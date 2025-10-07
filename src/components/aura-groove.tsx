@@ -13,7 +13,7 @@ import type { DrumSettings, InstrumentSettings, ScoreName, BassInstrument, Instr
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { useRouter } from "next/navigation";
 import { BASS_PRESETS } from "@/lib/bass-presets";
-import { getPresetParams } from "@/lib/presets";
+import { PRESETS } from "@/lib/presets";
 
 
 // This is now a "dumb" UI component controlled by the useAuraGroove hook.
@@ -57,6 +57,9 @@ const EQ_BANDS = [
   { freq: '4k', label: '4k' },
 ];
 
+const MELODY_INSTRUMENTS: (MelodyInstrument | 'none')[] = ['synth', 'organ', 'mellotron', 'theremin', 'E-Bells_melody', 'G-Drops', 'none'];
+
+
 export function AuraGroove({
   isPlaying,
   isInitializing,
@@ -96,14 +99,8 @@ export function AuraGroove({
         const preset = BASS_PRESETS[instrumentName as BassInstrument];
         return preset?.color || 'hsl(var(--foreground))';
     }
-    // For melody and accompaniment, we can define some default colors
-    switch (instrumentName) {
-        case 'synth': return '#8B5CF6'; // A nice purple
-        case 'organ': return '#38BDF8'; // A sky blue
-        case 'mellotron': return '#F97316'; // A warm orange
-        case 'theremin': return '#EC4899'; // A vibrant pink
-        default: return 'hsl(var(--foreground))';
-    }
+    const preset = PRESETS[instrumentName as MelodyInstrument];
+    return preset?.color || 'hsl(var(--foreground))';
   };
 
   const PartIcon = ({ part }: { part: keyof InstrumentSettings }) => {
@@ -251,9 +248,10 @@ export function AuraGroove({
                 const settings = instrumentSettings[part];
                 let instrumentList: (BassInstrument | MelodyInstrument | AccompanimentInstrument | 'none')[] = [];
                 if (part === 'bass') {
-                    instrumentList = ['classicBass', 'glideBass', 'ambientDrone', 'resonantGliss', 'hypnoticDrone', 'livingRiff', 'none'];
+                    instrumentList = Object.keys(BASS_PRESETS) as BassInstrument[];
+                    instrumentList.push('none');
                 } else if (part === 'melody' || part === 'accompaniment') {
-                    instrumentList = ['synth', 'organ', 'mellotron', 'theremin', 'none'];
+                    instrumentList = MELODY_INSTRUMENTS;
                 }
 
                 return (

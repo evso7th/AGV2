@@ -3,7 +3,7 @@
 
 import React, { createContext, useContext, useState, useRef, useCallback, useEffect } from 'react';
 import { useToast } from "@/hooks/use-toast";
-import type { WorkerSettings, Score, InstrumentPart, BassInstrument, MelodyInstrument, AccompanimentInstrument, BassTechnique, TextureSettings, ScoreName } from '@/types/music';
+import type { WorkerSettings, Score, InstrumentPart, BassInstrument, MelodyInstrument, AccompanimentInstrument, BassTechnique, TextureSettings, ScoreName, Note, InstrumentType } from '@/types/music';
 import { DrumMachine } from '@/lib/drum-machine';
 import { AccompanimentSynthManager } from '@/lib/accompaniment-synth-manager';
 import { BassSynthManager } from '@/lib/bass-synth-manager';
@@ -129,6 +129,31 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
     if (drumScore.length > 0 && drumMachineRef.current && currentSettings?.drumSettings.enabled) {
         drumMachineRef.current.schedule(drumScore, now);
     }
+
+    const effectsScore = score.effects || [];
+    if (effectsScore.length > 0 && currentSettings) {
+        const gainNode = gainNodesRef.current.effects;
+        if (gainNode) {
+            effectsScore.forEach(note => {
+                 const voice = synthPoolRef.current[nextVoiceRef.current++ % synthPoolRef.current.length];
+                 if(voice) {
+                     const noteAsMidi: Note = { midi: new (require('tone').Frequency)(note.note).toMidi(), time: note.time, duration: 0.5, velocity: note.velocity };
+                     const params = getPresetParams(note.note as InstrumentType, noteAsMidi);
+                     if (!params) return;
+                     voice.disconnect();
+                     voice.connect(gainNode);
+                     const noteOnTime = now + note.time;
+                     const noteOffTime = noteOnTime + 0.5; // Fixed duration for effects
+                     
+                     voice.port.postMessage({ ...params, type: 'noteOn', when: noteOnTime });
+                     const delayUntilOff = (noteOffTime - audioContext.currentTime) * 1000;
+                     setTimeout(() => voice.port.postMessage({ type: 'noteOff', release: params.release }), Math.max(0, delayUntilOff));
+                 }
+            });
+        }
+    }
+
+
     console.timeEnd('scheduleScore');
   }, []);
 

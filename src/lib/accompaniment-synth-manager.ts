@@ -74,13 +74,10 @@ export class AccompanimentSynthManager {
         const params = getPresetParams(instrumentName, placeholderNote);
         
         if (params) {
+             const { frequency, velocity, ...presetParams } = params;
              this.workletNode.port.postMessage({
                 type: 'setPreset',
-                wave: params.oscType,
-                cutoff: params.filterCutoff,
-                attack: params.attack,
-                release: params.release,
-                portamento: params.portamento,
+                ...presetParams
              });
         }
     }
