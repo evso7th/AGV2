@@ -1,0 +1,95 @@
+
+{
+  "name": "Acoustic Piano",
+  "description": "A preset mimicking the sound of an acoustic piano, with a distinct hammer attack and long sustain.",
+  "portamento": 0,
+  
+    "layers": [
+    {
+      "id": "hammer-layer",
+      "label": "Hammer",
+      "oscillator": {
+        "type": "sawtooth",
+        "count": 1,
+        "spread": 0
+      },
+      "envelope": {
+        "attack": 0.002,
+        "decay": 0.1,
+        "sustain": 0.0,
+        "release": 0.01
+      },
+      "filter": {
+        "type": "lowpass",
+        "cutoff": 3500,
+        "resonance": 0.2,
+        "envMod": 800
+      },
+      "lfo": null,
+      "detune": 0,
+      "pan": 0.1,
+      "mix": 0.7,
+      "stagger": 0
+    },
+    {
+      "id": "body-layer",
+      "label": "Body",
+      "oscillator": {
+        "type": "sine",
+        "count": 3,
+        "spread": 2
+      },
+      "envelope": {
+        "attack": 0.01,
+        "decay": 0.5,
+        "sustain": 0.3,
+        "release": 0.5
+      },
+      "filter": {
+        "type": "lowpass",
+        "cutoff": 2000,
+        "resonance": 0.2,
+        "envMod": 500
+      },
+      "lfo": null,
+      "detune": 0,
+      "pan": -0.1,
+      "mix": 1.0,
+      "stagger": 0.005
+    },
+    {
+      "id": "resonance-layer",
+      "label": "Resonance",
+      "oscillator": {
+        "type": "triangle",
+        "count": 1,
+        "spread": 0
+      },
+      "envelope": {
+        "attack": 0.1,
+        "decay": 0.4,
+        "sustain": 0.2,
+        "release": 0.2
+      },
+      "filter": {
+        "type": "lowpass",
+        "cutoff": 800,
+        "resonance": 0.4,
+        "envMod": 200
+      },
+      "lfo": null,
+      "detune": 0,
+      "pan": 0,
+      "mix": 0.5,
+      "stagger": 0.01,
+      "octave": -1
+    }
+  ],
+"effects": {
+    "reverb": { "decay": 0.1, "preDelay": 0.0 },
+    "delay": { "wet": 0.0, "time": 0.00, "feedback": 0.0 },
+    "chorus": { "depth": 0.2, "rate": 0.2, "wet": 0.035 },
+    "flanger": { "wet": 0.5, "rate": 0.05, "depth": 0.003, "feedback": 0.055 }
+   }
+
+}

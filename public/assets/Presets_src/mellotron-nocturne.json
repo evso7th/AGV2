@@ -1,0 +1,75 @@
+{
+  "name": "Mellotron Nocturne",
+  "effects": {
+    "chorus": { "rate": 0.2, "depth": 0.25, "wet": 0.35 },
+    "reverb": { "decay": 0.6, "preDelay": 0.05, "wet": 0.3 },
+    "delay": { "time": 0.1, "feedback": 0.25, "wet": 0.15 }
+  },
+  "layers": [
+    {
+      "id": "strings-layer",
+      "oscillator": { "type": "fatsawtooth", "count": 3, "spread": 8 },
+      "envelope": { "attack": 1.0, "decay": 1.5, "sustain": 0.85, "release": 0.7 },
+      "filter": { "type": "lowpass", "cutoff": 900, "resonance": 0.3, "envMod": 50 },
+      "lfo": { "target": "cutoff", "type": "sine", "frequency": 0.1, "depth": 20 },
+      "distortion": { "amount": 0.0 },
+      "mix": 0.65,
+      "pan": 0,
+      "detune": -2,
+      "octave": 0,
+      "reverbSend": 0.25,
+      "chorusSend": 0.1,
+      "delaySend": 0.1,
+      "flangerSend": 0
+    },
+    {
+      "id": "flute-layer",
+      "oscillator": { "type": "triangle" },
+      "envelope": { "attack": 0.2, "decay": 0.8, "sustain": 0.65, "release": 0.2 },
+      "distortion": { "amount": 0.1 },
+      "filter": { "type": "lowpass", "cutoff": 2000, "resonance": 0.2, "envMod": 0 },
+      "mix": 0.2,
+      "pan": -0.2,
+      "detune": 1,
+      "octave": 1,
+      "delaySend": 0,
+      "chorusSend": 0.3,
+      "flangerSend": 0,
+      "reverbSend": 0.15,
+      "lfo": { "target": "pitch", "type": "triangle", "frequency": 0.15, "depth": 0.0 }
+    },
+    {
+      "id": "choir-layer",
+      "oscillator": { "type": "triangle" },
+      "envelope": { "attack": 2.0, "decay": 0.9, "sustain": 0.85, "release": 1.8 },
+      "distortion": { "amount": 0.0 },
+      "filter": { "type": "bandpass", "cutoff": 2500, "resonance": 0.4, "envMod": 0 },
+      "mix": 0.15,
+      "pan": 0.4,
+      "detune": 3,
+      "octave": 1,
+      "delaySend": 0.1,
+      "chorusSend": 0.4,
+      "flangerSend": 0,
+      "reverbSend": 0.3,
+      "lfo": { "target": "pitch", "type": "sine", "frequency": 0.2, "depth": 0.02 }
+    },
+    {
+      "id": "tape-pad",
+      "oscillator": { "type": "sine" },
+      "envelope": { "attack": 1.5, "decay": 1.2, "sustain": 0.9, "release": 2.5 },
+      "distortion": { "amount": 0.15 },
+      "filter": { "type": "lowpass", "cutoff": 1200, "resonance": 0.1, "envMod": 0 },
+      "mix": 0.15,
+      "pan": -0.3,
+      "detune": -1,
+      "octave": -1,
+      "delaySend": 0.5,
+      "chorusSend": 0.2,
+      "flangerSend": 0,
+      "reverbSend": 0.15,
+      "volumeKeytracking": { "amount": 0.6 },
+      "lfo": { "target": "pitch", "type": "sine", "frequency": 0.15, "depth": 0.015 }
+    }
+  ]
+}
