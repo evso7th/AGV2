@@ -15,6 +15,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import type { AuraGrooveProps } from "./aura-groove";
 import { useRouter } from "next/navigation";
 import { formatTime } from "@/lib/utils";
+import type { BassInstrument, MelodyInstrument } from '@/types/music';
 
 const EQ_BANDS = [
   { freq: '60', label: '60' }, { freq: '125', label: '125' }, { freq: '250', label: '250' },
@@ -40,6 +41,10 @@ export function AuraGrooveV2({
     router.push('/aura-groove-legacy');
   };
   
+  const melodyInstrumentList: (MelodyInstrument | 'none')[] = ['piano', 'synth', 'organ', 'mellotron', 'theremin', 'E-Bells_melody', 'G-Drops', 'none'];
+  const bassInstrumentList: (BassInstrument | 'none')[] = ['classicBass', 'glideBass', 'ambientDrone', 'resonantGliss', 'hypnoticDrone', 'livingRiff', 'piano', 'none'];
+
+
   return (
     <div className="w-full h-full flex flex-col p-3 bg-card">
       {/* Header */}
@@ -161,13 +166,13 @@ export function AuraGrooveV2({
                                   <Select value={settings.name} onValueChange={(v) => setInstrumentSettings(part as any, v as any)} disabled={isInitializing || isPlaying}>
                                       <SelectTrigger className="h-8 text-xs"><SelectValue /></SelectTrigger>
                                       <SelectContent>
-                                          {(part === 'bass' ? ['classicBass', 'glideBass', 'ambientDrone', 'resonantGliss', 'hypnoticDrone', 'livingRiff', 'none'] : ['synth', 'organ', 'mellotron', 'theremin', 'none']).map(inst => (
+                                          {(part === 'bass' ? bassInstrumentList : melodyInstrumentList).map(inst => (
                                             <SelectItem key={inst} value={inst} className="text-xs">{inst.charAt(0).toUpperCase() + inst.slice(1).replace(/([A-Z])/g, ' $1')}</SelectItem>
                                           ))}
                                       </SelectContent>
                                   </Select>
                               </div>
-                               {part === 'bass' && (
+                               {part === 'bass' && 'technique' in settings && settings.name !== 'piano' && (
                                   <div className="grid grid-cols-2 items-center gap-2">
                                       <Label className="font-semibold flex items-center gap-1.5 capitalize text-xs"><GitBranch className="h-4 w-4"/>Technique</Label>
                                        <Select value={settings.technique} onValueChange={(v) => handleBassTechniqueChange(v as any)} disabled={isInitializing || isPlaying || settings.name === 'none'}>

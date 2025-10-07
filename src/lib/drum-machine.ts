@@ -57,7 +57,8 @@ function createSampler(audioContext: AudioContext, output: AudioNode): Sampler {
     const triggerAttack = (note: string, time: number, velocity = 1) => {
         const buffer = buffers.get(note);
         if (!buffer) {
-            console.warn(`[DrumMachine] Sample for note ${note} not found.`);
+            // It's common for a score to request a note that doesn't have a sample, so we'll just warn.
+            // console.warn(`[DrumMachine] Sample for note ${note} not found.`);
             return;
         }
 
@@ -68,7 +69,7 @@ function createSampler(audioContext: AudioContext, output: AudioNode): Sampler {
         gainNode.gain.setValueAtTime(velocity, audioContext.currentTime);
         
         source.connect(gainNode);
-        gainNode.connect(output); // Corrected: connect to the provided output gain node
+        gainNode.connect(output);
         source.start(time);
     };
 

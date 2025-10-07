@@ -7,7 +7,7 @@ const isMobile = () => {
 };
 
 export type PresetOptions = {
-    type?: 'Synth' | 'FMSynth' | 'AMSynth' | 'NoiseSynth';
+    type?: 'Synth' | 'FMSynth' | 'AMSynth' | 'NoiseSynth' | 'Sampler';
     options?: any;
     attack?: number;
     release?: number;
@@ -98,6 +98,14 @@ export const PRESETS: Record<string, PresetOptions> = {
         attack: 0.01, release: 0.4, filterCutoff: 2000, q: 1, oscType: 'fmsine'
     },
     
+    // Sampler Presets
+    piano: {
+        type: 'Sampler',
+        attack: 0.01,
+        release: 2.0,
+        color: 'hsl(var(--primary))'
+    },
+
     // Legacy Bass Preset
     portamento: {
        attack: 0.1,

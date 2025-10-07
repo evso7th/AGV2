@@ -76,8 +76,8 @@ export const useAuraGroove = () => {
   const [drumSettings, setDrumSettings] = useState<DrumSettings>({ pattern: 'composer', volume: 0.5 });
   const [instrumentSettings, setInstrumentSettings] = useState<InstrumentSettings>({
     bass: { name: "glideBass", volume: 0.7, technique: 'arpeggio' },
-    melody: { name: "synth", volume: 0.6 },
-    accompaniment: { name: "synth", volume: 0.5 },
+    melody: { name: "piano", volume: 0.8 },
+    accompaniment: { name: "piano", volume: 0.7 },
   });
   const [textureSettings, setTextureSettings] = useState<TextureSettings>({
       sparkles: { enabled: true, volume: 0.35 },
@@ -118,7 +118,12 @@ export const useAuraGroove = () => {
         updateSettings(getFullSettings());
         
         Object.entries(instrumentSettings).forEach(([part, settings]) => {
-            setVolume(part as InstrumentPart, settings.volume);
+            const instrumentPart = part as InstrumentPart;
+            if (settings.name === 'piano') {
+                setVolume('piano', settings.volume);
+            } else {
+                setVolume(instrumentPart, settings.volume);
+            }
         });
         setVolume('drums', drumSettings.volume);
         setEngineTextureSettings(textureSettings);
@@ -193,13 +198,20 @@ export const useAuraGroove = () => {
 
   const handleVolumeChange = (part: InstrumentPart, value: number) => {
     if (part === 'bass' || part === 'melody' || part === 'accompaniment') {
+      const settings = instrumentSettings[part];
+      if (settings.name === 'piano') {
+          setVolume('piano', value);
+      } else {
+          setVolume(part, value);
+      }
       setInstrumentSettings(prev => ({ ...prev, [part]: { ...prev[part], volume: value }}));
     } else if (part === 'drums') {
         setDrumSettings(prev => ({ ...prev, volume: value }));
+        setVolume('drums', value);
     } else if (part === 'sparkles' || part === 'pads') {
         setTextureSettings(prev => ({ ...prev, [part]: { ...prev[part], volume: value }}));
+        setVolume(part, value);
     }
-    setVolume(part, value);
   };
 
   const handleTextureEnabledChange = (part: 'sparkles' | 'pads', enabled: boolean) => {

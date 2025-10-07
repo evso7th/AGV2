@@ -57,7 +57,7 @@ const EQ_BANDS = [
   { freq: '4k', label: '4k' },
 ];
 
-const MELODY_INSTRUMENTS: (MelodyInstrument | 'none')[] = ['synth', 'organ', 'mellotron', 'theremin', 'E-Bells_melody', 'G-Drops', 'none'];
+const MELODY_INSTRUMENTS: (MelodyInstrument | 'none')[] = ['piano', 'synth', 'organ', 'mellotron', 'theremin', 'E-Bells_melody', 'G-Drops', 'none'];
 
 
 export function AuraGroove({
@@ -95,6 +95,7 @@ export function AuraGroove({
   const getPartColor = (part: keyof InstrumentSettings) => {
     const instrumentName = instrumentSettings[part].name;
     if (instrumentName === 'none') return 'hsl(var(--muted-foreground))';
+    if (instrumentName === 'piano') return 'hsl(var(--primary))';
     if (part === 'bass') {
         const preset = BASS_PRESETS[instrumentName as BassInstrument];
         return preset?.color || 'hsl(var(--foreground))';
@@ -105,8 +106,13 @@ export function AuraGroove({
 
   const PartIcon = ({ part }: { part: keyof InstrumentSettings }) => {
     const color = getPartColor(part);
+    const instrumentName = instrumentSettings[part].name;
     const iconProps = { className: "h-5 w-5", style: { color } };
     
+    if (instrumentName === 'piano') {
+        return <Piano {...iconProps} />;
+    }
+
     switch (part) {
         case 'bass': return <Waves {...iconProps} />;
         case 'melody': return <GitBranch {...iconProps} />;
