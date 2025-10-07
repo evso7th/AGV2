@@ -92,6 +92,7 @@ export class DrumMachine {
         this.sampler = createSampler(this.audioContext, this.outputNode);
         await this.sampler.load(DRUM_SAMPLES);
         this.isInitialized = true;
+        console.log('[DrumMachine] Initialized and samples loaded.');
     }
 
     schedule(score: SamplerNote[], time: number) {
