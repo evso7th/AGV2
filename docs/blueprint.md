@@ -1,18 +1,16 @@
-# **App Name**: MathTune Box
+# **App Name**: AuraGroove
 
 ## Core Features:
 
-- Algorithmic Music Generation: Generate music algorithmically using mathematical functions and parameters. Implement customizable controls for users to adjust musical scales, tempo, and instrument choices.
-- Interactive Controls: Provide interactive sliders and input fields that allow users to modify the parameters that will feed the music generation algorithms.
-- Playback Interface: Allow playback/pause/stop for the music.
-- Parameter Presets: Allow storing different combinations of music generation parameters into named presets for easy re-use.
+- Ambient Music Generation: Generate ambient music in real-time, creating a continuous, evolving soundscape, playing simultaneously solo, accompaniment and bass part
+- Start/Stop Button: Allows user to start/stop the music generation process
+- Instrument Selection: Enable user to choose an instrument from synthesizer, organ, and piano for both the solo and accompaniment part.
+- Bass instrument Selection: Let user select bass guitar for the bass part
+- Polyphony Sound Optimization: AI tool will optimize polyphony sound for different performance profiles (CPU) based on target playback device
 
 ## Style Guidelines:
 
-- Primary color: Dark blue (#34495E) to create a contemplative, focused mood conducive to mathematical exploration and musical experimentation.
-- Background color: Very dark blue (#222F3D), nearly black, provides high contrast for interface elements.
-- Accent color: Cyan (#4AC0C0), slightly more saturated than the other colors, provides highlights on interactive elements and visual feedback.
-- Headline font: 'Space Grotesk', a modern sans-serif for a techy, precise look; use 'Inter' (sans-serif) for longer descriptions.
-- Use minimalist, geometric icons for controls, parameters, and settings.
-- Employ a clean, grid-based layout with clear separation between controls and the output.
-- Subtle animations to visualize musical parameters.
+- Primary color: Calm purple (#947bb0) for a relaxing, ambient feel.
+- Background color: Near-black (#121212) to enhance the vibrancy of other elements and reduce eye strain in dark environments.
+- Accent color: Muted blue (#7a9ac6) for interactive elements and highlights.
+- Font: 'Montserrat' (sans-serif) for clear and modern readability. Note: currently only Google Fonts are supported.
