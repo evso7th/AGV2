@@ -335,31 +335,33 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
 
   const setInstrumentCallback = useCallback((part: 'bass' | 'melody' | 'accompaniment', name: BassInstrument | MelodyInstrument | AccompanimentInstrument) => {
     if (!settingsRef.current) return;
-    const { instrumentSettings } = settingsRef.current;
     
     if (part === 'accompaniment') {
+        const volume = settingsRef.current.instrumentSettings.accompaniment.volume;
         if (name === 'violin') {
-            violinSamplerPlayerRef.current?.setVolume(instrumentSettings.accompaniment.volume);
+            violinSamplerPlayerRef.current?.setVolume(volume);
         } else if (name === 'piano') {
-            samplerPlayerRef.current?.setVolume(instrumentSettings.accompaniment.volume);
+            samplerPlayerRef.current?.setVolume(volume);
         } else {
             accompanimentManagerRef.current?.setPreset(name as MelodyInstrument);
         }
     }
     if (part === 'bass') {
+        const volume = settingsRef.current.instrumentSettings.bass.volume;
         if (name === 'violin') {
-            violinSamplerPlayerRef.current?.setVolume(instrumentSettings.bass.volume);
+            violinSamplerPlayerRef.current?.setVolume(volume);
         } else if (name === 'piano') {
-            samplerPlayerRef.current?.setVolume(instrumentSettings.bass.volume);
+            samplerPlayerRef.current?.setVolume(volume);
         } else {
             bassManagerRef.current?.setPreset(name as BassInstrument);
         }
     }
      if (part === 'melody') {
+        const volume = settingsRef.current.instrumentSettings.melody.volume;
         if (name === 'violin') {
-            violinSamplerPlayerRef.current?.setVolume(instrumentSettings.melody.volume);
+            violinSamplerPlayerRef.current?.setVolume(volume);
         } else if (name === 'piano') {
-            samplerPlayerRef.current?.setVolume(instrumentSettings.melody.volume);
+            samplerPlayerRef.current?.setVolume(volume);
         }
     }
 

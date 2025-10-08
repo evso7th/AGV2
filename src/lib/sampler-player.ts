@@ -8,14 +8,20 @@ type SamplerInstrument = {
 
 export class SamplerPlayer {
     private audioContext: AudioContext;
-    private outputNode: AudioNode;
+    private outputNode: GainNode;
     private instruments = new Map<string, SamplerInstrument>();
     public isInitialized = false;
 
     constructor(audioContext: AudioContext, destination: AudioNode) {
         this.audioContext = audioContext;
-        this.outputNode = destination;
+        this.outputNode = this.audioContext.createGain();
+        this.outputNode.connect(destination);
     }
+    
+    public setVolume(volume: number) {
+        this.outputNode.gain.setTargetAtTime(volume, this.audioContext.currentTime, 0.01);
+    }
+
 
     async loadInstrument(instrumentName: string, sampleMap: Record<string, string>): Promise<boolean> {
         if (this.instruments.has(instrumentName)) {
@@ -90,7 +96,12 @@ export class SamplerPlayer {
 
             const source = this.audioContext.createBufferSource();
             source.buffer = buffer;
-            source.connect(this.outputNode);
+            
+            const gainNode = this.audioContext.createGain();
+            gainNode.gain.setValueAtTime(note.velocity ?? 0.7, this.audioContext.currentTime);
+
+            source.connect(gainNode);
+            gainNode.connect(this.outputNode);
 
             // Adjust playback rate for pitch shifting
             const playbackRate = Math.pow(2, (note.midi - sampleMidi) / 12);
@@ -116,12 +127,12 @@ export class SamplerPlayer {
         const match = note.match(/([A-G])([#b]?)(-?\d+)/);
         if (!match) return null;
         
-        const noteName = `${match[1]}${match[2]}`;
+        const noteName = `${match[1].toUpperCase()}${match[2]}`;
         const octave = parseInt(match[3], 10);
         
         const noteMap: Record<string, number> = {
-            'C': 0, 'C#': 1, 'Db': 1, 'D': 2, 'D#': 3, 'Eb': 3, 'E': 4,
-            'F': 5, 'F#': 6, 'Gb': 6, 'G': 7, 'G#': 8, 'Ab': 8, 'A': 9, 'A#': 10, 'Bb': 10, 'B': 11
+            'C': 0, 'C#': 1, 'DB': 1, 'D': 2, 'D#': 3, 'EB': 3, 'E': 4,
+            'F': 5, 'F#': 6, 'GB': 6, 'G': 7, 'G#': 8, 'AB': 8, 'A': 9, 'A#': 10, 'BB': 10, 'B': 11
         };
 
         const noteIndex = noteMap[noteName];

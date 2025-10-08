@@ -116,6 +116,7 @@ export class ViolinSamplerPlayer {
         const availableMidiNotes = Array.from(instrument.buffers.keys());
         
         // 1. Find the closest MIDI note available in the samples
+        if (availableMidiNotes.length === 0) return { buffer: null, midi: targetMidi };
         const closestMidi = availableMidiNotes.reduce((prev, curr) => 
             Math.abs(curr - targetMidi) < Math.abs(prev - targetMidi) ? curr : prev
         );
@@ -141,15 +142,15 @@ export class ViolinSamplerPlayer {
         const match = note.match(/([A-G])([#b]?)(-?\d+)/);
         if (!match) return null;
         
-        const noteName = `${match[1]}${match[2]}`;
+        const noteName = `${match[1].toUpperCase()}${match[2]}`;
         const octave = parseInt(match[3], 10);
         
         const noteMap: Record<string, number> = {
-            'C': 0, 'C#': 1, 'Db': 1, 'D': 2, 'D#': 3, 'Eb': 3, 'E': 4,
-            'F': 5, 'F#': 6, 'Gb': 6, 'G': 7, 'G#': 8, 'Ab': 8, 'A': 9, 'A#': 10, 'Bb': 10, 'B': 11
+            'C': 0, 'C#': 1, 'DB': 1, 'D': 2, 'D#': 3, 'EB': 3, 'E': 4,
+            'F': 5, 'F#': 6, 'GB': 6, 'G': 7, 'G#': 8, 'AB': 8, 'A': 9, 'A#': 10, 'BB': 10, 'B': 11
         };
 
-        const noteIndex = noteMap[noteName.toUpperCase()];
+        const noteIndex = noteMap[noteName];
         if (noteIndex === undefined) return null;
 
         return 12 * (octave + 1) + noteIndex;
