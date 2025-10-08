@@ -106,7 +106,7 @@ export const useAuraGroove = () => {
       drumSettings: { ...drumSettings, enabled: drumSettings.pattern !== 'none' },
       textureSettings: {
           sparkles: { enabled: textureSettings.sparkles.enabled },
-          pads: { enabled: textureSettings.pads.enabled },
+          pads: { enabled: textureSettings.pads.enabled }
       },
       density,
     };
@@ -119,11 +119,7 @@ export const useAuraGroove = () => {
         
         Object.entries(instrumentSettings).forEach(([part, settings]) => {
             const instrumentPart = part as InstrumentPart;
-            if (settings.name === 'piano') setVolume('piano', settings.volume);
-            else if (settings.name === 'violin') setVolume('violin', settings.volume);
-            else if (settings.name === 'flute') setVolume('flute', settings.volume);
-            else if (settings.name === 'acousticGuitar') setVolume('acousticGuitar', settings.volume);
-            else setVolume(instrumentPart, settings.volume);
+            setVolume(instrumentPart, settings.volume);
         });
         setVolume('drums', drumSettings.volume);
         setEngineTextureSettings(textureSettings);
@@ -197,14 +193,9 @@ export const useAuraGroove = () => {
   };
 
   const handleVolumeChange = (part: InstrumentPart, value: number) => {
-    if (part === 'bass' || part === 'melody' || part === 'accompaniment') {
+    if (part === 'bass' || part === 'melody' || part === 'accompaniment' || part === 'piano' || part === 'violin' || part === 'flute' || part === 'acousticGuitar') {
       setInstrumentSettings(prev => ({ ...prev, [part]: { ...prev[part], volume: value }}));
-      const instrumentName = instrumentSettings[part as keyof InstrumentSettings].name;
-      if (instrumentName === 'piano') setVolume('piano', value);
-      else if (instrumentName === 'violin') setVolume('violin', value);
-      else if (instrumentName === 'flute') setVolume('flute', value);
-      else if (instrumentName === 'acousticGuitar') setVolume('acousticGuitar', value);
-      else setVolume(part, value);
+      setVolume(part, value);
     } else if (part === 'drums') {
         setDrumSettings(prev => ({ ...prev, volume: value }));
         setVolume('drums', value);

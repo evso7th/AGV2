@@ -8,7 +8,7 @@ import { DrumMachine } from '@/lib/drum-machine';
 import { SamplerPlayer } from '@/lib/sampler-player';
 import { ViolinSamplerPlayer } from '@/lib/violin-sampler-player';
 import { FluteSamplerPlayer } from '@/lib/flute-sampler-player';
-import { AcousticGuitarSamplerPlayer } from '@/lib/acoustic-guitar-sampler-player';
+import { AcousticGuitarChordSamplerPlayer } from '@/lib/acoustic-guitar-sampler-player';
 import { AccompanimentSynthManager } from '@/lib/accompaniment-synth-manager';
 import { BassSynthManager } from '@/lib/bass-synth-manager';
 import { SparklePlayer } from '@/lib/sparkle-player';
@@ -84,7 +84,7 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
   const samplerPlayerRef = useRef<SamplerPlayer | null>(null);
   const violinSamplerPlayerRef = useRef<ViolinSamplerPlayer | null>(null);
   const fluteSamplerPlayerRef = useRef<FluteSamplerPlayer | null>(null);
-  const acousticGuitarSamplerPlayerRef = useRef<AcousticGuitarSamplerPlayer | null>(null);
+  const acousticGuitarSamplerPlayerRef = useRef<AcousticGuitarChordSamplerPlayer | null>(null);
 
 
   const masterGainNodeRef = useRef<GainNode | null>(null);
@@ -266,7 +266,7 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
             initPromises.push(fluteSamplerPlayerRef.current.loadInstrument('flute', FLUTE_SAMPLES));
         }
         if (!acousticGuitarSamplerPlayerRef.current) {
-            acousticGuitarSamplerPlayerRef.current = new AcousticGuitarSamplerPlayer(context, gainNodesRef.current.acousticGuitar!);
+            acousticGuitarSamplerPlayerRef.current = new AcousticGuitarChordSamplerPlayer(context, gainNodesRef.current.acousticGuitar!);
             initPromises.push(acousticGuitarSamplerPlayerRef.current.loadInstrument('acousticGuitar', ACOUSTIC_GUITAR_CHORD_SAMPLES));
         }
         if (!accompanimentManagerRef.current) {

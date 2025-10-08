@@ -57,8 +57,8 @@ const EQ_BANDS = [
   { freq: '4k', label: '4k' },
 ];
 
-const MELODY_INSTRUMENTS: (MelodyInstrument | 'none')[] = ['piano', 'violin', 'flute', 'acousticGuitar', 'synth', 'organ', 'mellotron', 'theremin', 'E-Bells_melody', 'G-Drops', 'none'];
-const ACCOMPANIMENT_INSTRUMENTS: (AccompanimentInstrument | 'none')[] = ['piano', 'violin', 'flute', 'acousticGuitar', 'synth', 'organ', 'mellotron', 'theremin', 'E-Bells_melody', 'G-Drops', 'none'];
+const MELODY_INSTRUMENTS: (MelodyInstrument | 'none')[] = ['piano', 'violin', 'flute', 'synth', 'organ', 'mellotron', 'theremin', 'E-Bells_melody', 'G-Drops', 'none'];
+const ACCOMPANIMENT_INSTRUMENTS: (AccompanimentInstrument | 'none')[] = ['acousticGuitar', 'piano', 'violin', 'flute', 'synth', 'organ', 'mellotron', 'theremin', 'E-Bells_melody', 'G-Drops', 'none'];
 const BASS_INSTRUMENTS: (BassInstrument | 'none')[] = ['classicBass', 'glideBass', 'ambientDrone', 'resonantGliss', 'hypnoticDrone', 'livingRiff', 'piano', 'violin', 'flute', 'none'];
 
 
@@ -256,6 +256,8 @@ export function AuraGroove({
             {(Object.keys(instrumentSettings) as Array<keyof InstrumentSettings>).map((part) => {
                 const settings = instrumentSettings[part];
                 let instrumentList: (BassInstrument | MelodyInstrument | AccompanimentInstrument | 'none')[] = [];
+                let displayNames: Record<string, string> = { 'acousticGuitar': 'Acoustic Chords' };
+
                 if (part === 'bass') {
                     instrumentList = BASS_INSTRUMENTS;
                 } else if (part === 'melody') {
@@ -280,7 +282,7 @@ export function AuraGroove({
                           </SelectTrigger>
                           <SelectContent>
                              {instrumentList.map(instrument => (
-                                <SelectItem key={instrument} value={instrument}>{instrument.charAt(0).toUpperCase() + instrument.slice(1).replace(/([A-Z])/g, ' $1')}</SelectItem>
+                                <SelectItem key={instrument} value={instrument}>{displayNames[instrument] || (instrument.charAt(0).toUpperCase() + instrument.slice(1).replace(/([A-Z])/g, ' $1'))}</SelectItem>
                              ))}
                           </SelectContent>
                         </Select>

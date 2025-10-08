@@ -41,9 +41,13 @@ export function AuraGrooveV2({
     router.push('/aura-groove-legacy');
   };
   
-  const melodyInstrumentList: (MelodyInstrument | 'none')[] = ['piano', 'violin', 'flute', 'acousticGuitar', 'synth', 'organ', 'mellotron', 'theremin', 'E-Bells_melody', 'G-Drops', 'none'];
-  const accompanimentInstrumentList: (AccompanimentInstrument | 'none')[] = ['piano', 'violin', 'flute', 'acousticGuitar', 'synth', 'organ', 'mellotron', 'theremin', 'E-Bells_melody', 'G-Drops', 'none'];
+  const melodyInstrumentList: (MelodyInstrument | 'none')[] = ['piano', 'violin', 'flute', 'synth', 'organ', 'mellotron', 'theremin', 'E-Bells_melody', 'G-Drops', 'none'];
+  const accompanimentInstrumentList: (AccompanimentInstrument | 'none')[] = ['acousticGuitar', 'piano', 'violin', 'flute', 'synth', 'organ', 'mellotron', 'theremin', 'E-Bells_melody', 'G-Drops', 'none'];
   const bassInstrumentList: (BassInstrument | 'none')[] = ['classicBass', 'glideBass', 'ambientDrone', 'resonantGliss', 'hypnoticDrone', 'livingRiff', 'piano', 'violin', 'flute', 'none'];
+
+  const displayNames: Record<string, string> = {
+    'acousticGuitar': 'Acoustic Chords',
+  };
 
 
   return (
@@ -170,7 +174,7 @@ export function AuraGrooveV2({
                                         <SelectTrigger className="h-8 text-xs"><SelectValue /></SelectTrigger>
                                         <SelectContent>
                                             {list.map(inst => (
-                                              <SelectItem key={inst} value={inst} className="text-xs">{inst.charAt(0).toUpperCase() + inst.slice(1).replace(/([A-Z])/g, ' $1')}</SelectItem>
+                                              <SelectItem key={inst} value={inst} className="text-xs">{displayNames[inst] || inst.charAt(0).toUpperCase() + inst.slice(1).replace(/([A-Z])/g, ' $1')}</SelectItem>
                                             ))}
                                         </SelectContent>
                                     </Select>

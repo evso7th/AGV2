@@ -5,7 +5,7 @@ type SamplerInstrument = {
     buffers: Map<string, AudioBuffer>; // Map from Chord name to AudioBuffer
 };
 
-export class AcousticGuitarSamplerPlayer {
+export class AcousticGuitarChordSamplerPlayer {
     private audioContext: AudioContext;
     private outputNode: GainNode;
     private instruments = new Map<string, SamplerInstrument>();
@@ -44,17 +44,17 @@ export class AcousticGuitarSamplerPlayer {
             await Promise.all(loadPromises);
 
             if (loadedBuffers.size === 0) {
-                 console.error(`[AcousticGuitarSamplerPlayer] No samples were loaded for instrument "${instrumentName}".`);
+                 console.error(`[AcousticGuitarChordSamplerPlayer] No samples were loaded for instrument "${instrumentName}".`);
                  return false;
             }
             
             this.instruments.set(instrumentName, { buffers: loadedBuffers });
             
-            console.log(`[AcousticGuitarSamplerPlayer] Instrument "${instrumentName}" loaded.`);
+            console.log(`[AcousticGuitarChordSamplerPlayer] Instrument "${instrumentName}" loaded.`);
             this.isInitialized = true;
             return true;
         } catch (error) {
-            console.error(`[AcousticGuitarSamplerPlayer] Failed to load instrument "${instrumentName}":`, error);
+            console.error(`[AcousticGuitarChordSamplerPlayer] Failed to load instrument "${instrumentName}":`, error);
             return false;
         }
     }
@@ -64,13 +64,13 @@ export class AcousticGuitarSamplerPlayer {
         
         const instrument = this.instruments.get(instrumentName);
         if (!instrument) {
-            console.warn(`[AcousticGuitarSamplerPlayer] Instrument "${instrumentName}" not loaded.`);
+            console.warn(`[AcousticGuitarChordSamplerPlayer] Instrument "${instrumentName}" not loaded.`);
             return;
         }
 
         const buffer = instrument.buffers.get(chordNote.chord);
         if (!buffer) {
-            console.warn(`[AcousticGuitarSamplerPlayer] Sample for chord "${chordNote.chord}" not found.`);
+            console.warn(`[AcousticGuitarChordSamplerPlayer] Sample for chord "${chordNote.chord}" not found.`);
             return;
         };
 
