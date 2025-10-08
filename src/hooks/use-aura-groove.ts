@@ -123,6 +123,8 @@ export const useAuraGroove = () => {
                 setVolume('piano', settings.volume);
             } else if (settings.name === 'violin') {
                 setVolume('violin', settings.volume);
+            } else if (settings.name === 'flute') {
+                setVolume('flute', settings.volume);
             } else {
                 setVolume(instrumentPart, settings.volume);
             }
@@ -136,7 +138,7 @@ export const useAuraGroove = () => {
         
         setBassTechnique(instrumentSettings.bass.technique);
     }
-  }, [isInitialized]);
+  }, [isInitialized, getFullSettings, setVolume, setInstrument, setBassTechnique, setEngineTextureSettings, drumSettings.volume, instrumentSettings]);
 
   // Sync settings with engine whenever they change
   useEffect(() => {
@@ -205,6 +207,8 @@ export const useAuraGroove = () => {
           setVolume('piano', value);
       } else if (settings.name === 'violin') {
           setVolume('violin', value);
+      } else if (settings.name === 'flute') {
+        setVolume('flute', value);
       } else {
           setVolume(part, value);
       }
@@ -299,3 +303,5 @@ export const useAuraGroove = () => {
     handleToggleTimer,
   };
 };
+
+    

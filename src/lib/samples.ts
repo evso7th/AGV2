@@ -44,3 +44,37 @@ export const VIOLIN_SAMPLES: Record<string, VelocitySample[]> = {
     'G4': [{ velocity: 1, file: '/assets/violin_samples/violin-arco-vibrato-single-g-4.mp3' }],
     'G5': [{ velocity: 1, file: '/assets/violin_samples/violin-arco-vibrato-single-g-5.mp3' }],
 };
+
+
+export const FLUTE_SAMPLES: Record<string, VelocitySample[]> = {
+    'C4': [
+        { velocity: 0.5, file: '/assets/flute_samples/flute-sustain-c-note_C.wav' },
+        { velocity: 1.0, file: '/assets/flute_samples/flute-sustain-vibrato-c-note_C.wav' }
+    ],
+    'D4': [
+        { velocity: 0.5, file: '/assets/flute_samples/flute-sustain-d-note_D.wav' },
+        { velocity: 1.0, file: '/assets/flute_samples/flute-sustain-vibrato-d-note_D.wav' }
+    ],
+    'E4': [
+        { velocity: 1.0, file: '/assets/flute_samples/flute-sustain-vibrato-e-note.wav' }
+    ],
+    'F4': [
+        { velocity: 0.5, file: '/assets/flute_samples/flute-sustain-f-note_F.wav' },
+        { velocity: 1.0, file: '/assets/flute_samples/flute-sustain-vibrato-f-note_F.wav' }
+    ],
+    'G4': [
+        { velocity: 0.5, file: '/assets/flute_samples/flute-sustain-g-note_G.wav' },
+        { velocity: 1.0, file: '/assets/flute_samples/flute-sustain-vibrato-g-note_G.wav' }
+    ],
+    'A4': [
+        { velocity: 0.5, file: '/assets/flute_samples/flute-sustain-a-note_A.wav' },
+        { velocity: 1.0, file: '/assets/flute_samples/flute-sustain-vibrato-a-note_A.wav' }
+    ],
+    'B4': [
+        { velocity: 0.5, file: '/assets/flute_samples/flute-sustain-b-note_B.wav' },
+        { velocity: 1.0, file: '/assets/flute_samples/flute-sustain-vibrato-b-note_B.wav' }
+    ],
+    'C5': [
+        { velocity: 1.0, file: '/assets/flute_samples/flute-c-major-single-note_C_major.wav' }
+    ]
+};

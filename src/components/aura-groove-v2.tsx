@@ -41,8 +41,8 @@ export function AuraGrooveV2({
     router.push('/aura-groove-legacy');
   };
   
-  const melodyInstrumentList: (MelodyInstrument | 'none')[] = ['piano', 'violin', 'synth', 'organ', 'mellotron', 'theremin', 'E-Bells_melody', 'G-Drops', 'none'];
-  const bassInstrumentList: (BassInstrument | 'none')[] = ['classicBass', 'glideBass', 'ambientDrone', 'resonantGliss', 'hypnoticDrone', 'livingRiff', 'piano', 'violin', 'none'];
+  const melodyInstrumentList: (MelodyInstrument | 'none')[] = ['piano', 'violin', 'flute', 'synth', 'organ', 'mellotron', 'theremin', 'E-Bells_melody', 'G-Drops', 'none'];
+  const bassInstrumentList: (BassInstrument | 'none')[] = ['classicBass', 'glideBass', 'ambientDrone', 'resonantGliss', 'hypnoticDrone', 'livingRiff', 'piano', 'violin', 'flute', 'none'];
 
 
   return (
@@ -158,7 +158,7 @@ export function AuraGrooveV2({
             <TabsContent value="instruments" className="space-y-1 pt-2 col-start-1 row-start-1 px-1">
                <Card className="border-0 shadow-none">
                   <CardHeader className="p-2"><CardTitle className="flex items-center gap-2 text-sm"><SlidersHorizontal className="h-4 w-4"/> Instruments</CardTitle></CardHeader>
-                  <CardContent className="space-y-1 p-3 pt-0">
+                  <CardContent className="space-y-1.5 p-3 pt-0">
                       {Object.entries(instrumentSettings).map(([part, settings]) => (
                           <div key={part} className="p-2 border rounded-md space-y-2">
                              <div className="grid grid-cols-2 items-center gap-2">
@@ -172,7 +172,7 @@ export function AuraGrooveV2({
                                       </SelectContent>
                                   </Select>
                               </div>
-                               {part === 'bass' && 'technique' in settings && settings.name !== 'piano' && settings.name !== 'violin' && (
+                               {part === 'bass' && 'technique' in settings && settings.name !== 'piano' && settings.name !== 'violin' && settings.name !== 'flute' && (
                                   <div className="grid grid-cols-2 items-center gap-2">
                                       <Label className="font-semibold flex items-center gap-1.5 capitalize text-xs"><GitBranch className="h-4 w-4"/>Technique</Label>
                                        <Select value={settings.technique} onValueChange={(v) => handleBassTechniqueChange(v as any)} disabled={isInitializing || isPlaying || settings.name === 'none'}>
