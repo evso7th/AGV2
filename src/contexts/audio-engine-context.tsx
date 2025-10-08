@@ -28,7 +28,7 @@ type WorkerMessage = {
 // --- Constants ---
 const VOICE_BALANCE = {
   bass: 1.0, melody: 0.7, accompaniment: 0.6, drums: 0.8,
-  effects: 0.6, sparkles: 0.35, pads: 0.9, piano: 0.8, violin: 0.8,
+  effects: 0.6, sparkles: 0.35, pads: 0.9, piano: 1.0, violin: 0.8,
 };
 
 const EQ_FREQUENCIES = [60, 125, 250, 500, 1000, 2000, 4000];
