@@ -102,26 +102,26 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
 
     // Bass
     const bassScore = score.bass || [];
-    if (bassScore.length > 0 && bassManagerRef.current && currentSettings.instrumentSettings.bass.name !== 'none') {
+    if (bassScore.length > 0 && currentSettings.instrumentSettings.bass.name !== 'none') {
         const instrumentName = currentSettings.instrumentSettings.bass.name;
-        if (instrumentName === 'piano') {
-            samplerPlayerRef.current?.schedule('piano', bassScore, now);
-        } else if (instrumentName === 'violin') {
-            violinSamplerPlayerRef.current?.schedule('violin', bassScore, now);
-        } else {
+        if (instrumentName === 'piano' && samplerPlayerRef.current) {
+            samplerPlayerRef.current.schedule('piano', bassScore, now);
+        } else if (instrumentName === 'violin' && violinSamplerPlayerRef.current) {
+            violinSamplerPlayerRef.current.schedule(bassScore, now);
+        } else if (bassManagerRef.current) {
             bassManagerRef.current.schedule(bassScore, now);
         }
     }
     
     // Melody
     const melodyScore = score.melody || [];
-    if (melodyScore.length > 0) {
+    if (melodyScore.length > 0 && currentSettings.instrumentSettings.melody.name !== 'none') {
         const instrumentName = currentSettings.instrumentSettings.melody.name;
-        if (instrumentName === 'piano') {
-            samplerPlayerRef.current?.schedule('piano', melodyScore, now);
-        } else if (instrumentName === 'violin') {
-            violinSamplerPlayerRef.current?.schedule('violin', melodyScore, now);
-        } else if (instrumentName !== 'none') {
+        if (instrumentName === 'piano' && samplerPlayerRef.current) {
+            samplerPlayerRef.current.schedule('piano', melodyScore, now);
+        } else if (instrumentName === 'violin' && violinSamplerPlayerRef.current) {
+            violinSamplerPlayerRef.current.schedule(melodyScore, now);
+        } else {
             const gainNode = gainNodesRef.current.melody;
             if (gainNode) {
                 melodyScore.forEach(note => {
@@ -144,13 +144,13 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
     
     // Accompaniment
     const accompanimentScore = score.accompaniment || [];
-    if (accompanimentScore.length > 0) {
+    if (accompanimentScore.length > 0 && currentSettings.instrumentSettings.accompaniment.name !== 'none') {
         const instrumentName = currentSettings.instrumentSettings.accompaniment.name;
-        if (instrumentName === 'piano') {
-            samplerPlayerRef.current?.schedule('piano', accompanimentScore, now);
-        } else if (instrumentName === 'violin') {
-            violinSamplerPlayerRef.current?.schedule('violin', accompanimentScore, now);
-        } else if (instrumentName !== 'none' && accompanimentManagerRef.current) {
+        if (instrumentName === 'piano' && samplerPlayerRef.current) {
+            samplerPlayerRef.current.schedule('piano', accompanimentScore, now);
+        } else if (instrumentName === 'violin' && violinSamplerPlayerRef.current) {
+            violinSamplerPlayerRef.current.schedule(accompanimentScore, now);
+        } else if (accompanimentManagerRef.current) {
             accompanimentManagerRef.current.schedule(accompanimentScore, now);
         }
     }
@@ -334,12 +334,37 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
   }, []);
 
   const setInstrumentCallback = useCallback((part: 'bass' | 'melody' | 'accompaniment', name: BassInstrument | MelodyInstrument | AccompanimentInstrument) => {
-    if (part === 'accompaniment') accompanimentManagerRef.current?.setPreset(name as MelodyInstrument);
-    if (part === 'bass') bassManagerRef.current?.setPreset(name as BassInstrument);
-    if (settingsRef.current) {
-      const newSettings = {...settingsRef.current, instrumentSettings: {...settingsRef.current.instrumentSettings, [part]: {...settingsRef.current.instrumentSettings[part], name}}};
-      updateSettingsCallback(newSettings);
+    if (!settingsRef.current) return;
+    const { instrumentSettings } = settingsRef.current;
+    
+    if (part === 'accompaniment') {
+        if (name === 'violin') {
+            violinSamplerPlayerRef.current?.setVolume(instrumentSettings.accompaniment.volume);
+        } else if (name === 'piano') {
+            samplerPlayerRef.current?.setVolume(instrumentSettings.accompaniment.volume);
+        } else {
+            accompanimentManagerRef.current?.setPreset(name as MelodyInstrument);
+        }
     }
+    if (part === 'bass') {
+        if (name === 'violin') {
+            violinSamplerPlayerRef.current?.setVolume(instrumentSettings.bass.volume);
+        } else if (name === 'piano') {
+            samplerPlayerRef.current?.setVolume(instrumentSettings.bass.volume);
+        } else {
+            bassManagerRef.current?.setPreset(name as BassInstrument);
+        }
+    }
+     if (part === 'melody') {
+        if (name === 'violin') {
+            violinSamplerPlayerRef.current?.setVolume(instrumentSettings.melody.volume);
+        } else if (name === 'piano') {
+            samplerPlayerRef.current?.setVolume(instrumentSettings.melody.volume);
+        }
+    }
+
+    const newSettings = {...settingsRef.current, instrumentSettings: {...settingsRef.current.instrumentSettings, [part]: {...settingsRef.current.instrumentSettings[part], name}}};
+    updateSettingsCallback(newSettings);
   }, [updateSettingsCallback]);
 
   const setBassTechniqueCallback = useCallback((technique: BassTechnique) => {
