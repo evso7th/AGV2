@@ -47,7 +47,7 @@ function createSampler(audioContext: AudioContext, output: AudioNode): Sampler {
                 const arrayBuffer = await response.arrayBuffer();
                 const audioBuffer = await audioContext.decodeAudioData(arrayBuffer);
                 buffers.set(note, audioBuffer);
-            } catch (error) {
+            } catch (error) => {
                 console.error(`Error loading sample ${note} from ${url}:`, error);
             }
         });

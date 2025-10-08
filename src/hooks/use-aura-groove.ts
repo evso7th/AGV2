@@ -121,6 +121,8 @@ export const useAuraGroove = () => {
             const instrumentPart = part as InstrumentPart;
             if (settings.name === 'piano') {
                 setVolume('piano', settings.volume);
+            } else if (settings.name === 'violin') {
+                setVolume('violin', settings.volume);
             } else {
                 setVolume(instrumentPart, settings.volume);
             }
@@ -201,6 +203,8 @@ export const useAuraGroove = () => {
       const settings = instrumentSettings[part];
       if (settings.name === 'piano') {
           setVolume('piano', value);
+      } else if (settings.name === 'violin') {
+          setVolume('violin', value);
       } else {
           setVolume(part, value);
       }

@@ -6,12 +6,13 @@ import { useToast } from "@/hooks/use-toast";
 import type { WorkerSettings, Score, InstrumentPart, BassInstrument, MelodyInstrument, AccompanimentInstrument, BassTechnique, TextureSettings, ScoreName, Note, InstrumentType } from '@/types/music';
 import { DrumMachine } from '@/lib/drum-machine';
 import { SamplerPlayer } from '@/lib/sampler-player';
+import { ViolinSamplerPlayer } from '@/lib/violin-sampler-player';
 import { AccompanimentSynthManager } from '@/lib/accompaniment-synth-manager';
 import { BassSynthManager } from '@/lib/bass-synth-manager';
 import { SparklePlayer } from '@/lib/sparkle-player';
 import { PadPlayer } from '@/lib/pad-player';
 import { getPresetParams } from "@/lib/presets";
-import { PIANO_SAMPLES } from '@/lib/samples';
+import { PIANO_SAMPLES, VIOLIN_SAMPLES } from '@/lib/samples';
 
 // --- Type Definitions ---
 type WorkerMessage = {
@@ -27,7 +28,7 @@ type WorkerMessage = {
 // --- Constants ---
 const VOICE_BALANCE = {
   bass: 1.0, melody: 0.7, accompaniment: 0.6, drums: 0.8,
-  effects: 0.6, sparkles: 0.35, pads: 0.9, piano: 0.8,
+  effects: 0.6, sparkles: 0.35, pads: 0.9, piano: 0.8, violin: 0.8,
 };
 
 const EQ_FREQUENCIES = [60, 125, 250, 500, 1000, 2000, 4000];
@@ -79,10 +80,11 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
   const sparklePlayerRef = useRef<SparklePlayer | null>(null);
   const padPlayerRef = useRef<PadPlayer | null>(null);
   const samplerPlayerRef = useRef<SamplerPlayer | null>(null);
+  const violinSamplerPlayerRef = useRef<ViolinSamplerPlayer | null>(null);
 
   const masterGainNodeRef = useRef<GainNode | null>(null);
   const gainNodesRef = useRef<Record<InstrumentPart, GainNode | null>>({
-    bass: null, melody: null, accompaniment: null, effects: null, drums: null, sparkles: null, pads: null, piano: null,
+    bass: null, melody: null, accompaniment: null, effects: null, drums: null, sparkles: null, pads: null, piano: null, violin: null,
   });
 
   const eqNodesRef = useRef<BiquadFilterNode[]>([]);
@@ -101,7 +103,14 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
     // Bass
     const bassScore = score.bass || [];
     if (bassScore.length > 0 && bassManagerRef.current && currentSettings.instrumentSettings.bass.name !== 'none') {
-        bassManagerRef.current.schedule(bassScore, now);
+        const instrumentName = currentSettings.instrumentSettings.bass.name;
+        if (instrumentName === 'piano') {
+            samplerPlayerRef.current?.schedule('piano', bassScore, now);
+        } else if (instrumentName === 'violin') {
+            violinSamplerPlayerRef.current?.schedule('violin', bassScore, now);
+        } else {
+            bassManagerRef.current.schedule(bassScore, now);
+        }
     }
     
     // Melody
@@ -110,6 +119,8 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
         const instrumentName = currentSettings.instrumentSettings.melody.name;
         if (instrumentName === 'piano') {
             samplerPlayerRef.current?.schedule('piano', melodyScore, now);
+        } else if (instrumentName === 'violin') {
+            violinSamplerPlayerRef.current?.schedule('violin', melodyScore, now);
         } else if (instrumentName !== 'none') {
             const gainNode = gainNodesRef.current.melody;
             if (gainNode) {
@@ -137,6 +148,8 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
         const instrumentName = currentSettings.instrumentSettings.accompaniment.name;
         if (instrumentName === 'piano') {
             samplerPlayerRef.current?.schedule('piano', accompanimentScore, now);
+        } else if (instrumentName === 'violin') {
+            violinSamplerPlayerRef.current?.schedule('violin', accompanimentScore, now);
         } else if (instrumentName !== 'none' && accompanimentManagerRef.current) {
             accompanimentManagerRef.current.schedule(accompanimentScore, now);
         }
@@ -211,7 +224,7 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
         }
 
         if (!gainNodesRef.current.bass) {
-            const parts: InstrumentPart[] = ['bass', 'melody', 'accompaniment', 'effects', 'drums', 'sparkles', 'pads', 'piano'];
+            const parts: InstrumentPart[] = ['bass', 'melody', 'accompaniment', 'effects', 'drums', 'sparkles', 'pads', 'piano', 'violin'];
             parts.forEach(part => {
                 gainNodesRef.current[part] = context.createGain();
                 gainNodesRef.current[part]!.connect(masterGainNodeRef.current!);
@@ -226,6 +239,10 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
         if (!samplerPlayerRef.current) {
             samplerPlayerRef.current = new SamplerPlayer(context, gainNodesRef.current.piano!);
             initPromises.push(samplerPlayerRef.current.loadInstrument('piano', PIANO_SAMPLES));
+        }
+        if (!violinSamplerPlayerRef.current) {
+            violinSamplerPlayerRef.current = new ViolinSamplerPlayer(context, gainNodesRef.current.violin!);
+            initPromises.push(violinSamplerPlayerRef.current.loadInstrument('violin', VIOLIN_SAMPLES));
         }
         if (!accompanimentManagerRef.current) {
             accompanimentManagerRef.current = new AccompanimentSynthManager(context, gainNodesRef.current.accompaniment!);
@@ -284,6 +301,7 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
     bassManagerRef.current?.allNotesOff();
     padPlayerRef.current?.stop();
     samplerPlayerRef.current?.stopAll();
+    violinSamplerPlayerRef.current?.stopAll();
   }, []);
   
   const setIsPlayingCallback = useCallback((playing: boolean) => {

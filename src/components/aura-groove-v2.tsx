@@ -41,8 +41,8 @@ export function AuraGrooveV2({
     router.push('/aura-groove-legacy');
   };
   
-  const melodyInstrumentList: (MelodyInstrument | 'none')[] = ['piano', 'synth', 'organ', 'mellotron', 'theremin', 'E-Bells_melody', 'G-Drops', 'none'];
-  const bassInstrumentList: (BassInstrument | 'none')[] = ['classicBass', 'glideBass', 'ambientDrone', 'resonantGliss', 'hypnoticDrone', 'livingRiff', 'piano', 'none'];
+  const melodyInstrumentList: (MelodyInstrument | 'none')[] = ['piano', 'violin', 'synth', 'organ', 'mellotron', 'theremin', 'E-Bells_melody', 'G-Drops', 'none'];
+  const bassInstrumentList: (BassInstrument | 'none')[] = ['classicBass', 'glideBass', 'ambientDrone', 'resonantGliss', 'hypnoticDrone', 'livingRiff', 'piano', 'violin', 'none'];
 
 
   return (
@@ -172,7 +172,7 @@ export function AuraGrooveV2({
                                       </SelectContent>
                                   </Select>
                               </div>
-                               {part === 'bass' && 'technique' in settings && settings.name !== 'piano' && (
+                               {part === 'bass' && 'technique' in settings && settings.name !== 'piano' && settings.name !== 'violin' && (
                                   <div className="grid grid-cols-2 items-center gap-2">
                                       <Label className="font-semibold flex items-center gap-1.5 capitalize text-xs"><GitBranch className="h-4 w-4"/>Technique</Label>
                                        <Select value={settings.technique} onValueChange={(v) => handleBassTechniqueChange(v as any)} disabled={isInitializing || isPlaying || settings.name === 'none'}>
