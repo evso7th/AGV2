@@ -56,6 +56,7 @@ export const FLUTE_SAMPLES: Record<string, VelocitySample[]> = {
         { velocity: 1.0, file: '/assets/flute_samples/flute-sustain-vibrato-d-note_D.wav' }
     ],
     'E4': [
+        { velocity: 0.5, file: '/assets/flute_samples/flute-sustain-e-note_E.wav' },
         { velocity: 1.0, file: '/assets/flute_samples/flute-sustain-vibrato-e-note.wav' }
     ],
     'F4': [
