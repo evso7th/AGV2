@@ -2,7 +2,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { SlidersHorizontal, Music, Pause, Speaker, FileMusic, Drum, GitBranch, Atom, Piano, Home, X, Sparkles, Sprout, LayoutGrid, LayoutList, Waves, Timer } from "lucide-react";
+import { SlidersHorizontal, Music, Pause, Speaker, FileMusic, Drum, GitBranch, Atom, Piano, Home, X, Sparkles, Sprout, LayoutGrid, LayoutList, Waves, Timer, Guitar } from "lucide-react";
 import Image from "next/image";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -15,7 +15,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import type { AuraGrooveProps } from "./aura-groove";
 import { useRouter } from "next/navigation";
 import { formatTime } from "@/lib/utils";
-import type { BassInstrument, MelodyInstrument } from '@/types/music';
+import type { BassInstrument, MelodyInstrument, AccompanimentInstrument } from '@/types/music';
 
 const EQ_BANDS = [
   { freq: '60', label: '60' }, { freq: '125', label: '125' }, { freq: '250', label: '250' },
@@ -41,7 +41,8 @@ export function AuraGrooveV2({
     router.push('/aura-groove-legacy');
   };
   
-  const melodyInstrumentList: (MelodyInstrument | 'none')[] = ['piano', 'violin', 'flute', 'synth', 'organ', 'mellotron', 'theremin', 'E-Bells_melody', 'G-Drops', 'none'];
+  const melodyInstrumentList: (MelodyInstrument | 'none')[] = ['piano', 'violin', 'flute', 'acousticGuitar', 'synth', 'organ', 'mellotron', 'theremin', 'E-Bells_melody', 'G-Drops', 'none'];
+  const accompanimentInstrumentList: (AccompanimentInstrument | 'none')[] = ['piano', 'violin', 'flute', 'acousticGuitar', 'synth', 'organ', 'mellotron', 'theremin', 'E-Bells_melody', 'G-Drops', 'none'];
   const bassInstrumentList: (BassInstrument | 'none')[] = ['classicBass', 'glideBass', 'ambientDrone', 'resonantGliss', 'hypnoticDrone', 'livingRiff', 'piano', 'violin', 'flute', 'none'];
 
 
@@ -159,41 +160,44 @@ export function AuraGrooveV2({
                <Card className="border-0 shadow-none">
                   <CardHeader className="p-2"><CardTitle className="flex items-center gap-2 text-sm"><SlidersHorizontal className="h-4 w-4"/> Instruments</CardTitle></CardHeader>
                   <CardContent className="space-y-1.5 p-3 pt-0">
-                      {Object.entries(instrumentSettings).map(([part, settings]) => (
-                          <div key={part} className="p-2 border rounded-md space-y-2">
-                             <div className="grid grid-cols-2 items-center gap-2">
-                                  <Label className="font-semibold flex items-center gap-1.5 capitalize text-xs"><Waves className="h-4 w-4"/>{part}</Label>
-                                  <Select value={settings.name} onValueChange={(v) => setInstrumentSettings(part as any, v as any)} disabled={isInitializing || isPlaying}>
-                                      <SelectTrigger className="h-8 text-xs"><SelectValue /></SelectTrigger>
-                                      <SelectContent>
-                                          {(part === 'bass' ? bassInstrumentList : melodyInstrumentList).map(inst => (
-                                            <SelectItem key={inst} value={inst} className="text-xs">{inst.charAt(0).toUpperCase() + inst.slice(1).replace(/([A-Z])/g, ' $1')}</SelectItem>
-                                          ))}
-                                      </SelectContent>
-                                  </Select>
-                              </div>
-                               {part === 'bass' && 'technique' in settings && settings.name !== 'piano' && settings.name !== 'violin' && settings.name !== 'flute' && (
-                                  <div className="grid grid-cols-2 items-center gap-2">
-                                      <Label className="font-semibold flex items-center gap-1.5 capitalize text-xs"><GitBranch className="h-4 w-4"/>Technique</Label>
-                                       <Select value={settings.technique} onValueChange={(v) => handleBassTechniqueChange(v as any)} disabled={isInitializing || isPlaying || settings.name === 'none'}>
-                                          <SelectTrigger className="h-8 text-xs"><SelectValue/></SelectTrigger>
-                                          <SelectContent>
-                                              <SelectItem value="arpeggio" className="text-xs">Arpeggio</SelectItem>
-                                              <SelectItem value="portamento" className="text-xs">Portamento</SelectItem>
-                                              <SelectItem value="glissando" className="text-xs">Glissando</SelectItem>
-                                              <SelectItem value="glide" className="text-xs">Glide</SelectItem>
-                                              <SelectItem value="pulse" className="text-xs">Pulse</SelectItem>
-                                          </SelectContent>
-                                      </Select>
-                                  </div>
-                              )}
-                              <div className="flex items-center gap-2">
-                                  <Label className="text-xs text-muted-foreground"><Speaker className="h-3 w-3 inline-block mr-1"/>Volume</Label>
-                                  <Slider value={[settings.volume]} max={1} step={0.05} onValueChange={(v) => handleVolumeChange(part as any, v[0])} disabled={isInitializing || settings.name === 'none'}/>
-                                  <span className="text-xs w-8 text-right font-mono">{Math.round(settings.volume * 100)}</span>
-                              </div>
-                          </div>
-                      ))}
+                      {Object.entries(instrumentSettings).map(([part, settings]) => {
+                          const list = part === 'bass' ? bassInstrumentList : (part === 'accompaniment' ? accompanimentInstrumentList : melodyInstrumentList);
+                          return (
+                            <div key={part} className="p-2 border rounded-md space-y-2">
+                               <div className="grid grid-cols-2 items-center gap-2">
+                                    <Label className="font-semibold flex items-center gap-1.5 capitalize text-xs"><Waves className="h-4 w-4"/>{part}</Label>
+                                    <Select value={settings.name} onValueChange={(v) => setInstrumentSettings(part as any, v as any)} disabled={isInitializing || isPlaying}>
+                                        <SelectTrigger className="h-8 text-xs"><SelectValue /></SelectTrigger>
+                                        <SelectContent>
+                                            {list.map(inst => (
+                                              <SelectItem key={inst} value={inst} className="text-xs">{inst.charAt(0).toUpperCase() + inst.slice(1).replace(/([A-Z])/g, ' $1')}</SelectItem>
+                                            ))}
+                                        </SelectContent>
+                                    </Select>
+                                </div>
+                                 {part === 'bass' && 'technique' in settings && settings.name !== 'piano' && settings.name !== 'violin' && settings.name !== 'flute' && (
+                                    <div className="grid grid-cols-2 items-center gap-2">
+                                        <Label className="font-semibold flex items-center gap-1.5 capitalize text-xs"><GitBranch className="h-4 w-4"/>Technique</Label>
+                                         <Select value={settings.technique} onValueChange={(v) => handleBassTechniqueChange(v as any)} disabled={isInitializing || isPlaying || settings.name === 'none'}>
+                                            <SelectTrigger className="h-8 text-xs"><SelectValue/></SelectTrigger>
+                                            <SelectContent>
+                                                <SelectItem value="arpeggio" className="text-xs">Arpeggio</SelectItem>
+                                                <SelectItem value="portamento" className="text-xs">Portamento</SelectItem>
+                                                <SelectItem value="glissando" className="text-xs">Glissando</SelectItem>
+                                                <SelectItem value="glide" className="text-xs">Glide</SelectItem>
+                                                <SelectItem value="pulse" className="text-xs">Pulse</SelectItem>
+                                            </SelectContent>
+                                        </Select>
+                                    </div>
+                                )}
+                                <div className="flex items-center gap-2">
+                                    <Label className="text-xs text-muted-foreground"><Speaker className="h-3 w-3 inline-block mr-1"/>Volume</Label>
+                                    <Slider value={[settings.volume]} max={1} step={0.05} onValueChange={(v) => handleVolumeChange(part as any, v[0])} disabled={isInitializing || settings.name === 'none'}/>
+                                    <span className="text-xs w-8 text-right font-mono">{Math.round(settings.volume * 100)}</span>
+                                </div>
+                            </div>
+                          );
+                      })}
                   </CardContent>
               </Card>
             </TabsContent>

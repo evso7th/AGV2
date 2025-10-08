@@ -79,3 +79,15 @@ export const FLUTE_SAMPLES: Record<string, VelocitySample[]> = {
         { velocity: 1.0, file: '/assets/flute_samples/flute-c-major-single-note_C_major.wav' }
     ]
 };
+
+export const ACOUSTIC_GUITAR_CHORD_SAMPLES: Record<string, string> = {
+    'Dm': '/assets/guitars_hords_samples/guitar-chord-d-minor-dm-rising.mp3',
+    'Em': '/assets/guitars_hords_samples/guitar-chord-e-minor-em-ascending.mp3',
+    'Fm': '/assets/guitars_hords_samples/guitar-chord-f-minor-fm-ascending.mp3',
+    'G': '/assets/guitars_hords_samples/guitar-chord-g-major-g.mp3',
+    'A': '/assets/guitars_hords_samples/guitar-chord-in-a-major.mp3',
+    'Am': '/assets/guitars_hords_samples/guitar-chord-in-a-minor-am.mp3',
+    'Bm': '/assets/guitars_hords_samples/guitar-chord-in-b-minor-bm.mp3',
+    'C': '/assets/guitars_hords_samples/guitar-chord-in-c-major-c.mp3',
+    'D': '/assets/guitars_hords_samples/guitar-chord-in-d-major.mp3'
+};

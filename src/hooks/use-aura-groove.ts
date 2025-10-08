@@ -77,7 +77,7 @@ export const useAuraGroove = () => {
   const [instrumentSettings, setInstrumentSettings] = useState<InstrumentSettings>({
     bass: { name: "glideBass", volume: 0.7, technique: 'arpeggio' },
     melody: { name: "piano", volume: 0.8 },
-    accompaniment: { name: "piano", volume: 0.7 },
+    accompaniment: { name: "acousticGuitar", volume: 0.7 },
   });
   const [textureSettings, setTextureSettings] = useState<TextureSettings>({
       sparkles: { enabled: true, volume: 0.35 },
@@ -119,15 +119,11 @@ export const useAuraGroove = () => {
         
         Object.entries(instrumentSettings).forEach(([part, settings]) => {
             const instrumentPart = part as InstrumentPart;
-            if (settings.name === 'piano') {
-                setVolume('piano', settings.volume);
-            } else if (settings.name === 'violin') {
-                setVolume('violin', settings.volume);
-            } else if (settings.name === 'flute') {
-                setVolume('flute', settings.volume);
-            } else {
-                setVolume(instrumentPart, settings.volume);
-            }
+            if (settings.name === 'piano') setVolume('piano', settings.volume);
+            else if (settings.name === 'violin') setVolume('violin', settings.volume);
+            else if (settings.name === 'flute') setVolume('flute', settings.volume);
+            else if (settings.name === 'acousticGuitar') setVolume('acousticGuitar', settings.volume);
+            else setVolume(instrumentPart, settings.volume);
         });
         setVolume('drums', drumSettings.volume);
         setEngineTextureSettings(textureSettings);
@@ -202,17 +198,13 @@ export const useAuraGroove = () => {
 
   const handleVolumeChange = (part: InstrumentPart, value: number) => {
     if (part === 'bass' || part === 'melody' || part === 'accompaniment') {
-      const settings = instrumentSettings[part];
-      if (settings.name === 'piano') {
-          setVolume('piano', value);
-      } else if (settings.name === 'violin') {
-          setVolume('violin', value);
-      } else if (settings.name === 'flute') {
-        setVolume('flute', value);
-      } else {
-          setVolume(part, value);
-      }
       setInstrumentSettings(prev => ({ ...prev, [part]: { ...prev[part], volume: value }}));
+      const instrumentName = instrumentSettings[part as keyof InstrumentSettings].name;
+      if (instrumentName === 'piano') setVolume('piano', value);
+      else if (instrumentName === 'violin') setVolume('violin', value);
+      else if (instrumentName === 'flute') setVolume('flute', value);
+      else if (instrumentName === 'acousticGuitar') setVolume('acousticGuitar', value);
+      else setVolume(part, value);
     } else if (part === 'drums') {
         setDrumSettings(prev => ({ ...prev, volume: value }));
         setVolume('drums', value);
@@ -303,5 +295,3 @@ export const useAuraGroove = () => {
     handleToggleTimer,
   };
 };
-
-    

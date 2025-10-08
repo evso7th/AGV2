@@ -16,6 +16,13 @@ export type SamplerNote = {
     velocity?: number;    // How loud to play it (0-1), optional.
 };
 
+export type ChordSampleNote = {
+    chord: string; // e.g., 'Am', 'C', 'G'
+    time: number;
+    duration: number;
+    velocity?: number;
+};
+
 export type DrumsScore = SamplerNote[];
 export type EffectsScore = SamplerNote[];
 
@@ -24,6 +31,7 @@ export type Score = {
     bass?: Note[];
     melody?: Note[];
     accompaniment?: Note[];
+    accompanimentChord?: ChordSampleNote; // For the new chord sampler
     drums?: DrumsScore;
     effects?: EffectsScore;
     sparkle?: boolean; // Command to play a sparkle
@@ -32,8 +40,8 @@ export type Score = {
 
 // --- UI Types ---
 export type BassInstrument = 'classicBass' | 'glideBass' | 'ambientDrone' | 'resonantGliss' | 'hypnoticDrone' | 'livingRiff' | 'piano' | 'violin' | 'flute' | 'none';
-export type MelodyInstrument = 'piano' | 'violin' | 'flute' | 'synth' | 'organ' | 'mellotron' | 'theremin' | 'E-Bells_melody' | 'G-Drops' | 'none';
-export type AccompanimentInstrument = MelodyInstrument;
+export type MelodyInstrument = 'piano' | 'violin' | 'flute' | 'synth' | 'organ' | 'mellotron' | 'theremin' | 'E-Bells_melody' | 'G-Drops' | 'acousticGuitar' | 'none';
+export type AccompanimentInstrument = MelodyInstrument | 'acousticGuitar';
 export type EffectInstrument = 
     'autopilot_effect_star' | 'autopilot_effect_meteor' | 'autopilot_effect_warp' | 
     'autopilot_effect_hole' | 'autopilot_effect_pulsar' | 'autopilot_effect_nebula' | 
@@ -41,7 +49,7 @@ export type EffectInstrument =
 
 export type InstrumentType = BassInstrument | MelodyInstrument | AccompanimentInstrument | EffectInstrument | 'portamento' | 'autopilot_bass' | 'none';
 
-export type InstrumentPart = 'bass' | 'melody' | 'accompaniment' | 'drums' | 'effects' | 'sparkles' | 'pads' | 'piano' | 'violin' | 'flute';
+export type InstrumentPart = 'bass' | 'melody' | 'accompaniment' | 'drums' | 'effects' | 'sparkles' | 'pads' | 'piano' | 'violin' | 'flute' | 'acousticGuitar';
 export type BassTechnique = 'arpeggio' | 'portamento' | 'glissando' | 'glide' | 'pulse';
 
 

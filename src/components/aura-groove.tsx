@@ -1,7 +1,7 @@
 
 "use client";
 
-import { Loader2, Music, Pause, Speaker, FileMusic, Drum, SlidersHorizontal, Waves, GitBranch, Atom, Piano, Home, X, Sparkles, Sprout, LayoutGrid, Timer } from "lucide-react";
+import { Loader2, Music, Pause, Speaker, FileMusic, Drum, SlidersHorizontal, Waves, GitBranch, Atom, Piano, Home, X, Sparkles, Sprout, LayoutGrid, Timer, Guitar } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -57,7 +57,8 @@ const EQ_BANDS = [
   { freq: '4k', label: '4k' },
 ];
 
-const MELODY_INSTRUMENTS: (MelodyInstrument | 'none')[] = ['piano', 'violin', 'flute', 'synth', 'organ', 'mellotron', 'theremin', 'E-Bells_melody', 'G-Drops', 'none'];
+const MELODY_INSTRUMENTS: (MelodyInstrument | 'none')[] = ['piano', 'violin', 'flute', 'acousticGuitar', 'synth', 'organ', 'mellotron', 'theremin', 'E-Bells_melody', 'G-Drops', 'none'];
+const ACCOMPANIMENT_INSTRUMENTS: (AccompanimentInstrument | 'none')[] = ['piano', 'violin', 'flute', 'acousticGuitar', 'synth', 'organ', 'mellotron', 'theremin', 'E-Bells_melody', 'G-Drops', 'none'];
 const BASS_INSTRUMENTS: (BassInstrument | 'none')[] = ['classicBass', 'glideBass', 'ambientDrone', 'resonantGliss', 'hypnoticDrone', 'livingRiff', 'piano', 'violin', 'flute', 'none'];
 
 
@@ -96,7 +97,7 @@ export function AuraGroove({
   const getPartColor = (part: keyof InstrumentSettings) => {
     const instrumentName = instrumentSettings[part].name;
     if (instrumentName === 'none') return 'hsl(var(--muted-foreground))';
-    if (instrumentName === 'piano' || instrumentName === 'violin' || instrumentName === 'flute') return 'hsl(var(--primary))';
+    if (instrumentName === 'piano' || instrumentName === 'violin' || instrumentName === 'flute' || instrumentName === 'acousticGuitar') return 'hsl(var(--primary))';
     if (part === 'bass') {
         const preset = BASS_PRESETS[instrumentName as BassInstrument];
         return preset?.color || 'hsl(var(--foreground))';
@@ -110,9 +111,10 @@ export function AuraGroove({
     const instrumentName = instrumentSettings[part].name;
     const iconProps = { className: "h-5 w-5", style: { color } };
     
-    if (instrumentName === 'piano' || instrumentName === 'violin' || instrumentName === 'flute') {
-        return <Piano {...iconProps} />;
-    }
+    if (instrumentName === 'piano') return <Piano {...iconProps} />;
+    if (instrumentName === 'violin') return <Sprout {...iconProps} />; // Using Sprout for Violin as an example
+    if (instrumentName === 'flute') return <Sprout {...iconProps} />; // Using Sprout for Flute as an example
+    if (instrumentName === 'acousticGuitar') return <Guitar {...iconProps} />;
 
     switch (part) {
         case 'bass': return <Waves {...iconProps} />;
@@ -215,11 +217,11 @@ export function AuraGroove({
                         <SelectValue placeholder="Select score" />
                     </SelectTrigger>
                     <SelectContent>
-                        <SelectItem value="dreamtales">Dreamtales (Anchor)</SelectItem>
-                        <SelectItem value="evolve">Evolve (L-Logic)</SelectItem>
-                        <SelectItem value="omega">Omega (Fractal)</SelectItem>
+                        <SelectItem value="dreamtales">Dreamtales</SelectItem>
+                        <SelectItem value="evolve">Evolve</SelectItem>
+                        <SelectItem value="omega">Omega</SelectItem>
                         <SelectItem value="journey">Journey</SelectItem>
-                        <SelectItem value="multeity">Multeity (Prog)</SelectItem>
+                        <SelectItem value="multeity">Multeity</SelectItem>
                     </SelectContent>
                 </Select>
             </div>
@@ -256,8 +258,10 @@ export function AuraGroove({
                 let instrumentList: (BassInstrument | MelodyInstrument | AccompanimentInstrument | 'none')[] = [];
                 if (part === 'bass') {
                     instrumentList = BASS_INSTRUMENTS;
-                } else if (part === 'melody' || part === 'accompaniment') {
+                } else if (part === 'melody') {
                     instrumentList = MELODY_INSTRUMENTS;
+                } else if (part === 'accompaniment') {
+                    instrumentList = ACCOMPANIMENT_INSTRUMENTS;
                 }
 
                 return (

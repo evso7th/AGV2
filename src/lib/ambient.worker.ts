@@ -6,11 +6,12 @@
  * Its goal is to create a continuously evolving piece of music where complexity is controlled by a 'density' parameter.
  * It is completely passive and only composes the next bar when commanded via a 'tick'.
  */
-import type { WorkerSettings, Score, Note, DrumsScore, ScoreName } from '@/types/music';
+import type { WorkerSettings, Score, Note, DrumsScore, ScoreName, ChordSampleNote } from '@/types/music';
 
 // --- Musical Constants ---
 const KEY_ROOT_MIDI = 40; // E2
 const SCALE_INTERVALS = [0, 2, 3, 5, 7, 8, 10]; // E Natural Minor
+const CHORD_PROGRESSION_DEGREES = [0, 3, 5, 2]; // Em, G, Am, F#dim - but we'll stick to scale intervals
 
 const PADS_BY_STYLE: Record<ScoreName, string | null> = {
     dreamtales: 'livecircle.mp3',
@@ -110,7 +111,7 @@ const MulteityComposer = {
         }
         return notes;
     },
-    generateAccompaniment(barIndex: number, density: number): Note[] {
+    generateAccompaniment(barIndex: number, density: number): Note[] | undefined {
         const notes: Note[] = [];
         const beatDuration = Scheduler.barDuration / 4;
         const step = beatDuration / 4; // 16th notes
@@ -200,7 +201,7 @@ const Composer = {
         return notes;
     },
     
-    generateAccompaniment(barIndex: number, density: number): Note[] {
+    generateAccompaniment(barIndex: number, density: number): Note[] | undefined {
         const notes: Note[] = [];
         if (density < 0.2) return notes;
 
@@ -222,6 +223,21 @@ const Composer = {
         }
         
         return notes;
+    },
+    
+    generateAcousticAccompaniment(barIndex: number): ChordSampleNote | undefined {
+        const progression = ['Em', 'G', 'C', 'Am'];
+        const chordName = progression[Math.floor(barIndex / 2) % progression.length];
+        
+        if (barIndex % 2 === 0) {
+            return {
+                chord: chordName,
+                time: 0,
+                duration: Scheduler.barDuration,
+                velocity: 0.6 + Math.random() * 0.2
+            };
+        }
+        return undefined;
     },
 
     generateDrums(barIndex: number, density: number): DrumsScore {
@@ -334,22 +350,28 @@ const Scheduler = {
         console.time('workerTick');
 
         const density = this.settings.density;
-        let bass, melody, accompaniment, drums;
+        const score: Score = {};
         
         if (this.settings.score === 'multeity') {
-             bass = MulteityComposer.generateBass(this.barCount, density);
-             melody = MulteityComposer.generateMelody(this.barCount, density);
-             accompaniment = MulteityComposer.generateAccompaniment(this.barCount, density);
+             score.bass = MulteityComposer.generateBass(this.barCount, density);
+             score.melody = MulteityComposer.generateMelody(this.barCount, density);
+             if (this.settings.instrumentSettings.accompaniment.name === 'acousticGuitar') {
+                 score.accompanimentChord = Composer.generateAcousticAccompaniment(this.barCount);
+             } else {
+                 score.accompaniment = MulteityComposer.generateAccompaniment(this.barCount, density);
+             }
         } else {
-             bass = Composer.generateBass(this.barCount, density);
-             melody = Composer.generateMelody(this.barCount, density);
-             accompaniment = Composer.generateAccompaniment(this.barCount, density);
+             score.bass = Composer.generateBass(this.barCount, density);
+             score.melody = Composer.generateMelody(this.barCount, density);
+             if (this.settings.instrumentSettings.accompaniment.name === 'acousticGuitar') {
+                 score.accompanimentChord = Composer.generateAcousticAccompaniment(this.barCount);
+             } else {
+                 score.accompaniment = Composer.generateAccompaniment(this.barCount, density);
+             }
         }
 
-        drums = Composer.generateDrums(this.barCount, density);
+        score.drums = Composer.generateDrums(this.barCount, density);
         
-        const score: Score = { bass, melody, accompaniment, drums };
-
         self.postMessage({ type: 'score', score, time: this.barDuration });
 
         const currentTime = this.barCount * this.barDuration;
