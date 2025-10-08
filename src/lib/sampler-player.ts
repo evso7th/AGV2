@@ -11,10 +11,17 @@ export class SamplerPlayer {
     private outputNode: GainNode;
     private instruments = new Map<string, SamplerInstrument>();
     public isInitialized = false;
+    private preamp: GainNode; // Pre-amplifier for the piano
 
     constructor(audioContext: AudioContext, destination: AudioNode) {
         this.audioContext = audioContext;
         this.outputNode = this.audioContext.createGain();
+        
+        // Create and connect the preamp
+        this.preamp = this.audioContext.createGain();
+        this.preamp.gain.value = 2.0; // Boost volume by 2x
+        this.preamp.connect(this.outputNode);
+        
         this.outputNode.connect(destination);
     }
     
@@ -100,8 +107,9 @@ export class SamplerPlayer {
             const gainNode = this.audioContext.createGain();
             gainNode.gain.setValueAtTime(note.velocity ?? 0.7, this.audioContext.currentTime);
 
+            // Connect source to gain, gain to preamp, preamp to main output
             source.connect(gainNode);
-            gainNode.connect(this.outputNode);
+            gainNode.connect(this.preamp);
 
             // Adjust playback rate for pitch shifting
             const playbackRate = Math.pow(2, (note.midi - sampleMidi) / 12);
@@ -115,6 +123,8 @@ export class SamplerPlayer {
     private findClosestSample(instrument: SamplerInstrument, targetMidi: number): { buffer: AudioBuffer | null, midi: number } {
         const availableMidiNotes = Array.from(instrument.buffers.keys());
         
+        if (availableMidiNotes.length === 0) return { buffer: null, midi: targetMidi };
+
         const closestMidi = availableMidiNotes.reduce((prev, curr) => 
             Math.abs(curr - targetMidi) < Math.abs(prev - targetMidi) ? curr : prev
         );
@@ -148,6 +158,7 @@ export class SamplerPlayer {
     }
 
     public dispose() {
+        this.preamp.disconnect();
         this.outputNode.disconnect();
     }
 }
