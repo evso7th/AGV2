@@ -3,7 +3,7 @@
 
 import React, { createContext, useContext, useState, useRef, useCallback, useEffect } from 'react';
 import { useToast } from "@/hooks/use-toast";
-import type { WorkerSettings, Score, InstrumentPart, BassInstrument, MelodyInstrument, AccompanimentInstrument, BassTechnique, TextureSettings, ScoreName, Note, InstrumentType, ChordSampleNote } from '@/types/music';
+import type { WorkerSettings, Score, InstrumentPart, BassInstrument, MelodyInstrument, AccompanimentInstrument, BassTechnique, TextureSettings, ScoreName, Note, ChordSampleNote } from '@/types/music';
 import { DrumMachine } from '@/lib/drum-machine';
 import { SamplerPlayer } from '@/lib/sampler-player';
 import { ViolinSamplerPlayer } from '@/lib/violin-sampler-player';
@@ -373,7 +373,10 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
   const setVolumeCallback = useCallback((part: InstrumentPart, volume: number) => {
     const gainNode = gainNodesRef.current[part];
     if (gainNode) {
-        const balancedVolume = volume * (VOICE_BALANCE[part as keyof typeof VOICE_BALANCE] ?? 1);
+        let balancedVolume = volume * (VOICE_BALANCE[part as keyof typeof VOICE_BALANCE] ?? 1);
+        if (part === 'acousticGuitar') {
+            balancedVolume /= 2;
+        }
         gainNode.gain.setTargetAtTime(balancedVolume, audioContextRef.current?.currentTime ?? 0, 0.01);
     }
   }, []);
@@ -398,7 +401,6 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
         else if (name === 'piano') samplerPlayerRef.current?.setVolume(instrumentSettings.bass.volume);
         else if (name === 'flute') fluteSamplerPlayerRef.current?.setVolume(instrumentSettings.bass.volume);
         else if (name === 'acousticGuitarSolo') {
-            console.log('[AudioEngine] Setting BASS instrument to AcousticGuitarSampler (Solo)');
             acousticGuitarSoloSamplerRef.current?.setVolume(instrumentSettings.bass.volume);
         } else {
              bassManagerRef.current?.setPreset(name as BassInstrument);
@@ -409,7 +411,6 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
         else if (name === 'piano') samplerPlayerRef.current?.setVolume(instrumentSettings.melody.volume);
         else if (name === 'flute') fluteSamplerPlayerRef.current?.setVolume(instrumentSettings.melody.volume);
         else if (name === 'acousticGuitarSolo') {
-            console.log('[AudioEngine] Setting MELODY instrument to AcousticGuitarSampler (Solo)');
             acousticGuitarSoloSamplerRef.current?.setVolume(instrumentSettings.melody.volume);
         }
     }
