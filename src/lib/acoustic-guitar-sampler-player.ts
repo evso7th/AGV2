@@ -78,13 +78,28 @@ export class AcousticGuitarChordSamplerPlayer {
         source.buffer = buffer;
         
         const gainNode = this.audioContext.createGain();
-        gainNode.gain.setValueAtTime(chordNote.velocity ?? 0.7, this.audioContext.currentTime);
-
-        source.connect(gainNode);
         gainNode.connect(this.outputNode);
 
         const startTime = time + chordNote.time;
+        const endTime = startTime + chordNote.duration;
+        const fadeOutTime = endTime - 0.5; // Start fading out 0.5s before the end
+
+        // Set initial gain
+        gainNode.gain.setValueAtTime(chordNote.velocity ?? 0.7, startTime);
+        
+        // Schedule the fade out
+        if (this.audioContext.currentTime < fadeOutTime) {
+            gainNode.gain.linearRampToValueAtTime(chordNote.velocity ?? 0.7, fadeOutTime);
+            gainNode.gain.linearRampToValueAtTime(0, endTime);
+        } else {
+             gainNode.gain.setValueAtTime(0, endTime);
+        }
+
+        source.connect(gainNode);
         source.start(startTime);
+        
+        // Stop the source node after the sound has completely faded out
+        source.stop(endTime + 0.1);
     }
 
     public stopAll() {
