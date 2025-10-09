@@ -1,5 +1,5 @@
 
-import type { ChordSampleNote } from "@/types/music";
+import type { ChordSampleNote, Note } from "@/types/music";
 
 type SamplerInstrument = {
     buffers: Map<string, AudioBuffer>; // Map from Chord name to AudioBuffer
@@ -59,7 +59,15 @@ export class AcousticGuitarChordSamplerPlayer {
         }
     }
     
-    public schedule(instrumentName: string, chordNote: ChordSampleNote, time: number) {
+    private midiToChordName(midi: number): string {
+        const noteNames = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B'];
+        const rootNote = noteNames[midi % 12];
+        // For simplicity in this context, we'll assume minor chords as the fractal engine uses a minor scale.
+        // A more complex system could infer major/minor from the full chord.
+        return `${rootNote}m`;
+    }
+
+    public schedule(instrumentName: string, notesOrChord: Note[] | ChordSampleNote, time: number) {
         if (!this.isInitialized) return;
         
         const instrument = this.instruments.get(instrumentName);
@@ -67,10 +75,43 @@ export class AcousticGuitarChordSamplerPlayer {
             console.warn(`[AcousticGuitarChordSamplerPlayer] Instrument "${instrumentName}" not loaded.`);
             return;
         }
+        
+        let chordToPlay: ChordSampleNote;
 
-        const buffer = instrument.buffers.get(chordNote.chord);
+        if (Array.isArray(notesOrChord)) {
+            // Logic for handling an array of Notes (from Fractal Engine)
+            if (notesOrChord.length === 0) return;
+            const rootNote = notesOrChord[0]; // Use the first note to determine the chord
+            const chordName = this.midiToChordName(rootNote.midi);
+
+            // Find if we have a direct match for the minor chord
+            const hasMinor = instrument.buffers.has(chordName);
+            // If not, try the major equivalent (e.g., 'Em' -> 'E')
+            const majorChordName = chordName.slice(0, -1);
+            const hasMajor = instrument.buffers.has(majorChordName);
+
+            let finalChordName = chordName;
+            if(!hasMinor && hasMajor) {
+                finalChordName = majorChordName;
+            }
+
+            chordToPlay = {
+                chord: finalChordName,
+                time: rootNote.time,
+                duration: rootNote.duration,
+                velocity: rootNote.velocity
+            };
+
+        } else {
+            // Logic for handling a single ChordSampleNote (from old composers)
+            chordToPlay = notesOrChord;
+        }
+
+
+        const buffer = instrument.buffers.get(chordToPlay.chord);
         if (!buffer) {
-            console.warn(`[AcousticGuitarChordSamplerPlayer] Sample for chord "${chordNote.chord}" not found.`);
+            // This is a common case, as not all chords might be sampled.
+            // console.warn(`[AcousticGuitarChordSamplerPlayer] Sample for chord "${chordToPlay.chord}" not found.`);
             return;
         };
 
@@ -80,16 +121,16 @@ export class AcousticGuitarChordSamplerPlayer {
         const gainNode = this.audioContext.createGain();
         gainNode.connect(this.outputNode);
 
-        const startTime = time + chordNote.time;
-        const endTime = startTime + chordNote.duration;
+        const startTime = time + chordToPlay.time;
+        const endTime = startTime + chordToPlay.duration;
         const fadeOutTime = endTime - 0.5; // Start fading out 0.5s before the end
 
         // Set initial gain
-        gainNode.gain.setValueAtTime(chordNote.velocity ?? 0.7, startTime);
+        gainNode.gain.setValueAtTime(chordToPlay.velocity ?? 0.7, startTime);
         
         // Schedule the fade out
         if (this.audioContext.currentTime < fadeOutTime) {
-            gainNode.gain.linearRampToValueAtTime(chordNote.velocity ?? 0.7, fadeOutTime);
+            gainNode.gain.linearRampToValueAtTime(chordToPlay.velocity ?? 0.7, fadeOutTime);
             gainNode.gain.linearRampToValueAtTime(0, endTime);
         } else {
              gainNode.gain.setValueAtTime(0, endTime);
