@@ -7,6 +7,7 @@ export type Note = {
     duration: number;     // How long the note should last, in seconds.
     velocity?: number;    // How loud to play it (0-1), optional.
     part?: 'spark';       // Optional identifier for special notes
+    note?: string; // For samplers that use note names
 };
 
 // A note for the sampler, identified by a string name.
@@ -36,12 +37,13 @@ export type Score = {
     effects?: EffectsScore;
     sparkle?: boolean; // Command to play a sparkle
     pad?: string; // Command to change pad
+    acousticGuitar?: Note[];
 };
 
 // --- UI Types ---
-export type BassInstrument = 'classicBass' | 'glideBass' | 'ambientDrone' | 'resonantGliss' | 'hypnoticDrone' | 'livingRiff' | 'piano' | 'violin' | 'flute' | 'none';
-export type MelodyInstrument = 'piano' | 'violin' | 'flute' | 'synth' | 'organ' | 'mellotron' | 'theremin' | 'E-Bells_melody' | 'G-Drops' | 'acousticGuitar' | 'none';
-export type AccompanimentInstrument = MelodyInstrument | 'acousticGuitar';
+export type BassInstrument = 'classicBass' | 'glideBass' | 'ambientDrone' | 'resonantGliss' | 'hypnoticDrone' | 'livingRiff' | 'piano' | 'violin' | 'flute' | 'acousticGuitarSolo' | 'none';
+export type MelodyInstrument = 'piano' | 'violin' | 'flute' | 'synth' | 'organ' | 'mellotron' | 'theremin' | 'E-Bells_melody' | 'G-Drops' | 'acousticGuitar' | 'acousticGuitarSolo' | 'none';
+export type AccompanimentInstrument = MelodyInstrument | 'acousticGuitar' | 'acousticGuitarSolo';
 export type EffectInstrument = 
     'autopilot_effect_star' | 'autopilot_effect_meteor' | 'autopilot_effect_warp' | 
     'autopilot_effect_hole' | 'autopilot_effect_pulsar' | 'autopilot_effect_nebula' | 
@@ -49,7 +51,7 @@ export type EffectInstrument =
 
 export type InstrumentType = BassInstrument | MelodyInstrument | AccompanimentInstrument | EffectInstrument | 'portamento' | 'autopilot_bass' | 'none';
 
-export type InstrumentPart = 'bass' | 'melody' | 'accompaniment' | 'drums' | 'effects' | 'sparkles' | 'pads' | 'piano' | 'violin' | 'flute' | 'acousticGuitar';
+export type InstrumentPart = 'bass' | 'melody' | 'accompaniment' | 'drums' | 'effects' | 'sparkles' | 'pads' | 'piano' | 'violin' | 'flute' | 'acousticGuitar' | 'acousticGuitarSolo';
 export type BassTechnique = 'arpeggio' | 'portamento' | 'glissando' | 'glide' | 'pulse';
 
 
@@ -67,6 +69,13 @@ export type InstrumentSettings = {
       name: AccompanimentInstrument;
       volume: number; // 0-1
   };
+  acousticGuitar?: { // Existing chord sampler
+      enabled: boolean;
+      volume: number;
+  };
+  acousticGuitarSolo?: { // New note-based sampler
+      volume: number;
+  }
 };
 
 export type DrumSettings = {
@@ -102,7 +111,11 @@ export type WorkerSettings = {
     bpm: number;
     score: ScoreName;
     drumSettings: Omit<DrumSettings, 'volume'> & { enabled: boolean };
-    instrumentSettings: InstrumentSettings;
+    instrumentSettings: Omit<InstrumentSettings, 'acousticGuitarSolo'> & {
+        acousticGuitar: {
+            enabled: boolean;
+        };
+    };
     textureSettings: Omit<TextureSettings, 'volume'>;
     density: number; // Controls musical density, 0 to 1
 };
