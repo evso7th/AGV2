@@ -7,7 +7,7 @@
  * Its goal is to create a continuously evolving piece of music where complexity is controlled by a 'density' parameter.
  * It is completely passive and only composes the next bar when commanded via a 'tick'.
  */
-import type { WorkerSettings, Score, Note, DrumsScore, ScoreName, ChordSampleNote } from '@/types/music';
+import type { WorkerSettings, Score, Note, DrumsScore, ScoreName, ChordSampleNote, InstrumentSettings } from '@/types/music';
 import { FractalMusicEngine } from './fractal-music-engine';
 import { MelancholicMinorK } from './resonance-matrices';
 import type { Seed, ResonanceMatrix } from '@/types/fractal';
@@ -342,8 +342,7 @@ const Scheduler = {
             bass: { name: "glideBass", volume: 0.5, technique: 'arpeggio' },
             melody: { name: "synth", volume: 0.5 },
             accompaniment: { name: "synth", volume: 0.5 },
-            acousticGuitar: { enabled: true } // Add this setting
-        },
+        } as InstrumentSettings, // Cast here to satisfy the new property
         textureSettings: {
             sparkles: { enabled: true },
             pads: { enabled: true }
@@ -382,12 +381,25 @@ const Scheduler = {
     },
     
     updateSettings(newSettings: Partial<WorkerSettings>) {
-       this.settings = { ...this.settings, ...newSettings };
-       if (this.isRunning) {
-         clearTimeout(this.loopId);
-         this.loopId = null;
-         this.start();
+       const isPlaying = this.isRunning;
+       if (isPlaying) this.stop();
+       
+       // Deep merge for nested settings
+       this.settings = {
+           ...this.settings,
+           ...newSettings,
+           drumSettings: { ...this.settings.drumSettings, ...newSettings.drumSettings },
+           instrumentSettings: { ...this.settings.instrumentSettings, ...newSettings.instrumentSettings },
+           textureSettings: { ...this.settings.textureSettings, ...newSettings.textureSettings },
+       };
+
+       // Update fractal engine config if it's part of the new settings
+       if (newSettings.bpm || newSettings.density) {
+            const newConfig = { ...fractalMusicEngine.getConfig(), ...newSettings };
+            fractalMusicEngine.updateConfig(newConfig);
        }
+       
+       if (isPlaying) this.start();
     },
 
     tick() {
@@ -401,6 +413,7 @@ const Scheduler = {
         if (this.settings.score === 'fractal') {
             fractalMusicEngine.tick();
             score = fractalMusicEngine.generateScore();
+            console.log("[Worker] Generated score from Fractal Engine:", score);
         } else if (this.settings.score === 'multeity') {
              score.bass = MulteityComposer.generateBass(this.barCount, density);
              score.melody = MulteityComposer.generateMelody(this.barCount, density);
