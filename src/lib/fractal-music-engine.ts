@@ -70,7 +70,7 @@ export class FractalMusicEngine {
 
   // Main method that implements the formula
   tick() {
-    console.log('[FractalEngine] Tick started. Current state size:', this.state.size);
+    // console.log('[FractalEngine] Tick started. Current state size:', this.state.size);
     const nextState: EngineState = new Map();
     const impulse = this.generateImpulse();
 
@@ -78,7 +78,7 @@ export class FractalMusicEngine {
     for (const [event, weight] of this.state.entries()) {
       nextState.set(event, (1 - this.config.lambda) * weight);
     }
-    console.log('[FractalEngine] State after decay:', nextState);
+    // console.log('[FractalEngine] State after decay:', nextState);
 
     // 2. Calculate and add new resonance Σ K_ij * δ_i
     for (const event_j of this.availableEvents) {
@@ -91,12 +91,12 @@ export class FractalMusicEngine {
       const existingWeight = nextState.get(event_j) || 0;
       nextState.set(event_j, existingWeight + resonanceSum);
     }
-    console.log('[FractalEngine] State after resonance:', nextState);
+    // console.log('[FractalEngine] State after resonance:', nextState);
     
     // 3. Normalize (Σw_i=1) and update state
     this.normalizeState(nextState);
     this.state = nextState;
-    console.log('[FractalEngine] State after normalization:', this.state);
+    // console.log('[FractalEngine] State after normalization:', this.state);
   }
 
   // Method to convert the state 'w' into a score for the audio engine
@@ -158,7 +158,7 @@ export class FractalMusicEngine {
         }
     };
     
-    console.log("[FractalEngine] Generated Score:", score);
+    // console.log("[FractalEngine] Generated Score:", score);
     return score;
   }
 }

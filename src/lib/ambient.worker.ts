@@ -333,6 +333,8 @@ const Scheduler = {
     loopId: null as any,
     isRunning: false,
     barCount: 0,
+    lfo1Phase: 0,
+    lfo2Phase: 0,
     
     settings: {
         bpm: 75,
@@ -395,10 +397,12 @@ const Scheduler = {
        };
 
        // Update fractal engine config if it's part of the new settings
-       if (newSettings.bpm || newSettings.density) {
-            const newConfig = { ...fractalMusicEngine.getConfig(), ...newSettings };
-            fractalMusicEngine.updateConfig(newConfig);
-       }
+       const newConfig = {
+           ...fractalMusicEngine.getConfig(),
+           ...newSettings
+       };
+       fractalMusicEngine.updateConfig(newConfig);
+
        
        if (isPlaying) this.start();
     },
@@ -406,7 +410,15 @@ const Scheduler = {
     tick() {
         if (!this.isRunning) return;
         
-        console.time('workerTick');
+        // LFO Modulation for Fractal style
+        if (this.settings.score === 'fractal') {
+            this.lfo1Phase += 0.05;
+            this.lfo2Phase += 0.03;
+            const newLambda = 0.5 + 0.3 * Math.sin(this.lfo1Phase);
+            const newDensity = 0.5 + 0.2 * Math.sin(this.lfo2Phase);
+            fractalMusicEngine.updateConfig({ lambda: newLambda, density: newDensity });
+        }
+
 
         const density = this.settings.density;
         let score: Score = {};
@@ -414,7 +426,7 @@ const Scheduler = {
         if (this.settings.score === 'fractal') {
             fractalMusicEngine.tick();
             score = fractalMusicEngine.generateScore();
-            console.log("[Worker] Generated score from Fractal Engine:", score);
+            // console.log("[Worker] Generated score from Fractal Engine:", score);
         } else if (this.settings.score === 'multeity') {
              score.bass = MulteityComposer.generateBass(this.barCount, density);
              score.melody = MulteityComposer.generateMelody(this.barCount, density);
@@ -464,7 +476,6 @@ const Scheduler = {
         }
 
         this.barCount++;
-        console.timeEnd('workerTick');
     }
 };
 
@@ -491,3 +502,4 @@ self.onmessage = async (event: MessageEvent) => {
         self.postMessage({ type: 'error', error: e instanceof Error ? e.message : String(e) });
     }
 };
+
