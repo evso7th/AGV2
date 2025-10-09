@@ -57,9 +57,9 @@ const EQ_BANDS = [
   { freq: '4k', label: '4k' },
 ];
 
-const MELODY_INSTRUMENTS: (MelodyInstrument | 'none')[] = ['piano', 'violin', 'flute', 'synth', 'organ', 'mellotron', 'theremin', 'E-Bells_melody', 'G-Drops', 'none'];
-const ACCOMPANIMENT_INSTRUMENTS: (AccompanimentInstrument | 'none')[] = ['acousticGuitar', 'piano', 'violin', 'flute', 'synth', 'organ', 'mellotron', 'theremin', 'E-Bells_melody', 'G-Drops', 'none'];
-const BASS_INSTRUMENTS: (BassInstrument | 'none')[] = ['classicBass', 'glideBass', 'ambientDrone', 'resonantGliss', 'hypnoticDrone', 'livingRiff', 'piano', 'violin', 'flute', 'none'];
+const MELODY_INSTRUMENTS: (MelodyInstrument | 'none')[] = ['piano', 'violin', 'flute', 'acousticGuitarSolo', 'synth', 'organ', 'mellotron', 'theremin', 'E-Bells_melody', 'G-Drops', 'none'];
+const ACCOMPANIMENT_INSTRUMENTS: (AccompanimentInstrument | 'none')[] = ['acousticGuitar', 'piano', 'violin', 'flute', 'acousticGuitarSolo', 'synth', 'organ', 'mellotron', 'theremin', 'E-Bells_melody', 'G-Drops', 'none'];
+const BASS_INSTRUMENTS: (BassInstrument | 'none')[] = ['classicBass', 'glideBass', 'ambientDrone', 'resonantGliss', 'hypnoticDrone', 'livingRiff', 'piano', 'violin', 'flute', 'acousticGuitarSolo', 'none'];
 
 
 export function AuraGroove({
@@ -97,7 +97,7 @@ export function AuraGroove({
   const getPartColor = (part: keyof InstrumentSettings) => {
     const instrumentName = instrumentSettings[part].name;
     if (instrumentName === 'none') return 'hsl(var(--muted-foreground))';
-    if (instrumentName === 'piano' || instrumentName === 'violin' || instrumentName === 'flute' || instrumentName === 'acousticGuitar') return 'hsl(var(--primary))';
+    if (instrumentName === 'piano' || instrumentName === 'violin' || instrumentName === 'flute' || instrumentName === 'acousticGuitar' || instrumentName === 'acousticGuitarSolo') return 'hsl(var(--primary))';
     if (part === 'bass') {
         const preset = BASS_PRESETS[instrumentName as BassInstrument];
         return preset?.color || 'hsl(var(--foreground))';
@@ -114,7 +114,8 @@ export function AuraGroove({
     if (instrumentName === 'piano') return <Piano {...iconProps} />;
     if (instrumentName === 'violin') return <Sprout {...iconProps} />; // Using Sprout for Violin as an example
     if (instrumentName === 'flute') return <Sprout {...iconProps} />; // Using Sprout for Flute as an example
-    if (instrumentName === 'acousticGuitar') return <Guitar {...iconProps} />;
+    if (instrumentName === 'acousticGuitar' || instrumentName === 'acousticGuitarSolo') return <Guitar {...iconProps} />;
+
 
     switch (part) {
         case 'bass': return <Waves {...iconProps} />;
@@ -253,10 +254,10 @@ export function AuraGroove({
         
         <div className="space-y-4 rounded-lg border p-4">
            <h3 className="text-lg font-medium text-primary flex items-center gap-2"><SlidersHorizontal className="h-5 w-5" /> Instrument Channels</h3>
-            {(Object.keys(instrumentSettings) as Array<keyof InstrumentSettings>).map((part) => {
+            {(Object.keys(instrumentSettings) as Array<keyof InstrumentSettings>).filter(part => part !== 'acousticGuitarSolo').map((part) => {
                 const settings = instrumentSettings[part];
                 let instrumentList: (BassInstrument | MelodyInstrument | AccompanimentInstrument | 'none')[] = [];
-                let displayNames: Record<string, string> = { 'acousticGuitar': 'Acoustic Chords' };
+                let displayNames: Record<string, string> = { 'acousticGuitar': 'Acoustic Chords', 'acousticGuitarSolo': 'Acoustic Solo' };
 
                 if (part === 'bass') {
                     instrumentList = BASS_INSTRUMENTS;
