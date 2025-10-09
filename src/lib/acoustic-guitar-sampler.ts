@@ -1,4 +1,4 @@
-import { NoteEvent } from "./types";
+import type { SamplerNote as NoteEvent } from "@/types/music";
 
 // A map of note names to their corresponding audio file URLs, including velocity layers.
 const SAMPLES: Record<string, { low: string; high: string } | string> = {
@@ -25,15 +25,16 @@ export class AcousticGuitarSampler {
 	private audioContext: AudioContext;
 	private samples: Map<string, AudioBuffer> = new Map();
 	public output: GainNode;
-	private isLoading: boolean = true;
+	public isInitialized: boolean = false;
 
 	constructor(audioContext: AudioContext) {
 		this.audioContext = audioContext;
 		this.output = this.audioContext.createGain();
-		this.loadSamples();
 	}
 
-	private async loadSamples() {
+	public async init() {
+		if (this.isInitialized) return;
+
 		let totalSamplesToLoad = 0;
 		for (const note in SAMPLES) {
 			const sampleInfo = SAMPLES[note];
@@ -45,7 +46,6 @@ export class AcousticGuitarSampler {
 		}
 		console.log(`AcousticGuitarSampler: Initializing... Loading ${totalSamplesToLoad} samples.`);
 
-		this.isLoading = true;
 		const samplePromises: Promise<void>[] = [];
 
 		for (const note in SAMPLES) {
@@ -60,7 +60,7 @@ export class AcousticGuitarSampler {
 		}
 
 		await Promise.all(samplePromises);
-		this.isLoading = false;
+		this.isInitialized = true;
 		console.log(`AcousticGuitarSampler: ${this.samples.size} of ${totalSamplesToLoad} samples successfully loaded. Ready to play.`);
 	}
 
@@ -75,17 +75,18 @@ export class AcousticGuitarSampler {
 		}
 	}
 
-	public schedule(notes: NoteEvent[]) {
-		if (this.isLoading) return; // Don't schedule if samples are not ready
+	public schedule(notes: NoteEvent[], startTime: number) {
+		if (!this.isInitialized) return;
 
 		notes.forEach((note) => {
 			const sampleInfo = SAMPLES[note.note];
-			if (!sampleInfo) return; // Skip notes for which we have no sample
+			if (!sampleInfo) return;
 
 			let bufferKey = note.note;
+            const velocity = note.velocity ?? 0.7;
+
 			if (typeof sampleInfo === "object") {
-				// This is a velocity-layered note
-				bufferKey = note.velocity > 0.6 ? `${note.note}-high` : `${note.note}-low`;
+				bufferKey = velocity > 0.6 ? `${note.note}-high` : `${note.note}-low`;
 			}
 
 			const buffer = this.samples.get(bufferKey);
@@ -93,14 +94,13 @@ export class AcousticGuitarSampler {
 				const source = this.audioContext.createBufferSource();
 				source.buffer = buffer;
 				
-				// Create a gain node for this specific note to control its volume via velocity
 				const noteGain = this.audioContext.createGain();
-				noteGain.gain.value = note.velocity;
+				noteGain.gain.value = velocity;
 				
 				source.connect(noteGain);
 				noteGain.connect(this.output);
 				
-				source.start(note.time, 0, note.duration);
+				source.start(startTime + note.time, 0, note.duration);
 			}
 		});
 	}
