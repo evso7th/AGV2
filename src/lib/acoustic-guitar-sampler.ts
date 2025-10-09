@@ -1,7 +1,11 @@
+
 import type { SamplerNote as NoteEvent } from "@/types/music";
 
 // A map of note names to their corresponding audio file URLs, including velocity layers.
 const SAMPLES: Record<string, { low: string; high: string } | string> = {
+    C3: "/assets/acoustic_guitar_samples/acoustic-guitar-string-c-3_120bpm.mp3",
+	D3: "/assets/acoustic_guitar_samples/acoustic-guitar-string-d-3_120bpm.mp3",
+    E3: "/assets/acoustic_guitar_samples/acoustic-guitar-string-e3_120bpm.mp3",
 	F3: {
 		low: "/assets/acoustic_guitar_samples/acoustic-guitar-string-f-note-clean-low.mp3",
 		high: "/assets/acoustic_guitar_samples/acoustic-guitar-string-f-note-clean-high.mp3",
@@ -12,9 +16,8 @@ const SAMPLES: Record<string, { low: string; high: string } | string> = {
 	},
 	A3: "/assets/acoustic_guitar_samples/acoustic-guitar-string-a-3_120bpm.mp3",
 	B3: "/assets/acoustic_guitar_samples/acoustic-guitar-string-b3_120bpm.mp3",
-	C4: "/assets/acoustic_guitar_samples/acoustic-guitar-string-c-note-clean.mp3", // Mapped C3 to C4 as it's a common middle note
-	D4: "/assets/acoustic_guitar_samples/acoustic-guitar-string-d-note-regolar-clean.mp3",
-	E4: "/assets/acoustic_guitar_samples/acoustic-guitar-string-e3_120bpm.mp3", // E3 is a bit low, but we'll use it for E4
+	C4: "/assets/acoustic_guitar_samples/acoustic-guitar-string-c-note-clean.mp3",
+	D4: "/assets/acoustic_guitar_samples/acoustic-guitar-string-d-note-regular-clean.mp3",
 };
 
 /**
@@ -26,6 +29,7 @@ export class AcousticGuitarSampler {
 	private samples: Map<string, AudioBuffer> = new Map();
 	public output: GainNode;
 	public isInitialized: boolean = false;
+    private isLoading: boolean = false;
 
 	constructor(audioContext: AudioContext) {
 		this.audioContext = audioContext;
@@ -33,7 +37,8 @@ export class AcousticGuitarSampler {
 	}
 
 	public async init() {
-		if (this.isInitialized) return;
+		if (this.isInitialized || this.isLoading) return;
+        this.isLoading = true;
 
 		let totalSamplesToLoad = 0;
 		for (const note in SAMPLES) {
@@ -61,6 +66,7 @@ export class AcousticGuitarSampler {
 
 		await Promise.all(samplePromises);
 		this.isInitialized = true;
+        this.isLoading = false;
 		console.log(`AcousticGuitarSampler: ${this.samples.size} of ${totalSamplesToLoad} samples successfully loaded. Ready to play.`);
 	}
 
@@ -108,4 +114,10 @@ export class AcousticGuitarSampler {
 	public setVolume(volume: number) {
 		this.output.gain.value = volume;
 	}
+
+    public stopAll() {
+        // Since we schedule one-shot samples, a global stop isn't easily implemented
+        // without tracking every single source node. For ambient music, letting notes
+        // decay naturally is usually acceptable.
+    }
 }
