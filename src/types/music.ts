@@ -15,6 +15,7 @@ export type SamplerNote = {
     note: string;         // Note name corresponding to the sampler mapping (e.g., 'C4' for kick).
     time: number;         // When to play it, in seconds, relative to the start of the audio chunk.
     velocity?: number;    // How loud to play it (0-1), optional.
+    midi: number;         // MIDI note number, can be redundant but useful for unification
 };
 
 export type ChordSampleNote = {

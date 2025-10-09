@@ -1,5 +1,6 @@
 
-import type { SamplerNote as NoteEvent } from "@/types/music";
+import type { Note as NoteEvent } from "@/types/music";
+import * as Tone from 'tone';
 
 // A map of note names to their corresponding audio file URLs, including velocity layers.
 const SAMPLES: Record<string, { low: string; high: string } | string> = {
@@ -80,19 +81,26 @@ export class AcousticGuitarSampler {
 			console.error(`Failed to load sample: ${noteName} from ${url}`, e);
 		}
 	}
+    
+    private midiToNoteName(midi: number): string {
+        return new Tone.Frequency(midi, 'midi').toNote();
+    }
 
 	public schedule(notes: NoteEvent[], startTime: number) {
 		if (!this.isInitialized) return;
 
 		notes.forEach((note) => {
-			const sampleInfo = SAMPLES[note.note];
+            const noteName = note.note ?? this.midiToNoteName(note.midi);
+            if (!noteName) return;
+
+			const sampleInfo = SAMPLES[noteName];
 			if (!sampleInfo) return;
 
-			let bufferKey = note.note;
+			let bufferKey = noteName;
             const velocity = note.velocity ?? 0.7;
 
 			if (typeof sampleInfo === "object") {
-				bufferKey = velocity > 0.6 ? `${note.note}-high` : `${note.note}-low`;
+				bufferKey = velocity > 0.6 ? `${noteName}-high` : `${noteName}-low`;
 			}
 
 			const buffer = this.samples.get(bufferKey);

@@ -11,6 +11,8 @@ import type { WorkerSettings, Score, Note, DrumsScore, ScoreName, ChordSampleNot
 import { FractalMusicEngine } from './fractal-music-engine';
 import { MelancholicMinorK } from './resonance-matrices';
 import type { Seed, ResonanceMatrix } from '@/types/fractal';
+import * as Tone from 'tone';
+
 
 // --- Musical Constants ---
 const KEY_ROOT_MIDI = 40; // E2
@@ -206,43 +208,21 @@ const Composer = {
         return notes;
     },
     
-    generateAccompaniment(barIndex: number, density: number): Note[] | undefined {
+    generateAccompaniment(barIndex: number, density: number): Note[] {
         const notes: Note[] = [];
-        if (density < 0.2) return notes;
-
-        const beatDuration = Scheduler.barDuration / 4;
-        const rootMidi = KEY_ROOT_MIDI + 12; // E3
-        const arpPattern = [rootMidi, rootMidi + 3, rootMidi + 7]; // E3, G3, B3
-
-        if (barIndex % 2 === 0 || density > 0.5) { 
-            for (let i = 0; i < 3; i++) {
-                if (Math.random() < density) {
-                    notes.push({ 
-                        midi: arpPattern[i], 
-                        time: i * (beatDuration / 3),
-                        duration: beatDuration * 2.5, 
-                        velocity: 0.4 * density 
-                    });
-                }
-            }
-        }
+        const progression = [0, 3, 5, 2];
+        const rootDegree = progression[Math.floor(barIndex / 2) % progression.length];
         
-        return notes;
-    },
-    
-    generateAcousticAccompaniment(barIndex: number): ChordSampleNote | undefined {
-        const progression = ['Em', 'G', 'C', 'Am'];
-        const chordName = progression[Math.floor(barIndex / 2) % progression.length];
-        
+        // Convert degrees to MIDI notes for the chord
+        const chordDegrees = [rootDegree, rootDegree + 2, rootDegree + 4];
+        const chordMidiNotes = chordDegrees.map(degree => getNoteFromDegree(degree, SCALE_INTERVALS, KEY_ROOT_MIDI, 2));
+
         if (barIndex % 2 === 0) {
-            return {
-                chord: chordName,
-                time: 0,
-                duration: Scheduler.barDuration,
-                velocity: 0.6 + Math.random() * 0.2
-            };
+            notes.push({ midi: chordMidiNotes[0], time: 0, duration: Scheduler.barDuration, velocity: 0.6 + Math.random() * 0.2 });
+            notes.push({ midi: chordMidiNotes[1], time: 0.1, duration: Scheduler.barDuration, velocity: 0.5 + Math.random() * 0.2 });
+            notes.push({ midi: chordMidiNotes[2], time: 0.2, duration: Scheduler.barDuration, velocity: 0.4 + Math.random() * 0.2 });
         }
-        return undefined;
+        return notes;
     },
 
     generateAcousticGuitarPart(barIndex: number, density: number): Note[] {
@@ -256,12 +236,14 @@ const Composer = {
         for (let i = 0; i < numNotes; i++) {
             if (Math.random() < density) {
                 const noteName = availableNotes[Math.floor(Math.random() * availableNotes.length)];
+                const midi = new Tone.Frequency(noteName).toMidi();
                 notes.push({
                     note: noteName,
+                    midi: midi,
                     time: i * step,
                     duration: step * (0.5 + Math.random() * 0.5),
                     velocity: 0.5 + Math.random() * 0.5 // Random velocity for dynamics
-                } as any);
+                });
             }
         }
         return notes;
@@ -426,29 +408,37 @@ const Scheduler = {
         if (this.settings.score === 'fractal') {
             fractalMusicEngine.tick();
             score = fractalMusicEngine.generateScore();
-            // console.log("[Worker] Generated score from Fractal Engine:", score);
         } else if (this.settings.score === 'multeity') {
              score.bass = MulteityComposer.generateBass(this.barCount, density);
              score.melody = MulteityComposer.generateMelody(this.barCount, density);
-             if (this.settings.instrumentSettings.accompaniment.name === 'acousticGuitar') {
-                 score.accompanimentChord = Composer.generateAcousticAccompaniment(this.barCount);
-             } else {
-                 score.accompaniment = MulteityComposer.generateAccompaniment(this.barCount, density);
-             }
+             score.accompaniment = MulteityComposer.generateAccompaniment(this.barCount, density);
         } else {
              score.bass = Composer.generateBass(this.barCount, density);
              score.melody = Composer.generateMelody(this.barCount, density);
-             if (this.settings.instrumentSettings.accompaniment.name === 'acousticGuitar') {
-                 score.accompanimentChord = Composer.generateAcousticAccompaniment(this.barCount);
-             } else {
-                 score.accompaniment = Composer.generateAccompaniment(this.barCount, density);
-             }
+             score.accompaniment = Composer.generateAccompaniment(this.barCount, density);
         }
 
-        // Add acoustic guitar part if enabled
-        if (this.settings.instrumentSettings.acousticGuitar?.enabled) {
-            score.acousticGuitar = Composer.generateAcousticGuitarPart(this.barCount, density);
+        // --- COMPATIBILITY LAYER ---
+        const { instrumentSettings } = this.settings;
+
+        if (instrumentSettings.accompaniment.name === 'acousticGuitar' && this.settings.score !== 'fractal') {
+            score.accompanimentChord = {
+                chord: ['Em', 'G', 'C', 'Am'][Math.floor(this.barCount / 2) % 4],
+                time: 0,
+                duration: this.barDuration,
+                velocity: 0.6 + Math.random() * 0.2
+            };
+            score.accompaniment = []; // Important: Clear the MIDI notes
         }
+
+        if (instrumentSettings.melody.name === 'acousticGuitarSolo') {
+            score.melody = Composer.generateAcousticGuitarPart(this.barCount, density);
+        }
+        
+        if (instrumentSettings.bass.name === 'acousticGuitarSolo') {
+            score.bass = Composer.generateAcousticGuitarPart(this.barCount, density);
+        }
+
 
         score.drums = Composer.generateDrums(this.barCount, density);
         

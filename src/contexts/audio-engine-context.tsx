@@ -144,7 +144,6 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
   }, []);
 
   const scheduleScore = useCallback((score: Score, audioContext: AudioContext) => {
-    console.log(`[AudioEngine] Received score. Bass: ${score.bass?.length || 0}, Melody: ${score.melody?.length || 0}, Accomp: ${score.accompaniment?.length || 0}, Drums: ${score.drums?.length || 0}`);
     console.time('scheduleScore');
 
     const now = audioContext.currentTime;
@@ -170,7 +169,6 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
         } else if (instrumentName === 'flute' && fluteSamplerPlayerRef.current) {
             fluteSamplerPlayerRef.current.schedule(bassScore, now);
         } else if (instrumentName === 'acousticGuitarSolo' && acousticGuitarSoloSamplerRef.current) {
-            console.log('[AudioEngine] Scheduling BASS for AcousticGuitarSampler (Solo)');
             acousticGuitarSoloSamplerRef.current.schedule(bassScore, now);
         } else if (bassManagerRef.current) {
             bassManagerRef.current.schedule(bassScore, now);
@@ -188,7 +186,6 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
         } else if (instrumentName === 'flute' && fluteSamplerPlayerRef.current) {
             fluteSamplerPlayerRef.current.schedule(melodyScore, now);
         } else if (instrumentName === 'acousticGuitarSolo' && acousticGuitarSoloSamplerRef.current) {
-            console.log('[AudioEngine] Scheduling MELODY for AcousticGuitarSampler (Solo)');
             acousticGuitarSoloSamplerRef.current.schedule(melodyScore, now);
         } else {
             const gainNode = gainNodesRef.current.melody;
@@ -217,8 +214,12 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
 
     if (currentSettings.instrumentSettings.accompaniment.name !== 'none') {
         const instrumentName = currentSettings.instrumentSettings.accompaniment.name;
-        if (instrumentName === 'acousticGuitar' && accompanimentChord && acousticGuitarChordSamplerPlayerRef.current) {
-            acousticGuitarChordSamplerPlayerRef.current.schedule('acousticGuitar', accompanimentChord, now);
+        if (instrumentName === 'acousticGuitar' && acousticGuitarChordSamplerPlayerRef.current) {
+            if (accompanimentChord) {
+                acousticGuitarChordSamplerPlayerRef.current.schedule('acousticGuitar', accompanimentChord, now);
+            } else if (accompanimentScore.length > 0) {
+                 acousticGuitarChordSamplerPlayerRef.current.schedule('acousticGuitar', accompanimentScore, now);
+            }
         } else if (accompanimentScore.length > 0) {
             if (instrumentName === 'piano' && samplerPlayerRef.current) {
                 samplerPlayerRef.current.schedule('piano', accompanimentScore, now);

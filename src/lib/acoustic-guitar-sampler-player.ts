@@ -1,5 +1,6 @@
 
 import type { ChordSampleNote, Note } from "@/types/music";
+import * as Tone from 'tone';
 
 type SamplerInstrument = {
     buffers: Map<string, AudioBuffer>; // Map from Chord name to AudioBuffer
@@ -60,14 +61,13 @@ export class AcousticGuitarChordSamplerPlayer {
     }
     
     private midiToChordName(midi: number): string {
-        const noteNames = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B'];
-        const rootNote = noteNames[midi % 12];
-        return `${rootNote}m`; // Defaulting to minor for now
+        const noteName = new Tone.Frequency(midi, 'midi').toNote();
+        const rootNote = noteName.slice(0, -1);
+        // Simple logic: for now, assume minor chords are preferred
+        return `${rootNote}m`;
     }
 
     public schedule(instrumentName: string, notesOrChord: Note[] | ChordSampleNote, time: number) {
-        console.log(`[DEBUG] schedule_AcousticChords called at time ${time}. Received:`, notesOrChord);
-
         if (!this.isInitialized) {
             console.warn('[AcousticGuitarChordSamplerPlayer] Tried to schedule before initialized.');
             return;
@@ -81,26 +81,17 @@ export class AcousticGuitarChordSamplerPlayer {
         
         let chordToPlay: ChordSampleNote;
 
-        if (Array.isArray(notesOrChord)) {
-            console.log("[DEBUG] Handling Note[] from Fractal Engine.");
-            if (notesOrChord.length === 0) {
-                console.log("[DEBUG] Note array is empty, exiting.");
-                return;
-            };
-            const rootNote = notesOrChord[0];
+        if (Array.isArray(notesOrChord) && notesOrChord.length > 0) {
+            const rootNote = notesOrChord.sort((a,b) => a.midi - b.midi)[0]; // Use the lowest note as the root
             const chordName = this.midiToChordName(rootNote.midi);
-            console.log(`[DEBUG] Converted MIDI ${rootNote.midi} to chord name: ${chordName}`);
 
-            const hasMinor = instrument.buffers.has(chordName);
-            const majorChordName = chordName.slice(0, -1);
-            const hasMajor = instrument.buffers.has(majorChordName);
-            
-            console.log(`[DEBUG] Sample check: has minor '${chordName}'? ${hasMinor}. Has major '${majorChordName}'? ${hasMajor}.`);
-
+            // Fallback logic: if a minor chord isn't found, try the major equivalent.
             let finalChordName = chordName;
-            if(!hasMinor && hasMajor) {
-                finalChordName = majorChordName;
-                console.log(`[DEBUG] Minor sample not found, falling back to major: ${finalChordName}`);
+            if (!instrument.buffers.has(chordName)) {
+                const majorChordName = chordName.replace('m', '');
+                if (instrument.buffers.has(majorChordName)) {
+                    finalChordName = majorChordName;
+                }
             }
 
             chordToPlay = {
@@ -110,20 +101,19 @@ export class AcousticGuitarChordSamplerPlayer {
                 velocity: rootNote.velocity
             };
 
-        } else {
-             console.log("[DEBUG] Handling ChordSampleNote from old composer.");
+        } else if (!Array.isArray(notesOrChord)) {
             chordToPlay = notesOrChord;
+        } else {
+            return; // Empty array, nothing to play
         }
 
-        console.log(`[DEBUG] Attempting to play chord: ${chordToPlay.chord}`);
         const buffer = instrument.buffers.get(chordToPlay.chord);
 
         if (!buffer) {
-            console.warn(`[DEBUG] Sample for chord "${chordToPlay.chord}" not found. No sound will be played.`);
+            // console.warn(`[AcousticGuitarChordSamplerPlayer] Sample for chord "${chordToPlay.chord}" not found.`);
             return;
         };
 
-        console.log(`[DEBUG] Found sample for "${chordToPlay.chord}". Scheduling playback.`);
         const source = this.audioContext.createBufferSource();
         source.buffer = buffer;
         
@@ -134,10 +124,11 @@ export class AcousticGuitarChordSamplerPlayer {
         const endTime = startTime + chordToPlay.duration;
         const fadeOutTime = endTime - 0.5;
 
-        gainNode.gain.setValueAtTime(chordToPlay.velocity ?? 0.7, startTime);
+        const velocity = chordToPlay.velocity ?? 0.7;
+        gainNode.gain.setValueAtTime(velocity, startTime);
         
         if (this.audioContext.currentTime < fadeOutTime) {
-            gainNode.gain.linearRampToValueAtTime(chordToPlay.velocity ?? 0.7, fadeOutTime);
+            gainNode.gain.linearRampToValueAtTime(velocity, fadeOutTime);
             gainNode.gain.linearRampToValueAtTime(0, endTime);
         } else {
              gainNode.gain.setValueAtTime(0, endTime);
