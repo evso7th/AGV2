@@ -261,7 +261,7 @@ const Composer = {
                     time: i * step,
                     duration: step * (0.5 + Math.random() * 0.5),
                     velocity: 0.5 + Math.random() * 0.5 // Random velocity for dynamics
-                });
+                } as any);
             }
         }
         return notes;
@@ -348,6 +348,7 @@ const Scheduler = {
             pads: { enabled: true }
         },
         density: 0.5,
+        composerControlsInstruments: true,
     } as WorkerSettings,
 
     get barDuration() { 

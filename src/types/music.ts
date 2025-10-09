@@ -38,6 +38,11 @@ export type Score = {
     sparkle?: boolean; // Command to play a sparkle
     pad?: string; // Command to change pad
     acousticGuitar?: Note[];
+    instrumentHints?: {
+        bass?: BassInstrument;
+        melody?: MelodyInstrument;
+        accompaniment?: AccompanimentInstrument;
+    }
 };
 
 // --- UI Types ---
@@ -118,4 +123,5 @@ export type WorkerSettings = {
     };
     textureSettings: Omit<TextureSettings, 'volume'>;
     density: number; // Controls musical density, 0 to 1
+    composerControlsInstruments: boolean;
 };

@@ -87,6 +87,7 @@ export const useAuraGroove = () => {
   const [bpm, setBpm] = useState(75);
   const [score, setScore] = useState<ScoreName>('multeity');
   const [density, setDensity] = useState(0.5);
+  const [composerControlsInstruments, setComposerControlsInstruments] = useState(true);
 
   const [isEqModalOpen, setIsEqModalOpen] = useState(false);
   const [eqSettings, setEqSettings] = useState<number[]>(Array(7).fill(0));
@@ -110,8 +111,9 @@ export const useAuraGroove = () => {
           pads: { enabled: textureSettings.pads.enabled }
       },
       density,
+      composerControlsInstruments,
     };
-  }, [bpm, score, instrumentSettings, drumSettings, textureSettings, density]);
+  }, [bpm, score, instrumentSettings, drumSettings, textureSettings, density, composerControlsInstruments]);
 
   // Initial settings sync
   useEffect(() => {
@@ -141,7 +143,7 @@ export const useAuraGroove = () => {
           const fullSettings = getFullSettings();
           updateSettings(fullSettings);
       }
-  }, [bpm, score, density, drumSettings, instrumentSettings, textureSettings, isInitialized, updateSettings, getFullSettings]);
+  }, [bpm, score, density, drumSettings, instrumentSettings, textureSettings, composerControlsInstruments, isInitialized, updateSettings, getFullSettings]);
 
   // Timer logic
   useEffect(() => {
@@ -278,6 +280,8 @@ export const useAuraGroove = () => {
     handleScoreChange: setScore,
     density,
     setDensity,
+    composerControlsInstruments,
+    setComposerControlsInstruments,
     handleGoHome,
     handleExit,
     isEqModalOpen,

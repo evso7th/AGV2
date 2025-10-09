@@ -28,6 +28,7 @@ export function AuraGrooveV2({
   bpm, handleBpmChange, score, handleScoreChange, density, setDensity, handleGoHome,
   isEqModalOpen, setIsEqModalOpen, eqSettings, handleEqChange,
   timerSettings, handleTimerDurationChange, handleToggleTimer,
+  composerControlsInstruments, setComposerControlsInstruments
 }: AuraGrooveProps) {
 
   const router = useRouter();
@@ -49,6 +50,9 @@ export function AuraGrooveV2({
     'acousticGuitar': 'Acoustic Chords',
     'acousticGuitarSolo': 'Acoustic Solo',
   };
+
+  const isFractalStyle = score === 'fractal';
+  const composerControl = isFractalStyle && composerControlsInstruments;
 
 
   return (
@@ -120,6 +124,14 @@ export function AuraGrooveV2({
                           </SelectContent>
                       </Select>
                   </div>
+                  {isFractalStyle && (
+                    <div className="grid grid-cols-3 items-center gap-2">
+                        <Label htmlFor="composer-control-switch" className="text-right text-xs">Composer Controls</Label>
+                        <div className="col-span-2 flex items-center">
+                            <Switch id="composer-control-switch" checked={composerControlsInstruments} onCheckedChange={setComposerControlsInstruments} disabled={isInitializing || isPlaying}/>
+                        </div>
+                    </div>
+                  )}
                   <div className="grid grid-cols-[1fr_2fr_auto] items-center gap-2">
                     <Label htmlFor="bpm-slider" className="text-right text-xs">BPM</Label>
                     <Slider id="bpm-slider" value={[bpm]} min={60} max={160} step={5} onValueChange={(v) => handleBpmChange(v[0])} className="col-span-1" disabled={isInitializing}/>
@@ -169,11 +181,13 @@ export function AuraGrooveV2({
                       {(Object.keys(instrumentSettings) as Array<keyof InstrumentSettings>).filter(part => part !== 'acousticGuitarSolo').map((part) => {
                           const settings = instrumentSettings[part];
                           const list = part === 'bass' ? bassInstrumentList : (part === 'accompaniment' ? accompanimentInstrumentList : melodyInstrumentList);
+                          const isDisabled = isInitializing || isPlaying || composerControl;
+
                           return (
                             <div key={part} className="p-2 border rounded-md space-y-2">
                                <div className="grid grid-cols-2 items-center gap-2">
                                     <Label className="font-semibold flex items-center gap-1.5 capitalize text-xs"><Waves className="h-4 w-4"/>{part}</Label>
-                                    <Select value={settings.name} onValueChange={(v) => setInstrumentSettings(part as any, v as any)} disabled={isInitializing || isPlaying}>
+                                    <Select value={settings.name} onValueChange={(v) => setInstrumentSettings(part as any, v as any)} disabled={isDisabled}>
                                         <SelectTrigger className="h-8 text-xs"><SelectValue /></SelectTrigger>
                                         <SelectContent>
                                             {list.map(inst => (
@@ -185,7 +199,7 @@ export function AuraGrooveV2({
                                  {part === 'bass' && 'technique' in settings && settings.name !== 'piano' && settings.name !== 'violin' && settings.name !== 'flute' && (
                                     <div className="grid grid-cols-2 items-center gap-2">
                                         <Label className="font-semibold flex items-center gap-1.5 capitalize text-xs"><GitBranch className="h-4 w-4"/>Technique</Label>
-                                         <Select value={settings.technique} onValueChange={(v) => handleBassTechniqueChange(v as any)} disabled={isInitializing || isPlaying || settings.name === 'none'}>
+                                         <Select value={settings.technique} onValueChange={(v) => handleBassTechniqueChange(v as any)} disabled={isDisabled || settings.name === 'none'}>
                                             <SelectTrigger className="h-8 text-xs"><SelectValue/></SelectTrigger>
                                             <SelectContent>
                                                 <SelectItem value="arpeggio" className="text-xs">Arpeggio</SelectItem>

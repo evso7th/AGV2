@@ -36,6 +36,8 @@ export type AuraGrooveProps = {
   handleTogglePlay: () => void;
   density: number;
   setDensity: (value: number) => void;
+  composerControlsInstruments: boolean;
+  setComposerControlsInstruments: (value: boolean) => void;
   handleGoHome: () => void;
   handleExit: () => void;
   isEqModalOpen: boolean;
