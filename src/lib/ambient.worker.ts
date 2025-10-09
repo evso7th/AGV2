@@ -240,6 +240,28 @@ const Composer = {
         return undefined;
     },
 
+    generateAcousticGuitarPart(barIndex: number, density: number): Note[] {
+        const notes: Note[] = [];
+        if (density < 0.3) return notes;
+
+        const availableNotes = ['F3', 'G3', 'A3', 'B3', 'C4', 'D4', 'E4'];
+        const numNotes = Math.floor(density * 8); // 0 to 8 notes per bar
+        const step = Scheduler.barDuration / numNotes;
+
+        for (let i = 0; i < numNotes; i++) {
+            if (Math.random() < density) {
+                const noteName = availableNotes[Math.floor(Math.random() * availableNotes.length)];
+                notes.push({
+                    note: noteName,
+                    time: i * step,
+                    duration: step * (0.5 + Math.random() * 0.5),
+                    velocity: 0.5 + Math.random() * 0.5 // Random velocity for dynamics
+                });
+            }
+        }
+        return notes;
+    },
+
     generateDrums(barIndex: number, density: number): DrumsScore {
         if (!Scheduler.settings.drumSettings.enabled) return [];
         
@@ -297,6 +319,7 @@ const Scheduler = {
             bass: { name: "glideBass", volume: 0.5, technique: 'arpeggio' },
             melody: { name: "synth", volume: 0.5 },
             accompaniment: { name: "synth", volume: 0.5 },
+            acousticGuitar: { enabled: true } // Add this setting
         },
         textureSettings: {
             sparkles: { enabled: true },
@@ -368,6 +391,11 @@ const Scheduler = {
              } else {
                  score.accompaniment = Composer.generateAccompaniment(this.barCount, density);
              }
+        }
+
+        // Add acoustic guitar part if enabled
+        if (this.settings.instrumentSettings.acousticGuitar?.enabled) {
+            score.acousticGuitar = Composer.generateAcousticGuitarPart(this.barCount, density);
         }
 
         score.drums = Composer.generateDrums(this.barCount, density);
