@@ -116,6 +116,7 @@ export function AuraGrooveV2({
                               <SelectItem value="omega">Omega</SelectItem>
                               <SelectItem value="journey">Journey</SelectItem>
                               <SelectItem value="multeity">Multeity</SelectItem>
+                              <SelectItem value="fractal">Fractal</SelectItem>
                           </SelectContent>
                       </Select>
                   </div>

@@ -1,4 +1,5 @@
 
+
 /**
  * @file AuraGroove Music Worker (Architecture: "The Dynamic Composer")
  *
@@ -7,6 +8,9 @@
  * It is completely passive and only composes the next bar when commanded via a 'tick'.
  */
 import type { WorkerSettings, Score, Note, DrumsScore, ScoreName, ChordSampleNote } from '@/types/music';
+import { FractalMusicEngine } from './fractal-music-engine';
+import { MelancholicMinorK } from './resonance-matrices';
+import type { Seed, ResonanceMatrix } from '@/types/fractal';
 
 // --- Musical Constants ---
 const KEY_ROOT_MIDI = 40; // E2
@@ -19,6 +23,7 @@ const PADS_BY_STYLE: Record<ScoreName, string | null> = {
     omega: 'things.mp3',
     journey: 'pure_energy.mp3',
     multeity: 'uneverse.mp3',
+    fractal: 'uneverse.mp3', // Default pad for fractal style
 };
 
 const SPARKLE_SAMPLES = [
@@ -302,6 +307,24 @@ const Composer = {
     }
 }
 
+// --- FRACTAL ENGINE ---
+const availableMatrices: Record<string, ResonanceMatrix> = {
+    'melancholic_minor': MelancholicMinorK,
+};
+
+const defaultSeed: Seed = {
+    initialState: { 'piano_60': 1 },
+    resonanceMatrixId: 'melancholic_minor',
+    config: {
+        lambda: 0.5,
+        bpm: 75,
+        density: 0.5,
+        organic: 0.5,
+    },
+};
+
+let fractalMusicEngine = new FractalMusicEngine(defaultSeed, availableMatrices);
+
 
 // --- Scheduler (The Conductor) ---
 let lastPadStyle: ScoreName | null = null;
@@ -373,9 +396,12 @@ const Scheduler = {
         console.time('workerTick');
 
         const density = this.settings.density;
-        const score: Score = {};
+        let score: Score = {};
         
-        if (this.settings.score === 'multeity') {
+        if (this.settings.score === 'fractal') {
+            fractalMusicEngine.tick();
+            score = fractalMusicEngine.generateScore();
+        } else if (this.settings.score === 'multeity') {
              score.bass = MulteityComposer.generateBass(this.barCount, density);
              score.melody = MulteityComposer.generateMelody(this.barCount, density);
              if (this.settings.instrumentSettings.accompaniment.name === 'acousticGuitar') {

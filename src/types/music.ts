@@ -104,7 +104,7 @@ export type TimerSettings = {
     isActive: boolean;
 };
 
-export type ScoreName = 'evolve' | 'omega' | 'journey' | 'dreamtales' | 'multeity';
+export type ScoreName = 'evolve' | 'omega' | 'journey' | 'dreamtales' | 'multeity' | 'fractal';
 
 // Settings sent from the UI to the main engine/worker.
 export type WorkerSettings = {
