@@ -23,7 +23,7 @@ const EQ_BANDS = [
 ];
 
 export function AuraGrooveV2({
-  isPlaying, isInitializing, handleTogglePlay, drumSettings, setDrumSettings, instrumentSettings,
+  isPlaying, isInitializing, handlePlayPause, handleRegenerate, drumSettings, setDrumSettings, instrumentSettings,
   setInstrumentSettings, handleBassTechniqueChange, handleVolumeChange, textureSettings, handleTextureEnabledChange,
   bpm, handleBpmChange, score, handleScoreChange, density, setDensity, handleGoHome,
   isEqModalOpen, setIsEqModalOpen, eqSettings, handleEqChange,
@@ -89,10 +89,13 @@ export function AuraGrooveV2({
             )}
           </div>
         </div>
-        <div className="flex flex-col items-center gap-1 pt-2 pb-1.5">
-           <Button type="button" onClick={handleTogglePlay} disabled={isInitializing} className="w-[60%] text-base h-10">
+        <div className="flex items-center justify-center gap-2 pt-2 pb-1.5">
+           <Button type="button" onClick={handlePlayPause} disabled={isInitializing} className="w-[50%] text-base h-10">
               {isPlaying ? <Pause className="mr-2 h-5 w-5" /> : <Music className="mr-2 h-5 w-5" />}
-              {isPlaying ? "Stop" : "Play"}
+              {isPlaying ? "Pause" : "Play"}
+           </Button>
+           <Button type="button" onClick={handleRegenerate} disabled={isInitializing} variant="outline" className="h-10 w-10 p-0">
+             <RefreshCw className="h-5 w-5" />
            </Button>
         </div>
       </header>
@@ -279,5 +282,4 @@ export function AuraGrooveV2({
   );
 }
 
-    
     

@@ -33,7 +33,8 @@ export type AuraGrooveProps = {
   handleBpmChange: (value: number) => void;
   score: ScoreName;
   handleScoreChange: (value: ScoreName) => void;
-  handleTogglePlay: () => void;
+  handlePlayPause: () => void;
+  handleRegenerate: () => void;
   density: number;
   setDensity: (value: number) => void;
   composerControlsInstruments: boolean;
@@ -80,7 +81,8 @@ export function AuraGroove({
   handleBpmChange,
   score,
   handleScoreChange,
-  handleTogglePlay,
+  handlePlayPause,
+  handleRegenerate,
   density,
   setDensity,
   handleGoHome,
@@ -440,11 +442,11 @@ export function AuraGroove({
             </p>
         )}
       </CardContent>
-      <CardFooter className="flex-col gap-4">
+      <CardFooter className="flex-col gap-2">
         <div className="flex gap-2 w-full">
           <Button
             type="button"
-            onClick={handleTogglePlay}
+            onClick={handlePlayPause}
             disabled={isInitializing}
             className="w-full text-lg py-6"
           >
@@ -453,7 +455,17 @@ export function AuraGroove({
             ) : (
               <Music className="mr-2 h-6 w-6" />
             )}
-            {isPlaying ? "Stop" : "Play"}
+            {isPlaying ? "Pause" : "Play"}
+          </Button>
+          <Button
+            type="button"
+            onClick={handleRegenerate}
+            disabled={isInitializing}
+            variant="outline"
+            className="text-lg py-6 px-4"
+            aria-label="Regenerate"
+          >
+            <RefreshCw className="h-6 w-6" />
           </Button>
         </div>
       </CardFooter>
@@ -461,5 +473,4 @@ export function AuraGroove({
   );
 }
 
-    
     
