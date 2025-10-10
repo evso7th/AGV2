@@ -13,7 +13,7 @@ import { BassSynthManager } from '@/lib/bass-synth-manager';
 import { SparklePlayer } from '@/lib/sparkle-player';
 import { PadPlayer } from '@/lib/pad-player';
 import { getPresetParams } from "@/lib/presets";
-import { PIANO_SAMPLES, VIOLIN_SAMPLES, FLUTE_SAMPLES, ACOUSTIC_GUITAR_SOLO_SAMPLES } from '@/lib/samples';
+import { PIANO_SAMPLES, VIOLIN_SAMPLES, FLUTE_SAMPLES, ACOUSTIC_GUITAR_CHORD_SAMPLES, ACOUSTIC_GUITAR_SOLO_SAMPLES } from '@/lib/samples';
 import { GuitarChordsSampler } from '@/lib/guitar-chords-sampler';
 import { AcousticGuitarSoloSampler } from '@/lib/acoustic-guitar-solo-sampler';
 
@@ -110,7 +110,6 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
         else if (name === 'piano') samplerPlayerRef.current?.setVolume(instrumentSettings.accompaniment.volume);
         else if (name === 'flute') fluteSamplerPlayerRef.current?.setVolume(instrumentSettings.accompaniment.volume);
         else if (name === 'guitarChords') guitarChordsSamplerRef.current?.setVolume(instrumentSettings.accompaniment.volume);
-        else if (name === 'acousticGuitarSolo') acousticGuitarSoloSamplerRef.current?.setVolume(instrumentSettings.accompaniment.volume);
         else accompanimentManagerRef.current?.setPreset(name as MelodyInstrument);
     }
     if (part === 'bass') {
@@ -209,8 +208,6 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
             fluteSamplerPlayerRef.current.schedule(accompanimentScore, now);
         } else if (instrumentName === 'guitarChords' && guitarChordsSamplerRef.current) {
             guitarChordsSamplerRef.current.schedule(accompanimentScore, now);
-        } else if (instrumentName === 'acousticGuitarSolo' && acousticGuitarSoloSamplerRef.current) {
-            acousticGuitarSoloSamplerRef.current.schedule(accompanimentScore, now);
         } else if (accompanimentManagerRef.current) {
             accompanimentManagerRef.current.schedule(accompanimentScore, now);
         }
@@ -313,7 +310,7 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
         }
         if (!acousticGuitarSoloSamplerRef.current) {
             acousticGuitarSoloSamplerRef.current = new AcousticGuitarSoloSampler(context, gainNodesRef.current.acousticGuitarSolo!);
-            initPromises.push(acousticGuitarSoloSamplerRef.current.init());
+            initPromises.push(acousticGuitarSoloSamplerRef.current.loadInstrument('acousticGuitarSolo', ACOUSTIC_GUITAR_SOLO_SAMPLES));
         }
         if (!accompanimentManagerRef.current) {
             accompanimentManagerRef.current = new AccompanimentSynthManager(context, gainNodesRef.current.accompaniment!);
