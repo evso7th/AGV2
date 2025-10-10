@@ -144,22 +144,29 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
     
     if (!currentSettings) return;
 
-    if (score.instrumentHints && currentSettings.score === 'fractal' && currentSettings.composerControlsInstruments) {
-        if (score.instrumentHints.bass) setInstrumentCallback('bass', score.instrumentHints.bass);
-        if (score.instrumentHints.melody) setInstrumentCallback('melody', score.instrumentHints.melody);
-        if (score.instrumentHints.accompaniment) setInstrumentCallback('accompaniment', score.instrumentHints.accompaniment);
+    let bassInstrument = currentSettings.instrumentSettings.bass.name;
+    let melodyInstrument = currentSettings.instrumentSettings.melody.name;
+    let accompanimentInstrument = currentSettings.instrumentSettings.accompaniment.name;
+
+    if (score.instrumentHints && currentSettings.score === 'neuro_f_matrix' && currentSettings.composerControlsInstruments) {
+        bassInstrument = score.instrumentHints.bass ?? bassInstrument;
+        melodyInstrument = score.instrumentHints.melody ?? melodyInstrument;
+        accompanimentInstrument = score.instrumentHints.accompaniment ?? accompanimentInstrument;
+        
+        // Directly apply the preset to the managers
+        if (score.instrumentHints.bass) bassManagerRef.current?.setPreset(score.instrumentHints.bass);
+        if (score.instrumentHints.accompaniment) accompanimentManagerRef.current?.setPreset(score.instrumentHints.accompaniment);
     }
 
     const bassScore = score.bass || [];
-    if (bassScore.length > 0 && currentSettings.instrumentSettings.bass.name !== 'none') {
-        const instrumentName = currentSettings.instrumentSettings.bass.name;
-        if (instrumentName === 'piano' && samplerPlayerRef.current) {
+    if (bassScore.length > 0 && bassInstrument !== 'none') {
+        if (bassInstrument === 'piano' && samplerPlayerRef.current) {
             samplerPlayerRef.current.schedule('piano', bassScore, now);
-        } else if (instrumentName === 'violin' && violinSamplerPlayerRef.current) {
+        } else if (bassInstrument === 'violin' && violinSamplerPlayerRef.current) {
             violinSamplerPlayerRef.current.schedule(bassScore, now);
-        } else if (instrumentName === 'flute' && fluteSamplerPlayerRef.current) {
+        } else if (bassInstrument === 'flute' && fluteSamplerPlayerRef.current) {
             fluteSamplerPlayerRef.current.schedule(bassScore, now);
-        } else if (instrumentName === 'acousticGuitarSolo' && acousticGuitarSoloSamplerRef.current) {
+        } else if (bassInstrument === 'acousticGuitarSolo' && acousticGuitarSoloSamplerRef.current) {
             acousticGuitarSoloSamplerRef.current.schedule('acousticGuitarSolo', bassScore, now);
         } else if (bassManagerRef.current) {
             bassManagerRef.current.schedule(bassScore, now);
@@ -167,15 +174,14 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
     }
     
     const melodyScore = score.melody || [];
-    if (melodyScore.length > 0 && currentSettings.instrumentSettings.melody.name !== 'none') {
-        const instrumentName = currentSettings.instrumentSettings.melody.name;
-        if (instrumentName === 'piano' && samplerPlayerRef.current) {
+    if (melodyScore.length > 0 && melodyInstrument !== 'none') {
+        if (melodyInstrument === 'piano' && samplerPlayerRef.current) {
             samplerPlayerRef.current.schedule('piano', melodyScore, now);
-        } else if (instrumentName === 'violin' && violinSamplerPlayerRef.current) {
+        } else if (melodyInstrument === 'violin' && violinSamplerPlayerRef.current) {
             violinSamplerPlayerRef.current.schedule(melodyScore, now);
-        } else if (instrumentName === 'flute' && fluteSamplerPlayerRef.current) {
+        } else if (melodyInstrument === 'flute' && fluteSamplerPlayerRef.current) {
             fluteSamplerPlayerRef.current.schedule(melodyScore, now);
-        } else if (instrumentName === 'acousticGuitarSolo' && acousticGuitarSoloSamplerRef.current) {
+        } else if (melodyInstrument === 'acousticGuitarSolo' && acousticGuitarSoloSamplerRef.current) {
             acousticGuitarSoloSamplerRef.current.schedule('acousticGuitarSolo', melodyScore, now);
         } else {
             const gainNode = gainNodesRef.current.melody;
@@ -183,7 +189,7 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
                 melodyScore.forEach(note => {
                     const voice = synthPoolRef.current[nextVoiceRef.current++ % synthPoolRef.current.length];
                     if (voice) {
-                        const params = getPresetParams(instrumentName as InstrumentType, note);
+                        const params = getPresetParams(melodyInstrument as InstrumentType, note);
                         if (!params) return;
                         voice.disconnect();
                         voice.connect(gainNode);
@@ -199,15 +205,14 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
     }
     
     const accompanimentScore: Note[] = score.accompaniment || [];
-    if (accompanimentScore.length > 0 && currentSettings.instrumentSettings.accompaniment.name !== 'none') {
-        const instrumentName = currentSettings.instrumentSettings.accompaniment.name;
-        if (instrumentName === 'piano' && samplerPlayerRef.current) {
+    if (accompanimentScore.length > 0 && accompanimentInstrument !== 'none') {
+        if (accompanimentInstrument === 'piano' && samplerPlayerRef.current) {
             samplerPlayerRef.current.schedule('piano', accompanimentScore, now);
-        } else if (instrumentName === 'violin' && violinSamplerPlayerRef.current) {
+        } else if (accompanimentInstrument === 'violin' && violinSamplerPlayerRef.current) {
             violinSamplerPlayerRef.current.schedule(accompanimentScore, now);
-        } else if (instrumentName === 'flute' && fluteSamplerPlayerRef.current) {
+        } else if (accompanimentInstrument === 'flute' && fluteSamplerPlayerRef.current) {
             fluteSamplerPlayerRef.current.schedule(accompanimentScore, now);
-        } else if (instrumentName === 'guitarChords' && guitarChordsSamplerRef.current) {
+        } else if (accompanimentInstrument === 'guitarChords' && guitarChordsSamplerRef.current) {
             guitarChordsSamplerRef.current.schedule(accompanimentScore, now);
         } else if (accompanimentManagerRef.current) {
             accompanimentManagerRef.current.schedule(accompanimentScore, now);
