@@ -44,7 +44,7 @@ export function AuraGrooveV2({
   
   const melodyInstrumentList: (MelodyInstrument | 'none')[] = ['piano', 'violin', 'flute', 'synth', 'organ', 'mellotron', 'theremin', 'E-Bells_melody', 'G-Drops', 'acousticGuitarSolo', 'electricGuitar', 'none'];
   const accompanimentInstrumentList: (AccompanimentInstrument | 'none')[] = ['piano', 'violin', 'flute', 'guitarChords', 'synth', 'organ', 'mellotron', 'theremin', 'E-Bells_melody', 'G-Drops', 'electricGuitar', 'none'];
-  const bassInstrumentList: (BassInstrument | 'none')[] = ['classicBass', 'glideBass', 'ambientDrone', 'resonantGliss', 'hypnoticDrone', 'livingRiff', 'piano', 'violin', 'flute', 'acousticGuitarSolo', 'none'];
+  const bassInstrumentList: (BassInstrument | 'none')[] = ['classicBass', 'glideBass', 'ambientDrone', 'resonantGliss', 'hypnoticDrone', 'livingRiff', 'none'];
 
   const displayNames: Record<string, string> = {
     'guitarChords': 'Guitar Chords',
@@ -277,3 +277,5 @@ export function AuraGrooveV2({
     </div>
   );
 }
+
+    

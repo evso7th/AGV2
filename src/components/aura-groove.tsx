@@ -61,7 +61,7 @@ const EQ_BANDS = [
 
 const MELODY_INSTRUMENTS: (MelodyInstrument | 'none')[] = ['piano', 'violin', 'flute', 'synth', 'organ', 'mellotron', 'theremin', 'E-Bells_melody', 'G-Drops', 'acousticGuitarSolo', 'electricGuitar', 'none'];
 const ACCOMPANIMENT_INSTRUMENTS: (AccompanimentInstrument | 'none')[] = ['piano', 'violin', 'flute', 'guitarChords', 'synth', 'organ', 'mellotron', 'theremin', 'E-Bells_melody', 'G-Drops', 'electricGuitar', 'none'];
-const BASS_INSTRUMENTS: (BassInstrument | 'none')[] = ['classicBass', 'glideBass', 'ambientDrone', 'resonantGliss', 'hypnoticDrone', 'livingRiff', 'piano', 'violin', 'flute', 'acousticGuitarSolo', 'none'];
+const BASS_INSTRUMENTS: (BassInstrument | 'none')[] = ['classicBass', 'glideBass', 'ambientDrone', 'resonantGliss', 'hypnoticDrone', 'livingRiff', 'none'];
 
 
 export function AuraGroove({
@@ -459,3 +459,5 @@ export function AuraGroove({
     </Card>
   );
 }
+
+    
