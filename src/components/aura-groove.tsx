@@ -1,7 +1,7 @@
 
 "use client";
 
-import { Loader2, Music, Pause, Speaker, FileMusic, Drum, SlidersHorizontal, Waves, GitBranch, Atom, Piano, Home, X, Sparkles, Sprout, LayoutGrid, Timer, Guitar } from "lucide-react";
+import { Loader2, Music, Pause, Speaker, FileMusic, Drum, SlidersHorizontal, Waves, GitBranch, Atom, Piano, Home, X, Sparkles, Sprout, LayoutGrid, Timer, Guitar, RefreshCw } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -262,7 +262,8 @@ export function AuraGroove({
                 let instrumentList: (BassInstrument | MelodyInstrument | AccompanimentInstrument | 'none')[] = [];
                 let displayNames: Record<string, string> = {
                   'guitarChords': 'Guitar Chords',
-                  'acousticGuitarSolo': 'Acoustic Solo'
+                  'acousticGuitarSolo': 'Acoustic Solo',
+                  'electricGuitar': 'Electric Guitar'
                 };
 
                 if (part === 'bass') {
@@ -297,7 +298,7 @@ export function AuraGroove({
                         </Select>
                     </div>
 
-                    {part === 'bass' && 'technique' in settings && settings.name !== 'acousticGuitarSolo' && settings.name !== 'piano' && settings.name !== 'violin' && settings.name !== 'flute' && (
+                    {part === 'bass' && 'technique' in settings && settings.name !== 'none' && (
                         <div className="flex justify-between items-center">
                             <Label htmlFor="bass-technique" className="font-semibold flex items-center gap-2 capitalize">Technique</Label>
                             <Select
@@ -460,4 +461,5 @@ export function AuraGroove({
   );
 }
 
+    
     

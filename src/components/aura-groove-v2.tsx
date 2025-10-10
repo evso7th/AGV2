@@ -2,7 +2,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { SlidersHorizontal, Music, Pause, Speaker, FileMusic, Drum, GitBranch, Atom, Piano, Home, X, Sparkles, Sprout, LayoutGrid, LayoutList, Waves, Timer, Guitar } from "lucide-react";
+import { SlidersHorizontal, Music, Pause, Speaker, FileMusic, Drum, GitBranch, Atom, Piano, Home, X, Sparkles, Sprout, LayoutGrid, LayoutList, Waves, Timer, Guitar, RefreshCw } from "lucide-react";
 import Image from "next/image";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -48,7 +48,8 @@ export function AuraGrooveV2({
 
   const displayNames: Record<string, string> = {
     'guitarChords': 'Guitar Chords',
-    'acousticGuitarSolo': 'Acoustic Solo'
+    'acousticGuitarSolo': 'Acoustic Solo',
+    'electricGuitar': 'Electric Guitar'
   };
 
   const isFractalStyle = score === 'fractal';
@@ -178,7 +179,7 @@ export function AuraGrooveV2({
                <Card className="border-0 shadow-none">
                   <CardHeader className="p-2"><CardTitle className="flex items-center gap-2 text-sm"><SlidersHorizontal className="h-4 w-4"/> Instruments</CardTitle></CardHeader>
                   <CardContent className="space-y-1.5 p-3 pt-0">
-                      {(Object.keys(instrumentSettings) as Array<keyof InstrumentSettings>).map((part) => {
+                      {(Object.keys(instrumentSettings) as Array<keyof typeof instrumentSettings>).map((part) => {
                           const settings = instrumentSettings[part];
                           const list = part === 'bass' ? bassInstrumentList : (part === 'accompaniment' ? accompanimentInstrumentList : melodyInstrumentList);
                           const isDisabled = isInitializing || isPlaying || composerControl;
@@ -196,7 +197,7 @@ export function AuraGrooveV2({
                                         </SelectContent>
                                     </Select>
                                 </div>
-                                 {part === 'bass' && 'technique' in settings && settings.name !== 'piano' && settings.name !== 'violin' && settings.name !== 'flute' && settings.name !== 'acousticGuitarSolo' && (
+                                 {part === 'bass' && 'technique' in settings && settings.name !== 'none' && (
                                     <div className="grid grid-cols-2 items-center gap-2">
                                         <Label className="font-semibold flex items-center gap-1.5 capitalize text-xs"><GitBranch className="h-4 w-4"/>Technique</Label>
                                          <Select value={settings.technique} onValueChange={(v) => handleBassTechniqueChange(v as any)} disabled={isDisabled || settings.name === 'none'}>
@@ -278,4 +279,5 @@ export function AuraGrooveV2({
   );
 }
 
+    
     
