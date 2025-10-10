@@ -277,18 +277,23 @@ const availableMatrices: Record<string, ResonanceMatrix> = {
     'melancholic_minor': MelancholicMinorK,
 };
 
-const defaultSeed: Seed = {
-    initialState: { 'piano_60': 1 },
-    resonanceMatrixId: 'melancholic_minor',
-    config: {
-        lambda: 0.5,
-        bpm: 75,
-        density: 0.5,
-        organic: 0.5,
-    },
-};
+function createNewSeed(baseConfig: any): Seed {
+    const randomMidiNote = 40 + E_MINOR_SCALE_DEGREES[Math.floor(Math.random() * E_MINOR_SCALE_DEGREES.length)] + (Math.floor(Math.random() * 3)) * 12;
+    const initialEvent = `piano_${randomMidiNote}`;
+    
+    return {
+        initialState: { [initialEvent]: 1.0 },
+        resonanceMatrixId: 'melancholic_minor',
+        config: {
+            lambda: baseConfig.lambda || 0.5,
+            bpm: baseConfig.bpm || 75,
+            density: baseConfig.density || 0.5,
+            organic: baseConfig.organic || 0.5,
+        },
+    };
+}
 
-let fractalMusicEngine = new FractalMusicEngine(defaultSeed, availableMatrices);
+let fractalMusicEngine: FractalMusicEngine;
 
 
 // --- Scheduler (The Conductor) ---
@@ -303,13 +308,13 @@ const Scheduler = {
     
     settings: {
         bpm: 75,
-        score: 'dreamtales', 
+        score: 'fractal', 
         drumSettings: { pattern: 'none', enabled: false },
         instrumentSettings: { 
             bass: { name: "glideBass", volume: 0.5, technique: 'arpeggio' },
             melody: { name: "synth", volume: 0.5 },
             accompaniment: { name: "synth", volume: 0.5 },
-        } as InstrumentSettings, // Cast here to satisfy the new property
+        } as InstrumentSettings,
         textureSettings: {
             sparkles: { enabled: true },
             pads: { enabled: true }
@@ -322,18 +327,27 @@ const Scheduler = {
         return (60 / this.settings.bpm) * 4; // 4 beats per bar
     },
 
+    initializeEngine() {
+        const seed = createNewSeed({
+            bpm: this.settings.bpm,
+            density: this.settings.density,
+            lambda: 0.5,
+            organic: 0.5,
+        });
+        fractalMusicEngine = new FractalMusicEngine(seed, availableMatrices);
+        this.barCount = 0;
+        lastSparkleTime = -Infinity;
+        lastPadStyle = null; // Reset on engine re-creation
+    },
+
     start() {
         if (this.isRunning) return;
         
         this.isRunning = true;
-        this.barCount = 0;
-        lastSparkleTime = -Infinity;
-        lastPadStyle = null; // Reset on start
         
         const loop = () => {
             if (!this.isRunning) return;
             this.tick();
-            // Use setTimeout for the loop, allows for dynamic bar duration based on BPM
             this.loopId = setTimeout(loop, this.barDuration * 1000);
         };
         
@@ -349,10 +363,9 @@ const Scheduler = {
     },
     
     updateSettings(newSettings: Partial<WorkerSettings>) {
-       const isPlaying = this.isRunning;
-       if (isPlaying) this.stop();
+       const needsRestart = this.isRunning && (newSettings.bpm !== undefined && newSettings.bpm !== this.settings.bpm);
+       if (needsRestart) this.stop();
        
-       // Deep merge for nested settings
        this.settings = {
            ...this.settings,
            ...newSettings,
@@ -361,15 +374,15 @@ const Scheduler = {
            textureSettings: { ...this.settings.textureSettings, ...newSettings.textureSettings },
        };
 
-       // Update fractal engine config if it's part of the new settings
-       const newConfig = {
-           ...fractalMusicEngine.getConfig(),
-           ...newSettings
-       };
-       fractalMusicEngine.updateConfig(newConfig);
-
+       if (fractalMusicEngine) {
+           const newConfig = {
+               ...fractalMusicEngine.getConfig(),
+               ...newSettings
+           };
+           fractalMusicEngine.updateConfig(newConfig);
+       }
        
-       if (isPlaying) this.start();
+       if (needsRestart) this.start();
     },
 
     tick() {
@@ -381,7 +394,9 @@ const Scheduler = {
             this.lfo2Phase += 0.03;
             const newLambda = 0.5 + 0.3 * Math.sin(this.lfo1Phase);
             const newDensity = 0.5 + 0.2 * Math.sin(this.lfo2Phase);
-            fractalMusicEngine.updateConfig({ lambda: newLambda, density: newDensity });
+            if (fractalMusicEngine) {
+                fractalMusicEngine.updateConfig({ lambda: newLambda, density: newDensity });
+            }
         }
 
 
@@ -389,6 +404,7 @@ const Scheduler = {
         let score: Score = {};
         
         if (this.settings.score === 'fractal') {
+            if (!fractalMusicEngine) this.initializeEngine();
             fractalMusicEngine.tick();
             score = fractalMusicEngine.generateScore();
         } else if (this.settings.score === 'multeity') {
@@ -401,7 +417,6 @@ const Scheduler = {
              score.accompaniment = Composer.generateAccompaniment(this.barCount, density);
         }
 
-        // --- COMPATIBILITY LAYER & UNIFICATION ---
         const { instrumentSettings } = this.settings;
 
         score.drums = Composer.generateDrums(this.barCount, density);
@@ -440,12 +455,25 @@ self.onmessage = async (event: MessageEvent) => {
 
     try {
         switch (command) {
+            case 'init': // This command might be obsolete if settings are always sent with start
+                Scheduler.updateSettings(data);
+                Scheduler.initializeEngine();
+                break;
+
             case 'start':
+                if (!fractalMusicEngine) {
+                    Scheduler.initializeEngine();
+                }
                 Scheduler.start();
                 break;
                 
             case 'stop':
                 Scheduler.stop();
+                break;
+
+            case 'reset':
+                Scheduler.stop();
+                Scheduler.initializeEngine();
                 break;
 
             case 'update_settings':
@@ -456,4 +484,3 @@ self.onmessage = async (event: MessageEvent) => {
         self.postMessage({ type: 'error', error: e instanceof Error ? e.message : String(e) });
     }
 };
-
