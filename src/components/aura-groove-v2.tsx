@@ -52,7 +52,7 @@ export function AuraGrooveV2({
     'electricGuitar': 'Electric Guitar'
   };
 
-  const isFractalStyle = score === 'fractal';
+  const isFractalStyle = score === 'neuro_f_matrix';
   const composerControl = isFractalStyle && composerControlsInstruments;
 
 
@@ -124,7 +124,7 @@ export function AuraGrooveV2({
                               <SelectItem value="omega">Omega</SelectItem>
                               <SelectItem value="journey">Journey</SelectItem>
                               <SelectItem value="multeity">Multeity</SelectItem>
-                              <SelectItem value="fractal">Fractal</SelectItem>
+                              <SelectItem value="neuro_f_matrix">Neuro F-Matrix</SelectItem>
                           </SelectContent>
                       </Select>
                   </div>
@@ -266,7 +266,7 @@ export function AuraGrooveV2({
                               </Select>
                           </div>
                           <div className="flex items-center gap-2">
-                              <Label className="text-xs text-muted-foreground"><Speaker className="h-3 w-3 inline-block mr-1"/>Volume</Label>
+                              <Label className="text-xs text-muted-foreground"><Speaker className="h-4 w-4"/> Volume</Label>
                               <Slider value={[drumSettings.volume]} max={1} step={0.05} onValueChange={(v) => setDrumSettings(d => ({...d, volume: v[0]}))} disabled={isInitializing || drumSettings.pattern === 'none'}/>
                                <span className="text-xs w-8 text-right font-mono">{Math.round(drumSettings.volume * 100)}</span>
                           </div>
@@ -282,4 +282,5 @@ export function AuraGrooveV2({
   );
 }
 
+    
     
