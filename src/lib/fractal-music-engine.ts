@@ -13,12 +13,14 @@ const MAX_MIDI = KEY_ROOT_MIDI + (NUM_OCTAVES * 12);
 const BASS_MIDI_MIN = 32; // G#1
 const BASS_MIDI_MAX = 50; // D3
 
+
 // --- Fractal Music Engine ---
 export class FractalMusicEngine {
   private state: EngineState;
   private config: EngineConfig;
   private K: ResonanceMatrix;
   private availableEvents: EventID[] = [];
+  private tickCount: number = 0;
 
   constructor(seed: Seed, availableMatricesRepo: Record<string, ResonanceMatrix>) {
     this.state = new Map(Object.entries(seed.initialState));
@@ -54,11 +56,14 @@ export class FractalMusicEngine {
     const impulse = new Map<EventID, number>();
     const impulseStrength = this.config.density;
     
-    // Simple impulse: excite a random note in the available universe
-    if (Math.random() < impulseStrength) {
+    // Rhythmic impulse: quarter notes
+    const quarter = this.tickCount % 4;
+    const beatStrength = (quarter === 0) ? 1.0 : (quarter % 2 === 0 ? 0.5 : 0.25);
+
+    if (Math.random() < impulseStrength * beatStrength) {
         const randomEventIndex = Math.floor(Math.random() * this.availableEvents.length);
         const eventToExcite = this.availableEvents[randomEventIndex];
-        impulse.set(eventToExcite, 1.0);
+        impulse.set(eventToExcite, beatStrength * impulseStrength);
     }
 
     return impulse;
@@ -85,6 +90,7 @@ export class FractalMusicEngine {
   }
 
   public tick() {
+    this.tickCount++;
     const nextState: EngineState = new Map();
     const impulse = this.generateImpulse();
     const lambda = this.config.lambda;
@@ -96,12 +102,10 @@ export class FractalMusicEngine {
     }
 
     // 2. Calculate and add new resonance from the impulse
-    // The impulse excites the system, and its energy propagates based on the K matrix.
     for (const [event_j, current_weight_j] of nextState.entries()) {
         let resonanceSum = 0;
         for (const [event_i, impulseValue] of impulse.entries()) {
             if (impulseValue > 0) {
-                // The resonance K(i,j) determines how much energy flows from excited event i to event j
                 resonanceSum += this.K(event_i, event_j) * impulseValue;
             }
         }
@@ -114,65 +118,80 @@ export class FractalMusicEngine {
   }
 
   public generateScore(): Score {
-      const score: Score = { melody: [], accompaniment: [], bass: [] };
-      const density = this.config.density;
+    const score: Score = { melody: [], accompaniment: [], bass: [] };
+    const density = this.config.density;
 
-      // Get the top N most active "neurons" (events)
-      const sortedEvents = [...this.state.entries()]
-          .sort(([, weightA], [, weightB]) => weightB - weightA);
+    // PAUSE LOGIC: if total energy is very low, create silence
+    const totalWeight = [...this.state.values()].reduce((sum, w) => sum + w, 0);
+    if (totalWeight < 0.1 || Math.random() > (this.config.density * 1.5)) {
+        return {}; // Return empty score for a pause
+    }
+    
+    const sortedEvents = [...this.state.entries()]
+        .map(([id, weight]) => ({ id, weight, midi: parseInt(id.split('_')[1])}))
+        .filter(event => !isNaN(event.midi))
+        .sort((a, b) => b.weight - a.weight);
 
-      const numMelodyNotes = Math.max(1, Math.floor(density * 4));
-      const numAccompanimentNotes = Math.max(1, Math.floor(density * 3));
-      const numBassNotes = 1;
+    const numActiveNotes = Math.max(2, Math.floor(density * 7));
+    const activeEvents = sortedEvents.slice(0, numActiveNotes);
+    
+    if (activeEvents.length < 2) return score;
 
-      const activeEvents = sortedEvents.slice(0, numMelodyNotes + numAccompanimentNotes + numBassNotes);
-      
-      if (activeEvents.length === 0) return score;
+    // --- Note Distribution Logic ---
+    const bassCandidates = activeEvents.filter(e => e.midi < 60).sort((a,b) => a.midi - b.midi);
+    const melodyCandidates = activeEvents.filter(e => e.midi >= 60).sort((a,b) => b.midi - a.midi);
+    
+    let usedIndices = new Set<number>();
 
-      // PAUSE LOGIC: if total energy is very low, create silence
-      const totalWeight = [...this.state.values()].reduce((sum, w) => sum + w, 0);
-      if (totalWeight < 0.1 || Math.random() > (density * 1.5)) {
-          return {}; // Return empty score for a pause
-      }
+    // 1. Assign Bass Note (lowest available)
+    if (bassCandidates.length > 0) {
+        const bassEvent = bassCandidates[0];
+        const bassMidi = (bassEvent.midi % 12) + KEY_ROOT_MIDI - 12; // Transpose to bass range
+        score.bass!.push({ midi: Math.max(BASS_MIDI_MIN, bassMidi), time: 0, duration: 3.8, velocity: 0.8 });
+        usedIndices.add(activeEvents.findIndex(e => e.id === bassEvent.id));
+    } else { // If no low notes are active, take the lowest of all and transpose it down
+        const lowestEvent = activeEvents.reduce((prev, curr) => curr.midi < prev.midi ? curr : prev);
+        const bassMidi = (lowestEvent.midi % 12) + KEY_ROOT_MIDI - 12;
+        score.bass!.push({ midi: Math.max(BASS_MIDI_MIN, bassMidi), time: 0, duration: 3.8, velocity: 0.7 });
+        usedIndices.add(activeEvents.findIndex(e => e.id === lowestEvent.id));
+    }
+    
+    // 2. Assign Accompaniment (up to 3 notes from the remaining pool)
+    const accompCount = Math.min(melodyCandidates.length -1, Math.floor(density * 3));
+    let accompTime = 0.2;
+    for(let i=0; i < melodyCandidates.length && score.accompaniment!.length < accompCount; i++) {
+        if (!usedIndices.has(activeEvents.findIndex(e => e.id === melodyCandidates[i].id))) {
+            const event = melodyCandidates[i];
+            const midi = (event.midi % 24) + KEY_ROOT_MIDI + 12; // Mid range
+            score.accompaniment!.push({ midi: midi, time: accompTime, duration: 2.5 + Math.random(), velocity: 0.5 + Math.random() * 0.2 });
+            usedIndices.add(activeEvents.findIndex(e => e.id === event.id));
+            accompTime += 0.3; // Stagger accompaniment notes
+        }
+    }
 
-      let eventIndex = 0;
+    // 3. Assign Melody (highest remaining notes)
+    const melodyCount = Math.min(melodyCandidates.length, Math.floor(density * 4));
+    let melodyTime = Math.random() * 0.5;
+    for (let i = 0; i < melodyCandidates.length && score.melody!.length < melodyCount; i++) {
+        const eventIndex = activeEvents.findIndex(e => e.id === melodyCandidates[i].id);
+        if (!usedIndices.has(eventIndex)) {
+            const event = melodyCandidates[i];
+            const midi = (event.midi % 24) + KEY_ROOT_MIDI + 24; // High range
+            score.melody!.push({ midi: midi, time: melodyTime, duration: 1.5 + Math.random(), velocity: 0.6 + Math.random() * 0.3 });
+            usedIndices.add(eventIndex);
+            melodyTime += 4 / (melodyCount + 1);
+        }
+    }
 
-      // Generate Bass
-      if (activeEvents[eventIndex]) {
-          const bassEvent = activeEvents[eventIndex++];
-          const midi = parseInt(bassEvent[0].split('_')[1]);
-          // Transpose to bass range
-          const bassMidi = (midi % 12) + KEY_ROOT_MIDI - 12; 
-          score.bass!.push({ midi: Math.max(BASS_MIDI_MIN, bassMidi), time: 0, duration: 3.5, velocity: 0.7 });
-      }
-      
-      // Generate Accompaniment (Chord Tones)
-      for (let i = 0; i < numAccompanimentNotes; i++) {
-          if (!activeEvents[eventIndex]) break;
-          const event = activeEvents[eventIndex++];
-          const midi = parseInt(event[0].split('_')[1]);
-          // Place in mid-range
-          const accompMidi = (midi % 24) + KEY_ROOT_MIDI + 12;
-          score.accompaniment!.push({ midi: accompMidi, time: i * 0.2, duration: 2, velocity: 0.5 + Math.random() * 0.2 });
-      }
+    // Add instrument hints
+    score.instrumentHints = {
+        bass: 'glideBass',
+        melody: 'theremin',
+        accompaniment: 'mellotron'
+    };
 
-      // Generate Melody
-      for (let i = 0; i < numMelodyNotes; i++) {
-          if (!activeEvents[eventIndex]) break;
-           const event = activeEvents[eventIndex++];
-           const midi = parseInt(event[0].split('_')[1]);
-           // Place in higher range
-           const melodyMidi = (midi % 24) + KEY_ROOT_MIDI + 24;
-           score.melody!.push({ midi: Math.min(melodyMidi, MAX_MIDI + 12), time: i * (4 / numMelodyNotes) + Math.random() * 0.2, duration: 1.5, velocity: 0.6 + Math.random() * 0.3 });
-      }
-
-      // Add instrument hints
-      score.instrumentHints = {
-          bass: 'glideBass',
-          melody: 'theremin',
-          accompaniment: 'mellotron'
-      };
-
-      return score;
+    return score;
   }
 }
+
+    
