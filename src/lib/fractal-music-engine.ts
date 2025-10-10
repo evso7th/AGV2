@@ -10,6 +10,8 @@ const NUM_NOTES_IN_SCALE = SCALE_DEGREES.length;
 const TOTAL_EVENTS = NUM_NOTES_IN_SCALE * NUM_OCTAVES;
 const MIN_MIDI = KEY_ROOT_MIDI;
 const MAX_MIDI = KEY_ROOT_MIDI + (NUM_OCTAVES * 12);
+const BASS_MIDI_MIN = 32; // G#1
+const BASS_MIDI_MAX = 50; // D3
 
 // --- Fractal Music Engine ---
 export class FractalMusicEngine {
@@ -174,5 +176,3 @@ export class FractalMusicEngine {
       return score;
   }
 }
-
-    
