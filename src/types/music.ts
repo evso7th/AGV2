@@ -96,7 +96,7 @@ export type TimerSettings = {
     isActive: boolean;
 };
 
-export type ScoreName = 'evolve' | 'omega' | 'journey' | 'dreamtales' | 'multeity' | 'fractal';
+export type ScoreName = 'evolve' | 'omega' | 'journey' | 'dreamtales' | 'multeity' | 'neuro_f_matrix';
 
 // Settings sent from the UI to the main engine/worker.
 export type WorkerSettings = {
