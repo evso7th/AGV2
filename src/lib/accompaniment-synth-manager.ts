@@ -44,7 +44,7 @@ export class AccompanimentSynthManager {
         if (chordNotes.length === 0) return;
         
         // Schedule Note On for the chord
-        const noteOnTime = time;
+        const noteOnTime = time + notes[0].time;
         this.workletNode.port.postMessage({
             type: 'playChord',
             notes: chordNotes,

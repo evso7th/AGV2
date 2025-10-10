@@ -43,11 +43,12 @@ export function AuraGrooveV2({
   };
   
   const melodyInstrumentList: (MelodyInstrument | 'none')[] = ['piano', 'violin', 'flute', 'acousticGuitarSolo', 'synth', 'organ', 'mellotron', 'theremin', 'E-Bells_melody', 'G-Drops', 'none'];
-  const accompanimentInstrumentList: (AccompanimentInstrument | 'none')[] = ['piano', 'violin', 'flute', 'acousticGuitarSolo', 'synth', 'organ', 'mellotron', 'theremin', 'E-Bells_melody', 'G-Drops', 'none'];
+  const accompanimentInstrumentList: (AccompanimentInstrument | 'none')[] = ['piano', 'violin', 'flute', 'guitarChords', 'synth', 'organ', 'mellotron', 'theremin', 'E-Bells_melody', 'G-Drops', 'none'];
   const bassInstrumentList: (BassInstrument | 'none')[] = ['classicBass', 'glideBass', 'ambientDrone', 'resonantGliss', 'hypnoticDrone', 'livingRiff', 'none'];
 
   const displayNames: Record<string, string> = {
     'acousticGuitarSolo': 'Acoustic Solo',
+    'guitarChords': 'Guitar Chords',
   };
 
   const isFractalStyle = score === 'fractal';
@@ -276,5 +277,3 @@ export function AuraGrooveV2({
     </div>
   );
 }
-
-    

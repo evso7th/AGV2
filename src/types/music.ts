@@ -18,27 +18,15 @@ export type SamplerNote = {
     midi: number;         // MIDI note number, can be redundant but useful for unification
 };
 
-export type ChordSampleNote = {
-    chord: string; // e.g., 'Am', 'C', 'G'
-    time: number;
-    duration: number;
-    velocity?: number;
-};
-
-export type DrumsScore = SamplerNote[];
-export type EffectsScore = SamplerNote[];
-
 // A score is an object containing arrays of notes for each part.
 export type Score = {
     bass?: Note[];
     melody?: Note[];
     accompaniment?: Note[];
-    accompanimentChord?: ChordSampleNote; // For the new chord sampler
     drums?: DrumsScore;
     effects?: EffectsScore;
     sparkle?: boolean; // Command to play a sparkle
     pad?: string; // Command to change pad
-    acousticGuitar?: Note[];
     instrumentHints?: {
         bass?: BassInstrument;
         melody?: MelodyInstrument;
@@ -48,8 +36,8 @@ export type Score = {
 
 // --- UI Types ---
 export type BassInstrument = 'classicBass' | 'glideBass' | 'ambientDrone' | 'resonantGliss' | 'hypnoticDrone' | 'livingRiff' | 'piano' | 'violin' | 'flute' | 'acousticGuitarSolo' | 'none';
-export type MelodyInstrument = 'piano' | 'violin' | 'flute' | 'synth' | 'organ' | 'mellotron' | 'theremin' | 'E-Bells_melody' | 'G-Drops' | 'acousticGuitar' | 'acousticGuitarSolo' | 'none';
-export type AccompanimentInstrument = MelodyInstrument | 'acousticGuitar' | 'acousticGuitarSolo';
+export type MelodyInstrument = 'piano' | 'violin' | 'flute' | 'synth' | 'organ' | 'mellotron' | 'theremin' | 'E-Bells_melody' | 'G-Drops' | 'acousticGuitarSolo' | 'none';
+export type AccompanimentInstrument = MelodyInstrument | 'guitarChords';
 export type EffectInstrument = 
     'autopilot_effect_star' | 'autopilot_effect_meteor' | 'autopilot_effect_warp' | 
     'autopilot_effect_hole' | 'autopilot_effect_pulsar' | 'autopilot_effect_nebula' | 
@@ -57,7 +45,7 @@ export type EffectInstrument =
 
 export type InstrumentType = BassInstrument | MelodyInstrument | AccompanimentInstrument | EffectInstrument | 'portamento' | 'autopilot_bass' | 'none';
 
-export type InstrumentPart = 'bass' | 'melody' | 'accompaniment' | 'drums' | 'effects' | 'sparkles' | 'pads' | 'piano' | 'violin' | 'flute' | 'acousticGuitar' | 'acousticGuitarSolo';
+export type InstrumentPart = 'bass' | 'melody' | 'accompaniment' | 'drums' | 'effects' | 'sparkles' | 'pads' | 'piano' | 'violin' | 'flute' | 'guitarChords' | 'acousticGuitarSolo';
 export type BassTechnique = 'arpeggio' | 'portamento' | 'glissando' | 'glide' | 'pulse';
 
 
@@ -74,10 +62,6 @@ export type InstrumentSettings = {
   accompaniment: {
       name: AccompanimentInstrument;
       volume: number; // 0-1
-  };
-  acousticGuitar?: { // Existing chord sampler
-      enabled: boolean;
-      volume: number;
   };
   acousticGuitarSolo?: { // New note-based sampler
       volume: number;
@@ -117,11 +101,7 @@ export type WorkerSettings = {
     bpm: number;
     score: ScoreName;
     drumSettings: Omit<DrumSettings, 'volume'> & { enabled: boolean };
-    instrumentSettings: Omit<InstrumentSettings, 'acousticGuitarSolo'> & {
-        acousticGuitar: {
-            enabled: boolean;
-        };
-    };
+    instrumentSettings: Omit<InstrumentSettings, 'acousticGuitarSolo'>;
     textureSettings: Omit<TextureSettings, 'volume'>;
     density: number; // Controls musical density, 0 to 1
     composerControlsInstruments: boolean;

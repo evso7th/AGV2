@@ -7,7 +7,7 @@
  * Its goal is to create a continuously evolving piece of music where complexity is controlled by a 'density' parameter.
  * It is completely passive and only composes the next bar when commanded via a 'tick'.
  */
-import type { WorkerSettings, Score, Note, DrumsScore, ScoreName, ChordSampleNote, InstrumentSettings } from '@/types/music';
+import type { WorkerSettings, Score, Note, DrumsScore, ScoreName, InstrumentSettings } from '@/types/music';
 import { FractalMusicEngine } from './fractal-music-engine';
 import { MelancholicMinorK } from './resonance-matrices';
 import type { Seed, ResonanceMatrix } from '@/types/fractal';
@@ -229,22 +229,23 @@ const Composer = {
         const notes: Note[] = [];
         if (density < 0.3) return notes;
 
-        const availableNotes = ['F3', 'G3', 'A3', 'B3', 'C4', 'D4', 'E4'];
-        const numNotes = Math.floor(density * 8); // 0 to 8 notes per bar
+        const progression = [0, 3, 5, 2];
+        const chordRootDegree = progression[Math.floor(barIndex / 2) % progression.length];
+        const rootMidi = getNoteFromDegree(chordRootDegree, SCALE_INTERVALS, KEY_ROOT_MIDI, 2);
+
+        // Simple arpeggio for the chord
+        const arpPattern = [0, 4, 7, 12]; // Root, 3rd, 5th, Octave
+        const numNotes = Math.floor(density * 8);
         const step = Scheduler.barDuration / numNotes;
 
         for (let i = 0; i < numNotes; i++) {
-            if (Math.random() < density) {
-                const noteName = availableNotes[Math.floor(Math.random() * availableNotes.length)];
-                const midi = new Tone.Frequency(noteName).toMidi();
-                notes.push({
-                    note: noteName,
-                    midi: midi,
-                    time: i * step,
-                    duration: step * (0.5 + Math.random() * 0.5),
-                    velocity: 0.5 + Math.random() * 0.5 // Random velocity for dynamics
-                });
-            }
+             const degreeOffset = arpPattern[i % arpPattern.length];
+             notes.push({
+                 midi: rootMidi + degreeOffset,
+                 time: i * step,
+                 duration: step * 1.5,
+                 velocity: 0.5 + Math.random() * 0.3,
+             });
         }
         return notes;
     },
@@ -258,19 +259,19 @@ const Composer = {
         // Basic kick and snare
         if (Scheduler.settings.drumSettings.pattern === 'composer') {
             for (let i = 0; i < 16; i++) {
-                if (i % 8 === 0) drums.push({ note: 'C4', time: i * step, velocity: 0.8 }); // Kick
-                if (i % 8 === 4) drums.push({ note: 'D4', time: i * step, velocity: 0.6 }); // Snare
+                if (i % 8 === 0) drums.push({ note: 'C4', time: i * step, velocity: 0.8, midi: 60 }); // Kick
+                if (i % 8 === 4) drums.push({ note: 'D4', time: i * step, velocity: 0.6, midi: 62 }); // Snare
             }
 
             // Add hi-hats based on density
             if (density > 0.3) {
                  for (let i = 0; i < 16; i++) {
-                     if (i % 4 === 2 && Math.random() < density) drums.push({ note: 'E4', time: i * step, velocity: 0.4 * density });
+                     if (i % 4 === 2 && Math.random() < density) drums.push({ note: 'E4', time: i * step, velocity: 0.4 * density, midi: 64 });
                 }
             }
              // Add crash cymbal based on density
             if (density > 0.8 && barIndex % 4 === 0) {
-                drums.push({ note: 'G4', time: 0, velocity: 0.7 * density });
+                drums.push({ note: 'G4', time: 0, velocity: 0.7 * density, midi: 67 });
             }
         }
 
@@ -280,7 +281,7 @@ const Composer = {
                 // Add on off-beats
                 if (i % 4 !== 0 && Math.random() < (density * 0.15)) {
                     const randomPerc = PERCUSSION_SOUNDS[Math.floor(Math.random() * PERCUSSION_SOUNDS.length)];
-                    drums.push({ note: randomPerc, time: i * step, velocity: Math.random() * 0.3 + 0.2 });
+                    drums.push({ note: randomPerc, time: i * step, velocity: Math.random() * 0.3 + 0.2, midi: new Tone.Frequency(randomPerc).toMidi() });
                 }
             }
         }
@@ -418,19 +419,15 @@ const Scheduler = {
              score.accompaniment = Composer.generateAccompaniment(this.barCount, density);
         }
 
-        // --- COMPATIBILITY LAYER ---
+        // --- COMPATIBILITY LAYER & UNIFICATION ---
         const { instrumentSettings } = this.settings;
 
-        if (instrumentSettings.accompaniment.name === 'acousticGuitar' && this.settings.score !== 'fractal') {
-            score.accompanimentChord = {
-                chord: ['Em', 'G', 'C', 'Am'][Math.floor(this.barCount / 2) % 4],
-                time: 0,
-                duration: this.barDuration,
-                velocity: 0.6 + Math.random() * 0.2
-            };
-            score.accompaniment = []; // Important: Clear the MIDI notes
+        if (instrumentSettings.accompaniment.name === 'guitarChords' && this.settings.score !== 'fractal') {
+            const progression = [0, 3, 5, 2];
+            const rootDegree = progression[Math.floor(this.barCount / 2) % progression.length];
+            score.accompaniment = [{ midi: getNoteFromDegree(rootDegree, SCALE_INTERVALS, KEY_ROOT_MIDI, 2), time: 0, duration: this.barDuration }];
         }
-
+        
         if (instrumentSettings.melody.name === 'acousticGuitarSolo') {
             score.melody = Composer.generateAcousticGuitarPart(this.barCount, density);
         }
@@ -492,4 +489,3 @@ self.onmessage = async (event: MessageEvent) => {
         self.postMessage({ type: 'error', error: e instanceof Error ? e.message : String(e) });
     }
 };
-

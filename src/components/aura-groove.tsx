@@ -60,7 +60,7 @@ const EQ_BANDS = [
 ];
 
 const MELODY_INSTRUMENTS: (MelodyInstrument | 'none')[] = ['piano', 'violin', 'flute', 'acousticGuitarSolo', 'synth', 'organ', 'mellotron', 'theremin', 'E-Bells_melody', 'G-Drops', 'none'];
-const ACCOMPANIMENT_INSTRUMENTS: (AccompanimentInstrument | 'none')[] = ['piano', 'violin', 'flute', 'acousticGuitarSolo', 'synth', 'organ', 'mellotron', 'theremin', 'E-Bells_melody', 'G-Drops', 'none'];
+const ACCOMPANIMENT_INSTRUMENTS: (AccompanimentInstrument | 'none')[] = ['piano', 'violin', 'flute', 'guitarChords', 'synth', 'organ', 'mellotron', 'theremin', 'E-Bells_melody', 'G-Drops', 'none'];
 const BASS_INSTRUMENTS: (BassInstrument | 'none')[] = ['classicBass', 'glideBass', 'ambientDrone', 'resonantGliss', 'hypnoticDrone', 'livingRiff', 'none'];
 
 
@@ -113,7 +113,7 @@ export function AuraGroove({
     const instrumentName = instrumentSettings[part].name;
     const iconProps = { className: "h-5 w-5", style: { color } };
     
-    if (instrumentName === 'piano') return <Piano {...iconProps} />;
+    if (instrumentName === 'piano' || instrumentName === 'guitarChords') return <Piano {...iconProps} />;
     if (instrumentName === 'violin') return <Sprout {...iconProps} />; // Using Sprout for Violin as an example
     if (instrumentName === 'flute') return <Sprout {...iconProps} />; // Using Sprout for Flute as an example
     if (instrumentName === 'acousticGuitarSolo') return <Guitar {...iconProps} />;
@@ -258,9 +258,12 @@ export function AuraGroove({
         <div className="space-y-4 rounded-lg border p-4">
            <h3 className="text-lg font-medium text-primary flex items-center gap-2"><SlidersHorizontal className="h-5 w-5" /> Instrument Channels</h3>
             {(Object.keys(instrumentSettings) as Array<keyof InstrumentSettings>).filter(part => part !== 'acousticGuitarSolo').map((part) => {
-                const settings = instrumentSettings[part];
+                const settings = instrumentSettings[part as keyof typeof instrumentSettings];
                 let instrumentList: (BassInstrument | MelodyInstrument | AccompanimentInstrument | 'none')[] = [];
-                let displayNames: Record<string, string> = { 'acousticGuitarSolo': 'Acoustic Solo' };
+                let displayNames: Record<string, string> = { 
+                  'acousticGuitarSolo': 'Acoustic Solo',
+                  'guitarChords': 'Guitar Chords'
+                };
 
                 if (part === 'bass') {
                     instrumentList = BASS_INSTRUMENTS;
@@ -270,11 +273,14 @@ export function AuraGroove({
                     instrumentList = ACCOMPANIMENT_INSTRUMENTS;
                 }
 
+                // @ts-ignore - settings could be undefined if acousticGuitarSolo is filtered out, but the filter prevents that
+                if (!settings) return null;
+
                 return (
                  <div key={part} className="space-y-3 rounded-md border p-3">
                      <div className="flex justify-between items-center">
                         <Label htmlFor={`${part}-instrument`} className="font-semibold flex items-center gap-2 capitalize">
-                           <PartIcon part={part} /> {part}
+                           <PartIcon part={part as keyof InstrumentSettings} /> {part}
                         </Label>
                          <Select
                           value={settings.name}
@@ -326,7 +332,7 @@ export function AuraGroove({
                             step={0.05} 
                             onValueChange={(v) => handleVolumeChange(part as InstrumentPart, v[0])} 
                             disabled={isInitializing || settings.name === 'none'}
-                            style={{ '--slider-color': getPartColor(part) } as React.CSSProperties}
+                            style={{ '--slider-color': getPartColor(part as keyof InstrumentSettings) } as React.CSSProperties}
                             className="[&>span>span]:bg-[var(--slider-color)]"
                          />
                     </div>
@@ -454,5 +460,3 @@ export function AuraGroove({
     </Card>
   );
 }
-
-    
