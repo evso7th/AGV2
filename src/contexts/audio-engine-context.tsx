@@ -159,7 +159,7 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
         } else if (instrumentName === 'flute' && fluteSamplerPlayerRef.current) {
             fluteSamplerPlayerRef.current.schedule(bassScore, now);
         } else if (instrumentName === 'acousticGuitarSolo' && acousticGuitarSoloSamplerRef.current) {
-            acousticGuitarSoloSamplerRef.current.schedule(bassScore, now);
+            acousticGuitarSoloSamplerRef.current.schedule('acousticGuitarSolo', bassScore, now);
         } else if (bassManagerRef.current) {
             bassManagerRef.current.schedule(bassScore, now);
         }
@@ -175,7 +175,7 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
         } else if (instrumentName === 'flute' && fluteSamplerPlayerRef.current) {
             fluteSamplerPlayerRef.current.schedule(melodyScore, now);
         } else if (instrumentName === 'acousticGuitarSolo' && acousticGuitarSoloSamplerRef.current) {
-            acousticGuitarSoloSamplerRef.current.schedule(melodyScore, now);
+            acousticGuitarSoloSamplerRef.current.schedule('acousticGuitarSolo', melodyScore, now);
         } else {
             const gainNode = gainNodesRef.current.melody;
             if (gainNode) {

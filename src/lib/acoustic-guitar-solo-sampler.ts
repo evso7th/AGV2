@@ -16,10 +16,16 @@ export class AcousticGuitarSoloSampler {
     private outputNode: GainNode;
     private instruments = new Map<string, SamplerInstrument>();
     public isInitialized = false;
+    private preamp: GainNode;
 
     constructor(audioContext: AudioContext, destination: AudioNode) {
         this.audioContext = audioContext;
         this.outputNode = this.audioContext.createGain();
+        
+        this.preamp = this.audioContext.createGain();
+        this.preamp.gain.value = 1.8; 
+        this.preamp.connect(this.outputNode);
+
         this.outputNode.connect(destination);
     }
     
@@ -82,10 +88,10 @@ export class AcousticGuitarSoloSampler {
         }
     }
     
-    public schedule(notes: Note[], time: number) {
-        const instrument = this.instruments.get('acousticGuitarSolo');
+    public schedule(instrumentName: string, notes: Note[], time: number) {
+        const instrument = this.instruments.get(instrumentName);
         if (!this.isInitialized || !instrument) {
-            console.warn('[AcousticGuitarSoloSampler] Tried to schedule before "acousticGuitarSolo" instrument was initialized.');
+            console.warn(`[AcousticGuitarSoloSampler] Tried to schedule before "${instrumentName}" instrument was initialized.`);
             return;
         }
 
@@ -100,7 +106,7 @@ export class AcousticGuitarSoloSampler {
             gainNode.gain.setValueAtTime(note.velocity ?? 0.7, this.audioContext.currentTime);
 
             source.connect(gainNode);
-            gainNode.connect(this.outputNode);
+            gainNode.connect(this.preamp);
 
             const playbackRate = Math.pow(2, (note.midi - sampleMidi) / 12);
             source.playbackRate.value = playbackRate;
