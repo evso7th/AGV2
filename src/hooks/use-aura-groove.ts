@@ -61,7 +61,8 @@ export const useAuraGroove = () => {
     isPlaying, 
     initialize, 
     setIsPlaying: setEngineIsPlaying, 
-    updateSettings, 
+    updateSettings,
+    resetWorker, 
     setVolume, 
     setInstrument, 
     setBassTechnique,
@@ -173,12 +174,19 @@ export const useAuraGroove = () => {
     };
   }, [timerSettings.isActive, timerSettings.timeLeft, setEngineIsPlaying, startMasterFadeOut]);
   
-  const handleTogglePlay = useCallback(async () => {
+  const handlePlayPause = useCallback(async () => {
     if (!isInitialized) {
       await initialize();
     }
     setEngineIsPlaying(!isPlaying);
   }, [isInitialized, isPlaying, initialize, setEngineIsPlaying]);
+
+  const handleRegenerate = useCallback(() => {
+    if (isPlaying) {
+      setEngineIsPlaying(false);
+    }
+    resetWorker();
+  }, [isPlaying, setEngineIsPlaying, resetWorker]);
 
   const handleInstrumentChange = (part: keyof InstrumentSettings, name: BassInstrument | MelodyInstrument | AccompanimentInstrument) => {
     setInstrumentSettings(prev => ({
@@ -264,7 +272,8 @@ export const useAuraGroove = () => {
     isInitializing,
     isPlaying,
     loadingText: isInitializing ? 'Initializing...' : (isInitialized ? 'Ready' : 'Click to initialize audio'),
-    handleTogglePlay,
+    handlePlayPause,
+    handleRegenerate,
     drumSettings,
     setDrumSettings: handleDrumSettingsChange,
     instrumentSettings,
@@ -292,3 +301,5 @@ export const useAuraGroove = () => {
     handleToggleTimer,
   };
 };
+
+    

@@ -3,7 +3,7 @@
 
 import React, { createContext, useContext, useState, useRef, useCallback, useEffect } from 'react';
 import { useToast } from "@/hooks/use-toast";
-import type { WorkerSettings, Score, InstrumentPart, BassInstrument, MelodyInstrument, AccompanimentInstrument, BassTechnique, TextureSettings, ScoreName, Note, DrumsScore, EffectsScore } from '@/types/music';
+import type { WorkerSettings, Score, InstrumentPart, BassInstrument, MelodyInstrument, AccompanimentInstrument, BassTechnique, TextureSettings, ScoreName, Note, DrumsScore, EffectsScore, InstrumentType } from '@/types/music';
 import { DrumMachine } from '@/lib/drum-machine';
 import { SamplerPlayer } from '@/lib/sampler-player';
 import { ViolinSamplerPlayer } from '@/lib/violin-sampler-player';
@@ -47,6 +47,7 @@ interface AudioEngineContextType {
   initialize: () => Promise<boolean>;
   setIsPlaying: (playing: boolean) => void;
   updateSettings: (settings: Partial<WorkerSettings>) => void;
+  resetWorker: () => void;
   setVolume: (part: InstrumentPart, volume: number) => void;
   setInstrument: (part: 'bass' | 'melody' | 'accompaniment', name: BassInstrument | MelodyInstrument | AccompanimentInstrument) => void;
   setBassTechnique: (technique: BassTechnique) => void;
@@ -182,7 +183,7 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
                 melodyScore.forEach(note => {
                     const voice = synthPoolRef.current[nextVoiceRef.current++ % synthPoolRef.current.length];
                     if (voice) {
-                        const params = getPresetParams(instrumentName, note);
+                        const params = getPresetParams(instrumentName as InstrumentType, note);
                         if (!params) return;
                         voice.disconnect();
                         voice.connect(gainNode);
@@ -389,6 +390,12 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
     }
   }, [isInitialized, stopAllSounds]);
 
+  const resetWorkerCallback = useCallback(() => {
+    if (!workerRef.current) return;
+    workerRef.current.postMessage({ command: 'reset' });
+  }, []);
+
+
   const updateSettingsCallback = useCallback((settings: Partial<WorkerSettings>) => {
      if (!isInitialized || !workerRef.current) return;
      const newSettings = { ...settingsRef.current, ...settings } as WorkerSettings;
@@ -445,6 +452,7 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
     <AudioEngineContext.Provider value={{
         isInitialized, isInitializing, isPlaying, initialize,
         setIsPlaying: setIsPlayingCallback, updateSettings: updateSettingsCallback,
+        resetWorker: resetWorkerCallback,
         setVolume: setVolumeCallback, setInstrument: setInstrumentCallback,
         setBassTechnique: setBassTechniqueCallback, setTextureSettings: setTextureSettingsCallback,
         setEQGain: setEQGainCallback, startMasterFadeOut, cancelMasterFadeOut,
@@ -453,3 +461,5 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
     </AudioEngineContext.Provider>
   );
 };
+
+    
