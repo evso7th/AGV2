@@ -406,12 +406,6 @@ const Scheduler = {
 
         score.drums = Composer.generateDrums(this.barCount, density);
         
-        console.log(`[WORKER] Generated Score:`, {
-            bass: score.bass?.map(n => n.midi),
-            melody: score.melody?.map(n => n.midi),
-            accompaniment: score.accompaniment?.map(n => n.midi),
-        });
-        
         self.postMessage({ type: 'score', score, time: this.barDuration });
 
         const currentTime = this.barCount * this.barDuration;

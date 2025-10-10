@@ -3,6 +3,18 @@ import type { EngineState, EngineConfig, ResonanceMatrix, Seed, EventID } from '
 import type { Score, Note, InstrumentSettings } from '@/types/music';
 import { MelancholicMinorK } from './resonance-matrices';
 
+const E_MINOR_SCALE_DEGREES = [0, 2, 3, 5, 7, 8, 10]; // Relative to root
+
+function getNotesInScale(rootMidi: number, intervals: number[], octaves: number[]): number[] {
+    const notes: number[] = [];
+    octaves.forEach(octave => {
+        intervals.forEach(interval => {
+            notes.push(rootMidi + (octave * 12) + interval);
+        });
+    });
+    return notes;
+}
+
 
 export class FractalMusicEngine {
   private state: EngineState;
@@ -11,17 +23,23 @@ export class FractalMusicEngine {
   private availableEvents: EventID[];
 
   constructor(seed: Seed, availableMatricesRepo: Record<string, ResonanceMatrix>) {
-    this.availableEvents = Array.from({ length: 36 }, (_, i) => `piano_${48 + i}`); // C3 to B5
+    // Generate available events based on the E Minor scale over a few octaves
+    const scaleNotes = getNotesInScale(40, E_MINOR_SCALE_DEGREES, [0, 1, 2, 3]);
+    this.availableEvents = scaleNotes.map(midi => `piano_${midi}`);
     
     // Initialize with a uniform distribution if seed is empty
     const initialState = new Map<EventID, number>();
     if (Object.keys(seed.initialState).length === 0) {
+        // Start with a random note from the available scale notes
         const randomStartIndex = Math.floor(Math.random() * this.availableEvents.length);
         const randomEvent = this.availableEvents[randomStartIndex];
         initialState.set(randomEvent, 1.0);
     } else {
         for (const [key, value] of Object.entries(seed.initialState)) {
-            initialState.set(key, value);
+            // Ensure initial state only contains valid notes
+            if (this.availableEvents.includes(key)) {
+               initialState.set(key, value);
+            }
         }
     }
     
@@ -46,7 +64,7 @@ export class FractalMusicEngine {
 
   private generateImpulse(): Map<EventID, number> {
     const impulse: Map<EventID, number> = new Map();
-    // Simple impulse: "hit" a random note to keep things dynamic
+    // Simple impulse: "hit" a random note from the allowed scale to keep things dynamic
     const randomIndex = Math.floor(Math.random() * this.availableEvents.length);
     const randomEvent = this.availableEvents[randomIndex];
     impulse.set(randomEvent, 1.0 * this.config.density);
@@ -113,27 +131,29 @@ export class FractalMusicEngine {
 
     // For E-minor scale context
     const E_MINOR_SCALE_DEGREES = [0, 2, 3, 5, 7, 8, 10];
-    const rootDegree = (rootMidi - 40) % 12;
-    let rootDegreeIndex = E_MINOR_SCALE_DEGREES.indexOf(rootDegree);
+    const rootDegreeInScale = (rootMidi - 40) % 12;
+    let rootDegreeIndex = E_MINOR_SCALE_DEGREES.indexOf(rootDegreeInScale);
     if (rootDegreeIndex === -1) rootDegreeIndex = 0;
 
-    const chordTones = [
-        E_MINOR_SCALE_DEGREES[(rootDegreeIndex) % 7],
-        E_MINOR_SCALE_DEGREES[(rootDegreeIndex + 2) % 7],
-        E_MINOR_SCALE_DEGREES[(rootDegreeIndex + 4) % 7],
-    ].map(degree => rootMidi - rootDegree + degree);
+    const getNoteFromScale = (degreeIndex: number) => 40 + E_MINOR_SCALE_DEGREES[degreeIndex];
+    
+    const chordTonesMidi = [
+        getNoteFromScale((rootDegreeIndex) % 7),
+        getNoteFromScale((rootDegreeIndex + 2) % 7),
+        getNoteFromScale((rootDegreeIndex + 4) % 7),
+    ];
 
     const bassNotes: Note[] = [{ midi: rootMidi - 12, time: 0, duration: 4, velocity: 0.8 }];
     const accompanimentNotes: Note[] = [];
     
     // Generate an arpeggio for accompaniment
     const numArpNotes = Math.floor(this.config.density * 8) + 4; // 4 to 12 notes
-    const stepDuration = 4 / numArpNotes; // duration of a 16th note in a 4/4 bar
+    const stepDuration = 4 / numArpNotes; // duration of a bar divided by number of notes
     const arpPattern = [0, 1, 2, 1]; // Simple up-down pattern
     
     for (let i = 0; i < numArpNotes; i++) {
         const chordToneIndex = arpPattern[i % arpPattern.length];
-        const midi = chordTones[chordToneIndex];
+        const midi = chordTonesMidi[chordToneIndex];
         const octaveShift = Math.random() < 0.3 ? 12 : 0;
         
         accompanimentNotes.push({
@@ -151,7 +171,6 @@ export class FractalMusicEngine {
             melodyNotes.push({midi: melodyMidi, time: 0.5, duration: 3, velocity: 0.6});
          }
     }
-
 
     const score: Score = {
         bass: bassNotes,
