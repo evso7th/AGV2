@@ -34,9 +34,13 @@ export type Score = {
     }
 };
 
+export type DrumsScore = Note[];
+export type EffectsScore = SamplerNote[];
+
+
 // --- UI Types ---
-export type BassInstrument = 'classicBass' | 'glideBass' | 'ambientDrone' | 'resonantGliss' | 'hypnoticDrone' | 'livingRiff' | 'piano' | 'violin' | 'flute' | 'acousticGuitarSolo' | 'none';
-export type MelodyInstrument = 'piano' | 'violin' | 'flute' | 'synth' | 'organ' | 'mellotron' | 'theremin' | 'E-Bells_melody' | 'G-Drops' | 'acousticGuitarSolo' | 'none';
+export type BassInstrument = 'classicBass' | 'glideBass' | 'ambientDrone' | 'resonantGliss' | 'hypnoticDrone' | 'livingRiff' | 'piano' | 'violin' | 'flute' | 'none';
+export type MelodyInstrument = 'piano' | 'violin' | 'flute' | 'synth' | 'organ' | 'mellotron' | 'theremin' | 'E-Bells_melody' | 'G-Drops' | 'none';
 export type AccompanimentInstrument = MelodyInstrument | 'guitarChords';
 export type EffectInstrument = 
     'autopilot_effect_star' | 'autopilot_effect_meteor' | 'autopilot_effect_warp' | 
@@ -45,7 +49,7 @@ export type EffectInstrument =
 
 export type InstrumentType = BassInstrument | MelodyInstrument | AccompanimentInstrument | EffectInstrument | 'portamento' | 'autopilot_bass' | 'none';
 
-export type InstrumentPart = 'bass' | 'melody' | 'accompaniment' | 'drums' | 'effects' | 'sparkles' | 'pads' | 'piano' | 'violin' | 'flute' | 'guitarChords' | 'acousticGuitarSolo';
+export type InstrumentPart = 'bass' | 'melody' | 'accompaniment' | 'drums' | 'effects' | 'sparkles' | 'pads' | 'piano' | 'violin' | 'flute' | 'guitarChords';
 export type BassTechnique = 'arpeggio' | 'portamento' | 'glissando' | 'glide' | 'pulse';
 
 
@@ -63,14 +67,12 @@ export type InstrumentSettings = {
       name: AccompanimentInstrument;
       volume: number; // 0-1
   };
-  acousticGuitarSolo?: { // New note-based sampler
-      volume: number;
-  }
 };
 
 export type DrumSettings = {
     pattern: 'ambient_beat' | 'composer' | 'none';
     volume: number;
+    enabled: boolean;
 };
 
 export type EffectsSettings = {
@@ -100,8 +102,8 @@ export type ScoreName = 'evolve' | 'omega' | 'journey' | 'dreamtales' | 'multeit
 export type WorkerSettings = {
     bpm: number;
     score: ScoreName;
-    drumSettings: Omit<DrumSettings, 'volume'> & { enabled: boolean };
-    instrumentSettings: Omit<InstrumentSettings, 'acousticGuitarSolo'>;
+    drumSettings: Omit<DrumSettings, 'volume'>;
+    instrumentSettings: InstrumentSettings;
     textureSettings: Omit<TextureSettings, 'volume'>;
     density: number; // Controls musical density, 0 to 1
     composerControlsInstruments: boolean;

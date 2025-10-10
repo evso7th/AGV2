@@ -42,12 +42,11 @@ export function AuraGrooveV2({
     router.push('/aura-groove-legacy');
   };
   
-  const melodyInstrumentList: (MelodyInstrument | 'none')[] = ['piano', 'violin', 'flute', 'acousticGuitarSolo', 'synth', 'organ', 'mellotron', 'theremin', 'E-Bells_melody', 'G-Drops', 'none'];
+  const melodyInstrumentList: (MelodyInstrument | 'none')[] = ['piano', 'violin', 'flute', 'synth', 'organ', 'mellotron', 'theremin', 'E-Bells_melody', 'G-Drops', 'none'];
   const accompanimentInstrumentList: (AccompanimentInstrument | 'none')[] = ['piano', 'violin', 'flute', 'guitarChords', 'synth', 'organ', 'mellotron', 'theremin', 'E-Bells_melody', 'G-Drops', 'none'];
   const bassInstrumentList: (BassInstrument | 'none')[] = ['classicBass', 'glideBass', 'ambientDrone', 'resonantGliss', 'hypnoticDrone', 'livingRiff', 'none'];
 
   const displayNames: Record<string, string> = {
-    'acousticGuitarSolo': 'Acoustic Solo',
     'guitarChords': 'Guitar Chords',
   };
 
@@ -178,7 +177,7 @@ export function AuraGrooveV2({
                <Card className="border-0 shadow-none">
                   <CardHeader className="p-2"><CardTitle className="flex items-center gap-2 text-sm"><SlidersHorizontal className="h-4 w-4"/> Instruments</CardTitle></CardHeader>
                   <CardContent className="space-y-1.5 p-3 pt-0">
-                      {(Object.keys(instrumentSettings) as Array<keyof InstrumentSettings>).filter(part => part !== 'acousticGuitarSolo').map((part) => {
+                      {(Object.keys(instrumentSettings) as Array<keyof InstrumentSettings>).map((part) => {
                           const settings = instrumentSettings[part];
                           const list = part === 'bass' ? bassInstrumentList : (part === 'accompaniment' ? accompanimentInstrumentList : melodyInstrumentList);
                           const isDisabled = isInitializing || isPlaying || composerControl;

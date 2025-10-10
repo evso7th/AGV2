@@ -3,7 +3,7 @@
 
 import React, { createContext, useContext, useState, useRef, useCallback, useEffect } from 'react';
 import { useToast } from "@/hooks/use-toast";
-import type { WorkerSettings, Score, InstrumentPart, BassInstrument, MelodyInstrument, AccompanimentInstrument, BassTechnique, TextureSettings, ScoreName, Note } from '@/types/music';
+import type { WorkerSettings, Score, InstrumentPart, BassInstrument, MelodyInstrument, AccompanimentInstrument, BassTechnique, TextureSettings, ScoreName, Note, DrumsScore, EffectsScore } from '@/types/music';
 import { DrumMachine } from '@/lib/drum-machine';
 import { SamplerPlayer } from '@/lib/sampler-player';
 import { ViolinSamplerPlayer } from '@/lib/violin-sampler-player';
@@ -14,7 +14,6 @@ import { SparklePlayer } from '@/lib/sparkle-player';
 import { PadPlayer } from '@/lib/pad-player';
 import { getPresetParams } from "@/lib/presets";
 import { PIANO_SAMPLES, VIOLIN_SAMPLES, FLUTE_SAMPLES } from '@/lib/samples';
-import { AcousticGuitarSampler } from '@/lib/acoustic-guitar-sampler';
 import { GuitarChordsSampler } from '@/lib/guitar-chords-sampler';
 
 // --- Type Definitions ---
@@ -29,10 +28,9 @@ type WorkerMessage = {
 };
 
 // --- Constants ---
-const VOICE_BALANCE = {
+const VOICE_BALANCE: Record<InstrumentPart, number> = {
   bass: 1.0, melody: 0.7, accompaniment: 0.6, drums: 0.8,
   effects: 0.6, sparkles: 0.35, pads: 0.9, piano: 1.0, violin: 0.8, flute: 0.8, guitarChords: 0.9,
-  acousticGuitarSolo: 0.9,
 };
 
 const EQ_FREQUENCIES = [60, 125, 250, 500, 1000, 2000, 4000];
@@ -86,13 +84,12 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
   const samplerPlayerRef = useRef<SamplerPlayer | null>(null);
   const violinSamplerPlayerRef = useRef<ViolinSamplerPlayer | null>(null);
   const fluteSamplerPlayerRef = useRef<FluteSamplerPlayer | null>(null);
-  const acousticGuitarSoloSamplerRef = useRef<AcousticGuitarSampler | null>(null);
   const guitarChordsSamplerRef = useRef<GuitarChordsSampler | null>(null);
 
 
   const masterGainNodeRef = useRef<GainNode | null>(null);
   const gainNodesRef = useRef<Record<InstrumentPart, GainNode | null>>({
-    bass: null, melody: null, accompaniment: null, effects: null, drums: null, sparkles: null, pads: null, piano: null, violin: null, flute: null, guitarChords: null, acousticGuitarSolo: null,
+    bass: null, melody: null, accompaniment: null, effects: null, drums: null, sparkles: null, pads: null, piano: null, violin: null, flute: null, guitarChords: null,
   });
 
   const eqNodesRef = useRef<BiquadFilterNode[]>([]);
@@ -109,7 +106,6 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
         if (name === 'violin') violinSamplerPlayerRef.current?.setVolume(instrumentSettings.accompaniment.volume);
         else if (name === 'piano') samplerPlayerRef.current?.setVolume(instrumentSettings.accompaniment.volume);
         else if (name === 'flute') fluteSamplerPlayerRef.current?.setVolume(instrumentSettings.accompaniment.volume);
-        else if (name === 'acousticGuitarSolo') acousticGuitarSoloSamplerRef.current?.setVolume(instrumentSettings.accompaniment.volume);
         else if (name === 'guitarChords') guitarChordsSamplerRef.current?.setVolume(instrumentSettings.accompaniment.volume);
         else accompanimentManagerRef.current?.setPreset(name as MelodyInstrument);
     }
@@ -118,9 +114,7 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
         if (name === 'violin') violinSamplerPlayerRef.current?.setVolume(instrumentSettings.bass.volume);
         else if (name === 'piano') samplerPlayerRef.current?.setVolume(instrumentSettings.bass.volume);
         else if (name === 'flute') fluteSamplerPlayerRef.current?.setVolume(instrumentSettings.bass.volume);
-        else if (name === 'acousticGuitarSolo') {
-            acousticGuitarSoloSamplerRef.current?.setVolume(instrumentSettings.bass.volume);
-        } else {
+        else {
              bassManagerRef.current?.setPreset(name as BassInstrument);
         }
     }
@@ -128,37 +122,28 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
         if (name === 'violin') violinSamplerPlayerRef.current?.setVolume(instrumentSettings.melody.volume);
         else if (name === 'piano') samplerPlayerRef.current?.setVolume(instrumentSettings.melody.volume);
         else if (name === 'flute') fluteSamplerPlayerRef.current?.setVolume(instrumentSettings.melody.volume);
-        else if (name === 'acousticGuitarSolo') {
-            acousticGuitarSoloSamplerRef.current?.setVolume(instrumentSettings.melody.volume);
-        }
     }
 
-    // This part is crucial, we update the settingsRef immediately
-    // so that the next call to updateSettings in the main hook sends the correct data.
     const newInstrumentSettings = {
         ...settingsRef.current.instrumentSettings,
         [part]: { ...settingsRef.current.instrumentSettings[part], name }
     };
     settingsRef.current.instrumentSettings = newInstrumentSettings;
-     // We don't call updateSettings here, as it's handled by the main hook's useEffect
   }, []);
 
   const scheduleScore = useCallback((score: Score, audioContext: AudioContext) => {
-    console.time('scheduleScore');
 
     const now = audioContext.currentTime;
     const currentSettings = settingsRef.current;
     
     if (!currentSettings) return;
 
-    // Handle "Composer Controls Instruments" for fractal style
     if (score.instrumentHints && currentSettings.score === 'fractal' && currentSettings.composerControlsInstruments) {
         if (score.instrumentHints.bass) setInstrumentCallback('bass', score.instrumentHints.bass);
         if (score.instrumentHints.melody) setInstrumentCallback('melody', score.instrumentHints.melody);
         if (score.instrumentHints.accompaniment) setInstrumentCallback('accompaniment', score.instrumentHints.accompaniment);
     }
 
-    // Bass
     const bassScore = score.bass || [];
     if (bassScore.length > 0 && currentSettings.instrumentSettings.bass.name !== 'none') {
         const instrumentName = currentSettings.instrumentSettings.bass.name;
@@ -168,14 +153,11 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
             violinSamplerPlayerRef.current.schedule(bassScore, now);
         } else if (instrumentName === 'flute' && fluteSamplerPlayerRef.current) {
             fluteSamplerPlayerRef.current.schedule(bassScore, now);
-        } else if (instrumentName === 'acousticGuitarSolo' && acousticGuitarSoloSamplerRef.current) {
-            acousticGuitarSoloSamplerRef.current.schedule(bassScore, now);
         } else if (bassManagerRef.current) {
             bassManagerRef.current.schedule(bassScore, now);
         }
     }
     
-    // Melody
     const melodyScore = score.melody || [];
     if (melodyScore.length > 0 && currentSettings.instrumentSettings.melody.name !== 'none') {
         const instrumentName = currentSettings.instrumentSettings.melody.name;
@@ -185,8 +167,6 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
             violinSamplerPlayerRef.current.schedule(melodyScore, now);
         } else if (instrumentName === 'flute' && fluteSamplerPlayerRef.current) {
             fluteSamplerPlayerRef.current.schedule(melodyScore, now);
-        } else if (instrumentName === 'acousticGuitarSolo' && acousticGuitarSoloSamplerRef.current) {
-            acousticGuitarSoloSamplerRef.current.schedule(melodyScore, now);
         } else {
             const gainNode = gainNodesRef.current.melody;
             if (gainNode) {
@@ -208,8 +188,7 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
         }
     }
     
-    // Accompaniment
-    const accompanimentScore = score.accompaniment || [];
+    const accompanimentScore: Note[] = score.accompaniment || [];
     if (accompanimentScore.length > 0 && currentSettings.instrumentSettings.accompaniment.name !== 'none') {
         const instrumentName = currentSettings.instrumentSettings.accompaniment.name;
         if (instrumentName === 'piano' && samplerPlayerRef.current) {
@@ -218,8 +197,6 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
             violinSamplerPlayerRef.current.schedule(accompanimentScore, now);
         } else if (instrumentName === 'flute' && fluteSamplerPlayerRef.current) {
             fluteSamplerPlayerRef.current.schedule(accompanimentScore, now);
-        } else if (instrumentName === 'acousticGuitarSolo' && acousticGuitarSoloSamplerRef.current) {
-            acousticGuitarSoloSamplerRef.current.schedule(accompanimentScore, now);
         } else if (instrumentName === 'guitarChords' && guitarChordsSamplerRef.current) {
             guitarChordsSamplerRef.current.schedule(accompanimentScore, now);
         } else if (accompanimentManagerRef.current) {
@@ -228,21 +205,19 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
     }
 
 
-    // Drums
-    const drumScore = score.drums || [];
+    const drumScore: DrumsScore = score.drums || [];
     if (drumScore.length > 0 && drumMachineRef.current && currentSettings.drumSettings.enabled) {
         drumMachineRef.current.schedule(drumScore, now);
     }
 
-    // Effects
-    const effectsScore = score.effects || [];
+    const effectsScore: EffectsScore = score.effects || [];
     if (effectsScore.length > 0 && currentSettings) {
         const gainNode = gainNodesRef.current.effects;
         if (gainNode) {
             effectsScore.forEach(note => {
                  const voice = synthPoolRef.current[nextVoiceRef.current++ % synthPoolRef.current.length];
                  if(voice) {
-                     const noteAsMidi: Note = { midi: new (require('tone').Frequency)(note.note).toMidi(), time: note.time, duration: 0.5, velocity: note.velocity };
+                     const noteAsMidi: Note = { midi: note.midi, time: note.time, duration: 0.5, velocity: note.velocity };
                      const params = getPresetParams(note.note as InstrumentType, noteAsMidi);
                      if (!params) return;
                      voice.disconnect();
@@ -259,7 +234,6 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
     }
 
 
-    console.timeEnd('scheduleScore');
   }, [setInstrumentCallback]);
 
   const initialize = useCallback(async () => {
@@ -297,7 +271,7 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
         }
 
         if (!gainNodesRef.current.bass) {
-            const parts: InstrumentPart[] = ['bass', 'melody', 'accompaniment', 'effects', 'drums', 'sparkles', 'pads', 'piano', 'violin', 'flute', 'guitarChords', 'acousticGuitarSolo'];
+            const parts: InstrumentPart[] = ['bass', 'melody', 'accompaniment', 'effects', 'drums', 'sparkles', 'pads', 'piano', 'violin', 'flute', 'guitarChords'];
             parts.forEach(part => {
                 gainNodesRef.current[part] = context.createGain();
                 gainNodesRef.current[part]!.connect(masterGainNodeRef.current!);
@@ -320,12 +294,6 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
         if (!fluteSamplerPlayerRef.current) {
             fluteSamplerPlayerRef.current = new FluteSamplerPlayer(context, gainNodesRef.current.flute!);
             initPromises.push(fluteSamplerPlayerRef.current.loadInstrument('flute', FLUTE_SAMPLES));
-        }
-        if (!acousticGuitarSoloSamplerRef.current) {
-            console.log('[AudioEngine] Initializing AcousticGuitarSampler (Solo)...');
-            acousticGuitarSoloSamplerRef.current = new AcousticGuitarSampler(context);
-            acousticGuitarSoloSamplerRef.current.output.connect(gainNodesRef.current.acousticGuitarSolo!);
-            initPromises.push(acousticGuitarSoloSamplerRef.current.init());
         }
         if (!guitarChordsSamplerRef.current) {
             guitarChordsSamplerRef.current = new GuitarChordsSampler(context, gainNodesRef.current.guitarChords!);
@@ -390,7 +358,6 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
     samplerPlayerRef.current?.stopAll();
     violinSamplerPlayerRef.current?.stopAll();
     fluteSamplerPlayerRef.current?.stopAll();
-    acousticGuitarSoloSamplerRef.current?.stopAll();
     guitarChordsSamplerRef.current?.stopAll();
   }, []);
   
@@ -418,7 +385,7 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
   const setVolumeCallback = useCallback((part: InstrumentPart, volume: number) => {
     const gainNode = gainNodesRef.current[part];
     if (gainNode) {
-        let balancedVolume = volume * (VOICE_BALANCE[part as keyof typeof VOICE_BALANCE] ?? 1);
+        const balancedVolume = volume * (VOICE_BALANCE[part] ?? 1);
         gainNode.gain.setTargetAtTime(balancedVolume, audioContextRef.current?.currentTime ?? 0, 0.01);
     }
   }, []);
