@@ -101,14 +101,13 @@ export class FractalMusicEngine {
         nextState.set(event, (1 - lambda) * currentWeight);
     }
 
-    // 2. Calculate and add new resonance from the impulse
-    // This part of the logic was flawed, let's correct it to resonate from the existing state, not just the impulse
+    // 2. Calculate and add new resonance from the existing state and the new impulse
     const eventsWithWeight = [...this.state.entries()].filter(([, weight]) => weight > 0.01);
     
     for (const [event_j, current_weight_j] of nextState.entries()) {
         let resonanceSum = 0;
         
-        // Resonance from existing active nodes
+        // Resonance from existing active nodes ("self-listening")
         for (const [event_i, weight_i] of eventsWithWeight) {
              resonanceSum += this.K(event_i, event_j) * weight_i * this.config.organic * 0.1;
         }
@@ -131,6 +130,7 @@ export class FractalMusicEngine {
     const density = this.config.density;
 
     const totalWeight = [...this.state.values()].reduce((sum, w) => sum + w, 0);
+    // Add a chance for silence based on density
     if (totalWeight < 0.1 || Math.random() > (density * 1.5)) {
         return {};
     }
@@ -142,6 +142,7 @@ export class FractalMusicEngine {
 
     if (sortedEvents.length === 0) return {};
 
+    // Determine number of notes to play based on density and total number of active events
     const numActiveNotes = Math.max(1, Math.min(sortedEvents.length, Math.floor(density * 7) + 2));
     let activeEvents = sortedEvents.slice(0, numActiveNotes);
     activeEvents.sort((a, b) => a.midi - b.midi); // Sort by pitch for easier distribution
@@ -151,7 +152,8 @@ export class FractalMusicEngine {
     // 1. Assign Bass Note (the lowest, most resonant note)
     const bassEvent = remainingEvents.shift();
     if (bassEvent) {
-        const bassMidi = (bassEvent.midi % 12) + KEY_ROOT_MIDI - 12; // Transpose to bass range
+        // Transpose the selected MIDI note to a suitable bass range
+        const bassMidi = (bassEvent.midi % 12) + KEY_ROOT_MIDI - 12; // Go one octave below the root key's octave
         score.bass!.push({ midi: Math.max(BASS_MIDI_MIN, Math.min(bassMidi, BASS_MIDI_MAX)), time: 0, duration: 3.9, velocity: 0.8 });
     }
 
@@ -166,19 +168,19 @@ export class FractalMusicEngine {
         });
     }
 
-    // 3. Assign Melody (highest remaining notes)
+    // 3. Assign Melody (highest remaining notes, with more rhythmic variety)
     const melodyCount = Math.min(remainingEvents.length, Math.floor(density * 4));
     if (melodyCount > 0) {
-        const melodyEvents = remainingEvents.splice(0, melodyCount).sort((a,b) => b.weight - a.weight);
-        let melodyTime = Math.random() * 0.5;
-        const timeStep = 4.0 / melodyEvents.length;
+        const melodyEvents = remainingEvents.splice(0, melodyCount).sort((a,b) => b.weight - a.weight); // Use the strongest remaining for melody
+        let melodyTime = Math.random() * 0.5; // Start at a random point in the first beat
+        const timeStep = 4.0 / melodyEvents.length; // Distribute notes across the bar
         melodyEvents.forEach(event => {
             score.melody!.push({ midi: event.midi, time: melodyTime, duration: 1.5 + Math.random(), velocity: 0.6 + event.weight * 0.4 });
             melodyTime += timeStep;
         });
     }
 
-    // 4. Dynamic Instrument Hints
+    // 4. Dynamic Instrument Hints based on generated score
     let bassHint: BassInstrument = 'ambientDrone';
     if(score.bass && score.bass.length > 1) bassHint = 'classicBass';
     else if (density > 0.6) bassHint = 'resonantGliss';
@@ -202,5 +204,3 @@ export class FractalMusicEngine {
     return score;
   }
 }
-
-    
