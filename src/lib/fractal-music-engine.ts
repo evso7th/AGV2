@@ -13,6 +13,16 @@ const MAX_MIDI = KEY_ROOT_MIDI + (NUM_OCTAVES * 12);
 const BASS_MIDI_MIN = 32; // G#1
 const BASS_MIDI_MAX = 50; // D3
 
+// --- Note Generation Helper ---
+const getNoteFromDegree = (degree: number, scale: number[], root: number, octave: number): number => {
+    const scaleLength = scale.length;
+    // Ensure the degree is a valid index within the scale array
+    const scaleIndex = ((degree % scaleLength) + scaleLength) % scaleLength;
+    const noteInScale = scale[scaleIndex];
+    const octaveOffset = Math.floor(degree / scaleLength);
+    return root + (octave + octaveOffset) * 12 + noteInScale;
+};
+
 
 // --- Fractal Music Engine ---
 export class FractalMusicEngine {
