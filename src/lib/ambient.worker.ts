@@ -225,31 +225,6 @@ const Composer = {
         return notes;
     },
 
-    generateAcousticGuitarPart(barIndex: number, density: number): Note[] {
-        const notes: Note[] = [];
-        if (density < 0.3) return notes;
-
-        const progression = [0, 3, 5, 2];
-        const chordRootDegree = progression[Math.floor(barIndex / 2) % progression.length];
-        const rootMidi = getNoteFromDegree(chordRootDegree, SCALE_INTERVALS, KEY_ROOT_MIDI, 2);
-
-        // Simple arpeggio for the chord
-        const arpPattern = [0, 4, 7, 12]; // Root, 3rd, 5th, Octave
-        const numNotes = Math.floor(density * 8);
-        const step = Scheduler.barDuration / numNotes;
-
-        for (let i = 0; i < numNotes; i++) {
-             const degreeOffset = arpPattern[i % arpPattern.length];
-             notes.push({
-                 midi: rootMidi + degreeOffset,
-                 time: i * step,
-                 duration: step * 1.5,
-                 velocity: 0.5 + Math.random() * 0.3,
-             });
-        }
-        return notes;
-    },
-
     generateDrums(barIndex: number, density: number): DrumsScore {
         if (!Scheduler.settings.drumSettings.enabled) return [];
         
@@ -421,21 +396,6 @@ const Scheduler = {
 
         // --- COMPATIBILITY LAYER & UNIFICATION ---
         const { instrumentSettings } = this.settings;
-
-        if (instrumentSettings.accompaniment.name === 'guitarChords' && this.settings.score !== 'fractal') {
-            const progression = [0, 3, 5, 2];
-            const rootDegree = progression[Math.floor(this.barCount / 2) % progression.length];
-            score.accompaniment = [{ midi: getNoteFromDegree(rootDegree, SCALE_INTERVALS, KEY_ROOT_MIDI, 2), time: 0, duration: this.barDuration }];
-        }
-        
-        if (instrumentSettings.melody.name === 'acousticGuitarSolo') {
-            score.melody = Composer.generateAcousticGuitarPart(this.barCount, density);
-        }
-        
-        if (instrumentSettings.bass.name === 'acousticGuitarSolo') {
-            score.bass = Composer.generateAcousticGuitarPart(this.barCount, density);
-        }
-
 
         score.drums = Composer.generateDrums(this.barCount, density);
         
