@@ -76,7 +76,7 @@ export const useAuraGroove = () => {
   
   const [drumSettings, setDrumSettings] = useState<DrumSettings>({ pattern: 'composer', volume: 0.5, enabled: true });
   const [instrumentSettings, setInstrumentSettings] = useState<InstrumentSettings>({
-    bass: { name: "acousticGuitarSolo", volume: 0.7, technique: 'arpeggio' },
+    bass: { name: "glideBass", volume: 0.7, technique: 'portamento' },
     melody: { name: "acousticGuitarSolo", volume: 0.8 },
     accompaniment: { name: "guitarChords", volume: 0.7 },
   });
@@ -302,4 +302,5 @@ export const useAuraGroove = () => {
   };
 };
 
+    
     
