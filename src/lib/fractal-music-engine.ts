@@ -56,11 +56,11 @@ export class FractalMusicEngine {
     const impulse = new Map<EventID, number>();
     const impulseStrength = this.config.density;
     
-    // Rhythmic impulse: quarter notes
-    const quarter = this.tickCount % 4;
-    const beatStrength = (quarter === 0) ? 1.0 : (quarter % 2 === 0 ? 0.5 : 0.25);
+    // Rhythmic impulse: quarter notes, with varying strength
+    const beatInBar = this.tickCount % 4; // Assuming 4 beats per bar
+    const beatStrength = (beatInBar === 0) ? 1.0 : (beatInBar % 2 === 0 ? 0.5 : 0.25);
 
-    if (Math.random() < impulseStrength * beatStrength) {
+    if (Math.random() < impulseStrength * beatStrength * 0.5) { // Reduced probability
         const randomEventIndex = Math.floor(Math.random() * this.availableEvents.length);
         const eventToExcite = this.availableEvents[randomEventIndex];
         impulse.set(eventToExcite, beatStrength * impulseStrength);
@@ -76,7 +76,6 @@ export class FractalMusicEngine {
     }
 
     if (totalWeight === 0) {
-        // If the system is "dead", re-energize a random node
         if (this.availableEvents.length > 0) {
             const randomEventIndex = Math.floor(Math.random() * this.availableEvents.length);
             state.set(this.availableEvents[randomEventIndex], 1.0);
@@ -102,12 +101,12 @@ export class FractalMusicEngine {
     }
 
     // 2. Calculate and add new resonance from the existing state and the new impulse
-    const eventsWithWeight = [...this.state.entries()].filter(([, weight]) => weight > 0.01);
+    const eventsWithWeight = [...this.state.entries()].filter(([, weight]) => weight > 0.001); // Lower threshold
     
     for (const [event_j, current_weight_j] of nextState.entries()) {
         let resonanceSum = 0;
         
-        // Resonance from existing active nodes ("self-listening")
+        // Resonance from existing active nodes
         for (const [event_i, weight_i] of eventsWithWeight) {
              resonanceSum += this.K(event_i, event_j) * weight_i * this.config.organic * 0.1;
         }
@@ -130,70 +129,80 @@ export class FractalMusicEngine {
     const density = this.config.density;
 
     const totalWeight = [...this.state.values()].reduce((sum, w) => sum + w, 0);
-    // Add a chance for silence based on density
-    if (totalWeight < 0.1 || Math.random() > (density * 1.5)) {
-        return {};
+    if (totalWeight < 0.05 || Math.random() > (density * 1.2)) { // Add more chance for silence
+        return { instrumentHints: {} }; // Return empty with hints object
     }
     
     const sortedEvents = [...this.state.entries()]
         .map(([id, weight]) => ({ id, weight, midi: parseInt(id.split('_')[1])}))
-        .filter(event => !isNaN(event.midi) && event.weight > 0.01) // Filter out insignificant events
+        .filter(event => !isNaN(event.midi) && event.weight > 0.02) // Increased threshold
         .sort((a, b) => b.weight - a.weight);
 
-    if (sortedEvents.length === 0) return {};
+    if (sortedEvents.length === 0) return { instrumentHints: {} };
 
-    // Determine number of notes to play based on density and total number of active events
-    const numActiveNotes = Math.max(1, Math.min(sortedEvents.length, Math.floor(density * 7) + 2));
+    const numActiveNotes = Math.max(1, Math.min(sortedEvents.length, Math.floor(density * 6) + 1));
     let activeEvents = sortedEvents.slice(0, numActiveNotes);
-    activeEvents.sort((a, b) => a.midi - b.midi); // Sort by pitch for easier distribution
+    activeEvents.sort((a, b) => a.midi - b.midi); 
     
     let remainingEvents = [...activeEvents];
 
-    // 1. Assign Bass Note (the lowest, most resonant note)
     const bassEvent = remainingEvents.shift();
     if (bassEvent) {
-        // Transpose the selected MIDI note to a suitable bass range
-        const bassMidi = (bassEvent.midi % 12) + KEY_ROOT_MIDI - 12; // Go one octave below the root key's octave
-        score.bass!.push({ midi: Math.max(BASS_MIDI_MIN, Math.min(bassMidi, BASS_MIDI_MAX)), time: 0, duration: 3.9, velocity: 0.8 });
+        const bassMidi = (bassEvent.midi % 12) + KEY_ROOT_MIDI - 12;
+        score.bass!.push({ midi: Math.max(BASS_MIDI_MIN, Math.min(bassMidi, BASS_MIDI_MAX)), time: 0, duration: 3.8, velocity: 0.8 });
     }
 
-    // 2. Assign Accompaniment (chordal or arpeggiated texture)
-    const accompCount = Math.min(remainingEvents.length, Math.floor(density * 3));
+    const accompCount = Math.min(remainingEvents.length, Math.floor(density * 2) + 1);
     if (accompCount > 0) {
         const accompEvents = remainingEvents.splice(0, accompCount);
-        let timeOffset = 0.1;
+        let timeOffset = 0.15;
         accompEvents.forEach(event => {
-            score.accompaniment!.push({ midi: event.midi, time: timeOffset, duration: 2.5 + Math.random(), velocity: 0.5 + event.weight * 0.3 });
-            timeOffset += 0.2 + Math.random() * 0.3; // Stagger accompaniment notes
+            if (event.midi < 72) { // Keep accompaniment in mid-range
+                score.accompaniment!.push({ midi: event.midi, time: timeOffset, duration: 2.8 + Math.random(), velocity: 0.5 + event.weight * 0.3 });
+                timeOffset += 0.25 + Math.random() * 0.4;
+            } else { // if too high, push to melody instead
+                remainingEvents.push(event);
+            }
         });
     }
 
-    // 3. Assign Melody (highest remaining notes, with more rhythmic variety)
-    const melodyCount = Math.min(remainingEvents.length, Math.floor(density * 4));
-    if (melodyCount > 0) {
-        const melodyEvents = remainingEvents.splice(0, melodyCount).sort((a,b) => b.weight - a.weight); // Use the strongest remaining for melody
-        let melodyTime = Math.random() * 0.5; // Start at a random point in the first beat
-        const timeStep = 4.0 / melodyEvents.length; // Distribute notes across the bar
+    if (remainingEvents.length > 0) {
+        const melodyEvents = remainingEvents.sort((a,b) => b.weight - a.weight);
+        let melodyTime = Math.random() * 0.6;
+        const timeStep = 4.0 / melodyEvents.length;
         melodyEvents.forEach(event => {
-            score.melody!.push({ midi: event.midi, time: melodyTime, duration: 1.5 + Math.random(), velocity: 0.6 + event.weight * 0.4 });
-            melodyTime += timeStep;
+            if (event.midi > 55) { // Ensure melody is in a higher register
+                score.melody!.push({ midi: event.midi, time: melodyTime, duration: 1.8 + Math.random() * 1.5, velocity: 0.6 + event.weight * 0.4 });
+                melodyTime += timeStep + (Math.random() - 0.5) * 0.2;
+            }
         });
     }
 
-    // 4. Dynamic Instrument Hints based on generated score
+    // --- DYNAMIC INSTRUMENT HINTS ---
     let bassHint: BassInstrument = 'ambientDrone';
-    if(score.bass && score.bass.length > 1) bassHint = 'classicBass';
-    else if (density > 0.6) bassHint = 'resonantGliss';
+    if(score.bass && score.bass.length > 0) {
+        if (density < 0.3) bassHint = 'ambientDrone';
+        else if (density < 0.6) bassHint = 'glideBass';
+        else bassHint = 'resonantGliss';
+    }
 
     let melodyHint: MelodyInstrument = 'theremin';
-    if(score.melody && score.melody.length > 2) melodyHint = 'synth';
+    if(score.melody && score.melody.length > 0) {
+        const avgMelodyMidi = score.melody.reduce((sum, n) => sum + n.midi, 0) / score.melody.length;
+        if(avgMelodyMidi > 72) melodyHint = 'E-Bells_melody';
+        else if (score.melody.length > 2) melodyHint = 'synth';
+        else melodyHint = 'theremin';
+    }
     
     let accompHint: AccompanimentInstrument = 'mellotron';
     if (score.accompaniment && score.accompaniment.length > 1) {
         const interval = Math.abs(score.accompaniment[0].midi - score.accompaniment[1].midi);
-        if (interval > 4) accompHint = 'organ';
+        if (interval > 7) accompHint = 'organ';
+        else if (density > 0.5) accompHint = 'piano';
+        else accompHint = 'mellotron';
+    } else if (score.accompaniment && score.accompaniment.length === 1) {
+        accompHint = 'G-Drops';
     }
-
 
     score.instrumentHints = {
         bass: bassHint,
