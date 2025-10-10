@@ -18,6 +18,7 @@ export class AccompanimentSynthManager {
     async init() {
         if (this.isInitialized) return;
         try {
+            // Correct the path to the worklet file.
             await this.audioContext.audioWorklet.addModule('/worklets/chord-processor.js');
             this.workletNode = new AudioWorkletNode(this.audioContext, 'chord-processor');
             this.workletNode.connect(this.gainNode);
