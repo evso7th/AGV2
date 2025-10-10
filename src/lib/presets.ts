@@ -15,6 +15,7 @@ export type PresetOptions = {
     filterCutoff?: number;
     q?: number;
     oscType?: 'sine' | 'triangle' | 'sawtooth' | 'square' | 'fatsine' | 'fmsine' | 'amsine' | 'pwm' | 'fatsawtooth';
+    distortion?: number;
     [key: string]: any; 
 };
 
@@ -60,6 +61,15 @@ export const PRESETS: Record<string, PresetOptions> = {
         filterCutoff: 600,
         q: 0.6,
         oscType: 'sine',
+    },
+    electricGuitar: {
+        attack: 0.01,
+        release: 1.0,
+        portamento: 0,
+        filterCutoff: 1500,
+        q: 1.2,
+        oscType: 'sawtooth',
+        distortion: 0.6,
     },
     'E-Bells_melody': {
         type: 'FMSynth',
