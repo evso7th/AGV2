@@ -105,18 +105,27 @@ export class SamplerPlayer {
             source.buffer = buffer;
             
             const gainNode = this.audioContext.createGain();
-            gainNode.gain.setValueAtTime(note.velocity ?? 0.7, this.audioContext.currentTime);
-
-            // Connect source to gain, gain to preamp, preamp to main output
+            
             source.connect(gainNode);
             gainNode.connect(this.preamp);
 
-            // Adjust playback rate for pitch shifting
             const playbackRate = Math.pow(2, (note.midi - sampleMidi) / 12);
             source.playbackRate.value = playbackRate;
 
             const startTime = time + note.time;
+            const endTime = startTime + note.duration;
+            const releaseDuration = note.duration / 2; // Dynamic release based on note duration
+            const finalEndTime = endTime + releaseDuration;
+
+            // ADSR-like envelope using GainNode
+            const velocity = note.velocity ?? 0.7;
+            gainNode.gain.setValueAtTime(0, this.audioContext.currentTime); // Start at 0
+            gainNode.gain.linearRampToValueAtTime(velocity, startTime + 0.01); // Quick attack
+            gainNode.gain.setValueAtTime(velocity, endTime); // Sustain
+            gainNode.gain.linearRampToValueAtTime(0, finalEndTime); // Release
+
             source.start(startTime);
+            source.stop(finalEndTime);
         });
     }
 
