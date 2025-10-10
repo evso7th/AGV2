@@ -8,7 +8,6 @@ import { DrumMachine } from '@/lib/drum-machine';
 import { SamplerPlayer } from '@/lib/sampler-player';
 import { ViolinSamplerPlayer } from '@/lib/violin-sampler-player';
 import { FluteSamplerPlayer } from '@/lib/flute-sampler-player';
-import { AcousticGuitarChordSamplerPlayer } from '@/lib/acoustic-guitar-sampler-player';
 import { AccompanimentSynthManager } from '@/lib/accompaniment-synth-manager';
 import { BassSynthManager } from '@/lib/bass-synth-manager';
 import { SparklePlayer } from '@/lib/sparkle-player';
@@ -86,7 +85,6 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
   const samplerPlayerRef = useRef<SamplerPlayer | null>(null);
   const violinSamplerPlayerRef = useRef<ViolinSamplerPlayer | null>(null);
   const fluteSamplerPlayerRef = useRef<FluteSamplerPlayer | null>(null);
-  const acousticGuitarChordSamplerPlayerRef = useRef<AcousticGuitarChordSamplerPlayer | null>(null);
   const acousticGuitarSoloSamplerRef = useRef<AcousticGuitarSampler | null>(null);
 
 
@@ -109,7 +107,6 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
         if (name === 'violin') violinSamplerPlayerRef.current?.setVolume(instrumentSettings.accompaniment.volume);
         else if (name === 'piano') samplerPlayerRef.current?.setVolume(instrumentSettings.accompaniment.volume);
         else if (name === 'flute') fluteSamplerPlayerRef.current?.setVolume(instrumentSettings.accompaniment.volume);
-        else if (name === 'acousticGuitar') acousticGuitarChordSamplerPlayerRef.current?.setVolume(instrumentSettings.accompaniment.volume);
         else if (name === 'acousticGuitarSolo') acousticGuitarSoloSamplerRef.current?.setVolume(instrumentSettings.accompaniment.volume);
         else accompanimentManagerRef.current?.setPreset(name as MelodyInstrument);
     }
@@ -214,13 +211,7 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
 
     if (currentSettings.instrumentSettings.accompaniment.name !== 'none') {
         const instrumentName = currentSettings.instrumentSettings.accompaniment.name;
-        if (instrumentName === 'acousticGuitar' && acousticGuitarChordSamplerPlayerRef.current) {
-            if (accompanimentChord) {
-                acousticGuitarChordSamplerPlayerRef.current.schedule('acousticGuitar', accompanimentChord, now);
-            } else if (accompanimentScore.length > 0) {
-                 acousticGuitarChordSamplerPlayerRef.current.schedule('acousticGuitar', accompanimentScore, now);
-            }
-        } else if (accompanimentScore.length > 0) {
+        if (accompanimentScore.length > 0) {
             if (instrumentName === 'piano' && samplerPlayerRef.current) {
                 samplerPlayerRef.current.schedule('piano', accompanimentScore, now);
             } else if (instrumentName === 'violin' && violinSamplerPlayerRef.current) {
@@ -328,10 +319,6 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
             fluteSamplerPlayerRef.current = new FluteSamplerPlayer(context, gainNodesRef.current.flute!);
             initPromises.push(fluteSamplerPlayerRef.current.loadInstrument('flute', FLUTE_SAMPLES));
         }
-        if (!acousticGuitarChordSamplerPlayerRef.current) {
-            acousticGuitarChordSamplerPlayerRef.current = new AcousticGuitarChordSamplerPlayer(context, gainNodesRef.current.acousticGuitar!);
-            initPromises.push(acousticGuitarChordSamplerPlayerRef.current.loadInstrument('acousticGuitar', ACOUSTIC_GUITAR_CHORD_SAMPLES));
-        }
         if (!acousticGuitarSoloSamplerRef.current) {
             console.log('[AudioEngine] Initializing AcousticGuitarSampler (Solo)...');
             acousticGuitarSoloSamplerRef.current = new AcousticGuitarSampler(context);
@@ -397,7 +384,6 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
     samplerPlayerRef.current?.stopAll();
     violinSamplerPlayerRef.current?.stopAll();
     fluteSamplerPlayerRef.current?.stopAll();
-    acousticGuitarChordSamplerPlayerRef.current?.stopAll();
     acousticGuitarSoloSamplerRef.current?.stopAll();
   }, []);
   
