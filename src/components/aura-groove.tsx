@@ -227,7 +227,7 @@ export function AuraGroove({
                         <SelectItem value="omega">Omega</SelectItem>
                         <SelectItem value="journey">Journey</SelectItem>
                         <SelectItem value="multeity">Multeity</SelectItem>
-                        <SelectItem value="fractal">Fractal</SelectItem>
+                        <SelectItem value="neuro_f_matrix">Neuro F-Matrix</SelectItem>
                     </SelectContent>
                 </Select>
             </div>
