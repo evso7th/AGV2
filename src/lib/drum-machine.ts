@@ -80,16 +80,21 @@ export class DrumMachine {
     private audioContext: AudioContext;
     private sampler: Sampler | null = null;
     private outputNode: AudioNode;
+    private preamp: GainNode;
     public isInitialized = false;
 
     constructor(audioContext: AudioContext, destination: AudioNode) {
         this.audioContext = audioContext;
         this.outputNode = destination;
+
+        this.preamp = this.audioContext.createGain();
+        this.preamp.gain.value = 2.0; // Boost volume by 2x
+        this.preamp.connect(this.outputNode);
     }
 
     async init() {
         if (this.isInitialized) return;
-        this.sampler = createSampler(this.audioContext, this.outputNode);
+        this.sampler = createSampler(this.audioContext, this.preamp);
         await this.sampler.load(DRUM_SAMPLES);
         this.isInitialized = true;
         console.log('[DrumMachine] Initialized and samples loaded.');
