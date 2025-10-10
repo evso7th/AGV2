@@ -29,7 +29,7 @@ const PADS_BY_STYLE: Record<ScoreName, string | null> = {
     omega: 'things.mp3',
     journey: 'pure_energy.mp3',
     multeity: 'uneverse.mp3',
-    fractal: 'uneverse.mp3', // Default pad for fractal style
+    neuro_f_matrix: 'uneverse.mp3', 
 };
 
 const SPARKLE_SAMPLES = [
@@ -309,7 +309,7 @@ const Scheduler = {
     
     settings: {
         bpm: 75,
-        score: 'fractal', 
+        score: 'neuro_f_matrix', 
         drumSettings: { pattern: 'none', enabled: false },
         instrumentSettings: { 
             bass: { name: "glideBass", volume: 0.5, technique: 'arpeggio' },
@@ -332,9 +332,8 @@ const Scheduler = {
         const seed = createNewSeed({
             bpm: this.settings.bpm,
             density: this.settings.density,
-            lambda: 0.5, // You could expose this via settings later
-            organic: 0.5, // You could expose this via settings later
-            seedTime: Date.now(), // Add a time-based seed for more uniqueness
+            lambda: 0.5, 
+            organic: 0.5,
         });
         fractalMusicEngine = new FractalMusicEngine(seed, availableMatrices);
         this.barCount = 0;
@@ -391,7 +390,7 @@ const Scheduler = {
         if (!this.isRunning) return;
         
         // LFO Modulation for Fractal style
-        if (this.settings.score === 'fractal') {
+        if (this.settings.score === 'neuro_f_matrix') {
             this.lfo1Phase += 0.05;
             this.lfo2Phase += 0.03;
             const newLambda = 0.5 + 0.3 * Math.sin(this.lfo1Phase);
@@ -405,7 +404,7 @@ const Scheduler = {
         const density = this.settings.density;
         let score: Score = {};
         
-        if (this.settings.score === 'fractal') {
+        if (this.settings.score === 'neuro_f_matrix') {
             if (!fractalMusicEngine) this.initializeEngine();
             fractalMusicEngine.tick();
             score = fractalMusicEngine.generateScore();
@@ -422,13 +421,6 @@ const Scheduler = {
         const { instrumentSettings } = this.settings;
 
         score.drums = Composer.generateDrums(this.barCount, density);
-        
-        // This log is for debugging purposes. It will be removed later.
-        // console.log('[WORKER] Generated Score:', {
-        //     bass: score.bass?.map(n => n.midi),
-        //     melody: score.melody?.map(n => n.midi),
-        //     accompaniment: score.accompaniment?.map(n => n.midi),
-        // });
         
         self.postMessage({ type: 'score', score, time: this.barDuration });
 
@@ -490,3 +482,5 @@ self.onmessage = async (event: MessageEvent) => {
 };
 
       
+
+    
