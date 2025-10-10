@@ -21,6 +21,7 @@ export class FractalMusicEngine {
   private K: ResonanceMatrix;
   private availableEvents: EventID[] = [];
   private tickCount: number = 0;
+  private melodyState = { lastDegree: 14, direction: 1 }; // State for melody generation
 
   constructor(seed: Seed, availableMatricesRepo: Record<string, ResonanceMatrix>) {
     this.state = new Map(Object.entries(seed.initialState));
@@ -35,13 +36,27 @@ export class FractalMusicEngine {
   }
 
   private generateEventUniverse() {
-      for (let octave = 0; octave < NUM_OCTAVES; octave++) {
-          for (let i = 0; i < NUM_NOTES_IN_SCALE; i++) {
-              const midiNote = KEY_ROOT_MIDI + (octave * 12) + SCALE_DEGREES[i];
-              // For now, we assume all events are 'piano'. This can be expanded later.
-              this.availableEvents.push(`piano_${midiNote}`);
-          }
+      // Instrument events
+      const instruments = ['piano', 'violin', 'flute', 'synth', 'organ', 'mellotron', 'theremin', 'E-Bells_melody', 'G-Drops', 'acousticGuitarSolo', 'electricGuitar', 'guitarChords'];
+      
+      for (const instrument of instruments) {
+        for (let octave = 0; octave < NUM_OCTAVES; octave++) {
+            for (let i = 0; i < NUM_NOTES_IN_SCALE; i++) {
+                const midiNote = KEY_ROOT_MIDI + (octave * 12) + SCALE_DEGREES[i];
+                if (midiNote <= MAX_MIDI) {
+                   this.availableEvents.push(`${instrument}_${midiNote}`);
+                }
+            }
+        }
       }
+
+      // Drum events
+      const drumSamples = ['kick', 'snare', 'hat', 'crash', 'tom1', 'tom2', 'tom3'];
+      for (const drum of drumSamples) {
+          this.availableEvents.push(`drum_${drum}`);
+      }
+
+      this.availableEvents = [...new Set(this.availableEvents)]; // Ensure uniqueness
   }
 
   public updateConfig(newConfig: Partial<EngineConfig>) {
@@ -56,14 +71,27 @@ export class FractalMusicEngine {
     const impulse = new Map<EventID, number>();
     const impulseStrength = this.config.density;
     
-    // Rhythmic impulse: quarter notes, with varying strength
-    const beatInBar = this.tickCount % 4; // Assuming 4 beats per bar
-    const beatStrength = (beatInBar === 0) ? 1.0 : (beatInBar % 2 === 0 ? 0.5 : 0.25);
-
-    if (Math.random() < impulseStrength * beatStrength * 0.5) { // Reduced probability
-        const randomEventIndex = Math.floor(Math.random() * this.availableEvents.length);
+    const beatsPerBar = 4;
+    const beatInMeasure = this.tickCount % beatsPerBar;
+    
+    // Strong kick on the 1st beat
+    if (beatInMeasure === 0 && Math.random() < 0.8) {
+        impulse.set('drum_kick', impulseStrength);
+    }
+    // Snare on the 3rd beat
+    if (beatInMeasure === 2 && Math.random() < 0.7 * impulseStrength) {
+        impulse.set('drum_snare', 0.8 * impulseStrength);
+    }
+    // Hi-hats on off-beats
+    if (beatInMeasure % 1 !== 0.5 && Math.random() < 0.5 * impulseStrength) {
+        impulse.set('drum_hat', 0.4 * impulseStrength);
+    }
+    
+    // Chance to excite a random note
+    if (Math.random() < impulseStrength * 0.3) {
+        const randomEventIndex = Math.floor(Math.random() * (this.availableEvents.length - 7)); // Avoid drums
         const eventToExcite = this.availableEvents[randomEventIndex];
-        impulse.set(eventToExcite, beatStrength * impulseStrength);
+        impulse.set(eventToExcite, impulseStrength * 0.5);
     }
 
     return impulse;
@@ -82,9 +110,19 @@ export class FractalMusicEngine {
         }
         return;
     }
-
+    
+    // Normalize, but also apply a power curve to accentuate peaks
     for (const [event, weight] of state.entries()) {
-        state.set(event, weight / totalWeight);
+        state.set(event, Math.pow(weight / totalWeight, 1.5));
+    }
+    
+    // Re-normalize after power curve
+    totalWeight = 0;
+    for (const weight of state.values()) { totalWeight += weight; }
+    if (totalWeight > 0) {
+        for (const [event, weight] of state.entries()) {
+            state.set(event, weight / totalWeight);
+        }
     }
   }
 
@@ -92,7 +130,7 @@ export class FractalMusicEngine {
     this.tickCount++;
     const nextState: EngineState = new Map();
     const impulse = this.generateImpulse();
-    const lambda = this.config.lambda;
+    const lambda = 1.0 - (this.config.organic * 0.5 + 0.3); // More memory for higher organic values
 
     // 1. Apply damping to all possible events
     for (const event of this.availableEvents) {
@@ -101,12 +139,11 @@ export class FractalMusicEngine {
     }
 
     // 2. Calculate and add new resonance from the existing state and the new impulse
-    const eventsWithWeight = [...this.state.entries()].filter(([, weight]) => weight > 0.001); // Lower threshold
+    const eventsWithWeight = [...this.state.entries()].filter(([, weight]) => weight > 0.0001);
     
-    for (const [event_j, current_weight_j] of nextState.entries()) {
+    for (const [event_j] of nextState.entries()) {
         let resonanceSum = 0;
-        
-        // Resonance from existing active nodes
+        // Resonance from existing active nodes (self-listening)
         for (const [event_i, weight_i] of eventsWithWeight) {
              resonanceSum += this.K(event_i, event_j) * weight_i * this.config.organic * 0.1;
         }
@@ -116,7 +153,7 @@ export class FractalMusicEngine {
             resonanceSum += impulse.get(event_j)!;
         }
         
-        nextState.set(event_j, (current_weight_j || 0) + resonanceSum);
+        nextState.set(event_j, (nextState.get(event_j) || 0) + resonanceSum);
     }
     
     // 3. Normalize and update the state
@@ -125,84 +162,91 @@ export class FractalMusicEngine {
   }
 
   public generateScore(): Score {
-    const score: Score = { melody: [], accompaniment: [], bass: [] };
+    const score: Score = { melody: [], accompaniment: [], bass: [], drums: [] };
     const density = this.config.density;
 
-    const totalWeight = [...this.state.values()].reduce((sum, w) => sum + w, 0);
-    if (totalWeight < 0.05 || Math.random() > (density * 1.2)) { // Add more chance for silence
-        return { instrumentHints: {} }; // Return empty with hints object
-    }
-    
     const sortedEvents = [...this.state.entries()]
-        .map(([id, weight]) => ({ id, weight, midi: parseInt(id.split('_')[1])}))
-        .filter(event => !isNaN(event.midi) && event.weight > 0.02) // Increased threshold
+        .map(([id, weight]) => {
+            const [type, value] = id.split('_');
+            return { id, weight, type, value, midi: parseInt(value) };
+        })
+        .filter(event => event.weight > 0.01) // Filter out noise
         .sort((a, b) => b.weight - a.weight);
 
     if (sortedEvents.length === 0) return { instrumentHints: {} };
-
-    const numActiveNotes = Math.max(1, Math.min(sortedEvents.length, Math.floor(density * 6) + 1));
-    let activeEvents = sortedEvents.slice(0, numActiveNotes);
-    activeEvents.sort((a, b) => a.midi - b.midi); 
     
-    let remainingEvents = [...activeEvents];
-
-    const bassEvent = remainingEvents.shift();
-    if (bassEvent) {
-        const bassMidi = (bassEvent.midi % 12) + KEY_ROOT_MIDI - 12;
-        score.bass!.push({ midi: Math.max(BASS_MIDI_MIN, Math.min(bassMidi, BASS_MIDI_MAX)), time: 0, duration: 3.8, velocity: 0.8 });
+    const musicalEvents = sortedEvents.filter(e => e.type !== 'drum');
+    
+    // --- BASS ---
+    const bassCandidates = musicalEvents.filter(e => e.midi < 55).sort((a,b)=>b.weight-a.weight);
+    if(bassCandidates.length > 0){
+        const bassNote = bassCandidates[0];
+        const bassMidi = (bassNote.midi % 12) + KEY_ROOT_MIDI - 12;
+         score.bass!.push({ midi: Math.max(BASS_MIDI_MIN, Math.min(bassMidi, BASS_MIDI_MAX)), time: 0, duration: 3.8, velocity: 0.8 });
     }
 
-    const accompCount = Math.min(remainingEvents.length, Math.floor(density * 2) + 1);
-    if (accompCount > 0) {
-        const accompEvents = remainingEvents.splice(0, accompCount);
-        let timeOffset = 0.15;
-        accompEvents.forEach(event => {
-            if (event.midi < 72) { // Keep accompaniment in mid-range
-                score.accompaniment!.push({ midi: event.midi, time: timeOffset, duration: 2.8 + Math.random(), velocity: 0.5 + event.weight * 0.3 });
-                timeOffset += 0.25 + Math.random() * 0.4;
-            } else { // if too high, push to melody instead
-                remainingEvents.push(event);
-            }
-        });
-    }
+    // --- ACCOMPANIMENT & MELODY ---
+    const midHighEvents = musicalEvents.filter(e => e.midi >= 55).sort((a,b)=>a.midi - b.midi);
+    
+    // MELODY: Create a more structured phrase
+    let melodyNotesCount = Math.floor(density * 5) + 1;
+    let time = Math.random() * 0.5;
+    for(let i=0; i < melodyNotesCount; i++) {
+        if (this.melodyState.lastDegree > NUM_NOTES_IN_SCALE * 2.5) this.melodyState.direction = -1;
+        if (this.melodyState.lastDegree < NUM_NOTES_IN_SCALE) this.melodyState.direction = 1;
 
-    if (remainingEvents.length > 0) {
-        const melodyEvents = remainingEvents.sort((a,b) => b.weight - a.weight);
-        let melodyTime = Math.random() * 0.6;
-        const timeStep = 4.0 / melodyEvents.length;
-        melodyEvents.forEach(event => {
-            if (event.midi > 55) { // Ensure melody is in a higher register
-                score.melody!.push({ midi: event.midi, time: melodyTime, duration: 1.8 + Math.random() * 1.5, velocity: 0.6 + event.weight * 0.4 });
-                melodyTime += timeStep + (Math.random() - 0.5) * 0.2;
-            }
-        });
+        const step = Math.random() < 0.7 ? 1 : 2; // Prefer stepwise motion
+        this.melodyState.lastDegree += this.melodyState.direction * step;
+
+        const midi = getNoteFromDegree(this.melodyState.lastDegree, SCALE_DEGREES, KEY_ROOT_MIDI, 2);
+        if (midi < MAX_MIDI) {
+            const duration = 0.5 + Math.random() * 1.5;
+            score.melody!.push({ midi, time, duration, velocity: 0.6 + Math.random() * 0.2 });
+            time += (duration * 0.5) + (Math.random() * 0.5);
+        }
     }
+    
+    // ACCOMPANIMENT: Fill harmony around melody
+    let accompNotesCount = Math.floor(density * 3);
+    let accompEvents = midHighEvents.slice(0, accompNotesCount);
+    let timeOffset = 0.2;
+    accompEvents.forEach(event => {
+        score.accompaniment!.push({ midi: event.midi, time: timeOffset, duration: 3.0 + Math.random(), velocity: 0.4 + event.weight * 0.4 });
+        timeOffset += 1.0 + Math.random();
+    });
+
 
     // --- DYNAMIC INSTRUMENT HINTS ---
     let bassHint: BassInstrument = 'ambientDrone';
     if(score.bass && score.bass.length > 0) {
-        if (density < 0.3) bassHint = 'ambientDrone';
-        else if (density < 0.6) bassHint = 'glideBass';
-        else bassHint = 'resonantGliss';
+        if (score.bass.length > 2) bassHint = 'classicBass';
+        else if (density < 0.4) bassHint = 'ambientDrone';
+        else bassHint = 'glideBass';
     }
 
-    let melodyHint: MelodyInstrument = 'theremin';
-    if(score.melody && score.melody.length > 0) {
-        const avgMelodyMidi = score.melody.reduce((sum, n) => sum + n.midi, 0) / score.melody.length;
-        if(avgMelodyMidi > 72) melodyHint = 'E-Bells_melody';
-        else if (score.melody.length > 2) melodyHint = 'synth';
-        else melodyHint = 'theremin';
+    let melodyHint: MelodyInstrument = 'flute';
+    if (score.melody && score.melody.length > 0) {
+        const avgDuration = score.melody.reduce((sum, n) => sum + n.duration, 0) / score.melody.length;
+        const avgMidi = score.melody.reduce((sum, n) => sum + n.midi, 0) / score.melody.length;
+        
+        if(avgMidi > 78) melodyHint = 'E-Bells_melody';
+        else if (avgDuration < 1.9) melodyHint = 'acousticGuitarSolo';
+        else if (avgDuration > 3.0) melodyHint = 'organ';
+        else melodyHint = (Math.random() < 0.5) ? 'flute' : 'mellotron';
     }
     
     let accompHint: AccompanimentInstrument = 'mellotron';
-    if (score.accompaniment && score.accompaniment.length > 1) {
-        const interval = Math.abs(score.accompaniment[0].midi - score.accompaniment[1].midi);
-        if (interval > 7) accompHint = 'organ';
-        else if (density > 0.5) accompHint = 'piano';
-        else accompHint = 'mellotron';
-    } else if (score.accompaniment && score.accompaniment.length === 1) {
-        accompHint = 'G-Drops';
+    if (score.accompaniment && score.accompaniment.length > 0) {
+        if (score.accompaniment.length <= 2) {
+             accompHint = 'violin'; // Use violin for sparse, expressive lines
+        } else if (score.accompaniment.length >= 3) {
+            accompHint = 'guitarChords'; // Use guitar for chordal textures
+        } else {
+            if (density > 0.6) accompHint = 'organ';
+            else accompHint = 'mellotron';
+        }
     }
+
 
     score.instrumentHints = {
         bass: bassHint,
