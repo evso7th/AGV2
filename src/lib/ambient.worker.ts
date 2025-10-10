@@ -17,6 +17,7 @@ import * as Tone from 'tone';
 // --- Musical Constants ---
 const KEY_ROOT_MIDI = 40; // E2
 const SCALE_INTERVALS = [0, 2, 3, 5, 7, 8, 10]; // E Natural Minor
+const E_MINOR_SCALE_DEGREES = [0, 2, 3, 5, 7, 8, 10]; // Duplicating for createNewSeed
 const CHORD_PROGRESSION_DEGREES = [0, 3, 5, 2]; // Em, G, Am, F#dim - but we'll stick to scale intervals
 
 const BASS_MIDI_MIN = 32; // G#1
@@ -331,8 +332,9 @@ const Scheduler = {
         const seed = createNewSeed({
             bpm: this.settings.bpm,
             density: this.settings.density,
-            lambda: 0.5,
-            organic: 0.5,
+            lambda: 0.5, // You could expose this via settings later
+            organic: 0.5, // You could expose this via settings later
+            seedTime: Date.now(), // Add a time-based seed for more uniqueness
         });
         fractalMusicEngine = new FractalMusicEngine(seed, availableMatrices);
         this.barCount = 0;
@@ -421,6 +423,13 @@ const Scheduler = {
 
         score.drums = Composer.generateDrums(this.barCount, density);
         
+        // This log is for debugging purposes. It will be removed later.
+        // console.log('[WORKER] Generated Score:', {
+        //     bass: score.bass?.map(n => n.midi),
+        //     melody: score.melody?.map(n => n.midi),
+        //     accompaniment: score.accompaniment?.map(n => n.midi),
+        // });
+        
         self.postMessage({ type: 'score', score, time: this.barDuration });
 
         const currentTime = this.barCount * this.barDuration;
@@ -455,11 +464,6 @@ self.onmessage = async (event: MessageEvent) => {
 
     try {
         switch (command) {
-            case 'init': // This command might be obsolete if settings are always sent with start
-                Scheduler.updateSettings(data);
-                Scheduler.initializeEngine();
-                break;
-
             case 'start':
                 if (!fractalMusicEngine) {
                     Scheduler.initializeEngine();
@@ -484,3 +488,5 @@ self.onmessage = async (event: MessageEvent) => {
         self.postMessage({ type: 'error', error: e instanceof Error ? e.message : String(e) });
     }
 };
+
+      
