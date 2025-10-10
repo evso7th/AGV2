@@ -59,9 +59,9 @@ const EQ_BANDS = [
   { freq: '4k', label: '4k' },
 ];
 
-const MELODY_INSTRUMENTS: (MelodyInstrument | 'none')[] = ['piano', 'violin', 'flute', 'synth', 'organ', 'mellotron', 'theremin', 'E-Bells_melody', 'G-Drops', 'none'];
+const MELODY_INSTRUMENTS: (MelodyInstrument | 'none')[] = ['piano', 'violin', 'flute', 'synth', 'organ', 'mellotron', 'theremin', 'E-Bells_melody', 'G-Drops', 'acousticGuitarSolo', 'none'];
 const ACCOMPANIMENT_INSTRUMENTS: (AccompanimentInstrument | 'none')[] = ['piano', 'violin', 'flute', 'guitarChords', 'synth', 'organ', 'mellotron', 'theremin', 'E-Bells_melody', 'G-Drops', 'none'];
-const BASS_INSTRUMENTS: (BassInstrument | 'none')[] = ['classicBass', 'glideBass', 'ambientDrone', 'resonantGliss', 'hypnoticDrone', 'livingRiff', 'none'];
+const BASS_INSTRUMENTS: (BassInstrument | 'none')[] = ['classicBass', 'glideBass', 'ambientDrone', 'resonantGliss', 'hypnoticDrone', 'livingRiff', 'piano', 'violin', 'flute', 'acousticGuitarSolo', 'none'];
 
 
 export function AuraGroove({
@@ -116,6 +116,7 @@ export function AuraGroove({
     if (instrumentName === 'piano' || instrumentName === 'guitarChords') return <Piano {...iconProps} />;
     if (instrumentName === 'violin') return <Sprout {...iconProps} />;
     if (instrumentName === 'flute') return <Sprout {...iconProps} />;
+    if (instrumentName === 'acousticGuitarSolo') return <Guitar {...iconProps} />;
 
 
     switch (part) {
@@ -260,7 +261,8 @@ export function AuraGroove({
                 const settings = instrumentSettings[part as keyof typeof instrumentSettings];
                 let instrumentList: (BassInstrument | MelodyInstrument | AccompanimentInstrument | 'none')[] = [];
                 let displayNames: Record<string, string> = {
-                  'guitarChords': 'Guitar Chords'
+                  'guitarChords': 'Guitar Chords',
+                  'acousticGuitarSolo': 'Acoustic Solo'
                 };
 
                 if (part === 'bass') {
@@ -295,7 +297,7 @@ export function AuraGroove({
                         </Select>
                     </div>
 
-                    {part === 'bass' && 'technique' in settings && (
+                    {part === 'bass' && 'technique' in settings && settings.name !== 'acousticGuitarSolo' && settings.name !== 'piano' && settings.name !== 'violin' && settings.name !== 'flute' && (
                         <div className="flex justify-between items-center">
                             <Label htmlFor="bass-technique" className="font-semibold flex items-center gap-2 capitalize">Technique</Label>
                             <Select

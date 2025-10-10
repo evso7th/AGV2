@@ -91,3 +91,28 @@ export const ACOUSTIC_GUITAR_CHORD_SAMPLES: Record<string, string> = {
     'C': '/assets/guitars_hords_samples/guitar-chord-in-c-major-c.mp3',
     'D': '/assets/guitars_hords_samples/guitar-chord-in-d-major.mp3'
 };
+
+export const ACOUSTIC_GUITAR_SOLO_SAMPLES: Record<string, VelocitySample[]> = {
+    'E2': [{ velocity: 1, file: '/assets/guitar_solo_samples/E2.mp3' }],
+    'F#2': [{ velocity: 1, file: '/assets/guitar_solo_samples/Fs2.mp3' }],
+    'G2': [{ velocity: 1, file: '/assets/guitar_solo_samples/G2.mp3' }],
+    'A2': [{ velocity: 1, file: '/assets/guitar_solo_samples/A2.mp3' }],
+    'B2': [{ velocity: 1, file: '/assets/guitar_solo_samples/B2.mp3' }],
+    'C3': [{ velocity: 1, file: '/assets/guitar_solo_samples/C3.mp3' }],
+    'D3': [{ velocity: 1, file: '/assets/guitar_solo_samples/D3.mp3' }],
+    'E3': [{ velocity: 1, file: '/assets/guitar_solo_samples/E3.mp3' }],
+    'F#3': [{ velocity: 1, file: '/assets/guitar_solo_samples/Fs3.mp3' }],
+    'G3': [{ velocity: 1, file: '/assets/guitar_solo_samples/G3.mp3' }],
+    'A3': [{ velocity: 1, file: '/assets/guitar_solo_samples/A3.mp3' }],
+    'B3': [{ velocity: 1, file: '/assets/guitar_solo_samples/B3.mp3' }],
+    'C4': [{ velocity: 1, file: '/assets/guitar_solo_samples/C4.mp3' }],
+    'D4': [{ velocity: 1, file: '/assets/guitar_solo_samples/D4.mp3' }],
+    'E4': [{ velocity: 1, file: '/assets/guitar_solo_samples/E4.mp3' }],
+    'F#4': [{ velocity: 1, file: '/assets/guitar_solo_samples/Fs4.mp3' }],
+    'G4': [{ velocity: 1, file: '/assets/guitar_solo_samples/G4.mp3' }],
+    'A4': [{ velocity: 1, file: '/assets/guitar_solo_samples/A4.mp3' }],
+    'B4': [{ velocity: 1, file: '/assets/guitar_solo_samples/B4.mp3' }],
+    'C5': [{ velocity: 1, file: '/assets/guitar_solo_samples/C5.mp3' }],
+    'D5': [{ velocity: 1, file: '/assets/guitar_solo_samples/D5.mp3' }],
+    'E5': [{ velocity: 1, file: '/assets/guitar_solo_samples/E5.mp3' }]
+};

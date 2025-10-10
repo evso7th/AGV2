@@ -42,12 +42,13 @@ export function AuraGrooveV2({
     router.push('/aura-groove-legacy');
   };
   
-  const melodyInstrumentList: (MelodyInstrument | 'none')[] = ['piano', 'violin', 'flute', 'synth', 'organ', 'mellotron', 'theremin', 'E-Bells_melody', 'G-Drops', 'none'];
+  const melodyInstrumentList: (MelodyInstrument | 'none')[] = ['piano', 'violin', 'flute', 'synth', 'organ', 'mellotron', 'theremin', 'E-Bells_melody', 'G-Drops', 'acousticGuitarSolo', 'none'];
   const accompanimentInstrumentList: (AccompanimentInstrument | 'none')[] = ['piano', 'violin', 'flute', 'guitarChords', 'synth', 'organ', 'mellotron', 'theremin', 'E-Bells_melody', 'G-Drops', 'none'];
-  const bassInstrumentList: (BassInstrument | 'none')[] = ['classicBass', 'glideBass', 'ambientDrone', 'resonantGliss', 'hypnoticDrone', 'livingRiff', 'none'];
+  const bassInstrumentList: (BassInstrument | 'none')[] = ['classicBass', 'glideBass', 'ambientDrone', 'resonantGliss', 'hypnoticDrone', 'livingRiff', 'piano', 'violin', 'flute', 'acousticGuitarSolo', 'none'];
 
   const displayNames: Record<string, string> = {
     'guitarChords': 'Guitar Chords',
+    'acousticGuitarSolo': 'Acoustic Solo'
   };
 
   const isFractalStyle = score === 'fractal';
@@ -195,7 +196,7 @@ export function AuraGrooveV2({
                                         </SelectContent>
                                     </Select>
                                 </div>
-                                 {part === 'bass' && 'technique' in settings && settings.name !== 'piano' && settings.name !== 'violin' && settings.name !== 'flute' && (
+                                 {part === 'bass' && 'technique' in settings && settings.name !== 'piano' && settings.name !== 'violin' && settings.name !== 'flute' && settings.name !== 'acousticGuitarSolo' && (
                                     <div className="grid grid-cols-2 items-center gap-2">
                                         <Label className="font-semibold flex items-center gap-1.5 capitalize text-xs"><GitBranch className="h-4 w-4"/>Technique</Label>
                                          <Select value={settings.technique} onValueChange={(v) => handleBassTechniqueChange(v as any)} disabled={isDisabled || settings.name === 'none'}>
