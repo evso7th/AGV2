@@ -1,3 +1,4 @@
+
 import type { ResonanceMatrix, EventID } from '@/types/fractal';
 
 // A simple scale to work with for the first matrix
@@ -21,29 +22,25 @@ export const MelancholicMinorK: ResonanceMatrix = (eventA, eventB) => {
     const inScaleB = scaleDegrees.includes(degreeB);
     if (!inScaleA || !inScaleB) return 0;
 
-    const interval = Math.abs(midiA - midiB) % 12;
+    const interval = Math.abs(midiA - midiB);
+    const semitoneInterval = interval % 12;
 
-    // Rule 2: Prefer consonant intervals (minor/major thirds, perfect fourths, perfect fifths)
-    if ([3, 4, 5, 7].includes(interval)) {
-      return 0.8; // Strong resonance
+    // Rule 2 & 3: Favor consonant intervals and stepwise motion
+    switch (semitoneInterval) {
+        case 0: return 0.4; // Unison, moderate resonance
+        case 1: return 0.5; // Minor second (step)
+        case 2: return 0.6; // Major second (step)
+        case 3: return 0.9; // Minor third (consonant)
+        case 4: return 0.9; // Major third (consonant)
+        case 5: return 0.8; // Perfect fourth (consonant)
+        case 7: return 1.0; // Perfect fifth (strongest consonant)
+        case 8: return 0.7; // Minor sixth
+        case 9: return 0.7; // Major sixth
+        case 10: return 0.3; // Minor seventh (mildly dissonant)
+        case 11: return 0.3; // Major seventh (mildly dissonant)
+        case 6: return 0.01; // Tritone (very dissonant)
+        default: return 0.1;
     }
-    
-    // Rule 3: Prefer smooth stepwise motion (major/minor seconds)
-    if (interval === 1 || interval === 2) {
-      return 0.5;
-    }
-    
-    // Rule 4: Penalize dissonant intervals like the tritone
-    if (interval === 6) {
-        return 0.01;
-    }
-
-    // Unison has a moderate resonance
-    if (interval === 0) {
-        return 0.3;
-    }
-
-    return 0.1; // Weak base resonance for other diatonic intervals (e.g., sixths)
   } catch (e) {
       return 0; // Return 0 if parsing fails
   }

@@ -1,3 +1,4 @@
+
 import type { EngineState, EngineConfig, ResonanceMatrix, Seed, EventID } from '@/types/fractal';
 import type { Score, Note, InstrumentSettings } from '@/types/music';
 import { MelancholicMinorK } from './resonance-matrices';
@@ -15,9 +16,9 @@ export class FractalMusicEngine {
     // Initialize with a uniform distribution if seed is empty
     const initialState = new Map<EventID, number>();
     if (Object.keys(seed.initialState).length === 0) {
-        this.availableEvents.forEach(event => {
-            initialState.set(event, 1 / this.availableEvents.length);
-        });
+        const randomStartIndex = Math.floor(Math.random() * this.availableEvents.length);
+        const randomEvent = this.availableEvents[randomStartIndex];
+        initialState.set(randomEvent, 1.0);
     } else {
         for (const [key, value] of Object.entries(seed.initialState)) {
             initialState.set(key, value);
@@ -70,7 +71,6 @@ export class FractalMusicEngine {
 
   // Main method that implements the formula
   tick() {
-    // console.log('[FractalEngine] Tick started. Current state size:', this.state.size);
     const nextState: EngineState = new Map();
     const impulse = this.generateImpulse();
 
@@ -78,7 +78,6 @@ export class FractalMusicEngine {
     for (const [event, weight] of this.state.entries()) {
       nextState.set(event, (1 - this.config.lambda) * weight);
     }
-    // console.log('[FractalEngine] State after decay:', nextState);
 
     // 2. Calculate and add new resonance Σ K_ij * δ_i
     for (const event_j of this.availableEvents) {
@@ -91,62 +90,69 @@ export class FractalMusicEngine {
       const existingWeight = nextState.get(event_j) || 0;
       nextState.set(event_j, existingWeight + resonanceSum);
     }
-    // console.log('[FractalEngine] State after resonance:', nextState);
     
     // 3. Normalize (Σw_i=1) and update state
     this.normalizeState(nextState);
     this.state = nextState;
-    // console.log('[FractalEngine] State after normalization:', this.state);
   }
 
   // Method to convert the state 'w' into a score for the audio engine
   generateScore(): Score {
     const sortedEvents = [...this.state.entries()].sort((a, b) => b[1] - a[1]);
-
-    const bassNotes: Note[] = [];
-    const melodyNotes: Note[] = [];
-    const accompanimentNotes: Note[] = [];
-
-    // Select the top N events based on density
     const numToPlay = Math.max(1, Math.floor(this.config.density * 5)); 
     const topEvents = sortedEvents.slice(0, numToPlay);
-
-    // 1. Bass note from the highest weighted event
-    if (topEvents.length > 0) {
-        const bassEventId = topEvents[0][0];
-        const bassMidi = parseInt(bassEventId.split('_')[1]);
-        if (!isNaN(bassMidi)) {
-            bassNotes.push({ midi: bassMidi - 24, time: 0, duration: 4, velocity: 0.7 }); // Play two octaves lower for 4 beats
-        }
+    
+    if (topEvents.length === 0) {
+        return {};
     }
 
-    // 2. Melody and Accompaniment from the next events
-    const otherEvents = topEvents.slice(1);
-    const step = 4 / (otherEvents.length || 1);
+    // Determine the root note and chord tones from the strongest event
+    const rootEventId = topEvents[0][0];
+    const rootMidi = parseInt(rootEventId.split('_')[1]);
+    if (isNaN(rootMidi)) return {};
+
+    // For E-minor scale context
+    const E_MINOR_SCALE_DEGREES = [0, 2, 3, 5, 7, 8, 10];
+    const rootDegree = (rootMidi - 40) % 12;
+    let rootDegreeIndex = E_MINOR_SCALE_DEGREES.indexOf(rootDegree);
+    if (rootDegreeIndex === -1) rootDegreeIndex = 0;
+
+    const chordTones = [
+        E_MINOR_SCALE_DEGREES[(rootDegreeIndex) % 7],
+        E_MINOR_SCALE_DEGREES[(rootDegreeIndex + 2) % 7],
+        E_MINOR_SCALE_DEGREES[(rootDegreeIndex + 4) % 7],
+    ].map(degree => rootMidi - rootDegree + degree);
+
+    const bassNotes: Note[] = [{ midi: rootMidi - 12, time: 0, duration: 4, velocity: 0.8 }];
+    const accompanimentNotes: Note[] = [];
     
-    otherEvents.forEach((event, index) => {
-        const eventId = event[0];
-        const weight = event[1];
-        const midi = parseInt(eventId.split('_')[1]);
+    // Generate an arpeggio for accompaniment
+    const numArpNotes = Math.floor(this.config.density * 8) + 4; // 4 to 12 notes
+    const stepDuration = 4 / numArpNotes; // duration of a 16th note in a 4/4 bar
+    const arpPattern = [0, 1, 2, 1]; // Simple up-down pattern
+    
+    for (let i = 0; i < numArpNotes; i++) {
+        const chordToneIndex = arpPattern[i % arpPattern.length];
+        const midi = chordTones[chordToneIndex];
+        const octaveShift = Math.random() < 0.3 ? 12 : 0;
+        
+        accompanimentNotes.push({
+            midi: midi + octaveShift,
+            time: i * stepDuration,
+            duration: stepDuration * 2, // notes overlap slightly
+            velocity: 0.5 + Math.random() * 0.2
+        });
+    }
+    
+    const melodyNotes: Note[] = [];
+    if (topEvents.length > 1) {
+        const melodyMidi = parseInt(topEvents[1][0].split('_')[1]);
+         if (!isNaN(melodyMidi)) {
+            melodyNotes.push({midi: melodyMidi, time: 0.5, duration: 3, velocity: 0.6});
+         }
+    }
 
-        if (!isNaN(midi)) {
-            const note: Note = {
-                midi: midi - 12, // One octave lower
-                time: index * step,
-                duration: step * 1.5,
-                velocity: 0.4 + weight * 0.6 // Velocity based on weight
-            };
 
-            // Distribute between melody and accompaniment
-            if (index % 2 === 0) {
-                melodyNotes.push(note);
-            } else {
-                accompanimentNotes.push(note);
-            }
-        }
-    });
-
-    // 3. Return the score with instrument hints
     const score: Score = {
         bass: bassNotes,
         melody: melodyNotes,
@@ -158,7 +164,6 @@ export class FractalMusicEngine {
         }
     };
     
-    // console.log("[FractalEngine] Generated Score:", score);
     return score;
   }
 }
