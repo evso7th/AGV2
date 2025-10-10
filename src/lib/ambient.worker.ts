@@ -19,6 +19,9 @@ const KEY_ROOT_MIDI = 40; // E2
 const SCALE_INTERVALS = [0, 2, 3, 5, 7, 8, 10]; // E Natural Minor
 const CHORD_PROGRESSION_DEGREES = [0, 3, 5, 2]; // Em, G, Am, F#dim - but we'll stick to scale intervals
 
+const BASS_MIDI_MIN = 32; // G#1
+const BASS_MIDI_MAX = 50; // D3
+
 const PADS_BY_STYLE: Record<ScoreName, string | null> = {
     dreamtales: 'livecircle.mp3',
     evolve: 'Tibetan bowls.mp3',
@@ -97,6 +100,9 @@ const getNoteFromDegree = (degree: number, scale: number[], root: number, octave
     return root + (octave + octaveOffset) * 12 + noteInScale;
 };
 
+const clamp = (value: number, min: number, max: number) => Math.max(min, Math.min(value, max));
+
+
 // --- Main Composition Engines ---
 
 const MulteityComposer = {
@@ -112,7 +118,8 @@ const MulteityComposer = {
             if (Math.random() < density * 0.8) {
                 const octave = (i % 8 < 4) ? 0 : 1; // E2 to E3 range
                 const degree = chordRootDegree + (i % 4);
-                const midi = getNoteFromDegree(degree, SCALE_INTERVALS, rootMidi, octave);
+                let midi = getNoteFromDegree(degree, SCALE_INTERVALS, rootMidi, octave);
+                midi = clamp(midi, BASS_MIDI_MIN, BASS_MIDI_MAX);
                 notes.push({ midi, time: i * step, duration: step, velocity: 0.6 + Math.random() * 0.2 });
             }
         }
@@ -170,15 +177,15 @@ const Composer = {
         let notes: Note[] = [];
         
         const riffPattern = [40, 40, 43, 43]; // E2, E2, G2, G2
-        notes.push({ midi: riffPattern[barIndex % 4], time: 0, duration: beatDuration * 2, velocity: 0.7 });
+        notes.push({ midi: clamp(riffPattern[barIndex % 4], BASS_MIDI_MIN, BASS_MIDI_MAX), time: 0, duration: beatDuration * 2, velocity: 0.7 });
 
         if (density > 0.4) {
-            notes.push({ midi: riffPattern[barIndex % 4] + 12, time: beatDuration * 2, duration: beatDuration, velocity: 0.5 });
+            notes.push({ midi: clamp(riffPattern[barIndex % 4] + 12, BASS_MIDI_MIN, BASS_MIDI_MAX), time: beatDuration * 2, duration: beatDuration, velocity: 0.5 });
         }
         if (density > 0.7) {
             const arpNotes = [40, 43, 47]; // E2, G2, B2
             for(let i=0; i<3; i++) {
-                notes.push({ midi: arpNotes[i], time: beatDuration * 3 + i * (beatDuration/3), duration: beatDuration/3, velocity: 0.6});
+                notes.push({ midi: clamp(arpNotes[i], BASS_MIDI_MIN, BASS_MIDI_MAX), time: beatDuration * 3 + i * (beatDuration/3), duration: beatDuration/3, velocity: 0.6});
             }
         }
        
@@ -449,3 +456,4 @@ self.onmessage = async (event: MessageEvent) => {
         self.postMessage({ type: 'error', error: e instanceof Error ? e.message : String(e) });
     }
 };
+
