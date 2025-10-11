@@ -1,6 +1,6 @@
 
 import type { EngineState, EngineConfig, ResonanceMatrix, Seed, EventID } from '@/types/fractal';
-import type { Score, Note, BassInstrument, MelodyInstrument, AccompanimentInstrument, DrumSettings } from '@/types/music';
+import type { Score, Note, BassInstrument, MelodyInstrument, AccompanimentInstrument, DrumSettings, BassTechnique } from '@/types/music';
 
 // --- Musical & Engine Constants ---
 const SCALE_DEGREES = [0, 2, 3, 5, 7, 8, 10]; // E Natural Minor degrees
@@ -42,7 +42,7 @@ export class FractalMusicEngine {
   }
 
   private generateEventUniverse() {
-      const instruments = ['piano', 'violin', 'flute', 'synth', 'organ', 'mellotron', 'theremin', 'E-Bells_melody', 'G-Drops', 'acousticGuitarSolo', 'electricGuitar', 'guitarChords'];
+      const instruments = ['piano', 'violin', 'flute', 'synth', 'organ', 'mellotron', 'theremin', 'E-Bells_melody', 'G-Drops', 'acousticGuitarSolo', 'electricGuitar', 'guitarChords', 'bass'];
       
       for (const instrument of instruments) {
         for (let octave = 0; octave < NUM_OCTAVES; octave++) {
@@ -73,7 +73,19 @@ export class FractalMusicEngine {
 
   private generateImpulse(): Map<EventID, number> {
     const impulse = new Map<EventID, number>();
-    // Impulses are now primarily driven by the drum pattern logic in generateScore
+    const { density, drumSettings } = this.config;
+    if (drumSettings.enabled && drumSettings.pattern === 'composer') {
+        if(this.tickCount % 8 < 1 && density > 0.2) { // more frequent kick
+            impulse.set('drum_kick', density);
+        }
+        if(this.tickCount % 4 === 2 && density > 0.5) { // snare on 2 and 4
+            impulse.set('drum_snare', density * 0.7);
+        }
+    }
+     // Bass impulse
+    if (this.tickCount % 16 === 0) { // Impulse on the first beat of every bar
+        impulse.set(`bass_${KEY_ROOT_MIDI}`, 0.5); 
+    }
     return impulse;
   }
 
@@ -150,16 +162,16 @@ export class FractalMusicEngine {
         
         // Crash on the 1st beat of every 4th bar
         if (this.barCount % 4 === 0 && Math.random() < density * 0.8) {
-            drumScore.push({ midi: PERCUSSION_SOUNDS['crash'], time: 0, duration: 0.5, velocity: 0.8 * density });
+            drumScore.push({ midi: PERCUSSION_SOUNDS['crash'], time: 0, duration: 0.5, velocity: 0.8 * density, note: 'crash' });
         }
 
         // Kick on 1 and 3 (beats 0 and 8 in 16ths)
-        if (Math.random() < 0.9 * density) drumScore.push({ midi: PERCUSSION_SOUNDS['kick'], time: 0, duration: 0.1, velocity: 0.95 * kickVolume });
-        if (Math.random() < 0.6 * density) drumScore.push({ midi: PERCUSSION_SOUNDS['kick'], time: 8 * sixteenthStep, duration: 0.1, velocity: 0.8 * kickVolume });
+        if (Math.random() < 0.9 * density) drumScore.push({ midi: PERCUSSION_SOUNDS['kick'], time: 0, duration: 0.1, velocity: 0.95 * kickVolume, note: 'kick' });
+        if (Math.random() < 0.6 * density) drumScore.push({ midi: PERCUSSION_SOUNDS['kick'], time: 8 * sixteenthStep, duration: 0.1, velocity: 0.8 * kickVolume, note: 'kick' });
 
         // Snare on 2 and 4 (beats 4 and 12 in 16ths)
-        if (Math.random() < 0.85 * density) drumScore.push({ midi: PERCUSSION_SOUNDS['snare'], time: 4 * sixteenthStep, duration: 0.1, velocity: 0.8 * density });
-        if (Math.random() < 0.7 * density) drumScore.push({ midi: PERCUSSION_SOUNDS['snare'], time: 12 * sixteenthStep, duration: 0.1, velocity: 0.6 * density });
+        if (Math.random() < 0.85 * density) drumScore.push({ midi: PERCUSSION_SOUNDS['snare'], time: 4 * sixteenthStep, duration: 0.1, velocity: 0.8 * density, note: 'snare' });
+        if (Math.random() < 0.7 * density) drumScore.push({ midi: PERCUSSION_SOUNDS['snare'], time: 12 * sixteenthStep, duration: 0.1, velocity: 0.6 * density, note: 'snare' });
 
         // Hi-hats or Ride
         const cymbal = density < 0.4 ? 'ride' : 'hat';
@@ -168,26 +180,25 @@ export class FractalMusicEngine {
             if (isCrashPlaying) continue;
             
             if (i % 2 === 0 && Math.random() < 0.8 * density) { // every 8th note
-               drumScore.push({ midi: PERCUSSION_SOUNDS[cymbal], time: i * sixteenthStep, duration: 0.1, velocity: (0.4 + Math.random() * 0.2) * density });
+               drumScore.push({ midi: PERCUSSION_SOUNDS[cymbal], time: i * sixteenthStep, duration: 0.1, velocity: (0.4 + Math.random() * 0.2) * density, note: cymbal });
             }
         }
         
         // Fill at the end of every 8th bar
         if (this.barCount % 8 === 7 && density > 0.6) {
             const fillStartTime = 14 * sixteenthStep;
-            drumScore.push({ midi: PERCUSSION_SOUNDS['tom1'], time: fillStartTime, duration: 0.1, velocity: 0.7 });
-            drumScore.push({ midi: PERCUSSION_SOUNDS['tom2'], time: fillStartTime + sixteenthStep, duration: 0.1, velocity: 0.75 });
+            drumScore.push({ midi: PERCUSSION_SOUNDS['tom1'], time: fillStartTime, duration: 0.1, velocity: 0.7, note: 'tom1' });
+            drumScore.push({ midi: PERCUSSION_SOUNDS['tom2'], time: fillStartTime + sixteenthStep, duration: 0.1, velocity: 0.75, note: 'tom2' });
         }
 
-        // Map abstract note names to midi for the drum machine
-        return drumScore.map(n => ({...n, note: Object.keys(PERCUSSION_SOUNDS).find(key => PERCUSSION_SOUNDS[key] === n.midi) || 'kick' }));
+        return drumScore;
     }
 
 
   public generateScore(): Score {
-    const score: Score = { melody: [], accompaniment: [], bass: [], drums: [] };
-    const density = this.config.density;
-    const barDuration = (60 / this.config.bpm) * 4;
+    const score: Score = { melody: [], accompaniment: [], bass: [], drums: [], instrumentHints: {} };
+    const { density, bpm } = this.config;
+    const barDuration = (60 / bpm) * 4;
 
     const sortedEvents = [...this.state.entries()]
         .map(([id, weight]) => {
@@ -198,41 +209,41 @@ export class FractalMusicEngine {
         .filter(event => event.weight > 0.001 && event.midi !== -1)
         .sort((a, b) => b.weight - a.weight);
 
-    // --- BASS ---
-    const bassRootCandidates = sortedEvents.filter(e => e.midi >= BASS_MIDI_MIN && e.midi <= BASS_MIDI_MAX);
-    
-    let rootBassNote = KEY_ROOT_MIDI; // Fallback to E2
-    if (bassRootCandidates.length > 0) {
-        rootBassNote = bassRootCandidates[0].midi;
-    }
-    
-    // Ensure root is within a playable bass octave
-    while (rootBassNote > BASS_MIDI_MAX - 12) {
-        rootBassNote -= 12;
-    }
-    while (rootBassNote < BASS_MIDI_MIN) {
-        rootBassNote += 12;
-    }
+    // --- BASS COMPOSITION ---
+    const bassCandidates = sortedEvents.filter(e => e.type === 'bass' && e.midi >= BASS_MIDI_MIN && e.midi <= BASS_MIDI_MAX);
+    const rootBassNote = bassCandidates.length > 0 ? bassCandidates[0].midi : KEY_ROOT_MIDI;
 
+    let bassTechnique: BassTechnique = 'portamento'; // Default to drone
+    const barMod = this.barCount % 16;
+    if (density > 0.7 && (barMod === 7 || barMod === 15)) {
+        bassTechnique = 'pulse';
+    } else if (density > 0.5 && barMod % 4 === 0) {
+        bassTechnique = 'arpeggio';
+    } else if (density < 0.3) {
+        bassTechnique = 'portamento';
+    } else {
+        bassTechnique = 'glide';
+    }
+    score.instrumentHints!.bassTechnique = bassTechnique;
 
-    const bassNotesPerBar = Math.floor(density * 8) + 1; // 1 to 9 notes for more activity
-    const step = barDuration / (bassNotesPerBar > 8 ? 16 : 8); // 8th or 16th note steps
-    const arpPattern = [0, 7, 3, 5, 2, 5, 0, 7]; // More interesting pattern
-    
-    for (let i = 0; i < (bassNotesPerBar > 8 ? 16 : 8) ; i++) {
-        if (Math.random() < density * 0.9) { // Higher chance to play a note
-            const degreeIndex = Math.floor((this.barCount * 4 + i) / 2) % arpPattern.length;
-            const degree = arpPattern[degreeIndex];
-            const noteMidi = rootBassNote + SCALE_DEGREES[degree % SCALE_DEGREES.length];
-            const midi = Math.max(BASS_MIDI_MIN, Math.min(noteMidi, BASS_MIDI_MAX));
-            
-            score.bass!.push({
-                midi,
-                time: i * step,
-                duration: step * (1 + Math.random() * 0.5), // Shorter, punchier notes
-                velocity: 0.6 + Math.random() * 0.3,
-            });
-        }
+    switch (bassTechnique) {
+        case 'pulse':
+        case 'portamento':
+        case 'glide':
+        case 'glissando':
+            // For these techniques, we only need to send one long note. The worklet handles the rest.
+            score.bass!.push({ midi: rootBassNote, time: 0, duration: barDuration, velocity: 0.9 });
+            break;
+        case 'arpeggio':
+            const arpPattern = [0, 7, 3, 5, 2, 5, 0, 7]; // Degrees from root
+            const steps = density > 0.6 ? 8 : 4;
+            const stepDuration = barDuration / steps;
+            for (let i = 0; i < steps; i++) {
+                const degreeIndex = arpPattern[i % arpPattern.length];
+                const noteMidi = rootBassNote + SCALE_DEGREES[degreeIndex % SCALE_DEGREES.length];
+                score.bass!.push({ midi: noteMidi, time: i * stepDuration, duration: stepDuration, velocity: 0.7 + Math.random() * 0.2 });
+            }
+            break;
     }
 
 
@@ -240,7 +251,7 @@ export class FractalMusicEngine {
     score.drums = this.generateDrums();
     
     // --- ACCOMPANIMENT & MELODY ---
-    const midHighEvents = sortedEvents.filter(e => e.midi >= 55 && e.midi <= 90);
+    const midHighEvents = sortedEvents.filter(e => e.type !== 'bass' && e.type !== 'drum' && e.midi >= 55 && e.midi <= 90);
     
     let melodyNotesCount = Math.floor(density * 5) + 1;
     let melodyTime = Math.random() * 0.5 * barDuration;
@@ -264,8 +275,8 @@ export class FractalMusicEngine {
     // --- DYNAMIC INSTRUMENT HINTS ---
     let bassHint: BassInstrument = 'ambientDrone';
     if(score.bass && score.bass.length > 0) {
-        if (score.bass.length > 3) bassHint = 'classicBass';
-        else if (density < 0.4) bassHint = 'ambientDrone';
+        if (bassTechnique === 'arpeggio') bassHint = 'classicBass';
+        else if (bassTechnique === 'pulse') bassHint = 'hypnoticDrone';
         else bassHint = 'glideBass';
     }
 
@@ -293,6 +304,7 @@ export class FractalMusicEngine {
     }
 
     score.instrumentHints = {
+        ...score.instrumentHints,
         bass: bassHint,
         melody: melodyHint,
         accompaniment: accompHint
@@ -301,5 +313,3 @@ export class FractalMusicEngine {
     return score;
   }
 }
-
-    

@@ -19,13 +19,14 @@ import { AcousticGuitarSoloSampler } from '@/lib/acoustic-guitar-solo-sampler';
 
 // --- Type Definitions ---
 type WorkerMessage = {
-    type: 'score' | 'error' | 'debug' | 'sparkle' | 'pad';
+    type: 'score' | 'error' | 'debug' | 'sparkle' | 'pad' | 'bass_technique';
     score?: Score;
     error?: string;
     message?: string;
     data?: any;
     padName?: string;
     time?: number;
+    technique?: BassTechnique;
 };
 
 // --- Constants ---
@@ -154,6 +155,7 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
         
         if (score.instrumentHints.bass) bassManagerRef.current?.setPreset(score.instrumentHints.bass);
         if (score.instrumentHints.accompaniment) accompanimentManagerRef.current?.setPreset(score.instrumentHints.accompaniment);
+        if (score.instrumentHints.bassTechnique) bassManagerRef.current?.setTechnique(score.instrumentHints.bassTechnique);
     }
 
     const bassScore = score.bass || [];
@@ -338,6 +340,11 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
             worker.onmessage = (event: MessageEvent<WorkerMessage>) => {
                 if (event.data.type === 'score' && event.data.score) {
                     scheduleScore(event.data.score, context);
+                }
+                else if (event.data.type === 'bass_technique' && event.data.technique) {
+                    if (bassManagerRef.current) {
+                        bassManagerRef.current.setTechnique(event.data.technique);
+                    }
                 }
                 else if (event.data.type === 'sparkle' && event.data.time !== undefined) {
                     sparklePlayerRef.current?.playRandomSparkle(context.currentTime + event.data.time);

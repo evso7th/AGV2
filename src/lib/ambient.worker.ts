@@ -7,7 +7,7 @@
  * Its goal is to create a continuously evolving piece of music where complexity is controlled by a 'density' parameter.
  * It is completely passive and only composes the next bar when commanded via a 'tick'.
  */
-import type { WorkerSettings, Score, Note, DrumsScore, ScoreName, InstrumentSettings, DrumSettings, InstrumentType } from '@/types/music';
+import type { WorkerSettings, Score, Note, DrumsScore, ScoreName, InstrumentSettings, DrumSettings, InstrumentType, BassTechnique } from '@/types/music';
 import { FractalMusicEngine } from './fractal-music-engine';
 import { MelancholicMinorK } from './resonance-matrices';
 import type { Seed, ResonanceMatrix, EngineConfig } from '@/types/fractal';
@@ -159,7 +159,7 @@ const Composer = {
                 }
                 break;
             case 'composer':
-                // Kick on 1 and 3, with probability based on density
+                 // Kick on 1 and 3, with probability based on density
                 if (Math.random() < density) drums.push({ note: 'kick', time: 0, velocity: 0.9 * kickVolume, midi: PERCUSSION_SOUNDS['kick'] });
                 if (Math.random() < density * 0.8) drums.push({ note: 'kick', time: 8 * step, velocity: 0.8 * kickVolume, midi: PERCUSSION_SOUNDS['kick'] });
 
@@ -323,6 +323,12 @@ const Scheduler = {
             if (!fractalMusicEngine) this.initializeEngine();
             fractalMusicEngine.tick();
             score = fractalMusicEngine.generateScore();
+
+            // Check for composer-driven technique changes and send them
+            if (score.instrumentHints?.bassTechnique && this.settings.composerControlsInstruments) {
+                self.postMessage({ type: 'bass_technique', technique: score.instrumentHints.bassTechnique });
+            }
+
         } else {
              score.bass = Composer.generateBass(this.barCount, density);
              score.melody = Composer.generateMelody(this.barCount, density);

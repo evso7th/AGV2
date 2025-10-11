@@ -31,6 +31,7 @@ export type Score = {
         bass?: BassInstrument;
         melody?: MelodyInstrument;
         accompaniment?: AccompanimentInstrument;
+        bassTechnique?: BassTechnique; // Added for NFM to control bass style
     }
 };
 
