@@ -23,7 +23,7 @@ export const MelancholicMinorK: ResonanceMatrix = (eventA, eventB) => {
     
     // Rule for bass and kick drum synchronization
     if ((typeA === 'bass' && typeB === 'drum_kick') || (typeA === 'drum_kick' && typeB === 'bass')) {
-        return 0.8; // Strong resonance between bass and kick
+        return 0.9; // Strong resonance between bass and kick
     }
 
     // --- Melodic/Harmonic Rules ---
@@ -32,6 +32,22 @@ export const MelancholicMinorK: ResonanceMatrix = (eventA, eventB) => {
 
     if (isNaN(midiA) || isNaN(midiB)) return 0;
     
+    // Bass resonance with itself
+    if (typeA === 'bass' && typeB === 'bass') {
+        const interval = Math.abs(midiA - midiB) % 12;
+        if ([3, 4, 7].includes(interval)) return 0.7; // thirds and fifths
+        if ([2, 5].includes(interval)) return 0.5; // steps
+        return 0.2;
+    }
+
+    // Bass resonating with melody/accomp
+    if (typeA === 'bass' || typeB === 'bass') {
+       const interval = Math.abs(midiA - midiB) % 12;
+       if (interval === 0 || interval === 7) return 0.8; // Octave/Unison and Fifths are strong anchors
+       return 0.3;
+    }
+    
+    // --- Default melodic/harmonic rules from before ---
     const degreeA = midiA % 12;
     const degreeB = midiB % 12;
     
@@ -41,26 +57,23 @@ export const MelancholicMinorK: ResonanceMatrix = (eventA, eventB) => {
     const inScaleB = scaleDegrees.includes(degreeB);
     if (!inScaleA || !inScaleB) return 0;
 
-    // Give bass notes a slightly higher base resonance
-    let baseResonance = (typeA === 'bass' || typeB === 'bass') ? 0.2 : 0.1;
-
     const interval = Math.abs(midiA - midiB);
     const semitoneInterval = interval % 12;
 
     switch (semitoneInterval) {
-        case 0: return baseResonance + 0.3; // Unison
-        case 1: return baseResonance + 0.4; // Stepwise motion
-        case 2: return baseResonance + 0.5; // Stepwise motion
-        case 3: return baseResonance + 0.8; // Minor third (consonant)
-        case 4: return baseResonance + 0.8; // Major third (consonant)
-        case 5: return baseResonance + 0.7; // Perfect fourth
-        case 7: return baseResonance + 0.9; // Perfect fifth (strongest)
-        case 8: return baseResonance + 0.6; // Minor sixth
-        case 9: return baseResonance + 0.6; // Major sixth
-        case 10: return baseResonance + 0.2; // Minor seventh
-        case 11: return baseResonance + 0.2; // Major seventh
-        case 6: return baseResonance * 0.1; // Tritone (dissonant)
-        default: return baseResonance;
+        case 0: return 0.3; // Unison
+        case 1: return 0.4; // Stepwise motion
+        case 2: return 0.5; // Stepwise motion
+        case 3: return 0.8; // Minor third (consonant)
+        case 4: return 0.8; // Major third (consonant)
+        case 5: return 0.7; // Perfect fourth
+        case 7: return 0.9; // Perfect fifth (strongest)
+        case 8: return 0.6; // Minor sixth
+        case 9: return 0.6; // Major sixth
+        case 10: return 0.2; // Minor seventh
+        case 11: return 0.2; // Major seventh
+        case 6: return 0.1; // Tritone (dissonant)
+        default: return 0.1;
     }
   } catch (e) {
       return 0;

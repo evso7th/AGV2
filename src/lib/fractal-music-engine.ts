@@ -42,7 +42,7 @@ export class FractalMusicEngine {
   }
 
   private generateEventUniverse() {
-      const instruments = ['piano', 'violin', 'flute', 'synth', 'organ', 'mellotron', 'theremin', 'E-Bells_melody', 'G-Drops', 'acousticGuitarSolo', 'electricGuitar', 'guitarChords', 'bass'];
+      const instruments = ['piano', 'violin', 'flute', 'synth', 'organ', 'mellotron', 'theremin', 'E-Bells_melody', 'G-Drops', 'acousticGuitarSolo', 'electricGuitar', 'guitarChords'];
       
       for (const instrument of instruments) {
         for (let octave = 0; octave < NUM_OCTAVES; octave++) {
@@ -54,6 +54,12 @@ export class FractalMusicEngine {
             }
         }
       }
+      
+      // Add bass events separately for its specific range
+      for (let midiNote = BASS_MIDI_MIN; midiNote <= BASS_MIDI_MAX; midiNote++) {
+          this.availableEvents.push(`bass_${midiNote}`);
+      }
+
 
       const drumSamples = ['kick', 'snare', 'hat', 'crash', 'tom1', 'tom2', 'tom3', 'ride'];
       for (const drum of drumSamples) {
@@ -74,18 +80,15 @@ export class FractalMusicEngine {
   private generateImpulse(): Map<EventID, number> {
     const impulse = new Map<EventID, number>();
     const { density, drumSettings } = this.config;
-    if (drumSettings.enabled && drumSettings.pattern === 'composer') {
-        if(this.tickCount % 8 < 1 && density > 0.2) { // more frequent kick
-            impulse.set('drum_kick', density);
-        }
-        if(this.tickCount % 4 === 2 && density > 0.5) { // snare on 2 and 4
-            impulse.set('drum_snare', density * 0.7);
-        }
+    
+    // Rhythmic impulse for kick drum drives the bass
+    if (this.tickCount % 16 === 0) { // Every bar
+        if (Math.random() < 0.9 * density) impulse.set('drum_kick', density);
     }
-     // Bass impulse
-    if (this.tickCount % 16 === 0) { // Impulse on the first beat of every bar
-        impulse.set(`bass_${KEY_ROOT_MIDI}`, 0.5); 
+    if (this.tickCount % 16 === 8) { // Offbeat
+        if (Math.random() < 0.6 * density) impulse.set('drum_kick', density * 0.8);
     }
+    
     return impulse;
   }
 
@@ -231,7 +234,6 @@ export class FractalMusicEngine {
         case 'portamento':
         case 'glide':
         case 'glissando':
-            // For these techniques, we only need to send one long note. The worklet handles the rest.
             score.bass!.push({ midi: rootBassNote, time: 0, duration: barDuration * 0.95, velocity: 0.9 });
             break;
         case 'arpeggio':
