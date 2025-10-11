@@ -232,7 +232,7 @@ export class FractalMusicEngine {
         case 'glide':
         case 'glissando':
             // For these techniques, we only need to send one long note. The worklet handles the rest.
-            score.bass!.push({ midi: rootBassNote, time: 0, duration: barDuration, velocity: 0.9 });
+            score.bass!.push({ midi: rootBassNote, time: 0, duration: barDuration * 0.95, velocity: 0.9 });
             break;
         case 'arpeggio':
             const arpPattern = [0, 7, 3, 5, 2, 5, 0, 7]; // Degrees from root
