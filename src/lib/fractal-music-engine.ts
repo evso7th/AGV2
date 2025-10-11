@@ -23,38 +23,46 @@ function generateAxiom(seed: number, mood: Mood): FractalEvent[] {
   
   // Простой, но выразительный мотив: нисходящий контур
   return [
-    { type: 'bass', note: rootNote, duration: 1.5, time: 0, technique: 'pluck', dynamics: 'mf', phrasing: 'legato', weight: 1.0 },
-    { type: 'bass', note: rootNote + 3, duration: 0.5, time: 1.5, technique: 'pluck', dynamics: 'p', phrasing: 'staccato', weight: 0.8 },
-    { type: 'bass', note: rootNote + 2, duration: 1.5, time: 2, technique: 'pluck', dynamics: 'mf', phrasing: 'legato', weight: 0.9 },
-    { type: 'bass', note: rootNote, duration: 0.5, time: 3.5, technique: 'pluck', dynamics: 'p', phrasing: 'staccato', weight: 1.0 }
+    { id: `evt-${Date.now()}-0`, type: 'bass', note: rootNote, duration: 1.5, time: 0, technique: 'pluck', dynamics: 'mf', phrasing: 'legato', weight: 1.0 },
+    { id: `evt-${Date.now()}-1`, type: 'bass', note: rootNote + 3, duration: 0.5, time: 1.5, technique: 'pluck', dynamics: 'p', phrasing: 'staccato', weight: 0.8 },
+    { id: `evt-${Date.now()}-2`, type: 'bass', note: rootNote + 2, duration: 1.5, time: 2, technique: 'pluck', dynamics: 'mf', phrasing: 'legato', weight: 0.9 },
+    { id: `evt-${Date.now()}-3`, type: 'bass', note: rootNote, duration: 0.5, time: 3.5, technique: 'pluck', dynamics: 'p', phrasing: 'staccato', weight: 1.0 }
   ];
 }
 
 // === 3. ТРАНСФОРМАЦИИ (ШЁНБЕРГ) ===
 function transformMotif(events: FractalEvent[], type: 'inversion' | 'retrograde'): FractalEvent[] {
-  const notes = events.map(e => e.note);
-  const durations = events.map(e => e.duration);
-  const pivot = notes[0];
-  
-  let newNotes: number[];
-  if (type === 'inversion') {
-    newNotes = notes.map(n => pivot - (n - pivot));
-  } else { // retrograde
-    newNotes = [...notes].reverse();
-    // Reverse durations as well to match the reversed notes
-    const newDurations = [...durations].reverse();
-    let currentTime = 0;
-    return newNotes.map((note, i) => {
-        const event = { ...events[events.length - 1 - i], note, time: currentTime };
-        currentTime += newDurations[i];
-        return event;
-    });
-  }
-  
-  return newNotes.map((note, i) => ({
-    ...events[i],
-    note,
-  }));
+    const notes = events.map(e => e.note);
+    const durations = events.map(e => e.duration);
+    const pivot = notes[0];
+
+    if (type === 'inversion') {
+        const newNotes = notes.map(n => pivot - (n - pivot));
+        return events.map((event, i) => ({
+            ...event,
+            id: `${event.id}-inv`,
+            note: newNotes[i],
+        }));
+    } else { // retrograde
+        const reversedNotes = [...notes].reverse();
+        const reversedDurations = [...durations].reverse();
+        const reversedEvents = [...events].reverse();
+        
+        const newEvents: FractalEvent[] = [];
+        let currentTime = 0;
+        for(let i = 0; i < reversedEvents.length; i++) {
+            const newEvent: FractalEvent = {
+                ...reversedEvents[i],
+                id: `${reversedEvents[i].id}-ret`,
+                note: reversedNotes[i],
+                time: currentTime,
+                duration: reversedDurations[i],
+            };
+            newEvents.push(newEvent);
+            currentTime += reversedDurations[i];
+        }
+        return newEvents;
+    }
 }
 
 // === 4. L-СИСТЕМА (IFS-РЕЖИМ) ===
@@ -118,13 +126,14 @@ export class FractalMusicEngine {
     const delta = getDeltaProfile(this.config.mood)(this.time);
     const output: FractalEvent[] = [];
     const beatDuration = 60 / this.config.tempo;
+    const { drumSettings } = this.config;
 
     // 1. Обновление весов по формуле
     this.branches = this.branches.map(branch => {
       let resonanceSum = 0;
       for (const other of this.branches) {
         if (other.id === branch.id) continue;
-        const k = this.resonanceMatrix(branch.events[0].id, other.events[0].id); // Assuming events have unique IDs
+        const k = this.resonanceMatrix(branch.events[0].id!, other.events[0].id!);
         resonanceSum += k * delta;
       }
       
@@ -142,11 +151,12 @@ export class FractalMusicEngine {
       // Генерация новых ветвей по L-строке...
     }
 
-    // 4. DLA: стохастическое исследование
+    // 4. DLA: стохастическое исследование (мутация)
     if (Math.random() < 0.3 * delta && this.branches.length < 5) {
       const base = this.branches[Math.floor(Math.random() * this.branches.length)];
       if (base) {
-          const newEvents = transformMotif(base.events, 'inversion');
+          const transformType = Math.random() < 0.5 ? 'inversion' : 'retrograde';
+          const newEvents = transformMotif(base.events, transformType);
           this.branches.push({
             id: `dla_${Date.now()}`,
             events: newEvents.map(e => ({...e, weight: 0.2, technique: Math.random() > 0.7 ? 'slap' : 'ghost'})),
@@ -158,7 +168,7 @@ export class FractalMusicEngine {
     }
 
     // 5. Генерация событий для вывода
-    const currentBarTime = this.epoch * (beatDuration * 4);
+    const currentBarTime = 0; // Time within the bar, gets scaled later
     this.branches.forEach(branch => {
       branch.events.forEach(event => {
         output.push({
@@ -172,6 +182,26 @@ export class FractalMusicEngine {
         });
       });
     });
+
+     // --- Drum Generation ---
+    if (drumSettings?.enabled) {
+        const sixteenth = beatDuration / 4;
+        if (drumSettings.pattern === 'composer' || drumSettings.pattern === 'ambient_beat') {
+             if (Math.random() < this.config.density) {
+                output.push({ id: `drum_kick_0`, type: 'drum_kick', note: 60, time: 0, duration: 0.1, technique: 'pluck', phrasing: 'staccato', dynamics: 'f', weight: 0.9 * (drumSettings.kickVolume ?? 1.0) });
+             }
+             if (Math.random() < this.config.density * 0.8) {
+                output.push({ id: `drum_kick_8`, type: 'drum_kick', note: 60, time: 8 * sixteenth, duration: 0.1, technique: 'pluck', phrasing: 'staccato', dynamics: 'mf', weight: 0.8 * (drumSettings.kickVolume ?? 1.0) });
+             }
+             if (Math.random() < this.config.density) {
+                output.push({ id: `drum_snare_4`, type: 'drum_snare', note: 62, time: 4 * sixteenth, duration: 0.1, technique: 'pluck', phrasing: 'staccato', dynamics: 'f', weight: 0.7 });
+             }
+             if (Math.random() < this.config.density * 0.6) {
+                output.push({ id: `drum_snare_12`, type: 'drum_snare', note: 62, time: 12 * sixteenth, duration: 0.1, technique: 'pluck', phrasing: 'staccato', dynamics: 'p', weight: 0.6 });
+             }
+        }
+    }
+
 
     this.time += beatDuration * 4;
     this.epoch++;
@@ -204,7 +234,7 @@ function seededRandom(seed: number) {
 }
 
 function getScaleForMood(mood: Mood): number[] {
-  const E = 64; // E4
+  const E = 40; // E2 as base
   if (mood === 'melancholic') return [E, E+2, E+3, E+5, E+7, E+9, E+10]; // E Dorian
   return [E, E+2, E+4, E+5, E+7, E+9, E+11]; // E Major
 }
@@ -213,3 +243,5 @@ function loadResonanceMatrix(mood: Mood): ResonanceMatrix {
   // Currently returns a placeholder. Should load from `resonance-matrices.ts` in a real scenario.
   return (eventA: string, eventB: string) => 0.5; 
 }
+
+    
