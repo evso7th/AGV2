@@ -67,12 +67,11 @@ export class FractalMusicEngine {
     const scale = getScaleForMood(this.config.mood);
     const root = scale[this.random.nextInt(scale.length)];
 
-    let currentTime = 0;
     const axiomEvents: FractalEvent[] = [
-      { type: 'bass', note: root, duration: 1.5, time: currentTime, weight: 1.0, technique: 'pluck', dynamics: 'f', phrasing: 'legato' },
-      { type: 'bass', note: root + 3, duration: 0.5, time: (currentTime += 1.5), weight: 0.8, technique: 'pluck', dynamics: 'mf', phrasing: 'staccato' },
-      { type: 'bass', note: root + 2, duration: 1.5, time: (currentTime += 0.5), weight: 0.9, technique: 'pluck', dynamics: 'f', phrasing: 'legato' },
-      { type: 'bass', note: root, duration: 0.5, time: (currentTime += 1.5), weight: 1.0, technique: 'pluck', dynamics: 'f', phrasing: 'staccato' }
+      { type: 'bass', note: root, duration: 1.5, time: 0, weight: 1.0, technique: 'pluck', dynamics: 'f', phrasing: 'legato' },
+      { type: 'bass', note: root + 3, duration: 0.5, time: 1.5, weight: 0.8, technique: 'pluck', dynamics: 'mf', phrasing: 'staccato' },
+      { type: 'bass', note: root + 2, duration: 1.5, time: 2.0, weight: 0.9, technique: 'pluck', dynamics: 'f', phrasing: 'legato' },
+      { type: 'bass', note: root, duration: 0.5, time: 3.5, weight: 1.0, technique: 'pluck', dynamics: 'f', phrasing: 'staccato' }
     ];
 
     this.branches = [{
@@ -91,27 +90,24 @@ export class FractalMusicEngine {
 
 
   // === ГЕНЕРАЦИЯ УДАРНЫХ (4/4 ПАТТЕРН) ===
-  private generateDrumEvents(barStartTime: number, barDuration: number): FractalEvent[] {
+  private generateDrumEvents(barDuration: number, barStartTime: number): FractalEvent[] {
     const events: FractalEvent[] = [];
     const beat = barDuration / 4;
 
-    // Kick on 1 and 3
     events.push({
-      type: 'drum_kick', note: 36, duration: 0.1, time: 0, // time is bar-local
+      type: 'drum_kick', note: 36, duration: 0.1, time: barStartTime,
       weight: 1.0, technique: 'hit', dynamics: 'f', phrasing: 'staccato'
     });
     events.push({
-      type: 'drum_kick', note: 36, duration: 0.1, time: 2 * beat,
+      type: 'drum_kick', note: 36, duration: 0.1, time: barStartTime + 2 * beat,
       weight: 1.0, technique: 'hit', dynamics: 'f', phrasing: 'staccato'
     });
-
-    // Snare on 2 and 4
     events.push({
-      type: 'drum_snare', note: 38, duration: 0.1, time: 1 * beat,
+      type: 'drum_snare', note: 38, duration: 0.1, time: barStartTime + 1 * beat,
       weight: 1.0, technique: 'hit', dynamics: 'mf', phrasing: 'staccato'
     });
     events.push({
-      type: 'drum_snare', note: 38, duration: 0.1, time: 3 * beat,
+      type: 'drum_snare', note: 38, duration: 0.1, time: barStartTime + 3 * beat,
       weight: 1.0, technique: 'hit', dynamics: 'mf', phrasing: 'staccato'
     });
 
@@ -131,39 +127,38 @@ export class FractalMusicEngine {
   public evolve(barDuration: number): FractalEvent[] {
     const delta = this.getDeltaProfile()(this.time);
     const output: FractalEvent[] = [];
+    let barCurrentTime = this.time;
 
-    // 1. Обновление весов по формуле
+    // 1. Обновление весов
     this.branches = this.branches.map(branch => {
       const resonanceSum = this.branches.reduce((sum, other) => {
         if (other.id === branch.id) return sum;
         const k = MelancholicMinorK(branch.events[0], other.events[0], {
           mood: this.config.mood,
           delta,
-          kickTimes: [], // в реальной версии — заполнить
+          kickTimes: [],
           snareTimes: [],
-          beatPhase: (this.time * this.config.tempo / 60) % 4
+          beatPhase: (barCurrentTime * this.config.tempo / 60) % 4
         });
         return sum + k * delta;
       }, 0);
       const newWeight = (1 - this.lambda) * branch.weight + resonanceSum;
       return { ...branch, weight: newWeight, age: branch.age + 1 };
     });
-
-    // 1.5. Нормализация весов
+    
+    // 2. Нормализация весов
     this.normalizeWeights();
 
-    // 2. Смерть слабых ветвей
+    // 3. Смерть слабых ветвей
     this.branches = this.branches.filter(b => b.weight > 0.05);
 
-    // 3. DLA: иногда добавляем ghost notes
-    if (this.random.next() < 0.4 && this.epoch > 2) {
+    // 4. Рождение новых ветвей
+    if (this.random.next() < 0.3 && this.branches.length < MAX_BRANCHES && this.epoch > 2) {
       const base = this.branches[0];
       if (base) {
-        let currentTime = 0;
-        base.events.forEach(e => { currentTime += e.duration; });
         this.branches.push({
           id: `ghost_${Date.now()}`,
-          events: [{ ...base.events[1], duration: 0.2, time: currentTime }],
+          events: [{ ...base.events[this.random.nextInt(base.events.length)], duration: 0.2 }],
           weight: 0.15,
           age: 0,
           technique: 'ghost'
@@ -171,19 +166,13 @@ export class FractalMusicEngine {
       }
     }
     
-    // 3.5. Ограничение количества ветвей
-    if (this.branches.length > MAX_BRANCHES) {
-        this.branches.sort((a, b) => a.age - b.age); // Сортируем от самых молодых к старым
-        this.branches = this.branches.slice(0, MAX_BRANCHES); // Оставляем только самые молодые
-    }
-    
-    // 4. Генерация басовых событий
-    let barCurrentTime = 0;
+    // 5. Генерация басовых событий
     this.branches.forEach(branch => {
       branch.events.forEach(event => {
+        const eventStartTime = barCurrentTime;
         output.push({
           ...event,
-          time: barCurrentTime, // Use bar-local time
+          time: eventStartTime,
           weight: branch.weight,
           technique: branch.technique,
           dynamics: weightToDynamics(branch.weight),
@@ -193,10 +182,11 @@ export class FractalMusicEngine {
       });
     });
 
-    // 5. Добавляем ударные (1 такт за вызов)
-    const drumEvents = this.generateDrumEvents(0, barDuration);
+    // 6. Независимая генерация ударных для этого такта
+    const drumEvents = this.generateDrumEvents(barDuration, this.time);
     output.push(...drumEvents); 
 
+    // 7. Обновляем общее время
     this.time += barDuration;
     this.epoch++;
     
