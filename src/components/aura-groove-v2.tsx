@@ -2,7 +2,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { SlidersHorizontal, Music, Pause, Speaker, FileMusic, Drum, GitBranch, Atom, Piano, Home, X, Sparkles, Sprout, LayoutGrid, LayoutList, Waves, Timer, Guitar, RefreshCw } from "lucide-react";
+import { SlidersHorizontal, Music, Pause, Speaker, FileMusic, Drum, GitBranch, Atom, Piano, Home, X, Sparkles, Sprout, LayoutGrid, LayoutList, Waves, Timer, Guitar, RefreshCw, Bot } from "lucide-react";
 import Image from "next/image";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -15,7 +15,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import type { AuraGrooveProps } from "./aura-groove";
 import { useRouter } from "next/navigation";
 import { formatTime } from "@/lib/utils";
-import type { BassInstrument, MelodyInstrument, AccompanimentInstrument } from '@/types/music';
+import type { BassInstrument, MelodyInstrument, AccompanimentInstrument, Mood } from '@/types/music';
 
 const EQ_BANDS = [
   { freq: '60', label: '60' }, { freq: '125', label: '125' }, { freq: '250', label: '250' },
@@ -28,7 +28,8 @@ export function AuraGrooveV2({
   bpm, handleBpmChange, score, handleScoreChange, density, setDensity, handleGoHome,
   isEqModalOpen, setIsEqModalOpen, eqSettings, handleEqChange,
   timerSettings, handleTimerDurationChange, handleToggleTimer,
-  composerControlsInstruments, setComposerControlsInstruments
+  composerControlsInstruments, setComposerControlsInstruments,
+  mood, setMood
 }: AuraGrooveProps) {
 
   const router = useRouter();
@@ -45,6 +46,7 @@ export function AuraGrooveV2({
   const melodyInstrumentList: (MelodyInstrument | 'none')[] = ['piano', 'violin', 'flute', 'synth', 'organ', 'mellotron', 'theremin', 'E-Bells_melody', 'G-Drops', 'acousticGuitarSolo', 'electricGuitar', 'none'];
   const accompanimentInstrumentList: (AccompanimentInstrument | 'none')[] = ['piano', 'violin', 'flute', 'guitarChords', 'synth', 'organ', 'mellotron', 'theremin', 'E-Bells_melody', 'G-Drops', 'electricGuitar', 'none'];
   const bassInstrumentList: (BassInstrument | 'none')[] = ['classicBass', 'glideBass', 'ambientDrone', 'resonantGliss', 'hypnoticDrone', 'livingRiff', 'none'];
+  const moodList: Mood[] = ['melancholic', 'epic', 'dreamy', 'dark'];
 
   const displayNames: Record<string, string> = {
     'guitarChords': 'Guitar Chords',
@@ -128,13 +130,26 @@ export function AuraGrooveV2({
                           </SelectContent>
                       </Select>
                   </div>
-                  {isFractalStyle && (
-                    <div className="grid grid-cols-3 items-center gap-2">
-                        <Label htmlFor="composer-control-switch" className="text-right text-xs">Composer Controls</Label>
-                        <div className="col-span-2 flex items-center">
-                            <Switch id="composer-control-switch" checked={composerControlsInstruments} onCheckedChange={setComposerControlsInstruments} disabled={isInitializing || isPlaying}/>
-                        </div>
-                    </div>
+                   {isFractalStyle && (
+                    <>
+                      <div className="grid grid-cols-3 items-center gap-2">
+                          <Label htmlFor="mood-selector" className="text-right text-xs">Mood</Label>
+                          <Select value={mood} onValueChange={(v) => setMood(v as Mood)} disabled={isInitializing || isPlaying}>
+                              <SelectTrigger id="mood-selector" className="col-span-2 h-8 text-xs"><SelectValue /></SelectTrigger>
+                              <SelectContent>
+                                  {moodList.map(m => <SelectItem key={m} value={m} className="text-xs capitalize">{m}</SelectItem>)}
+                              </SelectContent>
+                          </Select>
+                      </div>
+                      <div className="grid grid-cols-3 items-center gap-2">
+                          <Label htmlFor="composer-control-switch" className="text-right text-xs flex items-center gap-1.5 justify-end">
+                            <Bot className="h-3 w-3" /> Control
+                          </Label>
+                          <div className="col-span-2 flex items-center">
+                              <Switch id="composer-control-switch" checked={composerControlsInstruments} onCheckedChange={setComposerControlsInstruments} disabled={isInitializing || isPlaying}/>
+                          </div>
+                      </div>
+                    </>
                   )}
                   <div className="grid grid-cols-[1fr_2fr_auto] items-center gap-2">
                     <Label htmlFor="bpm-slider" className="text-right text-xs">BPM</Label>
@@ -287,5 +302,4 @@ export function AuraGrooveV2({
   );
 }
 
-    
     

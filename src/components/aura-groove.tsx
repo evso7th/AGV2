@@ -9,7 +9,7 @@ import { Label } from "@/components/ui/label";
 import Image from 'next/image';
 import { Slider } from "@/components/ui/slider";
 import { Switch } from "@/components/ui/switch";
-import type { DrumSettings, InstrumentSettings, ScoreName, BassInstrument, InstrumentPart, MelodyInstrument, AccompanimentInstrument, BassTechnique, TextureSettings, TimerSettings } from '@/types/music';
+import type { DrumSettings, InstrumentSettings, ScoreName, BassInstrument, InstrumentPart, MelodyInstrument, AccompanimentInstrument, BassTechnique, TextureSettings, TimerSettings, Mood } from '@/types/music';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { useRouter } from "next/navigation";
 import { BASS_PRESETS } from "@/lib/bass-presets";
@@ -48,6 +48,8 @@ export type AuraGrooveProps = {
   timerSettings: TimerSettings;
   handleTimerDurationChange: (minutes: number) => void;
   handleToggleTimer: () => void;
+  mood: Mood;
+  setMood: (mood: Mood) => void;
 };
 
 const EQ_BANDS = [

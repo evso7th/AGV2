@@ -7,7 +7,7 @@
  * Its goal is to create a continuously evolving piece of music where complexity is controlled by a 'density' parameter.
  * It is completely passive and only composes the next bar when commanded via a 'tick'.
  */
-import type { WorkerSettings, Score, Note, DrumsScore, ScoreName, InstrumentSettings, DrumSettings, InstrumentType, BassTechnique } from '@/types/music';
+import type { WorkerSettings, Score, Note, DrumsScore, ScoreName, InstrumentSettings, DrumSettings, InstrumentType, BassTechnique, Mood } from '@/types/music';
 import { FractalMusicEngine } from './fractal-music-engine';
 import { MelancholicMinorK } from './resonance-matrices';
 import type { Seed, ResonanceMatrix, EngineConfig, FractalEvent } from '@/types/fractal';
@@ -226,13 +226,14 @@ function createNewSeed(baseConfig: Partial<EngineConfig>): Seed {
 
 function convertFractalEventsToScore(events: FractalEvent[], barDuration: number): Score {
     const score: Score = { bass: [], melody: [], accompaniment: [], drums: [] };
-    
+    const beatsPerMinute = Scheduler.settings.bpm;
+
     const bassEvents = events.filter(e => e.type === 'bass');
     if (bassEvents.length > 0) {
         score.bass = bassEvents.map(e => ({
             midi: e.note,
             time: e.time,
-            duration: e.duration,
+            duration: e.duration, // This is in beats, convert in manager
             velocity: e.weight // Using weight for velocity as a starting point
         }));
     }
@@ -242,14 +243,11 @@ function convertFractalEventsToScore(events: FractalEvent[], barDuration: number
         score.drums = drumEvents.map(e => ({
             note: e.type.replace('drum_', ''),
             midi: e.note,
-            time: e.time ?? 0, // Diagnostic check
+            time: e.time * (60 / beatsPerMinute), // Convert beat time to seconds
             velocity: e.weight
         }));
     }
-
-    // Add other event type conversions here later (melody, accomp, etc.)
-    console.log('Converted Score:', { bass: score.bass?.length, drums: score.drums?.length });
-
+    
     return score;
 }
 
@@ -280,6 +278,7 @@ const Scheduler = {
         },
         density: 0.5,
         composerControlsInstruments: true,
+        mood: 'melancholic' as Mood,
     } as WorkerSettings,
 
     get barDuration() { 
@@ -287,14 +286,14 @@ const Scheduler = {
     },
 
     initializeEngine() {
-        console.log('[Worker] Initializing NFM Engine...');
+        console.log('[Worker] Initializing NFM Engine with mood:', this.settings.mood);
         const seed = createNewSeed({
             bpm: this.settings.bpm,
             density: this.settings.density,
             lambda: 0.5, 
-            organic: 0.5,
+            organic: this.settings.density,
             drumSettings: this.settings.drumSettings,
-            mood: 'melancholic',
+            mood: this.settings.mood,
             genre: 'ambient',
         });
         fractalMusicEngine = new FractalMusicEngine(seed.config);
@@ -308,7 +307,7 @@ const Scheduler = {
         
         this.isRunning = true;
         
-        if (!fractalMusicEngine && this.settings.score === 'neuro_f_matrix') {
+        if (this.settings.score === 'neuro_f_matrix' && !fractalMusicEngine) {
             this.initializeEngine();
         }
 
@@ -331,7 +330,8 @@ const Scheduler = {
     
     updateSettings(newSettings: Partial<WorkerSettings>) {
        const needsRestart = this.isRunning && (newSettings.bpm !== undefined && newSettings.bpm !== this.settings.bpm);
-       const scoreChangedToNFM = newSettings.score === 'neuro_f_matrix' && this.settings.score !== 'neuro_f_matrix';
+       const scoreChanged = newSettings.score && newSettings.score !== this.settings.score;
+       const moodChanged = newSettings.mood && newSettings.mood !== this.settings.mood;
        
        if (needsRestart) this.stop();
        
@@ -343,7 +343,7 @@ const Scheduler = {
            textureSettings: { ...this.settings.textureSettings, ...newSettings.textureSettings },
        };
 
-       if (scoreChangedToNFM) {
+       if (scoreChanged || moodChanged) {
            this.initializeEngine();
        }
 
@@ -353,7 +353,8 @@ const Scheduler = {
                density: this.settings.density,
                organic: this.settings.density,
                drumSettings: this.settings.drumSettings,
-               lambda: 1.0 - (this.settings.density * 0.5 + 0.3)
+               lambda: 1.0 - (this.settings.density * 0.5 + 0.3),
+               mood: this.settings.mood
            });
        }
        
@@ -368,7 +369,6 @@ const Scheduler = {
         
         if (this.settings.score === 'neuro_f_matrix') {
             if (!fractalMusicEngine) {
-                 console.error("NFM Engine not initialized in tick!");
                  this.initializeEngine(); // Failsafe
             }
             const fractalEvents = fractalMusicEngine!.evolve(this.barDuration);
@@ -440,7 +440,5 @@ self.onmessage = async (event: MessageEvent) => {
         self.postMessage({ type: 'error', error: e instanceof Error ? e.message : String(e) });
     }
 };
-
-
 
     

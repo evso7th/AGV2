@@ -1,5 +1,9 @@
 
 
+import type { Mood as FractalMood } from './fractal';
+
+export type Mood = FractalMood;
+
 // A musical note to be played by a synthesizer.
 export type Note = {
     midi: number;         // MIDI note number (e.g., 60 for C4).
@@ -109,4 +113,7 @@ export type WorkerSettings = {
     textureSettings: Omit<TextureSettings, 'volume'>;
     density: number; // Controls musical density, 0 to 1
     composerControlsInstruments: boolean;
+    mood: Mood;
 };
+
+    
