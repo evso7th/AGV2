@@ -77,19 +77,20 @@ const clamp = (value: number, min: number, max: number) => Math.max(min, Math.mi
 // --- Main Composition Engines ---
 const Composer = {
     generateBass(barIndex: number, density: number): Note[] {
-        const beatDuration = Scheduler.barDuration / 4;
+        const barDuration = Scheduler.barDuration;
+        const beatDuration = barDuration / 4;
         let notes: Note[] = [];
         
         const riffPattern = [40, 40, 43, 43]; // E2, E2, G2, G2
-        notes.push({ midi: clamp(riffPattern[barIndex % 4], BASS_MIDI_MIN, BASS_MIDI_MAX), time: 0, duration: beatDuration * 2, velocity: 0.7 });
+        notes.push({ midi: clamp(riffPattern[barIndex % 4], BASS_MIDI_MIN, BASS_MIDI_MAX), time: 0, duration: Math.min(beatDuration * 2, barDuration * 0.95), velocity: 0.7 });
 
         if (density > 0.4) {
-            notes.push({ midi: clamp(riffPattern[barIndex % 4] + 12, BASS_MIDI_MIN, BASS_MIDI_MAX), time: beatDuration * 2, duration: beatDuration, velocity: 0.5 });
+            notes.push({ midi: clamp(riffPattern[barIndex % 4] + 12, BASS_MIDI_MIN, BASS_MIDI_MAX), time: beatDuration * 2, duration: Math.min(beatDuration, barDuration * 0.95), velocity: 0.5 });
         }
         if (density > 0.7) {
             const arpNotes = [40, 43, 47]; // E2, G2, B2
             for(let i=0; i<3; i++) {
-                notes.push({ midi: clamp(arpNotes[i], BASS_MIDI_MIN, BASS_MIDI_MAX), time: beatDuration * 3 + i * (beatDuration/3), duration: beatDuration/3, velocity: 0.6});
+                notes.push({ midi: clamp(arpNotes[i], BASS_MIDI_MIN, BASS_MIDI_MAX), time: beatDuration * 3 + i * (beatDuration/3), duration: Math.min(beatDuration/3, barDuration * 0.95), velocity: 0.6});
             }
         }
        
@@ -363,7 +364,7 @@ const Scheduler = {
     }
 };
 
-// --- MessageBus (The entry point) ---
+// --- MessageBus (The "Kafka" entry point) ---
 self.onmessage = async (event: MessageEvent) => {
     if (!event.data || !event.data.command) return;
     const { command, data } = event.data;
