@@ -1,0 +1,112 @@
+// bass-presets.ts
+export type BassPreset = {
+  // Основной слой — имитация щипка
+  wave1: 'sawtooth' | 'pulse';
+  attack1: number;    // 0.001–0.05 для pluck
+  decay1: number;
+  sustain1: number;
+  release1: number;
+
+  // Суб-слой — низкий фундамент
+  wave2: 'sine';
+  attack2: number;
+  decay2: number;
+  sustain2: number;
+  release2: number;
+
+  // Фильтр — управляет тембром
+  filterType: 'lowpass' | 'bandpass';
+  cutoff: number;     // 200–500 Hz для баса
+  resonance: number;  // 0.3–0.8
+
+  // Портаменто — для legato
+  portamento?: number; // 0.01–0.1
+
+  // Дисторшн — для slap и агрессии
+  distortion?: number; // 0.0–0.3
+
+  // UI
+  color: string;
+  description: string;
+};
+
+export const BASS_PRESETS = {
+  // 🎸 Pluck Bass — как James Jamerson
+  pluckBass: {
+    wave1: 'pulse',
+    attack1: 0.005,
+    decay1: 0.4,
+    sustain1: 0.6,
+    release1: 0.3,
+    wave2: 'sine',
+    attack2: 0.02,
+    decay2: 0.8,
+    sustain2: 0.9,
+    release2: 0.5,
+    filterType: 'lowpass',
+    cutoff: 400,
+    resonance: 0.5,
+    distortion: 0.02,
+    color: '#8B4513',
+    description: 'Тёплый, проникающий, как в мотауне'
+  },
+
+  // 👻 Ghost Notes — шёпот в паузах
+  ghostBass: {
+    wave1: 'sine',
+    attack1: 0.001,
+    decay1: 0.1,
+    sustain1: 0.0,
+    release1: 0.05,
+    wave2: 'sine',
+    attack2: 0.001,
+    decay2: 0.1,
+    sustain2: 0.0,
+    release2: 0.05,
+    filterType: 'lowpass',
+    cutoff: 250,
+    resonance: 0.3,
+    color: '#708090',
+    description: 'Почти неслышимый, но создаёт напряжение'
+  },
+
+  // ✋ Slap Bass — как Flea
+  slapBass: {
+    wave1: 'pulse',
+    attack1: 0.001,
+    decay1: 0.2,
+    sustain1: 0.3,
+    release1: 0.1,
+    wave2: 'sine',
+    attack2: 0.01,
+    decay2: 0.6,
+    sustain2: 0.8,
+    release2: 0.3,
+    filterType: 'bandpass',
+    cutoff: 350,
+    resonance: 0.7,
+    distortion: 0.15,
+    color: '#FF4500',
+    description: 'Перкуссионный, с "щелчком" и низом'
+  },
+
+  // 🌀 Ambient Drone — для эпилога
+  ambientDrone: {
+    wave1: 'sine',
+    attack1: 0.3,
+    decay1: 1.0,
+    sustain1: 1.0,
+    release1: 2.0,
+    wave2: 'sine',
+    attack2: 0.3,
+    decay2: 1.0,
+    sustain2: 1.0,
+    release2: 2.0,
+    filterType: 'lowpass',
+    cutoff: 120,
+    resonance: 1.0,
+    portamento: 0.08,
+    color: '#1A0033',
+    description: 'Тёмный, плотный, как вибрация под землёй'
+  }
+} as const;

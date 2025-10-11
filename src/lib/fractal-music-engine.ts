@@ -19,6 +19,8 @@ interface EngineConfig {
   seed?: number;
 }
 
+const MAX_BRANCHES = 10;
+
 // === ВСПОМОГАТЕЛЬНЫЕ ФУНКЦИИ ===
 function seededRandom(seed: number) {
   let state = seed;
@@ -65,11 +67,12 @@ export class FractalMusicEngine {
     const scale = getScaleForMood(this.config.mood);
     const root = scale[this.random.nextInt(scale.length)];
 
+    let currentTime = 0;
     const axiomEvents: FractalEvent[] = [
-      { type: 'bass', note: root, duration: 1.5, time: 0, weight: 1.0, technique: 'pluck', dynamics: 'f', phrasing: 'legato' },
-      { type: 'bass', note: root + 3, duration: 0.5, time: 1.5, weight: 0.8, technique: 'pluck', dynamics: 'mf', phrasing: 'staccato' },
-      { type: 'bass', note: root + 2, duration: 1.5, time: 2.0, weight: 0.9, technique: 'pluck', dynamics: 'f', phrasing: 'legato' },
-      { type: 'bass', note: root, duration: 0.5, time: 3.5, weight: 1.0, technique: 'pluck', dynamics: 'f', phrasing: 'staccato' }
+      { type: 'bass', note: root, duration: 1.5, time: currentTime, weight: 1.0, technique: 'pluck', dynamics: 'f', phrasing: 'legato' },
+      { type: 'bass', note: root + 3, duration: 0.5, time: (currentTime += 1.5), weight: 0.8, technique: 'pluck', dynamics: 'mf', phrasing: 'staccato' },
+      { type: 'bass', note: root + 2, duration: 1.5, time: (currentTime += 0.5), weight: 0.9, technique: 'pluck', dynamics: 'f', phrasing: 'legato' },
+      { type: 'bass', note: root, duration: 0.5, time: (currentTime += 1.5), weight: 1.0, technique: 'pluck', dynamics: 'f', phrasing: 'staccato' }
     ];
 
     this.branches = [{
@@ -94,25 +97,34 @@ export class FractalMusicEngine {
 
     // Kick on 1 and 3
     events.push({
-      type: 'drum_kick', note: 36, duration: 0.1, time: barStartTime,
+      type: 'drum_kick', note: 36, duration: 0.1, time: 0, // time is bar-local
       weight: 1.0, technique: 'hit', dynamics: 'f', phrasing: 'staccato'
     });
     events.push({
-      type: 'drum_kick', note: 36, duration: 0.1, time: barStartTime + 2 * beat,
+      type: 'drum_kick', note: 36, duration: 0.1, time: 2 * beat,
       weight: 1.0, technique: 'hit', dynamics: 'f', phrasing: 'staccato'
     });
 
     // Snare on 2 and 4
     events.push({
-      type: 'drum_snare', note: 38, duration: 0.1, time: barStartTime + 1 * beat,
+      type: 'drum_snare', note: 38, duration: 0.1, time: 1 * beat,
       weight: 1.0, technique: 'hit', dynamics: 'mf', phrasing: 'staccato'
     });
     events.push({
-      type: 'drum_snare', note: 38, duration: 0.1, time: barStartTime + 3 * beat,
+      type: 'drum_snare', note: 38, duration: 0.1, time: 3 * beat,
       weight: 1.0, technique: 'hit', dynamics: 'mf', phrasing: 'staccato'
     });
 
     return events;
+  }
+  
+  private normalizeWeights() {
+    const totalWeight = this.branches.reduce((sum, branch) => sum + branch.weight, 0);
+    if (totalWeight > 0) {
+        this.branches.forEach(branch => {
+            branch.weight /= totalWeight;
+        });
+    }
   }
 
   // === ОСНОВНОЙ МЕТОД ===
@@ -127,7 +139,7 @@ export class FractalMusicEngine {
         const k = MelancholicMinorK(branch.events[0], other.events[0], {
           mood: this.config.mood,
           delta,
-          kickTimes: [],
+          kickTimes: [], // в реальной версии — заполнить
           snareTimes: [],
           beatPhase: (this.time * this.config.tempo / 60) % 4
         });
@@ -137,6 +149,9 @@ export class FractalMusicEngine {
       return { ...branch, weight: newWeight, age: branch.age + 1 };
     });
 
+    // 1.5. Нормализация весов
+    this.normalizeWeights();
+
     // 2. Смерть слабых ветвей
     this.branches = this.branches.filter(b => b.weight > 0.05);
 
@@ -144,16 +159,24 @@ export class FractalMusicEngine {
     if (this.random.next() < 0.4 && this.epoch > 2) {
       const base = this.branches[0];
       if (base) {
+        let currentTime = 0;
+        base.events.forEach(e => { currentTime += e.duration; });
         this.branches.push({
           id: `ghost_${Date.now()}`,
-          events: [{ ...base.events[1], duration: 0.2, time: base.events[0].duration }],
+          events: [{ ...base.events[1], duration: 0.2, time: currentTime }],
           weight: 0.15,
           age: 0,
           technique: 'ghost'
         });
       }
     }
-
+    
+    // 3.5. Ограничение количества ветвей
+    if (this.branches.length > MAX_BRANCHES) {
+        this.branches.sort((a, b) => a.age - b.age); // Сортируем от самых молодых к старым
+        this.branches = this.branches.slice(0, MAX_BRANCHES); // Оставляем только самые молодые
+    }
+    
     // 4. Генерация басовых событий
     let barCurrentTime = 0;
     this.branches.forEach(branch => {
@@ -172,7 +195,7 @@ export class FractalMusicEngine {
 
     // 5. Добавляем ударные (1 такт за вызов)
     const drumEvents = this.generateDrumEvents(0, barDuration);
-    output.push(...drumEvents.map(e => ({...e, time: e.time / barDuration * 4}))); // Normalize time
+    output.push(...drumEvents); 
 
     this.time += barDuration;
     this.epoch++;

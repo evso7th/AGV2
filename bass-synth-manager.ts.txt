@@ -1,0 +1,87 @@
+// bass-synth-manager.ts
+import type { FractalEvent } from '@/types/fractal';
+import { BASS_PRESETS } from './bass-presets';
+
+export class BassSynthManager {
+  private ctx: AudioContext;
+  private destination: AudioNode;
+  private activeNotes = new Map<number, { osc1: OscillatorNode; osc2: OscillatorNode; filter: BiquadFilterNode; gain: GainNode }>();
+
+  constructor(ctx: AudioContext, destination: AudioNode) {
+    this.ctx = ctx;
+    this.destination = destination;
+  }
+
+  public play(event: FractalEvent) {
+    const { note, technique, dynamics, phrasing } = event;
+    const freq = 440 * Math.pow(2, (note - 69) / 12);
+
+    // Выбор пресета по технике
+    let preset;
+    if (technique === 'ghost') preset = BASS_PRESETS.ghostBass;
+    else if (technique === 'slap') preset = BASS_PRESETS.slapBass;
+    else preset = BASS_PRESETS.pluckBass;
+
+    // Динамика → громкость и атака
+    const velocity = dynamics === 'p' ? 0.3 : dynamics === 'mf' ? 0.6 : 0.9;
+    const attack = phrasing === 'legato' && this.activeNotes.has(note) 
+      ? 0.001 // legato = без атаки
+      : preset.attack1;
+
+    // Основной осциллятор
+    const osc1 = new OscillatorNode(this.ctx, { type: preset.wave1, frequency: freq });
+    const gain1 = new GainNode(this.ctx);
+    gain1.gain.setValueAtTime(0, this.ctx.currentTime);
+    gain1.gain.linearRampToValueAtTime(velocity, this.ctx.currentTime + attack);
+    gain1.gain.exponentialRampToValueAtTime(0.01, this.ctx.currentTime + attack + preset.decay1);
+
+    // Суб-осциллятор (низ)
+    const osc2 = new OscillatorNode(this.ctx, { type: preset.wave2, frequency: freq / 2 });
+    const gain2 = new GainNode(this.ctx);
+    gain2.gain.setValueAtTime(0, this.ctx.currentTime);
+    gain2.gain.linearRampToValueAtTime(velocity * 0.7, this.ctx.currentTime + preset.attack2);
+    gain2.gain.setValueAtTime(velocity * 0.7 * preset.sustain2, this.ctx.currentTime + preset.attack2 + preset.decay2);
+    gain2.gain.exponentialRampToValueAtTime(0.01, this.ctx.currentTime + preset.release2);
+
+    // Фильтр
+    const filter = new BiquadFilterNode(this.ctx, {
+      type: preset.filterType,
+      frequency: preset.cutoff,
+      Q: preset.resonance
+    });
+
+    // Сборка цепи
+    osc1.connect(gain1);
+    osc2.connect(gain2);
+    gain1.connect(filter);
+    gain2.connect(filter);
+    filter.connect(this.destination);
+
+    // Запуск
+    osc1.start();
+    osc2.start();
+
+    // Остановка через duration
+    const stopTime = this.ctx.currentTime + event.duration;
+    gain1.gain.setValueAtTime(gain1.gain.value, stopTime);
+    gain1.gain.exponentialRampToValueAtTime(0.001, stopTime + 0.1);
+    gain2.gain.setValueAtTime(gain2.gain.value, stopTime);
+    gain2.gain.exponentialRampToValueAtTime(0.001, stopTime + 0.1);
+
+    setTimeout(() => {
+      osc1.stop();
+      osc2.stop();
+    }, (event.duration + 0.1) * 1000);
+
+    // Сохраняем для legato
+    this.activeNotes.set(note, { osc1, osc2, filter, gain: gain1 });
+  }
+
+  public allNotesOff() {
+    this.activeNotes.forEach(({ osc1, osc2 }) => {
+      osc1.stop();
+      osc2.stop();
+    });
+    this.activeNotes.clear();
+  }
+}
