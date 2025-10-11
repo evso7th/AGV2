@@ -188,12 +188,28 @@ export class FractalMusicEngine {
     const musicalEvents = sortedEvents.filter(e => e.type !== 'drum');
     
     // --- BASS ---
-    const bassCandidates = musicalEvents.filter(e => e.midi < 55).sort((a,b)=>b.weight-a.weight);
-    if(bassCandidates.length > 0){
-        const bassNote = bassCandidates[0];
-        const bassMidi = (bassNote.midi % 12) + KEY_ROOT_MIDI - 12;
-         score.bass!.push({ midi: Math.max(BASS_MIDI_MIN, Math.min(bassMidi, BASS_MIDI_MAX)), time: 0, duration: 3.8, velocity: 0.8 });
+    const bassRootCandidates = musicalEvents.filter(e => e.midi < 55).sort((a,b)=>b.weight-a.weight);
+    if (bassRootCandidates.length > 0) {
+        const rootBassNote = (bassRootCandidates[0].midi % 12) + KEY_ROOT_MIDI - 12;
+        const step = 0.5; // 8th notes
+        const numSteps = 8;
+        const arpPattern = [0, 7, 3, 5, 0, 5, 3, 7]; // Root, 5th, min3, 4th...
+        
+        for (let i = 0; i < numSteps; i++) {
+            if (Math.random() < density * 0.9) { // High probability of playing a note
+                const degree = arpPattern[i % arpPattern.length];
+                const noteMidi = rootBassNote + degree;
+                const midi = Math.max(BASS_MIDI_MIN, Math.min(noteMidi, BASS_MIDI_MAX));
+                score.bass!.push({
+                    midi,
+                    time: i * step,
+                    duration: step * (1.2 + Math.random() * 0.8), // Slightly varied duration for groove
+                    velocity: 0.7 + Math.random() * 0.3
+                });
+            }
+        }
     }
+
 
     // --- ACCOMPANIMENT & MELODY ---
     const midHighEvents = musicalEvents.filter(e => e.midi >= 55).sort((a,b)=>a.midi - b.midi);
