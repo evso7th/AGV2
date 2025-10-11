@@ -7,7 +7,7 @@
  * Its goal is to create a continuously evolving piece of music where complexity is controlled by a 'density' parameter.
  * It is completely passive and only composes the next bar when commanded via a 'tick'.
  */
-import type { WorkerSettings, Score, Note, DrumsScore, ScoreName, InstrumentSettings, DrumSettings } from '@/types/music';
+import type { WorkerSettings, Score, Note, DrumsScore, ScoreName, InstrumentSettings, DrumSettings, InstrumentType } from '@/types/music';
 import { FractalMusicEngine } from './fractal-music-engine';
 import { MelancholicMinorK } from './resonance-matrices';
 import type { Seed, ResonanceMatrix, EngineConfig } from '@/types/fractal';
@@ -44,7 +44,7 @@ const SPARKLE_SAMPLES = [
 ];
 
 const PERCUSSION_SOUNDS: Record<string, number> = {
-    'kick': 60, 'snare': 62, 'hat': 64, 'crash': 67, 'tom1': 69, 'tom2': 71, 'tom3': 72
+    'kick': 60, 'snare': 62, 'hat': 64, 'crash': 67, 'tom1': 69, 'tom2': 71, 'tom3': 72, 'ride': 65
 };
 
 
@@ -145,33 +145,42 @@ const Composer = {
     
         switch (pattern) {
             case 'ambient_beat':
-                drums.push({ note: 'kick', time: 0, velocity: 0.8, midi: 60 });
+                drums.push({ note: 'kick', time: 0, velocity: 0.8, midi: PERCUSSION_SOUNDS['kick'] });
                 if (density > 0.3) {
                     for (let i = 0; i < 16; i++) {
-                        if (i % 4 === 2 && Math.random() < density * 0.7) drums.push({ note: 'hat', time: i * step, velocity: 0.4 * density, midi: 64 });
+                        if (i % 4 === 2 && Math.random() < density * 0.7) drums.push({ note: 'hat', time: i * step, velocity: 0.4 * density, midi: PERCUSSION_SOUNDS['hat'] });
                     }
                 }
                 if (density > 0.6 && barIndex % 2 === 0) {
-                    drums.push({ note: 'snare', time: 4 * step, velocity: 0.6, midi: 62 });
-                    drums.push({ note: 'snare', time: 12 * step, velocity: 0.6, midi: 62 });
+                    drums.push({ note: 'snare', time: 4 * step, velocity: 0.6, midi: PERCUSSION_SOUNDS['snare'] });
+                    drums.push({ note: 'snare', time: 12 * step, velocity: 0.6, midi: PERCUSSION_SOUNDS['snare'] });
                 }
                 break;
             case 'composer':
-                // Kick on 1 and 3
-                if (Math.random() < density * 0.9) drums.push({ note: 'kick', time: 0, velocity: 0.9, midi: 60 });
-                if (Math.random() < density * 0.7) drums.push({ note: 'kick', time: 8 * step, velocity: 0.8, midi: 60 });
-                // Snare on 2 and 4
-                if (Math.random() < density * 0.8) drums.push({ note: 'snare', time: 4 * step, velocity: 0.7, midi: 62 });
-                if (Math.random() < density * 0.6) drums.push({ note: 'snare', time: 12 * step, velocity: 0.6, midi: 62 });
-                // Hi-hats
-                for (let i = 0; i < 16; i++) {
-                    if (i % 2 === 0 && Math.random() < density * 0.5) drums.push({ note: 'hat', time: i * step, velocity: 0.3 + (Math.random() * 0.3), midi: 64 });
+                const isFourthBar = barIndex % 4 === 0;
+
+                // Add crash on the first beat of every 4th bar for accent
+                if (isFourthBar) {
+                    drums.push({ note: 'crash', time: 0, velocity: 0.7 * density, midi: PERCUSSION_SOUNDS['crash'] });
                 }
-                // Random percussion
-                if (Math.random() < density * 0.2) {
-                     const randomPerc = Object.keys(PERCUSSION_SOUNDS)[Math.floor(Math.random() * 7)]; // Use first 7 for variety
-                     const randomTime = Math.floor(Math.random() * 16) * step;
-                     drums.push({ note: randomPerc, time: randomTime, velocity: Math.random() * 0.4 + 0.2, midi: PERCUSSION_SOUNDS[randomPerc] });
+
+                // Kick drum
+                if (Math.random() < density * 0.9) drums.push({ note: 'kick', time: 0, velocity: 0.9, midi: PERCUSSION_SOUNDS['kick'] });
+                if (Math.random() < density * 0.6) drums.push({ note: 'kick', time: 8 * step, velocity: 0.8, midi: PERCUSSION_SOUNDS['kick'] });
+                
+                // Snare drum
+                if (Math.random() < density * 0.8) drums.push({ note: 'snare', time: 4 * step, velocity: 0.7, midi: PERCUSSION_SOUNDS['snare'] });
+                if (Math.random() < density * 0.7) drums.push({ note: 'snare', time: 12 * step, velocity: 0.6, midi: PERCUSSION_SOUNDS['snare'] });
+
+                // Hi-hats or Ride
+                const cymbal = density < 0.4 ? 'ride' : 'hat';
+                for (let i = 0; i < 16; i++) {
+                    // Don't play on the same beat as the crash
+                    if (isFourthBar && i === 0) continue;
+                    
+                    if (i % 2 === 0 && Math.random() < density * 0.7) {
+                         drums.push({ note: cymbal, time: i * step, velocity: (0.3 + (Math.random() * 0.3)) * density, midi: PERCUSSION_SOUNDS[cymbal] });
+                    }
                 }
                 break;
             case 'none':
@@ -200,7 +209,7 @@ function createNewSeed(baseConfig: Partial<EngineConfig>): Seed {
             bpm: baseConfig.bpm || 75,
             density: baseConfig.density || 0.5,
             organic: baseConfig.organic || 0.5,
-            drumSettings: baseConfig.drumSettings || { pattern: 'none', enabled: false }
+            drumSettings: baseConfig.drumSettings || { pattern: 'none', volume: 0.5, enabled: false }
         },
     };
 }
@@ -284,10 +293,13 @@ const Scheduler = {
            instrumentSettings: { ...this.settings.instrumentSettings, ...newSettings.instrumentSettings },
            textureSettings: { ...this.settings.textureSettings, ...newSettings.textureSettings },
        };
-
        if (fractalMusicEngine) {
            fractalMusicEngine.updateConfig({
-               ...this.settings
+               bpm: this.settings.bpm,
+               density: this.settings.density,
+               organic: this.settings.density,
+               drumSettings: this.settings.drumSettings,
+               lambda: 1.0 - (this.settings.density * 0.5 + 0.3)
            });
        }
        
