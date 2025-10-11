@@ -1,0 +1,191 @@
+import type { 
+  FractalEvent, 
+  Branch, 
+  ResonanceMatrix, 
+  Mood, 
+  Genre 
+} from '@/types/fractal';
+
+// === 1. КОНФИГУРАЦИЯ ===
+interface EngineConfig {
+  mood: Mood;          // 'melancholic', 'epic', etc.
+  genre: Genre;        // 'trance', 'ambient', 'progressive'
+  tempo: number;       // BPM
+  seed?: number;       // для уникальности
+}
+
+// === 2. АКСОН: БАЗОВЫЙ МОТИВ ===
+function generateAxiom(seed: number, mood: Mood): FractalEvent[] {
+  const random = seededRandom(seed);
+  const scale = getScaleForMood(mood); // например, E Dorian для меланхолии
+  const root = scale[random.nextInt(scale.length)];
+  
+  // Простой, но выразительный мотив: нисходящий контур
+  return [
+    { type: 'bass', note: root, duration: 1.5 },
+    { type: 'bass', note: root + 3, duration: 0.5 },
+    { type: 'bass', note: root + 2, duration: 1.5 },
+    { type: 'bass', note: root, duration: 0.5 }
+  ];
+}
+
+// === 3. ТРАНСФОРМАЦИИ (ШЁНБЕРГ) ===
+function transformMotif(events: FractalEvent[], type: 'inversion' | 'retrograde'): FractalEvent[] {
+  const notes = events.map(e => e.note);
+  const durations = events.map(e => e.duration);
+  const pivot = notes[0];
+  
+  let newNotes: number[];
+  if (type === 'inversion') {
+    newNotes = notes.map(n => pivot - (n - pivot));
+  } else {
+    newNotes = [...notes].reverse();
+    durations.reverse();
+  }
+  
+  return newNotes.map((note, i) => ({
+    type: 'bass',
+    note,
+    duration: durations[i]
+  }));
+}
+
+// === 4. L-СИСТЕМА (IFS-РЕЖИМ) ===
+function applyLSystem(axiom: string, rules: Record<string, string>, iterations: number): string {
+  let s = axiom;
+  for (let i = 0; i < iterations; i++) {
+    s = s.split('').map(char => rules[char] || char).join('');
+  }
+  return s;
+}
+
+// === 5. ДРАМАТУРГИЧЕСКАЯ ДУГА δ(t) (ЛОГИНОВА) ===
+function getDeltaProfile(mood: Mood): (t: number) => number {
+  return (t: number) => {
+    const phase = (t / 120) % 1; // цикл каждые 2 минуты
+    if (mood === 'melancholic') {
+      if (phase < 0.4) return 0.3 + phase * 1.5;     // медленное нарастание
+      if (phase < 0.7) return 1.0;                   // кульминация
+      return 1.0 - (phase - 0.7) * 2.3;              // затухание
+    }
+    // другие настроения...
+    return 0.5;
+  };
+}
+
+// === 6. ОСНОВНОЙ КЛАСС ===
+export class FractalMusicEngine {
+  private config: EngineConfig;
+  private branches: Branch[] = [];
+  private time = 0;
+  private lambda: number;
+  private resonanceMatrix: ResonanceMatrix;
+  private epoch = 0;
+
+  constructor(config: EngineConfig) {
+    this.config = config;
+    this.lambda = config.mood === 'melancholic' ? 0.25 : 0.15;
+    this.resonanceMatrix = loadResonanceMatrix(config.mood);
+    this.initialize();
+  }
+
+  private initialize() {
+    const seed = this.config.seed ?? Date.now();
+    const axiomEvents = generateAxiom(seed, this.config.mood);
+    this.branches = [{
+      id: 'axon',
+      events: axiomEvents,
+      weight: 1.0,
+      age: 0,
+      technique: 'pluck'
+    }];
+  }
+
+  // === ОСНОВНОЙ ЦИКЛ ГЕНЕРАЦИИ ===
+  public evolve(duration: number): FractalEvent[] {
+    const delta = getDeltaProfile(this.config.mood)(this.time);
+    const output: FractalEvent[] = [];
+
+    // 1. Обновление весов по формуле
+    this.branches = this.branches.map(branch => {
+      const resonanceSum = this.branches.reduce((sum, other) => {
+        if (other.id === branch.id) return sum;
+        const k = this.resonanceMatrix(branch.events[0], other.events[0]);
+        return sum + k * delta;
+      }, 0);
+      
+      const newWeight = (1 - this.lambda) * branch.weight + resonanceSum;
+      return { ...branch, weight: newWeight, age: branch.age + 1 };
+    });
+
+    // 2. Смерть слабых ветвей
+    this.branches = this.branches.filter(b => b.weight > 0.05);
+
+    // 3. IFS: L-система каждые 2 эпохи
+    if (this.epoch % 2 === 0 && this.epoch > 0) {
+      const lString = applyLSystem('A', { A: 'AB[+A]C', B: 'BC', C: 'A' }, 1);
+      // Генерация новых ветвей по L-строке...
+    }
+
+    // 4. DLA: стохастическое исследование
+    if (Math.random() < 0.3 && this.branches.length < 5) {
+      const base = this.branches[0];
+      const newEvents = transformMotif(base.events, 'inversion');
+      this.branches.push({
+        id: `dla_${Date.now()}`,
+        events: newEvents,
+        weight: 0.2,
+        age: 0,
+        technique: Math.random() > 0.7 ? 'slap' : 'ghost'
+      });
+    }
+
+    // 5. Генерация событий для вывода
+    this.branches.forEach(branch => {
+      branch.events.forEach(event => {
+        output.push({
+          ...event,
+          time: this.time,
+          weight: branch.weight,
+          technique: branch.technique,
+          dynamics: this.weightToDynamics(branch.weight),
+          phrasing: branch.weight > 0.7 ? 'legato' : 'staccato'
+        });
+        this.time += event.duration * (60 / this.config.tempo);
+      });
+    });
+
+    this.epoch++;
+    return output;
+  }
+
+  private weightToDynamics(weight: number): 'p' | 'mf' | 'f' {
+    if (weight < 0.3) return 'p';
+    if (weight < 0.7) return 'mf';
+    return 'f';
+  }
+}
+
+// === ВСПОМОГАТЕЛЬНЫЕ ФУНКЦИИ ===
+function seededRandom(seed: number) {
+  let state = seed;
+  return {
+    next: () => {
+      state = (state * 1664525 + 1013904223) % Math.pow(2, 32);
+      return state / Math.pow(2, 32);
+    },
+    nextInt: (max: number) => Math.floor(this.next() * max)
+  };
+}
+
+function getScaleForMood(mood: Mood): number[] {
+  const E = 64; // E4
+  if (mood === 'melancholic') return [E, E+2, E+3, E+5, E+7, E+9, E+10]; // E Dorian
+  return [E, E+2, E+4, E+5, E+7, E+9, E+11]; // E Major
+}
+
+function loadResonanceMatrix(mood: Mood): ResonanceMatrix {
+  // Возвращает настоящую матрицу из resonance-matrices.ts
+  // с учётом лада, ритма, техники
+  return MelancholicMinorK; // упрощённо
+}
