@@ -239,7 +239,7 @@ export class FractalMusicEngine {
         const avgDuration = score.melody.reduce((sum, n) => sum + n.duration, 0) / score.melody.length;
         const avgMidi = score.melody.reduce((sum, n) => sum + n.midi, 0) / score.melody.length;
         
-        if(avgMidi > 78) melodyHint = 'E-Bells_melody';
+        if (avgMidi > 78) melodyHint = Math.random() < 0.5 ? 'piano' : 'acousticGuitarSolo';
         else if (avgDuration < 1.9) melodyHint = 'acousticGuitarSolo';
         else if (avgDuration > 3.0) melodyHint = 'organ';
         else melodyHint = (Math.random() < 0.5) ? 'flute' : 'mellotron';
