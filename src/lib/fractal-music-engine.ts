@@ -13,14 +13,8 @@ const MAX_MIDI = KEY_ROOT_MIDI + (NUM_OCTAVES * 12);
 const BASS_MIDI_MIN = 32; // G#1
 const BASS_MIDI_MAX = 50; // D3
 
-// --- Note Generation Helper ---
-const getNoteFromDegree = (degree: number, scale: number[], root: number, octave: number): number => {
-    const scaleLength = scale.length;
-    // Ensure the degree is a valid index within the scale array
-    const scaleIndex = ((degree % scaleLength) + scaleLength) % scaleLength;
-    const noteInScale = scale[scaleIndex];
-    const octaveOffset = Math.floor(degree / scaleLength);
-    return root + (octave + octaveOffset) * 12 + noteInScale;
+const PERCUSSION_SOUNDS: Record<string, number> = {
+    'kick': 60, 'snare': 62, 'hat': 64, 'crash': 67, 'tom1': 69, 'tom2': 71, 'tom3': 72, 'ride': 65
 };
 
 
@@ -32,6 +26,8 @@ export class FractalMusicEngine {
   private availableEvents: EventID[] = [];
   private tickCount: number = 0;
   private melodyState = { lastDegree: 14, direction: 1 }; // State for melody generation
+  private barCount: number = 0;
+
 
   constructor(seed: Seed, availableMatricesRepo: Record<string, ResonanceMatrix>) {
     this.state = new Map(Object.entries(seed.initialState));
@@ -46,7 +42,6 @@ export class FractalMusicEngine {
   }
 
   private generateEventUniverse() {
-      // Instrument events
       const instruments = ['piano', 'violin', 'flute', 'synth', 'organ', 'mellotron', 'theremin', 'E-Bells_melody', 'G-Drops', 'acousticGuitarSolo', 'electricGuitar', 'guitarChords'];
       
       for (const instrument of instruments) {
@@ -60,17 +55,16 @@ export class FractalMusicEngine {
         }
       }
 
-      // Drum events
-      const drumSamples = ['kick', 'snare', 'hat', 'crash', 'tom1', 'tom2', 'tom3'];
+      const drumSamples = ['kick', 'snare', 'hat', 'crash', 'tom1', 'tom2', 'tom3', 'ride'];
       for (const drum of drumSamples) {
           this.availableEvents.push(`drum_${drum}`);
       }
 
-      this.availableEvents = [...new Set(this.availableEvents)]; // Ensure uniqueness
+      this.availableEvents = [...new Set(this.availableEvents)];
   }
 
   public updateConfig(newConfig: Partial<EngineConfig>) {
-    this.config = { ...this.config, ...newConfig };
+    this.config = { ...this.config, ...newConfig, drumSettings: {...this.config.drumSettings, ...newConfig.drumSettings} };
   }
   
   public getConfig(): EngineConfig {
@@ -79,35 +73,7 @@ export class FractalMusicEngine {
 
   private generateImpulse(): Map<EventID, number> {
     const impulse = new Map<EventID, number>();
-    const impulseStrength = this.config.density;
-    
-    // Check if drum pattern is 'composer'
-    if (this.config.drumSettings?.pattern === 'composer' && this.config.drumSettings?.enabled) {
-      const beatsPerBar = 4;
-      const sixteenthsPerBar = 16;
-      const step = this.tickCount % sixteenthsPerBar;
-
-      // Kick on 1 and 3
-      if (step === 0 || step === 8) {
-          if (Math.random() < 0.9 * impulseStrength) impulse.set('drum_kick', impulseStrength);
-      }
-      // Snare on 2 and 4
-      if (step === 4 || step === 12) {
-          if (Math.random() < 0.7 * impulseStrength) impulse.set('drum_snare', 0.8 * impulseStrength);
-      }
-      // Hi-hats
-      if (Math.random() < 0.6 * impulseStrength) {
-          impulse.set('drum_hat', 0.5 * impulseStrength);
-      }
-    }
-    
-    // Chance to excite a random melodic note
-    if (Math.random() < impulseStrength * 0.2) {
-        const melodicEvents = this.availableEvents.filter(e => !e.startsWith('drum_'));
-        const eventToExcite = melodicEvents[Math.floor(Math.random() * melodicEvents.length)];
-        impulse.set(eventToExcite, impulseStrength * 0.5);
-    }
-
+    // Impulses are now primarily driven by the drum pattern logic in generateScore
     return impulse;
   }
 
@@ -166,74 +132,134 @@ export class FractalMusicEngine {
     
     this.normalizeState(nextState);
     this.state = nextState;
+    this.barCount++;
   }
+
+    private generateDrums(): Note[] {
+        const { density, bpm, drumSettings } = this.config;
+        if (!drumSettings?.enabled || drumSettings.pattern !== 'composer') {
+            return [];
+        }
+
+        const barDuration = (60 / bpm) * 4;
+        const sixteenthStep = barDuration / 16;
+        const drumScore: Note[] = [];
+
+        // --- Logic from drumtech.txt ---
+        const beatsPerBar = 4;
+        
+        // Crash on the 1st beat of every 4th bar
+        if (this.barCount % 4 === 0 && Math.random() < density * 0.8) {
+            drumScore.push({ midi: PERCUSSION_SOUNDS['crash'], time: 0, duration: 0.5, velocity: 0.8 * density });
+        }
+
+        for (let i = 0; i < 16; i++) {
+            const time = i * sixteenthStep;
+            
+            // Kick on 1 and 3 (beats 0 and 8 in 16ths)
+            if (i === 0 || i === 8) {
+                if (Math.random() < 0.9 * density) {
+                    drumScore.push({ midi: PERCUSSION_SOUNDS['kick'], time: time, duration: 0.1, velocity: 0.95 });
+                }
+            }
+
+            // Snare on 2 and 4 (beats 4 and 12 in 16ths)
+            if (i === 4 || i === 12) {
+                if (Math.random() < 0.85 * density) {
+                    drumScore.push({ midi: PERCUSSION_SOUNDS['snare'], time: time, duration: 0.1, velocity: 0.8 * density });
+                }
+            }
+
+            // Hi-hats on 8th notes
+            if (i % 2 === 0) { // every 8th note
+                if (Math.random() < 0.8 * density) {
+                    // Don't play hi-hat if a crash is playing
+                    const isCrashPlaying = this.barCount % 4 === 0 && i === 0;
+                    if (!isCrashPlaying) {
+                       const cymbal = density < 0.4 ? 'ride' : 'hat';
+                       drumScore.push({ midi: PERCUSSION_SOUNDS[cymbal], time: time, duration: 0.1, velocity: (0.4 + Math.random() * 0.2) * density });
+                    }
+                }
+            }
+        }
+        
+        // Fill at the end of every 8th bar
+        if (this.barCount % 8 === 7 && density > 0.6) {
+            const fillStartTime = 14 * sixteenthStep; // Start fill on the last half beat
+            drumScore.push({ midi: PERCUSSION_SOUNDS['tom1'], time: fillStartTime, duration: 0.1, velocity: 0.7 });
+            drumScore.push({ midi: PERCUSSION_SOUNDS['tom2'], time: fillStartTime + sixteenthStep, duration: 0.1, velocity: 0.75 });
+        }
+
+        // Map abstract note names to midi for the drum machine
+        return drumScore.map(n => ({...n, note: Object.keys(PERCUSSION_SOUNDS).find(key => PERCUSSION_SOUNDS[key] === n.midi) || 'kick' }));
+    }
+
 
   public generateScore(): Score {
     const score: Score = { melody: [], accompaniment: [], bass: [], drums: [] };
     const density = this.config.density;
+    const barDuration = (60 / this.config.bpm) * 4;
 
     const sortedEvents = [...this.state.entries()]
         .map(([id, weight]) => {
             const [type, value] = id.split('_');
-            return { id, weight, type, value, midi: parseInt(value, 10) };
+            const midi = parseInt(value, 10);
+            return { id, weight, type, value, midi: isNaN(midi) ? -1 : midi };
         })
-        .filter(event => event.weight > 0.001)
+        .filter(event => event.weight > 0.001 && event.midi !== -1)
         .sort((a, b) => b.weight - a.weight);
 
     // --- BASS ---
-    const bassCandidates = sortedEvents.filter(e => e.type !== 'drum' && e.midi < 55);
-    let rootBassNote = KEY_ROOT_MIDI; // Fallback to E2
-    if (bassCandidates.length > 0) {
-        rootBassNote = bassCandidates[0].midi % 12 + (KEY_ROOT_MIDI - (KEY_ROOT_MIDI % 12)); // Find root note in the correct octave
-    }
+    const bassRootCandidates = sortedEvents.filter(e => e.midi >= BASS_MIDI_MIN && e.midi <= BASS_MIDI_MAX);
     
-    const bassNotesPerBar = Math.floor(density * 8) + 1; // From 1 to 9 notes
-    const step = 4 / bassNotesPerBar; // Duration of each step in a 4-beat bar
-    const arpPattern = [0, 7, 3, 5, 2, 5, 0, 7]; // More interesting pattern
-
-    for (let i = 0; i < bassNotesPerBar; i++) {
-        const degree = arpPattern[i % arpPattern.length];
-        const noteMidi = rootBassNote + degree;
-        const midi = Math.max(BASS_MIDI_MIN, Math.min(noteMidi, BASS_MIDI_MAX));
-        
-        score.bass!.push({
-            midi,
-            time: i * step * (60 / this.config.bpm), // convert beat to time
-            duration: step * (60 / this.config.bpm) * (0.8 + Math.random() * 0.4),
-            velocity: 0.6 + Math.random() * 0.3,
-        });
+    let rootBassNote = KEY_ROOT_MIDI; // Fallback to E2
+    if (bassRootCandidates.length > 0) {
+        // Find the root of the most active bass note
+        rootBassNote = bassRootCandidates[0].midi % 12 + (KEY_ROOT_MIDI % 12);
     }
 
-    // --- DRUMS (from fractal state) ---
-    if (this.config.drumSettings?.pattern === 'composer') {
-        const drumEvents = sortedEvents.filter(e => e.type === 'drum' && e.weight > 0.05);
-        let time = 0;
-        for (const event of drumEvents) {
-            score.drums!.push({ note: event.value, time: time, velocity: event.weight * 5, midi: 0 });
-            time += (1 / (density * 2 + 1));
-            if (time >= 4 * (60 / this.config.bpm)) break;
+    const bassNotesPerBar = Math.floor(density * 4) + 1; // 1 to 5 notes
+    const step = barDuration / (bassNotesPerBar * 2); // 8th note steps
+    const arpPattern = [0, 7, 3, 5, 2, 5, 0, 7]; 
+    
+    for (let i = 0; i < bassNotesPerBar * 2; i++) {
+        if (Math.random() < density) {
+            const degree = arpPattern[i % arpPattern.length];
+            const noteMidi = rootBassNote + SCALE_DEGREES[degree % SCALE_DEGREES.length];
+            const midi = Math.max(BASS_MIDI_MIN, Math.min(noteMidi, BASS_MIDI_MAX));
+            
+            score.bass!.push({
+                midi,
+                time: i * step,
+                duration: step * (1 + Math.random()),
+                velocity: 0.6 + Math.random() * 0.3,
+            });
         }
     }
+
+
+    // --- DRUMS ---
+    score.drums = this.generateDrums();
     
     // --- ACCOMPANIMENT & MELODY ---
-    const midHighEvents = sortedEvents.filter(e => e.type !== 'drum' && e.midi >= 55);
+    const midHighEvents = sortedEvents.filter(e => e.midi >= 55 && e.midi <= 90);
     
     let melodyNotesCount = Math.floor(density * 5) + 1;
-    let melodyTime = Math.random() * 0.5;
+    let melodyTime = Math.random() * 0.5 * barDuration;
     for(let i = 0; i < melodyNotesCount && midHighEvents.length > i; i++) {
         const event = midHighEvents[i];
         const midi = event.midi;
-        const duration = 0.5 + Math.random() * 1.5;
+        const duration = (0.5 + Math.random() * 1.5) * (barDuration / 4);
         score.melody!.push({ midi, time: melodyTime, duration, velocity: 0.6 + Math.random() * 0.2 });
-        melodyTime += (duration * 0.5) + (Math.random() * 0.5);
+        melodyTime += (duration * 0.5) + (Math.random() * 0.5 * barDuration / 4);
     }
     
     let accompNotesCount = Math.floor(density * 3);
     let accompEvents = midHighEvents.slice(melodyNotesCount, melodyNotesCount + accompNotesCount);
-    let timeOffset = 0.2;
+    let timeOffset = 0.2 * barDuration;
     accompEvents.forEach(event => {
-        score.accompaniment!.push({ midi: event.midi, time: timeOffset, duration: 3.0 + Math.random(), velocity: 0.4 + event.weight * 0.4 });
-        timeOffset += 1.0 + Math.random();
+        score.accompaniment!.push({ midi: event.midi, time: timeOffset, duration: (3.0 + Math.random()) * (barDuration / 4), velocity: 0.4 + event.weight * 0.4 });
+        timeOffset += (1.0 + Math.random()) * (barDuration / 4);
     });
 
 
@@ -277,3 +303,5 @@ export class FractalMusicEngine {
     return score;
   }
 }
+
+    
