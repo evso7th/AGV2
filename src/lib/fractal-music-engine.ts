@@ -1,109 +1,77 @@
 
-import type { 
-  FractalEvent, 
-  Branch, 
-  ResonanceMatrix, 
-  Mood, 
-  Genre, 
-  EngineConfig,
-  Technique,
-  Phrasing,
-  Dynamics
-} from '@/types/fractal';
+import type { FractalEvent, Mood, Genre } from '@/types/fractal';
+import { MelancholicMinorK } from './resonance-matrices';
 
-// === 1. КОНФИГУРАЦИЯ ===
-// (Moved to types/fractal.ts)
+// === ТИПЫ ===
+export type Branch = {
+  id: string;
+  events: FractalEvent[];
+  weight: number;
+  age: number;
+  technique: 'pluck' | 'ghost' | 'slap';
+};
 
-
-// === 2. АКСОН: БАЗОВЫЙ МОТИВ ===
-function generateAxiom(seed: number, mood: Mood): FractalEvent[] {
-  const random = seededRandom(seed);
-  const scale = getScaleForMood(mood);
-  const rootNote = scale[random.nextInt(scale.length)];
-  
-  // Простой, но выразительный мотив: нисходящий контур
-  return [
-    { id: `evt-${Date.now()}-0`, type: 'bass', note: rootNote, duration: 1.5, time: 0, technique: 'pluck', dynamics: 'mf', phrasing: 'legato', weight: 1.0 },
-    { id: `evt-${Date.now()}-1`, type: 'bass', note: rootNote + 3, duration: 0.5, time: 1.5, technique: 'pluck', dynamics: 'p', phrasing: 'staccato', weight: 0.8 },
-    { id: `evt-${Date.now()}-2`, type: 'bass', note: rootNote + 2, duration: 1.5, time: 2, technique: 'pluck', dynamics: 'mf', phrasing: 'legato', weight: 0.9 },
-    { id: `evt-${Date.now()}-3`, type: 'bass', note: rootNote, duration: 0.5, time: 3.5, technique: 'pluck', dynamics: 'p', phrasing: 'staccato', weight: 1.0 }
-  ];
+// === КОНФИГУРАЦИЯ ===
+interface EngineConfig {
+  mood: Mood;      // 'melancholic', 'epic', 'dreamy', 'dark'
+  genre: Genre;    // 'trance', 'ambient', 'progressive'
+  tempo: number;   // BPM
+  seed?: number;
 }
 
-// === 3. ТРАНСФОРМАЦИИ (ШЁНБЕРГ) ===
-function transformMotif(events: FractalEvent[], type: 'inversion' | 'retrograde'): FractalEvent[] {
-    const notes = events.map(e => e.note);
-    const durations = events.map(e => e.duration);
-    const pivot = notes[0];
-
-    if (type === 'inversion') {
-        const newNotes = notes.map(n => pivot - (n - pivot));
-        return events.map((event, i) => ({
-            ...event,
-            id: `${event.id}-inv`,
-            note: newNotes[i],
-        }));
-    } else { // retrograde
-        const reversedEvents = [...events].reverse();
-        
-        const newEvents: FractalEvent[] = [];
-        let currentTime = 0;
-        for(let i = 0; i < reversedEvents.length; i++) {
-            const originalEvent = reversedEvents[i];
-            const newEvent: FractalEvent = {
-                ...originalEvent,
-                id: `${originalEvent.id}-ret`,
-                time: currentTime,
-            };
-            newEvents.push(newEvent);
-            currentTime += originalEvent.duration;
-        }
-        return newEvents;
-    }
-}
-
-// === 4. L-СИСТЕМА (IFS-РЕЖИМ) ===
-function applyLSystem(axiom: string, rules: Record<string, string>, iterations: number): string {
-  let s = axiom;
-  for (let i = 0; i < iterations; i++) {
-    s = s.split('').map(char => rules[char] || char).join('');
-  }
-  return s;
-}
-
-// === 5. ДРАМАТУРГИЧЕСКАЯ ДУГА δ(t) (ЛОГИНОВА) ===
-function getDeltaProfile(mood: Mood): (t: number) => number {
-  return (t: number) => {
-    const phase = (t / 120) % 1; // цикл каждые 2 минуты
-    if (mood === 'melancholic') {
-      if (phase < 0.4) return 0.3 + phase * 1.5;     // медленное нарастание
-      if (phase < 0.7) return 1.0;                   // кульминация
-      return 1.0 - (phase - 0.7) * 2.3;              // затухание
-    }
-    // другие настроения...
-    return 0.5;
+// === ВСПОМОГАТЕЛЬНЫЕ ФУНКЦИИ ===
+function seededRandom(seed: number) {
+  let state = seed;
+  const random = {
+    next: () => {
+      state = (state * 1664525 + 1013904223) % Math.pow(2, 32);
+      return state / Math.pow(2, 32);
+    },
+    nextInt: (max: number) => Math.floor(random.next() * max)
   };
+  return random;
 }
 
-// === 6. ОСНОВНОЙ КЛАСС ===
+function getScaleForMood(mood: Mood): number[] {
+  const E2 = 40; // E2 — реальный бас
+  if (mood === 'melancholic') return [E2, E2+2, E2+3, E2+5, E2+7, E2+9, E2+10]; // E Dorian
+  return [E2, E2+2, E2+4, E2+5, E2+7, E2+9, E2+11]; // E Major
+}
+
+function weightToDynamics(weight: number): 'p' | 'mf' | 'f' {
+  if (weight < 0.3) return 'p';
+  if (weight < 0.7) return 'mf';
+  return 'f';
+}
+
+// === ОСНОВНОЙ КЛАСС ===
 export class FractalMusicEngine {
   private config: EngineConfig;
   private branches: Branch[] = [];
-  private time = 0;
+  private time: number = 0;
   private lambda: number;
-  private resonanceMatrix: ResonanceMatrix;
   private epoch = 0;
+  private random;
 
   constructor(config: EngineConfig) {
     this.config = config;
     this.lambda = config.mood === 'melancholic' ? 0.25 : 0.15;
-    this.resonanceMatrix = loadResonanceMatrix(config.mood);
+    const seed = this.config.seed ?? Date.now();
+    this.random = seededRandom(seed);
     this.initialize();
   }
 
   private initialize() {
-    const seed = this.config.seed ?? Date.now();
-    const axiomEvents = generateAxiom(seed, this.config.mood);
+    const scale = getScaleForMood(this.config.mood);
+    const root = scale[this.random.nextInt(scale.length)];
+
+    const axiomEvents: FractalEvent[] = [
+      { type: 'bass', note: root, duration: 1.5, time: 0, weight: 1.0, technique: 'pluck', dynamics: 'f', phrasing: 'legato' },
+      { type: 'bass', note: root + 3, duration: 0.5, time: 1.5, weight: 0.8, technique: 'pluck', dynamics: 'mf', phrasing: 'staccato' },
+      { type: 'bass', note: root + 2, duration: 1.5, time: 2.0, weight: 0.9, technique: 'pluck', dynamics: 'f', phrasing: 'legato' },
+      { type: 'bass', note: root, duration: 0.5, time: 3.5, weight: 1.0, technique: 'pluck', dynamics: 'f', phrasing: 'staccato' }
+    ];
+
     this.branches = [{
       id: 'axon',
       events: axiomEvents,
@@ -112,134 +80,116 @@ export class FractalMusicEngine {
       technique: 'pluck'
     }];
   }
-  
-  public updateConfig(newConfig: Partial<EngineConfig>) {
-    this.config = { ...this.config, ...newConfig };
+
+    public updateConfig(newConfig: Partial<EngineConfig>) {
+        this.config = { ...this.config, ...newConfig };
+        this.lambda = this.config.mood === 'melancholic' ? 0.25 : 0.15;
+    }
+
+
+  // === ГЕНЕРАЦИЯ УДАРНЫХ (4/4 ПАТТЕРН) ===
+  private generateDrumEvents(barStartTime: number, barDuration: number): FractalEvent[] {
+    const events: FractalEvent[] = [];
+    const beat = barDuration / 4;
+
+    // Kick on 1 and 3
+    events.push({
+      type: 'drum_kick', note: 36, duration: 0.1, time: barStartTime,
+      weight: 1.0, technique: 'hit', dynamics: 'f', phrasing: 'staccato'
+    });
+    events.push({
+      type: 'drum_kick', note: 36, duration: 0.1, time: barStartTime + 2 * beat,
+      weight: 1.0, technique: 'hit', dynamics: 'f', phrasing: 'staccato'
+    });
+
+    // Snare on 2 and 4
+    events.push({
+      type: 'drum_snare', note: 38, duration: 0.1, time: barStartTime + 1 * beat,
+      weight: 1.0, technique: 'hit', dynamics: 'mf', phrasing: 'staccato'
+    });
+    events.push({
+      type: 'drum_snare', note: 38, duration: 0.1, time: barStartTime + 3 * beat,
+      weight: 1.0, technique: 'hit', dynamics: 'mf', phrasing: 'staccato'
+    });
+
+    return events;
   }
 
-
-  // === ОСНОВНОЙ ЦИКЛ ГЕНЕРАЦИИ ===
-  public evolve(duration: number): FractalEvent[] {
-    const delta = getDeltaProfile(this.config.mood)(this.time);
+  // === ОСНОВНОЙ МЕТОД ===
+  public evolve(barDuration: number): FractalEvent[] {
+    const delta = this.getDeltaProfile()(this.time);
     const output: FractalEvent[] = [];
-    const beatDuration = 60 / this.config.tempo;
-    const { drumSettings } = this.config;
 
     // 1. Обновление весов по формуле
     this.branches = this.branches.map(branch => {
-      let resonanceSum = 0;
-      for (const other of this.branches) {
-        if (other.id === branch.id) continue;
-        const k = this.resonanceMatrix(branch.events[0].id!, other.events[0].id!);
-        resonanceSum += k * delta;
-      }
-      
+      const resonanceSum = this.branches.reduce((sum, other) => {
+        if (other.id === branch.id) return sum;
+        const k = MelancholicMinorK(branch.events[0], other.events[0], {
+          mood: this.config.mood,
+          delta,
+          kickTimes: [],
+          snareTimes: [],
+          beatPhase: (this.time * this.config.tempo / 60) % 4
+        });
+        return sum + k * delta;
+      }, 0);
       const newWeight = (1 - this.lambda) * branch.weight + resonanceSum;
       return { ...branch, weight: newWeight, age: branch.age + 1 };
     });
 
     // 2. Смерть слабых ветвей
     this.branches = this.branches.filter(b => b.weight > 0.05);
-    if(this.branches.length === 0) this.initialize(); // Re-initialize if all branches die
 
-    // 3. IFS: L-система каждые 2 эпохи
-    if (this.epoch % 2 === 0 && this.epoch > 0) {
-      const lString = applyLSystem('A', { A: 'AB[+A]C', B: 'BC', C: 'A' }, 1);
-      // Генерация новых ветвей по L-строке...
-    }
-
-    // 4. DLA: стохастическое исследование (мутация)
-    if (Math.random() < 0.3 * delta && this.branches.length < 5) {
-      const base = this.branches[Math.floor(Math.random() * this.branches.length)];
+    // 3. DLA: иногда добавляем ghost notes
+    if (this.random.next() < 0.4 && this.epoch > 2) {
+      const base = this.branches[0];
       if (base) {
-          const transformType = Math.random() < 0.5 ? 'inversion' : 'retrograde';
-          const newEvents = transformMotif(base.events, transformType);
-          this.branches.push({
-            id: `dla_${Date.now()}`,
-            events: newEvents.map(e => ({...e, weight: 0.2, technique: Math.random() > 0.7 ? 'slap' : 'ghost'})),
-            weight: 0.2,
-            age: 0,
-            technique: Math.random() > 0.7 ? 'slap' : 'ghost'
-          });
+        this.branches.push({
+          id: `ghost_${Date.now()}`,
+          events: [{ ...base.events[1], duration: 0.2, time: base.events[0].duration }],
+          weight: 0.15,
+          age: 0,
+          technique: 'ghost'
+        });
       }
     }
 
-    // 5. Генерация событий для вывода
+    // 4. Генерация басовых событий
+    let barCurrentTime = 0;
     this.branches.forEach(branch => {
-      let eventTime = 0;
       branch.events.forEach(event => {
         output.push({
           ...event,
-          id: `${event.type}_${event.note}_${this.time + eventTime}`, // Add ID to event
-          time: eventTime,
+          time: barCurrentTime, // Use bar-local time
           weight: branch.weight,
           technique: branch.technique,
-          dynamics: this.weightToDynamics(branch.weight),
+          dynamics: weightToDynamics(branch.weight),
           phrasing: branch.weight > 0.7 ? 'legato' : 'staccato'
         });
-        eventTime += event.duration;
+        barCurrentTime += event.duration * (60 / this.config.tempo);
       });
     });
 
-     // --- Drum Generation ---
-    if (drumSettings?.enabled) {
-        const sixteenth = beatDuration / 4;
-        if (drumSettings.pattern === 'composer' || drumSettings.pattern === 'ambient_beat') {
-             if (Math.random() < this.config.density) {
-                output.push({ id: `drum_kick_0`, type: 'drum_kick', note: 60, time: 0, duration: 0.1, technique: 'pluck', phrasing: 'staccato', dynamics: 'f', weight: 0.9 * (drumSettings.kickVolume ?? 1.0) });
-             }
-             if (Math.random() < this.config.density * 0.8) {
-                output.push({ id: `drum_kick_8`, type: 'drum_kick', note: 60, time: 8 * sixteenth, duration: 0.1, technique: 'pluck', phrasing: 'staccato', dynamics: 'mf', weight: 0.8 * (drumSettings.kickVolume ?? 1.0) });
-             }
-             if (Math.random() < this.config.density) {
-                output.push({ id: `drum_snare_4`, type: 'drum_snare', note: 62, time: 4 * sixteenth, duration: 0.1, technique: 'pluck', phrasing: 'staccato', dynamics: 'f', weight: 0.7 });
-             }
-             if (Math.random() < this.config.density * 0.6) {
-                output.push({ id: `drum_snare_12`, type: 'drum_snare', note: 62, time: 12 * sixteenth, duration: 0.1, technique: 'pluck', phrasing: 'staccato', dynamics: 'p', weight: 0.6 });
-             }
-        }
-    }
+    // 5. Добавляем ударные (1 такт за вызов)
+    const drumEvents = this.generateDrumEvents(0, barDuration);
+    output.push(...drumEvents.map(e => ({...e, time: e.time / barDuration * 4}))); // Normalize time
 
-
-    this.time += beatDuration * 4;
+    this.time += barDuration;
     this.epoch++;
-
-    const bassEvents = output.filter(e => e.type === 'bass');
-    const drumEvents = output.filter(e => e.type.startsWith('drum_'));
-    console.log('[NFM Evolve] Generated Events. Bass:', bassEvents, 'Drums:', drumEvents);
     
+    console.log('[NFM Evolve] Generated Events:', output);
     return output;
   }
 
-  private weightToDynamics(weight: number): Dynamics {
-    if (weight < 0.3) return 'p';
-    if (weight < 0.7) return 'mf';
-    return 'f';
+  private getDeltaProfile(): (t: number) => number {
+    return (t: number) => {
+      const phase = (t / 120) % 1;
+      if (this.config.mood === 'melancholic') {
+        if (phase < 0.4) return 0.3 + phase * 1.5;
+        if (phase < 0.7) return 1.0;
+        return 1.0 - (phase - 0.7) * 2.3;
+      }
+      return 0.5;
+    };
   }
 }
-
-// === ВСПОМОГАТЕЛЬНЫЕ ФУНКЦИИ ===
-function seededRandom(seed: number) {
-  let state = seed;
-  const next = () => {
-      state = (state * 1664525 + 1013904223) % Math.pow(2, 32);
-      return state / Math.pow(2, 32);
-  };
-  return {
-    next: next,
-    nextInt: (max: number) => Math.floor(next() * max)
-  };
-}
-
-function getScaleForMood(mood: Mood): number[] {
-  const E = 40; // E2 as base
-  if (mood === 'melancholic') return [E, E+2, E+3, E+5, E+7, E+9, E+10]; // E Dorian
-  return [E, E+2, E+4, E+5, E+7, E+9, E+11]; // E Major
-}
-
-function loadResonanceMatrix(mood: Mood): ResonanceMatrix {
-  // Currently returns a placeholder. Should load from `resonance-matrices.ts` in a real scenario.
-  return (eventA: string, eventB: string) => 0.5; 
-}
-
-    
