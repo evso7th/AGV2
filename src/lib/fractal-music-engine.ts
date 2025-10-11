@@ -44,22 +44,19 @@ function transformMotif(events: FractalEvent[], type: 'inversion' | 'retrograde'
             note: newNotes[i],
         }));
     } else { // retrograde
-        const reversedNotes = [...notes].reverse();
-        const reversedDurations = [...durations].reverse();
         const reversedEvents = [...events].reverse();
         
         const newEvents: FractalEvent[] = [];
         let currentTime = 0;
         for(let i = 0; i < reversedEvents.length; i++) {
+            const originalEvent = reversedEvents[i];
             const newEvent: FractalEvent = {
-                ...reversedEvents[i],
-                id: `${reversedEvents[i].id}-ret`,
-                note: reversedNotes[i],
+                ...originalEvent,
+                id: `${originalEvent.id}-ret`,
                 time: currentTime,
-                duration: reversedDurations[i],
             };
             newEvents.push(newEvent);
-            currentTime += reversedDurations[i];
+            currentTime += originalEvent.duration;
         }
         return newEvents;
     }
@@ -168,18 +165,19 @@ export class FractalMusicEngine {
     }
 
     // 5. Генерация событий для вывода
-    const currentBarTime = 0; // Time within the bar, gets scaled later
     this.branches.forEach(branch => {
+      let eventTime = 0;
       branch.events.forEach(event => {
         output.push({
           ...event,
-          id: `${event.type}_${event.note}_${this.time}`, // Add ID to event
-          time: currentBarTime + event.time * beatDuration,
+          id: `${event.type}_${event.note}_${this.time + eventTime}`, // Add ID to event
+          time: eventTime,
           weight: branch.weight,
           technique: branch.technique,
           dynamics: this.weightToDynamics(branch.weight),
           phrasing: branch.weight > 0.7 ? 'legato' : 'staccato'
         });
+        eventTime += event.duration;
       });
     });
 
