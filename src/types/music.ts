@@ -72,6 +72,7 @@ export type InstrumentSettings = {
 export type DrumSettings = {
     pattern: 'ambient_beat' | 'composer' | 'none';
     volume: number;
+    kickVolume: number;
     enabled: boolean;
 };
 

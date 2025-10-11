@@ -270,6 +270,11 @@ export function AuraGrooveV2({
                               <Slider value={[drumSettings.volume]} max={1} step={0.05} onValueChange={(v) => setDrumSettings(d => ({...d, volume: v[0]}))} disabled={isInitializing || drumSettings.pattern === 'none'}/>
                                <span className="text-xs w-8 text-right font-mono">{Math.round(drumSettings.volume * 100)}</span>
                           </div>
+                           <div className="flex items-center gap-2 pt-2">
+                              <Label className="text-xs text-muted-foreground"><Speaker className="h-4 w-4"/> Kick</Label>
+                              <Slider value={[drumSettings.kickVolume]} max={1.5} step={0.05} onValueChange={(v) => setDrumSettings(d => ({...d, kickVolume: v[0]}))} disabled={isInitializing || drumSettings.pattern === 'none'}/>
+                               <span className="text-xs w-8 text-right font-mono">{Math.round(drumSettings.kickVolume * 100)}</span>
+                          </div>
                       </div>
                   </CardContent>
               </Card>

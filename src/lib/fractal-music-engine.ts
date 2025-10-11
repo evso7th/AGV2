@@ -144,48 +144,37 @@ export class FractalMusicEngine {
         const barDuration = (60 / bpm) * 4;
         const sixteenthStep = barDuration / 16;
         const drumScore: Note[] = [];
+        const kickVolume = drumSettings.kickVolume ?? 1.0;
 
         // --- Logic from drumtech.txt ---
-        const beatsPerBar = 4;
         
         // Crash on the 1st beat of every 4th bar
         if (this.barCount % 4 === 0 && Math.random() < density * 0.8) {
             drumScore.push({ midi: PERCUSSION_SOUNDS['crash'], time: 0, duration: 0.5, velocity: 0.8 * density });
         }
 
+        // Kick on 1 and 3 (beats 0 and 8 in 16ths)
+        if (Math.random() < 0.9 * density) drumScore.push({ midi: PERCUSSION_SOUNDS['kick'], time: 0, duration: 0.1, velocity: 0.95 * kickVolume });
+        if (Math.random() < 0.6 * density) drumScore.push({ midi: PERCUSSION_SOUNDS['kick'], time: 8 * sixteenthStep, duration: 0.1, velocity: 0.8 * kickVolume });
+
+        // Snare on 2 and 4 (beats 4 and 12 in 16ths)
+        if (Math.random() < 0.85 * density) drumScore.push({ midi: PERCUSSION_SOUNDS['snare'], time: 4 * sixteenthStep, duration: 0.1, velocity: 0.8 * density });
+        if (Math.random() < 0.7 * density) drumScore.push({ midi: PERCUSSION_SOUNDS['snare'], time: 12 * sixteenthStep, duration: 0.1, velocity: 0.6 * density });
+
+        // Hi-hats or Ride
+        const cymbal = density < 0.4 ? 'ride' : 'hat';
         for (let i = 0; i < 16; i++) {
-            const time = i * sixteenthStep;
+            const isCrashPlaying = this.barCount % 4 === 0 && i === 0;
+            if (isCrashPlaying) continue;
             
-            // Kick on 1 and 3 (beats 0 and 8 in 16ths)
-            if (i === 0 || i === 8) {
-                if (Math.random() < 0.9 * density) {
-                    drumScore.push({ midi: PERCUSSION_SOUNDS['kick'], time: time, duration: 0.1, velocity: 0.95 });
-                }
-            }
-
-            // Snare on 2 and 4 (beats 4 and 12 in 16ths)
-            if (i === 4 || i === 12) {
-                if (Math.random() < 0.85 * density) {
-                    drumScore.push({ midi: PERCUSSION_SOUNDS['snare'], time: time, duration: 0.1, velocity: 0.8 * density });
-                }
-            }
-
-            // Hi-hats on 8th notes
-            if (i % 2 === 0) { // every 8th note
-                if (Math.random() < 0.8 * density) {
-                    // Don't play hi-hat if a crash is playing
-                    const isCrashPlaying = this.barCount % 4 === 0 && i === 0;
-                    if (!isCrashPlaying) {
-                       const cymbal = density < 0.4 ? 'ride' : 'hat';
-                       drumScore.push({ midi: PERCUSSION_SOUNDS[cymbal], time: time, duration: 0.1, velocity: (0.4 + Math.random() * 0.2) * density });
-                    }
-                }
+            if (i % 2 === 0 && Math.random() < 0.8 * density) { // every 8th note
+               drumScore.push({ midi: PERCUSSION_SOUNDS[cymbal], time: i * sixteenthStep, duration: 0.1, velocity: (0.4 + Math.random() * 0.2) * density });
             }
         }
         
         // Fill at the end of every 8th bar
         if (this.barCount % 8 === 7 && density > 0.6) {
-            const fillStartTime = 14 * sixteenthStep; // Start fill on the last half beat
+            const fillStartTime = 14 * sixteenthStep;
             drumScore.push({ midi: PERCUSSION_SOUNDS['tom1'], time: fillStartTime, duration: 0.1, velocity: 0.7 });
             drumScore.push({ midi: PERCUSSION_SOUNDS['tom2'], time: fillStartTime + sixteenthStep, duration: 0.1, velocity: 0.75 });
         }
@@ -214,24 +203,33 @@ export class FractalMusicEngine {
     
     let rootBassNote = KEY_ROOT_MIDI; // Fallback to E2
     if (bassRootCandidates.length > 0) {
-        // Find the root of the most active bass note
-        rootBassNote = bassRootCandidates[0].midi % 12 + (KEY_ROOT_MIDI % 12);
+        rootBassNote = bassRootCandidates[0].midi;
+    }
+    
+    // Ensure root is within a playable bass octave
+    while (rootBassNote > BASS_MIDI_MAX - 12) {
+        rootBassNote -= 12;
+    }
+    while (rootBassNote < BASS_MIDI_MIN) {
+        rootBassNote += 12;
     }
 
-    const bassNotesPerBar = Math.floor(density * 4) + 1; // 1 to 5 notes
-    const step = barDuration / (bassNotesPerBar * 2); // 8th note steps
-    const arpPattern = [0, 7, 3, 5, 2, 5, 0, 7]; 
+
+    const bassNotesPerBar = Math.floor(density * 8) + 1; // 1 to 9 notes for more activity
+    const step = barDuration / (bassNotesPerBar > 8 ? 16 : 8); // 8th or 16th note steps
+    const arpPattern = [0, 7, 3, 5, 2, 5, 0, 7]; // More interesting pattern
     
-    for (let i = 0; i < bassNotesPerBar * 2; i++) {
-        if (Math.random() < density) {
-            const degree = arpPattern[i % arpPattern.length];
+    for (let i = 0; i < (bassNotesPerBar > 8 ? 16 : 8) ; i++) {
+        if (Math.random() < density * 0.9) { // Higher chance to play a note
+            const degreeIndex = Math.floor((this.barCount * 4 + i) / 2) % arpPattern.length;
+            const degree = arpPattern[degreeIndex];
             const noteMidi = rootBassNote + SCALE_DEGREES[degree % SCALE_DEGREES.length];
             const midi = Math.max(BASS_MIDI_MIN, Math.min(noteMidi, BASS_MIDI_MAX));
             
             score.bass!.push({
                 midi,
                 time: i * step,
-                duration: step * (1 + Math.random()),
+                duration: step * (1 + Math.random() * 0.5), // Shorter, punchier notes
                 velocity: 0.6 + Math.random() * 0.3,
             });
         }

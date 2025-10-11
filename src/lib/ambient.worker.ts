@@ -137,15 +137,17 @@ const Composer = {
     },
 
     generateDrums(barIndex: number, density: number): DrumsScore {
-        if (!Scheduler.settings.drumSettings.enabled) return [];
+        const { drumSettings } = Scheduler.settings;
+        if (!drumSettings.enabled) return [];
     
         const step = Scheduler.barDuration / 16;
         const drums: DrumsScore = [];
-        const pattern = Scheduler.settings.drumSettings.pattern;
+        const pattern = drumSettings.pattern;
+        const kickVolume = drumSettings.kickVolume ?? 1.0;
     
         switch (pattern) {
             case 'ambient_beat':
-                drums.push({ note: 'kick', time: 0, velocity: 0.8, midi: PERCUSSION_SOUNDS['kick'] });
+                drums.push({ note: 'kick', time: 0, velocity: 0.8 * kickVolume, midi: PERCUSSION_SOUNDS['kick'] });
                 if (density > 0.3) {
                     for (let i = 0; i < 16; i++) {
                         if (i % 4 === 2 && Math.random() < density * 0.7) drums.push({ note: 'hat', time: i * step, velocity: 0.4 * density, midi: PERCUSSION_SOUNDS['hat'] });
@@ -157,30 +159,35 @@ const Composer = {
                 }
                 break;
             case 'composer':
-                const isFourthBar = barIndex % 4 === 0;
+                // Kick on 1 and 3, with probability based on density
+                if (Math.random() < density) drums.push({ note: 'kick', time: 0, velocity: 0.9 * kickVolume, midi: PERCUSSION_SOUNDS['kick'] });
+                if (Math.random() < density * 0.8) drums.push({ note: 'kick', time: 8 * step, velocity: 0.8 * kickVolume, midi: PERCUSSION_SOUNDS['kick'] });
 
-                // Add crash on the first beat of every 4th bar for accent
-                if (isFourthBar) {
-                    drums.push({ note: 'crash', time: 0, velocity: 0.7 * density, midi: PERCUSSION_SOUNDS['crash'] });
-                }
-
-                // Kick drum
-                if (Math.random() < density * 0.9) drums.push({ note: 'kick', time: 0, velocity: 0.9, midi: PERCUSSION_SOUNDS['kick'] });
-                if (Math.random() < density * 0.6) drums.push({ note: 'kick', time: 8 * step, velocity: 0.8, midi: PERCUSSION_SOUNDS['kick'] });
+                // Snare on 2 and 4
+                if (Math.random() < density) drums.push({ note: 'snare', time: 4 * step, velocity: 0.7, midi: PERCUSSION_SOUNDS['snare'] });
+                if (Math.random() < density * 0.6) drums.push({ note: 'snare', time: 12 * step, velocity: 0.6, midi: PERCUSSION_SOUNDS['snare'] });
                 
-                // Snare drum
-                if (Math.random() < density * 0.8) drums.push({ note: 'snare', time: 4 * step, velocity: 0.7, midi: PERCUSSION_SOUNDS['snare'] });
-                if (Math.random() < density * 0.7) drums.push({ note: 'snare', time: 12 * step, velocity: 0.6, midi: PERCUSSION_SOUNDS['snare'] });
-
                 // Hi-hats or Ride
                 const cymbal = density < 0.4 ? 'ride' : 'hat';
                 for (let i = 0; i < 16; i++) {
-                    // Don't play on the same beat as the crash
-                    if (isFourthBar && i === 0) continue;
+                    const isCrashTime = barIndex % 4 === 0 && i === 0;
+                    if (isCrashTime) continue; // Don't play hi-hat if a crash is playing
                     
-                    if (i % 2 === 0 && Math.random() < density * 0.7) {
+                    if (i % 2 === 0 && Math.random() < density * 0.9) { // 8th notes
                          drums.push({ note: cymbal, time: i * step, velocity: (0.3 + (Math.random() * 0.3)) * density, midi: PERCUSSION_SOUNDS[cymbal] });
                     }
+                }
+
+                // Crash on the first beat of every 4th bar
+                if (barIndex % 4 === 0 && Math.random() < density) {
+                    drums.push({ note: 'crash', time: 0, velocity: 0.7 * density, midi: PERCUSSION_SOUNDS['crash'] });
+                }
+
+                // Fill at the end of every 8th bar
+                if (barIndex % 8 === 7 && density > 0.6) {
+                    const fillStartTime = 14 * step;
+                    drums.push({ note: 'tom1', time: fillStartTime, duration: 0.1, velocity: 0.7, midi: PERCUSSION_SOUNDS['tom1'] });
+                    drums.push({ note: 'tom2', time: fillStartTime + step, duration: 0.1, velocity: 0.75, midi: PERCUSSION_SOUNDS['tom2'] });
                 }
                 break;
             case 'none':
@@ -209,7 +216,7 @@ function createNewSeed(baseConfig: Partial<EngineConfig>): Seed {
             bpm: baseConfig.bpm || 75,
             density: baseConfig.density || 0.5,
             organic: baseConfig.organic || 0.5,
-            drumSettings: baseConfig.drumSettings || { pattern: 'none', volume: 0.5, enabled: false }
+            drumSettings: baseConfig.drumSettings || { pattern: 'none', volume: 0.5, kickVolume: 1.0, enabled: false }
         },
     };
 }
@@ -228,7 +235,7 @@ const Scheduler = {
     settings: {
         bpm: 75,
         score: 'neuro_f_matrix', 
-        drumSettings: { pattern: 'composer', enabled: true, volume: 0.5 } as DrumSettings,
+        drumSettings: { pattern: 'composer', enabled: true, volume: 0.5, kickVolume: 1.0 } as DrumSettings,
         instrumentSettings: { 
             bass: { name: "glideBass", volume: 0.7, technique: 'portamento' },
             melody: { name: "acousticGuitarSolo", volume: 0.8 },
@@ -381,3 +388,4 @@ self.onmessage = async (event: MessageEvent) => {
         self.postMessage({ type: 'error', error: e instanceof Error ? e.message : String(e) });
     }
 };
+
