@@ -1,3 +1,6 @@
+
+import type { DrumSettings } from './music';
+
 // Уникальный ID музыкального события, например "piano_C4" или "drums_kick"
 export type EventID = string;
 
@@ -10,6 +13,7 @@ export type EngineConfig = {
   bpm: number;         // Влияет на частоту импульсов
   density: number;     // Влияет на количество и силу импульсов
   organic: number;     // Модификатор случайности в K и δ
+  drumSettings: DrumSettings; // Добавляем настройки ударных
 };
 
 // Функция резонанса, ядро стиля/настроения

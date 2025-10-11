@@ -138,7 +138,6 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
   }, []);
 
   const scheduleScore = useCallback((score: Score, audioContext: AudioContext) => {
-
     const now = audioContext.currentTime;
     const currentSettings = settingsRef.current;
     
@@ -153,7 +152,6 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
         melodyInstrument = score.instrumentHints.melody ?? melodyInstrument;
         accompanimentInstrument = score.instrumentHints.accompaniment ?? accompanimentInstrument;
         
-        // Directly apply the preset to the managers
         if (score.instrumentHints.bass) bassManagerRef.current?.setPreset(score.instrumentHints.bass);
         if (score.instrumentHints.accompaniment) accompanimentManagerRef.current?.setPreset(score.instrumentHints.accompaniment);
     }
@@ -338,13 +336,18 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
         if (!workerRef.current) {
             const worker = new Worker(new URL('../lib/ambient.worker.ts', import.meta.url), { type: 'module' });
             worker.onmessage = (event: MessageEvent<WorkerMessage>) => {
-                const now = audioContextRef.current?.currentTime ?? 0;
-                const scheduleTime = event.data.time ? now + event.data.time : now;
-
-                if (event.data.type === 'score' && event.data.score) scheduleScore(event.data.score, context);
-                else if (event.data.type === 'sparkle') sparklePlayerRef.current?.playRandomSparkle(scheduleTime);
-                else if (event.data.type === 'pad' && event.data.padName) padPlayerRef.current?.setPad(event.data.padName, scheduleTime);
-                else if (event.data.type === 'error') toast({ variant: "destructive", title: "Worker Error", description: event.data.error });
+                if (event.data.type === 'score' && event.data.score) {
+                    scheduleScore(event.data.score, context);
+                }
+                else if (event.data.type === 'sparkle' && event.data.time !== undefined) {
+                    sparklePlayerRef.current?.playRandomSparkle(context.currentTime + event.data.time);
+                }
+                else if (event.data.type === 'pad' && event.data.padName) {
+                    padPlayerRef.current?.setPad(event.data.padName, context.currentTime + (event.data.time ?? 0));
+                }
+                else if (event.data.type === 'error') {
+                    toast({ variant: "destructive", title: "Worker Error", description: event.data.error });
+                }
             };
             workerRef.current = worker;
         }

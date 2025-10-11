@@ -7,10 +7,10 @@
  * Its goal is to create a continuously evolving piece of music where complexity is controlled by a 'density' parameter.
  * It is completely passive and only composes the next bar when commanded via a 'tick'.
  */
-import type { WorkerSettings, Score, Note, DrumsScore, ScoreName, InstrumentSettings } from '@/types/music';
+import type { WorkerSettings, Score, Note, DrumsScore, ScoreName, InstrumentSettings, DrumSettings } from '@/types/music';
 import { FractalMusicEngine } from './fractal-music-engine';
 import { MelancholicMinorK } from './resonance-matrices';
-import type { Seed, ResonanceMatrix } from '@/types/fractal';
+import type { Seed, ResonanceMatrix, EngineConfig } from '@/types/fractal';
 import * as Tone from 'tone';
 
 
@@ -43,39 +43,9 @@ const SPARKLE_SAMPLES = [
     '/assets/music/droplets/ocean.mp3',
 ];
 
-const PERCUSSION_SOUNDS = [
-    'C2', 'C#2', 'D2', 'D#2', 'E2', 'F2', 'F#2', 'G2', 
-    'G#2', 'A2', 'A#2', 'B2', 'C3', 'C#3', 'D3' 
-];
-
-const DRUM_FILL_PATTERNS: DrumsScore[] = [
-    // Fill 1: Simple tom roll
-    [
-        { note: 'A4', time: 0, velocity: 0.7 },
-        { note: 'A4', time: 0.25, velocity: 0.75 },
-        { note: 'G4', time: 0.5, velocity: 0.8 },
-        { note: 'G4', time: 0.75, velocity: 0.85 },
-    ],
-    // Fill 2: Snare build-up
-    [
-        { note: 'D4', time: 0, velocity: 0.5 },
-        { note: 'D4', time: 0.125, velocity: 0.6 },
-        { note: 'D4', time: 0.25, velocity: 0.7 },
-        { note: 'D4', time: 0.375, velocity: 0.8 },
-        { note: 'D4', time: 0.5, velocity: 0.9 },
-        { note: 'D4', time: 0.625, velocity: 1.0 },
-        { note: 'D4', time: 0.75, velocity: 1.0 },
-        { note: 'G4', time: 0.875, velocity: 0.9 },
-    ],
-    // Fill 3: Syncopated kick/snare
-    [
-        { note: 'C4', time: 0, velocity: 0.9 },
-        { note: 'C4', time: 0.375, velocity: 0.7 },
-        { note: 'D4', time: 0.5, velocity: 0.8 },
-        { note: 'A4', time: 0.75, velocity: 0.6 },
-        { note: 'G4', time: 0.875, velocity: 0.7 },
-    ]
-];
+const PERCUSSION_SOUNDS: Record<string, number> = {
+    'kick': 60, 'snare': 62, 'hat': 64, 'crash': 67, 'tom1': 69, 'tom2': 71, 'tom3': 72
+};
 
 
 // --- "Sparkle" (In-krap-le-ni-ye) Logic ---
@@ -105,73 +75,6 @@ const clamp = (value: number, min: number, max: number) => Math.max(min, Math.mi
 
 
 // --- Main Composition Engines ---
-
-const MulteityComposer = {
-    generateBass(barIndex: number, density: number): Note[] {
-        const notes: Note[] = [];
-        const beatDuration = Scheduler.barDuration / 4;
-        const step = beatDuration / 4; // 16th notes
-        const rootMidi = KEY_ROOT_MIDI;
-        const progression = [0, 3, 5, 2];
-        const chordRootDegree = progression[Math.floor(barIndex / 2) % progression.length];
-
-        for (let i = 0; i < 16; i++) {
-            if (Math.random() < density * 0.8) {
-                const octave = (i % 8 < 4) ? 0 : 1; // E2 to E3 range
-                const degree = chordRootDegree + (i % 4);
-                let midi = getNoteFromDegree(degree, SCALE_INTERVALS, rootMidi, octave);
-                midi = clamp(midi, BASS_MIDI_MIN, BASS_MIDI_MAX);
-                notes.push({ midi, time: i * step, duration: step, velocity: 0.6 + Math.random() * 0.2 });
-            }
-        }
-        return notes;
-    },
-    generateAccompaniment(barIndex: number, density: number): Note[] | undefined {
-        const notes: Note[] = [];
-        const beatDuration = Scheduler.barDuration / 4;
-        const step = beatDuration / 4; // 16th notes
-        const rootMidi = KEY_ROOT_MIDI;
-        const progression = [0, 3, 5, 2];
-        const chordRootDegree = progression[Math.floor(barIndex / 2) % progression.length];
-        
-        const pattern = [0, 2, 4, 2]; // Arpeggio pattern over chord tones
-        for (let i = 0; i < 16; i++) {
-             if (Math.random() < density * 0.9) {
-                const octave = 2; // E4 to E5 range
-                const degree = chordRootDegree + pattern[i % pattern.length];
-                const midi = getNoteFromDegree(degree, SCALE_INTERVALS, rootMidi, octave);
-                 if (midi > 40 && midi < 80) { // Keep notes in a reasonable range
-                    notes.push({ midi, time: i * step, duration: step * 1.5, velocity: 0.4 + Math.random() * 0.2 });
-                 }
-            }
-        }
-        return notes;
-    },
-    generateMelody(barIndex: number, density: number): Note[] {
-        const notes: Note[] = [];
-        if (Math.random() > density * 0.8) return notes;
-
-        const rootMidi = KEY_ROOT_MIDI;
-        const numNotes = Math.floor(density * 12) + 4;
-        const step = Scheduler.barDuration / numNotes;
-        let lastDegree = (barIndex * 3) % SCALE_INTERVALS.length + 14; // Start higher
-
-        for (let i = 0; i < numNotes; i++) {
-             const useChromatic = Math.random() < (density * 0.1);
-             const interval = useChromatic ? (Math.random() < 0.5 ? 1 : -1) : (Math.floor(Math.random() * 3) - 1) * 2;
-             lastDegree += interval;
-             
-             const octave = Math.random() < 0.3 ? 3 : 2; 
-             const midi = getNoteFromDegree(lastDegree, SCALE_INTERVALS, rootMidi, octave);
-             if (midi > 52 && midi < 88) { // Keep melody in a reasonable range
-                notes.push({ midi, time: i * step, duration: step * (1.5 + Math.random()), velocity: 0.5 + density * 0.3 });
-             }
-        }
-        return notes;
-    }
-}
-
-
 const Composer = {
     generateBass(barIndex: number, density: number): Note[] {
         const beatDuration = Scheduler.barDuration / 4;
@@ -235,40 +138,47 @@ const Composer = {
 
     generateDrums(barIndex: number, density: number): DrumsScore {
         if (!Scheduler.settings.drumSettings.enabled) return [];
-        
+    
         const step = Scheduler.barDuration / 16;
         const drums: DrumsScore = [];
-        
-        // Basic kick and snare
-        if (Scheduler.settings.drumSettings.pattern === 'composer') {
-            for (let i = 0; i < 16; i++) {
-                if (i % 8 === 0) drums.push({ note: 'C4', time: i * step, velocity: 0.8, midi: 60 }); // Kick
-                if (i % 8 === 4) drums.push({ note: 'D4', time: i * step, velocity: 0.6, midi: 62 }); // Snare
-            }
-
-            // Add hi-hats based on density
-            if (density > 0.3) {
-                 for (let i = 0; i < 16; i++) {
-                     if (i % 4 === 2 && Math.random() < density) drums.push({ note: 'E4', time: i * step, velocity: 0.4 * density, midi: 64 });
+        const pattern = Scheduler.settings.drumSettings.pattern;
+    
+        switch (pattern) {
+            case 'ambient_beat':
+                drums.push({ note: 'kick', time: 0, velocity: 0.8, midi: 60 });
+                if (density > 0.3) {
+                    for (let i = 0; i < 16; i++) {
+                        if (i % 4 === 2 && Math.random() < density * 0.7) drums.push({ note: 'hat', time: i * step, velocity: 0.4 * density, midi: 64 });
+                    }
                 }
-            }
-             // Add crash cymbal based on density
-            if (density > 0.8 && barIndex % 4 === 0) {
-                drums.push({ note: 'G4', time: 0, velocity: 0.7 * density, midi: 67 });
-            }
-        }
-
-        // Add percussive one-shots
-        if (density > 0.2) {
-            for (let i = 0; i < 16; i++) {
-                // Add on off-beats
-                if (i % 4 !== 0 && Math.random() < (density * 0.15)) {
-                    const randomPerc = PERCUSSION_SOUNDS[Math.floor(Math.random() * PERCUSSION_SOUNDS.length)];
-                    drums.push({ note: randomPerc, time: i * step, velocity: Math.random() * 0.3 + 0.2, midi: new Tone.Frequency(randomPerc).toMidi() });
+                if (density > 0.6 && barIndex % 2 === 0) {
+                    drums.push({ note: 'snare', time: 4 * step, velocity: 0.6, midi: 62 });
+                    drums.push({ note: 'snare', time: 12 * step, velocity: 0.6, midi: 62 });
                 }
-            }
+                break;
+            case 'composer':
+                // Kick on 1 and 3
+                if (Math.random() < density * 0.9) drums.push({ note: 'kick', time: 0, velocity: 0.9, midi: 60 });
+                if (Math.random() < density * 0.7) drums.push({ note: 'kick', time: 8 * step, velocity: 0.8, midi: 60 });
+                // Snare on 2 and 4
+                if (Math.random() < density * 0.8) drums.push({ note: 'snare', time: 4 * step, velocity: 0.7, midi: 62 });
+                if (Math.random() < density * 0.6) drums.push({ note: 'snare', time: 12 * step, velocity: 0.6, midi: 62 });
+                // Hi-hats
+                for (let i = 0; i < 16; i++) {
+                    if (i % 2 === 0 && Math.random() < density * 0.5) drums.push({ note: 'hat', time: i * step, velocity: 0.3 + (Math.random() * 0.3), midi: 64 });
+                }
+                // Random percussion
+                if (Math.random() < density * 0.2) {
+                     const randomPerc = Object.keys(PERCUSSION_SOUNDS)[Math.floor(Math.random() * 7)]; // Use first 7 for variety
+                     const randomTime = Math.floor(Math.random() * 16) * step;
+                     drums.push({ note: randomPerc, time: randomTime, velocity: Math.random() * 0.4 + 0.2, midi: PERCUSSION_SOUNDS[randomPerc] });
+                }
+                break;
+            case 'none':
+            default:
+                break;
         }
-        
+    
         return drums;
     }
 }
@@ -278,7 +188,7 @@ const availableMatrices: Record<string, ResonanceMatrix> = {
     'melancholic_minor': MelancholicMinorK,
 };
 
-function createNewSeed(baseConfig: any): Seed {
+function createNewSeed(baseConfig: Partial<EngineConfig>): Seed {
     const randomMidiNote = 40 + E_MINOR_SCALE_DEGREES[Math.floor(Math.random() * E_MINOR_SCALE_DEGREES.length)] + (Math.floor(Math.random() * 3)) * 12;
     const initialEvent = `piano_${randomMidiNote}`;
     
@@ -290,6 +200,7 @@ function createNewSeed(baseConfig: any): Seed {
             bpm: baseConfig.bpm || 75,
             density: baseConfig.density || 0.5,
             organic: baseConfig.organic || 0.5,
+            drumSettings: baseConfig.drumSettings || { pattern: 'none', enabled: false }
         },
     };
 }
@@ -304,17 +215,15 @@ const Scheduler = {
     loopId: null as any,
     isRunning: false,
     barCount: 0,
-    lfo1Phase: 0,
-    lfo2Phase: 0,
     
     settings: {
         bpm: 75,
         score: 'neuro_f_matrix', 
-        drumSettings: { pattern: 'none', enabled: false },
+        drumSettings: { pattern: 'composer', enabled: true, volume: 0.5 } as DrumSettings,
         instrumentSettings: { 
-            bass: { name: "glideBass", volume: 0.5, technique: 'arpeggio' },
-            melody: { name: "synth", volume: 0.5 },
-            accompaniment: { name: "synth", volume: 0.5 },
+            bass: { name: "glideBass", volume: 0.7, technique: 'portamento' },
+            melody: { name: "acousticGuitarSolo", volume: 0.8 },
+            accompaniment: { name: "guitarChords", volume: 0.7 },
         } as InstrumentSettings,
         textureSettings: {
             sparkles: { enabled: true },
@@ -334,6 +243,7 @@ const Scheduler = {
             density: this.settings.density,
             lambda: 0.5, 
             organic: 0.5,
+            drumSettings: this.settings.drumSettings
         });
         fractalMusicEngine = new FractalMusicEngine(seed, availableMatrices);
         this.barCount = 0;
@@ -376,11 +286,9 @@ const Scheduler = {
        };
 
        if (fractalMusicEngine) {
-           const newConfig = {
-               ...fractalMusicEngine.getConfig(),
-               ...newSettings
-           };
-           fractalMusicEngine.updateConfig(newConfig);
+           fractalMusicEngine.updateConfig({
+               ...this.settings
+           });
        }
        
        if (needsRestart) this.start();
@@ -389,18 +297,6 @@ const Scheduler = {
     tick() {
         if (!this.isRunning) return;
         
-        // LFO Modulation for Fractal style
-        if (this.settings.score === 'neuro_f_matrix') {
-            this.lfo1Phase += 0.05;
-            this.lfo2Phase += 0.03;
-            const newLambda = 0.5 + 0.3 * Math.sin(this.lfo1Phase);
-            const newDensity = 0.5 + 0.2 * Math.sin(this.lfo2Phase);
-            if (fractalMusicEngine) {
-                fractalMusicEngine.updateConfig({ lambda: newLambda, density: newDensity });
-            }
-        }
-
-
         const density = this.settings.density;
         let score: Score = {};
         
@@ -408,19 +304,12 @@ const Scheduler = {
             if (!fractalMusicEngine) this.initializeEngine();
             fractalMusicEngine.tick();
             score = fractalMusicEngine.generateScore();
-        } else if (this.settings.score === 'multeity') {
-             score.bass = MulteityComposer.generateBass(this.barCount, density);
-             score.melody = MulteityComposer.generateMelody(this.barCount, density);
-             score.accompaniment = MulteityComposer.generateAccompaniment(this.barCount, density);
         } else {
              score.bass = Composer.generateBass(this.barCount, density);
              score.melody = Composer.generateMelody(this.barCount, density);
              score.accompaniment = Composer.generateAccompaniment(this.barCount, density);
+             score.drums = Composer.generateDrums(this.barCount, density);
         }
-
-        const { instrumentSettings } = this.settings;
-
-        score.drums = Composer.generateDrums(this.barCount, density);
         
         self.postMessage({ type: 'score', score, time: this.barDuration });
 
@@ -457,7 +346,7 @@ self.onmessage = async (event: MessageEvent) => {
     try {
         switch (command) {
             case 'start':
-                if (!fractalMusicEngine) {
+                if (!fractalMusicEngine && Scheduler.settings.score === 'neuro_f_matrix') {
                     Scheduler.initializeEngine();
                 }
                 Scheduler.start();
@@ -480,7 +369,3 @@ self.onmessage = async (event: MessageEvent) => {
         self.postMessage({ type: 'error', error: e instanceof Error ? e.message : String(e) });
     }
 };
-
-      
-
-    
