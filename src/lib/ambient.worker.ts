@@ -10,7 +10,7 @@
 import type { WorkerSettings, Score, Note, DrumsScore, ScoreName, InstrumentSettings, DrumSettings, InstrumentType, BassTechnique } from '@/types/music';
 import { FractalMusicEngine } from './fractal-music-engine';
 import { MelancholicMinorK } from './resonance-matrices';
-import type { Seed, ResonanceMatrix, EngineConfig } from '@/types/fractal';
+import type { Seed, ResonanceMatrix, EngineConfig, FractalEvent } from '@/types/fractal';
 import * as Tone from 'tone';
 
 
@@ -217,12 +217,44 @@ function createNewSeed(baseConfig: Partial<EngineConfig>): Seed {
             bpm: baseConfig.bpm || 75,
             density: baseConfig.density || 0.5,
             organic: baseConfig.organic || 0.5,
-            drumSettings: baseConfig.drumSettings || { pattern: 'none', volume: 0.5, kickVolume: 1.0, enabled: false }
+            drumSettings: baseConfig.drumSettings || { pattern: 'none', volume: 0.5, kickVolume: 1.0, enabled: false },
+            mood: baseConfig.mood || 'melancholic',
+            genre: baseConfig.genre || 'ambient',
         },
     };
 }
 
-let fractalMusicEngine: FractalMusicEngine;
+function convertFractalEventsToScore(events: FractalEvent[], barDuration: number): Score {
+    const score: Score = { bass: [], melody: [], accompaniment: [], drums: [] };
+    
+    const bassEvents = events.filter(e => e.type === 'bass');
+    if (bassEvents.length > 0) {
+        score.bass = bassEvents.map(e => ({
+            midi: e.note,
+            time: e.time,
+            duration: e.duration,
+            velocity: e.weight // Using weight for velocity as a starting point
+        }));
+    }
+
+    const drumEvents = events.filter(e => e.type.startsWith('drum_'));
+     if (drumEvents.length > 0) {
+        score.drums = drumEvents.map(e => ({
+            note: e.type.replace('drum_', ''),
+            midi: e.note,
+            time: e.time ?? 0, // Diagnostic check
+            velocity: e.weight
+        }));
+    }
+
+    // Add other event type conversions here later (melody, accomp, etc.)
+    console.log('Converted Score:', { bass: score.bass?.length, drums: score.drums?.length });
+
+    return score;
+}
+
+
+let fractalMusicEngine: FractalMusicEngine | undefined;
 
 
 // --- Scheduler (The Conductor) ---
@@ -255,14 +287,17 @@ const Scheduler = {
     },
 
     initializeEngine() {
+        console.log('[Worker] Initializing NFM Engine...');
         const seed = createNewSeed({
             bpm: this.settings.bpm,
             density: this.settings.density,
             lambda: 0.5, 
             organic: 0.5,
-            drumSettings: this.settings.drumSettings
+            drumSettings: this.settings.drumSettings,
+            mood: 'melancholic',
+            genre: 'ambient',
         });
-        fractalMusicEngine = new FractalMusicEngine(seed, availableMatrices);
+        fractalMusicEngine = new FractalMusicEngine(seed.config);
         this.barCount = 0;
         lastSparkleTime = -Infinity;
         lastPadStyle = null; // Reset on engine re-creation
@@ -273,6 +308,10 @@ const Scheduler = {
         
         this.isRunning = true;
         
+        if (!fractalMusicEngine && this.settings.score === 'neuro_f_matrix') {
+            this.initializeEngine();
+        }
+
         const loop = () => {
             if (!this.isRunning) return;
             this.tick();
@@ -292,6 +331,8 @@ const Scheduler = {
     
     updateSettings(newSettings: Partial<WorkerSettings>) {
        const needsRestart = this.isRunning && (newSettings.bpm !== undefined && newSettings.bpm !== this.settings.bpm);
+       const scoreChangedToNFM = newSettings.score === 'neuro_f_matrix' && this.settings.score !== 'neuro_f_matrix';
+       
        if (needsRestart) this.stop();
        
        this.settings = {
@@ -301,6 +342,11 @@ const Scheduler = {
            instrumentSettings: { ...this.settings.instrumentSettings, ...newSettings.instrumentSettings },
            textureSettings: { ...this.settings.textureSettings, ...newSettings.textureSettings },
        };
+
+       if (scoreChangedToNFM) {
+           this.initializeEngine();
+       }
+
        if (fractalMusicEngine) {
            fractalMusicEngine.updateConfig({
                bpm: this.settings.bpm,
@@ -321,11 +367,13 @@ const Scheduler = {
         let score: Score = {};
         
         if (this.settings.score === 'neuro_f_matrix') {
-            if (!fractalMusicEngine) this.initializeEngine();
-            fractalMusicEngine.tick();
-            score = fractalMusicEngine.generateScore();
+            if (!fractalMusicEngine) {
+                 console.error("NFM Engine not initialized in tick!");
+                 this.initializeEngine(); // Failsafe
+            }
+            const fractalEvents = fractalMusicEngine!.evolve(this.barDuration);
+            score = convertFractalEventsToScore(fractalEvents, this.barDuration);
 
-            // Check for composer-driven technique changes and send them
             if (score.instrumentHints?.bassTechnique && this.settings.composerControlsInstruments) {
                 self.postMessage({ type: 'bass_technique', technique: score.instrumentHints.bassTechnique });
             }
@@ -372,9 +420,6 @@ self.onmessage = async (event: MessageEvent) => {
     try {
         switch (command) {
             case 'start':
-                if (!fractalMusicEngine && Scheduler.settings.score === 'neuro_f_matrix') {
-                    Scheduler.initializeEngine();
-                }
                 Scheduler.start();
                 break;
                 
@@ -396,3 +441,6 @@ self.onmessage = async (event: MessageEvent) => {
     }
 };
 
+
+
+    
