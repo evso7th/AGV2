@@ -161,7 +161,7 @@ const Scheduler = {
     initializeEngine(bpm: number) {
         console.log('[Worker] Initializing NFM Engine with mood:', this.settings.mood, 'and BPM:', bpm);
         const engineConfig: EngineConfig = {
-            bpm: Math.max(20, Math.min(300, Number(bpm) || 75)), // <-- Защита и преобразование
+            bpm: Math.max(20, Math.min(300, Number(bpm) || 75)),
             density: this.settings.density,
             lambda: 1.0 - (this.settings.density * 0.5 + 0.3),
             organic: this.settings.density,
