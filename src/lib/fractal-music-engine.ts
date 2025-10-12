@@ -71,14 +71,9 @@ export class FractalMusicEngine {
   private random;
 
   constructor(config: EngineConfig) {
-    console.log('[FractalEngine] ==> constructor called with config:', JSON.parse(JSON.stringify(config)));
-    if (!config || !config.tempo || !isFinite(config.tempo) || config.tempo <= 0) {
-      console.warn(`[FractalEngine] Invalid tempo at construction (${config?.tempo}), defaulting to 75`);
-      config.tempo = 75;
-    }
     this.config = {
       ...config,
-      tempo: Math.max(20, Math.min(300, config.tempo))
+      tempo: Math.max(20, Math.min(300, config.tempo || 75))
     };
     this.lambda = config.lambda;
     const seed = this.config.seed ?? Date.now();
@@ -122,7 +117,6 @@ export class FractalMusicEngine {
     const { volume } = this.config.drumSettings;
 
     if (!isFinite(beat) || !isFinite(startTime)) {
-        console.error('[FractalEngine] Invalid time calculation in generateOneBarDrums');
         return [];
     }
     
@@ -187,7 +181,6 @@ export class FractalMusicEngine {
   // === ОСНОВНОЙ МЕТОД ===
   public evolve(barDuration: number): FractalEvent[] {
     if (!isFinite(barDuration) || barDuration <= 0) {
-        console.error(`[FractalEngine] Invalid barDuration (${barDuration}) in evolve, skipping.`);
         return [];
     }
     const output: FractalEvent[] = [];
@@ -268,3 +261,5 @@ export class FractalMusicEngine {
     };
   }
 }
+
+    

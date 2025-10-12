@@ -159,9 +159,8 @@ const Scheduler = {
     },
 
     initializeEngine(settings: WorkerSettings) {
-        console.log(`[Worker] ==> initializeEngine called with settings:`, JSON.parse(JSON.stringify(settings)));
         const engineConfig: EngineConfig = {
-            bpm: settings.bpm,
+            tempo: settings.bpm,
             density: settings.density,
             lambda: 1.0 - (settings.density * 0.5 + 0.3),
             organic: settings.density,
@@ -180,10 +179,8 @@ const Scheduler = {
         
         this.isRunning = true;
         
-        // Wait for first settings before starting loop
         if (!fractalMusicEngine) {
-            console.log('[Worker] Waiting for initial settings to start...');
-            return;
+            this.initializeEngine(this.settings);
         }
 
         const loop = () => {
@@ -214,7 +211,6 @@ const Scheduler = {
     },
 
     updateSettings(newSettings: Partial<WorkerSettings>) {
-       console.log(`[Worker] ==> updateSettings called with:`, JSON.parse(JSON.stringify(newSettings)));
        const needsRestart = this.isRunning && (newSettings.bpm !== undefined && newSettings.bpm !== this.settings.bpm);
        const scoreChanged = newSettings.score && newSettings.score !== this.settings.score;
        const moodChanged = newSettings.mood && newSettings.mood !== this.settings.mood;
@@ -229,13 +225,12 @@ const Scheduler = {
            instrumentSettings: { ...this.settings.instrumentSettings, ...newSettings.instrumentSettings },
            textureSettings: { ...this.settings.textureSettings, ...newSettings.textureSettings },
        };
-       console.log(`[Worker] Settings updated. New state:`, JSON.parse(JSON.stringify(this.settings)));
 
        if (wasNotInitialized || scoreChanged || moodChanged) {
            this.initializeEngine(this.settings);
        } else if (fractalMusicEngine) {
            fractalMusicEngine.updateConfig({
-               bpm: this.settings.bpm,
+               tempo: this.settings.bpm,
                density: this.settings.density,
                organic: this.settings.density,
                drumSettings: this.settings.drumSettings,
@@ -296,9 +291,7 @@ const Scheduler = {
 
 // --- MessageBus (The "Kafka" entry point) ---
 self.onmessage = async (event: MessageEvent) => {
-    console.log('[Worker] Received command:', event.data.command, 'with data:', JSON.parse(JSON.stringify(event.data.data)));
     if (!event.data || !event.data.command) {
-        console.warn('[Worker] Unknown message type:', event.data.type);
         return;
     }
     
@@ -320,10 +313,6 @@ self.onmessage = async (event: MessageEvent) => {
 
             case 'update_settings':
                 Scheduler.updateSettings(data);
-                // If not running, but we now have settings, initialize the engine.
-                if (!fractalMusicEngine) {
-                    Scheduler.initializeEngine(Scheduler.settings);
-                }
                 break;
             default:
                  console.warn(`[Worker] Unknown command: ${command}`);
@@ -333,3 +322,5 @@ self.onmessage = async (event: MessageEvent) => {
         self.postMessage({ type: 'error', error: e instanceof Error ? e.message : String(e) });
     }
 };
+
+    
