@@ -1,66 +1,112 @@
 
-import type { DrumSettings } from './music';
+// types/fractal.ts
 
-// Настроение, определяющее гармоническую и драматургическую окраску
+/**
+ * Настроение (определяет лад, динамику, технику)
+ */
 export type Mood = 'melancholic' | 'epic' | 'dreamy' | 'dark';
 
-// Жанр, влияющий на ритмическую структуру и выбор техник
-export type Genre = 'trance' | 'ambient' | 'progressive';
+/**
+ * Жанр (определяет форму, темп, плотность)
+ */
+export type Genre = 'trance' | 'ambient' | 'progressive' | 'rock';
 
-// Техника исполнения, влияющая на тембр и артикуляцию
-export type Technique = 'pluck' | 'slap' | 'ghost' | 'harmonic';
+/**
+ * Техника игры на басу или ударных
+ * Расширено для поддержки всех инструментов
+ */
+export type Technique = 'pluck' | 'ghost' | 'slap' | 'hit' | 'harmonic';
 
-// Фразировка, управляющая связностью нот
-export type Phrasing = 'legato' | 'staccato';
-
-// Динамика (громкость) ноты
+/**
+ * Динамика (громкость)
+ */
 export type Dynamics = 'p' | 'mf' | 'f';
 
-// Единое музыкальное событие, базовый "квант" системы
-export type FractalEvent = {
-  type: 'bass' | 'lead' | 'pad' | 'arp' | `drum_${string}`; // Тип инструмента или партии
-  note: number;          // MIDI-нота
-  duration: number;      // Длительность в долях такта
-  time: number;          // Позиция внутри такта (от 0 до 4)
-  technique: Technique;
-  dynamics: Dynamics;
-  phrasing: Phrasing;
-  weight: number;        // "Жизненная сила" события
-};
+/**
+ * Фразировка (артикуляция)
+ */
+export type Phrasing = 'legato' | 'staccato';
 
-// "Ветвь" фрактального дерева, представляющая музыкальную фразу или мотив
-export type Branch = {
-  id: string;
-  events: FractalEvent[];
+/**
+ * Тип инструмента (для маршрутизации события)
+ */
+export type InstrumentType =
+  | 'bass'
+  | 'drum_kick'
+  | 'drum_snare'
+  | 'drum_hat'
+  | 'pad'
+  | 'lead'
+  | 'arp';
+
+/**
+ * Событие фрактального композитора
+ * Это основной протокол "композитор → инструмент"
+ */
+export interface FractalEvent {
+  /**
+   * Тип инструмента — определяет, кто играет
+   */
+  type: InstrumentType;
+
+  /**
+   * Нота в MIDI (например, 40 = E2)
+   */
+  note: number;
+
+  /**
+   * Длительность в долях такта (1 = целая нота при 4/4)
+   */
+  duration: number;
+
+  /**
+   * Абсолютное время начала события в секундах
+   */
+  time: number;
+
+  /**
+   * Вес ветви (0.0–1.0) — мера "живости" идеи
+   */
   weight: number;
-  age: number;
+
+  /**
+   * Техника исполнения
+   */
   technique: Technique;
-};
 
-// Конфигурация движка, управляемая пользователем
-export type EngineConfig = {
-  lambda: number;      // Коэффициент затухания (0-1)
-  bpm: number;         // Влияет на частоту импульсов
-  density: number;     // Влияет на количество и силу импульсов
-  organic: number;     // Модификатор случайности в K и δ
-  drumSettings: DrumSettings; // Настройки ударных
-  mood: Mood;
-  genre: Genre;
-  seed?: number;
-};
+  /**
+   * Динамика
+   */
+  dynamics: Dynamics;
 
-// Состояние системы: веса всех возможных событий
-export type EngineState = Map<EventID, number>;
+  /**
+   * Фразировка
+   */
+  phrasing: Phrasing;
+}
 
-// Уникальный ID музыкального события, например "piano_C4" или "drums_kick"
+/**
+ * Идентификатор события (для отладки и трассировки)
+ */
 export type EventID = string;
 
-// Функция резонанса, ядро стиля/настроения
-export type ResonanceMatrix = (eventA: EventID, eventB: EventID) => number;
+/**
+ * Ядро связности (резонансная матрица)
+ * Принимает два события и возвращает меру совместимости [0.0, 1.0]
+ */
+export type ResonanceMatrix = (
+  eventA: FractalEvent,
+  eventB: FractalEvent,
+  context?: ResonanceContext
+) => number;
 
-// Полный снимок состояния для сохранения и шаринга
-export type Seed = {
-  initialState: Record<EventID, number>; // Сериализуемая версия EngineState
-  resonanceMatrixId: string;
-  config: EngineConfig;
-};
+/**
+ * Контекст для расширенного резонанса (опционален)
+ */
+export interface ResonanceContext {
+  mood: Mood;
+  delta: number; // текущий импульс δ(t)
+  kickTimes: number[];
+  snareTimes: number[];
+  beatPhase: number; // фаза доли (0.0–4.0)
+}
