@@ -159,7 +159,7 @@ const Scheduler = {
     },
 
     initializeEngine(settings: WorkerSettings) {
-        console.log('[Worker] Initializing NFM Engine with mood:', settings.mood, 'and BPM:', settings.bpm);
+        console.log(`[Worker] ==> initializeEngine called with settings:`, JSON.parse(JSON.stringify(settings)));
         const engineConfig: EngineConfig = {
             bpm: settings.bpm,
             density: settings.density,
@@ -214,6 +214,7 @@ const Scheduler = {
     },
 
     updateSettings(newSettings: Partial<WorkerSettings>) {
+       console.log(`[Worker] ==> updateSettings called with:`, JSON.parse(JSON.stringify(newSettings)));
        const needsRestart = this.isRunning && (newSettings.bpm !== undefined && newSettings.bpm !== this.settings.bpm);
        const scoreChanged = newSettings.score && newSettings.score !== this.settings.score;
        const moodChanged = newSettings.mood && newSettings.mood !== this.settings.mood;
@@ -228,6 +229,7 @@ const Scheduler = {
            instrumentSettings: { ...this.settings.instrumentSettings, ...newSettings.instrumentSettings },
            textureSettings: { ...this.settings.textureSettings, ...newSettings.textureSettings },
        };
+       console.log(`[Worker] Settings updated. New state:`, JSON.parse(JSON.stringify(this.settings)));
 
        if (wasNotInitialized || scoreChanged || moodChanged) {
            this.initializeEngine(this.settings);
@@ -294,6 +296,7 @@ const Scheduler = {
 
 // --- MessageBus (The "Kafka" entry point) ---
 self.onmessage = async (event: MessageEvent) => {
+    console.log('[Worker] Received command:', event.data.command, 'with data:', JSON.parse(JSON.stringify(event.data.data)));
     if (!event.data || !event.data.command) {
         console.warn('[Worker] Unknown message type:', event.data.type);
         return;

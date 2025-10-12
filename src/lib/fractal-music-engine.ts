@@ -71,6 +71,7 @@ export class FractalMusicEngine {
   private random;
 
   constructor(config: EngineConfig) {
+    console.log('[FractalEngine] ==> constructor called with config:', JSON.parse(JSON.stringify(config)));
     if (!config || !config.tempo || !isFinite(config.tempo) || config.tempo <= 0) {
       console.warn(`[FractalEngine] Invalid tempo at construction (${config?.tempo}), defaulting to 75`);
       config.tempo = 75;
