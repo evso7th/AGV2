@@ -99,7 +99,7 @@ export class DrumMachine {
         this.isInitialized = true;
     }
 
-    schedule(score: FractalEvent[], time: number) {
+    schedule(score: FractalEvent[], startTime: number) {
         if (!this.sampler || !this.isInitialized) {
             return;
         }
@@ -107,7 +107,9 @@ export class DrumMachine {
         for (const event of score) {
             // Extract drum sample name from event type (e.g., 'drum_kick' -> 'kick')
             const sampleName = event.type.replace('drum_', '');
-            this.sampler.triggerAttack(sampleName, event.time, event.weight);
+            // Calculate absolute time for the event
+            const absoluteTime = startTime + event.time;
+            this.sampler.triggerAttack(sampleName, absoluteTime, event.weight);
         }
     }
 
