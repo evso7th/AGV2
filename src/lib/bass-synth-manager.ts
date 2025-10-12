@@ -1,6 +1,7 @@
 
-import type { Note, BassInstrument, BassTechnique } from "@/types/music";
+import type { BassInstrument, BassTechnique } from "@/types/music";
 import { BASS_PRESETS } from "./bass-presets";
+import type { FractalEvent } from '@/types/fractal';
 
 export class BassSynthManager {
     private audioContext: AudioContext;
@@ -35,44 +36,43 @@ export class BassSynthManager {
         }
     }
 
-    public schedule(notes: Note[], startTime: number) {
+    public play(event: FractalEvent) {
         if (!this.workletNode || !this.isInitialized) {
-            console.warn('[BassSynthManager] Tried to schedule before initialized.');
+            console.warn('[BassSynthManager] Tried to play event before initialized.');
             return;
         }
+
+        const freq = 440 * Math.pow(2, (event.note - 69) / 12);
+        if (isNaN(freq)) {
+            console.error('[BassSynthManager] NaN frequency for event:', event);
+            return;
+        }
+
+        const velocity = event.dynamics === 'p' ? 0.3 : event.dynamics === 'mf' ? 0.6 : 0.9;
         
-        notes.forEach(note => {
-            const freq = 440 * Math.pow(2, (note.midi - 69) / 12);
-            if (isNaN(freq)) {
-                console.error('[BassSynthManager] NaN frequency for note:', note);
-                return;
-            }
+        const noteOnTime = event.time;
+        const noteOffTime = noteOnTime + event.duration;
 
-            const noteOnTime = startTime + note.time;
-            const noteOffTime = noteOnTime + note.duration;
-
-            // Schedule Note On
-            this.workletNode!.port.postMessage({
-                type: 'noteOn',
-                frequency: freq,
-                velocity: note.velocity,
-                when: noteOnTime
-            });
-
-            // Schedule Note Off using main thread's setTimeout, ensuring it's sample-accurate with audioContext.currentTime
-            const delayUntilOff = (noteOffTime - this.audioContext.currentTime) * 1000;
-
-            if (delayUntilOff > 0) {
-                const timeoutId = setTimeout(() => {
-                    if (this.workletNode) {
-                        this.workletNode.port.postMessage({ type: 'noteOff' });
-                    }
-                    this.scheduledTimeouts.delete(timeoutId);
-                }, delayUntilOff);
-                this.scheduledTimeouts.add(timeoutId);
-            }
+        this.workletNode.port.postMessage({
+            type: 'noteOn',
+            frequency: freq,
+            velocity: velocity,
+            when: noteOnTime
         });
+
+        // Schedule Note Off
+        const delayUntilOff = (noteOffTime - this.audioContext.currentTime) * 1000;
+        if (delayUntilOff > 0) {
+            const timeoutId = setTimeout(() => {
+                if (this.workletNode) {
+                    this.workletNode.port.postMessage({ type: 'noteOff' });
+                }
+                this.scheduledTimeouts.delete(timeoutId);
+            }, delayUntilOff);
+            this.scheduledTimeouts.add(timeoutId);
+        }
     }
+
 
     public setPreset(instrumentName: BassInstrument) {
         if (!this.workletNode || instrumentName === 'none') {
