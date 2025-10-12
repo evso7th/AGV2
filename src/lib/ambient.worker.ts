@@ -180,10 +180,6 @@ const Scheduler = {
         
         this.isRunning = true;
         
-        if (this.settings.score === 'neuro_f_matrix' && !fractalMusicEngine) {
-            this.initializeEngine();
-        }
-
         const loop = () => {
             if (!this.isRunning) return;
             this.tick();
@@ -206,7 +202,7 @@ const Scheduler = {
             this.stop();
         }
         this.initializeEngine();
-        if (this.settings.bpm > 0) { // Only restart if there was a beat before
+        if (this.settings.bpm > 0) {
             this.start();
         }
     },
@@ -226,11 +222,9 @@ const Scheduler = {
            textureSettings: { ...this.settings.textureSettings, ...newSettings.textureSettings },
        };
 
-       if (scoreChanged || moodChanged) {
+       if (scoreChanged || moodChanged || !fractalMusicEngine) {
            this.initializeEngine();
-       }
-
-       if (fractalMusicEngine) {
+       } else if (fractalMusicEngine) {
            fractalMusicEngine.updateConfig({
                bpm: this.settings.bpm,
                density: this.settings.density,
@@ -246,16 +240,13 @@ const Scheduler = {
     },
 
     tick() {
-        if (!this.isRunning) return;
+        if (!this.isRunning || !fractalMusicEngine) return;
         
         const density = this.settings.density;
         let score: Score = { bass: [], melody: [], accompaniment: [], drums: [] };
         
         if (this.settings.score === 'neuro_f_matrix') {
-            if (!fractalMusicEngine) {
-                 this.initializeEngine(); // Failsafe
-            }
-            const fractalEvents = fractalMusicEngine!.evolve(this.barDuration);
+            const fractalEvents = fractalMusicEngine.evolve(this.barDuration);
 
             score.bass = fractalEvents.filter(e => e.type === 'bass');
             score.drums = fractalEvents.filter(e => e.type.startsWith('drum_'));
