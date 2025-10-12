@@ -1,9 +1,6 @@
-
 import type { BassInstrument, BassTechnique, Mood } from "@/types/music";
 import { TECHNIQUE_PRESETS, type BassTechniqueParams } from "./bass-presets";
 import type { FractalEvent, Dynamics, Phrasing } from '@/types/fractal';
-import { getPresetParams, PRESETS } from "./presets";
-
 
 export class BassSynthManager {
     private audioContext: AudioContext;
@@ -11,9 +8,6 @@ export class BassSynthManager {
     private outputNode: GainNode;
     public isInitialized = false;
     private scheduledTimeouts = new Set<NodeJS.Timeout>();
-    private currentPreset: BassInstrument = 'glideBass';
-    private currentTechnique: BassTechnique = 'portamento';
-
 
     constructor(audioContext: AudioContext, destination: AudioNode) {
         this.audioContext = audioContext;
@@ -28,18 +22,28 @@ export class BassSynthManager {
             this.workletNode = new AudioWorkletNode(this.audioContext, 'bass-processor');
             this.workletNode.connect(this.outputNode);
             this.isInitialized = true;
-            // No need to set preset here, it's done per note
+            console.log('[BassSynthManager] Initialized');
         } catch (e) {
-            console.error('[BassSynthManager] Failed to initialize:', e);
+            console.error('[BassSynthManager] Failed to init:', e);
         }
     }
-    
+
     public setVolume(volume: number) {
         if(this.outputNode instanceof GainNode){
             this.outputNode.gain.setTargetAtTime(volume, this.audioContext.currentTime, 0.01);
         }
     }
 
+    private setParam(name: string, value: number, time: number) {
+        if (!this.workletNode) return;
+        const param = this.workletNode.parameters.get(name);
+        if (param && isFinite(value)) {
+            param.setValueAtTime(value, time);
+        } else if (!param) {
+            console.warn(`[BassSynthManager] Parameter "${name}" not found on worklet node.`);
+        }
+    }
+    
     private getParamsForTechnique(
         technique: 'pluck' | 'ghost' | 'slap',
         phrasing: Phrasing,
@@ -48,7 +52,6 @@ export class BassSynthManager {
     ): BassTechniqueParams {
         const baseParams = { ...TECHNIQUE_PRESETS[technique] };
 
-        // Adjust for dynamics
         if (dynamics === 'p') {
             baseParams.distortion *= 0.5;
             baseParams.resonance *= 0.8;
@@ -57,19 +60,16 @@ export class BassSynthManager {
             baseParams.resonance *= 1.1;
         }
 
-        // Adjust for mood
         if (mood === 'dark' || mood === 'melancholic') {
             baseParams.cutoff *= 0.9;
         } else if (mood === 'epic') {
             baseParams.cutoff *= 1.1;
         }
         
-        // Handle phrasing
         baseParams.portamento = (phrasing === 'legato' && technique !== 'slap' && technique !== 'ghost') ? 0.03 : 0;
         
         return baseParams;
     }
-
 
     public play(event: FractalEvent, startTime: number) {
         if (!this.workletNode || !this.isInitialized) {
@@ -91,15 +91,12 @@ export class BassSynthManager {
         }
         
         const velocity = event.dynamics === 'p' ? 0.3 : event.dynamics === 'mf' ? 0.6 : 0.9;
-
         const params = this.getParamsForTechnique(event.technique, event.phrasing, event.dynamics, 'melancholic');
 
-        // console.log(`[BassSynthManager] Event: technique=${event.technique}, dynamics=${event.dynamics}. Params: `, params);
-
-        this.workletNode.parameters.get('cutoff')!.setValueAtTime(params.cutoff, noteOnTime);
-        this.workletNode.parameters.get('resonance')!.setValueAtTime(params.resonance, noteOnTime);
-        this.workletNode.parameters.get('distortion')!.setValueAtTime(params.distortion, noteOnTime);
-        this.workletNode.parameters.get('portamento')!.setValueAtTime(params.portamento, noteOnTime);
+        this.setParam('cutoff', params.cutoff, noteOnTime);
+        this.setParam('resonance', params.resonance, noteOnTime);
+        this.setParam('distortion', params.distortion, noteOnTime);
+        this.setParam('portamento', params.portamento, noteOnTime);
 
         this.workletNode.port.postMessage({
             type: 'noteOn',
@@ -122,24 +119,15 @@ export class BassSynthManager {
         }
     }
 
-
     public setPreset(instrumentName: BassInstrument) {
-        if (!this.workletNode) return;
-        this.currentPreset = instrumentName;
-        if (instrumentName === 'none') {
+        // This method is now a no-op for parameter setting, as it's technique-driven.
+        if (instrumentName === 'none' && this.workletNode) {
              this.workletNode.port.postMessage({ type: 'noteOff' });
-             return;
-        };
-        // This method is now effectively a no-op for parameter setting,
-        // but kept for potential future use or state management.
-        console.log(`[BassSynthManager] Preset set to ${instrumentName}. Note: Parameters are now technique-driven.`);
+        }
     }
 
     public setTechnique(technique: BassTechnique) {
-        if (!this.workletNode) return;
-        this.currentTechnique = technique;
-        // This is also largely a no-op now, as technique is per-note.
-        // It could set a 'default' or 'fallback' mode if desired.
+        // This is also a no-op now.
     }
 
     public allNotesOff() {
