@@ -71,14 +71,7 @@ export class FractalMusicEngine {
   private random;
 
   constructor(config: EngineConfig) {
-    if (!config || config.tempo <= 0 || !isFinite(config.tempo)) {
-      console.warn('[FractalEngine] Invalid tempo at construction, defaulting to 75');
-      config = { ...config, tempo: 75 };
-    }
-    this.config = {
-      ...config,
-      tempo: Math.max(20, Math.min(300, config.tempo))
-    };
+    this.config = config;
     this.lambda = config.lambda;
     const seed = this.config.seed ?? Date.now();
     this.random = seededRandom(seed);

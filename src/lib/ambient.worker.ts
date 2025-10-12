@@ -158,15 +158,15 @@ const Scheduler = {
         return (60 / this.settings.bpm) * 4; // 4 beats per bar
     },
 
-    initializeEngine(bpm: number) {
-        console.log('[Worker] Initializing NFM Engine with mood:', this.settings.mood, 'and BPM:', bpm);
+    initializeEngine(bpm: number, mood: Mood, density: number, drumSettings: DrumSettings) {
+        console.log('[Worker] Initializing NFM Engine with mood:', mood, 'and BPM:', bpm);
         const engineConfig: EngineConfig = {
             bpm: Math.max(20, Math.min(300, Number(bpm) || 75)),
-            density: this.settings.density,
-            lambda: 1.0 - (this.settings.density * 0.5 + 0.3),
-            organic: this.settings.density,
-            drumSettings: this.settings.drumSettings,
-            mood: this.settings.mood,
+            density: density,
+            lambda: 1.0 - (density * 0.5 + 0.3),
+            organic: density,
+            drumSettings: drumSettings,
+            mood: mood,
             genre: 'ambient',
         };
         fractalMusicEngine = new FractalMusicEngine(engineConfig);
@@ -207,7 +207,7 @@ const Scheduler = {
         if (this.isRunning) {
             this.stop();
         }
-        this.initializeEngine(this.settings.bpm);
+        this.initializeEngine(this.settings.bpm, this.settings.mood, this.settings.density, this.settings.drumSettings);
         if (this.settings.bpm > 0) {
             this.start();
         }
@@ -229,8 +229,8 @@ const Scheduler = {
            textureSettings: { ...this.settings.textureSettings, ...newSettings.textureSettings },
        };
 
-       if (scoreChanged || moodChanged || wasNotInitialized) {
-           this.initializeEngine(this.settings.bpm);
+       if (wasNotInitialized || scoreChanged || moodChanged) {
+           this.initializeEngine(this.settings.bpm, this.settings.mood, this.settings.density, this.settings.drumSettings);
        } else if (fractalMusicEngine) {
            fractalMusicEngine.updateConfig({
                bpm: this.settings.bpm,
@@ -315,7 +315,7 @@ self.onmessage = async (event: MessageEvent) => {
                 Scheduler.updateSettings(data);
                 // If not running, but we now have settings, initialize the engine.
                 if (!fractalMusicEngine) {
-                    Scheduler.initializeEngine(Scheduler.settings.bpm);
+                    Scheduler.initializeEngine(Scheduler.settings.bpm, Scheduler.settings.mood, Scheduler.settings.density, Scheduler.settings.drumSettings);
                 }
                 break;
         }
