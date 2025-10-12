@@ -52,6 +52,15 @@ function weightToDynamics(weight: number): 'p' | 'mf' | 'f' {
   return 'f';
 }
 
+function safeTime(value: number, fallback: number = 0): number {
+  return isFinite(value) ? value : fallback;
+}
+
+function safeDuration(duration: number): number {
+  return isFinite(duration) && duration > 0 ? Math.max(0.01, duration) : 0.1;
+}
+
+
 // === ОСНОВНОЙ КЛАСС ===
 export class FractalMusicEngine {
   private config: EngineConfig;
@@ -62,7 +71,14 @@ export class FractalMusicEngine {
   private random;
 
   constructor(config: EngineConfig) {
-    this.config = config;
+    if (!config || config.tempo <= 0 || !isFinite(config.tempo)) {
+      console.warn('[FractalEngine] Invalid tempo at construction, defaulting to 75');
+      config = { ...config, tempo: 75 };
+    }
+    this.config = {
+      ...config,
+      tempo: Math.max(20, Math.min(300, config.tempo))
+    };
     this.lambda = config.lambda;
     const seed = this.config.seed ?? Date.now();
     this.random = seededRandom(seed);
@@ -90,6 +106,10 @@ export class FractalMusicEngine {
   }
 
     public updateConfig(newConfig: Partial<EngineConfig>) {
+        if (newConfig.tempo && (!isFinite(newConfig.tempo) || newConfig.tempo <= 0)) {
+            console.warn(`[FractalEngine] Invalid tempo update (${newConfig.tempo}), keeping existing tempo.`);
+            delete newConfig.tempo;
+        }
         this.config = { ...this.config, ...newConfig };
         this.lambda = newConfig.lambda ?? this.lambda;
     }
@@ -104,52 +124,48 @@ export class FractalMusicEngine {
         console.error('[FractalEngine] Invalid time calculation in generateOneBarDrums');
         return [];
     }
-
-    const commonProps = (type: FractalEvent['type'], note: number) => ({
-      type,
-      note,
-      duration: 0.1,
-      technique: 'hit' as Technique,
-      phrasing: 'staccato' as const,
-    });
+    
+    const addEvent = (type: FractalEvent['type'], note: number, offset: number, weight: number, dynamics: 'p'|'mf'|'f', duration: number = 0.1) => {
+      const time = safeTime(startTime + offset);
+      if (isFinite(time)) {
+        events.push({
+          type,
+          note,
+          duration: safeDuration(duration),
+          time,
+          weight: weight * volume,
+          technique: 'hit',
+          dynamics,
+          phrasing: 'staccato'
+        });
+      }
+    };
     
     // Kick на 1 и 3
-    events.push({ ...commonProps('drum_kick', 36), time: startTime, weight: 1.0 * volume, dynamics: 'f' });
-    events.push({ ...commonProps('drum_kick', 36), time: startTime + 2 * beat, weight: 0.8 * volume, dynamics: 'f' });
+    addEvent('drum_kick', 36, 0, 1.0, 'f');
+    addEvent('drum_kick', 36, 2 * beat, 0.8, 'f');
 
     // Snare на 2 и 4
-    events.push({ ...commonProps('drum_snare', 38), time: startTime + 1 * beat, weight: 0.9 * volume, dynamics: 'mf' });
-    events.push({ ...commonProps('drum_snare', 38), time: startTime + 3 * beat, weight: 0.9 * volume, dynamics: 'mf' });
+    addEvent('drum_snare', 38, 1 * beat, 0.9, 'mf');
+    addEvent('drum_snare', 38, 3 * beat, 0.9, 'mf');
 
     // Hi-hat closed — 8 раз за такт (восьмые)
     for (let i = 0; i < 8; i++) {
-        const time = startTime + i * beat / 2;
-        if (!isFinite(time)) continue;
-        events.push({ 
-            ...commonProps('drum_hat', 42),
-            time: time,
-            weight: (0.3 + this.random.next() * 0.3) * volume,
-            dynamics: 'p'
-        });
+        addEvent('drum_hat', 42, i * beat / 2, (0.3 + this.random.next() * 0.3), 'p', 0.05);
     }
 
     // Эволюция: Добавляем Ride, Crash и сбивки в кульминации
     const isClimax = this.epoch % 8 === 7;
     if (isClimax) {
-        // Crash в начале такта
-        events.push({ ...commonProps('drum_crash', 49), time: startTime, weight: 1.0 * volume, dynamics: 'f' });
-        // Ride вместо Hi-hat
+        addEvent('drum_crash', 49, 0, 1.0, 'f', 0.3);
         for (let i = 0; i < 4; i++) {
-            events.push({ ...commonProps('drum_ride', 51), time: startTime + i * beat, weight: 0.7 * volume, dynamics: 'mf'});
+            addEvent('drum_ride', 51, i * beat, 0.7, 'mf', 0.05);
         }
-        // Сбивка в конце такта
-        const fillStart = startTime + 3 * beat;
-        if (isFinite(fillStart)) {
-            events.push({ ...commonProps('drum_tom_low', 41), time: fillStart, weight: 0.9 * volume, dynamics: 'mf'});
-            events.push({ ...commonProps('drum_tom_mid', 45), time: fillStart + beat/4, weight: 0.9*volume, dynamics: 'mf'});
-            events.push({ ...commonProps('drum_tom_high', 50), time: fillStart + beat/2, weight: 0.9*volume, dynamics: 'mf'});
-            events.push({ ...commonProps('drum_snare', 38), time: fillStart + (3 * beat/4), weight: 1.0*volume, dynamics: 'f'});
-        }
+        const fillStart = 3 * beat;
+        addEvent('drum_tom_low', 41, fillStart, 0.9, 'mf', 0.25);
+        addEvent('drum_tom_mid', 45, fillStart + beat/4, 0.9, 'mf', 0.25);
+        addEvent('drum_tom_high', 50, fillStart + beat/2, 0.9, 'mf', 0.25);
+        addEvent('drum_snare', 38, fillStart + (3 * beat/4), 1.0, 'f', 0.25);
     }
 
     return events;
@@ -161,6 +177,9 @@ export class FractalMusicEngine {
         this.branches.forEach(branch => {
             branch.weight = isFinite(branch.weight) ? branch.weight / totalWeight : 0.01;
         });
+    } else {
+        // Fallback in case totalWeight is 0 or NaN
+        this.branches.forEach(branch => branch.weight = 1 / this.branches.length);
     }
   }
 
@@ -170,7 +189,6 @@ export class FractalMusicEngine {
     
     // 1. Генерация ударных (1 такт — обязательно!)
     if (this.config.drumSettings.enabled && this.config.drumSettings.pattern === 'composer') {
-        // ВАЖНО: передаем 0, так как время будет абсолютным в audio-engine-context
         const drumEvents = this.generateOneBarDrums(0);
         output.push(...drumEvents);
     }
@@ -182,10 +200,10 @@ export class FractalMusicEngine {
     
     this.branches.forEach(branch => {
       branch.events.forEach(event => {
-        // Время события баса также относительно начала такта
         output.push({
           ...event,
-          time: event.time,
+          time: safeTime(event.time),
+          duration: safeDuration(event.duration),
           weight: branch.weight,
           technique: branch.technique,
           dynamics: weightToDynamics(branch.weight),
@@ -207,7 +225,7 @@ export class FractalMusicEngine {
         return sum + k * delta;
       }, 0);
       const newWeight = (1 - this.lambda) * branch.weight + resonanceSum;
-      nextBranches.push({ ...branch, weight: newWeight, age: branch.age + 1 });
+      nextBranches.push({ ...branch, weight: safeTime(newWeight, 0.01), age: branch.age + 1 });
     });
     
     this.branches = nextBranches;
@@ -234,7 +252,8 @@ export class FractalMusicEngine {
 
   private getDeltaProfile(): (t: number) => number {
     return (t: number) => {
-      const phase = (t / 120) % 1;
+      const safeT = safeTime(t);
+      const phase = (safeT / 120) % 1;
       if (this.config.mood === 'melancholic') {
         if (phase < 0.4) return 0.3 + phase * 1.5;
         if (phase < 0.7) return 1.0;
