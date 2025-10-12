@@ -1,4 +1,3 @@
-
 // Fallback for globalThis
 const g = typeof globalThis !== 'undefined' ? globalThis : (typeof self !== 'undefined' ? self : (typeof window !== 'undefined' ? window : global));
 
@@ -15,7 +14,12 @@ class ChordProcessor extends AudioWorkletProcessor {
     ];
   }
 
-  constructor(options) {
+  notes: any[];
+  stagger: number;
+  filterState: number;
+  oscType: string;
+
+  constructor(options: AudioWorkletNodeOptions) {
     super(options);
     
     this.notes = []; // { frequency, velocity, phase, gain, startTime, duration }
@@ -25,11 +29,11 @@ class ChordProcessor extends AudioWorkletProcessor {
     this.oscType = 'sawtooth';
   }
 
-  handleMessage(event) {
+  handleMessage(event: MessageEvent) {
     const { type, ...data } = event.data;
     if (type === 'playChord' && data.notes && data.notes.length > 0) {
         this.stagger = data.stagger || 0;
-        this.notes = data.notes.map(n => ({
+        this.notes = data.notes.map((n: any) => ({
             frequency: 440 * Math.pow(2, (n.midi - 69) / 12),
             velocity: n.velocity || 0.7,
             duration: n.duration,
@@ -46,20 +50,20 @@ class ChordProcessor extends AudioWorkletProcessor {
     }
   }
 
-  applyFilter(input, filterCutoff, filterQ) {
+  applyFilter(input: number, filterCutoff: number, filterQ: number) {
     const coeff = 1 - Math.exp(-2 * Math.PI * filterCutoff / sampleRate);
     this.filterState += coeff * (input - this.filterState);
     const feedback = filterQ * (this.filterState - input); // Simplified resonance
     return this.filterState + feedback;
   }
   
-  applyDistortion(input, distortionAmount) {
+  applyDistortion(input: number, distortionAmount: number) {
     if (distortionAmount <= 0) return input;
     const k = distortionAmount * 5;
     return (2 / Math.PI) * Math.atan(input * k);
   }
 
-  generateOsc(phase) {
+  generateOsc(phase: number) {
     switch (this.oscType) {
       case 'sine': return Math.sin(phase);
       case 'triangle': return 1 - 4 * Math.abs((phase / (2 * Math.PI)) - 0.5);
@@ -76,7 +80,7 @@ class ChordProcessor extends AudioWorkletProcessor {
     }
   }
 
-  process(inputs, outputs, parameters) {
+  process(inputs: Float32Array[][], outputs: Float32Array[][], parameters: Record<string, Float32Array>): boolean {
     const output = outputs[0];
     const attack = parameters.attack[0];
     const release = parameters.release[0];
@@ -131,6 +135,8 @@ class ChordProcessor extends AudioWorkletProcessor {
 }
 
 // Ensure processor is registered only once and works in different environments
-if (typeof registerProcessor === 'function') {
+try {
     registerProcessor('chord-processor', ChordProcessor);
+} catch (e) {
+    // Already registered
 }
