@@ -12,17 +12,13 @@ type ResonanceContext = {
 // A simple scale to work with for the first matrix
 const E_MINOR_SCALE_MIDI_DEGREES = [40, 42, 43, 45, 47, 48, 50]; // MIDI note numbers for E minor scale starting at E2
 
-const PERCUSSION_SOUNDS: Record<string, number> = {
-    'kick': 60, 'snare': 62, 'hat': 64, 'crash': 67, 'tom1': 69, 'tom2': 71, 'tom3': 72, 'ride': 65
-};
-
 // === 1. ГАРМОНИЧЕСКИЙ РЕЗОНАНС ===
 function harmonicResonance(note: number, mood: Mood, beatPhase: number): number {
   const scale = getScaleForMood(mood);
   const isConsonant = scale.includes(note % 12);
   
   // Акцент на тонике в сильных долях
-  const isTonic = (note % 12) === scale[0];
+  const isTonic = (note % 12) === (scale[0] % 12);
   const onStrongBeat = [0, 2].includes(Math.floor(beatPhase) % 4);
   
   if (isTonic && onStrongBeat) return 1.0;
@@ -34,61 +30,40 @@ function harmonicResonance(note: number, mood: Mood, beatPhase: number): number 
 function rhythmicResonance(
   event: FractalEvent,
   kickTimes: number[],
-  snareTimes: number[]
+  snareTimes: number[],
+  barDuration: number
 ): number {
-  const { time, duration, technique } = event;
+  const { time, technique } = event;
+  const relativeTime = time % barDuration;
   
-  // 1. Синхрон с kick (бас и kick на одной доле = высокий резонанс)
-  const nearKick = kickTimes.some(t => Math.abs(t - time) < 0.05);
+  // Синхрон с kick (бас и kick на одной доле = высокий резонанс)
+  const nearKick = kickTimes.some(t => Math.abs(t - relativeTime) < 0.05);
   if (nearKick) return technique === 'pluck' ? 1.0 : 0.7;
   
-  // 2. Избегание snare (бас не должен играть на 2 и 4)
-  const nearSnare = snareTimes.some(t => Math.abs(t - time) < 0.05);
+  // Избегание snare (бас не должен играть на 2 и 4)
+  const nearSnare = snareTimes.some(t => Math.abs(t - relativeTime) < 0.05);
   if (nearSnare) return 0.2;
   
-  // 3. Ghost notes — только в слабых долях
+  // Ghost notes — только в слабых долях
   if (technique === 'ghost') {
-    const beat = Math.floor(time * 2) % 4; // предполагаем 120 BPM → 2 доли/сек
+    const beat = Math.floor(time * 2) % 4; // Упрощенно
     return [1, 3].includes(beat) ? 0.9 : 0.4;
   }
   
-  // 4. Плотность: не более 4 нот/такт
-  const notesInBar = countNotesInBar(time, duration);
-  return notesInBar <= 4 ? 0.85 : 0.5;
+  return 0.8; // Базовый резонанс, если нет конфликтов/совпадений
 }
 
 // === 3. ТЕХНИЧЕСКИЙ РЕЗОНАНС ===
 function techniqueResonance(technique: Technique, mood: Mood, delta: number): number {
   const techniqueMap: Record<Mood, Record<Technique, number>> = {
-    melancholic: {
-      pluck: 1.0,
-      ghost: 0.9,
-      slap: 0.3,
-      harmonic: 0.7
-    },
-    epic: {
-      pluck: 0.9,
-      ghost: 0.6,
-      slap: 0.8,
-      harmonic: 0.5
-    },
-    dreamy: {
-      pluck: 0.8,
-      ghost: 1.0,
-      slap: 0.2,
-      harmonic: 0.9
-    },
-    dark: {
-      pluck: 0.9,
-      ghost: 0.8,
-      slap: 0.7,
-      harmonic: 0.4
-    }
+    melancholic: { pluck: 1.0, ghost: 0.9, slap: 0.3, harmonic: 0.7, hit: 0.5 },
+    epic: { pluck: 0.9, ghost: 0.6, slap: 0.8, harmonic: 0.5, hit: 0.5 },
+    dreamy: { pluck: 0.8, ghost: 1.0, slap: 0.2, harmonic: 0.9, hit: 0.5 },
+    dark: { pluck: 0.9, ghost: 0.8, slap: 0.7, harmonic: 0.4, hit: 0.5 }
   };
   
-  const base = techniqueMap[mood][technique] || 0.5;
+  const base = techniqueMap[mood]?.[technique] || 0.5;
   
-  // При высоком δ — slap допустим даже в меланхолии
   if (technique === 'slap' && delta > 0.8) return Math.min(0.7, base + 0.2);
   
   return base;
@@ -98,45 +73,38 @@ function techniqueResonance(technique: Technique, mood: Mood, delta: number): nu
 export function MelancholicMinorK(
   eventA: FractalEvent,
   eventB: FractalEvent,
-  context: ResonanceContext
+  context: ResonanceContext & { barDuration: number }
 ): number {
-  try {
-    const [typeA, valueA] = eventA.type.split('_');
-    const [typeB, valueB] = eventB.type.split('_');
-
-    // Гармонический резонанс (относительно лада и доли)
-    const harmA = harmonicResonance(eventA.note, context.mood, context.beatPhase);
-    const harmB = harmonicResonance(eventB.note, context.mood, context.beatPhase);
-    
-    // Ритмический резонанс (взаимодействие с ударными)
-    const rhythmA = rhythmicResonance(eventA, context.kickTimes, context.snareTimes);
-    const rhythmB = rhythmicResonance(eventB, context.kickTimes, context.snareTimes);
-    
-    // Технический резонанс (соответствие техники настроению)
-    const techA = techniqueResonance(eventA.technique, context.mood, context.delta);
-    const techB = techniqueResonance(eventB.technique, context.mood, context.delta);
-    
-    // Взвешенное среднее (можно настроить веса)
-    return (
-      0.5 * Math.min(harmA, harmB) +
-      0.3 * Math.min(rhythmA, rhythmB) +
-      0.2 * Math.min(techA, techB)
-    );
-  } catch (e) {
-    return 0;
+  // Игнорируем резонанс между барабанами
+  if (eventA.type.startsWith('drum_') || eventB.type.startsWith('drum_')) {
+      return 1.0;
   }
+
+  // Гармонический резонанс (относительно лада и доли)
+  const harmA = harmonicResonance(eventA.note, context.mood, context.beatPhase);
+  const harmB = harmonicResonance(eventB.note, context.mood, context.beatPhase);
+  
+  // Ритмический резонанс (взаимодействие с ударными)
+  const rhythmA = rhythmicResonance(eventA, context.kickTimes, context.snareTimes, context.barDuration);
+  const rhythmB = rhythmicResonance(eventB, context.kickTimes, context.snareTimes, context.barDuration);
+  
+  // Технический резонанс (соответствие техники настроению)
+  const techA = techniqueResonance(eventA.technique, context.mood, context.delta);
+  const techB = techniqueResonance(eventB.technique, context.mood, context.delta);
+  
+  // Взвешенное среднее (можно настроить веса)
+  return (
+    0.5 * Math.min(harmA, harmB) +
+    0.3 * Math.min(rhythmA, rhythmB) +
+    0.2 * Math.min(techA, techB)
+  );
 };
 
 // === ВСПОМОГАТЕЛЬНЫЕ ФУНКЦИИ ===
 function getScaleForMood(mood: Mood): number[] {
-  const E = 4; // E в chromatic scale (C=0)
-  if (mood === 'melancholic') return [E, E+2, E+3, E+5, E+7, E+9, E+10]; // E Dorian
-  return [E, E+2, E+4, E+5, E+7, E+9, E+11]; // E Major
-}
-
-function countNotesInBar(time: number, duration: number): number {
-  // Упрощённо: считаем, что такт = 2 сек при 120 BPM
-  const barStart = Math.floor(time / 2) * 2;
-  // В реальной системе здесь будет учёт всех событий в такте
-  return 3; // placeholder
+    const rootNoteOffset = 4; // E
+    const scale = mood === 'melancholic' 
+        ? [0, 2, 3, 5, 7, 8, 10] // Dorian
+        : [0, 2, 4, 5, 7, 9, 11]; // Major
+    return scale.map(degree => (degree + rootNoteOffset) % 12);
 }

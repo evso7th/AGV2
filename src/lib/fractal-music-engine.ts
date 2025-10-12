@@ -96,12 +96,14 @@ export class FractalMusicEngine {
 
 
   // === ГЕНЕРАЦИЯ УДАРНЫХ (4/4 ПАТТЕРН) ===
-  private generateDrumEvents(barDuration: number, barStartTime: number): FractalEvent[] {
+  private generateDrumEvents(barDuration: number): FractalEvent[] {
     const events: FractalEvent[] = [];
     const beat = barDuration / 4;
-    const { pattern, volume, kickVolume } = this.config.drumSettings;
+    const { pattern, volume } = this.config.drumSettings;
 
     if (pattern === 'none') return [];
+
+    const isClimax = this.epoch % 8 === 7;
 
     // Common properties for drum events
     const commonProps = {
@@ -115,16 +117,16 @@ export class FractalMusicEngine {
       ...commonProps,
       type: 'drum_kick',
       note: 36,
-      time: barStartTime,
-      weight: 1.0 * volume * kickVolume,
+      time: 0,
+      weight: 1.0 * volume,
       dynamics: 'f',
     });
     events.push({
       ...commonProps,
       type: 'drum_kick',
       note: 36,
-      time: barStartTime + 2 * beat,
-      weight: 0.8 * volume * kickVolume,
+      time: 2 * beat,
+      weight: 0.8 * volume,
       dynamics: 'f',
     });
 
@@ -133,7 +135,7 @@ export class FractalMusicEngine {
       ...commonProps,
       type: 'drum_snare',
       note: 38,
-      time: barStartTime + 1 * beat,
+      time: 1 * beat,
       weight: 0.9 * volume,
       dynamics: 'mf',
     });
@@ -141,24 +143,38 @@ export class FractalMusicEngine {
       ...commonProps,
       type: 'drum_snare',
       note: 38,
-      time: barStartTime + 3 * beat,
+      time: 3 * beat,
       weight: 0.9 * volume,
       dynamics: 'mf',
     });
     
     // Hi-hats
     for(let i = 0; i < 8; i++) {
-        if(this.random.next() < this.config.density) {
+        if(this.random.next() < this.config.density * 1.5) { // Denser hats
             events.push({
               ...commonProps,
               type: 'drum_hat',
               note: 42,
-              time: barStartTime + i * (beat / 2),
+              time: i * (beat / 2),
               weight: (0.3 + this.random.next() * 0.3) * volume,
               dynamics: 'p'
             });
         }
     }
+    
+    if (isClimax) {
+         events.push({ ...commonProps, type: 'drum_crash', note: 49, time: 0, weight: 1.0 * volume, dynamics: 'f' });
+         for (let i = 0; i < 4; i++) {
+             events.push({ ...commonProps, type: 'drum_ride', note: 51, time: i * beat, weight: 0.7 * volume, dynamics: 'mf'});
+         }
+         // Fill at the end of the bar
+         const fillStart = 3 * beat;
+         events.push({ ...commonProps, type: 'drum_tom_low', note: 41, time: fillStart, weight: 0.9 * volume, dynamics: 'mf'});
+         events.push({ ...commonProps, type: 'drum_tom_mid', note: 45, time: fillStart + beat/4, weight: 0.9*volume, dynamics: 'mf'});
+         events.push({ ...commonProps, type: 'drum_tom_high', note: 50, time: fillStart + beat/2, weight: 0.9*volume, dynamics: 'mf'});
+         events.push({ ...commonProps, type: 'drum_snare', note: 38, time: fillStart + (3 * beat/4), weight: 1.0*volume, dynamics: 'f'});
+    }
+
 
     return events;
   }
@@ -176,18 +192,26 @@ export class FractalMusicEngine {
   public evolve(barDuration: number): FractalEvent[] {
     const delta = this.getDeltaProfile()(this.time);
     const output: FractalEvent[] = [];
-    let barCurrentTime = this.time;
+    
+    // 1. Generate drum events for this bar first to create rhythmic context
+    const drumEvents = (this.config.drumSettings.enabled && this.config.drumSettings.pattern === 'composer')
+        ? this.generateDrumEvents(barDuration)
+        : [];
+    
+    const kickTimes = drumEvents.filter(e => e.type === 'drum_kick').map(e => e.time);
+    const snareTimes = drumEvents.filter(e => e.type === 'drum_snare').map(e => e.time);
 
-    // 1. Обновление весов
+    // 2. Update weights of existing bass branches based on new context
     this.branches = this.branches.map(branch => {
       const resonanceSum = this.branches.reduce((sum, other) => {
         if (other.id === branch.id) return sum;
         const k = MelancholicMinorK(branch.events[0], other.events[0], {
           mood: this.config.mood,
           delta,
-          kickTimes: [],
-          snareTimes: [],
-          beatPhase: (barCurrentTime * this.config.tempo / 60) % 4
+          kickTimes,
+          snareTimes,
+          beatPhase: (this.time * this.config.tempo / 60) % 4,
+          barDuration,
         });
         return sum + k * delta;
       }, 0);
@@ -195,13 +219,13 @@ export class FractalMusicEngine {
       return { ...branch, weight: newWeight, age: branch.age + 1 };
     });
     
-    // 2. Нормализация весов
+    // 3. Normalize weights
     this.normalizeWeights();
 
-    // 3. Смерть слабых ветвей
+    // 4. Prune weak branches
     this.branches = this.branches.filter(b => b.weight > 0.05);
 
-    // 4. Рождение новых ветвей
+    // 5. Create new branches (DLA-like)
     if (this.random.next() < 0.3 && this.branches.length < MAX_BRANCHES && this.epoch > 2) {
       const base = this.branches[0];
       if (base) {
@@ -215,11 +239,11 @@ export class FractalMusicEngine {
       }
     }
     
-    // 5. Генерация басовых событий
+    // 6. Generate final bass events for this bar
     let localTimeOffset = 0;
     this.branches.forEach(branch => {
       branch.events.forEach(event => {
-        const eventStartTime = barCurrentTime + localTimeOffset;
+        const eventStartTime = this.time + localTimeOffset;
         output.push({
           ...event,
           time: eventStartTime,
@@ -232,17 +256,13 @@ export class FractalMusicEngine {
       });
     });
 
-    // 6. Независимая генерация ударных для этого такта
-    if (this.config.drumSettings.enabled && this.config.drumSettings.pattern === 'composer') {
-        const drumEvents = this.generateDrumEvents(barDuration, this.time);
-        output.push(...drumEvents);
-    }
+    // 7. Add the generated drum events to the final output
+    output.push(...drumEvents.map(e => ({...e, time: this.time + e.time})));
 
-    // 7. Обновляем общее время
+    // 8. Update global time and epoch
     this.time += barDuration;
     this.epoch++;
     
-    console.log('[NFM Evolve] Generated Events:', output);
     return output;
   }
 
