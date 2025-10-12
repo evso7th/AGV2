@@ -102,69 +102,91 @@ export class FractalMusicEngine {
   }
 
     public updateConfig(newConfig: Partial<EngineConfig>) {
-        if (newConfig.tempo && (!isFinite(newConfig.tempo) || newConfig.tempo <= 0)) {
-            console.warn(`[FractalEngine] Invalid tempo update (${newConfig.tempo}), keeping existing tempo.`);
-            delete newConfig.tempo;
-        }
         this.config = { ...this.config, ...newConfig };
         this.lambda = newConfig.lambda ?? this.lambda;
     }
 
-
-  private generateOneBarDrums(startTime: number): FractalEvent[] {
-    const events: FractalEvent[] = [];
-    const beat = 60 / this.config.tempo;
-    const { volume } = this.config.drumSettings;
-
-    if (!isFinite(beat) || !isFinite(startTime)) {
-        return [];
-    }
+    private generateOneBarDrums(startTime: number): FractalEvent[] {
+        const events: FractalEvent[] = [];
+        const beat = 60 / this.config.tempo;
+        const { volume, kickVolume, enabled } = this.config.drumSettings;
+        const { density } = this.config;
+        const delta = this.getDeltaProfile()(this.time);
     
-    const addEvent = (type: FractalEvent['type'], note: number, offset: number, weight: number, dynamics: 'p'|'mf'|'f', duration: number = 0.1) => {
-      const time = safeTime(startTime + offset);
-      if (isFinite(time)) {
-        events.push({
-          type,
-          note,
-          duration: safeDuration(duration),
-          time,
-          weight: weight * volume,
-          technique: 'hit',
-          dynamics,
-          phrasing: 'staccato'
-        });
-      }
-    };
-    
-    // Kick на 1 и 3
-    addEvent('drum_kick', 36, 0, 1.0, 'f');
-    addEvent('drum_kick', 36, 2 * beat, 0.8, 'f');
-
-    // Snare на 2 и 4
-    addEvent('drum_snare', 38, 1 * beat, 0.9, 'mf');
-    addEvent('drum_snare', 38, 3 * beat, 0.9, 'mf');
-
-    // Hi-hat closed — 8 раз за такт (восьмые)
-    for (let i = 0; i < 8; i++) {
-        addEvent('drum_hat', 42, i * beat / 2, (0.3 + this.random.next() * 0.3), 'p', 0.05);
-    }
-
-    // Эволюция: Добавляем Ride, Crash и сбивки в кульминации
-    const isClimax = this.epoch % 8 === 7;
-    if (isClimax) {
-        addEvent('drum_crash', 49, 0, 1.0, 'f', 0.3);
-        for (let i = 0; i < 4; i++) {
-            addEvent('drum_ride', 51, i * beat, 0.7, 'mf', 0.05);
+        if (!isFinite(beat) || !isFinite(startTime) || !enabled) {
+            return [];
         }
-        const fillStart = 3 * beat;
-        addEvent('drum_tom_low', 41, fillStart, 0.9, 'mf', 0.25);
-        addEvent('drum_tom_mid', 45, fillStart + beat/4, 0.9, 'mf', 0.25);
-        addEvent('drum_tom_high', 50, fillStart + beat/2, 0.9, 'mf', 0.25);
-        addEvent('drum_snare', 38, fillStart + (3 * beat/4), 1.0, 'f', 0.25);
+        
+        const addEvent = (type: FractalEvent['type'], note: number, offset: number, weight: number, dynamics: 'p'|'mf'|'f', duration: number = 0.1) => {
+            const time = safeTime(startTime + offset);
+            if (isFinite(time)) {
+                events.push({
+                    type, note,
+                    duration: safeDuration(duration),
+                    time,
+                    weight: weight * volume, // Use the overall drum volume
+                    technique: 'hit', dynamics, phrasing: 'staccato'
+                });
+            }
+        };
+    
+        // 1. Kick Drum: всегда на 1, на 3 - с вероятностью, зависящей от плотности.
+        addEvent('drum_kick', 36, 0, kickVolume, 'f');
+        if (this.random.next() < (density * 0.8 + 0.2)) {
+            addEvent('drum_kick', 36, 2 * beat, kickVolume * 0.8, 'f');
+        }
+    
+        // 2. Snare Drum: всегда на 2 и 4, но с вариативной громкостью.
+        addEvent('drum_snare', 38, 1 * beat, 0.8 + this.random.next() * 0.2, 'mf');
+        addEvent('drum_snare', 38, 3 * beat, 0.8 + this.random.next() * 0.2, 'mf');
+    
+        // 3. Hi-Hats: сложность зависит от плотности
+        if (density < 0.4) { // Четверти
+            for (let i = 0; i < 4; i++) {
+                if (this.random.next() < 0.9) {
+                    addEvent('drum_hat', 42, i * beat, 0.4 + this.random.next() * 0.2, 'p', 0.05);
+                }
+            }
+        } else { // Восьмые с пропусками
+            for (let i = 0; i < 8; i++) {
+                // Пропускаем на сильных долях с некоторой вероятностью
+                if (i % 2 === 0 && this.random.next() < 0.1) continue;
+                addEvent('drum_hat', 42, i * beat / 2, (i % 2 === 0 ? 0.6 : 0.3) + this.random.next() * 0.2, 'p', 0.05);
+            }
+            // Открытый хэт на слабой доле в конце такта при высокой плотности
+            if (density > 0.7 && this.random.next() < 0.4) {
+                 addEvent('drum_open_hat', 44, 3.5 * beat, 0.7, 'mf', 0.2);
+            }
+        }
+    
+        // 4. Cymbals & Fills: зависят от энергии (delta) и номера такта (epoch)
+        const isClimaxBar = this.epoch % 8 === 7;
+        const isSubClimaxBar = this.epoch % 4 === 3;
+    
+        // Crash в кульминации
+        if (isClimaxBar && delta > 0.8) {
+            addEvent('drum_crash', 49, 0, 0.9, 'f', 0.4);
+        }
+        
+        // Ride для поддержания энергии при высокой плотности
+        if (density > 0.65) {
+             for (let i = 0; i < 4; i++) {
+                addEvent('drum_ride', 51, i * beat, 0.5, 'p', 0.1);
+            }
+        }
+    
+        // Сбивка (Fill) в конце 4-го такта, если плотность высокая
+        if (isSubClimaxBar && this.random.next() < density) {
+            const fillStart = 3 * beat;
+            const fillPatterns = [
+                () => { addEvent('drum_tom_mid', 45, fillStart + beat / 2, 0.8, 'mf'); addEvent('drum_tom_low', 41, fillStart + beat * 3/4, 0.85, 'mf'); },
+                () => { addEvent('drum_snare', 38, fillStart, 0.7, 'p'); addEvent('drum_snare', 38, fillStart + beat/4, 0.7, 'p'); addEvent('drum_tom_high', 50, fillStart + beat/2, 0.9, 'mf'); },
+            ];
+            fillPatterns[this.random.nextInt(fillPatterns.length)]();
+        }
+    
+        return events;
     }
-
-    return events;
-}
   
   private normalizeWeights() {
     const totalWeight = this.branches.reduce((sum, branch) => sum + branch.weight, 0);
@@ -249,16 +271,14 @@ export class FractalMusicEngine {
   }
 
   private getDeltaProfile(): (t: number) => number {
-    return (t: number) => {
-      const safeT = safeTime(t);
-      const phase = (safeT / 120) % 1;
-      if (this.config.mood === 'melancholic') {
+    const safeT = safeTime(this.time);
+    const phase = (safeT / 120) % 1;
+    if (this.config.mood === 'melancholic') {
         if (phase < 0.4) return 0.3 + phase * 1.5;
         if (phase < 0.7) return 1.0;
         return 1.0 - (phase - 0.7) * 2.3;
-      }
-      return 0.5;
-    };
+    }
+    return 0.5;
   }
 }
 
