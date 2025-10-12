@@ -7,6 +7,7 @@ type ResonanceContext = {
   kickTimes: number[];
   snareTimes: number[];
   beatPhase: number;
+  barDuration: number;
 };
 
 // A simple scale to work with for the first matrix
@@ -73,7 +74,7 @@ function techniqueResonance(technique: Technique, mood: Mood, delta: number): nu
 export function MelancholicMinorK(
   eventA: FractalEvent,
   eventB: FractalEvent,
-  context: ResonanceContext & { barDuration: number }
+  context: ResonanceContext
 ): number {
   // Игнорируем резонанс между барабанами
   if (eventA.type.startsWith('drum_') || eventB.type.startsWith('drum_')) {

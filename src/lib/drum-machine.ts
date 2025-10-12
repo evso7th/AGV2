@@ -8,9 +8,10 @@ const DRUM_SAMPLES: Record<string, string> = {
     'hat': '/assets/drums/closed_hi_hat_accented.wav',
     'open_hat': '/assets/drums/open_hh_top2.wav',
     'crash': '/assets/drums/crash1.wav',
-    'tom1': '/assets/drums/hightom.wav',
-    'tom2': '/assets/drums/midtom.wav',
-    'tom3': '/assets/drums/lowtom.wav',
+    'ride': '/assets/drums/cymbal1.wav', // Added ride cymbal
+    'tom_high': '/assets/drums/hightom.wav',
+    'tom_mid': '/assets/drums/midtom.wav',
+    'tom_low': '/assets/drums/lowtom.wav',
     
     // Percussion one-shots (mapped to C2-D#3)
     'perc1': '/assets/drums/perc-001.wav',
@@ -59,6 +60,7 @@ function createSampler(audioContext: AudioContext, output: AudioNode): Sampler {
     const triggerAttack = (note: string, time: number, velocity = 1) => {
         const buffer = buffers.get(note);
         if (!buffer) {
+            // console.warn(`[DrumMachine] Sample not found for note: ${note}`);
             return;
         }
 
@@ -107,8 +109,15 @@ export class DrumMachine {
         for (const event of score) {
             // Extract drum sample name from event type (e.g., 'drum_kick' -> 'kick')
             const sampleName = event.type.replace('drum_', '');
+            
             // Calculate absolute time for the event
             const absoluteTime = startTime + event.time;
+            
+            if (!isFinite(absoluteTime)) {
+                console.error('[DrumMachine] Non-finite time scheduled for event:', event);
+                continue;
+            }
+
             this.sampler.triggerAttack(sampleName, absoluteTime, event.weight);
         }
     }

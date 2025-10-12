@@ -36,22 +36,27 @@ export class BassSynthManager {
         }
     }
 
-    public play(event: FractalEvent) {
+    public play(event: FractalEvent, startTime: number) {
         if (!this.workletNode || !this.isInitialized) {
             console.warn('[BassSynthManager] Tried to play event before initialized.');
             return;
         }
 
         const freq = 440 * Math.pow(2, (event.note - 69) / 12);
-        if (isNaN(freq)) {
-            console.error('[BassSynthManager] NaN frequency for event:', event);
+        if (isNaN(freq) || !isFinite(freq)) {
+            console.error('[BassSynthManager] Invalid frequency for event:', event);
             return;
         }
 
         const velocity = event.dynamics === 'p' ? 0.3 : event.dynamics === 'mf' ? 0.6 : 0.9;
         
-        const noteOnTime = event.time;
+        const noteOnTime = startTime + event.time;
         const noteOffTime = noteOnTime + event.duration;
+        
+        if (!isFinite(noteOnTime) || !isFinite(noteOffTime)) {
+             console.error('[BassSynthManager] Non-finite time scheduled for event:', event);
+             return;
+        }
 
         this.workletNode.port.postMessage({
             type: 'noteOn',

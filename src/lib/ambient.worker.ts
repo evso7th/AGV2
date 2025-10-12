@@ -126,34 +126,6 @@ const Composer = {
 }
 
 // --- FRACTAL ENGINE ---
-function createNewSeed(baseConfig: Partial<EngineConfig>): Seed {
-    const randomMidiNote = 40 + E_MINOR_SCALE_DEGREES[Math.floor(Math.random() * E_MINOR_SCALE_DEGREES.length)] + (Math.floor(Math.random() * 3)) * 12;
-    const initialEvent: FractalEvent = { 
-        type: 'bass', 
-        note: randomMidiNote,
-        duration: 1, 
-        time: 0, 
-        weight: 1.0, 
-        technique: 'pluck',
-        dynamics: 'mf',
-        phrasing: 'staccato'
-    };
-    
-    return {
-        initialState: { [`${initialEvent.type}_${initialEvent.note}`]: 1.0 },
-        resonanceMatrixId: 'melancholic_minor',
-        config: {
-            lambda: baseConfig.lambda || 0.5,
-            bpm: baseConfig.bpm || 75,
-            density: baseConfig.density || 0.5,
-            organic: baseConfig.organic || 0.5,
-            drumSettings: baseConfig.drumSettings || { pattern: 'none', volume: 0.5, kickVolume: 1.0, enabled: false },
-            mood: baseConfig.mood || 'melancholic',
-            genre: baseConfig.genre || 'ambient',
-        },
-    };
-}
-
 let fractalMusicEngine: FractalMusicEngine | undefined;
 
 // --- Scheduler (The Conductor) ---
@@ -229,6 +201,16 @@ const Scheduler = {
         }
     },
     
+    reset() {
+        if (this.isRunning) {
+            this.stop();
+        }
+        this.initializeEngine();
+        if (this.settings.bpm > 0) { // Only restart if there was a beat before
+            this.start();
+        }
+    },
+
     updateSettings(newSettings: Partial<WorkerSettings>) {
        const needsRestart = this.isRunning && (newSettings.bpm !== undefined && newSettings.bpm !== this.settings.bpm);
        const scoreChanged = newSettings.score && newSettings.score !== this.settings.score;
@@ -273,13 +255,11 @@ const Scheduler = {
             if (!fractalMusicEngine) {
                  this.initializeEngine(); // Failsafe
             }
-            // The engine now returns a full set of FractalEvents
             const fractalEvents = fractalMusicEngine!.evolve(this.barDuration);
+
             score.bass = fractalEvents.filter(e => e.type === 'bass');
             score.drums = fractalEvents.filter(e => e.type.startsWith('drum_'));
-            // Other instruments can be filtered similarly
-            // e.g., score.melody = fractalEvents.filter(e => e.type === 'lead');
-
+            
         } else {
              // Legacy composers remain for other styles
              score.bass = Composer.generateBass(this.barCount, density);
@@ -330,8 +310,7 @@ self.onmessage = async (event: MessageEvent) => {
                 break;
 
             case 'reset':
-                Scheduler.stop();
-                Scheduler.initializeEngine();
+                Scheduler.reset();
                 break;
 
             case 'update_settings':

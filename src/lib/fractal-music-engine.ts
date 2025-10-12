@@ -161,21 +161,22 @@ export class FractalMusicEngine {
     
     // 1. Генерация ударных (1 такт — обязательно!)
     if (this.config.drumSettings.enabled && this.config.drumSettings.pattern === 'composer') {
-        const drumEvents = this.generateOneBarDrums(this.time);
+        // ВАЖНО: передаем 0, так как время будет абсолютным в audio-engine-context
+        const drumEvents = this.generateOneBarDrums(0);
         output.push(...drumEvents);
     }
     
     // 2. Генерация баса (1 такт)
     const delta = this.getDeltaProfile()(this.time);
-    const kickTimes = output.filter(e => e.type === 'drum_kick').map(e => e.time - this.time);
-    const snareTimes = output.filter(e => e.type === 'drum_snare').map(e => e.time - this.time);
+    const kickTimes = output.filter(e => e.type === 'drum_kick').map(e => e.time);
+    const snareTimes = output.filter(e => e.type === 'drum_snare').map(e => e.time);
     
     this.branches.forEach(branch => {
       branch.events.forEach(event => {
-        const eventStartTime = this.time + event.time;
+        // Время события баса также относительно начала такта
         output.push({
           ...event,
-          time: eventStartTime,
+          time: event.time,
           weight: branch.weight,
           technique: branch.technique,
           dynamics: weightToDynamics(branch.weight),
@@ -191,7 +192,7 @@ export class FractalMusicEngine {
         if (other.id === branch.id) return sum;
         const k = MelancholicMinorK(branch.events[0], other.events[0], {
           mood: this.config.mood, delta, kickTimes, snareTimes,
-          beatPhase: (this.time * this.config.tempo / 60) % 4, barDuration
+          beatPhase: (this.time * this.config.tempo / 60) % 4,
         });
         return sum + k * delta;
       }, 0);

@@ -151,7 +151,7 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
     const bassScore: FractalEvent[] = score.bass || [];
     if (bassScore.length > 0 && bassManagerRef.current) {
         bassScore.forEach(event => {
-            bassManagerRef.current!.play(event);
+            bassManagerRef.current!.play(event, now);
         });
     }
 

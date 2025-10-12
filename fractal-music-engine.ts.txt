@@ -1,6 +1,5 @@
- обновлённая, полностью рабочая версия fractal-music-engine.ts с полной поддержкой ударного арсенала (kick, snare, hi-hat, ride, crash, toms), интегрированная в вашу фрактальную модель и совместимая с types/fractal.ts.
-
-import type { FractalEvent, Mood, Genre, Technique, InstrumentType } from '@/types/fractal';
+import type { FractalEvent, Mood, Genre, Technique } from '@/types/fractal';
+import { MelancholicMinorK } from './resonance-matrices';
 
 export type Branch = {
   id: string;
@@ -32,8 +31,8 @@ function seededRandom(seed: number) {
 
 function getScaleForMood(mood: Mood): number[] {
   const E2 = 40;
-  if (mood === 'melancholic') return [E2, E2+2, E2+3, E2+5, E2+7, E2+9, E2+10]; // E Dorian
-  return [E2, E2+2, E2+4, E2+5, E2+7, E2+9, E2+11]; // E Major
+  if (mood === 'melancholic') return [E2, E2+2, E2+3, E2+5, E2+7, E2+9, E2+10];
+  return [E2, E2+2, E2+4, E2+5, E2+7, E2+9, E2+11];
 }
 
 function weightToDynamics(weight: number): 'p' | 'mf' | 'f' {
@@ -72,84 +71,94 @@ export class FractalMusicEngine {
     this.branches = [{ id: 'axon', events: axiomEvents, weight: 1.0, age: 0, technique: 'pluck' }];
   }
 
-  // === ГЕНЕРАЦИЯ УДАРНЫХ С ПОЛНЫМ АРСЕНАЛОМ ===
-  private generateDrumEvents(durationBars: number, startTime: number): FractalEvent[] {
+  // === ГЕНЕРАЦИЯ ОДНОГО ТАКТА УДАРНЫХ (БЕЗ ПАУЗ!) ===
+  private generateOneBarDrums(startTime: number): FractalEvent[] {
     const events: FractalEvent[] = [];
     const beat = 60 / this.config.tempo;
-    const isClimax = this.epoch % 8 === 7; // кульминация каждые 8 эпох
 
-    for (let bar = 0; bar < durationBars; bar++) {
-      const barStart = startTime + bar * 4 * beat;
+    // Kick на 1 и 3
+    events.push({ type: 'drum_kick', note: 36, duration: 0.1, time: startTime, weight: 1.0, technique: 'pluck', dynamics: 'f', phrasing: 'staccato' });
+    events.push({ type: 'drum_kick', note: 36, duration: 0.1, time: startTime + 2 * beat, weight: 1.0, technique: 'pluck', dynamics: 'f', phrasing: 'staccato' });
 
-      // Kick на 1 и 3
-      events.push({ type: 'drum_kick', note: 36, duration: 0.1, time: barStart, weight: 1.0, technique: 'pluck', dynamics: 'f', phrasing: 'staccato' });
-      events.push({ type: 'drum_kick', note: 36, duration: 0.1, time: barStart + 2 * beat, weight: 1.0, technique: 'pluck', dynamics: 'f', phrasing: 'staccato' });
+    // Snare на 2 и 4
+    events.push({ type: 'drum_snare', note: 38, duration: 0.1, time: startTime + 1 * beat, weight: 1.0, technique: 'pluck', dynamics: 'mf', phrasing: 'staccato' });
+    events.push({ type: 'drum_snare', note: 38, duration: 0.1, time: startTime + 3 * beat, weight: 1.0, technique: 'pluck', dynamics: 'mf', phrasing: 'staccato' });
 
-      // Snare на 2 и 4
-      events.push({ type: 'drum_snare', note: 38, duration: 0.1, time: barStart + 1 * beat, weight: 1.0, technique: 'pluck', dynamics: 'mf', phrasing: 'staccato' });
-      events.push({ type: 'drum_snare', note: 38, duration: 0.1, time: barStart + 3 * beat, weight: 1.0, technique: 'pluck', dynamics: 'mf', phrasing: 'staccato' });
-
-      // Hi-hat (closed) — постоянный пульс
-      for (let i = 0; i < 8; i++) {
-        events.push({ type: 'drum_hihat_closed', note: 42, duration: 0.05, time: barStart + i * beat / 2, weight: 0.8, technique: 'pluck', dynamics: 'p', phrasing: 'staccato' });
-      }
-
-      // Hi-hat (open) — перед кульминацией
-      if (isClimax && bar === durationBars - 1) {
-        events.push({ type: 'drum_hihat_open', note: 46, duration: 0.2, time: barStart + 3.5 * beat, weight: 0.9, technique: 'pluck', dynamics: 'mf', phrasing: 'staccato' });
-      }
-
-      // Ride — в кульминации вместо hi-hat
-      if (isClimax) {
-        for (let i = 0; i < 8; i++) {
-          events.push({ type: 'drum_ride', note: 51, duration: 0.05, time: barStart + i * beat / 2, weight: 0.9, technique: 'pluck', dynamics: 'mf', phrasing: 'staccato' });
-        }
-      }
-
-      // Crash — в начале кульминации
-      if (isClimax && bar === 0) {
-        events.push({ type: 'drum_crash', note: 49, duration: 0.3, time: barStart, weight: 1.0, technique: 'pluck', dynamics: 'f', phrasing: 'staccato' });
-      }
-
-      // Fills на томах — в конце каждого 4-го такта кульминации
-      if (isClimax && bar === durationBars - 1) {
-        const fillStart = barStart + 3 * beat;
-        events.push({ type: 'drum_tom_low', note: 41, duration: 0.25, time: fillStart, weight: 0.9, technique: 'pluck', dynamics: 'mf', phrasing: 'staccato' });
-        events.push({ type: 'drum_tom_mid', note: 45, duration: 0.25, time: fillStart + 0.25, weight: 0.9, technique: 'pluck', dynamics: 'mf', phrasing: 'staccato' });
-        events.push({ type: 'drum_tom_high', note: 50, duration: 0.25, time: fillStart + 0.5, weight: 0.9, technique: 'pluck', dynamics: 'mf', phrasing: 'staccato' });
-        events.push({ type: 'drum_snare', note: 38, duration: 0.25, time: fillStart + 0.75, weight: 1.0, technique: 'pluck', dynamics: 'f', phrasing: 'staccato' });
-      }
+    // Hi-hat closed — 8 раз за такт (восьмые)
+    for (let i = 0; i < 8; i++) {
+      events.push({
+        type: 'drum_hihat_closed',
+        note: 42,
+        duration: 0.05,
+        time: startTime + i * beat / 2,
+        weight: 0.8,
+        technique: 'pluck',
+        dynamics: 'p',
+        phrasing: 'staccato'
+      });
     }
+
+    // Кульминация каждые 8 тактов
+    if (this.epoch % 8 === 7) {
+      // Crash в начале такта
+      events.push({ type: 'drum_crash', note: 49, duration: 0.3, time: startTime, weight: 1.0, technique: 'pluck', dynamics: 'f', phrasing: 'staccato' });
+
+      // Ride вместо hi-hat
+      for (let i = 0; i < 8; i++) {
+        events.push({
+          type: 'drum_ride',
+          note: 51,
+          duration: 0.05,
+          time: startTime + i * beat / 2,
+          weight: 0.9,
+          technique: 'pluck',
+          dynamics: 'mf',
+          phrasing: 'staccato'
+        });
+      }
+
+      // Fill на томах в конце такта
+      const fillStart = startTime + 3 * beat;
+      events.push({ type: 'drum_tom_low', note: 41, duration: 0.25, time: fillStart, weight: 0.9, technique: 'pluck', dynamics: 'mf', phrasing: 'staccato' });
+      events.push({ type: 'drum_tom_mid', note: 45, duration: 0.25, time: fillStart + 0.25, weight: 0.9, technique: 'pluck', dynamics: 'mf', phrasing: 'staccato' });
+      events.push({ type: 'drum_tom_high', note: 50, duration: 0.25, time: fillStart + 0.5, weight: 0.9, technique: 'pluck', dynamics: 'mf', phrasing: 'staccato' });
+      events.push({ type: 'drum_snare', note: 38, duration: 0.25, time: fillStart + 0.75, weight: 1.0, technique: 'pluck', dynamics: 'f', phrasing: 'staccato' });
+    }
+
     return events;
   }
 
-  // === ОСНОВНОЙ МЕТОД ===
+  // === ОСНОВНОЙ МЕТОД: 1 ВЫЗОВ = 1 ТАКТ МУЗЫКИ ===
   public evolve(): FractalEvent[] {
     const delta = this.getDeltaProfile()(this.time);
-    let currentTime = this.time;
+    const barDuration = 4 * (60 / this.config.tempo);
     const output: FractalEvent[] = [];
 
-    // Обновление весов
+    // 1. Обновление весов
     this.branches = this.branches.map(branch => {
       const resonanceSum = this.branches.reduce((sum, other) => {
         if (other.id === branch.id) return sum;
-        const k = 0.8; // placeholder
+        const k = MelancholicMinorK(branch.events[0], other.events[0], {
+          mood: this.config.mood,
+          tempo: this.config.tempo,
+          delta
+        });
         return sum + k * delta;
       }, 0);
       const newWeight = (1 - this.lambda) * branch.weight + resonanceSum;
       return { ...branch, weight: newWeight, age: branch.age + 1 };
     });
 
-    // Нормализация
+    // 2. Нормализация
     const totalWeight = this.branches.reduce((sum, b) => sum + b.weight, 0);
     if (totalWeight > 0) {
       this.branches.forEach(b => b.weight /= totalWeight);
     }
 
-    // Смерть слабых ветвей
+    // 3. Смерть слабых ветвей
     this.branches = this.branches.filter(b => b.weight > 0.05);
 
-    // DLA: одна новая ветвь за вызов
+    // 4. DLA: одна новая ветвь за вызов (макс. 4 ветви)
     if (Math.random() < 0.3 && this.branches.length < 4 && this.epoch > 2) {
       const base = this.branches[0];
       if (base) {
@@ -163,7 +172,8 @@ export class FractalMusicEngine {
       }
     }
 
-    // Генерация баса
+    // 5. Генерация баса на 1 такт
+    let currentTime = this.time;
     this.branches.forEach(branch => {
       branch.events.forEach(event => {
         output.push({
@@ -178,11 +188,12 @@ export class FractalMusicEngine {
       });
     });
 
-    // Генерация ударных
-    const drumEvents = this.generateDrumEvents(2, this.time);
+    // 6. Генерация ударных на 1 такт (обязательно!)
+    const drumEvents = this.generateOneBarDrums(this.time);
     output.push(...drumEvents);
 
-    this.time = currentTime;
+    // 7. Продвигаем время на 1 такт
+    this.time += barDuration;
     this.epoch++;
     return output;
   }
@@ -199,32 +210,3 @@ export class FractalMusicEngine {
     };
   }
 }
-
-
-Что добавлено
-Полный ударный арсенал
-drum_kick
-,
-drum_snare
-,
-drum_hihat_closed
-,
-drum_hihat_open
-,
-drum_ride
-,
-drum_crash
-,
-drum_tom_low/mid/high
-Hi-hat
-Постоянный пульс (восьмые), открытый перед кульминацией
-Ride
-Заменяет hi-hat в кульминации
-Crash
-Только в начале кульминации
-Fills на томах
-Восходящий паттерн: low → mid → high → snare
-Драматургия
-Кульминация каждые 8 эпох → активация ride/crash/fills
-
-Теперь ваш композитор генерирует живую, профессиональную ритм-секцию, как у Motown, progressive trance или Yes — с дыханием, напряжением и кульминацией.
