@@ -158,10 +158,10 @@ const Scheduler = {
         return (60 / this.settings.bpm) * 4; // 4 beats per bar
     },
 
-    initializeEngine() {
-        console.log('[Worker] Initializing NFM Engine with mood:', this.settings.mood);
+    initializeEngine(bpm: number) {
+        console.log('[Worker] Initializing NFM Engine with mood:', this.settings.mood, 'and BPM:', bpm);
         const engineConfig: EngineConfig = {
-            bpm: this.settings.bpm,
+            bpm: bpm,
             density: this.settings.density,
             lambda: 1.0 - (this.settings.density * 0.5 + 0.3),
             organic: this.settings.density,
@@ -180,6 +180,12 @@ const Scheduler = {
         
         this.isRunning = true;
         
+        // Wait for first settings before starting loop
+        if (!fractalMusicEngine) {
+            console.log('[Worker] Waiting for initial settings to start...');
+            return;
+        }
+
         const loop = () => {
             if (!this.isRunning) return;
             this.tick();
@@ -201,7 +207,7 @@ const Scheduler = {
         if (this.isRunning) {
             this.stop();
         }
-        this.initializeEngine();
+        this.initializeEngine(this.settings.bpm);
         if (this.settings.bpm > 0) {
             this.start();
         }
@@ -211,6 +217,7 @@ const Scheduler = {
        const needsRestart = this.isRunning && (newSettings.bpm !== undefined && newSettings.bpm !== this.settings.bpm);
        const scoreChanged = newSettings.score && newSettings.score !== this.settings.score;
        const moodChanged = newSettings.mood && newSettings.mood !== this.settings.mood;
+       const wasNotInitialized = !fractalMusicEngine;
        
        if (needsRestart) this.stop();
        
@@ -222,8 +229,8 @@ const Scheduler = {
            textureSettings: { ...this.settings.textureSettings, ...newSettings.textureSettings },
        };
 
-       if (scoreChanged || moodChanged || !fractalMusicEngine) {
-           this.initializeEngine();
+       if (scoreChanged || moodChanged || wasNotInitialized) {
+           this.initializeEngine(this.settings.bpm);
        } else if (fractalMusicEngine) {
            fractalMusicEngine.updateConfig({
                bpm: this.settings.bpm,
