@@ -106,12 +106,11 @@ export class FractalMusicEngine {
         this.lambda = newConfig.lambda ?? this.lambda;
     }
 
-    private generateOneBarDrums(startTime: number): FractalEvent[] {
+    private generateOneBarDrums(startTime: number, delta: number): FractalEvent[] {
         const events: FractalEvent[] = [];
         const beat = 60 / this.config.tempo;
         const { volume, kickVolume, enabled } = this.config.drumSettings;
         const { density } = this.config;
-        const delta = this.getDeltaProfile()(this.time);
     
         if (!isFinite(beat) || !isFinite(startTime) || !enabled) {
             return [];
@@ -207,14 +206,15 @@ export class FractalMusicEngine {
     }
     const output: FractalEvent[] = [];
     
-    // 1. Генерация ударных (1 такт — обязательно!)
+    // 2. Генерация баса и барабанов (1 такт)
+    const delta = this.getDeltaProfile()(this.time);
+    
+    // Генерация ударных (1 такт — обязательно!)
     if (this.config.drumSettings.enabled && this.config.drumSettings.pattern === 'composer') {
-        const drumEvents = this.generateOneBarDrums(0);
+        const drumEvents = this.generateOneBarDrums(0, delta);
         output.push(...drumEvents);
     }
-    
-    // 2. Генерация баса (1 такт)
-    const delta = this.getDeltaProfile()(this.time);
+
     const kickTimes = output.filter(e => e.type === 'drum_kick').map(e => e.time);
     const snareTimes = output.filter(e => e.type === 'drum_snare').map(e => e.time);
     
@@ -271,15 +271,15 @@ export class FractalMusicEngine {
   }
 
   private getDeltaProfile(): (t: number) => number {
-    const safeT = safeTime(this.time);
-    const phase = (safeT / 120) % 1;
-    if (this.config.mood === 'melancholic') {
+    return (t: number) => {
+      const safeT = safeTime(t);
+      const phase = (safeT / 120) % 1;
+      if (this.config.mood === 'melancholic') {
         if (phase < 0.4) return 0.3 + phase * 1.5;
         if (phase < 0.7) return 1.0;
         return 1.0 - (phase - 0.7) * 2.3;
-    }
-    return 0.5;
+      }
+      return 0.5;
+    };
   }
 }
-
-    
