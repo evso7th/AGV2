@@ -161,7 +161,7 @@ const Scheduler = {
     initializeEngine(bpm: number) {
         console.log('[Worker] Initializing NFM Engine with mood:', this.settings.mood, 'and BPM:', bpm);
         const engineConfig: EngineConfig = {
-            bpm: bpm,
+            bpm: Math.max(20, Math.min(300, Number(bpm) || 75)), // <-- Защита и преобразование
             density: this.settings.density,
             lambda: 1.0 - (this.settings.density * 0.5 + 0.3),
             organic: this.settings.density,
@@ -313,6 +313,10 @@ self.onmessage = async (event: MessageEvent) => {
 
             case 'update_settings':
                 Scheduler.updateSettings(data);
+                // If not running, but we now have settings, initialize the engine.
+                if (!fractalMusicEngine) {
+                    Scheduler.initializeEngine(Scheduler.settings.bpm);
+                }
                 break;
         }
     } catch (e) {
