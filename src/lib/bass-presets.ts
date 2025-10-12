@@ -1,93 +1,89 @@
 
-export type BassPreset = {
-  // Layer 1
-  wave1: 'sine' | 'triangle' | 'sawtooth';
-  attack1: number;      
-  release1: number;     
-  portamento1?: number; 
-  
-  // Layer 2 (optional)
-  wave2?: 'sine' | 'triangle' | 'sawtooth';
-  attack2?: number;      
-  release2?: number;     
-  portamento2?: number; 
-  
-  // Shared
-  cutoff: number;       
-  distortion?: number;  
-  filterQ?: number;     
-  stagger?: number; // ms delay for layer 2
+/**
+ * @fileoverview This file acts as a cookbook for bass synthesizer techniques.
+ * It defines the sound characteristics for different playing styles,
+ * which are then used by the BassSynthManager to configure the audio worklet.
+ */
 
-  // UI
-  color: string;        
-  description: string;  
+import type { BassInstrument } from '@/types/music';
+
+/**
+ * Defines the parameters for a specific bass synthesis technique.
+ * These values are sent to the bass-processor worklet.
+ */
+export type BassTechniqueParams = {
+  cutoff: number;
+  resonance: number;
+  distortion: number;
+  portamento: number;
 };
 
-export const BASS_PRESETS: Record<string, BassPreset> = {
+/**
+ * A read-only collection of pre-defined sound recipes for each bass technique.
+ * This object serves as the single source of truth for how each technique should sound.
+ * Inspired by basstech.txt.
+ */
+export const TECHNIQUE_PRESETS: Record<'pluck' | 'ghost' | 'slap', BassTechniqueParams> = {
+  pluck: { 
+    cutoff: 450, 
+    resonance: 0.6, 
+    distortion: 0.05, 
+    portamento: 0 
+  },
+  ghost: { 
+    cutoff: 250, 
+    resonance: 0.3, 
+    distortion: 0.01, 
+    portamento: 0 
+  },
+  slap:  { 
+    cutoff: 800, 
+    resonance: 0.8, 
+    distortion: 0.2, 
+    portamento: 0 
+  }
+} as const;
+
+
+/**
+ * Legacy preset definitions for UI mapping and description purposes.
+ * This can be used to populate UI elements and provide user-facing text.
+ */
+export type BassPresetInfo = {
+  description: string;
+  color: string;
+};
+
+export const BASS_PRESET_INFO: Record<BassInstrument, BassPresetInfo | null> = {
   classicBass: {
-    wave1: 'sawtooth',
-    attack1: 0.01,
-    release1: 0.3,
-    cutoff: 400,
-    distortion: 0.05,
-    filterQ: 0.7,
+    description: 'Чёткий, ритмичный, как настоящая бас-гитара',
     color: '#8B4513',
-    description: 'Чёткий, ритмичный, как настоящая бас-гитара'
   },
   glideBass: {
-    wave1: 'triangle',
-    attack1: 0.05,
-    release1: 1.5,
-    portamento1: 0.03,
-    cutoff: 300,
-    filterQ: 0.5,
+    description: 'Плавный, как скольжение по струне',
     color: '#4169E1',
-    description: 'Плавный, как скольжение по струне'
   },
   ambientDrone: {
-    wave1: 'sine',
-    attack1: 0.2,
-    release1: 3.0,
-    portamento1: 0.08,
-    cutoff: 120,
-    filterQ: 1.2,
+    description: 'Тёмный, плотный, как вибрация под землёй',
     color: '#1A0033',
-    description: 'Тёмный, плотный, как вибрация под землёй'
   },
   resonantGliss: {
-    wave1: 'sawtooth',
-    attack1: 0.02,
-    release1: 1.0,
-    portamento1: 0.06,
-    cutoff: 500,
-    filterQ: 1.4,
-    distortion: 0.1,
+    description: 'Резонирующий, с "пением", идеален для глиссандо',
     color: '#8B008B',
-    description: 'Резонирующий, с "пением", идеален для глиссандо'
   },
   hypnoticDrone: {
-    wave1: 'sine',
-    attack1: 0.2,
-    release1: 3.0,
-    wave2: 'triangle',
-    attack2: 0.1,
-    release2: 2.0,
-    cutoff: 150,
-    stagger: 0.015,
+    description: 'Вибрация земли со стерео-движением',
     color: '#483D8B',
-    description: 'Вибрация земли со стерео-движением'
   },
   livingRiff: {
-    wave1: 'sine',
-    attack1: 0.01,
-    release1: 1.0,
-    wave2: 'sawtooth',
-    attack2: 0.05,
-    release2: 1.5,
-    distortion: 0.1,
-    cutoff: 350,
-    stagger: 0.005,
+    description: 'Живой, дышащий рифф с характером',
     color: '#FF4500',
-    description: 'Живой, дышащий рифф с характером'
-  }
+  },
+  // Instruments that are not bass presets
+  piano: null,
+  violin: null,
+  flute: null,
+  acousticGuitarSolo: null,
+  none: null
 };
+
