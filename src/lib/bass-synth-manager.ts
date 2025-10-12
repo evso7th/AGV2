@@ -1,7 +1,9 @@
 
-import type { BassInstrument, BassTechnique } from "@/types/music";
-import { BASS_PRESETS } from "./bass-presets";
-import type { FractalEvent } from '@/types/fractal';
+import type { BassInstrument, BassTechnique, Mood } from "@/types/music";
+import { TECHNIQUE_PRESETS, type BassTechniqueParams } from "./bass-presets";
+import type { FractalEvent, Dynamics, Phrasing } from '@/types/fractal';
+import { getPresetParams, PRESETS } from "./presets";
+
 
 export class BassSynthManager {
     private audioContext: AudioContext;
@@ -9,6 +11,9 @@ export class BassSynthManager {
     private outputNode: GainNode;
     public isInitialized = false;
     private scheduledTimeouts = new Set<NodeJS.Timeout>();
+    private currentPreset: BassInstrument = 'glideBass';
+    private currentTechnique: BassTechnique = 'portamento';
+
 
     constructor(audioContext: AudioContext, destination: AudioNode) {
         this.audioContext = audioContext;
@@ -24,7 +29,7 @@ export class BassSynthManager {
             this.workletNode.connect(this.outputNode);
             this.isInitialized = true;
             this.setPreset('glideBass'); 
-            this.setTechnique('arpeggio');
+            this.setTechnique('portamento');
         } catch (e) {
             console.error('[BassSynthManager] Failed to initialize:', e);
         }
@@ -35,6 +40,37 @@ export class BassSynthManager {
             this.outputNode.gain.setTargetAtTime(volume, this.audioContext.currentTime, 0.01);
         }
     }
+
+    private getParamsForTechnique(
+        technique: 'pluck' | 'ghost' | 'slap',
+        phrasing: Phrasing,
+        dynamics: Dynamics,
+        mood: Mood
+    ): BassTechniqueParams {
+        const baseParams = { ...TECHNIQUE_PRESETS[technique] };
+
+        // Adjust for dynamics
+        if (dynamics === 'p') {
+            baseParams.distortion *= 0.5;
+            baseParams.resonance *= 0.8;
+        } else if (dynamics === 'f') {
+            baseParams.distortion *= 1.2;
+            baseParams.resonance *= 1.1;
+        }
+
+        // Adjust for mood
+        if (mood === 'dark' || mood === 'melancholic') {
+            baseParams.cutoff *= 0.9;
+        } else if (mood === 'epic') {
+            baseParams.cutoff *= 1.1;
+        }
+        
+        // Handle phrasing
+        baseParams.portamento = (phrasing === 'legato' && technique !== 'slap' && technique !== 'ghost') ? 0.03 : 0;
+        
+        return baseParams;
+    }
+
 
     public play(event: FractalEvent, startTime: number) {
         if (!this.workletNode || !this.isInitialized) {
@@ -48,15 +84,23 @@ export class BassSynthManager {
             return;
         }
 
-        const velocity = event.dynamics === 'p' ? 0.3 : event.dynamics === 'mf' ? 0.6 : 0.9;
-        
         const noteOnTime = startTime + event.time;
-        const noteOffTime = noteOnTime + event.duration;
         
-        if (!isFinite(noteOnTime) || !isFinite(noteOffTime)) {
+        if (!isFinite(noteOnTime)) {
              console.error('[BassSynthManager] Non-finite time scheduled for event:', event);
              return;
         }
+        
+        const velocity = event.dynamics === 'p' ? 0.3 : event.dynamics === 'mf' ? 0.6 : 0.9;
+
+        const params = this.getParamsForTechnique(event.technique, event.phrasing, event.dynamics, 'melancholic'); // Assuming mood for now
+
+        console.log(`[BassSynthManager] Event: technique=${event.technique}, dynamics=${event.dynamics}. Params: `, params);
+
+        this.workletNode.parameters.get('cutoff')!.setValueAtTime(params.cutoff, noteOnTime);
+        this.workletNode.parameters.get('resonance')!.setValueAtTime(params.resonance, noteOnTime);
+        this.workletNode.parameters.get('distortion')!.setValueAtTime(params.distortion, noteOnTime);
+        this.workletNode.parameters.get('portamento')!.setValueAtTime(params.portamento, noteOnTime);
 
         this.workletNode.port.postMessage({
             type: 'noteOn',
@@ -66,10 +110,12 @@ export class BassSynthManager {
         });
 
         // Schedule Note Off
+        const noteOffTime = noteOnTime + event.duration;
         const delayUntilOff = (noteOffTime - this.audioContext.currentTime) * 1000;
         if (delayUntilOff > 0) {
             const timeoutId = setTimeout(() => {
                 if (this.workletNode) {
+                     // Check if it should stop at all (portamento might mean we glide to the next note)
                     this.workletNode.port.postMessage({ type: 'noteOff' });
                 }
                 this.scheduledTimeouts.delete(timeoutId);
@@ -80,23 +126,23 @@ export class BassSynthManager {
 
 
     public setPreset(instrumentName: BassInstrument) {
-        if (!this.workletNode || instrumentName === 'none') {
-             if(this.workletNode) this.workletNode.port.postMessage({ type: 'noteOff' });
+        if (!this.workletNode) return;
+        this.currentPreset = instrumentName;
+        if (instrumentName === 'none') {
+             this.workletNode.port.postMessage({ type: 'noteOff' });
              return;
         };
         
-        const preset = BASS_PRESETS[instrumentName];
-        
-        if (preset) {
-             this.workletNode.port.postMessage({
-                type: 'setPreset',
-                ...preset
-             });
-        }
+        // We're no longer using PRESETS here for parameters, as they are technique-driven.
+        // This method now primarily serves to select the instrument conceptually.
+        // We might re-introduce preset-based parameter variations later.
+        console.log(`[BassSynthManager] Preset set to ${instrumentName}. Note: Parameters are now technique-driven.`);
     }
 
     public setTechnique(technique: BassTechnique) {
         if (!this.workletNode) return;
+        this.currentTechnique = technique;
+        // The mode is now set per-note via getParamsForTechnique, but we can set a default mode.
         this.workletNode.port.postMessage({ type: 'setMode', mode: technique });
     }
 
@@ -105,11 +151,9 @@ export class BassSynthManager {
     }
 
     public stop() {
-        // Clear all scheduled note-off events
         this.scheduledTimeouts.forEach(timeoutId => clearTimeout(timeoutId));
         this.scheduledTimeouts.clear();
         
-        // Immediately stop any currently playing note in the worklet
         if (this.workletNode) {
             this.workletNode.port.postMessage({ type: 'noteOff' });
         }
