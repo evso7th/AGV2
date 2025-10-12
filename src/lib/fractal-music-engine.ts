@@ -71,7 +71,14 @@ export class FractalMusicEngine {
   private random;
 
   constructor(config: EngineConfig) {
-    this.config = config;
+    if (!config || !config.tempo || !isFinite(config.tempo) || config.tempo <= 0) {
+      console.warn(`[FractalEngine] Invalid tempo at construction (${config?.tempo}), defaulting to 75`);
+      config.tempo = 75;
+    }
+    this.config = {
+      ...config,
+      tempo: Math.max(20, Math.min(300, config.tempo))
+    };
     this.lambda = config.lambda;
     const seed = this.config.seed ?? Date.now();
     this.random = seededRandom(seed);
@@ -178,6 +185,10 @@ export class FractalMusicEngine {
 
   // === ОСНОВНОЙ МЕТОД ===
   public evolve(barDuration: number): FractalEvent[] {
+    if (!isFinite(barDuration) || barDuration <= 0) {
+        console.error(`[FractalEngine] Invalid barDuration (${barDuration}) in evolve, skipping.`);
+        return [];
+    }
     const output: FractalEvent[] = [];
     
     // 1. Генерация ударных (1 такт — обязательно!)

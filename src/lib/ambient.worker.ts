@@ -8,8 +8,8 @@
  * It is completely passive and only composes the next bar when commanded via a 'tick'.
  */
 import type { WorkerSettings, Score, Note, DrumsScore, ScoreName, InstrumentSettings, DrumSettings, InstrumentType, BassTechnique, Mood } from '@/types/music';
-import { FractalMusicEngine } from './fractal-music-engine';
-import type { Seed, ResonanceMatrix, EngineConfig, FractalEvent } from '@/types/fractal';
+import { FractalMusicEngine, type EngineConfig } from './fractal-music-engine';
+import type { Seed, ResonanceMatrix, FractalEvent } from '@/types/fractal';
 import * as Tone from 'tone';
 
 
@@ -158,15 +158,15 @@ const Scheduler = {
         return (60 / this.settings.bpm) * 4; // 4 beats per bar
     },
 
-    initializeEngine(bpm: number, mood: Mood, density: number, drumSettings: DrumSettings) {
-        console.log('[Worker] Initializing NFM Engine with mood:', mood, 'and BPM:', bpm);
+    initializeEngine(settings: WorkerSettings) {
+        console.log('[Worker] Initializing NFM Engine with mood:', settings.mood, 'and BPM:', settings.bpm);
         const engineConfig: EngineConfig = {
-            bpm: Math.max(20, Math.min(300, Number(bpm) || 75)),
-            density: density,
-            lambda: 1.0 - (density * 0.5 + 0.3),
-            organic: density,
-            drumSettings: drumSettings,
-            mood: mood,
+            bpm: settings.bpm,
+            density: settings.density,
+            lambda: 1.0 - (settings.density * 0.5 + 0.3),
+            organic: settings.density,
+            drumSettings: settings.drumSettings,
+            mood: settings.mood,
             genre: 'ambient',
         };
         fractalMusicEngine = new FractalMusicEngine(engineConfig);
@@ -207,7 +207,7 @@ const Scheduler = {
         if (this.isRunning) {
             this.stop();
         }
-        this.initializeEngine(this.settings.bpm, this.settings.mood, this.settings.density, this.settings.drumSettings);
+        this.initializeEngine(this.settings);
         if (this.settings.bpm > 0) {
             this.start();
         }
@@ -230,7 +230,7 @@ const Scheduler = {
        };
 
        if (wasNotInitialized || scoreChanged || moodChanged) {
-           this.initializeEngine(this.settings.bpm, this.settings.mood, this.settings.density, this.settings.drumSettings);
+           this.initializeEngine(this.settings);
        } else if (fractalMusicEngine) {
            fractalMusicEngine.updateConfig({
                bpm: this.settings.bpm,
@@ -294,7 +294,11 @@ const Scheduler = {
 
 // --- MessageBus (The "Kafka" entry point) ---
 self.onmessage = async (event: MessageEvent) => {
-    if (!event.data || !event.data.command) return;
+    if (!event.data || !event.data.command) {
+        console.warn('[Worker] Unknown message type:', event.data.type);
+        return;
+    }
+    
     const { command, data } = event.data;
 
     try {
@@ -315,9 +319,12 @@ self.onmessage = async (event: MessageEvent) => {
                 Scheduler.updateSettings(data);
                 // If not running, but we now have settings, initialize the engine.
                 if (!fractalMusicEngine) {
-                    Scheduler.initializeEngine(Scheduler.settings.bpm, Scheduler.settings.mood, Scheduler.settings.density, Scheduler.settings.drumSettings);
+                    Scheduler.initializeEngine(Scheduler.settings);
                 }
                 break;
+            default:
+                 console.warn(`[Worker] Unknown command: ${command}`);
+                 break;
         }
     } catch (e) {
         self.postMessage({ type: 'error', error: e instanceof Error ? e.message : String(e) });
