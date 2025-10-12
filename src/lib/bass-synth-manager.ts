@@ -28,8 +28,7 @@ export class BassSynthManager {
             this.workletNode = new AudioWorkletNode(this.audioContext, 'bass-processor');
             this.workletNode.connect(this.outputNode);
             this.isInitialized = true;
-            this.setPreset('glideBass'); 
-            this.setTechnique('portamento');
+            // No need to set preset here, it's done per note
         } catch (e) {
             console.error('[BassSynthManager] Failed to initialize:', e);
         }
@@ -93,9 +92,9 @@ export class BassSynthManager {
         
         const velocity = event.dynamics === 'p' ? 0.3 : event.dynamics === 'mf' ? 0.6 : 0.9;
 
-        const params = this.getParamsForTechnique(event.technique, event.phrasing, event.dynamics, 'melancholic'); // Assuming mood for now
+        const params = this.getParamsForTechnique(event.technique, event.phrasing, event.dynamics, 'melancholic');
 
-        console.log(`[BassSynthManager] Event: technique=${event.technique}, dynamics=${event.dynamics}. Params: `, params);
+        // console.log(`[BassSynthManager] Event: technique=${event.technique}, dynamics=${event.dynamics}. Params: `, params);
 
         this.workletNode.parameters.get('cutoff')!.setValueAtTime(params.cutoff, noteOnTime);
         this.workletNode.parameters.get('resonance')!.setValueAtTime(params.resonance, noteOnTime);
@@ -115,7 +114,6 @@ export class BassSynthManager {
         if (delayUntilOff > 0) {
             const timeoutId = setTimeout(() => {
                 if (this.workletNode) {
-                     // Check if it should stop at all (portamento might mean we glide to the next note)
                     this.workletNode.port.postMessage({ type: 'noteOff' });
                 }
                 this.scheduledTimeouts.delete(timeoutId);
@@ -132,18 +130,16 @@ export class BassSynthManager {
              this.workletNode.port.postMessage({ type: 'noteOff' });
              return;
         };
-        
-        // We're no longer using PRESETS here for parameters, as they are technique-driven.
-        // This method now primarily serves to select the instrument conceptually.
-        // We might re-introduce preset-based parameter variations later.
+        // This method is now effectively a no-op for parameter setting,
+        // but kept for potential future use or state management.
         console.log(`[BassSynthManager] Preset set to ${instrumentName}. Note: Parameters are now technique-driven.`);
     }
 
     public setTechnique(technique: BassTechnique) {
         if (!this.workletNode) return;
         this.currentTechnique = technique;
-        // The mode is now set per-note via getParamsForTechnique, but we can set a default mode.
-        this.workletNode.port.postMessage({ type: 'setMode', mode: technique });
+        // This is also largely a no-op now, as technique is per-note.
+        // It could set a 'default' or 'fallback' mode if desired.
     }
 
     public allNotesOff() {

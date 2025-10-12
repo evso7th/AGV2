@@ -1,61 +1,88 @@
-// src/lib/bass-synth-manager.ts
+// bass-synth-manager.ts
 import type { FractalEvent } from '@/types/fractal';
 
 export class BassSynthManager {
   private ctx: AudioContext;
-  private worklet: AudioWorkletNode;
-  private presetParams: Record<string, number> = {};
+  private worklet: AudioWorkletNode | null = null;
+  private isInitialized = false;
+  private mood: string;
 
-  constructor(ctx: AudioContext) {
+  constructor(ctx: AudioContext, mood: string) {
     this.ctx = ctx;
-    this.worklet = new AudioWorkletNode(ctx, 'bass-processor');
+    this.mood = mood;
   }
 
   async init() {
-    await this.ctx.audioWorklet.addModule('/worklets/bass-processor.js');
-    this.worklet.connect(this.ctx.destination);
-  }
-
-  public play(event: FractalEvent) {
-    const freq = 440 * Math.pow(2, (event.note - 69) / 12);
-    const velocity = event.dynamics === 'p' ? 0.3 : event.dynamics === 'mf' ? 0.6 : 0.9;
-
-    // Настройка параметров под технику
-    const params = this.getParamsForTechnique(event.technique, event.phrasing);
-    Object.entries(params).forEach(([key, value]) => {
-      if (this.worklet.parameters.has(key)) {
-        this.worklet.parameters.get(key)!.setValueAtTime(value, this.ctx.currentTime);
-      }
-    });
-
-    // Отправка ноты
-    this.worklet.port.postMessage({ type: 'noteOn', frequency: freq, velocity });
-    
-    // Авто-стоп через duration
-    setTimeout(() => {
-      this.worklet.port.postMessage({ type: 'noteOff' });
-    }, event.duration * 1000);
-  }
-
-  private getParamsForTechnique(technique: string, phrasing: string) {
-    switch (technique) {
-      case 'ghost':
-        return { cutoff: 250, resonance: 0.3, distortion: 0.01, portamento: 0.0 };
-      case 'slap':
-        return { cutoff: 350, resonance: 0.8, distortion: 0.15, portamento: 0.0 };
-      case 'pluck':
-        return { 
-          cutoff: 400, 
-          resonance: 0.6, 
-          distortion: 0.05, 
-          portamento: phrasing === 'legato' ? 0.03 : 0.0 
-        };
-      default:
-        return { cutoff: 400, resonance: 0.6, distortion: 0.05, portamento: 0.0 };
+    try {
+      await this.ctx.audioWorklet.addModule('/worklets/bass-processor.js');
+      this.worklet = new AudioWorkletNode(this.ctx, 'bass-processor');
+      this.worklet.connect(this.ctx.destination);
+      this.isInitialized = true;
+      console.log('[BassSynthManager] Initialized');
+    } catch (e) {
+      console.error('[BassSynthManager] Failed to init:', e);
     }
   }
 
-  public connect(destination: AudioNode) {
-    this.worklet.connect(destination);
+  private setParam(name: string, value: number, time: number) {
+    if (!this.worklet) return;
+    const param = this.worklet.parameters.get(name);
+    if (param && isFinite(value)) {
+      param.setValueAtTime(value, time);
+    }
+  }
+
+  private getParamsForTechnique(
+    technique: string,
+    phrasing: string,
+    dynamics: string
+  ) {
+    const base = {
+      cutoff: 400,
+      resonance: 0.7,
+      distortion: 0.05,
+      portamento: phrasing === 'legato' ? 0.03 : 0.0
+    };
+
+    switch (technique) {
+      case 'ghost':
+        return { ...base, cutoff: 250, resonance: 0.3, distortion: 0.0 };
+      case 'slap':
+        return { ...base, cutoff: 350, resonance: 0.8, distortion: 0.15 };
+      default: // 'pluck'
+        return base;
+    }
+  }
+
+  public play(event: FractalEvent) {
+    if (!this.isInitialized || !this.worklet) {
+      console.warn('[BassSynthManager] Not ready, skipping event');
+      return;
+    }
+
+    // Защита от некорректного времени
+    const safeTime = isFinite(event.time) ? event.time : 0;
+    const noteOnTime = this.ctx.currentTime + safeTime;
+
+    // Получение параметров
+    const params = this.getParamsForTechnique(
+      event.technique,
+      event.phrasing,
+      event.dynamics
+    );
+
+    // Установка параметров ДО отправки ноты
+    this.setParam('cutoff', params.cutoff, noteOnTime);
+    this.setParam('resonance', params.resonance, noteOnTime);
+    this.setParam('distortion', params.distortion, noteOnTime);
+    this.setParam('portamento', params.portamento, noteOnTime);
+
+    // Отправка ноты
+    this.worklet.port.postMessage({
+      type: 'noteOn',
+      frequency: 440 * Math.pow(2, (event.note - 69) / 12),
+      velocity: event.dynamics === 'p' ? 0.3 : event.dynamics === 'mf' ? 0.6 : 0.9,
+      time: noteOnTime
+    });
   }
 }
