@@ -1,6 +1,7 @@
 
-import type { FractalEvent, Mood, Genre } from '@/types/fractal';
+import type { FractalEvent, Mood, Genre, Technique } from '@/types/fractal';
 import { MelancholicMinorK } from './resonance-matrices';
+import type { DrumSettings } from '@/types/music';
 
 // === ТИПЫ ===
 export type Branch = {
@@ -12,12 +13,17 @@ export type Branch = {
 };
 
 // === КОНФИГУРАЦИЯ ===
-interface EngineConfig {
-  mood: Mood;      // 'melancholic', 'epic', 'dreamy', 'dark'
-  genre: Genre;    // 'trance', 'ambient', 'progressive'
-  tempo: number;   // BPM
+export interface EngineConfig {
+  mood: Mood;
+  genre: Genre;
+  tempo: number;
   seed?: number;
+  drumSettings: DrumSettings;
+  density: number;
+  lambda: number;
+  organic: number;
 }
+
 
 const MAX_BRANCHES = 10;
 
@@ -57,7 +63,7 @@ export class FractalMusicEngine {
 
   constructor(config: EngineConfig) {
     this.config = config;
-    this.lambda = config.mood === 'melancholic' ? 0.25 : 0.15;
+    this.lambda = config.lambda;
     const seed = this.config.seed ?? Date.now();
     this.random = seededRandom(seed);
     this.initialize();
@@ -85,7 +91,7 @@ export class FractalMusicEngine {
 
     public updateConfig(newConfig: Partial<EngineConfig>) {
         this.config = { ...this.config, ...newConfig };
-        this.lambda = this.config.mood === 'melancholic' ? 0.25 : 0.15;
+        this.lambda = newConfig.lambda ?? this.lambda;
     }
 
 
@@ -93,23 +99,66 @@ export class FractalMusicEngine {
   private generateDrumEvents(barDuration: number, barStartTime: number): FractalEvent[] {
     const events: FractalEvent[] = [];
     const beat = barDuration / 4;
+    const { pattern, volume, kickVolume } = this.config.drumSettings;
 
+    if (pattern === 'none') return [];
+
+    // Common properties for drum events
+    const commonProps = {
+      duration: 0.1,
+      technique: 'hit' as Technique,
+      phrasing: 'staccato' as const,
+    };
+    
+    // Kick on 1 and 3
     events.push({
-      type: 'drum_kick', note: 36, duration: 0.1, time: barStartTime,
-      weight: 1.0, technique: 'hit', dynamics: 'f', phrasing: 'staccato'
+      ...commonProps,
+      type: 'drum_kick',
+      note: 36,
+      time: barStartTime,
+      weight: 1.0 * volume * kickVolume,
+      dynamics: 'f',
     });
     events.push({
-      type: 'drum_kick', note: 36, duration: 0.1, time: barStartTime + 2 * beat,
-      weight: 1.0, technique: 'hit', dynamics: 'f', phrasing: 'staccato'
+      ...commonProps,
+      type: 'drum_kick',
+      note: 36,
+      time: barStartTime + 2 * beat,
+      weight: 0.8 * volume * kickVolume,
+      dynamics: 'f',
+    });
+
+    // Snare on 2 and 4
+    events.push({
+      ...commonProps,
+      type: 'drum_snare',
+      note: 38,
+      time: barStartTime + 1 * beat,
+      weight: 0.9 * volume,
+      dynamics: 'mf',
     });
     events.push({
-      type: 'drum_snare', note: 38, duration: 0.1, time: barStartTime + 1 * beat,
-      weight: 1.0, technique: 'hit', dynamics: 'mf', phrasing: 'staccato'
+      ...commonProps,
+      type: 'drum_snare',
+      note: 38,
+      time: barStartTime + 3 * beat,
+      weight: 0.9 * volume,
+      dynamics: 'mf',
     });
-    events.push({
-      type: 'drum_snare', note: 38, duration: 0.1, time: barStartTime + 3 * beat,
-      weight: 1.0, technique: 'hit', dynamics: 'mf', phrasing: 'staccato'
-    });
+    
+    // Hi-hats
+    for(let i = 0; i < 8; i++) {
+        if(this.random.next() < this.config.density) {
+            events.push({
+              ...commonProps,
+              type: 'drum_hat',
+              note: 42,
+              time: barStartTime + i * (beat / 2),
+              weight: (0.3 + this.random.next() * 0.3) * volume,
+              dynamics: 'p'
+            });
+        }
+    }
 
     return events;
   }
@@ -167,9 +216,10 @@ export class FractalMusicEngine {
     }
     
     // 5. Генерация басовых событий
+    let localTimeOffset = 0;
     this.branches.forEach(branch => {
       branch.events.forEach(event => {
-        const eventStartTime = barCurrentTime;
+        const eventStartTime = barCurrentTime + localTimeOffset;
         output.push({
           ...event,
           time: eventStartTime,
@@ -178,13 +228,15 @@ export class FractalMusicEngine {
           dynamics: weightToDynamics(branch.weight),
           phrasing: branch.weight > 0.7 ? 'legato' : 'staccato'
         });
-        barCurrentTime += event.duration * (60 / this.config.tempo);
+        localTimeOffset += event.duration * (60 / this.config.tempo);
       });
     });
 
     // 6. Независимая генерация ударных для этого такта
-    const drumEvents = this.generateDrumEvents(barDuration, this.time);
-    output.push(...drumEvents); 
+    if (this.config.drumSettings.enabled && this.config.drumSettings.pattern === 'composer') {
+        const drumEvents = this.generateDrumEvents(barDuration, this.time);
+        output.push(...drumEvents);
+    }
 
     // 7. Обновляем общее время
     this.time += barDuration;
