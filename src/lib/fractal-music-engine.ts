@@ -100,6 +100,11 @@ export class FractalMusicEngine {
     const beat = 60 / this.config.tempo;
     const { volume } = this.config.drumSettings;
 
+    if (!isFinite(beat) || !isFinite(startTime)) {
+        console.error('[FractalEngine] Invalid time calculation in generateOneBarDrums');
+        return [];
+    }
+
     const commonProps = (type: FractalEvent['type'], note: number) => ({
       type,
       note,
@@ -118,9 +123,11 @@ export class FractalMusicEngine {
 
     // Hi-hat closed — 8 раз за такт (восьмые)
     for (let i = 0; i < 8; i++) {
+        const time = startTime + i * beat / 2;
+        if (!isFinite(time)) continue;
         events.push({ 
             ...commonProps('drum_hat', 42),
-            time: startTime + i * beat / 2,
+            time: time,
             weight: (0.3 + this.random.next() * 0.3) * volume,
             dynamics: 'p'
         });
@@ -137,10 +144,12 @@ export class FractalMusicEngine {
         }
         // Сбивка в конце такта
         const fillStart = startTime + 3 * beat;
-        events.push({ ...commonProps('drum_tom_low', 41), time: fillStart, weight: 0.9 * volume, dynamics: 'mf'});
-        events.push({ ...commonProps('drum_tom_mid', 45), time: fillStart + beat/4, weight: 0.9*volume, dynamics: 'mf'});
-        events.push({ ...commonProps('drum_tom_high', 50), time: fillStart + beat/2, weight: 0.9*volume, dynamics: 'mf'});
-        events.push({ ...commonProps('drum_snare', 38), time: fillStart + (3 * beat/4), weight: 1.0*volume, dynamics: 'f'});
+        if (isFinite(fillStart)) {
+            events.push({ ...commonProps('drum_tom_low', 41), time: fillStart, weight: 0.9 * volume, dynamics: 'mf'});
+            events.push({ ...commonProps('drum_tom_mid', 45), time: fillStart + beat/4, weight: 0.9*volume, dynamics: 'mf'});
+            events.push({ ...commonProps('drum_tom_high', 50), time: fillStart + beat/2, weight: 0.9*volume, dynamics: 'mf'});
+            events.push({ ...commonProps('drum_snare', 38), time: fillStart + (3 * beat/4), weight: 1.0*volume, dynamics: 'f'});
+        }
     }
 
     return events;
@@ -148,9 +157,9 @@ export class FractalMusicEngine {
   
   private normalizeWeights() {
     const totalWeight = this.branches.reduce((sum, branch) => sum + branch.weight, 0);
-    if (totalWeight > 0) {
+    if (totalWeight > 0 && isFinite(totalWeight)) {
         this.branches.forEach(branch => {
-            branch.weight /= totalWeight;
+            branch.weight = isFinite(branch.weight) ? branch.weight / totalWeight : 0.01;
         });
     }
   }
@@ -193,6 +202,7 @@ export class FractalMusicEngine {
         const k = MelancholicMinorK(branch.events[0], other.events[0], {
           mood: this.config.mood, delta, kickTimes, snareTimes,
           beatPhase: (this.time * this.config.tempo / 60) % 4,
+          barDuration: barDuration,
         });
         return sum + k * delta;
       }, 0);

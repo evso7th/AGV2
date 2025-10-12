@@ -50,7 +50,14 @@ export class FractalMusicEngine {
   private epoch = 0;
 
   constructor(config: EngineConfig) {
-    this.config = config;
+    // Защита от некорректного темпа
+    if (config.tempo <= 0 || !isFinite(config.tempo)) {
+      throw new Error('Tempo must be a finite number > 0');
+    }
+    this.config = {
+      ...config,
+      tempo: Math.max(20, Math.min(300, config.tempo))
+    };
     this.lambda = config.mood === 'melancholic' ? 0.25 : 0.15;
     this.initialize();
   }
@@ -73,8 +80,14 @@ export class FractalMusicEngine {
 
   // === ГЕНЕРАЦИЯ ОДНОГО ТАКТА УДАРНЫХ (БЕЗ ПАУЗ!) ===
   private generateOneBarDrums(startTime: number): FractalEvent[] {
+    if (!isFinite(startTime)) {
+      console.warn('[FractalEngine] Invalid startTime, resetting to 0');
+      startTime = 0;
+    }
+
     const events: FractalEvent[] = [];
     const beat = 60 / this.config.tempo;
+    if (!isFinite(beat)) return [];
 
     // Kick на 1 и 3
     events.push({ type: 'drum_kick', note: 36, duration: 0.1, time: startTime, weight: 1.0, technique: 'pluck', dynamics: 'f', phrasing: 'staccato' });
@@ -84,13 +97,15 @@ export class FractalMusicEngine {
     events.push({ type: 'drum_snare', note: 38, duration: 0.1, time: startTime + 1 * beat, weight: 1.0, technique: 'pluck', dynamics: 'mf', phrasing: 'staccato' });
     events.push({ type: 'drum_snare', note: 38, duration: 0.1, time: startTime + 3 * beat, weight: 1.0, technique: 'pluck', dynamics: 'mf', phrasing: 'staccato' });
 
-    // Hi-hat closed — 8 раз за такт (восьмые)
+    // Hi-hat closed — 8 раз за такт
     for (let i = 0; i < 8; i++) {
+      const time = startTime + i * beat / 2;
+      if (!isFinite(time)) continue;
       events.push({
         type: 'drum_hihat_closed',
         note: 42,
         duration: 0.05,
-        time: startTime + i * beat / 2,
+        time,
         weight: 0.8,
         technique: 'pluck',
         dynamics: 'p',
@@ -100,16 +115,18 @@ export class FractalMusicEngine {
 
     // Кульминация каждые 8 тактов
     if (this.epoch % 8 === 7) {
-      // Crash в начале такта
+      // Crash
       events.push({ type: 'drum_crash', note: 49, duration: 0.3, time: startTime, weight: 1.0, technique: 'pluck', dynamics: 'f', phrasing: 'staccato' });
 
       // Ride вместо hi-hat
       for (let i = 0; i < 8; i++) {
+        const time = startTime + i * beat / 2;
+        if (!isFinite(time)) continue;
         events.push({
           type: 'drum_ride',
           note: 51,
           duration: 0.05,
-          time: startTime + i * beat / 2,
+          time,
           weight: 0.9,
           technique: 'pluck',
           dynamics: 'mf',
@@ -117,12 +134,14 @@ export class FractalMusicEngine {
         });
       }
 
-      // Fill на томах в конце такта
+      // Fill на томах
       const fillStart = startTime + 3 * beat;
-      events.push({ type: 'drum_tom_low', note: 41, duration: 0.25, time: fillStart, weight: 0.9, technique: 'pluck', dynamics: 'mf', phrasing: 'staccato' });
-      events.push({ type: 'drum_tom_mid', note: 45, duration: 0.25, time: fillStart + 0.25, weight: 0.9, technique: 'pluck', dynamics: 'mf', phrasing: 'staccato' });
-      events.push({ type: 'drum_tom_high', note: 50, duration: 0.25, time: fillStart + 0.5, weight: 0.9, technique: 'pluck', dynamics: 'mf', phrasing: 'staccato' });
-      events.push({ type: 'drum_snare', note: 38, duration: 0.25, time: fillStart + 0.75, weight: 1.0, technique: 'pluck', dynamics: 'f', phrasing: 'staccato' });
+      if (isFinite(fillStart)) {
+        events.push({ type: 'drum_tom_low', note: 41, duration: 0.25, time: fillStart, weight: 0.9, technique: 'pluck', dynamics: 'mf', phrasing: 'staccato' });
+        events.push({ type: 'drum_tom_mid', note: 45, duration: 0.25, time: fillStart + 0.25, weight: 0.9, technique: 'pluck', dynamics: 'mf', phrasing: 'staccato' });
+        events.push({ type: 'drum_tom_high', note: 50, duration: 0.25, time: fillStart + 0.5, weight: 0.9, technique: 'pluck', dynamics: 'mf', phrasing: 'staccato' });
+        events.push({ type: 'drum_snare', note: 38, duration: 0.25, time: fillStart + 0.75, weight: 1.0, technique: 'pluck', dynamics: 'f', phrasing: 'staccato' });
+      }
     }
 
     return events;
@@ -130,11 +149,19 @@ export class FractalMusicEngine {
 
   // === ОСНОВНОЙ МЕТОД: 1 ВЫЗОВ = 1 ТАКТ МУЗЫКИ ===
   public evolve(): FractalEvent[] {
+    // Защита от некорректного времени
+    if (!isFinite(this.time)) {
+      console.warn('[FractalEngine] Time is not finite. Resetting to 0.');
+      this.time = 0;
+    }
+
     const delta = this.getDeltaProfile()(this.time);
     const barDuration = 4 * (60 / this.config.tempo);
+    if (!isFinite(barDuration)) return [];
+
     const output: FractalEvent[] = [];
 
-    // 1. Обновление весов
+    // Обновление весов
     this.branches = this.branches.map(branch => {
       const resonanceSum = this.branches.reduce((sum, other) => {
         if (other.id === branch.id) return sum;
@@ -146,19 +173,21 @@ export class FractalMusicEngine {
         return sum + k * delta;
       }, 0);
       const newWeight = (1 - this.lambda) * branch.weight + resonanceSum;
-      return { ...branch, weight: newWeight, age: branch.age + 1 };
+      return { ...branch, weight: isFinite(newWeight) ? newWeight : 0.01, age: branch.age + 1 };
     });
 
-    // 2. Нормализация
+    // Нормализация
     const totalWeight = this.branches.reduce((sum, b) => sum + b.weight, 0);
-    if (totalWeight > 0) {
-      this.branches.forEach(b => b.weight /= totalWeight);
+    if (totalWeight > 0 && isFinite(totalWeight)) {
+      this.branches.forEach(b => {
+        b.weight = isFinite(b.weight) ? b.weight / totalWeight : 0.01;
+      });
     }
 
-    // 3. Смерть слабых ветвей
+    // Смерть слабых ветвей
     this.branches = this.branches.filter(b => b.weight > 0.05);
 
-    // 4. DLA: одна новая ветвь за вызов (макс. 4 ветви)
+    // DLA: одна новая ветвь за вызов
     if (Math.random() < 0.3 && this.branches.length < 4 && this.epoch > 2) {
       const base = this.branches[0];
       if (base) {
@@ -172,10 +201,11 @@ export class FractalMusicEngine {
       }
     }
 
-    // 5. Генерация баса на 1 такт
+    // Генерация баса на 1 такт
     let currentTime = this.time;
     this.branches.forEach(branch => {
       branch.events.forEach(event => {
+        if (!isFinite(currentTime)) currentTime = 0;
         output.push({
           ...event,
           time: currentTime,
@@ -184,22 +214,24 @@ export class FractalMusicEngine {
           dynamics: weightToDynamics(branch.weight),
           phrasing: branch.weight > 0.7 ? 'legato' : 'staccato'
         });
-        currentTime += event.duration * (60 / this.config.tempo);
+        const increment = event.duration * (60 / this.config.tempo);
+        currentTime = isFinite(currentTime + increment) ? currentTime + increment : currentTime + 0.1;
       });
     });
 
-    // 6. Генерация ударных на 1 такт (обязательно!)
+    // Генерация ударных на 1 такт
     const drumEvents = this.generateOneBarDrums(this.time);
     output.push(...drumEvents);
 
-    // 7. Продвигаем время на 1 такт
-    this.time += barDuration;
+    // Продвигаем время на 1 такт
+    this.time = isFinite(this.time + barDuration) ? this.time + barDuration : this.time + 2.0;
     this.epoch++;
     return output;
   }
 
   private getDeltaProfile(): (t: number) => number {
     return (t: number) => {
+      if (!isFinite(t)) t = 0;
       const phase = (t / 120) % 1;
       if (this.config.mood === 'melancholic') {
         if (phase < 0.4) return 0.3 + phase * 1.5;
