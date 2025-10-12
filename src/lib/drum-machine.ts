@@ -1,5 +1,5 @@
 
-import type { SamplerNote } from "@/types/music";
+import type { FractalEvent } from "@/types/fractal";
 
 const DRUM_SAMPLES: Record<string, string> = {
     // semantic names
@@ -99,13 +99,15 @@ export class DrumMachine {
         this.isInitialized = true;
     }
 
-    schedule(score: SamplerNote[], time: number) {
+    schedule(score: FractalEvent[], time: number) {
         if (!this.sampler || !this.isInitialized) {
             return;
         }
         
-        for (const note of score) {
-            this.sampler.triggerAttack(note.note, time + note.time, note.velocity);
+        for (const event of score) {
+            // Extract drum sample name from event type (e.g., 'drum_kick' -> 'kick')
+            const sampleName = event.type.replace('drum_', '');
+            this.sampler.triggerAttack(sampleName, event.time, event.weight);
         }
     }
 
