@@ -16,17 +16,17 @@ import { getPresetParams } from "@/lib/presets";
 import { PIANO_SAMPLES, VIOLIN_SAMPLES, FLUTE_SAMPLES, ACOUSTIC_GUITAR_CHORD_SAMPLES, ACOUSTIC_GUITAR_SOLO_SAMPLES } from '@/lib/samples';
 import { GuitarChordsSampler } from '@/lib/guitar-chords-sampler';
 import { AcousticGuitarSoloSampler } from '@/lib/acoustic-guitar-solo-sampler';
+import type { FractalEvent } from '@/types/fractal';
 
 // --- Type Definitions ---
 type WorkerMessage = {
-    type: 'score' | 'error' | 'debug' | 'sparkle' | 'pad' | 'bass_technique';
+    type: 'score' | 'error' | 'debug' | 'sparkle' | 'pad';
     score?: Score;
     error?: string;
     message?: string;
     data?: any;
     padName?: string;
     time?: number;
-    technique?: BassTechnique;
 };
 
 // --- Constants ---
@@ -115,12 +115,12 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
         else accompanimentManagerRef.current?.setPreset(name as MelodyInstrument);
     }
     if (part === 'bass') {
-        bassManagerRef.current?.setPreset('none');
-        if (name === 'violin') violinSamplerPlayerRef.current?.setVolume(instrumentSettings.bass.volume);
-        else if (name === 'piano') samplerPlayerRef.current?.setVolume(instrumentSettings.bass.volume);
-        else if (name === 'flute') fluteSamplerPlayerRef.current?.setVolume(instrumentSettings.bass.volume);
-        else if (name === 'acousticGuitarSolo') acousticGuitarSoloSamplerRef.current?.setVolume(instrumentSettings.bass.volume);
-        else {
+        if (name === 'violin' || name === 'piano' || name === 'flute' || name === 'acousticGuitarSolo') {
+            bassManagerRef.current?.setPreset('none');
+            // This is a conceptual mismatch, BassSynthManager doesn't play these.
+            // This logic might need revision based on desired behavior.
+            // For now, we'll just silence the bass worklet.
+        } else {
              bassManagerRef.current?.setPreset(name as BassInstrument);
         }
     }
@@ -147,30 +147,17 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
     let bassInstrument = currentSettings.instrumentSettings.bass.name;
     let melodyInstrument = currentSettings.instrumentSettings.melody.name;
     let accompanimentInstrument = currentSettings.instrumentSettings.accompaniment.name;
-
-    if (score.instrumentHints && currentSettings.score === 'neuro_f_matrix' && currentSettings.composerControlsInstruments) {
-        bassInstrument = score.instrumentHints.bass ?? bassInstrument;
-        melodyInstrument = score.instrumentHints.melody ?? melodyInstrument;
-        accompanimentInstrument = score.instrumentHints.accompaniment ?? accompanimentInstrument;
-        
-        if (score.instrumentHints.bass) bassManagerRef.current?.setPreset(score.instrumentHints.bass);
-        if (score.instrumentHints.accompaniment) accompanimentManagerRef.current?.setPreset(score.instrumentHints.accompaniment);
-        if (score.instrumentHints.bassTechnique) bassManagerRef.current?.setTechnique(score.instrumentHints.bassTechnique);
+    
+    const bassScore: FractalEvent[] = score.bass || [];
+    if (bassScore.length > 0 && bassManagerRef.current) {
+        bassScore.forEach(event => {
+            bassManagerRef.current!.play(event);
+        });
     }
 
-    const bassScore = score.bass || [];
-    if (bassScore.length > 0 && bassInstrument !== 'none') {
-        if (bassInstrument === 'piano' && samplerPlayerRef.current) {
-            samplerPlayerRef.current.schedule('piano', bassScore, now);
-        } else if (bassInstrument === 'violin' && violinSamplerPlayerRef.current) {
-            violinSamplerPlayerRef.current.schedule(bassScore, now);
-        } else if (bassInstrument === 'flute' && fluteSamplerPlayerRef.current) {
-            fluteSamplerPlayerRef.current.schedule(bassScore, now);
-        } else if (bassInstrument === 'acousticGuitarSolo' && acousticGuitarSoloSamplerRef.current) {
-            acousticGuitarSoloSamplerRef.current.schedule('acousticGuitarSolo', bassScore, now);
-        } else if (bassManagerRef.current) {
-            bassManagerRef.current.schedule(bassScore, now);
-        }
+    const drumScore: FractalEvent[] = score.drums || [];
+    if (drumScore.length > 0 && drumMachineRef.current && currentSettings.drumSettings.enabled) {
+        drumMachineRef.current.schedule(drumScore, now);
     }
     
     const melodyScore = score.melody || [];
@@ -219,12 +206,6 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
         }
     }
 
-
-    const drumScore: DrumsScore = score.drums || [];
-    if (drumScore.length > 0 && drumMachineRef.current && currentSettings.drumSettings.enabled) {
-        drumMachineRef.current.schedule(drumScore, now);
-    }
-
     const effectsScore: EffectsScore = score.effects || [];
     if (effectsScore.length > 0 && currentSettings) {
         const gainNode = gainNodesRef.current.effects;
@@ -247,8 +228,6 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
             });
         }
     }
-
-
   }, [setInstrumentCallback]);
 
   const initialize = useCallback(async () => {
@@ -341,11 +320,6 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
                 if (event.data.type === 'score' && event.data.score) {
                     scheduleScore(event.data.score, context);
                 }
-                else if (event.data.type === 'bass_technique' && event.data.technique) {
-                    if (bassManagerRef.current) {
-                        bassManagerRef.current.setTechnique(event.data.technique);
-                    }
-                }
                 else if (event.data.type === 'sparkle' && event.data.time !== undefined) {
                     sparklePlayerRef.current?.playRandomSparkle(context.currentTime + event.data.time);
                 }
@@ -359,6 +333,7 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
             workerRef.current = worker;
         }
         
+        // The synth pool is no longer used for bass, but we keep it for melody/effects
         if(synthPoolRef.current.length === 0) {
             initPromises.push(context.audioWorklet.addModule('/worklets/synth-processor.js').then(() => {
                 const numVoices = isMobile() ? 4 : 8;
@@ -378,7 +353,7 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
     } finally {
         setIsInitializing(false);
     }
-  }, [isInitialized, isInitializing, toast, scheduleScore, setInstrumentCallback]);
+  }, [isInitialized, isInitializing, toast, scheduleScore]);
 
   const stopAllSounds = useCallback(() => {
     accompanimentManagerRef.current?.allNotesOff();
@@ -427,7 +402,6 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
   }, []);
 
   const setBassTechniqueCallback = useCallback((technique: BassTechnique) => {
-    bassManagerRef.current?.setTechnique(technique);
      if (settingsRef.current) {
       const newSettings = {...settingsRef.current, instrumentSettings: {...settingsRef.current.instrumentSettings, bass: {...settingsRef.current.instrumentSettings.bass, technique}}};
       updateSettingsCallback(newSettings);
