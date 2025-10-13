@@ -73,13 +73,13 @@ class BassProcessor extends AudioWorkletProcessor {
 
             let noteToModify: NoteState | undefined = this.notes.values().next().value;
             
-            if (noteToModify) {
-                noteToModify.frequency = frequency; // This is the new target
-                noteToModify.targetGain = velocity;
-                noteToModify.state = 'attack'; // Re-trigger envelope
-                this.portamentoStartFreq = this.portamentoTargetFreq; // Current freq becomes start
+            if (noteToModify && isLegato) {
+                this.portamentoStartFreq = noteToModify.frequency;
                 this.portamentoTargetFreq = frequency;
                 this.portamentoProgress = 0;
+                noteToModify.frequency = frequency; 
+                noteToModify.targetGain = velocity;
+                noteToModify.state = 'attack'; 
             } else {
                  this.isPulsing = false;
                 if (technique === 'pulse') {
@@ -98,6 +98,7 @@ class BassProcessor extends AudioWorkletProcessor {
                         releaseTime: 0.4,
                         velocity,
                     };
+                    this.notes.clear(); // Ensure only one note is active for non-legato
                     this.notes.set(frequency, newNote);
                     this.portamentoStartFreq = frequency;
                     this.portamentoTargetFreq = frequency;
@@ -150,7 +151,7 @@ class BassProcessor extends AudioWorkletProcessor {
         const portamentoDuration = parameters.portamento[0];
 
         if (this.isPulsing && currentTime >= this.pulseNextTriggerTime) {
-            const pulseInterval = 60 / (32 * 4);
+            const pulseInterval = 60 / (this.config.tempo * 8); // 32nd notes
             this.pulseNextTriggerTime = currentTime + pulseInterval;
             const noteOffset = this.PULSE_NOTES[this.pulseNoteCounter++ % this.PULSE_NOTES.length];
             const pulseNoteFreq = this.pulseBaseFrequency * Math.pow(2, noteOffset / 12);
@@ -175,16 +176,15 @@ class BassProcessor extends AudioWorkletProcessor {
                     if (note.gain <= 0) { this.notes.delete(key); continue; }
                 }
 
+                // Handle Portamento
                 if (this.portamentoProgress < 1.0 && portamentoDuration > 0) {
                     this.portamentoProgress += 1.0 / (portamentoDuration * sampleRate);
                     if (this.portamentoProgress > 1.0) this.portamentoProgress = 1.0;
+                    note.frequency = this.portamentoStartFreq * (1 - this.portamentoProgress) + this.portamentoTargetFreq * this.portamentoProgress;
                 }
-                const freq = this.portamentoStartFreq * (1 - this.portamentoProgress) + this.portamentoTargetFreq * this.portamentoProgress;
-                
-                // console.log(`[bass-processor] Playing frequency: ${freq}`);
                 
                 const rawSample = this.generateOsc(note.phase);
-                note.phase += (freq * 2 * Math.PI) / sampleRate;
+                note.phase += (note.frequency * 2 * Math.PI) / sampleRate;
                 if (note.phase >= 2 * Math.PI) note.phase -= 2 * Math.PI;
 
                 leftSample += rawSample * note.gain;
@@ -205,5 +205,3 @@ class BassProcessor extends AudioWorkletProcessor {
 }
 
 registerProcessor('bass-processor', BassProcessor);
-
-    
