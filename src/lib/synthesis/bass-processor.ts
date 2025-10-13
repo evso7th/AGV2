@@ -1,180 +1,213 @@
-// bass-processor.ts
+// src/lib/synthesis/bass-processor.ts
 
+// This interface must be declared in the global scope for the AudioWorkletProcessor.
 interface NoteState {
   phase: number;
   gain: number;
   targetGain: number;
-  state: 'attack' | 'sustain' | 'release';
-  attackTime: number;
-  releaseTime: number;
+  state: 'attack' | 'sustain' | 'release' | 'pulsing';
+  attackTime: number; // in seconds
+  releaseTime: number; // in seconds
   frequency: number;
+  velocity: number;
 }
 
+/**
+ * A robust subtractive synthesizer running inside an AudioWorklet.
+ * It handles messages within the `process` loop to avoid race conditions and
+ * ensures access to `currentTime` and `parameters` is always valid.
+ *
+ * This processor now correctly implements various bass techniques like pluck, portamento,
+ * and a self-generating pulse, all dictated by the composer's events.
+ */
 class BassProcessor extends AudioWorkletProcessor {
-  private activeNotes: Map<number, NoteState> = new Map();
-  private technique: string = 'pluck';
-  
-  // Filter state
-  private filterState: number = 0;
-  private filterCoeff: number = 0;
+    private notes: Map<number, NoteState> = new Map();
+    private messageQueue: any[] = [];
+    private technique: string = 'pluck';
 
-  // Portamento state
-  private portamentoTime: number = 0;
-  private portamentoProgress: number = 1;
-  private portamentoStartFreq: number = 0;
-  private portamentoTargetFreq: number = 0;
+    // Portamento (Glide) state
+    private portamentoTime: number = 0; // Duration of the slide in seconds
+    private portamentoProgress: number = 1.0;
+    private portamentoStartFreq: number = 0;
+    private portamentoTargetFreq: number = 0;
 
-  // Pulse state
-  private pulseCounter: number = -1;
-  private pulseNoteCounter: number = 0;
-  private pulseFrequency: number = 0;
-  private pulseInterval: number = 0;
-  private readonly pulseNotes: number[] = [0, 7, 12, 7]; // Root, 5th, Octave, 5th
+    // Pulse state
+    private isPulsing: boolean = false;
+    private pulseBaseFrequency: number = 0;
+    private pulseNextTriggerTime: number = 0;
+    private pulseNoteCounter: number = 0;
+    private readonly PULSE_NOTES: number[] = [0, 7, 12, 7]; // Root, 5th, Octave, 5th
 
-  static get parameterDescriptors() {
-    return [
-      { name: 'cutoff', defaultValue: 800, minValue: 50, maxValue: 5000 },
-      { name: 'resonance', defaultValue: 0.7, minValue: 0.1, maxValue: 5 },
-      { name: 'distortion', defaultValue: 0.1, minValue: 0, maxValue: 1 },
-      { name: 'portamento', defaultValue: 0.05, minValue: 0, maxValue: 0.5 },
-    ];
-  }
+    // Filter state
+    private filterStateL: number = 0;
+    private filterStateR: number = 0;
 
-  constructor() {
-    super();
-    this.port.onmessage = this.handleMessage.bind(this);
-  }
 
-  handleMessage(event: MessageEvent) {
-    const { type, ...data } = event.data;
-    
-    if (type === 'noteOn') {
-      const { frequency, velocity, technique } = data;
-      this.technique = technique || 'pluck';
-      
-      const isLegato = this.activeNotes.size > 0 && (this.technique === 'portamento' || this.technique === 'glide' || this.technique === 'glissando');
+    static get parameterDescriptors() {
+        return [
+            { name: 'cutoff', defaultValue: 800, minValue: 50, maxValue: 10000 },
+            { name: 'resonance', defaultValue: 0.7, minValue: 0.1, maxValue: 5 },
+            { name: 'distortion', defaultValue: 0.1, minValue: 0, maxValue: 1 },
+            { name: 'portamento', defaultValue: 0.05, minValue: 0, maxValue: 0.5 },
+        ];
+    }
 
-      if (isLegato) {
-          this.portamentoStartFreq = this.portamentoTargetFreq; // Use the last frequency as the start
-          this.portamentoTargetFreq = frequency;
-          this.portamentoProgress = 0; // Reset progress to start the slide
-      } else {
-          this.portamentoStartFreq = frequency;
-          this.portamentoTargetFreq = frequency;
-          this.portamentoProgress = 1.0; // Instantly at target
-      }
+    constructor() {
+        super();
+        this.port.onmessage = (event: MessageEvent) => {
+            this.messageQueue.push(event.data);
+        };
+    }
 
-      this.activeNotes.clear();
-      this.pulseCounter = -1;
+    private handleMessage(message: any) {
+        const { type, ...data } = message;
 
-      if (this.technique === 'pulse') {
-          this.pulseFrequency = frequency;
-          this.pulseCounter = 0;
-          this.pulseNoteCounter = 0;
-      } else {
-          this.activeNotes.set(frequency, {
-              frequency,
-              phase: 0,
-              gain: 0,
-              targetGain: velocity,
-              state: 'attack',
-              attackTime: 0.02,
-              releaseTime: 0.4
-          });
-      }
-    } else if (type === 'noteOff') {
-        if (this.technique === 'pulse') {
-            this.pulseCounter = -1;
-        }
-        for (const note of this.activeNotes.values()) {
-            note.state = 'release';
-            note.targetGain = 0;
+        if (type === 'noteOn') {
+            const { frequency, velocity, technique, when } = data;
+            this.technique = technique || 'pluck';
+            
+            const isLegato = this.notes.size > 0 && (this.technique === 'portamento' || this.technique === 'glide' || this.technique === 'glissando');
+
+            if (isLegato) {
+                this.portamentoStartFreq = this.portamentoTargetFreq;
+                this.portamentoTargetFreq = frequency;
+                this.portamentoProgress = 0; // Start the slide
+            } else {
+                this.portamentoStartFreq = frequency;
+                this.portamentoTargetFreq = frequency;
+                this.portamentoProgress = 1.0; // No slide
+            }
+            
+            this.isPulsing = false;
+            this.notes.clear();
+
+            if (this.technique === 'pulse') {
+                this.isPulsing = true;
+                this.pulseBaseFrequency = frequency;
+                this.pulseNextTriggerTime = currentTime;
+                this.pulseNoteCounter = 0;
+            } else {
+                 this.notes.set(frequency, {
+                    frequency,
+                    phase: 0,
+                    gain: 0,
+                    targetGain: velocity,
+                    state: 'attack',
+                    attackTime: 0.02,
+                    releaseTime: 0.4,
+                    velocity
+                });
+            }
+           
+        } else if (type === 'noteOff') {
+            this.isPulsing = false;
+            for (const note of this.notes.values()) {
+                note.state = 'release';
+                note.targetGain = 0;
+            }
         }
     }
-  }
+    
+    private generateOsc(phase: number): number {
+        const saw = 1 - (phase / Math.PI);
+        const sub = Math.sin(phase * 0.5);
+        return saw * 0.7 + sub * 0.3;
+    }
+    
+    private softClip(input: number, drive: number): number {
+        if (drive === 0) return input;
+        const k = 2 + drive * 10;
+        return (1 + k) * input / (1 + k * Math.abs(input));
+    }
+    
+    private applyFilter(input: number, cutoff: number, isLeft: boolean): number {
+        const filterCoeff = 1 - Math.exp(-2 * Math.PI * cutoff / sampleRate);
+        if (isLeft) {
+            this.filterStateL += filterCoeff * (input - this.filterStateL);
+            return this.filterStateL;
+        } else {
+            this.filterStateR += filterCoeff * (input - this.filterStateR);
+            return this.filterStateR;
+        }
+    }
+    
+    process(inputs: Float32Array[][], outputs: Float32Array[][], parameters: Record<string, Float32Array>): boolean {
+        // --- 1. Process incoming messages ---
+        while (this.messageQueue.length > 0) {
+            this.handleMessage(this.messageQueue.shift());
+        }
 
-  pulseWave(phase: number, width: number) { return phase % (2 * Math.PI) < width * 2 * Math.PI ? 1 : -1; }
-  sawtoothWave(phase: number) { return 1 - (phase / Math.PI); }
-  
-  softClip(input: number, drive: number) {
-    if (drive === 0) return input;
-    const k = 2 + drive * 10;
-    return (1 + k) * input / (1 + k * Math.abs(input));
-  }
+        const output = outputs[0];
+        const channelCount = output.length;
+        const frameCount = output[0].length;
 
-  process(inputs: Float32Array[][], outputs: Float32Array[][], parameters: Record<string, Float32Array>) {
-    const output = outputs[0];
-    const cutoff = parameters.cutoff[0];
-    const resonance = parameters.resonance[0];
-    const distortion = parameters.distortion[0];
-    const portamentoDuration = parameters.portamento[0];
+        // Get parameters for this block
+        const cutoff = parameters.cutoff[0];
+        const distortion = parameters.distortion[0];
+        const portamentoDuration = parameters.portamento[0];
 
-    // --- Pulse logic ---
-    if (this.pulseCounter >= 0) {
-        this.pulseInterval = Math.floor(sampleRate / 32); // 32nd notes for pulse
-        this.pulseCounter++;
-        if (this.pulseCounter >= this.pulseInterval) {
-            this.pulseCounter = 0;
-            const noteOffset = this.pulseNotes[this.pulseNoteCounter++ % this.pulseNotes.length];
-            const pulseNoteFreq = this.pulseFrequency * Math.pow(2, noteOffset / 12);
-            this.activeNotes.clear();
-            this.activeNotes.set(pulseNoteFreq, {
-                frequency: pulseNoteFreq, phase: 0, gain: 0, targetGain: 0.9, 
-                state: 'attack', attackTime: 0.005, releaseTime: 0.08
+        // --- 2. Handle Pulse Generation ---
+        if (this.isPulsing && currentTime >= this.pulseNextTriggerTime) {
+            const pulseInterval = 60 / (32 * 4); // 32nd note at current tempo (approx)
+            this.pulseNextTriggerTime = currentTime + pulseInterval;
+            const noteOffset = this.PULSE_NOTES[this.pulseNoteCounter++ % this.PULSE_NOTES.length];
+            const pulseNoteFreq = this.pulseBaseFrequency * Math.pow(2, noteOffset / 12);
+            
+            this.notes.clear(); // Ensure only one pulse note at a time
+            this.notes.set(pulseNoteFreq, {
+                frequency: pulseNoteFreq, phase: 0, gain: 0, targetGain: 0.9,
+                state: 'attack', attackTime: 0.005, releaseTime: 0.08, velocity: 0.9,
             });
         }
-    }
-
-    // --- Portamento logic ---
-    if (this.portamentoProgress < 1.0 && portamentoDuration > 0) {
-        this.portamentoProgress += 1.0 / (portamentoDuration * sampleRate);
-        if (this.portamentoProgress >= 1.0) {
-            this.portamentoProgress = 1.0;
-        }
-    }
-    const currentSlideFreq = this.portamentoStartFreq * (1 - this.portamentoProgress) + this.portamentoTargetFreq * this.portamentoProgress;
-    
-    // --- Main processing loop ---
-    for (let i = 0; i < output[0].length; i++) {
-        let sample = 0;
         
-        for (const [key, note] of this.activeNotes) {
-            // ADSR Envelope
-            if (note.state === 'attack') {
-                note.gain += (1 / (note.attackTime * sampleRate));
-                if (note.gain >= note.targetGain) { note.gain = note.targetGain; note.state = 'sustain'; }
-            } else if (note.state === 'release') {
-                note.gain -= (1 / (note.releaseTime * sampleRate));
-                if (note.gain <= 0) { this.activeNotes.delete(key); continue; }
+        // --- 3. Main processing loop ---
+        for (let i = 0; i < frameCount; i++) {
+            let leftSample = 0;
+            let rightSample = 0;
+            
+            // --- Portamento update ---
+            if (this.portamentoProgress < 1.0 && portamentoDuration > 0) {
+                this.portamentoProgress += 1.0 / (portamentoDuration * sampleRate);
+                if (this.portamentoProgress > 1.0) this.portamentoProgress = 1.0;
             }
+            const currentSlideFreq = this.portamentoStartFreq * (1 - this.portamentoProgress) + this.portamentoTargetFreq * this.portamentoProgress;
 
-            const freq = (this.portamentoProgress < 1.0) ? currentSlideFreq : note.frequency;
+            // --- Synthesize active notes ---
+            for (const [key, note] of this.notes.entries()) {
+                // ADSR Envelope
+                if (note.state === 'attack') {
+                    note.gain += (1 / (note.attackTime * sampleRate));
+                    if (note.gain >= note.targetGain) { note.gain = note.targetGain; note.state = 'sustain'; }
+                } else if (note.state === 'release') {
+                    note.gain -= (1 / (note.releaseTime * sampleRate));
+                    if (note.gain <= 0) { this.notes.delete(key); continue; }
+                }
+
+                const freq = (this.portamentoProgress < 1.0) ? currentSlideFreq : note.frequency;
+                const rawSample = this.generateOsc(note.phase);
+                
+                note.phase += (freq * 2 * Math.PI) / sampleRate;
+                if (note.phase >= 2 * Math.PI) note.phase -= 2 * Math.PI;
+
+                leftSample += rawSample * note.gain;
+            }
             
-            const saw = this.sawtoothWave(note.phase);
-            const sub = Math.sin(note.phase * 0.5);
-            let rawSample = saw * 0.7 + sub * 0.3;
+            // Apply master effects
+            const filteredSample = this.applyFilter(leftSample, cutoff, true);
+            const distortedSample = this.softClip(filteredSample, distortion);
 
-            // Simple one-pole low-pass filter
-            this.filterCoeff = 1 - Math.exp(-2 * Math.PI * cutoff / sampleRate);
-            this.filterState += this.filterCoeff * (rawSample - this.filterState);
-            const filteredSample = this.filterState;
-
-            const distorted = this.softClip(filteredSample, distortion);
-            sample += distorted * note.gain;
+            // Simple stereo pan (optional, could be improved)
+            rightSample = distortedSample;
             
-            note.phase += (freq * 2 * Math.PI) / sampleRate;
-            if (note.phase > 2 * Math.PI) note.phase -= 2 * Math.PI;
+            // Write to output channels
+            for (let channel = 0; channel < channelCount; channel++) {
+                if(channel % 2 === 0) output[channel][i] = distortedSample * 0.6; // Left
+                else output[channel][i] = distortedSample * 0.6; // Right
+            }
         }
 
-        output[0][i] = sample * 0.6;
+        return true;
     }
-
-    if (output.length > 1) {
-        output[1].set(output[0]);
-    }
-
-    return true;
-  }
 }
 
 registerProcessor('bass-processor', BassProcessor);

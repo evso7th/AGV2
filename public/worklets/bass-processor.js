@@ -1,169 +1,177 @@
-// public/worklets/bass-processor.js
-
+// src/lib/synthesis/bass-processor.ts
+/**
+ * A robust subtractive synthesizer running inside an AudioWorklet.
+ * It handles messages within the `process` loop to avoid race conditions and
+ * ensures access to `currentTime` and `parameters` is always valid.
+ *
+ * This processor now correctly implements various bass techniques like pluck, portamento,
+ * and a self-generating pulse, all dictated by the composer's events.
+ */
 class BassProcessor extends AudioWorkletProcessor {
+  notes = /* @__PURE__ */ new Map();
+  messageQueue = [];
+  technique = "pluck";
+  // Portamento (Glide) state
+  portamentoTime = 0;
+  // Duration of the slide in seconds
+  portamentoProgress = 1;
+  portamentoStartFreq = 0;
+  portamentoTargetFreq = 0;
+  // Pulse state
+  isPulsing = false;
+  pulseBaseFrequency = 0;
+  pulseNextTriggerTime = 0;
+  pulseNoteCounter = 0;
+  PULSE_NOTES = [0, 7, 12, 7];
+  // Root, 5th, Octave, 5th
+  // Filter state
+  filterStateL = 0;
+  filterStateR = 0;
   static get parameterDescriptors() {
     return [
-      { name: 'cutoff', defaultValue: 400, minValue: 50, maxValue: 2000 },
-      { name: 'resonance', defaultValue: 0.7, minValue: 0.1, maxValue: 5 },
-      { name: 'distortion', defaultValue: 0.05, minValue: 0, maxValue: 1 },
-      { name: 'portamento', defaultValue: 0.0, minValue: 0, maxValue: 0.5 }
+      { name: "cutoff", defaultValue: 800, minValue: 50, maxValue: 1e4 },
+      { name: "resonance", defaultValue: 0.7, minValue: 0.1, maxValue: 5 },
+      { name: "distortion", defaultValue: 0.1, minValue: 0, maxValue: 1 },
+      { name: "portamento", defaultValue: 0.05, minValue: 0, maxValue: 0.5 }
     ];
   }
-
-  constructor(options) {
-    super(options);
-    this.activeNotes = new Map();
-    this.lastFreq = 0;
-    this.portamentoTarget = 0;
-    this.portamentoProgress = 1.0;
-    this.technique = 'pluck';
-    
-    // Pulse/Arpeggio state
-    this.pulseCounter = -1; // -1 means inactive
-    this.pulseFrequency = 0;
-    this.pulseInterval = 0;
-    this.pulseNotes = [0, 7, 12, 7]; // Root, 5th, Octave, 5th
-    
-    this.port.onmessage = this.handleMessage.bind(this);
-    console.log('[BassProcessor] Initialized');
+  constructor() {
+    super();
+    this.port.onmessage = (event) => {
+      this.messageQueue.push(event.data);
+    };
   }
-
-  handleMessage(event) {
-    const { type, ...data } = event.data;
-    console.log('[BassProcessor] Received message:', event.data);
-    const time = data.when || currentTime;
-    const parameters = this.parameters;
-
-    if (type === 'noteOn') {
-      const { frequency, velocity, technique } = data;
-      this.technique = technique || 'pluck';
-      
-      const portamentoParam = parameters.portamento;
-      const portamentoDuration = portamentoParam ? portamentoParam[0] : 0;
-
-      if (this.activeNotes.size > 0 && portamentoDuration > 0) {
-        this.portamentoTarget = frequency;
+  handleMessage(message) {
+    const { type, ...data } = message;
+    if (type === "noteOn") {
+      const { frequency, velocity, technique, when } = data;
+      this.technique = technique || "pluck";
+      const isLegato = this.notes.size > 0 && (this.technique === "portamento" || this.technique === "glide" || this.technique === "glissando");
+      if (isLegato) {
+        this.portamentoStartFreq = this.portamentoTargetFreq;
+        this.portamentoTargetFreq = frequency;
         this.portamentoProgress = 0;
       } else {
-        this.lastFreq = frequency;
-        this.portamentoProgress = 1.0;
+        this.portamentoStartFreq = frequency;
+        this.portamentoTargetFreq = frequency;
+        this.portamentoProgress = 1;
       }
-      
-      this.activeNotes.clear(); // Monosynth
-      this.pulseCounter = -1; // Stop any previous pulse
-
-      if (this.technique === 'pulse') {
-        this.pulseFrequency = frequency;
-        this.pulseCounter = 0;
-        this.pulseInterval = Math.floor(sampleRate / 8); // 16th notes at 120 bpm, adjust if needed
+      this.isPulsing = false;
+      this.notes.clear();
+      if (this.technique === "pulse") {
+        this.isPulsing = true;
+        this.pulseBaseFrequency = frequency;
+        this.pulseNextTriggerTime = currentTime;
+        this.pulseNoteCounter = 0;
       } else {
-        this.activeNotes.set(frequency, {
+        this.notes.set(frequency, {
+          frequency,
           phase: 0,
-          gain: velocity,
-          state: 'attack',
-          attackTime: 0.01, // short attack
-          releaseTime: 0.3   // default release
+          gain: 0,
+          targetGain: velocity,
+          state: "attack",
+          attackTime: 0.02,
+          releaseTime: 0.4,
+          velocity
         });
       }
-    } else if (type === 'noteOff') {
-      if (this.technique === 'pulse') {
-          this.pulseCounter = -1; // Stop the pulse
-      }
-      for (const note of this.activeNotes.values()) {
-        note.state = 'decay';
+    } else if (type === "noteOff") {
+      this.isPulsing = false;
+      for (const note of this.notes.values()) {
+        note.state = "release";
+        note.targetGain = 0;
       }
     }
   }
-
-  // --- Synthesis Functions ---
-  pulseWave(phase, width) { return phase % (2 * Math.PI) < width * 2 * Math.PI ? 1 : -1; }
+  generateOsc(phase) {
+    const saw = 1 - phase / Math.PI;
+    const sub = Math.sin(phase * 0.5);
+    return saw * 0.7 + sub * 0.3;
+  }
   softClip(input, drive) {
-    const k = 2 * drive;
-    return (input * (1 + k)) / (1 + k * Math.abs(input));
+    if (drive === 0)
+      return input;
+    const k = 2 + drive * 10;
+    return (1 + k) * input / (1 + k * Math.abs(input));
   }
-  
+  applyFilter(input, cutoff, isLeft) {
+    const filterCoeff = 1 - Math.exp(-2 * Math.PI * cutoff / sampleRate);
+    if (isLeft) {
+      this.filterStateL += filterCoeff * (input - this.filterStateL);
+      return this.filterStateL;
+    } else {
+      this.filterStateR += filterCoeff * (input - this.filterStateR);
+      return this.filterStateR;
+    }
+  }
   process(inputs, outputs, parameters) {
+    while (this.messageQueue.length > 0) {
+      this.handleMessage(this.messageQueue.shift());
+    }
     const output = outputs[0];
-    const portamentoParam = parameters.portamento[0];
-    
-    // --- Pulse/Arpeggio logic ---
-    if (this.pulseCounter >= 0) {
-        this.pulseCounter++;
-        if (this.pulseCounter >= this.pulseInterval) {
-            this.pulseCounter = 0;
-            const noteOffset = this.pulseNotes[this.pulseCounter % this.pulseNotes.length];
-            const pulseNoteFreq = this.pulseFrequency * Math.pow(2, noteOffset / 12);
-            
-            // Trigger a short note
-            this.activeNotes.clear();
-            this.activeNotes.set(pulseNoteFreq, {
-                phase: 0,
-                gain: 0.8, // Fixed velocity for pulse
-                state: 'attack',
-                attackTime: 0.005,
-                releaseTime: 0.05,
-            });
-            this.lastFreq = pulseNoteFreq;
-        }
+    const channelCount = output.length;
+    const frameCount = output[0].length;
+    const cutoff = parameters.cutoff[0];
+    const distortion = parameters.distortion[0];
+    const portamentoDuration = parameters.portamento[0];
+    if (this.isPulsing && currentTime >= this.pulseNextTriggerTime) {
+      const pulseInterval = 60 / 32 / 4;
+      this.pulseNextTriggerTime = currentTime + pulseInterval;
+      const noteOffset = this.PULSE_NOTES[this.pulseNoteCounter++ % this.PULSE_NOTES.length];
+      const pulseNoteFreq = this.pulseBaseFrequency * Math.pow(2, noteOffset / 12);
+      this.notes.clear();
+      this.notes.set(pulseNoteFreq, {
+        frequency: pulseNoteFreq,
+        phase: 0,
+        gain: 0,
+        targetGain: 0.9,
+        state: "attack",
+        attackTime: 5e-3,
+        releaseTime: 0.08,
+        velocity: 0.9
+      });
     }
-
-    // --- Portamento logic ---
-    if (this.portamentoProgress < 1.0) {
-      this.portamentoProgress += 1.0 / (portamentoParam * sampleRate);
-      if (this.portamentoProgress >= 1.0) {
-        this.portamentoProgress = 1.0;
-        this.lastFreq = this.portamentoTarget;
-      } else {
-         const easedProgress = 1 - Math.pow(1 - this.portamentoProgress, 2);
-         this.lastFreq = this.lastFreq * (1 - easedProgress) + this.portamentoTarget * easedProgress;
+    for (let i = 0; i < frameCount; i++) {
+      let leftSample = 0;
+      let rightSample = 0;
+      if (this.portamentoProgress < 1 && portamentoDuration > 0) {
+        this.portamentoProgress += 1 / (portamentoDuration * sampleRate);
+        if (this.portamentoProgress > 1)
+          this.portamentoProgress = 1;
+      }
+      const currentSlideFreq = this.portamentoStartFreq * (1 - this.portamentoProgress) + this.portamentoTargetFreq * this.portamentoProgress;
+      for (const [key, note] of this.notes.entries()) {
+        if (note.state === "attack") {
+          note.gain += 1 / (note.attackTime * sampleRate);
+          if (note.gain >= note.targetGain) {
+            note.gain = note.targetGain;
+            note.state = "sustain";
+          }
+        } else if (note.state === "release") {
+          note.gain -= 1 / (note.releaseTime * sampleRate);
+          if (note.gain <= 0) {
+            this.notes.delete(key);
+            continue;
+          }
+        }
+        const freq = this.portamentoProgress < 1 ? currentSlideFreq : note.frequency;
+        const rawSample = this.generateOsc(note.phase);
+        note.phase += freq * 2 * Math.PI / sampleRate;
+        if (note.phase >= 2 * Math.PI)
+          note.phase -= 2 * Math.PI;
+        leftSample += rawSample * note.gain;
+      }
+      const filteredSample = this.applyFilter(leftSample, cutoff, true);
+      const distortedSample = this.softClip(filteredSample, distortion);
+      rightSample = distortedSample;
+      for (let channel = 0; channel < channelCount; channel++) {
+        if (channel % 2 === 0)
+          output[channel][i] = distortedSample * 0.6;
+        else
+          output[channel][i] = distortedSample * 0.6;
       }
     }
-
-    // --- Main processing loop ---
-    for (let i = 0; i < output[0].length; i++) {
-      let sample = 0;
-      const cutoff = parameters.cutoff[i] || parameters.cutoff[0];
-      const resonance = parameters.resonance[i] || parameters.resonance[0];
-      const distortion = parameters.distortion[i] || parameters.distortion[0];
-      
-      for (const [freq, note] of this.activeNotes) {
-        if (note.state === 'decay') {
-            note.gain -= 1 / (note.releaseTime * sampleRate);
-            if (note.gain < 0.001) {
-                this.activeNotes.delete(freq);
-                continue;
-            }
-        } else if (note.state === 'attack') {
-            note.gain += 1 / (note.attackTime * sampleRate);
-            if (note.gain >= (note.velocity || 0.8)) {
-                note.gain = (note.velocity || 0.8);
-                note.state = 'sustain';
-            }
-        }
-        
-        const phase = note.phase;
-        const wave1 = this.pulseWave(phase, 0.5);
-        const wave2 = Math.sin(phase * 0.5);
-        
-        // Simplified filter (not shown for brevity, assume pass-through for now)
-        let filteredSample = wave1 + wave2 * 0.7;
-
-        const distorted = this.softClip(filteredSample, distortion);
-        
-        sample += distorted * note.gain;
-        note.phase += (freq * 2 * Math.PI) / sampleRate;
-      }
-      
-      output[0][i] = sample * 0.5; // Final gain
-    }
-    
-    // Copy to other channels if they exist
-    for (let channel = 1; channel < output.length; channel++) {
-        output[channel].set(output[0]);
-    }
-
     return true;
   }
 }
-
-registerProcessor('bass-processor', BassProcessor);
+registerProcessor("bass-processor", BassProcessor);
