@@ -1,16 +1,12 @@
+
 // public/worklets/bass-processor.js
 
-/**
- * BassProcessor - это AudioWorklet, который генерирует звук баса.
- * Он управляется сообщениями из основного потока и выполняет синтез
- * в реальном времени в отдельном аудио-потоке для максимальной производительности.
- */
 class BassProcessor extends AudioWorkletProcessor {
   constructor(options) {
-    super(options); // Обязательный вызов конструктора родительского класса
+    super(options);
     this.sampleRate = options.processorOptions.sampleRate;
-    this.activeNotes = new Map(); // Хранит активные ноты по их ID
-    this.noteQueue = []; // Очередь запланированных событий
+    this.activeNotes = new Map(); // noteId -> { frequency, gain, state, phase, attack, release }
+    this.noteQueue = [];
     this.enableLogging = true;
 
     this.port.onmessage = (event) => {
@@ -23,76 +19,92 @@ class BassProcessor extends AudioWorkletProcessor {
   }
 
   handleMessage(message) {
-    // Логируем получение сообщения с точным временем из audio context
+    // Defensive logging to prevent crash
     if (this.enableLogging) {
-      console.log(`[Worklet] Received ${message.type} for noteId ${message.noteId} at T=${currentTime.toFixed(2)} for when=${message.when.toFixed(2)}`);
+        if (message.type === 'noteOn' || message.type === 'noteOff') {
+            const timeLog = message.when !== undefined ? `for when=${message.when.toFixed(2)}` : '';
+            console.log(`[Worklet] Received ${message.type} for noteId ${message.noteId} at T=${currentTime.toFixed(2)} ${timeLog}`);
+        } else {
+            console.log(`[Worklet] Received ${message.type}`);
+        }
     }
 
     if (message.type === 'clear') {
-      this.activeNotes.clear();
-      this.noteQueue = [];
-      return;
+        this.activeNotes.clear();
+        this.noteQueue = [];
+        return;
     }
 
-    if (isFinite(message.when)) {
-      this.noteQueue.push(message);
-      // Сортируем, чтобы всегда обрабатывать самое раннее событие
-      this.noteQueue.sort((a, b) => a.when - b.when);
-    }
+    // All other messages are assumed to be note events and are queued
+    this.noteQueue.push(message);
   }
 
-  // Основной цикл обработки аудио
   process(inputs, outputs, parameters) {
-    const output = outputs[0];
-    const outputChannel = output[0];
+    const outputChannel = outputs[0][0];
 
-    // Обрабатываем очередь событий, время которых уже наступило
-    while (this.noteQueue.length > 0 && this.noteQueue[0].when <= currentTime) {
-      const message = this.noteQueue.shift();
-      if (!message) continue;
-
-      if (message.type === 'noteOn') {
-        this.activeNotes.set(message.noteId, {
-          frequency: message.frequency,
-          phase: 0,
-          gain: message.velocity,
-          state: 'attack',
-        });
-      } else if (message.type === 'noteOff') {
-        const note = this.activeNotes.get(message.noteId);
-        if (note) {
-          note.state = 'decay'; // Переводим ноту в состояние затухания
+    // Process the note queue at the beginning of each block
+    for (let i = this.noteQueue.length - 1; i >= 0; i--) {
+        const event = this.noteQueue[i];
+        if (event.when <= currentTime) {
+            if (event.type === 'noteOn') {
+                this.activeNotes.set(event.noteId, {
+                    frequency: event.frequency,
+                    gain: 0,
+                    state: 'attack',
+                    phase: 0,
+                    attack: event.attack || 0.01,
+                    release: event.release || 0.3
+                });
+            } else if (event.type === 'noteOff') {
+                const note = this.activeNotes.get(event.noteId);
+                if (note) {
+                    note.state = 'decay';
+                }
+            }
+            this.noteQueue.splice(i, 1);
         }
-      }
     }
 
-    // Генерируем аудио сэмплы
     for (let i = 0; i < outputChannel.length; i++) {
-      let sample = 0;
+        let sample = 0;
 
-      // Итерируемся по всем активным нотам
-      for (const [noteId, note] of this.activeNotes.entries()) {
-        if (note.state === 'decay') {
-          note.gain *= 0.999; // Простое экспоненциальное затухание
-          if (note.gain < 0.001) {
-            this.activeNotes.delete(noteId);
-            continue; // Удаляем ноту и переходим к следующей
-          }
+        for (const [noteId, note] of this.activeNotes) {
+             // Envelope calculation
+            if (note.state === 'attack') {
+                note.gain += (1 / (note.attack * this.sampleRate));
+                if (note.gain >= 1.0) {
+                    note.gain = 1.0;
+                    note.state = 'sustain';
+                }
+            } else if (note.state === 'decay') {
+                note.gain -= (1 / (note.release * this.sampleRate));
+                if (note.gain <= 0) {
+                    this.activeNotes.delete(noteId);
+                    continue; // Skip to next note
+                }
+            }
+            
+            // Oscillator
+            const wave = Math.sin(note.phase);
+            sample += wave * note.gain;
+            note.phase += (note.frequency * 2 * Math.PI) / this.sampleRate;
+            if (note.phase > 2 * Math.PI) {
+                note.phase -= 2 * Math.PI;
+            }
+
+            // --- DIAGNOSTIC LOG ---
+            if (this.enableLogging && i === 0 && this.activeNotes.size > 0) {
+                 if (noteId === Array.from(this.activeNotes.keys())[0]) { // Log only for the first active note to avoid spam
+                    console.log(`[Worklet Process] Note ${noteId}: Sample=${sample.toFixed(3)}, Gain=${note.gain.toFixed(3)}, Phase=${note.phase.toFixed(3)}`);
+                 }
+            }
         }
         
-        // Простой синусоидальный осциллятор
-        sample += Math.sin(note.phase) * note.gain;
-        note.phase += (note.frequency * 2 * Math.PI) / this.sampleRate;
-        if (note.phase >= 2 * Math.PI) {
-          note.phase -= 2 * Math.PI;
-        }
-      }
-      
-      // Записываем сэмпл в выходной буфер, избегая клиппинга
-      outputChannel[i] = Math.max(-1, Math.min(1, sample * 0.3));
+        // Final output sample, with some clipping protection
+        outputChannel[i] = Math.max(-1, Math.min(1, sample * 0.5));
     }
     
-    // Этот return должен быть в конце функции process, а не внутри цикла!
+    // This MUST be at the end of the process method.
     return true;
   }
 }
