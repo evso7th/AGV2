@@ -1,4 +1,3 @@
-
 // bass-processor.ts
 
 interface NoteState {
@@ -18,7 +17,6 @@ class BassProcessor extends AudioWorkletProcessor {
   // Filter state
   private filterState: number = 0;
   private filterCoeff: number = 0;
-  private filterResonance: number = 0.7;
 
   // Portamento state
   private portamentoTime: number = 0;
@@ -51,19 +49,19 @@ class BassProcessor extends AudioWorkletProcessor {
     const { type, ...data } = event.data;
     
     if (type === 'noteOn') {
-      const { frequency, velocity, technique, when } = data;
+      const { frequency, velocity, technique } = data;
       this.technique = technique || 'pluck';
       
-      const isLegato = this.activeNotes.size > 0 && this.portamentoTime > 0;
+      const isLegato = this.activeNotes.size > 0 && (this.technique === 'portamento' || this.technique === 'glide' || this.technique === 'glissando');
 
       if (isLegato) {
-          this.portamentoStartFreq = this.portamentoTargetFreq;
+          this.portamentoStartFreq = this.portamentoTargetFreq; // Use the last frequency as the start
           this.portamentoTargetFreq = frequency;
-          this.portamentoProgress = 0;
+          this.portamentoProgress = 0; // Reset progress to start the slide
       } else {
           this.portamentoStartFreq = frequency;
           this.portamentoTargetFreq = frequency;
-          this.portamentoProgress = 1.0;
+          this.portamentoProgress = 1.0; // Instantly at target
       }
 
       this.activeNotes.clear();
@@ -104,17 +102,6 @@ class BassProcessor extends AudioWorkletProcessor {
     return (1 + k) * input / (1 + k * Math.abs(input));
   }
 
-  applyFilter(input: number, cutoff: number, q: number) {
-    this.filterCoeff = 1 - Math.exp(-2 * Math.PI * cutoff / sampleRate);
-    this.filterResonance = q; // Simple resonance mapping
-    
-    const feedback = this.filterResonance + this.filterResonance / (1 - this.filterCoeff);
-    this.filterState += this.filterCoeff * (input - this.filterState + feedback * (this.filterState - this.applyFilter(this.filterState, cutoff, q))); // Simplified feedback
-    
-    return this.filterState;
-  }
-
-
   process(inputs: Float32Array[][], outputs: Float32Array[][], parameters: Record<string, Float32Array>) {
     const output = outputs[0];
     const cutoff = parameters.cutoff[0];
@@ -124,7 +111,7 @@ class BassProcessor extends AudioWorkletProcessor {
 
     // --- Pulse logic ---
     if (this.pulseCounter >= 0) {
-        this.pulseInterval = Math.floor(sampleRate / (this.technique === 'pulse' ? 32 : 8));
+        this.pulseInterval = Math.floor(sampleRate / 32); // 32nd notes for pulse
         this.pulseCounter++;
         if (this.pulseCounter >= this.pulseInterval) {
             this.pulseCounter = 0;
@@ -139,7 +126,7 @@ class BassProcessor extends AudioWorkletProcessor {
     }
 
     // --- Portamento logic ---
-    if (this.portamentoProgress < 1.0) {
+    if (this.portamentoProgress < 1.0 && portamentoDuration > 0) {
         this.portamentoProgress += 1.0 / (portamentoDuration * sampleRate);
         if (this.portamentoProgress >= 1.0) {
             this.portamentoProgress = 1.0;
@@ -191,5 +178,3 @@ class BassProcessor extends AudioWorkletProcessor {
 }
 
 registerProcessor('bass-processor', BassProcessor);
-
-    
