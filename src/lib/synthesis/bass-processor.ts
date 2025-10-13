@@ -1,3 +1,4 @@
+
 // This file is obsolete and will be removed. The correct logic is in public/worklets/bass-processor.js
 // This interface must be declared in the global scope for the AudioWorkletProcessor.
 interface NoteState {
@@ -65,24 +66,23 @@ class BassProcessor extends AudioWorkletProcessor {
         if (type === 'noteOn') {
             this.technique = technique || 'pluck';
             const isLegato = this.notes.size > 0 && ['portamento', 'glide', 'glissando'].includes(this.technique);
-
-            let noteToModify: NoteState | undefined;
-            if (isLegato) {
-                noteToModify = this.notes.values().next().value;
+            
+            if (!isLegato) {
+                this.notes.clear();
             }
 
+            let noteToModify: NoteState | undefined = this.notes.values().next().value;
+            
             if (noteToModify) {
-                noteToModify.frequency = frequency; // <- The fix
+                noteToModify.frequency = frequency; // This is the new target
                 noteToModify.targetGain = velocity;
                 noteToModify.state = 'attack'; // Re-trigger envelope
                 this.portamentoStartFreq = this.portamentoTargetFreq; // Current freq becomes start
-                this.portamentoTargetFreq = frequency; // New freq is target
-                this.portamentoProgress = 0; // Start the slide
+                this.portamentoTargetFreq = frequency;
+                this.portamentoProgress = 0;
             } else {
-                this.isPulsing = false;
-                this.notes.clear();
-
-                if (this.technique === 'pulse') {
+                 this.isPulsing = false;
+                if (technique === 'pulse') {
                     this.isPulsing = true;
                     this.pulseBaseFrequency = frequency;
                     this.pulseNextTriggerTime = currentTime;
@@ -104,7 +104,6 @@ class BassProcessor extends AudioWorkletProcessor {
                     this.portamentoProgress = 1.0;
                 }
             }
-           
         } else if (type === 'noteOff') {
             this.isPulsing = false;
             for (const note of this.notes.values()) {
@@ -180,11 +179,9 @@ class BassProcessor extends AudioWorkletProcessor {
                     this.portamentoProgress += 1.0 / (portamentoDuration * sampleRate);
                     if (this.portamentoProgress > 1.0) this.portamentoProgress = 1.0;
                 }
-                const freq = this.portamentoStartFreq * (1 - this.portamentoProgress) + note.frequency * this.portamentoProgress;
+                const freq = this.portamentoStartFreq * (1 - this.portamentoProgress) + this.portamentoTargetFreq * this.portamentoProgress;
                 
-                if (i === 0) {
-                   console.log(`[bass-processor] Processing note with frequency: ${freq}`);
-                }
+                // console.log(`[bass-processor] Playing frequency: ${freq}`);
                 
                 const rawSample = this.generateOsc(note.phase);
                 note.phase += (freq * 2 * Math.PI) / sampleRate;
@@ -208,3 +205,5 @@ class BassProcessor extends AudioWorkletProcessor {
 }
 
 registerProcessor('bass-processor', BassProcessor);
+
+    
