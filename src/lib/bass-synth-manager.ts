@@ -7,8 +7,8 @@ function midiToFreq(midi: number): number {
 }
 
 /**
- * Простейший менеджер басового синтезатора ("Пароходная труба").
- * Задача: принять партитуру и передать команды "noteOn" и "noteOff" в ворклет.
+ * A dead-simple bass synth manager.
+ * Its only job is to receive a score and schedule noteOn/noteOff messages to the worklet.
  */
 export class BassSynthManager {
     private audioContext: AudioContext;
@@ -47,13 +47,14 @@ export class BassSynthManager {
 
     public play(events: FractalEvent[], barStartTime: number) {
         if (!this.workletNode || !this.isInitialized || events.length === 0) {
+            if (!this.isInitialized) console.warn('[BassMan] Attempted to play before initialized.');
             return;
         }
         
         events.forEach(event => {
             const frequency = midiToFreq(event.note);
             if (!isFinite(frequency)) {
-                console.error(`[BassMan] Неверная частота для MIDI ноты ${event.note}`);
+                console.error(`[BassMan] Invalid frequency for MIDI note ${event.note}`);
                 return;
             }
 
@@ -78,13 +79,13 @@ export class BassSynthManager {
         });
     }
 
-    // --- Пустые методы для совместимости с API ---
+    // --- Stub methods for API compatibility ---
     public setPreset(instrumentName: BassInstrument) {
-        // Заглушка.
+        // No-op in this simple version
     }
 
     public setTechnique(technique: BassTechnique) {
-        // Заглушка.
+        // No-op in this simple version
     }
 
     public allNotesOff() {
