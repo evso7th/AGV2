@@ -37,74 +37,73 @@ export class BassSynthManager {
 
     public play(events: FractalEvent[], startTime: number) {
         if (!this.workletNode || !this.isInitialized || events.length === 0) {
-            if (!this.isInitialized) console.warn('[BassMan] SKIPPING: Not initialized.');
             return;
         }
 
-        this.stop();
-        console.log(`[BassMan] Received ${events.length} events to schedule. AudioContext time: ${this.audioContext.currentTime.toFixed(2)}, Bar start time: ${startTime.toFixed(2)}`);
-
         const scheduleNextNote = (noteIndex: number) => {
-            if (noteIndex >= events.length) {
-                return; // End of sequence for this bar
-            }
+            if (noteIndex >= events.length) return;
 
             const event = events[noteIndex];
             const noteOnTime = startTime + event.time;
             const noteOffTime = noteOnTime + event.duration;
-
+            
             const delayUntilOn = (noteOnTime - this.audioContext.currentTime) * 1000;
-
-            console.log(`[BassMan] Planning note ${noteIndex} (MIDI: ${event.note}). Scheduled On: ${noteOnTime.toFixed(2)}. Delay: ${delayUntilOn.toFixed(0)}ms`);
 
             if (delayUntilOn >= 0) {
                 const noteOnTimeout = setTimeout(() => {
                     this.scheduledTimeouts.delete(noteOnTimeout);
+
                     if (this.workletNode) {
                         const freq = 440 * Math.pow(2, (event.note - 69) / 12);
-                        if (isNaN(freq) || !isFinite(freq)) {
-                            console.error('[BassMan] Invalid frequency for event:', event);
+                        if (!isFinite(freq)) {
+                            console.error(`[BassMan] Invalid frequency for MIDI note ${event.note}`);
                             return;
                         }
+
                         const velocity = event.dynamics === 'p' ? 0.3 : event.dynamics === 'mf' ? 0.6 : 0.9;
-                        const message = {
+                        
+                        console.log(`[BassMan] >>>> SENDING noteOn: MIDI ${event.note}, Freq ${freq.toFixed(2)}`);
+
+                        this.workletNode.port.postMessage({
                             type: 'noteOn',
                             frequency: freq,
-                            velocity: velocity,
+                            velocity,
                             technique: event.technique 
-                        };
-                        console.log(`[BassMan] >>>> SENDING noteOn: MIDI ${event.note}, Freq ${freq.toFixed(2)}`);
-                        this.workletNode.port.postMessage(message);
+                        });
+
+                        // Schedule the noteOff for this note
+                        const delayUntilOff = (noteOffTime - this.audioContext.currentTime) * 1000;
+                        if (delayUntilOff > 0) {
+                             const noteOffTimeout = setTimeout(() => {
+                                 this.scheduledTimeouts.delete(noteOffTimeout);
+                                 // Only send noteOff if it's the last note in the current event array
+                                 if (noteIndex === events.length - 1) {
+                                     this.workletNode?.port.postMessage({ type: 'noteOff' });
+                                 }
+                             }, delayUntilOff);
+                             this.scheduledTimeouts.add(noteOffTimeout);
+                        }
                     }
                 }, delayUntilOn);
                 this.scheduledTimeouts.add(noteOnTimeout);
-            } else {
-                 console.warn(`[BassMan] SKIPPING note ${noteIndex} as its start time ${noteOnTime.toFixed(2)} is in the past.`);
             }
-
-            const delayUntilOff = (noteOffTime - this.audioContext.currentTime) * 1000;
-             if (delayUntilOff > 0) {
-                 const noteOffTimeout = setTimeout(() => {
-                    this.scheduledTimeouts.delete(noteOffTimeout);
-                    if (this.workletNode) {
-                         // Only send noteOff if it's the last note or the next note doesn't immediately start (creating a gap)
-                        const nextEvent = events[noteIndex + 1];
-                        if (!nextEvent || nextEvent.time > event.time + event.duration) {
-                             console.log(`[BassMan] <<<< SENDING noteOff for MIDI ${event.note}`);
-                             this.workletNode.port.postMessage({ type: 'noteOff' });
-                        }
-                    }
-                    // Schedule the next note in the sequence
-                    scheduleNextNote(noteIndex + 1);
-                }, delayUntilOff);
-                this.scheduledTimeouts.add(noteOffTimeout);
-            } else {
-                 // If the note is already supposed to be over, schedule the next one immediately
-                 console.warn(`[BassMan] Note ${noteIndex} (MIDI: ${event.note}) duration has already passed. Scheduling next note immediately.`);
-                 scheduleNextNote(noteIndex + 1);
+            
+            // Schedule the next note in the sequence
+            const nextEvent = events[noteIndex + 1];
+            if(nextEvent) {
+                const timeToNextNote = (nextEvent.time - event.time) * 1000;
+                 if (timeToNextNote >= 0) {
+                    const nextNoteTimeout = setTimeout(() => {
+                        this.scheduledTimeouts.delete(nextNoteTimeout);
+                        scheduleNextNote(noteIndex + 1);
+                    }, delayUntilOn + timeToNextNote);
+                    this.scheduledTimeouts.add(nextNoteTimeout);
+                }
             }
         };
 
+        // Before starting a new sequence, clear any old ones.
+        this.stop();
         scheduleNextNote(0);
     }
 
