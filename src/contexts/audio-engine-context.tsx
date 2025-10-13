@@ -141,7 +141,7 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
     
     const bassScore: FractalEvent[] = score.bass || [];
     if (bassScore.length > 0 && bassManagerRef.current) {
-        bassManagerRef.current!.play(bassScore, startTime);
+        bassManagerRef.current.play(bassScore, startTime);
     }
 
     const drumScore: FractalEvent[] = score.drums || [];
