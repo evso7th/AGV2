@@ -1,7 +1,7 @@
 
-import type { BassInstrument, BassTechnique, Mood } from "@/types/music";
-import { TECHNIQUE_PRESETS, type BassTechniqueParams } from "./bass-presets";
-import type { FractalEvent, Dynamics, Phrasing } from '@/types/fractal';
+import type { BassInstrument, BassTechnique } from "@/types/music";
+import { TECHNIQUE_PRESETS } from "./bass-presets";
+import type { FractalEvent } from '@/types/fractal';
 
 export class BassSynthManager {
     private audioContext: AudioContext;
@@ -35,53 +35,63 @@ export class BassSynthManager {
     }
 
     public play(events: FractalEvent[], startTime: number) {
-        if (!this.workletNode || !this.isInitialized) {
-            console.warn('[BassSynthManager] Tried to play event before initialized.');
+        if (!this.workletNode || !this.isInitialized || events.length === 0) {
             return;
         }
 
-        events.forEach(event => {
-            const freq = 440 * Math.pow(2, (event.note - 69) / 12);
-            if (isNaN(freq) || !isFinite(freq)) {
-                console.error('[BassSynthManager] Invalid frequency for event:', event);
-                return;
-            }
-            
+        this.stop(); // Clear any previously scheduled notes for this bar
+
+        const scheduleNextNote = (noteIndex: number) => {
+            if (noteIndex >= events.length) return;
+
+            const event = events[noteIndex];
             const noteOnTime = startTime + event.time;
-            
-            if (!isFinite(noteOnTime)) {
-                 console.error('[BassSynthManager] Non-finite time scheduled for event:', event);
-                 return;
-            }
-            
-            const velocity = event.dynamics === 'p' ? 0.3 : event.dynamics === 'mf' ? 0.6 : 0.9;
-            
-            const message = {
-                type: 'noteOn',
-                frequency: freq,
-                velocity: velocity,
-                when: noteOnTime,
-                technique: event.technique 
-            };
-            
-            console.log(`[BassSynthManager-LOOP] Posting MIDI ${event.note} as Freq ${freq} at time ${noteOnTime}`);
-            
-            this.workletNode!.port.postMessage(message);
-
             const noteOffTime = noteOnTime + event.duration;
-            const delayUntilOff = (noteOffTime - this.audioContext.currentTime) * 1000;
+            const delayUntilOn = (noteOnTime - this.audioContext.currentTime) * 1000;
 
-            if (delayUntilOff > 0) {
-                const timeoutId = setTimeout(() => {
+            if (delayUntilOn >= 0) {
+                const noteOnTimeout = setTimeout(() => {
                     if (this.workletNode) {
-                        this.workletNode.port.postMessage({ type: 'noteOff', when: this.audioContext.currentTime });
+                        const freq = 440 * Math.pow(2, (event.note - 69) / 12);
+                         if (isNaN(freq) || !isFinite(freq)) {
+                            console.error('[BassSynthManager] Invalid frequency for event:', event);
+                            return;
+                        }
+
+                        const velocity = event.dynamics === 'p' ? 0.3 : event.dynamics === 'mf' ? 0.6 : 0.9;
+                        
+                        this.workletNode.port.postMessage({
+                            type: 'noteOn',
+                            frequency: freq,
+                            velocity: velocity,
+                            technique: event.technique 
+                        });
                     }
-                    this.scheduledTimeouts.delete(timeoutId);
-                }, delayUntilOff);
-                this.scheduledTimeouts.add(timeoutId);
+                    this.scheduledTimeouts.delete(noteOnTimeout);
+                }, delayUntilOn);
+                this.scheduledTimeouts.add(noteOnTimeout);
             }
-        });
+
+            const delayUntilOff = (noteOffTime - this.audioContext.currentTime) * 1000;
+            if (delayUntilOff > 0) {
+                const noteOffTimeout = setTimeout(() => {
+                    if (this.workletNode && (noteIndex === events.length - 1 || events[noteIndex + 1].time > event.time + event.duration)) {
+                       this.workletNode.port.postMessage({ type: 'noteOff' });
+                    }
+                    this.scheduledTimeouts.delete(noteOffTimeout);
+                     // Schedule next note
+                    scheduleNextNote(noteIndex + 1);
+                }, delayUntilOff);
+                this.scheduledTimeouts.add(noteOffTimeout);
+            } else {
+                 // If the note is already supposed to be over, schedule the next one immediately
+                 scheduleNextNote(noteIndex + 1);
+            }
+        };
+
+        scheduleNextNote(0);
     }
+
 
     public setPreset(instrumentName: BassInstrument) {
         if (instrumentName === 'none' && this.workletNode) {

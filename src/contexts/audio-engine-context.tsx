@@ -141,7 +141,6 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
     
     const bassScore: FractalEvent[] = score.bass || [];
     if (bassScore.length > 0 && bassManagerRef.current) {
-        console.log(`[AudioEngineProvider] PRE-CALL: Passing ${bassScore.length} bass events to manager. First note MIDI: ${bassScore[0]?.note}, StartTime: ${startTime}`);
         bassManagerRef.current.play(bassScore, startTime);
     }
 
