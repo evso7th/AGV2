@@ -1,215 +1,232 @@
-// public/worklets/bass-processor.js
-
-// --- State and Poly-what-not ---
-let phase = 0;
-let currentFreq = 0;
-let targetFreq = 0;
-let portamentoProgress = 1;
-let noteState = 'off'; // 'attack', 'decay', 'sustain', 'release', 'off'
-let envelopeGain = 0;
-let env_attack = 0.01;
-let env_decay = 0.1;
-let env_sustain = 0.8;
-let env_release = 0.5;
-
-let pulseCounter = -1;
-let pulseStep = 0;
-const PULSE_NOTES = [0, 7, 12, 7];
-let pulseIntervalSamples = 0;
-let pulseNoteDurationSamples = 0;
-let technique = 'pluck';
-
-let lfoPhase = 0;
-
-// Filter state
-let lp_b0 = 1.0, lp_b1 = 0.0, lp_b2 = 0.0, lp_a1 = 0.0, lp_a2 = 0.0;
-let lp_x1 = 0, lp_x2 = 0, lp_y1 = 0, lp_y2 = 0;
-
-function setFilterCoefficients(cutoff, Q, sampleRate) {
-    const omega = 2 * Math.PI * cutoff / sampleRate;
-    const sinOmega = Math.sin(omega);
-    const cosOmega = Math.cos(omega);
-    const alpha = sinOmega / (2 * Q);
-
-    const b0 = (1 - cosOmega) / 2;
-    const b1 = 1 - cosOmega;
-    const b2 = (1 - cosOmega) / 2;
-    const a0 = 1 + alpha;
-    const a1 = -2 * cosOmega;
-    const a2 = 1 - alpha;
-
-    lp_b0 = b0 / a0;
-    lp_b1 = b1 / a0;
-    lp_b2 = b2 / a0;
-    lp_a1 = a1 / a0;
-    lp_a2 = a2 / a0;
-}
-
 
 class BassProcessor extends AudioWorkletProcessor {
-    static get parameterDescriptors() {
-        return [
-            { name: 'cutoff', defaultValue: 800, minValue: 20, maxValue: 10000 },
-            { name: 'resonance', defaultValue: 1, minValue: 0.1, maxValue: 20 },
-            { name: 'distortion', defaultValue: 0.1, minValue: 0, maxValue: 1 },
-            { name: 'portamento', defaultValue: 0.0, minValue: 0, maxValue: 0.5 }
-        ];
-    }
-    
-    constructor(options) {
-        super(options);
-        
-        console.log('[bass-processor] worklet created');
+  static get parameterDescriptors() {
+    return [
+      { name: 'cutoff', defaultValue: 400, minValue: 50, maxValue: 5000, automationRate: 'a-rate' },
+      { name: 'resonance', defaultValue: 0.7, minValue: 0.1, maxValue: 5, automationRate: 'a-rate' },
+      { name: 'distortion', defaultValue: 0.05, minValue: 0, maxValue: 1, automationRate: 'a-rate' },
+      { name: 'portamento', defaultValue: 0.0, minValue: 0, maxValue: 0.5, automationRate: 'k-rate' } // k-rate is fine here
+    ];
+  }
 
-        this.port.onmessage = (event) => {
-            const { type, ...data } = event.data;
-            const time = data.when || currentTime;
-            
-            if (type === 'noteOn') {
-                console.log(`[bass-processor] Received noteOn:`, data);
-                targetFreq = data.frequency;
-                technique = data.technique || 'pluck';
+  constructor(options) {
+    super(options);
+
+    this.sampleRate = options.processorOptions?.sampleRate || sampleRate; // Get sampleRate from constructor
+
+    this.activeNotes = new Map();
+    this.note = null; // Current playing note details
+    
+    // Envelope
+    this.envState = 'idle'; // idle, attack, decay, sustain, release
+    this.envValue = 0;
+    this.attackTime = 0.01;
+    this.decayTime = 0.1;
+    this.sustainLevel = 0.8;
+    this.releaseTime = 0.3;
+
+    // Oscillator
+    this.osc1Phase = 0;
+    this.osc2Phase = 0;
+    
+    // Filter
+    this.b1 = 0; this.b2 = 0; this.b3 = 0; this.b4 = 0;
+    this.t1 = 0; this.t2 = 0;
+
+    // Portamento
+    this.portamentoProgress = 1.0;
+    this.portamentoStartFreq = 0;
+    this.portamentoEndFreq = 0;
+    this.portamentoDurationFrames = 0;
+    this.portamentoFrameCount = 0;
+
+    // Pulse/Arpeggio
+    this.pulseCounter = -1;
+    this.pulseBaseFreq = 0;
+    this.pulseIntervalFrames = 0;
+    this.pulseStep = 0;
+    this.pulseNotes = [0, 7, 12, 7]; // Root, 5th, Octave, 5th
+
+    this.port.onmessage = (event) => {
+        const { type, ...data } = event.data;
+        console.log(`[BassProcessor] Received message:`, event.data);
+
+        switch(type) {
+            case 'noteOn': {
+                const { frequency, velocity, technique, when } = data;
+                const portamento = this.parameters.get('portamento').value;
+                const noteOnTime = when || currentTime;
                 
-                const portamentoDuration = this.parameters.get('portamento').value;
-                if (noteState !== 'off' && portamentoDuration > 0) {
-                   portamentoProgress = 0;
+                if (this.note && portamento > 0) { // If a note is already playing and portamento is on
+                    this.portamentoStartFreq = this.note.frequency;
+                    this.portamentoEndFreq = frequency;
+                    this.portamentoDurationFrames = portamento * this.sampleRate;
+                    this.portamentoFrameCount = 0;
                 } else {
-                   currentFreq = targetFreq;
-                   portamentoProgress = 1;
+                    this.portamentoProgress = 1.0; // No glide
                 }
                 
-                noteState = 'attack';
-                envelopeGain = 0;
+                this.note = {
+                    frequency,
+                    velocity: velocity || 0.7,
+                    technique: technique || 'pluck',
+                };
                 
-                if (technique === 'pulse') {
-                    pulseCounter = 0;
-                    pulseStep = 0;
-                    pulseIntervalSamples = Math.floor(sampleRate / 8); // 16th notes at 120bpm
-                    pulseNoteDurationSamples = Math.floor(pulseIntervalSamples * 0.9);
-                }
+                this.envState = 'attack';
+                this.targetGain = this.note.velocity;
+                this.attackTime = 0.02; // A default, could be part of the preset
+                this.releaseTime = 0.5;
 
-            } else if (type === 'noteOff') {
-                 console.log(`[bass-processor] Received noteOff`);
-                 noteState = 'release';
-                 pulseCounter = -1;
+                if (this.note.technique === 'pulse') {
+                    this.pulseBaseFreq = frequency;
+                    this.pulseCounter = 0;
+                    this.pulseStep = 0;
+                    // 16th note at current tempo
+                    this.pulseIntervalFrames = Math.floor((60 / 120) / 4 * this.sampleRate);
+                    // Start the first pulse note immediately
+                    this.triggerPulseNote();
+                }
+                break;
             }
-        };
+            case 'noteOff': {
+                if (this.note) {
+                    this.envState = 'release';
+                    this.pulseCounter = -1; // Stop pulsing
+                }
+                break;
+            }
+        }
+    };
+  }
+
+  triggerPulseNote() {
+    if (!this.note) return;
+    const noteOffset = this.pulseNotes[this.pulseStep % this.pulseNotes.length];
+    this.note.frequency = this.pulseBaseFreq * Math.pow(2, noteOffset / 12);
+    this.osc1Phase = 0;
+    this.osc2Phase = 0;
+    this.envState = 'attack';
+    this.targetGain = 0.8;
+    this.attackTime = 0.005;
+    this.releaseTime = (this.pulseIntervalFrames / this.sampleRate) * 0.8;
+    this.pulseStep++;
+  }
+
+  // --- DSP Functions ---
+  process(inputs, outputs, parameters) {
+    const output = outputs[0];
+    const channel = output[0];
+    
+    // Get parameter values. a-rate params need to be read per-frame.
+    const cutoffParam = parameters.cutoff;
+    const resonanceParam = parameters.resonance;
+    const distortionParam = parameters.distortion;
+    const portamentoParam = parameters.portamento;
+
+    for (let i = 0; i < channel.length; i++) {
+        let currentFreq = this.note ? this.note.frequency : 0;
+        
+        // --- Portamento ---
+        if (this.portamentoFrameCount < this.portamentoDurationFrames) {
+            const t = this.portamentoFrameCount / this.portamentoDurationFrames;
+            const easedT = t * t; // simple ease-in
+            currentFreq = this.portamentoStartFreq * (1 - easedT) + this.portamentoEndFreq * easedT;
+            this.note.frequency = currentFreq;
+            this.portamentoFrameCount++;
+        }
+
+        // --- Pulse ---
+        if (this.pulseCounter !== -1) {
+            this.pulseCounter++;
+            if (this.pulseCounter >= this.pulseIntervalFrames) {
+                this.pulseCounter = 0;
+                this.triggerPulseNote();
+            }
+        }
+
+        // --- Envelope ---
+        const attackFrames = this.attackTime * this.sampleRate;
+        const decayFrames = this.decayTime * this.sampleRate;
+        const releaseFrames = this.releaseTime * this.sampleRate;
+
+        switch (this.envState) {
+            case 'attack':
+                this.envValue += 1.0 / attackFrames;
+                if (this.envValue >= 1.0) {
+                    this.envValue = 1.0;
+                    this.envState = 'decay';
+                }
+                break;
+            case 'decay':
+                this.envValue -= (1.0 - this.sustainLevel) / decayFrames;
+                if (this.envValue <= this.sustainLevel) {
+                    this.envValue = this.sustainLevel;
+                    this.envState = 'sustain';
+                }
+                break;
+            case 'release':
+                this.envValue -= this.sustainLevel / releaseFrames;
+                if (this.envValue <= 0) {
+                    this.envValue = 0;
+                    this.envState = 'idle';
+                    this.note = null; // Note is finished
+                }
+                break;
+        }
+
+        if (!this.note || this.envState === 'idle') {
+            channel[i] = 0;
+            continue;
+        }
+
+        // --- Oscillator ---
+        const osc1 = Math.sin(this.osc1Phase);
+        this.osc1Phase += 2 * Math.PI * currentFreq / this.sampleRate;
+        if(this.osc1Phase > 2 * Math.PI) this.osc1Phase -= 2 * Math.PI;
+        
+        const osc2 = (this.osc2Phase / Math.PI) % 2 - 1; // Sawtooth
+        this.osc2Phase += 2 * Math.PI * currentFreq / this.sampleRate;
+        if(this.osc2Phase > 2 * Math.PI) this.osc2Phase -= 2 * Math.PI;
+        
+        let sample = (osc1 * 0.6 + osc2 * 0.4);
+
+        // --- Filter ---
+        const cutoff = cutoffParam.length > 1 ? cutoffParam[i] : cutoffParam[0];
+        const resonance = resonanceParam.length > 1 ? resonanceParam[i] : resonanceParam[0];
+        const f = 2 * Math.sin(Math.PI * Math.min(0.25, cutoff / (this.sampleRate * 2)));
+        this.b4 += f * (sample - this.b4);
+        this.b3 += f * (this.b4 - this.b3);
+        this.b2 += f * (this.b3 - this.b2);
+        this.b1 += f * (this.b2 - this.b1);
+        const q = 1 - resonance;
+        let filteredSample = this.b1;
+        filteredSample -= (this.t2 + this.t1) * q;
+        this.t1 = this.b3;
+        this.t2 = this.b4;
+
+        // --- Distortion ---
+        const distortion = distortionParam.length > 1 ? distortionParam[i] : distortionParam[0];
+        const k = 2 * distortion;
+        const distorted = (filteredSample * (1 + k)) / (1 + k * Math.abs(filteredSample));
+
+        channel[i] = distorted * this.envValue * this.note.velocity * 0.7; // Apply envelope and velocity
+    }
+
+    // --- Copy to other channels ---
+    for (let j = 1; j < output.length; j++) {
+      output[j].set(channel);
     }
     
-    softClip(input, drive) {
-      const k = Math.max(0, Math.min(1, drive));
-      return (input * (1 + k)) / (1 + k * Math.abs(input));
+    // Logging for debug
+    if (this.logCounter === undefined) this.logCounter = 0;
+    this.logCounter++;
+    if (this.logCounter > 5 * this.sampleRate) { // ~ every 5 seconds
+        console.log(`[BassProcessor.process] note: ${this.note ? this.note.frequency : 'none'}, envState: ${this.envState}, envValue: ${this.envValue.toFixed(2)}`);
+        this.logCounter = 0;
     }
-    
-    process(inputs, outputs, parameters) {
-        const output = outputs[0];
-        const cutoff = parameters.cutoff[0];
-        const resonance = parameters.resonance[0];
-        const distortion = parameters.distortion[0];
-        const portamento = parameters.portamento[0];
-        
-        setFilterCoefficients(cutoff, resonance, sampleRate);
-        
-        const attackSamples = env_attack * sampleRate;
-        const decaySamples = env_decay * sampleRate;
-        const releaseSamples = env_release * sampleRate;
 
-        for (let i = 0; i < output[0].length; i++) {
-            let sample = 0;
-
-            // --- Portamento ---
-            if (portamentoProgress < 1.0) {
-                portamentoProgress += 1.0 / (portamento * sampleRate);
-                if (portamentoProgress >= 1.0) {
-                    portamentoProgress = 1.0;
-                    currentFreq = targetFreq;
-                } else {
-                    const eased = 1 - Math.pow(1 - portamentoProgress, 2);
-                    currentFreq = currentFreq * (1 - eased) + targetFreq * eased;
-                }
-            }
-
-            // --- Pulse Technique ---
-            if (technique === 'pulse' && pulseCounter !== -1) {
-                if (pulseCounter % pulseIntervalSamples === 0) {
-                    const noteOffset = PULSE_NOTES[pulseStep % PULSE_NOTES.length];
-                    currentFreq = targetFreq * Math.pow(2, noteOffset/12);
-                    phase = 0;
-                    noteState = 'attack';
-                    envelopeGain = 0;
-                    pulseStep++;
-                }
-                if (pulseCounter % pulseIntervalSamples > pulseNoteDurationSamples) {
-                    noteState = 'release';
-                }
-                pulseCounter++;
-            }
-            
-            // --- Envelope ---
-            switch (noteState) {
-                case 'attack':
-                    envelopeGain += 1.0 / attackSamples;
-                    if (envelopeGain >= 1.0) {
-                        envelopeGain = 1.0;
-                        noteState = 'decay';
-                    }
-                    break;
-                case 'decay':
-                    envelopeGain -= (1.0 - env_sustain) / decaySamples;
-                    if (envelopeGain <= env_sustain) {
-                        envelopeGain = env_sustain;
-                        noteState = 'sustain';
-                    }
-                    break;
-                case 'sustain':
-                    // Gain is constant
-                    break;
-                case 'release':
-                    envelopeGain -= env_sustain / releaseSamples;
-                    if (envelopeGain <= 0) {
-                        envelopeGain = 0;
-                        noteState = 'off';
-                    }
-                    break;
-                case 'off':
-                    envelopeGain = 0;
-                    break;
-            }
-
-            if (noteState !== 'off') {
-                // --- Oscillator ---
-                const osc1 = 1 - 2 * (phase / (2 * Math.PI)); // Sawtooth
-                const osc2 = Math.sin(phase * 0.5); // Sub-octave sine
-                sample = (osc1 * 0.7) + (osc2 * 0.3);
-
-                // --- Filter ---
-                const filteredSample = lp_b0*sample + lp_b1*lp_x1 + lp_b2*lp_x2 - lp_a1*lp_y1 - lp_a2*lp_y2;
-                lp_x2 = lp_x1; lp_x1 = sample;
-                lp_y2 = lp_y1; lp_y1 = filteredSample;
-
-                // --- Distortion & Output ---
-                sample = this.softClip(filteredSample, distortion);
-                sample *= envelopeGain;
-                
-                phase += (currentFreq * 2 * Math.PI) / sampleRate;
-                if (phase > 2 * Math.PI) phase -= 2 * Math.PI;
-            }
-
-            output[0][i] = sample * 0.5; // Master volume
-        }
-        
-        for (let channel = 1; channel < output.length; channel++) {
-            output[channel].set(output[0]);
-        }
-
-        // Log state periodically
-        if (currentTime > (this.lastLogTime || 0) + 5) {
-             console.log(`[bass-processor] state: ${noteState}, gain: ${envelopeGain.toFixed(2)}, freq: ${currentFreq.toFixed(2)}`);
-             this.lastLogTime = currentTime;
-        }
-
-        return true;
-    }
+    return true;
+  }
 }
 
 registerProcessor('bass-processor', BassProcessor);

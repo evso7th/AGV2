@@ -35,23 +35,24 @@ export class BassSynthManager {
         }
     }
 
-    private setParam(name: string, value: number, time: number) {
+    private setParam(name: string, value: number) {
         if (!this.workletNode) return;
         const param = this.workletNode.parameters.get(name);
         if (param && isFinite(value)) {
-            param.setValueAtTime(value, time);
+            // Use setTargetAtTime for smooth transitions
+            param.setTargetAtTime(value, this.audioContext.currentTime, 0.01);
         } else if (!param) {
             console.warn(`[BassSynthManager] Parameter "${name}" not found on worklet node.`);
         }
     }
     
     private getParamsForTechnique(
-        technique: 'pluck' | 'ghost' | 'slap',
+        technique: 'pluck' | 'ghost' | 'slap' | 'pulse',
         phrasing: Phrasing,
         dynamics: Dynamics,
         mood: Mood
     ): BassTechniqueParams {
-        const baseParams = { ...TECHNIQUE_PRESETS[technique] };
+        const baseParams = { ...(TECHNIQUE_PRESETS[technique] || TECHNIQUE_PRESETS['pluck']) };
 
         if (dynamics === 'p') {
             baseParams.distortion *= 0.5;
@@ -83,7 +84,7 @@ export class BassSynthManager {
             console.error('[BassSynthManager] Invalid frequency for event:', event);
             return;
         }
-
+        
         const noteOnTime = startTime + event.time;
         
         if (!isFinite(noteOnTime)) {
@@ -92,12 +93,13 @@ export class BassSynthManager {
         }
         
         const velocity = event.dynamics === 'p' ? 0.3 : event.dynamics === 'mf' ? 0.6 : 0.9;
-        const params = this.getParamsForTechnique(event.technique, event.phrasing, event.dynamics, 'melancholic'); 
+        const params = this.getParamsForTechnique(event.technique as any, event.phrasing, event.dynamics, 'melancholic'); 
 
-        this.setParam('cutoff', params.cutoff, noteOnTime);
-        this.setParam('resonance', params.resonance, noteOnTime);
-        this.setParam('distortion', params.distortion, noteOnTime);
-        this.setParam('portamento', params.portamento, noteOnTime);
+        // Set parameters on the worklet node's parameters
+        this.setParam('cutoff', params.cutoff);
+        this.setParam('resonance', params.resonance);
+        this.setParam('distortion', params.distortion);
+        this.setParam('portamento', params.portamento);
         
         const message = {
             type: 'noteOn',
@@ -115,13 +117,16 @@ export class BassSynthManager {
         if (delayUntilOff > 0) {
             const timeoutId = setTimeout(() => {
                 if (this.workletNode) {
-                    this.workletNode.port.postMessage({ type: 'noteOff' });
+                    this.workletNode.port.postMessage({ type: 'noteOff', when: this.audioContext.currentTime });
+                    console.log(`[BassSynthManager] Posting noteOff for freq ${freq} at ${this.audioContext.currentTime}`);
                 }
                 this.scheduledTimeouts.delete(timeoutId);
             }, delayUntilOff);
             this.scheduledTimeouts.add(timeoutId);
         } else {
-             console.warn(`[BassSynthManager] Note-off for freq ${freq} scheduled in the past.`);
+             // If the note-off is in the past, send it immediately.
+             this.workletNode.port.postMessage({ type: 'noteOff', when: this.audioContext.currentTime });
+             console.warn(`[BassSynthManager] Note-off for freq ${freq} was in the past, sending now.`);
         }
     }
 

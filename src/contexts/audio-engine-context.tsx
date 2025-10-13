@@ -145,7 +145,7 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
     if (bassScore.length > 0 && bassManagerRef.current) {
         console.log(`[AudioEngineProvider] Scheduling ${bassScore.length} bass events.`);
         bassScore.forEach(event => {
-            console.log(`[AudioEngineProvider] -> Scheduling BASS event:`, { event, startTime });
+            console.log(`[AudioEngineProvider] -> Scheduling BASS event: `, { event, startTime });
             bassManagerRef.current!.play(event, startTime);
         });
     }
@@ -445,5 +445,3 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
     </AudioEngineContext.Provider>
   );
 };
-
-    
