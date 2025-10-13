@@ -117,11 +117,6 @@ const Composer = {
             notes.push({ midi: chordMidiNotes[2], time: 0.2, duration: Scheduler.barDuration, velocity: 0.4 + Math.random() * 0.2 });
         }
         return notes;
-    },
-
-    generateDrums(barIndex: number, density: number): DrumsScore {
-        // This is now legacy, NFM handles its own drum generation
-        return [];
     }
 }
 
@@ -251,7 +246,6 @@ const Scheduler = {
         
         if (this.settings.score === 'neuro_f_matrix') {
             const fractalEvents = fractalMusicEngine.evolve(this.barDuration);
-
             score.bass = fractalEvents.filter(e => e.type === 'bass');
             score.drums = fractalEvents.filter(e => e.type.startsWith('drum_'));
             
@@ -315,12 +309,10 @@ self.onmessage = async (event: MessageEvent) => {
                 Scheduler.updateSettings(data);
                 break;
             default:
-                 console.warn(`[Worker] Unknown command: ${command}`);
+                 // No-op for unknown commands
                  break;
         }
     } catch (e) {
         self.postMessage({ type: 'error', error: e instanceof Error ? e.message : String(e) });
     }
 };
-
-    

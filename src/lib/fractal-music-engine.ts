@@ -6,10 +6,10 @@ import type { DrumSettings } from '@/types/music';
 // === ТИПЫ ===
 export type Branch = {
   id: string;
-  events: FractalEvent[];
+  events: FractalEvent[]; // Может быть как басовой, так и барабанной фразой
   weight: number;
   age: number;
-  technique: 'pluck' | 'ghost' | 'slap';
+  type: 'bass' | 'drums'; // Тип ветви
 };
 
 // === КОНФИГУРАЦИЯ ===
@@ -24,8 +24,7 @@ export interface EngineConfig {
   organic: number;
 }
 
-
-const MAX_BRANCHES = 10;
+const MAX_BRANCHES = 12; // Увеличиваем лимит для баса и барабанов
 
 // === ВСПОМОГАТЕЛЬНЫЕ ФУНКЦИИ ===
 function seededRandom(seed: number) {
@@ -60,7 +59,6 @@ function safeDuration(duration: number): number {
   return isFinite(duration) && duration > 0 ? Math.max(0.01, duration) : 0.1;
 }
 
-
 // === ОСНОВНОЙ КЛАСС ===
 export class FractalMusicEngine {
   private config: EngineConfig;
@@ -81,189 +79,184 @@ export class FractalMusicEngine {
     this.initialize();
   }
 
+  private createDrumBranch(id: string, pattern: Partial<Record<FractalEvent['type'], number[]>>, weight: number): Branch {
+    const beat = 60 / this.config.tempo;
+    const events: FractalEvent[] = [];
+
+    Object.entries(pattern).forEach(([type, times]) => {
+        times.forEach(time => {
+            events.push({
+                type: type as FractalEvent['type'],
+                note: 36, // Placeholder, drum machine uses type
+                duration: 0.1,
+                time: time * beat,
+                weight: 1.0,
+                technique: 'hit',
+                dynamics: 'mf',
+                phrasing: 'staccato',
+            });
+        });
+    });
+
+    return { id, events, weight, age: 0, type: 'drums' };
+  }
+
   private initialize() {
     const scale = getScaleForMood(this.config.mood);
     const root = scale[this.random.nextInt(scale.length)];
 
-    const axiomEvents: FractalEvent[] = [
+    const bassAxiom: FractalEvent[] = [
       { type: 'bass', note: root, duration: 1.5, time: 0, weight: 1.0, technique: 'pluck', dynamics: 'f', phrasing: 'legato' },
-      { type: 'bass', note: root + 3, duration: 0.5, time: 1.5, weight: 0.8, technique: 'pluck', dynamics: 'mf', phrasing: 'staccato' },
-      { type: 'bass', note: root + 2, duration: 1.5, time: 2.0, weight: 0.9, technique: 'pluck', dynamics: 'f', phrasing: 'legato' },
-      { type: 'bass', note: root, duration: 0.5, time: 3.5, weight: 1.0, technique: 'pluck', dynamics: 'f', phrasing: 'staccato' }
+      { type: 'bass', note: root + 7, duration: 0.5, time: 1.5, weight: 0.8, technique: 'pluck', dynamics: 'mf', phrasing: 'staccato' },
+    ];
+    
+    // Начальные барабанные ветви (аксоны)
+    const drumAxiom1 = this.createDrumBranch('drum_axiom_1', {
+      'drum_kick': [0, 2],
+      'drum_snare': [1, 3],
+      'drum_hihat_closed': [0, 0.5, 1, 1.5, 2, 2.5, 3, 3.5],
+    }, 1.0);
+
+    const drumAxiom2 = this.createDrumBranch('drum_axiom_2', {
+      'drum_kick': [0, 1.5, 2],
+      'drum_snare': [1, 3],
+      'drum_hihat_closed': [0, 0.5, 1, 1.5, 2, 2.5, 3, 3.5],
+    }, 0.5);
+
+    this.branches = [
+        { id: 'bass_axon_1', events: bassAxiom, weight: 1.0, age: 0, type: 'bass' },
+        drumAxiom1,
+        drumAxiom2,
     ];
 
-    this.branches = [{
-      id: 'axon',
-      events: axiomEvents,
-      weight: 1.0,
-      age: 0,
-      technique: 'pluck'
-    }];
+    this.normalizeWeights();
   }
 
-    public updateConfig(newConfig: Partial<EngineConfig>) {
-        this.config = { ...this.config, ...newConfig };
-        this.lambda = newConfig.lambda ?? this.lambda;
+  public updateConfig(newConfig: Partial<EngineConfig>) {
+    const needsReinitialization = newConfig.mood && newConfig.mood !== this.config.mood;
+    this.config = { ...this.config, ...newConfig };
+    this.lambda = newConfig.lambda ?? this.lambda;
+    if (needsReinitialization) {
+      this.initialize();
     }
-
-    private generateOneBarDrums(startTime: number, delta: number): FractalEvent[] {
-        const events: FractalEvent[] = [];
-        const beat = 60 / this.config.tempo;
-        const { volume, kickVolume, enabled } = this.config.drumSettings;
-        const { density } = this.config;
-    
-        if (!isFinite(beat) || !isFinite(startTime) || !enabled) {
-            return [];
-        }
-        
-        const addEvent = (type: FractalEvent['type'], note: number, offset: number, weight: number, dynamics: 'p'|'mf'|'f', duration: number = 0.1) => {
-            const time = safeTime(startTime + offset);
-            if (isFinite(time)) {
-                events.push({
-                    type, note,
-                    duration: safeDuration(duration),
-                    time,
-                    weight: weight * volume, // Use the overall drum volume
-                    technique: 'hit', dynamics, phrasing: 'staccato'
-                });
-            }
-        };
-    
-        // 1. Kick Drum: всегда на 1, на 3 - с вероятностью, зависящей от плотности.
-        addEvent('drum_kick', 36, 0, kickVolume, 'f');
-        if (this.random.next() < (density * 0.8 + 0.2)) {
-            addEvent('drum_kick', 36, 2 * beat, kickVolume * 0.8, 'f');
-        }
-    
-        // 2. Snare Drum: всегда на 2 и 4, но с вариативной громкостью.
-        addEvent('drum_snare', 38, 1 * beat, 0.8 + this.random.next() * 0.2, 'mf');
-        addEvent('drum_snare', 38, 3 * beat, 0.8 + this.random.next() * 0.2, 'mf');
-    
-        // 3. Hi-Hats: сложность зависит от плотности
-        if (density < 0.4) { // Четверти
-            for (let i = 0; i < 4; i++) {
-                if (this.random.next() < 0.9) {
-                    addEvent('drum_hat', 42, i * beat, 0.4 + this.random.next() * 0.2, 'p', 0.05);
-                }
-            }
-        } else { // Восьмые с пропусками
-            for (let i = 0; i < 8; i++) {
-                // Пропускаем на сильных долях с некоторой вероятностью
-                if (i % 2 === 0 && this.random.next() < 0.1) continue;
-                addEvent('drum_hat', 42, i * beat / 2, (i % 2 === 0 ? 0.6 : 0.3) + this.random.next() * 0.2, 'p', 0.05);
-            }
-            // Открытый хэт на слабой доле в конце такта при высокой плотности
-            if (density > 0.7 && this.random.next() < 0.4) {
-                 addEvent('drum_open_hat', 44, 3.5 * beat, 0.7, 'mf', 0.2);
-            }
-        }
-    
-        // 4. Cymbals & Fills: зависят от энергии (delta) и номера такта (epoch)
-        const isClimaxBar = this.epoch % 8 === 7;
-        const isSubClimaxBar = this.epoch % 4 === 3;
-    
-        // Crash в кульминации
-        if (isClimaxBar && delta > 0.8) {
-            addEvent('drum_crash', 49, 0, 0.9, 'f', 0.4);
-        }
-        
-        // Ride для поддержания энергии при высокой плотности
-        if (density > 0.65) {
-             for (let i = 0; i < 4; i++) {
-                addEvent('drum_ride', 51, i * beat, 0.5, 'p', 0.1);
-            }
-        }
-    
-        // Сбивка (Fill) в конце 4-го такта, если плотность высокая
-        if (isSubClimaxBar && this.random.next() < density) {
-            const fillStart = 3 * beat;
-            const fillPatterns = [
-                () => { addEvent('drum_tom_mid', 45, fillStart + beat / 2, 0.8, 'mf'); addEvent('drum_tom_low', 41, fillStart + beat * 3/4, 0.85, 'mf'); },
-                () => { addEvent('drum_snare', 38, fillStart, 0.7, 'p'); addEvent('drum_snare', 38, fillStart + beat/4, 0.7, 'p'); addEvent('drum_tom_high', 50, fillStart + beat/2, 0.9, 'mf'); },
-            ];
-            fillPatterns[this.random.nextInt(fillPatterns.length)]();
-        }
-    
-        return events;
-    }
+  }
   
   private normalizeWeights() {
     const totalWeight = this.branches.reduce((sum, branch) => sum + branch.weight, 0);
     if (totalWeight > 0 && isFinite(totalWeight)) {
         this.branches.forEach(branch => {
-            branch.weight = isFinite(branch.weight) ? branch.weight / totalWeight : 0.01;
+            branch.weight = isFinite(branch.weight) ? branch.weight / totalWeight : (1 / this.branches.length);
         });
     } else {
-        // Fallback in case totalWeight is 0 or NaN
         this.branches.forEach(branch => branch.weight = 1 / this.branches.length);
     }
   }
 
-  // === ОСНОВНОЙ МЕТОД ===
-  public evolve(barDuration: number): FractalEvent[] {
-    if (!isFinite(barDuration) || barDuration <= 0) {
-        return [];
-    }
-    const output: FractalEvent[] = [];
-    
-    // 2. Генерация баса и барабанов (1 такт)
-    const delta = this.getDeltaProfile()(this.time);
-    
-    // Генерация ударных (1 такт — обязательно!)
-    if (this.config.drumSettings.enabled && this.config.drumSettings.pattern === 'composer') {
-        const drumEvents = this.generateOneBarDrums(0, delta);
-        output.push(...drumEvents);
+  private mutateDrumBranch(baseBranch: Branch): Branch {
+    const beat = 60 / this.config.tempo;
+    const newEvents = baseBranch.events.map(e => ({...e}));
+
+    // Mutation: Add a ghost note
+    if (this.random.next() < 0.4) {
+      const snareEvents = newEvents.filter(e => e.type === 'drum_snare');
+      if (snareEvents.length > 0) {
+        const randomSnare = snareEvents[this.random.nextInt(snareEvents.length)];
+        newEvents.push({
+          ...randomSnare,
+          time: randomSnare.time + beat / 2,
+          weight: 0.3,
+          technique: 'ghost',
+          dynamics: 'p'
+        });
+      }
     }
 
-    const kickTimes = output.filter(e => e.type === 'drum_kick').map(e => e.time);
-    const snareTimes = output.filter(e => e.type === 'drum_snare').map(e => e.time);
+    // Mutation: Change a hi-hat to an open-hat
+    if (this.random.next() < 0.2) {
+      const hatEvents = newEvents.filter(e => e.type === 'drum_hihat_closed');
+      if (hatEvents.length > 0) {
+        const hatToChange = hatEvents[this.random.nextInt(hatEvents.length)];
+        hatToChange.type = 'drum_hihat_open';
+        hatToChange.duration = 0.2;
+      }
+    }
     
-    this.branches.forEach(branch => {
+    return {
+      ...baseBranch,
+      id: `drum_mut_${Date.now()}_${this.random.nextInt(1000)}`,
+      events: newEvents,
+      weight: baseBranch.weight * 0.5, // Start with lower weight
+      age: 0,
+    };
+  }
+
+  public evolve(barDuration: number): FractalEvent[] {
+    if (!isFinite(barDuration) || barDuration <= 0) return [];
+
+    const delta = this.getDeltaProfile()(this.time);
+    const output: FractalEvent[] = [];
+
+    // --- 1. Генерация партитуры из текущих ветвей ---
+    const activeBranches = this.branches.filter(b => b.weight > 0.1);
+    
+    // Определяем ритмическую сетку этого такта
+    const kickTimes = activeBranches.filter(b => b.type === 'drums').flatMap(b => b.events.filter(e => e.type === 'drum_kick').map(e => e.time));
+    const snareTimes = activeBranches.filter(b => b.type === 'drums').flatMap(b => b.events.filter(e => e.type === 'drum_snare').map(e => e.time));
+
+    activeBranches.forEach(branch => {
       branch.events.forEach(event => {
         output.push({
           ...event,
           time: safeTime(event.time),
           duration: safeDuration(event.duration),
           weight: branch.weight,
-          technique: branch.technique,
           dynamics: weightToDynamics(branch.weight),
-          phrasing: branch.weight > 0.7 ? 'legato' : 'staccato'
         });
       });
     });
 
-    // 3. Эволюция басовых ветвей для СЛЕДУЮЩЕГО такта
+    // --- 2. Эволюция: обновление весов, рождение и смерть ---
     const nextBranches: Branch[] = [];
     this.branches.forEach(branch => {
-      const resonanceSum = this.branches.reduce((sum, other) => {
-        if (other.id === branch.id) return sum;
+      let resonanceSum = 0;
+      this.branches.forEach(other => {
+        if (other.id === branch.id) return;
         const k = MelancholicMinorK(branch.events[0], other.events[0], {
           mood: this.config.mood, delta, kickTimes, snareTimes,
           beatPhase: (this.time * this.config.tempo / 60) % 4,
-          barDuration: barDuration,
+          barDuration
         });
-        return sum + k * delta;
-      }, 0);
+        resonanceSum += k * delta * other.weight;
+      });
+      
       const newWeight = (1 - this.lambda) * branch.weight + resonanceSum;
       nextBranches.push({ ...branch, weight: safeTime(newWeight, 0.01), age: branch.age + 1 });
     });
     
     this.branches = nextBranches;
-    this.normalizeWeights();
-    this.branches = this.branches.filter(b => b.weight > 0.05);
-
-    if (this.random.next() < 0.3 && this.branches.length < MAX_BRANCHES && this.epoch > 2) {
-      const base = this.branches[0];
-      if (base) {
-        this.branches.push({
-          id: `ghost_${Date.now()}`,
-          events: [{ ...base.events[this.random.nextInt(base.events.length)], duration: 0.2 }],
-          weight: 0.15, age: 0, technique: 'ghost'
-        });
-      }
-    }
     
-    // 4. Продвигаем время на 1 такт
+    // --- 3. Мутации и рождение новых ветвей ---
+    const canMutate = this.branches.length < MAX_BRANCHES && this.epoch > 4;
+
+    if (canMutate && this.random.next() < 0.2 * this.config.organic) {
+        const drumBranches = this.branches.filter(b => b.type === 'drums');
+        if (drumBranches.length > 0) {
+            const strongestDrumBranch = drumBranches.sort((a,b) => b.weight - a.weight)[0];
+            this.branches.push(this.mutateDrumBranch(strongestDrumBranch));
+        }
+    }
+
+    // --- 4. Смерть старых и слабых ветвей ---
+    this.branches = this.branches.filter(b => b.weight > 0.01 && b.age < 50);
+
+    // --- 5. Нормализация и подготовка к следующему такту ---
+    this.normalizeWeights();
+    
+    // Если все ветви вымерли, реинициализируем
+    if(this.branches.length === 0){
+        this.initialize();
+    }
+
     this.time += barDuration;
     this.epoch++;
     

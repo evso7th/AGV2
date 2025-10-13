@@ -107,6 +107,8 @@ export class DrumMachine {
         }
         
         for (const event of score) {
+            if (!event.type.startsWith('drum_')) continue;
+
             // Extract drum sample name from event type (e.g., 'drum_kick' -> 'kick')
             const sampleName = event.type.replace('drum_', '');
             
