@@ -17,7 +17,6 @@ export class BassSynthManager {
     private workletNode: AudioWorkletNode | null = null;
     private outputNode: GainNode;
     public isInitialized = false;
-    private scheduledEvents: Set<number> = new Set(); // Используем для отслеживания таймаутов
 
     constructor(audioContext: AudioContext, destination: AudioNode) {
         this.audioContext = audioContext;
@@ -52,8 +51,6 @@ export class BassSynthManager {
         if (!this.workletNode || !this.isInitialized || events.length === 0) {
             return;
         }
-        
-        console.log(`[BassMan] Получено ${events.length} басовых событий для планирования. Время старта такта: ${barStartTime.toFixed(2)}`);
 
         // Сразу планируем все ноты из партитуры
         events.forEach(event => {
@@ -71,15 +68,15 @@ export class BassSynthManager {
                 type: 'noteOn',
                 frequency: frequency,
                 when: absoluteOnTime,
-                velocity: event.dynamics === 'p' ? 0.2 : event.dynamics === 'mf' ? 0.4 : 0.7
+                velocity: event.dynamics === 'p' ? 0.2 : event.dynamics === 'mf' ? 0.4 : 0.7,
+                noteId: event.note // ID для отслеживания ноты
             });
 
             this.workletNode!.port.postMessage({
                 type: 'noteOff',
-                frequency: frequency,
+                noteId: event.note,
                 when: absoluteOffTime
             });
-            console.log(`[BassMan] Запланирована нота ${event.note} (freq: ${frequency.toFixed(2)}) ON: ${absoluteOnTime.toFixed(2)}, OFF: ${absoluteOffTime.toFixed(2)}`);
         });
     }
 

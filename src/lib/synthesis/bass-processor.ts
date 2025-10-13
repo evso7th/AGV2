@@ -61,56 +61,28 @@ class BassProcessor extends AudioWorkletProcessor {
 
     private handleMessage(message: any) {
         const { type, ...data } = message;
-        const { frequency, velocity, when, technique } = data;
+        const { frequency, velocity, when, technique, noteId } = data;
 
         if (type === 'noteOn') {
-            this.technique = technique || 'pluck';
-            const isLegato = this.notes.size > 0 && ['portamento', 'glide', 'glissando'].includes(this.technique);
-            
-            if (!isLegato) {
-                this.notes.clear();
-            }
+             this.notes.set(noteId, {
+                frequency,
+                phase: 0,
+                gain: 0,
+                targetGain: velocity,
+                state: 'attack',
+                attackTime: 0.02,
+                releaseTime: 0.4,
+                velocity,
+            });
 
-            let noteToModify: NoteState | undefined = this.notes.values().next().value;
-            
-            if (noteToModify && isLegato) {
-                this.portamentoStartFreq = noteToModify.frequency;
-                this.portamentoTargetFreq = frequency;
-                this.portamentoProgress = 0;
-                noteToModify.frequency = frequency; 
-                noteToModify.targetGain = velocity;
-                noteToModify.state = 'attack'; 
-            } else {
-                 this.isPulsing = false;
-                if (technique === 'pulse') {
-                    this.isPulsing = true;
-                    this.pulseBaseFrequency = frequency;
-                    this.pulseNextTriggerTime = currentTime;
-                    this.pulseNoteCounter = 0;
-                } else {
-                    const newNote: NoteState = {
-                        frequency,
-                        phase: 0,
-                        gain: 0,
-                        targetGain: velocity,
-                        state: 'attack',
-                        attackTime: 0.02,
-                        releaseTime: 0.4,
-                        velocity,
-                    };
-                    this.notes.clear(); // Ensure only one note is active for non-legato
-                    this.notes.set(frequency, newNote);
-                    this.portamentoStartFreq = frequency;
-                    this.portamentoTargetFreq = frequency;
-                    this.portamentoProgress = 1.0;
-                }
-            }
         } else if (type === 'noteOff') {
-            this.isPulsing = false;
-            for (const note of this.notes.values()) {
+            const note = this.notes.get(noteId);
+            if (note) {
                 note.state = 'release';
                 note.targetGain = 0;
             }
+        } else if (type === 'clear') {
+            this.notes.clear();
         }
     }
     
@@ -138,65 +110,57 @@ class BassProcessor extends AudioWorkletProcessor {
     }
     
     process(inputs: Float32Array[][], outputs: Float32Array[][], parameters: Record<string, Float32Array>): boolean {
+        // Process queued messages at the beginning of each block
         while (this.messageQueue.length > 0) {
-            this.handleMessage(this.messageQueue.shift());
+            const message = this.messageQueue.shift();
+            // If the event is scheduled for the future, handle it later
+            if (message.when && message.when > currentTime) {
+                this.messageQueue.unshift(message); // Put it back at the front
+                break;
+            }
+            this.handleMessage(message);
         }
 
         const output = outputs[0];
         const channelCount = output.length;
         const frameCount = output[0].length;
 
+        // Note: parameters are AudioParam-like, but we'll just read the first value for simplicity here
         const cutoff = parameters.cutoff[0];
         const distortion = parameters.distortion[0];
-        const portamentoDuration = parameters.portamento[0];
 
-        if (this.isPulsing && currentTime >= this.pulseNextTriggerTime) {
-            const pulseInterval = 60 / (this.config.tempo * 8); // 32nd notes
-            this.pulseNextTriggerTime = currentTime + pulseInterval;
-            const noteOffset = this.PULSE_NOTES[this.pulseNoteCounter++ % this.PULSE_NOTES.length];
-            const pulseNoteFreq = this.pulseBaseFrequency * Math.pow(2, noteOffset / 12);
-            
-            this.notes.clear();
-            this.notes.set(pulseNoteFreq, {
-                frequency: pulseNoteFreq, phase: 0, gain: 0, targetGain: 0.9,
-                state: 'attack', attackTime: 0.005, releaseTime: 0.08, velocity: 0.9,
-            });
-        }
-        
         for (let i = 0; i < frameCount; i++) {
-            let leftSample = 0;
-            let rightSample = 0;
+            let sampleValue = 0;
 
             for (const [key, note] of this.notes.entries()) {
+                // Envelope
                 if (note.state === 'attack') {
                     note.gain += (1 / (note.attackTime * sampleRate));
-                    if (note.gain >= note.targetGain) { note.gain = note.targetGain; note.state = 'sustain'; }
+                    if (note.gain >= note.targetGain) { 
+                        note.gain = note.targetGain;
+                        note.state = 'sustain'; 
+                    }
                 } else if (note.state === 'release') {
                     note.gain -= (1 / (note.releaseTime * sampleRate));
-                    if (note.gain <= 0) { this.notes.delete(key); continue; }
+                    if (note.gain <= 0) {
+                        this.notes.delete(key);
+                        continue; // Go to next note
+                    }
                 }
 
-                // Handle Portamento
-                if (this.portamentoProgress < 1.0 && portamentoDuration > 0) {
-                    this.portamentoProgress += 1.0 / (portamentoDuration * sampleRate);
-                    if (this.portamentoProgress > 1.0) this.portamentoProgress = 1.0;
-                    note.frequency = this.portamentoStartFreq * (1 - this.portamentoProgress) + this.portamentoTargetFreq * this.portamentoProgress;
-                }
-                
-                const rawSample = this.generateOsc(note.phase);
+                // Oscillator
+                const rawSample = Math.sin(note.phase); // Simple sine wave for "steam pipe"
                 note.phase += (note.frequency * 2 * Math.PI) / sampleRate;
-                if (note.phase >= 2 * Math.PI) note.phase -= 2 * Math.PI;
+                if (note.phase >= 2 * Math.PI) {
+                    note.phase -= 2 * Math.PI;
+                }
 
-                leftSample += rawSample * note.gain;
+                sampleValue += rawSample * note.gain;
             }
             
-            const filteredSample = this.applyFilter(leftSample, cutoff, true);
-            const distortedSample = this.softClip(filteredSample, distortion);
-            
-            rightSample = distortedSample;
-            
+            // Mix all active notes and apply to output channels
             for (let channel = 0; channel < channelCount; channel++) {
-                output[channel][i] = distortedSample * 0.6;
+                output[channel][i] = sampleValue * 0.5; // Apply a master gain
             }
         }
 

@@ -1,104 +1,93 @@
 
-/**
- * "Пароходная труба" - простейший AudioWorklet-синтезатор.
- * Его единственная задача - проигрывать синусоиду в указанное время.
- * Никаких фильтров, эффектов и сложных техник. Максимально тупой и надежный.
- */
-class SimpleSynthProcessor extends AudioWorkletProcessor {
+class BassProcessor extends AudioWorkletProcessor {
     constructor() {
         super();
-        // Каждая нота (по частоте) имеет свой собственный осциллятор и огибающую.
-        this.notes = new Map(); // Map<frequency, { phase: number, gain: number, state: 'attack'|'decay'|'sustain'|'release' }>
-        
+        this.notes = new Map(); // noteId -> { phase, gain, state, releaseTime, velocity, frequency }
+        this.eventQueue = [];
         this.port.onmessage = (event) => {
-            const { type, frequency, when, velocity } = event.data;
-            const now = currentTime;
-
-            if (type === 'noteOn') {
-                if (when <= now) {
-                    this.startNote(frequency, velocity);
-                } else {
-                    setTimeout(() => this.startNote(frequency, velocity), (when - now) * 1000);
-                }
-            } else if (type === 'noteOff') {
-                 if (when <= now) {
-                    this.stopNote(frequency);
-                } else {
-                    setTimeout(() => this.stopNote(frequency), (when - now) * 1000);
-                }
-            } else if (type === 'clear') {
-                this.notes.clear();
-            }
+            this.eventQueue.push(event.data);
         };
     }
 
-    startNote(frequency, velocity) {
-        console.log(`[Worklet] NOTE ON: freq=${frequency.toFixed(2)}, velocity=${velocity}`);
-        this.notes.set(frequency, {
-            phase: 0,
-            gain: 0,
-            targetGain: velocity,
-            state: 'attack',
-            releaseTime: 0.2 // Короткий релиз
-        });
-    }
-
-    stopNote(frequency) {
-        const note = this.notes.get(frequency);
-        if (note) {
-            console.log(`[Worklet] NOTE OFF: freq=${frequency.toFixed(2)}`);
-            note.state = 'release';
-            note.targetGain = 0;
-        }
-    }
-
     process(inputs, outputs, parameters) {
-        const output = outputs[0];
-        const channelCount = output.length;
-        const frameCount = output[0].length;
-        
-        // Если нет активных нот, просто заполняем тишиной и выходим
-        if (this.notes.size === 0) {
-            return true;
+        // --- Event Handling ---
+        // Process all events scheduled for the current block
+        let nextEventIndex = 0;
+        while (nextEventIndex < this.eventQueue.length && this.eventQueue[nextEventIndex].when <= currentTime + (128 / sampleRate)) {
+            nextEventIndex++;
+        }
+        const eventsToProcess = this.eventQueue.splice(0, nextEventIndex);
+
+        for (const event of eventsToProcess) {
+             if (event.when > currentTime) {
+                // This logic is tricky in process(). A simpler way is just to queue and process.
+                // For now, let's assume we process if it's 'due'.
+             }
+
+            if (event.type === 'noteOn') {
+                console.log(`[Worklet] Received noteOn at T=${currentTime.toFixed(2)} for when=${event.when.toFixed(2)}: Note ID ${event.noteId}, Freq ${event.frequency.toFixed(2)}`);
+                this.notes.set(event.noteId, {
+                    phase: 0,
+                    gain: 0,
+                    state: 'attack',
+                    attackTime: 0.01, // Quick attack
+                    releaseTime: 0.3,  // Quick release
+                    velocity: event.velocity,
+                    frequency: event.frequency
+                });
+            } else if (event.type === 'noteOff') {
+                console.log(`[Worklet] Received noteOff at T=${currentTime.toFixed(2)} for when=${event.when.toFixed(2)}: Note ID ${event.noteId}`);
+                const note = this.notes.get(event.noteId);
+                if (note) {
+                    note.state = 'release';
+                }
+            } else if (event.type === 'clear') {
+                console.log(`[Worklet] Clearing all notes`);
+                this.notes.clear();
+            }
         }
 
-        for (let i = 0; i < frameCount; i++) {
-            let sample = 0;
+        // --- Audio Generation ---
+        const output = outputs[0];
+        const channel = output[0];
 
-            for (const [freq, note] of this.notes.entries()) {
-                // Простое ADSR управление громкостью
+        for (let i = 0; i < channel.length; ++i) {
+            let sampleValue = 0;
+
+            for (const [noteId, note] of this.notes.entries()) {
+                // Basic ADSR envelope
                 if (note.state === 'attack') {
-                    note.gain += 1 / (0.01 * sampleRate); // 10ms attack
-                    if (note.gain >= note.targetGain) {
-                        note.gain = note.targetGain;
+                    note.gain += (note.velocity / (note.attackTime * sampleRate));
+                    if (note.gain >= note.velocity) {
+                        note.gain = note.velocity;
                         note.state = 'sustain';
                     }
                 } else if (note.state === 'release') {
-                    note.gain -= 1 / (note.releaseTime * sampleRate);
+                    note.gain -= (note.velocity / (note.releaseTime * sampleRate));
                     if (note.gain <= 0) {
-                        this.notes.delete(freq);
-                        continue; // Нота закончила звучать, переходим к следующей
+                        this.notes.delete(noteId);
+                        continue;
                     }
                 }
 
-                // Простой синусоидальный осциллятор
-                sample += Math.sin(note.phase) * note.gain;
-                note.phase += (freq * 2 * Math.PI) / sampleRate;
+                // Simple sine wave oscillator
+                if (note.frequency > 0 && note.gain > 0) {
+                     sampleValue += Math.sin(note.phase) * note.gain;
+                     if(i === 0 && noteId === 28) {
+                        // console.log(`[Worklet] Playing note ${noteId} with gain ${note.gain.toFixed(3)}`);
+                     }
+                }
+                
+                note.phase += (note.frequency * 2 * Math.PI) / sampleRate;
                 if (note.phase >= 2 * Math.PI) {
                     note.phase -= 2 * Math.PI;
                 }
             }
-            
-            // Защита от клиппинга
-            const limitedSample = Math.max(-1, Math.min(1, sample)) * 0.5; // Уменьшаем громкость
-
-            for (let channel = 0; channel < channelCount; channel++) {
-                output[channel][i] = limitedSample;
-            }
+            channel[i] = sampleValue * 0.5; // Master gain
         }
-        
-        return true; // Продолжаем обработку
+
+        return true;
     }
 }
 
-registerProcessor('bass-processor', SimpleSynthProcessor);
+registerProcessor('bass-processor', BassProcessor);
