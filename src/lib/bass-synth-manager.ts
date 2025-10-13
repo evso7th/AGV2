@@ -73,7 +73,6 @@ export class BassSynthManager {
     }
 
     public play(event: FractalEvent, startTime: number) {
-        console.log('[BassSynthManager] play called with event:', event, 'and startTime:', startTime);
         if (!this.workletNode || !this.isInitialized) {
             console.warn('[BassSynthManager] Tried to play event before initialized.');
             return;
@@ -93,7 +92,7 @@ export class BassSynthManager {
         }
         
         const velocity = event.dynamics === 'p' ? 0.3 : event.dynamics === 'mf' ? 0.6 : 0.9;
-        const params = this.getParamsForTechnique(event.technique, event.phrasing, event.dynamics, 'melancholic'); // TODO: Pass mood dynamically
+        const params = this.getParamsForTechnique(event.technique, event.phrasing, event.dynamics, 'melancholic'); 
 
         this.setParam('cutoff', params.cutoff, noteOnTime);
         this.setParam('resonance', params.resonance, noteOnTime);
@@ -105,7 +104,7 @@ export class BassSynthManager {
             frequency: freq,
             velocity: velocity,
             when: noteOnTime,
-            technique: event.technique // Pass technique to the worklet
+            technique: event.technique 
         };
         console.log('[BassSynthManager] Posting message to worklet:', message);
         this.workletNode.port.postMessage(message);
@@ -116,7 +115,6 @@ export class BassSynthManager {
         if (delayUntilOff > 0) {
             const timeoutId = setTimeout(() => {
                 if (this.workletNode) {
-                    console.log(`[BassSynthManager] Posting noteOff for freq ${freq} at ${this.audioContext.currentTime}`);
                     this.workletNode.port.postMessage({ type: 'noteOff' });
                 }
                 this.scheduledTimeouts.delete(timeoutId);
@@ -157,5 +155,3 @@ export class BassSynthManager {
         this.workletNode?.disconnect();
     }
 }
-
-    
