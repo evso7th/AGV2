@@ -140,8 +140,11 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
     let accompanimentInstrument = currentSettings.instrumentSettings.accompaniment.name;
     
     const bassScore: FractalEvent[] = score.bass || [];
+    console.log('[AudioEngineProvider] Received score to schedule at', startTime, '. Bass:', bassScore.length, 'Drums:', score.drums?.length);
     if (bassScore.length > 0 && bassManagerRef.current) {
+        console.log('[AudioEngineProvider] Scheduling', bassScore.length, 'bass events.');
         bassScore.forEach(event => {
+            console.log('[AudioEngineProvider] -> Scheduling BASS event: ', {event, startTime});
             bassManagerRef.current!.play(event, startTime);
         });
     }
@@ -182,20 +185,21 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
         }
     }
     
-    const accompanimentScore: Note[] = score.accompaniment || [];
-    if (accompanimentScore.length > 0 && accompanimentInstrument !== 'none') {
-        if (accompanimentInstrument === 'piano' && samplerPlayerRef.current) {
-            samplerPlayerRef.current.schedule('piano', accompanimentScore, startTime);
-        } else if (accompanimentInstrument === 'violin' && violinSamplerPlayerRef.current) {
-            violinSamplerPlayerRef.current.schedule(accompanimentScore, startTime);
-        } else if (accompanimentInstrument === 'flute' && fluteSamplerPlayerRef.current) {
-            fluteSamplerPlayerRef.current.schedule(accompanimentScore, startTime);
-        } else if (accompanimentInstrument === 'guitarChords' && guitarChordsSamplerRef.current) {
-            guitarChordsSamplerRef.current.schedule(accompanimentScore, startTime);
-        } else if (accompanimentManagerRef.current) {
-            accompanimentManagerRef.current.schedule(accompanimentScore, startTime);
-        }
+    // const accompanimentScore: Note[] = score.accompaniment || [];
+    // if (accompanimentScore.length > 0 && accompanimentInstrument !== 'none') {
+    //     if (accompanimentInstrument === 'piano' && samplerPlayerRef.current) {
+    //         samplerPlayerRef.current.schedule('piano', accompanimentScore, startTime);
+    //     } else if (accompanimentInstrument === 'violin' && violinSamplerPlayerRef.current) {
+    //         violinSamplerPlayerRef.current.schedule(accompanimentScore, startTime);
+    //     } else if (accompanimentInstrument === 'flute' && fluteSamplerPlayerRef.current) {
+    //         fluteSamplerPlayerRef.current.schedule(accompanimentScore, startTime);
+    //     } else if (accompanimentInstrument === 'guitarChords' && guitarChordsSamplerRef.current) {
+    _ADD_
+      guitarChordsSamplerRef.current.schedule(accompanimentScore, startTime);
+    } else if (accompanimentManagerRef.current) {
+        accompanimentManagerRef.current.schedule(accompanimentScore, startTime);
     }
+    // }
 
     const effectsScore: EffectsScore = score.effects || [];
     if (effectsScore.length > 0 && currentSettings) {
