@@ -34,7 +34,14 @@ export type InstrumentType =
   | 'bass'
   | 'drum_kick'
   | 'drum_snare'
-  | 'drum_hat'
+  | 'drum_hat' // Maintained for backward compatibility
+  | 'drum_hihat_closed'
+  | 'drum_hihat_open'
+  | 'drum_crash'
+  | 'drum_ride'
+  | 'drum_tom_high'
+  | 'drum_tom_mid'
+  | 'drum_tom_low'
   | 'pad'
   | 'lead'
   | 'arp';
@@ -55,12 +62,12 @@ export interface FractalEvent {
   note: number;
 
   /**
-   * Длительность в долях такта (1 = целая нота при 4/4)
+   * Длительность в секундах
    */
   duration: number;
 
   /**
-   * Абсолютное время начала события в секундах
+   * Абсолютное время начала события в секундах от начала текущего такта
    */
   time: number;
 
@@ -97,11 +104,11 @@ export type EventID = string;
 export type ResonanceMatrix = (
   eventA: FractalEvent,
   eventB: FractalEvent,
-  context?: ResonanceContext
+  context: ResonanceContext
 ) => number;
 
 /**
- * Контекст для расширенного резонанса (опционален)
+ * Контекст для расширенного резонанса
  */
 export interface ResonanceContext {
   mood: Mood;
@@ -109,4 +116,5 @@ export interface ResonanceContext {
   kickTimes: number[];
   snareTimes: number[];
   beatPhase: number; // фаза доли (0.0–4.0)
+  barDuration: number;
 }

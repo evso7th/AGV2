@@ -1,14 +1,5 @@
 
-import type { FractalEvent, Mood, Technique } from '@/types/fractal';
-
-type ResonanceContext = {
-  mood: Mood;
-  delta: number;
-  kickTimes: number[];
-  snareTimes: number[];
-  beatPhase: number;
-  barDuration: number;
-};
+import type { FractalEvent, Mood, ResonanceContext, Technique } from '@/types/fractal';
 
 // A simple scale to work with for the first matrix
 const E_MINOR_SCALE_MIDI_DEGREES = [40, 42, 43, 45, 47, 48, 50]; // MIDI note numbers for E minor scale starting at E2
@@ -34,20 +25,21 @@ function rhythmicResonance(
   snareTimes: number[],
   barDuration: number
 ): number {
-  const { time, technique } = event;
+  if (barDuration <= 0) return 0.5; // Avoid division by zero
+  const time = event.time;
   const relativeTime = time % barDuration;
   
   // Синхрон с kick (бас и kick на одной доле = высокий резонанс)
   const nearKick = kickTimes.some(t => Math.abs(t - relativeTime) < 0.05);
-  if (nearKick) return technique === 'pluck' ? 1.0 : 0.7;
+  if (nearKick && event.type === 'bass') return event.technique === 'pluck' ? 1.0 : 0.7;
   
   // Избегание snare (бас не должен играть на 2 и 4)
   const nearSnare = snareTimes.some(t => Math.abs(t - relativeTime) < 0.05);
-  if (nearSnare) return 0.2;
+  if (nearSnare && event.type === 'bass') return 0.2;
   
   // Ghost notes — только в слабых долях
-  if (technique === 'ghost') {
-    const beat = Math.floor(time * 2) % 4; // Упрощенно
+  if (event.technique === 'ghost') {
+    const beat = Math.floor((time / barDuration) * 4) % 4; 
     return [1, 3].includes(beat) ? 0.9 : 0.4;
   }
   
@@ -76,28 +68,31 @@ export function MelancholicMinorK(
   eventB: FractalEvent,
   context: ResonanceContext
 ): number {
-  // Игнорируем резонанс между барабанами
-  if (eventA.type.startsWith('drum_') || eventB.type.startsWith('drum_')) {
+  // Если оба события - ударные, их резонанс не влияет на общую гармонию (пока)
+  if (eventA.type.startsWith('drum_') && eventB.type.startsWith('drum_')) {
       return 1.0;
   }
+  
+  // Если одно из событий - ударное, а другое - нет, считаем ритмический резонанс
+  const isADrum = eventA.type.startsWith('drum_');
+  const isBDrum = eventB.type.startsWith('drum_');
 
-  // Гармонический резонанс (относительно лада и доли)
+  if (isADrum !== isBDrum) {
+    const tonalEvent = isADrum ? eventB : eventA;
+    return rhythmicResonance(tonalEvent, context.kickTimes, context.snareTimes, context.barDuration);
+  }
+
+  // Если оба события тональные (не ударные)
   const harmA = harmonicResonance(eventA.note, context.mood, context.beatPhase);
   const harmB = harmonicResonance(eventB.note, context.mood, context.beatPhase);
   
-  // Ритмический резонанс (взаимодействие с ударными)
-  const rhythmA = rhythmicResonance(eventA, context.kickTimes, context.snareTimes, context.barDuration);
-  const rhythmB = rhythmicResonance(eventB, context.kickTimes, context.snareTimes, context.barDuration);
-  
-  // Технический резонанс (соответствие техники настроению)
   const techA = techniqueResonance(eventA.technique, context.mood, context.delta);
   const techB = techniqueResonance(eventB.technique, context.mood, context.delta);
   
-  // Взвешенное среднее (можно настроить веса)
+  // Взвешенное среднее для тональных инструментов
   return (
-    0.5 * Math.min(harmA, harmB) +
-    0.3 * Math.min(rhythmA, rhythmB) +
-    0.2 * Math.min(techA, techB)
+    0.6 * Math.min(harmA, harmB) + // Гармония важнее
+    0.4 * Math.min(techA, techB)
   );
 };
 
@@ -105,7 +100,7 @@ export function MelancholicMinorK(
 function getScaleForMood(mood: Mood): number[] {
     const rootNoteOffset = 4; // E
     const scale = mood === 'melancholic' 
-        ? [0, 2, 3, 5, 7, 8, 10] // Dorian
+        ? [0, 2, 3, 5, 7, 8, 10] // Dorian-like
         : [0, 2, 4, 5, 7, 9, 11]; // Major
-    return scale.map(degree => (degree + rootNoteOffset) % 12);
+    return scale.map(degree => (degree + rootNoteOffset)); // Return absolute MIDI note bases
 }
