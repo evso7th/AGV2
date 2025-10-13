@@ -24,7 +24,9 @@ export interface EngineConfig {
   organic: number;
 }
 
-const MAX_BRANCHES = 12; // Увеличиваем лимит для баса и барабанов
+const MAX_BRANCHES = 12; 
+const BASS_NOTE_MIN = 28; // E1
+const BASS_NOTE_MAX = 52; // E3
 
 // === ВСПОМОГАТЕЛЬНЫЕ ФУНКЦИИ ===
 function seededRandom(seed: number) {
@@ -40,9 +42,11 @@ function seededRandom(seed: number) {
 }
 
 function getScaleForMood(mood: Mood): number[] {
-  const E2 = 40; // E2 — реальный бас
-  if (mood === 'melancholic') return [E2, E2+2, E2+3, E2+5, E2+7, E2+9, E2+10]; // E Dorian
-  return [E2, E2+2, E2+4, E2+5, E2+7, E2+9, E2+11]; // E Major
+  const E2_DEGREE = 4; // E
+  const scale = mood === 'melancholic' 
+      ? [0, 2, 3, 5, 7, 8, 10] // Dorian-like
+      : [0, 2, 4, 5, 7, 9, 11]; // Major
+  return scale.map(degree => (degree + E2_DEGREE));
 }
 
 function weightToDynamics(weight: number): 'p' | 'mf' | 'f' {
@@ -102,8 +106,8 @@ export class FractalMusicEngine {
   }
 
   private initialize() {
-    const scale = getScaleForMood(this.config.mood);
-    const root = scale[this.random.nextInt(scale.length)];
+    const scale = getScaleForMood(this.config.mood).map(n => n + 24); // Start in E2 (MIDI 40)
+    const root = scale[0];
 
     const bassAxiom: FractalEvent[] = [
       { type: 'bass', note: root, duration: 1.5, time: 0, weight: 1.0, technique: 'pluck', dynamics: 'f', phrasing: 'legato' },
@@ -147,16 +151,51 @@ export class FractalMusicEngine {
         this.branches.forEach(branch => {
             branch.weight = isFinite(branch.weight) ? branch.weight / totalWeight : (1 / this.branches.length);
         });
-    } else {
+    } else if (this.branches.length > 0) {
         this.branches.forEach(branch => branch.weight = 1 / this.branches.length);
     }
+  }
+
+  private mutateBassBranch(baseBranch: Branch): Branch {
+    const scale = getScaleForMood(this.config.mood).map(n => n + 24);
+    const newEvents: FractalEvent[] = baseBranch.events.map(e => ({...e}));
+
+    // Choose a mutation type
+    const mutationType = this.random.next();
+
+    if (mutationType < 0.5) { // Pitch mutation
+        const eventToMutate = newEvents[this.random.nextInt(newEvents.length)];
+        const scaleIndex = scale.indexOf(eventToMutate.note % 12 + 36); // Normalize to one octave
+        const newIndex = scaleIndex + (this.random.next() < 0.5 ? 1 : -1);
+        let newNote = scale[((newIndex % scale.length) + scale.length) % scale.length];
+        
+        // Ensure the note stays in the bass range
+        while (newNote > BASS_NOTE_MAX) newNote -= 12;
+        while (newNote < BASS_NOTE_MIN) newNote += 12;
+
+        eventToMutate.note = newNote;
+    } else if (mutationType < 0.8) { // Rhythm mutation
+        const eventToMutate = newEvents[this.random.nextInt(newEvents.length)];
+        eventToMutate.duration *= (0.5 + this.random.next()); // 0.5x to 1.5x
+    } else { // Technique mutation
+        const eventToMutate = newEvents[this.random.nextInt(newEvents.length)];
+        eventToMutate.technique = 'ghost';
+        eventToMutate.dynamics = 'p';
+    }
+
+    return {
+        ...baseBranch,
+        id: `bass_mut_${Date.now()}_${this.random.nextInt(1000)}`,
+        events: newEvents,
+        weight: baseBranch.weight * 0.7, // Start with lower weight
+        age: 0,
+    };
   }
 
   private mutateDrumBranch(baseBranch: Branch): Branch {
     const beat = 60 / this.config.tempo;
     const newEvents = baseBranch.events.map(e => ({...e}));
 
-    // Mutation: Add a ghost note
     if (this.random.next() < 0.4) {
       const snareEvents = newEvents.filter(e => e.type === 'drum_snare');
       if (snareEvents.length > 0) {
@@ -166,12 +205,12 @@ export class FractalMusicEngine {
           time: randomSnare.time + beat / 2,
           weight: 0.3,
           technique: 'ghost',
-          dynamics: 'p'
+          dynamics: 'p',
+          phrasing: 'staccato',
         });
       }
     }
 
-    // Mutation: Change a hi-hat to an open-hat
     if (this.random.next() < 0.2) {
       const hatEvents = newEvents.filter(e => e.type === 'drum_hihat_closed');
       if (hatEvents.length > 0) {
@@ -185,7 +224,7 @@ export class FractalMusicEngine {
       ...baseBranch,
       id: `drum_mut_${Date.now()}_${this.random.nextInt(1000)}`,
       events: newEvents,
-      weight: baseBranch.weight * 0.5, // Start with lower weight
+      weight: baseBranch.weight * 0.5,
       age: 0,
     };
   }
@@ -196,14 +235,10 @@ export class FractalMusicEngine {
     const delta = this.getDeltaProfile()(this.time);
     const output: FractalEvent[] = [];
 
-    // --- 1. Генерация партитуры из текущих ветвей ---
-    const activeBranches = this.branches.filter(b => b.weight > 0.1);
-    
-    // Определяем ритмическую сетку этого такта
-    const kickTimes = activeBranches.filter(b => b.type === 'drums').flatMap(b => b.events.filter(e => e.type === 'drum_kick').map(e => e.time));
-    const snareTimes = activeBranches.filter(b => b.type === 'drums').flatMap(b => b.events.filter(e => e.type === 'drum_snare').map(e => e.time));
+    const kickTimes = this.branches.filter(b => b.type === 'drums').flatMap(b => b.events.filter(e => e.type === 'drum_kick').map(e => e.time));
+    const snareTimes = this.branches.filter(b => b.type === 'drums').flatMap(b => b.events.filter(e => e.type === 'drum_snare').map(e => e.time));
 
-    activeBranches.forEach(branch => {
+    this.branches.forEach(branch => {
       branch.events.forEach(event => {
         output.push({
           ...event,
@@ -215,7 +250,6 @@ export class FractalMusicEngine {
       });
     });
 
-    // --- 2. Эволюция: обновление весов, рождение и смерть ---
     const nextBranches: Branch[] = [];
     this.branches.forEach(branch => {
       let resonanceSum = 0;
@@ -235,9 +269,16 @@ export class FractalMusicEngine {
     
     this.branches = nextBranches;
     
-    // --- 3. Мутации и рождение новых ветвей ---
-    const canMutate = this.branches.length < MAX_BRANCHES && this.epoch > 4;
+    const canMutate = this.branches.length < MAX_BRANCHES && this.epoch > 2;
 
+    if (canMutate && this.random.next() < 0.25 * this.config.organic) {
+        const bassBranches = this.branches.filter(b => b.type === 'bass');
+        if (bassBranches.length > 0) {
+            const strongestBassBranch = bassBranches.sort((a,b) => b.weight - a.weight)[0];
+            this.branches.push(this.mutateBassBranch(strongestBassBranch));
+        }
+    }
+    
     if (canMutate && this.random.next() < 0.2 * this.config.organic) {
         const drumBranches = this.branches.filter(b => b.type === 'drums');
         if (drumBranches.length > 0) {
@@ -246,13 +287,10 @@ export class FractalMusicEngine {
         }
     }
 
-    // --- 4. Смерть старых и слабых ветвей ---
     this.branches = this.branches.filter(b => b.weight > 0.01 && b.age < 50);
 
-    // --- 5. Нормализация и подготовка к следующему такту ---
     this.normalizeWeights();
     
-    // Если все ветви вымерли, реинициализируем
     if(this.branches.length === 0){
         this.initialize();
     }
@@ -276,3 +314,5 @@ export class FractalMusicEngine {
     };
   }
 }
+
+    
