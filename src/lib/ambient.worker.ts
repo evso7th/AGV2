@@ -7,21 +7,11 @@
  * Its goal is to create a continuously evolving piece of music where complexity is controlled by a 'density' parameter.
  * It is completely passive and only composes the next bar when commanded via a 'tick'.
  */
-import type { WorkerSettings, Score, Note, DrumsScore, ScoreName, InstrumentSettings, DrumSettings, InstrumentType, BassTechnique, Mood } from '@/types/music';
+import type { WorkerSettings, Score, ScoreName, InstrumentSettings, DrumSettings, Mood } from '@/types/music';
 import { FractalMusicEngine, type EngineConfig } from './fractal-music-engine';
-import type { Seed, ResonanceMatrix, FractalEvent } from '@/types/fractal';
-import * as Tone from 'tone';
+import type { FractalEvent } from '@/types/fractal';
 
-
-// --- Musical Constants ---
-const KEY_ROOT_MIDI = 40; // E2
-const SCALE_INTERVALS = [0, 2, 3, 5, 7, 8, 10]; // E Natural Minor
-const E_MINOR_SCALE_DEGREES = [0, 2, 3, 5, 7, 8, 10]; 
-const CHORD_PROGRESSION_DEGREES = [0, 3, 5, 2]; // Em, G, Am, F#dim - but we'll stick to scale intervals
-
-const BASS_MIDI_MIN = 32; // G#1
-const BASS_MIDI_MAX = 50; // D3
-
+// --- Constants ---
 const PADS_BY_STYLE: Record<ScoreName, string | null> = {
     dreamtales: 'livecircle.mp3',
     evolve: 'Tibetan bowls.mp3',
@@ -46,79 +36,6 @@ function shouldAddSparkle(currentTime: number, density: number): boolean {
     return Math.random() < chance;
 }
 
-// --- Note Generation Helpers ---
-const getNoteFromDegree = (degree: number, scale: number[], root: number, octave: number) => {
-    const scaleLength = scale.length;
-    const noteInScale = scale[((degree % scaleLength) + scaleLength) % scaleLength];
-    const octaveOffset = Math.floor(degree / scaleLength);
-    return root + (octave + octaveOffset) * 12 + noteInScale;
-};
-
-const clamp = (value: number, min: number, max: number) => Math.max(min, Math.min(value, max));
-
-
-// --- Main Composition Engines ---
-const Composer = {
-    generateBass(barIndex: number, density: number): Note[] {
-        const barDuration = Scheduler.barDuration;
-        const beatDuration = barDuration / 4;
-        let notes: Note[] = [];
-        
-        const riffPattern = [40, 40, 43, 43]; // E2, E2, G2, G2
-        notes.push({ midi: clamp(riffPattern[barIndex % 4], BASS_MIDI_MIN, BASS_MIDI_MAX), time: 0, duration: Math.min(beatDuration * 2, barDuration * 0.95), velocity: 0.7 });
-
-        if (density > 0.4) {
-            notes.push({ midi: clamp(riffPattern[barIndex % 4] + 12, BASS_MIDI_MIN, BASS_MIDI_MAX), time: beatDuration * 2, duration: Math.min(beatDuration, barDuration * 0.95), velocity: 0.5 });
-        }
-        if (density > 0.7) {
-            const arpNotes = [40, 43, 47]; // E2, G2, B2
-            for(let i=0; i<3; i++) {
-                notes.push({ midi: clamp(arpNotes[i], BASS_MIDI_MIN, BASS_MIDI_MAX), time: beatDuration * 3 + i * (beatDuration/3), duration: Math.min(beatDuration/3, barDuration * 0.95), velocity: 0.6});
-            }
-        }
-       
-        return notes;
-    },
-
-    generateMelody(barIndex: number, density: number): Note[] {
-        const notes: Note[] = [];
-        if (Math.random() > density) return notes; 
-
-        const notesInBar = density > 0.6 ? 8 : 4;
-        const step = Scheduler.barDuration / notesInBar;
-        let lastMidi = 60 + SCALE_INTERVALS[barIndex % SCALE_INTERVALS.length];
-
-        for (let i = 0; i < notesInBar; i++) {
-            if (Math.random() < density * 1.2) { 
-                const direction = Math.random() < 0.5 ? 1 : -1;
-                const scaleIndex = (lastMidi - KEY_ROOT_MIDI + direction + SCALE_INTERVALS.length) % SCALE_INTERVALS.length;
-                const nextMidi = KEY_ROOT_MIDI + 24 + SCALE_INTERVALS[scaleIndex];
-                
-                if (nextMidi < 79) {
-                    lastMidi = nextMidi;
-                }
-                notes.push({ midi: lastMidi, time: i * step, duration: step * (1 + Math.random()), velocity: 0.5 * density });
-            }
-        }
-        return notes;
-    },
-    
-    generateAccompaniment(barIndex: number, density: number): Note[] {
-        const notes: Note[] = [];
-        const progression = [0, 3, 5, 2];
-        const rootDegree = progression[Math.floor(barIndex / 2) % progression.length];
-        
-        const chordDegrees = [rootDegree, rootDegree + 2, rootDegree + 4];
-        const chordMidiNotes = chordDegrees.map(degree => getNoteFromDegree(degree, SCALE_INTERVALS, KEY_ROOT_MIDI, 2));
-
-        if (barIndex % 2 === 0) {
-            notes.push({ midi: chordMidiNotes[0], time: 0, duration: Scheduler.barDuration, velocity: 0.6 + Math.random() * 0.2 });
-            notes.push({ midi: chordMidiNotes[1], time: 0.1, duration: Scheduler.barDuration, velocity: 0.5 + Math.random() * 0.2 });
-            notes.push({ midi: chordMidiNotes[2], time: 0.2, duration: Scheduler.barDuration, velocity: 0.4 + Math.random() * 0.2 });
-        }
-        return notes;
-    }
-}
 
 // --- FRACTAL ENGINE ---
 let fractalMusicEngine: FractalMusicEngine | undefined;
@@ -242,22 +159,22 @@ const Scheduler = {
         if (!this.isRunning || !fractalMusicEngine) return;
         
         const density = this.settings.density;
-        let score: Score = { bass: [], melody: [], accompaniment: [], drums: [] };
         
         if (this.settings.score === 'neuro_f_matrix') {
-            const fractalEvents = fractalMusicEngine.evolve(this.barDuration);
-            score.bass = fractalEvents.filter(e => e.type === 'bass');
-            score.drums = fractalEvents.filter(e => e.type.startsWith('drum_'));
-            
+            const fractalEvents: FractalEvent[] = fractalMusicEngine.evolve(this.barDuration);
+            const score: Score = {
+                bass: fractalEvents.filter(e => e.type === 'bass'),
+                drums: fractalEvents.filter(e => e.type.startsWith('drum_')),
+                melody: [],
+                accompaniment: []
+            };
+            self.postMessage({ type: 'score', score, time: this.barDuration });
         } else {
-             // Legacy composers remain for other styles
-             score.bass = Composer.generateBass(this.barCount, density);
-             score.melody = Composer.generateMelody(this.barCount, density);
-             score.accompaniment = Composer.generateAccompaniment(this.barCount, density);
+             // Legacy composers could be here, but are removed for neuro_f_matrix focus
+            const score: Score = { bass: [], melody: [], accompaniment: [], drums: [] };
+            self.postMessage({ type: 'score', score, time: this.barDuration });
         }
         
-        self.postMessage({ type: 'score', score, time: this.barDuration });
-
         const currentTime = this.barCount * this.barDuration;
         
         if (this.settings.textureSettings.sparkles.enabled) {
