@@ -27,9 +27,12 @@ export class BassSynthManager {
     async init() {
         if (this.isInitialized) return;
         try {
-            // Убедимся, что загружается правильный ворклет
             await this.audioContext.audioWorklet.addModule('/worklets/bass-processor.js');
-            this.workletNode = new AudioWorkletNode(this.audioContext, 'bass-processor');
+            this.workletNode = new AudioWorkletNode(this.audioContext, 'bass-processor', {
+                processorOptions: {
+                    sampleRate: this.audioContext.sampleRate
+                }
+            });
             this.workletNode.connect(this.outputNode);
             this.isInitialized = true;
             console.log('[BassSynthManager] "Пароходная труба" инициализирована.');
@@ -44,15 +47,11 @@ export class BassSynthManager {
         }
     }
 
-    /**
-     * Принимает массив нот и время начала такта, планирует их воспроизведение.
-     */
     public play(events: FractalEvent[], barStartTime: number) {
         if (!this.workletNode || !this.isInitialized || events.length === 0) {
             return;
         }
-
-        // Сразу планируем все ноты из партитуры
+        
         events.forEach(event => {
             const frequency = midiToFreq(event.note);
             if (!isFinite(frequency)) {
@@ -63,13 +62,11 @@ export class BassSynthManager {
             const absoluteOnTime = barStartTime + event.time;
             const absoluteOffTime = absoluteOnTime + event.duration;
             
-            // Отправляем команды в ворклет с абсолютным временем
             this.workletNode!.port.postMessage({
                 type: 'noteOn',
                 frequency: frequency,
                 when: absoluteOnTime,
-                velocity: event.dynamics === 'p' ? 0.2 : event.dynamics === 'mf' ? 0.4 : 0.7,
-                noteId: event.note // ID для отслеживания ноты
+                noteId: event.note 
             });
 
             this.workletNode!.port.postMessage({
@@ -95,7 +92,6 @@ export class BassSynthManager {
 
     public stop() {
         if (this.workletNode) {
-            // Отправляем команду немедленной очистки всех нот
             this.workletNode.port.postMessage({ type: 'clear' });
             console.log('[BassMan] Отправлена команда "clear" в ворклет.');
         }
