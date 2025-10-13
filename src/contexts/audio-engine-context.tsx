@@ -194,11 +194,10 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
     //     } else if (accompanimentInstrument === 'flute' && fluteSamplerPlayerRef.current) {
     //         fluteSamplerPlayerRef.current.schedule(accompanimentScore, startTime);
     //     } else if (accompanimentInstrument === 'guitarChords' && guitarChordsSamplerRef.current) {
-    _ADD_
-      guitarChordsSamplerRef.current.schedule(accompanimentScore, startTime);
-    } else if (accompanimentManagerRef.current) {
-        accompanimentManagerRef.current.schedule(accompanimentScore, startTime);
-    }
+    //   guitarChordsSamplerRef.current.schedule(accompanimentScore, startTime);
+    // } else if (accompanimentManagerRef.current) {
+    //     accompanimentManagerRef.current.schedule(accompanimentScore, startTime);
+    // }
     // }
 
     const effectsScore: EffectsScore = score.effects || [];
@@ -446,3 +445,5 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
     </AudioEngineContext.Provider>
   );
 };
+
+    
