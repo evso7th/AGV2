@@ -1,152 +1,140 @@
 
-// Fallback for globalThis
-const g = typeof globalThis !== 'undefined' ? globalThis : (typeof self !== 'undefined' ? self : (typeof window !== 'undefined' ? window : global));
-
 class ChordProcessor extends AudioWorkletProcessor {
-
-  static get parameterDescriptors() {
-    return [
-      { name: 'attack', defaultValue: 0.01, minValue: 0.001, maxValue: 2 },
-      { name: 'release', defaultValue: 0.1, minValue: 0.01, maxValue: 5 },
-      { name: 'filterCutoff', defaultValue: 8000, minValue: 20, maxValue: 20000 },
-      { name: 'filterQ', defaultValue: 1, minValue: 0.01, maxValue: 20 },
-      { name: 'distortion', defaultValue: 0, minValue: 0, maxValue: 1 },
-    ];
-  }
-
-  constructor(options) {
-    super(options);
-    
-    this.notes = []; // { frequency, velocity, phase, gain, startTime, duration, state }
-    this.stagger = 0;
-    this.port.onmessage = this.handleMessage.bind(this);
-
-    // Filter state for each channel
-    this.filterStateL = 0;
-    this.filterStateR = 0;
-    
-    this.oscType = 'sawtooth';
-    this.releaseTime = 0.1; // default
-  }
-
-  handleMessage(event) {
-    const { type, ...data } = event.data;
-    if (type === 'playChord' && data.notes && data.notes.length > 0) {
-        this.stagger = data.stagger || 0;
-        const now = currentTime;
-        this.notes = data.notes.map(n => ({
-            frequency: 440 * Math.pow(2, (n.midi - 69) / 12),
-            velocity: n.velocity || 0.7,
-            duration: n.duration,
-            phase: 0,
-            gain: 0, // start at 0
-            startTime: data.when || now,
-            state: 'attack'
-        }));
-    } else if (type === 'noteOff') {
-        this.notes.forEach(note => { note.state = 'release'; });
-    } else if (type === 'setPreset') {
-        this.oscType = data.oscType || this.oscType;
-        this.releaseTime = data.release || 0.1;
+    static get parameterDescriptors() {
+        return [
+            { name: 'attack', defaultValue: 0.01, minValue: 0.001, maxValue: 1 },
+            { name: 'release', defaultValue: 0.5, minValue: 0.01, maxValue: 5 },
+            { name: 'filterCutoff', defaultValue: 4000, minValue: 100, maxValue: 10000 },
+            { name: 'filterQ', defaultValue: 1, minValue: 0.1, maxValue: 10 },
+            { name: 'distortion', defaultValue: 0.0, minValue: 0, maxValue: 1 },
+        ];
     }
-  }
 
-  applyFilter(input, filterCutoff, filterQ, channel) {
-    const coeff = 1 - Math.exp(-2 * Math.PI * filterCutoff / sampleRate);
-    let filterState = channel === 0 ? this.filterStateL : this.filterStateR;
-    
-    filterState += coeff * (input - filterState);
-    const feedback = filterQ * (filterState - input);
-    filterState += feedback;
-
-    if (channel === 0) {
-      this.filterStateL = filterState;
-    } else {
-      this.filterStateR = filterState;
+    constructor() {
+        super();
+        this.notes = []; // { phase, gain, targetGain, state, frequency, release, velocity }
+        this.preset = {
+            attack: 0.02,
+            release: 0.5,
+            filterCutoff: 4000,
+            q: 1,
+            oscType: 'triangle',
+            distortion: 0
+        };
+        this.filterState = { z1: 0, z2: 0 };
+        this.port.onmessage = this.handleMessage.bind(this);
+        console.log('[ChordProcessor] Initialized.');
     }
-    return filterState;
-  }
-  
-  applyDistortion(input, distortionAmount) {
-    if (distortionAmount <= 0) return input;
-    const k = distortionAmount * 5; // Scale for a more noticeable effect
-    return (2 / Math.PI) * Math.atan(input * k);
-  }
 
-  generateOsc(phase) {
-    switch (this.oscType) {
-      case 'sine': return Math.sin(phase);
-      case 'triangle': return 1 - 4 * Math.abs(0.5 - (phase / (2 * Math.PI)) % 1);
-      case 'square': return (phase % (2 * Math.PI)) < Math.PI ? 1 : -1;
-      case 'sawtooth': return 1 - (phase / Math.PI);
-      case 'fatsine':
-      case 'fmsine':
-      case 'amsine':
-      case 'pwm':
-      case 'fatsawtooth':
-        // A simple detuned sine for "fat" sounds
-        return (Math.sin(phase) + Math.sin(phase * 1.01)) * 0.5;
-      default: return Math.sin(phase);
+    handleMessage(event) {
+        const { type, data } = event;
+        // console.log(`[ChordProcessor] Received message:`, event.data);
+
+        if (data.type === 'playChord') {
+            this.notes = data.notes.map((note, i) => {
+                const staggerDelay = (data.stagger || 0) * i;
+                return {
+                    phase: 0,
+                    gain: 0,
+                    targetGain: note.velocity,
+                    state: 'attack',
+                    frequency: 440 * Math.pow(2, (note.midi - 69) / 12),
+                    attackStartTime: currentTime + staggerDelay
+                };
+            });
+        } else if (data.type === 'noteOff') {
+            this.notes.forEach(note => note.state = 'release');
+        } else if (data.type === 'setPreset') {
+            this.preset = { ...this.preset, ...data.preset };
+            // console.log('[ChordProcessor] New Preset:', this.preset);
+        }
     }
-  }
 
-  process(inputs, outputs, parameters) {
-    const output = outputs[0];
-    const attack = parameters.attack[0];
-    const filterCutoff = parameters.filterCutoff[0];
-    const filterQ = parameters.filterQ[0];
-    const distortion = parameters.distortion[0];
-    const release = this.releaseTime; // Use the value from setPreset
+    applyFilter(input, cutoff, q) {
+        const f = cutoff * 1.16 / sampleRate;
+        const fb = q * (1.0 - 0.15 * f * f);
+        const lp = this.filterState.z1 + f * (input - this.filterState.z1 + fb * (this.filterState.z1 - this.filterState.z2));
+        this.filterState.z1 = lp;
+        this.filterState.z2 = this.filterState.z1;
+        return lp;
+    }
 
-    const attackSamples = attack * sampleRate;
-    const releaseSamples = release * sampleRate;
+    generateOsc(phase) {
+        switch (this.preset.oscType) {
+            case 'fatsine':
+            case 'sine':
+                return Math.sin(phase);
+            case 'fatsawtooth':
+            case 'sawtooth':
+                return 1 - 2 * (phase / (2 * Math.PI));
+            case 'square':
+                return phase < Math.PI ? 1 : -1;
+            case 'triangle':
+            default:
+                let val = 2 * (phase / (2 * Math.PI));
+                return val < 1 ? val * 2 - 1 : 1 - (val - 1) * 2;
+        }
+    }
     
-    for (let i = 0; i < output[0].length; ++i) {
-        let sample = 0;
+    softClip(x, drive) {
+      if (drive === 0) return x;
+      const k = 2 * drive / (1 - drive);
+      return (1 + k) * x / (1 + k * Math.abs(x));
+    }
 
-        this.notes.forEach((note, index) => {
-            const timeSinceStart = (currentTime + i/sampleRate) - note.startTime;
-            const staggerDelay = this.stagger * index;
-            
-            if (timeSinceStart < staggerDelay) {
-              return; // Wait for stagger time
-            }
 
-            // Envelope calculation
-            if (note.state === 'attack') {
-                note.gain = Math.min(note.velocity, note.gain + note.velocity / attackSamples);
-                if (timeSinceStart >= note.duration + staggerDelay) {
-                    note.state = 'release';
+    process(inputs, outputs, parameters) {
+        const output = outputs[0];
+        const channel = output[0];
+
+        const attack = parameters.get('attack')[0] || this.preset.attack;
+        const release = parameters.get('release')[0] || this.preset.release;
+        const filterCutoff = parameters.get('filterCutoff')[0] || this.preset.filterCutoff;
+        const filterQ = parameters.get('filterQ')[0] || this.preset.q;
+        const distortion = parameters.get('distortion')[0] || this.preset.distortion;
+
+
+        for (let i = 0; i < channel.length; ++i) {
+            let sample = 0;
+            const t = currentTime + i / sampleRate;
+
+            this.notes.forEach(note => {
+                if (note.state === 'attack' && t >= note.attackStartTime) {
+                    note.gain += 1 / (attack * sampleRate);
+                    if (note.gain >= note.targetGain) {
+                        note.gain = note.targetGain;
+                        note.state = 'sustain';
+                    }
+                } else if (note.state === 'release') {
+                    note.gain -= note.targetGain / (release * sampleRate);
+                    if (note.gain <= 0) {
+                        note.gain = 0;
+                        note.state = 'off';
+                    }
                 }
-            } else if (note.state === 'release') {
-                note.gain = Math.max(0, note.gain - note.velocity / releaseSamples);
-            }
 
-            if (note.gain > 0) {
-                note.phase += (note.frequency / sampleRate) * 2 * Math.PI;
-                if (note.phase >= 2 * Math.PI) note.phase -= 2 * Math.PI;
-                sample += this.generateOsc(note.phase) * note.gain;
-            }
-        });
+                if (note.gain > 0 && note.frequency > 0) {
+                    note.phase += (note.frequency * 2 * Math.PI) / sampleRate;
+                    if (note.phase >= 2 * Math.PI) note.phase -= 2 * Math.PI;
 
-        if (this.notes.length > 0) {
-            sample /= this.notes.length > 1 ? this.notes.length * 0.7 : 1; // Basic mixdown
+                    sample += this.generateOsc(note.phase) * note.gain;
+                }
+            });
+            
+            sample = this.applyFilter(sample, filterCutoff, filterQ);
+            sample = this.softClip(sample, distortion);
+            
+            channel[i] = sample * 0.2; // Master gain for chord synth
         }
 
-        sample = this.applyFilter(sample, filterCutoff, filterQ, 0); // Apply to one channel
-        sample = this.applyDistortion(sample, distortion);
+        this.notes = this.notes.filter(note => note.state !== 'off');
 
-        output[0][i] = sample;
-        // Copy to other channels if they exist
-        for (let channel = 1; channel < output.length; ++channel) {
-            output[channel][i] = sample;
+        for (let j = 1; j < output.length; j++) {
+            output[j].set(channel);
         }
+
+        return true;
     }
-    
-    this.notes = this.notes.filter(note => note.gain > 1e-5);
-
-    return true;
-  }
 }
 
 registerProcessor('chord-processor', ChordProcessor);

@@ -139,13 +139,9 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
     let melodyInstrument = currentSettings.instrumentSettings.melody.name;
     let accompanimentInstrument = currentSettings.instrumentSettings.accompaniment.name;
     
-    console.log(`[AudioEngineProvider] Received score to schedule at ${startTime}. Bass: ${score.bass?.length}, Drums: ${score.drums?.length}`);
-
     const bassScore: FractalEvent[] = score.bass || [];
     if (bassScore.length > 0 && bassManagerRef.current) {
-        console.log(`[AudioEngineProvider] Scheduling ${bassScore.length} bass events.`);
         bassScore.forEach(event => {
-            console.log(`[AudioEngineProvider] -> Scheduling BASS event: `, { event, startTime });
             bassManagerRef.current!.play(event, startTime);
         });
     }
@@ -313,6 +309,7 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
             const worker = new Worker(new URL('../lib/ambient.worker.ts', import.meta.url), { type: 'module' });
             worker.onmessage = (event: MessageEvent<WorkerMessage>) => {
                 if (event.data.type === 'score' && event.data.score && event.data.time) {
+                    // console.log('[AudioEngineProvider] Received score to schedule at', context.currentTime + event.data.time, 'Bass:', event.data.score.bass?.length, 'Drums:', event.data.score.drums?.length);
                     scheduleScore(event.data.score, context, context.currentTime + event.data.time);
                 }
                 else if (event.data.type === 'sparkle' && event.data.time !== undefined) {

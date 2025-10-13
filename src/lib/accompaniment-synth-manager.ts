@@ -20,7 +20,15 @@ export class AccompanimentSynthManager {
         try {
             // Correct the path to the worklet file.
             await this.audioContext.audioWorklet.addModule('/worklets/chord-processor.js');
-            this.workletNode = new AudioWorkletNode(this.audioContext, 'chord-processor');
+            this.workletNode = new AudioWorkletNode(this.audioContext, 'chord-processor', {
+                parameterData: {
+                    attack: 0.01,
+                    release: 0.3,
+                    filterCutoff: 1200,
+                    filterQ: 1,
+                    distortion: 0
+                }
+            });
             this.workletNode.connect(this.gainNode);
             this.isInitialized = true;
             this.setPreset('synth'); // Set a default preset
@@ -74,29 +82,11 @@ export class AccompanimentSynthManager {
         const params = getPresetParams(instrumentName, placeholderNote);
         
         if (params) {
-             // Pass all relevant parameters to the worklet
              const { type, options, frequency, velocity, ...presetParams } = params;
              this.workletNode.port.postMessage({
                 type: 'setPreset',
-                ...presetParams
+                preset: presetParams
              });
-
-             // Set parameters directly on the node as well
-            if (this.workletNode.parameters.has('attack')) {
-                this.workletNode.parameters.get('attack')!.value = presetParams.attack ?? 0.01;
-            }
-            if (this.workletNode.parameters.has('release')) {
-                this.workletNode.parameters.get('release')!.value = presetParams.release ?? 0.1;
-            }
-            if (this.workletNode.parameters.has('filterCutoff')) {
-                this.workletNode.parameters.get('filterCutoff')!.value = presetParams.filterCutoff ?? 8000;
-            }
-            if (this.workletNode.parameters.has('filterQ')) {
-                this.workletNode.parameters.get('filterQ')!.value = presetParams.q ?? 1;
-            }
-            if (this.workletNode.parameters.has('distortion')) {
-                this.workletNode.parameters.get('distortion')!.value = presetParams.distortion ?? 0;
-            }
         }
     }
 
