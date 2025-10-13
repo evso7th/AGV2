@@ -1,114 +1,84 @@
 
-
-/**
- * A radically simplified subtractive synthesizer for debugging purposes.
- * It does one thing: plays the frequency it's told to play.
- * All complex state management (portamento, multiple notes) is removed.
- */
 class BassProcessor extends AudioWorkletProcessor {
-  constructor() {
-    super();
+    // --- State ---
+    frequency = 440;
+    gain = 0;
+    targetGain = 0;
     
-    // --- Simple State ---
-    this.phase = 0;
-    this.frequency = 0; // The frequency we are currently playing
-    this.gain = 0;      // Current gain of the envelope
-    this.targetGain = 0;// Target gain (0 for off, >0 for on)
-    this.attack = 0.02; // Attack time in seconds
-    this.release = 0.4; // Release time in seconds
-    this.oscType = 'sawtooth';
+    // --- Synth Parameters (can be controlled via messages) ---
+    attack = 0.01;
+    release = 0.2;
+    oscType = 'sawtooth';
+    filterCutoff = 800;
+    filterQ = 1;
+    distortion = 0;
 
-    // Filter state
-    this.filterState = 0;
-    
-    this.port.onmessage = (event) => this.handleMessage(event.data);
-  }
+    // --- Internal processing state ---
+    phase = 0;
+    filterState = 0;
 
-  static get parameterDescriptors() {
-    return [
-      { name: 'cutoff', defaultValue: 800, minValue: 50, maxValue: 10000 },
-      { name: 'resonance', defaultValue: 0.7, minValue: 0.1, maxValue: 5 },
-      { name: 'distortion', defaultValue: 0.1, minValue: 0, maxValue: 1 },
-      { name: 'portamento', defaultValue: 0.05, minValue: 0, maxValue: 0.5 },
-    ];
-  }
-
-  handleMessage(message) {
-    const { type, frequency, velocity } = message;
-
-    if (type === 'noteOn') {
-      // --- Direct and "Stupid" Assignment ---
-      // What comes in is what we play. No questions asked.
-      this.frequency = frequency;
-      this.targetGain = velocity;
-      this.gain = 0; // Reset gain for a new attack envelope
-    } else if (type === 'noteOff') {
-      this.targetGain = 0; // Start the release phase
+    constructor() {
+        super();
+        this.port.onmessage = (event) => this.handleMessage(event.data);
+        console.log('[bass-processor] Worklet constructed.');
     }
-  }
-
-  // Simple one-pole low-pass filter
-  applyFilter(input, cutoff) {
-    const coeff = 1 - Math.exp(-2 * Math.PI * cutoff / sampleRate);
-    this.filterState += coeff * (input - this.filterState);
-    return this.filterState;
-  }
-  
-  // Simple soft-clipper for distortion
-  softClip(input, drive) {
-      if (drive === 0) return input;
-      const k = 2 + drive * 10;
-      return (1 + k) * input / (1 + k * Math.abs(input));
-  }
-
-  // Simple oscillator
-  generateOsc() {
-      const saw = 1 - (this.phase / Math.PI);
-      const sub = Math.sin(this.phase * 0.5); // Sub-oscillator for body
-      return saw * 0.7 + sub * 0.3;
-  }
-
-  process(inputs, outputs, parameters) {
-    const outputChannel = outputs[0][0];
-    const cutoff = parameters.cutoff[0];
-    const distortion = parameters.distortion[0];
     
-    // If there's no frequency, we don't need to do anything.
-    if (this.frequency === 0 && this.gain === 0) {
-      return true; // Keep processor alive
-    }
-
-    for (let i = 0; i < outputChannel.length; i++) {
-        // --- Envelope ---
-        if (this.gain < this.targetGain) { // Attack phase
-            this.gain = Math.min(this.targetGain, this.gain + 1.0 / (this.attack * sampleRate));
-        } else if (this.gain > this.targetGain) { // Release phase
-            this.gain = Math.max(0, this.gain - 1.0 / (this.release * sampleRate));
+    handleMessage(data) {
+        console.log('[bass-processor] 1. Received message:', JSON.stringify(data));
+        if (data.type === 'noteOn') {
+            this.frequency = data.frequency;
+            this.targetGain = data.velocity;
+            this.attack = data.attack || 0.01;
+            this.release = data.release || 0.2;
+            this.gain = 0; // Start attack phase
+            console.log(`[bass-processor] 2. State updated: Freq=${this.frequency}, TargetGain=${this.targetGain}`);
+        } else if (data.type === 'noteOff') {
+            this.targetGain = 0; // Start release phase
         }
-        
-        let sample = 0;
-        if (this.gain > 0) {
-            // --- Oscillator ---
-            this.phase += (this.frequency * 2 * Math.PI) / sampleRate;
+    }
+
+    generateOsc(phase) {
+        // Simple sawtooth for performance.
+        return 1.0 - (2.0 * phase / (2 * Math.PI));
+    }
+
+    applyFilter(input) {
+        const coeff = 1 - Math.exp(-2 * Math.PI * this.filterCutoff / sampleRate);
+        this.filterState += coeff * (input - this.filterState);
+        return this.filterState;
+    }
+    
+    process(inputs, outputs, parameters) {
+        const outputChannel = outputs[0][0];
+
+        // This log will run for every single audio block. It's very verbose.
+        console.log(`[bass-processor] 3. Processing block. Current Freq: ${this.frequency}, Current Gain: ${this.gain}`);
+
+        for (let i = 0; i < outputChannel.length; i++) {
+            // Envelope logic
+            if (this.gain < this.targetGain) {
+                this.gain = Math.min(this.targetGain, this.gain + (1 / (this.attack * sampleRate)));
+            } else if (this.gain > this.targetGain) {
+                this.gain = Math.max(this.targetGain, this.gain - (1 / (this.release * sampleRate)));
+            }
+
+            if (this.gain <= 0.0001) {
+                outputChannel[i] = 0;
+                continue;
+            }
+            
+            // Oscillator
+            this.phase += (this.frequency / sampleRate) * 2 * Math.PI;
             if (this.phase >= 2 * Math.PI) this.phase -= 2 * Math.PI;
             
-            sample = this.generateOsc();
+            const rawSample = this.generateOsc(this.phase);
+            const filteredSample = this.applyFilter(rawSample);
             
-            // --- Filter & Distortion ---
-            sample = this.applyFilter(sample, cutoff);
-            sample = this.softClip(sample, distortion);
-
-            // Apply envelope
-            sample *= this.gain;
+            outputChannel[i] = filteredSample * this.gain * 0.7; // Apply gain and a master volume
         }
-        
-        outputChannel[i] = sample * 0.6; // Final gain adjustment
-    }
-    
-    console.log(`[bass-processor] Playing frequency: ${this.frequency}`);
 
-    return true; // Keep the processor alive
-  }
+        return true;
+    }
 }
 
 registerProcessor('bass-processor', BassProcessor);

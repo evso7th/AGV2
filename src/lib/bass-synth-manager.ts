@@ -64,6 +64,8 @@ export class BassSynthManager {
                 technique: event.technique 
             };
             
+            console.log(`[BassSynthManager-LOOP] Posting MIDI ${event.note} as Freq ${freq} at time ${noteOnTime}`);
+            
             this.workletNode!.port.postMessage(message);
 
             const noteOffTime = noteOnTime + event.duration;
