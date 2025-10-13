@@ -23,7 +23,6 @@ export class BassSynthManager {
             this.workletNode = new AudioWorkletNode(this.audioContext, 'bass-processor');
             this.workletNode.connect(this.outputNode);
             this.isInitialized = true;
-            console.log('[BassSynthManager] Initialized');
         } catch (e) {
             console.error('[BassSynthManager] Failed to init:', e);
         }
@@ -126,5 +125,3 @@ export class BassSynthManager {
         this.workletNode?.disconnect();
     }
 }
-
-    
