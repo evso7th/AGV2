@@ -34,15 +34,14 @@ export class AccompanimentSynthManager {
     }
 
     public schedule(notes: Note[], time: number) {
-        if (!this.workletNode || !this.isInitialized) {
-            console.warn('[AccompanimentManager] Tried to schedule before initialized.');
+        if (!this.workletNode || !this.isInitialized || notes.length === 0) {
+            if (!this.isInitialized) console.warn('[AccompanimentManager] Tried to schedule before initialized.');
             return;
         }
 
         const chordNotes = notes.map(n => ({ midi: n.midi, duration: n.duration, velocity: n.velocity ?? 0.6 }));
         const maxDuration = Math.max(...notes.map(n => n.duration));
 
-        if (chordNotes.length === 0) return;
         
         // Schedule Note On for the chord
         const noteOnTime = time + notes[0].time;
@@ -75,11 +74,29 @@ export class AccompanimentSynthManager {
         const params = getPresetParams(instrumentName, placeholderNote);
         
         if (params) {
-             const { frequency, velocity, ...presetParams } = params;
+             // Pass all relevant parameters to the worklet
+             const { type, options, frequency, velocity, ...presetParams } = params;
              this.workletNode.port.postMessage({
                 type: 'setPreset',
                 ...presetParams
              });
+
+             // Set parameters directly on the node as well
+            if (this.workletNode.parameters.has('attack')) {
+                this.workletNode.parameters.get('attack')!.value = presetParams.attack ?? 0.01;
+            }
+            if (this.workletNode.parameters.has('release')) {
+                this.workletNode.parameters.get('release')!.value = presetParams.release ?? 0.1;
+            }
+            if (this.workletNode.parameters.has('filterCutoff')) {
+                this.workletNode.parameters.get('filterCutoff')!.value = presetParams.filterCutoff ?? 8000;
+            }
+            if (this.workletNode.parameters.has('filterQ')) {
+                this.workletNode.parameters.get('filterQ')!.value = presetParams.q ?? 1;
+            }
+            if (this.workletNode.parameters.has('distortion')) {
+                this.workletNode.parameters.get('distortion')!.value = presetParams.distortion ?? 0;
+            }
         }
     }
 

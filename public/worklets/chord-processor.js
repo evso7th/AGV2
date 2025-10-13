@@ -1,191 +1,152 @@
 
-// A polyphonic AudioWorklet processor for playing chords.
-// It manages a pool of voices internally to play multiple notes at once.
+// Fallback for globalThis
+const g = typeof globalThis !== 'undefined' ? globalThis : (typeof self !== 'undefined' ? self : (typeof window !== 'undefined' ? window : global));
 
 class ChordProcessor extends AudioWorkletProcessor {
-    constructor() {
-        super();
-        this.voices = [];
-        this.MAX_VOICES = 4; // Can play up to 4 notes simultaneously
-        this.delayQueue = [];
-        this.waveType = 'triangle';
-        this.cutoff = 1200;
-        this.attack = 0.05;
-        this.release = 0.5;
-        this.portamento = 0; // 0 = off
-        this.sampleRate = sampleRate;
 
-        for (let i = 0; i < this.MAX_VOICES; i++) {
-            this.voices.push(this.createVoice());
-        }
+  static get parameterDescriptors() {
+    return [
+      { name: 'attack', defaultValue: 0.01, minValue: 0.001, maxValue: 2 },
+      { name: 'release', defaultValue: 0.1, minValue: 0.01, maxValue: 5 },
+      { name: 'filterCutoff', defaultValue: 8000, minValue: 20, maxValue: 20000 },
+      { name: 'filterQ', defaultValue: 1, minValue: 0.01, maxValue: 20 },
+      { name: 'distortion', defaultValue: 0, minValue: 0, maxValue: 1 },
+    ];
+  }
 
-        this.port.onmessage = this.handleMessage.bind(this);
-    }
+  constructor(options) {
+    super(options);
+    
+    this.notes = []; // { frequency, velocity, phase, gain, startTime, duration, state }
+    this.stagger = 0;
+    this.port.onmessage = this.handleMessage.bind(this);
 
-    createVoice() {
-        return {
-            midi: 0,
-            frequency: 0,
-            currentFrequency: 0,
-            velocity: 0,
-            gain: 0,
-            targetGain: 0,
+    // Filter state for each channel
+    this.filterStateL = 0;
+    this.filterStateR = 0;
+    
+    this.oscType = 'sawtooth';
+    this.releaseTime = 0.1; // default
+  }
+
+  handleMessage(event) {
+    const { type, ...data } = event.data;
+    if (type === 'playChord' && data.notes && data.notes.length > 0) {
+        this.stagger = data.stagger || 0;
+        const now = currentTime;
+        this.notes = data.notes.map(n => ({
+            frequency: 440 * Math.pow(2, (n.midi - 69) / 12),
+            velocity: n.velocity || 0.7,
+            duration: n.duration,
             phase: 0,
-            isActive: false,
-            filterState: 0,
-            portamentoRate: 0.05,
-            attack: this.attack,
-            release: this.release
-        };
+            gain: 0, // start at 0
+            startTime: data.when || now,
+            state: 'attack'
+        }));
+    } else if (type === 'noteOff') {
+        this.notes.forEach(note => { note.state = 'release'; });
+    } else if (type === 'setPreset') {
+        this.oscType = data.oscType || this.oscType;
+        this.releaseTime = data.release || 0.1;
     }
+  }
 
-    handleMessage(event) {
-        const { type, ...data } = event.data;
+  applyFilter(input, filterCutoff, filterQ, channel) {
+    const coeff = 1 - Math.exp(-2 * Math.PI * filterCutoff / sampleRate);
+    let filterState = channel === 0 ? this.filterStateL : this.filterStateR;
+    
+    filterState += coeff * (input - filterState);
+    const feedback = filterQ * (filterState - input);
+    filterState += feedback;
 
-        if (type === 'playChord') {
-            this.releaseAllVoices(); // Stop previous chord before starting a new one
+    if (channel === 0) {
+      this.filterStateL = filterState;
+    } else {
+      this.filterStateR = filterState;
+    }
+    return filterState;
+  }
+  
+  applyDistortion(input, distortionAmount) {
+    if (distortionAmount <= 0) return input;
+    const k = distortionAmount * 5; // Scale for a more noticeable effect
+    return (2 / Math.PI) * Math.atan(input * k);
+  }
 
-            let sortedNotes = [...data.notes].sort((a, b) => a.midi - b.midi);
-            if (data.direction === 'down') sortedNotes.reverse();
-            if (data.direction === 'random') sortedNotes.sort(() => Math.random() - 0.5);
+  generateOsc(phase) {
+    switch (this.oscType) {
+      case 'sine': return Math.sin(phase);
+      case 'triangle': return 1 - 4 * Math.abs(0.5 - (phase / (2 * Math.PI)) % 1);
+      case 'square': return (phase % (2 * Math.PI)) < Math.PI ? 1 : -1;
+      case 'sawtooth': return 1 - (phase / Math.PI);
+      case 'fatsine':
+      case 'fmsine':
+      case 'amsine':
+      case 'pwm':
+      case 'fatsawtooth':
+        // A simple detuned sine for "fat" sounds
+        return (Math.sin(phase) + Math.sin(phase * 1.01)) * 0.5;
+      default: return Math.sin(phase);
+    }
+  }
 
-            sortedNotes.forEach((note, index) => {
-                const voice = this.getAvailableVoice();
-                if (voice) {
-                    const freq = 440 * Math.pow(2, (note.midi - 69) / 12);
-                    voice.midi = note.midi;
-                    voice.frequency = freq;
-                    if(voice.currentFrequency === 0) voice.currentFrequency = freq;
-                    voice.velocity = data.velocity || 0.7;
-                    voice.targetGain = voice.velocity;
-                    
-                    const staggerDelay = (data.stagger || 0) * index * this.sampleRate;
-                    if (staggerDelay > 0) {
-                         voice.isActive = false;
-                         this.delayQueue.push({ voice: voice, delay: staggerDelay });
-                    } else {
-                         voice.isActive = true;
-                    }
+  process(inputs, outputs, parameters) {
+    const output = outputs[0];
+    const attack = parameters.attack[0];
+    const filterCutoff = parameters.filterCutoff[0];
+    const filterQ = parameters.filterQ[0];
+    const distortion = parameters.distortion[0];
+    const release = this.releaseTime; // Use the value from setPreset
+
+    const attackSamples = attack * sampleRate;
+    const releaseSamples = release * sampleRate;
+    
+    for (let i = 0; i < output[0].length; ++i) {
+        let sample = 0;
+
+        this.notes.forEach((note, index) => {
+            const timeSinceStart = (currentTime + i/sampleRate) - note.startTime;
+            const staggerDelay = this.stagger * index;
+            
+            if (timeSinceStart < staggerDelay) {
+              return; // Wait for stagger time
+            }
+
+            // Envelope calculation
+            if (note.state === 'attack') {
+                note.gain = Math.min(note.velocity, note.gain + note.velocity / attackSamples);
+                if (timeSinceStart >= note.duration + staggerDelay) {
+                    note.state = 'release';
                 }
-            });
-        } else if (type === 'noteOff') {
-            this.releaseAllVoices();
-        } else if (type === 'setPreset') {
-            this.waveType = data.wave || this.waveType;
-            this.cutoff = data.cutoff || this.cutoff;
-            this.attack = data.attack || this.attack;
-            this.release = data.release || this.release;
-            this.portamento = data.portamento || 0;
-            this.voices.forEach(v => {
-                v.attack = this.attack;
-                v.release = this.release;
-            });
-        }
-    }
+            } else if (note.state === 'release') {
+                note.gain = Math.max(0, note.gain - note.velocity / releaseSamples);
+            }
 
-    getAvailableVoice() {
-        let voice = this.voices.find(v => !v.isActive && v.gain <= 0);
-        if (!voice) {
-            // If no voice is fully inactive, steal the one with the lowest gain.
-            voice = this.voices.sort((a, b) => a.gain - b.gain)[0];
+            if (note.gain > 0) {
+                note.phase += (note.frequency / sampleRate) * 2 * Math.PI;
+                if (note.phase >= 2 * Math.PI) note.phase -= 2 * Math.PI;
+                sample += this.generateOsc(note.phase) * note.gain;
+            }
+        });
+
+        if (this.notes.length > 0) {
+            sample /= this.notes.length > 1 ? this.notes.length * 0.7 : 1; // Basic mixdown
         }
-        return voice;
+
+        sample = this.applyFilter(sample, filterCutoff, filterQ, 0); // Apply to one channel
+        sample = this.applyDistortion(sample, distortion);
+
+        output[0][i] = sample;
+        // Copy to other channels if they exist
+        for (let channel = 1; channel < output.length; ++channel) {
+            output[channel][i] = sample;
+        }
     }
     
-    releaseAllVoices() {
-         this.voices.forEach(voice => {
-            voice.targetGain = 0; // Start release phase
-        });
-        this.delayQueue = []; // Clear any pending notes
-    }
+    this.notes = this.notes.filter(note => note.gain > 1e-5);
 
-
-    generateOsc(phase, type) {
-        switch (type) {
-            case 'sine':
-                return Math.sin(phase);
-            case 'square':
-                return phase < Math.PI ? 1.0 : -1.0;
-            case 'sawtooth':
-                return 2.0 * (phase / (2 * Math.PI)) - 1.0;
-            case 'triangle':
-                return 1.0 - 4.0 * Math.abs(Math.round(phase / (2 * Math.PI)) - (phase / (2 * Math.PI)));
-            default:
-                return Math.sin(phase);
-        }
-    }
-
-    process(inputs, outputs, parameters) {
-        const output = outputs[0];
-
-        // Handle delayed (arpeggiated) notes
-        if (this.delayQueue) {
-            for (let i = this.delayQueue.length - 1; i >= 0; i--) {
-                const item = this.delayQueue[i];
-                if (item.delay <= 0) {
-                    item.voice.isActive = true;
-                    this.delayQueue.splice(i, 1);
-                } else {
-                    item.delay--;
-                }
-            }
-        }
-
-        // Main generation loop
-        for (let channel = 0; channel < output.length; channel++) {
-            for (let i = 0; i < output[channel].length; i++) {
-                let mixed = 0;
-
-                for (const voice of this.voices) {
-                    if (!voice.isActive || voice.frequency <= 0) {
-                        if(voice.gain > 0){ // still in release phase
-                           voice.gain -= 1 / (voice.release * this.sampleRate);
-                           if (voice.gain < 0) voice.gain = 0;
-                        } else {
-                           continue;
-                        }
-                    }
-
-                    // Portamento
-                    if (this.portamento > 0 && Math.abs(voice.currentFrequency - voice.frequency) > 1) {
-                         voice.currentFrequency += (voice.frequency - voice.currentFrequency) * this.portamento;
-                    } else {
-                        voice.currentFrequency = voice.frequency;
-                    }
-
-                    // Phase
-                    voice.phase += (voice.currentFrequency / this.sampleRate) * 2 * Math.PI;
-                    if (voice.phase >= 2 * Math.PI) voice.phase -= 2 * Math.PI;
-
-                    let sample = this.generateOsc(voice.phase, this.waveType);
-
-                    // Simple LPF
-                    const coeff = 1 - Math.exp(-2 * Math.PI * this.cutoff / this.sampleRate);
-                    voice.filterState += coeff * (sample - voice.filterState);
-                    sample = voice.filterState;
-
-                    // Envelope
-                    if (voice.targetGain > 0 && voice.gain < voice.targetGain) {
-                        voice.gain += 1 / (voice.attack * this.sampleRate);
-                        if (voice.gain > voice.targetGain) voice.gain = voice.targetGain;
-                    } else if (voice.targetGain === 0 && voice.gain > 0) {
-                        voice.gain -= 1 / (voice.release * this.sampleRate);
-                        if (voice.gain < 0) {
-                            voice.gain = 0;
-                            voice.isActive = false; // Voice is now free
-                        }
-                    }
-                    
-                    if (voice.gain > 0) {
-                       mixed += sample * voice.gain;
-                    }
-                }
-
-                output[channel][i] = mixed * 0.25; // Normalization for 4 voices
-            }
-        }
-        return true;
-    }
+    return true;
+  }
 }
 
 registerProcessor('chord-processor', ChordProcessor);
