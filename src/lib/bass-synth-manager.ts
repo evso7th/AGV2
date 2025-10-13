@@ -35,55 +35,54 @@ export class BassSynthManager {
         }
     }
 
-    public play(event: FractalEvent, startTime: number) {
+    public play(events: FractalEvent[], startTime: number) {
         if (!this.workletNode || !this.isInitialized) {
             console.warn('[BassSynthManager] Tried to play event before initialized.');
             return;
         }
 
-        const freq = 440 * Math.pow(2, (event.note - 69) / 12);
-        if (isNaN(freq) || !isFinite(freq)) {
-            console.error('[BassSynthManager] Invalid frequency for event:', event);
-            return;
-        }
-        
-        const noteOnTime = startTime + event.time;
-        
-        if (!isFinite(noteOnTime)) {
-             console.error('[BassSynthManager] Non-finite time scheduled for event:', event);
-             return;
-        }
-        
-        const velocity = event.dynamics === 'p' ? 0.3 : event.dynamics === 'mf' ? 0.6 : 0.9;
-        
-        const message = {
-            type: 'noteOn',
-            frequency: freq,
-            velocity: velocity,
-            when: noteOnTime,
-            technique: event.technique 
-        };
-        
-        console.log('[BassSynthManager] Posting message to worklet:', message);
-        this.workletNode.port.postMessage(message);
+        events.forEach(event => {
+            const freq = 440 * Math.pow(2, (event.note - 69) / 12);
+            if (isNaN(freq) || !isFinite(freq)) {
+                console.error('[BassSynthManager] Invalid frequency for event:', event);
+                return;
+            }
+            
+            const noteOnTime = startTime + event.time;
+            
+            if (!isFinite(noteOnTime)) {
+                 console.error('[BassSynthManager] Non-finite time scheduled for event:', event);
+                 return;
+            }
+            
+            const velocity = event.dynamics === 'p' ? 0.3 : event.dynamics === 'mf' ? 0.6 : 0.9;
+            
+            const message = {
+                type: 'noteOn',
+                frequency: freq,
+                velocity: velocity,
+                when: noteOnTime,
+                technique: event.technique 
+            };
+            
+            this.workletNode!.port.postMessage(message);
 
-        // Schedule Note Off
-        const noteOffTime = noteOnTime + event.duration;
-        const delayUntilOff = (noteOffTime - this.audioContext.currentTime) * 1000;
+            const noteOffTime = noteOnTime + event.duration;
+            const delayUntilOff = (noteOffTime - this.audioContext.currentTime) * 1000;
 
-        if (delayUntilOff > 0) {
-            const timeoutId = setTimeout(() => {
-                if (this.workletNode) {
-                    this.workletNode.port.postMessage({ type: 'noteOff', when: this.audioContext.currentTime });
-                }
-                this.scheduledTimeouts.delete(timeoutId);
-            }, delayUntilOff);
-            this.scheduledTimeouts.add(timeoutId);
-        }
+            if (delayUntilOff > 0) {
+                const timeoutId = setTimeout(() => {
+                    if (this.workletNode) {
+                        this.workletNode.port.postMessage({ type: 'noteOff', when: this.audioContext.currentTime });
+                    }
+                    this.scheduledTimeouts.delete(timeoutId);
+                }, delayUntilOff);
+                this.scheduledTimeouts.add(timeoutId);
+            }
+        });
     }
 
     public setPreset(instrumentName: BassInstrument) {
-        console.log(`[BassSynthManager] setPreset called with: ${instrumentName}. This is now a no-op for parameter setting, as it's technique-driven.`);
         if (instrumentName === 'none' && this.workletNode) {
              this.workletNode.port.postMessage({ type: 'noteOff' });
         }
@@ -118,7 +117,6 @@ export class BassSynthManager {
         this.scheduledTimeouts.clear();
         
         if (this.workletNode) {
-            console.log('[BassSynthManager] Stopping all notes now.');
             this.workletNode.port.postMessage({ type: 'noteOff' });
         }
     }
@@ -128,3 +126,5 @@ export class BassSynthManager {
         this.workletNode?.disconnect();
     }
 }
+
+    
