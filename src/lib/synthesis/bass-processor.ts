@@ -55,6 +55,8 @@ class BassProcessor extends AudioWorkletProcessor {
     constructor() {
         super();
         this.port.onmessage = (event: MessageEvent) => {
+            // Добавляем лог для входящих сообщений
+            console.log('[bass-processor] Received message:', JSON.stringify(event.data));
             this.messageQueue.push(event.data);
         };
     }
@@ -184,6 +186,12 @@ class BassProcessor extends AudioWorkletProcessor {
                 }
 
                 const freq = (this.portamentoProgress < 1.0) ? currentSlideFreq : note.frequency;
+                
+                // Добавляем лог для каждой ноты в каждом кадре (может быть очень много логов!)
+                if (i % 1000 === 0) { // Логируем не каждый семпл, чтобы не перегружать консоль
+                   console.log(`[bass-processor] Processing note with frequency: ${freq}`);
+                }
+                
                 const rawSample = this.generateOsc(note.phase);
                 
                 note.phase += (freq * 2 * Math.PI) / sampleRate;
