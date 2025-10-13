@@ -1,112 +1,115 @@
 
-// public/worklets/bass-processor.js
-
+/**
+ * A simple Subtractive Synth Voice processor.
+ * It's designed to be lightweight and responsive, running in the audio thread.
+ * It handles note on/off events, ADSR envelope, and a basic low-pass filter.
+ *
+ * This version processes messages in a batch to improve performance.
+ */
 class BassProcessor extends AudioWorkletProcessor {
-  constructor(options) {
-    super(options);
-    this.sampleRate = options.processorOptions.sampleRate;
-    this.activeNotes = new Map(); // noteId -> { frequency, gain, state, phase, attack, release }
-    this.noteQueue = [];
-    this.enableLogging = true;
-
-    this.port.onmessage = (event) => {
-      this.handleMessage(event.data);
-    };
-
-    if (this.enableLogging) {
-      console.log(`[Worklet] BassProcessor constructed. Sample rate: ${this.sampleRate}`);
-    }
-  }
-
-  handleMessage(message) {
-    // Defensive logging to prevent crash
-    if (this.enableLogging) {
-        if (message.type === 'noteOn' || message.type === 'noteOff') {
-            const timeLog = message.when !== undefined ? `for when=${message.when.toFixed(2)}` : '';
-            console.log(`[Worklet] Received ${message.type} for noteId ${message.noteId} at T=${currentTime.toFixed(2)} ${timeLog}`);
-        } else {
-            console.log(`[Worklet] Received ${message.type}`);
-        }
-    }
-
-    if (message.type === 'clear') {
-        this.activeNotes.clear();
+    constructor(options) {
+        super(options);
+        this.sampleRate = options.processorOptions.sampleRate || currentTime;
+        this.activeNotes = new Map(); // Maps noteId to note state
         this.noteQueue = [];
-        return;
+        this.enableLogging = true;
+        this.port.onmessage = this.handleMessage.bind(this);
+        if (this.enableLogging) console.log(`[Worklet] BassProcessor constructed. Sample rate: ${this.sampleRate}`);
     }
 
-    // All other messages are assumed to be note events and are queued
-    this.noteQueue.push(message);
-  }
-
-  process(inputs, outputs, parameters) {
-    const outputChannel = outputs[0][0];
-
-    // Process the note queue at the beginning of each block
-    for (let i = this.noteQueue.length - 1; i >= 0; i--) {
-        const event = this.noteQueue[i];
-        if (event.when <= currentTime) {
-            if (event.type === 'noteOn') {
-                this.activeNotes.set(event.noteId, {
-                    frequency: event.frequency,
-                    gain: 0,
-                    state: 'attack',
-                    phase: 0,
-                    attack: event.attack || 0.01,
-                    release: event.release || 0.3
-                });
-            } else if (event.type === 'noteOff') {
-                const note = this.activeNotes.get(event.noteId);
-                if (note) {
-                    note.state = 'decay';
-                }
+    handleMessage(event) {
+        // We now expect an array of messages
+        const messages = event.data;
+        for (const message of messages) {
+            if (this.enableLogging && (message.type === 'noteOn' || message.type === 'noteOff')) {
+                console.log(`[Worklet] Received ${message.type} for noteId ${message.noteId} at T=${currentTime.toFixed(2)} for when=${message.when.toFixed(2)}`);
             }
-            this.noteQueue.splice(i, 1);
+
+            if (message.type === 'clear') {
+                this.noteQueue = [];
+                this.activeNotes.clear();
+                if (this.enableLogging) console.log('[Worklet] All notes cleared.');
+            } else {
+                this.noteQueue.push(message);
+            }
         }
     }
 
-    for (let i = 0; i < outputChannel.length; i++) {
-        let sample = 0;
+    process(inputs, outputs) {
+        const output = outputs[0];
+        const outputChannel = output[0];
+        const now = currentTime;
 
-        for (const [noteId, note] of this.activeNotes) {
-             // Envelope calculation
-            if (note.state === 'attack') {
-                note.gain += (1 / (note.attack * this.sampleRate));
-                if (note.gain >= 1.0) {
-                    note.gain = 1.0;
-                    note.state = 'sustain';
+        // Process the message queue for events that should happen now
+        this.noteQueue = this.noteQueue.filter(noteEvent => {
+            if (noteEvent.when <= now) {
+                if (noteEvent.type === 'noteOn') {
+                    this.activeNotes.set(noteEvent.noteId, {
+                        phase: 0,
+                        gain: 0,
+                        targetGain: noteEvent.velocity * 0.5, // Start with a velocity-based gain
+                        state: 'attack',
+                        frequency: noteEvent.frequency,
+                        // Simple ADSR values
+                        attack: 0.02,
+                        decay: 0.1,
+                        sustain: 0.7,
+                        release: 0.8,
+                    });
+                } else if (noteEvent.type === 'noteOff') {
+                    const note = this.activeNotes.get(noteEvent.noteId);
+                    if (note) {
+                        note.state = 'release';
+                        note.targetGain = 0; // Target gain is now 0 for the release phase
+                    }
                 }
-            } else if (note.state === 'decay') {
-                note.gain -= (1 / (note.release * this.sampleRate));
-                if (note.gain <= 0) {
-                    this.activeNotes.delete(noteId);
-                    continue; // Skip to next note
-                }
+                return false; // Remove from queue
             }
-            
-            // Oscillator
-            const wave = Math.sin(note.phase);
-            sample += wave * note.gain;
-            note.phase += (note.frequency * 2 * Math.PI) / this.sampleRate;
-            if (note.phase > 2 * Math.PI) {
-                note.phase -= 2 * Math.PI;
-            }
-
-            // --- DIAGNOSTIC LOG ---
-            if (this.enableLogging && i === 0 && this.activeNotes.size > 0) {
-                 if (noteId === Array.from(this.activeNotes.keys())[0]) { // Log only for the first active note to avoid spam
-                    console.log(`[Worklet Process] Note ${noteId}: Sample=${sample.toFixed(3)}, Gain=${note.gain.toFixed(3)}, Phase=${note.phase.toFixed(3)}`);
-                 }
-            }
-        }
+            return true; // Keep in queue
+        });
         
-        // Final output sample, with some clipping protection
-        outputChannel[i] = Math.max(-1, Math.min(1, sample * 0.5));
+        // Process each sample in the block
+        for (let i = 0; i < outputChannel.length; ++i) {
+            let sample = 0;
+
+            for (const [noteId, note] of this.activeNotes) {
+                // --- Envelope ---
+                if (note.state === 'attack') {
+                    note.gain += 1.0 / (note.attack * this.sampleRate);
+                    if (note.gain >= note.targetGain) {
+                        note.gain = note.targetGain;
+                        note.state = 'decay';
+                    }
+                } else if (note.state === 'decay') {
+                    const sustainGain = note.targetGain * note.sustain;
+                    if (note.gain > sustainGain) {
+                        note.gain -= 1.0 / (note.decay * this.sampleRate);
+                    } else {
+                        note.gain = sustainGain;
+                        note.state = 'sustain';
+                    }
+                } else if (note.state === 'release') {
+                    note.gain -= note.targetGain / (note.release * this.sampleRate);
+                    if (note.gain <= 0) {
+                        this.activeNotes.delete(noteId);
+                        continue; 
+                    }
+                }
+
+                // --- Oscillator ---
+                const wave = Math.sin(note.phase) * 0.5 + Math.sin(note.phase * 0.5) * 0.5; // Sine + Sub-octave
+                sample += wave * note.gain;
+                
+                note.phase += (note.frequency * 2 * Math.PI) / this.sampleRate;
+                if (note.phase >= 2 * Math.PI) {
+                    note.phase -= 2 * Math.PI;
+                }
+            }
+            outputChannel[i] = sample;
+        }
+
+        return true;
     }
-    
-    // This MUST be at the end of the process method.
-    return true;
-  }
 }
 
 registerProcessor('bass-processor', BassProcessor);

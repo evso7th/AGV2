@@ -14,11 +14,18 @@ export class BassSynthManager {
     private audioContext: AudioContext;
     private workletNode: AudioWorkletNode | null = null;
     private outputNode: GainNode;
+    private preamp: GainNode; // Pre-amplifier for the bass
     public isInitialized = false;
 
     constructor(audioContext: AudioContext, destination: AudioNode) {
         this.audioContext = audioContext;
         this.outputNode = this.audioContext.createGain();
+        
+        // Create and connect the preamp
+        this.preamp = this.audioContext.createGain();
+        this.preamp.gain.value = 3.0; // Boost volume by 3x
+        this.preamp.connect(this.outputNode);
+
         this.outputNode.connect(destination);
     }
 
@@ -31,9 +38,10 @@ export class BassSynthManager {
                     sampleRate: this.audioContext.sampleRate
                 }
             });
-            this.workletNode.connect(this.outputNode);
+            // Connect worklet to the preamp, not directly to the output
+            this.workletNode.connect(this.preamp);
             this.isInitialized = true;
-            console.log('[BassSynthManager] "Пароходная труба" инициализирована.');
+            console.log('[BassSynthManager] "Пароходная труба" инициализирована и усилена.');
         } catch (e) {
             console.error('[BassSynthManager] Ошибка инициализации ворклета:', e);
         }
@@ -51,32 +59,25 @@ export class BassSynthManager {
             return;
         }
         
-        events.forEach(event => {
+        const messages = events.map(event => {
             const frequency = midiToFreq(event.note);
             if (!isFinite(frequency)) {
                 console.error(`[BassMan] Invalid frequency for MIDI note ${event.note}`);
-                return;
+                return null;
             }
 
             const absoluteOnTime = barStartTime + event.time;
             const absoluteOffTime = absoluteOnTime + event.duration;
             
-            // Schedule the note ON
-            this.workletNode!.port.postMessage({
-                type: 'noteOn',
-                frequency: frequency,
-                velocity: event.weight, // Use weight as velocity
-                when: absoluteOnTime,
-                noteId: event.note 
-            });
+            return [
+                { type: 'noteOn', frequency, velocity: event.weight, when: absoluteOnTime, noteId: event.note },
+                { type: 'noteOff', noteId: event.note, when: absoluteOffTime }
+            ];
+        }).flat().filter(Boolean);
 
-            // Schedule the note OFF
-            this.workletNode!.port.postMessage({
-                type: 'noteOff',
-                noteId: event.note,
-                when: absoluteOffTime
-            });
-        });
+        if (messages.length > 0) {
+            this.workletNode!.port.postMessage(messages);
+        }
     }
 
     // --- Stub methods for API compatibility ---
@@ -94,7 +95,7 @@ export class BassSynthManager {
 
     public stop() {
         if (this.workletNode) {
-            this.workletNode.port.postMessage({ type: 'clear' });
+            this.workletNode.port.postMessage([{ type: 'clear' }]);
             console.log('[BassMan] Отправлена команда "clear" в ворклет.');
         }
     }
@@ -102,5 +103,7 @@ export class BassSynthManager {
     public dispose() {
         this.stop();
         this.workletNode?.disconnect();
+        this.preamp.disconnect();
+        this.outputNode.disconnect();
     }
 }
