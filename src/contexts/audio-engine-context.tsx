@@ -115,14 +115,7 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
         else accompanimentManagerRef.current?.setPreset(name as MelodyInstrument);
     }
     if (part === 'bass') {
-        if (name === 'violin' || name === 'piano' || name === 'flute' || name === 'acousticGuitarSolo') {
-            bassManagerRef.current?.setPreset('none');
-            // This is a conceptual mismatch, BassSynthManager doesn't play these.
-            // This logic might need revision based on desired behavior.
-            // For now, we'll just silence the bass worklet.
-        } else {
-             bassManagerRef.current?.setPreset(name as BassInstrument);
-        }
+        bassManagerRef.current?.setPreset(name as BassInstrument);
     }
      if (part === 'melody') {
         if (name === 'violin') violinSamplerPlayerRef.current?.setVolume(instrumentSettings.melody.volume);
@@ -138,38 +131,40 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
     settingsRef.current.instrumentSettings = newInstrumentSettings;
   }, []);
 
-  const scheduleScore = useCallback((score: Score, audioContext: AudioContext) => {
-    const now = audioContext.currentTime;
+  const scheduleScore = useCallback((score: Score, audioContext: AudioContext, startTime: number) => {
     const currentSettings = settingsRef.current;
-    
     if (!currentSettings) return;
 
     let bassInstrument = currentSettings.instrumentSettings.bass.name;
     let melodyInstrument = currentSettings.instrumentSettings.melody.name;
     let accompanimentInstrument = currentSettings.instrumentSettings.accompaniment.name;
     
+    console.log(`[AudioEngineProvider] Received score to schedule at ${startTime}. Bass: ${score.bass?.length}, Drums: ${score.drums?.length}`);
+
     const bassScore: FractalEvent[] = score.bass || [];
     if (bassScore.length > 0 && bassManagerRef.current) {
+        console.log(`[AudioEngineProvider] Scheduling ${bassScore.length} bass events.`);
         bassScore.forEach(event => {
-            bassManagerRef.current!.play(event, now);
+            console.log(`[AudioEngineProvider] -> Scheduling BASS event:`, { event, startTime });
+            bassManagerRef.current!.play(event, startTime);
         });
     }
 
     const drumScore: FractalEvent[] = score.drums || [];
     if (drumScore.length > 0 && drumMachineRef.current && currentSettings.drumSettings.enabled) {
-        drumMachineRef.current.schedule(drumScore, now);
+        drumMachineRef.current.schedule(drumScore, startTime);
     }
     
     const melodyScore = score.melody || [];
     if (melodyScore.length > 0 && melodyInstrument !== 'none') {
         if (melodyInstrument === 'piano' && samplerPlayerRef.current) {
-            samplerPlayerRef.current.schedule('piano', melodyScore, now);
+            samplerPlayerRef.current.schedule('piano', melodyScore, startTime);
         } else if (melodyInstrument === 'violin' && violinSamplerPlayerRef.current) {
-            violinSamplerPlayerRef.current.schedule(melodyScore, now);
+            violinSamplerPlayerRef.current.schedule(melodyScore, startTime);
         } else if (melodyInstrument === 'flute' && fluteSamplerPlayerRef.current) {
-            fluteSamplerPlayerRef.current.schedule(melodyScore, now);
+            fluteSamplerPlayerRef.current.schedule(melodyScore, startTime);
         } else if (melodyInstrument === 'acousticGuitarSolo' && acousticGuitarSoloSamplerRef.current) {
-            acousticGuitarSoloSamplerRef.current.schedule('acousticGuitarSolo', melodyScore, now);
+            acousticGuitarSoloSamplerRef.current.schedule('acousticGuitarSolo', melodyScore, startTime);
         } else {
             const gainNode = gainNodesRef.current.melody;
             if (gainNode) {
@@ -180,7 +175,7 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
                         if (!params) return;
                         voice.disconnect();
                         voice.connect(gainNode);
-                        const noteOnTime = now + note.time;
+                        const noteOnTime = startTime + note.time;
                         voice.port.postMessage({ ...params, type: 'noteOn', when: noteOnTime });
                         const noteOffTime = noteOnTime + note.duration;
                         const delayUntilOff = (noteOffTime - audioContext.currentTime) * 1000;
@@ -194,15 +189,15 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
     const accompanimentScore: Note[] = score.accompaniment || [];
     if (accompanimentScore.length > 0 && accompanimentInstrument !== 'none') {
         if (accompanimentInstrument === 'piano' && samplerPlayerRef.current) {
-            samplerPlayerRef.current.schedule('piano', accompanimentScore, now);
+            samplerPlayerRef.current.schedule('piano', accompanimentScore, startTime);
         } else if (accompanimentInstrument === 'violin' && violinSamplerPlayerRef.current) {
-            violinSamplerPlayerRef.current.schedule(accompanimentScore, now);
+            violinSamplerPlayerRef.current.schedule(accompanimentScore, startTime);
         } else if (accompanimentInstrument === 'flute' && fluteSamplerPlayerRef.current) {
-            fluteSamplerPlayerRef.current.schedule(accompanimentScore, now);
+            fluteSamplerPlayerRef.current.schedule(accompanimentScore, startTime);
         } else if (accompanimentInstrument === 'guitarChords' && guitarChordsSamplerRef.current) {
-            guitarChordsSamplerRef.current.schedule(accompanimentScore, now);
+            guitarChordsSamplerRef.current.schedule(accompanimentScore, startTime);
         } else if (accompanimentManagerRef.current) {
-            accompanimentManagerRef.current.schedule(accompanimentScore, now);
+            accompanimentManagerRef.current.schedule(accompanimentScore, startTime);
         }
     }
 
@@ -218,7 +213,7 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
                      if (!params) return;
                      voice.disconnect();
                      voice.connect(gainNode);
-                     const noteOnTime = now + note.time;
+                     const noteOnTime = startTime + note.time;
                      const noteOffTime = noteOnTime + 0.5; // Fixed duration for effects
                      
                      voice.port.postMessage({ ...params, type: 'noteOn', when: noteOnTime });
@@ -317,8 +312,8 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
         if (!workerRef.current) {
             const worker = new Worker(new URL('../lib/ambient.worker.ts', import.meta.url), { type: 'module' });
             worker.onmessage = (event: MessageEvent<WorkerMessage>) => {
-                if (event.data.type === 'score' && event.data.score) {
-                    scheduleScore(event.data.score, context);
+                if (event.data.type === 'score' && event.data.score && event.data.time) {
+                    scheduleScore(event.data.score, context, context.currentTime + event.data.time);
                 }
                 else if (event.data.type === 'sparkle' && event.data.time !== undefined) {
                     sparklePlayerRef.current?.playRandomSparkle(context.currentTime + event.data.time);
@@ -450,3 +445,5 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
     </AudioEngineContext.Provider>
   );
 };
+
+    

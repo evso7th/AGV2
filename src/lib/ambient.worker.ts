@@ -1,5 +1,4 @@
 
-
 /**
  * @file AuraGroove Music Worker (Architecture: "The Dynamic Composer")
  *
@@ -8,7 +7,7 @@
  * It is completely passive and only composes the next bar when commanded via a 'tick'.
  */
 import type { WorkerSettings, Score, ScoreName, InstrumentSettings, DrumSettings, Mood } from '@/types/music';
-import { FractalMusicEngine, type EngineConfig } from './fractal-music-engine';
+import { FractalMusicEngine } from './fractal-music-engine';
 import type { FractalEvent } from '@/types/fractal';
 
 // --- Constants ---
@@ -71,7 +70,7 @@ const Scheduler = {
     },
 
     initializeEngine(settings: WorkerSettings) {
-        const engineConfig: EngineConfig = {
+        fractalMusicEngine = new FractalMusicEngine({
             tempo: settings.bpm,
             density: settings.density,
             lambda: 1.0 - (settings.density * 0.5 + 0.3),
@@ -79,8 +78,7 @@ const Scheduler = {
             drumSettings: settings.drumSettings,
             mood: settings.mood,
             genre: 'ambient',
-        };
-        fractalMusicEngine = new FractalMusicEngine(engineConfig);
+        });
         this.barCount = 0;
         lastSparkleTime = -Infinity;
         lastPadStyle = null; // Reset on engine re-creation
@@ -162,11 +160,17 @@ const Scheduler = {
         
         if (this.settings.score === 'neuro_f_matrix') {
             const fractalEvents: FractalEvent[] = fractalMusicEngine.evolve(this.barDuration);
+            
+            const bassEvents = fractalEvents.filter(e => e.type === 'bass');
+            const drumEvents = fractalEvents.filter(e => e.type.startsWith('drum_'));
+            
+            console.log(`[Worker] Tick ${this.barCount}: Generated ${bassEvents.length} bass events, ${drumEvents.length} drum events.`);
+            
             const score: Score = {
-                bass: fractalEvents.filter(e => e.type === 'bass'),
-                drums: fractalEvents.filter(e => e.type.startsWith('drum_')),
-                melody: [],
-                accompaniment: []
+                bass: bassEvents,
+                drums: drumEvents,
+                melody: [], // Placeholder for future
+                accompaniment: [] // Placeholder for future
             };
             self.postMessage({ type: 'score', score, time: this.barDuration });
         } else {
@@ -233,3 +237,5 @@ self.onmessage = async (event: MessageEvent) => {
         self.postMessage({ type: 'error', error: e instanceof Error ? e.message : String(e) });
     }
 };
+
+    
