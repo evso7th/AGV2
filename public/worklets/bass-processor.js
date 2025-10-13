@@ -1,115 +1,104 @@
-// public/worklets/bass-processor.js
 
 /**
- * A radically simplified monophonic synthesizer for Web Audio.
- * It directly plays the frequency and velocity from 'noteOn' messages
- * and ramps down the gain on 'noteOff'. This removes all internal
-* state management for techniques, portamento, or multi-note handling
- * to ensure it acts as a predictable, "dumb" executor.
+ * "Пароходная труба" - простейший AudioWorklet-синтезатор.
+ * Его единственная задача - проигрывать синусоиду в указанное время.
+ * Никаких фильтров, эффектов и сложных техник. Максимально тупой и надежный.
  */
-class BassProcessor extends AudioWorkletProcessor {
-  static get parameterDescriptors() {
-    return [
-      { name: 'attack', defaultValue: 0.01, minValue: 0, maxValue: 1 },
-      { name: 'release', defaultValue: 0.5, minValue: 0, maxValue: 5 },
-      { name: 'cutoff', defaultValue: 800, minValue: 50, maxValue: 10000 },
-      { name: 'resonance', defaultValue: 0.7, minValue: 0.1, maxValue: 5 },
-      { name: 'distortion', defaultValue: 0.1, minValue: 0, maxValue: 1 },
-    ];
-  }
+class SimpleSynthProcessor extends AudioWorkletProcessor {
+    constructor() {
+        super();
+        // Каждая нота (по частоте) имеет свой собственный осциллятор и огибающую.
+        this.notes = new Map(); // Map<frequency, { phase: number, gain: number, state: 'attack'|'decay'|'sustain'|'release' }>
+        
+        this.port.onmessage = (event) => {
+            const { type, frequency, when, velocity } = event.data;
+            const now = currentTime;
 
-  constructor(options) {
-    super(options);
-    
-    // --- State ---
-    this.frequency = 0;
-    this.targetGain = 0; // The volume to ramp towards
-    this.currentGain = 0; // The current volume, frame by frame
-    this.phase = 0;
-    
-    // --- Filter State ---
-    this.filterState = 0;
-
-    this.port.onmessage = (event) => this.handleMessage(event.data);
-  }
-
-  handleMessage(message) {
-    const { type, frequency, velocity, attack, release } = message;
-
-    if (type === 'noteOn') {
-      this.frequency = frequency;
-      this.targetGain = velocity;
-      this.currentGain = 0; // Reset gain for the new note
-    } else if (type === 'noteOff') {
-      this.targetGain = 0;
-    }
-  }
-
-  // Simple sawtooth oscillator
-  generateOsc(phase) {
-    return 1 - (phase / Math.PI);
-  }
-
-  // Simple one-pole low-pass filter
-  applyFilter(input, cutoff) {
-    const filterCoeff = 1 - Math.exp(-2 * Math.PI * cutoff / sampleRate);
-    this.filterState += filterCoeff * (input - this.filterState);
-    return this.filterState;
-  }
-  
-  // Simple soft-clipper
-  softClip(input, drive) {
-      if (drive === 0) return input;
-      const k = 2 + drive * 10;
-      return (1 + k) * input / (1 + k * Math.abs(input));
-  }
-
-
-  process(inputs, outputs, parameters) {
-    const output = outputs[0];
-    const channelCount = output.length;
-    const frameCount = output[0].length;
-
-    const attackTime = parameters.attack[0];
-    const releaseTime = parameters.release[0];
-    const cutoff = parameters.cutoff[0];
-    const distortion = parameters.distortion[0];
-    
-    const attackStep = 1 / (attackTime * sampleRate);
-    const releaseStep = 1 / (releaseTime * sampleRate);
-
-    for (let i = 0; i < frameCount; i++) {
-      
-      // Envelope logic
-      if (this.currentGain < this.targetGain) {
-        this.currentGain = Math.min(this.targetGain, this.currentGain + attackStep);
-      } else if (this.currentGain > this.targetGain) {
-        this.currentGain = Math.max(this.targetGain, this.currentGain - releaseStep);
-      }
-      
-      let sample = 0;
-      if (this.currentGain > 0 && this.frequency > 0) {
-          // --- Log the actual frequency being used for synthesis ---
-          if (i === 0) console.log(`[bass-processor] Playing frequency: ${this.frequency}`);
-
-          this.phase += (this.frequency * 2 * Math.PI) / sampleRate;
-          if (this.phase >= 2 * Math.PI) {
-              this.phase -= 2 * Math.PI;
-          }
-          
-          sample = this.generateOsc(this.phase);
-          sample = this.applyFilter(sample, cutoff);
-          sample = this.softClip(sample, distortion);
-          sample *= this.currentGain;
-      }
-      
-      for (let channel = 0; channel < channelCount; channel++) {
-        output[channel][i] = sample * 0.7; // Apply master volume
-      }
+            if (type === 'noteOn') {
+                if (when <= now) {
+                    this.startNote(frequency, velocity);
+                } else {
+                    setTimeout(() => this.startNote(frequency, velocity), (when - now) * 1000);
+                }
+            } else if (type === 'noteOff') {
+                 if (when <= now) {
+                    this.stopNote(frequency);
+                } else {
+                    setTimeout(() => this.stopNote(frequency), (when - now) * 1000);
+                }
+            } else if (type === 'clear') {
+                this.notes.clear();
+            }
+        };
     }
 
-    return true;
-  }
+    startNote(frequency, velocity) {
+        console.log(`[Worklet] NOTE ON: freq=${frequency.toFixed(2)}, velocity=${velocity}`);
+        this.notes.set(frequency, {
+            phase: 0,
+            gain: 0,
+            targetGain: velocity,
+            state: 'attack',
+            releaseTime: 0.2 // Короткий релиз
+        });
+    }
+
+    stopNote(frequency) {
+        const note = this.notes.get(frequency);
+        if (note) {
+            console.log(`[Worklet] NOTE OFF: freq=${frequency.toFixed(2)}`);
+            note.state = 'release';
+            note.targetGain = 0;
+        }
+    }
+
+    process(inputs, outputs, parameters) {
+        const output = outputs[0];
+        const channelCount = output.length;
+        const frameCount = output[0].length;
+        
+        // Если нет активных нот, просто заполняем тишиной и выходим
+        if (this.notes.size === 0) {
+            return true;
+        }
+
+        for (let i = 0; i < frameCount; i++) {
+            let sample = 0;
+
+            for (const [freq, note] of this.notes.entries()) {
+                // Простое ADSR управление громкостью
+                if (note.state === 'attack') {
+                    note.gain += 1 / (0.01 * sampleRate); // 10ms attack
+                    if (note.gain >= note.targetGain) {
+                        note.gain = note.targetGain;
+                        note.state = 'sustain';
+                    }
+                } else if (note.state === 'release') {
+                    note.gain -= 1 / (note.releaseTime * sampleRate);
+                    if (note.gain <= 0) {
+                        this.notes.delete(freq);
+                        continue; // Нота закончила звучать, переходим к следующей
+                    }
+                }
+
+                // Простой синусоидальный осциллятор
+                sample += Math.sin(note.phase) * note.gain;
+                note.phase += (freq * 2 * Math.PI) / sampleRate;
+                if (note.phase >= 2 * Math.PI) {
+                    note.phase -= 2 * Math.PI;
+                }
+            }
+            
+            // Защита от клиппинга
+            const limitedSample = Math.max(-1, Math.min(1, sample)) * 0.5; // Уменьшаем громкость
+
+            for (let channel = 0; channel < channelCount; channel++) {
+                output[channel][i] = limitedSample;
+            }
+        }
+        
+        return true; // Продолжаем обработку
+    }
 }
 
-registerProcessor('bass-processor', BassProcessor);
+registerProcessor('bass-processor', SimpleSynthProcessor);

@@ -1,14 +1,23 @@
 
 import type { BassInstrument, BassTechnique } from "@/types/music";
-import { TECHNIQUE_PRESETS } from "./bass-presets";
 import type { FractalEvent } from '@/types/fractal';
 
+// Утилита для конвертации MIDI в частоту, чтобы избежать зависимости от Tone.js
+function midiToFreq(midi: number): number {
+    return Math.pow(2, (midi - 69) / 12) * 440;
+}
+
+/**
+ * Простейший менеджер басового синтезатора ("Пароходная труба").
+ * Задача: принять партитуру и тупо передать команды "noteOn" и "noteOff" в ворклет.
+ * Никаких пресетов, техник, сложных таймеров.
+ */
 export class BassSynthManager {
     private audioContext: AudioContext;
     private workletNode: AudioWorkletNode | null = null;
     private outputNode: GainNode;
     public isInitialized = false;
-    private scheduledTimeouts = new Set<NodeJS.Timeout>();
+    private scheduledEvents: Set<number> = new Set(); // Используем для отслеживания таймаутов
 
     constructor(audioContext: AudioContext, destination: AudioNode) {
         this.audioContext = audioContext;
@@ -19,118 +28,68 @@ export class BassSynthManager {
     async init() {
         if (this.isInitialized) return;
         try {
+            // Убедимся, что загружается правильный ворклет
             await this.audioContext.audioWorklet.addModule('/worklets/bass-processor.js');
             this.workletNode = new AudioWorkletNode(this.audioContext, 'bass-processor');
             this.workletNode.connect(this.outputNode);
             this.isInitialized = true;
-            console.log('[BassSynthManager] Initialized.');
+            console.log('[BassSynthManager] "Пароходная труба" инициализирована.');
         } catch (e) {
-            console.error('[BassSynthManager] Failed to init:', e);
+            console.error('[BassSynthManager] Ошибка инициализации ворклета:', e);
         }
     }
 
     public setVolume(volume: number) {
-        if(this.outputNode instanceof GainNode){
+        if(this.outputNode.gain){
             this.outputNode.gain.setTargetAtTime(volume, this.audioContext.currentTime, 0.01);
         }
     }
 
-    public play(events: FractalEvent[], startTime: number) {
+    /**
+     * Принимает массив нот и время начала такта, планирует их воспроизведение.
+     */
+    public play(events: FractalEvent[], barStartTime: number) {
         if (!this.workletNode || !this.isInitialized || events.length === 0) {
             return;
         }
+        
+        console.log(`[BassMan] Получено ${events.length} басовых событий для планирования. Время старта такта: ${barStartTime.toFixed(2)}`);
 
-        const scheduleNextNote = (noteIndex: number) => {
-            if (noteIndex >= events.length) return;
-
-            const event = events[noteIndex];
-            const noteOnTime = startTime + event.time;
-            const noteOffTime = noteOnTime + event.duration;
-            
-            const delayUntilOn = (noteOnTime - this.audioContext.currentTime) * 1000;
-
-            if (delayUntilOn >= 0) {
-                const noteOnTimeout = setTimeout(() => {
-                    this.scheduledTimeouts.delete(noteOnTimeout);
-
-                    if (this.workletNode) {
-                        const freq = 440 * Math.pow(2, (event.note - 69) / 12);
-                        if (!isFinite(freq)) {
-                            console.error(`[BassMan] Invalid frequency for MIDI note ${event.note}`);
-                            return;
-                        }
-
-                        const velocity = event.dynamics === 'p' ? 0.3 : event.dynamics === 'mf' ? 0.6 : 0.9;
-                        
-                        console.log(`[BassMan] >>>> SENDING noteOn: MIDI ${event.note}, Freq ${freq.toFixed(2)}`);
-
-                        this.workletNode.port.postMessage({
-                            type: 'noteOn',
-                            frequency: freq,
-                            velocity,
-                            technique: event.technique 
-                        });
-
-                        // Schedule the noteOff for this note
-                        const delayUntilOff = (noteOffTime - this.audioContext.currentTime) * 1000;
-                        if (delayUntilOff > 0) {
-                             const noteOffTimeout = setTimeout(() => {
-                                 this.scheduledTimeouts.delete(noteOffTimeout);
-                                 // Only send noteOff if it's the last note in the current event array
-                                 if (noteIndex === events.length - 1) {
-                                     this.workletNode?.port.postMessage({ type: 'noteOff' });
-                                 }
-                             }, delayUntilOff);
-                             this.scheduledTimeouts.add(noteOffTimeout);
-                        }
-                    }
-                }, delayUntilOn);
-                this.scheduledTimeouts.add(noteOnTimeout);
+        // Сразу планируем все ноты из партитуры
+        events.forEach(event => {
+            const frequency = midiToFreq(event.note);
+            if (!isFinite(frequency)) {
+                console.error(`[BassMan] Неверная частота для MIDI ноты ${event.note}`);
+                return;
             }
-            
-            // Schedule the next note in the sequence
-            const nextEvent = events[noteIndex + 1];
-            if(nextEvent) {
-                const timeToNextNote = (nextEvent.time - event.time) * 1000;
-                 if (timeToNextNote >= 0) {
-                    const nextNoteTimeout = setTimeout(() => {
-                        this.scheduledTimeouts.delete(nextNoteTimeout);
-                        scheduleNextNote(noteIndex + 1);
-                    }, delayUntilOn + timeToNextNote);
-                    this.scheduledTimeouts.add(nextNoteTimeout);
-                }
-            }
-        };
 
-        // Before starting a new sequence, clear any old ones.
-        this.stop();
-        scheduleNextNote(0);
+            const absoluteOnTime = barStartTime + event.time;
+            const absoluteOffTime = absoluteOnTime + event.duration;
+            
+            // Отправляем команды в ворклет с абсолютным временем
+            this.workletNode!.port.postMessage({
+                type: 'noteOn',
+                frequency: frequency,
+                when: absoluteOnTime,
+                velocity: event.dynamics === 'p' ? 0.2 : event.dynamics === 'mf' ? 0.4 : 0.7
+            });
+
+            this.workletNode!.port.postMessage({
+                type: 'noteOff',
+                frequency: frequency,
+                when: absoluteOffTime
+            });
+            console.log(`[BassMan] Запланирована нота ${event.note} (freq: ${frequency.toFixed(2)}) ON: ${absoluteOnTime.toFixed(2)}, OFF: ${absoluteOffTime.toFixed(2)}`);
+        });
     }
 
+    // --- Пустые методы для совместимости с API ---
     public setPreset(instrumentName: BassInstrument) {
-        if (instrumentName === 'none' && this.workletNode) {
-             this.workletNode.port.postMessage({ type: 'noteOff' });
-        }
+        // Заглушка. Ничего не делаем.
     }
 
     public setTechnique(technique: BassTechnique) {
-        if (!this.workletNode) return;
-        
-        const params = TECHNIQUE_PRESETS[technique as keyof typeof TECHNIQUE_PRESETS] || TECHNIQUE_PRESETS['pluck'];
-        
-        const parameterMap = {
-            'cutoff': params.cutoff,
-            'resonance': params.resonance,
-            'distortion': params.distortion,
-            'portamento': params.portamento,
-        };
-
-        for(const [name, value] of Object.entries(parameterMap)) {
-            const param = this.workletNode.parameters.get(name);
-            if (param && isFinite(value)) {
-                param.setTargetAtTime(value, this.audioContext.currentTime, 0.02);
-            }
-        }
+        // Заглушка. Ничего не делаем.
     }
 
     public allNotesOff() {
@@ -138,11 +97,10 @@ export class BassSynthManager {
     }
 
     public stop() {
-        this.scheduledTimeouts.forEach(timeoutId => clearTimeout(timeoutId));
-        this.scheduledTimeouts.clear();
-        
         if (this.workletNode) {
-            this.workletNode.port.postMessage({ type: 'noteOff' });
+            // Отправляем команду немедленной очистки всех нот
+            this.workletNode.port.postMessage({ type: 'clear' });
+            console.log('[BassMan] Отправлена команда "clear" в ворклет.');
         }
     }
 
