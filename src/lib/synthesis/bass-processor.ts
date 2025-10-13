@@ -1,4 +1,3 @@
-
 // This file is obsolete and will be removed. The correct logic is in public/worklets/bass-processor.js
 // This interface must be declared in the global scope for the AudioWorkletProcessor.
 interface NoteState {
@@ -74,7 +73,7 @@ class BassProcessor extends AudioWorkletProcessor {
         for (let i = 0; i < frameCount; i++) {
             let sampleValue = 0;
 
-            for (const [key, note] of this.notes.entries()) {
+            for (const [key, note] of this.activeNotes.entries()) {
                 // Envelope
                 if (note.state === 'attack') {
                     note.gain += (1 / (note.attackTime * this.sampleRate));
@@ -85,7 +84,7 @@ class BassProcessor extends AudioWorkletProcessor {
                 } else if (note.state === 'release') {
                     note.gain -= (1 / (note.releaseTime * this.sampleRate));
                     if (note.gain <= 0) {
-                        this.notes.delete(key);
+                        this.activeNotes.delete(key);
                         continue; // Go to next note
                     }
                 }
@@ -113,3 +112,4 @@ class BassProcessor extends AudioWorkletProcessor {
 }
 
 registerProcessor('bass-processor', BassProcessor);
+
