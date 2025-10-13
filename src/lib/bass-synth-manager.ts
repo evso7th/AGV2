@@ -2,15 +2,13 @@
 import type { BassInstrument, BassTechnique } from "@/types/music";
 import type { FractalEvent } from '@/types/fractal';
 
-// Утилита для конвертации MIDI в частоту, чтобы избежать зависимости от Tone.js
 function midiToFreq(midi: number): number {
     return Math.pow(2, (midi - 69) / 12) * 440;
 }
 
 /**
  * Простейший менеджер басового синтезатора ("Пароходная труба").
- * Задача: принять партитуру и тупо передать команды "noteOn" и "noteOff" в ворклет.
- * Никаких пресетов, техник, сложных таймеров.
+ * Задача: принять партитуру и передать команды "noteOn" и "noteOff" в ворклет.
  */
 export class BassSynthManager {
     private audioContext: AudioContext;
@@ -62,13 +60,16 @@ export class BassSynthManager {
             const absoluteOnTime = barStartTime + event.time;
             const absoluteOffTime = absoluteOnTime + event.duration;
             
+            // Schedule the note ON
             this.workletNode!.port.postMessage({
                 type: 'noteOn',
                 frequency: frequency,
+                velocity: event.weight, // Use weight as velocity
                 when: absoluteOnTime,
                 noteId: event.note 
             });
 
+            // Schedule the note OFF
             this.workletNode!.port.postMessage({
                 type: 'noteOff',
                 noteId: event.note,
@@ -79,11 +80,11 @@ export class BassSynthManager {
 
     // --- Пустые методы для совместимости с API ---
     public setPreset(instrumentName: BassInstrument) {
-        // Заглушка. Ничего не делаем.
+        // Заглушка.
     }
 
     public setTechnique(technique: BassTechnique) {
-        // Заглушка. Ничего не делаем.
+        // Заглушка.
     }
 
     public allNotesOff() {
