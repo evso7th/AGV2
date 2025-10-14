@@ -161,20 +161,16 @@ const Scheduler = {
         if (this.settings.score === 'neuro_f_matrix') {
             const fractalEvents: FractalEvent[] = fractalMusicEngine.evolve(this.barDuration);
             
-            const bassEvents = fractalEvents.filter(e => e.type === 'bass');
-            const drumEvents = fractalEvents.filter(e => e.type.startsWith('drum_'));
-            
-            console.log(`[Worker] Tick ${this.barCount}: Generated ${bassEvents.length} bass events, ${drumEvents.length} drum events.`);
-            
+            console.log(`[Worker] Tick ${this.barCount}. Generated ${fractalEvents.length} events.`);
+
             const score: Score = {
-                bass: bassEvents,
-                drums: drumEvents,
-                melody: [], // Placeholder for future
-                accompaniment: [] // Placeholder for future
+                bass: fractalEvents.filter(e => e.type === 'bass'),
+                drums: fractalEvents.filter(e => e.type.startsWith('drum_')),
+                melody: [],
+                accompaniment: []
             };
             self.postMessage({ type: 'score', score, time: this.barDuration });
         } else {
-             // Legacy composers could be here, but are removed for neuro_f_matrix focus
             const score: Score = { bass: [], melody: [], accompaniment: [], drums: [] };
             self.postMessage({ type: 'score', score, time: this.barDuration });
         }
@@ -237,3 +233,4 @@ self.onmessage = async (event: MessageEvent) => {
         self.postMessage({ type: 'error', error: e instanceof Error ? e.message : String(e) });
     }
 };
+
