@@ -41,8 +41,6 @@ const VOICE_BALANCE: Record<InstrumentPart, number> = {
 
 const EQ_FREQUENCIES = [60, 125, 250, 500, 1000, 2000, 4000];
 
-const isMobile = () => typeof window !== 'undefined' && /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
-
 // --- React Context ---
 interface AudioEngineContextType {
   isInitialized: boolean;
@@ -161,7 +159,7 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
         }
 
         if (!workerRef.current) {
-            const worker = new Worker(new URL('../app/ambient.worker.ts', import.meta.url), { type: 'module' });
+            const worker = new Worker(new URL('../lib/ambient.worker.ts', import.meta.url), { type: 'module' });
             worker.onmessage = (event: MessageEvent<WorkerMessage>) => {
                 const { type, events, barDuration, error } = event.data;
                 if (type === 'SCORE_READY' && events && barDuration && settingsRef.current) {

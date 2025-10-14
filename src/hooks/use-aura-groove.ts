@@ -57,6 +57,11 @@ export const useAuraGroove = () => {
   });
   const timerIntervalRef = useRef<NodeJS.Timeout | null>(null);
 
+  // Automatically initialize the engine when the component mounts
+  useEffect(() => {
+    initialize();
+  }, [initialize]);
+
 
   const getFullSettings = useCallback((): WorkerSettings => {
     return {
@@ -135,10 +140,11 @@ export const useAuraGroove = () => {
   
   const handlePlayPause = useCallback(async () => {
     if (!isInitialized) {
-      await initialize();
+      // Initialization is now handled by the provider's useEffect
+      return;
     }
     setEngineIsPlaying(!isPlaying);
-  }, [isInitialized, isPlaying, initialize, setEngineIsPlaying]);
+  }, [isInitialized, isPlaying, setEngineIsPlaying]);
 
   const handleRegenerate = useCallback(() => {
     if (isPlaying) {
