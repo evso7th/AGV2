@@ -48,6 +48,16 @@ export type InstrumentType =
   | 'drum_tom_high';
 
 /**
+ * Параметры для синтезатора баса.
+ */
+export type BassSynthParams = {
+  cutoff: number;
+  resonance: number;
+  distortion: number;
+  portamento: number;
+};
+
+/**
  * Событие фрактального композитора
  * Это единый протокол "композитор → исполнитель"
  */
@@ -96,12 +106,7 @@ export interface FractalEvent {
    * Параметры синтеза (только для 'bass')
    * Рассчитываются композитором, исполняются синтезатором.
    */
-  params?: {
-    cutoff: number;
-    resonance: number;
-    distortion: number;
-    portamento: number;
-  };
+  params?: BassSynthParams;
 }
 
 /**

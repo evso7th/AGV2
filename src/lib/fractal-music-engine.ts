@@ -1,5 +1,5 @@
 
-import type { FractalEvent, Mood, Genre, Technique } from '@/types/fractal';
+import type { FractalEvent, Mood, Genre, Technique, BassSynthParams } from '@/types/fractal';
 import { MelancholicMinorK } from './resonance-matrices';
 import { getScaleForMood } from './music-theory';
 
@@ -21,7 +21,7 @@ interface EngineConfig {
 
 // === ВСПОМОГАТЕЛЬНЫЕ ФУНКЦИИ ===
 
-function getParamsForTechnique(technique: Technique, mood: Mood): object {
+function getParamsForTechnique(technique: Technique, mood: Mood): BassSynthParams {
   switch (technique) {
     case 'pluck':
       return { cutoff: 800, resonance: 0.3, distortion: 0.1, portamento: 0.01 };
@@ -163,10 +163,6 @@ export class FractalMusicEngine {
           time: currentTime + event.time * beatDuration, // time тоже в долях → в секунды
           duration: durationInSeconds
         };
-
-        if (event.type === 'bass') {
-            (newEvent as FractalEvent).params = getParamsForTechnique(event.technique, this.config.mood) as any;
-        }
 
         output.push(newEvent);
       });
