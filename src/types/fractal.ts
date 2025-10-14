@@ -91,6 +91,17 @@ export interface FractalEvent {
    * Фразировка (артикуляция)
    */
   phrasing: Phrasing;
+  
+  /**
+   * Параметры синтеза (только для 'bass')
+   * Рассчитываются композитором, исполняются синтезатором.
+   */
+  params?: {
+    cutoff: number;
+    resonance: number;
+    distortion: number;
+    portamento: number;
+  };
 }
 
 /**

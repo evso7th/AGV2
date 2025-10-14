@@ -20,6 +20,20 @@ interface EngineConfig {
 }
 
 // === ВСПОМОГАТЕЛЬНЫЕ ФУНКЦИИ ===
+
+function getParamsForTechnique(technique: Technique, mood: Mood): object {
+  switch (technique) {
+    case 'pluck':
+      return { cutoff: 800, resonance: 0.3, distortion: 0.1, portamento: 0.01 };
+    case 'ghost':
+      return { cutoff: 250, resonance: 0.1, distortion: 0.0, portamento: 0.0 };
+    case 'slap':
+       return { cutoff: 1200, resonance: 0.5, distortion: 0.3, portamento: 0.0 };
+    default: // Для техник не от баса или по умолчанию
+      return { cutoff: 500, resonance: 0.2, distortion: 0.0, portamento: 0.0 };
+  }
+}
+
 function seededRandom(seed: number) {
   let state = seed;
   const self = {
@@ -67,11 +81,12 @@ function createDrumAxiom(): FractalEvent[] {
 function createBassAxiom(mood: Mood): FractalEvent[] {
   const scale = getScaleForMood(mood);
   const root = scale[0];
+  const pluckParams = getParamsForTechnique('pluck', mood);
   return [
-    { type: 'bass', note: root, duration: 1.5, time: 0, weight: 1.0, technique: 'pluck', dynamics: 'mf', phrasing: 'staccato' },
-    { type: 'bass', note: root + 3, duration: 0.5, time: 1.5, weight: 1.0, technique: 'pluck', dynamics: 'mf', phrasing: 'staccato' },
-    { type: 'bass', note: root + 2, duration: 1.5, time: 2.0, weight: 1.0, technique: 'pluck', dynamics: 'mf', phrasing: 'staccato' },
-    { type: 'bass', note: root, duration: 0.5, time: 3.5, weight: 1.0, technique: 'pluck', dynamics: 'mf', phrasing: 'staccato' }
+    { type: 'bass', note: root, duration: 1.5, time: 0, weight: 1.0, technique: 'pluck', dynamics: 'mf', phrasing: 'staccato', params: pluckParams },
+    { type: 'bass', note: root + 3, duration: 0.5, time: 1.5, weight: 1.0, technique: 'pluck', dynamics: 'mf', phrasing: 'staccato', params: pluckParams },
+    { type: 'bass', note: root + 2, duration: 1.5, time: 2.0, weight: 1.0, technique: 'pluck', dynamics: 'mf', phrasing: 'staccato', params: pluckParams },
+    { type: 'bass', note: root, duration: 0.5, time: 3.5, weight: 1.0, technique: 'pluck', dynamics: 'mf', phrasing: 'staccato', params: pluckParams }
   ];
 }
 
@@ -143,11 +158,17 @@ export class FractalMusicEngine {
       branch.events.forEach(event => {
         // ПЕРЕВОД duration из долей такта в секунды
         const durationInSeconds = event.duration * beatDuration;
-        output.push({
+        const newEvent = {
           ...event,
           time: currentTime + event.time * beatDuration, // time тоже в долях → в секунды
           duration: durationInSeconds
-        });
+        };
+
+        if (event.type === 'bass') {
+            (newEvent as FractalEvent).params = getParamsForTechnique(event.technique, this.config.mood) as any;
+        }
+
+        output.push(newEvent);
       });
     });
 
@@ -156,9 +177,10 @@ export class FractalMusicEngine {
       if (this.random.next() > 0.5 && this.branches.filter(b => b.type === 'bass').length < 3) {
         const base = this.branches.find(b => b.type === 'bass');
         if (base) {
+          const ghostParams = getParamsForTechnique('ghost', this.config.mood);
           this.branches.push({
             id: `bass_ghost_${Date.now()}`,
-            events: [{ ...base.events[1], duration: 0.2, time: 1.5 }],
+            events: [{ ...base.events[1], duration: 0.2, time: 1.5, technique: 'ghost', params: ghostParams }],
             weight: 0.15,
             age: 0,
             technique: 'ghost',
