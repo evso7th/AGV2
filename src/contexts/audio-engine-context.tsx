@@ -106,7 +106,6 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
     }
     
     if (bassManagerRef.current && bassEvents.length > 0) {
-        // We pass the barStartTime here to ensure correct absolute timing
         bassManagerRef.current.play(bassEvents, barStartTime);
     }
   }, []);
@@ -121,9 +120,13 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
             audioContextRef.current = new (window.AudioContext || (window as any).webkitAudioContext)({
                  sampleRate: 44100, latencyHint: 'interactive'
             });
+            console.log('[AudioEngine] AudioContext created. Initial state:', audioContextRef.current.state);
         }
 
-        if (audioContextRef.current.state === 'suspended') await audioContextRef.current.resume();
+        if (audioContextRef.current.state === 'suspended') {
+            await audioContextRef.current.resume();
+            console.log('[AudioEngine] AudioContext resumed. Current state:', audioContextRef.current.state);
+        }
 
         const context = audioContextRef.current;
         nextBarTimeRef.current = context.currentTime + 0.1; // Add small buffer
