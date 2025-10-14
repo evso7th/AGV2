@@ -41,14 +41,13 @@ function createSampler(audioContext: AudioContext, output: AudioNode): Sampler {
 
     const triggerAttack = (note: string, time: number, velocity = 1) => {
         const buffer = buffers.get(note);
-        if (!buffer) return;
+        if (!buffer || !isFinite(time)) return;
 
         const source = audioContext.createBufferSource();
         source.buffer = buffer;
 
         const gainNode = audioContext.createGain();
-        gainNode.gain.setValueAtTime(velocity, audioContext.currentTime);
-        gainNode.gain.setTargetAtTime(velocity, time, 0.01);
+        gainNode.gain.value = velocity;
 
         source.connect(gainNode);
         gainNode.connect(output);
@@ -87,7 +86,8 @@ export class DrumMachine {
             console.warn('[DrumMachine] Attempted to schedule before initialized.');
             return;
         }
-
+        
+        // Длительность одной доли в секундах
         const beatDuration = 60 / tempo;
         
         for (const event of score) {
