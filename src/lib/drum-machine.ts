@@ -2,33 +2,15 @@
 import type { FractalEvent } from "@/types/fractal";
 
 const DRUM_SAMPLES: Record<string, string> = {
-    // semantic names
     'kick': '/assets/drums/kick_drum6.wav',
     'snare': '/assets/drums/snare.wav',
     'hat': '/assets/drums/closed_hi_hat_accented.wav',
     'open_hat': '/assets/drums/open_hh_top2.wav',
     'crash': '/assets/drums/crash1.wav',
-    'ride': '/assets/drums/cymbal1.wav', // Added ride cymbal
+    'ride': '/assets/drums/cymbal1.wav',
     'tom_high': '/assets/drums/hightom.wav',
     'tom_mid': '/assets/drums/midtom.wav',
     'tom_low': '/assets/drums/lowtom.wav',
-    
-    // Percussion one-shots (mapped to C2-D#3)
-    'perc1': '/assets/drums/perc-001.wav',
-    'perc2': '/assets/drums/perc-002.wav',
-    'perc3': '/assets/drums/perc-003.wav',
-    'perc4': '/assets/drums/perc-004.wav',
-    'perc5': '/assets/drums/perc-005.wav',
-    'perc6': '/assets/drums/perc-006.wav',
-    'perc7': '/assets/drums/perc-007.wav',
-    'perc8': '/assets/drums/perc-008.wav',
-    'perc9': '/assets/drums/perc-009.wav',
-    'perc10': '/assets/drums/perc-010.wav',
-    'perc11': '/assets/drums/perc-011.wav',
-    'perc12': '/assets/drums/perc-012.wav',
-    'perc13': '/assets/drums/perc-013.wav',
-    'perc14': '/assets/drums/perc-014.wav',
-    'perc15': '/assets/drums/perc-015.wav',
 };
 
 type Sampler = {
@@ -59,17 +41,15 @@ function createSampler(audioContext: AudioContext, output: AudioNode): Sampler {
 
     const triggerAttack = (note: string, time: number, velocity = 1) => {
         const buffer = buffers.get(note);
-        if (!buffer) {
-            // console.warn(`[DrumMachine] Sample not found for note: ${note}`);
-            return;
-        }
+        if (!buffer) return;
 
         const source = audioContext.createBufferSource();
         source.buffer = buffer;
 
         const gainNode = audioContext.createGain();
         gainNode.gain.setValueAtTime(velocity, audioContext.currentTime);
-        
+        gainNode.gain.setTargetAtTime(velocity, time, 0.01);
+
         source.connect(gainNode);
         gainNode.connect(output);
         source.start(time);
@@ -90,7 +70,7 @@ export class DrumMachine {
         this.outputNode = destination;
 
         this.preamp = this.audioContext.createGain();
-        this.preamp.gain.value = 4.5; // Boost volume by 4.5x
+        this.preamp.gain.value = 4.5;
         this.preamp.connect(this.outputNode);
     }
 
@@ -101,7 +81,7 @@ export class DrumMachine {
         this.isInitialized = true;
     }
 
-    schedule(score: FractalEvent[], startTime: number) {
+    schedule(score: FractalEvent[]) {
         if (!this.sampler || !this.isInitialized) {
             return;
         }
@@ -109,11 +89,9 @@ export class DrumMachine {
         for (const event of score) {
             if (!event.type.startsWith('drum_')) continue;
 
-            // Extract drum sample name from event type (e.g., 'drum_kick' -> 'kick')
             const sampleName = event.type.replace('drum_', '');
             
-            // Calculate absolute time for the event
-            const absoluteTime = startTime + event.time;
+            const absoluteTime = event.time;
             
             if (!isFinite(absoluteTime)) {
                 console.error('[DrumMachine] Non-finite time scheduled for event:', event);
@@ -124,8 +102,5 @@ export class DrumMachine {
         }
     }
 
-    public stop() {
-        // Since we schedule samples with precise timing and they are short-lived,
-        // a specific 'stop' for scheduled notes is often not necessary.
-    }
+    public stop() {}
 }

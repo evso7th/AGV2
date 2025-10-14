@@ -7,34 +7,33 @@ let timeOffset = 0;
 let isRunning = false;
 let animationFrameId: number | null = null;
 
-// Вспомогательная функция для безопасного вычисления длительности такта
 function getBarDuration(tempo: number): number {
   const t = Number(tempo);
-  if (isNaN(t) || t <= 0) return 2.0; // 120 BPM = 2 сек/такт
+  if (isNaN(t) || t <= 0) {
+    console.warn(`[Worker] Invalid tempo: ${t}. Defaulting to 2.0s/bar (120 BPM).`);
+    return 2.0; 
+  }
   return 4 * (60 / t);
 }
 
-// Преобразование событий движка в формат сэмплера/синтезатора
 function convertScoreToEvents(score: FractalEvent[], offset: number): FractalEvent[] {
   return score
     .map(event => {
       if (!isFinite(event.time) || !isFinite(offset)) return null;
       return {
         ...event,
-        time: event.time + offset // time уже в долях такта → абсолютное время
+        time: event.time + offset
       };
     })
     .filter((event): event is FractalEvent => event !== null && isFinite(event.time));
 }
 
-// Инициализация движка
 function initializeEngine(settings: {
   mood: Mood;
   genre: Genre;
   tempo: number;
   seed?: number;
 }) {
-  // Валидация и преобразование темпа
   const tempo = Math.max(20, Math.min(300, Number(settings.tempo) || 120));
 
   engine = new FractalMusicEngine({
@@ -48,37 +47,32 @@ function initializeEngine(settings: {
   isRunning = false;
 }
 
-// Основной цикл генерации
 function tick() {
   if (!engine) return;
 
   try {
     const score = engine.evolve();
-    // @ts-ignore - Воркер не знает про `self.postMessage`, это нормально
     const events = convertScoreToEvents(score, timeOffset);
 
-    // Отправка событий в основной поток
     self.postMessage({
       type: 'SCORE_READY',
       events
     });
 
-    // Обновление времени — динамически
-    const barDuration = getBarDuration((engine as any).config.tempo);
+    const barDuration = getBarDuration(engine.tempo);
     timeOffset += barDuration;
+
   } catch (e) {
     console.error('[Worker] Error in tick:', e);
   }
 
   if (isRunning) {
-    // @ts-ignore
-    animationFrameId = self.setTimeout(tick, 10); // ~100 FPS
+    animationFrameId = self.setTimeout(tick, 10);
   }
 }
 
-// Обработчик сообщений из основного потока
-self.onmessage = (e) => {
-  if (!e.data) return;
+self.onmessage = (e: MessageEvent) => {
+  if (!e.data || !e.data.command) return;
 
   switch (e.data.command) {
     case 'init':
@@ -90,14 +84,15 @@ self.onmessage = (e) => {
         console.warn('[Worker] Engine not initialized, cannot start');
         return;
       }
-      isRunning = true;
-      tick();
+      if (!isRunning) {
+        isRunning = true;
+        tick();
+      }
       break;
 
     case 'stop':
       isRunning = false;
       if (animationFrameId) {
-        // @ts-ignore
         self.clearTimeout(animationFrameId);
         animationFrameId = null;
       }
@@ -112,8 +107,6 @@ self.onmessage = (e) => {
       break;
 
     default:
-      if (e.data.command) {
-        console.warn('[Worker] Unknown command:', e.data.command);
-      }
+      console.warn(`[Worker] Unknown command: ${e.data.command}`);
   }
 };

@@ -123,6 +123,10 @@ export class FractalMusicEngine {
     this.initialize();
   }
 
+  public get tempo(): number {
+    return this.config.tempo;
+  }
+
   private initialize() {
     // БАСОВЫЙ АКСОН
     const bassAxiom = createBassAxiom(this.config.mood);

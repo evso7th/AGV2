@@ -1,114 +1,117 @@
+
 // public/worklets/bass-processor.js
+
 class BassProcessor extends AudioWorkletProcessor {
   static get parameterDescriptors() {
-    // Параметры больше не управляются извне — всё в событии
-    return [];
+    return [
+      { name: 'cutoff', defaultValue: 800, minValue: 20, maxValue: 10000 },
+      { name: 'resonance', defaultValue: 1.0, minValue: 0.1, maxValue: 20 },
+      { name: 'distortion', defaultValue: 0.0, minValue: 0, maxValue: 1 },
+      { name: 'portamento', defaultValue: 0.0, minValue: 0, maxValue: 1 },
+    ];
   }
 
   constructor() {
     super();
-    this.sampleRate = 44100;
-    this.activeNotes = new Map(); // { frequency: noteState }
-  }
+    this.phase = 0;
+    this.currentFreq = 440;
+    this.targetFreq = 440;
+    this.gain = 0;
+    this.noteState = 'off'; // 'off', 'attack', 'release'
 
-  // Генератор белого шума
-  noise() {
-    return Math.random() * 2 - 1;
-  }
+    // Filter state
+    this.y1 = 0;
+    this.y2 = 0;
 
-  // Фильтр низких частот
-  lowpassFilter(input, cutoff, resonance, state) {
-    const g = Math.tan(Math.PI * cutoff / this.sampleRate);
-    const r = 1 / resonance;
-    const y1 = state.y1;
-    const y2 = state.y2;
-    const x = input;
-    const y = x - r * y1 - y2;
-    const y1_new = g * y + y1;
-    const y2_new = g * y1_new + y2;
-    state.y1 = y1_new;
-    state.y2 = y2_new;
-    return y2_new;
-  }
-
-  // Дисторшн (soft clip)
-  softClip(input, drive) {
-    if (drive <= 0) return input;
-    const k = 2 * drive;
-    return (input * (1 + k)) / (1 + k * Math.abs(input));
-  }
-
-  process(inputs, outputs, parameters) {
-    const output = outputs[0];
-
-    // Генерация звука
-    for (let channel = 0; channel < output.length; channel++) {
-      const channelData = output[channel];
-      for (let i = 0; i < channelData.length; i++) {
-        let sample = 0;
-        for (const [freq, note] of this.activeNotes) {
-          // Основной слой
-          const pulse = (note.phase1 % (2 * Math.PI)) < Math.PI ? 1 : -1;
-          // Суб-слой (октава ниже)
-          const sub = Math.sin(note.phase2 * 0.5);
-          // Применение фильтра и дисторшна
-          const filtered = this.lowpassFilter(
-            pulse + sub * 0.7,
-            note.cutoff,
-            note.resonance,
-            note.filterState
-          );
-          const distorted = this.softClip(filtered, note.distortion);
-          sample += distorted * note.gain;
-          note.phase1 += (freq * 2 * Math.PI) / this.sampleRate;
-          note.phase2 += (freq * 2 * Math.PI) / this.sampleRate;
-        }
-        channelData[i] = sample * 0.3;
-      }
-    }
-
-    // Управление затуханием
-    for (const [freq, note] of this.activeNotes) {
-      if (note.state === 'decay') {
-        note.gain *= 0.995;
-        if (note.gain < 0.001) {
-          this.activeNotes.delete(freq);
-        }
-      }
-    }
-
-    return true;
+    this.port.onmessage = this.onmessage.bind(this);
   }
 
   onmessage(event) {
-    if (event.data.type === 'noteOn') {
-      const { frequency, velocity, params } = event.data;
+    const { type, time, frequency, velocity } = event.data;
 
-      // Извлечение параметров ИЗ СОБЫТИЯ
-      const {
-        cutoff = 400,
-        resonance = 0.7,
-        distortion = 0.02,
-        portamento = 0.0
-      } = params;
-
-      // Создание состояния ноты
-      this.activeNotes.set(frequency, {
-        phase1: 0,
-        phase2: 0,
-        gain: velocity,
-        cutoff,
-        resonance,
-        distortion,
-        portamento,
-        state: 'attack',
-        filterState: { y1: 0, y2: 0 }
-      });
-    } else if (event.data.type === 'noteOff') {
-      for (const note of this.activeNotes.values()) {
-        note.state = 'decay';
+    if (type === 'noteOn') {
+      this.targetFreq = frequency;
+      
+      if (this.noteState === 'off') {
+        this.currentFreq = frequency;
       }
+      
+      this.gain = velocity;
+      this.noteState = 'attack';
+      this.y1 = 0;
+      this.y2 = 0;
+
+    } else if (type === 'noteOff') {
+      this.noteState = 'release';
+    } else if (type === 'allNotesOff') {
+      this.noteState = 'off';
+      this.gain = 0;
     }
+  }
+
+  softClip(input, drive) {
+    if (drive <= 0.01) return input;
+    const k = 1 + drive * 5;
+    return Math.tanh(input * k);
+  }
+
+  process(inputs, outputs, parameters) {
+    const outputChannel = outputs[0][0];
+
+    const cutoffValues = parameters.cutoff;
+    const resonanceValues = parameters.resonance;
+    const distortionValues = parameters.distortion;
+    const portamentoValues = parameters.portamento;
+
+    for (let i = 0; i < outputChannel.length; i++) {
+      if (this.noteState === 'release') {
+        this.gain *= 0.999; 
+        if (this.gain < 0.0001) {
+          this.noteState = 'off';
+          this.gain = 0;
+        }
+      }
+      
+      if (this.noteState === 'off') {
+        outputChannel[i] = 0;
+        continue;
+      }
+
+      const portamento = portamentoValues.length > 1 ? portamentoValues[i] : portamentoValues[0];
+
+      const glideFactor = 1.0 - Math.exp(-1.0 / (sampleRate * (portamento * 0.1 + 0.003)));
+      this.currentFreq += (this.targetFreq - this.currentFreq) * glideFactor;
+
+      const pulse = this.phase < 0.5 ? 1.0 : -1.0;
+      const sub = Math.sin(this.phase * Math.PI);
+      
+      this.phase += this.currentFreq / sampleRate;
+      if (this.phase >= 1.0) this.phase -= 1.0;
+
+      const oscOutput = (pulse * 0.7) + (sub * 0.3);
+
+      const cutoff = cutoffValues.length > 1 ? cutoffValues[i] : cutoffValues[0];
+      const resonance = resonanceValues.length > 1 ? resonanceValues[i] : resonanceValues[0];
+      
+      const g = Math.tan(Math.PI * cutoff / sampleRate);
+      const r = 1 / Math.max(0.1, resonance);
+      
+      const hp = oscOutput - (r * this.y1) - this.y2;
+      const bp = (g * hp) + this.y1;
+      const lp = (g * bp) + this.y2;
+      
+      this.y1 = bp;
+      this.y2 = lp;
+      
+      const filteredSample = this.y2;
+
+      const distortion = distortionValues.length > 1 ? distortionValues[i] : distortionValues[0];
+      const distortedSample = this.softClip(filteredSample, distortion);
+
+      outputChannel[i] = distortedSample * this.gain;
+    }
+
+    return true;
   }
 }
 

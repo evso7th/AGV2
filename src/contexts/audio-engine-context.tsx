@@ -20,13 +20,11 @@ import type { FractalEvent } from '@/types/fractal';
 
 // --- Type Definitions ---
 type WorkerMessage = {
-    type: 'score' | 'error' | 'debug' | 'sparkle' | 'pad';
-    score?: Score;
+    type: 'SCORE_READY' | 'error' | 'debug';
+    events?: FractalEvent[];
+    barDuration?: number;
     error?: string;
     message?: string;
-    data?: any;
-    padName?: string;
-    time?: number;
 };
 
 // --- Constants ---
@@ -76,148 +74,41 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
   
   const workerRef = useRef<Worker | null>(null);
   const audioContextRef = useRef<AudioContext | null>(null);
-  const synthPoolRef = useRef<AudioWorkletNode[]>([]);
-  const nextVoiceRef = useRef(0);
   const settingsRef = useRef<WorkerSettings | null>(null);
   
   const drumMachineRef = useRef<DrumMachine | null>(null);
-  const accompanimentManagerRef = useRef<AccompanimentSynthManager | null>(null);
   const bassManagerRef = useRef<BassSynthManager | null>(null);
-  const sparklePlayerRef = useRef<SparklePlayer | null>(null);
-  const padPlayerRef = useRef<PadPlayer | null>(null);
-  const samplerPlayerRef = useRef<SamplerPlayer | null>(null);
-  const violinSamplerPlayerRef = useRef<ViolinSamplerPlayer | null>(null);
-  const fluteSamplerPlayerRef = useRef<FluteSamplerPlayer | null>(null);
-  const guitarChordsSamplerRef = useRef<GuitarChordsSampler | null>(null);
-  const acousticGuitarSoloSamplerRef = useRef<AcousticGuitarSoloSampler | null>(null);
-
-
+  
   const masterGainNodeRef = useRef<GainNode | null>(null);
   const gainNodesRef = useRef<Record<InstrumentPart, GainNode | null>>({
     bass: null, melody: null, accompaniment: null, effects: null, drums: null, sparkles: null, pads: null, piano: null, violin: null, flute: null, guitarChords: null, acousticGuitarSolo: null,
   });
 
   const eqNodesRef = useRef<BiquadFilterNode[]>([]);
+  const nextBarTimeRef = useRef<number>(0);
   
   const { toast } = useToast();
-  
-  const setInstrumentCallback = useCallback((part: 'bass' | 'melody' | 'accompaniment', name: BassInstrument | MelodyInstrument | AccompanimentInstrument) => {
-    if (!settingsRef.current) return;
+
+  const scheduleEvents = useCallback((events: FractalEvent[], barStartTime: number, tempo: number) => {
+    const drumEvents: FractalEvent[] = [];
+    const bassEvents: FractalEvent[] = [];
+
+    for (const event of events) {
+      if (event.type.startsWith('drum_')) {
+        drumEvents.push(event);
+      } else if (event.type === 'bass') {
+        bassEvents.push(event);
+      }
+    }
+
+    if (drumMachineRef.current && drumEvents.length > 0) {
+      drumMachineRef.current.schedule(drumEvents, barStartTime, tempo);
+    }
     
-    const instrumentSettings = settingsRef.current.instrumentSettings;
-
-    if (part === 'accompaniment') {
-        accompanimentManagerRef.current?.setPreset('none');
-        if (name === 'violin') violinSamplerPlayerRef.current?.setVolume(instrumentSettings.accompaniment.volume);
-        else if (name === 'piano') samplerPlayerRef.current?.setVolume(instrumentSettings.accompaniment.volume);
-        else if (name === 'flute') fluteSamplerPlayerRef.current?.setVolume(instrumentSettings.accompaniment.volume);
-        else if (name === 'guitarChords') guitarChordsSamplerRef.current?.setVolume(instrumentSettings.accompaniment.volume);
-        else accompanimentManagerRef.current?.setPreset(name as MelodyInstrument);
+    if (bassManagerRef.current && bassEvents.length > 0) {
+      bassManagerRef.current.play(bassEvents, barStartTime);
     }
-    if (part === 'bass') {
-        bassManagerRef.current?.setPreset(name as BassInstrument);
-    }
-     if (part === 'melody') {
-        if (name === 'violin') violinSamplerPlayerRef.current?.setVolume(instrumentSettings.melody.volume);
-        else if (name === 'piano') samplerPlayerRef.current?.setVolume(instrumentSettings.melody.volume);
-        else if (name === 'flute') fluteSamplerPlayerRef.current?.setVolume(instrumentSettings.melody.volume);
-        else if (name === 'acousticGuitarSolo') acousticGuitarSoloSamplerRef.current?.setVolume(instrumentSettings.melody.volume);
-    }
-
-    const newInstrumentSettings = {
-        ...settingsRef.current.instrumentSettings,
-        [part]: { ...settingsRef.current.instrumentSettings[part], name }
-    };
-    settingsRef.current.instrumentSettings = newInstrumentSettings;
   }, []);
-
-  const scheduleScore = useCallback((score: Score, audioContext: AudioContext, startTime: number) => {
-    const currentSettings = settingsRef.current;
-    if (!currentSettings) return;
-
-    let bassInstrument = currentSettings.instrumentSettings.bass.name;
-    let melodyInstrument = currentSettings.instrumentSettings.melody.name;
-    let accompanimentInstrument = currentSettings.instrumentSettings.accompaniment.name;
-    
-    const bassScore: FractalEvent[] = score.bass || [];
-    if (bassScore.length > 0 && bassManagerRef.current) {
-        bassManagerRef.current.play(bassScore, startTime);
-    }
-
-    const drumScore: FractalEvent[] = score.drums || [];
-    if (drumScore.length > 0 && drumMachineRef.current && currentSettings.drumSettings.enabled) {
-        drumMachineRef.current.schedule(drumScore, startTime);
-    }
-    
-    const melodyScore = score.melody || [];
-    if (melodyScore.length > 0 && melodyInstrument !== 'none') {
-        if (melodyInstrument === 'piano' && samplerPlayerRef.current) {
-            samplerPlayerRef.current.schedule('piano', melodyScore, startTime);
-        } else if (melodyInstrument === 'violin' && violinSamplerPlayerRef.current) {
-            violinSamplerPlayerRef.current.schedule(melodyScore, startTime);
-        } else if (melodyInstrument === 'flute' && fluteSamplerPlayerRef.current) {
-            fluteSamplerPlayerRef.current.schedule(melodyScore, startTime);
-        } else if (melodyInstrument === 'acousticGuitarSolo' && acousticGuitarSoloSamplerRef.current) {
-            acousticGuitarSoloSamplerRef.current.schedule('acousticGuitarSolo', melodyScore, startTime);
-        } else {
-            const gainNode = gainNodesRef.current.melody;
-            if (gainNode) {
-                melodyScore.forEach(note => {
-                    const voice = synthPoolRef.current[nextVoiceRef.current++ % synthPoolRef.current.length];
-                    if (voice) {
-                        const params = getPresetParams(melodyInstrument as InstrumentType, note);
-                        if (!params) return;
-                        voice.disconnect();
-                        voice.connect(gainNode);
-                        const noteOnTime = startTime + note.time;
-                        voice.port.postMessage({ ...params, type: 'noteOn', when: noteOnTime });
-                        const noteOffTime = noteOnTime + note.duration;
-                        const delayUntilOff = (noteOffTime - audioContext.currentTime) * 1000;
-                        setTimeout(() => voice.port.postMessage({ type: 'noteOff', release: params.release }), Math.max(0, delayUntilOff));
-                    }
-                });
-            }
-        }
-    }
-    
-    const accompanimentScore: Note[] = score.accompaniment || [];
-    if (accompanimentScore.length > 0 && accompanimentInstrument !== 'none') {
-        if (accompanimentInstrument === 'piano' && samplerPlayerRef.current) {
-            samplerPlayerRef.current.schedule('piano', accompanimentScore, startTime);
-        } else if (accompanimentInstrument === 'violin' && violinSamplerPlayerRef.current) {
-            violinSamplerPlayerRef.current.schedule(accompanimentScore, startTime);
-        } else if (accompanimentInstrument === 'flute' && fluteSamplerPlayerRef.current) {
-            fluteSamplerPlayerRef.current.schedule(accompanimentScore, startTime);
-        } else if (accompanimentInstrument === 'guitarChords' && guitarChordsSamplerRef.current) {
-      guitarChordsSamplerRef.current.schedule(accompanimentScore, startTime);
-    } else if (accompanimentManagerRef.current) {
-        accompanimentManagerRef.current.schedule(accompanimentScore, startTime);
-    }
-    }
-
-    const effectsScore: EffectsScore = score.effects || [];
-    if (effectsScore.length > 0 && currentSettings) {
-        const gainNode = gainNodesRef.current.effects;
-        if (gainNode) {
-            effectsScore.forEach(note => {
-                 const voice = synthPoolRef.current[nextVoiceRef.current++ % synthPoolRef.current.length];
-                 if(voice) {
-                     const noteAsMidi: Note = { midi: note.midi, time: note.time, duration: 0.5, velocity: note.velocity };
-                     const params = getPresetParams(note.note as InstrumentType, noteAsMidi);
-                     if (!params) return;
-                     voice.disconnect();
-                     voice.connect(gainNode);
-                     const noteOnTime = startTime + note.time;
-                     const noteOffTime = noteOnTime + 0.5; // Fixed duration for effects
-                     
-                     voice.port.postMessage({ ...params, type: 'noteOn', when: noteOnTime });
-                     const delayUntilOff = (noteOffTime - audioContext.currentTime) * 1000;
-                     setTimeout(() => voice.port.postMessage({ type: 'noteOff', release: params.release }), Math.max(0, delayUntilOff));
-                 }
-            });
-        }
-    }
-  }, [setInstrumentCallback]);
 
   const initialize = useCallback(async () => {
     if (isInitialized || isInitializing) return true;
@@ -227,34 +118,22 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
     try {
         if (!audioContextRef.current) {
             audioContextRef.current = new (window.AudioContext || (window as any).webkitAudioContext)({
-                 sampleRate: isMobile() ? 44100 : 44100, latencyHint: 'interactive'
+                 sampleRate: 44100, latencyHint: 'interactive'
             });
         }
 
         if (audioContextRef.current.state === 'suspended') await audioContextRef.current.resume();
 
         const context = audioContextRef.current;
+        nextBarTimeRef.current = context.currentTime + 0.1; // Add small buffer
         
         if (!masterGainNodeRef.current) {
             masterGainNodeRef.current = context.createGain();
-            const eqChain: BiquadFilterNode[] = EQ_FREQUENCIES.map((freq, i) => {
-                const filter = context.createBiquadFilter();
-                filter.type = (i === 0) ? 'lowshelf' : (i === EQ_FREQUENCIES.length - 1 ? 'highshelf' : 'peaking');
-                filter.frequency.value = freq;
-                filter.Q.value = 1.0;
-                filter.gain.value = 0;
-                return filter;
-            });
-            eqChain.forEach((filter, i) => {
-              if (i < eqChain.length - 1) filter.connect(eqChain[i+1]);
-            });
-            eqChain[eqChain.length - 1].connect(context.destination);
-            eqNodesRef.current = eqChain;
-            masterGainNodeRef.current.connect(eqChain[0]);
+            masterGainNodeRef.current.connect(context.destination);
         }
 
         if (!gainNodesRef.current.bass) {
-            const parts: InstrumentPart[] = ['bass', 'melody', 'accompaniment', 'effects', 'drums', 'sparkles', 'pads', 'piano', 'violin', 'flute', 'guitarChords', 'acousticGuitarSolo'];
+            const parts: InstrumentPart[] = ['bass', 'drums']; // Only initialize what we use
             parts.forEach(part => {
                 gainNodesRef.current[part] = context.createGain();
                 gainNodesRef.current[part]!.connect(masterGainNodeRef.current!);
@@ -266,68 +145,24 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
             drumMachineRef.current = new DrumMachine(context, gainNodesRef.current.drums!);
             initPromises.push(drumMachineRef.current.init());
         }
-        if (!samplerPlayerRef.current) {
-            samplerPlayerRef.current = new SamplerPlayer(context, gainNodesRef.current.piano!);
-            initPromises.push(samplerPlayerRef.current.loadInstrument('piano', PIANO_SAMPLES));
-        }
-        if (!violinSamplerPlayerRef.current) {
-            violinSamplerPlayerRef.current = new ViolinSamplerPlayer(context, gainNodesRef.current.violin!);
-            initPromises.push(violinSamplerPlayerRef.current.loadInstrument('violin', VIOLIN_SAMPLES));
-        }
-        if (!fluteSamplerPlayerRef.current) {
-            fluteSamplerPlayerRef.current = new FluteSamplerPlayer(context, gainNodesRef.current.flute!);
-            initPromises.push(fluteSamplerPlayerRef.current.loadInstrument('flute', FLUTE_SAMPLES));
-        }
-        if (!guitarChordsSamplerRef.current) {
-            guitarChordsSamplerRef.current = new GuitarChordsSampler(context, gainNodesRef.current.guitarChords!);
-            initPromises.push(guitarChordsSamplerRef.current.init());
-        }
-        if (!acousticGuitarSoloSamplerRef.current) {
-            acousticGuitarSoloSamplerRef.current = new AcousticGuitarSoloSampler(context, gainNodesRef.current.acousticGuitarSolo!);
-            initPromises.push(acousticGuitarSoloSamplerRef.current.loadInstrument('acousticGuitarSolo', ACOUSTIC_GUITAR_SOLO_SAMPLES));
-        }
-        if (!accompanimentManagerRef.current) {
-            accompanimentManagerRef.current = new AccompanimentSynthManager(context, gainNodesRef.current.accompaniment!);
-            initPromises.push(accompanimentManagerRef.current.init());
-        }
+       
         if (!bassManagerRef.current) {
             bassManagerRef.current = new BassSynthManager(context, gainNodesRef.current.bass!);
             initPromises.push(bassManagerRef.current.init());
         }
-        if (!sparklePlayerRef.current) {
-            sparklePlayerRef.current = new SparklePlayer(context, gainNodesRef.current.sparkles!);
-            initPromises.push(sparklePlayerRef.current.init());
-        }
-        if (!padPlayerRef.current) {
-            padPlayerRef.current = new PadPlayer(context, gainNodesRef.current.pads!);
-            initPromises.push(padPlayerRef.current.init());
-        }
 
         if (!workerRef.current) {
-            const worker = new Worker(new URL('../lib/ambient.worker.ts', import.meta.url), { type: 'module' });
+            const worker = new Worker(new URL('../app/ambient.worker.ts', import.meta.url), { type: 'module' });
             worker.onmessage = (event: MessageEvent<WorkerMessage>) => {
-                if (event.data.type === 'score' && event.data.score && event.data.time) {
-                    scheduleScore(event.data.score, context, context.currentTime + event.data.time);
-                }
-                else if (event.data.type === 'sparkle' && event.data.time !== undefined) {
-                    sparklePlayerRef.current?.playRandomSparkle(context.currentTime + event.data.time);
-                }
-                else if (event.data.type === 'pad' && event.data.padName) {
-                    padPlayerRef.current?.setPad(event.data.padName, context.currentTime + (event.data.time ?? 0));
+                if (event.data.type === 'SCORE_READY' && event.data.events && event.data.barDuration && settingsRef.current) {
+                    scheduleEvents(event.data.events, nextBarTimeRef.current, settingsRef.current.bpm);
+                    nextBarTimeRef.current += event.data.barDuration;
                 }
                 else if (event.data.type === 'error') {
                     toast({ variant: "destructive", title: "Worker Error", description: event.data.error });
                 }
             };
             workerRef.current = worker;
-        }
-        
-        // The synth pool is no longer used for bass, but we keep it for melody/effects
-        if(synthPoolRef.current.length === 0) {
-            initPromises.push(context.audioWorklet.addModule('/worklets/synth-processor.js').then(() => {
-                const numVoices = isMobile() ? 4 : 8;
-                synthPoolRef.current = Array.from({ length: numVoices }, () => new AudioWorkletNode(context, 'synth-processor'));
-            }));
         }
         
         await Promise.all(initPromises);
@@ -342,17 +177,11 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
     } finally {
         setIsInitializing(false);
     }
-  }, [isInitialized, isInitializing, toast, scheduleScore]);
+  }, [isInitialized, isInitializing, toast, scheduleEvents]);
 
   const stopAllSounds = useCallback(() => {
-    accompanimentManagerRef.current?.allNotesOff();
     bassManagerRef.current?.allNotesOff();
-    padPlayerRef.current?.stop();
-    samplerPlayerRef.current?.stopAll();
-    violinSamplerPlayerRef.current?.stopAll();
-    fluteSamplerPlayerRef.current?.stopAll();
-    guitarChordsSamplerRef.current?.stopAll();
-    acousticGuitarSoloSamplerRef.current?.stopAll();
+    drumMachineRef.current?.stop();
   }, []);
   
   const setIsPlayingCallback = useCallback((playing: boolean) => {
@@ -362,6 +191,7 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
         if (audioContextRef.current.state === 'suspended') {
             audioContextRef.current.resume();
         }
+        nextBarTimeRef.current = audioContextRef.current.currentTime + 0.1;
         workerRef.current.postMessage({ command: 'start' });
     } else {
         stopAllSounds();
@@ -371,7 +201,9 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
 
   const resetWorkerCallback = useCallback(() => {
     if (!workerRef.current) return;
-    workerRef.current.postMessage({ command: 'reset' });
+    if (settingsRef.current) {
+      workerRef.current.postMessage({ command: 'init', data: settingsRef.current });
+    }
   }, []);
 
 
@@ -384,47 +216,19 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
 
   const setVolumeCallback = useCallback((part: InstrumentPart, volume: number) => {
     const gainNode = gainNodesRef.current[part];
-    if (gainNode) {
+    if (gainNode && audioContextRef.current) {
         const balancedVolume = volume * (VOICE_BALANCE[part] ?? 1);
-        gainNode.gain.setTargetAtTime(balancedVolume, audioContextRef.current?.currentTime ?? 0, 0.01);
+        gainNode.gain.setTargetAtTime(balancedVolume, audioContextRef.current.currentTime, 0.01);
     }
   }, []);
 
-  const setBassTechniqueCallback = useCallback((technique: BassTechnique) => {
-     if (settingsRef.current) {
-      const newSettings = {...settingsRef.current, instrumentSettings: {...settingsRef.current.instrumentSettings, bass: {...settingsRef.current.instrumentSettings.bass, technique}}};
-      updateSettingsCallback(newSettings);
-    }
-  }, [updateSettingsCallback]);
-
-  const setTextureSettingsCallback = useCallback((settings: TextureSettings) => {
-    sparklePlayerRef.current?.setVolume(settings.sparkles.volume);
-    padPlayerRef.current?.setVolume(settings.pads.volume);
-    if (settingsRef.current) {
-        const newSettings = {...settingsRef.current, textureSettings: { sparkles: { enabled: settings.sparkles.enabled }, pads: { enabled: settings.pads.enabled }}};
-        updateSettingsCallback(newSettings);
-    }
-  }, [updateSettingsCallback]);
-
-  const setEQGainCallback = useCallback((bandIndex: number, gain: number) => {
-      const filterNode = eqNodesRef.current[bandIndex];
-      if (filterNode && audioContextRef.current) {
-          filterNode.gain.setTargetAtTime(gain, audioContextRef.current.currentTime, 0.01);
-      }
-  }, []);
-
-  const startMasterFadeOut = useCallback((durationInSeconds: number) => {
-      if (masterGainNodeRef.current && audioContextRef.current) {
-          masterGainNodeRef.current.gain.linearRampToValueAtTime(0, audioContextRef.current.currentTime + durationInSeconds);
-      }
-  }, []);
-
-  const cancelMasterFadeOut = useCallback(() => {
-      if (masterGainNodeRef.current && audioContextRef.current) {
-          masterGainNodeRef.current.gain.cancelScheduledValues(audioContextRef.current.currentTime);
-          masterGainNodeRef.current.gain.linearRampToValueAtTime(1, audioContextRef.current.currentTime + 0.5);
-      }
-  }, []);
+  // Dummy implementations for unused functions
+  const setInstrumentCallback = useCallback((part: any, name: any) => {}, []);
+  const setBassTechniqueCallback = useCallback((technique: any) => {}, []);
+  const setTextureSettingsCallback = useCallback((settings: any) => {}, []);
+  const setEQGainCallback = useCallback((bandIndex: number, gain: number) => {}, []);
+  const startMasterFadeOut = useCallback((durationInSeconds: number) => {}, []);
+  const cancelMasterFadeOut = useCallback(() => {}, []);
 
   return (
     <AudioEngineContext.Provider value={{

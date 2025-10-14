@@ -3,7 +3,7 @@ import type { FractalEvent } from '@/types/fractal';
 
 /**
  * BassSynthManager — "Исполнитель"
- * Его единственная задача: получить событие FractalEvent и точно воспроизвести его
+ * Его единственная задача: получить МАССИВ событий FractalEvent и точно воспроизвести их
  * в заданное время с заданными параметрами синтеза.
  */
 export class BassSynthManager {
@@ -31,57 +31,69 @@ export class BassSynthManager {
   }
 
   /**
-   * Воспроизводит одно событие баса.
-   * Все параметры синтеза уже содержатся в событии.
+   * Воспроизводит массив событий баса.
+   * Время в событиях - АБСОЛЮТНОЕ.
    */
-  public play(event: FractalEvent) {
+  public play(events: FractalEvent[]) {
     if (!this.isInitialized || !this.worklet) {
-      console.warn('[BassSynthManager] Not ready, skipping event');
+      console.warn('[BassSynthManager] Not ready, skipping events');
       return;
     }
 
-    // Защита от некорректного времени
-    if (!isFinite(event.time)) {
-      console.warn('[BassSynthManager] Non-finite time in event:', event);
-      return;
+    for (const event of events) {
+      if (event.type !== 'bass') continue;
+
+      // Защита от некорректного времени
+      const noteOnTime = event.time;
+      if (!isFinite(noteOnTime)) {
+        console.warn('[BassSynthManager] Non-finite time in event:', event);
+        continue;
+      }
+
+      if (!event.params) {
+        console.warn('[BassSynthManager] Event is missing synth params:', event);
+        continue;
+      }
+
+      // Извлечение параметров ИЗ СОБЫТИЯ
+      const { cutoff, resonance, distortion, portamento } = event.params;
+
+      // Установка параметров через AudioParam (sample-accurate)
+      this.setParam('cutoff', cutoff, noteOnTime);
+      this.setParam('resonance', resonance, noteOnTime);
+      this.setParam('distortion', distortion, noteOnTime);
+      this.setParam('portamento', portamento, noteOnTime);
+
+      // Расчёт частоты
+      const freq = 440 * Math.pow(2, (event.note - 69) / 12);
+      if (!isFinite(freq)) continue;
+
+      // Отправка ноты в ворклет
+      this.worklet.port.postMessage({
+        type: 'noteOn',
+        frequency: freq,
+        velocity: this.getVelocity(event.dynamics),
+        time: noteOnTime
+      });
+
+      // Планирование noteOff
+      const noteOffTime = noteOnTime + event.duration;
+      this.worklet.port.postMessage({
+        type: 'noteOff',
+        time: noteOffTime
+      });
     }
-
-    const noteOnTime = this.ctx.currentTime + event.time;
-    if (!isFinite(noteOnTime)) return;
-
-    if (!event.params) {
-      console.warn('[BassSynthManager] Event is missing synth params:', event);
-      return;
-    }
-
-    // Извлечение параметров ИЗ СОБЫТИЯ (не генерация!)
-    const { cutoff, resonance, distortion, portamento } = event.params;
-
-    // Установка параметров через AudioParam (sample-accurate)
-    this.setParam('cutoff', cutoff, noteOnTime);
-    this.setParam('resonance', resonance, noteOnTime);
-    this.setParam('distortion', distortion, noteOnTime);
-    this.setParam('portamento', portamento, noteOnTime);
-
-    // Расчёт частоты
-    const freq = 440 * Math.pow(2, (event.note - 69) / 12);
-    if (!isFinite(freq)) return;
-
-    // Отправка ноты в ворклет
-    this.worklet.port.postMessage({
-      type: 'noteOn',
-      frequency: freq,
-      velocity: this.getVelocity(event.dynamics),
-      time: noteOnTime
-    });
   }
 
-  // Вспомогательные методы
+  public allNotesOff() {
+      if (!this.worklet) return;
+      this.worklet.port.postMessage({ type: 'allNotesOff' });
+  }
 
   private setParam(name: string, value: number, time: number) {
     const param = this.worklet?.parameters.get(name);
     if (param && isFinite(value)) {
-      param.setValueAtTime(value, time);
+      param.setTargetAtTime(value, time, 0.01); // Плавное изменение
     }
   }
 
