@@ -1,21 +1,24 @@
-
-// types/fractal.ts
-
 /**
- * Настроение (определяет лад, динамику, технику)
+ * Настроение — управляет ладом, динамикой, техникой
  */
 export type Mood = 'melancholic' | 'epic' | 'dreamy' | 'dark';
 
 /**
- * Жанр (определяет форму, темп, плотность)
+ * Жанр — управляет формой и плотностью
  */
 export type Genre = 'trance' | 'ambient' | 'progressive' | 'rock';
 
 /**
- * Техника игры на басу или ударных
- * Расширено для поддержки всех инструментов
+ * Техника игры
  */
-export type Technique = 'pluck' | 'ghost' | 'slap' | 'hit' | 'harmonic';
+export type Technique = 
+  // Бас
+  | 'pluck'    // щипок пальцами
+  | 'ghost'    // приглушённая нота в паузе
+  | 'slap'     // slap & pop (удар + щелчок)
+  | 'harmonic' // флажолет
+  // Ударные
+  | 'hit';     // стандартный удар по сэмплу
 
 /**
  * Динамика (громкость)
@@ -28,51 +31,49 @@ export type Dynamics = 'p' | 'mf' | 'f';
 export type Phrasing = 'legato' | 'staccato';
 
 /**
- * Тип инструмента (для маршрутизации события)
+ * Тип инструмента
  */
 export type InstrumentType =
+  // Бас (синтезатор)
   | 'bass'
+  // Ударные (сэмплы)
   | 'drum_kick'
   | 'drum_snare'
-  | 'drum_hat' // Maintained for backward compatibility
   | 'drum_hihat_closed'
   | 'drum_hihat_open'
-  | 'drum_crash'
   | 'drum_ride'
-  | 'drum_tom_high'
-  | 'drum_tom_mid'
+  | 'drum_crash'
   | 'drum_tom_low'
-  | 'pad'
-  | 'lead'
-  | 'arp';
+  | 'drum_tom_mid'
+  | 'drum_tom_high';
 
 /**
  * Событие фрактального композитора
- * Это основной протокол "композитор → инструмент"
+ * Это единый протокол "композитор → исполнитель"
  */
 export interface FractalEvent {
   /**
-   * Тип инструмента — определяет, кто играет
+   * Тип инструмента
    */
   type: InstrumentType;
 
   /**
-   * Нота в MIDI (например, 40 = E2)
+   * Нота в MIDI (например, 40 = E2, 36 = kick)
    */
   note: number;
 
   /**
-   * Длительность в секундах
+   * Длительность в долях такта (1 = целая при 4/4)
    */
   duration: number;
 
   /**
-   * Абсолютное время начала события в секундах от начала текущего такта
+   * Абсолютное время начала в секундах от старта композиции
    */
   time: number;
 
   /**
-   * Вес ветви (0.0–1.0) — мера "живости" идеи
+   * Вес ветви (0.0–1.0) — мера "живости" идеи в фрактальной модели
    */
   weight: number;
 
@@ -82,12 +83,12 @@ export interface FractalEvent {
   technique: Technique;
 
   /**
-   * Динамика
+   * Динамика (громкость)
    */
   dynamics: Dynamics;
 
   /**
-   * Фразировка
+   * Фразировка (артикуляция)
    */
   phrasing: Phrasing;
 }
@@ -104,17 +105,9 @@ export type EventID = string;
 export type ResonanceMatrix = (
   eventA: FractalEvent,
   eventB: FractalEvent,
-  context: ResonanceContext
+  context: {
+    mood: Mood;
+    tempo: number;
+    delta: number; // текущий импульс δ(t)
+  }
 ) => number;
-
-/**
- * Контекст для расширенного резонанса
- */
-export interface ResonanceContext {
-  mood: Mood;
-  delta: number; // текущий импульс δ(t)
-  kickTimes: number[];
-  snareTimes: number[];
-  beatPhase: number; // фаза доли (0.0–4.0)
-  barDuration: number;
-}
