@@ -17,6 +17,11 @@ import { PIANO_SAMPLES, VIOLIN_SAMPLES, FLUTE_SAMPLES, ACOUSTIC_GUITAR_CHORD_SAM
 import { GuitarChordsSampler } from '@/lib/guitar-chords-sampler';
 import { AcousticGuitarSoloSampler } from '@/lib/acoustic-guitar-solo-sampler';
 import type { FractalEvent } from '@/types/fractal';
+import * as Tone from 'tone';
+
+export function noteToMidi(note: string): number {
+    return new Tone.Frequency(note).toMidi();
+}
 
 // --- Type Definitions ---
 type WorkerMessage = {
