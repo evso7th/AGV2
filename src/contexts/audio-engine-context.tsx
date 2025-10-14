@@ -106,7 +106,8 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
     }
     
     if (bassManagerRef.current && bassEvents.length > 0) {
-      bassManagerRef.current.play(bassEvents, barStartTime);
+        // We pass the barStartTime here to ensure correct absolute timing
+        bassManagerRef.current.play(bassEvents, barStartTime);
     }
   }, []);
 
@@ -154,12 +155,12 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
         if (!workerRef.current) {
             const worker = new Worker(new URL('../app/ambient.worker.ts', import.meta.url), { type: 'module' });
             worker.onmessage = (event: MessageEvent<WorkerMessage>) => {
-                if (event.data.type === 'SCORE_READY' && event.data.events && event.data.barDuration && settingsRef.current) {
-                    scheduleEvents(event.data.events, nextBarTimeRef.current, settingsRef.current.bpm);
-                    nextBarTimeRef.current += event.data.barDuration;
-                }
-                else if (event.data.type === 'error') {
-                    toast({ variant: "destructive", title: "Worker Error", description: event.data.error });
+                const { type, events, barDuration, error } = event.data;
+                if (type === 'SCORE_READY' && events && barDuration && settingsRef.current) {
+                    scheduleEvents(events, nextBarTimeRef.current, settingsRef.current.bpm);
+                    nextBarTimeRef.current += barDuration;
+                } else if (type === 'error') {
+                    toast({ variant: "destructive", title: "Worker Error", description: error });
                 }
             };
             workerRef.current = worker;
