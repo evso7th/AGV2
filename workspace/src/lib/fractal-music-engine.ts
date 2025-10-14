@@ -1,5 +1,5 @@
 
-import type { FractalEvent, Mood, Genre, Technique } from '@/types/fractal';
+import type { FractalEvent, Mood, Genre, Technique, BassSynthParams } from '@/types/fractal';
 import { MelancholicMinorK } from './resonance-matrices';
 import { getScaleForMood } from './music-theory';
 
@@ -16,12 +16,16 @@ interface EngineConfig {
   mood: Mood;
   genre: Genre;
   tempo: number;
+  density: number; // Added density
+  lambda: number; // Added lambda
+  organic: number; // Added organic
+  drumSettings: any; // Added drumSettings
   seed?: number;
 }
 
 // === ВСПОМОГАТЕЛЬНЫЕ ФУНКЦИИ ===
 
-function getParamsForTechnique(technique: Technique, mood: Mood): object {
+function getParamsForTechnique(technique: Technique, mood: Mood): BassSynthParams {
   switch (technique) {
     case 'pluck':
       return { cutoff: 800, resonance: 0.3, distortion: 0.1, portamento: 0.01 };
@@ -102,7 +106,7 @@ function createTomFill(): FractalEvent[] {
 
 // === ОСНОВНОЙ КЛАСС ===
 export class FractalMusicEngine {
-  private config: EngineConfig;
+  public config: EngineConfig; // Made public
   private branches: Branch[] = [];
   private time: number = 0;
   private lambda: number;
@@ -111,16 +115,33 @@ export class FractalMusicEngine {
 
   constructor(config: EngineConfig) {
     if (!config || config.tempo <= 0 || !isFinite(config.tempo)) {
-      console.warn('[FractalEngine] Invalid tempo, defaulting to 120');
-      config = { ...config, tempo: 120 };
+      console.warn('[FractalEngine] Invalid config, using defaults.');
+      config = { 
+          mood: 'melancholic', 
+          genre: 'ambient', 
+          tempo: 120, 
+          density: 0.5,
+          lambda: 0.5,
+          organic: 0.5,
+          drumSettings: { enabled: true }
+      };
     }
     this.config = {
       ...config,
       tempo: Math.max(20, Math.min(300, config.tempo))
     };
-    this.lambda = config.mood === 'melancholic' ? 0.25 : 0.15;
+    this.lambda = config.lambda ?? 0.5;
     this.random = seededRandom(config.seed ?? Date.now());
     this.initialize();
+  }
+
+  public get tempo(): number {
+    return this.config.tempo;
+  }
+  
+  public updateConfig(newConfig: Partial<EngineConfig>) {
+      this.config = { ...this.config, ...newConfig };
+      if (newConfig.lambda) this.lambda = newConfig.lambda;
   }
 
   private initialize() {
@@ -136,73 +157,73 @@ export class FractalMusicEngine {
     });
 
     // УДАРНЫЙ АКСОН
-    const drumAxiom = createDrumAxiom();
-    this.branches.push({
-      id: 'drum_axon',
-      events: drumAxiom,
-      weight: 0.8,
-      age: 0,
-      technique: 'hit',
-      type: 'drums'
-    });
-  }
-
-  // === ГЕНЕРАЦИЯ СОБЫТИЙ НА 1 ТАКТ ===
-  private generateOneBar(): FractalEvent[] {
-    const output: FractalEvent[] = [];
-    let currentTime = this.time;
-    const beatDuration = 60 / this.config.tempo; // длительность доли в секундах
-
-    // Обработка всех ветвей
-    this.branches.forEach(branch => {
-      branch.events.forEach(event => {
-        // ПЕРЕВОД duration из долей такта в секунды
-        const durationInSeconds = event.duration * beatDuration;
-        const newEvent = {
-          ...event,
-          time: currentTime + event.time * beatDuration, // time тоже в долях → в секунды
-          duration: durationInSeconds
-        };
-
-        output.push(newEvent);
-      });
-    });
-
-    // DLA: новые ветви (каждые 4 такта) — с ВОСПРОИЗВОДИМЫМ random!
-    if (this.epoch % 4 === 0 && this.random.next() < 0.4) {
-      if (this.random.next() > 0.5 && this.branches.filter(b => b.type === 'bass').length < 3) {
-        const base = this.branches.find(b => b.type === 'bass');
-        if (base) {
-          const ghostParams = getParamsForTechnique('ghost', this.config.mood);
-          this.branches.push({
-            id: `bass_ghost_${Date.now()}`,
-            events: [{ ...base.events[1], duration: 0.2, time: 1.5, technique: 'ghost', params: ghostParams }],
-            weight: 0.15,
-            age: 0,
-            technique: 'ghost',
-            type: 'bass'
-          });
-        }
-      } else if (this.branches.filter(b => b.type === 'drums').length < 3) {
+    if (this.config.drumSettings.enabled) {
+        const drumAxiom = createDrumAxiom();
         this.branches.push({
-          id: `drum_fill_${Date.now()}`,
-          events: createTomFill(),
-          weight: 0.2,
+          id: 'drum_axon',
+          events: drumAxiom,
+          weight: 0.8,
           age: 0,
           technique: 'hit',
           type: 'drums'
         });
-      }
     }
+  }
 
+  private generateOneBar(): FractalEvent[] {
+    const output: FractalEvent[] = [];
+    
+    // Новая логика: просто собираем события из ветвей без изменения времени
+    this.branches.forEach(branch => {
+      branch.events.forEach(originalEvent => {
+        const newEvent: FractalEvent = { ...originalEvent };
+
+        // Применяем динамику и фразировку на основе веса ветви
+        newEvent.dynamics = weightToDynamics(branch.weight);
+        newEvent.phrasing = branch.weight > 0.7 ? 'legato' : 'staccato';
+        newEvent.weight = branch.weight; // Передаем вес ветви в событие
+
+        // Если это басовая нота, убедимся, что у нее есть параметры
+        if (newEvent.type === 'bass' && !newEvent.params) {
+            newEvent.params = getParamsForTechnique(newEvent.technique, this.config.mood);
+        }
+        
+        output.push(newEvent);
+      });
+    });
+
+    // DLA: новые ветви
+    if (this.epoch % 4 === 3 && this.random.next() < this.config.density) {
+        if (this.random.next() > 0.5 && this.branches.filter(b => b.type === 'bass').length < 3) {
+            const base = this.branches.find(b => b.type === 'bass');
+            if (base) {
+                const ghostParams = getParamsForTechnique('ghost', this.config.mood);
+                this.branches.push({
+                    id: `bass_ghost_${this.epoch}`,
+                    events: [{ ...base.events[this.random.nextInt(base.events.length)], duration: 0.2, technique: 'ghost', params: ghostParams }],
+                    weight: 0.15,
+                    age: 0,
+                    technique: 'ghost',
+                    type: 'bass'
+                });
+            }
+        } else if (this.config.drumSettings.enabled && this.branches.filter(b => b.type === 'drums').length < 3) {
+            this.branches.push({
+                id: `drum_fill_${this.epoch}`,
+                events: createTomFill(),
+                weight: 0.2,
+                age: 0,
+                technique: 'hit',
+                type: 'drums'
+            });
+        }
+    }
+    
     return output;
   }
 
-  // === ОСНОВНОЙ МЕТОД ===
-  public evolve(): FractalEvent[] {
-    if (!isFinite(this.time)) this.time = 0;
+  public evolve(barDuration: number): FractalEvent[] {
     const delta = this.getDeltaProfile()(this.time);
-    const barDuration = 4 * (60 / this.config.tempo);
     if (!isFinite(barDuration)) return [];
 
     // Обновление весов
@@ -227,12 +248,11 @@ export class FractalMusicEngine {
     }
 
     // Смерть слабых ветвей
-    this.branches = this.branches.filter(b => b.weight > 0.05);
+    this.branches = this.branches.filter(b => b.weight > 0.05 && b.age < 16);
 
     // Генерация событий
     const events = this.generateOneBar();
 
-    // Обновление времени
     this.time += barDuration;
     this.epoch++;
     return events;
