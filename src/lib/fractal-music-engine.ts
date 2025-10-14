@@ -114,24 +114,29 @@ export class FractalMusicEngine {
   private random: { next: () => number; nextInt: (max: number) => number };
 
   constructor(config: EngineConfig) {
-    if (!config || config.tempo <= 0 || !isFinite(config.tempo)) {
-      console.warn('[FractalEngine] Invalid config, using defaults.');
-      config = { 
-          mood: 'melancholic', 
-          genre: 'ambient', 
+      const defaultConfig: Omit<EngineConfig, 'mood' | 'genre'> = {
           tempo: 120, 
           density: 0.5,
           lambda: 0.5,
           organic: 0.5,
-          drumSettings: { enabled: true }
+          drumSettings: { enabled: true },
+          seed: Date.now()
       };
-    }
-    this.config = {
-      ...config,
-      tempo: Math.max(20, Math.min(300, config.tempo))
-    };
-    this.lambda = config.lambda ?? 0.5;
-    this.random = seededRandom(config.seed ?? Date.now());
+      
+      const mergedConfig = { ...defaultConfig, ...config };
+
+      if (!config || !isFinite(config.tempo) || config.tempo <= 0) {
+        console.warn('[FractalEngine] Invalid or missing tempo, using default.');
+        mergedConfig.tempo = defaultConfig.tempo;
+      }
+
+      this.config = {
+        ...mergedConfig,
+        tempo: Math.max(20, Math.min(300, mergedConfig.tempo))
+      };
+
+    this.lambda = this.config.lambda;
+    this.random = seededRandom(this.config.seed ?? Date.now());
     this.initialize();
   }
 
@@ -173,17 +178,14 @@ export class FractalMusicEngine {
   private generateOneBar(): FractalEvent[] {
     const output: FractalEvent[] = [];
     
-    // Новая логика: просто собираем события из ветвей без изменения времени
     this.branches.forEach(branch => {
       branch.events.forEach(originalEvent => {
         const newEvent: FractalEvent = { ...originalEvent };
 
-        // Применяем динамику и фразировку на основе веса ветви
         newEvent.dynamics = weightToDynamics(branch.weight);
         newEvent.phrasing = branch.weight > 0.7 ? 'legato' : 'staccato';
-        newEvent.weight = branch.weight; // Передаем вес ветви в событие
+        newEvent.weight = branch.weight; 
 
-        // Если это басовая нота, убедимся, что у нее есть параметры
         if (newEvent.type === 'bass' && !newEvent.params) {
             newEvent.params = getParamsForTechnique(newEvent.technique, this.config.mood);
         }
