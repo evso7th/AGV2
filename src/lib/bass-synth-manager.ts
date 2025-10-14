@@ -1,5 +1,10 @@
+
 // src/lib/bass-synth-manager.ts
-import type { FractalEvent } from '@/types/fractal';
+import type { FractalEvent, BassInstrument, BassTechnique } from '@/types/fractal';
+
+function midiToFreq(midi: number): number {
+    return Math.pow(2, (midi - 69) / 12) * 440;
+}
 
 /**
  * BassSynthManager — "Исполнитель"
@@ -21,7 +26,9 @@ export class BassSynthManager {
     if (this.isInitialized) return;
     try {
       await this.ctx.audioWorklet.addModule('/worklets/bass-processor.js');
-      this.worklet = new AudioWorkletNode(this.ctx, 'bass-processor');
+      this.worklet = new AudioWorkletNode(this.ctx, 'bass-processor', {
+         processorOptions: { sampleRate: this.ctx.sampleRate }
+      });
       this.worklet.connect(this.destination);
       this.isInitialized = true;
       console.log('[BassSynthManager] Initialized');
@@ -32,76 +39,76 @@ export class BassSynthManager {
 
   /**
    * Воспроизводит массив событий баса.
-   * Время в событиях - АБСОЛЮТНОЕ.
+   * Время в событиях - ОТНОСИТЕЛЬНОЕ (доли такта).
+   * barStartTime - АБСОЛЮТНОЕ время начала текущего такта.
    */
-  public play(events: FractalEvent[]) {
+  public play(events: FractalEvent[], barStartTime: number) {
     if (!this.isInitialized || !this.worklet) {
       console.warn('[BassSynthManager] Not ready, skipping events');
       return;
     }
+    
+    const beatDuration = 60 / 120; // Defaulting to 120 bpm, should be passed from engine ideally.
+    const messages = [];
 
     for (const event of events) {
       if (event.type !== 'bass') continue;
 
-      // Защита от некорректного времени
-      const noteOnTime = event.time;
-      if (!isFinite(noteOnTime)) {
-        console.warn('[BassSynthManager] Non-finite time in event:', event);
-        continue;
+      const frequency = midiToFreq(event.note);
+      if (!isFinite(frequency)) {
+          console.error(`[BassMan] Invalid frequency for MIDI note ${event.note}`);
+          continue;
       }
 
-      if (!event.params) {
-        console.warn('[BassSynthManager] Event is missing synth params:', event);
-        continue;
+      const noteOnTime = barStartTime + (event.time * beatDuration);
+      const noteOffTime = noteOnTime + (event.duration * beatDuration);
+
+      if (!isFinite(noteOnTime) || !isFinite(noteOffTime)) {
+          console.warn('[BassSynthManager] Non-finite time in event:', event);
+          continue;
       }
-
-      // Извлечение параметров ИЗ СОБЫТИЯ
-      const { cutoff, resonance, distortion, portamento } = event.params;
-
-      // Установка параметров через AudioParam (sample-accurate)
-      this.setParam('cutoff', cutoff, noteOnTime);
-      this.setParam('resonance', resonance, noteOnTime);
-      this.setParam('distortion', distortion, noteOnTime);
-      this.setParam('portamento', portamento, noteOnTime);
-
-      // Расчёт частоты
-      const freq = 440 * Math.pow(2, (event.note - 69) / 12);
-      if (!isFinite(freq)) continue;
-
-      // Отправка ноты в ворклет
-      this.worklet.port.postMessage({
-        type: 'noteOn',
-        frequency: freq,
-        velocity: this.getVelocity(event.dynamics),
-        time: noteOnTime
+      
+      messages.push({
+          type: 'noteOn',
+          frequency,
+          velocity: event.weight,
+          when: noteOnTime,
+          noteId: event.note,
+          params: event.params
       });
 
-      // Планирование noteOff
-      const noteOffTime = noteOnTime + event.duration;
-      this.worklet.port.postMessage({
-        type: 'noteOff',
-        time: noteOffTime
+      messages.push({
+          type: 'noteOff',
+          noteId: event.note,
+          when: noteOffTime
       });
     }
-  }
 
+    if(messages.length > 0) {
+        this.worklet.port.postMessage(messages);
+    }
+  }
+  
+  public setVolume(volume: number) {
+      if (this.destination instanceof GainNode) {
+          this.destination.gain.setTargetAtTime(volume, this.ctx.currentTime, 0.01);
+      }
+  }
+  
   public allNotesOff() {
       if (!this.worklet) return;
-      this.worklet.port.postMessage({ type: 'allNotesOff' });
+      this.worklet.port.postMessage([{ type: 'clear' }]);
   }
 
-  private setParam(name: string, value: number, time: number) {
-    const param = this.worklet?.parameters.get(name);
-    if (param && isFinite(value)) {
-      param.setTargetAtTime(value, time, 0.01); // Плавное изменение
-    }
+  public setPreset(instrumentName: BassInstrument) {
+      // No-op в этой версии, так как параметры приходят с событием
   }
 
-  private getVelocity(dynamics: string): number {
-    switch (dynamics) {
-      case 'p': return 0.3;
-      case 'mf': return 0.6;
-      default: return 0.9; // 'f'
-    }
+  public setTechnique(technique: BassTechnique) {
+    // No-op в этой версии, так как параметры приходят с событием
+  }
+  
+  public stop() {
+    this.allNotesOff();
   }
 }
