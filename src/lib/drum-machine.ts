@@ -4,8 +4,8 @@ import type { FractalEvent } from "@/types/fractal";
 const DRUM_SAMPLES: Record<string, string> = {
     'kick': '/assets/drums/kick_drum6.wav',
     'snare': '/assets/drums/snare.wav',
-    'hat': '/assets/drums/closed_hi_hat_accented.wav',
-    'open_hat': '/assets/drums/open_hh_top2.wav',
+    'hihat_closed': '/assets/drums/closed_hi_hat_accented.wav',
+    'hihat_open': '/assets/drums/open_hh_top2.wav',
     'crash': '/assets/drums/crash1.wav',
     'ride': '/assets/drums/cymbal1.wav',
     'tom_high': '/assets/drums/hightom.wav',
@@ -79,19 +79,25 @@ export class DrumMachine {
         this.sampler = createSampler(this.audioContext, this.preamp);
         await this.sampler.load(DRUM_SAMPLES);
         this.isInitialized = true;
+        console.log('[DrumMachine] Initialized and samples loaded.');
     }
 
-    schedule(score: FractalEvent[]) {
+    schedule(score: FractalEvent[], barStartTime: number, tempo: number) {
         if (!this.sampler || !this.isInitialized) {
+            console.warn('[DrumMachine] Attempted to schedule before initialized.');
             return;
         }
+
+        const beatDuration = 60 / tempo;
         
         for (const event of score) {
             if (!event.type.startsWith('drum_')) continue;
 
             const sampleName = event.type.replace('drum_', '');
             
-            const absoluteTime = event.time;
+            // Время в событии (event.time) - это смещение в долях такта от начала такта.
+            // barStartTime - это абсолютное время начала такта в AudioContext.
+            const absoluteTime = barStartTime + (event.time * beatDuration);
             
             if (!isFinite(absoluteTime)) {
                 console.error('[DrumMachine] Non-finite time scheduled for event:', event);
