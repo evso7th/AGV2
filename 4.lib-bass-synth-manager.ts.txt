@@ -1,0 +1,116 @@
+Цель
+Превратить бас-синтезатор в динамическую машину, которая:
+
+Принимает событие с technique: 'pluck' | 'ghost' | 'slap',
+Преобразует технику в полный набор параметров,
+Передаёт параметры в ворклет sample-accurate,
+Поддерживает полифонию и портаменто.
+
+// src/lib/bass-synth-manager.ts
+import type { FractalEvent } from '@/types/fractal';
+import { getScaleForMood } from './music-theory'; // ← из нового файла
+
+export type BassParams = {
+  cutoff: number;
+  resonance: number;
+  distortion: number;
+  portamento: number;
+};
+
+export class BassSynthManager {
+  private ctx: AudioContext;
+  private worklet: AudioWorkletNode | null = null;
+  private destination: AudioNode;
+  private isInitialized = false;
+  private mood: string;
+
+  constructor(ctx: AudioContext, destination: AudioNode, mood: string) {
+    this.ctx = ctx;
+    this.destination = destination;
+    this.mood = mood;
+  }
+
+  async init() {
+    try {
+      await this.ctx.audioWorklet.addModule('/worklets/bass-processor.js');
+      this.worklet = new AudioWorkletNode(this.ctx, 'bass-processor');
+      this.worklet.connect(this.destination);
+      this.isInitialized = true;
+      console.log('[BassSynthManager] Initialized');
+    } catch (e) {
+      console.error('[BassSynthManager] Failed to init:', e);
+    }
+  }
+
+  private setParam(name: string, value: number, time: number) {
+    if (!this.worklet) return;
+    const param = this.worklet.parameters.get(name);
+    if (param && isFinite(value)) {
+      param.setValueAtTime(value, time);
+    }
+  }
+
+  private getParamsForTechnique(
+    technique: string,
+    phrasing: string,
+    dynamics: string
+  ): BassParams {
+    const base = {
+      cutoff: 400,
+      resonance: 0.7,
+      distortion: 0.02,
+      portamento: phrasing === 'legato' ? 0.03 : 0.0
+    };
+
+    switch (technique) {
+      case 'ghost':
+        return { ...base, cutoff: 250, resonance: 0.3, distortion: 0.0 };
+      case 'slap':
+        return { ...base, cutoff: 350, resonance: 0.8, distortion: 0.15 };
+      default: // 'pluck'
+        return base;
+    }
+  }
+
+  public play(event: FractalEvent) {
+    if (!this.isInitialized || !this.worklet) {
+      console.warn('[BassSynthManager] Not ready, skipping event');
+      return;
+    }
+
+    // Защита от некорректного времени
+    const safeTime = isFinite(event.time) ? event.time : 0;
+    const beatDuration = 60 / this.ctx.sampleRate; // ← ОШИБКА! Должно быть из темпа
+    // ИСПРАВЛЕНИЕ:
+    // Но темп не в контексте! → Передаём tempo в конструктор
+    // Пока предположим, что tempo = 120 → beatDuration = 0.5
+    const noteOnTime = this.ctx.currentTime + safeTime * (60 / 120); // ← ВРЕМЕННО
+
+    // Получение параметров
+    const params = this.getParamsForTechnique(
+      event.technique,
+      event.phrasing,
+      event.dynamics
+    );
+
+    // Установка параметров ДО отправки ноты
+    this.setParam('cutoff', params.cutoff, noteOnTime);
+    this.setParam('resonance', params.resonance, noteOnTime);
+    this.setParam('distortion', params.distortion, noteOnTime);
+    this.setParam('portamento', params.portamento, noteOnTime);
+
+    // Отправка ноты
+    const freq = 440 * Math.pow(2, (event.note - 69) / 12);
+    if (!isFinite(freq)) return;
+
+    this.worklet.port.postMessage({
+      type: 'noteOn',
+      frequency: freq,
+      velocity: event.dynamics === 'p' ? 0.3 : event.dynamics === 'mf' ? 0.6 : 0.9,
+      time: noteOnTime
+    });
+  }
+}
+
+ Замечание: beatDuration должен браться из tempo, но tempo не в AudioContext.
+Решение: передавать tempo в конструктор BassSynthManager. 

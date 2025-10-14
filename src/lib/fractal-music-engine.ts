@@ -1,6 +1,7 @@
 
 import type { FractalEvent, Mood, Genre, Technique } from '@/types/fractal';
 import { MelancholicMinorK } from './resonance-matrices';
+import { getScaleForMood } from './music-theory';
 
 export type Branch = {
   id: string;
@@ -29,12 +30,6 @@ function seededRandom(seed: number) {
     nextInt: (max: number) => Math.floor(self.next() * max)
   };
   return self;
-}
-
-function getScaleForMood(mood: Mood): number[] {
-  const E2 = 40;
-  if (mood === 'melancholic') return [E2, E2+2, E2+3, E2+5, E2+7, E2+9, E2+10];
-  return [E2, E2+2, E2+4, E2+5, E2+7, E2+9, E2+11];
 }
 
 function weightToDynamics(weight: number): 'p' | 'mf' | 'f' {

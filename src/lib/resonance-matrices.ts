@@ -1,106 +1,98 @@
-
-import type { FractalEvent, Mood, ResonanceContext, Technique } from '@/types/fractal';
-
-// A simple scale to work with for the first matrix
-const E_MINOR_SCALE_MIDI_DEGREES = [40, 42, 43, 45, 47, 48, 50]; // MIDI note numbers for E minor scale starting at E2
-
-// === 1. ГАРМОНИЧЕСКИЙ РЕЗОНАНС ===
-function harmonicResonance(note: number, mood: Mood, beatPhase: number): number {
-  const scale = getScaleForMood(mood);
-  const isConsonant = scale.includes(note % 12);
-  
-  // Акцент на тонике в сильных долях
-  const isTonic = (note % 12) === (scale[0] % 12);
-  const onStrongBeat = [0, 2].includes(Math.floor(beatPhase) % 4);
-  
-  if (isTonic && onStrongBeat) return 1.0;
-  if (isConsonant) return 0.8;
-  return 0.3; // диссонанс разрешается только в слабых долях
-}
-
-// === 2. РИТМИЧЕСКИЙ РЕЗОНАНС ===
-function rhythmicResonance(
-  event: FractalEvent,
-  kickTimes: number[],
-  snareTimes: number[],
-  barDuration: number
-): number {
-  if (barDuration <= 0) return 0.5; // Avoid division by zero
-  const time = event.time;
-  const relativeTime = time % barDuration;
-  
-  // Синхрон с kick (бас и kick на одной доле = высокий резонанс)
-  const nearKick = kickTimes.some(t => Math.abs(t - relativeTime) < 0.05);
-  if (nearKick && event.type === 'bass') return event.technique === 'pluck' ? 1.0 : 0.7;
-  
-  // Избегание snare (бас не должен играть на 2 и 4)
-  const nearSnare = snareTimes.some(t => Math.abs(t - relativeTime) < 0.05);
-  if (nearSnare && event.type === 'bass') return 0.2;
-  
-  // Ghost notes — только в слабых долях
-  if (event.technique === 'ghost') {
-    const beat = Math.floor((time / barDuration) * 4) % 4; 
-    return [1, 3].includes(beat) ? 0.9 : 0.4;
-  }
-  
-  return 0.8; // Базовый резонанс, если нет конфликтов/совпадений
-}
-
-// === 3. ТЕХНИЧЕСКИЙ РЕЗОНАНС ===
-function techniqueResonance(technique: Technique, mood: Mood, delta: number): number {
-  const techniqueMap: Record<Mood, Record<Technique, number>> = {
-    melancholic: { pluck: 1.0, ghost: 0.9, slap: 0.3, harmonic: 0.7, hit: 0.5 },
-    epic: { pluck: 0.9, ghost: 0.6, slap: 0.8, harmonic: 0.5, hit: 0.5 },
-    dreamy: { pluck: 0.8, ghost: 1.0, slap: 0.2, harmonic: 0.9, hit: 0.5 },
-    dark: { pluck: 0.9, ghost: 0.8, slap: 0.7, harmonic: 0.4, hit: 0.5 }
-  };
-  
-  const base = techniqueMap[mood]?.[technique] || 0.5;
-  
-  if (technique === 'slap' && delta > 0.8) return Math.min(0.7, base + 0.2);
-  
-  return base;
-}
-
-// === 4. ОСНОВНАЯ ФУНКЦИЯ K_ij ===
-export function MelancholicMinorK(
-  eventA: FractalEvent,
-  eventB: FractalEvent,
-  context: ResonanceContext
-): number {
-  // Если оба события - ударные, их резонанс не влияет на общую гармонию (пока)
-  if (eventA.type.startsWith('drum_') && eventB.type.startsWith('drum_')) {
-      return 1.0;
-  }
-  
-  // Если одно из событий - ударное, а другое - нет, считаем ритмический резонанс
-  const isADrum = eventA.type.startsWith('drum_');
-  const isBDrum = eventB.type.startsWith('drum_');
-
-  if (isADrum !== isBDrum) {
-    const tonalEvent = isADrum ? eventB : eventA;
-    return rhythmicResonance(tonalEvent, context.kickTimes, context.snareTimes, context.barDuration);
-  }
-
-  // Если оба события тональные (не ударные)
-  const harmA = harmonicResonance(eventA.note, context.mood, context.beatPhase);
-  const harmB = harmonicResonance(eventB.note, context.mood, context.beatPhase);
-  
-  const techA = techniqueResonance(eventA.technique, context.mood, context.delta);
-  const techB = techniqueResonance(eventB.technique, context.mood, context.delta);
-  
-  // Взвешенное среднее для тональных инструментов
-  return (
-    0.6 * Math.min(harmA, harmB) + // Гармония важнее
-    0.4 * Math.min(techA, techB)
-  );
-};
+import type { FractalEvent, ResonanceMatrix, Mood } from '@/types/fractal';
+import { getScaleForMood } from './music-theory'; // ← импорт из нового файла
 
 // === ВСПОМОГАТЕЛЬНЫЕ ФУНКЦИИ ===
-function getScaleForMood(mood: Mood): number[] {
-    const rootNoteOffset = 4; // E
-    const scale = mood === 'melancholic' 
-        ? [0, 2, 3, 5, 7, 8, 10] // Dorian-like
-        : [0, 2, 4, 5, 7, 9, 11]; // Major
-    return scale.map(degree => (degree + rootNoteOffset)); // Return absolute MIDI note bases
+
+/** Проверяет, что время событий совпадает с небольшой погрешностью */
+function areSimultaneous(timeA: number, timeB: number): boolean {
+  return Math.abs(timeA - timeB) < 0.01;
 }
+
+/** Получает долю такта (0, 1, 2, 3) из времени в долях */
+function getBeat(timeInBeats: number): number {
+  return Math.floor(timeInBeats) % 4;
+}
+
+/** Проверяет, находится ли доля в сильной части такта (1 или 3) */
+function isOnStrongBeat(timeInBeats: number): boolean {
+  const beat = getBeat(timeInBeats);
+  return beat === 0 || beat === 2;
+}
+
+/** Проверяет, находится ли доля в слабой части такта (2 или 4) */
+function isOnSnareBeat(timeInBeats: number): boolean {
+  const beat = getBeat(timeInBeats);
+  return beat === 1 || beat === 3;
+}
+
+// Функции-предикаты для типов событий
+const isGhostNote = (event: FractalEvent): boolean => event.technique === 'ghost' || event.dynamics === 'p';
+const isKick = (event: FractalEvent): boolean => event.type === 'drum_kick';
+const isSnare = (event: FractalEvent): boolean => event.type === 'drum_snare';
+const isBass = (event: FractalEvent): boolean => event.type === 'bass';
+const isCrash = (event: FractalEvent): boolean => event.type === 'drum_crash';
+
+// === ОСНОВНАЯ ФУНКЦИЯ РЕЗОНАНСА ===
+
+export const MelancholicMinorK: ResonanceMatrix = (
+  eventA: FractalEvent,
+  eventB: FractalEvent,
+  context: { mood: Mood; tempo: number; delta: number }
+): number => {
+
+  // Все события используют time и duration в долях такта.
+  // Резонансная матрица работает исключительно в этой системе координат
+  // и не выполняет конвертацию во временные единицы.
+
+  // Если события не одновременны, их резонанс нейтрален.
+  if (!areSimultaneous(eventA.time, eventB.time)) {
+    return 0.5;
+  }
+
+  const timeInBeats = eventA.time; // Время в долях такта (едино для обоих событий)
+
+  // --- РИТМИЧЕСКИЙ РЕЗОНАНС (БАС ↔ УДАРНЫЕ) ---
+  if (isBass(eventA) && isKick(eventB) || isKick(eventA) && isBass(eventB)) {
+    // Поощрение за бас и бочку в сильные доли
+    return isOnStrongBeat(timeInBeats) ? 1.0 : 0.3;
+  }
+
+  if (isBass(eventA) && isSnare(eventB) || isSnare(eventA) && isBass(eventB)) {
+    // Штраф за бас и малый барабан в слабые доли (где обычно звучит малый)
+    return isOnSnareBeat(timeInBeats) ? 0.1 : 0.8;
+  }
+
+  // --- ВНУТРЕННИЙ РЕЗОНАНС УДАРНЫХ ---
+  if (isKick(eventA) && isSnare(eventB) || isSnare(eventA) && isKick(eventB)) {
+    // Классический грув: бочка в сильной доле, малый - в слабой
+    const kickTime = isKick(eventA) ? eventA.time : eventB.time;
+    const snareTime = isSnare(eventA) ? eventA.time : eventB.time;
+    return isOnStrongBeat(kickTime) && isOnSnareBeat(snareTime) ? 0.95 : 0.4;
+  }
+
+  // Ghost notes (тихие, призрачные ноты) поощряются в слабых долях
+  if (isGhostNote(eventA) || isGhostNote(eventB)) {
+    return !isOnStrongBeat(timeInBeats) ? 0.9 : 0.2;
+  }
+
+  // --- ГАРМОНИЧЕСКИЙ РЕЗОНАНС (БАС ↔ БАС) ---
+  if (isBass(eventA) && isBass(eventB)) {
+    const scale = getScaleForMood(context.mood);
+    const noteAInScale = scale.some(scaleNote => (eventA.note % 12) === (scaleNote % 12));
+    const noteBInScale = scale.some(scaleNote => (eventB.note % 12) === (scaleNote % 12));
+    // Поощрение, если обе ноты принадлежат текущей гамме
+    return noteAInScale && noteBInScale ? 0.9 : 0.3;
+  }
+
+  // --- ДРАМАТУРГИЧЕСКИЙ РЕЗОНАНС (КУЛЬМИНАЦИЯ) ---
+  if (context.delta > 0.9) { // Фаза высокой энергии
+    if (eventA.type.includes('tom') || eventB.type.includes('tom')) return 0.85; // Сбивки на томах
+    if (isCrash(eventA) || isCrash(eventB)) return 1.0; // Тарелка crash
+  } else { // Фаза низкой энергии
+    // Штраф за использование crash вне кульминации
+    if (isCrash(eventA) || isCrash(eventB)) return 0.05;
+  }
+
+  // Нейтральный резонанс для всех остальных комбинаций
+  return 0.5;
+};
