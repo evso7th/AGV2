@@ -1,116 +1,127 @@
 // public/worklets/bass-processor.js
 
-// Функция для преобразования MIDI-ноты в частоту.
-function midiToFreq(midi) {
-    return Math.pow(2, (midi - 69) / 12) * 440;
-}
-
 class BassProcessor extends AudioWorkletProcessor {
   constructor(options) {
-    super();
-    this.sampleRate = options.processorOptions.sampleRate || 44100;
-    this.activeNotes = new Map(); // Карта для отслеживания активных нот по их ID
-    
+    super(options);
+    this.sampleRate = options?.processorOptions?.sampleRate || 44100;
+    this.activeNotes = new Map(); // { noteId: { phase, gain, state, params } }
+    console.log(`[BassWorklet] Initialized with sample rate ${this.sampleRate}`);
+
     this.port.onmessage = (event) => {
-        const messages = event.data;
-        // Проверяем, является ли сообщение массивом команд
-        if (Array.isArray(messages)) {
-            messages.forEach(message => this.handleMessage(message));
-        } else {
-            this.handleMessage(messages); // Обрабатываем одиночное сообщение для обратной совместимости
-        }
+      const messages = event.data;
+      if (!Array.isArray(messages)) {
+        console.error('[BassWorklet] Received non-array message:', messages);
+        return;
+      }
+      
+      console.log(`[BassWorklet] Received ${messages.length} messages.`);
+      messages.forEach(message => this.handleMessage(message));
     };
   }
 
   handleMessage(message) {
-    const { type, when, noteId } = message;
-    
+    const { type, noteId, when } = message;
+    const now = currentTime;
+    const delay = (when - now) * 1000;
+
     if (type === 'noteOn') {
       const { frequency, velocity, params } = message;
       this.activeNotes.set(noteId, {
-        frequency,
-        velocity: velocity ?? 0.7,
-        attack: params?.attack ?? 0.02,
-        decay: params?.decay ?? 0.2, // Не используется в текущей огибающей, но может пригодиться
-        release: params?.release ?? 0.5,
-        cutoff: params?.cutoff ?? 800,
-        resonance: params?.resonance ?? 0.5,
-        distortion: params?.distortion ?? 0.1,
-        portamento: params?.portamento ?? 0.0,
-        startTime: when,
         phase: 0,
-        gain: 0,
-        envState: 'attack',
-        filterState: { y1: 0, y2: 0, y3: 0, y4: 0, oldx: 0, oldy: 0 }
-      });
-    } else if (type === 'noteOff') {
-        const note = this.activeNotes.get(noteId);
-        if (note && note.envState !== 'release') {
-            note.envState = 'release';
-            note.releaseStartTime = when;
+        gain: 0, // Start from 0 for attack envelope
+        targetGain: velocity,
+        state: 'attack',
+        params: {
+          attack: params?.attack ?? 0.01,
+          release: params?.release ?? 0.5,
+          cutoff: params?.cutoff ?? 800,
+          resonance: params?.resonance ?? 0.5,
+          distortion: params?.distortion ?? 0.1,
+          oscType: params?.oscType ?? 'sawtooth',
         }
+      });
+      console.log(`[BassWorklet] noteOn scheduled for noteId: ${noteId} at time: ${when}`);
+    } else if (type === 'noteOff') {
+       // Schedule note off
+       setTimeout(() => {
+         const note = this.activeNotes.get(noteId);
+         if (note && note.state === 'attack') {
+           note.state = 'decay';
+           console.log(`[BassWorklet] noteOff triggered for noteId: ${noteId}`);
+         }
+       }, Math.max(0, delay));
     } else if (type === 'clear') {
-        this.activeNotes.clear();
+      this.activeNotes.clear();
+      console.log('[BassWorklet] All notes cleared.');
+    }
+  }
+
+  // Simple one-pole low-pass filter
+  applyFilter(input, cutoff, state) {
+    const coeff = 1.0 - Math.exp(-2.0 * Math.PI * cutoff / this.sampleRate);
+    state.y1 = input * coeff + (1.0 - coeff) * state.y1;
+    return state.y1;
+  }
+
+  // Soft clip distortion
+  softClip(input, drive) {
+    if (drive <= 0.01) return input;
+    const k = 2 * drive / (1 - drive);
+    return (1 + k) * input / (1 + k * Math.abs(input));
+  }
+  
+  // Waveform generator
+  generateOsc(phase, oscType) {
+    switch (oscType) {
+      case 'sine': return Math.sin(phase);
+      case 'square': return phase < Math.PI ? 1 : -1;
+      case 'sawtooth': return 1 - (phase / Math.PI);
+      case 'triangle': return 1 - 4 * Math.abs(0.5 - (phase / (2 * Math.PI)));
+      default: return Math.sin(phase);
     }
   }
 
   process(inputs, outputs, parameters) {
     const output = outputs[0];
-    const channel = output[0];
-    
-    for (let i = 0; i < channel.length; i++) {
-        const now = currentTime + i / this.sampleRate;
+
+    for (let channel = 0; channel < output.length; ++channel) {
+      const outputChannel = output[channel];
+      for (let i = 0; i < outputChannel.length; i++) {
         let sample = 0;
 
         for (const [noteId, note] of this.activeNotes.entries()) {
-            // --- Envelope ---
-            if (note.envState === 'attack') {
-                const attackTime = now - note.startTime;
-                note.gain = Math.min(note.velocity, (attackTime / note.attack) * note.velocity);
-                if (note.gain >= note.velocity) {
-                    note.envState = 'sustain';
-                }
-            } else if (note.envState === 'release') {
-                const releaseTime = now - note.releaseStartTime;
-                note.gain = note.velocity * (1 - Math.min(1, releaseTime / note.release));
-                if (note.gain <= 0) {
-                    this.activeNotes.delete(noteId);
-                    continue;
-                }
-            }
+          const { params } = note;
 
-            // --- Oscillator ---
-            const pulse = (note.phase < Math.PI) ? 1 : -1;
-            const sub = Math.sin(note.phase * 0.5);
-            let oscSample = pulse * 0.6 + sub * 0.4;
-            
-            // --- Filter (A simple but effective one) ---
-            const g = Math.tan(Math.PI * note.cutoff / this.sampleRate);
-            const r = 1 / note.resonance;
-            const h = 1 / (1 + r * g + g * g);
-            let band = (oscSample - note.filterState.y2 - r * note.filterState.y1) * h;
-            let low = g * band + note.filterState.y1;
-            note.filterState.y1 = g * band + low;
-            note.filterState.y2 = g * note.filterState.y1 + note.filterState.y2;
-            let filteredSample = note.filterState.y2;
-            
-            // --- Distortion (Soft Clip) ---
-            const drive = note.distortion;
-            if (drive > 0.01) {
-              const k = 2 * drive / (1 - drive);
-              filteredSample = (1 + k) * filteredSample / (1 + k * Math.abs(filteredSample));
+          // Envelope logic
+          if (note.state === 'attack') {
+            note.gain += 1 / (params.attack * this.sampleRate);
+            if (note.gain >= note.targetGain) {
+                note.gain = note.targetGain;
+                // note.state remains 'attack' until a noteOff is received
             }
-            
-            sample += filteredSample * note.gain;
-            
-            note.phase += (note.frequency * 2 * Math.PI) / this.sampleRate;
-            if (note.phase > 2 * Math.PI) note.phase -= 2 * Math.PI;
+          } else if (note.state === 'decay') {
+            note.gain -= 1 / (params.release * this.sampleRate);
+            if (note.gain <= 0) {
+              this.activeNotes.delete(noteId);
+              continue;
+            }
+          }
+          
+          if (note.gain > 0) {
+             const freq = 440 * Math.pow(2, (noteId - 69) / 12);
+             note.phase += (freq / this.sampleRate) * 2 * Math.PI;
+             if (note.phase >= 2 * Math.PI) note.phase -= 2 * Math.PI;
+
+             let oscSample = this.generateOsc(note.phase, params.oscType);
+             oscSample = this.applyFilter(oscSample, params.cutoff, note.filterState = note.filterState || {y1:0});
+             oscSample = this.softClip(oscSample, params.distortion);
+             
+             sample += oscSample * note.gain;
+          }
         }
-
-        // Clip the final sample to avoid distortion
-        channel[i] = Math.max(-1, Math.min(1, sample * 0.5));
+        outputChannel[i] = sample * 0.4; // Master volume
+      }
     }
-
     return true;
   }
 }

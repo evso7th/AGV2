@@ -63,10 +63,10 @@ function safeTime(value: number, fallback: number = 0): number {
 // === УДАРНЫЙ АКСОН (duration в ДОЛЯХ ТАКТА!) ===
 function createDrumAxiom(): FractalEvent[] {
   return [
-    { type: 'drum_kick', note: 36, duration: 0.25, time: 0, weight: 1.0, technique: 'hit', dynamics: 'f', phrasing: 'staccato' },
-    { type: 'drum_snare', note: 38, duration: 0.25, time: 1.0, weight: 1.0, technique: 'hit', dynamics: 'mf', phrasing: 'staccato' },
-    { type: 'drum_kick', note: 36, duration: 0.25, time: 2.0, weight: 1.0, technique: 'hit', dynamics: 'f', phrasing: 'staccato' },
-    { type: 'drum_snare', note: 38, duration: 0.25, time: 3.0, weight: 1.0, technique: 'hit', dynamics: 'mf', phrasing: 'staccato' },
+    { type: 'drum_kick', note: 36, duration: 0.25, time: 0, weight: 1.0, technique: 'hit', dynamics: 'f', phrasing: 'staccato', params: getParamsForTechnique('hit', 'dark') },
+    { type: 'drum_snare', note: 38, duration: 0.25, time: 1.0, weight: 1.0, technique: 'hit', dynamics: 'mf', phrasing: 'staccato', params: getParamsForTechnique('hit', 'dark') },
+    { type: 'drum_kick', note: 36, duration: 0.25, time: 2.0, weight: 1.0, technique: 'hit', dynamics: 'f', phrasing: 'staccato', params: getParamsForTechnique('hit', 'dark') },
+    { type: 'drum_snare', note: 38, duration: 0.25, time: 3.0, weight: 1.0, technique: 'hit', dynamics: 'mf', phrasing: 'staccato', params: getParamsForTechnique('hit', 'dark') },
     // Hi-hat closed — 8 раз за такт (восьмые = 0.5 доли)
     ...Array.from({ length: 8 }, (_, i) => ({
       type: 'drum_hihat_closed' as const,
@@ -76,7 +76,8 @@ function createDrumAxiom(): FractalEvent[] {
       weight: 0.8,
       technique: 'hit' as Technique,
       dynamics: 'p' as const,
-      phrasing: 'staccato' as const
+      phrasing: 'staccato' as const,
+      params: getParamsForTechnique('hit', 'dark')
     }))
   ];
 }
@@ -95,12 +96,13 @@ function createBassAxiom(mood: Mood): FractalEvent[] {
 }
 
 // === ТРАНСФОРМАЦИИ УДАРНЫХ (duration в ДОЛЯХ ТАКТА!) ===
-function createTomFill(): FractalEvent[] {
+function createTomFill(mood: Mood): FractalEvent[] {
+  const hitParams = getParamsForTechnique('hit', mood);
   return [
-    { type: 'drum_tom_low', note: 41, duration: 0.25, time: 3.0, weight: 0.9, technique: 'hit', dynamics: 'mf', phrasing: 'staccato' },
-    { type: 'drum_tom_mid', note: 45, duration: 0.25, time: 3.25, weight: 0.9, technique: 'hit', dynamics: 'mf', phrasing: 'staccato' },
-    { type: 'drum_tom_high', note: 50, duration: 0.25, time: 3.5, weight: 0.9, technique: 'hit', dynamics: 'mf', phrasing: 'staccato' },
-    { type: 'drum_snare', note: 38, duration: 0.25, time: 3.75, weight: 1.0, technique: 'hit', dynamics: 'f', phrasing: 'staccato' }
+    { type: 'drum_tom_low', note: 41, duration: 0.25, time: 3.0, weight: 0.9, technique: 'hit', dynamics: 'mf', phrasing: 'staccato', params: hitParams },
+    { type: 'drum_tom_mid', note: 45, duration: 0.25, time: 3.25, weight: 0.9, technique: 'hit', dynamics: 'mf', phrasing: 'staccato', params: hitParams },
+    { type: 'drum_tom_high', note: 50, duration: 0.25, time: 3.5, weight: 0.9, technique: 'hit', dynamics: 'mf', phrasing: 'staccato', params: hitParams },
+    { type: 'drum_snare', note: 38, duration: 0.25, time: 3.75, weight: 1.0, technique: 'hit', dynamics: 'f', phrasing: 'staccato', params: hitParams }
   ];
 }
 
@@ -173,20 +175,16 @@ export class FractalMusicEngine {
   private generateOneBar(): FractalEvent[] {
     const output: FractalEvent[] = [];
     
-    // Новая логика: просто собираем события из ветвей без изменения времени
     this.branches.forEach(branch => {
       branch.events.forEach(originalEvent => {
         const newEvent: FractalEvent = { ...originalEvent };
 
-        // Применяем динамику и фразировку на основе веса ветви
         newEvent.dynamics = weightToDynamics(branch.weight);
         newEvent.phrasing = branch.weight > 0.7 ? 'legato' : 'staccato';
-        newEvent.weight = branch.weight; // Передаем вес ветви в событие
-
-        // Если это басовая нота, убедимся, что у нее есть параметры
-        if (newEvent.type === 'bass' && !newEvent.params) {
-            newEvent.params = getParamsForTechnique(newEvent.technique, this.config.mood);
-        }
+        newEvent.weight = branch.weight; 
+        
+        // Always assign params
+        newEvent.params = getParamsForTechnique(newEvent.technique, this.config.mood);
         
         output.push(newEvent);
       });
@@ -210,7 +208,7 @@ export class FractalMusicEngine {
         } else if (this.config.drumSettings.enabled && this.branches.filter(b => b.type === 'drums').length < 3) {
             this.branches.push({
                 id: `drum_fill_${this.epoch}`,
-                events: createTomFill(),
+                events: createTomFill(this.config.mood),
                 weight: 0.2,
                 age: 0,
                 technique: 'hit',
