@@ -1,88 +1,67 @@
 // public/worklets/bass-processor.js
-class BassProcessor extends AudioWorkletProcessor {
-  static get parameterDescriptors() {
-    return [
-      { name: 'cutoff', defaultValue: 400, minValue: 50, maxValue: 2000 },
-      { name: 'resonance', defaultValue: 0.7, minValue: 0.1, maxValue: 5 },
-      { name: 'distortion', defaultValue: 0.05, minValue: 0, maxValue: 1 },
-      { name: 'portamento', defaultValue: 0, minValue: 0, maxValue: 0.1 }
-    ];
-  }
 
-  constructor() {
-    super();
-    this.sampleRate = 44100;
-    this.activeNotes = new Map(); // { frequency: { phase1, phase2, gain1, gain2, targetFreq, startTime } }
-    this.lastFreq = 0;
-    this.portamentoTime = 0;
-    this.portamentoTarget = 0;
-    this.portamentoStartFreq = 0;
-    this.portamentoStartTime = 0;
+class BassProcessor extends AudioWorkletProcessor {
+  constructor(options) {
+    super(options);
+    this.sampleRate = options.processorOptions.sampleRate;
+    
+    // Карта для хранения активных нот. Ключ - ID ноты.
+    // Значение - объект с параметрами ноты.
+    this.activeNotes = new Map();
 
     this.port.onmessage = (event) => {
-        const messages = event.data;
-        if (!Array.isArray(messages)) return;
-
-        messages.forEach(message => this.handleMessage(message));
+      const messages = event.data;
+      if (!Array.isArray(messages)) return;
+      messages.forEach(message => this.handleMessage(message));
     };
+    console.log('[BassProcessor] Worklet created and ready.');
   }
 
   handleMessage(message) {
-    const { type, frequency, velocity, when, noteId } = message;
+    const { type, when, noteId } = message;
 
     if (type === 'noteOn') {
-      if (this.activeNotes.size > 0 && this.portamentoTime > 0) {
-        this.portamentoTarget = frequency;
-        this.portamentoStartFreq = this.lastFreq; // Use the last frequency as the start
-        this.portamentoStartTime = when;
-      } else {
-        this.portamentoStartFreq = frequency;
-        this.portamentoTarget = frequency;
-        this.lastFreq = frequency;
-      }
-
+      const { frequency, velocity, params } = message;
+      // Добавляем ноту в карту активных. Она еще не звучит, просто "запланирована".
       this.activeNotes.set(noteId, {
-        phase1: 0,
-        phase2: 0,
-        gain: velocity,
-        state: 'attack',
+        state: 'scheduled',
         startTime: when,
-        filterState: { y1: 0, y2: 0, y3: 0, y4: 0, oldx: 0, oldy: 0 }
+        endTime: Infinity, // Пока не знаем, когда закончится
+        phase: 0,
+        gain: 0,
+        targetGain: velocity,
+        frequency: frequency,
+        params: params || { cutoff: 500, resonance: 0.5, distortion: 0.1 }, // Параметры по-умолчанию
+        filterState: { y1: 0, y2: 0, oldx: 0, oldy: 0 },
       });
+      console.log(`[Worklet] Scheduled noteOn: id=${noteId}, time=${when.toFixed(3)}`);
+
     } else if (type === 'noteOff') {
-        const note = this.activeNotes.get(noteId);
-        if (note) {
-            note.state = 'decay';
-        }
-    } else if (type === 'setTechnique') {
-        // This is a placeholder for future implementation
+       const note = this.activeNotes.get(noteId);
+       if (note) {
+         // Устанавливаем время окончания. Нота перейдет в 'decay' в цикле process.
+         note.endTime = when;
+         console.log(`[Worklet] Scheduled noteOff: id=${noteId}, time=${when.toFixed(3)}`);
+       }
     } else if (type === 'clear') {
         this.activeNotes.clear();
+        console.log('[Worklet] All notes cleared.');
     }
   }
-
-
-  // Генератор белого шума для дисторшна
-  noise() {
-    return Math.random() * 2 - 1;
-  }
-
-  // Фильтр низких частот (упрощённый state-variable)
-  lowpassFilter(input, cutoff, resonance, state) {
+  
+  applyFilter(input, cutoff, resonance, state) {
     const g = Math.tan(Math.PI * cutoff / this.sampleRate);
     const r = 1 / resonance;
     const h = 1 / (1 + r * g + g * g);
 
     let band = (input - state.y2 - r * state.y1) * h;
     let low = g * band + state.y1;
-    state.y1 = g * band + low; // y1_new
-    state.y2 = g * state.y1 + state.y2; // y2_new
+    state.y1 = g * band + low;
+    state.y2 = g * state.y1 + state.y2;
     
     return state.y2;
   }
 
-
-  // Дисторшн (soft clip)
   softClip(input, drive) {
     if (drive <= 0.01) return input;
     const k = 2 * drive / (1 - drive);
@@ -91,67 +70,63 @@ class BassProcessor extends AudioWorkletProcessor {
 
   process(inputs, outputs, parameters) {
     const output = outputs[0];
-    const cutoffParam = parameters.cutoff;
-    const resonanceParam = parameters.resonance;
-    const distortionParam = parameters.distortion;
-    const portamentoParam = parameters.portamento;
 
-    this.portamentoTime = portamentoParam[0];
+    for (let i = 0; i < output[0].length; i++) {
+      const now = currentTime + i / this.sampleRate;
+      let sample = 0;
 
-    // Генерация звука
-    for (let channel = 0; channel < output.length; channel++) {
-      const channelData = output[channel];
-      for (let i = 0; i < channelData.length; i++) {
-        let sample = 0;
-        const now = currentTime + i / this.sampleRate;
-
-        // Все активные ноты
-        for (const [noteId, note] of this.activeNotes.entries()) {
-          
-          let currentFreq = noteIdToFreq(noteId); // Base frequency
-
-          if (this.portamentoTime > 0 && note.startTime === this.portamentoStartTime) {
-              const t = Math.min((now - this.portamentoStartTime) / this.portamentoTime, 1);
-              currentFreq = this.portamentoStartFreq * (1 - t) + this.portamentoTarget * t;
-              this.lastFreq = currentFreq;
-          }
-
-          // Основной слой (pulse)
-          const pulse = (note.phase1 % (2 * Math.PI)) < Math.PI ? 1 : -1;
-          // Суб-слой (sine на октаву ниже)
-          const sub = Math.sin(note.phase2 * 0.5);
-
-          // Применение фильтра
-          const filtered = this.lowpassFilter(pulse + sub * 0.7, cutoffParam[0], resonanceParam[0], note.filterState);
-
-          // Дисторшн
-          const distorted = this.softClip(filtered, distortionParam[0]);
-
-          sample += distorted * note.gain;
-          note.phase1 += (currentFreq * 2 * Math.PI) / this.sampleRate;
-          note.phase2 += (currentFreq * 2 * Math.PI) / this.sampleRate;
+      for (const [noteId, note] of this.activeNotes.entries()) {
+        // Проверяем, не пора ли начать играть ноту
+        if (note.state === 'scheduled' && now >= note.startTime) {
+          note.state = 'attack';
+          console.log(`[Worklet] Playing note: id=${noteId} at time ${now.toFixed(3)}`);
+        }
+        
+        // Проверяем, не пора ли отпустить ноту
+        if (note.state !== 'decay' && now >= note.endTime) {
+            note.state = 'decay';
+            note.targetGain = 0; // Цель - затухание до нуля
+            console.log(`[Worklet] Decaying note: id=${noteId} at time ${now.toFixed(3)}`);
         }
 
-        channelData[i] = sample * 0.3; // общий уровень
-      }
-    }
+        if (note.state === 'attack' || note.state === 'sustain' || note.state === 'decay') {
+            // --- Огибающая (Envelope) ---
+            if (note.state === 'attack') {
+                note.gain += 1 / (0.01 * this.sampleRate); // Быстрая атака
+                if (note.gain >= note.targetGain) {
+                    note.gain = note.targetGain;
+                    note.state = 'sustain';
+                }
+            } else if (note.state === 'decay') {
+                note.gain -= 1 / (0.3 * this.sampleRate); // Быстрое затухание
+                if (note.gain <= 0) {
+                    this.activeNotes.delete(noteId); // Удаляем ноту после затухания
+                    continue; // Переходим к следующей ноте
+                }
+            }
+            
+            // --- Осциллятор ---
+            note.phase += (note.frequency * 2 * Math.PI) / this.sampleRate;
+            if (note.phase >= 2 * Math.PI) note.phase -= 2 * Math.PI;
 
-    // Управление затуханием нот
-    for (const [noteId, note] of this.activeNotes) {
-      if (note.state === 'decay') {
-        note.gain *= 0.999;
-        if (note.gain < 0.0001) {
-          this.activeNotes.delete(noteId);
+            const osc1 = (note.phase < Math.PI) ? 1 : -1; // Pulse wave
+            const osc2 = Math.sin(note.phase * 0.5); // Sine wave (sub-osc)
+
+            // --- Фильтр и Дисторшн ---
+            const filtered = this.applyFilter(osc1 + osc2 * 0.7, note.params.cutoff, note.params.resonance, note.filterState);
+            const distorted = this.softClip(filtered, note.params.distortion);
+
+            sample += distorted * note.gain;
         }
       }
+      
+      // Записываем сэмпл в оба канала для стерео
+      output[0][i] = sample * 0.3; // Снижаем общую громкость, чтобы избежать клиппинга
+      output[1][i] = sample * 0.3;
     }
 
-    return true;
+    return true; // Keep the processor alive
   }
-}
-
-function noteIdToFreq(noteId) {
-    return 440 * Math.pow(2, (noteId - 69) / 12);
 }
 
 registerProcessor('bass-processor', BassProcessor);
