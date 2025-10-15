@@ -130,6 +130,7 @@ export class FractalMusicEngine {
   private lambda: number;
   private epoch = 0;
   private random: { next: () => number; nextInt: (max: number) => number };
+  private climaxImminent: boolean = false; // <<< NEW
 
   constructor(config: EngineConfig) {
     if (!config || config.tempo <= 0 || !isFinite(config.tempo)) {
@@ -263,6 +264,24 @@ export class FractalMusicEngine {
       }
     }
     
+    // Предвосхищение кульминации
+    if (this.climaxImminent && this.random.next() > 0.7) {
+        const base = this.branches.find(b => b.type === 'bass');
+        if(base) {
+            const ghostParams = getParamsForTechnique('ghost', this.config.mood);
+            const ghostEvents = base.events.map(e => ({ ...e, technique: 'ghost' as Technique, params: ghostParams }));
+            this.branches.push({
+                id: `bass_tension_${this.epoch}`,
+                events: ghostEvents,
+                weight: 0.4,
+                age: 0,
+                technique: 'ghost',
+                type: 'bass'
+            });
+        }
+        this.climaxImminent = false; // Сбрасываем флаг после использования
+    }
+
     this.branches.forEach(branch => {
       branch.events.forEach(originalEvent => {
         const newEvent: FractalEvent = { ...originalEvent };
@@ -296,6 +315,7 @@ export class FractalMusicEngine {
     this.branches = this.branches.map(branch => {
       const resonanceSum = this.branches.reduce((sum, other) => {
         if (other.id === branch.id) return sum;
+        // Используем ТОЛЬКО первое событие для основного резонанса
         const k = MelancholicMinorK(
           branch.events[0],
           other.events[0],
@@ -315,10 +335,21 @@ export class FractalMusicEngine {
 
     // Смерть слабых и старых ветвей
     this.branches = this.branches.filter(b => b.weight > 0.02 && b.age < 64);
-    if (this.branches.length === 0) {
-        this.initialize(); // Экстренная реинициализация
+    
+    // Возрождение, если все почти умерли
+    if (this.branches.length < 2 && this.epoch > 10) {
+      const newSeed = (this.config.seed ?? 1) + this.epoch;
+      const newRandom = seededRandom(newSeed);
+      const newBass = createBassAxiom(this.config.mood, newRandom);
+      this.branches.push({
+        id: `bass_reborn_${this.epoch}`,
+        events: newBass,
+        weight: 0.6,
+        age: 0,
+        technique: 'pluck',
+        type: 'bass'
+      });
     }
-
 
     // Генерация событий
     const events = this.generateOneBar();
@@ -334,8 +365,10 @@ export class FractalMusicEngine {
         const epoch = Math.floor(safeT / 120); // каждые 2 минуты — новая эпоха
         const phase = (safeT % 120) / 120;     // фаза внутри эпохи
 
-        // В чётных эпохах — меланхолия, в нечётных — эпика
         const currentMood = epoch % 2 === 0 ? this.config.mood : 'epic';
+
+        // Устанавливаем флаг предвосхищения кульминации
+        this.climaxImminent = phase > 0.65 && phase < 0.7;
 
         if (currentMood === 'melancholic' || currentMood === 'dreamy' || currentMood === 'dark') {
           if (phase < 0.4) return 0.3 + phase * 1.5;
