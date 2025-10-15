@@ -33,6 +33,8 @@ function getParamsForTechnique(technique: Technique, mood: Mood): BassSynthParam
       return { cutoff: 250, resonance: 0.1, distortion: 0.0, portamento: 0.0 };
     case 'slap':
        return { cutoff: 1200, resonance: 0.5, distortion: 0.3, portamento: 0.0 };
+    case 'fill':
+       return { cutoff: 900, resonance: 0.4, distortion: 0.15, portamento: 0.0 };
     default: // Для техник не от баса или по умолчанию
       return { cutoff: 500, resonance: 0.2, distortion: 0.0, portamento: 0.0 };
   }
@@ -111,7 +113,7 @@ function createBassAxiom(mood: Mood, random: { nextInt: (max: number) => number 
   ];
 }
 
-// === ТРАНСФОРМАЦИИ УДАРНЫХ (duration в ДОЛЯХ ТАКТА!) ===
+// === ТРАНСФОРМАЦИИ ===
 function createTomFill(mood: Mood): FractalEvent[] {
   const hitParams = getParamsForTechnique('hit', mood);
   return [
@@ -120,6 +122,32 @@ function createTomFill(mood: Mood): FractalEvent[] {
     { type: 'drum_tom_high', note: 50, duration: 0.25, time: 3.5, weight: 0.9, technique: 'hit', dynamics: 'mf', phrasing: 'staccato', params: hitParams },
     { type: 'drum_snare', note: 38, duration: 0.25, time: 3.75, weight: 1.0, technique: 'hit', dynamics: 'f', phrasing: 'staccato', params: hitParams }
   ];
+}
+
+function createBassFill(mood: Mood, random: { nextInt: (max: number) => number }): FractalEvent[] {
+    const scale = getScaleForMood(mood);
+    const fillParams = getParamsForTechnique('fill', mood);
+    const fill: FractalEvent[] = [];
+    let currentTime = 3.0;
+    const noteCount = 5 + random.nextInt(3); // 5-7 нот
+    
+    for (let i = 0; i < noteCount; i++) {
+        const note = scale[random.nextInt(scale.length)];
+        const duration = 0.25; // 16-е ноты
+        fill.push({
+            type: 'bass',
+            note,
+            duration,
+            time: currentTime,
+            weight: 0.8,
+            technique: 'fill',
+            dynamics: 'f',
+            phrasing: 'staccato',
+            params: fillParams,
+        });
+        currentTime += duration;
+    }
+    return fill;
 }
 
 // === ОСНОВНОЙ КЛАСС ===
@@ -191,6 +219,22 @@ export class FractalMusicEngine {
         });
     }
   }
+
+  public generateExternalImpulse() {
+    const bassBranches = this.branches.filter(b => b.type === 'bass');
+    if (bassBranches.length > 0) {
+        const branchToBoost = bassBranches[this.random.nextInt(bassBranches.length)];
+        if (branchToBoost) {
+            branchToBoost.weight = 0.9;
+            console.log(`[FractalEngine] External impulse boosted branch: ${branchToBoost.id}`);
+            // Re-normalize weights to keep the system stable
+            const totalWeight = this.branches.reduce((sum, b) => sum + b.weight, 0);
+            if (totalWeight > 1) {
+                this.branches.forEach(b => b.weight /= totalWeight);
+            }
+        }
+    }
+  }
   
   private selectBranchForMutation(): Branch | null {
     const totalWeight = this.branches.reduce((sum, b) => sum + b.weight, 0);
@@ -244,10 +288,7 @@ export class FractalMusicEngine {
     
     // "Weather" event: randomly boost a branch
     if (this.epoch > 10 && this.epoch % this.random.nextInt(24) + 8 === 0) {
-        const branchToBoost = this.branches[this.random.nextInt(this.branches.length)];
-        if (branchToBoost) {
-            branchToBoost.weight = Math.min(1.0, branchToBoost.weight + 0.5);
-        }
+        this.generateExternalImpulse();
     }
     
     if (this.climaxImminent && this.random.next() < 0.7) {
