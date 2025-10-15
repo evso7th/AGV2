@@ -130,7 +130,7 @@ export class FractalMusicEngine {
   private lambda: number;
   private epoch = 0;
   private random: { next: () => number; nextInt: (max: number) => number };
-  private climaxImminent: boolean = false; // <<< NEW
+  private climaxImminent: boolean = false;
 
   constructor(config: EngineConfig) {
     if (!config || config.tempo <= 0 || !isFinite(config.tempo)) {
@@ -230,16 +230,15 @@ export class FractalMusicEngine {
              break;
         case 3: // Drum Fill (if parent is drums)
              if (parent.type !== 'drums') return null;
-             return { id: `drum_fill_${this.epoch}`, events: createTomFill(this.config.mood), weight: 0.2, age: 0, technique: 'hit', type: 'drums' };
+             return { id: `drum_fill_${this.epoch}`, events: createTomFill(this.config.mood), weight: parent.weight, age: 0, technique: 'hit', type: 'drums' };
     }
     
-    return { id: `${parent.type}_mut_${this.epoch}`, events: newEvents, weight: parent.weight * 0.5, age: 0, technique: newTechnique, type: parent.type };
+    return { id: `${parent.type}_mut_${this.epoch}`, events: newEvents, weight: parent.weight, age: 0, technique: newTechnique, type: parent.type };
   }
 
   private generateOneBar(): FractalEvent[] {
     const output: FractalEvent[] = [];
     
-    // Проверка на tom fill для реакции баса
     const hasTomFill = this.branches.some(b => 
       b.type === 'drums' && 
       b.events.some(e => e.type.includes('tom'))
@@ -250,7 +249,7 @@ export class FractalMusicEngine {
       if (base) {
         const newEvents = base.events.map((e, i) => ({
           ...e,
-          note: e.note + i, // восходящая линия
+          note: e.note + i, 
           params: getParamsForTechnique('pluck', this.config.mood),
         }));
         this.branches.push({
@@ -264,7 +263,6 @@ export class FractalMusicEngine {
       }
     }
     
-    // Предвосхищение кульминации
     if (this.climaxImminent && this.random.next() > 0.7) {
         const base = this.branches.find(b => b.type === 'bass');
         if(base) {
@@ -279,7 +277,7 @@ export class FractalMusicEngine {
                 type: 'bass'
             });
         }
-        this.climaxImminent = false; // Сбрасываем флаг после использования
+        this.climaxImminent = false; 
     }
 
     this.branches.forEach(branch => {
@@ -315,7 +313,6 @@ export class FractalMusicEngine {
     this.branches = this.branches.map(branch => {
       const resonanceSum = this.branches.reduce((sum, other) => {
         if (other.id === branch.id) return sum;
-        // Используем ТОЛЬКО первое событие для основного резонанса
         const k = MelancholicMinorK(
           branch.events[0],
           other.events[0],
@@ -333,8 +330,8 @@ export class FractalMusicEngine {
       this.branches.forEach(b => b.weight = isFinite(b.weight) ? b.weight / totalWeight : 0.01);
     }
 
-    // Смерть слабых и старых ветвей
-    this.branches = this.branches.filter(b => b.weight > 0.02 && b.age < 64);
+    // Смерть слабых и старых ветвей (кроме базового барабанного аксона)
+    this.branches = this.branches.filter(b => b.id === 'drum_axon' || (b.weight > 0.02 && b.age < 64));
     
     // Возрождение, если все почти умерли
     if (this.branches.length < 2 && this.epoch > 10) {
@@ -367,7 +364,6 @@ export class FractalMusicEngine {
 
         const currentMood = epoch % 2 === 0 ? this.config.mood : 'epic';
 
-        // Устанавливаем флаг предвосхищения кульминации
         this.climaxImminent = phase > 0.65 && phase < 0.7;
 
         if (currentMood === 'melancholic' || currentMood === 'dreamy' || currentMood === 'dark') {
@@ -382,3 +378,5 @@ export class FractalMusicEngine {
     };
   }
 }
+
+    
