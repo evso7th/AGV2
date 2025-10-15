@@ -242,18 +242,26 @@ export class FractalMusicEngine {
 
     // Обновление весов
     this.branches = this.branches.map(branch => {
-      const resonanceSum = this.branches.reduce((sum, other) => {
-        if (other.id === branch.id) return sum;
-        const k = MelancholicMinorK(
-          branch.events[0],
-          other.events[0],
-          { mood: this.config.mood, tempo: this.config.tempo, delta }
-        );
-        return sum + k * delta;
-      }, 0);
-      const newWeight = (1 - this.lambda) * branch.weight + resonanceSum;
+      let resonanceSum = 0;
+      for (const other of this.branches) {
+        if (other.id === branch.id) continue;
+        // Сравнение каждого события в ветке с каждым событием в другой ветке
+        for (const eventA of branch.events) {
+          for (const eventB of other.events) {
+            const k = MelancholicMinorK(
+              eventA,
+              eventB,
+              { mood: this.config.mood, tempo: this.config.tempo, delta }
+            );
+            resonanceSum += k * delta;
+          }
+        }
+      }
+      
+      const newWeight = (1 - this.lambda) * branch.weight + resonanceSum / (this.branches.length || 1);
       return { ...branch, weight: isFinite(newWeight) ? newWeight : 0.01, age: branch.age + 1 };
     });
+
 
     // Нормализация
     const totalWeight = this.branches.reduce((sum, b) => sum + b.weight, 0);
@@ -262,7 +270,7 @@ export class FractalMusicEngine {
     }
 
     // Смерть слабых ветвей
-    this.branches = this.branches.filter(b => b.weight > 0.05 && b.age < 16);
+    this.branches = this.branches.filter(b => b.weight > 0.05 && b.age < 32);
 
     // Генерация событий
     const events = this.generateOneBar();

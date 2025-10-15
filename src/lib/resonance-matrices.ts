@@ -1,7 +1,8 @@
+
 import type { FractalEvent, ResonanceMatrix, Mood } from '@/types/fractal';
 import { getScaleForMood } from './music-theory'; // ← импорт из нового файла
 
-// === ВСПОМОГАТЕЛЬНЫЕ ФУНКЦИИ ===
+// === ВСПОМОГАТЕЛЬНЫЕ ФУНКЦИЯ ===
 
 /** Проверяет, что время событий совпадает с небольшой погрешностью */
 function areSimultaneous(timeA: number, timeB: number): boolean {
