@@ -103,17 +103,20 @@ export type TimerSettings = {
 };
 
 export type ScoreName = 'evolve' | 'omega' | 'journey' | 'dreamtales' | 'multeity' | 'neuro_f_matrix';
+export type Genre = 'trance' | 'ambient' | 'progressive' | 'rock' | 'house' | 'rnb' | 'ballad' | 'reggae' | 'blues' | 'celtic';
 
 // Settings sent from the UI to the main engine/worker.
 export type WorkerSettings = {
     bpm: number;
     score: ScoreName;
+    genre: Genre;
     drumSettings: Omit<DrumSettings, 'volume'>;
     instrumentSettings: InstrumentSettings;
     textureSettings: Omit<TextureSettings, 'volume'>;
     density: number; // Controls musical density, 0 to 1
     composerControlsInstruments: boolean;
     mood: Mood;
+    seed?: number;
 };
 
     

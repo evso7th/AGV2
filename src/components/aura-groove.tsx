@@ -9,10 +9,10 @@ import { Label } from "@/components/ui/label";
 import Image from 'next/image';
 import { Slider } from "@/components/ui/slider";
 import { Switch } from "@/components/ui/switch";
-import type { DrumSettings, InstrumentSettings, ScoreName, BassInstrument, InstrumentPart, MelodyInstrument, AccompanimentInstrument, BassTechnique, TextureSettings, TimerSettings, Mood } from '@/types/music';
+import type { DrumSettings, InstrumentSettings, ScoreName, BassInstrument, InstrumentPart, MelodyInstrument, AccompanimentInstrument, BassTechnique, TextureSettings, TimerSettings, Mood, Genre } from '@/types/music';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { useRouter } from "next/navigation";
-import { BASS_PRESETS } from "@/lib/bass-presets";
+import { BASS_PRESET_INFO } from "@/lib/bass-presets";
 import { PRESETS } from "@/lib/presets";
 
 
@@ -50,6 +50,8 @@ export type AuraGrooveProps = {
   handleToggleTimer: () => void;
   mood: Mood;
   setMood: (mood: Mood) => void;
+  genre: Genre;
+  setGenre: (genre: Genre) => void;
 };
 
 const EQ_BANDS = [
@@ -105,7 +107,7 @@ export function AuraGroove({
     if (instrumentName === 'none') return 'hsl(var(--muted-foreground))';
     if (instrumentName === 'piano' || instrumentName === 'violin' || instrumentName === 'flute') return 'hsl(var(--primary))';
     if (part === 'bass') {
-        const preset = BASS_PRESETS[instrumentName as BassInstrument];
+        const preset = BASS_PRESET_INFO[instrumentName as BassInstrument];
         return preset?.color || 'hsl(var(--foreground))';
     }
     const preset = PRESETS[instrumentName as MelodyInstrument];
@@ -481,5 +483,3 @@ export function AuraGroove({
     </Card>
   );
 }
-
-    

@@ -6,7 +6,7 @@
  * Its goal is to create a continuously evolving piece of music where complexity is controlled by a 'density' parameter.
  * It is completely passive and only composes the next bar when commanded via a 'tick'.
  */
-import type { WorkerSettings, Score, ScoreName, InstrumentSettings, DrumSettings, Mood } from '@/types/music';
+import type { WorkerSettings, ScoreName, Mood, Genre } from '@/types/music';
 import { FractalMusicEngine } from './fractal-music-engine';
 import type { FractalEvent } from '@/types/fractal';
 
@@ -50,12 +50,13 @@ const Scheduler = {
     settings: {
         bpm: 75,
         score: 'neuro_f_matrix', 
-        drumSettings: { pattern: 'composer', enabled: true, volume: 0.5, kickVolume: 1.0 } as DrumSettings,
+        genre: 'ambient' as Genre,
+        drumSettings: { pattern: 'composer', enabled: true, volume: 0.5, kickVolume: 1.0 },
         instrumentSettings: { 
             bass: { name: "glideBass", volume: 0.7, technique: 'portamento' },
             melody: { name: "acousticGuitarSolo", volume: 0.8 },
             accompaniment: { name: "guitarChords", volume: 0.7 },
-        } as InstrumentSettings,
+        },
         textureSettings: {
             sparkles: { enabled: true },
             pads: { enabled: true }
@@ -77,7 +78,8 @@ const Scheduler = {
             organic: settings.density,
             drumSettings: settings.drumSettings,
             mood: settings.mood,
-            genre: 'ambient',
+            genre: settings.genre,
+            seed: settings.seed ?? Date.now(),
         });
         this.barCount = 0;
         lastSparkleTime = -Infinity;
@@ -124,6 +126,7 @@ const Scheduler = {
        const needsRestart = this.isRunning && (newSettings.bpm !== undefined && newSettings.bpm !== this.settings.bpm);
        const scoreChanged = newSettings.score && newSettings.score !== this.settings.score;
        const moodChanged = newSettings.mood && newSettings.mood !== this.settings.mood;
+       const genreChanged = newSettings.genre && newSettings.genre !== this.settings.genre;
        const wasNotInitialized = !fractalMusicEngine;
        
        if (needsRestart) this.stop();
@@ -136,7 +139,7 @@ const Scheduler = {
            textureSettings: { ...this.settings.textureSettings, ...newSettings.textureSettings },
        };
 
-       if (wasNotInitialized || scoreChanged || moodChanged) {
+       if (wasNotInitialized || scoreChanged || moodChanged || genreChanged) {
            this.initializeEngine(this.settings);
        } else if (fractalMusicEngine) {
            fractalMusicEngine.updateConfig({
@@ -146,7 +149,7 @@ const Scheduler = {
                drumSettings: this.settings.drumSettings,
                lambda: 1.0 - (this.settings.density * 0.5 + 0.3),
                mood: this.settings.mood,
-               genre: 'ambient'
+               genre: this.settings.genre,
            });
        }
        

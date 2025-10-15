@@ -3,7 +3,7 @@
 
 import { useState, useEffect, useCallback, useRef } from "react";
 import { useRouter } from "next/navigation";
-import type { DrumSettings, InstrumentSettings, ScoreName, WorkerSettings, BassInstrument, InstrumentPart, MelodyInstrument, AccompanimentInstrument, BassTechnique, TextureSettings, TimerSettings, Mood } from '@/types/music';
+import type { DrumSettings, InstrumentSettings, ScoreName, WorkerSettings, BassInstrument, InstrumentPart, MelodyInstrument, AccompanimentInstrument, BassTechnique, TextureSettings, TimerSettings, Mood, Genre } from '@/types/music';
 import { useAudioEngine } from "@/contexts/audio-engine-context";
 
 const FADE_OUT_DURATION = 120; // 2 minutes
@@ -43,6 +43,7 @@ export const useAuraGroove = () => {
   });
   const [bpm, setBpm] = useState(75);
   const [score, setScore] = useState<ScoreName>('neuro_f_matrix');
+  const [genre, setGenre] = useState<Genre>('ambient');
   const [density, setDensity] = useState(0.5);
   const [composerControlsInstruments, setComposerControlsInstruments] = useState(true);
   const [mood, setMood] = useState<Mood>('melancholic');
@@ -67,6 +68,7 @@ export const useAuraGroove = () => {
     return {
       bpm,
       score,
+      genre,
       instrumentSettings,
       drumSettings: { ...drumSettings, enabled: drumSettings.pattern !== 'none' },
       textureSettings: {
@@ -77,7 +79,7 @@ export const useAuraGroove = () => {
       composerControlsInstruments,
       mood,
     };
-  }, [bpm, score, instrumentSettings, drumSettings, textureSettings, density, composerControlsInstruments, mood]);
+  }, [bpm, score, genre, instrumentSettings, drumSettings, textureSettings, density, composerControlsInstruments, mood]);
 
   // Initial settings sync
   useEffect(() => {
@@ -107,7 +109,7 @@ export const useAuraGroove = () => {
           const fullSettings = getFullSettings();
           updateSettings(fullSettings);
       }
-  }, [bpm, score, density, drumSettings, instrumentSettings, textureSettings, composerControlsInstruments, mood, isInitialized, updateSettings, getFullSettings]);
+  }, [bpm, score, genre, density, drumSettings, instrumentSettings, textureSettings, composerControlsInstruments, mood, isInitialized, updateSettings, getFullSettings]);
 
   // Timer logic
   useEffect(() => {
@@ -266,5 +268,7 @@ export const useAuraGroove = () => {
     handleToggleTimer,
     mood,
     setMood,
+    genre,
+    setGenre
   };
 };

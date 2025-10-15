@@ -15,7 +15,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import type { AuraGrooveProps } from "./aura-groove";
 import { useRouter } from "next/navigation";
 import { formatTime } from "@/lib/utils";
-import type { BassInstrument, MelodyInstrument, AccompanimentInstrument, Mood } from '@/types/music';
+import type { BassInstrument, MelodyInstrument, AccompanimentInstrument, Mood, Genre } from '@/types/music';
 
 const EQ_BANDS = [
   { freq: '60', label: '60' }, { freq: '125', label: '125' }, { freq: '250', label: '250' },
@@ -29,7 +29,7 @@ export function AuraGrooveV2({
   isEqModalOpen, setIsEqModalOpen, eqSettings, handleEqChange,
   timerSettings, handleTimerDurationChange, handleToggleTimer,
   composerControlsInstruments, setComposerControlsInstruments,
-  mood, setMood
+  mood, setMood, genre, setGenre
 }: AuraGrooveProps) {
 
   const router = useRouter();
@@ -47,11 +47,14 @@ export function AuraGrooveV2({
   const accompanimentInstrumentList: (AccompanimentInstrument | 'none')[] = ['piano', 'violin', 'flute', 'guitarChords', 'synth', 'organ', 'mellotron', 'theremin', 'E-Bells_melody', 'G-Drops', 'electricGuitar', 'none'];
   const bassInstrumentList: (BassInstrument | 'none')[] = ['classicBass', 'glideBass', 'ambientDrone', 'resonantGliss', 'hypnoticDrone', 'livingRiff', 'none'];
   const moodList: Mood[] = ['melancholic', 'epic', 'dreamy', 'dark'];
+  const genreList: Genre[] = ['trance', 'ambient', 'progressive', 'rock', 'house', 'rnb', 'ballad', 'reggae', 'blues', 'celtic'];
 
   const displayNames: Record<string, string> = {
     'guitarChords': 'Guitar Chords',
     'acousticGuitarSolo': 'Acoustic Solo',
-    'electricGuitar': 'Electric Guitar'
+    'electricGuitar': 'Electric Guitar',
+    'neuro_f_matrix': 'Neuro F-Matrix',
+    'rnb': 'R&B',
   };
 
   const isFractalStyle = score === 'neuro_f_matrix';
@@ -126,12 +129,21 @@ export function AuraGrooveV2({
                               <SelectItem value="omega">Omega</SelectItem>
                               <SelectItem value="journey">Journey</SelectItem>
                               <SelectItem value="multeity">Multeity</SelectItem>
-                              <SelectItem value="neuro_f_matrix">Neuro F-Matrix</SelectItem>
+                              <SelectItem value="neuro_f_matrix">{displayNames['neuro_f_matrix'] || 'Neuro F-Matrix'}</SelectItem>
                           </SelectContent>
                       </Select>
                   </div>
                    {isFractalStyle && (
                     <>
+                     <div className="grid grid-cols-3 items-center gap-2">
+                          <Label htmlFor="genre-selector" className="text-right text-xs">Genre</Label>
+                          <Select value={genre} onValueChange={(v) => setGenre(v as Genre)} disabled={isInitializing || isPlaying}>
+                              <SelectTrigger id="genre-selector" className="col-span-2 h-8 text-xs"><SelectValue /></SelectTrigger>
+                              <SelectContent>
+                                  {genreList.map(g => <SelectItem key={g} value={g} className="text-xs capitalize">{displayNames[g] || g}</SelectItem>)}
+                              </SelectContent>
+                          </Select>
+                      </div>
                       <div className="grid grid-cols-3 items-center gap-2">
                           <Label htmlFor="mood-selector" className="text-right text-xs">Mood</Label>
                           <Select value={mood} onValueChange={(v) => setMood(v as Mood)} disabled={isInitializing || isPlaying}>
@@ -301,5 +313,3 @@ export function AuraGrooveV2({
     </div>
   );
 }
-
-    
