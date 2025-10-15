@@ -75,7 +75,7 @@ export const MelancholicMinorK: ResonanceMatrix = (
   }
 
   // --- ГАРМОНИЧЕСКИЙ РЕЗОНАНС (БАС ↔ БАС) ---
-  if (isBass(eventA) && isBass(eventB) && eventA.id !== eventB.id) {
+  if (isBass(eventA) && isBass(eventB) && eventA.note !== eventB.note) { // Сравниваем разные ноты
     const scale = getScaleForMood(context.mood);
     const noteAInScale = scale.some(scaleNote => (eventA.note % 12) === (scaleNote % 12));
     const noteBInScale = scale.some(scaleNote => (eventB.note % 12) === (scaleNote % 12));
