@@ -187,6 +187,53 @@ export class FractalMusicEngine {
         });
     }
   }
+  
+  private selectBranchForMutation(): Branch | null {
+    const totalWeight = this.branches.reduce((sum, b) => sum + b.weight, 0);
+    if (totalWeight === 0) return null;
+    let random = this.random.next() * totalWeight;
+    for (const branch of this.branches) {
+      random -= branch.weight;
+      if (random <= 0) return branch;
+    }
+    return null;
+  }
+
+  private mutateBranch(parent: Branch): Branch | null {
+    const mutationType = this.random.nextInt(4);
+    const newEvents: FractalEvent[] = JSON.parse(JSON.stringify(parent.events));
+    let newTechnique: Technique = parent.technique;
+
+    switch(mutationType) {
+        case 0: // Ghost Note
+             if (parent.type !== 'bass') return null;
+             const eventToGhost = newEvents[this.random.nextInt(newEvents.length)];
+             eventToGhost.technique = 'ghost';
+             eventToGhost.params = getParamsForTechnique('ghost', this.config.mood);
+             eventToGhost.duration *= 0.5;
+             newTechnique = 'ghost';
+             break;
+        case 1: // Rhythmic shift
+             newEvents.forEach(e => e.time = (e.time + 0.125) % 4);
+             break;
+        case 2: // Transpose
+             if (parent.type !== 'bass') return null;
+             const scale = getScaleForMood(this.config.mood);
+             const shift = this.random.next() > 0.5 ? 2 : -2;
+             newEvents.forEach(e => {
+                 const currentIndex = scale.indexOf(e.note);
+                 if (currentIndex !== -1) {
+                     e.note = scale[(currentIndex + shift + scale.length) % scale.length];
+                 }
+             });
+             break;
+        case 3: // Drum Fill (if parent is drums)
+             if (parent.type !== 'drums') return null;
+             return { id: `drum_fill_${this.epoch}`, events: createTomFill(this.config.mood), weight: 0.2, age: 0, technique: 'hit', type: 'drums' };
+    }
+    
+    return { id: `${parent.type}_mut_${this.epoch}`, events: newEvents, weight: parent.weight * 0.5, age: 0, technique: newTechnique, type: parent.type };
+  }
 
   private generateOneBar(): FractalEvent[] {
     const output: FractalEvent[] = [];
@@ -194,42 +241,22 @@ export class FractalMusicEngine {
     this.branches.forEach(branch => {
       branch.events.forEach(originalEvent => {
         const newEvent: FractalEvent = { ...originalEvent };
-
         newEvent.dynamics = weightToDynamics(branch.weight);
         newEvent.phrasing = branch.weight > 0.7 ? 'legato' : 'staccato';
         newEvent.weight = branch.weight; 
-        
-        // Always assign params
         newEvent.params = getParamsForTechnique(newEvent.technique, this.config.mood);
-        
         output.push(newEvent);
       });
     });
 
     // DLA: новые ветви
-    if (this.epoch % 4 === 3 && this.random.next() < this.config.density) {
-        if (this.random.next() > 0.5 && this.branches.filter(b => b.type === 'bass').length < 3) {
-            const base = this.branches.find(b => b.type === 'bass');
-            if (base) {
-                const ghostParams = getParamsForTechnique('ghost', this.config.mood);
-                this.branches.push({
-                    id: `bass_ghost_${this.epoch}`,
-                    events: [{ ...base.events[this.random.nextInt(base.events.length)], duration: 0.2, technique: 'ghost', params: ghostParams }],
-                    weight: 0.15,
-                    age: 0,
-                    technique: 'ghost',
-                    type: 'bass'
-                });
+    if (this.epoch % 2 === 1 && this.random.next() < this.config.density && this.branches.length < 8) {
+        const parentBranch = this.selectBranchForMutation();
+        if (parentBranch) {
+            const newBranch = this.mutateBranch(parentBranch);
+            if (newBranch) {
+                this.branches.push(newBranch);
             }
-        } else if (this.config.drumSettings.enabled && this.branches.filter(b => b.type === 'drums').length < 3) {
-            this.branches.push({
-                id: `drum_fill_${this.epoch}`,
-                events: createTomFill(this.config.mood),
-                weight: 0.2,
-                age: 0,
-                technique: 'hit',
-                type: 'drums'
-            });
         }
     }
     
@@ -245,7 +272,6 @@ export class FractalMusicEngine {
       let resonanceSum = 0;
       for (const other of this.branches) {
         if (other.id === branch.id) continue;
-        // Сравнение каждого события в ветке с каждым событием в другой ветке
         for (const eventA of branch.events) {
           for (const eventB of other.events) {
             const k = MelancholicMinorK(
@@ -253,24 +279,32 @@ export class FractalMusicEngine {
               eventB,
               { mood: this.config.mood, tempo: this.config.tempo, delta }
             );
-            resonanceSum += k * delta;
+            // Увеличиваем влияние резонанса, чтобы изменения были заметнее
+            resonanceSum += k * delta * 2.0; 
           }
         }
       }
       
-      const newWeight = (1 - this.lambda) * branch.weight + resonanceSum / (this.branches.length || 1);
-      return { ...branch, weight: isFinite(newWeight) ? newWeight : 0.01, age: branch.age + 1 };
+      const averageResonance = resonanceSum / (branch.events.length * (this.branches.length -1) || 1);
+      const newWeight = (1 - this.lambda) * branch.weight + averageResonance;
+      return { ...branch, weight: isFinite(newWeight) ? Math.max(0, newWeight) : 0.01, age: branch.age + 1 };
     });
-
 
     // Нормализация
     const totalWeight = this.branches.reduce((sum, b) => sum + b.weight, 0);
     if (totalWeight > 0 && isFinite(totalWeight)) {
       this.branches.forEach(b => b.weight = isFinite(b.weight) ? b.weight / totalWeight : 0.01);
+    } else {
+      // Если все веса умерли, реинициализируем, чтобы избежать тишины
+      this.initialize();
     }
 
-    // Смерть слабых ветвей
-    this.branches = this.branches.filter(b => b.weight > 0.05 && b.age < 32);
+    // Смерть слабых и старых ветвей
+    this.branches = this.branches.filter(b => b.weight > 0.02 && b.age < 64);
+    if (this.branches.length === 0) {
+        this.initialize(); // Экстренная реинициализация
+    }
+
 
     // Генерация событий
     const events = this.generateOneBar();
