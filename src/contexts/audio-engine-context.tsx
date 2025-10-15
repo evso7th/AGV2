@@ -114,7 +114,7 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
     }
     
     if (bassManagerRef.current && bassEvents.length > 0) {
-        bassManagerRef.current.play(bassEvents, barStartTime);
+        bassManagerRef.current.play(bassEvents, barStartTime, tempo);
     }
   }, []);
 

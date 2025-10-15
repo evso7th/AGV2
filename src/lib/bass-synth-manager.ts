@@ -42,14 +42,14 @@ export class BassSynthManager {
    * Время в событиях - ОТНОСИТЕЛЬНОЕ (доли такта).
    * barStartTime - АБСОЛЮТНОЕ время начала текущего такта.
    */
-  public play(events: FractalEvent[], barStartTime: number) {
-    console.log('[BassMan] Received events to play:', { events, barStartTime });
+  public play(events: FractalEvent[], barStartTime: number, tempo: number) {
+    console.log('[BassMan] Received events to play:', { events, barStartTime, tempo });
     if (!this.isInitialized || !this.worklet) {
       console.warn('[BassSynthManager] Not ready, skipping events');
       return;
     }
     
-    const beatDuration = 60 / 120; // Defaulting to 120 bpm, should be passed from engine ideally.
+    const beatDuration = 60 / tempo;
     const messages = [];
 
     for (const event of events) {
