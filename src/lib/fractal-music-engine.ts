@@ -33,6 +33,8 @@ function getParamsForTechnique(technique: Technique, mood: Mood): BassSynthParam
       return { cutoff: 250, resonance: 0.1, distortion: 0.0, portamento: 0.0 };
     case 'slap':
        return { cutoff: 1200, resonance: 0.5, distortion: 0.3, portamento: 0.0 };
+    case 'fill':
+       return { cutoff: 900, resonance: 0.4, distortion: 0.15, portamento: 0.0 };
     default: // Для техник не от баса или по умолчанию
       return { cutoff: 500, resonance: 0.2, distortion: 0.0, portamento: 0.0 };
   }
@@ -111,7 +113,7 @@ function createBassAxiom(mood: Mood, random: { nextInt: (max: number) => number 
   ];
 }
 
-// === ТРАНСФОРМАЦИИ УДАРНЫХ (duration в ДОЛЯХ ТАКТА!) ===
+// === ТРАНСФОРМАЦИИ ===
 function createTomFill(mood: Mood): FractalEvent[] {
   const hitParams = getParamsForTechnique('hit', mood);
   return [
@@ -120,6 +122,32 @@ function createTomFill(mood: Mood): FractalEvent[] {
     { type: 'drum_tom_high', note: 50, duration: 0.25, time: 3.5, weight: 0.9, technique: 'hit', dynamics: 'mf', phrasing: 'staccato', params: hitParams },
     { type: 'drum_snare', note: 38, duration: 0.25, time: 3.75, weight: 1.0, technique: 'hit', dynamics: 'f', phrasing: 'staccato', params: hitParams }
   ];
+}
+
+function createBassFill(mood: Mood, random: { nextInt: (max: number) => number }): FractalEvent[] {
+    const scale = getScaleForMood(mood);
+    const fillParams = getParamsForTechnique('fill', mood);
+    const fill: FractalEvent[] = [];
+    let currentTime = 3.0;
+    const noteCount = 5 + random.nextInt(3); // 5-7 нот
+    
+    for (let i = 0; i < noteCount; i++) {
+        const note = scale[random.nextInt(scale.length)];
+        const duration = 0.25; // 16-е ноты
+        fill.push({
+            type: 'bass',
+            note,
+            duration,
+            time: currentTime,
+            weight: 0.8,
+            technique: 'fill',
+            dynamics: 'f',
+            phrasing: 'staccato',
+            params: fillParams,
+        });
+        currentTime += duration;
+    }
+    return fill;
 }
 
 // === ОСНОВНОЙ КЛАСС ===
@@ -258,6 +286,11 @@ export class FractalMusicEngine {
   private generateOneBar(): FractalEvent[] {
     const output: FractalEvent[] = [];
     
+    // "Weather" event: randomly boost a branch
+    if (this.epoch > 10 && this.epoch % (8 + this.random.nextInt(24)) === 0) {
+        this.generateExternalImpulse();
+    }
+    
     if (this.climaxImminent && this.random.next() < 0.7) {
         const base = this.branches.find(b => b.type === 'bass');
         if(base) {
@@ -295,6 +328,19 @@ export class FractalMusicEngine {
                 this.branches.push(newBranch);
             }
         }
+    }
+
+     // DLA: Bass Fill Trigger
+    const hasDrumFill = this.branches.some(b => b.technique === 'hit' && b.events.some(e => e.type.includes('tom')));
+    if (hasDrumFill && this.random.next() < 0.5) {
+        this.branches.push({
+            id: `bass_response_${this.epoch}`,
+            events: createBassFill(this.currentMood, this.random),
+            weight: 0.7,
+            age: 0,
+            technique: 'fill',
+            type: 'bass'
+        });
     }
     
     return output;
