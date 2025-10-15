@@ -131,6 +131,7 @@ export class FractalMusicEngine {
   private epoch = 0;
   private random: { next: () => number; nextInt: (max: number) => number };
   private climaxImminent: boolean = false;
+  private currentMood: Mood;
 
   constructor(config: EngineConfig) {
     if (!config || config.tempo <= 0 || !isFinite(config.tempo)) {
@@ -150,6 +151,7 @@ export class FractalMusicEngine {
       tempo: Math.max(20, Math.min(300, config.tempo))
     };
     this.lambda = config.lambda ?? 0.5;
+    this.currentMood = config.mood;
     this.random = seededRandom(config.seed ?? Date.now());
     this.initialize();
   }
@@ -161,6 +163,7 @@ export class FractalMusicEngine {
   public updateConfig(newConfig: Partial<EngineConfig>) {
       this.config = { ...this.config, ...newConfig };
       if (newConfig.lambda) this.lambda = newConfig.lambda;
+      if (newConfig.mood) this.currentMood = newConfig.mood;
   }
 
   private initialize() {
@@ -188,6 +191,22 @@ export class FractalMusicEngine {
         });
     }
   }
+
+  public generateExternalImpulse() {
+    const bassBranches = this.branches.filter(b => b.type === 'bass');
+    if (bassBranches.length > 0) {
+        const branchToBoost = bassBranches[this.random.nextInt(bassBranches.length)];
+        if (branchToBoost) {
+            branchToBoost.weight = 0.9;
+            console.log(`[FractalEngine] External impulse boosted branch: ${branchToBoost.id}`);
+            // Re-normalize weights to keep the system stable
+            const totalWeight = this.branches.reduce((sum, b) => sum + b.weight, 0);
+            if (totalWeight > 1) {
+                this.branches.forEach(b => b.weight /= totalWeight);
+            }
+        }
+    }
+  }
   
   private selectBranchForMutation(): Branch | null {
     const totalWeight = this.branches.reduce((sum, b) => sum + b.weight, 0);
@@ -197,7 +216,7 @@ export class FractalMusicEngine {
       random -= branch.weight;
       if (random <= 0) return branch;
     }
-    return this.branches.length > 0 ? this.branches[this.branches.length -1] : null;
+    return this.branches.length > 0 ? this.branches[this.branches.length - 1] : null;
   }
 
   private mutateBranch(parent: Branch): Branch | null {
@@ -210,7 +229,7 @@ export class FractalMusicEngine {
              if (parent.type !== 'bass') return null;
              const eventToGhost = newEvents[this.random.nextInt(newEvents.length)];
              eventToGhost.technique = 'ghost';
-             eventToGhost.params = getParamsForTechnique('ghost', this.config.mood);
+             eventToGhost.params = getParamsForTechnique('ghost', this.currentMood);
              eventToGhost.duration *= 0.5;
              newTechnique = 'ghost';
              break;
@@ -219,7 +238,7 @@ export class FractalMusicEngine {
              break;
         case 2: // Transpose
              if (parent.type !== 'bass') return null;
-             const scale = getScaleForMood(this.config.mood);
+             const scale = getScaleForMood(this.currentMood);
              const shift = this.random.next() > 0.5 ? 2 : -2;
              newEvents.forEach(e => {
                  const currentIndex = scale.indexOf(e.note);
@@ -230,43 +249,19 @@ export class FractalMusicEngine {
              break;
         case 3: // Drum Fill (if parent is drums)
              if (parent.type !== 'drums') return null;
-             return { id: `drum_fill_${this.epoch}`, events: createTomFill(this.config.mood), weight: parent.weight, age: 0, technique: 'hit', type: 'drums' };
+             return { id: `drum_fill_${this.epoch}`, events: createTomFill(this.currentMood), weight: parent.weight / 2, age: 0, technique: 'hit', type: 'drums' };
     }
     
-    return { id: `${parent.type}_mut_${this.epoch}`, events: newEvents, weight: parent.weight, age: 0, technique: newTechnique, type: parent.type };
+    return { id: `${parent.type}_mut_${this.epoch}`, events: newEvents, weight: parent.weight / 2, age: 0, technique: newTechnique, type: parent.type };
   }
 
   private generateOneBar(): FractalEvent[] {
     const output: FractalEvent[] = [];
     
-    const hasTomFill = this.branches.some(b => 
-      b.type === 'drums' && 
-      b.events.some(e => e.type.includes('tom'))
-    );
-
-    if (hasTomFill && this.random.next() > 0.5) {
-      const base = this.branches.find(b => b.type === 'bass');
-      if (base) {
-        const newEvents = base.events.map((e, i) => ({
-          ...e,
-          note: e.note + i, 
-          params: getParamsForTechnique('pluck', this.config.mood),
-        }));
-        this.branches.push({
-          id: `bass_response_${this.epoch}`,
-          events: newEvents,
-          weight: 0.3,
-          age: 0,
-          technique: 'pluck',
-          type: 'bass'
-        });
-      }
-    }
-    
-    if (this.climaxImminent && this.random.next() > 0.7) {
+    if (this.climaxImminent && this.random.next() < 0.7) {
         const base = this.branches.find(b => b.type === 'bass');
         if(base) {
-            const ghostParams = getParamsForTechnique('ghost', this.config.mood);
+            const ghostParams = getParamsForTechnique('ghost', this.currentMood);
             const ghostEvents = base.events.map(e => ({ ...e, technique: 'ghost' as Technique, params: ghostParams }));
             this.branches.push({
                 id: `bass_tension_${this.epoch}`,
@@ -286,12 +281,12 @@ export class FractalMusicEngine {
         newEvent.dynamics = weightToDynamics(branch.weight);
         newEvent.phrasing = branch.weight > 0.7 ? 'legato' : 'staccato';
         newEvent.weight = branch.weight; 
-        newEvent.params = getParamsForTechnique(newEvent.technique, this.config.mood);
+        newEvent.params = getParamsForTechnique(newEvent.technique, this.currentMood);
         output.push(newEvent);
       });
     });
 
-    // DLA: новые ветви
+    // DLA: Genetic mutation
     if (this.epoch % 2 === 1 && this.random.next() < this.config.density && this.branches.length < 8) {
         const parentBranch = this.selectBranchForMutation();
         if (parentBranch) {
@@ -316,7 +311,7 @@ export class FractalMusicEngine {
         const k = MelancholicMinorK(
           branch.events[0],
           other.events[0],
-          { mood: this.config.mood, tempo: this.config.tempo, delta }
+          { mood: this.currentMood, tempo: this.config.tempo, delta }
         );
         return sum + k * delta;
       }, 0);
@@ -330,24 +325,9 @@ export class FractalMusicEngine {
       this.branches.forEach(b => b.weight = isFinite(b.weight) ? b.weight / totalWeight : 0.01);
     }
 
-    // Смерть слабых и старых ветвей (кроме базового барабанного аксона)
-    this.branches = this.branches.filter(b => b.id === 'drum_axon' || (b.weight > 0.02 && b.age < 64));
+    // Смерть слабых и старых ветвей (но барабаны бессмертны)
+    this.branches = this.branches.filter(b => b.type === 'drums' || (b.weight > 0.02 && b.age < 32));
     
-    // Возрождение, если все почти умерли
-    if (this.branches.length < 2 && this.epoch > 10) {
-      const newSeed = (this.config.seed ?? 1) + this.epoch;
-      const newRandom = seededRandom(newSeed);
-      const newBass = createBassAxiom(this.config.mood, newRandom);
-      this.branches.push({
-        id: `bass_reborn_${this.epoch}`,
-        events: newBass,
-        weight: 0.6,
-        age: 0,
-        technique: 'pluck',
-        type: 'bass'
-      });
-    }
-
     // Генерация событий
     const events = this.generateOneBar();
 
@@ -359,14 +339,14 @@ export class FractalMusicEngine {
   private getDeltaProfile(): (t: number) => number {
     return (t: number) => {
         const safeT = safeTime(t);
-        const epoch = Math.floor(safeT / 120); // каждые 2 минуты — новая эпоха
-        const phase = (safeT % 120) / 120;     // фаза внутри эпохи
+        const epoch = Math.floor(safeT / 120); 
+        const phase = (safeT % 120) / 120;
 
-        const currentMood = epoch % 2 === 0 ? this.config.mood : 'epic';
+        this.currentMood = epoch % 2 === 0 ? this.config.mood : 'epic';
 
         this.climaxImminent = phase > 0.65 && phase < 0.7;
 
-        if (currentMood === 'melancholic' || currentMood === 'dreamy' || currentMood === 'dark') {
+        if (this.currentMood === 'melancholic' || this.currentMood === 'dreamy' || this.currentMood === 'dark') {
           if (phase < 0.4) return 0.3 + phase * 1.5;
           if (phase < 0.7) return 1.0;
           return 1.0 - (phase - 0.7) * 2.3;
@@ -378,5 +358,3 @@ export class FractalMusicEngine {
     };
   }
 }
-
-    
