@@ -1,111 +1,114 @@
 
-import type { BassInstrument, BassTechnique } from "@/types/music";
-import type { FractalEvent } from '@/types/fractal';
+// src/lib/bass-synth-manager.ts
+import type { FractalEvent, BassInstrument, BassTechnique } from '@/types/fractal';
 
 function midiToFreq(midi: number): number {
     return Math.pow(2, (midi - 69) / 12) * 440;
 }
 
 /**
- * A dead-simple bass synth manager.
- * Its only job is to receive a score and schedule noteOn/noteOff messages to the worklet.
+ * BassSynthManager — "Исполнитель"
+ * Его единственная задача: получить МАССИВ событий FractalEvent и точно воспроизвести их
+ * в заданное время с заданными параметрами синтеза.
  */
 export class BassSynthManager {
-    private audioContext: AudioContext;
-    private workletNode: AudioWorkletNode | null = null;
-    private outputNode: GainNode;
-    private preamp: GainNode; // Pre-amplifier for the bass
-    public isInitialized = false;
+  private ctx: AudioContext;
+  private worklet: AudioWorkletNode | null = null;
+  private destination: AudioNode;
+  private isInitialized = false;
 
-    constructor(audioContext: AudioContext, destination: AudioNode) {
-        this.audioContext = audioContext;
-        this.outputNode = this.audioContext.createGain();
-        
-        // Create and connect the preamp
-        this.preamp = this.audioContext.createGain();
-        this.preamp.gain.value = 4.5; // Boost volume by 4.5x
-        this.preamp.connect(this.outputNode);
+  constructor(ctx: AudioContext, destination: AudioNode) {
+    this.ctx = ctx;
+    this.destination = destination;
+  }
 
-        this.outputNode.connect(destination);
+  async init() {
+    if (this.isInitialized) return;
+    try {
+      await this.ctx.audioWorklet.addModule('/worklets/bass-processor.js');
+      this.worklet = new AudioWorkletNode(this.ctx, 'bass-processor', {
+         processorOptions: { sampleRate: this.ctx.sampleRate }
+      });
+      this.worklet.connect(this.destination);
+      this.isInitialized = true;
+      console.log('[BassSynthManager] Initialized');
+    } catch (e) {
+      console.error('[BassSynthManager] Failed to init:', e);
+    }
+  }
+
+  /**
+   * Воспроизводит массив событий баса.
+   * Время в событиях - ОТНОСИТЕЛЬНОЕ (доли такта).
+   * barStartTime - АБСОЛЮТНОЕ время начала текущего такта.
+   */
+  public play(events: FractalEvent[], barStartTime: number, tempo: number) {
+    if (!this.isInitialized || !this.worklet) {
+      console.warn('[BassSynthManager] Not ready, skipping events');
+      return;
+    }
+    
+    const beatDuration = 60 / tempo;
+    const messages = [];
+
+    for (const event of events) {
+      if (event.type !== 'bass') continue;
+
+      const frequency = midiToFreq(event.note);
+      if (!isFinite(frequency)) {
+          console.error(`[BassMan] Invalid frequency for MIDI note ${event.note}`);
+          continue;
+      }
+      
+      const noteOnTime = barStartTime + (event.time * beatDuration);
+      const noteOffTime = noteOnTime + (event.duration * beatDuration);
+
+      if (!isFinite(noteOnTime) || !isFinite(noteOffTime)) {
+          console.warn('[BassSynthManager] Non-finite time in event:', event);
+          continue;
+      }
+      
+      messages.push({
+          type: 'noteOn',
+          frequency,
+          velocity: event.weight,
+          when: noteOnTime,
+          noteId: event.note,
+          params: event.params
+      });
+
+      messages.push({
+          type: 'noteOff',
+          noteId: event.note,
+          when: noteOffTime
+      });
     }
 
-    async init() {
-        if (this.isInitialized) return;
-        try {
-            await this.audioContext.audioWorklet.addModule('/worklets/bass-processor.js');
-            this.workletNode = new AudioWorkletNode(this.audioContext, 'bass-processor', {
-                processorOptions: {
-                    sampleRate: this.audioContext.sampleRate
-                }
-            });
-            // Connect worklet to the preamp, not directly to the output
-            this.workletNode.connect(this.preamp);
-            this.isInitialized = true;
-            console.log('[BassSynthManager] "Пароходная труба" инициализирована и усилена.');
-        } catch (e) {
-            console.error('[BassSynthManager] Ошибка инициализации ворклета:', e);
-        }
+    if(messages.length > 0) {
+        this.worklet.port.postMessage(messages);
     }
+  }
+  
+  public setVolume(volume: number) {
+      if (this.destination instanceof GainNode) {
+          this.destination.gain.setTargetAtTime(volume, this.ctx.currentTime, 0.01);
+      }
+  }
+  
+  public allNotesOff() {
+      if (!this.worklet) return;
+      this.worklet.port.postMessage([{ type: 'clear' }]);
+  }
 
-    public setVolume(volume: number) {
-        if(this.outputNode.gain){
-            this.outputNode.gain.setTargetAtTime(volume, this.audioContext.currentTime, 0.01);
-        }
-    }
+  public setPreset(instrumentName: BassInstrument) {
+      // No-op в этой версии, так как параметры приходят с событием
+  }
 
-    public play(events: FractalEvent[], barStartTime: number) {
-        if (!this.workletNode || !this.isInitialized || events.length === 0) {
-            if (!this.isInitialized) console.warn('[BassMan] Attempted to play before initialized.');
-            return;
-        }
-        
-        const messages = events.map(event => {
-            const frequency = midiToFreq(event.note);
-            if (!isFinite(frequency)) {
-                console.error(`[BassMan] Invalid frequency for MIDI note ${event.note}`);
-                return null;
-            }
-
-            const absoluteOnTime = barStartTime + event.time;
-            const absoluteOffTime = absoluteOnTime + event.duration;
-            
-            return [
-                { type: 'noteOn', frequency, velocity: event.weight, when: absoluteOnTime, noteId: event.note },
-                { type: 'noteOff', noteId: event.note, when: absoluteOffTime }
-            ];
-        }).flat().filter(Boolean);
-
-        if (messages.length > 0) {
-            this.workletNode!.port.postMessage(messages);
-        }
-    }
-
-    // --- Stub methods for API compatibility ---
-    public setPreset(instrumentName: BassInstrument) {
-        // No-op in this simple version
-    }
-
-    public setTechnique(technique: BassTechnique) {
-        if (!this.workletNode) return;
-        this.workletNode.port.postMessage({ type: 'setTechnique', technique });
-    }
-
-    public allNotesOff() {
-        this.stop();
-    }
-
-    public stop() {
-        if (this.workletNode) {
-            // Send a single message which is an array of one 'clear' command.
-            this.workletNode.port.postMessage([{ type: 'clear' }]);
-            console.log('[BassMan] Отправлена команда "clear" в ворклет.');
-        }
-    }
-
-    public dispose() {
-        this.stop();
-        this.workletNode?.disconnect();
-        this.preamp.disconnect();
-        this.outputNode.disconnect();
-    }
+  public setTechnique(technique: BassTechnique) {
+    // No-op в этой версии, так как параметры приходят с событием
+  }
+  
+  public stop() {
+    this.allNotesOff();
+  }
 }
