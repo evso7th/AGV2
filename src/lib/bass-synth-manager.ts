@@ -43,6 +43,7 @@ export class BassSynthManager {
    * barStartTime - АБСОЛЮТНОЕ время начала текущего такта.
    */
   public play(events: FractalEvent[], barStartTime: number) {
+    console.log('[BassMan] Received events to play:', { events, barStartTime });
     if (!this.isInitialized || !this.worklet) {
       console.warn('[BassSynthManager] Not ready, skipping events');
       return;
@@ -85,6 +86,7 @@ export class BassSynthManager {
     }
 
     if(messages.length > 0) {
+        console.log('[BassMan] Sending messages to worklet:', messages);
         this.worklet.port.postMessage(messages);
     }
   }
