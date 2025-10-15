@@ -93,6 +93,7 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
   const { toast } = useToast();
 
   const scheduleEvents = useCallback((events: FractalEvent[], barStartTime: number, tempo: number) => {
+    console.log('[AudioEngine] scheduleEvents called with', events.length, 'events for time', barStartTime);
     const drumEvents: FractalEvent[] = [];
     const bassEvents: FractalEvent[] = [];
 
@@ -162,6 +163,7 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
             const worker = new Worker(new URL('../lib/ambient.worker.ts', import.meta.url), { type: 'module' });
             worker.onmessage = (event: MessageEvent<WorkerMessage>) => {
                 const { type, events, barDuration, error } = event.data;
+                console.log('[AudioEngine] Received message from worker:', event.data);
                 if (type === 'SCORE_READY' && events && barDuration && settingsRef.current) {
                     scheduleEvents(events, nextBarTimeRef.current, settingsRef.current.bpm);
                     nextBarTimeRef.current += barDuration;
