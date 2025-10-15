@@ -207,7 +207,7 @@ export class FractalMusicEngine {
     });
 
     // УДАРНЫЙ АКСОН
-    if (this.config.drumSettings.enabled) {
+    if (this.config.drumSettings.pattern === 'composer') {
         const drumAxiom = createDrumAxiom(this.config.mood);
         this.branches.push({
           id: 'drum_axon',
@@ -286,11 +286,6 @@ export class FractalMusicEngine {
   private generateOneBar(): FractalEvent[] {
     const output: FractalEvent[] = [];
     
-    // "Weather" event: randomly boost a branch
-    if (this.epoch > 10 && this.epoch % (8 + this.random.nextInt(24)) === 0) {
-        this.generateExternalImpulse();
-    }
-    
     if (this.climaxImminent && this.random.next() < 0.7) {
         const base = this.branches.find(b => b.type === 'bass');
         if(base) {
@@ -330,17 +325,19 @@ export class FractalMusicEngine {
         }
     }
 
-     // DLA: Bass Fill Trigger
-    const hasDrumFill = this.branches.some(b => b.technique === 'hit' && b.events.some(e => e.type.includes('tom')));
-    if (hasDrumFill && this.random.next() < 0.5) {
-        this.branches.push({
-            id: `bass_response_${this.epoch}`,
-            events: createBassFill(this.currentMood, this.random),
-            weight: 0.7,
-            age: 0,
-            technique: 'fill',
-            type: 'bass'
-        });
+     // DLA: Bass Fill Trigger in response to drum fill
+    if (this.config.drumSettings.pattern === 'composer') {
+        const hasDrumFill = this.branches.some(b => b.technique === 'hit' && b.events.some(e => e.type.includes('tom')));
+        if (hasDrumFill && this.random.next() < 0.5) {
+            this.branches.push({
+                id: `bass_response_${this.epoch}`,
+                events: createBassFill(this.currentMood, this.random),
+                weight: 0.7,
+                age: 0,
+                technique: 'fill',
+                type: 'bass'
+            });
+        }
     }
     
     return output;
