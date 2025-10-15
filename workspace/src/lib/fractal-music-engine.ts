@@ -61,12 +61,13 @@ function safeTime(value: number, fallback: number = 0): number {
 }
 
 // === УДАРНЫЙ АКСОН (duration в ДОЛЯХ ТАКТА!) ===
-function createDrumAxiom(): FractalEvent[] {
+function createDrumAxiom(mood: Mood): FractalEvent[] {
+  const hitParams = getParamsForTechnique('hit', mood);
   return [
-    { type: 'drum_kick', note: 36, duration: 0.25, time: 0, weight: 1.0, technique: 'hit', dynamics: 'f', phrasing: 'staccato', params: getParamsForTechnique('hit', 'dark') },
-    { type: 'drum_snare', note: 38, duration: 0.25, time: 1.0, weight: 1.0, technique: 'hit', dynamics: 'mf', phrasing: 'staccato', params: getParamsForTechnique('hit', 'dark') },
-    { type: 'drum_kick', note: 36, duration: 0.25, time: 2.0, weight: 1.0, technique: 'hit', dynamics: 'f', phrasing: 'staccato', params: getParamsForTechnique('hit', 'dark') },
-    { type: 'drum_snare', note: 38, duration: 0.25, time: 3.0, weight: 1.0, technique: 'hit', dynamics: 'mf', phrasing: 'staccato', params: getParamsForTechnique('hit', 'dark') },
+    { type: 'drum_kick', note: 36, duration: 0.25, time: 0, weight: 1.0, technique: 'hit', dynamics: 'f', phrasing: 'staccato', params: hitParams },
+    { type: 'drum_snare', note: 38, duration: 0.25, time: 1.0, weight: 1.0, technique: 'hit', dynamics: 'mf', phrasing: 'staccato', params: hitParams },
+    { type: 'drum_kick', note: 36, duration: 0.25, time: 2.0, weight: 1.0, technique: 'hit', dynamics: 'f', phrasing: 'staccato', params: hitParams },
+    { type: 'drum_snare', note: 38, duration: 0.25, time: 3.0, weight: 1.0, technique: 'hit', dynamics: 'mf', phrasing: 'staccato', params: hitParams },
     // Hi-hat closed — 8 раз за такт (восьмые = 0.5 доли)
     ...Array.from({ length: 8 }, (_, i) => ({
       type: 'drum_hihat_closed' as const,
@@ -77,21 +78,36 @@ function createDrumAxiom(): FractalEvent[] {
       technique: 'hit' as Technique,
       dynamics: 'p' as const,
       phrasing: 'staccato' as const,
-      params: getParamsForTechnique('hit', 'dark')
+      params: hitParams
     }))
   ];
 }
 
 // === БАСОВЫЙ АКСОН (duration в ДОЛЯХ ТАКТА!) ===
-function createBassAxiom(mood: Mood): FractalEvent[] {
+function createBassAxiom(mood: Mood, random: { nextInt: (max: number) => number }): FractalEvent[] {
   const scale = getScaleForMood(mood);
-  const root = scale[0];
   const pluckParams = getParamsForTechnique('pluck', mood);
+  
+  const createRandomNote = (time: number, duration: number): FractalEvent => {
+    const note = scale[random.nextInt(scale.length)];
+    return { 
+        type: 'bass', 
+        note: note, 
+        duration, 
+        time, 
+        weight: 1.0, 
+        technique: 'pluck', 
+        dynamics: 'mf', 
+        phrasing: 'staccato', 
+        params: pluckParams 
+    };
+  };
+  
   return [
-    { type: 'bass', note: root, duration: 1.5, time: 0, weight: 1.0, technique: 'pluck', dynamics: 'mf', phrasing: 'staccato', params: pluckParams },
-    { type: 'bass', note: root + 3, duration: 0.5, time: 1.5, weight: 1.0, technique: 'pluck', dynamics: 'mf', phrasing: 'staccato', params: pluckParams },
-    { type: 'bass', note: root + 2, duration: 1.5, time: 2.0, weight: 1.0, technique: 'pluck', dynamics: 'mf', phrasing: 'staccato', params: pluckParams },
-    { type: 'bass', note: root, duration: 0.5, time: 3.5, weight: 1.0, technique: 'pluck', dynamics: 'mf', phrasing: 'staccato', params: pluckParams }
+    createRandomNote(0, 1.5),
+    createRandomNote(1.5, 0.5),
+    createRandomNote(2.0, 1.5),
+    createRandomNote(3.5, 0.5)
   ];
 }
 
@@ -114,6 +130,8 @@ export class FractalMusicEngine {
   private lambda: number;
   private epoch = 0;
   private random: { next: () => number; nextInt: (max: number) => number };
+  private climaxImminent: boolean = false;
+  private currentMood: Mood;
 
   constructor(config: EngineConfig) {
     if (!config || config.tempo <= 0 || !isFinite(config.tempo)) {
@@ -133,6 +151,7 @@ export class FractalMusicEngine {
       tempo: Math.max(20, Math.min(300, config.tempo))
     };
     this.lambda = config.lambda ?? 0.5;
+    this.currentMood = config.mood;
     this.random = seededRandom(config.seed ?? Date.now());
     this.initialize();
   }
@@ -144,11 +163,12 @@ export class FractalMusicEngine {
   public updateConfig(newConfig: Partial<EngineConfig>) {
       this.config = { ...this.config, ...newConfig };
       if (newConfig.lambda) this.lambda = newConfig.lambda;
+      if (newConfig.mood) this.currentMood = newConfig.mood;
   }
 
   private initialize() {
     // БАСОВЫЙ АКСОН
-    const bassAxiom = createBassAxiom(this.config.mood);
+    const bassAxiom = createBassAxiom(this.config.mood, this.random);
     this.branches.push({
       id: 'bass_axon',
       events: bassAxiom,
@@ -160,7 +180,7 @@ export class FractalMusicEngine {
 
     // УДАРНЫЙ АКСОН
     if (this.config.drumSettings.enabled) {
-        const drumAxiom = createDrumAxiom();
+        const drumAxiom = createDrumAxiom(this.config.mood);
         this.branches.push({
           id: 'drum_axon',
           events: drumAxiom,
@@ -171,49 +191,101 @@ export class FractalMusicEngine {
         });
     }
   }
+  
+  private selectBranchForMutation(): Branch | null {
+    const totalWeight = this.branches.reduce((sum, b) => sum + b.weight, 0);
+    if (totalWeight === 0) return this.branches.length > 0 ? this.branches[0] : null;
+    let random = this.random.next() * totalWeight;
+    for (const branch of this.branches) {
+      random -= branch.weight;
+      if (random <= 0) return branch;
+    }
+    return this.branches.length > 0 ? this.branches[this.branches.length - 1] : null;
+  }
+
+  private mutateBranch(parent: Branch): Branch | null {
+    const mutationType = this.random.nextInt(4);
+    const newEvents: FractalEvent[] = JSON.parse(JSON.stringify(parent.events));
+    let newTechnique: Technique = parent.technique;
+
+    switch(mutationType) {
+        case 0: // Ghost Note
+             if (parent.type !== 'bass') return null;
+             const eventToGhost = newEvents[this.random.nextInt(newEvents.length)];
+             eventToGhost.technique = 'ghost';
+             eventToGhost.params = getParamsForTechnique('ghost', this.currentMood);
+             eventToGhost.duration *= 0.5;
+             newTechnique = 'ghost';
+             break;
+        case 1: // Rhythmic shift
+             newEvents.forEach(e => e.time = (e.time + 0.125) % 4);
+             break;
+        case 2: // Transpose
+             if (parent.type !== 'bass') return null;
+             const scale = getScaleForMood(this.currentMood);
+             const shift = this.random.next() > 0.5 ? 2 : -2;
+             newEvents.forEach(e => {
+                 const currentIndex = scale.indexOf(e.note);
+                 if (currentIndex !== -1) {
+                     e.note = scale[(currentIndex + shift + scale.length) % scale.length];
+                 }
+             });
+             break;
+        case 3: // Drum Fill (if parent is drums)
+             if (parent.type !== 'drums') return null;
+             return { id: `drum_fill_${this.epoch}`, events: createTomFill(this.currentMood), weight: parent.weight / 2, age: 0, technique: 'hit', type: 'drums' };
+    }
+    
+    return { id: `${parent.type}_mut_${this.epoch}`, events: newEvents, weight: parent.weight / 2, age: 0, technique: newTechnique, type: parent.type };
+  }
 
   private generateOneBar(): FractalEvent[] {
     const output: FractalEvent[] = [];
     
+    // "Weather" event: randomly boost a branch
+    if (this.epoch > 10 && this.epoch % this.random.nextInt(24) + 8 === 0) {
+        const branchToBoost = this.branches[this.random.nextInt(this.branches.length)];
+        if (branchToBoost) {
+            branchToBoost.weight = Math.min(1.0, branchToBoost.weight + 0.5);
+        }
+    }
+    
+    if (this.climaxImminent && this.random.next() < 0.7) {
+        const base = this.branches.find(b => b.type === 'bass');
+        if(base) {
+            const ghostParams = getParamsForTechnique('ghost', this.currentMood);
+            const ghostEvents = base.events.map(e => ({ ...e, technique: 'ghost' as Technique, params: ghostParams }));
+            this.branches.push({
+                id: `bass_tension_${this.epoch}`,
+                events: ghostEvents,
+                weight: 0.4,
+                age: 0,
+                technique: 'ghost',
+                type: 'bass'
+            });
+        }
+        this.climaxImminent = false; 
+    }
+
     this.branches.forEach(branch => {
       branch.events.forEach(originalEvent => {
         const newEvent: FractalEvent = { ...originalEvent };
-
         newEvent.dynamics = weightToDynamics(branch.weight);
         newEvent.phrasing = branch.weight > 0.7 ? 'legato' : 'staccato';
         newEvent.weight = branch.weight; 
-        
-        // Always assign params
-        newEvent.params = getParamsForTechnique(newEvent.technique, this.config.mood);
-        
+        newEvent.params = getParamsForTechnique(newEvent.technique, this.currentMood);
         output.push(newEvent);
       });
     });
 
-    // DLA: новые ветви
-    if (this.epoch % 4 === 3 && this.random.next() < this.config.density) {
-        if (this.random.next() > 0.5 && this.branches.filter(b => b.type === 'bass').length < 3) {
-            const base = this.branches.find(b => b.type === 'bass');
-            if (base) {
-                const ghostParams = getParamsForTechnique('ghost', this.config.mood);
-                this.branches.push({
-                    id: `bass_ghost_${this.epoch}`,
-                    events: [{ ...base.events[this.random.nextInt(base.events.length)], duration: 0.2, technique: 'ghost', params: ghostParams }],
-                    weight: 0.15,
-                    age: 0,
-                    technique: 'ghost',
-                    type: 'bass'
-                });
+    // DLA: Genetic mutation
+    if (this.epoch % 2 === 1 && this.random.next() < this.config.density && this.branches.length < 8) {
+        const parentBranch = this.selectBranchForMutation();
+        if (parentBranch) {
+            const newBranch = this.mutateBranch(parentBranch);
+            if (newBranch) {
+                this.branches.push(newBranch);
             }
-        } else if (this.config.drumSettings.enabled && this.branches.filter(b => b.type === 'drums').length < 3) {
-            this.branches.push({
-                id: `drum_fill_${this.epoch}`,
-                events: createTomFill(this.config.mood),
-                weight: 0.2,
-                age: 0,
-                technique: 'hit',
-                type: 'drums'
-            });
         }
     }
     
@@ -231,7 +303,7 @@ export class FractalMusicEngine {
         const k = MelancholicMinorK(
           branch.events[0],
           other.events[0],
-          { mood: this.config.mood, tempo: this.config.tempo, delta }
+          { mood: this.currentMood, tempo: this.config.tempo, delta }
         );
         return sum + k * delta;
       }, 0);
@@ -245,9 +317,9 @@ export class FractalMusicEngine {
       this.branches.forEach(b => b.weight = isFinite(b.weight) ? b.weight / totalWeight : 0.01);
     }
 
-    // Смерть слабых ветвей
-    this.branches = this.branches.filter(b => b.weight > 0.05 && b.age < 16);
-
+    // Смерть слабых и старых ветвей (но барабаны бессмертны)
+    this.branches = this.branches.filter(b => b.type === 'drums' || (b.weight > 0.02 && b.age < 32));
+    
     // Генерация событий
     const events = this.generateOneBar();
 
@@ -258,14 +330,25 @@ export class FractalMusicEngine {
 
   private getDeltaProfile(): (t: number) => number {
     return (t: number) => {
-      const safeT = safeTime(t);
-      const phase = (safeT / 120) % 1;
-      if (this.config.mood === 'melancholic') {
-        if (phase < 0.4) return 0.3 + phase * 1.5;
-        if (phase < 0.7) return 1.0;
-        return 1.0 - (phase - 0.7) * 2.3;
-      }
-      return 0.5;
+        const safeT = safeTime(t);
+        const epoch = Math.floor(safeT / 120); 
+        const phase = (safeT % 120) / 120;
+
+        this.currentMood = epoch % 2 === 0 ? this.config.mood : 'epic';
+
+        this.climaxImminent = phase > 0.65 && phase < 0.7;
+
+        if (this.currentMood === 'melancholic' || this.currentMood === 'dreamy' || this.currentMood === 'dark') {
+          if (phase < 0.4) return 0.3 + phase * 1.5;
+          if (phase < 0.7) return 1.0;
+          return 1.0 - (phase - 0.7) * 2.3;
+        } else { // epic
+          if (phase < 0.3) return 0.5 + phase * 1.6;
+          if (phase < 0.6) return 1.0;
+          return 1.0 - (phase - 0.6) * 1.6;
+        }
     };
   }
 }
+
+    
