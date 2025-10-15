@@ -1,112 +1,132 @@
 
 import { FractalMusicEngine } from '../lib/fractal-music-engine';
 import type { FractalEvent, Mood, Genre } from '@/types/fractal';
+import type { WorkerSettings } from '@/types/music';
+
 
 let engine: FractalMusicEngine | null = null;
-let timeOffset = 0;
+let loopId: any = null;
 let isRunning = false;
-let animationFrameId: number | null = null;
+
+function initializeEngine(settings: WorkerSettings) {
+    console.log('[Worker] Initializing engine with seed:', settings.seed);
+    engine = new FractalMusicEngine({
+        mood: settings.mood,
+        genre: 'ambient',
+        tempo: settings.bpm,
+        density: settings.density,
+        lambda: 1.0 - (settings.density * 0.5 + 0.3),
+        organic: settings.density,
+        drumSettings: settings.drumSettings,
+        seed: settings.seed ?? Date.now(),
+    });
+}
 
 function getBarDuration(tempo: number): number {
-  const t = Number(tempo);
-  if (isNaN(t) || t <= 0) {
-    console.warn(`[Worker] Invalid tempo: ${t}. Defaulting to 2.0s/bar (120 BPM).`);
-    return 2.0; 
-  }
-  return 4 * (60 / t);
+    const t = Number(tempo);
+    if (isNaN(t) || t <= 0) return 2.0; 
+    return 4 * (60 / t);
 }
 
-function convertScoreToEvents(score: FractalEvent[], offset: number): FractalEvent[] {
-  return score
-    .map(event => {
-      if (!isFinite(event.time) || !isFinite(offset)) return null;
-      return {
-        ...event,
-        time: event.time + offset
-      };
-    })
-    .filter((event): event is FractalEvent => event !== null && isFinite(event.time));
-}
-
-function initializeEngine(settings: {
-  mood: Mood;
-  genre: Genre;
-  tempo: number;
-  seed?: number;
-}) {
-  const tempo = Math.max(20, Math.min(300, Number(settings.tempo) || 120));
-
-  engine = new FractalMusicEngine({
-    mood: settings.mood,
-    genre: settings.genre,
-    tempo,
-    seed: settings.seed
-  });
-
-  timeOffset = 0;
-  isRunning = false;
-}
 
 function tick() {
-  if (!engine) return;
+    if (!engine || !isRunning) return;
+    
+    try {
+        const barDuration = getBarDuration(engine.tempo);
+        const score = engine.evolve(barDuration);
+        
+        self.postMessage({
+            type: 'SCORE_READY',
+            events: score,
+            barDuration: barDuration,
+        });
 
-  try {
-    const score = engine.evolve();
-    const events = convertScoreToEvents(score, timeOffset);
-
-    self.postMessage({
-      type: 'SCORE_READY',
-      events
-    });
-
-    const barDuration = getBarDuration(engine.tempo);
-    timeOffset += barDuration;
-
-  } catch (e) {
-    console.error('[Worker] Error in tick:', e);
-  }
-
-  if (isRunning) {
-    animationFrameId = self.setTimeout(tick, 10);
-  }
+    } catch (e) {
+        console.error('[Worker] Error in tick:', e);
+        self.postMessage({ type: 'error', error: e instanceof Error ? e.message : String(e) });
+    }
 }
 
 self.onmessage = (e: MessageEvent) => {
   if (!e.data || !e.data.command) return;
 
-  switch (e.data.command) {
+  const { command, data } = e.data;
+
+  switch (command) {
     case 'init':
-      initializeEngine(e.data.data);
+      initializeEngine(data);
       break;
 
     case 'start':
       if (!engine) {
-        console.warn('[Worker] Engine not initialized, cannot start');
-        return;
+        console.warn('[Worker] Engine not initialized, cannot start. Initializing now.');
+        initializeEngine(data);
       }
       if (!isRunning) {
         isRunning = true;
-        tick();
+        tick(); // First tick is immediate
+        loopId = setInterval(tick, getBarDuration(engine.tempo) * 1000);
       }
       break;
 
     case 'stop':
-      isRunning = false;
-      if (animationFrameId) {
-        self.clearTimeout(animationFrameId);
-        animationFrameId = null;
+      if (isRunning) {
+        isRunning = false;
+        if (loopId) {
+          clearInterval(loopId);
+          loopId = null;
+        }
+      }
+      break;
+
+    case 'reset':
+      if (isRunning) {
+        clearInterval(loopId);
+      }
+      // Re-initialize with a new seed to ensure variation
+      initializeEngine({ ...data, seed: Date.now() });
+      if(isRunning) {
+          tick();
+          loopId = setInterval(tick, getBarDuration(engine.tempo) * 1000);
       }
       break;
 
     case 'update_settings':
-      if (isRunning) {
-        console.warn('[Worker] Cannot update settings while running');
-        return;
+      if (!engine) {
+        initializeEngine(data);
+        break;
       }
-      initializeEngine(e.data.data);
+      
+      const needsRestart = data.bpm !== engine.config.bpm;
+      const needsReInit = data.mood !== engine.config.mood || data.score !== engine.config.genre;
+
+      if(needsReInit) {
+          if (isRunning) {
+            clearInterval(loopId);
+            loopId = null;
+          }
+          initializeEngine({ ...data, seed: Date.now() });
+          if(isRunning){
+            tick();
+            loopId = setInterval(tick, getBarDuration(engine.tempo) * 1000);
+          }
+      } else {
+        engine.updateConfig({
+            tempo: data.bpm,
+            density: data.density,
+            lambda: 1.0 - (data.density * 0.5 + 0.3),
+            organic: data.density,
+            drumSettings: data.drumSettings,
+        });
+        if (needsRestart && isRunning) {
+            clearInterval(loopId);
+            loopId = setInterval(tick, getBarDuration(engine.tempo) * 1000);
+        }
+      }
       break;
 
     default:
-      console.warn(`[Worker] Unknown command: ${e.data.command}`);
+      console.warn(`[Worker] Unknown command: ${command}`);
   }
 };

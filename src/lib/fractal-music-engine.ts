@@ -61,12 +61,13 @@ function safeTime(value: number, fallback: number = 0): number {
 }
 
 // === УДАРНЫЙ АКСОН (duration в ДОЛЯХ ТАКТА!) ===
-function createDrumAxiom(): FractalEvent[] {
+function createDrumAxiom(mood: Mood): FractalEvent[] {
+  const hitParams = getParamsForTechnique('hit', mood);
   return [
-    { type: 'drum_kick', note: 36, duration: 0.25, time: 0, weight: 1.0, technique: 'hit', dynamics: 'f', phrasing: 'staccato' },
-    { type: 'drum_snare', note: 38, duration: 0.25, time: 1.0, weight: 1.0, technique: 'hit', dynamics: 'mf', phrasing: 'staccato' },
-    { type: 'drum_kick', note: 36, duration: 0.25, time: 2.0, weight: 1.0, technique: 'hit', dynamics: 'f', phrasing: 'staccato' },
-    { type: 'drum_snare', note: 38, duration: 0.25, time: 3.0, weight: 1.0, technique: 'hit', dynamics: 'mf', phrasing: 'staccato' },
+    { type: 'drum_kick', note: 36, duration: 0.25, time: 0, weight: 1.0, technique: 'hit', dynamics: 'f', phrasing: 'staccato', params: hitParams },
+    { type: 'drum_snare', note: 38, duration: 0.25, time: 1.0, weight: 1.0, technique: 'hit', dynamics: 'mf', phrasing: 'staccato', params: hitParams },
+    { type: 'drum_kick', note: 36, duration: 0.25, time: 2.0, weight: 1.0, technique: 'hit', dynamics: 'f', phrasing: 'staccato', params: hitParams },
+    { type: 'drum_snare', note: 38, duration: 0.25, time: 3.0, weight: 1.0, technique: 'hit', dynamics: 'mf', phrasing: 'staccato', params: hitParams },
     // Hi-hat closed — 8 раз за такт (восьмые = 0.5 доли)
     ...Array.from({ length: 8 }, (_, i) => ({
       type: 'drum_hihat_closed' as const,
@@ -76,7 +77,8 @@ function createDrumAxiom(): FractalEvent[] {
       weight: 0.8,
       technique: 'hit' as Technique,
       dynamics: 'p' as const,
-      phrasing: 'staccato' as const
+      phrasing: 'staccato' as const,
+      params: hitParams
     }))
   ];
 }
@@ -95,12 +97,13 @@ function createBassAxiom(mood: Mood): FractalEvent[] {
 }
 
 // === ТРАНСФОРМАЦИИ УДАРНЫХ (duration в ДОЛЯХ ТАКТА!) ===
-function createTomFill(): FractalEvent[] {
+function createTomFill(mood: Mood): FractalEvent[] {
+  const hitParams = getParamsForTechnique('hit', mood);
   return [
-    { type: 'drum_tom_low', note: 41, duration: 0.25, time: 3.0, weight: 0.9, technique: 'hit', dynamics: 'mf', phrasing: 'staccato' },
-    { type: 'drum_tom_mid', note: 45, duration: 0.25, time: 3.25, weight: 0.9, technique: 'hit', dynamics: 'mf', phrasing: 'staccato' },
-    { type: 'drum_tom_high', note: 50, duration: 0.25, time: 3.5, weight: 0.9, technique: 'hit', dynamics: 'mf', phrasing: 'staccato' },
-    { type: 'drum_snare', note: 38, duration: 0.25, time: 3.75, weight: 1.0, technique: 'hit', dynamics: 'f', phrasing: 'staccato' }
+    { type: 'drum_tom_low', note: 41, duration: 0.25, time: 3.0, weight: 0.9, technique: 'hit', dynamics: 'mf', phrasing: 'staccato', params: hitParams },
+    { type: 'drum_tom_mid', note: 45, duration: 0.25, time: 3.25, weight: 0.9, technique: 'hit', dynamics: 'mf', phrasing: 'staccato', params: hitParams },
+    { type: 'drum_tom_high', note: 50, duration: 0.25, time: 3.5, weight: 0.9, technique: 'hit', dynamics: 'mf', phrasing: 'staccato', params: hitParams },
+    { type: 'drum_snare', note: 38, duration: 0.25, time: 3.75, weight: 1.0, technique: 'hit', dynamics: 'f', phrasing: 'staccato', params: hitParams }
   ];
 }
 
@@ -114,29 +117,24 @@ export class FractalMusicEngine {
   private random: { next: () => number; nextInt: (max: number) => number };
 
   constructor(config: EngineConfig) {
-      const defaultConfig: Omit<EngineConfig, 'mood' | 'genre'> = {
+    if (!config || config.tempo <= 0 || !isFinite(config.tempo)) {
+      console.warn('[FractalEngine] Invalid config, using defaults.');
+      config = { 
+          mood: 'melancholic', 
+          genre: 'ambient', 
           tempo: 120, 
           density: 0.5,
           lambda: 0.5,
           organic: 0.5,
-          drumSettings: { enabled: true },
-          seed: Date.now()
+          drumSettings: { enabled: true }
       };
-      
-      const mergedConfig = { ...defaultConfig, ...config };
-
-      if (!config || !isFinite(config.tempo) || config.tempo <= 0) {
-        console.warn('[FractalEngine] Invalid or missing tempo, using default.');
-        mergedConfig.tempo = defaultConfig.tempo;
-      }
-
-      this.config = {
-        ...mergedConfig,
-        tempo: Math.max(20, Math.min(300, mergedConfig.tempo))
-      };
-
-    this.lambda = this.config.lambda;
-    this.random = seededRandom(this.config.seed ?? Date.now());
+    }
+    this.config = {
+      ...config,
+      tempo: Math.max(20, Math.min(300, config.tempo))
+    };
+    this.lambda = config.lambda ?? 0.5;
+    this.random = seededRandom(config.seed ?? Date.now());
     this.initialize();
   }
 
@@ -163,7 +161,7 @@ export class FractalMusicEngine {
 
     // УДАРНЫЙ АКСОН
     if (this.config.drumSettings.enabled) {
-        const drumAxiom = createDrumAxiom();
+        const drumAxiom = createDrumAxiom(this.config.mood);
         this.branches.push({
           id: 'drum_axon',
           events: drumAxiom,
@@ -185,10 +183,9 @@ export class FractalMusicEngine {
         newEvent.dynamics = weightToDynamics(branch.weight);
         newEvent.phrasing = branch.weight > 0.7 ? 'legato' : 'staccato';
         newEvent.weight = branch.weight; 
-
-        if (newEvent.type === 'bass' && !newEvent.params) {
-            newEvent.params = getParamsForTechnique(newEvent.technique, this.config.mood);
-        }
+        
+        // Always assign params
+        newEvent.params = getParamsForTechnique(newEvent.technique, this.config.mood);
         
         output.push(newEvent);
       });
@@ -212,7 +209,7 @@ export class FractalMusicEngine {
         } else if (this.config.drumSettings.enabled && this.branches.filter(b => b.type === 'drums').length < 3) {
             this.branches.push({
                 id: `drum_fill_${this.epoch}`,
-                events: createTomFill(),
+                events: createTomFill(this.config.mood),
                 weight: 0.2,
                 age: 0,
                 technique: 'hit',
