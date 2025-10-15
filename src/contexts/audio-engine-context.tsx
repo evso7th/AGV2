@@ -25,11 +25,13 @@ export function noteToMidi(note: string): number {
 
 // --- Type Definitions ---
 type WorkerMessage = {
-    type: 'SCORE_READY' | 'error' | 'debug';
+    type: 'SCORE_READY' | 'error' | 'debug' | 'sparkle' | 'pad';
     events?: FractalEvent[];
     barDuration?: number;
     error?: string;
     message?: string;
+    time?: number;
+    padName?: string;
 };
 
 // --- Constants ---
@@ -81,6 +83,8 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
   
   const drumMachineRef = useRef<DrumMachine | null>(null);
   const bassManagerRef = useRef<BassSynthManager | null>(null);
+  const sparklePlayerRef = useRef<SparklePlayer | null>(null);
+  const padPlayerRef = useRef<PadPlayer | null>(null);
   
   const masterGainNodeRef = useRef<GainNode | null>(null);
   const gainNodesRef = useRef<Record<InstrumentPart, GainNode | null>>({
@@ -141,7 +145,7 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
         }
 
         if (!gainNodesRef.current.bass) {
-            const parts: InstrumentPart[] = ['bass', 'drums']; // Only initialize what we use
+            const parts: InstrumentPart[] = ['bass', 'drums', 'sparkles', 'pads'];
             parts.forEach(part => {
                 gainNodesRef.current[part] = context.createGain();
                 gainNodesRef.current[part]!.connect(masterGainNodeRef.current!);
@@ -158,15 +162,30 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
             bassManagerRef.current = new BassSynthManager(context, gainNodesRef.current.bass!);
             initPromises.push(bassManagerRef.current.init());
         }
+        
+        if (!sparklePlayerRef.current) {
+            sparklePlayerRef.current = new SparklePlayer(context, gainNodesRef.current.sparkles!);
+            initPromises.push(sparklePlayerRef.current.init());
+        }
+
+        if (!padPlayerRef.current) {
+            padPlayerRef.current = new PadPlayer(context, gainNodesRef.current.pads!);
+            initPromises.push(padPlayerRef.current.init());
+        }
+
 
         if (!workerRef.current) {
             const worker = new Worker(new URL('../lib/ambient.worker.ts', import.meta.url), { type: 'module' });
             worker.onmessage = (event: MessageEvent<WorkerMessage>) => {
-                const { type, events, barDuration, error } = event.data;
                 console.log('[AudioEngine] Received message from worker:', event.data);
+                const { type, events, barDuration, error, time, padName } = event.data;
                 if (type === 'SCORE_READY' && events && barDuration && settingsRef.current) {
                     scheduleEvents(events, nextBarTimeRef.current, settingsRef.current.bpm);
                     nextBarTimeRef.current += barDuration;
+                } else if (type === 'sparkle' && time !== undefined) {
+                    sparklePlayerRef.current?.playRandomSparkle(nextBarTimeRef.current + time);
+                } else if (type === 'pad' && padName && time !== undefined) {
+                    padPlayerRef.current?.setPad(padName, nextBarTimeRef.current + time);
                 } else if (type === 'error') {
                     toast({ variant: "destructive", title: "Worker Error", description: error });
                 }
@@ -191,6 +210,7 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
   const stopAllSounds = useCallback(() => {
     bassManagerRef.current?.allNotesOff();
     drumMachineRef.current?.stop();
+    padPlayerRef.current?.stop();
   }, []);
   
   const setIsPlayingCallback = useCallback((playing: boolean) => {
@@ -231,10 +251,14 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
     }
   }, []);
 
+  const setTextureSettingsCallback = useCallback((settings: TextureSettings) => {
+    setVolumeCallback('sparkles', settings.sparkles.enabled ? settings.sparkles.volume : 0);
+    setVolumeCallback('pads', settings.pads.enabled ? settings.pads.volume : 0);
+  }, [setVolumeCallback]);
+
   // Dummy implementations for unused functions
   const setInstrumentCallback = useCallback((part: any, name: any) => {}, []);
   const setBassTechniqueCallback = useCallback((technique: any) => {}, []);
-  const setTextureSettingsCallback = useCallback((settings: any) => {}, []);
   const setEQGainCallback = useCallback((bandIndex: number, gain: number) => {}, []);
   const startMasterFadeOut = useCallback((durationInSeconds: number) => {}, []);
   const cancelMasterFadeOut = useCallback(() => {}, []);

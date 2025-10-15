@@ -157,24 +157,16 @@ const Scheduler = {
         if (!this.isRunning || !fractalMusicEngine) return;
         
         const density = this.settings.density;
-        
-        if (this.settings.score === 'neuro_f_matrix') {
-            const fractalEvents: FractalEvent[] = fractalMusicEngine.evolve(this.barDuration);
-            
-            console.log(`[Worker] Tick ${this.barCount}. Generated ${fractalEvents.length} events.`);
+        let events: FractalEvent[] = [];
 
-            const score: Score = {
-                bass: fractalEvents.filter(e => e.type === 'bass'),
-                drums: fractalEvents.filter(e => e.type.startsWith('drum_')),
-                melody: [],
-                accompaniment: []
-            };
-            self.postMessage({ type: 'score', score, time: this.barDuration });
-        } else {
-            const score: Score = { bass: [], melody: [], accompaniment: [], drums: [] };
-            self.postMessage({ type: 'score', score, time: this.barDuration });
-        }
+        if (this.settings.score === 'neuro_f_matrix') {
+            events = fractalMusicEngine.evolve(this.barDuration);
+        } 
         
+        console.log(`[Worker] Tick ${this.barCount}. Generated ${events.length} events.`);
+        
+        self.postMessage({ type: 'SCORE_READY', events: events, barDuration: this.barDuration });
+
         const currentTime = this.barCount * this.barDuration;
         
         if (this.settings.textureSettings.sparkles.enabled) {
@@ -210,6 +202,10 @@ self.onmessage = async (event: MessageEvent) => {
 
     try {
         switch (command) {
+            case 'init':
+                Scheduler.updateSettings(data);
+                Scheduler.initializeEngine(data);
+                break;
             case 'start':
                 Scheduler.start();
                 break;
@@ -233,4 +229,3 @@ self.onmessage = async (event: MessageEvent) => {
         self.postMessage({ type: 'error', error: e instanceof Error ? e.message : String(e) });
     }
 };
-
