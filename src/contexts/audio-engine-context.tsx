@@ -93,6 +93,7 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
 
   const eqNodesRef = useRef<BiquadFilterNode[]>([]);
   const nextBarTimeRef = useRef<number>(0);
+  const impulseTimerRef = useRef<NodeJS.Timeout | null>(null);
   
   const { toast } = useToast();
 
@@ -207,10 +208,28 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
     }
   }, [isInitialized, isInitializing, toast, scheduleEvents]);
 
+  const scheduleNextImpulse = useCallback(() => {
+    if (impulseTimerRef.current) {
+        clearTimeout(impulseTimerRef.current);
+    }
+    const randomInterval = Math.random() * 90000 + 30000; // 30-120 seconds
+    impulseTimerRef.current = setTimeout(() => {
+        if (workerRef.current && isPlaying) {
+            console.log('[AudioEngine] Sending external impulse to worker.');
+            workerRef.current.postMessage({ command: 'external_impulse' });
+            scheduleNextImpulse(); // Schedule the next one
+        }
+    }, randomInterval);
+  }, [isPlaying]);
+
   const stopAllSounds = useCallback(() => {
     bassManagerRef.current?.allNotesOff();
     drumMachineRef.current?.stop();
     padPlayerRef.current?.stop();
+    if (impulseTimerRef.current) {
+        clearTimeout(impulseTimerRef.current);
+        impulseTimerRef.current = null;
+    }
   }, []);
   
   const setIsPlayingCallback = useCallback((playing: boolean) => {
@@ -222,11 +241,12 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
         }
         nextBarTimeRef.current = audioContextRef.current.currentTime + 0.1;
         workerRef.current.postMessage({ command: 'start' });
+        scheduleNextImpulse(); // Start the weather system
     } else {
         stopAllSounds();
         workerRef.current.postMessage({ command: 'stop' });
     }
-  }, [isInitialized, stopAllSounds]);
+  }, [isInitialized, stopAllSounds, scheduleNextImpulse]);
 
   const resetWorkerCallback = useCallback(() => {
     if (!workerRef.current) return;
