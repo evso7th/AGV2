@@ -42,15 +42,20 @@ export const MelancholicMinorK: ResonanceMatrix = (
 ): number => {
   // --- Ритмический резонанс (БАС ↔ УДАРНЫЕ) ---
   if ((isBass(eventA) && isKick(eventB)) || (isKick(eventA) && isBass(eventB))) {
-    const bassTime = isBass(eventA) ? eventA.time : eventB.time;
+    const bassEvent = isBass(eventA) ? eventA : eventB;
     const kickTime = isKick(eventA) ? eventA.time : eventB.time;
 
+    // Поощрение за "филл" в сочетании с киком
+    if (bassEvent.technique === 'fill' && areSimultaneous(bassEvent.time, kickTime)) {
+        return 0.9;
+    }
+
     // Идеально: бас на долю, kick на долю, одновременно
-    if (areSimultaneous(bassTime, kickTime) && isOnStrongBeat(bassTime)) {
+    if (areSimultaneous(bassEvent.time, kickTime) && isOnStrongBeat(bassEvent.time)) {
       return 1.0;
     }
     // Хорошо: бас на "и", kick на долю (синкопа)
-    if (Math.abs(bassTime - kickTime - 0.5) < 0.1 && isOnStrongBeat(kickTime)) {
+    if (Math.abs(bassEvent.time - kickTime - 0.5) < 0.1 && isOnStrongBeat(kickTime)) {
       return 0.85;
     }
     return 0.3; // Слабый резонанс в остальных случаях
