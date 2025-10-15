@@ -190,13 +190,13 @@ export class FractalMusicEngine {
   
   private selectBranchForMutation(): Branch | null {
     const totalWeight = this.branches.reduce((sum, b) => sum + b.weight, 0);
-    if (totalWeight === 0) return null;
+    if (totalWeight === 0) return this.branches.length > 0 ? this.branches[0] : null;
     let random = this.random.next() * totalWeight;
     for (const branch of this.branches) {
       random -= branch.weight;
       if (random <= 0) return branch;
     }
-    return null;
+    return this.branches.length > 0 ? this.branches[this.branches.length -1] : null;
   }
 
   private mutateBranch(parent: Branch): Branch | null {
@@ -238,6 +238,31 @@ export class FractalMusicEngine {
   private generateOneBar(): FractalEvent[] {
     const output: FractalEvent[] = [];
     
+    // Проверка на tom fill для реакции баса
+    const hasTomFill = this.branches.some(b => 
+      b.type === 'drums' && 
+      b.events.some(e => e.type.includes('tom'))
+    );
+
+    if (hasTomFill && this.random.next() > 0.5) {
+      const base = this.branches.find(b => b.type === 'bass');
+      if (base) {
+        const newEvents = base.events.map((e, i) => ({
+          ...e,
+          note: e.note + i, // восходящая линия
+          params: getParamsForTechnique('pluck', this.config.mood),
+        }));
+        this.branches.push({
+          id: `bass_response_${this.epoch}`,
+          events: newEvents,
+          weight: 0.3,
+          age: 0,
+          technique: 'pluck',
+          type: 'bass'
+        });
+      }
+    }
+    
     this.branches.forEach(branch => {
       branch.events.forEach(originalEvent => {
         const newEvent: FractalEvent = { ...originalEvent };
@@ -269,34 +294,23 @@ export class FractalMusicEngine {
 
     // Обновление весов
     this.branches = this.branches.map(branch => {
-      let resonanceSum = 0;
-      for (const other of this.branches) {
-        if (other.id === branch.id) continue;
-        for (const eventA of branch.events) {
-          for (const eventB of other.events) {
-            const k = MelancholicMinorK(
-              eventA,
-              eventB,
-              { mood: this.config.mood, tempo: this.config.tempo, delta }
-            );
-            // Увеличиваем влияние резонанса, чтобы изменения были заметнее
-            resonanceSum += k * delta * 2.0; 
-          }
-        }
-      }
-      
-      const averageResonance = resonanceSum / (branch.events.length * (this.branches.length -1) || 1);
-      const newWeight = (1 - this.lambda) * branch.weight + averageResonance;
-      return { ...branch, weight: isFinite(newWeight) ? Math.max(0, newWeight) : 0.01, age: branch.age + 1 };
+      const resonanceSum = this.branches.reduce((sum, other) => {
+        if (other.id === branch.id) return sum;
+        const k = MelancholicMinorK(
+          branch.events[0],
+          other.events[0],
+          { mood: this.config.mood, tempo: this.config.tempo, delta }
+        );
+        return sum + k * delta;
+      }, 0);
+      const newWeight = (1 - this.lambda) * branch.weight + resonanceSum;
+      return { ...branch, weight: isFinite(newWeight) ? newWeight : 0.01, age: branch.age + 1 };
     });
 
     // Нормализация
     const totalWeight = this.branches.reduce((sum, b) => sum + b.weight, 0);
     if (totalWeight > 0 && isFinite(totalWeight)) {
       this.branches.forEach(b => b.weight = isFinite(b.weight) ? b.weight / totalWeight : 0.01);
-    } else {
-      // Если все веса умерли, реинициализируем, чтобы избежать тишины
-      this.initialize();
     }
 
     // Смерть слабых и старых ветвей
@@ -316,14 +330,22 @@ export class FractalMusicEngine {
 
   private getDeltaProfile(): (t: number) => number {
     return (t: number) => {
-      const safeT = safeTime(t);
-      const phase = (safeT / 120) % 1;
-      if (this.config.mood === 'melancholic') {
-        if (phase < 0.4) return 0.3 + phase * 1.5;
-        if (phase < 0.7) return 1.0;
-        return 1.0 - (phase - 0.7) * 2.3;
-      }
-      return 0.5;
+        const safeT = safeTime(t);
+        const epoch = Math.floor(safeT / 120); // каждые 2 минуты — новая эпоха
+        const phase = (safeT % 120) / 120;     // фаза внутри эпохи
+
+        // В чётных эпохах — меланхолия, в нечётных — эпика
+        const currentMood = epoch % 2 === 0 ? this.config.mood : 'epic';
+
+        if (currentMood === 'melancholic' || currentMood === 'dreamy' || currentMood === 'dark') {
+          if (phase < 0.4) return 0.3 + phase * 1.5;
+          if (phase < 0.7) return 1.0;
+          return 1.0 - (phase - 0.7) * 2.3;
+        } else { // epic
+          if (phase < 0.3) return 0.5 + phase * 1.6;
+          if (phase < 0.6) return 1.0;
+          return 1.0 - (phase - 0.6) * 1.6;
+        }
     };
   }
 }
