@@ -6,7 +6,7 @@ export type Mood = 'melancholic' | 'epic' | 'dreamy' | 'dark';
 /**
  * Жанр — управляет формой и плотностью
  */
-export type Genre = 'trance' | 'ambient' | 'progressive' | 'rock';
+export type Genre = 'trance' | 'ambient' | 'progressive' | 'rock' | 'house' | 'rnb' | 'ballad' | 'reggae' | 'blues' | 'celtic';
 
 /**
  * Техника игры
@@ -64,17 +64,17 @@ export type BassSynthParams = {
  */
 export interface FractalEvent {
   /**
-   * Тип инструмента
+   * Тип инструмента — определяет, кто играет
    */
   type: InstrumentType;
 
   /**
-   * Нота в MIDI (например, 40 = E2, 36 = kick)
+   * Нота в MIDI (например, 40 = E2)
    */
   note: number;
 
   /**
-   * Длительность в долях такта (1 = целая при 4/4)
+   * Длительность в долях такта (1 = целая нота при 4/4)
    */
   duration: number;
 
@@ -84,7 +84,7 @@ export interface FractalEvent {
   time: number;
 
   /**
-   * Вес ветви (0.0–1.0) — мера "живости" идеи в фрактальной модели
+   * Вес ветви (0.0–1.0) — мера "живости" идеи
    */
   weight: number;
 
@@ -94,12 +94,12 @@ export interface FractalEvent {
   technique: Technique;
 
   /**
-   * Динамика (громкость)
+   * Динамика
    */
   dynamics: Dynamics;
 
   /**
-   * Фразировка (артикуляция)
+   * Фразировка
    */
   phrasing: Phrasing;
   
