@@ -206,6 +206,7 @@ self.onmessage = async (event: MessageEvent) => {
                 Scheduler.updateSettings(data);
                 Scheduler.initializeEngine(data);
                 break;
+            
             case 'start':
                 Scheduler.start();
                 break;
@@ -221,6 +222,13 @@ self.onmessage = async (event: MessageEvent) => {
             case 'update_settings':
                 Scheduler.updateSettings(data);
                 break;
+                
+            case 'external_impulse':
+                if (fractalMusicEngine) {
+                    fractalMusicEngine.generateExternalImpulse();
+                }
+                break;
+
             default:
                  // No-op for unknown commands
                  break;
