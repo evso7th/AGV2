@@ -84,15 +84,30 @@ function createDrumAxiom(mood: Mood): FractalEvent[] {
 }
 
 // === БАСОВЫЙ АКСОН (duration в ДОЛЯХ ТАКТА!) ===
-function createBassAxiom(mood: Mood): FractalEvent[] {
+function createBassAxiom(mood: Mood, random: { nextInt: (max: number) => number }): FractalEvent[] {
   const scale = getScaleForMood(mood);
-  const root = scale[0];
   const pluckParams = getParamsForTechnique('pluck', mood);
+  
+  const createRandomNote = (time: number, duration: number): FractalEvent => {
+    const note = scale[random.nextInt(scale.length)];
+    return { 
+        type: 'bass', 
+        note: note, 
+        duration, 
+        time, 
+        weight: 1.0, 
+        technique: 'pluck', 
+        dynamics: 'mf', 
+        phrasing: 'staccato', 
+        params: pluckParams 
+    };
+  };
+  
   return [
-    { type: 'bass', note: root, duration: 1.5, time: 0, weight: 1.0, technique: 'pluck', dynamics: 'mf', phrasing: 'staccato', params: pluckParams },
-    { type: 'bass', note: root + 3, duration: 0.5, time: 1.5, weight: 1.0, technique: 'pluck', dynamics: 'mf', phrasing: 'staccato', params: pluckParams },
-    { type: 'bass', note: root + 2, duration: 1.5, time: 2.0, weight: 1.0, technique: 'pluck', dynamics: 'mf', phrasing: 'staccato', params: pluckParams },
-    { type: 'bass', note: root, duration: 0.5, time: 3.5, weight: 1.0, technique: 'pluck', dynamics: 'mf', phrasing: 'staccato', params: pluckParams }
+    createRandomNote(0, 1.5),
+    createRandomNote(1.5, 0.5),
+    createRandomNote(2.0, 1.5),
+    createRandomNote(3.5, 0.5)
   ];
 }
 
@@ -149,7 +164,7 @@ export class FractalMusicEngine {
 
   private initialize() {
     // БАСОВЫЙ АКСОН
-    const bassAxiom = createBassAxiom(this.config.mood);
+    const bassAxiom = createBassAxiom(this.config.mood, this.random);
     this.branches.push({
       id: 'bass_axon',
       events: bassAxiom,
