@@ -10,9 +10,9 @@ class BassProcessor extends AudioWorkletProcessor {
     this.activeNotes = new Map();
 
     this.port.onmessage = (event) => {
-      const messages = event.data;
-      if (!Array.isArray(messages)) return;
-      messages.forEach(message => this.handleMessage(message));
+        // Теперь мы можем получать массив сообщений, но для надежности обработаем и одиночные
+        const messages = Array.isArray(event.data) ? event.data : [event.data];
+        messages.forEach(message => this.handleMessage(message));
     };
     console.log('[BassProcessor] Worklet created and ready.');
   }
@@ -79,14 +79,14 @@ class BassProcessor extends AudioWorkletProcessor {
         // Проверяем, не пора ли начать играть ноту
         if (note.state === 'scheduled' && now >= note.startTime) {
           note.state = 'attack';
-          console.log(`[Worklet] Playing note: id=${noteId} at time ${now.toFixed(3)}`);
+          // console.log(`[Worklet] Playing note: id=${noteId} at time ${now.toFixed(3)}`);
         }
         
         // Проверяем, не пора ли отпустить ноту
         if (note.state !== 'decay' && now >= note.endTime) {
             note.state = 'decay';
             note.targetGain = 0; // Цель - затухание до нуля
-            console.log(`[Worklet] Decaying note: id=${noteId} at time ${now.toFixed(3)}`);
+            // console.log(`[Worklet] Decaying note: id=${noteId} at time ${now.toFixed(3)}`);
         }
 
         if (note.state === 'attack' || note.state === 'sustain' || note.state === 'decay') {
@@ -122,7 +122,9 @@ class BassProcessor extends AudioWorkletProcessor {
       
       // Записываем сэмпл в оба канала для стерео
       output[0][i] = sample * 0.3; // Снижаем общую громкость, чтобы избежать клиппинга
-      output[1][i] = sample * 0.3;
+      if (output[1]) {
+        output[1][i] = sample * 0.3;
+      }
     }
 
     return true; // Keep the processor alive
