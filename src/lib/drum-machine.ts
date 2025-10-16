@@ -2,16 +2,6 @@
 import type { FractalEvent } from "@/types/fractal";
 
 const DRUM_SAMPLES: Record<string, string> = {
-    'kick': '/assets/drums/kick_drum6.wav',
-    'snare': '/assets/drums/snare.wav',
-    'snare_ghost': '/assets/drums/snare_ghost_note.wav',
-    'hihat_closed': '/assets/drums/closed_hi_hat_accented.wav',
-    'hihat_open': '/assets/drums/open_hh_top2.wav',
-    'crash': '/assets/drums/crash1.wav',
-    'ride': '/assets/drums/cymbal1.wav',
-    'tom_high': '/assets/drums/hightom.wav',
-    'tom_mid': '/assets/drums/midtom.wav',
-    'tom_low': '/assets/drums/lowtom.wav',
     'closed_hi_hat_accented': '/assets/drums/closed_hi_hat_accented.wav',
     'closed_hi_hat_ghost': '/assets/drums/closed_hi_hat_ghost.wav',
     'crash1': '/assets/drums/crash1.wav',
@@ -29,8 +19,34 @@ const DRUM_SAMPLES: Record<string, string> = {
     'midtom': '/assets/drums/midtom.wav',
     'open_hh_bottom2': '/assets/drums/open_hh_bottom2.wav',
     'open_hh_top2': '/assets/drums/open_hh_top2.wav',
+    'perc-001': '/assets/drums/perc-001.wav',
+    'perc-002': '/assets/drums/perc-002.wav',
+    'perc-003': '/assets/drums/perc-003.wav',
+    'perc-004': '/assets/drums/perc-004.wav',
+    'perc-005': '/assets/drums/perc-005.wav',
+    'perc-006': '/assets/drums/perc-006.wav',
+    'perc-007': '/assets/drums/perc-007.wav',
+    'perc-008': '/assets/drums/perc-008.wav',
+    'perc-009': '/assets/drums/perc-009.wav',
+    'perc-010': '/assets/drums/perc-010.wav',
+    'perc-011': '/assets/drums/perc-011.wav',
+    'perc-012': '/assets/drums/perc-012.wav',
+    'perc-013': '/assets/drums/perc-013.wav',
+    'perc-014': '/assets/drums/perc-014.wav',
+    'perc-015': '/assets/drums/perc-015.wav',
+    'snare': '/assets/drums/snare.wav',
+    'snare_ghost_note': '/assets/drums/snare_ghost_note.wav',
     'snare_off': '/assets/drums/snare_off.wav',
-    'snarepress': '/assets/drums/snarepress.wav'
+    'snarepress': '/assets/drums/snarepress.wav',
+    // Maintaining compatibility with old names for now
+    'kick': '/assets/drums/kick_drum6.wav',
+    'hihat_closed': '/assets/drums/closed_hi_hat_accented.wav',
+    'hihat_open': '/assets/drums/open_hh_top2.wav',
+    'crash': '/assets/drums/crash1.wav',
+    'ride': '/assets/drums/cymbal1.wav',
+    'tom_high': '/assets/drums/hightom.wav',
+    'tom_mid': '/assets/drums/midtom.wav',
+    'tom_low': '/assets/drums/lowtom.wav',
 };
 
 type Sampler = {
