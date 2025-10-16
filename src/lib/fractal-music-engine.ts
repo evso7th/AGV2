@@ -279,11 +279,6 @@ export class FractalMusicEngine {
   private generateOneBar(): FractalEvent[] {
     const output: FractalEvent[] = [];
     
-    // "Weather" event: randomly boost a branch
-    if (this.epoch > 10 && this.epoch % this.random.nextInt(24) + 8 === 0) {
-        this.generateExternalImpulse();
-    }
-    
     if (this.climaxImminent && this.random.next() < 0.7) {
         const base = this.branches.find(b => b.type === 'bass');
         if(base) {
@@ -326,11 +321,11 @@ export class FractalMusicEngine {
      // DLA: Bass Fill Trigger in response to drum fill
     if (this.config.drumSettings.enabled) {
         const hasDrumFill = this.branches.some(b => b.technique === 'hit' && b.events.some(e => e.type.includes('tom')));
-        if (hasDrumFill && this.random.next() < 0.5) {
+        if (hasDrumFill && this.random.next() < 0.8) { // Increased probability
             this.branches.push({
                 id: `bass_response_${this.epoch}`,
                 events: createBassFill(this.currentMood, this.config.genre, this.random),
-                weight: 0.7,
+                weight: 0.7, // Higher initial weight
                 age: 0,
                 technique: 'fill',
                 type: 'bass'
@@ -344,6 +339,11 @@ export class FractalMusicEngine {
   public evolve(barDuration: number): FractalEvent[] {
     const delta = this.getDeltaProfile()(this.time);
     if (!isFinite(barDuration)) return [];
+
+    // "Weather" event: randomly boost a branch
+    if (this.epoch > 10 && this.epoch % (this.random.nextInt(24) + 8) === 0) {
+        this.generateExternalImpulse();
+    }
 
     // Обновление весов
     this.branches = this.branches.map(branch => {
@@ -366,8 +366,8 @@ export class FractalMusicEngine {
       this.branches.forEach(b => b.weight = isFinite(b.weight) ? b.weight / totalWeight : 0.01);
     }
 
-    // Смерть слабых и старых ветвей (но барабаны бессмертны)
-    this.branches = this.branches.filter(b => b.type === 'drums' || (b.weight > 0.02 && b.age < 32));
+    // Смерть слабых ветвей (но барабаны бессмертны)
+    this.branches = this.branches.filter(b => b.type === 'drums' || b.weight > 0.02);
     
     // Генерация событий
     const events = this.generateOneBar();
@@ -399,5 +399,3 @@ export class FractalMusicEngine {
     };
   }
 }
-
-    
