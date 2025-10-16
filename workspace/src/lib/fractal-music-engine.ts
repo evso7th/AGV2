@@ -213,21 +213,38 @@ export class FractalMusicEngine {
     }
   }
 
-  public generateExternalImpulse() {
-    const bassBranches = this.branches.filter(b => b.type === 'bass');
-    if (bassBranches.length > 0) {
-        const branchToBoost = bassBranches[this.random.nextInt(bassBranches.length)];
-        if (branchToBoost) {
-            branchToBoost.weight = 0.9;
-            console.log(`[FractalEngine] External impulse boosted branch: ${branchToBoost.id}`);
-            // Re-normalize weights to keep the system stable
-            const totalWeight = this.branches.reduce((sum, b) => sum + b.weight, 0);
-            if (totalWeight > 1) {
-                this.branches.forEach(b => b.weight /= totalWeight);
-            }
-        }
+ public generateExternalImpulse() {
+    console.log(`%c[WEATHER EVENT] at epoch ${this.epoch}: Triggering linked mutation.`, "color: blue; font-weight: bold;");
+
+    const drumParent = this.branches.find(b => b.type === 'drums' && b.id.includes('axon'));
+    const bassParent = this.branches.find(b => b.type === 'bass' && b.id.includes('axon'));
+
+    if (drumParent) {
+        const drumFillBranch: Branch = { 
+            id: `drum_fill_${this.epoch}`, 
+            events: createTomFill(this.currentMood, this.config.genre), 
+            weight: 0.9, // High initial weight to ensure it's heard
+            age: 0, 
+            technique: 'hit', 
+            type: 'drums'
+        };
+        this.branches.push(drumFillBranch);
+        console.log(`%c  -> Created DRUM fill branch: ${drumFillBranch.id}`, "color: blue;");
     }
-  }
+
+    if (bassParent) {
+         const bassFillBranch: Branch = {
+            id: `bass_response_${this.epoch}`,
+            events: createBassFill(this.currentMood, this.config.genre, this.random),
+            weight: 0.85, // High initial weight
+            age: 0,
+            technique: 'fill',
+            type: 'bass'
+        };
+        this.branches.push(bassFillBranch);
+        console.log(`%c  -> Created BASS response branch: ${bassFillBranch.id}`, "color: blue;");
+    }
+}
   
   private selectBranchForMutation(): Branch | null {
     const totalWeight = this.branches.reduce((sum, b) => sum + b.weight, 0);
@@ -279,11 +296,6 @@ export class FractalMusicEngine {
   private generateOneBar(): FractalEvent[] {
     const output: FractalEvent[] = [];
     
-    // "Weather" event: randomly boost a branch
-    if (this.epoch > 10 && this.epoch % this.random.nextInt(24) + 8 === 0) {
-        this.generateExternalImpulse();
-    }
-    
     if (this.climaxImminent && this.random.next() < 0.7) {
         const base = this.branches.find(b => b.type === 'bass');
         if(base) {
@@ -292,7 +304,7 @@ export class FractalMusicEngine {
             this.branches.push({
                 id: `bass_tension_${this.epoch}`,
                 events: ghostEvents,
-                weight: 0.4,
+                weight: 0.7,
                 age: 0,
                 technique: 'ghost',
                 type: 'bass'
@@ -322,21 +334,6 @@ export class FractalMusicEngine {
             }
         }
     }
-
-     // DLA: Bass Fill Trigger in response to drum fill
-    if (this.config.drumSettings.enabled) {
-        const hasDrumFill = this.branches.some(b => b.technique === 'hit' && b.events.some(e => e.type.includes('tom')));
-        if (hasDrumFill && this.random.next() < 0.8) { // Increased probability
-            this.branches.push({
-                id: `bass_response_${this.epoch}`,
-                events: createBassFill(this.currentMood, this.config.genre, this.random),
-                weight: 0.7, // Higher initial weight
-                age: 0,
-                technique: 'fill',
-                type: 'bass'
-            });
-        }
-    }
     
     return output;
   }
@@ -345,8 +342,13 @@ export class FractalMusicEngine {
     const delta = this.getDeltaProfile()(this.time);
     if (!isFinite(barDuration)) return [];
 
+    // "Weather" event: randomly create linked mutations
+    if (this.epoch > 4 && this.epoch % (this.random.nextInt(12) + 8) === 0) {
+        this.generateExternalImpulse();
+    }
+
     // Обновление весов
-    this.branches = this.branches.map(branch => {
+    this.branches.forEach(branch => {
       const resonanceSum = this.branches.reduce((sum, other) => {
         if (other.id === branch.id) return sum;
         const k = MelancholicMinorK(
@@ -357,7 +359,8 @@ export class FractalMusicEngine {
         return sum + k * delta;
       }, 0);
       const newWeight = (1 - this.lambda) * branch.weight + resonanceSum;
-      return { ...branch, weight: isFinite(newWeight) ? newWeight : 0.01, age: branch.age + 1 };
+      branch.weight = isFinite(newWeight) ? newWeight : 0.01;
+      branch.age++;
     });
 
     // Нормализация
@@ -365,9 +368,11 @@ export class FractalMusicEngine {
     if (totalWeight > 0 && isFinite(totalWeight)) {
       this.branches.forEach(b => b.weight = isFinite(b.weight) ? b.weight / totalWeight : 0.01);
     }
+    console.log('Weights after update:', this.branches.map(b => ({id: b.id, type: b.type, weight: b.weight.toFixed(3)})));
 
-    // Смерть слабых ветвей (но барабаны бессмертны)
-    this.branches = this.branches.filter(b => b.type === 'drums' || b.weight > 0.02);
+
+    // Смерть слабых ветвей (но главные аксоны бессмертны)
+    this.branches = this.branches.filter(b => b.id.includes('axon') || b.weight > 0.02);
     
     // Генерация событий
     const events = this.generateOneBar();
@@ -399,5 +404,3 @@ export class FractalMusicEngine {
     };
   }
 }
-
-    
