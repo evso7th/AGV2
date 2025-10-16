@@ -386,6 +386,7 @@ export class FractalMusicEngine {
     const delta = this.getDeltaProfile()(this.time);
     if (!isFinite(barDuration)) return [];
 
+    // Update weights
     this.branches.forEach(branch => {
       const ageBonus = branch.age === 0 ? 1.5 : 1.0; 
       const resonanceSum = this.branches.reduce((sum, other) => {
@@ -398,6 +399,7 @@ export class FractalMusicEngine {
       branch.age++;
     });
 
+    // Normalize weights within each type (bass, drums)
     ['bass', 'drums'].forEach(type => {
         const typeBranches = this.branches.filter(b => b.type === type);
         const totalWeight = typeBranches.reduce((sum, b) => sum + b.weight, 0);
@@ -432,5 +434,3 @@ export class FractalMusicEngine {
     };
   }
 }
-
-    
