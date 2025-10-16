@@ -9,7 +9,7 @@ const DRUM_SAMPLES: Record<string, string> = {
     'cymbal1': '/assets/drums/cymbal1.wav',
     'cymbal2': '/assets/drums/cymbal2.wav',
     'cymbal3': '/assets/drums/cymbal3.wav',
-    'cymbal4': '/assets/drums/cymbal4.wav',
+    'cymbal4.wav': '/assets/drums/cymbal4.wav',
     'cymbal_bell1': '/assets/drums/cymbal_bell1.wav',
     'cymbal_bell2': '/assets/drums/cymbal_bell2.wav',
     'hh_bark_short': '/assets/drums/hh_bark_short.wav',
@@ -73,6 +73,7 @@ function createSampler(audioContext: AudioContext, output: AudioNode): Sampler {
             }
         });
         await Promise.all(promises);
+        console.log('[DrumMachine] Initialized and samples loaded:', Array.from(buffers.keys()));
     };
 
     const triggerAttack = (note: string, time: number, velocity = 1) => {
@@ -114,7 +115,6 @@ export class DrumMachine {
         this.sampler = createSampler(this.audioContext, this.preamp);
         await this.sampler.load(DRUM_SAMPLES);
         this.isInitialized = true;
-        console.log('[DrumMachine] Initialized and samples loaded.');
     }
 
     schedule(score: FractalEvent[], barStartTime: number, tempo: number) {
