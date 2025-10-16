@@ -14,12 +14,14 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { useRouter } from "next/navigation";
 import { BASS_PRESET_INFO } from "@/lib/bass-presets";
 import { PRESETS } from "@/lib/presets";
+import { cn } from "@/lib/utils";
 
 
 // This is now a "dumb" UI component controlled by the useAuraGroove hook.
 export type AuraGrooveProps = {
   isPlaying: boolean;
   isInitializing: boolean;
+  isRegenerating: boolean;
   loadingText: string;
   drumSettings: DrumSettings;
   setDrumSettings: (settings: React.SetStateAction<DrumSettings>) => void;
@@ -72,6 +74,7 @@ const BASS_INSTRUMENTS: (BassInstrument | 'none')[] = ['classicBass', 'glideBass
 export function AuraGroove({
   isPlaying,
   isInitializing,
+  isRegenerating,
   loadingText,
   drumSettings,
   setDrumSettings,
@@ -263,7 +266,7 @@ export function AuraGroove({
         
         <div className="space-y-4 rounded-lg border p-4">
            <h3 className="text-lg font-medium text-primary flex items-center gap-2"><SlidersHorizontal className="h-5 w-5" /> Instrument Channels</h3>
-            {(Object.keys(instrumentSettings) as Array<keyof InstrumentSettings>).map((part) => {
+            {(Object.keys(instrumentSettings) as Array<keyof typeof instrumentSettings>).map((part) => {
                 const settings = instrumentSettings[part as keyof typeof instrumentSettings];
                 let instrumentList: (BassInstrument | MelodyInstrument | AccompanimentInstrument | 'none')[] = [];
                 let displayNames: Record<string, string> = {
@@ -476,7 +479,7 @@ export function AuraGroove({
             className="text-lg py-6 px-4"
             aria-label="Regenerate"
           >
-            <RefreshCw className="h-6 w-6" />
+            <RefreshCw className={cn("h-6 w-6", isRegenerating && "animate-spin")} />
           </Button>
         </div>
       </CardFooter>

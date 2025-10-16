@@ -14,7 +14,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import type { AuraGrooveProps } from "./aura-groove";
 import { useRouter } from "next/navigation";
-import { formatTime } from "@/lib/utils";
+import { formatTime, cn } from "@/lib/utils";
 import type { BassInstrument, MelodyInstrument, AccompanimentInstrument, Mood, Genre } from '@/types/music';
 
 const EQ_BANDS = [
@@ -29,7 +29,7 @@ export function AuraGrooveV2({
   isEqModalOpen, setIsEqModalOpen, eqSettings, handleEqChange,
   timerSettings, handleTimerDurationChange, handleToggleTimer,
   composerControlsInstruments, setComposerControlsInstruments,
-  mood, setMood, genre, setGenre
+  mood, setMood, genre, setGenre, isRegenerating,
 }: AuraGrooveProps) {
 
   const router = useRouter();
@@ -100,7 +100,7 @@ export function AuraGrooveV2({
               {isPlaying ? "Pause" : "Play"}
            </Button>
            <Button type="button" onClick={handleRegenerate} disabled={isInitializing} variant="outline" className="h-10 w-10 p-0">
-             <RefreshCw className="h-5 w-5" />
+             <RefreshCw className={cn("h-5 w-5", isRegenerating && "animate-spin")} />
            </Button>
         </div>
       </header>

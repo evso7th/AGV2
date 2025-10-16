@@ -58,6 +58,8 @@ export const useAuraGroove = () => {
   });
   const timerIntervalRef = useRef<NodeJS.Timeout | null>(null);
 
+  const [isRegenerating, setIsRegenerating] = useState(false);
+
   // Automatically initialize the engine when the component mounts
   useEffect(() => {
     initialize();
@@ -149,6 +151,9 @@ export const useAuraGroove = () => {
   }, [isInitialized, isPlaying, setEngineIsPlaying]);
 
   const handleRegenerate = useCallback(() => {
+    setIsRegenerating(true);
+    setTimeout(() => setIsRegenerating(false), 500); // Animation duration
+
     if (isPlaying) {
       setEngineIsPlaying(false);
     }
@@ -238,6 +243,7 @@ export const useAuraGroove = () => {
   return {
     isInitializing,
     isPlaying,
+    isRegenerating,
     loadingText: isInitializing ? 'Initializing...' : (isInitialized ? 'Ready' : 'Click to initialize audio'),
     handlePlayPause,
     handleRegenerate,
