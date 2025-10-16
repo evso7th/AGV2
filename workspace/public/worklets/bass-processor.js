@@ -4,12 +4,15 @@ class BassProcessor extends AudioWorkletProcessor {
   constructor(options) {
     super(options);
     this.sampleRate = options.processorOptions.sampleRate;
+    
+    // Карта для хранения активных нот. Ключ - ID ноты.
+    // Значение - объект с параметрами ноты.
     this.activeNotes = new Map();
 
     this.port.onmessage = (event) => {
-      const messages = event.data;
-      if (!Array.isArray(messages)) return;
-      messages.forEach(message => this.handleMessage(message));
+        // Теперь мы можем получать массив сообщений, но для надежности обработаем и одиночные
+        const messages = Array.isArray(event.data) ? event.data : [event.data];
+        messages.forEach(message => this.handleMessage(message));
     };
     console.log('[BassProcessor] Worklet created and ready.');
   }
@@ -19,30 +22,34 @@ class BassProcessor extends AudioWorkletProcessor {
 
     if (type === 'noteOn') {
       const { frequency, velocity, params } = message;
+      // Добавляем ноту в карту активных. Она еще не звучит, просто "запланирована".
       this.activeNotes.set(noteId, {
         state: 'scheduled',
         startTime: when,
-        endTime: Infinity,
+        endTime: Infinity, // Пока не знаем, когда закончится
         phase: 0,
         gain: 0,
         targetGain: velocity,
         frequency: frequency,
-        // Сохраняем индивидуальные параметры для каждой ноты
-        params: params || { cutoff: 500, resonance: 0.5, distortion: 0.1 }, 
+        params: params || { cutoff: 500, resonance: 0.5, distortion: 0.1 }, // Параметры по-умолчанию
         filterState: { y1: 0, y2: 0, oldx: 0, oldy: 0 },
       });
+      // console.log(`[Worklet] Scheduled noteOn: id=${noteId}, time=${when.toFixed(3)}`);
+
     } else if (type === 'noteOff') {
        const note = this.activeNotes.get(noteId);
        if (note) {
+         // Устанавливаем время окончания. Нота перейдет в 'decay' в цикле process.
          note.endTime = when;
+         // console.log(`[Worklet] Scheduled noteOff: id=${noteId}, time=${when.toFixed(3)}`);
        }
     } else if (type === 'clear') {
         this.activeNotes.clear();
+        console.log('[Worklet] All notes cleared.');
     }
   }
   
   applyFilter(input, cutoff, resonance, state) {
-    // Простой, но эффективный one-pole low-pass filter
     const g = Math.tan(Math.PI * cutoff / this.sampleRate);
     const r = 1 / resonance;
     const h = 1 / (1 + r * g + g * g);
@@ -52,17 +59,13 @@ class BassProcessor extends AudioWorkletProcessor {
     state.y1 = g * band + low;
     state.y2 = g * state.y1 + state.y2;
     
-    // Возвращаем low-pass выход
     return state.y2;
   }
 
   softClip(input, drive) {
     if (drive <= 0.01) return input;
     const k = 2 * drive / (1 - drive);
-    // Формула для мягкого клиппинга, предотвращающая жесткие искажения
-    const output = (1 + k) * input / (1 + k * Math.abs(input));
-    // Дополнительное ослабление, чтобы компенсировать увеличение громкости
-    return output / (1 + drive * 0.5); 
+    return (1 + k) * input / (1 + k * Math.abs(input));
   }
 
   process(inputs, outputs, parameters) {
@@ -73,53 +76,61 @@ class BassProcessor extends AudioWorkletProcessor {
       let sample = 0;
 
       for (const [noteId, note] of this.activeNotes.entries()) {
-        // Проверка времени начала/окончания ноты
+        // Проверяем, не пора ли начать играть ноту
         if (note.state === 'scheduled' && now >= note.startTime) {
           note.state = 'attack';
         }
         
+        // Проверяем, не пора ли отпустить ноту
         if (note.state !== 'decay' && now >= note.endTime) {
             note.state = 'decay';
-            note.targetGain = 0; 
+            note.targetGain = 0; // Цель - затухание до нуля
         }
 
         if (note.state === 'attack' || note.state === 'sustain' || note.state === 'decay') {
             // --- Огибающая (Envelope) ---
             if (note.state === 'attack') {
-                note.gain += 1 / (0.01 * this.sampleRate); // Быстрая атака (10ms)
+                note.gain += 1 / (0.01 * this.sampleRate); // Быстрая атака
                 if (note.gain >= note.targetGain) {
                     note.gain = note.targetGain;
                     note.state = 'sustain';
                 }
             } else if (note.state === 'decay') {
-                note.gain -= 1 / (0.3 * this.sampleRate); // Быстрое затухание (300ms)
+                note.gain -= 1 / (0.3 * this.sampleRate); // Быстрое затухание
                 if (note.gain <= 0) {
-                    this.activeNotes.delete(noteId);
-                    continue; 
+                    this.activeNotes.delete(noteId); // Удаляем ноту после затухания
+                    continue; // Переходим к следующей ноте
                 }
             }
             
-            // --- Осциллятор ---
+            // --- Осцилляторы ---
             note.phase += (note.frequency * 2 * Math.PI) / this.sampleRate;
             if (note.phase >= 2 * Math.PI) note.phase -= 2 * Math.PI;
 
-            const osc1 = (note.phase < Math.PI) ? 1 : -1; // Pulse wave
-            const osc2 = Math.sin(note.phase * 0.5);     // Sine wave (sub-osc)
+            const osc1 = (note.phase < Math.PI) ? 1 : -1; // Основной осциллятор (Pulse)
+            const osc2 = Math.sin(note.phase * 0.5);      // Саб-осциллятор (Sine, -1 октава)
 
-            // --- Фильтр и Дисторшн (с использованием индивидуальных `params`) ---
-            const filtered = this.applyFilter(osc1 + osc2 * 0.7, note.params.cutoff, note.params.resonance, note.filterState);
+            // --- Обработка и смешивание ---
+            // 1. Обрабатываем только основной осциллятор
+            const filtered = this.applyFilter(osc1, note.params.cutoff, note.params.resonance, note.filterState);
             const distorted = this.softClip(filtered, note.params.distortion);
 
-            sample += distorted * note.gain;
+            // 2. Смешиваем обработанный сигнал с чистым саб-басом
+            const mixedSignal = distorted + (osc2 * 0.7); // Саб-бас на 70% громкости
+
+            // 3. Применяем огибающую к финальному миксу
+            sample += mixedSignal * note.gain;
         }
       }
       
       // Записываем сэмпл в оба канала для стерео
-      output[0][i] = sample * 0.3; // Снижаем общую громкость
-      output[1][i] = sample * 0.3;
+      output[0][i] = sample * 0.3; // Снижаем общую громкость, чтобы избежать клиппинга
+      if (output[1]) {
+        output[1][i] = sample * 0.3;
+      }
     }
 
-    return true;
+    return true; // Keep the processor alive
   }
 }
 
