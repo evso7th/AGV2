@@ -31,11 +31,11 @@ function getParamsForTechnique(technique: Technique, mood: Mood, genre: Genre): 
     case 'pluck':
       return { cutoff: 800, resonance: 0.3, distortion: 0.1, portamento: 0.01 };
     case 'ghost':
-      return { cutoff: 250, resonance: 0.1, distortion: 0.0, portamento: 0.0 };
+      return { cutoff: 350, resonance: 0.2, distortion: 0.0, portamento: 0.0 }; // cutoff был 250
     case 'slap':
        return { cutoff: 1200, resonance: 0.5, distortion: 0.3, portamento: 0.0 };
     case 'fill':
-       return { cutoff: 900, resonance: 0.4, distortion: 0.15, portamento: 0.0 };
+       return { cutoff: 1000, resonance: 0.5, distortion: 0.2, portamento: 0.0 }; // cutoff был 900, distortion 0.15
     default: // Для техник не от баса или по умолчанию
       return { cutoff: 500, resonance: 0.2, distortion: 0.0, portamento: 0.0 };
   }
@@ -114,7 +114,7 @@ function createTomFill(mood: Mood, genre: Genre): FractalEvent[] {
     { type: 'drum_tom_mid', note: 45, duration: 0.25, time: 3.25, weight: 0.9, technique: 'hit', dynamics: 'mf', phrasing: 'staccato', params: hitParams },
     { type: 'drum_tom_high', note: 50, duration: 0.25, time: 3.5, weight: 0.9, technique: 'hit', dynamics: 'mf', phrasing: 'staccato', params: hitParams },
     { type: 'drum_snare', note: 38, duration: 0.25, time: 3.75, weight: 1.0, technique: 'hit', dynamics: 'f', phrasing: 'staccato', params: hitParams },
-    { type: 'drum_crash', note: 49, duration: 0.25, time: 3.75, weight: 1.0, technique: 'hit', dynamics: 'f', phrasing: 'staccato', params: hitParams },
+    { type: 'drum_crash', note: 49, duration: 0.25, time: 3.75, weight: 1.0, technique: 'hit', dynamics: 'f', phrasing: 'staccato', params: hitParams }, // Added Crash
   ];
 }
 
@@ -176,7 +176,7 @@ export class FractalMusicEngine {
     this.lambda = config.lambda ?? 0.5;
     this.currentMood = config.mood;
     this.random = seededRandom(config.seed ?? Date.now());
-    this.nextWeatherEventEpoch = 0;
+    this.nextWeatherEventEpoch = 0; // Will be set in initialize
     this.initialize();
   }
 
@@ -347,15 +347,13 @@ export class FractalMusicEngine {
   }
 
   public evolve(barDuration: number): FractalEvent[] {
-    const delta = this.getDeltaProfile()(this.time);
-    if (!isFinite(barDuration)) return [];
-
-    // "Weather" event: check if it's time to trigger
     if (this.epoch >= this.nextWeatherEventEpoch) {
         this.generateExternalImpulse();
-        // Schedule the next weather event
         this.nextWeatherEventEpoch += this.random.nextInt(12) + 8; // Schedule next event in 8-20 epochs
     }
+
+    const delta = this.getDeltaProfile()(this.time);
+    if (!isFinite(barDuration)) return [];
 
 
     // Обновление весов

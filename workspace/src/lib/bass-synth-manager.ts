@@ -49,8 +49,7 @@ export class BassSynthManager {
     }
     
     const beatDuration = 60 / tempo;
-    const messages = [];
-
+    
     for (const event of events) {
       if (event.type !== 'bass') continue;
 
@@ -68,24 +67,26 @@ export class BassSynthManager {
           continue;
       }
       
-      messages.push({
+      const noteOnMessage = {
           type: 'noteOn',
           frequency,
           velocity: event.weight,
           when: noteOnTime,
           noteId: event.note,
           params: event.params
-      });
+      };
 
-      messages.push({
+      const noteOffMessage = {
           type: 'noteOff',
           noteId: event.note,
           when: noteOffTime
-      });
-    }
+      };
 
-    if(messages.length > 0) {
-        this.worklet.port.postMessage(messages);
+      console.log("[BassMan] Sending message to worklet:", noteOnMessage);
+      this.worklet.port.postMessage(noteOnMessage);
+
+      console.log("[BassMan] Sending message to worklet:", noteOffMessage);
+      this.worklet.port.postMessage(noteOffMessage);
     }
   }
   
@@ -97,7 +98,7 @@ export class BassSynthManager {
   
   public allNotesOff() {
       if (!this.worklet) return;
-      this.worklet.port.postMessage([{ type: 'clear' }]);
+      this.worklet.port.postMessage({ type: 'clear' });
   }
 
   public setPreset(instrumentName: BassInstrument) {
