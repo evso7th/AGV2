@@ -57,49 +57,75 @@ function safeTime(value: number, fallback: number = 0): number {
 }
 
 // === АКСОНЫ И ТРАНСФОРМАЦИИ ===
-function createDrumAxiom(genre: Genre, mood: Mood, random: { next: () => number }): FractalEvent[] {
-  const hitParams = getParamsForTechnique('hit', mood, genre);
-  const basePattern = STYLE_DRUM_PATTERNS[genre] || STYLE_DRUM_PATTERNS['ambient'];
-  
-  const axiomEvents: FractalEvent[] = [];
+function createDrumAxiom(genre: Genre, mood: Mood, random: { next: () => number, nextInt: (max: number) => number }): FractalEvent[] {
+    const hitParams = getParamsForTechnique('hit', mood, genre);
+    const grammar = STYLE_DRUM_PATTERNS[genre] || STYLE_DRUM_PATTERNS['ambient'];
+    
+    // Выбираем случайный луп из библиотеки жанра
+    const loop = grammar.loops[random.nextInt(grammar.loops.length)];
+    
+    const axiomEvents: FractalEvent[] = [];
 
-  basePattern.forEach(patternEvent => {
-    if (patternEvent.probability && random.next() > patternEvent.probability) {
-      return;
-    }
-
-    let instrumentType: InstrumentType;
-
-    if (Array.isArray(patternEvent.type)) {
-        const types = patternEvent.type as InstrumentType[];
-        const probabilities = patternEvent.probabilities || [];
-        let rand = random.next();
-        let cumulativeProb = 0;
-        
-        let chosenType: InstrumentType | null = null;
-        for (let i = 0; i < types.length; i++) {
-            cumulativeProb += probabilities[i] || (1 / types.length);
-            if (rand <= cumulativeProb) {
-                chosenType = types[i];
-                break;
-            }
+    // 1. Создаем основной каркас (kick, snare, hi-hat)
+    const allBaseEvents = [...loop.kick, ...loop.snare, ...loop.hihat];
+    for (const baseEvent of allBaseEvents) {
+        if (baseEvent.probability && random.next() > baseEvent.probability) {
+            continue;
         }
-        instrumentType = chosenType || types[types.length-1];
-    } else {
-        instrumentType = patternEvent.type;
+
+        let instrumentType: InstrumentType;
+        if (Array.isArray(baseEvent.type)) {
+            const types = baseEvent.type as InstrumentType[];
+            const probabilities = baseEvent.probabilities || [];
+            let rand = random.next();
+            let cumulativeProb = 0;
+            
+            let chosenType: InstrumentType | null = null;
+            for (let i = 0; i < types.length; i++) {
+                cumulativeProb += probabilities[i] || (1 / types.length);
+                if (rand <= cumulativeProb) {
+                    chosenType = types[i];
+                    break;
+                }
+            }
+            instrumentType = chosenType || types[types.length - 1];
+        } else {
+            instrumentType = baseEvent.type;
+        }
+
+        axiomEvents.push({
+            ...baseEvent,
+            type: instrumentType,
+            note: 36, // Placeholder MIDI
+            phrasing: 'staccato',
+            dynamics: 'mf', // Placeholder
+            params: hitParams,
+        } as FractalEvent);
+    }
+    
+    // 2. Добавляем перкуссию (второй "барабанщик")
+    if (grammar.percussion && random.next() < grammar.percussion.probability) {
+        const occupiedTimes = new Set(axiomEvents.map(e => e.time));
+        const availableTimes = grammar.percussion.allowedTimes.filter(t => !occupiedTimes.has(t));
+        
+        if (availableTimes.length > 0) {
+            const time = availableTimes[random.nextInt(availableTimes.length)];
+            const type = grammar.percussion.types[random.nextInt(grammar.percussion.types.length)];
+            
+            axiomEvents.push({
+                type: type,
+                time: time,
+                duration: 0.25,
+                weight: grammar.percussion.weight,
+                note: 36,
+                phrasing: 'staccato',
+                dynamics: 'p',
+                params: hitParams
+            } as FractalEvent);
+        }
     }
 
-    axiomEvents.push({
-      ...patternEvent,
-      type: instrumentType,
-      note: 36, 
-      phrasing: 'staccato',
-      dynamics: 'mf',
-      params: hitParams,
-    } as FractalEvent);
-  });
-
-  return axiomEvents;
+    return axiomEvents;
 }
 
 
@@ -285,7 +311,7 @@ export class FractalMusicEngine {
                 });
                 break;
             case 1: // Add percussion
-                const percOptions: InstrumentType[] = ['perc-001', 'perc-002', 'perc-003', 'perc-004', 'perc-005'];
+                const percOptions: InstrumentType[] = ['perc-001', 'perc-002', 'perc-003', 'perc-004', 'perc-005', 'perc-006', 'perc-007', 'perc-008', 'perc-009', 'perc-010', 'perc-011', 'perc-012', 'perc-013', 'perc-014', 'perc-015'];
                 const timeSlots = [0.25, 0.75, 1.25, 1.75, 2.25, 2.75, 3.25, 3.75];
                 const targetTime = timeSlots[this.random.nextInt(timeSlots.length)];
                 if (!newEvents.some(e => Math.abs(e.time - targetTime) < 0.1)) {
@@ -297,15 +323,21 @@ export class FractalMusicEngine {
                 break;
             case 2: // Rhythmic shift (syncopation)
                 const snareIndex = newEvents.findIndex(e => e.type === 'drum_snare');
-                if (snareIndex > -1) {
+                if (snareIndex > -1 && this.random.next() > 0.5) { // 50% chance to shift
                     newEvents[snareIndex].time += (this.random.next() > 0.5 ? 0.25 : -0.25);
                     newEvents[snareIndex].time = (newEvents[snareIndex].time + 4) % 4; // Wrap around bar
                     mutationApplied = true;
+                } else { // Or replace snare with another perc
+                    const snareToReplace = newEvents.find(e => e.type === 'drum_snare');
+                    if (snareToReplace) {
+                        snareToReplace.type = 'drum_tom_mid';
+                        mutationApplied = true;
+                    }
                 }
                 break;
             case 3: // Double hi-hat time
                 const hihats = newEvents.filter(e => e.type === 'drum_hihat_closed');
-                if (hihats.length > 0) {
+                if (hihats.length > 0 && this.random.next() > 0.5) {
                     const targetHat = hihats[this.random.nextInt(hihats.length)];
                     newEvents.push({...targetHat, time: targetHat.time + 0.25 });
                     mutationApplied = true;
@@ -367,7 +399,7 @@ export class FractalMusicEngine {
             if (parentBranch) {
                 const newBranch = this.mutateBranch(parentBranch);
                 if (newBranch) {
-                    this.branches.push(newBranch);
+                     this.branches.push(newBranch);
                      console.log(`%c[MUTATION] at epoch ${this.epoch}: Created new drum branch ${newBranch.id}.`, "color: darkorange;");
                 }
             }
@@ -434,3 +466,5 @@ export class FractalMusicEngine {
     };
   }
 }
+
+    
