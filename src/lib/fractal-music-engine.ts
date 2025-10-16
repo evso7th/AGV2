@@ -30,11 +30,11 @@ function getParamsForTechnique(technique: Technique, mood: Mood, genre: Genre): 
     case 'pluck':
       return { cutoff: 800, resonance: 0.3, distortion: 0.1, portamento: 0.01 };
     case 'ghost':
-      return { cutoff: 350, resonance: 0.2, distortion: 0.0, portamento: 0.0 };
+      return { cutoff: 450, resonance: 0.2, distortion: 0.0, portamento: 0.0 }; // Raised cutoff slightly
     case 'slap':
        return { cutoff: 1200, resonance: 0.5, distortion: 0.3, portamento: 0.0 };
     case 'fill':
-       return { cutoff: 1000, resonance: 0.5, distortion: 0.2, portamento: 0.0 };
+       return { cutoff: 1200, resonance: 0.6, distortion: 0.25, portamento: 0.0 }; // More aggressive
     default:
       return { cutoff: 500, resonance: 0.2, distortion: 0.0, portamento: 0.0 };
   }
@@ -86,10 +86,12 @@ function createTomFill(mood: Mood, genre: Genre): FractalEvent[] {
     { type: 'drum_tom_low', note: 41, duration: 0.25, time: 3.0, weight: 0.9, technique: 'hit', dynamics: 'mf', phrasing: 'staccato', params: hitParams },
     { type: 'drum_tom_mid', note: 45, duration: 0.25, time: 3.25, weight: 0.9, technique: 'hit', dynamics: 'mf', phrasing: 'staccato', params: hitParams },
     { type: 'drum_tom_high', note: 50, duration: 0.25, time: 3.5, weight: 0.9, technique: 'hit', dynamics: 'mf', phrasing: 'staccato', params: hitParams },
+    // Simultaneous snare and crash for a powerful accent
     { type: 'drum_snare', note: 38, duration: 0.25, time: 3.75, weight: 1.0, technique: 'hit', dynamics: 'f', phrasing: 'staccato', params: hitParams },
-    { type: 'drum_crash', note: 49, duration: 0.25, time: 3.75, weight: 1.0, technique: 'hit', dynamics: 'f', phrasing: 'staccato', params: hitParams },
+    { type: 'drum_crash', note: 49, duration: 0.25, time: 3.75, weight: 1.0, technique: 'hit', dynamics: 'f', phrasing: 'staccato', params: hitParams }
   ];
 }
+
 
 function createBassFill(mood: Mood, genre: Genre, random: { nextInt: (max: number) => number }): FractalEvent[] {
   const scale = getScaleForMood(mood);
@@ -147,7 +149,6 @@ export class FractalMusicEngine {
   private generateExternalImpulse() {
     console.log(`%c[WEATHER EVENT] at epoch ${this.epoch}: Triggering linked mutation.`, "color: blue; font-weight: bold;");
     
-    // Drum fills are now handled as one-off events, not persistent branches
     this.drumFillForThisEpoch = createTomFill(this.config.mood, this.config.genre);
     console.log(`%c  -> Created ONE-OFF DRUM fill for this epoch.`, "color: blue;");
 
@@ -228,8 +229,9 @@ export class FractalMusicEngine {
     if (winningBassBranch) {
         winningBassBranch.events.forEach(event => {
             const newEvent: FractalEvent = { ...event };
-            // Decouple loudness from weight. Use original dynamics.
-            newEvent.weight = event.dynamics === 'p' ? 0.3 : event.dynamics === 'mf' ? 0.7 : 1.0;
+            // Set dynamics based on original event, not branch weight
+            newEvent.dynamics = event.dynamics; 
+            newEvent.weight = event.weight; // Use original event weight for velocity
             newEvent.phrasing = winningBassBranch.weight > 0.7 ? 'legato' : 'staccato';
             newEvent.params = getParamsForTechnique(newEvent.technique, this.config.mood, this.config.genre);
             output.push(newEvent);
@@ -238,14 +240,14 @@ export class FractalMusicEngine {
 
     if (winningDrumBranch) {
         let drumEvents = winningDrumBranch.events;
+        // If there's a one-off fill for this epoch, use it instead of the main pattern
         if (this.drumFillForThisEpoch) {
             drumEvents = this.drumFillForThisEpoch;
-            this.drumFillForThisEpoch = null;
+            this.drumFillForThisEpoch = null; // Consume it
         }
         drumEvents.forEach(event => {
-            // Decouple loudness from weight. Use original event weight or a default.
-            const velocity = event.weight ?? (event.dynamics === 'f' ? 1.0 : 0.7);
-            output.push({ ...event, weight: velocity });
+            // Use original event weight/dynamics for velocity
+            output.push({ ...event, weight: event.weight ?? 1.0 });
         });
     }
     
@@ -274,12 +276,14 @@ export class FractalMusicEngine {
 
     // Update weights
     this.branches.forEach(branch => {
+      // Give a boost to new branches to ensure they are heard
+      const ageBonus = branch.age === 0 ? 1.5 : 1.0; 
       const resonanceSum = this.branches.reduce((sum, other) => {
         if (other.id === branch.id || other.type === branch.type) return sum;
         const k = MelancholicMinorK(branch.events[0], other.events[0], { mood: this.config.mood, tempo: this.config.tempo, delta });
         return sum + k * delta * other.weight;
       }, 0);
-      const newWeight = (1 - this.lambda) * branch.weight + resonanceSum;
+      const newWeight = ((1 - this.lambda) * branch.weight + resonanceSum) * ageBonus;
       branch.weight = isFinite(newWeight) ? Math.max(0, newWeight) : 0.01;
       branch.age++;
     });
@@ -295,8 +299,8 @@ export class FractalMusicEngine {
 
     console.log('Weights after update:', this.branches.map(b => ({id: b.id, type: b.type, weight: b.weight.toFixed(3)})));
 
-    // Kill old and weak branches (but keep axons)
-    this.branches = this.branches.filter(b => b.id.includes('axon') || (b.age < 16 && b.weight > 0.05));
+    // Kill weak branches (but keep axons)
+    this.branches = this.branches.filter(b => b.id.includes('axon') || b.weight > 0.05);
     
     const events = this.generateOneBar();
 
