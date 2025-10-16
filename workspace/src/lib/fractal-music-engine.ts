@@ -153,6 +153,7 @@ export class FractalMusicEngine {
   private random: { next: () => number; nextInt: (max: number) => number };
   private climaxImminent: boolean = false;
   private currentMood: Mood;
+  private nextWeatherEventEpoch: number;
 
   constructor(config: EngineConfig) {
     if (!config || config.tempo <= 0 || !isFinite(config.tempo)) {
@@ -174,6 +175,7 @@ export class FractalMusicEngine {
     this.lambda = config.lambda ?? 0.5;
     this.currentMood = config.mood;
     this.random = seededRandom(config.seed ?? Date.now());
+    this.nextWeatherEventEpoch = this.random.nextInt(12) + 8; // Schedule first event
     this.initialize();
   }
 
@@ -342,10 +344,13 @@ export class FractalMusicEngine {
     const delta = this.getDeltaProfile()(this.time);
     if (!isFinite(barDuration)) return [];
 
-    // "Weather" event: randomly create linked mutations
-    if (this.epoch > 4 && this.epoch % (this.random.nextInt(12) + 8) === 0) {
+    // "Weather" event: check if it's time to trigger
+    if (this.epoch >= this.nextWeatherEventEpoch) {
         this.generateExternalImpulse();
+        // Schedule the next weather event
+        this.nextWeatherEventEpoch += this.random.nextInt(12) + 8; // Schedule next event in 8-20 epochs
     }
+
 
     // Обновление весов
     this.branches.forEach(branch => {
