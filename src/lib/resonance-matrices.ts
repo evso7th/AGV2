@@ -32,6 +32,7 @@ const isKick = (event: FractalEvent): boolean => event.type === 'drum_kick';
 const isSnare = (event: FractalEvent): boolean => event.type === 'drum_snare';
 const isBass = (event: FractalEvent): boolean => event.type === 'bass';
 const isCrash = (event: FractalEvent): boolean => event.type === 'drum_crash';
+const isFill = (event: FractalEvent): boolean => event.technique === 'fill';
 
 // === ОСНОВНАЯ ФУНКЦИЯ РЕЗОНАНСА ===
 
@@ -46,7 +47,7 @@ export const MelancholicMinorK: ResonanceMatrix = (
     const kickTime = isKick(eventA) ? eventA.time : eventB.time;
 
     // Поощрение за "филл" в сочетании с киком
-    if (bassEvent.technique === 'fill' && areSimultaneous(bassEvent.time, kickTime)) {
+    if (isFill(bassEvent) && areSimultaneous(bassEvent.time, kickTime)) {
         return 0.9;
     }
 
@@ -90,6 +91,12 @@ export const MelancholicMinorK: ResonanceMatrix = (
     const scale = getScaleForMood(context.mood);
     const noteAInScale = scale.some(scaleNote => (eventA.note % 12) === (scaleNote % 12));
     const noteBInScale = scale.some(scaleNote => (eventB.note % 12) === (scaleNote % 12));
+    
+    // Если обе ноты - часть филла, они должны хорошо сочетаться
+    if (isFill(eventA) && isFill(eventB)) {
+        return noteAInScale && noteBInScale ? 0.95 : 0.2;
+    }
+    
     return noteAInScale && noteBInScale ? 0.9 : 0.3;
   }
 
