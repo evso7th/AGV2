@@ -113,7 +113,8 @@ function createTomFill(mood: Mood, genre: Genre): FractalEvent[] {
     { type: 'drum_tom_low', note: 41, duration: 0.25, time: 3.0, weight: 0.9, technique: 'hit', dynamics: 'mf', phrasing: 'staccato', params: hitParams },
     { type: 'drum_tom_mid', note: 45, duration: 0.25, time: 3.25, weight: 0.9, technique: 'hit', dynamics: 'mf', phrasing: 'staccato', params: hitParams },
     { type: 'drum_tom_high', note: 50, duration: 0.25, time: 3.5, weight: 0.9, technique: 'hit', dynamics: 'mf', phrasing: 'staccato', params: hitParams },
-    { type: 'drum_snare', note: 38, duration: 0.25, time: 3.75, weight: 1.0, technique: 'hit', dynamics: 'f', phrasing: 'staccato', params: hitParams }
+    { type: 'drum_snare', note: 38, duration: 0.25, time: 3.75, weight: 1.0, technique: 'hit', dynamics: 'f', phrasing: 'staccato', params: hitParams },
+    { type: 'drum_crash', note: 49, duration: 0.25, time: 3.75, weight: 1.0, technique: 'hit', dynamics: 'f', phrasing: 'staccato', params: hitParams },
   ];
 }
 
@@ -175,7 +176,7 @@ export class FractalMusicEngine {
     this.lambda = config.lambda ?? 0.5;
     this.currentMood = config.mood;
     this.random = seededRandom(config.seed ?? Date.now());
-    this.nextWeatherEventEpoch = this.random.nextInt(12) + 8; // Schedule first event
+    this.nextWeatherEventEpoch = 0;
     this.initialize();
   }
 
@@ -190,6 +191,11 @@ export class FractalMusicEngine {
   }
 
   private initialize() {
+    this.random = seededRandom(this.config.seed ?? Date.now());
+    this.nextWeatherEventEpoch = this.random.nextInt(12) + 8; // Schedule first event
+
+    this.branches = []; // Clear existing branches
+
     // БАСОВЫЙ АКСОН
     const bassAxiom = createBassAxiom(this.config.mood, this.config.genre, this.random);
     this.branches.push({
