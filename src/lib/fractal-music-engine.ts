@@ -57,13 +57,53 @@ function safeTime(value: number, fallback: number = 0): number {
 }
 
 // === АКСОНЫ И ТРАНСФОРМАЦИИ ===
-function createDrumAxiom(genre: Genre, mood: Mood): FractalEvent[] {
+function createDrumAxiom(genre: Genre, mood: Mood, random: { next: () => number }): FractalEvent[] {
   const hitParams = getParamsForTechnique('hit', mood, genre);
-  const pattern = STYLE_DRUM_PATTERNS[genre] || STYLE_DRUM_PATTERNS['ambient'];
-  return pattern.map(baseEvent => ({
-    note: 36, phrasing: 'staccato', dynamics: 'mf', ...baseEvent, params: hitParams
-  })) as FractalEvent[];
+  const basePattern = STYLE_DRUM_PATTERNS[genre] || STYLE_DRUM_PATTERNS['ambient'];
+  
+  const axiomEvents: FractalEvent[] = [];
+
+  basePattern.forEach(patternEvent => {
+    // Если есть шанс не сыграть ноту, проверяем его
+    if (patternEvent.probability && random.next() > patternEvent.probability) {
+      return;
+    }
+
+    let instrumentType: InstrumentType;
+
+    // Если тип - массив, выбираем один из них на основе вероятностей
+    if (Array.isArray(patternEvent.type)) {
+        const types = patternEvent.type as InstrumentType[];
+        const probabilities = patternEvent.probabilities || [];
+        let rand = random.next();
+        let cumulativeProb = 0;
+        
+        let chosenType: InstrumentType | null = null;
+        for (let i = 0; i < types.length; i++) {
+            cumulativeProb += probabilities[i] || (1 / types.length); // Fallback to equal probability
+            if (rand <= cumulativeProb) {
+                chosenType = types[i];
+                break;
+            }
+        }
+        instrumentType = chosenType || types[types.length-1];
+    } else {
+        instrumentType = patternEvent.type;
+    }
+
+    axiomEvents.push({
+      ...patternEvent,
+      type: instrumentType,
+      note: 36, // Placeholder, can be more specific later
+      phrasing: 'staccato',
+      dynamics: 'mf',
+      params: hitParams,
+    } as FractalEvent);
+  });
+
+  return axiomEvents;
 }
+
 
 function createBassAxiom(mood: Mood, genre: Genre, random: { nextInt: (max: number) => number }): FractalEvent[] {
   const scale = getScaleForMood(mood);
@@ -195,7 +235,7 @@ export class FractalMusicEngine {
     this.branches.push({ id: 'bass_axon', events: bassAxiom, weight: 1.0, age: 0, technique: 'pluck', type: 'bass' });
 
     if (this.config.drumSettings.enabled) {
-        const drumAxiom = createDrumAxiom(this.config.genre, this.config.mood);
+        const drumAxiom = createDrumAxiom(this.config.genre, this.config.mood, this.random);
         this.branches.push({ id: 'drum_axon', events: drumAxiom, weight: 1.0, age: 0, technique: 'hit', type: 'drums' });
     }
   }
@@ -361,5 +401,3 @@ export class FractalMusicEngine {
     };
   }
 }
-
-    
