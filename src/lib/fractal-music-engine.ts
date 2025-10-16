@@ -52,12 +52,6 @@ function seededRandom(seed: number) {
   return self;
 }
 
-function weightToDynamics(weight: number): 'p' | 'mf' | 'f' {
-  if (weight < 0.3) return 'p';
-  if (weight < 0.7) return 'mf';
-  return 'f';
-}
-
 function safeTime(value: number, fallback: number = 0): number {
   return isFinite(value) ? value : fallback;
 }
@@ -80,31 +74,46 @@ function createBassAxiom(mood: Mood, genre: Genre, random: { nextInt: (max: numb
   return [createRandomNote(0, 1.5), createRandomNote(1.5, 0.5), createRandomNote(2.0, 1.5), createRandomNote(3.5, 0.5)];
 }
 
-function createTomFill(mood: Mood, genre: Genre): FractalEvent[] {
-  const hitParams = getParamsForTechnique('hit', mood, genre);
-  return [
-    { type: 'drum_tom_low', note: 41, duration: 0.25, time: 3.0, weight: 0.9, technique: 'hit', dynamics: 'mf', phrasing: 'staccato', params: hitParams },
-    { type: 'drum_tom_mid', note: 45, duration: 0.25, time: 3.25, weight: 0.9, technique: 'hit', dynamics: 'mf', phrasing: 'staccato', params: hitParams },
-    { type: 'drum_tom_high', note: 50, duration: 0.25, time: 3.5, weight: 0.9, technique: 'hit', dynamics: 'mf', phrasing: 'staccato', params: hitParams },
-    // Simultaneous snare and crash for a powerful accent
-    { type: 'drum_snare', note: 38, duration: 0.25, time: 3.75, weight: 1.0, technique: 'hit', dynamics: 'f', phrasing: 'staccato', params: hitParams },
-    { type: 'drum_crash', note: 49, duration: 0.25, time: 3.75, weight: 1.0, technique: 'hit', dynamics: 'f', phrasing: 'staccato', params: hitParams }
-  ];
+function createRhythmSectionFill(mood: Mood, genre: Genre, random: { next: () => number, nextInt: (max: number) => number }): { drumFill: FractalEvent[], bassFill: FractalEvent[] } {
+    const hitParams = getParamsForTechnique('hit', mood, genre);
+    const fillParams = getParamsForTechnique('fill', mood, genre);
+    const drumFill: FractalEvent[] = [];
+    const bassFill: FractalEvent[] = [];
+    const scale = getScaleForMood(mood);
+
+    // Определяем плотность сбивки
+    const fillDensity = random.nextInt(3) + 2; // 2, 3, или 4
+    let drumTime = 3.0;
+    
+    const drumInstruments: InstrumentType[] = ['drum_tom_low', 'drum_tom_mid', 'drum_tom_high', 'drum_snare'];
+
+    // Генерируем барабанную сбивку
+    for(let i = 0; i < fillDensity; i++) {
+        const instrument = drumInstruments[random.nextInt(drumInstruments.length)];
+        const duration = 1 / fillDensity;
+        // Громкость сбивки чуть выше средней, но не максимальная
+        drumFill.push({ type: instrument, note: 41 + i, duration, time: drumTime, weight: 0.8, technique: 'hit', dynamics: 'mf', phrasing: 'staccato', params: hitParams });
+        
+        // Бас отвечает на удар барабана с небольшим шансом
+        if (random.next() > 0.4) {
+             // Громкость басового филла тоже акцентирована, но не чрезмерно
+             bassFill.push({ type: 'bass', note: scale[random.nextInt(scale.length)], duration: duration * 0.8, time: drumTime + 0.05, weight: 0.85, technique: 'fill', dynamics: 'f', phrasing: 'staccato', params: fillParams });
+        }
+        
+        drumTime += duration;
+    }
+
+    // Финальный акцент
+    drumFill.push({ type: 'drum_snare', note: 38, duration: 0.25, time: 3.75, weight: 0.9, technique: 'hit', dynamics: 'f', phrasing: 'staccato', params: hitParams });
+    drumFill.push({ type: 'drum_crash', note: 49, duration: 0.25, time: 3.75, weight: 0.9, technique: 'hit', dynamics: 'f', phrasing: 'staccato', params: hitParams });
+     // Бас тоже может сделать финальный акцент
+    if (random.next() > 0.3) {
+      bassFill.push({ type: 'bass', note: scale[0], duration: 0.25, time: 3.75, weight: 0.9, technique: 'fill', dynamics: 'f', phrasing: 'staccato', params: fillParams });
+    }
+
+    return { drumFill, bassFill };
 }
 
-
-function createBassFill(mood: Mood, genre: Genre, random: { nextInt: (max: number) => number }): FractalEvent[] {
-  const scale = getScaleForMood(mood);
-  const fillParams = getParamsForTechnique('fill', mood, genre);
-  const fill: FractalEvent[] = [];
-  let currentTime = 3.0;
-  const noteCount = 5 + random.nextInt(3);
-  for (let i = 0; i < noteCount; i++) {
-    fill.push({ type: 'bass', note: scale[random.nextInt(scale.length)], duration: 0.25, time: currentTime, weight: 0.8, technique: 'fill', dynamics: 'f', phrasing: 'staccato', params: fillParams });
-    currentTime += 0.25;
-  }
-  return fill;
-}
 
 // === ОСНОВНОЙ КЛАСС ===
 export class FractalMusicEngine {
@@ -146,17 +155,18 @@ export class FractalMusicEngine {
     }
   }
 
-  private generateExternalImpulse() {
+  public generateExternalImpulse() {
     console.log(`%c[WEATHER EVENT] at epoch ${this.epoch}: Triggering linked mutation.`, "color: blue; font-weight: bold;");
     
-    this.drumFillForThisEpoch = createTomFill(this.config.mood, this.config.genre);
+    const { drumFill, bassFill } = createRhythmSectionFill(this.config.mood, this.config.genre, this.random);
+
+    this.drumFillForThisEpoch = drumFill;
     console.log(`%c  -> Created ONE-OFF DRUM fill for this epoch.`, "color: blue;");
 
-    const bassParent = this.branches.find(b => b.type === 'bass');
-    if (bassParent) {
-         const bassFillBranch: Branch = {
+    if (bassFill.length > 0) {
+        const bassFillBranch: Branch = {
             id: `bass_response_${this.epoch}`,
-            events: createBassFill(this.config.mood, this.config.genre, this.random),
+            events: bassFill,
             weight: 1.5, // Give it a high initial weight to ensure it plays
             age: 0,
             technique: 'fill',
@@ -229,9 +239,8 @@ export class FractalMusicEngine {
     if (winningBassBranch) {
         winningBassBranch.events.forEach(event => {
             const newEvent: FractalEvent = { ...event };
-            // Set dynamics based on original event, not branch weight
-            newEvent.dynamics = event.dynamics; 
-            newEvent.weight = event.weight; // Use original event weight for velocity
+            newEvent.dynamics = event.dynamics;
+            newEvent.weight = event.weight;
             newEvent.phrasing = winningBassBranch.weight > 0.7 ? 'legato' : 'staccato';
             newEvent.params = getParamsForTechnique(newEvent.technique, this.config.mood, this.config.genre);
             output.push(newEvent);
@@ -276,8 +285,7 @@ export class FractalMusicEngine {
 
     // Update weights
     this.branches.forEach(branch => {
-      // Give a boost to new branches to ensure they are heard
-      const ageBonus = branch.age === 0 ? 1.5 : 1.0; 
+      const ageBonus = Math.max(0.5, 1 - (branch.age / 32)); // Bonus for younger branches, decays over 32 epochs
       const resonanceSum = this.branches.reduce((sum, other) => {
         if (other.id === branch.id || other.type === branch.type) return sum;
         const k = MelancholicMinorK(branch.events[0], other.events[0], { mood: this.config.mood, tempo: this.config.tempo, delta });
@@ -325,5 +333,3 @@ export class FractalMusicEngine {
     };
   }
 }
-
-    
