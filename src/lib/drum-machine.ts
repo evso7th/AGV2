@@ -4,6 +4,7 @@ import type { FractalEvent } from "@/types/fractal";
 const DRUM_SAMPLES: Record<string, string> = {
     'kick': '/assets/drums/kick_drum6.wav',
     'snare': '/assets/drums/snare.wav',
+    'snare_ghost': '/assets/drums/snare_ghost_note.wav',
     'hihat_closed': '/assets/drums/closed_hi_hat_accented.wav',
     'hihat_open': '/assets/drums/open_hh_top2.wav',
     'crash': '/assets/drums/crash1.wav',
@@ -11,6 +12,25 @@ const DRUM_SAMPLES: Record<string, string> = {
     'tom_high': '/assets/drums/hightom.wav',
     'tom_mid': '/assets/drums/midtom.wav',
     'tom_low': '/assets/drums/lowtom.wav',
+    'closed_hi_hat_accented': '/assets/drums/closed_hi_hat_accented.wav',
+    'closed_hi_hat_ghost': '/assets/drums/closed_hi_hat_ghost.wav',
+    'crash1': '/assets/drums/crash1.wav',
+    'crash2': '/assets/drums/crash2.wav',
+    'cymbal1': '/assets/drums/cymbal1.wav',
+    'cymbal2': '/assets/drums/cymbal2.wav',
+    'cymbal3': '/assets/drums/cymbal3.wav',
+    'cymbal4': '/assets/drums/cymbal4.wav',
+    'cymbal_bell1': '/assets/drums/cymbal_bell1.wav',
+    'cymbal_bell2': '/assets/drums/cymbal_bell2.wav',
+    'hh_bark_short': '/assets/drums/hh_bark_short.wav',
+    'hightom': '/assets/drums/hightom.wav',
+    'kick_drum6': '/assets/drums/kick_drum6.wav',
+    'lowtom': '/assets/drums/lowtom.wav',
+    'midtom': '/assets/drums/midtom.wav',
+    'open_hh_bottom2': '/assets/drums/open_hh_bottom2.wav',
+    'open_hh_top2': '/assets/drums/open_hh_top2.wav',
+    'snare_off': '/assets/drums/snare_off.wav',
+    'snarepress': '/assets/drums/snarepress.wav'
 };
 
 type Sampler = {
