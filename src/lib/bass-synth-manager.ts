@@ -43,7 +43,6 @@ export class BassSynthManager {
    * barStartTime - АБСОЛЮТНОЕ время начала текущего такта.
    */
   public play(events: FractalEvent[], barStartTime: number, tempo: number) {
-    console.log('[BassMan] Received events to play:', { events, barStartTime, tempo });
     if (!this.isInitialized || !this.worklet) {
       console.warn('[BassSynthManager] Not ready, skipping events');
       return;
@@ -60,7 +59,7 @@ export class BassSynthManager {
           console.error(`[BassMan] Invalid frequency for MIDI note ${event.note}`);
           continue;
       }
-
+      
       const noteOnTime = barStartTime + (event.time * beatDuration);
       const noteOffTime = noteOnTime + (event.duration * beatDuration);
 
@@ -86,7 +85,6 @@ export class BassSynthManager {
     }
 
     if(messages.length > 0) {
-        console.log('[BassMan] Sending messages to worklet:', messages);
         this.worklet.port.postMessage(messages);
     }
   }

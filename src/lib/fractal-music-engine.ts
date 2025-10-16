@@ -1,7 +1,7 @@
 
 import type { FractalEvent, Mood, Genre, Technique, BassSynthParams, InstrumentType } from '@/types/fractal';
 import { MelancholicMinorK } from './resonance-matrices';
-import { getScaleForMood, STYLE_DRUM_PATTERNS } from './music-theory';
+import { getScaleForMood, STYLE_DRUM_PATTERNS, STYLE_BASS_PATTERNS } from './music-theory';
 
 export type Branch = {
   id: string;
@@ -129,13 +129,41 @@ function createDrumAxiom(genre: Genre, mood: Mood, random: { next: () => number,
 }
 
 
-function createBassAxiom(mood: Mood, genre: Genre, random: { nextInt: (max: number) => number }): FractalEvent[] {
+function createBassAxiom(mood: Mood, genre: Genre, random: { next: () => number, nextInt: (max: number) => number }): FractalEvent[] {
   const scale = getScaleForMood(mood);
-  const pluckParams = getParamsForTechnique('pluck', mood, genre);
-  const createRandomNote = (time: number, duration: number): FractalEvent => ({
-    type: 'bass', note: scale[random.nextInt(scale.length)], duration, time, weight: 1.0, technique: 'pluck', dynamics: 'mf', phrasing: 'staccato', params: pluckParams
+  const patternLibrary = STYLE_BASS_PATTERNS[genre] || STYLE_BASS_PATTERNS['ambient'];
+  const pattern = patternLibrary[random.nextInt(patternLibrary.length)];
+  
+  // Weighted random note selection, strongly favoring lower notes
+  const selectNote = (): number => {
+      const rand = random.next();
+      if (rand < 0.8) { // 80% chance for low octave (E1-E2)
+          const third = Math.floor(scale.length / 3);
+          return scale[random.nextInt(third)];
+      } else if (rand < 0.95) { // 15% chance for mid octave (E2-E3)
+          const third = Math.floor(scale.length / 3);
+          return scale[third + random.nextInt(third)];
+      } else { // 5% chance for high octave (E3-E4)
+          const twoThirds = Math.floor(2 * scale.length / 3);
+          return scale[twoThirds + random.nextInt(scale.length - twoThirds)];
+      }
+  };
+
+  return pattern.map(event => {
+      const note = selectNote();
+      const technique = event.technique || 'pluck';
+      return {
+        type: 'bass',
+        note,
+        duration: event.duration,
+        time: event.time,
+        weight: 1.0,
+        technique,
+        dynamics: 'mf',
+        phrasing: 'staccato',
+        params: getParamsForTechnique(technique, mood, genre)
+      };
   });
-  return [createRandomNote(0, 1.5), createRandomNote(1.5, 0.5), createRandomNote(2.0, 1.5), createRandomNote(3.5, 0.5)];
 }
 
 function createRhythmSectionFill(mood: Mood, genre: Genre, random: { next: () => number, nextInt: (max: number) => number }): { drumFill: FractalEvent[], bassFill: FractalEvent[] } {
@@ -156,7 +184,8 @@ function createRhythmSectionFill(mood: Mood, genre: Genre, random: { next: () =>
         drumFill.push({ type: instrument, note: 41 + i, duration, time: drumTime, weight: 0.9, technique: 'hit', dynamics: 'f', phrasing: 'staccato', params: hitParams });
         
         if (random.next() > 0.4) {
-             bassFill.push({ type: 'bass', note: scale[random.nextInt(scale.length)], duration: duration * 0.8, time: drumTime + 0.05, weight: 0.85, technique: 'fill', dynamics: 'f', phrasing: 'staccato', params: fillParams });
+             const noteIndex = random.nextInt(scale.length);
+             bassFill.push({ type: 'bass', note: scale[noteIndex], duration: duration * 0.8, time: drumTime + 0.05, weight: 0.85, technique: 'fill', dynamics: 'f', phrasing: 'staccato', params: fillParams });
         }
         
         drumTime += duration;
@@ -177,19 +206,34 @@ function createBassFill(mood: Mood, genre: Genre, random: { next: () => number, 
     const fillParams = getParamsForTechnique('fill', mood, genre);
     const numNotes = random.nextInt(4) + 7; // 7 to 10 notes
     let currentTime = 0;
-    let currentNoteIndex = random.nextInt(scale.length);
+    
+    // Weighted random note selection for fills
+    const selectNote = (): number => {
+      const rand = random.next();
+      if (rand < 0.6) { // 60% chance for low octave
+          const third = Math.floor(scale.length / 3);
+          return scale[random.nextInt(third)];
+      } else if (rand < 0.9) { // 30% chance for mid octave
+          const third = Math.floor(scale.length / 3);
+          return scale[third + random.nextInt(third)];
+      } else { // 10% chance for high octave
+          const twoThirds = Math.floor(2 * scale.length / 3);
+          return scale[twoThirds + random.nextInt(scale.length - twoThirds)];
+      }
+    };
 
-    const isFastGenre = genre === 'rock' || genre === 'trance' || genre === 'progressive';
+    let currentNote = selectNote();
 
     for (let i = 0; i < numNotes; i++) {
-        const duration = (isFastGenre || random.next() > 0.5) ? 0.25 : 0.5;
-        const step = random.next() > 0.7 ? (random.next() > 0.5 ? 2 : -2) : (random.next() > 0.5 ? 1 : -1);
-        currentNoteIndex = (currentNoteIndex + step + scale.length) % scale.length;
+        const duration = (genre === 'rock' || genre === 'trance' || genre === 'progressive') ? 0.25 : 0.5;
         
-        const note = (i === 0 || i === numNotes - 1) ? scale[0] : scale[currentNoteIndex];
+        const noteIndex = scale.indexOf(currentNote);
+        const step = random.next() > 0.7 ? (random.next() > 0.5 ? 2 : -2) : (random.next() > 0.5 ? 1 : -1);
+        const newNoteIndex = (noteIndex + step + scale.length) % scale.length;
+        currentNote = scale[newNoteIndex];
 
         fill.push({
-            type: 'bass', note: note, duration: duration, time: currentTime, weight: 0.8 + random.next() * 0.2, technique: 'fill', dynamics: 'f', phrasing: 'staccato', params: fillParams
+            type: 'bass', note: currentNote, duration: duration, time: currentTime, weight: 0.8 + random.next() * 0.2, technique: 'fill', dynamics: 'f', phrasing: 'staccato', params: fillParams
         });
         currentTime += duration;
     }
@@ -466,5 +510,3 @@ export class FractalMusicEngine {
     };
   }
 }
-
-    
