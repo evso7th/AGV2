@@ -39,10 +39,6 @@ export function AuraGrooveV2({
     setIsClient(true);
   }, []);
 
-  const handleBack = () => {
-    router.push('/aura-groove-legacy');
-  };
-  
   const melodyInstrumentList: (MelodyInstrument | 'none')[] = ['piano', 'violin', 'flute', 'synth', 'organ', 'mellotron', 'theremin', 'E-Bells_melody', 'G-Drops', 'acousticGuitarSolo', 'electricGuitar', 'none'];
   const accompanimentInstrumentList: (AccompanimentInstrument | 'none')[] = ['piano', 'violin', 'flute', 'guitarChords', 'synth', 'organ', 'mellotron', 'theremin', 'E-Bells_melody', 'G-Drops', 'electricGuitar', 'none'];
   const bassInstrumentList: (BassInstrument | 'none')[] = ['classicBass', 'glideBass', 'ambientDrone', 'resonantGliss', 'hypnoticDrone', 'livingRiff', 'none'];
@@ -72,7 +68,6 @@ export function AuraGrooveV2({
           </div>
           <div className="flex items-center gap-1">
             <Button variant="ghost" size="icon" onClick={handleGoHome} aria-label="Go to Home"><Home className="h-5 w-5" /></Button>
-            <Button variant="ghost" size="icon" onClick={handleBack} aria-label="Go back to original UI"><LayoutList className="h-5 w-5" /></Button>
             {isClient && (
               <Dialog open={isEqModalOpen} onOpenChange={setIsEqModalOpen}>
                 <DialogTrigger asChild>
