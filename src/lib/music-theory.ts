@@ -100,10 +100,10 @@ export const STYLE_DRUM_PATTERNS: Record<Genre, GenreRhythmGrammar> = {
             }
         ],
         percussion: {
-            types: ['perc-013', 'drum_ride'],
-            allowedTimes: [1.75, 3.25],
-            probability: 0.5,
-            weight: 0.35
+            types: ['perc-013', 'drum_ride', 'perc-001', 'perc-002', 'perc-005', 'perc-006', 'perc-014', 'perc-015'],
+            allowedTimes: [1.75, 2.5, 3.25],
+            probability: 0.4, 
+            weight: 0.25
         }
     },
     rock: {
@@ -351,6 +351,7 @@ export const STYLE_BASS_PATTERNS: Record<Genre, BassPattern[]> = {
     dreamy: [[{ note: 0, time: 0, duration: 4 }]],
     epic: [[{ note: 0, time: 0, duration: 2 }, { note: 4, time: 2, duration: 2 }]],
 };
+
     
 
     
