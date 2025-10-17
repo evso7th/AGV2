@@ -57,16 +57,14 @@ function safeTime(value: number, fallback: number = 0): number {
 }
 
 // === АКСОНЫ И ТРАНСФОРМАЦИИ ===
-function createDrumAxiom(genre: Genre, mood: Mood, random: { next: () => number, nextInt: (max: number) => number }): FractalEvent[] {
+function createDrumAxiom(genre: Genre, mood: Mood, tempo: number, random: { next: () => number, nextInt: (max: number) => number }): FractalEvent[] {
     const hitParams = getParamsForTechnique('hit', mood, genre);
     const grammar = STYLE_DRUM_PATTERNS[genre] || STYLE_DRUM_PATTERNS['ambient'];
     
-    // Выбираем случайный луп из библиотеки жанра
     const loop = grammar.loops[random.nextInt(grammar.loops.length)];
     
     const axiomEvents: FractalEvent[] = [];
 
-    // 1. Создаем основной каркас (kick, snare, hi-hat)
     const allBaseEvents = [...loop.kick, ...loop.snare, ...loop.hihat];
     for (const baseEvent of allBaseEvents) {
         if (baseEvent.probability && random.next() > baseEvent.probability) {
@@ -103,25 +101,31 @@ function createDrumAxiom(genre: Genre, mood: Mood, random: { next: () => number,
         } as FractalEvent);
     }
     
-    // 2. Добавляем перкуссию (второй "барабанщик")
-    if (grammar.percussion && random.next() < grammar.percussion.probability) {
-        const occupiedTimes = new Set(axiomEvents.map(e => e.time));
-        const availableTimes = grammar.percussion.allowedTimes.filter(t => !occupiedTimes.has(t));
+    if (grammar.percussion) {
+        // --- Динамическая вероятность перкуссии ---
+        // Модификатор: 1.25 при 60 BPM, 1.0 при 120 BPM, 0.75 при 180 BPM
+        const tempoModifier = 1.5 - (tempo / 120); 
+        const dynamicProbability = grammar.percussion.probability * Math.max(0.2, Math.min(1.5, tempoModifier));
         
-        if (availableTimes.length > 0) {
-            const time = availableTimes[random.nextInt(availableTimes.length)];
-            const type = grammar.percussion.types[random.nextInt(grammar.percussion.types.length)];
+        if (random.next() < dynamicProbability) {
+            const occupiedTimes = new Set(axiomEvents.map(e => e.time));
+            const availableTimes = grammar.percussion.allowedTimes.filter(t => !occupiedTimes.has(t));
             
-            axiomEvents.push({
-                type: type,
-                time: time,
-                duration: 0.25,
-                weight: grammar.percussion.weight,
-                note: 36,
-                phrasing: 'staccato',
-                dynamics: 'p',
-                params: hitParams
-            } as FractalEvent);
+            if (availableTimes.length > 0) {
+                const time = availableTimes[random.nextInt(availableTimes.length)];
+                const type = grammar.percussion.types[random.nextInt(grammar.percussion.types.length)];
+                
+                axiomEvents.push({
+                    type: type,
+                    time: time,
+                    duration: 0.25,
+                    weight: grammar.percussion.weight,
+                    note: 36,
+                    phrasing: 'staccato',
+                    dynamics: 'p',
+                    params: hitParams
+                } as FractalEvent);
+            }
         }
     }
 
@@ -134,16 +138,15 @@ function createBassAxiom(mood: Mood, genre: Genre, random: { next: () => number,
   const patternLibrary = STYLE_BASS_PATTERNS[genre] || STYLE_BASS_PATTERNS['ambient'];
   const pattern = patternLibrary[random.nextInt(patternLibrary.length)];
   
-  // Weighted random note selection, strongly favoring lower notes
   const selectNote = (): number => {
       const rand = random.next();
-      if (rand < 0.8) { // 80% chance for low octave (E1-E2)
+      if (rand < 0.6) { 
           const third = Math.floor(scale.length / 3);
           return scale[random.nextInt(third)];
-      } else if (rand < 0.95) { // 15% chance for mid octave (E2-E3)
+      } else if (rand < 0.9) { 
           const third = Math.floor(scale.length / 3);
           return scale[third + random.nextInt(third)];
-      } else { // 5% chance for high octave (E3-E4)
+      } else { 
           const twoThirds = Math.floor(2 * scale.length / 3);
           return scale[twoThirds + random.nextInt(scale.length - twoThirds)];
       }
@@ -207,7 +210,6 @@ function createBassFill(mood: Mood, genre: Genre, random: { next: () => number, 
     const numNotes = random.nextInt(4) + 7; // 7 to 10 notes
     let currentTime = 0;
     
-    // Weighted random note selection for fills
     const selectNote = (): number => {
       const rand = random.next();
       if (rand < 0.2) { // 20% chance low
@@ -281,7 +283,7 @@ export class FractalMusicEngine {
     this.branches.push({ id: 'bass_axon', events: bassAxiom, weight: 1.0, age: 0, technique: 'pluck', type: 'bass' });
 
     if (this.config.drumSettings.enabled) {
-        const drumAxiom = createDrumAxiom(this.config.genre, this.config.mood, this.random);
+        const drumAxiom = createDrumAxiom(this.config.genre, this.config.mood, this.config.tempo, this.random);
         this.branches.push({ id: 'drum_axon', events: drumAxiom, weight: 1.0, age: 0, technique: 'hit', type: 'drums' });
     }
   }
