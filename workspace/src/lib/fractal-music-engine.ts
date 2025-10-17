@@ -57,16 +57,14 @@ function safeTime(value: number, fallback: number = 0): number {
 }
 
 // === АКСОНЫ И ТРАНСФОРМАЦИИ ===
-function createDrumAxiom(genre: Genre, mood: Mood, random: { next: () => number, nextInt: (max: number) => number }): FractalEvent[] {
+function createDrumAxiom(genre: Genre, mood: Mood, tempo: number, random: { next: () => number, nextInt: (max: number) => number }): FractalEvent[] {
     const hitParams = getParamsForTechnique('hit', mood, genre);
     const grammar = STYLE_DRUM_PATTERNS[genre] || STYLE_DRUM_PATTERNS['ambient'];
     
-    // Выбираем случайный луп из библиотеки жанра
     const loop = grammar.loops[random.nextInt(grammar.loops.length)];
     
     const axiomEvents: FractalEvent[] = [];
 
-    // 1. Создаем основной каркас (kick, snare, hi-hat)
     const allBaseEvents = [...loop.kick, ...loop.snare, ...loop.hihat];
     for (const baseEvent of allBaseEvents) {
         if (baseEvent.probability && random.next() > baseEvent.probability) {
@@ -103,25 +101,31 @@ function createDrumAxiom(genre: Genre, mood: Mood, random: { next: () => number,
         } as FractalEvent);
     }
     
-    // 2. Добавляем перкуссию (второй "барабанщик")
-    if (grammar.percussion && random.next() < grammar.percussion.probability) {
-        const occupiedTimes = new Set(axiomEvents.map(e => e.time));
-        const availableTimes = grammar.percussion.allowedTimes.filter(t => !occupiedTimes.has(t));
+    if (grammar.percussion) {
+        // --- Динамическая вероятность перкуссии ---
+        // Модификатор: 1.25 при 60 BPM, 1.0 при 120 BPM, 0.75 при 180 BPM
+        const tempoModifier = 1.5 - (tempo / 120); 
+        const dynamicProbability = grammar.percussion.probability * Math.max(0.2, Math.min(1.5, tempoModifier));
         
-        if (availableTimes.length > 0) {
-            const time = availableTimes[random.nextInt(availableTimes.length)];
-            const type = grammar.percussion.types[random.nextInt(grammar.percussion.types.length)];
+        if (random.next() < dynamicProbability) {
+            const occupiedTimes = new Set(axiomEvents.map(e => e.time));
+            const availableTimes = grammar.percussion.allowedTimes.filter(t => !occupiedTimes.has(t));
             
-            axiomEvents.push({
-                type: type,
-                time: time,
-                duration: 0.25,
-                weight: grammar.percussion.weight,
-                note: 36,
-                phrasing: 'staccato',
-                dynamics: 'p',
-                params: hitParams
-            } as FractalEvent);
+            if (availableTimes.length > 0) {
+                const time = availableTimes[random.nextInt(availableTimes.length)];
+                const type = grammar.percussion.types[random.nextInt(grammar.percussion.types.length)];
+                
+                axiomEvents.push({
+                    type: type,
+                    time: time,
+                    duration: 0.25,
+                    weight: grammar.percussion.weight,
+                    note: 36,
+                    phrasing: 'staccato',
+                    dynamics: 'p',
+                    params: hitParams
+                } as FractalEvent);
+            }
         }
     }
 
@@ -134,15 +138,17 @@ function createBassAxiom(mood: Mood, genre: Genre, random: { next: () => number,
   const patternLibrary = STYLE_BASS_PATTERNS[genre] || STYLE_BASS_PATTERNS['ambient'];
   const pattern = patternLibrary[random.nextInt(patternLibrary.length)];
   
-  // Weighted random note selection
   const selectNote = (): number => {
       const rand = random.next();
-      if (rand < 0.6) { // 60% chance for low octave (E1-E2)
-          return scale[random.nextInt(scale.length / 3)];
-      } else if (rand < 0.9) { // 30% chance for mid octave (E2-E3)
-          return scale[Math.floor(scale.length / 3) + random.nextInt(scale.length / 3)];
-      } else { // 10% chance for high octave (E3-E4)
-          return scale[Math.floor(2 * scale.length / 3) + random.nextInt(scale.length / 3)];
+      if (rand < 0.6) { 
+          const third = Math.floor(scale.length / 3);
+          return scale[random.nextInt(third)];
+      } else if (rand < 0.9) { 
+          const third = Math.floor(scale.length / 3);
+          return scale[third + random.nextInt(third)];
+      } else { 
+          const twoThirds = Math.floor(2 * scale.length / 3);
+          return scale[twoThirds + random.nextInt(scale.length - twoThirds)];
       }
   };
 
@@ -163,7 +169,7 @@ function createBassAxiom(mood: Mood, genre: Genre, random: { next: () => number,
   });
 }
 
-function createRhythmSectionFill(mood: Mood, genre: Genre, random: { next: () => number, nextInt: (max: number) => number }): { drumFill: FractalEvent[], bassFill: FractalEvent[] } {
+function createRhythmSectionFill(mood: Mood, genre: Genre, random: { next: () => number, nextInt: (max-number) => number }): { drumFill: FractalEvent[], bassFill: FractalEvent[] } {
     const hitParams = getParamsForTechnique('hit', mood, genre);
     const fillParams = getParamsForTechnique('fill', mood, genre);
     const drumFill: FractalEvent[] = [];
@@ -178,20 +184,20 @@ function createRhythmSectionFill(mood: Mood, genre: Genre, random: { next: () =>
     for(let i = 0; i < fillDensity; i++) {
         const instrument = drumInstruments[random.nextInt(drumInstruments.length)];
         const duration = 1 / fillDensity;
-        drumFill.push({ type: instrument, note: 41 + i, duration, time: drumTime, weight: 0.9, technique: 'hit', dynamics: 'f', phrasing: 'staccato', params: hitParams });
+        drumFill.push({ type: instrument, note: 41 + i, duration, time: drumTime, weight: 0.7 + random.next() * 0.2, technique: 'hit', dynamics: 'mf', phrasing: 'staccato', params: hitParams });
         
         if (random.next() > 0.4) {
              const noteIndex = random.nextInt(scale.length);
-             bassFill.push({ type: 'bass', note: scale[noteIndex], duration: duration * 0.8, time: drumTime + 0.05, weight: 0.85, technique: 'fill', dynamics: 'f', phrasing: 'staccato', params: fillParams });
+             bassFill.push({ type: 'bass', note: scale[noteIndex], duration: duration * 0.8, time: drumTime + 0.05, weight: 0.7 + random.next() * 0.2, technique: 'fill', dynamics: 'mf', phrasing: 'staccato', params: fillParams });
         }
         
         drumTime += duration;
     }
 
-    drumFill.push({ type: 'drum_snare', note: 38, duration: 0.25, time: 3.75, weight: 1.0, technique: 'hit', dynamics: 'f', phrasing: 'staccato', params: hitParams });
-    drumFill.push({ type: 'drum_crash', note: 49, duration: 0.25, time: 3.75, weight: 1.0, technique: 'hit', dynamics: 'f', phrasing: 'staccato', params: hitParams });
+    drumFill.push({ type: 'drum_snare', note: 38, duration: 0.25, time: 3.75, weight: 0.8 + random.next() * 0.2, technique: 'hit', dynamics: 'mf', phrasing: 'staccato', params: hitParams });
+    drumFill.push({ type: 'drum_crash', note: 49, duration: 0.25, time: 3.75, weight: 0.8 + random.next() * 0.2, technique: 'hit', dynamics: 'mf', phrasing: 'staccato', params: hitParams });
     if (random.next() > 0.3) {
-      bassFill.push({ type: 'bass', note: scale[0], duration: 0.25, time: 3.75, weight: 1.0, technique: 'fill', dynamics: 'f', phrasing: 'staccato', params: fillParams });
+      bassFill.push({ type: 'bass', note: scale[0], duration: 0.25, time: 3.75, weight: 0.9, technique: 'fill', dynamics: 'mf', phrasing: 'staccato', params: fillParams });
     }
 
     return { drumFill, bassFill };
@@ -277,7 +283,7 @@ export class FractalMusicEngine {
     this.branches.push({ id: 'bass_axon', events: bassAxiom, weight: 1.0, age: 0, technique: 'pluck', type: 'bass' });
 
     if (this.config.drumSettings.enabled) {
-        const drumAxiom = createDrumAxiom(this.config.genre, this.config.mood, this.random);
+        const drumAxiom = createDrumAxiom(this.config.genre, this.config.mood, this.config.tempo, this.random);
         this.branches.push({ id: 'drum_axon', events: drumAxiom, weight: 1.0, age: 0, technique: 'hit', type: 'drums' });
     }
   }
@@ -503,3 +509,5 @@ export class FractalMusicEngine {
     };
   }
 }
+
+    
