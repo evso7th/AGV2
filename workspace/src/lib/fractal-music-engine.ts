@@ -65,7 +65,9 @@ function createDrumAxiom(genre: Genre, mood: Mood, tempo: number, random: { next
     
     const axiomEvents: FractalEvent[] = [];
 
-    const allBaseEvents = [...loop.kick, ...loop.snare, ...loop.hihat];
+    if (!loop) return axiomEvents; // Safety check
+
+    const allBaseEvents = [...(loop.kick || []), ...(loop.snare || []), ...(loop.hihat || [])];
     for (const baseEvent of allBaseEvents) {
         if (baseEvent.probability && random.next() > baseEvent.probability) {
             continue;
@@ -102,8 +104,6 @@ function createDrumAxiom(genre: Genre, mood: Mood, tempo: number, random: { next
     }
     
     if (grammar.percussion) {
-        // --- Динамическая вероятность перкуссии ---
-        // Модификатор: 1.25 при 60 BPM, 1.0 при 120 BPM, 0.75 при 180 BPM
         const tempoModifier = 1.5 - (tempo / 120); 
         const dynamicProbability = grammar.percussion.probability * Math.max(0.2, Math.min(1.5, tempoModifier));
         
@@ -169,7 +169,7 @@ function createBassAxiom(mood: Mood, genre: Genre, random: { next: () => number,
   });
 }
 
-function createRhythmSectionFill(mood: Mood, genre: Genre, random: { next: () => number, nextInt: (max-number) => number }): { drumFill: FractalEvent[], bassFill: FractalEvent[] } {
+function createRhythmSectionFill(mood: Mood, genre: Genre, random: { next: () => number, nextInt: (max: number) => number }): { drumFill: FractalEvent[], bassFill: FractalEvent[] } {
     const hitParams = getParamsForTechnique('hit', mood, genre);
     const fillParams = getParamsForTechnique('fill', mood, genre);
     const drumFill: FractalEvent[] = [];
