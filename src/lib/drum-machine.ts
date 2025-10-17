@@ -123,7 +123,6 @@ export class DrumMachine {
             return;
         }
         
-        // Длительность одной доли в секундах
         const beatDuration = 60 / tempo;
         
         for (const event of score) {
@@ -131,15 +130,14 @@ export class DrumMachine {
 
             const sampleName = event.type.replace('drum_', '');
             
-            // Время в событии (event.time) - это смещение в долях такта от начала такта.
-            // barStartTime - это абсолютное время начала такта в AudioContext.
             const absoluteTime = barStartTime + (event.time * beatDuration);
             
             if (!isFinite(absoluteTime)) {
                 console.error('[DrumMachine] Non-finite time scheduled for event:', event);
                 continue;
             }
-
+            
+            console.log(`[DrumMachine] Scheduling ${event.type} at beat ${event.time.toFixed(2)} | absolute time: ${absoluteTime.toFixed(4)}`);
             this.sampler.triggerAttack(sampleName, absoluteTime, event.weight);
         }
     }
