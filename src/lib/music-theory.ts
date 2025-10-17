@@ -351,7 +351,3 @@ export const STYLE_BASS_PATTERNS: Record<Genre, BassPattern[]> = {
     dreamy: [[{ note: 0, time: 0, duration: 4 }]],
     epic: [[{ note: 0, time: 0, duration: 2 }, { note: 4, time: 2, duration: 2 }]],
 };
-
-    
-
-    
