@@ -34,6 +34,7 @@ type GenreRhythmGrammar = {
 };
 
 type BassPatternEvent = {
+    note: number; // Scale degree (0=root, 1=second, etc.)
     time: number; // Beat
     duration: number; // In beats
     technique?: Technique;
@@ -82,17 +83,27 @@ const defaultHitParams: BassSynthParams = { cutoff: 500, resonance: 0.2, distort
 export const STYLE_DRUM_PATTERNS: Record<Genre, GenreRhythmGrammar> = {
     ambient: {
         loops: [
-            { // Sparse pattern
-                kick: [{ type: 'drum_kick', time: 0, duration: 4, weight: 0.6, probability: 0.8 }],
-                snare: [],
-                hihat: [{ type: ['drum_hihat_closed', 'perc-008'], probabilities: [0.7, 0.3], time: 1.5, duration: 0.5, weight: 0.3, probability: 0.6 }],
+            { // More atmospheric and pulsing ambient beat
+                kick: [
+                    { type: 'drum_kick', time: 0, duration: 1, weight: 0.7, probability: 0.9 },
+                    { type: 'drum_kick', time: 2.5, duration: 0.5, weight: 0.4, probability: 0.6 }
+                ],
+                snare: [
+                    { type: 'drum_snare_ghost_note', time: 3.5, duration: 0.25, weight: 0.3, probability: 0.7 }
+                ],
+                hihat: [
+                    { type: 'drum_hihat_closed', time: 0.5, duration: 0.5, weight: 0.4, probability: 0.5 },
+                    { type: 'drum_hihat_closed', time: 1.5, duration: 0.5, weight: 0.4, probability: 0.5 },
+                    { type: 'drum_hihat_open', time: 2, duration: 1, weight: 0.3, probability: 0.4 },
+                    { type: 'drum_hihat_closed', time: 3, duration: 0.5, weight: 0.2, probability: 0.6 }
+                ],
             }
         ],
         percussion: {
-            types: ['perc-011', 'perc-007', 'drum_ride'],
-            allowedTimes: [1.75, 2.5, 3.25],
-            probability: 0.4, 
-            weight: 0.25
+            types: ['perc-013', 'drum_ride'],
+            allowedTimes: [1.75, 3.25],
+            probability: 0.5,
+            weight: 0.35
         }
     },
     rock: {
@@ -298,47 +309,47 @@ export const STYLE_DRUM_PATTERNS: Record<Genre, GenreRhythmGrammar> = {
 // Bass Riff Library
 export const STYLE_BASS_PATTERNS: Record<Genre, BassPattern[]> = {
     ambient: [
-        [{ time: 0, duration: 4 }], // One long note
-        [{ time: 0, duration: 2 }, { time: 2, duration: 2 }], // Root -> Fifth
+        [{ note: 0, time: 0, duration: 4 }], // One long note
+        [{ note: 0, time: 0, duration: 2 }, { note: 4, time: 2, duration: 2 }], // Root -> Fifth
     ],
     rock: [
-        [{ time: 0, duration: 0.5 }, { time: 0.5, duration: 0.5 }, { time: 1, duration: 0.5 }, { time: 1.5, duration: 0.5 }, { time: 2, duration: 0.5 }, { time: 2.5, duration: 0.5 }, { time: 3, duration: 0.5 }, { time: 3.5, duration: 0.5 }], // Straight eighths
-        [{ time: 0, duration: 1 }, { time: 2, duration: 1 }, { time: 3, duration: 1 }], // Basic rock riff
+        [{ note: 0, time: 0, duration: 0.5 }, { note: 0, time: 0.5, duration: 0.5 }, { note: 0, time: 1, duration: 0.5 }, { note: 0, time: 1.5, duration: 0.5 }, { note: 0, time: 2, duration: 0.5 }, { note: 0, time: 2.5, duration: 0.5 }, { note: 0, time: 3, duration: 0.5 }, { note: 0, time: 3.5, duration: 0.5 }], // Straight eighths
+        [{ note: 0, time: 0, duration: 1 }, { note: 2, time: 2, duration: 1 }, { note: 4, time: 3, duration: 1 }], // Basic rock riff
     ],
     house: [
-        [{ time: 0, duration: 0.5 }, { time: 1, duration: 0.5 }, { time: 2, duration: 0.5 }, { time: 3, duration: 0.5 }], // Four on the floor root
-        [{ time: 0, duration: 0.5 }, { time: 0.5, duration: 0.5, technique: 'ghost' }, { time: 1, duration: 0.5 }, { time: 1.5, duration: 0.5, technique: 'ghost' }, { time: 2, duration: 0.5 }, { time: 2.5, duration: 0.5, technique: 'ghost' }, { time: 3, duration: 0.5 }, { time: 3.5, duration: 0.5, technique: 'ghost' }], // Octave jumping
+        [{ note: 0, time: 0, duration: 0.5 }, { note: 0, time: 1, duration: 0.5 }, { note: 0, time: 2, duration: 0.5 }, { note: 0, time: 3, duration: 0.5 }], // Four on the floor root
+        [{ note: 0, time: 0, duration: 0.5 }, { note: 7, time: 0.5, duration: 0.5 }, { note: 0, time: 1, duration: 0.5 }, { note: 7, time: 1.5, duration: 0.5 }, { note: 0, time: 2, duration: 0.5 }, { note: 7, time: 2.5, duration: 0.5 }, { note: 0, time: 3, duration: 0.5 }, { note: 7, time: 3.5, duration: 0.5 }], // Octave jumping
     ],
     trance: [
-        [{ time: 0, duration: 0.5 }, { time: 0.5, duration: 0.5 }, { time: 1, duration: 0.5 }, { time: 1.5, duration: 0.5 }, { time: 2, duration: 0.5 }, { time: 2.5, duration: 0.5 }, { time: 3, duration: 0.5 }, { time: 3.5, duration: 0.5 }], // Driving eighths
-        [{ time: 0, duration: 0.25 }, { time: 0.75, duration: 0.25 }, { time: 1.5, duration: 0.25 }, { time: 2.25, duration: 0.25 }, { time: 3, duration: 0.25 }, { time: 3.75, duration: 0.25 }], // Syncopated 16ths
+        [{ note: 0, time: 0, duration: 0.5 }, { note: 0, time: 0.5, duration: 0.5 }, { note: 0, time: 1, duration: 0.5 }, { note: 0, time: 1.5, duration: 0.5 }, { note: 0, time: 2, duration: 0.5 }, { note: 0, time: 2.5, duration: 0.5 }, { note: 0, time: 3, duration: 0.5 }, { note: 0, time: 3.5, duration: 0.5 }], // Driving eighths
+        [{ note: 0, time: 0, duration: 0.25 }, { note: 0, time: 0.75, duration: 0.25 }, { note: 0, time: 1.5, duration: 0.25 }, { note: 0, time: 2.25, duration: 0.25 }, { note: 0, time: 3, duration: 0.25 }, { note: 0, time: 3.75, duration: 0.25 }], // Syncopated 16ths
     ],
     rnb: [
-        [{ time: 0, duration: 1.5 }, { time: 1.5, duration: 0.5 }, { time: 2, duration: 1.5 }, { time: 3.5, duration: 0.5, technique: 'ghost' }],
-        [{ time: 0, duration: 1 }, { time: 1.75, duration: 0.75 }, { time: 2.5, duration: 0.5 }, { time: 3.25, duration: 0.75 }],
+        [{ note: 0, time: 0, duration: 1.5 }, { note: 4, time: 1.5, duration: 0.5 }, { note: 2, time: 2, duration: 1.5 }, { note: 0, time: 3.5, duration: 0.5, technique: 'ghost' }],
+        [{ note: 0, time: 0, duration: 1 }, { note: 2, time: 1.75, duration: 0.75 }, { note: -1, time: 2.5, duration: 0.5 }, { note: 0, time: 3.25, duration: 0.75 }],
     ],
     ballad: [
-        [{ time: 0, duration: 3 }, { time: 3, duration: 1 }],
-        [{ time: 0, duration: 2 }, { time: 2, duration: 2 }],
+        [{ note: 0, time: 0, duration: 3 }, { note: 4, time: 3, duration: 1 }],
+        [{ note: 0, time: 0, duration: 2 }, { note: 2, time: 2, duration: 2 }],
     ],
     reggae: [
-        [{ time: 1, duration: 1 }, { time: 3, duration: 1, technique: 'ghost' }],
-        [{ time: 2.5, duration: 1.5 }],
+        [{ note: 0, time: 1, duration: 1 }, { note: 0, time: 3, duration: 1, technique: 'ghost' }],
+        [{ note: 0, time: 2.5, duration: 1.5 }],
     ],
     blues: [
-        [{ time: 0, duration: 1 }, { time: 1, duration: 1 }, { time: 2, duration: 1 }, { time: 3, duration: 1 }], // Walking
-        [{ time: 0, duration: 0.66 }, { time: 0.66, duration: 0.33 }, { time: 1, duration: 0.66 }, { time: 1.66, duration: 0.33 }], // Shuffle
+        [{ note: 0, time: 0, duration: 1 }, { note: 2, time: 1, duration: 1 }, { note: 4, time: 2, duration: 1 }, { note: 5, time: 3, duration: 1 }], // Walking
+        [{ note: 0, time: 0, duration: 0.66 }, { note: 2, time: 0.66, duration: 0.33 }, { note: 4, time: 1, duration: 0.66 }, { note: 2, time: 1.66, duration: 0.33 }], // Shuffle
     ],
     celtic: [
-        [{ time: 0, duration: 1 }, { time: 2, duration: 1 }],
-        [{ time: 0, duration: 0.5 }, { time: 0.5, duration: 0.5 }, { time: 1, duration: 0.5 }, { time: 1.5, duration: 0.5 }],
+        [{ note: 0, time: 0, duration: 1 }, { note: 4, time: 2, duration: 1 }],
+        [{ note: 0, time: 0, duration: 0.5 }, { note: 7, time: 0.5, duration: 0.5 }, { note: 0, time: 1, duration: 0.5 }, { note: 7, time: 1.5, duration: 0.5 }],
     ],
     progressive: [
-        [{ time: 0, duration: 0.75 }, { time: 0.75, duration: 0.25 }, { time: 1, duration: 1 }, { time: 2.5, duration: 1.5 }],
+        [{ note: 0, time: 0, duration: 0.75 }, { note: 0, time: 0.75, duration: 0.25 }, { note: 2, time: 1, duration: 1 }, { note: -1, time: 2.5, duration: 1.5 }],
     ],
-    dark: [[{ time: 0, duration: 4 }]],
-    dreamy: [[{ time: 0, duration: 4 }]],
-    epic: [[{ time: 0, duration: 2 }, { time: 2, duration: 2 }]],
+    dark: [[{ note: 0, time: 0, duration: 4 }]],
+    dreamy: [[{ note: 0, time: 0, duration: 4 }]],
+    epic: [[{ note: 0, time: 0, duration: 2 }, { note: 4, time: 2, duration: 2 }]],
 };
     
 
