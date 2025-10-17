@@ -1,4 +1,5 @@
 
+
 /**
  * @file AuraGroove Music Worker (Architecture: "The Dynamic Composer")
  *
@@ -131,13 +132,15 @@ const Scheduler = {
        
        if (needsRestart) this.stop();
        
-       this.settings = {
-           ...this.settings,
-           ...newSettings,
-           drumSettings: { ...this.settings.drumSettings, ...newSettings.drumSettings },
-           instrumentSettings: { ...this.settings.instrumentSettings, ...newSettings.instrumentSettings },
-           textureSettings: { ...this.settings.textureSettings, ...newSettings.textureSettings },
-       };
+       // Defensive update
+        this.settings = {
+            ...this.settings,
+            ...newSettings,
+            drumSettings: newSettings.drumSettings ? { ...this.settings.drumSettings, ...newSettings.drumSettings } : this.settings.drumSettings,
+            instrumentSettings: newSettings.instrumentSettings ? { ...this.settings.instrumentSettings, ...newSettings.instrumentSettings } : this.settings.instrumentSettings,
+            textureSettings: newSettings.textureSettings ? { ...this.settings.textureSettings, ...newSettings.textureSettings } : this.settings.textureSettings,
+        };
+
 
        if (wasNotInitialized || scoreChanged || moodChanged || genreChanged) {
            this.initializeEngine(this.settings);
