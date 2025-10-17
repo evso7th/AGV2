@@ -210,15 +210,12 @@ function createBassFill(mood: Mood, genre: Genre, random: { next: () => number, 
     // Weighted random note selection for fills
     const selectNote = (): number => {
       const rand = random.next();
-      if (rand < 0.6) { // 60% chance for low octave
-          const third = Math.floor(scale.length / 3);
-          return scale[random.nextInt(third)];
-      } else if (rand < 0.9) { // 30% chance for mid octave
-          const third = Math.floor(scale.length / 3);
-          return scale[third + random.nextInt(third)];
-      } else { // 10% chance for high octave
-          const twoThirds = Math.floor(2 * scale.length / 3);
-          return scale[twoThirds + random.nextInt(scale.length - twoThirds)];
+      if (rand < 0.2) { // 20% chance low
+          return scale[random.nextInt(scale.length / 3)];
+      } else if (rand < 0.8) { // 60% chance mid
+          return scale[Math.floor(scale.length / 3) + random.nextInt(scale.length / 3)];
+      } else { // 20% chance high
+          return scale[Math.floor(2 * scale.length / 3) + random.nextInt(scale.length / 3)];
       }
     };
 
@@ -510,3 +507,5 @@ export class FractalMusicEngine {
     };
   }
 }
+
+    
