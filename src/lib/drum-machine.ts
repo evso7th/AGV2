@@ -1,5 +1,5 @@
 
-import type { FractalEvent } from "@/types/fractal";
+import type { FractalEvent, InstrumentType } from "@/types/fractal";
 
 const DRUM_SAMPLES: Record<string, string> = {
     'closed_hi_hat_accented': '/assets/drums/closed_hi_hat_accented.wav',
@@ -126,11 +126,10 @@ export class DrumMachine {
         const beatDuration = 60 / tempo;
         
         for (const event of score) {
-            // This now handles both drum_ and perc- prefixes
             if (!event.type.startsWith('drum_') && !event.type.startsWith('perc-')) continue;
 
-            // More robust sample name extraction
-            let sampleName = event.type;
+            // This now handles both drum_ and perc- prefixes
+            let sampleName = event.type as string;
             if (sampleName.startsWith('drum_')) {
                 sampleName = sampleName.substring(5);
             }
@@ -150,7 +149,7 @@ export class DrumMachine {
                 continue;
             }
             
-            const isMainBeat = ['kick', 'snare', 'hihat_closed', 'hihat_open'].some(t => sampleName.includes(t));
+            const isMainBeat = ['kick', 'snare', 'hihat_closed', 'hihat_open'].some(t => finalSampleName.includes(t));
             const logCategory = isMainBeat ? 'Main Beat' : 'Perc/Fill';
             const color = isMainBeat ? 'color: cyan;' : 'color: orange;';
 
