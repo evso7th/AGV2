@@ -1,7 +1,7 @@
 
 import type { FractalEvent, Mood, Genre, Technique, BassSynthParams, InstrumentType } from '@/types/fractal';
 import { MelancholicMinorK } from './resonance-matrices';
-import { getScaleForMood, STYLE_DRUM_PATTERNS, STYLE_BASS_PATTERNS, type BassPatternDefinition } from './music-theory';
+import { getScaleForMood, STYLE_DRUM_PATTERNS, STYLE_BASS_PATTERNS, type BassPatternDefinition, PERCUSSION_SETS } from './music-theory';
 
 export type Branch = {
   id: string;
@@ -106,29 +106,35 @@ function createDrumAxiom(genre: Genre, mood: Mood, tempo: number, random: { next
     }
     
     // Этап 2: Добавление перкуссии ("Приправа")
-    if (grammar.percussion && grammar.percussion.types.length > 0) {
+    if (grammar.percussion) {
         const tempoModifier = 1.5 - (tempo / 120); 
         const dynamicProbability = grammar.percussion.probability * Math.max(0.2, Math.min(1.5, tempoModifier));
         
-        if (random.next() < dynamicProbability) {
+        // Используем Math.random() для действительно случайного события в каждом такте
+        if (Math.random() < dynamicProbability) {
             const occupiedTimes = new Set(axiomEvents.map(e => e.time));
             const availableTimes = grammar.percussion.allowedTimes.filter(t => !occupiedTimes.has(t));
             
             if (availableTimes.length > 0) {
-                const time = availableTimes[random.nextInt(availableTimes.length)];
+                // И здесь Math.random() для выбора времени
+                const time = availableTimes[Math.floor(Math.random() * availableTimes.length)];
+                
                 const percPool = grammar.percussion.types;
-                const type = percPool[random.nextInt(percPool.length)];
+                if (percPool.length > 0) {
+                  // И здесь Math.random() для выбора инструмента
+                  const type = percPool[Math.floor(Math.random() * percPool.length)];
                   
-                axiomEvents.push({
-                    type: type,
-                    time: time,
-                    duration: 0.25,
-                    weight: grammar.percussion.weight,
-                    note: 36, // Placeholder
-                    phrasing: 'staccato',
-                    dynamics: 'p',
-                    params: hitParams
-                } as FractalEvent);
+                  axiomEvents.push({
+                      type: type,
+                      time: time,
+                      duration: 0.25,
+                      weight: grammar.percussion.weight,
+                      note: 36, // Placeholder
+                      phrasing: 'staccato',
+                      dynamics: 'p',
+                      params: hitParams
+                  } as FractalEvent);
+                }
             }
         }
     }
@@ -557,3 +563,5 @@ export class FractalMusicEngine {
     };
   }
 }
+
+    
