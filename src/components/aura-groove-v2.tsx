@@ -266,17 +266,6 @@ export function AuraGrooveV2({
                       </div>
                        <div className="p-2 border rounded-md">
                           <div className="flex justify-between items-center mb-1">
-                              <Label className="font-semibold flex items-center gap-1.5 text-sm"><Waves className="h-4 w-4"/>Pads</Label>
-                              <Switch checked={textureSettings.pads.enabled} onCheckedChange={(c) => handleTextureEnabledChange('pads', c)} disabled={isInitializing}/>
-                          </div>
-                          <div className="flex items-center gap-2">
-                              <Label className="text-xs text-muted-foreground"><Speaker className="h-3 w-3 inline-block mr-1"/>Volume</Label>
-                              <Slider value={[textureSettings.pads.volume]} max={1} step={0.05} onValueChange={(v) => handleVolumeChange('pads', v[0])} disabled={isInitializing || !textureSettings.pads.enabled}/>
-                              <span className="text-xs w-8 text-right font-mono">{Math.round(textureSettings.pads.volume * 100)}</span>
-                          </div>
-                      </div>
-                       <div className="p-2 border rounded-md">
-                          <div className="flex justify-between items-center mb-1">
                               <Label className="font-semibold flex items-center gap-1.5 text-sm"><Drum className="h-4 w-4"/>Drums</Label>
                                <Select value={drumSettings.pattern} onValueChange={(v) => setDrumSettings(d => ({...d, pattern: v as any}))} disabled={isInitializing || isPlaying}>
                                   <SelectTrigger className="w-[140px] h-8 text-xs"><SelectValue /></SelectTrigger>

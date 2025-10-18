@@ -29,8 +29,8 @@ export type AuraGrooveProps = {
   setInstrumentSettings: (part: keyof InstrumentSettings, name: BassInstrument | MelodyInstrument | AccompanimentInstrument) => void;
   handleBassTechniqueChange: (technique: BassTechnique) => void;
   handleVolumeChange: (part: InstrumentPart, value: number) => void;
-  textureSettings: TextureSettings;
-  handleTextureEnabledChange: (part: 'sparkles' | 'pads', enabled: boolean) => void;
+  textureSettings: Omit<TextureSettings, 'pads'>;
+  handleTextureEnabledChange: (part: 'sparkles', enabled: boolean) => void;
   bpm: number;
   handleBpmChange: (value: number) => void;
   score: ScoreName;
@@ -376,33 +376,6 @@ export function AuraGroove({
                       step={0.05} 
                       onValueChange={(v) => handleVolumeChange('sparkles', v[0])}
                       disabled={isInitializing || !textureSettings.sparkles.enabled}
-                  />
-              </div>
-          </div>
-          
-          <div className="space-y-3 rounded-md border p-3">
-              <div className="flex justify-between items-center">
-                  <Label htmlFor="pads-switch" className="font-semibold flex items-center gap-2">
-                      <Waves className="h-5 w-5" /> Pads
-                  </Label>
-                  <Switch
-                      id="pads-switch"
-                      checked={textureSettings.pads.enabled}
-                      onCheckedChange={(checked) => handleTextureEnabledChange('pads', checked)}
-                      disabled={isInitializing}
-                  />
-              </div>
-              <div className="space-y-2 pt-2">
-                  <div className="flex items-center justify-between">
-                      <Label className="text-xs text-muted-foreground flex items-center gap-1.5"><Speaker className="h-4 w-4"/> Volume</Label>
-                      <span className="text-xs font-mono text-muted-foreground">{Math.round(textureSettings.pads.volume * 100)}</span>
-                  </div>
-                  <Slider 
-                      value={[textureSettings.pads.volume]} 
-                      max={1} 
-                      step={0.05} 
-                      onValueChange={(v) => handleVolumeChange('pads', v[0])}
-                      disabled={isInitializing || !textureSettings.pads.enabled}
                   />
               </div>
           </div>

@@ -37,9 +37,8 @@ export const useAuraGroove = () => {
     melody: { name: "acousticGuitarSolo", volume: 0.8 },
     accompaniment: { name: "guitarChords", volume: 0.7 },
   });
-  const [textureSettings, setTextureSettings] = useState<TextureSettings>({
+  const [textureSettings, setTextureSettings] = useState<Omit<TextureSettings, 'pads'>>({
       sparkles: { enabled: true, volume: 0.35 },
-      pads: { enabled: true, volume: 0.4 },
   });
   const [bpm, setBpm] = useState(75);
   const [score, setScore] = useState<ScoreName>('neuro_f_matrix');
@@ -75,7 +74,6 @@ export const useAuraGroove = () => {
       drumSettings: { ...drumSettings, enabled: drumSettings.pattern !== 'none' },
       textureSettings: {
           sparkles: { enabled: textureSettings.sparkles.enabled },
-          pads: { enabled: textureSettings.pads.enabled }
       },
       density,
       composerControlsInstruments,
@@ -183,13 +181,13 @@ export const useAuraGroove = () => {
     } else if (part === 'drums') {
         setDrumSettings(prev => ({ ...prev, volume: value }));
         setVolume('drums', value);
-    } else if (part === 'sparkles' || part === 'pads') {
+    } else if (part === 'sparkles') {
         setTextureSettings(prev => ({ ...prev, [part]: { ...prev[part], volume: value }}));
         setVolume(part, value);
     }
   };
 
-  const handleTextureEnabledChange = (part: 'sparkles' | 'pads', enabled: boolean) => {
+  const handleTextureEnabledChange = (part: 'sparkles', enabled: boolean) => {
       setTextureSettings(prev => {
           const newSettings = { ...prev, [part]: { ...prev[part], enabled }};
           setEngineTextureSettings(newSettings);

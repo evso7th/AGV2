@@ -8,18 +8,8 @@
  * It is completely passive and only composes the next bar when commanded via a 'tick'.
  */
 import type { WorkerSettings, ScoreName, Mood, Genre } from '@/types/music';
-import { FractalMusicEngine } from './fractal-music-engine';
+import { FractalMusicEngine } from '@/lib/fractal-music-engine';
 import type { FractalEvent } from '@/types/fractal';
-
-// --- Constants ---
-const PADS_BY_STYLE: Record<ScoreName, string | null> = {
-    dreamtales: 'livecircle.mp3',
-    evolve: 'Tibetan bowls.mp3',
-    omega: 'things.mp3',
-    journey: 'pure_energy.mp3',
-    multeity: 'uneverse.mp3',
-    neuro_f_matrix: 'uneverse.mp3', 
-};
 
 // --- "Sparkle" (In-krap-le-ni-ye) Logic ---
 let lastSparkleTime = -Infinity;
@@ -41,8 +31,6 @@ function shouldAddSparkle(currentTime: number, density: number): boolean {
 let fractalMusicEngine: FractalMusicEngine | undefined;
 
 // --- Scheduler (The Conductor) ---
-let lastPadStyle: ScoreName | null = null;
-
 const Scheduler = {
     loopId: null as any,
     isRunning: false,
@@ -60,7 +48,6 @@ const Scheduler = {
         },
         textureSettings: {
             sparkles: { enabled: true },
-            pads: { enabled: true }
         },
         density: 0.5,
         composerControlsInstruments: true,
@@ -84,7 +71,6 @@ const Scheduler = {
         });
         this.barCount = 0;
         lastSparkleTime = -Infinity;
-        lastPadStyle = null; // Reset on engine re-creation
     },
 
     start() {
@@ -177,20 +163,8 @@ const Scheduler = {
         
         if (this.settings.textureSettings.sparkles.enabled) {
             if (shouldAddSparkle(currentTime, density)) {
-                 self.postMessage({ type: 'sparkle', time: 0 });
+                 self.postMessage({ type: 'sparkle', time: 0, genre: this.settings.genre });
                  lastSparkleTime = currentTime;
-            }
-        }
-        
-        if (this.settings.textureSettings.pads.enabled) {
-            const currentStyle = this.settings.score;
-            if (currentStyle !== lastPadStyle) {
-                 const padName = PADS_BY_STYLE[currentStyle];
-                 if (padName) {
-                    const delay = this.barCount === 0 ? 1 : 0;
-                    self.postMessage({ type: 'pad', padName: padName, time: delay });
-                 }
-                lastPadStyle = currentStyle;
             }
         }
 

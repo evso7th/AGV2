@@ -11,7 +11,6 @@ import { FluteSamplerPlayer } from '@/lib/flute-sampler-player';
 import { AccompanimentSynthManager } from '@/lib/accompaniment-synth-manager';
 import { BassSynthManager } from '@/lib/bass-synth-manager';
 import { SparklePlayer } from '@/lib/sparkle-player';
-import { PadPlayer } from '@/lib/pad-player';
 import { getPresetParams } from "@/lib/presets";
 import { PIANO_SAMPLES, VIOLIN_SAMPLES, FLUTE_SAMPLES, ACOUSTIC_GUITAR_CHORD_SAMPLES, ACOUSTIC_GUITAR_SOLO_SAMPLES } from '@/lib/samples';
 import { GuitarChordsSampler } from '@/lib/guitar-chords-sampler';
@@ -32,12 +31,13 @@ type WorkerMessage = {
     message?: string;
     time?: number;
     padName?: string;
+    genre?: string;
 };
 
 // --- Constants ---
 const VOICE_BALANCE: Record<InstrumentPart, number> = {
   bass: 1.0, melody: 0.7, accompaniment: 0.6, drums: 1.0,
-  effects: 0.6, sparkles: 0.35, pads: 0.9, piano: 1.0, violin: 0.8, flute: 0.8, guitarChords: 0.9,
+  effects: 0.6, sparkles: 0.35, piano: 1.0, violin: 0.8, flute: 0.8, guitarChords: 0.9,
   acousticGuitarSolo: 0.9,
 };
 
@@ -55,7 +55,7 @@ interface AudioEngineContextType {
   setVolume: (part: InstrumentPart, volume: number) => void;
   setInstrument: (part: 'bass' | 'melody' | 'accompaniment', name: BassInstrument | MelodyInstrument | AccompanimentInstrument) => void;
   setBassTechnique: (technique: BassTechnique) => void;
-  setTextureSettings: (settings: TextureSettings) => void;
+  setTextureSettings: (settings: Omit<TextureSettings, 'pads'>) => void;
   setEQGain: (bandIndex: number, gain: number) => void;
   startMasterFadeOut: (durationInSeconds: number) => void;
   cancelMasterFadeOut: () => void;
@@ -84,11 +84,10 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
   const drumMachineRef = useRef<DrumMachine | null>(null);
   const bassManagerRef = useRef<BassSynthManager | null>(null);
   const sparklePlayerRef = useRef<SparklePlayer | null>(null);
-  const padPlayerRef = useRef<PadPlayer | null>(null);
   
   const masterGainNodeRef = useRef<GainNode | null>(null);
-  const gainNodesRef = useRef<Record<InstrumentPart, GainNode | null>>({
-    bass: null, melody: null, accompaniment: null, effects: null, drums: null, sparkles: null, pads: null, piano: null, violin: null, flute: null, guitarChords: null, acousticGuitarSolo: null,
+  const gainNodesRef = useRef<Record<Exclude<InstrumentPart, 'pads'>, GainNode | null>>({
+    bass: null, melody: null, accompaniment: null, effects: null, drums: null, sparkles: null, piano: null, violin: null, flute: null, guitarChords: null, acousticGuitarSolo: null,
   });
 
   const eqNodesRef = useRef<BiquadFilterNode[]>([]);
@@ -146,7 +145,7 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
         }
 
         if (!gainNodesRef.current.bass) {
-            const parts: InstrumentPart[] = ['bass', 'drums', 'sparkles', 'pads'];
+            const parts: Exclude<InstrumentPart, 'pads'>[] = ['bass', 'drums', 'sparkles'];
             parts.forEach(part => {
                 gainNodesRef.current[part] = context.createGain();
                 gainNodesRef.current[part]!.connect(masterGainNodeRef.current!);
@@ -169,24 +168,18 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
             initPromises.push(sparklePlayerRef.current.init());
         }
 
-        if (!padPlayerRef.current) {
-            padPlayerRef.current = new PadPlayer(context, gainNodesRef.current.pads!);
-            initPromises.push(padPlayerRef.current.init());
-        }
-
 
         if (!workerRef.current) {
-            const worker = new Worker(new URL('../lib/ambient.worker.ts', import.meta.url), { type: 'module' });
+            const worker = new Worker(new URL('../app/ambient.worker.ts', import.meta.url), { type: 'module' });
             worker.onmessage = (event: MessageEvent<WorkerMessage>) => {
                 console.log('[AudioEngine] Received message from worker:', event.data);
-                const { type, events, barDuration, error, time, padName } = event.data;
+                const { type, events, barDuration, error, time, genre } = event.data;
                 if (type === 'SCORE_READY' && events && barDuration && settingsRef.current) {
                     scheduleEvents(events, nextBarTimeRef.current, settingsRef.current.bpm);
                     nextBarTimeRef.current += barDuration;
                 } else if (type === 'sparkle' && time !== undefined) {
-                    sparklePlayerRef.current?.playRandomSparkle(nextBarTimeRef.current + time);
-                } else if (type === 'pad' && padName && time !== undefined) {
-                    padPlayerRef.current?.setPad(padName, nextBarTimeRef.current + time);
+                    console.log('[AudioEngine] Received "sparkle" command from worker.');
+                    sparklePlayerRef.current?.playRandomSparkle(nextBarTimeRef.current + time, genre);
                 } else if (type === 'error') {
                     toast({ variant: "destructive", title: "Worker Error", description: error });
                 }
@@ -225,7 +218,7 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
   const stopAllSounds = useCallback(() => {
     bassManagerRef.current?.allNotesOff();
     drumMachineRef.current?.stop();
-    padPlayerRef.current?.stop();
+    sparklePlayerRef.current?.stopAll();
     if (impulseTimerRef.current) {
         clearTimeout(impulseTimerRef.current);
         impulseTimerRef.current = null;
@@ -239,9 +232,10 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
         if (audioContextRef.current.state === 'suspended') {
             audioContextRef.current.resume();
         }
-        nextBarTimeRef.current = audioContextRef.current.currentTime + 0.1;
+        stopAllSounds(); // Clear any lingering sounds before starting
+        nextBarTimeRef.current = audioContextRef.current.currentTime + 0.2; // Add a buffer
         workerRef.current.postMessage({ command: 'start' });
-        scheduleNextImpulse(); // Start the weather system
+        scheduleNextImpulse();
     } else {
         stopAllSounds();
         workerRef.current.postMessage({ command: 'stop' });
@@ -264,6 +258,7 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
   }, [isInitialized]);
 
   const setVolumeCallback = useCallback((part: InstrumentPart, volume: number) => {
+    if (part === 'pads') return;
     const gainNode = gainNodesRef.current[part];
     if (gainNode && audioContextRef.current) {
         const balancedVolume = volume * (VOICE_BALANCE[part] ?? 1);
@@ -271,9 +266,8 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
     }
   }, []);
 
-  const setTextureSettingsCallback = useCallback((settings: TextureSettings) => {
+  const setTextureSettingsCallback = useCallback((settings: Omit<TextureSettings, 'pads'>) => {
     setVolumeCallback('sparkles', settings.sparkles.enabled ? settings.sparkles.volume : 0);
-    setVolumeCallback('pads', settings.pads.enabled ? settings.pads.volume : 0);
   }, [setVolumeCallback]);
 
   // Dummy implementations for unused functions

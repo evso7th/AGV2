@@ -30,7 +30,6 @@ export type Score = {
     drums?: DrumsScore;
     effects?: EffectsScore;
     sparkle?: boolean; // Command to play a sparkle
-    pad?: string; // Command to change pad
     instrumentHints?: {
         bass?: BassInstrument;
         melody?: MelodyInstrument;
@@ -54,7 +53,7 @@ export type EffectInstrument =
 
 export type InstrumentType = BassInstrument | MelodyInstrument | AccompanimentInstrument | EffectInstrument | 'portamento' | 'autopilot_bass' | 'none';
 
-export type InstrumentPart = 'bass' | 'melody' | 'accompaniment' | 'drums' | 'effects' | 'sparkles' | 'pads' | 'piano' | 'violin' | 'flute' | 'guitarChords' | 'acousticGuitarSolo';
+export type InstrumentPart = 'bass' | 'melody' | 'accompaniment' | 'drums' | 'effects' | 'sparkles' | 'piano' | 'violin' | 'flute' | 'guitarChords' | 'acousticGuitarSolo';
 export type BassTechnique = 'arpeggio' | 'portamento' | 'glissando' | 'glide' | 'pulse';
 
 
@@ -90,10 +89,6 @@ export type TextureSettings = {
         enabled: boolean;
         volume: number;
     };
-    pads: {
-        enabled: boolean;
-        volume: number;
-    };
 };
 
 export type TimerSettings = {
@@ -118,5 +113,3 @@ export type WorkerSettings = {
     mood: Mood;
     seed?: number;
 };
-
-    
