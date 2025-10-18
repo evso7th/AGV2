@@ -52,8 +52,8 @@ export const MelancholicMinorK: ResonanceMatrix = (
       const bassEvent = event1IsBass ? eventA : eventB;
       const drumEvent = event1IsDrums ? eventA : eventB;
 
-      // Сильный резонанс для филлов
-      if (isFill(bassEvent) && (isTom(drumEvent) || isSnare(drumEvent))) {
+      // Сценарий 3: "Джем" - сильный резонанс для одновременных филлов
+      if (isFill(bassEvent) && (isTom(drumEvent) || (isSnare(drumEvent) && drumEvent.weight > 0.8))) {
           if (areSimultaneous(bassEvent.time, drumEvent.time)) return 1.0;
           if (Math.abs(bassEvent.time - drumEvent.time) < 0.25) return 0.9;
       }
@@ -92,8 +92,8 @@ export const MelancholicMinorK: ResonanceMatrix = (
     const noteAInScale = scale.some(scaleNote => (eventA.note % 12) === (scaleNote % 12));
     const noteBInScale = scale.some(scaleNote => (eventB.note % 12) === (scaleNote % 12));
     
+    // Для филлов более строгая гармоническая проверка
     if (isFill(eventA) && isFill(eventB)) {
-        // Для филлов более строгая гармоническая проверка
         return noteAInScale && noteBInScale ? 0.95 : 0.2;
     }
     

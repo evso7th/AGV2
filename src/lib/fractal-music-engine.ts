@@ -170,7 +170,7 @@ function createRhythmSectionFill(mood: Mood, genre: Genre, random: { next: () =>
         const currentDrumTime = drumTime;
         drumFill.push({ type: instrument, note: 41 + i, duration, time: currentDrumTime, weight: 0.7 + random.next() * 0.2, technique: 'hit', dynamics: 'mf', phrasing: 'staccato', params: hitParams });
         
-        // Басовый филл, ритмически совпадающий с ударными
+        // Scenario 3: Bass and Drums jam together
         if (random.next() > 0.4) {
              const noteIndex = random.nextInt(scale.length);
              bassFill.push({ type: 'bass', note: scale[noteIndex], duration: duration * 0.8, time: currentDrumTime, weight: 0.7 + random.next() * 0.2, technique: 'fill', dynamics: 'mf', phrasing: 'staccato', params: fillParams });
@@ -268,6 +268,7 @@ export class FractalMusicEngine {
   private nextWeatherEventEpoch: number;
   private drumFillForThisEpoch: FractalEvent[] | null = null;
   public needsBassReset: boolean = false;
+  private bassShouldRespond: boolean = false;
 
   constructor(config: EngineConfig) {
     this.config = { ...config };
@@ -300,8 +301,11 @@ export class FractalMusicEngine {
     this.branches.push({ id: 'bass_axon', events: bassAxiom, weight: 1.0, age: 0, technique: 'pluck', type: 'bass' });
     
     this.needsBassReset = false;
+    this.bassShouldRespond = false;
   }
 
+  // Scenario 3: "Jam" - creates both drum and bass fills.
+  // Also sets up Scenario 2: "Bass follows Drummer"
   public generateExternalImpulse() {
     console.log(`%c[WEATHER EVENT] at epoch ${this.epoch}: Triggering linked mutation.`, "color: blue; font-weight: bold;");
     
@@ -310,18 +314,9 @@ export class FractalMusicEngine {
     this.drumFillForThisEpoch = drumFill;
     console.log(`%c  -> Created ONE-OFF DRUM fill for this epoch.`, "color: blue;");
 
-    if (bassFill.length > 0) {
-        const bassFillBranch: Branch = {
-            id: `bass_response_${this.epoch}`,
-            events: bassFill,
-            weight: 1.5,
-            age: 0,
-            technique: 'fill',
-            type: 'bass'
-        };
-        this.branches.push(bassFillBranch);
-        console.log(`%c  -> Created BASS response branch: ${bassFillBranch.id}`, "color: blue;");
-    }
+    // Signal that the bass should respond on the next tick
+    this.bassShouldRespond = true; 
+    console.log(`%c  -> Bass response queued for next epoch.`, "color: blue;");
   }
   
   private selectBranchForMutation(type: 'bass' | 'drums'): Branch | null {
@@ -377,7 +372,7 @@ export class FractalMusicEngine {
                  let addedGhosts = 0;
                  parent.events.forEach(event => {
                     if (['drum_kick', 'drum_snare'].includes(event.type) && this.random.next() > 0.5) {
-                        newEvents.push({ ...event, type: 'drum_snare_ghost_note', time: event.time - 0.125, duration: 0.1, weight: 0.2, technique: 'ghost', dynamics: 'p' });
+                        newEvents.push({ ...event, type: 'drum_snare_ghost_note', time: event.time - 0.125, duration: 0.1, weight: 0.2, technique: 'ghost', dynamics: 'p' } as FractalEvent);
                         addedGhosts++;
                     }
                  });
@@ -417,11 +412,12 @@ export class FractalMusicEngine {
                 if (percRule && percRule.types.length > 0) {
                     const occupiedTimes = new Set(newEvents.map(e => e.time));
                     let availableTimes = percRule.allowedTimes.filter(t => !occupiedTimes.has(t));
-                    const fillLength = this.random.nextInt(2) + 2; // 2 or 3 hits
+                    const fillLength = this.random.nextInt(3) + 5; // 5 to 7 hits
                     
                     if (availableTimes.length >= fillLength) {
                         console.log(`[DrumMutation] Generating a ${fillLength}-hit percussion fill.`);
                         for (let i = 0; i < fillLength; i++) {
+                            if (availableTimes.length === 0) break;
                             const timeIndex = this.random.nextInt(availableTimes.length);
                             const time = availableTimes.splice(timeIndex, 1)[0]; // Remove to avoid collision
                             const type = percRule.types[this.random.nextInt(percRule.types.length)];
@@ -450,11 +446,32 @@ export class FractalMusicEngine {
 
     const output: FractalEvent[] = [];
     
+    // Scenario 2: Bass responds to a previous drum fill
+    if (this.bassShouldRespond) {
+        const newFill = createBassFill.call(this, this.config.mood, this.config.genre, this.random);
+        if (newFill.length > 0) {
+            this.branches.push({
+                id: `bass_response_${this.epoch}`,
+                events: newFill,
+                weight: 1.8, // High weight to ensure it plays
+                age: 0,
+                technique: 'fill',
+                type: 'bass'
+            });
+            console.log(`%c[BASS RESPONSE] at epoch ${this.epoch}: Created bass fill branch.`, "color: purple;");
+        }
+        this.bassShouldRespond = false;
+    }
+
+
     const bassBranches = this.branches.filter(b => b.type === 'bass');
     const drumBranches = this.branches.filter(b => b.type === 'drums');
     
-    if (bassBranches.length > 0) {
-        const winningBassBranch = bassBranches.reduce((max, b) => b.weight > max.weight ? b : max, bassBranches[0]);
+    const winningBassBranch = bassBranches.length > 0
+        ? bassBranches.reduce((max, b) => b.weight > max.weight ? b : max, bassBranches[0])
+        : null;
+
+    if (winningBassBranch) {
         winningBassBranch.events.forEach(event => {
             const newEvent: FractalEvent = { ...event };
             newEvent.phrasing = winningBassBranch.weight > 0.7 ? 'legato' : 'staccato';
@@ -470,6 +487,12 @@ export class FractalMusicEngine {
         if (this.drumFillForThisEpoch) {
             drumEvents = this.drumFillForThisEpoch;
             this.drumFillForThisEpoch = null;
+        } else if (winningBassBranch?.technique === 'fill') { // Scenario 1: Drummer follows Bass
+            console.log(`%c[DRUM RESPONSE] at epoch ${this.epoch}: Bass is playing a fill, generating drum response.`, "color: #007acc;");
+            const { drumFill } = createRhythmSectionFill(this.config.mood, this.config.genre, this.random);
+            // Replace the latter half of the drum events with the fill
+            const baseBeat = drumEvents.filter(e => e.time < 2.0);
+            drumEvents = [...baseBeat, ...drumFill];
         } else {
              // --- DYNAMIC PERCUSSION LOGIC ---
             const percRule = STYLE_PERCUSSION_RULES[this.config.genre];
@@ -482,20 +505,18 @@ export class FractalMusicEngine {
                     const percPool = percRule.types;
                     
                     if (availableTimes.length > 0 && percPool.length > 0) {
-                        // Decide between a single hit or a mini-fill
-                        if (Math.random() > 0.7) { // 30% chance for a mini-fill
-                            const fillLength = Math.min(availableTimes.length, this.random.nextInt(3) + 5); // 5 to 7 hits
-                            console.log(`[DynamicPerc] Adding a ${fillLength}-hit fill.`);
+                        if (Math.random() > 0.7) { 
+                            const fillLength = Math.min(availableTimes.length, this.random.nextInt(3) + 5); 
                             for (let i = 0; i < fillLength; i++) {
                                 if (availableTimes.length === 0) break;
-                                const timeIndex = Math.floor(Math.random() * availableTimes.length);
+                                const timeIndex = this.random.nextInt(availableTimes.length);
                                 const time = availableTimes.splice(timeIndex, 1)[0];
-                                const type = percPool[Math.floor(Math.random() * percPool.length)];
+                                const type = percPool[this.random.nextInt(percPool.length)];
                                 drumEvents.push({ type, time, duration: 0.25, weight: percRule.weight * 0.9, note: 36, phrasing: 'staccato', dynamics: 'p', params: getParamsForTechnique('hit', this.config.mood, this.config.genre) } as FractalEvent);
                             }
-                        } else { // 70% chance for a single hit
-                            const time = availableTimes[Math.floor(Math.random() * availableTimes.length)];
-                            const type = percPool[Math.floor(Math.random() * percPool.length)];
+                        } else { 
+                            const time = availableTimes[this.random.nextInt(availableTimes.length)];
+                            const type = percPool[this.random.nextInt(percPool.length)];
                             drumEvents.push({ type, time, duration: 0.25, weight: percRule.weight, note: 36, phrasing: 'staccato', dynamics: 'p', params: getParamsForTechnique('hit', this.config.mood, this.config.genre) } as FractalEvent);
                         }
                     }
@@ -509,10 +530,10 @@ export class FractalMusicEngine {
     }
     
     // --- DLA: Genetic mutation ---
-    const shouldMutateBass = this.random.next() < (this.config.density * 0.4); // Reduced probability
-    const shouldMutateDrums = this.random.next() < (this.config.density * 0.4); // Reduced probability
+    const shouldMutateBass = this.random.next() < (this.config.density * 0.4);
+    const shouldMutateDrums = this.random.next() < (this.config.density * 0.4); 
 
-    if (this.epoch > 0 && this.epoch % 2 === 0) { // Mutate on even epochs now
+    if (this.epoch > 0 && this.epoch % 2 === 0) { 
         if (shouldMutateBass && this.branches.filter(b => b.type === 'bass').length < 5) {
             const parentBranch = this.selectBranchForMutation('bass');
             if (parentBranch) {
@@ -595,3 +616,5 @@ export class FractalMusicEngine {
     };
   }
 }
+
+    
