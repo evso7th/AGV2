@@ -128,7 +128,8 @@ export class DrumMachine {
         for (const event of score) {
             if (!event.type.startsWith('drum_') && !event.type.startsWith('perc-')) continue;
             
-            const sampleName = event.type;
+            // This is the corrected line
+            const sampleName = event.type.startsWith('drum_') ? event.type.replace('drum_', '') : event.type;
 
             if (!DRUM_SAMPLES[sampleName as keyof typeof DRUM_SAMPLES]) {
                  console.warn(`[DrumMachine] Sample not found for type: ${sampleName}`);
