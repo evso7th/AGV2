@@ -130,9 +130,10 @@ export class DrumMachine {
         const beatDuration = 60 / tempo;
         
         for (const event of score) {
-            if (!event.type.startsWith('drum_') && !event.type.startsWith('perc-')) continue;
+            const eventType = Array.isArray(event.type) ? event.type[0] : event.type;
+            if (typeof eventType !== 'string' || (!eventType.startsWith('drum_') && !eventType.startsWith('perc-'))) continue;
             
-            const sampleName = event.type.startsWith('drum_') ? event.type.replace('drum_', '') : event.type;
+            const sampleName = eventType.startsWith('drum_') ? eventType.replace('drum_', '') : eventType;
 
             if (!DRUM_SAMPLES[sampleName as keyof typeof DRUM_SAMPLES]) {
                  console.warn(`[DrumMachine] Sample not found for type: ${sampleName}`);
@@ -145,17 +146,22 @@ export class DrumMachine {
                 console.error('[DrumMachine] Non-finite time scheduled for event:', event);
                 continue;
             }
+
+            let velocity = event.weight;
+            if (eventType.startsWith('perc-')) {
+                velocity *= 0.5; // Уменьшаем громкость перкуссии вдвое
+            }
             
             const isMainBeat = ['kick', 'snare', 'hihat_closed', 'hihat_open'].some(t => sampleName.includes(t));
             const logCategory = isMainBeat ? 'Main Beat' : 'Perc/Fill';
             const color = isMainBeat ? 'color: cyan;' : 'color: orange;';
 
-            console.log(
-                `%c[DrumMachine] Sched: ${logCategory.padEnd(10)} | Sample: ${sampleName.padEnd(25)} | Time: ${absoluteTime.toFixed(3)} | Vel: ${event.weight.toFixed(2)}`,
-                color
-            );
+            // console.log(
+            //     `%c[DrumMachine] Sched: ${logCategory.padEnd(10)} | Sample: ${sampleName.padEnd(25)} | Time: ${absoluteTime.toFixed(3)} | Vel: ${velocity.toFixed(2)}`,
+            //     color
+            // );
 
-            this.sampler.triggerAttack(sampleName, absoluteTime, event.weight);
+            this.sampler.triggerAttack(sampleName, absoluteTime, velocity);
         }
     }
 
