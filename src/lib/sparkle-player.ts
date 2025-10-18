@@ -1,30 +1,51 @@
 
-import type { Genre } from '@/types/music';
+import type { Genre, Mood } from '@/types/music';
 
 const SPARKLE_SAMPLES = {
     NON_ELECTRONIC: [
-        '/assets/music/droplets/merimbo.ogg',
-        '/assets/music/droplets/icepad.ogg',
-        '/assets/music/droplets/vibes_a.ogg',
         '/assets/music/droplets/sweepingbells.ogg',
-        '/assets/music/droplets/belldom.ogg',
+        '/assets/music/droplets/icepad.ogg',
         '/assets/music/droplets/dreams.mp3',
+        '/assets/music/droplets/Sleep.ogg',
+        '/assets/music/droplets/AcChord.ogg',
+        '/assets/music/droplets/SweetHarpRev1.ogg',
         '/assets/music/droplets/end.mp3',
+        '/assets/music/droplets/BirdFX.ogg',
+        '/assets/music/droplets/vibes_a.ogg',
+        '/assets/music/droplets/belldom.ogg',
+        '/assets/music/droplets/merimbo.ogg',
         '/assets/music/droplets/ocean.mp3',
+        '/assets/music/droplets/BeepFreak.ogg',
+        '/assets/music/droplets/GlassBell.ogg',
     ],
     ELECTRONIC: [
-        '/assets/music/droplets/EPstein.ogg',
-        '/assets/music/droplets/Fearsome.ogg',
-        '/assets/music/droplets/Dizzy.ogg',
-        '/assets/music/droplets/BladeWalker.ogg',
-        '/assets/music/droplets/Confusion.ogg',
-        '/assets/music/droplets/Koto1.ogg',
+        '/assets/music/droplets/electro/EPstein.ogg',
+        '/assets/music/droplets/electro/Fearsome.ogg',
+        '/assets/music/droplets/electro/Dizzy.ogg',
+        '/assets/music/droplets/electro/BladeWalker.ogg',
+        '/assets/music/droplets/electro/Confusion.ogg',
+        '/assets/music/droplets/electro/Koto1.ogg',
+        '/assets/music/droplets/electro/Tubator.ogg',
+        '/assets/music/droplets/electro/SalvingPad.ogg',
+        '/assets/music/droplets/electro/NoiseFxB06.ogg',
+        '/assets/music/droplets/electro/CloseA.ogg',
+        '/assets/music/droplets/electro/E_Rhythm.ogg',
+        '/assets/music/droplets/electro/HousedBass7.ogg',
+        '/assets/music/droplets/electro/Drill.ogg',
+        '/assets/music/droplets/electro/Starter.ogg',
+        '/assets/music/droplets/electro/ElectroShock.ogg',
+        '/assets/music/droplets/electro/MelancholicPad.ogg',
+        '/assets/music/droplets/electro/Electricity.ogg',
+        '/assets/music/droplets/Freakystones.ogg',
+        '/assets.music/droplets/Abstruse.ogg'
     ],
     DARK: [
-        '/assets/music/droplets/dark/Abstruse.ogg',
-        '/assets/music/droplets/dark/BladeWalker.ogg',
-        '/assets/music/droplets/dark/Drill.ogg',
         '/assets/music/droplets/dark/Fearsome.ogg',
+        '/assets/music/droplets/dark/Grounding.ogg',
+        '/assets/music/droplets/dark/Gulls.ogg',
+        '/assets/music/droplets/dark/Abstruse.ogg', 
+        '/assets/music/droplets/dark/BladeWalker.ogg',
+        '/assets/music/droplets/dark/Drill.ogg'
     ]
 };
 
@@ -77,39 +98,44 @@ export class SparklePlayer {
                 return null;
             }
             const arrayBuffer = await response.arrayBuffer();
-            return await this.audioContext.decodeAudioData(arrayBuffer);
+            const buffer = await this.audioContext.decodeAudioData(arrayBuffer);
+            (buffer as any).url = url; // Attach URL for logging
+            return buffer;
         } catch (error) {
             console.error(`Error loading sparkle sample ${url}:`, error);
             return null;
         }
     }
 
-    public playRandomSparkle(time: number, genre?: Genre) {
+    public playRandomSparkle(time: number, genre?: Genre, mood?: Mood) {
         if (!this.isInitialized) return;
 
         const electronicGenres: Genre[] = ['house', 'progressive', 'rnb', 'trance', 'rock', 'blues'];
         let samplePool: AudioBuffer[];
 
-        if (genre && electronicGenres.includes(genre)) {
-            samplePool = this.electroBuffers;
-            console.log('[SparklePlayer] Using ELECTRONIC sample set.');
-        } else if (genre === 'dark') {
+        if (mood === 'dark') {
             samplePool = this.darkBuffers;
             console.log('[SparklePlayer] Using DARK sample set.');
-        }
-        else {
+        } else if (genre && electronicGenres.includes(genre)) {
+            samplePool = this.electroBuffers;
+            console.log(`[SparklePlayer] Using ELECTRONIC sample set for genre: ${genre}.`);
+        } else {
             samplePool = this.nonElectroBuffers;
-            console.log('[SparklePlayer] Using NON-ELECTRONIC sample set.');
+            console.log(`[SparklePlayer] Using NON-ELECTRONIC sample set for genre: ${genre || 'default'}.`);
         }
 
-        if (samplePool.length === 0) return;
+        if (samplePool.length === 0) {
+             console.warn(`[SparklePlayer] No samples loaded for the selected genre/mood pool.`);
+             return;
+        }
         
         const buffer = samplePool[Math.floor(Math.random() * samplePool.length)];
         const source = this.audioContext.createBufferSource();
         source.buffer = buffer;
         source.connect(this.gainNode);
         
-        console.log(`[SparklePlayer] Playing sample: ${buffer ? (buffer as any).url || 'Unknown' : 'None'} at time ${time.toFixed(2)}`);
+        const sampleUrlForLogging = (buffer as any)?.url || 'Unknown';
+        console.log(`[SparklePlayer] Playing sample: ${sampleUrlForLogging.substring(sampleUrlForLogging.lastIndexOf('/') + 1)} at time ${time.toFixed(2)}`);
         source.start(time);
         this.activeSources.add(source);
         source.onended = () => {

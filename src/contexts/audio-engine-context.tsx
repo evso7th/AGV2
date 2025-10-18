@@ -31,6 +31,7 @@ type WorkerMessage = {
     message?: string;
     time?: number;
     genre?: Genre;
+    mood?: Mood;
 };
 
 
@@ -173,13 +174,13 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
             const worker = new Worker(new URL('../app/ambient.worker.ts', import.meta.url), { type: 'module' });
             worker.onmessage = (event: MessageEvent<WorkerMessage>) => {
                 console.log('[AudioEngine] Received message from worker:', event.data);
-                const { type, events, barDuration, error, time, genre } = event.data;
+                const { type, events, barDuration, error, time, genre, mood } = event.data;
                 if (type === 'SCORE_READY' && events && barDuration && settingsRef.current) {
                     scheduleEvents(events, nextBarTimeRef.current, settingsRef.current.bpm);
                     nextBarTimeRef.current += barDuration;
                 } else if (type === 'sparkle' && time !== undefined) {
                     console.log('[AudioEngine] Received "sparkle" command from worker.');
-                    sparklePlayerRef.current?.playRandomSparkle(nextBarTimeRef.current + time, genre);
+                    sparklePlayerRef.current?.playRandomSparkle(nextBarTimeRef.current + time, genre, mood);
                 } else if (type === 'error') {
                     toast({ variant: "destructive", title: "Worker Error", description: error });
                 }

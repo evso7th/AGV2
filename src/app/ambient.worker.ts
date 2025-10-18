@@ -163,7 +163,7 @@ const Scheduler = {
         
         if (this.settings.textureSettings.sparkles.enabled) {
             if (shouldAddSparkle(currentTime, density)) {
-                 self.postMessage({ type: 'sparkle', time: 0, genre: this.settings.genre });
+                 self.postMessage({ type: 'sparkle', time: 0, genre: this.settings.genre, mood: this.settings.mood });
                  lastSparkleTime = currentTime;
             }
         }
