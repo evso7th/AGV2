@@ -3,47 +3,42 @@ import type { Genre, Mood } from '@/types/music';
 
 const SPARKLE_SAMPLES = {
     NON_ELECTRONIC: [
-        '/assets/music/droplets/sweepingbells.ogg',//есть
-        '/assets/music/droplets/icepad.ogg',//есть
-        '/assets/music/droplets/dreams.mp3',//есть
-        '/assets/music/droplets/Sleep.ogg',//есть
-        '/assets/music/droplets/AcChord.ogg',//есть
-        '/assets/music/droplets/SweetHarpRev1.ogg', //есть
-        '/assets/music/droplets/end.mp3', //есть
-        '/assets/music/droplets/BirdFX.ogg',//есть
-        '/assets/music/droplets/vibes_a.ogg',//есть
-        '/assets/music/droplets/belldom.ogg',//есть
-        '/assets/music/droplets/merimbo.ogg',//есть
-        '/assets/music/droplets/ocean.mp3',//есть
-        '/assets/music/droplets/BeepFreak.ogg',//есть
-        '/assets/music/droplets/GlassBell.ogg',//есть
-        '/assets/music/droplets/EPstein.ogg',//есть
-        '/assets/music/droplets/Fearsome.ogg',//есть
-        '/assets/music/droplets/Dizzy.ogg',//есть
-        '/assets/music/droplets/BladeWalker.ogg',
+        '/assets/music/droplets/sweepingbells.ogg',
+        '/assets/music/droplets/icepad.ogg',
+        '/assets/music/droplets/dreams.mp3',
+        '/assets/music/droplets/Sleep.ogg',
+        '/assets/music/droplets/AcChord.ogg',
+        '/assets/music/droplets/SweetHarpRev1.ogg',
+        '/assets/music/droplets/end.mp3',
+        '/assets/music/droplets/BirdFX.ogg',
+        '/assets/music/droplets/vibes_a.ogg',
+        '/assets/music/droplets/belldom.ogg',
+        '/assets/music/droplets/merimbo.ogg',
+        '/assets/music/droplets/ocean.mp3',
+        '/assets/music/droplets/BeepFreak.ogg',
+        '/assets/music/droplets/GlassBell.ogg',
+        '/assets/music/droplets/EPstein.ogg',
         '/assets/music/droplets/Confusion.ogg',
         '/assets/music/droplets/Koto1.ogg',
         '/assets/music/droplets/Freakystones.ogg',
-        
     ],
     ELECTRONIC: [
-        '/assets/music/droplets/electro/Tubator.ogg',//есть
-        '/assets/music/droplets/electro/SalvingPad.ogg',//есть
-        '/assets/music/droplets/electro/NoiseFxB06.ogg',//есть
-        '/assets/music/droplets/electro/CloseA.ogg',//есть
-        '/assets/music/droplets/electro/E_Rhythm.ogg',//есть
-        '/assets/music/droplets/electro/HousedBass7.ogg',//есть
-        '/assets/music/droplets/electro/Starter.ogg',//есть,
-        '/assets/music/droplets/electro/ElectroShock.ogg',//есть
-        '/assets/music/droplets/electro/MelancholicPad.ogg',//есть
-        '/assets/music/droplets/electro/Electricity.ogg',//есть
-        
+        '/assets/music/droplets/electro/Tubator.ogg',
+        '/assets/music/droplets/electro/SalvingPad.ogg',
+        '/assets/music/droplets/electro/NoiseFxB06.ogg',
+        '/assets/music/droplets/electro/CloseA.ogg',
+        '/assets/music/droplets/electro/E_Rhythm.ogg',
+        '/assets/music/droplets/electro/HousedBass7.ogg',
+        '/assets/music/droplets/electro/Starter.ogg',
+        '/assets/music/droplets/electro/ElectroShock.ogg',
+        '/assets/music/droplets/electro/MelancholicPad.ogg',
+        '/assets/music/droplets/electro/Electricity.ogg',
     ],
     DARK: [
-        '/assets/music/droplets/dark/Abstruse.ogg',//*
-        '/assets/music/droplets/dark/Fearsome.ogg',//*
-        '/assets/music/droplets/dark/Grounding.ogg',//*
-        '/assets/music/droplets/dark/Gulls.ogg',//*
+        '/assets/music/droplets/dark/Abstruse.ogg',
+        '/assets/music/droplets/dark/Fearsome.ogg',
+        '/assets/music/droplets/dark/Grounding.ogg',
+        '/assets/music/droplets/dark/Gulls.ogg',
         '/assets/music/droplets/dark/BladeWalker.ogg',
         '/assets/music/droplets/dark/Drill.ogg'
     ]
