@@ -1,4 +1,3 @@
-
 // src/lib/music-theory.ts
 import type { Mood, Genre, Technique, BassSynthParams, InstrumentType } from '@/types/fractal';
 
@@ -110,7 +109,7 @@ export function getScaleForMood(mood: Mood): number[] {
 
 
 const defaultHitParams: BassSynthParams = { cutoff: 500, resonance: 0.2, distortion: 0.0, portamento: 0.0 };
-const ALL_RIDES: InstrumentType[] = ['drum_ride', 'drum_a_ride1', 'drum_a_ride2', 'drum_a_ride3', 'drum_a_ride4'];
+export const ALL_RIDES: InstrumentType[] = ['drum_ride', 'drum_a_ride1', 'drum_a_ride2', 'drum_a_ride3', 'drum_a_ride4'];
 const AMBIENT_SNARES: InstrumentType[] = ['drum_snare_ghost_note', 'drum_snarepress', 'drum_snare_off'];
 const AMBIENT_PERC: InstrumentType[] = [...PERCUSSION_SETS.ELECTRONIC, ...ALL_RIDES];
 
@@ -398,7 +397,6 @@ export const STYLE_BASS_PATTERNS: Record<Genre, BassPatternDefinition[]> = {
     progressive: [
         { pattern: [{ note: 0, time: 0, duration: 0.75 }, { note: 0, time: 0.75, duration: 0.25 }, { note: 2, time: 1, duration: 1 }, { note: -1, time: 2.5, duration: 1.5 }], tags: ['prog-rock-sparse', 'syncopated'] },
     ],
-    // Fallback genres
     dark: [{ pattern: [{ note: 0, time: 0, duration: 4, technique: 'swell' }], tags:['ambient-pulse'] }],
     dreamy: [{ pattern: [{ note: 0, time: 0, duration: 4, technique: 'swell' }], tags:['ambient-pulse'] }],
     epic: [{ pattern: [{ note: 0, time: 0, duration: 2 }, { note: 4, time: 2, duration: 2 }], tags: ['ballad-simple'] }],
