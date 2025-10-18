@@ -3,7 +3,7 @@
 
 import React, { createContext, useContext, useState, useRef, useCallback, useEffect } from 'react';
 import { useToast } from "@/hooks/use-toast";
-import type { WorkerSettings, Score, InstrumentPart, BassInstrument, MelodyInstrument, AccompanimentInstrument, BassTechnique, TextureSettings, ScoreName, Note, DrumsScore, EffectsScore, InstrumentType } from '@/types/music';
+import type { WorkerSettings, Score, InstrumentPart, BassInstrument, MelodyInstrument, AccompanimentInstrument, BassTechnique, TextureSettings, ScoreName, Note, DrumsScore, EffectsScore, InstrumentType, Genre, Mood } from '@/types/music';
 import { DrumMachine } from '@/lib/drum-machine';
 import { SamplerPlayer } from '@/lib/sampler-player';
 import { ViolinSamplerPlayer } from '@/lib/violin-sampler-player';
@@ -24,15 +24,15 @@ export function noteToMidi(note: string): number {
 
 // --- Type Definitions ---
 type WorkerMessage = {
-    type: 'SCORE_READY' | 'error' | 'debug' | 'sparkle' | 'pad';
+    type: 'SCORE_READY' | 'error' | 'debug' | 'sparkle';
     events?: FractalEvent[];
     barDuration?: number;
     error?: string;
     message?: string;
     time?: number;
-    padName?: string;
-    genre?: string;
+    genre?: Genre;
 };
+
 
 // --- Constants ---
 const VOICE_BALANCE: Record<InstrumentPart, number> = {
@@ -102,7 +102,7 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
     const bassEvents: FractalEvent[] = [];
 
     for (const event of events) {
-      if (event.type.startsWith('drum_')) {
+      if (event.type.startsWith('drum_') || event.type.startsWith('perc-')) {
         drumEvents.push(event);
       } else if (event.type === 'bass') {
         bassEvents.push(event);
