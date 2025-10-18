@@ -107,13 +107,6 @@ export const STYLE_DRUM_PATTERNS: Record<Genre, GenreRhythmGrammar> = {
                 tags: ['ambient-pulse']
             }
         ],
-        percussion: {
-            types: ['perc-011', 'perc-007', 'drum_ride', 'cymbal_bell1'],
-            allowedTimes: [1.75, 2.5, 3.25],
-            probability: 0.4, 
-            weight: 0.25,
-            type: 'acoustic'
-        }
     },
     rock: {
         loops: [
@@ -129,13 +122,6 @@ export const STYLE_DRUM_PATTERNS: Record<Genre, GenreRhythmGrammar> = {
                 tags: ['rock-standard']
             }
         ],
-        percussion: {
-            types: ['drum_crash', 'perc-005', 'drum_tom_high'],
-            allowedTimes: [0, 1.75, 3.75],
-            probability: 0.25, 
-            weight: 0.7,
-            type: 'acoustic'
-        }
     },
     house: {
         loops: [
@@ -159,13 +145,6 @@ export const STYLE_DRUM_PATTERNS: Record<Genre, GenreRhythmGrammar> = {
                 tags: ['four-on-the-floor']
             }
         ],
-        percussion: {
-            types: ['perc-003', 'perc-007', 'perc-009', 'hh_bark_short'],
-            allowedTimes: [0.75, 1.25, 1.75, 2.75, 3.25, 3.75],
-            probability: 0.6, 
-            weight: 0.6,
-            type: 'electronic'
-        }
     },
     trance: {
         loops: [
@@ -188,13 +167,6 @@ export const STYLE_DRUM_PATTERNS: Record<Genre, GenreRhythmGrammar> = {
                 tags: ['trance-drive']
              }
         ],
-        percussion: {
-             types: ['perc-010', 'perc-012', 'hh_bark_short', 'perc-008'],
-             allowedTimes: [0.75, 1.75, 2.75, 3.75],
-             probability: 0.5, 
-             weight: 0.5,
-             type: 'electronic'
-        }
     },
     rnb: {
         loops: [
@@ -215,13 +187,6 @@ export const STYLE_DRUM_PATTERNS: Record<Genre, GenreRhythmGrammar> = {
                 tags: ['rnb-groove', 'hip-hop']
             }
         ],
-        percussion: {
-            types: ['perc-001', 'perc-004', 'perc-009', 'drum_tom_high', 'cymbal_bell2'],
-            allowedTimes: [0.75, 2.25, 2.75, 3.25],
-            probability: 0.65, 
-            weight: 0.4,
-            type: 'electronic'
-        }
     },
     ballad: {
        loops: [
@@ -237,13 +202,6 @@ export const STYLE_DRUM_PATTERNS: Record<Genre, GenreRhythmGrammar> = {
                 tags: ['ballad-simple']
            }
        ],
-       percussion: {
-           types: ['perc-013', 'perc-014', 'cymbal_bell1', 'drum_crash'],
-           allowedTimes: [1.5, 3.5],
-           probability: 0.45, 
-           weight: 0.4,
-           type: 'acoustic'
-       }
     },
     reggae: {
         loops: [
@@ -259,13 +217,6 @@ export const STYLE_DRUM_PATTERNS: Record<Genre, GenreRhythmGrammar> = {
                 tags: ['one-drop']
             }
         ],
-        percussion: {
-            types: ['drum_snare_off', 'perc-009', 'perc-001'],
-            allowedTimes: [1, 3],
-            probability: 0.8, 
-            weight: 0.9,
-            type: 'acoustic'
-        }
     },
     blues: {
         loops: [
@@ -285,23 +236,9 @@ export const STYLE_DRUM_PATTERNS: Record<Genre, GenreRhythmGrammar> = {
                 tags: ['shuffle']
             }
         ],
-        percussion: {
-            types: ['perc-002', 'hh_bark_short', 'drum_snare_ghost_note'],
-            allowedTimes: [3.75],
-            probability: 0.5, 
-            weight: 0.3,
-            type: 'acoustic'
-        }
     },
     celtic: {
         loops: [ { kick: [], snare: [], hihat: [], tags: ['bodhran-pulse'] } ],
-        percussion: {
-            types: ['drum_tom_low', 'drum_tom_mid', 'drum_tom_high', 'perc-006', 'drum_snare_off'],
-            allowedTimes: [0, 0.75, 1, 1.75, 2, 2.75, 3, 3.75],
-            probability: 0.85, 
-            weight: 0.8,
-            type: 'acoustic'
-        }
     },
     progressive: {
         loops: [
@@ -312,18 +249,88 @@ export const STYLE_DRUM_PATTERNS: Record<Genre, GenreRhythmGrammar> = {
                 tags: ['prog-rock-sparse']
             }
         ],
-        percussion: {
-            types: ['perc-008', 'perc-011', 'drum_tom_mid', 'drum_ride', 'cymbal_bell2'],
-            allowedTimes: [0.75, 1.5, 2.5, 2.75, 3.5],
-            probability: 0.6, 
-            weight: 0.6,
-            type: 'acoustic'
-        }
     },
     // Fallback genres
-    dark: { loops: [{ kick: [], snare: [], hihat: [], tags: ['ambient-pulse'] }], percussion: { types: PERCUSSION_SETS.DARK, allowedTimes: [1.25, 2.75], probability: 0.7, weight: 0.5, type: 'acoustic' } },
-    dreamy: { loops: [{ kick: [], snare: [], hihat: [], tags: ['ambient-pulse'] }], percussion: { types: [], allowedTimes: [], probability: 0, weight: 0 } },
-    epic: { loops: [{ kick: [], snare: [], hihat: [], tags: ['rock-standard', 'ballad-simple'] }], percussion: { types: [], allowedTimes: [], probability: 0, weight: 0 } },
+    dark: { loops: [{ kick: [], snare: [], hihat: [], tags: ['ambient-pulse'] }] },
+    dreamy: { loops: [{ kick: [], snare: [], hihat: [], tags: ['ambient-pulse'] }] },
+    epic: { loops: [{ kick: [], snare: [], hihat: [], tags: ['rock-standard', 'ballad-simple'] }] },
+};
+
+export const STYLE_PERCUSSION_RULES: Record<Genre, PercussionRule> = {
+    ambient: {
+        types: ['perc-011', 'perc-007', 'drum_ride', 'cymbal_bell1'],
+        allowedTimes: [1.75, 2.5, 3.25],
+        probability: 0.4, 
+        weight: 0.25,
+        type: 'acoustic'
+    },
+    rock: {
+        types: ['drum_crash', 'perc-005', 'drum_tom_high'],
+        allowedTimes: [0, 1.75, 3.75],
+        probability: 0.25, 
+        weight: 0.7,
+        type: 'acoustic'
+    },
+    house: {
+        types: ['perc-003', 'perc-007', 'perc-009', 'hh_bark_short'],
+        allowedTimes: [0.75, 1.25, 1.75, 2.75, 3.25, 3.75],
+        probability: 0.6, 
+        weight: 0.6,
+        type: 'electronic'
+    },
+    trance: {
+         types: ['perc-010', 'perc-012', 'hh_bark_short', 'perc-008'],
+         allowedTimes: [0.75, 1.75, 2.75, 3.75],
+         probability: 0.5, 
+         weight: 0.5,
+         type: 'electronic'
+    },
+    rnb: {
+        types: ['perc-001', 'perc-004', 'perc-009', 'drum_tom_high', 'cymbal_bell2'],
+        allowedTimes: [0.75, 2.25, 2.75, 3.25],
+        probability: 0.65, 
+        weight: 0.4,
+        type: 'electronic'
+    },
+    ballad: {
+       types: ['perc-013', 'perc-014', 'cymbal_bell1', 'drum_crash'],
+       allowedTimes: [1.5, 3.5],
+       probability: 0.45, 
+       weight: 0.4,
+       type: 'acoustic'
+    },
+    reggae: {
+        types: ['drum_snare_off', 'perc-009', 'perc-001'],
+        allowedTimes: [1, 3],
+        probability: 0.8, 
+        weight: 0.9,
+        type: 'acoustic'
+    },
+    blues: {
+        types: ['perc-002', 'hh_bark_short', 'drum_snare_ghost_note'],
+        allowedTimes: [3.75],
+        probability: 0.5, 
+        weight: 0.3,
+        type: 'acoustic'
+    },
+    celtic: {
+        types: ['drum_tom_low', 'drum_tom_mid', 'drum_tom_high', 'perc-006', 'drum_snare_off'],
+        allowedTimes: [0, 0.75, 1, 1.75, 2, 2.75, 3, 3.75],
+        probability: 0.85, 
+        weight: 0.8,
+        type: 'acoustic'
+    },
+    progressive: {
+        types: ['perc-008', 'perc-011', 'drum_tom_mid', 'drum_ride', 'cymbal_bell2'],
+        allowedTimes: [0.75, 1.5, 2.5, 2.75, 3.5],
+        probability: 0.6, 
+        weight: 0.6,
+        type: 'acoustic'
+    },
+    // Fallbacks
+    dark: { types: PERCUSSION_SETS.DARK, allowedTimes: [1.25, 2.75], probability: 0.7, weight: 0.5, type: 'acoustic' },
+    dreamy: { types: [], allowedTimes: [], probability: 0, weight: 0 },
+    epic: { types: [], allowedTimes: [], probability: 0, weight: 0 },
 };
 
 // Bass Riff Library
