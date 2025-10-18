@@ -2,7 +2,7 @@
 
 import type { FractalEvent, Mood, Genre, Technique, BassSynthParams, InstrumentType } from '@/types/fractal';
 import { MelancholicMinorK } from './resonance-matrices';
-import { getScaleForMood, STYLE_DRUM_PATTERNS, STYLE_BASS_PATTERNS, type BassPatternDefinition, STYLE_PERCUSSION_RULES } from './music-theory';
+import { getScaleForMood, STYLE_DRUM_PATTERNS, STYLE_BASS_PATTERNS, type BassPatternDefinition, STYLE_PERCUSSION_RULES, ALL_RIDES } from './music-theory';
 
 export type Branch = {
   id: string;
@@ -27,8 +27,8 @@ interface EngineConfig {
 // === ВСПОМОГАТЕЛЬНЫЕ ФУНКЦИИ ===
 
 function getParamsForTechnique(technique: Technique, mood: Mood, genre: Genre): BassSynthParams {
-  if (genre === 'ambient') {
-     return { cutoff: 150, resonance: 1.1, distortion: 0.0, portamento: 0.1, attack: 0.8, release: 2.0 };
+  if (genre === 'ambient' && technique === 'swell') {
+     return { cutoff: 200, resonance: 1.1, distortion: 0.0, portamento: 0.1, attack: 0.8, release: 2.0 };
   }
   switch (technique) {
     case 'pluck':
@@ -118,7 +118,7 @@ function createBassAxiom(mood: Mood, genre: Genre, random: { next: () => number,
   const patternLibrary = STYLE_BASS_PATTERNS[genre] || STYLE_BASS_PATTERNS['ambient'];
 
   let compatiblePatterns = patternLibrary;
-  if (compatibleTags.length > 0) {
+  if (compatibleTags.length > 0 && genre !== 'ambient') { // Don't filter for ambient, let it be random
       const filtered = patternLibrary.filter(p => p.tags.some(tag => compatibleTags.includes(tag)));
       if (filtered.length > 0) {
           compatiblePatterns = filtered;
@@ -143,7 +143,7 @@ function createBassAxiom(mood: Mood, genre: Genre, random: { next: () => number,
 
   return chosenPatternDef.pattern.map(event => {
       const note = selectNote();
-      const technique = event.technique || 'pluck';
+      const technique = event.technique || (genre === 'ambient' ? 'swell' : 'pluck');
       return {
         type: 'bass',
         note,
@@ -186,7 +186,15 @@ function createRhythmSectionFill(mood: Mood, genre: Genre, random: { next: () =>
     }
 
     drumFill.push({ type: 'drum_snare', note: 38, duration: 0.25, time: 3.75, weight: 0.8 + random.next() * 0.2, technique: 'hit', dynamics: 'mf', phrasing: 'staccato', params: hitParams });
-    drumFill.push({ type: 'drum_crash', note: 49, duration: 0.25, time: 3.75, weight: 0.8 + random.next() * 0.2, technique: 'hit', dynamics: 'mf', phrasing: 'staccato', params: hitParams });
+
+    // Thematic cymbal for climax
+    if (genre === 'ambient') {
+        const rideCymbal = ALL_RIDES[random.nextInt(ALL_RIDES.length)];
+        drumFill.push({ type: rideCymbal, note: 51, duration: 0.5, time: 3.75, weight: 0.7, technique: 'hit', dynamics: 'mf', phrasing: 'staccato', params: hitParams });
+    } else {
+        drumFill.push({ type: 'drum_crash', note: 49, duration: 0.25, time: 3.75, weight: 0.8 + random.next() * 0.2, technique: 'hit', dynamics: 'mf', phrasing: 'staccato', params: hitParams });
+    }
+
     if (random.next() > 0.3) {
       bassFill.push({ type: 'bass', note: scale[0], duration: 0.25, time: 3.75, weight: 0.9, technique: 'fill', dynamics: 'mf', phrasing: 'staccato', params: fillParams });
     }
@@ -520,7 +528,7 @@ export class FractalMusicEngine {
                                 const timeIndex = this.random.nextInt(availableTimes.length);
                                 const time = availableTimes.splice(timeIndex, 1)[0];
                                 const type = percPool[this.random.nextInt(percPool.length)];
-                                drumEvents.push({ type, time, duration: 0.25, weight: percRule.weight * 0.9, note: 36, phrasing: 'staccato', dynamics: 'p', params: getParamsForTechnique('hit', this.config.mood, this.config.genre) } as FractalEvent);
+                                drumEvents.push({ type, note: 36, duration: 0.25, time, weight: percRule.weight * 0.9, technique: 'hit', dynamics: 'p', phrasing: 'staccato', params: getParamsForTechnique('hit', this.config.mood, this.config.genre) } as FractalEvent);
                             }
                         } else { 
                             const time = availableTimes[this.random.nextInt(availableTimes.length)];
@@ -580,7 +588,7 @@ export class FractalMusicEngine {
       const ageBonus = branch.age === 0 ? 1.5 : 1.0; 
       const resonanceSum = this.branches.reduce((sum, other) => {
         if (other.id === branch.id || other.type === branch.type) return sum;
-        const k = MelancholicMinorK(branch.events[0], other.events[0], { mood: this.config.mood, tempo: this.config.tempo, delta });
+        const k = MelancholicMinorK(branch.events[0], other.events[0], { mood: this.config.mood, tempo: this.config.tempo, delta, genre: this.config.genre });
         return sum + k * delta * other.weight;
       }, 0);
       const newWeight = ((1 - this.lambda) * branch.weight + resonanceSum) * ageBonus;

@@ -1,5 +1,5 @@
 
-import type { FractalEvent, ResonanceMatrix, Mood } from '@/types/fractal';
+import type { FractalEvent, ResonanceMatrix, Mood, Genre } from '@/types/fractal';
 import { getScaleForMood } from './music-theory';
 
 // === ВСПОМОГАТЕЛЬНЫЕ ФУНКЦИИ ===
@@ -40,7 +40,7 @@ const isTom = (event: FractalEvent): boolean => event.type.startsWith('drum_tom'
 export const MelancholicMinorK: ResonanceMatrix = (
   eventA: FractalEvent,
   eventB: FractalEvent,
-  context: { mood: Mood; tempo: number; delta: number }
+  context: { mood: Mood; tempo: number; delta: number, genre: Genre }
 ): number => {
   const event1IsBass = isBass(eventA);
   const event2IsBass = isBass(eventB);
@@ -103,7 +103,8 @@ export const MelancholicMinorK: ResonanceMatrix = (
   // --- ДРАМАТУРГИЧЕСКИЙ РЕЗОНАНС (КУЛЬМИНАЦИЯ) ---
   if (context.delta > 0.9) { 
     if (eventA.type.includes('tom') || eventB.type.includes('tom')) return 0.85;
-    if (isCrash(eventA) || isCrash(eventB)) return 1.0;
+    // Crash is inappropriate for ambient
+    if ((isCrash(eventA) || isCrash(eventB)) && context.genre !== 'ambient') return 1.0;
   } else { 
     if (isCrash(eventA) || isCrash(eventB)) return 0.05;
   }
@@ -111,5 +112,3 @@ export const MelancholicMinorK: ResonanceMatrix = (
   // Нейтральный резонанс для всех остальных комбинаций
   return 0.5;
 };
-
-    
