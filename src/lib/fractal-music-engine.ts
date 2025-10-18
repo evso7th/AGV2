@@ -192,9 +192,10 @@ function createBassFill(this: FractalMusicEngine, mood: Mood, genre: Genre, rand
     const fill: FractalEvent[] = [];
     const scale = getScaleForMood(mood);
     const fillParams = getParamsForTechnique('fill', mood, genre);
-    const numNotes = random.nextInt(4) + 5; // 5 to 8 notes for more musical fills
+    const numNotes = random.nextInt(3) + 5; // Generates 5, 6, or 7 notes
     let currentTime = 0;
     
+    // Predominantly low, infrequently mid, rarely high
     const selectNote = (lastNote?: number): number => {
         const lastNoteIndex = lastNote !== undefined ? scale.indexOf(lastNote) : -1;
         const r = random.next();
@@ -473,7 +474,7 @@ export class FractalMusicEngine {
              // --- DYNAMIC PERCUSSION LOGIC ---
             const percRule = STYLE_PERCUSSION_RULES[this.config.genre];
             if (percRule && this.config.drumSettings.enabled) {
-                const dynamicProbability = percRule.probability * Math.max(0.2, Math.min(1.5, (120 / this.tempo)));
+                const dynamicProbability = percRule.probability * Math.max(0.2, Math.min(1.5, (120 / this.config.tempo)));
                 
                 if (Math.random() < dynamicProbability) {
                     const occupiedTimes = new Set(drumEvents.map(e => e.time));
@@ -482,16 +483,17 @@ export class FractalMusicEngine {
                     
                     if (availableTimes.length > 0 && percPool.length > 0) {
                         // Decide between a single hit or a mini-fill
-                        if (Math.random() > 0.8) { // 20% chance for a mini-fill
-                            const fillLength = Math.min(availableTimes.length, this.random.nextInt(2) + 2); // 2 or 3 hits
+                        if (Math.random() > 0.7) { // 30% chance for a mini-fill
+                            const fillLength = Math.min(availableTimes.length, this.random.nextInt(3) + 5); // 5 to 7 hits
                             console.log(`[DynamicPerc] Adding a ${fillLength}-hit fill.`);
                             for (let i = 0; i < fillLength; i++) {
+                                if (availableTimes.length === 0) break;
                                 const timeIndex = Math.floor(Math.random() * availableTimes.length);
                                 const time = availableTimes.splice(timeIndex, 1)[0];
                                 const type = percPool[Math.floor(Math.random() * percPool.length)];
                                 drumEvents.push({ type, time, duration: 0.25, weight: percRule.weight * 0.9, note: 36, phrasing: 'staccato', dynamics: 'p', params: getParamsForTechnique('hit', this.config.mood, this.config.genre) } as FractalEvent);
                             }
-                        } else { // 80% chance for a single hit
+                        } else { // 70% chance for a single hit
                             const time = availableTimes[Math.floor(Math.random() * availableTimes.length)];
                             const type = percPool[Math.floor(Math.random() * percPool.length)];
                             drumEvents.push({ type, time, duration: 0.25, weight: percRule.weight, note: 36, phrasing: 'staccato', dynamics: 'p', params: getParamsForTechnique('hit', this.config.mood, this.config.genre) } as FractalEvent);
@@ -593,5 +595,3 @@ export class FractalMusicEngine {
     };
   }
 }
-
-    

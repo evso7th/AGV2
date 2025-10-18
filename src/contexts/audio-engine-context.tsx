@@ -38,7 +38,7 @@ type WorkerMessage = {
 // --- Constants ---
 const VOICE_BALANCE: Record<InstrumentPart, number> = {
   bass: 1.0, melody: 0.7, accompaniment: 0.6, drums: 1.0,
-  effects: 0.6, sparkles: 0.35, piano: 1.0, violin: 0.8, flute: 0.8, guitarChords: 0.9,
+  effects: 0.6, sparkles: 0.7, piano: 1.0, violin: 0.8, flute: 0.8, guitarChords: 0.9,
   acousticGuitarSolo: 0.9,
 };
 
