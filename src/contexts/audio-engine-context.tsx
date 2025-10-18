@@ -103,9 +103,10 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
     const bassEvents: FractalEvent[] = [];
 
     for (const event of events) {
-      if (event.type.startsWith('drum_') || event.type.startsWith('perc-')) {
+      const eventType = Array.isArray(event.type) ? event.type[0] : event.type;
+      if (typeof eventType === 'string' && (eventType.startsWith('drum_') || eventType.startsWith('perc-'))) {
         drumEvents.push(event);
-      } else if (event.type === 'bass') {
+      } else if (eventType === 'bass') {
         bassEvents.push(event);
       }
     }
