@@ -25,10 +25,6 @@ const SPARKLE_SAMPLES = {
         '/assets/music/droplets/electro/ElectroShock.ogg',
         '/assets/music/droplets/electro/MelancholicPad.ogg',
         '/assets/music/droplets/electro/Electricity.ogg',
-        '/assets/music/droplets/EPstein.ogg',
-        '/assets/music/droplets/BladeWalker.ogg',
-        '/assets/music/droplets/Confusion.ogg',
-        '/assets/music/droplets/Koto1.ogg',
     ],
     DARK: [
         '/assets/music/droplets/dark/Fearsome.ogg',
