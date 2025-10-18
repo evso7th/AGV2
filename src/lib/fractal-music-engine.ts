@@ -1,7 +1,7 @@
 
 import type { FractalEvent, Mood, Genre, Technique, BassSynthParams, InstrumentType } from '@/types/fractal';
 import { MelancholicMinorK } from './resonance-matrices';
-import { getScaleForMood, STYLE_DRUM_PATTERNS, STYLE_BASS_PATTERNS, type BassPatternDefinition, PERCUSSION_SETS } from './music-theory';
+import { getScaleForMood, STYLE_DRUM_PATTERNS, STYLE_BASS_PATTERNS, type BassPatternDefinition, STYLE_PERCUSSION_RULES } from './music-theory';
 
 export type Branch = {
   id: string;
@@ -67,7 +67,6 @@ function createDrumAxiom(genre: Genre, mood: Mood, tempo: number, random: { next
 
     if (!loop) return { events: [], tags: [] };
 
-    // Этап 1: Генерация основного бита (Kick, Snare, Hi-hat)
     const allBaseEvents = [...(loop.kick || []), ...(loop.snare || []), ...(loop.hihat || [])];
     for (const baseEvent of allBaseEvents) {
         if (baseEvent.probability && random.next() > baseEvent.probability) {
@@ -75,7 +74,6 @@ function createDrumAxiom(genre: Genre, mood: Mood, tempo: number, random: { next
         }
 
         let instrumentType: InstrumentType;
-        // Если тип - массив, выбираем один на основе вероятностей
         if (Array.isArray(baseEvent.type)) {
             const types = baseEvent.type as InstrumentType[];
             const probabilities = baseEvent.probabilities || [];
@@ -103,40 +101,6 @@ function createDrumAxiom(genre: Genre, mood: Mood, tempo: number, random: { next
             dynamics: 'mf', // Placeholder
             params: hitParams,
         } as FractalEvent);
-    }
-    
-    // Этап 2: Добавление перкуссии ("Приправа")
-    if (grammar.percussion) {
-        const tempoModifier = 1.5 - (tempo / 120); 
-        const dynamicProbability = grammar.percussion.probability * Math.max(0.2, Math.min(1.5, tempoModifier));
-        
-        // Используем Math.random() для действительно случайного события в каждом такте
-        if (Math.random() < dynamicProbability) {
-            const occupiedTimes = new Set(axiomEvents.map(e => e.time));
-            const availableTimes = grammar.percussion.allowedTimes.filter(t => !occupiedTimes.has(t));
-            
-            if (availableTimes.length > 0) {
-                // И здесь Math.random() для выбора времени
-                const time = availableTimes[Math.floor(Math.random() * availableTimes.length)];
-                
-                const percPool = grammar.percussion.types;
-                if (percPool.length > 0) {
-                  // И здесь Math.random() для выбора инструмента
-                  const type = percPool[Math.floor(Math.random() * percPool.length)];
-                  
-                  axiomEvents.push({
-                      type: type,
-                      time: time,
-                      duration: 0.25,
-                      weight: grammar.percussion.weight,
-                      note: 36, // Placeholder
-                      phrasing: 'staccato',
-                      dynamics: 'p',
-                      params: hitParams
-                  } as FractalEvent);
-                }
-            }
-        }
     }
 
     return { events: axiomEvents, tags: loop.tags };
@@ -397,8 +361,7 @@ export class FractalMusicEngine {
                 });
                 break;
             case 1: // Add percussion
-                const grammar = STYLE_DRUM_PATTERNS[this.config.genre] || STYLE_DRUM_PATTERNS['ambient'];
-                const percRule = grammar.percussion;
+                const percRule = STYLE_PERCUSSION_RULES[this.config.genre] || STYLE_PERCUSSION_RULES['ambient'];
                 if (percRule && percRule.types.length > 0) {
                     const timeSlots = percRule.allowedTimes;
                     const targetTime = timeSlots[this.random.nextInt(timeSlots.length)];
@@ -466,11 +429,45 @@ export class FractalMusicEngine {
 
     if (drumBranches.length > 0) {
         const winningDrumBranch = drumBranches.reduce((max, b) => b.weight > max.weight ? b : max, drumBranches[0]);
-        let drumEvents = winningDrumBranch.events;
+        let drumEvents = [...winningDrumBranch.events]; // Make a mutable copy
+        
         if (this.drumFillForThisEpoch) {
             drumEvents = this.drumFillForThisEpoch;
             this.drumFillForThisEpoch = null;
         }
+
+        // --- DYNAMIC PERCUSSION LOGIC ---
+        const percRule = STYLE_PERCUSSION_RULES[this.config.genre];
+        if (percRule) {
+            const tempoModifier = 1.5 - (this.tempo / 120); 
+            const dynamicProbability = percRule.probability * Math.max(0.2, Math.min(1.5, tempoModifier));
+            
+            if (Math.random() < dynamicProbability) {
+                const occupiedTimes = new Set(drumEvents.map(e => e.time));
+                const availableTimes = percRule.allowedTimes.filter(t => !occupiedTimes.has(t));
+                
+                if (availableTimes.length > 0) {
+                    const time = availableTimes[Math.floor(Math.random() * availableTimes.length)];
+                    const percPool = percRule.types;
+                    if (percPool.length > 0) {
+                      const type = percPool[Math.floor(Math.random() * percPool.length)];
+                      drumEvents.push({
+                          type: type,
+                          time: time,
+                          duration: 0.25,
+                          weight: percRule.weight,
+                          note: 36, // Placeholder
+                          phrasing: 'staccato',
+                          dynamics: 'p',
+                          params: getParamsForTechnique('hit', this.config.mood, this.config.genre)
+                      } as FractalEvent);
+                    }
+                }
+            }
+        }
+        // --- END DYNAMIC PERCUSSION ---
+
+
         drumEvents.forEach(event => {
             output.push({ ...event, weight: event.weight ?? 1.0 });
         });
