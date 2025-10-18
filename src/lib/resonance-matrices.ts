@@ -33,6 +33,7 @@ const isSnare = (event: FractalEvent): boolean => event.type === 'drum_snare';
 const isBass = (event: FractalEvent): boolean => event.type === 'bass';
 const isCrash = (event: FractalEvent): boolean => event.type === 'drum_crash';
 const isFill = (event: FractalEvent): boolean => event.technique === 'fill';
+const isTom = (event: FractalEvent): boolean => event.type.startsWith('drum_tom');
 
 // === ОСНОВНАЯ ФУНКЦИЯ РЕЗОНАНСА ===
 
@@ -41,43 +42,42 @@ export const MelancholicMinorK: ResonanceMatrix = (
   eventB: FractalEvent,
   context: { mood: Mood; tempo: number; delta: number }
 ): number => {
+  const event1IsBass = isBass(eventA);
+  const event2IsBass = isBass(eventB);
+  const event1IsDrums = eventA.type.startsWith('drum_') || eventA.type.startsWith('perc-');
+  const event2IsDrums = eventB.type.startsWith('drum_') || eventB.type.startsWith('perc-');
+
   // --- Ритмический резонанс (БАС ↔ УДАРНЫЕ) ---
-  if ((isBass(eventA) && isKick(eventB)) || (isKick(eventA) && isBass(eventB))) {
-    const bassEvent = isBass(eventA) ? eventA : eventB;
-    const kickTime = isKick(eventA) ? eventA.time : eventB.time;
+  if ((event1IsBass && event2IsDrums) || (event1IsDrums && event2IsBass)) {
+      const bassEvent = event1IsBass ? eventA : eventB;
+      const drumEvent = event1IsDrums ? eventA : eventB;
 
-    // Поощрение за "филл" в сочетании с киком
-    if (isFill(bassEvent) && areSimultaneous(bassEvent.time, kickTime)) {
-        return 0.9;
-    }
+      // Сильный резонанс для филлов
+      if (isFill(bassEvent) && (isTom(drumEvent) || isSnare(drumEvent))) {
+          if (areSimultaneous(bassEvent.time, drumEvent.time)) return 1.0;
+          if (Math.abs(bassEvent.time - drumEvent.time) < 0.25) return 0.9;
+      }
+      
+      if (isKick(drumEvent)) {
+        if (areSimultaneous(bassEvent.time, drumEvent.time) && isOnStrongBeat(bassEvent.time)) return 1.0; // Идеально
+        if (Math.abs(bassEvent.time - drumEvent.time - 0.5) < 0.1 && isOnStrongBeat(drumEvent.time)) return 0.85; // Синкопа
+        return 0.3;
+      }
 
-    // Идеально: бас на долю, kick на долю, одновременно
-    if (areSimultaneous(bassEvent.time, kickTime) && isOnStrongBeat(bassEvent.time)) {
-      return 1.0;
-    }
-    // Хорошо: бас на "и", kick на долю (синкопа)
-    if (Math.abs(bassEvent.time - kickTime - 0.5) < 0.1 && isOnStrongBeat(kickTime)) {
-      return 0.85;
-    }
-    return 0.3; // Слабый резонанс в остальных случаях
-  }
-
-  if ((isBass(eventA) && isSnare(eventB)) || (isSnare(eventA) && isBass(eventB))) {
-    // Штраф за бас и малый барабан на одной доле
-    if (areSimultaneous(eventA.time, eventB.time) && isOnSnareBeat(eventA.time)) {
-      return 0.1;
-    }
-    return 0.8; // Нейтрально-положительный, если не совпадают
+      if (isSnare(drumEvent)) {
+        if (areSimultaneous(bassEvent.time, drumEvent.time) && isOnSnareBeat(bassEvent.time)) return 0.1; // Конфликт
+        return 0.8;
+      }
   }
   
   // --- ВНУТРЕННИЙ РЕЗОНАНС УДАРНЫХ ---
-  if ((isKick(eventA) && isSnare(eventB)) || (isSnare(eventA) && isKick(eventB))) {
-    const kickTime = isKick(eventA) ? eventA.time : eventB.time;
-    const snareTime = isSnare(eventA) ? eventA.time : eventB.time;
-    if (isOnStrongBeat(kickTime) && isOnSnareBeat(snareTime)) {
-      return 0.95;
-    }
-    return 0.4;
+  if (event1IsDrums && event2IsDrums) {
+      if ((isKick(eventA) && isSnare(eventB)) || (isSnare(eventA) && isKick(eventB))) {
+        const kickTime = isKick(eventA) ? eventA.time : eventB.time;
+        const snareTime = isSnare(eventA) ? eventA.time : eventB.time;
+        if (isOnStrongBeat(kickTime) && isOnSnareBeat(snareTime)) return 0.95;
+        return 0.4;
+      }
   }
 
   // Ghost notes поощряются в слабых долях
@@ -92,8 +92,8 @@ export const MelancholicMinorK: ResonanceMatrix = (
     const noteAInScale = scale.some(scaleNote => (eventA.note % 12) === (scaleNote % 12));
     const noteBInScale = scale.some(scaleNote => (eventB.note % 12) === (scaleNote % 12));
     
-    // Если обе ноты - часть филла, они должны хорошо сочетаться
     if (isFill(eventA) && isFill(eventB)) {
+        // Для филлов более строгая гармоническая проверка
         return noteAInScale && noteBInScale ? 0.95 : 0.2;
     }
     
@@ -111,3 +111,5 @@ export const MelancholicMinorK: ResonanceMatrix = (
   // Нейтральный резонанс для всех остальных комбинаций
   return 0.5;
 };
+
+    
