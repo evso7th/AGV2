@@ -38,6 +38,10 @@ const DRUM_SAMPLES: Record<string, string> = {
     'snare_ghost_note': '/assets/drums/snare_ghost_note.wav',
     'snare_off': '/assets/drums/snare_off.wav',
     'snarepress': '/assets/drums/snarepress.wav',
+    'a_ride1': '/assets/drums/a-ride1.mp3',
+    'a_ride2': '/assets/drums/a-ride2.mp3',
+    'a_ride3': '/assets/drums/a-ride3.mp3',
+    'a_ride4': '/assets/drums/a-ride4.mp3',
     // Aliases for compatibility
     'kick': '/assets/drums/kick_drum6.wav',
     'hihat_closed': '/assets/drums/closed_hi_hat_accented.wav',
@@ -128,7 +132,6 @@ export class DrumMachine {
         for (const event of score) {
             if (!event.type.startsWith('drum_') && !event.type.startsWith('perc-')) continue;
             
-            // This is the corrected line
             const sampleName = event.type.startsWith('drum_') ? event.type.replace('drum_', '') : event.type;
 
             if (!DRUM_SAMPLES[sampleName as keyof typeof DRUM_SAMPLES]) {
