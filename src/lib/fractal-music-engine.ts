@@ -35,6 +35,8 @@ function getParamsForTechnique(technique: Technique, mood: Mood, genre: Genre): 
        return { cutoff: 1200, resonance: 0.5, distortion: 0.3, portamento: 0.0 };
     case 'fill':
        return { cutoff: 1200, resonance: 0.6, distortion: 0.25, portamento: 0.0 };
+    case 'swell':
+       return { cutoff: 200, resonance: 1.1, distortion: 0.0, portamento: 0.1, attack: 0.8, release: 2.0 };
     default: // 'hit' or others
       return { cutoff: 500, resonance: 0.2, distortion: 0.0, portamento: 0.0 };
   }
@@ -170,7 +172,7 @@ function createRhythmSectionFill(mood: Mood, genre: Genre, random: { next: () =>
         const currentDrumTime = drumTime;
         drumFill.push({ type: instrument, note: 41 + i, duration, time: currentDrumTime, weight: 0.7 + random.next() * 0.2, technique: 'hit', dynamics: 'mf', phrasing: 'staccato', params: hitParams });
         
-        // Scenario 3: Bass and Drums jam together
+        // Bass and Drums jam together
         if (random.next() > 0.4) {
              const noteIndex = random.nextInt(scale.length);
              bassFill.push({ type: 'bass', note: scale[noteIndex], duration: duration * 0.8, time: currentDrumTime, weight: 0.7 + random.next() * 0.2, technique: 'fill', dynamics: 'mf', phrasing: 'staccato', params: fillParams });
@@ -192,21 +194,24 @@ function createBassFill(this: FractalMusicEngine, mood: Mood, genre: Genre, rand
     const fill: FractalEvent[] = [];
     const scale = getScaleForMood(mood);
     const fillParams = getParamsForTechnique('fill', mood, genre);
-    const numNotes = random.nextInt(3) + 5; // Generates 5, 6, or 7 notes
-    let currentTime = 0;
     
-    // Predominantly low, infrequently mid, rarely high
+    // Ambient fills are slower and more melodic
+    const numNotes = genre === 'ambient' ? random.nextInt(2) + 3 : random.nextInt(4) + 7; // 3-4 for ambient, 7-10 for others
+    const baseDuration = genre === 'ambient' ? 1.0 : 0.25;
+
+    let currentTime = 0;
+
     const selectNote = (lastNote?: number): number => {
         const lastNoteIndex = lastNote !== undefined ? scale.indexOf(lastNote) : -1;
         const r = random.next();
-        if (lastNoteIndex !== -1 && r < 0.6) { // 60% chance for stepwise motion
+        if (lastNoteIndex !== -1 && r < 0.6) {
             const step = random.next() > 0.5 ? 1 : -1;
             return scale[(lastNoteIndex + step + scale.length) % scale.length];
-        } else if (r < 0.85) { // 25% chance for chord tones (root, 3rd, 5th, 7th)
+        } else if (r < 0.85) {
             const chordToneIndices = [0, 2, 4, 6].filter(i => i < scale.length);
             return scale[chordToneIndices[random.nextInt(chordToneIndices.length)]];
-        } else { // 15% chance for a larger jump
-             const step = random.next() > 0.5 ? (random.nextInt(3) + 2) : -(random.nextInt(3) + 2); // Jump of 2, 3 or 4
+        } else {
+             const step = random.next() > 0.5 ? (random.nextInt(3) + 2) : -(random.nextInt(3) + 2);
              const targetIndex = (lastNoteIndex !== -1 ? lastNoteIndex : 0) + step;
              return scale[ (targetIndex + scale.length) % scale.length ];
         }
@@ -217,10 +222,10 @@ function createBassFill(this: FractalMusicEngine, mood: Mood, genre: Genre, rand
     for (let i = 0; i < numNotes; i++) {
         let duration: number;
         const rhythmChoice = random.next();
-        if (rhythmChoice < 0.5) duration = 0.25;      // 50% 16th
-        else if (rhythmChoice < 0.8) duration = 0.5; // 30% 8th
-        else if (rhythmChoice < 0.95) duration = 0.75; // 15% dotted 8th
-        else duration = 0.125;                       // 5% 32nd for flair
+        if (rhythmChoice < 0.5) duration = baseDuration;
+        else if (rhythmChoice < 0.8) duration = baseDuration * 2;
+        else if (rhythmChoice < 0.95) duration = baseDuration * 1.5;
+        else duration = baseDuration / 2;
 
         if (currentTime + duration > 4.0) break;
 
@@ -232,7 +237,7 @@ function createBassFill(this: FractalMusicEngine, mood: Mood, genre: Genre, rand
         currentNote = selectNote(currentNote);
     }
     
-    if (currentTime > 4.0) {
+    if (currentTime > 4.0 && currentTime > 0) {
         const scaleFactor = 4.0 / currentTime;
         fill.forEach(e => {
             e.time *= scaleFactor;
@@ -240,18 +245,15 @@ function createBassFill(this: FractalMusicEngine, mood: Mood, genre: Genre, rand
         });
     }
     
-    // Штраф за слишком высокий регистр
     const maxNote = Math.max(...scale);
-    const highNoteThreshold = maxNote - 12; // Последняя октава считается высокой
+    const highNoteThreshold = maxNote - 12;
     const hasHighNotes = fill.some(n => n.note > highNoteThreshold);
     
     if (hasHighNotes) {
         console.warn(`[BassFillPenalty] High-register fill detected. Applying penalty.`);
-        // Применяем очень сильный штраф к весу всей ветви, чтобы она "умерла" после одного проигрывания
         fill.forEach(e => e.weight *= 0.1); 
-        this.needsBassReset = true; // Триггер для сброса к аксиоме на следующей эпохе
+        this.needsBassReset = true;
     }
-
 
     return fill;
 }
@@ -343,6 +345,9 @@ export class FractalMusicEngine {
     let newTechnique: Technique = parent.technique;
 
     if (parent.type === 'bass') {
+      const fillProbability = this.config.genre === 'ambient' ? 0.2 : 0.8;
+      if (this.random.next() > fillProbability) return null;
+        
       const newFill = createBassFill.call(this, this.config.mood, this.config.genre, this.random);
       if (newFill.length === 0) return null;
       
@@ -355,7 +360,7 @@ export class FractalMusicEngine {
           type: 'bass' 
       };
     } else if (parent.type === 'drums') {
-        const mutationType = this.random.nextInt(5); // Increased to 5 for the new case
+        const mutationType = this.random.nextInt(5);
         let mutationApplied = false;
 
         switch(mutationType) {
@@ -407,21 +412,21 @@ export class FractalMusicEngine {
                     mutationApplied = true;
                 }
                 break;
-            case 4: // Percussion Fill (The new logic)
+            case 4: // Percussion Fill
                 const percRule = STYLE_PERCUSSION_RULES[this.config.genre];
                 if (percRule && percRule.types.length > 0) {
                     const occupiedTimes = new Set(newEvents.map(e => e.time));
                     let availableTimes = percRule.allowedTimes.filter(t => !occupiedTimes.has(t));
-                    const fillLength = this.random.nextInt(3) + 5; // 5 to 7 hits
+                    const fillLength = this.random.nextInt(3) + 5; 
                     
                     if (availableTimes.length >= fillLength) {
                         console.log(`[DrumMutation] Generating a ${fillLength}-hit percussion fill.`);
                         for (let i = 0; i < fillLength; i++) {
                             if (availableTimes.length === 0) break;
                             const timeIndex = this.random.nextInt(availableTimes.length);
-                            const time = availableTimes.splice(timeIndex, 1)[0]; // Remove to avoid collision
+                            const time = availableTimes.splice(timeIndex, 1)[0];
                             const type = percRule.types[this.random.nextInt(percRule.types.length)];
-                            newEvents.push({ type, note: 36, duration: 0.25, time, weight: percRule.weight * 0.8, technique: 'hit', dynamics: 'p', phrasing: 'staccato', params: getParamsForTechnique('hit', this.config.mood, this.config.genre) } as FractalEvent);
+                            newEvents.push({ type, note: 36, duration: 0.25, time, weight: percRule.weight * 0.9, technique: 'hit', dynamics: 'p', phrasing: 'staccato', params: getParamsForTechnique('hit', this.config.mood, this.config.genre) } as FractalEvent);
                         }
                         mutationApplied = true;
                     }
@@ -490,22 +495,21 @@ export class FractalMusicEngine {
         } else if (winningBassBranch?.technique === 'fill') { // Scenario 1: Drummer follows Bass
             console.log(`%c[DRUM RESPONSE] at epoch ${this.epoch}: Bass is playing a fill, generating drum response.`, "color: #007acc;");
             const { drumFill } = createRhythmSectionFill(this.config.mood, this.config.genre, this.random);
-            // Replace the latter half of the drum events with the fill
             const baseBeat = drumEvents.filter(e => e.time < 2.0);
             drumEvents = [...baseBeat, ...drumFill];
         } else {
-             // --- DYNAMIC PERCUSSION LOGIC ---
             const percRule = STYLE_PERCUSSION_RULES[this.config.genre];
             if (percRule && this.config.drumSettings.enabled) {
                 const dynamicProbability = percRule.probability * Math.max(0.2, Math.min(1.5, (120 / this.config.tempo)));
                 
-                if (Math.random() < dynamicProbability) {
+                if (this.random.next() < dynamicProbability) {
                     const occupiedTimes = new Set(drumEvents.map(e => e.time));
                     let availableTimes = percRule.allowedTimes.filter(t => !occupiedTimes.has(t));
                     const percPool = percRule.types;
                     
                     if (availableTimes.length > 0 && percPool.length > 0) {
-                        if (Math.random() > 0.7) { 
+                        // Generate a longer fill with a small probability
+                        if (this.random.next() > 0.7) { 
                             const fillLength = Math.min(availableTimes.length, this.random.nextInt(3) + 5); 
                             for (let i = 0; i < fillLength; i++) {
                                 if (availableTimes.length === 0) break;
@@ -529,7 +533,6 @@ export class FractalMusicEngine {
         });
     }
     
-    // --- DLA: Genetic mutation ---
     const shouldMutateBass = this.random.next() < (this.config.density * 0.4);
     const shouldMutateDrums = this.random.next() < (this.config.density * 0.4); 
 
@@ -616,5 +619,3 @@ export class FractalMusicEngine {
     };
   }
 }
-
-    

@@ -14,13 +14,18 @@ import type { FractalEvent } from '@/types/fractal';
 // --- "Sparkle" (In-krap-le-ni-ye) Logic ---
 let lastSparkleTime = -Infinity;
 
-function shouldAddSparkle(currentTime: number, density: number): boolean {
+function shouldAddSparkle(currentTime: number, density: number, genre: Genre): boolean {
     const timeSinceLast = currentTime - lastSparkleTime;
-    const minTime = 30; 
-    const maxTime = 90;
+    const baseMinTime = 30; 
+    const baseMaxTime = 90;
+
+    // For ambient, make sparkles more frequent
+    const isAmbient = genre === 'ambient';
+    const minTime = isAmbient ? 15 : baseMinTime;
+    const maxTime = isAmbient ? 45 : baseMaxTime;
 
     if (timeSinceLast < minTime) return false;
-    if (density > 0.6) return false; 
+    if (density > 0.6 && !isAmbient) return false; 
 
     const chance = ((timeSinceLast - minTime) / (maxTime - minTime)) * (1 - density);
     return Math.random() < chance;
@@ -149,6 +154,7 @@ const Scheduler = {
         if (!this.isRunning || !fractalMusicEngine) return;
         
         const density = this.settings.density;
+        const genre = this.settings.genre;
         let events: FractalEvent[] = [];
 
         if (this.settings.score === 'neuro_f_matrix') {
@@ -162,8 +168,10 @@ const Scheduler = {
         const currentTime = this.barCount * this.barDuration;
         
         if (this.settings.textureSettings.sparkles.enabled) {
-            if (shouldAddSparkle(currentTime, density)) {
-                 self.postMessage({ type: 'sparkle', time: 0, genre: this.settings.genre, mood: this.settings.mood });
+            if (shouldAddSparkle(currentTime, density, genre)) {
+                 // For ambient, always use electronic sparkles as requested
+                 const sparkleGenre = genre === 'ambient' ? 'trance' : genre;
+                 self.postMessage({ type: 'sparkle', time: 0, genre: sparkleGenre, mood: this.settings.mood });
                  lastSparkleTime = currentTime;
             }
         }

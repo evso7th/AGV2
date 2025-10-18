@@ -19,6 +19,7 @@ export type Technique =
   | 'slap'     // slap & pop (удар + щелчок)
   | 'harmonic' // флажолет
   | 'fill'     // басовый проигрыш (сбивка)
+  | 'swell'    // медленное нарастание, как пэд
   // Ударные
   | 'hit';     // стандартный удар по сэмплу
 
@@ -43,6 +44,7 @@ export type InstrumentType =
   | 'drum_snare'
   | 'drum_snare_ghost_note'
   | 'drum_snare_off'
+  | 'drum_snarepress'
   | 'drum_hihat_closed'
   | 'drum_hihat_open'
   | 'drum_ride'
@@ -80,6 +82,8 @@ export type BassSynthParams = {
   resonance: number;
   distortion: number;
   portamento: number;
+  attack?: number;
+  release?: number;
 };
 
 /**

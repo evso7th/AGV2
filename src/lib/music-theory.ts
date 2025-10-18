@@ -95,18 +95,28 @@ export function getScaleForMood(mood: Mood): number[] {
 
 const defaultHitParams: BassSynthParams = { cutoff: 500, resonance: 0.2, distortion: 0.0, portamento: 0.0 };
 const ALL_RIDES: InstrumentType[] = ['drum_ride', 'drum_a_ride1', 'drum_a_ride2', 'drum_a_ride3', 'drum_a_ride4'];
+const AMBIENT_SNARES: InstrumentType[] = ['drum_snare_ghost_note', 'drum_snarepress', 'drum_snare_off'];
+const AMBIENT_PERC: InstrumentType[] = [...PERCUSSION_SETS.ELECTRONIC, ...ALL_RIDES];
+
 
 // Rhythmic Grammar Library for Drums
 export const STYLE_DRUM_PATTERNS: Record<Genre, GenreRhythmGrammar> = {
     ambient: {
         loops: [
             { 
-                kick: [{ type: 'drum_kick', time: 0, duration: 4, weight: 0.6, probability: 0.8 }],
-                snare: [],
-                hihat: [{ type: ['drum_hihat_closed', 'perc-008'], probabilities: [0.7, 0.3], time: 1.5, duration: 0.5, weight: 0.3, probability: 0.6 }],
+                kick: [{ type: 'drum_kick', time: 0, duration: 4, weight: 0.5, probability: 0.25 }],
+                snare: [{ type: AMBIENT_SNARES, time: 2.5, duration: 0.5, weight: 0.3, probability: 0.15 }],
+                hihat: [{ type: AMBIENT_PERC, time: 1.5, duration: 0.5, weight: 0.4, probability: 0.4 }],
                 tags: ['ambient-pulse']
             }
         ],
+         percussion: {
+            types: AMBIENT_PERC,
+            allowedTimes: [0.75, 1.25, 1.75, 2.25, 2.75, 3.25, 3.75],
+            probability: 0.6, 
+            weight: 0.3,
+            type: 'electronic'
+        }
     },
     rock: {
         loops: [
@@ -258,11 +268,11 @@ export const STYLE_DRUM_PATTERNS: Record<Genre, GenreRhythmGrammar> = {
 
 export const STYLE_PERCUSSION_RULES: Record<Genre, PercussionRule> = {
     ambient: {
-        types: ['perc-011', 'perc-007', 'drum_ride', 'cymbal_bell1'],
-        allowedTimes: [1.75, 2.5, 3.25],
-        probability: 0.4, 
-        weight: 0.25,
-        type: 'acoustic'
+        types: PERCUSSION_SETS.ELECTRONIC,
+        allowedTimes: [0.75, 1.25, 1.75, 2.25, 2.75, 3.25, 3.75],
+        probability: 0.6, 
+        weight: 0.3,
+        type: 'electronic'
     },
     rock: {
         types: ['drum_crash', 'perc-005', 'drum_tom_high'],
@@ -336,8 +346,10 @@ export const STYLE_PERCUSSION_RULES: Record<Genre, PercussionRule> = {
 // Bass Riff Library
 export const STYLE_BASS_PATTERNS: Record<Genre, BassPatternDefinition[]> = {
     ambient: [
-        { pattern: [{ note: 0, time: 0, duration: 4 }], tags: ['ambient-pulse'] },
-        { pattern: [{ note: 0, time: 0, duration: 2 }, { note: 4, time: 2, duration: 2 }], tags: ['ambient-pulse'] },
+        { pattern: [{ note: 0, time: 0, duration: 4, technique: 'swell' }], tags: ['ambient-pulse'] },
+        { pattern: [{ note: 0, time: 0, duration: 2, technique: 'swell' }, { note: 4, time: 2, duration: 2, technique: 'swell' }], tags: ['ambient-pulse'] },
+        { pattern: Array.from({ length: 16 }, (_, i) => ({ note: 0, time: i * 0.25, duration: 0.25, technique: 'pluck' })), tags: ['ambient-pulse', 'pulsing'] },
+        { pattern: Array.from({ length: 32 }, (_, i) => ({ note: 0, time: i * 0.125, duration: 0.125, technique: 'pluck' })), tags: ['ambient-pulse', 'pulsing'] },
     ],
     rock: [
         { pattern: [{ note: 0, time: 0, duration: 0.5 }, { note: 0, time: 0.5, duration: 0.5 }, { note: 0, time: 1, duration: 0.5 }, { note: 0, time: 1.5, duration: 0.5 }, { note: 0, time: 2, duration: 0.5 }, { note: 0, time: 2.5, duration: 0.5 }, { note: 0, time: 3, duration: 0.5 }, { note: 0, time: 3.5, duration: 0.5 }], tags: ['rock-standard', 'rock-eighths'] },
@@ -374,7 +386,7 @@ export const STYLE_BASS_PATTERNS: Record<Genre, BassPatternDefinition[]> = {
     progressive: [
         { pattern: [{ note: 0, time: 0, duration: 0.75 }, { note: 0, time: 0.75, duration: 0.25 }, { note: 2, time: 1, duration: 1 }, { note: -1, time: 2.5, duration: 1.5 }], tags: ['prog-rock-sparse', 'syncopated'] },
     ],
-    dark: [{ pattern: [{ note: 0, time: 0, duration: 4 }], tags:['ambient-pulse'] }],
-    dreamy: [{ pattern: [{ note: 0, time: 0, duration: 4 }], tags:['ambient-pulse'] }],
+    dark: [{ pattern: [{ note: 0, time: 0, duration: 4, technique: 'swell' }], tags:['ambient-pulse'] }],
+    dreamy: [{ pattern: [{ note: 0, time: 0, duration: 4, technique: 'swell' }], tags:['ambient-pulse'] }],
     epic: [{ pattern: [{ note: 0, time: 0, duration: 2 }, { note: 4, time: 2, duration: 2 }], tags: ['ballad-simple'] }],
 };
