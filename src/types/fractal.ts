@@ -1,3 +1,4 @@
+
 /**
  * Настроение — управляет ладом, динамикой, техникой
  */
@@ -40,13 +41,32 @@ export type InstrumentType =
   // Ударные (сэмплы)
   | 'drum_kick'
   | 'drum_snare'
+  | 'drum_snare_ghost_note'
+  | 'drum_snare_off'
   | 'drum_hihat_closed'
   | 'drum_hihat_open'
   | 'drum_ride'
   | 'drum_crash'
   | 'drum_tom_low'
   | 'drum_tom_mid'
-  | 'drum_tom_high';
+  | 'drum_tom_high'
+  | 'perc-001'
+  | 'perc-002'
+  | 'perc-003'
+  | 'perc-004'
+  | 'perc-005'
+  | 'perc-006'
+  | 'perc-007'
+  | 'perc-008'
+  | 'perc-009'
+  | 'perc-010'
+  | 'perc-011'
+  | 'perc-012'
+  | 'perc-013'
+  | 'perc-014'
+  | 'perc-015'
+  | 'hh_bark_short'
+  | 'cymbal_bell1';
 
 /**
  * Параметры для синтезатора баса.
