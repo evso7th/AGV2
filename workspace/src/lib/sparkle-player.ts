@@ -19,30 +19,30 @@ const SPARKLE_SAMPLES = {
         '/assets/music/droplets/GlassBell.ogg',
     ],
     ELECTRONIC: [
-        '/assets/music/droplets/EPstein.ogg',
-        '/assets/music/droplets/Confusion.ogg',
-        '/assets/music/droplets/Freakystones.ogg',
-        '/assets/music/droplets/Koto1.ogg',
-        '/assets/music/droplets/Abstruse.ogg',
-        '/assets/music/droplets/BladeWalker.ogg',
+        '/assets/music/droplets/electro/EPstein.ogg',
+        '/assets/music/droplets/electro/Fearsome.ogg',
+        '/assets/music/droplets/electro/Dizzy.ogg',
+        '/assets/music/droplets/electro/BladeWalker.ogg',
+        '/assets/music/droplets/electro/Confusion.ogg',
+        '/assets/music/droplets/electro/Koto1.ogg',
         '/assets/music/droplets/electro/Tubator.ogg',
         '/assets/music/droplets/electro/SalvingPad.ogg',
         '/assets/music/droplets/electro/NoiseFxB06.ogg',
         '/assets/music/droplets/electro/CloseA.ogg',
         '/assets/music/droplets/electro/E_Rhythm.ogg',
         '/assets/music/droplets/electro/HousedBass7.ogg',
-        '/assets/music/droplets/electro/Dizzy.ogg',
         '/assets/music/droplets/electro/Drill.ogg',
         '/assets/music/droplets/electro/Starter.ogg',
         '/assets/music/droplets/electro/ElectroShock.ogg',
         '/assets/music/droplets/electro/MelancholicPad.ogg',
-        '/assets/music/droplets/electro/Electricity.ogg'
+        '/assets/music/droplets/electro/Electricity.ogg',
+        '/assets/music/droplets/Freakystones.ogg', // This one is in the parent droplets folder
+        '/assets/music/droplets/Abstruse.ogg' // This one is in the parent droplets folder
     ],
     DARK: [
         '/assets/music/droplets/dark/Fearsome.ogg',
         '/assets/music/droplets/dark/Grounding.ogg',
         '/assets/music/droplets/dark/Gulls.ogg',
-        // Note: These files are duplicated in the manifest, adding them to the DARK category as intended.
         '/assets/music/droplets/dark/Abstruse.ogg', 
         '/assets/music/droplets/dark/BladeWalker.ogg',
         '/assets/music/droplets/dark/Drill.ogg'
