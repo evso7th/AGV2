@@ -73,16 +73,9 @@ function createDrumAxiom(genre: Genre, mood: Mood, tempo: number, random: { next
         if (baseEvent.probability && random.next() > baseEvent.probability) {
             continue;
         }
-        
-        // Убедимся, что тип - строка, а не массив
-        if (Array.isArray(baseEvent.type)) {
-            console.error("[createDrumAxiom] Error: baseEvent.type should not be an array. Defaulting to first element.", baseEvent);
-        }
-        const instrumentType = Array.isArray(baseEvent.type) ? baseEvent.type[0] : baseEvent.type;
 
         axiomEvents.push({
             ...baseEvent,
-            type: instrumentType,
             note: 36, // Placeholder MIDI
             phrasing: 'staccato',
             dynamics: 'mf', // Placeholder
@@ -90,8 +83,8 @@ function createDrumAxiom(genre: Genre, mood: Mood, tempo: number, random: { next
         } as FractalEvent);
     }
     
-    // Этап 2: Добавление перкуссии ("приправа") от второго логического барабанщика
-    if (grammar.percussion && grammar.percussion.types.length > 0) {
+    // Этап 2: Добавление перкуссии ("Приправа") - "Второй барабанщик"
+    if (grammar.percussion) {
         const tempoModifier = 1.5 - (tempo / 120); 
         const dynamicProbability = grammar.percussion.probability * Math.max(0.2, Math.min(1.5, tempoModifier));
         
@@ -101,18 +94,29 @@ function createDrumAxiom(genre: Genre, mood: Mood, tempo: number, random: { next
             
             if (availableTimes.length > 0) {
                 const time = availableTimes[random.nextInt(availableTimes.length)];
-                const type = grammar.percussion.types[random.nextInt(grammar.percussion.types.length)];
                 
-                axiomEvents.push({
-                    type: type,
-                    time: time,
-                    duration: 0.25,
-                    weight: grammar.percussion.weight,
-                    note: 36, // Placeholder
-                    phrasing: 'staccato',
-                    dynamics: 'p',
-                    params: hitParams
-                } as FractalEvent);
+                // --- Интеллектуальный выбор набора перкуссии ---
+                let percPool: InstrumentType[] = PERCUSSION_SETS.NEUTRAL;
+                if (mood === 'dark') {
+                    percPool = PERCUSSION_SETS.DARK;
+                } else if (grammar.percussion.type === 'electronic') {
+                    percPool = PERCUSSION_SETS.ELECTRONIC;
+                }
+
+                if (percPool.length > 0) {
+                  const type = percPool[random.nextInt(percPool.length)];
+                  
+                  axiomEvents.push({
+                      type: type,
+                      time: time,
+                      duration: 0.25,
+                      weight: grammar.percussion.weight,
+                      note: 36, // Placeholder
+                      phrasing: 'staccato',
+                      dynamics: 'p',
+                      params: hitParams
+                  } as FractalEvent);
+                }
             }
         }
     }
@@ -252,13 +256,16 @@ function createBassFill(this: FractalMusicEngine, mood: Mood, genre: Genre, rand
         });
     }
     
-    const highNote = Math.max(...fill.map(n => n.note));
-    const highNoteThreshold = getScaleForMood(mood).slice(-5)[0]; // Top 5 notes of the scale are 'high'
+    // Штраф за слишком высокий регистр
+    const maxNote = Math.max(...scale);
+    const highNoteThreshold = maxNote - 12; // Последняя октава считается высокой
+    const hasHighNotes = fill.some(n => n.note > highNoteThreshold);
     
-    if (highNote > highNoteThreshold) {
-        console.warn(`[BassFillPenalty] High-register fill detected (max note: ${highNote}). Applying penalty.`);
+    if (hasHighNotes) {
+        console.warn(`[BassFillPenalty] High-register fill detected. Applying penalty.`);
+        // Применяем очень сильный штраф к весу всей ветви, чтобы она "умерла" после одного проигрывания
         fill.forEach(e => e.weight *= 0.1); 
-        this.needsBassReset = true;
+        this.needsBassReset = true; // Триггер для сброса к аксиоме на следующей эпохе
     }
 
 
@@ -381,16 +388,14 @@ export class FractalMusicEngine {
                 });
                 break;
             case 1: // Add percussion
-                const percGrammar = (STYLE_DRUM_PATTERNS[this.config.genre] || STYLE_DRUM_PATTERNS['ambient']).percussion;
-                if (percGrammar && percGrammar.types.length > 0) {
-                    const timeSlots = percGrammar.allowedTimes;
-                    const targetTime = timeSlots[this.random.nextInt(timeSlots.length)];
-                    if (!newEvents.some(e => Math.abs(e.time - targetTime) < 0.1)) {
-                        newEvents.push({
-                            type: percGrammar.types[this.random.nextInt(percGrammar.types.length)], note: 36, duration: 0.1, time: targetTime, weight: 0.6, technique: 'hit', dynamics: 'p', phrasing: 'staccato', params: getParamsForTechnique('hit', this.config.mood, this.config.genre)
-                        });
-                        mutationApplied = true;
-                    }
+                const percPool = PERCUSSION_SETS.NEUTRAL; // Simplified for now
+                const timeSlots = [0.25, 0.75, 1.25, 1.75, 2.25, 2.75, 3.25, 3.75];
+                const targetTime = timeSlots[this.random.nextInt(timeSlots.length)];
+                if (!newEvents.some(e => Math.abs(e.time - targetTime) < 0.1)) {
+                    newEvents.push({
+                        type: percPool[this.random.nextInt(percPool.length)], note: 36, duration: 0.1, time: targetTime, weight: 0.6, technique: 'hit', dynamics: 'p', phrasing: 'staccato', params: getParamsForTechnique('hit', this.config.mood, this.config.genre)
+                    });
+                    mutationApplied = true;
                 }
                 break;
             case 2: // Rhythmic shift (syncopation)
@@ -546,5 +551,3 @@ export class FractalMusicEngine {
     };
   }
 }
-
-    

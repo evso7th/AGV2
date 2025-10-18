@@ -9,7 +9,7 @@ const DRUM_SAMPLES: Record<string, string> = {
     'cymbal1': '/assets/drums/cymbal1.wav',
     'cymbal2': '/assets/drums/cymbal2.wav',
     'cymbal3': '/assets/drums/cymbal3.wav',
-    'cymbal4.wav': '/assets/drums/cymbal4.wav',
+    'cymbal4': '/assets/drums/cymbal4.wav',
     'cymbal_bell1': '/assets/drums/cymbal_bell1.wav',
     'cymbal_bell2': '/assets/drums/cymbal_bell2.wav',
     'hh_bark_short': '/assets/drums/hh_bark_short.wav',
@@ -38,7 +38,7 @@ const DRUM_SAMPLES: Record<string, string> = {
     'snare_ghost_note': '/assets/drums/snare_ghost_note.wav',
     'snare_off': '/assets/drums/snare_off.wav',
     'snarepress': '/assets/drums/snarepress.wav',
-    // Maintaining compatibility with old names for now
+    // Aliases for compatibility
     'kick': '/assets/drums/kick_drum6.wav',
     'hihat_closed': '/assets/drums/closed_hi_hat_accented.wav',
     'hihat_open': '/assets/drums/open_hh_top2.wav',
@@ -126,10 +126,23 @@ export class DrumMachine {
         const beatDuration = 60 / tempo;
         
         for (const event of score) {
+            // This now handles both drum_ and perc- prefixes
             if (!event.type.startsWith('drum_') && !event.type.startsWith('perc-')) continue;
 
-            const sampleName = event.type.startsWith('drum_') ? event.type.substring(5) : event.type;
+            // More robust sample name extraction
+            let sampleName = event.type;
+            if (sampleName.startsWith('drum_')) {
+                sampleName = sampleName.substring(5);
+            }
             
+            // Check if the exact name (like 'perc-001') or the derived name exists
+            if (!DRUM_SAMPLES[sampleName] && !DRUM_SAMPLES[event.type]) {
+                console.warn(`[DrumMachine] Sample not found for type: ${event.type} (derived: ${sampleName})`);
+                continue;
+            }
+            const finalSampleName = DRUM_SAMPLES[event.type] ? event.type : sampleName;
+
+
             const absoluteTime = barStartTime + (event.time * beatDuration);
             
             if (!isFinite(absoluteTime)) {
@@ -137,16 +150,16 @@ export class DrumMachine {
                 continue;
             }
             
-            const isMainBeat = ['kick', 'snare', 'hihat_closed', 'hihat_open'].some(t => event.type.includes(t));
+            const isMainBeat = ['kick', 'snare', 'hihat_closed', 'hihat_open'].some(t => sampleName.includes(t));
             const logCategory = isMainBeat ? 'Main Beat' : 'Perc/Fill';
             const color = isMainBeat ? 'color: cyan;' : 'color: orange;';
 
             console.log(
-                `%c[DrumMachine] Sched: ${logCategory.padEnd(10)} | Sample: ${sampleName.padEnd(20)} | Time: ${absoluteTime.toFixed(3)} | Vel: ${event.weight.toFixed(2)}`,
+                `%c[DrumMachine] Sched: ${logCategory.padEnd(10)} | Sample: ${finalSampleName.padEnd(25)} | Time: ${absoluteTime.toFixed(3)} | Vel: ${event.weight.toFixed(2)}`,
                 color
             );
 
-            this.sampler.triggerAttack(sampleName, absoluteTime, event.weight);
+            this.sampler.triggerAttack(finalSampleName, absoluteTime, event.weight);
         }
     }
 

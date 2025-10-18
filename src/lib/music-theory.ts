@@ -1,4 +1,3 @@
-
 // src/lib/music-theory.ts
 import type { Mood, Genre, Technique, BassSynthParams, InstrumentType } from '@/types/fractal';
 
@@ -24,8 +23,8 @@ type DrumKitPattern = {
 };
 
 type PercussionRule = {
-    // Defines which set of percussion to use
-    types: InstrumentType[]; 
+    // Defines which set of percussion to use, 'electronic' or 'neutral'
+    type: 'electronic' | 'neutral' | 'dark';
     // Times where they are allowed to be placed (in beats)
     allowedTimes: number[];
     // Probability of a percussion hit occurring in one of the allowed times per bar
@@ -104,7 +103,7 @@ export const STYLE_DRUM_PATTERNS: Record<Genre, GenreRhythmGrammar> = {
             }
         ],
         percussion: {
-            types: PERCUSSION_SETS.NEUTRAL,
+            type: 'neutral',
             allowedTimes: [1.75, 2.5, 3.25],
             probability: 0.4, 
             weight: 0.25
@@ -125,6 +124,7 @@ export const STYLE_DRUM_PATTERNS: Record<Genre, GenreRhythmGrammar> = {
             }
         ],
         percussion: {
+            type: 'neutral',
             types: ['drum_crash'],
             allowedTimes: [0],
             probability: 0.25, 
@@ -154,7 +154,7 @@ export const STYLE_DRUM_PATTERNS: Record<Genre, GenreRhythmGrammar> = {
             }
         ],
         percussion: {
-            types: PERCUSSION_SETS.ELECTRONIC,
+            type: 'electronic',
             allowedTimes: [1.75, 3.25],
             probability: 0.6, 
             weight: 0.6
@@ -182,7 +182,7 @@ export const STYLE_DRUM_PATTERNS: Record<Genre, GenreRhythmGrammar> = {
              }
         ],
         percussion: {
-             types: PERCUSSION_SETS.ELECTRONIC,
+             type: 'electronic',
              allowedTimes: [0.75, 1.75, 2.75, 3.75],
              probability: 0.5, 
              weight: 0.5
@@ -208,7 +208,7 @@ export const STYLE_DRUM_PATTERNS: Record<Genre, GenreRhythmGrammar> = {
             }
         ],
         percussion: {
-            types: PERCUSSION_SETS.ELECTRONIC,
+            type: 'electronic',
             allowedTimes: [0.75, 2.25, 2.75, 3.25],
             probability: 0.65, 
             weight: 0.4
@@ -229,6 +229,7 @@ export const STYLE_DRUM_PATTERNS: Record<Genre, GenreRhythmGrammar> = {
            }
        ],
        percussion: {
+           type: 'neutral',
            types: ['perc-013', 'perc-014', 'cymbal_bell1'],
            allowedTimes: [1.5, 3.5],
            probability: 0.45, 
@@ -250,6 +251,7 @@ export const STYLE_DRUM_PATTERNS: Record<Genre, GenreRhythmGrammar> = {
             }
         ],
         percussion: {
+            type: 'neutral',
             types: ['drum_snare_off', 'perc-009'],
             allowedTimes: [1, 3],
             probability: 0.8, 
@@ -275,6 +277,7 @@ export const STYLE_DRUM_PATTERNS: Record<Genre, GenreRhythmGrammar> = {
             }
         ],
         percussion: {
+            type: 'neutral',
             types: ['perc-002', 'hh_bark_short'],
             allowedTimes: [3.75],
             probability: 0.5, 
@@ -284,6 +287,7 @@ export const STYLE_DRUM_PATTERNS: Record<Genre, GenreRhythmGrammar> = {
     celtic: {
         loops: [ { kick: [], snare: [], hihat: [], tags: ['bodhran-pulse'] } ],
         percussion: {
+            type: 'neutral',
             types: ['drum_tom_low', 'drum_tom_mid', 'drum_tom_high'],
             allowedTimes: [0, 0.75, 1, 1.75, 2, 2.75, 3, 3.75],
             probability: 0.85, 
@@ -300,6 +304,7 @@ export const STYLE_DRUM_PATTERNS: Record<Genre, GenreRhythmGrammar> = {
             }
         ],
         percussion: {
+            type: 'neutral',
             types: ['perc-008', 'perc-011', 'drum_tom_mid'],
             allowedTimes: [0.75, 1.5, 2.75, 3.5],
             probability: 0.6, 
@@ -307,9 +312,9 @@ export const STYLE_DRUM_PATTERNS: Record<Genre, GenreRhythmGrammar> = {
         }
     },
     // Fallback genres
-    dark: { loops: [{ kick: [], snare: [], hihat: [], tags: ['ambient-pulse'] }], percussion: { types: PERCUSSION_SETS.DARK, allowedTimes: [1.25, 2.75], probability: 0.7, weight: 0.5 } },
-    dreamy: { loops: [{ kick: [], snare: [], hihat: [], tags: ['ambient-pulse'] }], percussion: { types: [], allowedTimes: [], probability: 0, weight: 0 } },
-    epic: { loops: [{ kick: [], snare: [], hihat: [], tags: ['rock-standard', 'ballad-simple'] }], percussion: { types: [], allowedTimes: [], probability: 0, weight: 0 } },
+    dark: { loops: [{ kick: [], snare: [], hihat: [], tags: ['ambient-pulse'] }], percussion: { type: 'dark', types: PERCUSSION_SETS.DARK, allowedTimes: [1.25, 2.75], probability: 0.7, weight: 0.5 } },
+    dreamy: { loops: [{ kick: [], snare: [], hihat: [], tags: ['ambient-pulse'] }], percussion: { type: 'neutral', types: [], allowedTimes: [], probability: 0, weight: 0 } },
+    epic: { loops: [{ kick: [], snare: [], hihat: [], tags: ['rock-standard', 'ballad-simple'] }], percussion: { type: 'neutral', types: [], allowedTimes: [], probability: 0, weight: 0 } },
 };
 
 // Bass Riff Library
@@ -357,5 +362,3 @@ export const STYLE_BASS_PATTERNS: Record<Genre, BassPatternDefinition[]> = {
     dreamy: [{ pattern: [{ note: 0, time: 0, duration: 4 }], tags:['ambient-pulse'] }],
     epic: [{ pattern: [{ note: 0, time: 0, duration: 2 }, { note: 4, time: 2, duration: 2 }], tags: ['ballad-simple'] }],
 };
-
-    
