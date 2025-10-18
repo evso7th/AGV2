@@ -231,15 +231,26 @@ function createBassFill(this: FractalMusicEngine, mood: Mood, genre: Genre, rand
         currentNote = selectNote(currentNote);
     }
     
-    const maxNoteInScale = Math.max(...scale);
-    const highNoteThreshold = maxNoteInScale - 12; 
+    if (currentTime > 4.0) {
+        const scaleFactor = 4.0 / currentTime;
+        fill.forEach(e => {
+            e.time *= scaleFactor;
+            e.duration *= scaleFactor;
+        });
+    }
+    
+    // Штраф за слишком высокий регистр
+    const maxNote = Math.max(...scale);
+    const highNoteThreshold = maxNote - 12; // Последняя октава считается высокой
     const hasHighNotes = fill.some(n => n.note > highNoteThreshold);
     
     if (hasHighNotes) {
         console.warn(`[BassFillPenalty] High-register fill detected. Applying penalty.`);
+        // Применяем очень сильный штраф к весу всей ветви, чтобы она "умерла" после одного проигрывания
         fill.forEach(e => e.weight *= 0.1); 
-        this.needsBassReset = true;
+        this.needsBassReset = true; // Триггер для сброса к аксиоме на следующей эпохе
     }
+
 
     return fill;
 }
@@ -348,7 +359,7 @@ export class FractalMusicEngine {
           type: 'bass' 
       };
     } else if (parent.type === 'drums') {
-        const mutationType = this.random.nextInt(4);
+        const mutationType = this.random.nextInt(5); // Increased to 5 for the new case
         let mutationApplied = false;
 
         switch(mutationType) {
@@ -359,30 +370,34 @@ export class FractalMusicEngine {
                         mutationApplied = true;
                     }
                 });
+                if(mutationApplied) console.log(`[DrumMutation] Swapped hi-hat for ride.`);
                 break;
-            case 1: // Add percussion
-                const percRule = STYLE_PERCUSSION_RULES[this.config.genre] || STYLE_PERCUSSION_RULES['ambient'];
-                if (percRule && percRule.types.length > 0) {
-                    const timeSlots = percRule.allowedTimes;
-                    const targetTime = timeSlots[this.random.nextInt(timeSlots.length)];
-                    if (!newEvents.some(e => Math.abs(e.time - targetTime) < 0.1)) {
-                        newEvents.push({
-                            type: percRule.types[this.random.nextInt(percRule.types.length)], note: 36, duration: 0.1, time: targetTime, weight: 0.6, technique: 'hit', dynamics: 'p', phrasing: 'staccato', params: getParamsForTechnique('hit', this.config.mood, this.config.genre)
-                        });
-                        mutationApplied = true;
+            case 1: // Add ghost notes
+                 let addedGhosts = 0;
+                 parent.events.forEach(event => {
+                    if (['drum_kick', 'drum_snare'].includes(event.type) && this.random.next() > 0.5) {
+                        newEvents.push({ ...event, type: 'drum_snare_ghost_note', time: event.time - 0.125, duration: 0.1, weight: 0.2, technique: 'ghost', dynamics: 'p' });
+                        addedGhosts++;
                     }
-                }
-                break;
+                 });
+                 if (addedGhosts > 0) {
+                     console.log(`[DrumMutation] Added ${addedGhosts} ghost notes.`);
+                     mutationApplied = true;
+                 }
+                 break;
             case 2: // Rhythmic shift (syncopation)
                 const snareIndex = newEvents.findIndex(e => e.type === 'drum_snare');
                 if (snareIndex > -1 && this.random.next() > 0.5) { 
-                    newEvents[snareIndex].time += (this.random.next() > 0.5 ? 0.25 : -0.25);
-                    newEvents[snareIndex].time = (newEvents[snareIndex].time + 4) % 4; // Wrap around bar
+                    const shiftAmount = this.random.next() > 0.5 ? 0.25 : -0.25;
+                    newEvents[snareIndex].time += shiftAmount;
+                    newEvents[snareIndex].time = (newEvents[snareIndex].time + 4) % 4;
+                    console.log(`[DrumMutation] Shifted snare by ${shiftAmount}.`);
                     mutationApplied = true;
                 } else { 
                     const snareToReplace = newEvents.find(e => e.type === 'drum_snare');
                     if (snareToReplace) {
                         snareToReplace.type = 'drum_tom_mid';
+                        console.log(`[DrumMutation] Replaced snare with mid tom.`);
                         mutationApplied = true;
                     }
                 }
@@ -392,7 +407,27 @@ export class FractalMusicEngine {
                 if (hihats.length > 0 && this.random.next() > 0.5) {
                     const targetHat = hihats[this.random.nextInt(hihats.length)];
                     newEvents.push({...targetHat, time: targetHat.time + 0.25 });
+                    console.log(`[DrumMutation] Doubled a hi-hat hit.`);
                     mutationApplied = true;
+                }
+                break;
+            case 4: // Percussion Fill (The new logic)
+                const percRule = STYLE_PERCUSSION_RULES[this.config.genre];
+                if (percRule && percRule.types.length > 0) {
+                    const occupiedTimes = new Set(newEvents.map(e => e.time));
+                    let availableTimes = percRule.allowedTimes.filter(t => !occupiedTimes.has(t));
+                    const fillLength = this.random.nextInt(2) + 2; // 2 or 3 hits
+                    
+                    if (availableTimes.length >= fillLength) {
+                        console.log(`[DrumMutation] Generating a ${fillLength}-hit percussion fill.`);
+                        for (let i = 0; i < fillLength; i++) {
+                            const timeIndex = this.random.nextInt(availableTimes.length);
+                            const time = availableTimes.splice(timeIndex, 1)[0]; // Remove to avoid collision
+                            const type = percRule.types[this.random.nextInt(percRule.types.length)];
+                            newEvents.push({ type, note: 36, duration: 0.25, time, weight: percRule.weight * 0.8, technique: 'hit', dynamics: 'p', phrasing: 'staccato', params: getParamsForTechnique('hit', this.config.mood, this.config.genre) } as FractalEvent);
+                        }
+                        mutationApplied = true;
+                    }
                 }
                 break;
         }
@@ -429,55 +464,53 @@ export class FractalMusicEngine {
 
     if (drumBranches.length > 0) {
         const winningDrumBranch = drumBranches.reduce((max, b) => b.weight > max.weight ? b : max, drumBranches[0]);
-        let drumEvents = [...winningDrumBranch.events]; // Make a mutable copy
+        let drumEvents = [...winningDrumBranch.events]; 
         
         if (this.drumFillForThisEpoch) {
             drumEvents = this.drumFillForThisEpoch;
             this.drumFillForThisEpoch = null;
-        }
-
-        // --- DYNAMIC PERCUSSION LOGIC ---
-        const percRule = STYLE_PERCUSSION_RULES[this.config.genre];
-        if (percRule) {
-            const tempoModifier = 1.5 - (this.tempo / 120); 
-            const dynamicProbability = percRule.probability * Math.max(0.2, Math.min(1.5, tempoModifier));
-            
-            if (Math.random() < dynamicProbability) {
-                const occupiedTimes = new Set(drumEvents.map(e => e.time));
-                const availableTimes = percRule.allowedTimes.filter(t => !occupiedTimes.has(t));
+        } else {
+             // --- DYNAMIC PERCUSSION LOGIC ---
+            const percRule = STYLE_PERCUSSION_RULES[this.config.genre];
+            if (percRule && this.config.drumSettings.enabled) {
+                const dynamicProbability = percRule.probability * Math.max(0.2, Math.min(1.5, (120 / this.tempo)));
                 
-                if (availableTimes.length > 0) {
-                    const time = availableTimes[Math.floor(Math.random() * availableTimes.length)];
+                if (Math.random() < dynamicProbability) {
+                    const occupiedTimes = new Set(drumEvents.map(e => e.time));
+                    let availableTimes = percRule.allowedTimes.filter(t => !occupiedTimes.has(t));
                     const percPool = percRule.types;
-                    if (percPool.length > 0) {
-                      const type = percPool[Math.floor(Math.random() * percPool.length)];
-                      drumEvents.push({
-                          type: type,
-                          time: time,
-                          duration: 0.25,
-                          weight: percRule.weight,
-                          note: 36, // Placeholder
-                          phrasing: 'staccato',
-                          dynamics: 'p',
-                          params: getParamsForTechnique('hit', this.config.mood, this.config.genre)
-                      } as FractalEvent);
+                    
+                    if (availableTimes.length > 0 && percPool.length > 0) {
+                        // Decide between a single hit or a mini-fill
+                        if (Math.random() > 0.8) { // 20% chance for a mini-fill
+                            const fillLength = Math.min(availableTimes.length, this.random.nextInt(2) + 2); // 2 or 3 hits
+                            console.log(`[DynamicPerc] Adding a ${fillLength}-hit fill.`);
+                            for (let i = 0; i < fillLength; i++) {
+                                const timeIndex = Math.floor(Math.random() * availableTimes.length);
+                                const time = availableTimes.splice(timeIndex, 1)[0];
+                                const type = percPool[Math.floor(Math.random() * percPool.length)];
+                                drumEvents.push({ type, time, duration: 0.25, weight: percRule.weight * 0.9, note: 36, phrasing: 'staccato', dynamics: 'p', params: getParamsForTechnique('hit', this.config.mood, this.config.genre) } as FractalEvent);
+                            }
+                        } else { // 80% chance for a single hit
+                            const time = availableTimes[Math.floor(Math.random() * availableTimes.length)];
+                            const type = percPool[Math.floor(Math.random() * percPool.length)];
+                            drumEvents.push({ type, time, duration: 0.25, weight: percRule.weight, note: 36, phrasing: 'staccato', dynamics: 'p', params: getParamsForTechnique('hit', this.config.mood, this.config.genre) } as FractalEvent);
+                        }
                     }
                 }
             }
         }
-        // --- END DYNAMIC PERCUSSION ---
-
-
+        
         drumEvents.forEach(event => {
             output.push({ ...event, weight: event.weight ?? 1.0 });
         });
     }
     
     // --- DLA: Genetic mutation ---
-    const shouldMutateBass = this.random.next() < (this.config.density * 0.5);
-    const shouldMutateDrums = this.random.next() < (this.config.density * 0.5);
+    const shouldMutateBass = this.random.next() < (this.config.density * 0.4); // Reduced probability
+    const shouldMutateDrums = this.random.next() < (this.config.density * 0.4); // Reduced probability
 
-    if (this.epoch % 2 === 1) { // Mutate on odd epochs
+    if (this.epoch > 0 && this.epoch % 2 === 0) { // Mutate on even epochs now
         if (shouldMutateBass && this.branches.filter(b => b.type === 'bass').length < 5) {
             const parentBranch = this.selectBranchForMutation('bass');
             if (parentBranch) {
