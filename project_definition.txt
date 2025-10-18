@@ -12,3 +12,4 @@ Rolling back to version 2bccd46
 
 Rolling back to version 2bccd46
 приложение сломал саб-бас. Rolling back to version 4281c62. проблема 404 решена
+Неудача со SparkPlayer. Rolling back to version 305d26a
