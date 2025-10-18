@@ -127,20 +127,13 @@ export class DrumMachine {
         
         for (const event of score) {
             if (!event.type.startsWith('drum_') && !event.type.startsWith('perc-')) continue;
-
-            // This now handles both drum_ and perc- prefixes
-            let sampleName = event.type as string;
-            if (sampleName.startsWith('drum_')) {
-                sampleName = sampleName.substring(5);
-            }
             
-            // Check if the exact name (like 'perc-001') or the derived name exists
-            if (!DRUM_SAMPLES[sampleName] && !DRUM_SAMPLES[event.type]) {
-                console.warn(`[DrumMachine] Sample not found for type: ${event.type} (derived: ${sampleName})`);
-                continue;
-            }
-            const finalSampleName = DRUM_SAMPLES[event.type] ? event.type : sampleName;
+            const sampleName = event.type;
 
+            if (!DRUM_SAMPLES[sampleName as keyof typeof DRUM_SAMPLES]) {
+                 console.warn(`[DrumMachine] Sample not found for type: ${sampleName}`);
+                 continue;
+            }
 
             const absoluteTime = barStartTime + (event.time * beatDuration);
             
@@ -149,16 +142,16 @@ export class DrumMachine {
                 continue;
             }
             
-            const isMainBeat = ['kick', 'snare', 'hihat_closed', 'hihat_open'].some(t => finalSampleName.includes(t));
+            const isMainBeat = ['kick', 'snare', 'hihat_closed', 'hihat_open'].some(t => sampleName.includes(t));
             const logCategory = isMainBeat ? 'Main Beat' : 'Perc/Fill';
             const color = isMainBeat ? 'color: cyan;' : 'color: orange;';
 
             console.log(
-                `%c[DrumMachine] Sched: ${logCategory.padEnd(10)} | Sample: ${finalSampleName.padEnd(25)} | Time: ${absoluteTime.toFixed(3)} | Vel: ${event.weight.toFixed(2)}`,
+                `%c[DrumMachine] Sched: ${logCategory.padEnd(10)} | Sample: ${sampleName.padEnd(25)} | Time: ${absoluteTime.toFixed(3)} | Vel: ${event.weight.toFixed(2)}`,
                 color
             );
 
-            this.sampler.triggerAttack(finalSampleName, absoluteTime, event.weight);
+            this.sampler.triggerAttack(sampleName, absoluteTime, event.weight);
         }
     }
 
