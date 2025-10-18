@@ -126,9 +126,9 @@ export class DrumMachine {
         const beatDuration = 60 / tempo;
         
         for (const event of score) {
-            if (!event.type.startsWith('drum_')) continue;
+            if (!event.type.startsWith('drum_') && !event.type.startsWith('perc-')) continue;
 
-            const sampleName = event.type.replace('drum_', '');
+            const sampleName = event.type.startsWith('drum_') ? event.type.substring(5) : event.type;
             
             const absoluteTime = barStartTime + (event.time * beatDuration);
             
@@ -137,7 +137,15 @@ export class DrumMachine {
                 continue;
             }
             
-            console.log(`[DrumMachine] Scheduling ${event.type} at beat ${event.time.toFixed(2)} | absolute time: ${absoluteTime.toFixed(4)}`);
+            const isMainBeat = ['kick', 'snare', 'hihat_closed', 'hihat_open'].some(t => event.type.includes(t));
+            const logCategory = isMainBeat ? 'Main Beat' : 'Perc/Fill';
+            const color = isMainBeat ? 'color: cyan;' : 'color: orange;';
+
+            console.log(
+                `%c[DrumMachine] Sched: ${logCategory.padEnd(10)} | Sample: ${sampleName.padEnd(20)} | Time: ${absoluteTime.toFixed(3)} | Vel: ${event.weight.toFixed(2)}`,
+                color
+            );
+
             this.sampler.triggerAttack(sampleName, absoluteTime, event.weight);
         }
     }
