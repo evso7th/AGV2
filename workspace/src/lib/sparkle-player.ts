@@ -6,13 +6,25 @@ const SPARKLE_SAMPLES = {
         '/assets/music/droplets/sweepingbells.ogg',
         '/assets/music/droplets/icepad.ogg',
         '/assets/music/droplets/dreams.mp3',
+        '/assets/music/droplets/Sleep.ogg',
+        '/assets/music/droplets/AcChord.ogg',
+        '/assets/music/droplets/SweetHarpRev1.ogg',
         '/assets/music/droplets/end.mp3',
+        '/assets/music/droplets/BirdFX.ogg',
         '/assets/music/droplets/vibes_a.ogg',
         '/assets/music/droplets/belldom.ogg',
         '/assets/music/droplets/merimbo.ogg',
         '/assets/music/droplets/ocean.mp3',
+        '/assets/music/droplets/BeepFreak.ogg',
+        '/assets/music/droplets/GlassBell.ogg',
     ],
     ELECTRONIC: [
+        '/assets/music/droplets/EPstein.ogg',
+        '/assets/music/droplets/Confusion.ogg',
+        '/assets/music/droplets/Freakystones.ogg',
+        '/assets/music/droplets/Koto1.ogg',
+        '/assets/music/droplets/Abstruse.ogg',
+        '/assets/music/droplets/BladeWalker.ogg',
         '/assets/music/droplets/electro/Tubator.ogg',
         '/assets/music/droplets/electro/SalvingPad.ogg',
         '/assets/music/droplets/electro/NoiseFxB06.ogg',
@@ -24,12 +36,16 @@ const SPARKLE_SAMPLES = {
         '/assets/music/droplets/electro/Starter.ogg',
         '/assets/music/droplets/electro/ElectroShock.ogg',
         '/assets/music/droplets/electro/MelancholicPad.ogg',
-        '/assets/music/droplets/electro/Electricity.ogg',
+        '/assets/music/droplets/electro/Electricity.ogg'
     ],
     DARK: [
         '/assets/music/droplets/dark/Fearsome.ogg',
         '/assets/music/droplets/dark/Grounding.ogg',
         '/assets/music/droplets/dark/Gulls.ogg',
+        // Note: These files are duplicated in the manifest, adding them to the DARK category as intended.
+        '/assets/music/droplets/dark/Abstruse.ogg', 
+        '/assets/music/droplets/dark/BladeWalker.ogg',
+        '/assets/music/droplets/dark/Drill.ogg'
     ]
 };
 
