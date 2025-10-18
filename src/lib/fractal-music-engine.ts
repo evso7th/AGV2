@@ -74,8 +74,30 @@ function createDrumAxiom(genre: Genre, mood: Mood, tempo: number, random: { next
             continue;
         }
 
+        let instrumentType: InstrumentType;
+        // Если тип - массив, выбираем один на основе вероятностей
+        if (Array.isArray(baseEvent.type)) {
+            const types = baseEvent.type as InstrumentType[];
+            const probabilities = baseEvent.probabilities || [];
+            let rand = random.next();
+            let cumulativeProb = 0;
+            
+            let chosenType: InstrumentType | null = null;
+            for (let i = 0; i < types.length; i++) {
+                cumulativeProb += probabilities[i] || (1 / types.length);
+                if (rand <= cumulativeProb) {
+                    chosenType = types[i];
+                    break;
+                }
+            }
+            instrumentType = chosenType || types[types.length - 1];
+        } else {
+            instrumentType = baseEvent.type;
+        }
+
         axiomEvents.push({
             ...baseEvent,
+            type: instrumentType,
             note: 36, // Placeholder MIDI
             phrasing: 'staccato',
             dynamics: 'mf', // Placeholder
@@ -83,7 +105,7 @@ function createDrumAxiom(genre: Genre, mood: Mood, tempo: number, random: { next
         } as FractalEvent);
     }
     
-    // Этап 2: Добавление перкуссии ("Приправа") - "Второй барабанщик"
+    // Этап 2: Добавление перкуссии ("Приправа")
     if (grammar.percussion) {
         const tempoModifier = 1.5 - (tempo / 120); 
         const dynamicProbability = grammar.percussion.probability * Math.max(0.2, Math.min(1.5, tempoModifier));
@@ -95,7 +117,6 @@ function createDrumAxiom(genre: Genre, mood: Mood, tempo: number, random: { next
             if (availableTimes.length > 0) {
                 const time = availableTimes[random.nextInt(availableTimes.length)];
                 
-                // --- Интеллектуальный выбор набора перкуссии ---
                 let percPool: InstrumentType[] = PERCUSSION_SETS.NEUTRAL;
                 if (mood === 'dark') {
                     percPool = PERCUSSION_SETS.DARK;
@@ -209,68 +230,80 @@ function createRhythmSectionFill(mood: Mood, genre: Genre, random: { next: () =>
 function createBassFill(this: FractalMusicEngine, mood: Mood, genre: Genre, random: { next: () => number, nextInt: (max: number) => number }): FractalEvent[] {
     const fill: FractalEvent[] = [];
     const scale = getScaleForMood(mood);
+    const rootNote = scale[0];
     const fillParams = getParamsForTechnique('fill', mood, genre);
-    const numNotes = random.nextInt(4) + 7; // 7 to 10 notes
     let currentTime = 0;
+    const maxTime = 4.0; // Fill is one bar long
     
-    // Predominantly low, infrequently mid, rarely high
-    const selectNote = (): number => {
-      const rand = random.next();
-      if (rand < 0.7) { // 70% chance low register
-          const third = Math.floor(scale.length / 3);
-          return scale[random.nextInt(third)];
-      } else if (rand < 0.95) { // 25% chance mid register
-          const third = Math.floor(scale.length / 3);
-          return scale[third + random.nextInt(third)];
-      } else { // 5% chance high register
-          const twoThirds = Math.floor(2 * scale.length / 3);
-          return scale[twoThirds + random.nextInt(scale.length - twoThirds)];
-      }
-    };
+    // Choose a rhythmic pattern for the fill
+    const rhythms = [
+        [0.25, 0.25, 0.25, 0.25], // 16ths
+        [0.5, 0.5],             // 8ths
+        [0.75, 0.25],           // Dotted 8th + 16th
+        [0.33, 0.33, 0.33]      // Triplets
+    ];
+    
+    while(currentTime < maxTime) {
+        // --- Note Selection ---
+        let nextNote: number;
+        const lastNote = fill.length > 0 ? fill[fill.length - 1].note : rootNote;
+        const lastNoteIndex = scale.indexOf(lastNote);
 
-    let currentNote = selectNote();
-
-    for (let i = 0; i < numNotes; i++) {
-        const duration = (genre === 'rock' || genre === 'trance' || genre === 'progressive') ? 0.25 : 0.5;
-        
-        const noteIndex = scale.indexOf(currentNote);
-        const step = random.next() > 0.7 ? (random.next() > 0.5 ? 2 : -2) : (random.next() > 0.5 ? 1 : -1);
-        let newNoteIndex = (noteIndex + step + scale.length) % scale.length;
-        // Ensure the new note is within a reasonable jump
-        if (Math.abs(scale[newNoteIndex] - currentNote) > 12) {
-             newNoteIndex = (noteIndex - step + scale.length) % scale.length;
+        const r = random.next();
+        if (r < 0.5) { // 50% chance: Arpeggio tone (root, 3rd, 5th, 7th)
+            const chordTones = [scale[0], scale[2], scale[4], scale[6]].filter(n => n !== undefined);
+            nextNote = chordTones[random.nextInt(chordTones.length)];
+        } else if (r < 0.8) { // 30% chance: Stepwise motion
+            const step = random.next() > 0.5 ? 1 : -1;
+            nextNote = scale[ (lastNoteIndex + step + scale.length) % scale.length ];
+        } else { // 20% chance: Bigger jump
+            const step = random.next() > 0.5 ? (random.nextInt(3) + 2) : -(random.nextInt(3) + 2); // Jump of 2, 3 or 4
+            nextNote = scale[ (lastNoteIndex + step + scale.length) % scale.length ];
         }
-        currentNote = scale[newNoteIndex];
+        
+        // --- Rhythm Selection ---
+        let duration: number;
+        const rhythmChoice = random.next();
+        if (rhythmChoice < 0.6) duration = 0.25;      // 60% chance of 16th
+        else if (rhythmChoice < 0.9) duration = 0.5; // 30% chance of 8th
+        else duration = 0.75;                        // 10% chance of dotted 8th
+        
+        if (currentTime + duration > maxTime) {
+            duration = maxTime - currentTime;
+        }
 
-        fill.push({
-            type: 'bass', note: currentNote, duration: duration, time: currentTime, weight: 0.8 + random.next() * 0.2, technique: 'fill', dynamics: 'f', phrasing: 'staccato', params: fillParams
-        });
+        // --- Create Event ---
+        if (duration > 0.05) { // Avoid tiny, machine-gun like notes
+            fill.push({
+                type: 'bass',
+                note: nextNote,
+                duration,
+                time: currentTime,
+                weight: 0.8 + random.next() * 0.2, // Fills are confident
+                technique: 'fill',
+                dynamics: 'f',
+                phrasing: 'staccato',
+                params: fillParams
+            });
+        }
+        
         currentTime += duration;
     }
     
-    if (currentTime > 4.0) {
-        const scaleFactor = 4.0 / currentTime;
-        fill.forEach(e => {
-            e.time *= scaleFactor;
-            e.duration *= scaleFactor;
-        });
-    }
-    
-    // Штраф за слишком высокий регистр
-    const maxNote = Math.max(...scale);
-    const highNoteThreshold = maxNote - 12; // Последняя октава считается высокой
+    // Penalty for high-register fills remains
+    const maxNoteInScale = Math.max(...scale);
+    const highNoteThreshold = maxNoteInScale - 12; 
     const hasHighNotes = fill.some(n => n.note > highNoteThreshold);
     
     if (hasHighNotes) {
         console.warn(`[BassFillPenalty] High-register fill detected. Applying penalty.`);
-        // Применяем очень сильный штраф к весу всей ветви, чтобы она "умерла" после одного проигрывания
         fill.forEach(e => e.weight *= 0.1); 
-        this.needsBassReset = true; // Триггер для сброса к аксиоме на следующей эпохе
+        this.needsBassReset = true;
     }
-
 
     return fill;
 }
+
 
 // === ОСНОВНОЙ КЛАСС ===
 export class FractalMusicEngine {
