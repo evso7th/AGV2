@@ -1,7 +1,7 @@
 
 import type { FractalEvent, Mood, Genre, Technique, BassSynthParams, InstrumentType } from '@/types/fractal';
 import { MelancholicMinorK } from './resonance-matrices';
-import { getScaleForMood, STYLE_DRUM_PATTERNS, STYLE_BASS_PATTERNS, type BassPatternDefinition, PERCUSSION_SETS } from './music-theory';
+import { getScaleForMood, STYLE_DRUM_PATTERNS, STYLE_BASS_PATTERNS, type BassPatternDefinition } from './music-theory';
 
 export type Branch = {
   id: string;
@@ -106,7 +106,7 @@ function createDrumAxiom(genre: Genre, mood: Mood, tempo: number, random: { next
     }
     
     // Этап 2: Добавление перкуссии ("Приправа")
-    if (grammar.percussion) {
+    if (grammar.percussion && grammar.percussion.types.length > 0) {
         const tempoModifier = 1.5 - (tempo / 120); 
         const dynamicProbability = grammar.percussion.probability * Math.max(0.2, Math.min(1.5, tempoModifier));
         
@@ -116,28 +116,19 @@ function createDrumAxiom(genre: Genre, mood: Mood, tempo: number, random: { next
             
             if (availableTimes.length > 0) {
                 const time = availableTimes[random.nextInt(availableTimes.length)];
-                
-                let percPool: InstrumentType[] = PERCUSSION_SETS.NEUTRAL;
-                if (mood === 'dark') {
-                    percPool = PERCUSSION_SETS.DARK;
-                } else if (grammar.percussion.type === 'electronic') {
-                    percPool = PERCUSSION_SETS.ELECTRONIC;
-                }
-
-                if (percPool.length > 0) {
-                  const type = percPool[random.nextInt(percPool.length)];
+                const percPool = grammar.percussion.types;
+                const type = percPool[random.nextInt(percPool.length)];
                   
-                  axiomEvents.push({
-                      type: type,
-                      time: time,
-                      duration: 0.25,
-                      weight: grammar.percussion.weight,
-                      note: 36, // Placeholder
-                      phrasing: 'staccato',
-                      dynamics: 'p',
-                      params: hitParams
-                  } as FractalEvent);
-                }
+                axiomEvents.push({
+                    type: type,
+                    time: time,
+                    duration: 0.25,
+                    weight: grammar.percussion.weight,
+                    note: 36, // Placeholder
+                    phrasing: 'staccato',
+                    dynamics: 'p',
+                    params: hitParams
+                } as FractalEvent);
             }
         }
     }
@@ -230,67 +221,46 @@ function createRhythmSectionFill(mood: Mood, genre: Genre, random: { next: () =>
 function createBassFill(this: FractalMusicEngine, mood: Mood, genre: Genre, random: { next: () => number, nextInt: (max: number) => number }): FractalEvent[] {
     const fill: FractalEvent[] = [];
     const scale = getScaleForMood(mood);
-    const rootNote = scale[0];
     const fillParams = getParamsForTechnique('fill', mood, genre);
+    const numNotes = random.nextInt(4) + 5; // 5 to 8 notes for more musical fills
     let currentTime = 0;
-    const maxTime = 4.0; // Fill is one bar long
     
-    // Choose a rhythmic pattern for the fill
-    const rhythms = [
-        [0.25, 0.25, 0.25, 0.25], // 16ths
-        [0.5, 0.5],             // 8ths
-        [0.75, 0.25],           // Dotted 8th + 16th
-        [0.33, 0.33, 0.33]      // Triplets
-    ];
-    
-    while(currentTime < maxTime) {
-        // --- Note Selection ---
-        let nextNote: number;
-        const lastNote = fill.length > 0 ? fill[fill.length - 1].note : rootNote;
-        const lastNoteIndex = scale.indexOf(lastNote);
-
+    const selectNote = (lastNote?: number): number => {
+        const lastNoteIndex = lastNote !== undefined ? scale.indexOf(lastNote) : -1;
         const r = random.next();
-        if (r < 0.5) { // 50% chance: Arpeggio tone (root, 3rd, 5th, 7th)
-            const chordTones = [scale[0], scale[2], scale[4], scale[6]].filter(n => n !== undefined);
-            nextNote = chordTones[random.nextInt(chordTones.length)];
-        } else if (r < 0.8) { // 30% chance: Stepwise motion
+        if (lastNoteIndex !== -1 && r < 0.6) { // 60% chance for stepwise motion
             const step = random.next() > 0.5 ? 1 : -1;
-            nextNote = scale[ (lastNoteIndex + step + scale.length) % scale.length ];
-        } else { // 20% chance: Bigger jump
-            const step = random.next() > 0.5 ? (random.nextInt(3) + 2) : -(random.nextInt(3) + 2); // Jump of 2, 3 or 4
-            nextNote = scale[ (lastNoteIndex + step + scale.length) % scale.length ];
+            return scale[(lastNoteIndex + step + scale.length) % scale.length];
+        } else if (r < 0.85) { // 25% chance for chord tones (root, 3rd, 5th, 7th)
+            const chordToneIndices = [0, 2, 4, 6].filter(i => i < scale.length);
+            return scale[chordToneIndices[random.nextInt(chordToneIndices.length)]];
+        } else { // 15% chance for a larger jump
+             const step = random.next() > 0.5 ? (random.nextInt(3) + 2) : -(random.nextInt(3) + 2); // Jump of 2, 3 or 4
+             const targetIndex = (lastNoteIndex !== -1 ? lastNoteIndex : 0) + step;
+             return scale[ (targetIndex + scale.length) % scale.length ];
         }
-        
-        // --- Rhythm Selection ---
+    };
+
+    let currentNote = selectNote();
+
+    for (let i = 0; i < numNotes; i++) {
         let duration: number;
         const rhythmChoice = random.next();
-        if (rhythmChoice < 0.6) duration = 0.25;      // 60% chance of 16th
-        else if (rhythmChoice < 0.9) duration = 0.5; // 30% chance of 8th
-        else duration = 0.75;                        // 10% chance of dotted 8th
-        
-        if (currentTime + duration > maxTime) {
-            duration = maxTime - currentTime;
-        }
+        if (rhythmChoice < 0.5) duration = 0.25;      // 50% 16th
+        else if (rhythmChoice < 0.8) duration = 0.5; // 30% 8th
+        else if (rhythmChoice < 0.95) duration = 0.75; // 15% dotted 8th
+        else duration = 0.125;                       // 5% 32nd for flair
 
-        // --- Create Event ---
-        if (duration > 0.05) { // Avoid tiny, machine-gun like notes
-            fill.push({
-                type: 'bass',
-                note: nextNote,
-                duration,
-                time: currentTime,
-                weight: 0.8 + random.next() * 0.2, // Fills are confident
-                technique: 'fill',
-                dynamics: 'f',
-                phrasing: 'staccato',
-                params: fillParams
-            });
-        }
+        if (currentTime + duration > 4.0) break;
+
+        fill.push({
+            type: 'bass', note: currentNote, duration, time: currentTime, weight: 0.8 + random.next() * 0.2, technique: 'fill', dynamics: 'f', phrasing: 'staccato', params: fillParams
+        });
         
         currentTime += duration;
+        currentNote = selectNote(currentNote);
     }
     
-    // Penalty for high-register fills remains
     const maxNoteInScale = Math.max(...scale);
     const highNoteThreshold = maxNoteInScale - 12; 
     const hasHighNotes = fill.some(n => n.note > highNoteThreshold);
@@ -421,14 +391,17 @@ export class FractalMusicEngine {
                 });
                 break;
             case 1: // Add percussion
-                const percPool = PERCUSSION_SETS.NEUTRAL; // Simplified for now
-                const timeSlots = [0.25, 0.75, 1.25, 1.75, 2.25, 2.75, 3.25, 3.75];
-                const targetTime = timeSlots[this.random.nextInt(timeSlots.length)];
-                if (!newEvents.some(e => Math.abs(e.time - targetTime) < 0.1)) {
-                    newEvents.push({
-                        type: percPool[this.random.nextInt(percPool.length)], note: 36, duration: 0.1, time: targetTime, weight: 0.6, technique: 'hit', dynamics: 'p', phrasing: 'staccato', params: getParamsForTechnique('hit', this.config.mood, this.config.genre)
-                    });
-                    mutationApplied = true;
+                const grammar = STYLE_DRUM_PATTERNS[this.config.genre] || STYLE_DRUM_PATTERNS['ambient'];
+                const percRule = grammar.percussion;
+                if (percRule && percRule.types.length > 0) {
+                    const timeSlots = percRule.allowedTimes;
+                    const targetTime = timeSlots[this.random.nextInt(timeSlots.length)];
+                    if (!newEvents.some(e => Math.abs(e.time - targetTime) < 0.1)) {
+                        newEvents.push({
+                            type: percRule.types[this.random.nextInt(percRule.types.length)], note: 36, duration: 0.1, time: targetTime, weight: 0.6, technique: 'hit', dynamics: 'p', phrasing: 'staccato', params: getParamsForTechnique('hit', this.config.mood, this.config.genre)
+                        });
+                        mutationApplied = true;
+                    }
                 }
                 break;
             case 2: // Rhythmic shift (syncopation)
