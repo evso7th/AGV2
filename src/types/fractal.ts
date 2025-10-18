@@ -1,8 +1,12 @@
 
+
 /**
  * Настроение — управляет ладом, динамикой, техникой
  */
-export type Mood = 'melancholic' | 'epic' | 'dreamy' | 'dark';
+export type Mood = 
+  | 'epic' | 'joyful' | 'enthusiastic' // Позитивные
+  | 'melancholic' | 'dark' | 'anxious'    // Негативные
+  | 'dreamy' | 'contemplative' | 'calm';     // Нейтральные
 
 /**
  * Жанр — управляет формой и плотностью

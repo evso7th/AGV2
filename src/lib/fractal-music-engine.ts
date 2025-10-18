@@ -1,4 +1,5 @@
 
+
 import type { FractalEvent, Mood, Genre, Technique, BassSynthParams, InstrumentType } from '@/types/fractal';
 import { MelancholicMinorK } from './resonance-matrices';
 import { getScaleForMood, STYLE_DRUM_PATTERNS, STYLE_BASS_PATTERNS, type BassPatternDefinition, STYLE_PERCUSSION_RULES } from './music-theory';
@@ -26,6 +27,9 @@ interface EngineConfig {
 // === ВСПОМОГАТЕЛЬНЫЕ ФУНКЦИИ ===
 
 function getParamsForTechnique(technique: Technique, mood: Mood, genre: Genre): BassSynthParams {
+  if (genre === 'ambient') {
+     return { cutoff: 150, resonance: 1.1, distortion: 0.0, portamento: 0.1, attack: 0.8, release: 2.0 };
+  }
   switch (technique) {
     case 'pluck':
       return { cutoff: 800, resonance: 0.3, distortion: 0.1, portamento: 0.01 };
@@ -207,10 +211,10 @@ function createBassFill(this: FractalMusicEngine, mood: Mood, genre: Genre, rand
         if (lastNoteIndex !== -1 && r < 0.6) {
             const step = random.next() > 0.5 ? 1 : -1;
             return scale[(lastNoteIndex + step + scale.length) % scale.length];
-        } else if (r < 0.85) {
+        } else if (r < 0.85) { 
             const chordToneIndices = [0, 2, 4, 6].filter(i => i < scale.length);
             return scale[chordToneIndices[random.nextInt(chordToneIndices.length)]];
-        } else {
+        } else { 
              const step = random.next() > 0.5 ? (random.nextInt(3) + 2) : -(random.nextInt(3) + 2);
              const targetIndex = (lastNoteIndex !== -1 ? lastNoteIndex : 0) + step;
              return scale[ (targetIndex + scale.length) % scale.length ];
@@ -510,7 +514,7 @@ export class FractalMusicEngine {
                     if (availableTimes.length > 0 && percPool.length > 0) {
                         // Generate a longer fill with a small probability
                         if (this.random.next() > 0.7) { 
-                            const fillLength = Math.min(availableTimes.length, this.random.nextInt(3) + 5); 
+                            const fillLength = this.random.nextInt(3) + 5; 
                             for (let i = 0; i < fillLength; i++) {
                                 if (availableTimes.length === 0) break;
                                 const timeIndex = this.random.nextInt(availableTimes.length);
@@ -607,14 +611,24 @@ export class FractalMusicEngine {
     return (t: number) => {
         const safeT = safeTime(t);
         const phase = (safeT / 120) % 1;
-        if (this.config.mood === 'melancholic' || this.config.mood === 'dreamy' || this.config.mood === 'dark') {
-          if (phase < 0.4) return 0.3 + phase * 1.5;
-          if (phase < 0.7) return 1.0;
-          return 1.0 - (phase - 0.7) * 2.3;
-        } else { // epic
-          if (phase < 0.3) return 0.5 + phase * 1.6;
-          if (phase < 0.6) return 1.0;
-          return 1.0 - (phase - 0.6) * 1.6;
+        switch (this.config.mood) {
+          case 'joyful':
+          case 'enthusiastic':
+          case 'epic':
+              if (phase < 0.3) return 0.6 + phase * 1.3;
+              if (phase < 0.6) return 1.0;
+              return 1.0 - (phase - 0.6) * 1.8;
+          case 'melancholic':
+          case 'calm':
+          case 'dark':
+          case 'anxious':
+              if (phase < 0.4) return 0.3 + phase * 1.5;
+              if (phase < 0.7) return 1.0;
+              return 1.0 - (phase - 0.7) * 2.3;
+          case 'dreamy':
+          case 'contemplative':
+          default:
+              return 0.4 + Math.sin(phase * Math.PI) * 0.3; // Gentle sine wave
         }
     };
   }

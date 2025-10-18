@@ -65,19 +65,35 @@ export function getScaleForMood(mood: Mood): number[] {
   const E1 = 28;
   let baseScale: number[];
 
-  if (mood === 'melancholic') {
-    // E Dorian: E F# G A B C# D
-    baseScale = [0, 2, 3, 5, 7, 9, 10];
-  } else if (mood === 'epic') {
-    // E Lydian: E F# G# A# B C# D#
-    baseScale = [0, 2, 4, 6, 7, 9, 11];
-  } else if (mood === 'dreamy') {
-    // E Pentatonic: E G A B D
-    baseScale = [0, 3, 5, 7, 10];
-  } else { // 'dark' or default to E Minor
-    // E Aeolian: E F# G A B C D
-    baseScale = [0, 2, 3, 5, 7, 8, 10];
+  switch (mood) {
+    case 'joyful':      // C Ionian (Major) - transposed to E
+      baseScale = [0, 2, 4, 5, 7, 9, 11];
+      break;
+    case 'epic':        // E Lydian
+    case 'enthusiastic':
+      baseScale = [0, 2, 4, 6, 7, 9, 11];
+      break;
+    case 'dreamy':      // E Pentatonic Major
+      baseScale = [0, 2, 4, 7, 9];
+      break;
+    case 'contemplative': // E Mixolydian
+        baseScale = [0, 2, 4, 5, 7, 9, 10];
+        break;
+    case 'melancholic': // E Dorian
+    case 'calm':
+      baseScale = [0, 2, 3, 5, 7, 9, 10];
+      break;
+    case 'dark':        // E Aeolian (Natural Minor)
+      baseScale = [0, 2, 3, 5, 7, 8, 10];
+      break;
+    case 'anxious':     // E Locrian
+      baseScale = [0, 1, 3, 5, 6, 8, 10];
+      break;
+    default:            // Fallback to E Aeolian
+      baseScale = [0, 2, 3, 5, 7, 8, 10];
+      break;
   }
+
 
   const fullScale: number[] = [];
   // Generate notes for 3 octaves: E1-E2, E2-E3, E3-E4
@@ -260,10 +276,6 @@ export const STYLE_DRUM_PATTERNS: Record<Genre, GenreRhythmGrammar> = {
             }
         ],
     },
-    // Fallback genres
-    dark: { loops: [{ kick: [], snare: [], hihat: [], tags: ['ambient-pulse'] }] },
-    dreamy: { loops: [{ kick: [], snare: [], hihat: [], tags: ['ambient-pulse'] }] },
-    epic: { loops: [{ kick: [], snare: [], hihat: [], tags: ['rock-standard', 'ballad-simple'] }] },
 };
 
 export const STYLE_PERCUSSION_RULES: Record<Genre, PercussionRule> = {
@@ -386,6 +398,7 @@ export const STYLE_BASS_PATTERNS: Record<Genre, BassPatternDefinition[]> = {
     progressive: [
         { pattern: [{ note: 0, time: 0, duration: 0.75 }, { note: 0, time: 0.75, duration: 0.25 }, { note: 2, time: 1, duration: 1 }, { note: -1, time: 2.5, duration: 1.5 }], tags: ['prog-rock-sparse', 'syncopated'] },
     ],
+    // Fallback genres
     dark: [{ pattern: [{ note: 0, time: 0, duration: 4, technique: 'swell' }], tags:['ambient-pulse'] }],
     dreamy: [{ pattern: [{ note: 0, time: 0, duration: 4, technique: 'swell' }], tags:['ambient-pulse'] }],
     epic: [{ pattern: [{ note: 0, time: 0, duration: 2 }, { note: 4, time: 2, duration: 2 }], tags: ['ballad-simple'] }],
