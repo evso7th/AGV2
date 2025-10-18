@@ -2,6 +2,12 @@
 // src/lib/music-theory.ts
 import type { Mood, Genre, Technique, BassSynthParams, InstrumentType } from '@/types/fractal';
 
+export const PERCUSSION_SETS: Record<'NEUTRAL' | 'ELECTRONIC' | 'DARK', InstrumentType[]> = {
+    NEUTRAL: ['perc-001', 'perc-002', 'perc-005', 'perc-006', 'perc-013', 'perc-014', 'perc-015', 'drum_ride', 'cymbal_bell1'],
+    ELECTRONIC: ['perc-003', 'perc-004', 'perc-007', 'perc-008', 'perc-009', 'perc-010', 'perc-011', 'perc-012', 'hh_bark_short'],
+    DARK: ['perc-013', 'drum_snare_off', 'drum_tom_low', 'perc-007', 'perc-015']
+};
+
 type DrumPatternEvent = {
     type: InstrumentType | InstrumentType[];
     time: number; // in beats
@@ -15,11 +21,12 @@ type DrumKitPattern = {
     kick: DrumPatternEvent[];
     snare: DrumPatternEvent[];
     hihat: DrumPatternEvent[];
+    tags: string[]; // Rhythmic/stylistic tags
 };
 
 type PercussionRule = {
-    // Instruments to choose from
-    types: InstrumentType[];
+    // Defines which set of percussion to use (neutral or electronic)
+    type: 'neutral' | 'electronic'; 
     // Times where they are allowed to be placed (in beats)
     allowedTimes: number[];
     // Probability of a percussion hit occurring in one of the allowed times per bar
@@ -39,7 +46,14 @@ type BassPatternEvent = {
     duration: number; // In beats
     technique?: Technique;
 };
+
 type BassPattern = BassPatternEvent[];
+
+export type BassPatternDefinition = {
+    pattern: BassPattern;
+    tags: string[];
+};
+
 
 /**
  * Returns the MIDI notes of a mode for a given mood across multiple octaves.
@@ -83,24 +97,15 @@ const defaultHitParams: BassSynthParams = { cutoff: 500, resonance: 0.2, distort
 export const STYLE_DRUM_PATTERNS: Record<Genre, GenreRhythmGrammar> = {
     ambient: {
         loops: [
-            { // More atmospheric and pulsing ambient beat
-                kick: [
-                    { type: 'drum_kick', time: 0, duration: 1, weight: 0.7, probability: 0.9 },
-                    { type: 'drum_kick', time: 2.5, duration: 0.5, weight: 0.4, probability: 0.6 }
-                ],
-                snare: [
-                    { type: 'drum_snare_ghost_note', time: 3.5, duration: 0.25, weight: 0.3, probability: 0.7 }
-                ],
-                hihat: [
-                    { type: 'drum_hihat_closed', time: 0.5, duration: 0.5, weight: 0.4, probability: 0.5 },
-                    { type: 'drum_hihat_closed', time: 1.5, duration: 0.5, weight: 0.4, probability: 0.5 },
-                    { type: 'drum_hihat_open', time: 2, duration: 1, weight: 0.3, probability: 0.4 },
-                    { type: 'drum_hihat_closed', time: 3, duration: 0.5, weight: 0.2, probability: 0.6 }
-                ],
+            { 
+                kick: [{ type: 'drum_kick', time: 0, duration: 4, weight: 0.6, probability: 0.8 }],
+                snare: [],
+                hihat: [{ type: ['drum_hihat_closed', 'perc-008'], probabilities: [0.7, 0.3], time: 1.5, duration: 0.5, weight: 0.3, probability: 0.6 }],
+                tags: ['ambient-pulse']
             }
         ],
         percussion: {
-            types: ['perc-013', 'drum_ride', 'perc-001', 'perc-002', 'perc-005', 'perc-006', 'perc-014', 'perc-015'],
+            type: 'neutral',
             allowedTimes: [1.75, 2.5, 3.25],
             probability: 0.4, 
             weight: 0.25
@@ -108,7 +113,7 @@ export const STYLE_DRUM_PATTERNS: Record<Genre, GenreRhythmGrammar> = {
     },
     rock: {
         loops: [
-            { // Classic rock beat
+            { 
                 kick: [{ type: 'drum_kick', time: 0, duration: 0.25, weight: 1.0 }, { type: 'drum_kick', time: 2, duration: 0.25, weight: 1.0 }],
                 snare: [{ type: 'drum_snare', time: 1, duration: 0.25, weight: 1.0 }, { type: 'drum_snare', time: 3, duration: 0.25, weight: 1.0 }],
                 hihat: [
@@ -116,19 +121,20 @@ export const STYLE_DRUM_PATTERNS: Record<Genre, GenreRhythmGrammar> = {
                     { type: 'drum_hihat_closed', time: 1.5, duration: 0.5, weight: 0.6 },
                     { type: 'drum_hihat_closed', time: 2.5, duration: 0.5, weight: 0.6 },
                     { type: 'drum_hihat_closed', time: 3.5, duration: 0.5, weight: 0.6 },
-                ]
+                ],
+                tags: ['rock-standard']
             }
         ],
         percussion: {
-            types: ['drum_crash'],
-            allowedTimes: [0],
+            type: 'neutral',
+            allowedTimes: [0.25, 1.75, 3.75],
             probability: 0.25, 
             weight: 0.7
         }
     },
     house: {
         loops: [
-            { // Four-on-the-floor
+            { 
                 kick: [
                     { type: 'drum_kick', time: 0, duration: 0.25, weight: 1.0 },
                     { type: 'drum_kick', time: 1, duration: 0.25, weight: 1.0 },
@@ -144,11 +150,12 @@ export const STYLE_DRUM_PATTERNS: Record<Genre, GenreRhythmGrammar> = {
                     { type: 'drum_hihat_open', time: 1.5, duration: 0.5, weight: 0.8 },
                     { type: 'drum_hihat_open', time: 2.5, duration: 0.5, weight: 0.8 },
                     { type: 'drum_hihat_open', time: 3.5, duration: 0.5, weight: 0.8 },
-                ]
+                ],
+                tags: ['four-on-the-floor']
             }
         ],
         percussion: {
-            types: ['perc-003', 'perc-007'],
+            type: 'electronic',
             allowedTimes: [1.75, 3.25],
             probability: 0.6, 
             weight: 0.6
@@ -171,11 +178,12 @@ export const STYLE_DRUM_PATTERNS: Record<Genre, GenreRhythmGrammar> = {
                     { type: 'drum_hihat_open', time: 1.5, duration: 0.25, weight: 0.7 },
                     { type: 'drum_hihat_open', time: 2.5, duration: 0.25, weight: 0.7 },
                     { type: 'drum_hihat_open', time: 3.5, duration: 0.25, weight: 0.7 },
-                ]
+                ],
+                tags: ['trance-drive']
              }
         ],
         percussion: {
-             types: ['perc-010', 'perc-012'],
+             type: 'electronic',
              allowedTimes: [0.75, 1.75, 2.75, 3.75],
              probability: 0.5, 
              weight: 0.5
@@ -183,7 +191,7 @@ export const STYLE_DRUM_PATTERNS: Record<Genre, GenreRhythmGrammar> = {
     },
     rnb: {
         loops: [
-            { // "Limping" kick, snare on 2 and 4
+            { 
                 kick: [
                     { type: 'drum_kick', time: 0, duration: 0.25, weight: 1.0 },
                     { type: 'drum_kick', time: 1.75, duration: 0.25, weight: 0.8, probability: 0.8 },
@@ -196,11 +204,12 @@ export const STYLE_DRUM_PATTERNS: Record<Genre, GenreRhythmGrammar> = {
                     { type: 'drum_hihat_closed', time: 0.5, duration: 0.5, weight: 0.6},
                     { type: 'drum_hihat_closed', time: 2.5, duration: 0.5, weight: 0.6},
                     { type: 'drum_hihat_closed', time: 3.5, duration: 0.5, weight: 0.6, probability: 0.7 },
-                ]
+                ],
+                tags: ['rnb-groove', 'hip-hop']
             }
         ],
         percussion: {
-            types: ['perc-001', 'perc-004', 'perc-009', 'drum_tom_high'],
+            type: 'electronic',
             allowedTimes: [0.75, 2.25, 2.75, 3.25],
             probability: 0.65, 
             weight: 0.4
@@ -216,11 +225,12 @@ export const STYLE_DRUM_PATTERNS: Record<Genre, GenreRhythmGrammar> = {
                      { type: 'drum_ride', time: 1, duration: 0.5, weight: 0.5, probability: 0.8 },
                      { type: 'drum_ride', time: 2, duration: 0.5, weight: 0.5, probability: 0.8 },
                      { type: 'drum_ride', time: 3, duration: 0.5, weight: 0.5, probability: 0.8 },
-                ]
+                ],
+                tags: ['ballad-simple']
            }
        ],
        percussion: {
-           types: ['perc-013', 'perc-014', 'cymbal_bell1'],
+           type: 'neutral',
            allowedTimes: [1.5, 3.5],
            probability: 0.45, 
            weight: 0.4
@@ -228,7 +238,7 @@ export const STYLE_DRUM_PATTERNS: Record<Genre, GenreRhythmGrammar> = {
     },
     reggae: {
         loops: [
-            { // One drop
+            { 
                 kick: [],
                 snare: [{ type: 'drum_kick', time: 2, duration: 0.5, weight: 1.0 }], // Kick and snare together
                 hihat: [
@@ -236,11 +246,12 @@ export const STYLE_DRUM_PATTERNS: Record<Genre, GenreRhythmGrammar> = {
                     { type: 'drum_hihat_closed', time: 1.5, duration: 0.5, weight: 0.8 },
                     { type: 'drum_hihat_closed', time: 2.5, duration: 0.5, weight: 0.8 },
                     { type: 'drum_hihat_closed', time: 3.5, duration: 0.5, weight: 0.8 },
-                ]
+                ],
+                tags: ['one-drop']
             }
         ],
         percussion: {
-            types: ['drum_snare_off', 'perc-009'],
+            type: 'neutral',
             allowedTimes: [1, 3],
             probability: 0.8, 
             weight: 0.9,
@@ -248,7 +259,7 @@ export const STYLE_DRUM_PATTERNS: Record<Genre, GenreRhythmGrammar> = {
     },
     blues: {
         loops: [
-            { // Shuffle feel
+            { 
                 kick: [{ type: 'drum_kick', time: 0, duration: 0.5, weight: 0.9 }, { type: 'drum_kick', time: 2, duration: 0.5, weight: 0.9 }],
                 snare: [{ type: 'drum_snare', time: 1, duration: 0.5, weight: 1.0 }, { type: 'drum_snare', time: 3, duration: 0.5, weight: 1.0 }],
                 hihat: [
@@ -260,26 +271,21 @@ export const STYLE_DRUM_PATTERNS: Record<Genre, GenreRhythmGrammar> = {
                     { type: 'drum_ride', time: 2.66, duration: 0.33, weight: 0.4 },
                     { type: 'drum_ride', time: 3, duration: 0.66, weight: 0.6 },
                     { type: 'drum_ride', time: 3.66, duration: 0.33, weight: 0.4 },
-                ]
+                ],
+                tags: ['shuffle']
             }
         ],
         percussion: {
-            types: ['perc-002', 'hh_bark_short'],
+            type: 'neutral',
             allowedTimes: [3.75],
             probability: 0.5, 
             weight: 0.3
         }
     },
     celtic: {
-        loops: [
-            {
-                kick: [],
-                snare: [],
-                hihat: [],
-            }
-        ],
+        loops: [ { kick: [], snare: [], hihat: [], tags: ['bodhran-pulse'] } ],
         percussion: {
-            types: ['drum_tom_low', 'drum_tom_mid', 'drum_tom_high'],
+            type: 'neutral',
             allowedTimes: [0, 0.75, 1, 1.75, 2, 2.75, 3, 3.75],
             probability: 0.85, 
             weight: 0.8
@@ -290,64 +296,65 @@ export const STYLE_DRUM_PATTERNS: Record<Genre, GenreRhythmGrammar> = {
             {
                 kick: [{ type: 'drum_kick', time: 0, duration: 0.25, weight: 1.0 }],
                 snare: [{ type: 'drum_snare', time: 1, duration: 0.25, weight: 1.0 }, { type: 'drum_snare', time: 3, duration: 0.25, weight: 1.0 }],
-                hihat: []
+                hihat: [],
+                tags: ['prog-rock-sparse']
             }
         ],
         percussion: {
-            types: ['perc-008', 'perc-011', 'drum_tom_mid'],
+            type: 'electronic',
             allowedTimes: [0.75, 1.5, 2.75, 3.5],
             probability: 0.6, 
             weight: 0.6
         }
     },
     // Fallback genres
-    dark: { loops: [], percussion: { types: [], allowedTimes: [], probability: 0, weight: 0 } },
-    dreamy: { loops: [], percussion: { types: [], allowedTimes: [], probability: 0, weight: 0 } },
-    epic: { loops: [], percussion: { types: [], allowedTimes: [], probability: 0, weight: 0 } },
+    dark: { loops: [{ kick: [], snare: [], hihat: [], tags: ['ambient-pulse'] }], percussion: { type: 'neutral', allowedTimes: [], probability: 0, weight: 0 } },
+    dreamy: { loops: [{ kick: [], snare: [], hihat: [], tags: ['ambient-pulse'] }], percussion: { type: 'neutral', allowedTimes: [], probability: 0, weight: 0 } },
+    epic: { loops: [{ kick: [], snare: [], hihat: [], tags: ['rock-standard', 'ballad-simple'] }], percussion: { type: 'neutral', allowedTimes: [], probability: 0, weight: 0 } },
 };
 
 // Bass Riff Library
-export const STYLE_BASS_PATTERNS: Record<Genre, BassPattern[]> = {
+export const STYLE_BASS_PATTERNS: Record<Genre, BassPatternDefinition[]> = {
     ambient: [
-        [{ note: 0, time: 0, duration: 4 }], // One long note
-        [{ note: 0, time: 0, duration: 2 }, { note: 4, time: 2, duration: 2 }], // Root -> Fifth
+        { pattern: [{ note: 0, time: 0, duration: 4 }], tags: ['ambient-pulse'] },
+        { pattern: [{ note: 0, time: 0, duration: 2 }, { note: 4, time: 2, duration: 2 }], tags: ['ambient-pulse'] },
     ],
     rock: [
-        [{ note: 0, time: 0, duration: 0.5 }, { note: 0, time: 0.5, duration: 0.5 }, { note: 0, time: 1, duration: 0.5 }, { note: 0, time: 1.5, duration: 0.5 }, { note: 0, time: 2, duration: 0.5 }, { note: 0, time: 2.5, duration: 0.5 }, { note: 0, time: 3, duration: 0.5 }, { note: 0, time: 3.5, duration: 0.5 }], // Straight eighths
-        [{ note: 0, time: 0, duration: 1 }, { note: 2, time: 2, duration: 1 }, { note: 4, time: 3, duration: 1 }], // Basic rock riff
+        { pattern: [{ note: 0, time: 0, duration: 0.5 }, { note: 0, time: 0.5, duration: 0.5 }, { note: 0, time: 1, duration: 0.5 }, { note: 0, time: 1.5, duration: 0.5 }, { note: 0, time: 2, duration: 0.5 }, { note: 0, time: 2.5, duration: 0.5 }, { note: 0, time: 3, duration: 0.5 }, { note: 0, time: 3.5, duration: 0.5 }], tags: ['rock-standard', 'rock-eighths'] },
+        { pattern: [{ note: 0, time: 0, duration: 1 }, { note: 2, time: 2, duration: 1 }, { note: 4, time: 3, duration: 1 }], tags: ['rock-standard'] },
     ],
     house: [
-        [{ note: 0, time: 0, duration: 0.5 }, { note: 0, time: 1, duration: 0.5 }, { note: 0, time: 2, duration: 0.5 }, { note: 0, time: 3, duration: 0.5 }], // Four on the floor root
-        [{ note: 0, time: 0, duration: 0.5 }, { note: 7, time: 0.5, duration: 0.5 }, { note: 0, time: 1, duration: 0.5 }, { note: 7, time: 1.5, duration: 0.5 }, { note: 0, time: 2, duration: 0.5 }, { note: 7, time: 2.5, duration: 0.5 }, { note: 0, time: 3, duration: 0.5 }, { note: 7, time: 3.5, duration: 0.5 }], // Octave jumping
+        { pattern: [{ note: 0, time: 0, duration: 1 }, { note: 0, time: 1, duration: 1 }, { note: 0, time: 2, duration: 1 }, { note: 0, time: 3, duration: 1 }], tags: ['four-on-the-floor'] },
+        { pattern: [{ note: 0, time: 0, duration: 0.5 }, { note: 7, time: 0.5, duration: 0.5 }, { note: 0, time: 1, duration: 0.5 }, { note: 7, time: 1.5, duration: 0.5 }, { note: 0, time: 2, duration: 0.5 }, { note: 7, time: 2.5, duration: 0.5 }, { note: 0, time: 3, duration: 0.5 }, { note: 7, time: 3.5, duration: 0.5 }], tags: ['four-on-the-floor', 'octave-jump'] },
     ],
     trance: [
-        [{ note: 0, time: 0, duration: 0.5 }, { note: 0, time: 0.5, duration: 0.5 }, { note: 0, time: 1, duration: 0.5 }, { note: 0, time: 1.5, duration: 0.5 }, { note: 0, time: 2, duration: 0.5 }, { note: 0, time: 2.5, duration: 0.5 }, { note: 0, time: 3, duration: 0.5 }, { note: 0, time: 3.5, duration: 0.5 }], // Driving eighths
-        [{ note: 0, time: 0, duration: 0.25 }, { note: 0, time: 0.75, duration: 0.25 }, { note: 0, time: 1.5, duration: 0.25 }, { note: 0, time: 2.25, duration: 0.25 }, { note: 0, time: 3, duration: 0.25 }, { note: 0, time: 3.75, duration: 0.25 }], // Syncopated 16ths
+        { pattern: [{ note: 0, time: 0, duration: 0.5 }, { note: 0, time: 0.5, duration: 0.5 }, { note: 0, time: 1, duration: 0.5 }, { note: 0, time: 1.5, duration: 0.5 }, { note: 0, time: 2, duration: 0.5 }, { note: 0, time: 2.5, duration: 0.5 }, { note: 0, time: 3, duration: 0.5 }, { note: 0, time: 3.5, duration: 0.5 }], tags: ['trance-drive'] },
+        { pattern: [{ note: 0, time: 0, duration: 0.25 }, { note: 0, time: 0.75, duration: 0.25 }, { note: 0, time: 1.5, duration: 0.25 }, { note: 0, time: 2.25, duration: 0.25 }, { note: 0, time: 3, duration: 0.25 }, { note: 0, time: 3.75, duration: 0.25 }], tags: ['trance-drive', 'syncopated'] },
     ],
     rnb: [
-        [{ note: 0, time: 0, duration: 1.5 }, { note: 4, time: 1.5, duration: 0.5 }, { note: 2, time: 2, duration: 1.5 }, { note: 0, time: 3.5, duration: 0.5, technique: 'ghost' }],
-        [{ note: 0, time: 0, duration: 1 }, { note: 2, time: 1.75, duration: 0.75 }, { note: -1, time: 2.5, duration: 0.5 }, { note: 0, time: 3.25, duration: 0.75 }],
+        { pattern: [{ note: 0, time: 0, duration: 1.5 }, { note: 4, time: 1.5, duration: 0.5 }, { note: 2, time: 2, duration: 1.5 }, { note: 0, time: 3.5, duration: 0.5, technique: 'ghost' }], tags: ['rnb-groove'] },
+        { pattern: [{ note: 0, time: 0, duration: 1 }, { note: 2, time: 1.75, duration: 0.75 }, { note: -1, time: 2.5, duration: 0.5 }, { note: 0, time: 3.25, duration: 0.75 }], tags: ['rnb-groove', 'hip-hop'] },
     ],
     ballad: [
-        [{ note: 0, time: 0, duration: 3 }, { note: 4, time: 3, duration: 1 }],
-        [{ note: 0, time: 0, duration: 2 }, { note: 2, time: 2, duration: 2 }],
+        { pattern: [{ note: 0, time: 0, duration: 3 }, { note: 4, time: 3, duration: 1 }], tags: ['ballad-simple'] },
+        { pattern: [{ note: 0, time: 0, duration: 2 }, { note: 2, time: 2, duration: 2 }], tags: ['ballad-simple'] },
     ],
     reggae: [
-        [{ note: 0, time: 1, duration: 1 }, { note: 0, time: 3, duration: 1, technique: 'ghost' }],
-        [{ note: 0, time: 2.5, duration: 1.5 }],
+        { pattern: [{ note: 0, time: 1, duration: 1 }, { note: 0, time: 3, duration: 1, technique: 'ghost' }], tags: ['one-drop'] },
+        { pattern: [{ note: 0, time: 2.5, duration: 1.5 }], tags: ['one-drop'] },
     ],
     blues: [
-        [{ note: 0, time: 0, duration: 1 }, { note: 2, time: 1, duration: 1 }, { note: 4, time: 2, duration: 1 }, { note: 5, time: 3, duration: 1 }], // Walking
-        [{ note: 0, time: 0, duration: 0.66 }, { note: 2, time: 0.66, duration: 0.33 }, { note: 4, time: 1, duration: 0.66 }, { note: 2, time: 1.66, duration: 0.33 }], // Shuffle
+        { pattern: [{ note: 0, time: 0, duration: 1 }, { note: 2, time: 1, duration: 1 }, { note: 4, time: 2, duration: 1 }, { note: 5, time: 3, duration: 1 }], tags: ['shuffle', 'walking-bass'] },
+        { pattern: [{ note: 0, time: 0, duration: 0.66 }, { note: 2, time: 0.66, duration: 0.33 }, { note: 4, time: 1, duration: 0.66 }, { note: 2, time: 1.66, duration: 0.33 }], tags: ['shuffle'] },
     ],
     celtic: [
-        [{ note: 0, time: 0, duration: 1 }, { note: 4, time: 2, duration: 1 }],
-        [{ note: 0, time: 0, duration: 0.5 }, { note: 7, time: 0.5, duration: 0.5 }, { note: 0, time: 1, duration: 0.5 }, { note: 7, time: 1.5, duration: 0.5 }],
+        { pattern: [{ note: 0, time: 0, duration: 1 }, { note: 4, time: 2, duration: 1 }], tags: ['bodhran-pulse'] },
+        { pattern: [{ note: 0, time: 0, duration: 0.5 }, { note: 7, time: 0.5, duration: 0.5 }, { note: 0, time: 1, duration: 0.5 }, { note: 7, time: 1.5, duration: 0.5 }], tags: ['bodhran-pulse'] },
     ],
     progressive: [
-        [{ note: 0, time: 0, duration: 0.75 }, { note: 0, time: 0.75, duration: 0.25 }, { note: 2, time: 1, duration: 1 }, { note: -1, time: 2.5, duration: 1.5 }],
+        { pattern: [{ note: 0, time: 0, duration: 0.75 }, { note: 0, time: 0.75, duration: 0.25 }, { note: 2, time: 1, duration: 1 }, { note: -1, time: 2.5, duration: 1.5 }], tags: ['prog-rock-sparse', 'syncopated'] },
     ],
-    dark: [[{ note: 0, time: 0, duration: 4 }]],
-    dreamy: [[{ note: 0, time: 0, duration: 4 }]],
-    epic: [[{ note: 0, time: 0, duration: 2 }, { note: 4, time: 2, duration: 2 }]],
+    dark: [{ pattern: [{ note: 0, time: 0, duration: 4 }], tags:['ambient-pulse'] }],
+    dreamy: [{ pattern: [{ note: 0, time: 0, duration: 4 }], tags:['ambient-pulse'] }],
+    epic: [{ pattern: [{ note: 0, time: 0, duration: 2 }, { note: 4, time: 2, duration: 2 }], tags: ['ballad-simple'] }],
 };
