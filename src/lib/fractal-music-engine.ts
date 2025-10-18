@@ -151,9 +151,6 @@ function createBassAxiom(mood: Mood, genre: Genre, random: { next: () => number,
       const filtered = patternLibrary.filter(p => p.tags.some(tag => compatibleTags.includes(tag)));
       if (filtered.length > 0) {
           compatiblePatterns = filtered;
-          console.log(`[Handshake] Found ${filtered.length} compatible bass patterns for tags:`, compatibleTags);
-      } else {
-          console.warn(`[Handshake] No compatible bass patterns found for tags: ${compatibleTags}. Using any pattern for genre ${genre}.`);
       }
   }
   
@@ -493,7 +490,6 @@ export class FractalMusicEngine {
                 const newBranch = this.mutateBranch(parentBranch);
                 if (newBranch) {
                     this.branches.push(newBranch);
-                    console.log(`%c[MUTATION] at epoch ${this.epoch}: Created new bass branch ${newBranch.id}.`, "color: green;");
                 }
             }
         }
@@ -503,7 +499,6 @@ export class FractalMusicEngine {
                 const newBranch = this.mutateBranch(parentBranch);
                 if (newBranch) {
                      this.branches.push(newBranch);
-                     console.log(`%c[MUTATION] at epoch ${this.epoch}: Created new drum branch ${newBranch.id}.`, "color: darkorange;");
                 }
             }
         }

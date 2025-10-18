@@ -26,7 +26,7 @@ type DrumKitPattern = {
 
 type PercussionRule = {
     // Defines which set of percussion to use (neutral or electronic)
-    type: 'neutral' | 'electronic'; 
+    type: 'neutral' | 'electronic' | 'dark'; 
     // Times where they are allowed to be placed (in beats)
     allowedTimes: number[];
     // Probability of a percussion hit occurring in one of the allowed times per bar
@@ -308,7 +308,7 @@ export const STYLE_DRUM_PATTERNS: Record<Genre, GenreRhythmGrammar> = {
         }
     },
     // Fallback genres
-    dark: { loops: [{ kick: [], snare: [], hihat: [], tags: ['ambient-pulse'] }], percussion: { type: 'neutral', allowedTimes: [], probability: 0, weight: 0 } },
+    dark: { loops: [{ kick: [], snare: [], hihat: [], tags: ['ambient-pulse'] }], percussion: { type: 'dark', allowedTimes: [1.25, 2.75], probability: 0.7, weight: 0.5 } },
     dreamy: { loops: [{ kick: [], snare: [], hihat: [], tags: ['ambient-pulse'] }], percussion: { type: 'neutral', allowedTimes: [], probability: 0, weight: 0 } },
     epic: { loops: [{ kick: [], snare: [], hihat: [], tags: ['rock-standard', 'ballad-simple'] }], percussion: { type: 'neutral', allowedTimes: [], probability: 0, weight: 0 } },
 };
