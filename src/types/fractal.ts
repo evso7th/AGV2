@@ -90,6 +90,7 @@ export type BassSynthParams = {
   portamento: number;
   attack?: number;
   release?: number;
+  chord?: number[];
 };
 
 /**

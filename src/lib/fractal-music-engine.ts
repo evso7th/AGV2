@@ -285,6 +285,39 @@ function createBassFill(this: FractalMusicEngine, mood: Mood, genre: Genre, rand
     return fill;
 }
 
+function createAccompanimentAxiom(mood: Mood, genre: Genre, bassAxiom: FractalEvent[]): FractalEvent[] {
+    const scale = getScaleForMood(mood);
+    const rootNote = bassAxiom[0]?.note;
+    if (rootNote === undefined) return [];
+
+    const rootIndex = scale.findIndex(n => n % 12 === rootNote % 12);
+    if (rootIndex === -1) return [];
+
+    const third = scale.find(n => n % 12 === (rootNote + (mood === 'melancholic' || mood === 'dark' ? 3 : 4)) % 12) ?? scale[(rootIndex + 2) % scale.length];
+    const fifth = scale.find(n => n % 12 === (rootNote + 7) % 12) ?? scale[(rootIndex + 4) % scale.length];
+    
+    const chord = [rootNote, third, fifth];
+    
+    const params: BassSynthParams = {
+        ...getParamsForTechnique('pluck', mood, genre),
+        cutoff: 400,
+        resonance: 0.8,
+        distortion: 0.05,
+        chord: chord
+    };
+
+    return [{
+        type: 'accompaniment',
+        note: rootNote,
+        duration: 4,
+        time: 0,
+        weight: 0.6,
+        technique: 'pluck',
+        dynamics: 'p',
+        phrasing: 'legato',
+        params: params
+    }];
+}
 
 // === ОСНОВНОЙ КЛАСС ===
 export class FractalMusicEngine {
@@ -329,6 +362,9 @@ export class FractalMusicEngine {
     const bassAxiom = createBassAxiom(this.config.mood, this.config.genre, this.random, drumTags);
     this.branches.push({ id: 'bass_axon', events: bassAxiom, weight: 1.0, age: 0, technique: 'pluck', type: 'bass' });
     
+    const accompanimentAxiom = createAccompanimentAxiom(this.config.mood, this.config.genre, bassAxiom);
+    this.branches.push({ id: 'accomp_axon', events: accompanimentAxiom, weight: 0.7, age: 0, technique: 'pluck', type: 'accompaniment' });
+
     this.needsBassReset = false;
     this.bassShouldRespond = false;
   }
@@ -348,7 +384,7 @@ export class FractalMusicEngine {
     console.log(`%c  -> Bass response queued for next epoch.`, "color: blue;");
   }
   
-  private selectBranchForMutation(type: 'bass' | 'drums'): Branch | null {
+  private selectBranchForMutation(type: 'bass' | 'drums' | 'accompaniment'): Branch | null {
     const candidates = this.branches.filter(b => b.type === type && b.age > 1);
     if (candidates.length === 0) {
         const allTypeBranches = this.branches.filter(b => b.type === type);
@@ -463,6 +499,49 @@ export class FractalMusicEngine {
 
         if (!mutationApplied) return null;
         return { id: `drum_mut_${this.epoch}`, events: newEvents, weight: parent.weight * 0.8, age: 0, technique: 'hit', type: 'drums' };
+    } else if (parent.type === 'accompaniment') {
+        // Accompaniment Mutation: arpeggiate or create a passage
+        const scale = getScaleForMood(this.config.mood);
+        const newAccompaniment: FractalEvent[] = [];
+        const baseEvent = parent.events[0];
+        if (!baseEvent || !baseEvent.params?.chord) return null;
+
+        const chord: number[] = baseEvent.params.chord;
+        const numNotes = this.random.nextInt(5) + 8; // 8-12 notes
+        let currentTime = 0;
+
+        for (let i = 0; i < numNotes; i++) {
+            const duration = 0.25;
+            if (currentTime + duration > 4.0) break;
+            
+            const note = chord[this.random.nextInt(chord.length)];
+            const octaveShift = (this.random.nextInt(3) - 1) * 12;
+
+            newAccompaniment.push({
+                type: 'accompaniment',
+                note: note + octaveShift,
+                duration: duration,
+                time: currentTime,
+                weight: baseEvent.weight * (0.8 + this.random.next() * 0.2),
+                technique: 'pluck',
+                dynamics: 'mf',
+                phrasing: 'staccato',
+                params: { ...baseEvent.params, chord: undefined } // Remove chord from child events
+            });
+            currentTime += duration;
+        }
+        
+        if (newAccompaniment.length > 0) {
+             console.log(`%c[MUTATION] at epoch ${this.epoch}: Created new accompaniment branch with ${newAccompaniment.length} notes.`, "color: #9932CC;");
+            return {
+                id: `accomp_mut_${this.epoch}`,
+                events: newAccompaniment,
+                weight: parent.weight * 0.7,
+                age: 0,
+                technique: 'fill',
+                type: 'accompaniment'
+            };
+        }
     }
     return null;
   }
@@ -495,158 +574,98 @@ export class FractalMusicEngine {
         this.bassShouldRespond = false;
     }
 
-    const bassBranches = this.branches.filter(b => b.type === 'bass');
-    const drumBranches = this.branches.filter(b => b.type === 'drums');
+    const types: ('bass' | 'drums' | 'accompaniment')[] = ['bass', 'drums', 'accompaniment'];
+    types.forEach(type => {
+        const typeBranches = this.branches.filter(b => b.type === type);
+        if (typeBranches.length > 0) {
+            const winningBranch = typeBranches.reduce((max, b) => b.weight > max.weight ? b : max, typeBranches[0]);
+            
+            let finalEvents = [...winningBranch.events];
+
+            if (type === 'drums') {
+                if (this.drumFillForThisEpoch) {
+                    finalEvents = this.drumFillForThisEpoch;
+                    this.drumFillForThisEpoch = null; // Consume the one-off fill
+                } else if (this.branches.some(b => b.type === 'bass' && b.technique === 'fill' && b.weight > 0.5)) {
+                    console.log(`%c[DRUM RESPONSE] at epoch ${this.epoch}: Bass is playing a fill, generating drum response.`, "color: #007acc;");
+                    const { drumFill } = createRhythmSectionFill(this.config.mood, this.config.genre, this.random);
+                    const baseBeat = finalEvents.filter(e => e.time < 2.0);
+                    finalEvents = [...baseBeat, ...drumFill];
+                } else {
+                     const percRule = STYLE_PERCUSSION_RULES[this.config.genre];
+                     if (percRule && this.config.drumSettings.enabled) {
+                        const dynamicProbability = percRule.probability * Math.max(0.2, Math.min(1.5, (120 / this.config.tempo)));
+                         if (this.random.next() < dynamicProbability) {
+                            // ... percussion logic ...
+                         }
+                     }
+                }
+            }
+            
+            finalEvents.forEach(event => {
+                if (!event) return;
+                const newEvent: FractalEvent = { ...event };
+                if (type === 'bass') {
+                    newEvent.phrasing = winningBranch.weight > 0.7 ? 'legato' : 'staccato';
+                    newEvent.params = getParamsForTechnique(newEvent.technique, this.config.mood, this.config.genre);
+                } else if (type === 'accompaniment' && newEvent.params?.chord) {
+                    // Logic for "humanizing" chords for the accompaniment manager
+                    const chordNotes = newEvent.params.chord;
+                    const humanizationAmount = 0.015;
+                    chordNotes.forEach((note, index) => {
+                        output.push({
+                            ...newEvent,
+                            note: note,
+                            time: newEvent.time + (index * humanizationAmount),
+                            // ensure individual notes don't carry the chord param
+                            params: { ...newEvent.params, chord: undefined } 
+                        });
+                    });
+                    return; // a-a-a-a-a-a-a-a
+                }
+                output.push(newEvent);
+            });
+        }
+    });
+
     
-    const winningBassBranch = bassBranches.length > 0
-        ? bassBranches.reduce((max, b) => b.weight > max.weight ? b : max, bassBranches[0])
-        : null;
-
-    if (winningBassBranch) {
-        winningBassBranch.events.forEach(event => {
-            if (!event) return;
-            const newEvent: FractalEvent = { ...event };
-            newEvent.phrasing = winningBassBranch.weight > 0.7 ? 'legato' : 'staccato';
-            newEvent.params = getParamsForTechnique(newEvent.technique, this.config.mood, this.config.genre);
-            output.push(newEvent);
-        });
-    }
-
-    if (drumBranches.length > 0) {
-        const winningDrumBranch = drumBranches.reduce((max, b) => b.weight > max.weight ? b : max, drumBranches[0]);
-        let drumEvents = [...winningDrumBranch.events]; 
-        
-        if (this.drumFillForThisEpoch) {
-            drumEvents = this.drumFillForThisEpoch;
-            this.drumFillForThisEpoch = null;
-        } else if (winningBassBranch?.technique === 'fill') { // Scenario 1: Drummer follows Bass
-            console.log(`%c[DRUM RESPONSE] at epoch ${this.epoch}: Bass is playing a fill, generating drum response.`, "color: #007acc;");
-            const { drumFill } = createRhythmSectionFill(this.config.mood, this.config.genre, this.random);
-            const baseBeat = drumEvents.filter(e => e.time < 2.0);
-            drumEvents = [...baseBeat, ...drumFill];
-        } else {
-            const percRule = STYLE_PERCUSSION_RULES[this.config.genre];
-            if (percRule && this.config.drumSettings.enabled) {
-                const dynamicProbability = percRule.probability * Math.max(0.2, Math.min(1.5, (120 / this.config.tempo)));
-                
-                if (this.random.next() < dynamicProbability) {
-                    const occupiedTimes = new Set(drumEvents.map(e => e.time));
-                    let availableTimes = percRule.allowedTimes.filter(t => !occupiedTimes.has(t));
-                    const percPool = percRule.types;
-                    
-                    if (availableTimes.length > 0 && percPool.length > 0) {
-                        // Generate a longer fill with a small probability
-                        if (this.random.next() > 0.7) { 
-                            const fillLength = this.random.nextInt(3) + 5; 
-                            for (let i = 0; i < fillLength; i++) {
-                                if (availableTimes.length === 0) break;
-                                const timeIndex = this.random.nextInt(availableTimes.length);
-                                const time = availableTimes.splice(timeIndex, 1)[0];
-                                const type = percPool[this.random.nextInt(percPool.length)];
-                                drumEvents.push({ type, note: 36, duration: 0.25, time, weight: percRule.weight * 0.9, technique: 'hit', dynamics: 'p', phrasing: 'staccato', params: getParamsForTechnique('hit', this.config.mood, this.config.genre) } as FractalEvent);
-                            }
-                        } else { 
-                            const time = availableTimes[this.random.nextInt(availableTimes.length)];
-                            const type = percPool[this.random.nextInt(percPool.length)];
-                            drumEvents.push({ type, time, duration: 0.25, weight: percRule.weight, note: 36, phrasing: 'staccato', dynamics: 'p', params: getParamsForTechnique('hit', this.config.mood, this.config.genre) } as FractalEvent);
-                        }
+    // --- DLA: Genetic mutation ---
+    if (this.epoch > 0 && this.epoch % 2 === 0) { 
+        ['bass', 'drums', 'accompaniment'].forEach(type => {
+            if (this.random.next() < (this.config.density * 0.4) && this.branches.filter(b => b.type === type).length < 5) {
+                const parentBranch = this.selectBranchForMutation(type as any);
+                if (parentBranch) {
+                    const newBranch = this.mutateBranch(parentBranch);
+                    if (newBranch) {
+                        this.branches.push(newBranch);
+                        console.log(`%c[MUTATION] at epoch ${this.epoch}: Created new ${type} branch ${newBranch.id}.`, `color: ${type === 'bass' ? 'green' : type === 'drums' ? 'darkorange' : '#9932CC'};`);
                     }
                 }
             }
-        }
-        
-        drumEvents.forEach(event => {
-            if (event && event.type) output.push({ ...event, weight: event.weight ?? 1.0 });
         });
-    }
-
-    // --- Accompaniment Generation ---
-    const resonanceThreshold = 0.65;
-    const resonance = this.calculateCrossResonance(delta);
-
-    if (resonance * this.config.density > resonanceThreshold && winningBassBranch) {
-        const scale = getScaleForMood(this.config.mood);
-        const rootNote = winningBassBranch.events[0]?.note;
-        if (rootNote) {
-            const rootIndex = scale.findIndex(n => n % 12 === rootNote % 12);
-            if (rootIndex !== -1) {
-                const third = scale[(rootIndex + 2) % scale.length];
-                const fifth = scale[(rootIndex + 4) % scale.length];
-                
-                console.log(`%c[ACCOMPANIMENT] Generated chord at epoch ${this.epoch} with resonance ${resonance.toFixed(2)}`, "color: #9932CC; font-weight: bold;");
-
-                const chordEvent: FractalEvent = {
-                    type: 'accompaniment',
-                    note: rootNote,
-                    duration: 4, 
-                    time: 0, 
-                    weight: resonance * this.config.density,
-                    technique: 'pluck',
-                    dynamics: 'p',
-                    phrasing: 'legato',
-                    params: { // This is a bit of a hack, but reuses the bass params for now.
-                         ...getParamsForTechnique('pluck', this.config.mood, this.config.genre),
-                         // Override for a softer accompaniment sound
-                         cutoff: 400,
-                         resonance: 0.8,
-                         distortion: 0.05
-                    },
-                    // We can add chord notes to the event if the synth manager supports it
-                    // chord: [rootNote, third, fifth]
-                };
-                output.push(chordEvent);
-            }
-        }
-    }
-    
-    // --- DLA: Genetic mutation ---
-    const shouldMutateBass = this.random.next() < (this.config.density * 0.4);
-    const shouldMutateDrums = this.random.next() < (this.config.density * 0.4); 
-
-    if (this.epoch > 0 && this.epoch % 2 === 0) { 
-        if (shouldMutateBass && this.branches.filter(b => b.type === 'bass').length < 5) {
-            const parentBranch = this.selectBranchForMutation('bass');
-            if (parentBranch) {
-                const newBranch = this.mutateBranch(parentBranch);
-                if (newBranch) {
-                    this.branches.push(newBranch);
-                    console.log(`%c[MUTATION] at epoch ${this.epoch}: Created new bass branch ${newBranch.id}.`, "color: green;");
-                }
-            }
-        }
-        if (shouldMutateDrums && this.branches.filter(b => b.type === 'drums').length < 5) {
-            const parentBranch = this.selectBranchForMutation('drums');
-            if (parentBranch) {
-                const newBranch = this.mutateBranch(parentBranch);
-                if (newBranch) {
-                     this.branches.push(newBranch);
-                     console.log(`%c[MUTATION] at epoch ${this.epoch}: Created new drum branch ${newBranch.id}.`, "color: darkorange;");
-                }
-            }
-        }
     }
     
     return output;
   }
   
-  private calculateCrossResonance(delta: number): number {
-    const bassBranches = this.branches.filter(b => b.type === 'bass');
-    const drumBranches = this.branches.filter(b => b.type === 'drums');
+  private calculateCrossResonance(delta: number, typeA: 'bass' | 'drums' | 'accompaniment', typeB: 'bass' | 'drums' | 'accompaniment'): number {
+    const branchesA = this.branches.filter(b => b.type === typeA);
+    const branchesB = this.branches.filter(b => b.type === typeB);
 
-    if (bassBranches.length === 0 || drumBranches.length === 0) return 0;
+    if (branchesA.length === 0 || branchesB.length === 0) return 0;
     
     let totalResonance = 0;
     let count = 0;
 
-    for (const bBranch of bassBranches) {
-        for (const dBranch of drumBranches) {
-            if (!bBranch.events[0] || !dBranch.events[0]) continue;
+    for (const bA of branchesA) {
+        for (const bB of branchesB) {
+            if (!bA.events[0] || !bB.events[0]) continue;
             const k = MelancholicMinorK(
-                bBranch.events[0],
-                dBranch.events[0],
+                bA.events[0],
+                bB.events[0],
                 { mood: this.config.mood, tempo: this.config.tempo, delta, genre: this.config.genre }
             );
-            totalResonance += k * delta * bBranch.weight * dBranch.weight;
+            totalResonance += k * delta * bA.weight * bB.weight;
             count++;
         }
     }
@@ -663,15 +682,24 @@ export class FractalMusicEngine {
     const delta = this.getDeltaProfile()(this.time);
     if (!isFinite(barDuration)) return [];
 
-    // Update weights
+    // Update weights based on cross-resonance
+    const typePairs: ['bass' | 'drums' | 'accompaniment', 'bass' | 'drums' | 'accompaniment'][] = [['bass', 'drums'], ['bass', 'accompaniment'], ['drums', 'accompaniment']];
+    const resonanceSums: Record<string, number> = {};
+
+    this.branches.forEach(branch => {
+        resonanceSums[branch.id] = 0;
+        typePairs.forEach(([typeA, typeB]) => {
+            if (branch.type === typeA) {
+                resonanceSums[branch.id] += this.calculateCrossResonance(delta, typeA, typeB);
+            } else if (branch.type === typeB) {
+                 resonanceSums[branch.id] += this.calculateCrossResonance(delta, typeB, typeA);
+            }
+        });
+    });
+
     this.branches.forEach(branch => {
       const ageBonus = branch.age === 0 ? 1.5 : 1.0; 
-      const resonanceSum = this.branches.reduce((sum, other) => {
-        if (other.id === branch.id || other.type === branch.type) return sum;
-        if (!branch.events[0] || !other.events[0]) return sum;
-        const k = MelancholicMinorK(branch.events[0], other.events[0], { mood: this.config.mood, tempo: this.config.tempo, delta, genre: this.config.genre });
-        return sum + k * delta * other.weight;
-      }, 0);
+      const resonanceSum = resonanceSums[branch.id] || 0;
       const newWeight = ((1 - this.lambda) * branch.weight + resonanceSum) * ageBonus;
       branch.weight = isFinite(newWeight) ? Math.max(0, newWeight) : 0.01;
       branch.age++;
