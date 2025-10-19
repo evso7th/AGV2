@@ -150,6 +150,8 @@ export class DrumMachine {
             let velocity = event.weight;
             if (eventType.startsWith('perc-')) {
                 velocity *= 0.5; // Уменьшаем громкость перкуссии вдвое
+            } else if (eventType.startsWith('drum_a_ride')) {
+                velocity *= 0.7; // Уменьшаем громкость райдов
             }
             
             const isMainBeat = ['kick', 'snare', 'hihat_closed', 'hihat_open'].some(t => sampleName.includes(t));
