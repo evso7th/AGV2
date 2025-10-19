@@ -135,7 +135,6 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
     }
 
     if (accompanimentManagerRef.current && accompanimentEvents.length > 0) {
-        console.log(`[AudioEngine] Dispatching ${accompanimentEvents.length} events to AccompanimentSynthManager.`);
         accompanimentManagerRef.current.schedule(accompanimentEvents, barStartTime, tempo);
     }
   }, []);
