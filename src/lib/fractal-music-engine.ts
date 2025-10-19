@@ -1,6 +1,6 @@
 
 
-import type { FractalEvent, Mood, Genre, Technique, BassSynthParams, InstrumentType, MelodyInstrument, BassInstrument } from '@/types/fractal';
+import type { FractalEvent, Mood, Genre, Technique, BassSynthParams, InstrumentType, MelodyInstrument, BassInstrument, AccompanimentInstrument } from '@/types/fractal';
 import { MelancholicMinorK } from './resonance-matrices';
 import { getScaleForMood, STYLE_DRUM_PATTERNS, STYLE_BASS_PATTERNS, type BassPatternDefinition, STYLE_PERCUSSION_RULES, ALL_RIDES } from './music-theory';
 
@@ -178,27 +178,42 @@ function createAccompanimentAxiom(mood: Mood, genre: Genre, bassAxiom: FractalEv
     const rootNote = bassAxiom[0]?.note;
     if (rootNote === undefined) return [];
 
-    const octaveShift = 24; // 2 octaves higher than bass
-    const chordTones = [0, 2, 4, 6].map(i => scale.find(n => n % 12 === (rootNote + i + 12) % 12) ?? scale[i]).map(n => n + octaveShift);
-
     const axiom: FractalEvent[] = [];
-    const numEvents = random.nextInt(2) + 1; // 1-2 events per bar
-    const duration = 0.25; // 16th note
+    const params = getParamsForTechnique('pluck', mood, genre);
+    
+    // Create a sparse, 16-beat (4-bar) phrase
+    const totalBeats = 16;
+    let beatsFilled = 0;
 
-    for (let i = 0; i < numEvents; i++) {
-        const time = random.nextInt(16) * 0.25; // Place on any 16th note grid
-        const note = chordTones[random.nextInt(chordTones.length)];
-        axiom.push({
-            type: 'accompaniment',
-            note: note,
-            duration: duration,
-            time: time,
-            weight: 0.6,
-            technique: 'pluck',
-            dynamics: 'p',
-            phrasing: 'staccato',
-            params: getParamsForTechnique('pluck', mood, genre)
-        });
+    while (beatsFilled < totalBeats * 0.25) { // Fill about 25% of the phrase
+        const time = random.nextInt(totalBeats * 2) * 0.5; // Place on 8th note grid
+        const phraseLength = random.nextInt(3) + 1; // 1-3 notes
+        const duration = (random.nextInt(2) + 1) * 0.25; // 16th or 8th note
+
+        let lastNote = rootNote + 24;
+        for (let i = 0; i < phraseLength; i++) {
+            const currentTime = time + i * duration;
+            if (currentTime >= totalBeats) break;
+
+            const step = random.nextInt(5) - 2; // -2 to +2 scale degrees
+            const lastNoteIndex = scale.findIndex(n => n % 12 === lastNote % 12);
+            const newNoteIndex = (lastNoteIndex + step + scale.length) % scale.length;
+            const newNote = scale[newNoteIndex] + (step > 0 ? 12 : 0); // Tend to go up
+            
+            axiom.push({
+                type: 'accompaniment',
+                note: newNote,
+                duration: duration,
+                time: currentTime,
+                weight: 0.4 + random.next() * 0.3,
+                technique: 'pluck',
+                dynamics: 'p',
+                phrasing: 'staccato',
+                params: params,
+            });
+            lastNote = newNote;
+        }
+        beatsFilled += phraseLength * duration;
     }
 
     return axiom;
@@ -327,6 +342,8 @@ export class FractalMusicEngine {
   private drumFillForThisEpoch: FractalEvent[] | null = null;
   public needsBassReset: boolean = false;
   private bassShouldRespond: boolean = false;
+  private lastInstrumentChangeEpoch: number = 0;
+  private currentAccompanimentInstrument: AccompanimentInstrument = 'piano';
 
   constructor(config: EngineConfig) {
     this.config = { ...config };
@@ -363,6 +380,8 @@ export class FractalMusicEngine {
 
     this.needsBassReset = false;
     this.bassShouldRespond = false;
+    this.lastInstrumentChangeEpoch = 0;
+    this.currentAccompanimentInstrument = 'piano';
   }
 
   public generateExternalImpulse() {
@@ -493,37 +512,7 @@ export class FractalMusicEngine {
         if (!mutationApplied) return null;
         return { id: `drum_mut_${this.epoch}`, events: newEvents, weight: parent.weight * 0.8, age: 0, technique: 'hit', type: 'drums' };
     } else if (parent.type === 'accompaniment') {
-        const scale = getScaleForMood(this.config.mood);
-        const newAccompaniment: FractalEvent[] = [];
-        const baseEvent = parent.events[0];
-        if (!baseEvent) return null;
-        
-        const params = getParamsForTechnique('pluck', this.config.mood, this.config.genre);
-
-        const numEvents = this.random.nextInt(3) + 1; // 1-3 events
-        const duration = 0.25;
-
-        for (let i = 0; i < numEvents; i++) {
-            const time = this.random.nextInt(16) * 0.25;
-            
-            const lastNote = newAccompaniment[newAccompaniment.length - 1]?.note ?? baseEvent.note;
-            const step = this.random.nextInt(5) - 2; // -2 to +2 scale degrees
-            const lastNoteIndex = scale.findIndex(n => n % 12 === lastNote % 12);
-            const newNoteIndex = (lastNoteIndex + step + scale.length) % scale.length;
-            const newNote = scale[newNoteIndex];
-
-            newAccompaniment.push({
-                type: 'accompaniment',
-                note: newNote,
-                duration: duration,
-                time: time,
-                weight: baseEvent.weight * (0.8 + this.random.next() * 0.2),
-                technique: 'pluck',
-                dynamics: 'p',
-                phrasing: 'staccato',
-                params: params,
-            });
-        }
+        const newAccompaniment = createAccompanimentAxiom(this.config.mood, this.config.genre, newEvents, this.random);
         
         if (newAccompaniment.length > 0) {
             return {
@@ -531,7 +520,7 @@ export class FractalMusicEngine {
                 events: newAccompaniment,
                 weight: parent.weight * 0.7,
                 age: 0,
-                technique: 'fill',
+                technique: 'pluck',
                 type: 'accompaniment'
             };
         }
@@ -620,10 +609,21 @@ export class FractalMusicEngine {
         });
     }
 
-    const instrumentHints = {
-      accompaniment: (this.config.genre === 'ambient' || this.config.genre === 'ballad') ? 'piano' : 'acousticGuitarSolo' as MelodyInstrument,
-      bass: (this.config.genre === 'ambient' || this.config.mood === 'dreamy') ? 'ambientDrone' : 'classicBass' as BassInstrument
+    const instrumentHints: { accompaniment?: AccompanimentInstrument, bass?: BassInstrument } = {
+        bass: (this.config.genre === 'ambient' || this.config.mood === 'dreamy') ? 'ambientDrone' : 'classicBass',
     };
+
+    const AMBIENT_ACCOMPANIMENT_POOL: AccompanimentInstrument[] = ['piano', 'E-Bells_melody', 'G-Drops', 'acousticGuitarSolo', 'synth'];
+
+    if (this.config.genre === 'ambient' && (this.epoch - this.lastInstrumentChangeEpoch > (this.random.nextInt(8) + 16))) {
+        this.currentAccompanimentInstrument = AMBIENT_ACCOMPANIMENT_POOL[this.random.nextInt(AMBIENT_ACCOMPANIMENT_POOL.length)];
+        this.lastInstrumentChangeEpoch = this.epoch;
+        console.log(`%c[INSTRUMENT CHANGE] at epoch ${this.epoch}: Switched accompaniment to ${this.currentAccompanimentInstrument}`, 'color: magenta; font-weight: bold;');
+    } else if (this.config.genre !== 'ambient') {
+        this.currentAccompanimentInstrument = 'acousticGuitarSolo'; // Default for non-ambient
+    }
+
+    instrumentHints.accompaniment = this.currentAccompanimentInstrument;
     
     return { events: output, instrumentHints };
   }
@@ -727,5 +727,3 @@ export class FractalMusicEngine {
     };
   }
 }
-
-    
