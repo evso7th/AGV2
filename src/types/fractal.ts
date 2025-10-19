@@ -76,7 +76,9 @@ export type InstrumentType =
   | 'perc-014'
   | 'perc-015'
   | 'hh_bark_short'
-  | 'cymbal_bell1';
+  | 'cymbal_bell1'
+  // Гармонические инструменты
+  | 'accompaniment';
 
 /**
  * Параметры для синтезатора баса.
@@ -158,5 +160,6 @@ export type ResonanceMatrix = (
     mood: Mood;
     tempo: number;
     delta: number; // текущий импульс δ(t)
+    genre: Genre;
   }
 ) => number;
