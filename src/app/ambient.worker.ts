@@ -9,7 +9,7 @@
  */
 import type { WorkerSettings, ScoreName, Mood, Genre } from '@/types/music';
 import { FractalMusicEngine } from '@/lib/fractal-music-engine';
-import type { FractalEvent } from '@/types/fractal';
+import type { FractalEvent, BassInstrument, MelodyInstrument } from '@/types/fractal';
 
 // --- "Sparkle" (In-krap-le-ni-ye) Logic ---
 let lastSparkleTime = -Infinity;
@@ -155,15 +155,22 @@ const Scheduler = {
         
         const density = this.settings.density;
         const genre = this.settings.genre;
-        let events: FractalEvent[] = [];
+        let scorePayload: { events: FractalEvent[]; instrumentHints: { accompaniment?: MelodyInstrument, bass?: BassInstrument } } = { events: [], instrumentHints: {} };
 
         if (this.settings.score === 'neuro_f_matrix') {
-            events = fractalMusicEngine.evolve(this.barDuration);
+            scorePayload = fractalMusicEngine.evolve(this.barDuration);
         } 
         
-        console.log(`[Worker] Tick ${this.barCount}. Generated ${events.length} events.`);
+        console.log(`[Worker] Tick ${this.barCount}. Generated ${scorePayload.events?.length ?? 'undefined'} events.`);
         
-        self.postMessage({ type: 'SCORE_READY', events: events, barDuration: this.barDuration });
+        self.postMessage({ 
+            type: 'SCORE_READY', 
+            payload: {
+                events: scorePayload.events,
+                instrumentHints: scorePayload.instrumentHints,
+                barDuration: this.barDuration
+            }
+        });
 
         const currentTime = this.barCount * this.barDuration;
         
@@ -225,3 +232,4 @@ self.onmessage = async (event: MessageEvent) => {
         self.postMessage({ type: 'error', error: e instanceof Error ? e.message : String(e) });
     }
 };
+
