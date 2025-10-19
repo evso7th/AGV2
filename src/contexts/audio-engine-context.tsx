@@ -84,6 +84,7 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
   
   const drumMachineRef = useRef<DrumMachine | null>(null);
   const bassManagerRef = useRef<BassSynthManager | null>(null);
+  const accompanimentManagerRef = useRef<AccompanimentSynthManager | null>(null);
   const sparklePlayerRef = useRef<SparklePlayer | null>(null);
   
   const masterGainNodeRef = useRef<GainNode | null>(null);
@@ -99,15 +100,19 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
 
   const scheduleEvents = useCallback((events: FractalEvent[], barStartTime: number, tempo: number) => {
     console.log('[AudioEngine] scheduleEvents called with', events.length, 'events for time', barStartTime);
+    const validEvents = events.filter(e => e && e.type);
     const drumEvents: FractalEvent[] = [];
     const bassEvents: FractalEvent[] = [];
+    const accompanimentEvents: FractalEvent[] = [];
 
-    for (const event of events) {
+    for (const event of validEvents) {
       const eventType = Array.isArray(event.type) ? event.type[0] : event.type;
       if (typeof eventType === 'string' && (eventType.startsWith('drum_') || eventType.startsWith('perc-'))) {
         drumEvents.push(event);
       } else if (eventType === 'bass') {
         bassEvents.push(event);
+      } else if (eventType === 'accompaniment') {
+        accompanimentEvents.push(event);
       }
     }
 
@@ -117,6 +122,10 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
     
     if (bassManagerRef.current && bassEvents.length > 0) {
         bassManagerRef.current.play(bassEvents, barStartTime, tempo);
+    }
+
+    if (accompanimentManagerRef.current && accompanimentEvents.length > 0) {
+        accompanimentManagerRef.current.schedule(accompanimentEvents, barStartTime, tempo);
     }
   }, []);
 
@@ -147,7 +156,7 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
         }
 
         if (!gainNodesRef.current.bass) {
-            const parts: Exclude<InstrumentPart, 'pads'>[] = ['bass', 'drums', 'sparkles'];
+            const parts: Exclude<InstrumentPart, 'pads'>[] = ['bass', 'drums', 'sparkles', 'accompaniment'];
             parts.forEach(part => {
                 gainNodesRef.current[part] = context.createGain();
                 gainNodesRef.current[part]!.connect(masterGainNodeRef.current!);
@@ -164,6 +173,11 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
             bassManagerRef.current = new BassSynthManager(context, gainNodesRef.current.bass!);
             initPromises.push(bassManagerRef.current.init());
         }
+
+        if (!accompanimentManagerRef.current) {
+            accompanimentManagerRef.current = new AccompanimentSynthManager(context, gainNodesRef.current.accompaniment!);
+            initPromises.push(accompanimentManagerRef.current.init());
+        }
         
         if (!sparklePlayerRef.current) {
             sparklePlayerRef.current = new SparklePlayer(context, gainNodesRef.current.sparkles!);
@@ -172,7 +186,7 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
 
 
         if (!workerRef.current) {
-            const worker = new Worker(new URL('../app/ambient.worker.ts', import.meta.url), { type: 'module' });
+            const worker = new Worker(new URL('@/app/ambient.worker.ts', import.meta.url), { type: 'module' });
             worker.onmessage = (event: MessageEvent<WorkerMessage>) => {
                 console.log('[AudioEngine] Received message from worker:', event.data);
                 const { type, events, barDuration, error, time, genre, mood } = event.data;
@@ -220,6 +234,7 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
   const stopAllSounds = useCallback(() => {
     bassManagerRef.current?.allNotesOff();
     drumMachineRef.current?.stop();
+    accompanimentManagerRef.current?.allNotesOff();
     sparklePlayerRef.current?.stopAll();
     if (impulseTimerRef.current) {
         clearTimeout(impulseTimerRef.current);
@@ -273,7 +288,11 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
   }, [setVolumeCallback]);
 
   // Dummy implementations for unused functions
-  const setInstrumentCallback = useCallback((part: any, name: any) => {}, []);
+  const setInstrumentCallback = useCallback((part: any, name: any) => {
+      if (part === 'accompaniment') {
+        accompanimentManagerRef.current?.setPreset(name);
+      }
+  }, []);
   const setBassTechniqueCallback = useCallback((technique: any) => {}, []);
   const setEQGainCallback = useCallback((bandIndex: number, gain: number) => {}, []);
   const startMasterFadeOut = useCallback((durationInSeconds: number) => {}, []);
