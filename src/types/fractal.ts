@@ -78,7 +78,13 @@ export type InstrumentType =
   | 'hh_bark_short'
   | 'cymbal_bell1'
   // Гармонические инструменты
-  | 'accompaniment';
+  | 'accompaniment'
+  // Мелодические инструменты
+  | 'melody';
+
+export type MelodyInstrument = 'piano' | 'violin' | 'flute' | 'synth' | 'organ' | 'mellotron' | 'theremin' | 'E-Bells_melody' | 'G-Drops' | 'acousticGuitarSolo' | 'electricGuitar' | 'none';
+export type BassInstrument = 'classicBass' | 'glideBass' | 'ambientDrone' | 'resonantGliss' | 'hypnoticDrone' | 'livingRiff' | 'piano' | 'violin' | 'flute' | 'acousticGuitarSolo' | 'none';
+
 
 /**
  * Параметры для синтезатора баса.

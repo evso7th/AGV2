@@ -1,6 +1,6 @@
 
 
-import type { FractalEvent, Mood, Genre, Technique, BassSynthParams, InstrumentType } from '@/types/fractal';
+import type { FractalEvent, Mood, Genre, Technique, BassSynthParams, InstrumentType, MelodyInstrument, BassInstrument } from '@/types/fractal';
 import { MelancholicMinorK } from './resonance-matrices';
 import { getScaleForMood, STYLE_DRUM_PATTERNS, STYLE_BASS_PATTERNS, type BassPatternDefinition, STYLE_PERCUSSION_RULES, ALL_RIDES } from './music-theory';
 
@@ -293,30 +293,35 @@ function createAccompanimentAxiom(mood: Mood, genre: Genre, bassAxiom: FractalEv
     const rootIndex = scale.findIndex(n => n % 12 === rootNote % 12);
     if (rootIndex === -1) return [];
 
+    // Поднимаем аккорд на 1 или 2 октавы
+    const octaveShift = 12 + (Math.random() < 0.5 ? 12 : 0);
+
     const third = scale.find(n => n % 12 === (rootNote + (mood === 'melancholic' || mood === 'dark' ? 3 : 4)) % 12) ?? scale[(rootIndex + 2) % scale.length];
     const fifth = scale.find(n => n % 12 === (rootNote + 7) % 12) ?? scale[(rootIndex + 4) % scale.length];
     
-    const chord = [rootNote, third, fifth];
+    const chord = [rootNote + octaveShift, third + octaveShift, fifth + octaveShift];
     
     const params: BassSynthParams = {
         ...getParamsForTechnique('pluck', mood, genre),
         cutoff: 400,
         resonance: 0.8,
         distortion: 0.05,
-        chord: chord
     };
 
-    return [{
+    const humanizationAmount = 0.015; // расхождение в долях такта
+
+    // Создаем пачку отдельных нот с небольшим смещением
+    return chord.map((note, index) => ({
         type: 'accompaniment',
-        note: rootNote,
-        duration: 4,
-        time: 0,
+        note: note,
+        duration: 4, // Длительность всего аккорда
+        time: 0 + index * humanizationAmount, // Добавляем смещение
         weight: 0.6,
         technique: 'pluck',
         dynamics: 'p',
         phrasing: 'legato',
         params: params
-    }];
+    }));
 }
 
 // === ОСНОВНОЙ КЛАСС ===
@@ -500,39 +505,40 @@ export class FractalMusicEngine {
         if (!mutationApplied) return null;
         return { id: `drum_mut_${this.epoch}`, events: newEvents, weight: parent.weight * 0.8, age: 0, technique: 'hit', type: 'drums' };
     } else if (parent.type === 'accompaniment') {
-        // Accompaniment Mutation: arpeggiate or create a passage
         const scale = getScaleForMood(this.config.mood);
         const newAccompaniment: FractalEvent[] = [];
         const baseEvent = parent.events[0];
-        if (!baseEvent || !baseEvent.params?.chord) return null;
+        if (!baseEvent) return null;
 
-        const chord: number[] = baseEvent.params.chord;
+        const rootNote = baseEvent.note;
+        const chord = [rootNote, rootNote+4, rootNote+7]; // Simple major triad for passage
+        
         const numNotes = this.random.nextInt(5) + 8; // 8-12 notes
         let currentTime = 0;
+        const humanizationAmount = 0.015;
 
         for (let i = 0; i < numNotes; i++) {
             const duration = 0.25;
             if (currentTime + duration > 4.0) break;
             
             const note = chord[this.random.nextInt(chord.length)];
-            const octaveShift = (this.random.nextInt(3) - 1) * 12;
+            const octaveShift = (this.random.nextInt(2)) * 12;
 
             newAccompaniment.push({
                 type: 'accompaniment',
                 note: note + octaveShift,
                 duration: duration,
-                time: currentTime,
+                time: currentTime + (i * humanizationAmount),
                 weight: baseEvent.weight * (0.8 + this.random.next() * 0.2),
                 technique: 'pluck',
                 dynamics: 'mf',
                 phrasing: 'staccato',
-                params: { ...baseEvent.params, chord: undefined } // Remove chord from child events
+                params: { ...baseEvent.params, chord: undefined }
             });
             currentTime += duration;
         }
         
         if (newAccompaniment.length > 0) {
-             console.log(`%c[MUTATION] at epoch ${this.epoch}: Created new accompaniment branch with ${newAccompaniment.length} notes.`, "color: #9932CC;");
             return {
                 id: `accomp_mut_${this.epoch}`,
                 events: newAccompaniment,
@@ -546,7 +552,7 @@ export class FractalMusicEngine {
     return null;
   }
 
-  private generateOneBar(delta: number): FractalEvent[] {
+  private generateOneBar(delta: number): { events: FractalEvent[]; instrumentHints: { accompaniment?: MelodyInstrument, bass?: BassInstrument } } {
     if (this.needsBassReset) {
         console.log("%c[RESET] Bass branch reset triggered.", "color: red; font-weight: bold;");
         this.branches = this.branches.filter(b => b.type !== 'bass' || b.id.includes('axon'));
@@ -608,20 +614,13 @@ export class FractalMusicEngine {
                 if (type === 'bass') {
                     newEvent.phrasing = winningBranch.weight > 0.7 ? 'legato' : 'staccato';
                     newEvent.params = getParamsForTechnique(newEvent.technique, this.config.mood, this.config.genre);
-                } else if (type === 'accompaniment' && newEvent.params?.chord) {
-                    // Logic for "humanizing" chords for the accompaniment manager
-                    const chordNotes = newEvent.params.chord;
-                    const humanizationAmount = 0.015;
-                    chordNotes.forEach((note, index) => {
-                        output.push({
-                            ...newEvent,
-                            note: note,
-                            time: newEvent.time + (index * humanizationAmount),
-                            // ensure individual notes don't carry the chord param
-                            params: { ...newEvent.params, chord: undefined } 
-                        });
-                    });
-                    return; // a-a-a-a-a-a-a-a
+                } else if (type === 'accompaniment') {
+                   // Ensure accompaniment notes have their own parameters.
+                   newEvent.params = getParamsForTechnique(newEvent.technique, this.config.mood, this.config.genre);
+                   if (this.config.genre === 'ambient') {
+                       newEvent.params.cutoff = 250 + (this.random.next() * 400);
+                       newEvent.params.resonance = 0.5 + (this.random.next() * 0.4);
+                   }
                 }
                 output.push(newEvent);
             });
@@ -631,9 +630,9 @@ export class FractalMusicEngine {
     
     // --- DLA: Genetic mutation ---
     if (this.epoch > 0 && this.epoch % 2 === 0) { 
-        ['bass', 'drums', 'accompaniment'].forEach(type => {
+        (['bass', 'drums', 'accompaniment'] as const).forEach(type => {
             if (this.random.next() < (this.config.density * 0.4) && this.branches.filter(b => b.type === type).length < 5) {
-                const parentBranch = this.selectBranchForMutation(type as any);
+                const parentBranch = this.selectBranchForMutation(type);
                 if (parentBranch) {
                     const newBranch = this.mutateBranch(parentBranch);
                     if (newBranch) {
@@ -644,8 +643,13 @@ export class FractalMusicEngine {
             }
         });
     }
+
+    const instrumentHints = {
+      accompaniment: (this.config.genre === 'ambient' || this.config.genre === 'ballad') ? 'piano' : 'acousticGuitarSolo' as MelodyInstrument,
+      bass: (this.config.genre === 'ambient' || this.config.mood === 'dreamy') ? 'ambientDrone' : 'classicBass' as BassInstrument
+    };
     
-    return output;
+    return { events: output, instrumentHints };
   }
   
   private calculateCrossResonance(delta: number, typeA: 'bass' | 'drums' | 'accompaniment', typeB: 'bass' | 'drums' | 'accompaniment'): number {
@@ -673,14 +677,14 @@ export class FractalMusicEngine {
   }
 
 
-  public evolve(barDuration: number): FractalEvent[] {
+  public evolve(barDuration: number): { events: FractalEvent[]; instrumentHints: { accompaniment?: MelodyInstrument, bass?: BassInstrument } } {
     if (this.epoch >= this.nextWeatherEventEpoch) {
         this.generateExternalImpulse();
         this.nextWeatherEventEpoch += this.random.nextInt(12) + 8;
     }
 
     const delta = this.getDeltaProfile()(this.time);
-    if (!isFinite(barDuration)) return [];
+    if (!isFinite(barDuration)) return { events: [], instrumentHints: {} };
 
     // Update weights based on cross-resonance
     const typePairs: ['bass' | 'drums' | 'accompaniment', 'bass' | 'drums' | 'accompaniment'][] = [['bass', 'drums'], ['bass', 'accompaniment'], ['drums', 'accompaniment']];
@@ -717,11 +721,11 @@ export class FractalMusicEngine {
     // Kill old and weak branches (but keep axons)
     this.branches = this.branches.filter(b => b.id.includes('axon') || b.weight > 0.05 || b.age < 8);
     
-    const events = this.generateOneBar(delta);
+    const { events, instrumentHints } = this.generateOneBar(delta);
 
     this.time += barDuration;
     this.epoch++;
-    return events.filter(e => e); // Filter out any null/undefined events
+    return { events: events.filter(e => e), instrumentHints }; // Filter out any null/undefined events
   }
 
   private getDeltaProfile(): (t: number) => number {
