@@ -115,10 +115,18 @@ function createDrumAxiom(genre: Genre, mood: Mood, tempo: number, random: { next
 
 function createBassAxiom(mood: Mood, genre: Genre, random: { next: () => number, nextInt: (max: number) => number }, compatibleTags: string[] = []): FractalEvent[] {
   const scale = getScaleForMood(mood);
-  const patternLibrary = STYLE_BASS_PATTERNS[genre] || STYLE_BASS_PATTERNS['ambient'];
+  let patternLibrary = STYLE_BASS_PATTERNS[genre] || STYLE_BASS_PATTERNS['ambient'];
+
+  // For ambient, always start with a smooth 'swell' pattern.
+  if (genre === 'ambient') {
+    const swellPatterns = patternLibrary.filter(p => p.pattern.some(e => e.technique === 'swell'));
+    if (swellPatterns.length > 0) {
+        patternLibrary = swellPatterns;
+    }
+  }
 
   let compatiblePatterns = patternLibrary;
-  if (compatibleTags.length > 0 && genre !== 'ambient') { // Don't filter for ambient, let it be random
+  if (compatibleTags.length > 0 && genre !== 'ambient') {
       const filtered = patternLibrary.filter(p => p.tags.some(tag => compatibleTags.includes(tag)));
       if (filtered.length > 0) {
           compatiblePatterns = filtered;
@@ -207,8 +215,7 @@ function createBassFill(this: FractalMusicEngine, mood: Mood, genre: Genre, rand
     const scale = getScaleForMood(mood);
     const fillParams = getParamsForTechnique('fill', mood, genre);
     
-    // Ambient fills are slower and more melodic
-    const numNotes = genre === 'ambient' ? random.nextInt(2) + 3 : random.nextInt(4) + 7; // 3-4 for ambient, 7-10 for others
+    const numNotes = genre === 'ambient' ? random.nextInt(3) + 6 : random.nextInt(7) + 14; // 6-8 for ambient, 14-20 for others
     const baseDuration = genre === 'ambient' ? 1.0 : 0.25;
 
     let currentTime = 0;
@@ -643,3 +650,5 @@ export class FractalMusicEngine {
     };
   }
 }
+
+    
