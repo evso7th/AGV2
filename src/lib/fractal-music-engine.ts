@@ -28,7 +28,7 @@ interface EngineConfig {
 
 function getParamsForTechnique(technique: Technique, mood: Mood, genre: Genre): BassSynthParams {
   if (genre === 'ambient' && technique === 'swell') {
-     return { cutoff: 200, resonance: 1.1, distortion: 0.0, portamento: 0.1, attack: 0.8, release: 2.0 };
+     return { cutoff: 200, resonance: 1.1, distortion: 0.0, portamento: 0.1 };
   }
   switch (technique) {
     case 'pluck':
@@ -40,7 +40,7 @@ function getParamsForTechnique(technique: Technique, mood: Mood, genre: Genre): 
     case 'fill':
        return { cutoff: 1200, resonance: 0.6, distortion: 0.25, portamento: 0.0 };
     case 'swell':
-       return { cutoff: 200, resonance: 1.1, distortion: 0.0, portamento: 0.1, attack: 0.8, release: 2.0 };
+       return { cutoff: 200, resonance: 1.1, distortion: 0.0, portamento: 0.1 };
     default: // 'hit' or others
       return { cutoff: 500, resonance: 0.2, distortion: 0.0, portamento: 0.0 };
   }
@@ -490,6 +490,7 @@ export class FractalMusicEngine {
 
     if (winningBassBranch) {
         winningBassBranch.events.forEach(event => {
+            if (!event) return;
             const newEvent: FractalEvent = { ...event };
             newEvent.phrasing = winningBassBranch.weight > 0.7 ? 'legato' : 'staccato';
             newEvent.params = getParamsForTechnique(newEvent.technique, this.config.mood, this.config.genre);
@@ -541,7 +542,7 @@ export class FractalMusicEngine {
         }
         
         drumEvents.forEach(event => {
-            output.push({ ...event, weight: event.weight ?? 1.0 });
+            if (event && event.type) output.push({ ...event, weight: event.weight ?? 1.0 });
         });
     }
     
@@ -588,6 +589,7 @@ export class FractalMusicEngine {
       const ageBonus = branch.age === 0 ? 1.5 : 1.0; 
       const resonanceSum = this.branches.reduce((sum, other) => {
         if (other.id === branch.id || other.type === branch.type) return sum;
+        if (!branch.events[0] || !other.events[0]) return sum;
         const k = MelancholicMinorK(branch.events[0], other.events[0], { mood: this.config.mood, tempo: this.config.tempo, delta, genre: this.config.genre });
         return sum + k * delta * other.weight;
       }, 0);
@@ -612,7 +614,7 @@ export class FractalMusicEngine {
 
     this.time += barDuration;
     this.epoch++;
-    return events;
+    return events.filter(e => e); // Filter out any null/undefined events
   }
 
   private getDeltaProfile(): (t: number) => number {
