@@ -44,37 +44,43 @@ export class AccompanimentSynthManager {
         const messages: any[] = [];
 
         events.forEach(event => {
-            const frequency = midiToFreq(event.note);
-            if (!isFinite(frequency)) {
-                console.error(`[AccompanimentManager] Invalid frequency for MIDI note ${event.note}`);
-                return;
-            }
+            const notesToPlay = event.params?.chord ? event.params.chord : [event.note];
 
-            const noteOnTime = barStartTime + (event.time * beatDuration);
-            const noteOffTime = noteOnTime + (event.duration * beatDuration);
+            notesToPlay.forEach((midiNote, index) => {
+                const frequency = midiToFreq(midiNote);
+                if (!isFinite(frequency)) {
+                    console.error(`[AccompanimentManager] Invalid frequency for MIDI note ${midiNote}`);
+                    return;
+                }
 
-            if (!isFinite(noteOnTime) || !isFinite(noteOffTime)) {
-                console.warn('[AccompanimentManager] Non-finite time in event:', event);
-                return;
-            }
+                // Apply a small delay for "humanization" if it's a chord
+                const humanizationDelay = event.params?.chord ? index * 0.015 : 0;
+                const noteOnTime = barStartTime + (event.time * beatDuration) + humanizationDelay;
+                const noteOffTime = noteOnTime + (event.duration * beatDuration);
 
-            const noteId = `${event.note}-${event.time}`;
+                if (!isFinite(noteOnTime) || !isFinite(noteOffTime)) {
+                    console.warn('[AccompanimentManager] Non-finite time in event:', event);
+                    return;
+                }
 
-            console.log(`%c[Accompaniment] Scheduling noteOn: ${event.note} at beat ${event.time.toFixed(2)} | absolute time: ${noteOnTime.toFixed(4)}`, 'color: #DAA520;');
+                const noteId = `${event.time}-${midiNote}-${index}`;
 
-            messages.push({
-                type: 'noteOn',
-                frequency,
-                velocity: event.weight,
-                when: noteOnTime,
-                noteId: noteId,
-                params: event.params 
-            });
+                console.log(`%c[Accompaniment] Scheduling noteOn: ${midiNote} at beat ${event.time.toFixed(2)} | absolute time: ${noteOnTime.toFixed(4)}`, 'color: #DAA520;');
 
-            messages.push({
-                type: 'noteOff',
-                noteId: noteId,
-                when: noteOffTime
+                messages.push({
+                    type: 'noteOn',
+                    frequency,
+                    velocity: event.weight,
+                    when: noteOnTime,
+                    noteId: noteId,
+                    params: event.params 
+                });
+
+                messages.push({
+                    type: 'noteOff',
+                    noteId: noteId,
+                    when: noteOffTime
+                });
             });
         });
         
