@@ -12,6 +12,7 @@ export type Note = {
     velocity?: number;    // How loud to play it (0-1), optional.
     part?: 'spark';       // Optional identifier for special notes
     note?: string; // For samplers that use note names
+    params?: any; // To pass synth params from composer
 };
 
 // A note for the sampler, identified by a string name.
@@ -43,7 +44,7 @@ export type EffectsScore = SamplerNote[];
 
 
 // --- UI Types ---
-export type BassInstrument = 'classicBass' | 'glideBass' | 'ambientDrone' | 'resonantGliss' | 'hypnoticDrone' | 'livingRiff' | 'piano' | 'violin' | 'flute' | 'acousticGuitarSolo' | 'none';
+export type BassInstrument = 'classicBass' | 'glideBass' | 'ambientDrone' | 'resonantGliss' | 'hypnoticDrone' | 'livingRiff' | 'none';
 export type MelodyInstrument = 'piano' | 'violin' | 'flute' | 'synth' | 'organ' | 'mellotron' | 'theremin' | 'E-Bells_melody' | 'G-Drops' | 'acousticGuitarSolo' | 'electricGuitar' | 'none';
 export type AccompanimentInstrument = MelodyInstrument | 'guitarChords';
 export type EffectInstrument = 
@@ -107,7 +108,7 @@ export type WorkerSettings = {
     genre: Genre;
     drumSettings: Omit<DrumSettings, 'volume'>;
     instrumentSettings: InstrumentSettings;
-    textureSettings: Omit<TextureSettings, 'volume'>;
+    textureSettings: Omit<TextureSettings, 'pads' | 'volume'>;
     density: number; // Controls musical density, 0 to 1
     composerControlsInstruments: boolean;
     mood: Mood;

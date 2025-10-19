@@ -1,5 +1,5 @@
 
-import type { FractalEvent, MelodyInstrument, AccompanimentInstrument, BassSynthParams } from "@/types/fractal";
+import type { FractalEvent, MelodyInstrument, AccompanimentInstrument, BassSynthParams } from '@/types/fractal';
 import type { Note } from "@/types/music";
 import * as Tone from 'tone';
 import { SamplerPlayer } from './sampler-player';
@@ -156,7 +156,6 @@ export class AccompanimentSynthManager {
         const messages: any[] = [];
         notes.forEach((note, i) => {
             const voiceIndex = (this.nextSynthVoice + i) % this.synthPool.length;
-            const voice = this.synthPool[voiceIndex];
             
             const frequency = midiToFreq(note.midi);
             const noteOnTime = barStartTime + note.time;
@@ -190,7 +189,8 @@ export class AccompanimentSynthManager {
         });
 
         if (messages.length > 0) {
-             this.synthPool[0].worklet.port.postMessage(messages);
+             // Send all messages for the bar in a single batch
+             this.synthPool.forEach(voice => voice.worklet.port.postMessage(messages));
              this.nextSynthVoice = (this.nextSynthVoice + notes.length) % this.synthPool.length;
         }
     }
