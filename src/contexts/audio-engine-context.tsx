@@ -146,8 +146,14 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
     } else if (part === 'bass' && bassManagerRef.current) {
         bassManagerRef.current.setPreset(name);
     }
-    // TODO: Implement for other parts if needed
+    // TODO: Implement for melody part if it becomes independent
   }, [isInitialized]);
+
+  const setBassTechniqueCallback = useCallback((technique: BassTechnique) => {
+    if (bassManagerRef.current) {
+        bassManagerRef.current.setTechnique(technique);
+    }
+  }, []);
 
 
   const initialize = useCallback(async () => {
@@ -309,6 +315,8 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
 
   const setVolumeCallback = useCallback((part: InstrumentPart, volume: number) => {
     if (part === 'pads') return;
+    // This part requires a type assertion because the keys of gainNodesRef are more restrictive
+    // than the full InstrumentPart type. We know from the logic it will only be valid keys.
     const gainNode = gainNodesRef.current[part as Exclude<InstrumentPart, 'pads'>];
     if (gainNode && audioContextRef.current) {
         const balancedVolume = volume * (VOICE_BALANCE[part] ?? 1);
@@ -319,12 +327,6 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
   const setTextureSettingsCallback = useCallback((settings: Omit<TextureSettings, 'pads'>) => {
     setVolumeCallback('sparkles', settings.sparkles.enabled ? settings.sparkles.volume : 0);
   }, [setVolumeCallback]);
-
-  const setBassTechniqueCallback = useCallback((technique: BassTechnique) => {
-      if (bassManagerRef.current) {
-          bassManagerRef.current.setTechnique(technique);
-      }
-  }, []);
   
   const setEQGainCallback = useCallback((bandIndex: number, gain: number) => {}, []);
   const startMasterFadeOut = useCallback((durationInSeconds: number) => {}, []);
