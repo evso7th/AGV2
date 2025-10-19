@@ -445,7 +445,7 @@ export class FractalMusicEngine {
                  let addedGhosts = 0;
                  parent.events.forEach(event => {
                     if (['drum_kick', 'drum_snare'].includes(event.type) && this.random.next() > 0.5) {
-                        newEvents.push({ ...event, type: 'drum_snare_ghost_note', time: event.time - 0.125, duration: 0.1, weight: 0.2, technique: 'ghost', dynamics: 'p' } as FractalEvent);
+                        newEvents.push({ ...event, type: 'drum_snare_ghost_note', time: event.time - 0.125, duration: 0.1, weight: 0.2, technique: 'ghost', dynamics: 'p', params: getParamsForTechnique('ghost', this.config.mood, this.config.genre) } as FractalEvent);
                         addedGhosts++;
                     }
                  });
@@ -509,6 +509,8 @@ export class FractalMusicEngine {
         const newAccompaniment: FractalEvent[] = [];
         const baseEvent = parent.events[0];
         if (!baseEvent) return null;
+        
+        const baseParams = getParamsForTechnique('pluck', this.config.mood, this.config.genre);
 
         const rootNote = baseEvent.note;
         const chord = [rootNote, rootNote+4, rootNote+7]; // Simple major triad for passage
@@ -533,7 +535,7 @@ export class FractalMusicEngine {
                 technique: 'pluck',
                 dynamics: 'mf',
                 phrasing: 'staccato',
-                params: { ...baseEvent.params, chord: undefined }
+                params: baseParams,
             });
             currentTime += duration;
         }
@@ -709,8 +711,8 @@ export class FractalMusicEngine {
       branch.age++;
     });
 
-    // Normalize weights within each type (bass, drums)
-    ['bass', 'drums', 'accompaniment'].forEach(type => {
+    // Normalize weights within each type (bass, drums, accompaniment)
+    (['bass', 'drums', 'accompaniment'] as const).forEach(type => {
         const typeBranches = this.branches.filter(b => b.type === type);
         const totalWeight = typeBranches.reduce((sum, b) => sum + b.weight, 0);
         if (totalWeight > 0) {
