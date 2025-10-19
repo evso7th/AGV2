@@ -27,6 +27,10 @@ type WorkerMessage = {
     type: 'SCORE_READY' | 'error' | 'debug' | 'sparkle';
     events?: FractalEvent[];
     barDuration?: number;
+    instrumentHints?: {
+      accompaniment?: MelodyInstrument,
+      bass?: BassInstrument,
+    };
     error?: string;
     message?: string;
     time?: number;
@@ -130,6 +134,14 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
     }
   }, []);
 
+  const setInstrumentCallback = useCallback((part: 'bass' | 'melody' | 'accompaniment', name: BassInstrument | MelodyInstrument | AccompanimentInstrument) => {
+    if (part === 'accompaniment') {
+      accompanimentManagerRef.current?.setPreset(name);
+    }
+    // TODO: Implement for other parts if needed
+  }, []);
+
+
   const initialize = useCallback(async () => {
     if (isInitialized || isInitializing) return true;
     
@@ -190,8 +202,18 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
             const worker = new Worker(new URL('@/app/ambient.worker.ts', import.meta.url), { type: 'module' });
             worker.onmessage = (event: MessageEvent<WorkerMessage>) => {
                 console.log('[AudioEngine] Received message from worker:', event.data);
-                const { type, events, barDuration, error, time, genre, mood } = event.data;
+                const { type, events, barDuration, error, time, genre, mood, instrumentHints } = event.data;
                 if (type === 'SCORE_READY' && events && barDuration && settingsRef.current) {
+                    
+                    if (settingsRef.current.composerControlsInstruments && instrumentHints) {
+                      if (instrumentHints.accompaniment) {
+                        setInstrumentCallback('accompaniment', instrumentHints.accompaniment);
+                      }
+                       if (instrumentHints.bass) {
+                         bassManagerRef.current?.setPreset(instrumentHints.bass);
+                       }
+                    }
+
                     scheduleEvents(events, nextBarTimeRef.current, settingsRef.current.bpm);
                     nextBarTimeRef.current += barDuration;
                 } else if (type === 'sparkle' && time !== undefined) {
@@ -216,7 +238,7 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
     } finally {
         setIsInitializing(false);
     }
-  }, [isInitialized, isInitializing, toast, scheduleEvents]);
+  }, [isInitialized, isInitializing, toast, scheduleEvents, setInstrumentCallback]);
 
   const scheduleNextImpulse = useCallback(() => {
     if (impulseTimerRef.current) {
@@ -277,7 +299,7 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
 
   const setVolumeCallback = useCallback((part: InstrumentPart, volume: number) => {
     if (part === 'pads') return;
-    const gainNode = gainNodesRef.current[part];
+    const gainNode = gainNodesRef.current[part as Exclude<InstrumentPart, 'pads'>];
     if (gainNode && audioContextRef.current) {
         const balancedVolume = volume * (VOICE_BALANCE[part] ?? 1);
         gainNode.gain.setTargetAtTime(balancedVolume, audioContextRef.current.currentTime, 0.01);
@@ -288,12 +310,6 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
     setVolumeCallback('sparkles', settings.sparkles.enabled ? settings.sparkles.volume : 0);
   }, [setVolumeCallback]);
 
-  // Dummy implementations for unused functions
-  const setInstrumentCallback = useCallback((part: any, name: any) => {
-      if (part === 'accompaniment') {
-        accompanimentManagerRef.current?.setPreset(name);
-      }
-  }, []);
   const setBassTechniqueCallback = useCallback((technique: any) => {}, []);
   const setEQGainCallback = useCallback((bandIndex: number, gain: number) => {}, []);
   const startMasterFadeOut = useCallback((durationInSeconds: number) => {}, []);
