@@ -10,7 +10,7 @@ export type Branch = {
   weight: number;
   age: number;
   technique: Technique;
-  type: 'bass' | 'drums';
+  type: 'bass' | 'drums' | 'accompaniment';
 };
 
 interface EngineConfig {
@@ -467,7 +467,7 @@ export class FractalMusicEngine {
     return null;
   }
 
-  private generateOneBar(): FractalEvent[] {
+  private generateOneBar(delta: number): FractalEvent[] {
     if (this.needsBassReset) {
         console.log("%c[RESET] Bass branch reset triggered.", "color: red; font-weight: bold;");
         this.branches = this.branches.filter(b => b.type !== 'bass' || b.id.includes('axon'));
@@ -494,7 +494,6 @@ export class FractalMusicEngine {
         }
         this.bassShouldRespond = false;
     }
-
 
     const bassBranches = this.branches.filter(b => b.type === 'bass');
     const drumBranches = this.branches.filter(b => b.type === 'drums');
@@ -560,7 +559,46 @@ export class FractalMusicEngine {
             if (event && event.type) output.push({ ...event, weight: event.weight ?? 1.0 });
         });
     }
+
+    // --- Accompaniment Generation ---
+    const resonanceThreshold = 0.65;
+    const resonance = this.calculateCrossResonance(delta);
+
+    if (resonance * this.config.density > resonanceThreshold && winningBassBranch) {
+        const scale = getScaleForMood(this.config.mood);
+        const rootNote = winningBassBranch.events[0]?.note;
+        if (rootNote) {
+            const rootIndex = scale.findIndex(n => n % 12 === rootNote % 12);
+            if (rootIndex !== -1) {
+                const third = scale[(rootIndex + 2) % scale.length];
+                const fifth = scale[(rootIndex + 4) % scale.length];
+
+                const chordEvent: FractalEvent = {
+                    type: 'accompaniment',
+                    note: rootNote,
+                    duration: 4, 
+                    time: 0, 
+                    weight: resonance * this.config.density,
+                    technique: 'pluck',
+                    dynamics: 'p',
+                    phrasing: 'legato',
+                    params: { // This is a bit of a hack, but reuses the bass params for now.
+                         ...getParamsForTechnique('pluck', this.config.mood, this.config.genre),
+                         // Override for a softer accompaniment sound
+                         cutoff: 400,
+                         resonance: 0.8,
+                         distortion: 0.05
+                    },
+                    // We can add chord notes to the event if the synth manager supports it
+                    // chord: [rootNote, third, fifth]
+                };
+                output.push(chordEvent);
+                console.log(`%c[ACCOMPANIMENT] Generated chord at epoch ${this.epoch} with resonance ${resonance.toFixed(2)}`, "color: #9932CC;");
+            }
+        }
+    }
     
+    // --- DLA: Genetic mutation ---
     const shouldMutateBass = this.random.next() < (this.config.density * 0.4);
     const shouldMutateDrums = this.random.next() < (this.config.density * 0.4); 
 
@@ -589,6 +627,31 @@ export class FractalMusicEngine {
     
     return output;
   }
+  
+  private calculateCrossResonance(delta: number): number {
+    const bassBranches = this.branches.filter(b => b.type === 'bass');
+    const drumBranches = this.branches.filter(b => b.type === 'drums');
+
+    if (bassBranches.length === 0 || drumBranches.length === 0) return 0;
+    
+    let totalResonance = 0;
+    let count = 0;
+
+    for (const bBranch of bassBranches) {
+        for (const dBranch of drumBranches) {
+            if (!bBranch.events[0] || !dBranch.events[0]) continue;
+            const k = MelancholicMinorK(
+                bBranch.events[0],
+                dBranch.events[0],
+                { mood: this.config.mood, tempo: this.config.tempo, delta, genre: this.config.genre }
+            );
+            totalResonance += k * delta * bBranch.weight * dBranch.weight;
+            count++;
+        }
+    }
+    return count > 0 ? totalResonance / count : 0;
+  }
+
 
   public evolve(barDuration: number): FractalEvent[] {
     if (this.epoch >= this.nextWeatherEventEpoch) {
@@ -614,7 +677,7 @@ export class FractalMusicEngine {
     });
 
     // Normalize weights within each type (bass, drums)
-    ['bass', 'drums'].forEach(type => {
+    ['bass', 'drums', 'accompaniment'].forEach(type => {
         const typeBranches = this.branches.filter(b => b.type === type);
         const totalWeight = typeBranches.reduce((sum, b) => sum + b.weight, 0);
         if (totalWeight > 0) {
@@ -625,7 +688,7 @@ export class FractalMusicEngine {
     // Kill old and weak branches (but keep axons)
     this.branches = this.branches.filter(b => b.id.includes('axon') || b.weight > 0.05 || b.age < 8);
     
-    const events = this.generateOneBar();
+    const events = this.generateOneBar(delta);
 
     this.time += barDuration;
     this.epoch++;
@@ -658,5 +721,3 @@ export class FractalMusicEngine {
     };
   }
 }
-
-    
