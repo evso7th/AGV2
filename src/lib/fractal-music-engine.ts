@@ -217,6 +217,7 @@ function createRhythmSectionFill(mood: Mood, genre: Genre, random: { next: () =>
     return { drumFill, bassFill };
 }
 
+
 function createBassFill(this: FractalMusicEngine, mood: Mood, genre: Genre, random: { next: () => number, nextInt: (max: number) => number }): FractalEvent[] {
     const fill: FractalEvent[] = [];
     const scale = getScaleForMood(mood);
