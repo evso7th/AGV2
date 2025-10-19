@@ -572,6 +572,8 @@ export class FractalMusicEngine {
             if (rootIndex !== -1) {
                 const third = scale[(rootIndex + 2) % scale.length];
                 const fifth = scale[(rootIndex + 4) % scale.length];
+                
+                console.log(`%c[ACCOMPANIMENT] Generated chord at epoch ${this.epoch} with resonance ${resonance.toFixed(2)}`, "color: #9932CC; font-weight: bold;");
 
                 const chordEvent: FractalEvent = {
                     type: 'accompaniment',
@@ -593,7 +595,6 @@ export class FractalMusicEngine {
                     // chord: [rootNote, third, fifth]
                 };
                 output.push(chordEvent);
-                console.log(`%c[ACCOMPANIMENT] Generated chord at epoch ${this.epoch} with resonance ${resonance.toFixed(2)}`, "color: #9932CC;");
             }
         }
     }

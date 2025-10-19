@@ -60,7 +60,7 @@ export class AccompanimentSynthManager {
 
             const noteId = `${event.note}-${event.time}`;
 
-            console.log(`[Accompaniment] Scheduling noteOn: ${event.note} at beat ${event.time.toFixed(2)} | absolute time: ${noteOnTime.toFixed(4)}`);
+            console.log(`%c[Accompaniment] Scheduling noteOn: ${event.note} at beat ${event.time.toFixed(2)} | absolute time: ${noteOnTime.toFixed(4)}`, 'color: #DAA520;');
 
             messages.push({
                 type: 'noteOn',
