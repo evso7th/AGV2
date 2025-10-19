@@ -206,19 +206,15 @@ export class AccompanimentSynthManager {
         const isSampler = ['piano', 'violin', 'flute', 'guitarChords', 'acousticGuitarSolo'].includes(instrumentName);
         const synthIsActive = !isSampler && instrumentName !== 'none';
         
-        // Use the master gain nodes of each player
-        this.piano.setVolume(instrumentName === 'piano' ? 1 : 0);
-        this.violin.setVolume(instrumentName === 'violin' ? 1 : 0);
-        this.flute.setVolume(instrumentName === 'flute' ? 1 : 0);
-        this.guitarChords.setVolume(instrumentName === 'guitarChords' ? 1 : 0);
-        this.acousticGuitarSolo.setVolume(instrumentName === 'acousticGuitarSolo' ? 1 : 0);
+        const balance = VOICE_BALANCE['accompaniment'] || 0.7;
 
-        this.synthOutput.gain.setTargetAtTime(synthIsActive ? 1 : 0, this.audioContext.currentTime, 0.01);
-    }
-    
-    public setVolume(partVolume: number) {
-        const balancedVolume = partVolume * (VOICE_BALANCE['accompaniment'] ?? 0.7);
-        this.destination.gain.setTargetAtTime(balancedVolume, this.audioContext.currentTime, 0.01);
+        this.piano.setVolume(instrumentName === 'piano' ? balance : 0);
+        this.violin.setVolume(instrumentName === 'violin' ? balance : 0);
+        this.flute.setVolume(instrumentName === 'flute' ? balance : 0);
+        this.guitarChords.setVolume(instrumentName === 'guitarChords' ? balance : 0);
+        this.acousticGuitarSolo.setVolume(instrumentName === 'acousticGuitarSolo' ? balance : 0);
+
+        this.synthOutput.gain.setTargetAtTime(synthIsActive ? balance : 0, this.audioContext.currentTime, 0.01);
     }
 
     public allNotesOff() {
