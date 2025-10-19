@@ -148,9 +148,16 @@ function createBassAxiom(mood: Mood, genre: Genre, random: { next: () => number,
           return scale[twoThirds + random.nextInt(scale.length - twoThirds)];
       }
   };
+  
+  const selectFirstNote = (): number => {
+    const lowerThird = Math.floor(scale.length / 3);
+    return scale[random.nextInt(lowerThird)];
+  }
 
+  let firstNote = true;
   return chosenPatternDef.pattern.map(event => {
-      const note = selectNote();
+      const note = firstNote ? selectFirstNote() : selectNote();
+      firstNote = false;
       const technique = event.technique || (genre === 'ambient' ? 'swell' : 'pluck');
       return {
         type: 'bass',
