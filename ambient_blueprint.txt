@@ -1,0 +1,703 @@
+Готовые blueprints под генерацию
+
+GEN-01 «Twilight Suspension»
+ПАРАМЕТРЫ
+
+Темп: 48 BPM | Тональность: A Minor (Aeolian) | Размер: 4/4 | Такты: 24
+Настроение: тёмный, задумчивый, минималистичный
+Время звучания: ~3:00
+ГАРМОНИЯ (цикл 8 тактов × 3)
+text
+
+Am7 (4 т.) → Fmaj7 (2 т.) → Em7 (2 т.)
+БАС
+text
+
+Т.1-4:   A1 (whole notes, velocity 68)
+Т.5-6:   F1 (half) . E1 (half)
+Т.7-8:   E1 (whole)
+
+Т.9-16:  повтор цикла, добавить проход G1 в т.14
+Т.17-24: только педали A1/F1/E1, разрежение (играть через такт)
+Обработка: LPF 180 Гц, tube sat, reverb 12%
+
+УДАРНЫЕ/ПЕРКУССИЯ
+text
+
+Т.1-8:   молчат
+Т.9-16:  soft kick на 1 и 3 (vel 60), ocean drum roll т.15-16
+Т.17-24: только shaker восьмыми на 2 и 4 (vel 50), dropout 15%
+АККОМПАНЕМЕНТ (Меллотрон Choir)
+text
+
+Am7:  A2-C3-E3-G3 (whole notes, легато)
+Fmaj7: F2-A2-C3-E3 (half note) + rest
+Em7:  E2-G2-B2-D3 (dotted whole)
+
+Т.1-8:   как выше, статично
+Т.9-16:  добавить верхний голос B3 (парит над Am7)
+Т.17-24: только 2 нижних голоса, fade -3 dB
+Воисинг: широкое, reverb 8 s, chorus 10%
+
+SFX + АВТОМАТИЗАЦИЯ
+text
+
+Т.1-4:   Air/wind fade-in (HPF 4 kHz, -30 dB)
+Т.9:     Water droplet (single, L-40%)
+Т.13:    Water droplet (R+35%)
+Т.17-20: Vinyl crackle layer (-36 dB)
+Т.21-24: Reverse swell → silence
+
+Automation:
+- Mellotron LPF: 7 kHz → 9 kHz (т.1-16) → 6.5 kHz (т.24)
+- Bass volume: -20 dB → -18 dB (т.9) → -24 dB (т.24)
+GEN-02 «Golden Horizon»
+ПАРАМЕТРЫ
+
+Темп: 54 BPM | Тональность: D Lydian | Размер: 4/4 | Такты: 28
+Настроение: светлый, открытый, парящий
+Время звучания: ~3:27
+ГАРМОНИЯ (цикл 7 тактов × 4)
+text
+
+Dmaj9 (2 т.) → Gmaj7 (2 т.) → Bm7 (1.5 т.) → A6/9 (1.5 т.)
+БАС
+text
+
+Т.1-2:   D2 (whole), легкое vibrato
+Т.3-4:   G1 (dotted half) A1 (quarter)
+Т.5-7:   B1 (half) . A1 (whole)
+
+Т.8-14:  повтор, октавой ниже (D1-G1-B0-A1)
+Т.15-21: синкопированный вариант:
+         D1 (half) . rest . D2 (quarter) D1 (quarter)
+Т.22-28: педаль D1, целые ноты, diminuendo
+Обработка: LPF 220 Гц, без сатурации (чистый), reverb 18%
+
+УДАРНЫЕ/ПЕРКУССИЯ
+text
+
+Т.1-7:   молчат
+Т.8-14:  brush snare на 3 (vel 58), finger cymbals т.10, 14 (vel 52)
+Т.15-21: добавить soft kick на 1 (vel 62), frame drum на "и" 4-й (vel 55)
+Т.22-28: только bells (pitch: D5, F#5, A5), одиночные удары т.23, 25, 27
+АККОМПАНЕМЕНТ (Орган, slow Leslie)
+text
+
+Dmaj9:  D3-F#3-A3-C#4-E4 (5 голосов, целые ноты)
+Gmaj7:  G2-B2-D3-F#3
+Bm7:    B2-D3-F#3-A3
+A6/9:   A2-C#3-E3-F#3-B3
+
+Т.1-7:   плавные смены, vibrato organ (slow)
+Т.8-14:  Leslie ускорить до fast к т.14
+Т.15-21: компактный voicing (3 голоса), половинные ноты + паузы
+Т.22-28: обратно 5 голосов, Leslie slow, fade-out
+Настройки: Drawbars 16'(7) 8'(8) 4'(3), reverb Spring 3.5 s
+
+SFX + АВТОМАТИЗАЦИЯ
+text
+
+Т.1-7:   Field recording (distant birds, -28 dB, stereo wide)
+Т.8:     Wind gust (short, 1 bar, -24 dB)
+Т.15-16: Granular freeze Dmaj9 (pitch +7 st, -26 dB)
+Т.22-28: Air shimmer (HPF 6 kHz, -30 dB, slow fade-out)
+
+Automation:
+- Organ Leslie speed: slow (т.1) → fast (т.14) → slow (т.22)
+- Reverb send на орган: 20% → 35% (т.15-21) → 25% (т.28)
+- Bass HPF: 40 Hz static
+GEN-03 «Obsidian Pulse»
+ПАРАМЕТРЫ
+
+Темп: 44 BPM | Тональность: E Phrygian | Размер: 5/4 | Такты: 20
+Настроение: тёмный, ритуальный, гипнотичный
+Время звучания: ~3:25
+ГАРМОНИЯ (цикл 5 тактов × 4)
+text
+
+Em (2 т., 5/4) → F5 (1 т.) → Am (1 т.) → Bbadd9 (1 т.)
+5/4 даёт асимметрию, медитативное «спотыкание»
+
+БАС
+text
+
+Т.1-2:   E1 (dotted whole + quarter), монотонно
+Т.3:     F1 (whole)
+Т.4:     A1 (dotted half) G1 (half)
+Т.5:     Bb1 (whole + quarter в 5/4)
+
+Т.6-10:  повтор цикла, добавить D1 проход в т.9
+Т.11-15: октавой выше (E2-F2-A1-Bb1)
+Т.16-20: возврат E1 педаль, разреженно (целые ноты через паузу)
+Обработка: Heavy tube sat (THD 2.5%), LPF 160 Гц, reverb 10%
+
+УДАРНЫЕ/ПЕРКУССИЯ
+text
+
+Т.1-5:   Frame drum на 1 и 4 доли (учитывая 5/4: | 1 . . . 4 |), vel 70
+Т.6-10:  + Kick на 1 (vel 68), деревянный блок на 3 (vel 62)
+Т.11-15: Euclidean shaker (7, 20), vel 58, стерео
+Т.16-20: только gong удар т.16 (vel 75), долгий затухание 12 s
+АККОМПАНЕМЕНТ (Меллотрон Strings + Organ blend)
+text
+
+Em:     E2-G2-B2 (Mellotron) + E1-B1 (Organ drone)
+F5:     F2-C3 (power-chord feel, Organ)
+Am:     A2-C3-E3 (Mellotron)
+Bbadd9: Bb2-D3-F3-C4 (Mellotron, верхний голос парит)
+
+Т.1-5:   Mellotron доминирует, Organ -6 dB ниже
+Т.6-10:  равный баланс
+Т.11-15: Organ громче (+3 dB), Leslie fast, Mellotron как тень
+Т.16-20: только Mellotron, Organ выключен, fade to silence
+Эффекты: Tape delay 5/4 (dotted quarter), feedback 18%
+
+SFX + АВТОМАТИЗАЦИЯ
+text
+
+Т.1-5:   Distant thunder rumble (looped, -32 dB, LPF 400 Hz)
+Т.8:     Metal scrape (short, L-50%, -28 dB)
+Т.12:    Glass texture (reversed, -26 dB)
+Т.16-20: Cave drip (sparse, 3-4 капли, random pan)
+
+Automation:
+- Mellotron flutter amount: 0.2% → 0.5% (т.11-15) → 0.1% (т.20)
+- Bass saturation drive: +1 dB (т.6-10)
+- Master reverb decay: 8 s → 12 s (т.16 onwards)
+GEN-04 «Sakura Drift»
+ПАРАМЕТРЫ
+
+Темп: 58 BPM | Тональность: F# Minor (Japanese Insen scale) | Размер: 4/4 | Такты: 24
+Настроение: восточный, нежный, созерцательный
+Время звучания: ~2:55
+Insen scale: F#–G–B–C#–E
+
+ГАРМОНИЯ (свободная, модальная)
+text
+
+F#m (3 т.) → Bsus2 (2 т.) → C#m7 (3 т.)
+(цикл 8 т. × 3)
+БАС
+text
+
+Т.1-3:   F#1 (целые ноты, без вибрато)
+Т.4-5:   B1 (dotted whole)
+Т.6-8:   C#1 (half) E1 (half) C#1 (whole)
+
+Т.9-16:  повтор, добавить G1 проход в т.13
+Т.17-24: только F#1 педаль, играть половинными через паузы
+Обработка: Чистый синус 90%, LPF 200 Гц, reverb shimmer 15%
+
+УДАРНЫЕ/ПЕРКУССИЯ
+text
+
+Т.1-8:   молчат
+Т.9-16:  Taiko drum на 1 и 3 (vel 65, soft mallets)
+         Tingsha bells т.12, 16 (vel 60, pitch B5)
+Т.17-24: только Mokugyo (wood block) на 2 и 4 (vel 55, sparse)
+         Rain stick roll т.23-24 (crescendo)
+АККОМПАНЕМЕНТ (Меллотрон Flute + soft Piano)
+text
+
+F#m:  F#3-A3-C#4 (Flute, breathy), + F#2 bass note (Piano)
+Bsus2: B2-C#3-F#3 (Piano, soft felt)
+C#m7: C#3-E3-G#3-B3 (Flute + Piano blend)
+
+Т.1-8:   только Flute, легато, динамика pp–mp
+Т.9-16:  Piano добавляется (арпеджио восьмыми, редко)
+         Пример: | F# . A . C# . A . | (т.9)
+Т.17-24: обратно только Flute, верхний регистр (октавой выше)
+Эффекты: Plate reverb 5 s, micro-delays L/R 11/13 ms
+
+SFX + АВТОМАТИЗАЦИЯ
+text
+
+Т.1-4:   Bamboo wind chimes (loop, -30 dB, stereo)
+Т.9:     Water pour (short, center, -26 dB)
+Т.17:    Koto harmonic (sampled, pitch F#5, -28 dB, long decay)
+Т.21-24: Wind through leaves (-32 dB, HPF 2 kHz, fade-out)
+
+Automation:
+- Flute vibrato depth: 0% (т.1-8) → 8% (т.9-16) → 4% (т.24)
+- Piano velocity curve: 52–60 (т.9-16)
+- Reverb pre-delay: 18 ms → 35 ms (т.17-24, создаёт даль)
+GEN-05 «Arctic Mirror»
+ПАРАМЕТРЫ
+
+Темп: 40 BPM | Тональность: C Mixolydian | Размер: 3/4 | Такты: 30
+Настроение: холодный, просторный, медленный вальс
+Время звучания: ~3:45
+ГАРМОНИЯ (цикл 6 тактов × 5)
+text
+
+C7sus4 (2 т.) → Bb/C (2 т.) → Gm7 (2 т.)
+3/4 даёт лёгкое покачивание
+
+БАС
+text
+
+Т.1-2:   C1 (dotted half каждый такт, на 1-ю долю)
+Т.3-4:   Bb0 (dotted half)
+Т.5-6:   G1 (dotted half)
+
+Т.7-12:  повтор, добавить D1 проход в т.10
+Т.13-24: синкопы: бас на 2-й доле (вместо 1-й), создаёт смещение
+Т.25-30: возврат к 1-й доле, педаль C1, fade-out
+Обработка: LPF 190 Гц, ice-like reverb (bright, 10 s), без сатурации
+
+УДАРНЫЕ/ПЕРКУССИЯ
+text
+
+Т.1-6:   молчат
+Т.7-12:  Kick на 1 (vel 58), brushed cymbal на 2 и 3 (vel 50, легчайшее)
+Т.13-18: добавить triangle на 3 (vel 54, pitch high)
+Т.19-24: Kalimba (thumb piano) короткие ноты на off-beats
+         Ноты: C5-Eb5-G5 (случайно), vel 60
+Т.25-30: только bowl/singing bowl на 1-й доле каждые 2 такта
+АККОМПАНЕМЕНТ (Орган + Меллотрон Choir blend)
+text
+
+C7sus4:  C3-F3-G3-Bb3 (Орган 60%, Choir 40%)
+Bb/C:    Bb2-D3-F3 over C bass (Choir доминирует)
+Gm7:     G2-Bb2-D3-F3 (равный blend)
+
+Т.1-6:   целые dotted half, медленные смены
+Т.7-12:  добавить верхний голос D4 (парит)
+Т.13-24: половинные ноты + паузы (вальсовое дыхание)
+Т.25-30: только Choir, Орган fade-out к т.27
+Эффекты: Hall reverb 12 s, chorus slow, stereo width 155%
+
+SFX + АВТОМАТИЗАЦИЯ
+text
+
+Т.1-6:   Ice cracking (distant, -34 dB, low rumble)
+Т.7-12:  Wind whistle (soft, HPF 3 kHz, -28 dB)
+Т.19:    Glass chime (single strike, pitch C6, -26 dB)
+Т.25-30: Northern lights ambience (synth texture, shimmer, -30 dB)
+
+Automation:
+- Choir LPF: 8 kHz → 11 kHz (т.13-24) → 7 kHz (т.30)
+- Reverb decay: 10 s → 14 s (т.25 onwards, бесконечный хвост)
+- Bass mono width: 0% (pure mono) throughout
+GEN-06 «Amber Waves»
+ПАРАМЕТРЫ
+
+Темп: 52 BPM | Тональность: Bb Major | Размер: 4/4 | Такты: 26
+Настроение: тёплый, успокаивающий, золотистый
+Время звучания: ~3:20
+ГАРМОНИЯ (цикл 13 тактов × 2)
+text
+
+Bbmaj7 (3 т.) → Cm7 (3 т.) → Eb6/9 (3 т.) → F7sus4 (4 т.)
+БАС
+text
+
+Т.1-3:   Bb1 (whole notes, легкий swell)
+Т.4-6:   C1 (whole)
+Т.7-9:   Eb1 (dotted half) F1 (half)
+Т.10-13: F1 (whole), в т.13 добавить G1 (quarter на конце)
+
+Т.14-26: повтор цикла, в т.20-23 октавой выше (Eb2-F2)
+Обработка: Tape saturation (warm), LPF 210 Гц, reverb 15%, компрессия мягкая
+
+УДАРНЫЕ/ПЕРКУССИЯ
+text
+
+Т.1-6:   молчат
+Т.7-13:  Kick на 1 и 3 (vel 64), shaker восьмые (vel 56, swing 12%)
+Т.14-19: добавить rim click на 2 и 4 (vel 60)
+Т.20-26: только congas (soft), pattern:
+         | 1 . .+. | 3 . . . | (+. = синкопа на "и" 2-й)
+         vel 62, stereo L-20%
+АККОМПАНЕМЕНТ (Меллотрон Strings + Rhodes Piano)
+text
+
+Bbmaj7: Bb2-D3-F3-A3 (Strings) + Bb3-D4-F4 (Rhodes, тихо)
+Cm7:    C3-Eb3-G3-Bb3
+Eb6/9:  Eb3-G3-Bb3-C4-F4 (5 голосов, Rhodes громче)
+F7sus4: F2-Bb2-Eb3-C3
+
+Т.1-6:   только Strings, легато
+Т.7-13:  Rhodes добавляется, арпеджио четвертями (редко)
+Т.14-26: Rhodes доминирует, Strings как подложка (-4 dB)
+Эффекты: Rhodes → tape delay 1/4 (feedback 22%), Strings → hall 7 s
+
+SFX + АВТОМАТИЗАЦИЯ
+text
+
+Т.1-3:   Tape hiss (warm, -36 dB, continuous)
+Т.7:     Vinyl pop (single, -30 dB)
+Т.14-16: Field recording (wheat field wind, -28 dB, loop)
+Т.22-26: Sunset drone (synth pad, C2 pedal, -32 dB, fade-out)
+
+Automation:
+- Rhodes tremolo depth: 0% → 18% (т.14-19) → 8% (т.26)
+- Strings vibrato: 6% constant
+- Master warmth (low shelf +1 dB @ 100 Hz) увеличить к т.20
+GEN-07 «Void Between Stars»
+ПАРАМЕТРЫ
+
+Темп: 36 BPM | Тональность: G# Minor (Harmonic) | Размер: 7/8 | Такты: 21
+Настроение: космический, странный, разреженный
+Время звучания: ~4:05
+7/8 = группировка 3+2+2 для асимметрии
+
+ГАРМОНИЯ (цикл 7 тактов × 3)
+text
+
+G#m (2 т.) → D#m/F# (2 т.) → Emaj7#5 (1.5 т.) → F#7alt (1.5 т.)
+БАС
+text
+
+Т.1-2:   G#0 (очень низко, sub, dotted whole в 7/8)
+Т.3-4:   F#0 (sub)
+Т.5-6:   E1 (dotted whole)
+Т.7:     F#1 (dotted half)
+
+Т.8-14:  повтор, добавить C#1 проход в т.11
+Т.15-21: только G#0 педаль, играть половинными с длинными паузами
+Обработка: Pure sine 100%, LPF 150 Гц, reverb shimmer 20%, компрессия тяжёлая
+
+УДАРНЫЕ/ПЕРКУССИЯ
+text
+
+Т.1-7:   молчат
+Т.8-14:  Kick на 1 и 4 (учитывая 7/8: | 1 . . | 4 . . . |), vel 70
+         Space tom т.10, 14 (pitch low, reverb huge)
+Т.15-21: только electronic blip (synth perc) на случайных долях
+         Euclidean (5, 21), vel 58, pitch modulation ±2 st
+АККОМПАНЕМЕНТ (Орган + Theremin blend)
+text
+
+G#m:     G#2-B2-D#3 (Орган drone) + G#4 (Theremin, долгая нота)
+D#m/F#:  F#2-D#3-A#3 (Орган) + F#5 (Theremin, портаменто)
+Emaj7#5: E3-G#3-B3-D#4-B#4 (только Орган, странный кластер)
+F#7alt:  F#2-A2-C3-E#3 (Орган), Theremin молчит
+
+Т.1-7:   равный баланс Орган/Theremin
+Т.8-14:  Theremin громче (+3 dB), vibrato 7 Hz глубокий
+Т.15-21: только Орган drone, Theremin fade-out к т.18
+Эффекты: Cavernous reverb 16 s, pitch shifter +1 oct (subtle) на Theremin
+
+SFX + АВТОМАТИЗАЦИЯ
+text
+
+Т.1-7:   Deep space drone (synth, -32 dB, no rhythm)
+Т.8:     Satellite beep (short, pitch descending, -28 dB)
+Т.14-15: Radio static burst (1 bar, -26 dB, filter sweep)
+Т.18-21: Cosmic wind (granular, freeze Emaj7#5, -30 dB)
+
+Automation:
+- Theremin portamento time: 40 ms → 120 ms (т.8-14)
+- Organ Leslie off (статичный тон)
+- Reverb decay: 14 s → 20 s (т.15 onwards, бесконечность)
+- Bass sub boost: +2 dB @ 40 Hz (т.15-21)
+GEN-08 «Temple Rain»
+ПАРАМЕТРЫ
+
+Темп: 50 BPM | Тональность: E Dorian | Размер: 6/8 | Такты: 24
+Настроение: духовный, текучий, медитативный
+Время звучания: ~3:36
+6/8 даёт плавное покачивание "раз-два-три, раз-два-три"
+
+ГАРМОНИЯ (цикл 8 тактов × 3)
+text
+
+Em9 (2 т.) → A7sus4 (2 т.) → Dmaj7 (2 т.) → Cmaj7 (2 т.)
+БАС
+text
+
+Т.1-2:   E1 (dotted half на 1-ю долю каждого такта, 6/8)
+Т.3-4:   A1 (dotted half)
+Т.5-6:   D1 (dotted quarter) F#1 (dotted quarter)
+Т.7-8:   C1 (dotted half)
+
+Т.9-16:  повтор, добавить G1 проход в т.12
+Т.17-24: вариация с eighth notes:
+         | E1 . . G1 . . | (т.17, создаёт движение)
+Обработка: LPF 200 Гц, reverb 8 s (cathedral), HPF 38 Hz
+
+УДАРНЫЕ/ПЕРКУССИЯ
+text
+
+Т.1-8:   молчат
+Т.9-16:  Frame drum на 1 и 4 (6/8: | 1 . . 4 . . |), vel 66
+         Rain stick continuous roll (background, -32 dB)
+Т.17-24: добавить finger cymbals на 3 и 6 (dotted quarters), vel 58
+         Tabla (bayan) т.20, 22, 24 (dum strokes, vel 70)
+АККОМПАНЕМЕНТ (Меллотрон Choir + Harmonium)
+text
+
+Em9:  E3-G3-B3-D4-F#4 (Choir) + E2-B2 (Harmonium drone)
+A7sus4: A2-D3-E3-G3 (blend равный)
+Dmaj7: D3-F#3-A3-C#4 (Choir доминирует)
+Cmaj7: C3-E3-G3-B3 (Harmonium громче)
+
+Т.1-8:   плавные смены, Choir легато, Harmonium drone sustain
+Т.9-16:  Choir добавить верхний голос A4 (парит)
+Т.17-24: Harmonium играет арпеджио восьмыми (редко):
+         | E . G . B . | (т.17-18, Em9)
+Эффекты: Plate reverb 6 s, spring reverb 2.5 s (на Harmonium), stereo 140%
+
+Ниже — 10 компактных MIDI‑эскизов для генерации медитативного амбиента. Каждый вариант — 20–30 тактов, с разметкой по партиям (бас, ударные/перкуссия/SFX, аккомпанемент орган/меллотрон) и таймингом. Можно копировать как шаблоны клипов в DAW и варьировать октавы/длительности.
+
+Общие соглашения
+
+Размер: 4/4. Квантизация — 1/8 с лёгким humanize ±10–20 мс.
+Каналы: Ch1 Bass, Ch2 Organ, Ch3 Mellotron, Ch10 Drums/Perc, Ch11 SFX-триггеры.
+Обозначения длительностей: wn (целая), dhn (пунктирная половинная), hn (половинная), qn (четверть), en (восьмая).
+Тайминг: 1 такт = 240/BPM секунд. В скобках — приблизительные mm:ss для ключевых точек.
+Велюсити (рекомендации): Бас 60–80, Кик 60–75, Шейкер/хэт 35–55, Орган/Меллотрон 50–70, SFX 40–60.
+FX CC (по желанию): CC1=модуляция/Leslie, CC11=Expression, CC64=Sustain, CC91=Reverb Send.
+D Dorian — Emerald Drift (24 такта)
+BPM: 52 (1 такт ≈ 4.62 c). Длительность: ≈ 1:51
+Тональность: D Dorian (D–E–F–G–A–B–C)
+Инструмент аккомп.: Mellotron Strings/Choir (Ch3)
+Форма и тайминг
+
+Т.1–8 Intro (0:00–0:37), т.9–16 Main A (0:37–1:14), т.17–24 Main B/Release (1:14–1:51)
+Аккомпанемент (Ch3, целыми/половинными, 4‑тактовые пласты)
+
+Т.1–4: Dm9 (D–F–A–C–E), voicing: D3–A3–C4–E4 (wn)
+Т.5–8: Gm7 (G–Bb–D–F), voicing: G3–D4–F4–Bb4 (wn)
+Т.9–12: Fmaj7 (F–A–C–E), voicing: F3–C4–E4–A4 (wn)
+Т.13–16: Dm11 (D–F–C–G), voicing: D3–A3–C4–G4 (wn)
+Т.17–20: Am7 (A–C–E–G), voicing: A3–E4–G4–C5 (wn)
+Т.21–24: Dm9 reprise (как т.1–4), чуть тише
+Бас (Ch1, октава D1–A1)
+
+4‑тактовая петля (повтор всю форму):
+T.1: D1 wn
+T.2: A1 hn, D1 hn
+T.3: D1 wn
+T.4: C2 hn, A1 hn
+Вариации: т.13–16 замените Т.2 на E1 hn, D1 hn; т.21–24 — все wn (расслабление)
+Ударные/Перкуссия (Ch10)
+
+Кик: на “1” (каждый такт), иногда добавка на “3” в т.9–16
+Шейкер: восьмые с 15% выпадений (en en …), тихо
+Рим/щётка: т.13 и т.21 — единичный soft rim на “4”
+Нотация 2‑тактового паттерна (повтор): Kick (1 . . . | 1 . . 3), Shaker (восьмые)
+SFX (Ch11)
+
+Т.1–2: Air pad fade‑in (loop), т.8 и т.16: reverse swell (подвод к смене гармонии), т.12: 1 колоколчик (–20 dB, длинный реверб)
+Автоматы
+
+CC11 (Mellotron) т.1–12: 70→85, т.13–24: 85→65; CC91 реверб т.17–24: +5
+C Lydian — Warm Haze (28 тактов)
+BPM: 48 (1 такт = 5.00 c). Длительность: ≈ 2:20
+Тональность: C Lydian (C–D–E–F#–G–A–B)
+Аккомп.: Орган (Ch2), Leslie slow
+Форма и тайминг
+
+Т.1–8 Intro (0:00–0:40), т.9–16 Main A (0:40–1:20), т.17–24 Main B (1:20–2:00), т.25–28 Outro (2:00–2:20)
+Аккомпанемент (целые)
+
+Т.1–4: Cmaj7(#11) — C3–G3–B3–E4–F#4
+Т.5–8: Dm7 — D3–A3–C4–F4
+Т.9–12: Em7 — E3–B3–D4–G4
+Т.13–16: Cmaj9 — C3–G3–B3–D4–E4
+Т.17–20: Dm9 — D3–A3–C4–E4–F4
+Т.21–24: Cmaj7(#11) — повтор
+Т.25–28: Cmaj(add2) — C3–G3–D4–E4 (редкий подзвуч)
+Бас (октава C1–G1)
+
+Петля 4 такта: T1: C1 wn | T2: G1 hn C1 hn | T3: C1 wn | T4: B0 hn C1 hn (повтор по секциям)
+В т.17–24 добавьте D1 (в такте 2 вместо G1)
+Ударные/Перкуссия
+
+Kick: “1” всегда; “3” — только т.17–24
+Hat (brush): каждую 2‑ю восьмую (x . x . …)
+Woodblock: Euclid 5/16 тихо в т.21–24
+SFX
+
+Т.4, 12, 20, 28: мягкие reverse swells; т.9–16: лёгкий винил‑крэкл (–38 dB)
+Автоматы
+
+CC1 (Leslie): т.17–20: 20→60 (слегка быстрее), т.21–24: назад к 20
+A Aeolian — Slow Tide (20 тактов)
+BPM: 56 (1 такт ≈ 4.29 c). ≈ 1:26
+Тональность: A Aeolian (A–B–C–D–E–F–G)
+Аккомп.: Орган (pad‑стайл)
+Гармония (по 4 такта)
+
+Т.1–4: Am9 (A–C–E–G–B)
+Т.5–8: Fmaj7 (F–A–C–E)
+Т.9–12: Cmaj7 (C–E–G–B)
+Т.13–16: Em7 (E–G–B–D)
+Т.17–20: Am9 (мягкая кода)
+Бас
+
+2‑тактовая петля: T1: A1 wn | T2: E1 hn, G1 hn (повтор)
+Т.13–16: вместо E1 используйте B0 hn (чуть темнее)
+Ударные/Перкуссия
+
+Kick: только на “1” (в т.1–12), добавьте на “3” в т.13–20
+Shaker: восьмые ghost (велосити 35–40), выпадения 25%
+Soft bell: т.10 и т.18 на “1”
+SFX
+
+Т.1–2: Air in; т.8: лёгкий шум моря (loop 4 такта); т.16: reverse swell
+F Lydian — Sky Loom (26 тактов)
+BPM: 50 (1 такт = 4.8 c). ≈ 2:05
+Аккомп.: Mellotron Strings
+Гармония (2–4 такта на аккорд)
+
+Т.1–4: Fmaj7(#11)
+Т.5–8: Gm7
+Т.9–12: Cmaj7
+Т.13–16: Dm7
+Т.17–22: Fmaj9 (удлинённый пласт)
+Т.23–26: Gm7 → Fmaj7(#11) (по 2 такта)
+Бас
+
+4‑тактовая петля: F1 wn | C2 hn F1 hn | F1 wn | E1 hn C2 hn
+Т.17–22: только F1 wn (drone), велосити вниз
+Ударные/Перкуссия
+
+Kick: “1” и редкая синкопа на “и 3” в т.9–16
+Hat: 1/8, пан L↔R медленно (LFO 0.03 Hz)
+Ocean drum swell: т.22→23
+SFX
+
+Т.6, 12, 18, 26: droplets (единичные), долгий хвост
+E Mixolydian — Sunlit Plains (22 такта)
+BPM: 60 (1 такт = 4.0 c). ≈ 1:28
+Аккомп.: Орган (мягкий, spring reverb)
+Гармония (2 такта на аккорд)
+
+E7sus2 → Dmaj7 → Aadd9 → E7(no3) → Gmaj7 → Dmaj7 → E7sus4 → Aadd9 → E7 (закрытие на 2 такта)
+Бас
+
+2‑тактовая петля: E1 wn | D1 hn A1 hn (повтор по всей форме)
+В т.19–22: ослабьте плотность — только E1 wn
+Ударные/Перкуссия
+
+Kick: “1” всегда; rim на “4” в каждом 4‑м такте
+Shaker: «tt . tt .» (два восьмых — пауза — два восьмых — пауза)
+Малый колокол в т.11 и 22
+SFX
+
+Т.1–2: Air; т.10: reverse swell; т.21: soft whoosh
+G Dorian — Fog Steps (30 тактов)
+BPM: 45 (1 такт ≈ 5.33 c). ≈ 2:40
+Аккомп.: Mellotron Choir
+Гармония (длинные пласты)
+
+Т.1–6: Gm9
+Т.7–12: Bbmaj7
+Т.13–18: Cm7
+Т.19–24: Dm7(no5) / Dsus4
+Т.25–30: Gm9 (тише)
+Бас
+
+6‑тактовая петля:
+G1 wn
+D1 hn G1 hn
+G1 wn
+F1 hn D1 hn
+G1 wn
+A1 hn G1 hn
+Повтор два раза (1–12), затем дроном G1 wn (13–30)
+Ударные/Перкуссия
+
+Kick: “1” только в т.7–24; отсутствует в самом начале и в кода
+Shaker: 1/8 весь трек, но в т.1–6 и т.25–30 — -6 dB
+Frame drum: слабые удары на “3” в т.13–24
+SFX
+
+Т.6, 12, 18, 24: короткие reverse swells; постоянный низкий air bed на -30 dB
+B Phrygian — Night Garden (24 такта)
+BPM: 52 (1 такт ≈ 4.62 c). ≈ 1:51
+Аккомп.: Орган (тёплый, LPF 8–10 кГц)
+Гармония (экзотическая, по 4 такта)
+
+Bsus2 → Cmaj7 → Bm(add4) → Gmaj7 → Em7 → Bsus2
+Бас
+
+4‑тактовая петля: B1 wn | F#1 hn B1 hn | B1 wn | C2 hn B1 hn (повтор)
+В т.17–24: редкий проход A1 qn перед C2
+Ударные/Перкуссия
+
+Kick: “1” кажд. такт; добавка на “и 2” в т.13–16
+Hat: 1/8 тихо
+Woodblock: Euclid 3/16 в т.9–20
+SFX
+
+Шум «насе��омых» (field) т.9–16 тихим слоем; колокольчик в т.24
+D Ionian — Clear Water (20 тактов)
+BPM: 58 (1 такт ≈ 4.14 c). ≈ 1:23
+Аккомп.: Mellotron (Strings)
+Гармония (2–4 такта)
+
+Т.1–4: Dmaj9
+Т.5–8: Gmaj7
+Т.9–12: Bm7
+Т.13–16: Em7
+Т.17–20: Dmaj9
+Бас
+
+2‑тактовая петля: D1 wn | A1 hn D1 hn (повтор)
+В т.13–16: F#1 hn вместо A1
+Ударные/Перкуссия
+
+Kick: только “1”
+Shaker: 1/8 с выпадениями 30%
+Малый rim на “4” в т.10 и т.18
+SFX
+
+Т.8 и т.16: reverse swell; постоянно лёгкий vinyl crackle -38 dB
+Eb Mixolydian — Quiet Voyage (28 тактов)
+BPM: 48 (1 такт = 5.00 c). ≈ 2:20
+Аккомп.: Орган
+Гармония (по 4 такта)
+
+Ebmaj9 → Dbmaj7 → Abmaj7 → Bb7sus4 → Ebmaj9 → Dbmaj7 → Ebmaj9 (закрытие 4 такта)
+Бас
+
+4‑тактовая петля: Eb1 wn | Bb0 hn Eb1 hn | Eb1 wn | Db1 hn Eb1 hn
+Т.25–28: только Eb1 wn (медленная кода)
+Ударные/Перкуссия
+
+Kick: “1” всегда; “3” в т.13–20
+Hat: 1/8, панорама узкая
+Soft bell: в конце каждого 8‑го такта
+SFX
+
+Т.4, 8, 12, 16, 20, 24, 28: gentle swell; т.9–16: далёкий «ветер»
+C# Aeolian — Dim Veil (25 тактов)
+BPM: 54 (1 такт ≈ 4.44 c). ≈ 1:51
+Аккомп.: Mellotron Choir + Strings (медленный слой)
+Гармония
+
+Т.1–5: C#m9 (5 тактов для неровного дыхания)
+Т.6–10: Amaj7
+Т.11–16: Emaj7
+Т.17–21: Bsus2
+Т.22–25: C#m9 (тише)
+Бас
+
+5‑тактовая петля:
+C#1 wn
+G#0 hn C#1 hn
+C#1 wn
+B0 hn C#1 hn
+C#1 wn
+Повтор до т.21, затем C#1 drоne
+Ударные/Перкуссия
+
+Kick: редкий — только в т.6, 12, 18, 24 на “1”
+Shaker: 1/8, выпадения 40%
+Quiet tom: на “3” т.11 и т.16
+SFX
+
+Постоянный air pad; т.10 и 21 — granular freeze из меллотрона (1–2 c), т.25 — длинный tail
+Как быстро собрать клипы (шаблон)
+
+В каждой секции аккомп держите аккорд целыми (wn), меняя воисинги между октавами для движения.
+Бас — 2/4/6‑тактовые петли из примеров; придайте «дыхание» сменой hn↔wn и редкими проходящими.
+Ударные — half‑time: кик на “1”, иногда “3”; шейкер восьмыми с выпадениями; редкие тихие рим/томы.
+SFX — короткие reverse swell на стыках секций; постоянный «air bed» на -30…-36 dB.
+
+

@@ -1,0 +1,106 @@
+TITLE: “Eternal Luminous Drift” | GENRE: deep ambient, cinematic, drone, meditative | LENGTH: 10:00 | LOOPABLE_ENDS: yes
+
+GLOBAL MOOD/TAGS (с весами):
+(calm:1.4), (vast:1.3), (warm:1.25), (evolving:1.35), (hypnotic:1.25), (serene:1.3), (organic:1.15), (airy:1.2), (shimmering:1.2), (low_density:1.25), (minimalism:1.15), (no_tension:1.2)
+
+HARMONY:
+
+Key: C Lydian (A=440Hz), Scale degrees emphasis: 1(C):1.0, 2(D):0.6, 3(E):0.8, #4(F#):1.0, 5(G):0.7, 6(A):0.5, 7(B):0.4
+Temperament: 12-TET (w=1.0), Micro-variance ±5 cents (w=0.3) для «живости»
+Chordal language: sustained cluster-chords with wide voicings, quartal harmony, open fifths (w=0.8), no strong functional cadences (w=1.2)
+Pedal/Drone: C as tonal center (w=1.4), occasional color notes E/F# (w=0.9)
+TEMPO / METER / RHYTHM:
+
+BPM: 48 (w=1.0), Time signature: 4/4, Swing: 0%
+Pulse policy: very subtle, non-intrusive pulse (w=0.35), amplitude low (-18 to -24 LUFS localized)
+Euclidean micro-pattern for soft percussive element: (5,16) density 0.25, random dropouts 10–15% (w=0.3)
+Polyrhythm as texture (not groove): 3:2 shimmer gate (w=0.2), slow LFO amplitude gating 0.02–0.05 Hz (w=0.5)
+Event density targets (events/min): 10–18 intro, 16–24 mid, 8–14 outro
+MACRO FORM (временное расписание):
+
+00:00–01:30 INTRO: fade-in drone-bed only; lowpass closed, high reverb tail, no pulses
+01:30–03:30 TEXTURE BLOOM: add granular air & soft tape noise; faint high shimmer enters (-26 dB)
+03:30–05:30 HARMONIC BLOSSOM: widen chord clusters; introduce very soft pulse (5/16 euclid), subtle bell artifacts
+05:30–07:00 APEX (still calm): richest texture density, shimmer up +1.5 dB, bass barely present (-24 dB)
+07:00–09:00 RELEASE: remove pulse, keep drone + granular; slow lowpass glide down; more space
+09:00–10:00 CODA: return to near-silence; loop-friendly tail and spectral match to intro
+SOUND SOURCES / LAYERS (каждый слой с весом и параметрами):
+
+Layer A — Drone Bed (w=1.6):
+analog pad (saw+sine blend 70/30), mild tape saturation; LPF 10 kHz (24 dB/oct), HPF 25 Hz;
+ADSR: A=2.5s D=4s S=0.85 R=12–18s; filter env amt: 18%;
+LFO1→cutoff: 0.03–0.07 Hz, depth 8%; LFO2→pan: 0.015 Hz, 20%; chorus (slow, depth 12%);
+Reverb: hall 7.5–9.5s, pre-delay 22 ms, ER low; Width: 140%
+
+Layer B — Granular Air/Texture (w=1.35):
+source: field-like noise (wind/water/spacey breath), grain size 80–180 ms, density 0.3–0.6, spray 20–35%;
+pitch jitter ±4 semitones (slow), position jitter 15%, occasional freeze (2–3 s) each 30–45 s;
+LPF 12 kHz gentle, airy shelf +2 dB @10 kHz; reverb plate 6 s, wet 25–35%
+
+Layer C — Harmonic Shimmer (w=1.15):
+bowed strings or ebow-like guitar sample → shimmer reverb (+oct) mix 18–24%;
+slow filter sweep 0.01–0.04 Hz; HPF 120 Hz; subtle stereo micro-delays L/R 14/17 ms; level -22 to -26 dB RMS
+
+Layer D — Soft Pulse (optional, w=0.35):
+source: soft mallet/bowl/low tom heavily low-passed (LPF 1.2 kHz), transient softened;
+Euclidean (5,16) @ 48 BPM, random dropouts 12%, velocity variance ±6 dB; HPF 60 Hz;
+very short room reverb 0.6 s; sidechain to drone -1 dB (gentle)
+
+Layer E — Bell Sparks (w=0.45):
+tiny bell/glock textures, pitched to scale tones (1, 3, #4, 5); sparse: 1 event/8–16 bars;
+delay: 1/2 and dotted 1/4 (very low in mix), diffusion pre-delay 8 ms; stereo spread 160%; level -26 to -30 dB
+
+Layer F — Sub/Bass Pad (w=0.35):
+sine/triangle blend, fundamental C1–G1 range; no clear rhythm; slow volume envelopes; LPF 200 Hz; mono below 120 Hz
+
+Layer G — Tape/Air Bed (w=0.5):
+gentle tape hiss/space noise, calibrated at -38 to -42 dB RMS; dynamic tilt with music (duck -1 dB during apex)
+
+TEXTURE EVOLUTION / AUTOMATION:
+
+Drone cutoff opens from 2.8 kHz → 7 kHz by 05:30, closes back to 3.5 kHz by 09:30
+Shimmer send increases linearly 03:30→06:30 (+2 dB), then decreases to baseline by 08:30
+Granular density modulated by slow random LFO (walk), range 0.3–0.6; freeze events aligned near section transitions
+Stereo width L/R: intro 120% → apex 150% → coda 120%; mid/side EQ: slight M dip -0.8 dB @250 Hz at apex
+Pulse layer auto-mute below -26 dB during intro/outro; center -20 dB at mid
+SPATIAL & FX:
+
+Global reverb bus chain: Hall 8.5 s (mix per-layer), pre-delay 18–24 ms; Late > Early reflections; HF damping gentle
+Secondary plate 3.2 s for bells/shimmer; Binaural panning subtle (HRTF-light), avoid extreme localization
+Delays: tape-style, wow 0.2%, flutter 0.1%, noise -60 dB; feedback 8–14%
+Dynamics: no hard compression; gentle bus compressor 1.2:1, slow attack 30 ms, release 500 ms, GR 0.5–1.5 dB max
+Saturation: very mild tape (soft clip knee), target THD < 0.5% in midband
+RHYTHMIC/MOTIF POLICY:
+
+No prominent groove; pulse = texture, not beat
+Melodic motion: stepwise or 3rd jumps; avoid big leaps (> P4) (w=0.7)
+Phrase lengths: 12–32 bars; rests and long sustains prioritized
+Register policy: keep highs delicate (above 8 kHz minimal energy)
+MIX TARGETS:
+
+Integrated LUFS: -18 to -16; Short-term not exceeding -14 on apex
+True peak: ≤ -1.0 dBTP; Headroom: 1.5–2.0 dB
+Low-end: mono ≤120 Hz; gentle shelf -1 dB @ 60 Hz if mud builds
+High shelf +0.5 to +1 dB @ 9–12 kHz only on shimmer/bells, not on drone bed
+OUTPUT / RENDER:
+
+Sample rate: 48 kHz; Bit depth: 24-bit; Dither: TPDF if down-quantizing
+Seamless loop mode: spectral match intro/outro, 500 ms crossfade guidance
+Seed: 1337 (reproducible); Temperature: 0.85; Top_p: 0.9; Top_k: 50; Guidance/CFG: 6.5
+STYLE INTENT (без ссылок на конкретных исполнителей):
+
+90s/00s ambient aesthetics, generative minimalism, cinematic scale, contemplative space
+NEGATIVE PROMPT (что избегать, с весами):
+(no_vocals:1.6), (no_rap:1.6), (no_lyrics:1.6), (no_edm_kick:1.4), (no_snare_clap:1.3), (no_harsh_highs:1.3), (no_distortion:1.3), (no_sidechain_pumping:1.2), (no_fast_arpeggios:1.2), (no_bright_lead:1.2), (no_chords_with_strong_cadences:1.1), (no_sudden_stops:1.2), (no_drone_dropouts:1.2), (no_mud_200_400Hz:1.1), (no_metallic_resonances:1.1), (no_tonal_drift_beyond_±10_cents:1.0)
+
+PROMPT SCHEDULE (акценты по времени; веса меняются):
+
+[00:00–01:30]: (Drone_Bed:1.6), (Granular:0.8), (Shimmer:0.2), (Pulse:0.0), (Bells:0.0), (Sub:0.2), (TapeAir:0.5)
+[01:30–03:30]: (Drone_Bed:1.5), (Granular:1.2), (Shimmer:0.5), (Pulse:0.15), (Bells:0.2), (Sub:0.25), (TapeAir:0.5)
+[03:30–05:30]: (Drone_Bed:1.4), (Granular:1.3), (Shimmer:0.9), (Pulse:0.35), (Bells:0.4), (Sub:0.35), (TapeAir:0.45)
+[05:30–07:00]: (Drone_Bed:1.45), (Granular:1.25), (Shimmer:1.0), (Pulse:0.3), (Bells:0.5), (Sub:0.35), (TapeAir:0.45)
+[07:00–09:00]: (Drone_Bed:1.55), (Granular:1.0), (Shimmer:0.6), (Pulse:0.05), (Bells:0.2), (Sub:0.3), (TapeAir:0.5)
+[09:00–10:00]: (Drone_Bed:1.6), (Granular:0.9), (Shimmer:0.3), (Pulse:0.0), (Bells:0.1), (Sub:0.25), (TapeAir:0.55)
+FALLBACK (если модель не поддерживает расписание/JSON):
+
+Просто оставьте весь текст; веса и подсказки останутся как приоритеты. Если ограничение длительности ≤60 с, масштабируйте секции пропорционально (например, 10:00 → 1:00).
