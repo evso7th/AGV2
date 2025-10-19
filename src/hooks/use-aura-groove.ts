@@ -38,7 +38,7 @@ export const useAuraGroove = () => {
     accompaniment: { name: "guitarChords", volume: 0.7 },
   });
   const [textureSettings, setTextureSettings] = useState<Omit<TextureSettings, 'pads'>>({
-      sparkles: { enabled: true, volume: 0.35 },
+      sparkles: { enabled: true, volume: 0.7 },
   });
   const [bpm, setBpm] = useState(75);
   const [score, setScore] = useState<ScoreName>('neuro_f_matrix');
