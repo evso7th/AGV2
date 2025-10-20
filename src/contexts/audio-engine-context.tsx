@@ -183,7 +183,7 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
         }
 
         if (!gainNodesRef.current.bass) {
-            const parts: Exclude<InstrumentPart, 'pads'>[] = ['bass', 'drums', 'sparkles', 'accompaniment'];
+            const parts: Exclude<InstrumentPart, 'pads'>[] = ['bass', 'melody', 'accompaniment', 'effects', 'drums', 'sparkles', 'piano', 'violin', 'flute', 'guitarChords', 'acousticGuitarSolo'];
             parts.forEach(part => {
                 gainNodesRef.current[part] = context.createGain();
                 gainNodesRef.current[part]!.connect(masterGainNodeRef.current!);

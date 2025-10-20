@@ -1,4 +1,3 @@
-
 // src/lib/bass-synth-manager.ts
 import type { FractalEvent, BassInstrument, BassTechnique } from '@/types/fractal';
 
@@ -49,7 +48,7 @@ export class BassSynthManager {
     }
     
     const beatDuration = 60 / tempo;
-    const messages = [];
+    const messages: any[] = [];
 
     for (const event of events) {
       if (event.type !== 'bass') continue;
@@ -68,20 +67,20 @@ export class BassSynthManager {
           continue;
       }
       
-      console.log(`[BassMan] Scheduling noteOn: ${event.note} at beat ${event.time.toFixed(2)} | absolute time: ${noteOnTime.toFixed(4)}`);
-
+      const noteId = `${noteOnTime.toFixed(4)}-${event.note}`;
+      
       messages.push({
           type: 'noteOn',
           frequency,
           velocity: event.weight,
           when: noteOnTime,
-          noteId: event.note,
+          noteId: noteId,
           params: event.params
       });
 
       messages.push({
           type: 'noteOff',
-          noteId: event.note,
+          noteId: noteId,
           when: noteOffTime
       });
     }

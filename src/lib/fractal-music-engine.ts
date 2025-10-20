@@ -582,6 +582,8 @@ export class FractalMusicEngine {
   private evolveBranches() {
     const shouldMutateBass = this.random.next() < (this.config.density * 0.5);
     const shouldMutateDrums = this.random.next() < (this.config.density * 0.5);
+    const shouldMutateAccomp = this.random.next() < (this.config.density * 0.3); // Accompaniment mutates less often
+
 
     if (this.epoch % 2 === 1 && this.branches.filter(b => b.type === 'bass').length < 5) {
         if (shouldMutateBass) {
@@ -603,6 +605,25 @@ export class FractalMusicEngine {
                 }
             }
         }
+     }
+     
+     if (this.epoch % 5 === 1) { // Even slower for accompaniment
+         if (shouldMutateAccomp && this.branches.filter(b => b.type === 'accompaniment').length < 3) {
+             const parentBranch = this.selectBranchForMutation('accompaniment');
+             if (parentBranch) {
+                 const newBranch = this.mutateBranch(parentBranch);
+                 if (newBranch) this.branches.push(newBranch);
+             } else {
+                 // If no parent, create a new axiom
+                 const bassBranches = this.branches.filter(isBass);
+                 const currentBassNote = bassBranches.length > 0 ? bassBranches[0].events[0]?.note ?? 40 : 40;
+                 const newAxiom = createAccompanimentAxiom(this.config.mood, this.config.genre, this.random, currentBassNote);
+                 if (newAxiom.length > 0) {
+                     const endTime = newAxiom.reduce((max, e) => Math.max(max, e.time + e.duration), 0);
+                     this.branches.push({ id: `accomp_axiom_${this.epoch}`, events: newAxiom, weight: 1.0, age: 0, technique: 'swell', type: 'accompaniment', endTime });
+                 }
+             }
+         }
      }
   }
 

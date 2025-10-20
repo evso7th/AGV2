@@ -1,3 +1,4 @@
+
 // public/worklets/bass-processor.js
 
 class BassProcessor extends AudioWorkletProcessor {
@@ -34,14 +35,14 @@ class BassProcessor extends AudioWorkletProcessor {
         params: params || { cutoff: 500, resonance: 0.5, distortion: 0.1 }, // Параметры по-умолчанию
         filterState: { y1: 0, y2: 0, oldx: 0, oldy: 0 },
       });
-      console.log(`[Worklet] Scheduled noteOn: id=${noteId}, time=${when.toFixed(3)}`);
+      // console.log(`[Worklet] Scheduled noteOn: id=${noteId}, time=${when.toFixed(3)}`);
 
     } else if (type === 'noteOff') {
        const note = this.activeNotes.get(noteId);
        if (note) {
          // Устанавливаем время окончания. Нота перейдет в 'decay' в цикле process.
          note.endTime = when;
-         console.log(`[Worklet] Scheduled noteOff: id=${noteId}, time=${when.toFixed(3)}`);
+         // console.log(`[Worklet] Scheduled noteOff: id=${noteId}, time=${when.toFixed(3)}`);
        }
     } else if (type === 'clear') {
         this.activeNotes.clear();
@@ -91,14 +92,17 @@ class BassProcessor extends AudioWorkletProcessor {
 
         if (note.state === 'attack' || note.state === 'sustain' || note.state === 'decay') {
             // --- Огибающая (Envelope) ---
+            const attackTime = note.params.attack || 0.01;
+            const releaseTime = note.params.release || 0.3;
+
             if (note.state === 'attack') {
-                note.gain += 1 / (0.01 * this.sampleRate); // Быстрая атака
+                note.gain += 1 / (attackTime * this.sampleRate);
                 if (note.gain >= note.targetGain) {
                     note.gain = note.targetGain;
                     note.state = 'sustain';
                 }
             } else if (note.state === 'decay') {
-                note.gain -= 1 / (0.3 * this.sampleRate); // Быстрое затухание
+                note.gain -= 1 / (releaseTime * this.sampleRate);
                 if (note.gain <= 0) {
                     this.activeNotes.delete(noteId); // Удаляем ноту после затухания
                     continue; // Переходим к следующей ноте
