@@ -11,6 +11,7 @@ import { FluteSamplerPlayer } from '@/lib/flute-sampler-player';
 import { AccompanimentSynthManager } from '@/lib/accompaniment-synth-manager';
 import { BassSynthManager } from '@/lib/bass-synth-manager';
 import { SparklePlayer } from '@/lib/sparkle-player';
+import { SfxSynthManager } from '@/lib/sfx-synth-manager';
 import { getPresetParams } from "@/lib/presets";
 import { PIANO_SAMPLES, VIOLIN_SAMPLES, FLUTE_SAMPLES, ACOUSTIC_GUITAR_CHORD_SAMPLES, ACOUSTIC_GUITAR_SOLO_SAMPLES } from '@/lib/samples';
 import { GuitarChordsSampler } from '@/lib/guitar-chords-sampler';
@@ -24,7 +25,7 @@ export function noteToMidi(note: string): number {
 
 // --- Type Definitions ---
 type WorkerMessage = {
-    type: 'SCORE_READY' | 'error' | 'debug' | 'sparkle';
+    type: 'SCORE_READY' | 'error' | 'debug' | 'sparkle' | 'sfx';
     payload?: {
         events?: FractalEvent[];
         barDuration?: number;
@@ -38,6 +39,7 @@ type WorkerMessage = {
     time?: number;
     genre?: Genre;
     mood?: Mood;
+    sfxParams?: any;
 };
 
 
@@ -45,7 +47,7 @@ type WorkerMessage = {
 const VOICE_BALANCE: Record<InstrumentPart, number> = {
   bass: 1.0, melody: 0.7, accompaniment: 0.6, drums: 1.0,
   effects: 0.6, sparkles: 0.7, piano: 1.0, violin: 0.8, flute: 0.8, guitarChords: 0.9,
-  acousticGuitarSolo: 0.9,
+  acousticGuitarSolo: 0.9, sfx: 0.8,
 };
 
 const EQ_FREQUENCIES = [60, 125, 250, 500, 1000, 2000, 4000];
@@ -92,10 +94,11 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
   const bassManagerRef = useRef<BassSynthManager | null>(null);
   const accompanimentManagerRef = useRef<AccompanimentSynthManager | null>(null);
   const sparklePlayerRef = useRef<SparklePlayer | null>(null);
+  const sfxSynthManagerRef = useRef<SfxSynthManager | null>(null);
   
   const masterGainNodeRef = useRef<GainNode | null>(null);
   const gainNodesRef = useRef<Record<Exclude<InstrumentPart, 'pads'>, GainNode | null>>({
-    bass: null, melody: null, accompaniment: null, effects: null, drums: null, sparkles: null, piano: null, violin: null, flute: null, guitarChords: null, acousticGuitarSolo: null,
+    bass: null, melody: null, accompaniment: null, effects: null, drums: null, sparkles: null, piano: null, violin: null, flute: null, guitarChords: null, acousticGuitarSolo: null, sfx: null,
   });
 
   const eqNodesRef = useRef<BiquadFilterNode[]>([]);
@@ -183,7 +186,7 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
         }
 
         if (!gainNodesRef.current.bass) {
-            const parts: Exclude<InstrumentPart, 'pads'>[] = ['bass', 'melody', 'accompaniment', 'effects', 'drums', 'sparkles', 'piano', 'violin', 'flute', 'guitarChords', 'acousticGuitarSolo'];
+            const parts: Exclude<InstrumentPart, 'pads'>[] = ['bass', 'melody', 'accompaniment', 'effects', 'drums', 'sparkles', 'piano', 'violin', 'flute', 'guitarChords', 'acousticGuitarSolo', 'sfx'];
             parts.forEach(part => {
                 gainNodesRef.current[part] = context.createGain();
                 gainNodesRef.current[part]!.connect(masterGainNodeRef.current!);
@@ -210,12 +213,17 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
             sparklePlayerRef.current = new SparklePlayer(context, gainNodesRef.current.sparkles!);
             initPromises.push(sparklePlayerRef.current.init());
         }
+        
+        if (!sfxSynthManagerRef.current) {
+            sfxSynthManagerRef.current = new SfxSynthManager(context, gainNodesRef.current.sfx!);
+            initPromises.push(sfxSynthManagerRef.current.init());
+        }
 
 
         if (!workerRef.current) {
             const worker = new Worker(new URL('@/app/ambient.worker.ts', import.meta.url), { type: 'module' });
             worker.onmessage = (event: MessageEvent<WorkerMessage>) => {
-                const { type, payload, error, time, genre, mood } = event.data;
+                const { type, payload, error, time, genre, mood, sfxParams } = event.data;
                 
                 if (type === 'SCORE_READY' && payload && payload.events && payload.barDuration && settingsRef.current) {
                     const { events, barDuration, instrumentHints } = payload;
@@ -235,6 +243,9 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
                 } else if (type === 'sparkle' && time !== undefined) {
                     console.log('[AudioEngine] Received "sparkle" command from worker.');
                     sparklePlayerRef.current?.playRandomSparkle(nextBarTimeRef.current + time, genre, mood);
+                } else if (type === 'sfx' && time !== undefined) {
+                    console.log('[AudioEngine] Received "sfx" command from worker.');
+                    sfxSynthManagerRef.current?.trigger(nextBarTimeRef.current + time, sfxParams);
                 } else if (type === 'error') {
                     toast({ variant: "destructive", title: "Worker Error", description: error });
                 }
@@ -315,8 +326,6 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
 
   const setVolumeCallback = useCallback((part: InstrumentPart, volume: number) => {
     if (part === 'pads') return;
-    // This part requires a type assertion because the keys of gainNodesRef are more restrictive
-    // than the full InstrumentPart type. We know from the logic it will only be valid keys.
     const gainNode = gainNodesRef.current[part as Exclude<InstrumentPart, 'pads'>];
     if (gainNode && audioContextRef.current) {
         const balancedVolume = volume * (VOICE_BALANCE[part] ?? 1);
@@ -326,6 +335,7 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
 
   const setTextureSettingsCallback = useCallback((settings: Omit<TextureSettings, 'pads'>) => {
     setVolumeCallback('sparkles', settings.sparkles.enabled ? settings.sparkles.volume : 0);
+    setVolumeCallback('sfx', settings.sfx.enabled ? settings.sfx.volume : 0);
   }, [setVolumeCallback]);
   
   const setEQGainCallback = useCallback((bandIndex: number, gain: number) => {}, []);
