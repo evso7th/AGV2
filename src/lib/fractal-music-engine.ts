@@ -256,14 +256,13 @@ function createBassFill(this: FractalMusicEngine, mood: Mood, genre: Genre, rand
     }
     
     // Штраф за слишком высокий регистр
-    const maxNote = Math.max(...scale);
-    const highNoteThreshold = maxNote - 12; // Последняя октава считается высокой
+    const highNoteThreshold = 52; // E3
     const hasHighNotes = fill.some(n => n.note > highNoteThreshold);
     
     if (hasHighNotes) {
         console.warn(`[BassFillPenalty] High-register fill detected. Applying penalty.`);
         // Применяем очень сильный штраф к весу всей ветви, чтобы она "умерла" после одного проигрывания
-        fill.forEach(e => e.weight *= 0.1); 
+        fill.forEach(e => e.weight *= 0.2); 
         this.needsBassReset = true; // Триггер для сброса к аксиоме на следующей эпохе
     }
 
@@ -495,20 +494,19 @@ export class FractalMusicEngine {
     const lastBassEvent = bassEvents.reduce((last, current) => (current.time > last.time ? current : last));
 
     if (lastBassEvent.time + lastBassEvent.duration >= barDuration - 0.1 && lastBassEvent.duration >= barDuration / 2) {
-        if (lastBassEvent.params) {
-            lastBassEvent.params.release = lastBassEvent.duration * 0.8;
+        if (!lastBassEvent.params) {
+            lastBassEvent.params = { cutoff: 300, resonance: 0.8, distortion: 0.02, portamento: 0.0, attack: 0.2 };
         }
+        lastBassEvent.params.release = lastBassEvent.duration * 0.8;
     }
     return events;
   }
 
 
   private generateOneBar(barDuration: number): { events: FractalEvent[], instrumentHints: { accompaniment?: MelodyInstrument, bass?: BassInstrument } } {
-    const output: FractalEvent[] = [];
     let instrumentHints: { accompaniment?: MelodyInstrument, bass?: BassInstrument } = {};
-    
-    // --- ACCOMPANIMENT LOGIC ---
     let shouldPlayAccompaniment = false;
+    
     if (this.time >= this.lastAccompanimentEndTime + this.nextAccompanimentDelay) {
         shouldPlayAccompaniment = true;
     }
@@ -517,7 +515,8 @@ export class FractalMusicEngine {
         const possibleInstruments: MelodyInstrument[] = ['violin', 'flute', 'synth', 'organ', 'mellotron', 'theremin', 'E-Bells_melody', 'G-Drops'];
         instrumentHints.accompaniment = possibleInstruments[this.random.nextInt(possibleInstruments.length)];
     }
-
+    const output: FractalEvent[] = [];
+    
     // --- BASS LOGIC ---
     if (this.config.genre === 'ambient') {
         const planItem = this.bassPlayPlan[this.currentPlanIndex];
@@ -649,14 +648,12 @@ export class FractalMusicEngine {
     });
 
     // Check for bass revival if not in ambient genre
-    if (this.config.genre !== 'ambient') {
-        const bassBranches = this.branches.filter(b => b.type === 'bass');
-        if (bassBranches.length === 0 || bassBranches.every(b => b.weight < 0.3)) {
-            console.log(`%c[BASS REVIVAL] Creating new bass axon.`, "color: #4169E1;");
-            const drumTags = this.branches.find(b => b.type === 'drums')?.events.map(e => e.type.toString()) ?? [];
-            const newAxiom = generateAmbientBassPhrase(this.config.mood, this.config.genre, this.random);
-            this.branches.push({ id: `bass_axon_${this.epoch}`, events: newAxiom, weight: 1.2, age: 0, technique: 'pluck', type: 'bass', endTime: 0 });
-        }
+    const bassBranches = this.branches.filter(b => b.type === 'bass');
+    if (this.config.genre !== 'ambient' && (bassBranches.length === 0 || bassBranches.every(b => b.weight < 0.3))) {
+        console.log(`%c[BASS REVIVAL] Creating new bass axon.`, "color: #4169E1;");
+        const drumTags = this.branches.find(b => b.type === 'drums')?.events.map(e => e.type.toString()) ?? [];
+        const newAxiom = generateAmbientBassPhrase(this.config.mood, this.config.genre, this.random);
+        this.branches.push({ id: `bass_axon_${this.epoch}`, events: newAxiom, weight: 1.2, age: 0, technique: 'pluck', type: 'bass', endTime: 0 });
     }
 
     // Normalize weights and prune branches
@@ -670,6 +667,7 @@ export class FractalMusicEngine {
 
     this.branches = this.branches.filter(b => {
         if (b.type === 'accompaniment') return b.age < 2;
+        if (this.config.genre === 'ambient' && b.type === 'bass' && b.id.includes('axon')) return true; // Keep ambient bass axon
         return b.weight > 0.05 || b.age < 8;
     });
     
@@ -695,3 +693,5 @@ export class FractalMusicEngine {
     };
   }
 }
+
+    
