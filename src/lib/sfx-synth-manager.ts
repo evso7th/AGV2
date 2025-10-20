@@ -20,7 +20,8 @@ export class SfxSynthManager {
 
         try {
             await this.context.audioWorklet.addModule('/worklets/sfx-processor.js');
-            this.workletNode = new AudioWorkletNode(this.context, 'sfx-processor', { numberOfOutputs: 1 });
+            // FIX: Ensure the output is stereo by specifying outputChannelCount
+            this.workletNode = new AudioWorkletNode(this.context, 'sfx-processor', { outputChannelCount: [2] });
             this.workletNode.connect(this.destination);
             this.isReady = true;
             console.log('[SFX] Synth Manager initialized and ready.');
