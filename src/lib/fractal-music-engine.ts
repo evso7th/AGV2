@@ -166,58 +166,46 @@ function createBassAxiom(mood: Mood, genre: Genre, random: { next: () => number,
 }
 
 
-function createAccompanimentAxiom(mood: Mood, genre: Genre, random: { next: () => number; nextInt: (max: number) => number }): FractalEvent[] {
-    if (genre !== 'ambient') return [];
-
+function createAccompanimentAxiom(mood: Mood, genre: Genre, random: { next: () => number; nextInt: (max: number) => number }, bassNote: number): FractalEvent[] {
     const scale = getScaleForMood(mood);
-    const fill: FractalEvent[] = [];
-    const fillParams = getParamsForTechnique('swell', mood, genre);
-    const numNotes = random.nextInt(11) + 10; // 10 to 20 notes
-    let currentTime = 0;
-
-    const selectNote = (): number => {
-        const index = random.nextInt(scale.length);
-        return scale[index];
-    };
+    const swellParams = getParamsForTechnique('swell', mood, genre);
+    const arpeggio: FractalEvent[] = [];
     
-    let currentNote = selectNote();
+    const rootMidi = bassNote;
+    const rootDegree = rootMidi % 12;
 
-    for (let i = 0; i < numNotes; i++) {
-        const duration = (random.next() * 0.3) + 0.2; // durations between 0.2 and 0.5 beats
-        
-        const noteIndex = scale.indexOf(currentNote);
-        const step = random.next() > 0.6 ? (random.next() > 0.5 ? 2 : -2) : (random.next() > 0.5 ? 1 : -1);
-        let newNoteIndex = (noteIndex + step + scale.length) % scale.length;
+    const findNoteInScale = (degree: number) => scale.find(n => (n % 12) === (degree + 12) % 12);
+    
+    const thirdDegree = findNoteInScale(rootDegree + (mood === 'melancholic' || mood === 'dark' ? 3 : 4));
+    const fifthDegree = findNoteInScale(rootDegree + 7);
 
-        if (Math.abs(scale[newNoteIndex] - currentNote) > 7) { // Prefer smaller jumps
-             newNoteIndex = (noteIndex - step + scale.length) % scale.length;
+    const chord = [rootMidi, thirdDegree, fifthDegree].filter(n => n !== undefined) as number[];
+
+    if (chord.length < 2) return []; 
+
+    const pattern = [0, 1, 2, 1, 0, 2, 1, 0, 2, 1, 0, 2, 1, 2, 0, 1]; // Classic arpeggio pattern
+    const duration = 0.25; // 16th notes
+
+    for (let i = 0; i < pattern.length; i++) {
+        const time = i * duration;
+        const noteMidi = chord[pattern[i] % chord.length];
+
+        if (noteMidi) {
+            arpeggio.push({
+                type: 'accompaniment',
+                note: noteMidi,
+                duration: duration,
+                time: time,
+                weight: 0.6 + random.next() * 0.1,
+                technique: 'swell',
+                dynamics: 'p',
+                phrasing: 'legato',
+                params: swellParams
+            });
         }
-        currentNote = scale[newNoteIndex];
-        
-        fill.push({
-            type: 'accompaniment',
-            note: currentNote,
-            duration: duration,
-            time: currentTime,
-            weight: 0.6 + random.next() * 0.2,
-            technique: 'swell',
-            dynamics: 'p',
-            phrasing: 'legato',
-            params: fillParams
-        });
-        
-        currentTime += duration * ((random.next() * 0.4) + 0.8); // overlap notes
-    }
-    
-    if (currentTime > 4.0) {
-        const scaleFactor = 4.0 / currentTime;
-        fill.forEach(e => {
-            e.time *= scaleFactor;
-            e.duration *= scaleFactor;
-        });
     }
 
-    return fill;
+    return arpeggio;
 }
 
 
@@ -498,7 +486,9 @@ export class FractalMusicEngine {
         endTime = newEvents.reduce((max, e) => Math.max(max, e.time + e.duration), 0);
         return { id: `drum_mut_${this.epoch}`, events: newEvents, weight: parent.weight * 0.8, age: 0, technique: 'hit', type: 'drums', endTime };
     } else if (parent.type === 'accompaniment') {
-        const newAxiom = createAccompanimentAxiom(this.config.mood, this.config.genre, this.random);
+        const bassBranches = this.branches.filter(isBass);
+        const currentBassNote = bassBranches.length > 0 ? bassBranches[0].events[0]?.note ?? 40 : 40;
+        const newAxiom = createAccompanimentAxiom(this.config.mood, this.config.genre, this.random, currentBassNote);
         if (newAxiom.length === 0) return null;
         endTime = newAxiom.reduce((max, e) => Math.max(max, e.time + e.duration), 0);
         return {
@@ -569,29 +559,16 @@ export class FractalMusicEngine {
         });
     }
     
-    if (this.epoch > 4 && accompBranches.length > 0) {
+    if (accompBranches.length > 0) {
         const winningAccompBranch = accompBranches.reduce((max, b) => b.weight > max.weight ? b : max, accompBranches[0]);
-        output.push(...winningAccompBranch.events);
-        const beatDuration = 60 / this.config.tempo;
-        this.lastAccompanimentEndTime = this.time + (winningAccompBranch.endTime * beatDuration);
-    }
-    
-    const timeSinceLastAccompaniment = this.time - this.lastAccompanimentEndTime;
-
-    if (this.config.genre === 'ambient' && this.epoch > 4 && timeSinceLastAccompaniment > this.nextAccompanimentDelay) {
-        const newBranch = this.mutateBranch({ id: 'accomp_parent', type: 'accompaniment', events: [], age: 10, weight: 1, technique: 'swell', endTime: 0 });
-        if (newBranch) {
-            this.branches.push(newBranch);
-            this.lastAccompanimentEndTime = this.time; // Reset timer immediately upon creation
+        if (this.time >= this.lastAccompanimentEndTime + this.nextAccompanimentDelay) {
+            output.push(...winningAccompBranch.events);
+            const beatDuration = 60 / this.config.tempo;
+            this.lastAccompanimentEndTime = this.time + (winningAccompBranch.endTime * beatDuration);
             this.nextAccompanimentDelay = (this.random.next() * 7) + 5; // 5-12 seconds
-            console.log(`%c[ACCOMPANIMENT] at epoch ${this.epoch}: Created new phrase. Next in ~${this.nextAccompanimentDelay.toFixed(1)}s.`, "color: magenta;");
-             if (this.config.composerControlsInstruments) {
-                const possibleInstruments: MelodyInstrument[] = ['violin', 'flute', 'synth', 'organ', 'mellotron', 'theremin', 'E-Bells_melody', 'G-Drops'];
-                instrumentHints.accompaniment = possibleInstruments[this.random.nextInt(possibleInstruments.length)];
-            }
         }
     }
-
+    
     const shouldMutateBass = this.random.next() < (this.config.density * 0.5);
     const shouldMutateDrums = this.random.next() < (this.config.density * 0.5);
 
@@ -616,6 +593,19 @@ export class FractalMusicEngine {
         }
     }
     
+    const timeSinceLastAccompaniment = this.time - this.lastAccompanimentEndTime;
+    if (this.config.genre === 'ambient' && this.epoch > 4 && timeSinceLastAccompaniment > this.nextAccompanimentDelay && this.branches.filter(b => b.type === 'accompaniment').length === 0) {
+        const newBranch = this.mutateBranch({ id: 'accomp_parent', type: 'accompaniment', events: [], age: 10, weight: 1, technique: 'swell', endTime: 0 });
+        if (newBranch) {
+            this.branches.push(newBranch);
+            console.log(`%c[ACCOMPANIMENT] at epoch ${this.epoch}: Created new phrase. Next in ~${this.nextAccompanimentDelay.toFixed(1)}s.`, "color: magenta;");
+             if (this.config.composerControlsInstruments) {
+                const possibleInstruments: MelodyInstrument[] = ['violin', 'flute', 'synth', 'organ', 'mellotron', 'theremin', 'E-Bells_melody', 'G-Drops'];
+                instrumentHints.accompaniment = possibleInstruments[this.random.nextInt(possibleInstruments.length)];
+            }
+        }
+    }
+    
     const finalEvents = this.applyNaturalDecay(output, 4.0); // Assuming 4 beats per bar
     
     return { events: finalEvents, instrumentHints };
@@ -636,7 +626,7 @@ export class FractalMusicEngine {
       let newWeight = branch.weight;
       const ageBonus = branch.age === 0 ? 1.5 : 1.0; 
       const resonanceSum = this.branches.reduce((sum, other) => {
-        if (other.id === branch.id || other.type === branch.type) return sum;
+        if (!branch.events[0] || !other.events[0] || other.id === branch.id || other.type === branch.type) return sum;
         const k = MelancholicMinorK(branch.events[0], other.events[0], { mood: this.config.mood, tempo: this.config.tempo, delta, genre: this.config.genre });
         return sum + k * delta * other.weight;
       }, 0);
@@ -644,7 +634,7 @@ export class FractalMusicEngine {
       
       // Штраф за короткие басовые фразы
       if (branch.type === 'bass' && branch.events.length > 0 && branch.events.length < 10) {
-          newWeight *= 0.2;
+          newWeight *= 0.2; // Усиленный штраф
           console.log(`[Penalty] Applied to short bass branch ${branch.id}. New weight: ${newWeight.toFixed(3)}`);
       }
       
@@ -689,5 +679,3 @@ export class FractalMusicEngine {
     };
   }
 }
-
-      

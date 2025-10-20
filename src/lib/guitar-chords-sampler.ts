@@ -1,5 +1,5 @@
 
-import type { Note, Note as NoteEvent } from "@/types/music";
+import type { Note as NoteEvent } from "@/types/music";
 import { ACOUSTIC_GUITAR_CHORD_SAMPLES } from "./samples";
 import * as Tone from 'tone';
 
@@ -74,30 +74,29 @@ export class GuitarChordsSampler {
     public schedule(notes: NoteEvent[], startTime: number) {
         if (!this.isInitialized || notes.length === 0) return;
 
-        notes.forEach(note => {
-            const chordName = this.midiToChordName(note.midi);
+        const note = notes[0]; // Process only the first note to trigger a chord sample
+        const chordName = this.midiToChordName(note.midi);
 
-            if (!chordName) {
-                // console.warn(`[GuitarChordsSampler] Could not map MIDI ${note.midi} to a chord.`);
-                return;
-            }
+        if (!chordName) {
+            // console.warn(`[GuitarChordsSampler] Could not map MIDI ${note.midi} to a chord.`);
+            return;
+        }
 
-            const buffer = this.samples.get(chordName);
-            if (buffer) {
-                const source = this.audioContext.createBufferSource();
-                source.buffer = buffer;
-                
-                const noteGain = this.audioContext.createGain();
-                noteGain.gain.value = note.velocity ?? 0.7;
-                
-                source.connect(noteGain);
-                noteGain.connect(this.preamp);
-                
-                source.start(startTime + note.time);
-            } else {
-                console.warn(`[GuitarChordsSampler] Sample for chord "${chordName}" not found.`);
-            }
-        });
+        const buffer = this.samples.get(chordName);
+        if (buffer) {
+            const source = this.audioContext.createBufferSource();
+            source.buffer = buffer;
+            
+            const noteGain = this.audioContext.createGain();
+            noteGain.gain.value = note.velocity ?? 0.7;
+            
+            source.connect(noteGain);
+            noteGain.connect(this.preamp);
+            
+            source.start(startTime + note.time);
+        } else {
+            console.warn(`[GuitarChordsSampler] Sample for chord "${chordName}" not found.`);
+        }
     }
     
     // Maps a MIDI note to the most likely chord name from our sample map
