@@ -268,7 +268,7 @@ function createRhythmSectionFill(mood: Mood, genre: Genre, random: { next: () =>
     return { drumFill, bassFill };
 }
 
-function createBassFill(this: FractalMusicEngine, mood: Mood, genre: Genre, random: { next: () => number, nextInt: (max, number) => number }): FractalEvent[] {
+function createBassFill(this: FractalMusicEngine, mood: Mood, genre: Genre, random: { next: () => number, nextInt: (max: number) => number }): FractalEvent[] {
     const fill: FractalEvent[] = [];
     const scale = getScaleForMood(mood);
     const fillParams = getParamsForTechnique('fill', mood, genre);
@@ -514,7 +514,7 @@ export class FractalMusicEngine {
         return {
             id: `accomp_mut_${this.epoch}`,
             events: newAxiom,
-            weight: 1.0, // New accompaniment phrases start with full weight
+            weight: 1.2, // New accompaniment phrases start with strong weight to ensure they play
             age: 0,
             technique: 'swell',
             type: 'accompaniment',
@@ -541,7 +541,7 @@ export class FractalMusicEngine {
   }
 
 
-  private generateOneBar(barDuration: number): FractalEvent[] {
+  private generateOneBar(barDuration: number): { events: FractalEvent[], instrumentHints: { accompaniment?: MelodyInstrument, bass?: BassInstrument } } {
     if (this.needsBassReset) {
         console.log("%c[RESET] Bass branch reset triggered.", "color: red; font-weight: bold;");
         this.branches = this.branches.filter(b => b.type !== 'bass' || b.id.includes('axon'));
@@ -582,7 +582,7 @@ export class FractalMusicEngine {
     if (accompBranches.length > 0) {
         const winningAccompBranch = accompBranches.reduce((max, b) => b.weight > max.weight ? b : max, accompBranches[0]);
         output.push(...winningAccompBranch.events);
-        this.lastAccompanimentTime = this.time + (winningAccompBranch.endTime * (60 / this.tempo));
+        this.lastAccompanimentTime = this.time + (winningAccompBranch.endTime * (60 / this.config.tempo));
     }
     
     const shouldMutateBass = this.random.next() < (this.config.density * 0.5);
@@ -590,16 +590,18 @@ export class FractalMusicEngine {
     
     const timeSinceLastAccompaniment = this.time - this.lastAccompanimentTime;
 
-    if (this.config.genre === 'ambient' && timeSinceLastAccompaniment > this.nextAccompanimentDelay && this.epoch > 4 && this.branches.filter(b => b.type === 'accompaniment').length < 2) {
-        const newBranch = createAccompanimentAxiom(this.config.mood, this.config.genre, this.random);
-        if (newBranch.length > 0) {
-            const endTime = newBranch.reduce((max, e) => Math.max(max, e.time + e.duration), 0);
-            this.branches.push({
-                id: `accomp_mut_${this.epoch}`, events: newBranch, weight: 1.2, age: 0, technique: 'swell', type: 'accompaniment', endTime
-            });
-            this.lastAccompanimentTime = this.time;
+    if (this.config.genre === 'ambient' && this.epoch >= 4 && timeSinceLastAccompaniment > this.nextAccompanimentDelay) {
+        const parentBranch = this.selectBranchForMutation('accompaniment') ?? this.branches.find(b => b.type === 'accompaniment');
+        const newBranch = parentBranch ? this.mutateBranch(parentBranch) : null;
+        if (newBranch) {
+            this.branches.push(newBranch);
+            this.lastAccompanimentTime = this.time; // Reset timer
             this.nextAccompanimentDelay = (this.random.next() * 7) + 5; // 5-12 seconds
             console.log(`%c[ACCOMPANIMENT] at epoch ${this.epoch}: Created new phrase. Next in ~${this.nextAccompanimentDelay.toFixed(1)}s.`, "color: magenta;");
+             if (this.config.composerControlsInstruments) {
+                const possibleInstruments: MelodyInstrument[] = ['violin', 'flute', 'synth', 'organ', 'mellotron', 'theremin', 'E-Bells_melody', 'G-Drops'];
+                instrumentHints.accompaniment = possibleInstruments[this.random.nextInt(possibleInstruments.length)];
+            }
         }
     }
 
@@ -690,5 +692,3 @@ export class FractalMusicEngine {
     };
   }
 }
-
-    
