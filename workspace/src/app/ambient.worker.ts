@@ -43,46 +43,42 @@ function shouldAddSfx(currentTime: number, density: number, mood: Mood, genre: G
 
     let chance = ((timeSinceLast - minTime) / (maxTime - minTime)) * (0.95 - density);
 
-    // Увеличиваем шанс для более "индустриальных" или "темных" стилей
     if (mood === 'dark' || mood === 'anxious' || genre === 'rock' || genre === 'progressive') chance *= 1.6;
     if (mood === 'calm' || mood === 'dreamy') chance *= 0.4;
     
     if (Math.random() < chance) {
         console.log(`[SFX] Firing complex SFX event for mood: ${mood}, genre: ${genre}`);
         const phrase: FractalEvent[] = [];
-        const numNotes = 2 + Math.floor(Math.random() * 4); // 2 to 5 notes
-        const phraseDuration = 2 + Math.random() * 4; // 2 to 6 seconds total
+        const numNotes = 3 + Math.floor(Math.random() * 8); // 3 to 10 notes
+        const phraseDuration = 3 + Math.random() * 3; // 3 to 6 seconds total
         let phraseTime = 0;
 
-        // --- Интеллектуальный выбор "рецепта" на основе контекста ---
         const prefs = {
             texture: { industrial: 0.3, ambient: 0.6, vocal: 0.1 },
-            frequency: { low: 0.2, mid: 0.4, high: 0.1, 'wide-sweep-up': 0.15, 'wide-sweep-down': 0.15 },
+            frequency: { low: 0.3, mid: 0.4, high: 0.1, 'wide-sweep-up': 0.1, 'wide-sweep-down': 0.1 },
             envelope: { percussive: 0.4, pad: 0.3, swell: 0.3 },
         };
 
-        // Модуляция предпочтений в зависимости от жанра и настроения
         if (genre === 'rock' || genre === 'progressive') {
-            prefs.texture.industrial = 0.7;
+            prefs.texture.industrial = 0.8;
             prefs.envelope.percussive = 0.8;
+            prefs.frequency.low = 0.5;
         }
         if (genre === 'trance' || genre === 'house') {
-            prefs.texture.electronic = 0.8; // Предполагая, что такая текстура есть в SFX_GRAMMAR
-            prefs.frequency['wide-sweep-up'] = 0.4;
+            prefs.texture.industrial = 0.2; // Keep it clean
+            prefs.frequency['wide-sweep-up'] = 0.5;
         }
         if (mood === 'dark' || mood === 'anxious') {
-            prefs.texture.industrial = 0.8;
-            prefs.frequency.low = 0.6;
-            prefs.envelope.swell = 0.5;
+            prefs.texture.industrial = 0.9;
+            prefs.frequency.low = 0.7;
+            prefs.envelope.swell = 0.6;
         }
         if (mood === 'dreamy' || mood === 'calm') {
             prefs.texture.ambient = 0.8;
             prefs.texture.vocal = 0.2;
             prefs.envelope.pad = 0.7;
-            prefs.frequency.mid = 0.6;
         }
 
-        // Взвешенный случайный выбор
         const chooseWeighted = (options: Record<string, number>): string => {
             const total = Object.values(options).reduce((s, w) => s + w, 0);
             let rand = Math.random() * total;
@@ -98,9 +94,18 @@ function shouldAddSfx(currentTime: number, density: number, mood: Mood, genre: G
         const envelopeChoice = chooseWeighted(prefs.envelope) as keyof typeof SFX_GRAMMAR.envelopes;
         
         for (let i = 0; i < numNotes; i++) {
-            const oscType = SFX_GRAMMAR.textures[textureChoice]?.[Math.floor(Math.random() * SFX_GRAMMAR.textures[textureChoice].length)] || 'sine';
-            const envelope = SFX_GRAMMAR.envelopes[envelopeChoice];
+            const numLayers = Math.random() > 0.4 ? (Math.random() > 0.7 ? 3 : 2) : 1;
+            const oscillators = [];
+            
+            for (let l = 0; l < numLayers; l++) {
+                const oscType = SFX_GRAMMAR.textures[textureChoice]?.[Math.floor(Math.random() * SFX_GRAMMAR.textures[textureChoice].length)] || 'sine';
+                oscillators.push({
+                    type: oscType,
+                    detune: (Math.random() * 2400 - 1200) * (l > 0 ? 1 : 0), // Detune only on layers > 0
+                });
+            }
 
+            const envelope = SFX_GRAMMAR.envelopes[envelopeChoice];
             const noteDuration = (phraseDuration / numNotes) * (0.7 + Math.random() * 0.6);
 
             let startFreq, endFreq;
@@ -114,18 +119,19 @@ function shouldAddSfx(currentTime: number, density: number, mood: Mood, genre: G
                  endFreq = startFreq + (Math.random() * 100 - 50); // Slight drift
             }
             
-            const params: Partial<BassSynthParams> & { oscType: any, startFreq: number, endFreq: number, pan: number, chorus: boolean, lfoFreq?: number, sustainLevel?: number } = {
+            const distortionAmount = (textureChoice === 'industrial') ? (0.2 + Math.random() * 0.5) : (Math.random() * 0.1);
+
+            const params = {
                 duration: noteDuration,
                 attack: envelope.attack.min + Math.random() * (envelope.attack.max - envelope.attack.min),
                 decay: envelope.decay.min + Math.random() * (envelope.decay.max - envelope.decay.min),
                 sustainLevel: envelope.sustain,
                 release: envelope.release.min + Math.random() * (envelope.release.max - envelope.release.min),
-                oscType: oscType,
+                oscillators,
                 startFreq,
                 endFreq,
                 pan: Math.random() * 2 - 1,
-                chorus: Math.random() > 0.5,
-                lfoFreq: Math.random() * 8, // For future use in sfx-processor
+                distortion: distortionAmount,
             };
 
             phrase.push({
@@ -140,7 +146,6 @@ function shouldAddSfx(currentTime: number, density: number, mood: Mood, genre: G
                 params: params as any
             });
             
-            // Overlap notes for a richer texture
             phraseTime += noteDuration * (0.2 + Math.random() * 0.5);
         }
 
@@ -363,3 +368,5 @@ self.onmessage = async (event: MessageEvent) => {
         self.postMessage({ type: 'error', error: e instanceof Error ? e.message : String(e) });
     }
 };
+
+    
