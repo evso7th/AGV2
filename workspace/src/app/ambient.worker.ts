@@ -54,23 +54,51 @@ function shouldAddSfx(currentTime: number, density: number, mood: Mood, genre: G
         const phraseDuration = 2 + Math.random() * 4; // 2 to 6 seconds total
         let phraseTime = 0;
 
-        // --- Выбор "рецепта" на основе контекста ---
-        let textureChoice: keyof typeof SFX_GRAMMAR.textures = 'ambient';
-        if (mood === 'dark' || mood === 'anxious') textureChoice = 'industrial';
-        if (genre === 'trance' || genre === 'house') textureChoice = 'electronic';
-        
-        let freqChoice: keyof typeof SFX_GRAMMAR.freqRanges = 'mid';
-        const freqRoll = Math.random();
-        if (freqRoll < 0.33) freqChoice = 'low';
-        else if (freqRoll < 0.66) freqChoice = 'wide-sweep-up';
-        else freqChoice = 'wide-sweep-down';
+        // --- Интеллектуальный выбор "рецепта" на основе контекста ---
+        const prefs = {
+            texture: { industrial: 0.3, ambient: 0.6, vocal: 0.1 },
+            frequency: { low: 0.2, mid: 0.4, high: 0.1, 'wide-sweep-up': 0.15, 'wide-sweep-down': 0.15 },
+            envelope: { percussive: 0.4, pad: 0.3, swell: 0.3 },
+        };
 
-        let envelopeChoice: keyof typeof SFX_GRAMMAR.envelopes = 'swell';
-        const envRoll = Math.random();
-        if (envRoll < 0.5) envelopeChoice = 'percussive';
+        // Модуляция предпочтений в зависимости от жанра и настроения
+        if (genre === 'rock' || genre === 'progressive') {
+            prefs.texture.industrial = 0.7;
+            prefs.envelope.percussive = 0.8;
+        }
+        if (genre === 'trance' || genre === 'house') {
+            prefs.texture.electronic = 0.8; // Предполагая, что такая текстура есть в SFX_GRAMMAR
+            prefs.frequency['wide-sweep-up'] = 0.4;
+        }
+        if (mood === 'dark' || mood === 'anxious') {
+            prefs.texture.industrial = 0.8;
+            prefs.frequency.low = 0.6;
+            prefs.envelope.swell = 0.5;
+        }
+        if (mood === 'dreamy' || mood === 'calm') {
+            prefs.texture.ambient = 0.8;
+            prefs.texture.vocal = 0.2;
+            prefs.envelope.pad = 0.7;
+            prefs.frequency.mid = 0.6;
+        }
+
+        // Взвешенный случайный выбор
+        const chooseWeighted = (options: Record<string, number>): string => {
+            const total = Object.values(options).reduce((s, w) => s + w, 0);
+            let rand = Math.random() * total;
+            for (const key in options) {
+                rand -= options[key];
+                if (rand <= 0) return key;
+            }
+            return Object.keys(options)[0];
+        };
+        
+        const textureChoice = chooseWeighted(prefs.texture) as keyof typeof SFX_GRAMMAR.textures;
+        const freqChoice = chooseWeighted(prefs.frequency) as keyof typeof SFX_GRAMMAR.freqRanges;
+        const envelopeChoice = chooseWeighted(prefs.envelope) as keyof typeof SFX_GRAMMAR.envelopes;
         
         for (let i = 0; i < numNotes; i++) {
-            const oscType = SFX_GRAMMAR.textures[textureChoice][Math.floor(Math.random() * SFX_GRAMMAR.textures[textureChoice].length)];
+            const oscType = SFX_GRAMMAR.textures[textureChoice]?.[Math.floor(Math.random() * SFX_GRAMMAR.textures[textureChoice].length)] || 'sine';
             const envelope = SFX_GRAMMAR.envelopes[envelopeChoice];
 
             const noteDuration = (phraseDuration / numNotes) * (0.7 + Math.random() * 0.6);
@@ -86,7 +114,7 @@ function shouldAddSfx(currentTime: number, density: number, mood: Mood, genre: G
                  endFreq = startFreq + (Math.random() * 100 - 50); // Slight drift
             }
             
-            const params: Partial<BassSynthParams> & { oscType: any, startFreq: number, endFreq: number, pan: number, chorus: boolean, lfoFreq?: number } = {
+            const params: Partial<BassSynthParams> & { oscType: any, startFreq: number, endFreq: number, pan: number, chorus: boolean, lfoFreq?: number, sustainLevel?: number } = {
                 duration: noteDuration,
                 attack: envelope.attack.min + Math.random() * (envelope.attack.max - envelope.attack.min),
                 decay: envelope.decay.min + Math.random() * (envelope.decay.max - envelope.decay.min),
@@ -335,5 +363,3 @@ self.onmessage = async (event: MessageEvent) => {
         self.postMessage({ type: 'error', error: e instanceof Error ? e.message : String(e) });
     }
 };
-
-    
