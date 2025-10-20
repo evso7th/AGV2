@@ -114,7 +114,7 @@ export class AccompanimentSynthManager {
             params: event.params
         }));
 
-        // console.log(`[AccompanimentManager] Scheduling ${notes.length} notes for instrument: ${this.activeInstrumentName}`);
+        console.log(`[AccompanimentManager] Scheduling ${notes.length} notes for instrument: ${this.activeInstrumentName}`);
 
         switch (this.activeInstrumentName) {
             case 'piano':
