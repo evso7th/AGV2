@@ -53,7 +53,40 @@ export type EffectInstrument =
     'autopilot_effect_hole' | 'autopilot_effect_pulsar' | 'autopilot_effect_nebula' | 
     'autopilot_effect_comet' | 'autopilot_effect_wind' | 'autopilot_effect_echoes';
 
-export type InstrumentType = BassInstrument | MelodyInstrument | AccompanimentInstrument | EffectInstrument | 'portamento' | 'autopilot_bass' | 'none';
+export type DrumAndPercussionInstrument =
+    | 'drum_kick'
+    | 'drum_snare'
+    | 'drum_snare_off'
+    | 'drum_snare_ghost_note'
+    | 'drum_snarepress'
+    | 'drum_tom_low'
+    | 'drum_ride'
+    | 'drum_a_ride1'
+    | 'drum_a_ride2'
+    | 'drum_a_ride3'
+    | 'drum_a_ride4'
+    | 'drum_closed_hi_hat_ghost'
+    | 'drum_hihat_open'
+    | 'drum_hihat_closed'
+    | 'cymbal_bell1'
+    | 'hh_bark_short'
+    | 'perc-001'
+    | 'perc-002'
+    | 'perc-003'
+    | 'perc-004'
+    | 'perc-005'
+    | 'perc-006'
+    | 'perc-007'
+    | 'perc-008'
+    | 'perc-009'
+    | 'perc-010'
+    | 'perc-011'
+    | 'perc-012'
+    | 'perc-013'
+    | 'perc-014'
+    | 'perc-015';
+
+export type InstrumentType = BassInstrument | MelodyInstrument | AccompanimentInstrument | EffectInstrument | DrumAndPercussionInstrument | 'portamento' | 'autopilot_bass' | 'none';
 
 export type InstrumentPart = 'bass' | 'melody' | 'accompaniment' | 'drums' | 'effects' | 'sparkles' | 'piano' | 'violin' | 'flute' | 'guitarChords' | 'acousticGuitarSolo' | 'electricGuitar' | 'sfx';
 export type BassTechnique = 'arpeggio' | 'portamento' | 'glissando' | 'glide' | 'pulse';

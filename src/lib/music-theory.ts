@@ -386,14 +386,14 @@ export const STYLE_DRUM_PATTERNS: Record<Genre, GenreRhythmGrammar> = {
                 kick: [{ type: 'drum_kick', time: 0, duration: 0.5, weight: 0.9 }, { type: 'drum_kick', time: 2, duration: 0.5, weight: 0.9 }],
                 snare: [{ type: 'drum_snare', time: 1, duration: 0.5, weight: 1.0 }, { type: 'drum_snare', time: 3, duration: 0.5, weight: 1.0 }],
                 hihat: [
-                    { type: ALL_RIDES, time: 0, duration: 0.66, weight: 0.6 },
-                    { type: ALL_RIDES, time: 0.66, duration: 0.33, weight: 0.4 },
-                    { type: ALL_RIDES, time: 1, duration: 0.66, weight: 0.6 },
-                    { type: ALL_RIDES, time: 1.66, duration: 0.33, weight: 0.4 },
-                    { type: ALL_RIDES, time: 2, duration: 0.66, weight: 0.6 },
-                    { type: ALL_RIDES, time: 2.66, duration: 0.33, weight: 0.4 },
-                    { type: ALL_RIDES, time: 3, duration: 0.66, weight: 0.6 },
-                    { type: ALL_RIDES, time: 3.66, duration: 0.33, weight: 0.4 },
+                    { type: 'drum_ride', time: 0, duration: 0.66, weight: 0.6 },
+                    { type: 'drum_ride', time: 0.66, duration: 0.33, weight: 0.4 },
+                    { type: 'drum_ride', time: 1, duration: 0.66, weight: 0.6 },
+                    { type: 'drum_ride', time: 1.66, duration: 0.33, weight: 0.4 },
+                    { type: 'drum_ride', time: 2, duration: 0.66, weight: 0.6 },
+                    { type: 'drum_ride', time: 2.66, duration: 0.33, weight: 0.4 },
+                    { type: 'drum_ride', time: 3, duration: 0.66, weight: 0.6 },
+                    { type: 'drum_ride', time: 3.66, duration: 0.33, weight: 0.4 },
                 ],
                 tags: ['shuffle']
             }
@@ -455,3 +455,38 @@ export const STYLE_BASS_PATTERNS: Record<Genre, BassPatternDefinition[]> = {
         { pattern: [{ note: 0, time: 0, duration: 0.75 }, { note: 0, time: 0.75, duration: 0.25 }, { note: 2, time: 1, duration: 1 }, { note: -1, time: 2.5, duration: 1.5 }], tags: ['prog-rock-sparse', 'syncopated'] },
     ],
 };
+
+/**
+ * Грамматика для генерации SFX.
+ * Определяет "строительные блоки" для создания разнообразных звуковых эффектов.
+ */
+export const SFX_GRAMMAR = {
+  // Типы осцилляторов для разных текстур
+  textures: {
+    industrial: ['sawtooth', 'square'],
+    ambient: ['sine', 'triangle'],
+    vocal: ['fatsine'],
+  },
+  // Диапазоны частот для разных регистров и движений
+  freqRanges: {
+    low: { min: 30, max: 150 },
+    mid: { min: 150, max: 800 },
+    high: { min: 800, max: 4000 },
+    'wide-sweep-up': { minStart: 100, maxStart: 400, minEnd: 1500, maxEnd: 3000 },
+    'wide-sweep-down': { minStart: 1500, maxStart: 3000, minEnd: 100, maxEnd: 400 },
+  },
+  // Характеристики огибающей для разной артикуляции
+  envelopes: {
+    percussive: { attack: {min: 0.01, max: 0.05}, decay: {min: 0.1, max: 0.3}, sustain: 0.1, release: {min: 0.1, max: 0.4} },
+    pad: { attack: {min: 0.5, max: 1.5}, decay: {min: 1.0, max: 2.0}, sustain: 0.8, release: {min: 1.0, max: 2.5} },
+    swell: { attack: {min: 0.2, max: 0.8}, decay: {min: 0.5, max: 1.0}, sustain: 0.6, release: {min: 0.5, max: 1.5} },
+  },
+  // Типы движения панорамы
+  panning: {
+    static: 'static',
+    sweep: 'sweep',
+    random: 'random'
+  }
+};
+
+    
