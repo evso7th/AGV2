@@ -25,7 +25,7 @@ export function noteToMidi(note: string): number {
 
 // --- Type Definitions ---
 type WorkerMessage = {
-    type: 'SCORE_READY' | 'error' | 'debug' | 'sparkle' | 'sfx';
+    type: 'SCORE_READY' | 'error' | 'debug' | 'sparkle';
     payload?: {
         events?: FractalEvent[];
         barDuration?: number;
@@ -39,7 +39,6 @@ type WorkerMessage = {
     time?: number;
     genre?: Genre;
     mood?: Mood;
-    sfxParams?: any;
 };
 
 
@@ -127,6 +126,7 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
     const drumEvents: FractalEvent[] = [];
     const bassEvents: FractalEvent[] = [];
     const accompanimentEvents: FractalEvent[] = [];
+    const sfxEvents: FractalEvent[] = [];
 
     for (const event of validEvents) {
       const eventType = Array.isArray(event.type) ? event.type[0] : event.type;
@@ -136,6 +136,8 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
         bassEvents.push(event);
       } else if (eventType === 'accompaniment') {
         accompanimentEvents.push(event);
+      } else if (eventType === 'sfx') {
+        sfxEvents.push(event);
       }
     }
 
@@ -149,6 +151,10 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
 
     if (accompanimentManagerRef.current && accompanimentEvents.length > 0) {
         accompanimentManagerRef.current.schedule(accompanimentEvents, barStartTime, tempo);
+    }
+
+    if (sfxSynthManagerRef.current && sfxEvents.length > 0) {
+        sfxSynthManagerRef.current.trigger(sfxEvents, barStartTime, tempo);
     }
   }, []);
 
@@ -223,7 +229,7 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
         if (!workerRef.current) {
             const worker = new Worker(new URL('@/app/ambient.worker.ts', import.meta.url), { type: 'module' });
             worker.onmessage = (event: MessageEvent<WorkerMessage>) => {
-                const { type, payload, error, time, genre, mood, sfxParams } = event.data;
+                const { type, payload, error, time, genre, mood } = event.data;
                 
                 if (type === 'SCORE_READY' && payload && payload.events && payload.barDuration && settingsRef.current) {
                     const { events, barDuration, instrumentHints } = payload;
@@ -243,9 +249,6 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
                 } else if (type === 'sparkle' && time !== undefined) {
                     console.log('[AudioEngine] Received "sparkle" command from worker.');
                     sparklePlayerRef.current?.playRandomSparkle(nextBarTimeRef.current + time, genre, mood);
-                } else if (type === 'sfx' && time !== undefined) {
-                    console.log('[AudioEngine] Received "sfx" command from worker.');
-                    sfxSynthManagerRef.current?.trigger(nextBarTimeRef.current + time, sfxParams);
                 } else if (type === 'error') {
                     toast({ variant: "destructive", title: "Worker Error", description: error });
                 }
