@@ -158,7 +158,7 @@ const Scheduler = {
         let scorePayload: { events: FractalEvent[]; instrumentHints: { accompaniment?: MelodyInstrument, bass?: BassInstrument } } = { events: [], instrumentHints: {} };
 
         if (this.settings.score === 'neuro_f_matrix') {
-            scorePayload = fractalMusicEngine.evolve(this.barDuration);
+             scorePayload = fractalMusicEngine.evolve(this.barDuration, this.barCount);
         } 
         
         console.log(`[Worker] Tick ${this.barCount}. Generated ${scorePayload.events?.length ?? 'undefined'} events.`);
@@ -174,9 +174,8 @@ const Scheduler = {
 
         const currentTime = this.barCount * this.barDuration;
         
-        if (this.settings.textureSettings.sparkles.enabled) {
+        if (this.barCount >= 4 && this.settings.textureSettings.sparkles.enabled) {
             if (shouldAddSparkle(currentTime, density, genre)) {
-                 // For ambient, always use electronic sparkles as requested
                  const sparkleGenre = genre === 'ambient' ? 'trance' : genre;
                  self.postMessage({ type: 'sparkle', time: 0, genre: sparkleGenre, mood: this.settings.mood });
                  lastSparkleTime = currentTime;
@@ -229,6 +228,4 @@ self.onmessage = async (event: MessageEvent) => {
                  break;
         }
     } catch (e) {
-        self.postMessage({ type: 'error', error: e instanceof Error ? e.message : String(e) });
-    }
-};
+        self.postMessage({ type: 'error', error: e instanceof Error ? e.
