@@ -1,4 +1,3 @@
-
 // src/lib/music-theory.ts
 import type { FractalEvent, Mood, Genre, Technique, BassSynthParams, InstrumentType } from '@/types/fractal';
 
@@ -155,17 +154,87 @@ export function generateAmbientBassPhrase(mood: Mood, genre: Genre, random: { ne
     }
     
     // Normalize phrase to fit into exactly 4 beats (one bar)
-    if (currentTime > 4.0) {
-        const scaleFactor = 4.0 / currentTime;
+    const totalDuration = phrase.reduce((sum, e) => sum + e.duration, 0);
+    if (totalDuration > 4.0) {
+        const scaleFactor = 4.0 / totalDuration;
+        let runningTime = 0;
         phrase.forEach(e => {
-            e.time *= scaleFactor;
             e.duration *= scaleFactor;
+            e.time = runningTime;
+            runningTime += e.duration;
         });
     }
+
 
     return phrase;
 };
 
+
+export function mutateBassPhrase(phrase: FractalEvent[], mood: Mood, genre: Genre, random: { next: () => number, nextInt: (max: number) => number }): FractalEvent[] {
+    const newPhrase: FractalEvent[] = JSON.parse(JSON.stringify(phrase));
+    const mutationType = random.nextInt(4); // 4 types of mutation
+
+    if (newPhrase.length === 0) return [];
+    
+    switch (mutationType) {
+        case 0: // Rhythmic mutation
+            const noteToChange = newPhrase[random.nextInt(newPhrase.length)];
+            noteToChange.duration *= (random.next() > 0.5 ? 1.5 : 0.5);
+            break;
+
+        case 1: // Pitch mutation (in-scale)
+            const noteToTranspose = newPhrase[random.nextInt(newPhrase.length)];
+            const scale = getScaleForMood(mood);
+            const currentIndex = scale.indexOf(noteToTranspose.note);
+            if (currentIndex !== -1) {
+                const step = random.next() > 0.5 ? 1 : -1;
+                const newIndex = (currentIndex + step + scale.length) % scale.length;
+                noteToTranspose.note = scale[newIndex];
+            }
+            break;
+            
+        case 2: // Inversion of a small fragment
+            if (newPhrase.length > 2) {
+                const start = random.nextInt(newPhrase.length - 2);
+                const fragment = newPhrase.slice(start, start + 2);
+                const reversedNotes = fragment.map(e => e.note).reverse();
+                fragment.forEach((event, i) => event.note = reversedNotes[i]);
+            }
+            break;
+
+        case 3: // Add or remove a note
+            if (random.next() > 0.5 && newPhrase.length > 3) {
+                newPhrase.splice(random.nextInt(newPhrase.length), 1);
+            } else {
+                 const scale = getScaleForMood(mood);
+                 const newNoteEvent = {...newPhrase[0]}; // copy properties from first note
+                 newNoteEvent.note = scale[random.nextInt(scale.length)];
+                 newNoteEvent.time = newPhrase[newPhrase.length-1].time + newPhrase[newPhrase.length-1].duration;
+                 newNoteEvent.duration = 0.5;
+                 newPhrase.push(newNoteEvent);
+            }
+            break;
+    }
+
+    // Re-normalize timings after mutation
+    let currentTime = 0;
+    newPhrase.forEach(e => {
+        e.time = currentTime;
+        currentTime += e.duration;
+    });
+
+    if (currentTime > 4.0) {
+        const scaleFactor = 4.0 / currentTime;
+        let runningTime = 0;
+        newPhrase.forEach(e => {
+            e.duration *= scaleFactor;
+            e.time = runningTime;
+            runningTime += e.duration;
+        });
+    }
+
+    return newPhrase;
+}
 
 // Rhythmic Grammar Library for Drums
 export const STYLE_DRUM_PATTERNS: Record<Genre, GenreRhythmGrammar> = {
@@ -349,7 +418,7 @@ export const STYLE_BASS_PATTERNS: Record<Genre, BassPatternDefinition[]> = {
     ],
     rnb: [
         { pattern: [{ note: 0, time: 0, duration: 1.5 }, { note: 4, time: 1.5, duration: 0.5 }, { note: 2, time: 2, duration: 1.5 }, { note: 0, time: 3.5, duration: 0.5, technique: 'ghost' }], tags: ['rnb-groove'] },
-        { pattern: [{ note: 0, time: 0, duration: 1 }, { note: 2, time: 1.75, duration: 0.75 }, { note: -1, time: 2.5, duration: 0.5 }, { note: 0, time: 3.25, duration: 0.75 }], tags: ['rnb-groove', 'hip-hop'] },
+        { pattern: [{ note: 0, time: 1, duration: 0.75 }, { note: 2, time: 1.75, duration: 0.75 }, { note: -1, time: 2.5, duration: 0.5 }, { note: 0, time: 3.25, duration: 0.75 }], tags: ['rnb-groove', 'hip-hop'] },
     ],
     ballad: [
         { pattern: [{ note: 0, time: 0, duration: 3 }, { note: 4, time: 3, duration: 1 }], tags: ['ballad-simple'] },

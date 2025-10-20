@@ -1,7 +1,6 @@
-
 import type { FractalEvent, Mood, Genre, Technique, BassSynthParams, InstrumentType, MelodyInstrument, BassInstrument } from '@/types/fractal';
 import { MelancholicMinorK } from './resonance-matrices';
-import { getScaleForMood, STYLE_DRUM_PATTERNS, STYLE_BASS_PATTERNS, type BassPatternDefinition, PERCUSSION_SETS, ALL_RIDES, generateAmbientBassPhrase } from './music-theory';
+import { getScaleForMood, STYLE_DRUM_PATTERNS, STYLE_BASS_PATTERNS, type BassPatternDefinition, PERCUSSION_SETS, generateAmbientBassPhrase, mutateBassPhrase } from './music-theory';
 
 export type Branch = {
   id: string;
@@ -255,15 +254,13 @@ function createBassFill(this: FractalMusicEngine, mood: Mood, genre: Genre, rand
         });
     }
     
-    // Штраф за слишком высокий регистр
     const highNoteThreshold = 52; // E3
     const hasHighNotes = fill.some(n => n.note > highNoteThreshold);
     
     if (hasHighNotes) {
         console.warn(`[BassFillPenalty] High-register fill detected. Applying penalty.`);
-        // Применяем очень сильный штраф к весу всей ветви, чтобы она "умерла" после одного проигрывания
         fill.forEach(e => e.weight *= 0.2); 
-        this.needsBassReset = true; // Триггер для сброса к аксиоме на следующей эпохе
+        this.needsBassReset = true; 
     }
 
 
@@ -331,28 +328,29 @@ export class FractalMusicEngine {
   }
 
   private createBassAxiom() {
-      // 1. Создать библиотеку из 2-4 фраз
       this.bassPhraseLibrary = [];
-      const numPhrases = 2 + this.random.nextInt(3); // 2 to 4 phrases
-      for (let i = 0; i < numPhrases; i++) {
-          this.bassPhraseLibrary.push(generateAmbientBassPhrase(this.config.mood, this.config.genre, this.random));
+      const numPhrases = 2 + this.random.nextInt(3); 
+      
+      const anchorPhrase = generateAmbientBassPhrase(this.config.mood, this.config.genre, this.random);
+      this.bassPhraseLibrary.push(anchorPhrase);
+
+      for (let i = 1; i < numPhrases; i++) {
+          this.bassPhraseLibrary.push(mutateBassPhrase(anchorPhrase, this.config.mood, this.config.genre, this.random));
       }
 
-      // 2. Создать план воспроизведения
       this.bassPlayPlan = [];
-      const planLength = 3 + this.random.nextInt(2); // 3 to 4 steps in the plan
+      const planLength = 3 + this.random.nextInt(2);
       for (let i = 0; i < planLength; i++) {
           this.bassPlayPlan.push({
               phraseIndex: this.random.nextInt(numPhrases),
-              repetitions: 1 + this.random.nextInt(3) // 1 to 3 reps
+              repetitions: 1 + this.random.nextInt(3)
           });
       }
       
-      // 3. Сбросить счетчики
       this.currentPlanIndex = 0;
       this.currentRepetition = 0;
       this.barsInCurrentPhrase = 0;
-      console.log(`[BassAxiom] Created new bass plan with ${numPhrases} phrases. Plan length: ${planLength}`);
+      console.log(`[BassAxiom] Created new bass plan with ${numPhrases} related phrases. Plan length: ${planLength}`);
   }
 
 
@@ -493,11 +491,13 @@ export class FractalMusicEngine {
 
     const lastBassEvent = bassEvents.reduce((last, current) => (current.time > last.time ? current : last));
 
-    if (lastBassEvent.time + lastBassEvent.duration >= barDuration - 0.1 && lastBassEvent.duration >= barDuration / 2) {
+    // Ensure the last note has a defined release that fits within its duration
+    if (lastBassEvent.time + lastBassEvent.duration >= barDuration - 0.1) {
         if (!lastBassEvent.params) {
             lastBassEvent.params = { cutoff: 300, resonance: 0.8, distortion: 0.02, portamento: 0.0, attack: 0.2 };
         }
-        lastBassEvent.params.release = lastBassEvent.duration * 0.8;
+        // Release should be within the note's own duration to avoid overlapping the next phrase
+        lastBassEvent.params.release = Math.min(lastBassEvent.duration * 0.8, 1.5);
     }
     return events;
   }
@@ -525,7 +525,6 @@ export class FractalMusicEngine {
         const phraseDurationInBars = Math.ceil(phraseDurationInBeats / 4);
 
         if (this.barsInCurrentPhrase === 0) {
-             // This is the first bar of a new phrase/repetition
              output.push(...phrase);
         }
 
@@ -533,20 +532,20 @@ export class FractalMusicEngine {
 
         if (this.barsInCurrentPhrase >= phraseDurationInBars) {
             this.currentRepetition++;
-            this.barsInCurrentPhrase = 0; // Reset for next phrase
+            this.barsInCurrentPhrase = 0; 
             
             if (this.currentRepetition >= planItem.repetitions) {
                 this.currentRepetition = 0;
                 this.currentPlanIndex++;
                 
                 if (this.currentPlanIndex >= this.bassPlayPlan.length) {
-                    this.createBassAxiom(); // End of plan, create a new one
+                    this.createBassAxiom(); 
                     console.log(`%c[BASS PLAN] Loop finished. Regenerating phrase library and plan.`, 'color: #FF7F50');
                 }
             }
         }
     } else {
-        this.createBassAxiom(); // Safety net
+        this.createBassAxiom();
     }
 
 
@@ -584,8 +583,8 @@ export class FractalMusicEngine {
     const shouldMutateBass = this.random.next() < (this.config.density * 0.5);
     const shouldMutateDrums = this.random.next() < (this.config.density * 0.5);
 
-    if (this.epoch % 2 === 1 && this.config.genre !== 'ambient') { 
-        if (shouldMutateBass && this.branches.filter(b => b.type === 'bass').length < 5) {
+    if (this.epoch % 2 === 1 && this.branches.filter(b => b.type === 'bass').length < 5) {
+        if (shouldMutateBass) {
             const parentBranch = this.selectBranchForMutation('bass');
             if (parentBranch) {
                 const newBranch = this.mutateBranch(parentBranch);
@@ -598,7 +597,10 @@ export class FractalMusicEngine {
             const parentBranch = this.selectBranchForMutation('drums');
             if (parentBranch) {
                 const newBranch = this.mutateBranch(parentBranch);
-                if (newBranch) this.branches.push(newBranch);
+                if (newBranch) {
+                     this.branches.push(newBranch);
+                     console.log(`%c[MUTATION] at epoch ${this.epoch}: Created new drum branch ${newBranch.id}.`, "color: darkorange;");
+                }
             }
         }
      }
@@ -626,7 +628,7 @@ export class FractalMusicEngine {
       }, 0);
       let newWeight = ((1 - this.lambda) * branch.weight + resonanceSum) * ageBonus;
       
-      if (branch.type === 'bass' && branch.events.length > 0 && branch.events.length < 10) {
+      if (branch.type === 'bass' && branch.events.some(e => e.note > 52)) {
           newWeight *= 0.2;
       }
       
@@ -634,13 +636,11 @@ export class FractalMusicEngine {
       branch.age++;
     });
 
-    // Check for bass revival if not in ambient genre
+    // Check for bass revival
     const bassBranches = this.branches.filter(b => b.type === 'bass');
-    if (this.config.genre !== 'ambient' && (bassBranches.length === 0 || bassBranches.every(b => b.weight < 0.3))) {
-        console.log(`%c[BASS REVIVAL] Creating new bass axon.`, "color: #4169E1;");
-        const drumTags = this.branches.find(b => b.type === 'drums')?.events.map(e => e.type.toString()) ?? [];
-        const newAxiom = generateAmbientBassPhrase(this.config.mood, this.config.genre, this.random);
-        this.branches.push({ id: `bass_axon_${this.epoch}`, events: newAxiom, weight: 1.2, age: 0, technique: 'pluck', type: 'bass', endTime: 0 });
+    if (bassBranches.length === 0 || bassBranches.every(b => b.weight < 0.3)) {
+        console.log(`%c[BASS REVIVAL] All bass branches are weak. Creating new axiom.`, "color: #4169E1;");
+        this.createBassAxiom();
     }
 
     // Normalize weights and prune branches
@@ -654,10 +654,6 @@ export class FractalMusicEngine {
 
     this.branches = this.branches.filter(b => {
         if (b.type === 'accompaniment') return b.age < 2;
-        
-        // This was the old logic that caused issues. Now removed.
-        // if (this.config.genre === 'ambient' && b.type === 'bass' && b.id.includes('axon')) return true; 
-
         return b.weight > 0.05 || b.age < 8;
     });
     
