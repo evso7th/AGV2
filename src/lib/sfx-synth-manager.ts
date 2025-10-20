@@ -13,7 +13,7 @@ export class SfxSynthManager {
         if (this.isReady) return;
         
         if (!this.context.audioWorklet) {
-            const errorMsg = '[SFX] AudioWorklet is not supported in this browser.';
+            const errorMsg = 'AudioWorklet is not supported in this browser.';
             console.error(errorMsg);
             throw new Error(errorMsg);
         }
@@ -32,7 +32,7 @@ export class SfxSynthManager {
 
     public trigger(time: number, params?: any): void {
         if (!this.isReady || !this.workletNode) {
-            console.warn('[SFX] Trigger called but not ready.');
+             console.warn('[SFX] Trigger called but not ready.');
             return;
         }
         console.log(`[SFX] Triggering effect at time ${time.toFixed(2)}`);

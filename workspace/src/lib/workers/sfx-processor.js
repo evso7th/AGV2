@@ -31,7 +31,10 @@ class SfxProcessor extends AudioWorkletProcessor {
                 releaseTime: release,
                 endTime: time + duration,
                 released: false,
+                releaseStartTime: 0,
+                releaseStartAmp: 0,
                 // Oscillator
+                phase: 0, // Persistent phase for smooth frequency changes
                 oscType: noteParams.oscType || ['sawtooth', 'square', 'sine'][Math.floor(this.random() * 3)],
                 startFreq: noteParams.startFreq || (100 + this.random() * 1000),
                 endFreq: noteParams.endFreq || (100 + this.random() * 1000),
@@ -57,6 +60,13 @@ class SfxProcessor extends AudioWorkletProcessor {
              if (leftChannel) leftChannel.fill(0);
             return true; // No notes or no output, output silence and keep processor alive.
         }
+        
+        // Zero out the buffers before processing
+        leftChannel.fill(0);
+        if (rightChannel !== leftChannel) {
+            rightChannel.fill(0);
+        }
+
 
         for (let i = 0; i < leftChannel.length; i++) {
             let leftSample = 0;
@@ -70,8 +80,7 @@ class SfxProcessor extends AudioWorkletProcessor {
 
                 // 1. Calculate Envelope
                 if (noteTime < 0) {
-                    // Note hasn't started yet
-                    continue;
+                    continue; // Note hasn't started yet
                 }
                 
                 if (!note.released && time >= note.endTime) {
@@ -87,9 +96,9 @@ class SfxProcessor extends AudioWorkletProcessor {
                 } else if (!note.released) {
                     amplitude = note.sustainLevel;
                 } else {
-                    const releaseTime = time - note.releaseStartTime;
-                    if (releaseTime < note.releaseTime) {
-                         amplitude = note.releaseStartAmp * (1.0 - releaseTime / note.releaseTime);
+                    const releaseTimeElapsed = time - note.releaseStartTime;
+                    if (releaseTimeElapsed < note.releaseTime) {
+                         amplitude = note.releaseStartAmp * (1.0 - releaseTimeElapsed / note.releaseTime);
                     } else {
                         this.activeNotes.splice(j, 1);
                         continue;
@@ -99,23 +108,22 @@ class SfxProcessor extends AudioWorkletProcessor {
                 amplitude = Math.max(0, amplitude);
 
                 // 2. Calculate Oscillator Signal
-                const progress = Math.min(1, noteTime / (note.endTime - note.startTime));
+                const progress = Math.max(0, Math.min(1, noteTime / (note.endTime - note.startTime)));
                 const freq = note.startFreq + (note.endFreq - note.startFreq) * progress;
-                const phaseIncrement = (2 * Math.PI * freq) / sampleRate;
-
-                let signal = 0;
-                // This is a simplified phase calculation that doesn't persist. For sliding tones, a persistent phase is better.
-                const phase = (time - note.startTime) * 2 * Math.PI * freq;
                 
+                note.phase += (freq * 2 * Math.PI) / sampleRate;
+                if (note.phase >= 2 * Math.PI) note.phase -= (2 * Math.PI);
+                
+                let signal = 0;
                 switch (note.oscType) {
                     case 'sine':
-                        signal = Math.sin(phase);
+                        signal = Math.sin(note.phase);
                         break;
                     case 'square':
-                        signal = Math.sign(Math.sin(phase));
+                        signal = Math.sign(Math.sin(note.phase));
                         break;
                     case 'sawtooth':
-                         signal = 2 * ( (phase / (2 * Math.PI)) % 1) - 1;
+                         signal = 1.0 - (note.phase / Math.PI);
                         break;
                 }
                 
