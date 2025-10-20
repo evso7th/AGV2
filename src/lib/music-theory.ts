@@ -1,6 +1,6 @@
 
 // src/lib/music-theory.ts
-import type { Mood, Genre, Technique, BassSynthParams, InstrumentType } from '@/types/fractal';
+import type { FractalEvent, Mood, Genre, Technique, BassSynthParams, InstrumentType } from '@/types/fractal';
 
 export const PERCUSSION_SETS: Record<'NEUTRAL' | 'ELECTRONIC' | 'DARK', InstrumentType[]> = {
     NEUTRAL: ['perc-001', 'perc-002', 'perc-005', 'perc-006', 'perc-013', 'perc-014', 'perc-015', 'drum_ride', 'cymbal_bell1'],
@@ -55,11 +55,6 @@ export type BassPatternDefinition = {
     tags: string[];
 };
 
-
-/**
- * Returns the MIDI notes of a mode for a given mood across multiple octaves.
- * The scale now spans from E1 (MIDI 28) up to E4, providing a wide range for bass.
- */
 export function getScaleForMood(mood: Mood): number[] {
   const E1 = 28;
   let baseScale: number[];
@@ -95,64 +90,80 @@ export function getScaleForMood(mood: Mood): number[] {
 
 
   const fullScale: number[] = [];
-  // Generate notes for 3 octaves: E1-E2, E2-E3, E3-E4
   for (let octave = 0; octave < 3; octave++) {
       for (const note of baseScale) {
           fullScale.push(E1 + (octave * 12) + note);
       }
   }
-  // Add the final E4
   fullScale.push(E1 + 36);
 
   return fullScale;
 }
 
-
-const generateAmbientBassPattern: BassPatternGenerator = (scale, random) => {
-    const pattern: { note: number, time: number, duration: number, technique?: Technique }[] = [];
-    const numNotes = 15 + random.nextInt(11); // 15-25 notes
+export function generateAmbientBassPhrase(mood: Mood, genre: Genre, random: { next: () => number, nextInt: (max: number) => number }): FractalEvent[] {
+    const phrase: FractalEvent[] = [];
+    const scale = getScaleForMood(mood);
+    const numNotes = 5 + random.nextInt(8); // 5 to 12 notes per phrase
     let currentTime = 0;
     
-    // Start on the root note of the lower part of the scale
-    const rootNote = scale.find(n => n % 12 === scale[0] % 12) || scale[0];
-    let currentNote = rootNote;
-    let lastNote = -1;
+    // Predominantly low, infrequently mid
+    const selectNote = (): number => {
+      const rand = random.next();
+      if (rand < 0.8) { // 80% chance low register
+          const half = Math.floor(scale.length / 2);
+          return scale[random.nextInt(half)];
+      } else { // 20% chance mid register
+          const half = Math.floor(scale.length / 2);
+          return scale[half + random.nextInt(scale.length - half)];
+      }
+    };
+
+    let currentNote = selectNote();
 
     for (let i = 0; i < numNotes; i++) {
-        const duration = 0.25 + random.next() * 0.75; // 0.25 to 1.0 beats
+        // Vary duration
+        const durationRand = random.next();
+        let duration;
+        if (durationRand < 0.6) duration = 0.5; // eighth note
+        else if (durationRand < 0.9) duration = 1.0; // quarter note
+        else duration = 0.25; // sixteenth note
 
-        pattern.push({
+        phrase.push({
+            type: 'bass',
             note: currentNote,
+            duration: duration,
             time: currentTime,
-            duration: duration + 0.5, // Add overlap
-            technique: 'swell'
+            weight: 0.7 + random.next() * 0.3,
+            technique: 'swell',
+            dynamics: 'mf',
+            phrasing: 'legato',
+            params: { cutoff: 300, resonance: 0.8, distortion: 0.02, portamento: 0.0, attack: 0.2, release: duration * 1.2 }
         });
-
+        
         currentTime += duration;
-        
-        lastNote = currentNote;
-        
-        // Find next note
+
+        // Select next note, mostly stepwise
         const currentIndex = scale.indexOf(currentNote);
-        let nextIndex;
-
-        // Tendency to move stepwise, occasionally leap
-        if (random.next() < 0.8) { // 80% chance stepwise
-            nextIndex = currentIndex + (random.next() > 0.5 ? 1 : -1);
-        } else { // 20% chance leap
-            const leap = random.nextInt(5) - 2; // Leap of -2 to +2 scale degrees
-            nextIndex = currentIndex + leap;
+        let step = 0;
+        if (random.next() < 0.85) { // 85% chance stepwise
+            step = random.next() > 0.5 ? 1 : -1;
+        } else { // 15% chance leap
+            step = random.nextInt(5) - 2; // Leap of -2 to +2 scale degrees
         }
-
-        // Keep within bounds and avoid repeating the last note
-        if (nextIndex < 0 || nextIndex >= scale.length || scale[nextIndex] === lastNote) {
-            nextIndex = (currentIndex + (i % 2 === 0 ? 1 : -1) + scale.length) % scale.length;
-        }
-        
+        const nextIndex = Math.max(0, Math.min(scale.length - 1, currentIndex + step));
         currentNote = scale[nextIndex];
     }
+    
+    // Normalize phrase to fit into exactly 4 beats (one bar)
+    if (currentTime > 4.0) {
+        const scaleFactor = 4.0 / currentTime;
+        phrase.forEach(e => {
+            e.time *= scaleFactor;
+            e.duration *= scaleFactor;
+        });
+    }
 
-    return pattern;
+    return phrase;
 };
 
 
@@ -322,7 +333,7 @@ export const STYLE_DRUM_PATTERNS: Record<Genre, GenreRhythmGrammar> = {
 // Bass Riff Library
 export const STYLE_BASS_PATTERNS: Record<Genre, BassPatternDefinition[]> = {
     ambient: [
-        { pattern: generateAmbientBassPattern, tags: ['ambient-generative'] }
+        { pattern: (scale, random) => generateAmbientBassPhrase('calm', 'ambient', random).map(e => ({ note: e.note, time: e.time, duration: e.duration })), tags: ['ambient-generative'] }
     ],
     rock: [
         { pattern: [{ note: 0, time: 0, duration: 0.5 }, { note: 0, time: 0.5, duration: 0.5 }, { note: 0, time: 1, duration: 0.5 }, { note: 0, time: 1.5, duration: 0.5 }, { note: 0, time: 2, duration: 0.5 }, { note: 0, time: 2.5, duration: 0.5 }, { note: 0, time: 3, duration: 0.5 }, { note: 0, time: 3.5, duration: 0.5 }], tags: ['rock-standard', 'rock-eighths'] },
