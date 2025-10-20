@@ -39,6 +39,7 @@ export const useAuraGroove = () => {
   });
   const [textureSettings, setTextureSettings] = useState<Omit<TextureSettings, 'pads'>>({
       sparkles: { enabled: true, volume: 0.7 },
+      sfx: { enabled: true, volume: 0.5 },
   });
   const [bpm, setBpm] = useState(75);
   const [score, setScore] = useState<ScoreName>('neuro_f_matrix');
@@ -73,7 +74,8 @@ export const useAuraGroove = () => {
       instrumentSettings,
       drumSettings: { ...drumSettings, enabled: drumSettings.pattern !== 'none' },
       textureSettings: {
-          sparkles: { enabled: textureSettings.sparkles.enabled },
+          sparkles: { enabled: textureSettings.sparkles.enabled, volume: textureSettings.sparkles.volume },
+          sfx: { enabled: textureSettings.sfx.enabled, volume: textureSettings.sfx.volume },
       },
       density,
       composerControlsInstruments,
@@ -101,7 +103,7 @@ export const useAuraGroove = () => {
         
         setBassTechnique(instrumentSettings.bass.technique);
     }
-  }, [isInitialized, getFullSettings, setVolume, setInstrument, setBassTechnique, setEngineTextureSettings, drumSettings.volume, instrumentSettings]);
+  }, [isInitialized, getFullSettings, setVolume, setInstrument, setBassTechnique, setEngineTextureSettings, drumSettings.volume, instrumentSettings, textureSettings]);
 
   // Sync settings with engine whenever they change
   useEffect(() => {
@@ -181,13 +183,13 @@ export const useAuraGroove = () => {
     } else if (part === 'drums') {
         setDrumSettings(prev => ({ ...prev, volume: value }));
         setVolume('drums', value);
-    } else if (part === 'sparkles') {
+    } else if (part === 'sparkles' || part === 'sfx') {
         setTextureSettings(prev => ({ ...prev, [part]: { ...prev[part], volume: value }}));
         setVolume(part, value);
     }
   };
 
-  const handleTextureEnabledChange = (part: 'sparkles', enabled: boolean) => {
+  const handleTextureEnabledChange = (part: 'sparkles' | 'sfx', enabled: boolean) => {
       setTextureSettings(prev => {
           const newSettings = { ...prev, [part]: { ...prev[part], enabled }};
           setEngineTextureSettings(newSettings);

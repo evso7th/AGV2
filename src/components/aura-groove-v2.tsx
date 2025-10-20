@@ -265,6 +265,17 @@ export function AuraGrooveV2({
                                <span className="text-xs w-8 text-right font-mono">{Math.round(textureSettings.sparkles.volume * 100)}</span>
                           </div>
                       </div>
+                      <div className="p-2 border rounded-md">
+                          <div className="flex justify-between items-center mb-1">
+                              <Label className="font-semibold flex items-center gap-1.5 text-sm"><Sprout className="h-4 w-4"/>SFX</Label>
+                              <Switch checked={textureSettings.sfx.enabled} onCheckedChange={(c) => handleTextureEnabledChange('sfx', c)} disabled={isInitializing}/>
+                          </div>
+                          <div className="flex items-center gap-2">
+                              <Label className="text-xs text-muted-foreground"><Speaker className="h-3 w-3 inline-block mr-1"/>Volume</Label>
+                              <Slider value={[textureSettings.sfx.volume]} max={1} step={0.05} onValueChange={(v) => handleVolumeChange('sfx', v[0])} disabled={isInitializing || !textureSettings.sfx.enabled}/>
+                               <span className="text-xs w-8 text-right font-mono">{Math.round(textureSettings.sfx.volume * 100)}</span>
+                          </div>
+                      </div>
                        <div className="p-2 border rounded-md">
                           <div className="flex justify-between items-center mb-1">
                               <Label className="font-semibold flex items-center gap-1.5 text-sm"><Drum className="h-4 w-4"/>Drums</Label>
