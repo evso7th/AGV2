@@ -1,5 +1,6 @@
 
 
+
 /**
  * Настроение — управляет ладом, динамикой, техникой
  */
@@ -25,7 +26,17 @@ export type Technique =
   | 'fill'     // басовый проигрыш (сбивка)
   | 'swell'    // медленное нарастание, как пэд
   // Ударные
-  | 'hit';     // стандартный удар по сэмплу
+  | 'hit'
+  // Гитара
+  | 'pick'
+  | 'harm'
+  | 'slide'
+   // Legacy bass
+  | 'arpeggio'
+  | 'portamento'
+  | 'glissando'
+  | 'glide'
+  | 'pulse';    
 
 /**
  * Динамика (громкость)
@@ -83,7 +94,8 @@ export type InstrumentType =
   | 'melody';
 
 export type MelodyInstrument = 'piano' | 'violin' | 'flute' | 'synth' | 'organ' | 'mellotron' | 'theremin' | 'E-Bells_melody' | 'G-Drops' | 'acousticGuitarSolo' | 'electricGuitar' | 'none';
-export type BassInstrument = 'classicBass' | 'glideBass' | 'ambientDrone' | 'resonantGliss' | 'hypnoticDrone' | 'livingRiff' | 'piano' | 'violin' | 'flute' | 'acousticGuitarSolo' | 'none';
+export type BassInstrument = 'classicBass' | 'glideBass' | 'ambientDrone' | 'resonantGliss' | 'hypnoticDrone' | 'livingRiff' | 'none';
+export type AccompanimentInstrument = MelodyInstrument | 'guitarChords';
 
 
 /**

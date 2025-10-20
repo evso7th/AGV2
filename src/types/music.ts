@@ -1,5 +1,6 @@
 
 
+
 import type { Mood as FractalMood } from './fractal';
 
 export type Mood = FractalMood;
@@ -13,6 +14,7 @@ export type Note = {
     part?: 'spark';       // Optional identifier for special notes
     note?: string; // For samplers that use note names
     params?: any; // To pass synth params from composer
+    technique?: Technique;
 };
 
 // A note for the sampler, identified by a string name.
@@ -56,6 +58,7 @@ export type InstrumentType = BassInstrument | MelodyInstrument | AccompanimentIn
 
 export type InstrumentPart = 'bass' | 'melody' | 'accompaniment' | 'drums' | 'effects' | 'sparkles' | 'piano' | 'violin' | 'flute' | 'guitarChords' | 'acousticGuitarSolo' | 'electricGuitar';
 export type BassTechnique = 'arpeggio' | 'portamento' | 'glissando' | 'glide' | 'pulse';
+export type Technique = BassTechnique | 'pluck' | 'pick' | 'harm' | 'slide' | 'hit' | 'ghost' | 'swell' | 'fill';
 
 
 export type InstrumentSettings = {

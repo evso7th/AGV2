@@ -1,23 +1,24 @@
 
-import type { Note } from "@/types/music";
-import { ACOUSTIC_GUITAR_SOLO_SAMPLES } from "./samples";
-
-type VelocitySample = {
-    velocity: number;
-    file: string;
-};
+import type { Note, Technique } from "@/types/music";
+import { ACOUSTIC_GUITAR_SOLO_SAMPLES, ACOUSTIC_GUITAR_SLIDE_SAMPLES, type GuitarTechniqueSamples } from "./samples";
 
 type SamplerInstrument = {
-    buffers: Map<number, { velocity: number; buffer: AudioBuffer }[]>;
+    buffers: Map<number, {
+        pluck?: AudioBuffer;
+        pick?: AudioBuffer;
+        harm?: AudioBuffer;
+    }>;
 };
 
 export class AcousticGuitarSoloSampler {
     private audioContext: AudioContext;
     private outputNode: GainNode;
     private instruments = new Map<string, SamplerInstrument>();
+    private slideBuffers: AudioBuffer[] = [];
     public isInitialized = false;
     private preamp: GainNode;
     private isLoading = false;
+    private lastNoteTime = 0;
 
     constructor(audioContext: AudioContext, destination: AudioNode) {
         this.audioContext = audioContext;
@@ -35,60 +36,55 @@ export class AcousticGuitarSoloSampler {
     }
 
     async init(): Promise<boolean> {
-        return this.loadInstrument('acousticGuitarSolo', ACOUSTIC_GUITAR_SOLO_SAMPLES);
+        return this.loadInstrument('acousticGuitarSolo', ACOUSTIC_GUITAR_SOLO_SAMPLES, ACOUSTIC_GUITAR_SLIDE_SAMPLES);
     }
 
-    async loadInstrument(instrumentName: 'acousticGuitarSolo', sampleMap: Record<string, VelocitySample[]>): Promise<boolean> {
+    async loadInstrument(instrumentName: 'acousticGuitarSolo', sampleMap: Record<string, GuitarTechniqueSamples>, slideSamples: string[]): Promise<boolean> {
         if (this.isInitialized || this.isLoading) return true;
         this.isLoading = true;
 
         if (this.instruments.has(instrumentName)) {
-            console.log(`[AcousticGuitarSoloSampler] Instrument "${instrumentName}" already loaded.`);
             this.isLoading = false;
             return true;
         }
 
         try {
-            const loadedBuffers = new Map<number, { velocity: number; buffer: AudioBuffer }[]>();
+            const loadedBuffers = new Map<number, any>();
             
-            const loadPromises = Object.entries(sampleMap).flatMap(([noteStr, samples]) => {
+            const loadSample = async (url: string) => {
+                const response = await fetch(url);
+                if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+                const arrayBuffer = await response.arrayBuffer();
+                return await this.audioContext.decodeAudioData(arrayBuffer);
+            };
+            
+            const notePromises = Object.entries(sampleMap).map(async ([noteStr, techniques]) => {
                 const midi = this.noteToMidi(noteStr);
-                if (midi === null) {
-                    console.warn(`[AcousticGuitarSoloSampler] Could not parse MIDI for note: ${noteStr}`);
-                    return [];
-                }
+                if (midi === null) return;
                 
-                if (!loadedBuffers.has(midi)) {
-                    loadedBuffers.set(midi, []);
-                }
+                loadedBuffers.set(midi, {});
                 
-                return samples.map(async (sample) => {
-                    try {
-                        const response = await fetch(sample.file);
-                        if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
-                        const arrayBuffer = await response.arrayBuffer();
-                        const audioBuffer = await this.audioContext.decodeAudioData(arrayBuffer);
-                        loadedBuffers.get(midi)!.push({ velocity: sample.velocity, buffer: audioBuffer });
-                    } catch (error) {
-                        console.error(`Error loading sample ${noteStr} (${sample.velocity}) from ${sample.file}:`, error);
+                const techPromises = Object.entries(techniques).map(async ([tech, url]) => {
+                    if(url) {
+                        try {
+                            const buffer = await loadSample(url);
+                            loadedBuffers.get(midi)![tech as keyof GuitarTechniqueSamples] = buffer;
+                        } catch(e) { console.error(`Error loading ${tech} for ${noteStr}`, e); }
                     }
                 });
+                await Promise.all(techPromises);
             });
 
-            await Promise.all(loadPromises);
+            const slidePromises = slideSamples.map(async (url) => {
+                try {
+                    const buffer = await loadSample(url);
+                    this.slideBuffers.push(buffer);
+                } catch(e) { console.error(`Error loading slide sample ${url}`, e); }
+            });
 
-            for (const samples of loadedBuffers.values()) {
-                samples.sort((a, b) => a.velocity - b.velocity);
-            }
-
-            if (Array.from(loadedBuffers.values()).every(arr => arr.length === 0)) {
-                 console.error(`[AcousticGuitarSoloSampler] No samples were loaded for instrument "${instrumentName}".`);
-                 this.isLoading = false;
-                 return false;
-            }
+            await Promise.all([...notePromises, ...slidePromises]);
             
             this.instruments.set(instrumentName, { buffers: loadedBuffers });
-            
             console.log(`[AcousticGuitarSoloSampler] Instrument "${instrumentName}" loaded.`);
             this.isInitialized = true;
             this.isLoading = false;
@@ -102,14 +98,29 @@ export class AcousticGuitarSoloSampler {
     
     public schedule(notes: Note[], time: number) {
         const instrument = this.instruments.get('acousticGuitarSolo');
-        if (!this.isInitialized || !instrument) {
-            console.warn(`[AcousticGuitarSoloSampler] Tried to schedule before "acousticGuitarSolo" instrument was initialized.`);
-            return;
-        }
+        if (!this.isInitialized || !instrument) return;
 
-        notes.forEach(note => {
-            const { buffer, midi: sampleMidi } = this.findBestSample(instrument, note.midi, note.velocity);
+        notes.forEach((note, index) => {
+            const tech: Technique = (note as any).technique || (Math.random() > 0.5 ? 'pick' : 'pluck');
+
+            const { buffer, midi: sampleMidi } = this.findBestSample(instrument, note.midi, tech);
             if (!buffer) return;
+
+            const startTime = time + note.time;
+
+            // С вероятностью 15% вставить слайд между нотами
+            if (index > 0 && Math.random() < 0.15 && this.slideBuffers.length > 0) {
+                const prevNoteEndTime = time + notes[index - 1].time + notes[index - 1].duration;
+                if (startTime > prevNoteEndTime) { // Убедимся, что есть пауза
+                    const slideBuffer = this.slideBuffers[Math.floor(Math.random() * this.slideBuffers.length)];
+                    const slideSource = this.audioContext.createBufferSource();
+                    slideSource.buffer = slideBuffer;
+                    slideSource.connect(this.preamp);
+                    // Начинаем слайд в конце предыдущей ноты
+                    slideSource.start(prevNoteEndTime);
+                }
+            }
+
 
             const source = this.audioContext.createBufferSource();
             source.buffer = buffer;
@@ -122,13 +133,13 @@ export class AcousticGuitarSoloSampler {
 
             const playbackRate = Math.pow(2, (note.midi - sampleMidi) / 12);
             source.playbackRate.value = playbackRate;
-
-            const startTime = time + note.time;
+            
             source.start(startTime);
+            this.lastNoteTime = startTime + note.duration;
         });
     }
 
-    private findBestSample(instrument: SamplerInstrument, targetMidi: number, targetVelocity: number = 0.7): { buffer: AudioBuffer | null, midi: number } {
+    private findBestSample(instrument: SamplerInstrument, targetMidi: number, technique: Technique): { buffer: AudioBuffer | null, midi: number } {
         const availableMidiNotes = Array.from(instrument.buffers.keys());
         
         if (availableMidiNotes.length === 0) return { buffer: null, midi: targetMidi };
@@ -136,18 +147,17 @@ export class AcousticGuitarSoloSampler {
             Math.abs(curr - targetMidi) < Math.abs(prev - targetMidi) ? curr : prev
         );
 
-        const velocityLayers = instrument.buffers.get(closestMidi);
-        if (!velocityLayers || velocityLayers.length === 0) {
-            return { buffer: null, midi: closestMidi };
-        }
-        
-        let bestSample = velocityLayers.find(sample => sample.velocity >= targetVelocity);
-        
-        if (!bestSample) {
-            bestSample = velocityLayers[velocityLayers.length - 1];
-        }
+        const techSamples = instrument.buffers.get(closestMidi);
+        if (!techSamples) return { buffer: null, midi: closestMidi };
 
-        return { buffer: bestSample.buffer, midi: closestMidi };
+        const sampleBuffer = techSamples[technique as keyof GuitarTechniqueSamples];
+        
+        if (sampleBuffer) {
+            return { buffer: sampleBuffer, midi: closestMidi };
+        }
+        
+        // Fallback to pluck or pick if the desired technique is not available
+        return { buffer: techSamples.pluck || techSamples.pick || null, midi: closestMidi };
     }
 
     private noteToMidi(note: string): number | null {
