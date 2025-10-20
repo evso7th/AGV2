@@ -116,7 +116,8 @@ function createDrumAxiom(genre: Genre, mood: Mood, tempo: number, random: { next
 
 function createBassAxiom(mood: Mood, genre: Genre, random: { next: () => number, nextInt: (max: number) => number }, compatibleTags: string[] = []): FractalEvent[] {
     const scale = getScaleForMood(mood);
-    const patternLibrary = STYLE_BASS_PATTERNS[genre] || STYLE_BASS_PATTERNS['ambient'];
+    const patternLibrary = STYLE_BASS_PATTERNS[genre];
+    if (!patternLibrary) return [];
 
     let compatiblePatterns = patternLibrary;
     if (compatibleTags.length > 0) {
@@ -128,53 +129,42 @@ function createBassAxiom(mood: Mood, genre: Genre, random: { next: () => number,
     
     const chosenPatternDef = compatiblePatterns[random.nextInt(compatiblePatterns.length)];
     
-    const selectNote = (): number => {
-        const rand = random.next();
-        if (rand < 0.6) { 
-            const third = Math.floor(scale.length / 3);
-            return scale[random.nextInt(third)];
-        } else if (rand < 0.9) { 
-            const third = Math.floor(scale.length / 3);
-            return scale[third + random.nextInt(third)];
-        } else { 
-            const twoThirds = Math.floor(2 * scale.length / 3);
-            return scale[twoThirds + random.nextInt(scale.length - twoThirds)];
-        }
-    };
-    
-    const axiom: FractalEvent[] = [];
-    let lastNote = -1;
-    let secondLastNote = -1;
-    
-    for (const event of chosenPatternDef.pattern) {
-      let note = selectNote();
-      // "Запрет на монотонность"
-      if (note === lastNote && note === secondLastNote) {
-        let attempts = 0;
-        while (note === lastNote && attempts < 10) {
-           note = selectNote();
-           attempts++;
-        }
-      }
-
-      const technique = event.technique || 'pluck';
-      axiom.push({
-        type: 'bass',
-        note,
-        duration: event.duration,
-        time: event.time,
-        weight: 1.0,
-        technique,
-        dynamics: 'mf',
-        phrasing: 'staccato',
-        params: getParamsForTechnique(technique, mood, genre)
-      });
-      secondLastNote = lastNote;
-      lastNote = note;
+    let generatedPattern;
+    if (typeof chosenPatternDef.pattern === 'function') {
+        generatedPattern = chosenPatternDef.pattern(scale, random);
+    } else {
+        const selectNote = (): number => {
+          const rand = random.next();
+          if (rand < 0.6) { 
+              const third = Math.floor(scale.length / 3);
+              return scale[random.nextInt(third)];
+          } else if (rand < 0.9) { 
+              const third = Math.floor(scale.length / 3);
+              return scale[third + random.nextInt(third)];
+          } else { 
+              const twoThirds = Math.floor(2 * scale.length / 3);
+              return scale[twoThirds + random.nextInt(scale.length - twoThirds)];
+          }
+        };
+        generatedPattern = chosenPatternDef.pattern.map(e => ({...e, note: selectNote()}));
     }
 
-    return axiom;
+    return generatedPattern.map(event => {
+        const technique = event.technique || 'pluck';
+        return {
+            type: 'bass',
+            note: event.note,
+            duration: event.duration,
+            time: event.time,
+            weight: 1.0,
+            technique,
+            dynamics: 'mf',
+            phrasing: 'staccato',
+            params: getParamsForTechnique(technique, mood, genre)
+        };
+    });
 }
+
 
 function createAccompanimentAxiom(mood: Mood, genre: Genre, random: { next: () => number; nextInt: (max: number) => number }): FractalEvent[] {
     if (genre !== 'ambient') return [];
@@ -357,7 +347,7 @@ export class FractalMusicEngine {
   private nextWeatherEventEpoch: number;
   private drumFillForThisEpoch: FractalEvent[] | null = null;
   public needsBassReset: boolean = false;
-  private lastAccompanimentTime: number = -Infinity;
+  private lastAccompanimentEndTime: number = -Infinity;
   private nextAccompanimentDelay: number = 0;
 
   constructor(config: EngineConfig) {
@@ -391,8 +381,8 @@ export class FractalMusicEngine {
     this.branches.push({ id: 'bass_axon', events: bassAxiom, weight: 1.0, age: 0, technique: 'pluck', type: 'bass', endTime: 0 });
     
     this.needsBassReset = false;
-    this.lastAccompanimentTime = -Infinity;
-    this.nextAccompanimentDelay = (this.random.next() * 5) + 5; // 5-10 seconds
+    this.lastAccompanimentEndTime = -Infinity;
+    this.nextAccompanimentDelay = (this.random.next() * 7) + 5; // 5-12 seconds
   }
 
   public generateExternalImpulse() {
@@ -582,20 +572,20 @@ export class FractalMusicEngine {
     if (accompBranches.length > 0) {
         const winningAccompBranch = accompBranches.reduce((max, b) => b.weight > max.weight ? b : max, accompBranches[0]);
         output.push(...winningAccompBranch.events);
-        this.lastAccompanimentTime = this.time + (winningAccompBranch.endTime * (60 / this.config.tempo));
+        const beatDuration = 60 / this.config.tempo;
+        this.lastAccompanimentEndTime = this.time + (winningAccompBranch.endTime * beatDuration);
     }
     
     const shouldMutateBass = this.random.next() < (this.config.density * 0.5);
     const shouldMutateDrums = this.random.next() < (this.config.density * 0.5);
     
-    const timeSinceLastAccompaniment = this.time - this.lastAccompanimentTime;
+    const timeSinceLastAccompaniment = this.time - this.lastAccompanimentEndTime;
 
     if (this.config.genre === 'ambient' && this.epoch >= 4 && timeSinceLastAccompaniment > this.nextAccompanimentDelay) {
-        const parentBranch = this.selectBranchForMutation('accompaniment') ?? this.branches.find(b => b.type === 'accompaniment');
-        const newBranch = parentBranch ? this.mutateBranch(parentBranch) : null;
+        const newBranch = this.mutateBranch({ id: 'accomp_parent', type: 'accompaniment', events: [], age: 10, weight: 1, technique: 'swell', endTime: 0 });
         if (newBranch) {
             this.branches.push(newBranch);
-            this.lastAccompanimentTime = this.time; // Reset timer
+            this.lastAccompanimentEndTime = this.time; // Reset timer immediately upon creation
             this.nextAccompanimentDelay = (this.random.next() * 7) + 5; // 5-12 seconds
             console.log(`%c[ACCOMPANIMENT] at epoch ${this.epoch}: Created new phrase. Next in ~${this.nextAccompanimentDelay.toFixed(1)}s.`, "color: magenta;");
              if (this.config.composerControlsInstruments) {
