@@ -341,6 +341,7 @@ function createBassFill(this: FractalMusicEngine, mood: Mood, genre: Genre, rand
     };
 
     let currentNote = selectNote();
+    let penultimateNote: number | null = null;
 
     for (let i = 0; i < numNotes; i++) {
         let duration: number;
@@ -357,7 +358,16 @@ function createBassFill(this: FractalMusicEngine, mood: Mood, genre: Genre, rand
         });
         
         currentTime += duration;
-        currentNote = selectNote(currentNote);
+        
+        let nextNote;
+        let attempts = 0;
+        do {
+            nextNote = selectNote(currentNote);
+            attempts++;
+        } while (attempts < 5 && nextNote === currentNote && currentNote === penultimateNote);
+
+        penultimateNote = currentNote;
+        currentNote = nextNote;
     }
     
     if (currentTime > 4.0 && currentTime > 0) {
@@ -395,6 +405,7 @@ export class FractalMusicEngine {
   private bassShouldRespond: boolean = false;
   private lastInstrumentChangeEpoch: number = 0;
   private currentAccompanimentInstrument: AccompanimentInstrument = 'piano';
+  private lastAccompanimentTime: number = -Infinity;
 
   constructor(config: EngineConfig) {
     this.config = { ...config };
@@ -433,6 +444,7 @@ export class FractalMusicEngine {
     this.bassShouldRespond = false;
     this.lastInstrumentChangeEpoch = 0;
     this.currentAccompanimentInstrument = 'guitarChords';
+    this.lastAccompanimentTime = -Infinity;
   }
 
   public generateExternalImpulse() {
@@ -567,6 +579,7 @@ export class FractalMusicEngine {
         const newAccompaniment = createAccompanimentAxiom(this.config.mood, this.config.genre, bassAxiom, this.random);
         
         if (newAccompaniment.length > 0) {
+            this.lastAccompanimentTime = this.time;
             return {
                 id: `accomp_mut_${this.epoch}`,
                 events: newAccompaniment,
@@ -673,9 +686,16 @@ export class FractalMusicEngine {
     });
 
     
+    const timeSinceLastAccompaniment = this.time - this.lastAccompanimentTime;
+    const shouldMutateAccompaniment = (this.config.genre === 'ambient' && timeSinceLastAccompaniment > (5 + this.random.next() * 5)) || this.config.genre !== 'ambient';
+    
     if (this.epoch > 0 && this.epoch % 2 === 0) { 
         (['bass', 'drums', 'accompaniment'] as const).forEach(type => {
-            const mutationChance = type === 'accompaniment' ? this.config.density * 0.8 : this.config.density * 0.4;
+            if (type === 'accompaniment' && !shouldMutateAccompaniment) {
+                return;
+            }
+
+            const mutationChance = type === 'accompaniment' ? 0.9 : this.config.density * 0.4;
             if (this.random.next() < mutationChance && this.branches.filter(b => b.type === type).length < 5) {
                 const parentBranch = this.selectBranchForMutation(type);
                 if (parentBranch) {
