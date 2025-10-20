@@ -17,6 +17,7 @@ export class AcousticGuitarSoloSampler {
     private instruments = new Map<string, SamplerInstrument>();
     public isInitialized = false;
     private preamp: GainNode;
+    private isLoading = false;
 
     constructor(audioContext: AudioContext, destination: AudioNode) {
         this.audioContext = audioContext;
@@ -33,9 +34,17 @@ export class AcousticGuitarSoloSampler {
         this.outputNode.gain.setTargetAtTime(volume, this.audioContext.currentTime, 0.01);
     }
 
+    async init(): Promise<boolean> {
+        return this.loadInstrument('acousticGuitarSolo', ACOUSTIC_GUITAR_SOLO_SAMPLES);
+    }
+
     async loadInstrument(instrumentName: 'acousticGuitarSolo', sampleMap: Record<string, VelocitySample[]>): Promise<boolean> {
+        if (this.isInitialized || this.isLoading) return true;
+        this.isLoading = true;
+
         if (this.instruments.has(instrumentName)) {
             console.log(`[AcousticGuitarSoloSampler] Instrument "${instrumentName}" already loaded.`);
+            this.isLoading = false;
             return true;
         }
 
@@ -74,6 +83,7 @@ export class AcousticGuitarSoloSampler {
 
             if (Array.from(loadedBuffers.values()).every(arr => arr.length === 0)) {
                  console.error(`[AcousticGuitarSoloSampler] No samples were loaded for instrument "${instrumentName}".`);
+                 this.isLoading = false;
                  return false;
             }
             
@@ -81,17 +91,19 @@ export class AcousticGuitarSoloSampler {
             
             console.log(`[AcousticGuitarSoloSampler] Instrument "${instrumentName}" loaded.`);
             this.isInitialized = true;
+            this.isLoading = false;
             return true;
         } catch (error) {
             console.error(`[AcousticGuitarSoloSampler] Failed to load instrument "${instrumentName}":`, error);
+            this.isLoading = false;
             return false;
         }
     }
     
-    public schedule(instrumentName: string, notes: Note[], time: number) {
-        const instrument = this.instruments.get(instrumentName);
+    public schedule(notes: Note[], time: number) {
+        const instrument = this.instruments.get('acousticGuitarSolo');
         if (!this.isInitialized || !instrument) {
-            console.warn(`[AcousticGuitarSoloSampler] Tried to schedule before "${instrumentName}" instrument was initialized.`);
+            console.warn(`[AcousticGuitarSoloSampler] Tried to schedule before "acousticGuitarSolo" instrument was initialized.`);
             return;
         }
 
@@ -146,8 +158,8 @@ export class AcousticGuitarSoloSampler {
         const octave = parseInt(match[3], 10);
         
         const noteMap: Record<string, number> = {
-            'C': 0, 'C#': 1, 'DB': 1, 'D': 2, 'D#': 3, 'EB': 3, 'E': 4,
-            'F': 5, 'F#': 6, 'GB': 6, 'G': 7, 'G#': 8, 'AB': 8, 'A': 9, 'A#': 10, 'BB': 10, 'B': 11
+            'C': 0, 'C#': 1, 'Db': 1, 'D': 2, 'D#': 3, 'Eb': 3, 'E': 4,
+            'F': 5, 'F#': 6, 'Gb': 6, 'G': 7, 'G#': 8, 'Ab': 8, 'A': 9, 'A#': 10, 'BB': 10, 'B': 11
         };
 
         const noteIndex = noteMap[noteName];

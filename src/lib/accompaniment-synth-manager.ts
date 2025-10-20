@@ -73,7 +73,7 @@ export class AccompanimentSynthManager {
             this.violin.loadInstrument('violin', (PRESETS['violin'] as any).urls),
             this.flute.loadInstrument('flute', (PRESETS['flute'] as any).urls),
             this.guitarChords.init(),
-            this.acousticGuitarSolo.loadInstrument('acousticGuitarSolo', (PRESETS['acousticGuitarSolo'] as any).urls),
+            this.acousticGuitarSolo.init(),
             this.initSynthPool()
         ]);
 
@@ -130,7 +130,7 @@ export class AccompanimentSynthManager {
                 this.guitarChords.schedule(notes, barStartTime);
                 break;
             case 'acousticGuitarSolo':
-                this.acousticGuitarSolo.schedule('acousticGuitarSolo', notes, barStartTime);
+                this.acousticGuitarSolo.schedule(notes, barStartTime);
                 break;
             case 'electricGuitar':
             case 'synth':

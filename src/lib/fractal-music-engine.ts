@@ -117,16 +117,42 @@ function createBassAxiom(mood: Mood, genre: Genre, random: { next: () => number,
   const scale = getScaleForMood(mood);
   let patternLibrary = STYLE_BASS_PATTERNS[genre] || STYLE_BASS_PATTERNS['ambient'];
 
-  // For ambient, always start with a smooth 'swell' pattern.
+  // For ambient, start with a sparse, long phrase
   if (genre === 'ambient') {
-    const swellPatterns = patternLibrary.filter(p => p.pattern.some(e => e.technique === 'swell'));
-    if (swellPatterns.length > 0) {
-        patternLibrary = swellPatterns;
+    const axiom: FractalEvent[] = [];
+    let currentTime = 0;
+    const totalDuration = 16; // 4 bars
+    let lastNote = scale[random.nextInt(Math.floor(scale.length / 2))]; // Start low
+
+    while(currentTime < totalDuration) {
+        const durationOptions = [2, 4, 6, 8]; // in beats
+        const duration = durationOptions[random.nextInt(durationOptions.length)];
+        
+        const isRest = random.next() < 0.3;
+        
+        if (!isRest) {
+           const intervalChoices = [-7, -5, 5, 7]; // Fifths and Fourths
+           const lastNoteIndex = scale.findIndex(n => n % 12 === lastNote % 12);
+           const interval = intervalChoices[random.nextInt(intervalChoices.length)];
+           let newNoteIndex = lastNoteIndex + interval;
+           // Keep it within a reasonable range
+           newNoteIndex = Math.max(0, Math.min(scale.length - 1, newNoteIndex));
+           const note = scale[newNoteIndex];
+           
+           axiom.push({
+             type: 'bass', note, duration, time: currentTime, weight: 0.8 + random.next() * 0.2,
+             technique: 'swell', dynamics: 'mf', phrasing: 'legato',
+             params: getParamsForTechnique('swell', mood, genre)
+           });
+           lastNote = note;
+        }
+        currentTime += duration;
     }
+    return axiom;
   }
 
   let compatiblePatterns = patternLibrary;
-  if (compatibleTags.length > 0 && genre !== 'ambient') {
+  if (compatibleTags.length > 0) {
       const filtered = patternLibrary.filter(p => p.tags.some(tag => compatibleTags.includes(tag)));
       if (filtered.length > 0) {
           compatiblePatterns = filtered;
@@ -175,35 +201,44 @@ function createBassAxiom(mood: Mood, genre: Genre, random: { next: () => number,
 
 function createAccompanimentAxiom(mood: Mood, genre: Genre, bassAxiom: FractalEvent[], random: { next: () => number, nextInt: (max: number) => number }): FractalEvent[] {
     const scale = getScaleForMood(mood);
-    const rootNote = bassAxiom[0]?.note;
-    if (rootNote === undefined) return [];
+    if (bassAxiom.length === 0) return [];
 
     const axiom: FractalEvent[] = [];
     const params = getParamsForTechnique('pluck', mood, genre);
     
     // Create a sparse, 16-beat (4-bar) phrase
     const totalBeats = 16;
-    let beatsFilled = 0;
+    let nextPassageTime = random.next() * 4; // Start somewhere in the first bar
 
-    while (beatsFilled < totalBeats * 0.25) { // Fill about 25% of the phrase
-        const time = random.nextInt(totalBeats * 2) * 0.5; // Place on 8th note grid
-        const phraseLength = random.nextInt(3) + 1; // 1-3 notes
-        const duration = (random.nextInt(2) + 1) * 0.25; // 16th or 8th note
-
+    while (nextPassageTime < totalBeats) {
+        const phraseLength = random.nextInt(4) + 2; // 2-5 notes
+        const durationOptions = [0.25, 0.5, 0.75, 1.0]; // 16th, 8th, dotted 8th, quarter
+        
+        // Find the bass note at this time
+        const bassNoteAtTime = bassAxiom.find(b => nextPassageTime >= b.time && nextPassageTime < b.time + b.duration);
+        let rootNote = bassNoteAtTime ? bassNoteAtTime.note : bassAxiom[0].note;
+        
+        // Start the accompaniment phrase in a higher octave
         let lastNote = rootNote + 24;
+
         for (let i = 0; i < phraseLength; i++) {
-            const currentTime = time + i * duration;
+            const duration = durationOptions[random.nextInt(durationOptions.length)];
+            const currentTime = nextPassageTime + i * duration;
             if (currentTime >= totalBeats) break;
 
-            const step = random.nextInt(5) - 2; // -2 to +2 scale degrees
+            const step = random.nextInt(3) - 1; // -1, 0, 1 scale degrees
             const lastNoteIndex = scale.findIndex(n => n % 12 === lastNote % 12);
-            const newNoteIndex = (lastNoteIndex + step + scale.length) % scale.length;
-            const newNote = scale[newNoteIndex] + (step > 0 ? 12 : 0); // Tend to go up
+            let newNoteIndex = (lastNoteIndex + step + scale.length) % scale.length;
             
+            // Try to keep notes within a reasonable range
+            let newNote = scale[newNoteIndex] + Math.floor(lastNote / 12) * 12;
+            if(Math.abs(newNote - lastNote) > 7) newNote -= 12;
+            if(newNote < 60) newNote += 12; // Keep in higher register
+
             axiom.push({
                 type: 'accompaniment',
                 note: newNote,
-                duration: duration,
+                duration: duration * 1.5, // Let notes ring out a bit
                 time: currentTime,
                 weight: 0.4 + random.next() * 0.3,
                 technique: 'pluck',
@@ -213,7 +248,9 @@ function createAccompanimentAxiom(mood: Mood, genre: Genre, bassAxiom: FractalEv
             });
             lastNote = newNote;
         }
-        beatsFilled += phraseLength * duration;
+        
+        // Schedule next passage after a long pause
+        nextPassageTime += phraseLength * 0.5 + 5 + random.next() * 5; // 5-10 seconds pause
     }
 
     return axiom;
@@ -274,7 +311,7 @@ function createBassFill(this: FractalMusicEngine, mood: Mood, genre: Genre, rand
     let currentTime = 0;
 
     const selectNote = (lastNote?: number): number => {
-        const lastNoteIndex = lastNote !== undefined ? scale.indexOf(lastNote) : -1;
+        const lastNoteIndex = lastNote !== undefined ? scale.findIndex(n => n % 12 === lastNote % 12) : -1;
         const r = random.next();
         if (lastNoteIndex !== -1 && r < 0.6) {
             const step = random.next() > 0.5 ? 1 : -1;
@@ -381,7 +418,7 @@ export class FractalMusicEngine {
     this.needsBassReset = false;
     this.bassShouldRespond = false;
     this.lastInstrumentChangeEpoch = 0;
-    this.currentAccompanimentInstrument = 'piano';
+    this.currentAccompanimentInstrument = 'guitarChords';
   }
 
   public generateExternalImpulse() {
@@ -512,7 +549,8 @@ export class FractalMusicEngine {
         if (!mutationApplied) return null;
         return { id: `drum_mut_${this.epoch}`, events: newEvents, weight: parent.weight * 0.8, age: 0, technique: 'hit', type: 'drums' };
     } else if (parent.type === 'accompaniment') {
-        const newAccompaniment = createAccompanimentAxiom(this.config.mood, this.config.genre, newEvents, this.random);
+        const bassAxiom = this.branches.find(b => b.id.includes('bass_axon'))?.events || [];
+        const newAccompaniment = createAccompanimentAxiom(this.config.mood, this.config.genre, bassAxiom, this.random);
         
         if (newAccompaniment.length > 0) {
             return {
@@ -596,7 +634,8 @@ export class FractalMusicEngine {
     
     if (this.epoch > 0 && this.epoch % 2 === 0) { 
         (['bass', 'drums', 'accompaniment'] as const).forEach(type => {
-            if (this.random.next() < (this.config.density * 0.4) && this.branches.filter(b => b.type === type).length < 5) {
+            const mutationChance = type === 'accompaniment' ? this.config.density * 0.8 : this.config.density * 0.4;
+            if (this.random.next() < mutationChance && this.branches.filter(b => b.type === type).length < 5) {
                 const parentBranch = this.selectBranchForMutation(type);
                 if (parentBranch) {
                     const newBranch = this.mutateBranch(parentBranch);
@@ -613,14 +652,14 @@ export class FractalMusicEngine {
         bass: (this.config.genre === 'ambient' || this.config.mood === 'dreamy') ? 'ambientDrone' : 'classicBass',
     };
 
-    const AMBIENT_ACCOMPANIMENT_POOL: AccompanimentInstrument[] = ['piano', 'E-Bells_melody', 'G-Drops', 'acousticGuitarSolo', 'synth'];
+    const AMBIENT_ACCOMPANIMENT_POOL: AccompanimentInstrument[] = ['piano', 'E-Bells_melody', 'G-Drops', 'acousticGuitarSolo', 'synth', 'electricGuitar'];
 
     if (this.config.genre === 'ambient' && (this.epoch - this.lastInstrumentChangeEpoch > (this.random.nextInt(8) + 16))) {
         this.currentAccompanimentInstrument = AMBIENT_ACCOMPANIMENT_POOL[this.random.nextInt(AMBIENT_ACCOMPANIMENT_POOL.length)];
         this.lastInstrumentChangeEpoch = this.epoch;
         console.log(`%c[INSTRUMENT CHANGE] at epoch ${this.epoch}: Switched accompaniment to ${this.currentAccompanimentInstrument}`, 'color: magenta; font-weight: bold;');
     } else if (this.config.genre !== 'ambient') {
-        this.currentAccompanimentInstrument = 'acousticGuitarSolo'; // Default for non-ambient
+        this.currentAccompanimentInstrument = 'guitarChords'; // Default for non-ambient
     }
 
     instrumentHints.accompaniment = this.currentAccompanimentInstrument;

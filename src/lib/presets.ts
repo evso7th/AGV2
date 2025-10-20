@@ -39,7 +39,7 @@ export const PRESETS: Record<string, PresetOptions> = {
         attack: 0.3, release: 1.5, portamento: 0.08, filterCutoff: 600, q: 0.6, oscType: 'sine', color: 'hsl(var(--chart-5))'
     },
     electricGuitar: {
-        attack: 0.01, release: 1.0, portamento: 0, filterCutoff: 1500, q: 1.2, oscType: 'sawtooth', distortion: 0.6, color: 'hsl(var(--chart-1))'
+        attack: 0.02, release: 1.2, portamento: 0, filterCutoff: 2500, q: 1.5, oscType: 'pwm', distortion: 0.4, color: 'hsl(var(--chart-1))'
     },
     'E-Bells_melody': {
         type: 'FMSynth',
