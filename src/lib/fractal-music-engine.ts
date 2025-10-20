@@ -26,6 +26,8 @@ interface EngineConfig {
 
 // === ВСПОМОГАТЕЛЬНЫЕ ФУНКЦИИ ===
 
+const isBass = (event: FractalEvent): boolean => event.type === 'bass';
+
 function getParamsForTechnique(technique: Technique, mood: Mood, genre: Genre): BassSynthParams {
   if (genre === 'ambient' && technique === 'swell') {
      return { cutoff: 200, resonance: 1.1, distortion: 0.0, portamento: 0.1 };
@@ -809,5 +811,3 @@ export class FractalMusicEngine {
     };
   }
 }
-
-    
