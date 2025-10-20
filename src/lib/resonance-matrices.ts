@@ -44,6 +44,11 @@ export const MelancholicMinorK: ResonanceMatrix = (
   eventB: FractalEvent,
   context: { mood: Mood; tempo: number; delta: number, genre: Genre }
 ): number => {
+  // Защита от неопределенных событий, которые могли возникнуть из пустых массивов
+  if (!eventA || !eventB) {
+      return 0.5; // Нейтральный резонанс
+  }
+
   const event1IsBass = isBass(eventA);
   const event2IsBass = isBass(eventB);
   const event1IsDrums = (eventA.type as string).startsWith('drum_') || (eventA.type as string).startsWith('perc-');
@@ -131,4 +136,3 @@ export const MelancholicMinorK: ResonanceMatrix = (
   // Нейтральный резонанс для всех остальных комбинаций
   return 0.5;
 };
-
