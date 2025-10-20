@@ -1,6 +1,5 @@
 
 
-
 /**
  * Настроение — управляет ладом, динамикой, техникой
  */
@@ -91,7 +90,9 @@ export type InstrumentType =
   // Гармонические инструменты
   | 'accompaniment'
   // Мелодические инструменты
-  | 'melody';
+  | 'melody'
+  // Спецэффекты
+  | 'sfx';
 
 export type MelodyInstrument = 'piano' | 'violin' | 'flute' | 'synth' | 'organ' | 'mellotron' | 'theremin' | 'E-Bells_melody' | 'G-Drops' | 'acousticGuitarSolo' | 'electricGuitar' | 'none';
 export type BassInstrument = 'classicBass' | 'glideBass' | 'ambientDrone' | 'resonantGliss' | 'hypnoticDrone' | 'livingRiff' | 'none';

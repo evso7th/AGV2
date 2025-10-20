@@ -1,6 +1,5 @@
 
 
-
 import type { Mood as FractalMood } from './fractal';
 
 export type Mood = FractalMood;
@@ -56,7 +55,7 @@ export type EffectInstrument =
 
 export type InstrumentType = BassInstrument | MelodyInstrument | AccompanimentInstrument | EffectInstrument | 'portamento' | 'autopilot_bass' | 'none';
 
-export type InstrumentPart = 'bass' | 'melody' | 'accompaniment' | 'drums' | 'effects' | 'sparkles' | 'piano' | 'violin' | 'flute' | 'guitarChords' | 'acousticGuitarSolo' | 'electricGuitar';
+export type InstrumentPart = 'bass' | 'melody' | 'accompaniment' | 'drums' | 'effects' | 'sparkles' | 'piano' | 'violin' | 'flute' | 'guitarChords' | 'acousticGuitarSolo' | 'electricGuitar' | 'sfx';
 export type BassTechnique = 'arpeggio' | 'portamento' | 'glissando' | 'glide' | 'pulse';
 export type Technique = BassTechnique | 'pluck' | 'pick' | 'harm' | 'slide' | 'hit' | 'ghost' | 'swell' | 'fill';
 
@@ -88,11 +87,18 @@ export type EffectsSettings = {
     enabled: boolean;
 };
 
+export type SfxSettings = {
+    enabled: boolean;
+    volume: number;
+};
+
+
 export type TextureSettings = {
     sparkles: {
         enabled: boolean;
         volume: number;
     };
+    sfx: SfxSettings;
 };
 
 export type TimerSettings = {
