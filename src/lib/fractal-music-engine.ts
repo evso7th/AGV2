@@ -569,19 +569,16 @@ export class FractalMusicEngine {
         });
     }
     
-    if (accompBranches.length > 0) {
+    if (this.epoch > 4 && accompBranches.length > 0) {
         const winningAccompBranch = accompBranches.reduce((max, b) => b.weight > max.weight ? b : max, accompBranches[0]);
         output.push(...winningAccompBranch.events);
         const beatDuration = 60 / this.config.tempo;
         this.lastAccompanimentEndTime = this.time + (winningAccompBranch.endTime * beatDuration);
     }
     
-    const shouldMutateBass = this.random.next() < (this.config.density * 0.5);
-    const shouldMutateDrums = this.random.next() < (this.config.density * 0.5);
-    
     const timeSinceLastAccompaniment = this.time - this.lastAccompanimentEndTime;
 
-    if (this.config.genre === 'ambient' && this.epoch >= 4 && timeSinceLastAccompaniment > this.nextAccompanimentDelay) {
+    if (this.config.genre === 'ambient' && this.epoch > 4 && timeSinceLastAccompaniment > this.nextAccompanimentDelay) {
         const newBranch = this.mutateBranch({ id: 'accomp_parent', type: 'accompaniment', events: [], age: 10, weight: 1, technique: 'swell', endTime: 0 });
         if (newBranch) {
             this.branches.push(newBranch);
@@ -595,6 +592,8 @@ export class FractalMusicEngine {
         }
     }
 
+    const shouldMutateBass = this.random.next() < (this.config.density * 0.5);
+    const shouldMutateDrums = this.random.next() < (this.config.density * 0.5);
 
     if (this.epoch % 2 === 1) { 
         if (shouldMutateBass && this.branches.filter(b => b.type === 'bass').length < 5) {
@@ -634,13 +633,21 @@ export class FractalMusicEngine {
     if (!isFinite(barDuration)) return { events: [], instrumentHints: {} };
 
     this.branches.forEach(branch => {
+      let newWeight = branch.weight;
       const ageBonus = branch.age === 0 ? 1.5 : 1.0; 
       const resonanceSum = this.branches.reduce((sum, other) => {
         if (other.id === branch.id || other.type === branch.type) return sum;
         const k = MelancholicMinorK(branch.events[0], other.events[0], { mood: this.config.mood, tempo: this.config.tempo, delta, genre: this.config.genre });
         return sum + k * delta * other.weight;
       }, 0);
-      const newWeight = ((1 - this.lambda) * branch.weight + resonanceSum) * ageBonus;
+      newWeight = ((1 - this.lambda) * newWeight + resonanceSum) * ageBonus;
+      
+      // Штраф за короткие басовые фразы
+      if (branch.type === 'bass' && branch.events.length > 0 && branch.events.length < 5) {
+          newWeight *= 0.5;
+          console.log(`[Penalty] Applied to short bass branch ${branch.id}. New weight: ${newWeight.toFixed(3)}`);
+      }
+      
       branch.weight = isFinite(newWeight) ? Math.max(0, newWeight) : 0.01;
       branch.age++;
     });
@@ -682,3 +689,5 @@ export class FractalMusicEngine {
     };
   }
 }
+
+      
