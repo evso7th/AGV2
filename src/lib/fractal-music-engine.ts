@@ -632,9 +632,8 @@ export class FractalMusicEngine {
       }, 0);
       newWeight = ((1 - this.lambda) * newWeight + resonanceSum) * ageBonus;
       
-      // Штраф за короткие басовые фразы
       if (branch.type === 'bass' && branch.events.length > 0 && branch.events.length < 10) {
-          newWeight *= 0.2; // Усиленный штраф
+          newWeight *= 0.2;
           console.log(`[Penalty] Applied to short bass branch ${branch.id}. New weight: ${newWeight.toFixed(3)}`);
       }
       
@@ -642,6 +641,19 @@ export class FractalMusicEngine {
       branch.age++;
     });
 
+    // --- Проверка и возрождение баса ---
+    const bassBranches = this.branches.filter(b => b.type === 'bass');
+    const isBassFading = bassBranches.every(b => b.weight < 0.3);
+    
+    if (this.config.genre === 'ambient' && bassBranches.length > 0 && isBassFading) {
+        console.log(`%c[BASS REVIVAL] All bass branches fading (max weight: ${Math.max(...bassBranches.map(b => b.weight)).toFixed(3)}). Creating new axon.`, "color: #4169E1;");
+        const drumTags = this.branches.find(b => b.type === 'drums')?.events.map(e => e.type.toString()) ?? [];
+        const newAxiom = createBassAxiom(this.config.mood, this.config.genre, this.random, drumTags);
+        this.branches.push({ id: `bass_axon_${this.epoch}`, events: newAxiom, weight: 1.2, age: 0, technique: 'pluck', type: 'bass', endTime: 0 });
+    }
+
+
+    // Normalize weights within each type (bass, drums)
     ['bass', 'drums', 'accompaniment'].forEach(type => {
         const typeBranches = this.branches.filter(b => b.type === type);
         const totalWeight = typeBranches.reduce((sum, b) => sum + b.weight, 0);
@@ -650,9 +662,7 @@ export class FractalMusicEngine {
         }
     });
 
-    // Kill old/weak branches, but keep axons and short-lived mutations
     this.branches = this.branches.filter(b => {
-        if (b.id.includes('axon')) return true;
         if (b.type === 'accompaniment') return b.age < 2; // Accompaniment lives for one bar
         return b.weight > 0.05 || b.age < 8;
     });
@@ -679,3 +689,4 @@ export class FractalMusicEngine {
     };
   }
 }
+
