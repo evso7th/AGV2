@@ -1,152 +1,147 @@
-
 // public/worklets/sfx-processor.js
 
+/**
+ * Многослойный субтрактивный синтезатор для SFX, работающий в AudioWorklet.
+ * Архитектура "Исполнитель".
+ * - Поддерживает до 3 осцилляторов на ноту.
+ * - Имеет общий фильтр и дисторшн для всех слоев ноты.
+ * - Управляется через postMessage, принимая массивы команд noteOn/noteOff.
+ */
 class SfxProcessor extends AudioWorkletProcessor {
-    constructor() {
-        super();
-        this.activeNotes = new Map();
-        this.port.onmessage = this.handleMessage.bind(this);
-        console.log('[SFXProcessor] Worklet created and ready.');
-    }
+  constructor(options) {
+    super(options);
+    this.sampleRate = options.processorOptions.sampleRate;
+    this.activeNotes = new Map();
+    this.port.onmessage = (event) => {
+      const messages = Array.isArray(event.data) ? event.data : [event.data];
+      messages.forEach(message => this.handleMessage(message));
+    };
+    console.log('[SFXProcessor] Multi-oscillator worklet created and ready.');
+  }
 
-    handleMessage(event) {
-        const messages = Array.isArray(event.data) ? event.data : [event.data];
-        for (const message of messages) {
-            const { type, noteId, when, params } = message;
-            if (type === 'noteOn') {
-                if (this.activeNotes.has(noteId)) continue;
-                this.activeNotes.set(noteId, {
-                    state: 'scheduled',
-                    startTime: when,
-                    endTime: Infinity,
-                    phase: 0,
-                    gain: 0,
-                    targetGain: 1.0,
-                    params: params || {},
-                });
-            } else if (type === 'noteOff') {
-                const note = this.activeNotes.get(noteId);
-                if (note) {
-                    note.endTime = when;
+  handleMessage(message) {
+    const { type, when, noteId, params } = message;
+
+    if (type === 'noteOn') {
+      const { frequency, velocity, oscillators, distortion } = params;
+      this.activeNotes.set(noteId, {
+        state: 'scheduled',
+        startTime: when,
+        endTime: Infinity,
+        phase: [0, 0, 0], // Фаза для каждого из 3-х осцилляторов
+        gain: 0,
+        targetGain: velocity,
+        frequency: frequency,
+        params: params,
+        oscillators: oscillators || [{ type: 'sine', detune: 0 }],
+        distortion: distortion || 0,
+        filterState: { y1: 0, y2: 0, oldx: 0, oldy: 0 },
+      });
+    } else if (type === 'noteOff') {
+      const note = this.activeNotes.get(noteId);
+      if (note) {
+        note.endTime = when;
+      }
+    } else if (type === 'clear') {
+      this.activeNotes.clear();
+    }
+  }
+  
+  // Low-pass filter (one-pole)
+  applyFilter(input, cutoff, resonance, state) {
+    const g = Math.tan(Math.PI * cutoff / this.sampleRate);
+    const r = 1 / (resonance || 1); // Ensure resonance is not zero
+    const h = 1 / (1 + r * g + g * g);
+    let band = (input - state.y2 - r * state.y1) * h;
+    let low = g * band + state.y1;
+    state.y1 = g * band + low;
+    state.y2 = g * state.y1 + state.y2;
+    return state.y2;
+  }
+  
+  // Soft-clipping distortion
+  softClip(input, drive) {
+      if (drive <= 0.01) return input;
+      const k = 2 * drive / (1 - Math.min(drive, 0.99));
+      return (1 + k) * input / (1 + k * Math.abs(input));
+  }
+
+  generateOscillator(type, phase) {
+      switch (type) {
+          case 'sine': return Math.sin(phase);
+          case 'triangle': return 1 - 4 * Math.abs((phase / (2 * Math.PI)) - 0.5);
+          case 'square': return phase < Math.PI ? 1 : -1;
+          case 'sawtooth': return 1 - (phase / Math.PI);
+          default: return Math.sin(phase);
+      }
+  }
+
+  process(inputs, outputs, parameters) {
+    const output = outputs[0];
+    const leftChannel = output[0];
+    const rightChannel = output.length > 1 ? output[1] : leftChannel;
+
+    for (let i = 0; i < leftChannel.length; i++) {
+      const now = currentTime + i / this.sampleRate;
+      let mixedSample = 0;
+
+      for (const [noteId, note] of this.activeNotes.entries()) {
+        if (note.state === 'scheduled' && now >= note.startTime) {
+          note.state = 'attack';
+        }
+        
+        if (note.state !== 'decay' && now >= note.endTime) {
+          note.state = 'decay';
+          note.targetGain = 0;
+        }
+
+        if (note.state === 'attack' || note.state === 'sustain' || note.state === 'decay') {
+            const attackTime = note.params.attack || 0.01;
+            const releaseTime = note.params.release || 0.3;
+
+            if (note.state === 'attack') {
+                note.gain += 1 / (attackTime * this.sampleRate);
+                if (note.gain >= note.targetGain) {
+                    note.gain = note.targetGain;
+                    note.state = 'sustain';
                 }
-            } else if (type === 'clear') {
-                this.activeNotes.clear();
-            }
-        }
-    }
-
-    // Simple LFO
-    lfo(phase) {
-        return Math.sin(phase);
-    }
-    
-    // Generate wave based on type
-    generateOsc(note) {
-        switch (note.params.oscType) {
-            case 'sine': return Math.sin(note.phase);
-            case 'square': return Math.sign(Math.sin(note.phase));
-            case 'sawtooth': return 1.0 - 2.0 * (note.phase / (2 * Math.PI));
-            default: return Math.sin(note.phase);
-        }
-    }
-
-    process(inputs, outputs, parameters) {
-        const outputChannels = outputs[0];
-        const leftChannel = outputChannels[0];
-        const rightChannel = outputChannels.length > 1 ? outputChannels[1] : leftChannel;
-
-        if (!leftChannel || this.activeNotes.size === 0) {
-             if (rightChannel) rightChannel.fill(0);
-             if (leftChannel) leftChannel.fill(0);
-            return true;
-        }
-
-        leftChannel.fill(0);
-        if (rightChannel !== leftChannel) {
-            rightChannel.fill(0);
-        }
-
-        for (let i = 0; i < leftChannel.length; i++) {
-            const time = currentTime + i / sampleRate;
-            let leftSample = 0;
-            let rightSample = 0;
-
-            for (const [noteId, note] of this.activeNotes.entries()) {
-                if (note.state === 'scheduled' && time >= note.startTime) {
-                    note.state = 'attack';
-                }
-                
-                if (note.state !== 'decay' && time >= note.endTime) {
-                    note.state = 'decay';
-                    note.releaseStartTime = note.endTime;
-                    note.releaseStartGain = note.gain;
-                }
-
-                if (note.state === 'finished') {
+            } else if (note.state === 'decay') {
+                note.gain -= 1 / (releaseTime * this.sampleRate);
+                if (note.gain <= 0) {
                     this.activeNotes.delete(noteId);
                     continue;
                 }
-                
-                if (note.state === 'attack' || note.state === 'sustain' || note.state === 'decay') {
-                    // Envelope
-                    const attackTime = note.params.attack || 0.01;
-                    const decayTime = note.params.decay || 0.1;
-                    const sustainLevel = note.params.sustainLevel || 0.5;
-                    const releaseTime = note.params.release || 0.3;
-                    const noteTime = time - note.startTime;
-                    
-                    if (note.state === 'attack') {
-                        note.gain = (noteTime / attackTime) * sustainLevel;
-                        if (noteTime >= attackTime) {
-                            note.gain = sustainLevel;
-                            note.state = 'sustain';
-                        }
-                    } else if (note.state === 'sustain') {
-                       // Sustain level is maintained until release
-                       note.gain = sustainLevel;
-                    } else if (note.state === 'decay') {
-                        const releaseElapsed = time - note.releaseStartTime;
-                        note.gain = note.releaseStartGain * (1.0 - releaseElapsed / releaseTime);
-                        if (releaseElapsed >= releaseTime) {
-                            note.state = 'finished';
-                            continue;
-                        }
-                    }
-
-                    // Oscillator & LFO
-                    const lfoPhase = time * 2 * Math.PI * (note.params.lfoFreq || 0);
-                    const lfoValue = this.lfo(lfoPhase);
-                    
-                    const freqProgress = Math.min(1, noteTime / (note.endTime - note.startTime));
-                    const currentFreq = note.params.startFreq + (note.params.endFreq - note.params.startFreq) * freqProgress;
-                    
-                    note.phase += (currentFreq * (1 + lfoValue * 0.1)) * 2 * Math.PI / sampleRate;
-                    if(note.phase >= 2 * Math.PI) note.phase -= 2 * Math.PI;
-
-                    let signal = this.generateOsc(note);
-                    
-                    // Basic Chorus effect
-                    if (note.params.chorus) {
-                        note.chorusPhase = (note.chorusPhase || 0) + (currentFreq * 1.05 * 2 * Math.PI) / sampleRate;
-                        signal = (signal + this.generateOsc({...note, phase: note.chorusPhase})) / 2;
-                    }
-                    
-                    let sample = signal * note.gain * 0.5;
-                    
-                    // Panning
-                    const panValue = (note.params.pan + 1) / 2; // pan from -1..1 to 0..1
-                    leftSample += sample * Math.cos(panValue * Math.PI / 2);
-                    rightSample += sample * Math.sin(panValue * Math.PI / 2);
-                }
             }
-            leftChannel[i] = leftSample;
-            rightChannel[i] = rightSample;
-        }
+            
+            let oscSample = 0;
+            // --- Multi-oscillator synthesis ---
+            for(let j = 0; j < note.oscillators.length; j++) {
+                const osc = note.oscillators[j];
+                const detunedFreq = note.frequency * Math.pow(2, (osc.detune || 0) / 1200);
 
-        return true;
+                note.phase[j] += (detunedFreq * 2 * Math.PI) / this.sampleRate;
+                if (note.phase[j] >= 2 * Math.PI) note.phase[j] -= 2 * Math.PI;
+
+                oscSample += this.generateOscillator(osc.type, note.phase[j]);
+            }
+            oscSample /= note.oscillators.length; // Normalize
+
+            // --- Filtering and Distortion ---
+            const filtered = this.applyFilter(oscSample, note.params.cutoff, note.params.resonance, note.filterState);
+            const distorted = this.softClip(filtered, note.distortion);
+
+            mixedSample += distorted * note.gain;
+        }
+      }
+      
+      const finalSample = mixedSample * 0.3;
+      leftChannel[i] = finalSample;
+      if (rightChannel) {
+        rightChannel[i] = finalSample;
+      }
     }
+    return true;
+  }
 }
 
 registerProcessor('sfx-processor', SfxProcessor);
-
-    
