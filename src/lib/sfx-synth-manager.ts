@@ -1,3 +1,6 @@
+
+import type { FractalEvent } from '@/types/fractal';
+
 export class SfxSynthManager {
     private context: AudioContext;
     private destination: GainNode;
@@ -20,7 +23,6 @@ export class SfxSynthManager {
 
         try {
             await this.context.audioWorklet.addModule('/worklets/sfx-processor.js');
-            // FIX: Ensure the output is stereo by specifying outputChannelCount
             this.workletNode = new AudioWorkletNode(this.context, 'sfx-processor', { outputChannelCount: [2] });
             this.workletNode.connect(this.destination);
             this.isReady = true;
@@ -31,20 +33,42 @@ export class SfxSynthManager {
         }
     }
 
-    public trigger(time: number, params?: any): void {
+    public trigger(events: FractalEvent[], barStartTime: number, tempo: number): void {
         if (!this.isReady || !this.workletNode) {
              console.warn('[SFX] Trigger called but not ready.');
             return;
         }
-        console.log(`[SFX] Triggering effect at time ${time.toFixed(2)}`);
-        this.workletNode.port.postMessage({
-            type: 'trigger',
-            time: time,
-            noteParams: params || {}
+
+        const beatDuration = 60 / tempo;
+        const messages: any[] = [];
+
+        events.forEach(event => {
+            const noteOnTime = barStartTime + (event.time * beatDuration);
+            const noteOffTime = noteOnTime + (event.duration * beatDuration);
+            const noteId = `${noteOnTime.toFixed(4)}-${event.params?.startFreq || event.note}`;
+
+            messages.push({
+                type: 'noteOn',
+                when: noteOnTime,
+                noteId,
+                params: event.params
+            });
+            messages.push({
+                type: 'noteOff',
+                noteId,
+                when: noteOffTime
+            });
         });
+        
+        if (messages.length > 0) {
+            console.log(`[SFX] Triggering effect phrase with ${events.length} notes.`);
+            this.workletNode.port.postMessage(messages);
+        }
     }
 
     public isSynthReady(): boolean {
         return this.isReady;
     }
 }
+
+    

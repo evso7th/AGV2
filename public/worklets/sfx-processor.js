@@ -1,128 +1,140 @@
+
+// public/worklets/sfx-processor.js
+
 class SfxProcessor extends AudioWorkletProcessor {
     constructor() {
         super();
-        this.activeNotes = [];
+        this.activeNotes = new Map();
         this.port.onmessage = this.handleMessage.bind(this);
-    }
-
-    // A simple pseudo-random number generator
-    random() {
-        return Math.random();
+        console.log('[SFXProcessor] Worklet created and ready.');
     }
 
     handleMessage(event) {
-        const { type, time, noteParams = {} } = event.data;
-        if (type === 'trigger') {
-            const duration = noteParams.duration || (0.1 + this.random() * 0.4); // 100ms to 500ms
-            const attack = noteParams.attack || 0.01;
-            const decay = noteParams.decay || duration * 0.3;
-            const release = noteParams.release || 0.1;
-            const sustainLevel = noteParams.sustainLevel || 0.4;
-            
-            const note = {
-                startTime: time,
-                // Envelope
-                attackTime: attack,
-                decayTime: decay,
-                sustainLevel: sustainLevel,
-                releaseTime: release,
-                endTime: time + duration,
-                released: false,
-                // Oscillator
-                oscType: noteParams.oscType || ['sawtooth', 'square', 'sine'][Math.floor(this.random() * 3)],
-                startFreq: noteParams.startFreq || (100 + this.random() * 1000),
-                endFreq: noteParams.endFreq || (100 + this.random() * 1000),
-                // Panning
-                pan: noteParams.pan !== undefined ? noteParams.pan : (this.random() * 2 - 1),
-                // Chorus/Delay
-                chorus: noteParams.chorus !== undefined ? noteParams.chorus : this.random() > 0.5,
-                delayLine: new Float32Array(Math.floor(sampleRate * 0.2)), // 200ms max delay
-                delayWritePos: 0,
-            };
-            this.activeNotes.push(note);
-        }
+        const messages = Array.isArray(event.data) ? event.data : [event.data];
+        messages.forEach(message => {
+            const { type, when, noteId, params } = message;
+
+            if (type === 'noteOn') {
+                this.activeNotes.set(noteId, {
+                    state: 'scheduled',
+                    startTime: when,
+                    endTime: Infinity,
+                    phase: 0,
+                    gain: 0,
+                    targetGain: params.sustainLevel,
+                    releaseStartAmp: 0,
+                    params: params || {},
+                });
+            } else if (type === 'noteOff') {
+                const note = this.activeNotes.get(noteId);
+                if (note) {
+                    note.endTime = when;
+                }
+            } else if (type === 'clear') {
+                this.activeNotes.clear();
+            }
+        });
+    }
+
+    // Simple LFO
+    lfo(phase) {
+        return Math.sin(phase);
+    }
+    
+    // Simple Filter (one-pole low-pass)
+    applyFilter(input, cutoff, state) {
+        const g = Math.tan(Math.PI * cutoff / sampleRate);
+        const k = g / (1.0 + g);
+        state.y1 = (1.0 - k) * state.y1 + k * input;
+        return state.y1;
     }
 
     process(inputs, outputs, parameters) {
-        const output = outputs[0];
-        const leftChannel = output[0];
-        const rightChannel = output[1];
+        const outputChannels = outputs[0];
+        const leftChannel = outputChannels[0];
+        const rightChannel = outputChannels.length > 1 ? outputChannels[1] : leftChannel;
 
-        if (this.activeNotes.length === 0) {
-            return true; // No notes, output silence and keep processor alive.
+        if (!leftChannel) {
+            return true;
+        }
+
+        leftChannel.fill(0);
+        if (rightChannel !== leftChannel) {
+            rightChannel.fill(0);
         }
 
         for (let i = 0; i < leftChannel.length; i++) {
+            const time = currentTime + i / sampleRate;
             let leftSample = 0;
             let rightSample = 0;
-            const time = currentTime + i / sampleRate;
 
-            for (let j = this.activeNotes.length - 1; j >= 0; j--) {
-                const note = this.activeNotes[j];
-                let amplitude = 0;
-                const noteTime = time - note.startTime;
+            for (const [noteId, note] of this.activeNotes.entries()) {
+                if (time < note.startTime) {
+                    continue;
+                }
 
-                // 1. Calculate Envelope
-                if (noteTime < note.attackTime) {
-                    amplitude = noteTime / note.attackTime;
-                } else if (noteTime < note.attackTime + note.decayTime) {
-                    amplitude = 1.0 - ((noteTime - note.attackTime) / note.decayTime) * (1.0 - note.sustainLevel);
-                } else if (time < note.endTime) {
-                    amplitude = note.sustainLevel;
-                } else {
-                    if (!note.released) {
-                        note.released = true;
-                        note.releaseStartTime = note.endTime;
-                        note.releaseStartAmp = note.sustainLevel;
+                if (note.state === 'scheduled') {
+                    note.state = 'attack';
+                    note.filterState = { y1: 0 };
+                    note.lfoPhase = 0;
+                }
+
+                if (note.state !== 'decay' && time >= note.endTime) {
+                    note.state = 'decay';
+                    note.releaseStartTime = note.endTime;
+                    note.releaseStartAmp = note.gain;
+                }
+
+                // Envelope
+                let amp = 0;
+                if (note.state === 'attack') {
+                    amp = (note.gain += (1 / (note.params.attack * sampleRate)));
+                    if (note.gain >= 1.0) {
+                        note.gain = 1.0;
+                        note.state = 'decay-sustain';
                     }
-                    const releaseTime = time - note.releaseStartTime;
-                    if (releaseTime < note.releaseTime) {
-                         amplitude = note.releaseStartAmp * (1.0 - releaseTime / note.releaseTime);
-                    } else {
-                        this.activeNotes.splice(j, 1);
+                } else if (note.state === 'decay-sustain') {
+                     amp = note.gain -= (1.0 - note.params.sustainLevel) / (note.params.decay * sampleRate);
+                     if (note.gain <= note.params.sustainLevel) {
+                         note.gain = note.params.sustainLevel;
+                         note.state = 'sustain';
+                     }
+                } else if (note.state === 'sustain') {
+                    amp = note.gain;
+                } else if (note.state === 'decay') {
+                    const releaseTimeElapsed = time - note.releaseStartTime;
+                    amp = note.releaseStartAmp * (1.0 - releaseTimeElapsed / note.params.release);
+                    if (amp <= 0) {
+                        this.activeNotes.delete(noteId);
                         continue;
                     }
                 }
+                amp = Math.max(0, amp);
                 
-                amplitude = Math.max(0, amplitude);
+                // Oscillator
+                const noteTime = time - note.startTime;
+                const progress = Math.min(1, noteTime / note.params.duration);
+                const freq = note.params.startFreq + (note.params.endFreq - note.params.startFreq) * progress;
 
-                // 2. Calculate Oscillator Signal
-                const progress = Math.min(1, noteTime / (note.endTime - note.startTime));
-                const freq = note.startFreq + (note.endFreq - note.startFreq) * progress;
-                const phase = (time - note.startTime) * freq;
+                note.phase += (freq * 2 * Math.PI) / sampleRate;
+                if (note.phase >= 2 * Math.PI) note.phase -= (2 * Math.PI);
+                
                 let signal = 0;
-                switch (note.oscType) {
-                    case 'sine':
-                        signal = Math.sin(2 * Math.PI * phase);
-                        break;
-                    case 'square':
-                        signal = Math.sign(Math.sin(2 * Math.PI * phase));
-                        break;
-                    case 'sawtooth':
-                        signal = 2 * (phase / sampleRate - Math.floor(phase / sampleRate + 0.5));
-                        break;
-                }
-                
-                let sample = signal * amplitude * 0.3; // 0.3 gain to prevent clipping
-
-                // 3. Apply Chorus (simple delay)
-                if (note.chorus) {
-                    const delayReadPos = (note.delayWritePos - Math.floor(sampleRate * 0.025) + note.delayLine.length) % note.delayLine.length;
-                    const delayedSample = note.delayLine[delayReadPos];
-                    note.delayLine[note.delayWritePos] = sample;
-                    note.delayWritePos = (note.delayWritePos + 1) % note.delayLine.length;
-                    sample += delayedSample * 0.5;
+                switch (note.params.oscType) {
+                    case 'sine': signal = Math.sin(note.phase); break;
+                    case 'square': signal = Math.sign(Math.sin(note.phase)); break;
+                    case 'sawtooth': signal = 1.0 - (note.phase / Math.PI); break;
+                    default: signal = Math.sin(note.phase); break;
                 }
 
-                // 4. Apply Panning
-                const panValue = (note.pan + 1) / 2;
-                const leftPan = Math.cos(panValue * Math.PI / 2);
-                const rightPan = Math.sin(panValue * Math.PI / 2);
+                let finalSample = signal * amp * 0.3;
 
-                leftSample += sample * leftPan;
-                rightSample += sample * rightPan;
+                // Panning
+                const panValue = (note.params.pan + 1) / 2;
+                leftSample += finalSample * Math.cos(panValue * Math.PI / 2);
+                rightSample += finalSample * Math.sin(panValue * Math.PI / 2);
             }
-
+            
             leftChannel[i] = leftSample;
             rightChannel[i] = rightSample;
         }
@@ -132,3 +144,5 @@ class SfxProcessor extends AudioWorkletProcessor {
 }
 
 registerProcessor('sfx-processor', SfxProcessor);
+
+    

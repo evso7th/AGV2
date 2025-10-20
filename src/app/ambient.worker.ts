@@ -31,50 +31,68 @@ function shouldAddSparkle(currentTime: number, density: number, genre: Genre): b
     return Math.random() < chance;
 }
 
-function shouldAddSfx(currentTime: number, density: number, mood: Mood): { should: boolean, params: any } {
+function shouldAddSfx(currentTime: number, density: number, mood: Mood): { should: boolean, phrase: FractalEvent[] } {
     const timeSinceLast = currentTime - lastSfxTime;
-    const minTime = 15; // Increased frequency
-    const maxTime = 50; // Increased frequency
+    const minTime = 15;
+    const maxTime = 40;
     
-    if (timeSinceLast < minTime) return { should: false, params: {} };
-    if (density > 0.8) return { should: false, params: {} }; // Allow at higher density
+    if (timeSinceLast < minTime) return { should: false, phrase: [] };
+    if (density > 0.7) return { should: false, phrase: [] };
 
-    let chance = ((timeSinceLast - minTime) / (maxTime - minTime)) * (0.8 - density);
+    let chance = ((timeSinceLast - minTime) / (maxTime - minTime)) * (0.9 - density);
 
-    if (mood === 'dark' || mood === 'anxious' || mood === 'epic') {
-        chance *= 1.5;
-    }
-    
-    if (mood === 'calm' || mood === 'dreamy' || mood === 'contemplative') {
-        chance *= 0.5;
-    }
-
+    if (mood === 'dark' || mood === 'anxious' || mood === 'epic') chance *= 1.5;
+    if (mood === 'calm' || mood === 'dreamy' || mood === 'contemplative') chance *= 0.5;
 
     if (Math.random() < chance) {
-         console.log('[SFX] Firing complex SFX event');
-         
-         const oscTypes: ('sawtooth' | 'square' | 'sine')[] = ['sawtooth', 'square', 'sine'];
-         const randomOsc = oscTypes[Math.floor(Math.random() * oscTypes.length)];
-         const isUpwardSweep = Math.random() > 0.5;
+        console.log('[SFX] Firing complex SFX event');
+        const phrase: FractalEvent[] = [];
+        const numNotes = 2 + Math.floor(Math.random() * 4); // 2 to 5 notes
+        const phraseDuration = 2 + Math.random() * 4; // 2 to 6 seconds total
+        let phraseTime = 0;
 
-         const params = {
-            duration: 0.1 + Math.random() * 0.4, // 100ms to 500ms
-            attack: 0.01 + Math.random() * 0.05,
-            decay: 0.1 + Math.random() * 0.2,
-            sustainLevel: 0.3 + Math.random() * 0.4,
-            release: 0.1 + Math.random() * 0.3,
-            oscType: randomOsc,
-            startFreq: isUpwardSweep ? (100 + Math.random() * 400) : (500 + Math.random() * 800),
-            endFreq: isUpwardSweep ? (500 + Math.random() * 800) : (100 + Math.random() * 400),
-            pan: Math.random() * 2 - 1, // Full stereo pan
-            chorus: Math.random() > 0.5,
-            lfoFreq: Math.random() * 5, // LFO for future filter modulation
-         };
+        const oscTypes: ('sawtooth' | 'square' | 'sine')[] = ['sawtooth', 'square', 'sine'];
+        
+        for (let i = 0; i < numNotes; i++) {
+            const randomOsc = oscTypes[Math.floor(Math.random() * oscTypes.length)];
+            const noteDuration = (phraseDuration / numNotes) * (0.8 + Math.random() * 0.4);
+            
+            const startFreq = 100 + Math.random() * 800;
+            const endFreq = 100 + Math.random() * 1200;
+            
+            const params = {
+                duration: noteDuration,
+                attack: 0.01 + Math.random() * 0.1,
+                decay: 0.1 + Math.random() * 0.3,
+                sustainLevel: 0.2 + Math.random() * 0.5,
+                release: noteDuration * 0.5 + Math.random() * 0.5,
+                oscType: randomOsc,
+                startFreq,
+                endFreq,
+                pan: Math.random() * 2 - 1, // Full stereo pan
+                chorus: Math.random() > 0.6,
+                lfoFreq: Math.random() * 5,
+            };
 
-         return { should: true, params };
+            phrase.push({
+                type: 'sfx',
+                note: 60, // Placeholder, frequency is what matters
+                duration: noteDuration,
+                time: phraseTime,
+                weight: 0.5 + Math.random() * 0.3,
+                technique: 'hit',
+                dynamics: 'f',
+                phrasing: 'legato',
+                params: params
+            });
+            
+            phraseTime += noteDuration * (0.3 + Math.random() * 0.5); // Overlap notes
+        }
+
+        return { should: true, phrase };
     }
 
-    return { should: false, params: {} };
+    return { should: false, phrase: [] };
 }
 
 
@@ -211,17 +229,6 @@ const Scheduler = {
              scorePayload = fractalMusicEngine.evolve(this.barDuration, this.barCount);
         } 
         
-        console.log(`[Worker] Tick ${this.barCount}. Generated ${scorePayload.events?.length ?? 'undefined'} events.`);
-        
-        self.postMessage({ 
-            type: 'SCORE_READY', 
-            payload: {
-                events: scorePayload.events,
-                instrumentHints: scorePayload.instrumentHints,
-                barDuration: this.barDuration
-            }
-        });
-
         const currentTime = this.barCount * this.barDuration;
         
         if (this.barCount >= 4 && this.settings.textureSettings.sparkles.enabled) {
@@ -233,12 +240,24 @@ const Scheduler = {
         }
         
         if (this.barCount >= 2 && this.settings.textureSettings.sfx.enabled) {
-            const { should, params } = shouldAddSfx(currentTime, density, mood);
+            const { should, phrase } = shouldAddSfx(currentTime, density, mood);
             if (should) {
-                self.postMessage({ type: 'sfx', time: this.barDuration * (0.1 + Math.random() * 0.8), sfxParams: params });
+                // Send the entire phrase to be scheduled
+                scorePayload.events.push(...phrase);
                 lastSfxTime = currentTime;
             }
         }
+        
+        console.log(`[Worker] Tick ${this.barCount}. Generated ${scorePayload.events?.length ?? 'undefined'} events.`);
+        
+        self.postMessage({ 
+            type: 'SCORE_READY', 
+            payload: {
+                events: scorePayload.events,
+                instrumentHints: scorePayload.instrumentHints,
+                barDuration: this.barDuration
+            }
+        });
 
         this.barCount++;
     }
@@ -289,3 +308,5 @@ self.onmessage = async (event: MessageEvent) => {
         self.postMessage({ type: 'error', error: e instanceof Error ? e.message : String(e) });
     }
 };
+
+    
