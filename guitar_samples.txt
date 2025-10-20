@@ -1,0 +1,17 @@
+acoustic-guitar-string-a-3_120bpm.mp3
+acoustic-guitar-string-b3_120bpm.mp3
+acoustic-guitar-string-c3_120bpm_C.mp3
+acoustic-guitar-string-c-3_120bpm.mp3
+acoustic-guitar-string-c-note-clean.mp3
+acoustic-guitar-string-d-3_120bpm.mp3
+acoustic-guitar-string-d3_120bpm.mp3
+acoustic-guitar-string-d-note-regular-clean.mp3
+acoustic-guitar-string-e3_120bpm.mp3
+acoustic-guitar-string-f-3_120bpm.mp3
+acoustic-guitar-string-f3_120bpm.mp3
+acoustic-guitar-string-f-note-clean-high.mp3
+acoustic-guitar-string-f-note-clean-low.mp3
+acoustic-guitar-string-g-3_120bpm.mp3
+acoustic-guitar-string-g-note-bright-clean.mp3
+acoustic-guitar-string-g-note-clean-low.mp3
+acoustic-guitar-string-g-note-clean.mp3

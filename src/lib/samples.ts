@@ -100,9 +100,9 @@ export const ACOUSTIC_GUITAR_SOLO_SAMPLES: Record<string, VelocitySample[]> = {
     'D3': [{ velocity: 1, file: '/assets/acoustic_guitar_samples/acoustic-guitar-string-d-3_120bpm.mp3' }],
     'D4': [{ velocity: 1, file: '/assets/acoustic_guitar_samples/acoustic-guitar-string-d-note-regular-clean.mp3' }],
     'E3': [{ velocity: 1, file: '/assets/acoustic_guitar_samples/acoustic-guitar-string-e3_120bpm.mp3' }],
-    'E4': [{ velocity: 1, file: '/assets/acoustic_guitar_samples/acoustic-guitar-string-e-note-clean.mp3' }],
     'F3': [{ velocity: 1, file: '/assets/acoustic_guitar_samples/acoustic-guitar-string-f-3_120bpm.mp3' }],
-    'F4': [{ velocity: 1, file: '/assets/acoustic_guitar_samples/acoustic-guitar-string-f-note-clean-high.mp3' }],
     'G3': [{ velocity: 1, file: '/assets/acoustic_guitar_samples/acoustic-guitar-string-g-3_120bpm.mp3' }],
+    'E4': [{ velocity: 1, file: '/assets/acoustic_guitar_samples/acoustic-guitar-string-e-note-clean.mp3' }],
+    'F4': [{ velocity: 1, file: '/assets/acoustic_guitar_samples/acoustic-guitar-string-f-note-clean-high.mp3' }],
     'G4': [{ velocity: 1, file: '/assets/acoustic_guitar_samples/acoustic-guitar-string-g-note-bright-clean.mp3' }]
 };
