@@ -643,8 +643,8 @@ export class FractalMusicEngine {
       newWeight = ((1 - this.lambda) * newWeight + resonanceSum) * ageBonus;
       
       // Штраф за короткие басовые фразы
-      if (branch.type === 'bass' && branch.events.length > 0 && branch.events.length < 5) {
-          newWeight *= 0.5;
+      if (branch.type === 'bass' && branch.events.length > 0 && branch.events.length < 10) {
+          newWeight *= 0.2;
           console.log(`[Penalty] Applied to short bass branch ${branch.id}. New weight: ${newWeight.toFixed(3)}`);
       }
       

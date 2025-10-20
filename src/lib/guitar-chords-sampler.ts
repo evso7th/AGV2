@@ -74,31 +74,30 @@ export class GuitarChordsSampler {
     public schedule(notes: NoteEvent[], startTime: number) {
         if (!this.isInitialized || notes.length === 0) return;
 
-        // Use the first note's MIDI to determine the chord
-        const rootNote = notes[0];
-        const chordName = this.midiToChordName(rootNote.midi);
+        notes.forEach(note => {
+            const chordName = this.midiToChordName(note.midi);
 
-        if (!chordName) {
-            // console.warn(`[GuitarChordsSampler] Could not map MIDI ${rootNote.midi} to a chord.`);
-            return;
-        }
+            if (!chordName) {
+                // console.warn(`[GuitarChordsSampler] Could not map MIDI ${note.midi} to a chord.`);
+                return;
+            }
 
-        const buffer = this.samples.get(chordName);
-        if (buffer) {
-            const source = this.audioContext.createBufferSource();
-            source.buffer = buffer;
-            
-            const noteGain = this.audioContext.createGain();
-            noteGain.gain.value = rootNote.velocity ?? 0.7;
-            
-            source.connect(noteGain);
-            noteGain.connect(this.preamp);
-            
-            // We don't adjust playbackRate here since we're playing pre-recorded chords
-            source.start(startTime + rootNote.time);
-        } else {
-            console.warn(`[GuitarChordsSampler] Sample for chord "${chordName}" not found.`);
-        }
+            const buffer = this.samples.get(chordName);
+            if (buffer) {
+                const source = this.audioContext.createBufferSource();
+                source.buffer = buffer;
+                
+                const noteGain = this.audioContext.createGain();
+                noteGain.gain.value = note.velocity ?? 0.7;
+                
+                source.connect(noteGain);
+                noteGain.connect(this.preamp);
+                
+                source.start(startTime + note.time);
+            } else {
+                console.warn(`[GuitarChordsSampler] Sample for chord "${chordName}" not found.`);
+            }
+        });
     }
     
     // Maps a MIDI note to the most likely chord name from our sample map
