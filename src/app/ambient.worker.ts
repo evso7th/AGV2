@@ -10,8 +10,9 @@ import type { WorkerSettings, ScoreName, Mood, Genre } from '@/types/music';
 import { FractalMusicEngine } from '@/lib/fractal-music-engine';
 import type { FractalEvent, MelodyInstrument, BassInstrument } from '@/types/fractal';
 
-// --- "Sparkle" (In-krap-le-ni-ye) Logic ---
+// --- Effect Logic ---
 let lastSparkleTime = -Infinity;
+let lastSfxTime = -Infinity;
 
 function shouldAddSparkle(currentTime: number, density: number, genre: Genre): boolean {
     const timeSinceLast = currentTime - lastSparkleTime;
@@ -28,6 +29,30 @@ function shouldAddSparkle(currentTime: number, density: number, genre: Genre): b
 
     const chance = ((timeSinceLast - minTime) / (maxTime - minTime)) * (1 - density);
     return Math.random() < chance;
+}
+
+function shouldAddSfx(currentTime: number, density: number, mood: Mood): { should: boolean, params: any } {
+    const timeSinceLast = currentTime - lastSfxTime;
+    const minTime = 45;
+    const maxTime = 150;
+    
+    if (timeSinceLast < minTime) return { should: false, params: {} };
+    if (density > 0.7) return { should: false, params: {} };
+
+    let chance = ((timeSinceLast - minTime) / (maxTime - minTime)) * (1 - density);
+
+    // Increase chance for certain moods
+    if (mood === 'dark' || mood === 'anxious' || mood === 'epic') {
+        chance *= 1.5;
+    }
+
+    if (Math.random() < chance) {
+         console.log('[SFX] Firing SFX event');
+         // Here you could add logic to select different SFX params based on mood/genre
+         return { should: true, params: { note: 30 + Math.random() * 30 } };
+    }
+
+    return { should: false, params: {} };
 }
 
 
@@ -51,7 +76,8 @@ const Scheduler = {
             accompaniment: { name: "guitarChords", volume: 0.7 },
         },
         textureSettings: {
-            sparkles: { enabled: true },
+            sparkles: { enabled: true, volume: 0.7 },
+            sfx: { enabled: true, volume: 0.5 },
         },
         density: 0.5,
         composerControlsInstruments: true,
@@ -75,6 +101,7 @@ const Scheduler = {
         });
         this.barCount = 0;
         lastSparkleTime = -Infinity;
+        lastSfxTime = -Infinity;
     },
 
     start() {
@@ -154,6 +181,8 @@ const Scheduler = {
         
         const density = this.settings.density;
         const genre = this.settings.genre;
+        const mood = this.settings.mood;
+
         let scorePayload: { events: FractalEvent[]; instrumentHints: { accompaniment?: MelodyInstrument, bass?: BassInstrument } } = { events: [], instrumentHints: {} };
 
         if (this.settings.score === 'neuro_f_matrix') {
@@ -178,6 +207,14 @@ const Scheduler = {
                  const sparkleGenre = genre === 'ambient' ? 'trance' : genre;
                  self.postMessage({ type: 'sparkle', time: 0, genre: sparkleGenre, mood: this.settings.mood });
                  lastSparkleTime = currentTime;
+            }
+        }
+        
+        if (this.barCount >= 8 && this.settings.textureSettings.sfx.enabled) {
+            const { should, params } = shouldAddSfx(currentTime, density, mood);
+            if (should) {
+                self.postMessage({ type: 'sfx', time: 0, sfxParams: params });
+                lastSfxTime = currentTime;
             }
         }
 
