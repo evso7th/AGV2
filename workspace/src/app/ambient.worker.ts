@@ -8,7 +8,8 @@
  */
 import type { WorkerSettings, ScoreName, Mood, Genre } from '@/types/music';
 import { FractalMusicEngine } from '@/lib/fractal-music-engine';
-import type { FractalEvent, MelodyInstrument, BassInstrument } from '@/types/fractal';
+import { SFX_GRAMMAR } from '@/lib/music-theory';
+import type { FractalEvent, MelodyInstrument, BassInstrument, BassSynthParams } from '@/types/fractal';
 
 // --- Effect Logic ---
 let lastSparkleTime = -Infinity;
@@ -31,62 +32,88 @@ function shouldAddSparkle(currentTime: number, density: number, genre: Genre): b
     return Math.random() < chance;
 }
 
-function shouldAddSfx(currentTime: number, density: number, mood: Mood): { should: boolean, phrase: FractalEvent[] } {
+
+function shouldAddSfx(currentTime: number, density: number, mood: Mood, genre: Genre): { should: boolean, phrase: FractalEvent[] } {
     const timeSinceLast = currentTime - lastSfxTime;
     const minTime = 15;
-    const maxTime = 40;
+    const maxTime = 50;
     
     if (timeSinceLast < minTime) return { should: false, phrase: [] };
-    if (density > 0.7) return { should: false, phrase: [] };
+    if (density > 0.75) return { should: false, phrase: [] };
 
-    let chance = ((timeSinceLast - minTime) / (maxTime - minTime)) * (0.9 - density);
+    let chance = ((timeSinceLast - minTime) / (maxTime - minTime)) * (0.95 - density);
 
-    if (mood === 'dark' || mood === 'anxious' || mood === 'epic') chance *= 1.5;
-    if (mood === 'calm' || mood === 'dreamy' || mood === 'contemplative') chance *= 0.5;
-
+    // Увеличиваем шанс для более "индустриальных" или "темных" стилей
+    if (mood === 'dark' || mood === 'anxious' || genre === 'rock' || genre === 'progressive') chance *= 1.6;
+    if (mood === 'calm' || mood === 'dreamy') chance *= 0.4;
+    
     if (Math.random() < chance) {
-        console.log('[SFX] Firing complex SFX event');
+        console.log(`[SFX] Firing complex SFX event for mood: ${mood}, genre: ${genre}`);
         const phrase: FractalEvent[] = [];
         const numNotes = 2 + Math.floor(Math.random() * 4); // 2 to 5 notes
         const phraseDuration = 2 + Math.random() * 4; // 2 to 6 seconds total
         let phraseTime = 0;
 
-        const oscTypes: ('sawtooth' | 'square' | 'sine')[] = ['sawtooth', 'square', 'sine'];
+        // --- Выбор "рецепта" на основе контекста ---
+        let textureChoice: keyof typeof SFX_GRAMMAR.textures = 'ambient';
+        if (mood === 'dark' || mood === 'anxious') textureChoice = 'industrial';
+        if (genre === 'trance' || genre === 'house') textureChoice = 'electronic';
+        
+        let freqChoice: keyof typeof SFX_GRAMMAR.freqRanges = 'mid';
+        const freqRoll = Math.random();
+        if (freqRoll < 0.33) freqChoice = 'low';
+        else if (freqRoll < 0.66) freqChoice = 'wide-sweep-up';
+        else freqChoice = 'wide-sweep-down';
+
+        let envelopeChoice: keyof typeof SFX_GRAMMAR.envelopes = 'swell';
+        const envRoll = Math.random();
+        if (envRoll < 0.5) envelopeChoice = 'percussive';
         
         for (let i = 0; i < numNotes; i++) {
-            const randomOsc = oscTypes[Math.floor(Math.random() * oscTypes.length)];
-            const noteDuration = (phraseDuration / numNotes) * (0.8 + Math.random() * 0.4);
+            const oscType = SFX_GRAMMAR.textures[textureChoice][Math.floor(Math.random() * SFX_GRAMMAR.textures[textureChoice].length)];
+            const envelope = SFX_GRAMMAR.envelopes[envelopeChoice];
+
+            const noteDuration = (phraseDuration / numNotes) * (0.7 + Math.random() * 0.6);
+
+            let startFreq, endFreq;
+            const freqRange = SFX_GRAMMAR.freqRanges[freqChoice];
+
+            if ('minStart' in freqRange) { // Sweep
+                 startFreq = freqRange.minStart + Math.random() * (freqRange.maxStart - freqRange.minStart);
+                 endFreq = freqRange.minEnd + Math.random() * (freqRange.maxEnd - freqRange.minEnd);
+            } else { // Static or slow-moving
+                 startFreq = freqRange.min + Math.random() * (freqRange.max - freqRange.min);
+                 endFreq = startFreq + (Math.random() * 100 - 50); // Slight drift
+            }
             
-            const startFreq = 100 + Math.random() * 800;
-            const endFreq = 100 + Math.random() * 1200;
-            
-            const params = {
+            const params: Partial<BassSynthParams> & { oscType: any, startFreq: number, endFreq: number, pan: number, chorus: boolean, lfoFreq?: number } = {
                 duration: noteDuration,
-                attack: 0.01 + Math.random() * 0.1,
-                decay: 0.1 + Math.random() * 0.3,
-                sustainLevel: 0.2 + Math.random() * 0.5,
-                release: noteDuration * 0.5 + Math.random() * 0.5,
-                oscType: randomOsc,
+                attack: envelope.attack.min + Math.random() * (envelope.attack.max - envelope.attack.min),
+                decay: envelope.decay.min + Math.random() * (envelope.decay.max - envelope.decay.min),
+                sustainLevel: envelope.sustain,
+                release: envelope.release.min + Math.random() * (envelope.release.max - envelope.release.min),
+                oscType: oscType,
                 startFreq,
                 endFreq,
-                pan: Math.random() * 2 - 1, // Full stereo pan
-                chorus: Math.random() > 0.6,
-                lfoFreq: Math.random() * 5,
+                pan: Math.random() * 2 - 1,
+                chorus: Math.random() > 0.5,
+                lfoFreq: Math.random() * 8, // For future use in sfx-processor
             };
 
             phrase.push({
                 type: 'sfx',
-                note: 60, // Placeholder, frequency is what matters
+                note: 60, // Placeholder
                 duration: noteDuration,
                 time: phraseTime,
-                weight: 0.5 + Math.random() * 0.3,
+                weight: 0.4 + Math.random() * 0.3,
                 technique: 'hit',
                 dynamics: 'f',
                 phrasing: 'legato',
-                params: params
+                params: params as any
             });
             
-            phraseTime += noteDuration * (0.3 + Math.random() * 0.5); // Overlap notes
+            // Overlap notes for a richer texture
+            phraseTime += noteDuration * (0.2 + Math.random() * 0.5);
         }
 
         return { should: true, phrase };
@@ -240,7 +267,7 @@ const Scheduler = {
         }
         
         if (this.barCount >= 2 && this.settings.textureSettings.sfx.enabled) {
-            const { should, phrase } = shouldAddSfx(currentTime, density, mood);
+            const { should, phrase } = shouldAddSfx(currentTime, density, mood, genre);
             if (should) {
                 // Send the entire phrase to be scheduled
                 scorePayload.events.push(...phrase);
@@ -309,5 +336,4 @@ self.onmessage = async (event: MessageEvent) => {
     }
 };
 
-    
     
