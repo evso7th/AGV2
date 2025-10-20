@@ -1,5 +1,4 @@
 
-
 /**
  * @file AuraGroove Music Worker (Architecture: "The Dynamic Composer")
  *
@@ -228,4 +227,6 @@ self.onmessage = async (event: MessageEvent) => {
                  break;
         }
     } catch (e) {
-        self.postMessage({ type: 'error', error: e instanceof Error ? e.
+        self.postMessage({ type: 'error', error: e instanceof Error ? e.message : String(e) });
+    }
+};
