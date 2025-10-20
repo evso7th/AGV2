@@ -517,49 +517,36 @@ export class FractalMusicEngine {
     }
     const output: FractalEvent[] = [];
     
-    // --- BASS LOGIC ---
-    if (this.config.genre === 'ambient') {
-        const planItem = this.bassPlayPlan[this.currentPlanIndex];
-        if (planItem) {
-            const phrase = this.bassPhraseLibrary[planItem.phraseIndex];
-            const phraseDurationInBars = Math.ceil(phrase.reduce((max, e) => max + e.duration, 0) / 4);
+    // --- BASS LOGIC (Universal Phrase Composer) ---
+    const planItem = this.bassPlayPlan[this.currentPlanIndex];
+    if (planItem && this.bassPhraseLibrary.length > 0) {
+        const phrase = this.bassPhraseLibrary[planItem.phraseIndex];
+        const phraseDurationInBeats = phrase.reduce((max, e) => Math.max(max, e.time + e.duration), 0);
+        const phraseDurationInBars = Math.ceil(phraseDurationInBeats / 4);
 
-            if (this.barsInCurrentPhrase < phraseDurationInBars) {
-                // If we're in the middle of a multi-bar phrase, do nothing.
-                // The events have already been scheduled.
-            } else {
-                this.currentRepetition++;
-                this.barsInCurrentPhrase = 0; // Reset for next phrase
+        if (this.barsInCurrentPhrase === 0) {
+             // This is the first bar of a new phrase/repetition
+             output.push(...phrase);
+        }
+
+        this.barsInCurrentPhrase++;
+
+        if (this.barsInCurrentPhrase >= phraseDurationInBars) {
+            this.currentRepetition++;
+            this.barsInCurrentPhrase = 0; // Reset for next phrase
+            
+            if (this.currentRepetition >= planItem.repetitions) {
+                this.currentRepetition = 0;
+                this.currentPlanIndex++;
                 
-                if (this.currentRepetition >= planItem.repetitions) {
-                    this.currentRepetition = 0;
-                    this.currentPlanIndex++;
-                    
-                    if (this.currentPlanIndex >= this.bassPlayPlan.length) {
-                        this.createBassAxiom(); // End of plan, create a new one
-                        console.log(`%c[BASS PLAN] Loop finished. Regenerating phrase library and plan.`, 'color: #FF7F50');
-                    }
+                if (this.currentPlanIndex >= this.bassPlayPlan.length) {
+                    this.createBassAxiom(); // End of plan, create a new one
+                    console.log(`%c[BASS PLAN] Loop finished. Regenerating phrase library and plan.`, 'color: #FF7F50');
                 }
-                
-                const nextPlanItem = this.bassPlayPlan[this.currentPlanIndex];
-                const nextPhrase = this.bassPhraseLibrary[nextPlanItem.phraseIndex];
-                output.push(...nextPhrase);
-                // Assume 1 bar per phrase for now, simple implementation
             }
-             this.barsInCurrentPhrase++;
-        } else {
-            this.createBassAxiom(); // Safety net
         }
     } else {
-        const bassBranches = this.branches.filter(b => b.type === 'bass');
-        if (bassBranches.length > 0) {
-            const winningBassBranch = bassBranches.reduce((max, b) => b.weight > max.weight ? b : max, bassBranches[0]);
-            output.push(...winningBassBranch.events.map(event => ({
-                ...event,
-                phrasing: winningBassBranch.weight > 0.7 ? 'legato' : 'staccato',
-                params: getParamsForTechnique(event.technique, this.config.mood, this.config.genre)
-            })));
-        }
+        this.createBassAxiom(); // Safety net
     }
 
 
@@ -667,7 +654,10 @@ export class FractalMusicEngine {
 
     this.branches = this.branches.filter(b => {
         if (b.type === 'accompaniment') return b.age < 2;
-        if (this.config.genre === 'ambient' && b.type === 'bass' && b.id.includes('axon')) return true; // Keep ambient bass axon
+        
+        // This was the old logic that caused issues. Now removed.
+        // if (this.config.genre === 'ambient' && b.type === 'bass' && b.id.includes('axon')) return true; 
+
         return b.weight > 0.05 || b.age < 8;
     });
     
@@ -693,5 +683,3 @@ export class FractalMusicEngine {
     };
   }
 }
-
-    
