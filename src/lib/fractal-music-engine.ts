@@ -121,30 +121,42 @@ function createBassAxiom(mood: Mood, genre: Genre, random: { next: () => number,
   if (genre === 'ambient') {
     const axiom: FractalEvent[] = [];
     let currentTime = 0;
-    const totalDuration = 16; // 4 bars
+    const totalBeats = 16; // 4 bars
     let lastNote = scale[random.nextInt(Math.floor(scale.length / 2))]; // Start low
+    let penultimateNote: number | null = null;
 
-    while(currentTime < totalDuration) {
+    while(currentTime < totalBeats) {
         const durationOptions = [2, 4, 6, 8]; // in beats
         const duration = durationOptions[random.nextInt(durationOptions.length)];
         
-        const isRest = random.next() < 0.3;
+        const isRest = random.next() < 0.3 && currentTime > 0;
         
         if (!isRest) {
-           const intervalChoices = [-7, -5, 5, 7]; // Fifths and Fourths
            const lastNoteIndex = scale.findIndex(n => n % 12 === lastNote % 12);
-           const interval = intervalChoices[random.nextInt(intervalChoices.length)];
-           let newNoteIndex = lastNoteIndex + interval;
-           // Keep it within a reasonable range
-           newNoteIndex = Math.max(0, Math.min(scale.length - 1, newNoteIndex));
-           const note = scale[newNoteIndex];
            
+           let nextNote;
+           let attempts = 0;
+           do {
+                const intervalChoices = [-7, -5, -3, -2, 2, 3, 5, 7]; // Fifths, Fourths, Thirds, Seconds
+                const interval = intervalChoices[random.nextInt(intervalChoices.length)];
+                let newNoteIndex = lastNoteIndex + interval;
+                
+                // Keep it within a reasonable range (approx 2 octaves for melody)
+                newNoteIndex = Math.max(0, Math.min(scale.length - 1, newNoteIndex));
+                nextNote = scale[newNoteIndex];
+                attempts++;
+           } while(
+                // Avoid more than two identical notes in a row
+                attempts < 10 && nextNote === lastNote && lastNote === penultimateNote
+           );
+
            axiom.push({
-             type: 'bass', note, duration, time: currentTime, weight: 0.8 + random.next() * 0.2,
+             type: 'bass', note: nextNote, duration, time: currentTime, weight: 0.8 + random.next() * 0.2,
              technique: 'swell', dynamics: 'mf', phrasing: 'legato',
              params: getParamsForTechnique('swell', mood, genre)
            });
-           lastNote = note;
+           penultimateNote = lastNote;
+           lastNote = nextNote;
         }
         currentTime += duration;
     }
