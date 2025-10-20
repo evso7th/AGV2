@@ -7,7 +7,7 @@ export const PERCUSSION_SETS: Record<'NEUTRAL' | 'ELECTRONIC' | 'DARK', Instrume
     DARK: ['perc-013', 'drum_snare_off', 'drum_tom_low', 'perc-007', 'perc-015']
 };
 
-export const ALL_RIDES: InstrumentType[] = ['drum_ride', 'drum_a_ride1', 'drum_a_ride2', 'drum_a_ride3', 'drum_a_ride4'];
+export const ALL_RIDES: InstrumentType[] = ['drum_a_ride1', 'drum_a_ride2', 'drum_a_ride3', 'drum_a_ride4'];
 const AMBIENT_SNARES: InstrumentType[] = ['drum_snare_ghost_note', 'drum_snarepress', 'drum_snare_off'];
 const AMBIENT_PERC: InstrumentType[] = [...PERCUSSION_SETS.ELECTRONIC, ...ALL_RIDES];
 
@@ -42,11 +42,13 @@ type GenreRhythmGrammar = {
 };
 
 type BassPatternEvent = {
+    note: number; // Scale degree (0=root, 1=second, etc.)
     time: number; // Beat
     duration: number; // In beats
     technique?: Technique;
 };
 
+type BassPattern = BassPatternEvent[];
 type BassPatternGenerator = (scale: number[], random: { next: () => number, nextInt: (max: number) => number }) => { note: number, time: number, duration: number, technique?: Technique }[];
 
 export type BassPatternDefinition = {
@@ -241,10 +243,23 @@ export const STYLE_DRUM_PATTERNS: Record<Genre, GenreRhythmGrammar> = {
     ambient: {
         loops: [
             { 
-                kick: [{ type: 'drum_kick', time: 0, duration: 4, weight: 0.5, probability: 0.25 }],
-                snare: [{ type: AMBIENT_SNARES, time: 2.5, duration: 0.5, weight: 0.3, probability: 0.15 }],
-                hihat: [{ type: AMBIENT_PERC, time: 1.5, duration: 0.5, weight: 0.4, probability: 0.4 }],
-                tags: ['ambient-pulse']
+                kick: [{ type: 'drum_kick', time: 0, duration: 4, weight: 0.5, probability: 0.1 }],
+                snare: [],
+                hihat: [
+                    { type: AMBIENT_PERC, probabilities: [0.2, 0.2, 0.2, 0.2, 0.2], time: 1.5, duration: 0.5, weight: 0.4, probability: 0.5 },
+                    { type: 'drum_closed_hi_hat_ghost', time: 2.75, duration: 0.25, weight: 0.2, probability: 0.4 }
+                ],
+                tags: ['ambient-pulse-minimal']
+            },
+            {
+                kick: [],
+                snare: [],
+                hihat: [
+                    { type: 'drum_a_ride1', time: 0.75, duration: 0.25, weight: 0.3, probability: 0.6 },
+                    { type: 'drum_tom_low', time: 2.25, duration: 0.25, weight: 0.2, probability: 0.5 },
+                    { type: 'drum_a_ride2', time: 3.5, duration: 0.25, weight: 0.35, probability: 0.6 }
+                ],
+                tags: ['ambient-intro', 'sparse']
             }
         ],
          percussion: {

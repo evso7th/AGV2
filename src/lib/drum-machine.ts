@@ -150,19 +150,10 @@ export class DrumMachine {
             let velocity = event.weight;
             if (eventType.startsWith('perc-')) {
                 velocity *= 0.5; // Уменьшаем громкость перкуссии вдвое
-            } else if (eventType.startsWith('drum_a_ride')) {
+            } else if ((eventType as string).includes('ride')) {
                 velocity *= 0.7; // Уменьшаем громкость райдов
             }
             
-            const isMainBeat = ['kick', 'snare', 'hihat_closed', 'hihat_open'].some(t => sampleName.includes(t));
-            const logCategory = isMainBeat ? 'Main Beat' : 'Perc/Fill';
-            const color = isMainBeat ? 'color: cyan;' : 'color: orange;';
-
-            // console.log(
-            //     `%c[DrumMachine] Sched: ${logCategory.padEnd(10)} | Sample: ${sampleName.padEnd(25)} | Time: ${absoluteTime.toFixed(3)} | Vel: ${velocity.toFixed(2)}`,
-            //     color
-            // );
-
             this.sampler.triggerAttack(sampleName, absoluteTime, velocity);
         }
     }
