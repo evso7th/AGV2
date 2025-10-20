@@ -566,6 +566,33 @@ export class FractalMusicEngine {
     return null;
   }
 
+  private applyNaturalDecay(events: FractalEvent[], barDuration: number): FractalEvent[] {
+    const bassEvents = events.filter(isBass).sort((a, b) => a.time - b.time);
+    if (bassEvents.length === 0) return events;
+
+    const beatDuration = 60 / this.config.tempo;
+
+    for (let i = 0; i < bassEvents.length; i++) {
+        const currentNote = bassEvents[i];
+        const nextNote = bassEvents[i + 1];
+
+        const isLongNote = currentNote.duration >= 2.0; // duration in beats
+        const isFollowedByPause = !nextNote || (nextNote.time > currentNote.time + currentNote.duration);
+        
+        if (isLongNote && isFollowedByPause) {
+            if (!currentNote.params) {
+                currentNote.params = getParamsForTechnique(currentNote.technique, this.config.mood, this.config.genre);
+            }
+            // Set release to be a significant portion of the note's duration
+            const newReleaseTime = (currentNote.duration * beatDuration) * 0.75;
+            currentNote.params.release = Math.max(0.5, Math.min(2.5, newReleaseTime)); // Cap release time
+            console.log(`%c[Natural Decay] Applied long release (${currentNote.params.release.toFixed(2)}s) to bass note at time ${currentNote.time.toFixed(2)}`, 'color: #90EE90');
+        }
+    }
+
+    return events;
+  }
+
   private generateOneBar(delta: number): { events: FractalEvent[]; instrumentHints: { accompaniment?: MelodyInstrument, bass?: BassInstrument } } {
     if (this.needsBassReset) {
         console.log("%c[RESET] Bass branch reset triggered.", "color: red; font-weight: bold;");
@@ -733,7 +760,11 @@ export class FractalMusicEngine {
 
     this.branches = this.branches.filter(b => b.id.includes('axon') || b.weight > 0.05 || b.age < 8);
     
-    const { events, instrumentHints } = this.generateOneBar(delta);
+    let { events, instrumentHints } = this.generateOneBar(delta);
+    
+    // Apply natural decay after generating the bar's events
+    events = this.applyNaturalDecay(events, barDuration);
+
 
     this.time += barDuration;
     this.epoch++;
@@ -766,3 +797,5 @@ export class FractalMusicEngine {
     };
   }
 }
+
+    
