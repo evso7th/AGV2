@@ -8,8 +8,8 @@
  * It is completely passive and only composes the next bar when commanded via a 'tick'.
  */
 import type { WorkerSettings, ScoreName, Mood, Genre } from '@/types/music';
-import { FractalMusicEngine } from '@/lib/fractal-music-engine';
-import type { FractalEvent, BassInstrument, MelodyInstrument } from '@/types/fractal';
+import { FractalMusicEngine } from './fractal-music-engine';
+import type { FractalEvent, MelodyInstrument, BassInstrument } from '@/types/fractal';
 
 // --- "Sparkle" (In-krap-le-ni-ye) Logic ---
 let lastSparkleTime = -Infinity;
@@ -232,4 +232,3 @@ self.onmessage = async (event: MessageEvent) => {
         self.postMessage({ type: 'error', error: e instanceof Error ? e.message : String(e) });
     }
 };
-

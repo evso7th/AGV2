@@ -104,6 +104,16 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
   
   const { toast } = useToast();
 
+  const setInstrumentCallback = useCallback((part: 'bass' | 'melody' | 'accompaniment', name: BassInstrument | MelodyInstrument | AccompanimentInstrument) => {
+    if (!isInitialized) return;
+    if (part === 'accompaniment' && accompanimentManagerRef.current) {
+      accompanimentManagerRef.current.setPreset(name);
+    } else if (part === 'bass' && bassManagerRef.current) {
+        bassManagerRef.current.setPreset(name);
+    }
+    // TODO: Implement for melody part if it becomes independent
+  }, [isInitialized]);
+
   const scheduleEvents = useCallback((events: FractalEvent[], barStartTime: number, tempo: number) => {
     if (!Array.isArray(events)) {
         console.error('[AudioEngine] scheduleEvents received non-array "events":', events);
@@ -138,16 +148,6 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
         accompanimentManagerRef.current.schedule(accompanimentEvents, barStartTime, tempo);
     }
   }, []);
-
-  const setInstrumentCallback = useCallback((part: 'bass' | 'melody' | 'accompaniment', name: BassInstrument | MelodyInstrument | AccompanimentInstrument) => {
-    if (!isInitialized) return;
-    if (part === 'accompaniment' && accompanimentManagerRef.current) {
-      accompanimentManagerRef.current.setPreset(name);
-    } else if (part === 'bass' && bassManagerRef.current) {
-        bassManagerRef.current.setPreset(name);
-    }
-    // TODO: Implement for melody part if it becomes independent
-  }, [isInitialized]);
 
   const setBassTechniqueCallback = useCallback((technique: BassTechnique) => {
     if (bassManagerRef.current) {
