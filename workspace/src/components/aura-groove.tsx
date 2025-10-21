@@ -30,7 +30,7 @@ export type AuraGrooveProps = {
   handleBassTechniqueChange: (technique: BassTechnique) => void;
   handleVolumeChange: (part: InstrumentPart, value: number) => void;
   textureSettings: Omit<TextureSettings, 'pads'>;
-  handleTextureEnabledChange: (part: 'sparkles', enabled: boolean) => void;
+  handleTextureEnabledChange: (part: 'sparkles' | 'sfx', enabled: boolean) => void;
   bpm: number;
   handleBpmChange: (value: number) => void;
   score: ScoreName;
