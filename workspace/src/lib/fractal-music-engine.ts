@@ -573,13 +573,14 @@ export class FractalMusicEngine {
 
     // --- RHYTHMIC HARMONY (Piano/Guitar) LOGIC ---
     if (this.epoch >= this.nextHarmonyEventEpoch) {
-        console.log(`%c[HARMONY EVENT] at epoch ${this.epoch}: Triggering rhythmic harmony layer.`, "color: green;");
+        console.log(`%c[HARMONY EVENT] at epoch ${this.epoch}: Triggering rhythmic harmony layer.`, "color: green; font-weight: bold;");
         const bassNote = output.find(isBass)?.note ?? this.bassPhraseLibrary[0]?.[0]?.note ?? getScaleForMood(this.config.mood)[0];
         const harmonyPhrase = createAccompanimentAxiom(this.config.mood, this.config.genre, this.random, bassNote, this.config.tempo);
         
         // Change type to 'harmony'
         harmonyPhrase.forEach(e => e.type = 'harmony');
         output.push(...harmonyPhrase);
+        console.log(`%c  -> Generated ${harmonyPhrase.length} harmony events.`, "color: green;");
         
         const rhythmicInstruments: ('piano' | 'guitarChords')[] = ['piano', 'guitarChords'];
         instrumentHints.harmony = rhythmicInstruments[this.random.nextInt(rhythmicInstruments.length)];
@@ -666,5 +667,3 @@ export class FractalMusicEngine {
     };
   }
 }
-
-    

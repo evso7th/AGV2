@@ -54,7 +54,7 @@ export class HarmonySynthManager {
             velocity: event.weight,
         }));
 
-        console.log(`[HarmonyManager] Scheduling ${notes.length} notes for instrument: ${this.activeInstrumentName}`);
+        console.log(`%c[HarmonyManager] Scheduling ${notes.length} notes for instrument: ${this.activeInstrumentName}`, "color: green;");
 
         switch (this.activeInstrumentName) {
             case 'piano':
@@ -73,8 +73,6 @@ export class HarmonySynthManager {
         }
         console.log(`[HarmonyManager] Setting active instrument to: ${instrumentName}`);
         this.activeInstrumentName = instrumentName;
-        
-        // No volume adjustment needed here as the composer will decide when to play it
     }
 
     public allNotesOff() {
