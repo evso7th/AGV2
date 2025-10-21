@@ -240,6 +240,49 @@ function createBassFill(this: FractalMusicEngine, mood: Mood, genre: Genre, rand
     return fill;
 }
 
+export function createAccompanimentAxiom(mood: Mood, genre: Genre, random: { next: () => number; nextInt: (max: number) => number }, bassNote: number, tempo: number = 120): FractalEvent[] {
+    const scale = getScaleForMood(mood);
+    const swellParams = { cutoff: 300, resonance: 0.8, distortion: 0.02, portamento: 0.0, attack: 1.5, release: 2.5 };
+    const axiom: FractalEvent[] = [];
+    
+    const tempoFactor = 120 / tempo;
+    const numNotes = Math.max(2, Math.floor((2 + random.nextInt(2)) * tempoFactor));
+    const totalDuration = 4.0; 
+    let currentTime = 0;
+
+    const rootMidi = bassNote;
+    const rootDegree = rootMidi % 12;
+
+    const findNoteInScale = (degree: number) => scale.find(n => (n % 12) === (degree + 12) % 12);
+    
+    const thirdDegree = findNoteInScale(rootDegree + (mood === 'melancholic' || mood === 'dark' ? 3 : 4));
+    const fifthDegree = findNoteInScale(rootDegree + 7);
+
+    const chord = [rootMidi + 12, thirdDegree ? thirdDegree + 12 : null, fifthDegree ? fifthDegree + 12 : null].filter(n => n !== null) as number[];
+
+    if (chord.length < 2) return []; 
+
+    for (let i = 0; i < numNotes; i++) {
+        const noteMidi = chord[random.nextInt(chord.length)];
+        const duration = (totalDuration / numNotes) * (0.8 + random.next() * 0.4);
+        axiom.push({
+            type: 'accompaniment',
+            note: noteMidi,
+            duration: duration,
+            time: currentTime,
+            weight: 0.8 + random.next() * 0.2,
+            technique: 'swell',
+            dynamics: 'p',
+            phrasing: 'legato',
+            params: swellParams
+        });
+        currentTime += duration / (1.5 * tempoFactor); // More overlap at slower tempos
+    }
+
+    return axiom;
+}
+
+
 type PlayPlanItem = {
     phraseIndex: number;
     repetitions: number;
@@ -251,7 +294,6 @@ export class FractalMusicEngine {
   public config: EngineConfig;
   private branches: Branch[] = [];
   private time: number = 0;
-  private lambda: number;
   private epoch = 0;
   private random: { next: () => number; nextInt: (max: number) => number };
   private nextWeatherEventEpoch: number;
@@ -277,7 +319,6 @@ export class FractalMusicEngine {
 
   constructor(config: EngineConfig) {
     this.config = { ...config };
-    this.lambda = config.lambda ?? 0.5;
     this.random = seededRandom(config.seed ?? Date.now());
     this.nextWeatherEventEpoch = 0;
     this.initialize();
@@ -286,8 +327,11 @@ export class FractalMusicEngine {
   public get tempo(): number { return this.config.tempo; }
   
   public updateConfig(newConfig: Partial<EngineConfig>) {
+      const moodOrGenreChanged = newConfig.mood !== this.config.mood || newConfig.genre !== this.config.genre;
       this.config = { ...this.config, ...newConfig };
-      if (newConfig.lambda) this.lambda = newConfig.lambda;
+      if(moodOrGenreChanged) {
+          this.initialize();
+      }
   }
 
   private initialize() {
@@ -546,9 +590,15 @@ export class FractalMusicEngine {
         const phraseDurationInBars = Math.ceil(phraseDurationInBeats / 4);
 
         if (this.barsInCurrentAccompPhrase === 0) {
-             const textureInstruments: AccompanimentInstrument[] = ['violin', 'flute', 'organ', 'mellotron', 'synth', 'theremin'];
-             instrumentHints.accompaniment = textureInstruments[this.random.nextInt(textureInstruments.length)];
-             output.push(...phrase);
+            const ALL_ACCOMP_INSTRUMENTS: AccompanimentInstrument[] = ['piano', 'violin', 'flute', 'organ', 'mellotron', 'synth', 'theremin', 'guitarChords', 'acousticGuitarSolo'];
+            const AMBIENT_ACCOMP_INSTRUMENTS: AccompanimentInstrument[] = ['violin', 'flute', 'organ', 'mellotron', 'synth', 'theremin'];
+            
+            const availableInstruments = this.config.genre === 'ambient' ? AMBIENT_ACCOMP_INSTRUMENTS : ALL_ACCOMP_INSTRUMENTS;
+
+            instrumentHints.accompaniment = availableInstruments[this.random.nextInt(availableInstruments.length)];
+            console.log(`[AccompHint] Genre: ${this.config.genre}, Instrument Hint: ${instrumentHints.accompaniment}`);
+
+            output.push(...phrase);
         }
 
         this.barsInCurrentAccompPhrase++;
@@ -578,6 +628,7 @@ export class FractalMusicEngine {
         
         const rhythmicInstruments: ('piano' | 'guitarChords')[] = ['piano', 'guitarChords'];
         instrumentHints.harmony = rhythmicInstruments[this.random.nextInt(rhythmicInstruments.length)];
+        console.log(`[HarmonyHint] Instrument Hint: ${instrumentHints.harmony}`);
         
         this.nextHarmonyEventEpoch = this.epoch + 8 + this.random.nextInt(9); // 8-16 bars
     }
@@ -614,29 +665,18 @@ export class FractalMusicEngine {
         this.generateExternalImpulse();
         this.nextWeatherEventEpoch += this.random.nextInt(12) + 8;
     }
-
-    const delta = this.getDeltaProfile()(this.time);
+    
     if (!isFinite(barDuration)) return { events: [], instrumentHints: {} };
 
-    // Update weights of drum branches
+    // Evolve drum branches
     this.branches.filter(b => b.type === 'drums').forEach(branch => {
-      const ageBonus = branch.age === 0 ? 1.5 : 1.0; 
-      const resonanceSum = 0; // Simplified for now
-      let newWeight = ((1 - this.lambda) * branch.weight + resonanceSum) * ageBonus;
-      branch.weight = isFinite(newWeight) ? Math.max(0, newWeight) : 0.01;
+      branch.weight *= this.config.lambda; // Decay
       branch.age++;
     });
 
-    // Normalize weights and prune branches for drums
-    const drumBranches = this.branches.filter(b => b.type === 'drums');
-    const totalDrumWeight = drumBranches.reduce((sum, b) => sum + b.weight, 0);
-    if (totalDrumWeight > 0) {
-        drumBranches.forEach(b => b.weight /= totalDrumWeight);
-    }
-
     this.branches = this.branches.filter(b => {
-        if (b.type !== 'drums') return true; // Keep non-drum branches for now
-        return b.weight > 0.01 || b.age < 8; // Pruning condition for drums
+        if (b.type !== 'drums') return true;
+        return b.weight > 0.01 && b.age < 16;
     });
     
     const { events, instrumentHints } = this.generateOneBar(barDuration);
@@ -644,20 +684,6 @@ export class FractalMusicEngine {
     this.time += barDuration;
     return { events, instrumentHints };
   }
-
-  private getDeltaProfile(): (t: number) => number {
-    return (t: number) => {
-        const safeT = safeTime(t);
-        const phase = (safeT / 120) % 1;
-        if (this.config.mood === 'melancholic' || this.config.mood === 'dreamy' || this.config.mood === 'dark') {
-          if (phase < 0.4) return 0.3 + phase * 1.5;
-          if (phase < 0.7) return 1.0;
-          return 1.0 - (phase - 0.7) * 2.3;
-        } else { // epic
-          if (phase < 0.3) return 0.5 + phase * 1.6;
-          if (phase < 0.6) return 1.0;
-          return 1.0 - (phase - 0.6) * 1.6;
-        }
-    };
-  }
 }
+
+    

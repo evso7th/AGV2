@@ -307,13 +307,13 @@ export function AuraGroove({
                         </Select>
                     </div>
 
-                    {part === 'bass' && 'technique' in settings && settings.name !== 'none' && (
+                    {part === 'bass' && 'technique' in settings && (settings.name as BassInstrument | 'none') !== 'none' && (
                         <div className="flex justify-between items-center">
                             <Label htmlFor="bass-technique" className="font-semibold flex items-center gap-2 capitalize">Technique</Label>
                             <Select
                                 value={settings.technique}
                                 onValueChange={(v) => handleBassTechniqueChange(v as BassTechnique)}
-                                disabled={isInitializing || isPlaying || settings.name === 'none'}
+                                disabled={isInitializing || isPlaying || (settings.name as BassInstrument | 'none') === 'none'}
                             >
                                 <SelectTrigger id="bass-technique" className="w-[150px]">
                                     <SelectValue placeholder="Select technique" />
@@ -340,7 +340,7 @@ export function AuraGroove({
                             max={1} 
                             step={0.05} 
                             onValueChange={(v) => handleVolumeChange(part as InstrumentPart, v[0])} 
-                            disabled={isInitializing || settings.name === 'none'}
+                            disabled={isInitializing || (settings.name as BassInstrument | 'none') === 'none'}
                             style={{ '--slider-color': getPartColor(part as keyof InstrumentSettings) } as React.CSSProperties}
                             className="[&>span>span]:bg-[var(--slider-color)]"
                          />
