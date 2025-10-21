@@ -36,6 +36,7 @@ export type Score = {
         bass?: BassInstrument;
         melody?: MelodyInstrument;
         accompaniment?: AccompanimentInstrument;
+        harmony?: AccompanimentInstrument; // Added for the new harmony layer
         bassTechnique?: BassTechnique; // Added for NFM to control bass style
     }
 };
@@ -88,7 +89,7 @@ export type DrumAndPercussionInstrument =
 
 export type InstrumentType = BassInstrument | MelodyInstrument | AccompanimentInstrument | EffectInstrument | DrumAndPercussionInstrument | 'portamento' | 'autopilot_bass' | 'none';
 
-export type InstrumentPart = 'bass' | 'melody' | 'accompaniment' | 'drums' | 'effects' | 'sparkles' | 'piano' | 'violin' | 'flute' | 'guitarChords' | 'acousticGuitarSolo' | 'electricGuitar' | 'sfx';
+export type InstrumentPart = 'bass' | 'melody' | 'accompaniment' | 'harmony' | 'drums' | 'effects' | 'sparkles' | 'piano' | 'violin' | 'flute' | 'guitarChords' | 'acousticGuitarSolo' | 'electricGuitar' | 'sfx';
 export type BassTechnique = 'arpeggio' | 'portamento' | 'glissando' | 'glide' | 'pulse';
 export type Technique = BassTechnique | 'pluck' | 'pick' | 'harm' | 'slide' | 'hit' | 'ghost' | 'swell' | 'fill';
 
@@ -105,6 +106,10 @@ export type InstrumentSettings = {
   };
   accompaniment: {
       name: AccompanimentInstrument;
+      volume: number; // 0-1
+  };
+  harmony: {
+      name: 'piano' | 'guitarChords' | 'none';
       volume: number; // 0-1
   };
 };

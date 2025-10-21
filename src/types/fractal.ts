@@ -59,17 +59,19 @@ export type InstrumentType =
   | 'drum_snare_ghost_note'
   | 'drum_snare_off'
   | 'drum_snarepress'
-  | 'drum_hihat_closed'
-  | 'drum_hihat_open'
-  | 'drum_ride'
-  | 'drum_crash'
   | 'drum_tom_low'
   | 'drum_tom_mid'
   | 'drum_tom_high'
+  | 'drum_ride'
   | 'drum_a_ride1'
   | 'drum_a_ride2'
   | 'drum_a_ride3'
   | 'drum_a_ride4'
+  | 'drum_closed_hi_hat_ghost'
+  | 'drum_hihat_open'
+  | 'drum_hihat_closed'
+  | 'cymbal_bell1'
+  | 'hh_bark_short'
   | 'perc-001'
   | 'perc-002'
   | 'perc-003'
@@ -85,10 +87,9 @@ export type InstrumentType =
   | 'perc-013'
   | 'perc-014'
   | 'perc-015'
-  | 'hh_bark_short'
-  | 'cymbal_bell1'
   // Гармонические инструменты
   | 'accompaniment'
+  | 'harmony'
   // Мелодические инструменты
   | 'melody'
   // Спецэффекты
@@ -137,7 +138,7 @@ export interface FractalEvent {
   /**
    * Тип инструмента — определяет, кто играет
    */
-  type: InstrumentType;
+  type: InstrumentType | InstrumentType[];
 
   /**
    * Нота в MIDI (например, 40 = E2)

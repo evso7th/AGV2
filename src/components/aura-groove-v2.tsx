@@ -3,7 +3,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { SlidersHorizontal, Music, Pause, Speaker, FileMusic, Drum, GitBranch, Atom, Piano, Home, X, Sparkles, Sprout, LayoutGrid, LayoutList, Waves, Timer, Guitar, RefreshCw, Bot } from "lucide-react";
+import { SlidersHorizontal, Music, Pause, Speaker, FileMusic, Drum, GitBranch, Atom, Piano, Home, X, Sparkles, Sprout, LayoutGrid, Timer, Guitar, RefreshCw, Bot } from "lucide-react";
 import Image from "next/image";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -41,7 +41,8 @@ export function AuraGrooveV2({
   }, []);
 
   const melodyInstrumentList: (MelodyInstrument | 'none')[] = ['piano', 'violin', 'flute', 'synth', 'organ', 'mellotron', 'theremin', 'E-Bells_melody', 'G-Drops', 'acousticGuitarSolo', 'electricGuitar', 'none'];
-  const accompanimentInstrumentList: (AccompanimentInstrument | 'none')[] = ['piano', 'violin', 'flute', 'guitarChords', 'synth', 'organ', 'mellotron', 'theremin', 'E-Bells_melody', 'G-Drops', 'electricGuitar', 'none'];
+  const textureInstrumentList: (AccompanimentInstrument | 'none')[] = ['violin', 'flute', 'synth', 'organ', 'mellotron', 'theremin', 'none'];
+  const harmonyInstrumentList: ('piano' | 'guitarChords' | 'none')[] = ['piano', 'guitarChords', 'none'];
   const bassInstrumentList: (BassInstrument | 'none')[] = ['classicBass', 'glideBass', 'ambientDrone', 'resonantGliss', 'hypnoticDrone', 'livingRiff', 'none'];
   const moodList: Mood[] = ['epic', 'joyful', 'enthusiastic', 'melancholic', 'dark', 'anxious', 'dreamy', 'contemplative', 'calm'];
   const genreList: Genre[] = ['trance', 'ambient', 'progressive', 'rock', 'house', 'rnb', 'ballad', 'reggae', 'blues', 'celtic'];
@@ -207,7 +208,16 @@ export function AuraGrooveV2({
                   <CardContent className="space-y-1.5 p-3 pt-0">
                       {(Object.keys(instrumentSettings) as Array<keyof typeof instrumentSettings>).map((part) => {
                           const settings = instrumentSettings[part];
-                          const list = part === 'bass' ? bassInstrumentList : (part === 'accompaniment' ? accompanimentInstrumentList : melodyInstrumentList);
+                          let instrumentList: (string | 'none')[] = [];
+                          if (part === 'bass') {
+                              instrumentList = bassInstrumentList;
+                          } else if (part === 'melody') {
+                              instrumentList = melodyInstrumentList;
+                          } else if (part === 'accompaniment') {
+                              instrumentList = textureInstrumentList;
+                          } else if (part === 'harmony') {
+                              instrumentList = harmonyInstrumentList;
+                          }
                           const isDisabled = isInitializing || isPlaying || composerControl;
 
                           return (
@@ -217,7 +227,7 @@ export function AuraGrooveV2({
                                     <Select value={settings.name} onValueChange={(v) => setInstrumentSettings(part as any, v as any)} disabled={isDisabled}>
                                         <SelectTrigger className="h-8 text-xs"><SelectValue /></SelectTrigger>
                                         <SelectContent>
-                                            {list.map(inst => (
+                                            {instrumentList.map(inst => (
                                               <SelectItem key={inst} value={inst} className="text-xs">{displayNames[inst] || inst.charAt(0).toUpperCase() + inst.slice(1).replace(/([A-Z])/g, ' $1')}</SelectItem>
                                             ))}
                                         </SelectContent>

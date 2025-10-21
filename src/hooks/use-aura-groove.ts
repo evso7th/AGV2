@@ -36,6 +36,7 @@ export const useAuraGroove = () => {
     bass: { name: "glideBass", volume: 0.7, technique: 'portamento' },
     melody: { name: "acousticGuitarSolo", volume: 0.8 },
     accompaniment: { name: "guitarChords", volume: 0.7 },
+    harmony: { name: "piano", volume: 0.6 },
   });
   const [textureSettings, setTextureSettings] = useState<Omit<TextureSettings, 'pads'>>({
       sparkles: { enabled: true, volume: 0.7 },
@@ -100,6 +101,7 @@ export const useAuraGroove = () => {
         setInstrument('bass', instrumentSettings.bass.name);
         setInstrument('melody', instrumentSettings.melody.name);
         setInstrument('accompaniment', instrumentSettings.accompaniment.name);
+        setInstrument('harmony', instrumentSettings.harmony.name);
         
         setBassTechnique(instrumentSettings.bass.technique);
     }
@@ -160,12 +162,12 @@ export const useAuraGroove = () => {
     resetWorker();
   }, [isPlaying, setEngineIsPlaying, resetWorker]);
 
-  const handleInstrumentChange = (part: keyof InstrumentSettings, name: BassInstrument | MelodyInstrument | AccompanimentInstrument) => {
+  const handleInstrumentChange = (part: keyof InstrumentSettings, name: BassInstrument | MelodyInstrument | AccompanimentInstrument | 'piano' | 'guitarChords') => {
     setInstrumentSettings(prev => ({
       ...prev,
       [part]: { ...prev[part as keyof typeof prev], name }
     }));
-    setInstrument(part as 'bass' | 'melody' | 'accompaniment', name);
+    setInstrument(part as any, name as any);
   };
   
   const handleBassTechniqueChange = (technique: BassTechnique) => {
@@ -177,7 +179,7 @@ export const useAuraGroove = () => {
   };
 
   const handleVolumeChange = (part: InstrumentPart, value: number) => {
-    if (part === 'bass' || part === 'melody' || part === 'accompaniment' || part === 'piano' || part === 'violin' || part === 'flute' || part === 'guitarChords' || part === 'acousticGuitarSolo') {
+    if (part === 'bass' || part === 'melody' || part === 'accompaniment' || part === 'harmony' || part === 'piano' || part === 'violin' || part === 'flute' || part === 'guitarChords' || part === 'acousticGuitarSolo') {
       setInstrumentSettings(prev => ({ ...prev, [part]: { ...prev[part as keyof typeof prev], volume: value }}));
       setVolume(part, value);
     } else if (part === 'drums') {
