@@ -73,8 +73,6 @@ export class HarmonySynthManager {
         }
         console.log(`[HarmonyManager] Setting active instrument to: ${instrumentName}`);
         this.activeInstrumentName = instrumentName;
-        
-        // No volume adjustment needed here as the composer will decide when to play it
     }
 
     public allNotesOff() {

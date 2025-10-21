@@ -98,8 +98,8 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
   const sfxSynthManagerRef = useRef<SfxSynthManager | null>(null);
   
   const masterGainNodeRef = useRef<GainNode | null>(null);
-  const gainNodesRef = useRef<Record<Exclude<InstrumentPart, 'pads'>, GainNode | null>>({
-    bass: null, melody: null, accompaniment: null, effects: null, drums: null, sparkles: null, piano: null, violin: null, flute: null, guitarChords: null, acousticGuitarSolo: null, sfx: null, harmony: null,
+  const gainNodesRef = useRef<Record<Exclude<InstrumentPart, 'pads' | 'melody' | 'effects'>, GainNode | null>>({
+    bass: null, accompaniment: null, drums: null, sparkles: null, piano: null, violin: null, flute: null, guitarChords: null, acousticGuitarSolo: null, sfx: null, harmony: null,
   });
 
   const eqNodesRef = useRef<BiquadFilterNode[]>([]);
@@ -202,7 +202,7 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
         }
 
         if (!gainNodesRef.current.bass) {
-            const parts: Exclude<InstrumentPart, 'pads'>[] = ['bass', 'melody', 'accompaniment', 'effects', 'drums', 'sparkles', 'piano', 'violin', 'flute', 'guitarChords', 'acousticGuitarSolo', 'sfx', 'harmony'];
+            const parts: Exclude<InstrumentPart, 'pads' | 'melody' | 'effects'>[] = ['bass', 'accompaniment', 'drums', 'sparkles', 'piano', 'violin', 'flute', 'guitarChords', 'acousticGuitarSolo', 'sfx', 'harmony'];
             parts.forEach(part => {
                 gainNodesRef.current[part] = context.createGain();
                 gainNodesRef.current[part]!.connect(masterGainNodeRef.current!);
@@ -345,7 +345,7 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
 
   const setVolumeCallback = useCallback((part: InstrumentPart, volume: number) => {
     if (part === 'pads') return;
-    const gainNode = gainNodesRef.current[part as Exclude<InstrumentPart, 'pads'>];
+    const gainNode = gainNodesRef.current[part as Exclude<InstrumentPart, 'pads' | 'melody' | 'effects'>];
     if (gainNode && audioContextRef.current) {
         const balancedVolume = volume * (VOICE_BALANCE[part] ?? 1);
         gainNode.gain.setTargetAtTime(balancedVolume, audioContextRef.current.currentTime, 0.01);
