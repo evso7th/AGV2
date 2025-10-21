@@ -253,17 +253,31 @@ export function createAccompanimentAxiom(mood: Mood, genre: Genre, random: { nex
     const rootMidi = bassNote;
     const rootDegree = rootMidi % 12;
 
-    const findNoteInScale = (degree: number) => scale.find(n => (n % 12) === (degree + 12) % 12);
+    const getScaleDegree = (degree: number): number | null => {
+        const fullScaleDegree = (rootDegree + degree + 12) % 12;
+        const matchingNote = scale.find(n => (n % 12) === fullScaleDegree);
+        return matchingNote !== undefined ? (matchingNote % 12) : null;
+    };
     
-    const thirdDegree = findNoteInScale(rootDegree + (mood === 'melancholic' || mood === 'dark' ? 3 : 4));
-    const fifthDegree = findNoteInScale(rootDegree + 7);
+    const thirdDegree = getScaleDegree(mood === 'melancholic' || mood === 'dark' ? 3 : 4);
+    const fifthDegree = getScaleDegree(7);
 
-    const chord = [rootMidi + 12, thirdDegree ? thirdDegree + 12 : null, fifthDegree ? fifthDegree + 12 : null].filter(n => n !== null) as number[];
+    const chordDegrees = [rootDegree, thirdDegree, fifthDegree].filter(d => d !== null) as number[];
 
-    if (chord.length < 2) return []; 
+    if (chordDegrees.length < 2) return []; 
+
+    const selectOctave = (): number => {
+        const rand = random.next();
+        if (rand < 0.70) return 4; // 70% chance for 4th octave
+        if (rand < 0.95) return 3; // 25% chance for 3rd octave
+        return 5; // 5% chance for 5th octave
+    };
 
     for (let i = 0; i < numNotes; i++) {
-        const noteMidi = chord[random.nextInt(chord.length)];
+        const degree = chordDegrees[random.nextInt(chordDegrees.length)];
+        const octave = selectOctave();
+        const noteMidi = 12 * (octave + 1) + degree;
+
         const duration = (totalDuration / numNotes) * (0.8 + random.next() * 0.4);
         axiom.push({
             type: 'accompaniment',
@@ -539,44 +553,44 @@ export class FractalMusicEngine {
     if (this.sfxFillForThisEpoch) {
         output.push(...this.sfxFillForThisEpoch.drum, ...this.sfxFillForThisEpoch.bass, ...this.sfxFillForThisEpoch.accompaniment);
         this.sfxFillForThisEpoch = null; // Consume the one-off fill
-    } else {
-        // --- BASS LOGIC (Universal Phrase Composer) ---
-        const bassPlanItem = this.bassPlayPlan[this.currentBassPlanIndex];
-        if (bassPlanItem && this.bassPhraseLibrary.length > 0) {
-            const phrase = this.bassPhraseLibrary[bassPlanItem.phraseIndex];
-            const phraseDurationInBeats = phrase.reduce((max, e) => Math.max(max, e.time + e.duration), 0);
-            const phraseDurationInBars = Math.ceil(phraseDurationInBeats / 4);
+    }
+    
+    // --- BASS LOGIC (Universal Phrase Composer) ---
+    const bassPlanItem = this.bassPlayPlan[this.currentBassPlanIndex];
+    if (bassPlanItem && this.bassPhraseLibrary.length > 0) {
+        const phrase = this.bassPhraseLibrary[bassPlanItem.phraseIndex];
+        const phraseDurationInBeats = phrase.reduce((max, e) => Math.max(max, e.time + e.duration), 0);
+        const phraseDurationInBars = Math.ceil(phraseDurationInBeats / 4);
 
-            if (this.barsInCurrentBassPhrase === 0) {
-                output.push(...phrase);
-            }
+        if (this.barsInCurrentBassPhrase === 0) {
+            output.push(...phrase);
+        }
 
-            this.barsInCurrentBassPhrase++;
+        this.barsInCurrentBassPhrase++;
 
-            if (this.barsInCurrentBassPhrase >= phraseDurationInBars) {
-                this.currentBassRepetition++;
-                this.barsInCurrentBassPhrase = 0; 
+        if (this.barsInCurrentBassPhrase >= phraseDurationInBars) {
+            this.currentBassRepetition++;
+            this.barsInCurrentBassPhrase = 0; 
+            
+            if (this.currentBassRepetition >= bassPlanItem.repetitions) {
+                this.currentBassRepetition = 0;
+                this.currentBassPlanIndex++;
                 
-                if (this.currentBassRepetition >= bassPlanItem.repetitions) {
-                    this.currentBassRepetition = 0;
-                    this.currentBassPlanIndex++;
-                    
-                    if (this.currentBassPlanIndex >= this.bassPlayPlan.length) {
-                        this.createBassAxiomAndPlan(); 
-                        console.log(`%c[BASS PLAN] Loop finished. Regenerating phrase library and plan.`, 'color: #FF7F50');
-                    }
+                if (this.currentBassPlanIndex >= this.bassPlayPlan.length) {
+                    this.createBassAxiomAndPlan(); 
+                    console.log(`%c[BASS PLAN] Loop finished. Regenerating phrase library and plan.`, 'color: #FF7F50');
                 }
             }
-        } else {
-            this.createBassAxiomAndPlan();
         }
+    } else {
+        this.createBassAxiomAndPlan();
+    }
 
-        // --- DRUMS LOGIC ---
-        const drumBranches = this.branches.filter(b => b.type === 'drums');
-        if (drumBranches.length > 0) {
-            const winningDrumBranch = drumBranches.reduce((max, b) => b.weight > max.weight ? b : max, drumBranches[0]);
-            output.push(...winningDrumBranch.events.map(event => ({ ...event, weight: event.weight ?? 1.0 })));
-        }
+    // --- DRUMS LOGIC ---
+    const drumBranches = this.branches.filter(b => b.type === 'drums');
+    if (drumBranches.length > 0) {
+        const winningDrumBranch = drumBranches.reduce((max, b) => b.weight > max.weight ? b : max, drumBranches[0]);
+        output.push(...winningDrumBranch.events.map(event => ({ ...event, weight: event.weight ?? 1.0 })));
     }
     
     // --- TEXTURAL ACCOMPANIMENT LOGIC ---
