@@ -34,6 +34,7 @@ type WorkerMessage = {
         instrumentHints?: {
           accompaniment?: MelodyInstrument,
           bass?: BassInstrument,
+          harmony?: 'piano' | 'guitarChords';
         };
     };
     error?: string;
@@ -112,7 +113,7 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
   const setInstrumentCallback = useCallback((part: 'bass' | 'melody' | 'accompaniment' | 'harmony', name: BassInstrument | MelodyInstrument | AccompanimentInstrument) => {
     if (!isInitialized) return;
     if (part === 'accompaniment' && accompanimentManagerRef.current) {
-      accompanimentManagerRef.current.setPreset(name as AccompanimentInstrument);
+      accompanimentManagerRef.current.setInstrument(name as AccompanimentInstrument);
     } else if (part === 'bass' && bassManagerRef.current) {
         bassManagerRef.current.setPreset(name as BassInstrument);
     } else if (part === 'harmony' && harmonyManagerRef.current) {
@@ -251,12 +252,16 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
                     const { events, barDuration, instrumentHints } = payload;
                     
                     if (settingsRef.current.composerControlsInstruments && instrumentHints) {
-                      if (instrumentHints.accompaniment) {
-                        setInstrumentCallback('accompaniment', instrumentHints.accompaniment);
+                      if (instrumentHints.accompaniment && accompanimentManagerRef.current) {
+                        accompanimentManagerRef.current.setInstrument(instrumentHints.accompaniment);
                       }
-                       if (instrumentHints.bass) {
-                         setInstrumentCallback('bass', instrumentHints.bass);
+                       if (instrumentHints.bass && bassManagerRef.current) {
+                         bassManagerRef.current.setPreset(instrumentHints.bass);
                        }
+                        if (instrumentHints.harmony && harmonyManagerRef.current) {
+                            console.log(`[AudioEngine] Setting harmony instrument via hint: ${instrumentHints.harmony}`);
+                            harmonyManagerRef.current.setInstrument(instrumentHints.harmony);
+                        }
                     }
 
                     scheduleEvents(events, nextBarTimeRef.current, settingsRef.current.bpm);
