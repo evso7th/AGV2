@@ -22,7 +22,6 @@ export const useAuraGroove = () => {
     updateSettings,
     resetWorker, 
     setVolume, 
-    setInstrument, 
     setBassTechnique,
     setTextureSettings: setEngineTextureSettings,
     setEQGain,
@@ -98,12 +97,6 @@ export const useAuraGroove = () => {
         });
         setVolume('drums', drumSettings.volume);
         setEngineTextureSettings(textureSettings);
-        
-        setInstrument('bass', instrumentSettings.bass.name);
-        setInstrument('melody', instrumentSettings.melody.name);
-        setInstrument('accompaniment', instrumentSettings.accompaniment.name);
-        setInstrument('harmony', instrumentSettings.harmony.name);
-        
         setBassTechnique(instrumentSettings.bass.technique);
     }
   }, [isInitialized]);
@@ -173,10 +166,7 @@ export const useAuraGroove = () => {
       // Update the React state for the UI to be in sync.
       setInstrumentSettings(newInstrumentSettings);
 
-      // Immediately call the underlying engine function to change the instrument.
-      setInstrument(part as any, name as any);
-
-      // Also, immediately send the complete, updated settings object to the worker.
+      // Immediately send the complete, updated settings object to the worker.
       // This prevents the race condition caused by relying on useEffect.
       if (isInitialized) {
           const fullSettings = getFullSettings();
@@ -211,7 +201,7 @@ export const useAuraGroove = () => {
   const handleTextureEnabledChange = (part: 'sparkles' | 'sfx', enabled: boolean) => {
       setTextureSettings(prev => {
           const newSettings = { ...prev, [part]: { ...prev[part], enabled }};
-          setEngineTextureSettings(newSettings);
+          setEngineTextureSettings(newSettings as any);
           return newSettings;
       });
   };
