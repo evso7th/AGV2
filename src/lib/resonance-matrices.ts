@@ -43,10 +43,10 @@ const isRhythmic = (event: FractalEvent): boolean => (event.type as string).star
 // === МАТРИЦЫ РЕЗОНАНСА ===
 
 /**
- * Матрица для ритмичных, динамичных жанров (Trance, House, Rock и т.д.)
+ * Матрица для ритмичных, динамичных электронных жанров (Trance, House, RnB)
  * Поощряет синхронизацию баса и ударных, четкую структуру.
  */
-export const RhythmicK: ResonanceMatrix = (
+export const ElectronicK: ResonanceMatrix = (
   eventA: FractalEvent,
   eventB: FractalEvent,
   context: { mood: Mood; tempo: number; delta: number, genre: Genre }
@@ -171,3 +171,9 @@ export const AmbientK: ResonanceMatrix = (
 
     return 0.5; // Нейтральный резонанс для всех остальных комбинаций
 };
+
+/**
+ * Матрица для "живых" жанров (рок, блюз, баллады).
+ * На данный момент является копией электронной матрицы для обеспечения базовой функциональности.
+ */
+export const TraditionalK = ElectronicK;

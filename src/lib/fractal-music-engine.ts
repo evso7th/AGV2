@@ -1,6 +1,6 @@
 
 import type { FractalEvent, Mood, Genre, Technique, BassSynthParams, InstrumentType, MelodyInstrument, BassInstrument, AccompanimentInstrument, ResonanceMatrix } from '@/types/fractal';
-import { RhythmicK, AmbientK } from './resonance-matrices';
+import { ElectronicK, TraditionalK, AmbientK } from './resonance-matrices';
 import { getScaleForMood, STYLE_DRUM_PATTERNS, generateAmbientBassPhrase, mutateBassPhrase, createAccompanimentAxiom, PERCUSSION_SETS } from './music-theory';
 
 export type Branch = {
@@ -282,28 +282,33 @@ export class FractalMusicEngine {
     this.random = seededRandom(config.seed ?? Date.now());
     this.nextWeatherEventEpoch = 0;
     
-    if (this.config.genre === 'ambient') {
-        this.resonanceMatrix = AmbientK;
-        console.log("Using AmbientK resonance matrix.");
-    } else {
-        this.resonanceMatrix = RhythmicK;
-        console.log("Using RhythmicK resonance matrix.");
-    }
-
+    this.setResonanceMatrix();
     this.initialize();
   }
 
   public get tempo(): number { return this.config.tempo; }
   
+  private setResonanceMatrix() {
+    const electronicGenres: Genre[] = ['trance', 'house', 'progressive', 'rnb'];
+    const traditionalGenres: Genre[] = ['rock', 'ballad', 'blues', 'reggae', 'celtic'];
+
+    if (this.config.genre === 'ambient') {
+        this.resonanceMatrix = AmbientK;
+        console.log("[Engine] Using AmbientK resonance matrix.");
+    } else if (traditionalGenres.includes(this.config.genre)) {
+        this.resonanceMatrix = TraditionalK;
+        console.log("[Engine] Using TraditionalK resonance matrix.");
+    } else {
+        this.resonanceMatrix = ElectronicK;
+        console.log("[Engine] Using ElectronicK resonance matrix.");
+    }
+  }
+
   public updateConfig(newConfig: Partial<EngineConfig>) {
       const moodOrGenreChanged = newConfig.mood !== this.config.mood || newConfig.genre !== this.config.genre;
       this.config = { ...this.config, ...newConfig };
       
-      if (this.config.genre === 'ambient') {
-          this.resonanceMatrix = AmbientK;
-      } else {
-          this.resonanceMatrix = RhythmicK;
-      }
+      this.setResonanceMatrix();
 
       if(moodOrGenreChanged) {
           this.initialize();
