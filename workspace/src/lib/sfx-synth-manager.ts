@@ -41,13 +41,22 @@ export class SfxSynthManager {
 
         const beatDuration = 60 / tempo;
         const messages: any[] = [];
+        
+        const sfxEvents = events.filter(event => {
+            const eventType = Array.isArray(event.type) ? event.type[0] : event.type;
+            return eventType === 'sfx';
+        });
 
-        events.forEach(event => {
-            if (event.type !== 'sfx') return;
+        if (sfxEvents.length === 0) return;
+        
+        console.log(`[SFX] Triggering effect phrase with ${sfxEvents.length} notes.`);
 
+        sfxEvents.forEach(event => {
             const noteOnTime = barStartTime + (event.time * beatDuration);
             const noteOffTime = noteOnTime + (event.duration * beatDuration);
-            const noteId = `${noteOnTime.toFixed(4)}-${event.params?.startFreq || event.note}`;
+            const noteId = `${noteOnTime.toFixed(4)}-${(event.params as any)?.startFreq || event.note}`;
+            
+            console.log('[SFX] Event Params:', event.params);
 
             messages.push({
                 type: 'noteOn',
@@ -63,7 +72,6 @@ export class SfxSynthManager {
         });
         
         if (messages.length > 0) {
-            console.log(`[SFX] Triggering effect phrase with ${events.filter(e=>e.type === 'sfx').length} notes.`);
             this.workletNode.port.postMessage(messages);
         }
     }

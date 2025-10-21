@@ -35,22 +35,22 @@ function shouldAddSparkle(currentTime: number, density: number, genre: Genre): b
 
 function shouldAddSfx(currentTime: number, density: number, mood: Mood, genre: Genre): { should: boolean, phrase: FractalEvent[] } {
     const timeSinceLast = currentTime - lastSfxTime;
-    const minTime = 15;
-    const maxTime = 50;
+    const minTime = 8; // Reduced from 15
+    const maxTime = 25; // Reduced from 50
     
     if (timeSinceLast < minTime) return { should: false, phrase: [] };
-    if (density > 0.75) return { should: false, phrase: [] };
+    if (density > 0.85) return { should: false, phrase: [] };
 
-    let chance = ((timeSinceLast - minTime) / (maxTime - minTime)) * (0.95 - density);
+    let chance = ((timeSinceLast - minTime) / (maxTime - minTime)) * (1.0 - density) * 1.5; // Increased base chance
 
-    if (mood === 'dark' || mood === 'anxious' || genre === 'rock' || genre === 'progressive') chance *= 1.6;
-    if (mood === 'calm' || mood === 'dreamy') chance *= 0.4;
+    if (mood === 'dark' || mood === 'anxious' || genre === 'rock' || genre === 'progressive') chance *= 1.8; // Boosted
+    if (mood === 'calm' || mood === 'dreamy') chance *= 0.6; // Softened penalty
     
     if (Math.random() < chance) {
         console.log(`[SFX] Firing complex SFX event for mood: ${mood}, genre: ${genre}`);
         const phrase: FractalEvent[] = [];
-        const numNotes = 3 + Math.floor(Math.random() * 8); // 3 to 10 notes
-        const phraseDuration = 3 + Math.random() * 3; // 3 to 6 seconds total
+        const numNotes = 2 + Math.floor(Math.random() * 6); // 2 to 7 notes
+        const phraseDuration = 2 + Math.random() * 4; // 2 to 6 seconds total
         let phraseTime = 0;
 
         const prefs = {
@@ -94,19 +94,19 @@ function shouldAddSfx(currentTime: number, density: number, mood: Mood, genre: G
         const envelopeChoice = chooseWeighted(prefs.envelope) as keyof typeof SFX_GRAMMAR.envelopes;
         
         for (let i = 0; i < numNotes; i++) {
-            const numLayers = Math.random() > 0.4 ? (Math.random() > 0.7 ? 3 : 2) : 1;
+            const numLayers = Math.random() > 0.3 ? (Math.random() > 0.6 ? 3 : 2) : 1; // More layers
             const oscillators = [];
             
             for (let l = 0; l < numLayers; l++) {
                 const oscType = SFX_GRAMMAR.textures[textureChoice]?.[Math.floor(Math.random() * SFX_GRAMMAR.textures[textureChoice].length)] || 'sine';
                 oscillators.push({
                     type: oscType,
-                    detune: (Math.random() * 2400 - 1200) * (l > 0 ? 1 : 0), // Detune only on layers > 0
+                    detune: (Math.random() * 2400 - 1200) * (l > 0 ? 1 : 0),
                 });
             }
 
             const envelope = SFX_GRAMMAR.envelopes[envelopeChoice];
-            const noteDuration = (phraseDuration / numNotes) * (0.7 + Math.random() * 0.6);
+            const noteDuration = (phraseDuration / numNotes) * (0.6 + Math.random() * 0.8);
 
             let startFreq, endFreq;
             const freqRange = SFX_GRAMMAR.freqRanges[freqChoice];
@@ -116,10 +116,10 @@ function shouldAddSfx(currentTime: number, density: number, mood: Mood, genre: G
                  endFreq = freqRange.minEnd + Math.random() * (freqRange.maxEnd - freqRange.minEnd);
             } else { // Static or slow-moving
                  startFreq = freqRange.min + Math.random() * (freqRange.max - freqRange.min);
-                 endFreq = startFreq + (Math.random() * 100 - 50); // Slight drift
+                 endFreq = startFreq + (Math.random() * 150 - 75); // More drift
             }
             
-            const distortionAmount = (textureChoice === 'industrial') ? (0.2 + Math.random() * 0.5) : (Math.random() * 0.1);
+            const distortionAmount = (textureChoice === 'industrial') ? (0.1 + Math.random() * 0.6) : (Math.random() * 0.05);
 
             const params = {
                 duration: noteDuration,
@@ -139,14 +139,14 @@ function shouldAddSfx(currentTime: number, density: number, mood: Mood, genre: G
                 note: 60, // Placeholder
                 duration: noteDuration,
                 time: phraseTime,
-                weight: 0.4 + Math.random() * 0.3,
+                weight: 0.5 + Math.random() * 0.3,
                 technique: 'hit',
                 dynamics: 'f',
                 phrasing: 'legato',
                 params: params as any
             });
             
-            phraseTime += noteDuration * (0.2 + Math.random() * 0.5);
+            phraseTime += noteDuration * (0.15 + Math.random() * 0.4); // Tighter or more spread out
         }
 
         return { should: true, phrase };

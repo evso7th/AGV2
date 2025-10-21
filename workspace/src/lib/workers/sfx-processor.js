@@ -1,158 +1,161 @@
 // public/worklets/sfx-processor.js
 
 class SfxProcessor extends AudioWorkletProcessor {
-    constructor() {
-        super();
-        this.activeNotes = [];
+    constructor(options) {
+        super(options);
+        this.activeNotes = new Map();
         this.port.onmessage = this.handleMessage.bind(this);
         console.log('[SFXProcessor] Worklet created and ready.');
     }
 
-    // A simple pseudo-random number generator
-    random() {
-        return Math.random();
-    }
-
     handleMessage(event) {
-        const { type, time, noteParams = {} } = event.data;
-        if (type === 'trigger') {
-            const duration = noteParams.duration || (0.1 + this.random() * 0.4); // 100ms to 500ms
-            const attack = noteParams.attack || 0.01;
-            const decay = noteParams.decay || duration * 0.3;
-            const release = noteParams.release || 0.1;
-            const sustainLevel = noteParams.sustainLevel || 0.4;
-            
-            const note = {
-                startTime: time,
-                // Envelope
-                attackTime: attack,
-                decayTime: decay,
-                sustainLevel: sustainLevel,
-                releaseTime: release,
-                endTime: time + duration,
-                released: false,
-                releaseStartTime: 0,
-                releaseStartAmp: 0,
-                // Oscillator
-                phase: 0, // Persistent phase for smooth frequency changes
-                oscType: noteParams.oscType || ['sawtooth', 'square', 'sine'][Math.floor(this.random() * 3)],
-                startFreq: noteParams.startFreq || (100 + this.random() * 1000),
-                endFreq: noteParams.endFreq || (100 + this.random() * 1000),
-                // Panning
-                pan: noteParams.pan !== undefined ? noteParams.pan : (this.random() * 2 - 1),
-                // Chorus/Delay
-                chorus: noteParams.chorus !== undefined ? noteParams.chorus : this.random() > 0.5,
-                delayLine: new Float32Array(Math.floor(sampleRate * 0.2)), // 200ms max delay
-                delayWritePos: 0,
-            };
-            this.activeNotes.push(note);
+        const messages = Array.isArray(event.data) ? event.data : [event.data];
+        
+        for (const message of messages) {
+             const { type, when, noteId } = message;
+
+            if (type === 'noteOn') {
+              const { params } = message;
+              if (!params) continue;
+
+              this.activeNotes.set(noteId, {
+                state: 'scheduled',
+                startTime: when,
+                endTime: when + params.duration,
+                phase: 0,
+                gain: 0,
+                targetGain: 1.0, 
+                frequency: params.startFreq,
+                endFrequency: params.endFreq,
+                params: params,
+                filterState: { y1: 0, y2: 0, oldx: 0, oldy: 0 },
+                oscillators: params.oscillators,
+              });
+             
+            } else if (type === 'noteOff') {
+               const note = this.activeNotes.get(noteId);
+               if (note) {
+                 note.endTime = when;
+                 note.state = 'decay';
+                 note.targetGain = 0;
+                 note.releaseStartTime = when;
+                 note.releaseStartGain = note.gain;
+               }
+            } else if (type === 'clear') {
+                this.activeNotes.clear();
+            }
         }
     }
+  
+  applyFilter(input, cutoff, resonance, state) {
+    const g = Math.tan(Math.PI * cutoff / sampleRate);
+    const r = 1 / resonance;
+    const h = 1 / (1 + r * g + g * g);
 
-    process(inputs, outputs, parameters) {
-        const outputChannels = outputs[0];
-        const leftChannel = outputChannels[0];
-        const rightChannel = outputChannels.length > 1 ? outputChannels[1] : leftChannel;
+    let band = (input - state.y2 - r * state.y1) * h;
+    let low = g * band + state.y1;
+    state.y1 = g * band + low;
+    state.y2 = g * state.y1 + state.y2;
+    
+    return state.y2;
+  }
+
+  softClip(input, drive) {
+    if (drive <= 0.01) return input;
+    const k = 2 * drive / (1 - drive);
+    return (1 + k) * input / (1 + k * Math.abs(input));
+  }
+  
+  generateOsc(note) {
+      let sample = 0;
+      if (!note.oscillators || note.oscillators.length === 0) return 0;
+      
+      const numOscillators = note.oscillators.length;
+
+      for (const osc of note.oscillators) {
+          const phaseIncrement = (note.frequency * 2 * Math.PI) / sampleRate;
+          note.phase += phaseIncrement;
+          if (note.phase >= 2 * Math.PI) note.phase -= 2 * Math.PI;
+
+          let oscSample = 0;
+          switch (osc.type) {
+              case 'sine': oscSample = Math.sin(note.phase + osc.detune); break;
+              case 'square': oscSample = Math.sign(Math.sin(note.phase + osc.detune)); break;
+              case 'sawtooth': oscSample = 1.0 - (note.phase / Math.PI); break;
+              case 'triangle': oscSample = 1 - 4 * Math.abs((note.phase / (2 * Math.PI)) - 0.5); break;
+              case 'fatsine':
+                oscSample = (Math.sin(note.phase + osc.detune) + Math.sin(note.phase * 1.01 + osc.detune) + Math.sin(note.phase * 0.99 + osc.detune)) / 3;
+                break;
+              default: oscSample = Math.sin(note.phase + osc.detune);
+          }
+          sample += oscSample;
+      }
+      
+      return sample / numOscillators;
+  }
 
 
-        if (!leftChannel || this.activeNotes.length === 0) {
-             if (rightChannel) rightChannel.fill(0);
-             if (leftChannel) leftChannel.fill(0);
-            return true; // No notes or no output, output silence and keep processor alive.
-        }
+  process(inputs, outputs, parameters) {
+    const outputChannels = outputs[0];
+    const leftChannel = outputChannels[0];
+    const rightChannel = outputChannels.length > 1 ? outputChannels[1] : leftChannel;
+    
+    leftChannel.fill(0);
+    if(rightChannel !== leftChannel) rightChannel.fill(0);
+
+    const now = currentTime;
+
+    for (const [noteId, note] of this.activeNotes.entries()) {
+        const noteProgress = Math.max(0, Math.min(1, (now - note.startTime) / (note.endTime - note.startTime)));
+        note.frequency = note.params.startFreq + (note.params.endFreq - note.params.startFreq) * noteProgress;
         
-        // Zero out the buffers before processing
-        leftChannel.fill(0);
-        if (rightChannel !== leftChannel) {
-            rightChannel.fill(0);
-        }
-
-
         for (let i = 0; i < leftChannel.length; i++) {
-            let leftSample = 0;
-            let rightSample = 0;
-            const time = currentTime + i / sampleRate;
+            const frameTime = now + i / sampleRate;
+            let finalSample = 0;
 
-            for (let j = this.activeNotes.length - 1; j >= 0; j--) {
-                const note = this.activeNotes[j];
-                let amplitude = 0;
-                const noteTime = time - note.startTime;
-
-                // 1. Calculate Envelope
-                if (noteTime < 0) {
-                    continue; // Note hasn't started yet
-                }
-                
-                if (!note.released && time >= note.endTime) {
-                    note.released = true;
-                    note.releaseStartTime = note.endTime;
-                    note.releaseStartAmp = note.sustainLevel;
-                }
-
-                if (noteTime < note.attackTime) {
-                    amplitude = noteTime / note.attackTime;
-                } else if (noteTime < note.attackTime + note.decayTime) {
-                    amplitude = 1.0 - ((noteTime - note.attackTime) / note.decayTime) * (1.0 - note.sustainLevel);
-                } else if (!note.released) {
-                    amplitude = note.sustainLevel;
-                } else {
-                    const releaseTimeElapsed = time - note.releaseStartTime;
-                    if (releaseTimeElapsed < note.releaseTime) {
-                         amplitude = note.releaseStartAmp * (1.0 - releaseTimeElapsed / note.releaseTime);
-                    } else {
-                        this.activeNotes.splice(j, 1);
+            if (frameTime >= note.startTime) {
+                 // --- Envelope ---
+                const timeInNote = frameTime - note.startTime;
+                let amplitude;
+                if (frameTime >= note.endTime) {
+                    const releaseProgress = Math.min(1.0, (frameTime - note.endTime) / note.params.release);
+                    amplitude = note.gain * (1.0 - releaseProgress);
+                    if (releaseProgress >= 1.0) {
+                        this.activeNotes.delete(noteId);
                         continue;
                     }
+                } else if (timeInNote < note.params.attack) {
+                    amplitude = note.targetGain * (timeInNote / note.params.attack);
+                } else if (timeInNote < note.params.attack + note.params.decay) {
+                    const decayProgress = (timeInNote - note.params.attack) / note.params.decay;
+                    amplitude = note.targetGain - decayProgress * (note.targetGain - note.params.sustainLevel);
+                } else {
+                    amplitude = note.params.sustainLevel;
                 }
-                
-                amplitude = Math.max(0, amplitude);
+                note.gain = amplitude;
 
-                // 2. Calculate Oscillator Signal
-                const progress = Math.max(0, Math.min(1, noteTime / (note.endTime - note.startTime)));
-                const freq = note.startFreq + (note.endFreq - note.startFreq) * progress;
-                
-                note.phase += (freq * 2 * Math.PI) / sampleRate;
-                if (note.phase >= 2 * Math.PI) note.phase -= (2 * Math.PI);
-                
-                let signal = 0;
-                switch (note.oscType) {
-                    case 'sine':
-                        signal = Math.sin(note.phase);
-                        break;
-                    case 'square':
-                        signal = Math.sign(Math.sin(note.phase));
-                        break;
-                    case 'sawtooth':
-                         signal = 1.0 - (note.phase / Math.PI);
-                        break;
+                if (note.gain > 0) {
+                     // --- Oscillator ---
+                     const oscSample = this.generateOsc(note);
+                     
+                     // --- Distortion ---
+                     const distorted = this.softClip(oscSample, note.params.distortion);
+                     
+                     finalSample = distorted * note.gain * 0.4;
                 }
-                
-                let sample = signal * amplitude * 0.3; // 0.3 gain to prevent clipping
-
-                // 3. Apply Chorus (simple delay)
-                if (note.chorus) {
-                    const delayReadPos = (note.delayWritePos - Math.floor(sampleRate * 0.025) + note.delayLine.length) % note.delayLine.length;
-                    const delayedSample = note.delayLine[delayReadPos];
-                    note.delayLine[note.delayWritePos] = sample;
-                    note.delayWritePos = (note.delayWritePos + 1) % note.delayLine.length;
-                    sample += delayedSample * 0.5;
-                }
-
-                // 4. Apply Panning
-                const panValue = (note.pan + 1) / 2;
-                const leftPan = Math.cos(panValue * Math.PI / 2);
-                const rightPan = Math.sin(panValue * Math.PI / 2);
-
-                leftSample += sample * leftPan;
-                rightSample += sample * rightPan;
             }
-
-            leftChannel[i] = leftSample;
-            rightChannel[i] = rightSample;
+            
+            // --- Panning ---
+            const panValue = (note.params.pan + 1) / 2;
+            const leftPan = Math.cos(panValue * Math.PI / 2);
+            const rightPan = Math.sin(panValue * Math.PI / 2);
+            
+            leftChannel[i] += finalSample * leftPan;
+            rightChannel[i] += finalSample * rightPan;
         }
-
-        return true;
     }
+    return true;
+  }
 }
 
 registerProcessor('sfx-processor', SfxProcessor);
