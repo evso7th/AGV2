@@ -134,8 +134,10 @@ export class DrumMachine {
             if (typeof eventType !== 'string' || (!eventType.startsWith('drum_') && !eventType.startsWith('perc-'))) continue;
             
             const sampleName = eventType.startsWith('drum_') ? eventType.replace('drum_', '') : eventType;
-
-            if (!DRUM_SAMPLES[sampleName as keyof typeof DRUM_SAMPLES]) {
+            
+            console.log(`[DrumMachine] Attempting to schedule sample: ${sampleName}`);
+            
+            if (!this.sampler.buffers.has(sampleName)) {
                  console.warn(`[DrumMachine] Sample not found for type: ${sampleName}`);
                  continue;
             }
