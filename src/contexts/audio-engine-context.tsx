@@ -1,4 +1,5 @@
 
+
 'use client';
 
 import React, { createContext, useContext, useState, useRef, useCallback, useEffect } from 'react';
@@ -64,7 +65,7 @@ interface AudioEngineContextType {
   setVolume: (part: InstrumentPart, volume: number) => void;
   setInstrument: (part: 'bass' | 'melody' | 'accompaniment' | 'harmony', name: BassInstrument | MelodyInstrument | AccompanimentInstrument) => void;
   setBassTechnique: (technique: BassTechnique) => void;
-  setTextureSettings: (settings: Omit<TextureSettings, 'pads'>) => void;
+  setTextureSettings: (settings: TextureSettings) => void;
   setEQGain: (bandIndex: number, gain: number) => void;
   startMasterFadeOut: (durationInSeconds: number) => void;
   cancelMasterFadeOut: () => void;
@@ -111,9 +112,9 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
   const setInstrumentCallback = useCallback((part: 'bass' | 'melody' | 'accompaniment' | 'harmony', name: BassInstrument | MelodyInstrument | AccompanimentInstrument) => {
     if (!isInitialized) return;
     if (part === 'accompaniment' && accompanimentManagerRef.current) {
-      accompanimentManagerRef.current.setPreset(name);
+      accompanimentManagerRef.current.setPreset(name as AccompanimentInstrument);
     } else if (part === 'bass' && bassManagerRef.current) {
-        bassManagerRef.current.setPreset(name);
+        bassManagerRef.current.setPreset(name as BassInstrument);
     } else if (part === 'harmony' && harmonyManagerRef.current) {
         harmonyManagerRef.current.setInstrument(name as 'piano' | 'guitarChords' | 'none');
     }
@@ -305,6 +306,7 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
     accompanimentManagerRef.current?.allNotesOff();
     harmonyManagerRef.current?.allNotesOff();
     sparklePlayerRef.current?.stopAll();
+    sfxSynthManagerRef.current?.allNotesOff();
     if (impulseTimerRef.current) {
         clearTimeout(impulseTimerRef.current);
         impulseTimerRef.current = null;
@@ -352,7 +354,7 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
     }
   }, []);
 
-  const setTextureSettingsCallback = useCallback((settings: Omit<TextureSettings, 'pads'>) => {
+  const setTextureSettingsCallback = useCallback((settings: TextureSettings) => {
     setVolumeCallback('sparkles', settings.sparkles.enabled ? settings.sparkles.volume : 0);
     setVolumeCallback('sfx', settings.sfx.enabled ? settings.sfx.volume : 0);
   }, [setVolumeCallback]);

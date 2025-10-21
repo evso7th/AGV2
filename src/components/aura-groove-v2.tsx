@@ -275,7 +275,6 @@ export function AuraGrooveV2({
                                <span className="text-xs w-8 text-right font-mono">{Math.round(textureSettings.sparkles.volume * 100)}</span>
                           </div>
                       </div>
-                      {/*
                       <div className="p-2 border rounded-md">
                           <div className="flex justify-between items-center mb-1">
                               <Label className="font-semibold flex items-center gap-1.5 text-sm"><Sprout className="h-4 w-4"/>SFX</Label>
@@ -287,7 +286,6 @@ export function AuraGrooveV2({
                                <span className="text-xs w-8 text-right font-mono">{Math.round(textureSettings.sfx.volume * 100)}</span>
                           </div>
                       </div>
-                      */}
                        <div className="p-2 border rounded-md">
                           <div className="flex justify-between items-center mb-1">
                               <Label className="font-semibold flex items-center gap-1.5 text-sm"><Drum className="h-4 w-4"/>Drums</Label>

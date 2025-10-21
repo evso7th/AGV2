@@ -121,10 +121,6 @@ export type DrumSettings = {
     enabled: boolean;
 };
 
-export type EffectsSettings = {
-    enabled: boolean;
-};
-
 export type SfxSettings = {
     enabled: boolean;
     volume: number;
@@ -155,7 +151,7 @@ export type WorkerSettings = {
     genre: Genre;
     drumSettings: Omit<DrumSettings, 'volume'>;
     instrumentSettings: InstrumentSettings;
-    textureSettings: Omit<TextureSettings, 'pads' | 'volume'>;
+    textureSettings: TextureSettings;
     density: number; // Controls musical density, 0 to 1
     composerControlsInstruments: boolean;
     mood: Mood;

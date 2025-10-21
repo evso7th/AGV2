@@ -1,9 +1,10 @@
 
+
 'use client';
 
 import { useState, useEffect, useCallback, useRef } from "react";
 import { useRouter } from "next/navigation";
-import type { DrumSettings, InstrumentSettings, ScoreName, WorkerSettings, BassInstrument, InstrumentPart, MelodyInstrument, AccompanimentInstrument, BassTechnique, TextureSettings, TimerSettings, Mood, Genre } from '@/types/music';
+import type { DrumSettings, InstrumentSettings, ScoreName, WorkerSettings, BassInstrument, InstrumentPart, MelodyInstrument, AccompanimentInstrument, BassTechnique, TextureSettings, TimerSettings, Mood, Genre, SfxSettings } from '@/types/music';
 import { useAudioEngine } from "@/contexts/audio-engine-context";
 
 const FADE_OUT_DURATION = 120; // 2 minutes
@@ -38,7 +39,7 @@ export const useAuraGroove = () => {
     accompaniment: { name: "guitarChords", volume: 0.7 },
     harmony: { name: "piano", volume: 0.6 },
   });
-  const [textureSettings, setTextureSettings] = useState<Omit<TextureSettings, 'pads'>>({
+  const [textureSettings, setTextureSettings] = useState<TextureSettings>({
       sparkles: { enabled: true, volume: 0.7 },
       sfx: { enabled: true, volume: 0.5 },
   });
