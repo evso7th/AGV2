@@ -101,19 +101,22 @@ export function getScaleForMood(mood: Mood): number[] {
   return fullScale;
 }
 
-export function generateAmbientBassPhrase(mood: Mood, genre: Genre, random: { next: () => number, nextInt: (max: number) => number }): FractalEvent[] {
+export function generateAmbientBassPhrase(mood: Mood, genre: Genre, random: { next: () => number, nextInt: (max: number) => number }, tempo: number = 120): FractalEvent[] {
     const phrase: FractalEvent[] = [];
     const scale = getScaleForMood(mood);
-    const numNotes = 5 + random.nextInt(8); // 5 to 12 notes per phrase
+    
+    // Slower tempos should result in fewer, longer notes.
+    const tempoFactor = Math.max(0.5, 60 / tempo); // Normalizes around 60bpm
+    const numNotes = Math.max(4, Math.floor((3 + random.nextInt(3)) * tempoFactor));
+
     let currentTime = 0;
     
-    // Predominantly low, infrequently mid
     const selectNote = (): number => {
       const rand = random.next();
-      if (rand < 0.8) { // 80% chance low register
+      if (rand < 0.8) { 
           const half = Math.floor(scale.length / 2);
           return scale[random.nextInt(half)];
-      } else { // 20% chance mid register
+      } else { 
           const half = Math.floor(scale.length / 2);
           return scale[half + random.nextInt(scale.length - half)];
       }
@@ -122,12 +125,8 @@ export function generateAmbientBassPhrase(mood: Mood, genre: Genre, random: { ne
     let currentNote = selectNote();
 
     for (let i = 0; i < numNotes; i++) {
-        // Vary duration
-        const durationRand = random.next();
-        let duration;
-        if (durationRand < 0.6) duration = 0.5; // eighth note
-        else if (durationRand < 0.9) duration = 1.0; // quarter note
-        else duration = 0.25; // sixteenth note
+        // Longer notes at slower tempos
+        const duration = (4.0 / numNotes) * (0.8 + random.next() * 0.4);
 
         phrase.push({
             type: 'bass',
@@ -138,12 +137,11 @@ export function generateAmbientBassPhrase(mood: Mood, genre: Genre, random: { ne
             technique: 'swell',
             dynamics: 'mf',
             phrasing: 'legato',
-            params: { cutoff: 300, resonance: 0.8, distortion: 0.02, portamento: 0.0, attack: 0.2, release: duration * 1.2 }
+            params: { cutoff: 300, resonance: 0.8, distortion: 0.02, portamento: 0.0, attack: duration * 0.5, release: duration * 1.5 }
         });
         
         currentTime += duration;
 
-        // Select next note, mostly stepwise
         const currentIndex = scale.indexOf(currentNote);
         let step = 0;
         if (random.next() < 0.85) { // 85% chance stepwise
@@ -157,7 +155,7 @@ export function generateAmbientBassPhrase(mood: Mood, genre: Genre, random: { ne
     
     // Normalize phrase to fit into exactly 4 beats (one bar)
     const totalDuration = phrase.reduce((sum, e) => sum + e.duration, 0);
-    if (totalDuration > 4.0) {
+    if (totalDuration > 0) {
         const scaleFactor = 4.0 / totalDuration;
         let runningTime = 0;
         phrase.forEach(e => {
@@ -167,14 +165,13 @@ export function generateAmbientBassPhrase(mood: Mood, genre: Genre, random: { ne
         });
     }
 
-
     return phrase;
 };
 
 
 export function mutateBassPhrase(phrase: FractalEvent[], mood: Mood, genre: Genre, random: { next: () => number, nextInt: (max: number) => number }): FractalEvent[] {
     const newPhrase: FractalEvent[] = JSON.parse(JSON.stringify(phrase));
-    const mutationType = random.nextInt(4); // 4 types of mutation
+    const mutationType = random.nextInt(4);
 
     if (newPhrase.length === 0) return [];
     
@@ -205,11 +202,11 @@ export function mutateBassPhrase(phrase: FractalEvent[], mood: Mood, genre: Genr
             break;
 
         case 3: // Add or remove a note
-            if (random.next() > 0.5 && newPhrase.length > 3) {
+            if (random.next() > 0.5 && newPhrase.length > 4) { // Keep at least 4 notes
                 newPhrase.splice(random.nextInt(newPhrase.length), 1);
             } else {
                  const scale = getScaleForMood(mood);
-                 const newNoteEvent = {...newPhrase[0]}; // copy properties from first note
+                 const newNoteEvent = {...newPhrase[0]};
                  newNoteEvent.note = scale[random.nextInt(scale.length)];
                  newNoteEvent.time = newPhrase[newPhrase.length-1].time + newPhrase[newPhrase.length-1].duration;
                  newNoteEvent.duration = 0.5;
@@ -246,6 +243,8 @@ export const STYLE_DRUM_PATTERNS: Record<Genre, GenreRhythmGrammar> = {
                 kick: [{ type: 'drum_kick', time: 0, duration: 4, weight: 0.5, probability: 0.1 }],
                 snare: [],
                 hihat: [
+                    // A very likely ride cymbal hit on the first beat to establish presence
+                    { type: ALL_RIDES, probabilities: [0.3, 0.3, 0.2, 0.2], time: 0, duration: 1, weight: 0.35, probability: 0.9 },
                     { type: AMBIENT_PERC, probabilities: [0.2, 0.2, 0.2, 0.2, 0.2], time: 1.5, duration: 0.5, weight: 0.4, probability: 0.5 },
                     { type: 'drum_closed_hi_hat_ghost', time: 2.75, duration: 0.25, weight: 0.2, probability: 0.4 }
                 ],
@@ -255,9 +254,9 @@ export const STYLE_DRUM_PATTERNS: Record<Genre, GenreRhythmGrammar> = {
                 kick: [],
                 snare: [],
                 hihat: [
-                    { type: 'drum_a_ride1', time: 0.75, duration: 0.25, weight: 0.3, probability: 0.6 },
+                    { type: 'drum_a_ride1', time: 0.75, duration: 0.25, weight: 0.3, probability: 0.8 }, // Increased probability
                     { type: 'drum_tom_low', time: 2.25, duration: 0.25, weight: 0.2, probability: 0.5 },
-                    { type: 'drum_a_ride2', time: 3.5, duration: 0.25, weight: 0.35, probability: 0.6 }
+                    { type: 'drum_a_ride2', time: 3.5, duration: 0.25, weight: 0.35, probability: 0.8 } // Increased probability
                 ],
                 tags: ['ambient-intro', 'sparse']
             }
@@ -489,4 +488,46 @@ export const SFX_GRAMMAR = {
   }
 };
 
+
+export function createAccompanimentAxiom(mood: Mood, genre: Genre, random: { next: () => number; nextInt: (max: number) => number }, bassNote: number, tempo: number = 120): FractalEvent[] {
+    const scale = getScaleForMood(mood);
+    const swellParams = { cutoff: 300, resonance: 0.8, distortion: 0.02, portamento: 0.0, attack: 1.5, release: 2.5 };
+    const axiom: FractalEvent[] = [];
     
+    const tempoFactor = 120 / tempo;
+    const numNotes = Math.max(2, Math.floor((2 + random.nextInt(2)) * tempoFactor));
+    const totalDuration = 4.0; 
+    let currentTime = 0;
+
+    const rootMidi = bassNote;
+    const rootDegree = rootMidi % 12;
+
+    const findNoteInScale = (degree: number) => scale.find(n => (n % 12) === (degree + 12) % 12);
+    
+    const thirdDegree = findNoteInScale(rootDegree + (mood === 'melancholic' || mood === 'dark' ? 3 : 4));
+    const fifthDegree = findNoteInScale(rootDegree + 7);
+
+    const chord = [rootMidi + 12, thirdDegree ? thirdDegree + 12 : null, fifthDegree ? fifthDegree + 12 : null].filter(n => n !== null) as number[];
+
+    if (chord.length < 2) return []; 
+
+    for (let i = 0; i < numNotes; i++) {
+        const noteMidi = chord[random.nextInt(chord.length)];
+        const duration = (totalDuration / numNotes) * (0.8 + random.next() * 0.4);
+        axiom.push({
+            type: 'accompaniment',
+            note: noteMidi,
+            duration: duration,
+            time: currentTime,
+            weight: 0.8 + random.next() * 0.2,
+            technique: 'swell',
+            dynamics: 'p',
+            phrasing: 'legato',
+            params: swellParams
+        });
+        currentTime += duration / (1.5 * tempoFactor); // More overlap at slower tempos
+    }
+
+    return axiom;
+}
+
