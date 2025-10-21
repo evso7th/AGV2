@@ -66,7 +66,7 @@ interface AudioEngineContextType {
   setVolume: (part: InstrumentPart, volume: number) => void;
   setInstrument: (part: 'bass' | 'melody' | 'accompaniment' | 'harmony', name: BassInstrument | MelodyInstrument | AccompanimentInstrument) => void;
   setBassTechnique: (technique: BassTechnique) => void;
-  setTextureSettings: (settings: TextureSettings) => void;
+  setTextureSettings: (settings: Omit<TextureSettings, 'pads' | 'sfx'>) => void;
   setEQGain: (bandIndex: number, gain: number) => void;
   startMasterFadeOut: (durationInSeconds: number) => void;
   cancelMasterFadeOut: () => void;
@@ -126,7 +126,6 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
         console.error('[AudioEngine] scheduleEvents received non-array "events":', events);
         return;
     }
-    console.log('[AudioEngine] scheduleEvents called with', events.length, 'events for time', barStartTime);
     const validEvents = events.filter(e => e && e.type);
     const drumEvents: FractalEvent[] = [];
     const bassEvents: FractalEvent[] = [];
@@ -158,10 +157,12 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
     }
 
     if (accompanimentManagerRef.current && accompanimentEvents.length > 0) {
+        console.log(`[AudioEngine] Forwarding ${accompanimentEvents.length} events to AccompanimentManager`);
         accompanimentManagerRef.current.schedule(accompanimentEvents, barStartTime, tempo);
     }
 
     if (harmonyManagerRef.current && harmonyEvents.length > 0) {
+        console.log(`[AudioEngine] Forwarding ${harmonyEvents.length} events to HarmonyManager`);
         harmonyManagerRef.current.schedule(harmonyEvents, barStartTime, tempo);
     }
 
@@ -251,16 +252,15 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
                 if (type === 'SCORE_READY' && payload && payload.events && payload.barDuration && settingsRef.current) {
                     const { events, barDuration, instrumentHints } = payload;
                     
-                    if (settingsRef.current.composerControlsInstruments && instrumentHints) {
-                      if (instrumentHints.accompaniment && accompanimentManagerRef.current) {
-                        accompanimentManagerRef.current.setInstrument(instrumentHints.accompaniment);
+                    if (instrumentHints) {
+                      if (instrumentHints.accompaniment) {
+                        setInstrumentCallback('accompaniment', instrumentHints.accompaniment);
                       }
-                       if (instrumentHints.bass && bassManagerRef.current) {
-                         bassManagerRef.current.setPreset(instrumentHints.bass);
+                       if (instrumentHints.bass) {
+                         setInstrumentCallback('bass', instrumentHints.bass);
                        }
-                        if (instrumentHints.harmony && harmonyManagerRef.current) {
-                            console.log(`[AudioEngine] Setting harmony instrument via hint: ${instrumentHints.harmony}`);
-                            harmonyManagerRef.current.setInstrument(instrumentHints.harmony);
+                        if (instrumentHints.harmony) {
+                            setInstrumentCallback('harmony', instrumentHints.harmony);
                         }
                     }
 
@@ -268,7 +268,6 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
                     nextBarTimeRef.current += barDuration;
 
                 } else if (type === 'sparkle' && time !== undefined) {
-                    console.log('[AudioEngine] Received "sparkle" command from worker.');
                     sparklePlayerRef.current?.playRandomSparkle(nextBarTimeRef.current + time, genre, mood);
                 } else if (type === 'error') {
                     toast({ variant: "destructive", title: "Worker Error", description: error });
@@ -359,9 +358,8 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
     }
   }, []);
 
-  const setTextureSettingsCallback = useCallback((settings: TextureSettings) => {
+  const setTextureSettingsCallback = useCallback((settings: Omit<TextureSettings, 'pads' | 'sfx'>) => {
     setVolumeCallback('sparkles', settings.sparkles.enabled ? settings.sparkles.volume : 0);
-    setVolumeCallback('sfx', settings.sfx.enabled ? settings.sfx.volume : 0);
   }, [setVolumeCallback]);
   
   const setEQGainCallback = useCallback((bandIndex: number, gain: number) => {}, []);
