@@ -106,7 +106,7 @@ export const useAuraGroove = () => {
         
         setBassTechnique(instrumentSettings.bass.technique);
     }
-  }, [isInitialized, getFullSettings, setVolume, setInstrument, setBassTechnique, setEngineTextureSettings, drumSettings.volume, instrumentSettings, textureSettings]);
+  }, [isInitialized]);
 
   // Sync settings with engine whenever they change
   useEffect(() => {
@@ -114,7 +114,7 @@ export const useAuraGroove = () => {
           const fullSettings = getFullSettings();
           updateSettings(fullSettings);
       }
-  }, [bpm, score, genre, density, drumSettings, instrumentSettings, textureSettings, composerControlsInstruments, mood, isInitialized, updateSettings, getFullSettings]);
+  }, [bpm, score, genre, density, drumSettings, textureSettings, composerControlsInstruments, mood, isInitialized, updateSettings, getFullSettings]);
 
   // Timer logic
   useEffect(() => {
@@ -164,11 +164,27 @@ export const useAuraGroove = () => {
   }, [isPlaying, setEngineIsPlaying, resetWorker]);
 
   const handleInstrumentChange = (part: keyof InstrumentSettings, name: BassInstrument | MelodyInstrument | AccompanimentInstrument | 'piano' | 'guitarChords') => {
-    setInstrumentSettings(prev => ({
-      ...prev,
-      [part]: { ...prev[part as keyof typeof prev], name }
-    }));
-    setInstrument(part as any, name as any);
+      // Create the new settings object based on the current state.
+      const newInstrumentSettings = {
+        ...instrumentSettings,
+        [part]: { ...instrumentSettings[part as keyof typeof instrumentSettings], name }
+      };
+
+      // Update the React state for the UI to be in sync.
+      setInstrumentSettings(newInstrumentSettings);
+
+      // Immediately call the underlying engine function to change the instrument.
+      setInstrument(part as any, name as any);
+
+      // Also, immediately send the complete, updated settings object to the worker.
+      // This prevents the race condition caused by relying on useEffect.
+      if (isInitialized) {
+          const fullSettings = getFullSettings();
+          updateSettings({
+              ...fullSettings,
+              instrumentSettings: newInstrumentSettings, // Use the new settings object
+          });
+      }
   };
   
   const handleBassTechniqueChange = (technique: BassTechnique) => {
