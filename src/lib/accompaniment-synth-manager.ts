@@ -99,12 +99,14 @@ export class AccompanimentSynthManager {
         }
     }
 
-    public schedule(events: FractalEvent[], barStartTime: number, tempo: number) {
+    public schedule(events: FractalEvent[], barStartTime: number, tempo: number, instrumentHint?: AccompanimentInstrument) {
         if (!this.isInitialized) {
             console.warn('[AccompanimentManager] Tried to schedule before initialized.');
             return;
         }
 
+        const instrumentToPlay = instrumentHint || this.activeInstrumentName;
+        
         const beatDuration = 60 / tempo;
         const notes: Note[] = events.map(event => ({
             midi: event.note,
@@ -114,9 +116,9 @@ export class AccompanimentSynthManager {
             params: event.params
         }));
 
-        console.log(`[AccompanimentManager] Scheduling ${notes.length} notes for instrument: ${this.activeInstrumentName}`);
+        console.log(`[AccompanimentManager] Scheduling ${notes.length} notes for instrument: ${instrumentToPlay}`);
 
-        switch (this.activeInstrumentName) {
+        switch (instrumentToPlay) {
             case 'piano':
                 this.piano.schedule('piano', notes, barStartTime);
                 break;
@@ -139,18 +141,18 @@ export class AccompanimentSynthManager {
             case 'theremin':
             case 'E-Bells_melody':
             case 'G-Drops':
-                this.scheduleSynth(notes, barStartTime);
+                this.scheduleSynth(instrumentToPlay, notes, barStartTime);
                 break;
             case 'none':
                 // Do nothing
                 break;
             default:
                 // Fallback to synth for any other unhandled preset
-                this.scheduleSynth(notes, barStartTime);
+                this.scheduleSynth(this.activeInstrumentName as MelodyInstrument, notes, barStartTime);
         }
     }
 
-    private scheduleSynth(notes: Note[], barStartTime: number) {
+    private scheduleSynth(instrument: MelodyInstrument, notes: Note[], barStartTime: number) {
         if (!this.isSynthPoolInitialized || this.synthPool.length === 0) return;
 
         const messages: any[] = [];
@@ -162,7 +164,7 @@ export class AccompanimentSynthManager {
             const noteOffTime = noteOnTime + note.duration;
             const noteId = `${noteOnTime.toFixed(4)}-${note.midi}-${voiceIndex}`;
             
-            const presetParams = PRESETS[this.activeInstrumentName] || PRESETS['synth'];
+            const presetParams = PRESETS[instrument] || PRESETS['synth'];
 
             const finalParams: BassSynthParams = {
                 cutoff: note.params?.cutoff ?? presetParams.filterCutoff ?? 800,
