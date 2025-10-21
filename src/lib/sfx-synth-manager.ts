@@ -65,6 +65,11 @@ export class SfxSynthManager {
             this.workletNode.port.postMessage(messages);
         }
     }
+    
+    public allNotesOff() {
+        if (!this.workletNode) return;
+        this.workletNode.port.postMessage([{ type: 'clear' }]);
+    }
 
     public isSynthReady(): boolean {
         return this.isReady;
