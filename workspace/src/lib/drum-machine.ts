@@ -1,5 +1,5 @@
 
-import type { FractalEvent } from "@/types/fractal";
+import type { FractalEvent, InstrumentType } from "@/types/fractal";
 
 const DRUM_SAMPLES: Record<string, string> = {
     'closed_hi_hat_accented': '/assets/drums/closed_hi_hat_accented.wav',
@@ -9,7 +9,7 @@ const DRUM_SAMPLES: Record<string, string> = {
     'cymbal1': '/assets/drums/cymbal1.wav',
     'cymbal2': '/assets/drums/cymbal2.wav',
     'cymbal3': '/assets/drums/cymbal3.wav',
-    'cymbal4.wav': '/assets/drums/cymbal4.wav',
+    'cymbal4': '/assets/drums/cymbal4.wav',
     'cymbal_bell1': '/assets/drums/cymbal_bell1.wav',
     'cymbal_bell2': '/assets/drums/cymbal_bell2.wav',
     'hh_bark_short': '/assets/drums/hh_bark_short.wav',
@@ -38,7 +38,11 @@ const DRUM_SAMPLES: Record<string, string> = {
     'snare_ghost_note': '/assets/drums/snare_ghost_note.wav',
     'snare_off': '/assets/drums/snare_off.wav',
     'snarepress': '/assets/drums/snarepress.wav',
-    // Maintaining compatibility with old names for now
+    'a_ride1': '/assets/drums/a-ride1.mp3',
+    'a_ride2': '/assets/drums/a-ride2.mp3',
+    'a_ride3': '/assets/drums/a-ride3.mp3',
+    'a_ride4': '/assets/drums/a-ride4.mp3',
+    // Aliases for compatibility
     'kick': '/assets/drums/kick_drum6.wav',
     'hihat_closed': '/assets/drums/closed_hi_hat_accented.wav',
     'hihat_open': '/assets/drums/open_hh_top2.wav',
@@ -126,18 +130,31 @@ export class DrumMachine {
         const beatDuration = 60 / tempo;
         
         for (const event of score) {
-            if (!event.type.startsWith('drum_')) continue;
-
-            const sampleName = event.type.replace('drum_', '');
+            const eventType = Array.isArray(event.type) ? event.type[0] : event.type;
+            if (typeof eventType !== 'string' || (!eventType.startsWith('drum_') && !eventType.startsWith('perc-'))) continue;
             
+            const sampleName = eventType.startsWith('drum_') ? eventType.replace('drum_', '') : eventType;
+
+            if (!DRUM_SAMPLES[sampleName as keyof typeof DRUM_SAMPLES]) {
+                 console.warn(`[DrumMachine] Sample not found for type: ${sampleName}`);
+                 continue;
+            }
+
             const absoluteTime = barStartTime + (event.time * beatDuration);
             
             if (!isFinite(absoluteTime)) {
                 console.error('[DrumMachine] Non-finite time scheduled for event:', event);
                 continue;
             }
+
+            let velocity = event.weight;
+            if (eventType.startsWith('perc-')) {
+                velocity *= 0.6; // Уменьшаем громкость перкуссии
+            } else if ((eventType as string).includes('ride')) {
+                velocity *= 0.7; // Уменьшаем громкость райдов
+            }
             
-            this.sampler.triggerAttack(sampleName, absoluteTime, event.weight);
+            this.sampler.triggerAttack(sampleName, absoluteTime, velocity);
         }
     }
 

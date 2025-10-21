@@ -120,7 +120,7 @@ export interface FractalEvent {
   /**
    * Тип инструмента — определяет, кто играет
    */
-  type: InstrumentType;
+  type: InstrumentType | InstrumentType[];
 
   /**
    * Нота в MIDI (например, 40 = E2)

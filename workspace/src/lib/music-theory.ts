@@ -102,13 +102,14 @@ export function getScaleForMood(mood: Mood): number[] {
   return fullScale;
 }
 
-export function generateAmbientBassPhrase(mood: Mood, genre: Genre, random: { next: () => number, nextInt: (max: number) => number }, tempo: number = 120): FractalEvent[] {
+export function generateAmbientBassPhrase(mood: Mood, genre: Genre, random: { next: () => number, nextInt: (max: number) => number }, tempo: number = 75): FractalEvent[] {
     const phrase: FractalEvent[] = [];
     const scale = getScaleForMood(mood);
     
-    const tempoFactor = 120 / tempo; // Slower tempo = higher factor
-    const numNotes = Math.max(4, Math.floor((4 + random.nextInt(4)) * tempoFactor));
-    
+    // Slower tempo = higher factor = fewer, longer notes
+    const tempoFactor = Math.max(0.5, 75 / tempo); 
+    const numNotes = Math.max(4, Math.floor((4 + random.nextInt(2)) * tempoFactor));
+
     let currentTime = 0;
     
     const selectNote = (): number => {
@@ -125,12 +126,8 @@ export function generateAmbientBassPhrase(mood: Mood, genre: Genre, random: { ne
     let currentNote = selectNote();
 
     for (let i = 0; i < numNotes; i++) {
-        const durationRand = random.next();
-        let duration;
         // Longer notes at slower tempos
-        if (durationRand < 0.6) duration = 0.5 * tempoFactor; 
-        else if (durationRand < 0.9) duration = 1.0 * tempoFactor;
-        else duration = 0.25 * tempoFactor;
+        const duration = (4.0 / numNotes) * (0.9 + random.next() * 0.2);
 
         phrase.push({
             type: 'bass',
@@ -141,24 +138,25 @@ export function generateAmbientBassPhrase(mood: Mood, genre: Genre, random: { ne
             technique: 'swell',
             dynamics: 'mf',
             phrasing: 'legato',
-            params: { cutoff: 300, resonance: 0.8, distortion: 0.02, portamento: 0.0, attack: 0.2, release: duration * 1.2 }
+            params: { cutoff: 300, resonance: 0.8, distortion: 0.02, portamento: 0.0, attack: duration * 0.5, release: duration * 1.5 }
         });
         
         currentTime += duration;
 
         const currentIndex = scale.indexOf(currentNote);
         let step = 0;
-        if (random.next() < 0.85) { 
+        if (random.next() < 0.85) { // 85% chance stepwise
             step = random.next() > 0.5 ? 1 : -1;
-        } else { 
-            step = random.nextInt(5) - 2; 
+        } else { // 15% chance leap
+            step = random.nextInt(5) - 2; // Leap of -2 to +2 scale degrees
         }
         const nextIndex = Math.max(0, Math.min(scale.length - 1, currentIndex + step));
         currentNote = scale[nextIndex];
     }
     
+    // Normalize phrase to fit into exactly 4 beats (one bar)
     const totalDuration = phrase.reduce((sum, e) => sum + e.duration, 0);
-    if (totalDuration > 4.0) {
+    if (totalDuration > 0) {
         const scaleFactor = 4.0 / totalDuration;
         let runningTime = 0;
         phrase.forEach(e => {
@@ -167,7 +165,6 @@ export function generateAmbientBassPhrase(mood: Mood, genre: Genre, random: { ne
             runningTime += e.duration;
         });
     }
-
 
     return phrase;
 };
@@ -244,9 +241,11 @@ export const STYLE_DRUM_PATTERNS: Record<Genre, GenreRhythmGrammar> = {
     ambient: {
         loops: [
             { 
-                kick: [{ type: 'drum_kick', time: 0, duration: 4, weight: 0.5, probability: 0.1 }],
+                kick: [{ type: 'drum_kick', time: 0, duration: 4, weight: 0.6, probability: 0.9 }],
                 snare: [],
                 hihat: [
+                    // A very likely ride cymbal hit on the first beat to establish presence
+                    { type: ALL_RIDES, probabilities: [0.3, 0.3, 0.2, 0.2], time: 0, duration: 1, weight: 0.5, probability: 0.9 },
                     { type: AMBIENT_PERC, probabilities: [0.2, 0.2, 0.2, 0.2, 0.2], time: 1.5, duration: 0.5, weight: 0.4, probability: 0.5 },
                     { type: 'drum_closed_hi_hat_ghost', time: 2.75, duration: 0.25, weight: 0.2, probability: 0.4 }
                 ],
@@ -256,9 +255,9 @@ export const STYLE_DRUM_PATTERNS: Record<Genre, GenreRhythmGrammar> = {
                 kick: [],
                 snare: [],
                 hihat: [
-                    { type: 'drum_a_ride1', time: 0.75, duration: 0.25, weight: 0.3, probability: 0.6 },
+                    { type: 'drum_a_ride1', time: 0.75, duration: 0.25, weight: 0.4, probability: 0.9 },
                     { type: 'drum_tom_low', time: 2.25, duration: 0.25, weight: 0.2, probability: 0.5 },
-                    { type: 'drum_a_ride2', time: 3.5, duration: 0.25, weight: 0.35, probability: 0.6 }
+                    { type: 'drum_a_ride2', time: 3.5, duration: 0.25, weight: 0.45, probability: 0.9 }
                 ],
                 tags: ['ambient-intro', 'sparse']
             }
@@ -491,14 +490,15 @@ export const SFX_GRAMMAR = {
 };
 
 
-export function createAccompanimentAxiom(mood: Mood, genre: Genre, random: { next: () => number; nextInt: (max: number) => number }, bassNote: number, tempo: number = 120): FractalEvent[] {
+export function createAccompanimentAxiom(mood: Mood, genre: Genre, random: { next: () => number; nextInt: (max: number) => number }, bassNote: number, tempo: number = 75): FractalEvent[] {
     const scale = getScaleForMood(mood);
     const swellParams = { cutoff: 300, resonance: 0.8, distortion: 0.02, portamento: 0.0, attack: 1.5, release: 2.5 };
     const axiom: FractalEvent[] = [];
     
+    // Slower tempo = higher factor = fewer, longer notes
     const tempoFactor = 120 / tempo;
-    const numNotes = Math.max(2, Math.floor((2 + random.nextInt(2)) * tempoFactor)); // 2-3 notes, more at slower tempos
-    const totalDuration = 4.0; 
+    const numNotes = Math.max(2, Math.floor((2 + random.nextInt(2)) * tempoFactor));
+    const totalDuration = 4.0; // Always generate for one bar (4 beats)
     let currentTime = 0;
 
     const rootMidi = bassNote;
@@ -515,7 +515,7 @@ export function createAccompanimentAxiom(mood: Mood, genre: Genre, random: { nex
 
     for (let i = 0; i < numNotes; i++) {
         const noteMidi = chord[random.nextInt(chord.length)];
-        const duration = (totalDuration / numNotes) * (0.8 + random.next() * 0.4);
+        const duration = (totalDuration / numNotes) * (0.9 + random.next() * 0.2); // Give it some breath
         axiom.push({
             type: 'accompaniment',
             note: noteMidi,
@@ -532,3 +532,4 @@ export function createAccompanimentAxiom(mood: Mood, genre: Genre, random: { nex
 
     return axiom;
 }
+
