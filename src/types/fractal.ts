@@ -113,6 +113,23 @@ export type BassSynthParams = {
 };
 
 /**
+ * Параметры для синтезатора спецэффектов (SFX).
+ */
+export type SfxSynthParams = {
+    duration: number;
+    attack: number;
+    decay: number;
+    sustainLevel: number;
+    release: number;
+    oscillators: { type: string; detune: number }[];
+    startFreq: number;
+    endFreq: number;
+    pan: number;
+    distortion: number;
+};
+
+
+/**
  * Событие фрактального композитора
  * Это единый протокол "композитор → исполнитель"
  */
@@ -161,7 +178,7 @@ export interface FractalEvent {
    * Параметры синтеза (только для 'bass')
    * Рассчитываются композитором, исполняются синтезатором.
    */
-  params?: BassSynthParams;
+  params?: BassSynthParams | SfxSynthParams;
 }
 
 /**
