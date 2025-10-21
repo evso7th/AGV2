@@ -195,9 +195,9 @@ export class AccompanimentSynthManager {
         }
     }
 
-    public setPreset(instrumentName: MelodyInstrument | AccompanimentInstrument) {
+    public setInstrument(instrumentName: MelodyInstrument | AccompanimentInstrument) {
         if (!this.isInitialized) {
-            console.warn('[AccompanimentManager] setPreset called before initialization.');
+            console.warn('[AccompanimentManager] setInstrument called before initialization.');
             return;
         }
         console.log(`[AccompanimentManager] Setting active instrument to: ${instrumentName}`);
