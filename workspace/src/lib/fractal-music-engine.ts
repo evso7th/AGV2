@@ -487,8 +487,8 @@ export class FractalMusicEngine {
   }
 
 
-  private generateOneBar(barDuration: number): { events: FractalEvent[], instrumentHints: { accompaniment?: MelodyInstrument, bass?: BassInstrument } } {
-    let instrumentHints: { accompaniment?: MelodyInstrument, bass?: BassInstrument } = {};
+  private generateOneBar(barDuration: number): { events: FractalEvent[], instrumentHints: { accompaniment?: AccompanimentInstrument, bass?: BassInstrument, harmony?: AccompanimentInstrument } } {
+    let instrumentHints: { accompaniment?: AccompanimentInstrument, bass?: BassInstrument, harmony?: AccompanimentInstrument } = {};
     const output: FractalEvent[] = [];
 
     // --- SFX FILL LOGIC ---
@@ -546,8 +546,13 @@ export class FractalMusicEngine {
         const phraseDurationInBars = Math.ceil(phraseDurationInBeats / 4);
 
         if (this.barsInCurrentAccompPhrase === 0) {
+             const allInstruments: AccompanimentInstrument[] = ['piano', 'violin', 'flute', 'synth', 'organ', 'mellotron', 'theremin', 'guitarChords'];
              const textureInstruments: AccompanimentInstrument[] = ['violin', 'flute', 'organ', 'mellotron', 'synth', 'theremin'];
-             instrumentHints.accompaniment = textureInstruments[this.random.nextInt(textureInstruments.length)];
+             
+             // If genre is ambient, restrict to texture instruments. Otherwise, use all available.
+             const availableInstruments = this.config.genre === 'ambient' ? textureInstruments : allInstruments;
+             
+             instrumentHints.accompaniment = availableInstruments[this.random.nextInt(availableInstruments.length)];
              output.push(...phrase);
         }
 
@@ -576,7 +581,7 @@ export class FractalMusicEngine {
         harmonyPhrase.forEach(e => e.type = 'harmony');
         output.push(...harmonyPhrase);
         
-        const rhythmicInstruments: AccompanimentInstrument[] = ['piano', 'guitarChords'];
+        const rhythmicInstruments: ('piano' | 'guitarChords')[] = ['piano', 'guitarChords'];
         instrumentHints.harmony = rhythmicInstruments[this.random.nextInt(rhythmicInstruments.length)];
         
         this.nextHarmonyEventEpoch = this.epoch + 8 + this.random.nextInt(9); // 8-16 bars
@@ -661,3 +666,5 @@ export class FractalMusicEngine {
     };
   }
 }
+
+    
