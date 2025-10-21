@@ -346,7 +346,7 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
   }, [isInitialized]);
 
   const setVolumeCallback = useCallback((part: InstrumentPart, volume: number) => {
-    if (part === 'pads') return;
+    if (part === 'pads' || part === 'melody' || part === 'effects') return;
     const gainNode = gainNodesRef.current[part as Exclude<InstrumentPart, 'pads' | 'melody' | 'effects'>];
     if (gainNode && audioContextRef.current) {
         const balancedVolume = volume * (VOICE_BALANCE[part] ?? 1);
