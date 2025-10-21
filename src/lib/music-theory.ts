@@ -461,10 +461,18 @@ export function createAccompanimentAxiom(mood: Mood, genre: Genre, random: { nex
     const rootMidi = bassNote;
     const rootDegree = rootMidi % 12;
 
-    const findNoteInScale = (degree: number) => scale.find(n => (n % 12) === (degree + 12) % 12);
+    const getScaleDegree = (degree: number): number | null => {
+        const fullScaleDegree = (rootDegree + degree + 12) % 12;
+        const matchingNote = scale.find(n => (n % 12) === fullScaleDegree);
+        return matchingNote !== undefined ? (matchingNote % 12) : null;
+    };
     
-    const thirdDegree = findNoteInScale(rootDegree + (mood === 'melancholic' || mood === 'dark' ? 3 : 4));
-    const fifthDegree = findNoteInScale(rootDegree + 7);
+    const thirdDegree = getScaleDegree(mood === 'melancholic' || mood === 'dark' ? 3 : 4);
+    const fifthDegree = getScaleDegree(7);
+
+    const chordDegrees = [rootDegree, thirdDegree, fifthDegree].filter(d => d !== null) as number[];
+
+    if (chordDegrees.length < 2) return []; 
 
     const selectOctave = (): number => {
         const rand = random.next();
@@ -473,17 +481,11 @@ export function createAccompanimentAxiom(mood: Mood, genre: Genre, random: { nex
         return 5; // 5% chance for 5th octave
     };
 
-    const baseOctaveMidi = 12 * selectOctave();
-
-    const chord = [rootMidi, thirdDegree, fifthDegree]
-        .filter(n => n !== null && n !== undefined)
-        .map(n => n! + baseOctaveMidi) as number[];
-
-
-    if (chord.length < 2) return []; 
-
     for (let i = 0; i < numNotes; i++) {
-        const noteMidi = chord[random.nextInt(chord.length)];
+        const degree = chordDegrees[random.nextInt(chordDegrees.length)];
+        const octave = selectOctave();
+        const noteMidi = 12 * (octave + 1) + degree;
+
         const duration = (totalDuration / numNotes) * (0.8 + random.next() * 0.4);
         axiom.push({
             type: 'accompaniment',
