@@ -3,7 +3,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { SlidersHorizontal, Music, Pause, Speaker, FileMusic, Drum, GitBranch, Atom, Piano, Home, X, Sparkles, Sprout, LayoutGrid, Timer, Guitar, RefreshCw, Bot } from "lucide-react";
+import { SlidersHorizontal, Music, Pause, Speaker, FileMusic, Drum, GitBranch, Atom, Piano, Home, X, Sparkles, Sprout, LayoutGrid, Timer, Guitar, RefreshCw, Bot, Waves } from "lucide-react";
 import Image from "next/image";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -233,7 +233,7 @@ export function AuraGrooveV2({
                                         </SelectContent>
                                     </Select>
                                 </div>
-                                 {part === 'bass' && 'technique' in settings && settings.name !== 'none' && (
+                                 {part === 'bass' && 'technique' in settings && (settings.name as BassInstrument | 'none') !== 'none' && (
                                     <div className="grid grid-cols-2 items-center gap-2">
                                         <Label className="font-semibold flex items-center gap-1.5 capitalize text-xs"><GitBranch className="h-4 w-4"/>Technique</Label>
                                          <Select value={settings.technique} onValueChange={(v) => handleBassTechniqueChange(v as any)} disabled={isDisabled || settings.name === 'none'}>
@@ -248,7 +248,7 @@ export function AuraGrooveV2({
                                         </Select>
                                     </div>
                                 )}
-                                <div className="flex items-center gap-2">
+                                 <div className="flex items-center gap-2">
                                     <Label className="text-xs text-muted-foreground"><Speaker className="h-3 w-3 inline-block mr-1"/>Volume</Label>
                                     <Slider value={[settings.volume]} max={1} step={0.05} onValueChange={(v) => handleVolumeChange(part as any, v[0])} disabled={isInitializing || settings.name === 'none'}/>
                                     <span className="text-xs w-8 text-right font-mono">{Math.round(settings.volume * 100)}</span>
@@ -282,7 +282,7 @@ export function AuraGrooveV2({
                           </div>
                           <div className="flex items-center gap-2">
                               <Label className="text-xs text-muted-foreground"><Speaker className="h-3 w-3 inline-block mr-1"/>Volume</Label>
-                              <Slider value={[textureSettings.sfx.volume]} max={1} step={0.05} onValueChange={(v) => handleVolumeChange('sfx', v[0])} disabled={isInitializing || !textureSettings.sfx.enabled}/>
+                              <Slider value={[textureSettings.sfx.volume]} max={1} step={0.05} onValueChange={(v) => handleVolumeChange('sfx' as any, v[0])} disabled={isInitializing || !textureSettings.sfx.enabled}/>
                                <span className="text-xs w-8 text-right font-mono">{Math.round(textureSettings.sfx.volume * 100)}</span>
                           </div>
                       </div>
