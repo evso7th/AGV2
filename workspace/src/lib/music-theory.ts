@@ -1,3 +1,4 @@
+
 // src/lib/music-theory.ts
 import type { FractalEvent, Mood, Genre, Technique, BassSynthParams, InstrumentType } from '@/types/fractal';
 
@@ -488,3 +489,46 @@ export const SFX_GRAMMAR = {
     random: 'random'
   }
 };
+
+
+export function createAccompanimentAxiom(mood: Mood, genre: Genre, random: { next: () => number; nextInt: (max: number) => number }, bassNote: number): FractalEvent[] {
+    const scale = getScaleForMood(mood);
+    const swellParams = { cutoff: 300, resonance: 0.8, distortion: 0.02, portamento: 0.0, attack: 1.5, release: 2.5 };
+    const axiom: FractalEvent[] = [];
+    
+    const rootMidi = bassNote;
+    const rootDegree = rootMidi % 12;
+
+    const findNoteInScale = (degree: number) => scale.find(n => (n % 12) === (degree + 12) % 12);
+    
+    const thirdDegree = findNoteInScale(rootDegree + (mood === 'melancholic' || mood === 'dark' ? 3 : 4));
+    const fifthDegree = findNoteInScale(rootDegree + 7);
+
+    const chord = [rootMidi + 12, thirdDegree ? thirdDegree + 12 : null, fifthDegree ? fifthDegree + 12 : null].filter(n => n !== null) as number[];
+
+    if (chord.length < 2) return []; 
+
+    const numNotes = 2 + random.nextInt(2); // 2 or 3 notes
+    const totalDuration = 4.0; // One bar
+    let currentTime = 0;
+
+    for (let i = 0; i < numNotes; i++) {
+        const noteMidi = chord[random.nextInt(chord.length)];
+        const duration = (totalDuration / numNotes) * (0.8 + random.next() * 0.4);
+        axiom.push({
+            type: 'accompaniment',
+            note: noteMidi,
+            duration: duration,
+            time: currentTime,
+            weight: 0.8 + random.next() * 0.2,
+            technique: 'swell',
+            dynamics: 'p',
+            phrasing: 'legato',
+            params: swellParams
+        });
+        currentTime += duration / 2; // Overlap notes
+    }
+
+    return axiom;
+}
+
