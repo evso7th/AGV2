@@ -22,6 +22,7 @@ export const useAuraGroove = () => {
     updateSettings,
     resetWorker, 
     setVolume, 
+    setInstrument,
     setBassTechnique,
     setTextureSettings: setEngineTextureSettings,
     setEQGain,
@@ -96,7 +97,7 @@ export const useAuraGroove = () => {
             }
         });
         setVolume('drums', drumSettings.volume);
-        setEngineTextureSettings(textureSettings);
+        setEngineTextureSettings({sparkles: textureSettings.sparkles});
         setBassTechnique(instrumentSettings.bass.technique);
     }
   }, [isInitialized]);
@@ -140,7 +141,6 @@ export const useAuraGroove = () => {
   
   const handlePlayPause = useCallback(async () => {
     if (!isInitialized) {
-      // Initialization is now handled by the provider's useEffect
       return;
     }
     setEngineIsPlaying(!isPlaying);
@@ -148,7 +148,7 @@ export const useAuraGroove = () => {
 
   const handleRegenerate = useCallback(() => {
     setIsRegenerating(true);
-    setTimeout(() => setIsRegenerating(false), 500); // Animation duration
+    setTimeout(() => setIsRegenerating(false), 500); 
 
     if (isPlaying) {
       setEngineIsPlaying(false);
@@ -157,24 +157,19 @@ export const useAuraGroove = () => {
   }, [isPlaying, setEngineIsPlaying, resetWorker]);
 
   const handleInstrumentChange = (part: keyof InstrumentSettings, name: BassInstrument | MelodyInstrument | AccompanimentInstrument | 'piano' | 'guitarChords') => {
-      // Create the new settings object based on the current state.
-      const newInstrumentSettings = {
-        ...instrumentSettings,
-        [part]: { ...instrumentSettings[part as keyof typeof instrumentSettings], name }
-      };
+    const newSettings = {
+      ...instrumentSettings,
+      [part]: { ...instrumentSettings[part as keyof typeof instrumentSettings], name }
+    };
+    setInstrumentSettings(newSettings);
+    setInstrument(part, name as any);
 
-      // Update the React state for the UI to be in sync.
-      setInstrumentSettings(newInstrumentSettings);
-
-      // Immediately send the complete, updated settings object to the worker.
-      // This prevents the race condition caused by relying on useEffect.
-      if (isInitialized) {
-          const fullSettings = getFullSettings();
-          updateSettings({
-              ...fullSettings,
-              instrumentSettings: newInstrumentSettings, // Use the new settings object
-          });
-      }
+    if (isInitialized) {
+      updateSettings({
+        ...getFullSettings(),
+        instrumentSettings: newSettings
+      });
+    }
   };
   
   const handleBassTechniqueChange = (technique: BassTechnique) => {
