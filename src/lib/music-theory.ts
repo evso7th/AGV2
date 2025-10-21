@@ -1,3 +1,4 @@
+
 // src/lib/music-theory.ts
 import type { FractalEvent, Mood, Genre, Technique, BassSynthParams, InstrumentType } from '@/types/fractal';
 
@@ -413,48 +414,6 @@ export const STYLE_DRUM_PATTERNS: Record<Genre, GenreRhythmGrammar> = {
     },
 };
 
-// Bass Riff Library
-export const STYLE_BASS_PATTERNS: Record<Genre, BassPatternDefinition[]> = {
-    ambient: [
-        { pattern: (scale, random) => generateAmbientBassPhrase('calm', 'ambient', random).map(e => ({ note: e.note, time: e.time, duration: e.duration })), tags: ['ambient-generative'] }
-    ],
-    rock: [
-        { pattern: [{ note: 0, time: 0, duration: 0.5 }, { note: 0, time: 0.5, duration: 0.5 }, { note: 0, time: 1, duration: 0.5 }, { note: 0, time: 1.5, duration: 0.5 }, { note: 0, time: 2, duration: 0.5 }, { note: 0, time: 2.5, duration: 0.5 }, { note: 0, time: 3, duration: 0.5 }, { note: 0, time: 3.5, duration: 0.5 }], tags: ['rock-standard', 'rock-eighths'] },
-        { pattern: [{ note: 0, time: 0, duration: 1 }, { note: 2, time: 2, duration: 1 }, { note: 4, time: 3, duration: 1 }], tags: ['rock-standard'] },
-    ],
-    house: [
-        { pattern: [{ note: 0, time: 0, duration: 1 }, { note: 0, time: 1, duration: 1 }, { note: 0, time: 2, duration: 1 }, { note: 0, time: 3, duration: 1 }], tags: ['four-on-the-floor'] },
-        { pattern: [{ note: 0, time: 0, duration: 0.5 }, { note: 7, time: 0.5, duration: 0.5 }, { note: 0, time: 1, duration: 0.5 }, { note: 7, time: 1.5, duration: 0.5 }, { note: 0, time: 2, duration: 0.5 }, { note: 7, time: 2.5, duration: 0.5 }, { note: 0, time: 3, duration: 0.5 }, { note: 7, time: 3.5, duration: 0.5 }], tags: ['four-on-the-floor', 'octave-jump'] },
-    ],
-    trance: [
-        { pattern: [{ note: 0, time: 0, duration: 0.5 }, { note: 0, time: 0.5, duration: 0.5 }, { note: 0, time: 1, duration: 0.5 }, { note: 0, time: 1.5, duration: 0.5 }, { note: 0, time: 2, duration: 0.5 }, { note: 0, time: 2.5, duration: 0.5 }, { note: 0, time: 3, duration: 0.5 }, { note: 0, time: 3.5, duration: 0.5 }], tags: ['trance-drive'] },
-        { pattern: [{ note: 0, time: 0, duration: 0.25 }, { note: 0, time: 0.75, duration: 0.25 }, { note: 0, time: 1.5, duration: 0.25 }, { note: 0, time: 2.25, duration: 0.25 }, { note: 0, time: 3, duration: 0.25 }, { note: 0, time: 3.75, duration: 0.25 }], tags: ['trance-drive', 'syncopated'] },
-    ],
-    rnb: [
-        { pattern: [{ note: 0, time: 0, duration: 1.5 }, { note: 4, time: 1.5, duration: 0.5 }, { note: 2, time: 2, duration: 1.5 }, { note: 0, time: 3.5, duration: 0.5, technique: 'ghost' }], tags: ['rnb-groove'] },
-        { pattern: [{ note: 0, time: 1, duration: 0.75 }, { note: 2, time: 1.75, duration: 0.75 }, { note: -1, time: 2.5, duration: 0.5 }, { note: 0, time: 3.25, duration: 0.75 }], tags: ['rnb-groove', 'hip-hop'] },
-    ],
-    ballad: [
-        { pattern: [{ note: 0, time: 0, duration: 3 }, { note: 4, time: 3, duration: 1 }], tags: ['ballad-simple'] },
-        { pattern: [{ note: 0, time: 0, duration: 2 }, { note: 2, time: 2, duration: 2 }], tags: ['ballad-simple'] },
-    ],
-    reggae: [
-        { pattern: [{ note: 0, time: 1, duration: 1 }, { note: 0, time: 3, duration: 1, technique: 'ghost' }], tags: ['one-drop'] },
-        { pattern: [{ note: 0, time: 2.5, duration: 1.5 }], tags: ['one-drop'] },
-    ],
-    blues: [
-        { pattern: [{ note: 0, time: 0, duration: 1 }, { note: 2, time: 1, duration: 1 }, { note: 4, time: 2, duration: 1 }, { note: 5, time: 3, duration: 1 }], tags: ['shuffle', 'walking-bass'] },
-        { pattern: [{ note: 0, time: 0, duration: 0.66 }, { note: 2, time: 0.66, duration: 0.33 }, { note: 4, time: 1, duration: 0.66 }, { note: 2, time: 1.66, duration: 0.33 }], tags: ['shuffle'] },
-    ],
-    celtic: [
-        { pattern: [{ note: 0, time: 0, duration: 1 }, { note: 4, time: 2, duration: 1 }], tags: ['bodhran-pulse'] },
-        { pattern: [{ note: 0, time: 0, duration: 0.5 }, { note: 7, time: 0.5, duration: 0.5 }, { note: 0, time: 1, duration: 0.5 }, { note: 7, time: 1.5, duration: 0.5 }], tags: ['bodhran-pulse'] },
-    ],
-    progressive: [
-        { pattern: [{ note: 0, time: 0, duration: 0.75 }, { note: 0, time: 0.75, duration: 0.25 }, { note: 2, time: 1, duration: 1 }, { note: -1, time: 2.5, duration: 1.5 }], tags: ['prog-rock-sparse', 'syncopated'] },
-    ],
-};
-
 /**
  * Грамматика для генерации SFX.
  * Определяет "строительные блоки" для создания разнообразных звуковых эффектов.
@@ -507,7 +466,19 @@ export function createAccompanimentAxiom(mood: Mood, genre: Genre, random: { nex
     const thirdDegree = findNoteInScale(rootDegree + (mood === 'melancholic' || mood === 'dark' ? 3 : 4));
     const fifthDegree = findNoteInScale(rootDegree + 7);
 
-    const chord = [rootMidi + 12, thirdDegree ? thirdDegree + 12 : null, fifthDegree ? fifthDegree + 12 : null].filter(n => n !== null) as number[];
+    const selectOctave = (): number => {
+        const rand = random.next();
+        if (rand < 0.70) return 4; // 70% chance for 4th octave
+        if (rand < 0.95) return 3; // 25% chance for 3rd octave
+        return 5; // 5% chance for 5th octave
+    };
+
+    const baseOctaveMidi = 12 * selectOctave();
+
+    const chord = [rootMidi, thirdDegree, fifthDegree]
+        .filter(n => n !== null && n !== undefined)
+        .map(n => n! + baseOctaveMidi) as number[];
+
 
     if (chord.length < 2) return []; 
 
