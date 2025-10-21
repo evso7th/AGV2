@@ -532,5 +532,3 @@ export class FractalMusicEngine {
     return { events, instrumentHints };
   }
 }
-
-```

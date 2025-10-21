@@ -1,5 +1,5 @@
 
-import type { FractalEvent, ResonanceMatrix, Mood, Genre } from '@/types/fractal';
+import type { FractalEvent, ResonanceMatrix, Mood, Genre, Technique, BassSynthParams, InstrumentType } from '@/types/fractal';
 import { getScaleForMood } from './music-theory';
 
 // === ВСПОМОГАТЕЛЬНЫЕ ФУНКЦИИ ===
@@ -169,7 +169,5 @@ export const AmbientK: ResonanceMatrix = (
         return 0.2; // Практически не должны влиять друг на друга
     }
 
-    return 0.5; // Нейтральный резонанс
+    return 0.5; // Нейтральный резонанс для всех остальных комбинаций
 };
-
-```
