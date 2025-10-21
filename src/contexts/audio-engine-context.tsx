@@ -18,7 +18,7 @@ import { getPresetParams } from "@/lib/presets";
 import { PIANO_SAMPLES, VIOLIN_SAMPLES, FLUTE_SAMPLES, ACOUSTIC_GUITAR_CHORD_SAMPLES, ACOUSTIC_GUITAR_SOLO_SAMPLES } from '@/lib/samples';
 import { GuitarChordsSampler } from '@/lib/guitar-chords-sampler';
 import { AcousticGuitarSoloSampler } from '@/lib/acoustic-guitar-solo-sampler';
-import type { FractalEvent } from '@/types/fractal';
+import type { FractalEvent, InstrumentHints } from '@/types/fractal';
 import * as Tone from 'tone';
 
 export function noteToMidi(note: string): number {
@@ -31,11 +31,7 @@ type WorkerMessage = {
     payload?: {
         events?: FractalEvent[];
         barDuration?: number;
-        instrumentHints?: {
-          accompaniment?: MelodyInstrument,
-          bass?: BassInstrument,
-          harmony?: 'piano' | 'guitarChords';
-        };
+        instrumentHints?: InstrumentHints;
     };
     error?: string;
     message?: string;
@@ -121,7 +117,7 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
     }
   }, [isInitialized]);
 
-  const scheduleEvents = useCallback((events: FractalEvent[], barStartTime: number, tempo: number) => {
+  const scheduleEvents = useCallback((events: FractalEvent[], barStartTime: number, tempo: number, instrumentHints?: InstrumentHints) => {
     if (!Array.isArray(events)) {
         console.error('[AudioEngine] scheduleEvents received non-array "events":', events);
         return;
@@ -158,7 +154,7 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
 
     if (accompanimentManagerRef.current && accompanimentEvents.length > 0) {
         console.log(`[AudioEngine] Forwarding ${accompanimentEvents.length} events to AccompanimentManager`);
-        accompanimentManagerRef.current.schedule(accompanimentEvents, barStartTime, tempo);
+        accompanimentManagerRef.current.schedule(accompanimentEvents, barStartTime, tempo, instrumentHints?.accompaniment);
     }
 
     if (harmonyManagerRef.current && harmonyEvents.length > 0) {
@@ -252,19 +248,10 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
                 if (type === 'SCORE_READY' && payload && payload.events && payload.barDuration && settingsRef.current) {
                     const { events, barDuration, instrumentHints } = payload;
                     
-                    if (instrumentHints) {
-                      if (instrumentHints.accompaniment) {
-                        setInstrumentCallback('accompaniment', instrumentHints.accompaniment);
-                      }
-                       if (instrumentHints.bass) {
-                         setInstrumentCallback('bass', instrumentHints.bass);
-                       }
-                        if (instrumentHints.harmony) {
-                            setInstrumentCallback('harmony', instrumentHints.harmony);
-                        }
-                    }
-
-                    scheduleEvents(events, nextBarTimeRef.current, settingsRef.current.bpm);
+                    const composerControls = settingsRef.current.composerControlsInstruments;
+                    // Pass hints conditionally, without updating the UI state directly from here
+                    scheduleEvents(events, nextBarTimeRef.current, settingsRef.current.bpm, composerControls ? instrumentHints : undefined);
+                    
                     nextBarTimeRef.current += barDuration;
 
                 } else if (type === 'sparkle' && time !== undefined) {
@@ -288,7 +275,7 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
     } finally {
         setIsInitializing(false);
     }
-  }, [isInitialized, isInitializing, toast, scheduleEvents, setInstrumentCallback]);
+  }, [isInitialized, isInitializing, toast, scheduleEvents]);
 
   const scheduleNextImpulse = useCallback(() => {
     if (impulseTimerRef.current) {
