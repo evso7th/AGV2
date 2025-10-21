@@ -1,7 +1,7 @@
 
 import type { FractalEvent, Mood, Genre, Technique, BassSynthParams, InstrumentType, MelodyInstrument, BassInstrument } from '@/types/fractal';
 import { MelancholicMinorK } from './resonance-matrices';
-import { getScaleForMood, STYLE_DRUM_PATTERNS, STYLE_BASS_PATTERNS, type BassPatternDefinition, PERCUSSION_SETS, generateAmbientBassPhrase, mutateBassPhrase } from './music-theory';
+import { getScaleForMood, STYLE_DRUM_PATTERNS, STYLE_BASS_PATTERNS, type BassPatternDefinition, PERCUSSION_SETS, generateAmbientBassPhrase, mutateBassPhrase, createAccompanimentAxiom } from './music-theory';
 
 export type Branch = {
   id: string;
@@ -112,50 +112,6 @@ function createDrumAxiom(genre: Genre, mood: Mood, tempo: number, random: { next
     
     return { events: axiomEvents, tags: loop.tags };
 }
-
-function createAccompanimentAxiom(mood: Mood, genre: Genre, random: { next: () => number; nextInt: (max: number) => number }, bassNote: number): FractalEvent[] {
-    const scale = getScaleForMood(mood);
-    const swellParams = getParamsForTechnique('swell', mood, genre);
-    const arpeggio: FractalEvent[] = [];
-    
-    const rootMidi = bassNote;
-    const rootDegree = rootMidi % 12;
-
-    const findNoteInScale = (degree: number) => scale.find(n => (n % 12) === (degree + 12) % 12);
-    
-    const thirdDegree = findNoteInScale(rootDegree + (mood === 'melancholic' || mood === 'dark' ? 3 : 4));
-    const fifthDegree = findNoteInScale(rootDegree + 7);
-
-    const chord = [rootMidi, thirdDegree, fifthDegree].filter(n => n !== undefined) as number[];
-
-    if (chord.length < 2) return []; 
-
-    const pattern = [0, 1, 2, 1, 0, 2, 1, 0, 2, 1, 0, 2, 1, 2, 0, 1]; // Classic arpeggio pattern
-    const duration = 0.25; // 16th notes
-
-    for (let i = 0; i < pattern.length; i++) {
-        const time = i * duration;
-        const noteMidi = chord[pattern[i] % chord.length];
-
-        if (noteMidi) {
-            arpeggio.push({
-                type: 'accompaniment',
-                note: noteMidi,
-                duration: duration,
-                time: time,
-                weight: 0.6 + random.next() * 0.1,
-                technique: 'swell',
-                dynamics: 'p',
-                phrasing: 'legato',
-                params: swellParams
-            });
-        }
-    }
-
-    return arpeggio;
-}
-
-
 
 function createSfxScenario(mood: Mood, genre: Genre, random: { next: () => number, nextInt: (max: number) => number }): { drumFill: FractalEvent[], bassFill: FractalEvent[], accompanimentFill: FractalEvent[] } {
     const drumFill: FractalEvent[] = [];
@@ -340,6 +296,15 @@ export class FractalMusicEngine {
     }
     
     this.createBassAxiom();
+    
+    // Create accompaniment axiom
+    const bassAxiomEvents = this.branches.find(b => b.type === 'bass')?.events;
+    if (bassAxiomEvents && bassAxiomEvents.length > 0) {
+        const accompAxiom = createAccompanimentAxiom(this.config.mood, this.config.genre, this.random, bassAxiomEvents[0].note, this.config.tempo);
+        const endTime = accompAxiom.reduce((max, e) => Math.max(max, e.time + e.duration), 0);
+        this.branches.push({ id: `accomp_axiom_0`, events: accompAxiom, weight: 1.0, age: 0, technique: 'swell', type: 'accompaniment', endTime });
+    }
+
 
     this.needsBassReset = false;
     this.lastAccompanimentEndTime = -Infinity;
@@ -350,7 +315,7 @@ export class FractalMusicEngine {
       this.bassPhraseLibrary = [];
       const numPhrases = 2 + this.random.nextInt(3); 
       
-      const anchorPhrase = generateAmbientBassPhrase(this.config.mood, this.config.genre, this.random);
+      const anchorPhrase = generateAmbientBassPhrase(this.config.mood, this.config.genre, this.random, this.config.tempo);
       this.bassPhraseLibrary.push(anchorPhrase);
 
       for (let i = 1; i < numPhrases; i++) {
@@ -479,7 +444,7 @@ export class FractalMusicEngine {
     } else if (parent.type === 'accompaniment') {
         const bassBranches = this.branches.filter(isBass);
         const currentBassNote = bassBranches.length > 0 ? bassBranches[0].events[0]?.note ?? 40 : 40;
-        const newAxiom = createAccompanimentAxiom(this.config.mood, this.config.genre, this.random, currentBassNote);
+        const newAxiom = createAccompanimentAxiom(this.config.mood, this.config.genre, this.random, currentBassNote, this.config.tempo);
         if (newAxiom.length === 0) return null;
         endTime = newAxiom.reduce((max, e) => Math.max(max, e.time + e.duration), 0);
         return {
@@ -522,7 +487,7 @@ export class FractalMusicEngine {
     }
     
     if (this.config.composerControlsInstruments && shouldPlayAccompaniment) {
-        const possibleInstruments: MelodyInstrument[] = ['violin', 'flute', 'synth', 'organ', 'mellotron', 'theremin', 'E-Bells_melody', 'G-Drops'];
+        const possibleInstruments: MelodyInstrument[] = ['violin', 'flute', 'synth', 'organ', 'mellotron', 'theremin', 'electricGuitar'];
         instrumentHints.accompaniment = possibleInstruments[this.random.nextInt(possibleInstruments.length)];
     }
     const output: FractalEvent[] = [];
@@ -627,7 +592,7 @@ export class FractalMusicEngine {
                  // If no parent, create a new axiom
                  const bassBranches = this.branches.filter(isBass);
                  const currentBassNote = bassBranches.length > 0 ? bassBranches[0].events[0]?.note ?? 40 : 40;
-                 const newAxiom = createAccompanimentAxiom(this.config.mood, this.config.genre, this.random, currentBassNote);
+                 const newAxiom = createAccompanimentAxiom(this.config.mood, this.config.genre, this.random, currentBassNote, this.config.tempo);
                  if (newAxiom.length > 0) {
                      const endTime = newAxiom.reduce((max, e) => Math.max(max, e.time + e.duration), 0);
                      this.branches.push({ id: `accomp_axiom_${this.epoch}`, events: newAxiom, weight: 1.0, age: 0, technique: 'swell', type: 'accompaniment', endTime });
