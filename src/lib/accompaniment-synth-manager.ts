@@ -84,9 +84,9 @@ export class AccompanimentSynthManager {
     private async initSynthPool() {
         if (this.isSynthPoolInitialized) return;
         try {
-            await this.audioContext.audioWorklet.addModule('/worklets/bass-processor.js');
+            await this.audioContext.audioWorklet.addModule('/worklets/chord-processor.js');
             for (let i = 0; i < 4; i++) { // Pool of 4 voices for chords/arpeggios
-                const worklet = new AudioWorkletNode(this.audioContext, 'bass-processor', {
+                const worklet = new AudioWorkletNode(this.audioContext, 'chord-processor', {
                     processorOptions: { sampleRate: this.audioContext.sampleRate }
                 });
                 worklet.connect(this.synthOutput);
