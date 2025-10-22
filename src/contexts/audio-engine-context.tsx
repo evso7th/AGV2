@@ -153,13 +153,12 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
     }
 
     if (accompanimentManagerRef.current && accompanimentEvents.length > 0) {
-        console.log(`[AudioEngine] Forwarding ${accompanimentEvents.length} events to AccompanimentManager`);
         accompanimentManagerRef.current.schedule(accompanimentEvents, barStartTime, tempo, instrumentHints?.accompaniment);
     }
 
     if (harmonyManagerRef.current && harmonyEvents.length > 0) {
         console.log(`[AudioEngine] Forwarding ${harmonyEvents.length} events to HarmonyManager`);
-        harmonyManagerRef.current.schedule(harmonyEvents, barStartTime, tempo);
+        harmonyManagerRef.current.schedule(harmonyEvents, barStartTime, tempo, instrumentHints?.harmony);
     }
 
     if (sfxSynthManagerRef.current && sfxEvents.length > 0) {
