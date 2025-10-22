@@ -243,14 +243,29 @@ function createBassFill(this: FractalMusicEngine, mood: Mood, genre: Genre, rand
 type PlayPlanItem = {
     phraseIndex: number;
     repetitions: number;
+    instrument: AccompanimentInstrument;
 };
 
+const AMBIENT_INSTRUMENT_WEIGHTS: Record<AccompanimentInstrument, number> = {
+    piano: 0.1,
+    violin: 0.05,
+    flute: 0.2,
+    synth: 0.2,
+    organ: 0.25,
+    mellotron: 0.25,
+    theremin: 0.05,
+    guitarChords: 0.0,
+    acousticGuitarSolo: 0.0,
+    electricGuitar: 0.0,
+    'E-Bells_melody': 0.0,
+    'G-Drops': 0.0,
+    'none': 0.0,
+};
 
 // === ОСНОВНОЙ КЛАСС ===
 export class FractalMusicEngine {
   public config: EngineConfig;
   private resonanceMatrix: ResonanceMatrix;
-  private branches: Branch[] = [];
   private time: number = 0;
   private epoch = 0;
   private random: { next: () => number; nextInt: (max: number) => number };
@@ -259,12 +274,10 @@ export class FractalMusicEngine {
   private sfxFillForThisEpoch: { drum: FractalEvent[], bass: FractalEvent[], accompaniment: FractalEvent[] } | null = null;
   private nextAccompPlanRegenEpoch: number = 0;
   private nextHarmonyEventEpoch: number = 0;
-  
-  private currentAccompInstrument: AccompanimentInstrument | null = null;
 
   // Композитор Фраз для Баса
   private bassPhraseLibrary: FractalEvent[][] = [];
-  private bassPlayPlan: PlayPlanItem[] = [];
+  private bassPlayPlan: { phraseIndex: number, repetitions: number }[] = [];
   private currentBassPlanIndex: number = 0;
   private currentBassRepetition: number = 0;
   private barsInCurrentBassPhrase: number = 0;
@@ -351,37 +364,56 @@ export class FractalMusicEngine {
       this.barsInCurrentBassPhrase = 0;
       console.log(`[BassAxiom] Created new bass plan with ${numPhrases} related phrases. Plan length: ${planLength}`);
   }
+  
+  private chooseWeightedInstrument(weights: Record<AccompanimentInstrument, number>): AccompanimentInstrument {
+      const totalWeight = Object.values(weights).reduce((sum, weight) => sum + weight, 0);
+      let rand = this.random.next() * totalWeight;
+
+      for (const [instrument, weight] of Object.entries(weights)) {
+          rand -= weight;
+          if (rand <= 0) {
+              return instrument as AccompanimentInstrument;
+          }
+      }
+      return 'synth'; // Fallback
+  }
 
   private createAccompAxiomAndPlan() {
       this.accompPhraseLibrary = [];
       const numPhrases = 4 + this.random.nextInt(2); // 4-5 фраз в бандле
 
-      // Находим текущую или первую басовую ноту для гармонической привязки
       const bassNote = this.bassPhraseLibrary[0]?.[0]?.note ?? getScaleForMood(this.config.mood)[0];
       
       const anchorPhrase = createAccompanimentAxiom(this.config.mood, this.config.genre, this.random, bassNote, this.config.tempo);
       this.accompPhraseLibrary.push(anchorPhrase);
       
       for (let i = 1; i < numPhrases; i++) {
-          // Мутации для аккомпанемента могут быть более смелыми
           this.accompPhraseLibrary.push(mutateBassPhrase(anchorPhrase, this.config.mood, this.config.genre, this.random)); 
       }
 
       this.accompPlayPlan = [];
       const planLength = 4 + this.random.nextInt(3);
       for (let i = 0; i < planLength; i++) {
+          let instrument: AccompanimentInstrument = 'synth'; // Default
+          if (this.config.genre === 'ambient') {
+              instrument = this.chooseWeightedInstrument(AMBIENT_INSTRUMENT_WEIGHTS);
+          } else {
+              const ALL_ACCOMP_INSTRUMENTS: AccompanimentInstrument[] = ['piano', 'violin', 'flute', 'organ', 'mellotron', 'synth', 'theremin', 'guitarChords', 'acousticGuitarSolo'];
+              instrument = ALL_ACCOMP_INSTRUMENTS[this.random.nextInt(ALL_ACCOMP_INSTRUMENTS.length)];
+          }
+
           this.accompPlayPlan.push({
               phraseIndex: this.random.nextInt(numPhrases),
-              repetitions: 1 + this.random.nextInt(2) // не повторять одну фразу более 3 раз (1 + 2)
+              repetitions: 1 + this.random.nextInt(2),
+              instrument: instrument,
           });
       }
       
       this.currentAccompPlanIndex = 0;
       this.currentAccompRepetition = 0;
       this.barsInCurrentAccompPhrase = 0;
-      this.nextAccompPlanRegenEpoch = this.epoch + 10 + this.random.nextInt(3); // 10-12 тактов
-      this.currentAccompInstrument = null; // Сбрасываем инструмент при создании нового плана
-      console.log(`[AccompAxiom] Created new plan with ${numPhrases} phrases. Plan length: ${planLength}. Next regen at epoch ${this.nextAccompPlanRegenEpoch}.`);
+      this.nextAccompPlanRegenEpoch = this.epoch + 10 + this.random.nextInt(3);
+      console.log(`[AccompAxiom] Created new plan with ${numPhrases} phrases. Next regen at epoch ${this.nextAccompPlanRegenEpoch}.`);
   }
 
   public generateExternalImpulse() {
@@ -404,12 +436,10 @@ export class FractalMusicEngine {
 
     const lastBassEvent = bassEvents.reduce((last, current) => (current.time > last.time ? current : last));
 
-    // Ensure the last note has a defined release that fits within its duration
     if (lastBassEvent.time + lastBassEvent.duration >= barDuration - 0.1) {
         if (!lastBassEvent.params) {
             lastBassEvent.params = { cutoff: 300, resonance: 0.8, distortion: 0.02, portamento: 0.0, attack: 0.2 };
         }
-        // Release should be within the note's own duration to avoid overlapping the next phrase
         lastBassEvent.params.release = Math.min(lastBassEvent.duration * 0.8, 1.5);
     }
     return events;
@@ -420,19 +450,16 @@ export class FractalMusicEngine {
     let instrumentHints: { harmony?: AccompanimentInstrument, accompaniment?: AccompanimentInstrument, bass?: BassInstrument } = {};
     const output: FractalEvent[] = [];
 
-    // --- SFX FILL LOGIC ---
     if (this.sfxFillForThisEpoch) {
         output.push(...this.sfxFillForThisEpoch.drum, ...this.sfxFillForThisEpoch.bass, ...this.sfxFillForThisEpoch.accompaniment);
-        this.sfxFillForThisEpoch = null; // Consume the one-off fill
+        this.sfxFillForThisEpoch = null;
     }
     
-    // --- DRUMS LOGIC ---
     if (this.config.drumSettings.enabled) {
         const { events: drumAxiom } = createDrumAxiom(this.config.genre, this.config.mood, this.config.tempo, this.random);
         output.push(...drumAxiom);
     }
     
-    // --- BASS LOGIC ---
     const bassPlanItem = this.bassPlayPlan[this.currentBassPlanIndex];
     if (bassPlanItem && this.bassPhraseLibrary.length > 0) {
         const phrase = this.bassPhraseLibrary[bassPlanItem.phraseIndex];
@@ -463,7 +490,6 @@ export class FractalMusicEngine {
         this.createBassAxiomAndPlan();
     }
 
-    // --- TEXTURAL ACCOMPANIMENT LOGIC ---
     if (this.epoch >= this.nextAccompPlanRegenEpoch) {
          this.createAccompAxiomAndPlan();
     }
@@ -474,20 +500,10 @@ export class FractalMusicEngine {
         const phraseDurationInBars = Math.ceil(phraseDurationInBeats / 4);
 
         if (this.barsInCurrentAccompPhrase === 0) {
-            const ALL_ACCOMP_INSTRUMENTS: AccompanimentInstrument[] = ['piano', 'violin', 'flute', 'organ', 'mellotron', 'synth', 'theremin', 'guitarChords', 'acousticGuitarSolo'];
-            const AMBIENT_ACCOMP_INSTRUMENTS: AccompanimentInstrument[] = ['violin', 'flute', 'organ', 'mellotron', 'synth', 'theremin'];
-            
-            const availableInstruments = this.config.genre === 'ambient' ? AMBIENT_ACCOMP_INSTRUMENTS : ALL_ACCOMP_INSTRUMENTS;
-
-            this.currentAccompInstrument = availableInstruments[this.random.nextInt(availableInstruments.length)];
-            instrumentHints.accompaniment = this.currentAccompInstrument;
-            console.log(`[AccompHint] Genre: ${this.config.genre}, Instrument Hint: ${instrumentHints.accompaniment}`);
-
             output.push(...phrase);
-        } else {
-            // Ensure hint is carried over for subsequent bars of the same phrase
-            instrumentHints.accompaniment = this.currentAccompInstrument || undefined;
         }
+
+        instrumentHints.accompaniment = accompPlanItem.instrument;
 
         this.barsInCurrentAccompPhrase++;
 
@@ -504,7 +520,6 @@ export class FractalMusicEngine {
         }
     }
 
-    // --- RHYTHMIC HARMONY ---
     if (this.epoch >= this.nextHarmonyEventEpoch) {
         const bassNote = output.find(isBass)?.note ?? this.bassPhraseLibrary[0]?.[0]?.note ?? getScaleForMood(this.config.mood)[0];
         const harmonyPhrase = createAccompanimentAxiom(this.config.mood, this.config.genre, this.random, bassNote, this.config.tempo);
