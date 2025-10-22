@@ -12,7 +12,7 @@ import { PIANO_SAMPLES } from "@/lib/samples";
 export class HarmonySynthManager {
     private audioContext: AudioContext;
     private destination: AudioNode;
-    private activeInstrumentName: 'piano' | 'guitarChords' | 'none' = 'none';
+    private activeInstrumentName: 'piano' | 'guitarChords' | 'none' = 'piano';
     public isInitialized = false;
 
     // Sampler Instruments
@@ -36,13 +36,21 @@ export class HarmonySynthManager {
             this.piano.loadInstrument('piano', PIANO_SAMPLES),
             this.guitarChords.init(),
         ]);
+        
+        this.setInstrument(this.activeInstrumentName); // Set initial volume
 
         this.isInitialized = true;
         console.log('[HarmonyManager] Harmony instruments initialized.');
     }
     
-    public schedule(events: FractalEvent[], barStartTime: number, tempo: number) {
-        if (!this.isInitialized || this.activeInstrumentName === 'none') {
+    public schedule(events: FractalEvent[], barStartTime: number, tempo: number, instrumentHint?: 'piano' | 'guitarChords') {
+        if (!this.isInitialized) {
+            return;
+        }
+
+        const instrumentToPlay = instrumentHint || this.activeInstrumentName;
+
+        if (instrumentToPlay === 'none') {
             return;
         }
 
@@ -53,10 +61,14 @@ export class HarmonySynthManager {
             duration: event.duration * beatDuration,
             velocity: event.weight,
         }));
+        
+        if (notes.length === 0) {
+            return;
+        }
 
-        console.log(`[HarmonyManager] Scheduling ${notes.length} notes for instrument: ${this.activeInstrumentName}`);
+        console.log(`[HarmonyManager] Scheduling ${notes.length} notes for instrument: ${instrumentToPlay}`);
 
-        switch (this.activeInstrumentName) {
+        switch (instrumentToPlay) {
             case 'piano':
                 this.piano.schedule('piano', notes, barStartTime);
                 break;
@@ -73,6 +85,10 @@ export class HarmonySynthManager {
         }
         console.log(`[HarmonyManager] Setting active instrument to: ${instrumentName}`);
         this.activeInstrumentName = instrumentName;
+
+        // Manage volumes of child samplers
+        this.piano.setVolume(instrumentName === 'piano' ? 1.0 : 0);
+        this.guitarChords.setVolume(instrumentName === 'guitarChords' ? 1.0 : 0);
     }
 
     public allNotesOff() {
