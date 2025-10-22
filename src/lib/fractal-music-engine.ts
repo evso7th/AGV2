@@ -247,13 +247,13 @@ function createBassFill(this: FractalMusicEngine, mood: Mood, genre: Genre, rand
 }
 
 const AMBIENT_INSTRUMENT_WEIGHTS: Record<AccompanimentInstrument, number> = {
-    piano: 0.1,
-    violin: 0.05,
-    flute: 0.2,
-    synth: 0.2,
     organ: 0.25,
     mellotron: 0.25,
+    synth: 0.2,
+    flute: 0.2,
+    violin: 0.05,
     theremin: 0.05,
+    piano: 0.0,
     guitarChords: 0.0,
     acousticGuitarSolo: 0.0,
     electricGuitar: 0.0,
@@ -550,5 +550,3 @@ export class FractalMusicEngine {
     return { events, instrumentHints };
   }
 }
-
-    
