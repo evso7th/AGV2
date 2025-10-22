@@ -154,18 +154,21 @@ export class AccompanimentSynthManager {
 
     private scheduleSynth(instrument: MelodyInstrument, notes: Note[], barStartTime: number) {
         if (!this.isSynthPoolInitialized || this.synthPool.length === 0) return;
-
-        const messages: any[] = [];
-        notes.forEach((note, i) => {
-            const voiceIndex = (this.nextSynthVoice + i) % this.synthPool.length;
-            
+    
+        console.log(`[AccompManager] Distributing ${notes.length} synth notes to worklets.`);
+    
+        notes.forEach((note) => {
+            const voiceIndex = this.nextSynthVoice % this.synthPool.length;
+            const voice = this.synthPool[voiceIndex];
+            this.nextSynthVoice++;
+    
             const frequency = midiToFreq(note.midi);
             const noteOnTime = barStartTime + note.time;
             const noteOffTime = noteOnTime + note.duration;
             const noteId = `${noteOnTime.toFixed(4)}-${note.midi}-${voiceIndex}`;
-            
+    
             const presetParams = PRESETS[instrument] || PRESETS['synth'];
-
+    
             const finalParams: BassSynthParams = {
                 cutoff: note.params?.cutoff ?? presetParams.filterCutoff ?? 800,
                 resonance: note.params?.resonance ?? presetParams.q ?? 0.5,
@@ -174,28 +177,26 @@ export class AccompanimentSynthManager {
                 attack: note.params?.attack ?? presetParams.attack ?? 0.02,
                 release: note.params?.release ?? presetParams.release ?? 0.3,
             };
-
-            messages.push({
+    
+            const onMessage = {
                 type: 'noteOn',
                 frequency,
                 velocity: note.velocity,
                 when: noteOnTime,
                 noteId,
                 params: finalParams
-            });
-            messages.push({
+            };
+    
+            const offMessage = {
                 type: 'noteOff',
                 noteId,
                 when: noteOffTime
-            });
+            };
+    
+            console.log(`[AccompManager] -> Voice ${voiceIndex}:`, onMessage);
+            voice.worklet.port.postMessage(onMessage);
+            voice.worklet.port.postMessage(offMessage);
         });
-
-        if (messages.length > 0) {
-            console.log('[AccompManager] Sending messages to worklet:', messages);
-             // Send all messages for the bar in a single batch
-             this.synthPool.forEach(voice => voice.worklet.port.postMessage(messages));
-             this.nextSynthVoice = (this.nextSynthVoice + notes.length) % this.synthPool.length;
-        }
     }
 
     public setInstrument(instrumentName: MelodyInstrument | AccompanimentInstrument) {
@@ -228,7 +229,7 @@ export class AccompanimentSynthManager {
         this.acousticGuitarSolo.stopAll();
         this.synthPool.forEach(voice => {
             if (voice.worklet.port) {
-                 voice.worklet.port.postMessage([{ type: 'clear' }]);
+                 voice.worklet.port.postMessage({ type: 'clear' });
             }
         });
     }
