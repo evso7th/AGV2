@@ -1,61 +1,88 @@
 // public/worklets/chord-processor.js
-
-/**
- * A simple subtractive synthesizer running in an AudioWorklet.
- * It's designed to be lightweight and is controlled by messages from its corresponding AudioWorkletNode.
- */
 class ChordProcessor extends AudioWorkletProcessor {
-  static get parameterDescriptors() {
-    return [
-      { name: 'cutoff', defaultValue: 1200, minValue: 20, maxValue: 20000 },
-      { name: 'resonance', defaultValue: 0.8, minValue: 0, maxValue: 20 },
-      { name: 'distortion', defaultValue: 0.1, minValue: 0, maxValue: 1 },
-    ];
-  }
-
   constructor(options) {
     super(options);
     
-    this.activeNotes = new Map(); // Maps noteId to { phase, frequency, gain, targetGain, noteOffTime }
+    this.activeNotes = new Map();
+    this.port.onmessage = this.handleMessage.bind(this);
     
-    // Message port for receiving commands from the main thread
-    this.port.onmessage = (event) => {
-      const messages = Array.isArray(event.data) ? event.data : [event.data];
-      
-      for (const message of messages) {
-          if (message.type === 'noteOn' && isFinite(message.when)) {
-            this.activeNotes.set(message.noteId, {
-                phase: 0,
-                frequency: message.frequency,
-                gain: 0,
-                targetGain: message.velocity || 0.7,
-                attack: message.params?.attack || 0.02,
-                release: message.params?.release || 0.3,
-                noteOffTime: Infinity, 
-            });
-          } else if (message.type === 'noteOff' && isFinite(message.when)) {
-            const note = this.activeNotes.get(message.noteId);
-            if (note) {
-              note.targetGain = 0;
-              note.noteOffTime = message.when;
-            }
-          } else if (message.type === 'clear') {
-              this.activeNotes.forEach(note => {
-                  note.targetGain = 0;
-                  note.noteOffTime = currentTime;
-              });
-          }
-      }
-    };
+    this.phase = 0;
+    this.sampleRate = options?.processorOptions?.sampleRate || 44100;
   }
 
-  generateOsc(type, phase) {
-    switch (type) {
-      case 'sine': return Math.sin(phase);
-      case 'triangle': return 1 - 4 * Math.abs(0.5 - (phase / (2 * Math.PI)));
-      case 'square': return phase < Math.PI ? 1.0 : -1.0;
-      case 'sawtooth': return 1.0 - (phase / Math.PI);
-      default: return Math.sin(phase);
+  handleMessage(event) {
+    console.log('[ChordProcessor] Received message:', event.data);
+    const messages = Array.isArray(event.data) ? event.data : [event.data];
+
+    for (const message of messages) {
+        switch (message.type) {
+          case 'noteOn': {
+            const { noteId, when, frequency, velocity, params } = message;
+            if (when > currentTime) {
+              const noteData = {
+                id: noteId,
+                freq: frequency,
+                startTime: when,
+                velocity: velocity || 0.7,
+                attack: params.attack || 0.02,
+                release: params.release || 0.3,
+                
+                // Synth params
+                oscType: params.oscType || 'sawtooth',
+                cutoff: params.cutoff || 800,
+                resonance: params.resonance || 0.5,
+                distortion: params.distortion || 0.1,
+                
+                // Envelope state
+                gain: 0,
+                targetGain: velocity || 0.7,
+                isReleasing: false,
+
+                // Filter state
+                filterState: 0,
+                filterCoeff: 1 - Math.exp(-2 * Math.PI * (params.cutoff || 800) / this.sampleRate),
+
+                // Phase for this specific note
+                phase: 0
+              };
+              this.activeNotes.set(noteId, noteData);
+            }
+            break;
+          }
+          case 'noteOff': {
+            const { noteId, when } = message;
+            const note = this.activeNotes.get(noteId);
+            if (note && when > currentTime) {
+               note.releaseTime = when;
+               note.isReleasing = true;
+               note.targetGain = 0;
+            }
+            break;
+          }
+          case 'clear':
+            this.activeNotes.clear();
+            break;
+        }
+    }
+  }
+  
+  applyFilter(input, noteState) {
+    noteState.filterState += noteState.filterCoeff * (input - noteState.filterState);
+    return noteState.filterState;
+  }
+
+  generateOsc(noteState) {
+    switch (noteState.oscType) {
+      case 'sine':
+        return Math.sin(noteState.phase);
+      case 'triangle':
+        return 1 - 4 * Math.abs((noteState.phase / (2 * Math.PI)) - 0.5);
+      case 'square':
+        return noteState.phase < Math.PI ? 1 : -1;
+      case 'sawtooth':
+        return 1 - (noteState.phase / Math.PI);
+      default:
+        return Math.sin(noteState.phase);
     }
   }
 
@@ -63,40 +90,61 @@ class ChordProcessor extends AudioWorkletProcessor {
     const output = outputs[0];
     const channelCount = output.length;
 
-    // Correct way to access parameters
-    const distortionAmount = parameters.distortion[0];
+    if (this.activeNotes.size === 0) {
+        return true; 
+    }
     
+    // Log active notes state periodically
+    if (Math.random() < 0.01) { // Roughly once per second
+       console.log(`[ChordProcessor] Active notes: ${this.activeNotes.size}, CurrentTime: ${currentTime.toFixed(2)}`);
+       this.activeNotes.forEach(note => {
+          console.log(`  - Note ${note.id}: Freq=${note.freq}, Gain=${note.gain.toFixed(2)}, Releasing=${note.isReleasing}`);
+       });
+    }
+
     for (let i = 0; i < output[0].length; ++i) {
       let sample = 0;
+      const now = currentTime + i / this.sampleRate;
 
       for (const [noteId, note] of this.activeNotes.entries()) {
-        // Envelope
-        if (note.targetGain > note.gain) {
-            note.gain = Math.min(note.targetGain, note.gain + (1 / (note.attack * sampleRate)));
-        } else if (note.targetGain < note.gain) {
-            note.gain = Math.max(note.targetGain, note.gain - (1 / (note.release * sampleRate)));
-        }
-
-        if (note.gain > 0) {
-            let noteSample = this.generateOsc('triangle', note.phase);
-            note.phase += (note.frequency / sampleRate) * 2 * Math.PI;
-            if (note.phase > 2 * Math.PI) note.phase -= 2 * Math.PI;
-            sample += noteSample * note.gain;
-        } else if (currentTime >= note.noteOffTime) {
+        
+        if (now < note.startTime) continue;
+        if (note.gain <= 0.0001 && note.isReleasing) {
             this.activeNotes.delete(noteId);
+            continue;
         }
+        
+        if(note.releaseTime && now >= note.releaseTime){
+            note.isReleasing = true;
+            note.targetGain = 0;
+        }
+        
+        // --- Generate Signal ---
+        note.phase += (note.freq / this.sampleRate) * 2 * Math.PI;
+        if (note.phase >= 2 * Math.PI) note.phase -= 2 * Math.PI;
+        let noteSample = this.generateOsc(note);
+
+        // --- Apply Filter ---
+        noteSample = this.applyFilter(noteSample, note);
+
+        // --- Apply Envelope ---
+        if (!note.isReleasing) {
+            note.gain += (note.targetGain - note.gain) / (note.attack * this.sampleRate);
+        } else {
+            note.gain -= note.gain / (note.release * this.sampleRate);
+        }
+        note.gain = Math.max(0, note.gain);
+
+        sample += noteSample * note.gain;
       }
       
-      // Distortion (tanh)
-      if (distortionAmount > 0) {
-          sample = Math.tanh(sample * (1 + distortionAmount * 4));
-      }
+      sample = Math.tanh(sample); // Soft clipping to prevent harsh distortion
 
-      // Output to all channels
-      for (let j = 0; j < channelCount; j++) {
-        output[j][i] = sample * 0.4; // Reduce volume to prevent clipping
+      for (let channel = 0; channel < channelCount; ++channel) {
+        output[channel][i] = sample * 0.3; // Final output gain
       }
     }
+
     return true;
   }
 }

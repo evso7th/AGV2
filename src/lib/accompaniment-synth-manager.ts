@@ -191,6 +191,7 @@ export class AccompanimentSynthManager {
         });
 
         if (messages.length > 0) {
+            console.log('[AccompManager] Sending messages to worklet:', messages);
              // Send all messages for the bar in a single batch
              this.synthPool.forEach(voice => voice.worklet.port.postMessage(messages));
              this.nextSynthVoice = (this.nextSynthVoice + notes.length) % this.synthPool.length;
