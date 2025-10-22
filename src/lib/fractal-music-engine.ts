@@ -24,6 +24,12 @@ interface EngineConfig {
   seed?: number;
 }
 
+type PlayPlanItem = {
+    phraseIndex: number;
+    repetitions: number;
+    instrument: AccompanimentInstrument;
+};
+
 // === ВСПОМОГАТЕЛЬНЫЕ ФУНКЦИИ ===
 
 function getParamsForTechnique(technique: Technique, mood: Mood, genre: Genre): BassSynthParams {
@@ -181,7 +187,7 @@ function createBassFill(this: FractalMusicEngine, mood: Mood, genre: Genre, rand
       } else if (rand < 0.95) { // 25% chance mid register
           const third = Math.floor(scale.length / 3);
           return scale[third + random.nextInt(third)];
-      } else { // 5% chance high register
+      } else { // 5% chance for 5th octave
           const twoThirds = Math.floor(2 * scale.length / 3);
           return scale[twoThirds + random.nextInt(scale.length - twoThirds)];
       }
@@ -240,12 +246,6 @@ function createBassFill(this: FractalMusicEngine, mood: Mood, genre: Genre, rand
     return fill;
 }
 
-type PlayPlanItem = {
-    phraseIndex: number;
-    repetitions: number;
-    instrument: AccompanimentInstrument;
-};
-
 const AMBIENT_INSTRUMENT_WEIGHTS: Record<AccompanimentInstrument, number> = {
     piano: 0.1,
     violin: 0.05,
@@ -272,7 +272,6 @@ export class FractalMusicEngine {
   private nextWeatherEventEpoch: number;
   public needsBassReset: boolean = false;
   private sfxFillForThisEpoch: { drum: FractalEvent[], bass: FractalEvent[], accompaniment: FractalEvent[] } | null = null;
-  private nextAccompPlanRegenEpoch: number = 0;
   private nextHarmonyEventEpoch: number = 0;
 
   // Композитор Фраз для Баса
@@ -412,8 +411,7 @@ export class FractalMusicEngine {
       this.currentAccompPlanIndex = 0;
       this.currentAccompRepetition = 0;
       this.barsInCurrentAccompPhrase = 0;
-      this.nextAccompPlanRegenEpoch = this.epoch + 10 + this.random.nextInt(3);
-      console.log(`[AccompAxiom] Created new plan with ${numPhrases} phrases. Next regen at epoch ${this.nextAccompPlanRegenEpoch}.`);
+      console.log(`[AccompAxiom] Created new plan with ${numPhrases} phrases. Plan length: ${planLength}`);
   }
 
   public generateExternalImpulse() {
@@ -460,6 +458,7 @@ export class FractalMusicEngine {
         output.push(...drumAxiom);
     }
     
+    // --- BASS LOGIC ---
     const bassPlanItem = this.bassPlayPlan[this.currentBassPlanIndex];
     if (bassPlanItem && this.bassPhraseLibrary.length > 0) {
         const phrase = this.bassPhraseLibrary[bassPlanItem.phraseIndex];
@@ -490,9 +489,7 @@ export class FractalMusicEngine {
         this.createBassAxiomAndPlan();
     }
 
-    if (this.epoch >= this.nextAccompPlanRegenEpoch) {
-         this.createAccompAxiomAndPlan();
-    }
+    // --- ACCOMPANIMENT LOGIC ---
     const accompPlanItem = this.accompPlayPlan[this.currentAccompPlanIndex];
     if (accompPlanItem && this.accompPhraseLibrary.length > 0) {
         const phrase = this.accompPhraseLibrary[accompPlanItem.phraseIndex];
@@ -520,6 +517,7 @@ export class FractalMusicEngine {
         }
     }
 
+    // --- HARMONY LOGIC ---
     if (this.epoch >= this.nextHarmonyEventEpoch) {
         const bassNote = output.find(isBass)?.note ?? this.bassPhraseLibrary[0]?.[0]?.note ?? getScaleForMood(this.config.mood)[0];
         const harmonyPhrase = createAccompanimentAxiom(this.config.mood, this.config.genre, this.random, bassNote, this.config.tempo);
@@ -552,3 +550,5 @@ export class FractalMusicEngine {
     return { events, instrumentHints };
   }
 }
+
+    
