@@ -351,49 +351,55 @@ export class FractalMusicEngine {
                           ...bassNoteEvent,
                           type: 'accompaniment',
                           note: bassNoteEvent.note + (degree - rootNote) + (i > 0 ? 12 : 0), // Spread out chord
-                          time: bassNoteEvent.time + i * 0.1, // Strum
-                          weight: bassNoteEvent.weight * 0.6
+                          time: bassNoteEvent.time + i * 0.05, // Strum
+                          duration: bassNoteEvent.duration * 1.5, // Longer duration for pads
+                          weight: bassNoteEvent.weight * 0.5,
+                          phrasing: 'legato',
+                          technique: 'swell'
                       });
                   });
               });
               break;
 
           case 'arpeggio-fast':
-              let time = 0;
-              for (let i = 0; i < 16; i++) {
+              for (let i = 0; i < 16; i++) { // 16th notes for one bar
                   const note = chord[i % chord.length];
                   accompanimentPhrase.push({
                       type: 'accompaniment',
-                      note: note + 12,
-                      time: i * 0.25, // 16th notes
-                      duration: 0.25,
-                      weight: 0.7,
+                      note: note + 12 + (i % 2 === 0 ? 0 : 12), // Alternate octaves
+                      time: i * 0.25,
+                      duration: 0.2,
+                      weight: 0.6,
                       technique: 'pluck',
                       dynamics: 'mf',
                       phrasing: 'staccato',
-                      params: {}
+                      params: { cutoff: 1500, resonance: 0.4, attack: 0.01, release: 0.15 }
                   });
               }
               break;
 
           case 'chord-pulsation':
                for (let i = 0; i < 8; i++) { // 8th note pulses
-                   chord.forEach(degree => {
+                    const time = i * 0.5;
+                    const onBeat = i % 2 === 0;
+                    chord.forEach(degree => {
                         accompanimentPhrase.push({
                             type: 'accompaniment',
                             note: degree + 12,
-                            time: i * 0.5,
-                            duration: 0.4,
-                            weight: 0.5,
+                            time,
+                            duration: 0.3,
+                            weight: onBeat ? 0.7 : 0.5,
                             technique: 'pluck',
-                            dynamics: 'p',
+                            dynamics: 'mf',
                             phrasing: 'staccato',
-                            params: {}
+                            params: { attack: 0.02, release: 0.2 }
                         });
                    });
                }
                break;
                
+          case 'alternating-bass-chord':
+          case 'alberti-bass':
           default:
               return createAccompanimentAxiom(this.config.mood, this.config.genre, this.random, bassPhrase[0].note, this.config.tempo);
       }
