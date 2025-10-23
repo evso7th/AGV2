@@ -506,7 +506,7 @@ export function createAccompanimentAxiom(mood: Mood, genre: Genre, random: { nex
     return axiom;
 }
 
-const TEXTURE_INSTRUMENT_WEIGHTS_BY_MOOD: Record<Mood, Record<AccompanimentInstrument, number>> = {
+export const TEXTURE_INSTRUMENT_WEIGHTS_BY_MOOD: Record<Mood, Record<AccompanimentInstrument, number>> = {
   epic:          { organ: 0.4, mellotron: 0.4, synth: 0.2, violin: 0.0, flute: 0.0, theremin: 0.0, piano: 0.0, guitarChords: 0.0, acousticGuitarSolo: 0.0, electricGuitar: 0.0, 'E-Bells_melody': 0.0, 'G-Drops': 0.0, 'none': 0.0 },
   joyful:        { organ: 0.3, flute: 0.3, synth: 0.2, violin: 0.0, mellotron: 0.2, theremin: 0.0, piano: 0.0, guitarChords: 0.0, acousticGuitarSolo: 0.0, electricGuitar: 0.0, 'E-Bells_melody': 0.0, 'G-Drops': 0.0, 'none': 0.0 },
   enthusiastic:  { synth: 0.5, organ: 0.4, electricGuitar: 0.1, violin: 0.0, flute: 0.0, mellotron: 0.0, theremin: 0.0, piano: 0.0, guitarChords: 0.0, acousticGuitarSolo: 0.0, 'E-Bells_melody': 0.0, 'G-Drops': 0.0, 'none': 0.0 },
@@ -537,3 +537,5 @@ export function getAccompanimentTechnique(genre: Genre, mood: Mood, density: num
   
   return 'choral'; // Безопасный вариант по умолчанию
 }
+
+    
