@@ -1,7 +1,7 @@
 
 import type { FractalEvent, Mood, Genre, Technique, BassSynthParams, InstrumentType, MelodyInstrument, BassInstrument, AccompanimentInstrument, ResonanceMatrix, InstrumentHints } from '@/types/fractal';
 import { ElectronicK, TraditionalK, AmbientK } from './resonance-matrices';
-import { getScaleForMood, STYLE_DRUM_PATTERNS, generateAmbientBassPhrase, mutateBassPhrase, createAccompanimentAxiom, PERCUSSION_SETS, TEXTURE_INSTRUMENT_WEIGHTS_BY_MOOD } from './music-theory';
+import { getScaleForMood, STYLE_DRUM_PATTERNS, generateAmbientBassPhrase, mutateBassPhrase, createAccompanimentAxiom, PERCUSSION_SETS, TEXTURE_INSTRUMENT_WEIGHTS_BY_MOOD, getAccompanimentTechnique, createBassFill as createBassFillFromTheory, type AccompanimentTechnique } from './music-theory';
 
 export type Branch = {
   id: string;
@@ -32,23 +32,6 @@ type PlayPlanItem = {
 
 // === ВСПОМОГАТЕЛЬНЫЕ ФУНКЦИИ ===
 
-function getParamsForTechnique(technique: Technique, mood: Mood, genre: Genre): BassSynthParams {
-  switch (technique) {
-    case 'pluck':
-      return { cutoff: 800, resonance: 0.3, distortion: 0.1, portamento: 0.01 };
-    case 'ghost':
-      return { cutoff: 450, resonance: 0.2, distortion: 0.0, portamento: 0.0 };
-    case 'slap':
-       return { cutoff: 1200, resonance: 0.5, distortion: 0.3, portamento: 0.0 };
-    case 'fill':
-       return { cutoff: 1200, resonance: 0.6, distortion: 0.25, portamento: 0.0 };
-    case 'swell':
-       return { cutoff: 300, resonance: 0.8, distortion: 0.02, portamento: 0.0, attack: 0.5, release: 1.5 };
-    default: // 'hit' or others
-      return { cutoff: 500, resonance: 0.2, distortion: 0.0, portamento: 0.0 };
-  }
-}
-
 function seededRandom(seed: number) {
   let state = seed;
   const self = {
@@ -70,7 +53,7 @@ const isBass = (event: FractalEvent): boolean => event.type === 'bass';
 
 // === АКСОМЫ И ТРАНСФОРМАЦИИ ===
 function createDrumAxiom(genre: Genre, mood: Mood, tempo: number, random: { next: () => number, nextInt: (max: number) => number }): { events: FractalEvent[], tags: string[] } {
-    const hitParams = getParamsForTechnique('hit', mood, genre);
+    const hitParams = {}; // Params now come from events
     const grammar = STYLE_DRUM_PATTERNS[genre] || STYLE_DRUM_PATTERNS['ambient'];
     
     const loop = grammar.loops[random.nextInt(grammar.loops.length)];
@@ -131,8 +114,7 @@ function createSfxScenario(mood: Mood, genre: Genre, random: { next: () => numbe
     const fifth = rootNote + 7;
     const chord = [rootNote, third, fifth].filter(n => scale.some(sn => sn % 12 === n % 12));
 
-    const hitParams = getParamsForTechnique('hit', mood, genre);
-    const fillParams = getParamsForTechnique('fill', mood, genre);
+    const fillParams = { cutoff: 1200, resonance: 0.6, distortion: 0.25, portamento: 0.0 };
 
     const fillDensity = random.nextInt(4) + 3; // 3 to 6 notes for the core rhythm
     let fillTime = 3.0; // Start the fill in the last beat
@@ -141,28 +123,19 @@ function createSfxScenario(mood: Mood, genre: Genre, random: { next: () => numbe
         const duration = (1.0 / fillDensity) * (0.8 + random.next() * 0.4); // slightly variable duration
         const currentTime = fillTime;
         
-        // --- DRUMS ---
         const drumInstruments: InstrumentType[] = ['drum_tom_low', 'drum_tom_mid', 'drum_tom_high', 'drum_snare'];
         const drumInstrument = drumInstruments[random.nextInt(drumInstruments.length)];
-        drumFill.push({ type: drumInstrument, note: 40 + i, duration, time: currentTime, weight: 0.7 + random.next() * 0.2, technique: 'hit', dynamics: 'mf', phrasing: 'staccato', params: hitParams });
+        drumFill.push({ type: drumInstrument, note: 40 + i, duration, time: currentTime, weight: 0.7 + random.next() * 0.2, technique: 'hit', dynamics: 'mf', phrasing: 'staccato', params: {} });
 
-        // --- BASS (synchronized with drums) ---
         if (random.next() > 0.3) {
              bassFill.push({ type: 'bass', note: chord[random.nextInt(chord.length)], duration: duration * 0.9, time: currentTime, weight: 0.8 + random.next() * 0.2, technique: 'fill', dynamics: 'mf', phrasing: 'staccato', params: fillParams });
-        }
-
-        // --- ACCOMPANIMENT (chord stabs or short arps) ---
-        if (random.next() > 0.6) {
-            const accompNote = chord[random.nextInt(chord.length)] + 12; // One octave higher
-            accompanimentFill.push({ type: 'accompaniment', note: accompNote, duration: duration, time: currentTime, weight: 0.6 + random.next() * 0.2, technique: 'swell', dynamics: 'p', phrasing: 'staccato', params: getParamsForTechnique('swell', mood, genre) });
         }
         
         fillTime += duration;
     }
     
-    // --- CLIMAX ---
     const climaxTime = Math.min(3.75, fillTime);
-    drumFill.push({ type: 'drum_crash', note: 49, duration: 1, time: climaxTime, weight: 0.9, technique: 'hit', dynamics: 'f', phrasing: 'legato', params: hitParams });
+    drumFill.push({ type: 'drum_crash', note: 49, duration: 1, time: climaxTime, weight: 0.9, technique: 'hit', dynamics: 'f', phrasing: 'legato', params: {} });
     if (random.next() > 0.2) {
       bassFill.push({ type: 'bass', note: rootNote, duration: 0.5, time: climaxTime, weight: 1.0, technique: 'fill', dynamics: 'f', phrasing: 'staccato', params: fillParams });
     }
@@ -170,81 +143,6 @@ function createSfxScenario(mood: Mood, genre: Genre, random: { next: () => numbe
     return { drumFill, bassFill, accompanimentFill };
 }
 
-
-function createBassFill(this: FractalMusicEngine, mood: Mood, genre: Genre, random: { next: () => number, nextInt: (max: number) => number }): FractalEvent[] {
-    const fill: FractalEvent[] = [];
-    const scale = getScaleForMood(mood);
-    const fillParams = getParamsForTechnique('fill', mood, genre);
-    const numNotes = random.nextInt(4) + 7; // 7 to 10 notes
-    let currentTime = 0;
-    
-    // Predominantly low, infrequently mid, rarely high
-    const selectNote = (): number => {
-      const rand = random.next();
-      if (rand < 0.7) { // 70% chance low register
-          const third = Math.floor(scale.length / 3);
-          return scale[random.nextInt(third)];
-      } else if (rand < 0.95) { // 25% chance mid register
-          const third = Math.floor(scale.length / 3);
-          return scale[third + random.nextInt(third)];
-      } else { // 5% chance for 5th octave
-          const twoThirds = Math.floor(2 * scale.length / 3);
-          return scale[twoThirds + random.nextInt(scale.length - twoThirds)];
-      }
-    };
-
-    let currentNote = selectNote();
-    let lastNote = -1;
-    let secondLastNote = -1;
-
-    for (let i = 0; i < numNotes; i++) {
-        const duration = (genre === 'rock' || genre === 'trance' || genre === 'progressive') ? 0.25 : 0.5;
-        
-        let noteIndex = scale.indexOf(currentNote);
-        let step;
-        let attempts = 0;
-
-        // "Запрет на монотонность"
-        do {
-            step = random.next() > 0.7 ? (random.next() > 0.5 ? 2 : -2) : (random.next() > 0.5 ? 1 : -1);
-            let newNoteIndex = (noteIndex + step + scale.length) % scale.length;
-            if (Math.abs(scale[newNoteIndex] - currentNote) > 12) {
-                 newNoteIndex = (noteIndex - step + scale.length) % scale.length;
-            }
-            currentNote = scale[newNoteIndex];
-            noteIndex = newNoteIndex;
-            attempts++;
-        } while(currentNote === lastNote && currentNote === secondLastNote && attempts < 10);
-        
-
-        fill.push({
-            type: 'bass', note: currentNote, duration: duration, time: currentTime, weight: 0.8 + random.next() * 0.2, technique: 'fill', dynamics: 'f', phrasing: 'staccato', params: fillParams
-        });
-        currentTime += duration;
-        secondLastNote = lastNote;
-        lastNote = currentNote;
-    }
-    
-    if (currentTime > 4.0) {
-        const scaleFactor = 4.0 / currentTime;
-        fill.forEach(e => {
-            e.time *= scaleFactor;
-            e.duration *= scaleFactor;
-        });
-    }
-    
-    const highNoteThreshold = 52; // E3
-    const hasHighNotes = fill.some(n => n.note > highNoteThreshold);
-    
-    if (hasHighNotes) {
-        console.warn(`[BassFillPenalty] High-register fill detected. Applying penalty.`);
-        fill.forEach(e => e.weight *= 0.2); 
-        this.needsBassReset = true; 
-    }
-
-
-    return fill;
-}
 
 // === ОСНОВНОЙ КЛАСС ===
 export class FractalMusicEngine {
@@ -427,30 +325,101 @@ export class FractalMusicEngine {
     return events;
   }
 
+  /**
+   * Generates accompaniment events based on a bass phrase and a chosen technique.
+   */
+  private generateAccompanimentForPhrase(
+      bassPhrase: FractalEvent[], 
+      technique: AccompanimentTechnique
+  ): FractalEvent[] {
+      const accompanimentPhrase: FractalEvent[] = [];
+      const scale = getScaleForMood(this.config.mood);
+
+      if (!bassPhrase || bassPhrase.length === 0) return [];
+      
+      const rootNote = bassPhrase[0].note;
+      const isMinor = this.config.mood === 'melancholic' || this.config.mood === 'dark';
+      const third = rootNote + (isMinor ? 3 : 4);
+      const fifth = rootNote + 7;
+      const chord = [rootNote, third, fifth];
+      
+      switch (technique) {
+          case 'choral':
+              bassPhrase.forEach((bassNoteEvent, index) => {
+                  chord.forEach((degree, i) => {
+                      accompanimentPhrase.push({
+                          ...bassNoteEvent,
+                          type: 'accompaniment',
+                          note: bassNoteEvent.note + (degree - rootNote) + (i > 0 ? 12 : 0), // Spread out chord
+                          time: bassNoteEvent.time + i * 0.1, // Strum
+                          weight: bassNoteEvent.weight * 0.6
+                      });
+                  });
+              });
+              break;
+
+          case 'arpeggio-fast':
+              let time = 0;
+              for (let i = 0; i < 16; i++) {
+                  const note = chord[i % chord.length];
+                  accompanimentPhrase.push({
+                      type: 'accompaniment',
+                      note: note + 12,
+                      time: i * 0.25, // 16th notes
+                      duration: 0.25,
+                      weight: 0.7,
+                      technique: 'pluck',
+                      dynamics: 'mf',
+                      phrasing: 'staccato',
+                      params: {}
+                  });
+              }
+              break;
+
+          case 'chord-pulsation':
+               for (let i = 0; i < 8; i++) { // 8th note pulses
+                   chord.forEach(degree => {
+                        accompanimentPhrase.push({
+                            type: 'accompaniment',
+                            note: degree + 12,
+                            time: i * 0.5,
+                            duration: 0.4,
+                            weight: 0.5,
+                            technique: 'pluck',
+                            dynamics: 'p',
+                            phrasing: 'staccato',
+                            params: {}
+                        });
+                   });
+               }
+               break;
+               
+          default:
+              return createAccompanimentAxiom(this.config.mood, this.config.genre, this.random, bassPhrase[0].note, this.config.tempo);
+      }
+      return accompanimentPhrase;
+  }
 
   private generateOneBar(barDuration: number): { events: FractalEvent[], instrumentHints: InstrumentHints } {
     let instrumentHints: InstrumentHints = {};
     const output: FractalEvent[] = [];
+    let drumEvents: FractalEvent[] = [];
 
-    if (this.sfxFillForThisEpoch) {
-        output.push(...this.sfxFillForThisEpoch.drum, ...this.sfxFillForThisEpoch.bass, ...this.sfxFillForThisEpoch.accompaniment);
-        this.sfxFillForThisEpoch = null;
-    }
-    
+    // --- DRUMS ---
     if (this.config.drumSettings.enabled) {
-        const { events: drumAxiom } = createDrumAxiom(this.config.genre, this.config.mood, this.config.tempo, this.random);
-        output.push(...drumAxiom);
+        const { events: drumAxiom, tags } = createDrumAxiom(this.config.genre, this.config.mood, this.config.tempo, this.random);
+        drumEvents.push(...drumAxiom);
     }
     
-    // --- BASS LOGIC ---
+    // --- BASS ---
     const bassPlanItem = this.bassPlayPlan[this.currentBassPlanIndex];
+    let bassPhraseForThisBar: FractalEvent[] = [];
     if (bassPlanItem && this.bassPhraseLibrary.length > 0) {
         const phrase = this.bassPhraseLibrary[bassPlanItem.phraseIndex];
-        const phraseDurationInBeats = phrase.reduce((max, e) => Math.max(max, e.time + e.duration), 0);
-        const phraseDurationInBars = Math.ceil(phraseDurationInBeats / 4);
+        const phraseDurationInBars = Math.ceil(phrase.reduce((max, e) => Math.max(max, e.time + e.duration), 0) / 4);
 
         if (this.barsInCurrentBassPhrase === 0) {
-            output.push(...phrase);
+            bassPhraseForThisBar = phrase;
         }
 
         this.barsInCurrentBassPhrase++;
@@ -462,6 +431,14 @@ export class FractalMusicEngine {
             if (this.currentBassRepetition >= bassPlanItem.repetitions) {
                 this.currentBassRepetition = 0;
                 this.currentBassPlanIndex++;
+
+                // **EVENT**: End of a bass bundle -> chance for a fill
+                if (this.random.next() < 0.4) { // 40% chance
+                    console.log(`%c[EVENT] Bass plan transition. Generating fill...`, 'color: orange');
+                    const { events: fillEvents, penalty } = createBassFillFromTheory(this.config.mood, this.config.genre, this.random);
+                    bassPhraseForThisBar = fillEvents;
+                    if (penalty > 0) this.needsBassReset = true; // Mark for reset after fill
+                }
                 
                 if (this.currentBassPlanIndex >= this.bassPlayPlan.length) {
                     this.createBassAxiomAndPlan(); 
@@ -472,46 +449,34 @@ export class FractalMusicEngine {
     } else {
         this.createBassAxiomAndPlan();
     }
-
-    // --- ACCOMPANIMENT LOGIC ---
-    const accompPlanItem = this.accompPlayPlan[this.currentAccompPlanIndex];
-    if (accompPlanItem && this.accompPhraseLibrary.length > 0) {
-        const phrase = this.accompPhraseLibrary[accompPlanItem.phraseIndex];
-        const phraseDurationInBeats = phrase.reduce((max, e) => Math.max(max, e.time + e.duration), 0);
-        const phraseDurationInBars = Math.ceil(phraseDurationInBeats / 4);
-
-        if (this.barsInCurrentAccompPhrase === 0) {
-            output.push(...phrase);
-        }
-
-        instrumentHints.accompaniment = accompPlanItem.instrument;
-
-        this.barsInCurrentAccompPhrase++;
-
-        if (this.barsInCurrentAccompPhrase >= phraseDurationInBars) {
-            this.currentAccompRepetition++;
-            this.barsInCurrentAccompPhrase = 0;
-            if (this.currentAccompRepetition >= accompPlanItem.repetitions) {
-                this.currentAccompRepetition = 0;
-                this.currentAccompPlanIndex++;
-                if (this.currentAccompPlanIndex >= this.accompPlayPlan.length) {
-                    this.currentAccompPlanIndex = 0; // Loop the plan
-                }
-            }
-        }
+    
+    // --- DRUM FILL REACTION ---
+    const hasDrumFill = drumEvents.some(e => e.technique === 'fill' || (e.type as string).includes('tom'));
+    if(hasDrumFill && this.random.next() < 0.6) { // 60% chance to react
+        console.log(`%c[EVENT] Bass reacting to drum fill...`, 'color: cyan');
+        const { events: fillEvents, penalty } = createBassFillFromTheory(this.config.mood, this.config.genre, this.random);
+        bassPhraseForThisBar.push(...fillEvents); // Add to existing events
+        if (penalty > 0) this.needsBassReset = true;
     }
 
-    // --- HARMONY LOGIC ---
-    if (this.epoch >= this.nextHarmonyEventEpoch) {
-        const bassNote = output.find(isBass)?.note ?? this.bassPhraseLibrary[0]?.[0]?.note ?? getScaleForMood(this.config.mood)[0];
-        const harmonyPhrase = createAccompanimentAxiom(this.config.mood, this.config.genre, this.random, bassNote, this.config.tempo);
-        
-        harmonyPhrase.forEach(e => e.type = 'harmony');
-        output.push(...harmonyPhrase);
-        
-        const rhythmicInstruments: ('piano' | 'guitarChords')[] = ['piano', 'guitarChords'];
-        instrumentHints.harmony = rhythmicInstruments[this.random.nextInt(rhythmicInstruments.length)];
-        this.nextHarmonyEventEpoch = this.epoch + 8 + this.random.nextInt(9); // 8-16 bars
+
+    output.push(...bassPhraseForThisBar);
+    output.push(...drumEvents);
+    
+    // --- ACCOMPANIMENT (Reacts to Bass) ---
+    const accompPlanItem = this.accompPlayPlan[this.currentAccompPlanIndex];
+    if (accompPlanItem) {
+        const technique = getAccompanimentTechnique(this.config.genre, this.config.mood, this.config.density);
+        const accompPhrase = this.generateAccompanimentForPhrase(bassPhraseForThisBar, technique);
+        output.push(...accompPhrase);
+        instrumentHints.accompaniment = accompPlanItem.instrument;
+
+        // Logic for advancing accompaniment plan (simplified)
+        this.currentAccompRepetition++;
+        if(this.currentAccompRepetition >= accompPlanItem.repetitions) {
+            this.currentAccompRepetition = 0;
+            this.currentAccompPlanIndex = (this.currentAccompPlanIndex + 1) % this.accompPlayPlan.length;
+        }
     }
     
     const finalEvents = this.applyNaturalDecay(output, 4.0);
@@ -520,6 +485,12 @@ export class FractalMusicEngine {
 
   public evolve(barDuration: number, barCount: number): { events: FractalEvent[], instrumentHints: InstrumentHints } {
     this.epoch = barCount;
+    
+    if (this.needsBassReset) {
+        console.log(`%c[RESET] High-register bass fill penalty triggered. Resetting bass plan.`, 'color: red');
+        this.createBassAxiomAndPlan();
+        this.needsBassReset = false;
+    }
 
     if (this.epoch >= this.nextWeatherEventEpoch) {
         this.generateExternalImpulse();
@@ -534,3 +505,5 @@ export class FractalMusicEngine {
     return { events, instrumentHints };
   }
 }
+
+    
