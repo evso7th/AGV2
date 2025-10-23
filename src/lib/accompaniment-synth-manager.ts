@@ -169,11 +169,6 @@ export class AccompanimentSynthManager {
             const onDelay = (noteOnTime - this.audioContext.currentTime) * 1000;
             const offDelay = (noteOffTime - this.audioContext.currentTime) * 1000;
 
-            if (onDelay < 0 || offDelay < 0) {
-                 console.warn("[AccompManager] Attempted to schedule note in the past. Skipping.");
-                 return;
-            }
-
             const frequency = midiToFreq(note.midi);
             const presetParams = PRESETS[instrument] || PRESETS['synth'];
     
@@ -204,13 +199,13 @@ export class AccompanimentSynthManager {
                     console.log(`[AccompManager] -> TIMEOUT -> Voice ${voiceIndex}:`, onMessage);
                     voice.worklet.port.postMessage(onMessage);
                 }
-            }, onDelay);
+            }, Math.max(0, onDelay));
 
             setTimeout(() => {
                  if (this.audioContext.state === 'running') {
                     voice.worklet.port.postMessage(offMessage);
                  }
-            }, offDelay);
+            }, Math.max(0, offDelay));
         });
     }
 
