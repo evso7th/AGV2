@@ -1,152 +1,179 @@
 // public/worklets/chord-processor.js
+
+/**
+ * A simple voice for our polyphonic synth. Each voice handles one note.
+ */
+class Voice {
+    constructor(sampleRate) {
+        this.sampleRate = sampleRate;
+        this.reset();
+    }
+
+    reset() {
+        this.noteId = null;
+        this.frequency = 0;
+        this.phase = 0;
+        this.gain = 0;
+        this.targetGain = 0;
+        this.velocity = 0;
+
+        // Envelope params
+        this.attack = 0.01;
+        this.release = 0.3;
+        this.sustainLevel = 0.7; // Not used in this simple version yet
+        this.decay = 0.1; // Not used in this simple version yet
+
+        // Filter params
+        this.filterState = 0;
+        this.filterCoeff = 0;
+        this.filterCutoff = 20000;
+        this.q = 0.7;
+
+        // Osc
+        this.oscType = 'sawtooth';
+    }
+
+    noteOn(noteId, frequency, velocity, params) {
+        this.reset();
+        this.noteId = noteId;
+        this.frequency = frequency;
+        this.velocity = velocity;
+        this.targetGain = velocity; // Target gain is the velocity
+        this.gain = 0; // Start from 0 for attack phase
+
+        // Apply params
+        this.attack = params.attack ?? 0.01;
+        this.release = params.release ?? 0.3;
+        this.filterCutoff = params.cutoff ?? 20000;
+        this.q = params.resonance ?? 0.7;
+        this.oscType = params.oscType || 'sawtooth';
+
+        this.filterCoeff = 1 - Math.exp(-2 * Math.PI * this.filterCutoff / this.sampleRate);
+    }
+
+    noteOff(releaseTime) {
+        this.targetGain = 0; // Start the release phase
+        this.release = releaseTime ?? this.release;
+    }
+
+    /**
+     * Generates a single sample for this voice.
+     */
+    process() {
+        if (this.frequency === 0) {
+            return 0;
+        }
+
+        // --- Envelope ---
+        if (this.gain < this.targetGain) { // Attack phase
+            this.gain = Math.min(this.targetGain, this.gain + (1 / (this.attack * this.sampleRate)));
+        } else if (this.gain > this.targetGain) { // Release phase
+            this.gain = Math.max(this.targetGain, this.gain - (1 / (this.release * this.sampleRate)));
+        }
+
+        if (this.gain <= 0.0001 && this.targetGain === 0) {
+            this.reset();
+            return 0;
+        }
+
+        // --- Oscillator ---
+        this.phase += (this.frequency / this.sampleRate) * 2 * Math.PI;
+        if (this.phase >= 2 * Math.PI) this.phase -= 2 * Math.PI;
+        
+        let sample = 0;
+        switch (this.oscType) {
+            case 'sine': sample = Math.sin(this.phase); break;
+            case 'triangle': sample = 1 - 4 * Math.abs((this.phase / (2 * Math.PI)) - 0.5); break;
+            case 'square': sample = this.phase < Math.PI ? 1 : -1; break;
+            case 'sawtooth': default: sample = 1 - (this.phase / Math.PI); break;
+        }
+
+        // --- Filter (simple one-pole LPF) ---
+        this.filterState += this.filterCoeff * (sample - this.filterState);
+        
+        return this.filterState * this.gain;
+    }
+
+    isActive() {
+        return this.frequency > 0;
+    }
+}
+
+
+/**
+ * A polyphonic synthesizer processor that manages multiple voices.
+ */
 class ChordProcessor extends AudioWorkletProcessor {
-  constructor(options) {
-    super(options);
-    
-    this.activeNotes = new Map();
-    this.port.onmessage = this.handleMessage.bind(this);
-    
-    this.phase = 0;
-    this.sampleRate = options?.processorOptions?.sampleRate || 44100;
-  }
+    constructor(options) {
+        super();
+        this.voices = [];
+        const sampleRate = options.processorOptions?.sampleRate || 44100;
+        for (let i = 0; i < 4; i++) { // 4 voices for polyphony
+            this.voices.push(new Voice(sampleRate));
+        }
 
-  handleMessage(event) {
-    console.log('[ChordProcessor] Received message:', event.data);
-    const messages = Array.isArray(event.data) ? event.data : [event.data];
+        this.port.onmessage = this.handleMessage.bind(this);
+        console.log('[ChordProcessor] Initialized with 4 voices.');
+    }
 
-    for (const message of messages) {
-        switch (message.type) {
-          case 'noteOn': {
-            const { noteId, when, frequency, velocity, params } = message;
-            if (when > currentTime) {
-              const noteData = {
-                id: noteId,
-                freq: frequency,
-                startTime: when,
-                velocity: velocity || 0.7,
-                attack: params.attack || 0.02,
-                release: params.release || 0.3,
-                
-                // Synth params
-                oscType: params.oscType || 'sawtooth',
-                cutoff: params.cutoff || 800,
-                resonance: params.resonance || 0.5,
-                distortion: params.distortion || 0.1,
-                
-                // Envelope state
-                gain: 0,
-                targetGain: velocity || 0.7,
-                isReleasing: false,
+    handleMessage(event) {
+        const message = event.data;
+        // Check if message is an array (batch) or single object
+        const messages = Array.isArray(message) ? message : [message];
 
-                // Filter state
-                filterState: 0,
-                filterCoeff: 1 - Math.exp(-2 * Math.PI * (params.cutoff || 800) / this.sampleRate),
-
-                // Phase for this specific note
-                phase: 0
-              };
-              this.activeNotes.set(noteId, noteData);
+        for (const msg of messages) {
+             switch (msg.type) {
+                case 'noteOn':
+                    this.assignVoiceToNote(msg);
+                    break;
+                case 'noteOff':
+                    this.releaseVoiceForNote(msg.noteId);
+                    break;
+                case 'clear':
+                    this.voices.forEach(v => v.reset());
+                    break;
             }
-            break;
-          }
-          case 'noteOff': {
-            const { noteId, when } = message;
-            const note = this.activeNotes.get(noteId);
-            if (note && when > currentTime) {
-               note.releaseTime = when;
-               note.isReleasing = true;
-               note.targetGain = 0;
+        }
+    }
+
+    assignVoiceToNote({ noteId, frequency, velocity, params }) {
+        let voice = this.voices.find(v => !v.isActive());
+        if (!voice) {
+            // Simple voice stealing: find the one with the lowest gain
+            voice = this.voices.reduce((prev, curr) => (curr.gain < prev.gain ? curr : prev));
+        }
+        if (voice) {
+             voice.noteOn(noteId, frequency, velocity, params);
+        }
+    }
+
+    releaseVoiceForNote(noteId) {
+        const voice = this.voices.find(v => v.noteId === noteId);
+        if (voice) {
+            voice.noteOff();
+        }
+    }
+
+    process(inputs, outputs, parameters) {
+        const output = outputs[0];
+        const numChannels = output.length;
+
+        for (let i = 0; i < output[0].length; i++) {
+            let sample = 0;
+            for (const voice of this.voices) {
+                if (voice.isActive()) {
+                    sample += voice.process();
+                }
             }
-            break;
-          }
-          case 'clear':
-            this.activeNotes.clear();
-            break;
+            // Clip to avoid distortion
+            sample = Math.max(-1, Math.min(1, sample * 0.5)); // Mixdown with gain reduction
+
+            for (let channel = 0; channel < numChannels; channel++) {
+                output[channel][i] = sample;
+            }
         }
+        return true;
     }
-  }
-  
-  applyFilter(input, noteState) {
-    noteState.filterState += noteState.filterCoeff * (input - noteState.filterState);
-    return noteState.filterState;
-  }
-
-  generateOsc(noteState) {
-    switch (noteState.oscType) {
-      case 'sine':
-        return Math.sin(noteState.phase);
-      case 'triangle':
-        return 1 - 4 * Math.abs((noteState.phase / (2 * Math.PI)) - 0.5);
-      case 'square':
-        return noteState.phase < Math.PI ? 1 : -1;
-      case 'sawtooth':
-        return 1 - (noteState.phase / Math.PI);
-      default:
-        return Math.sin(noteState.phase);
-    }
-  }
-
-  process(inputs, outputs, parameters) {
-    const output = outputs[0];
-    const channelCount = output.length;
-
-    if (this.activeNotes.size === 0) {
-        return true; 
-    }
-    
-    // Log active notes state periodically
-    if (Math.random() < 0.01) { // Roughly once per second
-       console.log(`[ChordProcessor] Active notes: ${this.activeNotes.size}, CurrentTime: ${currentTime.toFixed(2)}`);
-       this.activeNotes.forEach(note => {
-          console.log(`  - Note ${note.id}: Freq=${note.freq}, Gain=${note.gain.toFixed(2)}, Releasing=${note.isReleasing}`);
-       });
-    }
-
-    for (let i = 0; i < output[0].length; ++i) {
-      let sample = 0;
-      const now = currentTime + i / this.sampleRate;
-
-      for (const [noteId, note] of this.activeNotes.entries()) {
-        
-        if (now < note.startTime) continue;
-        if (note.gain <= 0.0001 && note.isReleasing) {
-            this.activeNotes.delete(noteId);
-            continue;
-        }
-        
-        if(note.releaseTime && now >= note.releaseTime){
-            note.isReleasing = true;
-            note.targetGain = 0;
-        }
-        
-        // --- Generate Signal ---
-        note.phase += (note.freq / this.sampleRate) * 2 * Math.PI;
-        if (note.phase >= 2 * Math.PI) note.phase -= 2 * Math.PI;
-        let noteSample = this.generateOsc(note);
-
-        // --- Apply Filter ---
-        noteSample = this.applyFilter(noteSample, note);
-
-        // --- Apply Envelope ---
-        if (!note.isReleasing) {
-            note.gain += (note.targetGain - note.gain) / (note.attack * this.sampleRate);
-        } else {
-            note.gain -= note.gain / (note.release * this.sampleRate);
-        }
-        note.gain = Math.max(0, note.gain);
-
-        sample += noteSample * note.gain;
-      }
-      
-      sample = Math.tanh(sample); // Soft clipping to prevent harsh distortion
-
-      for (let channel = 0; channel < channelCount; ++channel) {
-        output[channel][i] = sample * 0.3; // Final output gain
-      }
-    }
-
-    return true;
-  }
 }
 
 registerProcessor('chord-processor', ChordProcessor);
