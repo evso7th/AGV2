@@ -1,0 +1,32 @@
+4,10d3
+< const withPWA = require('next-pwa')({
+<     dest: 'public',
+<     register: true,
+<     skipWaiting: true,
+<     disable: process.env.NODE_ENV === 'development'
+< });
+< 
+12d4
+<   output: 'export',
+21a14,30
+>   output: 'export',
+>   webpack: (config, {isServer}) => {
+>     config.watchOptions = {
+>       poll: 1000,
+>       aggregateTimeout: 300,
+>     };
+>     if (!isServer) {
+>       config.resolve.fallback = {
+>         fs: false,
+>       };
+>     }
+>     return config;
+>   },
+>   // for PWA
+>   // experimental: {
+>   //   allowedDevOrigins: ['http://localhost:3000', 'https://localhost:3000']
+>   // },
+24c33
+< export default withPWA(nextConfig);
+---
+> export default nextConfig;
