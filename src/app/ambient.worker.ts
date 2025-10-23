@@ -9,7 +9,7 @@
 import type { WorkerSettings, ScoreName, Mood, Genre } from '@/types/music';
 import { FractalMusicEngine } from '@/lib/fractal-music-engine';
 import { SFX_GRAMMAR } from '@/lib/music-theory';
-import type { FractalEvent, MelodyInstrument, BassInstrument, BassSynthParams } from '@/types/fractal';
+import type { FractalEvent, MelodyInstrument, BassInstrument, BassSynthParams, InstrumentHints } from '@/types/fractal';
 
 // --- Effect Logic ---
 let lastSparkleTime = -Infinity;
@@ -174,6 +174,7 @@ const Scheduler = {
             bass: { name: "glideBass", volume: 0.7, technique: 'portamento' },
             melody: { name: "acousticGuitarSolo", volume: 0.8 },
             accompaniment: { name: "guitarChords", volume: 0.7 },
+            harmony: { name: "piano", volume: 0.6 }
         },
         textureSettings: {
             sparkles: { enabled: true, volume: 0.7 },
@@ -283,7 +284,7 @@ const Scheduler = {
         const genre = this.settings.genre;
         const mood = this.settings.mood;
 
-        let scorePayload: { events: FractalEvent[]; instrumentHints: { accompaniment?: MelodyInstrument, bass?: BassInstrument } } = { events: [], instrumentHints: {} };
+        let scorePayload: { events: FractalEvent[]; instrumentHints: InstrumentHints } = { events: [], instrumentHints: {} };
 
         if (this.settings.score === 'neuro_f_matrix') {
              scorePayload = fractalMusicEngine.evolve(this.barDuration, this.barCount);
