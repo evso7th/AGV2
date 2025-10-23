@@ -1,7 +1,7 @@
 
-import type { FractalEvent, Mood, Genre, Technique, BassSynthParams, InstrumentType, MelodyInstrument, BassInstrument, AccompanimentInstrument, ResonanceMatrix } from '@/types/fractal';
+import type { FractalEvent, Mood, Genre, Technique, BassSynthParams, InstrumentType, MelodyInstrument, BassInstrument, AccompanimentInstrument, ResonanceMatrix, InstrumentHints } from '@/types/fractal';
 import { ElectronicK, TraditionalK, AmbientK } from './resonance-matrices';
-import { getScaleForMood, STYLE_DRUM_PATTERNS, generateAmbientBassPhrase, mutateBassPhrase, createAccompanimentAxiom, PERCUSSION_SETS } from './music-theory';
+import { getScaleForMood, STYLE_DRUM_PATTERNS, generateAmbientBassPhrase, mutateBassPhrase, createAccompanimentAxiom, PERCUSSION_SETS, TEXTURE_INSTRUMENT_WEIGHTS_BY_MOOD } from './music-theory';
 
 export type Branch = {
   id: string;
@@ -246,22 +246,6 @@ function createBassFill(this: FractalMusicEngine, mood: Mood, genre: Genre, rand
     return fill;
 }
 
-const AMBIENT_INSTRUMENT_WEIGHTS: Record<AccompanimentInstrument, number> = {
-    organ: 0.25,
-    mellotron: 0.25,
-    synth: 0.2,
-    flute: 0.2,
-    violin: 0.05,
-    theremin: 0.05,
-    piano: 0.0,
-    guitarChords: 0.0,
-    acousticGuitarSolo: 0.0,
-    electricGuitar: 0.0,
-    'E-Bells_melody': 0.0,
-    'G-Drops': 0.0,
-    'none': 0.0,
-};
-
 // === ОСНОВНОЙ КЛАСС ===
 export class FractalMusicEngine {
   public config: EngineConfig;
@@ -395,7 +379,7 @@ export class FractalMusicEngine {
       for (let i = 0; i < planLength; i++) {
           let instrument: AccompanimentInstrument = 'synth'; // Default
           if (this.config.genre === 'ambient') {
-              instrument = this.chooseWeightedInstrument(AMBIENT_INSTRUMENT_WEIGHTS);
+              instrument = this.chooseWeightedInstrument(TEXTURE_INSTRUMENT_WEIGHTS_BY_MOOD[this.config.mood]);
           } else {
               const ALL_ACCOMP_INSTRUMENTS: AccompanimentInstrument[] = ['piano', 'violin', 'flute', 'organ', 'mellotron', 'synth', 'theremin', 'guitarChords', 'acousticGuitarSolo'];
               instrument = ALL_ACCOMP_INSTRUMENTS[this.random.nextInt(ALL_ACCOMP_INSTRUMENTS.length)];
@@ -444,8 +428,8 @@ export class FractalMusicEngine {
   }
 
 
-  private generateOneBar(barDuration: number): { events: FractalEvent[], instrumentHints: { harmony?: AccompanimentInstrument, accompaniment?: AccompanimentInstrument, bass?: BassInstrument } } {
-    let instrumentHints: { harmony?: AccompanimentInstrument, accompaniment?: AccompanimentInstrument, bass?: BassInstrument } = {};
+  private generateOneBar(barDuration: number): { events: FractalEvent[], instrumentHints: InstrumentHints } {
+    let instrumentHints: InstrumentHints = {};
     const output: FractalEvent[] = [];
 
     if (this.sfxFillForThisEpoch) {
@@ -534,7 +518,7 @@ export class FractalMusicEngine {
     return { events: finalEvents, instrumentHints };
   }
 
-  public evolve(barDuration: number, barCount: number): { events: FractalEvent[], instrumentHints: Record<string, any> } {
+  public evolve(barDuration: number, barCount: number): { events: FractalEvent[], instrumentHints: InstrumentHints } {
     this.epoch = barCount;
 
     if (this.epoch >= this.nextWeatherEventEpoch) {
