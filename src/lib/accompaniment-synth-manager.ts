@@ -46,6 +46,7 @@ export class AccompanimentSynthManager {
     // Synth Instruments (Worklet-based pool)
     private synthPool: SynthVoice[] = [];
     private synthOutput: GainNode;
+    private preamp: GainNode; // Pre-amplifier for the synth section
     private nextSynthVoice = 0;
     private isSynthPoolInitialized = false;
 
@@ -61,6 +62,11 @@ export class AccompanimentSynthManager {
         
         this.synthOutput = this.audioContext.createGain();
         this.synthOutput.connect(this.destination);
+
+        // Create and connect the preamp
+        this.preamp = this.audioContext.createGain();
+        this.preamp.gain.value = 2.0; // Boost signal by 2x
+        this.preamp.connect(this.synthOutput);
     }
 
     async init() {
@@ -89,7 +95,7 @@ export class AccompanimentSynthManager {
                 const worklet = new AudioWorkletNode(this.audioContext, 'chord-processor', {
                     processorOptions: { sampleRate: this.audioContext.sampleRate }
                 });
-                worklet.connect(this.synthOutput);
+                worklet.connect(this.preamp); // Connect to the preamp
                 this.synthPool.push({ worklet });
             }
             this.isSynthPoolInitialized = true;
@@ -256,6 +262,7 @@ export class AccompanimentSynthManager {
         this.guitarChords.dispose();
         this.acousticGuitarSolo.dispose();
         this.synthPool.forEach(voice => voice.worklet.disconnect());
+        this.preamp.disconnect();
         this.synthOutput.disconnect();
     }
 }
