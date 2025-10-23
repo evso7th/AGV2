@@ -162,11 +162,19 @@ export class AccompanimentSynthManager {
             const voice = this.synthPool[voiceIndex];
             this.nextSynthVoice++;
     
-            const frequency = midiToFreq(note.midi);
             const noteOnTime = barStartTime + note.time;
             const noteOffTime = noteOnTime + note.duration;
             const noteId = `${noteOnTime.toFixed(4)}-${note.midi}-${voiceIndex}`;
-    
+            
+            const onDelay = (noteOnTime - this.audioContext.currentTime) * 1000;
+            const offDelay = (noteOffTime - this.audioContext.currentTime) * 1000;
+
+            if (onDelay < 0 || offDelay < 0) {
+                 console.warn("[AccompManager] Attempted to schedule note in the past. Skipping.");
+                 return;
+            }
+
+            const frequency = midiToFreq(note.midi);
             const presetParams = PRESETS[instrument] || PRESETS['synth'];
     
             const finalParams: BassSynthParams = {
@@ -182,7 +190,6 @@ export class AccompanimentSynthManager {
                 type: 'noteOn',
                 frequency,
                 velocity: note.velocity,
-                when: noteOnTime,
                 noteId,
                 params: finalParams
             };
@@ -190,12 +197,20 @@ export class AccompanimentSynthManager {
             const offMessage = {
                 type: 'noteOff',
                 noteId,
-                when: noteOffTime
             };
-    
-            console.log(`[AccompManager] -> Voice ${voiceIndex}:`, onMessage);
-            voice.worklet.port.postMessage(onMessage);
-            voice.worklet.port.postMessage(offMessage);
+
+            setTimeout(() => {
+                if (this.audioContext.state === 'running') {
+                    console.log(`[AccompManager] -> TIMEOUT -> Voice ${voiceIndex}:`, onMessage);
+                    voice.worklet.port.postMessage(onMessage);
+                }
+            }, onDelay);
+
+            setTimeout(() => {
+                 if (this.audioContext.state === 'running') {
+                    voice.worklet.port.postMessage(offMessage);
+                 }
+            }, offDelay);
         });
     }
 
