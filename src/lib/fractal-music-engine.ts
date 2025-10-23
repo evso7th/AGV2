@@ -337,55 +337,71 @@ export class FractalMusicEngine {
 
       if (!bassPhrase || bassPhrase.length === 0) return [];
       
+      // Используем первую ноту басовой фразы как тонику для построения аккорда
       const rootNote = bassPhrase[0].note;
-      const isMinor = this.config.mood === 'melancholic' || this.config.mood === 'dark';
-      const third = rootNote + (isMinor ? 3 : 4);
-      const fifth = rootNote + 7;
-      const chord = [rootNote, third, fifth];
+      const isMinor = this.config.mood === 'melancholic' || this.config.mood === 'dark' || this.config.mood === 'anxious';
+      
+      const getScaleDegree = (degree: number): number | null => {
+        const rootDegree = rootNote % 12;
+        const fullScaleDegree = (rootDegree + degree + 12) % 12;
+        const matchingNote = scale.find(n => (n % 12) === fullScaleDegree);
+        return matchingNote !== undefined ? (matchingNote % 12) : null;
+      };
+      
+      const thirdDegree = getScaleDegree(isMinor ? 3 : 4);
+      const fifthDegree = getScaleDegree(7);
+      
+      const chordDegrees = [rootNote % 12, thirdDegree, fifthDegree].filter(d => d !== null) as number[];
+
+      if (chordDegrees.length < 2) return [];
+
+      const selectOctave = (): number => (this.random.next() > 0.6 ? 4 : 3);
       
       switch (technique) {
           case 'choral':
-              bassPhrase.forEach((bassNoteEvent, index) => {
-                  chord.forEach((degree, i) => {
-                      accompanimentPhrase.push({
-                          ...bassNoteEvent,
-                          type: 'accompaniment',
-                          note: bassNoteEvent.note + (degree - rootNote) + (i > 0 ? 12 : 0), // Spread out chord
-                          time: bassNoteEvent.time + i * 0.05, // Strum
-                          duration: bassNoteEvent.duration * 1.5, // Longer duration for pads
-                          weight: bassNoteEvent.weight * 0.5,
-                          phrasing: 'legato',
-                          technique: 'swell'
-                      });
+              // Создаем один длинный аккорд
+              chordDegrees.forEach((degree, i) => {
+                  const octave = selectOctave() + (i > 0 ? 1 : 0);
+                  accompanimentPhrase.push({
+                      type: 'accompaniment',
+                      note: 12 * octave + degree,
+                      time: 0 + i * 0.05, // Эффект "strum"
+                      duration: 4.0, // Длительность в 1 такт
+                      weight: 0.6,
+                      phrasing: 'legato',
+                      technique: 'swell',
+                      dynamics: 'p',
+                      params: { attack: 1.5, release: 2.5 }
                   });
               });
               break;
 
           case 'arpeggio-fast':
-              for (let i = 0; i < 16; i++) { // 16th notes for one bar
-                  const note = chord[i % chord.length];
+              for (let i = 0; i < 16; i++) { // 16-е ноты
+                  const degree = chordDegrees[i % chordDegrees.length];
+                  const note = 12 * (selectOctave() + 1) + degree;
                   accompanimentPhrase.push({
                       type: 'accompaniment',
-                      note: note + 12 + (i % 2 === 0 ? 0 : 12), // Alternate octaves
+                      note: note,
                       time: i * 0.25,
                       duration: 0.2,
-                      weight: 0.6,
+                      weight: 0.6 + this.random.next() * 0.1,
                       technique: 'pluck',
                       dynamics: 'mf',
                       phrasing: 'staccato',
-                      params: { cutoff: 1500, resonance: 0.4, attack: 0.01, release: 0.15 }
+                      params: { attack: 0.01, release: 0.15 }
                   });
               }
               break;
 
           case 'chord-pulsation':
-               for (let i = 0; i < 8; i++) { // 8th note pulses
+               for (let i = 0; i < 8; i++) { // Пульсация 8-ми нотами
                     const time = i * 0.5;
                     const onBeat = i % 2 === 0;
-                    chord.forEach(degree => {
+                    chordDegrees.forEach(degree => {
                         accompanimentPhrase.push({
                             type: 'accompaniment',
-                            note: degree + 12,
+                            note: 12 * selectOctave() + degree,
                             time,
                             duration: 0.3,
                             weight: onBeat ? 0.7 : 0.5,
