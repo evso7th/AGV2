@@ -538,4 +538,74 @@ export function getAccompanimentTechnique(genre: Genre, mood: Mood, density: num
   return 'choral'; // Безопасный вариант по умолчанию
 }
 
+export function createBassFill(mood: Mood, genre: Genre, random: { next: () => number, nextInt: (max: number) => number }): { events: FractalEvent[], penalty: number } {
+    const fill: FractalEvent[] = [];
+    const scale = getScaleForMood(mood);
+    const fillParams = { cutoff: 1200, resonance: 0.6, distortion: 0.25, portamento: 0.0 };
+    const numNotes = random.nextInt(4) + 7; // 7 to 10 notes
+    let currentTime = 0;
+    
+    // Predominantly low, infrequently mid
+    const selectNote = (): number => {
+      const rand = random.next();
+      if (rand < 0.75) { // 75% chance low register
+          const third = Math.floor(scale.length / 3);
+          return scale[random.nextInt(third)];
+      } else { // 25% chance mid register
+          const third = Math.floor(scale.length / 3);
+          return scale[third + random.nextInt(third)];
+      }
+    };
+
+    let currentNote = selectNote();
+    let lastNote = -1;
+    let secondLastNote = -1;
+
+    for (let i = 0; i < numNotes; i++) {
+        const duration = (genre === 'rock' || genre === 'trance' || genre === 'progressive') ? 0.25 : 0.5;
+        
+        let noteIndex = scale.indexOf(currentNote);
+        let step;
+        let attempts = 0;
+
+        // "Запрет на монотонность"
+        do {
+            step = random.next() > 0.7 ? (random.next() > 0.5 ? 2 : -2) : (random.next() > 0.5 ? 1 : -1);
+            let newNoteIndex = (noteIndex + step + scale.length) % scale.length;
+            if (Math.abs(scale[newNoteIndex] - currentNote) > 12) {
+                 newNoteIndex = (noteIndex - step + scale.length) % scale.length;
+            }
+            currentNote = scale[newNoteIndex];
+            noteIndex = newNoteIndex;
+            attempts++;
+        } while(currentNote === lastNote && currentNote === secondLastNote && attempts < 10);
+        
+
+        fill.push({
+            type: 'bass', note: currentNote, duration: duration, time: currentTime, weight: 0.8 + random.next() * 0.2, technique: 'fill', dynamics: 'f', phrasing: 'staccato', params: fillParams
+        });
+        currentTime += duration;
+        secondLastNote = lastNote;
+        lastNote = currentNote;
+    }
+    
+    if (currentTime > 4.0) {
+        const scaleFactor = 4.0 / currentTime;
+        fill.forEach(e => {
+            e.time *= scaleFactor;
+            e.duration *= scaleFactor;
+        });
+    }
+    
+    const highNoteThreshold = 52; // E3
+    const hasHighNotes = fill.some(n => n.note > highNoteThreshold);
+    const penalty = hasHighNotes ? 0.8 : 0; // 80% penalty if high notes are present
+
+    if (hasHighNotes) {
+        console.warn(`[BassFillPenalty] High-register fill detected. Applying penalty.`);
+    }
+
+    return { events: fill, penalty };
+}
+    
     
