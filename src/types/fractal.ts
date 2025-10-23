@@ -182,6 +182,14 @@ export interface FractalEvent {
   params?: BassSynthParams | SfxSynthParams;
 }
 
+export type InstrumentHints = {
+    bass?: BassInstrument;
+    melody?: MelodyInstrument;
+    accompaniment?: AccompanimentInstrument;
+    harmony?: 'piano' | 'guitarChords';
+    bassTechnique?: BassTechnique;
+};
+
 /**
  * Идентификатор события (для отладки и трассировки)
  */

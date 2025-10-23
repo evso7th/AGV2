@@ -92,6 +92,7 @@ export type InstrumentType = BassInstrument | MelodyInstrument | AccompanimentIn
 export type InstrumentPart = 'bass' | 'melody' | 'accompaniment' | 'harmony' | 'drums' | 'effects' | 'sparkles' | 'piano' | 'violin' | 'flute' | 'guitarChords' | 'acousticGuitarSolo' | 'electricGuitar' | 'sfx';
 export type BassTechnique = 'arpeggio' | 'portamento' | 'glissando' | 'glide' | 'pulse';
 export type Technique = BassTechnique | 'pluck' | 'pick' | 'harm' | 'slide' | 'hit' | 'ghost' | 'swell' | 'fill';
+export type AccompanimentTechnique = 'choral' | 'alternating-bass-chord' | 'chord-pulsation' | 'arpeggio-fast' | 'arpeggio-slow' | 'alberti-bass';
 
 
 export type InstrumentSettings = {
