@@ -523,25 +523,46 @@ export const TEXTURE_INSTRUMENT_WEIGHTS_BY_MOOD: Record<Mood, Record<Accompanime
 };
 
 
-export type AccompanimentTechnique = 'choral' | 'alternating-bass-chord' | 'chord-pulsation' | 'arpeggio-fast' | 'arpeggio-slow' | 'alberti-bass';
+export type AccompanimentTechnique = 'choral' | 'alternating-bass-chord' | 'chord-pulsation' | 'arpeggio-fast' | 'arpeggio-slow' | 'alberti-bass' | 'paired-notes' | 'long-chords';
 
-export function getAccompanimentTechnique(genre: Genre, mood: Mood, density: number, tempo: number): AccompanimentTechnique {
-    if (tempo < 85) {
+export function getAccompanimentTechnique(genre: Genre, mood: Mood, density: number, tempo: number, barCount: number, random: { next: () => number }): AccompanimentTechnique {
+    // Intro phase: prioritize calm, sustained techniques
+    if (barCount < 4) {
+        if (random.next() < 0.7) return 'long-chords';
         return 'choral';
     }
 
-    if (tempo >= 85 && tempo < 115) {
-        const isNegativeMood = mood === 'dark' || mood === 'anxious' || mood === 'melancholic';
-        return isNegativeMood ? 'chord-pulsation' : 'alberti-bass';
+    // Main logic based on genre, density, and randomness
+    const rand = random.next();
+    const isHighEnergyGenre = ['trance', 'house', 'progressive', 'rock'].includes(genre);
+    const isLowEnergyGenre = ['ambient', 'ballad', 'celtic'].includes(genre);
+    
+    // Higher density and tempo push towards more active techniques
+    const activityPressure = (density * 0.7) + (tempo / 160 * 0.3);
+
+    if (activityPressure > 0.65 && isHighEnergyGenre) {
+        if (rand < 0.7) return 'arpeggio-fast';
+        if (rand < 0.9) return 'chord-pulsation';
+        return 'alberti-bass';
+    }
+    
+    if (activityPressure > 0.4) {
+        if (rand < 0.5) return 'alberti-bass';
+        if (rand < 0.8) return 'chord-pulsation';
+        return 'paired-notes';
     }
 
-    if (tempo >= 115) {
-        return 'arpeggio-fast';
+    // Low activity pressure defaults to calmer techniques
+    if (isLowEnergyGenre || activityPressure <= 0.4) {
+        if (rand < 0.6) return 'long-chords';
+        if (rand < 0.9) return 'choral';
+        return 'paired-notes';
     }
-  
+    
     // Fallback
     return 'choral';
 }
+
 
 export function createBassFill(mood: Mood, genre: Genre, random: { next: () => number, nextInt: (max: number) => number }): { events: FractalEvent[], penalty: number } {
     const fill: FractalEvent[] = [];

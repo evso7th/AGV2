@@ -1,7 +1,7 @@
 
-import type { FractalEvent, Mood, Genre, Technique, BassSynthParams, InstrumentType, MelodyInstrument, BassInstrument, AccompanimentInstrument, ResonanceMatrix, InstrumentHints } from '@/types/fractal';
+import type { FractalEvent, Mood, Genre, Technique, BassSynthParams, InstrumentType, MelodyInstrument, BassInstrument, AccompanimentInstrument, ResonanceMatrix, InstrumentHints, AccompanimentTechnique } from '@/types/fractal';
 import { ElectronicK, TraditionalK, AmbientK } from './resonance-matrices';
-import { getScaleForMood, STYLE_DRUM_PATTERNS, generateAmbientBassPhrase, mutateBassPhrase, createAccompanimentAxiom, PERCUSSION_SETS, TEXTURE_INSTRUMENT_WEIGHTS_BY_MOOD, getAccompanimentTechnique, createBassFill as createBassFillFromTheory, createDrumFill, type AccompanimentTechnique } from './music-theory';
+import { getScaleForMood, STYLE_DRUM_PATTERNS, generateAmbientBassPhrase, mutateBassPhrase, createAccompanimentAxiom, PERCUSSION_SETS, TEXTURE_INSTRUMENT_WEIGHTS_BY_MOOD, getAccompanimentTechnique, createBassFill as createBassFillFromTheory, createDrumFill } from './music-theory';
 
 export type Branch = {
   id: string;
@@ -502,7 +502,7 @@ export class FractalMusicEngine {
     if (this.epoch >= 2) {
       const accompPlanItem = this.accompPlayPlan[this.currentAccompPlanIndex];
       if (accompPlanItem) {
-          const technique = getAccompanimentTechnique(this.config.genre, this.config.mood, this.config.density, this.config.tempo);
+          const technique = getAccompanimentTechnique(this.config.genre, this.config.mood, this.config.density, this.config.tempo, this.epoch, this.random);
           const accompPhrase = this.generateAccompanimentForPhrase(bassPhraseForThisBar, technique);
           output.push(...accompPhrase);
           // Distribute hints based on technique
