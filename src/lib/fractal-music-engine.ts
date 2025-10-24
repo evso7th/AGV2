@@ -337,14 +337,12 @@ export class FractalMusicEngine {
 
       if (!bassPhrase || bassPhrase.length === 0) return [];
       
-      // Используем первую ноту басовой фразы как тонику для построения аккорда
       const rootNote = bassPhrase[0].note;
       const rootDegree = rootNote % 12;
       const isMinor = this.config.mood === 'melancholic' || this.config.mood === 'dark' || this.config.mood === 'anxious';
 
-      // Находим ступени лада для терции, квинты и септимы
       const findScaleDegree = (interval: number): number | null => {
-        const targetDegree = (rootDegree + interval) % 12;
+        const targetDegree = (rootDegree + interval + 12) % 12;
         const matchingNote = scale.find(n => (n % 12) === targetDegree);
         return matchingNote !== undefined ? (matchingNote % 12) : null;
       };
@@ -352,39 +350,6 @@ export class FractalMusicEngine {
       const thirdDegree = findScaleDegree(isMinor ? 3 : 4);
       const fifthDegree = findScaleDegree(7);
       const seventhDegree = findScaleDegree(isMinor ? 10 : 11);
-
-      if (technique === 'choral') {
-          const baseOctave = 3; 
-          const melodyOctave = 4;
-          const params = { attack: 1.5, release: 2.5, cutoff: 1200, resonance: 0.4, distortion: 0.0, portamento: 0.01 };
-          
-          if (fifthDegree !== null) {
-              accompanimentPhrase.push({
-                  type: 'harmony', note: 12 * (baseOctave + 1) + rootDegree,
-                  duration: 4.0, time: 0, weight: 0.65,
-                  phrasing: 'legato', technique: 'swell', dynamics: 'p', params
-              });
-              accompanimentPhrase.push({
-                  type: 'harmony', note: 12 * (baseOctave + 1) + fifthDegree,
-                  duration: 4.0, time: 0.1, weight: 0.55,
-                  phrasing: 'legato', technique: 'swell', dynamics: 'p', params
-              });
-          }
-
-          if (thirdDegree !== null && seventhDegree !== null) {
-              accompanimentPhrase.push({
-                  type: 'harmony', note: 12 * (melodyOctave + 1) + thirdDegree,
-                  duration: 3.0, time: 0.5, weight: 0.6,
-                  phrasing: 'legato', technique: 'swell', dynamics: 'p', params
-              });
-              accompanimentPhrase.push({
-                  type: 'harmony', note: 12 * (melodyOctave + 1) + seventhDegree,
-                  duration: 2.5, time: 1.0, weight: 0.5,
-                  phrasing: 'legato', technique: 'swell', dynamics: 'p', params
-              });
-          }
-          return accompanimentPhrase;
-      }
       
       const chordDegrees = [rootDegree, thirdDegree, fifthDegree].filter(d => d !== null) as number[];
       if (chordDegrees.length < 2) return []; 
@@ -392,6 +357,67 @@ export class FractalMusicEngine {
       const selectOctave = (): number => (this.random.next() > 0.6 ? 4 : 3);
       
       switch (technique) {
+          case 'long-chords':
+              chordDegrees.forEach((degree, index) => {
+                  accompanimentPhrase.push({
+                      type: 'harmony',
+                      note: 12 * (selectOctave() + 1) + degree,
+                      time: index * 0.1, // Slight stagger
+                      duration: 4.0,
+                      weight: 0.6 - (index * 0.1),
+                      technique: 'swell', dynamics: 'p', phrasing: 'legato',
+                      params: { attack: 1.8, release: 2.8 }
+                  });
+              });
+              break;
+
+          case 'paired-notes':
+              accompanimentPhrase.push({
+                  type: 'harmony', note: 12 * (selectOctave() + 1) + chordDegrees[0],
+                  time: 0.0, duration: 2.0, weight: 0.7,
+                  technique: 'swell', dynamics: 'p', phrasing: 'legato', params: { attack: 0.8, release: 1.2 }
+              });
+              if (chordDegrees[1]) {
+                  accompanimentPhrase.push({
+                      type: 'harmony', note: 12 * (selectOctave() + 1) + chordDegrees[1],
+                      time: 2.0, duration: 2.0, weight: 0.65,
+                      technique: 'swell', dynamics: 'p', phrasing: 'legato', params: { attack: 0.8, release: 1.2 }
+                  });
+              }
+              break;
+
+          case 'choral':
+              const baseOctave = 3; 
+              const melodyOctave = 4;
+              const params = { attack: 1.5, release: 2.5, cutoff: 1200, resonance: 0.4, distortion: 0.0, portamento: 0.01 };
+              
+              if (fifthDegree !== null) {
+                  accompanimentPhrase.push({
+                      type: 'harmony', note: 12 * (baseOctave + 1) + rootDegree,
+                      duration: 4.0, time: 0, weight: 0.65,
+                      phrasing: 'legato', technique: 'swell', dynamics: 'p', params
+                  });
+                  accompanimentPhrase.push({
+                      type: 'harmony', note: 12 * (baseOctave + 1) + fifthDegree,
+                      duration: 4.0, time: 0.1, weight: 0.55,
+                      phrasing: 'legato', technique: 'swell', dynamics: 'p', params
+                  });
+              }
+
+              if (thirdDegree !== null && seventhDegree !== null) {
+                  accompanimentPhrase.push({
+                      type: 'harmony', note: 12 * (melodyOctave + 1) + thirdDegree,
+                      duration: 3.0, time: 0.5, weight: 0.6,
+                      phrasing: 'legato', technique: 'swell', dynamics: 'p', params
+                  });
+                  accompanimentPhrase.push({
+                      type: 'harmony', note: 12 * (melodyOctave + 1) + seventhDegree,
+                      duration: 2.5, time: 1.0, weight: 0.5,
+                      phrasing: 'legato', technique: 'swell', dynamics: 'p', params
+                  });
+              }
+              return accompanimentPhrase;
+
           case 'arpeggio-fast':
               for (let i = 0; i < 16; i++) {
                   const degree = chordDegrees[i % chordDegrees.length];
@@ -506,7 +532,7 @@ export class FractalMusicEngine {
           const accompPhrase = this.generateAccompanimentForPhrase(bassPhraseForThisBar, technique);
           output.push(...accompPhrase);
           // Distribute hints based on technique
-          if (technique === 'choral') {
+          if (technique === 'choral' || technique === 'long-chords' || technique === 'paired-notes') {
               instrumentHints.harmony = accompPlanItem.instrument;
           } else {
               instrumentHints.accompaniment = accompPlanItem.instrument;
@@ -552,3 +578,5 @@ export class FractalMusicEngine {
     return { events: finalEvents, instrumentHints };
   }
 }
+
+    
