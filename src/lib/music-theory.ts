@@ -522,20 +522,24 @@ export const TEXTURE_INSTRUMENT_WEIGHTS_BY_MOOD: Record<Mood, Record<Accompanime
 export type AccompanimentTechnique = 'choral' | 'alternating-bass-chord' | 'chord-pulsation' | 'arpeggio-fast' | 'arpeggio-slow' | 'alberti-bass';
 
 /**
- * Выбирает технику аккомпанемента в зависимости от жанра, настроения и плотности.
+ * Выбирает технику аккомпанемента в зависимости от жанра, настроения и темпа.
  */
-export function getAccompanimentTechnique(genre: Genre, mood: Mood, density: number): AccompanimentTechnique {
-  const isElectronic = ['trance', 'house', 'progressive'].includes(genre);
-  const isFast = density > 0.6;
-  const isSlowAndSparse = density < 0.4;
+export function getAccompanimentTechnique(genre: Genre, mood: Mood, density: number, tempo: number): AccompanimentTechnique {
+  if (tempo < 85) {
+    return 'choral';
+  }
 
-  if (isElectronic && isFast) return 'arpeggio-fast';
-  if (genre === 'ambient' || isSlowAndSparse) return 'choral';
-  if (genre === 'rock' || genre === 'progressive') return 'alternating-bass-chord';
-  if (genre === 'house' || genre === 'rnb') return 'chord-pulsation';
-  if (mood === 'joyful' || mood === 'enthusiastic') return 'alberti-bass';
+  if (tempo >= 85 && tempo < 115) {
+    const isNegativeMood = mood === 'dark' || mood === 'anxious' || mood === 'melancholic';
+    return isNegativeMood ? 'chord-pulsation' : 'alberti-bass';
+  }
+
+  if (tempo >= 115) {
+    return 'arpeggio-fast';
+  }
   
-  return 'choral'; // Безопасный вариант по умолчанию
+  // Fallback
+  return 'choral';
 }
 
 export function createBassFill(mood: Mood, genre: Genre, random: { next: () => number, nextInt: (max: number) => number }): { events: FractalEvent[], penalty: number } {

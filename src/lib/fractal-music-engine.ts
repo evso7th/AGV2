@@ -488,7 +488,7 @@ export class FractalMusicEngine {
     // --- ACCOMPANIMENT (Reacts to Bass) ---
     const accompPlanItem = this.accompPlayPlan[this.currentAccompPlanIndex];
     if (accompPlanItem) {
-        const technique = getAccompanimentTechnique(this.config.genre, this.config.mood, this.config.density);
+        const technique = getAccompanimentTechnique(this.config.genre, this.config.mood, this.config.density, this.config.tempo);
         const accompPhrase = this.generateAccompanimentForPhrase(bassPhraseForThisBar, technique);
         output.push(...accompPhrase);
         instrumentHints.accompaniment = accompPlanItem.instrument;
