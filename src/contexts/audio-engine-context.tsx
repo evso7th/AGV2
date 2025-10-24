@@ -136,8 +136,6 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
         bassEvents.push(event);
       } else if (eventType === 'accompaniment') {
         accompanimentEvents.push(event);
-      } else if (eventType === 'harmony') {
-        harmonyEvents.push(event);
       } else if (eventType === 'sfx') {
         sfxEvents.push(event);
       }
@@ -153,11 +151,6 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
 
     if (accompanimentManagerRef.current && accompanimentEvents.length > 0) {
         accompanimentManagerRef.current.schedule(accompanimentEvents, barStartTime, tempo, instrumentHints?.accompaniment);
-    }
-
-    if (harmonyManagerRef.current && harmonyEvents.length > 0) {
-        console.log(`[AudioEngine] Forwarding ${harmonyEvents.length} events to HarmonyManager`);
-        harmonyManagerRef.current.schedule(harmonyEvents, barStartTime, tempo, instrumentHints?.harmony);
     }
 
     if (sfxSynthManagerRef.current && sfxEvents.length > 0) {
@@ -364,5 +357,3 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
     </AudioEngineContext.Provider>
   );
 };
-
-    
