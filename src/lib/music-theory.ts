@@ -1,6 +1,6 @@
 
 // src/lib/music-theory.ts
-import type { FractalEvent, Mood, Genre, Technique, BassSynthParams, InstrumentType, AccompanimentInstrument } from '@/types/fractal';
+import type { FractalEvent, Mood, Genre, Technique, BassSynthParams, InstrumentType, AccompanimentInstrument, InstrumentHints } from '@/types/fractal';
 
 export const PERCUSSION_SETS: Record<'NEUTRAL' | 'ELECTRONIC' | 'DARK', InstrumentType[]> = {
     NEUTRAL: ['perc-001', 'perc-002', 'perc-005', 'perc-006', 'perc-013', 'perc-014', 'perc-015', 'drum_ride', 'cymbal_bell1'],
@@ -489,7 +489,8 @@ export function createAccompanimentAxiom(mood: Mood, genre: Genre, random: { nex
         const noteMidi = 12 * (octave + 1) + degree;
 
         const duration = (totalDuration / numNotes) * (0.8 + random.next() * 0.4);
-        axiom.push({
+        
+        const mainEvent: FractalEvent = {
             type: 'accompaniment',
             note: noteMidi,
             duration: duration,
@@ -499,7 +500,19 @@ export function createAccompanimentAxiom(mood: Mood, genre: Genre, random: { nex
             dynamics: 'p',
             phrasing: 'legato',
             params: swellParams
-        });
+        };
+        axiom.push(mainEvent);
+
+        // Условное дублирование в октаву
+        if (duration > 1.0) { // Длиннее, чем 1/4
+            const octaveShadow: FractalEvent = {
+                ...mainEvent,
+                note: noteMidi - 12,
+                weight: mainEvent.weight * 0.7 // "Тень" чуть тише
+            };
+            axiom.push(octaveShadow);
+        }
+
         currentTime += duration / (1.5 * tempoFactor); // More overlap at slower tempos
     }
 
