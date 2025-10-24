@@ -1,5 +1,4 @@
 
-
 'use client';
 
 import React, { createContext, useContext, useState, useRef, useCallback, useEffect } from 'react';
@@ -32,12 +31,12 @@ type WorkerMessage = {
         events?: FractalEvent[];
         barDuration?: number;
         instrumentHints?: InstrumentHints;
+        time?: number;
+        genre?: Genre;
+        mood?: Mood;
     };
     error?: string;
     message?: string;
-    time?: number;
-    genre?: Genre;
-    mood?: Mood;
 };
 
 
@@ -242,7 +241,7 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
         if (!workerRef.current) {
             const worker = new Worker(new URL('@/app/ambient.worker.ts', import.meta.url), { type: 'module' });
             worker.onmessage = (event: MessageEvent<WorkerMessage>) => {
-                const { type, payload, error, time, genre, mood } = event.data;
+                const { type, payload, error } = event.data;
                 
                 if (type === 'SCORE_READY' && payload && payload.events && payload.barDuration && settingsRef.current) {
                     const { events, barDuration, instrumentHints } = payload;
@@ -253,8 +252,8 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
                     
                     nextBarTimeRef.current += barDuration;
 
-                } else if (type === 'sparkle' && time !== undefined) {
-                    sparklePlayerRef.current?.playRandomSparkle(nextBarTimeRef.current + time, genre, mood);
+                } else if (type === 'sparkle' && payload?.time !== undefined) {
+                    sparklePlayerRef.current?.playRandomSparkle(nextBarTimeRef.current + payload.time, payload.genre, payload.mood);
                 } else if (type === 'error') {
                     toast({ variant: "destructive", title: "Worker Error", description: error });
                 }
@@ -365,3 +364,5 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
     </AudioEngineContext.Provider>
   );
 };
+
+    

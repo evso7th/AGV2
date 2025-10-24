@@ -193,7 +193,7 @@ const Scheduler = {
         
         if (this.barCount >= 4 && this.settings.textureSettings.sparkles.enabled) {
             if (shouldAddSparkle(currentTime, density, genre)) {
-                 self.postMessage({ type: 'sparkle', time: 0, genre: genre, mood: this.settings.mood });
+                 self.postMessage({ type: 'sparkle', payload: { time: 0, genre: genre, mood: this.settings.mood } });
                  lastSparkleTime = currentTime;
             }
         }
