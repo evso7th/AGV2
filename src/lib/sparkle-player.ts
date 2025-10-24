@@ -232,37 +232,73 @@ export class SparklePlayer {
     public playRandomSparkle(time: number, genre?: Genre, mood?: Mood) {
         if (!this.isInitialized) return;
 
-        const electronicGenres: Genre[] = ['house', 'progressive', 'rnb', 'trance', 'rock', 'blues'];
-        const isElectronic = genre && electronicGenres.includes(genre);
-        const darkMoods: Mood[] = ['dark', 'anxious'];
-        const lightMoods: Mood[] = ['joyful', 'dreamy', 'calm', 'epic', 'enthusiastic'];
+        let samplePool: AudioBuffer[] = [];
+        let poolName: string = 'DEFAULT';
+        const rand = Math.random();
 
-        let samplePool: AudioBuffer[];
-        let poolName: string;
-
-        // Иерархия правил:
         if (genre === 'ambient') {
-            samplePool = this.ambientCommonBuffers;
-            poolName = 'AMBIENT_COMMON';
-        } else if (isElectronic) {
-            if (mood && darkMoods.includes(mood)) {
-                samplePool = this.darkBuffers;
-                poolName = 'DARK';
-            } else if (mood && lightMoods.includes(mood)) {
-                samplePool = this.lightBuffers;
-                poolName = 'LIGHT';
-            } else {
-                samplePool = this.electronicBuffers;
-                poolName = 'ELECTRONIC';
+            switch (mood) {
+                // Нейтральные
+                case 'calm':
+                    samplePool = rand < 0.9 ? this.ambientCommonBuffers : this.lightBuffers;
+                    poolName = rand < 0.9 ? 'AMBIENT_COMMON' : 'LIGHT';
+                    break;
+                case 'contemplative':
+                    samplePool = rand < 0.8 ? this.ambientCommonBuffers : this.lightBuffers;
+                    poolName = rand < 0.8 ? 'AMBIENT_COMMON' : 'LIGHT';
+                    break;
+                case 'dreamy':
+                    samplePool = rand < 0.7 ? this.ambientCommonBuffers : this.lightBuffers;
+                    poolName = rand < 0.7 ? 'AMBIENT_COMMON' : 'LIGHT';
+                    break;
+                // Хорошие
+                case 'joyful':
+                    samplePool = rand < 0.2 ? this.ambientCommonBuffers : this.lightBuffers;
+                    poolName = rand < 0.2 ? 'AMBIENT_COMMON' : 'LIGHT';
+                    break;
+                case 'enthusiastic':
+                    samplePool = rand < 0.3 ? this.ambientCommonBuffers : this.lightBuffers;
+                    poolName = rand < 0.3 ? 'AMBIENT_COMMON' : 'LIGHT';
+                    break;
+                case 'epic':
+                    if (rand < 0.4) { samplePool = this.lightBuffers; poolName = 'LIGHT'; }
+                    else if (rand < 0.8) { samplePool = this.ambientCommonBuffers; poolName = 'AMBIENT_COMMON'; }
+                    else { samplePool = this.darkBuffers; poolName = 'DARK'; }
+                    break;
+                // Плохие
+                case 'melancholic':
+                    if (rand < 0.5) { samplePool = this.ambientCommonBuffers; poolName = 'AMBIENT_COMMON'; }
+                    else if (rand < 0.8) { samplePool = this.lightBuffers; poolName = 'LIGHT'; }
+                    else { samplePool = this.darkBuffers; poolName = 'DARK'; }
+                    break;
+                case 'dark':
+                    samplePool = rand < 0.3 ? this.ambientCommonBuffers : this.darkBuffers;
+                    poolName = rand < 0.3 ? 'AMBIENT_COMMON' : 'DARK';
+                    break;
+                case 'anxious':
+                    if (rand < 0.7) { samplePool = this.darkBuffers; poolName = 'DARK'; }
+                    else if (rand < 0.9) { samplePool = this.electronicBuffers; poolName = 'ELECTRONIC'; }
+                    else { samplePool = this.ambientCommonBuffers; poolName = 'AMBIENT_COMMON'; }
+                    break;
+                default:
+                    samplePool = this.ambientCommonBuffers;
+                    poolName = 'AMBIENT_COMMON';
             }
         } else {
+            // Fallback for non-ambient genres
             samplePool = this.rootBuffers;
             poolName = 'ROOT';
         }
 
         if (samplePool.length === 0) {
              console.warn(`[SparklePlayer] No samples loaded for the selected pool: ${poolName}.`);
-             return;
+             // Fallback to root if the selected pool is empty
+             if (this.rootBuffers.length > 0) {
+                 samplePool = this.rootBuffers;
+                 poolName = 'ROOT (fallback)';
+             } else {
+                 return;
+             }
         }
         
         const buffer = samplePool[Math.floor(Math.random() * samplePool.length)];
@@ -271,7 +307,7 @@ export class SparklePlayer {
         source.connect(this.preamp);
         
         const sampleUrlForLogging = (buffer as any)?.url || 'Unknown';
-        console.log(`[SparklePlayer] Playing from pool "${poolName}". Sample: ${sampleUrlForLogging.substring(sampleUrlForLogging.lastIndexOf('/') + 1)} at time ${time.toFixed(2)}`);
+        console.log(`[SparklePlayer] Playing from pool "${poolName}". Mood: ${mood}, Genre: ${genre}. Sample: ${sampleUrlForLogging.substring(sampleUrlForLogging.lastIndexOf('/') + 1)} at time ${time.toFixed(2)}`);
         source.start(time);
         
         this.activeSources.add(source);

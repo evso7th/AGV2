@@ -16,13 +16,11 @@ let lastSfxTime = -Infinity;
 
 function shouldAddSparkle(currentTime: number, density: number, genre: Genre): boolean {
     const timeSinceLast = currentTime - lastSparkleTime;
-    const baseMinTime = 30; 
-    const baseMaxTime = 90;
-
+    
     // For ambient, make sparkles more frequent
     const isAmbient = genre === 'ambient';
-    const minTime = isAmbient ? 7.5 : baseMinTime;
-    const maxTime = isAmbient ? 22.5 : baseMaxTime;
+    const minTime = isAmbient ? 7.5 : 30;
+    const maxTime = isAmbient ? 22.5 : 90;
 
     if (timeSinceLast < minTime) return false;
     if (density > 0.6 && !isAmbient) return false; 
@@ -70,7 +68,7 @@ const Scheduler = {
         bpm: 75,
         score: 'neuro_f_matrix', 
         genre: 'ambient' as Genre,
-        drumSettings: { pattern: 'composer', enabled: true, volume: 0.5, kickVolume: 1.0 },
+        drumSettings: { pattern: 'composer', enabled: true, kickVolume: 1.0 },
         instrumentSettings: { 
             bass: { name: "glideBass", volume: 0.7, technique: 'portamento' },
             melody: { name: "acousticGuitarSolo", volume: 0.8 },
@@ -195,8 +193,7 @@ const Scheduler = {
         
         if (this.barCount >= 4 && this.settings.textureSettings.sparkles.enabled) {
             if (shouldAddSparkle(currentTime, density, genre)) {
-                 const sparkleGenre = genre === 'ambient' ? 'trance' : genre;
-                 self.postMessage({ type: 'sparkle', time: 0, genre: sparkleGenre, mood: this.settings.mood });
+                 self.postMessage({ type: 'sparkle', time: 0, genre: genre, mood: this.settings.mood });
                  lastSparkleTime = currentTime;
             }
         }
