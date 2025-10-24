@@ -451,7 +451,6 @@ export const SFX_GRAMMAR = {
 
 
 export function createAccompanimentAxiom(mood: Mood, genre: Genre, random: { next: () => number; nextInt: (max: number) => number }, bassNote: number, tempo: number = 120): FractalEvent[] {
-    const scale = getScaleForMood(mood);
     const swellParams = { cutoff: 300, resonance: 0.8, distortion: 0.02, portamento: 0.0, attack: 1.5, release: 2.5 };
     const axiom: FractalEvent[] = [];
     
@@ -460,6 +459,7 @@ export function createAccompanimentAxiom(mood: Mood, genre: Genre, random: { nex
     const totalDuration = 4.0; 
     let currentTime = 0;
 
+    const scale = getScaleForMood(mood);
     const rootMidi = bassNote;
     const rootDegree = rootMidi % 12;
 
@@ -478,9 +478,9 @@ export function createAccompanimentAxiom(mood: Mood, genre: Genre, random: { nex
 
     const selectOctave = (): number => {
         const rand = random.next();
-        if (rand < 0.70) return 4; // 70% chance for 4th octave
-        if (rand < 0.95) return 3; // 25% chance for 3rd octave
-        return 5; // 5% chance for 5th octave
+        if (rand < 0.70) return 4; 
+        if (rand < 0.95) return 3; 
+        return 5;
     };
 
     for (let i = 0; i < numNotes; i++) {
@@ -491,29 +491,20 @@ export function createAccompanimentAxiom(mood: Mood, genre: Genre, random: { nex
         const duration = (totalDuration / numNotes) * (0.8 + random.next() * 0.4);
         
         const mainEvent: FractalEvent = {
-            type: 'accompaniment',
-            note: noteMidi,
-            duration: duration,
-            time: currentTime,
-            weight: 0.8 + random.next() * 0.2,
-            technique: 'swell',
-            dynamics: 'p',
-            phrasing: 'legato',
-            params: swellParams
+            type: 'accompaniment', note: noteMidi, duration: duration,
+            time: currentTime, weight: 0.8 + random.next() * 0.2, technique: 'swell',
+            dynamics: 'p', phrasing: 'legato', params: swellParams
         };
         axiom.push(mainEvent);
 
-        // Условное дублирование в октаву
         if (duration > 1.0) { // Длиннее, чем 1/4
             const octaveShadow: FractalEvent = {
-                ...mainEvent,
-                note: noteMidi - 12,
-                weight: mainEvent.weight * 0.7 // "Тень" чуть тише
+                ...mainEvent, note: noteMidi - 12, weight: mainEvent.weight * 0.7
             };
             axiom.push(octaveShadow);
         }
 
-        currentTime += duration / (1.5 * tempoFactor); // More overlap at slower tempos
+        currentTime += duration / (1.5 * tempoFactor);
     }
 
     return axiom;
@@ -534,25 +525,22 @@ export const TEXTURE_INSTRUMENT_WEIGHTS_BY_MOOD: Record<Mood, Record<Accompanime
 
 export type AccompanimentTechnique = 'choral' | 'alternating-bass-chord' | 'chord-pulsation' | 'arpeggio-fast' | 'arpeggio-slow' | 'alberti-bass';
 
-/**
- * Выбирает технику аккомпанемента в зависимости от жанра, настроения и темпа.
- */
 export function getAccompanimentTechnique(genre: Genre, mood: Mood, density: number, tempo: number): AccompanimentTechnique {
-  if (tempo < 85) {
-    return 'choral';
-  }
+    if (tempo < 85) {
+        return 'choral';
+    }
 
-  if (tempo >= 85 && tempo < 115) {
-    const isNegativeMood = mood === 'dark' || mood === 'anxious' || mood === 'melancholic';
-    return isNegativeMood ? 'chord-pulsation' : 'alberti-bass';
-  }
+    if (tempo >= 85 && tempo < 115) {
+        const isNegativeMood = mood === 'dark' || mood === 'anxious' || mood === 'melancholic';
+        return isNegativeMood ? 'chord-pulsation' : 'alberti-bass';
+    }
 
-  if (tempo >= 115) {
-    return 'arpeggio-fast';
-  }
+    if (tempo >= 115) {
+        return 'arpeggio-fast';
+    }
   
-  // Fallback
-  return 'choral';
+    // Fallback
+    return 'choral';
 }
 
 export function createBassFill(mood: Mood, genre: Genre, random: { next: () => number, nextInt: (max: number) => number }): { events: FractalEvent[], penalty: number } {
@@ -623,6 +611,69 @@ export function createBassFill(mood: Mood, genre: Genre, random: { next: () => n
     }
 
     return { events: fill, penalty };
+}
+
+/**
+ * Creates a drum fill synchronized with a bass fill.
+ */
+export function createDrumFill(random: { next: () => number, nextInt: (max: number) => number }): FractalEvent[] {
+    const fill: FractalEvent[] = [];
+    const numHits = random.nextInt(3) + 2; // 2-4 hits
+    const toms: InstrumentType[] = ['drum_tom_low', 'drum_tom_mid', 'drum_tom_high'];
+    let currentTime = 3.0; // Start the fill on the 4th beat
+    const baseWeight = 0.75;
+
+    for (let i = 0; i < numHits; i++) {
+        const tom = toms[random.nextInt(toms.length)];
+        const duration = 0.25; // 16th note
+        const time = currentTime + i * duration;
+        
+        fill.push({
+            type: tom,
+            note: 50 + i, // Arbitrary midi note for uniqueness
+            duration,
+            time,
+            weight: baseWeight + (random.next() * 0.1),
+            technique: 'hit',
+            dynamics: 'mf',
+            phrasing: 'staccato',
+            params: {}
+        });
+
+        // Add a ghost hi-hat with 50% probability
+        if (random.next() < 0.5) {
+             fill.push({
+                type: 'drum_closed_hi_hat_ghost',
+                note: 42,
+                duration: 0.125,
+                time: time + duration / 2,
+                weight: baseWeight * 0.5,
+                technique: 'ghost',
+                dynamics: 'p',
+                phrasing: 'staccato',
+                params: {}
+            });
+        }
+    }
+
+    // Add final accent
+    const finalTime = currentTime + numHits * 0.25;
+    const numRides = random.next() > 0.5 ? 2 : 1;
+    for (let i = 0; i < numRides; i++) {
+         fill.push({
+            type: 'drum_ride',
+            note: 59,
+            duration: 0.5,
+            time: finalTime + i * 0.25,
+            weight: baseWeight * 0.6, // Quieter accent
+            technique: 'hit',
+            dynamics: 'mp',
+            phrasing: 'legato',
+            params: {}
+        });
+    }
+
+    return fill;
 }
     
     
