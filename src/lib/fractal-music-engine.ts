@@ -1,7 +1,7 @@
 
 import type { FractalEvent, Mood, Genre, Technique, BassSynthParams, InstrumentType, MelodyInstrument, BassInstrument, AccompanimentInstrument, ResonanceMatrix, InstrumentHints } from '@/types/fractal';
 import { ElectronicK, TraditionalK, AmbientK } from './resonance-matrices';
-import { getScaleForMood, STYLE_DRUM_PATTERNS, generateAmbientBassPhrase, mutateBassPhrase, createAccompanimentAxiom, PERCUSSION_SETS, TEXTURE_INSTRUMENT_WEIGHTS_BY_MOOD, getAccompanimentTechnique, createBassFill as createBassFillFromTheory, type AccompanimentTechnique } from './music-theory';
+import { getScaleForMood, STYLE_DRUM_PATTERNS, generateAmbientBassPhrase, mutateBassPhrase, createAccompanimentAxiom, PERCUSSION_SETS, TEXTURE_INSTRUMENT_WEIGHTS_BY_MOOD, getAccompanimentTechnique, createBassFill as createBassFillFromTheory, createDrumFill, type AccompanimentTechnique } from './music-theory';
 
 export type Branch = {
   id: string;
@@ -354,13 +354,10 @@ export class FractalMusicEngine {
       const seventhDegree = findScaleDegree(isMinor ? 10 : 11);
 
       if (technique === 'choral') {
-          // Имитация игры двумя руками для техники "хорал"
           const baseOctave = 3; 
           const melodyOctave = 4;
-          
           const params = { attack: 1.5, release: 2.5, cutoff: 1200, resonance: 0.4, distortion: 0.0, portamento: 0.01 };
           
-          // "Левая рука" - основа аккорда
           if (fifthDegree !== null) {
               accompanimentPhrase.push({
                   type: 'accompaniment', note: 12 * (baseOctave + 1) + rootDegree,
@@ -369,16 +366,15 @@ export class FractalMusicEngine {
               });
               accompanimentPhrase.push({
                   type: 'accompaniment', note: 12 * (baseOctave + 1) + fifthDegree,
-                  duration: 4.0, time: 0.1, weight: 0.55, // Небольшая задержка
+                  duration: 4.0, time: 0.1, weight: 0.55,
                   phrasing: 'legato', technique: 'swell', dynamics: 'p', params
               });
           }
 
-          // "Правая рука" - мелодическая надстройка
           if (thirdDegree !== null && seventhDegree !== null) {
               accompanimentPhrase.push({
                   type: 'accompaniment', note: 12 * (melodyOctave + 1) + thirdDegree,
-                  duration: 3.0, time: 0.5, weight: 0.6, // Начинается позже, длится меньше
+                  duration: 3.0, time: 0.5, weight: 0.6,
                   phrasing: 'legato', technique: 'swell', dynamics: 'p', params
               });
               accompanimentPhrase.push({
@@ -391,13 +387,13 @@ export class FractalMusicEngine {
       }
       
       const chordDegrees = [rootDegree, thirdDegree, fifthDegree].filter(d => d !== null) as number[];
-      if (chordDegrees.length < 2) return [];
+      if (chordDegrees.length < 2) return []; 
 
       const selectOctave = (): number => (this.random.next() > 0.6 ? 4 : 3);
       
       switch (technique) {
           case 'arpeggio-fast':
-              for (let i = 0; i < 16; i++) { // 16-е ноты
+              for (let i = 0; i < 16; i++) {
                   const degree = chordDegrees[i % chordDegrees.length];
                   const note = 12 * (selectOctave() + 1) + degree;
                   accompanimentPhrase.push({
@@ -410,7 +406,7 @@ export class FractalMusicEngine {
               break;
 
           case 'chord-pulsation':
-               for (let i = 0; i < 8; i++) { // Пульсация 8-ми нотами
+               for (let i = 0; i < 8; i++) {
                     const time = i * 0.5;
                     const onBeat = i % 2 === 0;
                     chordDegrees.forEach(degree => {
@@ -437,13 +433,8 @@ export class FractalMusicEngine {
     let instrumentHints: InstrumentHints = {};
     const output: FractalEvent[] = [];
     let drumEvents: FractalEvent[] = [];
+    let isFillBar = false;
 
-    // --- DRUMS ---
-    if (this.config.drumSettings.enabled) {
-        const { events: drumAxiom, tags } = createDrumAxiom(this.config.genre, this.config.mood, this.config.tempo, this.random);
-        drumEvents.push(...drumAxiom);
-    }
-    
     // --- BASS ---
     const bassPlanItem = this.bassPlayPlan[this.currentBassPlanIndex];
     let bassPhraseForThisBar: FractalEvent[] = [];
@@ -468,8 +459,13 @@ export class FractalMusicEngine {
                 // **EVENT**: End of a bass bundle -> chance for a fill
                 if (this.random.next() < 0.4) { // 40% chance
                     console.log(`%c[EVENT] Bass plan transition. Generating fill...`, 'color: orange');
-                    const { events: fillEvents, penalty } = createBassFillFromTheory(this.config.mood, this.config.genre, this.random);
-                    bassPhraseForThisBar = fillEvents;
+                    const { events: bassFillEvents, penalty } = createBassFillFromTheory(this.config.mood, this.config.genre, this.random);
+                    const drumFillEvents = createDrumFill(this.random);
+
+                    bassPhraseForThisBar = bassFillEvents;
+                    drumEvents = drumFillEvents; // Replace drum part with a fill
+                    isFillBar = true;
+
                     if (penalty > 0) this.needsBassReset = true; // Mark for reset after fill
                 }
                 
@@ -481,6 +477,12 @@ export class FractalMusicEngine {
         }
     } else {
         this.createBassAxiomAndPlan();
+    }
+
+    // --- DRUMS (if not a fill bar) ---
+    if (!isFillBar && this.config.drumSettings.enabled) {
+        const { events: drumAxiom } = createDrumAxiom(this.config.genre, this.config.mood, this.config.tempo, this.random);
+        drumEvents.push(...drumAxiom);
     }
     
     // --- DRUM FILL REACTION ---
