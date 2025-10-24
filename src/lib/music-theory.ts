@@ -1,5 +1,6 @@
+
 // src/lib/music-theory.ts
-import type { FractalEvent, Mood, Genre, Technique, BassSynthParams, InstrumentType, AccompanimentInstrument, InstrumentHints } from '@/types/fractal';
+import type { FractalEvent, Mood, Genre, Technique, BassSynthParams, InstrumentType, AccompanimentInstrument, InstrumentHints, AccompanimentTechnique } from '@/types/fractal';
 
 export const PERCUSSION_SETS: Record<'NEUTRAL' | 'ELECTRONIC' | 'DARK', InstrumentType[]> = {
     NEUTRAL: ['perc-001', 'perc-002', 'perc-005', 'perc-006', 'perc-013', 'perc-014', 'perc-015', 'drum_ride', 'cymbal_bell1'],
@@ -511,7 +512,7 @@ export function createAccompanimentAxiom(mood: Mood, genre: Genre, random: { nex
 
 export const TEXTURE_INSTRUMENT_WEIGHTS_BY_MOOD: Record<Mood, Record<AccompanimentInstrument, number>> = {
   epic:          { organ: 0.4, mellotron: 0.4, synth: 0.2, violin: 0.0, flute: 0.0, theremin: 0.0, piano: 0.0, guitarChords: 0.0, acousticGuitarSolo: 0.0, electricGuitar: 0.0, 'E-Bells_melody': 0.0, 'G-Drops': 0.0, 'none': 0.0 },
-  joyful:        { organ: 0.3, flute: 0.3, synth: 0.2, violin: 0.0, mellotron: 0.2, theremin: 0.0, piano: 0.0, guitarChords: 0.0, acousticGuitarSolo: 0.0, electricGuitar: 0.0, 'E-Bells_melody': 0.0, 'G-Drops': 0.0, 'none': 0.0 },
+  joyful:        { organ: 0.3, flute: 0.3, synth: 0.2, mellotron: 0.2, violin: 0.0, theremin: 0.0, piano: 0.0, guitarChords: 0.0, acousticGuitarSolo: 0.0, electricGuitar: 0.0, 'E-Bells_melody': 0.0, 'G-Drops': 0.0, 'none': 0.0 },
   enthusiastic:  { synth: 0.5, organ: 0.4, electricGuitar: 0.1, violin: 0.0, flute: 0.0, mellotron: 0.0, theremin: 0.0, piano: 0.0, guitarChords: 0.0, acousticGuitarSolo: 0.0, 'E-Bells_melody': 0.0, 'G-Drops': 0.0, 'none': 0.0 },
   melancholic:   { mellotron: 0.4, organ: 0.3, violin: 0.0, flute: 0.2, synth: 0.1, theremin: 0.0, piano: 0.0, guitarChords: 0.0, acousticGuitarSolo: 0.0, electricGuitar: 0.0, 'E-Bells_melody': 0.0, 'G-Drops': 0.0, 'none': 0.0 },
   dark:          { organ: 0.5, mellotron: 0.3, theremin: 0.2, violin: 0.0, flute: 0.0, synth: 0.0, piano: 0.0, guitarChords: 0.0, acousticGuitarSolo: 0.0, electricGuitar: 0.0, 'E-Bells_melody': 0.0, 'G-Drops': 0.0, 'none': 0.0 },
@@ -523,17 +524,17 @@ export const TEXTURE_INSTRUMENT_WEIGHTS_BY_MOOD: Record<Mood, Record<Accompanime
 
 export const AMBIENT_ACCOMPANIMENT_WEIGHTS: Record<Mood, Record<AccompanimentInstrument, number>> = {
   // Positive Moods
-  epic:          { organ: 0.4, mellotron: 0.4, synth: 0.2, violin: 0, flute: 0, theremin: 0, piano: 0, guitarChords: 0, acousticGuitarSolo: 0, electricGuitar: 0, 'E-Bells_melody': 0, 'G-Drops': 0, none: 0 },
-  joyful:        { organ: 0.3, flute: 0.3, synth: 0.2, mellotron: 0.2, violin: 0, theremin: 0, piano: 0, guitarChords: 0, acousticGuitarSolo: 0, electricGuitar: 0, 'E-Bells_melody': 0, 'G-Drops': 0, none: 0 },
-  enthusiastic:  { synth: 0.5, organ: 0.4, theremin: 0.1, violin: 0, flute: 0, mellotron: 0, piano: 0, guitarChords: 0, acousticGuitarSolo: 0, electricGuitar: 0, 'E-Bells_melody': 0, 'G-Drops': 0, none: 0 },
+  epic:          { organ: 0.4, mellotron: 0.4, synth: 0.2, violin: 0, flute: 0, theremin: 0, piano: 0, guitarChords: 0, acousticGuitarSolo: 0, electricGuitar: 0, 'E-Bells_melody': 0, 'G-Drops': 0, 'none': 0.0 },
+  joyful:        { organ: 0.3, flute: 0.3, synth: 0.2, mellotron: 0.2, violin: 0, theremin: 0, piano: 0, guitarChords: 0, acousticGuitarSolo: 0, electricGuitar: 0, 'E-Bells_melody': 0, 'G-Drops': 0, 'none': 0.0 },
+  enthusiastic:  { synth: 0.5, organ: 0.4, theremin: 0.1, violin: 0, flute: 0, mellotron: 0, piano: 0, guitarChords: 0, acousticGuitarSolo: 0, electricGuitar: 0, 'E-Bells_melody': 0, 'G-Drops': 0, 'none': 0.0 },
   // Negative Moods
-  melancholic:   { mellotron: 0.4, organ: 0.3, flute: 0.2, synth: 0.1, violin: 0, theremin: 0, piano: 0, guitarChords: 0, acousticGuitarSolo: 0, electricGuitar: 0, 'E-Bells_melody': 0, 'G-Drops': 0, none: 0 },
-  dark:          { organ: 0.5, mellotron: 0.3, theremin: 0.2, violin: 0, flute: 0, synth: 0, piano: 0, guitarChords: 0, acousticGuitarSolo: 0, electricGuitar: 0, 'E-Bells_melody': 0, 'G-Drops': 0, none: 0 },
-  anxious:       { synth: 0.5, theremin: 0.3, organ: 0.2, violin: 0, flute: 0, mellotron: 0, piano: 0, guitarChords: 0, acousticGuitarSolo: 0, electricGuitar: 0, 'E-Bells_melody': 0, 'G-Drops': 0, none: 0 },
+  melancholic:   { mellotron: 0.4, organ: 0.3, flute: 0.2, synth: 0.1, violin: 0, theremin: 0, piano: 0, guitarChords: 0, acousticGuitarSolo: 0, electricGuitar: 0, 'E-Bells_melody': 0, 'G-Drops': 0, 'none': 0.0 },
+  dark:          { organ: 0.5, mellotron: 0.3, theremin: 0.2, violin: 0, flute: 0, synth: 0, piano: 0, guitarChords: 0, acousticGuitarSolo: 0, electricGuitar: 0, 'E-Bells_melody': 0, 'G-Drops': 0, 'none': 0.0 },
+  anxious:       { synth: 0.5, theremin: 0.3, organ: 0.2, violin: 0, flute: 0, mellotron: 0, piano: 0, guitarChords: 0, acousticGuitarSolo: 0, electricGuitar: 0, 'E-Bells_melody': 0, 'G-Drops': 0, 'none': 0.0 },
   // Neutral Moods
-  dreamy:        { flute: 0.3, synth: 0.3, mellotron: 0.2, organ: 0.2, violin: 0, theremin: 0, piano: 0, guitarChords: 0, acousticGuitarSolo: 0, electricGuitar: 0, 'E-Bells_melody': 0, 'G-Drops': 0, none: 0 },
-  contemplative: { flute: 0.4, organ: 0.4, synth: 0.2, violin: 0, mellotron: 0, theremin: 0, piano: 0, guitarChords: 0, acousticGuitarSolo: 0, electricGuitar: 0, 'E-Bells_melody': 0, 'G-Drops': 0, none: 0 },
-  calm:          { flute: 0.5, synth: 0.3, organ: 0.2, violin: 0, mellotron: 0, theremin: 0, piano: 0, guitarChords: 0, acousticGuitarSolo: 0, electricGuitar: 0, 'E-Bells_melody': 0, 'G-Drops': 0, none: 0 },
+  dreamy:        { flute: 0.3, synth: 0.3, mellotron: 0.2, organ: 0.2, violin: 0, theremin: 0, piano: 0, guitarChords: 0, acousticGuitarSolo: 0, electricGuitar: 0, 'E-Bells_melody': 0, 'G-Drops': 0, 'none': 0.0 },
+  contemplative: { flute: 0.4, organ: 0.4, synth: 0.2, violin: 0, mellotron: 0, theremin: 0, piano: 0, guitarChords: 0, acousticGuitarSolo: 0, electricGuitar: 0, 'E-Bells_melody': 0, 'G-Drops': 0, 'none': 0.0 },
+  calm:          { flute: 0.5, synth: 0.3, organ: 0.2, violin: 0, mellotron: 0, theremin: 0, piano: 0, guitarChords: 0, acousticGuitarSolo: 0, electricGuitar: 0, 'E-Bells_melody': 0, 'G-Drops': 0, 'none': 0.0 },
 };
 
 
@@ -561,6 +562,12 @@ export function getAccompanimentTechnique(genre: Genre, mood: Mood, density: num
     }
     
     if (activityPressure > 0.4) {
+        // For ambient, explicitly forbid chord-pulsation at this stage
+        if (genre === 'ambient') {
+            if (rand < 0.6) return 'alberti-bass';
+            return 'paired-notes';
+        }
+        
         if (rand < 0.5) return 'alberti-bass';
         if (rand < 0.8) return 'chord-pulsation';
         return 'paired-notes';
@@ -711,4 +718,6 @@ export function createDrumFill(random: { next: () => number, nextInt: (max: numb
     return fill;
 }
     
+    
+
     
