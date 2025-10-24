@@ -209,3 +209,5 @@ export type ResonanceMatrix = (
     genre: Genre;
   }
 ) => number;
+
+export type AccompanimentTechnique = 'choral' | 'alternating-bass-chord' | 'chord-pulsation' | 'arpeggio-fast' | 'arpeggio-slow' | 'alberti-bass' | 'paired-notes' | 'long-chords';
