@@ -360,12 +360,12 @@ export class FractalMusicEngine {
           
           if (fifthDegree !== null) {
               accompanimentPhrase.push({
-                  type: 'accompaniment', note: 12 * (baseOctave + 1) + rootDegree,
+                  type: 'harmony', note: 12 * (baseOctave + 1) + rootDegree,
                   duration: 4.0, time: 0, weight: 0.65,
                   phrasing: 'legato', technique: 'swell', dynamics: 'p', params
               });
               accompanimentPhrase.push({
-                  type: 'accompaniment', note: 12 * (baseOctave + 1) + fifthDegree,
+                  type: 'harmony', note: 12 * (baseOctave + 1) + fifthDegree,
                   duration: 4.0, time: 0.1, weight: 0.55,
                   phrasing: 'legato', technique: 'swell', dynamics: 'p', params
               });
@@ -373,12 +373,12 @@ export class FractalMusicEngine {
 
           if (thirdDegree !== null && seventhDegree !== null) {
               accompanimentPhrase.push({
-                  type: 'accompaniment', note: 12 * (melodyOctave + 1) + thirdDegree,
+                  type: 'harmony', note: 12 * (melodyOctave + 1) + thirdDegree,
                   duration: 3.0, time: 0.5, weight: 0.6,
                   phrasing: 'legato', technique: 'swell', dynamics: 'p', params
               });
               accompanimentPhrase.push({
-                  type: 'accompaniment', note: 12 * (melodyOctave + 1) + seventhDegree,
+                  type: 'harmony', note: 12 * (melodyOctave + 1) + seventhDegree,
                   duration: 2.5, time: 1.0, weight: 0.5,
                   phrasing: 'legato', technique: 'swell', dynamics: 'p', params
               });
@@ -498,22 +498,29 @@ export class FractalMusicEngine {
     output.push(...bassPhraseForThisBar);
     output.push(...drumEvents);
     
-    // --- ACCOMPANIMENT (Reacts to Bass) ---
-    const accompPlanItem = this.accompPlayPlan[this.currentAccompPlanIndex];
-    if (accompPlanItem) {
-        const technique = getAccompanimentTechnique(this.config.genre, this.config.mood, this.config.density, this.config.tempo);
-        const accompPhrase = this.generateAccompanimentForPhrase(bassPhraseForThisBar, technique);
-        output.push(...accompPhrase);
-        instrumentHints.accompaniment = accompPlanItem.instrument;
+    // --- ACCOMPANIMENT & HARMONY (Reacts to Bass) ---
+    if (this.epoch >= 2) {
+      const accompPlanItem = this.accompPlayPlan[this.currentAccompPlanIndex];
+      if (accompPlanItem) {
+          const technique = getAccompanimentTechnique(this.config.genre, this.config.mood, this.config.density, this.config.tempo);
+          const accompPhrase = this.generateAccompanimentForPhrase(bassPhraseForThisBar, technique);
+          output.push(...accompPhrase);
+          // Distribute hints based on technique
+          if (technique === 'choral') {
+              instrumentHints.harmony = accompPlanItem.instrument;
+          } else {
+              instrumentHints.accompaniment = accompPlanItem.instrument;
+          }
 
-        // Logic for advancing accompaniment plan (simplified)
-        this.currentAccompRepetition++;
-        if(this.currentAccompRepetition >= accompPlanItem.repetitions) {
-            this.currentAccompRepetition = 0;
-            this.currentAccompPlanIndex = (this.currentAccompPlanIndex + 1) % this.accompPlayPlan.length;
-        }
+          // Logic for advancing accompaniment plan (simplified)
+          this.currentAccompRepetition++;
+          if(this.currentAccompRepetition >= accompPlanItem.repetitions) {
+              this.currentAccompRepetition = 0;
+              this.currentAccompPlanIndex = (this.currentAccompPlanIndex + 1) % this.accompPlayPlan.length;
+          }
+      }
     }
-    
+
     const finalEvents = this.applyNaturalDecay(output, 4.0);
     return { events: finalEvents, instrumentHints };
   }
@@ -536,9 +543,12 @@ export class FractalMusicEngine {
     
     const { events, instrumentHints } = this.generateOneBar(barDuration);
 
+    // Filter SFX events if it's too early
+    const finalEvents = this.epoch < 2 
+        ? events.filter(e => e.type !== 'sfx') 
+        : events;
+
     this.time += barDuration;
-    return { events, instrumentHints };
+    return { events: finalEvents, instrumentHints };
   }
 }
-
-    

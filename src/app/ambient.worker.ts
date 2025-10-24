@@ -186,6 +186,7 @@ const Scheduler = {
         let scorePayload: { events: FractalEvent[]; instrumentHints: InstrumentHints } = { events: [], instrumentHints: {} };
 
         if (this.settings.score === 'neuro_f_matrix') {
+             // Pass barCount to evolve to make decisions based on it.
              scorePayload = fractalMusicEngine.evolve(this.barDuration, this.barCount);
         } 
         
@@ -265,5 +266,3 @@ self.onmessage = async (event: MessageEvent) => {
         self.postMessage({ type: 'error', error: e instanceof Error ? e.message : String(e) });
     }
 };
-
-    
