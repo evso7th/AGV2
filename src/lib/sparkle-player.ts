@@ -165,6 +165,7 @@ const SPARKLE_SAMPLES = {
 export class SparklePlayer {
     private audioContext: AudioContext;
     private gainNode: GainNode;
+    private preamp: GainNode;
     private rootBuffers: AudioBuffer[] = [];
     private darkBuffers: AudioBuffer[] = [];
     private lightBuffers: AudioBuffer[] = [];
@@ -177,6 +178,9 @@ export class SparklePlayer {
     constructor(audioContext: AudioContext, destination: AudioNode) {
         this.audioContext = audioContext;
         this.gainNode = this.audioContext.createGain();
+        this.preamp = this.audioContext.createGain();
+        this.preamp.gain.value = 2.0; // Boost volume
+        this.preamp.connect(this.gainNode);
         this.gainNode.connect(destination);
     }
 
@@ -264,7 +268,7 @@ export class SparklePlayer {
         const buffer = samplePool[Math.floor(Math.random() * samplePool.length)];
         const source = this.audioContext.createBufferSource();
         source.buffer = buffer;
-        source.connect(this.gainNode);
+        source.connect(this.preamp);
         
         const sampleUrlForLogging = (buffer as any)?.url || 'Unknown';
         console.log(`[SparklePlayer] Playing from pool "${poolName}". Sample: ${sampleUrlForLogging.substring(sampleUrlForLogging.lastIndexOf('/') + 1)} at time ${time.toFixed(2)}`);

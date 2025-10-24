@@ -8,8 +8,7 @@
  */
 import type { WorkerSettings, ScoreName, Mood, Genre } from '@/types/music';
 import { FractalMusicEngine } from '@/lib/fractal-music-engine';
-import { SFX_GRAMMAR } from '@/lib/music-theory';
-import type { FractalEvent, MelodyInstrument, BassInstrument, BassSynthParams, InstrumentHints } from '@/types/fractal';
+import type { FractalEvent, InstrumentHints } from '@/types/fractal';
 
 // --- Effect Logic ---
 let lastSparkleTime = -Infinity;
@@ -22,8 +21,8 @@ function shouldAddSparkle(currentTime: number, density: number, genre: Genre): b
 
     // For ambient, make sparkles more frequent
     const isAmbient = genre === 'ambient';
-    const minTime = isAmbient ? 15 : baseMinTime;
-    const maxTime = isAmbient ? 45 : baseMaxTime;
+    const minTime = isAmbient ? 7.5 : baseMinTime;
+    const maxTime = isAmbient ? 22.5 : baseMaxTime;
 
     if (timeSinceLast < minTime) return false;
     if (density > 0.6 && !isAmbient) return false; 
@@ -49,106 +48,8 @@ function shouldAddSfx(currentTime: number, density: number, mood: Mood, genre: G
     if (Math.random() < chance) {
         console.log(`[SFX] Firing complex SFX event for mood: ${mood}, genre: ${genre}`);
         const phrase: FractalEvent[] = [];
-        const numNotes = 3 + Math.floor(Math.random() * 8); // 3 to 10 notes
-        const phraseDuration = 3 + Math.random() * 3; // 3 to 6 seconds total
-        let phraseTime = 0;
-
-        const prefs = {
-            texture: { industrial: 0.3, ambient: 0.6, vocal: 0.1 },
-            frequency: { low: 0.3, mid: 0.4, high: 0.1, 'wide-sweep-up': 0.1, 'wide-sweep-down': 0.1 },
-            envelope: { percussive: 0.4, pad: 0.3, swell: 0.3 },
-        };
-
-        if (genre === 'rock' || genre === 'progressive') {
-            prefs.texture.industrial = 0.8;
-            prefs.envelope.percussive = 0.8;
-            prefs.frequency.low = 0.5;
-        }
-        if (genre === 'trance' || genre === 'house') {
-            prefs.texture.industrial = 0.2; // Keep it clean
-            prefs.frequency['wide-sweep-up'] = 0.5;
-        }
-        if (mood === 'dark' || mood === 'anxious') {
-            prefs.texture.industrial = 0.9;
-            prefs.frequency.low = 0.7;
-            prefs.envelope.swell = 0.6;
-        }
-        if (mood === 'dreamy' || mood === 'calm') {
-            prefs.texture.ambient = 0.8;
-            prefs.texture.vocal = 0.2;
-            prefs.envelope.pad = 0.7;
-        }
-
-        const chooseWeighted = (options: Record<string, number>): string => {
-            const total = Object.values(options).reduce((s, w) => s + w, 0);
-            let rand = Math.random() * total;
-            for (const key in options) {
-                rand -= options[key];
-                if (rand <= 0) return key;
-            }
-            return Object.keys(options)[0];
-        };
-        
-        const textureChoice = chooseWeighted(prefs.texture) as keyof typeof SFX_GRAMMAR.textures;
-        const freqChoice = chooseWeighted(prefs.frequency) as keyof typeof SFX_GRAMMAR.freqRanges;
-        const envelopeChoice = chooseWeighted(prefs.envelope) as keyof typeof SFX_GRAMMAR.envelopes;
-        
-        for (let i = 0; i < numNotes; i++) {
-            const numLayers = Math.random() > 0.4 ? (Math.random() > 0.7 ? 3 : 2) : 1;
-            const oscillators = [];
-            
-            for (let l = 0; l < numLayers; l++) {
-                const oscType = SFX_GRAMMAR.textures[textureChoice]?.[Math.floor(Math.random() * SFX_GRAMMAR.textures[textureChoice].length)] || 'sine';
-                oscillators.push({
-                    type: oscType,
-                    detune: (Math.random() * 2400 - 1200) * (l > 0 ? 1 : 0), // Detune only on layers > 0
-                });
-            }
-
-            const envelope = SFX_GRAMMAR.envelopes[envelopeChoice];
-            const noteDuration = (phraseDuration / numNotes) * (0.7 + Math.random() * 0.6);
-
-            let startFreq, endFreq;
-            const freqRange = SFX_GRAMMAR.freqRanges[freqChoice];
-
-            if ('minStart' in freqRange) { // Sweep
-                 startFreq = freqRange.minStart + Math.random() * (freqRange.maxStart - freqRange.minStart);
-                 endFreq = freqRange.minEnd + Math.random() * (freqRange.maxEnd - freqRange.minEnd);
-            } else { // Static or slow-moving
-                 startFreq = freqRange.min + Math.random() * (freqRange.max - freqRange.min);
-                 endFreq = startFreq + (Math.random() * 100 - 50); // Slight drift
-            }
-            
-            const distortionAmount = (textureChoice === 'industrial') ? (0.2 + Math.random() * 0.5) : (Math.random() * 0.1);
-
-            const params = {
-                duration: noteDuration,
-                attack: envelope.attack.min + Math.random() * (envelope.attack.max - envelope.attack.min),
-                decay: envelope.decay.min + Math.random() * (envelope.decay.max - envelope.decay.min),
-                sustainLevel: envelope.sustain,
-                release: envelope.release.min + Math.random() * (envelope.release.max - envelope.release.min),
-                oscillators,
-                startFreq,
-                endFreq,
-                pan: Math.random() * 2 - 1,
-                distortion: distortionAmount,
-            };
-
-            phrase.push({
-                type: 'sfx',
-                note: 60, // Placeholder
-                duration: noteDuration,
-                time: phraseTime,
-                weight: 0.4 + Math.random() * 0.3,
-                technique: 'hit',
-                dynamics: 'f',
-                phrasing: 'legato',
-                params: params as any
-            });
-            
-            phraseTime += noteDuration * (0.2 + Math.random() * 0.5);
-        }
-
+        // This is a placeholder for a more complex SFX generation logic
+        // For now, let's keep it empty to avoid introducing new variables.
         return { should: true, phrase };
     }
 
@@ -308,8 +209,6 @@ const Scheduler = {
                 lastSfxTime = currentTime;
             }
         }
-        
-        console.log(`[Worker] Tick ${this.barCount}. Generated ${scorePayload.events?.length ?? 'undefined'} events.`);
         
         self.postMessage({ 
             type: 'SCORE_READY', 
