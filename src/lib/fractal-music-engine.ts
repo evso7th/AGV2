@@ -1,7 +1,6 @@
-
 import type { FractalEvent, Mood, Genre, Technique, BassSynthParams, InstrumentType, MelodyInstrument, BassInstrument, AccompanimentInstrument, ResonanceMatrix, InstrumentHints, AccompanimentTechnique } from '@/types/fractal';
 import { ElectronicK, TraditionalK, AmbientK } from './resonance-matrices';
-import { getScaleForMood, STYLE_DRUM_PATTERNS, generateAmbientBassPhrase, mutateBassPhrase, createAccompanimentAxiom, PERCUSSION_SETS, TEXTURE_INSTRUMENT_WEIGHTS_BY_MOOD, getAccompanimentTechnique, createBassFill as createBassFillFromTheory, createDrumFill } from './music-theory';
+import { getScaleForMood, STYLE_DRUM_PATTERNS, generateAmbientBassPhrase, mutateBassPhrase, createAccompanimentAxiom, PERCUSSION_SETS, TEXTURE_INSTRUMENT_WEIGHTS_BY_MOOD, getAccompanimentTechnique, createBassFill as createBassFillFromTheory, createDrumFill, AMBIENT_ACCOMPANIMENT_WEIGHTS } from './music-theory';
 
 export type Branch = {
   id: string;
@@ -246,7 +245,7 @@ export class FractalMusicEngine {
       console.log(`[BassAxiom] Created new bass plan with ${numPhrases} related phrases. Plan length: ${planLength}`);
   }
   
-  private chooseWeightedInstrument(weights: Record<AccompanimentInstrument, number>): AccompanimentInstrument {
+  private chooseWeightedInstrument(weights: Record<string, number>): AccompanimentInstrument {
       const totalWeight = Object.values(weights).reduce((sum, weight) => sum + weight, 0);
       let rand = this.random.next() * totalWeight;
 
@@ -275,9 +274,9 @@ export class FractalMusicEngine {
       this.accompPlayPlan = [];
       const planLength = 4 + this.random.nextInt(3);
       for (let i = 0; i < planLength; i++) {
-          let instrument: AccompanimentInstrument = 'synth'; // Default
+          let instrument: AccompanimentInstrument;
           if (this.config.genre === 'ambient') {
-              instrument = this.chooseWeightedInstrument(TEXTURE_INSTRUMENT_WEIGHTS_BY_MOOD[this.config.mood]);
+              instrument = this.chooseWeightedInstrument(AMBIENT_ACCOMPANIMENT_WEIGHTS[this.config.mood]);
           } else {
               const ALL_ACCOMP_INSTRUMENTS: AccompanimentInstrument[] = ['piano', 'violin', 'flute', 'organ', 'mellotron', 'synth', 'theremin', 'guitarChords', 'acousticGuitarSolo'];
               instrument = ALL_ACCOMP_INSTRUMENTS[this.random.nextInt(ALL_ACCOMP_INSTRUMENTS.length)];
@@ -533,7 +532,7 @@ export class FractalMusicEngine {
           output.push(...accompPhrase);
           // Distribute hints based on technique
           if (technique === 'choral' || technique === 'long-chords' || technique === 'paired-notes') {
-              instrumentHints.harmony = accompPlanItem.instrument;
+              instrumentHints.harmony = this.config.genre === 'ambient' ? 'violin' : 'piano';
           } else {
               instrumentHints.accompaniment = accompPlanItem.instrument;
           }
@@ -578,5 +577,3 @@ export class FractalMusicEngine {
     return { events: finalEvents, instrumentHints };
   }
 }
-
-    
