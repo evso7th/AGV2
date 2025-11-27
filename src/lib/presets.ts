@@ -15,7 +15,7 @@ export type PresetOptions = {
     portamento?: number;
     filterCutoff?: number;
     q?: number;
-    oscType?: 'sine' | 'triangle' | 'sawtooth' | 'square' | 'fatsine' | 'fmsine' | 'amsine' | 'pwm' | 'fatsawtooth';
+    oscType?: 'sine' | 'triangle' | 'sawtooth' | 'square' | 'fatsine' | 'fmsine' | 'amsine' | 'pwm' | 'fatsawtooth' | 'pulse';
     distortion?: number;
     urls?: Record<string, any>; // For samplers
     color?: string; // For UI
@@ -80,6 +80,56 @@ export const PRESETS: Record<string, PresetOptions> = {
     // Legacy Bass Preset
     portamento: {
        attack: 0.1, release: isMobile() ? 2.0 : 4.0, portamento: 0.05, filterCutoff: 1000, q: 1, oscType: 'triangle'
+    },
+
+    // Bass Presets
+    'classic-bass': {
+        // Corresponds to the default parameters in bass-processor.js
+        cutoff: 500,
+        resonance: 0.5,
+        distortion: 0.1,
+        color: 'hsl(var(--chart-4))'
+    },
+    'ambient-drone': {
+        cutoff: 350,
+        resonance: 0.8,
+        distortion: 0.05,
+        // The envelope is hardcoded in the processor, so attack/release here are for future use
+        attack: 0.5, 
+        release: 5.0,
+        color: 'hsl(var(--accent))'
+    },
+     'hypnotic-drone': {
+        cutoff: 400,
+        resonance: 0.9,
+        distortion: 0.1,
+        attack: 0.4, 
+        release: 4.0,
+        color: 'hsl(var(--chart-5))'
+    },
+    'glide-bass': {
+        cutoff: 300,
+        resonance: 0.6,
+        distortion: 0.0,
+        attack: 0.1, 
+        release: 1.0,
+        color: 'hsl(var(--primary))'
+    },
+    'resonant-gliss': {
+        cutoff: 600,
+        resonance: 0.95,
+        distortion: 0.0,
+        attack: 0.05, 
+        release: 1.5,
+        color: 'hsl(var(--accent))'
+    },
+    'living-riff': {
+        cutoff: 800,
+        resonance: 0.7,
+        distortion: 0.25,
+        attack: 0.02,
+        release: 0.8,
+        color: 'hsl(var(--chart-1))'
     },
 
     // Autopilot Effect Presets (can be used by accompaniment too)

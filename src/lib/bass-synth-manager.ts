@@ -1,5 +1,7 @@
 // src/lib/bass-synth-manager.ts
-import type { FractalEvent, BassInstrument, BassTechnique } from '@/types/fractal';
+import type { FractalEvent, BassInstrument } from '@/types/fractal';
+import type { BassTechnique } from '@/types/music';
+import { PRESETS, PresetOptions } from './presets';
 
 function midiToFreq(midi: number): number {
     return Math.pow(2, (midi - 69) / 12) * 440;
@@ -15,6 +17,7 @@ export class BassSynthManager {
   private worklet: AudioWorkletNode | null = null;
   private destination: AudioNode;
   private isInitialized = false;
+  private activePresetParams: PresetOptions | null = PRESETS['classic-bass'];
 
   constructor(ctx: AudioContext, destination: AudioNode) {
     this.ctx = ctx;
@@ -75,7 +78,8 @@ export class BassSynthManager {
           velocity: event.weight,
           when: noteOnTime,
           noteId: noteId,
-          params: event.params
+          // Use event-specific params if available, otherwise fall back to the active preset.
+          params: event.params || this.activePresetParams
       });
 
       messages.push({
@@ -102,7 +106,13 @@ export class BassSynthManager {
   }
 
   public setPreset(instrumentName: BassInstrument) {
-      // No-op в этой версии, так как параметры приходят с событием
+      const preset = PRESETS[instrumentName];
+      if (preset) {
+        this.activePresetParams = preset;
+        console.log(`[BassSynthManager] Preset set to: ${instrumentName}`);
+      } else {
+        console.warn(`[BassSynthManager] Preset not found: ${instrumentName}`);
+      }
   }
 
   public setTechnique(technique: BassTechnique) {

@@ -10,8 +10,9 @@ import { ViolinSamplerPlayer } from '@/lib/violin-sampler-player';
 import { FluteSamplerPlayer } from '@/lib/flute-sampler-player';
 import { AccompanimentSynthManager } from '@/lib/accompaniment-synth-manager';
 import { BassSynthManager } from '@/lib/bass-synth-manager';
+import { MelodyPadManager } from '@/lib/melody-pad-manager';
 import { SparklePlayer } from '@/lib/sparkle-player';
-import { SfxSynthManager } from '@/lib/sfx-synth-manager';
+import { SfxSamplerPlayer } from '@/lib/sfx-sampler-player';
 import { HarmonySynthManager } from '@/lib/harmony-synth-manager';
 import { getPresetParams } from "@/lib/presets";
 import { PIANO_SAMPLES, VIOLIN_SAMPLES, FLUTE_SAMPLES, ACOUSTIC_GUITAR_CHORD_SAMPLES, ACOUSTIC_GUITAR_SOLO_SAMPLES } from '@/lib/samples';
@@ -21,7 +22,7 @@ import type { FractalEvent, InstrumentHints } from '@/types/fractal';
 import * as Tone from 'tone';
 
 export function noteToMidi(note: string): number {
-    return new (Tone.Frequency as any)(note).toMidi();
+    return new Tone.Frequency(note).toMidi();
 }
 
 // --- Type Definitions ---
@@ -34,6 +35,7 @@ type WorkerMessage = {
         time?: number;
         genre?: Genre;
         mood?: Mood;
+        currentSectionName?: string;
     };
     error?: string;
     message?: string;
@@ -41,10 +43,12 @@ type WorkerMessage = {
 
 
 // --- Constants ---
-const VOICE_BALANCE: Record<InstrumentPart, number> = {
-  bass: 1.0, melody: 0.7, accompaniment: 0.6, drums: 1.0,
-  effects: 0.6, sparkles: 0.7, piano: 1.0, violin: 0.8, flute: 0.8, guitarChords: 0.9,
-  acousticGuitarSolo: 0.9, sfx: 0.8, harmony: 0.8, electricGuitar: 0.9,
+const VOICE_BALANCE: Record<string, number> = {
+  bass: 1.0, melody: 0.7, accompaniment: 0.6, harmony: 0.8, drums: 1.0,
+  sparkles: 0.7, sfx: 0.8,
+  // These are sampler-specific and handled internally by their managers
+  piano: 1.0, violin: 0.8, flute: 0.8, guitarChords: 0.9,
+  acousticGuitarSolo: 0.9, 
 };
 
 const EQ_FREQUENCIES = [60, 125, 250, 500, 1000, 2000, 4000];
@@ -59,9 +63,10 @@ interface AudioEngineContextType {
   updateSettings: (settings: Partial<WorkerSettings>) => void;
   resetWorker: () => void;
   setVolume: (part: InstrumentPart, volume: number) => void;
+  setPreampGain: (part: string, gain: number) => void;
   setInstrument: (part: 'bass' | 'melody' | 'accompaniment' | 'harmony', name: BassInstrument | MelodyInstrument | AccompanimentInstrument) => void;
   setBassTechnique: (technique: BassTechnique) => void;
-  setTextureSettings: (settings: Omit<TextureSettings, 'pads' | 'sfx'>) => void;
+  setTextureSettings: (settings: Omit<TextureSettings, 'pads'>) => void;
   setEQGain: (bandIndex: number, gain: number) => void;
   startMasterFadeOut: (durationInSeconds: number) => void;
   cancelMasterFadeOut: () => void;
@@ -89,14 +94,15 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
   
   const drumMachineRef = useRef<DrumMachine | null>(null);
   const bassManagerRef = useRef<BassSynthManager | null>(null);
+  const melodyPadManagerRef = useRef<MelodyPadManager | null>(null);
   const accompanimentManagerRef = useRef<AccompanimentSynthManager | null>(null);
   const harmonyManagerRef = useRef<HarmonySynthManager | null>(null);
   const sparklePlayerRef = useRef<SparklePlayer | null>(null);
-  const sfxSynthManagerRef = useRef<SfxSynthManager | null>(null);
+  const sfxSamplerPlayerRef = useRef<SfxSamplerPlayer | null>(null);
   
   const masterGainNodeRef = useRef<GainNode | null>(null);
-  const gainNodesRef = useRef<Record<Exclude<InstrumentPart, 'pads' | 'melody' | 'effects'>, GainNode | null>>({
-    bass: null, accompaniment: null, drums: null, sparkles: null, piano: null, violin: null, flute: null, guitarChords: null, acousticGuitarSolo: null, sfx: null, harmony: null, electricGuitar: null
+  const gainNodesRef = useRef<Record<string, GainNode | null>>({
+    bass: null, melody: null, accompaniment: null, harmony: null, drums: null, sparkles: null, sfx: null,
   });
 
   const eqNodesRef = useRef<BiquadFilterNode[]>([]);
@@ -107,8 +113,10 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
 
   const setInstrumentCallback = useCallback((part: 'bass' | 'melody' | 'accompaniment' | 'harmony', name: BassInstrument | MelodyInstrument | AccompanimentInstrument) => {
     if (!isInitialized) return;
-    if (part === 'accompaniment' && accompanimentManagerRef.current) {
-      accompanimentManagerRef.current.setInstrument(name as AccompanimentInstrument);
+    if (part === 'melody' && melodyPadManagerRef.current) {
+        melodyPadManagerRef.current.setInstrument(name as MelodyInstrument);
+    } else if (part === 'accompaniment' && accompanimentManagerRef.current) {
+        accompanimentManagerRef.current.setInstrument(name as AccompanimentInstrument);
     } else if (part === 'bass' && bassManagerRef.current) {
         bassManagerRef.current.setPreset(name as BassInstrument);
     } else if (part === 'harmony' && harmonyManagerRef.current) {
@@ -116,17 +124,15 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
     }
   }, [isInitialized]);
 
-  const scheduleEvents = useCallback((events: FractalEvent[], barStartTime: number, tempo: number, instrumentHints?: InstrumentHints) => {
+  const scheduleEvents = useCallback((events: FractalEvent[], barStartTime: number, tempo: number, instrumentHints?: InstrumentHints, composerControlsInstruments?: boolean, mood?: Mood, genre?: Genre) => {
     if (!Array.isArray(events)) {
         console.error('[AudioEngine] scheduleEvents received non-array "events":', events);
         return;
     }
-
-    const composerControls = settingsRef.current?.composerControlsInstruments;
-
     const validEvents = events.filter(e => e && e.type);
     const drumEvents: FractalEvent[] = [];
-    let bassEvents: FractalEvent[] = [];
+    const bassEvents: FractalEvent[] = [];
+    const melodyEvents: FractalEvent[] = [];
     const accompanimentEvents: FractalEvent[] = [];
     const harmonyEvents: FractalEvent[] = [];
     const sfxEvents: FractalEvent[] = [];
@@ -137,6 +143,8 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
         drumEvents.push(event);
       } else if (eventType === 'bass') {
         bassEvents.push(event);
+      } else if (eventType === 'melody') {
+        melodyEvents.push(event);
       } else if (eventType === 'accompaniment') {
         accompanimentEvents.push(event);
       } else if (eventType === 'harmony') {
@@ -145,33 +153,39 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
         sfxEvents.push(event);
       }
     }
+    
+    if (sfxEvents.length > 0) {
+      console.log(`[AudioEngine] DIAG: Filtered Events - sfx: ${sfxEvents.length}, harmony: ${harmonyEvents.length}`);
+    }
+
 
     if (drumMachineRef.current && drumEvents.length > 0) {
       drumMachineRef.current.schedule(drumEvents, barStartTime, tempo);
     }
     
     if (bassManagerRef.current && bassEvents.length > 0) {
-        // If composer is not controlling instruments, strip the params from bass events so the manager uses its own preset.
-        if (composerControls === false) {
-            bassEvents = bassEvents.map(event => {
-                const { params, ...rest } = event;
-                return rest;
-            });
-        }
         bassManagerRef.current.play(bassEvents, barStartTime, tempo);
     }
 
+    if (melodyPadManagerRef.current && melodyEvents.length > 0) {
+        melodyPadManagerRef.current.schedule(melodyEvents, barStartTime, tempo, instrumentHints?.melody, composerControlsInstruments);
+    }
+
     if (accompanimentManagerRef.current && accompanimentEvents.length > 0) {
-        accompanimentManagerRef.current.schedule(accompanimentEvents, barStartTime, tempo, instrumentHints?.accompaniment);
+        accompanimentManagerRef.current.schedule(accompanimentEvents, barStartTime, tempo, instrumentHints?.accompaniment, composerControlsInstruments);
     }
 
     if (harmonyManagerRef.current && harmonyEvents.length > 0) {
       harmonyManagerRef.current.schedule(harmonyEvents, barStartTime, tempo, instrumentHints?.harmony);
     }
-
-    if (sfxSynthManagerRef.current && sfxEvents.length > 0) {
-        sfxSynthManagerRef.current.trigger(sfxEvents, barStartTime, tempo);
+    
+    if (sfxSamplerPlayerRef.current && sfxEvents.length > 0 && mood && genre) {
+        const beatDuration = 60 / tempo;
+        sfxEvents.forEach(event => {
+            sfxSamplerPlayerRef.current?.play(barStartTime + event.time * beatDuration, mood, genre, event.technique, event.weight);
+        });
     }
+
   }, []);
 
   const setBassTechniqueCallback = useCallback((technique: BassTechnique) => {
@@ -200,7 +214,6 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
         }
 
         const context = audioContextRef.current;
-        nextBarTimeRef.current = context.currentTime + 0.1; // Add small buffer
         
         if (!masterGainNodeRef.current) {
             masterGainNodeRef.current = context.createGain();
@@ -208,42 +221,50 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
         }
 
         if (!gainNodesRef.current.bass) {
-            const parts: Exclude<InstrumentPart, 'pads' | 'melody' | 'effects'>[] = ['bass', 'accompaniment', 'drums', 'sparkles', 'piano', 'violin', 'flute', 'guitarChords', 'acousticGuitarSolo', 'sfx', 'harmony', 'electricGuitar'];
+            const parts: InstrumentPart[] = ['bass', 'melody', 'accompaniment', 'harmony', 'drums', 'sparkles', 'sfx'];
             parts.forEach(part => {
-                gainNodesRef.current[part] = context.createGain();
-                gainNodesRef.current[part]!.connect(masterGainNodeRef.current!);
+                const gainNode = context.createGain();
+                gainNode.connect(masterGainNodeRef.current!);
+                gainNodesRef.current[part] = gainNode;
             });
         }
+        
+        const destinationFor = (part: keyof typeof gainNodesRef.current) => gainNodesRef.current[part]!;
 
         const initPromises: Promise<any>[] = [];
         if (!drumMachineRef.current) {
-            drumMachineRef.current = new DrumMachine(context, gainNodesRef.current.drums!);
+            drumMachineRef.current = new DrumMachine(context, destinationFor('drums'));
             initPromises.push(drumMachineRef.current.init());
         }
        
         if (!bassManagerRef.current) {
-            bassManagerRef.current = new BassSynthManager(context, gainNodesRef.current.bass!);
+            bassManagerRef.current = new BassSynthManager(context, destinationFor('bass'));
             initPromises.push(bassManagerRef.current.init());
         }
 
+        if (!melodyPadManagerRef.current) {
+            melodyPadManagerRef.current = new MelodyPadManager(context, destinationFor('melody'));
+            initPromises.push(melodyPadManagerRef.current.init());
+        }
+
         if (!accompanimentManagerRef.current) {
-            accompanimentManagerRef.current = new AccompanimentSynthManager(context, gainNodesRef.current.accompaniment!);
+            accompanimentManagerRef.current = new AccompanimentSynthManager(context, destinationFor('accompaniment'));
             initPromises.push(accompanimentManagerRef.current.init());
         }
         
         if (!harmonyManagerRef.current) {
-            harmonyManagerRef.current = new HarmonySynthManager(context, gainNodesRef.current.harmony!);
+            harmonyManagerRef.current = new HarmonySynthManager(context, destinationFor('harmony'));
             initPromises.push(harmonyManagerRef.current.init());
         }
         
         if (!sparklePlayerRef.current) {
-            sparklePlayerRef.current = new SparklePlayer(context, gainNodesRef.current.sparkles!);
+            sparklePlayerRef.current = new SparklePlayer(context, destinationFor('sparkles'));
             initPromises.push(sparklePlayerRef.current.init());
         }
         
-        if (!sfxSynthManagerRef.current) {
-            sfxSynthManagerRef.current = new SfxSynthManager(context, gainNodesRef.current.sfx!);
-            initPromises.push(sfxSynthManagerRef.current.init());
+        if (!sfxSamplerPlayerRef.current) {
+            sfxSamplerPlayerRef.current = new SfxSamplerPlayer(context, destinationFor('sfx'));
+            initPromises.push(sfxSamplerPlayerRef.current.init());
         }
 
 
@@ -252,16 +273,25 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
             worker.onmessage = (event: MessageEvent<WorkerMessage>) => {
                 const { type, payload, error } = event.data;
                 
-                if (type === 'SCORE_READY' && payload && payload.events && payload.barDuration && settingsRef.current) {
-                    const { events, barDuration, instrumentHints } = payload;
+                if (type === 'SCORE_READY' && payload && payload.events && payload.barDuration && settingsRef.current && audioContextRef.current) {
+                    
+                    const { events, barDuration, instrumentHints, mood, genre } = payload;
+                    let scheduleTime = nextBarTimeRef.current;
+                    const now = audioContextRef.current.currentTime;
+                    const lookahead = 0.1; 
+
+                    if (scheduleTime < now) {
+                        scheduleTime = now + lookahead;
+                        console.warn(`[AudioEngine] Worker tick was late. Resyncing schedule time from ${nextBarTimeRef.current.toFixed(3)} to ${scheduleTime.toFixed(3)}.`);
+                    }
                     
                     const composerControls = settingsRef.current.composerControlsInstruments;
-                    // Pass hints conditionally, without updating the UI state directly from here
-                    scheduleEvents(events, nextBarTimeRef.current, settingsRef.current.bpm, composerControls ? instrumentHints : undefined);
                     
-                    nextBarTimeRef.current += barDuration;
+                    scheduleEvents(events, scheduleTime, settingsRef.current.bpm, instrumentHints, composerControls, mood, genre);
+                    
+                    nextBarTimeRef.current = scheduleTime + barDuration;
 
-                } else if (type === 'sparkle' && payload?.time !== undefined) {
+                } else if (type === 'sparkle' && payload?.time !== undefined && audioContextRef.current) {
                     sparklePlayerRef.current?.playRandomSparkle(nextBarTimeRef.current + payload.time, payload.genre, payload.mood);
                 } else if (type === 'error') {
                     toast({ variant: "destructive", title: "Worker Error", description: error });
@@ -300,11 +330,12 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
 
   const stopAllSounds = useCallback(() => {
     bassManagerRef.current?.allNotesOff();
+    melodyPadManagerRef.current?.allNotesOff();
     drumMachineRef.current?.stop();
     accompanimentManagerRef.current?.allNotesOff();
     harmonyManagerRef.current?.allNotesOff();
     sparklePlayerRef.current?.stopAll();
-    sfxSynthManagerRef.current?.allNotesOff();
+    sfxSamplerPlayerRef.current?.stopAll();
     if (impulseTimerRef.current) {
         clearTimeout(impulseTimerRef.current);
         impulseTimerRef.current = null;
@@ -344,16 +375,32 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
   }, [isInitialized]);
 
   const setVolumeCallback = useCallback((part: InstrumentPart, volume: number) => {
-    if (part === 'melody' || part === 'effects') return;
-    const gainNode = gainNodesRef.current[part as Exclude<InstrumentPart, 'pads' | 'melody' | 'effects'>];
+    const gainNode = gainNodesRef.current[part];
     if (gainNode && audioContextRef.current) {
         const balancedVolume = volume * (VOICE_BALANCE[part] ?? 1);
         gainNode.gain.setTargetAtTime(balancedVolume, audioContextRef.current.currentTime, 0.01);
     }
   }, []);
 
-  const setTextureSettingsCallback = useCallback((settings: Omit<TextureSettings, 'pads' | 'sfx'>) => {
+  const setPreampGainCallback = useCallback((part: string, gain: number) => {
+    const manager = 
+        part === 'bass' ? bassManagerRef.current :
+        part === 'melody' ? melodyPadManagerRef.current :
+        part === 'accompaniment' ? accompanimentManagerRef.current :
+        part === 'harmony' ? harmonyManagerRef.current :
+        part === 'drums' ? drumMachineRef.current :
+        part === 'sparkles' ? sparklePlayerRef.current :
+        part === 'sfx' ? sfxSamplerPlayerRef.current :
+        null;
+    
+    if (manager && 'setPreampGain' in manager) {
+      (manager as any).setPreampGain(gain);
+    }
+  }, []);
+
+  const setTextureSettingsCallback = useCallback((settings: Omit<TextureSettings, 'pads'>) => {
     setVolumeCallback('sparkles', settings.sparkles.enabled ? settings.sparkles.volume : 0);
+    setVolumeCallback('sfx', settings.sfx.enabled ? settings.sfx.volume : 0);
   }, [setVolumeCallback]);
   
   const setEQGainCallback = useCallback((bandIndex: number, gain: number) => {}, []);
@@ -368,6 +415,7 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
         setVolume: setVolumeCallback, setInstrument: setInstrumentCallback,
         setBassTechnique: setBassTechniqueCallback, setTextureSettings: setTextureSettingsCallback,
         setEQGain: setEQGainCallback, startMasterFadeOut, cancelMasterFadeOut,
+        setPreampGain: setPreampGainCallback,
     }}>
       {children}
     </AudioEngineContext.Provider>
