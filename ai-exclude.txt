@@ -1,0 +1,10 @@
+.firebase
+.idx
+.next
+/node_modules
+/public/assets
+node_modules/
+public/assets/
+.firebase/
+.idx/
+.next/
