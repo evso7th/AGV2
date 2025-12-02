@@ -1,3 +1,4 @@
+
 import type { FractalEvent, Mood, Genre, Technique, BassSynthParams, InstrumentType, MelodyInstrument, BassInstrument, AccompanimentInstrument, ResonanceMatrix, InstrumentHints, AccompanimentTechnique } from '@/types/fractal';
 import { ElectronicK, TraditionalK, AmbientK } from './resonance-matrices';
 import { getScaleForMood, STYLE_DRUM_PATTERNS, generateAmbientBassPhrase, mutateBassPhrase, createAccompanimentAxiom, PERCUSSION_SETS, TEXTURE_INSTRUMENT_WEIGHTS_BY_MOOD, getAccompanimentTechnique, createBassFill as createBassFillFromTheory, createDrumFill, AMBIENT_ACCOMPANIMENT_WEIGHTS } from './music-theory';
@@ -447,7 +448,6 @@ export class FractalMusicEngine {
                break;
                
           case 'alternating-bass-chord':
-          case 'alberti-bass':
           default:
               return createAccompanimentAxiom(this.config.mood, this.config.genre, this.random, bassPhrase[0].note, this.config.tempo);
       }
@@ -524,26 +524,24 @@ export class FractalMusicEngine {
     output.push(...drumEvents);
     
     // --- ACCOMPANIMENT & HARMONY (Reacts to Bass) ---
-    if (this.epoch >= 2) {
-      const accompPlanItem = this.accompPlayPlan[this.currentAccompPlanIndex];
-      if (accompPlanItem) {
-          const technique = getAccompanimentTechnique(this.config.genre, this.config.mood, this.config.density, this.config.tempo, this.epoch, this.random);
-          const accompPhrase = this.generateAccompanimentForPhrase(bassPhraseForThisBar, technique);
-          output.push(...accompPhrase);
-          // Distribute hints based on technique
-          if (technique === 'choral' || technique === 'long-chords' || technique === 'paired-notes') {
-              instrumentHints.harmony = this.config.genre === 'ambient' ? 'violin' : 'piano';
-          } else {
-              instrumentHints.accompaniment = accompPlanItem.instrument;
-          }
+    const accompPlanItem = this.accompPlayPlan[this.currentAccompPlanIndex];
+    if (accompPlanItem) {
+        const technique = getAccompanimentTechnique(this.config.genre, this.config.mood, this.config.density, this.config.tempo, this.epoch, this.random);
+        const accompPhrase = this.generateAccompanimentForPhrase(bassPhraseForThisBar, technique);
+        output.push(...accompPhrase);
+        // Distribute hints based on technique
+        if (technique === 'choral' || technique === 'long-chords' || technique === 'paired-notes') {
+            instrumentHints.harmony = this.config.genre === 'ambient' ? 'violin' : 'piano';
+        } else {
+            instrumentHints.accompaniment = accompPlanItem.instrument;
+        }
 
-          // Logic for advancing accompaniment plan (simplified)
-          this.currentAccompRepetition++;
-          if(this.currentAccompRepetition >= accompPlanItem.repetitions) {
-              this.currentAccompRepetition = 0;
-              this.currentAccompPlanIndex = (this.currentAccompPlanIndex + 1) % this.accompPlayPlan.length;
-          }
-      }
+        // Logic for advancing accompaniment plan (simplified)
+        this.currentAccompRepetition++;
+        if(this.currentAccompRepetition >= accompPlanItem.repetitions) {
+            this.currentAccompRepetition = 0;
+            this.currentAccompPlanIndex = (this.currentAccompPlanIndex + 1) % this.accompPlayPlan.length;
+        }
     }
 
     const finalEvents = this.applyNaturalDecay(output, 4.0);
@@ -577,3 +575,5 @@ export class FractalMusicEngine {
     return { events: finalEvents, instrumentHints };
   }
 }
+
+    
