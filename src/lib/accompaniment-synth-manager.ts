@@ -68,10 +68,9 @@ export class AccompanimentSynthManager {
 
         const instrumentToPlay = instrumentHint || this.activeInstrumentName;
 
-        // Guard against trying to play non-synth instruments
-        if (instrumentToPlay === 'none' || !SYNTH_PRESETS[instrumentToPlay as keyof typeof SYNTH_PRESETS]) {
+        if (instrumentToPlay === 'none' || !SYNTH_PRESETS.hasOwnProperty(instrumentToPlay)) {
             if (instrumentToPlay !== 'none' && instrumentToPlay !== 'piano' && instrumentToPlay !== 'violin' && instrumentToPlay !== 'flute' && instrumentToPlay !== 'guitarChords' && instrumentToPlay !== 'acousticGuitarSolo') {
-               console.warn(`[AccompManager] Instrument "${instrumentToPlay}" is not a synth preset. Skipping.`);
+               console.log(`[AccompManager] Instrument "${instrumentToPlay}" is not a valid synth preset. Skipping.`);
             }
             return;
         }
@@ -92,7 +91,6 @@ export class AccompanimentSynthManager {
         if (!this.worklet) return;
 
         const preset = SYNTH_PRESETS[instrumentName];
-        // No fallback needed due to the guard clause in `schedule`
 
         const messages: any[] = [];
 

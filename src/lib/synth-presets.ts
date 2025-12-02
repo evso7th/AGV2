@@ -50,7 +50,6 @@ export type SynthPreset = {
 /**
  * Библиотека пресетов для синтезаторных инструментов.
  * Каждый пресет - это "рецепт" звука.
- * Обновлено для использования полной ADSR огибающей.
  */
 export const SYNTH_PRESETS: Record<Exclude<MelodyInstrument | BassInstrument, 'piano' | 'violin' | 'flute' | 'acousticGuitarSolo' | 'guitarChords' | 'none'>, SynthPreset> = {
   
@@ -199,7 +198,7 @@ export const SYNTH_PRESETS: Record<Exclude<MelodyInstrument | BassInstrument, 'p
       layers: [ { type: 'triangle', detune: 0, octave: 0, gain: 1.0 } ],
       adsr: { attack: 0.01, decay: 0.7, sustain: 0.1, release: 0.4 },
       filter: { type: 'lpf', cutoff: 2000, q: 1.5 },
-      lfo: { shape: 'sine', rate: 0.5, amount: 0, target: 'pitch' },
+      lfo: { shape: 'sine', rate: 0.5, amount: 0, target: 'pitch' }, // Amount was 3.5, seems too high for pitch
       effects: { 
           distortion: 0.1, 
           chorus: { rate: 0.1, depth: 0.001, mix: 0.2 }, 
