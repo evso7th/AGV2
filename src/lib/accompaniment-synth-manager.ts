@@ -60,20 +60,22 @@ export class AccompanimentSynthManager {
         }
     }
 
-    public schedule(events: FractalEvent[], barStartTime: number, tempo: number, instrumentHint?: AccompanimentInstrument, composerControlsInstruments: boolean = true) {
+    public schedule(events: FractalEvent[], barStartTime: number, tempo: number, instrumentHint?: AccompanimentInstrument) {
         if (!this.isInitialized || !this.worklet) {
             console.warn('[AccompManager] Tried to schedule before initialized.');
             return;
         }
 
-        const instrumentToPlay = (composerControlsInstruments && instrumentHint) ? instrumentHint : this.activeInstrumentName;
-        
-        console.log(`[AccompManager] schedule called. Control: ${composerControlsInstruments}, Hint: ${instrumentHint}, Active: ${this.activeInstrumentName}. Will play: ${instrumentToPlay}`);
+        const instrumentToPlay = instrumentHint || this.activeInstrumentName;
 
-        if (instrumentToPlay === 'none') {
+        // Guard against trying to play non-synth instruments
+        if (instrumentToPlay === 'none' || !SYNTH_PRESETS[instrumentToPlay as keyof typeof SYNTH_PRESETS]) {
+            if (instrumentToPlay !== 'none' && instrumentToPlay !== 'piano' && instrumentToPlay !== 'violin' && instrumentToPlay !== 'flute' && instrumentToPlay !== 'guitarChords' && instrumentToPlay !== 'acousticGuitarSolo') {
+               console.warn(`[AccompManager] Instrument "${instrumentToPlay}" is not a synth preset. Skipping.`);
+            }
             return;
         }
-
+        
         const beatDuration = 60 / tempo;
         const notes: Note[] = events.map(event => ({
             midi: event.note,
@@ -83,18 +85,14 @@ export class AccompanimentSynthManager {
             params: event.params
         }));
 
-        this.scheduleSynth(instrumentToPlay as Exclude<AccompanimentInstrument, 'piano' | 'violin' | 'flute' | 'guitarChords' | 'acousticGuitarSolo' | 'none'>, notes, barStartTime);
+        this.scheduleSynth(instrumentToPlay as keyof typeof SYNTH_PRESETS, notes, barStartTime);
     }
 
     private scheduleSynth(instrumentName: keyof typeof SYNTH_PRESETS, notes: Note[], barStartTime: number) {
         if (!this.worklet) return;
 
-        let preset = SYNTH_PRESETS[instrumentName];
-        if (!preset) {
-            console.warn(`[AccompManager] Synth preset not found for: ${instrumentName}. Using default 'synth'.`);
-            instrumentName = 'synth';
-            preset = SYNTH_PRESETS[instrumentName];
-        }
+        const preset = SYNTH_PRESETS[instrumentName];
+        // No fallback needed due to the guard clause in `schedule`
 
         const messages: any[] = [];
 
@@ -105,8 +103,6 @@ export class AccompanimentSynthManager {
             const noteOnTime = barStartTime + note.time;
             const noteOffTime = noteOnTime + note.duration;
             
-            // We create a flat object of parameters to send to the worklet.
-            // The worklet now knows how to read both the old flat format and the new structured format.
             const finalFlatParams = {
                 ...preset.adsr,
                 ...preset.filter,

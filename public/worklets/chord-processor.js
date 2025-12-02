@@ -1,4 +1,3 @@
-
 // public/worklets/chord-processor.js
 
 const MAX_VOICES = 8;
@@ -82,6 +81,7 @@ class Voice {
         this.velocity = 0;
         this.adsrState = 'idle';
         this.adsrGain = 0;
+        this.params = null;
     }
 
     noteOn(noteId, frequency, velocity, params) {
@@ -90,28 +90,13 @@ class Voice {
         this.baseFrequency = frequency;
         this.velocity = velocity;
         this.adsrState = 'attack';
-        
-        this.params = {
-            layers: params.layers || [{ type: 'sawtooth', detune: 0, octave: 0, gain: 1 }],
-            // *** NEW ADSR LOGIC: Read from adsr sub-object or fall back to individual params ***
-            adsr: params.adsr || { 
-                attack: params.attack || 0.01, 
-                decay: params.decay || 0.1, 
-                sustain: params.sustain || 0.7, 
-                release: params.release || 0.5 
-            },
-            filter: params.filter || { type: 'lpf', cutoff: params.cutoff || 8000, q: params.q || 1 },
-            lfo: params.lfo || { shape: 'sine', rate: 5, amount: 0, target: 'pitch' },
-            effects: params.effects || { 
-                distortion: params.distortion || 0,
-                chorus: params.chorus || { rate: 0, depth: 0, mix: 0 },
-                delay: params.delay || { time: 0, feedback: 0, mix: 0 }
-            }
-        };
+        this.params = params;
     }
 
     noteOff() {
-        this.adsrState = 'release';
+        if (this.adsrState !== 'idle') {
+            this.adsrState = 'release';
+        }
     }
 
     isActive() {
@@ -119,7 +104,7 @@ class Voice {
     }
 
     process() {
-        if (!this.isActive()) return [0, 0];
+        if (!this.isActive() || !this.params) return [0, 0];
 
         // --- 1. LFO --- 
         let lfoValue = 0;
@@ -137,7 +122,7 @@ class Voice {
         }
         
         // --- 2. Oscillators (Layers) --- 
-        let pitchMod = (this.params.lfo.target === 'pitch') ? lfoValue : 0; // Modulate in cents
+        let pitchMod = (lfoParams?.target === 'pitch') ? lfoValue : 0; // Modulate in cents
         let mixedSample = 0;
         for (let i = 0; i < this.params.layers.length; i++) {
             const layerParams = this.params.layers[i];
@@ -149,10 +134,10 @@ class Voice {
 
 
         // --- 3. Filter ---
-        let filterCutoffMod = this.params.lfo.target === 'filter' ? lfoValue : 0;
+        let filterCutoffMod = lfoParams?.target === 'filter' ? lfoValue : 0;
         let filteredSample = this.filter.process(mixedSample, this.params.filter.cutoff + filterCutoffMod, this.params.filter.q, this.params.filter.type);
 
-        // --- 4. ADSR Envelope (*** UPDATED ***) ---
+        // --- 4. ADSR Envelope ---
         const { attack, decay, sustain, release } = this.params.adsr;
         switch (this.adsrState) {
             case 'attack':
@@ -163,19 +148,13 @@ class Voice {
                 }
                 break;
             case 'decay':
-                // Move from 1.0 to sustain level over the decay time
                 this.adsrGain -= (1 - sustain) / (Math.max(0.001, decay) * this.sampleRate);
                 if (this.adsrGain <= sustain) {
                     this.adsrGain = sustain;
                     this.adsrState = 'sustain';
                 }
                 break;
-            case 'sustain':
-                // Gain remains at sustain level
-                this.adsrGain = sustain;
-                break;
             case 'release':
-                // Gain reduces from its current level (which could be sustain or somewhere during attack/decay)
                 this.adsrGain -= this.adsrGain / (Math.max(0.001, release) * this.sampleRate);
                 if (this.adsrGain <= 0.0001) {
                     this.adsrGain = 0;
@@ -184,7 +163,6 @@ class Voice {
                 break;
         }
         let finalSample = filteredSample * this.adsrGain * this.velocity;
-
 
         // --- 5. Effects ---
         const fx = this.params.effects;
@@ -228,63 +206,66 @@ class Voice {
 class ChordProcessor extends AudioWorkletProcessor {
     constructor(options) {
         super();
-        const sampleRate = options.processorOptions?.sampleRate || sampleRate; // Use global sampleRate
-        this.voices = Array.from({ length: MAX_VOICES }, () => new Voice(sampleRate));
+        this.voices = Array.from({ length: MAX_VOICES }, () => new Voice(options.processorOptions.sampleRate));
         this.pendingEvents = [];
-
         this.port.onmessage = this.handleMessage.bind(this);
         console.log(`[ChordProcessor] Initialized with ${MAX_VOICES} voices.`);
     }
 
     handleMessage(event) {
         const events = Array.isArray(event.data) ? event.data : [event.data];
-        for(const msg of events){
-            // Ensure events are scheduled with precision
-            const delay = (msg.when || 0) - currentTime;
-            if (delay > 0) {
-                setTimeout(() => this.processMessage(msg), delay * 1000);
-            } else {
-                this.processMessage(msg);
-            }
-        }
+        this.pendingEvents.push(...events);
     }
     
-    processMessage(msg) {
-        switch (msg.type) {
-            case 'noteOn':
-                this.assignVoiceToNote(msg);
-                break;
-            case 'noteOff':
-                this.releaseVoiceForNote(msg.noteId);
-                break;
-            case 'clear':
-                this.voices.forEach(v => v.reset());
-                break;
-        }
-    }
-
-    assignVoiceToNote({ noteId, frequency, velocity, params }) {
+    _internallyAssignVoiceToNote({ noteId, frequency, velocity, params }) {
         let voice = this.voices.find(v => !v.isActive());
         if (!voice) {
-            // Voice stealing: find the quietest voice and reuse it.
-            voice = this.voices.sort((a,b) => a.adsrGain - b.adsrGain)[0];
+            voice = this.voices.sort((a, b) => a.adsrGain - b.adsrGain)[0];
         }
         if (voice) {
             voice.noteOn(noteId, frequency, velocity, params);
         }
     }
-
-    releaseVoiceForNote(noteId) {
+    
+    _internallyReleaseVoiceForNote(noteId) {
         const voice = this.voices.find(v => v.noteId === noteId);
         if (voice) {
             voice.noteOff();
         }
     }
 
+
     process(inputs, outputs, parameters) {
         const outputL = outputs[0][0];
         const outputR = outputs[0][1];
 
+        // Process pending events that should occur in this block
+        const blockEndTime = currentTime + (outputL.length / sampleRate);
+        
+        let i = this.pendingEvents.length;
+        while(i--) {
+            const event = this.pendingEvents[i];
+            if (event.when <= blockEndTime) {
+                this.pendingEvents.splice(i, 1);
+                
+                // We don't want to schedule events in the past
+                if (event.when >= currentTime) {
+                    switch(event.type) {
+                        case 'noteOn':
+                            this._internallyAssignVoiceToNote(event);
+                            break;
+                        case 'noteOff':
+                            this._internallyReleaseVoiceForNote(event.noteId);
+                            break;
+                        case 'clear':
+                             this.voices.forEach(v => v.reset());
+                             break;
+                    }
+                }
+            }
+        }
+
+        // Process active voices
         for (let i = 0; i < outputL.length; i++) {
             let sampleL = 0;
             let sampleR = 0;
@@ -297,10 +278,13 @@ class ChordProcessor extends AudioWorkletProcessor {
                 }
             }
             
-            // Basic limiting to prevent clipping
-            outputL[i] = Math.tanh(sampleL / MAX_VOICES);
-            outputR[i] = Math.tanh(sampleR / MAX_VOICES);
+            const numActiveVoices = this.voices.filter(v => v.isActive()).length;
+            const normFactor = numActiveVoices > 0 ? Math.max(1, numActiveVoices / 2) : 1;
+
+            outputL[i] = Math.tanh(sampleL / normFactor);
+            outputR[i] = Math.tanh(sampleR / normFactor);
         }
+
         return true;
     }
 }
