@@ -3,11 +3,6 @@
 const MAX_VOICES = 8;
 const MAX_LAYERS_PER_VOICE = 8;
 
-// Helper to convert MIDI to frequency
-const mtof = (midi) => Math.pow(2, (midi - 69) / 12) * 440;
-
-// --- DSP Components ---
-
 class StateVariableFilter {
     constructor(sampleRate) {
         this.sampleRate = sampleRate;
@@ -37,7 +32,7 @@ class StateVariableFilter {
 class Layer {
     constructor(sampleRate) {
         this.sampleRate = sampleRate;
-        this.phase = Math.random() * 2 * Math.PI; // Randomize phase to prevent phasing issues
+        this.phase = Math.random() * 2 * Math.PI;
     }
 
     process(baseFrequency, type, detune, octave, gain) {
@@ -81,22 +76,44 @@ class Voice {
         this.velocity = 0;
         this.adsrState = 'idle';
         this.adsrGain = 0;
-        this.params = null;
+        // Ensure params object is always initialized safely
+        this.params = {
+            layers: [],
+            adsr: { attack: 0.01, decay: 0.1, sustain: 0.7, release: 0.5 },
+            filter: { type: 'lpf', cutoff: 8000, q: 1 },
+            lfo: { shape: 'sine', rate: 5, amount: 0, target: 'pitch' },
+            effects: { 
+                distortion: 0,
+                chorus: { rate: 0, depth: 0, mix: 0 },
+                delay: { time: 0, feedback: 0, mix: 0 }
+            }
+        };
     }
 
-    noteOn(noteId, frequency, velocity, params) {
+    noteOn(noteId, frequency, velocity, rawParams) {
         this.reset();
         this.noteId = noteId;
         this.baseFrequency = frequency;
         this.velocity = velocity;
         this.adsrState = 'attack';
-        this.params = params;
+        
+        const p = rawParams || {};
+        
+        this.params = {
+            layers: p.layers || [{ type: 'sawtooth', detune: 0, octave: 0, gain: 1 }],
+            adsr: p.adsr || { attack: p.attack || 0.01, decay: p.decay || 0.1, sustain: p.sustain || 0.7, release: p.release || 0.5 },
+            filter: p.filter || { type: p.filterType || 'lpf', cutoff: p.cutoff || 8000, q: p.q || 1 },
+            lfo: p.lfo || { shape: p.lfoShape || 'sine', rate: p.lfoRate || 5, amount: p.lfoAmount || 0, target: p.lfoTarget || 'pitch' },
+            effects: p.effects || { 
+                distortion: p.distortion || 0,
+                chorus: p.chorus || { rate: 0, depth: 0, mix: 0 },
+                delay: p.delay || { time: 0, feedback: 0, mix: 0 }
+            }
+        };
     }
 
     noteOff() {
-        if (this.adsrState !== 'idle') {
-            this.adsrState = 'release';
-        }
+        this.adsrState = 'release';
     }
 
     isActive() {
@@ -104,7 +121,7 @@ class Voice {
     }
 
     process() {
-        if (!this.isActive() || !this.params) return [0, 0];
+        if (!this.isActive()) return [0, 0];
 
         // --- 1. LFO --- 
         let lfoValue = 0;
@@ -122,19 +139,18 @@ class Voice {
         }
         
         // --- 2. Oscillators (Layers) --- 
-        let pitchMod = (lfoParams?.target === 'pitch') ? lfoValue : 0; // Modulate in cents
+        let pitchMod = (this.params.lfo.target === 'pitch') ? lfoValue : 0;
         let mixedSample = 0;
-        for (let i = 0; i < this.params.layers.length; i++) {
-            const layerParams = this.params.layers[i];
-            mixedSample += this.layers[i].process(this.baseFrequency, layerParams.type, layerParams.detune + pitchMod, layerParams.octave, layerParams.gain);
+        if (this.params.layers && this.params.layers.length > 0) {
+            for (let i = 0; i < this.params.layers.length; i++) {
+                const layerParams = this.params.layers[i];
+                mixedSample += this.layers[i].process(this.baseFrequency, layerParams.type, layerParams.detune + pitchMod, layerParams.octave, layerParams.gain);
+            }
+            mixedSample /= this.params.layers.length; // Normalize
         }
-        if (this.params.layers.length > 0) {
-           mixedSample /= this.params.layers.length; // Normalize
-        }
-
 
         // --- 3. Filter ---
-        let filterCutoffMod = lfoParams?.target === 'filter' ? lfoValue : 0;
+        let filterCutoffMod = (this.params.lfo.target === 'filter') ? lfoValue : 0;
         let filteredSample = this.filter.process(mixedSample, this.params.filter.cutoff + filterCutoffMod, this.params.filter.q, this.params.filter.type);
 
         // --- 4. ADSR Envelope ---
@@ -167,7 +183,6 @@ class Voice {
         // --- 5. Effects ---
         const fx = this.params.effects;
 
-        // Distortion
         if (fx.distortion > 0) {
             finalSample = Math.tanh(finalSample * (1 + fx.distortion * 5));
         }
@@ -182,11 +197,10 @@ class Voice {
         }
         finalSample += chorusSample * (fx.chorus?.mix ?? 0);
 
-        // Stereo Delay
         let finalL = finalSample, finalR = finalSample;
         if (fx.delay && fx.delay.mix > 0) {
             const readPosL = (this.delayWritePos - (fx.delay.time * this.sampleRate) + this.delayBufferL.length) % this.delayBufferL.length;
-            const readPosR = (this.delayWritePos - (fx.delay.time * 0.75 * this.sampleRate) + this.delayBufferR.length) % this.delayBufferR.length; // R is 75% of L time for stereo effect
+            const readPosR = (this.delayWritePos - (fx.delay.time * 0.75 * this.sampleRate) + this.delayBufferR.length) % this.delayBufferR.length;
             
             const delayedL = this.delayBufferL[Math.floor(readPosL)];
             const delayedR = this.delayBufferR[Math.floor(readPosR)];
@@ -206,66 +220,65 @@ class Voice {
 class ChordProcessor extends AudioWorkletProcessor {
     constructor(options) {
         super();
-        this.voices = Array.from({ length: MAX_VOICES }, () => new Voice(options.processorOptions.sampleRate));
+        this.voices = Array.from({ length: MAX_VOICES }, () => new Voice(options.processorOptions?.sampleRate || sampleRate));
         this.pendingEvents = [];
         this.port.onmessage = this.handleMessage.bind(this);
-        console.log(`[ChordProcessor] Initialized with ${MAX_VOICES} voices.`);
+        console.log(`[ChordProcessor] Initialized with ${MAX_VOICES} voices at ${options.processorOptions?.sampleRate || sampleRate}Hz.`);
     }
 
     handleMessage(event) {
         const events = Array.isArray(event.data) ? event.data : [event.data];
-        this.pendingEvents.push(...events);
+        for (const msg of events) {
+            this.pendingEvents.push(msg);
+        }
     }
-    
-    _internallyAssignVoiceToNote({ noteId, frequency, velocity, params }) {
+
+    processPendingEvents(blockEndTime) {
+        let i = this.pendingEvents.length;
+        while (i--) {
+            const event = this.pendingEvents[i];
+            if (event.when <= blockEndTime) {
+                this.pendingEvents.splice(i, 1);
+                
+                switch (event.type) {
+                    case 'noteOn':
+                        this.assignVoiceToNote(event);
+                        break;
+                    case 'noteOff':
+                        this.releaseVoiceForNote(event.noteId);
+                        break;
+                    case 'clear':
+                         this.voices.forEach(v => v.reset());
+                         break;
+                }
+            }
+        }
+    }
+
+    assignVoiceToNote({ noteId, frequency, velocity, params }) {
         let voice = this.voices.find(v => !v.isActive());
         if (!voice) {
-            voice = this.voices.sort((a, b) => a.adsrGain - b.adsrGain)[0];
+            voice = this.voices.sort((a,b) => a.adsrGain - b.adsrGain)[0];
         }
         if (voice) {
             voice.noteOn(noteId, frequency, velocity, params);
         }
     }
-    
-    _internallyReleaseVoiceForNote(noteId) {
+
+    releaseVoiceForNote(noteId) {
         const voice = this.voices.find(v => v.noteId === noteId);
         if (voice) {
             voice.noteOff();
         }
     }
 
-
     process(inputs, outputs, parameters) {
         const outputL = outputs[0][0];
         const outputR = outputs[0][1];
+        const blockEndTime = currentTime + (128 / sampleRate);
 
-        // Process pending events that should occur in this block
-        const blockEndTime = currentTime + (outputL.length / sampleRate);
-        
-        let i = this.pendingEvents.length;
-        while(i--) {
-            const event = this.pendingEvents[i];
-            if (event.when <= blockEndTime) {
-                this.pendingEvents.splice(i, 1);
-                
-                // We don't want to schedule events in the past
-                if (event.when >= currentTime) {
-                    switch(event.type) {
-                        case 'noteOn':
-                            this._internallyAssignVoiceToNote(event);
-                            break;
-                        case 'noteOff':
-                            this._internallyReleaseVoiceForNote(event.noteId);
-                            break;
-                        case 'clear':
-                             this.voices.forEach(v => v.reset());
-                             break;
-                    }
-                }
-            }
-        }
+        this.processPendingEvents(blockEndTime);
 
-        // Process active voices
         for (let i = 0; i < outputL.length; i++) {
             let sampleL = 0;
             let sampleR = 0;
@@ -278,13 +291,10 @@ class ChordProcessor extends AudioWorkletProcessor {
                 }
             }
             
-            const numActiveVoices = this.voices.filter(v => v.isActive()).length;
-            const normFactor = numActiveVoices > 0 ? Math.max(1, numActiveVoices / 2) : 1;
-
-            outputL[i] = Math.tanh(sampleL / normFactor);
-            outputR[i] = Math.tanh(sampleR / normFactor);
+            // Basic clipping to prevent distortion from summing voices
+            outputL[i] = Math.tanh(sampleL);
+            outputR[i] = Math.tanh(sampleR);
         }
-
         return true;
     }
 }
