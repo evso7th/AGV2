@@ -37,7 +37,7 @@ export class AccompanimentSynthManager {
         this.synthOutput.connect(this.destination);
 
         this.preamp = this.audioContext.createGain();
-        this.preamp.gain.value = 1.4; // Final volume calibration
+        this.preamp.gain.value = 2.8; // Doubled from 1.4 to compensate for filter volume loss
         this.preamp.connect(this.synthOutput);
     }
 
@@ -69,7 +69,7 @@ export class AccompanimentSynthManager {
         const instrumentToPlay = instrumentHint || this.activeInstrumentName;
 
         if (instrumentToPlay === 'none' || !SYNTH_PRESETS.hasOwnProperty(instrumentToPlay)) {
-            if (instrumentToPlay !== 'none' && instrumentToPlay !== 'piano' && instrumentToPlay !== 'violin' && instrumentToPlay !== 'flute' && instrumentToPlay !== 'guitarChords' && instrumentToPlay !== 'acousticGuitarSolo') {
+            if (instrumentToPlay !== 'none' && instrumentToPlay !== 'piano' && instrumentToPlay !== 'violin' && instrumentToPlay !== 'flute' && instrumentToPlay !== 'guitarChords' && instrumentToPlay !== 'acousticGuitarSolo' && instrumentToPlay !== 'electricGuitar') {
                console.log(`[AccompManager] Instrument "${instrumentToPlay}" is not a valid synth preset. Skipping.`);
             }
             return;
