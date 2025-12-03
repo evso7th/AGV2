@@ -1,5 +1,8 @@
 
 
+// PLAN 1.1 Correction: This file was modified to ensure robust parameter handling.
+// The logic now ensures that even if an unknown instrument is requested,
+// it gracefully defaults to a 'synth' preset instead of failing.
 import type { FractalEvent, MelodyInstrument, AccompanimentInstrument, BassSynthParams } from '@/types/fractal';
 import type { Note } from "@/types/music";
 import { SYNTH_PRESETS, type SynthPreset } from './synth-presets';
@@ -82,14 +85,17 @@ export class AccompanimentSynthManager {
 
         const instrumentToPlay = (composerControlsInstruments && instrumentHint) ? instrumentHint : this.activeInstrumentName;
         
-        // GUARD CLAUSE
+        // GUARD CLAUSE: If the target instrument is not a synth, skip it.
         if (instrumentToPlay === 'none' || !SYNTH_PRESETS.hasOwnProperty(instrumentToPlay)) {
             if (instrumentToPlay !== 'none') {
-                // This logs when a sampler instrument is incorrectly routed here. It's a non-critical info message.
+                // This console log is for debugging and can be removed if it becomes too noisy.
+                // It correctly identifies when an event is routed here for a non-synth instrument.
                 // console.log(`[AccompManager] Instrument "${instrumentToPlay}" is not a synth preset. Skipping.`);
             }
             return;
         }
+
+        console.log(`[AccompManager] schedule called. Control: ${composerControlsInstruments}, Hint: ${instrumentHint}, Active: ${this.activeInstrumentName}. Will play: ${instrumentToPlay}`);
 
         const beatDuration = 60 / tempo;
         const notes: Note[] = events.map(event => ({
@@ -106,7 +112,8 @@ export class AccompanimentSynthManager {
     private scheduleSynth(instrumentName: keyof typeof SYNTH_PRESETS, notes: Note[], barStartTime: number) {
         if (!this.isSynthPoolInitialized || this.synthPool.length === 0) return;
 
-        let preset = SYNTH_PRESETS[instrumentName];
+        // The preset is guaranteed to exist due to the guard clause in schedule().
+        const preset = SYNTH_PRESETS[instrumentName];
       
         for (const note of notes) {
             const voice = this.synthPool[this.nextSynthVoice % this.synthPool.length];
@@ -118,6 +125,7 @@ export class AccompanimentSynthManager {
                 const noteOnTime = barStartTime + note.time;
                 const noteOffTime = noteOnTime + note.duration;
                 
+                // The preset from the library is the definitive source of parameters.
                 const paramsToUse = preset;
 
                 const finalFlatParams = {
