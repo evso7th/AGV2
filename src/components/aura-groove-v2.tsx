@@ -1,5 +1,4 @@
 
-
 "use client";
 
 import { useState, useEffect } from "react";
@@ -41,9 +40,9 @@ export function AuraGrooveV2({
   }, []);
 
   const synthInstrumentList: ('synth' | 'organ' | 'mellotron' | 'theremin' | 'electricGuitar' | 'ambientPad' | 'none')[] = ['synth', 'organ', 'mellotron', 'theremin', 'electricGuitar', 'ambientPad', 'none'];
-  const melodyInstrumentList: MelodyInstrument[] = synthInstrumentList;
-  const accompanimentInstrumentList: AccompanimentInstrument[] = synthInstrumentList;
-  const harmonyInstrumentList: ('piano' | 'guitarChords' | 'none')[] = ['piano', 'guitarChords', 'none'];
+  const melodyInstrumentList: (MelodyInstrument | 'none')[] = ['synth', 'organ', 'mellotron', 'theremin', 'electricGuitar', 'ambientPad', 'none'];
+  const accompanimentInstrumentList: (AccompanimentInstrument | 'none')[] = ['synth', 'organ', 'mellotron', 'theremin', 'electricGuitar', 'ambientPad', 'none'];
+  const harmonyInstrumentList: ('piano' | 'guitarChords' | 'violin' | 'flute' | 'none')[] = ['piano', 'guitarChords', 'violin', 'flute', 'none'];
   const bassInstrumentList: BassInstrument[] = ['classicBass', 'glideBass', 'ambientDrone', 'resonantGliss', 'hypnoticDrone', 'livingRiff', 'none'];
   const moodList: Mood[] = ['epic', 'joyful', 'enthusiastic', 'melancholic', 'dark', 'anxious', 'dreamy', 'contemplative', 'calm'];
   const genreList: Genre[] = ['trance', 'ambient', 'progressive', 'rock', 'house', 'rnb', 'ballad', 'reggae', 'blues', 'celtic'];
@@ -336,3 +335,5 @@ export function AuraGrooveV2({
     </div>
   );
 }
+
+    
