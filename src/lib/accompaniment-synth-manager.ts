@@ -83,7 +83,7 @@ export class AccompanimentSynthManager {
 
         const instrumentToPlay = (composerControlsInstruments && instrumentHint) ? instrumentHint : this.activeInstrumentName;
         
-        console.log(`[AccompManager] schedule called. Control: ${composerControlsInstruments}, Hint: ${instrumentHint}, Active: ${this.activeInstrumentName}. Will play: ${instrumentToPlay}`);
+        // console.log(`[AccompManager] schedule called. Control: ${composerControlsInstruments}, Hint: ${instrumentHint}, Active: ${this.activeInstrumentName}. Will play: ${instrumentToPlay}`);
 
 
         if (instrumentToPlay === 'none') {
@@ -116,39 +116,56 @@ export class AccompanimentSynthManager {
         if (!workletNode) return;
 
         const messages: any[] = [];
-
+        
+        // Group notes by their start time to apply strumming effect
+        const notesByTime = new Map<number, Note[]>();
         for (const note of notes) {
-            const noteId = `${barStartTime + note.time}-${note.midi}`;
-            const frequency = midiToFreq(note.midi);
-            
-            const noteOnTime = barStartTime + note.time;
-            const noteOffTime = noteOnTime + note.duration;
-            
-            const paramsToUse = preset;
+            const timeKey = Math.round(note.time * 1000); // Group by millisecond
+            if (!notesByTime.has(timeKey)) {
+                notesByTime.set(timeKey, []);
+            }
+            notesByTime.get(timeKey)!.push(note);
+        }
 
-            const finalFlatParams = {
-                ...paramsToUse.adsr,
-                ...paramsToUse.filter,
-                layers: paramsToUse.layers,
-                lfo: paramsToUse.lfo,
-                effects: paramsToUse.effects,
-                portamento: paramsToUse.portamento
-            };
+        for (const noteGroup of notesByTime.values()) {
+            let strumOffset = 0;
+            for (const note of noteGroup) {
+                 const noteId = `${barStartTime + note.time}-${note.midi}`;
+                 const frequency = midiToFreq(note.midi);
+                
+                const humanizedTime = note.time + strumOffset;
+                const noteOnTime = barStartTime + humanizedTime;
+                const noteOffTime = noteOnTime + note.duration;
 
-            messages.push({
-                type: 'noteOn',
-                noteId,
-                frequency,
-                velocity: note.velocity,
-                when: noteOnTime,
-                params: finalFlatParams
-            });
-            
-            messages.push({
-                type: 'noteOff',
-                noteId: noteId,
-                when: noteOffTime
-            });
+                const paramsToUse = preset;
+
+                const finalFlatParams = {
+                    ...paramsToUse.adsr,
+                    ...paramsToUse.filter,
+                    layers: paramsToUse.layers,
+                    lfo: paramsToUse.lfo,
+                    effects: paramsToUse.effects,
+                    portamento: paramsToUse.portamento
+                };
+
+                messages.push({
+                    type: 'noteOn',
+                    noteId,
+                    frequency,
+                    velocity: note.velocity,
+                    when: noteOnTime,
+                    params: finalFlatParams
+                });
+                
+                messages.push({
+                    type: 'noteOff',
+                    noteId: noteId,
+                    when: noteOffTime
+                });
+                
+                // Add a small random delay for the next note in the chord
+                strumOffset += (Math.random() * 0.008) + 0.002; // 2ms to 10ms
+            }
         }
         
         if (messages.length > 0) {
