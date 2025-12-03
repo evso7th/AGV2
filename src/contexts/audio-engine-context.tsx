@@ -5,19 +5,12 @@ import React, { createContext, useContext, useState, useRef, useCallback, useEff
 import { useToast } from "@/hooks/use-toast";
 import type { WorkerSettings, Score, InstrumentPart, BassInstrument, MelodyInstrument, AccompanimentInstrument, BassTechnique, TextureSettings, ScoreName, Note, DrumsScore, EffectsScore, InstrumentType, Genre, Mood } from '@/types/music';
 import { DrumMachine } from '@/lib/drum-machine';
-import { SamplerPlayer } from '@/lib/sampler-player';
-import { ViolinSamplerPlayer } from '@/lib/violin-sampler-player';
-import { FluteSamplerPlayer } from '@/lib/flute-sampler-player';
 import { AccompanimentSynthManager } from '@/lib/accompaniment-synth-manager';
 import { BassSynthManager } from '@/lib/bass-synth-manager';
 import { MelodyPadManager } from '@/lib/melody-pad-manager';
 import { SparklePlayer } from '@/lib/sparkle-player';
 import { SfxSynthManager } from '@/lib/sfx-synth-manager';
 import { HarmonySynthManager } from '@/lib/harmony-synth-manager';
-import { getPresetParams } from "@/lib/presets";
-import { PIANO_SAMPLES, VIOLIN_SAMPLES, FLUTE_SAMPLES, ACOUSTIC_GUITAR_CHORD_SAMPLES, ACOUSTIC_GUITAR_SOLO_SAMPLES } from '@/lib/samples';
-import { GuitarChordsSampler } from '@/lib/guitar-chords-sampler';
-import { AcousticGuitarSoloSampler } from '@/lib/acoustic-guitar-solo-sampler';
 import type { FractalEvent, InstrumentHints } from '@/types/fractal';
 import * as Tone from 'tone';
 
@@ -98,7 +91,7 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
   const accompanimentManagerRef = useRef<AccompanimentSynthManager | null>(null);
   const harmonyManagerRef = useRef<HarmonySynthManager | null>(null);
   const sparklePlayerRef = useRef<SparklePlayer | null>(null);
-  const sfxSamplerPlayerRef = useRef<SfxSamplerPlayer | null>(null);
+  const sfxSynthManagerRef = useRef<SfxSynthManager | null>(null);
   
   const masterGainNodeRef = useRef<GainNode | null>(null);
   const gainNodesRef = useRef<Record<string, GainNode | null>>({
@@ -154,11 +147,6 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
       }
     }
     
-    if (sfxEvents.length > 0) {
-      console.log(`[AudioEngine] DIAG: Filtered Events - sfx: ${sfxEvents.length}, harmony: ${harmonyEvents.length}`);
-    }
-
-
     if (drumMachineRef.current && drumEvents.length > 0) {
       drumMachineRef.current.schedule(drumEvents, barStartTime, tempo);
     }
@@ -179,11 +167,9 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
       harmonyManagerRef.current.schedule(harmonyEvents, barStartTime, tempo, instrumentHints?.harmony);
     }
     
-    if (sfxSamplerPlayerRef.current && sfxEvents.length > 0 && mood && genre) {
-        const beatDuration = 60 / tempo;
-        sfxEvents.forEach(event => {
-            sfxSamplerPlayerRef.current?.play(barStartTime + event.time * beatDuration, mood, genre, event.technique, event.weight);
-        });
+    if (sfxSynthManagerRef.current && sfxEvents.length > 0 && mood && genre) {
+        console.log(`[AudioEngine] Triggering SFX phrase with ${sfxEvents.length} events`);
+        sfxSynthManagerRef.current.trigger(sfxEvents, barStartTime, tempo);
     }
 
   }, []);
@@ -262,9 +248,9 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
             initPromises.push(sparklePlayerRef.current.init());
         }
         
-        if (!sfxSamplerPlayerRef.current) {
-            sfxSamplerPlayerRef.current = new SfxSamplerPlayer(context, destinationFor('sfx'));
-            initPromises.push(sfxSamplerPlayerRef.current.init());
+        if (!sfxSynthManagerRef.current) {
+            sfxSynthManagerRef.current = new SfxSynthManager(context, destinationFor('sfx'));
+            initPromises.push(sfxSynthManagerRef.current.init());
         }
 
 
@@ -275,7 +261,7 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
                 
                 if (type === 'SCORE_READY' && payload && payload.events && payload.barDuration && settingsRef.current && audioContextRef.current) {
                     
-                    const { events, barDuration, instrumentHints, mood, genre } = payload;
+                    const { events, barDuration, instrumentHints } = payload;
                     let scheduleTime = nextBarTimeRef.current;
                     const now = audioContextRef.current.currentTime;
                     const lookahead = 0.1; 
@@ -287,7 +273,7 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
                     
                     const composerControls = settingsRef.current.composerControlsInstruments;
                     
-                    scheduleEvents(events, scheduleTime, settingsRef.current.bpm, instrumentHints, composerControls, mood, genre);
+                    scheduleEvents(events, scheduleTime, settingsRef.current.bpm, instrumentHints, composerControls, settingsRef.current.mood, settingsRef.current.genre);
                     
                     nextBarTimeRef.current = scheduleTime + barDuration;
 
@@ -335,7 +321,7 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
     accompanimentManagerRef.current?.allNotesOff();
     harmonyManagerRef.current?.allNotesOff();
     sparklePlayerRef.current?.stopAll();
-    sfxSamplerPlayerRef.current?.stopAll();
+    sfxSynthManagerRef.current?.allNotesOff();
     if (impulseTimerRef.current) {
         clearTimeout(impulseTimerRef.current);
         impulseTimerRef.current = null;
@@ -390,7 +376,7 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
         part === 'harmony' ? harmonyManagerRef.current :
         part === 'drums' ? drumMachineRef.current :
         part === 'sparkles' ? sparklePlayerRef.current :
-        part === 'sfx' ? sfxSamplerPlayerRef.current :
+        part === 'sfx' ? sfxSynthManagerRef.current :
         null;
     
     if (manager && 'setPreampGain' in manager) {
