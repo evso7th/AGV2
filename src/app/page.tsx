@@ -35,11 +35,12 @@ export default function Home() {
             Click the button below to start the experience.
           </p>
         </CardContent>
-        <CardFooter>
+        <CardFooter className="flex-col gap-2">
           <Button onClick={handleStart} className="w-full text-lg py-6" disabled={!isClient}>
             <Music className="mr-2 h-6 w-6" />
             Start AuraGroove
           </Button>
+          <p className="text-xs text-muted-foreground">v 2.123</p>
         </CardFooter>
       </Card>
     </main>
