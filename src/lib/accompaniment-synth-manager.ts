@@ -31,6 +31,7 @@ export class AccompanimentSynthManager {
     private synthPool: SynthVoice[] = [];
     private synthOutput: GainNode;
     private preamp: GainNode; // Pre-amplifier for the synth section
+    private nextSynthVoice = 0;
     private isSynthPoolInitialized = false;
 
     constructor(audioContext: AudioContext, destination: AudioNode) {
@@ -130,13 +131,12 @@ export class AccompanimentSynthManager {
         for (const noteGroup of notesByTime.values()) {
             let strumOffset = 0;
             for (const note of noteGroup) {
-                 const noteId = `${barStartTime + note.time}-${note.midi}`;
-                 const frequency = midiToFreq(note.midi);
-                
                 const humanizedTime = note.time + strumOffset;
                 const noteOnTime = barStartTime + humanizedTime;
                 const noteOffTime = noteOnTime + note.duration;
-
+                const noteId = `${noteOnTime.toFixed(4)}-${note.midi}`; // Use humanized time for ID
+                const frequency = midiToFreq(note.midi);
+                
                 const paramsToUse = preset;
 
                 const finalFlatParams = {
