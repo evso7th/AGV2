@@ -49,6 +49,7 @@ export const useAuraGroove = () => {
   const [density, setDensity] = useState(0.5);
   const [composerControlsInstruments, setComposerControlsInstruments] = useState(true);
   const [mood, setMood] = useState<Mood>('melancholic');
+  const [lfoEnabled, setLfoEnabled] = useState(true);
 
   const [isEqModalOpen, setIsEqModalOpen] = useState(false);
   const [eqSettings, setEqSettings] = useState<number[]>(Array(7).fill(0));
@@ -79,8 +80,9 @@ export const useAuraGroove = () => {
       density,
       composerControlsInstruments,
       mood,
+      lfoEnabled,
     };
-  }, [bpm, score, genre, instrumentSettings, drumSettings, textureSettings, density, composerControlsInstruments, mood]);
+  }, [bpm, score, genre, instrumentSettings, drumSettings, textureSettings, density, composerControlsInstruments, mood, lfoEnabled]);
 
   // Initial settings sync
   useEffect(() => {
@@ -106,7 +108,7 @@ export const useAuraGroove = () => {
           const fullSettings = getFullSettings();
           updateSettings(fullSettings);
       }
-  }, [bpm, score, genre, density, drumSettings, textureSettings, composerControlsInstruments, mood, isInitialized, updateSettings, getFullSettings]);
+  }, [bpm, score, genre, density, drumSettings, textureSettings, composerControlsInstruments, mood, lfoEnabled, isInitialized, updateSettings, getFullSettings]);
 
   // Timer logic
   useEffect(() => {
@@ -277,6 +279,8 @@ export const useAuraGroove = () => {
     mood,
     setMood,
     genre,
-    setGenre
+    setGenre,
+    lfoEnabled,
+    setLfoEnabled,
   };
 };
