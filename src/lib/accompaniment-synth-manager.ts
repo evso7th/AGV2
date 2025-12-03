@@ -24,10 +24,12 @@ export class AccompanimentSynthManager {
     private activeInstrumentName: AccompanimentInstrument | 'none' = 'organ';
     public isInitialized = false;
 
-    // Synth Instruments (Worklet-based)
-    private worklet: AudioWorkletNode | null = null;
+    // Synth Instruments (Worklet-based pool)
+    private synthPool: SynthVoice[] = [];
     private synthOutput: GainNode;
     private preamp: GainNode; // Pre-amplifier for the synth section
+    private nextSynthVoice = 0;
+    private isSynthPoolInitialized = false;
 
     constructor(audioContext: AudioContext, destination: AudioNode) {
         this.audioContext = audioContext;
@@ -39,42 +41,56 @@ export class AccompanimentSynthManager {
         this.preamp = this.audioContext.createGain();
         this.preamp.gain.value = 2.8; // Doubled from 1.4 to compensate for filter volume loss
         this.preamp.connect(this.synthOutput);
+        this.nextSynthVoice = 0;
     }
 
     async init() {
         if (this.isInitialized) return;
         
-        console.log('[AccompManager] Initializing...');
+        console.log('[AccompManager] Initializing all instruments...');
 
+        await this.initSynthPool();
+
+        this.isInitialized = true;
+        console.log('[AccompManager] All instruments initialized.');
+    }
+
+    private async initSynthPool() {
+        if (this.isSynthPoolInitialized) return;
         try {
             await this.audioContext.audioWorklet.addModule('/worklets/chord-processor.js');
-            this.worklet = new AudioWorkletNode(this.audioContext, 'chord-processor', {
-                processorOptions: { sampleRate: this.audioContext.sampleRate },
-                outputChannelCount: [2]
-            });
-            this.worklet.connect(this.preamp);
-            this.isInitialized = true;
-            console.log('[AccompManager] Initialized.');
+            for (let i = 0; i < 8; i++) { // Increased pool size to 8
+                const worklet = new AudioWorkletNode(this.audioContext, 'chord-processor', {
+                    processorOptions: { sampleRate: this.audioContext.sampleRate },
+                    outputChannelCount: [2]
+                });
+                worklet.connect(this.preamp);
+                this.synthPool.push({ worklet });
+            }
+            this.isSynthPoolInitialized = true;
+            console.log('[AccompManager] Synth pool initialized with 8 voices.');
         } catch (e) {
             console.error('[AccompManager] Failed to init synth pool:', e);
         }
     }
 
-    public schedule(events: FractalEvent[], barStartTime: number, tempo: number, instrumentHint?: AccompanimentInstrument) {
-        if (!this.isInitialized || !this.worklet) {
+    public schedule(events: FractalEvent[], barStartTime: number, tempo: number, instrumentHint?: AccompanimentInstrument, composerControlsInstruments: boolean = true) {
+        if (!this.isInitialized) {
             console.warn('[AccompManager] Tried to schedule before initialized.');
             return;
         }
 
-        const instrumentToPlay = instrumentHint || this.activeInstrumentName;
-
+        const instrumentToPlay = (composerControlsInstruments && instrumentHint) ? instrumentHint : this.activeInstrumentName;
+        
+        // GUARD CLAUSE
         if (instrumentToPlay === 'none' || !SYNTH_PRESETS.hasOwnProperty(instrumentToPlay)) {
-            if (instrumentToPlay !== 'none' && instrumentToPlay !== 'piano' && instrumentToPlay !== 'violin' && instrumentToPlay !== 'flute' && instrumentToPlay !== 'guitarChords' && instrumentToPlay !== 'acousticGuitarSolo' && instrumentToPlay !== 'electricGuitar') {
-               console.log(`[AccompManager] Instrument "${instrumentToPlay}" is not a valid synth preset. Skipping.`);
+            if (instrumentToPlay !== 'none') {
+                // This logs when a sampler instrument is incorrectly routed here. It's a non-critical info message.
+                // console.log(`[AccompManager] Instrument "${instrumentToPlay}" is not a synth preset. Skipping.`);
             }
             return;
         }
-        
+
         const beatDuration = 60 / tempo;
         const notes: Note[] = events.map(event => ({
             midi: event.note,
@@ -84,49 +100,52 @@ export class AccompanimentSynthManager {
             params: event.params
         }));
 
-        this.scheduleSynth(instrumentToPlay as keyof typeof SYNTH_PRESETS, notes, barStartTime);
+        this.scheduleSynth(instrumentToPlay as Exclude<AccompanimentInstrument, 'piano' | 'violin' | 'flute' | 'guitarChords' | 'acousticGuitarSolo' | 'none'>, notes, barStartTime);
     }
 
     private scheduleSynth(instrumentName: keyof typeof SYNTH_PRESETS, notes: Note[], barStartTime: number) {
-        if (!this.worklet) return;
+        if (!this.isSynthPoolInitialized || this.synthPool.length === 0) return;
 
-        const preset = SYNTH_PRESETS[instrumentName];
-
-        const messages: any[] = [];
-
+        let preset = SYNTH_PRESETS[instrumentName];
+      
         for (const note of notes) {
-            const noteId = `${barStartTime + note.time}-${note.midi}`;
-            const frequency = midiToFreq(note.midi);
-            
-            const noteOnTime = barStartTime + note.time;
-            const noteOffTime = noteOnTime + note.duration;
-            
-            const finalFlatParams = {
-                ...preset.adsr,
-                ...preset.filter,
-                layers: preset.layers,
-                lfo: preset.lfo,
-                effects: preset.effects,
-                portamento: preset.portamento
-            };
+            const voice = this.synthPool[this.nextSynthVoice % this.synthPool.length];
+            this.nextSynthVoice++;
+            if (voice && voice.worklet && voice.worklet.port) {
+                const noteId = `${barStartTime + note.time}-${note.midi}`;
+                const frequency = midiToFreq(note.midi);
+                
+                const noteOnTime = barStartTime + note.time;
+                const noteOffTime = noteOnTime + note.duration;
+                
+                const paramsToUse = preset;
 
-            messages.push({
-                type: 'noteOn',
-                noteId,
-                frequency,
-                velocity: note.velocity,
-                when: noteOnTime,
-                params: finalFlatParams
-            });
-            
-            messages.push({
-                type: 'noteOff',
-                noteId: noteId,
-                when: noteOffTime
-            });
-        }
-        if (messages.length > 0) {
-            this.worklet.port.postMessage(messages);
+                const finalFlatParams = {
+                    ...paramsToUse.adsr,
+                    ...paramsToUse.filter,
+                    layers: paramsToUse.layers,
+                    lfo: paramsToUse.lfo,
+                    effects: paramsToUse.effects,
+                    portamento: paramsToUse.portamento
+                };
+
+                const message = {
+                    type: 'noteOn',
+                    noteId,
+                    frequency,
+                    velocity: note.velocity,
+                    when: noteOnTime,
+                    params: finalFlatParams
+                };
+                
+                voice.worklet.port.postMessage(message);
+                
+                voice.worklet.port.postMessage({
+                    type: 'noteOff',
+                    noteId: noteId,
+                    when: noteOffTime
+                });
+            }
         }
     }
     
@@ -140,6 +159,7 @@ export class AccompanimentSynthManager {
         }
         console.log(`[AccompManager] Setting active instrument to: ${instrumentName}`);
         this.activeInstrumentName = instrumentName;
+        // No volume changes needed here anymore, as `schedule` handles routing.
     }
     
     public setPreampGain(gain: number) {
@@ -149,9 +169,11 @@ export class AccompanimentSynthManager {
     }
 
     public allNotesOff() {
-        if (this.worklet) {
-            this.worklet.port.postMessage({ type: 'clear' });
-        }
+        this.synthPool.forEach(voice => {
+            if (voice && voice.worklet && voice.worklet.port) {
+                 voice.worklet.port.postMessage({ type: 'clear' });
+            }
+        });
     }
 
     public stop() {
@@ -160,9 +182,7 @@ export class AccompanimentSynthManager {
 
     public dispose() {
         this.stop();
-        if (this.worklet) {
-            this.worklet.disconnect();
-        }
+        this.synthPool.forEach(voice => voice.worklet.disconnect());
         this.preamp.disconnect();
         this.synthOutput.disconnect();
     }
