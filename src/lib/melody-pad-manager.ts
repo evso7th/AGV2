@@ -1,4 +1,5 @@
 
+
 import type { FractalEvent, MelodyInstrument } from '@/types/fractal';
 import type { Note } from "@/types/music";
 import { SYNTH_PRESETS, type SynthPreset } from './synth-presets';
@@ -150,6 +151,9 @@ export class MelodyPadManager {
         }
     }
     
+    /**
+     * Sets the active instrument for the accompaniment part.
+     */
     public setInstrument(instrumentName: MelodyInstrument | 'none') {
         if (!this.isInitialized) {
             console.warn('[MelodyManager] setInstrument called before initialization.');
