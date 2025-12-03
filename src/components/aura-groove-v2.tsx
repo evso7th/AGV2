@@ -40,8 +40,9 @@ export function AuraGrooveV2({
     setIsClient(true);
   }, []);
 
-  const melodyInstrumentList: MelodyInstrument[] = ['piano', 'violin', 'flute', 'synth', 'organ', 'mellotron', 'theremin', 'E-Bells_melody', 'G-Drops', 'acousticGuitarSolo', 'electricGuitar', 'ambientPad', 'none'];
-  const accompanimentInstrumentList: AccompanimentInstrument[] = ['piano', 'violin', 'flute', 'synth', 'organ', 'mellotron', 'theremin', 'E-Bells_melody', 'G-Drops', 'acousticGuitarSolo', 'electricGuitar', 'ambientPad', 'guitarChords', 'none'];
+  const synthInstrumentList: ('synth' | 'organ' | 'mellotron' | 'theremin' | 'electricGuitar' | 'ambientPad' | 'none')[] = ['synth', 'organ', 'mellotron', 'theremin', 'electricGuitar', 'ambientPad', 'none'];
+  const melodyInstrumentList: MelodyInstrument[] = synthInstrumentList;
+  const accompanimentInstrumentList: AccompanimentInstrument[] = synthInstrumentList;
   const harmonyInstrumentList: ('piano' | 'guitarChords' | 'none')[] = ['piano', 'guitarChords', 'none'];
   const bassInstrumentList: BassInstrument[] = ['classicBass', 'glideBass', 'ambientDrone', 'resonantGliss', 'hypnoticDrone', 'livingRiff', 'none'];
   const moodList: Mood[] = ['epic', 'joyful', 'enthusiastic', 'melancholic', 'dark', 'anxious', 'dreamy', 'contemplative', 'calm'];
