@@ -1,4 +1,5 @@
 
+
 'use client';
 
 import React, { createContext, useContext, useState, useRef, useCallback, useEffect } from 'react';
@@ -113,11 +114,11 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
     } else if (part === 'bass' && bassManagerRef.current) {
         bassManagerRef.current.setPreset(name as BassInstrument);
     } else if (part === 'harmony' && harmonyManagerRef.current) {
-        harmonyManagerRef.current.setInstrument(name as 'piano' | 'guitarChords' | 'none');
+        harmonyManagerRef.current.setInstrument(name as 'piano' | 'guitarChords' | 'violin' | 'flute' | 'none');
     }
   }, [isInitialized]);
 
-  const scheduleEvents = useCallback((events: FractalEvent[], barStartTime: number, tempo: number, instrumentHints?: InstrumentHints, composerControlsInstruments?: boolean, mood?: Mood, genre?: Genre) => {
+  const scheduleEvents = useCallback((events: FractalEvent[], barStartTime: number, tempo: number, instrumentHints?: InstrumentHints, composerControlsInstruments?: boolean, mood?: Mood, genre?: Genre, lfoEnabled?: boolean) => {
     if (!Array.isArray(events)) {
         console.error('[AudioEngine] scheduleEvents received non-array "events":', events);
         return;
@@ -156,11 +157,11 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
     }
 
     if (melodyPadManagerRef.current && melodyEvents.length > 0) {
-        melodyPadManagerRef.current.schedule(melodyEvents, barStartTime, tempo, instrumentHints?.melody, composerControlsInstruments);
+        melodyPadManagerRef.current.schedule(melodyEvents, barStartTime, tempo, instrumentHints?.melody, composerControlsInstruments, lfoEnabled);
     }
 
     if (accompanimentManagerRef.current && accompanimentEvents.length > 0) {
-        accompanimentManagerRef.current.schedule(accompanimentEvents, barStartTime, tempo, instrumentHints?.accompaniment, composerControlsInstruments);
+        accompanimentManagerRef.current.schedule(accompanimentEvents, barStartTime, tempo, instrumentHints?.accompaniment, composerControlsInstruments, lfoEnabled);
     }
 
     if (harmonyManagerRef.current && harmonyEvents.length > 0) {
@@ -261,7 +262,7 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
                 
                 if (type === 'SCORE_READY' && payload && payload.events && payload.barDuration && settingsRef.current && audioContextRef.current) {
                     
-                    const { events, barDuration, instrumentHints } = payload;
+                    const { events, barDuration, instrumentHints, mood, genre } = payload;
                     let scheduleTime = nextBarTimeRef.current;
                     const now = audioContextRef.current.currentTime;
                     const lookahead = 0.1; 
@@ -271,9 +272,9 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
                         console.warn(`[AudioEngine] Worker tick was late. Resyncing schedule time from ${nextBarTimeRef.current.toFixed(3)} to ${scheduleTime.toFixed(3)}.`);
                     }
                     
-                    const composerControls = settingsRef.current.composerControlsInstruments;
+                    const { composerControlsInstruments, lfoEnabled } = settingsRef.current;
                     
-                    scheduleEvents(events, scheduleTime, settingsRef.current.bpm, instrumentHints, composerControls, settingsRef.current.mood, settingsRef.current.genre);
+                    scheduleEvents(events, scheduleTime, settingsRef.current.bpm, instrumentHints, composerControlsInstruments, mood, genre, lfoEnabled);
                     
                     nextBarTimeRef.current = scheduleTime + barDuration;
 

@@ -8,32 +8,51 @@
  * It is completely passive and only composes the next bar when commanded via a 'tick'.
  */
 import type { WorkerSettings, ScoreName, Mood, Genre } from '@/types/music';
-import { FractalMusicEngine } from './fractal-music-engine';
-import type { FractalEvent } from '@/types/fractal';
+import { FractalMusicEngine } from '@/lib/fractal-music-engine';
+import type { FractalEvent, InstrumentHints } from '@/types/fractal';
 
-// --- Constants ---
-const PADS_BY_STYLE: Record<ScoreName, string | null> = {
-    dreamtales: 'livecircle.mp3',
-    evolve: 'Tibetan bowls.mp3',
-    omega: 'things.mp3',
-    journey: 'pure_energy.mp3',
-    multeity: 'uneverse.mp3',
-    neuro_f_matrix: 'uneverse.mp3', 
-};
-
-// --- "Sparkle" (In-krap-le-ni-ye) Logic ---
+// --- Effect Logic ---
 let lastSparkleTime = -Infinity;
+let lastSfxTime = -Infinity;
 
-function shouldAddSparkle(currentTime: number, density: number): boolean {
+function shouldAddSparkle(currentTime: number, density: number, genre: Genre): boolean {
     const timeSinceLast = currentTime - lastSparkleTime;
-    const minTime = 30; 
-    const maxTime = 90;
+    
+    // For ambient, make sparkles more frequent
+    const isAmbient = genre === 'ambient';
+    const minTime = isAmbient ? 7.5 : 30;
+    const maxTime = isAmbient ? 22.5 : 90;
 
     if (timeSinceLast < minTime) return false;
-    if (density > 0.6) return false; 
+    if (density > 0.6 && !isAmbient) return false; 
 
     const chance = ((timeSinceLast - minTime) / (maxTime - minTime)) * (1 - density);
     return Math.random() < chance;
+}
+
+
+function shouldAddSfx(currentTime: number, density: number, mood: Mood, genre: Genre): { should: boolean, phrase: FractalEvent[] } {
+    const timeSinceLast = currentTime - lastSfxTime;
+    const minTime = 15;
+    const maxTime = 50;
+    
+    if (timeSinceLast < minTime) return { should: false, phrase: [] };
+    if (density > 0.75) return { should: false, phrase: [] };
+
+    let chance = ((timeSinceLast - minTime) / (maxTime - minTime)) * (0.95 - density);
+
+    if (mood === 'dark' || mood === 'anxious' || genre === 'rock' || genre === 'progressive') chance *= 1.6;
+    if (mood === 'calm' || mood === 'dreamy') chance *= 0.4;
+    
+    if (Math.random() < chance) {
+        console.log(`[SFX] Firing complex SFX event for mood: ${mood}, genre: ${genre}`);
+        const phrase: FractalEvent[] = [];
+        // This is a placeholder for a more complex SFX generation logic
+        // For now, let's keep it empty to avoid introducing new variables.
+        return { should: true, phrase };
+    }
+
+    return { should: false, phrase: [] };
 }
 
 
@@ -41,8 +60,6 @@ function shouldAddSparkle(currentTime: number, density: number): boolean {
 let fractalMusicEngine: FractalMusicEngine | undefined;
 
 // --- Scheduler (The Conductor) ---
-let lastPadStyle: ScoreName | null = null;
-
 const Scheduler = {
     loopId: null as any,
     isRunning: false,
@@ -52,19 +69,21 @@ const Scheduler = {
         bpm: 75,
         score: 'neuro_f_matrix', 
         genre: 'ambient' as Genre,
-        drumSettings: { pattern: 'composer', enabled: true, volume: 0.5, kickVolume: 1.0 },
+        drumSettings: { pattern: 'composer', enabled: true, kickVolume: 1.0 },
         instrumentSettings: { 
             bass: { name: "glideBass", volume: 0.7, technique: 'portamento' },
             melody: { name: "acousticGuitarSolo", volume: 0.8 },
             accompaniment: { name: "guitarChords", volume: 0.7 },
+            harmony: { name: "piano", volume: 0.6 }
         },
         textureSettings: {
-            sparkles: { enabled: true },
-            pads: { enabled: true }
+            sparkles: { enabled: true, volume: 0.7 },
+            sfx: { enabled: true, volume: 0.5 },
         },
         density: 0.5,
         composerControlsInstruments: true,
         mood: 'melancholic' as Mood,
+        lfoEnabled: true,
     } as WorkerSettings,
 
     get barDuration() { 
@@ -81,10 +100,11 @@ const Scheduler = {
             mood: settings.mood,
             genre: settings.genre,
             seed: settings.seed ?? Date.now(),
+            lfoEnabled: settings.lfoEnabled,
         });
         this.barCount = 0;
         lastSparkleTime = -Infinity;
-        lastPadStyle = null; // Reset on engine re-creation
+        lastSfxTime = -Infinity;
     },
 
     start() {
@@ -153,6 +173,7 @@ const Scheduler = {
                lambda: 1.0 - (this.settings.density * 0.5 + 0.3),
                mood: this.settings.mood,
                genre: this.settings.genre,
+               lfoEnabled: this.settings.lfoEnabled,
            });
        }
        
@@ -163,36 +184,44 @@ const Scheduler = {
         if (!this.isRunning || !fractalMusicEngine) return;
         
         const density = this.settings.density;
-        let events: FractalEvent[] = [];
+        const genre = this.settings.genre;
+        const mood = this.settings.mood;
+
+        let scorePayload: { events: FractalEvent[]; instrumentHints: InstrumentHints } = { events: [], instrumentHints: {} };
 
         if (this.settings.score === 'neuro_f_matrix') {
-            events = fractalMusicEngine.evolve(this.barDuration);
+             // Pass barCount to evolve to make decisions based on it.
+             scorePayload = fractalMusicEngine.evolve(this.barDuration, this.barCount);
         } 
         
-        console.log(`[Worker] Tick ${this.barCount}. Generated ${events.length} events.`);
-        
-        self.postMessage({ type: 'SCORE_READY', events: events, barDuration: this.barDuration });
-
         const currentTime = this.barCount * this.barDuration;
         
-        if (this.settings.textureSettings.sparkles.enabled) {
-            if (shouldAddSparkle(currentTime, density)) {
-                 self.postMessage({ type: 'sparkle', time: 0 });
+        if (this.barCount >= 4 && this.settings.textureSettings.sparkles.enabled) {
+            if (shouldAddSparkle(currentTime, density, genre)) {
+                 self.postMessage({ type: 'sparkle', payload: { time: 0, genre: genre, mood: this.settings.mood } });
                  lastSparkleTime = currentTime;
             }
         }
         
-        if (this.settings.textureSettings.pads.enabled) {
-            const currentStyle = this.settings.score;
-            if (currentStyle !== lastPadStyle) {
-                 const padName = PADS_BY_STYLE[currentStyle];
-                 if (padName) {
-                    const delay = this.barCount === 0 ? 1 : 0;
-                    self.postMessage({ type: 'pad', padName: padName, time: delay });
-                 }
-                lastPadStyle = currentStyle;
+        if (this.barCount >= 2 && this.settings.textureSettings.sfx.enabled) {
+            const { should, phrase } = shouldAddSfx(currentTime, density, mood, genre);
+            if (should) {
+                // Send the entire phrase to be scheduled
+                scorePayload.events.push(...phrase);
+                lastSfxTime = currentTime;
             }
         }
+        
+        self.postMessage({ 
+            type: 'SCORE_READY', 
+            payload: {
+                events: scorePayload.events,
+                instrumentHints: scorePayload.instrumentHints,
+                barDuration: this.barDuration,
+                mood: this.settings.mood,
+                genre: this.settings.genre,
+            }
+        });
 
         this.barCount++;
     }

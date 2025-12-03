@@ -1,7 +1,7 @@
 
 
 import type { FractalEvent, MelodyInstrument } from '@/types/fractal';
-import type { Note } from "@/types/music";
+import type { Note, WorkerSettings } from "@/types/music";
 import { SYNTH_PRESETS, type SynthPreset } from './synth-presets';
 
 
@@ -70,7 +70,7 @@ export class MelodyPadManager {
         }
     }
 
-    public schedule(events: FractalEvent[], barStartTime: number, tempo: number, instrumentHint?: MelodyInstrument, composerControlsInstruments: boolean = true) {
+    public schedule(events: FractalEvent[], barStartTime: number, tempo: number, instrumentHint?: MelodyInstrument, composerControlsInstruments: boolean = true, lfoEnabled: boolean = true) {
         if (!this.isInitialized) {
             console.warn('[MelodyManager] Tried to schedule before initialized.');
             return;
@@ -91,10 +91,10 @@ export class MelodyPadManager {
             params: event.params
         }));
 
-        this.scheduleSynth(instrumentToPlay as Exclude<MelodyInstrument, 'piano' | 'violin' | 'flute' | 'acousticGuitarSolo' | 'none'>, notes, barStartTime);
+        this.scheduleSynth(instrumentToPlay as Exclude<MelodyInstrument, 'piano' | 'violin' | 'flute' | 'acousticGuitarSolo' | 'none'>, notes, barStartTime, lfoEnabled);
     }
 
-    private scheduleSynth(instrumentName: keyof typeof SYNTH_PRESETS, notes: Note[], barStartTime: number) {
+    private scheduleSynth(instrumentName: keyof typeof SYNTH_PRESETS, notes: Note[], barStartTime: number, lfoEnabled: boolean) {
         if (!this.isSynthPoolInitialized || this.synthPool.length === 0) return;
 
         let preset = SYNTH_PRESETS[instrumentName];
@@ -117,7 +117,12 @@ export class MelodyPadManager {
             const noteId = `${noteOnTime.toFixed(4)}-${note.midi}`;
             const frequency = midiToFreq(note.midi);
             
-            const paramsToUse = preset;
+            const paramsToUse = { ...preset };
+
+            if (!lfoEnabled) {
+                paramsToUse.lfo = { ...paramsToUse.lfo, amount: 0 };
+            }
+
 
             const finalFlatParams = {
                 ...paramsToUse.adsr,

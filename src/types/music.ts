@@ -110,7 +110,7 @@ export type InstrumentSettings = {
       volume: number; // 0-1
   };
   harmony: {
-      name: 'piano' | 'guitarChords' | 'none';
+      name: 'piano' | 'guitarChords' | 'violin' | 'flute' | 'none';
       volume: number; // 0-1
   };
 };
@@ -157,4 +157,5 @@ export type WorkerSettings = {
     composerControlsInstruments: boolean;
     mood: Mood;
     seed?: number;
+    lfoEnabled: boolean;
 };
