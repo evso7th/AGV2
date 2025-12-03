@@ -24,14 +24,13 @@ type SynthVoice = {
 export class AccompanimentSynthManager {
     private audioContext: AudioContext;
     private destination: AudioNode;
-    private activeInstrumentName: AccompanimentInstrument | 'none' = 'organ';
+    private activeInstrumentName: AccompanimentInstrument | 'none' = 'synth';
     public isInitialized = false;
 
     // Synth Instruments (Worklet-based pool)
     private synthPool: SynthVoice[] = [];
     private synthOutput: GainNode;
     private preamp: GainNode; // Pre-amplifier for the synth section
-    private nextSynthVoice = 0;
     private isSynthPoolInitialized = false;
 
     constructor(audioContext: AudioContext, destination: AudioNode) {
@@ -42,9 +41,8 @@ export class AccompanimentSynthManager {
         this.synthOutput.connect(this.destination);
 
         this.preamp = this.audioContext.createGain();
-        this.preamp.gain.value = 2.8; // Doubled from 1.4 to compensate for filter volume loss
+        this.preamp.gain.value = 1.4; // PLAN-90: Final volume calibration
         this.preamp.connect(this.synthOutput);
-        this.nextSynthVoice = 0;
     }
 
     async init() {
@@ -62,16 +60,16 @@ export class AccompanimentSynthManager {
         if (this.isSynthPoolInitialized) return;
         try {
             await this.audioContext.audioWorklet.addModule('/worklets/chord-processor.js');
-            for (let i = 0; i < 8; i++) { // Increased pool size to 8
-                const worklet = new AudioWorkletNode(this.audioContext, 'chord-processor', {
-                    processorOptions: { sampleRate: this.audioContext.sampleRate },
-                    outputChannelCount: [2]
-                });
-                worklet.connect(this.preamp);
-                this.synthPool.push({ worklet });
-            }
+            // We only need ONE chord processor, as it handles polyphony internally.
+            const worklet = new AudioWorkletNode(this.audioContext, 'chord-processor', {
+                processorOptions: { sampleRate: this.audioContext.sampleRate },
+                outputChannelCount: [2]
+            });
+            worklet.connect(this.preamp);
+            this.synthPool.push({ worklet });
+            
             this.isSynthPoolInitialized = true;
-            console.log('[AccompManager] Synth pool initialized with 8 voices.');
+            console.log('[AccompManager] Synth pool initialized with a single chord processor.');
         } catch (e) {
             console.error('[AccompManager] Failed to init synth pool:', e);
         }
@@ -85,17 +83,12 @@ export class AccompanimentSynthManager {
 
         const instrumentToPlay = (composerControlsInstruments && instrumentHint) ? instrumentHint : this.activeInstrumentName;
         
-        // GUARD CLAUSE: If the target instrument is not a synth, skip it.
-        if (instrumentToPlay === 'none' || !SYNTH_PRESETS.hasOwnProperty(instrumentToPlay)) {
-            if (instrumentToPlay !== 'none') {
-                // This console log is for debugging and can be removed if it becomes too noisy.
-                // It correctly identifies when an event is routed here for a non-synth instrument.
-                // console.log(`[AccompManager] Instrument "${instrumentToPlay}" is not a synth preset. Skipping.`);
-            }
+        console.log(`[AccompManager] schedule called. Control: ${composerControlsInstruments}, Hint: ${instrumentHint}, Active: ${this.activeInstrumentName}. Will play: ${instrumentToPlay}`);
+
+
+        if (instrumentToPlay === 'none') {
             return;
         }
-
-        console.log(`[AccompManager] schedule called. Control: ${composerControlsInstruments}, Hint: ${instrumentHint}, Active: ${this.activeInstrumentName}. Will play: ${instrumentToPlay}`);
 
         const beatDuration = 60 / tempo;
         const notes: Note[] = events.map(event => ({
@@ -112,48 +105,54 @@ export class AccompanimentSynthManager {
     private scheduleSynth(instrumentName: keyof typeof SYNTH_PRESETS, notes: Note[], barStartTime: number) {
         if (!this.isSynthPoolInitialized || this.synthPool.length === 0) return;
 
-        // The preset is guaranteed to exist due to the guard clause in schedule().
-        const preset = SYNTH_PRESETS[instrumentName];
-      
+        let preset = SYNTH_PRESETS[instrumentName];
+        if (!preset) {
+            console.warn(`[AccompManager] Synth preset not found for: ${instrumentName}. Using default 'synth'.`);
+            instrumentName = 'synth';
+            preset = SYNTH_PRESETS[instrumentName];
+        }
+
+        const workletNode = this.synthPool[0]?.worklet;
+        if (!workletNode) return;
+
+        const messages: any[] = [];
+
         for (const note of notes) {
-            const voice = this.synthPool[this.nextSynthVoice % this.synthPool.length];
-            this.nextSynthVoice++;
-            if (voice && voice.worklet && voice.worklet.port) {
-                const noteId = `${barStartTime + note.time}-${note.midi}`;
-                const frequency = midiToFreq(note.midi);
-                
-                const noteOnTime = barStartTime + note.time;
-                const noteOffTime = noteOnTime + note.duration;
-                
-                // The preset from the library is the definitive source of parameters.
-                const paramsToUse = preset;
+            const noteId = `${barStartTime + note.time}-${note.midi}`;
+            const frequency = midiToFreq(note.midi);
+            
+            const noteOnTime = barStartTime + note.time;
+            const noteOffTime = noteOnTime + note.duration;
+            
+            const paramsToUse = preset;
 
-                const finalFlatParams = {
-                    ...paramsToUse.adsr,
-                    ...paramsToUse.filter,
-                    layers: paramsToUse.layers,
-                    lfo: paramsToUse.lfo,
-                    effects: paramsToUse.effects,
-                    portamento: paramsToUse.portamento
-                };
+            const finalFlatParams = {
+                ...paramsToUse.adsr,
+                ...paramsToUse.filter,
+                layers: paramsToUse.layers,
+                lfo: paramsToUse.lfo,
+                effects: paramsToUse.effects,
+                portamento: paramsToUse.portamento
+            };
 
-                const message = {
-                    type: 'noteOn',
-                    noteId,
-                    frequency,
-                    velocity: note.velocity,
-                    when: noteOnTime,
-                    params: finalFlatParams
-                };
-                
-                voice.worklet.port.postMessage(message);
-                
-                voice.worklet.port.postMessage({
-                    type: 'noteOff',
-                    noteId: noteId,
-                    when: noteOffTime
-                });
-            }
+            messages.push({
+                type: 'noteOn',
+                noteId,
+                frequency,
+                velocity: note.velocity,
+                when: noteOnTime,
+                params: finalFlatParams
+            });
+            
+            messages.push({
+                type: 'noteOff',
+                noteId: noteId,
+                when: noteOffTime
+            });
+        }
+        
+        if (messages.length > 0) {
+            workletNode.port.postMessage(messages);
         }
     }
     
