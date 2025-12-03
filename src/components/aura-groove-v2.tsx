@@ -40,10 +40,10 @@ export function AuraGrooveV2({
     setIsClient(true);
   }, []);
 
-  const melodyInstrumentList: (MelodyInstrument | 'none')[] = ['piano', 'violin', 'flute', 'synth', 'organ', 'mellotron', 'theremin', 'E-Bells_melody', 'G-Drops', 'acousticGuitarSolo', 'electricGuitar', 'ambientPad', 'none'];
-  const textureInstrumentList: (AccompanimentInstrument | 'none')[] = ['synth', 'organ', 'mellotron', 'theremin', 'ambientPad', 'electricGuitar', 'none'];
+  const melodyInstrumentList: MelodyInstrument[] = ['piano', 'violin', 'flute', 'synth', 'organ', 'mellotron', 'theremin', 'E-Bells_melody', 'G-Drops', 'acousticGuitarSolo', 'electricGuitar', 'ambientPad', 'none'];
+  const accompanimentInstrumentList: AccompanimentInstrument[] = ['piano', 'violin', 'flute', 'synth', 'organ', 'mellotron', 'theremin', 'E-Bells_melody', 'G-Drops', 'acousticGuitarSolo', 'electricGuitar', 'ambientPad', 'guitarChords', 'none'];
   const harmonyInstrumentList: ('piano' | 'guitarChords' | 'none')[] = ['piano', 'guitarChords', 'none'];
-  const bassInstrumentList: (BassInstrument | 'none')[] = ['classicBass', 'glideBass', 'ambientDrone', 'resonantGliss', 'hypnoticDrone', 'livingRiff', 'none'];
+  const bassInstrumentList: BassInstrument[] = ['classicBass', 'glideBass', 'ambientDrone', 'resonantGliss', 'hypnoticDrone', 'livingRiff', 'none'];
   const moodList: Mood[] = ['epic', 'joyful', 'enthusiastic', 'melancholic', 'dark', 'anxious', 'dreamy', 'contemplative', 'calm'];
   const genreList: Genre[] = ['trance', 'ambient', 'progressive', 'rock', 'house', 'rnb', 'ballad', 'reggae', 'blues', 'celtic'];
 
@@ -218,13 +218,13 @@ export function AuraGrooveV2({
                   <CardContent className="space-y-1.5 p-3 pt-0">
                       {(Object.keys(instrumentSettings) as Array<keyof typeof instrumentSettings>).map((part) => {
                           const settings = instrumentSettings[part];
-                          let instrumentList: (string | 'none')[] = [];
+                          let instrumentList: string[] = [];
                           if (part === 'bass') {
                               instrumentList = bassInstrumentList;
                           } else if (part === 'melody') {
                               instrumentList = melodyInstrumentList;
                           } else if (part === 'accompaniment') {
-                              instrumentList = textureInstrumentList;
+                              instrumentList = accompanimentInstrumentList;
                           } else if (part === 'harmony') {
                               instrumentList = harmonyInstrumentList;
                           }
@@ -244,7 +244,7 @@ export function AuraGrooveV2({
                                         <SelectTrigger className="h-8 text-xs"><SelectValue /></SelectTrigger>
                                         <SelectContent>
                                             {instrumentList.map(inst => (
-                                              <SelectItem key={inst} value={inst} className="text-xs">{displayNames[inst] || inst}</SelectItem>
+                                              <SelectItem key={inst} value={inst} className="text-xs capitalize">{displayNames[inst] || inst}</SelectItem>
                                             ))}
                                         </SelectContent>
                                     </Select>
