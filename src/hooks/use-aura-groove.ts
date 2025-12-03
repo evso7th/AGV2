@@ -39,7 +39,7 @@ export const useAuraGroove = () => {
     accompaniment: { name: "synth", volume: 0.7 },
     harmony: { name: "guitarChords", volume: 0.6 },
   });
-  const [textureSettings, setTextureSettings] = useState<TextureSettings>({
+  const [textureSettings, setTextureSettings] = useState<Omit<TextureSettings, 'pads'>>({
       sparkles: { enabled: false, volume: 0.7 },
       sfx: { enabled: false, volume: 0.5 },
   });
@@ -75,10 +75,7 @@ export const useAuraGroove = () => {
       genre,
       instrumentSettings,
       drumSettings: { ...drumSettings, enabled: drumSettings.pattern !== 'none' },
-      textureSettings: {
-          sparkles: { enabled: textureSettings.sparkles.enabled, volume: textureSettings.sparkles.volume },
-          sfx: { enabled: textureSettings.sfx.enabled, volume: textureSettings.sfx.volume },
-      },
+      textureSettings,
       density,
       composerControlsInstruments,
       mood,
@@ -97,9 +94,10 @@ export const useAuraGroove = () => {
             }
         });
         setVolume('drums', drumSettings.volume);
-        setEngineTextureSettings({sparkles: textureSettings.sparkles});
+        setEngineTextureSettings(textureSettings);
         setBassTechnique(instrumentSettings.bass.technique);
     }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isInitialized]);
 
   // Sync settings with engine whenever they change
@@ -196,7 +194,7 @@ export const useAuraGroove = () => {
   const handleTextureEnabledChange = (part: 'sparkles' | 'sfx', enabled: boolean) => {
       setTextureSettings(prev => {
           const newSettings = { ...prev, [part]: { ...prev[part], enabled }};
-          setEngineTextureSettings(newSettings as any);
+          setEngineTextureSettings(newSettings);
           return newSettings;
       });
   };

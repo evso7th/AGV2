@@ -3,7 +3,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { SlidersHorizontal, Music, Pause, Speaker, FileMusic, Drum, GitBranch, Atom, Piano, Home, X, Sparkles, Sprout, LayoutGrid, Timer, Guitar, RefreshCw, Bot, Waves } from "lucide-react";
+import { SlidersHorizontal, Music, Pause, Speaker, FileMusic, Drum, GitBranch, Atom, Piano, Home, X, Sparkles, Sprout, LayoutGrid, Timer, Guitar, RefreshCw, Bot, Waves, BotMessageSquare } from "lucide-react";
 import Image from "next/image";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -40,8 +40,8 @@ export function AuraGrooveV2({
     setIsClient(true);
   }, []);
 
-  const melodyInstrumentList: (MelodyInstrument | 'none')[] = ['piano', 'violin', 'flute', 'synth', 'organ', 'mellotron', 'theremin', 'E-Bells_melody', 'G-Drops', 'acousticGuitarSolo', 'electricGuitar', 'none'];
-  const textureInstrumentList: (AccompanimentInstrument | 'none')[] = ['violin', 'flute', 'synth', 'organ', 'mellotron', 'theremin', 'none'];
+  const melodyInstrumentList: (MelodyInstrument | 'none')[] = ['piano', 'violin', 'flute', 'synth', 'organ', 'mellotron', 'theremin', 'E-Bells_melody', 'G-Drops', 'acousticGuitarSolo', 'electricGuitar', 'ambientPad', 'none'];
+  const textureInstrumentList: (AccompanimentInstrument | 'none')[] = ['synth', 'organ', 'mellotron', 'theremin', 'ambientPad', 'electricGuitar', 'none'];
   const harmonyInstrumentList: ('piano' | 'guitarChords' | 'none')[] = ['piano', 'guitarChords', 'none'];
   const bassInstrumentList: (BassInstrument | 'none')[] = ['classicBass', 'glideBass', 'ambientDrone', 'resonantGliss', 'hypnoticDrone', 'livingRiff', 'none'];
   const moodList: Mood[] = ['epic', 'joyful', 'enthusiastic', 'melancholic', 'dark', 'anxious', 'dreamy', 'contemplative', 'calm'];
@@ -53,6 +53,16 @@ export function AuraGrooveV2({
     'electricGuitar': 'Electric Guitar',
     'neuro_f_matrix': 'Neuro F-Matrix',
     'rnb': 'R&B',
+    'ambientPad': 'Ambient Pad',
+    'E-Bells_melody': 'E-Bells',
+    'G-Drops': 'G-Drops',
+    'classicBass': 'Classic Bass',
+    'glideBass': 'Glide Bass',
+    'ambientDrone': 'Ambient Drone',
+    'resonantGliss': 'Resonant Gliss',
+    'hypnoticDrone': 'Hypnotic Drone',
+    'livingRiff': 'Living Riff',
+
   };
 
   const isFractalStyle = score === 'neuro_f_matrix';
@@ -223,12 +233,18 @@ export function AuraGrooveV2({
                           return (
                             <div key={part} className="p-2 border rounded-md space-y-2">
                                <div className="grid grid-cols-2 items-center gap-2">
-                                    <Label className="font-semibold flex items-center gap-1.5 capitalize text-xs"><Waves className="h-4 w-4"/>{part}</Label>
+                                    <Label className="font-semibold flex items-center gap-1.5 capitalize text-xs">
+                                      {part === 'melody' && <GitBranch className="h-4 w-4"/>}
+                                      {part === 'accompaniment' && <BotMessageSquare className="h-4 w-4"/>}
+                                      {part === 'bass' && <Waves className="h-4 w-4"/>}
+                                      {part === 'harmony' && <Piano className="h-4 w-4"/>}
+                                      {part}
+                                    </Label>
                                     <Select value={settings.name} onValueChange={(v) => setInstrumentSettings(part as any, v as any)} disabled={isDisabled}>
                                         <SelectTrigger className="h-8 text-xs"><SelectValue /></SelectTrigger>
                                         <SelectContent>
                                             {instrumentList.map(inst => (
-                                              <SelectItem key={inst} value={inst} className="text-xs">{displayNames[inst] || inst.charAt(0).toUpperCase() + inst.slice(1).replace(/([A-Z])/g, ' $1')}</SelectItem>
+                                              <SelectItem key={inst} value={inst} className="text-xs">{displayNames[inst] || inst}</SelectItem>
                                             ))}
                                         </SelectContent>
                                     </Select>

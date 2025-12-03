@@ -385,8 +385,13 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
   }, []);
 
   const setTextureSettingsCallback = useCallback((settings: Omit<TextureSettings, 'pads'>) => {
-    setVolumeCallback('sparkles', settings.sparkles.enabled ? settings.sparkles.volume : 0);
-    setVolumeCallback('sfx', settings.sfx.enabled ? settings.sfx.volume : 0);
+    if (!settings) return;
+    if (settings.sparkles) {
+      setVolumeCallback('sparkles', settings.sparkles.enabled ? settings.sparkles.volume : 0);
+    }
+    if (settings.sfx) {
+      setVolumeCallback('sfx', settings.sfx.enabled ? settings.sfx.volume : 0);
+    }
   }, [setVolumeCallback]);
   
   const setEQGainCallback = useCallback((bandIndex: number, gain: number) => {}, []);
