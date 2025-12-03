@@ -31,7 +31,6 @@ export class AccompanimentSynthManager {
     private synthPool: SynthVoice[] = [];
     private synthOutput: GainNode;
     private preamp: GainNode; // Pre-amplifier for the synth section
-    private nextSynthVoice = 0;
     private isSynthPoolInitialized = false;
 
     constructor(audioContext: AudioContext, destination: AudioNode) {
@@ -84,9 +83,6 @@ export class AccompanimentSynthManager {
 
         const instrumentToPlay = (composerControlsInstruments && instrumentHint) ? instrumentHint : this.activeInstrumentName;
         
-        // console.log(`[AccompManager] schedule called. Control: ${composerControlsInstruments}, Hint: ${instrumentHint}, Active: ${this.activeInstrumentName}. Will play: ${instrumentToPlay}`);
-
-
         if (instrumentToPlay === 'none') {
             return;
         }
@@ -118,10 +114,9 @@ export class AccompanimentSynthManager {
 
         const messages: any[] = [];
         
-        // Group notes by their start time to apply strumming effect
         const notesByTime = new Map<number, Note[]>();
         for (const note of notes) {
-            const timeKey = Math.round(note.time * 1000); // Group by millisecond
+            const timeKey = Math.round(note.time * 1000);
             if (!notesByTime.has(timeKey)) {
                 notesByTime.set(timeKey, []);
             }
@@ -134,7 +129,7 @@ export class AccompanimentSynthManager {
                 const humanizedTime = note.time + strumOffset;
                 const noteOnTime = barStartTime + humanizedTime;
                 const noteOffTime = noteOnTime + note.duration;
-                const noteId = `${noteOnTime.toFixed(4)}-${note.midi}`; // Use humanized time for ID
+                const noteId = `${noteOnTime.toFixed(4)}-${note.midi}`;
                 const frequency = midiToFreq(note.midi);
                 
                 const paramsToUse = { ...preset };
@@ -167,7 +162,6 @@ export class AccompanimentSynthManager {
                     when: noteOffTime
                 });
                 
-                // Add a small random delay for the next note in the chord
                 strumOffset += (Math.random() * 0.008) + 0.002; // 2ms to 10ms
             }
         }
@@ -187,7 +181,6 @@ export class AccompanimentSynthManager {
         }
         console.log(`[AccompManager] Setting active instrument to: ${instrumentName}`);
         this.activeInstrumentName = instrumentName;
-        // No volume changes needed here anymore, as `schedule` handles routing.
     }
     
     public setPreampGain(gain: number) {

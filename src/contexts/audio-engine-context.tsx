@@ -262,7 +262,7 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
                 
                 if (type === 'SCORE_READY' && payload && payload.events && payload.barDuration && settingsRef.current && audioContextRef.current) {
                     
-                    const { events, barDuration, instrumentHints, mood, genre } = payload;
+                    const { events, barDuration, instrumentHints } = payload;
                     let scheduleTime = nextBarTimeRef.current;
                     const now = audioContextRef.current.currentTime;
                     const lookahead = 0.1; 
@@ -272,7 +272,7 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
                         console.warn(`[AudioEngine] Worker tick was late. Resyncing schedule time from ${nextBarTimeRef.current.toFixed(3)} to ${scheduleTime.toFixed(3)}.`);
                     }
                     
-                    const { composerControlsInstruments, lfoEnabled } = settingsRef.current;
+                    const { composerControlsInstruments, lfoEnabled, mood, genre } = settingsRef.current;
                     
                     scheduleEvents(events, scheduleTime, settingsRef.current.bpm, instrumentHints, composerControlsInstruments, mood, genre, lfoEnabled);
                     
