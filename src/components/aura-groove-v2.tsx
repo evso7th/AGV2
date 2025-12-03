@@ -2,7 +2,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { SlidersHorizontal, Music, Pause, Speaker, FileMusic, Drum, GitBranch, Atom, Piano, Home, X, Sparkles, Sprout, LayoutGrid, Timer, Guitar, RefreshCw, Bot, Waves, BotMessageSquare } from "lucide-react";
+import { SlidersHorizontal, Music, Pause, Speaker, FileMusic, Drum, GitBranch, Atom, Piano, Home, X, Sparkles, Sprout, LayoutGrid, Timer, Guitar, RefreshCw, Bot, Waves, BotMessageSquare, Zap } from "lucide-react";
 import Image from "next/image";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -29,7 +29,7 @@ export function AuraGrooveV2({
   isEqModalOpen, setIsEqModalOpen, eqSettings, handleEqChange,
   timerSettings, handleTimerDurationChange, handleToggleTimer,
   composerControlsInstruments, setComposerControlsInstruments,
-  mood, setMood, genre, setGenre, isRegenerating,
+  mood, setMood, genre, setGenre, isRegenerating, lfoEnabled, setLfoEnabled,
 }: AuraGrooveProps) {
 
   const router = useRouter();
@@ -166,6 +166,14 @@ export function AuraGrooveV2({
                           </Label>
                           <div className="col-span-2 flex items-center">
                               <Switch id="composer-control-switch" checked={composerControlsInstruments} onCheckedChange={setComposerControlsInstruments} disabled={isInitializing || isPlaying}/>
+                          </div>
+                      </div>
+                      <div className="grid grid-cols-3 items-center gap-2">
+                          <Label htmlFor="lfo-switch" className="text-right text-xs flex items-center gap-1.5 justify-end">
+                            <Zap className="h-3 w-3" /> LFO
+                          </Label>
+                          <div className="col-span-2 flex items-center">
+                              <Switch id="lfo-switch" checked={lfoEnabled} onCheckedChange={setLfoEnabled} disabled={isInitializing || isPlaying}/>
                           </div>
                       </div>
                     </>
@@ -335,5 +343,7 @@ export function AuraGrooveV2({
     </div>
   );
 }
+
+    
 
     
