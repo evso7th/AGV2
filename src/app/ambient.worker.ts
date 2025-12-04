@@ -82,6 +82,7 @@ const Scheduler = {
         density: 0.5,
         composerControlsInstruments: true,
         mood: 'melancholic' as Mood,
+        lfoEnabled: true,
     } as WorkerSettings,
 
     get barDuration() { 
@@ -98,6 +99,7 @@ const Scheduler = {
             mood: settings.mood,
             genre: settings.genre,
             seed: settings.seed ?? Date.now(),
+            lfoEnabled: settings.lfoEnabled,
         });
         this.barCount = 0;
         lastSparkleTime = -Infinity;
@@ -170,6 +172,7 @@ const Scheduler = {
                lambda: 1.0 - (this.settings.density * 0.5 + 0.3),
                mood: this.settings.mood,
                genre: this.settings.genre,
+               lfoEnabled: this.settings.lfoEnabled,
            });
        }
        
@@ -213,7 +216,9 @@ const Scheduler = {
             payload: {
                 events: scorePayload.events,
                 instrumentHints: scorePayload.instrumentHints,
-                barDuration: this.barDuration
+                barDuration: this.barDuration,
+                mood: this.settings.mood,
+                genre: this.settings.genre,
             }
         });
 

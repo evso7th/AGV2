@@ -95,9 +95,9 @@ export type InstrumentType =
   // Спецэффекты
   | 'sfx';
 
-export type MelodyInstrument = 'piano' | 'violin' | 'flute' | 'synth' | 'organ' | 'mellotron' | 'theremin' | 'E-Bells_melody' | 'G-Drops' | 'acousticGuitarSolo' | 'electricGuitar' | 'none';
+export type MelodyInstrument = 'piano' | 'violin' | 'flute' | 'synth' | 'organ' | 'mellotron' | 'theremin' | 'E-Bells_melody' | 'G-Drops' | 'acousticGuitarSolo' | 'electricGuitar' | 'ambientPad' | 'none';
 export type BassInstrument = 'classicBass' | 'glideBass' | 'ambientDrone' | 'resonantGliss' | 'hypnoticDrone' | 'livingRiff' | 'none';
-export type AccompanimentInstrument = MelodyInstrument | 'guitarChords';
+export type AccompanimentInstrument = MelodyInstrument | 'guitarChords' | 'ambientPad';
 
 
 /**
@@ -118,10 +118,10 @@ export type BassSynthParams = {
  */
 export type SfxSynthParams = {
     duration: number;
-    attack: number;
-    decay: number;
+    attack: { min: number; max: number };
+    decay: { min: number; max: number };
     sustainLevel: number;
-    release: number;
+    release: { min: number; max: number };
     oscillators: { type: string; detune: number }[];
     startFreq: number;
     endFreq: number;
@@ -186,7 +186,7 @@ export type InstrumentHints = {
     bass?: BassInstrument;
     melody?: MelodyInstrument;
     accompaniment?: AccompanimentInstrument;
-    harmony?: 'piano' | 'guitarChords';
+    harmony?: 'piano' | 'guitarChords' | 'violin' | 'flute';
     bassTechnique?: BassTechnique;
 };
 

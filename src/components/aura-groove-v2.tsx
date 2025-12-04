@@ -12,7 +12,7 @@ import { Slider } from "@/components/ui/slider";
 import { Switch } from "@/components/ui/switch";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
-import type { AuraGrooveProps } from "./aura-groove";
+import type { AuraGrooveProps } from "../hooks/use-aura-groove";
 import { useRouter } from "next/navigation";
 import { formatTime, cn } from "@/lib/utils";
 import type { BassInstrument, MelodyInstrument, AccompanimentInstrument, Mood, Genre } from '@/types/music';
@@ -236,7 +236,7 @@ export function AuraGrooveV2({
                           } else if (part === 'harmony') {
                               instrumentList = harmonyInstrumentList;
                           }
-                          const isDisabled = isInitializing || isPlaying || composerControl;
+                          const isDisabled = isInitializing || (isPlaying && composerControlsInstruments);
 
                           return (
                             <div key={part} className="p-2 border rounded-md space-y-2">
@@ -343,7 +343,3 @@ export function AuraGrooveV2({
     </div>
   );
 }
-
-    
-
-    

@@ -2,7 +2,7 @@
 
 import type { FractalEvent, Mood, Genre, Technique, BassSynthParams, InstrumentType, MelodyInstrument, BassInstrument, AccompanimentInstrument, ResonanceMatrix, InstrumentHints, AccompanimentTechnique } from '@/types/fractal';
 import { ElectronicK, TraditionalK, AmbientK } from './resonance-matrices';
-import { getScaleForMood, STYLE_DRUM_PATTERNS, generateAmbientBassPhrase, mutateBassPhrase, createAccompanimentAxiom, PERCUSSION_SETS, TEXTURE_INSTRUMENT_WEIGHTS_BY_MOOD, getAccompanimentTechnique, createBassFill as createBassFillFromTheory, createDrumFill, AMBIENT_ACCOMPANIMENT_WEIGHTS } from './music-theory';
+import { getScaleForMood, STYLE_DRUM_PATTERNS, generateAmbientBassPhrase, mutateBassPhrase, createAccompanimentAxiom, PERCUSSION_SETS, TEXTURE_INSTRUMENT_WEIGHTS_BY_MOOD, getAccompanimentTechnique, createBassFill as createBassFillFromTheory, createDrumFill, AMBIENT_ACCOMPANIMENT_WEIGHTS, SFX_GRAMMAR } from './music-theory';
 
 export type Branch = {
   id: string;
@@ -104,45 +104,59 @@ function createDrumAxiom(genre: Genre, mood: Mood, tempo: number, random: { next
     return { events: axiomEvents, tags: loop.tags };
 }
 
-function createSfxScenario(mood: Mood, genre: Genre, random: { next: () => number, nextInt: (max: number) => number }): { drumFill: FractalEvent[], bassFill: FractalEvent[], accompanimentFill: FractalEvent[] } {
-    const drumFill: FractalEvent[] = [];
-    const bassFill: FractalEvent[] = [];
-    const accompanimentFill: FractalEvent[] = [];
-    
+function createSfxScenario(mood: Mood, genre: Genre, random: { next: () => number, nextInt: (max: number) => number }): FractalEvent[] {
+    const sfxPhrase: FractalEvent[] = [];
     const scale = getScaleForMood(mood);
-    const rootNote = scale[random.nextInt(Math.floor(scale.length / 2))]; // Select a root from the lower half of the scale
-    const isMinor = mood === 'melancholic' || mood === 'dark';
-    const third = rootNote + (isMinor ? 3 : 4);
-    const fifth = rootNote + 7;
-    const chord = [rootNote, third, fifth].filter(n => scale.some(sn => sn % 12 === n % 12));
 
-    const fillParams = { cutoff: 1200, resonance: 0.6, distortion: 0.25, portamento: 0.0 };
+    const sfxType = random.nextInt(3); 
+    const numberOfEvents = 2 + random.nextInt(4); // 2-5 events per phrase
+    let currentTime = random.next() * 2; // Start at a random time in the first half
 
-    const fillDensity = random.nextInt(4) + 3; // 3 to 6 notes for the core rhythm
-    let fillTime = 3.0; // Start the fill in the last beat
-
-    for(let i = 0; i < fillDensity; i++) {
-        const duration = (1.0 / fillDensity) * (0.8 + random.next() * 0.4); // slightly variable duration
-        const currentTime = fillTime;
+    for (let i = 0; i < numberOfEvents; i++) {
+        const duration = 0.5 + random.next();
+        const startFreq = SFX_GRAMMAR.freqRanges.low.min + random.next() * (SFX_GRAMMAR.freqRanges.high.max - SFX_GRAMMAR.freqRanges.low.min);
+        const endFreq = startFreq * (0.5 + random.next() * 1.5);
         
-        const drumInstruments: InstrumentType[] = ['drum_tom_low', 'drum_tom_mid', 'drum_tom_high', 'drum_snare'];
-        const drumInstrument = drumInstruments[random.nextInt(drumInstruments.length)];
-        drumFill.push({ type: drumInstrument, note: 40 + i, duration, time: currentTime, weight: 0.7 + random.next() * 0.2, technique: 'hit', dynamics: 'mf', phrasing: 'staccato', params: {} });
-
-        if (random.next() > 0.3) {
-             bassFill.push({ type: 'bass', note: chord[random.nextInt(chord.length)], duration: duration * 0.9, time: currentTime, weight: 0.8 + random.next() * 0.2, technique: 'fill', dynamics: 'mf', phrasing: 'staccato', params: fillParams });
-        }
+        sfxPhrase.push({
+            type: 'sfx',
+            note: 60, // Placeholder
+            time: currentTime,
+            duration: duration,
+            weight: 0.3 + random.next() * 0.4,
+            technique: 'swell',
+            dynamics: 'p',
+            phrasing: 'legato',
+            params: {
+                duration,
+                attack: { min: 0.1, max: 0.5 },
+                decay: { min: 0.2, max: 0.6 },
+                sustainLevel: 0.4,
+                release: { min: 0.3, max: 1.0 },
+                oscillators: [{ type: SFX_GRAMMAR.textures.ambient[random.nextInt(SFX_GRAMMAR.textures.ambient.length)], detune: random.nextInt(20) - 10 }],
+                startFreq,
+                endFreq,
+                pan: random.next() * 2 - 1,
+                distortion: random.next() * 0.1
+            } as SfxSynthParams
+        });
         
-        fillTime += duration;
+        currentTime += duration * (0.5 + random.next() * 0.5);
     }
     
-    const climaxTime = Math.min(3.75, fillTime);
-    drumFill.push({ type: 'drum_crash', note: 49, duration: 1, time: climaxTime, weight: 0.9, technique: 'hit', dynamics: 'f', phrasing: 'legato', params: {} });
-    if (random.next() > 0.2) {
-      bassFill.push({ type: 'bass', note: rootNote, duration: 0.5, time: climaxTime, weight: 1.0, technique: 'fill', dynamics: 'f', phrasing: 'staccato', params: fillParams });
+     // Normalize to fit within one bar
+    const totalDuration = sfxPhrase.reduce((sum, e) => sum + e.duration, 0);
+    if (totalDuration > 4) {
+        const scaleFactor = 4.0 / totalDuration;
+        let runningTime = 0;
+        sfxPhrase.forEach(e => {
+            e.duration *= scaleFactor;
+            if (e.params) (e.params as SfxSynthParams).duration = e.duration;
+            e.time = runningTime;
+            runningTime += e.duration;
+        });
     }
-
-    return { drumFill, bassFill, accompanimentFill };
+    
+    return sfxPhrase;
 }
 
 
@@ -155,7 +169,7 @@ export class FractalMusicEngine {
   private random: { next: () => number; nextInt: (max: number) => number };
   private nextWeatherEventEpoch: number;
   public needsBassReset: boolean = false;
-  private sfxFillForThisEpoch: { drum: FractalEvent[], bass: FractalEvent[], accompaniment: FractalEvent[] } | null = null;
+  private sfxFillForThisEpoch: FractalEvent[] | null = null;
   private nextHarmonyEventEpoch: number = 0;
 
   // Композитор Фраз для Баса
@@ -339,16 +353,9 @@ export class FractalMusicEngine {
 
   public generateExternalImpulse() {
     console.log(`%c[WEATHER EVENT] at epoch ${this.epoch}: Triggering musical scenario.`, "color: blue; font-weight: bold;");
-    
-    const { drumFill, bassFill, accompanimentFill } = createSfxScenario(this.config.mood, this.config.genre, this.random);
-
-    this.sfxFillForThisEpoch = {
-        drum: drumFill,
-        bass: bassFill,
-        accompaniment: accompanimentFill
-    };
-    
-    console.log(`%c  -> Created ONE-OFF musical scenario for this epoch.`, "color: blue;");
+    const sfxEvents = createSfxScenario(this.config.mood, this.config.genre, this.random);
+    this.sfxFillForThisEpoch = sfxEvents;
+    console.log(`%c  -> Created ONE-OFF SFX phrase for this epoch.`, "color: blue;");
   }
 
   private applyNaturalDecay(events: FractalEvent[], barDuration: number): FractalEvent[] {
@@ -523,7 +530,8 @@ export class FractalMusicEngine {
     let bassPhraseForThisBar: FractalEvent[] = [];
     if (bassPlanItem && this.bassPhraseLibrary.length > 0) {
         const phrase = this.bassPhraseLibrary[bassPlanItem.phraseIndex];
-        const phraseDurationInBars = Math.ceil(phrase.reduce((max, e) => Math.max(max, e.time + e.duration), 0) / 4);
+        const phraseDurationInBeats = phrase.reduce((max, e) => Math.max(max, e.time + e.duration), 0);
+        const phraseDurationInBars = Math.ceil(phraseDurationInBeats / 4);
 
         if (this.barsInCurrentBassPhrase === 0) {
             bassPhraseForThisBar = phrase;
@@ -568,6 +576,13 @@ export class FractalMusicEngine {
         drumEvents.push(...drumAxiom);
     }
     
+    // --- SFX (Weather Event) ---
+    if (this.sfxFillForThisEpoch) {
+      output.push(...this.sfxFillForThisEpoch);
+      this.sfxFillForThisEpoch = null;
+    }
+
+
     // --- DRUM FILL REACTION ---
     const hasDrumFill = drumEvents.some(e => e.technique === 'fill' || (e.type as string).includes('tom'));
     if(hasDrumFill && this.random.next() < 0.6) { // 60% chance to react

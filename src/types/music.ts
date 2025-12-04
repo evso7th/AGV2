@@ -61,11 +61,14 @@ export type DrumAndPercussionInstrument =
     | 'drum_snare_ghost_note'
     | 'drum_snarepress'
     | 'drum_tom_low'
+    | 'drum_tom_mid'
+    | 'drum_tom_high'
     | 'drum_ride'
     | 'drum_a_ride1'
     | 'drum_a_ride2'
     | 'drum_a_ride3'
     | 'drum_a_ride4'
+    | 'drum_crash'
     | 'drum_closed_hi_hat_ghost'
     | 'drum_hihat_open'
     | 'drum_hihat_closed'
@@ -89,10 +92,9 @@ export type DrumAndPercussionInstrument =
 
 export type InstrumentType = BassInstrument | MelodyInstrument | AccompanimentInstrument | EffectInstrument | DrumAndPercussionInstrument | 'portamento' | 'autopilot_bass' | 'none';
 
-export type InstrumentPart = 'bass' | 'melody' | 'accompaniment' | 'harmony' | 'drums' | 'sparkles' | 'piano' | 'violin' | 'flute' | 'guitarChords' | 'acousticGuitarSolo' | 'electricGuitar' | 'sfx';
+export type InstrumentPart = 'bass' | 'melody' | 'accompaniment' | 'harmony' | 'drums' | 'sparkles' | 'piano' | 'violin' | 'flute' | 'guitarChords' | 'acousticGuitarSolo' | 'sfx';
 export type BassTechnique = 'arpeggio' | 'portamento' | 'glissando' | 'glide' | 'pulse';
 export type Technique = BassTechnique | 'pluck' | 'pick' | 'harm' | 'slide' | 'hit' | 'ghost' | 'swell' | 'fill';
-export type AccompanimentTechnique = 'choral' | 'alternating-bass-chord' | 'chord-pulsation' | 'arpeggio-fast' | 'arpeggio-slow' | 'alberti-bass';
 
 
 export type InstrumentSettings = {

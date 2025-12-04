@@ -1,10 +1,6 @@
 
-
-// PLAN 1.1 Correction: This file was modified to ensure robust parameter handling.
-// The logic now ensures that even if an unknown instrument is requested,
-// it gracefully defaults to a 'synth' preset instead of failing.
 import type { FractalEvent, MelodyInstrument, AccompanimentInstrument, BassSynthParams } from '@/types/fractal';
-import type { Note, WorkerSettings } from "@/types/music";
+import type { Note } from "@/types/music";
 import { SYNTH_PRESETS, type SynthPreset } from './synth-presets';
 
 

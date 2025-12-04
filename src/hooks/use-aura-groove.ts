@@ -141,19 +141,28 @@ export const useAuraGroove = () => {
   
   const handlePlayPause = useCallback(async () => {
     if (!isInitialized) {
-      return;
+      await initialize();
     }
     setEngineIsPlaying(!isPlaying);
-  }, [isInitialized, isPlaying, setEngineIsPlaying]);
+  }, [isInitialized, isPlaying, setEngineIsPlaying, initialize]);
 
   const handleRegenerate = useCallback(() => {
     setIsRegenerating(true);
     setTimeout(() => setIsRegenerating(false), 500); 
 
-    if (isPlaying) {
+    const wasPlaying = isPlaying;
+    if (wasPlaying) {
       setEngineIsPlaying(false);
     }
     resetWorker();
+    
+    // If it was playing, restart it after a short delay to allow the worker to re-init
+    if (wasPlaying) {
+      setTimeout(() => {
+        setEngineIsPlaying(true);
+      }, 100);
+    }
+
   }, [isPlaying, setEngineIsPlaying, resetWorker]);
 
   const handleInstrumentChange = (part: keyof InstrumentSettings, name: BassInstrument | MelodyInstrument | AccompanimentInstrument | 'piano' | 'guitarChords') => {
