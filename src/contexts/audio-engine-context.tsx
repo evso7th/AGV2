@@ -13,11 +13,6 @@ import { SparklePlayer } from '@/lib/sparkle-player';
 import { SfxSynthManager } from '@/lib/sfx-synth-manager';
 import { HarmonySynthManager } from '@/lib/harmony-synth-manager';
 import type { FractalEvent, InstrumentHints } from '@/types/fractal';
-import * as Tone from 'tone';
-
-export function noteToMidi(note: string): number {
-    return new (Tone.Frequency as any)(note).toMidi();
-}
 
 // --- Type Definitions ---
 type WorkerMessage = {
@@ -152,7 +147,8 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
       drumMachineRef.current.schedule(drumEvents, barStartTime, tempo);
     }
     
-    if (bassManagerRef.current && bassEvents.length > 0) {
+    // "Призрачная партия" - передаем басовую партитуру другим для гармонизации, но играем ее только если есть хинт
+    if (instrumentHints?.bass !== 'none' && bassManagerRef.current && bassEvents.length > 0) {
         bassManagerRef.current.play(bassEvents, barStartTime, tempo);
     }
 

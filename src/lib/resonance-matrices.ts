@@ -5,7 +5,7 @@ import { getScaleForMood } from './music-theory';
 // === ВСПОМОГАТЕЛЬНЫЕ ФУНКЦИИ ===
 
 /** Проверяет, что время событий совпадает с небольшой погрешностью */
-function areSimultaneous(timeA: number, timeB: number, tolerance: number = 0.05): boolean {
+export function areSimultaneous(timeA: number, timeB: number, tolerance: number = 0.05): boolean {
   return Math.abs(timeA - timeB) < tolerance;
 }
 
@@ -27,18 +27,18 @@ function isOnSnareBeat(timeInBeats: number): boolean {
 }
 
 // Функции-предикаты для типов событий
-const isGhostNote = (event: FractalEvent): boolean => event.technique === 'ghost';
-const isKick = (event: FractalEvent): boolean => event.type === 'drum_kick';
-const isSnare = (event: FractalEvent): boolean => event.type === 'drum_snare';
-const isBass = (event: FractalEvent): boolean => event.type === 'bass';
-const isCrash = (event: FractalEvent): boolean => event.type === 'drum_crash';
-const isFill = (event: FractalEvent): boolean => event.technique === 'fill';
-const isTom = (event: FractalEvent): boolean => (event.type as string).startsWith('drum_tom');
-const isAccompaniment = (event: FractalEvent): boolean => event.type === 'accompaniment';
-const isHarmony = (event: FractalEvent): boolean => event.type === 'harmony';
+export const isGhostNote = (event: FractalEvent): boolean => event.technique === 'ghost';
+export const isKick = (event: FractalEvent): boolean => event.type === 'drum_kick';
+export const isSnare = (event: FractalEvent): boolean => event.type === 'drum_snare';
+export const isBass = (event: FractalEvent): boolean => event.type === 'bass';
+export const isCrash = (event: FractalEvent): boolean => event.type === 'drum_crash';
+export const isFill = (event: FractalEvent): boolean => event.technique === 'fill';
+export const isTom = (event: FractalEvent): boolean => (event.type as string).startsWith('drum_tom');
+export const isAccompaniment = (event: FractalEvent): boolean => event.type === 'accompaniment';
+export const isHarmony = (event: FractalEvent): boolean => event.type === 'harmony';
 
-const isTonal = (event: FractalEvent): boolean => isBass(event) || isAccompaniment(event) || isHarmony(event);
-const isRhythmic = (event: FractalEvent): boolean => (event.type as string).startsWith('drum_') || (event.type as string).startsWith('perc-');
+export const isTonal = (event: FractalEvent): boolean => isBass(event) || isAccompaniment(event) || isHarmony(event);
+export const isRhythmic = (event: FractalEvent): boolean => (event.type as string).startsWith('drum_') || (event.type as string).startsWith('perc-');
 
 // === МАТРИЦЫ РЕЗОНАНСА ===
 

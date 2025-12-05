@@ -2,6 +2,7 @@
 import type { FractalEvent, MelodyInstrument, AccompanimentInstrument, BassSynthParams } from '@/types/fractal';
 import type { Note } from "@/types/music";
 import { SYNTH_PRESETS, type SynthPreset } from './synth-presets';
+import { noteToMidi, cn } from "@/lib/utils";
 
 
 function midiToFreq(midi: number): number {

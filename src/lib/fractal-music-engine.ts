@@ -1,7 +1,6 @@
 
-
-import type { FractalEvent, Mood, Genre, Technique, BassSynthParams, InstrumentType, MelodyInstrument, BassInstrument, AccompanimentInstrument, ResonanceMatrix, InstrumentHints, AccompanimentTechnique, MusicBlueprint, SectionName } from '@/types/fractal';
-import { ElectronicK, TraditionalK, AmbientK } from './resonance-matrices';
+import type { FractalEvent, Mood, Genre, Technique, BassSynthParams, InstrumentType, MelodyInstrument, BassInstrument, AccompanimentInstrument, ResonanceMatrix, InstrumentHints, AccompanimentTechnique, MusicBlueprint, SectionName, SfxSynthParams } from '@/types/fractal';
+import { ElectronicK, TraditionalK, AmbientK, isTonal, areSimultaneous } from './resonance-matrices';
 import { getScaleForMood, STYLE_DRUM_PATTERNS, generateAmbientBassPhrase, mutateBassPhrase, createAccompanimentAxiom, PERCUSSION_SETS, TEXTURE_INSTRUMENT_WEIGHTS_BY_MOOD, getAccompanimentTechnique, createBassFill as createBassFillFromTheory, createDrumFill, AMBIENT_ACCOMPANIMENT_WEIGHTS, SFX_GRAMMAR } from './music-theory';
 import { AMBIENT_BLUEPRINTS } from './blueprints';
 
@@ -565,4 +564,3 @@ export class FractalMusicEngine {
     return { events, instrumentHints };
   }
 }
-
