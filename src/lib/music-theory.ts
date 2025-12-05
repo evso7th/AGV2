@@ -1,12 +1,9 @@
 
 
 import type { FractalEvent, Mood, Genre, Technique, BassSynthParams, InstrumentType, AccompanimentInstrument, InstrumentHints, SfxSynthParams, AccompanimentTechnique } from '@/types/fractal';
+import { isTonal, areSimultaneous, ElectronicK, TraditionalK, AmbientK } from './resonance-matrices';
+import { getScaleForMood, STYLE_DRUM_PATTERNS as old_STYLE_DRUM_PATTERNS, generateAmbientBassPhrase, mutateBassPhrase, createAccompanimentAxiom, PERCUSSION_SETS, TEXTURE_INSTRUMENT_WEIGHTS_BY_MOOD, getAccompanimentTechnique, createBassFill as createBassFillFromTheory, createDrumFill, AMBIENT_ACCOMPANIMENT_WEIGHTS, SFX_GRAMMAR } from './music-theory-v2';
 
-export const PERCUSSION_SETS: Record<'NEUTRAL' | 'ELECTRONIC' | 'DARK', InstrumentType[]> = {
-    NEUTRAL: ['perc-001', 'perc-002', 'perc-005', 'perc-006', 'perc-013', 'perc-014', 'perc-015', 'drum_ride', 'cymbal_bell1'],
-    ELECTRONIC: ['perc-003', 'perc-004', 'perc-007', 'perc-008', 'perc-009', 'perc-010', 'perc-011', 'perc-012', 'hh_bark_short'],
-    DARK: ['perc-013', 'drum_snare_off', 'drum_tom_low', 'perc-007', 'perc-015']
-};
 
 export const ALL_RIDES: InstrumentType[] = ['drum_a_ride1', 'drum_a_ride2', 'drum_a_ride3', 'drum_a_ride4'];
 const AMBIENT_SNARES: InstrumentType[] = ['drum_snare_ghost_note', 'drum_snarepress', 'drum_snare_off'];
@@ -238,37 +235,31 @@ export function mutateBassPhrase(phrase: FractalEvent[], mood: Mood, genre: Genr
 
 // Rhythmic Grammar Library for Drums
 export const STYLE_DRUM_PATTERNS: Record<Genre, GenreRhythmGrammar> = {
+    // PLAN 8.25: Ambient drum part revision.
+    // Goal: Make the part very sparse, focusing on texture over rhythm.
     ambient: {
         loops: [
             { 
+                // Kick is now very infrequent, just a low pulse.
                 kick: [{ type: 'drum_kick', time: 0, duration: 4, weight: 0.5, probability: 0.1 }],
+                // Snare is removed to avoid strong rhythmic markers.
                 snare: [],
+                // Cymbals and hi-hats are now very subtle ghost notes or rare accents.
                 hihat: [
-                    { type: ALL_RIDES, probabilities: [0.3, 0.3, 0.2, 0.2], time: 0, duration: 1, weight: 0.35, probability: 0.9 },
-                    { type: AMBIENT_PERC, time: 1.5, duration: 0.5, weight: 0.4, probability: 0.5 },
-                    { type: 'drum_tom_low', time: 2.25, duration: 0.25, weight: 0.2, probability: 0.3 },
-                    { type: 'drum_closed_hi_hat_ghost', time: 2.75, duration: 0.25, weight: 0.2, probability: 0.6 },
-                    { type: 'drum_a_ride2', time: 3.5, duration: 0.25, weight: 0.3, probability: 0.7 }
+                    { type: ALL_RIDES, probabilities: [0.3, 0.3, 0.2, 0.2], time: 0, duration: 1, weight: 0.25, probability: 0.2 },
+                    { type: 'drum_closed_hi_hat_ghost', time: 1.75, duration: 0.25, weight: 0.15, probability: 0.4 },
+                    { type: 'drum_tom_low', time: 2.25, duration: 0.25, weight: 0.2, probability: 0.15 },
+                    { type: 'drum_crash', time: 3.5, duration: 1, weight: 0.2, probability: 0.05 } // very rare quiet crash
                 ],
-                tags: ['ambient-pulse-varied']
-            },
-            {
-                kick: [],
-                snare: [],
-                hihat: [
-                    { type: 'drum_a_ride1', time: 0.75, duration: 0.25, weight: 0.3, probability: 0.8 },
-                    { type: 'drum_closed_hi_hat_ghost', time: 1.5, duration: 0.25, weight: 0.15, probability: 0.6 },
-                    { type: 'drum_tom_low', time: 2.25, duration: 0.25, weight: 0.2, probability: 0.5 },
-                    { type: 'drum_a_ride2', time: 3.5, duration: 0.25, weight: 0.35, probability: 0.8 }
-                ],
-                tags: ['ambient-sparse-syncopated']
+                tags: ['ambient-sparse-pulse']
             }
         ],
+         // Percussion is now the main rhythmic texture, playing often but quietly.
          percussion: {
             types: AMBIENT_PERC,
             allowedTimes: [0.75, 1.25, 1.75, 2.25, 2.75, 3.25, 3.75],
-            probability: 0.6, 
-            weight: 0.3,
+            probability: 0.8, 
+            weight: 0.5, // Louder as requested
             type: 'electronic'
         }
     },
@@ -718,4 +709,3 @@ export function createDrumFill(random: { next: () => number, nextInt: (max: numb
 }
     
     
-
