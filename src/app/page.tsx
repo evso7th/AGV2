@@ -40,7 +40,7 @@ export default function Home() {
             <Music className="mr-2 h-6 w-6" />
             Start AuraGroove
           </Button>
-          <p className="text-xs text-muted-foreground">v 2.140</p>
+          <p className="text-xs text-muted-foreground">v 2.141</p>
         </CardFooter>
       </Card>
     </main>
