@@ -1,6 +1,6 @@
 
 import type { FractalEvent, Mood, Genre, Technique, BassSynthParams, InstrumentType, MelodyInstrument, BassInstrument, AccompanimentInstrument, ResonanceMatrix, InstrumentHints, AccompanimentTechnique, MusicBlueprint, SectionName, SfxSynthParams } from '@/types/fractal';
-import { ElectronicK, TraditionalK, AmbientK, isTonal, areSimultaneous } from './resonance-matrices';
+import { isTonal, areSimultaneous, ElectronicK, TraditionalK, AmbientK } from './resonance-matrices';
 import { getScaleForMood, STYLE_DRUM_PATTERNS, generateAmbientBassPhrase, mutateBassPhrase, createAccompanimentAxiom, PERCUSSION_SETS, TEXTURE_INSTRUMENT_WEIGHTS_BY_MOOD, getAccompanimentTechnique, createBassFill as createBassFillFromTheory, createDrumFill, AMBIENT_ACCOMPANIMENT_WEIGHTS, SFX_GRAMMAR } from './music-theory';
 import { AMBIENT_BLUEPRINTS } from './blueprints';
 
@@ -182,6 +182,12 @@ export class FractalMusicEngine {
   private sfxFillForThisEpoch: FractalEvent[] | null = null;
   private nextHarmonyEventEpoch: number = 0;
   
+  // --- Evolution & Genetic Memory ---
+  private successfulMutationsLibrary: FractalEvent[][] = [];
+  private readonly qualityThreshold = 5.0; // Minimum score to be considered "good"
+  private readonly libraryMaxSize = 200; // Max number of phrases to store
+
+
   // Phrase & Plan Management
   private bassPhraseLibrary: FractalEvent[][] = [];
   private bassPlayPlan: { phraseIndex: number, repetitions: number }[] = [];
@@ -258,13 +264,16 @@ export class FractalMusicEngine {
     this.currentSectionIndex = -1;
     this.currentSection = null;
     this.currentBarInSection = 0;
+    this.successfulMutationsLibrary = []; // Clear genetic memory on re-init
   }
 
   private createBassAxiomAndPlan() {
-      // ... same as before
       this.bassPhraseLibrary = [];
       const numPhrases = 2 + this.random.nextInt(3); 
-      const anchorPhrase = generateAmbientBassPhrase(this.config.mood, this.config.genre, this.random, this.config.tempo);
+      const anchorPhrase = (this.random.next() < 0.5 && this.successfulMutationsLibrary.length > 5)
+        ? this.successfulMutationsLibrary[this.random.nextInt(this.successfulMutationsLibrary.length)]
+        : generateAmbientBassPhrase(this.config.mood, this.config.genre, this.random, this.config.tempo);
+        
       this.bassPhraseLibrary.push(anchorPhrase);
       for (let i = 1; i < numPhrases; i++) {
           this.bassPhraseLibrary.push(mutateBassPhrase(anchorPhrase, this.config.mood, this.config.genre, this.random));
@@ -358,8 +367,9 @@ export class FractalMusicEngine {
    */
   private evaluateHarmonicQuality(events: FractalEvent[]): number {
       let score = 0;
-      let dissonantPairs = 0;
       const tonalEvents = events.filter(isTonal);
+
+      if (tonalEvents.length < 2) return 0;
 
       for (let i = 0; i < tonalEvents.length; i++) {
           for (let j = i + 1; j < tonalEvents.length; j++) {
@@ -371,21 +381,43 @@ export class FractalMusicEngine {
                       genre: this.config.genre
                   });
                   score += quality;
-                  if (quality < 0.5) { // Threshold for dissonance
-                      dissonantPairs++;
-                  }
               }
           }
       }
-      // Penalize for too many dissonant pairs
-      return score - (dissonantPairs * 2);
+      return score / (tonalEvents.length * (tonalEvents.length -1) / 2); // Normalize score
+  }
+
+  /**
+   * Creates several mutations of a phrase and returns the one with the best harmonic quality.
+   */
+  private evolveAndSelect(basePhrase: FractalEvent[], contextEvents: FractalEvent[]): FractalEvent[] {
+      const numMutations = 4;
+      let bestPhrase = basePhrase;
+      let bestScore = this.evaluateHarmonicQuality([...contextEvents, ...basePhrase]);
+      
+      for (let i = 0; i < numMutations; i++) {
+          const mutatedPhrase = mutateBassPhrase(basePhrase, this.config.mood, this.config.genre, this.random);
+          const score = this.evaluateHarmonicQuality([...contextEvents, ...mutatedPhrase]);
+          
+          if (score > bestScore) {
+              bestScore = score;
+              bestPhrase = mutatedPhrase;
+          }
+      }
+      
+      // Add to genetic memory if it's good enough
+      if (bestScore > this.qualityThreshold && this.successfulMutationsLibrary.length < this.libraryMaxSize) {
+          console.log(`%c[Genetics] Storing high-quality phrase (Score: ${bestScore.toFixed(2)})`, 'color: #90ee90');
+          this.successfulMutationsLibrary.push(bestPhrase);
+      }
+
+      return bestPhrase;
   }
 
 
   private generateOneBar(barCount: number): { events: FractalEvent[], instrumentHints: InstrumentHints } {
     let instrumentHints: InstrumentHints = {};
     const output: FractalEvent[] = [];
-    let isFillBar = false;
 
     // --- 1. Определяем текущую секцию ---
     if (this.currentSection === null || this.currentBarInSection >= this.currentSection.bars) {
@@ -393,66 +425,23 @@ export class FractalMusicEngine {
         this.currentSection = this.suiteStructure[this.currentSectionIndex];
         this.currentBarInSection = 0;
         console.log(`%c[Engine] Entering Section: ${this.currentSection.part}`, 'color: green; font-weight: bold;');
-
-        // Смена инструментов на границе секции
-        const accompPlanItem = this.accompPlayPlan[this.currentAccompPlanIndex];
-        const melodyPlanItem = this.melodyPlayPlan[this.currentMelodyPlanIndex];
-        instrumentHints.accompaniment = accompPlanItem?.instrument;
-        instrumentHints.melody = melodyPlanItem?.instrument;
-        console.log(`[Engine] Section Instruments:`, instrumentHints);
     }
     const sectionName = this.currentSection.part;
     const layerConfig = this.currentBlueprint.layers[sectionName] || {};
 
     // --- 2. Генерируем "Призрачную партию" баса ---
-    let bassPhraseForThisBar: FractalEvent[] = [];
     const bassPlanItem = this.bassPlayPlan[this.currentBassPlanIndex];
+    let bassPhraseForThisBar: FractalEvent[] = [];
     if (bassPlanItem && this.bassPhraseLibrary.length > 0) {
-        const phrase = this.bassPhraseLibrary[bassPlanItem.phraseIndex];
-        
-        let phraseToPlay = phrase;
-        // Мутация на границах бандлов
-        if (this.barsInCurrentBassPhrase === 0 && this.currentBassRepetition > 0) {
-             if (this.random.next() < this.currentBlueprint.mutations.microProbability) {
-                console.log(`[Engine] Mutating bass phrase for bundle repetition.`);
-                phraseToPlay = mutateBassPhrase(phrase, this.config.mood, this.config.genre, this.random);
-             }
-        }
-        bassPhraseForThisBar = phraseToPlay;
-
-        // Продвигаем план баса
-        const phraseDurationInBeats = phrase.reduce((max, e) => Math.max(max, e.time + e.duration), 0);
-        const phraseDurationInBars = Math.ceil(phraseDurationInBeats / 4);
-        this.barsInCurrentBassPhrase++;
-        if (this.barsInCurrentBassPhrase >= phraseDurationInBars) {
-            this.currentBassRepetition++;
-            this.barsInCurrentBassPhrase = 0; 
-            if (this.currentBassRepetition >= bassPlanItem.repetitions) {
-                this.currentBassRepetition = 0;
-                this.currentBassPlanIndex = (this.currentBassPlanIndex + 1) % this.bassPlayPlan.length;
-            }
-        }
+        bassPhraseForThisBar = this.bassPhraseLibrary[bassPlanItem.phraseIndex];
     }
     
-    // --- 3. Генерируем остальные партии на основе "призрачного" баса ---
-    let accompPhraseForThisBar: FractalEvent[] = [];
-    let melodyPhraseForThisBar: FractalEvent[] = [];
-    let harmonyPhraseForThisBar: FractalEvent[] = [];
-
+    // --- 3. Генерируем остальные партии ---
     const technique = getAccompanimentTechnique(this.config.genre, this.config.mood, this.config.density, this.config.tempo, barCount, this.random);
     let candidatePhrase = this.generateAccompanimentForPhrase(bassPhraseForThisBar, technique);
     
-    // "Страж Гармонии"
-    let qualityScore = this.evaluateHarmonicQuality([...bassPhraseForThisBar, ...candidatePhrase]);
-    let attempts = 0;
-    while(qualityScore < 5 && attempts < 10) { // Пороговое значение качества
-        console.warn(`[Guard] Harmony quality low (${qualityScore.toFixed(2)}). Regenerating...`);
-        candidatePhrase = this.generateAccompanimentForPhrase(bassPhraseForThisBar, technique);
-        qualityScore = this.evaluateHarmonicQuality([...bassPhraseForThisBar, ...candidatePhrase]);
-        attempts++;
-    }
-
-    // Распределяем одобренную фразу по партиям
+    let harmonyPhraseForThisBar: FractalEvent[] = [];
+    let accompPhraseForThisBar: FractalEvent[] = [];
     candidatePhrase.forEach(event => {
         if (event.type === 'harmony') {
             harmonyPhraseForThisBar.push(event);
@@ -461,7 +450,7 @@ export class FractalMusicEngine {
         }
     });
 
-    // --- 4. Применяем правила `layers` из блюпринта ---
+    // --- 4. Применяем правила `layers` и собираем итоговую партитуру ---
     instrumentHints.bass = layerConfig.bass ? (bassPlanItem?.instrument as BassInstrument || 'classicBass') : 'none';
     instrumentHints.accompaniment = layerConfig.accompaniment ? (this.accompPlayPlan[this.currentAccompPlanIndex]?.instrument as AccompanimentInstrument) : 'none';
     instrumentHints.melody = layerConfig.melody ? (this.melodyPlayPlan[this.currentMelodyPlanIndex]?.instrument as MelodyInstrument) : 'none';
@@ -482,6 +471,41 @@ export class FractalMusicEngine {
       output.push(...this.sfxFillForThisEpoch);
       this.sfxFillForThisEpoch = null;
     }
+    
+    // --- 6. Эволюция и Продвижение планов (пост-генерация) ---
+    const contextEvents = bassPhraseForThisBar; 
+    
+    // Эволюция аккомпанемента
+    const accompPlanItem = this.accompPlayPlan[this.currentAccompPlanIndex];
+    if (accompPlanItem) {
+        let currentPhrase = this.accompPhraseLibrary[accompPlanItem.phraseIndex];
+        let evolvedPhrase = this.evolveAndSelect(currentPhrase, contextEvents);
+        this.accompPhraseLibrary[accompPlanItem.phraseIndex] = evolvedPhrase; // Update library
+        // Продвигаем план
+        this.barsInCurrentAccompPhrase++;
+        const phraseDuration = Math.ceil(evolvedPhrase.reduce((max, e) => max + e.duration, 0) / 4);
+        if (this.barsInCurrentAccompPhrase >= phraseDuration * accompPlanItem.repetitions) {
+            this.currentAccompPlanIndex = (this.currentAccompPlanIndex + 1) % this.accompPlayPlan.length;
+            this.barsInCurrentAccompPhrase = 0;
+            console.log(`[Engine] Advancing accomp plan to index ${this.currentAccompPlanIndex}`);
+        }
+    }
+
+    // Продвигаем план баса (без эволюции, т.к. он основа)
+    if (bassPlanItem) {
+        const phraseDurationInBeats = bassPhraseForThisBar.reduce((max, e) => Math.max(max, e.time + e.duration), 0);
+        const phraseDurationInBars = Math.ceil(phraseDurationInBeats / 4);
+        this.barsInCurrentBassPhrase++;
+        if (this.barsInCurrentBassPhrase >= phraseDurationInBars) {
+            this.currentBassRepetition++;
+            this.barsInCurrentBassPhrase = 0; 
+            if (this.currentBassRepetition >= bassPlanItem.repetitions) {
+                this.currentBassRepetition = 0;
+                this.currentBassPlanIndex = (this.currentBassPlanIndex + 1) % this.bassPlayPlan.length;
+            }
+        }
+    }
+
 
     this.currentBarInSection++;
     return { events: output, instrumentHints };
@@ -491,7 +515,6 @@ export class FractalMusicEngine {
       bassPhrase: FractalEvent[], 
       technique: AccompanimentTechnique
   ): FractalEvent[] {
-      // ... (implementation remains the same)
       const accompanimentPhrase: FractalEvent[] = [];
       const scale = getScaleForMood(this.config.mood);
       if (!bassPhrase || bassPhrase.length === 0) return [];
@@ -564,3 +587,5 @@ export class FractalMusicEngine {
     return { events, instrumentHints };
   }
 }
+
+    
