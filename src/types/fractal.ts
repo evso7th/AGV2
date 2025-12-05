@@ -216,7 +216,7 @@ export type AccompanimentTechnique = 'choral' | 'alternating-bass-chord' | 'chor
 
 // --- Blueprint Types ---
 
-export type SectionName = 'INTRO' | 'BUILD' | 'MAIN' | 'RELEASE' | 'OUTRO' | 'BRIDGE';
+export type SectionName = 'INTRO_A' | 'INTRO_B' | 'INTRO_C' | 'BUILD' | 'MAIN' | 'RELEASE' | 'OUTRO' | 'BRIDGE';
 
 export type PartBlueprint = {
   techniquesByPart: Record<SectionName, { technique: string, weight: number }[]>;
@@ -235,17 +235,17 @@ export type MusicBlueprint = {
     secondsPerBar: number;
     barsPerMinute: number;
     totalBars: number;
-    introDuration: number;
-    partsDistribution: { part: SectionName, bars: number, percent: number }[];
+    introDuration?: number; // Optional now, as we have specific intro sections
+    partsDistribution: { part: SectionName, bars: number, percent?: number }[];
   };
   harmony: {
     key: { root: string, scale: string, octave: number };
     chords: {
       primary: { name: string, notes: string[], midi: number[], tension: number }[];
       secondary: { name: string, notes: string[], midi: number[], tension: number }[];
-      tension: { name: string, notes: string[], midi: number[], tension: number }[];
+      tension?: { name: string, notes: string[], midi: number[], tension: number }[];
     };
-    progressions: Record<SectionName, string[]>;
+    progressions: Partial<Record<SectionName, string[]>>; // Use Partial to allow omitting sections
     motion: { ascending: number, descending: number, static: number };
   };
   voicings: {
@@ -259,9 +259,9 @@ export type MusicBlueprint = {
   drums: {
     activeParts: SectionName[];
     kit: { type: string, pattern: string, velocity: { min: number, max: number }, probability: number }[];
-    densityByPart: Record<string, number>;
+    densityByPart: Partial<Record<SectionName, number>>;
   };
-  layers: Record<SectionName, Record<string, boolean>>;
+  layers: Partial<Record<SectionName, Record<string, boolean>>>;
   mutations: {
     microProbability: number;
     mediumProbability: number;
