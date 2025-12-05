@@ -67,6 +67,7 @@ export type InstrumentType =
   | 'drum_a_ride2'
   | 'drum_a_ride3'
   | 'drum_a_ride4'
+  | 'drum_crash'
   | 'drum_closed_hi_hat_ghost'
   | 'drum_hihat_open'
   | 'drum_hihat_closed'
@@ -211,3 +212,78 @@ export type ResonanceMatrix = (
 ) => number;
 
 export type AccompanimentTechnique = 'choral' | 'alternating-bass-chord' | 'chord-pulsation' | 'arpeggio-fast' | 'arpeggio-slow' | 'alberti-bass' | 'paired-notes' | 'long-chords';
+
+
+// --- Blueprint Types ---
+
+export type SectionName = 'INTRO' | 'BUILD' | 'MAIN' | 'RELEASE' | 'OUTRO' | 'BRIDGE';
+
+export type PartBlueprint = {
+  techniquesByPart: Record<SectionName, { technique: string, weight: number }[]>;
+  densityByPart: Record<SectionName, number>;
+  registerByPart?: Record<SectionName, { min: number, max: number }>;
+  envelopeByPart?: Record<SectionName, { attack: number, decay: number, sustain: number, release: number }>;
+};
+
+export type MusicBlueprint = {
+  id: string;
+  name: string;
+  mood: Mood;
+  timing: {
+    bpm: number;
+    suiteMinutes: number;
+    secondsPerBar: number;
+    barsPerMinute: number;
+    totalBars: number;
+    introDuration: number;
+    partsDistribution: { part: SectionName, bars: number, percent: number }[];
+  };
+  harmony: {
+    key: { root: string, scale: string, octave: number };
+    chords: {
+      primary: { name: string, notes: string[], midi: number[], tension: number }[];
+      secondary: { name: string, notes: string[], midi: number[], tension: number }[];
+      tension: { name: string, notes: string[], midi: number[], tension: number }[];
+    };
+    progressions: Record<SectionName, string[]>;
+    motion: { ascending: number, descending: number, static: number };
+  };
+  voicings: {
+    preferredType: string;
+    voiceCount: { min: number, max: number };
+    spread: { min: number, max: number };
+    examples: Record<string, number[]>;
+  };
+  bass: PartBlueprint;
+  pad: PartBlueprint;
+  drums: {
+    activeParts: SectionName[];
+    kit: { type: string, pattern: string, velocity: { min: number, max: number }, probability: number }[];
+    densityByPart: Record<string, number>;
+  };
+  layers: Record<SectionName, Record<string, boolean>>;
+  mutations: {
+    microProbability: number;
+    mediumProbability: number;
+    allowedTranspositions: number[];
+    microTypes: string[];
+    mediumTypes: string[];
+  };
+  fills: {
+    bundle: { type: string, duration: number, probability: number };
+    part: { type: string, duration: number, probability: number };
+  };
+  unique: {
+    filterCutoff: { min: number, max: number };
+    reverbSize: number;
+    subBassBoost?: number;
+    noiselevel?: number;
+    shimmerMix?: number;
+    brightness?: number;
+    swing?: number;
+    character: string;
+    ambientEvents: { type: string, probability: number, activeParts: SectionName[] }[];
+  };
+  unisonPolicy?: any; // To be fully defined later
+  transitions?: any; // To be fully defined later
+};

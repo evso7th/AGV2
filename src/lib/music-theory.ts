@@ -1,4 +1,5 @@
 
+
 import type { FractalEvent, Mood, Genre, Technique, BassSynthParams, InstrumentType, AccompanimentInstrument, InstrumentHints, SfxSynthParams, AccompanimentTechnique } from '@/types/fractal';
 
 export const PERCUSSION_SETS: Record<'NEUTRAL' | 'ELECTRONIC' | 'DARK', InstrumentType[]> = {
@@ -717,3 +718,4 @@ export function createDrumFill(random: { next: () => number, nextInt: (max: numb
 }
     
     
+

@@ -1,0 +1,1060 @@
+# КОНЦЕПЦИЯ: УНИСОН И ПЕРЕХОДНЫЕ ФРАЗЫ
+
+Это **блестящая** идея! Она решает сразу несколько задач:
+1. **Унисон бас+аккомпанемент** создаёт мощную, монолитную текстуру (характерно для классического ambient)
+2. **Переходные фразы** обеспечивают гармоническую логику и плавность формы
+3. **Иерархия переходов** даёт структурную ясность на всех масштабах
+
+---
+
+## ЧАСТЬ 1: ТЕОРИЯ УНИСОНА
+
+### Когда унисон активен?
+
+```typescript
+type UnisonPolicy = {
+  part: PartName;
+  unisonActive: boolean;
+  unisonType: 'strict' | 'octave' | 'harmonized' | 'none';
+  description: string;
+};
+
+const UNISON_POLICIES: UnisonPolicy[] = [
+  {
+    part: 'INTRO',
+    unisonActive: false,
+    unisonType: 'none',
+    description: 'Бас и пад независимы — создаём пространство'
+  },
+  {
+    part: 'BUILD',
+    unisonActive: true,
+    unisonType: 'octave',
+    description: 'Бас играет root note, пад удваивает её октавой выше + полный аккорд'
+  },
+  {
+    part: 'MAIN',
+    unisonActive: true,
+    unisonType: 'strict',
+    description: 'Бас и нижний голос пада — в абсолютном унисоне (± октава)'
+  },
+  {
+    part: 'RELEASE',
+    unisonActive: true,
+    unisonType: 'harmonized',
+    description: 'Бас играет фразу, пад гармонизует её (терции/квинты)'
+  },
+  {
+    part: 'OUTRO',
+    unisonActive: false,
+    unisonType: 'none',
+    description: 'Возврат к независимости — растворение'
+  }
+];
+```
+
+### Типы унисона (детализация)
+
+#### 1. Strict Unison (строгий)
+```
+Бас:  D2  F2  A2  C3
+Пад:  D2  F2  A2  C3  +  F3  A3  C4  (верхние голоса добавлены)
+      └──унисон──┘
+```
+
+**Эффект:** Максимальная монолитность, "единый организм".
+
+**Код:**
+```typescript
+function generateStrictUnison(bassPhrase: Phrase, chord: Chord): PadVoicing {
+  const bassNotes = bassPhrase.notes.map(n => n.pitch);
+  
+  return {
+    lower: bassNotes,                    // Дублируем бас точно
+    upper: chord.notes.filter(note =>    // Добавляем верхние голоса аккорда
+      note > Math.max(...bassNotes) + 3  // Выше баса минимум на малую терцию
+    )
+  };
+}
+
+// Пример для Dm7:
+// Бас играет: D2(38) A1(33) F2(41) D2(38)
+// Пад играет:
+//   Нижний слой: D2(38) A1(33) F2(41) D2(38)  [строгий унисон]
+//   Верхний слой: A3(57) C4(60) F4(65)        [статичный аккорд]
+```
+
+#### 2. Octave Unison (октавный)
+```
+Бас:  D1  A1  F1  D1
+Пад:  D2  A2  F2  D2  +  A3  C4  F4
+      └─октава выше─┘
+```
+
+**Эффект:** Более воздушно, чем strict, но всё ещё связано.
+
+**Код:**
+```typescript
+function generateOctaveUnison(bassPhrase: Phrase, chord: Chord): PadVoicing {
+  return {
+    lower: bassPhrase.notes.map(n => ({ ...n, pitch: n.pitch + 12 })), // +1 октава
+    upper: chord.notes.filter(note => note > bassPhrase.maxPitch + 15)
+  };
+}
+```
+
+#### 3. Harmonized Unison (гармонизованный)
+```
+Бас:  D2  F2  A2  C3
+Пад:  F2  A2  C3  E3  (терции выше баса)
+      A2  C3  E3  G3  (квинты выше баса)
+```
+
+**Эффект:** Бас ведёт мелодию, пад следует параллельным движением.
+
+**Код:**
+```typescript
+function generateHarmonizedUnison(
+  bassPhrase: Phrase, 
+  scale: Scale, 
+  intervalType: 'thirds' | 'fifths'
+): PadVoicing {
+  const interval = intervalType === 'thirds' ? 3 : 7; // полутонов (approx)
+  
+  return {
+    lower: bassPhrase.notes.map(n => ({
+      ...n,
+      pitch: scale.getClosestNoteInScale(n.pitch + interval) // Ближайшая нота гаммы
+    })),
+    upper: bassPhrase.notes.map(n => ({
+      ...n,
+      pitch: scale.getClosestNoteInScale(n.pitch + interval * 2)
+    }))
+  };
+}
+
+// Пример для D Dorian (D E F G A B C):
+// Бас: D2(38) → F2(41) → A2(45)
+// Пад (thirds): F2(41) → A2(45) → C3(48)  [терции в гамме]
+// Пад (fifths): A2(45) → C3(48) → E3(52)  [квинты]
+```
+
+---
+
+## ЧАСТЬ 2: ТЕОРИЯ ПЕРЕХОДНЫХ ФРАЗ
+
+### Иерархия переходов
+
+```typescript
+type TransitionLevel = 'micro' | 'medium' | 'macro';
+
+type TransitionPhrase = {
+  level: TransitionLevel;
+  duration: number;              // тактов
+  fromHarmony: Chord;
+  toHarmony: Chord;
+  technique: TransitionTechnique;
+  allInstruments: boolean;       // Играют ли все инструменты унисоном?
+  description: string;
+};
+
+type TransitionTechnique = 
+  | 'chromatic_approach'   // Хроматический подход к следующему аккорду
+  | 'pivot_chord'          // Общий аккорд (модуляция)
+  | 'sequential'           // Секвенция
+  | 'suspended_resolution' // Sus4 → основной аккорд
+  | 'pedal_point'          // Педаль на тонике/доминанте
+  | 'diminished_passage'   // Уменьшенный проход
+  | 'scalar_run';          // Гаммообразный пассаж
+```
+
+### 1. MICRO TRANSITIONS (бандл → бандл)
+
+**Характеристики:**
+- Длительность: **1-2 такта**
+- Инструменты: **бас + пад** (унисон или октавы)
+- Техника: простая (chromatic approach, sus resolution)
+- Цель: плавно соединить два бандла внутри одной части
+
+**Пример для MELANCHOLIC (Dm7 → Gm7):**
+
+```typescript
+const MICRO_TRANSITION_DM_TO_GM: TransitionPhrase = {
+  level: 'micro',
+  duration: 1,  // 1 такт
+  fromHarmony: { name: 'Dm7', root: 'D' },
+  toHarmony: { name: 'Gm7', root: 'G' },
+  technique: 'chromatic_approach',
+  allInstruments: false,  // Только бас + пад
+  description: 'Хроматический подход D → Eb → E → F → G'
+};
+
+// Конкретные ноты (такт переходный):
+const microTransitionNotes = {
+  bass: [
+    { pitch: 38, beat: 1.0, duration: 1 },  // D2, quarter
+    { pitch: 39, beat: 2.0, duration: 1 },  // Eb2
+    { pitch: 40, beat: 3.0, duration: 1 },  // E2
+    { pitch: 41, beat: 4.0, duration: 1 }   // F2
+    // Следующий такт начинается с G2 (43)
+  ],
+  
+  pad: [
+    // Пад держит Dm7, затем на beat 3.5 начинает glide к Gm7
+    { pitch: 38, beat: 1.0, duration: 2.5, glide: false },  // D2
+    { pitch: 41, beat: 1.0, duration: 2.5, glide: false },  // F2
+    { pitch: 57, beat: 1.0, duration: 2.5, glide: false },  // A3
+    // На beat 3.5 все голоса glide к Gm7:
+    { pitch: 43, beat: 3.5, duration: 1.5, glide: true },   // G2 (from D2)
+    { pitch: 46, beat: 3.5, duration: 1.5, glide: true },   // Bb2 (from F2)
+    { pitch: 62, beat: 3.5, duration: 1.5, glide: true }    // D4 (from A3)
+  ],
+  
+  arpeggio: 'muted',  // Молчит
+  drums: 'continue',  // Продолжают обычный паттерн
+  melody: 'muted'
+};
+```
+
+**Визуализация:**
+```
+Такт N (конец Bundle 1):    Dm7
+Такт N+1 (TRANSITION):      D → Eb → E → F  [chromatic ascend]
+Такт N+2 (начало Bundle 2): Gm7
+                            ↑
+                    плавный вход
+```
+
+---
+
+### 2. MEDIUM TRANSITIONS (часть → часть)
+
+**Характеристики:**
+- Длительность: **2-4 такта**
+- Инструменты: **ВСЕ** (бас, пад, арпеджио в унисон; drums fill; SFX акцент)
+- Техника: более развитая (pivot chord, sequential, diminished passage)
+- Цель: сигнализировать о смене части и подготовить новую гармонию
+
+**Пример для MELANCHOLIC (INTRO → BUILD):**
+
+```typescript
+const MEDIUM_TRANSITION_INTRO_TO_BUILD: TransitionPhrase = {
+  level: 'medium',
+  duration: 4,
+  fromHarmony: { name: 'Dm9', root: 'D' },  // Конец INTRO
+  toHarmony: { name: 'Gm7', root: 'G' },    // Начало BUILD
+  technique: 'suspended_resolution',
+  allInstruments: true,
+  description: 'Dsus4 → D → Gsus4 → Gm7 (4 такта, все инструменты унисон на корневых движениях)'
+};
+
+// Детализация по тактам:
+const mediumTransitionStructure = {
+  // Такт 1: Dsus4 (D G A)
+  bar1: {
+    harmony: 'Dsus4',
+    bass: [
+      { pitch: 38, beat: 1.0, duration: 4 }  // D2, whole note
+    ],
+    pad: [
+      { pitch: 38, beat: 1.0, duration: 4 },  // D2 (unison с басом)
+      { pitch: 55, beat: 1.0, duration: 4 },  // G3
+      { pitch: 57, beat: 1.0, duration: 4 }   // A3
+    ],
+    arpeggio: [
+      // Арпеджио играет корневую ноту вместе с басом (octave unison)
+      { pitch: 50, beat: 1.0, duration: 2 },  // D3
+      { pitch: 50, beat: 3.0, duration: 2 }
+    ],
+    drums: 'buildup',  // Crescendo roll
+    sfx: 'reverse_cymbal_start'
+  },
+  
+  // Такт 2: D major (разрешение sus4)
+  bar2: {
+    harmony: 'D',
+    bass: [
+      { pitch: 38, beat: 1.0, duration: 2 },  // D2
+      { pitch: 42, beat: 3.0, duration: 2 }   // F#2 (мелодическое движение)
+    ],
+    pad: [
+      { pitch: 38, beat: 1.0, duration: 4 },  // D2
+      { pitch: 54, beat: 1.0, duration: 4 },  // F#3 (разрешение G→F#)
+      { pitch: 57, beat: 1.0, duration: 4 }   // A3
+    ],
+    arpeggio: [
+      { pitch: 50, beat: 1.0, duration: 1 },  // D3
+      { pitch: 54, beat: 2.0, duration: 1 },  // F#3
+      { pitch: 57, beat: 3.0, duration: 1 },  // A3
+      { pitch: 50, beat: 4.0, duration: 1 }   // D3
+    ],
+    drums: 'continue_buildup',
+    sfx: 'reverse_cymbal_peak'
+  },
+  
+  // Такт 3: Gsus4 (переход к новой тонике)
+  bar3: {
+    harmony: 'Gsus4',
+    bass: [
+      { pitch: 43, beat: 1.0, duration: 4 }   // G2, whole note
+    ],
+    pad: [
+      { pitch: 43, beat: 1.0, duration: 4 },  // G2 (UNISON)
+      { pitch: 48, beat: 1.0, duration: 4 },  // C3
+      { pitch: 50, beat: 1.0, duration: 4 }   // D3
+    ],
+    arpeggio: [
+      { pitch: 55, beat: 1.0, duration: 2 },  // G3 (октава выше баса)
+      { pitch: 55, beat: 3.0, duration: 2 }
+    ],
+    drums: 'fill_climax',  // Барабанный филл на весь такт
+    sfx: 'filter_sweep_open'  // Фильтр открывается
+  },
+  
+  // Такт 4: Gm7 (вход в BUILD)
+  bar4: {
+    harmony: 'Gm7',
+    bass: [
+      { pitch: 43, beat: 1.0, duration: 2 },  // G2
+      { pitch: 50, beat: 3.0, duration: 2 }   // D3 (квинта для momentum)
+    ],
+    pad: [
+      { pitch: 43, beat: 1.0, duration: 4 },  // G2
+      { pitch: 46, beat: 1.0, duration: 4 },  // Bb2 (разрешение C→Bb)
+      { pitch: 50, beat: 1.0, duration: 4 },  // D3
+      { pitch: 65, beat: 1.0, duration: 4 }   // F4 (верхний голос)
+    ],
+    arpeggio: [
+      { pitch: 55, beat: 1.0, duration: 1 },  // G3
+      { pitch: 58, beat: 2.0, duration: 1 },  // Bb3
+      { pitch: 62, beat: 3.0, duration: 1 },  // D4
+      { pitch: 65, beat: 4.0, duration: 1 }   // F4
+    ],
+    drums: 'new_pattern_start',  // Новый паттерн BUILD начинается
+    sparkles: 'entry',           // Sparkles входят на beat 2
+    sfx: 'filter_settle'
+  }
+};
+```
+
+**Визуализация:**
+```
+INTRO (конец):     Dm9
+                    ↓
+TRANSITION (4т):   Dsus4 → D → Gsus4 → Gm7
+                   [───все инструменты унисон на корнях───]
+                    ↓
+BUILD (начало):    Gm7 → ...
+```
+
+**Эффект:**
+- Слушатель чётко слышит "грань" между частями
+- Унисон всех инструментов = мощный сигнал
+- Suspended аккорды создают напряжение → разрешение
+- Drums fill дополнительно маркирует переход
+
+---
+
+### 3. MACRO TRANSITIONS (сюита → сюита)
+
+**Характеристики:**
+- Длительность: **6-8 тактов**
+- Инструменты: **ВСЕ** в развитом полифоническом взаимодействии
+- Техника: комбинированная (несколько техник подряд)
+- Цель: завершить старую сюиту, подготовить новую (может быть в другой тональности)
+- Особенность: **может содержать паузу** (1-2 такта тишины перед новой сюитой)
+
+**Пример для MELANCHOLIC (Сюита 1 → Сюита 2):**
+
+```typescript
+const MACRO_TRANSITION_SUITE_1_TO_2: TransitionPhrase = {
+  level: 'macro',
+  duration: 8,
+  fromHarmony: { name: 'Dm7', root: 'D', key: 'D Dorian' },
+  toHarmony: { name: 'Am7', root: 'A', key: 'A Aeolian' },  // Модуляция!
+  technique: 'pivot_chord + scalar_run + pedal_point',
+  allInstruments: true,
+  description: 'Развитая 3-фазовая модуляция с кульминацией и паузой'
+};
+
+// Структура (8 тактов):
+const macroTransitionPlan = {
+  // ФАЗА 1: Подготовка (такты 1-3)
+  phase1: {
+    bars: [1, 2, 3],
+    harmony: ['Dm7', 'Fmaj7', 'Cmaj7'],  // Отход от тоники
+    technique: 'sequential',
+    
+    description: 'Секвенция вверх (Dm → F → C), все инструменты',
+    
+    bar1: {
+      bass: [
+        { pitch: 38, beat: 1.0, duration: 1 },  // D2
+        { pitch: 41, beat: 2.0, duration: 1 },  // F2
+        { pitch: 45, beat: 3.0, duration: 1 },  // A2
+        { pitch: 38, beat: 4.0, duration: 1 }   // D2
+      ],
+      pad: 'Dm7_open_voicing',
+      arpeggio: 'D_dorian_ascend',  // Восходящая гамма
+      melody: 'phrase_A_variation',  // Мелодическая фраза (если была)
+      drums: 'continue'
+    },
+    
+    bar2: {
+      bass: [
+        { pitch: 41, beat: 1.0, duration: 2 },  // F2
+        { pitch: 45, beat: 3.0, duration: 2 }   // A2
+      ],
+      pad: 'Fmaj7_open_voicing',
+      arpeggio: 'F_lydian_fragment',
+      drums: 'continue'
+    },
+    
+    bar3: {
+      bass: [
+        { pitch: 48, beat: 1.0, duration: 2 },  // C3
+        { pitch: 40, beat: 3.0, duration: 2 }   // E2
+      ],
+      pad: 'Cmaj7_open_voicing',
+      arpeggio: 'C_ionian_fragment',
+      drums: 'buildup_start'
+    }
+  },
+  
+  // ФАЗА 2: Pivot Chord (такты 4-5)
+  phase2: {
+    bars: [4, 5],
+    harmony: ['Em7'],  // Общий аккорд для D Dorian и A Aeolian!
+    technique: 'pivot_chord',
+    
+    description: 'Em7 — общий для обеих тональностей, pedal point на E',
+    
+    bar4: {
+      bass: [
+        { pitch: 40, beat: 1.0, duration: 4 }   // E2, whole note (PEDAL)
+      ],
+      pad: [
+        { pitch: 40, beat: 1.0, duration: 4 },  // E2 (унисон с басом)
+        { pitch: 43, beat: 1.0, duration: 4 },  // G2
+        { pitch: 47, beat: 1.0, duration: 4 },  // B2
+        { pitch: 50, beat: 1.0, duration: 4 },  // D3
+        { pitch: 64, beat: 1.0, duration: 4 }   // E4 (октава)
+      ],
+      arpeggio: [
+        // Все инструменты играют E в разных октавах (UNISON TOTAL)
+        { pitch: 52, beat: 1.0, duration: 1 },  // E3
+        { pitch: 55, beat: 2.0, duration: 1 },  // G3
+        { pitch: 59, beat: 3.0, duration: 1 },  // B3
+        { pitch: 64, beat: 4.0, duration: 1 }   // E4
+      ],
+      melody: [
+        // Мелодия держит E (педаль) и обыгрывает его
+        { pitch: 76, beat: 1.0, duration: 2 },  // E5, half
+        { pitch: 74, beat: 3.0, duration: 1 },  // D5, quarter
+        { pitch: 71, beat: 4.0, duration: 1 }   // B4
+      ],
+      drums: 'intense_buildup',
+      sfx: 'granular_freeze_on_E'  // Заморозить E как текстуру
+    },
+    
+    bar5: {
+      // Продолжение Em7 с нарастанием
+      bass: [
+        { pitch: 40, beat: 1.0, duration: 2 },  // E2
+        { pitch: 47, beat: 3.0, duration: 2 }   // B2 (квинта)
+      ],
+      pad: 'Em7_sustained',
+      arpeggio: [
+        // Ускорение арпеджио (16-е ноты)
+        ...generateArpeggio('Em7', 16, 'ascending')
+      ],
+      melody: [
+        { pitch: 67, beat: 1.0, duration: 4 }   // G4, whole note (sustained)
+      ],
+      drums: 'fill_climax',
+      sfx: 'reverse_cymbal_massive'
+    }
+  },
+  
+  // ФАЗА 3: Разрешение в новую тональность (такты 6-7) + Пауза (такт 8)
+  phase3: {
+    bars: [6, 7, 8],
+    harmony: ['Am7', 'Am7', 'silence'],
+    technique: 'scalar_run + pause',
+    
+    description: 'Нисходящий пассаж E → A, затем пауза перед новой сюитой',
+    
+    bar6: {
+      bass: [
+        // Scalar run (E → A, по A Aeolian: E D C B A)
+        { pitch: 40, beat: 1.0, duration: 1 },  // E2
+        { pitch: 38, beat: 2.0, duration: 1 },  // D2
+        { pitch: 36, beat: 3.0, duration: 1 },  // C2
+        { pitch: 35, beat: 4.0, duration: 1 }   // B1
+      ],
+      pad: [
+        // Пад делает glide вниз параллельно басу
+        { pitch: 52, beat: 1.0, duration: 1, glide: true },  // E3 → D3
+        { pitch: 50, beat: 2.0, duration: 1, glide: true },  // D3 → C3
+        { pitch: 48, beat: 3.0, duration: 1, glide: true },  // C3 → B2
+        { pitch: 47, beat: 4.0, duration: 1, glide: true }   // B2 → A2
+      ],
+      arpeggio: [
+        // ВСЕ играют унисон на scalar run (разные октавы)
+        { pitch: 64, beat: 1.0, duration: 0.5 },  // E4
+        { pitch: 62, beat: 1.5, duration: 0.5 },  // D4
+        { pitch: 60, beat: 2.0, duration: 0.5 },  // C4
+        { pitch: 59, beat: 2.5, duration: 0.5 },  // B3
+        { pitch: 57, beat: 3.0, duration: 0.5 },  // A3
+        { pitch: 55, beat: 3.5, duration: 0.5 },  // G3
+        { pitch: 52, beat: 4.0, duration: 0.5 },  // E3
+        { pitch: 50, beat: 4.5, duration: 0.5 }   // D3
+      ],
+      melody: [
+        // Мелодия тоже участвует в нисходящем движении
+        { pitch: 76, beat: 1.0, duration: 0.5 },  // E5
+        { pitch: 74, beat: 1.5, duration: 0.5 },  // D5
+        { pitch: 72, beat: 2.0, duration: 0.5 },  // C5
+        { pitch: 71, beat: 2.5, duration: 0.5 },  // B4
+        { pitch: 69, beat: 3.0, duration: 2 }     // A4, half (финальная нота)
+      ],
+      drums: 'descending_roll',  // Барабанный roll вниз
+      sfx: 'filter_sweep_close'
+    },
+    
+    bar7: {
+      // Arrival на Am7
+      bass: [
+        { pitch: 33, beat: 1.0, duration: 4 }   // A1, whole note
+      ],
+      pad: [
+        { pitch: 33, beat: 1.0, duration: 4 },  // A1 (UNISON)
+        { pitch: 36, beat: 1.0, duration: 4 },  // C2
+        { pitch: 40, beat: 1.0, duration: 4 },  // E2
+        { pitch: 43, beat: 1.0, duration: 4 },  // G2
+        { pitch: 57, beat: 1.0, duration: 4 }   // A3
+      ],
+      arpeggio: [
+        // Медленное арпеджио Am7
+        { pitch: 57, beat: 1.0, duration: 2 },  // A3
+        { pitch: 60, beat: 3.0, duration: 2 }   // C4
+      ],
+      melody: [
+        { pitch: 69, beat: 1.0, duration: 4 }   // A4, whole (sustained, затухает)
+      ],
+      drums: 'final_hit',  // Один мощный удар на beat 1, потом silence
+      sparkles: 'muted',
+      sfx: 'air_texture_fade_in'  // Только воздушная текстура
+    },
+    
+    bar8: {
+      // ПАУЗА (все молчат, кроме SFX)
+      bass: 'silence',
+      pad: 'silence',
+      arpeggio: 'silence',
+      melody: 'silence',
+      drums: 'silence',
+      sparkles: 'silence',
+      sfx: [
+        // Только тихий ambient noise
+        { type: 'air_texture', level: -36 },
+        { type: 'vinyl_crackle', level: -42 }
+      ],
+      
+      description: 'Пауза — "дыхание" перед новой сюитой',
+      
+      // На beat 4 такта 8 можно сделать тихий reverse swell
+      // как "анонс" новой сюиты
+      anticipation: {
+        beat: 3.5,
+        type: 'reverse_pad_swell',
+        duration: 2,  // Продолжается в такт 9 (начало новой сюиты)
+        velocity: 25
+      }
+    }
+  }
+};
+
+// Такт 9 (не входит в transition, это уже новая сюита):
+// Новая INTRO в A Aeolian с новыми аксиомами
+```
+
+**Визуализация:**
+```
+Сюита 1 (конец):  Dm7 (D Dorian)
+                   ↓
+MACRO TRANSITION:
+  [T1-3]  Dm7 → Fmaj7 → Cmaj7     (секвенция вверх)
+  [T4-5]  Em7 (pivot, pedal)      (общий аккорд, напряжение)
+  [T6]    E→D→C→B→A (scalar run)  (нисходящий пассаж, ВСЕ унисон)
+  [T7]    Am7                     (arrival, затухание)
+  [T8]    SILENCE                 (пауза, дыхание)
+                   ↓
+Сюита 2 (начало): Am7 (A Aeolian)
+```
+
+**Эффект:**
+- Слушатель чувствует **завершение главы** (такты 1-7)
+- Пауза создаёт **anticipation** (ожидание чего-то нового)
+- Новая сюита воспринимается как **fresh start**, а не продолжение
+
+---
+
+## ЧАСТЬ 3: ИНТЕГРАЦИЯ В БЛЮПРИНТ
+
+### Обновлённая структура Blueprint
+
+```typescript
+type MusicBlueprint = {
+  // ... существующие поля
+  
+  // НОВОЕ: Политика унисона
+  unisonPolicy: {
+    byPart: Record<PartName, {
+      active: boolean;
+      type: 'strict' | 'octave' | 'harmonized' | 'none';
+      ratio: number;  // 0..1, сколько времени в части унисон активен (может быть не всё время)
+    }>;
+  };
+  
+  // НОВОЕ: Переходные фразы
+  transitions: {
+    micro: {
+      enabled: boolean;
+      probability: number;  // Вероятность вставки между бандлами
+      duration: { min: number; max: number };
+      techniques: TransitionTechnique[];
+      instruments: InstrumentName[];  // Какие участвуют
+    };
+    
+    medium: {
+      enabled: boolean;
+      mandatory: boolean;   // Обязательно между частями
+      duration: { min: number; max: number };
+      techniques: TransitionTechnique[];
+      allInstruments: true;  // Всегда все
+    };
+    
+    macro: {
+      enabled: boolean;
+      duration: { min: number; max: number };
+      techniques: TransitionTechnique[];
+      includesPause: boolean;
+      pauseDuration?: number;  // Тактов тишины
+    };
+  };
+};
+```
+
+### Пример для MELANCHOLIC (обновлённый)
+
+```typescript
+const MELANCHOLIC_AMBIENT_BLUEPRINT_V2: MusicBlueprint = {
+  // ... все предыдущие поля
+  
+  // УНИСОН
+  unisonPolicy: {
+    byPart: {
+      INTRO: {
+        active: false,
+        type: 'none',
+        ratio: 0.0
+      },
+      BUILD: {
+        active: true,
+        type: 'octave',      // Бас + пад октавой выше
+        ratio: 0.7           // 70% времени (не всё время, есть вариации)
+      },
+      MAIN: {
+        active: true,
+        type: 'strict',      // Абсолютный унисон
+        ratio: 0.85          // 85% времени (основная фактура)
+      },
+      RELEASE: {
+        active: true,
+        type: 'harmonized',  // Терции/квинты
+        ratio: 0.6
+      },
+      OUTRO: {
+        active: false,
+        type: 'none',
+        ratio: 0.0
+      }
+    }
+  },
+  
+  // ПЕРЕХОДЫ
+  transitions: {
+    micro: {
+      enabled: true,
+      probability: 0.6,           // 60% шанс между бандлами
+      duration: { min: 1, max: 2 },
+      techniques: ['chromatic_approach', 'suspended_resolution'],
+      instruments: ['bass', 'pad']
+    },
+    
+    medium: {
+      enabled: true,
+      mandatory: true,            // Всегда между частями
+      duration: { min: 3, max: 4 },
+      techniques: ['pivot_chord', 'suspended_resolution', 'sequential'],
+      allInstruments: true
+    },
+    
+    macro: {
+      enabled: true,
+      duration: { min: 7, max: 9 },
+      techniques: ['pivot_chord', 'scalar_run', 'pedal_point'],
+      includesPause: true,
+      pauseDuration: 1           // 1 такт тишины
+    }
+  }
+};
+```
+
+---
+
+## ЧАСТЬ 4: ПРИМЕРЫ ДЛЯ ДРУГИХ НАСТРОЕНИЙ
+
+### DARK AMBIENT
+
+```typescript
+// Унисон
+unisonPolicy: {
+  byPart: {
+    INTRO: { active: true, type: 'octave', ratio: 0.5 },     // Уже в INTRO есть унисон (мрачность)
+    BUILD: { active: true, type: 'strict', ratio: 0.8 },
+    MAIN: { active: true, type: 'strict', ratio: 0.9 },      // Максимальный унисон (давящая плотность)
+    RELEASE: { active: true, type: 'harmonized', ratio: 0.7 },
+    OUTRO: { active: true, type: 'octave', ratio: 0.6 }      // Не отпускаем (мрак остаётся)
+  }
+},
+
+// Переходы
+transitions: {
+  micro: {
+    enabled: true,
+    probability: 0.3,           // Редко (статичность)
+    duration: { min: 2, max: 3 },  // Дольше (медленный темп)
+    techniques: ['pedal_point', 'diminished_passage'],
+    instruments: ['bass', 'pad']
+  },
+  medium: {
+    enabled: true,
+    mandatory: true,
+    duration: { min: 4, max: 6 },  // Дольше
+    techniques: ['pedal_point', 'diminished_passage'],
+    allInstruments: true
+  },
+  macro: {
+    enabled: true,
+    duration: { min: 8, max: 12 },  // Очень долгий переход
+    techniques: ['pedal_point', 'diminished_passage', 'chromatic_descent'],
+    includesPause: true,
+    pauseDuration: 2              // 2 такта тишины (тяжёлая пауза)
+  }
+}
+```
+
+---
+
+### JOYFUL AMBIENT
+
+```typescript
+// Унисон
+unisonPolicy: {
+  byPart: {
+    INTRO: { active: false, type: 'none', ratio: 0.0 },
+    BUILD: { active: true, type: 'harmonized', ratio: 0.6 },  // Терции (светло)
+    MAIN: { active: true, type: 'harmonized', ratio: 0.7 },   // Больше гармонизации, меньше строгого унисона
+    RELEASE: { active: true, type: 'octave', ratio: 0.5 },
+    OUTRO: { active: false, type: 'none', ratio: 0.0 }
+  }
+},
+
+// Переходы
+transitions: {
+  micro: {
+    enabled: true,
+    probability: 0.7,           // Часто (динамичность)
+    duration: { min: 1, max: 1 },  // Короткие (быстрый темп)
+    techniques: ['suspended_resolution', 'chromatic_approach'],
+    instruments: ['bass', 'pad', 'arpeggio']  // Арпеджио тоже участвует
+  },
+  medium: {
+    enabled: true,
+    mandatory: true,
+    duration: { min: 2, max: 3 },  // Короче
+    techniques: ['sequential', 'suspended_resolution'],
+    allInstruments: true
+  },
+  macro: {
+    enabled: true,
+    duration: { min: 6, max: 8 },
+    techniques: ['sequential', 'scalar_run'],  // Восходящие пассажи
+    includesPause: false,         // Нет паузы (momentum сохраняется)
+    pauseDuration: 0
+  }
+}
+```
+
+---
+
+## ЧАСТЬ 5: ГЕНЕРАЦИЯ ПЕРЕХОДНЫХ ФРАЗ (КОД)
+
+```typescript
+class TransitionGenerator {
+  constructor(
+    private fromChord: Chord,
+    private toChord: Chord,
+    private scale: Scale,
+    private duration: number  // тактов
+  ) {}
+  
+  // Chromatic Approach
+  generateChromaticApproach(): MIDINote[] {
+    const fromRoot = this.fromChord.root;
+    const toRoot = this.toChord.root;
+    const distance = toRoot - fromRoot;
+    
+    const notes: MIDINote[] = [];
+    const steps = this.duration * 4;  // Четвертные ноты
+    const semitoneStep = distance / steps;
+    
+    for (let i = 0; i < steps; i++) {
+      notes.push({
+        pitch: Math.round(fromRoot + semitoneStep * i),
+        beat: i + 1,
+        duration: 1,
+        velocity: 65 + Math.random() * 10
+      });
+    }
+    
+    return notes;
+  }
+  
+  // Pivot Chord
+  generatePivotChord(): { chord: Chord; voicing: number[] } {
+    // Найти общий аккорд между from и to
+    const fromNotes = new Set(this.fromChord.notes);
+    const toNotes = new Set(this.toChord.notes);
+    
+    // Пересечение нот
+    const commonNotes = [...fromNotes].filter(n => toNotes.has(n));
+    
+    if (commonNotes.length >= 2) {
+      // Строим аккорд на общих нотах
+      return {
+        chord: { name: 'pivot', root: commonNotes[0], notes: commonNotes },
+        voicing: commonNotes.map(note => this.scale.noteToMIDI(note))
+      };
+    }
+    
+    // Если общих нот мало, используем уменьшенный аккорд (универсальный)
+    return {
+      chord: { name: 'dim7', root: this.fromChord.root, notes: [...] },
+      voicing: [...]
+    };
+  }
+  
+  // Suspended Resolution
+  generateSuspendedResolution(): MIDINote[][] {
+    // Создаём sus4 аккорд от toChord, затем разрешаем в toChord
+    const susChord = {
+      ...this.toChord,
+      notes: this.toChord.notes.map(n => 
+        n === this.toChord.third ? this.toChord.fourth : n
+      )
+    };
+    
+    const bar1 = this.chordToNotes(susChord, 0, 2);  // Sus4, 2 такта
+    const bar2 = this.chordToNotes(this.toChord, 2, 2);  // Разрешение, 2 такта
+    
+    return [bar1, bar2];
+  }
+  
+  // Scalar Run
+  generateScalarRun(direction: 'ascending' | 'descending'): MIDINote[] {
+    const start = this.fromChord.root;
+    const end = this.toChord.root;
+    
+    const scaleNotes = this.scale.getNotesBetween(start, end);
+    if (direction === 'descending') scaleNotes.reverse();
+    
+    const notes: MIDINote[] = [];
+    const noteDuration = (this.duration * 4) / scaleNotes.length;
+    
+    scaleNotes.forEach((pitch, i) => {
+      notes.push({
+        pitch,
+        beat: i * noteDuration + 1,
+        duration: noteDuration * 0.9,  // Небольшой зазор
+        velocity: 70 + (direction === 'ascending' ? i * 2 : -i * 2)  // Crescendo/diminuendo
+      });
+    });
+    
+    return notes;
+  }
+  
+  // Pedal Point
+  generatePedalPoint(pedalNote: number): { bass: MIDINote[]; pad: MIDINote[][] } {
+    const bass = [
+      { pitch: pedalNote, beat: 1, duration: this.duration * 4, velocity: 70 }
+    ];
+    
+    // Пад меняет аккорды над педалью
+    const pad = [];
+    const chordsOverPedal = this.generateChordsOverPedal(pedalNote);
+    
+    let currentBeat = 1;
+    for (const chord of chordsOverPedal) {
+      pad.push(this.chordToNotes(chord, currentBeat, 2));
+      currentBeat += 2;
+    }
+    
+    return { bass, pad };
+  }
+}
+```
+
+---
+
+## ИТОГО: ЧТО ПОЛУЧИЛОСЬ
+
+### ✅ Концепция унисона
+- 3 типа: strict, octave, harmonized
+- Разная политика для каждой части
+- Переменное соотношение (ratio) — не всё время, а N%
+
+### ✅ Иерархия переходов
+- **Micro** (1-2 т): бандл→бандл, только бас+пад
+- **Medium** (3-4 т): часть→часть, ВСЕ инструменты
+- **Macro** (7-9 т): сюита→сюита, развитая структура + пауза
+
+### ✅ Техники переходов
+- Chromatic approach
+- Pivot chord
+- Suspended resolution
+- Scalar run
+- Pedal point
+- Diminished passage
+- Sequential
+
+### ✅ Интеграция в блюпринт
+- Новые поля `unisonPolicy` и `transitions`
+- Примеры для melancholic, dark, joyful
+- Готовый код для генерации
+
+---
+
+Классная мысль. Сфокусированные «окна унисона» баса и аккомпанемента дают узнаваемый почерк и сильную «ось» формы. Ниже — честная критика, как сделать это музыкально и технично безопасно, и подробный план внедрения: где, как и в каких дозировках играть унисон, какие мосты (bridges) использовать между частями и при смене сюиты.
+
+Зачем это работает
+- Плюсы:
+  - Ясный центр внимания: монолитная линия «дышит» как один организм.
+  - Стабильность тонцентра: ambient-поток не разваливается, хорошо ложится на длинные пласты.
+  - Сильный «почерк»: редкая для эмбиента техника, звучит как осознанный дизайн.
+- Риски:
+  - Спектральная муть (200–500 Гц) и моноцентр, если дублить фундамент в двух слоях.
+  - Фазовые гребёнки в чистом унисоне (особенно на органах с детюном/хорусом).
+  - Гармоническая бедность и «одна линия всё время» — утомляет.
+
+Как минимизировать риски и сделать «унисон» музыкальным
+- Псевдо‑унисон вместо «жёсткого»
+  - Регистровое разведение: всегда минимум октава между басом и аккомпом (бас — фундамент; аккомп — октава/две выше).
+  - Спектральное разделение: HPF на аккомпе 120–180 Гц; бас — моно до 120 Гц. Слегка приглушить 250–400 Гц в mid‑канале, +side ширину у аккомпа.
+  - Небольшой детюн у аккомпа ±4–8 центов, а у баса — 0 центов (чтобы избежать фаз).
+  - Разные огибающие: бас — ровно/легато, аккомп — длинная атака и чуть длиннее релиз.
+- Гетерофония (микро‑расхождения)
+  - «Тень» ноты: аккомп повторяет ту же высоту, но добавляет редкие прохождения к соседним ступеням (верхний/нижний сосед) и возвращается.
+  - Ритмический микросдвиг: аккомп чуть позже на 20–40 мс в начале бандла или делает мягкое «поддыхание» фильтром.
+  - Цветовые обертона: в унисоне добавляй тихо add9 или 5 вверху на слабых долях (не аккорд, а орнамент).
+- Дозировка: унисон окнами
+  - Не «всю часть насквозь», а окнами по 4–12 тактов (в зависимости от Mood), внутри бандлов или на плато части.
+  - Края бандла/части — размыкаем унисон и переходим в широкий voicing для контраста.
+
+Где применять унисон по настройкам (рекомендации)
+- Dark/Gloomy: много унисона (0.6–0.7 времени в «плато»), чаще октавы/квинты.
+- Melancholic/Calm: умеренно (0.4–0.5), на «Reflection/Establish».
+- Dreamy: дозировано (0.3–0.4), с более высоким регистром и плавной «тенью» (#11).
+- Joyful/Enthusiastic: акцент на движение, унисон короткими всплесками (0.2–0.35) для «собранности», дальше — открытые voicings.
+- Neutral: 0.4–0.5, как гибкая серединка.
+
+Переходные фразы (bridges) — все инструменты вместе
+Идея сильная: «общая фраза» объединяет форму. Варианты мостов (2–4 такта для межчастевых; 4–8 тактов — межсютный):
+
+- Pivot‑bridge (общий тон)
+  - Держим общую ноту/квинту обеих частей 1–2 такта; в последних тактах вводим цвет новой части (add9/11). Перкуссия: tom swell, шейкер редеет, ride wash.
+- Step‑bridge (соседние ступени)
+  - Ведущая линия (унисонная пара) делает соседний шаг к целевому корню: b7→1, 5→1, реже b2→1 (для Phrygian). Тома подводят, ride — мягкий штрих на последней доле.
+- Fifth‑bridge (квинтовый ход)
+  - Гармоническая опора через квинту (1→5→1 нового центра), бас делает 5→1, аккомп в унисоне на октаву выше.
+- Chromatic‑glide (очень тихо, для gloomy/dark)
+  - Полутоновый подвод в верхнем голосе аккомпа на последнем такте, бас остаётся устойчивым.
+
+Переход на новую сюиту — «расширенный мост» (4–8 тактов)
+- Дизайн:
+  - 2 такта: pivot старого тонцентра (унисон держит опору).
+  - 2–3 такта: «перекрашивание» — добавляем характерную краску новой сюиты (например, #11 для dreamy, bII‑тень для gloomy), аккуратно смешивая модальности.
+  - 1–2 такта: приоритет новой тональности — унисонная пара уже «говорит» на языке новой сюиты, старая фактура уходит фильтром/уровнем.
+- Микс:
+  - Duck хвостов реверба старой сюиты −1.5 dB на каждом онсете моста.
+  - Лёгкий кросс‑пэн у аккомпа (старый — к центру, новый — чуть шире).
+
+Примеры (D Dorian) — короткие наброски
+
+1) Межчастевой мост (2 такта) Dm9 → Gm11
+- Бас: | C2 (qn) D2 (hn) | G1 (wn) |
+- Аккомп (октава ↑, унисон с басом на D и G): | C3 (qn, fade) D3 (hn, long A) | G2 (wn) |
+- Перкуссия: tom swell 2 такта (−18→−12 dB), шейкер выпадения 100% на 2‑м такте, ride — один штрих на «4» такта 2.
+
+2) Межсютный мост (6 тактов) D Dorian → F Lydian
+- t.1–2: Pivot D (унисон D в октавах), аккомп LPF 6→7 кГц
+- t.3–4: Добавляем E (9) и B (мажорная 3 к F как #11 намёк), унисонная линия поднимается D→E→F (мягко)
+- t.5–6: Фиксируемся на F с #11 тихо вверху (B4), бас уже F1, аккомп — F2/F3 (унисон октавами), старую фактуру глушим на −3 dB
+
+Интеграция в блюпринты (правила)
+- UnisonPolicy (вводим в блюпринт)
+  - enabled: true
+  - ratio_by_part: { Establish: 0.4, Bloom: 0.3, Reflection: 0.6, Release: 0.35 } (пример для melancholic)
+  - type: 'octave' | 'fifth' | 'true' (рекомендуется octave/псевдо‑унисон)
+  - detune_cents: 4..8 (для аккомпа), 0 (для баса)
+  - spectral_split: {accomp_hpf: 150 Hz, bass_lpf: 200 Hz, mid_dip: -1.5 dB @ 250–400 Hz, width_accomp: +20%}
+  - micro_variation: {neighbor_tone_prob: 0.25, rhythmic_offset_ms: 20..40, add9_shadow_prob: 0.2}
+- BridgeLibrary
+  - part_bridge: ['pivot', 'step', 'fifth'] с весами по Mood
+  - suite_bridge: ['extended_pivot', 'modal_mix', 'fifth_glide'] (длины 4–8 тактов)
+  - percussion_bridge: {tom_swell: yes, ride_wash: maybe, shaker_dropout: yes}
+- Scheduling
+  - В начале каждого бандла: вероятность войти в унисон‑окно согласно ratio_by_part; длительность окна 4–12 тактов.
+  - Перед границей части/сюты: 100% запланировать мост нужного типа; унисон на мосте — допустим как часть жеста (обычно «подхваты»).
+
+Правила звукоизвлечения (тембр/микс) во время унисона
+- Орган (аккомп): убрать 16’ drawbar (или сильно приглушить), оставить 8’/4’/2’ — так бас не дублируется по фундаменталу.
+- Mellotron/strings: фильтр 9–10 кГц, high‑shelf −1 dB при плотных октавных унисонах, чтобы не «сверлить».
+- Бас: лёгкая сатурация (THD ~0.5–1%), лоу‑энд моно, компрессор 2:1 (атака 20–30 мс).
+- Пространство: Hall 7–9 с, pre‑delay 20–25 мс; при унисоне — чуть меньше send у аккомпа, чтобы линия оставалась «телесной».
+
+Как это встраивается в движок (псевдо‑алгоритм)
+- В Worker (FractalMusicEngine):
+  - При выборе фразы для бандла вычислить unison_window = Bernoulli(p=ratio_by_part[currentPart]).
+  - Если unison_window:
+    - bassPhrase → as is
+    - accompPhrase = createUnisonLayer(bassPhrase, octave=+12/+24, detune=±(4..8)cents, shadowAdd9Prob, rhythmicOffset)
+  - За N тактов до смены части/сюты: выбрать bridgeType из BridgeLibrary по Mood и контексту; сгенерировать bridgeEvents (бас+аккомп+перкуссия) и вставить в EventQueue перед новой секцией.
+- В K/K_ctx:
+  - Во время унисон‑окна понизить «цену» выбора фраз с большим Δregister (держим линию цельной).
+  - При росте mid‑RMS — повышать «цену» новых sustain‑слоёв и slightly ослаблять унисон (убирать add9‑тени и ширину).
+
+Контроль качества (что слушать/мерить)
+- Корреляция бас/аккомп в мид‑канале: при «true‑унисоне» держать 0.6–0.8 в окне, но не постоянно 0.95+ (чтобы не зацементировать микс).
+- Mid‑RMS (200–500 Гц): не превышать на +1.5 dB относительно соседних полос; при превышении — включать mid‑dip и/или уменьшать унисон‑ratio.
+- Слушать фазу: если «высасывает низ» при органе — отключить 16’, снизить детюн или распараллелить по октавам.
+
+Где идея не сработает и что делать
+- вот здесь «жёсткий унисон весь Bloom» потому что усталость слуха и монообраз могут наступить; если изменить на «2 окна унисона по 6 тактов, между ними — широкий voicing с add9/11» то будет лучше, потому что появится дыхание и контраст.
+- вот здесь «аккомп дублирует фундамент внизу» потому что муть и маскировка баса; если изменить на «HPF 150–180 Гц, убрать 16’, оставить 8’/4’/2’» то будет лучше, потому что фундамент останется у баса, а аккомп даст тело и воздух.
+- вот здесь «мосты только томами и райдом» потому что гармония не связывается; если изменить на «обязательный гармонический bridge (pivot/step/fifth) в унисоне линей» то будет лучше, потому что части склеятся не только по ритму/текстуре, но и по тону.
+
+Хочешь — интегрирую этот UnisonPolicy и BridgeLibrary в уже написанные блюпринты (melancholic + остальные 7 moods), с конкретными ratio_by_part, типами мостов и примерами 2‑тактовых межчастевых и 6‑тактовых межсютных фраз для каждого настроения.
+

@@ -1,0 +1,225 @@
+Отлично — интегрируем UnisonPolicy и BridgeLibrary во все 8 блюпринтов. Для каждого настроения даю:
+- части и их доли унисона (ratio_by_part);
+- параметры унисона (тип, детюн, спектральное разделение, микро‑вариации, длина окон);
+- набор мостов (межчастевых и межсютных) с весами;
+- примеры: 2‑тактовый межчастевой мост и 6‑тактовый межсютный мост (в относительных ступенях от тонцентра T; длительности: wn=целая, hn=половинная, qn=четверть).
+
+Примечания
+- Unison здесь — «псевдо‑унисон»: бас и аккомпанемент в ту же ноту, но аккомпанемент октавой/двумя выше, с лёгким детюном и HPF, чтобы не дублировать фундамент и не ловить фазу.
+- Длина окна унисона: window_bars = round(base_window × f), где f = clamp(50/BPM, 0.7, 1.5). Окна применяются 1–2 раза в бандле, по вероятности из ratio_by_part.
+- В интро sparkles/SFX запрещены; в межсютных мостах можно добавить тихий reverse swell (≤ −24 dB).
+
+1) Melancholic (меланхолия)
+Части: Establish, Bloom, Reflection, Release
+
+UnisonPolicy
+- ratio_by_part: { Establish: 0.40, Bloom: 0.30, Reflection: 0.60, Release: 0.35 }
+- type: 'octave' (иногда 'fifth' на подводах)
+- detune_cents: accomp ±4–7, bass 0
+- spectral_split: accomp_hpf 150–180 Гц; bass_lpf 200 Гц; mid_dip −1.5 dB @ 250–400 Гц; width_accomp +15%
+- micro_variation: neighbor_tone_prob 0.25; rhythmic_offset_ms 20–40; add9_shadow_prob 0.20
+- base_window: 6 тактов
+
+BridgeLibrary
+- part_bridges (веса): pivot 0.5, step(b7→1) 0.3, fifth(5→1) 0.2
+- suite_bridges: extended_pivot 0.5, modal_mix(Dor↔Aeol) 0.3, fifth_glide 0.2
+
+Примеры мостов
+- Межчастевой 2 такта (Dor): 
+  - Бас: t1: C (b7, hn) → D (1, hn); t2: A (5, wn)
+  - Аккомп: унисон октавой выше; тени: add9 (E) тихо в t2
+  - Перкуссия: tom swell 2 такта (−18→−12 dB), ride один штрих на «4» t2
+- Межсютный 6 тактов (Dor→Aeol или новый центр):
+  - t1–2: pivot D (бас D1 wn×2, аккомп D октавой↑), LPF аккомпа 6→7 кГц
+  - t3–4: ввод Aeolian‑краски: добавь b6 (Bb) в верхнем голосе тихо, бас A (5)→C (b7)
+  - t5–6: фиксация новой тональности (напр. A Aeolian): бас A→A, аккомп A унисоном октавой↑, тени add11 (D) очень тихо; ride wash на t6
+
+2) Dark (тёмное)
+Части: Establish, Plateau, Release
+
+UnisonPolicy
+- ratio_by_part: { Establish: 0.50, Plateau: 0.70, Release: 0.40 }
+- type: 'octave' (главный), 'fifth' иногда; true‑унисон — нет
+- detune_cents: ±3–5
+- spectral_split: accomp_hpf 180–200 Гц; bass_lpf 180–200 Гц; mid_dip −2 dB @ 250–400 Гц; width_accomp +10%
+- micro_variation: neighbor_tone_prob 0.15; offset 15–30 ms; add9_shadow_prob 0.10
+- base_window: 8 тактов
+
+BridgeLibrary
+- part_bridges: pivot 0.5, step(b2→1 для Phryg) 0.3, fifth 0.2
+- suite_bridges: extended_pivot 0.5, chromatic_glide 0.3, fifth_glide 0.2
+
+Примеры
+- Межчастевой 2 такта (Phryg):
+  - Бас: t1: b2 (Eb, hn) → D (1, hn); t2: A (5, wn)
+  - Аккомп: унисон октавой↑; sus4 вместо терции; LPF дип на t1
+  - Перкуссия: только том‑swell; шейкер гасим
+- Межсютный 6 тактов:
+  - t1–2: pivot 1 (бас T wn; аккомп T октавой↑), плотный LPF
+  - t3–4: chromatic_glide в верхнем голосе (b2→1→b2→1 тихо), бас остаётся на 1→5
+  - t5–6: новый центр (квинтовый сосед): бас 5→1 нового; аккомп унисон октавой↑; ride один едва слышный штрих в t6
+
+3) Gloomy (мрачное)
+Части: Establish, Motion, Plateau, Release
+
+UnisonPolicy
+- ratio_by_part: { Establish: 0.45, Motion: 0.35, Plateau: 0.60, Release: 0.40 }
+- type: 'octave' (иногда 'fifth'); true — нет
+- detune_cents: ±4–6
+- spectral_split: accomp_hpf 170–190; bass_lpf 200; mid_dip −1.5 dB; width +12%
+- micro_variation: neighbor_tone_prob 0.20; offset 20–35 ms; add9_shadow_prob 0.15
+- base_window: 6 тактов
+
+BridgeLibrary
+- part_bridges: step(b2→1) 0.45, pivot 0.35, fifth 0.20
+- suite_bridges: extended_pivot 0.4, modal_mix(Phryg↔Dor) 0.35, fifth_glide 0.25
+
+Примеры
+- Межчастевой 2 такта (Phryg/Dor контраст):
+  - Бас: t1: b2 (hn) → 1 (hn); t2: 5 (wn)
+  - Аккомп: унисон октавой↑; верхний голос «дышит» полутоном (neighbor)
+  - Перкуссия: тихий том‑swell; ride − нет
+- Межсютный 6 тактов:
+  - t1–2: pivot 1; 
+  - t3–4: modal_mix — верхняя нота из Dorian (6 ступень) как мягкая тень; бас 1→b7
+  - t5–6: фиксация нового центра через 5→1; ride wash в t6 очень тихо
+
+4) Calm (спокойствие)
+Части: Establish, Bloom, Release
+
+UnisonPolicy
+- ratio_by_part: { Establish: 0.45, Bloom: 0.35, Release: 0.30 }
+- type: 'octave' (иногда 'fifth' в переходах)
+- detune_cents: ±4–6
+- spectral_split: accomp_hpf 150–170; bass_lpf 200; mid_dip −1 dB; width +12%
+- micro_variation: neighbor_tone_prob 0.20; offset 20–30 ms; add9_shadow_prob 0.25
+- base_window: 5 тактов
+
+BridgeLibrary
+- part_bridges: pivot 0.5, fifth(5→1) 0.3, step(6→5→1) 0.2
+- suite_bridges: extended_pivot 0.5, fifth_glide 0.3, modal_mix(Ion↔Lyd) 0.2
+
+Примеры
+- Межчастевой 2 такта (Ion/Lyd):
+  - Бас: t1: 5 (hn) → 1 (hn); t2: 1 (wn)
+  - Аккомп: унисон октавой↑; тень add9 на слабой доле t2
+  - Перкуссия: короткий tom‑swell; ride один мягкий штрих
+- Межсютный 6 тактов:
+  - t1–2: pivot 1 (унисон), ширина стерео у аккомпа чуть↑
+  - t3–4: плавный ввод #11 (Lydian‑подсветка) тихо; бас 1→5
+  - t5–6: новый центр: 5→1, аккомп унисон октавой↑; ride wash t6
+
+5) Dreamy (мечтательное)
+Части: Establish, Float, Bloom, Release
+
+UnisonPolicy
+- ratio_by_part: { Establish: 0.35, Float: 0.45, Bloom: 0.30, Release: 0.25 }
+- type: 'octave' (с тенью #11/9), 'fifth' реже
+- detune_cents: ±5–8
+- spectral_split: accomp_hpf 180; bass_lpf 220; mid_dip −1 dB; width +20%
+- micro_variation: neighbor_tone_prob 0.30; offset 20–40 ms; add9_shadow_prob 0.35
+- base_window: 4 такта
+
+BridgeLibrary
+- part_bridges: pivot(+#11) 0.45, fifth(с 9) 0.35, step(2→3→2) 0.20
+- suite_bridges: extended_pivot(+#11) 0.5, modal_mix(Lyd↔Mixol) 0.3, fifth_glide 0.2
+
+Примеры
+- Межчастевой 2 такта (Lyd):
+  - Бас: t1: 5 (hn) → 1 (hn); t2: 1 (wn)
+  - Аккомп: унисон октавой↑; на t2 верхний голос «подсвечивает» #11 тихо
+  - Перкуссия: ride wash 1 такт; шейкер редеет
+- Межсютный 6 тактов:
+  - t1–2: pivot 1; shimmer‑сенд +0.5–1 dB
+  - t3–4: ввод 9 и #11 (верхний голос) по соседним ступеням; бас 1→5
+  - t5–6: новый центр: 5→1; унисон; ride wash t5–t6
+
+6) Joyful (весёлое)
+Части: Establish, Bloom, Dance‑like shimmer, Release
+
+UnisonPolicy
+- ratio_by_part: { Establish: 0.30, Bloom: 0.25, Dance: 0.20, Release: 0.25 }
+- type: 'octave' (короткие окна), 'fifth' в переходах
+- detune_cents: ±3–5
+- spectral_split: accomp_hpf 180; bass_lpf 220–240; mid_dip −1 dB; width +15%
+- micro_variation: neighbor_tone_prob 0.35; offset 15–25 ms; add9_shadow_prob 0.30
+- base_window: 3 такта
+
+BridgeLibrary
+- part_bridges: fifth(5→1) 0.45, pivot(+add9) 0.35, step(2→3→2) 0.20
+- suite_bridges: fifth_glide 0.5, extended_pivot 0.3, modal_mix(Ion↔Lyd) 0.2
+
+Примеры
+- Межчастевой 2 такта (Ion):
+  - Бас: t1: 2(qn)→3(qn)→2(qn)→1(qn); t2: 5(hn)→1(hn)
+  - Аккомп: унисон октавой↑; тени add9 на t2
+  - Перкуссия: лёгкий tom hit на «4» t2, ride штрих
+- Межсютный 6 тактов:
+  - t1–2: fifth_glide: 1→5 (бас), унисон октавой↑
+  - t3–4: pivot 5 с add9 тенью (верхний голос), шейкер редеет
+  - t5–6: 5→1 нового центра; ride wash t6
+
+7) Enthusiastic (энтузиаст)
+Части: Quick Establish, Bloom, High‑Energy Float, Controlled Release
+
+UnisonPolicy
+- ratio_by_part: { QuickEst: 0.25, Bloom: 0.20, HighEnergy: 0.20, Release: 0.20 }
+- type: 'octave' (короткие окна), 'fifth' часто
+- detune_cents: ±2–4
+- spectral_split: accomp_hpf 200; bass_lpf 220–240; mid_dip −1 dB; width +10%
+- micro_variation: neighbor_tone_prob 0.30; offset 10–20 ms; add9_shadow_prob 0.25
+- base_window: 3 такта
+
+BridgeLibrary
+- part_bridges: fifth(1→5→1) 0.5, step(5→6→1) 0.3, pivot 0.2
+- suite_bridges: fifth_glide 0.5, extended_pivot 0.3, modal_mix(Mixol↔Lyd) 0.2
+
+Примеры
+- Межчастевой 2 такта (Mixol):
+  - Бас: t1: 5(hn) → 1(hn); t2: b7(hn) → 1(hn) (без яркой доминанты, всё sus)
+  - Аккомп: унисон октавой↑; можно легкий арп‑штрих на последней доле t2
+  - Перкуссия: короткий том‑fill (не swell), ride мягкий
+- Межсютный 6 тактов:
+  - t1–2: 1→5 (бас), унисон октавой↑
+  - t3–4: step 5→6→5 в верхнем голосе; бас держит 5
+  - t5–6: 5→1 нового центра; ride wash обе такта (−16 dB)
+
+8) Neutral (нейтральное)
+Части: Establish, Bloom, Reflection, Release
+
+UnisonPolicy
+- ratio_by_part: { Establish: 0.40, Bloom: 0.35, Reflection: 0.50, Release: 0.30 }
+- type: 'octave' (иногда 'fifth')
+- detune_cents: ±4–6
+- spectral_split: accomp_hpf 160–180; bass_lpf 200–220; mid_dip −1…−1.5 dB; width +12%
+- micro_variation: neighbor_tone_prob 0.25; offset 20–30 ms; add9_shadow_prob 0.20
+- base_window: 5 тактов
+
+BridgeLibrary
+- part_bridges: pivot 0.45, fifth 0.35, step(b7→1) 0.20
+- suite_bridges: extended_pivot 0.4, fifth_glide 0.35, modal_mix(Ion↔Dor) 0.25
+
+Примеры
+- Межчастевой 2 такта:
+  - Бас: t1: b7(hn) → 1(hn); t2: 5(wn)
+  - Аккомп: унисон октавой↑; add9 тенью на t2
+  - Перкуссия: tom‑swell короткий; ride штрих на «4»
+- Межсютный 6 тактов:
+  - t1–2: pivot 1; 
+  - t3–4: fifth_glide 1→5 (бас), верхний голос тень 9
+  - t5–6: 5→1 нового центра; ride wash t6, шейкер пауза
+
+Быстрые правила исполнения унисона (для всех)
+- Орган: приглушить 16’, оставить 8’/4’/2’; Leslie slow; у аккомпа HPF согласно настроению; у баса LPF и саб‑моно.
+- Строки/мелло: LPF 9–10 кГц; при плотных унисонах — high‑shelf −1 dB.
+- Дакинг реверба при онсетах моста −1…−2 dB; в унисон‑окнах — reverb send аккомпа чуть меньше.
+
+Правила планировщика
+- В начале бандла бросай Bernoulli(p = ratio_by_part[part]) → если true, ставь unison_window длиной window_bars (масштабировать по f).
+- За 2 такта до конца бандла/части — гарантированно вставляй part_bridge по весам.
+- За 6 тактов до конца сюиты — вставляй suite_bridge (6 тактов); «двойной контур» старой/новой сюиты, без обрыва хвостов.
+
+Хочешь — выберем один из moods (например, Dark или Dreamy) и распишем референс‑настройку как делали для Melancholic: конкретные бандлы, воисинги (по нотам) и басовые контуры по тактам, плюс готовые MIDI‑наброски для мостов.
+
+
+
