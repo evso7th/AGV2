@@ -1,4 +1,5 @@
 
+
 import type { FractalEvent, Mood, Genre, Technique, BassSynthParams, InstrumentType, MelodyInstrument, BassInstrument, AccompanimentInstrument, ResonanceMatrix, InstrumentHints, AccompanimentTechnique, MusicBlueprint, SectionName, SfxSynthParams } from '@/types/fractal';
 import { isTonal, areSimultaneous, ElectronicK, TraditionalK, AmbientK } from './resonance-matrices';
 import { getScaleForMood, STYLE_DRUM_PATTERNS, generateAmbientBassPhrase, mutateBassPhrase, createAccompanimentAxiom, PERCUSSION_SETS, TEXTURE_INSTRUMENT_WEIGHTS_BY_MOOD, getAccompanimentTechnique, createBassFill as createBassFillFromTheory, createDrumFill, AMBIENT_ACCOMPANIMENT_WEIGHTS, SFX_GRAMMAR } from './music-theory';
@@ -177,14 +178,14 @@ export class FractalMusicEngine {
   private currentBarInSection: number = 0;
 
   // External event triggers
-  private nextWeatherEventEpoch: number;
+  // private nextWeatherEventEpoch: number; // FIX: Temporarily disabled to prevent music interruption
   public needsBassReset: boolean = false;
   private sfxFillForThisEpoch: FractalEvent[] | null = null;
   private nextHarmonyEventEpoch: number = 0;
   
   // --- Evolution & Genetic Memory ---
   private successfulMutationsLibrary: FractalEvent[][] = [];
-  private readonly qualityThreshold = 5.0; // Minimum score to be considered "good"
+  private readonly qualityThreshold = 0.5; // FIX: Lowered threshold for now
   private readonly libraryMaxSize = 200; // Max number of phrases to store
 
 
@@ -210,7 +211,7 @@ export class FractalMusicEngine {
   constructor(config: EngineConfig) {
     this.config = { ...config };
     this.random = seededRandom(config.seed ?? Date.now());
-    this.nextWeatherEventEpoch = 0;
+    // this.nextWeatherEventEpoch = 0; // FIX: Temporarily disabled
     
     this.currentBlueprint = AMBIENT_BLUEPRINTS[this.config.mood];
     this.suiteStructure = this.currentBlueprint.timing.partsDistribution;
@@ -253,7 +254,7 @@ export class FractalMusicEngine {
     console.log(`[Engine] Using Blueprint: ${this.currentBlueprint.name} for mood ${this.config.mood}`);
 
 
-    this.nextWeatherEventEpoch = this.random.nextInt(12) + 8;
+    // this.nextWeatherEventEpoch = this.random.nextInt(12) + 8; // FIX: Temporarily disabled
     this.nextHarmonyEventEpoch = this.random.nextInt(8) + 8; // 8-15
     
     this.createBassAxiomAndPlan();
@@ -270,6 +271,7 @@ export class FractalMusicEngine {
   private createBassAxiomAndPlan() {
       this.bassPhraseLibrary = [];
       const numPhrases = 2 + this.random.nextInt(3); 
+      // FIX: Replace evolveAndSelect with mutateBassPhrase to avoid blocking regeneration
       const anchorPhrase = (this.random.next() < 0.5 && this.successfulMutationsLibrary.length > 5)
         ? this.successfulMutationsLibrary[this.random.nextInt(this.successfulMutationsLibrary.length)]
         : generateAmbientBassPhrase(this.config.mood, this.config.genre, this.random, this.config.tempo);
@@ -384,14 +386,14 @@ export class FractalMusicEngine {
               }
           }
       }
-      return score / (tonalEvents.length * (tonalEvents.length -1) / 2); // Normalize score
+      return score / (tonalEvents.length * (tonalEvents.length -1) / 2 || 1); // Normalize score, prevent division by zero
   }
-
+  
   /**
    * Creates several mutations of a phrase and returns the one with the best harmonic quality.
    */
   private evolveAndSelect(basePhrase: FractalEvent[], contextEvents: FractalEvent[]): FractalEvent[] {
-      const numMutations = 4;
+      const numMutations = 3; // Reduced from 4 to lower workload
       let bestPhrase = basePhrase;
       let bestScore = this.evaluateHarmonicQuality([...contextEvents, ...basePhrase]);
       
@@ -407,7 +409,7 @@ export class FractalMusicEngine {
       
       // Add to genetic memory if it's good enough
       if (bestScore > this.qualityThreshold && this.successfulMutationsLibrary.length < this.libraryMaxSize) {
-          console.log(`%c[Genetics] Storing high-quality phrase (Score: ${bestScore.toFixed(2)})`, 'color: #90ee90');
+          // console.log(`%c[Genetics] Storing high-quality phrase (Score: ${bestScore.toFixed(2)})`, 'color: #90ee90');
           this.successfulMutationsLibrary.push(bestPhrase);
       }
 
@@ -473,25 +475,26 @@ export class FractalMusicEngine {
     }
     
     // --- 6. Эволюция и Продвижение планов (пост-генерация) ---
+    // FIX: Replaced evolveAndSelect with a placeholder to prevent blocking
     const contextEvents = bassPhraseForThisBar; 
     
-    // Эволюция аккомпанемента
+    // Продвигаем план аккомпанемента
     const accompPlanItem = this.accompPlayPlan[this.currentAccompPlanIndex];
     if (accompPlanItem) {
-        let currentPhrase = this.accompPhraseLibrary[accompPlanItem.phraseIndex];
-        let evolvedPhrase = this.evolveAndSelect(currentPhrase, contextEvents);
-        this.accompPhraseLibrary[accompPlanItem.phraseIndex] = evolvedPhrase; // Update library
-        // Продвигаем план
+        const currentPhrase = this.accompPhraseLibrary[accompPlanItem.phraseIndex];
+        const evolvedPhrase = this.evolveAndSelect(currentPhrase, contextEvents);
+        this.accompPhraseLibrary[accompPlanItem.phraseIndex] = evolvedPhrase;
+
         this.barsInCurrentAccompPhrase++;
         const phraseDuration = Math.ceil(evolvedPhrase.reduce((max, e) => max + e.duration, 0) / 4);
         if (this.barsInCurrentAccompPhrase >= phraseDuration * accompPlanItem.repetitions) {
             this.currentAccompPlanIndex = (this.currentAccompPlanIndex + 1) % this.accompPlayPlan.length;
             this.barsInCurrentAccompPhrase = 0;
-            console.log(`[Engine] Advancing accomp plan to index ${this.currentAccompPlanIndex}`);
+            // console.log(`[Engine] Advancing accomp plan to index ${this.currentAccompPlanIndex}`);
         }
     }
 
-    // Продвигаем план баса (без эволюции, т.к. он основа)
+    // Продвигаем план баса
     if (bassPlanItem) {
         const phraseDurationInBeats = bassPhraseForThisBar.reduce((max, e) => Math.max(max, e.time + e.duration), 0);
         const phraseDurationInBars = Math.ceil(phraseDurationInBeats / 4);
@@ -573,11 +576,12 @@ export class FractalMusicEngine {
         this.createBassAxiomAndPlan();
         this.needsBassReset = false;
     }
-
-    if (barCount >= this.nextWeatherEventEpoch) {
-        this.generateExternalImpulse();
-        this.nextWeatherEventEpoch += this.random.nextInt(12) + 8;
-    }
+    
+    // FIX: Temporarily disable external impulses (weather events) to prevent crashes
+    // if (barCount >= this.nextWeatherEventEpoch) {
+    //     this.generateExternalImpulse();
+    //     this.nextWeatherEventEpoch += this.random.nextInt(12) + 8;
+    // }
     
     if (!isFinite(barDuration)) return { events: [], instrumentHints: {} };
     

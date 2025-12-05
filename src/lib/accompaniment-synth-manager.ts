@@ -1,4 +1,5 @@
 
+
 import type { FractalEvent, MelodyInstrument, AccompanimentInstrument, BassSynthParams } from '@/types/fractal';
 import type { Note } from "@/types/music";
 import { SYNTH_PRESETS, type SynthPreset } from './synth-presets';
@@ -28,6 +29,7 @@ export class AccompanimentSynthManager {
     private synthPool: SynthVoice[] = [];
     private synthOutput: GainNode;
     private preamp: GainNode; // Pre-amplifier for the synth section
+    private nextSynthVoice = 0; // FIX: Added missing property
     private isSynthPoolInitialized = false;
 
     constructor(audioContext: AudioContext, destination: AudioNode) {
@@ -111,9 +113,11 @@ export class AccompanimentSynthManager {
 
         const messages: any[] = [];
         
+        // FIX: Group notes by simultaneous start time to send as a single chord message
         const notesByTime = new Map<number, Note[]>();
         for (const note of notes) {
-            const timeKey = Math.round(note.time * 1000);
+            // Quantize time to group notes that are very close together
+            const timeKey = Math.round(note.time * 1000); 
             if (!notesByTime.has(timeKey)) {
                 notesByTime.set(timeKey, []);
             }
@@ -159,6 +163,7 @@ export class AccompanimentSynthManager {
                     when: noteOffTime
                 });
                 
+                // Add a small, humanizing delay for notes in the same chord
                 strumOffset += (Math.random() * 0.008) + 0.002; // 2ms to 10ms
             }
         }
