@@ -13,7 +13,6 @@ type SynthVoice = {
     worklet: AudioWorkletNode;
     gain: GainNode; // For ADSR envelope
     lfo: OscillatorNode; // For LFO modulation
-    lfoGain: GainNode; // To control LFO depth
 };
 
 /**
@@ -30,6 +29,7 @@ export class AccompanimentSynthManager {
     // Synth Instruments (Worklet-based pool)
     private synthPool: SynthVoice[] = [];
     private synthOutput: GainNode;
+    private preamp: GainNode; // Pre-amplifier for the synth section
     private nextSynthVoice = 0;
     private isSynthPoolInitialized = false;
 
@@ -39,6 +39,10 @@ export class AccompanimentSynthManager {
 
         this.synthOutput = this.audioContext.createGain();
         this.synthOutput.connect(this.destination);
+
+        this.preamp = this.audioContext.createGain();
+        this.preamp.gain.value = 1.4; 
+        this.preamp.connect(this.synthOutput);
         this.nextSynthVoice = 0;
     }
 
@@ -57,32 +61,22 @@ export class AccompanimentSynthManager {
         if (this.isSynthPoolInitialized) return;
         try {
             await this.audioContext.audioWorklet.addModule('/worklets/chord-processor.js');
-            for (let i = 0; i < 8; i++) {
+            for (let i = 0; i < 8; i++) { // Increased pool size to 8
                 const worklet = new AudioWorkletNode(this.audioContext, 'chord-processor', {
                     processorOptions: { sampleRate: this.audioContext.sampleRate },
-                    outputChannelCount: [2],
-                     // Define custom AudioParams that can be modulated
-                    parameterData: {
-                        'cutoff': SYNTH_PRESETS.synth.filter.cutoff,
-                        'q': SYNTH_PRESETS.synth.filter.q,
-                        'lfoAmount': 0, // No modulation by default
-                        'distortion': 0,
-                    }
+                    outputChannelCount: [2]
                 });
                 
                 const gain = this.audioContext.createGain();
                 gain.gain.value = 0;
 
-                // Create LFO components for this voice
                 const lfo = this.audioContext.createOscillator();
-                const lfoGain = this.audioContext.createGain();
-                lfo.connect(lfoGain);
-                lfo.start(); // LFOs run continuously
+                lfo.start(); 
 
                 worklet.connect(gain);
-                gain.connect(this.synthOutput);
-
-                this.synthPool.push({ worklet, gain, lfo, lfoGain });
+                gain.connect(this.preamp);
+                
+                this.synthPool.push({ worklet, gain, lfo });
             }
             this.isSynthPoolInitialized = true;
             console.log('[AccompManager] Synth pool initialized with 8 voices (Worklet + Gain + LFO).');
@@ -101,6 +95,7 @@ export class AccompanimentSynthManager {
         
         console.log(`[AccompManager] schedule called. Control: ${composerControlsInstruments}, Hint: ${instrumentHint}, Active: ${this.activeInstrumentName}. Will play: ${instrumentToPlay}`);
 
+
         if (instrumentToPlay === 'none' || !Object.keys(SYNTH_PRESETS).includes(instrumentToPlay)) {
             return;
         }
@@ -114,7 +109,7 @@ export class AccompanimentSynthManager {
             params: event.params
         }));
 
-        this.scheduleSynth(instrumentToPlay as keyof typeof SYNTH_PRESETS, notes, barStartTime);
+        this.scheduleSynth(instrumentToPlay as Exclude<AccompanimentInstrument, 'piano' | 'violin' | 'flute' | 'guitarChords' | 'acousticGuitarSolo' | 'none'>, notes, barStartTime);
     }
 
     private scheduleSynth(instrumentName: keyof typeof SYNTH_PRESETS, notes: Note[], barStartTime: number) {
@@ -130,84 +125,52 @@ export class AccompanimentSynthManager {
         for (const note of notes) {
             const voice = this.synthPool[this.nextSynthVoice % this.synthPool.length];
             this.nextSynthVoice++;
-            
             if (voice && voice.worklet && voice.worklet.port) {
+                const noteId = `${barStartTime + note.time}-${note.midi}`;
+                const frequency = midiToFreq(note.midi);
+                
                 const noteOnTime = barStartTime + note.time;
                 const noteOffTime = noteOnTime + note.duration;
                 
-                // === 1. GET PARAMS FROM PRESET ===
-                const { adsr, filter, layers, lfo, effects, portamento } = preset;
-
-                // === 2. SETUP AUDIO PARAMS ON WORKLET ===
-                const cutoffParam = voice.worklet.parameters.get('cutoff');
-                const qParam = voice.worklet.parameters.get('q');
-                const lfoAmountParam = voice.worklet.parameters.get('lfoAmount');
-                const distortionParam = voice.worklet.parameters.get('distortion');
-
-                if (!cutoffParam || !qParam || !lfoAmountParam || !distortionParam) {
-                    console.error("A required AudioParam was not found on the worklet.");
-                    continue;
-                }
+                const paramsToUse = preset;
                 
-                // Reset any previous automations
-                cutoffParam.cancelScheduledValues(noteOnTime);
-                qParam.cancelScheduledValues(noteOnTime);
-                lfoAmountParam.cancelScheduledValues(noteOnTime);
-                distortionParam.cancelScheduledValues(noteOnTime);
-                
-                // Set initial values from preset
-                cutoffParam.setValueAtTime(filter.cutoff, noteOnTime);
-                qParam.setValueAtTime(filter.q, noteOnTime);
-                distortionParam.setValueAtTime(effects.distortion, noteOnTime);
-
-                // === 3. SETUP LFO (NATIVE) ===
-                // Disconnect previous LFO target
-                try {
-                  voice.lfoGain.disconnect();
-                } catch(e) {
-                  // It's okay if it wasn't connected
-                }
-                
-                if (lfo && lfo.amount > 0) {
-                    voice.lfo.type = lfo.shape;
-                    voice.lfo.frequency.setValueAtTime(lfo.rate, noteOnTime);
-                    
-                    if (lfo.target === 'filter') {
-                        lfoAmountParam.setValueAtTime(lfo.amount, noteOnTime); // Use a dedicated param for LFO amount
-                        // This connection is now conceptually handled inside the worklet
-                        // which reads from the 'lfoAmount' parameter.
-                        // The actual LFO signal isn't connected directly, instead we tell the worklet about it.
-                    } else if (lfo.target === 'pitch') {
-                        // Pitch modulation is still done in the worklet via postMessage
-                        lfoAmountParam.setValueAtTime(0, noteOnTime); // ensure no filter mod
-                    }
-                } else {
-                     lfoAmountParam.setValueAtTime(0, noteOnTime);
-                }
-
-                // === 4. SETUP ADSR ENVELOPE (NATIVE) ===
+                // NATIVE ADSR
                 const gainParam = voice.gain.gain;
-                const peakLevel = (note.velocity ?? 0.7) * 0.5; // Global volume reduction for multiple voices
-                
+                const peakLevel = (note.velocity ?? 0.7) * 0.5; // Reduce volume to avoid clipping with multiple voices
                 gainParam.cancelScheduledValues(noteOnTime);
                 gainParam.setValueAtTime(0, noteOnTime);
-                gainParam.linearRampToValueAtTime(peakLevel, noteOnTime + adsr.attack);
-                gainParam.setTargetAtTime(peakLevel * adsr.sustain, noteOnTime + adsr.attack, adsr.decay / 3 + 0.001); 
-                gainParam.setTargetAtTime(0, noteOffTime, adsr.release / 3 + 0.001);
-                
-                // === 5. SEND NOTE-SPECIFIC INFO TO WORKLET (NON-MODULATABLE) ===
-                const noteId = `${noteOnTime.toFixed(4)}-${note.midi}`;
-                const frequency = midiToFreq(note.midi);
+                gainParam.linearRampToValueAtTime(peakLevel, noteOnTime + paramsToUse.adsr.attack);
+                gainParam.setTargetAtTime(peakLevel * paramsToUse.adsr.sustain, noteOnTime + paramsToUse.adsr.attack, paramsToUse.adsr.decay / 3 + 0.001);
+                gainParam.setTargetAtTime(0, noteOffTime, paramsToUse.adsr.release / 3 + 0.001);
 
+                // NATIVE LFO (if applicable)
+                if (paramsToUse.lfo.target === 'filter' && paramsToUse.lfo.amount > 0) {
+                    const lfo = voice.lfo;
+                    const cutoffParam = voice.worklet.parameters.get('cutoff');
+                    if (cutoffParam) {
+                       const lfoGain = this.audioContext.createGain();
+                       lfoGain.gain.value = paramsToUse.lfo.amount;
+                       lfo.type = paramsToUse.lfo.shape;
+                       lfo.frequency.setValueAtTime(paramsToUse.lfo.rate, noteOnTime);
+                       lfo.connect(lfoGain);
+                       lfoGain.connect(cutoffParam);
+                    }
+                }
+                
+                // WORKLET MESSAGE
                 const workletMessage = {
                     type: 'noteOn',
                     noteId,
                     frequency,
-                    layers,
-                    filterType: filter.type, // Send filter type
-                    lfo: { ...lfo, target: lfo.target === 'pitch' ? 'pitch' : 'none' }, // Only send pitch LFO info
-                    portamento: portamento || 0,
-                    when: noteOnTime
+                    params: {
+                        layers: paramsToUse.layers,
+                        filter: paramsToUse.filter,
+                        effects: paramsToUse.effects,
+                        portamento: paramsToUse.portamento,
+                        // Pass pitch LFO info if needed, worklet will handle it internally
+                        lfo: paramsToUse.lfo.target === 'pitch' ? paramsToUse.lfo : { shape: 'sine', rate: 0, amount: 0, target: 'pitch' }
+                    },
+                    when: noteOnTime,
                 };
                 
                 voice.worklet.port.postMessage(workletMessage);
@@ -221,6 +184,9 @@ export class AccompanimentSynthManager {
         }
     }
     
+    /**
+     * Sets the active instrument for the accompaniment part.
+     */
     public setInstrument(instrumentName: AccompanimentInstrument | 'none') {
         if (!this.isInitialized) {
             console.warn('[AccompManager] setInstrument called before initialization.');
@@ -228,10 +194,13 @@ export class AccompanimentSynthManager {
         }
         console.log(`[AccompManager] Setting active instrument to: ${instrumentName}`);
         this.activeInstrumentName = instrumentName;
+        // No volume changes needed here anymore, as `schedule` handles routing.
     }
     
     public setPreampGain(gain: number) {
-      this.synthOutput.gain.setTargetAtTime(gain, this.audioContext.currentTime, 0.01);
+      if (this.preamp) {
+        this.preamp.gain.setTargetAtTime(gain, this.audioContext.currentTime, 0.01);
+      }
     }
 
     public allNotesOff() {
@@ -254,8 +223,8 @@ export class AccompanimentSynthManager {
             voice.worklet.disconnect();
             voice.gain.disconnect();
             voice.lfo.disconnect();
-            voice.lfoGain.disconnect();
         });
+        this.preamp.disconnect();
         this.synthOutput.disconnect();
     }
 }
