@@ -3,51 +3,14 @@
 const MAX_VOICES = 8;
 const MAX_LAYERS_PER_VOICE = 8;
 
-// Helper to convert MIDI to frequency
-const mtof = (midi) => Math.pow(2, (midi - 69) / 12) * 440;
-
-// --- DSP Components ---
-
-class StateVariableFilter {
-    constructor(sampleRate) {
-        this.sampleRate = sampleRate;
-        this.lp = 0;
-        this.bp = 0;
-        this.hp = 0;
-    }
-
-    process(input, cutoff, q, type) {
-        // Clamp cutoff to avoid instability issues with high frequencies
-        const f = 2 * Math.sin(Math.PI * Math.min(0.25, cutoff / (this.sampleRate * 2)));
-        const qVal = 1 / q;
-
-        this.lp += this.bp * f;
-        this.hp = input - this.lp - this.bp * qVal;
-        this.bp += this.hp * f;
-        
-        this.lp = isNaN(this.lp) ? 0 : this.lp;
-        this.hp = isNaN(this.hp) ? 0 : this.hp;
-        this.bp = isNaN(this.bp) ? 0 : this.bp;
-
-
-        switch (type) {
-            case 'lpf': return this.lp;
-            case 'hpf': return this.hp;
-            case 'bpf': return this.bp;
-            case 'notch': return this.hp + this.lp;
-            default: return this.lp;
-        }
-    }
-}
-
 class Layer {
     constructor(sampleRate) {
         this.sampleRate = sampleRate;
         this.phase = Math.random() * 2 * Math.PI;
     }
 
-    process(baseFrequency, type, detune, octave, gain) {
-        const detuneFactor = Math.pow(2, detune / 1200);
+    process(baseFrequency, type, detune, octave, gain, pitchLfoValue) {
+        const detuneFactor = Math.pow(2, (detune + pitchLfoValue) / 1200);
         const octaveFactor = Math.pow(2, octave);
         const frequency = baseFrequency * detuneFactor * octaveFactor;
         const phaseIncrement = (frequency / this.sampleRate) * 2 * Math.PI;
@@ -67,221 +30,186 @@ class Layer {
     }
 }
 
+class StateVariableFilter {
+    constructor() {
+        this.lp = 0;
+        this.bp = 0;
+        this.hp = 0;
+    }
+
+    process(input, f, qVal) {
+        this.lp += this.bp * f;
+        this.hp = input - this.lp - this.bp * qVal;
+        this.bp += this.hp * f;
+        return this.lp; // Only low-pass is used for now
+    }
+}
+
+
 class Voice {
     constructor(sampleRate) {
         this.sampleRate = sampleRate;
         this.layers = Array.from({ length: MAX_LAYERS_PER_VOICE }, () => new Layer(sampleRate));
-        this.filter = new StateVariableFilter(sampleRate);
-        this.delayBufferL = new Float32Array(sampleRate * 2);
-        this.delayBufferR = new Float32Array(sampleRate * 2);
-        this.delayWritePos = 0;
-        this.chorusBuffer = new Float32Array(sampleRate * 0.1);
-        this.chorusWritePos = 0;
-        this.chorusLfoPhase = Math.random() * 2 * Math.PI;
+        this.filter = new StateVariableFilter();
         this.reset();
     }
 
     reset() {
         this.noteId = null;
         this.baseFrequency = 0;
-        this.velocity = 0;
-        this.adsrState = 'idle';
-        this.adsrGain = 0;
+        this.isActive = false;
+        this.releaseTime = Infinity;
+        this.params = {};
     }
 
-    noteOn(noteId, frequency, velocity, params, when) {
+    noteOn(noteId, frequency, params, when) {
         this.reset();
         this.noteId = noteId;
         this.baseFrequency = frequency;
-        this.velocity = velocity;
-        this.adsrState = 'attack';
-        this.params = params; // Keep the whole preset
+        this.params = params; // Store layers, LFO config for pitch, etc.
+        this.isActive = true;
+        this.releaseTime = Infinity;
     }
 
-    noteOff() {
-        this.adsrState = 'release';
+    noteOff(when) {
+        if (!this.isActive) return;
+        this.releaseTime = when;
     }
 
-    isActive() {
-        return this.adsrState !== 'idle';
-    }
-
-    process(parameters) {
-        if (!this.isActive() || !this.params) return [0, 0];
-
-        // --- Read modulated parameters ---
-        const cutoff = parameters.cutoff[parameters.cutoff.length > 1 ? i : 0];
-        const q = parameters.q[parameters.q.length > 1 ? i : 0];
-        const distortion = parameters.distortion[parameters.distortion.length > 1 ? i : 0];
-        const pitchMod = parameters.lfoPitch[parameters.lfoPitch.length > 1 ? i : 0];
-
-
-        // --- Oscillators (Layers) --- 
-        let mixedSample = 0;
-        for (let j = 0; j < this.params.layers.length; j++) {
-            const layerParams = this.params.layers[j];
-            const layerPitchMod = this.params.lfo.target === 'pitch' ? pitchMod : 0;
-            mixedSample += this.layers[j].process(this.baseFrequency, layerParams.type, layerParams.detune + layerPitchMod, layerParams.octave, layerParams.gain);
+    process(parameters, sampleIndex) {
+        if (!this.isActive) {
+            return 0;
         }
-        if (this.params.layers.length > 0) {
-           mixedSample /= this.params.layers.length;
-        }
-
-        // --- Filter ---
-        let filteredSample = this.filter.process(mixedSample, cutoff, q, this.params.filter.type);
         
-        // --- ADSR Envelope ---
-        const { attack, decay, sustain, release } = this.params.adsr;
-        switch (this.adsrState) {
-            case 'attack':
-                this.adsrGain += 1 / (Math.max(0.001, attack) * this.sampleRate);
-                if (this.adsrGain >= 1) { this.adsrGain = 1; this.adsrState = 'decay'; }
-                break;
-            case 'decay':
-                this.adsrGain -= (1 - sustain) / (Math.max(0.001, decay) * this.sampleRate);
-                if (this.adsrGain <= sustain) { this.adsrGain = sustain; this.adsrState = 'sustain'; }
-                break;
-            case 'release':
-                this.adsrGain -= this.adsrGain / (Math.max(0.001, release) * this.sampleRate);
-                if (this.adsrGain <= 0.0001) { this.adsrGain = 0; this.adsrState = 'idle'; }
-                break;
+        // --- Get per-sample values from AudioParams ---
+        const cutoff = parameters.cutoff.length > 1 ? parameters.cutoff[sampleIndex] : parameters.cutoff[0];
+        const q = parameters.q.length > 1 ? parameters.q[sampleIndex] : parameters.q[0];
+        const distortion = parameters.distortion.length > 1 ? parameters.distortion[sampleIndex] : parameters.distortion[0];
+        const lfoAmount = parameters.lfoAmount.length > 1 ? parameters.lfoAmount[sampleIndex] : parameters.lfoAmount[0];
+        
+        let pitchLfoValue = 0;
+        if (this.params.lfo && this.params.lfo.target === 'pitch') {
+             // Simple internal LFO for pitch only
+             const lfoRate = (this.params.lfo.rate || 5) / this.sampleRate;
+             this.lfoPhase = (this.lfoPhase || 0) + lfoRate * 2 * Math.PI;
+             if (this.lfoPhase > 2 * Math.PI) this.lfoPhase -= 2 * Math.PI;
+             pitchLfoValue = Math.sin(this.lfoPhase) * (this.params.lfo.amount || 0);
         }
-        let finalSample = filteredSample * this.adsrGain * this.velocity;
 
-        // --- Effects ---
-        const fx = this.params.effects;
+        // --- 1. Oscillators (Layers) ---
+        let mixedSample = 0;
+        if (this.params.layers) {
+            for (let i = 0; i < this.params.layers.length; i++) {
+                const layerParams = this.params.layers[i];
+                mixedSample += this.layers[i].process(this.baseFrequency, layerParams.type, layerParams.detune, layerParams.octave, layerParams.gain, pitchLfoValue);
+            }
+            if (this.params.layers.length > 0) {
+                mixedSample /= this.params.layers.length;
+            }
+        }
+        
+        // --- 2. Filter ---
+        const f = 2 * Math.sin(Math.PI * Math.min(0.25, (cutoff + lfoAmount) / (this.sampleRate * 2)));
+        const qVal = 1 / q;
+        let filteredSample = this.filter.process(mixedSample, f, qVal);
 
-        // Distortion
+        // --- 3. Distortion ---
         if (distortion > 0) {
-            finalSample = Math.tanh(finalSample * (1 + distortion * 5));
+            filteredSample = Math.tanh(filteredSample * (1 + distortion * 5));
         }
 
-        // Chorus
-        let chorusSample = 0;
-        if(fx.chorus && fx.chorus.mix > 0){
-            this.chorusLfoPhase += (fx.chorus.rate / this.sampleRate) * 2 * Math.PI;
-            if (this.chorusLfoPhase >= 2 * Math.PI) this.chorusLfoPhase -= 2 * Math.PI;
-
-            const chorusDelay = (Math.sin(this.chorusLfoPhase) * fx.chorus.depth + fx.chorus.depth) * this.sampleRate * 0.05;
-            const readPos = (this.chorusWritePos - chorusDelay + this.chorusBuffer.length) % this.chorusBuffer.length;
-            chorusSample = this.chorusBuffer[Math.floor(readPos)];
-            this.chorusBuffer[this.chorusWritePos] = finalSample;
-            this.chorusWritePos = (this.chorusWritePos + 1) % this.chorusBuffer.length;
-        }
-        finalSample = finalSample * (1 - (fx.chorus?.mix ?? 0)) + chorusSample * (fx.chorus?.mix ?? 0);
-
-        // Stereo Delay
-        let finalL = finalSample, finalR = finalSample;
-        if (fx.delay && fx.delay.mix > 0) {
-            const readPosL = (this.delayWritePos - (fx.delay.time * this.sampleRate) + this.delayBufferL.length) % this.delayBufferL.length;
-            const readPosR = (this.delayWritePos - (fx.delay.time * 0.75 * this.sampleRate) + this.delayBufferR.length) % this.delayBufferR.length;
-            
-            const delayedL = this.delayBufferL[Math.floor(readPosL)];
-            const delayedR = this.delayBufferR[Math.floor(readPosR)];
-
-            this.delayBufferL[this.delayWritePos] = finalL + delayedL * fx.delay.feedback;
-            this.delayBufferR[this.delayWritePos] = finalR + delayedR * fx.delay.feedback;
-            
-            finalL = finalL * (1 - fx.delay.mix) + delayedL * fx.delay.mix;
-            finalR = finalR * (1 - fx.delay.mix) + delayedR * fx.delay.mix;
-        }
-        this.delayWritePos = (this.delayWritePos + 1) % this.delayBufferL.length;
-
-        return [finalL, finalR];
+        return filteredSample;
     }
 }
 
 class ChordProcessor extends AudioWorkletProcessor {
+    constructor(options) {
+        super();
+        const sampleRate = options.processorOptions?.sampleRate || sampleRate;
+        this.voices = Array.from({ length: MAX_VOICES }, () => new Voice(sampleRate));
+        this.pendingEvents = [];
+
+        this.port.onmessage = this.handleMessage.bind(this);
+    }
+    
     static get parameterDescriptors() {
         return [
-            { name: 'cutoff', defaultValue: 8000, minValue: 20, maxValue: 20000, automationRate: 'a-rate' },
-            { name: 'q', defaultValue: 1, minValue: 0.1, maxValue: 20, automationRate: 'a-rate' },
-            { name: 'distortion', defaultValue: 0, minValue: 0, maxValue: 1, automationRate: 'a-rate' },
-            { name: 'lfoPitch', defaultValue: 0, minValue: -1200, maxValue: 1200, automationRate: 'a-rate' }
+            { name: 'cutoff', defaultValue: 8000, minValue: 20, maxValue: 20000 },
+            { name: 'q', defaultValue: 1, minValue: 0.1, maxValue: 20 },
+            { name: 'lfoAmount', defaultValue: 0, minValue: -5000, maxValue: 5000 },
+            { name: 'distortion', defaultValue: 0, minValue: 0, maxValue: 1 },
         ];
     }
 
-    constructor(options) {
-        super();
-        const sampleRate = options.processorOptions?.sampleRate || 44100;
-        this.voices = Array.from({ length: MAX_VOICES }, () => new Voice(sampleRate));
-        this.pendingEvents = [];
-        this.port.onmessage = this.handleMessage.bind(this);
-    }
-
     handleMessage(event) {
-        const events = Array.isArray(event.data) ? event.data : [event.data];
-        for(const msg of events){
-            const executionTime = msg.when || currentTime;
-            if (executionTime > currentTime) {
-                this.pendingEvents.push(msg);
-            } else {
-                this.processMessage(msg);
-            }
+        const messages = Array.isArray(event.data) ? event.data : [event.data];
+        for(const msg of messages){
+            this.pendingEvents.push(msg);
         }
     }
 
-    processMessage(msg) {
-        switch (msg.type) {
-            case 'noteOn':
-                let voice = this.voices.find(v => !v.isActive());
-                if (!voice) {
-                    voice = this.voices.sort((a,b) => a.adsrGain - b.adsrGain)[0]; // Voice stealing
-                }
-                if (voice) {
-                    voice.noteOn(msg.noteId, msg.frequency, msg.velocity, msg.params, msg.when);
-                }
-                break;
-            case 'noteOff':
-                const voiceToRelease = this.voices.find(v => v.noteId === msg.noteId);
-                if (voiceToRelease) {
-                    voiceToRelease.noteOff();
-                }
-                break;
-            case 'clear':
-                this.voices.forEach(v => v.reset());
-                break;
+    assignVoiceToNote({ noteId, frequency, params }) {
+        let voice = this.voices.find(v => !v.isActive);
+        if (!voice) {
+            // Voice stealing: find the one that's been in release the longest or has lowest gain
+            voice = this.voices.sort((a,b) => a.adsrGain - b.adsrGain)[0];
+        }
+        if (voice) {
+            voice.noteOn(noteId, frequency, params, currentTime);
         }
     }
-    
+
+    releaseVoiceForNote(noteId, when) {
+        const voice = this.voices.find(v => v.noteId === noteId);
+        if (voice) {
+            voice.noteOff(when);
+        }
+    }
+
     process(inputs, outputs, parameters) {
         const outputL = outputs[0][0];
         const outputR = outputs[0][1];
-        const blockEndTime = currentTime + 128 / sampleRate;
+        const blockEndTime = currentTime + outputL.length / sampleRate;
 
-        // Process scheduled messages
+        // Process scheduled events
         let i = this.pendingEvents.length;
-        while(i--) {
+        while (i--) {
             const event = this.pendingEvents[i];
             if (event.when < blockEndTime) {
                 this.pendingEvents.splice(i, 1);
-                this.processMessage(event);
+                
+                if (event.type === 'noteOn') {
+                    this.assignVoiceToNote(event);
+                } else if (event.type === 'noteOff') {
+                    this.releaseVoiceForNote(event.noteId, event.when);
+                } else if (event.type === 'clear') {
+                     this.voices.forEach(v => v.reset());
+                }
             }
         }
-
+        
         for (let i = 0; i < outputL.length; i++) {
             let sampleL = 0;
             let sampleR = 0;
-            
-            // This is a snapshot of parameters for this sample frame
-            const frameParameters = {
-                cutoff: parameters.cutoff.length > 1 ? parameters.cutoff[i] : parameters.cutoff[0],
-                q: parameters.q.length > 1 ? parameters.q[i] : parameters.q[0],
-                distortion: parameters.distortion.length > 1 ? parameters.distortion[i] : parameters.distortion[0],
-                lfoPitch: parameters.lfoPitch.length > 1 ? parameters.lfoPitch[i] : parameters.lfoPitch[0]
-            };
 
             for (const voice of this.voices) {
-                if (voice.isActive()) {
-                    const [voiceSampleL, voiceSampleR] = voice.process(frameParameters, i);
-                    sampleL += voiceSampleL;
-                    sampleR += voiceSampleR;
+                if (voice.isActive) {
+                    const sample = voice.process(parameters, i);
+                    sampleL += sample;
+                    sampleR += sample;
+
+                    // Deactivate voice if release time has passed. The gain envelope is handled outside.
+                    if (voice.releaseTime !== Infinity && currentTime + i/sampleRate >= voice.releaseTime) {
+                        voice.isActive = false;
+                    }
                 }
             }
             
-            outputL[i] = Math.tanh(sampleL * 0.5); // Apply soft clipping
-            outputR[i] = Math.tanh(sampleR * 0.5);
+            // Basic hard clipping to prevent explosion, master gain is handled outside
+            outputL[i] = Math.tanh(sampleL / MAX_VOICES);
+            outputR[i] = Math.tanh(sampleR / MAX_VOICES);
         }
+
         return true;
     }
 }
