@@ -1,6 +1,6 @@
 
 
-import type { FractalEvent, MelodyInstrument, AccompanimentInstrument, BassSynthParams } from '@/types/fractal';
+import type { FractalEvent, AccompanimentInstrument } from '@/types/fractal';
 import type { Note } from "@/types/music";
 import { SYNTH_PRESETS, type SynthPreset } from './synth-presets';
 
@@ -10,15 +10,19 @@ function midiToFreq(midi: number): number {
 }
 
 type SynthVoice = {
-    worklet: AudioWorkletNode;
-    gain: GainNode; // For ADSR envelope
-    lfo: OscillatorNode; // For LFO modulation
+    envGain: GainNode;
+    filter: BiquadFilterNode;
+    lfo: OscillatorNode;
+    lfoGain: GainNode;
+    distortion: WaveShaperNode | null;
+    panner: StereoPannerNode;
+    oscillators: OscillatorNode[];
+    isActive: boolean;
 };
 
 /**
- * Manages multiple instruments for the accompaniment part.
- * Acts as an orchestrator, directing musical events to the currently active instrument,
- * which can be a sampler (piano, guitar, etc.) or a synth.
+ * Manages multiple synth voices for the accompaniment part using native AudioNodes.
+ * This approach avoids worklets for maximum performance and compatibility.
  */
 export class AccompanimentSynthManager {
     private audioContext: AudioContext;
@@ -26,77 +30,61 @@ export class AccompanimentSynthManager {
     private activeInstrumentName: AccompanimentInstrument | 'none' = 'organ';
     public isInitialized = false;
 
-    // Synth Instruments (Worklet-based pool)
-    private synthPool: SynthVoice[] = [];
-    private synthOutput: GainNode;
-    private preamp: GainNode; // Pre-amplifier for the synth section
-    private nextSynthVoice = 0;
-    private isSynthPoolInitialized = false;
+    private voicePool: SynthVoice[] = [];
+    private nextVoice = 0;
+    private preamp: GainNode;
 
     constructor(audioContext: AudioContext, destination: AudioNode) {
         this.audioContext = audioContext;
         this.destination = destination;
 
-        this.synthOutput = this.audioContext.createGain();
-        this.synthOutput.connect(this.destination);
-
         this.preamp = this.audioContext.createGain();
-        this.preamp.gain.value = 1.4; 
-        this.preamp.connect(this.synthOutput);
-        this.nextSynthVoice = 0;
+        this.preamp.gain.value = 1.0;
+        this.preamp.connect(this.destination);
     }
 
     async init() {
         if (this.isInitialized) return;
         
-        console.log('[AccompManager] Initializing all instruments...');
-
-        await this.initSynthPool();
-
+        console.log('[AccompManager] Initializing native synth voices...');
+        this.initVoicePool(8);
         this.isInitialized = true;
-        console.log('[AccompManager] All instruments initialized.');
+        console.log('[AccompManager] Native voices initialized.');
     }
 
-    private async initSynthPool() {
-        if (this.isSynthPoolInitialized) return;
-        try {
-            await this.audioContext.audioWorklet.addModule('/worklets/chord-processor.js');
-            for (let i = 0; i < 8; i++) { // Increased pool size to 8
-                const worklet = new AudioWorkletNode(this.audioContext, 'chord-processor', {
-                    processorOptions: { sampleRate: this.audioContext.sampleRate },
-                    outputChannelCount: [2]
-                });
-                
-                const gain = this.audioContext.createGain();
-                gain.gain.value = 0;
+    private initVoicePool(poolSize: number) {
+        for (let i = 0; i < poolSize; i++) {
+            const envGain = this.audioContext.createGain();
+            const filter = this.audioContext.createBiquadFilter();
+            const panner = this.audioContext.createStereoPanner();
+            const lfo = this.audioContext.createOscillator();
+            const lfoGain = this.audioContext.createGain();
 
-                const lfo = this.audioContext.createOscillator();
-                lfo.start(); 
+            lfo.connect(lfoGain);
+            lfo.start();
 
-                worklet.connect(gain);
-                gain.connect(this.preamp);
-                
-                this.synthPool.push({ worklet, gain, lfo });
-            }
-            this.isSynthPoolInitialized = true;
-            console.log('[AccompManager] Synth pool initialized with 8 voices (Worklet + Gain + LFO).');
-        } catch (e) {
-            console.error('[AccompManager] Failed to init synth pool:', e);
+            envGain.connect(filter).connect(panner).connect(this.preamp);
+            envGain.gain.value = 0;
+
+            this.voicePool.push({
+                envGain,
+                filter,
+                panner,
+                lfo,
+                lfoGain,
+                distortion: null,
+                oscillators: [],
+                isActive: false,
+            });
         }
     }
 
     public schedule(events: FractalEvent[], barStartTime: number, tempo: number, instrumentHint?: AccompanimentInstrument, composerControlsInstruments: boolean = true) {
-        if (!this.isInitialized) {
-            console.warn('[AccompManager] Tried to schedule before initialized.');
-            return;
-        }
+        if (!this.isInitialized) return;
 
         const instrumentToPlay = (composerControlsInstruments && instrumentHint) ? instrumentHint : this.activeInstrumentName;
         
-        console.log(`[AccompManager] schedule called. Control: ${composerControlsInstruments}, Hint: ${instrumentHint}, Active: ${this.activeInstrumentName}. Will play: ${instrumentToPlay}`);
-
-
-        if (instrumentToPlay === 'none' || !Object.keys(SYNTH_PRESETS).includes(instrumentToPlay)) {
+        if (instrumentToPlay === 'none' || !(instrumentToPlay in SYNTH_PRESETS)) {
             return;
         }
 
@@ -109,92 +97,104 @@ export class AccompanimentSynthManager {
             params: event.params
         }));
 
-        this.scheduleSynth(instrumentToPlay as Exclude<AccompanimentInstrument, 'piano' | 'violin' | 'flute' | 'guitarChords' | 'acousticGuitarSolo' | 'none'>, notes, barStartTime);
+        this.scheduleSynth(instrumentToPlay as keyof typeof SYNTH_PRESETS, notes, barStartTime);
     }
 
     private scheduleSynth(instrumentName: keyof typeof SYNTH_PRESETS, notes: Note[], barStartTime: number) {
-        if (!this.isSynthPoolInitialized || this.synthPool.length === 0) return;
-
-        let preset = SYNTH_PRESETS[instrumentName];
+        const preset = SYNTH_PRESETS[instrumentName];
         if (!preset) {
-            console.warn(`[AccompManager] Synth preset not found for: ${instrumentName}. Using default 'synth'.`);
-            instrumentName = 'synth';
-            preset = SYNTH_PRESETS[instrumentName];
+            console.warn(`[AccompManager] Synth preset not found: ${instrumentName}`);
+            return;
         }
 
         for (const note of notes) {
-            const voice = this.synthPool[this.nextSynthVoice % this.synthPool.length];
-            this.nextSynthVoice++;
-            if (voice && voice.worklet && voice.worklet.port) {
-                const noteId = `${barStartTime + note.time}-${note.midi}`;
-                const frequency = midiToFreq(note.midi);
-                
-                const noteOnTime = barStartTime + note.time;
-                const noteOffTime = noteOnTime + note.duration;
-                
-                const paramsToUse = preset;
-                
-                // NATIVE ADSR
-                const gainParam = voice.gain.gain;
-                const peakLevel = (note.velocity ?? 0.7) * 0.5; // Reduce volume to avoid clipping with multiple voices
-                gainParam.cancelScheduledValues(noteOnTime);
-                gainParam.setValueAtTime(0, noteOnTime);
-                gainParam.linearRampToValueAtTime(peakLevel, noteOnTime + paramsToUse.adsr.attack);
-                gainParam.setTargetAtTime(peakLevel * paramsToUse.adsr.sustain, noteOnTime + paramsToUse.adsr.attack, paramsToUse.adsr.decay / 3 + 0.001);
-                gainParam.setTargetAtTime(0, noteOffTime, paramsToUse.adsr.release / 3 + 0.001);
+            const voice = this.voicePool[this.nextVoice % this.voicePool.length];
+            this.nextVoice++;
 
-                // NATIVE LFO (if applicable)
-                if (paramsToUse.lfo.target === 'filter' && paramsToUse.lfo.amount > 0) {
-                    const lfo = voice.lfo;
-                    const cutoffParam = voice.worklet.parameters.get('cutoff');
-                    if (cutoffParam) {
-                       const lfoGain = this.audioContext.createGain();
-                       lfoGain.gain.value = paramsToUse.lfo.amount;
-                       lfo.type = paramsToUse.lfo.shape;
-                       lfo.frequency.setValueAtTime(paramsToUse.lfo.rate, noteOnTime);
-                       lfo.connect(lfoGain);
-                       lfoGain.connect(cutoffParam);
-                    }
-                }
-                
-                // WORKLET MESSAGE
-                const workletMessage = {
-                    type: 'noteOn',
-                    noteId,
-                    frequency,
-                    params: {
-                        layers: paramsToUse.layers,
-                        filter: paramsToUse.filter,
-                        effects: paramsToUse.effects,
-                        portamento: paramsToUse.portamento,
-                        // Pass pitch LFO info if needed, worklet will handle it internally
-                        lfo: paramsToUse.lfo.target === 'pitch' ? paramsToUse.lfo : { shape: 'sine', rate: 0, amount: 0, target: 'pitch' }
-                    },
-                    when: noteOnTime,
-                };
-                
-                voice.worklet.port.postMessage(workletMessage);
-                
-                voice.worklet.port.postMessage({
-                    type: 'noteOff',
-                    noteId: noteId,
-                    when: noteOffTime
-                });
-            }
+            this.triggerVoice(voice, note, preset, barStartTime);
         }
     }
     
-    /**
-     * Sets the active instrument for the accompaniment part.
-     */
+    private triggerVoice(voice: SynthVoice, note: Note, preset: SynthPreset, barStartTime: number) {
+        const now = this.audioContext.currentTime;
+        const noteOnTime = barStartTime + note.time;
+        const noteOffTime = noteOnTime + note.duration;
+
+        if (noteOnTime < now) {
+            console.warn("[AccompManager] Attempted to schedule a note in the past. Skipping.");
+            return;
+        }
+
+        voice.isActive = true;
+        
+        // --- CONFIGURE ---
+        voice.filter.type = preset.filter.type;
+        voice.filter.Q.value = preset.filter.q;
+        voice.filter.frequency.setValueAtTime(preset.filter.cutoff, noteOnTime);
+        
+        // LFO
+        if (preset.lfo.amount > 0) {
+            voice.lfo.type = preset.lfo.shape;
+            voice.lfo.frequency.setValueAtTime(preset.lfo.rate, noteOnTime);
+            voice.lfoGain.gain.setValueAtTime(preset.lfo.target === 'pitch' ? preset.lfo.amount : preset.lfo.amount * 1000, noteOnTime); // Scale for filter
+        }
+
+        // --- ADSR ENVELOPE on Gain ---
+        const gainParam = voice.envGain.gain;
+        const velocity = note.velocity ?? 0.7;
+        const peakGain = velocity * 0.5; // Avoid clipping
+        
+        gainParam.cancelScheduledValues(noteOnTime);
+        gainParam.setValueAtTime(0, noteOnTime);
+        gainParam.linearRampToValueAtTime(peakGain, noteOnTime + preset.adsr.attack);
+        gainParam.setTargetAtTime(peakGain * preset.adsr.sustain, noteOnTime + preset.adsr.attack, preset.adsr.decay / 3 + 0.001);
+        gainParam.setTargetAtTime(0, noteOffTime, preset.adsr.release / 3 + 0.001);
+
+        // --- OSCILLATORS ---
+        voice.oscillators = [];
+        const baseFrequency = midiToFreq(note.midi);
+        
+        preset.layers.forEach(layer => {
+            const osc = this.audioContext.createOscillator();
+            const detuneFactor = Math.pow(2, layer.detune / 1200);
+            const octaveFactor = Math.pow(2, layer.octave);
+            osc.frequency.value = baseFrequency * detuneFactor * octaveFactor;
+            osc.type = layer.type;
+
+            const oscGain = this.audioContext.createGain();
+            oscGain.gain.value = layer.gain;
+            
+            osc.connect(oscGain).connect(voice.envGain);
+
+            // Connect LFO if target is pitch
+            if (preset.lfo.target === 'pitch' && preset.lfo.amount > 0) {
+                voice.lfoGain.connect(osc.detune);
+            }
+            
+            osc.start(noteOnTime);
+            osc.stop(noteOffTime + preset.adsr.release + 0.5); // Stop after release
+            voice.oscillators.push(osc);
+        });
+
+        // --- CLEANUP ---
+        setTimeout(() => {
+            voice.isActive = false;
+            voice.oscillators.forEach(osc => {
+                 if (voice.lfo.numberOfOutputs > 0 && preset.lfo.target === 'pitch') {
+                    voice.lfoGain.disconnect(osc.detune);
+                }
+                osc.disconnect();
+            });
+            voice.oscillators = [];
+        }, (noteOffTime - now + preset.adsr.release + 1.0) * 1000);
+    }
+
     public setInstrument(instrumentName: AccompanimentInstrument | 'none') {
         if (!this.isInitialized) {
             console.warn('[AccompManager] setInstrument called before initialization.');
             return;
         }
-        console.log(`[AccompManager] Setting active instrument to: ${instrumentName}`);
         this.activeInstrumentName = instrumentName;
-        // No volume changes needed here anymore, as `schedule` handles routing.
     }
     
     public setPreampGain(gain: number) {
@@ -204,11 +204,14 @@ export class AccompanimentSynthManager {
     }
 
     public allNotesOff() {
-        this.synthPool.forEach(voice => {
-            if (voice && voice.worklet && voice.worklet.port) {
-                 voice.worklet.port.postMessage({ type: 'clear' });
-                 voice.gain.gain.cancelScheduledValues(this.audioContext.currentTime);
-                 voice.gain.gain.setValueAtTime(0, this.audioContext.currentTime);
+        this.voicePool.forEach(voice => {
+            if (voice.isActive) {
+                voice.envGain.gain.cancelScheduledValues(this.audioContext.currentTime);
+                voice.envGain.gain.setTargetAtTime(0, this.audioContext.currentTime, 0.05); // Quick fade out
+                voice.oscillators.forEach(osc => {
+                    try { osc.stop(this.audioContext.currentTime + 0.1); } catch (e) {}
+                });
+                voice.isActive = false;
             }
         });
     }
@@ -219,12 +222,12 @@ export class AccompanimentSynthManager {
 
     public dispose() {
         this.stop();
-        this.synthPool.forEach(voice => {
-            voice.worklet.disconnect();
-            voice.gain.disconnect();
+        this.voicePool.forEach(voice => {
             voice.lfo.disconnect();
+            voice.envGain.disconnect();
+            voice.filter.disconnect();
+            voice.panner.disconnect();
         });
         this.preamp.disconnect();
-        this.synthOutput.disconnect();
     }
 }
