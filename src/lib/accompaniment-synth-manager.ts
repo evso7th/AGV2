@@ -1,13 +1,8 @@
 
+
 import type { FractalEvent, MelodyInstrument, AccompanimentInstrument, BassSynthParams } from '@/types/fractal';
 import type { Note } from "@/types/music";
-import * as Tone from 'tone';
-import { SamplerPlayer } from './sampler-player';
-import { ViolinSamplerPlayer } from './violin-sampler-player';
-import { FluteSamplerPlayer } from './flute-sampler-player';
-import { GuitarChordsSampler } from './guitar-chords-sampler';
-import { AcousticGuitarSoloSampler } from './acoustic-guitar-solo-sampler';
-import { PRESETS } from "./presets";
+import { SYNTH_PRESETS, type SynthPreset } from './synth-presets';
 
 
 function midiToFreq(midi: number): number {
@@ -16,14 +11,8 @@ function midiToFreq(midi: number): number {
 
 type SynthVoice = {
     worklet: AudioWorkletNode;
+    gain: GainNode;
 };
-
-const VOICE_BALANCE: Record<string, number> = {
-  bass: 1.0, melody: 0.7, accompaniment: 0.6, drums: 1.0,
-  effects: 0.6, sparkles: 0.7, piano: 1.0, violin: 0.8, flute: 0.8, guitarChords: 0.9,
-  acousticGuitarSolo: 0.9,
-};
-
 
 /**
  * Manages multiple instruments for the accompaniment part.
@@ -33,20 +22,12 @@ const VOICE_BALANCE: Record<string, number> = {
 export class AccompanimentSynthManager {
     private audioContext: AudioContext;
     private destination: AudioNode;
-    private activeInstrumentName: MelodyInstrument | AccompanimentInstrument = 'piano';
+    private activeInstrumentName: AccompanimentInstrument | 'none' = 'organ';
     public isInitialized = false;
-
-    // Sampler Instruments
-    private piano: SamplerPlayer;
-    private violin: ViolinSamplerPlayer;
-    private flute: FluteSamplerPlayer;
-    private guitarChords: GuitarChordsSampler;
-    private acousticGuitarSolo: AcousticGuitarSoloSampler;
 
     // Synth Instruments (Worklet-based pool)
     private synthPool: SynthVoice[] = [];
     private synthOutput: GainNode;
-    private preamp: GainNode; // Pre-amplifier for the synth section
     private nextSynthVoice = 0;
     private isSynthPoolInitialized = false;
 
@@ -54,65 +35,58 @@ export class AccompanimentSynthManager {
         this.audioContext = audioContext;
         this.destination = destination;
 
-        this.piano = new SamplerPlayer(audioContext, this.destination);
-        this.violin = new ViolinSamplerPlayer(audioContext, this.destination);
-        this.flute = new FluteSamplerPlayer(audioContext, this.destination);
-        this.guitarChords = new GuitarChordsSampler(audioContext, this.destination);
-        this.acousticGuitarSolo = new AcousticGuitarSoloSampler(audioContext, this.destination);
-        
         this.synthOutput = this.audioContext.createGain();
         this.synthOutput.connect(this.destination);
-
-        // Create and connect the preamp
-        this.preamp = this.audioContext.createGain();
-        this.preamp.gain.value = 2.0; // Boost signal by 2x
-        this.preamp.connect(this.synthOutput);
+        this.nextSynthVoice = 0;
     }
 
     async init() {
         if (this.isInitialized) return;
         
-        console.log('[AccompanimentManager] Initializing all instruments...');
+        console.log('[AccompManager] Initializing all instruments...');
 
-        await Promise.all([
-            this.piano.loadInstrument('piano', (PRESETS['piano'] as any).urls),
-            this.violin.loadInstrument('violin', (PRESETS['violin'] as any).urls),
-            this.flute.loadInstrument('flute', (PRESETS['flute'] as any).urls),
-            this.guitarChords.init(),
-            this.acousticGuitarSolo.init(),
-            this.initSynthPool()
-        ]);
+        await this.initSynthPool();
 
         this.isInitialized = true;
-        console.log('[AccompanimentManager] All instruments initialized.');
+        console.log('[AccompManager] All instruments initialized.');
     }
 
     private async initSynthPool() {
         if (this.isSynthPoolInitialized) return;
         try {
             await this.audioContext.audioWorklet.addModule('/worklets/chord-processor.js');
-            for (let i = 0; i < 4; i++) { // Pool of 4 voices for chords/arpeggios
+            for (let i = 0; i < 8; i++) {
                 const worklet = new AudioWorkletNode(this.audioContext, 'chord-processor', {
-                    processorOptions: { sampleRate: this.audioContext.sampleRate }
+                    processorOptions: { sampleRate: this.audioContext.sampleRate },
+                    outputChannelCount: [2]
                 });
-                worklet.connect(this.preamp); // Connect to the preamp
-                this.synthPool.push({ worklet });
+                const gain = this.audioContext.createGain();
+                gain.gain.value = 0; // Start silent
+                worklet.connect(gain);
+                gain.connect(this.synthOutput);
+                this.synthPool.push({ worklet, gain });
             }
             this.isSynthPoolInitialized = true;
-            console.log('[AccompanimentManager] Synth pool initialized.');
+            console.log('[AccompManager] Synth pool initialized with 8 voices (Worklet + GainNode).');
         } catch (e) {
-            console.error('[AccompanimentManager] Failed to init synth pool:', e);
+            console.error('[AccompManager] Failed to init synth pool:', e);
         }
     }
 
-    public schedule(events: FractalEvent[], barStartTime: number, tempo: number, instrumentHint?: AccompanimentInstrument) {
+    public schedule(events: FractalEvent[], barStartTime: number, tempo: number, instrumentHint?: AccompanimentInstrument, composerControlsInstruments: boolean = true) {
         if (!this.isInitialized) {
-            console.warn('[AccompanimentManager] Tried to schedule before initialized.');
+            console.warn('[AccompManager] Tried to schedule before initialized.');
             return;
         }
 
-        const instrumentToPlay = instrumentHint || this.activeInstrumentName;
+        const instrumentToPlay = (composerControlsInstruments && instrumentHint) ? instrumentHint : this.activeInstrumentName;
         
+        console.log(`[AccompManager] schedule called. Control: ${composerControlsInstruments}, Hint: ${instrumentHint}, Active: ${this.activeInstrumentName}. Will play: ${instrumentToPlay}`);
+
+        if (instrumentToPlay === 'none' || !['synth', 'organ', 'mellotron', 'theremin', 'E-Bells_melody', 'G-Drops', 'electricGuitar', 'ambientPad'].includes(instrumentToPlay)) {
+            return;
+        }
+
         const beatDuration = 60 / tempo;
         const notes: Note[] = events.map(event => ({
             midi: event.note,
@@ -122,130 +96,97 @@ export class AccompanimentSynthManager {
             params: event.params
         }));
 
-        console.log(`[AccompanimentManager] Scheduling ${notes.length} notes for instrument: ${instrumentToPlay}`);
+        this.scheduleSynth(instrumentToPlay as Exclude<AccompanimentInstrument, 'piano' | 'violin' | 'flute' | 'guitarChords' | 'acousticGuitarSolo' | 'none'>, notes, barStartTime);
+    }
 
-        switch (instrumentToPlay) {
-            case 'piano':
-                this.piano.schedule('piano', notes, barStartTime);
-                break;
-            case 'violin':
-                this.violin.schedule(notes, barStartTime);
-                break;
-            case 'flute':
-                this.flute.schedule(notes, barStartTime);
-                break;
-            case 'guitarChords':
-                this.guitarChords.schedule(notes, barStartTime);
-                break;
-            case 'acousticGuitarSolo':
-                this.acousticGuitarSolo.schedule(notes, barStartTime);
-                break;
-            case 'electricGuitar':
-            case 'synth':
-            case 'organ':
-            case 'mellotron':
-            case 'theremin':
-            case 'E-Bells_melody':
-            case 'G-Drops':
-                this.scheduleSynth(instrumentToPlay, notes, barStartTime);
-                break;
-            case 'none':
-                // Do nothing
-                break;
-            default:
-                // Fallback to synth for any other unhandled preset
-                this.scheduleSynth(this.activeInstrumentName as MelodyInstrument, notes, barStartTime);
+    private scheduleSynth(instrumentName: keyof typeof SYNTH_PRESETS, notes: Note[], barStartTime: number) {
+        if (!this.isSynthPoolInitialized || this.synthPool.length === 0) return;
+
+        let preset = SYNTH_PRESETS[instrumentName];
+        if (!preset) {
+            console.warn(`[AccompManager] Synth preset not found for: ${instrumentName}. Using default 'synth'.`);
+            instrumentName = 'synth';
+            preset = SYNTH_PRESETS[instrumentName];
+        }
+
+        for (const note of notes) {
+            const voice = this.synthPool[this.nextSynthVoice % this.synthPool.length];
+            this.nextSynthVoice++;
+            
+            if (voice && voice.worklet && voice.worklet.port) {
+                const noteId = `${barStartTime + note.time}-${note.midi}`;
+                const frequency = midiToFreq(note.midi);
+                
+                const noteOnTime = barStartTime + note.time;
+                const noteOffTime = noteOnTime + note.duration;
+                
+                const paramsToUse = preset;
+                const { adsr, filter, layers, lfo, effects } = paramsToUse;
+
+                // --- ADSR Automation via GainNode ---
+                const gainParam = voice.gain.gain;
+                const peakLevel = (note.velocity ?? 0.7) * 0.7; // Global volume reduction
+                
+                gainParam.cancelScheduledValues(noteOnTime);
+                gainParam.setValueAtTime(0, noteOnTime);
+                // Attack
+                gainParam.linearRampToValueAtTime(peakLevel, noteOnTime + adsr.attack);
+                // Decay to Sustain
+                gainParam.setTargetAtTime(peakLevel * adsr.sustain, noteOnTime + adsr.attack, adsr.decay / 4); // time-constant for decay
+                // Release
+                gainParam.setTargetAtTime(0.0001, noteOffTime, adsr.release / 4); // time-constant for release
+
+                // --- Send messages to Worklet ---
+                const workletParams = {
+                    filter,
+                    layers,
+                    lfo,
+                    effects,
+                };
+                
+                const noteOnMessage = {
+                    type: 'noteOn',
+                    noteId,
+                    frequency,
+                    params: workletParams
+                };
+                
+                const noteOffMessage = {
+                    type: 'noteOff',
+                    noteId: noteId
+                };
+
+                voice.worklet.port.postMessage({ ...noteOnMessage, when: noteOnTime });
+                voice.worklet.port.postMessage({ ...noteOffMessage, when: noteOffTime });
+            }
         }
     }
-
-    private scheduleSynth(instrument: MelodyInstrument, notes: Note[], barStartTime: number) {
-        if (!this.isSynthPoolInitialized || this.synthPool.length === 0) return;
     
-        console.log(`[AccompManager] Distributing ${notes.length} synth notes to worklets.`);
-    
-        notes.forEach((note) => {
-            const voiceIndex = this.nextSynthVoice % this.synthPool.length;
-            const voice = this.synthPool[voiceIndex];
-            this.nextSynthVoice++;
-    
-            const noteOnTime = barStartTime + note.time;
-            const noteOffTime = noteOnTime + note.duration;
-            const noteId = `${noteOnTime.toFixed(4)}-${note.midi}-${voiceIndex}`;
-            
-            const onDelay = (noteOnTime - this.audioContext.currentTime) * 1000;
-            const offDelay = (noteOffTime - this.audioContext.currentTime) * 1000;
-
-            const frequency = midiToFreq(note.midi);
-            const presetParams = PRESETS[instrument] || PRESETS['synth'];
-    
-            const finalParams: BassSynthParams = {
-                cutoff: note.params?.cutoff ?? presetParams.filterCutoff ?? 800,
-                resonance: note.params?.resonance ?? presetParams.q ?? 0.5,
-                distortion: note.params?.distortion ?? presetParams.distortion ?? 0.1,
-                portamento: note.params?.portamento ?? presetParams.portamento ?? 0,
-                attack: note.params?.attack ?? presetParams.attack ?? 0.02,
-                release: note.params?.release ?? presetParams.release ?? 0.3,
-            };
-    
-            const onMessage = {
-                type: 'noteOn',
-                frequency,
-                velocity: note.velocity,
-                noteId,
-                params: finalParams
-            };
-    
-            const offMessage = {
-                type: 'noteOff',
-                noteId,
-            };
-
-            setTimeout(() => {
-                if (this.audioContext.state === 'running') {
-                    console.log(`[AccompManager] -> TIMEOUT -> Voice ${voiceIndex}:`, onMessage);
-                    voice.worklet.port.postMessage(onMessage);
-                }
-            }, Math.max(0, onDelay));
-
-            setTimeout(() => {
-                 if (this.audioContext.state === 'running') {
-                    voice.worklet.port.postMessage(offMessage);
-                 }
-            }, Math.max(0, offDelay));
-        });
-    }
-
-    public setInstrument(instrumentName: MelodyInstrument | AccompanimentInstrument) {
+    /**
+     * Sets the active instrument for the accompaniment part.
+     */
+    public setInstrument(instrumentName: AccompanimentInstrument | 'none') {
         if (!this.isInitialized) {
-            console.warn('[AccompanimentManager] setInstrument called before initialization.');
+            console.warn('[AccompManager] setInstrument called before initialization.');
             return;
         }
-        console.log(`[AccompanimentManager] Setting active instrument to: ${instrumentName}`);
+        console.log(`[AccompManager] Setting active instrument to: ${instrumentName}`);
         this.activeInstrumentName = instrumentName;
-
-        const isSampler = ['piano', 'violin', 'flute', 'guitarChords', 'acousticGuitarSolo'].includes(instrumentName);
-        const synthIsActive = !isSampler && instrumentName !== 'none';
-        
-        const balance = VOICE_BALANCE['accompaniment'] || 0.7;
-
-        this.piano.setVolume(instrumentName === 'piano' ? balance : 0);
-        this.violin.setVolume(instrumentName === 'violin' ? balance : 0);
-        this.flute.setVolume(instrumentName === 'flute' ? balance : 0);
-        this.guitarChords.setVolume(instrumentName === 'guitarChords' ? balance : 0);
-        this.acousticGuitarSolo.setVolume(instrumentName === 'acousticGuitarSolo' ? balance : 0);
-
-        this.synthOutput.gain.setTargetAtTime(synthIsActive ? balance : 0, this.audioContext.currentTime, 0.01);
+        // No volume changes needed here anymore, as `schedule` handles routing.
+    }
+    
+    public setPreampGain(gain: number) {
+      // This is now handled by the per-voice gain nodes.
+      // We could apply a global multiplier here if needed.
+      this.synthOutput.gain.setTargetAtTime(gain, this.audioContext.currentTime, 0.01);
     }
 
     public allNotesOff() {
-        this.piano.stopAll();
-        this.violin.stopAll();
-        this.flute.stopAll();
-        this.guitarChords.stopAll();
-        this.acousticGuitarSolo.stopAll();
         this.synthPool.forEach(voice => {
-            if (voice.worklet.port) {
+            if (voice && voice.worklet && voice.worklet.port) {
                  voice.worklet.port.postMessage({ type: 'clear' });
+                 voice.gain.gain.cancelScheduledValues(this.audioContext.currentTime);
+                 voice.gain.gain.setValueAtTime(0, this.audioContext.currentTime);
             }
         });
     }
@@ -256,13 +197,10 @@ export class AccompanimentSynthManager {
 
     public dispose() {
         this.stop();
-        this.piano.dispose();
-        this.violin.dispose();
-        this.flute.dispose();
-        this.guitarChords.dispose();
-        this.acousticGuitarSolo.dispose();
-        this.synthPool.forEach(voice => voice.worklet.disconnect());
-        this.preamp.disconnect();
+        this.synthPool.forEach(voice => {
+            voice.worklet.disconnect();
+            voice.gain.disconnect();
+        });
         this.synthOutput.disconnect();
     }
 }

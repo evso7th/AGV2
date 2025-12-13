@@ -1,0 +1,1607 @@
+Модификация public/worklets/chord-processor.js:
+
+Действие: Я полностью перепишу внутреннюю структуру Voice. Вместо одного осциллятора и ручной ADSR-огибающей, каждый Voice будет состоять из цепочки нативных узлов: OscillatorNode → GainNode (для ADSR) → FilterNode → GainNode (для velocity) → выход. Логика noteOn больше не будет вычислять adsrGain в цикле process, а будет использовать gainNode.gain.cancelAndHoldAtTime() и setTargetAtTime() для планирования атаки, спада и затухания.
+Обоснование: Это переносит 99% вычислений огибающей из нашего JS-кода в оптимизированный нативный код браузера, что является золотым стандартом для веб-аудио. Это должно полностью решить проблему производительности.
+Модификация src/lib/accompaniment-synth-manager.ts:
+
+Действие: Я скорректирую сообщения, отправляемые в ворклет. Вместо передачи параметров adsr как одного объекта, мы будем передавать их как отдельные значения, которые ворклет будет использовать для планирования через AudioParam.
+Обоснование: Это необходимо для соответствия новой, более производительной архитектуре ворклета.
+
+Advanced techniques: Creating and sequencing audio
+In this tutorial, we're going to cover sound creation and modification, as well as timing and scheduling. We will introduce sample loading, envelopes, filters, wavetables, and frequency modulation. If you're familiar with these terms and looking for an introduction to their application with the Web Audio API, you've come to the right place.
+
+Note: You can find the source code for the demo below on GitHub in the step-sequencer subdirectory of the MDN webaudio-examples repo. You can also see the live demo.
+
+In this article
+Demo
+Creating an audio context
+The "sweep" — oscillators, periodic waves, and envelopes
+The "pulse" — low-frequency oscillator modulation
+The "noise" — random noise buffer with a biquad filter
+"Dial-up" — loading a sound sample
+Playing the audio in time
+Putting it all together
+Summary
+Demo
+We're going to be looking at a very simple step sequencer:
+
+A sound sequencer application featuring play and BPM master controls and 4 different voices with controls for each.
+
+In practice, this is easier to do with a library — the Web Audio API was built to be built upon. If you are about to embark on building something more complex, tone.js would be an excellent place to start. However, we want to demonstrate how to create such a demo from first principles as a learning exercise.
+
+The interface consists of master controls, which allow us to play/stop the sequencer, and adjust the BPM (beats per minute) to speed up or slow down the "music".
+
+Four different sounds, or voices, can be played. Each voice has four buttons, one for each beat in one bar of music. When they are enabled, the note will sound. When the instrument plays, it will move across this set of beats and loop the bar.
+
+Each voice also has local controls, allowing you to manipulate the effects or parameters particular to each technique we use to create those voices. The methods we are using are:
+
+Name of voice	Technique	Associated Web Audio API feature
+"Sweep"	Oscillator, periodic wave	OscillatorNode, PeriodicWave
+"Pulse"	Multiple oscillators	OscillatorNode
+"Noise"	Random noise buffer, Biquad filter	AudioBuffer, AudioBufferSourceNode, BiquadFilterNode
+"Dial up"	Loading a sound sample to play	BaseAudioContext/decodeAudioData, AudioBufferSourceNode
+Note: We didn't create this instrument to sound good but to provide demonstration code. This demonstration represents a very simplified version of such an instrument. The sounds are based on a dial-up modem. If you are unaware of how such a device sounds, you can listen to one here.
+
+Creating an audio context
+As you should be used to by now, each Web Audio API app starts with an audio context:
+
+js
+
+Copy
+const audioCtx = new AudioContext();
+The "sweep" — oscillators, periodic waves, and envelopes
+For what we will call the "sweep" sound, that first noise you hear when you dial up, we're going to create an oscillator to generate the sound.
+
+The OscillatorNode comes with basic waveforms out of the box — sine, square, triangle, or sawtooth. However, instead of using the standard waves that come by default, we're going to create our own using the PeriodicWave interface and values set in a wavetable. We can use the PeriodicWave() constructor to use this custom wave with an oscillator.
+
+The periodic wave
+First of all, we'll create our periodic wave. To do so, We need to pass real and imaginary values into the PeriodicWave() constructor:
+
+js
+
+Copy
+const wave = new PeriodicWave(audioCtx, {
+  real: wavetable.real,
+  imag: wavetable.imag,
+});
+Note: In our example, the wavetable is held in a separate JavaScript file (wavetable.js) because there are so many values. We took it from a repository of wavetables, found in the Web Audio API examples from Google Chrome Labs.
+
+The Oscillator
+Now we can create an OscillatorNode and set its wave to the one we've created:
+
+js
+
+Copy
+function playSweep(time) {
+  const osc = new OscillatorNode(audioCtx, {
+    frequency: 380,
+    type: "custom",
+    periodicWave: wave,
+  });
+  osc.connect(audioCtx.destination);
+  osc.start(time);
+  osc.stop(time + 1);
+}
+We pass a time parameter to the function here, which we'll use later to schedule the sweep.
+
+Controlling amplitude
+This is great, but wouldn't it be nice if we had an amplitude envelope to go with it? Let's create one so we get used to the methods we need to create an envelope with the Web Audio API.
+
+Let's say our envelope has attack and release. We can allow the user to control these using range inputs on the interface:
+
+html
+
+Copy
+<label for="attack">Attack</label>
+<input
+  name="attack"
+  id="attack"
+  type="range"
+  min="0"
+  max="1"
+  value="0.2"
+  step="0.1" />
+
+<label for="release">Release</label>
+<input
+  name="release"
+  id="release"
+  type="range"
+  min="0"
+  max="1"
+  value="0.5"
+  step="0.1" />
+Now we can create some variables over in JavaScript and have them change when the input values are updated:
+
+js
+
+Copy
+let attackTime = 0.2;
+const attackControl = document.querySelector("#attack");
+attackControl.addEventListener("input", (ev) => {
+  attackTime = parseInt(ev.target.value, 10);
+});
+
+let releaseTime = 0.5;
+const releaseControl = document.querySelector("#release");
+releaseControl.addEventListener("input", (ev) => {
+  releaseTime = parseInt(ev.target.value, 10);
+});
+The final playSweep() function
+Now we can expand our playSweep() function. We need to add a GainNode and connect that through our audio graph to apply amplitude variations to our sound. The gain node has one property: gain, which is of type AudioParam.
+
+This is useful — now we can start to harness the power of the audio param methods on the gain value. We can set a value at a certain time, or we can change it over time with methods such as AudioParam.linearRampToValueAtTime.
+
+As mentioned above, we'll use the linearRampToValueAtTime method for our attack and release. It takes two parameters — the value you want to set the parameter you are changing to (in this case, the gain) and when you want to do this. In our case when is controlled by our inputs. So, in the example below, the gain increases to 1 at a linear rate over the time the attack range input defines. Similarly, for our release, the gain is set to 0 at a linear rate, over the time the release input has been set to.
+
+js
+
+Copy
+const sweepLength = 2;
+function playSweep(time) {
+  const osc = new OscillatorNode(audioCtx, {
+    frequency: 380,
+    type: "custom",
+    periodicWave: wave,
+  });
+
+  const sweepEnv = new GainNode(audioCtx);
+  sweepEnv.gain.cancelScheduledValues(time);
+  sweepEnv.gain.setValueAtTime(0, time);
+  sweepEnv.gain.linearRampToValueAtTime(1, time + attackTime);
+  sweepEnv.gain.linearRampToValueAtTime(0, time + sweepLength - releaseTime);
+
+  osc.connect(sweepEnv).connect(audioCtx.destination);
+  osc.start(time);
+  osc.stop(time + sweepLength);
+}
+The "pulse" — low-frequency oscillator modulation
+Great, now we've got our sweep! Let's move on and take a look at that nice pulse sound. We can achieve this with a basic oscillator, modulated with a second oscillator.
+
+Initial oscillator
+We'll set up our first OscillatorNode the same way as our sweep sound, except we won't use a wavetable to set a bespoke wave — we'll just use the default sine wave:
+
+js
+
+Copy
+const osc = new OscillatorNode(audioCtx, {
+  type: "sine",
+  frequency: pulseHz,
+});
+Now we're going to create a GainNode, as it's the gain value that we will oscillate with our second, low-frequency oscillator:
+
+js
+
+Copy
+const amp = new GainNode(audioCtx, {
+  value: 1,
+});
+Creating the second, low-frequency oscillator
+We'll now create a second — square — wave (or pulse) oscillator to alter the amplification of our first sine wave:
+
+js
+
+Copy
+const lfo = new OscillatorNode(audioCtx, {
+  type: "square",
+  frequency: 30,
+});
+Connecting the graph
+The key here is connecting the graph correctly and also starting both oscillators:
+
+js
+
+Copy
+lfo.connect(amp.gain);
+osc.connect(amp).connect(audioCtx.destination);
+lfo.start();
+osc.start(time);
+osc.stop(time + pulseTime);
+Note: We also don't have to use the default wave types for either of these oscillators we're creating — we could use a wavetable and the periodic wave method as we did before. There is a multitude of possibilities with just a minimum of nodes.
+
+Pulse user controls
+For the UI controls, let's expose both frequencies of our oscillators, allowing them to be controlled via range inputs. One will change the tone, and the other will change how the pulse modulates the first wave:
+
+html
+
+Copy
+<label for="hz">Hz</label>
+<input
+  name="hz"
+  id="hz"
+  type="range"
+  min="660"
+  max="1320"
+  value="880"
+  step="1" />
+<label for="lfo">LFO</label>
+<input name="lfo" id="lfo" type="range" min="20" max="40" value="30" step="1" />
+As before, we'll vary the parameters when the user changes the ranges values.
+
+js
+
+Copy
+let pulseHz = 880;
+const hzControl = document.querySelector("#hz");
+hzControl.addEventListener("input", (ev) => {
+  pulseHz = parseInt(ev.target.value, 10);
+});
+
+let lfoHz = 30;
+const lfoControl = document.querySelector("#lfo");
+lfoControl.addEventListener("input", (ev) => {
+  lfoHz = parseInt(ev.target.value, 10);
+});
+The final playPulse() function
+Here's the entire playPulse() function:
+
+js
+
+Copy
+const pulseTime = 1;
+function playPulse(time) {
+  const osc = new OscillatorNode(audioCtx, {
+    type: "sine",
+    frequency: pulseHz,
+  });
+
+  const amp = new GainNode(audioCtx, {
+    value: 1,
+  });
+
+  const lfo = new OscillatorNode(audioCtx, {
+    type: "square",
+    frequency: lfoHz,
+  });
+
+  lfo.connect(amp.gain);
+  osc.connect(amp).connect(audioCtx.destination);
+  lfo.start();
+  osc.start(time);
+  osc.stop(time + pulseTime);
+}
+The "noise" — random noise buffer with a biquad filter
+Now we need to make some noise! All modems have noise. Noise is just random numbers when it comes to audio data, so is, therefore, a relatively straightforward thing to create with code.
+
+Creating an audio buffer
+We need to create an empty container to put these numbers into, however, one that the Web Audio API understands. This is where AudioBuffer objects come in. You can fetch a file and decode it into a buffer (we'll get to that later in the tutorial), or you can create an empty buffer and fill it with your data.
+
+For noise, let's do the latter. We first need to calculate the size of our buffer to create it. We can use the BaseAudioContext.sampleRate property for this:
+
+js
+
+Copy
+const bufferSize = audioCtx.sampleRate * noiseDuration;
+// Create an empty buffer
+const noiseBuffer = new AudioBuffer({
+  length: bufferSize,
+  sampleRate: audioCtx.sampleRate,
+});
+Now we can fill it with random numbers between -1 and 1:
+
+js
+
+Copy
+// Fill the buffer with noise
+const data = noiseBuffer.getChannelData(0);
+for (let i = 0; i < bufferSize; i++) {
+  data[i] = Math.random() * 2 - 1;
+}
+Note: Why -1 to 1? When outputting sound to a file or speakers, we need a number representing 0 dB full scale — the numerical limit of the fixed point media or DAC. In floating point audio, 1 is a convenient number to map to "full scale" for mathematical operations on signals, so oscillators, noise generators, and other sound sources typically output bipolar signals in the range -1 to 1. A browser will clamp values outside this range.
+
+Creating a buffer source
+Now we have the audio buffer and have filled it with data; we need a node to add to our graph that can use the buffer as a source. We'll create an AudioBufferSourceNode for this, and pass in the data we've created:
+
+js
+
+Copy
+// Create a buffer source for our created data
+const noise = new AudioBufferSourceNode(audioCtx, {
+  buffer: noiseBuffer,
+});
+When we connect this through our audio graph and play it:
+
+js
+
+Copy
+noise.connect(audioCtx.destination);
+noise.start();
+You'll notice that it's pretty hissy or tinny. We've created white noise; that's how it should be. Our values are spread from -1 to 1, meaning we have peaks of all frequencies, which are actually quite dramatic and piercing. We could modify the function only spread values from 0.5 to -0.5 or similar to take the peaks off and reduce the discomfort; however, where's the fun in that? Let's route the noise we've created through a filter.
+
+Adding a biquad filter to the mix
+We want something in the range of pink or brown noise. We want to cut off those high frequencies and possibly some lower ones. Let's pick a bandpass biquad filter for the job.
+
+Note: The Web Audio API comes with two types of filter nodes: BiquadFilterNode and IIRFilterNode. For the most part, a biquad filter will be good enough — it comes with different types such as lowpass, highpass, and bandpass. If you're looking to do something more bespoke, however, the IIR filter might be a good option — see Using IIR filters for more information.
+
+Wiring this up is the same as we've seen before. We create the BiquadFilterNode, configure the properties we want for it, and connect it through our graph. Different types of biquad filters have different properties — for instance, setting the frequency on a bandpass type adjusts the middle frequency. However, on a lowpass, it would set the top frequency.
+
+js
+
+Copy
+// Filter the output
+const bandpass = new BiquadFilterNode(audioCtx, {
+  type: "bandpass",
+  frequency: bandHz,
+});
+
+// Connect our graph
+noise.connect(bandpass).connect(audioCtx.destination);
+Noise user controls
+On the UI, we'll expose the noise duration and the frequency we want to band, allowing the user to adjust them via range inputs and event handlers just like in previous sections:
+
+html
+
+Copy
+<label for="duration">Duration</label>
+<input
+  name="duration"
+  id="duration"
+  type="range"
+  min="0"
+  max="2"
+  value="1"
+  step="0.1" />
+
+<label for="band">Band</label>
+<input
+  name="band"
+  id="band"
+  type="range"
+  min="400"
+  max="1200"
+  value="1000"
+  step="5" />
+js
+
+Copy
+let noiseDuration = 1;
+const durControl = document.querySelector("#duration");
+durControl.addEventListener("input", (ev) => {
+  noiseDuration = parseFloat(ev.target.value);
+});
+
+let bandHz = 1000;
+const bandControl = document.querySelector("#band");
+bandControl.addEventListener("input", (ev) => {
+  bandHz = parseInt(ev.target.value, 10);
+});
+The final playNoise() function
+Here's the entire playNoise() function:
+
+js
+
+Copy
+function playNoise(time) {
+  const bufferSize = audioCtx.sampleRate * noiseDuration; // set the time of the note
+
+  // Create an empty buffer
+  const noiseBuffer = new AudioBuffer({
+    length: bufferSize,
+    sampleRate: audioCtx.sampleRate,
+  });
+
+  // Fill the buffer with noise
+  const data = noiseBuffer.getChannelData(0);
+  for (let i = 0; i < bufferSize; i++) {
+    data[i] = Math.random() * 2 - 1;
+  }
+
+  // Create a buffer source for our created data
+  const noise = new AudioBufferSourceNode(audioCtx, {
+    buffer: noiseBuffer,
+  });
+
+  // Filter the output
+  const bandpass = new BiquadFilterNode(audioCtx, {
+    type: "bandpass",
+    frequency: bandHz,
+  });
+
+  // Connect our graph
+  noise.connect(bandpass).connect(audioCtx.destination);
+  noise.start(time);
+}
+"Dial-up" — loading a sound sample
+It's straightforward enough to emulate phone dial (DTMF) sounds by playing a couple of oscillators together using the methods we've already used. Instead, we'll load a sample file in this section to look at what's involved.
+
+Loading the sample
+We want to make sure our file has loaded and been decoded into a buffer before we use it, so let's create an async function to allow us to do this:
+
+js
+
+Copy
+async function getFile(audioContext, filepath) {
+  const response = await fetch(filepath);
+  const arrayBuffer = await response.arrayBuffer();
+  const audioBuffer = await audioContext.decodeAudioData(arrayBuffer);
+  return audioBuffer;
+}
+We can then use the await operator when calling this function, which ensures that we can only run subsequent code when it has finished executing.
+
+Let's create another async function to set up the sample — we can combine the two async functions in a lovely promise pattern to perform further actions when this file is loaded and buffered:
+
+js
+
+Copy
+async function setupSample() {
+  const filePath = "dtmf.mp3";
+  const sample = await getFile(audioCtx, filePath);
+  return sample;
+}
+Note: You can easily modify the above function to take an array of files and loop over them to load more than one sample. This technique would be convenient for more complex instruments or gaming.
+
+We can now use setupSample() like so:
+
+js
+
+Copy
+setupSample().then((sample) => {
+  // sample is our buffered file
+  // …
+});
+When the sample is ready to play, the program sets up the UI, so it is ready to go.
+
+Playing the sample
+Let's create a playSample() function similarly to how we did with the other sounds. This time we will create an AudioBufferSourceNode, put the buffer data we've fetched and decoded into it, and play it:
+
+js
+
+Copy
+function playSample(audioContext, audioBuffer, time) {
+  const sampleSource = new AudioBufferSourceNode(audioContext, {
+    buffer: audioBuffer,
+    playbackRate,
+  });
+  sampleSource.connect(audioContext.destination);
+  sampleSource.start(time);
+  return sampleSource;
+}
+Note: We can call stop() on an AudioBufferSourceNode, however, this will happen automatically when the sample has finished playing.
+
+Dial-up user controls
+The AudioBufferSourceNode comes with a playbackRate property. Let's expose that to our UI so that we can speed up and slow down our sample. We'll do that in the same sort of way as before:
+
+html
+
+Copy
+<label for="rate">Rate</label>
+<input
+  name="rate"
+  id="rate"
+  type="range"
+  min="0.1"
+  max="2"
+  value="1"
+  step="0.1" />
+js
+
+Copy
+let playbackRate = 1;
+const rateControl = document.querySelector("#rate");
+rateControl.addEventListener("input", (ev) => {
+  playbackRate = parseInt(ev.target.value, 10);
+});
+The final playSample() function
+We'll then add a line to update the playbackRate property to our playSample() function. The final version looks like this:
+
+js
+
+Copy
+function playSample(audioContext, audioBuffer, time) {
+  const sampleSource = new AudioBufferSourceNode(audioCtx, {
+    buffer: audioBuffer,
+    playbackRate,
+  });
+  sampleSource.connect(audioContext.destination);
+  sampleSource.start(time);
+  return sampleSource;
+}
+Note: The sound file was sourced from soundbible.com.
+
+Playing the audio in time
+A common problem with digital audio applications is getting the sounds to play in time so that the beat remains consistent and things do not slip out of time.
+
+We could schedule our voices to play within a for loop; however, the biggest problem with this is updating while it is playing, and we've already implemented UI controls to do so. Also, it would be really nice to consider an instrument-wide BPM control. The best way to get our voices to play on the beat is to create a scheduling system, whereby we look ahead at when the notes will play and push them into a queue. We can start them at a precise time with the currentTime property and also consider any changes.
+
+Note: This is a much stripped down version of Chris Wilson's A Tale Of Two Clocks (2013) article, which goes into this method with much more detail. There's no point repeating it all here, but we highly recommend reading this article and using this method. Much of the code here is taken from his metronome example, which he references in the article.
+
+Let's start by setting up our default BPM (beats per minute), which will also be user-controllable via — you guessed it — another range input.
+
+js
+
+Copy
+let tempo = 60.0;
+const bpmControl = document.querySelector("#bpm");
+
+bpmControl.addEventListener("input", (ev) => {
+  tempo = parseInt(ev.target.value, 10);
+});
+Then we'll create variables to define how far ahead we want to look and how far ahead we want to schedule:
+
+js
+
+Copy
+const lookahead = 25.0; // How frequently to call scheduling function (in milliseconds)
+const scheduleAheadTime = 0.1; // How far ahead to schedule audio (sec)
+Let's create a function that moves the note forwards by one beat and loops back to the first when it reaches the 4th (last) one:
+
+js
+
+Copy
+let currentNote = 0;
+let nextNoteTime = 0.0; // when the next note is due.
+
+function nextNote() {
+  const secondsPerBeat = 60.0 / tempo;
+
+  nextNoteTime += secondsPerBeat; // Add beat length to last beat time
+
+  // Advance the beat number, wrap to zero when reaching 4
+  currentNote = (currentNote + 1) % 4;
+}
+We want to create a reference queue for the notes that are to be played, and the functionality to play them using the functions we've previously created:
+
+js
+
+Copy
+const notesInQueue = [];
+
+function scheduleNote(beatNumber, time) {
+  // Push the note on the queue, even if we're not playing.
+  notesInQueue.push({ note: beatNumber, time });
+
+  if (pads[0].querySelectorAll("input")[beatNumber].checked) {
+    playSweep(time);
+  }
+  if (pads[1].querySelectorAll("input")[beatNumber].checked) {
+    playPulse(time);
+  }
+  if (pads[2].querySelectorAll("input")[beatNumber].checked) {
+    playNoise(time);
+  }
+  if (pads[3].querySelectorAll("input")[beatNumber].checked) {
+    playSample(audioCtx, dtmf, time);
+  }
+}
+Here we look at the current time and compare it to the time for the following note; when the two match, it will call the previous two functions.
+
+AudioContext object instances have a currentTime property, which allows us to retrieve the number of seconds after we first created the context. We will use it for timing within our step sequencer. It's extremely accurate, returning a float value accurate to about 15 decimal places.
+
+js
+
+Copy
+let timerID;
+function scheduler() {
+  // While there are notes that will need to play before the next interval,
+  // schedule them and advance the pointer.
+  while (nextNoteTime < audioCtx.currentTime + scheduleAheadTime) {
+    scheduleNote(currentNote, nextNoteTime);
+    nextNote();
+  }
+  timerID = setTimeout(scheduler, lookahead);
+}
+We also need a draw() function to update the UI, so we can see when the beat progresses.
+
+js
+
+Copy
+let lastNoteDrawn = 3;
+function draw() {
+  let drawNote = lastNoteDrawn;
+  const currentTime = audioCtx.currentTime;
+
+  while (notesInQueue.length && notesInQueue[0].time < currentTime) {
+    drawNote = notesInQueue[0].note;
+    notesInQueue.shift(); // Remove note from queue
+  }
+
+  // We only need to draw if the note has moved.
+  if (lastNoteDrawn !== drawNote) {
+    pads.forEach((pad) => {
+      pad.children[lastNoteDrawn * 2].style.borderColor = "var(--black)";
+      pad.children[drawNote * 2].style.borderColor = "var(--yellow)";
+    });
+
+    lastNoteDrawn = drawNote;
+  }
+  // Set up to draw again
+  requestAnimationFrame(draw);
+}
+Putting it all together
+Now all that's left to do is make sure we've loaded the sample before we can play the instrument. We'll add a loading screen that disappears when the file has been fetched and decoded. Then we can allow the scheduler to start using the play button click event.
+
+js
+
+Copy
+// When the sample has loaded, allow play
+const loadingEl = document.querySelector(".loading");
+const playButton = document.querySelector("#playBtn");
+let isPlaying = false;
+setupSample().then((sample) => {
+  loadingEl.style.display = "none";
+
+  dtmf = sample; // to be used in our playSample function
+
+  playButton.addEventListener("click", (ev) => {
+    isPlaying = !isPlaying;
+
+    if (isPlaying) {
+      // Start playing
+
+      // Check if context is in suspended state (autoplay policy)
+      if (audioCtx.state === "suspended") {
+        audioCtx.resume();
+      }
+
+      currentNote = 0;
+      nextNoteTime = audioCtx.currentTime;
+      scheduler(); // kick off scheduling
+      requestAnimationFrame(draw); // start the drawing loop.
+      ev.target.dataset.playing = "true";
+    } else {
+      clearTimeout(timerID);
+      ev.target.dataset.playing = "false";
+    }
+  });
+});
+
+Digital Piano with Web Audio API (5) : ADSR(Attack, Decay, Sustain, Release)
+fukagaifukagaiApril 29, 2022information-technology-english, sound-english
+I updated the digital piano on this page so that the gain changes according to the ADSR (Attack, Decay, Sustain, Release) parameters when the keyboard keys are pressed and released.
+
+# It works mostly stable with Chrome and Edge on Windows 11 PCs, but it is sometimes unstable on smartphones when the same keys are pressed repeatedly with short intervals.
+
+
+Envelope
+Attack:
+(Time)	0%	
+100%	Release:
+(Time)	0%	
+100%
+Decay:
+(Time)	0%	
+100%	Time
+Scale:	0.0(s)	
+2.0(s)
+Sustain:
+(Volume)	0%	
+100%				
+Volume:	Mute
+100%
+Current waveform: 
+Triangle
+The ADSR (Attack, Decay, Sustain, Release) parameters are changed by using the sliders in the Envelope frame.
+
+Attack Attack specifies the length ot the time between the keyboard pressing and the time when the gain reaches maximum. The Attack length is the Attack slider ratio multiplied by the the Time Scale slider value.
+Decay The time constant for the gain to decrease from the maximum to the gain specified by Sustain. The Decay time constant is the Decay slider ratio multiplied by the Time Scale slider value.
+Sustain The Sustain level is the gain level after Attack and Decay. The level is the Sustain slider ratio multiplied by the Volume slider value. While Attack, Decay and Release specify the length of time, Sustain specifies the gain level.
+Release Release specifies the length of the time between the release of the key and the disappearance of the sound. The Release length is Release slider ratio multiplied by the Time Scale slider value.
+1. Code specifying the time variation of the gain when a key is pressed
+
+1
+2
+3
+gainNode.gain.setValueAtTime(0, t_pressed);
+gainNode.gain.linearRampToValueAtTime(volume, t_pressed + attackDuration);
+gainNode.gain.setTargetAtTime(sustainLevel * volume, t_pressed + attackDuration, decayDuration);
+The above code specifies the time variation of the gain after pressing the key. If you press and hold the key, the gain will be set to the level specified by Sustain after Decay.
+
+gainNode.gain.setValueAtTime(0, t_pressed) sets the initial gain value 0 when the key is pressed.
+gainNode.gain.linearRampToValueAtTime(volume, t_pressed + attackDuration) sets the gain value after Attack duration. The gain varies in proportion to time from 0 to “volume”.
+gainNode.gain.setTargetAtTime(sustainLevel * volume, t_pressed + attackDuration, decayDuration) sets the gain value after Decay. The gain starts changing exponentially from the time specified by the second argument, “t_pressed + attackDuration”. It approaches the value specified by the third argument, “sustainLevel * volume”.
+Note: Gain schedule functions
+linearRampToValueAtTime(value, endTime)
+The gain varies with time according to the following equation as described on this page.
+𝑣⁡(𝑡)=𝑉0+(𝑉1–𝑉0)⁢
+𝑡–𝑇0
+𝑇1–𝑇0
+ 
+
+In the above equation, 𝑇0 is the time of the previous event, 𝑉0 is the gain at time 𝑇0, 𝑇1 is the function argument “endTime” and 𝑉1 is the function argument “value”. 𝑣⁡(𝑡) specifies the gain at time 𝑡 that satisfies 𝑇0 ≤𝑡 <𝑇1. The 𝑣⁡(𝑡) varies linearly with time.
+
+setTargetAtTime(target, startTime, timeConstant)
+The gain varies with time according to the following equation as described on this page.
+𝑣⁡(𝑡)=𝑉1+(𝑉0–𝑉1)⁢𝑒−
+𝑡–𝑇0
+𝜏
+ 
+
+In the above equation, 𝑇0 is the function argument “startTime”, 𝑉0 is the gain at time 𝑇0, 𝑉1 is the function argument “target” and 𝜏 is the function argument “timeConstant”. 𝑣⁡(𝑡) specifies the gain at time 𝑡 that satisfies 𝑇0 ≤𝑡. 𝑣⁡(𝑡) approaches 𝑉1 according to the exponential function.
+
+2. Code specifying the time variation of the gain when a key is released
+
+1
+2
+3
+gainNode.gain.cancelScheduledValues(t_released);
+gainNode.gain.setValueAtTime(gainNode.gain.value, t_released);
+gainNode.gain.linearRampToValueAtTime(0, t_released + releaseDuration);
+gainNode.gain.cancelScheduledValues(t_released) cancels the gain schedule after the key is released. For example, if the key is released during the Attack period, the processes after the middle of Attack, Decay and Sustain will be canceled. In another example, if the key is held down for a long time and the sound continues to be output with the gain specified with Sustain, releasing the key will cancel the continued output of the sound.
+gainNode.gain.setValueAtTime(gainNode.gain.value, t_released) sets the gain at the time the key is released.
+gainNode.gain.linearRampToValueAtTime(0, t_released + releaseDuration) turns off the sound after the Release period. The gain decreases in proportion to time.
+3. Entire code after modification
+
+3.1. css
+
+1
+2
+3
+4
+5
+6
+7
+8
+9
+10
+11
+12
+13
+14
+15
+16
+17
+18
+19
+20
+21
+22
+23
+24
+25
+26
+27
+28
+29
+30
+31
+32
+33
+34
+35
+36
+37
+38
+39
+40
+41
+42
+43
+44
+45
+46
+47
+48
+49
+50
+51
+52
+53
+54
+55
+56
+57
+58
+59
+60
+61
+62
+63
+64
+65
+66
+67
+68
+69
+70
+71
+72
+73
+74
+75
+76
+77
+78
+79
+80
+81
+82
+83
+84
+85
+86
+87
+88
+89
+90
+91
+92
+93
+94
+95
+96
+97
+98
+99
+100
+101
+102
+103
+104
+105
+106
+107
+108
+109
+110
+111
+112
+113
+114
+115
+116
+117
+118
+119
+120
+121
+122
+123
+124
+125
+126
+127
+128
+129
+130
+131
+132
+133
+134
+135
+136
+137
+138
+139
+140
+141
+142
+143
+144
+145
+146
+147
+148
+<style type="text/css">
+.container {
+    overflow-x: scroll;
+    overflow-y: hidden;
+    width: 100%;
+    height: 180px;
+    white-space: nowrap;
+    margin: 10px;
+}
+ 
+.keyboard {
+    width: auto;
+    padding: 0;
+    margin: 0;
+}
+ 
+.key-set-parent {
+    position: relative;
+    display: inline-block;
+    width: 40px;
+    height: 120px;
+}
+ 
+.key {
+    position: relative;
+    cursor: pointer;
+    font: 10px "Open Sans", "Lucida Grande", "Arial", sans-serif;
+    border: 1px solid black;
+    border-radius: 5px;
+    width: 40px;
+    height: 120px;
+    text-align: center;
+    box-shadow: 2px 2px darkgray;
+    display: inline-block;
+    margin-right: 3px;
+    user-select: none;
+    -moz-user-select: none;
+    -webkit-user-select: none;
+    -ms-user-select: none;
+}
+ 
+.key.black-key {
+    position: absolute;
+    background-color: #000;
+    color: #fff;
+    width: 36px;
+    height: 80px;
+    top: 0px;
+    left: 22px;
+    z-index: 1;
+    pointer-events: auto;
+    vertical-align: top;
+}
+ 
+.key div {
+    position: absolute;
+    bottom: 0;
+    text-align: center;
+    width: 100%;
+    pointer-events: none;
+}
+ 
+.key div sub {
+    font-size: 8px;
+    pointer-events: none;
+}
+ 
+.key:hover {
+    background-color: #eef;
+}
+ 
+.key.black-key:hover {
+    background-color: #778;
+}
+ 
+.key:active {
+    background-color: #000;
+    color: #fff;
+}
+ 
+.key.black-key:active {
+    background-color: #fff;
+    color: #000;
+}
+ 
+.octave {
+    display: inline-block;
+    padding: 0 6px 0 0;
+}
+ 
+.settingsBar {
+    padding-top: 8px;
+    font: 14px "Open Sans", "Lucida Grande", "Arial", sans-serif;
+    position: relative;
+    vertical-align: middle;
+    width: 100%;
+    height: 60px;
+}
+ 
+.left {
+    width: 50%;
+    position: absolute;
+    left: 0;
+    display: table-cell;
+    vertical-align: middle;
+}
+ 
+.left span, .left input {
+    vertical-align: middle;
+}
+ 
+.right {
+    width: 50%;
+    position: absolute;
+    right: 0;
+    display: table-cell;
+    vertical-align: middle;
+}
+ 
+.right span {
+    vertical-align: middle;
+}
+ 
+.right input {
+    vertical-align: baseline;
+}
+ 
+.envelope-fieldset {
+    padding-top: 8px;
+    position: relative;
+    font: 18px "Open Sans", "Lucida Grande", "Arial", sans-serif;
+    left: 0;
+    display: table-cell;
+    border-style: solid;
+    vertical-align: middle;
+    border-color: #000;
+    background-color: #eee;
+}
+ 
+.table-border-none, .table-border-none td {
+    font: 14px "Open Sans", "Lucida Grande", "Arial", sans-serif;
+    left: 0;
+    width: 45%;
+    vertical-align: middle;
+    white-space: nowrap;
+    border: none;
+}
+</style>
+3.2. HTML
+
+1
+2
+3
+4
+5
+6
+7
+8
+9
+10
+11
+12
+13
+14
+15
+16
+17
+18
+19
+20
+21
+22
+23
+24
+25
+26
+27
+28
+29
+30
+31
+32
+33
+34
+35
+36
+37
+38
+39
+40
+41
+42
+43
+44
+45
+46
+47
+48
+49
+50
+51
+52
+53
+54
+55
+56
+57
+58
+59
+60
+61
+62
+63
+64
+65
+66
+67
+<div class="container">
+    <div class="keyboard"></div>
+</div>
+ 
+<fieldset class="envelope-fieldset">
+    <legend>Envelope</legend>
+ 
+    <table class="table-border-none">
+        <tr>
+            <td>Attack:<br/>(Time)</td>
+            <td>0%</td>
+            <td><input type="range" min="0.0" max="1.0" step="0.01" value="0.1" name="attack"></td>
+            <td>100%</td>
+ 
+            <td>Release:<br/>(Time)</td>
+            <td>0%</td>
+            <td><input type="range" min="0.0" max="1.0" step="0.01" value="0.5" name="release"></td>
+            <td>100%</td>
+        </tr>
+ 
+        <tr>
+            <td>Decay:<br/>(Time)</td>
+            <td>0%</td>
+            <td><input type="range" min="0.0" max="1.0" step="0.01" value="0.5" name="decay"></td>
+            <td>100%</td>
+ 
+            <td>Time<br/>Scale:</td>
+            <td>0.0(s)</td>
+            <td><input type="range" min="0.0" max="2.0" step="0.01" value="1.0" name="time-scale"></td>
+            <td>2.0(s)</td>
+        </tr>
+ 
+        <tr>
+            <td>Sustain:<br/>(Volume)</td>
+            <td>0%</td>
+            <td><input type="range" min="0.0" max="1.0" step="0.01" value="0.5" name="sustain"></td>
+            <td>100%</td>
+ 
+            <td></td>
+            <td></td>
+            <td></td>
+            <td></td>
+        </tr>
+    </table>
+</fieldset>
+ 
+<div class="settingsBar">
+    <div class="left">
+        <table class="table-border-none">
+            <tr>
+                <td>Volume: </td>
+                <td>Mute<input type="range" min="0.0" max="1.0" step="0.01" value="0.5" name="volume">100%</td>
+            </tr>
+        </table>
+    </div>
+ 
+    <div class="right">
+        <span>Current waveform: </span>
+        <select name="waveform">
+            <option value="sine">Sine</option>
+            <option value="square">Square</option>
+            <option value="sawtooth">Sawtooth</option>
+            <option value="triangle" selected>Triangle</option>
+            <option value="custom">Custom</option>
+        </select>
+    </div>
+</div>
+3.3. JavaScript
+
+1
+2
+3
+4
+5
+6
+7
+8
+9
+10
+11
+12
+13
+14
+15
+16
+17
+18
+19
+20
+21
+22
+23
+24
+25
+26
+27
+28
+29
+30
+31
+32
+33
+34
+35
+36
+37
+38
+39
+40
+41
+42
+43
+44
+45
+46
+47
+48
+49
+50
+51
+52
+53
+54
+55
+56
+57
+58
+59
+60
+61
+62
+63
+64
+65
+66
+67
+68
+69
+70
+71
+72
+73
+74
+75
+76
+77
+78
+79
+80
+81
+82
+83
+84
+85
+86
+87
+88
+89
+90
+91
+92
+93
+94
+95
+96
+97
+98
+99
+100
+101
+102
+103
+104
+105
+106
+107
+108
+109
+110
+111
+112
+113
+114
+115
+116
+117
+118
+119
+120
+121
+122
+123
+124
+125
+126
+127
+128
+129
+130
+131
+132
+133
+134
+135
+136
+137
+138
+139
+140
+141
+142
+143
+144
+145
+146
+147
+148
+149
+150
+151
+152
+153
+154
+155
+156
+157
+158
+159
+160
+161
+162
+163
+164
+165
+166
+167
+168
+169
+170
+171
+172
+173
+174
+175
+176
+177
+178
+179
+180
+181
+182
+183
+184
+185
+186
+187
+188
+189
+190
+191
+192
+193
+194
+195
+196
+197
+198
+199
+200
+201
+202
+203
+204
+205
+206
+207
+208
+209
+210
+211
+212
+213
+214
+215
+216
+217
+218
+219
+220
+221
+222
+223
+224
+<script>
+const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+ 
+const oscillatorMap = new Map();
+const gainNodeMap = new Map();
+ 
+const keyboard = document.querySelector(".keyboard");
+const wavePicker = document.querySelector("select[name='waveform']");
+const volumeControl = document.querySelector("input[name='volume']");
+const attackControl = document.querySelector("input[name='attack']");
+const decayControl = document.querySelector("input[name='decay']");
+const sustainControl = document.querySelector("input[name='sustain']");
+const releaseControl = document.querySelector("input[name='release']");
+const timeScaleControl = document.querySelector("input[name='time-scale']");
+ 
+let noteFreq = null;
+let customWaveform = null;
+let sineTerms = null;
+let cosineTerms = null;
+ 
+const note_names =
+[
+    ["ラ", "", "A", ""],
+    ["ラ#", "シ$\\flat$", "A#", "B$\\flat$"],
+    ["シ", "","B", ""],
+    ["ド", "","C", ""],
+    ["ド#", "レ$\\flat$","C#", "D$\\flat$"],
+    ["レ", "","D", ""],
+    ["レ#", "ミ$\\flat$","D#", "E$\\flat$"],
+    ["ミ", "","E", ""],
+    ["ファ", "","F", ""],
+    ["ファ#", "ソ$\\flat$","F#", "G$\\flat$"],
+    ["ソ", "", "G", ""],
+    ["ソ#", "ラ$\\flat$", "G#", "A$\\flat$"]
+];
+ 
+setup();
+ 
+// -------------------------------------------------------
+// functions
+// -------------------------------------------------------
+ 
+function createNoteTable() {
+ 
+    let noteFreq = [];
+    for (let octave = 0; octave < 9; octave++) {
+        noteFreq[octave] = [];
+    }
+ 
+    for (let n = 0; n < 88; n++) {
+ 
+        const frequency = getAudioFrequency(n);
+ 
+        let octave = parseInt(n/12);
+        if (n % 12 >= 3) {
+            octave++;
+        }
+ 
+        const note_name_sharp_english = note_names[n % 12][2];
+        noteFreq[octave][note_name_sharp_english] = frequency;
+    }
+ 
+    return noteFreq;
+}
+ 
+function getAudioFrequency(n) {
+    return 27.5 * ( Math.pow( Math.pow(2, 1/12), n) );
+}
+ 
+function setup() {
+    noteFreq = createNoteTable();
+ 
+    noteFreq.forEach(function(keys, idx) {
+ 
+        const keyList = Object.entries(keys);
+        const octaveElem = document.createElement("div");
+        octaveElem.className = "octave";
+ 
+        for (let i = 0; i < keyList.length; i++) {
+ 
+            const keySetElem = document.createElement("div");
+            keySetElem.className = "key-set-parent";
+ 
+            const whiteKey = keyList[i];
+            const whiteKeyName = whiteKey[0];
+ 
+            const whiteKeyElem = createKey(whiteKeyName, idx, whiteKey[1], 'white-key');
+            keySetElem.appendChild(whiteKeyElem);
+ 
+            if (whiteKeyName === 'A' || whiteKeyName === 'C' || whiteKeyName === 'D' ||
+                whiteKeyName === 'F' || whiteKeyName === 'G') {
+ 
+                const blackKey = keyList[++i];
+ 
+                if (blackKey != undefined) {
+                    const blackKeyName = blackKey[0];
+                    const blackKeyElem = createKey(blackKeyName, idx, blackKey[1], 'black-key');
+                    keySetElem.appendChild(blackKeyElem);
+                }
+            }
+ 
+            octaveElem.appendChild(keySetElem);
+        }
+ 
+        keyboard.appendChild(octaveElem);
+    });
+ 
+    document.querySelector("div[data-note='F'][data-octave='5']").scrollIntoView(false);
+ 
+    sineTerms = new Float32Array([0, 0, 1, 0, 1]);
+    cosineTerms = new Float32Array(sineTerms.length);
+    customWaveform = audioContext.createPeriodicWave(cosineTerms, sineTerms);
+}
+ 
+function createKey(note, octave, freq, keyColor) {
+    const keyElement = document.createElement("div");
+    const labelElement = document.createElement("div");
+ 
+    if (keyColor === 'black-key') {
+        keyElement.className = "key black-key";
+    } else {
+        keyElement.className = "key";
+    }
+ 
+    keyElement.dataset["octave"] = octave;
+    keyElement.dataset["note"] = note;
+    keyElement.dataset["frequency"] = freq;
+ 
+    labelElement.innerHTML = note + "<sub>" + octave + "</sub>";
+    keyElement.appendChild(labelElement);
+ 
+    keyElement.addEventListener("mousedown", notePressed, false);
+    keyElement.addEventListener("mouseup", noteReleased, false);
+    keyElement.addEventListener("mouseleave", noteReleased, false);
+ 
+    keyElement.addEventListener("touchstart", notePressed, false);
+    keyElement.addEventListener("touchend", noteReleased, false);
+    keyElement.addEventListener("touchmove", noteReleased, false);
+    keyElement.addEventListener("touchcancel", noteReleased, false);
+ 
+    return keyElement;
+}
+ 
+function notePressed(event) {
+ 
+    event.preventDefault();
+ 
+    const dataset = event.target.dataset;
+ 
+    if (dataset["pressed"]) {
+        return;
+    }
+ 
+    dataset["pressed"] = "yes";
+ 
+    const octave = dataset["octave"];
+    const note = dataset["note"];
+    const frequency = dataset["frequency"];
+ 
+    const oscillator = audioContext.createOscillator();
+ 
+    const t_pressed = audioContext.currentTime;
+    const volume = parseFloat(volumeControl.value);
+    const timeScale = parseFloat(timeScaleControl.value);
+    const attackDuration = parseFloat(attackControl.value) * timeScale;
+    const decayDuration = parseFloat(decayControl.value) * timeScale;
+    const sustainLevel = parseFloat(sustainControl.value);
+ 
+    // Attack -> Decay -> Sustain
+    const gainNode = audioContext.createGain();
+    gainNode.connect(audioContext.destination);
+    gainNode.gain.setValueAtTime(0, t_pressed);
+    gainNode.gain.linearRampToValueAtTime(volume, t_pressed + attackDuration);
+    gainNode.gain.setTargetAtTime(sustainLevel * volume, t_pressed + attackDuration, decayDuration);
+ 
+    oscillator.connect(gainNode);
+ 
+    const type = wavePicker.options[wavePicker.selectedIndex].value;
+ 
+    if (type == "custom") {
+        oscillator.setPeriodicWave(customWaveform);
+    } else {
+        oscillator.type = type;
+    }
+ 
+    oscillator.frequency.value = frequency;
+    oscillator.start();
+ 
+    const keyID = note + octave;
+    oscillatorMap.set(keyID, oscillator);
+    gainNodeMap.set(keyID, gainNode);
+}
+ 
+function noteReleased(event) {
+ 
+    event.preventDefault();
+ 
+    const dataset = event.target.dataset;
+ 
+    if (!dataset["pressed"]) {
+        return;
+    }
+ 
+    delete dataset["pressed"];
+ 
+    const octave = dataset["octave"];
+    const note = dataset["note"];
+    const frequency = dataset["frequency"];
+    const keyID = note + octave;
+ 
+    const oscillator = oscillatorMap.get(keyID);
+    const gainNode = gainNodeMap.get(keyID);
+ 
+    const t_released = audioContext.currentTime;
+    const timeScale = parseFloat(timeScaleControl.value);
+    const releaseDuration = parseFloat(releaseControl.value) * timeScale;
+ 
+    gainNode.gain.cancelScheduledValues(t_released);
+    gainNode.gain.setValueAtTime(gainNode.gain.value, t_released);
+    gainNode.gain.linearRampToValueAtTime(0, t_released + releaseDuration);
+ 
+    oscillator.stop(t_released + releaseDuration);
+}
+</script>
