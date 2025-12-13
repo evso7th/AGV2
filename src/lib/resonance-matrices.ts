@@ -177,3 +177,88 @@ export const AmbientK: ResonanceMatrix = (
  * На данный момент является копией электронной матрицы для обеспечения базовой функциональности.
  */
 export const TraditionalK = ElectronicK;
+
+export const MelancholicMinorK: ResonanceMatrix = (eventA: FractalEvent, eventB: FractalEvent, context: { mood: Mood; tempo: number; delta: number, genre: Genre }): number => {
+    if (!eventA || !eventB) { return 0.5; }
+
+    const event1IsBass = isBass(eventA);
+    const event2IsBass = isBass(eventB);
+    const event1IsDrums = eventA.type.startsWith('drum_') || eventA.type.startsWith('perc-');
+    const event2IsDrums = eventB.type.startsWith('drum_') || eventB.type.startsWith('perc-');
+    const event1IsAccomp = isAccompaniment(eventA);
+    const event2IsAccomp = isAccompaniment(eventB);
+
+
+    if ((event1IsBass && event2IsDrums) || (event1IsDrums && event2IsBass)) {
+        const bassEvent = event1IsBass ? eventA : eventB;
+        const drumEvent = event1IsDrums ? eventA : eventB;
+
+        if (isFill(bassEvent) && (isTom(drumEvent) || (isSnare(drumEvent) && drumEvent.weight > 0.8))) {
+            if (areSimultaneous(bassEvent.time, drumEvent.time)) return 1.0;
+            if (Math.abs(bassEvent.time - drumEvent.time) < 0.25) return 0.9;
+        }
+
+        if (isKick(drumEvent)) {
+            if (areSimultaneous(bassEvent.time, drumEvent.time) && isOnStrongBeat(bassEvent.time)) return 1.0;
+            if (Math.abs(bassEvent.time - drumEvent.time - 0.5) < 0.1 && isOnStrongBeat(drumEvent.time)) return 0.85; 
+            return 0.3;
+        }
+        if (isSnare(drumEvent)) {
+            if (areSimultaneous(eventA.time, eventB.time) && isOnSnareBeat(eventA.time)) {
+                return 0.1;
+            }
+            return 0.8; 
+        }
+    }
+
+
+    if ((event1IsBass && event2IsAccomp) || (event1IsAccomp && event2IsBass)) {
+        const scale = getScaleForMood(context.mood);
+        const noteAInScale = scale.some(scaleNote => (eventA.note % 12) === (scaleNote % 12));
+        const noteBInScale = scale.some(scaleNote => (eventB.note % 12) === (scaleNote % 12));
+        if (!noteAInScale || !noteBInScale) return 0.2; 
+
+        const interval = Math.abs(eventA.note - eventB.note) % 12;
+        if ([3, 4, 7, 8, 9].includes(interval)) return 0.9;
+        return 0.6;
+    }
+
+
+    if (event1IsDrums && event2IsDrums) {
+        if ((isKick(eventA) && isSnare(eventB)) || (isSnare(eventA) && isKick(eventB))) {
+            const kickTime = isKick(eventA) ? eventA.time : eventB.time;
+            const snareTime = isSnare(eventA) ? eventA.time : eventB.time;
+            if (isOnStrongBeat(kickTime) && isOnSnareBeat(snareTime)) {
+                return 0.95; 
+            }
+            return 0.4;
+        }
+    }
+
+    if (isGhostNote(eventA) || isGhostNote(eventB)) {
+        const time = isGhostNote(eventA) ? eventA.time : eventB.time;
+        return !isOnStrongBeat(time) ? 0.9 : 0.2;
+    }
+    
+    if ((event1IsBass && event2IsBass && eventA.note !== eventB.note) || (event1IsAccomp && event2IsAccomp)) {
+        const scale = getScaleForMood(context.mood);
+        const noteAInScale = scale.some(scaleNote => (eventA.note % 12) === (scaleNote % 12));
+        const noteBInScale = scale.some(scaleNote => (eventB.note % 12) === (scaleNote % 12));
+        
+        if (isFill(eventA) && isFill(eventB)) {
+             return noteAInScale && noteBInScale ? 0.95 : 0.2;
+        }
+
+        return noteAInScale && noteBInScale ? 0.9 : 0.3;
+    }
+    
+    if (context.delta > 0.9) { 
+        if (isTom(eventA) || isTom(eventB)) return 0.85;
+        if ((isCrash(eventA) || isCrash(eventB)) && context.genre !== 'ambient') return 1.0;
+    } else {
+        if (isCrash(eventA) || isCrash(eventB)) return 0.05;
+    }
+
+
+    return 0.5;
+};
