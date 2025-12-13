@@ -162,7 +162,11 @@ export class AccompanimentSynthManager {
 
                 // === 3. SETUP LFO (NATIVE) ===
                 // Disconnect previous LFO target
-                voice.lfoGain.disconnect();
+                try {
+                  voice.lfoGain.disconnect();
+                } catch(e) {
+                  // It's okay if it wasn't connected
+                }
                 
                 if (lfo && lfo.amount > 0) {
                     voice.lfo.type = lfo.shape;
@@ -170,7 +174,9 @@ export class AccompanimentSynthManager {
                     
                     if (lfo.target === 'filter') {
                         lfoAmountParam.setValueAtTime(lfo.amount, noteOnTime); // Use a dedicated param for LFO amount
-                        voice.lfoGain.connect(cutoffParam);
+                        // This connection is now conceptually handled inside the worklet
+                        // which reads from the 'lfoAmount' parameter.
+                        // The actual LFO signal isn't connected directly, instead we tell the worklet about it.
                     } else if (lfo.target === 'pitch') {
                         // Pitch modulation is still done in the worklet via postMessage
                         lfoAmountParam.setValueAtTime(0, noteOnTime); // ensure no filter mod
@@ -198,8 +204,8 @@ export class AccompanimentSynthManager {
                     noteId,
                     frequency,
                     layers,
+                    filterType: filter.type, // Send filter type
                     lfo: { ...lfo, target: lfo.target === 'pitch' ? 'pitch' : 'none' }, // Only send pitch LFO info
-                    effects,
                     portamento: portamento || 0,
                     when: noteOnTime
                 };
