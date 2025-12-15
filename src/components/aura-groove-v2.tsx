@@ -41,7 +41,7 @@ export function AuraGrooveV2({
   }, []);
 
   const melodyInstrumentList: (MelodyInstrument | 'none')[] = ['piano', 'violin', 'flute', 'synth', 'organ', 'mellotron', 'theremin', 'E-Bells_melody', 'G-Drops', 'acousticGuitarSolo', 'electricGuitar', 'none'];
-  const textureInstrumentList: (AccompanimentInstrument | 'none')[] = ['violin', 'flute', 'synth', 'organ', 'mellotron', 'theremin', 'none'];
+  const textureInstrumentList: (AccompanimentInstrument | 'none')[] = ['piano', 'guitarChords', 'synth', 'organ', 'mellotron', 'theremin', 'E-Bells_melody', 'G-Drops', 'electricGuitar', 'none'];
   const harmonyInstrumentList: ('piano' | 'guitarChords' | 'none')[] = ['piano', 'guitarChords', 'none'];
   const bassInstrumentList: (BassInstrument | 'none')[] = ['classicBass', 'glideBass', 'ambientDrone', 'resonantGliss', 'hypnoticDrone', 'livingRiff', 'none'];
   const moodList: Mood[] = ['epic', 'joyful', 'enthusiastic', 'melancholic', 'dark', 'anxious', 'dreamy', 'contemplative', 'calm'];
