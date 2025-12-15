@@ -172,21 +172,22 @@ export class AccompanimentSynthManager {
         
         // Этап 1.1: Расчет корректных временных точек
         const attackEndTime = noteOnTime + preset.adsr.attack;
+        const sustainValue = peakGain * preset.adsr.sustain;
+        // Correctly calculate decay end time
         const decayEndTime = attackEndTime + preset.adsr.decay;
         const noteOffTime = noteOnTime + note.duration;
         const releaseEndTime = noteOffTime + preset.adsr.release;
 
         // Этап 1.2: Каноническая ADSR-огибающая
         gainParam.cancelScheduledValues(noteOnTime);
-        gainParam.setValueAtTime(0, noteOnTime); // Start at 0
-        // Attack
+        gainParam.setValueAtTime(0, noteOnTime);
         gainParam.linearRampToValueAtTime(peakGain, attackEndTime);
-        // Decay to Sustain
-        const sustainValue = peakGain * preset.adsr.sustain;
         gainParam.linearRampToValueAtTime(sustainValue, decayEndTime);
-        // Sustain
+        
+        // Sustain: Hold the sustain value until the note is released.
         gainParam.setValueAtTime(sustainValue, noteOffTime);
-        // Release
+        
+        // Release: Ramp down to 0.
         gainParam.linearRampToValueAtTime(0, releaseEndTime);
         
         // --- OSCILLATORS ---
