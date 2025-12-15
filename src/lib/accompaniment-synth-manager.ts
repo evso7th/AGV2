@@ -170,20 +170,24 @@ export class AccompanimentSynthManager {
         const velocity = note.velocity ?? 0.7;
         const peakGain = velocity * 0.5;
         
-        // --- Этап 1.1: Расчет корректных временных точек ---
+        // Этап 1.1: Расчет корректных временных точек
         const attackEndTime = noteOnTime + preset.adsr.attack;
         const decayEndTime = attackEndTime + preset.adsr.decay;
         const noteOffTime = noteOnTime + note.duration;
         const releaseEndTime = noteOffTime + preset.adsr.release;
 
-        // --- Этап 1.2: Будет реализован на следующем шаге ---
-        // Пока используется старая, некорректная логика
+        // Этап 1.2: Каноническая ADSR-огибающая
         gainParam.cancelScheduledValues(noteOnTime);
-        gainParam.setValueAtTime(0, noteOnTime);
-        gainParam.linearRampToValueAtTime(peakGain, noteOnTime + preset.adsr.attack);
-        gainParam.setTargetAtTime(peakGain * preset.adsr.sustain, noteOnTime + preset.adsr.attack, preset.adsr.decay / 3 + 0.001); // Incorrect but kept for now
-        gainParam.setTargetAtTime(0, noteOnTime + note.duration, preset.adsr.release / 3 + 0.001); // Incorrect but kept for now
-
+        gainParam.setValueAtTime(0, noteOnTime); // Start at 0
+        // Attack
+        gainParam.linearRampToValueAtTime(peakGain, attackEndTime);
+        // Decay to Sustain
+        const sustainValue = peakGain * preset.adsr.sustain;
+        gainParam.linearRampToValueAtTime(sustainValue, decayEndTime);
+        // Sustain
+        gainParam.setValueAtTime(sustainValue, noteOffTime);
+        // Release
+        gainParam.linearRampToValueAtTime(0, releaseEndTime);
         
         // --- OSCILLATORS ---
         voice.oscillators = [];
