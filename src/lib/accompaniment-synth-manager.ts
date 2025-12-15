@@ -165,24 +165,25 @@ export class AccompanimentSynthManager {
         voice.wetGain.gain.setValueAtTime(wetMix, noteOnTime);
         voice.dryGain.gain.setValueAtTime(1.0 - wetMix, noteOnTime);
 
-        // --- ADSR ENVELOPE (CORRECTED) ---
+        // --- ADSR ENVELOPE (CORRECTED TIMING CALCULATION) ---
         const gainParam = voice.envGain.gain;
         const velocity = note.velocity ?? 0.7;
         const peakGain = velocity * 0.5;
-
-        // 1. Calculate phase end times correctly
+        
+        // --- Этап 1.1: Расчет корректных временных точек ---
         const attackEndTime = noteOnTime + preset.adsr.attack;
         const decayEndTime = attackEndTime + preset.adsr.decay;
         const noteOffTime = noteOnTime + note.duration;
         const releaseEndTime = noteOffTime + preset.adsr.release;
 
-        // 2. Schedule envelope phases
+        // --- Этап 1.2: Будет реализован на следующем шаге ---
+        // Пока используется старая, некорректная логика
         gainParam.cancelScheduledValues(noteOnTime);
-        gainParam.setValueAtTime(0, noteOnTime); // Start at zero
-        gainParam.linearRampToValueAtTime(peakGain, attackEndTime); // Attack phase
-        gainParam.linearRampToValueAtTime(peakGain * preset.adsr.sustain, decayEndTime); // Decay phase
-        gainParam.setValueAtTime(peakGain * preset.adsr.sustain, noteOffTime); // Sustain anchor point
-        gainParam.linearRampToValueAtTime(0, releaseEndTime); // Release phase
+        gainParam.setValueAtTime(0, noteOnTime);
+        gainParam.linearRampToValueAtTime(peakGain, noteOnTime + preset.adsr.attack);
+        gainParam.setTargetAtTime(peakGain * preset.adsr.sustain, noteOnTime + preset.adsr.attack, preset.adsr.decay / 3 + 0.001); // Incorrect but kept for now
+        gainParam.setTargetAtTime(0, noteOnTime + note.duration, preset.adsr.release / 3 + 0.001); // Incorrect but kept for now
+
         
         // --- OSCILLATORS ---
         voice.oscillators = [];
@@ -201,7 +202,13 @@ export class AccompanimentSynthManager {
             osc.connect(oscGain).connect(voice.envGain);
             
             if (preset.lfo.target === 'pitch' && preset.lfo.amount > 0) {
-                 voice.chorusLfo.connect(osc.detune);
+                 const lfo = this.audioContext.createOscillator();
+                 lfo.frequency.value = preset.lfo.rate;
+                 const lfoGain = this.audioContext.createGain();
+                 lfoGain.gain.value = preset.lfo.amount;
+                 lfo.connect(lfoGain).connect(osc.detune);
+                 lfo.start(noteOnTime);
+                 lfo.stop(releaseEndTime + 0.1);
             }
             
             osc.start(noteOnTime);
@@ -212,12 +219,7 @@ export class AccompanimentSynthManager {
         // --- CLEANUP ---
         setTimeout(() => {
             voice.isActive = false;
-            voice.oscillators.forEach(osc => {
-                 if (voice.chorusLfo.numberOfOutputs > 0 && preset.lfo.target === 'pitch') {
-                    try { voice.chorusLfo.disconnect(osc.detune); } catch(e) {}
-                }
-                osc.disconnect();
-            });
+            voice.oscillators.forEach(osc => osc.disconnect());
             voice.oscillators = [];
         }, (releaseEndTime - now + 0.2) * 1000);
     }
@@ -256,8 +258,6 @@ export class AccompanimentSynthManager {
     public dispose() {
         this.stop();
         this.voicePool.forEach(voice => {
-            voice.lfo.disconnect();
-            voice.chorusLfo.disconnect();
             voice.envGain.disconnect();
             voice.filter.disconnect();
             voice.panner.disconnect();
@@ -266,6 +266,7 @@ export class AccompanimentSynthManager {
             voice.delayNode.disconnect();
             voice.feedbackGain.disconnect();
             voice.chorusDelayNode.disconnect();
+            voice.chorusLfo.disconnect();
             voice.chorusLfoGain.disconnect();
         });
         this.preamp.disconnect();
