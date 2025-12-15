@@ -149,7 +149,22 @@ export class AccompanimentSynthManager {
         voice.isActive = true;
         
         // --- CONFIGURE VOICE ---
-        voice.filter.type = preset.filter.type;
+        switch (preset.filter.type) {
+            case 'lpf':
+                voice.filter.type = 'lowpass';
+                break;
+            case 'hpf':
+                voice.filter.type = 'highpass';
+                break;
+            case 'bpf':
+                voice.filter.type = 'bandpass';
+                break;
+            case 'notch':
+                voice.filter.type = 'notch';
+                break;
+            default:
+                voice.filter.type = 'lowpass';
+        }
         voice.filter.Q.value = preset.filter.q;
         voice.filter.frequency.setValueAtTime(preset.filter.cutoff, noteOnTime);
         
