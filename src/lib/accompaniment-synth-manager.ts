@@ -1,5 +1,4 @@
 
-
 import type { FractalEvent, AccompanimentInstrument } from '@/types/fractal';
 import type { Note } from "@/types/music";
 import { SYNTH_PRESETS, type SynthPreset } from './synth-presets';
@@ -185,23 +184,17 @@ export class AccompanimentSynthManager {
         const velocity = note.velocity ?? 0.7;
         const peakGain = velocity * 0.5;
         
-        // Этап 1.1: Расчет корректных временных точек
         const attackEndTime = noteOnTime + preset.adsr.attack;
         const sustainValue = peakGain * preset.adsr.sustain;
         const decayEndTime = attackEndTime + preset.adsr.decay;
         const noteOffTime = noteOnTime + note.duration;
         const releaseEndTime = noteOffTime + preset.adsr.release;
 
-        // Этап 1.2: Каноническая ADSR-огибающая
         gainParam.cancelScheduledValues(noteOnTime);
         gainParam.setValueAtTime(0, noteOnTime);
         gainParam.linearRampToValueAtTime(peakGain, attackEndTime);
         gainParam.linearRampToValueAtTime(sustainValue, decayEndTime);
-        
-        // Sustain: Hold the sustain value until the note is released.
         gainParam.setValueAtTime(sustainValue, noteOffTime);
-        
-        // Release: Ramp down to 0.
         gainParam.linearRampToValueAtTime(0, releaseEndTime);
         
         // --- OSCILLATORS ---
@@ -209,6 +202,10 @@ export class AccompanimentSynthManager {
         const baseFrequency = midiToFreq(note.midi);
         
         preset.layers.forEach(layer => {
+            if (layer.type === 'noise') {
+                console.warn(`[AccompManager] Skipping 'noise' layer type as it's not supported by native OscillatorNode.`);
+                return;
+            }
             const osc = this.audioContext.createOscillator();
             const detuneFactor = Math.pow(2, layer.detune / 1200);
             const octaveFactor = Math.pow(2, layer.octave);
