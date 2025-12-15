@@ -173,7 +173,6 @@ export class AccompanimentSynthManager {
         // Этап 1.1: Расчет корректных временных точек
         const attackEndTime = noteOnTime + preset.adsr.attack;
         const sustainValue = peakGain * preset.adsr.sustain;
-        // Correctly calculate decay end time
         const decayEndTime = attackEndTime + preset.adsr.decay;
         const noteOffTime = noteOnTime + note.duration;
         const releaseEndTime = noteOffTime + preset.adsr.release;
