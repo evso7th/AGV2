@@ -221,7 +221,7 @@ export class AccompanimentSynthManager {
                  const lfo = this.audioContext.createOscillator();
                  lfo.frequency.value = preset.lfo.rate;
                  const lfoGain = this.audioContext.createGain();
-                 lfoGain.gain.value = preset.lfo.amount;
+                 lfoGain.gain.value = preset.lfo.amount * 100; // ИСПРАВЛЕНО: Масштабируем amount до центов
                  lfo.connect(lfoGain).connect(osc.detune);
                  lfo.start(noteOnTime);
                  lfo.stop(releaseEndTime + 0.1);
