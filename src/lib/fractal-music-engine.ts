@@ -1,4 +1,5 @@
 
+
 import type { FractalEvent, Mood, Genre, Technique, BassSynthParams, InstrumentType, MelodyInstrument, BassInstrument, AccompanimentInstrument, ResonanceMatrix, InstrumentHints, AccompanimentTechnique } from '@/types/fractal';
 import { ElectronicK, TraditionalK, AmbientK, MelancholicMinorK } from './resonance-matrices';
 import { getScaleForMood, STYLE_DRUM_PATTERNS, generateAmbientBassPhrase, mutateBassPhrase, createAccompanimentAxiom, PERCUSSION_SETS, TEXTURE_INSTRUMENT_WEIGHTS_BY_MOOD, getAccompanimentTechnique, createBassFill as createBassFillFromTheory, createDrumFill, AMBIENT_ACCOMPANIMENT_WEIGHTS } from './music-theory';
@@ -9,7 +10,7 @@ export type Branch = {
   weight: number;
   age: number;
   technique: Technique;
-  type: 'bass' | 'drums' | 'accompaniment' | 'harmony';
+  type: 'bass' | 'drums' | 'accompaniment' | 'harmony' | 'melody';
   endTime: number; // Абсолютное время окончания последнего события в ветке
 };
 
@@ -50,6 +51,8 @@ function safeTime(value: number, fallback: number = 0): number {
 }
 
 const isBass = (event: FractalEvent): boolean => event.type === 'bass';
+const isAccompaniment = (event: FractalEvent): boolean => event.type === 'accompaniment';
+const isHarmony = (event: FractalEvent): boolean => event.type === 'harmony';
 
 
 // === АКСОМЫ И ТРАНСФОРМАЦИИ ===
@@ -144,6 +147,47 @@ function createSfxScenario(mood: Mood, genre: Genre, random: { next: () => numbe
     return { drumFill, bassFill, accompanimentFill };
 }
 
+/**
+ * [Шаг 1.1, План 11.53]
+ * Находит верхние ноты в группе событий, происходящих примерно в одно и то же время.
+ * @param events Массив событий для анализа (обычно аккомпанемент).
+ * @param maxNotes Максимальное количество мелодических нот для извлечения.
+ * @returns Массив событий, которые являются "вершинами" гармонии.
+ */
+function extractTopNotes(events: FractalEvent[], maxNotes: number = 4): FractalEvent[] {
+    if (events.length === 0) return [];
+    
+    const timeTolerance = 0.1; // 100ms tolerance for grouping notes
+    const groupedByTime: Map<number, FractalEvent[]> = new Map();
+
+    // Группируем ноты по времени начала
+    for (const event of events) {
+        let foundGroup = false;
+        for (const time of groupedByTime.keys()) {
+            if (Math.abs(time - event.time) < timeTolerance) {
+                groupedByTime.get(time)!.push(event);
+                foundGroup = true;
+                break;
+            }
+        }
+        if (!foundGroup) {
+            groupedByTime.set(event.time, [event]);
+        }
+    }
+
+    const topNotes: FractalEvent[] = [];
+    // Для каждой временной группы находим самую высокую ноту
+    for (const group of groupedByTime.values()) {
+        const topNote = group.reduce((max, current) => (current.note > max.note ? current : max));
+        topNotes.push(topNote);
+    }
+    
+    // Сортируем по времени и возвращаем только нужное количество
+    return topNotes
+        .sort((a, b) => a.time - b.time)
+        .slice(0, maxNotes);
+}
+
 
 // === ОСНОВНОЙ КЛАСС ===
 export class FractalMusicEngine {
@@ -157,19 +201,16 @@ export class FractalMusicEngine {
   private lastAccompanimentEndTime: number = -Infinity;
   private nextAccompanimentDelay: number = 0;
   
-  // Ветви для разных партий
   private branches: Branch[] = [];
   private harmonyBranches: Branch[] = [];
 
 
-  // Композитор Фраз для Баса
   private bassPhraseLibrary: FractalEvent[][] = [];
   private bassPlayPlan: { phraseIndex: number, repetitions: number }[] = [];
   private currentBassPlanIndex: number = 0;
   private currentBassRepetition: number = 0;
   private barsInCurrentBassPhrase: number = 0;
 
-  // Композитор Фраз для Аккомпанемента (Текстурный слой)
   private accompPhraseLibrary: FractalEvent[][] = [];
   private accompPlayPlan: PlayPlanItem[] = [];
   private currentAccompPlanIndex: number = 0;
@@ -205,7 +246,6 @@ export class FractalMusicEngine {
     this.branches = [];
     this.harmonyBranches = [];
     
-    // Создание аксиом для всех партий
     if (this.config.drumSettings.enabled) {
         const { events: drumAxiom } = createDrumAxiom(this.config.genre, this.config.mood, this.config.tempo, this.random);
         this.branches.push({ id: "drum_axiom_0", events: drumAxiom, weight: 1, age: 0, technique: "hit", type: "drums", endTime: 0 });
@@ -280,11 +320,9 @@ export class FractalMusicEngine {
     console.log(`%c  -> Created ONE-OFF musical scenario for this epoch.`, "color: blue;");
   }
 
-  // A simplified selection just to get one branch for mutation
   private selectBranchForMutation(type: Branch['type']): Branch | null {
-      const candidates = (type === 'accompaniment' || type === 'harmony') ? this.harmonyBranches : this.branches.filter(b => b.type === type);
+      const candidates = (type === 'accompaniment' || type === 'harmony' || type === 'melody') ? this.harmonyBranches : this.branches.filter(b => b.type === type);
       if (candidates.length === 0) return null;
-      // Simple selection for now: just pick the one with the highest weight
       return candidates.reduce((a, b) => a.weight > b.weight ? a : b);
   }
 
@@ -296,7 +334,7 @@ export class FractalMusicEngine {
           const { events, penalty } = createBassFillFromTheory(this.config.mood, this.config.genre, this.random);
           if (penalty > 0) this.needsBassReset = true;
           newEvents = events;
-      } else if (parent.type === 'harmony' || parent.type === 'accompaniment') {
+      } else if (parent.type === 'harmony' || parent.type === 'accompaniment' || parent.type === 'melody') {
           const bassNote = this.branches.find(isBass)?.events[0]?.note ?? getScaleForMood(this.config.mood)[0] ?? 40;
           newEvents = createAccompanimentAxiom(this.config.mood, this.config.genre, this.random, bassNote, this.config.tempo);
       } else { // drums
@@ -310,7 +348,7 @@ export class FractalMusicEngine {
       return {
           id: `${parent.type}_mut_${this.epoch}`,
           events: newEvents,
-          weight: 1.0, // Give new mutations a chance
+          weight: 1.0,
           age: 0,
           technique: parent.technique,
           type: parent.type,
@@ -328,7 +366,7 @@ export class FractalMusicEngine {
         if (!lastBassEvent.params) {
             lastBassEvent.params = { cutoff: 300, resonance: 0.8, distortion: 0.02, portamento: 0.0, attack: 0.2 };
         }
-        lastBassEvent.params.release = Math.min(lastBassEvent.duration * 0.8, 1.5);
+        (lastBassEvent.params as BassSynthParams).release = Math.min(lastBassEvent.duration * 0.8, 1.5);
     }
     return events;
   }
@@ -337,7 +375,6 @@ export class FractalMusicEngine {
     let instrumentHints: InstrumentHints = {};
     const output: FractalEvent[] = [];
 
-    // --- BASS ---
     const bassPlanItem = this.bassPlayPlan[this.currentBassPlanIndex];
     let bassPhraseForThisBar: FractalEvent[] = [];
     if (bassPlanItem && this.bassPhraseLibrary.length > 0) {
@@ -368,7 +405,6 @@ export class FractalMusicEngine {
         this.createBassAxiomAndPlan();
     }
 
-    // --- DRUMS ---
     let drumEvents: FractalEvent[] = [];
     if (this.config.drumSettings.enabled) {
         const drumBranches = this.branches.filter(b => b.type === 'drums');
@@ -378,7 +414,6 @@ export class FractalMusicEngine {
         }
     }
     
-    // SFX fill overrides drums
     if (this.sfxFillForThisEpoch?.drum) {
         drumEvents = this.sfxFillForThisEpoch.drum;
     }
@@ -390,24 +425,38 @@ export class FractalMusicEngine {
     output.push(...bassPhraseForThisBar);
     output.push(...drumEvents);
     
-    // --- ACCOMPANIMENT & HARMONY (Plays every bar now) ---
     const accompBranches = this.harmonyBranches.filter(b => b.type === 'harmony' || b.type === 'accompaniment');
+    let accompanimentEvents: FractalEvent[] = [];
     if (accompBranches.length > 0) {
         const winningAccompBranch = accompBranches.reduce((max, b) => b.weight > max.weight ? b : max, accompBranches[0]);
-        output.push(...winningAccompBranch.events);
-
-        // Simple hint logic for now
+        accompanimentEvents.push(...winningAccompBranch.events);
+        output.push(...accompanimentEvents);
+        
         instrumentHints.harmony = 'piano';
         instrumentHints.accompaniment = 'synth';
         if (this.config.composerControlsInstruments){
             const possibleInstruments: MelodyInstrument[] = ["violin", "flute", "synth", "organ", "mellotron", "theremin"];
             instrumentHints.accompaniment = possibleInstruments[this.random.nextInt(possibleInstruments.length)];
         }
-    } else {
-        console.warn(`[Engine] No accompaniment branches found at epoch ${this.epoch}`);
     }
 
-    // Clear SFX fill after use
+    // [Шаг 1.2, План 11.53] Извлекаем верхние ноты из аккомпанемента
+    const topNotes = extractTopNotes(accompanimentEvents, 4);
+    if(topNotes.length > 0) {
+        // [Шаг 1.3, План 11.53] Создаем дубликаты и помечаем их как 'melody'
+        const melodyEvents = topNotes.map(note => ({
+            ...note,
+            type: 'melody' as InstrumentType,
+            // Можно добавить небольшое смещение по громкости или параметрам, если нужно
+            weight: Math.min(1.0, note.weight * 1.2), 
+        }));
+        console.log(`[Composer] Extracted ${melodyEvents.length} melody notes.`);
+        // [Шаг 1.4, План 11.53] Добавляем дубликаты в общий массив.
+        // Оригинальные ноты аккомпанемента остаются нетронутыми.
+        output.push(...melodyEvents);
+    }
+
+
     if (this.sfxFillForThisEpoch) {
         this.sfxFillForThisEpoch = null;
     }
@@ -418,7 +467,7 @@ export class FractalMusicEngine {
 
   private evolveBranches() {
     const lambda = this.config.lambda;
-    const delta = 1.0; // Simplified impulse for now
+    const delta = 1.0; 
     
     const getResonance = (branch: Branch, allBranches: Branch[]) => {
       return allBranches.reduce((sum, other) => {
@@ -430,22 +479,19 @@ export class FractalMusicEngine {
 
     const allBranches = [...this.branches, ...this.harmonyBranches];
     
-    // Evolve main branches (bass, drums)
     this.branches.forEach(branch => {
       const resonanceSum = getResonance(branch, allBranches);
       branch.weight = ((1 - lambda) * branch.weight) + resonanceSum;
       branch.age++;
     });
 
-    // Evolve harmony branches
     this.harmonyBranches.forEach(branch => {
       const resonanceSum = getResonance(branch, allBranches);
       branch.weight = ((1 - lambda) * branch.weight) + resonanceSum;
       branch.age++;
     });
 
-    // --- Mutation ---
-    if (this.epoch % 2 === 1) { // Mutate every other bar
+    if (this.epoch % 2 === 1) {
         if (this.random.next() < this.config.density * 0.4 && this.branches.filter(b => b.type === 'bass').length < 4) {
             const parent = this.selectBranchForMutation('bass');
             if (parent) {
@@ -462,11 +508,9 @@ export class FractalMusicEngine {
         }
     }
     
-    // --- Culling ---
     this.branches = this.branches.filter(b => b.weight > 0.05 || b.age < 8);
     this.harmonyBranches = this.harmonyBranches.filter(b => b.weight > 0.05 || b.age < 5);
 
-    // --- Normalization ---
     ['bass', 'drums'].forEach(type => {
       const typeBranches = this.branches.filter(b => b.type === type);
       const totalWeight = typeBranches.reduce((sum, b) => sum + b.weight, 0);
@@ -478,7 +522,6 @@ export class FractalMusicEngine {
         this.harmonyBranches.forEach(b => b.weight /= harmonyTotalWeight);
     }
     
-    // --- Revival ---
     if (this.branches.filter(b => b.type === 'bass').length === 0) {
         console.log(`%c[BASS REVIVAL] Creating new bass axiom.`, "color: #4169E1;");
         this.createBassAxiomAndPlan();
@@ -510,7 +553,6 @@ export class FractalMusicEngine {
     
     if (!isFinite(barDuration)) return { events: [], instrumentHints: {} };
 
-    // Evolve internal branch states before generating the bar
     this.evolveBranches();
     
     const { events, instrumentHints } = this.generateOneBar(barDuration);
