@@ -51,7 +51,7 @@ export class MelodySynthManager {
         
         console.log('[MelodyManager] Initializing native synth voices...');
         this.createNoiseBuffer();
-        this.initVoicePool(8); // Мелодии обычно нужно меньше голосов, чем аккомпанементу
+        this.initVoicePool(3); // Мелодии обычно нужно меньше голосов, чем аккомпанементу
         this.isInitialized = true;
         console.log('[MelodyManager] Native voices initialized.');
     }

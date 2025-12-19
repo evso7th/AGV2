@@ -52,7 +52,7 @@ export class AccompanimentSynthManager {
         
         console.log('[AccompManager] Initializing native synth voices...');
         this.createNoiseBuffer(); // ДОБАВЛЕНО: создаем буфер шума при инициализации
-        this.initVoicePool(12); 
+        this.initVoicePool(6); 
         this.isInitialized = true;
         console.log('[AccompManager] Native voices initialized.');
     }
