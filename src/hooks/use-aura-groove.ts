@@ -97,7 +97,7 @@ export const useAuraGroove = () => {
             }
         });
         setVolume('drums', drumSettings.volume);
-        setEngineTextureSettings({sparkles: textureSettings.sparkles});
+        setEngineTextureSettings({sparkles: textureSettings.sparkles, sfx: textureSettings.sfx});
         setBassTechnique(instrumentSettings.bass.technique);
     }
   }, [isInitialized]);
@@ -196,7 +196,7 @@ export const useAuraGroove = () => {
   const handleTextureEnabledChange = (part: 'sparkles' | 'sfx', enabled: boolean) => {
       setTextureSettings(prev => {
           const newSettings = { ...prev, [part]: { ...prev[part], enabled }};
-          setEngineTextureSettings(newSettings as any);
+          setEngineTextureSettings(newSettings);
           return newSettings;
       });
   };
