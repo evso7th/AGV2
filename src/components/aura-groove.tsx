@@ -67,8 +67,8 @@ const EQ_BANDS = [
   { freq: '4k', label: '4k' },
 ];
 
-const MELODY_INSTRUMENTS: (MelodyInstrument | 'none')[] = ['piano', 'violin', 'flute', 'synth', 'organ', 'mellotron', 'theremin', 'E-Bells_melody', 'G-Drops', 'acousticGuitarSolo', 'electricGuitar', 'none'];
-const ACCOMPANIMENT_INSTRUMENTS: (AccompanimentInstrument | 'none')[] = ['piano', 'guitarChords', 'synth', 'organ', 'mellotron', 'theremin', 'E-Bells_melody', 'G-Drops', 'electricGuitar', 'none'];
+const MELODY_INSTRUMENTS: (MelodyInstrument | 'none')[] = ['piano', 'violin', 'flute', 'synth', 'organ', 'mellotron', 'theremin', 'acousticGuitarSolo', 'electricGuitar', 'ambientPad', 'acousticGuitar', 'none'];
+const ACCOMPANIMENT_INSTRUMENTS: (AccompanimentInstrument | 'none')[] = ['piano', 'guitarChords', 'synth', 'organ', 'mellotron', 'theremin', 'electricGuitar', 'ambientPad', 'acousticGuitar', 'none'];
 const BASS_INSTRUMENTS: (BassInstrument | 'none')[] = ['classicBass', 'glideBass', 'ambientDrone', 'resonantGliss', 'hypnoticDrone', 'livingRiff', 'none'];
 
 
@@ -273,7 +273,9 @@ export function AuraGroove({
                 let displayNames: Record<string, string> = {
                   'guitarChords': 'Guitar Chords',
                   'acousticGuitarSolo': 'Acoustic Solo',
-                  'electricGuitar': 'Electric Guitar'
+                  'electricGuitar': 'Electric Guitar',
+                  'ambientPad': 'Ambient Pad',
+                  'acousticGuitar': 'Acoustic Guitar'
                 };
 
                 if (part === 'bass') {

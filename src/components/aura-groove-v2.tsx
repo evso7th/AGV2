@@ -40,8 +40,8 @@ export function AuraGrooveV2({
     setIsClient(true);
   }, []);
 
-  const melodyInstrumentList: (MelodyInstrument | 'none')[] = ['piano', 'violin', 'flute', 'synth', 'organ', 'mellotron', 'theremin', 'E-Bells_melody', 'G-Drops', 'acousticGuitarSolo', 'electricGuitar', 'none'];
-  const textureInstrumentList: (AccompanimentInstrument | 'none')[] = ['piano', 'guitarChords', 'synth', 'organ', 'mellotron', 'theremin', 'E-Bells_melody', 'G-Drops', 'electricGuitar', 'none'];
+  const melodyInstrumentList: (MelodyInstrument | 'none')[] = ['piano', 'violin', 'flute', 'synth', 'organ', 'mellotron', 'theremin', 'acousticGuitarSolo', 'electricGuitar', 'ambientPad', 'acousticGuitar', 'none'];
+  const textureInstrumentList: (AccompanimentInstrument | 'none')[] = ['piano', 'guitarChords', 'synth', 'organ', 'mellotron', 'theremin', 'electricGuitar', 'ambientPad', 'acousticGuitar', 'none'];
   const harmonyInstrumentList: ('piano' | 'guitarChords' | 'none')[] = ['piano', 'guitarChords', 'none'];
   const bassInstrumentList: (BassInstrument | 'none')[] = ['classicBass', 'glideBass', 'ambientDrone', 'resonantGliss', 'hypnoticDrone', 'livingRiff', 'none'];
   const moodList: Mood[] = ['epic', 'joyful', 'enthusiastic', 'melancholic', 'dark', 'anxious', 'dreamy', 'contemplative', 'calm'];
@@ -51,6 +51,8 @@ export function AuraGrooveV2({
     'guitarChords': 'Guitar Chords',
     'acousticGuitarSolo': 'Acoustic Solo',
     'electricGuitar': 'Electric Guitar',
+    'ambientPad': 'Ambient Pad',
+    'acousticGuitar': 'Acoustic Guitar',
     'neuro_f_matrix': 'Neuro F-Matrix',
     'rnb': 'R&B',
   };
