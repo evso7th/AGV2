@@ -154,6 +154,7 @@ const Scheduler = {
        const scoreChanged = newSettings.score && newSettings.score !== this.settings.score;
        const moodChanged = newSettings.mood && newSettings.mood !== this.settings.mood;
        const genreChanged = newSettings.genre && newSettings.genre !== this.settings.genre;
+       const seedChanged = newSettings.seed !== undefined && newSettings.seed !== this.settings.seed;
        const wasNotInitialized = !fractalMusicEngine;
        
        if (needsRestart) this.stop();
@@ -168,7 +169,7 @@ const Scheduler = {
         };
 
 
-       if (wasNotInitialized || scoreChanged || moodChanged || genreChanged) {
+       if (wasNotInitialized || scoreChanged || moodChanged || genreChanged || seedChanged) {
            this.initializeEngine(this.settings);
        } else if (fractalMusicEngine) {
            fractalMusicEngine.updateConfig({
@@ -179,6 +180,7 @@ const Scheduler = {
                lambda: 1.0 - (this.settings.density * 0.5 + 0.3),
                mood: this.settings.mood,
                genre: this.settings.genre,
+               seed: this.settings.seed,
            });
        }
        

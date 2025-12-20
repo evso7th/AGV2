@@ -22,7 +22,7 @@ interface EngineConfig {
   lambda: number;
   organic: number;
   drumSettings: any;
-  seed?: number;
+  seed: number;
   composerControlsInstruments?: boolean;
 }
 
@@ -210,7 +210,7 @@ export class FractalMusicEngine {
 
   constructor(config: EngineConfig) {
     this.config = { ...config };
-    this.random = seededRandom(config.seed ?? Date.now());
+    this.random = seededRandom(config.seed);
     this.nextWeatherEventEpoch = 0;
     
     this.initialize();
@@ -221,7 +221,14 @@ export class FractalMusicEngine {
 
   public updateConfig(newConfig: Partial<EngineConfig>) {
       const moodOrGenreChanged = newConfig.mood !== this.config.mood || newConfig.genre !== this.config.genre;
+      
+      const oldSeed = this.config.seed;
       this.config = { ...this.config, ...newConfig };
+      
+      // Only re-initialize random number generator if seed changes
+      if (newConfig.seed !== undefined && newConfig.seed !== oldSeed) {
+          this.random = seededRandom(newConfig.seed);
+      }
 
       if(moodOrGenreChanged) {
           this.initialize();
@@ -229,7 +236,7 @@ export class FractalMusicEngine {
   }
 
   private initialize() {
-    this.random = seededRandom(this.config.seed ?? Date.now());
+    this.random = seededRandom(this.config.seed);
     this.nextWeatherEventEpoch = this.random.nextInt(12) + 8;
     this.lastAccompanimentEndTime = -Infinity;
     this.nextAccompanimentDelay = this.random.next() * 7 + 5; 
