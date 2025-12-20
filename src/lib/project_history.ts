@@ -12,3 +12,4 @@
 // откат на точку начала восстановления harmony. Rolling back to version 6b1fdd8
 // откат на шаг назад, до выполнения Модифицировать src/lib/fractal-music-engine.ts: сломал мелодию.
 // Rolling back to version e12f942.
+// откат на начало план 39.  Модификация  FractalMusicEngine привела к потере звука. Rolling back to version 513ad7f
