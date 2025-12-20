@@ -67,16 +67,23 @@ export class BlueprintNavigator {
             let bundleStartBarInPart = 0;
             const bundleCount = part.bundles.length;
             
-            // Distribute partDuration among bundles
             let remainingBars = partDuration;
             for (let i = 0; i < bundleCount; i++) {
                 const bundleSpec = part.bundles[i];
-                // For the last bundle, assign all remaining bars
-                const bundleDuration = (i === bundleCount - 1)
-                    ? remainingBars
-                    : random.nextInt(bundleSpec.duration.min, bundleSpec.duration.max);
+                let bundleDuration = 0;
+                if (i === bundleCount - 1) {
+                    bundleDuration = remainingBars;
+                } else {
+                    const maxPossible = Math.max(bundleSpec.duration.min, remainingBars - (bundleCount - 1 - i) * bundleSpec.duration.min);
+                    const minDuration = Math.min(bundleSpec.duration.min, remainingBars);
+                     if (minDuration > maxPossible) {
+                        bundleDuration = minDuration;
+                    } else {
+                        bundleDuration = random.nextInt(minDuration, maxPossible);
+                    }
+                }
                 
-                const actualDuration = Math.min(bundleDuration, remainingBars);
+                const actualDuration = Math.max(0, Math.min(bundleDuration, remainingBars));
 
                 partBoundary.bundleBoundaries.push({
                     bundle: bundleSpec,
@@ -86,10 +93,6 @@ export class BlueprintNavigator {
 
                 bundleStartBarInPart += actualDuration;
                 remainingBars -= actualDuration;
-                if (remainingBars <= 0 && i < bundleCount - 1) {
-                    // If we run out of bars, subsequent bundles will have zero duration.
-                    // This can be handled or logged as a warning.
-                }
             }
             
             this.partBoundaries.push(partBoundary);
@@ -110,30 +113,20 @@ export class BlueprintNavigator {
             return null; // End of composition
         }
 
-        const prevPartInfo = currentBar > 0 
-            ? this.partBoundaries.find(p => (currentBar - 1) >= p.startBar && (currentBar - 1) <= p.endBar)
-            : undefined;
-
-        const isPartTransition = currentBar === 0 || (prevPartInfo && prevPartInfo.part.id !== partInfo.part.id);
-        
         const bundleInfo = partInfo.bundleBoundaries.find(b => currentBar >= b.startBar && currentBar <= b.endBar);
         if (!bundleInfo) {
-            // This should not happen if the constructor logic is correct
             console.error(`[NAVIGATOR @ Bar ${currentBar}] Could not find bundle in part ${partInfo.part.id}`);
             return null;
         }
 
-        const prevBundleInfo = currentBar > 0
-            ? partInfo.bundleBoundaries.find(b => (currentBar - 1) >= b.startBar && (currentBar - 1) <= b.endBar)
-            : undefined;
-
-        const isBundleTransition = !isPartTransition && (!prevBundleInfo || prevBundleInfo.bundle.id !== bundleInfo.bundle.id);
+        const isPartTransition = currentBar === partInfo.startBar;
+        const isBundleTransition = !isPartTransition && currentBar === bundleInfo.startBar;
 
         let logMessage: string | null = null;
         if (isPartTransition) {
-            logMessage = `[NAVIGATOR @ Bar ${currentBar}] Transition: Part ${prevPartInfo ? prevPartInfo.part.id : 'Start'} -> Part ${partInfo.part.id}. Mutation point (macro).`;
+            logMessage = `[NAVIGATOR @ Bar ${currentBar}] Transition: Part ${partInfo.part.id}. Mutation point (macro).`;
         } else if (isBundleTransition) {
-            logMessage = `[NAVIGATOR @ Bar ${currentBar}] Transition: Bundle ${prevBundleInfo ? prevBundleInfo.bundle.id : 'Start'} -> Bundle ${bundleInfo.bundle.id}. Mutation point (micro).`;
+            logMessage = `[NAVIGATOR @ Bar ${currentBar}] Transition: Bundle ${bundleInfo.bundle.id}. Mutation point (micro).`;
         }
 
         return {
