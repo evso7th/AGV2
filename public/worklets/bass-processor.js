@@ -34,17 +34,17 @@ class BassProcessor extends AudioWorkletProcessor {
         // Уникальное состояние фильтра для каждой ноты
         filterState: { y1: 0, y2: 0, oldx: 0, oldy: 0 },
       });
-      console.log(`[Worklet] Запланирован noteOn: id=${noteId}, time=${when.toFixed(3)}`);
+      //console.log(`[Worklet] Запланирован noteOn: id=${noteId}, time=${when.toFixed(3)}`);
 
     } else if (type === 'noteOff') {
        const note = this.activeNotes.get(noteId);
        if (note) {
          note.endTime = when;
-         console.log(`[Worklet] Запланирован noteOff: id=${noteId}, time=${when.toFixed(3)}`);
+        // console.log(`[Worklet] Запланирован noteOff: id=${noteId}, time=${when.toFixed(3)}`);
        }
     } else if (type === 'clear') {
         this.activeNotes.clear();
-        console.log('[Worklet] Все ноты очищены.');
+       // console.log('[Worklet] Все ноты очищены.');
     }
   }
   
@@ -78,14 +78,14 @@ class BassProcessor extends AudioWorkletProcessor {
         // Проверяем, не пора ли начать играть ноту
         if (note.state === 'scheduled' && now >= note.startTime) {
           note.state = 'attack';
-           console.log(`[Worklet] Play: id=${noteId} at ${now.toFixed(3)}`);
+           //console.log(`[Worklet] Play: id=${noteId} at ${now.toFixed(3)}`);
         }
         
         // Проверяем, не пора ли отпустить ноту
         if (note.state !== 'decay' && now >= note.endTime) {
             note.state = 'decay';
             note.targetGain = 0; // Цель - затухание до нуля
-            console.log(`[Worklet] Decay: id=${noteId} at ${now.toFixed(3)}`);
+           // console.log(`[Worklet] Decay: id=${noteId} at ${now.toFixed(3)}`);
         }
 
         if (note.state === 'attack' || note.state === 'sustain' || note.state === 'decay') {
@@ -100,7 +100,7 @@ class BassProcessor extends AudioWorkletProcessor {
                 note.gain -= 1 / (0.3 * this.sampleRate); // Быстрое затухание
                 if (note.gain <= 0) {
                     this.activeNotes.delete(noteId); // Удаляем ноту после затухания
-                    console.log(`[Worklet] Deleted: id=${noteId}`);
+                   // console.log(`[Worklet] Deleted: id=${noteId}`);
                     continue; // Переходим к следующей ноте
                 }
             }

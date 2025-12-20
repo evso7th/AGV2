@@ -1,16 +1,16 @@
 
 
-import type { Mood as FractalMood } from './fractal';
+import type { Mood as FractalMood, InstrumentHints as FractalInstrumentHints } from './fractal';
 
 export type Mood = FractalMood;
 
 // A musical note to be played by a synthesizer.
-export type Note = {
+export type PlayableNote = {
     midi: number;         // MIDI note number (e.g., 60 for C4).
     time: number;         // When to play it, in seconds, relative to the start of the audio chunk.
     duration: number;     // How long the note should last, in seconds.
     velocity?: number;    // How loud to play it (0-1), optional.
-    part?: 'spark';       // Optional identifier for special notes
+    part?: 'spark' | 'fill' | string; // Optional identifier for special notes or parts
     note?: string; // For samplers that use note names
     params?: any; // To pass synth params from composer
     technique?: Technique;
@@ -26,29 +26,24 @@ export type SamplerNote = {
 
 // A score is an object containing arrays of notes for each part.
 export type Score = {
-    bass?: Note[];
-    melody?: Note[];
-    accompaniment?: Note[];
+    bass?: PlayableNote[];
+    melody?: PlayableNote[];
+    accompaniment?: PlayableNote[];
+    harmony?: PlayableNote[];
     drums?: DrumsScore;
     effects?: EffectsScore;
     sparkle?: boolean; // Command to play a sparkle
-    instrumentHints?: {
-        bass?: BassInstrument;
-        melody?: MelodyInstrument;
-        accompaniment?: AccompanimentInstrument;
-        harmony?: AccompanimentInstrument; // Added for the new harmony layer
-        bassTechnique?: BassTechnique; // Added for NFM to control bass style
-    }
+    instrumentHints?: FractalInstrumentHints;
 };
 
-export type DrumsScore = Note[];
+export type DrumsScore = PlayableNote[];
 export type EffectsScore = SamplerNote[];
 
 
 // --- UI Types ---
 export type BassInstrument = 'classicBass' | 'glideBass' | 'ambientDrone' | 'resonantGliss' | 'hypnoticDrone' | 'livingRiff' | 'none';
-export type MelodyInstrument = 'synth' | 'organ' | 'mellotron' | 'theremin' | 'electricGuitar' | 'ambientPad' | 'acousticGuitar' | 'none';
-export type AccompanimentInstrument = Exclude<MelodyInstrument, 'violin' | 'flute' | 'acousticGuitarSolo' | 'E-Bells_melody' | 'G-Drops'> | 'guitarChords';
+export type MelodyInstrument = 'synth' | 'organ' | 'mellotron' | 'theremin' | 'electricGuitar' | 'ambientPad' | 'acousticGuitar' | 'E-Bells_melody' | 'G-Drops' | 'piano' | 'violin' | 'flute' | 'acousticGuitarSolo' | 'none';
+export type AccompanimentInstrument = Exclude<MelodyInstrument, 'piano' | 'violin' | 'flute' | 'acousticGuitarSolo'> | 'guitarChords';
 export type EffectInstrument = 
     'autopilot_effect_star' | 'autopilot_effect_meteor' | 'autopilot_effect_warp' | 
     'autopilot_effect_hole' | 'autopilot_effect_pulsar' | 'autopilot_effect_nebula' | 
@@ -61,6 +56,8 @@ export type DrumAndPercussionInstrument =
     | 'drum_snare_ghost_note'
     | 'drum_snarepress'
     | 'drum_tom_low'
+    | 'drum_tom_mid'
+    | 'drum_tom_high'
     | 'drum_ride'
     | 'drum_a_ride1'
     | 'drum_a_ride2'
@@ -157,4 +154,108 @@ export type WorkerSettings = {
     composerControlsInstruments: boolean;
     mood: Mood;
     seed?: number;
+};
+
+
+// --- BLUEPRINT STRUCTURE ---
+
+export type MutationType = 'transpose' | 'rhythmic_shift' | 'velocity_curve' | 'inversion' | 'register_shift' | 'voicing_change' | 'retrograde' | 'augmentation';
+
+export type MutationPolicy = {
+  probability: number;
+  types: { type: MutationType; weight: number; params?: any }[];
+};
+
+export type FillTechnique = 'filter_sweep' | 'reverb_burst' | 'harmonic_glide' | 'density_pause' | 'granular_freeze' | 'roll' | 'crescendo';
+
+export type FillPolicy = {
+  type: FillTechnique;
+  duration: number; // in bars
+  parameters: any;
+};
+
+export type InstrumentRules = {
+  techniques: { value: string; weight: number }[];
+  register: { preferred: string; range: { min: number; max: number } };
+  density: { min: number; max: number };
+  velocity: { min: number; max: number };
+  [key: string]: any; // For other specific rules
+};
+
+export type BlueprintBundle = {
+  id: string;
+  name: string;
+  duration: { min: number; max: number }; // in bars
+  characteristics: {
+    harmonicMovement: 'static' | 'slight' | 'moderate' | 'active' | 'free' | 'expansive' | 'stable' | 'resolving' | 'returning' | 'gentle' | 'tense' | 'none';
+    densityBias: number;
+    filterCutoff: { min: number; max: number };
+    reverbWet: number;
+  };
+  phrases: {
+    count: { min: number; max: number };
+    length: { min: number; max: number };
+  };
+};
+
+export type BlueprintPart = {
+  id: string;
+  name: string;
+  duration: {
+    bars: { min: number; max: number };
+    bundles: { min: number; max: number };
+  };
+  layers: {
+    [key in InstrumentPart]?: boolean;
+  };
+  instrumentEntry?: { [key: string]: number };
+  instrumentExit?: { [key: string]: number };
+  instrumentRules: {
+    [key: string]: InstrumentRules;
+  };
+  bundles: BlueprintBundle[];
+  outroFill: FillPolicy | null;
+};
+
+export type HarmonicCenter = {
+    partIndex: number;
+    center: string;
+    satellites: string[];
+    weight: number;
+};
+
+export type TensionProfile = {
+    type: 'arc' | 'plateau' | 'wave' | 'crescendo';
+    peakPosition: number;
+    curve: (progress: number, peakPosition: number) => number;
+};
+
+export type MusicBlueprint = {
+    id: string;
+    name: string;
+    description: string;
+    mood: Mood;
+    musical: {
+        key: { root: string; scale: string; octave: number };
+        bpm: { base: number; range: [number, number], modifier: number };
+        timeSignature: { numerator: number; denominator: number };
+        harmonicJourney: HarmonicCenter[];
+        tensionProfile: TensionProfile;
+    };
+    structure: {
+        totalDuration: { bars: { min: number; max: number }; preferredBars: number };
+        parts: BlueprintPart[];
+    };
+    mutations: {
+        onBundleBoundary: MutationPolicy;
+        onPartBoundary: MutationPolicy;
+        onSuiteBoundary: {
+            regenerateAxioms: boolean;
+            varyHarmonicCenter: { enabled: boolean; allowedRoots: string[]; allowedScales: string[] };
+            reshuffleLayering: boolean;
+        };
+    };
+    ambientEvents: any[]; // Define this type more strictly later
+    continuity: any; // Define this type more strictly later
+    rendering: any; // Define this type more strictly later
 };
