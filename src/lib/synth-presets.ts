@@ -124,8 +124,8 @@ export const SYNTH_PRESETS: Record<Exclude<MelodyInstrument | BassInstrument, 'p
   synth: {
     layers: [
       { type: 'sawtooth', detune: -6, octave: 0, gain: 1.0 },
-      { type: 'sawtooth', detune: 6, octave: 0, gain: 1.0 },
-      { type: 'square', detune: 0, octave: -1, gain: 0.6 },
+      { type: 'sawtooth', detune: 6, octave: 0, gain: 1.5 },
+      { type: 'square', detune: 0, octave: -1, gain: 1.5 },
     ],
     adsr: { attack: 0.02, decay: 0.4, sustain: 0.7, release: 0.5 },
     filter: { type: 'lpf', cutoff: 2200, q: 4.5 }, // Более агрессивный резонанс
@@ -170,9 +170,9 @@ export const SYNTH_PRESETS: Record<Exclude<MelodyInstrument | BassInstrument, 'p
   
   electricGuitar: {
     layers: [
-      { type: 'sawtooth', detune: -2, octave: 0, gain: 1.0 },
-      { type: 'sawtooth', detune: 2, octave: 0, gain: 0.9 },
-      { type: 'square', detune: 0, octave: 1, gain: 0.5 },
+      { type: 'sawtooth', detune: -2, octave: 0, gain: 1.2 },
+      { type: 'sawtooth', detune: 2, octave: 0, gain: 1.1 },
+      { type: 'square', detune: 0, octave: 1, gain: 0.6 },
     ],
     adsr: { attack: 0.01, decay: 0.5, sustain: 0.2, release: 0.8 },
     filter: { type: 'bpf', cutoff: 1800, q: 2.5 },
@@ -202,8 +202,8 @@ export const SYNTH_PRESETS: Record<Exclude<MelodyInstrument | BassInstrument, 'p
 
   acousticGuitar: {
     layers: [
-      { type: 'triangle', detune: 0, octave: 0, gain: 1.0 },
-      { type: 'noise', detune: 0, octave: 0, gain: 0.3 }, // Увеличиваем громкость "щипка"
+      { type: 'triangle', detune: 0, octave: 0, gain: 1.2 },
+      { type: 'noise', detune: 0, octave: 0, gain: 0.4 }, // Увеличиваем громкость "щипка"
     ],
     adsr: { attack: 0.001, decay: 0.4, sustain: 0.2, release: 0.4 }, // Увеличиваем сустейн и затухание
     filter: { type: 'lpf', cutoff: 4000, q: 3.0 }, // Открываем фильтр, чтобы было больше верхов
