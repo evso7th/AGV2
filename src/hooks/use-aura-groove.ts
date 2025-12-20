@@ -37,7 +37,7 @@ export const useAuraGroove = () => {
     bass: { name: "glideBass", volume: 0.7, technique: 'portamento' },
     melody: { name: "ambientPad", volume: 0.8 },
     accompaniment: { name: "synth", volume: 0.7 },
-    harmony: { name: "piano", volume: 0.6 },
+    harmony: { name: "guitarChords", volume: 0.6 },
   });
   const [textureSettings, setTextureSettings] = useState<TextureSettings>({
       sparkles: { enabled: true, volume: 0.7 },

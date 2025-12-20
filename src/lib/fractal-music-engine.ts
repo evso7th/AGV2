@@ -421,7 +421,6 @@ export class FractalMusicEngine {
         const winningAccompBranch = accompBranches.reduce((max, b) => b.weight > max.weight ? b : max, accompBranches[0]);
         accompanimentEvents.push(...winningAccompBranch.events);
         
-        // **Исправление маркировки**: Создаем копии событий с правильным типом 'harmony'
         const harmonyEvents = accompanimentEvents.map(event => ({
             ...event,
             type: 'harmony' as InstrumentType,
@@ -429,11 +428,10 @@ export class FractalMusicEngine {
         
         console.log(`[harmony] Composer generated ${harmonyEvents.length} events for harmony.`);
         
-        // Добавляем и оригинальные события аккомпанемента, и новые события гармонии
         output.push(...accompanimentEvents);
         output.push(...harmonyEvents);
         
-        instrumentHints.harmony = 'piano';
+        instrumentHints.harmony = 'guitarChords';
         instrumentHints.accompaniment = 'synth';
         if (this.config.composerControlsInstruments){
             const possibleInstruments: MelodyInstrument[] = ["violin", "flute", "synth", "organ", "mellotron", "theremin"];
