@@ -279,10 +279,10 @@ export const STYLE_DRUM_PATTERNS: Record<Genre, GenreRhythmGrammar> = {
                 kick: [{ type: 'drum_kick', time: 0, duration: 0.25, weight: 1.0 }, { type: 'drum_kick', time: 2, duration: 0.25, weight: 1.0 }],
                 snare: [{ type: 'drum_snare', time: 1, duration: 0.25, weight: 1.0 }, { type: ['drum_snare', 'drum_snare_ghost_note'], probabilities: [0.8, 0.2], time: 3, duration: 0.25, weight: 1.0 }],
                 hihat: [
-                    { type: ALL_RIDES, time: 0.5, duration: 0.5, weight: 0.6 },
-                    { type: ALL_RIDES, time: 1.5, duration: 0.5, weight: 0.6 },
-                    { type: ALL_RIDES, time: 2.5, duration: 0.5, weight: 0.6 },
-                    { type: ALL_RIDES, time: 3.5, duration: 0.5, weight: 0.6 },
+                    { type: 'drum_hihat_closed', time: 0.5, duration: 0.5, weight: 0.6 },
+                    { type: 'drum_hihat_closed', time: 1.5, duration: 0.5, weight: 0.6 },
+                    { type: 'drum_hihat_closed', time: 2.5, duration: 0.5, weight: 0.6 },
+                    { type: 'drum_hihat_closed', time: 3.5, duration: 0.5, weight: 0.6 },
                 ],
                 tags: ['rock-standard']
             }
@@ -359,10 +359,10 @@ export const STYLE_DRUM_PATTERNS: Record<Genre, GenreRhythmGrammar> = {
                 kick: [{ type: 'drum_kick', time: 0, duration: 1, weight: 0.8, probability: 0.9 }],
                 snare: [{ type: 'drum_snare', time: 2, duration: 1, weight: 0.7, probability: 0.9 }],
                 hihat: [
-                     { type: ALL_RIDES, time: 0, duration: 0.5, weight: 0.5, probability: 0.8 },
-                     { type: ALL_RIDES, time: 1, duration: 0.5, weight: 0.5, probability: 0.8 },
-                     { type: ALL_RIDES, time: 2, duration: 0.5, weight: 0.5, probability: 0.8 },
-                     { type: ALL_RIDES, time: 3, duration: 0.5, weight: 0.5, probability: 0.8 },
+                     { type: 'drum_ride', time: 0, duration: 0.5, weight: 0.5, probability: 0.8 },
+                     { type: 'drum_ride', time: 1, duration: 0.5, weight: 0.5, probability: 0.8 },
+                     { type: 'drum_ride', time: 2, duration: 0.5, weight: 0.5, probability: 0.8 },
+                     { type: 'drum_ride', time: 3, duration: 0.5, weight: 0.5, probability: 0.8 },
                 ],
                 tags: ['ballad-simple']
            }
@@ -512,27 +512,27 @@ export function createAccompanimentAxiom(mood: Mood, genre: Genre, random: { nex
 }
 
 export const TEXTURE_INSTRUMENT_WEIGHTS_BY_MOOD: Record<Mood, Record<Exclude<AccompanimentInstrument, 'violin' | 'flute'>, number>> = {
-  epic:          { organ: 0.4, mellotron: 0.4, synth: 0.2, piano: 0.0, guitarChords: 0.0, acousticGuitarSolo: 0.0, electricGuitar: 0.0, 'E-Bells_melody': 0.0, 'G-Drops': 0.0, 'theremin': 0.0, 'none': 0.0 },
-  joyful:        { organ: 0.3, synth: 0.2, mellotron: 0.2, piano: 0.3, guitarChords: 0.0, acousticGuitarSolo: 0.0, electricGuitar: 0.0, 'E-Bells_melody': 0.0, 'G-Drops': 0.0, 'theremin': 0.0, 'none': 0.0 },
-  enthusiastic:  { synth: 0.5, organ: 0.4, electricGuitar: 0.1, piano: 0.0, guitarChords: 0.0, acousticGuitarSolo: 0.0, mellotron: 0.0, 'theremin': 0.0, 'E-Bells_melody': 0.0, 'G-Drops': 0.0, 'none': 0.0 },
-  melancholic:   { mellotron: 0.4, organ: 0.3, synth: 0.1, piano: 0.2, guitarChords: 0.0, acousticGuitarSolo: 0.0, electricGuitar: 0.0, 'E-Bells_melody': 0.0, 'G-Drops': 0.0, 'theremin': 0.0, 'none': 0.0 },
-  dark:          { organ: 0.5, mellotron: 0.3, theremin: 0.2, synth: 0.0, piano: 0.0, guitarChords: 0.0, acousticGuitarSolo: 0.0, electricGuitar: 0.0, 'E-Bells_melody': 0.0, 'G-Drops': 0.0, 'none': 0.0 },
-  anxious:       { synth: 0.5, theremin: 0.3, organ: 0.2, mellotron: 0.0, piano: 0.0, guitarChords: 0.0, acousticGuitarSolo: 0.0, electricGuitar: 0.0, 'E-Bells_melody': 0.0, 'G-Drops': 0.0, 'none': 0.0 },
-  dreamy:        { synth: 0.3, mellotron: 0.2, organ: 0.2, piano: 0.3, guitarChords: 0.0, acousticGuitarSolo: 0.0, electricGuitar: 0.0, 'E-Bells_melody': 0.0, 'G-Drops': 0.0, 'theremin': 0.0, 'none': 0.0 },
-  contemplative: { organ: 0.4, synth: 0.2, piano: 0.4, guitarChords: 0.0, acousticGuitarSolo: 0.0, electricGuitar: 0.0, 'E-Bells_melody': 0.0, 'G-Drops': 0.0, 'theremin': 0.0, 'mellotron': 0.0, 'none': 0.0 },
-  calm:          { synth: 0.3, organ: 0.2, piano: 0.5, guitarChords: 0.0, acousticGuitarSolo: 0.0, electricGuitar: 0.0, 'E-Bells_melody': 0.0, 'G-Drops': 0.0, 'theremin': 0.0, 'mellotron': 0.0, 'none': 0.0 },
+  epic:          { organ: 0.4, mellotron: 0.4, synth: 0.2, piano: 0.0, guitarChords: 0.0, acousticGuitarSolo: 0.0, electricGuitar: 0.0, 'E-Bells_melody': 0.0, 'G-Drops': 0.0, 'theremin': 0.0, 'none': 0.0, 'ambientPad': 0.0, 'acousticGuitar': 0.0 },
+  joyful:        { organ: 0.3, synth: 0.2, mellotron: 0.2, piano: 0.3, guitarChords: 0.0, acousticGuitarSolo: 0.0, electricGuitar: 0.0, 'E-Bells_melody': 0.0, 'G-Drops': 0.0, 'theremin': 0.0, 'none': 0.0, 'ambientPad': 0.0, 'acousticGuitar': 0.0 },
+  enthusiastic:  { synth: 0.5, organ: 0.4, electricGuitar: 0.1, piano: 0.0, guitarChords: 0.0, acousticGuitarSolo: 0.0, mellotron: 0.0, 'theremin': 0.0, 'E-Bells_melody': 0.0, 'G-Drops': 0.0, 'none': 0.0, 'ambientPad': 0.0, 'acousticGuitar': 0.0 },
+  melancholic:   { mellotron: 0.4, organ: 0.3, synth: 0.1, piano: 0.2, guitarChords: 0.0, acousticGuitarSolo: 0.0, electricGuitar: 0.0, 'E-Bells_melody': 0.0, 'G-Drops': 0.0, 'theremin': 0.0, 'none': 0.0, 'ambientPad': 0.0, 'acousticGuitar': 0.0 },
+  dark:          { organ: 0.5, mellotron: 0.3, theremin: 0.2, synth: 0.0, piano: 0.0, guitarChords: 0.0, acousticGuitarSolo: 0.0, electricGuitar: 0.0, 'E-Bells_melody': 0.0, 'G-Drops': 0.0, 'none': 0.0, 'ambientPad': 0.0, 'acousticGuitar': 0.0 },
+  anxious:       { synth: 0.5, theremin: 0.3, organ: 0.2, mellotron: 0.0, piano: 0.0, guitarChords: 0.0, acousticGuitarSolo: 0.0, electricGuitar: 0.0, 'E-Bells_melody': 0.0, 'G-Drops': 0.0, 'none': 0.0, 'ambientPad': 0.0, 'acousticGuitar': 0.0 },
+  dreamy:        { synth: 0.3, mellotron: 0.2, organ: 0.2, piano: 0.3, guitarChords: 0.0, acousticGuitarSolo: 0.0, electricGuitar: 0.0, 'E-Bells_melody': 0.0, 'G-Drops': 0.0, 'theremin': 0.0, 'none': 0.0, 'ambientPad': 0.0, 'acousticGuitar': 0.0 },
+  contemplative: { organ: 0.4, synth: 0.2, piano: 0.4, guitarChords: 0.0, acousticGuitarSolo: 0.0, electricGuitar: 0.0, 'E-Bells_melody': 0.0, 'G-Drops': 0.0, 'theremin': 0.0, 'mellotron': 0.0, 'none': 0.0, 'ambientPad': 0.0, 'acousticGuitar': 0.0 },
+  calm:          { synth: 0.3, organ: 0.2, piano: 0.5, guitarChords: 0.0, acousticGuitarSolo: 0.0, electricGuitar: 0.0, 'E-Bells_melody': 0.0, 'G-Drops': 0.0, 'theremin': 0.0, 'mellotron': 0.0, 'none': 0.0, 'ambientPad': 0.0, 'acousticGuitar': 0.0 },
 };
 
 export const AMBIENT_ACCOMPANIMENT_WEIGHTS: Record<Mood, Record<Exclude<AccompanimentInstrument, 'violin' | 'flute'>, number>> = {
-  epic:          { organ: 0.4, mellotron: 0.4, synth: 0.2, piano: 0, guitarChords: 0, acousticGuitarSolo: 0, electricGuitar: 0, 'E-Bells_melody': 0, 'G-Drops': 0, 'theremin': 0, 'none': 0.0 },
-  joyful:        { organ: 0.3, synth: 0.2, mellotron: 0.2, piano: 0.3, guitarChords: 0, acousticGuitarSolo: 0, electricGuitar: 0, 'E-Bells_melody': 0, 'G-Drops': 0, 'theremin': 0, 'none': 0.0 },
-  enthusiastic:  { synth: 0.5, organ: 0.4, theremin: 0.1, piano: 0, guitarChords: 0, acousticGuitarSolo: 0, electricGuitar: 0, mellotron: 0, 'E-Bells_melody': 0, 'G-Drops': 0, 'none': 0.0 },
-  melancholic:   { mellotron: 0.4, organ: 0.3, synth: 0.1, piano: 0.2, guitarChords: 0, acousticGuitarSolo: 0, electricGuitar: 0, 'E-Bells_melody': 0, 'G-Drops': 0, 'theremin': 0, 'none': 0.0 },
-  dark:          { organ: 0.5, mellotron: 0.3, theremin: 0.2, piano: 0, guitarChords: 0, acousticGuitarSolo: 0, electricGuitar: 0, synth: 0, 'E-Bells_melody': 0, 'G-Drops': 0, 'none': 0.0 },
-  anxious:       { synth: 0.5, theremin: 0.3, organ: 0.2, piano: 0, guitarChords: 0, acousticGuitarSolo: 0, electricGuitar: 0, mellotron: 0, 'E-Bells_melody': 0, 'G-Drops': 0, 'none': 0.0 },
-  dreamy:        { synth: 0.3, mellotron: 0.2, organ: 0.2, piano: 0.3, guitarChords: 0, acousticGuitarSolo: 0, electricGuitar: 0, 'E-Bells_melody': 0, 'G-Drops': 0, 'theremin': 0, 'none': 0.0 },
-  contemplative: { organ: 0.4, synth: 0.2, piano: 0.4, guitarChords: 0, acousticGuitarSolo: 0, electricGuitar: 0, 'E-Bells_melody': 0, 'G-Drops': 0, 'theremin': 0, 'mellotron': 0, 'none': 0.0 },
-  calm:          { synth: 0.3, organ: 0.2, piano: 0.5, guitarChords: 0, acousticGuitarSolo: 0, electricGuitar: 0, 'E-Bells_melody': 0, 'G-Drops': 0, 'theremin': 0, 'mellotron': 0, 'none': 0.0 },
+  epic:          { organ: 0.4, mellotron: 0.4, synth: 0.2, piano: 0, guitarChords: 0, acousticGuitarSolo: 0, electricGuitar: 0, 'E-Bells_melody': 0, 'G-Drops': 0, 'theremin': 0, 'none': 0.0, 'ambientPad': 0.0, 'acousticGuitar': 0.0 },
+  joyful:        { organ: 0.3, synth: 0.2, mellotron: 0.2, piano: 0.3, guitarChords: 0, acousticGuitarSolo: 0, electricGuitar: 0, 'E-Bells_melody': 0, 'G-Drops': 0, 'theremin': 0, 'none': 0.0, 'ambientPad': 0.0, 'acousticGuitar': 0.0 },
+  enthusiastic:  { synth: 0.5, organ: 0.4, theremin: 0.1, piano: 0, guitarChords: 0, acousticGuitarSolo: 0, electricGuitar: 0, mellotron: 0, 'E-Bells_melody': 0, 'G-Drops': 0, 'none': 0.0, 'ambientPad': 0.0, 'acousticGuitar': 0.0 },
+  melancholic:   { mellotron: 0.4, organ: 0.3, synth: 0.1, piano: 0.2, guitarChords: 0, acousticGuitarSolo: 0, electricGuitar: 0, 'E-Bells_melody': 0, 'G-Drops': 0, 'theremin': 0, 'none': 0.0, 'ambientPad': 0.0, 'acousticGuitar': 0.0 },
+  dark:          { organ: 0.5, mellotron: 0.3, theremin: 0.2, piano: 0, guitarChords: 0, acousticGuitarSolo: 0, electricGuitar: 0, synth: 0, 'E-Bells_melody': 0, 'G-Drops': 0, 'none': 0.0, 'ambientPad': 0.0, 'acousticGuitar': 0.0 },
+  anxious:       { synth: 0.5, theremin: 0.3, organ: 0.2, piano: 0, guitarChords: 0, acousticGuitarSolo: 0, electricGuitar: 0, mellotron: 0, 'E-Bells_melody': 0, 'G-Drops': 0, 'none': 0.0, 'ambientPad': 0.0, 'acousticGuitar': 0.0 },
+  dreamy:        { synth: 0.3, mellotron: 0.2, organ: 0.2, piano: 0.3, guitarChords: 0, acousticGuitarSolo: 0, electricGuitar: 0, 'E-Bells_melody': 0, 'G-Drops': 0, 'theremin': 0, 'none': 0.0, 'ambientPad': 0.0, 'acousticGuitar': 0.0 },
+  contemplative: { organ: 0.4, synth: 0.2, piano: 0.4, guitarChords: 0, acousticGuitarSolo: 0, electricGuitar: 0, 'E-Bells_melody': 0, 'G-Drops': 0, 'theremin': 0, 'mellotron': 0, 'none': 0.0, 'ambientPad': 0.0, 'acousticGuitar': 0.0 },
+  calm:          { synth: 0.3, organ: 0.2, piano: 0.5, guitarChords: 0, acousticGuitarSolo: 0, electricGuitar: 0, 'E-Bells_melody': 0, 'G-Drops': 0, 'theremin': 0, 'mellotron': 0, 'none': 0.0, 'ambientPad': 0.0, 'acousticGuitar': 0.0 },
 };
 
 
@@ -744,4 +744,5 @@ export function chooseHarmonyInstrument(mood: Mood, random: { next: () => number
     
 
     
+
 

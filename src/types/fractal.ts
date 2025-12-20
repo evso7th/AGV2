@@ -70,6 +70,7 @@ export type InstrumentType =
   | 'drum_closed_hi_hat_ghost'
   | 'drum_hihat_open'
   | 'drum_hihat_closed'
+  | 'drum_crash'
   | 'cymbal_bell1'
   | 'hh_bark_short'
   | 'perc-001'
