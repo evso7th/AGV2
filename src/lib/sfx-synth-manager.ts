@@ -121,9 +121,9 @@ export class SfxSynthManager {
     }
 
     private getCategoryForContext(mood: Mood, genre: Genre): string {
-        // Simple logic for now. Bongo is always an option.
         const rand = Math.random();
         if (rand < 0.2) return 'bongo';
+        if (rand < 0.4) return 'voice';
 
         if (mood === 'dark' || mood === 'anxious') return 'dark';
         if (genre === 'trance' || genre === 'house' || genre === 'progressive') return 'laser';
