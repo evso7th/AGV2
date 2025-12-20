@@ -89,10 +89,10 @@ export class BlueprintNavigator {
 
         let logMessage: string | null = null;
         if (isPartTransition) {
-            logMessage = `[NAVIGATOR] Transition: Part ${prevPartInfo ? prevPartInfo.part.id : 'Start'} -> Part ${partInfo.part.id}. Mutation point (macro).`;
+            logMessage = `[NAVIGATOR @ Bar ${currentBar}] Transition: Part ${prevPartInfo ? prevPartInfo.part.id : 'Start'} -> Part ${partInfo.part.id}. Mutation point (macro).`;
         } else if (isBundleTransition) {
             const prevBundle = partInfo.part.bundles[prevBundleIndex];
-            logMessage = `[NAVIGATOR] Transition: Bundle ${prevBundle.id} -> Bundle ${currentBundle.id}. Mutation point (micro).`;
+            logMessage = `[NAVIGATOR @ Bar ${currentBar}] Transition: Bundle ${prevBundle.id} -> Bundle ${currentBundle.id}. Mutation point (micro).`;
         }
 
         return {
