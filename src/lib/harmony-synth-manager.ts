@@ -48,6 +48,9 @@ export class HarmonySynthManager {
         if (!this.isInitialized) {
             return;
         }
+        
+        console.log(`[harmony] HarmonySynthManager received ${events.length} events to schedule.`);
+
 
         const instrumentToPlay = instrumentHint || this.activeInstrumentName;
 
@@ -66,8 +69,6 @@ export class HarmonySynthManager {
         if (notes.length === 0) {
             return;
         }
-
-        console.log(`[harmony] HarmonySynthManager received ${notes.length} notes to schedule.`);
 
         switch (instrumentToPlay) {
             case 'piano':

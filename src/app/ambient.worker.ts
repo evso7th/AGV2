@@ -211,6 +211,10 @@ const Scheduler = {
 
         const harmonyEvents = scorePayload.events.filter(e => e.type === 'harmony');
         
+        if (harmonyEvents.length > 0) {
+            console.log(`[harmony] Worker sending ${harmonyEvents.length} harmony events.`, scorePayload);
+        }
+
         self.postMessage({ 
             type: 'SCORE_READY', 
             payload: {

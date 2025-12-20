@@ -135,7 +135,7 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
     const bassEvents: FractalEvent[] = [];
     const accompanimentEvents: FractalEvent[] = [];
     const melodyEvents: FractalEvent[] = [];
-    const harmonyEvents: FractalEvent[] = events.filter(e => e.type === 'harmony');
+    const harmonyEvents: FractalEvent[] = [];
     const sfxEvents: FractalEvent[] = [];
 
     for (const event of events) {
@@ -148,6 +148,8 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
         accompanimentEvents.push(event);
       } else if (eventType === 'melody') {
         melodyEvents.push(event);
+      } else if (eventType === 'harmony') {
+        harmonyEvents.push(event);
       } else if (eventType === 'sfx') {
         sfxEvents.push(event);
       }
@@ -272,8 +274,8 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
                 if (type === 'SCORE_READY' && payload) {
                     const { events, barDuration, instrumentHints, harmony } = payload;
                     
-                    if(harmony && harmony.length > 0) {
-                        console.log(`[harmony] Main thread received ${harmony.length} harmony events.`);
+                    if (harmony && harmony.length > 0) {
+                        console.log(`[harmony] Main thread received payload with ${harmony.length} harmony events.`);
                     }
 
                     if(events && barDuration && settingsRef.current){
