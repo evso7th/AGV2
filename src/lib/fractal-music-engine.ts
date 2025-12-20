@@ -201,6 +201,7 @@ export class FractalMusicEngine {
 
 
   private currentBassPhrase: FractalEvent[] = [];
+  private bassPhraseLibrary: FractalEvent[][] = [];
 
 
   private accompPhraseLibrary: FractalEvent[][] = [];
@@ -257,7 +258,16 @@ export class FractalMusicEngine {
         this.branches.push({ id: "drum_axiom_0", events: drumAxiom, weight: 1, age: 0, technique: "hit", type: "drums", endTime: 0 });
     }
 
-    this.currentBassPhrase = generateAmbientBassPhrase(this.config.mood, this.config.genre, this.random, this.config.tempo);
+    // --- BASS INITIALIZATION ---
+    this.bassPhraseLibrary = [];
+    for (let i = 0; i < 5; i++) {
+        const seedPhrase = generateAmbientBassPhrase(this.config.mood, this.config.genre, this.random, this.config.tempo);
+        // Slightly mutate to create variation in the library
+        this.bassPhraseLibrary.push( i > 0 ? mutateBassPhrase(seedPhrase, this.config.mood, this.config.genre, this.random) : seedPhrase );
+    }
+    this.currentBassPhrase = this.bassPhraseLibrary[0] || [];
+    console.log(`%c[BassAxiom] Created new bass library with ${this.bassPhraseLibrary.length} seed phrases.`, 'color: #FF7F50');
+
 
     const initialBassNote = this.currentBassPhrase[0]?.note ?? getScaleForMood(this.config.mood)[0] ?? 40;
     const harmonyAxiom = createAccompanimentAxiom(this.config.mood, this.config.genre, this.random, initialBassNote, this.config.tempo);
@@ -356,16 +366,6 @@ export class FractalMusicEngine {
     const output: FractalEvent[] = [];
 
     // --- BASS EVOLUTION ---
-    if (navInfo && (navInfo.isPartTransition || navInfo.isBundleTransition)) {
-        if (this.currentBassPhrase.length > 0) {
-            this.currentBassPhrase = mutateBassPhrase(this.currentBassPhrase, this.config.mood, this.config.genre, this.random);
-            console.log(`%c[BassEvolution] Mutating phrase at bar ${this.epoch}. New DNA created.`, 'color: #FF7F50');
-        } else {
-             // Fallback if phrase is somehow empty
-            this.currentBassPhrase = generateAmbientBassPhrase(this.config.mood, this.config.genre, this.random, this.config.tempo);
-        }
-    }
-    
     let bassPhraseForThisBar: FractalEvent[] = this.currentBassPhrase;
     
     // --- DRUMS ---
@@ -536,5 +536,3 @@ export class FractalMusicEngine {
   }
 }
 
-
-    
