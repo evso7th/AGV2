@@ -46,10 +46,18 @@ function shouldAddSfx(currentTime: number, density: number, mood: Mood, genre: G
     
     if (Math.random() < chance) {
         console.log(`[SFX] Firing complex SFX event for mood: ${mood}, genre: ${genre}`);
-        const phrase: FractalEvent[] = [];
-        // This is a placeholder for a more complex SFX generation logic
-        // For now, let's keep it empty to avoid introducing new variables.
-        return { should: true, phrase };
+        const sfxEvent: FractalEvent = {
+            type: 'sfx',
+            note: 60, // Placeholder, not used by sampler
+            duration: 1, // Placeholder
+            time: 0, // Will be played at the start of the bar
+            weight: 0.8, // Default volume
+            technique: 'hit',
+            dynamics: 'mf',
+            phrasing: 'staccato',
+            params: { mood, genre } // Pass context to the manager
+        };
+        return { should: true, phrase: [sfxEvent] };
     }
 
     return { should: false, phrase: [] };
