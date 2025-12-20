@@ -210,9 +210,6 @@ const Scheduler = {
         }
 
         const harmonyEvents = scorePayload.events.filter(e => e.type === 'harmony');
-        if (harmonyEvents.length > 0) {
-            console.log(`[harmony] Worker received from composer and sending to main: ${harmonyEvents.length} events.`);
-        }
         
         self.postMessage({ 
             type: 'SCORE_READY', 

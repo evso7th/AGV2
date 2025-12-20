@@ -272,9 +272,8 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
                 if (type === 'SCORE_READY' && payload) {
                     const { events, barDuration, instrumentHints, harmony } = payload;
                     
-                    const harmonyPayload = payload.harmony;
-                    if(harmonyPayload && harmonyPayload.length > 0) {
-                        console.log(`[harmony] Main thread received ${harmonyPayload.length} harmony events.`);
+                    if(harmony && harmony.length > 0) {
+                        console.log(`[harmony] Main thread received ${harmony.length} harmony events.`);
                     }
 
                     if(events && barDuration && settingsRef.current){
