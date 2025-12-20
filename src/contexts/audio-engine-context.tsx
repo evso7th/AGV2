@@ -180,6 +180,7 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
     }
 
     if (harmonyManagerRef.current && harmonyEvents.length > 0) {
+      console.log(`[harmony] AudioEngine passing ${harmonyEvents.length} events to HarmonySynthManager with hint: ${instrumentHints?.harmony}`);
       harmonyManagerRef.current.schedule(harmonyEvents, barStartTime, tempo, instrumentHints?.harmony);
     }
 
