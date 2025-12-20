@@ -3,6 +3,9 @@
 import type { FractalEvent, Mood, Genre, Technique, BassSynthParams, InstrumentType, MelodyInstrument, BassInstrument, AccompanimentInstrument, ResonanceMatrix, InstrumentHints, AccompanimentTechnique } from '@/types/fractal';
 import { ElectronicK, TraditionalK, AmbientK, MelancholicMinorK } from './resonance-matrices';
 import { getScaleForMood, STYLE_DRUM_PATTERNS, generateAmbientBassPhrase, mutateBassPhrase, createAccompanimentAxiom, PERCUSSION_SETS, TEXTURE_INSTRUMENT_WEIGHTS_BY_MOOD, getAccompanimentTechnique, createBassFill as createBassFillFromTheory, createDrumFill, AMBIENT_ACCOMPANIMENT_WEIGHTS, chooseHarmonyInstrument } from './music-theory';
+import { BlueprintNavigator } from './blueprint-navigator';
+import { MelancholicAmbientBlueprint } from './blueprints';
+
 
 export type Branch = {
   id: string;
@@ -194,6 +197,8 @@ export class FractalMusicEngine {
   private branches: Branch[] = [];
   private harmonyBranches: Branch[] = [];
 
+  private navigator: BlueprintNavigator;
+
 
   private bassPhraseLibrary: FractalEvent[][] = [];
   private bassPlayPlan: { phraseIndex: number, repetitions: number }[] = [];
@@ -213,6 +218,8 @@ export class FractalMusicEngine {
     this.random = seededRandom(config.seed);
     this.nextWeatherEventEpoch = 0;
     
+    this.navigator = new BlueprintNavigator(MelancholicAmbientBlueprint, config.seed);
+    
     this.initialize();
   }
 
@@ -228,6 +235,8 @@ export class FractalMusicEngine {
       // Only re-initialize random number generator if seed changes
       if (newConfig.seed !== undefined && newConfig.seed !== oldSeed) {
           this.random = seededRandom(newConfig.seed);
+          // Also re-create the navigator if seed changes, to get a new structure
+          this.navigator = new BlueprintNavigator(MelancholicAmbientBlueprint, newConfig.seed);
       }
 
       if(moodOrGenreChanged) {
@@ -243,6 +252,11 @@ export class FractalMusicEngine {
     this.branches = [];
     this.harmonyBranches = [];
     
+    // The navigator is now created in the constructor
+    // this.navigator = new BlueprintNavigator(MelancholicAmbientBlueprint, this.config.seed);
+    console.log('[FractalMusicEngine] Initialized with blueprint. Total duration:', (this.navigator as any).totalBars, 'bars.');
+
+
     if (this.config.drumSettings.enabled) {
         const { events: drumAxiom } = createDrumAxiom(this.config.genre, this.config.mood, this.config.tempo, this.random);
         this.branches.push({ id: "drum_axiom_0", events: drumAxiom, weight: 1, age: 0, technique: "hit", type: "drums", endTime: 0 });
@@ -559,6 +573,15 @@ export class FractalMusicEngine {
     const { events, instrumentHints } = this.generateOneBar(barDuration);
     
     this.time += barDuration;
+    
+    // --- "Призрачная" навигация ---
+    const navigationInfo = this.navigator.tick(this.epoch);
+    if (navigationInfo?.logMessage) {
+        console.log(navigationInfo.logMessage);
+    }
+    // --- Конец "Призрачной" навигации ---
+    
     return { events, instrumentHints };
   }
 }
+
