@@ -1,4 +1,5 @@
 
+
 import type { FractalEvent, Mood, Genre, Technique, BassSynthParams, InstrumentType, MelodyInstrument, BassInstrument, AccompanimentInstrument, ResonanceMatrix, InstrumentHints, AccompanimentTechnique } from '@/types/fractal';
 import { ElectronicK, TraditionalK, AmbientK, MelancholicMinorK } from './resonance-matrices';
 import { getScaleForMood, STYLE_DRUM_PATTERNS, generateAmbientBassPhrase, mutateBassPhrase, createAccompanimentAxiom, PERCUSSION_SETS, TEXTURE_INSTRUMENT_WEIGHTS_BY_MOOD, getAccompanimentTechnique, createBassFill as createBassFillFromTheory, createDrumFill, AMBIENT_ACCOMPANIMENT_WEIGHTS, chooseHarmonyInstrument } from './music-theory';
@@ -364,7 +365,7 @@ export class FractalMusicEngine {
    * This is an isolated function to keep drum logic separate and robust.
    */
   private generateDrumEvents(navInfo: NavigationInfo | null): FractalEvent[] {
-    if (!this.config.drumSettings.enabled || !navInfo) {
+    if (!navInfo || !this.config.drumSettings.enabled) {
       return [];
     }
 
@@ -372,7 +373,8 @@ export class FractalMusicEngine {
     const baseAxiom = createDrumAxiom(this.config.genre, this.config.mood, this.config.tempo, this.random).events;
 
     switch (partId) {
-      case 'INTRO':
+      case 'INTRO_1':
+      case 'INTRO_2':
       case 'OUTRO':
         // Filter for very sparse, ambient percussion
         return baseAxiom.filter(event => {
@@ -380,6 +382,7 @@ export class FractalMusicEngine {
             return type.startsWith('perc-') || type.includes('ride') || type.includes('cymbal');
         }).map(event => ({ ...event, weight: event.weight * 0.5 })); // Make it quieter
 
+      case 'INTRO_3':
       case 'BUILD':
         // Add more ghost notes for build-up
         const buildEvents = [...baseAxiom];
@@ -418,7 +421,7 @@ export class FractalMusicEngine {
 
     // --- BASS EVOLUTION ---
     if (navInfo) {
-        if (navInfo.isPartTransition && this.bassPhraseLibrary.length > 0) {
+        if (navInfo.isPartTransition && this.epoch > 0) {
             const seedPhrase = this.bassPhraseLibrary[this.random.nextInt(this.bassPhraseLibrary.length)];
             this.currentBassPhrase = mutateBassPhrase(seedPhrase, this.config.mood, this.config.genre, this.random);
             console.log(`%c[BassEvolution @ Bar ${this.epoch}] MACRO-MUTATION. New seed selected.`, 'color: #9932CC;');
@@ -429,8 +432,16 @@ export class FractalMusicEngine {
     }
     output.push(...this.currentBassPhrase);
     
-    // --- DRUMS (NEW ISOLATED LOGIC) ---
-    const drumEvents = this.generateDrumEvents(navInfo);
+    // --- DRUMS ---
+    let drumEvents: FractalEvent[];
+    if (navInfo?.isPartTransition && this.epoch > 0) {
+        // On a major part transition, play a fill
+        drumEvents = createDrumFill(this.random);
+        console.log(`%c[Fill @ Bar ${this.epoch}] Generated DRUM FILL for part transition.`, 'color: #20B2AA;');
+    } else {
+        // Otherwise, play the normal pattern for the current part
+        drumEvents = this.generateDrumEvents(navInfo);
+    }
     output.push(...drumEvents);
     
     // --- HARMONY & MELODY ---
