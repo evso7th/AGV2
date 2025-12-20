@@ -1,4 +1,5 @@
 
+
 import type { FractalEvent } from '@/types/fractal';
 import type { Note } from "@/types/music";
 import { SamplerPlayer } from '@/lib/sampler-player';
@@ -66,7 +67,7 @@ export class HarmonySynthManager {
             return;
         }
 
-        console.log(`[HarmonyManager] Scheduling ${notes.length} notes for instrument: ${instrumentToPlay}`);
+        console.log(`[harmony] HarmonySynthManager received ${notes.length} notes to schedule.`);
 
         switch (instrumentToPlay) {
             case 'piano':

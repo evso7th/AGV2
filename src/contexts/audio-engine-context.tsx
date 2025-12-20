@@ -1,4 +1,5 @@
 
+
 'use client';
 
 import React, { createContext, useContext, useState, useRef, useCallback, useEffect } from 'react';
@@ -33,6 +34,7 @@ type WorkerMessage = {
         barDuration?: number;
         instrumentHints?: InstrumentHints;
         melody?: FractalEvent[];
+        harmony?: FractalEvent[];
         time?: number;
         genre?: Genre;
         mood?: Mood;
@@ -129,15 +131,14 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
 
     const composerControls = settingsRef.current?.composerControlsInstruments;
 
-    const validEvents = events.filter(e => e && e.type);
     const drumEvents: FractalEvent[] = [];
-    let bassEvents: FractalEvent[] = [];
+    const bassEvents: FractalEvent[] = [];
     const accompanimentEvents: FractalEvent[] = [];
     const melodyEvents: FractalEvent[] = [];
-    const harmonyEvents: FractalEvent[] = [];
+    const harmonyEvents: FractalEvent[] = events.filter(e => e.type === 'harmony');
     const sfxEvents: FractalEvent[] = [];
 
-    for (const event of validEvents) {
+    for (const event of events) {
       const eventType = Array.isArray(event.type) ? event.type[0] : event.type;
       if (typeof eventType === 'string' && (eventType.startsWith('drum_') || eventType.startsWith('perc-'))) {
         drumEvents.push(event);
@@ -147,8 +148,6 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
         accompanimentEvents.push(event);
       } else if (eventType === 'melody') {
         melodyEvents.push(event);
-      } else if (eventType === 'harmony') {
-        harmonyEvents.push(event);
       } else if (eventType === 'sfx') {
         sfxEvents.push(event);
       }
@@ -160,12 +159,14 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
     
     if (bassManagerRef.current && bassEvents.length > 0) {
         if (composerControls === false) {
-            bassEvents = bassEvents.map(event => {
+            const cleanedBassEvents = bassEvents.map(event => {
                 const { params, ...rest } = event;
                 return rest;
             });
+            bassManagerRef.current.play(cleanedBassEvents, barStartTime, tempo);
+        } else {
+             bassManagerRef.current.play(bassEvents, barStartTime, tempo);
         }
-        bassManagerRef.current.play(bassEvents, barStartTime, tempo);
     }
 
     if (accompanimentManagerRef.current && accompanimentEvents.length > 0) {
@@ -173,10 +174,8 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
     }
     
     if (melodyManagerRef.current && melodyEvents.length > 0) {
-        console.log(`[AudioEngine] Scheduling: ${melodyEvents.length} melody events.`);
         melodyManagerRef.current.schedule(melodyEvents, barStartTime, tempo, instrumentHints?.melody);
     }
-
 
     if (harmonyManagerRef.current && harmonyEvents.length > 0) {
       harmonyManagerRef.current.schedule(harmonyEvents, barStartTime, tempo, instrumentHints?.harmony);
@@ -268,12 +267,16 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
         if (!workerRef.current) {
             const worker = new Worker(new URL('@/app/ambient.worker.ts', import.meta.url), { type: 'module' });
             worker.onmessage = (event: MessageEvent<WorkerMessage>) => {
-                console.log(`[AudioEngine] Received: `, event.data);
                 const { type, payload, error } = event.data;
                 
                 if (type === 'SCORE_READY' && payload) {
-                    const { events, barDuration, instrumentHints } = payload;
+                    const { events, barDuration, instrumentHints, harmony } = payload;
                     
+                    const harmonyPayload = payload.harmony;
+                    if(harmonyPayload && harmonyPayload.length > 0) {
+                        console.log(`[harmony] Main thread received ${harmonyPayload.length} harmony events.`);
+                    }
+
                     if(events && barDuration && settingsRef.current){
                         const composerControls = settingsRef.current.composerControlsInstruments;
                         scheduleEvents(events, nextBarTimeRef.current, settingsRef.current.bpm, composerControls ? instrumentHints : undefined);
@@ -393,5 +396,3 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
     </AudioEngineContext.Provider>
   );
 };
-
-    

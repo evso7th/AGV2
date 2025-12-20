@@ -1,4 +1,5 @@
 
+
 /**
  * @file AuraGroove Music Worker (Architecture: "The Dynamic Composer")
  *
@@ -207,13 +208,19 @@ const Scheduler = {
                 lastSfxTime = currentTime;
             }
         }
+
+        const harmonyEvents = scorePayload.events.filter(e => e.type === 'harmony');
+        if (harmonyEvents.length > 0) {
+            console.log(`[harmony] Worker received from composer and sending to main: ${harmonyEvents.length} events.`);
+        }
         
         self.postMessage({ 
             type: 'SCORE_READY', 
             payload: {
                 events: scorePayload.events,
                 instrumentHints: scorePayload.instrumentHints,
-                barDuration: this.barDuration
+                barDuration: this.barDuration,
+                harmony: harmonyEvents
             }
         });
 

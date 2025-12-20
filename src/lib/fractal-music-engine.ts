@@ -147,20 +147,12 @@ function createSfxScenario(mood: Mood, genre: Genre, random: { next: () => numbe
     return { drumFill, bassFill, accompanimentFill };
 }
 
-/**
- * [Шаг 1.1, План 11.53]
- * Находит верхние ноты в группе событий, происходящих примерно в одно и то же время.
- * @param events Массив событий для анализа (обычно аккомпанемент).
- * @param maxNotes Максимальное количество мелодических нот для извлечения.
- * @returns Массив событий, которые являются "вершинами" гармонии.
- */
 function extractTopNotes(events: FractalEvent[], maxNotes: number = 4): FractalEvent[] {
     if (events.length === 0) return [];
     
-    const timeTolerance = 0.1; // 100ms tolerance for grouping notes
+    const timeTolerance = 0.1; 
     const groupedByTime: Map<number, FractalEvent[]> = new Map();
 
-    // Группируем ноты по времени начала
     for (const event of events) {
         let foundGroup = false;
         for (const time of groupedByTime.keys()) {
@@ -176,13 +168,11 @@ function extractTopNotes(events: FractalEvent[], maxNotes: number = 4): FractalE
     }
 
     const topNotes: FractalEvent[] = [];
-    // Для каждой временной группы находим самую высокую ноту
     for (const group of groupedByTime.values()) {
         const topNote = group.reduce((max, current) => (current.note > max.note ? current : max));
         topNotes.push(topNote);
     }
     
-    // Сортируем по времени и возвращаем только нужное количество
     return topNotes
         .sort((a, b) => a.time - b.time)
         .slice(0, maxNotes);
@@ -440,19 +430,18 @@ export class FractalMusicEngine {
         }
     }
 
-    // [Шаг 1.2, План 11.53] Извлекаем верхние ноты из аккомпанемента
+    const harmonyEvents = accompanimentEvents.filter(isHarmony);
+    if(harmonyEvents.length > 0) {
+        console.log(`[harmony] Composer generated ${harmonyEvents.length} events for harmony.`);
+    }
+
     const topNotes = extractTopNotes(accompanimentEvents, 4);
     if(topNotes.length > 0) {
-        // [Шаг 1.3, План 11.53] Создаем дубликаты и помечаем их как 'melody'
         const melodyEvents = topNotes.map(note => ({
             ...note,
             type: 'melody' as InstrumentType,
-            // Можно добавить небольшое смещение по громкости или параметрам, если нужно
             weight: Math.min(1.0, note.weight * 1.2), 
         }));
-        console.log(`[Composer] Extracted ${melodyEvents.length} melody notes.`);
-        // [Шаг 1.4, План 11.53] Добавляем дубликаты в общий массив.
-        // Оригинальные ноты аккомпанемента остаются нетронутыми.
         output.push(...melodyEvents);
     }
 
