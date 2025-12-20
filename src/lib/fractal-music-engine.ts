@@ -3,7 +3,7 @@
 import type { FractalEvent, Mood, Genre, Technique, BassSynthParams, InstrumentType, MelodyInstrument, BassInstrument, AccompanimentInstrument, ResonanceMatrix, InstrumentHints, AccompanimentTechnique } from '@/types/fractal';
 import { ElectronicK, TraditionalK, AmbientK, MelancholicMinorK } from './resonance-matrices';
 import { getScaleForMood, STYLE_DRUM_PATTERNS, generateAmbientBassPhrase, mutateBassPhrase, createAccompanimentAxiom, PERCUSSION_SETS, TEXTURE_INSTRUMENT_WEIGHTS_BY_MOOD, getAccompanimentTechnique, createBassFill as createBassFillFromTheory, createDrumFill, AMBIENT_ACCOMPANIMENT_WEIGHTS, chooseHarmonyInstrument } from './music-theory';
-import { BlueprintNavigator } from './blueprint-navigator';
+import { BlueprintNavigator, type NavigationInfo } from './blueprint-navigator';
 import { MelancholicAmbientBlueprint } from './blueprints';
 
 
@@ -200,11 +200,8 @@ export class FractalMusicEngine {
   private navigator: BlueprintNavigator;
 
 
-  private bassPhraseLibrary: FractalEvent[][] = [];
-  private bassPlayPlan: { phraseIndex: number, repetitions: number }[] = [];
-  private currentBassPlanIndex: number = 0;
-  private currentBassRepetition: number = 0;
-  private barsInCurrentBassPhrase: number = 0;
+  private currentBassPhrase: FractalEvent[] = [];
+
 
   private accompPhraseLibrary: FractalEvent[][] = [];
   private accompPlayPlan: PlayPlanItem[] = [];
@@ -252,8 +249,6 @@ export class FractalMusicEngine {
     this.branches = [];
     this.harmonyBranches = [];
     
-    // The navigator is now created in the constructor
-    // this.navigator = new BlueprintNavigator(MelancholicAmbientBlueprint, this.config.seed);
     console.log('[FractalMusicEngine] Initialized with blueprint. Total duration:', (this.navigator as any).totalBars, 'bars.');
 
 
@@ -262,9 +257,9 @@ export class FractalMusicEngine {
         this.branches.push({ id: "drum_axiom_0", events: drumAxiom, weight: 1, age: 0, technique: "hit", type: "drums", endTime: 0 });
     }
 
-    this.createBassAxiomAndPlan();
-    
-    const initialBassNote = this.bassPhraseLibrary[0]?.[0]?.note ?? getScaleForMood(this.config.mood)[0] ?? 40;
+    this.currentBassPhrase = generateAmbientBassPhrase(this.config.mood, this.config.genre, this.random, this.config.tempo);
+
+    const initialBassNote = this.currentBassPhrase[0]?.note ?? getScaleForMood(this.config.mood)[0] ?? 40;
     const harmonyAxiom = createAccompanimentAxiom(this.config.mood, this.config.genre, this.random, initialBassNote, this.config.tempo);
     if (harmonyAxiom.length > 0) {
         const endTime = harmonyAxiom.reduce((max, e) => Math.max(max, e.time + e.duration), 0);
@@ -272,32 +267,6 @@ export class FractalMusicEngine {
     }
     
     this.needsBassReset = false;
-  }
-
-  private createBassAxiomAndPlan() {
-      this.bassPhraseLibrary = [];
-      const numPhrases = 2 + this.random.nextInt(3); 
-      
-      const anchorPhrase = generateAmbientBassPhrase(this.config.mood, this.config.genre, this.random, this.config.tempo);
-      this.bassPhraseLibrary.push(anchorPhrase);
-
-      for (let i = 1; i < numPhrases; i++) {
-          this.bassPhraseLibrary.push(mutateBassPhrase(anchorPhrase, this.config.mood, this.config.genre, this.random));
-      }
-
-      this.bassPlayPlan = [];
-      const planLength = 3 + this.random.nextInt(2);
-      for (let i = 0; i < planLength; i++) {
-          this.bassPlayPlan.push({
-              phraseIndex: this.random.nextInt(numPhrases),
-              repetitions: 1 + this.random.nextInt(3)
-          });
-      }
-      
-      this.currentBassPlanIndex = 0;
-      this.currentBassRepetition = 0;
-      this.barsInCurrentBassPhrase = 0;
-      console.log(`[BassAxiom] Created new bass plan with ${numPhrases} related phrases. Plan length: ${planLength}`);
   }
   
   private chooseWeightedInstrument(weights: Record<string, number>): AccompanimentInstrument {
@@ -382,40 +351,24 @@ export class FractalMusicEngine {
     return events;
   }
   
- private generateOneBar(barDuration: number): { events: FractalEvent[], instrumentHints: InstrumentHints } {
+ private generateOneBar(barDuration: number, navInfo: NavigationInfo | null): { events: FractalEvent[], instrumentHints: InstrumentHints } {
     let instrumentHints: InstrumentHints = {};
     const output: FractalEvent[] = [];
 
-    const bassPlanItem = this.bassPlayPlan[this.currentBassPlanIndex];
-    let bassPhraseForThisBar: FractalEvent[] = [];
-    if (bassPlanItem && this.bassPhraseLibrary.length > 0) {
-        const phrase = this.bassPhraseLibrary[bassPlanItem.phraseIndex];
-        const phraseDurationInBars = Math.ceil(phrase.reduce((max, e) => Math.max(max, e.time + e.duration), 0) / 4);
-
-        if (this.barsInCurrentBassPhrase === 0) {
-            bassPhraseForThisBar = phrase;
+    // --- BASS EVOLUTION ---
+    if (navInfo && (navInfo.isPartTransition || navInfo.isBundleTransition)) {
+        if (this.currentBassPhrase.length > 0) {
+            this.currentBassPhrase = mutateBassPhrase(this.currentBassPhrase, this.config.mood, this.config.genre, this.random);
+            console.log(`%c[BassEvolution] Mutating phrase at bar ${this.epoch}. New DNA created.`, 'color: #FF7F50');
+        } else {
+             // Fallback if phrase is somehow empty
+            this.currentBassPhrase = generateAmbientBassPhrase(this.config.mood, this.config.genre, this.random, this.config.tempo);
         }
-
-        this.barsInCurrentBassPhrase++;
-
-        if (this.barsInCurrentBassPhrase >= phraseDurationInBars) {
-            this.currentBassRepetition++;
-            this.barsInCurrentBassPhrase = 0; 
-            
-            if (this.currentBassRepetition >= bassPlanItem.repetitions) {
-                this.currentBassRepetition = 0;
-                this.currentBassPlanIndex++;
-                
-                if (this.currentBassPlanIndex >= this.bassPlayPlan.length) {
-                    this.createBassAxiomAndPlan(); 
-                    console.log(`%c[BASS PLAN] Loop finished. Regenerating.`, 'color: #FF7F50');
-                }
-            }
-        }
-    } else {
-        this.createBassAxiomAndPlan();
     }
-
+    
+    let bassPhraseForThisBar: FractalEvent[] = this.currentBassPhrase;
+    
+    // --- DRUMS ---
     let drumEvents: FractalEvent[] = [];
     if (this.config.drumSettings.enabled) {
         const drumBranches = this.branches.filter(b => b.type === 'drums');
@@ -425,6 +378,7 @@ export class FractalMusicEngine {
         }
     }
     
+    // Override with SFX fills if they exist for this epoch
     if (this.sfxFillForThisEpoch?.drum) {
         drumEvents = this.sfxFillForThisEpoch.drum;
     }
@@ -436,6 +390,7 @@ export class FractalMusicEngine {
     output.push(...bassPhraseForThisBar);
     output.push(...drumEvents);
     
+    // --- HARMONY & MELODY ---
     const accompBranches = this.harmonyBranches.filter(b => b.type === 'harmony' || b.type === 'accompaniment');
     let accompanimentEvents: FractalEvent[] = [];
     if (accompBranches.length > 0) {
@@ -446,8 +401,6 @@ export class FractalMusicEngine {
             ...event,
             type: 'harmony' as InstrumentType,
         }));
-        
-        console.log(`[harmony] Composer generated ${harmonyEvents.length} events for harmony.`);
         
         output.push(...accompanimentEvents);
         output.push(...harmonyEvents);
@@ -539,7 +492,7 @@ export class FractalMusicEngine {
     
     if (this.branches.filter(b => b.type === 'bass').length === 0) {
         console.log(`%c[BASS REVIVAL] Creating new bass axiom.`, "color: #4169E1;");
-        this.createBassAxiomAndPlan();
+        this.currentBassPhrase = generateAmbientBassPhrase(this.config.mood, this.config.genre, this.random, this.config.tempo);
     }
      if (this.harmonyBranches.length === 0 && this.epoch > 2) {
         console.log(`%c[HARMONY REVIVAL] Creating new harmony axiom.`, "color: #DA70D6;");
@@ -557,7 +510,7 @@ export class FractalMusicEngine {
     
     if (this.needsBassReset) {
         console.log(`%c[RESET] Bass reset flag is true. Resetting...`, 'color: red');
-        this.createBassAxiomAndPlan();
+        this.currentBassPhrase = generateAmbientBassPhrase(this.config.mood, this.config.genre, this.random, this.config.tempo);
         this.needsBassReset = false;
     }
 
@@ -567,21 +520,21 @@ export class FractalMusicEngine {
     }
     
     if (!isFinite(barDuration)) return { events: [], instrumentHints: {} };
-
-    this.evolveBranches();
     
-    const { events, instrumentHints } = this.generateOneBar(barDuration);
-    
-    this.time += barDuration;
-    
-    // --- "Призрачная" навигация ---
     const navigationInfo = this.navigator.tick(this.epoch);
     if (navigationInfo?.logMessage) {
-        console.log(navigationInfo.logMessage);
+        console.log(navigationInfo.logMessage, 'color: green; font-style: italic;');
     }
-    // --- Конец "Призрачной" навигации ---
+    
+    this.evolveBranches();
+    
+    const { events, instrumentHints } = this.generateOneBar(barDuration, navigationInfo);
+    
+    this.time += barDuration;
     
     return { events, instrumentHints };
   }
 }
 
+
+    
