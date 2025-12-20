@@ -1,5 +1,4 @@
 
-
 import type { FractalEvent, Mood, Genre, Technique, BassSynthParams, InstrumentType, MelodyInstrument, BassInstrument, AccompanimentInstrument, ResonanceMatrix, InstrumentHints, AccompanimentTechnique } from '@/types/fractal';
 import { ElectronicK, TraditionalK, AmbientK, MelancholicMinorK } from './resonance-matrices';
 import { getScaleForMood, STYLE_DRUM_PATTERNS, generateAmbientBassPhrase, mutateBassPhrase, createAccompanimentAxiom, PERCUSSION_SETS, TEXTURE_INSTRUMENT_WEIGHTS_BY_MOOD, getAccompanimentTechnique, createBassFill as createBassFillFromTheory, createDrumFill, AMBIENT_ACCOMPANIMENT_WEIGHTS, chooseHarmonyInstrument } from './music-theory';
@@ -262,7 +261,6 @@ export class FractalMusicEngine {
     this.bassPhraseLibrary = [];
     for (let i = 0; i < 5; i++) {
         const seedPhrase = generateAmbientBassPhrase(this.config.mood, this.config.genre, this.random, this.config.tempo);
-        // Slightly mutate to create variation in the library
         this.bassPhraseLibrary.push( i > 0 ? mutateBassPhrase(seedPhrase, this.config.mood, this.config.genre, this.random) : seedPhrase );
     }
     this.currentBassPhrase = this.bassPhraseLibrary[0] || [];
@@ -365,8 +363,21 @@ export class FractalMusicEngine {
     let instrumentHints: InstrumentHints = {};
     const output: FractalEvent[] = [];
 
-    // --- BASS EVOLUTION ---
-    let bassPhraseForThisBar: FractalEvent[] = this.currentBassPhrase;
+    // --- BASS EVOLUTION (Hybrid Approach) ---
+    if (navInfo) {
+        if (navInfo.isPartTransition && this.bassPhraseLibrary.length > 0) {
+            // MACRO-MUTATION: New "gene" from library at the start of a new part
+            const seedPhrase = this.bassPhraseLibrary[this.random.nextInt(this.bassPhraseLibrary.length)];
+            this.currentBassPhrase = mutateBassPhrase(seedPhrase, this.config.mood, this.config.genre, this.random);
+            console.log(`%c[BassEvolution @ Bar ${this.epoch}] MACRO-MUTATION. New seed selected.`, 'color: #9932CC;');
+        } else if (navInfo.isBundleTransition) {
+            // MICRO-MUTATION: Evolve the current phrase at a bundle boundary
+            this.currentBassPhrase = mutateBassPhrase(this.currentBassPhrase, this.config.mood, this.config.genre, this.random);
+            console.log(`%c[BassEvolution @ Bar ${this.epoch}] MICRO-MUTATION. Evolving current phrase.`, 'color: #DA70D6;');
+        }
+    }
+    output.push(...this.currentBassPhrase);
+
     
     // --- DRUMS ---
     let drumEvents: FractalEvent[] = [];
@@ -378,16 +389,14 @@ export class FractalMusicEngine {
         }
     }
     
-    // Override with SFX fills if they exist for this epoch
     if (this.sfxFillForThisEpoch?.drum) {
         drumEvents = this.sfxFillForThisEpoch.drum;
     }
     if (this.sfxFillForThisEpoch?.bass) {
-        bassPhraseForThisBar = this.sfxFillForThisEpoch.bass;
+        // SFX fill overrides the evolved bass phrase for this bar
+        output.splice(0, output.length, ...this.sfxFillForThisEpoch.bass);
     }
 
-
-    output.push(...bassPhraseForThisBar);
     output.push(...drumEvents);
     
     // --- HARMONY & MELODY ---
@@ -522,17 +531,19 @@ export class FractalMusicEngine {
     if (!isFinite(barDuration)) return { events: [], instrumentHints: {} };
     
     const navigationInfo = this.navigator.tick(this.epoch);
+    
+    // Pass navigation info to generateOneBar
+    const { events, instrumentHints } = this.generateOneBar(barDuration, navigationInfo);
+    
     if (navigationInfo?.logMessage) {
+        // Use the same log message, but now it's correctly generated inside generateOneBar based on the transition
         console.log(navigationInfo.logMessage, 'color: green; font-style: italic;');
     }
     
     this.evolveBranches();
-    
-    const { events, instrumentHints } = this.generateOneBar(barDuration, navigationInfo);
     
     this.time += barDuration;
     
     return { events, instrumentHints };
   }
 }
-
