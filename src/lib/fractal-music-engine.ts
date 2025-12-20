@@ -361,7 +361,7 @@ export class FractalMusicEngine {
   
   /**
    * Generates drum events based on the current part of the composition.
-   * This is an isolated function to keep drum logic separate.
+   * This is an isolated function to keep drum logic separate and robust.
    */
   private generateDrumEvents(navInfo: NavigationInfo | null): FractalEvent[] {
     if (!this.config.drumSettings.enabled || !navInfo) {
@@ -369,27 +369,45 @@ export class FractalMusicEngine {
     }
 
     const partId = navInfo.currentPart.id;
+    const baseAxiom = createDrumAxiom(this.config.genre, this.config.mood, this.config.tempo, this.random).events;
 
-    // For now, all parts generate a basic ambient axiom.
-    // This function will be expanded in the next step (54.2).
     switch (partId) {
       case 'INTRO':
-        // Placeholder: a very sparse pattern
-        return createDrumAxiom(this.config.genre, this.config.mood, this.config.tempo, this.random).events;
-      case 'BUILD':
-        // Placeholder: slightly more complex
-        return createDrumAxiom(this.config.genre, this.config.mood, this.config.tempo, this.random).events;
-      case 'MAIN':
-         // Placeholder: full pattern
-        return createDrumAxiom(this.config.genre, this.config.mood, this.config.tempo, this.random).events;
-      case 'RELEASE':
-         // Placeholder: sparse again
-        return createDrumAxiom(this.config.genre, this.config.mood, this.config.tempo, this.random).events;
       case 'OUTRO':
-         // Placeholder: almost silent
-        return createDrumAxiom(this.config.genre, this.config.mood, this.config.tempo, this.random).events;
+        // Filter for very sparse, ambient percussion
+        return baseAxiom.filter(event => {
+            const type = Array.isArray(event.type) ? event.type[0] : event.type;
+            return type.startsWith('perc-') || type.includes('ride') || type.includes('cymbal');
+        }).map(event => ({ ...event, weight: event.weight * 0.5 })); // Make it quieter
+
+      case 'BUILD':
+        // Add more ghost notes for build-up
+        const buildEvents = [...baseAxiom];
+        if (this.random.next() < 0.6) {
+             buildEvents.push({ 
+                type: 'drum_closed_hi_hat_ghost', 
+                note: 42, 
+                duration: 0.25, 
+                time: 0.75 + Math.floor(this.random.next() * 3) * 1, 
+                weight: 0.3,
+                technique: 'ghost', dynamics: 'p', phrasing: 'staccato', params: {}
+             });
+        }
+        return buildEvents;
+
+      case 'MAIN':
+         // Use the full, rich pattern
+        return baseAxiom;
+
+      case 'RELEASE':
+         // Like intro, but maybe keep a simple snare pattern
+        return baseAxiom.filter(event => {
+            const type = Array.isArray(event.type) ? event.type[0] : event.type;
+            return type.startsWith('perc-') || type.includes('ride') || type === 'drum_snare_ghost_note';
+        });
+      
       default:
-        // Always return an array to prevent iteration errors.
+        // Failsafe: return an empty array if partId is unknown
         return [];
     }
   }
