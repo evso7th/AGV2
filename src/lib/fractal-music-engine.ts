@@ -361,7 +361,7 @@ export class FractalMusicEngine {
     return events;
   }
   
-  private generateOneBar(barDuration: number): { events: FractalEvent[], instrumentHints: InstrumentHints } {
+ private generateOneBar(barDuration: number): { events: FractalEvent[], instrumentHints: InstrumentHints } {
     let instrumentHints: InstrumentHints = {};
     const output: FractalEvent[] = [];
 
@@ -420,7 +420,18 @@ export class FractalMusicEngine {
     if (accompBranches.length > 0) {
         const winningAccompBranch = accompBranches.reduce((max, b) => b.weight > max.weight ? b : max, accompBranches[0]);
         accompanimentEvents.push(...winningAccompBranch.events);
+        
+        // **Исправление маркировки**: Создаем копии событий с правильным типом 'harmony'
+        const harmonyEvents = accompanimentEvents.map(event => ({
+            ...event,
+            type: 'harmony' as InstrumentType,
+        }));
+        
+        console.log(`[harmony] Composer generated ${harmonyEvents.length} events for harmony.`);
+        
+        // Добавляем и оригинальные события аккомпанемента, и новые события гармонии
         output.push(...accompanimentEvents);
+        output.push(...harmonyEvents);
         
         instrumentHints.harmony = 'piano';
         instrumentHints.accompaniment = 'synth';
@@ -428,11 +439,6 @@ export class FractalMusicEngine {
             const possibleInstruments: MelodyInstrument[] = ["violin", "flute", "synth", "organ", "mellotron", "theremin"];
             instrumentHints.accompaniment = possibleInstruments[this.random.nextInt(possibleInstruments.length)];
         }
-    }
-
-    const harmonyEvents = accompanimentEvents.filter(isHarmony);
-    if(harmonyEvents.length > 0) {
-        console.log(`[harmony] Composer generated ${harmonyEvents.length} events for harmony.`);
     }
 
     const topNotes = extractTopNotes(accompanimentEvents, 4);
@@ -453,6 +459,7 @@ export class FractalMusicEngine {
     const finalEvents = this.applyNaturalDecay(output, 4.0);
     return { events: finalEvents, instrumentHints };
   }
+
 
   private evolveBranches() {
     const lambda = this.config.lambda;
