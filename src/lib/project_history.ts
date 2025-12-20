@@ -10,4 +10,5 @@
 // Rolling back to version d3cbec2 опять начинаем внедрять мелодию. третий раз
 // откат. Rolling back to version de9caa8
 // откат на точку начала восстановления harmony. Rolling back to version 6b1fdd8
-// откат на шаг назад, до выполнения Модифицировать src/lib/fractal-music-engine.ts. Причина: сломал мелодию.
+// откат на шаг назад, до выполнения Модифицировать src/lib/fractal-music-engine.ts: сломал мелодию.
+// Rolling back to version e12f942.
