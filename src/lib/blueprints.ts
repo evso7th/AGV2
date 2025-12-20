@@ -91,8 +91,8 @@ export const MelancholicAmbientBlueprint: MusicBlueprint = {
   
   structure: {
     totalDuration: {
-      bars: { min: 220, max: 280 }, // @ 52 BPM = 11-14 минут
-      preferredBars: 250            // Целевое значение
+      bars: { min: 60, max: 80 }, // @ 52 BPM = ~5-7 минут
+      preferredBars: 72
     },
     
     parts: [
@@ -104,122 +104,73 @@ export const MelancholicAmbientBlueprint: MusicBlueprint = {
         name: 'Awakening',
         
         duration: {
-          bars: { min: 24, max: 32 },
-          bundles: { min: 2, max: 3 }  // 2-3 бандла
+          bars: { min: 8, max: 12 },
+          bundles: { min: 2, max: 2 }
         },
         
-        // Слои (какие инструменты активны)
         layers: {
           bass: true,
           pad: true,
-          arpeggio: false,      // Входит в середине INTRO
+          arpeggio: false,
           melody: false,
-          sparkles: false,      // Только с BUILD
+          sparkles: false,
           sfx: false,
           drums: false
         },
         
-        // Расписание входа инструментов (в процентах от длины части)
         instrumentEntry: {
-          bass: 0.0,            // Сразу
-          pad: 0.25,            // 25% INTRO (если INTRO = 28 тактов → такт 7)
-          arpeggio: 0.65,       // 65% INTRO
+          bass: 0.0,
+          pad: 0.25,
+          arpeggio: 0.65,
         },
         
-        // Правила для каждого инструмента
         instrumentRules: {
           bass: {
-            techniques: [
-              { value: 'pedal', weight: 0.8 },      // 80% — долгие педали
-              { value: 'drone', weight: 0.2 }       // 20% — суб-бас дрон
-            ],
-            register: {
-              preferred: 'low',   // D1-G2
-              range: { min: 26, max: 43 } // MIDI (D1 = 26, G2 = 43)
-            },
-            density: { min: 0.25, max: 0.4 }, // Редко (25-40% заполненности)
+            techniques: [ { value: 'pedal', weight: 0.8 }, { value: 'drone', weight: 0.2 } ],
+            register: { preferred: 'low', range: { min: 26, max: 43 } },
+            density: { min: 0.25, max: 0.4 },
             velocity: { min: 50, max: 70 },
           },
-          
           pad: {
-            techniques: [
-              { value: 'swell', weight: 0.6 },      // Медленные нарастания
-              { value: 'sustained', weight: 0.4 }   // Статичные аккорды
-            ],
-            register: {
-              preferred: 'mid',
-              range: { min: 48, max: 72 } // C3-C5
-            },
-            density: { min: 0.6, max: 0.8 }, // Более плотно, чем бас
+            techniques: [ { value: 'swell', weight: 0.6 }, { value: 'sustained', weight: 0.4 } ],
+            register: { preferred: 'mid', range: { min: 48, max: 72 } },
+            density: { min: 0.6, max: 0.8 },
             velocity: { min: 40, max: 60 },
           },
-          
           arpeggio: {
-            techniques: [
-              { value: 'slow_ascend', weight: 0.5 },
-              { value: 'slow_descend', weight: 0.3 },
-              { value: 'random_sparse', weight: 0.2 }
-            ],
-            register: {
-              preferred: 'mid-high',
-              range: { min: 60, max: 84 } // C4-C6
-            },
+            techniques: [ { value: 'slow_ascend', weight: 0.5 }, { value: 'slow_descend', weight: 0.3 }, { value: 'random_sparse', weight: 0.2 } ],
+            register: { preferred: 'mid-high', range: { min: 60, max: 84 } },
             density: { min: 0.3, max: 0.5 },
-            velocity: { min: 35, max: 55 }, // Тише остальных
+            velocity: { min: 35, max: 55 },
           }
         },
         
-        // Бандлы (подразделы части)
         bundles: [
           {
             id: 'INTRO_BUNDLE_1',
             name: 'Emergence',
-            duration: { min: 12, max: 16 }, // тактов
-            
-            characteristics: {
-              harmonicMovement: 'static',     // Почти без движения
-              densityBias: -0.1,              // На 10% разреженнее базовой
-              filterCutoff: { min: 0.4, max: 0.6 }, // 40-60% от макс. (приглушено)
-              reverbWet: 0.5
-            },
-            
-            phrases: {
-              count: { min: 3, max: 4 },      // 3-4 фразы по 4 такта
-              length: { min: 4, max: 4 }      // Все фразы по 4 такта (симметрия)
-            }
+            duration: { min: 4, max: 6 },
+            characteristics: { harmonicMovement: 'static', densityBias: -0.1, filterCutoff: { min: 0.4, max: 0.6 }, reverbWet: 0.5 },
+            phrases: { count: { min: 1, max: 2 }, length: { min: 4, max: 4 } }
           },
-          
           {
             id: 'INTRO_BUNDLE_2',
             name: 'Unfolding',
-            duration: { min: 12, max: 16 },
-            
-            characteristics: {
-              harmonicMovement: 'slight',     // Лёгкое движение (Dm7 → Gm7)
-              densityBias: 0.0,
-              filterCutoff: { min: 0.5, max: 0.7 }, // Приоткрывается
-              reverbWet: 0.55
-            },
-            
-            phrases: {
-              count: { min: 3, max: 4 },
-              length: { min: 4, max: 4 }
-            }
+            duration: { min: 4, max: 6 },
+            characteristics: { harmonicMovement: 'slight', densityBias: 0.0, filterCutoff: { min: 0.5, max: 0.7 }, reverbWet: 0.55 },
+            phrases: { count: { min: 1, max: 2 }, length: { min: 4, max: 4 } }
           }
         ],
         
         outroFill: {
           type: 'filter_sweep',
-          duration: 2,            // такта
-          parameters: {
-            filterStart: 0.6,     // 60% cutoff
-            filterEnd: 0.95,      // 95% cutoff (открывается)
-            curve: 'exponential'  // Ускорение к концу
-          }
+          duration: 1,
+          parameters: { filterStart: 0.6, filterEnd: 0.95, curve: 'exponential' }
         }
       },
-      
-      // ... (other parts will be added later)
+       // Остальные части (BUILD, MAIN, etc.) должны быть добавлены сюда
+       // с пропорционально уменьшенными длительностями.
+       // Пока оставим только INTRO для проверки.
     ]
   },
   
