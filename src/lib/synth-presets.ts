@@ -165,19 +165,21 @@ export const SYNTH_PRESETS: Record<Exclude<MelodyInstrument | BassInstrument, 'p
       chorus: { rate: 0.2, depth: 0.003, mix: 0.3 },
       delay: { time: 0.25, feedback: 0.2, mix: 0.15 },
     },
+    portamento: 0.08
   },
   
   electricGuitar: {
     layers: [
-      { type: 'sawtooth', detune: 0, octave: 0, gain: 1.0 },
-      { type: 'square', detune: 2, octave: 1, gain: 0.3 },
+      { type: 'sawtooth', detune: -2, octave: 0, gain: 1.0 },
+      { type: 'sawtooth', detune: 2, octave: 0, gain: 0.9 },
+      { type: 'square', detune: 0, octave: 1, gain: 0.5 },
     ],
-    adsr: { attack: 0.005, decay: 0.5, sustain: 0.1, release: 0.6 },
-    filter: { type: 'bpf', cutoff: 1500, q: 3.5 },
+    adsr: { attack: 0.01, decay: 0.5, sustain: 0.2, release: 0.8 },
+    filter: { type: 'bpf', cutoff: 1800, q: 2.5 },
     lfo: { shape: 'sine', rate: 0, amount: 0, target: 'pitch' },
     effects: {
-      distortion: 0.7,
-      chorus: { rate: 0, depth: 0, mix: 0 },
+      distortion: 0.8,
+      chorus: { rate: 0.1, depth: 0.002, mix: 0.2 },
       delay: { time: 0.375, feedback: 0.4, mix: 0.35 },
     },
   },
@@ -201,14 +203,14 @@ export const SYNTH_PRESETS: Record<Exclude<MelodyInstrument | BassInstrument, 'p
   acousticGuitar: {
     layers: [
       { type: 'triangle', detune: 0, octave: 0, gain: 1.0 },
-      { type: 'noise', detune: 0, octave: 0, gain: 0.15 },
+      { type: 'noise', detune: 0, octave: 0, gain: 0.3 }, // Увеличиваем громкость "щипка"
     ],
-    adsr: { attack: 0.001, decay: 0.3, sustain: 0.05, release: 0.3 },
-    filter: { type: 'bpf', cutoff: 2000, q: 4.0 },
+    adsr: { attack: 0.001, decay: 0.4, sustain: 0.2, release: 0.4 }, // Увеличиваем сустейн и затухание
+    filter: { type: 'lpf', cutoff: 4000, q: 3.0 }, // Открываем фильтр, чтобы было больше верхов
     lfo: { shape: 'sine', rate: 0, amount: 0, target: 'pitch' },
     effects: {
       distortion: 0,
-      chorus: { rate: 0.1, depth: 0.001, mix: 0.1 },
+      chorus: { rate: 0.1, depth: 0.002, mix: 0.2 }, // Добавляем легкий хорус для объема
       delay: { time: 0, feedback: 0, mix: 0 },
     },
   },
