@@ -13,3 +13,4 @@
 // откат на шаг назад, до выполнения Модифицировать src/lib/fractal-music-engine.ts: сломал мелодию.
 // Rolling back to version e12f942.
 // откат на начало план 39.  Модификация  FractalMusicEngine привела к потере звука. Rolling back to version 513ad7f
+// откат на результат выполнения плана 49.1 В результате выполнения 49.2 были убиты и мелодия и аккомпанемент. Rolling back to version 9e9178b
