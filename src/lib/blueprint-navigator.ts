@@ -1,7 +1,7 @@
 
 import type { MusicBlueprint, BlueprintPart, BlueprintBundle } from '@/types/music';
 
-// Helper function for seeded random numbers
+// Helper function for seeded random numbers - kept for potential future use in axiom selection
 function seededRandom(seed: number) {
   let state = seed;
   const self = {
@@ -39,6 +39,7 @@ export type NavigationInfo = {
  * A class dedicated to navigating the hierarchical structure of a MusicBlueprint.
  * It tracks the current position (Part, Bundle) based on the bar count ('epoch').
  * It pre-calculates all boundaries at construction time for deterministic navigation.
+ * This version uses a deterministic "bookkeeping" approach.
  */
 export class BlueprintNavigator {
     private blueprint: MusicBlueprint;
@@ -47,16 +48,21 @@ export class BlueprintNavigator {
 
     constructor(blueprint: MusicBlueprint, seed: number) {
         this.blueprint = blueprint;
-        const random = seededRandom(seed);
+        
+        // Use a fixed, preferred total duration for predictability.
+        this.totalBars = this.blueprint.structure.totalDuration.preferredBars;
+        let currentBar = 0;
 
-        let totalSuiteBars = 0;
+        const totalPercentage = this.blueprint.structure.parts.reduce((sum, part) => sum + part.duration.percent, 0);
+        if (Math.abs(totalPercentage - 100) > 1) {
+            console.warn(`[NAVIGATOR] Sum of part percentages is ${totalPercentage}, not 100. Durations may be skewed.`);
+        }
 
         for (const part of this.blueprint.structure.parts) {
-            const partDuration = random.nextInt(part.duration.bars.min, part.duration.bars.max);
-            
-            const partStartBar = totalSuiteBars;
+            const partDuration = Math.round((part.duration.percent / 100) * this.totalBars);
+            const partStartBar = currentBar;
             const partEndBar = partStartBar + partDuration - 1;
-            
+
             const partBoundary: PartBoundary = {
                 part,
                 startBar: partStartBar,
@@ -64,42 +70,34 @@ export class BlueprintNavigator {
                 bundleBoundaries: []
             };
 
-            let bundleStartBarInPart = 0;
+            let bundleStartInPart = 0;
             const bundleCount = part.bundles.length;
             
-            let remainingBars = partDuration;
+            // Distribute part duration among its bundles (assuming equal length for simplicity now)
+            const approxBundleDuration = Math.floor(partDuration / bundleCount);
+            let remainder = partDuration % bundleCount;
+
             for (let i = 0; i < bundleCount; i++) {
                 const bundleSpec = part.bundles[i];
-                let bundleDuration = 0;
-                if (i === bundleCount - 1) {
-                    bundleDuration = remainingBars;
-                } else {
-                    const maxPossible = Math.max(bundleSpec.duration.min, remainingBars - (bundleCount - 1 - i) * bundleSpec.duration.min);
-                    const minDuration = Math.min(bundleSpec.duration.min, remainingBars);
-                     if (minDuration > maxPossible) {
-                        bundleDuration = minDuration;
-                    } else {
-                        bundleDuration = random.nextInt(minDuration, maxPossible);
-                    }
-                }
-                
-                const actualDuration = Math.max(0, Math.min(bundleDuration, remainingBars));
+                let bundleDuration = approxBundleDuration + (remainder > 0 ? 1 : 0);
+                if(remainder > 0) remainder--;
 
                 partBoundary.bundleBoundaries.push({
                     bundle: bundleSpec,
-                    startBar: partStartBar + bundleStartBarInPart,
-                    endBar: partStartBar + bundleStartBarInPart + actualDuration - 1
+                    startBar: partStartBar + bundleStartInPart,
+                    endBar: partStartBar + bundleStartInPart + bundleDuration - 1
                 });
-
-                bundleStartBarInPart += actualDuration;
-                remainingBars -= actualDuration;
+                bundleStartInPart += bundleDuration;
             }
-            
+
             this.partBoundaries.push(partBoundary);
-            totalSuiteBars += partDuration;
+            currentBar += partDuration;
         }
 
-        this.totalBars = totalSuiteBars;
+        // Adjust the last part's end bar to match the total, accounting for rounding.
+        if (this.partBoundaries.length > 0) {
+            this.partBoundaries[this.partBoundaries.length - 1].endBar = this.totalBars - 1;
+        }
     }
 
     /**
@@ -108,26 +106,33 @@ export class BlueprintNavigator {
      * @returns NavigationInfo object with details about the current position and transitions.
      */
     public tick(currentBar: number): NavigationInfo | null {
-        const partInfo = this.partBoundaries.find(p => currentBar >= p.startBar && currentBar <= p.endBar);
-        if (!partInfo) {
-            return null; // End of composition
-        }
+        // Wrap the bar count if it exceeds the total duration, allowing for looping.
+        const effectiveBar = currentBar % this.totalBars;
 
-        const bundleInfo = partInfo.bundleBoundaries.find(b => currentBar >= b.startBar && currentBar <= b.endBar);
-        if (!bundleInfo) {
-            console.error(`[NAVIGATOR @ Bar ${currentBar}] Could not find bundle in part ${partInfo.part.id}`);
+        const partInfo = this.partBoundaries.find(p => effectiveBar >= p.startBar && effectiveBar <= p.endBar);
+        if (!partInfo) {
+            // This should not happen with the new logic, but as a fallback:
+            console.error(`[NAVIGATOR @ Bar ${effectiveBar}] CRITICAL: Could not find part for current bar.`);
             return null;
         }
 
-        const isPartTransition = currentBar === partInfo.startBar;
-        const isBundleTransition = !isPartTransition && currentBar === bundleInfo.startBar;
+        const bundleInfo = partInfo.bundleBoundaries.find(b => effectiveBar >= b.startBar && effectiveBar <= b.endBar);
+        if (!bundleInfo) {
+            console.error(`[NAVIGATOR @ Bar ${effectiveBar}] CRITICAL: Could not find bundle in part ${partInfo.part.id}`);
+            return null;
+        }
 
+        // Simplified transition logic
+        const isPartTransition = effectiveBar === partInfo.startBar;
+        const isBundleTransition = !isPartTransition && effectiveBar === bundleInfo.startBar;
+        
         let logMessage: string | null = null;
         if (isPartTransition) {
-            logMessage = `[NAVIGATOR @ Bar ${currentBar}] Transition: Part ${partInfo.part.id}. Mutation point (macro).`;
+             logMessage = `%c[NAVIGATOR @ Bar ${currentBar}] Transition: Part ${partInfo.part.id}. Mutation (macro).`;
         } else if (isBundleTransition) {
-            logMessage = `[NAVIGATOR @ Bar ${currentBar}] Transition: Bundle ${bundleInfo.bundle.id}. Mutation point (micro).`;
+             logMessage = `%c[NAVIGATOR @ Bar ${currentBar}] Transition: Bundle ${bundleInfo.bundle.id}. Mutation (micro).`;
         }
+
 
         return {
             currentPart: partInfo.part,

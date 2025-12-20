@@ -162,8 +162,7 @@ export type WorkerSettings = {
 export type MutationType = 'transpose' | 'rhythmic_shift' | 'velocity_curve' | 'inversion' | 'register_shift' | 'voicing_change' | 'retrograde' | 'augmentation';
 
 export type MutationPolicy = {
-  probability: number;
-  types: { type: MutationType; weight: number; params?: any }[];
+  // Simplified for now
 };
 
 export type FillTechnique = 'filter_sweep' | 'reverb_burst' | 'harmonic_glide' | 'density_pause' | 'granular_freeze' | 'roll' | 'crescendo';
@@ -175,36 +174,21 @@ export type FillPolicy = {
 };
 
 export type InstrumentRules = {
-  techniques: { value: string; weight: number }[];
-  register: { preferred: string; range: { min: number; max: number } };
-  density: { min: number; max: number };
-  velocity: { min: number; max: number };
-  [key: string]: any; // For other specific rules
+  // Simplified for now
 };
 
 export type BlueprintBundle = {
   id: string;
   name: string;
-  duration: { min: number; max: number }; // in bars
-  characteristics: {
-    harmonicMovement: 'static' | 'slight' | 'moderate' | 'active' | 'free' | 'expansive' | 'stable' | 'resolving' | 'returning' | 'gentle' | 'tense' | 'none';
-    densityBias: number;
-    filterCutoff: { min: number; max: number };
-    reverbWet: number;
-  };
-  phrases: {
-    count: { min: number; max: number };
-    length: { min: number; max: number };
-  };
+  duration: { percent: number }; // Duration as a percentage of the parent part
+  characteristics: any; 
+  phrases: any;
 };
 
 export type BlueprintPart = {
   id: string;
   name: string;
-  duration: {
-    bars: { min: number; max: number };
-    bundles: { min: number; max: number };
-  };
+  duration: { percent: number }; // Duration as a percentage of the total suite
   layers: {
     [key in InstrumentPart]?: boolean;
   };
@@ -239,22 +223,14 @@ export type MusicBlueprint = {
         key: { root: string; scale: string; octave: number };
         bpm: { base: number; range: [number, number], modifier: number };
         timeSignature: { numerator: number; denominator: number };
-        harmonicJourney: HarmonicCenter[];
-        tensionProfile: TensionProfile;
+        harmonicJourney: any[]; // Define this type more strictly later
+        tensionProfile: any; // Define this type more strictly later
     };
     structure: {
-        totalDuration: { bars: { min: number; max: number }; preferredBars: number };
+        totalDuration: { preferredBars: number };
         parts: BlueprintPart[];
     };
-    mutations: {
-        onBundleBoundary: MutationPolicy;
-        onPartBoundary: MutationPolicy;
-        onSuiteBoundary: {
-            regenerateAxioms: boolean;
-            varyHarmonicCenter: { enabled: boolean; allowedRoots: string[]; allowedScales: string[] };
-            reshuffleLayering: boolean;
-        };
-    };
+    mutations: any; // Define this type more strictly later
     ambientEvents: any[]; // Define this type more strictly later
     continuity: any; // Define this type more strictly later
     rendering: any; // Define this type more strictly later
