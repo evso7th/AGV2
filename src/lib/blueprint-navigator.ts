@@ -16,6 +16,17 @@ function seededRandom(seed: number) {
   return self;
 }
 
+type PartBoundary = {
+    part: BlueprintPart;
+    startBar: number;
+    endBar: number;
+    bundleBoundaries: {
+        bundle: BlueprintBundle;
+        startBar: number;
+        endBar: number;
+    }[];
+};
+
 export type NavigationInfo = {
   currentPart: BlueprintPart;
   currentBundle: BlueprintBundle;
@@ -27,35 +38,65 @@ export type NavigationInfo = {
 /**
  * A class dedicated to navigating the hierarchical structure of a MusicBlueprint.
  * It tracks the current position (Part, Bundle) based on the bar count ('epoch').
- * It is a stateless-per-tick class; it recalculates its position on every tick.
+ * It pre-calculates all boundaries at construction time for deterministic navigation.
  */
 export class BlueprintNavigator {
     private blueprint: MusicBlueprint;
-    private partBoundaries: { part: BlueprintPart, startBar: number, endBar: number }[] = [];
-    private totalBars: number;
+    private partBoundaries: PartBoundary[] = [];
+    public totalBars: number;
 
     constructor(blueprint: MusicBlueprint, seed: number) {
         this.blueprint = blueprint;
         const random = seededRandom(seed);
 
-        // Determine the concrete duration of the suite and its parts
-        this.totalBars = random.nextInt(
-            this.blueprint.structure.totalDuration.bars.min,
-            this.blueprint.structure.totalDuration.bars.max
-        );
+        let totalSuiteBars = 0;
 
-        let currentBar = 0;
         for (const part of this.blueprint.structure.parts) {
             const partDuration = random.nextInt(part.duration.bars.min, part.duration.bars.max);
-            this.partBoundaries.push({
-                part: part,
-                startBar: currentBar,
-                endBar: currentBar + partDuration -1,
-            });
-            currentBar += partDuration;
+            
+            const partStartBar = totalSuiteBars;
+            const partEndBar = partStartBar + partDuration - 1;
+            
+            const partBoundary: PartBoundary = {
+                part,
+                startBar: partStartBar,
+                endBar: partEndBar,
+                bundleBoundaries: []
+            };
+
+            let bundleStartBarInPart = 0;
+            const bundleCount = part.bundles.length;
+            
+            // Distribute partDuration among bundles
+            let remainingBars = partDuration;
+            for (let i = 0; i < bundleCount; i++) {
+                const bundleSpec = part.bundles[i];
+                // For the last bundle, assign all remaining bars
+                const bundleDuration = (i === bundleCount - 1)
+                    ? remainingBars
+                    : random.nextInt(bundleSpec.duration.min, bundleSpec.duration.max);
+                
+                const actualDuration = Math.min(bundleDuration, remainingBars);
+
+                partBoundary.bundleBoundaries.push({
+                    bundle: bundleSpec,
+                    startBar: partStartBar + bundleStartBarInPart,
+                    endBar: partStartBar + bundleStartBarInPart + actualDuration - 1
+                });
+
+                bundleStartBarInPart += actualDuration;
+                remainingBars -= actualDuration;
+                if (remainingBars <= 0 && i < bundleCount - 1) {
+                    // If we run out of bars, subsequent bundles will have zero duration.
+                    // This can be handled or logged as a warning.
+                }
+            }
+            
+            this.partBoundaries.push(partBoundary);
+            totalSuiteBars += partDuration;
         }
-        // Adjust total bars to match the sum of part durations
-        this.totalBars = currentBar;
+
+        this.totalBars = totalSuiteBars;
     }
 
     /**
@@ -66,38 +107,38 @@ export class BlueprintNavigator {
     public tick(currentBar: number): NavigationInfo | null {
         const partInfo = this.partBoundaries.find(p => currentBar >= p.startBar && currentBar <= p.endBar);
         if (!partInfo) {
-            // End of composition or error
+            return null; // End of composition
+        }
+
+        const prevPartInfo = currentBar > 0 
+            ? this.partBoundaries.find(p => (currentBar - 1) >= p.startBar && (currentBar - 1) <= p.endBar)
+            : undefined;
+
+        const isPartTransition = currentBar === 0 || (prevPartInfo && prevPartInfo.part.id !== partInfo.part.id);
+        
+        const bundleInfo = partInfo.bundleBoundaries.find(b => currentBar >= b.startBar && currentBar <= b.endBar);
+        if (!bundleInfo) {
+            // This should not happen if the constructor logic is correct
+            console.error(`[NAVIGATOR @ Bar ${currentBar}] Could not find bundle in part ${partInfo.part.id}`);
             return null;
         }
-        
-        const prevPartInfo = this.partBoundaries.find(p => (currentBar - 1) >= p.startBar && (currentBar - 1) <= p.endBar);
-        
-        const isPartTransition = !prevPartInfo || prevPartInfo.part.id !== partInfo.part.id;
-        
-        // Simplified bundle navigation for now: assume bundles divide the part evenly.
-        const barsIntoPart = currentBar - partInfo.startBar;
-        const partDuration = partInfo.endBar - partInfo.startBar + 1;
-        const bundleCount = partInfo.part.bundles.length;
-        const approxBundleDuration = Math.ceil(partDuration / bundleCount);
-        
-        const currentBundleIndex = Math.min(bundleCount - 1, Math.floor(barsIntoPart / approxBundleDuration));
-        const currentBundle = partInfo.part.bundles[currentBundleIndex];
-        
-        const prevBundleIndex = Math.min(bundleCount - 1, Math.floor((barsIntoPart - 1) / approxBundleDuration));
-        
-        const isBundleTransition = !isPartTransition && prevBundleIndex !== currentBundleIndex;
+
+        const prevBundleInfo = currentBar > 0
+            ? partInfo.bundleBoundaries.find(b => (currentBar - 1) >= b.startBar && (currentBar - 1) <= b.endBar)
+            : undefined;
+
+        const isBundleTransition = !isPartTransition && (!prevBundleInfo || prevBundleInfo.bundle.id !== bundleInfo.bundle.id);
 
         let logMessage: string | null = null;
         if (isPartTransition) {
             logMessage = `[NAVIGATOR @ Bar ${currentBar}] Transition: Part ${prevPartInfo ? prevPartInfo.part.id : 'Start'} -> Part ${partInfo.part.id}. Mutation point (macro).`;
         } else if (isBundleTransition) {
-            const prevBundle = partInfo.part.bundles[prevBundleIndex];
-            logMessage = `[NAVIGATOR @ Bar ${currentBar}] Transition: Bundle ${prevBundle.id} -> Bundle ${currentBundle.id}. Mutation point (micro).`;
+            logMessage = `[NAVIGATOR @ Bar ${currentBar}] Transition: Bundle ${prevBundleInfo ? prevBundleInfo.bundle.id : 'Start'} -> Bundle ${bundleInfo.bundle.id}. Mutation point (micro).`;
         }
 
         return {
             currentPart: partInfo.part,
-            currentBundle: currentBundle,
+            currentBundle: bundleInfo.bundle,
             isPartTransition,
             isBundleTransition,
             logMessage
