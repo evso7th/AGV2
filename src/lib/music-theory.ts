@@ -715,7 +715,33 @@ export function createDrumFill(random: { next: () => number, nextInt: (max: numb
 
     return fill;
 }
+
+export function chooseHarmonyInstrument(mood: Mood, random: { next: () => number }): NonNullable<InstrumentHints['harmony']> {
+    const weights: { instrument: NonNullable<InstrumentHints['harmony']>, weight: number }[] = [
+        { instrument: 'guitarChords', weight: 0.6 },
+        { instrument: 'piano', weight: 0.1 },
+        { instrument: 'acousticGuitarSolo', weight: 0.1 },
+        { instrument: 'flute', weight: 0.1 },
+        { instrument: 'violin', weight: 0.1 },
+    ];
+    
+    // Note: Mood can be used here in the future to adjust weights.
+    // For now, we use the static distribution.
+
+    const totalWeight = weights.reduce((sum, item) => sum + item.weight, 0);
+    let rand = random.next() * totalWeight;
+
+    for (const item of weights) {
+        rand -= item.weight;
+        if (rand <= 0) {
+            return item.instrument;
+        }
+    }
+
+    return 'guitarChords'; // Fallback
+}
     
     
 
     
+
