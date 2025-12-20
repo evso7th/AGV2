@@ -186,7 +186,7 @@ export type InstrumentHints = {
     bass?: BassInstrument;
     melody?: MelodyInstrument;
     accompaniment?: AccompanimentInstrument;
-    harmony?: 'piano' | 'guitarChords';
+    harmony?: 'piano' | 'guitarChords' | 'acousticGuitarSolo' | 'flute' | 'violin';
     bassTechnique?: BassTechnique;
 };
 
