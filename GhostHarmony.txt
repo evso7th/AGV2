@@ -1,0 +1,498 @@
+ТЗ "Призрачная гармония"
+Цель: Перестроить музыкальный движок с хаотично-децентрализованной модели на централизованную модель, где единая, неслышимая гармоническая последовательность (ghostHarmonyTrack) служит незыблемым "скелетом" для всей композиции. Это обеспечит макро-гармоническую целостность сьюиты.
+
+Философия: Мы создаем "Архитектора" (Блюпринт), который рисует план. Мы создаем "Скелет" (Призрачная Гармония). Мы переобучаем "Музыкантов" (генераторы партий), чтобы они не импровизировали на вольную тему, а "наращивали мясо" на этот скелет по чертежам архитектора.
+
+Задача: Создать структуры данных и функцию, которая генерирует последовательность аккордов на всю сьюиту. На этом этапе мы ничего не ломаем, только создаем новые, неиспользуемые инструменты.
+
+Шаг 1.1: Описание Типа Аккорда.
+
+Действие: Откройте файл src/types/fractal.ts.
+Код: Добавьте в конец файла экспорт нового типа GhostChord.
+// src/types/fractal.ts
+
+// ... (в конце файла)
+/**
+ * Описывает один аккорд в неслышимой гармонической основе (скелете) сьюиты.
+ */
+export type GhostChord = {
+  /** Основная нота аккорда (тоника) в MIDI формате. */
+  rootNote: number;
+  /** Тип аккорда (например, мажор, минор). */
+  chordType: 'major' | 'minor' | 'diminished' | 'dominant'; // Можно расширить
+  /** Такт, с которого начинает звучать этот аккорд. */
+  bar: number;
+  /** Длительность аккорда в тактах. */
+  durationBars: number;
+};
+
+
+Контроль: Убедитесь, что файл сохранился без ошибок.
+Шаг 1.2: Создание Генератора Гармонии.
+
+Действие: Откройте файл src/lib/music-theory.ts.
+Код: Добавьте в конец файла новую функцию generateGhostHarmonyTrack. Это её первая, простейшая версия. Мы не стремимся к гениальной музыке, мы стремимся к работающей структуре.
+// src/lib/music-theory.ts
+import type { GhostChord, Mood } from '@/types/fractal'; // Убедитесь, что импорт добавлен
+
+// ... (в конце файла)
+
+/**
+ * Генерирует основополагающую гармоническую последовательность (скелет) для всей сьюиты.
+ * @param totalBars Общая длительность сьюиты в тактах.
+ * @param mood Текущее настроение, для выбора лада.
+ * @param key Тоника (основная нота) для всей сьюиты (MIDI).
+ * @returns Массив аккордов, составляющих "Призрачную Гармонию".
+ */
+export function generateGhostHarmonyTrack(totalBars: number, mood: Mood, key: number): GhostChord[] {
+  console.log(`[Harmony] Начало генерации "Призрачной Гармонии" на ${totalBars} тактов в тональности ${key} (${mood}).`);
+  
+  const harmonyTrack: GhostChord[] = [];
+  const scale = getScaleForMood(mood, key);
+
+  // Определяем базовые ступени для построения аккордов
+  const I = scale[0];   // Тоника
+  const IV = scale[3];  // Субдоминанта
+  const V = scale[4];   // Доминанта
+  const VI = scale[5];  // Субмедианта
+
+  // Простейшая последовательность аккордов (например, I-VI-IV-V)
+  const progression = [I, VI, IV, V]; 
+  const chordTypes: GhostChord['chordType'][] = ['minor', 'major', 'major', 'minor']; // Пример для минорного лада
+
+  let currentBar = 0;
+  while (currentBar < totalBars) {
+    const progressionIndex = Math.floor(currentBar / 4) % progression.length;
+    const rootNote = progression[progressionIndex];
+    const duration = 4; // Каждый аккорд длится 4 такта для простоты
+
+    if (rootNote === undefined) {
+        console.error(`[Harmony] Ошибка: Не удалось определить ноту для аккорда в такте ${currentBar}. Пропускаем.`);
+        currentBar += duration;
+        continue;
+    }
+
+    harmonyTrack.push({
+      rootNote: rootNote,
+      chordType: chordTypes[progressionIndex], // Упрощенно
+      bar: currentBar,
+      durationBars: duration,
+    });
+
+    currentBar += duration;
+  }
+
+  console.log(`[Harmony] "Призрачная Гармония" успешно сгенерирована. Количество аккордов: ${harmonyTrack.length}.`);
+  return harmonyTrack;
+}
+
+
+Контроль: Убедитесь, что функция добавлена и нет синтаксических ошибок. На этом этапе она нигде не вызывается.
+Задача: Модифицировать генераторы партий так, чтобы они принимали на вход GhostChord и генерировали музыку на его основе, а не придумывали её сами.
+
+Шаг 2.1: Модификация Генератора Аккомпанемента.
+
+Действие: Откройте src/lib/fractal-music-engine.ts. Найдите функцию generateAccompanimentForPhrase.
+Код: Полностью замените её сигнатуру и логику. Старая логика пыталась угадать аккорд по басу. Новая — получает его как закон.
+// src/lib/fractal-music-engine.ts
+
+// ЗАМЕНИТЬ СТАРУЮ ФУНКЦИЮ generateAccompanimentForPhrase НА ЭТУ:
+
+/**
+ * Generates accompaniment events based on a GHOST CHORD and a chosen technique.
+ */
+private generateAccompanimentForPhrase(
+    currentChord: GhostChord, // !!! ГЛАВНОЕ ИЗМЕНЕНИЕ: Получаем готовый аккорд
+    technique: AccompanimentTechnique
+): FractalEvent[] {
+    const accompanimentPhrase: FractalEvent[] = [];
+    const scale = getScaleForMood(this.config.mood, currentChord.rootNote);
+    
+    console.log(`[Accomp] Генерация аккомпанемента для аккорда ${currentChord.rootNote} с техникой "${technique}"`);
+
+    if (!currentChord) {
+        console.error("[Accomp] Ошибка: В генератор аккомпанемента не передан currentChord. Возвращена пустая партия.");
+        return [];
+    }
+
+    // --- Логика построения аккорда от rootNote ---
+    const rootDegree = currentChord.rootNote % 12;
+    const isMinor = currentChord.chordType === 'minor' || currentChord.chordType === 'diminished';
+    
+    const thirdDegree = (rootDegree + (isMinor ? 3 : 4)) % 12;
+    const fifthDegree = (rootDegree + 7) % 12;
+
+    const chordDegrees = [rootDegree, thirdDegree, fifthDegree];
+    
+    // Вся остальная логика (switch/case по 'technique') остается почти такой же,
+    // но теперь она использует 'chordDegrees', полученные от "Призрачной Гармонии",
+    // а не пытается угадать их по басу.
+    // ... (вставьте сюда ваш существующий switch/case)
+
+    // ПРИМЕР для техники 'long-chords':
+    switch (technique) {
+        case 'long-chords':
+            chordDegrees.forEach((degree, index) => {
+                accompanimentPhrase.push({
+                    type: 'harmony',
+                    note: 12 * 4 + degree, // Играем в 4-й октаве
+                    time: index * 0.1, // Легкое арпеджио для человечности
+                    duration: 4.0, // Длится весь такт
+                    weight: 0.6 - (index * 0.1),
+                    technique: 'swell', dynamics: 'p', phrasing: 'legato',
+                    params: { attack: 1.8, release: 2.8 }
+                });
+            });
+            break;
+        // ... и другие кейсы для arpeggio-fast, choral и т.д.
+        // Убедитесь, что они используют 'chordDegrees'
+        default:
+            console.warn(`[Accomp] Неизвестная техника "${technique}". Возвращена пустая партия.`);
+            return [];
+    }
+
+    return accompanimentPhrase;
+}
+
+
+Контроль: Убедитесь, что новая функция на месте. Теперь код, который ее вызывает, будет подсвечен ошибкой, потому что мы изменили параметры. Это нормально, мы исправим это на следующей фазе.
+Важно: Повторите аналогичную операцию для generateAmbientBassPhrase и других тональных генераторов. Они тоже должны перестать угадывать ноту и начать принимать currentChord.
+Задача: Интегрировать ghostHarmonyTrack в основной цикл движка и заставить "музыкантов" играть по новым правилам.
+
+Шаг 3.1: Добавление "Скелета" в Движок.
+
+Действие: Откройте src/lib/fractal-music-engine.ts.
+Код: Добавьте новое свойство в класс FractalMusicEngine.
+// src/lib/fractal-music-engine.ts
+
+export class FractalMusicEngine {
+  // ... (существующие свойства)
+  private ghostHarmonyTrack: GhostChord[] = []; // Наше новое свойство!
+  // ...
+}
+
+
+Шаг 3.2: Инициализация Гармонии.
+
+Действие: В том же файле найдите метод initialize().
+Код: Добавьте вызов нашего нового генератора в начало метода.
+// src/lib/fractal-music-engine.ts -> initialize()
+
+private initialize() {
+    this.random = seededRandom(this.config.seed ?? Date.now());
+    
+    // !!! ГЕНЕРИРУЕМ СКЕЛЕТ ОДИН РАЗ НА ВСЮ СЬЮИТУ !!!
+    // Для totalBars и key пока используем заглушки, позже их можно брать из блюпринта
+    this.ghostHarmonyTrack = generateGhostHarmonyTrack(200, this.config.mood, 60); // 200 тактов, от ноты До (60)
+    
+    // Проверка на отказ
+    if (this.ghostHarmonyTrack.length === 0) {
+        throw new Error("[Engine] КРИТИЧЕСКАЯ ОШИБКА: Не удалось сгенерировать 'Призрачную Гармонию'. Музыка невозможна.");
+    }
+
+    this.nextWeatherEventEpoch = this.random.nextInt(12) + 8;
+    // ... (остальной код initialize)
+}
+
+
+Шаг 3.3: Модификация Главного Цикла (generateOneBar).
+
+Действие: В том же файле найдите метод generateOneBar. Это сердце всей системы.
+Код: Внесите ключевые изменения.
+// src/lib/fractal-music-engine.ts -> generateOneBar()
+
+private generateOneBar(barDuration: number): { events: FractalEvent[], instrumentHints: InstrumentHints } {
+  // ...
+  const output: FractalEvent[] = [];
+  
+  // !!! ШАГ 1: НАЙТИ ТЕКУЩИЙ АККОРД В "СКЕЛЕТЕ" !!!
+  const currentChord = this.ghostHarmonyTrack.find(chord => 
+      this.epoch >= chord.bar && this.epoch < chord.bar + chord.durationBars
+  );
+
+  // Проверка на отказ
+  if (!currentChord) {
+      console.error(`[Engine] КРИТИЧЕСКАЯ ОШИБКА в такте ${this.epoch}: Не найден аккорд в 'Призрачной Гармонии'.`);
+      // Можно либо остановить музыку, либо пропустить такт
+      return { events: [], instrumentHints: {} }; 
+  }
+
+  // Центральный лог для отладки!
+  console.log(`%c[Bar ${this.epoch}] Chord: ${currentChord.rootNote} ${currentChord.chordType}`, "color: violet;");
+
+  // --- ACCOMPANIMENT & HARMONY (Теперь работает от currentChord) ---
+  // Вместо старой логики, теперь мы делаем так:
+  // (Этот код должен быть внутри проверки, разрешен ли аккомпанемент блюпринтом)
+  
+  const technique = getAccompanimentTechnique(/*...*/); // Ваша логика выбора техники
+  const accompPhrase = this.generateAccompanimentForPhrase(currentChord, technique);
+  output.push(...accompPhrase);
+
+  // --- BASS (Теперь тоже работает от currentChord) ---
+  // (Этот код должен быть внутри проверки, разрешен ли бас блюпринтом)
+  // const bassPhrase = generateBassPhrase(currentChord, ...);
+  // output.push(...bassPhrase);
+
+  // ... (остальная логика)
+  return { events: output, instrumentHints };
+}
+
+
+Контроль: Запустите приложение. В консоли вы должны четко видеть последовательность логов: [Harmony] ..., а затем, на каждый такт: [Bar X] Chord: Y Z и [Accomp] Генерация.... Если это так — вы успешно собрали основной механизм.
+Задача: Добавить возможность генерировать, но не проигрывать партии. Это уровень аранжировки, а не генерации.
+
+Шаг 4.1: Определяем, где происходит "заглушение".
+
+Логика: Глушить партию нужно на самом последнем этапе — перед отправкой нот в синтезатор. accompaniment-synth-manager.ts (и другие менеджеры) — идеальное место.
+Действие: Откройте src/lib/accompaniment-synth-manager.ts.
+Шаг 4.2: Модификация планировщика (schedule).
+
+Действие: Найдите метод schedule.
+Код: Добавьте проверку на instrumentHint в самом начале.
+// src/lib/accompaniment-synth-manager.ts -> schedule()
+
+public schedule(events: FractalEvent[], barStartTime: number, tempo: number, instrumentHint?: AccompanimentInstrument | 'none') { // Добавляем 'none' в тип
+    
+    // !!! НАШ НОВЫЙ КОД !!!
+    if (instrumentHint === 'none') {
+        console.log(`[AccompManager] Партия получена, но заглушена по команде 'none'. Планирование отменено.`);
+        return; // Просто выходим из функции, ничего не делая.
+    }
+
+    if (!this.isInitialized) {
+        // ... (остальной код)
+    }
+    
+    const instrumentToPlay = instrumentHint || this.activeInstrumentName;
+    // ...
+}
+
+
+Действие 2: Чтобы передать этот hint, его нужно получить в ambient.worker.ts из блюпринта и добавить в scorePayload, а затем распаковать в основном потоке и передать в schedule.
+Контроль Финальной Сборки:
+
+Откройте блюпринт (например, EmeraldDriftBlueprint из src/lib/blueprints.ts).
+В секции INTRO установите для баса hint: 'none'.
+Запустите приложение.
+Ожидаемый результат: В консоли вы увидите логи генерации басовой партии от fractal-music-engine, но затем лог от BassSynthManager: "Партия получена, но заглушена...". Звука баса в интро не будет. В следующей секции, где hint не указан, бас зазвучит.
+Поздравляю. "Автомат" собран. Он стал сложнее, но его поведение теперь на 100% предсказуемо и управляемо. Вы получили полный контроль над гармонической структурой, не пожертвовав при этом эволюционными возможностями движка.
+
+###Часть 2###
+Короткий вывод
+Вы в яблочко: «блюпринт — русло», «движок — поток», а «Призрачная гармония» — скрытый каркас, который даёт целостность. Это решает главную боль: одна опорная партия, не зависящая от того, кто сейчас слышим. Я бы закрепил это архитектурно как «Ghost Conductor»: невидимый много‑дорожечный план, где ghostHarmony — главный трек, а рядом идут ещё несколько «скрытых линий», чтобы партии синхронно дышали (ниже).
+
+Что улучшить и почему
+- вот здесь «ghostHarmonyTrack только из корней и простых типов аккордов» потому что для эмбиента важны мягкие качества (m9/m11/sus/add9), инверсии и плавный voice-leading; если изменить на «расширенный тип аккорда с mode/degree/quality/extensions/inversion и подсказками регистра» то будет лучше, потому что рендер аккомп/мелодии/баса станет музыкальным, предсказуемым и узнаваемым по «почерку».
+- вот здесь «генерация по фиксированной прогрессии и длительности 4 такта» потому что форма станет «блоковой» и скучной; если изменить на «грамматику переходов по Mood/Mode (веса для i, iv, bVII, v и т. п.) и распределения длительностей 2/4/8 (редко 1)» то будет лучше, потому что появится естественная волна, плато и мягкие повороты.
+- вот здесь «каждый такт find текущего аккорда в массиве» потому что это и медленнее, и даёт шанс на пограничные баги; если изменить на «индекс bar→chordIdx и курсор» то будет лучше, потому что доступ будет O(1), а поведение — стабильнее в длинных сессиях.
+- вот здесь «генераторы сами выводят аккорд из баса/ладов» потому что это ломает единую структуру; если изменить на «все генераторы принимают currentChord и/или ghost‑подсказки» то будет лучше, потому что исчезнет расхождение между партиями.
+
+Предложение: Ghost Conductor (минимально необходимый набор «призрачных» дорожек)
+- ghostHarmonyTrack — основной скелет (аккорды с длительностями).
+- ghostContourTrack — верхняя «псевдомелодия» (топ‑голос, невидимая линия: куда движется верх).
+- ghostPedalTrack — план фундаментов: где педаль 1/5, где переходы (если бас молчит — он всё равно «знает» опору).
+- ghostDensityTrack — желаемая плотность событий по барам (ориентир для sparsify/condense).
+- ghostBridgePlan — точки мостов (межчастевые/межсютные) и их типы (pivot/step/fifth/modal‑mix).
+
+Важно: слышим мы только «живых» музыкантов, но все они читают один и тот же Ghost Conductor. Это и есть ваша «опорная партия».
+
+Спецификация типов (совместимо с вашим ТЗ, расширяет его)
+src/types/fractal.ts
+```ts
+export type ScaleMode =
+  | 'ionian' | 'dorian' | 'phrygian' | 'lydian'
+  | 'mixolydian' | 'aeolian' | 'locrian'
+
+export type ChordQuality = 'maj'|'min'|'sus2'|'sus4'|'dim'
+export type Seventh = 'maj7'|'min7'|null
+
+/** Расширенный призрачный аккорд (скелет). */
+export type GhostChord = {
+  keyMidi: number              // тоника сьюиты, например 62 = D
+  mode: ScaleMode              // лад сьюиты или локальный (если секция переключает)
+  degree: 0|1|2|3|4|5|6        // 0=i/I, 3=iv/IV, 6=bVII...
+  quality: ChordQuality        // базовое качество
+  seventh: Seventh             // 7-я
+  add9?: boolean
+  add11?: boolean
+  sharp11?: boolean            // для Lydian-подсветок
+  inversion?: 0|1|2            // инверсии для мягкого ведения голосов
+  registerHint?: 'low'|'mid'|'high'
+  bar: number                  // стартовый бар
+  durationBars: number         // длительность
+  tags?: string[]              // 'plateau' | 'pivot' | 'bridge' | 'color' ...
+}
+
+/** Индексированная гармония для O(1) доступа. */
+export type GhostHarmonyTrack = {
+  chords: GhostChord[]
+  barIndex: Int16Array         // длиной totalBars, хранит индекс аккорда
+  totalBars: number
+}
+
+/** Невидимые подсказки формы. */
+export type GhostConductor = {
+  harmony: GhostHarmonyTrack
+  contour?: number[]           // top-voice midi per bar (опционально)
+  pedalPlan?: ('root'|'fifth'|'pass')[] // опора баса по барам
+  densityPlan?: number[]       // 0..1 «желаемая плотность» по барам
+  bridges?: { bar: number, kind: 'pivot'|'step'|'fifth'|'modal', spanBars: number }[]
+}
+```
+
+Утилиты лада/ступеней и voicing
+src/lib/music-theory.ts
+```ts
+export const MODE_SEMITONES: Record<ScaleMode, number[]> = {
+  ionian:[0,2,4,5,7,9,11], dorian:[0,2,3,5,7,9,10], phrygian:[0,1,3,5,7,8,10],
+  lydian:[0,2,4,6,7,9,11], mixolydian:[0,2,4,5,7,9,10], aeolian:[0,2,3,5,7,8,10], locrian:[0,1,3,5,6,8,10]
+}
+export function degreeToMidi(key:number, mode:ScaleMode, degree:number, oct=0){
+  return key + MODE_SEMITONES[mode][degree%7] + 12*oct
+}
+
+export function defaultQualityForDegree(mode:ScaleMode, degree:number){
+  // Мягкая эмбиентная грамматика (пример для Dorian/Aeolian)
+  if (mode==='dorian') return [
+    {quality:'min', seventh:'min7', add9:true},      // i
+    {quality:'min', seventh:'min7'},                 // ii
+    {quality:'maj', seventh:'maj7', add9:true},      // bIII (редкий «просвет»)
+    {quality:'min', seventh:'min7', add11:true},     // iv
+    {quality:'min', seventh:'min7', add11:true},     // v
+    {quality:'maj', seventh:'maj7', add9:true},      // VI
+    {quality:'sus2', seventh:null, add9:true},       // bVII
+  ][degree]
+  if (mode==='aeolian') return [
+    {quality:'min', seventh:'min7', add9:true},      // i
+    {quality:'dim', seventh:'min7'},                 // ii°
+    {quality:'maj', seventh:'maj7', add9:true},      // bIII
+    {quality:'min', seventh:'min7', add11:true},     // iv
+    {quality:'min', seventh:'min7', add11:true},     // v
+    {quality:'maj', seventh:'maj7', add9:true},      // bVI
+    {quality:'sus2', seventh:null, add9:true},       // bVII
+  ][degree]
+  return {quality:'min', seventh:'min7'}
+}
+
+export function realizeGhostChord(
+  chord: GhostChord, opts:{bassOct?:number, topMidi?:number, spread?:'open'|'close'|'drop2'}={}
+){
+  const root = degreeToMidi(chord.keyMidi, chord.mode, chord.degree, opts.bassOct ?? 1)
+  const isMin = chord.quality==='min' || chord.quality==='dim'
+  const third = isMin?3:4
+  const fifth = chord.quality==='dim'?6:7
+  let pcs = [0, third, fifth]
+  if (chord.seventh==='min7') pcs.push(10)
+  if (chord.seventh==='maj7') pcs.push(11)
+  if (chord.add9) pcs.push(14)
+  if (chord.add11) pcs.push(17)
+  if (chord.sharp11) pcs.push(18)
+  for(let i=0;i<(chord.inversion??0);i++) pcs.push(pcs.shift()!+12)
+  let stack = pcs.map(semi=>root+12+semi)         // подняли на октаву
+  if (opts.spread==='drop2' && stack.length>=3) stack[1]-=12
+  if (opts.spread==='open'){ for(let i=0;i<stack.length;i++) if(i%2===0) stack[i]+=12 }
+  const top = opts.topMidi ?? (chord.keyMidi+76)
+  while(Math.max(...stack)>top) stack = stack.map(n=>n-12)
+  while(Math.max(...stack)<top-12) stack = stack.map(n=>n+12)
+  return { bass: root, voicing: stack }
+}
+```
+
+Генератор «скелета» (грамматика + длительности + мосты)
+- Правила переходов по Mood/Mode (веса): напр. для Dorian — i↔iv, i↔bVII, редкий ход к v, возвращение к i.
+- Длительности: выбор из {2,4,8} по весам секции (Establish/Bloom/Plateau/Release).
+- Мосты: каждые N баров секций вставляем tags: 'pivot' и при смене сьюты строим bridge по типу (pivot/step/fifth/modal) на 4–8 тактов.
+
+Псевдокод
+```ts
+export function generateGhostHarmonyTrack(totalBars:number, mood:Mood, key:number, mode:ScaleMode): GhostHarmonyTrack {
+  const chords:GhostChord[]=[]
+  const barIndex = new Int16Array(totalBars).fill(-1)
+  let bar=0, degree:0|1|2|3|4|5|6=0
+  while(bar<totalBars){
+    const dur = pickDuration(mood)             // 2/4/8 с весами
+    const def = defaultQualityForDegree(mode, degree)
+    const gc:GhostChord = { keyMidi:key, mode, degree, ...def, inversion:0, registerHint:'mid', bar, durationBars:Math.min(dur,totalBars-bar), tags:['plateau'] }
+    const idx=chords.length
+    for(let b=0;b<gc.durationBars;b++) barIndex[bar+b]=idx
+    chords.push(gc); bar+=gc.durationBars
+    degree = nextDegreeByGrammar(mode, degree, mood) // i→iv/bVII/v→i по весам
+  }
+  // Пометим границы частей/мосты (получите их из блюпринта)
+  return { chords, barIndex, totalBars }
+}
+```
+
+Интеграция с блюпринтом и движком
+- Blueprint (Архитектор):
+  - Sections: INTRO/BUILD/MAIN/OUTRO… с полями: mode/center (если отличаются), instrumentation, techniqueHints, density targets, bridgePolicy (тип мостов).
+- Worker.tick:
+  - currentSection = blueprint.byBar(epoch)
+  - engine.evolve(barDuration, epoch, currentSection) — передаём правила секции.
+- FractalMusicEngine:
+  - initialize(): создаёт GhostConductor (harmony + планы), кеширует barIndex, хранит ghostCursor.
+  - generateOneBar(): 
+    - chord = ghost.harmony.chords[ghost.harmony.barIndex[epoch]]
+    - Для каждого разрешённого инструмента:
+      - Accomp: realizeGhostChord → voicing policy (open/drop2) → render long‑chords/choral/arp.
+      - Bass: опирается на ghost.pedalPlan или chord.root/inversion; педали/подводы; если секция запрещает бас — формируем, но глушим по hint.
+      - Melody: контур из ghostContour (если есть) или scale‑орнамент вокруг voicing top; интервалы 3/6 приоритетно; никаких унисонов.
+      - Perc: ориентируется на ghostDensity; на мостах — разные филлы.
+
+Почему это решает «опорную партию»
+- В любой момент времени существует единый ненулевой контекст: chord + (опционально) pedal/contour/density/bridge. Даже если бас молчит и нет перкуссий, аккомпанемент и мелодия «смотрят» в один «скелет». Когда в кадр возвращается бас/перкуссии — они продолжают ту же линию опоры (root/5/переходы), не вступая «с нуля».
+
+Мосты (межчастевые и межсютные)
+- part‑bridge (2–4 такта):
+  - pivot: держим общую ступень 1/5, аккомп делает add9/11 следующей части; том‑swell 2 такта; ride — 1 штрих.
+  - step: b7→1 или 2→1 с контрдвижением верхнего голоса.
+  - fifth: 1→5→1 нового центра.
+- suite‑bridge (4–8 тактов):
+  - extended_pivot: 2 такта — общий тон; 2 такта — модальная смесь (напр. #11 для Lydian‑входа/ bII‑тень для Phrygian); 2–4 такта — фиксация нового центра (5→1), старая фактура затухает фильтром/уровнем.
+
+Изменения коду (минимально инвазивно)
+- types/fractal.ts: добавить расширенный GhostChord, GhostHarmonyTrack, GhostConductor.
+- music-theory.ts: MODE_SEMITONES, degreeToMidi, defaultQualityForDegree, realizeGhostChord, generateGhostHarmonyTrack (v2).
+- fractal-music-engine.ts:
+  - class: private ghost: GhostConductor
+  - initialize(): this.ghost = buildGhostConductorFromBlueprint(blueprint, mood, key)
+  - generateOneBar(): chord = ghost.harmony.byBar(epoch) → рендер партий от chord + hints секции.
+- accompaniment/bass generators: сигнатуры принимают currentChord (+секционные hints), используют realizeGhostChord; старые «угадыватели» удалить/заглушить.
+- managers.schedule(): поддерживать instrumentHint='none' (заглушка интро/частей).
+
+Метрики и QA
+- Логи: на старте — dump первых 10 аккордов (degree/quality/ext, dur); в рантайме — [Bar X] deg i/iv/… tags, section.
+- Метрики: 
+  - средняя длительность аккорда (ожидаем 3–6 тактов), 
+  - распределение ступеней (i ~40–50%, iv/bVII ~30–40%, v ~10–20% для Dorian/Aeolian),
+  - NoveltyRate по сменам аккордов/voicing,
+  - плавность топ‑голоса (если используете contour: средний шаг ≤ M3).
+- Аудит: 30–60 мин рендера — отсутствие функциональных V→i в «тёмных» пресетах, гармоническая связность при входах/выходах инструментов, отсутствие «голых» тактов (всегда есть хвост/перекрытие).
+
+Риски и как их закрыть
+- Слишком «ровная» гармония: добавьте редкие «цвета» (bIIImaj7(add9) в меланхолии) и варьируйте длительности 2/4/8 по частям.
+- Монотонный верх: введите ghostContour (мягкая линия top‑голоса) или хотя бы implicit rule «верхний голос меняется ≤ раз в 2–4 такта».
+- Перегруз мид‑полосы: динамический mid‑dip −1..−2 dB + лимит активных sustain‑слоёв ≤ 3–4 + короткие LPF‑окна на переходах.
+- Производительность: индекс barIndex + кеш voicing per (degree,inversion,registerHint) + без аллокаций в аудио‑пути.
+
+Если «моё ТЗ»
+Название: Ghost Conductor v2 — централизованный «скелет» (гармония + планы) и интерпретаторы партий
+- Цель: Ввести невидимый кондуктор (harmony + contour/pedal/density/bridges), переключить генераторы партий на интерпретацию текущего аккорда и секционных правил блюпринта. Сохранить эволюцию — в «как играть», а не «что играть».
+- DoD:
+  - GhostHarmonyTrack с O(1) доступом по бару; длительность ≥ 150 тактов; грамматика по Mood/Mode.
+  - Все тональные генераторы принимают currentChord; accompaniment/bass/melody/perc читают секционные hints.
+  - Межчастевые/межсютные мосты формируются согласно BridgePolicy блюпринта.
+  - 60–120 мин рендер без провалов, без «жёстких» V→i в тёмных/меланхоличных пресетах.
+- Этапы:
+  1) Типы/утилиты/реализация аккорда (2–3 дня).
+  2) Генерация «скелета» (грамматика + длительности) (2–3 дня).
+  3) Интеграция в движок и генераторы (3–5 дней).
+  4) BridgePolicy + интро‑policy (1–2 дня).
+  5) Тесты/метрики/полировка (2–3 дня).
+
+Итого
+- Блюпринт — задаёт «где» и «как интерпретировать» (инструменты/техники/плотность/моды).
+- Ghost Conductor — даёт «что сейчас звучит в основе» (аккорд/педаль/контур/мост).
+- Движок — эволюционирует внутри заданных рамок, но всегда «смотрит» в один скелет.
+
+Готов оформить это в PR‑патч: типы + генератор harmony v2 + realizeGhostChord + примеры интеграции в generateOneBar и вспомогательные рендер‑функции для аккомпа/баса/мелодии, а также минимальный BridgePolicy, чтобы межчастевые и межсютные переходы стали «цементом» всей формы.

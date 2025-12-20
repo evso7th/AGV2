@@ -1,0 +1,1584 @@
+# БЛЮПРИНТЫ AMBIENT: 7 НАСТРОЕНИЙ
+
+---
+
+## 1. DARK AMBIENT (Тёмный)
+
+### Общие параметры
+
+```typescript
+const DARK_AMBIENT_BLUEPRINT = {
+  id: 'dark_ambient',
+  name: 'Abyssal Descent',
+  mood: 'dark',
+  
+  // TIMING
+  timing: {
+    bpm: 40,                    // Самый медленный
+    suiteMinutes: 14,           // Дольше из-за медленного темпа
+    secondsPerBar: 6.0,         // (60/40)*4
+    barsPerMinute: 10,
+    totalBars: 140,
+    
+    introDuration: 90 * (52/40), // 117 секунд ≈ 19.5 тактов → 20
+    
+    partsDistribution: [
+      { part: 'INTRO',   bars: 20, percent: 14 },
+      { part: 'BUILD',   bars: 40, percent: 29 }, // Медленное нарастание
+      { part: 'MAIN',    bars: 50, percent: 36 }, // Долгая кульминация (давящая)
+      { part: 'RELEASE', bars: 20, percent: 14 },
+      { part: 'OUTRO',   bars: 10, percent: 7 }
+    ]
+  },
+  
+  // HARMONY
+  harmony: {
+    key: { root: 'C', scale: 'phrygian', octave: 2 }, // C Db Eb F G Ab Bb
+    
+    // Аккорды строятся от C Phrygian
+    chords: {
+      primary: [
+        { name: 'Cm', notes: ['C', 'Eb', 'G'], midi: [36, 39, 43], tension: 0.3 },
+        { name: 'Db', notes: ['Db', 'F', 'Ab'], midi: [37, 41, 44], tension: 0.5 }, // bII - характерная краска
+        { name: 'Fm', notes: ['F', 'Ab', 'C'], midi: [41, 44, 48], tension: 0.35 },
+        { name: 'Abmaj7', notes: ['Ab', 'C', 'Eb', 'G'], midi: [44, 48, 51, 55], tension: 0.4 }
+      ],
+      
+      secondary: [
+        { name: 'Cm7', notes: ['C', 'Eb', 'G', 'Bb'], midi: [36, 39, 43, 46], tension: 0.35 },
+        { name: 'Ebm', notes: ['Eb', 'Gb', 'Bb'], midi: [39, 42, 46], tension: 0.5 }, // out-of-scale для мрачности
+        { name: 'Gm7b5', notes: ['G', 'Bb', 'Db', 'F'], midi: [43, 46, 49, 53], tension: 0.75 } // уменьшенный
+      ],
+      
+      tension: [
+        { name: 'Cdim7', notes: ['C', 'Eb', 'Gb', 'A'], midi: [36, 39, 42, 45], tension: 0.9 }
+      ]
+    },
+    
+    // Прогрессии по частям (преимущественно нисходящие)
+    progressions: {
+      INTRO:   ['Cm', 'Cm', 'Fm', 'Cm'],              // Статика
+      BUILD:   ['Cm', 'Db', 'Abmaj7', 'Fm', 'Cm'],    // bII → движение вниз
+      MAIN:    ['Cm', 'Gm7b5', 'Db', 'Fm', 'Ebm'],    // Максимум диссонанса
+      RELEASE: ['Abmaj7', 'Fm', 'Db', 'Cm'],          // Разрешение вниз
+      OUTRO:   ['Cm']                                  // Только тоника
+    },
+    
+    // Гармоническое движение (85% нисходящее)
+    motion: {
+      ascending: 0.05,
+      descending: 0.85,
+      static: 0.10
+    }
+  },
+  
+  // VOICINGS (очень широкие, "пустые")
+  voicings: {
+    preferredType: 'ultra_open',    // Расстояние 2-3 октавы
+    voiceCount: { min: 2, max: 3 }, // Меньше голосов = мрачнее
+    spread: { min: 24, max: 36 },   // 2-3 октавы
+    
+    examples: {
+      'Cm_ultra_open':  [24, 39, 55], // C1 Eb2 G3 (3 октавы)
+      'Db_ultra_open':  [25, 41, 56], // Db1 F2 Ab3
+      'Fm_ultra_open':  [29, 44, 60]  // F1 Ab2 C4
+    }
+  },
+  
+  // BASS
+  bass: {
+    registerByPart: {
+      INTRO:   { min: 24, max: 36 }, // C1-C2 (суб-бас)
+      BUILD:   { min: 24, max: 40 }, // C1-E2
+      MAIN:    { min: 24, max: 43 }, // C1-G2
+      RELEASE: { min: 24, max: 38 },
+      OUTRO:   { min: 22, max: 30 }  // Bb0-F1 (глубже некуда)
+    },
+    
+    techniquesByPart: {
+      INTRO:   [{ technique: 'drone', weight: 0.9 }, { technique: 'pedal', weight: 0.1 }],
+      BUILD:   [{ technique: 'drone', weight: 0.6 }, { technique: 'pedal', weight: 0.4 }],
+      MAIN:    [{ technique: 'pedal', weight: 0.5 }, { technique: 'ostinato', weight: 0.3 }, { technique: 'drone', weight: 0.2 }],
+      RELEASE: [{ technique: 'drone', weight: 0.7 }, { technique: 'pedal', weight: 0.3 }],
+      OUTRO:   [{ technique: 'drone', weight: 1.0 }]
+    },
+    
+    densityByPart: {
+      INTRO:   0.25,  // Очень разрежено
+      BUILD:   0.40,
+      MAIN:    0.55,
+      RELEASE: 0.35,
+      OUTRO:   0.20
+    },
+    
+    envelopeByPart: {
+      INTRO:   { attack: 2500, decay: 1500, sustain: 0.9,  release: 8000 },  // Очень медленно
+      BUILD:   { attack: 1800, decay: 1000, sustain: 0.85, release: 6000 },
+      MAIN:    { attack: 1200, decay: 800,  sustain: 0.8,  release: 4000 },
+      RELEASE: { attack: 2000, decay: 1200, sustain: 0.85, release: 7000 },
+      OUTRO:   { attack: 3500, decay: 2000, sustain: 0.95, release: 12000 } // Бесконечное затухание
+    }
+  },
+  
+  // PAD
+  pad: {
+    techniquesByPart: {
+      INTRO:   [{ technique: 'sustained', weight: 0.8 }, { technique: 'swell', weight: 0.2 }],
+      BUILD:   [{ technique: 'sustained', weight: 0.6 }, { technique: 'swell', weight: 0.3 }, { technique: 'drone_layer', weight: 0.1 }],
+      MAIN:    [{ technique: 'sustained', weight: 0.5 }, { technique: 'tremolo', weight: 0.3 }, { technique: 'granular', weight: 0.2 }],
+      RELEASE: [{ technique: 'swell', weight: 0.6 }, { technique: 'sustained', weight: 0.4 }],
+      OUTRO:   [{ technique: 'sustained', weight: 1.0 }]
+    },
+    
+    densityByPart: {
+      INTRO:   0.50,
+      BUILD:   0.65,
+      MAIN:    0.75,
+      RELEASE: 0.60,
+      OUTRO:   0.40
+    }
+  },
+  
+  // DRUMS (минимум!)
+  drums: {
+    activeParts: ['BUILD', 'MAIN'], // Только в средине
+    
+    kit: [
+      { type: 'deep_tom', pattern: 'whole_notes', velocity: { min: 45, max: 60 }, probability: 0.3 },
+      { type: 'gong', pattern: 'rare_hits', velocity: { min: 50, max: 65 }, probability: 0.1 },
+      { type: 'industrial_clang', pattern: 'occasional', velocity: { min: 40, max: 55 }, probability: 0.15 }
+    ],
+    
+    densityByPart: {
+      BUILD: 0.15,  // Очень редко
+      MAIN:  0.25
+    }
+  },
+  
+  // LAYERS
+  layers: {
+    INTRO:   { bass: true,  pad: true,  arpeggio: false, melody: false, drums: false, sparkles: false, sfx: true },
+    BUILD:   { bass: true,  pad: true,  arpeggio: false, melody: false, drums: true,  sparkles: false, sfx: true },
+    MAIN:    { bass: true,  pad: true,  arpeggio: false, melody: false, drums: true,  sparkles: false, sfx: true },
+    RELEASE: { bass: true,  pad: true,  arpeggio: false, melody: false, drums: false, sparkles: false, sfx: true },
+    OUTRO:   { bass: true,  pad: false, arpeggio: false, melody: false, drums: false, sparkles: false, sfx: true }
+  },
+  
+  // MUTATIONS
+  mutations: {
+    microProbability: 0.25,   // Редко (статичность)
+    mediumProbability: 0.50,
+    allowedTranspositions: [0, 1, 3, 5], // Phrygian: 0, b2, b3, 4
+    microTypes: ['transpose', 'register_shift'], // Только простые
+    mediumTypes: ['inversion', 'augmentation']   // Замедление
+  },
+  
+  // FILLS
+  fills: {
+    bundle: { type: 'granular_freeze', duration: 2, probability: 0.4 },
+    part:   { type: 'reverb_burst',    duration: 4, probability: 0.7 }
+  },
+  
+  // ОСОБЕННОСТИ
+  unique: {
+    filterCutoff: { min: 0.25, max: 0.65 }, // Всегда приглушено
+    reverbSize: 1.0,                         // Максимальный реверб
+    subBassBoost: +3,                        // dB на 40-60 Hz
+    noiselevel: -40,                         // dB постоянного noise floor
+    
+    ambientEvents: [
+      { type: 'reverse_cymbal', probability: 0.03, activeParts: ['BUILD', 'MAIN'] },
+      { type: 'industrial_noise', probability: 0.02, activeParts: ['MAIN'] },
+      { type: 'breath_texture', probability: 0.05, activeParts: ['INTRO', 'BUILD', 'MAIN'] }
+    ]
+  }
+};
+```
+
+### Пример бандла: INTRO Bundle 1.1 (такты 1-10)
+
+```
+КОНЦЕПЦИЯ: Выход из тишины. Только суб-бас дрон + тёмный пад.
+
+Такт 1-4: Фраза A (Cm drone)
+-----------
+БАС (drone):
+  T1-4: C1 (24), whole note × 4, vel=50, attack=2500ms
+  
+  MIDI:
+  T1, beat 1.0: NoteOn C1(24), vel=50
+  T5, beat 1.0: NoteOff C1(24) (в следующей фразе)
+
+ПАД (sustained, ultra_open):
+  T1-2: молчит
+  T3-4: Cm (C1 Eb2 G3)
+    - C1 (24), vel=42, attack=2000ms
+    - Eb2 (39), vel=44, attack=2300ms (задержка 0.3s)
+    - G3 (55), vel=40, attack=2600ms (задержка 0.6s)
+  
+  MIDI:
+  T3, beat 1.0: NoteOn C1(24), vel=42
+  T3, beat 1.2: NoteOn Eb2(39), vel=44
+  T3, beat 1.4: NoteOn G3(55), vel=40
+  (держатся до T11)
+
+SFX (breath_texture):
+  T1-4: постоянный подлож, -38dB, HPF 2kHz
+
+
+Такт 5-10: Фраза B (Cm → Fm, медленный переход)
+-----------
+БАС (drone):
+  T5-7: C1 продолжается (tied)
+  T8-10: F1 (29), vel=52, глиссандо из C1 (pitch bend за 1 такт)
+  
+  MIDI:
+  T5: (C1 уже звучит)
+  T7, beat 4.0: Pitch Bend Start (0 → -700 cents за 6 секунд = 1 такт @ 40 BPM)
+  T8, beat 1.0: NoteOff C1; NoteOn F1(29), vel=52
+  T11, beat 1.0: NoteOff F1
+
+ПАД (sustained):
+  T5-7: Cm продолжается
+  T8, beat 1.0: кроссфейд в Fm (F1 Ab2 C4)
+    NoteOff Cm (с release 4s)
+    NoteOn Fm:
+    - F1 (29), vel=44
+    - Ab2 (44), vel=46
+    - C4 (60), vel=43
+  
+SFX:
+  T7-8: reverse_cymbal (probability roll = успех)
+    T7, beat 3.0: ReverseCymbal, vel=35, duration=6s (накрывает переход)
+
+
+ИТОГО Bundle 1.1:
+- 10 тактов (1 минута @ 40 BPM)
+- Гармония: Cm → Fm (только 2 аккорда за минуту!)
+- Движение баса: C1 → F1 (1 нота в 5 тактов)
+- Пад: 2-3 голоса, расстояние 2+ октавы
+- Плотность: ~25%
+```
+
+---
+
+## 2. GLOOMY AMBIENT (Мрачный)
+
+### Общие параметры
+
+```typescript
+const GLOOMY_AMBIENT_BLUEPRINT = {
+  id: 'gloomy_ambient',
+  name: 'Ashen Horizons',
+  mood: 'gloomy',
+  
+  timing: {
+    bpm: 46,
+    suiteMinutes: 13,
+    secondsPerBar: 5.217,  // (60/46)*4
+    barsPerMinute: 11.5,
+    totalBars: 150,
+    
+    introDuration: 90 * (52/46), // 101 сек ≈ 19.4 → 20 тактов
+    
+    partsDistribution: [
+      { part: 'INTRO',   bars: 20, percent: 13 },
+      { part: 'BUILD',   bars: 48, percent: 32 },
+      { part: 'MAIN',    bars: 46, percent: 31 },
+      { part: 'RELEASE', bars: 24, percent: 16 },
+      { part: 'OUTRO',   bars: 12, percent: 8 }
+    ]
+  },
+  
+  harmony: {
+    key: { root: 'A', scale: 'aeolian', octave: 2 }, // A B C D E F G (натуральный минор)
+    
+    chords: {
+      primary: [
+        { name: 'Am7', notes: ['A', 'C', 'E', 'G'], midi: [33, 36, 40, 43], tension: 0.25 },
+        { name: 'Dm7', notes: ['D', 'F', 'A', 'C'], midi: [38, 41, 45, 48], tension: 0.30 },
+        { name: 'Fmaj7', notes: ['F', 'A', 'C', 'E'], midi: [41, 45, 48, 52], tension: 0.35 },
+        { name: 'Em7', notes: ['E', 'G', 'B', 'D'], midi: [40, 43, 47, 50], tension: 0.40 }
+      ],
+      
+      secondary: [
+        { name: 'Cmaj7', notes: ['C', 'E', 'G', 'B'], midi: [36, 40, 43, 47], tension: 0.45 },
+        { name: 'G', notes: ['G', 'B', 'D'], midi: [43, 47, 50], tension: 0.50 },
+        { name: 'Am9', notes: ['A', 'C', 'E', 'G', 'B'], midi: [33, 36, 40, 43, 47], tension: 0.30 }
+      ],
+      
+      tension: [
+        { name: 'Bdim', notes: ['B', 'D', 'F'], midi: [35, 38, 41], tension: 0.75 }
+      ]
+    },
+    
+    progressions: {
+      INTRO:   ['Am7', 'Am7', 'Dm7', 'Am7'],
+      BUILD:   ['Am7', 'Dm7', 'Fmaj7', 'Em7', 'Am7'],
+      MAIN:    ['Am7', 'Em7', 'Fmaj7', 'Dm7', 'Cmaj7', 'Am7'],
+      RELEASE: ['Fmaj7', 'Dm7', 'Em7', 'Am7'],
+      OUTRO:   ['Am7']
+    },
+    
+    motion: {
+      ascending: 0.15,
+      descending: 0.65,  // Преимущественно вниз
+      static: 0.20
+    }
+  },
+  
+  voicings: {
+    preferredType: 'open',
+    voiceCount: { min: 3, max: 4 },
+    spread: { min: 14, max: 26 },
+    
+    examples: {
+      'Am7_open':  [33, 40, 48, 55], // A1 E2 C3 G3
+      'Dm7_open':  [38, 45, 53, 60], // D2 A2 F3 C4
+      'Fmaj7_open': [41, 48, 56, 64] // F2 C3 Ab3 E4
+    }
+  },
+  
+  bass: {
+    registerByPart: {
+      INTRO:   { min: 28, max: 40 }, // E1-E2
+      BUILD:   { min: 28, max: 45 },
+      MAIN:    { min: 28, max: 50 },
+      RELEASE: { min: 28, max: 43 },
+      OUTRO:   { min: 26, max: 36 }
+    },
+    
+    techniquesByPart: {
+      INTRO:   [{ technique: 'pedal', weight: 0.75 }, { technique: 'drone', weight: 0.25 }],
+      BUILD:   [{ technique: 'pedal', weight: 0.5 }, { technique: 'ostinato', weight: 0.35 }, { technique: 'drone', weight: 0.15 }],
+      MAIN:    [{ technique: 'ostinato', weight: 0.5 }, { technique: 'walking', weight: 0.3 }, { technique: 'pedal', weight: 0.2 }],
+      RELEASE: [{ technique: 'pedal', weight: 0.6 }, { technique: 'drone', weight: 0.4 }],
+      OUTRO:   [{ technique: 'drone', weight: 0.8 }, { technique: 'pedal', weight: 0.2 }]
+    },
+    
+    densityByPart: {
+      INTRO:   0.30,
+      BUILD:   0.50,
+      MAIN:    0.65,
+      RELEASE: 0.45,
+      OUTRO:   0.25
+    },
+    
+    envelopeByPart: {
+      INTRO:   { attack: 1500, decay: 800,  sustain: 0.85, release: 4500 },
+      BUILD:   { attack: 900,  decay: 500,  sustain: 0.78, release: 3000 },
+      MAIN:    { attack: 600,  decay: 350,  sustain: 0.72, release: 2200 },
+      RELEASE: { attack: 1100, decay: 700,  sustain: 0.80, release: 4000 },
+      OUTRO:   { attack: 2200, decay: 1400, sustain: 0.90, release: 9000 }
+    }
+  },
+  
+  layers: {
+    INTRO:   { bass: true,  pad: true,  arpeggio: false, melody: false, drums: false, sparkles: false, sfx: true },
+    BUILD:   { bass: true,  pad: true,  arpeggio: true,  melody: false, drums: true,  sparkles: false, sfx: true },
+    MAIN:    { bass: true,  pad: true,  arpeggio: true,  melody: false, drums: true,  sparkles: true,  sfx: true },
+    RELEASE: { bass: true,  pad: true,  arpeggio: true,  melody: false, drums: false, sparkles: true,  sfx: true },
+    OUTRO:   { bass: true,  pad: false, arpeggio: false, melody: false, drums: false, sparkles: false, sfx: true }
+  },
+  
+  mutations: {
+    microProbability: 0.35,
+    mediumProbability: 0.65,
+    allowedTranspositions: [0, 2, 3, 5, 7], // Aeolian
+    microTypes: ['transpose', 'rhythmic_shift'],
+    mediumTypes: ['inversion', 'register_shift', 'retrograde']
+  },
+  
+  unique: {
+    filterCutoff: { min: 0.35, max: 0.75 },
+    reverbSize: 0.92,
+    character: 'холодный, дистанцированный, тяжёлый'
+  }
+};
+```
+
+---
+
+## 3. CALM AMBIENT (Спокойный)
+
+### Общие параметры
+
+```typescript
+const CALM_AMBIENT_BLUEPRINT = {
+  id: 'calm_ambient',
+  name: 'Still Waters',
+  mood: 'calm',
+  
+  timing: {
+    bpm: 54,
+    suiteMinutes: 11,
+    secondsPerBar: 4.444,
+    barsPerMinute: 13.5,
+    totalBars: 148,
+    
+    introDuration: 90 * (52/54), // 86.7 сек ≈ 19.5 → 20 тактов
+    
+    partsDistribution: [
+      { part: 'INTRO',   bars: 20, percent: 14 },
+      { part: 'BUILD',   bars: 44, percent: 30 },
+      { part: 'MAIN',    bars: 44, percent: 30 }, // Симметрия
+      { part: 'RELEASE', bars: 28, percent: 19 }, // Длиннее (растягиваем спокойствие)
+      { part: 'OUTRO',   bars: 12, percent: 8 }
+    ]
+  },
+  
+  harmony: {
+    key: { root: 'G', scale: 'mixolydian', octave: 3 }, // G A B C D E F (мажор с b7)
+    
+    chords: {
+      primary: [
+        { name: 'Gmaj7', notes: ['G', 'B', 'D', 'F#'], midi: [43, 47, 50, 54], tension: 0.15 }, // Светлый
+        { name: 'Cmaj7', notes: ['C', 'E', 'G', 'B'], midi: [48, 52, 55, 59], tension: 0.20 },
+        { name: 'Dsus4', notes: ['D', 'G', 'A'], midi: [50, 55, 57], tension: 0.25 },
+        { name: 'Am7', notes: ['A', 'C', 'E', 'G'], midi: [45, 48, 52, 55], tension: 0.30 }
+      ],
+      
+      secondary: [
+        { name: 'Em7', notes: ['E', 'G', 'B', 'D'], midi: [52, 55, 59, 62], tension: 0.25 },
+        { name: 'F', notes: ['F', 'A', 'C'], midi: [53, 57, 60], tension: 0.35 }, // bVII (mixolydian)
+        { name: 'Gadd9', notes: ['G', 'B', 'D', 'A'], midi: [43, 47, 50, 57], tension: 0.18 }
+      ]
+    },
+    
+    progressions: {
+      INTRO:   ['Gmaj7', 'Gmaj7', 'Cmaj7', 'Gmaj7'],
+      BUILD:   ['Gmaj7', 'Cmaj7', 'Dsus4', 'Am7', 'Gmaj7'],
+      MAIN:    ['Gmaj7', 'Em7', 'Cmaj7', 'Dsus4', 'Gadd9'],
+      RELEASE: ['Cmaj7', 'Am7', 'F', 'Gmaj7'],
+      OUTRO:   ['Gmaj7']
+    },
+    
+    motion: {
+      ascending: 0.30,   // Чуть больше вверх (спокойствие с надеждой)
+      descending: 0.40,
+      static: 0.30       // Много статики
+    }
+  },
+  
+  voicings: {
+    preferredType: 'balanced_open', // Не слишком широко, не слишком узко
+    voiceCount: { min: 3, max: 4 },
+    spread: { min: 12, max: 20 },
+    
+    examples: {
+      'Gmaj7_balanced': [43, 50, 59, 66], // G2 D3 B3 F#4
+      'Cmaj7_balanced': [48, 55, 64, 71], // C3 G3 E4 B4
+      'Dsus4_balanced': [50, 55, 62, 67]  // D3 G3 D4 G4
+    }
+  },
+  
+  bass: {
+    registerByPart: {
+      INTRO:   { min: 31, max: 43 }, // G1-G2
+      BUILD:   { min: 31, max: 48 },
+      MAIN:    { min: 31, max: 50 },
+      RELEASE: { min: 31, max: 45 },
+      OUTRO:   { min: 29, max: 40 }
+    },
+    
+    techniquesByPart: {
+      INTRO:   [{ technique: 'pedal', weight: 0.8 }, { technique: 'walking', weight: 0.2 }],
+      BUILD:   [{ technique: 'walking', weight: 0.5 }, { technique: 'pedal', weight: 0.3 }, { technique: 'ostinato', weight: 0.2 }],
+      MAIN:    [{ technique: 'walking', weight: 0.6 }, { technique: 'ostinato', weight: 0.4 }],
+      RELEASE: [{ technique: 'pedal', weight: 0.7 }, { technique: 'walking', weight: 0.3 }],
+      OUTRO:   [{ technique: 'pedal', weight: 0.9 }, { technique: 'drone', weight: 0.1 }]
+    },
+    
+    densityByPart: {
+      INTRO:   0.40,
+      BUILD:   0.60,
+      MAIN:    0.70,
+      RELEASE: 0.55,
+      OUTRO:   0.35
+    },
+    
+    envelopeByPart: {
+      INTRO:   { attack: 900,  decay: 450, sustain: 0.80, release: 2800 },
+      BUILD:   { attack: 600,  decay: 300, sustain: 0.75, release: 2000 },
+      MAIN:    { attack: 400,  decay: 250, sustain: 0.72, release: 1600 },
+      RELEASE: { attack: 800,  decay: 400, sustain: 0.78, release: 2500 },
+      OUTRO:   { attack: 1500, decay: 800, sustain: 0.85, release: 5000 }
+    }
+  },
+  
+  layers: {
+    INTRO:   { bass: true,  pad: true,  arpeggio: false, melody: false, drums: false, sparkles: true,  sfx: true },
+    BUILD:   { bass: true,  pad: true,  arpeggio: true,  melody: false, drums: true,  sparkles: true,  sfx: true },
+    MAIN:    { bass: true,  pad: true,  arpeggio: true,  melody: true,  drums: true,  sparkles: true,  sfx: true },
+    RELEASE: { bass: true,  pad: true,  arpeggio: true,  melody: false, drums: false, sparkles: true,  sfx: true },
+    OUTRO:   { bass: true,  pad: true,  arpeggio: false, melody: false, drums: false, sparkles: false, sfx: true }
+  },
+  
+  mutations: {
+    microProbability: 0.45,
+    mediumProbability: 0.70,
+    allowedTranspositions: [0, 2, 4, 5, 7, 9], // Mixolydian
+    microTypes: ['transpose', 'velocity_curve'],
+    mediumTypes: ['register_shift', 'voicing_change', 'inversion']
+  },
+  
+  unique: {
+    filterCutoff: { min: 0.55, max: 0.85 },     // Более открыто
+    reverbSize: 0.82,
+    character: 'теплый, обволакивающий, умиротворяющий',
+    
+    ambientEvents: [
+      { type: 'bell', probability: 0.08, activeParts: ['BUILD', 'MAIN', 'RELEASE'] },
+      { type: 'pad_swell', probability: 0.05, activeParts: ['INTRO', 'BUILD', 'MAIN'] },
+      { type: 'water_droplets', probability: 0.06, activeParts: ['INTRO', 'OUTRO'] }
+    ]
+  }
+};
+```
+
+### Пример бандла: BUILD Bundle 2.1 (такты 21-36, 16 тактов)
+
+```
+КОНЦЕПЦИЯ: Плавное пробуждение. Бас walking, пад устойчивый, арпеджио входит, лёгкие шейкеры.
+
+Такт 21-24: Фраза C (Gmaj7)
+-----------
+БАС (walking):
+  T21: G2 (43), quarter, vel=64
+       B1 (35), quarter, vel=62
+       D2 (38), quarter, vel=66
+       G2 (43), quarter, vel=64
+  
+  T22: F#2 (42), half, vel=65
+       D2 (38), half, vel=63
+  
+  T23-24: повтор T21-22
+  
+  MIDI (такт 21):
+  T21, beat 1.0: NoteOn G2(43), vel=64
+  T21, beat 1.85: NoteOff G2
+  T21, beat 2.0: NoteOn B1(35), vel=62
+  T21, beat 2.85: NoteOff B1
+  T21, beat 3.0: NoteOn D2(38), vel=66
+  T21, beat 3.85: NoteOff D2
+  T21, beat 4.0: NoteOn G2(43), vel=64
+  T22, beat 0.85: NoteOff G2
+
+ПАД (sustained, Gmaj7):
+  T21-24: G2 B2 D3 F#3 (balanced voicing)
+    - G2 (43), vel=58
+    - B2 (47), vel=60
+    - D3 (50), vel=62
+    - F#3 (54), vel=59
+  
+  MIDI:
+  T21, beat 1.0: NoteOn всех голосов
+  T25, beat 1.0: NoteOff (при смене аккорда)
+
+АРПЕДЖИО (slow_ascend, входит на 25% BUILD = такт 21):
+  Паттерн (половинные ноты): G3 B3 D4 F#4 G4 (восходящий)
+  T21: G3 B3
+  T22: D4 F#4
+  T23: G4 F#4 (обратно)
+  T24: D4 B4
+  
+  MIDI (такт 21):
+  T21, beat 1.0: NoteOn G3(55), vel=50
+  T21, beat 2.9: NoteOff G3
+  T21, beat 3.0: NoteOn B3(59), vel=52
+  T22, beat 0.9: NoteOff B3
+
+DRUMS (шейкер, входит на такте 21):
+  Паттерн: восьмые ноты, dropout 40%
+  T21: шейкер на долях 1, 1.5, 2.5, 3, 4 (выборочно)
+  
+SFX:
+  T22, beat 3.5: водяная капля (water_droplet), vel=32
+
+SPARKLES:
+  T23, beat 2.2: Bell D5(74), vel=38, reverb tail 5s
+
+
+Такт 25-28: Фраза D (Gmaj7 → Cmaj7)
+-----------
+БАС (walking):
+  T25-26: G2 → E2 → C2 → G2 (переход к C)
+  T27-28: C2 педаль (half notes)
+
+ПАД:
+  T25-26: Gmaj7 продолжается
+  T27, beat 1.0: кроссфейд в Cmaj7
+    NoteOff Gmaj7
+    NoteOn Cmaj7 (C3 E3 G3 B3)
+
+АРПЕДЖИО:
+  T25-28: смена паттерна на Cmaj7 (C4 E4 G4 B4)
+
+DRUMS:
+  Продолжают шейкер
+
+FILL (такт 28, beat 4):
+  Filter sweep: cutoff 65% → 80% за 1 такт
+
+
+ИТОГО Bundle 2.1:
+- 16 тактов (~1:11 @ 54 BPM)
+- Гармония: Gmaj7 → Cmaj7 → Dsus4 → Am7 (спокойная прогрессия)
+- Бас: walking (3-5 нот/такт), плавные скачки
+- Пад: 4 голоса, balanced voicing
+- Арпеджио: половинные ноты (медленно)
+- Drums: только шейкер, density 0.3
+- Плотность: ~60%
+```
+
+---
+
+## 4. DREAMY AMBIENT (Мечтательный)
+
+### Общие параметры
+
+```typescript
+const DREAMY_AMBIENT_BLUEPRINT = {
+  id: 'dreamy_ambient',
+  name: 'Celestial Drift',
+  mood: 'dreamy',
+  
+  timing: {
+    bpm: 58,
+    suiteMinutes: 11,
+    secondsPerBar: 4.138,
+    barsPerMinute: 14.5,
+    totalBars: 160,
+    
+    introDuration: 90 * (52/58), // 80.7 сек ≈ 19.5 → 20 тактов
+    
+    partsDistribution: [
+      { part: 'INTRO',   bars: 20, percent: 13 },
+      { part: 'BUILD',   bars: 48, percent: 30 },
+      { part: 'MAIN',    bars: 52, percent: 33 }, // Самая длинная (парение)
+      { part: 'RELEASE', bars: 28, percent: 17 },
+      { part: 'OUTRO',   bars: 12, percent: 7 }
+    ]
+  },
+  
+  harmony: {
+    key: { root: 'F', scale: 'lydian', octave: 3 }, // F G A B C D E (#4 = B)
+    
+    chords: {
+      primary: [
+        { name: 'Fmaj7#11', notes: ['F', 'A', 'C', 'E', 'B'], midi: [41, 45, 48, 52, 59], tension: 0.20 }, // Характерная краска
+        { name: 'Cmaj7', notes: ['C', 'E', 'G', 'B'], midi: [48, 52, 55, 59], tension: 0.15 },
+        { name: 'Gmaj7', notes: ['G', 'B', 'D', 'F#'], midi: [43, 47, 50, 54], tension: 0.22 },
+        { name: 'Dm7', notes: ['D', 'F', 'A', 'C'], midi: [50, 53, 57, 60], tension: 0.25 }
+      ],
+      
+      secondary: [
+        { name: 'Am7', notes: ['A', 'C', 'E', 'G'], midi: [45, 48, 52, 55], tension: 0.28 },
+        { name: 'Em7', notes: ['E', 'G', 'B', 'D'], midi: [52, 55, 59, 62], tension: 0.30 },
+        { name: 'Fmaj9', notes: ['F', 'A', 'C', 'E', 'G'], midi: [41, 45, 48, 52, 55], tension: 0.18 }
+      ]
+    },
+    
+    progressions: {
+      INTRO:   ['Fmaj7#11', 'Fmaj7#11', 'Cmaj7', 'Fmaj9'],
+      BUILD:   ['Fmaj7#11', 'Gmaj7', 'Cmaj7', 'Dm7', 'Fmaj7#11'],
+      MAIN:    ['Fmaj7#11', 'Am7', 'Gmaj7', 'Cmaj7', 'Em7', 'Fmaj9'],
+      RELEASE: ['Cmaj7', 'Gmaj7', 'Am7', 'Fmaj7#11'],
+      OUTRO:   ['Fmaj7#11']
+    },
+    
+    motion: {
+      ascending: 0.50,   // Половина вверх (парение)
+      descending: 0.25,
+      static: 0.25
+    }
+  },
+  
+  voicings: {
+    preferredType: 'shimmer_open', // Широкие + высокие регистры
+    voiceCount: { min: 4, max: 5 },
+    spread: { min: 18, max: 28 },
+    
+    examples: {
+      'Fmaj7#11_shimmer': [41, 52, 59, 64, 71], // F2 E3 B3 E4 B4
+      'Cmaj7_shimmer':    [48, 55, 64, 71, 76], // C3 G3 E4 B4 E5
+      'Gmaj7_shimmer':    [43, 54, 59, 66, 73]  // G2 F#3 B3 F#4 C#5
+    }
+  },
+  
+  bass: {
+    registerByPart: {
+      INTRO:   { min: 33, max: 45 }, // A1-A2 (выше чем обычно)
+      BUILD:   { min: 33, max: 50 },
+      MAIN:    { min: 33, max: 52 },
+      RELEASE: { min: 33, max: 48 },
+      OUTRO:   { min: 31, max: 43 }
+    },
+    
+    techniquesByPart: {
+      INTRO:   [{ technique: 'pedal', weight: 0.7 }, { technique: 'floating', weight: 0.3 }], // "floating" = редкие прыжки
+      BUILD:   [{ technique: 'floating', weight: 0.5 }, { technique: 'arpeggio_slow', weight: 0.3 }, { technique: 'pedal', weight: 0.2 }],
+      MAIN:    [{ technique: 'arpeggio_slow', weight: 0.5 }, { technique: 'melodic', weight: 0.3 }, { technique: 'floating', weight: 0.2 }],
+      RELEASE: [{ technique: 'pedal', weight: 0.6 }, { technique: 'floating', weight: 0.4 }],
+      OUTRO:   [{ technique: 'pedal', weight: 0.8 }, { technique: 'drone', weight: 0.2 }]
+    },
+    
+    densityByPart: {
+      INTRO:   0.35,
+      BUILD:   0.55,
+      MAIN:    0.65,
+      RELEASE: 0.50,
+      OUTRO:   0.30
+    },
+    
+    envelopeByPart: {
+      INTRO:   { attack: 1000, decay: 500,  sustain: 0.82, release: 3200 },
+      BUILD:   { attack: 700,  decay: 350,  sustain: 0.78, release: 2400 },
+      MAIN:    { attack: 500,  decay: 280,  sustain: 0.75, release: 2000 },
+      RELEASE: { attack: 900,  decay: 450,  sustain: 0.80, release: 3000 },
+      OUTRO:   { attack: 1800, decay: 1000, sustain: 0.88, release: 6000 }
+    }
+  },
+  
+  layers: {
+    INTRO:   { bass: true,  pad: true,  arpeggio: true,  melody: false, drums: false, sparkles: true,  sfx: true },
+    BUILD:   { bass: true,  pad: true,  arpeggio: true,  melody: true,  drums: true,  sparkles: true,  sfx: true },
+    MAIN:    { bass: true,  pad: true,  arpeggio: true,  melody: true,  drums: true,  sparkles: true,  sfx: true },
+    RELEASE: { bass: true,  pad: true,  arpeggio: true,  melody: false, drums: false, sparkles: true,  sfx: true },
+    OUTRO:   { bass: true,  pad: true,  arpeggio: false, melody: false, drums: false, sparkles: false, sfx: true }
+  },
+  
+  mutations: {
+    microProbability: 0.55,  // Чаще (живость)
+    mediumProbability: 0.80,
+    allowedTranspositions: [0, 2, 4, 6, 7, 9, 11], // Lydian (с #4)
+    microTypes: ['transpose', 'shimmer_add', 'velocity_curve'],
+    mediumTypes: ['voicing_change', 'register_shift', 'octave_doubling']
+  },
+  
+  unique: {
+    filterCutoff: { min: 0.65, max: 0.95 },  // Яркий
+    reverbSize: 0.95,                         // Очень большой
+    shimmerMix: 0.18,                         // Постоянный shimmer reverb
+    character: 'воздушный, парящий, светящийся',
+    
+    ambientEvents: [
+      { type: 'bell', probability: 0.12, activeParts: ['BUILD', 'MAIN', 'RELEASE'] },
+      { type: 'pad_swell', probability: 0.08, activeParts: ['INTRO', 'BUILD', 'MAIN'] },
+      { type: 'granular_freeze', probability: 0.04, activeParts: ['MAIN'] },
+      { type: 'shimmer_burst', probability: 0.06, activeParts: ['BUILD', 'MAIN'] } // Уникально
+    ]
+  }
+};
+```
+
+---
+
+## 5. JOYFUL AMBIENT (Весёлый)
+
+### Общие параметры
+
+```typescript
+const JOYFUL_AMBIENT_BLUEPRINT = {
+  id: 'joyful_ambient',
+  name: 'Golden Horizons',
+  mood: 'joyful',
+  
+  timing: {
+    bpm: 62,
+    suiteMinutes: 10,
+    secondsPerBar: 3.871,
+    barsPerMinute: 15.5,
+    totalBars: 155,
+    
+    introDuration: 90 * (52/62), // 75.5 сек ≈ 19.5 → 20 тактов
+    
+    partsDistribution: [
+      { part: 'INTRO',   bars: 20, percent: 13 },
+      { part: 'BUILD',   bars: 45, percent: 29 },
+      { part: 'MAIN',    bars: 50, percent: 32 },
+      { part: 'RELEASE', bars: 28, percent: 18 },
+      { part: 'OUTRO',   bars: 12, percent: 8 }
+    ]
+  },
+  
+  harmony: {
+    key: { root: 'C', scale: 'ionian', octave: 3 }, // C D E F G A B (чистый мажор)
+    
+    chords: {
+      primary: [
+        { name: 'Cmaj7', notes: ['C', 'E', 'G', 'B'], midi: [48, 52, 55, 59], tension: 0.10 },
+        { name: 'Fmaj7', notes: ['F', 'A', 'C', 'E'], midi: [53, 57, 60, 64], tension: 0.12 },
+        { name: 'Gmaj7', notes: ['G', 'B', 'D', 'F#'], midi: [55, 59, 62, 66], tension: 0.18 },
+        { name: 'Am7', notes: ['A', 'C', 'E', 'G'], midi: [57, 60, 64, 67], tension: 0.20 }
+      ],
+      
+      secondary: [
+        { name: 'Dm7', notes: ['D', 'F', 'A', 'C'], midi: [50, 53, 57, 60], tension: 0.22 },
+        { name: 'Em7', notes: ['E', 'G', 'B', 'D'], midi: [52, 55, 59, 62], tension: 0.24 },
+        { name: 'Cadd9', notes: ['C', 'E', 'G', 'D'], midi: [48, 52, 55, 62], tension: 0.08 },
+        { name: 'Gsus4', notes: ['G', 'C', 'D'], midi: [55, 60, 62], tension: 0.15 }
+      ]
+    },
+    
+    progressions: {
+      INTRO:   ['Cmaj7', 'Cadd9', 'Fmaj7', 'Cmaj7'],
+      BUILD:   ['Cmaj7', 'Am7', 'Fmaj7', 'Gmaj7', 'Cmaj7'],
+      MAIN:    ['Cmaj7', 'Em7', 'Am7', 'Fmaj7', 'Gsus4', 'Cmaj7'],
+      RELEASE: ['Fmaj7', 'Dm7', 'Gmaj7', 'Cmaj7'],
+      OUTRO:   ['Cmaj7']
+    },
+    
+    motion: {
+      ascending: 0.65,   // Преимущественно вверх (радость)
+      descending: 0.15,
+      static: 0.20
+    }
+  },
+  
+  voicings: {
+    preferredType: 'bright_open',
+    voiceCount: { min: 4, max: 5 },
+    spread: { min: 14, max: 24 },
+    
+    examples: {
+      'Cmaj7_bright': [48, 55, 64, 71, 76], // C3 G3 E4 B4 E5
+      'Fmaj7_bright': [53, 60, 69, 76, 81], // F3 C4 A4 E5 A5
+      'Gmaj7_bright': [55, 62, 71, 78, 83]  // G3 D4 B4 F#5 B5
+    }
+  },
+  
+  bass: {
+    registerByPart: {
+      INTRO:   { min: 36, max: 48 }, // C2-C3
+      BUILD:   { min: 36, max: 52 },
+      MAIN:    { min: 36, max: 55 },
+      RELEASE: { min: 36, max: 50 },
+      OUTRO:   { min: 34, max: 46 }
+    },
+    
+    techniquesByPart: {
+      INTRO:   [{ technique: 'walking', weight: 0.6 }, { technique: 'arpeggio_slow', weight: 0.4 }],
+      BUILD:   [{ technique: 'arpeggio_slow', weight: 0.5 }, { technique: 'walking', weight: 0.35 }, { technique: 'melodic', weight: 0.15 }],
+      MAIN:    [{ technique: 'melodic', weight: 0.5 }, { technique: 'arpeggio_fast', weight: 0.3 }, { technique: 'walking', weight: 0.2 }],
+      RELEASE: [{ technique: 'walking', weight: 0.6 }, { technique: 'pedal', weight: 0.4 }],
+      OUTRO:   [{ technique: 'pedal', weight: 0.7 }, { technique: 'drone', weight: 0.3 }]
+    },
+    
+    densityByPart: {
+      INTRO:   0.50,
+      BUILD:   0.70,
+      MAIN:    0.80,  // Высокая плотность
+      RELEASE: 0.60,
+      OUTRO:   0.40
+    },
+    
+    envelopeByPart: {
+      INTRO:   { attack: 600,  decay: 280, sustain: 0.75, release: 1800 },
+      BUILD:   { attack: 400,  decay: 200, sustain: 0.70, release: 1400 },
+      MAIN:    { attack: 250,  decay: 150, sustain: 0.68, release: 1200 },
+      RELEASE: { attack: 550,  decay: 260, sustain: 0.73, release: 1600 },
+      OUTRO:   { attack: 1200, decay: 600, sustain: 0.82, release: 3500 }
+    }
+  },
+  
+  layers: {
+    INTRO:   { bass: true,  pad: true,  arpeggio: true,  melody: false, drums: false, sparkles: true,  sfx: true },
+    BUILD:   { bass: true,  pad: true,  arpeggio: true,  melody: true,  drums: true,  sparkles: true,  sfx: true },
+    MAIN:    { bass: true,  pad: true,  arpeggio: true,  melody: true,  drums: true,  sparkles: true,  sfx: true },
+    RELEASE: { bass: true,  pad: true,  arpeggio: true,  melody: false, drums: true,  sparkles: true,  sfx: true },
+    OUTRO:   { bass: true,  pad: true,  arpeggio: false, melody: false, drums: false, sparkles: false, sfx: true }
+  },
+  
+  mutations: {
+    microProbability: 0.65,  // Часто (динамичность)
+    mediumProbability: 0.85,
+    allowedTranspositions: [0, 2, 4, 5, 7, 9, 11], // Ionian
+    microTypes: ['transpose', 'rhythmic_shift', 'velocity_curve', 'staccato_touch'],
+    mediumTypes: ['octave_doubling', 'voicing_change', 'register_shift', 'augmentation']
+  },
+  
+  unique: {
+    filterCutoff: { min: 0.75, max: 1.0 },   // Максимально открыто
+    reverbSize: 0.78,                         // Средний (не размывать радость)
+    brightness: +2,                           // dB на 8-12 kHz
+    character: 'светлый, энергичный, позитивный',
+    
+    ambientEvents: [
+      { type: 'bell', probability: 0.15, activeParts: ['BUILD', 'MAIN', 'RELEASE'] },
+      { type: 'sparkle_cascade', probability: 0.10, activeParts: ['MAIN'] }, // Уникально
+      { type: 'pad_swell', probability: 0.06, activeParts: ['BUILD', 'MAIN'] }
+    ]
+  }
+};
+```
+
+---
+
+## 6. ENTHUSIASTIC AMBIENT (Энтузиаст)
+
+### Общие параметры
+
+```typescript
+const ENTHUSIASTIC_AMBIENT_BLUEPRINT = {
+  id: 'enthusiastic_ambient',
+  name: 'Radiant Ascent',
+  mood: 'enthusiastic',
+  
+  timing: {
+    bpm: 68,              // Самый быстрый
+    suiteMinutes: 10,
+    secondsPerBar: 3.529,
+    barsPerMinute: 17,
+    totalBars: 170,
+    
+    introDuration: 90 * (52/68), // 68.8 сек ≈ 19.5 → 20 тактов
+    
+    partsDistribution: [
+      { part: 'INTRO',   bars: 20, percent: 12 },
+      { part: 'BUILD',   bars: 50, percent: 29 },
+      { part: 'MAIN',    bars: 60, percent: 35 }, // Самая длинная (энергия)
+      { part: 'RELEASE', bars: 28, percent: 16 },
+      { part: 'OUTRO',   bars: 12, percent: 7 }
+    ]
+  },
+  
+  harmony: {
+    key: { root: 'E', scale: 'lydian', octave: 3 }, // E F# G# A# B C# D# (#4 = A#)
+    
+    chords: {
+      primary: [
+        { name: 'Emaj7#11', notes: ['E', 'G#', 'B', 'D#', 'A#'], midi: [52, 56, 59, 63, 70], tension: 0.15 },
+        { name: 'Bmaj7', notes: ['B', 'D#', 'F#', 'A#'], midi: [59, 63, 66, 70], tension: 0.18 },
+        { name: 'C#m7', notes: ['C#', 'E', 'G#', 'B'], midi: [61, 64, 68, 71], tension: 0.22 },
+        { name: 'F#maj7', notes: ['F#', 'A#', 'C#', 'E#'], midi: [54, 58, 61, 65], tension: 0.20 }
+      ],
+      
+      secondary: [
+        { name: 'G#m7', notes: ['G#', 'B', 'D#', 'F#'], midi: [56, 59, 63, 66], tension: 0.25 },
+        { name: 'Amaj7', notes: ['A', 'C#', 'E', 'G#'], midi: [57, 61, 64, 68], tension: 0.28 },
+        { name: 'Emaj9', notes: ['E', 'G#', 'B', 'D#', 'F#'], midi: [52, 56, 59, 63, 66], tension: 0.12 }
+      ]
+    },
+    
+    progressions: {
+      INTRO:   ['Emaj7#11', 'Emaj9', 'Bmaj7', 'Emaj7#11'],
+      BUILD:   ['Emaj7#11', 'C#m7', 'Amaj7', 'Bmaj7', 'Emaj7#11'],
+      MAIN:    ['Emaj7#11', 'G#m7', 'C#m7', 'Amaj7', 'F#maj7', 'Bmaj7', 'Emaj9'],
+      RELEASE: ['Amaj7', 'F#maj7', 'Bmaj7', 'Emaj7#11'],
+      OUTRO:   ['Emaj7#11']
+    },
+    
+    motion: {
+      ascending: 0.75,   // Максимально вверх
+      descending: 0.10,
+      static: 0.15
+    }
+  },
+  
+  voicings: {
+    preferredType: 'ultra_bright_open',
+    voiceCount: { min: 5, max: 6 }, // Много голосов
+    spread: { min: 20, max: 32 },
+    
+    examples: {
+      'Emaj7#11_ultra': [52, 63, 70, 76, 82, 87], // E3 D#4 A#4 E5 A#5 D#6
+      'Bmaj7_ultra':    [59, 66, 73, 78, 85, 90], // B3 F#4 C#5 F#5 C#6 F#6
+      'C#m7_ultra':     [61, 68, 75, 80, 87, 92]  // C#4 G#4 D#5 G#5 D#6 G#6
+    }
+  },
+  
+  bass: {
+    registerByPart: {
+      INTRO:   { min: 40, max: 52 }, // E2-E3
+      BUILD:   { min: 40, max: 57 },
+      MAIN:    { min: 40, max: 59 },
+      RELEASE: { min: 40, max: 54 },
+      OUTRO:   { min: 38, max: 50 }
+    },
+    
+    techniquesByPart: {
+      INTRO:   [{ technique: 'arpeggio_slow', weight: 0.6 }, { technique: 'melodic', weight: 0.4 }],
+      BUILD:   [{ technique: 'melodic', weight: 0.5 }, { technique: 'arpeggio_fast', weight: 0.35 }, { technique: 'syncopated', weight: 0.15 }],
+      MAIN:    [{ technique: 'syncopated', weight: 0.5 }, { technique: 'melodic', weight: 0.3 }, { technique: 'arpeggio_fast', weight: 0.2 }],
+      RELEASE: [{ technique: 'melodic', weight: 0.6 }, { technique: 'walking', weight: 0.4 }],
+      OUTRO:   [{ technique: 'pedal', weight: 0.6 }, { technique: 'arpeggio_slow', weight: 0.4 }]
+    },
+    
+    densityByPart: {
+      INTRO:   0.55,
+      BUILD:   0.75,
+      MAIN:    0.85,  // Максимальная плотность
+      RELEASE: 0.65,
+      OUTRO:   0.45
+    },
+    
+    envelopeByPart: {
+      INTRO:   { attack: 400,  decay: 180, sustain: 0.72, release: 1200 },
+      BUILD:   { attack: 250,  decay: 120, sustain: 0.68, release: 900 },
+      MAIN:    { attack: 150,  decay: 80,  sustain: 0.65, release: 700 },
+      RELEASE: { attack: 350,  decay: 160, sustain: 0.70, release: 1000 },
+      OUTRO:   { attack: 800,  decay: 400, sustain: 0.78, release: 2500 }
+    }
+  },
+  
+  layers: {
+    INTRO:   { bass: true,  pad: true,  arpeggio: true,  melody: true,  drums: false, sparkles: true,  sfx: true },
+    BUILD:   { bass: true,  pad: true,  arpeggio: true,  melody: true,  drums: true,  sparkles: true,  sfx: true },
+    MAIN:    { bass: true,  pad: true,  arpeggio: true,  melody: true,  drums: true,  sparkles: true,  sfx: true },
+    RELEASE: { bass: true,  pad: true,  arpeggio: true,  melody: true,  drums: true,  sparkles: true,  sfx: true },
+    OUTRO:   { bass: true,  pad: true,  arpeggio: false, melody: false, drums: false, sparkles: false, sfx: true }
+  },
+  
+  mutations: {
+    microProbability: 0.75,  // Очень часто
+    mediumProbability: 0.90,
+    allowedTranspositions: [0, 2, 4, 6, 7, 9, 11], // Lydian
+    microTypes: ['transpose', 'rhythmic_shift', 'velocity_burst', 'staccato_touch', 'swing_add'],
+    mediumTypes: ['octave_doubling', 'polyrhythm', 'voicing_change', 'register_shift', 'harmonic_addition']
+  },
+  
+  unique: {
+    filterCutoff: { min: 0.85, max: 1.0 },   // Полностью открыто
+    reverbSize: 0.70,                         // Меньше (чёткость)
+    brightness: +3,                           // dB на высоких
+    swing: 0.08,                              // Лёгкий groove
+    character: 'яркий, энергичный, восторженный',
+    
+    ambientEvents: [
+      { type: 'bell', probability: 0.18, activeParts: ['BUILD', 'MAIN', 'RELEASE'] },
+      { type: 'sparkle_cascade', probability: 0.14, activeParts: ['MAIN'] },
+      { type: 'shimmer_burst', probability: 0.10, activeParts: ['BUILD', 'MAIN'] },
+      { type: 'ascending_run', probability: 0.08, activeParts: ['BUILD', 'MAIN'] } // Уникально
+    ]
+  }
+};
+```
+
+---
+
+## 7. NEUTRAL AMBIENT (Нейтральный)
+
+### Общие параметры
+
+```typescript
+const NEUTRAL_AMBIENT_BLUEPRINT = {
+  id: 'neutral_ambient',
+  name: 'Infinite Expanse',
+  mood: 'neutral',
+  
+  timing: {
+    bpm: 56,              // Средний
+    suiteMinutes: 12,
+    secondsPerBar: 4.286,
+    barsPerMinute: 14,
+    totalBars: 168,
+    
+    introDuration: 90 * (52/56), // 83.6 сек ≈ 19.5 → 20 тактов
+    
+    partsDistribution: [
+      { part: 'INTRO',   bars: 20, percent: 12 },
+      { part: 'BUILD',   bars: 52, percent: 31 },
+      { part: 'MAIN',    bars: 52, percent: 31 }, // Симметрия (нейтральность)
+      { part: 'RELEASE', bars: 32, percent: 19 },
+      { part: 'OUTRO',   bars: 12, percent: 7 }
+    ]
+  },
+  
+  harmony: {
+    key: { root: 'D', scale: 'ionian', octave: 3 }, // D E F# G A B C# (мажор)
+    
+    chords: {
+      primary: [
+        { name: 'Dmaj7', notes: ['D', 'F#', 'A', 'C#'], midi: [50, 54, 57, 61], tension: 0.20 },
+        { name: 'Gmaj7', notes: ['G', 'B', 'D', 'F#'], midi: [55, 59, 62, 66], tension: 0.22 },
+        { name: 'Amaj7', notes: ['A', 'C#', 'E', 'G#'], midi: [57, 61, 64, 68], tension: 0.25 },
+        { name: 'Bm7', notes: ['B', 'D', 'F#', 'A'], midi: [59, 62, 66, 69], tension: 0.28 }
+      ],
+      
+      secondary: [
+        { name: 'Em7', notes: ['E', 'G', 'B', 'D'], midi: [52, 55, 59, 62], tension: 0.30 },
+        { name: 'F#m7', notes: ['F#', 'A', 'C#', 'E'], midi: [54, 57, 61, 64], tension: 0.32 },
+        { name: 'Dadd9', notes: ['D', 'F#', 'A', 'E'], midi: [50, 54, 57, 64], tension: 0.18 }
+      ]
+    },
+    
+    progressions: {
+      INTRO:   ['Dmaj7', 'Dadd9', 'Gmaj7', 'Dmaj7'],
+      BUILD:   ['Dmaj7', 'Bm7', 'Gmaj7', 'Amaj7', 'Dmaj7'],
+      MAIN:    ['Dmaj7', 'Em7', 'Gmaj7', 'Amaj7', 'F#m7', 'Bm7', 'Dmaj7'],
+      RELEASE: ['Gmaj7', 'Em7', 'Amaj7', 'Dmaj7'],
+      OUTRO:   ['Dmaj7']
+    },
+    
+    motion: {
+      ascending: 0.35,   // Баланс
+      descending: 0.35,
+      static: 0.30
+    }
+  },
+  
+  voicings: {
+    preferredType: 'balanced',
+    voiceCount: { min: 3, max: 4 },
+    spread: { min: 12, max: 20 },
+    
+    examples: {
+      'Dmaj7_balanced': [50, 57, 66, 73], // D3 A3 F#4 C#5
+      'Gmaj7_balanced': [55, 62, 71, 78], // G3 D4 B4 F#5
+      'Amaj7_balanced': [57, 64, 73, 80]  // A3 E4 C#5 G#5
+    }
+  },
+  
+  bass: {
+    registerByPart: {
+      INTRO:   { min: 38, max: 50 }, // D2-D3
+      BUILD:   { min: 38, max: 54 },
+      MAIN:    { min: 38, max: 57 },
+      RELEASE: { min: 38, max: 52 },
+      OUTRO:   { min: 36, max: 48 }
+    },
+    
+    techniquesByPart: {
+      INTRO:   [{ technique: 'pedal', weight: 0.5 }, { technique: 'walking', weight: 0.3 }, { technique: 'ostinato', weight: 0.2 }],
+      BUILD:   [{ technique: 'walking', weight: 0.4 }, { technique: 'ostinato', weight: 0.35 }, { technique: 'pedal', weight: 0.25 }],
+      MAIN:    [{ technique: 'walking', weight: 0.45 }, { technique: 'melodic', weight: 0.3 }, { technique: 'ostinato', weight: 0.25 }],
+      RELEASE: [{ technique: 'pedal', weight: 0.5 }, { technique: 'walking', weight: 0.35 }, { technique: 'drone', weight: 0.15 }],
+      OUTRO:   [{ technique: 'pedal', weight: 0.6 }, { technique: 'drone', weight: 0.4 }]
+    },
+    
+    densityByPart: {
+      INTRO:   0.45,
+      BUILD:   0.65,
+      MAIN:    0.70,
+      RELEASE: 0.55,
+      OUTRO:   0.40
+    },
+    
+    envelopeByPart: {
+      INTRO:   { attack: 800,  decay: 400, sustain: 0.78, release: 2400 },
+      BUILD:   { attack: 500,  decay: 250, sustain: 0.73, release: 1700 },
+      MAIN:    { attack: 350,  decay: 200, sustain: 0.70, release: 1400 },
+      RELEASE: { attack: 650,  decay: 320, sustain: 0.75, release: 2000 },
+      OUTRO:   { attack: 1400, decay: 700, sustain: 0.83, release: 4500 }
+    }
+  },
+  
+  layers: {
+    INTRO:   { bass: true,  pad: true,  arpeggio: false, melody: false, drums: false, sparkles: true,  sfx: true },
+    BUILD:   { bass: true,  pad: true,  arpeggio: true,  melody: false, drums: true,  sparkles: true,  sfx: true },
+    MAIN:    { bass: true,  pad: true,  arpeggio: true,  melody: true,  drums: true,  sparkles: true,  sfx: true },
+    RELEASE: { bass: true,  pad: true,  arpeggio: true,  melody: false, drums: false, sparkles: true,  sfx: true },
+    OUTRO:   { bass: true,  pad: true,  arpeggio: false, melody: false, drums: false, sparkles: false, sfx: true }
+  },
+  
+  mutations: {
+    microProbability: 0.50,  // Средне
+    mediumProbability: 0.70,
+    allowedTranspositions: [0, 2, 4, 5, 7, 9, 11], // Ionian
+    microTypes: ['transpose', 'rhythmic_shift', 'velocity_curve'],
+    mediumTypes: ['inversion', 'register_shift', 'voicing_change', 'retrograde']
+  },
+  
+  unique: {
+    filterCutoff: { min: 0.60, max: 0.85 },
+    reverbSize: 0.85,
+    character: 'сбалансированный, универсальный, спокойный',
+    
+    ambientEvents: [
+      { type: 'bell', probability: 0.08, activeParts: ['BUILD', 'MAIN', 'RELEASE'] },
+      { type: 'pad_swell', probability: 0.05, activeParts: ['INTRO', 'BUILD', 'MAIN'] },
+      { type: 'water_droplets', probability: 0.04, activeParts: ['INTRO', 'OUTRO'] }
+    ]
+  }
+};
+```
+
+---
+
+## СВОДНАЯ ТАБЛИЦА ВСЕХ НАСТРОЕНИЙ
+
+```typescript
+// Для быстрого сравнения и выбора
+
+const MOOD_COMPARISON = {
+  dark: {
+    bpm: 40,
+    scale: 'phrygian',
+    motion: { asc: 0.05, desc: 0.85, stat: 0.10 },
+    density: { intro: 0.25, build: 0.40, main: 0.55, release: 0.35, outro: 0.20 },
+    character: 'мрачный, давящий, суб-бас',
+    uniqueTechniques: ['drone_dominant', 'ultra_wide_voicing', 'industrial_percussion']
+  },
+  
+  gloomy: {
+    bpm: 46,
+    scale: 'aeolian',
+    motion: { asc: 0.15, desc: 0.65, stat: 0.20 },
+    density: { intro: 0.30, build: 0.50, main: 0.65, release: 0.45, outro: 0.25 },
+    character: 'холодный, дистанцированный',
+    uniqueTechniques: ['pedal_ostinato_mix', 'wide_voicing']
+  },
+  
+  melancholic: {
+    bpm: 52,
+    scale: 'dorian',
+    motion: { asc: 0.20, desc: 0.60, stat: 0.20 },
+    density: { intro: 0.35, build: 0.60, main: 0.75, release: 0.50, outro: 0.35 },
+    character: 'задумчивый, интроспективный',
+    uniqueTechniques: ['walking_bass', 'open_voicing', 'melodic_fragments']
+  },
+  
+  calm: {
+    bpm: 54,
+    scale: 'mixolydian',
+    motion: { asc: 0.30, desc: 0.40, stat: 0.30 },
+    density: { intro: 0.40, build: 0.60, main: 0.70, release: 0.55, outro: 0.35 },
+    character: 'теплый, умиротворяющий',
+    uniqueTechniques: ['walking_bass', 'balanced_voicing', 'water_sfx']
+  },
+  
+  neutral: {
+    bpm: 56,
+    scale: 'ionian',
+    motion: { asc: 0.35, desc: 0.35, stat: 0.30 },
+    density: { intro: 0.45, build: 0.65, main: 0.70, release: 0.55, outro: 0.40 },
+    character: 'сбалансированный, универсальный',
+    uniqueTechniques: ['mixed_techniques', 'balanced_voicing']
+  },
+  
+  dreamy: {
+    bpm: 58,
+    scale: 'lydian',
+    motion: { asc: 0.50, desc: 0.25, stat: 0.25 },
+    density: { intro: 0.35, build: 0.55, main: 0.65, release: 0.50, outro: 0.30 },
+    character: 'воздушный, парящий, светящийся',
+    uniqueTechniques: ['floating_bass', 'shimmer_voicing', 'high_register']
+  },
+  
+  joyful: {
+    bpm: 62,
+    scale: 'ionian',
+    motion: { asc: 0.65, desc: 0.15, stat: 0.20 },
+    density: { intro: 0.50, build: 0.70, main: 0.80, release: 0.60, outro: 0.40 },
+    character: 'светлый, позитивный',
+    uniqueTechniques: ['melodic_bass', 'bright_voicing', 'sparkle_cascade']
+  },
+  
+  enthusiastic: {
+    bpm: 68,
+    scale: 'lydian',
+    motion: { asc: 0.75, desc: 0.10, stat: 0.15 },
+    density: { intro: 0.55, build: 0.75, main: 0.85, release: 0.65, outro: 0.45 },
+    character: 'яркий, энергичный, восторженный',
+    uniqueTechniques: ['syncopated_bass', 'ultra_bright_voicing', 'polyrhythm', 'ascending_runs']
+  }
+};
+```
+
+---
+
+## ИТОГО
+
+**Что готово:**
+✅ 8 полных блюпринтов (melancholic + 7 новых)  
+✅ Уникальные параметры для каждого настроения  
+✅ BPM диапазон: 40-68  
+✅ Лады: Phrygian, Aeolian, Dorian, Mixolydian, Ionian, Lydian  
+✅ Гармонические палитры для каждого  
+✅ Воисинги (от ultra_open до ultra_bright)  
+✅ Басовые техники по частям  
+✅ Правила мутаций  
+✅ Уникальные ambient events  
+✅ Детальные примеры бандлов (melancholic, calm)
+
+**Следующий шаг:**
+1. **Создать генератор блюпринтов** — функцию, которая принимает `MoodName` и возвращает готовый объект `MusicBlueprint`
+2. **Реализовать движок** для одного настроения (например, melancholic) с реальным MIDI-выходом
+3. **Масштабировать** на остальные 7
+
+**Или нужны дополнительные детали?** Например:
+- Конкретные MIDI-паттерны для каждого настроения?
+- Формулы для автоматического расчёта parameters (вместо хардкода)?
+- Примеры кода для генерации аксиом под каждый лад?
+
+Окей, идём по agreed-принципам. Ниже — 7 блюпринтов для ambient под настроения: dark, gloomy, calm, dreamy, joyful, enthusiastic, neutral. Формат единый: темпо‑масштабирование интро, гармония/воисинги, роль баса/перкуссий, иерархия фразы→бандлы→части→сюита, мутации и переходы, целевые метрики. Блюпринт = направление мыслей, не жёсткий шаблон: каждая сюита будет уникальна.
+
+Глобальные формулы (для всех блюпринтов)
+- Диапазон BPM: 40–64 (опорный BPM0 = 50)
+- Нормализующий фактор по темпу: f = clamp(BPM0 / BPM, 0.7, 1.5)
+- Время бара: Tbar = 240 / BPM (сек)
+- Длина сюиты: 10–15 мин (условно 140–200 тактов при BPM≈50)
+- Интро (в барах): bars_intro = clamp(round(INTRO_BASE × f), MIN_INTRO, MAX_INTRO) — значения BASE/MIN/MAX для каждого настроения ниже
+- Вступления (в барах от старта):
+  - Аккомп bed: бар 0 (тихо, LPF закрыт)
+  - Бас: enter_bass = clamp(round(2 × f) + BASS_SHIFT, 1, 6)
+  - Шейкер: enter_shaker = clamp(round(6 × f) + SHAKER_SHIFT, 3, bars_intro)
+  - Томы: enter_toms = enter_shaker + rand(2..4)
+  - Райд: enter_ride = bars_intro − 2
+- Запрет в интро: sparkles/sfx — off; допустим «air‑bed» −36..−40 dB как клей
+- Иерархия формы: фразы (1–4 такта) → бандлы (8–24) → части (2–4 бандла) → сюита
+- Переходы: мягкие филлы (том‑swell, ride‑wash, harmony bridge, bass pickup)
+- Guardrails: onset rate в коридоре 0.3–1.2/такт; активно ≤3–4 sustain‑слоёв; mid (200–500 Гц) контролируем −1..−2 dB; duck реверба при новых онсетах −1..−2 dB
+
+Обозначения гармонии (относительно тонцентра T)
+- i, iv, v, bII, bIII, bVI, bVII — ступени лада
+- Классы аккордов: m7/m9/m11, maj7/add9, sus2/sus4, add11 и т. п.
+- Примеры воисинга (общая форма): T–(терция или sus)–5–(b7/maj7)–(9/11)
+
+1) DARK (тёмное)
+Смысл: тяжесть, неподвижность, глубина. Минимум событий, низкий регистр, темный спектр.
+
+- Тональность/лад:
+  - Modes: Aeolian/Phrygian (70/30)
+  - Тонцентры: C/D/Eb/F (bias к низким)
+- Темпо‑интро:
+  - BPM: 40–52; INTRO_BASE=14; MIN/MAX=8/28
+  - Шифт вступлений: BASS_SHIFT=+1 (медленнее), SHAKER_SHIFT=+2 (позже обычного)
+- Гармоническая палитра:
+  - Aeolian: i(m9), iv(m11), bVImaj7(add9), bVII(add2), v(m7 add11)
+  - Phrygian: i(m7 add11), bIImaj7(add9), v(m7), bVII(sus2)
+  - Табу: яркие Maj кадансы, ведущая ступень; #11 — редко
+- Аккомпанемент:
+  - Тембр: орган с медленным Leslie или тёмный mellotron choir; LPF 7–9 кГц
+  - Воисинги: open, низкий верхний голос; предпочт. sus2/4 вместо терции
+  - Движение: большие sustain‑пласты 3–4 такта; дыхание фильтром/шириной
+- Бас:
+  - Педали T/5; проходы b2→1 (для Phrygian), b7→1 (для Aeolian)
+  - Длительности: wn преобладают; редкие hn‑подводы к сменам
+- Перкуссии:
+  - Шейкер появляется поздно; выпадения 40–50%; велосити 30–40
+  - Томы только на переходах (swell Euclid 5/16); райд — редчайший wash
+- Бандлы/части:
+  - mood_base_bundle ≈ 24 такта; 3 части (Establish 40%, Plateau 40%, Release 20%)
+- Микро‑мутации:
+  - LPF дип на 1 такт перед сменой; sus↔m3 (редко); octave‑дубли баса на финальной доле
+- Средние:
+  - Aeolian↔Phrygian на 1 бандл; регистр аккомпа вниз/вверх на октаву эпизодически; density −20..−30%
+- Глобальные:
+  - Новый тонцентр на квинту вниз/вверх; новые аксиомы, ещё темнее тембры
+- Переходы:
+  - Длинные harmony‑bridges на общей ноте/квинте; ride‑wash 1 такт; bass pickup 5→1 или b2→1
+- Целевые метрики:
+  - Onset rate 0.3–0.6; spectral tilt тёмный (−HF); reverb глуб. (0.7–0.8); sustain‑слои ≤3
+- MoodVector (рекомендация):
+  - density 0.25–0.35, registerBias −0.7, dynamics 0.35, spectralTilt −0.7, onsetRate 0.4, reverbDepth 0.75
+
+2) GLOOMY (мрачное)
+Смысл: холодная напряжённость, чуть больше движения чем DARK, но без «светлых» вспышек.
+
+- Тональность/лад:
+  - Modes: Phrygian/Dorian (60/40), центры: D/C/Eb/F
+- Темпо‑интро:
+  - BPM: 42–56; INTRO_BASE=13; MIN/MAX=8/24
+  - Шифты: BASS_SHIFT=+1, SHAKER_SHIFT=+1
+- Гармония:
+  - Phrygian: i(m7 add11), bIImaj7(add9), v(m7), bVII(sus2)
+  - Dorian: i(m9), iv(m11), bVII(add2), v(m7 add11)
+  - Допустимы мягкие кластеры 2‑х в верхних голосах (очень тихо)
+- Аккомпанемент:
+  - Орган или тёмные strings; воисинги с сусами, избегать яркой терции
+  - Мелкое «дыхание» верхнего голоса (полутон/тон туда‑обратно)
+- Бас:
+  - Педали T/5; короткие соседние b2/2 подходы; периодические wn→hn микс
+- Перкуссии:
+  - Шейкер умеренный (dropouts 30–40%); томы чаще на межбандловых переходах; ride в средней части
+- Бандлы/части:
+  - mood_base_bundle ≈ 20 тактов; 3–4 части (Establish, Motion, Plateau, Release)
+- Микро:
+  - add11 on/off; LPF ±0.8 кГц; панорама верхнего голоса ±8%
+- Средние:
+  - Регистровый сдвиг на октаву в одной части; modal mix Phrygian↔Dorian; density ±25%
+- Глобальные:
+  - Новый набор фраз с упором на bII/iv; тонцентр по квинтовому соседу
+- Переходы:
+  - Tom swell (чаще, чем в DARK), bass pickup b2→1 — «фирменный»
+- Метрики:
+  - Onset rate 0.4–0.9; spectral tilt тёмный; reverb глубокий (0.6–0.7)
+- MoodVector:
+  - density 0.3–0.4, registerBias −0.5, dynamics 0.4, spectralTilt −0.6, onsetRate 0.5, reverbDepth 0.65
+
+3) CALM (спокойствие)
+Смысл: устойчивое умиротворение. Светлее меланхолии, без драматизма.
+
+- Тональность/лад:
+  - Modes: Ionian/Lydian (50/50), центры: D/G/C/F
+- Темпо‑интро:
+  - BPM: 44–58; INTRO_BASE=11; MIN/MAX=6/20
+  - Шифты: BASS_SHIFT=0, SHAKER_SHIFT=0
+- Гармония:
+  - Ionian: Imaj9, IVmaj7(add9), vi(m7 add11), V(sus4/add2)
+  - Lydian: Imaj7(#11 add9), II(m7), V(sus2), VII(m7 b5 — очень редко и тихо)
+  - Избегать ярких доминант; сусы предпочтительнее
+- Аккомпанемент:
+  - Орган мягкий или strings pad; воисинги открытые, верх — мягкий
+  - Движение: sustain 2–3 такта, разреженные лёгкие арпеджио (редко)
+- Бас:
+  - T/5 педали; иногда 6→5→T «дышащий» ход
+- Перкуссии:
+  - Шейкер лёгкий (dropouts 30%); томы — только переходы; ride по желанию в середине
+- Бандлы/части:
+  - mood_base_bundle ≈ 16 тактов; 3 части (Establish, Bloom, Release)
+- Микро:
+  - add9 on/off; ширина стерео ±10%; LPF ±0.5 кГц
+- Средние:
+  - Lydian↔Ionian эпизодически; регистр чуть выше на Bloom; density ±20%
+- Глобальные:
+  - Новый тонцентр соседний по квинте/терции; свежие voicings
+- Переходы:
+  - Harmony bridge на общей ноте/квинте; tom swell короткий; ride wash однотактовый
+- Метрики:
+  - Onset rate 0.3–0.7; spectral tilt нейтраль/слегка тёплый; reverb глубокий (0.6–0.7)
+- MoodVector:
+  - density 0.3–0.4, registerBias 0.0, dynamics 0.4, spectralTilt −0.1, onsetRate 0.45, reverbDepth 0.65
+
+4) DREAMY (мечтательное)
+Смысл: воздушность, парение. Больше верха, Lydian‑окраска, светлые сусы.
+
+- Тональность/лад:
+  - Modes: Lydian/Mixolydian (60/40), центры: F/C/G/D (bias к средне‑высоким)
+- Темпо‑интро:
+  - BPM: 46–60; INTRO_BASE=12; MIN/MAX=6/22
+  - Шифты: BASS_SHIFT=0, SHAKER_SHIFT=−1 (раньше обычного и тише)
+- Гармония:
+  - Lydian: Imaj7(#11 add9), II(m7), V(sus2/4)
+  - Mixolydian: I(add9/11), bVII(add2), IVmaj7(add9)
+  - Квартовые/квинтовые слои, «подсветка» #11 очень мягко
+- Аккомпанемент:
+  - Мягкий орган/струны с shimmer‑планом (но без ярких «искр»); LPF 9–11 кГц
+  - Небольшие волнообразные кривые громкости/фильтра
+- Бас:
+  - T/5/6; редкие 2→3→2 соседние; чуть выше регистр (A1–D2)
+- Перкуссии:
+  - Шейкер почти постоянен (dropouts 20–30%); ride‑wash регулярный на Bloom/Reflection; томы — редкие
+- Бандлы/части:
+  - mood_base_bundle ≈ 18 тактов; 4 части (Establish, Float, Bloom, Release)
+- Микро:
+  - Верхний голос «качает» между 9 и #11; ширина стерео более широкая +10–15%
+- Средние:
+  - Lydian↔Mixolydian; регистр вверх; density +20–25% в Bloom
+- Глобальные:
+  - Новый тонцентр выше; новые аксиомы с большим участием #11/sus2
+- Переходы:
+  - Ride wash почти всегда на переходах; harmony bridge через общую 9
+- Метрики:
+  - Onset rate 0.5–1.0; spectral tilt светлее (но без рези); reverb глубокий (0.7–0.75)
+- MoodVector:
+  - density 0.35–0.45, registerBias +0.3, dynamics 0.45, spectralTilt +0.2, onsetRate 0.6, reverbDepth 0.7
+
+5) JOYFUL (весёлое)
+Смысл: мягкая радость, ясность. Светлые мажорные краски, чуть больше событий, но всё ещё ambient.
+
+- Тональность/лад:
+  - Modes: Ionian (70%), Lydian (30% «подсветок»)
+  - Центры: C/G/D/A (bias к высоким)
+- Темпо‑интро:
+  - BPM: 50–64; INTRO_BASE=8; MIN/MAX=4/16
+  - Шифты: BASS_SHIFT=−1 (раньше), SHAKER_SHIFT=−1 (раньше)
+- Гармония:
+  - Ionian: Imaj9, IVmaj7(add9), V(sus4/add2), vi(m7 add11), ii(m7)
+  - Lydian: Imaj7(#11) — редко и тихо
+  - Избегать явных кадансов V→I — только sus/общие звуки
+- Аккомпанемент:
+  - Орган/мелло со «светлым» фильтром; арпеджио разрешены, но редкие (1 из 4 фраз)
+- Бас:
+  - T–5–6–5–4–5‑педали; wn/h n микс; небольшие синкопы на «и 3» (редко, тихо)
+- Перкуссии:
+  - Шейкер ощутимее (dropouts 15–25%); ride часто в Bloom; томы — короткие
+- Бандлы/части:
+  - mood_base_bundle ≈ 12 тактов; 4 части (Establish, Bloom, Dance‑like shimmer, Release)
+- Микро:
+  - add6/add9 on/off; ширина/яркость слегка ↑ на Bloom
+- Средние:
+  - Lydian‑подсветки в Bloom; density +20–30%; регистр чуть выше
+- Глобальные:
+  - Новый тонцентр вверх по квинтовому кругу; новые арп‑фразы
+- Переходы:
+  - Лёгкие tom hits (не swell) + ride wash; bass pickup 5→1
+- Метрики:
+  - Onset rate 0.6–1.1; spectral tilt светлый; reverb умеренно‑глубокий (0.5–0.6)
+- MoodVector:
+  - density 0.45–0.55, registerBias +0.4, dynamics 0.55, spectralTilt +0.3, onsetRate 0.8, reverbDepth 0.55
+
+6) ENTHUSIASTIC (энтузиаст)
+Смысл: приподнятая энергия, вперёд‑стремление. На грани downtempo, но остаёмся в ambient.
+
+- Тональность/лад:
+  - Modes: Mixolydian/Lydian (70/30), центры: D/A/G/C (bias к высоким)
+- Темпо‑интро:
+  - BPM: 54–64; INTRO_BASE=7; MIN/MAX=4/14
+  - Шифты: BASS_SHIFT=−1, SHAKER_SHIFT=−2 (оба раньше)
+- Гармония:
+  - Mixolydian: I(add9/11), bVII(add2), IVmaj7(add9), V(sus4)
+  - Lydian подсветки: Imaj7(#11) как редкий «искрящий» штрих (очень тихо)
+- Аккомпанемент:
+  - Более пульсирующий pad (медленное амп‑гейтинг 0.1–0.2 Гц), но без навязчивости
+  - Воисинги открытые, арпеджио встречаются (до 1/3 фраз)
+- Бас:
+  - T–5–4–5 циклы; легкие синкопы; регистр выше (A1–D2), но саб‑моно сохраняется
+- Перкуссии:
+  - Шейкер почти постоянен (dropouts 10–20%); ride регулярный в Parts II–III; томы короткие fill’ы
+- Бандлы/части:
+  - mood_base_bundle ≈ 10 тактов; 4 части (Quick Establish, Bloom, High‑Energy Float, Controlled Release)
+- Микро:
+  - Ступенчатое повышение фильтра/яркости в концах бандлов; add11 on/off
+- Средние:
+  - Density +30–40% в Bloom/High‑Energy; регистр ↑; арп‑фразы чаще
+- Глобальные:
+  - Новый тонцентр по квинтам; новые пульс‑аксиомы
+- Переходы:
+  - Короткие tom fills + ride hits; bass pickup 4→5→1
+- Метрики:
+  - Onset rate 0.7–1.2 (держать в верхней границе); spectral tilt светлее; reverb умеренный (0.45–0.55)
+- MoodVector:
+  - density 0.55–0.65, registerBias +0.5, dynamics 0.65, spectralTilt +0.4, onsetRate 0.95, reverbDepth 0.5
+
+7) NEUTRAL (нейтральное)
+Смысл: сбалансировано, без ярких эмоций. Гибкий, «универсальный» блюпринт.
+
+- Тональность/лад:
+  - Modes: Ionian/Dorian (60/40), центры: D/G/C/A (средний регистр)
+- Темпо‑интро:
+  - BPM: 46–58; INTRO_BASE=10; MIN/MAX=6/20
+  - Шифты: BASS_SHIFT=0, SHAKER_SHIFT=0
+- Гармония:
+  - Ionian: Imaj9, IVmaj7(add9), V(sus2/4), vi(m7)
+  - Dorian: i(m9), iv(m11), bVII(add2), v(m7 add11)
+  - Позволены редкие квартовые слои
+- Аккомпанемент:
+  - Орган/strings без ярких штрихов; sustain‑пласты 2–3 такта; иногда разложение voicing
+- Бас:
+  - T/5 педали; hn‑подводы к сменам бандлов
+- Перкуссии:
+  - Шейкер стандартный (dropouts 25–30%); ride в Bloom; томы — переходные
+- Бандлы/части:
+  - mood_base_bundle ≈ 14 тактов; 3–4 части (Establish, Bloom, Reflection, Release)
+- Микро:
+  - add9 on/off; LPF ±0.5–0.8 кГц; панорама ±5–8%
+- Средние:
+  - Лёгкая модальная смесь; регистр слегка вверх/вниз; density ±20%
+- Глобальные:
+  - Новый тонцентр соседний по квинтам; свежие voicings
+- Переходы:
+  - Стандартный набор: tom swell, ride wash, harmony bridge на общей ноте
+- Метрики:
+  - Onset rate 0.5–0.9; spectral tilt нейтральный; reverb средне‑глубокий (0.5–0.6)
+- MoodVector:
+  - density 0.4–0.5, registerBias 0.0, dynamics 0.5, spectralTilt 0.0, onsetRate 0.6, reverbDepth 0.55
+
+Универсальная библиотека переходных филлов (для всех настроений)
+- tom_swell_2bars: Euclid 5/16, −18→−12 dB, LPF 2 кГц
+- ride_wash_1bar: мягкие штрихи 1/2, HPF 3–5 кГц, −16..−18 dB
+- bass_pickup: b7→1, 5→1, иногда b2→1 (для Phrygian/Dark/Gloomy)
+- harmony_bridge: удержание общей ноты/квинты 1–2 такта + add9/11 вступающей секции
+- spectral_window: LPF/HPF‑окно 1 такт на одном слое на переходе (дыхание без паузы)
+
+Короткие подсказки по реализации (если включено w/K/δ)
+- Для DARK/GLOOMY в K увеличьте вес roughness и Δregister‑штрафов; снижайте «цену» переходов, оставляющих общие звуки.
+- Для DREAMY/JOYFUL/ENTHUSIASTIC увеличьте вес Δdensity (мягкие подъёмы) и снижайте штраф за высокие регистры/ширину.
+- В K_ctx поднимайте «цену» новых sustain при activeSustainLayers ≥ 3 и mid‑RMS > порога.
+- Интро/вступления строго считать в барах по формулам f(BPM), чтобы масштабирование было предсказуемым.
+
+Если ок — выбирай следующий mood для «референс‑настройки» (как мы делали для Melancholic), и я распишу конкретные бандлы с воисингами/басовыми контурами по тактам. Можно начать с DARK или DREAMY.
+
+
