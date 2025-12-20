@@ -359,44 +359,60 @@ export class FractalMusicEngine {
     return events;
   }
   
+  /**
+   * Generates drum events based on the current part of the composition.
+   * This is an isolated function to keep drum logic separate.
+   */
+  private generateDrumEvents(navInfo: NavigationInfo | null): FractalEvent[] {
+    if (!this.config.drumSettings.enabled || !navInfo) {
+      return [];
+    }
+
+    const partId = navInfo.currentPart.id;
+
+    // For now, all parts generate a basic ambient axiom.
+    // This function will be expanded in the next step (54.2).
+    switch (partId) {
+      case 'INTRO':
+        // Placeholder: a very sparse pattern
+        return createDrumAxiom(this.config.genre, this.config.mood, this.config.tempo, this.random).events;
+      case 'BUILD':
+        // Placeholder: slightly more complex
+        return createDrumAxiom(this.config.genre, this.config.mood, this.config.tempo, this.random).events;
+      case 'MAIN':
+         // Placeholder: full pattern
+        return createDrumAxiom(this.config.genre, this.config.mood, this.config.tempo, this.random).events;
+      case 'RELEASE':
+         // Placeholder: sparse again
+        return createDrumAxiom(this.config.genre, this.config.mood, this.config.tempo, this.random).events;
+      case 'OUTRO':
+         // Placeholder: almost silent
+        return createDrumAxiom(this.config.genre, this.config.mood, this.config.tempo, this.random).events;
+      default:
+        // Always return an array to prevent iteration errors.
+        return [];
+    }
+  }
+  
  private generateOneBar(barDuration: number, navInfo: NavigationInfo | null): { events: FractalEvent[], instrumentHints: InstrumentHints } {
     let instrumentHints: InstrumentHints = {};
     const output: FractalEvent[] = [];
 
-    // --- BASS EVOLUTION (Hybrid Approach) ---
+    // --- BASS EVOLUTION ---
     if (navInfo) {
         if (navInfo.isPartTransition && this.bassPhraseLibrary.length > 0) {
-            // MACRO-MUTATION: New "gene" from library at the start of a new part
             const seedPhrase = this.bassPhraseLibrary[this.random.nextInt(this.bassPhraseLibrary.length)];
             this.currentBassPhrase = mutateBassPhrase(seedPhrase, this.config.mood, this.config.genre, this.random);
             console.log(`%c[BassEvolution @ Bar ${this.epoch}] MACRO-MUTATION. New seed selected.`, 'color: #9932CC;');
         } else if (navInfo.isBundleTransition) {
-            // MICRO-MUTATION: Evolve the current phrase at a bundle boundary
             this.currentBassPhrase = mutateBassPhrase(this.currentBassPhrase, this.config.mood, this.config.genre, this.random);
             console.log(`%c[BassEvolution @ Bar ${this.epoch}] MICRO-MUTATION. Evolving current phrase.`, 'color: #DA70D6;');
         }
     }
     output.push(...this.currentBassPhrase);
-
     
-    // --- DRUMS ---
-    let drumEvents: FractalEvent[] = [];
-    if (this.config.drumSettings.enabled) {
-        const drumBranches = this.branches.filter(b => b.type === 'drums');
-        if (drumBranches.length > 0) {
-            const winningDrumBranch = drumBranches.reduce((max, b) => b.weight > max.weight ? b : max, drumBranches[0]);
-            drumEvents.push(...winningDrumBranch.events.map(event => ({ ...event, weight: 1 })));
-        }
-    }
-    
-    if (this.sfxFillForThisEpoch?.drum) {
-        drumEvents = this.sfxFillForThisEpoch.drum;
-    }
-    if (this.sfxFillForThisEpoch?.bass) {
-        // SFX fill overrides the evolved bass phrase for this bar
-        output.splice(0, output.length, ...this.sfxFillForThisEpoch.bass);
-    }
-
+    // --- DRUMS (NEW ISOLATED LOGIC) ---
+    const drumEvents = this.generateDrumEvents(navInfo);
     output.push(...drumEvents);
     
     // --- HARMONY & MELODY ---
