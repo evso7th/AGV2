@@ -23,20 +23,13 @@ export const MelancholicAmbientBlueprint: MusicBlueprint = {
   },
   
   structure: {
-    totalDuration: {
-      preferredBars: 120 // Adjusted for longer structure ~10-11 mins
-    },
+    totalDuration: { preferredBars: 120 }, // ~10-11 mins
     
     parts: [
       {
         id: 'INTRO_1', name: 'Awakening Pad & Melody',
         duration: { percent: 7 }, // ~8 bars
         layers: { accompaniment: true, melody: true },
-        instrumentRules: {},
-        bundles: [
-          { id: 'INTRO_1_BUNDLE_1', name: 'Emergence', duration: { percent: 100 }, characteristics: {}, phrases: {} }
-        ],
-        outroFill: null,
         instrumentation: {
             accompaniment: {
                 strategy: 'weighted',
@@ -46,17 +39,15 @@ export const MelancholicAmbientBlueprint: MusicBlueprint = {
                 strategy: 'weighted',
                 options: [{ name: 'synth', weight: 1.0 }]
             }
-        }
+        },
+        instrumentRules: {},
+        bundles: [ { id: 'INTRO_1_BUNDLE_1', name: 'Emergence', duration: { percent: 100 }, characteristics: {}, phrases: {} } ],
+        outroFill: null,
       },
       {
         id: 'INTRO_2', name: 'Rhythm Enters',
         duration: { percent: 7 }, // ~8 bars
         layers: { accompaniment: true, melody: true, bass: true, drums: true, sparkles: true },
-        instrumentRules: {},
-        bundles: [
-          { id: 'INTRO_2_BUNDLE_1', name: 'First Pulse', duration: { percent: 100 }, characteristics: {}, phrases: {} }
-        ],
-        outroFill: null,
         instrumentation: {
             accompaniment: {
                 strategy: 'weighted',
@@ -66,17 +57,15 @@ export const MelancholicAmbientBlueprint: MusicBlueprint = {
                 strategy: 'weighted',
                 options: [{ name: 'synth', weight: 1.0 }]
             }
-        }
+        },
+        instrumentRules: {},
+        bundles: [ { id: 'INTRO_2_BUNDLE_1', name: 'First Pulse', duration: { percent: 100 }, characteristics: {}, phrases: {} } ],
+        outroFill: null,
       },
       {
         id: 'INTRO_3', name: 'Full Intro',
         duration: { percent: 6 }, // ~7 bars
         layers: { accompaniment: true, melody: true, bass: true, drums: true, sparkles: true, sfx: true, harmony: true },
-        instrumentRules: {},
-        bundles: [
-            { id: 'INTRO_3_BUNDLE_1', name: 'Anticipation', duration: { percent: 100 }, characteristics: {}, phrases: {} }
-        ],
-        outroFill: { type: 'filter_sweep', duration: 2, parameters: { filterEnd: 0.95 } },
         instrumentation: {
             accompaniment: {
                 strategy: 'weighted',
@@ -91,17 +80,15 @@ export const MelancholicAmbientBlueprint: MusicBlueprint = {
                     { name: 'mellotron', weight: 0.1 },
                 ]
             }
-        }
+        },
+        instrumentRules: {},
+        bundles: [ { id: 'INTRO_3_BUNDLE_1', name: 'Anticipation', duration: { percent: 100 }, characteristics: {}, phrases: {} } ],
+        outroFill: { type: 'filter_sweep', duration: 2, parameters: { filterEnd: 0.95 } },
       },
       {
         id: 'BUILD_1', name: 'First Rise',
         duration: { percent: 10 }, // ~12 bars
-        layers: { pad: true, bass: true, arpeggio: true, drums: true, sfx: true, melody: true, sparkles: true },
-        instrumentRules: {},
-        bundles: [
-            { id: 'BUILD_1_BUNDLE_1', name: 'Stirring', duration: { percent: 100 }, characteristics: {}, phrases: {} }
-        ],
-        outroFill: null,
+        layers: { pad: true, bass: true, arpeggio: true, drums: true, sfx: true, melody: true, sparkles: true, harmony: true, accompaniment: true },
         instrumentation: {
             accompaniment: {
                 strategy: 'weighted',
@@ -116,17 +103,15 @@ export const MelancholicAmbientBlueprint: MusicBlueprint = {
                     { name: 'mellotron', weight: 0.1 },
                 ]
             }
-        }
+        },
+        instrumentRules: {},
+        bundles: [ { id: 'BUILD_1_BUNDLE_1', name: 'Stirring', duration: { percent: 100 }, characteristics: {}, phrases: {} } ],
+        outroFill: null,
       },
       {
         id: 'MAIN_1', name: 'First Apex',
         duration: { percent: 15 }, // ~18 bars
-        layers: { pad: true, bass: true, arpeggio: true, melody: true, sparkles: true, drums: true, sfx: true },
-        instrumentRules: {},
-        bundles: [
-            { id: 'MAIN_1_BUNDLE_1', name: 'Arrival', duration: { percent: 100 }, characteristics: {}, phrases: {} }
-        ],
-        outroFill: null,
+        layers: { pad: true, bass: true, arpeggio: true, melody: true, sparkles: true, drums: true, sfx: true, harmony: true, accompaniment: true },
         instrumentation: {
             accompaniment: {
                 strategy: 'weighted',
@@ -141,17 +126,15 @@ export const MelancholicAmbientBlueprint: MusicBlueprint = {
                     { name: 'mellotron', weight: 0.1 },
                 ]
             }
-        }
+        },
+        instrumentRules: {},
+        bundles: [ { id: 'MAIN_1_BUNDLE_1', name: 'Arrival', duration: { percent: 100 }, characteristics: {}, phrases: {} } ],
+        outroFill: null,
       },
        {
         id: 'BUILD_2', name: 'Second Rise',
         duration: { percent: 10 }, // ~12 bars
-        layers: { pad: true, bass: true, arpeggio: true, drums: true, sfx: true, melody: true, sparkles: true },
-        instrumentRules: {},
-        bundles: [
-            { id: 'BUILD_2_BUNDLE_1', name: 'Intensifying', duration: { percent: 100 }, characteristics: {}, phrases: {} }
-        ],
-        outroFill: { type: 'reverb_burst', duration: 2, parameters: {} },
+        layers: { pad: true, bass: true, arpeggio: true, drums: true, sfx: true, melody: true, sparkles: true, harmony: true, accompaniment: true },
         instrumentation: {
             accompaniment: {
                 strategy: 'weighted',
@@ -166,65 +149,64 @@ export const MelancholicAmbientBlueprint: MusicBlueprint = {
                     { name: 'mellotron', weight: 0.1 },
                 ]
             }
-        }
+        },
+        instrumentRules: {},
+        bundles: [ { id: 'BUILD_2_BUNDLE_1', name: 'Intensifying', duration: { percent: 100 }, characteristics: {}, phrases: {} } ],
+        outroFill: { type: 'reverb_burst', duration: 2, parameters: {} },
       },
       {
         id: 'MAIN_2', name: 'Second Apex',
         duration: { percent: 20 }, // ~24 bars
-        layers: { pad: true, bass: true, arpeggio: true, melody: true, sparkles: true, drums: true, sfx: true },
+        layers: { pad: true, bass: true, arpeggio: true, melody: true, sparkles: true, drums: true, sfx: true, harmony: true, accompaniment: true },
+        instrumentation: {
+            accompaniment: {
+                strategy: 'weighted',
+                options: [{ name: 'ambientPad', weight: 1.0 }]
+            },
+            melody: {
+                strategy: 'weighted',
+                options: [
+                    { name: 'synth', weight: 0.4 },
+                    { name: 'organ', weight: 0.4 },
+                    { name: 'theremin', weight: 0.1 },
+                    { name: 'mellotron', weight: 0.1 },
+                ]
+            }
+        },
         instrumentRules: {},
         bundles: [
             { id: 'MAIN_2_BUNDLE_1', name: 'Plateau', duration: { percent: 50 }, characteristics: {}, phrases: {} },
             { id: 'MAIN_2_BUNDLE_2', name: 'Reflection', duration: { percent: 50 }, characteristics: {}, phrases: {} }
         ],
         outroFill: null,
-        instrumentation: {
-            accompaniment: {
-                strategy: 'weighted',
-                options: [{ name: 'ambientPad', weight: 1.0 }]
-            },
-            melody: {
-                strategy: 'weighted',
-                options: [
-                    { name: 'synth', weight: 0.4 },
-                    { name: 'organ', weight: 0.4 },
-                    { name: 'theremin', weight: 0.1 },
-                    { name: 'mellotron', weight: 0.1 },
-                ]
-            }
-        }
       },
       {
         id: 'RELEASE', name: 'Descent',
         duration: { percent: 15 }, // ~18 bars
-        layers: { pad: true, bass: true, arpeggio: true, sparkles: true, sfx: true },
-        instrumentRules: {},
-        bundles: [
-          { id: 'RELEASE_BUNDLE_1', name: 'Softening', duration: { percent: 100 }, characteristics: {}, phrases: {} }
-        ],
-        outroFill: { type: 'density_pause', duration: 2, parameters: { soloLayer: 'pad' } },
+        layers: { pad: true, bass: true, arpeggio: true, sparkles: true, sfx: true, harmony: true, accompaniment: true },
         instrumentation: {
             accompaniment: {
                 strategy: 'weighted',
                 options: [{ name: 'ambientPad', weight: 1.0 }]
             },
-        }
+        },
+        instrumentRules: {},
+        bundles: [ { id: 'RELEASE_BUNDLE_1', name: 'Softening', duration: { percent: 100 }, characteristics: {}, phrases: {} } ],
+        outroFill: { type: 'density_pause', duration: 2, parameters: { soloLayer: 'pad' } },
       },
       {
         id: 'OUTRO', name: 'Dissolution',
         duration: { percent: 10 }, // ~12 bars
-        layers: { pad: true, sfx: true },
-        instrumentRules: {},
-        bundles: [
-          { id: 'OUTRO_BUNDLE_1', name: 'Fading', duration: { percent: 100 }, characteristics: {}, phrases: {} }
-        ],
-        outroFill: null, // This is where a bridge to a new suite would be triggered.
+        layers: { pad: true, sfx: true, harmony: true, accompaniment: true },
         instrumentation: {
             accompaniment: {
                 strategy: 'weighted',
                 options: [{ name: 'ambientPad', weight: 1.0 }]
             },
-        }
+        },
+        instrumentRules: {},
+        bundles: [ { id: 'OUTRO_BUNDLE_1', name: 'Fading', duration: { percent: 100 }, characteristics: {}, phrases: {} } ],
+        outroFill: null, 
       }
     ]
   },
@@ -281,7 +263,7 @@ export const DarkAmbientBlueprint: MusicBlueprint = {
           {
             id: 'MAIN', name: 'The Abyss',
             duration: { percent: 30 },
-            layers: { bass: true, sfx: true, drums: true, melody: true, pad: true },
+            layers: { bass: true, sfx: true, drums: true, melody: true, pad: true, accompaniment: true, harmony: true },
             instrumentRules: {},
             bundles: [
               { id: 'MAIN_BUNDLE_1', name: 'Stasis', duration: { percent: 50 }, characteristics: {}, phrases: {} },
@@ -339,7 +321,7 @@ export const JoyfulAmbientBlueprint: MusicBlueprint = {
           {
             id: 'BUILD', name: 'Gathering Light',
             duration: { percent: 30 },
-            layers: { melody: true, sparkles: true, bass: true, drums: true, arpeggio: true },
+            layers: { melody: true, sparkles: true, bass: true, drums: true, arpeggio: true, accompaniment: true, harmony: true },
             instrumentRules: {},
             bundles: [
                 { id: 'BUILD_BUNDLE_1', name: 'Ascension', duration: { percent: 100 }, characteristics: {}, phrases: {} }
@@ -349,7 +331,7 @@ export const JoyfulAmbientBlueprint: MusicBlueprint = {
           {
             id: 'MAIN', name: 'Zenith',
             duration: { percent: 30 },
-            layers: { melody: true, sparkles: true, bass: true, drums: true, arpeggio: true, pad: true },
+            layers: { melody: true, sparkles: true, bass: true, drums: true, arpeggio: true, pad: true, accompaniment: true, harmony: true },
             instrumentRules: {},
             bundles: [
               { id: 'MAIN_BUNDLE_1', name: 'Celebration', duration: { percent: 100 }, characteristics: {}, phrases: {} }
