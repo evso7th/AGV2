@@ -1,6 +1,5 @@
 
-
-import type { MusicBlueprint, TensionProfile, HarmonicCenter } from '@/types/music';
+import type { MusicBlueprint, Mood } from '@/types/music';
 
 export const MelancholicAmbientBlueprint: MusicBlueprint = {
   id: 'melancholic_ambient',
@@ -227,3 +226,48 @@ export const MelancholicAmbientBlueprint: MusicBlueprint = {
   continuity: {},
   rendering: {}
 };
+
+
+export const DarkAmbientBlueprint: MusicBlueprint = {
+    ...MelancholicAmbientBlueprint,
+    id: 'dark_ambient',
+    name: 'Abyssal Descent',
+    description: 'Тёмный, давящий, медленный эмбиент.',
+    mood: 'dark',
+    musical: {
+        ...MelancholicAmbientBlueprint.musical,
+        bpm: { base: 42, range: [40, 48], modifier: 0.8 },
+    },
+};
+
+export const JoyfulAmbientBlueprint: MusicBlueprint = {
+    ...MelancholicAmbientBlueprint,
+    id: 'joyful_ambient',
+    name: 'Golden Horizons',
+    description: 'Светлый, радостный и воздушный эмбиент.',
+    mood: 'joyful',
+    musical: {
+        ...MelancholicAmbientBlueprint.musical,
+        key: { root: 'D', scale: 'lydian', octave: 4 },
+        bpm: { base: 60, range: [58, 65], modifier: 1.1 },
+    },
+};
+
+export const BLUEPRINT_LIBRARY: Record<Mood, MusicBlueprint> = {
+    // Positive
+    epic: MelancholicAmbientBlueprint, // Fallback
+    joyful: JoyfulAmbientBlueprint,
+    enthusiastic: JoyfulAmbientBlueprint, // Fallback
+    
+    // Negative
+    melancholic: MelancholicAmbientBlueprint,
+    dark: DarkAmbientBlueprint,
+    anxious: DarkAmbientBlueprint, // Fallback
+    
+    // Neutral
+    dreamy: MelancholicAmbientBlueprint, // Fallback
+    contemplative: MelancholicAmbientBlueprint, // Fallback
+    calm: MelancholicAmbientBlueprint, // Fallback
+};
+
+export default MelancholicAmbientBlueprint;
