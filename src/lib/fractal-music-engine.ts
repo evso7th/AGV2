@@ -4,7 +4,7 @@ import type { FractalEvent, Mood, Genre, Technique, BassSynthParams, InstrumentT
 import { ElectronicK, TraditionalK, AmbientK, MelancholicMinorK } from './resonance-matrices';
 import { getScaleForMood, STYLE_DRUM_PATTERNS, generateAmbientBassPhrase, mutateBassPhrase, createAccompanimentAxiom, PERCUSSION_SETS, TEXTURE_INSTRUMENT_WEIGHTS_BY_MOOD, getAccompanimentTechnique, createBassFill as createBassFillFromTheory, createDrumFill, AMBIENT_ACCOMPANIMENT_WEIGHTS, chooseHarmonyInstrument } from './music-theory';
 import { BlueprintNavigator, type NavigationInfo } from './blueprint-navigator';
-import { MelancholicAmbientBlueprint } from './blueprints';
+import { MelancholicAmbientBlueprint, BLUEPRINT_LIBRARY } from './blueprints';
 
 
 export type Branch = {
@@ -216,7 +216,8 @@ export class FractalMusicEngine {
     this.random = seededRandom(config.seed);
     this.nextWeatherEventEpoch = 0;
     
-    this.navigator = new BlueprintNavigator(MelancholicAmbientBlueprint, config.seed);
+    const blueprint = BLUEPRINT_LIBRARY[config.mood] || MelancholicAmbientBlueprint;
+    this.navigator = new BlueprintNavigator(blueprint, config.seed);
     
     this.initialize();
   }
@@ -230,11 +231,10 @@ export class FractalMusicEngine {
       const oldSeed = this.config.seed;
       this.config = { ...this.config, ...newConfig };
       
-      // Only re-initialize random number generator if seed changes
       if (newConfig.seed !== undefined && newConfig.seed !== oldSeed) {
           this.random = seededRandom(newConfig.seed);
-          // Also re-create the navigator if seed changes, to get a new structure
-          this.navigator = new BlueprintNavigator(MelancholicAmbientBlueprint, newConfig.seed);
+          const newBlueprint = BLUEPRINT_LIBRARY[this.config.mood] || MelancholicAmbientBlueprint;
+          this.navigator = new BlueprintNavigator(newBlueprint, newConfig.seed);
       }
 
       if(moodOrGenreChanged) {
@@ -250,7 +250,9 @@ export class FractalMusicEngine {
     this.branches = [];
     this.harmonyBranches = [];
     
-    console.log('[FractalMusicEngine] Initialized with blueprint. Total duration:', (this.navigator as any).totalBars, 'bars.');
+    const blueprint = BLUEPRINT_LIBRARY[this.config.mood] || MelancholicAmbientBlueprint;
+    this.navigator = new BlueprintNavigator(blueprint, this.config.seed);
+    console.log(`[FractalMusicEngine] Initialized with blueprint "${this.navigator.blueprint.name}". Total duration: ${this.navigator.totalBars} bars.`);
 
 
     if (this.config.drumSettings.enabled) {
@@ -281,10 +283,21 @@ export class FractalMusicEngine {
     private _chooseInstrumentForPart(part: 'melody' | 'accompaniment', currentPartInfo: BlueprintPart | null): MelodyInstrument | AccompanimentInstrument | undefined {
         if (!currentPartInfo || !currentPartInfo.instrumentation || !currentPartInfo.instrumentation[part]) {
             // Fallback logic if no rules are defined
-            if (this.config.genre === 'ambient') {
-                return part === 'accompaniment' ? 'ambientPad' : 'synth';
+            const moodWeights = TEXTURE_INSTRUMENT_WEIGHTS_BY_MOOD[this.config.mood] || TEXTURE_INSTRUMENT_WEIGHTS_BY_MOOD['calm'];
+            const options = Object.entries(moodWeights).map(([name, weight]) => ({ name: name as MelodyInstrument, weight }));
+            
+            if (options.length === 0) return undefined;
+            
+            const totalWeight = options.reduce((sum, opt) => sum + opt.weight, 0);
+            let rand = this.random.next() * totalWeight;
+
+            for (const option of options) {
+                rand -= option.weight;
+                if (rand <= 0) {
+                    return option.name;
+                }
             }
-            return part === 'melody' ? 'synth' : 'organ';
+            return options[0].name;
         }
 
         const rules = currentPartInfo.instrumentation[part];
@@ -370,10 +383,6 @@ export class FractalMusicEngine {
     return events;
   }
   
-  /**
-   * Generates drum events based on the current part of the composition.
-   * This is an isolated function to keep drum logic separate and robust.
-   */
   private generateDrumEvents(navInfo: NavigationInfo | null): FractalEvent[] {
     if (!navInfo || !this.config.drumSettings.enabled) {
       return [];
@@ -591,11 +600,9 @@ export class FractalMusicEngine {
     
     const navigationInfo = this.navigator.tick(this.epoch);
     
-    // Pass navigation info to generateOneBar
     const { events, instrumentHints } = this.generateOneBar(barDuration, navigationInfo);
     
     if (navigationInfo?.logMessage) {
-        // Use the same log message, but now it's correctly generated inside generateOneBar based on the transition
         console.log(navigationInfo.logMessage, 'color: green; font-style: italic;');
     }
     
@@ -606,3 +613,5 @@ export class FractalMusicEngine {
     return { events, instrumentHints };
   }
 }
+
+    
