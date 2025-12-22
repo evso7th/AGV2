@@ -37,7 +37,13 @@ export const MelancholicAmbientBlueprint: MusicBlueprint = {
         bundles: [
           { id: 'INTRO_1_BUNDLE_1', name: 'Emergence', duration: { percent: 100 }, characteristics: {}, phrases: {} }
         ],
-        outroFill: null
+        outroFill: null,
+        instrumentation: {
+            accompaniment: {
+                strategy: 'weighted',
+                options: [{ name: 'ambientPad', weight: 1.0 }]
+            },
+        }
       },
       {
         id: 'INTRO_2', name: 'Rhythm Enters',
@@ -47,7 +53,13 @@ export const MelancholicAmbientBlueprint: MusicBlueprint = {
         bundles: [
           { id: 'INTRO_2_BUNDLE_1', name: 'First Pulse', duration: { percent: 100 }, characteristics: {}, phrases: {} }
         ],
-        outroFill: null
+        outroFill: null,
+        instrumentation: {
+            accompaniment: {
+                strategy: 'weighted',
+                options: [{ name: 'ambientPad', weight: 1.0 }]
+            },
+        }
       },
       {
         id: 'INTRO_3', name: 'Full Intro',
@@ -57,7 +69,22 @@ export const MelancholicAmbientBlueprint: MusicBlueprint = {
         bundles: [
             { id: 'INTRO_3_BUNDLE_1', name: 'Anticipation', duration: { percent: 100 }, characteristics: {}, phrases: {} }
         ],
-        outroFill: { type: 'filter_sweep', duration: 2, parameters: { filterEnd: 0.95 } }
+        outroFill: { type: 'filter_sweep', duration: 2, parameters: { filterEnd: 0.95 } },
+        instrumentation: {
+            accompaniment: {
+                strategy: 'weighted',
+                options: [{ name: 'ambientPad', weight: 1.0 }]
+            },
+            melody: {
+                strategy: 'weighted',
+                options: [
+                    { name: 'synth', weight: 0.4 },
+                    { name: 'organ', weight: 0.4 },
+                    { name: 'theremin', weight: 0.1 },
+                    { name: 'mellotron', weight: 0.1 },
+                ]
+            }
+        }
       },
       {
         id: 'BUILD_1', name: 'First Rise',
@@ -67,7 +94,22 @@ export const MelancholicAmbientBlueprint: MusicBlueprint = {
         bundles: [
             { id: 'BUILD_1_BUNDLE_1', name: 'Stirring', duration: { percent: 100 }, characteristics: {}, phrases: {} }
         ],
-        outroFill: null
+        outroFill: null,
+        instrumentation: {
+            accompaniment: {
+                strategy: 'weighted',
+                options: [{ name: 'ambientPad', weight: 1.0 }]
+            },
+            melody: {
+                strategy: 'weighted',
+                options: [
+                    { name: 'synth', weight: 0.4 },
+                    { name: 'organ', weight: 0.4 },
+                    { name: 'theremin', weight: 0.1 },
+                    { name: 'mellotron', weight: 0.1 },
+                ]
+            }
+        }
       },
       {
         id: 'MAIN_1', name: 'First Apex',
@@ -77,7 +119,22 @@ export const MelancholicAmbientBlueprint: MusicBlueprint = {
         bundles: [
             { id: 'MAIN_1_BUNDLE_1', name: 'Arrival', duration: { percent: 100 }, characteristics: {}, phrases: {} }
         ],
-        outroFill: null
+        outroFill: null,
+        instrumentation: {
+            accompaniment: {
+                strategy: 'weighted',
+                options: [{ name: 'ambientPad', weight: 1.0 }]
+            },
+            melody: {
+                strategy: 'weighted',
+                options: [
+                    { name: 'synth', weight: 0.4 },
+                    { name: 'organ', weight: 0.4 },
+                    { name: 'theremin', weight: 0.1 },
+                    { name: 'mellotron', weight: 0.1 },
+                ]
+            }
+        }
       },
        {
         id: 'BUILD_2', name: 'Second Rise',
@@ -87,7 +144,22 @@ export const MelancholicAmbientBlueprint: MusicBlueprint = {
         bundles: [
             { id: 'BUILD_2_BUNDLE_1', name: 'Intensifying', duration: { percent: 100 }, characteristics: {}, phrases: {} }
         ],
-        outroFill: { type: 'reverb_burst', duration: 2, parameters: {} }
+        outroFill: { type: 'reverb_burst', duration: 2, parameters: {} },
+        instrumentation: {
+            accompaniment: {
+                strategy: 'weighted',
+                options: [{ name: 'ambientPad', weight: 1.0 }]
+            },
+            melody: {
+                strategy: 'weighted',
+                options: [
+                    { name: 'synth', weight: 0.4 },
+                    { name: 'organ', weight: 0.4 },
+                    { name: 'theremin', weight: 0.1 },
+                    { name: 'mellotron', weight: 0.1 },
+                ]
+            }
+        }
       },
       {
         id: 'MAIN_2', name: 'Second Apex',
@@ -98,7 +170,22 @@ export const MelancholicAmbientBlueprint: MusicBlueprint = {
             { id: 'MAIN_2_BUNDLE_1', name: 'Plateau', duration: { percent: 50 }, characteristics: {}, phrases: {} },
             { id: 'MAIN_2_BUNDLE_2', name: 'Reflection', duration: { percent: 50 }, characteristics: {}, phrases: {} }
         ],
-        outroFill: null
+        outroFill: null,
+        instrumentation: {
+            accompaniment: {
+                strategy: 'weighted',
+                options: [{ name: 'ambientPad', weight: 1.0 }]
+            },
+            melody: {
+                strategy: 'weighted',
+                options: [
+                    { name: 'synth', weight: 0.4 },
+                    { name: 'organ', weight: 0.4 },
+                    { name: 'theremin', weight: 0.1 },
+                    { name: 'mellotron', weight: 0.1 },
+                ]
+            }
+        }
       },
       {
         id: 'RELEASE', name: 'Descent',
@@ -108,7 +195,13 @@ export const MelancholicAmbientBlueprint: MusicBlueprint = {
         bundles: [
           { id: 'RELEASE_BUNDLE_1', name: 'Softening', duration: { percent: 100 }, characteristics: {}, phrases: {} }
         ],
-        outroFill: { type: 'density_pause', duration: 2, parameters: { soloLayer: 'pad' } }
+        outroFill: { type: 'density_pause', duration: 2, parameters: { soloLayer: 'pad' } },
+        instrumentation: {
+            accompaniment: {
+                strategy: 'weighted',
+                options: [{ name: 'ambientPad', weight: 1.0 }]
+            },
+        }
       },
       {
         id: 'OUTRO', name: 'Dissolution',
@@ -118,7 +211,13 @@ export const MelancholicAmbientBlueprint: MusicBlueprint = {
         bundles: [
           { id: 'OUTRO_BUNDLE_1', name: 'Fading', duration: { percent: 100 }, characteristics: {}, phrases: {} }
         ],
-        outroFill: null // This is where a bridge to a new suite would be triggered.
+        outroFill: null, // This is where a bridge to a new suite would be triggered.
+        instrumentation: {
+            accompaniment: {
+                strategy: 'weighted',
+                options: [{ name: 'ambientPad', weight: 1.0 }]
+            },
+        }
       }
     ]
   },
@@ -128,4 +227,3 @@ export const MelancholicAmbientBlueprint: MusicBlueprint = {
   continuity: {},
   rendering: {}
 };
-
