@@ -233,9 +233,10 @@ export class FractalMusicEngine {
       
       if (newConfig.seed !== undefined && newConfig.seed !== oldSeed) {
           this.random = seededRandom(newConfig.seed);
-          const newBlueprint = BLUEPRINT_LIBRARY[this.config.mood] || MelancholicAmbientBlueprint;
-          this.navigator = new BlueprintNavigator(newBlueprint, newConfig.seed);
       }
+      
+      const blueprint = BLUEPRINT_LIBRARY[this.config.mood] || MelancholicAmbientBlueprint;
+      this.navigator = new BlueprintNavigator(blueprint, this.config.seed);
 
       if(moodOrGenreChanged) {
           this.initialize();
@@ -440,6 +441,17 @@ export class FractalMusicEngine {
     let instrumentHints: InstrumentHints = {};
     const output: FractalEvent[] = [];
 
+    // --- START DIAGNOSTIC LOG ---
+    if (navInfo) {
+        console.log(
+            `[FME Check @ Bar ${this.epoch}] Part: ${navInfo.currentPart.id} | LAYERS: ${JSON.stringify(navInfo.currentPart.layers)}`
+        );
+    } else {
+        console.log(`[FME Check @ Bar ${this.epoch}] No navigation info available.`);
+    }
+    // --- END DIAGNOSTIC LOG ---
+
+
     // --- CHOOSE INSTRUMENTS BASED ON BLUEPRINT ---
     if (navInfo) {
         instrumentHints.accompaniment = this._chooseInstrumentForPart('accompaniment', navInfo.currentPart) as AccompanimentInstrument;
@@ -613,5 +625,3 @@ export class FractalMusicEngine {
     return { events, instrumentHints };
   }
 }
-
-    
