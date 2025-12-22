@@ -1,6 +1,6 @@
 
 
-import type { FractalEvent, Mood, Genre, Technique, BassSynthParams, InstrumentType, MelodyInstrument, BassInstrument, AccompanimentInstrument, ResonanceMatrix, InstrumentHints, AccompanimentTechnique } from '@/types/fractal';
+import type { FractalEvent, Mood, Genre, Technique, BassSynthParams, InstrumentType, MelodyInstrument, BassInstrument, AccompanimentInstrument, ResonanceMatrix, InstrumentHints, AccompanimentTechnique, BlueprintPart } from '@/types/fractal';
 import { ElectronicK, TraditionalK, AmbientK, MelancholicMinorK } from './resonance-matrices';
 import { getScaleForMood, STYLE_DRUM_PATTERNS, generateAmbientBassPhrase, mutateBassPhrase, createAccompanimentAxiom, PERCUSSION_SETS, TEXTURE_INSTRUMENT_WEIGHTS_BY_MOOD, getAccompanimentTechnique, createBassFill as createBassFillFromTheory, createDrumFill, AMBIENT_ACCOMPANIMENT_WEIGHTS, chooseHarmonyInstrument } from './music-theory';
 import { BlueprintNavigator, type NavigationInfo } from './blueprint-navigator';
@@ -278,22 +278,32 @@ export class FractalMusicEngine {
     this.needsBassReset = false;
   }
   
-  private chooseWeightedInstrument(weights: Record<string, number>): AccompanimentInstrument {
-      const totalWeight = Object.values(weights).reduce((sum, weight) => sum + weight, 0);
-      let rand = this.random.next() * totalWeight;
+    private _chooseInstrumentForPart(part: 'melody' | 'accompaniment', currentPartInfo: BlueprintPart | null): MelodyInstrument | AccompanimentInstrument | undefined {
+        if (!currentPartInfo || !currentPartInfo.instrumentation || !currentPartInfo.instrumentation[part]) {
+            // Fallback logic if no rules are defined
+            if (this.config.genre === 'ambient') {
+                return part === 'accompaniment' ? 'ambientPad' : 'synth';
+            }
+            return part === 'melody' ? 'synth' : 'organ';
+        }
 
-      for (const [instrument, weight] of Object.entries(weights)) {
-          rand -= weight;
-          if (rand <= 0) {
-              return instrument as AccompanimentInstrument;
-          }
-      }
-      return 'synth'; // Fallback
-  }
+        const rules = currentPartInfo.instrumentation[part];
+        if (rules && rules.strategy === 'weighted' && rules.options.length > 0) {
+            const totalWeight = rules.options.reduce((sum, opt) => sum + opt.weight, 0);
+            let rand = this.random.next() * totalWeight;
 
-  private createAccompAxiomAndPlan() {
-      // This is now handled within the harmony branch logic
-  }
+            for (const option of rules.options) {
+                rand -= option.weight;
+                if (rand <= 0) {
+                    return option.name;
+                }
+            }
+            return rules.options[0].name; // Fallback to first option
+        }
+
+        return undefined;
+    }
+
 
   public generateExternalImpulse() {
     console.log(`%c[WEATHER EVENT] at epoch ${this.epoch}: Triggering musical scenario.`, "color: blue; font-weight: bold;");
@@ -383,7 +393,8 @@ export class FractalMusicEngine {
         }).map(event => ({ ...event, weight: event.weight * 0.5 })); // Make it quieter
 
       case 'INTRO_3':
-      case 'BUILD':
+      case 'BUILD_1': // Renamed from BUILD
+      case 'BUILD_2':
         // Add more ghost notes for build-up
         const buildEvents = [...baseAxiom];
         if (this.random.next() < 0.6) {
@@ -398,7 +409,8 @@ export class FractalMusicEngine {
         }
         return buildEvents;
 
-      case 'MAIN':
+      case 'MAIN_1': // Renamed from MAIN
+      case 'MAIN_2':
          // Use the full, rich pattern
         return baseAxiom;
 
@@ -419,8 +431,15 @@ export class FractalMusicEngine {
     let instrumentHints: InstrumentHints = {};
     const output: FractalEvent[] = [];
 
-    // --- BASS EVOLUTION ---
+    // --- CHOOSE INSTRUMENTS BASED ON BLUEPRINT ---
     if (navInfo) {
+        instrumentHints.accompaniment = this._chooseInstrumentForPart('accompaniment', navInfo.currentPart) as AccompanimentInstrument;
+        instrumentHints.melody = this._chooseInstrumentForPart('melody', navInfo.currentPart) as MelodyInstrument;
+    }
+
+
+    // --- BASS EVOLUTION ---
+    if (navInfo?.currentPart.layers.bass) {
         if (navInfo.isPartTransition && this.epoch > 0) {
             const seedPhrase = this.bassPhraseLibrary[this.random.nextInt(this.bassPhraseLibrary.length)];
             this.currentBassPhrase = mutateBassPhrase(seedPhrase, this.config.mood, this.config.genre, this.random);
@@ -429,17 +448,15 @@ export class FractalMusicEngine {
             this.currentBassPhrase = mutateBassPhrase(this.currentBassPhrase, this.config.mood, this.config.genre, this.random);
             console.log(`%c[BassEvolution @ Bar ${this.epoch}] MICRO-MUTATION. Evolving current phrase.`, 'color: #DA70D6;');
         }
+        output.push(...this.currentBassPhrase);
     }
-    output.push(...this.currentBassPhrase);
     
     // --- DRUMS ---
     let drumEvents: FractalEvent[];
     if (navInfo?.isPartTransition && this.epoch > 0) {
-        // On a major part transition, play a fill
         drumEvents = createDrumFill(this.random);
         console.log(`%c[Fill @ Bar ${this.epoch}] Generated DRUM FILL for part transition.`, 'color: #20B2AA;');
     } else {
-        // Otherwise, play the normal pattern for the current part
         drumEvents = this.generateDrumEvents(navInfo);
     }
     output.push(...drumEvents);
@@ -447,7 +464,7 @@ export class FractalMusicEngine {
     // --- HARMONY & MELODY ---
     const accompBranches = this.harmonyBranches.filter(b => b.type === 'harmony' || b.type === 'accompaniment');
     let accompanimentEvents: FractalEvent[] = [];
-    if (accompBranches.length > 0) {
+    if (navInfo?.currentPart.layers.pad && accompBranches.length > 0) {
         const winningAccompBranch = accompBranches.reduce((max, b) => b.weight > max.weight ? b : max, accompBranches[0]);
         accompanimentEvents.push(...winningAccompBranch.events);
         
@@ -460,21 +477,18 @@ export class FractalMusicEngine {
         output.push(...harmonyEvents);
         
         instrumentHints.harmony = chooseHarmonyInstrument(this.config.mood, this.random);
-        instrumentHints.accompaniment = 'synth';
-        if (this.config.composerControlsInstruments){
-            const possibleInstruments: MelodyInstrument[] = ["violin", "flute", "synth", "organ", "mellotron", "theremin"];
-            instrumentHints.accompaniment = possibleInstruments[this.random.nextInt(possibleInstruments.length)];
-        }
     }
 
-    const topNotes = extractTopNotes(accompanimentEvents, 4);
-    if(topNotes.length > 0) {
-        const melodyEvents = topNotes.map(note => ({
-            ...note,
-            type: 'melody' as InstrumentType,
-            weight: Math.min(1.0, note.weight * 1.2), 
-        }));
-        output.push(...melodyEvents);
+    if (navInfo?.currentPart.layers.melody) {
+        const topNotes = extractTopNotes(accompanimentEvents, 4);
+        if(topNotes.length > 0) {
+            const melodyEvents = topNotes.map(note => ({
+                ...note,
+                type: 'melody' as InstrumentType,
+                weight: Math.min(1.0, note.weight * 1.2), 
+            }));
+            output.push(...melodyEvents);
+        }
     }
 
 
