@@ -177,6 +177,16 @@ export type InstrumentRules = {
   // Simplified for now
 };
 
+export type InstrumentOption<T> = {
+    name: T;
+    weight: number; // 0.0 to 1.0
+};
+
+export type InstrumentationRules<T> = {
+    strategy: 'weighted';
+    options: InstrumentOption<T>[];
+};
+
 export type BlueprintBundle = {
   id: string;
   name: string;
@@ -191,6 +201,11 @@ export type BlueprintPart = {
   duration: { percent: number }; // Duration as a percentage of the total suite
   layers: {
     [key in InstrumentPart]?: boolean;
+  };
+  instrumentation?: {
+      melody?: InstrumentationRules<MelodyInstrument>;
+      accompaniment?: InstrumentationRules<AccompanimentInstrument>;
+      bass?: InstrumentationRules<BassInstrument>;
   };
   instrumentEntry?: { [key: string]: number };
   instrumentExit?: { [key: string]: number };
