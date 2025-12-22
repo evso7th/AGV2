@@ -29,9 +29,9 @@ export const MelancholicAmbientBlueprint: MusicBlueprint = {
     
     parts: [
       {
-        id: 'INTRO_1', name: 'Awakening Pad',
+        id: 'INTRO_1', name: 'Awakening Pad & Melody',
         duration: { percent: 7 }, // ~8 bars
-        layers: { pad: true },
+        layers: { accompaniment: true, melody: true },
         instrumentRules: {},
         bundles: [
           { id: 'INTRO_1_BUNDLE_1', name: 'Emergence', duration: { percent: 100 }, characteristics: {}, phrases: {} }
@@ -42,12 +42,16 @@ export const MelancholicAmbientBlueprint: MusicBlueprint = {
                 strategy: 'weighted',
                 options: [{ name: 'ambientPad', weight: 1.0 }]
             },
+            melody: {
+                strategy: 'weighted',
+                options: [{ name: 'synth', weight: 1.0 }]
+            }
         }
       },
       {
         id: 'INTRO_2', name: 'Rhythm Enters',
         duration: { percent: 7 }, // ~8 bars
-        layers: { pad: true, bass: true, sfx: true, drums: true },
+        layers: { pad: true, bass: true, drums: true, melody: true, accompaniment: true, sparkles: true },
         instrumentRules: {},
         bundles: [
           { id: 'INTRO_2_BUNDLE_1', name: 'First Pulse', duration: { percent: 100 }, characteristics: {}, phrases: {} }
@@ -58,12 +62,16 @@ export const MelancholicAmbientBlueprint: MusicBlueprint = {
                 strategy: 'weighted',
                 options: [{ name: 'ambientPad', weight: 1.0 }]
             },
+            melody: {
+                strategy: 'weighted',
+                options: [{ name: 'synth', weight: 1.0 }]
+            }
         }
       },
       {
         id: 'INTRO_3', name: 'Full Intro',
         duration: { percent: 6 }, // ~7 bars
-        layers: { pad: true, bass: true, sfx: true, drums: true, melody: true, sparkles: true },
+        layers: { pad: true, bass: true, sfx: true, drums: true, melody: true, sparkles: true, accompaniment: true, harmony: true },
         instrumentRules: {},
         bundles: [
             { id: 'INTRO_3_BUNDLE_1', name: 'Anticipation', duration: { percent: 100 }, characteristics: {}, phrases: {} }
