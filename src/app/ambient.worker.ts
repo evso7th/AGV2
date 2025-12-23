@@ -11,59 +11,6 @@ import type { WorkerSettings, ScoreName, Mood, Genre } from '@/types/music';
 import { FractalMusicEngine } from '@/lib/fractal-music-engine';
 import type { FractalEvent, InstrumentHints } from '@/types/fractal';
 
-// --- Effect Logic ---
-let lastSparkleTime = -Infinity;
-let lastSfxTime = -Infinity;
-
-function shouldAddSparkle(currentTime: number, density: number, genre: Genre): boolean {
-    const timeSinceLast = currentTime - lastSparkleTime;
-    
-    // For ambient, make sparkles more frequent
-    const isAmbient = genre === 'ambient';
-    const minTime = isAmbient ? 7.5 : 30;
-    const maxTime = isAmbient ? 22.5 : 90;
-
-    if (timeSinceLast < minTime) return false;
-    if (density > 0.6 && !isAmbient) return false; 
-
-    const chance = ((timeSinceLast - minTime) / (maxTime - minTime)) * (1 - density);
-    return Math.random() < chance;
-}
-
-
-function shouldAddSfx(currentTime: number, density: number, mood: Mood, genre: Genre): { should: boolean, phrase: FractalEvent[] } {
-    const timeSinceLast = currentTime - lastSfxTime;
-    const minTime = 15;
-    const maxTime = 50;
-    
-    if (timeSinceLast < minTime) return { should: false, phrase: [] };
-    if (density > 0.75) return { should: false, phrase: [] };
-
-    let chance = ((timeSinceLast - minTime) / (maxTime - minTime)) * (0.95 - density);
-
-    if (mood === 'dark' || mood === 'anxious' || genre === 'rock' || genre === 'progressive') chance *= 1.6;
-    if (mood === 'calm' || mood === 'dreamy') chance *= 0.4;
-    
-    if (Math.random() < chance) {
-        console.log(`[SFX] Firing complex SFX event for mood: ${mood}, genre: ${genre}`);
-        const sfxEvent: FractalEvent = {
-            type: 'sfx',
-            note: 60, // Placeholder, not used by sampler
-            duration: 1, // Placeholder
-            time: 0, // Will be played at the start of the bar
-            weight: 0.8, // Default volume
-            technique: 'hit',
-            dynamics: 'mf',
-            phrasing: 'staccato',
-            params: { mood, genre } // Pass context to the manager
-        };
-        return { should: true, phrase: [sfxEvent] };
-    }
-
-    return { should: false, phrase: [] };
-}
-
-
 // --- FRACTAL ENGINE ---
 let fractalMusicEngine: FractalMusicEngine | undefined;
 
@@ -109,8 +56,6 @@ const Scheduler = {
             seed: settings.seed ?? Date.now(),
         });
         this.barCount = 0;
-        lastSparkleTime = -Infinity;
-        lastSfxTime = -Infinity;
     },
 
     start() {
@@ -190,10 +135,6 @@ const Scheduler = {
     tick() {
         if (!this.isRunning || !fractalMusicEngine) return;
         
-        const density = this.settings.density;
-        const genre = this.settings.genre;
-        const mood = this.settings.mood;
-
         let scorePayload: { events: FractalEvent[]; instrumentHints: InstrumentHints } = { events: [], instrumentHints: {} };
 
         if (this.settings.score === 'neuro_f_matrix') {
@@ -201,24 +142,6 @@ const Scheduler = {
              scorePayload = fractalMusicEngine.evolve(this.barDuration, this.barCount);
         } 
         
-        const currentTime = this.barCount * this.barDuration;
-        
-        if (this.barCount >= 4 && this.settings.textureSettings.sparkles.enabled) {
-            if (shouldAddSparkle(currentTime, density, genre)) {
-                 self.postMessage({ type: 'sparkle', payload: { time: 0, genre: genre, mood: this.settings.mood } });
-                 lastSparkleTime = currentTime;
-            }
-        }
-        
-        if (this.barCount >= 2 && this.settings.textureSettings.sfx.enabled) {
-            const { should, phrase } = shouldAddSfx(currentTime, density, mood, genre);
-            if (should) {
-                // Send the entire phrase to be scheduled
-                scorePayload.events.push(...phrase);
-                lastSfxTime = currentTime;
-            }
-        }
-
         const harmonyEvents = scorePayload.events.filter(e => e.type === 'harmony');
         
         if (harmonyEvents.length > 0) {
