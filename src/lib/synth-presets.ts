@@ -111,7 +111,7 @@ export const SYNTH_PRESETS: Record<Exclude<MelodyInstrument | BassInstrument, 'p
     ],
     adsr: { attack: 0.1, decay: 0.1, sustain: 0.9, release: 0.6 },
     filter: { type: 'lpf', cutoff: 2500, q: 2 },
-    lfo: { shape: 'sine', rate: 4.8, amount: 2, target: 'pitch' }, // Cents
+    lfo: { shape: 'sine', rate: 4.8, amount: 0, target: 'pitch' }, // Cents
     effects: {
       distortion: 0,
       chorus: { rate: 0.7, depth: 0.006, mix: 0.4 },
