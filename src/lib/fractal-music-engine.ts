@@ -2,7 +2,7 @@
 
 import type { FractalEvent, Mood, Genre, Technique, BassSynthParams, InstrumentType, MelodyInstrument, BassInstrument, AccompanimentInstrument, ResonanceMatrix, InstrumentHints, AccompanimentTechnique, BlueprintPart } from '@/types/fractal';
 import { ElectronicK, TraditionalK, AmbientK, MelancholicMinorK } from './resonance-matrices';
-import { getScaleForMood, STYLE_DRUM_PATTERNS, generateAmbientBassPhrase, mutateBassPhrase, createAccompanimentAxiom, PERCUSSION_SETS, TEXTURE_INSTRUMENT_WEIGHTS_BY_MOOD, getAccompanimentTechnique, createBassFill as createBassFillFromTheory, createDrumFill, AMBIENT_ACCOMPANIMENT_WEIGHTS, chooseHarmonyInstrument } from './music-theory';
+import { getScaleForMood, STYLE_DRUM_PATTERNS, generateAmbientBassPhrase, mutateBassPhrase, createAccompanimentAxiom, PERCUSSION_SETS, TEXTURE_INSTRUMENT_WEIGHTS_BY_MOOD, getAccompanimentTechnique, createBassFill as createBassFillFromTheory, createDrumFill, AMBIENT_ACCOMPANIMENT_WEIGHTS, chooseHarmonyInstrument, mutateAccompanimentPhrase } from './music-theory';
 import { BlueprintNavigator, type NavigationInfo } from './blueprint-navigator';
 import { MelancholicAmbientBlueprint, BLUEPRINT_LIBRARY } from './blueprints';
 
@@ -181,63 +181,6 @@ function extractTopNotes(events: FractalEvent[], maxNotes: number = 4): FractalE
         .slice(0, maxNotes);
 }
 
-function mutateAccompanimentPhrase(phrase: FractalEvent[], mood: Mood, genre: Genre, random: { next: () => number, nextInt: (max: number) => number }): FractalEvent[] {
-    // This is a simplified version, similar to bass mutation for now
-    const newPhrase: FractalEvent[] = JSON.parse(JSON.stringify(phrase));
-    const mutationType = random.nextInt(4);
-
-    if (newPhrase.length === 0) return [];
-
-    const scale = getScaleForMood(mood);
-
-    switch (mutationType) {
-        case 0: // Rhythmic change
-            const noteToChange = newPhrase[random.nextInt(newPhrase.length)];
-            noteToChange.duration *= (random.next() > 0.5 ? 1.5 : 0.5);
-            break;
-        case 1: // Pitch change (in-scale)
-            const noteToTranspose = newPhrase[random.nextInt(newPhrase.length)];
-            const currentIndex = scale.indexOf(noteToTranspose.note);
-            if (currentIndex !== -1) {
-                const step = random.next() > 0.5 ? 1 : -1;
-                noteToTranspose.note = scale[(currentIndex + step + scale.length) % scale.length];
-            }
-            break;
-        case 2: // Invert a fragment
-             if (newPhrase.length > 2) {
-                const start = random.nextInt(newPhrase.length - 2);
-                const fragment = newPhrase.slice(start, start + 2);
-                const reversedNotes = fragment.map(e => e.note).reverse();
-                fragment.forEach((event, i) => event.note = reversedNotes[i]);
-            }
-            break;
-        case 3: // Add/Remove note
-            if (random.next() > 0.5 && newPhrase.length > 3) {
-                newPhrase.splice(random.nextInt(newPhrase.length), 1);
-            } else {
-                 const newNoteEvent = {...newPhrase[0], note: scale[random.nextInt(scale.length)], time: newPhrase[newPhrase.length-1].time + 0.5, duration: 0.5};
-                 newPhrase.push(newNoteEvent);
-            }
-            break;
-    }
-    // Normalize phrase
-    let currentTime = 0;
-    newPhrase.forEach(e => { e.time = currentTime; currentTime += e.duration; });
-    const scaleFactor = 4.0 / currentTime;
-    if (isFinite(scaleFactor) && scaleFactor > 0) {
-        let runningTime = 0;
-        newPhrase.forEach(e => {
-            e.duration *= scaleFactor;
-            e.time = runningTime;
-            runningTime += e.duration;
-        });
-    }
-
-    return newPhrase;
-}
-
-
-
 // === ОСНОВНОЙ КЛАСС ===
 export class FractalMusicEngine {
   public config: EngineConfig;
@@ -249,6 +192,7 @@ export class FractalMusicEngine {
   private sfxFillForThisEpoch: { drum: FractalEvent[], bass: FractalEvent[], accompaniment: FractalEvent[] } | null = null;
   private lastAccompanimentEndTime: number = -Infinity;
   private nextAccompanimentDelay: number = 0;
+  private hasBassBeenMutated = false;
   
   private branches: Branch[] = [];
   private harmonyBranches: Branch[] = [];
@@ -340,6 +284,7 @@ export class FractalMusicEngine {
     this.nextAccompanimentDelay = this.random.next() * 7 + 5; 
     this.branches = [];
     this.harmonyBranches = [];
+    this.hasBassBeenMutated = false; // Reset flag
     
     // This was already correct, using the navigator's blueprint.
     console.log(`[FractalMusicEngine] Initialized with blueprint "${this.navigator.blueprint.name}". Total duration: ${this.navigator.totalBars} bars.`);
@@ -563,10 +508,13 @@ export class FractalMusicEngine {
     instrumentHints.melody = this._chooseInstrumentForPart('melody', navInfo.currentPart);
 
     if (navInfo.currentPart.layers.bass) {
-        if (navInfo.isPartTransition && this.epoch > 0) {
-            const seedPhrase = this.bassPhraseLibrary[this.random.nextInt(this.bassPhraseLibrary.length)];
-            this.currentBassPhrase = mutateBassPhrase(seedPhrase, this.config.mood, this.config.genre, this.random);
-            console.log(`%c[BassEvolution @ Bar ${this.epoch}] MACRO-MUTATION. New seed selected.`, 'color: #9932CC;');
+        if (!this.hasBassBeenMutated && this.epoch > 0) {
+            const mutationCount = this.random.nextInt(2) + 2; // 2-3 mutations
+            console.log(`%c[BassEvolution @ Bar ${this.epoch}] Delayed MACRO-MUTATION (${mutationCount} iterations).`, 'color: #FF4500;');
+            for (let i = 0; i < mutationCount; i++) {
+                this.currentBassPhrase = mutateBassPhrase(this.currentBassPhrase, this.config.mood, this.config.genre, this.random);
+            }
+            this.hasBassBeenMutated = true;
         } else if (navInfo.isBundleTransition) {
             this.currentBassPhrase = mutateBassPhrase(this.currentBassPhrase, this.config.mood, this.config.genre, this.random);
             console.log(`%c[BassEvolution @ Bar ${this.epoch}] MICRO-MUTATION. Evolving current phrase.`, 'color: #DA70D6;');
