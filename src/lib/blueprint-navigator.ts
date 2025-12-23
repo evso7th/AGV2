@@ -58,8 +58,14 @@ export class BlueprintNavigator {
             console.warn(`[NAVIGATOR] Sum of part percentages is ${totalPercentage}, not 100. Durations may be skewed.`);
         }
 
-        for (const part of this.blueprint.structure.parts) {
-            const partDuration = Math.round((part.duration.percent / 100) * this.totalBars);
+        const numParts = this.blueprint.structure.parts.length;
+        for (let partIndex = 0; partIndex < numParts; partIndex++) {
+            const part = this.blueprint.structure.parts[partIndex];
+            const isLastPart = partIndex === numParts - 1;
+            
+            const calculatedPartDuration = Math.round((part.duration.percent / 100) * this.totalBars);
+            const partDuration = isLastPart ? this.totalBars - currentBar : calculatedPartDuration;
+            
             const partStartBar = currentBar;
             const partEndBar = partStartBar + partDuration - 1;
 
@@ -81,18 +87,24 @@ export class BlueprintNavigator {
                     let accumulatedDuration = 0;
                     for (let i = 0; i < bundleCount; i++) {
                         const bundleSpec = part.bundles[i];
+                        const isLastBundleInPart = i === bundleCount - 1;
+
                         const proportion = bundleDurations[i] / totalBundlePercent;
-                        const calculatedDuration = Math.round(proportion * partDuration);
+                        let bundleDuration;
+
+                        if (isLastBundleInPart) {
+                            // Last bundle gets the remainder to ensure full coverage of the part
+                            bundleDuration = partDuration - accumulatedDuration;
+                        } else {
+                            bundleDuration = Math.round(proportion * partDuration);
+                        }
                         
-                        // Last bundle gets the remainder to ensure full coverage
-                        const bundleDuration = (i === bundleCount - 1)
-                            ? partDuration - accumulatedDuration
-                            : calculatedDuration;
+                        const bundleEndBar = partStartBar + accumulatedDuration + bundleDuration - 1;
 
                         partBoundary.bundleBoundaries.push({
                             bundle: bundleSpec,
                             startBar: partStartBar + accumulatedDuration,
-                            endBar: partStartBar + accumulatedDuration + bundleDuration - 1
+                            endBar: bundleEndBar
                         });
                         accumulatedDuration += bundleDuration;
                     }
@@ -104,9 +116,16 @@ export class BlueprintNavigator {
             currentBar += partDuration;
         }
 
-        // Adjust the last part's end bar to match the total, accounting for rounding.
+        // Final check to ensure the last part covers the total duration
         if (this.partBoundaries.length > 0) {
-            this.partBoundaries[this.partBoundaries.length - 1].endBar = this.totalBars - 1;
+            const lastPartBoundary = this.partBoundaries[this.partBoundaries.length - 1];
+            if (lastPartBoundary.endBar !== this.totalBars - 1) {
+                 lastPartBoundary.endBar = this.totalBars - 1;
+                 if (lastPartBoundary.bundleBoundaries.length > 0) {
+                     const lastBundle = lastPartBoundary.bundleBoundaries[lastPartBoundary.bundleBoundaries.length - 1];
+                     lastBundle.endBar = this.totalBars - 1;
+                 }
+            }
         }
     }
 
@@ -121,7 +140,6 @@ export class BlueprintNavigator {
 
         const partInfo = this.partBoundaries.find(p => effectiveBar >= p.startBar && effectiveBar <= p.endBar);
         if (!partInfo) {
-            // This should not happen with the new logic, but as a fallback:
             console.error(`[NAVIGATOR @ Bar ${effectiveBar}] CRITICAL: Could not find part for current bar.`);
             return null;
         }
