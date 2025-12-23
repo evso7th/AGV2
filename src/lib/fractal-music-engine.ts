@@ -213,12 +213,9 @@ export class FractalMusicEngine {
 
   constructor(config: EngineConfig) {
     this.config = { ...config };
+    this.navigator = new BlueprintNavigator(BLUEPRINT_LIBRARY[config.mood] || MelancholicAmbientBlueprint, config.seed);
     this.random = seededRandom(config.seed);
     this.nextWeatherEventEpoch = 0;
-    
-    const blueprint = BLUEPRINT_LIBRARY[config.mood] || MelancholicAmbientBlueprint;
-    this.navigator = new BlueprintNavigator(blueprint, config.seed);
-    
     this.initialize();
   }
 
@@ -235,10 +232,10 @@ export class FractalMusicEngine {
           this.random = seededRandom(newConfig.seed);
       }
       
-      const blueprint = BLUEPRINT_LIBRARY[this.config.mood] || MelancholicAmbientBlueprint;
-      this.navigator = new BlueprintNavigator(blueprint, this.config.seed);
-
       if(moodOrGenreChanged) {
+          console.log(`[FME] Mood or Genre changed. Re-initializing with new blueprint for mood: ${this.config.mood}`);
+          const blueprint = BLUEPRINT_LIBRARY[this.config.mood] || MelancholicAmbientBlueprint;
+          this.navigator = new BlueprintNavigator(blueprint, this.config.seed);
           this.initialize();
       }
   }
@@ -251,8 +248,7 @@ export class FractalMusicEngine {
     this.branches = [];
     this.harmonyBranches = [];
     
-    const blueprint = BLUEPRINT_LIBRARY[this.config.mood] || MelancholicAmbientBlueprint;
-    this.navigator = new BlueprintNavigator(blueprint, this.config.seed);
+    // This was already correct, using the navigator's blueprint.
     console.log(`[FractalMusicEngine] Initialized with blueprint "${this.navigator.blueprint.name}". Total duration: ${this.navigator.totalBars} bars.`);
 
 
@@ -385,27 +381,23 @@ export class FractalMusicEngine {
   }
   
   private generateDrumEvents(navInfo: NavigationInfo | null): FractalEvent[] {
-    if (!navInfo || !this.config.drumSettings.enabled) {
-      return [];
-    }
-
+    if (!navInfo) return [];
+    
     const partId = navInfo.currentPart.id;
     const baseAxiom = createDrumAxiom(this.config.genre, this.config.mood, this.config.tempo, this.random).events;
 
     switch (partId) {
       case 'INTRO_1':
-      case 'INTRO_2':
       case 'OUTRO':
-        // Filter for very sparse, ambient percussion
         return baseAxiom.filter(event => {
             const type = Array.isArray(event.type) ? event.type[0] : event.type;
             return type.startsWith('perc-') || type.includes('ride') || type.includes('cymbal');
-        }).map(event => ({ ...event, weight: event.weight * 0.5 })); // Make it quieter
+        }).map(event => ({ ...event, weight: event.weight * 0.5 }));
 
+      case 'INTRO_2':
       case 'INTRO_3':
-      case 'BUILD_1': // Renamed from BUILD
+      case 'BUILD_1':
       case 'BUILD_2':
-        // Add more ghost notes for build-up
         const buildEvents = [...baseAxiom];
         if (this.random.next() < 0.6) {
              buildEvents.push({ 
@@ -419,20 +411,17 @@ export class FractalMusicEngine {
         }
         return buildEvents;
 
-      case 'MAIN_1': // Renamed from MAIN
+      case 'MAIN_1':
       case 'MAIN_2':
-         // Use the full, rich pattern
         return baseAxiom;
 
       case 'RELEASE':
-         // Like intro, but maybe keep a simple snare pattern
         return baseAxiom.filter(event => {
             const type = Array.isArray(event.type) ? event.type[0] : event.type;
             return type.startsWith('perc-') || type.includes('ride') || type === 'drum_snare_ghost_note';
         });
       
       default:
-        // Failsafe: return an empty array if partId is unknown
         return [];
     }
   }
@@ -441,26 +430,23 @@ export class FractalMusicEngine {
     let instrumentHints: InstrumentHints = {};
     const output: FractalEvent[] = [];
 
-    // --- START DIAGNOSTIC LOG ---
     if (navInfo) {
         console.log(
             `[FME Check @ Bar ${this.epoch}] Part: ${navInfo.currentPart.id} | LAYERS: ${JSON.stringify(navInfo.currentPart.layers)}`
         );
     } else {
         console.log(`[FME Check @ Bar ${this.epoch}] No navigation info available.`);
+        return { events: [], instrumentHints: {} }; // Return early if no nav info
     }
-    // --- END DIAGNOSTIC LOG ---
 
-
-    // --- CHOOSE INSTRUMENTS BASED ON BLUEPRINT ---
     if (navInfo) {
         instrumentHints.accompaniment = this._chooseInstrumentForPart('accompaniment', navInfo.currentPart) as AccompanimentInstrument;
         instrumentHints.melody = this._chooseInstrumentForPart('melody', navInfo.currentPart) as MelodyInstrument;
     }
 
 
-    // --- BASS EVOLUTION ---
-    if (navInfo?.currentPart.layers.bass) {
+    if (navInfo.currentPart.layers.bass) {
+        console.log(`[FME Generate] Generating BASS for bar ${this.epoch} (Part: ${navInfo.currentPart.id})`);
         if (navInfo.isPartTransition && this.epoch > 0) {
             const seedPhrase = this.bassPhraseLibrary[this.random.nextInt(this.bassPhraseLibrary.length)];
             this.currentBassPhrase = mutateBassPhrase(seedPhrase, this.config.mood, this.config.genre, this.random);
@@ -472,35 +458,34 @@ export class FractalMusicEngine {
         output.push(...this.currentBassPhrase);
     }
     
-    // --- DRUMS ---
-    let drumEvents: FractalEvent[];
-    if (navInfo?.isPartTransition && this.epoch > 0) {
-        drumEvents = createDrumFill(this.random);
-        console.log(`%c[Fill @ Bar ${this.epoch}] Generated DRUM FILL for part transition.`, 'color: #20B2AA;');
-    } else {
-        drumEvents = this.generateDrumEvents(navInfo);
+    if (navInfo.currentPart.layers.drums) {
+        console.log(`[FME Generate] Generating DRUMS for bar ${this.epoch} (Part: ${navInfo.currentPart.id})`);
+        let drumEvents: FractalEvent[];
+        if (navInfo.isPartTransition && this.epoch > 0) {
+            drumEvents = createDrumFill(this.random);
+            console.log(`%c[Fill @ Bar ${this.epoch}] Generated DRUM FILL for part transition.`, 'color: #20B2AA;');
+        } else {
+            drumEvents = this.generateDrumEvents(navInfo);
+        }
+        output.push(...drumEvents);
     }
-    output.push(...drumEvents);
     
-    // --- HARMONY & MELODY ---
     const accompBranches = this.harmonyBranches.filter(b => b.type === 'harmony' || b.type === 'accompaniment');
     let accompanimentEvents: FractalEvent[] = [];
-    if (navInfo?.currentPart.layers.pad && accompBranches.length > 0) {
+    if (navInfo.currentPart.layers.accompaniment && navInfo.currentPart.layers.pad && accompBranches.length > 0) {
         const winningAccompBranch = accompBranches.reduce((max, b) => b.weight > max.weight ? b : max, accompBranches[0]);
         accompanimentEvents.push(...winningAccompBranch.events);
-        
-        const harmonyEvents = accompanimentEvents.map(event => ({
-            ...event,
-            type: 'harmony' as InstrumentType,
-        }));
-        
         output.push(...accompanimentEvents);
+    }
+    
+    if (navInfo.currentPart.layers.harmony) {
+        const harmonyEvents = accompanimentEvents.map(event => ({ ...event, type: 'harmony' as InstrumentType }));
         output.push(...harmonyEvents);
-        
         instrumentHints.harmony = chooseHarmonyInstrument(this.config.mood, this.random);
     }
 
-    if (navInfo?.currentPart.layers.melody) {
+
+    if (navInfo.currentPart.layers.melody) {
         const topNotes = extractTopNotes(accompanimentEvents, 4);
         if(topNotes.length > 0) {
             const melodyEvents = topNotes.map(note => ({
@@ -547,16 +532,18 @@ export class FractalMusicEngine {
       branch.weight = ((1 - lambda) * branch.weight) + resonanceSum;
       branch.age++;
     });
+    
+    const navInfo = this.navigator.tick(this.epoch);
 
     if (this.epoch % 2 === 1) {
-        if (this.random.next() < this.config.density * 0.4 && this.branches.filter(b => b.type === 'bass').length < 4) {
+        if (navInfo?.currentPart.layers.bass && this.random.next() < this.config.density * 0.4 && this.branches.filter(b => b.type === 'bass').length < 4) {
             const parent = this.selectBranchForMutation('bass');
             if (parent) {
                 const child = this.mutateBranch(parent);
                 if (child) this.branches.push(child);
             }
         }
-        if (this.random.next() < this.config.density * 0.3 && this.harmonyBranches.length < 4) {
+        if ((navInfo?.currentPart.layers.accompaniment || navInfo?.currentPart.layers.harmony) && this.random.next() < this.config.density * 0.3 && this.harmonyBranches.length < 4) {
              const parent = this.selectBranchForMutation('harmony');
              if (parent) {
                  const child = this.mutateBranch(parent);
