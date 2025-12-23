@@ -1,5 +1,4 @@
 
-
 // src/lib/music-theory.ts
 import type { FractalEvent, Mood, Genre, Technique, BassSynthParams, InstrumentType, AccompanimentInstrument, InstrumentHints, AccompanimentTechnique } from '@/types/fractal';
 
@@ -232,6 +231,67 @@ export function mutateBassPhrase(phrase: FractalEvent[], mood: Mood, genre: Genr
             e.time = runningTime;
             runningTime += e.duration;
         });
+    }
+
+    return newPhrase;
+}
+
+export function mutateAccompanimentPhrase(phrase: FractalEvent[], mood: Mood, genre: Genre, random: { next: () => number, nextInt: (max: number) => number }): FractalEvent[] {
+    const newPhrase: FractalEvent[] = JSON.parse(JSON.stringify(phrase));
+    const mutationType = random.nextInt(4);
+
+    if (newPhrase.length === 0) return [];
+    
+    switch (mutationType) {
+        case 0: // Rhythmic mutation: Change duration of a random note
+            const noteToChange = newPhrase[random.nextInt(newPhrase.length)];
+            noteToChange.duration *= (random.next() > 0.5 ? 1.5 : 0.7);
+            break;
+
+        case 1: // Pitch mutation (in-scale)
+            const noteToTranspose = newPhrase[random.nextInt(newPhrase.length)];
+            const scale = getScaleForMood(mood);
+            const rootNote = noteToTranspose.note - (noteToTranspose.note % 12); // Get octave base
+            const possibleNotes = scale.filter(n => n >= rootNote && n < rootNote + 12);
+            if (possibleNotes.length > 0) {
+                noteToTranspose.note = possibleNotes[random.nextInt(possibleNotes.length)];
+            }
+            break;
+            
+        case 2: // Inversion of a small fragment (order of notes)
+            if (newPhrase.length > 2) {
+                const start = random.nextInt(newPhrase.length - 2);
+                const fragment = newPhrase.slice(start, start + 2);
+                const reversedNotes = fragment.map(e => e.note).reverse();
+                fragment.forEach((event, i) => event.note = reversedNotes[i]);
+            }
+            break;
+
+        case 3: // Add or remove a note
+            if (random.next() > 0.5 && newPhrase.length > 3) {
+                newPhrase.splice(random.nextInt(newPhrase.length), 1);
+            } else {
+                 const lastNote = newPhrase[newPhrase.length-1];
+                 const newNoteEvent = {...lastNote};
+                 const scale = getScaleForMood(mood);
+                 newNoteEvent.note = scale[random.nextInt(scale.length)];
+                 newNoteEvent.time = lastNote.time + lastNote.duration;
+                 newNoteEvent.duration = (phrase[0]?.duration || 1.0) * 0.5;
+                 newPhrase.push(newNoteEvent);
+            }
+            break;
+    }
+
+    // Re-normalize timings to fit one bar
+    let totalDuration = newPhrase.reduce((sum, e) => sum + e.duration, 0);
+    if (totalDuration > 0 && totalDuration !== 4.0) {
+         const scaleFactor = 4.0 / totalDuration;
+         let runningTime = 0;
+         newPhrase.forEach(e => {
+             e.duration *= scaleFactor;
+             e.time = runningTime;
+             runningTime += e.duration;
+         });
     }
 
     return newPhrase;
@@ -526,10 +586,10 @@ export const TEXTURE_INSTRUMENT_WEIGHTS_BY_MOOD: Record<Mood, Record<Exclude<Acc
 export const AMBIENT_ACCOMPANIMENT_WEIGHTS: Record<Mood, Record<Exclude<AccompanimentInstrument, 'violin' | 'flute'>, number>> = {
   epic:          { organ: 0.4, mellotron: 0.4, synth: 0.2, piano: 0, guitarChords: 0, acousticGuitarSolo: 0, electricGuitar: 0, 'E-Bells_melody': 0, 'G-Drops': 0, 'theremin': 0, 'none': 0.0, 'ambientPad': 0.0, 'acousticGuitar': 0.0 },
   joyful:        { organ: 0.3, synth: 0.2, mellotron: 0.2, piano: 0.3, guitarChords: 0, acousticGuitarSolo: 0, electricGuitar: 0, 'E-Bells_melody': 0, 'G-Drops': 0, 'theremin': 0, 'none': 0.0, 'ambientPad': 0.0, 'acousticGuitar': 0.0 },
-  enthusiastic:  { synth: 0.5, organ: 0.4, theremin: 0.1, piano: 0, guitarChords: 0, acousticGuitarSolo: 0, electricGuitar: 0, mellotron: 0, 'E-Bells_melody': 0, 'G-Drops': 0, 'none': 0.0, 'ambientPad': 0.0, 'acousticGuitar': 0.0 },
+  enthusiastic:  { synth: 0.5, organ: 0.4, theremin: 0.1, piano: 0, guitarChords: 0, acousticGuitarSolo: 0, electricGuitar: 0, mellotron: 0, 'E-Bells_melody': 0, 'G-Drops': 0, 'theremin': 0, 'none': 0.0, 'ambientPad': 0.0, 'acousticGuitar': 0.0 },
   melancholic:   { mellotron: 0.4, organ: 0.3, synth: 0.1, piano: 0.2, guitarChords: 0, acousticGuitarSolo: 0, electricGuitar: 0, 'E-Bells_melody': 0, 'G-Drops': 0, 'theremin': 0, 'none': 0.0, 'ambientPad': 0.0, 'acousticGuitar': 0.0 },
-  dark:          { organ: 0.5, mellotron: 0.3, theremin: 0.2, piano: 0, guitarChords: 0, acousticGuitarSolo: 0, electricGuitar: 0, synth: 0, 'E-Bells_melody': 0, 'G-Drops': 0, 'none': 0.0, 'ambientPad': 0.0, 'acousticGuitar': 0.0 },
-  anxious:       { synth: 0.5, theremin: 0.3, organ: 0.2, piano: 0, guitarChords: 0, acousticGuitarSolo: 0, electricGuitar: 0, mellotron: 0, 'E-Bells_melody': 0, 'G-Drops': 0, 'none': 0.0, 'ambientPad': 0.0, 'acousticGuitar': 0.0 },
+  dark:          { organ: 0.5, mellotron: 0.3, theremin: 0.2, piano: 0, guitarChords: 0, acousticGuitarSolo: 0, electricGuitar: 0, synth: 0, 'E-Bells_melody': 0, 'G-Drops': 0, 'theremin': 0, 'none': 0.0, 'ambientPad': 0.0, 'acousticGuitar': 0.0 },
+  anxious:       { synth: 0.5, theremin: 0.3, organ: 0.2, piano: 0, guitarChords: 0, acousticGuitarSolo: 0, electricGuitar: 0, mellotron: 0, 'E-Bells_melody': 0, 'G-Drops': 0, 'theremin': 0, 'none': 0.0, 'ambientPad': 0.0, 'acousticGuitar': 0.0 },
   dreamy:        { synth: 0.3, mellotron: 0.2, organ: 0.2, piano: 0.3, guitarChords: 0, acousticGuitarSolo: 0, electricGuitar: 0, 'E-Bells_melody': 0, 'G-Drops': 0, 'theremin': 0, 'none': 0.0, 'ambientPad': 0.0, 'acousticGuitar': 0.0 },
   contemplative: { organ: 0.4, synth: 0.2, piano: 0.4, guitarChords: 0, acousticGuitarSolo: 0, electricGuitar: 0, 'E-Bells_melody': 0, 'G-Drops': 0, 'theremin': 0, 'mellotron': 0, 'none': 0.0, 'ambientPad': 0.0, 'acousticGuitar': 0.0 },
   calm:          { synth: 0.3, organ: 0.2, piano: 0.5, guitarChords: 0, acousticGuitarSolo: 0, electricGuitar: 0, 'E-Bells_melody': 0, 'G-Drops': 0, 'theremin': 0, 'mellotron': 0, 'none': 0.0, 'ambientPad': 0.0, 'acousticGuitar': 0.0 },
@@ -746,3 +806,4 @@ export function chooseHarmonyInstrument(mood: Mood, random: { next: () => number
     
 
 
+    
