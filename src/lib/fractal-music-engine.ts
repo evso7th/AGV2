@@ -416,6 +416,7 @@ export class FractalMusicEngine {
         return baseAxiom;
 
       case 'RELEASE':
+      case 'BRIDGE':
         return baseAxiom.filter(event => {
             const type = Array.isArray(event.type) ? event.type[0] : event.type;
             return type.startsWith('perc-') || type.includes('ride') || type === 'drum_snare_ghost_note';
@@ -430,20 +431,17 @@ export class FractalMusicEngine {
     let instrumentHints: InstrumentHints = {};
     const output: FractalEvent[] = [];
 
-    if (navInfo) {
-        console.log(
-            `[FME Check @ Bar ${this.epoch}] Part: ${navInfo.currentPart.id} | LAYERS: ${JSON.stringify(navInfo.currentPart.layers)}`
-        );
-    } else {
+    if (!navInfo) {
         console.log(`[FME Check @ Bar ${this.epoch}] No navigation info available.`);
         return { events: [], instrumentHints: {} }; // Return early if no nav info
     }
 
-    if (navInfo) {
-        instrumentHints.accompaniment = this._chooseInstrumentForPart('accompaniment', navInfo.currentPart) as AccompanimentInstrument;
-        instrumentHints.melody = this._chooseInstrumentForPart('melody', navInfo.currentPart) as MelodyInstrument;
-    }
+    console.log(
+        `[FME Check @ Bar ${this.epoch}] Part: ${navInfo.currentPart.id} | LAYERS: ${JSON.stringify(navInfo.currentPart.layers)}`
+    );
 
+    instrumentHints.accompaniment = this._chooseInstrumentForPart('accompaniment', navInfo.currentPart);
+    instrumentHints.melody = this._chooseInstrumentForPart('melody', navInfo.currentPart);
 
     if (navInfo.currentPart.layers.bass) {
         console.log(`[FME Generate] Generating BASS for bar ${this.epoch} (Part: ${navInfo.currentPart.id})`);
@@ -484,7 +482,6 @@ export class FractalMusicEngine {
         instrumentHints.harmony = chooseHarmonyInstrument(this.config.mood, this.random);
     }
 
-
     if (navInfo.currentPart.layers.melody) {
         const topNotes = extractTopNotes(accompanimentEvents, 4);
         if(topNotes.length > 0) {
@@ -497,6 +494,23 @@ export class FractalMusicEngine {
         }
     }
 
+    // SFX and Sparkles generation
+    if (navInfo.currentPart.layers.sfx && this.random.next() < this.config.density * 0.1) {
+        output.push({
+            type: 'sfx', note: 60, duration: 2, time: this.random.next() * 2, weight: 0.5,
+            technique: 'swell', dynamics: 'p', phrasing: 'legato',
+            params: { mood: this.config.mood, genre: this.config.genre }
+        });
+         console.log(`[FME Generate] Added SFX event for bar ${this.epoch}.`);
+    }
+    if (navInfo.currentPart.layers.sparkles && this.random.next() < this.config.density * 0.15) {
+         output.push({
+            type: 'sparkle', note: 72, duration: 1, time: this.random.next() * 3.5, weight: 0.4,
+            technique: 'hit', dynamics: 'p', phrasing: 'staccato',
+            params: { mood: this.config.mood, genre: this.config.genre }
+        });
+         console.log(`[FME Generate] Added Sparkle event for bar ${this.epoch}.`);
+    }
 
     if (this.sfxFillForThisEpoch) {
         this.sfxFillForThisEpoch = null;
@@ -612,3 +626,6 @@ export class FractalMusicEngine {
     return { events, instrumentHints };
   }
 }
+
+
+    

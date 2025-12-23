@@ -18,7 +18,7 @@ const SPARKLE_SAMPLES = {
         '/assets/music/droplets/BirdFX.ogg',
         '/assets/music/droplets/vibes_a.ogg',
         '/assets/music/droplets/belldom.ogg',
-        '/assets/music/droplets/Abstruse.ogg',
+        //'/assets/music/droplets/Abstruse.ogg',
         '/assets/music/droplets/BladeWalker.ogg',
         '/assets/music/droplets/merimbo.ogg',
         '/assets/music/droplets/ocean.mp3',
