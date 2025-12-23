@@ -195,19 +195,23 @@ export const MelancholicAmbientBlueprint: MusicBlueprint = {
         outroFill: { type: 'density_pause', duration: 2, parameters: { soloLayer: 'pad' } },
       },
       {
-        id: 'OUTRO', name: 'Dissolution',
-        duration: { percent: 10 }, // ~12 bars
-        layers: { pad: true, sfx: true, harmony: true, accompaniment: true },
+        id: 'BRIDGE', name: 'Promenade',
+        duration: { percent: 5 }, // ~6 bars
+        layers: { accompaniment: true, bass: true, sfx: true },
         instrumentation: {
-            accompaniment: {
-                strategy: 'weighted',
-                options: [{ name: 'ambientPad', weight: 1.0 }]
-            },
+          accompaniment: {
+            strategy: 'weighted',
+            options: [{ name: 'synth', weight: 1.0 }]
+          },
+          bass: {
+            strategy: 'weighted',
+            options: [{ name: 'glideBass', weight: 1.0 }]
+          }
         },
         instrumentRules: {},
-        bundles: [ { id: 'OUTRO_BUNDLE_1', name: 'Fading', duration: { percent: 100 }, characteristics: {}, phrases: {} } ],
-        outroFill: null, 
-      }
+        bundles: [ { id: 'BRIDGE_BUNDLE_1', name: 'Transition', duration: { percent: 100 }, characteristics: {}, phrases: {} } ],
+        outroFill: null,
+      },
     ]
   },
   
@@ -374,3 +378,5 @@ export const BLUEPRINT_LIBRARY: Record<Mood, MusicBlueprint> = {
 };
 
 export default MelancholicAmbientBlueprint;
+
+    
