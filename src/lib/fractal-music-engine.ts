@@ -312,7 +312,7 @@ export class FractalMusicEngine {
     
     // Macro-mutation for accompaniment on init
     const mutationCount = this.random.nextInt(3) + 2; // 2 to 4 mutations
-    for(let i=0; i < mutationCount; i++) {
+    for(let i = 0; i < mutationCount; i++) {
       initialAccompPhrase = mutateAccompanimentPhrase(initialAccompPhrase, this.config.mood, this.config.genre, this.random);
     }
     this.currentAccompPhrase = initialAccompPhrase;
@@ -475,6 +475,46 @@ export class FractalMusicEngine {
         return [];
     }
   }
+
+  private _applyMicroMutations(phrase: FractalEvent[]): FractalEvent[] {
+    if (phrase.length === 0) return [];
+    const newPhrase = JSON.parse(JSON.stringify(phrase));
+
+    // 1. Ритмический Дрейф (Rhythmic Drift)
+    if (this.random.next() < 0.5) { // 50% шанс на сдвиг
+        const noteToShift = newPhrase[this.random.nextInt(newPhrase.length)];
+        const shiftAmount = (this.random.next() - 0.5) * 0.1; // Сдвиг на ±5% от доли
+        noteToShift.time = Math.max(0, noteToShift.time + shiftAmount);
+    }
+
+    // 2. Динамический Акцент (Velocity Accent)
+    if (this.random.next() < 0.6) { // 60% шанс на акцент
+        const noteToAccent = newPhrase[this.random.nextInt(newPhrase.length)];
+        noteToAccent.weight *= (0.85 + this.random.next() * 0.3); // Изменение громкости на ±15%
+        noteToAccent.weight = Math.max(0.1, Math.min(1.0, noteToAccent.weight));
+    }
+    
+    // 3. Регистровый Дрейф (Register Drift) - сдвиг всей фразы на октаву
+    if (this.random.next() < 0.3) { // 30% шанс на сдвиг октавы
+        const octaveShift = (this.random.next() > 0.5) ? 12 : -12;
+        newPhrase.forEach(note => {
+            const newNote = note.note + octaveShift;
+            // Ограничиваем, чтобы не уходить в слишком неблагозвучные регистры
+            if (newNote > 36 && newNote < 84) {
+                 note.note = newNote;
+            }
+        });
+    }
+
+    // Пересчитываем время, чтобы избежать наложений после сдвига
+    let currentTime = 0;
+    newPhrase.sort((a,b) => a.time - b.time).forEach(e => {
+        e.time = currentTime;
+        currentTime += e.duration;
+    });
+
+    return newPhrase;
+  }
   
  private generateOneBar(barDuration: number, navInfo: NavigationInfo | null): { events: FractalEvent[], instrumentHints: InstrumentHints } {
     let instrumentHints: InstrumentHints = {};
@@ -538,8 +578,10 @@ export class FractalMusicEngine {
         if (navInfo.isPartTransition && this.epoch > 0) {
             this.currentAccompPhrase = mutateAccompanimentPhrase(this.currentAccompPhrase, this.config.mood, this.config.genre, this.random);
         }
-        accompanimentEvents.push(...this.currentAccompPhrase);
-        output.push(...this.currentAccompPhrase);
+        // Применяем микромутации каждый такт
+        const mutatedAccomp = this._applyMicroMutations(this.currentAccompPhrase);
+        accompanimentEvents.push(...mutatedAccomp);
+        output.push(...mutatedAccomp);
     }
     
     if (navInfo.currentPart.layers.harmony) {
@@ -705,3 +747,4 @@ export class FractalMusicEngine {
     return { events, instrumentHints };
   }
 }
+
