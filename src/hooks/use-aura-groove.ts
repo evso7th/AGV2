@@ -156,6 +156,15 @@ export const useAuraGroove = () => {
     resetWorker();
   }, [isPlaying, setEngineIsPlaying, resetWorker]);
 
+  // === NEW: Automatic regeneration on initialization ===
+  useEffect(() => {
+    if (isInitialized) {
+      console.log('[useAuraGroove] Initializing with a new seed...');
+      handleRegenerate();
+    }
+  }, [isInitialized, handleRegenerate]);
+
+
   const handleInstrumentChange = (part: keyof InstrumentSettings, name: BassInstrument | MelodyInstrument | AccompanimentInstrument | 'piano' | 'guitarChords') => {
     const newSettings = {
       ...instrumentSettings,
