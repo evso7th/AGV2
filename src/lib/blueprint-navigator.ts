@@ -73,22 +73,32 @@ export class BlueprintNavigator {
             let bundleStartInPart = 0;
             const bundleCount = part.bundles.length;
             
-            // Distribute part duration among its bundles (assuming equal length for simplicity now)
-            const approxBundleDuration = Math.floor(partDuration / bundleCount);
-            let remainder = partDuration % bundleCount;
+            if (bundleCount > 0) {
+                const bundleDurations = part.bundles.map(b => b.duration.percent);
+                const totalBundlePercent = bundleDurations.reduce((a, b) => a + b, 0);
 
-            for (let i = 0; i < bundleCount; i++) {
-                const bundleSpec = part.bundles[i];
-                let bundleDuration = approxBundleDuration + (remainder > 0 ? 1 : 0);
-                if(remainder > 0) remainder--;
+                if (totalBundlePercent > 0) {
+                    let accumulatedDuration = 0;
+                    for (let i = 0; i < bundleCount; i++) {
+                        const bundleSpec = part.bundles[i];
+                        const proportion = bundleDurations[i] / totalBundlePercent;
+                        const calculatedDuration = Math.round(proportion * partDuration);
+                        
+                        // Last bundle gets the remainder to ensure full coverage
+                        const bundleDuration = (i === bundleCount - 1)
+                            ? partDuration - accumulatedDuration
+                            : calculatedDuration;
 
-                partBoundary.bundleBoundaries.push({
-                    bundle: bundleSpec,
-                    startBar: partStartBar + bundleStartInPart,
-                    endBar: partStartBar + bundleStartInPart + bundleDuration - 1
-                });
-                bundleStartInPart += bundleDuration;
+                        partBoundary.bundleBoundaries.push({
+                            bundle: bundleSpec,
+                            startBar: partStartBar + accumulatedDuration,
+                            endBar: partStartBar + accumulatedDuration + bundleDuration - 1
+                        });
+                        accumulatedDuration += bundleDuration;
+                    }
+                }
             }
+
 
             this.partBoundaries.push(partBoundary);
             currentBar += partDuration;
