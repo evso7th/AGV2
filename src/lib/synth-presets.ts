@@ -111,10 +111,10 @@ export const SYNTH_PRESETS: Record<Exclude<MelodyInstrument | BassInstrument, 'p
     ],
     adsr: { attack: 0.1, decay: 0.1, sustain: 0.9, release: 0.6 },
     filter: { type: 'lpf', cutoff: 2500, q: 2 },
-    lfo: { shape: 'sine', rate: 1.5, amount: 3, target: 'pitch' }, // Cents
+    lfo: { shape: 'sine', rate: 4.8, amount: 2, target: 'pitch' }, // Cents
     effects: {
       distortion: 0,
-      chorus: { rate: 0.3, depth: 0.004, mix: 0.4 },
+      chorus: { rate: 0.7, depth: 0.006, mix: 0.4 },
       delay: { time: 0, feedback: 0, mix: 0 },
     },
   },
@@ -176,7 +176,7 @@ export const SYNTH_PRESETS: Record<Exclude<MelodyInstrument | BassInstrument, 'p
     lfo: { shape: 'sine', rate: 0, amount: 0, target: 'pitch' },
     effects: {
       distortion: 0.8,
-      chorus: { rate: 0.2, depth: 0.005, mix: 0.3 },
+      chorus: { rate: 0.7, depth: 0.006, mix: 0.3 },
       delay: { time: 0.375, feedback: 0.4, mix: 0.35 },
     },
   },
@@ -236,3 +236,5 @@ export const SYNTH_PRESETS: Record<Exclude<MelodyInstrument | BassInstrument, 'p
     },
   },
 };
+
+    
