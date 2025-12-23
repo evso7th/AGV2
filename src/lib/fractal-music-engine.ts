@@ -476,12 +476,13 @@ export class FractalMusicEngine {
     }
   }
 
-  private _applyMicroMutations(phrase: FractalEvent[]): FractalEvent[] {
+  private _applyMicroMutations(phrase: FractalEvent[], epoch: number): FractalEvent[] {
     if (phrase.length === 0) return [];
     const newPhrase = JSON.parse(JSON.stringify(phrase));
 
     // 1. Ритмический Дрейф (Rhythmic Drift)
     if (this.random.next() < 0.5) { // 50% шанс на сдвиг
+        console.log(`%c[MicroMutation @ Bar ${epoch}] Rhythmic Drift applied.`, 'color: cyan');
         const noteToShift = newPhrase[this.random.nextInt(newPhrase.length)];
         const shiftAmount = (this.random.next() - 0.5) * 0.1; // Сдвиг на ±5% от доли
         noteToShift.time = Math.max(0, noteToShift.time + shiftAmount);
@@ -489,13 +490,15 @@ export class FractalMusicEngine {
 
     // 2. Динамический Акцент (Velocity Accent)
     if (this.random.next() < 0.6) { // 60% шанс на акцент
+        console.log(`%c[MicroMutation @ Bar ${epoch}] Velocity Accent applied.`, 'color: cyan');
         const noteToAccent = newPhrase[this.random.nextInt(newPhrase.length)];
         noteToAccent.weight *= (0.85 + this.random.next() * 0.3); // Изменение громкости на ±15%
         noteToAccent.weight = Math.max(0.1, Math.min(1.0, noteToAccent.weight));
     }
     
-    // 3. Регистровый Дрейф (Register Drift) - сдвиг всей фразы на октаву
+    // 3. Регистровый Дрейф (Register Drift)
     if (this.random.next() < 0.3) { // 30% шанс на сдвиг октавы
+        console.log(`%c[MicroMutation @ Bar ${epoch}] Register Drift applied.`, 'color: cyan');
         const octaveShift = (this.random.next() > 0.5) ? 12 : -12;
         newPhrase.forEach(note => {
             const newNote = note.note + octaveShift;
@@ -548,6 +551,7 @@ export class FractalMusicEngine {
     instrumentHints.melody = this._chooseInstrumentForPart('melody', navInfo.currentPart);
 
     if (navInfo.currentPart.layers.bass) {
+        // Отложенная макромутация баса
         if (!this.hasBassBeenMutated && this.epoch > 0) {
             const mutationCount = this.random.nextInt(2) + 2; // 2-3 mutations
             console.log(`%c[BassEvolution @ Bar ${this.epoch}] Delayed MACRO-MUTATION (${mutationCount} iterations).`, 'color: #FF4500;');
@@ -579,7 +583,7 @@ export class FractalMusicEngine {
             this.currentAccompPhrase = mutateAccompanimentPhrase(this.currentAccompPhrase, this.config.mood, this.config.genre, this.random);
         }
         // Применяем микромутации каждый такт
-        const mutatedAccomp = this._applyMicroMutations(this.currentAccompPhrase);
+        const mutatedAccomp = this._applyMicroMutations(this.currentAccompPhrase, this.epoch);
         accompanimentEvents.push(...mutatedAccomp);
         output.push(...mutatedAccomp);
     }
@@ -748,3 +752,4 @@ export class FractalMusicEngine {
   }
 }
 
+    
