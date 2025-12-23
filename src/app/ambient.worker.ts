@@ -143,11 +143,10 @@ const Scheduler = {
         } 
         
         const harmonyEvents = scorePayload.events.filter(e => e.type === 'harmony');
-        
-        if (harmonyEvents.length > 0) {
-            console.log(`[harmony] Worker sending ${harmonyEvents.length} harmony events.`, scorePayload);
-        }
+        const sfxEvents = scorePayload.events.filter(e => e.type === 'sfx');
+        const sparkleEvents = scorePayload.events.filter(e => e.type === 'sparkle');
 
+        // Post main score
         self.postMessage({ 
             type: 'SCORE_READY', 
             payload: {
@@ -156,6 +155,15 @@ const Scheduler = {
                 barDuration: this.barDuration,
                 harmony: harmonyEvents
             }
+        });
+        
+        // Post individual texture events
+        sfxEvents.forEach(event => {
+            self.postMessage({ type: 'sfx', payload: event });
+        });
+        
+        sparkleEvents.forEach(event => {
+            self.postMessage({ type: 'sparkle', payload: event });
         });
 
         this.barCount++;

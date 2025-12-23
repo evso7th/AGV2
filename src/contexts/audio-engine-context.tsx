@@ -28,7 +28,7 @@ export function noteToMidi(note: string): number {
 
 // --- Type Definitions ---
 type WorkerMessage = {
-    type: 'SCORE_READY' | 'error' | 'debug' | 'sparkle';
+    type: 'SCORE_READY' | 'error' | 'debug' | 'sparkle' | 'sfx';
     payload?: {
         events?: FractalEvent[];
         barDuration?: number;
@@ -38,7 +38,7 @@ type WorkerMessage = {
         time?: number;
         genre?: Genre;
         mood?: Mood;
-    };
+    } | FractalEvent; // payload can be the full score payload or a single event
     error?: string;
     message?: string;
 };
@@ -272,21 +272,20 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
             worker.onmessage = (event: MessageEvent<WorkerMessage>) => {
                 const { type, payload, error } = event.data;
                 
-                if (type === 'SCORE_READY' && payload) {
-                    const { events, barDuration, instrumentHints, harmony } = payload;
+                if (type === 'SCORE_READY' && payload && 'events' in payload) {
+                    const { events, barDuration, instrumentHints } = payload;
                     
-                    if (harmony && harmony.length > 0) {
-                        console.log(`[harmony] Main thread received payload with ${harmony.length} harmony events.`);
-                    }
-
                     if(events && barDuration && settingsRef.current){
                         const composerControls = settingsRef.current.composerControlsInstruments;
                         scheduleEvents(events, nextBarTimeRef.current, settingsRef.current.bpm, composerControls ? instrumentHints : undefined);
                         nextBarTimeRef.current += barDuration;
                     }
 
-                } else if (type === 'sparkle' && payload?.time !== undefined) {
-                    sparklePlayerRef.current?.playRandomSparkle(nextBarTimeRef.current + payload.time, payload.genre, payload.mood);
+                } else if (type === 'sparkle' && payload && 'params' in payload && 'time' in payload) {
+                    const { mood, genre } = payload.params as { mood: Mood, genre: Genre };
+                    sparklePlayerRef.current?.playRandomSparkle(nextBarTimeRef.current + payload.time, genre, mood);
+                } else if (type === 'sfx' && payload && 'params' in payload) {
+                    sfxSynthManagerRef.current?.trigger([payload as FractalEvent], nextBarTimeRef.current, settingsRef.current?.bpm || 75);
                 } else if (type === 'error') {
                     toast({ variant: "destructive", title: "Worker Error", description: error });
                 }
