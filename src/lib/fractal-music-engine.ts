@@ -712,6 +712,8 @@ export class FractalMusicEngine {
       this.epoch = 0;
       this.isPromenadeActive = false;
       this.promenadeBarIndex = 0;
+      this.branches = [];
+      this.harmonyBranches = [];
       this.initialize(); // Re-initialize everything for a fresh start
   }
 
@@ -755,5 +757,3 @@ export class FractalMusicEngine {
     return { events, instrumentHints };
   }
 }
-
-    
