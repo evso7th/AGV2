@@ -61,6 +61,8 @@ export const useAuraGroove = () => {
   const timerIntervalRef = useRef<NodeJS.Timeout | null>(null);
 
   const [isRegenerating, setIsRegenerating] = useState(false);
+  const [initialSeed, setInitialSeed] = useState(() => Date.now());
+
 
   // Automatically initialize the engine when the component mounts
   useEffect(() => {
@@ -82,8 +84,9 @@ export const useAuraGroove = () => {
       density,
       composerControlsInstruments,
       mood,
+      seed: initialSeed,
     };
-  }, [bpm, score, genre, instrumentSettings, drumSettings, textureSettings, density, composerControlsInstruments, mood]);
+  }, [bpm, score, genre, instrumentSettings, drumSettings, textureSettings, density, composerControlsInstruments, mood, initialSeed]);
 
   // Initial settings sync
   useEffect(() => {
@@ -148,6 +151,7 @@ export const useAuraGroove = () => {
 
   const handleRegenerate = useCallback(() => {
     setIsRegenerating(true);
+    setInitialSeed(Date.now());
     setTimeout(() => setIsRegenerating(false), 500); 
 
     if (isPlaying) {
@@ -155,14 +159,6 @@ export const useAuraGroove = () => {
     }
     resetWorker();
   }, [isPlaying, setEngineIsPlaying, resetWorker]);
-
-  // === NEW: Automatic regeneration on initialization ===
-  useEffect(() => {
-    if (isInitialized) {
-      console.log('[useAuraGroove] Initializing with a new seed...');
-      handleRegenerate();
-    }
-  }, [isInitialized, handleRegenerate]);
 
 
   const handleInstrumentChange = (part: keyof InstrumentSettings, name: BassInstrument | MelodyInstrument | AccompanimentInstrument | 'piano' | 'guitarChords') => {
