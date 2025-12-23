@@ -1,4 +1,5 @@
 
+
 import type { FractalEvent, Mood, Genre } from '@/types/fractal';
 
 const SFX_SAMPLES: Record<string, string[]> = {
@@ -189,7 +190,8 @@ export class SfxSynthManager {
             const beatDuration = 60 / tempo;
             const startTime = barStartTime + (event.time * beatDuration);
 
-            console.log(`[SFX] Triggering effect from category '${category}' at time ${startTime.toFixed(2)}`);
+            // Step 4: SFX Manager Logging
+            console.log(`%c[SFX Player] Triggering effect. Category: '${category}'. Start time: ${startTime.toFixed(2)}`, 'color: #FFA500');
             source.start(startTime);
             
             this.activeSources.add(source);
@@ -224,3 +226,5 @@ export class SfxSynthManager {
         return this.isReady;
     }
 }
+
+    

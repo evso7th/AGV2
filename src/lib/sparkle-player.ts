@@ -309,7 +309,8 @@ export class SparklePlayer {
         source.connect(this.preamp);
         
         const sampleUrlForLogging = (buffer as any)?.url || 'Unknown';
-        console.log(`[SparklePlayer] Playing from pool "${poolName}". Mood: ${mood}, Genre: ${genre}. Sample: ${sampleUrlForLogging.substring(sampleUrlForLogging.lastIndexOf('/') + 1)} at time ${time.toFixed(2)}`);
+        // Step 4: Sparkle Player Logging
+        console.log(`%c[SparklePlayer] Playing from pool "${poolName}". Sample: ${sampleUrlForLogging.substring(sampleUrlForLogging.lastIndexOf('/') + 1)} at time ${time.toFixed(2)}`, 'color: #00FFFF');
         source.start(time);
         
         this.activeSources.add(source);
@@ -338,3 +339,5 @@ export class SparklePlayer {
         this.gainNode.disconnect();
     }
 }
+
+    

@@ -135,38 +135,40 @@ const Scheduler = {
     tick() {
         if (!this.isRunning || !fractalMusicEngine) return;
         
-        let scorePayload: { events: FractalEvent[]; instrumentHints: InstrumentHints } = { events: [], instrumentHints: {} };
-
-        if (this.settings.score === 'neuro_f_matrix') {
-             // Pass barCount to evolve to make decisions based on it.
-             scorePayload = fractalMusicEngine.evolve(this.barDuration, this.barCount);
-        } 
+        // This moves the engine state forward one bar and gets the resulting score
+        const scorePayload = fractalMusicEngine.evolve(this.barDuration, this.barCount);
         
-        const harmonyEvents = scorePayload.events.filter(e => e.type === 'harmony');
+        // Separate SFX and Sparkle events from the main score to be sent individually
         const sfxEvents = scorePayload.events.filter(e => e.type === 'sfx');
         const sparkleEvents = scorePayload.events.filter(e => e.type === 'sparkle');
+        const mainScoreEvents = scorePayload.events.filter(e => e.type !== 'sfx' && e.type !== 'sparkle');
 
         // Post main score
         self.postMessage({ 
             type: 'SCORE_READY', 
             payload: {
-                events: scorePayload.events,
+                events: mainScoreEvents, // Send only main events
                 instrumentHints: scorePayload.instrumentHints,
                 barDuration: this.barDuration,
-                harmony: harmonyEvents
             }
         });
         
-        // Post individual texture events
+        // Step 2: Worker Logging
         sfxEvents.forEach(event => {
+            console.log(`[Worker] SFX event found. Posting to main thread.`, event);
             self.postMessage({ type: 'sfx', payload: event });
         });
         
         sparkleEvents.forEach(event => {
+            console.log(`[Worker] Sparkle event found. Posting to main thread.`, event);
             self.postMessage({ type: 'sparkle', payload: event });
         });
 
         this.barCount++;
+        // If promenade is finished, reset bar count
+        if (this.barCount > fractalMusicEngine.navigator.totalBars + 3) {
+            this.barCount = 0;
+        }
     }
 };
 
@@ -215,3 +217,5 @@ self.onmessage = async (event: MessageEvent) => {
         self.postMessage({ type: 'error', error: e instanceof Error ? e.message : String(e) });
     }
 };
+
+    

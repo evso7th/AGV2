@@ -180,7 +180,6 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
     }
 
     if (harmonyManagerRef.current && harmonyEvents.length > 0) {
-      console.log(`[harmony] AudioEngine passing ${harmonyEvents.length} events to HarmonySynthManager with hint: ${instrumentHints?.harmony}`);
       harmonyManagerRef.current.schedule(harmonyEvents, barStartTime, tempo, instrumentHints?.harmony);
     }
 
@@ -282,9 +281,11 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
                     }
 
                 } else if (type === 'sparkle' && payload && 'params' in payload && 'time' in payload) {
-                    const { mood, genre } = payload.params as { mood: Mood, genre: Genre };
-                    sparklePlayerRef.current?.playRandomSparkle(nextBarTimeRef.current + payload.time, genre, mood);
+                    console.log(`[AudioEngine] Received 'sparkle'. Passing to player.`, payload);
+                    const { mood, genre } = (payload as FractalEvent).params as { mood: Mood, genre: Genre };
+                    sparklePlayerRef.current?.playRandomSparkle(nextBarTimeRef.current + (payload as FractalEvent).time, genre, mood);
                 } else if (type === 'sfx' && payload && 'params' in payload) {
+                    console.log(`[AudioEngine] Received 'sfx'. Passing to manager.`, payload);
                     sfxSynthManagerRef.current?.trigger([payload as FractalEvent], nextBarTimeRef.current, settingsRef.current?.bpm || 75);
                 } else if (type === 'error') {
                     toast({ variant: "destructive", title: "Worker Error", description: error });
@@ -397,3 +398,5 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
     </AudioEngineContext.Provider>
   );
 };
+
+    

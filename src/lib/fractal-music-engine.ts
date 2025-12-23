@@ -187,7 +187,7 @@ export class FractalMusicEngine {
   public config: EngineConfig;
   private time: number = 0;
   private epoch = 0;
-  private random: { next: () => number; nextInt: (max: number) => number };
+  private random: { next: () => number; nextInt: (max: number) => number }
   private nextWeatherEventEpoch: number;
   public needsBassReset: boolean = false;
   private sfxFillForThisEpoch: { drum: FractalEvent[], bass: FractalEvent[], accompaniment: FractalEvent[] } | null = null;
@@ -198,6 +198,8 @@ export class FractalMusicEngine {
   private harmonyBranches: Branch[] = [];
 
   private navigator: BlueprintNavigator;
+  private isPromenadeActive: boolean = false;
+  private promenadeBars: FractalEvent[] = [];
 
 
   private currentBassPhrase: FractalEvent[] = [];
@@ -240,6 +242,41 @@ export class FractalMusicEngine {
       }
   }
 
+  private _generatePromenade() {
+    const scale = getScaleForMood(this.config.mood);
+    const root = scale[0];
+    const fifth = scale.find(n => (n - root) % 12 === 7) || scale[4] || (root + 7);
+    const fourth = scale.find(n => (n - root) % 12 === 5) || scale[3] || (root + 5);
+
+    const promenade: FractalEvent[] = [];
+    const notes = [root, fifth, fourth, root];
+    for (let i = 0; i < 4; i++) {
+        promenade.push({
+            type: 'accompaniment',
+            note: notes[i] + 12, // Play one octave higher
+            duration: 4.0, // Whole note
+            time: i * 4.0, // Each note starts a new bar, assuming 4 beats per bar
+            weight: 0.6,
+            technique: 'swell',
+            dynamics: 'p',
+            phrasing: 'legato',
+            params: { attack: 1.5, release: 2.5 }
+        });
+         promenade.push({
+            type: 'bass',
+            note: notes[i],
+            duration: 4.0,
+            time: i * 4.0,
+            weight: 0.7,
+            technique: 'drone',
+            dynamics: 'p',
+            phrasing: 'legato',
+            params: { attack: 2.0, release: 3.0 }
+        });
+    }
+    this.promenadeBars = promenade;
+  }
+
   private initialize() {
     this.random = seededRandom(this.config.seed);
     this.nextWeatherEventEpoch = this.random.nextInt(12) + 8;
@@ -250,6 +287,7 @@ export class FractalMusicEngine {
     
     // This was already correct, using the navigator's blueprint.
     console.log(`[FractalMusicEngine] Initialized with blueprint "${this.navigator.blueprint.name}". Total duration: ${this.navigator.totalBars} bars.`);
+    this._generatePromenade();
 
 
     if (this.config.drumSettings.enabled) {
@@ -431,20 +469,34 @@ export class FractalMusicEngine {
     let instrumentHints: InstrumentHints = {};
     const output: FractalEvent[] = [];
 
+    // Promenade Logic
+    if (this.isPromenadeActive) {
+        const promenadeBarIndex = this.epoch - this.navigator.totalBars;
+        if (promenadeBarIndex < 4) {
+             console.log(`%c[FME Generate] Playing PROMENADE bar ${promenadeBarIndex + 1}`, 'color: #FFD700');
+             const barStartTime = promenadeBarIndex * 4.0;
+             const barEndTime = barStartTime + 4.0;
+             const promenadeEventsForBar = this.promenadeBars.filter(e => e.time >= barStartTime && e.time < barEndTime)
+                .map(e => ({ ...e, time: e.time - barStartTime }));
+             return { events: promenadeEventsForBar, instrumentHints: { bass: 'glideBass', accompaniment: 'synth' } };
+        } else {
+            this.isPromenadeActive = false;
+            this.epoch = 0; // Reset epoch to start the new suite
+            // Recalculate navInfo for the new epoch
+            navInfo = this.navigator.tick(this.epoch);
+        }
+    }
+
+
     if (!navInfo) {
         console.log(`[FME Check @ Bar ${this.epoch}] No navigation info available.`);
         return { events: [], instrumentHints: {} }; // Return early if no nav info
     }
 
-    console.log(
-        `[FME Check @ Bar ${this.epoch}] Part: ${navInfo.currentPart.id} | LAYERS: ${JSON.stringify(navInfo.currentPart.layers)}`
-    );
-
     instrumentHints.accompaniment = this._chooseInstrumentForPart('accompaniment', navInfo.currentPart);
     instrumentHints.melody = this._chooseInstrumentForPart('melody', navInfo.currentPart);
 
     if (navInfo.currentPart.layers.bass) {
-        console.log(`[FME Generate] Generating BASS for bar ${this.epoch} (Part: ${navInfo.currentPart.id})`);
         if (navInfo.isPartTransition && this.epoch > 0) {
             const seedPhrase = this.bassPhraseLibrary[this.random.nextInt(this.bassPhraseLibrary.length)];
             this.currentBassPhrase = mutateBassPhrase(seedPhrase, this.config.mood, this.config.genre, this.random);
@@ -457,7 +509,6 @@ export class FractalMusicEngine {
     }
     
     if (navInfo.currentPart.layers.drums) {
-        console.log(`[FME Generate] Generating DRUMS for bar ${this.epoch} (Part: ${navInfo.currentPart.id})`);
         let drumEvents: FractalEvent[];
         if (navInfo.isPartTransition && this.epoch > 0) {
             drumEvents = createDrumFill(this.random);
@@ -494,22 +545,27 @@ export class FractalMusicEngine {
         }
     }
 
-    // SFX and Sparkles generation
-    if (navInfo.currentPart.layers.sfx && this.random.next() < this.config.density * 0.1) {
+    // Step 1: SFX/Sparkle Logging
+    const sfxChance = this.config.density * 0.1;
+    const sparkleChance = this.config.density * 0.15;
+    // console.log(`[FME Check @ Bar ${this.epoch}] SFX enabled: ${navInfo.currentPart.layers.sfx}, Chance: ${sfxChance.toFixed(2)}. Sparkles enabled: ${navInfo.currentPart.layers.sparkles}, Chance: ${sparkleChance.toFixed(2)}.`);
+
+
+    if (navInfo.currentPart.layers.sfx && this.random.next() < sfxChance) {
+        console.log(`%c[FME Generate] SFX event TRIGGERED for bar ${this.epoch}.`, 'color: #FFA500');
         output.push({
             type: 'sfx', note: 60, duration: 2, time: this.random.next() * 2, weight: 0.5,
             technique: 'swell', dynamics: 'p', phrasing: 'legato',
             params: { mood: this.config.mood, genre: this.config.genre }
         });
-         console.log(`[FME Generate] Added SFX event for bar ${this.epoch}.`);
     }
-    if (navInfo.currentPart.layers.sparkles && this.random.next() < this.config.density * 0.15) {
+    if (navInfo.currentPart.layers.sparkles && this.random.next() < sparkleChance) {
+        console.log(`%c[FME Generate] Sparkle event TRIGGERED for bar ${this.epoch}.`, 'color: #00FFFF');
          output.push({
             type: 'sparkle', note: 72, duration: 1, time: this.random.next() * 3.5, weight: 0.4,
             technique: 'hit', dynamics: 'p', phrasing: 'staccato',
             params: { mood: this.config.mood, genre: this.config.genre }
         });
-         console.log(`[FME Generate] Added Sparkle event for bar ${this.epoch}.`);
     }
 
     if (this.sfxFillForThisEpoch) {
@@ -603,6 +659,12 @@ export class FractalMusicEngine {
         this.currentBassPhrase = generateAmbientBassPhrase(this.config.mood, this.config.genre, this.random, this.config.tempo);
         this.needsBassReset = false;
     }
+    
+    // Promenade Activation Logic
+    if (!this.isPromenadeActive && this.epoch === this.navigator.totalBars) {
+      console.log(`%c[FME] End of suite reached. Activating PROMENADE.`, 'color: #FFD700; font-weight: bold');
+      this.isPromenadeActive = true;
+    }
 
     if (this.epoch > 0 && this.epoch >= this.nextWeatherEventEpoch) {
         this.generateExternalImpulse();
@@ -611,7 +673,7 @@ export class FractalMusicEngine {
     
     if (!isFinite(barDuration)) return { events: [], instrumentHints: {} };
     
-    const navigationInfo = this.navigator.tick(this.epoch);
+    const navigationInfo = this.isPromenadeActive ? null : this.navigator.tick(this.epoch);
     
     const { events, instrumentHints } = this.generateOneBar(barDuration, navigationInfo);
     
@@ -619,7 +681,9 @@ export class FractalMusicEngine {
         console.log(navigationInfo.logMessage, 'color: green; font-style: italic;');
     }
     
-    this.evolveBranches();
+    if (!this.isPromenadeActive) {
+      this.evolveBranches();
+    }
     
     this.time += barDuration;
     
@@ -627,5 +691,7 @@ export class FractalMusicEngine {
   }
 }
 
+
+    
 
     
