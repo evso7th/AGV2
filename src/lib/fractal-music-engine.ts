@@ -181,6 +181,62 @@ function extractTopNotes(events: FractalEvent[], maxNotes: number = 4): FractalE
         .slice(0, maxNotes);
 }
 
+function mutateAccompanimentPhrase(phrase: FractalEvent[], mood: Mood, genre: Genre, random: { next: () => number, nextInt: (max: number) => number }): FractalEvent[] {
+    // This is a simplified version, similar to bass mutation for now
+    const newPhrase: FractalEvent[] = JSON.parse(JSON.stringify(phrase));
+    const mutationType = random.nextInt(4);
+
+    if (newPhrase.length === 0) return [];
+
+    const scale = getScaleForMood(mood);
+
+    switch (mutationType) {
+        case 0: // Rhythmic change
+            const noteToChange = newPhrase[random.nextInt(newPhrase.length)];
+            noteToChange.duration *= (random.next() > 0.5 ? 1.5 : 0.5);
+            break;
+        case 1: // Pitch change (in-scale)
+            const noteToTranspose = newPhrase[random.nextInt(newPhrase.length)];
+            const currentIndex = scale.indexOf(noteToTranspose.note);
+            if (currentIndex !== -1) {
+                const step = random.next() > 0.5 ? 1 : -1;
+                noteToTranspose.note = scale[(currentIndex + step + scale.length) % scale.length];
+            }
+            break;
+        case 2: // Invert a fragment
+             if (newPhrase.length > 2) {
+                const start = random.nextInt(newPhrase.length - 2);
+                const fragment = newPhrase.slice(start, start + 2);
+                const reversedNotes = fragment.map(e => e.note).reverse();
+                fragment.forEach((event, i) => event.note = reversedNotes[i]);
+            }
+            break;
+        case 3: // Add/Remove note
+            if (random.next() > 0.5 && newPhrase.length > 3) {
+                newPhrase.splice(random.nextInt(newPhrase.length), 1);
+            } else {
+                 const newNoteEvent = {...newPhrase[0], note: scale[random.nextInt(scale.length)], time: newPhrase[newPhrase.length-1].time + 0.5, duration: 0.5};
+                 newPhrase.push(newNoteEvent);
+            }
+            break;
+    }
+    // Normalize phrase
+    let currentTime = 0;
+    newPhrase.forEach(e => { e.time = currentTime; currentTime += e.duration; });
+    const scaleFactor = 4.0 / currentTime;
+    if (isFinite(scaleFactor) && scaleFactor > 0) {
+        let runningTime = 0;
+        newPhrase.forEach(e => {
+            e.duration *= scaleFactor;
+            e.time = runningTime;
+            runningTime += e.duration;
+        });
+    }
+
+    return newPhrase;
+}
+
+
 
 // === ОСНОВНОЙ КЛАСС ===
 export class FractalMusicEngine {
@@ -197,7 +253,7 @@ export class FractalMusicEngine {
   private branches: Branch[] = [];
   private harmonyBranches: Branch[] = [];
 
-  private navigator: BlueprintNavigator;
+  public navigator: BlueprintNavigator;
   private isPromenadeActive: boolean = false;
   private promenadeBars: FractalEvent[] = [];
 
@@ -205,7 +261,7 @@ export class FractalMusicEngine {
   private currentBassPhrase: FractalEvent[] = [];
   private bassPhraseLibrary: FractalEvent[][] = [];
 
-
+  private currentAccompPhrase: FractalEvent[] = []; // NEW
   private accompPhraseLibrary: FractalEvent[][] = [];
   private accompPlayPlan: PlayPlanItem[] = [];
   private currentAccompPlanIndex: number = 0;
@@ -305,11 +361,21 @@ export class FractalMusicEngine {
     console.log(`%c[BassAxiom] Created new bass library with ${this.bassPhraseLibrary.length} seed phrases.`, 'color: #FF7F50');
 
 
+    // --- ACCOMPANIMENT INITIALIZATION & MUTATION ---
     const initialBassNote = this.currentBassPhrase[0]?.note ?? getScaleForMood(this.config.mood)[0] ?? 40;
-    const harmonyAxiom = createAccompanimentAxiom(this.config.mood, this.config.genre, this.random, initialBassNote, this.config.tempo);
-    if (harmonyAxiom.length > 0) {
-        const endTime = harmonyAxiom.reduce((max, e) => Math.max(max, e.time + e.duration), 0);
-        this.harmonyBranches.push({ id: `harmony_axiom_0`, events: harmonyAxiom, weight: 1, age: 0, technique: 'swell', type: 'harmony', endTime });
+    let initialAccompPhrase = createAccompanimentAxiom(this.config.mood, this.config.genre, this.random, initialBassNote, this.config.tempo);
+    
+    // Macro-mutation for accompaniment on init
+    const mutationCount = this.random.nextInt(3) + 2; // 2 to 4 mutations
+    for(let i=0; i < mutationCount; i++) {
+      initialAccompPhrase = mutateAccompanimentPhrase(initialAccompPhrase, this.config.mood, this.config.genre, this.random);
+    }
+    this.currentAccompPhrase = initialAccompPhrase;
+    console.log(`%c[AccompAxiom] Created and mutated initial accompaniment phrase (${mutationCount} iterations).`, 'color: #87CEEB');
+
+    if (this.currentAccompPhrase.length > 0) {
+        const endTime = this.currentAccompPhrase.reduce((max, e) => Math.max(max, e.time + e.duration), 0);
+        this.harmonyBranches.push({ id: `harmony_axiom_0`, events: this.currentAccompPhrase, weight: 1, age: 0, technique: 'swell', type: 'harmony', endTime });
     }
     
     this.needsBassReset = false;
@@ -519,12 +585,13 @@ export class FractalMusicEngine {
         output.push(...drumEvents);
     }
     
-    const accompBranches = this.harmonyBranches.filter(b => b.type === 'harmony' || b.type === 'accompaniment');
     let accompanimentEvents: FractalEvent[] = [];
-    if (navInfo.currentPart.layers.accompaniment && accompBranches.length > 0) {
-        const winningAccompBranch = accompBranches.reduce((max, b) => b.weight > max.weight ? b : max, accompBranches[0]);
-        accompanimentEvents.push(...winningAccompBranch.events);
-        output.push(...accompanimentEvents);
+    if (navInfo.currentPart.layers.accompaniment) {
+        if (navInfo.isPartTransition && this.epoch > 0) {
+            this.currentAccompPhrase = mutateAccompanimentPhrase(this.currentAccompPhrase, this.config.mood, this.config.genre, this.random);
+        }
+        accompanimentEvents.push(...this.currentAccompPhrase);
+        output.push(...this.currentAccompPhrase);
     }
     
     if (navInfo.currentPart.layers.harmony) {
@@ -690,8 +757,3 @@ export class FractalMusicEngine {
     return { events, instrumentHints };
   }
 }
-
-
-    
-
-    
