@@ -472,7 +472,7 @@ export class FractalMusicEngine {
     
     const accompBranches = this.harmonyBranches.filter(b => b.type === 'harmony' || b.type === 'accompaniment');
     let accompanimentEvents: FractalEvent[] = [];
-    if (navInfo.currentPart.layers.accompaniment && navInfo.currentPart.layers.pad && accompBranches.length > 0) {
+    if (navInfo.currentPart.layers.accompaniment && accompBranches.length > 0) {
         const winningAccompBranch = accompBranches.reduce((max, b) => b.weight > max.weight ? b : max, accompBranches[0]);
         accompanimentEvents.push(...winningAccompBranch.events);
         output.push(...accompanimentEvents);
