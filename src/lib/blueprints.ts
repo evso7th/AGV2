@@ -110,7 +110,7 @@ export const MelancholicAmbientBlueprint: MusicBlueprint = {
       },
       {
         id: 'MAIN_1', name: 'First Apex',
-        duration: { percent: 15 }, // ~18 bars
+        duration: { percent: 17 }, // ~18 bars
         layers: { pad: true, bass: true, arpeggio: true, melody: true, sparkles: true, drums: true, sfx: true, harmony: true, accompaniment: true },
         instrumentation: {
             accompaniment: {
@@ -156,7 +156,7 @@ export const MelancholicAmbientBlueprint: MusicBlueprint = {
       },
       {
         id: 'MAIN_2', name: 'Second Apex',
-        duration: { percent: 20 }, // ~24 bars
+        duration: { percent: 23 }, // ~24 bars
         layers: { pad: true, bass: true, arpeggio: true, melody: true, sparkles: true, drums: true, sfx: true, harmony: true, accompaniment: true },
         instrumentation: {
             accompaniment: {
