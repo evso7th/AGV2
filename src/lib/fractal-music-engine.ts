@@ -200,7 +200,7 @@ export class FractalMusicEngine {
   public navigator: BlueprintNavigator;
   private isPromenadeActive: boolean = false;
   private promenadeBars: FractalEvent[] = [];
-  private promenadeBarIndex: number = 0; // NEW: Dedicated counter for promenade
+  private promenadeBarIndex: number = 0;
 
 
   private currentBassPhrase: FractalEvent[] = [];
@@ -252,6 +252,7 @@ export class FractalMusicEngine {
     const promenade: FractalEvent[] = [];
     const notes = [root, fifth, fourth, root];
     for (let i = 0; i < 4; i++) {
+        // Accompaniment part for this bar
         promenade.push({
             type: 'accompaniment',
             note: notes[i] + 12, // Play one octave higher
@@ -263,6 +264,7 @@ export class FractalMusicEngine {
             phrasing: 'legato',
             params: { attack: 1.5, release: 2.5 }
         });
+        // Bass part for this bar
          promenade.push({
             type: 'bass',
             note: notes[i],
@@ -283,8 +285,6 @@ export class FractalMusicEngine {
     this.nextWeatherEventEpoch = this.random.nextInt(12) + 8;
     this.lastAccompanimentEndTime = -Infinity;
     this.nextAccompanimentDelay = this.random.next() * 7 + 5; 
-    this.branches = [];
-    this.harmonyBranches = [];
     this.hasBassBeenMutated = false;
     
     console.log(`[FractalMusicEngine] Initialized with blueprint "${this.navigator.blueprint.name}". Total duration: ${this.navigator.totalBars} bars.`);
@@ -520,27 +520,27 @@ export class FractalMusicEngine {
   }
   
  private generateOneBar(barDuration: number, navInfo: NavigationInfo | null): { events: FractalEvent[], instrumentHints: InstrumentHints } {
-    let instrumentHints: InstrumentHints = {};
-
     // Promenade Logic
     if (this.isPromenadeActive) {
         console.log(`%c[FME Generate] Playing PROMENADE bar ${this.promenadeBarIndex + 1}`, 'color: #FFD700');
-        const barStartTime = this.promenadeBarIndex * 4.0;
-        const barEndTime = barStartTime + 4.0;
-        const promenadeEventsForBar = this.promenadeBars.filter(e => e.time >= barStartTime && e.time < barEndTime)
-            .map(e => ({ ...e, time: e.time - barStartTime }));
+        const barStartTimeInPromenade = this.promenadeBarIndex * 4.0;
+        const barEndTimeInPromenade = barStartTimeInPromenade + 4.0;
+        const promenadeEventsForBar = this.promenadeBars
+            .filter(e => e.time >= barStartTimeInPromenade && e.time < barEndTimeInPromenade)
+            .map(e => ({ ...e, time: e.time - barStartTimeInPromenade })); // Normalize time to be within the bar
         
         this.promenadeBarIndex++;
 
-        // End of promenade, reset for new suite
         if (this.promenadeBarIndex >= 4) {
             this._resetForNewSuite();
         }
 
+        // Return the events for the current bar of the promenade with hints
         return { events: promenadeEventsForBar, instrumentHints: { bass: 'glideBass', accompaniment: 'synth' } };
     }
 
     // --- Regular Suite Logic ---
+    let instrumentHints: InstrumentHints = {};
     if (!navInfo) {
         console.log(`[FME Check @ Bar ${this.epoch}] No navigation info available.`);
         return { events: [], instrumentHints: {} };
@@ -712,6 +712,7 @@ export class FractalMusicEngine {
       this.epoch = 0;
       this.isPromenadeActive = false;
       this.promenadeBarIndex = 0;
+      // Clear musical state before re-initializing
       this.branches = [];
       this.harmonyBranches = [];
       this.initialize(); // Re-initialize everything for a fresh start
@@ -727,7 +728,7 @@ export class FractalMusicEngine {
     }
     
     // Promenade Activation Logic
-    if (!this.isPromenadeActive && this.epoch >= this.navigator.totalBars) {
+    if (!this.isPromenadeActive && this.epoch >= this.navigator.totalBars && this.navigator.totalBars > 0) {
       console.log(`%c[FME] End of suite reached. Activating PROMENADE.`, 'color: #FFD700; font-weight: bold');
       this.isPromenadeActive = true;
       this.promenadeBarIndex = 0; // Reset promenade counter
