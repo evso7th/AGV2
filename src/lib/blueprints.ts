@@ -329,11 +329,11 @@ export const DarkAmbientBlueprint: MusicBlueprint = {
 export const JoyfulAmbientBlueprint: MusicBlueprint = {
     id: 'joyful_ambient',
     name: 'Golden Horizons',
-    description: 'Светлый, радостный и воздушный эмбиент.',
+    description: 'Светлый, энергичный, позитивный эмбиент.',
     mood: 'joyful',
     musical: {
-        key: { root: 'G', scale: 'lydian', octave: 4 },
-        bpm: { base: 60, range: [58, 65], modifier: 1.1 },
+        key: { root: 'C', scale: 'ionian', octave: 3 },
+        bpm: { base: 62, range: [60, 70], modifier: 1.1 },
         timeSignature: { numerator: 4, denominator: 4 },
         harmonicJourney: [],
         tensionProfile: {
@@ -369,7 +369,10 @@ export const JoyfulAmbientBlueprint: MusicBlueprint = {
               accompaniment: { strategy: 'weighted', options: [{ name: 'synth', weight: 1.0 }]},
               melody: { strategy: 'weighted', options: [{ name: 'organ', weight: 1.0 }]}
             },
-            instrumentRules: {},
+            instrumentRules: {
+              bass: { techniques: [{value: 'walking', weight: 1.0}], density: {min: 0.6, max: 0.8}},
+              drums: { pattern: 'ambient_beat', density: {min: 0.5, max: 0.7}}
+            },
             bundles: [ { id: 'JOY_INTRO_BUNDLE_2', name: 'First Pulse', duration: { percent: 100 }, characteristics: {}, phrases: {} } ],
             outroFill: null,
           },
@@ -381,7 +384,11 @@ export const JoyfulAmbientBlueprint: MusicBlueprint = {
               accompaniment: { strategy: 'weighted', options: [{ name: 'synth', weight: 1.0 }]},
               melody: { strategy: 'weighted', options: [{ name: 'organ', weight: 0.5 }, { name: 'mellotron', weight: 0.5 }]}
             },
-            instrumentRules: {},
+            instrumentRules: {
+                bass: { techniques: [{value: 'melodic', weight: 0.7}, {value: 'walking', weight: 0.3}], density: {min: 0.7, max: 0.9}},
+                accompaniment: { techniques: [{value: 'arpeggio-fast', weight: 1.0}]},
+                drums: { pattern: 'composer', density: {min: 0.7, max: 0.9}}
+            },
             bundles: [ { id: 'JOY_BUILD_BUNDLE_1', name: 'Ascension', duration: { percent: 100 }, characteristics: {}, phrases: {} } ],
             outroFill: null,
           },
@@ -393,7 +400,10 @@ export const JoyfulAmbientBlueprint: MusicBlueprint = {
               accompaniment: { strategy: 'weighted', options: [{ name: 'ambientPad', weight: 1.0 }]},
               melody: { strategy: 'weighted', options: [{ name: 'electricGuitar', weight: 0.5 }, { name: 'synth', weight: 0.5 }]}
             },
-            instrumentRules: {},
+            instrumentRules: {
+                bass: { techniques: [{value: 'syncopated', weight: 1.0}], density: {min: 0.8, max: 1.0}},
+                drums: { pattern: 'composer', kickVolume: 1.2, density: {min: 0.8, max: 1.0}}
+            },
             bundles: [ { id: 'JOY_MAIN_BUNDLE_1', name: 'Celebration', duration: { percent: 100 }, characteristics: {}, phrases: {} } ],
             outroFill: null,
           },
@@ -405,7 +415,10 @@ export const JoyfulAmbientBlueprint: MusicBlueprint = {
               accompaniment: { strategy: 'weighted', options: [{ name: 'synth', weight: 1.0 }]},
               melody: { strategy: 'weighted', options: [{ name: 'organ', weight: 1.0 }]}
             },
-            instrumentRules: {},
+            instrumentRules: {
+                accompaniment: { techniques: [{value: 'long-chords', weight: 1.0}], density: {min: 0.3, max: 0.5}},
+                melody: { density: {min: 0.2, max: 0.4} }
+            },
             bundles: [ { id: 'JOY_OUTRO_BUNDLE_1', name: 'Lingering', duration: { percent: 100 }, characteristics: {}, phrases: {} } ],
             outroFill: null,
           }
