@@ -12,7 +12,7 @@ export const MelancholicAmbientBlueprint: MusicBlueprint = {
     key: { root: 'D', scale: 'dorian', octave: 3 },
     bpm: { base: 52, range: [48, 56], modifier: 0.95 },
     timeSignature: { numerator: 4, denominator: 4 },
-    harmonicJourney: [], // Simplified for now
+    harmonicJourney: [],
     tensionProfile: {
       type: 'arc',
       peakPosition: 0.58,
@@ -24,195 +24,117 @@ export const MelancholicAmbientBlueprint: MusicBlueprint = {
   },
   
   structure: {
-    totalDuration: { preferredBars: 120 }, // ~10-11 mins
+    totalDuration: { preferredBars: 120 },
     
     parts: [
       {
-        id: 'INTRO_1', name: 'Awakening Pad & Melody',
-        duration: { percent: 7 }, // ~8 bars
-        layers: { accompaniment: true, melody: true },
+        id: 'INTRO', name: 'Awakening',
+        duration: { percent: 20 },
+        layers: { accompaniment: true, bass: true, sparkles: true, sfx: true },
         instrumentation: {
-            accompaniment: {
-                strategy: 'weighted',
-                options: [{ name: 'ambientPad', weight: 1.0 }]
+            accompaniment: { strategy: 'weighted', options: [{ name: 'ambientPad', weight: 1.0 }] },
+            bass: { strategy: 'weighted', options: [{ name: 'ambientDrone', weight: 1.0 }] }
+        },
+        instrumentRules: {
+            bass: {
+                techniques: [{ value: 'pedal', weight: 0.8 }, { value: 'drone', weight: 0.2 }],
+                register: { preferred: 'low', range: { min: 26, max: 43 } },
+                density: { min: 0.25, max: 0.4 },
+                noteDuration: { type: 'long', range: [8, 16] },
+                envelope: { attack: { min: 800, max: 1500 }, release: { min: 2000, max: 4000 } }
             },
-            melody: {
-                strategy: 'weighted',
-                options: [{ name: 'synth', weight: 1.0 }]
+            accompaniment: {
+                techniques: [{ value: 'swell', weight: 0.6 }, { value: 'sustained', weight: 0.4 }],
+                density: { min: 0.6, max: 0.8 },
+                voices: { min: 3, max: 4 },
+                envelope: { attack: { min: 1200, max: 2500 }, release: { min: 4000, max: 8000 } }
             }
         },
-        instrumentRules: {},
-        bundles: [ { id: 'INTRO_1_BUNDLE_1', name: 'Emergence', duration: { percent: 100 }, characteristics: {}, phrases: {} } ],
+        bundles: [ { id: 'INTRO_BUNDLE_1', name: 'Emergence', duration: { percent: 100 }, characteristics: {}, phrases: {} } ],
         outroFill: null,
       },
       {
-        id: 'INTRO_2', name: 'Rhythm Enters',
-        duration: { percent: 7 }, // ~8 bars
-        layers: { accompaniment: true, melody: true, bass: true, drums: true, sparkles: true },
-        instrumentation: {
-            accompaniment: {
-                strategy: 'weighted',
-                options: [{ name: 'ambientPad', weight: 1.0 }]
+        id: 'BUILD', name: 'Rising',
+        duration: { percent: 25 },
+        layers: { accompaniment: true, bass: true, drums: true, sparkles: true, sfx: true },
+         instrumentation: {
+            accompaniment: { strategy: 'weighted', options: [{ name: 'organ', weight: 0.7 }, { name: 'ambientPad', weight: 0.3 }] },
+            bass: { strategy: 'weighted', options: [{ name: 'classicBass', weight: 1.0 }] }
+        },
+        instrumentRules: {
+            bass: {
+                techniques: [{ value: 'ostinato', weight: 0.5 }, { value: 'walking', weight: 0.5 }],
+                density: { min: 0.5, max: 0.7 },
+                envelope: { attack: { min: 400, max: 800 }, release: { min: 1500, max: 3000 } }
             },
-            melody: {
-                strategy: 'weighted',
-                options: [{ name: 'synth', weight: 1.0 }]
+            accompaniment: {
+                density: { min: 0.7, max: 0.85 },
+                voices: { min: 4, max: 5 },
+            },
+            drums: {
+                pattern: 'ambient_beat',
+                density: { min: 0.25, max: 0.4 },
             }
         },
-        instrumentRules: {},
-        bundles: [ { id: 'INTRO_2_BUNDLE_1', name: 'First Pulse', duration: { percent: 100 }, characteristics: {}, phrases: {} } ],
-        outroFill: null,
-      },
-      {
-        id: 'INTRO_3', name: 'Full Intro',
-        duration: { percent: 6 }, // ~7 bars
-        layers: { accompaniment: true, melody: true, bass: true, drums: true, sparkles: true, sfx: true, harmony: true },
-        instrumentation: {
-            accompaniment: {
-                strategy: 'weighted',
-                options: [{ name: 'ambientPad', weight: 1.0 }]
-            },
-            melody: {
-                strategy: 'weighted',
-                options: [
-                    { name: 'synth', weight: 0.4 },
-                    { name: 'organ', weight: 0.4 },
-                    { name: 'theremin', weight: 0.1 },
-                    { name: 'mellotron', weight: 0.1 },
-                ]
-            }
-        },
-        instrumentRules: {},
-        bundles: [ { id: 'INTRO_3_BUNDLE_1', name: 'Anticipation', duration: { percent: 100 }, characteristics: {}, phrases: {} } ],
+        bundles: [ { id: 'BUILD_BUNDLE_1', name: 'Stirring', duration: { percent: 100 }, characteristics: {}, phrases: {} } ],
         outroFill: { type: 'filter_sweep', duration: 2, parameters: { filterEnd: 0.95 } },
       },
       {
-        id: 'BUILD_1', name: 'First Rise',
-        duration: { percent: 10 }, // ~12 bars
-        layers: { pad: true, bass: true, arpeggio: true, drums: true, sfx: true, melody: true, sparkles: true, harmony: true, accompaniment: true },
-        instrumentation: {
+        id: 'MAIN', name: 'Apex',
+        duration: { percent: 35 },
+        layers: { accompaniment: true, bass: true, drums: true, melody: true, sparkles: true, sfx: true, harmony: true },
+         instrumentation: {
+            accompaniment: { strategy: 'weighted', options: [{ name: 'mellotron', weight: 0.6 }, { name: 'organ', weight: 0.4 }] },
+            bass: { strategy: 'weighted', options: [{ name: 'livingRiff', weight: 1.0 }] },
+            melody: { strategy: 'weighted', options: [{ name: 'synth', weight: 0.8 }, { name: 'theremin', weight: 0.2 }] }
+        },
+        instrumentRules: {
+            bass: {
+                techniques: [{ value: 'walking', weight: 0.6 }, { value: 'melodic', weight: 0.4 }],
+                density: { min: 0.65, max: 0.85 },
+                envelope: { attack: { min: 200, max: 500 }, release: { min: 1000, max: 2000 } }
+            },
             accompaniment: {
-                strategy: 'weighted',
-                options: [{ name: 'ambientPad', weight: 1.0 }]
+                density: { min: 0.8, max: 0.95 },
+                voices: { min: 4, max: 6 },
+            },
+            drums: {
+                pattern: 'composer',
+                density: { min: 0.45, max: 0.65 },
             },
             melody: {
-                strategy: 'weighted',
-                options: [
-                    { name: 'synth', weight: 0.4 },
-                    { name: 'organ', weight: 0.4 },
-                    { name: 'theremin', weight: 0.1 },
-                    { name: 'mellotron', weight: 0.1 },
-                ]
+                density: { min: 0.2, max: 0.4 },
+                phrasing: { phraseLength: { min: 4, max: 8 }, restBetween: { min: 4, max: 12 } }
             }
         },
-        instrumentRules: {},
-        bundles: [ { id: 'BUILD_1_BUNDLE_1', name: 'Stirring', duration: { percent: 100 }, characteristics: {}, phrases: {} } ],
-        outroFill: null,
-      },
-      {
-        id: 'MAIN_1', name: 'First Apex',
-        duration: { percent: 17 }, // ~18 bars
-        layers: { pad: true, bass: true, arpeggio: true, melody: true, sparkles: true, drums: true, sfx: true, harmony: true, accompaniment: true },
-        instrumentation: {
-            accompaniment: {
-                strategy: 'weighted',
-                options: [{ name: 'ambientPad', weight: 1.0 }]
-            },
-            melody: {
-                strategy: 'weighted',
-                options: [
-                    { name: 'synth', weight: 0.4 },
-                    { name: 'organ', weight: 0.4 },
-                    { name: 'theremin', weight: 0.1 },
-                    { name: 'mellotron', weight: 0.1 },
-                ]
-            }
-        },
-        instrumentRules: {},
-        bundles: [ { id: 'MAIN_1_BUNDLE_1', name: 'Arrival', duration: { percent: 100 }, characteristics: {}, phrases: {} } ],
-        outroFill: null,
-      },
-       {
-        id: 'BUILD_2', name: 'Second Rise',
-        duration: { percent: 10 }, // ~12 bars
-        layers: { pad: true, bass: true, arpeggio: true, drums: true, sfx: true, melody: true, sparkles: true, harmony: true, accompaniment: true },
-        instrumentation: {
-            accompaniment: {
-                strategy: 'weighted',
-                options: [{ name: 'ambientPad', weight: 1.0 }]
-            },
-            melody: {
-                strategy: 'weighted',
-                options: [
-                    { name: 'synth', weight: 0.4 },
-                    { name: 'organ', weight: 0.4 },
-                    { name: 'theremin', weight: 0.1 },
-                    { name: 'mellotron', weight: 0.1 },
-                ]
-            }
-        },
-        instrumentRules: {},
-        bundles: [ { id: 'BUILD_2_BUNDLE_1', name: 'Intensifying', duration: { percent: 100 }, characteristics: {}, phrases: {} } ],
+        bundles: [
+            { id: 'MAIN_BUNDLE_1', name: 'Arrival', duration: { percent: 50 }, characteristics: {}, phrases: {} },
+            { id: 'MAIN_BUNDLE_2', name: 'Plateau', duration: { percent: 50 }, characteristics: {}, phrases: {} }
+        ],
         outroFill: { type: 'reverb_burst', duration: 2, parameters: {} },
       },
       {
-        id: 'MAIN_2', name: 'Second Apex',
-        duration: { percent: 23 }, // ~24 bars
-        layers: { pad: true, bass: true, arpeggio: true, melody: true, sparkles: true, drums: true, sfx: true, harmony: true, accompaniment: true },
+        id: 'RELEASE', name: 'Descent',
+        duration: { percent: 20 },
+        layers: { accompaniment: true, bass: true, sparkles: true, sfx: true },
         instrumentation: {
-            accompaniment: {
-                strategy: 'weighted',
-                options: [{ name: 'ambientPad', weight: 1.0 }]
+            accompaniment: { strategy: 'weighted', options: [{ name: 'ambientPad', weight: 1.0 }] },
+            bass: { strategy: 'weighted', options: [{ name: 'glideBass', weight: 1.0 }] }
+        },
+        instrumentRules: {
+            bass: {
+                techniques: [{ value: 'pedal', weight: 0.7 }, { value: 'drone', weight: 0.3 }],
+                density: { min: 0.4, max: 0.6 },
+                envelope: { attack: { min: 600, max: 1200 }, release: { min: 2500, max: 5000 } }
             },
-            melody: {
-                strategy: 'weighted',
-                options: [
-                    { name: 'synth', weight: 0.4 },
-                    { name: 'organ', weight: 0.4 },
-                    { name: 'theremin', weight: 0.1 },
-                    { name: 'mellotron', weight: 0.1 },
-                ]
+             accompaniment: {
+                density: { min: 0.65, max: 0.8 },
+                voices: { min: 3, max: 4 },
             }
         },
-        instrumentRules: {},
-        bundles: [
-            { id: 'MAIN_2_BUNDLE_1', name: 'Plateau', duration: { percent: 50 }, characteristics: {}, phrases: {} },
-            { id: 'MAIN_2_BUNDLE_2', name: 'Reflection', duration: { percent: 50 }, characteristics: {}, phrases: {} }
-        ],
-        outroFill: null,
-      },
-      {
-        id: 'RELEASE', name: 'Descent',
-        duration: { percent: 15 }, // ~18 bars
-        layers: { pad: true, bass: true, arpeggio: true, sparkles: true, sfx: true, harmony: true, accompaniment: true },
-        instrumentation: {
-            accompaniment: {
-                strategy: 'weighted',
-                options: [{ name: 'ambientPad', weight: 1.0 }]
-            },
-        },
-        instrumentRules: {},
         bundles: [ { id: 'RELEASE_BUNDLE_1', name: 'Softening', duration: { percent: 100 }, characteristics: {}, phrases: {} } ],
         outroFill: { type: 'density_pause', duration: 2, parameters: { soloLayer: 'pad' } },
-      },
-      {
-        id: 'BRIDGE', name: 'Promenade',
-        duration: { percent: 5 }, // ~6 bars
-        layers: { accompaniment: true, bass: true, sfx: true },
-        instrumentation: {
-          accompaniment: {
-            strategy: 'weighted',
-            options: [{ name: 'synth', weight: 1.0 }]
-          },
-          bass: {
-            strategy: 'weighted',
-            options: [{ name: 'glideBass', weight: 1.0 }]
-          }
-        },
-        instrumentRules: {},
-        bundles: [ { id: 'BRIDGE_BUNDLE_1', name: 'Transition', duration: { percent: 100 }, characteristics: {}, phrases: {} } ],
-        outroFill: null,
-      },
+      }
     ]
   },
   
@@ -561,3 +483,4 @@ export default MelancholicAmbientBlueprint;
     
 
     
+
