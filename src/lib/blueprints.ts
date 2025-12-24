@@ -348,11 +348,16 @@ export const JoyfulAmbientBlueprint: MusicBlueprint = {
           {
             id: 'INTRO_1', name: 'Sunrise',
             duration: { percent: 10 },
-            layers: { melody: true, sparkles: true },
+            layers: { accompaniment: true, melody: true, sparkles: true },
             instrumentation: {
+              accompaniment: { strategy: 'weighted', options: [{ name: 'synth', weight: 1.0 }]},
               melody: { strategy: 'weighted', options: [{ name: 'organ', weight: 1.0 }]}
             },
-            instrumentRules: {},
+            instrumentRules: {
+              melody: { density: { min: 0.5, max: 0.7 }, register: { preferred: 'high' } },
+              accompaniment: { density: { min: 0.4, max: 0.6 }, register: { preferred: 'mid' } },
+              sparkles: { eventProbability: 0.2 },
+            },
             bundles: [ { id: 'JOY_INTRO_BUNDLE_1', name: 'First Light', duration: { percent: 100 }, characteristics: {}, phrases: {} } ],
             outroFill: null,
           },
@@ -430,3 +435,4 @@ export const BLUEPRINT_LIBRARY: Record<Mood, MusicBlueprint> = {
 };
 
 export default MelancholicAmbientBlueprint;
+
