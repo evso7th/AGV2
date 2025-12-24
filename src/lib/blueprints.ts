@@ -1,4 +1,5 @@
 
+
 import type { MusicBlueprint, Mood } from '@/types/music';
 
 export const MelancholicAmbientBlueprint: MusicBlueprint = {
