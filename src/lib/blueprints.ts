@@ -249,15 +249,10 @@ export const DarkAmbientBlueprint: MusicBlueprint = {
             duration: { percent: 10 },
             layers: { bass: true, accompaniment: true },
             instrumentation: {
-              accompaniment: {
-                strategy: 'weighted',
-                options: [{ name: 'ambientPad', weight: 1.0 }]
-              }
+              accompaniment: { strategy: 'weighted', options: [{ name: 'ambientPad', weight: 1.0 }]}
             },
             instrumentRules: {},
-            bundles: [
-              { id: 'DARK_INTRO_BUNDLE_1', name: 'Drone', duration: { percent: 100 }, characteristics: {}, phrases: {} }
-            ],
+            bundles: [ { id: 'DARK_INTRO_BUNDLE_1', name: 'Drone', duration: { percent: 100 }, characteristics: {}, phrases: {} } ],
             outroFill: null,
           },
           {
@@ -265,19 +260,11 @@ export const DarkAmbientBlueprint: MusicBlueprint = {
             duration: { percent: 10 },
             layers: { bass: true, accompaniment: true, melody: true, sparkles: true },
             instrumentation: {
-              accompaniment: {
-                strategy: 'weighted',
-                options: [{ name: 'ambientPad', weight: 1.0 }]
-              },
-              melody: {
-                strategy: 'weighted',
-                options: [{ name: 'theremin', weight: 1.0 }]
-              }
+              accompaniment: { strategy: 'weighted', options: [{ name: 'ambientPad', weight: 1.0 }]},
+              melody: { strategy: 'weighted', options: [{ name: 'theremin', weight: 1.0 }]}
             },
             instrumentRules: {},
-            bundles: [
-              { id: 'DARK_INTRO_BUNDLE_2', name: 'Whispers', duration: { percent: 100 }, characteristics: {}, phrases: {} }
-            ],
+            bundles: [ { id: 'DARK_INTRO_BUNDLE_2', name: 'Whispers', duration: { percent: 100 }, characteristics: {}, phrases: {} } ],
             outroFill: null,
           },
           {
@@ -285,19 +272,11 @@ export const DarkAmbientBlueprint: MusicBlueprint = {
             duration: { percent: 10 },
             layers: { bass: true, accompaniment: true, melody: true, sparkles: true, drums: true, sfx: true, harmony: true },
             instrumentation: {
-              accompaniment: {
-                strategy: 'weighted',
-                options: [{ name: 'ambientPad', weight: 1.0 }]
-              },
-              melody: {
-                strategy: 'weighted',
-                options: [{ name: 'theremin', weight: 0.7 }, { name: 'synth', weight: 0.3 }]
-              }
+              accompaniment: { strategy: 'weighted', options: [{ name: 'ambientPad', weight: 1.0 }]},
+              melody: { strategy: 'weighted', options: [{ name: 'theremin', weight: 0.7 }, { name: 'synth', weight: 0.3 }] }
             },
             instrumentRules: {},
-            bundles: [
-              { id: 'DARK_INTRO_BUNDLE_3', name: 'Deepening', duration: { percent: 100 }, characteristics: {}, phrases: {} }
-            ],
+            bundles: [ { id: 'DARK_INTRO_BUNDLE_3', name: 'Deepening', duration: { percent: 100 }, characteristics: {}, phrases: {} } ],
             outroFill: null,
           },
           {
@@ -305,19 +284,11 @@ export const DarkAmbientBlueprint: MusicBlueprint = {
             duration: { percent: 20 },
             layers: { bass: true, sfx: true, drums: true, melody: true, pad: true, accompaniment: true, harmony: true, sparkles: true },
              instrumentation: {
-              accompaniment: {
-                strategy: 'weighted',
-                options: [{ name: 'organ', weight: 1.0 }]
-              },
-              melody: {
-                strategy: 'weighted',
-                options: [{ name: 'theremin', weight: 0.5 }, { name: 'synth', weight: 0.5 }]
-              }
+              accompaniment: { strategy: 'weighted', options: [{ name: 'organ', weight: 1.0 }]},
+              melody: { strategy: 'weighted', options: [{ name: 'theremin', weight: 0.5 }, { name: 'synth', weight: 0.5 }] }
             },
             instrumentRules: {},
-            bundles: [
-                { id: 'BUILD_BUNDLE_1', name: 'Rumble', duration: { percent: 100 }, characteristics: {}, phrases: {} }
-            ],
+            bundles: [ { id: 'BUILD_BUNDLE_1', name: 'Rumble', duration: { percent: 100 }, characteristics: {}, phrases: {} } ],
             outroFill: null,
           },
           {
@@ -325,14 +296,8 @@ export const DarkAmbientBlueprint: MusicBlueprint = {
             duration: { percent: 30 },
             layers: { bass: true, sfx: true, drums: true, melody: true, pad: true, accompaniment: true, harmony: true, sparkles: true },
             instrumentation: {
-              accompaniment: {
-                strategy: 'weighted',
-                options: [{ name: 'organ', weight: 0.7 }, { name: 'mellotron', weight: 0.3 }]
-              },
-              melody: {
-                strategy: 'weighted',
-                options: [{ name: 'theremin', weight: 0.4 }, { name: 'synth', weight: 0.4 }, { name: 'electricGuitar', weight: 0.2 }]
-              }
+              accompaniment: { strategy: 'weighted', options: [{ name: 'organ', weight: 0.7 }, { name: 'mellotron', weight: 0.3 }]},
+              melody: { strategy: 'weighted', options: [{ name: 'theremin', weight: 0.4 }, { name: 'synth', weight: 0.4 }, { name: 'electricGuitar', weight: 0.2 }] }
             },
             instrumentRules: {},
             bundles: [
@@ -346,15 +311,10 @@ export const DarkAmbientBlueprint: MusicBlueprint = {
             duration: { percent: 20 },
             layers: { bass: true, sfx: true, accompaniment: true },
              instrumentation: {
-              accompaniment: {
-                strategy: 'weighted',
-                options: [{ name: 'ambientPad', weight: 1.0 }]
-              }
+              accompaniment: { strategy: 'weighted', options: [{ name: 'ambientPad', weight: 1.0 }]}
             },
             instrumentRules: {},
-            bundles: [
-              { id: 'OUTRO_BUNDLE_1', name: 'Silence', duration: { percent: 100 }, characteristics: {}, phrases: {} }
-            ],
+            bundles: [ { id: 'OUTRO_BUNDLE_1', name: 'Silence', duration: { percent: 100 }, characteristics: {}, phrases: {} } ],
             outroFill: null,
           }
         ]
@@ -385,17 +345,26 @@ export const JoyfulAmbientBlueprint: MusicBlueprint = {
         totalDuration: { preferredBars: 120 },
         parts: [
           {
-            id: 'INTRO', name: 'Sunrise',
-            duration: { percent: 20 },
-            layers: { melody: true, sparkles: true, accompaniment: true },
+            id: 'INTRO_1', name: 'Sunrise',
+            duration: { percent: 10 },
+            layers: { melody: true, sparkles: true },
+            instrumentation: {
+              melody: { strategy: 'weighted', options: [{ name: 'organ', weight: 1.0 }]}
+            },
+            instrumentRules: {},
+            bundles: [ { id: 'JOY_INTRO_BUNDLE_1', name: 'First Light', duration: { percent: 100 }, characteristics: {}, phrases: {} } ],
+            outroFill: null,
+          },
+           {
+            id: 'INTRO_2', name: 'Awakening',
+            duration: { percent: 10 },
+            layers: { melody: true, sparkles: true, bass: true, drums: true, accompaniment: true },
             instrumentation: {
               accompaniment: { strategy: 'weighted', options: [{ name: 'synth', weight: 1.0 }]},
               melody: { strategy: 'weighted', options: [{ name: 'organ', weight: 1.0 }]}
             },
             instrumentRules: {},
-            bundles: [
-              { id: 'INTRO_BUNDLE_1', name: 'First Light', duration: { percent: 100 }, characteristics: {}, phrases: {} }
-            ],
+            bundles: [ { id: 'JOY_INTRO_BUNDLE_2', name: 'First Pulse', duration: { percent: 100 }, characteristics: {}, phrases: {} } ],
             outroFill: null,
           },
           {
@@ -407,9 +376,7 @@ export const JoyfulAmbientBlueprint: MusicBlueprint = {
               melody: { strategy: 'weighted', options: [{ name: 'organ', weight: 0.5 }, { name: 'mellotron', weight: 0.5 }]}
             },
             instrumentRules: {},
-            bundles: [
-                { id: 'BUILD_BUNDLE_1', name: 'Ascension', duration: { percent: 100 }, characteristics: {}, phrases: {} }
-            ],
+            bundles: [ { id: 'JOY_BUILD_BUNDLE_1', name: 'Ascension', duration: { percent: 100 }, characteristics: {}, phrases: {} } ],
             outroFill: null,
           },
           {
@@ -421,9 +388,7 @@ export const JoyfulAmbientBlueprint: MusicBlueprint = {
               melody: { strategy: 'weighted', options: [{ name: 'electricGuitar', weight: 0.5 }, { name: 'synth', weight: 0.5 }]}
             },
             instrumentRules: {},
-            bundles: [
-              { id: 'MAIN_BUNDLE_1', name: 'Celebration', duration: { percent: 100 }, characteristics: {}, phrases: {} }
-            ],
+            bundles: [ { id: 'JOY_MAIN_BUNDLE_1', name: 'Celebration', duration: { percent: 100 }, characteristics: {}, phrases: {} } ],
             outroFill: null,
           },
           {
@@ -435,9 +400,7 @@ export const JoyfulAmbientBlueprint: MusicBlueprint = {
               melody: { strategy: 'weighted', options: [{ name: 'organ', weight: 1.0 }]}
             },
             instrumentRules: {},
-            bundles: [
-              { id: 'OUTRO_BUNDLE_1', name: 'Lingering', duration: { percent: 100 }, characteristics: {}, phrases: {} }
-            ],
+            bundles: [ { id: 'JOY_OUTRO_BUNDLE_1', name: 'Lingering', duration: { percent: 100 }, characteristics: {}, phrases: {} } ],
             outroFill: null,
           }
         ]
