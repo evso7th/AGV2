@@ -417,6 +417,113 @@ export const JoyfulAmbientBlueprint: MusicBlueprint = {
     rendering: {}
 };
 
+export const CalmAmbientBlueprint: MusicBlueprint = {
+  id: 'calm_ambient',
+  name: 'Still Waters',
+  description: 'Теплый, обволакивающий и умиротворяющий эмбиент.',
+  mood: 'calm',
+  musical: {
+    key: { root: 'G', scale: 'mixolydian', octave: 3 },
+    bpm: { base: 54, range: [50, 58], modifier: 1.0 },
+    timeSignature: { numerator: 4, denominator: 4 },
+    harmonicJourney: [],
+    tensionProfile: {
+      type: 'plateau', // Длинное плато спокойствия
+      peakPosition: 0.3,
+      curve: (progress: number, peakPos: number): number => {
+        if (progress < peakPos) return progress / peakPos;
+        if (progress < 0.8) return 1.0;
+        return 1.0 - ((progress - 0.8) / 0.2);
+      }
+    }
+  },
+  structure: {
+    totalDuration: { preferredBars: 120 },
+    parts: [
+      {
+        id: 'INTRO', name: 'Gentle Awakening',
+        duration: { percent: 20 },
+        layers: { sparkles: true, accompaniment: true, sfx: true },
+        instrumentation: {
+          accompaniment: {
+            strategy: 'weighted',
+            options: [{ name: 'ambientPad', weight: 0.7 }, { name: 'synth', weight: 0.3 }]
+          }
+        },
+        instrumentRules: {
+          accompaniment: { density: { min: 0.4, max: 0.6 } },
+          sparkles: { eventProbability: 0.15 },
+          sfx: { density: 0.4 },
+        },
+        bundles: [{ id: 'CALM_INTRO_BUNDLE', name: 'First Breath', duration: { percent: 100 }, characteristics: {}, phrases: {} }],
+        outroFill: null,
+      },
+      {
+        id: 'BUILD', name: 'Flowing Stream',
+        duration: { percent: 30 },
+        layers: { sparkles: true, accompaniment: true, sfx: true, bass: true, arpeggio: true, drums: true },
+        instrumentation: {
+          accompaniment: {
+            strategy: 'weighted',
+            options: [{ name: 'ambientPad', weight: 0.6 }, { name: 'organ', weight: 0.4 }]
+          },
+          bass: {
+            strategy: 'weighted',
+            options: [{ name: 'classicBass', weight: 1.0 }]
+          }
+        },
+        instrumentRules: {
+           drums: { pattern: 'ambient_beat', density: { min: 0.3, max: 0.5 } }
+        },
+        bundles: [{ id: 'CALM_BUILD_BUNDLE', name: 'Movement', duration: { percent: 100 }, characteristics: {}, phrases: {} }],
+        outroFill: null,
+      },
+      {
+        id: 'MAIN', name: 'Stillness',
+        duration: { percent: 35 },
+        layers: { sparkles: true, accompaniment: true, sfx: true, bass: true, arpeggio: true, drums: true, melody: true },
+        instrumentation: {
+          accompaniment: {
+            strategy: 'weighted',
+            options: [{ name: 'organ', weight: 0.5 }, { name: 'mellotron', weight: 0.5 }]
+          },
+           melody: {
+            strategy: 'weighted',
+            options: [{ name: 'flute', weight: 0.6 }, { name: 'piano', weight: 0.4 }]
+          }
+        },
+        instrumentRules: {
+           melody: { density: { min: 0.2, max: 0.4 } } // редкая, спокойная мелодия
+        },
+        bundles: [{ id: 'CALM_MAIN_BUNDLE', name: 'Clarity', duration: { percent: 100 }, characteristics: {}, phrases: {} }],
+        outroFill: null,
+      },
+      {
+        id: 'OUTRO', name: 'Fading Light',
+        duration: { percent: 15 },
+        layers: { sparkles: true, accompaniment: true, sfx: true },
+        instrumentation: {
+           accompaniment: {
+            strategy: 'weighted',
+            options: [{ name: 'ambientPad', weight: 1.0 }]
+          }
+        },
+        instrumentRules: {
+            accompaniment: { density: { min: 0.3, max: 0.5 } },
+            sparkles: { eventProbability: 0.1 },
+        },
+        bundles: [{ id: 'CALM_OUTRO_BUNDLE', name: 'Return', duration: { percent: 100 }, characteristics: {}, phrases: {} }],
+        outroFill: null,
+      }
+    ]
+  },
+  mutations: {},
+  ambientEvents: [],
+  continuity: {},
+  rendering: {}
+};
+
+
 export const BLUEPRINT_LIBRARY: Record<Mood, MusicBlueprint> = {
     // Positive
     epic: JoyfulAmbientBlueprint,
@@ -429,13 +536,15 @@ export const BLUEPRINT_LIBRARY: Record<Mood, MusicBlueprint> = {
     anxious: DarkAmbientBlueprint,
     
     // Neutral
-    dreamy: MelancholicAmbientBlueprint,
-    contemplative: MelancholicAmbientBlueprint,
-    calm: MelancholicAmbientBlueprint,
+    dreamy: CalmAmbientBlueprint,
+    contemplative: CalmAmbientBlueprint,
+    calm: CalmAmbientBlueprint,
 };
 
 export default MelancholicAmbientBlueprint;
 
 
+
+    
 
     
