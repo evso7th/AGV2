@@ -105,19 +105,21 @@ export const SYNTH_PRESETS: Record<Exclude<MelodyInstrument | BassInstrument, 'p
   // --- MELODY/ACCOMPANIMENT PRESETS ---
   organ: {
     layers: [
-      { type: 'triangle', detune: 0, octave: 0, gain: 1.0 },
-      { type: 'triangle', detune: 2, octave: 1, gain: 0.6 },
-      { type: 'triangle', detune: -2, octave: -1, gain: 0.4 },
+      { type: 'sine', detune: 0, octave: 0, gain: 1.0 }, // Основной тон
+      { type: 'sine', detune: 2, octave: 1, gain: 0.5 }, // Верхний регистр
+      { type: 'sine', detune: 0, octave: 0, gain: 0.4 }, // 5-й регистр (гармоника)
+      { type: 'noise', detune: 0, octave: 0, gain: 0.05 }, // "Клик" клавиши
     ],
-    adsr: { attack: 0.1, decay: 0.1, sustain: 0.9, release: 0.6 },
-    filter: { type: 'lpf', cutoff: 2500, q: 2 },
-    lfo: { shape: 'sine', rate: 4.8, amount: 0, target: 'pitch' }, // Cents
+    adsr: { attack: 0.01, decay: 0.1, sustain: 0.9, release: 0.4 },
+    filter: { type: 'lpf', cutoff: 3500, q: 2 },
+    lfo: { shape: 'sine', rate: 5.5, amount: 0, target: 'pitch' }, // Более выраженное вибрато
     effects: {
       distortion: 0,
-      chorus: { rate: 0.7, depth: 0.006, mix: 0.4 },
+      chorus: { rate: 0.5, depth: 0.005, mix: 0.4 }, // Имитация Leslie-динамика
       delay: { time: 0, feedback: 0, mix: 0 },
     },
   },
+
 
   synth: {
     layers: [
@@ -140,12 +142,12 @@ export const SYNTH_PRESETS: Record<Exclude<MelodyInstrument | BassInstrument, 'p
       { type: 'sawtooth', detune: 0, octave: 0, gain: 1.0 },
       { type: 'sine', detune: 5, octave: 0, gain: 0.7 },
     ],
-    adsr: { attack: 0.3, decay: 0.2, sustain: 0.9, release: 1.2 },
-    filter: { type: 'lpf', cutoff: 2200, q: 1.5 },
-    lfo: { shape: 'sine', rate: 4.5, amount: 5, target: 'pitch' }, // "Wow and flutter"
+    adsr: { attack: 0.15, decay: 0.1, sustain: 0.9, release: 1.0 }, // Чуть более быстрая атака
+    filter: { type: 'lpf', cutoff: 1800, q: 2.5 }, // Более "лоу-файный" звук
+    lfo: { shape: 'sine', rate: 1.5, amount: 0.03, target: 'pitch' }, // "Wow and flutter" ленты
     effects: {
-      distortion: 0.05,
-      chorus: { rate: 0.1, depth: 0.001, mix: 0.2 },
+      distortion: 0.1,
+      chorus: { rate: 0.1, depth: 0.001, mix: 0.3 },
       delay: { time: 0, feedback: 0, mix: 0 },
     },
   },
@@ -155,33 +157,32 @@ export const SYNTH_PRESETS: Record<Exclude<MelodyInstrument | BassInstrument, 'p
       { type: 'sine', detune: 0, octave: 0, gain: 1.0 },
       { type: 'sine', detune: 2, octave: 1, gain: 0.3 },
     ],
-    adsr: { attack: 0.4, decay: 0.1, sustain: 1.0, release: 0.6 },
-    filter: { type: 'lpf', cutoff: 5000, q: 1 },
-    lfo: { shape: 'sine', rate: 5, amount: 5, target: 'pitch' }, // Classic vibrato in cents
+    adsr: { attack: 0.3, decay: 0.1, sustain: 1.0, release: 0.5 }, // Добавлено портаменто
+    filter: { type: 'lpf', cutoff: 6000, q: 1 },
+    lfo: { shape: 'sine', rate: 4.5, amount: 0.06, target: 'pitch' }, // Классическое вибрато
     effects: {
       distortion: 0,
       chorus: { rate: 0.2, depth: 0.003, mix: 0.3 },
-      delay: { time: 0, feedback: 0, mix: 0 },
+      delay: { time: 0.25, feedback: 0.2, mix: 0.15 },
     },
-    portamento: 0.08
   },
   
   electricGuitar: {
     layers: [
       { type: 'sawtooth', detune: 0, octave: 0, gain: 1.0 },
-      { type: 'square', detune: 3, octave: 0, gain: 0.6 },
+      { type: 'square', detune: 2, octave: 1, gain: 0.3 }, // Добавлен верхний гармонический слой
     ],
-    adsr: { attack: 0.02, decay: 0.8, sustain: 0.8, release: 2.5 },
-    filter: { type: 'bpf', cutoff: 1500, q: 3.5 },
+    adsr: { attack: 0.005, decay: 0.5, sustain: 0.5, release: 0.6 }, // Быстрая "щипковая" атака
+    filter: { type: 'bpf', cutoff: 1500, q: 3.5 }, // Band-pass для "гнусавого" тона звукоснимателя
     lfo: { shape: 'sine', rate: 0, amount: 0, target: 'pitch' },
     effects: {
-      distortion: 0.8,
-      chorus: { rate: 0.7, depth: 0.006, mix: 0.3 },
+      distortion: 0.7, // Больше гейна
+      chorus: { rate: 0, depth: 0, mix: 0 },
       delay: { time: 0.375, feedback: 0.4, mix: 0.35 },
     },
   },
 
-  'E-Bells_melody': {
+ 'E-Bells_melody': {
       layers: [ { type: 'sine', detune: 0, octave: 0, gain: 1.0 } ],
       adsr: { attack: 0.001, decay: 1.6, sustain: 0.0, release: 1.6 },
       filter: { type: 'hpf', cutoff: 800, q: 1 },
@@ -205,36 +206,37 @@ export const SYNTH_PRESETS: Record<Exclude<MelodyInstrument | BassInstrument, 'p
       },
   },
   
-  ambientPad: {
-    layers: [
-      { type: 'sawtooth', detune: -8, octave: 0, gain: 0.8 },
-      { type: 'sawtooth', detune: 8, octave: 0, gain: 0.8 },
-      { type: 'sine', detune: 0, octave: 1, gain: 0.4 },
-    ],
-    adsr: { attack: 2.5, decay: 2.0, sustain: 0.8, release: 4.0 },
-    filter: { type: 'lpf', cutoff: 1200, q: 1.5 },
-    lfo: { shape: 'sine', rate: 0.05, amount: 600, target: 'filter' },
-    effects: {
-      distortion: 0,
-      chorus: { rate: 0.2, depth: 0.008, mix: 0.7 },
-      delay: { time: 0.75, feedback: 0.45, mix: 0.4 },
-    },
+ // НОВЫЙ: Пышный, медленно развивающийся пэд
+ ambientPad: {
+  layers: [
+    { type: 'sawtooth', detune: -8, octave: 0, gain: 0.8 },
+    { type: 'sawtooth', detune: 8, octave: 0, gain: 0.8 },
+    { type: 'sine', detune: 0, octave: 1, gain: 0.4 },
+  ],
+  adsr: { attack: 2.5, decay: 2.0, sustain: 0.8, release: 4.0 }, // Очень медленная атака и затухание
+  filter: { type: 'lpf', cutoff: 1200, q: 1.5 },
+  lfo: { shape: 'sine', rate: 0.05, amount: 600, target: 'filter' }, // Очень медленная модуляция фильтра для "дыхания"
+  effects: {
+    distortion: 0,
+    chorus: { rate: 0.2, depth: 0.008, mix: 0.7 }, // Глубокий хорус
+    delay: { time: 0.75, feedback: 0.45, mix: 0.4 }, // Длинный дилэй
   },
+},
 
-  acousticGuitar: {
-    layers: [
-      { type: 'triangle', detune: 0, octave: 0, gain: 1.0 },
-      { type: 'noise', detune: 0, octave: 0, gain: 0.15 },
-    ],
-    adsr: { attack: 0.001, decay: 0.3, sustain: 0.05, release: 0.3 },
-    filter: { type: 'bpf', cutoff: 2000, q: 4.0 },
-    lfo: { shape: 'sine', rate: 0, amount: 0, target: 'pitch' },
-    effects: {
-      distortion: 0,
-      chorus: { rate: 0.1, depth: 0.001, mix: 0.1 },
-      delay: { time: 0, feedback: 0, mix: 0 },
-    },
+ // НОВЫЙ: Имитация щипка нейлоновой струны
+ acousticGuitar: {
+  layers: [
+    { type: 'triangle', detune: 0, octave: 0, gain: 1.0 },
+    { type: 'noise', detune: 0, octave: 0, gain: 0.15 }, // Шум щипка струны
+  ],
+  adsr: { attack: 0.001, decay: 0.3, sustain: 0.05, release: 0.3 }, // Очень быстрая атака и затухание
+  filter: { type: 'bpf', cutoff: 2000, q: 4.0 }, // Выделение "деревянных" частот
+  lfo: { shape: 'sine', rate: 0, amount: 0, target: 'pitch' },
+  effects: {
+    distortion: 0,
+    chorus: { rate: 0.1, depth: 0.001, mix: 0.1 }, // Легкая реверберация корпуса
+    delay: { time: 0, feedback: 0, mix: 0 },
   },
+},
 };
-
     

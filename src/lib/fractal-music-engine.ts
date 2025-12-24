@@ -200,7 +200,6 @@ export class FractalMusicEngine {
   public navigator: BlueprintNavigator;
   private isPromenadeActive: boolean = false;
   private promenadeBars: FractalEvent[] = [];
-  private promenadeBarIndex: number = 0;
 
 
   private currentBassPhrase: FractalEvent[] = [];
@@ -520,26 +519,6 @@ export class FractalMusicEngine {
   }
   
  private generateOneBar(barDuration: number, navInfo: NavigationInfo | null): { events: FractalEvent[], instrumentHints: InstrumentHints } {
-    // Promenade Logic
-    if (this.isPromenadeActive) {
-        console.log(`%c[FME Generate] Playing PROMENADE bar ${this.promenadeBarIndex + 1}`, 'color: #FFD700');
-        const barStartTimeInPromenade = this.promenadeBarIndex * 4.0;
-        const barEndTimeInPromenade = barStartTimeInPromenade + 4.0;
-        const promenadeEventsForBar = this.promenadeBars
-            .filter(e => e.time >= barStartTimeInPromenade && e.time < barEndTimeInPromenade)
-            .map(e => ({ ...e, time: e.time - barStartTimeInPromenade })); // Normalize time to be within the bar
-        
-        this.promenadeBarIndex++;
-
-        if (this.promenadeBarIndex >= 4) {
-            this._resetForNewSuite();
-        }
-
-        // Return the events for the current bar of the promenade with hints
-        return { events: promenadeEventsForBar, instrumentHints: { bass: 'glideBass', accompaniment: 'synth' } };
-    }
-
-    // --- Regular Suite Logic ---
     let instrumentHints: InstrumentHints = {};
     if (!navInfo) {
         console.log(`[FME Check @ Bar ${this.epoch}] No navigation info available.`);
@@ -711,8 +690,6 @@ export class FractalMusicEngine {
       console.log(`%c[FME] Resetting for new suite.`, 'color: green; font-weight: bold;');
       this.epoch = 0;
       this.isPromenadeActive = false;
-      this.promenadeBarIndex = 0;
-      // Clear musical state before re-initializing
       this.branches = [];
       this.harmonyBranches = [];
       this.initialize(); // Re-initialize everything for a fresh start
@@ -720,18 +697,28 @@ export class FractalMusicEngine {
 
   public evolve(barDuration: number, barCount: number): { events: FractalEvent[], instrumentHints: InstrumentHints } {
     this.epoch = barCount;
+
+    // Check if it's time to start the promenade
+    if (!this.isPromenadeActive && this.epoch >= this.navigator.totalBars && this.navigator.totalBars > 0) {
+      console.log(`%c[FME] End of suite reached. Activating PROMENADE.`, 'color: #FFD700; font-weight: bold');
+      this.isPromenadeActive = true;
+      // Immediately return the full promenade score. The next tick will trigger the reset.
+      return {
+        events: this.promenadeBars,
+        instrumentHints: { bass: 'glideBass', accompaniment: 'synth' }
+      };
+    }
+    
+    // Check if we need to reset after the promenade has conceptually "finished"
+    if (this.isPromenadeActive) {
+      this._resetForNewSuite();
+      // After reset, we generate the first bar of the new suite
+    }
     
     if (this.needsBassReset) {
         console.log(`%c[RESET] Bass reset flag is true. Resetting...`, 'color: red');
         this.currentBassPhrase = generateAmbientBassPhrase(this.config.mood, this.config.genre, this.random, this.config.tempo);
         this.needsBassReset = false;
-    }
-    
-    // Promenade Activation Logic
-    if (!this.isPromenadeActive && this.epoch >= this.navigator.totalBars && this.navigator.totalBars > 0) {
-      console.log(`%c[FME] End of suite reached. Activating PROMENADE.`, 'color: #FFD700; font-weight: bold');
-      this.isPromenadeActive = true;
-      this.promenadeBarIndex = 0; // Reset promenade counter
     }
 
     if (this.epoch > 0 && this.epoch >= this.nextWeatherEventEpoch) {
@@ -741,7 +728,7 @@ export class FractalMusicEngine {
     
     if (!isFinite(barDuration)) return { events: [], instrumentHints: {} };
     
-    const navigationInfo = this.isPromenadeActive ? null : this.navigator.tick(this.epoch);
+    const navigationInfo = this.navigator.tick(this.epoch);
     
     const { events, instrumentHints } = this.generateOneBar(barDuration, navigationInfo);
     
@@ -749,9 +736,7 @@ export class FractalMusicEngine {
         console.log(navigationInfo.logMessage, 'color: green; font-style: italic;');
     }
     
-    if (!this.isPromenadeActive) {
-      this.evolveBranches();
-    }
+    this.evolveBranches();
     
     this.time += barDuration;
     
