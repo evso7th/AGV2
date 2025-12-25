@@ -375,18 +375,17 @@ export class FractalMusicEngine {
   
   private ghostHarmonyTrack: GhostChord[] = []; // The harmonic "skeleton"
   
-  private branches: Branch[] = [];
-  private harmonyBranches: Branch[] = [];
-
   public navigator: BlueprintNavigator;
   private isPromenadeActive: boolean = false;
   private promenadeBars: FractalEvent[] = [];
 
 
-  private currentBassPhrase: FractalEvent[] = [];
   private bassPhraseLibrary: FractalEvent[][] = [];
+  private currentBassPhraseIndex = 0;
 
-  private currentAccompPhrase: FractalEvent[] = []; 
+  private accompPhraseLibrary: FractalEvent[][] = [];
+  private currentAccompPhraseIndex = 0;
+
   private currentMelodyMotif: FractalEvent[] = [];
   private lastMelodyPlayEpoch: number = -4; // Start with a delay
 
@@ -476,18 +475,20 @@ export class FractalMusicEngine {
     console.log(`[FractalMusicEngine] Initialized with blueprint "${this.navigator.blueprint.name}". Total duration: ${this.navigator.totalBars} bars.`);
     this._generatePromenade();
 
-    // --- BASS INITIALIZATION ---
+    this.bassPhraseLibrary = [];
+    this.currentBassPhraseIndex = 0;
+    this.accompPhraseLibrary = [];
+    this.currentAccompPhraseIndex = 0;
+
     const firstChord = this.ghostHarmonyTrack[0];
-    this.currentBassPhrase = generateAmbientBassPhrase(firstChord, this.config.mood, this.config.genre, this.random, this.config.tempo);
-    console.log(`%c[BassAxiom] Created initial bass phrase based on first GhostChord.`, 'color: #FF7F50');
-
-    // --- ACCOMPANIMENT INITIALIZATION ---
-    this.currentAccompPhrase = createAccompanimentAxiom(firstChord, this.config.mood, this.config.genre, this.random, this.config.tempo);
-    console.log(`%c[AccompAxiom] Created initial accompaniment phrase.`, 'color: #87CEEB');
-
-    // --- MELODY INITIALIZATION ---
+    for (let i = 0; i < 4; i++) {
+        this.bassPhraseLibrary.push(generateAmbientBassPhrase(firstChord, this.config.mood, this.config.genre, this.random, this.config.tempo));
+        this.accompPhraseLibrary.push(createAccompanimentAxiom(firstChord, this.config.mood, this.config.genre, this.random, this.config.tempo));
+    }
+    console.log(`%c[Axiom Libraries] Created ${this.bassPhraseLibrary.length} bass and ${this.accompPhraseLibrary.length} accomp phrases.`, 'color: #FFD700');
+    
     this.currentMelodyMotif = createMelodyMotif(firstChord, this.config.mood, this.random);
-    this.lastMelodyPlayEpoch = -4; // Ensure it can play early
+    this.lastMelodyPlayEpoch = -4;
     console.log(`%c[MelodyAxiom] Created initial melody motif.`, 'color: #32CD32');
     
     this.needsBassReset = false;
@@ -563,48 +564,22 @@ export class FractalMusicEngine {
   private generateDrumEvents(navInfo: NavigationInfo | null): FractalEvent[] {
     if (!navInfo) return [];
     
-    const partId = navInfo.currentPart.id;
-    const baseAxiom = createDrumAxiom(this.config.genre, this.config.mood, this.config.tempo, this.random).events;
-
-    switch (partId) {
-      case 'INTRO_1':
-      case 'OUTRO':
-        return baseAxiom.filter(event => {
-            const type = Array.isArray(event.type) ? event.type[0] : event.type;
-            return type.startsWith('perc-') || type.includes('ride') || type.includes('cymbal');
-        }).map(event => ({ ...event, weight: event.weight * 0.5 }));
-
-      case 'INTRO_2':
-      case 'INTRO_3':
-      case 'BUILD_1':
-      case 'BUILD_2':
-        const buildEvents = [...baseAxiom];
-        if (this.random.next() < 0.6) {
-             buildEvents.push({ 
-                type: 'drum_closed_hi_hat_ghost', 
-                note: 42, 
-                duration: 0.25, 
-                time: 0.75 + Math.floor(this.random.next() * 3) * 1, 
-                weight: 0.3,
-                technique: 'ghost', dynamics: 'p', phrasing: 'staccato', params: {}
-             });
-        }
-        return buildEvents;
-
-      case 'MAIN_1':
-      case 'MAIN_2':
-        return baseAxiom;
-
-      case 'RELEASE':
-      case 'BRIDGE':
-        return baseAxiom.filter(event => {
-            const type = Array.isArray(event.type) ? event.type[0] : event.type;
-            return type.startsWith('perc-') || type.includes('ride') || type === 'drum_snare_ghost_note';
-        });
-      
-      default:
+    // Defer to blueprint if rules are defined
+    const drumRules = navInfo.currentPart.instrumentRules?.drums;
+    if (drumRules && drumRules.pattern === 'none') {
         return [];
     }
+    
+    const baseAxiom = createDrumAxiom(this.config.genre, this.config.mood, this.config.tempo, this.random).events;
+    
+    // Don't play ride in INTRO/RELEASE unless specified
+    if (navInfo.currentPart.id.includes('INTRO') || navInfo.currentPart.id.includes('RELEASE')) {
+        if (!drumRules?.ride?.enabled) {
+            return baseAxiom.filter(e => !(e.type as string).includes('ride'));
+        }
+    }
+    
+    return baseAxiom;
   }
 
   private _applyMicroMutations(phrase: FractalEvent[], epoch: number): FractalEvent[] {
@@ -664,9 +639,8 @@ export class FractalMusicEngine {
     }
     
     if (navInfo.logMessage) {
-        console.log(navInfo.logMessage, 'color: green; font-style: italic;');
+        console.log(navInfo.logMessage);
     } else {
-        // Standard log if no transition
         console.log(`%c[Bar ${this.epoch}] Chord: ${currentChord.rootNote} ${currentChord.chordType}`, "color: violet;");
     }
 
@@ -674,14 +648,15 @@ export class FractalMusicEngine {
     instrumentHints.accompaniment = this._chooseInstrumentForPart('accompaniment', navInfo.currentPart);
     instrumentHints.melody = this._chooseInstrumentForPart('melody', navInfo.currentPart);
 
-    const shouldMutate = navInfo.isBundleTransition && navInfo.currentPart.id !== 'INTRO_1' && navInfo.currentPart.id !== 'INTRO_2';
+    const shouldMutate = navInfo.isBundleTransition && !navInfo.currentPart.id.startsWith('INTRO_1');
 
     if (navInfo.currentPart.layers.bass) {
         if (shouldMutate) {
-            this.currentBassPhrase = mutateBassPhrase(this.currentBassPhrase, currentChord, this.config.mood, this.config.genre, this.random);
-            console.log(`%c[BassEvolution @ Bar ${this.epoch}] Mutating bass phrase for new bundle.`, 'color: #DA70D6;');
+            this.currentBassPhraseIndex = (this.currentBassPhraseIndex + 1) % this.bassPhraseLibrary.length;
+            this.bassPhraseLibrary[this.currentBassPhraseIndex] = mutateBassPhrase(this.bassPhraseLibrary[this.currentBassPhraseIndex], currentChord, this.config.mood, this.config.genre, this.random);
+            console.log(`%c[BassEvolution @ Bar ${this.epoch}] Mutating bass phrase for new bundle. Now using phrase ${this.currentBassPhraseIndex}.`, 'color: #DA70D6;');
         }
-        output.push(...this.currentBassPhrase);
+        output.push(...this.bassPhraseLibrary[this.currentBassPhraseIndex]);
     }
     
     if (navInfo.currentPart.layers.drums) {
@@ -690,17 +665,17 @@ export class FractalMusicEngine {
     
     if (navInfo.currentPart.layers.accompaniment) {
         if (shouldMutate) {
-            this.currentAccompPhrase = mutateAccompanimentPhrase(this.currentAccompPhrase, currentChord, this.config.mood, this.config.genre, this.random);
-            console.log(`%c[AccompEvolution @ Bar ${this.epoch}] Mutating accompaniment phrase for new bundle.`, 'color: #87CEEB;');
+            this.currentAccompPhraseIndex = (this.currentAccompPhraseIndex + 1) % this.accompPhraseLibrary.length;
+            this.accompPhraseLibrary[this.currentAccompPhraseIndex] = mutateAccompanimentPhrase(this.accompPhraseLibrary[this.currentAccompPhraseIndex], currentChord, this.config.mood, this.config.genre, this.random);
+            console.log(`%c[AccompEvolution @ Bar ${this.epoch}] Mutating accompaniment phrase for new bundle. Now using phrase ${this.currentAccompPhraseIndex}.`, 'color: #87CEEB;');
         }
-        output.push(...this.currentAccompPhrase);
+        output.push(...this.accompPhraseLibrary[this.currentAccompPhraseIndex]);
     }
     
     if (navInfo.currentPart.layers.melody) {
-        const melodyPlayInterval = 4; // Play every 4 bars
+        const melodyPlayInterval = 4;
         if (this.epoch >= this.lastMelodyPlayEpoch + melodyPlayInterval) {
-            
-            if (shouldMutate) {
+            if (shouldMutate || navInfo.isPartTransition) {
                 this.currentMelodyMotif = createMelodyMotif(currentChord, this.config.mood, this.random, this.currentMelodyMotif);
             }
             output.push(...this.currentMelodyMotif);
@@ -718,8 +693,6 @@ export class FractalMusicEngine {
       console.log(`%c[FME] Resetting for new suite.`, 'color: green; font-weight: bold;');
       this.epoch = 0;
       this.isPromenadeActive = false;
-      this.branches = [];
-      this.harmonyBranches = [];
       this.initialize(); // Re-initialize everything for a fresh start
   }
 
