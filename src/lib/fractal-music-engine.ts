@@ -662,14 +662,22 @@ export class FractalMusicEngine {
         console.error(`[Engine] CRITICAL ERROR in bar ${this.epoch}: Could not find chord in 'Ghost Harmony'.`);
         return { events: [], instrumentHints: {} };
     }
-    console.log(`%c[Bar ${this.epoch}] Chord: ${currentChord.rootNote} ${currentChord.chordType}`, "color: violet;");
+    
+    if (navInfo.logMessage) {
+        console.log(navInfo.logMessage, 'color: green; font-style: italic;');
+    } else {
+        // Standard log if no transition
+        console.log(`%c[Bar ${this.epoch}] Chord: ${currentChord.rootNote} ${currentChord.chordType}`, "color: violet;");
+    }
 
     const output: FractalEvent[] = [];
     instrumentHints.accompaniment = this._chooseInstrumentForPart('accompaniment', navInfo.currentPart);
     instrumentHints.melody = this._chooseInstrumentForPart('melody', navInfo.currentPart);
 
+    const shouldMutate = navInfo.isBundleTransition && navInfo.currentPart.id !== 'INTRO_1' && navInfo.currentPart.id !== 'INTRO_2';
+
     if (navInfo.currentPart.layers.bass) {
-        if (navInfo.isBundleTransition) {
+        if (shouldMutate) {
             this.currentBassPhrase = mutateBassPhrase(this.currentBassPhrase, currentChord, this.config.mood, this.config.genre, this.random);
             console.log(`%c[BassEvolution @ Bar ${this.epoch}] Mutating bass phrase for new bundle.`, 'color: #DA70D6;');
         }
@@ -681,7 +689,7 @@ export class FractalMusicEngine {
     }
     
     if (navInfo.currentPart.layers.accompaniment) {
-        if (navInfo.isBundleTransition) {
+        if (shouldMutate) {
             this.currentAccompPhrase = mutateAccompanimentPhrase(this.currentAccompPhrase, currentChord, this.config.mood, this.config.genre, this.random);
             console.log(`%c[AccompEvolution @ Bar ${this.epoch}] Mutating accompaniment phrase for new bundle.`, 'color: #87CEEB;');
         }
@@ -691,8 +699,8 @@ export class FractalMusicEngine {
     if (navInfo.currentPart.layers.melody) {
         const melodyPlayInterval = 4; // Play every 4 bars
         if (this.epoch >= this.lastMelodyPlayEpoch + melodyPlayInterval) {
-            console.log(`%c[Melody @ Bar ${this.epoch}] Playing melody motif.`, 'color: #32CD32;');
-            if (navInfo.isBundleTransition) {
+            
+            if (shouldMutate) {
                 this.currentMelodyMotif = createMelodyMotif(currentChord, this.config.mood, this.random, this.currentMelodyMotif);
             }
             output.push(...this.currentMelodyMotif);
@@ -741,9 +749,6 @@ export class FractalMusicEngine {
     
     const { events, instrumentHints } = this.generateOneBar(barDuration, navigationInfo);
     
-    if (navigationInfo?.logMessage) {
-        console.log(navigationInfo.logMessage, 'color: green; font-style: italic;');
-    }
     
     this.time += barDuration;
     
@@ -751,3 +756,5 @@ export class FractalMusicEngine {
   }
 }
 
+
+    
