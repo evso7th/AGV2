@@ -2,7 +2,7 @@
 
 import type { FractalEvent, Mood, Genre, Technique, BassSynthParams, InstrumentType, MelodyInstrument, BassInstrument, AccompanimentInstrument, ResonanceMatrix, InstrumentHints, AccompanimentTechnique, GhostChord } from '@/types/fractal';
 import { ElectronicK, TraditionalK, AmbientK, MelancholicMinorK } from './resonance-matrices';
-import { getScaleForMood, STYLE_DRUM_PATTERNS, generateAmbientBassPhrase, mutateBassPhrase, createAccompanimentAxiom, PERCUSSION_SETS, TEXTURE_INSTRUMENT_WEIGHTS_BY_MOOD, getAccompanimentTechnique, createBassFill as createBassFillFromTheory, createDrumFill, AMBIENT_ACCOMPANIMENT_WEIGHTS, chooseHarmonyInstrument, mutateAccompanimentPhrase, generateGhostHarmonyTrack, createMelodyMotif } from './music-theory';
+import { getScaleForMood, STYLE_DRUM_PATTERNS, generateAmbientBassPhrase, mutateBassPhrase as originalMutateBassPhrase, createAccompanimentAxiom, PERCUSSION_SETS, TEXTURE_INSTRUMENT_WEIGHTS_BY_MOOD, getAccompanimentTechnique, createBassFill as createBassFillFromTheory, createDrumFill, AMBIENT_ACCOMPANIMENT_WEIGHTS, chooseHarmonyInstrument, mutateAccompanimentPhrase as originalMutateAccompPhrase, generateGhostHarmonyTrack, createMelodyMotif as originalCreateMelodyMotif } from './music-theory';
 import { BlueprintNavigator, type NavigationInfo } from './blueprint-navigator';
 import { MelancholicAmbientBlueprint, BLUEPRINT_LIBRARY, getBlueprint } from './blueprints';
 
@@ -59,6 +59,185 @@ const isHarmony = (event: FractalEvent): boolean => event.type === 'harmony';
 
 
 // === АКСОМЫ И ТРАНСФОРМАЦИИ ===
+
+// УСИЛЕННЫЕ ФУНКЦИИ МУТАЦИИ
+function mutateBassPhrase(phrase: FractalEvent[], chord: GhostChord, mood: Mood, genre: Genre, random: { next: () => number, nextInt: (max: number) => number }): FractalEvent[] {
+    if (phrase.length === 0) return generateAmbientBassPhrase(chord, mood, genre, random);
+
+    const newPhrase: FractalEvent[] = JSON.parse(JSON.stringify(phrase));
+    const mutationType = random.nextInt(4);
+
+    switch (mutationType) {
+        case 0: // Более заметное ритмическое изменение
+            const noteToChange = newPhrase[random.nextInt(newPhrase.length)];
+            noteToChange.duration *= (random.next() > 0.5 ? 1.5 : 0.66);
+            if (newPhrase.length > 1) {
+                const anotherNote = newPhrase[random.nextInt(newPhrase.length)];
+                anotherNote.duration *= (random.next() > 0.5 ? 1.25 : 0.75);
+            }
+            break;
+
+        case 1: // Инверсия высоты тона внутри фразы
+             if (newPhrase.length > 1) {
+                const firstNote = newPhrase[0].note;
+                newPhrase.forEach(event => {
+                    const interval = event.note - firstNote;
+                    event.note = firstNote - interval;
+                });
+             }
+            break;
+
+        case 2: // Замена половины фразы на новый материал
+            if (newPhrase.length > 2) {
+                const half = Math.ceil(newPhrase.length / 2);
+                const newHalf = generateAmbientBassPhrase(chord, mood, genre, random).slice(0, half);
+                newPhrase.splice(0, half, ...newHalf);
+            }
+            break;
+
+        case 3: // Добавление "проходящей" ноты
+            if (newPhrase.length > 1) {
+                const insertIndex = random.nextInt(newPhrase.length - 1) + 1;
+                const prevNote = newPhrase[insertIndex-1];
+                const scale = getScaleForMood(mood);
+                const passingNoteMidi = scale[Math.floor(random.next() * scale.length)];
+                
+                const newNote: FractalEvent = {
+                    ...prevNote,
+                    note: passingNoteMidi,
+                    duration: 0.5, // Короткая проходящая нота
+                    time: prevNote.time + prevNote.duration / 2,
+                    weight: prevNote.weight * 0.8
+                };
+                newPhrase.splice(insertIndex, 0, newNote);
+            }
+            break;
+    }
+
+    // Re-normalize timings after mutation
+    let totalDuration = newPhrase.reduce((sum, e) => sum + e.duration, 0);
+    if (totalDuration > 0) {
+        const scaleFactor = 4.0 / totalDuration;
+        let runningTime = 0;
+        newPhrase.forEach(e => {
+            e.duration *= scaleFactor;
+            e.time = runningTime;
+            runningTime += e.duration;
+        });
+    }
+
+    return newPhrase;
+}
+
+function mutateAccompanimentPhrase(phrase: FractalEvent[], chord: GhostChord, mood: Mood, genre: Genre, random: { next: () => number, nextInt: (max: number) => number }): FractalEvent[] {
+    const newPhrase: FractalEvent[] = JSON.parse(JSON.stringify(phrase));
+    if (newPhrase.length === 0) return [];
+    
+    const mutationType = random.nextInt(4);
+    switch (mutationType) {
+        case 0: // Изменение ритма (арпеджио -> аккорд и наоборот)
+            if (newPhrase.length > 1) {
+                const totalDuration = newPhrase.reduce((sum, e) => sum + e.duration, 0);
+                newPhrase.splice(1); // Оставляем только первую ноту
+                newPhrase[0].duration = totalDuration;
+                newPhrase[0].time = 0;
+            }
+            break;
+        case 1: // Смена октавы
+            const octaveShift = (random.next() > 0.5) ? 12 : -12;
+            newPhrase.forEach(e => e.note += octaveShift);
+            break;
+        case 2: // Ретроград (обратное движение)
+            const noteOrder = newPhrase.map(e => e.note).reverse();
+            newPhrase.forEach((e, i) => e.note = noteOrder[i]);
+            break;
+        case 3: // Добавление гармонического тона
+            if (newPhrase.length < 5) {
+                const scale = getScaleForMood(mood);
+                const newNoteMidi = scale[random.nextInt(scale.length)] + 12 * 4;
+                const lastNote = newPhrase[newPhrase.length - 1];
+                newPhrase.push({ ...lastNote, note: newNoteMidi, time: lastNote.time + 0.1 });
+            }
+            break;
+    }
+
+    return newPhrase;
+}
+
+function createMelodyMotif(chord: GhostChord, mood: Mood, random: { next: () => number; nextInt: (max: number) => number; }, previousMotif?: FractalEvent[]): FractalEvent[] {
+    const motif: FractalEvent[] = [];
+    const scale = getScaleForMood(mood);
+    const rootOctave = 4;
+    let baseNote = chord.rootNote;
+    while (baseNote > 50) baseNote -= 12;
+    baseNote += (12 * rootOctave);
+
+    if (previousMotif && random.next() > 0.2) { // 80% шанс на мутацию
+        const variationType = random.nextInt(4);
+        const sourceNotes = previousMotif.map(e => e.note);
+        const firstNote = sourceNotes[0] || baseNote;
+
+        switch (variationType) {
+            case 0: // Инверсия
+                console.log('%c[MelodyEvolution] Mutation: Inversion', 'color: #20B2AA');
+                previousMotif.forEach(event => {
+                    const interval = event.note - firstNote;
+                    motif.push({ ...event, note: firstNote - interval });
+                });
+                break;
+            case 1: // Ретроград
+                console.log('%c[MelodyEvolution] Mutation: Retrograde', 'color: #20B2AA');
+                const reversedNotes = [...sourceNotes].reverse();
+                previousMotif.forEach((event, i) => {
+                    motif.push({ ...event, note: reversedNotes[i] });
+                });
+                break;
+            case 2: // Сдвиг октавы
+                 console.log('%c[MelodyEvolution] Mutation: Octave Shift', 'color: #20B2AA');
+                const octaveShift = random.next() > 0.5 ? 12 : -12;
+                previousMotif.forEach(event => {
+                    motif.push({ ...event, note: event.note + octaveShift });
+                });
+                break;
+            default: // Ритмическая вариация
+                 console.log('%c[MelodyEvolution] Mutation: Rhythmic Variation', 'color: #20B2AA');
+                 const totalDuration = previousMotif.reduce((sum, e) => sum + e.duration, 0);
+                 let currentTime = 0;
+                 previousMotif.forEach(event => {
+                     const newDuration = event.duration * (0.5 + random.next());
+                     motif.push({ ...event, duration: newDuration, time: currentTime });
+                     currentTime += newDuration;
+                 });
+                 // Нормализация
+                 if (currentTime > 0) {
+                     const scaleFactor = totalDuration / currentTime;
+                     let runningTime = 0;
+                     motif.forEach(e => {
+                         e.duration *= scaleFactor;
+                         e.time = runningTime;
+                         runningTime += e.duration;
+                     });
+                 }
+                break;
+        }
+        return motif;
+    }
+    
+    // Генерация нового мотива
+    console.log('%c[MelodyEvolution] Generating new motif.', 'color: #20B2AA');
+    const contour = [0, 2, 4, 2];
+    contour.forEach((degree, i) => {
+        const noteIndex = (scale.findIndex(n => n % 12 === baseNote % 12) + degree + scale.length) % scale.length;
+        const note = scale[noteIndex] + (12 * rootOctave);
+        motif.push({
+            type: 'melody', note: note, duration: 1.0, time: i, weight: 0.7,
+            technique: 'swell', dynamics: 'mf', phrasing: 'legato', params: {}
+        });
+    });
+    return motif;
+}
+
+
 function createDrumAxiom(genre: Genre, mood: Mood, tempo: number, random: { next: () => number, nextInt: (max: number) => number }): { events: FractalEvent[], tags: string[] } {
     const hitParams = {}; // Params now come from events
     const grammar = STYLE_DRUM_PATTERNS[genre] || STYLE_DRUM_PATTERNS['ambient'];
@@ -498,7 +677,7 @@ export class FractalMusicEngine {
     }
     
     if (navInfo.currentPart.layers.drums) {
-        // ... (drum logic remains the same)
+        output.push(...this.generateDrumEvents(navInfo));
     }
     
     if (navInfo.currentPart.layers.accompaniment) {
@@ -509,14 +688,12 @@ export class FractalMusicEngine {
         output.push(...this.currentAccompPhrase);
     }
     
-    // TopVoice Manager Logic
     if (navInfo.currentPart.layers.melody) {
         const melodyPlayInterval = 4; // Play every 4 bars
         if (this.epoch >= this.lastMelodyPlayEpoch + melodyPlayInterval) {
             console.log(`%c[Melody @ Bar ${this.epoch}] Playing melody motif.`, 'color: #32CD32;');
             if (navInfo.isBundleTransition) {
-                this.currentMelodyMotif = createMelodyMotif(currentChord, this.config.mood, this.random, this.currentMelodyMotif); // Pass previous for variation
-                console.log(`%c  -> Mutated melody motif for new bundle.`, 'color: #32CD32;');
+                this.currentMelodyMotif = createMelodyMotif(currentChord, this.config.mood, this.random, this.currentMelodyMotif);
             }
             output.push(...this.currentMelodyMotif);
             this.lastMelodyPlayEpoch = this.epoch;
@@ -573,3 +750,4 @@ export class FractalMusicEngine {
     return { events, instrumentHints };
   }
 }
+
