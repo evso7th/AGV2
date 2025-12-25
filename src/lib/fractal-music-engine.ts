@@ -386,7 +386,21 @@ export class FractalMusicEngine {
 
     let bassEvents = navInfo.currentPart.layers.bass ? this.bassPhraseLibrary[this.currentBassPhraseIndex] : [];
     let drumEvents = navInfo.currentPart.layers.drums ? this.generateDrumEvents(navInfo) : [];
-    let accompEvents = navInfo.currentPart.layers.accompaniment ? this.accompPhraseLibrary[this.currentAccompPhraseIndex] : [];
+    
+    // #ЗАЧЕМ: Этот блок отвечает за генерацию аккомпанемента с учетом правил из блюпринта.
+    // #ЧТО: Он извлекает указание по регистру (`registerHint`) из текущей части блюпринта
+    //      и передает его в функцию `createAccompanimentAxiom`.
+    // #СВЯЗИ: Зависит от `navInfo` для получения правил и от `createAccompanimentAxiom` для их исполнения.
+    let accompEvents: FractalEvent[] = [];
+    if (navInfo.currentPart.layers.accompaniment) {
+        const registerHint = navInfo.currentPart.instrumentRules?.accompaniment?.register?.preferred;
+        // Пересоздаем аксиому, только если она пуста или сменился аккорд
+        if (this.accompPhraseLibrary[this.currentAccompPhraseIndex].length === 0 || this.epoch % 4 === 0) {
+            this.accompPhraseLibrary[this.currentAccompPhraseIndex] = createAccompanimentAxiom(currentChord, this.config.mood, this.config.genre, this.random, this.config.tempo, registerHint);
+        }
+        accompEvents = this.accompPhraseLibrary[this.currentAccompPhraseIndex];
+    }
+    
     let harmonyEvents: FractalEvent[] = [];
     let melodyEvents: FractalEvent[] = [];
 
@@ -478,3 +492,4 @@ export class FractalMusicEngine {
     return { events, instrumentHints };
   }
 }
+

@@ -1,4 +1,5 @@
 
+
 // src/lib/music-theory.ts
 import type { FractalEvent, Mood, Genre, Technique, BassSynthParams, InstrumentType, AccompanimentInstrument, InstrumentHints, AccompanimentTechnique, GhostChord } from '@/types/fractal';
 import { ElectronicK, TraditionalK, AmbientK, MelancholicMinorK } from './resonance-matrices';
@@ -315,7 +316,7 @@ export function generateAmbientBassPhrase(chord: GhostChord, mood: Mood, genre: 
     return phrase;
 };
 
-export function createAccompanimentAxiom(chord: GhostChord, mood: Mood, genre: Genre, random: { next: () => number; nextInt: (max: number) => number }, tempo: number = 120): FractalEvent[] {
+export function createAccompanimentAxiom(chord: GhostChord, mood: Mood, genre: Genre, random: { next: () => number; nextInt: (max: number) => number }, tempo: number = 120, registerHint?: 'low' | 'mid' | 'high'): FractalEvent[] {
     const swellParams = { cutoff: 300, resonance: 0.8, distortion: 0.02, portamento: 0.0, attack: 1.5, release: 2.5 };
     const axiom: FractalEvent[] = [];
     
@@ -329,11 +330,20 @@ export function createAccompanimentAxiom(chord: GhostChord, mood: Mood, genre: G
     const chordNotes = [rootMidi, third, fifth].filter(n => scale.some(scaleNote => scaleNote % 12 === n % 12));
     if (chordNotes.length < 2) return [];
 
+    // #ЗАЧЕМ: Этот блок кода определяет базовую октаву для аккомпанемента.
+    // #ЧТО: Он проверяет `registerHint`. Если hint равен 'low', он устанавливает базовую октаву на 2,
+    //      в противном случае — на 3, что является поведением по умолчанию.
+    // #СВЯЗИ: Это позволяет блюпринту управлять высотой звучания аккомпанемента в разных частях композиции.
+    let baseOctave = 3;
+    if (registerHint === 'low') {
+        baseOctave = 2;
+    }
+
     const numNotes = 2 + random.nextInt(2);
     let currentTime = 0;
 
     for (let i = 0; i < numNotes; i++) {
-        const noteMidi = chordNotes[random.nextInt(chordNotes.length)] + 12 * (3 + random.nextInt(2));
+        const noteMidi = chordNotes[random.nextInt(chordNotes.length)] + 12 * (baseOctave + random.nextInt(2));
         const duration = 4.0 / numNotes;
         
         const mainEvent: FractalEvent = {
@@ -1094,6 +1104,7 @@ export function createMelodyMotif(chord: GhostChord, mood: Mood, random: { next:
 
 
     
+
 
 
 
