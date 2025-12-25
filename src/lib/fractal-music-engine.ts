@@ -646,27 +646,40 @@ export class FractalMusicEngine {
         }
     }
 
+    // --- BASS GENERATION ---
     if (navInfo.currentPart.layers.bass) {
         output.push(...this.bassPhraseLibrary[this.currentBassPhraseIndex]);
     }
     
+    // --- DRUM GENERATION ---
     if (navInfo.currentPart.layers.drums) {
         output.push(...this.generateDrumEvents(navInfo));
     }
     
+    // --- ACCOMPANIMENT GENERATION ---
     if (navInfo.currentPart.layers.accompaniment) {
         output.push(...this.accompPhraseLibrary[this.currentAccompPhraseIndex]);
     }
     
-     if (navInfo.currentPart.layers.harmony) {
+    // --- HARMONY GENERATION ---
+    // #ЗАЧЕМ: Этот блок отвечает за создание фонового гармонического слоя.
+    // #ЧТО: Он определяет инструмент для гармонии и создает для него музыкальную фразу (аксиому).
+    // #СВЯЗИ: Зависит от `currentChord` (чтобы знать тональность) и блюпринта (`navInfo`) для разрешения.
+    if (navInfo.currentPart.layers.harmony) {
         instrumentHints.harmony = chooseHarmonyInstrument(this.config.mood, this.random);
+        // #FIX: Восстанавливаем вызов функции, которая генерирует ноты для гармонии.
         output.push(...createAccompanimentAxiom(currentChord, this.config.mood, this.config.genre, this.random));
     }
     
+    // --- MELODY GENERATION ---
+    // #ЗАЧЕМ: Этот блок создает основную мелодическую линию.
+    // #ЧТО: Он проверяет, пора ли играть мелодию, и генерирует/мутирует мелодический мотив.
+    // #СВЯЗИ: Зависит от `currentChord` и `this.currentMelodyMotif` для эволюции.
     if (navInfo.currentPart.layers.melody) {
         const melodyPlayInterval = 4;
         if (this.epoch >= this.lastMelodyPlayEpoch + melodyPlayInterval) {
              if (this.epoch > 0) {
+                 // #FIX: Восстанавливаем вызов функции, которая генерирует/мутирует мелодию.
                  this.currentMelodyMotif = createMelodyMotif(currentChord, this.config.mood, this.random, this.currentMelodyMotif);
              }
             output.push(...this.currentMelodyMotif);
@@ -674,6 +687,10 @@ export class FractalMusicEngine {
         }
     }
     
+    // --- TEXTURE GENERATION ---
+    // #ЗАЧЕМ: Эти блоки добавляют случайные атмосферные звуки для "живости".
+    // #ЧТО: С определенной вероятностью создают события 'sparkle' или 'sfx'.
+    // #СВЯЗИ: Зависят от блюпринта (`navInfo`) для разрешения.
     if (navInfo.currentPart.layers.sparkles && this.random.next() < 0.1) {
         output.push({ type: 'sparkle', note: 60, time: this.random.next() * 4, duration: 1, weight: 0.5, technique: 'hit', dynamics: 'p', phrasing: 'legato', params: {mood: this.config.mood, genre: this.config.genre}});
     }

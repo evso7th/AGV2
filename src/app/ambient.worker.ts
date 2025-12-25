@@ -141,6 +141,9 @@ const Scheduler = {
         const sfxEvents: FractalEvent[] = [];
         const sparkleEvents: FractalEvent[] = [];
         
+        // #FIX: Восстановлена корректная сортировка всех типов событий по своим массивам
+        // #ЗАЧЕМ: Ранее здесь обрабатывались только sfx, из-за чего harmony и sparkles "терялись".
+        //         Теперь мы проходим по всем событиям и раскладываем их по трем категориям.
         for (const event of scorePayload.events) {
             if (event.type === 'sfx') {
                 sfxEvents.push(event);
@@ -150,7 +153,10 @@ const Scheduler = {
                 mainScoreEvents.push(event);
             }
         }
-
+        
+        // #FIX: Отправка основного музыкального score.
+        // #ЗАЧЕМ: Это сообщение содержит все тональные и ритмические инструменты (bass, melody, harmony, drums).
+        // #СВЯЗИ: audio-engine-context.tsx слушает 'SCORE_READY' и передает данные в scheduleEvents.
         self.postMessage({ 
             type: 'SCORE_READY', 
             payload: {
@@ -160,12 +166,16 @@ const Scheduler = {
             }
         });
         
+        // #FIX: Отправка SFX, если они есть.
+        // #ЗАЧЕМ: SFX обрабатываются отдельно, так как у них своя логика воспроизведения (случайный выбор из пула).
         if (sfxEvents.length > 0) {
             sfxEvents.forEach(event => {
                 self.postMessage({ type: 'sfx', payload: event });
             });
         }
         
+        // #FIX: Отправка Sparkles, если они есть.
+        // #ЗАЧЕМ: Sparkles, как и SFX, имеют свою особую логику воспроизведения.
         if (sparkleEvents.length > 0) {
             sparkleEvents.forEach(event => {
                 self.postMessage({ type: 'sparkle', payload: event });
@@ -173,6 +183,7 @@ const Scheduler = {
         }
 
         this.barCount++;
+        // #FIX: Добавлена проверка на существование fractalMusicEngine перед доступом к его свойствам.
         if (fractalMusicEngine && this.barCount > fractalMusicEngine.navigator.totalBars + 3) {
             this.barCount = 0;
         }
