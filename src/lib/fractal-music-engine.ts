@@ -2,7 +2,7 @@
 
 import type { FractalEvent, Mood, Genre, Technique, BassSynthParams, InstrumentType, MelodyInstrument, BassInstrument, AccompanimentInstrument, ResonanceMatrix, InstrumentHints, AccompanimentTechnique, GhostChord } from '@/types/fractal';
 import { ElectronicK, TraditionalK, AmbientK, MelancholicMinorK } from './resonance-matrices';
-import { getScaleForMood, STYLE_DRUM_PATTERNS, generateAmbientBassPhrase, createAccompanimentAxiom, PERCUSSION_SETS, TEXTURE_INSTRUMENT_WEIGHTS_BY_MOOD, getAccompanimentTechnique, createBassFill as createBassFillFromTheory, createDrumFill, AMBIENT_ACCOMPANIMENT_WEIGHTS, chooseHarmonyInstrument, mutateAccompanimentPhrase as originalMutateAccompPhrase, generateGhostHarmonyTrack, createMelodyMotif as originalCreateMelodyMotif, createHarmonyAxiom } from './music-theory';
+import { getScaleForMood, STYLE_DRUM_PATTERNS, generateAmbientBassPhrase, createAccompanimentAxiom, PERCUSSION_SETS, TEXTURE_INSTRUMENT_WEIGHTS_BY_MOOD, getAccompanimentTechnique, createBassFill as createBassFillFromTheory, createDrumFill, AMBIENT_ACCOMPANIMENT_WEIGHTS, chooseHarmonyInstrument, mutateAccompanimentPhrase as originalMutateAccompPhrase, generateGhostHarmonyTrack, createHarmonyAxiom } from './music-theory';
 import { BlueprintNavigator, type NavigationInfo } from './blueprint-navigator';
 import { MelancholicAmbientBlueprint, BLUEPRINT_LIBRARY, getBlueprint } from './blueprints';
 
@@ -166,10 +166,17 @@ function mutateAccompanimentPhrase(phrase: FractalEvent[], chord: GhostChord, mo
     return newPhrase;
 }
 
+/**
+ * #ЗАЧЕМ: Эта функция создает новый мелодический мотив (аксиому) или мутирует существующий.
+ * #ЧТО: Она использует базовый контур (массив ступеней) для генерации 8-нотной фразы.
+ *      Если передан `previousMotif`, она с вероятностью 80% применяет одну из мутаций (инверсия, ретроград и т.д.).
+ *      После генерации она выводит MIDI-ноты мотива в консоль для отладки.
+ * #СВЯЗИ: Вызывается в `generateOneBar`, когда движку нужна новая мелодическая идея.
+ */
 function createMelodyMotif(chord: GhostChord, mood: Mood, random: { next: () => number; nextInt: (max: number) => number; }, previousMotif?: FractalEvent[]): FractalEvent[] {
     const motif: FractalEvent[] = [];
     const scale = getScaleForMood(mood);
-    const rootOctave = 4;
+    const rootOctave = 3; // #РЕШЕНИЕ: Октава понижена для более меланхоличного звучания.
     let baseNote = chord.rootNote;
     while (baseNote > 50) baseNote -= 12;
     baseNote += (12 * rootOctave);
@@ -225,17 +232,27 @@ function createMelodyMotif(chord: GhostChord, mood: Mood, random: { next: () => 
         return motif;
     }
     
-    // Генерация нового мотива
-    console.log('%c[MelodyAxiom] Generating new motif.', 'color: #32CD32');
-    const contour = [0, 2, 4, 2];
+    // #ЗАЧЕМ: Этот блок генерирует совершенно новый мотив с нуля.
+    // #ЧТО: Он проходит по `contour`, находит соответствующую ноту в `scale` и создает для нее событие `melody`.
+    // #СВЯЗИ: Результат - это новая "аксиома" для мелодии.
+    const contour = [0, 2, 4, 5, 7, 5, 4, 2]; // #РЕШЕНИЕ: Контур расширен до 8 нот для более длинной фразы.
     contour.forEach((degree, i) => {
-        const noteIndex = (scale.findIndex(n => n % 12 === baseNote % 12) + degree + scale.length) % scale.length;
-        const note = scale[noteIndex] + (12 * rootOctave);
+        const baseNoteIndexInScale = scale.findIndex(n => n % 12 === baseNote % 12);
+        const noteIndex = (baseNoteIndexInScale + degree + scale.length) % scale.length;
+        const note = scale[noteIndex];
         motif.push({
-            type: 'melody', note: note, duration: 1.0, time: i, weight: 0.7,
+            type: 'melody', note: note, duration: 0.5,
+            time: i * 0.5, weight: 0.7,
             technique: 'swell', dynamics: 'mf', phrasing: 'legato', params: {}
         });
     });
+
+    // #ЗАЧЕМ: Этот лог делает видимой сгенерированную мелодическую "ДНК".
+    // #ЧТО: Он преобразует массив MIDI-нот в читаемую строку и выводит ее в консоль.
+    // #СВЯЗИ: Помогает отслеживать, какие именно мелодии создаются и как они мутируют.
+    const motifNotes = motif.map(e => e.note);
+    console.log(`%c[MelodyAxiom] New motif generated: ${motifNotes.join(' -> ')}`, 'color: #DA70D6');
+    
     return motif;
 }
 
@@ -723,6 +740,13 @@ export class FractalMusicEngine {
     if (!isFinite(barDuration)) return { events: [], instrumentHints: {} };
     
     const navigationInfo = this.navigator.tick(this.epoch);
+
+    // #ЗАЧЕМ: Этот блок обеспечивает вывод отладочной информации от Навигатора.
+    // #ЧТО: Он проверяет, было ли сгенерировано сообщение в `navigationInfo`, и если да, выводит его.
+    // #СВЯЗИ: Восстанавливает утерянное логирование, критически важное для понимания смены частей и бандлов.
+    if (navigationInfo && navigationInfo.logMessage) {
+        console.log(navigationInfo.logMessage);
+    }
     
     const { events, instrumentHints } = this.generateOneBar(barDuration, navigationInfo);
     
