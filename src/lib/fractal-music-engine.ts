@@ -635,7 +635,7 @@ export class FractalMusicEngine {
         return { events: [], instrumentHints: {} };
     }
     
-    if (navInfo.isPartTransition) {
+     if (navInfo.isPartTransition || navInfo.isBundleTransition) {
         console.log(navInfo.logMessage);
     }
     
@@ -646,26 +646,25 @@ export class FractalMusicEngine {
     const isIntro = navInfo.currentPart.id.startsWith('INTRO');
     const canVary = !isIntro || navInfo.currentPart.id.includes('3');
     
-    if (canVary && this.epoch > 0 && this.epoch % 4 === 0) {
-        // Vary bass phrase
-        if (this.random.next() < 0.4) { // 40% chance to switch
-            this.currentBassPhraseIndex = (this.currentBassPhraseIndex + 1) % this.bassPhraseLibrary.length;
-            console.log(`%c[BassEvolution] Switching to next phrase: index ${this.currentBassPhraseIndex}`, "color: #DAA520;");
-        } else { // 60% chance to mutate
+    const PHRASE_VARIATION_INTERVAL = 4;
+    
+    if (canVary && this.epoch > 0 && this.epoch % PHRASE_VARIATION_INTERVAL === 0) {
+        if (this.random.next() < 0.6) {
             console.log(`%c[BassEvolution] Mutating current phrase: index ${this.currentBassPhraseIndex}`, "color: #FF8C00;");
             this.bassPhraseLibrary[this.currentBassPhraseIndex] = mutateBassPhrase(this.bassPhraseLibrary[this.currentBassPhraseIndex], currentChord, this.config.mood, this.config.genre, this.random);
+        } else {
+            this.currentBassPhraseIndex = (this.currentBassPhraseIndex + 1) % this.bassPhraseLibrary.length;
+            console.log(`%c[BassEvolution] Switching to next phrase: index ${this.currentBassPhraseIndex}`, "color: #DAA520;");
         }
-        
-        // Vary accompaniment phrase
-         if (this.random.next() < 0.4) { // 40% chance to switch
-            this.currentAccompPhraseIndex = (this.currentAccompPhraseIndex + 1) % this.accompPhraseLibrary.length;
-            console.log(`%c[AccompEvolution] Switching to next phrase: index ${this.currentAccompPhraseIndex}`, "color: #ADD8E6;");
-        } else { // 60% chance to mutate
+
+        if (this.random.next() < 0.6) {
             console.log(`%c[AccompEvolution] Mutating current phrase: index ${this.currentAccompPhraseIndex}`, "color: #87CEEB;");
             this.accompPhraseLibrary[this.currentAccompPhraseIndex] = mutateAccompanimentPhrase(this.accompPhraseLibrary[this.currentAccompPhraseIndex], currentChord, this.config.mood, this.config.genre, this.random);
+        } else {
+            this.currentAccompPhraseIndex = (this.currentAccompPhraseIndex + 1) % this.accompPhraseLibrary.length;
+            console.log(`%c[AccompEvolution] Switching to next phrase: index ${this.currentAccompPhraseIndex}`, "color: #ADD8E6;");
         }
     }
-
 
     if (navInfo.currentPart.layers.bass) {
         output.push(...this.bassPhraseLibrary[this.currentBassPhraseIndex]);
@@ -679,6 +678,11 @@ export class FractalMusicEngine {
         output.push(...this.accompPhraseLibrary[this.currentAccompPhraseIndex]);
     }
     
+     if (navInfo.currentPart.layers.harmony) {
+        instrumentHints.harmony = chooseHarmonyInstrument(this.config.mood, this.random);
+        output.push(...createAccompanimentAxiom(currentChord, this.config.mood, this.config.genre, this.random));
+    }
+    
     if (navInfo.currentPart.layers.melody) {
         const melodyPlayInterval = 4;
         if (this.epoch >= this.lastMelodyPlayEpoch + melodyPlayInterval) {
@@ -688,6 +692,13 @@ export class FractalMusicEngine {
             output.push(...this.currentMelodyMotif);
             this.lastMelodyPlayEpoch = this.epoch;
         }
+    }
+    
+    if (navInfo.currentPart.layers.sparkles && this.random.next() < 0.1) {
+        output.push({ type: 'sparkle', note: 60, time: this.random.next() * 4, duration: 1, weight: 0.5, technique: 'hit', dynamics: 'p', phrasing: 'legato', params: {mood: this.config.mood, genre: this.config.genre}});
+    }
+    if (navInfo.currentPart.layers.sfx && this.random.next() < 0.08) {
+        output.push({ type: 'sfx', note: 60, time: this.random.next() * 4, duration: 2, weight: 0.6, technique: 'swell', dynamics: 'mf', phrasing: 'legato', params: {mood: this.config.mood, genre: this.config.genre}});
     }
 
 
