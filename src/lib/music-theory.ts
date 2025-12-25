@@ -424,7 +424,7 @@ export const STYLE_DRUM_PATTERNS: Record<Genre, GenreRhythmGrammar> = {
          percussion: {
             types: AMBIENT_PERC,
             allowedTimes: [0.75, 1.25, 1.75, 2.25, 2.75, 3.25, 3.75],
-            probability: 0.6, 
+            probability: 0.9, 
             weight: 0.3,
             type: 'electronic'
         }
@@ -762,7 +762,7 @@ export function createDrumFill(random: { next: () => number, nextInt: (max: numb
         
         fill.push({
             type: tom,
-            note: 50 + i, // Arbitrary midi note for uniqueness
+            note: 40 + i, // Arbitrary midi note for uniqueness
             duration,
             time,
             weight: baseWeight + (random.next() * 0.1),
@@ -1094,6 +1094,7 @@ export function createMelodyMotif(chord: GhostChord, mood: Mood, random: { next:
 
 
     
+
 
 
 
