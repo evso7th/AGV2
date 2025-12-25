@@ -470,8 +470,6 @@ export class FractalMusicEngine {
     if (this.ghostHarmonyTrack.length === 0) {
       throw new Error("[Engine] CRITICAL ERROR: Could not generate 'Ghost Harmony'. Music is not possible.");
     }
-    console.log(`%c[Harmony] Ghost Harmony generated with ${this.ghostHarmonyTrack.length} chords.`, "color: violet;");
-
 
     console.log(`[FractalMusicEngine] Initialized with blueprint "${this.navigator.blueprint.name}". Total duration: ${this.navigator.totalBars} bars.`);
     this._generatePromenade();
@@ -486,18 +484,15 @@ export class FractalMusicEngine {
         this.bassPhraseLibrary.push(generateAmbientBassPhrase(firstChord, this.config.mood, this.config.genre, this.random, this.config.tempo));
         this.accompPhraseLibrary.push(createAccompanimentAxiom(firstChord, this.config.mood, this.config.genre, this.random, this.config.tempo));
     }
-    console.log(`%c[Axiom Libraries] Created ${this.bassPhraseLibrary.length} bass and ${this.accompPhraseLibrary.length} accomp phrases.`, 'color: #FFD700');
     
     this.currentMelodyMotif = createMelodyMotif(firstChord, this.config.mood, this.random);
     this.lastMelodyPlayEpoch = -4;
-    console.log(`%c[MelodyAxiom] Created initial melody motif.`, 'color: #32CD32');
     
     this.needsBassReset = false;
   }
   
   private _chooseInstrumentForPart(part: 'melody' | 'accompaniment', currentPartInfo: BlueprintPart | null): MelodyInstrument | AccompanimentInstrument | undefined {
         if (!currentPartInfo || !currentPartInfo.instrumentation || !currentPartInfo.instrumentation[part]) {
-            // Fallback logic if no rules are defined
             const moodWeights = TEXTURE_INSTRUMENT_WEIGHTS_BY_MOOD[this.config.mood] || TEXTURE_INSTRUMENT_WEIGHTS_BY_MOOD['calm'];
             const options = Object.entries(moodWeights).map(([name, weight]) => ({ name: name as MelodyInstrument, weight }));
             
@@ -534,8 +529,6 @@ export class FractalMusicEngine {
 
 
   public generateExternalImpulse() {
-    console.log(`%c[WEATHER EVENT] at epoch ${this.epoch}: Triggering musical scenario.`, "color: blue; font-weight: bold;");
-    
     const { drumFill, bassFill, accompanimentFill } = createSfxScenario(this.config.mood, this.config.genre, this.random);
 
     this.sfxFillForThisEpoch = {
@@ -543,8 +536,6 @@ export class FractalMusicEngine {
         bass: bassFill,
         accompaniment: accompanimentFill
     };
-    
-    console.log(`%c  -> Created ONE-OFF musical scenario for this epoch.`, "color: blue;");
   }
   
   private applyNaturalDecay(events: FractalEvent[], barDuration: number): FractalEvent[] {
@@ -565,7 +556,6 @@ export class FractalMusicEngine {
   private generateDrumEvents(navInfo: NavigationInfo | null): FractalEvent[] {
     if (!navInfo) return [];
     
-    // Defer to blueprint if rules are defined
     const drumRules = navInfo.currentPart.instrumentRules?.drums;
     if (drumRules && drumRules.pattern === 'none') {
         return [];
@@ -573,7 +563,6 @@ export class FractalMusicEngine {
     
     const baseAxiom = createDrumAxiom(this.config.genre, this.config.mood, this.config.tempo, this.random).events;
     
-    // Don't play ride in INTRO/RELEASE unless specified
     if (navInfo.currentPart.id.includes('INTRO') || navInfo.currentPart.id.includes('RELEASE')) {
         if (!drumRules?.ride?.enabled) {
             return baseAxiom.filter(e => !(e.type as string).includes('ride'));
@@ -587,33 +576,28 @@ export class FractalMusicEngine {
     if (phrase.length === 0) return [];
     const newPhrase: FractalEvent[] = JSON.parse(JSON.stringify(phrase));
 
-    // 1. Ритмический Дрейф (Rhythmic Drift)
-    if (this.random.next() < 0.5) { // 50% шанс на сдвиг
+    if (this.random.next() < 0.5) { 
         const noteToShift = newPhrase[this.random.nextInt(newPhrase.length)];
-        const shiftAmount = (this.random.next() - 0.5) * 0.1; // Сдвиг на ±5% от доли
+        const shiftAmount = (this.random.next() - 0.5) * 0.1;
         noteToShift.time = Math.max(0, noteToShift.time + shiftAmount);
     }
 
-    // 2. Динамический Акцент (Velocity Accent)
-    if (this.random.next() < 0.6) { // 60% шанс на акцент
+    if (this.random.next() < 0.6) {
         const noteToAccent = newPhrase[this.random.nextInt(newPhrase.length)];
-        noteToAccent.weight *= (0.85 + this.random.next() * 0.3); // Изменение громкости на ±15%
+        noteToAccent.weight *= (0.85 + this.random.next() * 0.3);
         noteToAccent.weight = Math.max(0.1, Math.min(1.0, noteToAccent.weight));
     }
     
-    // 3. Регистровый Дрейф (Register Drift) - РЕДКО
-    if (epoch % 4 === 0 && this.random.next() < 0.3) { // 30% шанс на сдвиг октавы, раз в 4 такта
+    if (epoch % 4 === 0 && this.random.next() < 0.3) {
         const octaveShift = (this.random.next() > 0.5) ? 12 : -12;
         newPhrase.forEach(note => {
             const newNote = note.note + octaveShift;
-            // Ограничиваем, чтобы не уходить в слишком неблагозвучные регистры
             if (newNote > 36 && newNote < 84) {
                  note.note = newNote;
             }
         });
     }
 
-    // Пересчитываем время, чтобы избежать наложений после сдвига
     let currentTime = 0;
     newPhrase.sort((a,b) => a.time - b.time).forEach(e => {
         e.time = currentTime;
@@ -650,19 +634,15 @@ export class FractalMusicEngine {
     
     if (canVary && this.epoch > 0 && this.epoch % PHRASE_VARIATION_INTERVAL === 0) {
         if (this.random.next() < 0.6) {
-            console.log(`%c[BassEvolution] Mutating current phrase: index ${this.currentBassPhraseIndex}`, "color: #FF8C00;");
             this.bassPhraseLibrary[this.currentBassPhraseIndex] = mutateBassPhrase(this.bassPhraseLibrary[this.currentBassPhraseIndex], currentChord, this.config.mood, this.config.genre, this.random);
         } else {
             this.currentBassPhraseIndex = (this.currentBassPhraseIndex + 1) % this.bassPhraseLibrary.length;
-            console.log(`%c[BassEvolution] Switching to next phrase: index ${this.currentBassPhraseIndex}`, "color: #DAA520;");
         }
 
         if (this.random.next() < 0.6) {
-            console.log(`%c[AccompEvolution] Mutating current phrase: index ${this.currentAccompPhraseIndex}`, "color: #87CEEB;");
             this.accompPhraseLibrary[this.currentAccompPhraseIndex] = mutateAccompanimentPhrase(this.accompPhraseLibrary[this.currentAccompPhraseIndex], currentChord, this.config.mood, this.config.genre, this.random);
         } else {
             this.currentAccompPhraseIndex = (this.currentAccompPhraseIndex + 1) % this.accompPhraseLibrary.length;
-            console.log(`%c[AccompEvolution] Switching to next phrase: index ${this.currentAccompPhraseIndex}`, "color: #ADD8E6;");
         }
     }
 
@@ -703,32 +683,6 @@ export class FractalMusicEngine {
 
 
     const finalEvents = this.applyNaturalDecay(output, 4.0);
-
-    // --- DIAGNOSTIC LOG POINT 1 ---
-    const harmonyCount = finalEvents.filter(e => e.type === 'harmony').length;
-    const melodyCount = finalEvents.filter(e => e.type === 'melody').length;
-    if (harmonyCount > 0 || melodyCount > 0) {
-        console.log(`[FME.generateOneBar] Generated Events: Total=${finalEvents.length}, Harmony=${harmonyCount}, Melody=${melodyCount}`);
-    }
-
-    // --- DETAILED BAR LOG ---
-    const bassEvents = finalEvents.filter(isBass);
-    const accompEvents = finalEvents.filter(isAccompaniment);
-    const melodyEventsLog = finalEvents.filter(isMelody);
-    const kickEvents = finalEvents.filter(isKick);
-    const snareEvents = finalEvents.filter(isSnare);
-    
-    const bassTechnique = bassEvents.length > 0 ? (bassEvents[0]?.technique || 'on') : 'off';
-    const accompTechnique = accompEvents.length > 0 ? (accompEvents[0]?.technique || 'on') : 'off';
-    const leadTechnique = melodyEventsLog.length > 0 ? (melodyEventsLog[0]?.technique || 'on') : 'off';
-    
-    const eventCounts = `kick:${kickEvents.length}, snare:${snareEvents.length}, bass:${bassEvents.length}, accomp:${accompEvents.length}, lead:${melodyEventsLog.length}`;
-    
-    // console.log(
-    //     `[Bar ${this.epoch}] sec=${navInfo.currentPart.id} bundle=${navInfo.currentBundle.id} | ` +
-    //     `bass=${bassTechnique} accomp=${accompTechnique} lead=${leadTechnique} | ` +
-    //     `events={${eventCounts}}`
-    // );
 
     return { events: finalEvents, instrumentHints };
   }

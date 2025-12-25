@@ -151,11 +151,6 @@ const Scheduler = {
             }
         }
 
-        // DIAGNOSTIC LOG POINT 2: What is the worker about to send?
-        const harmonyInMain = mainScoreEvents.filter(e => e.type === 'harmony').length;
-        const melodyInMain = mainScoreEvents.filter(e => e.type === 'melody').length;
-        console.log(`[Worker.tick] Dispatching Events: Total=${mainScoreEvents.length}, Harmony=${harmonyInMain}, Melody=${melodyInMain}`);
-
         self.postMessage({ 
             type: 'SCORE_READY', 
             payload: {
@@ -229,5 +224,3 @@ self.onmessage = async (event: MessageEvent) => {
         self.postMessage({ type: 'error', error: e instanceof Error ? e.message : String(e) });
     }
 };
-
-    

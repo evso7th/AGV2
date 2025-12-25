@@ -33,11 +33,6 @@ type WorkerMessage = {
         events?: FractalEvent[];
         barDuration?: number;
         instrumentHints?: InstrumentHints;
-        melody?: FractalEvent[];
-        harmony?: FractalEvent[];
-        time?: number;
-        genre?: Genre;
-        mood?: Mood;
     } | FractalEvent; // payload can be the full score payload or a single event
     error?: string;
     message?: string;
@@ -125,15 +120,8 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
 
   const scheduleEvents = useCallback((events: FractalEvent[], barStartTime: number, tempo: number, instrumentHints?: InstrumentHints) => {
     if (!Array.isArray(events)) {
-        console.error('[AudioEngine] scheduleEvents received non-array "events":', events);
         return;
     }
-
-    // DIAGNOSTIC LOG POINT 3: What events have reached the final scheduler?
-    const harmonyCount = events.filter(e => e.type === 'harmony').length;
-    const melodyCount = events.filter(e => e.type === 'melody').length;
-    console.log(`[AudioEngine.scheduleEvents] Received Events: Total=${events.length}, Harmony=${harmonyCount}, Melody=${melodyCount}`);
-
 
     const composerControls = settingsRef.current?.composerControlsInstruments;
 
@@ -211,16 +199,14 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
             audioContextRef.current = new (window.AudioContext || (window as any).webkitAudioContext)({
                  sampleRate: 44100, latencyHint: 'interactive'
             });
-            console.log('[AudioEngine] AudioContext created. Initial state:', audioContextRef.current.state);
         }
 
         if (audioContextRef.current.state === 'suspended') {
             await audioContextRef.current.resume();
-            console.log('[AudioEngine] AudioContext resumed. Current state:', audioContextRef.current.state);
         }
 
         const context = audioContextRef.current;
-        nextBarTimeRef.current = context.currentTime + 0.1; // Add small buffer
+        nextBarTimeRef.current = context.currentTime + 0.1; 
         
         if (!masterGainNodeRef.current) {
             masterGainNodeRef.current = context.createGain();
@@ -287,11 +273,9 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
                     }
 
                 } else if (type === 'sparkle' && payload && 'params' in payload && 'time' in payload) {
-                    console.log(`[AudioEngine] Received 'sparkle'. Passing to player.`, payload);
                     const { mood, genre } = (payload as FractalEvent).params as { mood: Mood, genre: Genre };
                     sparklePlayerRef.current?.playRandomSparkle(nextBarTimeRef.current + (payload as FractalEvent).time, genre, mood);
                 } else if (type === 'sfx' && payload && 'params' in payload) {
-                    console.log(`[AudioEngine] Received 'sfx'. Passing to manager.`, payload);
                     sfxSynthManagerRef.current?.trigger([payload as FractalEvent], nextBarTimeRef.current, settingsRef.current?.bpm || 75);
                 } else if (type === 'error') {
                     toast({ variant: "destructive", title: "Worker Error", description: error });
@@ -321,7 +305,6 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
     const randomInterval = Math.random() * 90000 + 30000; // 30-120 seconds
     impulseTimerRef.current = setTimeout(() => {
         if (workerRef.current && isPlaying) {
-            console.log('[AudioEngine] Sending external impulse to worker.');
             workerRef.current.postMessage({ command: 'external_impulse' });
             scheduleNextImpulse(); // Schedule the next one
         }
@@ -404,5 +387,3 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
     </AudioEngineContext.Provider>
   );
 };
-
-    
