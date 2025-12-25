@@ -135,38 +135,31 @@ const Scheduler = {
     tick() {
         if (!this.isRunning || !fractalMusicEngine) return;
         
-        // This moves the engine state forward one bar and gets the resulting score
         const scorePayload = fractalMusicEngine.evolve(this.barDuration, this.barCount);
         
-        // Separate SFX and Sparkle events from the main score to be sent individually
         const sfxEvents = scorePayload.events.filter(e => e.type === 'sfx');
         const sparkleEvents = scorePayload.events.filter(e => e.type === 'sparkle');
         const mainScoreEvents = scorePayload.events.filter(e => e.type !== 'sfx' && e.type !== 'sparkle');
 
-        // Post main score
         self.postMessage({ 
             type: 'SCORE_READY', 
             payload: {
-                events: mainScoreEvents, // Send only main events
+                events: mainScoreEvents,
                 instrumentHints: scorePayload.instrumentHints,
                 barDuration: this.barDuration,
             }
         });
         
-        // Step 2: Worker Logging
         sfxEvents.forEach(event => {
-            console.log(`[Worker] SFX event found. Posting to main thread.`, event);
             self.postMessage({ type: 'sfx', payload: event });
         });
         
         sparkleEvents.forEach(event => {
-            console.log(`[Worker] Sparkle event found. Posting to main thread.`, event);
             self.postMessage({ type: 'sparkle', payload: event });
         });
 
         this.barCount++;
-        // If promenade is finished, reset bar count
-        if (this.barCount > fractalMusicEngine.navigator.totalBars + 3) {
+        if (this.barCount > this.navigator.totalBars + 3) {
             this.barCount = 0;
         }
     }
