@@ -137,9 +137,19 @@ const Scheduler = {
         
         const scorePayload = fractalMusicEngine.evolve(this.barDuration, this.barCount);
         
-        const sfxEvents = scorePayload.events.filter(e => e.type === 'sfx');
-        const sparkleEvents = scorePayload.events.filter(e => e.type === 'sparkle');
-        const mainScoreEvents = scorePayload.events.filter(e => e.type !== 'sfx' && e.type !== 'sparkle');
+        const mainScoreEvents: FractalEvent[] = [];
+        const sfxEvents: FractalEvent[] = [];
+        const sparkleEvents: FractalEvent[] = [];
+        
+        for (const event of scorePayload.events) {
+            if (event.type === 'sfx') {
+                sfxEvents.push(event);
+            } else if (event.type === 'sparkle') {
+                sparkleEvents.push(event);
+            } else {
+                mainScoreEvents.push(event);
+            }
+        }
 
         self.postMessage({ 
             type: 'SCORE_READY', 
@@ -150,16 +160,20 @@ const Scheduler = {
             }
         });
         
-        sfxEvents.forEach(event => {
-            self.postMessage({ type: 'sfx', payload: event });
-        });
+        if (sfxEvents.length > 0) {
+            sfxEvents.forEach(event => {
+                self.postMessage({ type: 'sfx', payload: event });
+            });
+        }
         
-        sparkleEvents.forEach(event => {
-            self.postMessage({ type: 'sparkle', payload: event });
-        });
+        if (sparkleEvents.length > 0) {
+            sparkleEvents.forEach(event => {
+                self.postMessage({ type: 'sparkle', payload: event });
+            });
+        }
 
         this.barCount++;
-        if (this.barCount > this.navigator.totalBars + 3) {
+        if (fractalMusicEngine && this.barCount > fractalMusicEngine.navigator.totalBars + 3) {
             this.barCount = 0;
         }
     }
