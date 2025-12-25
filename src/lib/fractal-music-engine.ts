@@ -225,7 +225,7 @@ function createMelodyMotif(chord: GhostChord, mood: Mood, random: { next: () => 
     }
     
     // Генерация нового мотива
-    console.log('%c[MelodyEvolution] Generating new motif.', 'color: #20B2AA');
+    console.log('%c[MelodyAxiom] Generating new motif.', 'color: #32CD32');
     const contour = [0, 2, 4, 2];
     contour.forEach((degree, i) => {
         const noteIndex = (scale.findIndex(n => n % 12 === baseNote % 12) + degree + scale.length) % scale.length;
@@ -585,7 +585,7 @@ export class FractalMusicEngine {
 
   private _applyMicroMutations(phrase: FractalEvent[], epoch: number): FractalEvent[] {
     if (phrase.length === 0) return [];
-    const newPhrase = JSON.parse(JSON.stringify(phrase));
+    const newPhrase: FractalEvent[] = JSON.parse(JSON.stringify(phrase));
 
     // 1. Ритмический Дрейф (Rhythmic Drift)
     if (this.random.next() < 0.5) { // 50% шанс на сдвиг
@@ -602,7 +602,7 @@ export class FractalMusicEngine {
     }
     
     // 3. Регистровый Дрейф (Register Drift) - РЕДКО
-    if (this.random.next() < 0.3) { // 30% шанс на сдвиг октавы
+    if (epoch % 4 === 0 && this.random.next() < 0.3) { // 30% шанс на сдвиг октавы, раз в 4 такта
         const octaveShift = (this.random.next() > 0.5) ? 12 : -12;
         newPhrase.forEach(note => {
             const newNote = note.note + octaveShift;
@@ -623,7 +623,7 @@ export class FractalMusicEngine {
     return newPhrase;
   }
   
- private generateOneBar(barDuration: number, navInfo: NavigationInfo | null): { events: FractalEvent[], instrumentHints: InstrumentHints } {
+  private generateOneBar(barDuration: number, navInfo: NavigationInfo | null): { events: FractalEvent[], instrumentHints: InstrumentHints } {
     let instrumentHints: InstrumentHints = {};
     if (!navInfo) {
         return { events: [], instrumentHints: {} };
@@ -642,14 +642,32 @@ export class FractalMusicEngine {
     const output: FractalEvent[] = [];
     instrumentHints.accompaniment = this._chooseInstrumentForPart('accompaniment', navInfo.currentPart);
     instrumentHints.melody = this._chooseInstrumentForPart('melody', navInfo.currentPart);
+    
+    const isIntro = navInfo.currentPart.id.startsWith('INTRO');
+    const canVary = !isIntro || navInfo.currentPart.id.includes('3');
+    
+    if (canVary && this.epoch % 4 === 0 && this.epoch > 0) {
+        // Vary bass phrase
+        if (this.random.next() < 0.6) { // 60% chance to mutate
+            console.log(`[BassEvolution @ Bar ${this.epoch}] Mutating bass phrase ${this.currentBassPhraseIndex}.`);
+            this.bassPhraseLibrary[this.currentBassPhraseIndex] = mutateBassPhrase(this.bassPhraseLibrary[this.currentBassPhraseIndex], currentChord, this.config.mood, this.config.genre, this.random);
+        } else { // 40% chance to switch to the next phrase
+            this.currentBassPhraseIndex = (this.currentBassPhraseIndex + 1) % this.bassPhraseLibrary.length;
+            console.log(`[BassEvolution @ Bar ${this.epoch}] Switching to bass phrase ${this.currentBassPhraseIndex}.`);
+        }
+        
+        // Vary accompaniment phrase
+        if (this.random.next() < 0.6) { // 60% chance to mutate
+             console.log(`[AccompEvolution @ Bar ${this.epoch}] Mutating accompaniment phrase ${this.currentAccompPhraseIndex}.`);
+            this.accompPhraseLibrary[this.currentAccompPhraseIndex] = mutateAccompanimentPhrase(this.accompPhraseLibrary[this.currentAccompPhraseIndex], currentChord, this.config.mood, this.config.genre, this.random);
+        } else { // 40% chance to switch to the next phrase
+            this.currentAccompPhraseIndex = (this.currentAccompPhraseIndex + 1) % this.accompPhraseLibrary.length;
+            console.log(`[AccompEvolution @ Bar ${this.epoch}] Switching to accompaniment phrase ${this.currentAccompPhraseIndex}.`);
+        }
+    }
 
-    const shouldMutate = navInfo.isBundleTransition && !navInfo.currentPart.id.startsWith('INTRO');
 
     if (navInfo.currentPart.layers.bass) {
-        if (shouldMutate) {
-            this.currentBassPhraseIndex = (this.currentBassPhraseIndex + 1) % this.bassPhraseLibrary.length;
-            this.bassPhraseLibrary[this.currentBassPhraseIndex] = mutateBassPhrase(this.bassPhraseLibrary[this.currentBassPhraseIndex], currentChord, this.config.mood, this.config.genre, this.random);
-        }
         output.push(...this.bassPhraseLibrary[this.currentBassPhraseIndex]);
     }
     
@@ -658,19 +676,15 @@ export class FractalMusicEngine {
     }
     
     if (navInfo.currentPart.layers.accompaniment) {
-        if (shouldMutate) {
-            this.currentAccompPhraseIndex = (this.currentAccompPhraseIndex + 1) % this.accompPhraseLibrary.length;
-            this.accompPhraseLibrary[this.currentAccompPhraseIndex] = mutateAccompanimentPhrase(this.accompPhraseLibrary[this.currentAccompPhraseIndex], currentChord, this.config.mood, this.config.genre, this.random);
-        }
         output.push(...this.accompPhraseLibrary[this.currentAccompPhraseIndex]);
     }
     
     if (navInfo.currentPart.layers.melody) {
         const melodyPlayInterval = 4;
         if (this.epoch >= this.lastMelodyPlayEpoch + melodyPlayInterval) {
-            if (shouldMutate || navInfo.isPartTransition) {
-                this.currentMelodyMotif = createMelodyMotif(currentChord, this.config.mood, this.random, this.currentMelodyMotif);
-            }
+             if (this.epoch > 0) {
+                 this.currentMelodyMotif = createMelodyMotif(currentChord, this.config.mood, this.random, this.currentMelodyMotif);
+             }
             output.push(...this.currentMelodyMotif);
             this.lastMelodyPlayEpoch = this.epoch;
         }
@@ -686,8 +700,8 @@ export class FractalMusicEngine {
     const kickEvents = finalEvents.filter(isKick);
     const snareEvents = finalEvents.filter(isSnare);
     
-    const bassTechnique = bassEvents[0]?.technique || 'off';
-    const accompTechnique = accompEvents[0]?.technique || 'off';
+    const bassTechnique = bassEvents.length > 0 ? (bassEvents[0]?.technique || 'on') : 'off';
+    const accompTechnique = accompEvents.length > 0 ? (accompEvents[0]?.technique || 'on') : 'off';
     const leadTechnique = melodyEvents.length > 0 ? (melodyEvents[0]?.technique || 'on') : 'off';
     
     const eventCounts = `kick:${kickEvents.length}, snare:${snareEvents.length}, bass:${bassEvents.length}, accomp:${accompEvents.length}, lead:${melodyEvents.length}`;
