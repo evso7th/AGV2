@@ -516,6 +516,13 @@ export function createAccompanimentAxiom(chord: GhostChord, mood: Mood, genre: G
     return axiom;
 }
 
+/**
+ * #ЗАЧЕМ: Эта функция создает базовую музыкальную фразу (аксиому) для слоя 'harmony'.
+ * #ЧТО: Она генерирует 2-3 ноты, основываясь на переданном "призрачном" аккорде (GhostChord),
+ *         выбирая ноты из этого аккорда и размещая их в 3-й октаве.
+ * #СВЯЗИ: Вызывается движком (FractalMusicEngine), когда нужно создать новую гармоническую идею.
+ *          Результат передается в HarmonySynthManager для воспроизведения.
+ */
 export function createHarmonyAxiom(chord: GhostChord, mood: Mood, genre: Genre, random: { next: () => number; nextInt: (max: number) => number }): FractalEvent[] {
     const axiom: FractalEvent[] = [];
     const scale = getScaleForMood(mood);
@@ -833,8 +840,10 @@ export function createMelodyMotif(chord: GhostChord, mood: Mood, random: { next:
     const scale = getScaleForMood(mood);
     const rootOctave = 4; // Start melody in the 4th octave
     
-    // Define a simple melodic contour using scale degrees relative to the chord root
-    const contour = [0, 2, 4, 2]; // e.g., Root, 3rd, 5th, 3rd
+    // #ЗАЧЕМ: Этот контур определяет "скелет" мелодии.
+    // #ЧТО: Он задает последовательность шагов по гамме относительно базовой ноты, создавая музыкальную фразу.
+    // #СВЯЗИ: Используется для генерации нот в цикле ниже.
+    const contour = [0, 2, 4, 5, 7, 5, 4, 2]; // Classic "arching" phrase
     
     let baseNote = chord.rootNote;
     while(baseNote > 50) baseNote -= 12; // Ensure it's in a reasonable starting octave
@@ -884,15 +893,20 @@ export function createMelodyMotif(chord: GhostChord, mood: Mood, random: { next:
         }
 
     } else {
-        // Generate a new motif
+        // #ЗАЧЕМ: Этот блок генерирует совершенно новый мотив с нуля.
+        // #ЧТО: Он проходит по `contour`, находит соответствующую ноту в `scale` и создает для нее событие `melody`.
+        // #СВЯЗИ: Результат - это новая "аксиома" для мелодии.
         contour.forEach((degree, i) => {
-            const noteIndex = (scale.findIndex(n => n % 12 === baseNote % 12) + degree + scale.length) % scale.length;
-            const note = scale[noteIndex] + (12 * rootOctave);
+            // Find the index of the base note in the scale to use as a reference point.
+            const baseNoteIndexInScale = scale.findIndex(n => n % 12 === baseNote % 12);
+            // Calculate the new note's index by adding the contour degree.
+            const noteIndex = (baseNoteIndexInScale + degree + scale.length) % scale.length;
+            const note = scale[noteIndex];
             motif.push({
                 type: 'melody',
                 note: note,
-                duration: 1.0, // Quarter note
-                time: i, // On each beat
+                duration: 0.5, // Eigth note duration for an 8-note phrase
+                time: i * 0.5, // Each note starts on an eighth note
                 weight: 0.7,
                 technique: 'swell',
                 dynamics: 'mf',
@@ -900,6 +914,12 @@ export function createMelodyMotif(chord: GhostChord, mood: Mood, random: { next:
                 params: {}
             });
         });
+
+        // #ЗАЧЕМ: Этот лог делает видимой сгенерированную мелодическую "ДНК".
+        // #ЧТО: Он преобразует массив MIDI-нот в читаемую строку и выводит ее в консоль.
+        // #СВЯЗИ: Помогает отслеживать, какие именно мелодии создаются и как они мутируют.
+        const motifNotes = motif.map(e => e.note);
+        console.log(`%c[MelodyAxiom] New motif generated: ${motifNotes.join(' -> ')}`, 'color: #DA70D6');
     }
 
     return motif;
@@ -911,4 +931,3 @@ export function createMelodyMotif(chord: GhostChord, mood: Mood, random: { next:
 
 
     
-
