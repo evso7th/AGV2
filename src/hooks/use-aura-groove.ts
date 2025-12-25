@@ -34,14 +34,14 @@ export const useAuraGroove = () => {
   
   const [drumSettings, setDrumSettings] = useState<DrumSettings>({ pattern: 'composer', volume: 0.5, kickVolume: 1.0, enabled: true });
   const [instrumentSettings, setInstrumentSettings] = useState<InstrumentSettings>({
-    bass: { name: "glideBass", volume: 0.7, technique: 'portamento' },
+    bass: { name: "glideBass", volume: 0.5, technique: 'portamento' },
     melody: { name: "ambientPad", volume: 0.8 },
     accompaniment: { name: "synth", volume: 0.7 },
-    harmony: { name: "guitarChords", volume: 0.6 },
+    harmony: { name: "guitarChords", volume: 0.25 },
   });
   const [textureSettings, setTextureSettings] = useState<TextureSettings>({
-      sparkles: { enabled: true, volume: 0.7 },
-      sfx: { enabled: true, volume: 0.5 },
+      sparkles: { enabled: true, volume: 0.35 },
+      sfx: { enabled: true, volume: 0.35 },
   });
   const [bpm, setBpm] = useState(75);
   const [score, setScore] = useState<ScoreName>('neuro_f_matrix');
