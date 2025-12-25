@@ -94,7 +94,8 @@ export type InstrumentType =
   // Мелодические инструменты
   | 'melody'
   // Спецэффекты
-  | 'sfx';
+  | 'sfx'
+  | 'sparkle';
 
 export type MelodyInstrument = 'piano' | 'violin' | 'flute' | 'synth' | 'organ' | 'mellotron' | 'theremin' | 'E-Bells_melody' | 'G-Drops' | 'acousticGuitarSolo' | 'electricGuitar' | 'none';
 export type BassInstrument = 'classicBass' | 'glideBass' | 'ambientDrone' | 'resonantGliss' | 'hypnoticDrone' | 'livingRiff' | 'none';
@@ -212,3 +213,17 @@ export type ResonanceMatrix = (
 ) => number;
 
 export type AccompanimentTechnique = 'choral' | 'alternating-bass-chord' | 'chord-pulsation' | 'arpeggio-fast' | 'arpeggio-slow' | 'alberti-bass' | 'paired-notes' | 'long-chords';
+
+/**
+ * Описывает один аккорд в неслышимой гармонической основе (скелете) сьюиты.
+ */
+export type GhostChord = {
+  /** Основная нота аккорда (тоника) в MIDI формате. */
+  rootNote: number;
+  /** Тип аккорда (например, мажор, минор). */
+  chordType: 'major' | 'minor' | 'diminished' | 'dominant'; // Можно расширить
+  /** Такт, с которого начинает звучать этот аккорд. */
+  bar: number;
+  /** Длительность аккорда в тактах. */
+  durationBars: number;
+};
