@@ -217,7 +217,7 @@ export const MelancholicAmbientBlueprint: MusicBlueprint = {
     parts: [
        {
         id: 'INTRO_1', name: 'Emergence', duration: { percent: 8 }, // ~10 bars
-        layers: { accompaniment: true, harmony: true, sfx: true, sparkles: true },
+        layers: { accompaniment: true, harmony: false, sfx: false, sparkles: false },
         instrumentation: { accompaniment: { strategy: 'weighted', options: [{ name: 'ambientPad', weight: 1.0 }] } },
         instrumentRules: {},
         bundles: [ { id: 'INTRO_BUNDLE_1', name: 'Emergence', duration: { percent: 100 }, characteristics: {}, phrases: {} } ],
@@ -225,7 +225,7 @@ export const MelancholicAmbientBlueprint: MusicBlueprint = {
       },
       {
         id: 'INTRO_2', name: 'Stirrings', duration: { percent: 6 }, // ~7 bars
-        layers: { accompaniment: true, bass: true, sparkles: true, sfx: true, harmony: true, melody: false },
+        layers: { accompaniment: true, bass: true, sparkles: true, sfx: false, harmony: false, melody: false },
         instrumentation: {
           accompaniment: { strategy: 'weighted', options: [{ name: 'ambientPad', weight: 0.9 }, { name: 'organ', weight: 0.1 }] },
           bass: { strategy: 'weighted', options: [{ name: 'ambientDrone', weight: 1.0 }] }
@@ -643,6 +643,7 @@ export default MelancholicAmbientBlueprint;
 
 
     
+
 
 
 
