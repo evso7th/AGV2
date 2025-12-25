@@ -219,7 +219,9 @@ export const MelancholicAmbientBlueprint: MusicBlueprint = {
         id: 'INTRO_1', name: 'Emergence', duration: { percent: 8 }, // ~10 bars
         layers: { accompaniment: true, harmony: false, sfx: false, sparkles: false },
         instrumentation: { accompaniment: { strategy: 'weighted', options: [{ name: 'ambientPad', weight: 1.0 }] } },
-        instrumentRules: {},
+        instrumentRules: {
+          accompaniment: { register: { preferred: 'low' } }
+        },
         bundles: [ { id: 'INTRO_BUNDLE_1', name: 'Emergence', duration: { percent: 100 }, characteristics: {}, phrases: {} } ],
         outroFill: null,
       },
@@ -230,7 +232,9 @@ export const MelancholicAmbientBlueprint: MusicBlueprint = {
           accompaniment: { strategy: 'weighted', options: [{ name: 'ambientPad', weight: 0.9 }, { name: 'organ', weight: 0.1 }] },
           bass: { strategy: 'weighted', options: [{ name: 'ambientDrone', weight: 1.0 }] }
         },
-        instrumentRules: {},
+        instrumentRules: {
+          accompaniment: { register: { preferred: 'low' } }
+        },
         bundles: [ { id: 'INTRO_BUNDLE_2', name: 'Stirrings', duration: { percent: 100 }, characteristics: {}, phrases: {} } ],
         outroFill: null,
       },
@@ -242,7 +246,9 @@ export const MelancholicAmbientBlueprint: MusicBlueprint = {
           bass: { strategy: 'weighted', options: [{ name: 'classicBass', weight: 1.0 }] },
           melody: { strategy: 'weighted', options: [{ name: 'synth', weight: 1.0 }] }
         },
-        instrumentRules: {},
+        instrumentRules: {
+          accompaniment: { register: { preferred: 'low' } }
+        },
         bundles: [ { id: 'INTRO_BUNDLE_3', name: 'Anticipation', duration: { percent: 100 }, characteristics: {}, phrases: {} } ],
         outroFill: { type: 'filter_sweep', duration: 2, parameters: { filterEnd: 0.95 } },
       },
@@ -643,6 +649,7 @@ export default MelancholicAmbientBlueprint;
 
 
     
+
 
 
 

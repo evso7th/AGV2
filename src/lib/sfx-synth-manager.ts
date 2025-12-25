@@ -121,11 +121,16 @@ export class SfxSynthManager {
     private isReady = false;
     private buffers: Map<string, AudioBuffer[]> = new Map();
     private activeSources: Set<AudioBufferSourceNode> = new Set();
+    private preamp: GainNode;
 
 
     constructor(context: AudioContext, destination: GainNode) {
         this.context = context;
         this.destination = destination;
+
+        this.preamp = this.context.createGain();
+        this.preamp.gain.value = 1.0; // Громкость уменьшена в 2 раза
+        this.preamp.connect(this.destination);
     }
 
     public async init(): Promise<void> {
@@ -186,7 +191,9 @@ export class SfxSynthManager {
             const buffer = samplePool[Math.floor(Math.random() * samplePool.length)];
             const source = this.context.createBufferSource();
             source.buffer = buffer;
-            source.connect(this.destination);
+            
+            // SFX теперь подключается к предусилителю
+            source.connect(this.preamp);
 
             const beatDuration = 60 / tempo;
             const startTime = barStartTime + (event.time * beatDuration);
@@ -227,5 +234,3 @@ export class SfxSynthManager {
         return this.isReady;
     }
 }
-
-    
