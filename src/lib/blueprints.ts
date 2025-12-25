@@ -217,7 +217,7 @@ export const MelancholicAmbientBlueprint: MusicBlueprint = {
     parts: [
        {
         id: 'INTRO_1', name: 'Emergence', duration: { percent: 8 }, // ~10 bars
-        layers: { accompaniment: true },
+        layers: { accompaniment: true, harmony: true },
         instrumentation: { accompaniment: { strategy: 'weighted', options: [{ name: 'ambientPad', weight: 1.0 }] } },
         instrumentRules: {},
         bundles: [ { id: 'INTRO_BUNDLE_1', name: 'Emergence', duration: { percent: 100 }, characteristics: {}, phrases: {} } ],
@@ -225,7 +225,7 @@ export const MelancholicAmbientBlueprint: MusicBlueprint = {
       },
       {
         id: 'INTRO_2', name: 'Stirrings', duration: { percent: 6 }, // ~7 bars
-        layers: { accompaniment: true, bass: true, sparkles: false, sfx: false },
+        layers: { accompaniment: true, bass: true, sparkles: false, sfx: false, harmony: true },
         instrumentation: {
           accompaniment: { strategy: 'weighted', options: [{ name: 'ambientPad', weight: 0.9 }, { name: 'organ', weight: 0.1 }] },
           bass: { strategy: 'weighted', options: [{ name: 'ambientDrone', weight: 1.0 }] }
@@ -236,7 +236,7 @@ export const MelancholicAmbientBlueprint: MusicBlueprint = {
       },
       {
         id: 'INTRO_3', name: 'Anticipation', duration: { percent: 6 }, // ~7 bars
-        layers: { accompaniment: true, bass: true, melody: true },
+        layers: { accompaniment: true, bass: true, melody: true, harmony: true },
         instrumentation: {
           accompaniment: { strategy: 'weighted', options: [{ name: 'ambientPad', weight: 0.8 }, { name: 'mellotron', weight: 0.2 }] },
           bass: { strategy: 'weighted', options: [{ name: 'classicBass', weight: 1.0 }] },
@@ -248,7 +248,7 @@ export const MelancholicAmbientBlueprint: MusicBlueprint = {
       },
       {
         id: 'BUILD', name: 'Rising', duration: { percent: 25 }, // ~30 bars
-        layers: { accompaniment: true, bass: true, drums: true, sfx: true, melody: true },
+        layers: { accompaniment: true, bass: true, drums: true, sfx: true, melody: true, harmony: true },
          instrumentation: {
             accompaniment: { strategy: 'weighted', options: [{ name: 'ambientPad', weight: 0.7 }, { name: 'organ', weight: 0.3 }] },
             bass: { strategy: 'weighted', options: [{ name: 'classicBass', weight: 1.0 }] },
@@ -285,7 +285,7 @@ export const MelancholicAmbientBlueprint: MusicBlueprint = {
       },
       {
         id: 'RELEASE', name: 'Descent', duration: { percent: 20 }, // ~24 bars
-        layers: { accompaniment: true, bass: true, sparkles: true, sfx: true, melody: true },
+        layers: { accompaniment: true, bass: true, sparkles: true, sfx: true, melody: true, harmony: true },
         instrumentation: {
             accompaniment: { strategy: 'weighted', options: [{ name: 'ambientPad', weight: 1.0 }] },
             bass: { strategy: 'weighted', options: [{ name: 'glideBass', weight: 1.0 }] },
@@ -667,3 +667,4 @@ export default MelancholicAmbientBlueprint;
 
 
     
+
