@@ -63,13 +63,15 @@ const isRhythmic = (event: FractalEvent): boolean => (event.type as string).star
 
 // === АКСОМЫ И ТРАНСФОРМАЦИИ ===
 export function mutateBassPhrase(phrase: FractalEvent[], chord: GhostChord, mood: Mood, genre: Genre, random: { next: () => number, nextInt: (max: number) => number }): FractalEvent[] {
-    if (phrase.length === 0) return generateAmbientBassPhrase(chord, mood, genre, random);
+    if (phrase.length === 0) return generateAmbientBassPhrase(chord, mood, genre, random, 120);
 
     const newPhrase: FractalEvent[] = JSON.parse(JSON.stringify(phrase));
     const mutationType = random.nextInt(4);
+    let mutationDescription = "Unknown";
 
     switch (mutationType) {
-        case 0: // Более заметное ритмическое изменение
+        case 0: 
+            mutationDescription = "Rhythmic Variation";
             const noteToChange = newPhrase[random.nextInt(newPhrase.length)];
             noteToChange.duration *= (random.next() > 0.5 ? 1.5 : 0.66);
             if (newPhrase.length > 1) {
@@ -78,7 +80,8 @@ export function mutateBassPhrase(phrase: FractalEvent[], chord: GhostChord, mood
             }
             break;
 
-        case 1: // Инверсия высоты тона внутри фразы
+        case 1:
+            mutationDescription = "Pitch Inversion";
              if (newPhrase.length > 1) {
                 const firstNote = newPhrase[0].note;
                 newPhrase.forEach(event => {
@@ -88,15 +91,17 @@ export function mutateBassPhrase(phrase: FractalEvent[], chord: GhostChord, mood
              }
             break;
 
-        case 2: // Замена половины фразы на новый материал
+        case 2:
+            mutationDescription = "Partial Regeneration";
             if (newPhrase.length > 2) {
                 const half = Math.ceil(newPhrase.length / 2);
-                const newHalf = generateAmbientBassPhrase(chord, mood, genre, random).slice(0, half);
+                const newHalf = generateAmbientBassPhrase(chord, mood, genre, random, 120).slice(0, half);
                 newPhrase.splice(0, half, ...newHalf);
             }
             break;
 
-        case 3: // Добавление "проходящей" ноты
+        case 3:
+            mutationDescription = "Passing Note Addition";
             if (newPhrase.length > 1) {
                 const insertIndex = random.nextInt(newPhrase.length - 1) + 1;
                 const prevNote = newPhrase[insertIndex-1];
@@ -106,7 +111,7 @@ export function mutateBassPhrase(phrase: FractalEvent[], chord: GhostChord, mood
                 const newNote: FractalEvent = {
                     ...prevNote,
                     note: passingNoteMidi,
-                    duration: 0.5, // Короткая проходящая нота
+                    duration: 0.5, 
                     time: prevNote.time + prevNote.duration / 2,
                     weight: prevNote.weight * 0.8
                 };
@@ -115,7 +120,6 @@ export function mutateBassPhrase(phrase: FractalEvent[], chord: GhostChord, mood
             break;
     }
 
-    // Re-normalize timings after mutation
     let totalDuration = newPhrase.reduce((sum, e) => sum + e.duration, 0);
     if (totalDuration > 0) {
         const scaleFactor = 4.0 / totalDuration;
@@ -126,6 +130,9 @@ export function mutateBassPhrase(phrase: FractalEvent[], chord: GhostChord, mood
             runningTime += e.duration;
         });
     }
+
+    const resultNotes = newPhrase.map(e => e.note).join(' -> ');
+    console.log(`%c[BassMutation] Type: ${mutationDescription} -> Result: ${resultNotes}`, 'color: #87CEEB');
 
     return newPhrase;
 }
@@ -301,6 +308,9 @@ export function generateAmbientBassPhrase(chord: GhostChord, mood: Mood, genre: 
         
         currentTime += duration;
     }
+    
+    const phraseNotes = phrase.map(e => e.note).join(' -> ');
+    console.log(`%c[BassAxiom] New phrase generated: ${phraseNotes}`, 'color: #98FB98');
     
     return phrase;
 };
@@ -1084,5 +1094,6 @@ export function createMelodyMotif(chord: GhostChord, mood: Mood, random: { next:
 
 
     
+
 
 
