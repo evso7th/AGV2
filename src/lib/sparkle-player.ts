@@ -1,4 +1,5 @@
 
+
 import type { Genre, Mood } from '@/types/music';
 
 const SPARKLE_SAMPLES = {
@@ -232,6 +233,7 @@ export class SparklePlayer {
     }
 
     public playRandomSparkle(time: number, genre?: Genre, mood?: Mood) {
+        console.log(`[SparklePlayer] Received request to play sparkle at time ${time}.`);
         if (!this.isInitialized) return;
 
         let samplePool: AudioBuffer[] = [];

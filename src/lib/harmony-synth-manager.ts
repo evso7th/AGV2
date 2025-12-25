@@ -1,4 +1,5 @@
 
+
 import type { FractalEvent } from '@/types/fractal';
 import type { Note } from "@/types/music";
 import { SamplerPlayer } from '@/lib/sampler-player';
@@ -60,10 +61,8 @@ export class HarmonySynthManager {
         if (!this.isInitialized) {
             return;
         }
+        console.log(`[HarmonyManager] Received ${events.length} events to schedule.`);
         
-        console.log(`[harmony] HarmonySynthManager received ${events.length} events to schedule.`);
-
-
         const instrumentToPlay = instrumentHint || this.activeInstrumentName;
 
         if (instrumentToPlay === 'none') {

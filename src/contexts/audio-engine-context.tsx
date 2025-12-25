@@ -28,7 +28,7 @@ export function noteToMidi(note: string): number {
 
 // --- Type Definitions ---
 type WorkerMessage = {
-    type: 'SCORE_READY' | 'error' | 'debug' | 'sparkle' | 'sfx';
+    type: 'SCORE_READY' | 'HARMONY_SCORE_READY' | 'error' | 'debug' | 'sparkle' | 'sfx';
     payload?: {
         events?: FractalEvent[];
         barDuration?: number;
@@ -119,6 +119,7 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
   }, [isInitialized]);
 
   const scheduleEvents = useCallback((events: FractalEvent[], barStartTime: number, tempo: number, instrumentHints?: InstrumentHints) => {
+    console.log(`[AudioEngine.scheduleEvents] Received Events: Total=${events.length}, Harmony=${events.filter(e => e.type === 'harmony').length}, Melody=${events.filter(e => e.type === 'melody').length}`);
     if (!Array.isArray(events)) {
         return;
     }
@@ -261,6 +262,7 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
         if (!workerRef.current) {
             const worker = new Worker(new URL('@/app/ambient.worker.ts', import.meta.url), { type: 'module' });
             worker.onmessage = (event: MessageEvent<WorkerMessage>) => {
+                 console.log('[AudioEngine] Received message from worker:', event.data);
                 const { type, payload, error } = event.data;
                 
                 if (type === 'SCORE_READY' && payload && 'events' in payload) {
@@ -272,6 +274,12 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
                         nextBarTimeRef.current += barDuration;
                     }
 
+                } else if (type === 'HARMONY_SCORE_READY' && payload && 'events' in payload) {
+                     const { events, barDuration, instrumentHints } = payload;
+                     if(events && barDuration && settingsRef.current){
+                        scheduleEvents(events, nextBarTimeRef.current, settingsRef.current.bpm, instrumentHints);
+                        // Do not advance nextBarTimeRef here, as it's part of the same bar
+                    }
                 } else if (type === 'sparkle' && payload && 'params' in payload && 'time' in payload) {
                     const { mood, genre } = (payload as FractalEvent).params as { mood: Mood, genre: Genre };
                     sparklePlayerRef.current?.playRandomSparkle(nextBarTimeRef.current + (payload as FractalEvent).time, genre, mood);

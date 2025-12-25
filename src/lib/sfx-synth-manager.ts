@@ -165,6 +165,7 @@ export class SfxSynthManager {
 
 
     public trigger(events: FractalEvent[], barStartTime: number, tempo: number): void {
+        console.log(`[SfxManager] Received ${events.length} events to trigger.`);
         if (!this.isReady) {
             console.warn('[SFX] Trigger called but not ready.');
             return;
