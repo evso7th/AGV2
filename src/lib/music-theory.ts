@@ -62,7 +62,7 @@ const isRhythmic = (event: FractalEvent): boolean => (event.type as string).star
 
 
 // === АКСОМЫ И ТРАНСФОРМАЦИИ ===
-function mutateBassPhrase(phrase: FractalEvent[], chord: GhostChord, mood: Mood, genre: Genre, random: { next: () => number, nextInt: (max: number) => number }): FractalEvent[] {
+export function mutateBassPhrase(phrase: FractalEvent[], chord: GhostChord, mood: Mood, genre: Genre, random: { next: () => number, nextInt: (max: number) => number }): FractalEvent[] {
     if (phrase.length === 0) return generateAmbientBassPhrase(chord, mood, genre, random);
 
     const newPhrase: FractalEvent[] = JSON.parse(JSON.stringify(phrase));
@@ -130,7 +130,7 @@ function mutateBassPhrase(phrase: FractalEvent[], chord: GhostChord, mood: Mood,
     return newPhrase;
 }
 
-function mutateAccompanimentPhrase(phrase: FractalEvent[], chord: GhostChord, mood: Mood, genre: Genre, random: { next: () => number, nextInt: (max: number) => number }): FractalEvent[] {
+export function mutateAccompanimentPhrase(phrase: FractalEvent[], chord: GhostChord, mood: Mood, genre: Genre, random: { next: () => number, nextInt: (max: number) => number }): FractalEvent[] {
     const newPhrase: FractalEvent[] = JSON.parse(JSON.stringify(phrase));
     if (newPhrase.length === 0) return [];
     
@@ -866,94 +866,215 @@ export function generateGhostHarmonyTrack(totalBars: number, mood: Mood, key: nu
   return harmonyTrack;
 }
     
+export function createDrumAxiom(genre: Genre, mood: Mood, tempo: number, random: { next: () => number, nextInt: (max: number) => number }): { events: FractalEvent[], tags: string[] } {
+    const hitParams = {}; // Params now come from events
+    const grammar = STYLE_DRUM_PATTERNS[genre] || STYLE_DRUM_PATTERNS['ambient'];
+    
+    const loop = grammar.loops[random.nextInt(grammar.loops.length)];
+    
+    const axiomEvents: FractalEvent[] = [];
 
+    if (!loop) return { events: [], tags: [] };
+
+    // Этап 1: Генерация основного бита (Kick, Snare, Hi-hat)
+    const allBaseEvents = [...(loop.kick || []), ...(loop.snare || []), ...(loop.hihat || [])];
+    for (const baseEvent of allBaseEvents) {
+        if (baseEvent.probability && random.next() > baseEvent.probability) {
+            continue;
+        }
+
+        let instrumentType: InstrumentType;
+        if (Array.isArray(baseEvent.type)) {
+            const types = baseEvent.type as InstrumentType[];
+            const probabilities = baseEvent.probabilities || [];
+            let rand = random.next();
+            let cumulativeProb = 0;
+            
+            let chosenType: InstrumentType | null = null;
+            for (let i = 0; i < types.length; i++) {
+                cumulativeProb += probabilities[i] || (1 / types.length);
+                if (rand <= cumulativeProb) {
+                    chosenType = types[i];
+                    break;
+                }
+            }
+            instrumentType = chosenType || types[types.length - 1];
+        } else {
+            instrumentType = baseEvent.type;
+        }
+
+        axiomEvents.push({
+            ...baseEvent,
+            type: instrumentType,
+            note: 36, // Placeholder MIDI
+            phrasing: 'staccato',
+            dynamics: 'mf', // Placeholder
+            params: hitParams,
+        } as FractalEvent);
+    }
+    
+    return { events: axiomEvents, tags: loop.tags };
+}
+
+export function createSfxScenario(mood: Mood, genre: Genre, random: { next: () => number, nextInt: (max: number) => number }): { drumFill: FractalEvent[], bassFill: FractalEvent[], accompanimentFill: FractalEvent[] } {
+    const drumFill: FractalEvent[] = [];
+    const bassFill: FractalEvent[] = [];
+    const accompanimentFill: FractalEvent[] = [];
+    
+    const scale = getScaleForMood(mood);
+    const rootNote = scale[random.nextInt(Math.floor(scale.length / 2))]; // Select a root from the lower half of the scale
+    const isMinor = mood === 'melancholic' || mood === 'dark';
+    const third = rootNote + (isMinor ? 3 : 4);
+    const fifth = rootNote + 7;
+    const chord = [rootNote, third, fifth].filter(n => scale.some(sn => sn % 12 === n % 12));
+
+    const fillParams = { cutoff: 1200, resonance: 0.6, distortion: 0.25, portamento: 0.0 };
+
+    const fillDensity = random.nextInt(4) + 3; // 3 to 6 notes for the core rhythm
+    let fillTime = 3.0; // Start the fill in the last beat
+
+    for(let i = 0; i < fillDensity; i++) {
+        const duration = (1.0 / fillDensity) * (0.8 + random.next() * 0.4); // slightly variable duration
+        const currentTime = fillTime;
+        
+        const drumInstruments: InstrumentType[] = ['drum_tom_low', 'drum_tom_mid', 'drum_tom_high', 'drum_snare'];
+        const drumInstrument = drumInstruments[random.nextInt(drumInstruments.length)];
+        drumFill.push({ type: drumInstrument, note: 40 + i, duration, time: currentTime, weight: 0.7 + random.next() * 0.2, technique: 'hit', dynamics: 'mf', phrasing: 'staccato', params: {} });
+
+        if (random.next() > 0.3) {
+             bassFill.push({ type: 'bass', note: chord[random.nextInt(chord.length)], duration: duration * 0.9, time: currentTime, weight: 0.8 + random.next() * 0.2, technique: 'fill', dynamics: 'mf', phrasing: 'staccato', params: fillParams });
+        }
+        
+        fillTime += duration;
+    }
+    
+    const climaxTime = Math.min(3.75, fillTime);
+    drumFill.push({ type: 'drum_crash', note: 49, duration: 1, time: climaxTime, weight: 0.9, technique: 'hit', dynamics: 'f', phrasing: 'legato', params: {} });
+    if (random.next() > 0.2) {
+      bassFill.push({ type: 'bass', note: rootNote, duration: 0.5, time: climaxTime, weight: 1.0, technique: 'fill', dynamics: 'f', phrasing: 'staccato', params: fillParams });
+    }
+
+    return { drumFill, bassFill, accompanimentFill };
+}
+
+function extractTopNotes(events: FractalEvent[], maxNotes: number = 4): FractalEvent[] {
+    if (events.length === 0) return [];
+    
+    const timeTolerance = 0.1; 
+    const groupedByTime: Map<number, FractalEvent[]> = new Map();
+
+    for (const event of events) {
+        let foundGroup = false;
+        for (const time of groupedByTime.keys()) {
+            if (Math.abs(time - event.time) < timeTolerance) {
+                groupedByTime.get(time)!.push(event);
+                foundGroup = true;
+                break;
+            }
+        }
+        if (!foundGroup) {
+            groupedByTime.set(event.time, [event]);
+        }
+    }
+
+    const topNotes: FractalEvent[] = [];
+    for (const group of groupedByTime.values()) {
+        const topNote = group.reduce((max, current) => (current.note > max.note ? current : max));
+        topNotes.push(topNote);
+    }
+    
+    return topNotes
+        .sort((a, b) => a.time - b.time)
+        .slice(0, maxNotes);
+}
+
+/**
+ * #ЗАЧЕМ: Эта функция создает новый мелодический мотив (аксиому) или мутирует существующий.
+ * #ЧТО: Она использует базовый контур (массив ступеней) для генерации 8-нотной фразы.
+ *      Если передан `previousMotif`, она с вероятностью 80% применяет одну из мутаций (инверсия, ретроград и т.д.).
+ *      После генерации она выводит MIDI-ноты мотива в консоль для отладки.
+ * #СВЯЗИ: Вызывается в `generateOneBar`, когда движку нужна новая мелодическая идея.
+ */
 export function createMelodyMotif(chord: GhostChord, mood: Mood, random: { next: () => number; nextInt: (max: number) => number; }, previousMotif?: FractalEvent[]): FractalEvent[] {
     const motif: FractalEvent[] = [];
     const scale = getScaleForMood(mood);
-    const rootOctave = 3; // Start melody in the 3rd octave
-    
-    // #ЗАЧЕМ: Этот контур определяет "скелет" мелодии.
-    // #ЧТО: Он задает последовательность шагов по гамме относительно базовой ноты, создавая музыкальную фразу.
-    // #СВЯЗИ: Используется для генерации нот в цикле ниже.
-    const contour = [0, 2, 4, 5, 7, 5, 4, 2]; // Classic "arching" phrase
-    
+    const rootOctave = 3; // #РЕШЕНИЕ: Октава понижена для более меланхоличного звучания.
     let baseNote = chord.rootNote;
-    while(baseNote > 50) baseNote -= 12; // Ensure it's in a reasonable starting octave
+    while (baseNote > 50) baseNote -= 12;
     baseNote += (12 * rootOctave);
 
-
-    // Variation logic if a previous motif is provided
-    if (previousMotif && random.next() > 0.3) {
-        const variationType = random.nextInt(3);
+    if (previousMotif && random.next() > 0.2) { // 80% шанс на мутацию
+        const variationType = random.nextInt(4);
         const sourceNotes = previousMotif.map(e => e.note);
-        
-        switch(variationType) {
-            case 0: // Inversion
-                const firstNote = sourceNotes[0];
-                const invertedNotes = sourceNotes.map(n => firstNote - (n - firstNote));
-                contour.forEach((degree, i) => {
-                    motif.push({
-                        type: 'melody',
-                        note: invertedNotes[i % invertedNotes.length],
-                        duration: 1.0, time: i, weight: 0.7,
-                        technique: 'swell', dynamics: 'mf', phrasing: 'legato', params: {}
-                    });
+        const firstNote = sourceNotes[0] || baseNote;
+
+        switch (variationType) {
+            case 0: // Инверсия
+                console.log('%c[MelodyEvolution] Mutation: Inversion', 'color: #20B2AA');
+                previousMotif.forEach(event => {
+                    const interval = event.note - firstNote;
+                    motif.push({ ...event, note: firstNote - interval });
                 });
                 break;
-            case 1: // Retrograde
-                const retrogradeNotes = [...sourceNotes].reverse();
-                 contour.forEach((degree, i) => {
-                    motif.push({
-                        type: 'melody',
-                        note: retrogradeNotes[i % retrogradeNotes.length],
-                        duration: 1.0, time: i, weight: 0.7,
-                        technique: 'swell', dynamics: 'mf', phrasing: 'legato', params: {}
-                    });
+            case 1: // Ретроград
+                console.log('%c[MelodyEvolution] Mutation: Retrograde', 'color: #20B2AA');
+                const reversedNotes = [...sourceNotes].reverse();
+                previousMotif.forEach((event, i) => {
+                    motif.push({ ...event, note: reversedNotes[i] });
                 });
                 break;
-            default: // Octave shift
+            case 2: // Сдвиг октавы
+                 console.log('%c[MelodyEvolution] Mutation: Octave Shift', 'color: #20B2AA');
                 const octaveShift = random.next() > 0.5 ? 12 : -12;
-                 contour.forEach((degree, i) => {
-                    motif.push({
-                        type: 'melody',
-                        note: sourceNotes[i % sourceNotes.length] + octaveShift,
-                        duration: 1.0, time: i, weight: 0.7,
-                        technique: 'swell', dynamics: 'mf', phrasing: 'legato', params: {}
-                    });
+                previousMotif.forEach(event => {
+                    motif.push({ ...event, note: event.note + octaveShift });
                 });
+                break;
+            default: // Ритмическая вариация
+                 console.log('%c[MelodyEvolution] Mutation: Rhythmic Variation', 'color: #20B2AA');
+                 const totalDuration = previousMotif.reduce((sum, e) => sum + e.duration, 0);
+                 let currentTime = 0;
+                 previousMotif.forEach(event => {
+                     const newDuration = event.duration * (0.5 + random.next());
+                     motif.push({ ...event, duration: newDuration, time: currentTime });
+                     currentTime += newDuration;
+                 });
+                 // Нормализация
+                 if (currentTime > 0) {
+                     const scaleFactor = totalDuration / currentTime;
+                     let runningTime = 0;
+                     motif.forEach(e => {
+                         e.duration *= scaleFactor;
+                         e.time = runningTime;
+                         runningTime += e.duration;
+                     });
+                 }
                 break;
         }
-
-    } else {
-        // #ЗАЧЕМ: Этот блок генерирует совершенно новый мотив с нуля.
-        // #ЧТО: Он проходит по `contour`, находит соответствующую ноту в `scale` и создает для нее событие `melody`.
-        // #СВЯЗИ: Результат - это новая "аксиома" для мелодии.
-        contour.forEach((degree, i) => {
-            // Find the index of the base note in the scale to use as a reference point.
-            const baseNoteIndexInScale = scale.findIndex(n => n % 12 === baseNote % 12);
-            // Calculate the new note's index by adding the contour degree.
-            const noteIndex = (baseNoteIndexInScale + degree + scale.length) % scale.length;
-            const note = scale[noteIndex];
-            motif.push({
-                type: 'melody',
-                note: note,
-                duration: 0.5, // Eigth note duration for an 8-note phrase
-                time: i * 0.5, // Each note starts on an eighth note
-                weight: 0.7,
-                technique: 'swell',
-                dynamics: 'mf',
-                phrasing: 'legato',
-                params: {}
-            });
-        });
-
-        // #ЗАЧЕМ: Этот лог делает видимой сгенерированную мелодическую "ДНК".
-        // #ЧТО: Он преобразует массив MIDI-нот в читаемую строку и выводит ее в консоль.
-        // #СВЯЗИ: Помогает отслеживать, какие именно мелодии создаются и как они мутируют.
-        const motifNotes = motif.map(e => e.note);
-        console.log(`%c[MelodyAxiom] New motif generated: ${motifNotes.join(' -> ')}`, 'color: #DA70D6');
+        return motif;
     }
+    
+    // #ЗАЧЕМ: Этот блок генерирует совершенно новый мотив с нуля.
+    // #ЧТО: Он проходит по `contour`, находит соответствующую ноту в `scale` и создает для нее событие `melody`.
+    // #СВЯЗИ: Результат - это новая "аксиома" для мелодии.
+    const contour = [0, 2, 4, 5, 7, 5, 4, 2]; // #РЕШЕНИЕ: Контур расширен до 8 нот для более длинной фразы.
+    contour.forEach((degree, i) => {
+        const baseNoteIndexInScale = scale.findIndex(n => n % 12 === baseNote % 12);
+        const noteIndex = (baseNoteIndexInScale + degree + scale.length) % scale.length;
+        const note = scale[noteIndex];
+        motif.push({
+            type: 'melody', note: note, duration: 0.5,
+            time: i * 0.5, weight: 0.7,
+            technique: 'swell', dynamics: 'mf', phrasing: 'legato', params: {}
+        });
+    });
 
+    // #ЗАЧЕМ: Этот лог делает видимой сгенерированную мелодическую "ДНК".
+    // #ЧТО: Он преобразует массив MIDI-нот в читаемую строку и выводит ее в консоль.
+    // #СВЯЗИ: Помогает отслеживать, какие именно мелодии создаются и как они мутируют.
+    const motifNotes = motif.map(e => e.note);
+    console.log(`%c[MelodyAxiom] New motif generated: ${motifNotes.join(' -> ')}`, 'color: #DA70D6');
+    
     return motif;
 }
     
@@ -963,4 +1084,5 @@ export function createMelodyMotif(chord: GhostChord, mood: Mood, random: { next:
 
 
     
+
 
