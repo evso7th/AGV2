@@ -2,7 +2,7 @@
 
 import type { FractalEvent, Mood, Genre, Technique, BassSynthParams, InstrumentType, MelodyInstrument, BassInstrument, AccompanimentInstrument, ResonanceMatrix, InstrumentHints, AccompanimentTechnique, GhostChord } from '@/types/fractal';
 import { ElectronicK, TraditionalK, AmbientK, MelancholicMinorK } from './resonance-matrices';
-import { getScaleForMood, STYLE_DRUM_PATTERNS, generateAmbientBassPhrase, mutateBassPhrase as originalMutateBassPhrase, createAccompanimentAxiom, PERCUSSION_SETS, TEXTURE_INSTRUMENT_WEIGHTS_BY_MOOD, getAccompanimentTechnique, createBassFill as createBassFillFromTheory, createDrumFill, AMBIENT_ACCOMPANIMENT_WEIGHTS, chooseHarmonyInstrument, mutateAccompanimentPhrase as originalMutateAccompPhrase, generateGhostHarmonyTrack, createMelodyMotif as originalCreateMelodyMotif } from './music-theory';
+import { getScaleForMood, STYLE_DRUM_PATTERNS, generateAmbientBassPhrase, createAccompanimentAxiom, PERCUSSION_SETS, TEXTURE_INSTRUMENT_WEIGHTS_BY_MOOD, getAccompanimentTechnique, createBassFill as createBassFillFromTheory, createDrumFill, AMBIENT_ACCOMPANIMENT_WEIGHTS, chooseHarmonyInstrument, mutateAccompanimentPhrase as originalMutateAccompPhrase, generateGhostHarmonyTrack, createMelodyMotif as originalCreateMelodyMotif } from './music-theory';
 import { BlueprintNavigator, type NavigationInfo } from './blueprint-navigator';
 import { MelancholicAmbientBlueprint, BLUEPRINT_LIBRARY, getBlueprint } from './blueprints';
 
@@ -56,11 +56,12 @@ function safeTime(value: number, fallback: number = 0): number {
 const isBass = (event: FractalEvent): boolean => event.type === 'bass';
 const isAccompaniment = (event: FractalEvent): boolean => event.type === 'accompaniment';
 const isHarmony = (event: FractalEvent): boolean => event.type === 'harmony';
+const isMelody = (event: FractalEvent): boolean => event.type === 'melody';
+const isKick = (event: FractalEvent): boolean => event.type === 'drum_kick';
+const isSnare = (event: FractalEvent): boolean => event.type === 'drum_snare';
 
 
 // === АКСОМЫ И ТРАНСФОРМАЦИИ ===
-
-// УСИЛЕННЫЕ ФУНКЦИИ МУТАЦИИ
 function mutateBassPhrase(phrase: FractalEvent[], chord: GhostChord, mood: Mood, genre: Genre, random: { next: () => number, nextInt: (max: number) => number }): FractalEvent[] {
     if (phrase.length === 0) return generateAmbientBassPhrase(chord, mood, genre, random);
 
@@ -588,7 +589,6 @@ export class FractalMusicEngine {
 
     // 1. Ритмический Дрейф (Rhythmic Drift)
     if (this.random.next() < 0.5) { // 50% шанс на сдвиг
-        console.log(`%c[MicroMutation @ Bar ${epoch}] Rhythmic Drift applied.`, 'color: cyan');
         const noteToShift = newPhrase[this.random.nextInt(newPhrase.length)];
         const shiftAmount = (this.random.next() - 0.5) * 0.1; // Сдвиг на ±5% от доли
         noteToShift.time = Math.max(0, noteToShift.time + shiftAmount);
@@ -596,15 +596,13 @@ export class FractalMusicEngine {
 
     // 2. Динамический Акцент (Velocity Accent)
     if (this.random.next() < 0.6) { // 60% шанс на акцент
-        console.log(`%c[MicroMutation @ Bar ${epoch}] Velocity Accent applied.`, 'color: cyan');
         const noteToAccent = newPhrase[this.random.nextInt(newPhrase.length)];
         noteToAccent.weight *= (0.85 + this.random.next() * 0.3); // Изменение громкости на ±15%
         noteToAccent.weight = Math.max(0.1, Math.min(1.0, noteToAccent.weight));
     }
     
-    // 3. Регистровый Дрейф (Register Drift)
+    // 3. Регистровый Дрейф (Register Drift) - РЕДКО
     if (this.random.next() < 0.3) { // 30% шанс на сдвиг октавы
-        console.log(`%c[MicroMutation @ Bar ${epoch}] Register Drift applied.`, 'color: cyan');
         const octaveShift = (this.random.next() > 0.5) ? 12 : -12;
         newPhrase.forEach(note => {
             const newNote = note.note + octaveShift;
@@ -628,7 +626,6 @@ export class FractalMusicEngine {
  private generateOneBar(barDuration: number, navInfo: NavigationInfo | null): { events: FractalEvent[], instrumentHints: InstrumentHints } {
     let instrumentHints: InstrumentHints = {};
     if (!navInfo) {
-        console.log(`[FME Check @ Bar ${this.epoch}] No navigation info available.`);
         return { events: [], instrumentHints: {} };
     }
     
@@ -638,23 +635,20 @@ export class FractalMusicEngine {
         return { events: [], instrumentHints: {} };
     }
     
-    if (navInfo.logMessage) {
+    if (navInfo.logMessage && !navInfo.currentPart.id.startsWith('PROMENADE')) {
         console.log(navInfo.logMessage);
-    } else {
-        console.log(`%c[Bar ${this.epoch}] Chord: ${currentChord.rootNote} ${currentChord.chordType}`, "color: violet;");
     }
 
     const output: FractalEvent[] = [];
     instrumentHints.accompaniment = this._chooseInstrumentForPart('accompaniment', navInfo.currentPart);
     instrumentHints.melody = this._chooseInstrumentForPart('melody', navInfo.currentPart);
 
-    const shouldMutate = navInfo.isBundleTransition && !navInfo.currentPart.id.startsWith('INTRO_1');
+    const shouldMutate = navInfo.isBundleTransition && !navInfo.currentPart.id.startsWith('INTRO');
 
     if (navInfo.currentPart.layers.bass) {
         if (shouldMutate) {
             this.currentBassPhraseIndex = (this.currentBassPhraseIndex + 1) % this.bassPhraseLibrary.length;
             this.bassPhraseLibrary[this.currentBassPhraseIndex] = mutateBassPhrase(this.bassPhraseLibrary[this.currentBassPhraseIndex], currentChord, this.config.mood, this.config.genre, this.random);
-            console.log(`%c[BassEvolution @ Bar ${this.epoch}] Mutating bass phrase for new bundle. Now using phrase ${this.currentBassPhraseIndex}.`, 'color: #DA70D6;');
         }
         output.push(...this.bassPhraseLibrary[this.currentBassPhraseIndex]);
     }
@@ -667,7 +661,6 @@ export class FractalMusicEngine {
         if (shouldMutate) {
             this.currentAccompPhraseIndex = (this.currentAccompPhraseIndex + 1) % this.accompPhraseLibrary.length;
             this.accompPhraseLibrary[this.currentAccompPhraseIndex] = mutateAccompanimentPhrase(this.accompPhraseLibrary[this.currentAccompPhraseIndex], currentChord, this.config.mood, this.config.genre, this.random);
-            console.log(`%c[AccompEvolution @ Bar ${this.epoch}] Mutating accompaniment phrase for new bundle. Now using phrase ${this.currentAccompPhraseIndex}.`, 'color: #87CEEB;');
         }
         output.push(...this.accompPhraseLibrary[this.currentAccompPhraseIndex]);
     }
@@ -685,6 +678,26 @@ export class FractalMusicEngine {
 
 
     const finalEvents = this.applyNaturalDecay(output, 4.0);
+
+    // --- DETAILED BAR LOG ---
+    const bassEvents = finalEvents.filter(isBass);
+    const accompEvents = finalEvents.filter(isAccompaniment);
+    const melodyEvents = finalEvents.filter(isMelody);
+    const kickEvents = finalEvents.filter(isKick);
+    const snareEvents = finalEvents.filter(isSnare);
+    
+    const bassTechnique = bassEvents[0]?.technique || 'off';
+    const accompTechnique = accompEvents[0]?.technique || 'off';
+    const leadTechnique = melodyEvents.length > 0 ? (melodyEvents[0]?.technique || 'on') : 'off';
+    
+    const eventCounts = `kick:${kickEvents.length}, snare:${snareEvents.length}, bass:${bassEvents.length}, accomp:${accompEvents.length}, lead:${melodyEvents.length}`;
+    
+    console.log(
+        `[Bar ${this.epoch}] sec=${navInfo.currentPart.id} bundle=${navInfo.currentBundle.id} | ` +
+        `bass=${bassTechnique} accomp=${accompTechnique} lead=${leadTechnique} | ` +
+        `events={${eventCounts}}`
+    );
+
     return { events: finalEvents, instrumentHints };
   }
 
@@ -729,5 +742,3 @@ export class FractalMusicEngine {
   }
 }
 
-
-    
