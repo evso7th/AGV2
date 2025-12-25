@@ -516,6 +516,44 @@ export function createAccompanimentAxiom(chord: GhostChord, mood: Mood, genre: G
     return axiom;
 }
 
+export function createHarmonyAxiom(chord: GhostChord, mood: Mood, genre: Genre, random: { next: () => number; nextInt: (max: number) => number }): FractalEvent[] {
+    const axiom: FractalEvent[] = [];
+    const scale = getScaleForMood(mood);
+    const rootMidi = chord.rootNote;
+    
+    const isMinor = chord.chordType === 'minor' || chord.chordType === 'diminished';
+    const third = rootMidi + (isMinor ? 3 : 4);
+    const fifth = rootMidi + 7;
+
+    const chordNotes = [rootMidi, third, fifth].filter(n => scale.some(scaleNote => scaleNote % 12 === n % 12));
+    if (chordNotes.length < 2) return [];
+    
+    const numNotes = 2 + random.nextInt(2); // 2 or 3 notes for harmony
+    let currentTime = 0;
+
+    for (let i = 0; i < numNotes; i++) {
+        const noteMidi = chordNotes[random.nextInt(chordNotes.length)] + 12 * 3; // Play in 3rd octave
+        const duration = 4.0 / numNotes;
+        
+        axiom.push({
+            type: 'harmony', // Correct type
+            note: noteMidi,
+            duration: duration,
+            time: currentTime,
+            weight: 0.5 + random.next() * 0.15, // Lower weight for harmony
+            technique: 'swell',
+            dynamics: 'p',
+            phrasing: 'legato',
+            params: { attack: 2.0, release: 3.0 }
+        });
+
+        currentTime += duration;
+    }
+
+    return axiom;
+}
+
+
 export const TEXTURE_INSTRUMENT_WEIGHTS_BY_MOOD: Record<Mood, Record<Exclude<AccompanimentInstrument, 'violin' | 'flute'>, number>> = {
   epic:          { organ: 0.4, mellotron: 0.4, synth: 0.2, piano: 0.0, guitarChords: 0.0, acousticGuitarSolo: 0.0, electricGuitar: 0.0, 'E-Bells_melody': 0.0, 'G-Drops': 0.0, 'theremin': 0.0, 'none': 0.0, 'ambientPad': 0.0, 'acousticGuitar': 0.0 },
   joyful:        { organ: 0.3, synth: 0.2, mellotron: 0.2, piano: 0.3, guitarChords: 0.0, acousticGuitarSolo: 0.0, electricGuitar: 0.0, 'E-Bells_melody': 0.0, 'G-Drops': 0.0, 'theremin': 0.0, 'none': 0.0, 'ambientPad': 0.0, 'acousticGuitar': 0.0 },
@@ -873,3 +911,4 @@ export function createMelodyMotif(chord: GhostChord, mood: Mood, random: { next:
 
 
     
+

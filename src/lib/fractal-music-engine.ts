@@ -2,7 +2,7 @@
 
 import type { FractalEvent, Mood, Genre, Technique, BassSynthParams, InstrumentType, MelodyInstrument, BassInstrument, AccompanimentInstrument, ResonanceMatrix, InstrumentHints, AccompanimentTechnique, GhostChord } from '@/types/fractal';
 import { ElectronicK, TraditionalK, AmbientK, MelancholicMinorK } from './resonance-matrices';
-import { getScaleForMood, STYLE_DRUM_PATTERNS, generateAmbientBassPhrase, createAccompanimentAxiom, PERCUSSION_SETS, TEXTURE_INSTRUMENT_WEIGHTS_BY_MOOD, getAccompanimentTechnique, createBassFill as createBassFillFromTheory, createDrumFill, AMBIENT_ACCOMPANIMENT_WEIGHTS, chooseHarmonyInstrument, mutateAccompanimentPhrase as originalMutateAccompPhrase, generateGhostHarmonyTrack, createMelodyMotif as originalCreateMelodyMotif } from './music-theory';
+import { getScaleForMood, STYLE_DRUM_PATTERNS, generateAmbientBassPhrase, createAccompanimentAxiom, PERCUSSION_SETS, TEXTURE_INSTRUMENT_WEIGHTS_BY_MOOD, getAccompanimentTechnique, createBassFill as createBassFillFromTheory, createDrumFill, AMBIENT_ACCOMPANIMENT_WEIGHTS, chooseHarmonyInstrument, mutateAccompanimentPhrase as originalMutateAccompPhrase, generateGhostHarmonyTrack, createMelodyMotif as originalCreateMelodyMotif, createHarmonyAxiom } from './music-theory';
 import { BlueprintNavigator, type NavigationInfo } from './blueprint-navigator';
 import { MelancholicAmbientBlueprint, BLUEPRINT_LIBRARY, getBlueprint } from './blueprints';
 
@@ -59,6 +59,7 @@ const isHarmony = (event: FractalEvent): boolean => event.type === 'harmony';
 const isMelody = (event: FractalEvent): boolean => event.type === 'melody';
 const isKick = (event: FractalEvent): boolean => event.type === 'drum_kick';
 const isSnare = (event: FractalEvent): boolean => event.type === 'drum_snare';
+const isRhythmic = (event: FractalEvent): boolean => (event.type as string).startsWith('drum_') || (event.type as string).startsWith('perc-');
 
 
 // === АКСОМЫ И ТРАНСФОРМАЦИИ ===
@@ -361,6 +362,12 @@ function extractTopNotes(events: FractalEvent[], maxNotes: number = 4): FractalE
         .slice(0, maxNotes);
 }
 
+const VOICE_LIMITS = {
+    accompaniment: 6,
+    melody: 3,
+};
+
+
 // === ОСНОВНОЙ КЛАСС ===
 export class FractalMusicEngine {
   public config: EngineConfig;
@@ -619,59 +626,39 @@ export class FractalMusicEngine {
         return { events: [], instrumentHints: {} };
     }
     
-     if (navInfo.isPartTransition || navInfo.isBundleTransition) {
-        console.log(navInfo.logMessage);
-    }
-    
-    const output: FractalEvent[] = [];
+    let allEvents: FractalEvent[] = [];
     instrumentHints.accompaniment = this._chooseInstrumentForPart('accompaniment', navInfo.currentPart);
     instrumentHints.melody = this._chooseInstrumentForPart('melody', navInfo.currentPart);
     
     const isIntro = navInfo.currentPart.id.startsWith('INTRO');
     const canVary = !isIntro || navInfo.currentPart.id.includes('3');
-    
     const PHRASE_VARIATION_INTERVAL = 4;
     
     if (canVary && this.epoch > 0 && this.epoch % PHRASE_VARIATION_INTERVAL === 0) {
+        this.currentBassPhraseIndex = (this.currentBassPhraseIndex + 1) % this.bassPhraseLibrary.length;
         if (this.random.next() < 0.6) {
             this.bassPhraseLibrary[this.currentBassPhraseIndex] = mutateBassPhrase(this.bassPhraseLibrary[this.currentBassPhraseIndex], currentChord, this.config.mood, this.config.genre, this.random);
-        } else {
-            this.currentBassPhraseIndex = (this.currentBassPhraseIndex + 1) % this.bassPhraseLibrary.length;
         }
-
+        this.currentAccompPhraseIndex = (this.currentAccompPhraseIndex + 1) % this.accompPhraseLibrary.length;
         if (this.random.next() < 0.6) {
             this.accompPhraseLibrary[this.currentAccompPhraseIndex] = mutateAccompanimentPhrase(this.accompPhraseLibrary[this.currentAccompPhraseIndex], currentChord, this.config.mood, this.config.genre, this.random);
-        } else {
-            this.currentAccompPhraseIndex = (this.currentAccompPhraseIndex + 1) % this.accompPhraseLibrary.length;
         }
     }
 
-    // --- BASS GENERATION ---
-    if (navInfo.currentPart.layers.bass) {
-        output.push(...this.bassPhraseLibrary[this.currentBassPhraseIndex]);
-    }
-    
-    // --- DRUM GENERATION ---
-    if (navInfo.currentPart.layers.drums) {
-        output.push(...this.generateDrumEvents(navInfo));
-    }
-    
-    // --- ACCOMPANIMENT GENERATION ---
-    if (navInfo.currentPart.layers.accompaniment) {
-        output.push(...this.accompPhraseLibrary[this.currentAccompPhraseIndex]);
-    }
-    
-    // --- HARMONY GENERATION ---
+    let bassEvents = navInfo.currentPart.layers.bass ? this.bassPhraseLibrary[this.currentBassPhraseIndex] : [];
+    let drumEvents = navInfo.currentPart.layers.drums ? this.generateDrumEvents(navInfo) : [];
+    let accompEvents = navInfo.currentPart.layers.accompaniment ? this.accompPhraseLibrary[this.currentAccompPhraseIndex] : [];
+    let harmonyEvents: FractalEvent[] = [];
+    let melodyEvents: FractalEvent[] = [];
+
     // #ЗАЧЕМ: Этот блок отвечает за создание фонового гармонического слоя.
-    // #ЧТО: Он определяет инструмент для гармонии и создает для него музыкальную фразу (аксиому).
-    // #СВЯЗИ: Зависит от `currentChord` (чтобы знать тональность) и блюпринта (`navInfo`) для разрешения.
+    // #ЧТО: Он определяет инструмент для гармонии и создает для него музыкальную фразу, используя createHarmonyAxiom.
+    // #СВЯЗИ: Зависит от `currentChord` и блюпринта (`navInfo`).
     if (navInfo.currentPart.layers.harmony) {
         instrumentHints.harmony = chooseHarmonyInstrument(this.config.mood, this.random);
-        // #FIX: Восстанавливаем вызов функции, которая генерирует ноты для гармонии.
-        output.push(...createAccompanimentAxiom(currentChord, this.config.mood, this.config.genre, this.random));
+        harmonyEvents = createHarmonyAxiom(currentChord, this.config.mood, this.config.genre, this.random);
     }
     
-    // --- MELODY GENERATION ---
     // #ЗАЧЕМ: Этот блок создает основную мелодическую линию.
     // #ЧТО: Он проверяет, пора ли играть мелодию, и генерирует/мутирует мелодический мотив.
     // #СВЯЗИ: Зависит от `currentChord` и `this.currentMelodyMotif` для эволюции.
@@ -679,29 +666,34 @@ export class FractalMusicEngine {
         const melodyPlayInterval = 4;
         if (this.epoch >= this.lastMelodyPlayEpoch + melodyPlayInterval) {
              if (this.epoch > 0) {
-                 // #FIX: Восстанавливаем вызов функции, которая генерирует/мутирует мелодию.
                  this.currentMelodyMotif = createMelodyMotif(currentChord, this.config.mood, this.random, this.currentMelodyMotif);
              }
-            output.push(...this.currentMelodyMotif);
+            melodyEvents = this.currentMelodyMotif;
             this.lastMelodyPlayEpoch = this.epoch;
         }
     }
     
-    // --- TEXTURE GENERATION ---
-    // #ЗАЧЕМ: Эти блоки добавляют случайные атмосферные звуки для "живости".
-    // #ЧТО: С определенной вероятностью создают события 'sparkle' или 'sfx'.
-    // #СВЯЗИ: Зависят от блюпринта (`navInfo`) для разрешения.
+    // Применение "Бюджета Голосов"
+    if (accompEvents.length > VOICE_LIMITS.accompaniment) {
+        accompEvents = accompEvents.slice(0, VOICE_LIMITS.accompaniment);
+    }
+    if (melodyEvents.length > VOICE_LIMITS.melody) {
+        melodyEvents = melodyEvents.slice(0, VOICE_LIMITS.melody);
+    }
+
+    allEvents.push(...bassEvents, ...drumEvents, ...accompEvents, ...harmonyEvents, ...melodyEvents);
+    
     if (navInfo.currentPart.layers.sparkles && this.random.next() < 0.1) {
-        output.push({ type: 'sparkle', note: 60, time: this.random.next() * 4, duration: 1, weight: 0.5, technique: 'hit', dynamics: 'p', phrasing: 'legato', params: {mood: this.config.mood, genre: this.config.genre}});
+        allEvents.push({ type: 'sparkle', note: 60, time: this.random.next() * 4, duration: 1, weight: 0.5, technique: 'hit', dynamics: 'p', phrasing: 'legato', params: {mood: this.config.mood, genre: this.config.genre}});
     }
     if (navInfo.currentPart.layers.sfx && this.random.next() < 0.08) {
-        output.push({ type: 'sfx', note: 60, time: this.random.next() * 4, duration: 2, weight: 0.6, technique: 'swell', dynamics: 'mf', phrasing: 'legato', params: {mood: this.config.mood, genre: this.config.genre}});
+        allEvents.push({ type: 'sfx', note: 60, time: this.random.next() * 4, duration: 2, weight: 0.6, technique: 'swell', dynamics: 'mf', phrasing: 'legato', params: {mood: this.config.mood, genre: this.config.genre}});
     }
 
+    // Финальное логирование перед отправкой
+    console.log(`[FME.generateOneBar] Generated Events: Total=${allEvents.length}, Harmony=${harmonyEvents.length}, Melody=${melodyEvents.length}, Accomp=${accompEvents.length}, Bass=${bassEvents.length}, Drums=${drumEvents.length}`);
 
-    const finalEvents = this.applyNaturalDecay(output, 4.0);
-
-    return { events: finalEvents, instrumentHints };
+    return { events: allEvents, instrumentHints };
   }
 
 
@@ -715,21 +707,17 @@ export class FractalMusicEngine {
   public evolve(barDuration: number, barCount: number): { events: FractalEvent[], instrumentHints: InstrumentHints } {
     this.epoch = barCount;
 
-    // Check if it's time to start the promenade
     if (!this.isPromenadeActive && this.epoch >= this.navigator.totalBars && this.navigator.totalBars > 0) {
       console.log(`%c[FME] End of suite reached. Activating PROMENADE.`, 'color: #FFD700; font-weight: bold');
       this.isPromenadeActive = true;
-      // Immediately return the full promenade score. The next tick will trigger the reset.
       return {
         events: this.promenadeBars,
         instrumentHints: { bass: 'glideBass', accompaniment: 'synth' }
       };
     }
     
-    // Check if we need to reset after the promenade has conceptually "finished"
     if (this.isPromenadeActive) {
       this._resetForNewSuite();
-      // After reset, we generate the first bar of the new suite
     }
     
     if (!isFinite(barDuration)) return { events: [], instrumentHints: {} };
