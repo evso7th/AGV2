@@ -704,24 +704,31 @@ export class FractalMusicEngine {
 
     const finalEvents = this.applyNaturalDecay(output, 4.0);
 
+    // --- DIAGNOSTIC LOG POINT 1 ---
+    const harmonyCount = finalEvents.filter(e => e.type === 'harmony').length;
+    const melodyCount = finalEvents.filter(e => e.type === 'melody').length;
+    if (harmonyCount > 0 || melodyCount > 0) {
+        console.log(`[FME.generateOneBar] Generated Events: Total=${finalEvents.length}, Harmony=${harmonyCount}, Melody=${melodyCount}`);
+    }
+
     // --- DETAILED BAR LOG ---
     const bassEvents = finalEvents.filter(isBass);
     const accompEvents = finalEvents.filter(isAccompaniment);
-    const melodyEvents = finalEvents.filter(isMelody);
+    const melodyEventsLog = finalEvents.filter(isMelody);
     const kickEvents = finalEvents.filter(isKick);
     const snareEvents = finalEvents.filter(isSnare);
     
     const bassTechnique = bassEvents.length > 0 ? (bassEvents[0]?.technique || 'on') : 'off';
     const accompTechnique = accompEvents.length > 0 ? (accompEvents[0]?.technique || 'on') : 'off';
-    const leadTechnique = melodyEvents.length > 0 ? (melodyEvents[0]?.technique || 'on') : 'off';
+    const leadTechnique = melodyEventsLog.length > 0 ? (melodyEventsLog[0]?.technique || 'on') : 'off';
     
-    const eventCounts = `kick:${kickEvents.length}, snare:${snareEvents.length}, bass:${bassEvents.length}, accomp:${accompEvents.length}, lead:${melodyEvents.length}`;
+    const eventCounts = `kick:${kickEvents.length}, snare:${snareEvents.length}, bass:${bassEvents.length}, accomp:${accompEvents.length}, lead:${melodyEventsLog.length}`;
     
-    console.log(
-        `[Bar ${this.epoch}] sec=${navInfo.currentPart.id} bundle=${navInfo.currentBundle.id} | ` +
-        `bass=${bassTechnique} accomp=${accompTechnique} lead=${leadTechnique} | ` +
-        `events={${eventCounts}}`
-    );
+    // console.log(
+    //     `[Bar ${this.epoch}] sec=${navInfo.currentPart.id} bundle=${navInfo.currentBundle.id} | ` +
+    //     `bass=${bassTechnique} accomp=${accompTechnique} lead=${leadTechnique} | ` +
+    //     `events={${eventCounts}}`
+    // );
 
     return { events: finalEvents, instrumentHints };
   }
@@ -766,5 +773,3 @@ export class FractalMusicEngine {
     return { events, instrumentHints };
   }
 }
-
-    

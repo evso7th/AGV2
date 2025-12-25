@@ -129,6 +129,12 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
         return;
     }
 
+    // DIAGNOSTIC LOG POINT 3: What events have reached the final scheduler?
+    const harmonyCount = events.filter(e => e.type === 'harmony').length;
+    const melodyCount = events.filter(e => e.type === 'melody').length;
+    console.log(`[AudioEngine.scheduleEvents] Received Events: Total=${events.length}, Harmony=${harmonyCount}, Melody=${melodyCount}`);
+
+
     const composerControls = settingsRef.current?.composerControlsInstruments;
 
     const drumEvents: FractalEvent[] = [];
