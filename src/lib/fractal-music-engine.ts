@@ -635,10 +635,10 @@ export class FractalMusicEngine {
         return { events: [], instrumentHints: {} };
     }
     
-    if (navInfo.logMessage && !navInfo.currentPart.id.startsWith('PROMENADE')) {
+    if (navInfo.isPartTransition) {
         console.log(navInfo.logMessage);
     }
-
+    
     const output: FractalEvent[] = [];
     instrumentHints.accompaniment = this._chooseInstrumentForPart('accompaniment', navInfo.currentPart);
     instrumentHints.melody = this._chooseInstrumentForPart('melody', navInfo.currentPart);
@@ -646,23 +646,23 @@ export class FractalMusicEngine {
     const isIntro = navInfo.currentPart.id.startsWith('INTRO');
     const canVary = !isIntro || navInfo.currentPart.id.includes('3');
     
-    if (canVary && this.epoch % 4 === 0 && this.epoch > 0) {
+    if (canVary && this.epoch > 0 && this.epoch % 4 === 0) {
         // Vary bass phrase
-        if (this.random.next() < 0.6) { // 60% chance to mutate
-            console.log(`[BassEvolution @ Bar ${this.epoch}] Mutating bass phrase ${this.currentBassPhraseIndex}.`);
-            this.bassPhraseLibrary[this.currentBassPhraseIndex] = mutateBassPhrase(this.bassPhraseLibrary[this.currentBassPhraseIndex], currentChord, this.config.mood, this.config.genre, this.random);
-        } else { // 40% chance to switch to the next phrase
+        if (this.random.next() < 0.4) { // 40% chance to switch
             this.currentBassPhraseIndex = (this.currentBassPhraseIndex + 1) % this.bassPhraseLibrary.length;
-            console.log(`[BassEvolution @ Bar ${this.epoch}] Switching to bass phrase ${this.currentBassPhraseIndex}.`);
+            console.log(`%c[BassEvolution] Switching to next phrase: index ${this.currentBassPhraseIndex}`, "color: #DAA520;");
+        } else { // 60% chance to mutate
+            console.log(`%c[BassEvolution] Mutating current phrase: index ${this.currentBassPhraseIndex}`, "color: #FF8C00;");
+            this.bassPhraseLibrary[this.currentBassPhraseIndex] = mutateBassPhrase(this.bassPhraseLibrary[this.currentBassPhraseIndex], currentChord, this.config.mood, this.config.genre, this.random);
         }
         
         // Vary accompaniment phrase
-        if (this.random.next() < 0.6) { // 60% chance to mutate
-             console.log(`[AccompEvolution @ Bar ${this.epoch}] Mutating accompaniment phrase ${this.currentAccompPhraseIndex}.`);
-            this.accompPhraseLibrary[this.currentAccompPhraseIndex] = mutateAccompanimentPhrase(this.accompPhraseLibrary[this.currentAccompPhraseIndex], currentChord, this.config.mood, this.config.genre, this.random);
-        } else { // 40% chance to switch to the next phrase
+         if (this.random.next() < 0.4) { // 40% chance to switch
             this.currentAccompPhraseIndex = (this.currentAccompPhraseIndex + 1) % this.accompPhraseLibrary.length;
-            console.log(`[AccompEvolution @ Bar ${this.epoch}] Switching to accompaniment phrase ${this.currentAccompPhraseIndex}.`);
+            console.log(`%c[AccompEvolution] Switching to next phrase: index ${this.currentAccompPhraseIndex}`, "color: #ADD8E6;");
+        } else { // 60% chance to mutate
+            console.log(`%c[AccompEvolution] Mutating current phrase: index ${this.currentAccompPhraseIndex}`, "color: #87CEEB;");
+            this.accompPhraseLibrary[this.currentAccompPhraseIndex] = mutateAccompanimentPhrase(this.accompPhraseLibrary[this.currentAccompPhraseIndex], currentChord, this.config.mood, this.config.genre, this.random);
         }
     }
 
@@ -756,3 +756,4 @@ export class FractalMusicEngine {
   }
 }
 
+    
