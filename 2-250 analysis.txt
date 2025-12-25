@@ -1,0 +1,167 @@
+Очень хорошо! По логам видно: у тебя уже «живая» ткань (микро‑мутации каждый такт, связная форма, отдельный променада‑бридж). Ниже — первое впечатление, что бросается в глаза по логам, и набор быстрых, точечных апгрейдов с готовыми скетчами кода. Всё без внедрения «полного» Ghost — с твоей матрёшкой (бас → аккомп → мелодия).
+
+Первое впечатление (сильные стороны)
+- Форма держится: секционные переходы читаются (Intro→Build @24, Build→Main @54, Main→Release @96; Promenade 4 бара между сюитами).
+- «Живость без расползания»: Rhythmic/Velocity/Register drift в каждом такте дают движение, но не рвут композицию.
+- Инфраструктура аудио готова: Worklet/менеджеры/семплеры грузятся, шина SFX/Sparkles работает, падение слоёв по секциям ок.
+
+Что бросается в глаза (и где можно усилить)
+- BASS REVIVAL срабатывает слишком часто — почти каждый бар. Даже если бас «есть всегда», частая регенерация аксиом = зря тратим CPU/детерминизм и рискуем случайной «ломкой» фундамента. Нужен кулдаун/бюджет и явная причина в логе.
+- Sparkles/SFX в интро: логи показывают sparkles @1, 17 и SFX @2, 7, 15… Ранее ты сам запрещал «искры» в интро; стоит ввести «входные ворота» и бюджет на часть/бандл.
+- Weather events (ONE‑OFF scenario) срабатывают часто (8, 27, 38, 50, 62, 74, 79, 90, 92, 105, 110, 114…) — как минимум сделай backoff/бюджет, чтобы не «звенеть» каждые ~10–12 тактов.
+- Многократная инициализация (в конце лога есть тройные init подряд) — поставь защиту от двойного старта одной и той же сюиты/партии.
+- Мелодия = «верх аккомпа»: работает, но звучание быстро узнаваемое. Твой «TopVoice Manager» — прям мастхэв: соседние/терцовые шаги поверх верхнего голоса аккомпа, ограничение по регистру и избегание точного унисона.
+
+Быстрые апгрейды (P0) — минимальные, но дадут +стабильность/+качество
+
+1) BassRevival: кулдаун/бюджет + причина
+- цель: не чаще раз в 8–16 тактов; ограничить количество ревивалов в части; печатать reason
+
+```ts
+// state
+private lastBassRevivalBar = -Infinity
+private bassRevivalCountInPart = 0
+private readonly minBarsBetweenBassRevival = 16
+private readonly bassRevivalBudgetPerPart = 2
+
+private maybeReviveBass(reason: 'pool_depleted'|'plan_exhausted'|'age_timeout'|'density_mismatch') {
+  const bar = this.epoch
+  if (bar - this.lastBassRevivalBar < this.minBarsBetweenBassRevival) {
+    console.debug(`[BassRevival SKIP] cooldown ${bar - this.lastBassRevivalBar} bars`)
+    return
+  }
+  if (this.bassRevivalCountInPart >= this.bassRevivalBudgetPerPart) {
+    console.debug(`[BassRevival SKIP] budget reached in part`)
+    return
+  }
+  this.lastBassRevivalBar = bar
+  this.bassRevivalCountInPart++
+  console.warn(`[BassRevival @${bar}] reason=${reason} countPart=${this.bassRevivalCountInPart}`)
+  // ... create new bass axiom
+}
+
+// сбрасывай счётчик на границе части:
+onPartChange(() => { this.bassRevivalCountInPart = 0 })
+```
+
+2) Ворота для Sparkles/SFX + бюджет по части
+- цель: не запускать в Intro/Promenade; ограничить частоту (>=8 тактов «тишины» между событиями) и количество на часть
+
+```ts
+class TriggerBudget {
+  constructor(private perPart=3, private minGapBars=8){ }
+  private lastBar = -Infinity; private used = 0
+  reset(){ this.used = 0; this.lastBar = -Infinity }
+  try(bar:number){ if (this.used>=this.perPart || (bar - this.lastBar) < this.minGapBars) return false
+    this.used++; this.lastBar = bar; return true }
+}
+
+const sparkleBudget = new TriggerBudget(3, 12)
+const sfxBudget = new TriggerBudget(3, 12)
+
+function maybeTriggerSparkle(sectionName:string, bar:number) {
+  if (sectionName === 'INTRO' || sectionName === 'PROMENADE') return
+  if (!sparkleBudget.try(bar)) return
+  // ... trigger sparkle
+}
+```
+
+3) Weather events: задай backoff и «зону применения»
+```ts
+const weather = new TriggerBudget(2, 16) // не более 2 на часть, минимум 16 тактов между
+function maybeWeather(section:string, bar:number){
+  if (section==='INTRO' || section==='OUTRO') return
+  if (weather.try(bar)) triggerWeather()
+}
+onPartChange(()=>weather.reset())
+```
+
+4) Guard от двойного init
+```ts
+if (this.currentSuiteId === suiteId && this.initialized) {
+  console.warn(`[Init] Suite "${suiteId}" already initialized; skip re-init`)
+  return
+}
+this.currentSuiteId = suiteId; this.initialized = true
+```
+
+5) «HarmonySnapshot» (лайт‑гоуст) — без Ghost Conductor
+- цель: аккомп/мелодия всегда знают «корень», даже если бас замолчит (instrumentHint='none')
+
+```ts
+type HarmonySnapshot = {
+  bar:number, rootMidi:number,
+  quality:'min'|'maj'|'sus2'|'sus4', seventh?:'min7'|'maj7', add9?:boolean, add11?:boolean,
+  modeHint:'dorian'|'aeolian'|'ionian'
+}
+
+function deriveHarmonyFromBass(
+  bassPlan: {bar:number, notes:number[]}[], keyMidi:number, modeHint:HarmonySnapshot['modeHint']
+): Map<number,HarmonySnapshot> {
+  const map = new Map<number,HarmonySnapshot>()
+  let lastRoot = keyMidi
+  for (const b of bassPlan) {
+    const root = pickRoot(b.notes) ?? lastRoot; lastRoot = root
+    const q = modeHint==='dorian' ? {quality:'min',seventh:'min7',add9:true}
+            : modeHint==='aeolian'? {quality:'min',seventh:'min7',add11:true}
+            : {quality:'maj',seventh:'maj7',add9:true}
+    map.set(b.bar, { bar:b.bar, rootMidi:root, modeHint, ...q })
+  }
+  return map
+}
+```
+- В generateOneBar: currentSnapshot = harmonyMap.get(bar) || lastSnapshot; аккомп и мелодия читают его, не зависят от текущей атаки баса.
+
+6) Cap микромутаций «в такт»
+- чтобы не навешивать 3–4 микросдвига каждый бар
+
+```ts
+const microCap = 2
+let microAppliedThisBar = 0
+function tryMicro(mutation:()=>void) {
+  if (microAppliedThisBar >= microCap) return
+  mutation(); microAppliedThisBar++
+}
+onBarStart(()=> microAppliedThisBar = 0)
+```
+
+7) TopVoice Manager (черновик сигнатуры)
+```ts
+function nextTopVoice(prev:number, chordTop:number, scale:number[]): number {
+  const candidates = [chordTop+2, chordTop-2, chordTop+4, chordTop-4].filter(n=>inScale(n, scale))
+  // избегаем точного унисона с chordTop
+  return candidates.sort((a,b)=>
+    (Math.abs(a - prev) + (Math.abs(a - chordTop)<1?100:0))
+    - (Math.abs(b - prev) + (Math.abs(b - chordTop)<1?100:0))
+  )[0] ?? chordTop+2
+}
+```
+
+Диагностика (что добавить в логи для «полной картины»)
+- Init (раз в сьюту):
+  - [Suite Init] id=…, bpm=…, totalBars=120; секции (name, start, end, instr); bassPlan.len; accompPlan.len
+- Каждый бар:
+  - [Bar X] sec=BUILD bundle=2/… bassPat=offbeat hats=16 ride=off accomp=long_chords lead=off events={kick:..,bass:..,hats:..,pads:..,lead:..,arp:..}
+  - Если включишь HarmonySnapshot: chord=root=…, q=min7, +9/+11
+- Мутации:
+  - [Mutation] type=micro reason=bundle_boundary (или every_bar_accomp) cap=2/2 applied=Rhythm,Velocity
+  - [Mutation] type=macro reason=part_boundary from=BUILD to=MAIN
+- BassRevival:
+  - [BassRevival @bar] reason=… poolSize=… cooldownOk=true
+- Weather/Sparkle:
+  - [Sparkle] allowed=false section=INTRO (если сдержали)
+  - [Weather] skip (budget/cooldown)
+
+Почему это улучшит звук/стабильность
+- Revival кулдаун и бюджеты снимут «дерганье» фундамента и сократят случайный дрейф тембра/ритма.
+- Sparkle/SFX и Weather перестанут «шить» интро/тихие места.
+- HarmonySnapshot даст крепкую опору для аккомпа/мелодии при любом состоянии баса.
+- Cap микромутаций удержит «дыхание» и CPU.
+- Guard от двойных init уберёт лишние перезапуски и раздувание логов.
+
+Ответы на твои ремарки
+- «Бас есть всегда» — ок, тогда BASS REVIVAL особенно важно приручить: он теперь не «восстанавливает пропавший бас», а «ничего не должен делать» чаще, чем раз в несколько тактов/на границе части.
+- «Матрешка мутаций» — это звучит, и по логам видно, что Macro = на частях, Micro = на бандлах (и ещё микро в аккомпе каждый такт). Оставь «каждый такт» для аккомпа, но введи cap и приоритет (в такт не более 2 микро: rythm/velocity; register — не чаще, чем раз в 2–4 такта).
+- «TopVoice Manager» — рад, что зашёл. Это сразу уменьшит «узнаваемую ступеньку» и добавит мелодичности без ломки стиля.
+
+Если пришлёшь 30–40 тактов обновлённых логов с «бар‑строкой» (sec, techniques, events, +HarmonySnapshot), я дам следующее ревью: проверим, уменьшились ли Revival, не «звенят» ли sparkles в интро, равномернее ли распределены weather и как выглядит плотность (onset rate) по частям.

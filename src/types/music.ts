@@ -107,7 +107,7 @@ export type InstrumentSettings = {
       volume: number; // 0-1
   };
   harmony: {
-      name: 'piano' | 'guitarChords' | 'none';
+      name: 'piano' | 'guitarChords' | 'acousticGuitarSolo' | 'flute' | 'violin' | 'none';
       volume: number; // 0-1
   };
 };
@@ -210,7 +210,7 @@ export type BlueprintPart = {
   instrumentEntry?: { [key: string]: number };
   instrumentExit?: { [key: string]: number };
   instrumentRules: {
-    [key: string]: InstrumentRules;
+    [key: string]: any;
   };
   bundles: BlueprintBundle[];
   outroFill: FillPolicy | null;
@@ -250,3 +250,5 @@ export type MusicBlueprint = {
     continuity: any; // Define this type more strictly later
     rendering: any; // Define this type more strictly later
 };
+
+    
