@@ -1,10 +1,10 @@
 
 
-import type { FractalEvent, Mood, Genre, Technique, BassSynthParams, InstrumentType, MelodyInstrument, BassInstrument, AccompanimentInstrument, ResonanceMatrix, InstrumentHints, AccompanimentTechnique, BlueprintPart } from '@/types/fractal';
+import type { FractalEvent, Mood, Genre, Technique, BassSynthParams, InstrumentType, MelodyInstrument, BassInstrument, AccompanimentInstrument, ResonanceMatrix, InstrumentHints, AccompanimentTechnique, BlueprintPart, InstrumentationRules } from '@/types/fractal';
 import { ElectronicK, TraditionalK, AmbientK, MelancholicMinorK } from './resonance-matrices';
 import { getScaleForMood, STYLE_DRUM_PATTERNS, generateAmbientBassPhrase, mutateBassPhrase, createAccompanimentAxiom, PERCUSSION_SETS, TEXTURE_INSTRUMENT_WEIGHTS_BY_MOOD, getAccompanimentTechnique, createBassFill as createBassFillFromTheory, createDrumFill, AMBIENT_ACCOMPANIMENT_WEIGHTS, chooseHarmonyInstrument, mutateAccompanimentPhrase } from './music-theory';
 import { BlueprintNavigator, type NavigationInfo } from './blueprint-navigator';
-import { MelancholicAmbientBlueprint, BLUEPRINT_LIBRARY } from './blueprints';
+import { MelancholicAmbientBlueprint, BLUEPRINT_LIBRARY, getBlueprint } from './blueprints';
 
 
 export type Branch = {
@@ -215,7 +215,7 @@ export class FractalMusicEngine {
 
   constructor(config: EngineConfig) {
     this.config = { ...config };
-    this.navigator = new BlueprintNavigator(BLUEPRINT_LIBRARY[config.mood] || MelancholicAmbientBlueprint, config.seed);
+    this.navigator = new BlueprintNavigator(getBlueprint(config.genre, config.mood), config.seed, config.genre, config.mood);
     this.random = seededRandom(config.seed);
     this.nextWeatherEventEpoch = 0;
     this.initialize();
@@ -236,8 +236,8 @@ export class FractalMusicEngine {
       
       if(moodOrGenreChanged) {
           console.log(`[FME] Mood or Genre changed. Re-initializing with new blueprint for mood: ${this.config.mood}`);
-          const blueprint = BLUEPRINT_LIBRARY[this.config.mood] || MelancholicAmbientBlueprint;
-          this.navigator = new BlueprintNavigator(blueprint, this.config.seed);
+          const blueprint = getBlueprint(this.config.genre, this.config.mood);
+          this.navigator = new BlueprintNavigator(blueprint, this.config.seed, this.config.genre, this.config.mood);
           this.initialize();
       }
   }
@@ -345,7 +345,7 @@ export class FractalMusicEngine {
             return options[0].name;
         }
 
-        const rules = currentPartInfo.instrumentation[part];
+        const rules = currentPartInfo.instrumentation[part] as InstrumentationRules<any>;
         if (rules && rules.strategy === 'weighted' && rules.options.length > 0) {
             const totalWeight = rules.options.reduce((sum, opt) => sum + opt.weight, 0);
             let rand = this.random.next() * totalWeight;

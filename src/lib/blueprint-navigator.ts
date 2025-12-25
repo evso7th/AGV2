@@ -1,5 +1,6 @@
 
-import type { MusicBlueprint, BlueprintPart, BlueprintBundle } from '@/types/music';
+
+import type { MusicBlueprint, BlueprintPart, BlueprintBundle, Genre, Mood, InstrumentationRules, MelodyInstrument, AccompanimentInstrument, BassInstrument } from '@/types/music';
 
 // Helper function for seeded random numbers - kept for potential future use in axiom selection
 function seededRandom(seed: number) {
@@ -35,6 +36,25 @@ export type NavigationInfo = {
   logMessage: string | null;
 };
 
+function formatInstrumentation(instrumentation?: { [key: string]: any }): string {
+    if (!instrumentation) {
+        return 'Instrumentation: (none)';
+    }
+
+    const parts = Object.keys(instrumentation).map(partKey => {
+        const rule = instrumentation[partKey] as InstrumentationRules<any>;
+        if (rule && rule.strategy === 'weighted' && rule.options) {
+            const optionsStr = rule.options
+                .map(opt => `${opt.name}:${Math.round(opt.weight * 100)}%`)
+                .join(',');
+            return `${partKey}(${optionsStr})`;
+        }
+        return null;
+    }).filter(Boolean);
+
+    return `Instruments: ${parts.join(' | ')}`;
+}
+
 /**
  * A class dedicated to navigating the hierarchical structure of a MusicBlueprint.
  * It tracks the current position (Part, Bundle) based on the bar count ('epoch').
@@ -42,12 +62,16 @@ export type NavigationInfo = {
  * This version uses a deterministic "bookkeeping" approach.
  */
 export class BlueprintNavigator {
-    private blueprint: MusicBlueprint;
+    public blueprint: MusicBlueprint;
     private partBoundaries: PartBoundary[] = [];
     public totalBars: number;
+    private genre: Genre;
+    private mood: Mood;
 
-    constructor(blueprint: MusicBlueprint, seed: number) {
+    constructor(blueprint: MusicBlueprint, seed: number, genre: Genre, mood: Mood) {
         this.blueprint = blueprint;
+        this.genre = genre;
+        this.mood = mood;
         
         // Use a fixed, preferred total duration for predictability.
         this.totalBars = this.blueprint.structure.totalDuration.preferredBars;
@@ -150,15 +174,19 @@ export class BlueprintNavigator {
             return null;
         }
 
-        // Simplified transition logic
         const isPartTransition = effectiveBar === partInfo.startBar;
         const isBundleTransition = !isPartTransition && effectiveBar === bundleInfo.startBar;
         
         let logMessage: string | null = null;
-        if (isPartTransition) {
-             logMessage = `%c[NAVIGATOR @ Bar ${currentBar}] Transition: Part ${partInfo.part.id}. Mutation (macro).`;
-        } else if (isBundleTransition) {
-             logMessage = `%c[NAVIGATOR @ Bar ${currentBar}] Transition: Bundle ${bundleInfo.bundle.id}. Mutation (micro).`;
+        if (isPartTransition || isBundleTransition) {
+            const transitionType = isPartTransition ? "Part" : "Bundle";
+            const mutationType = isPartTransition ? "MACRO" : "micro";
+            const instrumentationLog = formatInstrumentation(partInfo.part.instrumentation);
+            
+            logMessage = `%c[NAVIGATOR @ Bar ${currentBar}] ${transitionType} Transition: ${partInfo.part.id} / ${bundleInfo.bundle.id}\n` +
+                         `  - Context: Genre: ${this.genre}, Mood: ${this.mood}, BP: ${this.blueprint.name}\n` +
+                         `  - ${instrumentationLog}\n` +
+                         `  - Mutation: ${mutationType}`;
         }
 
 
