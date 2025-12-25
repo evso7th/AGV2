@@ -1,7 +1,169 @@
 
-
 // src/lib/music-theory.ts
 import type { FractalEvent, Mood, Genre, Technique, BassSynthParams, InstrumentType, AccompanimentInstrument, InstrumentHints, AccompanimentTechnique, GhostChord } from '@/types/fractal';
+import { ElectronicK, TraditionalK, AmbientK, MelancholicMinorK } from './resonance-matrices';
+import { BlueprintNavigator, type NavigationInfo } from './blueprint-navigator';
+import { MelancholicAmbientBlueprint, BLUEPRINT_LIBRARY, getBlueprint } from './blueprints';
+
+
+export type Branch = {
+  id: string;
+  events: FractalEvent[];
+  weight: number;
+  age: number;
+  technique: Technique;
+  type: 'bass' | 'drums' | 'accompaniment' | 'harmony' | 'melody';
+  endTime: number; // Абсолютное время окончания последнего события в ветке
+};
+
+interface EngineConfig {
+  mood: Mood;
+  genre: Genre;
+  tempo: number;
+  density: number;
+  lambda: number;
+  organic: number;
+  drumSettings: any;
+  seed: number;
+  composerControlsInstruments?: boolean;
+}
+
+type PlayPlanItem = {
+    phraseIndex: number;
+    repetitions: number;
+    instrument: AccompanimentInstrument;
+};
+
+// === ВСПОМОГАТЕЛЬНЫЕ ФУНКЦИИ ===
+
+function seededRandom(seed: number) {
+  let state = seed;
+  const self = {
+    next: () => {
+      state = (state * 1664525 + 1013904223) % Math.pow(2, 32);
+      return state / Math.pow(2, 32);
+    },
+    nextInt: (max: number) => Math.floor(self.next() * max)
+  };
+  return self;
+}
+
+function safeTime(value: number, fallback: number = 0): number {
+  return isFinite(value) ? value : fallback;
+}
+
+const isBass = (event: FractalEvent): boolean => event.type === 'bass';
+const isAccompaniment = (event: FractalEvent): boolean => event.type === 'accompaniment';
+const isHarmony = (event: FractalEvent): boolean => event.type === 'harmony';
+const isMelody = (event: FractalEvent): boolean => event.type === 'melody';
+const isKick = (event: FractalEvent): boolean => event.type === 'drum_kick';
+const isSnare = (event: FractalEvent): boolean => event.type === 'drum_snare';
+const isRhythmic = (event: FractalEvent): boolean => (event.type as string).startsWith('drum_') || (event.type as string).startsWith('perc-');
+
+
+// === АКСОМЫ И ТРАНСФОРМАЦИИ ===
+function mutateBassPhrase(phrase: FractalEvent[], chord: GhostChord, mood: Mood, genre: Genre, random: { next: () => number, nextInt: (max: number) => number }): FractalEvent[] {
+    if (phrase.length === 0) return generateAmbientBassPhrase(chord, mood, genre, random);
+
+    const newPhrase: FractalEvent[] = JSON.parse(JSON.stringify(phrase));
+    const mutationType = random.nextInt(4);
+
+    switch (mutationType) {
+        case 0: // Более заметное ритмическое изменение
+            const noteToChange = newPhrase[random.nextInt(newPhrase.length)];
+            noteToChange.duration *= (random.next() > 0.5 ? 1.5 : 0.66);
+            if (newPhrase.length > 1) {
+                const anotherNote = newPhrase[random.nextInt(newPhrase.length)];
+                anotherNote.duration *= (random.next() > 0.5 ? 1.25 : 0.75);
+            }
+            break;
+
+        case 1: // Инверсия высоты тона внутри фразы
+             if (newPhrase.length > 1) {
+                const firstNote = newPhrase[0].note;
+                newPhrase.forEach(event => {
+                    const interval = event.note - firstNote;
+                    event.note = firstNote - interval;
+                });
+             }
+            break;
+
+        case 2: // Замена половины фразы на новый материал
+            if (newPhrase.length > 2) {
+                const half = Math.ceil(newPhrase.length / 2);
+                const newHalf = generateAmbientBassPhrase(chord, mood, genre, random).slice(0, half);
+                newPhrase.splice(0, half, ...newHalf);
+            }
+            break;
+
+        case 3: // Добавление "проходящей" ноты
+            if (newPhrase.length > 1) {
+                const insertIndex = random.nextInt(newPhrase.length - 1) + 1;
+                const prevNote = newPhrase[insertIndex-1];
+                const scale = getScaleForMood(mood);
+                const passingNoteMidi = scale[Math.floor(random.next() * scale.length)];
+                
+                const newNote: FractalEvent = {
+                    ...prevNote,
+                    note: passingNoteMidi,
+                    duration: 0.5, // Короткая проходящая нота
+                    time: prevNote.time + prevNote.duration / 2,
+                    weight: prevNote.weight * 0.8
+                };
+                newPhrase.splice(insertIndex, 0, newNote);
+            }
+            break;
+    }
+
+    // Re-normalize timings after mutation
+    let totalDuration = newPhrase.reduce((sum, e) => sum + e.duration, 0);
+    if (totalDuration > 0) {
+        const scaleFactor = 4.0 / totalDuration;
+        let runningTime = 0;
+        newPhrase.forEach(e => {
+            e.duration *= scaleFactor;
+            e.time = runningTime;
+            runningTime += e.duration;
+        });
+    }
+
+    return newPhrase;
+}
+
+function mutateAccompanimentPhrase(phrase: FractalEvent[], chord: GhostChord, mood: Mood, genre: Genre, random: { next: () => number, nextInt: (max: number) => number }): FractalEvent[] {
+    const newPhrase: FractalEvent[] = JSON.parse(JSON.stringify(phrase));
+    if (newPhrase.length === 0) return [];
+    
+    const mutationType = random.nextInt(4);
+    switch (mutationType) {
+        case 0: // Изменение ритма (арпеджио -> аккорд и наоборот)
+            if (newPhrase.length > 1) {
+                const totalDuration = newPhrase.reduce((sum, e) => sum + e.duration, 0);
+                newPhrase.splice(1); // Оставляем только первую ноту
+                newPhrase[0].duration = totalDuration;
+                newPhrase[0].time = 0;
+            }
+            break;
+        case 1: // Смена октавы
+            const octaveShift = (random.next() > 0.5) ? 12 : -12;
+            newPhrase.forEach(e => e.note += octaveShift);
+            break;
+        case 2: // Ретроград (обратное движение)
+            const noteOrder = newPhrase.map(e => e.note).reverse();
+            newPhrase.forEach((e, i) => e.note = noteOrder[i]);
+            break;
+        case 3: // Добавление гармонического тона
+            if (newPhrase.length < 5) {
+                const scale = getScaleForMood(mood);
+                const newNoteMidi = scale[random.nextInt(scale.length)] + 12 * 4;
+                const lastNote = newPhrase[newPhrase.length - 1];
+                newPhrase.push({ ...lastNote, note: newNoteMidi, time: lastNote.time + 0.1 });
+            }
+            break;
+    }
+
+    return newPhrase;
+}
 
 export const PERCUSSION_SETS: Record<'NEUTRAL' | 'ELECTRONIC' | 'DARK', InstrumentType[]> = {
     NEUTRAL: ['perc-001', 'perc-002', 'perc-005', 'perc-006', 'perc-013', 'perc-014', 'perc-015', 'drum_ride', 'cymbal_bell1'],
@@ -143,129 +305,82 @@ export function generateAmbientBassPhrase(chord: GhostChord, mood: Mood, genre: 
     return phrase;
 };
 
-
-export function mutateBassPhrase(phrase: FractalEvent[], chord: GhostChord, mood: Mood, genre: Genre, random: { next: () => number, nextInt: (max: number) => number }): FractalEvent[] {
-    if (phrase.length === 0) return generateAmbientBassPhrase(chord, mood, genre, random);
-
-    const newPhrase: FractalEvent[] = JSON.parse(JSON.stringify(phrase));
-    const mutationType = random.nextInt(4);
+export function createAccompanimentAxiom(chord: GhostChord, mood: Mood, genre: Genre, random: { next: () => number; nextInt: (max: number) => number }, tempo: number = 120): FractalEvent[] {
+    const swellParams = { cutoff: 300, resonance: 0.8, distortion: 0.02, portamento: 0.0, attack: 1.5, release: 2.5 };
+    const axiom: FractalEvent[] = [];
     
-    switch (mutationType) {
-        case 0: // Rhythmic mutation
-            const noteToChange = newPhrase[random.nextInt(newPhrase.length)];
-            noteToChange.duration *= (random.next() > 0.5 ? 1.5 : 0.5);
-            break;
+    const scale = getScaleForMood(mood);
+    const rootMidi = chord.rootNote;
+    
+    const isMinor = chord.chordType === 'minor' || chord.chordType === 'diminished';
+    const third = rootMidi + (isMinor ? 3 : 4);
+    const fifth = rootMidi + 7;
 
-        case 1: // Pitch mutation (within chord)
-            const noteToTranspose = newPhrase[random.nextInt(newPhrase.length)];
-            const scale = getScaleForMood(mood);
-             const isMinor = chord.chordType === 'minor' || chord.chordType === 'diminished';
-            const possibleNotes = [
-                chord.rootNote,
-                chord.rootNote + 7, // 5th
-                chord.rootNote + (isMinor ? 3 : 4) // 3rd
-            ].filter(n => scale.some(scaleNote => scaleNote % 12 === n % 12));
+    const chordNotes = [rootMidi, third, fifth].filter(n => scale.some(scaleNote => scaleNote % 12 === n % 12));
+    if (chordNotes.length < 2) return [];
 
-            if (possibleNotes.length > 0) {
-                 noteToTranspose.note = possibleNotes[random.nextInt(possibleNotes.length)];
-            }
-            break;
-            
-        case 2: // Inversion of a small fragment
-            if (newPhrase.length > 2) {
-                const start = random.nextInt(newPhrase.length - 2);
-                const fragment = newPhrase.slice(start, start + 2);
-                const reversedNotes = fragment.map(e => e.note).reverse();
-                fragment.forEach((event, i) => event.note = reversedNotes[i]);
-            }
-            break;
-
-        case 3: // Add or remove a note
-            if (random.next() > 0.5 && newPhrase.length > 2) { 
-                newPhrase.splice(random.nextInt(newPhrase.length), 1);
-            }
-            break;
-    }
-
-    // Re-normalize timings after mutation
+    const numNotes = 2 + random.nextInt(2);
     let currentTime = 0;
-    newPhrase.forEach(e => {
-        e.time = currentTime;
-        currentTime += e.duration;
-    });
 
-    if (currentTime > 0) {
-        const scaleFactor = 4.0 / currentTime;
-        let runningTime = 0;
-        newPhrase.forEach(e => {
-            e.duration *= scaleFactor;
-            e.time = runningTime;
-            runningTime += e.duration;
-        });
+    for (let i = 0; i < numNotes; i++) {
+        const noteMidi = chordNotes[random.nextInt(chordNotes.length)] + 12 * (3 + random.nextInt(2));
+        const duration = 4.0 / numNotes;
+        
+        const mainEvent: FractalEvent = {
+            type: 'accompaniment', note: noteMidi, duration: duration,
+            time: currentTime, weight: 0.6 + random.next() * 0.2, technique: 'swell',
+            dynamics: 'p', phrasing: 'legato', params: swellParams
+        };
+        axiom.push(mainEvent);
+
+        currentTime += duration;
     }
 
-    return newPhrase;
+    return axiom;
 }
 
-export function mutateAccompanimentPhrase(phrase: FractalEvent[], chord: GhostChord, mood: Mood, genre: Genre, random: { next: () => number, nextInt: (max: number) => number }): FractalEvent[] {
-    const newPhrase: FractalEvent[] = JSON.parse(JSON.stringify(phrase));
-    const mutationType = random.nextInt(4);
-
-    if (newPhrase.length === 0) return [];
+/**
+ * #ЗАЧЕМ: Эта функция создает базовую музыкальную фразу (аксиому) для слоя 'harmony'.
+ * #ЧТО: Она генерирует 2-3 ноты, основываясь на переданном "призрачном" аккорде (GhostChord),
+ *         выбирая ноты из этого аккорда и размещая их в 3-й октаве.
+ * #СВЯЗИ: Вызывается движком (FractalMusicEngine), когда нужно создать новую гармоническую идею.
+ *          Результат передается в HarmonySynthManager для воспроизведения.
+ */
+export function createHarmonyAxiom(chord: GhostChord, mood: Mood, genre: Genre, random: { next: () => number; nextInt: (max: number) => number }): FractalEvent[] {
+    const axiom: FractalEvent[] = [];
+    const scale = getScaleForMood(mood);
+    const rootMidi = chord.rootNote;
     
-    switch (mutationType) {
-        case 0: // Rhythmic mutation: Change duration of a random note
-            const noteToChange = newPhrase[random.nextInt(newPhrase.length)];
-            noteToChange.duration *= (random.next() > 0.5 ? 1.5 : 0.7);
-            break;
+    const isMinor = chord.chordType === 'minor' || chord.chordType === 'diminished';
+    const third = rootMidi + (isMinor ? 3 : 4);
+    const fifth = rootMidi + 7;
 
-        case 1: // Pitch mutation (in-scale)
-            const noteToTranspose = newPhrase[random.nextInt(newPhrase.length)];
-            const scale = getScaleForMood(mood);
-            const rootNote = noteToTranspose.note - (noteToTranspose.note % 12); // Get octave base
-            const possibleNotes = scale.filter(n => n >= rootNote && n < rootNote + 12);
-            if (possibleNotes.length > 0) {
-                noteToTranspose.note = possibleNotes[random.nextInt(possibleNotes.length)];
-            }
-            break;
-            
-        case 2: // Inversion of a small fragment (order of notes)
-            if (newPhrase.length > 2) {
-                const start = random.nextInt(newPhrase.length - 2);
-                const fragment = newPhrase.slice(start, start + 2);
-                const reversedNotes = fragment.map(e => e.note).reverse();
-                fragment.forEach((event, i) => event.note = reversedNotes[i]);
-            }
-            break;
+    const chordNotes = [rootMidi, third, fifth].filter(n => scale.some(scaleNote => scaleNote % 12 === n % 12));
+    if (chordNotes.length < 2) return [];
+    
+    const numNotes = 2 + random.nextInt(2); // 2 or 3 notes for harmony
+    let currentTime = 0;
 
-        case 3: // Add or remove a note
-            if (random.next() > 0.5 && newPhrase.length > 3) {
-                newPhrase.splice(random.nextInt(newPhrase.length), 1);
-            } else {
-                 const lastNote = newPhrase[newPhrase.length-1];
-                 const newNoteEvent = {...lastNote};
-                 const scale = getScaleForMood(mood);
-                 newNoteEvent.note = scale[random.nextInt(scale.length)];
-                 newNoteEvent.time = lastNote.time + lastNote.duration;
-                 newNoteEvent.duration = (phrase[0]?.duration || 1.0) * 0.5;
-                 newPhrase.push(newNoteEvent);
-            }
-            break;
+    for (let i = 0; i < numNotes; i++) {
+        const noteMidi = chordNotes[random.nextInt(chordNotes.length)] + 12 * 3; // Play in 3rd octave
+        const duration = 4.0 / numNotes;
+        
+        axiom.push({
+            type: 'harmony', // Correct type
+            note: noteMidi,
+            duration: duration,
+            time: currentTime,
+            weight: 0.5 + random.next() * 0.15, // Lower weight for harmony
+            technique: 'swell',
+            dynamics: 'p',
+            phrasing: 'legato',
+            params: { attack: 2.0, release: 3.0 }
+        });
+
+        currentTime += duration;
     }
 
-    // Re-normalize timings to fit one bar
-    let totalDuration = newPhrase.reduce((sum, e) => sum + e.duration, 0);
-    if (totalDuration > 0 && totalDuration !== 4.0) {
-         const scaleFactor = 4.0 / totalDuration;
-         let runningTime = 0;
-         newPhrase.forEach(e => {
-             e.duration *= scaleFactor;
-             e.time = runningTime;
-             runningTime += e.duration;
-         });
-    }
-
-    return newPhrase;
+    return axiom;
 }
 
 // Rhythmic Grammar Library for Drums
@@ -481,86 +596,6 @@ export const SFX_GRAMMAR = {
   }
 };
 
-
-export function createAccompanimentAxiom(chord: GhostChord, mood: Mood, genre: Genre, random: { next: () => number; nextInt: (max: number) => number }, tempo: number = 120): FractalEvent[] {
-    const swellParams = { cutoff: 300, resonance: 0.8, distortion: 0.02, portamento: 0.0, attack: 1.5, release: 2.5 };
-    const axiom: FractalEvent[] = [];
-    
-    const scale = getScaleForMood(mood);
-    const rootMidi = chord.rootNote;
-    
-    const isMinor = chord.chordType === 'minor' || chord.chordType === 'diminished';
-    const third = rootMidi + (isMinor ? 3 : 4);
-    const fifth = rootMidi + 7;
-
-    const chordNotes = [rootMidi, third, fifth].filter(n => scale.some(scaleNote => scaleNote % 12 === n % 12));
-    if (chordNotes.length < 2) return [];
-
-    const numNotes = 2 + random.nextInt(2);
-    let currentTime = 0;
-
-    for (let i = 0; i < numNotes; i++) {
-        const noteMidi = chordNotes[random.nextInt(chordNotes.length)] + 12 * (3 + random.nextInt(2));
-        const duration = 4.0 / numNotes;
-        
-        const mainEvent: FractalEvent = {
-            type: 'accompaniment', note: noteMidi, duration: duration,
-            time: currentTime, weight: 0.6 + random.next() * 0.2, technique: 'swell',
-            dynamics: 'p', phrasing: 'legato', params: swellParams
-        };
-        axiom.push(mainEvent);
-
-        currentTime += duration;
-    }
-
-    return axiom;
-}
-
-/**
- * #ЗАЧЕМ: Эта функция создает базовую музыкальную фразу (аксиому) для слоя 'harmony'.
- * #ЧТО: Она генерирует 2-3 ноты, основываясь на переданном "призрачном" аккорде (GhostChord),
- *         выбирая ноты из этого аккорда и размещая их в 3-й октаве.
- * #СВЯЗИ: Вызывается движком (FractalMusicEngine), когда нужно создать новую гармоническую идею.
- *          Результат передается в HarmonySynthManager для воспроизведения.
- */
-export function createHarmonyAxiom(chord: GhostChord, mood: Mood, genre: Genre, random: { next: () => number; nextInt: (max: number) => number }): FractalEvent[] {
-    const axiom: FractalEvent[] = [];
-    const scale = getScaleForMood(mood);
-    const rootMidi = chord.rootNote;
-    
-    const isMinor = chord.chordType === 'minor' || chord.chordType === 'diminished';
-    const third = rootMidi + (isMinor ? 3 : 4);
-    const fifth = rootMidi + 7;
-
-    const chordNotes = [rootMidi, third, fifth].filter(n => scale.some(scaleNote => scaleNote % 12 === n % 12));
-    if (chordNotes.length < 2) return [];
-    
-    const numNotes = 2 + random.nextInt(2); // 2 or 3 notes for harmony
-    let currentTime = 0;
-
-    for (let i = 0; i < numNotes; i++) {
-        const noteMidi = chordNotes[random.nextInt(chordNotes.length)] + 12 * 3; // Play in 3rd octave
-        const duration = 4.0 / numNotes;
-        
-        axiom.push({
-            type: 'harmony', // Correct type
-            note: noteMidi,
-            duration: duration,
-            time: currentTime,
-            weight: 0.5 + random.next() * 0.15, // Lower weight for harmony
-            technique: 'swell',
-            dynamics: 'p',
-            phrasing: 'legato',
-            params: { attack: 2.0, release: 3.0 }
-        });
-
-        currentTime += duration;
-    }
-
-    return axiom;
-}
-
-
 export const TEXTURE_INSTRUMENT_WEIGHTS_BY_MOOD: Record<Mood, Record<Exclude<AccompanimentInstrument, 'violin' | 'flute'>, number>> = {
   epic:          { organ: 0.4, mellotron: 0.4, synth: 0.2, piano: 0.0, guitarChords: 0.0, acousticGuitarSolo: 0.0, electricGuitar: 0.0, 'E-Bells_melody': 0.0, 'G-Drops': 0.0, 'theremin': 0.0, 'none': 0.0, 'ambientPad': 0.0, 'acousticGuitar': 0.0 },
   joyful:        { organ: 0.3, synth: 0.2, mellotron: 0.2, piano: 0.3, guitarChords: 0.0, acousticGuitarSolo: 0.0, electricGuitar: 0.0, 'E-Bells_melody': 0.0, 'G-Drops': 0.0, 'theremin': 0.0, 'none': 0.0, 'ambientPad': 0.0, 'acousticGuitar': 0.0 },
@@ -584,9 +619,6 @@ export const AMBIENT_ACCOMPANIMENT_WEIGHTS: Record<Mood, Record<Exclude<Accompan
   contemplative: { organ: 0.4, synth: 0.2, piano: 0.4, guitarChords: 0, acousticGuitarSolo: 0, electricGuitar: 0, 'E-Bells_melody': 0, 'G-Drops': 0, 'theremin': 0, 'mellotron': 0, 'none': 0.0, 'ambientPad': 0.0, 'acousticGuitar': 0.0 },
   calm:          { synth: 0.3, organ: 0.2, piano: 0.5, guitarChords: 0, acousticGuitarSolo: 0, electricGuitar: 0, 'E-Bells_melody': 0, 'G-Drops': 0, 'theremin': 0, 'mellotron': 0, 'none': 0.0, 'ambientPad': 0.0, 'acousticGuitar': 0.0 },
 };
-
-
-export type AccompanimentTechnique = 'choral' | 'alternating-bass-chord' | 'chord-pulsation' | 'arpeggio-fast' | 'arpeggio-slow' | 'alberti-bass' | 'paired-notes' | 'long-chords';
 
 export function getAccompanimentTechnique(genre: Genre, mood: Mood, density: number, tempo: number, barCount: number, random: { next: () => number }): AccompanimentTechnique {
     // Intro phase: prioritize calm, sustained techniques
@@ -838,7 +870,7 @@ export function generateGhostHarmonyTrack(totalBars: number, mood: Mood, key: nu
 export function createMelodyMotif(chord: GhostChord, mood: Mood, random: { next: () => number; nextInt: (max: number) => number; }, previousMotif?: FractalEvent[]): FractalEvent[] {
     const motif: FractalEvent[] = [];
     const scale = getScaleForMood(mood);
-    const rootOctave = 4; // Start melody in the 4th octave
+    const rootOctave = 3; // Start melody in the 3rd octave
     
     // #ЗАЧЕМ: Этот контур определяет "скелет" мелодии.
     // #ЧТО: Он задает последовательность шагов по гамме относительно базовой ноты, создавая музыкальную фразу.
@@ -931,3 +963,4 @@ export function createMelodyMotif(chord: GhostChord, mood: Mood, random: { next:
 
 
     
+
