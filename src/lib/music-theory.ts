@@ -138,7 +138,7 @@ export function mutateBassPhrase(phrase: FractalEvent[], chord: GhostChord, mood
     return newPhrase;
 }
 
-function mutateAccompanimentPhrase(phrase: FractalEvent[], chord: GhostChord, mood: Mood, genre: Genre, random: { next: () => number, nextInt: (max: number) => number }): FractalEvent[] {
+export function mutateAccompanimentPhrase(phrase: FractalEvent[], chord: GhostChord, mood: Mood, genre: Genre, random: { next: () => number, nextInt: (max: number) => number }): FractalEvent[] {
     const newPhrase: FractalEvent[] = JSON.parse(JSON.stringify(phrase));
     if (newPhrase.length === 0) return [];
     
@@ -1106,6 +1106,7 @@ export function createMelodyMotif(chord: GhostChord, mood: Mood, random: { next:
 
 
     
+
 
 
 

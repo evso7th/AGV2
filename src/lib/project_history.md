@@ -4,6 +4,21 @@
 
 ---
 
+### ЗАПИСЬ: 2024-08-12
+
+**ПРОБЛЕМА:**
+Код падал с ошибкой `Attempted import error: 'mutateAccompanimentPhrase' is not exported from './music-theory'`.
+
+**ДИАГНОСТИКА:**
+Анализ кода показал, что `FractalMusicEngine` пытался импортировать функцию `mutateAccompanimentPhrase`, но она не была экспортирована из `music-theory.ts`.
+
+**РЕШЕНИЕ:**
+В файле `src/lib/music-theory.ts` к определению функции `mutateAccompanimentPhrase` было добавлено ключевое слово `export`.
+
+**РЕЗУЛЬТАТ:** Ошибка импорта устранена. Движок теперь имеет доступ к функции мутации аккомпанемента.
+
+---
+
 ### ЗАПИСЬ: 2024-08-11
 
 **ПРОБЛЕМА:**
