@@ -128,7 +128,7 @@ export class SfxSynthManager {
         this.destination = destination;
 
         this.preamp = this.context.createGain();
-        this.preamp.gain.value = 0.25;
+        this.preamp.gain.value = 0.5;
         this.preamp.connect(this.destination);
     }
 
