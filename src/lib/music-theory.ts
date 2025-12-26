@@ -279,11 +279,12 @@ export function generateAmbientBassPhrase(chord: GhostChord, mood: Mood, genre: 
     const scale = getScaleForMood(mood);
     const rootNote = chord.rootNote;
 
-    const numNotes = 2 + random.nextInt(3); // 2 to 4 notes per bar
+    const numNotes = 4 + random.nextInt(5); // 4 to 8 notes over two bars
     let currentTime = 0;
+    const totalDurationNormalizer = 8.0; // Two bars
 
     for (let i = 0; i < numNotes; i++) {
-        const duration = 4.0 / numNotes;
+        const duration = totalDurationNormalizer / numNotes;
         
         let note = rootNote;
         if (i > 0 && random.next() > 0.4) {
@@ -1118,6 +1119,7 @@ export function createMelodyMotif(chord: GhostChord, mood: Mood, random: { next:
 
 
     
+
 
 
 
