@@ -37,11 +37,6 @@ type PlayPlanItem = {
 
 // === ВСПОМОГАТЕЛЬНЫЕ ФУНКЦИИ ===
 
-const VOICE_LIMITS = {
-    accompaniment: 6,
-    melody: 3,
-};
-
 function seededRandom(seed: number) {
   let state = seed;
   const self = {
@@ -318,6 +313,40 @@ export class FractalMusicEngine {
     return newPhrase;
   }
   
+    private _createArpeggiatedChordSwell(startTime: number, chord: GhostChord): FractalEvent[] {
+        const arpeggio: FractalEvent[] = [];
+        const scale = getScaleForMood(this.config.mood);
+        const rootMidi = chord.rootNote;
+        
+        const isMinor = chord.chordType === 'minor' || chord.chordType === 'diminished';
+        const third = rootMidi + (isMinor ? 3 : 4);
+        const fifth = rootMidi + 7;
+        const octave = rootMidi + 12;
+
+        let chordNotes = [rootMidi, third, fifth, octave].filter(n => scale.some(sn => sn % 12 === n % 12));
+        if (chordNotes.length < 3) chordNotes = [rootMidi, rootMidi + 5, rootMidi + 7, rootMidi + 12];
+        
+        if (this.random.next() > 0.5) {
+            chordNotes.reverse();
+        }
+
+        chordNotes.forEach((note, index) => {
+            arpeggio.push({
+                type: 'accompaniment',
+                note: note + 12 * 2, // Play in a mid-low register
+                duration: 4.0, // Long duration for overlapping
+                time: startTime + (index * 0.06), // Very fast succession
+                weight: 0.5 - (index * 0.05), // Slightly decreasing volume
+                technique: 'swell',
+                dynamics: 'p',
+                phrasing: 'legato',
+                params: { attack: 0.8, release: 3.5 }
+            });
+        });
+
+        return arpeggio;
+    }
+
   private generateOneBar(barDuration: number, navInfo: NavigationInfo | null): { events: FractalEvent[], instrumentHints: InstrumentHints } {
     let instrumentHints: InstrumentHints = {};
     if (!navInfo) {
@@ -335,6 +364,30 @@ export class FractalMusicEngine {
     instrumentHints.melody = this._chooseInstrumentForPart('melody', navInfo.currentPart);
     
     const isIntro = navInfo.currentPart.id.startsWith('INTRO');
+    
+    let drumEvents = navInfo.currentPart.layers.drums ? this.generateDrumEvents(navInfo) : [];
+    
+    let accompEvents: FractalEvent[] = [];
+    if (isIntro && navInfo.currentPart.layers.accompaniment) {
+        drumEvents.forEach(drumEvent => {
+            const swell = this._createArpeggiatedChordSwell(drumEvent.time, currentChord);
+            accompEvents.push(...swell);
+        });
+        instrumentHints.accompaniment = 'ambientPad'; // Force pad for this effect
+    } else if (navInfo.currentPart.layers.accompaniment) {
+        // #ЗАЧЕМ: Этот блок отвечает за генерацию аккомпанемента с учетом правил из блюпринта.
+        // #ЧТО: Он извлекает указание по регистру (`registerHint`) из текущей части блюпринта
+        //      и передает его в функцию `createAccompanimentAxiom`.
+        // #СВЯЗИ: Зависит от `navInfo` для получения правил и от `createAccompanimentAxiom` для их исполнения.
+        const registerHint = navInfo.currentPart.instrumentRules?.accompaniment?.register?.preferred;
+        // Пересоздаем аксиому, только если она пуста или сменился аккорд
+        if (this.accompPhraseLibrary[this.currentAccompPhraseIndex].length === 0 || this.epoch % 4 === 0) {
+            this.accompPhraseLibrary[this.currentAccompPhraseIndex] = createAccompanimentAxiom(currentChord, this.config.mood, this.config.genre, this.random, this.config.tempo, registerHint);
+        }
+        accompEvents = this.accompPhraseLibrary[this.currentAccompPhraseIndex];
+    }
+    
+    
     const canVary = !isIntro || navInfo.currentPart.id.includes('3');
     const PHRASE_VARIATION_INTERVAL = 4;
     
@@ -344,27 +397,13 @@ export class FractalMusicEngine {
             this.bassPhraseLibrary[this.currentBassPhraseIndex] = mutateBassPhrase(this.bassPhraseLibrary[this.currentBassPhraseIndex], currentChord, this.config.mood, this.config.genre, this.random);
         }
         this.currentAccompPhraseIndex = (this.currentAccompPhraseIndex + 1) % this.accompPhraseLibrary.length;
-        if (this.random.next() < 0.6) {
+        if (this.random.next() < 0.6 && !isIntro) { // Don't mutate accomp in intro
             this.accompPhraseLibrary[this.currentAccompPhraseIndex] = mutateAccompanimentPhrase(this.accompPhraseLibrary[this.currentAccompPhraseIndex], currentChord, this.config.mood, this.config.genre, this.random);
         }
     }
 
     let bassEvents = navInfo.currentPart.layers.bass ? this.bassPhraseLibrary[this.currentBassPhraseIndex] : [];
-    let drumEvents = navInfo.currentPart.layers.drums ? this.generateDrumEvents(navInfo) : [];
     
-    // #ЗАЧЕМ: Этот блок отвечает за генерацию аккомпанемента с учетом правил из блюпринта.
-    // #ЧТО: Он извлекает указание по регистру (`registerHint`) из текущей части блюпринта
-    //      и передает его в функцию `createAccompanimentAxiom`.
-    // #СВЯЗИ: Зависит от `navInfo` для получения правил и от `createAccompanimentAxiom` для их исполнения.
-    let accompEvents: FractalEvent[] = [];
-    if (navInfo.currentPart.layers.accompaniment) {
-        const registerHint = navInfo.currentPart.instrumentRules?.accompaniment?.register?.preferred;
-        // Пересоздаем аксиому, только если она пуста или сменился аккорд
-        if (this.accompPhraseLibrary[this.currentAccompPhraseIndex].length === 0 || this.epoch % 4 === 0) {
-            this.accompPhraseLibrary[this.currentAccompPhraseIndex] = createAccompanimentAxiom(currentChord, this.config.mood, this.config.genre, this.random, this.config.tempo, registerHint);
-        }
-        accompEvents = this.accompPhraseLibrary[this.currentAccompPhraseIndex];
-    }
     
     let harmonyEvents: FractalEvent[] = [];
     let melodyEvents: FractalEvent[] = [];
@@ -449,11 +488,4 @@ export class FractalMusicEngine {
         console.log(navigationInfo.logMessage);
     }
     
-    const { events, instrumentHints } = this.generateOneBar(barDuration, navigationInfo);
-    
-    
-    this.time += barDuration;
-    
-    return { events, instrumentHints };
-  }
-}
+    const { events, instrumentHints } = this.generateOne

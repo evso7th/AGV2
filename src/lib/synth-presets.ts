@@ -172,20 +172,52 @@ export const SYNTH_PRESETS: Record<Exclude<MelodyInstrument | BassInstrument, 'p
   },
   
   // УЛУЧШЕНО: Более "кусачий" и реалистичный звук
-  electricGuitar: {
-    layers: [
-      { type: 'sawtooth', detune: 0, octave: 0, gain: 1.0 },
-      { type: 'square', detune: 2, octave: 1, gain: 0.3 }, // Добавлен верхний гармонический слой
-    ],
-    adsr: { attack: 0.005, decay: 0.5, sustain: 0.1, release: 0.6 }, // Быстрая "щипковая" атака
-    filter: { type: 'bpf', cutoff: 1500, q: 3.5 }, // Band-pass для "гнусавого" тона звукоснимателя
-    lfo: { shape: 'sine', rate: 0, amount: 0, target: 'pitch' },
-    effects: {
-      distortion: 0.7, // Больше гейна
-      chorus: { rate: 0, depth: 0, mix: 0 },
-      delay: { time: 0.375, feedback: 0.4, mix: 0.35 },
-    },
+ // electricGuitar: {
+ //   layers: [
+ //     { type: 'sawtooth', detune: 0, octave: 0, gain: 1.0 },
+ //     { type: 'square', detune: 2, octave: 1, gain: 0.3 }, // Добавлен верхний гармонический слой
+ //   ],
+ //   adsr: { attack: 0.005, decay: 0.5, sustain: 0.1, release: 0.6 }, // Быстрая "щипковая" атака
+ //   filter: { type: 'bpf', cutoff: 1500, q: 3.5 }, // Band-pass для "гнусавого" тона звукоснимателя
+ //   lfo: { shape: 'sine', rate: 0, amount: 0, target: 'pitch' },
+ //   effects: {
+ //     distortion: 0.7, // Больше гейна
+ //     chorus: { rate: 0, depth: 0, mix: 0 },
+ //     delay: { time: 0.375, feedback: 0.4, mix: 0.35 },
+ //   },
+ // },
+
+//модернезировано для достижения более мощного, "фуззового" и объемного звучания в стиле Black Sabbath. 
+electricGuitar: {
+  layers: [
+    // Основной слой, имитирующий звукосниматель
+    { type: 'sawtooth', detune: 0, octave: 0, gain: 1.0 },
+    // НОВЫЙ СЛОЙ: Добавляет "тела" и низкочастотного гудения
+    { type: 'square', detune: 0, octave: -1, gain: 0.5 },
+    // НОВЫЙ СЛОЙ: Добавляет верхние гармоники и "грязь"
+    { type: 'sawtooth', detune: 4, octave: 1, gain: 0.3 }
+  ],
+  adsr: {
+    attack: 0.01,  // Быстрая атака, как при ударе по струне
+    decay: 0.8,    // Увеличен для большего сустейна
+    sustain: 0.4,  // Увеличен, чтобы нота дольше "висела"
+    release: 1.0   // Увеличен для более длинного "хвоста"
   },
+  filter: {
+    type: 'bpf',   // Band-pass фильтр остается, он хорошо имитирует гитарный кабинет
+    cutoff: 1400,  // Чуть ниже, чтобы убрать лишний "песок"
+    q: 4.0         // Более высокий Q для выраженного "гнусавого" тембра
+  },
+  lfo: { shape: 'sine', rate: 0, amount: 0, target: 'pitch' }, // Без вибрато
+  effects: {
+    // ИМИТАЦИЯ FUZZ: Значительно увеличен distortion
+    distortion: 0.85,
+    // Легкий хорус для объема, имитирующий работу двух гитар
+    chorus: { rate: 0.1, depth: 0.003, mix: 0.3 },
+    // ИЗМЕНЕННЫЙ DELAY: Время дилэя увеличено для создания более "психоделического" эха
+    delay: { time: 0.5, feedback: 0.45, mix: 0.3 },
+  },
+},
 
   'E-Bells_melody': {
       layers: [ { type: 'sine', detune: 0, octave: 0, gain: 1.0 } ],
