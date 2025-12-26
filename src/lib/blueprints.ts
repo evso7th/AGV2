@@ -217,10 +217,11 @@ export const MelancholicAmbientBlueprint: MusicBlueprint = {
     parts: [
        {
         id: 'INTRO_1', name: 'Emergence', duration: { percent: 8 }, // ~10 bars
-        layers: { accompaniment: true, harmony: false, sfx: false, sparkles: false },
+        layers: { accompaniment: true, harmony: false, sfx: false, sparkles: false, drums: true },
         instrumentation: { accompaniment: { strategy: 'weighted', options: [{ name: 'ambientPad', weight: 1.0 }] } },
         instrumentRules: {
-          accompaniment: { register: { preferred: 'low' } }
+          accompaniment: { register: { preferred: 'low' } },
+          drums: { pattern: 'composer', density: { min: 0.1, max: 0.3 }, useSnare: false, rareKick: false, usePerc: true }
         },
         bundles: [ { id: 'INTRO_BUNDLE_1', name: 'Emergence', duration: { percent: 100 }, characteristics: {}, phrases: {} } ],
         outroFill: null,
@@ -784,11 +785,3 @@ export default MelancholicAmbientBlueprint;
 
 
     
-
-
-
-
-
-
-
-
