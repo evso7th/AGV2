@@ -1,5 +1,4 @@
 
-
 // src/lib/music-theory.ts
 import type { FractalEvent, Mood, Genre, Technique, BassSynthParams, InstrumentType, AccompanimentInstrument, InstrumentHints, AccompanimentTechnique, GhostChord } from '@/types/fractal';
 import { ElectronicK, TraditionalK, AmbientK, MelancholicMinorK } from './resonance-matrices';
@@ -319,6 +318,11 @@ export function generateAmbientBassPhrase(chord: GhostChord, mood: Mood, genre: 
 };
 
 export function createAccompanimentAxiom(chord: GhostChord, mood: Mood, genre: Genre, random: { next: () => number; nextInt: (max: number) => number }, tempo: number = 120, registerHint?: 'low' | 'mid' | 'high'): FractalEvent[] {
+    // #ЗАЧЕМ: Этот `console.log` нужен для отладки регистра аккомпанемента.
+    // #ЧТО: Он выводит в консоль полученный `registerHint` и итоговую выбранную `baseOctave`.
+    // #СВЯЗИ: Помогает проверить, правильно ли движок передает команду из блюпринта.
+    console.log(`[AccompAxiom] Received registerHint: ${registerHint}`);
+
     const swellParams = { cutoff: 300, resonance: 0.8, distortion: 0.02, portamento: 0.0, attack: 1.5, release: 2.5 };
     const axiom: FractalEvent[] = [];
     
@@ -340,6 +344,8 @@ export function createAccompanimentAxiom(chord: GhostChord, mood: Mood, genre: G
     if (registerHint === 'low') {
         baseOctave = 2;
     }
+    console.log(`[AccompAxiom] Using baseOctave: ${baseOctave}`);
+
 
     const numNotes = 2 + random.nextInt(2);
     let currentTime = 0;
@@ -357,6 +363,11 @@ export function createAccompanimentAxiom(chord: GhostChord, mood: Mood, genre: G
 
         currentTime += duration;
     }
+    
+    // #ЗАЧЕМ: Этот `console.log` нужен для проверки итоговой высоты сгенерированных нот.
+    // #ЧТО: Он выводит MIDI-ноты созданной фразы.
+    // #СВЯЗИ: Позволяет нам убедиться, что логика выбора октавы сработала корректно.
+    console.log(`[AccompAxiom] Generated phrase notes: ${axiom.map(e => e.note).join(', ')}`);
 
     return axiom;
 }
@@ -763,7 +774,7 @@ export function createBassFill(mood: Mood, genre: Genre, random: { next: () => n
 export function createDrumFill(random: { next: () => number, nextInt: (max: number) => number }): FractalEvent[] {
     const fill: FractalEvent[] = [];
     const numHits = random.nextInt(3) + 2; // 2-4 hits
-    const toms: InstrumentType[] = ['drum_tom_low', 'drum_tom_mid', 'drum_tom_high'];
+    const toms: InstrumentType[] = ['drum_tom_low', 'drum_tom_mid', 'drum_tom_high', 'drum_snare'];
     let currentTime = 3.0; // Start the fill on the 4th beat
     const baseWeight = 0.75;
 
@@ -1106,6 +1117,7 @@ export function createMelodyMotif(chord: GhostChord, mood: Mood, random: { next:
 
 
     
+
 
 
 
