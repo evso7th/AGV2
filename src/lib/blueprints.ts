@@ -1,6 +1,6 @@
 
 
-import type { MusicBlueprint, Mood, Genre, BlueprintPart } from '@/types/music';
+import type { MusicBlueprint, Mood, Genre, BlueprintPart, SfxRule } from '@/types/music';
 
 const JoyfulTranceBlueprint: MusicBlueprint = {
     id: 'joyful_trance', name: 'Sunrise Pulse', description: 'Uplifting and energetic trance.', mood: 'joyful',
@@ -362,11 +362,19 @@ export const DarkAmbientBlueprint: MusicBlueprint = {
              instrumentation: {
               bass: { strategy: 'weighted', options: [{ name: 'livingRiff', weight: 1.0 }]},
               accompaniment: { strategy: 'weighted', options: [{ name: 'electricGuitar', weight: 0.8 }, {name: 'organ', weight: 0.2}]},
-              harmony: { strategy: 'weighted', options: [ { name: 'violin', weight: 0.45, octaveShift: -1 }, { name: 'flute', weight: 0.45, octaveShift: 0 }, { name: 'guitarChords', weight: 0.1, octaveShift: 0 } ]}
+              harmony: { strategy: 'weighted', options: [ { name: 'violin', weight: 0.45, octaveShift: -1 }, { name: 'flute', weight: 0.45, octaveShift: 0 }, { name: 'guitarChords', weight: 0.1 } ]}
             },
             instrumentRules: {
                 drums: { pattern: 'composer', density: { min: 0.2, max: 0.4 }, useSnare: false, usePerc: true, useGhostHat: true, rareKick: true },
-                bass: { density: {min: 0.5, max: 0.7} }
+                bass: { density: {min: 0.5, max: 0.7} },
+                sfx: {
+                  eventProbability: 0.25,
+                  categories: [
+                    { name: 'voice', weight: 0.6 },
+                    { name: 'dark', weight: 0.3 },
+                    { name: 'common', weight: 0.1 }
+                  ]
+                }
             },
             bassAccompanimentDouble: {
               enabled: true,
@@ -384,11 +392,19 @@ export const DarkAmbientBlueprint: MusicBlueprint = {
               bass: { strategy: 'weighted', options: [{ name: 'livingRiff', weight: 1.0 }]},
               accompaniment: { strategy: 'weighted', options: [{ name: 'electricGuitar', weight: 1.0 }]},
               melody: { strategy: 'weighted', options: [{ name: 'theremin', weight: 0.6 }, { name: 'synth', weight: 0.4 }] },
-              harmony: { strategy: 'weighted', options: [ { name: 'violin', weight: 0.45, octaveShift: -1 }, { name: 'flute', weight: 0.45, octaveShift: 0 }, { name: 'guitarChords', weight: 0.1, octaveShift: 0 } ]}
+              harmony: { strategy: 'weighted', options: [ { name: 'violin', weight: 0.45, octaveShift: -1 }, { name: 'flute', weight: 0.45, octaveShift: 0 }, { name: 'guitarChords', weight: 0.1 } ]}
             },
             instrumentRules: {
               drums: { pattern: 'composer', density: { min: 0.3, max: 0.5 }, useSnare: false, usePerc: true, useGhostHat: true, rareKick: true },
-              melody: { register: { preferred: 'high' }}
+              melody: { register: { preferred: 'high' }},
+              sfx: {
+                  eventProbability: 0.25,
+                  categories: [
+                    { name: 'voice', weight: 0.6 },
+                    { name: 'dark', weight: 0.3 },
+                    { name: 'common', weight: 0.1 }
+                  ]
+              }
             },
             bassAccompanimentDouble: {
               enabled: true,
@@ -797,3 +813,4 @@ export default MelancholicAmbientBlueprint;
 
 
     
+

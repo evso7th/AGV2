@@ -115,6 +115,12 @@ export type BassSynthParams = {
   chord?: number[];
 };
 
+export type SfxRule = {
+    eventProbability: number;
+    categories: { name: string; weight: number }[];
+};
+
+
 /**
  * Параметры для синтезатора спецэффектов (SFX).
  */
@@ -129,6 +135,9 @@ export type SfxSynthParams = {
     endFreq: number;
     pan: number;
     distortion: number;
+    mood: Mood;
+    genre: Genre;
+    rules?: SfxRule;
 };
 
 

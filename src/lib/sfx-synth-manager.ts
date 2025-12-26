@@ -1,6 +1,6 @@
 
 
-import type { FractalEvent, Mood, Genre } from '@/types/fractal';
+import type { FractalEvent, Mood, Genre, SfxRule } from '@/types/fractal';
 
 const SFX_SAMPLES: Record<string, string[]> = {
     dark: [
@@ -128,7 +128,7 @@ export class SfxSynthManager {
         this.destination = destination;
 
         this.preamp = this.context.createGain();
-        this.preamp.gain.value = 0.25; // Громкость уменьшена еще в 2 раза
+        this.preamp.gain.value = 0.25;
         this.preamp.connect(this.destination);
     }
 
@@ -169,7 +169,6 @@ export class SfxSynthManager {
 
 
     public trigger(events: FractalEvent[], barStartTime: number, tempo: number): void {
-        console.log(`[SfxManager] Received ${events.length} events to trigger.`);
         if (!this.isReady) {
             console.warn('[SFX] Trigger called but not ready.');
             return;
@@ -178,8 +177,8 @@ export class SfxSynthManager {
         events.forEach(event => {
             if (event.type !== 'sfx') return;
 
-            const { mood, genre } = event.params as { mood: Mood, genre: Genre };
-            const category = this.getCategoryForContext(mood, genre);
+            const { mood, genre, rules } = event.params as { mood: Mood, genre: Genre, rules?: SfxRule };
+            const category = this.getCategoryForContext(mood, genre, rules);
             const samplePool = this.buffers.get(category);
 
             if (!samplePool || samplePool.length === 0) {
@@ -190,14 +189,11 @@ export class SfxSynthManager {
             const buffer = samplePool[Math.floor(Math.random() * samplePool.length)];
             const source = this.context.createBufferSource();
             source.buffer = buffer;
-            
-            // SFX теперь подключается к предусилителю
             source.connect(this.preamp);
 
             const beatDuration = 60 / tempo;
             const startTime = barStartTime + (event.time * beatDuration);
 
-            // Step 4: SFX Manager Logging
             console.log(`%c[SFX Player] Triggering effect. Category: '${category}'. Start time: ${startTime.toFixed(2)}`, 'color: #FFA500');
             source.start(startTime);
             
@@ -209,7 +205,20 @@ export class SfxSynthManager {
         });
     }
 
-    private getCategoryForContext(mood: Mood, genre: Genre): string {
+    private getCategoryForContext(mood: Mood, genre: Genre, rules?: SfxRule): string {
+        if (rules && rules.categories && rules.categories.length > 0) {
+            const totalWeight = rules.categories.reduce((sum, cat) => sum + cat.weight, 0);
+            let rand = Math.random() * totalWeight;
+
+            for (const category of rules.categories) {
+                rand -= category.weight;
+                if (rand <= 0) {
+                    return category.name;
+                }
+            }
+        }
+        
+        // Fallback logic if no rules are provided
         const rand = Math.random();
         if (rand < 0.2) return 'bongo';
         if (rand < 0.4) return 'voice';

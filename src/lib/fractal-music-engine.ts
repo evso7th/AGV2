@@ -1,6 +1,6 @@
 
 
-import type { FractalEvent, Mood, Genre, Technique, BassSynthParams, InstrumentType, MelodyInstrument, BassInstrument, AccompanimentInstrument, ResonanceMatrix, InstrumentHints, AccompanimentTechnique, GhostChord } from '@/types/fractal';
+import type { FractalEvent, Mood, Genre, Technique, BassSynthParams, InstrumentType, MelodyInstrument, BassInstrument, AccompanimentInstrument, ResonanceMatrix, InstrumentHints, AccompanimentTechnique, GhostChord, SfxRule } from '@/types/fractal';
 import { ElectronicK, TraditionalK, AmbientK, MelancholicMinorK } from './resonance-matrices';
 import { getScaleForMood, STYLE_DRUM_PATTERNS, generateAmbientBassPhrase, createAccompanimentAxiom, PERCUSSION_SETS, TEXTURE_INSTRUMENT_WEIGHTS_BY_MOOD, getAccompanimentTechnique, createBassFill as createBassFillFromTheory, createDrumFill, AMBIENT_ACCOMPANIMENT_WEIGHTS, chooseHarmonyInstrument, mutateBassPhrase, createMelodyMotif, createDrumAxiom, generateGhostHarmonyTrack, mutateAccompanimentPhrase, createHarmonyAxiom } from './music-theory';
 import { BlueprintNavigator, type NavigationInfo } from './blueprint-navigator';
@@ -438,15 +438,21 @@ export class FractalMusicEngine {
     
     allEvents.push(...bassEvents, ...drumEvents, ...accompEvents, ...harmonyEvents, ...melodyEvents);
     
+    const sfxRules = navInfo.currentPart.instrumentRules?.sfx as SfxRule | undefined;
+    const sfxChance = sfxRules?.eventProbability ?? 0.08;
+
+    if (navInfo.currentPart.layers.sfx && this.random.next() < sfxChance) {
+        allEvents.push({ 
+            type: 'sfx', note: 60, time: this.random.next() * 4, duration: 2, weight: 0.6, 
+            technique: 'swell', dynamics: 'mf', phrasing: 'legato', 
+            params: { mood: this.config.mood, genre: this.config.genre, rules: sfxRules }
+        });
+    }
+
     if (navInfo.currentPart.layers.sparkles && this.random.next() < 0.1) {
         allEvents.push({ type: 'sparkle', note: 60, time: this.random.next() * 4, duration: 1, weight: 0.5, technique: 'hit', dynamics: 'p', phrasing: 'legato', params: {mood: this.config.mood, genre: this.config.genre}});
     }
-    if (navInfo.currentPart.layers.sfx && this.random.next() < 0.08) {
-        allEvents.push({ type: 'sfx', note: 60, time: this.random.next() * 4, duration: 2, weight: 0.6, technique: 'swell', dynamics: 'mf', phrasing: 'legato', params: {mood: this.config.mood, genre: this.config.genre}});
-    }
     
-    console.log(`[FME.generateOneBar] Generated Events: Total=${allEvents.length}, Harmony=${harmonyEvents.length}, Melody=${melodyEvents.length}, Accomp=${accompEvents.length}, Bass=${bassEvents.length}, Drums=${drumEvents.length}`);
-
     return { events: allEvents, instrumentHints };
   }
 
