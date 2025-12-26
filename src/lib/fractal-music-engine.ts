@@ -267,7 +267,7 @@ export class FractalMusicEngine {
         return [];
     }
     
-    const baseAxiom = createDrumAxiom(this.config.genre, this.config.mood, this.config.tempo, this.random).events;
+    const baseAxiom = createDrumAxiom(this.config.genre, this.config.mood, this.config.tempo, this.random, drumRules).events;
     
     if (navInfo.currentPart.id.includes('INTRO') || navInfo.currentPart.id.includes('RELEASE')) {
         if (!drumRules?.ride?.enabled) {
@@ -336,7 +336,7 @@ export class FractalMusicEngine {
                 note: note + 12 * 2, // Play in a mid-low register
                 duration: 4.0, // Long duration for overlapping
                 time: startTime + (index * 0.06), // Very fast succession
-                weight: 0.5 - (index * 0.05), // Slightly decreasing volume
+                weight: 0.6 - (index * 0.05), // Slightly decreasing volume
                 technique: 'swell',
                 dynamics: 'p',
                 phrasing: 'legato',
@@ -375,12 +375,7 @@ export class FractalMusicEngine {
         });
         instrumentHints.accompaniment = 'ambientPad'; // Force pad for this effect
     } else if (navInfo.currentPart.layers.accompaniment) {
-        // #ЗАЧЕМ: Этот блок отвечает за генерацию аккомпанемента с учетом правил из блюпринта.
-        // #ЧТО: Он извлекает указание по регистру (`registerHint`) из текущей части блюпринта
-        //      и передает его в функцию `createAccompanimentAxiom`.
-        // #СВЯЗИ: Зависит от `navInfo` для получения правил и от `createAccompanimentAxiom` для их исполнения.
         const registerHint = navInfo.currentPart.instrumentRules?.accompaniment?.register?.preferred;
-        // Пересоздаем аксиому, только если она пуста или сменился аккорд
         if (this.accompPhraseLibrary[this.currentAccompPhraseIndex].length === 0 || this.epoch % 4 === 0) {
             this.accompPhraseLibrary[this.currentAccompPhraseIndex] = createAccompanimentAxiom(currentChord, this.config.mood, this.config.genre, this.random, this.config.tempo, registerHint);
         }
@@ -397,7 +392,7 @@ export class FractalMusicEngine {
             this.bassPhraseLibrary[this.currentBassPhraseIndex] = mutateBassPhrase(this.bassPhraseLibrary[this.currentBassPhraseIndex], currentChord, this.config.mood, this.config.genre, this.random);
         }
         this.currentAccompPhraseIndex = (this.currentAccompPhraseIndex + 1) % this.accompPhraseLibrary.length;
-        if (this.random.next() < 0.6 && !isIntro) { // Don't mutate accomp in intro
+        if (this.random.next() < 0.6 && !isIntro) { 
             this.accompPhraseLibrary[this.currentAccompPhraseIndex] = mutateAccompanimentPhrase(this.accompPhraseLibrary[this.currentAccompPhraseIndex], currentChord, this.config.mood, this.config.genre, this.random);
         }
     }
@@ -408,17 +403,11 @@ export class FractalMusicEngine {
     let harmonyEvents: FractalEvent[] = [];
     let melodyEvents: FractalEvent[] = [];
 
-    // #ЗАЧЕМ: Этот блок отвечает за создание фонового гармонического слоя.
-    // #ЧТО: Он определяет инструмент для гармонии и создает для него музыкальную фразу, используя createHarmonyAxiom.
-    // #СВЯЗИ: Зависит от `currentChord` и блюпринта (`navInfo`).
     if (navInfo.currentPart.layers.harmony) {
         instrumentHints.harmony = chooseHarmonyInstrument(this.config.mood, this.random);
         harmonyEvents = createHarmonyAxiom(currentChord, this.config.mood, this.config.genre, this.random);
     }
     
-    // #ЗАЧЕМ: Этот блок создает основную мелодическую линию.
-    // #ЧТО: Он проверяет, пора ли играть мелодию, и генерирует/мутирует мелодический мотив.
-    // #СВЯЗИ: Зависит от `currentChord` и `this.currentMelodyMotif` для эволюции.
     if (navInfo.currentPart.layers.melody) {
         const melodyPlayInterval = 4;
         if (this.epoch >= this.lastMelodyPlayEpoch + melodyPlayInterval) {
@@ -430,14 +419,6 @@ export class FractalMusicEngine {
         }
     }
     
-    // Применение "Бюджета Голосов"
-    if (accompEvents.length > VOICE_LIMITS.accompaniment) {
-        accompEvents = accompEvents.slice(0, VOICE_LIMITS.accompaniment);
-    }
-    if (melodyEvents.length > VOICE_LIMITS.melody) {
-        melodyEvents = melodyEvents.slice(0, VOICE_LIMITS.melody);
-    }
-
     allEvents.push(...bassEvents, ...drumEvents, ...accompEvents, ...harmonyEvents, ...melodyEvents);
     
     if (navInfo.currentPart.layers.sparkles && this.random.next() < 0.1) {
@@ -446,8 +427,7 @@ export class FractalMusicEngine {
     if (navInfo.currentPart.layers.sfx && this.random.next() < 0.08) {
         allEvents.push({ type: 'sfx', note: 60, time: this.random.next() * 4, duration: 2, weight: 0.6, technique: 'swell', dynamics: 'mf', phrasing: 'legato', params: {mood: this.config.mood, genre: this.config.genre}});
     }
-
-    // Финальное логирование перед отправкой
+    
     console.log(`[FME.generateOneBar] Generated Events: Total=${allEvents.length}, Harmony=${harmonyEvents.length}, Melody=${melodyEvents.length}, Accomp=${accompEvents.length}, Bass=${bassEvents.length}, Drums=${drumEvents.length}`);
 
     return { events: allEvents, instrumentHints };
@@ -481,11 +461,11 @@ export class FractalMusicEngine {
     
     const navigationInfo = this.navigator.tick(this.epoch);
 
-    // #ЗАЧЕМ: Этот блок обеспечивает вывод отладочной информации от Навигатора.
-    // #ЧТО: Он проверяет, было ли сгенерировано сообщение в `navigationInfo`, и если да, выводит его.
-    // #СВЯЗИ: Восстанавливает утерянное логирование, критически важное для понимания смены частей и бандлов.
     if (navigationInfo && navigationInfo.logMessage) {
         console.log(navigationInfo.logMessage);
     }
     
-    const { events, instrumentHints } = this.generateOne
+    const { events, instrumentHints } = this.generateOneBar(barDuration, navigationInfo);
+    return { events, instrumentHints };
+  }
+}
