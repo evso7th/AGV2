@@ -4,6 +4,21 @@
 
 ---
 
+### ЗАПИСЬ: 2024-08-15
+
+**ПРОБЛЕМА:**
+Движок падал с ошибкой `Uncaught ReferenceError: createHarmonyAxiom is not defined` в `fractal-music-engine.ts`.
+
+**ДИАГНОСТИКА:**
+Стек вызовов ошибки показал, что `FractalMusicEngine` пытался вызвать `createHarmonyAxiom`, но эта функция не была импортирована из `music-theory.ts`.
+
+**РЕШЕНИЕ:**
+В файл `src/lib/fractal-music-engine.ts` был добавлен импорт функции `createHarmonyAxiom` из файла `src/lib/music-theory.ts`.
+
+**РЕЗУЛЬТАТ:** Ошибка устранена, генерация гармонических партий восстановлена.
+
+---
+
 ### ЗАПИСЬ: 2024-08-14
 
 **ПРОБЛЕМА:**
