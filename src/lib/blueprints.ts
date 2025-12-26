@@ -345,9 +345,12 @@ export const DarkAmbientBlueprint: MusicBlueprint = {
           {
             id: 'INTRO', name: 'The Void',
             duration: { percent: 20 },
-            layers: { bass: true, sfx: true },
+            layers: { bass: true, sfx: true, drums: true },
             instrumentation: { bass: { strategy: 'weighted', options: [{ name: 'livingRiff', weight: 1.0 }] } },
-            instrumentRules: { bass: { density: {min: 0.2, max: 0.4}, techniques: [{value: 'drone', weight: 1.0}]}},
+            instrumentRules: { 
+                bass: { density: {min: 0.2, max: 0.4}, techniques: [{value: 'drone', weight: 1.0}]},
+                drums: { pattern: 'composer', density: { min: 0.1, max: 0.3 }, useSnare: false, rareKick: false, usePerc: true }
+            },
             bundles: [ { id: 'DARK_INTRO_BUNDLE', name: 'Drone', duration: { percent: 100 }, characteristics: {}, phrases: {} } ],
             outroFill: null,
           },
@@ -781,6 +784,7 @@ export default MelancholicAmbientBlueprint;
 
 
     
+
 
 
 
