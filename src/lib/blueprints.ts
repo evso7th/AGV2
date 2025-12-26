@@ -367,6 +367,11 @@ export const DarkAmbientBlueprint: MusicBlueprint = {
                 drums: { pattern: 'composer', density: { min: 0.2, max: 0.4 }, useSnare: false, usePerc: true, useGhostHat: true, rareKick: true },
                 bass: { density: {min: 0.5, max: 0.7} }
             },
+            bassAccompanimentDouble: {
+              enabled: true,
+              instrument: 'synth',
+              octaveShift: 1
+            },
             bundles: [ { id: 'DARK_BUILD_BUNDLE', name: 'Riffage', duration: { percent: 100 }, characteristics: {}, phrases: {} } ],
             outroFill: null,
           },
@@ -382,6 +387,11 @@ export const DarkAmbientBlueprint: MusicBlueprint = {
             instrumentRules: {
               drums: { pattern: 'composer', density: { min: 0.3, max: 0.5 }, useSnare: false, usePerc: true, useGhostHat: true, rareKick: true },
               melody: { register: { preferred: 'high' }}
+            },
+            bassAccompanimentDouble: {
+              enabled: true,
+              instrument: 'synth',
+              octaveShift: 1
             },
             bundles: [
               { id: 'DARK_MAIN_BUNDLE', name: 'The Monolith', duration: { percent: 100 }, characteristics: {}, phrases: {} },

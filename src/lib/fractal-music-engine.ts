@@ -263,7 +263,7 @@ export class FractalMusicEngine {
     if (!navInfo) return [];
     
     const drumRules = navInfo.currentPart.instrumentRules?.drums;
-    if (drumRules && drumRules.pattern === 'none') {
+    if (!navInfo.currentPart.layers.drums || (drumRules && drumRules.pattern === 'none')) {
         return [];
     }
     
@@ -365,14 +365,20 @@ export class FractalMusicEngine {
     
     const isIntro = navInfo.currentPart.id.startsWith('INTRO');
     
-    let drumEvents = navInfo.currentPart.layers.drums ? this.generateDrumEvents(navInfo) : [];
+    let drumEvents = this.generateDrumEvents(navInfo);
     
     let accompEvents: FractalEvent[] = [];
     if (isIntro && navInfo.currentPart.layers.accompaniment) {
-        drumEvents.forEach(drumEvent => {
-            const swell = this._createArpeggiatedChordSwell(drumEvent.time, currentChord);
+        if (drumEvents.length > 0) {
+            drumEvents.forEach(drumEvent => {
+                const swell = this._createArpeggiatedChordSwell(drumEvent.time, currentChord);
+                accompEvents.push(...swell);
+            });
+        } else {
+            // Если ударных нет, генерируем одно арпеджио в начале такта
+            const swell = this._createArpeggiatedChordSwell(0, currentChord);
             accompEvents.push(...swell);
-        });
+        }
         instrumentHints.accompaniment = 'ambientPad'; // Force pad for this effect
     } else if (navInfo.currentPart.layers.accompaniment) {
         const registerHint = navInfo.currentPart.instrumentRules?.accompaniment?.register?.preferred;
@@ -399,6 +405,17 @@ export class FractalMusicEngine {
 
     let bassEvents = navInfo.currentPart.layers.bass ? this.bassPhraseLibrary[this.currentBassPhraseIndex] : [];
     
+    if (navInfo.currentPart.bassAccompanimentDouble?.enabled) {
+        const { instrument, octaveShift } = navInfo.currentPart.bassAccompanimentDouble;
+        const bassDoubleEvents: FractalEvent[] = bassEvents.map(e => ({
+            ...e,
+            type: 'accompaniment',
+            note: e.note + (12 * octaveShift),
+            weight: e.weight * 0.8, // Slightly lower volume
+        }));
+        accompEvents.push(...bassDoubleEvents);
+        instrumentHints.accompaniment = instrument; // Ensure the correct instrument is hinted
+    }
     
     let harmonyEvents: FractalEvent[] = [];
     let melodyEvents: FractalEvent[] = [];

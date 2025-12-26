@@ -212,6 +212,11 @@ export type BlueprintPart = {
   instrumentRules: {
     [key: string]: any;
   };
+  bassAccompanimentDouble?: {
+    enabled: boolean;
+    instrument: AccompanimentInstrument;
+    octaveShift: number;
+  };
   bundles: BlueprintBundle[];
   outroFill: FillPolicy | null;
 };
