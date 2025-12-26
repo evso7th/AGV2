@@ -69,7 +69,6 @@ const SFX_SAMPLES: Record<string, string[]> = {
         '/assets/music/sfx/voice/785805__alien_i_trust__sample-pack-link-in-bio-alien-i-trust-i-exist-between-the-known-and-the-unknown.ogg',
         '/assets/music/sfx/voice/789675__alien_i_trust__synth-shot-1-by-alien-i-trust.ogg',
         '/assets/music/sfx/voice/953__vate__processed-vocoder-voice.ogg',
-        //'/assets/music/sfx/voice/Enjoy_every_moment_F.ogg',
         '/assets/music/sfx/voice/Enjoy_every_moment_F.ogg.824252.wav',
         '/assets/music/sfx/voice/Hello_who_would_you_.ogg',
         '/assets/music/sfx/voice/I_m_afraid_of_nothin.ogg',
@@ -129,7 +128,7 @@ export class SfxSynthManager {
         this.destination = destination;
 
         this.preamp = this.context.createGain();
-        this.preamp.gain.value = 0.5; // Громкость уменьшена в 2 раза
+        this.preamp.gain.value = 0.25; // Громкость уменьшена еще в 2 раза
         this.preamp.connect(this.destination);
     }
 
