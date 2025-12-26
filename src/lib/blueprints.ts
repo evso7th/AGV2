@@ -228,7 +228,7 @@ export const MelancholicAmbientBlueprint: MusicBlueprint = {
       },
       {
         id: 'INTRO_2', name: 'Stirrings', duration: { percent: 6 }, // ~7 bars
-        layers: { accompaniment: true, bass: true, sparkles: true, sfx: false, harmony: false, melody: true },
+        layers: { accompaniment: true, bass: true, sparkles: true, sfx: true, harmony: false, melody: true },
         instrumentation: {
           accompaniment: { strategy: 'weighted', options: [{ name: 'ambientPad', weight: 0.9 }, { name: 'organ', weight: 0.1 }] },
           bass: { strategy: 'weighted', options: [{ name: 'ambientDrone', weight: 1.0 }] },
@@ -243,7 +243,15 @@ export const MelancholicAmbientBlueprint: MusicBlueprint = {
           }
         },
         instrumentRules: {
-          accompaniment: { register: { preferred: 'low' } }
+          accompaniment: { register: { preferred: 'low' } },
+          sfx: {
+              eventProbability: 0.25,
+              categories: [
+                { name: 'voice', weight: 0.6 },
+                { name: 'dark', weight: 0.3 },
+                { name: 'common', weight: 0.1 }
+              ]
+          }
         },
         bundles: [ { id: 'INTRO_BUNDLE_2', name: 'Stirrings', duration: { percent: 100 }, characteristics: {}, phrases: {} } ],
         outroFill: null,
@@ -362,7 +370,7 @@ export const DarkAmbientBlueprint: MusicBlueprint = {
              instrumentation: {
               bass: { strategy: 'weighted', options: [{ name: 'livingRiff', weight: 1.0 }]},
               accompaniment: { strategy: 'weighted', options: [{ name: 'electricGuitar', weight: 0.8 }, {name: 'organ', weight: 0.2}]},
-              harmony: { strategy: 'weighted', options: [ { name: 'violin', weight: 0.45, octaveShift: -1 }, { name: 'flute', weight: 0.45, octaveShift: 0 }, { name: 'guitarChords', weight: 0.1 } ]}
+              harmony: { strategy: 'weighted', options: [ { name: 'violin', weight: 0.45, octaveShift: -1 }, { name: 'flute', weight: 0.45 }, { name: 'guitarChords', weight: 0.1 } ]}
             },
             instrumentRules: {
                 drums: { pattern: 'composer', density: { min: 0.2, max: 0.4 }, useSnare: false, usePerc: true, useGhostHat: true, rareKick: true },
@@ -392,7 +400,7 @@ export const DarkAmbientBlueprint: MusicBlueprint = {
               bass: { strategy: 'weighted', options: [{ name: 'livingRiff', weight: 1.0 }]},
               accompaniment: { strategy: 'weighted', options: [{ name: 'electricGuitar', weight: 1.0 }]},
               melody: { strategy: 'weighted', options: [{ name: 'theremin', weight: 0.6 }, { name: 'synth', weight: 0.4 }] },
-              harmony: { strategy: 'weighted', options: [ { name: 'violin', weight: 0.45, octaveShift: -1 }, { name: 'flute', weight: 0.45, octaveShift: 0 }, { name: 'guitarChords', weight: 0.1 } ]}
+              harmony: { strategy: 'weighted', options: [ { name: 'violin', weight: 0.45, octaveShift: -1 }, { name: 'flute', weight: 0.45 }, { name: 'guitarChords', weight: 0.1 } ]}
             },
             instrumentRules: {
               drums: { pattern: 'composer', density: { min: 0.3, max: 0.5 }, useSnare: false, usePerc: true, useGhostHat: true, rareKick: true },
@@ -556,217 +564,6 @@ export const DreamyAmbientBlueprint: MusicBlueprint = {
   rendering: {}
 };
 
-
-export const JoyfulAmbientBlueprint: MusicBlueprint = {
-    id: 'joyful_ambient',
-    name: 'Golden Horizons',
-    description: 'Светлый, энергичный, позитивный эмбиент.',
-    mood: 'joyful',
-    musical: {
-        key: { root: 'C', scale: 'ionian', octave: 3 },
-        bpm: { base: 62, range: [60, 70], modifier: 1.1 },
-        timeSignature: { numerator: 4, denominator: 4 },
-        harmonicJourney: [],
-        tensionProfile: {
-          type: 'wave',
-          peakPosition: 0.5,
-          curve: (progress: number, peakPos: number): number => 0.5 + 0.5 * Math.sin(progress * Math.PI * 2)
-        }
-    },
-     structure: {
-        totalDuration: { preferredBars: 120 },
-        parts: [
-          {
-            id: 'INTRO', name: 'Sunrise',
-            duration: { percent: 10 },
-            layers: { accompaniment: true, melody: true, sparkles: true, harmony: true, sfx: true },
-            instrumentation: {
-              accompaniment: { strategy: 'weighted', options: [{ name: 'synth', weight: 1.0 }]},
-              melody: { strategy: 'weighted', options: [{ name: 'organ', weight: 1.0 }]}
-            },
-            instrumentRules: {
-              melody: { density: { min: 0.5, max: 0.7 }, register: { preferred: 'high' } },
-              accompaniment: { density: { min: 0.4, max: 0.6 }, register: { preferred: 'mid' } },
-              sparkles: { eventProbability: 0.2 },
-            },
-            bundles: [ { id: 'JOY_INTRO_BUNDLE_1', name: 'First Light', duration: { percent: 100 }, characteristics: {}, phrases: {} } ],
-            outroFill: null,
-          },
-           {
-            id: 'BUILD', name: 'Awakening',
-            duration: { percent: 10 },
-            layers: { melody: true, sparkles: true, bass: true, drums: true, accompaniment: true, harmony: true, sfx: true },
-            instrumentation: {
-              accompaniment: { strategy: 'weighted', options: [{ name: 'synth', weight: 1.0 }]},
-              melody: { strategy: 'weighted', options: [{ name: 'organ', weight: 1.0 }]}
-            },
-            instrumentRules: {
-              bass: { techniques: [{value: 'walking', weight: 1.0}], density: {min: 0.6, max: 0.8}},
-              drums: { pattern: 'ambient_beat', density: {min: 0.5, max: 0.7}}
-            },
-            bundles: [ { id: 'JOY_INTRO_BUNDLE_2', name: 'First Pulse', duration: { percent: 100 }, characteristics: {}, phrases: {} } ],
-            outroFill: null,
-          },
-          {
-            id: 'MAIN', name: 'Gathering Light',
-            duration: { percent: 30 },
-            layers: { melody: true, sparkles: true, bass: true, drums: true, arpeggio: true, accompaniment: true, harmony: true, sfx: true },
-            instrumentation: {
-              accompaniment: { strategy: 'weighted', options: [{ name: 'synth', weight: 1.0 }]},
-              melody: { strategy: 'weighted', options: [{ name: 'organ', weight: 0.5 }, { name: 'mellotron', weight: 0.5 }]}
-            },
-            instrumentRules: {
-                bass: { techniques: [{value: 'melodic', weight: 0.7}, {value: 'walking', weight: 0.3}], density: {min: 0.7, max: 0.9}},
-                accompaniment: { techniques: [{value: 'arpeggio-fast', weight: 1.0}]},
-                drums: { pattern: 'composer', density: {min: 0.7, max: 0.9}}
-            },
-            bundles: [ { id: 'JOY_BUILD_BUNDLE_1', name: 'Ascension', duration: { percent: 100 }, characteristics: {}, phrases: {} } ],
-            outroFill: null,
-          },
-          {
-            id: 'PEAK', name: 'Zenith',
-            duration: { percent: 30 },
-            layers: { melody: true, sparkles: true, bass: true, drums: true, arpeggio: true, pad: true, accompaniment: true, harmony: true, sfx: true },
-            instrumentation: {
-              accompaniment: { strategy: 'weighted', options: [{ name: 'ambientPad', weight: 1.0 }]},
-              melody: { strategy: 'weighted', options: [{ name: 'electricGuitar', weight: 0.5 }, { name: 'synth', weight: 0.5 }]}
-            },
-            instrumentRules: {
-                bass: { techniques: [{value: 'syncopated', weight: 1.0}], density: {min: 0.8, max: 1.0}},
-                drums: { pattern: 'composer', kickVolume: 1.2, density: {min: 0.8, max: 1.0}}
-            },
-            bundles: [ { id: 'JOY_MAIN_BUNDLE_1', name: 'Celebration', duration: { percent: 100 }, characteristics: {}, phrases: {} } ],
-            outroFill: null,
-          },
-          {
-            id: 'OUTRO', name: 'Afterglow',
-            duration: { percent: 20 },
-            layers: { melody: true, sparkles: true, accompaniment: true, harmony: true, sfx: true },
-            instrumentation: {
-              accompaniment: { strategy: 'weighted', options: [{ name: 'synth', weight: 1.0 }]},
-              melody: { strategy: 'weighted', options: [{ name: 'organ', weight: 1.0 }]}
-            },
-            instrumentRules: {
-                accompaniment: { techniques: [{value: 'long-chords', weight: 1.0}], density: {min: 0.3, max: 0.5}},
-                melody: { density: {min: 0.2, max: 0.4} }
-            },
-            bundles: [ { id: 'JOY_OUTRO_BUNDLE_1', name: 'Lingering', duration: { percent: 100 }, characteristics: {}, phrases: {} } ],
-            outroFill: null,
-          }
-        ]
-    },
-    mutations: { },
-    ambientEvents: [],
-    continuity: {},
-    rendering: {}
-};
-
-export const CalmAmbientBlueprint: MusicBlueprint = {
-  id: 'calm_ambient',
-  name: 'Still Waters',
-  description: 'Теплый, обволакивающий и умиротворяющий эмбиент.',
-  mood: 'calm',
-  musical: {
-    key: { root: 'G', scale: 'mixolydian', octave: 3 },
-    bpm: { base: 54, range: [50, 58], modifier: 1.0 },
-    timeSignature: { numerator: 4, denominator: 4 },
-    harmonicJourney: [],
-    tensionProfile: {
-      type: 'plateau', // Длинное плато спокойствия
-      peakPosition: 0.3,
-      curve: (progress: number, peakPos: number): number => {
-        if (progress < peakPos) return progress / peakPos;
-        if (progress < 0.8) return 1.0;
-        return 1.0 - ((progress - 0.8) / 0.2);
-      }
-    }
-  },
-  structure: {
-    totalDuration: { preferredBars: 120 },
-    parts: [
-      {
-        id: 'INTRO', name: 'Gentle Awakening',
-        duration: { percent: 20 },
-        layers: { sparkles: true, accompaniment: true, sfx: true, harmony: true },
-        instrumentation: {
-          accompaniment: {
-            strategy: 'weighted',
-            options: [{ name: 'ambientPad', weight: 0.7 }, { name: 'synth', weight: 0.3 }]
-          }
-        },
-        instrumentRules: {
-          accompaniment: { density: { min: 0.4, max: 0.6 } },
-          sparkles: { eventProbability: 0.15 },
-          sfx: { density: 0.4 },
-        },
-        bundles: [{ id: 'CALM_INTRO_BUNDLE', name: 'First Breath', duration: { percent: 100 }, characteristics: {}, phrases: {} }],
-        outroFill: null,
-      },
-      {
-        id: 'BUILD', name: 'Flowing Stream',
-        duration: { percent: 30 },
-        layers: { sparkles: true, accompaniment: true, sfx: true, bass: true, arpeggio: true, drums: true, harmony: true, melody: true },
-        instrumentation: {
-          accompaniment: {
-            strategy: 'weighted',
-            options: [{ name: 'ambientPad', weight: 0.6 }, { name: 'organ', weight: 0.4 }]
-          },
-          bass: {
-            strategy: 'weighted',
-            options: [{ name: 'classicBass', weight: 1.0 }]
-          }
-        },
-        instrumentRules: {
-           drums: { pattern: 'ambient_beat', density: { min: 0.3, max: 0.5 } }
-        },
-        bundles: [{ id: 'CALM_BUILD_BUNDLE', name: 'Movement', duration: { percent: 100 }, characteristics: {}, phrases: {} }],
-        outroFill: null,
-      },
-      {
-        id: 'MAIN', name: 'Stillness',
-        duration: { percent: 35 },
-        layers: { sparkles: true, accompaniment: true, sfx: true, bass: true, arpeggio: true, drums: true, melody: true, harmony: true },
-        instrumentation: {
-          accompaniment: {
-            strategy: 'weighted',
-            options: [{ name: 'organ', weight: 0.5 }, { name: 'mellotron', weight: 0.5 }]
-          },
-           melody: {
-            strategy: 'weighted',
-            options: [{ name: 'flute', weight: 0.6 }, { name: 'piano', weight: 0.4 }]
-          }
-        },
-        instrumentRules: {
-           melody: { density: { min: 0.2, max: 0.4 } } // редкая, спокойная мелодия
-        },
-        bundles: [{ id: 'CALM_MAIN_BUNDLE', name: 'Clarity', duration: { percent: 100 }, characteristics: {}, phrases: {} }],
-        outroFill: null,
-      },
-      {
-        id: 'OUTRO', name: 'Fading Light',
-        duration: { percent: 15 },
-        layers: { sparkles: true, accompaniment: true, sfx: true, harmony: true, melody: true },
-        instrumentation: {
-           accompaniment: {
-            strategy: 'weighted',
-            options: [{ name: 'ambientPad', weight: 1.0 }]
-          }
-        },
-        instrumentRules: {
-            accompaniment: { density: { min: 0.3, max: 0.5 } },
-            sparkles: { eventProbability: 0.1 },
-        },
-        bundles: [{ id: 'CALM_OUTRO_BUNDLE', name: 'Return', duration: { percent: 100 }, characteristics: {}, phrases: {} }],
-        outroFill: null,
-      }
-    ]
-  },
-  mutations: {},
-  ambientEvents: [],
-  continuity: {},
-  rendering: {}
-};
-
 export const EnthusiasticAmbientBlueprint: MusicBlueprint = {
     id: 'enthusiastic_ambient',
     name: 'Radiant Ascent',
@@ -862,6 +659,117 @@ export const EnthusiasticAmbientBlueprint: MusicBlueprint = {
     rendering: {}
 };
 
+export const CalmAmbientBlueprint: MusicBlueprint = {
+  id: 'calm_ambient',
+  name: 'Still Waters',
+  description: 'Теплый, обволакивающий и умиротворяющий эмбиент.',
+  mood: 'calm',
+  musical: {
+    key: { root: 'G', scale: 'mixolydian', octave: 3 },
+    bpm: { base: 54, range: [50, 58], modifier: 1.0 },
+    timeSignature: { numerator: 4, denominator: 4 },
+    harmonicJourney: [],
+    tensionProfile: {
+      type: 'plateau', 
+      peakPosition: 0.3,
+      curve: (p, pp) => (p < pp ? p / pp : (p < 0.8 ? 1.0 : 1 - ((p - 0.8) / 0.2)))
+    }
+  },
+  structure: {
+    totalDuration: { preferredBars: 148 },
+    parts: [
+      {
+        id: 'INTRO', name: 'Gentle Awakening', duration: { percent: 14 },
+        layers: { sparkles: true, accompaniment: true, sfx: true },
+        instrumentation: {
+          accompaniment: {
+            strategy: 'weighted',
+            options: [{ name: 'ambientPad', weight: 0.7 }, { name: 'synth', weight: 0.3 }]
+          }
+        },
+        instrumentRules: {
+          accompaniment: { density: { min: 0.4, max: 0.6 } },
+        },
+        bundles: [{ id: 'CALM_INTRO_BUNDLE', name: 'First Breath', duration: { percent: 100 }, characteristics: {}, phrases: {} }],
+        outroFill: null,
+      },
+      {
+        id: 'BUILD', name: 'Flowing Stream', duration: { percent: 30 },
+        layers: { sparkles: true, accompaniment: true, sfx: true, bass: true, arpeggio: true, drums: true, harmony: true, melody: true },
+        instrumentation: {
+          accompaniment: {
+            strategy: 'weighted',
+            options: [{ name: 'ambientPad', weight: 0.6 }, { name: 'organ', weight: 0.4 }]
+          },
+          bass: {
+            strategy: 'weighted',
+            options: [{ name: 'classicBass', weight: 1.0 }]
+          }
+        },
+        instrumentRules: {
+           drums: { pattern: 'ambient_beat', density: { min: 0.3, max: 0.5 } }
+        },
+        bundles: [{ id: 'CALM_BUILD_BUNDLE', name: 'Movement', duration: { percent: 100 }, characteristics: {}, phrases: {} }],
+        outroFill: null,
+      },
+      {
+        id: 'MAIN', name: 'Stillness', duration: { percent: 30 },
+        layers: { sparkles: true, accompaniment: true, sfx: true, bass: true, arpeggio: true, drums: true, melody: true, harmony: true },
+        instrumentation: {
+          accompaniment: {
+            strategy: 'weighted',
+            options: [{ name: 'organ', weight: 0.5 }, { name: 'mellotron', weight: 0.5 }]
+          },
+           melody: {
+            strategy: 'weighted',
+            options: [{ name: 'flute', weight: 0.6 }, { name: 'piano', weight: 0.4 }]
+          }
+        },
+        instrumentRules: {
+           melody: { density: { min: 0.2, max: 0.4 } }
+        },
+        bundles: [{ id: 'CALM_MAIN_BUNDLE', name: 'Clarity', duration: { percent: 100 }, characteristics: {}, phrases: {} }],
+        outroFill: null,
+      },
+      {
+        id: 'RELEASE', name: 'Fading Light', duration: { percent: 19 },
+        layers: { sparkles: true, accompaniment: true, sfx: true, harmony: true, melody: true },
+        instrumentation: {
+           accompaniment: {
+            strategy: 'weighted',
+            options: [{ name: 'ambientPad', weight: 1.0 }]
+          }
+        },
+        instrumentRules: {
+            accompaniment: { density: { min: 0.3, max: 0.5 } },
+        },
+        bundles: [{ id: 'CALM_RELEASE_BUNDLE', name: 'Return', duration: { percent: 100 }, characteristics: {}, phrases: {} }],
+        outroFill: null,
+      },
+      {
+        id: 'OUTRO', name: 'Final Peace', duration: { percent: 8 },
+        layers: { sparkles: true, accompaniment: true, sfx: true },
+         instrumentation: {
+           accompaniment: {
+            strategy: 'weighted',
+            options: [{ name: 'ambientPad', weight: 1.0 }]
+          }
+        },
+        instrumentRules: { },
+        bundles: [{ id: 'CALM_OUTRO_BUNDLE', name: 'End', duration: { percent: 100 }, characteristics: {}, phrases: {} }],
+        outroFill: null,
+      }
+    ]
+  },
+  mutations: {},
+  ambientEvents: [
+      { type: 'sparkle', probability: 0.08, activeParts: ['BUILD', 'MAIN', 'RELEASE'] }, // Bells
+      { type: 'sfx', probability: 0.06, activeParts: ['INTRO', 'OUTRO'] }, // Water droplets
+  ],
+  continuity: {},
+  rendering: {}
+};
+
 
 export const BLUEPRINT_LIBRARY: Record<Mood, MusicBlueprint> = {
     // Positive
@@ -908,5 +816,6 @@ export default MelancholicAmbientBlueprint;
 
 
     
+
 
 
