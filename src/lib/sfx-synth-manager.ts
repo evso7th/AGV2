@@ -129,7 +129,7 @@ export class SfxSynthManager {
         this.destination = destination;
 
         this.preamp = this.context.createGain();
-        this.preamp.gain.value = 1.0; // Громкость уменьшена в 2 раза
+        this.preamp.gain.value = 0.5; // Громкость уменьшена в 2 раза
         this.preamp.connect(this.destination);
     }
 
