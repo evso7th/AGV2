@@ -2,7 +2,7 @@
 
 import type { FractalEvent, Mood, Genre, Technique, BassSynthParams, InstrumentType, MelodyInstrument, BassInstrument, AccompanimentInstrument, ResonanceMatrix, InstrumentHints, AccompanimentTechnique, GhostChord } from '@/types/fractal';
 import { ElectronicK, TraditionalK, AmbientK, MelancholicMinorK } from './resonance-matrices';
-import { getScaleForMood, STYLE_DRUM_PATTERNS, generateAmbientBassPhrase, createAccompanimentAxiom, PERCUSSION_SETS, TEXTURE_INSTRUMENT_WEIGHTS_BY_MOOD, getAccompanimentTechnique, createBassFill as createBassFillFromTheory, createDrumFill, AMBIENT_ACCOMPANIMENT_WEIGHTS, chooseHarmonyInstrument, mutateAccompanimentPhrase as originalMutateAccompPhrase, generateGhostHarmonyTrack, createHarmonyAxiom, mutateBassPhrase, createMelodyMotif } from './music-theory';
+import { getScaleForMood, STYLE_DRUM_PATTERNS, generateAmbientBassPhrase, createAccompanimentAxiom, PERCUSSION_SETS, TEXTURE_INSTRUMENT_WEIGHTS_BY_MOOD, getAccompanimentTechnique, createBassFill as createBassFillFromTheory, createDrumFill, AMBIENT_ACCOMPANIMENT_WEIGHTS, chooseHarmonyInstrument, mutateAccompanimentPhrase as originalMutateAccompPhrase, generateGhostHarmonyTrack, createHarmonyAxiom, mutateBassPhrase, createMelodyMotif, createDrumAxiom } from './music-theory';
 import { BlueprintNavigator, type NavigationInfo } from './blueprint-navigator';
 import { MelancholicAmbientBlueprint, BLUEPRINT_LIBRARY, getBlueprint } from './blueprints';
 
@@ -492,4 +492,5 @@ export class FractalMusicEngine {
     return { events, instrumentHints };
   }
 }
+
 
