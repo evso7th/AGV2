@@ -138,7 +138,7 @@ export function mutateBassPhrase(phrase: FractalEvent[], chord: GhostChord, mood
     return newPhrase;
 }
 
-export function mutateAccompanimentPhrase(phrase: FractalEvent[], chord: GhostChord, mood: Mood, genre: Genre, random: { next: () => number, nextInt: (max: number) => number }): FractalEvent[] {
+function mutateAccompanimentPhrase(phrase: FractalEvent[], chord: GhostChord, mood: Mood, genre: Genre, random: { next: () => number, nextInt: (max: number) => number }): FractalEvent[] {
     const newPhrase: FractalEvent[] = JSON.parse(JSON.stringify(phrase));
     if (newPhrase.length === 0) return [];
     
@@ -172,6 +172,8 @@ export function mutateAccompanimentPhrase(phrase: FractalEvent[], chord: GhostCh
 
     return newPhrase;
 }
+
+
 
 export const PERCUSSION_SETS: Record<'NEUTRAL' | 'ELECTRONIC' | 'DARK', InstrumentType[]> = {
     NEUTRAL: ['perc-001', 'perc-002', 'perc-005', 'perc-006', 'perc-013', 'perc-014', 'perc-015', 'drum_ride', 'cymbal_bell1'],
@@ -1104,6 +1106,7 @@ export function createMelodyMotif(chord: GhostChord, mood: Mood, random: { next:
 
 
     
+
 
 
 

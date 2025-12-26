@@ -2,7 +2,7 @@
 
 import type { FractalEvent, Mood, Genre, Technique, BassSynthParams, InstrumentType, MelodyInstrument, BassInstrument, AccompanimentInstrument, ResonanceMatrix, InstrumentHints, AccompanimentTechnique, GhostChord } from '@/types/fractal';
 import { ElectronicK, TraditionalK, AmbientK, MelancholicMinorK } from './resonance-matrices';
-import { getScaleForMood, STYLE_DRUM_PATTERNS, generateAmbientBassPhrase, createAccompanimentAxiom, PERCUSSION_SETS, TEXTURE_INSTRUMENT_WEIGHTS_BY_MOOD, getAccompanimentTechnique, createBassFill as createBassFillFromTheory, createDrumFill, AMBIENT_ACCOMPANIMENT_WEIGHTS, chooseHarmonyInstrument, mutateAccompanimentPhrase as originalMutateAccompPhrase, generateGhostHarmonyTrack, createHarmonyAxiom, mutateBassPhrase, createMelodyMotif, createDrumAxiom } from './music-theory';
+import { getScaleForMood, STYLE_DRUM_PATTERNS, generateAmbientBassPhrase, createAccompanimentAxiom, PERCUSSION_SETS, TEXTURE_INSTRUMENT_WEIGHTS_BY_MOOD, getAccompanimentTechnique, createBassFill as createBassFillFromTheory, createDrumFill, AMBIENT_ACCOMPANIMENT_WEIGHTS, chooseHarmonyInstrument, mutateBassPhrase, createMelodyMotif, createDrumAxiom, generateGhostHarmonyTrack, createHarmonyAxiom } from './music-theory';
 import { BlueprintNavigator, type NavigationInfo } from './blueprint-navigator';
 import { MelancholicAmbientBlueprint, BLUEPRINT_LIBRARY, getBlueprint } from './blueprints';
 
@@ -60,51 +60,6 @@ const isMelody = (event: FractalEvent): boolean => event.type === 'melody';
 const isKick = (event: FractalEvent): boolean => event.type === 'drum_kick';
 const isSnare = (event: FractalEvent): boolean => event.type === 'drum_snare';
 const isRhythmic = (event: FractalEvent): boolean => (event.type as string).startsWith('drum_') || (event.type as string).startsWith('perc-');
-
-
-// === АКСОМЫ И ТРАНСФОРМАЦИИ ===
-
-function mutateAccompanimentPhrase(phrase: FractalEvent[], chord: GhostChord, mood: Mood, genre: Genre, random: { next: () => number, nextInt: (max: number) => number }): FractalEvent[] {
-    const newPhrase: FractalEvent[] = JSON.parse(JSON.stringify(phrase));
-    if (newPhrase.length === 0) return [];
-    
-    const mutationType = random.nextInt(4);
-    switch (mutationType) {
-        case 0: // Изменение ритма (арпеджио -> аккорд и наоборот)
-            if (newPhrase.length > 1) {
-                const totalDuration = newPhrase.reduce((sum, e) => sum + e.duration, 0);
-                newPhrase.splice(1); // Оставляем только первую ноту
-                newPhrase[0].duration = totalDuration;
-                newPhrase[0].time = 0;
-            }
-            break;
-        case 1: // Смена октавы
-            const octaveShift = (random.next() > 0.5) ? 12 : -12;
-            newPhrase.forEach(e => e.note += octaveShift);
-            break;
-        case 2: // Ретроград (обратное движение)
-            const noteOrder = newPhrase.map(e => e.note).reverse();
-            newPhrase.forEach((e, i) => e.note = noteOrder[i]);
-            break;
-        case 3: // Добавление гармонического тона
-            if (newPhrase.length < 5) {
-                const scale = getScaleForMood(mood);
-                const newNoteMidi = scale[random.nextInt(scale.length)] + 12 * 4;
-                const lastNote = newPhrase[newPhrase.length - 1];
-                newPhrase.push({ ...lastNote, note: newNoteMidi, time: lastNote.time + 0.1 });
-            }
-            break;
-    }
-
-    return newPhrase;
-}
-
-
-
-const VOICE_LIMITS = {
-    accompaniment: 6,
-    melody: 3,
-};
 
 
 // === ОСНОВНОЙ КЛАСС ===
@@ -275,13 +230,8 @@ export class FractalMusicEngine {
 
 
   public generateExternalImpulse() {
-    const { drumFill, bassFill, accompanimentFill } = createSfxScenario(this.config.mood, this.config.genre, this.random);
-
-    this.sfxFillForThisEpoch = {
-        drum: drumFill,
-        bass: bassFill,
-        accompaniment: accompanimentFill
-    };
+    // This functionality is currently disabled to simplify the logic.
+    // We can re-enable it once the core composition is stable.
   }
   
   private applyNaturalDecay(events: FractalEvent[], barDuration: number): FractalEvent[] {
@@ -492,5 +442,3 @@ export class FractalMusicEngine {
     return { events, instrumentHints };
   }
 }
-
-
