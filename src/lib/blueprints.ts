@@ -331,7 +331,6 @@ export const MelancholicAmbientBlueprint: MusicBlueprint = {
   rendering: {}
 };
 
-
 export const DarkAmbientBlueprint: MusicBlueprint = {
     id: 'dark_ambient',
     name: 'Sabbath Drift',
@@ -857,7 +856,6 @@ export const JoyfulAmbientBlueprint: MusicBlueprint = {
     rendering: {}
 };
 
-
 export const EpicAmbientBlueprint: MusicBlueprint = {
     id: 'epic_ambient',
     name: 'Heroic Dawn',
@@ -942,7 +940,6 @@ export const EpicAmbientBlueprint: MusicBlueprint = {
     rendering: {}
 };
 
-
 export const BLUEPRINT_LIBRARY: Record<Mood, MusicBlueprint> = {
     // Positive
     epic: EpicAmbientBlueprint,
@@ -976,20 +973,3 @@ export function getBlueprint(genre: Genre, mood: Mood): MusicBlueprint {
 }
 
 export default MelancholicAmbientBlueprint;
-
-
-
-    
-
-    
-
-
-
-
-
-    
-
-
-
-
-
