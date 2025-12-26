@@ -122,40 +122,72 @@ export class FractalMusicEngine {
   }
 
   private _generatePromenade() {
+    const promenade: FractalEvent[] = [];
     const scale = getScaleForMood(this.config.mood);
     const root = scale[0];
-    const fifth = scale.find(n => (n - root) % 12 === 7) || scale[4] || (root + 7);
-    const fourth = scale.find(n => (n - root) % 12 === 5) || scale[3] || (root + 5);
-
-    const promenade: FractalEvent[] = [];
-    const notes = [root, fifth, fourth, root];
-    for (let i = 0; i < 4; i++) {
-        // Accompaniment part for this bar
+    const durationInBeats = 16; // 4 bars * 4 beats
+  
+    // 1. Sustained Bass/Pad Drone (Foundation)
+    promenade.push({
+      type: 'bass',
+      note: root - 12, // Sub-bass
+      duration: durationInBeats,
+      time: 0,
+      weight: 0.5,
+      technique: 'drone',
+      dynamics: 'p',
+      phrasing: 'legato',
+      params: { attack: 3.0, release: 5.0, cutoff: 200, resonance: 0.5, distortion: 0, portamento: 0.1 }
+    });
+    promenade.push({
+        type: 'accompaniment',
+        note: root, // Mid-range
+        duration: durationInBeats,
+        time: 0.5, // Slightly offset
+        weight: 0.4,
+        technique: 'swell',
+        dynamics: 'p',
+        phrasing: 'legato',
+        params: { attack: 4.0, release: 6.0 }
+    });
+  
+    // 2. Textural Percussion (Using `perc-*` samples)
+    const percSamples: InstrumentType[] = ['perc-007', 'perc-011', 'perc-014', 'drum_a_ride2'];
+    for (let i = 0; i < 8; i++) {
         promenade.push({
-            type: 'accompaniment',
-            note: notes[i] + 12, // Play one octave higher
-            duration: 4.0, // Whole note
-            time: i * 4.0, // Each note starts a new bar, assuming 4 beats per bar
-            weight: 0.6,
-            technique: 'swell',
-            dynamics: 'p',
-            phrasing: 'legato',
-            params: { attack: 1.5, release: 2.5 }
-        });
-        // Bass part for this bar
-         promenade.push({
-            type: 'bass',
-            note: notes[i],
-            duration: 4.0,
-            time: i * 4.0,
-            weight: 0.7,
-            technique: 'drone',
-            dynamics: 'p',
-            phrasing: 'legato',
-            params: { attack: 2.0, release: 3.0 }
+            type: percSamples[i % percSamples.length],
+            note: 60, // Dummy note
+            duration: 1.0,
+            time: i * 2.0 + this.random.next() * 0.5, // Every 2 beats, with jitter
+            weight: 0.2 + this.random.next() * 0.1, // Very quiet
+            technique: 'hit', dynamics: 'pp', phrasing: 'staccato', params: {}
         });
     }
+  
+    // 3. Atmospheric SFX
+    promenade.push({
+      type: 'sfx',
+      note: 60,
+      time: 1.0,
+      duration: durationInBeats - 2.0,
+      weight: 0.35,
+      technique: 'swell', dynamics: 'p', phrasing: 'legato',
+      params: { mood: this.config.mood, genre: 'ambient', rules: { eventProbability: 1.0, categories: [{name: 'common', weight: 1.0}]} }
+    });
+  
+    // 4. Melodic "Sparkle"
+    promenade.push({
+      type: 'sparkle',
+      note: 60,
+      time: durationInBeats / 2, // Right in the middle
+      duration: 1,
+      weight: 0.6,
+      technique: 'hit', dynamics: 'mp', phrasing: 'legato',
+      params: { mood: this.config.mood, genre: this.config.genre }
+    });
+  
     this.promenadeBars = promenade;
+    console.log(`[FME] Generated enriched Promenade with ${this.promenadeBars.length} events.`);
   }
 
   private initialize() {
@@ -492,3 +524,4 @@ export class FractalMusicEngine {
     return { events, instrumentHints };
   }
 }
+
