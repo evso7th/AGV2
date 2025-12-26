@@ -330,7 +330,7 @@ export const DarkAmbientBlueprint: MusicBlueprint = {
     description: 'Тёмный, давящий, медленный эмбиент, вдохновленный тяжелыми риффами.',
     mood: 'dark',
     musical: {
-        key: { root: 'E', scale: 'phrygian', octave: 2 },
+        key: { root: 'E', scale: 'phrygian', octave: 1 },
         bpm: { base: 45, range: [42, 50], modifier: 0.85 },
         timeSignature: { numerator: 4, denominator: 4 },
         harmonicJourney: [],
@@ -358,10 +358,11 @@ export const DarkAmbientBlueprint: MusicBlueprint = {
           {
             id: 'BUILD', name: 'The Riff',
             duration: { percent: 30 },
-            layers: { bass: true, sfx: true, drums: true, accompaniment: true },
+            layers: { bass: true, sfx: true, drums: true, accompaniment: true, harmony: true },
              instrumentation: {
               bass: { strategy: 'weighted', options: [{ name: 'livingRiff', weight: 1.0 }]},
-              accompaniment: { strategy: 'weighted', options: [{ name: 'electricGuitar', weight: 0.8 }, {name: 'organ', weight: 0.2}]}
+              accompaniment: { strategy: 'weighted', options: [{ name: 'electricGuitar', weight: 0.8 }, {name: 'organ', weight: 0.2}]},
+              harmony: { strategy: 'weighted', options: [ { name: 'violin', weight: 0.45, octaveShift: -1 }, { name: 'flute', weight: 0.45, octaveShift: 0 }, { name: 'guitarChords', weight: 0.1, octaveShift: 0 } ]}
             },
             instrumentRules: {
                 drums: { pattern: 'composer', density: { min: 0.2, max: 0.4 }, useSnare: false, usePerc: true, useGhostHat: true, rareKick: true },
@@ -378,11 +379,12 @@ export const DarkAmbientBlueprint: MusicBlueprint = {
           {
             id: 'MAIN', name: 'Iron God',
             duration: { percent: 35 },
-            layers: { bass: true, sfx: true, drums: true, melody: true, accompaniment: true },
+            layers: { bass: true, sfx: true, drums: true, melody: true, accompaniment: true, harmony: true },
             instrumentation: {
               bass: { strategy: 'weighted', options: [{ name: 'livingRiff', weight: 1.0 }]},
               accompaniment: { strategy: 'weighted', options: [{ name: 'electricGuitar', weight: 1.0 }]},
-              melody: { strategy: 'weighted', options: [{ name: 'theremin', weight: 0.6 }, { name: 'synth', weight: 0.4 }] }
+              melody: { strategy: 'weighted', options: [{ name: 'theremin', weight: 0.6 }, { name: 'synth', weight: 0.4 }] },
+              harmony: { strategy: 'weighted', options: [ { name: 'violin', weight: 0.45, octaveShift: -1 }, { name: 'flute', weight: 0.45, octaveShift: 0 }, { name: 'guitarChords', weight: 0.1, octaveShift: 0 } ]}
             },
             instrumentRules: {
               drums: { pattern: 'composer', density: { min: 0.3, max: 0.5 }, useSnare: false, usePerc: true, useGhostHat: true, rareKick: true },
