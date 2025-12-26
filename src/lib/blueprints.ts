@@ -227,10 +227,19 @@ export const MelancholicAmbientBlueprint: MusicBlueprint = {
       },
       {
         id: 'INTRO_2', name: 'Stirrings', duration: { percent: 6 }, // ~7 bars
-        layers: { accompaniment: true, bass: true, sparkles: true, sfx: false, harmony: false, melody: false },
+        layers: { accompaniment: true, bass: true, sparkles: true, sfx: false, harmony: false, melody: true },
         instrumentation: {
           accompaniment: { strategy: 'weighted', options: [{ name: 'ambientPad', weight: 0.9 }, { name: 'organ', weight: 0.1 }] },
-          bass: { strategy: 'weighted', options: [{ name: 'ambientDrone', weight: 1.0 }] }
+          bass: { strategy: 'weighted', options: [{ name: 'ambientDrone', weight: 1.0 }] },
+           melody: {
+            strategy: 'weighted',
+            options: [
+              { name: 'electricGuitar', weight: 0.2 },
+              { name: 'acousticGuitar', weight: 0.2 },
+              { name: 'organ', weight: 0.3 },
+              { name: 'mellotron', weight: 0.3 },
+            ]
+          }
         },
         instrumentRules: {
           accompaniment: { register: { preferred: 'low' } }
@@ -316,73 +325,76 @@ export const MelancholicAmbientBlueprint: MusicBlueprint = {
 
 export const DarkAmbientBlueprint: MusicBlueprint = {
     id: 'dark_ambient',
-    name: 'Abyssal Descent',
-    description: 'Тёмный, давящий, медленный эмбиент.',
+    name: 'Sabbath Drift',
+    description: 'Тёмный, давящий, медленный эмбиент, вдохновленный тяжелыми риффами.',
     mood: 'dark',
     musical: {
-        key: { root: 'C', scale: 'phrygian', octave: 2 },
-        bpm: { base: 42, range: [40, 48], modifier: 0.8 },
+        key: { root: 'E', scale: 'phrygian', octave: 2 },
+        bpm: { base: 45, range: [42, 50], modifier: 0.85 },
         timeSignature: { numerator: 4, denominator: 4 },
         harmonicJourney: [],
         tensionProfile: {
-          type: 'arc',
-          peakPosition: 0.65,
-          curve: (progress: number, peakPos: number): number => {
-            if (progress < peakPos) return Math.pow(progress / peakPos, 1.1);
-            else return Math.pow((1 - progress) / (1 - peakPos), 2.0);
-          }
+          type: 'plateau',
+          peakPosition: 0.3,
+          curve: (p, pp) => (p < pp ? p / pp : (p < 0.9 ? 1.0 : 1 - ((p - 0.9) / 0.1)))
         }
     },
     structure: {
         totalDuration: { preferredBars: 120 },
         parts: [
           {
-            id: 'INTRO', name: 'Creeping Fog',
-            duration: { percent: 10 },
-            layers: { bass: true, accompaniment: true, sfx: true, sparkles: true, harmony: true },
-            instrumentation: {
-              accompaniment: { strategy: 'weighted', options: [{ name: 'ambientPad', weight: 1.0 }]}
-            },
-            instrumentRules: {},
-            bundles: [ { id: 'DARK_INTRO_BUNDLE_1', name: 'Drone', duration: { percent: 100 }, characteristics: {}, phrases: {} } ],
-            outroFill: null,
-          },
-          {
-            id: 'BUILD', name: 'Distant Thunder',
+            id: 'INTRO', name: 'The Void',
             duration: { percent: 20 },
-            layers: { bass: true, sfx: true, drums: true, melody: true, pad: true, accompaniment: true, harmony: true, sparkles: true },
-             instrumentation: {
-              accompaniment: { strategy: 'weighted', options: [{ name: 'organ', weight: 1.0 }]},
-              melody: { strategy: 'weighted', options: [{ name: 'theremin', weight: 0.5 }, { name: 'synth', weight: 0.5 }] }
-            },
-            instrumentRules: {},
-            bundles: [ { id: 'BUILD_BUNDLE_1', name: 'Rumble', duration: { percent: 100 }, characteristics: {}, phrases: {} } ],
+            layers: { bass: true, sfx: true },
+            instrumentation: { bass: { strategy: 'weighted', options: [{ name: 'livingRiff', weight: 1.0 }] } },
+            instrumentRules: { bass: { density: {min: 0.2, max: 0.4}, techniques: [{value: 'drone', weight: 1.0}]}},
+            bundles: [ { id: 'DARK_INTRO_BUNDLE', name: 'Drone', duration: { percent: 100 }, characteristics: {}, phrases: {} } ],
             outroFill: null,
           },
           {
-            id: 'MAIN', name: 'The Abyss',
+            id: 'BUILD', name: 'The Riff',
             duration: { percent: 30 },
-            layers: { bass: true, sfx: true, drums: true, melody: true, pad: true, accompaniment: true, harmony: true, sparkles: true },
-            instrumentation: {
-              accompaniment: { strategy: 'weighted', options: [{ name: 'organ', weight: 0.7 }, { name: 'mellotron', weight: 0.3 }]},
-              melody: { strategy: 'weighted', options: [{ name: 'theremin', weight: 0.4 }, { name: 'synth', weight: 0.4 }, { name: 'electricGuitar', weight: 0.2 }] }
+            layers: { bass: true, sfx: true, drums: true, accompaniment: true },
+             instrumentation: {
+              bass: { strategy: 'weighted', options: [{ name: 'livingRiff', weight: 1.0 }]},
+              accompaniment: { strategy: 'weighted', options: [{ name: 'electricGuitar', weight: 0.8 }, {name: 'organ', weight: 0.2}]}
             },
-            instrumentRules: {},
+            instrumentRules: {
+                drums: { pattern: 'composer', density: { min: 0.2, max: 0.4 }, useSnare: false, usePerc: true, useGhostHat: true, rareKick: true },
+                bass: { density: {min: 0.5, max: 0.7} }
+            },
+            bundles: [ { id: 'DARK_BUILD_BUNDLE', name: 'Riffage', duration: { percent: 100 }, characteristics: {}, phrases: {} } ],
+            outroFill: null,
+          },
+          {
+            id: 'MAIN', name: 'Iron God',
+            duration: { percent: 35 },
+            layers: { bass: true, sfx: true, drums: true, melody: true, accompaniment: true },
+            instrumentation: {
+              bass: { strategy: 'weighted', options: [{ name: 'livingRiff', weight: 1.0 }]},
+              accompaniment: { strategy: 'weighted', options: [{ name: 'electricGuitar', weight: 1.0 }]},
+              melody: { strategy: 'weighted', options: [{ name: 'theremin', weight: 0.6 }, { name: 'synth', weight: 0.4 }] }
+            },
+            instrumentRules: {
+              drums: { pattern: 'composer', density: { min: 0.3, max: 0.5 }, useSnare: false, usePerc: true, useGhostHat: true, rareKick: true },
+              melody: { register: { preferred: 'high' }}
+            },
             bundles: [
-              { id: 'MAIN_BUNDLE_1', name: 'Stasis', duration: { percent: 50 }, characteristics: {}, phrases: {} },
-              { id: 'MAIN_BUNDLE_2', name: 'Pressure', duration: { percent: 50 }, characteristics: {}, phrases: {} }
+              { id: 'DARK_MAIN_BUNDLE', name: 'The Monolith', duration: { percent: 100 }, characteristics: {}, phrases: {} },
             ],
             outroFill: null,
           },
           {
-            id: 'OUTRO', name: 'Fading Echo',
-            duration: { percent: 20 },
-            layers: { bass: true, sfx: true, accompaniment: true, harmony: true, sparkles: true },
-             instrumentation: {
-              accompaniment: { strategy: 'weighted', options: [{ name: 'ambientPad', weight: 1.0 }]}
+            id: 'OUTRO', name: 'Feedback',
+            duration: { percent: 15 },
+            layers: { sfx: true, accompaniment: true },
+            instrumentation: {
+                accompaniment: { strategy: 'weighted', options: [{ name: 'electricGuitar', weight: 1.0 }]}
             },
-            instrumentRules: {},
-            bundles: [ { id: 'OUTRO_BUNDLE_1', name: 'Silence', duration: { percent: 100 }, characteristics: {}, phrases: {} } ],
+            instrumentRules: {
+                accompaniment: { techniques: [{value: 'swell', weight: 1.0}], register: { preferred: 'low' } }
+            },
+            bundles: [ { id: 'DARK_OUTRO_BUNDLE', name: 'Decay', duration: { percent: 100 }, characteristics: {}, phrases: {} } ],
             outroFill: null,
           }
         ]
@@ -769,6 +781,7 @@ export default MelancholicAmbientBlueprint;
 
 
     
+
 
 
 
