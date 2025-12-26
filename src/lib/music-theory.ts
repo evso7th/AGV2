@@ -351,8 +351,8 @@ export function createAccompanimentAxiom(chord: GhostChord, mood: Mood, genre: G
     let currentTime = 0;
 
     for (let i = 0; i < numNotes; i++) {
-        // #РЕШЕНИЕ: Исправлена ошибка. Вместо жестко заданного `* 3` теперь используется `* baseOctave`.
-        const noteMidi = chordNotes[random.nextInt(chordNotes.length)] + 12 * (baseOctave + random.nextInt(2));
+        // #РЕШЕНИЕ: Исправлена ошибка. Убрано случайное добавление октавы.
+        const noteMidi = chordNotes[random.nextInt(chordNotes.length)] + 12 * baseOctave;
         const duration = 4.0 / numNotes;
         
         const mainEvent: FractalEvent = {
@@ -1118,6 +1118,7 @@ export function createMelodyMotif(chord: GhostChord, mood: Mood, random: { next:
 
 
     
+
 
 
 
