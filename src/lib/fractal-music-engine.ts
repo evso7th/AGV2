@@ -1,5 +1,4 @@
 
-
 import type { FractalEvent, Mood, Genre, Technique, BassSynthParams, InstrumentType, MelodyInstrument, BassInstrument, AccompanimentInstrument, ResonanceMatrix, InstrumentHints, AccompanimentTechnique, GhostChord } from '@/types/fractal';
 import { ElectronicK, TraditionalK, AmbientK, MelancholicMinorK } from './resonance-matrices';
 import { getScaleForMood, STYLE_DRUM_PATTERNS, generateAmbientBassPhrase, createAccompanimentAxiom, PERCUSSION_SETS, TEXTURE_INSTRUMENT_WEIGHTS_BY_MOOD, getAccompanimentTechnique, createBassFill as createBassFillFromTheory, createDrumFill, AMBIENT_ACCOMPANIMENT_WEIGHTS, chooseHarmonyInstrument, mutateBassPhrase, createMelodyMotif, createDrumAxiom, generateGhostHarmonyTrack, createHarmonyAxiom, mutateAccompanimentPhrase } from './music-theory';
@@ -186,9 +185,19 @@ export class FractalMusicEngine {
     this.currentAccompPhraseIndex = 0;
 
     const firstChord = this.ghostHarmonyTrack[0];
+    
+    // #ЗАЧЕМ: Этот блок кода отвечает за создание НАЧАЛЬНОЙ библиотеки фраз для аккомпанемента.
+    // #ЧТО: Он считывает информацию о навигации для самого первого такта (bar 0), чтобы получить
+    //      правила для интро. Затем он извлекает из этих правил `registerHint` (указание на регистр)
+    //      и передает его в `createAccompanimentAxiom` при создании фраз.
+    // #СВЯЗИ: Решает проблему "инициализации вслепую", когда начальные фразы создавались
+    //         без учета правил блюпринта, что приводило к неправильному регистру в интро.
+    const initialNavInfo = this.navigator.tick(0);
+    const initialRegisterHint = initialNavInfo?.currentPart.instrumentRules?.accompaniment?.register?.preferred;
+    
     for (let i = 0; i < 4; i++) {
         this.bassPhraseLibrary.push(generateAmbientBassPhrase(firstChord, this.config.mood, this.config.genre, this.random, this.config.tempo));
-        this.accompPhraseLibrary.push(createAccompanimentAxiom(firstChord, this.config.mood, this.config.genre, this.random, this.config.tempo));
+        this.accompPhraseLibrary.push(createAccompanimentAxiom(firstChord, this.config.mood, this.config.genre, this.random, this.config.tempo, initialRegisterHint));
     }
     
     this.currentMelodyMotif = createMelodyMotif(firstChord, this.config.mood, this.random);
