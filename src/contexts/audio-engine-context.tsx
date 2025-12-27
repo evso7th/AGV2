@@ -136,7 +136,6 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
 
         // Immediately update the worker with the new engine state
         if (settingsRef.current) {
-            // #РЕШЕНИЕ: Мы напрямую вызываем колбэк для обновления воркера
             const newSettings = { ...settingsRef.current, useMelodyV2: newValue };
             updateSettingsCallback(newSettings);
         }
