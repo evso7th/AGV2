@@ -558,7 +558,7 @@ export async function buildMultiInstrument(ctx: AudioContext, {
   }
 
   // fallback
-  master.connect(output);
+  master.connect(output || ctx.destination);
   // TELEMETRY POINT
   console.log(`%c[InstrumentFactory] Instrument of type '${type}' built. Final output connected.`, 'color: #00FF7F;');
   return api;
