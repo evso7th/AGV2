@@ -46,7 +46,7 @@ export const V2_PRESETS = {
     osc: [
       { type: 'sawtooth', detune: -8,    gain: 0.55 },
       { type: 'sawtooth', detune: +8,    gain: 0.55 },
-      { type: 'sine',     detune: +1200, gain: 0.25 }  // +1 октава (детюн в центах)
+      { type: 'sine',     detune: 1200, gain: 0.25 }  // +1 октава (детюн в центах)
     ],
     noise: { on: true, color: 'white', gain: 0.02 },
     adsr:  { a: 2.5, d: 2.0, s: 0.8, r: 4.0 },
@@ -119,39 +119,25 @@ export const V2_PRESETS = {
     reverbMix: 0.15
   },
 
-  // (опционально) 12-струнная — если есть карта зон instrument:'acoustic12'
-  acoustic12: {
-    type: 'mellotron',
-    instrument: 'acoustic12',
-    attack: 0.012, release: 0.22,
-    wow: { rate: 0.10, depth: 0.0008 },
-    flutter: { rate: 6.0,  depth: 0.0004 },
-    noise: { level: -40 },
-    lpf: 7800, hpf: 100,
-    reverbMix: 0.18
-  },
-
   // ───────────────────────── GUITAR (электро, Гилмор) ─────────────────────────
   guitar_shineOn: {
     type: 'guitar',
     variant: 'shineOn',
-    // можно оставить по умолчанию — цепь подберётся из кода
+    osc: { width: 0.46, detune: 5, mainGain: 0.85, detGain: 0.18, subGain: 0.25 },
     reverbMix: 0.18
   },
-
-  // Мфф-лид (Time/Comfortably Numb вкуса), корректный формат для ветки 'guitar'
+  
   electricGuitar: {
     type: 'guitar',
     variant: 'muffLead',
+    osc: { width: 0.45, detune: 7, mainGain: 0.8, detGain: 0.2, subGain: 0.3 },
     pickup: { cutoff: 3400, q: 1.1 },
     comp:   { threshold: -20, ratio: 4, attack: 0.008, release: 0.14, makeup: +4 },
     drive:  { type: 'muff', amount: 0.65 },
     post:   { lpf: 4500, mids: [{ f: 900, q: 0.9, g: +1.5 }, { f: 3000, q: 1.2, g: -2.5 }] },
     phaser: { stages: 4, base: 900, depth: 700, rate: 0.18, fb: 0.12, mix: 0.18 },
     delayA: { time: 0.50, fb: 0.45, hc: 3200, wet: 0.28 },
-    delayB: { time: 0.00, fb: 0.00, hc: 0,    wet: 0.00 }, // второй тейп отключён
+    delayB: { time: 0.00, fb: 0.00, hc: 0,    wet: 0.00 },
     reverbMix: 0.30,
-    // управление уровнем исходных осцилляторов (внутри ветки guitar)
-    osc: { width: 0.45, detune: 7, mainGain: 0.8, detGain: 0.2, subGain: 0.3 }
   }
 };
