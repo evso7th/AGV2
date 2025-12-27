@@ -481,11 +481,15 @@ export class FractalMusicEngine {
     }
     
     if (navInfo.currentPart.layers.melody) {
-        const melodyPlayInterval = 4;
-        if (this.epoch >= this.lastMelodyPlayEpoch + melodyPlayInterval) {
-             if (this.epoch > 0) {
-                 this.currentMelodyMotif = createMelodyMotif(currentChord, this.config.mood, this.random, this.currentMelodyMotif);
-             }
+        const melodyRules = navInfo.currentPart.instrumentRules?.melody;
+        // Используем optional chaining и nullish coalescing для безопасного доступа
+        const melodyDensity = melodyRules?.density?.min ?? 0.25; // 25% шанс по умолчанию
+        const minInterval = 2; // Минимальный интервал в тактах
+
+        if (this.epoch >= this.lastMelodyPlayEpoch + minInterval && this.random.next() < melodyDensity) {
+            if (this.epoch > 0 && this.currentMelodyMotif.length > 0) {
+                this.currentMelodyMotif = createMelodyMotif(currentChord, this.config.mood, this.random, this.currentMelodyMotif);
+            }
             melodyEvents = this.currentMelodyMotif;
             this.lastMelodyPlayEpoch = this.epoch;
         }
