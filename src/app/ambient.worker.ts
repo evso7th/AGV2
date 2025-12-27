@@ -174,6 +174,7 @@ const Scheduler = {
                 events: mainScoreEvents,
                 instrumentHints: scorePayload.instrumentHints,
                 barDuration: this.barDuration,
+                barCount: this.barCount,
             }
         });
         

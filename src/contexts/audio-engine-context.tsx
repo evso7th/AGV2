@@ -36,6 +36,7 @@ type WorkerMessage = {
         events?: FractalEvent[];
         barDuration?: number;
         instrumentHints?: InstrumentHints;
+        barCount?: number; // Added for logging
     } | FractalEvent; // payload can be the full score payload or a single event
     error?: string;
     message?: string;
@@ -150,7 +151,7 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
     }
   }, [isInitialized, useMelodyV2]);
 
-  const scheduleEvents = useCallback((events: FractalEvent[], barStartTime: number, tempo: number, instrumentHints?: InstrumentHints) => {
+  const scheduleEvents = useCallback((events: FractalEvent[], barStartTime: number, tempo: number, barCount: number, instrumentHints?: InstrumentHints) => {
     if (!Array.isArray(events)) {
         return;
     }
@@ -200,12 +201,12 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
     if (accompanimentEvents.length > 0) {
         if (useMelodyV2) {
             if (accompanimentManagerV2Ref.current) {
-                console.log("Scheduling accompaniment with V2 engine");
+                console.log(`[AudioEngine @ Bar ${barCount}] Routing ${accompanimentEvents.length} accomp events to V2 Engine.`);
                 accompanimentManagerV2Ref.current.schedule(accompanimentEvents, barStartTime, tempo);
             }
         } else {
             if (accompanimentManagerRef.current) {
-                console.log("Scheduling accompaniment with V1 engine");
+                console.log(`[AudioEngine @ Bar ${barCount}] Routing ${accompanimentEvents.length} accomp events to V1 Engine.`);
                 accompanimentManagerRef.current.schedule(accompanimentEvents, barStartTime, tempo, instrumentHints?.accompaniment);
             }
         }
@@ -214,12 +215,12 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
     if (melodyEvents.length > 0) {
         if (useMelodyV2) {
             if (melodyManagerV2Ref.current) {
-                console.log("Scheduling melody with V2 engine");
+                console.log(`[AudioEngine @ Bar ${barCount}] Routing ${melodyEvents.length} melody events to V2 Engine.`);
                 melodyManagerV2Ref.current.schedule(melodyEvents, barStartTime, tempo);
             }
         } else {
             if (melodyManagerRef.current) {
-                console.log("Scheduling melody with V1 engine");
+                console.log(`[AudioEngine @ Bar ${barCount}] Routing ${melodyEvents.length} melody events to V1 Engine.`);
                 melodyManagerRef.current.schedule(melodyEvents, barStartTime, tempo, instrumentHints?.melody);
             }
         }
@@ -323,23 +324,24 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
         if (!workerRef.current) {
             const worker = new Worker(new URL('@/app/ambient.worker.ts', import.meta.url), { type: 'module' });
             worker.onmessage = (event: MessageEvent<WorkerMessage>) => {
-                 console.log('[AudioEngine] Received message from worker:', event.data);
                 const { type, payload, error } = event.data;
                 
                 if (type === 'SCORE_READY' && payload && 'events' in payload) {
-                    const { events, barDuration, instrumentHints } = payload;
+                    const { events, barDuration, instrumentHints, barCount } = payload;
                     
-                    if(events && barDuration && settingsRef.current){
+                    if(events && barDuration && settingsRef.current && barCount !== undefined){
                         const composerControls = settingsRef.current.composerControlsInstruments;
-                        scheduleEvents(events, nextBarTimeRef.current, settingsRef.current.bpm, composerControls ? instrumentHints : undefined);
+                        scheduleEvents(events, nextBarTimeRef.current, settingsRef.current.bpm, barCount, composerControls ? instrumentHints : undefined);
                         nextBarTimeRef.current += barDuration;
                     }
 
                 } else if (type === 'HARMONY_SCORE_READY' && payload && 'events' in payload) {
                      const { events, barDuration, instrumentHints } = payload;
                      if(events && barDuration && settingsRef.current){
-                        scheduleEvents(events, nextBarTimeRef.current, settingsRef.current.bpm, instrumentHints);
-                        // Do not advance nextBarTimeRef here, as it's part of the same bar
+                        // Assuming barCount is part of the main SCORE_READY payload
+                        // The harmony events are part of the same bar.
+                        // We need a way to get the current bar count here or assume it's the same as the last main score.
+                        scheduleEvents(events, nextBarTimeRef.current, settingsRef.current.bpm, -1, instrumentHints);
                     }
                 } else if (type === 'sparkle' && payload && 'params' in payload && 'time' in payload) {
                     const { mood, genre } = (payload as FractalEvent).params as { mood: Mood, genre: Genre };

@@ -37,6 +37,8 @@ export class AccompanimentSynthManagerV2 {
             console.error(`[AccompanimentManagerV2] Preset not found: ${presetName}`);
             return;
         }
+        
+        console.log(`[AccompanimentManagerV2] Loading instrument with preset: ${presetName}`, preset);
 
         try {
             this.instrument = await buildMultiInstrument(this.audioContext, {

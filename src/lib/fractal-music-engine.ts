@@ -240,6 +240,9 @@ export class FractalMusicEngine {
         let selectedInstrument: MelodyInstrument | AccompanimentInstrument | undefined = undefined;
         let rules: InstrumentationRules<any> | undefined;
 
+        console.log(`%c[FME @ Bar ${this.epoch}] Choosing instrument for '${part}'. V2 Engine Active: ${this.config.useMelodyV2}`, 'color: #9370DB');
+
+
         if (currentPartInfo?.instrumentation?.[part]) {
             rules = currentPartInfo.instrumentation[part];
         }
@@ -278,14 +281,22 @@ export class FractalMusicEngine {
             }
         }
         
-        if (part === 'melody' && this.config.useMelodyV2) {
+        if (this.config.useMelodyV2) {
             const v2PresetNames = Object.keys(V2_PRESETS);
             if (!selectedInstrument || !v2PresetNames.includes(selectedInstrument as string)) {
-                console.log(`[FME Hint Correction] V2 Engine is active. Hint '${selectedInstrument}' is not a V2 preset. Choosing a random V2 preset.`);
+                console.log(`[FME @ Bar ${this.epoch}] V2 Engine active. Hint '${selectedInstrument}' is not V2. Choosing random V2 preset.`);
                 selectedInstrument = v2PresetNames[this.random.nextInt(v2PresetNames.length)] as keyof typeof V2_PRESETS;
             }
+        } else {
+            // Ensure we don't accidentally select a V2-only preset for V1 engine
+            const v1InstrumentList: string[] = ['synth', 'organ', 'mellotron', 'theremin', 'electricGuitar', 'ambientPad', 'acousticGuitar', 'E-Bells_melody', 'G-Drops', 'piano', 'violin', 'flute', 'acousticGuitarSolo', 'guitarChords'];
+             if (selectedInstrument && !v1InstrumentList.includes(selectedInstrument)) {
+                console.log(`[FME @ Bar ${this.epoch}] V1 Engine active. Hint '${selectedInstrument}' is not V1. Choosing random V1 preset.`);
+                selectedInstrument = v1InstrumentList[this.random.nextInt(v1InstrumentList.length)] as MelodyInstrument;
+             }
         }
-
+        
+        console.log(`%c[FME @ Bar ${this.epoch}] Selected instrument hint for '${part}': ${selectedInstrument}`, 'color: #9370DB');
         return selectedInstrument;
     }
 
@@ -546,5 +557,3 @@ export class FractalMusicEngine {
     return { events, instrumentHints };
   }
 }
-
-    

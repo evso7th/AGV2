@@ -38,6 +38,8 @@ export class MelodySynthManagerV2 {
             return;
         }
 
+        console.log(`[MelodyManagerV2] Loading instrument with preset: ${presetName}`, preset);
+
         try {
             this.instrument = await buildMultiInstrument(this.audioContext, {
                 type: preset.type as any,
