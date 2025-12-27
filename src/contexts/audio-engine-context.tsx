@@ -135,10 +135,7 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
         }
 
         // Immediately update the worker with the new engine state
-        if (settingsRef.current) {
-            const newSettings = { ...settingsRef.current, useMelodyV2: newValue };
-            updateSettingsCallback(newSettings);
-        }
+        updateSettingsCallback({ useMelodyV2: newValue });
 
         return newValue;
     });
@@ -216,7 +213,7 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
     if (accompanimentEvents.length > 0) {
         if (useMelodyV2) {
             if (accompanimentManagerV2Ref.current) {
-                console.log(`[AudioEngine @ Bar ${barCount}] Routing ${accompanimentEvents.length} accomp events to V2 Engine.`);
+                console.log(`%c[AudioEngine @ Bar ${barCount}] Routing ${accompanimentEvents.length} accomp events to V2 Engine.`, 'color: lightgreen');
                 accompanimentManagerV2Ref.current.schedule(accompanimentEvents, barStartTime, tempo, instrumentHints?.accompaniment as keyof typeof V2_PRESETS);
             }
         } else {
@@ -230,7 +227,7 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
     if (melodyEvents.length > 0) {
         if (useMelodyV2) {
             if (melodyManagerV2Ref.current) {
-                console.log(`[AudioEngine @ Bar ${barCount}] Routing ${melodyEvents.length} melody events to V2 Engine.`);
+                console.log(`%c[AudioEngine @ Bar ${barCount}] Routing ${melodyEvents.length} melody events to V2 Engine.`, 'color: lightgreen');
                 melodyManagerV2Ref.current.schedule(melodyEvents, barStartTime, tempo, instrumentHints?.melody as keyof typeof V2_PRESETS);
             }
         } else {
@@ -255,6 +252,51 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
         bassManagerRef.current.setTechnique(technique);
     }
   }, []);
+
+  // #ЗАЧЕМ: Этот `useEffect` отвечает за подписку на сообщения от Web Worker'а.
+  // #ЧТО: Он устанавливает `worker.onmessage` и обрабатывает входящие события.
+  // #СВЯЗИ: Критически важно, что теперь он зависит от `scheduleEvents`. Когда
+  //         `scheduleEvents` пересоздается (из-за изменения `useMelodyV2`),
+  //         этот `useEffect` запускается заново, отписываясь от старого обработчика
+  //         и подписываясь с новым, который содержит правильное, актуальное
+  //         значение `useMelodyV2`. Это разрывает "проклятие замыканий".
+  useEffect(() => {
+    if (workerRef.current) {
+        const worker = workerRef.current;
+        const messageHandler = (event: MessageEvent<WorkerMessage>) => {
+             const { type, payload, error } = event.data;
+                
+                if (type === 'SCORE_READY' && payload && 'events' in payload) {
+                    const { events, barDuration, instrumentHints, barCount } = payload;
+                    
+                    if(events && barDuration && settingsRef.current && barCount !== undefined){
+                        const composerControls = settingsRef.current.composerControlsInstruments;
+                        scheduleEvents(events, nextBarTimeRef.current, settingsRef.current.bpm, barCount, composerControls ? instrumentHints : undefined);
+                        nextBarTimeRef.current += barDuration;
+                    }
+
+                } else if (type === 'HARMONY_SCORE_READY' && payload && 'events' in payload) {
+                     const { events, barDuration, instrumentHints } = payload;
+                     if(events && barDuration && settingsRef.current){
+                        scheduleEvents(events, nextBarTimeRef.current, settingsRef.current.bpm, -1, instrumentHints);
+                    }
+                } else if (type === 'sparkle' && payload && 'params' in payload && 'time' in payload) {
+                    const { mood, genre } = (payload as FractalEvent).params as { mood: Mood, genre: Genre };
+                    sparklePlayerRef.current?.playRandomSparkle(nextBarTimeRef.current + (payload as FractalEvent).time, genre, mood);
+                } else if (type === 'sfx' && payload && 'params' in payload) {
+                    sfxSynthManagerRef.current?.trigger([payload as FractalEvent], nextBarTimeRef.current, settingsRef.current?.bpm || 75);
+                } else if (type === 'error') {
+                    toast({ variant: "destructive", title: "Worker Error", description: error });
+                }
+        };
+        
+        worker.onmessage = messageHandler;
+
+        return () => {
+            worker.onmessage = null; // Clean up the message handler
+        };
+    }
+  }, [scheduleEvents, toast]);
 
 
   const initialize = useCallback(async () => {
@@ -337,37 +379,7 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
 
 
         if (!workerRef.current) {
-            const worker = new Worker(new URL('@/app/ambient.worker.ts', import.meta.url), { type: 'module' });
-            worker.onmessage = (event: MessageEvent<WorkerMessage>) => {
-                const { type, payload, error } = event.data;
-                
-                if (type === 'SCORE_READY' && payload && 'events' in payload) {
-                    const { events, barDuration, instrumentHints, barCount } = payload;
-                    
-                    if(events && barDuration && settingsRef.current && barCount !== undefined){
-                        const composerControls = settingsRef.current.composerControlsInstruments;
-                        scheduleEvents(events, nextBarTimeRef.current, settingsRef.current.bpm, barCount, composerControls ? instrumentHints : undefined);
-                        nextBarTimeRef.current += barDuration;
-                    }
-
-                } else if (type === 'HARMONY_SCORE_READY' && payload && 'events' in payload) {
-                     const { events, barDuration, instrumentHints } = payload;
-                     if(events && barDuration && settingsRef.current){
-                        // Assuming barCount is part of the main SCORE_READY payload
-                        // The harmony events are part of the same bar.
-                        // We need a way to get the current bar count here or assume it's the same as the last main score.
-                        scheduleEvents(events, nextBarTimeRef.current, settingsRef.current.bpm, -1, instrumentHints);
-                    }
-                } else if (type === 'sparkle' && payload && 'params' in payload && 'time' in payload) {
-                    const { mood, genre } = (payload as FractalEvent).params as { mood: Mood, genre: Genre };
-                    sparklePlayerRef.current?.playRandomSparkle(nextBarTimeRef.current + (payload as FractalEvent).time, genre, mood);
-                } else if (type === 'sfx' && payload && 'params' in payload) {
-                    sfxSynthManagerRef.current?.trigger([payload as FractalEvent], nextBarTimeRef.current, settingsRef.current?.bpm || 75);
-                } else if (type === 'error') {
-                    toast({ variant: "destructive", title: "Worker Error", description: error });
-                }
-            };
-            workerRef.current = worker;
+            workerRef.current = new Worker(new URL('@/app/ambient.worker.ts', import.meta.url), { type: 'module' });
         }
         
         await Promise.all(initPromises);
@@ -382,7 +394,7 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
     } finally {
         setIsInitializing(false);
     }
-  }, [isInitialized, isInitializing, toast, scheduleEvents]);
+  }, [isInitialized, isInitializing, toast]);
 
   const scheduleNextImpulse = useCallback(() => {
     if (impulseTimerRef.current) {
