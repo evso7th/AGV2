@@ -2,7 +2,7 @@
 import type { FractalEvent, AccompanimentInstrument } from '@/types/fractal';
 import type { Note } from "@/types/music";
 import { buildMultiInstrument } from './instrument-factory';
-import { prettyPresets } from './presets-v2';
+import { V2_PRESETS } from './presets-v2';
 
 /**
  * A V2 manager for the melody synthesizer.
@@ -14,7 +14,7 @@ export class MelodySynthManagerV2 {
     private destination: AudioNode;
     public isInitialized = false;
     private instrument: any | null = null; // Will hold the instance from the factory
-    private activePresetName: keyof typeof prettyPresets = 'synth_pad_emerald';
+    private activePresetName: keyof typeof V2_PRESETS = 'synth';
     private activeNotes = new Map<number, () => void>(); // Maps MIDI note to a noteOff function
 
     constructor(audioContext: AudioContext, destination: AudioNode) {
@@ -30,9 +30,9 @@ export class MelodySynthManagerV2 {
         console.log('[MelodyManagerV2] Initialized.');
     }
     
-    private async loadInstrument(presetName: keyof typeof prettyPresets) {
+    private async loadInstrument(presetName: keyof typeof V2_PRESETS) {
         this.allNotesOff(); // Stop any previous sound
-        const preset = prettyPresets[presetName];
+        const preset = V2_PRESETS[presetName];
         if (!preset) {
             console.error(`[MelodyManagerV2] Preset not found: ${presetName}`);
             return;
@@ -40,7 +40,7 @@ export class MelodySynthManagerV2 {
 
         try {
             this.instrument = await buildMultiInstrument(this.audioContext, {
-                type: preset.type,
+                type: preset.type as any,
                 preset: preset,
                 output: this.destination
             });
@@ -82,7 +82,7 @@ export class MelodySynthManagerV2 {
         });
     }
     
-    public setInstrument(instrumentName: keyof typeof prettyPresets) {
+    public setInstrument(instrumentName: keyof typeof V2_PRESETS) {
        if (this.activePresetName !== instrumentName) {
            this.loadInstrument(instrumentName);
        }
