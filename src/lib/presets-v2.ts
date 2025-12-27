@@ -1,7 +1,7 @@
 
-export const prettyPresets = {
+export const V2_PRESETS = {
   // ───────────────────────── ORGAN ─────────────────────────
-  organ_cathedral_warm: {
+  organ: {
     type: 'organ',
     drawbars: [8, 0, 8, 6, 0, 3, 0, 2, 0], // 16', 5⅓', 8', 4', ...
     vibratoRate: 6.0, vibratoDepth: 0.003,
@@ -21,7 +21,7 @@ export const prettyPresets = {
   },
 
   // ───────────────────────── SYNTH (AMBIENT PAD / THEREMIN) ─────────────────────────
-  synth_pad_emerald: {
+  synth: {
     type: 'synth',
     osc: [
       { type: 'sawtooth', detune: 0,  gain: 0.55 },
@@ -41,7 +41,7 @@ export const prettyPresets = {
     osc: [
       { type: 'sawtooth', detune: -8,    gain: 0.55 },
       { type: 'sawtooth', detune: +8,    gain: 0.55 },
-      { type: 'sine',     detune: 1200, gain: 0.25 }
+      { type: 'sine', detune: 1200, gain: 0.25 }
     ],
     noise: { on: true, color: 'white', gain: 0.02 },
     adsr:  { a: 2.5, d: 2.0, s: 0.8, r: 4.0 },
@@ -51,7 +51,7 @@ export const prettyPresets = {
     delay: { on: true, time: 0.75, fb: 0.45, hc: 3800, mix: 0.35 },
     reverbMix: 0.28
   },
-  synth_theremin_vocal: {
+  theremin: {
     type: 'synth',
     osc: [
       { type: 'sine',     detune: 0,  gain: 0.85 },
@@ -67,7 +67,7 @@ export const prettyPresets = {
   },
 
   // ───────────────────────── MELL0TRON ─────────────────────────
-  mellotron_strings_majestic: {
+  mellotron: {
     type: 'mellotron',
     instrument: 'strings',
     attack: 0.05, release: 0.35,
@@ -104,12 +104,12 @@ export const prettyPresets = {
     variant: 'shineOn',
     reverbMix: 0.18
   },
-  guitar_muffLead: {
+  electricGuitar: {
     type: 'guitar',
     variant: 'muffLead',
     osc: [
         { type: 'sawtooth', detune: 0, octave: 0, gain: 1.0 },
-        { type: 'square', detune: 0, octave: -1, gain: 0.5 },
+        { type: 'pulse', detune: 0, octave: -1, gain: 0.5 },
         { type: 'pulse', detune: 4, octave: 1, gain: 0.3 }
     ],
     reverbMix: 0.3,
@@ -119,7 +119,7 @@ export const prettyPresets = {
   },
 
   // ───────────────────────── ACOUSTIC (через Mellotron-семплы) ─────────────────────────
-  acoustic_guitar_folk: {
+  acousticGuitar: {
     type: 'mellotron',
     instrument: 'acoustic',
     attack: 0.01, release: 0.3,
@@ -130,5 +130,3 @@ export const prettyPresets = {
     reverbMix: 0.15
   }
 };
-
-    

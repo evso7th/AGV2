@@ -22,7 +22,7 @@ import { AcousticGuitarSoloSampler } from '@/lib/acoustic-guitar-solo-sampler';
 import type { FractalEvent, InstrumentHints } from '@/types/fractal';
 import * as Tone from 'tone';
 import { MelodySynthManagerV2 } from '@/lib/melody-synth-manager-v2';
-import { prettyPresets } from '@/lib/presets-v2';
+import { V2_PRESETS } from '@/lib/presets-v2';
 
 export function noteToMidi(note: string): number {
     return new (Tone.Frequency as any)(note).toMidi();
@@ -61,7 +61,7 @@ interface AudioEngineContextType {
   updateSettings: (settings: Partial<WorkerSettings>) => void;
   resetWorker: () => void;
   setVolume: (part: InstrumentPart, volume: number) => void;
-  setInstrument: (part: 'bass' | 'melody' | 'accompaniment' | 'harmony', name: BassInstrument | MelodyInstrument | AccompanimentInstrument | keyof typeof prettyPresets) => void;
+  setInstrument: (part: 'bass' | 'melody' | 'accompaniment' | 'harmony', name: BassInstrument | MelodyInstrument | AccompanimentInstrument | keyof typeof V2_PRESETS) => void;
   setBassTechnique: (technique: BassTechnique) => void;
   setTextureSettings: (settings: Omit<TextureSettings, 'pads' | 'sfx'>) => void;
   setEQGain: (bandIndex: number, gain: number) => void;
@@ -125,13 +125,13 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
     });
   }, []);
 
-  const setInstrumentCallback = useCallback((part: 'bass' | 'melody' | 'accompaniment' | 'harmony', name: BassInstrument | MelodyInstrument | AccompanimentInstrument | 'piano' | 'guitarChords' | 'violin' | 'flute' | 'acousticGuitarSolo' | keyof typeof prettyPresets) => {
+  const setInstrumentCallback = useCallback((part: 'bass' | 'melody' | 'accompaniment' | 'harmony', name: BassInstrument | MelodyInstrument | AccompanimentInstrument | 'piano' | 'guitarChords' | 'violin' | 'flute' | 'acousticGuitarSolo' | keyof typeof V2_PRESETS) => {
     if (!isInitialized) return;
     if (part === 'accompaniment' && accompanimentManagerRef.current) {
       accompanimentManagerRef.current.setInstrument(name as AccompanimentInstrument);
     } else if (part === 'melody') {
         if(useMelodyV2 && melodyManagerV2Ref.current) {
-            melodyManagerV2Ref.current.setInstrument(name as keyof typeof prettyPresets);
+            melodyManagerV2Ref.current.setInstrument(name as keyof typeof V2_PRESETS);
         } else if (melodyManagerRef.current) {
             melodyManagerRef.current.setInstrument(name as AccompanimentInstrument);
         }
@@ -143,7 +143,6 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
   }, [isInitialized, useMelodyV2]);
 
   const scheduleEvents = useCallback((events: FractalEvent[], barStartTime: number, tempo: number, instrumentHints?: InstrumentHints) => {
-    console.log(`[AudioEngine.scheduleEvents] Received Events: Total=${events.length}, Harmony=${events.filter(e => e.type === 'harmony').length}, Melody=${events.filter(e => e.type === 'melody').length}`);
     if (!Array.isArray(events)) {
         return;
     }
@@ -408,9 +407,9 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
 
   const updateSettingsCallback = useCallback((settings: Partial<WorkerSettings>) => {
      if (!isInitialized || !workerRef.current) return;
-     const newSettings = { ...settingsRef.current, ...settings } as WorkerSettings;
-     settingsRef.current = newSettings;
-     workerRef.current.postMessage({ command: 'update_settings', data: newSettings });
+     // Update the ref immediately
+     settingsRef.current = { ...settingsRef.current, ...settings } as WorkerSettings;
+     workerRef.current.postMessage({ command: 'update_settings', data: settingsRef.current });
   }, [isInitialized]);
 
   const setVolumeCallback = useCallback((part: InstrumentPart, volume: number) => {
