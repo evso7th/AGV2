@@ -38,6 +38,7 @@ const Scheduler = {
         density: 0.5,
         composerControlsInstruments: true,
         mood: 'melancholic' as Mood,
+        useMelodyV2: false, // Default to V1 engine
     } as WorkerSettings,
 
     get barDuration() { 
@@ -54,6 +55,7 @@ const Scheduler = {
             mood: settings.mood,
             genre: settings.genre,
             seed: settings.seed ?? Date.now(),
+            useMelodyV2: settings.useMelodyV2,
         });
         this.barCount = 0;
     },
@@ -117,16 +119,8 @@ const Scheduler = {
        if (wasNotInitialized || scoreChanged || moodChanged || genreChanged || seedChanged) {
            this.initializeEngine(this.settings);
        } else if (fractalMusicEngine) {
-           fractalMusicEngine.updateConfig({
-               tempo: this.settings.bpm,
-               density: this.settings.density,
-               organic: this.settings.density,
-               drumSettings: this.settings.drumSettings,
-               lambda: 1.0 - (this.settings.density * 0.5 + 0.3),
-               mood: this.settings.mood,
-               genre: this.settings.genre,
-               seed: this.settings.seed,
-           });
+           // #РЕШЕНИЕ: Передаем ВЕСЬ объект настроек, чтобы гарантировать, что useMelodyV2 всегда актуален.
+           fractalMusicEngine.updateConfig(this.settings);
        }
        
        if (needsRestart) this.start();

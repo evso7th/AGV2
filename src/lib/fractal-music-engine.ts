@@ -28,7 +28,7 @@ interface EngineConfig {
   drumSettings: any;
   seed: number;
   composerControlsInstruments?: boolean;
-  useMelodyV2?: boolean;
+  useMelodyV2?: boolean; // #РЕШЕНИЕ: Добавлено поле для флага V2
 }
 
 type PlayPlanItem = {
@@ -95,7 +95,7 @@ export class FractalMusicEngine {
 
 
   constructor(config: EngineConfig) {
-    this.config = { ...config };
+    this.config = { ...config }; // #РЕШЕНИЕ: Сохраняем полную конфигурацию
     this.navigator = new BlueprintNavigator(getBlueprint(config.genre, config.mood), config.seed, config.genre, config.mood);
     this.random = seededRandom(config.seed);
     this.nextWeatherEventEpoch = 0;
@@ -109,6 +109,7 @@ export class FractalMusicEngine {
       const moodOrGenreChanged = newConfig.mood !== this.config.mood || newConfig.genre !== this.config.genre;
       
       const oldSeed = this.config.seed;
+      // #РЕШЕНИЕ: Обновляем полную конфигурацию
       this.config = { ...this.config, ...newConfig };
       
       if (newConfig.seed !== undefined && newConfig.seed !== oldSeed) {
@@ -240,6 +241,7 @@ export class FractalMusicEngine {
         let selectedInstrument: MelodyInstrument | AccompanimentInstrument | undefined = undefined;
         let rules: InstrumentationRules<any> | undefined;
 
+        // #РЕШЕНИЕ: Добавлен лог для проверки состояния флага V2.
         console.log(`%c[FME @ Bar ${this.epoch}] Choosing instrument for '${part}'. V2 Engine Active: ${this.config.useMelodyV2}`, 'color: #9370DB');
 
 
