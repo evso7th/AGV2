@@ -202,7 +202,7 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
         if (useMelodyV2) {
             if (accompanimentManagerV2Ref.current) {
                 console.log(`[AudioEngine @ Bar ${barCount}] Routing ${accompanimentEvents.length} accomp events to V2 Engine.`);
-                accompanimentManagerV2Ref.current.schedule(accompanimentEvents, barStartTime, tempo);
+                accompanimentManagerV2Ref.current.schedule(accompanimentEvents, barStartTime, tempo, instrumentHints?.accompaniment as keyof typeof V2_PRESETS);
             }
         } else {
             if (accompanimentManagerRef.current) {
@@ -216,7 +216,7 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
         if (useMelodyV2) {
             if (melodyManagerV2Ref.current) {
                 console.log(`[AudioEngine @ Bar ${barCount}] Routing ${melodyEvents.length} melody events to V2 Engine.`);
-                melodyManagerV2Ref.current.schedule(melodyEvents, barStartTime, tempo);
+                melodyManagerV2Ref.current.schedule(melodyEvents, barStartTime, tempo, instrumentHints?.melody as keyof typeof V2_PRESETS);
             }
         } else {
             if (melodyManagerRef.current) {
