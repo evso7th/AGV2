@@ -4,6 +4,124 @@
 // MultiInstrument WebAudio: organ | synth | mellotron | guitar
 // ─────────────────────────────────────────────────────────────────────────────
 
+// ───── Helpers ─────
+const loadIR = async (ctx: AudioContext, url: string | null) => {
+    if (!url) return null;
+    const res = await fetch(url);
+    const buf = await res.arrayBuffer();
+    return await ctx.decodeAudioData(buf);
+};
+const loadSample = async (ctx: AudioContext, url: string) => {
+    const res = await fetch(url);
+    const buf = await res.arrayBuffer();
+    return await ctx.decodeAudioData(buf);
+};
+const midiToHz = (m: number) => 440 * Math.pow(2, (m - 69) / 12);
+const dB = (x: number) => Math.pow(10, x / 20);
+
+const makeSoftClip = (amount = 0.5, n = 65536) => {
+    const c = new Float32Array(n);
+    const k = amount * 10 + 1;
+    for (let i = 0; i < n; i++) {
+        const x = (i / (n - 1)) * 2 - 1;
+        c[i] = Math.tanh(k * x) / Math.tanh(k);
+    }
+    return c;
+};
+const makeMuff = (gain = 0.65, n = 65536) => {
+    const c = new Float32Array(n);
+    for (let i = 0; i < n; i++) {
+        const x = (i / (n - 1)) * 2 - 1;
+        const y = Math.tanh(x * (1 + gain * 4)) * 0.9;
+        c[i] = y;
+    }
+    return c;
+};
+const makePhaser = (ctx: AudioContext, { stages = 4, base = 800, depth = 600, rate = 0.16, fb = 0.12, mix = 0.2 }) => {
+    const input = ctx.createGain(), out = ctx.createGain(), wet = ctx.createGain(), dry = ctx.createGain();
+    wet.gain.value = mix;
+    dry.gain.value = 1 - mix;
+    let head: AudioNode = input;
+    const aps: BiquadFilterNode[] = [];
+    for (let i = 0; i < stages; i++) {
+        const ap = ctx.createBiquadFilter();
+        ap.type = 'allpass';
+        ap.frequency.value = base * ((i % 2) ? 1.2 : 0.8);
+        ap.Q.value = 0.6;
+        head.connect(ap);
+        head = ap;
+        aps.push(ap);
+    }
+    const fbG = ctx.createGain();
+    fbG.gain.value = fb;
+    (aps[aps.length - 1] as BiquadFilterNode).connect(fbG);
+    fbG.connect(aps[0]);
+    const lfo = ctx.createOscillator();
+    lfo.type = 'sine';
+    lfo.frequency.value = rate;
+    const lfoG = ctx.createGain();
+    lfoG.gain.value = depth;
+    lfo.connect(lfoG);
+    aps.forEach(ap => lfoG.connect(ap.frequency));
+    lfo.start();
+    input.connect(dry);
+    (aps[aps.length - 1] as BiquadFilterNode).connect(wet);
+    dry.connect(out);
+    wet.connect(out);
+    return { input, output: out, setRate: (r: number) => (lfo.frequency.value = r), setDepth: (d: number) => (lfoG.gain.value = d) };
+};
+const makeChorus = (ctx: AudioContext, { rate = 0.25, depth = 0.006, mix = 0.25 }) => {
+    const input = ctx.createGain(), out = ctx.createGain(), wet = ctx.createGain(), dry = ctx.createGain();
+    wet.gain.value = mix;
+    dry.gain.value = 1 - mix;
+    const d1 = ctx.createDelay(0.03), d2 = ctx.createDelay(0.03);
+    const l1 = ctx.createOscillator(), g1 = ctx.createGain();
+    l1.type = 'sine';
+    l1.frequency.value = rate;
+    g1.gain.value = depth;
+    l1.connect(g1);
+    g1.connect(d1.delayTime);
+    l1.start();
+    const l2 = ctx.createOscillator(), g2 = ctx.createGain();
+    l2.type = 'sine';
+    l2.frequency.value = rate * 1.11;
+    g2.gain.value = depth * 1.1;
+    l2.connect(g2);
+    g2.connect(d2.delayTime);
+    l2.start();
+    const s1 = ctx.createGain(), s2 = ctx.createGain();
+    input.connect(s1);
+    input.connect(s2);
+    s1.connect(d1);
+    s2.connect(d2);
+    d1.connect(wet);
+    d2.connect(wet);
+    input.connect(dry);
+    dry.connect(out);
+    wet.connect(out);
+    return { input, output: out };
+};
+const makeFilteredDelay = (ctx: AudioContext, { time = 0.38, fb = 0.26, hc = 3600, wet = 0.2 }) => {
+    const input = ctx.createGain(), out = ctx.createGain(), wetG = ctx.createGain();
+    wetG.gain.value = wet;
+    const d = ctx.createDelay(2.0);
+    d.delayTime.value = time;
+    const loop = ctx.createGain();
+    loop.gain.value = fb;
+    const lp = ctx.createBiquadFilter();
+    lp.type = 'lowpass';
+    lp.frequency.value = hc;
+    lp.Q.value = 0.7;
+    input.connect(d);
+    d.connect(lp);
+    lp.connect(loop);
+    loop.connect(d);
+    lp.connect(wetG);
+    wetG.connect(out);
+    return { input, output: out };
+};
+
+
 export async function buildMultiInstrument(ctx: AudioContext, {
   type = 'organ',            // 'organ' | 'synth' | 'mellotron' | 'guitar'
   preset = {} as any,
@@ -13,64 +131,9 @@ export async function buildMultiInstrument(ctx: AudioContext, {
   output = ctx.destination
 } = {}) {
 
-  // ───── Helpers
-  const loadIR = async (url: string | null) => {
-    if (!url) return null;
-    const res = await fetch(url);
-    const buf = await res.arrayBuffer();
-    return await ctx.decodeAudioData(buf);
-  };
-  const loadSample = async (url: string) => {
-    const res = await fetch(url);
-    const buf = await res.arrayBuffer();
-    return await ctx.decodeAudioData(buf);
-  };
-  const midiToHz = (m: number) => 440 * Math.pow(2, (m - 69) / 12);
-  const dB = (x: number)=>Math.pow(10, x/20);
-
-  const makeSoftClip = (amount=0.5, n=65536) => {
-    const c=new Float32Array(n); const k=amount*10+1;
-    for (let i=0;i<n;i++){ const x=i/(n-1)*2-1; c[i]=Math.tanh(k*x)/Math.tanh(k); }
-    return c;
-  };
-  const makeMuff = (gain=0.65, n=65536) => {
-    const c=new Float32Array(n);
-    for (let i=0;i<n;i++){ const x=i/(n-1)*2-1; const y=Math.tanh(x*(1+gain*4))*0.9; c[i]=y; }
-    return c;
-  };
-  const makePhaser = (ctx: AudioContext,{stages=4, base=800, depth=600, rate=0.16, fb=0.12, mix=0.2})=>{
-    const input=ctx.createGain(), out=ctx.createGain(), wet=ctx.createGain(), dry=ctx.createGain();
-    wet.gain.value=mix; dry.gain.value=1-mix;
-    let head: AudioNode =input; const aps=[]; 
-    for(let i=0;i<stages;i++){ const ap=ctx.createBiquadFilter(); ap.type='allpass'; ap.frequency.value=base*((i%2)?1.2:0.8); ap.Q.value=0.6; head.connect(ap); head=ap; aps.push(ap); }
-    const fbG=ctx.createGain(); fbG.gain.value=fb; (aps[aps.length-1] as BiquadFilterNode).connect(fbG); fbG.connect(aps[0]);
-    const lfo=ctx.createOscillator(); lfo.type='sine'; lfo.frequency.value=rate; const lfoG=ctx.createGain(); lfoG.gain.value=depth; lfo.connect(lfoG); aps.forEach(ap=>lfoG.connect(ap.frequency)); lfo.start();
-    input.connect(dry); (aps[aps.length-1] as BiquadFilterNode).connect(wet); dry.connect(out); wet.connect(out);
-    return {input, output: out, setRate:(r: number)=>lfo.frequency.value=r, setDepth:(d: number)=>lfoG.gain.value=d};
-  };
-  const makeChorus = (ctx: AudioContext,{rate=0.25, depth=0.006, mix=0.25})=>{
-    const input=ctx.createGain(), out=ctx.createGain(), wet=ctx.createGain(), dry=ctx.createGain();
-    wet.gain.value=mix; dry.gain.value=1-mix;
-    const d1=ctx.createDelay(0.03), d2=ctx.createDelay(0.03);
-    const l1=ctx.createOscillator(), g1=ctx.createGain(); l1.type='sine'; l1.frequency.value=rate; g1.gain.value=depth; l1.connect(g1); g1.connect(d1.delayTime); l1.start();
-    const l2=ctx.createOscillator(), g2=ctx.createGain(); l2.type='sine'; l2.frequency.value=rate*1.11; g2.gain.value=depth*1.1; l2.connect(g2); g2.connect(d2.delayTime); l2.start();
-    const s1=ctx.createGain(), s2=ctx.createGain(); input.connect(s1); input.connect(s2); s1.connect(d1); s2.connect(d2); d1.connect(wet); d2.connect(wet);
-    input.connect(dry); dry.connect(out); wet.connect(out);
-    return {input, output: out};
-  };
-  const makeFilteredDelay = (ctx: AudioContext,{time=0.38, fb=0.26, hc=3600, wet=0.2})=>{
-    const input=ctx.createGain(), out=ctx.createGain(), wetG=ctx.createGain(); wetG.gain.value=wet;
-    const d=ctx.createDelay(2.0); d.delayTime.value=time;
-    const loop=ctx.createGain(); loop.gain.value=fb;
-    const lp=ctx.createBiquadFilter(); lp.type='lowpass'; lp.frequency.value=hc; lp.Q.value=0.7;
-    input.connect(d); d.connect(lp); lp.connect(loop); loop.connect(d);
-    lp.connect(wetG); wetG.connect(out);
-    return {input, output: out};
-  };
-
   // ───── Master FX (plate ревёрб общий)
   const master = ctx.createGain(); master.gain.value = 0.8;
-  const reverb = ctx.createConvolver(); if (plateIRUrl) reverb.buffer = await loadIR(plateIRUrl);
+  const reverb = ctx.createConvolver(); if (plateIRUrl) reverb.buffer = await loadIR(ctx, plateIRUrl);
   const revMix = ctx.createGain(); revMix.gain.value = preset.reverbMix ?? 0.18;
   if (reverb.buffer) {
     reverb.connect(master);
@@ -318,7 +381,7 @@ export async function buildMultiInstrument(ctx: AudioContext, {
     const zones = (mellotronMap?.zones ?? []).filter((z: any)=>z.name===instrument || !z.name);
     const cache: Record<string, AudioBuffer> = {};
     for (const z of zones) {
-        if(z.url) cache[z.note] = await loadSample(z.url);
+        if(z.url) cache[z.note] = await loadSample(ctx, z.url);
     }
     
     const out = ctx.createGain(); out.gain.value=0.9;
@@ -424,7 +487,7 @@ export async function buildMultiInstrument(ctx: AudioContext, {
     const mid2 = ctx.createBiquadFilter(); mid2.type='peaking'; mid2.frequency.value=post.mids[1].f; mid2.Q.value=post.mids[1].q; mid2.gain.value=post.mids[1].g;
     const postLPF = ctx.createBiquadFilter(); postLPF.type='lowpass'; postLPF.frequency.value=post.lpf; postLPF.Q.value=0.7;
 
-    const cab = ctx.createConvolver(); if (cabinetIRUrl) cab.buffer = await loadIR(cabinetIRUrl);
+    const cab = ctx.createConvolver(); if (cabinetIRUrl) cab.buffer = await loadIR(ctx, cabinetIRUrl);
 
     const ph = makePhaser(ctx, phaser);
     const dA = makeFilteredDelay(ctx, {time:delayA.time, fb:delayA.fb, hc:delayA.hc, wet:delayA.wet});
@@ -499,4 +562,3 @@ export async function buildMultiInstrument(ctx: AudioContext, {
   master.connect(output);
   return api;
 }
-
