@@ -43,8 +43,8 @@ export function AuraGrooveV2({
   }, []);
 
   const v1MelodyInstruments: (MelodyInstrument | 'none')[] = ['synth', 'organ', 'mellotron', 'theremin', 'electricGuitar', 'ambientPad', 'acousticGuitar', 'none'];
+  const v1AccompanimentInstruments: (AccompanimentInstrument | 'none')[] = ['synth', 'organ', 'mellotron', 'theremin', 'electricGuitar', 'ambientPad', 'acousticGuitar', 'none'];
   const v2MelodyInstruments = Object.keys(V2_PRESETS) as (keyof typeof V2_PRESETS)[];
-  const textureInstrumentList: (AccompanimentInstrument | 'none')[] = ['synth', 'organ', 'mellotron', 'theremin', 'electricGuitar', 'ambientPad', 'acousticGuitar', 'none'];
   const harmonyInstrumentList: ('piano' | 'guitarChords' | 'acousticGuitarSolo' | 'flute' | 'violin' | 'none')[] = ['piano', 'guitarChords', 'acousticGuitarSolo', 'flute', 'violin', 'none'];
   const bassInstrumentList: (BassInstrument | 'none')[] = ['classicBass', 'glideBass', 'ambientDrone', 'resonantGliss', 'hypnoticDrone', 'livingRiff', 'none'];
   const moodList: Mood[] = ['epic', 'joyful', 'enthusiastic', 'melancholic', 'dark', 'anxious', 'dreamy', 'contemplative', 'calm'];
@@ -59,19 +59,21 @@ export function AuraGrooveV2({
     'neuro_f_matrix': 'Neuro F-Matrix',
     'rnb': 'R&B',
     // V2 presets
-    'organ_cathedral_warm': 'Cathedral Organ',
+    'organ': 'Cathedral Organ',
     'organ_soft_jazz': 'Soft Jazz Organ',
-    'synth_pad_emerald': 'Emerald Pad',
-    'synth_theremin_vocal': 'Vocal Theremin',
-    'mellotron_strings_majestic': 'Majestic Strings',
+    'synth': 'Emerald Pad',
+    'theremin': 'Vocal Theremin',
+    'mellotron': 'Majestic Strings',
     'mellotron_choir_dark': 'Dark Choir',
     'mellotron_flute_intimate': 'Intimate Flute',
     'guitar_shineOn': 'Shine On Guitar',
-    'guitar_muffLead': 'Muff Lead Guitar',
-    'acoustic_guitar_folk': 'Folk Acoustic',
+    'electricGuitar': 'Muff Lead Guitar',
+    'acousticGuitar': 'Folk Acoustic',
+    'synth_ambient_pad_lush': 'Lush Pad'
   };
   
   const melodyInstrumentList = useMelodyV2 ? v2MelodyInstruments : v1MelodyInstruments;
+  const textureInstrumentList = useMelodyV2 ? v2MelodyInstruments : v1AccompanimentInstruments;
 
 
   const isFractalStyle = score === 'neuro_f_matrix';
@@ -344,3 +346,4 @@ export function AuraGrooveV2({
     </div>
   );
 }
+
