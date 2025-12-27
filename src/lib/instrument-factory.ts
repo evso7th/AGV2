@@ -121,7 +121,6 @@ const makeFilteredDelay = (ctx: AudioContext, { time = 0.38, fb = 0.26, hc = 360
     return { input, output: out };
 };
 
-
 export async function buildMultiInstrument(ctx: AudioContext, {
   type = 'organ',            // 'organ' | 'synth' | 'mellotron' | 'guitar'
   preset = {} as any,
@@ -491,7 +490,7 @@ export async function buildMultiInstrument(ctx: AudioContext, {
 
     const ph = makePhaser(ctx, phaser);
     const dA = makeFilteredDelay(ctx, {time:delayA.time, fb:delayA.fb, hc:delayA.hc, wet:delayA.wet});
-    const dB = delayB ? makeFilteredDelay(ctx, {time:delayB.time, fb:delayB.fb, hc:delayB.hc, wet:delayB.wet}) : null;
+    const dB_node = delayB ? makeFilteredDelay(ctx, {time:delayB.time, fb:delayB.fb, hc:delayB.hc, wet:delayB.wet}) : null;
 
     const revSend = ctx.createGain(); revSend.gain.value = reverbMix;
     if(reverb.buffer) {
@@ -526,10 +525,10 @@ export async function buildMultiInstrument(ctx: AudioContext, {
 
       afterCab.connect(ph.input);
       if(dA) ph.output.connect(dA.input);
-      if (dB) ph.output.connect(dB.input);
+      if (dB_node) ph.output.connect(dB_node.input);
 
       ph.output.connect(master); ph.output.connect(revSend);
-      if(dA) dA.output.connect(revSend); if (dB) dB.output.connect(revSend);
+      if(dA) dA.output.connect(revSend); if (dB_node) dB_node.output.connect(revSend);
 
 
       vGain.gain.cancelScheduledValues(when);
@@ -560,5 +559,7 @@ export async function buildMultiInstrument(ctx: AudioContext, {
 
   // fallback
   master.connect(output);
+  // TELEMETRY POINT
+  console.log(`%c[InstrumentFactory] Instrument of type '${type}' built. Final output connected.`, 'color: #00FF7F;');
   return api;
 }

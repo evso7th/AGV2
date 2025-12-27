@@ -1,4 +1,5 @@
 
+
 import type { FractalEvent, AccompanimentInstrument } from '@/types/fractal';
 import type { Note } from "@/types/music";
 import { buildMultiInstrument } from './instrument-factory';
@@ -20,6 +21,7 @@ export class MelodySynthManagerV2 {
     constructor(audioContext: AudioContext, destination: AudioNode) {
         this.audioContext = audioContext;
         this.destination = destination;
+        console.log('[MelodyManagerV2] Constructor: Destination node is set.');
     }
 
     async init() {
@@ -59,7 +61,10 @@ export class MelodySynthManagerV2 {
             await this.loadInstrument(instrumentHint);
         }
         
-        if (!this.instrument) return;
+        if (!this.instrument) {
+            console.warn('[MelodyManagerV2] Schedule called but instrument is not loaded.');
+            return;
+        }
 
         const beatDuration = 60 / tempo;
         
@@ -75,17 +80,20 @@ export class MelodySynthManagerV2 {
                  this.activeNotes.delete(event.note);
             }
 
+            // TELEMETRY POINT
+            console.log(`%c[MelodyManagerV2] Scheduling Note: MIDI=${event.note}, On=${noteOnTime.toFixed(2)}, Off=${noteOffTime.toFixed(2)}`, 'color: #87CEFA;');
+
             // Schedule noteOn and noteOff with the instrument
             this.instrument.noteOn(event.note, noteOnTime);
             this.instrument.noteOff(event.note, noteOffTime);
             
-            // Use setTimeout only to clean up the tracking map
-            const cleanup = () => {
+            // Use setTimeout only to clean up the tracking map after the note has fully released
+            const cleanupTime = (noteOffTime - this.audioContext.currentTime + (this.instrument.preset?.adsr?.r || 2) + 0.1) * 1000;
+            const timeoutId = setTimeout(() => {
                 this.activeNotes.delete(event.note);
-            };
-            this.activeNotes.set(event.note, cleanup);
-            
-            const timeoutId = setTimeout(cleanup, (noteOffTime - this.audioContext.currentTime + 0.1) * 1000);
+            }, cleanupTime);
+
+            this.activeNotes.set(event.note, () => clearTimeout(timeoutId));
         });
     }
     
@@ -97,8 +105,9 @@ export class MelodySynthManagerV2 {
 
     public allNotesOff() {
         if (this.instrument) {
-            this.activeNotes.forEach((noteOff, note) => {
-                this.instrument.noteOff(note, this.audioContext.currentTime + 0.01);
+            this.activeNotes.forEach((clearTimeoutFunc, note) => {
+                this.instrument.noteOff(note, this.audioContext.currentTime);
+                clearTimeoutFunc();
             });
             this.activeNotes.clear();
         }
