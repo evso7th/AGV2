@@ -136,6 +136,7 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
 
         // Immediately update the worker with the new engine state
         if (settingsRef.current) {
+            // #РЕШЕНИЕ: Мы напрямую вызываем колбэк для обновления воркера
             const newSettings = { ...settingsRef.current, useMelodyV2: newValue };
             updateSettingsCallback(newSettings);
         }
@@ -143,6 +144,7 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
         return newValue;
     });
   }, [updateSettingsCallback]);
+
 
   const setInstrumentCallback = useCallback((part: 'bass' | 'melody' | 'accompaniment' | 'harmony', name: BassInstrument | MelodyInstrument | AccompanimentInstrument | 'piano' | 'guitarChords' | 'violin' | 'flute' | 'acousticGuitarSolo' | keyof typeof V2_PRESETS) => {
     if (!isInitialized) return;
