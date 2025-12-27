@@ -196,12 +196,16 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
     
     // Logic to switch between melody synth managers
     if (melodyEvents.length > 0) {
-        if (useMelodyV2 && melodyManagerV2Ref.current) {
-            console.log("Scheduling melody with V2 engine");
-            melodyManagerV2Ref.current.schedule(melodyEvents, barStartTime, tempo);
-        } else if (melodyManagerRef.current) {
-            console.log("Scheduling melody with V1 engine");
-            melodyManagerRef.current.schedule(melodyEvents, barStartTime, tempo, instrumentHints?.melody);
+        if (useMelodyV2) {
+            if (melodyManagerV2Ref.current) {
+                console.log("Scheduling melody with V2 engine");
+                melodyManagerV2Ref.current.schedule(melodyEvents, barStartTime, tempo);
+            }
+        } else {
+            if (melodyManagerRef.current) {
+                console.log("Scheduling melody with V1 engine");
+                melodyManagerRef.current.schedule(melodyEvents, barStartTime, tempo, instrumentHints?.melody);
+            }
         }
     }
 
