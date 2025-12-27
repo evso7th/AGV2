@@ -1,4 +1,5 @@
 
+
 // ─────────────────────────────────────────────────────────────────────────────
 // MultiInstrument WebAudio: organ | synth | mellotron | guitar
 // ─────────────────────────────────────────────────────────────────────────────
@@ -180,6 +181,281 @@ export async function buildMultiInstrument(ctx: AudioContext, {
     return api;
   }
   
+  // ──────────────────────────────────────────────────────────────────────────
+  // SYNTH (subtractive pad/lead)
+  if (type === 'synth') {
+    // --- ПРАВИЛЬНОЕ СЧИТЫВАНИЕ ПАРАМЕТРОВ ИЗ PRESET ---
+    const {
+        osc = [],
+        noise = { on: false, color: 'white', gain: 0.0 },
+        adsr = { a: 0.1, d: 0.5, s: 0.5, r: 1.0 },
+        lpf = { cutoff: 3000, q: 1, mode: '12dB' },
+        lfo = { rate: 0, amount: 0, target: 'filter' },
+        chorus = { on: false, rate: 0, depth: 0, mix: 0 },
+        delay = { on: false, time: 0, fb: 0, hc: 0, mix: 0 },
+        reverbMix = 0.18
+    } = preset;
+
+    const pre = ctx.createGain(); pre.gain.value = 0.9;
+    const vGain = ctx.createGain(); vGain.gain.value = 0.0;
+    const filt = ctx.createBiquadFilter(); filt.type='lowpass'; filt.frequency.value=lpf.cutoff; filt.Q.value=lpf.q;
+    const filt2 = ctx.createBiquadFilter(); filt2.type='lowpass'; filt2.frequency.value=lpf.cutoff; filt2.Q.value=lpf.q;
+    const use2pole = (lpf.mode!=='24dB');
+
+    pre.connect(vGain); vGain.connect(filt); (use2pole?filt:filt2).connect(master);
+    
+    // FX sends
+    const chorusNode = chorus.on ? makeChorus(ctx, chorus) : null;
+    const delayNode  = delay.on  ? makeFilteredDelay(ctx, delay) : null;
+    const revSend = ctx.createGain(); revSend.gain.value = reverbMix;
+    if (reverb.buffer) {
+        revSend.connect(reverb);
+    }
+
+    const sink = use2pole? filt : (filt.connect(filt2), filt2);
+    if (chorusNode){ sink.connect(chorusNode.input); chorusNode.output.connect(master); chorusNode.output.connect(revSend); }
+    if (delayNode){ sink.connect(delayNode.input); delayNode.output.connect(master); delayNode.output.connect(revSend); }
+    sink.connect(revSend);
+
+    // LFO
+    if (lfo?.amount > 0){
+      const l = ctx.createOscillator(); l.type='sine'; l.frequency.value=lfo.rate;
+      const lg=ctx.createGain(); lg.gain.value=lfo.amount;
+      l.connect(lg);
+      if (lfo.target==='filter'){ lg.connect(filt.frequency); if (!use2pole) lg.connect(filt2.frequency); }
+      l.start();
+    }
+
+    // OSCs
+    const active: {x: OscillatorNode | AudioBufferSourceNode, g: GainNode}[] = [];
+    let activeNoise: {n: AudioBufferSourceNode, ng: GainNode} | null = null;
+    let noiseBuffer: AudioBuffer | null = null;
+    if(noise.on) {
+        noiseBuffer = ctx.createBuffer(1, ctx.sampleRate * 2, ctx.sampleRate);
+        const d = noiseBuffer.getChannelData(0);
+        for(let i=0; i<d.length; i++) {
+            d[i] = (Math.random() * 2 - 1) * (noise.color === 'pink' ? Math.pow(Math.random(), 2) : 1);
+        }
+    }
+
+
+    api.noteOn = (midi, when=ctx.currentTime) => {
+      const f = midiToHz(midi);
+      osc.forEach(o=>{
+        const x = ctx.createOscillator(); x.type=o.type as OscillatorType; 
+        const detuneFactor = Math.pow(2, o.detune / 1200);
+        const octaveFactor = Math.pow(2, o.octave || 0);
+        x.frequency.setValueAtTime(f * detuneFactor * octaveFactor, when);
+        
+        const g = ctx.createGain(); g.gain.value=o.gain;
+        x.connect(g); g.connect(pre);
+        x.start(when);
+        active.push({x,g});
+      });
+      if (noise.on && noiseBuffer){
+        const n = ctx.createBufferSource();
+        n.buffer = noiseBuffer;
+        n.loop = true;
+        const ng = ctx.createGain(); ng.gain.value=noise.gain;
+        n.connect(ng); ng.connect(pre); n.start(when);
+        activeNoise = {n,ng};
+      }
+      // ADSR
+      vGain.gain.cancelScheduledValues(when);
+      vGain.gain.setValueAtTime(0.0001, when);
+      vGain.gain.linearRampToValueAtTime(1.0, when+adsr.a);
+      vGain.gain.setTargetAtTime(adsr.s, when+adsr.a, adsr.d / 3); // time constant for decay
+    };
+    api.noteOff = (when=ctx.currentTime) => {
+      vGain.gain.cancelScheduledValues(when);
+      vGain.gain.setTargetAtTime(0.0001, when, (adsr.r || 1.0) / 3); // time constant for release
+      
+      const stopTime = when + (adsr.r || 1.0) * 2; // Make sure we stop it after it has faded out
+      active.forEach(({x})=>x.stop(stopTime));
+      active.length=0;
+      if (activeNoise){ activeNoise.n.stop(stopTime); activeNoise=null; }
+    };
+    api.setParam = (k,v)=>{ if (k==='cutoff') filt.frequency.value=v; };
+    return api;
+  }
+
+  // ──────────────────────────────────────────────────────────────────────────
+  // MELLotron (sample + wow/flutter + tapeNoise)
+  if (type === 'mellotron') {
+    const {
+      instrument = 'strings', // 'strings'|'choir'|'flute' (подберите карту)
+      attack = 0.04, release = 0.35,
+      wow = { rate: 0.3, depth: 0.003 },
+      flutter = { rate: 5.5, depth: 0.0008 },
+      noise = { level: -36 }, // dB
+      lpf = 9000, hpf = 120,
+      reverbMix = 0.2
+    } = preset;
+
+    // Загрузка сэмплов
+    const zones = (mellotronMap?.zones ?? []).filter((z: any)=>z.name===instrument || !z.name);
+    const cache: Record<string, AudioBuffer> = {};
+    for (const z of zones) cache[z.note] = await loadSample(z.url);
+
+    const out = ctx.createGain(); out.gain.value=0.9;
+    const lp = ctx.createBiquadFilter(); lp.type='lowpass'; lp.frequency.value=lpf; lp.Q.value=0.5;
+    const hp = ctx.createBiquadFilter(); hp.type='highpass'; hp.frequency.value=hpf; hp.Q.value=0.7;
+    out.connect(hp); hp.connect(lp); lp.connect(master);
+    const revSend = ctx.createGain(); revSend.gain.value = reverbMix;
+    if(reverb.buffer) {
+        lp.connect(revSend); revSend.connect(reverb);
+    }
+
+    // Лентовый шум
+    const noiseB = ctx.createBufferSource();
+    const nb = ctx.createBuffer(1, ctx.sampleRate*2, ctx.sampleRate); const d = nb.getChannelData(0);
+    for(let i=0;i<d.length;i++) d[i]=(Math.random()*2-1)*0.4;
+    noiseB.buffer=nb; noiseB.loop=true;
+    const noiseG = ctx.createGain(); noiseG.gain.value = dB(noise.level); noiseB.connect(noiseG); noiseG.connect(lp); noiseB.start();
+
+    let current: any = null;
+
+    api.noteOn = (midi, when=ctx.currentTime) => {
+      // nearest zone
+      const notes = Object.keys(cache).map(n=>+n).sort((a,b)=>Math.abs(a-midi)-Math.abs(b-midi));
+      const root = notes[0] ?? 60;
+      const src = ctx.createBufferSource(); src.buffer = cache[root]; src.loop = true;
+      const playback = Math.pow(2, (midi - root)/12);
+      src.playbackRate.value = playback;
+
+      // wow/flutter
+      const lfoWow = ctx.createOscillator(); lfoWow.type='sine'; lfoWow.frequency.value=wow.rate;
+      const lfoWg = ctx.createGain(); lfoWg.gain.value = wow.depth*playback;
+      const lfoFl = ctx.createOscillator(); lfoFl.type='sine'; lfoFl.frequency.value=flutter.rate;
+      const lfoFg = ctx.createGain(); lfoFg.gain.value = flutter.depth*playback;
+      lfoWow.connect(lfoWg); lfoFl.connect(lfoFg);
+      lfoWg.connect(src.playbackRate); lfoFg.connect(src.playbackRate);
+      lfoWow.start(); lfoFl.start();
+
+      const vg = ctx.createGain(); vg.gain.value=0.0;
+      src.connect(vg); vg.connect(out);
+      src.start(when);
+      vg.gain.linearRampToValueAtTime(1.0, when+attack);
+
+      current = {src, vg, lfoWow, lfoFl};
+    };
+    api.noteOff = (when=ctx.currentTime) => {
+      if (!current) return;
+      current.vg.gain.cancelScheduledValues(when);
+      current.vg.gain.linearRampToValueAtTime(0.0001, when+release);
+      current.src.stop(when+release+0.05);
+      try { current.lfoWow.stop(when+release+0.05); current.lfoFl.stop(when+release+0.05); } catch{}
+      current=null;
+    };
+    return api;
+  }
+
+  // ──────────────────────────────────────────────────────────────────────────
+  // GUITAR (Gilmour shineOn / muffLead)
+  if (type === 'guitar') {
+    const {
+      variant='shineOn', // 'shineOn' | 'muffLead'
+      pickup = { cutoff: 3600, q: 1.0 },
+      drive = { type: (variant==='muffLead'?'muff':'soft'), amount: (variant==='muffLead'?0.65:0.2) },
+      comp  = { threshold: (variant==='muffLead'?-20:-18), ratio:(variant==='muffLead'?4:3), attack:0.01, release:0.12, makeup: +3 },
+      post = { lpf:(variant==='muffLead'?4700:5200), mids: [{f:850,q:0.9,g:+2},{f:(variant==='muffLead'?3200:2500),q:1.4,g:(variant==='muffLead'?-2:-1.5)}] },
+      phaser = { stages:4, base:(variant==='muffLead'?900:800), depth:(variant==='muffLead'?700:600), rate:(variant==='muffLead'?0.18:0.16), fb:0.12, mix:(variant==='muffLead'?0.18:0.22) },
+      delayA = { time:0.38, fb:(variant==='muffLead'?0.26:0.28), hc:3600, wet:(variant==='muffLead'?0.16:0.22) },
+      delayB = (variant==='muffLead'? { time:0.52, fb:0.22, hc:3600, wet:0.12 } : null),
+      reverbMix = (variant==='muffLead'?0.2:0.18),
+      osc = { width:0.46, detune: (variant==='muffLead'?7:5), mainGain:(variant==='muffLead'?0.8:0.85), detGain:(variant==='muffLead'?0.2:0.18), subGain:(variant==='muffLead'?0.3:0.25) },
+      adsr = { a:(variant==='muffLead'?0.008:0.006), d:(variant==='muffLead'?0.5:0.35), s:(variant==='muffLead'?0.65:0.6), r:(variant==='muffLead'?1.8:1.6) }
+    } = preset;
+
+    // Источник (pulse + pulse det + sine sub)
+    const createPulseOsc = (ctx: AudioContext, freq: number, width = 0.5) => {
+      const real = new Float32Array(32), imag = new Float32Array(32);
+      for (let n = 1; n < 32; n++) { const a = (2/(n*Math.PI)) * Math.sin(n*Math.PI*width); real[n]=a; }
+      const wave = ctx.createPeriodicWave(real, imag, { disableNormalization:true });
+      const o = ctx.createOscillator(); o.setPeriodicWave(wave); o.frequency.value=freq; return o;
+    };
+    const oscMain = createPulseOsc(ctx, 440, osc.width);
+    const oscDet  = createPulseOsc(ctx, 440, osc.width+0.06); oscDet.detune.value = osc.detune;
+    const oscSub  = ctx.createOscillator(); oscSub.type='sine'; oscSub.frequency.value=220;
+    const gMain=ctx.createGain(); gMain.gain.value=osc.mainGain;
+    const gDet =ctx.createGain(); gDet.gain.value =osc.detGain;
+    const gSub =ctx.createGain(); gSub.gain.value =osc.subGain;
+    const sum = ctx.createGain(); sum.gain.value=0.8;
+    oscMain.connect(gMain); gMain.connect(sum);
+    oscDet.connect(gDet); gDet.connect(sum);
+    oscSub.connect(gSub); gSub.connect(sum);
+    try { oscMain.start(); oscDet.start(); oscSub.start(); } catch {}
+
+    // ADSR
+    const vGain = ctx.createGain(); vGain.gain.value=0.0;
+
+    // Пикап → HPF → Comp → Drive → Post EQ/LPF → (Cab IR) → Phaser → Delays → Reverb → Master
+    const pickupLPF = ctx.createBiquadFilter(); pickupLPF.type='lowpass'; pickupLPF.frequency.value=pickup.cutoff; pickupLPF.Q.value=pickup.q;
+    const hpf = ctx.createBiquadFilter(); hpf.type='highpass'; hpf.frequency.value=90; hpf.Q.value=0.7;
+
+    const compNode = ctx.createDynamicsCompressor();
+    compNode.threshold.value=comp.threshold; compNode.ratio.value=comp.ratio; compNode.attack.value=comp.attack; compNode.release.value=comp.release;
+    const compMakeup = ctx.createGain(); compMakeup.gain.value = dB(comp.makeup||0);
+
+    const shaper = ctx.createWaveShaper(); shaper.curve = (drive.type==='muff') ? makeMuff(drive.amount) : makeSoftClip(drive.amount); shaper.oversample='4x';
+
+    const postHPF = ctx.createBiquadFilter(); postHPF.type='highpass'; postHPF.frequency.value=80; postHPF.Q.value=0.7;
+    const mid1 = ctx.createBiquadFilter(); mid1.type='peaking'; mid1.frequency.value=post.mids[0].f; mid1.Q.value=post.mids[0].q; mid1.gain.value=post.mids[0].g;
+    const mid2 = ctx.createBiquadFilter(); mid2.type='peaking'; mid2.frequency.value=post.mids[1].f; mid2.Q.value=post.mids[1].q; mid2.gain.value=post.mids[1].g;
+    const postLPF = ctx.createBiquadFilter(); postLPF.type='lowpass'; postLPF.frequency.value=post.lpf; postLPF.Q.value=0.7;
+
+    const cab = ctx.createConvolver(); if (cabinetIRUrl) cab.buffer = await loadIR(cabinetIRUrl);
+
+    const ph = makePhaser(ctx, phaser);
+    const dA = makeFilteredDelay(ctx, {time:delayA.time, fb:delayA.fb, hc:delayA.hc, wet:delayA.wet});
+    const dB = delayB ? makeFilteredDelay(ctx, {time:delayB.time, fb:delayB.fb, hc:delayB.hc, wet:delayB.wet}) : null;
+
+    const revSend = ctx.createGain(); revSend.gain.value = reverbMix;
+    if(reverb.buffer) {
+        revSend.connect(reverb);
+    }
+
+    sum.connect(vGain);
+    vGain.connect(pickupLPF);
+    pickupLPF.connect(hpf);
+    hpf.connect(compNode); compNode.connect(compMakeup);
+    compMakeup.connect(shaper);
+    shaper.connect(postHPF);
+    postHPF.connect(mid1); mid1.connect(mid2); mid2.connect(postLPF);
+    const afterCab = (cabinetIRUrl && cab.buffer ? (postLPF.connect(cab), cab) : postLPF);
+
+    afterCab.connect(ph.input);
+    if(dA) ph.output.connect(dA.input);
+    if (dB) ph.output.connect(dB.input);
+
+    ph.output.connect(master); ph.output.connect(revSend);
+    if(dA) dA.output.connect(revSend); if (dB) dB.output.connect(revSend);
+
+    let curFreq = 440;
+    api.noteOn = (midi, when=ctx.currentTime)=>{
+      const f = midiToHz(midi); curFreq=f;
+      oscMain.frequency.setValueAtTime(f, when);
+      oscDet.frequency.setValueAtTime(f, when);
+      oscSub.frequency.setValueAtTime(f/2, when);
+      vGain.gain.cancelScheduledValues(when);
+      vGain.gain.setValueAtTime(vGain.gain.value, when);
+      vGain.gain.linearRampToValueAtTime(1.0, when+adsr.a);
+      vGain.gain.setTargetAtTime(adsr.s, when+adsr.a, adsr.d / 3);
+    };
+    api.noteOff=(when=ctx.currentTime)=>{
+      vGain.gain.cancelScheduledValues(when);
+      vGain.gain.setValueAtTime(vGain.gain.value, when);
+      vGain.gain.setTargetAtTime(0.0001, when, adsr.r / 3);
+    };
+    api.setParam=(k,v)=>{
+      if (k==='pickupLPF') pickupLPF.frequency.value=v;
+      if (k==='drive') shaper.curve=(drive.type==='muff')?makeMuff(v):makeSoftClip(v);
+    };
+    return api;
+  }
+
+  // fallback
   master.connect(output);
   return api;
 }
+
