@@ -1,0 +1,510 @@
+Да! Ниже — универсальный аудиограф на чистом Web Audio API, который умеет играть четыре разных «семейства» по пресетам: орган (drawbar + Leslie), синт‑пад (сабтрактив), меллотрон (семплер с wow/flutter/шумом), электрогитара (гилморовский лид: чисто‑поющий или с сустейном). Одна фабрика buildMultiInstrument возвращает API noteOn/noteOff/setPreset/setParam, а внутри создаются нужные цепи.
+
+Что внутри, кратко
+- Organ: аддитив 9 drawbar’ов, «сканер»/вибрато, упрощённая Leslie (скорости slow/fast, плавный разгон), key‑click, HPF/LPF «кабинета».
+- Synth: 2–3 осц + шум, ADSR, LPF 12/24 дБ, LFO на срез/пан, хорус/дилей/реверб.
+- Mellotron: AudioBufferSource с лупом, wow/flutter (LFO на playbackRate), лентый шум, мягкий A/R, HPF/LPF ленты.
+- Guitar: цепочка «пикап LPF → компрессор → клиппер (soft/muff) → post‑EQ → (cab IR/LPF) → фейзер → тейп‑дилеи → plate».
+
+Код (JS/TS, чистый Web Audio, готов к вставке)
+- Можно копировать в модуль. IR и сэмплы — опциональны (подставьте свои URL).
+
+```js
+// ─────────────────────────────────────────────────────────────────────────────
+// MultiInstrument WebAudio: organ | synth | mellotron | guitar
+// ─────────────────────────────────────────────────────────────────────────────
+
+export async function buildMultiInstrument(ctx, {
+  type = 'organ',            // 'organ' | 'synth' | 'mellotron' | 'guitar'
+  preset = {},
+  cabinetIRUrl = null,       // для guitar (и можно для organ)
+  plateIRUrl = null,         // общий plate
+  mellotronMap = null,       // { name:'strings', zones: [{note:60,url:'...'}, ...] }
+  output = ctx.destination
+} = {}) {
+
+  // ───── Helpers
+  const loadIR = async (url) => {
+    if (!url) return null;
+    const res = await fetch(url);
+    const buf = await res.arrayBuffer();
+    return await ctx.decodeAudioData(buf);
+  };
+  const loadSample = async (url) => {
+    const res = await fetch(url);
+    const buf = await res.arrayBuffer();
+    return await ctx.decodeAudioData(buf);
+  };
+  const midiToHz = (m) => 440 * Math.pow(2, (m - 69) / 12);
+  const dB = (x)=>Math.pow(10, x/20);
+
+  const makeSoftClip = (amount=0.5, n=65536) => {
+    const c=new Float32Array(n); const k=amount*10+1;
+    for (let i=0;i<n;i++){ const x=i/(n-1)*2-1; c[i]=Math.tanh(k*x)/Math.tanh(k); }
+    return c;
+  };
+  const makeMuff = (gain=0.65, n=65536) => {
+    const c=new Float32Array(n);
+    for (let i=0;i<n;i++){ const x=i/(n-1)*2-1; const y=Math.tanh(x*(1+gain*4))*0.9; c[i]=y; }
+    return c;
+  };
+  const makePhaser = (ctx,{stages=4, base=800, depth=600, rate=0.16, fb=0.12, mix=0.2})=>{
+    const input=ctx.createGain(), output=ctx.createGain(), wet=ctx.createGain(), dry=ctx.createGain();
+    wet.gain.value=mix; dry.gain.value=1-mix;
+    let head=input; const aps=[]; 
+    for(let i=0;i<stages;i++){ const ap=ctx.createBiquadFilter(); ap.type='allpass'; ap.frequency.value=base*((i%2)?1.2:0.8); ap.Q.value=0.6; head.connect(ap); head=ap; aps.push(ap); }
+    const fbG=ctx.createGain(); fbG.gain.value=fb; aps[aps.length-1].connect(fbG); fbG.connect(aps[0]);
+    const lfo=ctx.createOscillator(); lfo.type='sine'; lfo.frequency.value=rate; const lfoG=ctx.createGain(); lfoG.gain.value=depth; lfo.connect(lfoG); aps.forEach(ap=>lfoG.connect(ap.frequency)); lfo.start();
+    input.connect(dry); aps[aps.length-1].connect(wet); dry.connect(output); wet.connect(output);
+    return {input, output, setRate:(r)=>lfo.frequency.value=r, setDepth:(d)=>lfoG.gain.value=d};
+  };
+  const makeChorus = (ctx,{rate=0.25, depth=0.006, mix=0.25})=>{
+    const input=ctx.createGain(), output=ctx.createGain(), wet=ctx.createGain(), dry=ctx.createGain();
+    wet.gain.value=mix; dry.gain.value=1-mix;
+    const d1=ctx.createDelay(0.03), d2=ctx.createDelay(0.03);
+    const l1=ctx.createOscillator(), g1=ctx.createGain(); l1.type='sine'; l1.frequency.value=rate; g1.gain.value=depth; l1.connect(g1); g1.connect(d1.delayTime); l1.start();
+    const l2=ctx.createOscillator(), g2=ctx.createGain(); l2.type='sine'; l2.frequency.value=rate*1.11; g2.gain.value=depth*1.1; l2.connect(g2); g2.connect(d2.delayTime); l2.start();
+    const s1=ctx.createGain(), s2=ctx.createGain(); input.connect(s1); input.connect(s2); s1.connect(d1); s2.connect(d2); d1.connect(wet); d2.connect(wet);
+    input.connect(dry); dry.connect(output); wet.connect(output);
+    return {input, output};
+  };
+  const makeFilteredDelay = (ctx,{time=0.38, fb=0.26, hc=3600, wet=0.2})=>{
+    const input=ctx.createGain(), output=ctx.createGain(), wetG=ctx.createGain(); wetG.gain.value=wet;
+    const d=ctx.createDelay(2.0); d.delayTime.value=time;
+    const loop=ctx.createGain(); loop.gain.value=fb;
+    const lp=ctx.createBiquadFilter(); lp.type='lowpass'; lp.frequency.value=hc; lp.Q.value=0.7;
+    input.connect(d); d.connect(lp); lp.connect(loop); loop.connect(d);
+    lp.connect(wetG); wetG.connect(output);
+    return {input, output};
+  };
+
+  // ───── Master FX (plate ревёрб общий)
+  const master = ctx.createGain(); master.gain.value = 0.8;
+  const reverb = ctx.createConvolver(); if (plateIRUrl) reverb.buffer = await loadIR(plateIRUrl);
+  const revMix = ctx.createGain(); revMix.gain.value = preset.reverbMix ?? 0.18;
+  reverb.connect(master);
+
+  // API, общий выход
+  const api = { connect:(dest)=>master.connect(dest||output), setParam:(k,v)=>{}, noteOn:()=>{}, noteOff:()=>{}, setPreset:(p)=>{} };
+
+  // ──────────────────────────────────────────────────────────────────────────
+  // ORGAN (drawbar + Leslie)
+  if (type === 'organ') {
+    const {
+      drawbars = [8,0,8,8,0,4,0,2,0], // 16',5 1/3',8',4',2 2/3',2',1 3/5',1 1/3',1'
+      vibratoRate = 6.0, vibratoDepth = 0.003,
+      leslie = { mode:'slow', slow:0.6, fast:6.0, accel:0.6 },
+      keyClick = 0.004,
+      lpf = 8000, hpf = 90,
+      chorusMix = 0.2, reverbMix = 0.15
+    } = preset;
+
+    const organOut = ctx.createGain(); organOut.gain.value = 0.6;
+    const organLPF = ctx.createBiquadFilter(); organLPF.type='lowpass'; organLPF.frequency.value=lpf; organLPF.Q.value=0.7;
+    const organHPF = ctx.createBiquadFilter(); organHPF.type='highpass'; organHPF.frequency.value=hpf; organHPF.Q.value=0.7;
+    const chorus = makeChorus(ctx, {rate:0.7, depth:0.005, mix:chorusMix});
+
+    // Leslie (упрощённо): амп‑мод+пан‑мод с ускорением
+    const pan = ctx.createStereoPanner(); pan.pan.value = 0;
+    const trem = ctx.createGain(); trem.gain.value = 1.0;
+    const lfo = ctx.createOscillator(); lfo.type='sine';
+    const lfoPanGain = ctx.createGain(); const lfoAmpGain = ctx.createGain();
+    lfoPanGain.gain.value = 0.7; lfoAmpGain.gain.value = 0.08; // ширина/амп‑колесо
+    lfo.connect(lfoPanGain); lfo.connect(lfoAmpGain);
+    lfoPanGain.connect(pan.pan); lfoAmpGain.connect(trem.gain);
+    lfo.start();
+
+    // Drawbar partials
+    const foot = [16, 5.333, 8, 4, 2.666, 2, 1.6, 1.333, 1];
+    const gains = drawbars.map(v => (v/8));
+    let activeOscs = [];
+    const voiceGain = ctx.createGain(); voiceGain.gain.value = 0;
+
+    // chain
+    voiceGain.connect(chorus.input);
+    chorus.output.connect(organHPF);
+    organHPF.connect(organLPF);
+    organLPF.connect(trem);
+    trem.connect(pan);
+    pan.connect(organOut);
+
+    // mix to reverb and master
+    const revSend = ctx.createGain(); revSend.gain.value = reverbMix;
+    organOut.connect(master);
+    organOut.connect(revSend); revSend.connect(reverb);
+
+    // vibrato (мелкий pitch LFO на все осцилляторы)
+    const vib = ctx.createOscillator(); vib.type='sine'; vib.frequency.value=vibratoRate;
+    const vibGain = ctx.createGain(); vibGain.gain.value = vibratoDepth; vib.connect(vibGain); vib.start();
+
+    // leslie speed control
+    let targetRate = (leslie.mode==='fast'? leslie.fast : leslie.slow);
+    lfo.frequency.value = targetRate;
+    const setLeslie = (mode)=>{
+      targetRate = (mode==='fast'? leslie.fast : leslie.slow);
+      const now = ctx.currentTime;
+      lfo.frequency.cancelScheduledValues(now);
+      lfo.frequency.setTargetAtTime(targetRate, now, leslie.accel);
+    };
+
+    api.noteOn = (midi, when=ctx.currentTime) => {
+      const f0 = midiToHz(midi);
+      // key click (очень короткий шумовой импульс)
+      const kc = ctx.createBufferSource();
+      const noise = ctx.createBuffer(1, ctx.sampleRate*keyClick, ctx.sampleRate);
+      const d = noise.getChannelData(0); for(let i=0;i<d.length;i++) d[i]=(Math.random()*2-1)*0.2;
+      kc.buffer=noise; const kcEnv=ctx.createGain(); kcEnv.gain.value=0.6; kc.connect(kcEnv); kcEnv.connect(voiceGain); kc.start(when); kc.stop(when+keyClick);
+
+      // Частоты гармоник по футам
+      activeOscs = foot.map((ft, i) => {
+        const osc = ctx.createOscillator();
+        osc.type = 'sine'; // гладкие паршалы
+        const ratio = (8/ft); // основной 8'
+        osc.frequency.setValueAtTime(f0*ratio, when);
+        const g = ctx.createGain(); g.gain.value = gains[i]*0.4;
+        osc.connect(g); g.connect(voiceGain);
+        vibGain.connect(osc.frequency); // vibrato
+        osc.start(when);
+        return {osc,g};
+      });
+      // envelope (у органа почти нет ADSR — делаем мягкий gate)
+      voiceGain.gain.cancelScheduledValues(when);
+      voiceGain.gain.linearRampToValueAtTime(1.0, when+0.01);
+    };
+    api.noteOff = (when=ctx.currentTime) => {
+      voiceGain.gain.cancelScheduledValues(when);
+      voiceGain.gain.linearRampToValueAtTime(0.0001, when+0.05);
+      activeOscs.forEach(({osc})=>osc.stop(when+0.06));
+      activeOscs = [];
+    };
+    api.setParam = (k,v)=>{
+      if (k==='leslie') setLeslie(v); 
+      if (k==='pickupLPF'||k==='lpf') organLPF.frequency.value = v;
+    };
+    api.setPreset = (p)=>{ /* можно маппить drawbars/vibrato/leslie */ };
+
+    // выход
+    return api;
+  }
+
+  // ──────────────────────────────────────────────────────────────────────────
+  // SYNTH (subtractive pad/lead)
+  if (type === 'synth') {
+    const {
+      osc = [{type:'sawtooth', detune:0, gain:0.6},{type:'triangle', detune:-5, gain:0.35},{type:'sine',detune:+7,gain:0.2}],
+      noise = { on:false, color:'white', gain:0.0 },
+      adsr = {a:0.3, d:0.6, s:0.6, r:1.6},
+      lpf = { cutoff: 1800, q: 0.7, mode:'12dB' }, // для простоты один LPF
+      lfo = { rate:0.15, amount:300, target:'filter' },
+      chorus = { on:true, rate:0.25, depth:0.006, mix:0.25 },
+      delay = { on:true, time:0.38, fb:0.25, hc:3800, mix:0.18 },
+      reverbMix = 0.18
+    } = preset;
+
+    const pre = ctx.createGain(); pre.gain.value = 0.9;
+    const vGain = ctx.createGain(); vGain.gain.value = 0.0;
+    const filt = ctx.createBiquadFilter(); filt.type='lowpass'; filt.frequency.value=lpf.cutoff; filt.Q.value=lpf.q;
+    const filt2 = ctx.createBiquadFilter(); filt2.type='lowpass'; filt2.frequency.value=lpf.cutoff; filt2.Q.value=lpf.q;
+    const use2pole = (lpf.mode!=='24dB');
+
+    pre.connect(vGain); vGain.connect(filt); (use2pole?filt:filt2).connect(master);
+    // FX sends
+    const chorusNode = chorus.on ? makeChorus(ctx, chorus) : null;
+    const delayNode  = delay.on  ? makeFilteredDelay(ctx, delay) : null;
+    const revSend = ctx.createGain(); revSend.gain.value = reverbMix;
+
+    const sink = use2pole? filt : (filt.connect(filt2), filt2);
+    if (chorusNode){ sink.connect(chorusNode.input); chorusNode.output.connect(master); chorusNode.output.connect(revSend); }
+    if (delayNode){ sink.connect(delayNode.input); delayNode.output.connect(master); delayNode.output.connect(revSend); }
+    sink.connect(revSend); revSend.connect(reverb);
+
+    // LFO
+    if (lfo?.amount>0){
+      const l = ctx.createOscillator(); l.type='sine'; l.frequency.value=lfo.rate;
+      const lg=ctx.createGain(); lg.gain.value=lfo.amount;
+      l.connect(lg);
+      if (lfo.target==='filter'){ lg.connect(filt.frequency); lg.connect(filt2.frequency); }
+      l.start();
+    }
+
+    // OSCs
+    const active = [];
+    let activeNoise = null;
+
+    api.noteOn = (midi, when=ctx.currentTime) => {
+      const f = midiToHz(midi);
+      osc.forEach(o=>{
+        const x = ctx.createOscillator(); x.type=o.type; x.detune.value=o.detune;
+        const g = ctx.createGain(); g.gain.value=o.gain;
+        x.frequency.value=f;
+        x.connect(g); g.connect(pre);
+        x.start(when);
+        active.push({x,g});
+      });
+      if (noise.on){
+        const n = ctx.createBufferSource();
+        const buffer = ctx.createBuffer(1, ctx.sampleRate*2, ctx.sampleRate);
+        const d = buffer.getChannelData(0); for(let i=0;i<d.length;i++) d[i] = (Math.random()*2-1) * (noise.color==='pink'? Math.pow(Math.random(),2) : 1);
+        n.buffer = buffer; n.loop = true;
+        const ng = ctx.createGain(); ng.gain.value=noise.gain;
+        n.connect(ng); ng.connect(pre); n.start(when);
+        activeNoise = {n,ng};
+      }
+      // ADSR
+      vGain.gain.cancelScheduledValues(when);
+      vGain.gain.setValueAtTime(0.0001, when);
+      vGain.gain.linearRampToValueAtTime(1.0, when+adsr.a);
+      vGain.gain.linearRampToValueAtTime(adsr.s, when+adsr.a+adsr.d);
+    };
+    api.noteOff = (when=ctx.currentTime) => {
+      vGain.gain.cancelScheduledValues(when);
+      vGain.gain.linearRampToValueAtTime(0.0001, when+preset.adsr?.r ?? 1.6);
+      active.forEach(({x})=>x.stop(when + (preset.adsr?.r ?? 1.6)+0.05));
+      active.length=0;
+      if (activeNoise){ activeNoise.n.stop(when+(preset.adsr?.r ?? 1.6)+0.05); activeNoise=null; }
+    };
+    api.setParam = (k,v)=>{ if (k==='cutoff') filt.frequency.value=v; };
+    return api;
+  }
+
+  // ──────────────────────────────────────────────────────────────────────────
+  // MELLotron (sample + wow/flutter + tapeNoise)
+  if (type === 'mellotron') {
+    const {
+      instrument = 'strings', // 'strings'|'choir'|'flute' (подберите карту)
+      attack = 0.04, release = 0.35,
+      wow = { rate: 0.3, depth: 0.003 },
+      flutter = { rate: 5.5, depth: 0.0008 },
+      noise = { level: -36 }, // dB
+      lpf = 9000, hpf = 120,
+      reverbMix = 0.2
+    } = preset;
+
+    // Загрузкаэм сэмплов
+    const zones = (mellotronMap?.zones ?? []).filter(z=>z.name===instrument || !z.name);
+    const cache = {};
+    for (const z of zones) cache[z.note] = await loadSample(z.url);
+
+    const out = ctx.createGain(); out.gain.value=0.9;
+    const lp = ctx.createBiquadFilter(); lp.type='lowpass'; lp.frequency.value=lpf; lp.Q.value=0.5;
+    const hp = ctx.createBiquadFilter(); hp.type='highpass'; hp.frequency.value=hpf; hp.Q.value=0.7;
+    out.connect(hp); hp.connect(lp); lp.connect(master);
+    const revSend = ctx.createGain(); revSend.gain.value=reverbMix; lp.connect(revSend); revSend.connect(reverb);
+
+    // Лентовый шум
+    const noiseB = ctx.createBufferSource();
+    const nb = ctx.createBuffer(1, ctx.sampleRate*2, ctx.sampleRate); const d = nb.getChannelData(0);
+    for(let i=0;i<d.length;i++) d[i]=(Math.random()*2-1)*0.4;
+    noiseB.buffer=nb; noiseB.loop=true;
+    const noiseG = ctx.createGain(); noiseG.gain.value = dB(noise.level); noiseB.connect(noiseG); noiseG.connect(lp); noiseB.start();
+
+    let current = null;
+
+    api.noteOn = (midi, when=ctx.currentTime) => {
+      // nearest zone
+      const notes = Object.keys(cache).map(n=>+n).sort((a,b)=>Math.abs(a-midi)-Math.abs(b-midi));
+      const root = notes[0] ?? 60;
+      const src = ctx.createBufferSource(); src.buffer = cache[root]; src.loop = true;
+      const playback = Math.pow(2, (midi - root)/12);
+      src.playbackRate.value = playback;
+
+      // wow/flutter
+      const lfoWow = ctx.createOscillator(); lfoWow.type='sine'; lfoWow.frequency.value=wow.rate;
+      const lfoWg = ctx.createGain(); lfoWg.gain.value = wow.depth*playback;
+      const lfoFl = ctx.createOscillator(); lfoFl.type='sine'; lfoFl.frequency.value=flutter.rate;
+      const lfoFg = ctx.createGain(); lfoFg.gain.value = flutter.depth*playback;
+      lfoWow.connect(lfoWg); lfoFl.connect(lfoFg);
+      lfoWg.connect(src.playbackRate); lfoFg.connect(src.playbackRate);
+      lfoWow.start(); lfoFl.start();
+
+      const vg = ctx.createGain(); vg.gain.value=0.0;
+      src.connect(vg); vg.connect(out);
+      src.start(when);
+      vg.gain.linearRampToValueAtTime(1.0, when+attack);
+
+      current = {src, vg, lfoWow, lfoFl};
+    };
+    api.noteOff = (when=ctx.currentTime) => {
+      if (!current) return;
+      current.vg.gain.cancelScheduledValues(when);
+      current.vg.gain.linearRampToValueAtTime(0.0001, when+release);
+      current.src.stop(when+release+0.05);
+      try { current.lfoWow.stop(when+release+0.05); current.lfoFl.stop(when+release+0.05); } catch{}
+      current=null;
+    };
+    return api;
+  }
+
+  // ──────────────────────────────────────────────────────────────────────────
+  // GUITAR (Gilmour shineOn / muffLead)
+  if (type === 'guitar') {
+    const {
+      variant='shineOn', // 'shineOn' | 'muffLead'
+      pickup = { cutoff: 3600, q: 1.0 },
+      drive = { type: (variant==='muffLead'?'muff':'soft'), amount: (variant==='muffLead'?0.65:0.2) },
+      comp  = { threshold: (variant==='muffLead'?-20:-18), ratio:(variant==='muffLead'?4:3), attack:0.01, release:0.12, makeup: +3 },
+      post = { lpf:(variant==='muffLead'?4700:5200), mids: [{f:850,q:0.9,g:+2},{f:(variant==='muffLead'?3200:2500),q:1.4,g:(variant==='muffLead'?-2:-1.5)}] },
+      phaser = { stages:4, base:(variant==='muffLead'?900:800), depth:(variant==='muffLead'?700:600), rate:(variant==='muffLead'?0.18:0.16), fb:0.12, mix:(variant==='muffLead'?0.18:0.22) },
+      delayA = { time:0.38, fb:(variant==='muffLead'?0.26:0.28), hc:3600, wet:(variant==='muffLead'?0.16:0.22) },
+      delayB = (variant==='muffLead'? { time:0.52, fb:0.22, hc:3600, wet:0.12 } : null),
+      reverbMix = (variant==='muffLead'?0.2:0.18),
+      osc = { width:0.46, detune: (variant==='muffLead'?7:5), mainGain:(variant==='muffLead'?0.8:0.85), detGain:(variant==='muffLead'?0.2:0.18), subGain:(variant==='muffLead'?0.3:0.25) },
+      adsr = { a:(variant==='muffLead'?0.008:0.006), d:(variant==='muffLead'?0.5:0.35), s:(variant==='muffLead'?0.65:0.6), r:(variant==='muffLead'?1.8:1.6) }
+    } = preset;
+
+    // Источник (pulse + pulse det + sine sub)
+    const createPulseOsc = (ctx, freq, width = 0.5) => {
+      const real = new Float32Array(32), imag = new Float32Array(32);
+      for (let n = 1; n < 32; n++) { const a = (2/(n*Math.PI)) * Math.sin(n*Math.PI*width); real[n]=a; }
+      const wave = ctx.createPeriodicWave(real, imag, { disableNormalization:true });
+      const o = ctx.createOscillator(); o.setPeriodicWave(wave); o.frequency.value=freq; return o;
+    };
+    const oscMain = createPulseOsc(ctx, 440, osc.width);
+    const oscDet  = createPulseOsc(ctx, 440, osc.width+0.06); oscDet.detune.value = osc.detune;
+    const oscSub  = ctx.createOscillator(); oscSub.type='sine'; oscSub.frequency.value=220;
+    const gMain=ctx.createGain(); gMain.gain.value=osc.mainGain;
+    const gDet =ctx.createGain(); gDet.gain.value =osc.detGain;
+    const gSub =ctx.createGain(); gSub.gain.value =osc.subGain;
+    const sum = ctx.createGain(); sum.gain.value=0.8;
+    oscMain.connect(gMain); gMain.connect(sum);
+    oscDet.connect(gDet); gDet.connect(sum);
+    oscSub.connect(gSub); gSub.connect(sum);
+    try { oscMain.start(); oscDet.start(); oscSub.start(); } catch {}
+
+    // ADSR
+    const vGain = ctx.createGain(); vGain.gain.value=0.0;
+
+    // Пикап → HPF → Comp → Drive → Post EQ/LPF → (Cab IR) → Phaser → Delays → Reverb → Master
+    const pickupLPF = ctx.createBiquadFilter(); pickupLPF.type='lowpass'; pickupLPF.frequency.value=pickup.cutoff; pickupLPF.Q.value=pickup.q;
+    const hpf = ctx.createBiquadFilter(); hpf.type='highpass'; hpf.frequency.value=90; hpf.Q.value=0.7;
+
+    const compNode = ctx.createDynamicsCompressor();
+    compNode.threshold.value=comp.threshold; compNode.ratio.value=comp.ratio; compNode.attack.value=comp.attack; compNode.release.value=comp.release;
+    const compMakeup = ctx.createGain(); compMakeup.gain.value = dB(comp.makeup||0);
+
+    const shaper = ctx.createWaveShaper(); shaper.curve = (drive.type==='muff') ? makeMuff(drive.amount) : makeSoftClip(drive.amount); shaper.oversample='4x';
+
+    const postHPF = ctx.createBiquadFilter(); postHPF.type='highpass'; postHPF.frequency.value=80; postHPF.Q.value=0.7;
+    const mid1 = ctx.createBiquadFilter(); mid1.type='peaking'; mid1.frequency.value=post.mids[0].f; mid1.Q.value=post.mids[0].q; mid1.gain.value=post.mids[0].g;
+    const mid2 = ctx.createBiquadFilter(); mid2.type='peaking'; mid2.frequency.value=post.mids[1].f; mid2.Q.value=post.mids[1].q; mid2.gain.value=post.mids[1].g;
+    const postLPF = ctx.createBiquadFilter(); postLPF.type='lowpass'; postLPF.frequency.value=post.lpf; postLPF.Q.value=0.7;
+
+    const cab = ctx.createConvolver(); if (cabinetIRUrl) cab.buffer = await loadIR(cabinetIRUrl);
+
+    const ph = makePhaser(ctx, phaser);
+    const dA = makeFilteredDelay(ctx, {time:delayA.time, fb:delayA.fb, hc:delayA.hc, wet:delayA.wet});
+    const dB = delayB ? makeFilteredDelay(ctx, {time:delayB.time, fb:delayB.fb, hc:delayB.hc, wet:delayB.wet}) : null;
+
+    const revSend = ctx.createGain(); revSend.gain.value = reverbMix;
+
+    sum.connect(vGain);
+    vGain.connect(pickupLPF);
+    pickupLPF.connect(hpf);
+    hpf.connect(compNode); compNode.connect(compMakeup);
+    compMakeup.connect(shaper);
+    shaper.connect(postHPF);
+    postHPF.connect(mid1); mid1.connect(mid2); mid2.connect(postLPF);
+    const afterCab = (cabinetIRUrl ? (postLPF.connect(cab), cab) : postLPF);
+
+    afterCab.connect(ph.input);
+    ph.output.connect(dA.input);
+    if (dB) ph.output.connect(dB.input);
+
+    ph.output.connect(master); ph.output.connect(revSend);
+    dA.output.connect(revSend); if (dB) dB.output.connect(revSend);
+    revSend.connect(reverb);
+
+    let curFreq = 440;
+    api.noteOn = (midi, when=ctx.currentTime)=>{
+      const f = midiToHz(midi); curFreq=f;
+      oscMain.frequency.setValueAtTime(f, when);
+      oscDet.frequency.setValueAtTime(f, when);
+      oscSub.frequency.setValueAtTime(f/2, when);
+      vGain.gain.cancelScheduledValues(when);
+      vGain.gain.setValueAtTime(vGain.gain.value, when);
+      vGain.gain.linearRampToValueAtTime(1.0, when+adsr.a);
+      vGain.gain.linearRampToValueAtTime(adsr.s, when+adsr.a+adsr.d);
+    };
+    api.noteOff=(when=ctx.currentTime)=>{
+      vGain.gain.cancelScheduledValues(when);
+      vGain.gain.setValueAtTime(vGain.gain.value, when);
+      vGain.gain.linearRampToValueAtTime(0.0001, when+adsr.r);
+    };
+    api.setParam=(k,v)=>{
+      if (k==='pickupLPF') pickupLPF.frequency.value=v;
+      if (k==='drive') shaper.curve=(drive.type==='muff')?makeMuff(v):makeSoftClip(v);
+    };
+    return api;
+  }
+
+  // fallback
+  master.connect(output);
+  return api;
+}
+```
+
+Примеры пресетов (минимум)
+```js
+export const presets = {
+  organ_drawbar_warm: {
+    type:'organ',
+    drawbars:[8,0,8,6,0,3,0,2,0],
+    vibratoRate:6.0, vibratoDepth:0.003,
+    leslie:{mode:'slow', slow:0.7, fast:5.5, accel:0.6},
+    lpf:8000, hpf:90, chorusMix:0.22, reverbMix:0.15
+  },
+  synth_pad_airy: {
+    type:'synth',
+    osc:[{type:'sawtooth',detune:0,gain:0.55},{type:'triangle',detune:-7,gain:0.35},{type:'sine',detune:+5,gain:0.2}],
+    adsr:{a:0.4,d:0.7,s:0.65,r:2.0},
+    lpf:{cutoff:1800,q:0.8,mode:'24dB'},
+    lfo:{rate:0.12,amount:250,target:'filter'},
+    chorus:{on:true,rate:0.25,depth:0.006,mix:0.25},
+    delay:{on:true,time:0.38,fb:0.25,hc:3800,mix:0.18},
+    reverbMix:0.2
+  },
+  mellotron_strings: {
+    type:'mellotron',
+    instrument:'strings', attack:0.05, release:0.35,
+    wow:{rate:0.3,depth:0.003}, flutter:{rate:5.5,depth:0.0008},
+    noise:{level:-36}, lpf:9000, hpf:120, reverbMix:0.22
+  },
+  guitar_shineOn: {
+    type:'guitar',
+    variant:'shineOn',
+    reverbMix:0.18
+  },
+  guitar_muffLead: {
+    type:'guitar',
+    variant:'muffLead',
+    reverbMix:0.2
+  }
+}
+```
+
+Как использовать
+```js
+const ctx = new (window.AudioContext || window.webkitAudioContext)();
+
+const organ = await buildMultiInstrument(ctx, { type:'organ', preset:presets.organ_drawbar_warm, plateIRUrl:'/ir/plate.wav' });
+organ.connect(ctx.destination);
+organ.noteOn(60); setTimeout(()=>organ.noteOff(), 1500);
+
+const synth = await buildMultiInstrument(ctx, { type:'synth', preset:presets.synth_pad_airy, plateIRUrl:'/ir/plate.wav' });
+synth.noteOn(69); setTimeout(()=>synth.noteOff(), 3000);
+
+const mtronMap = { zones:[ {name:'strings', note:60, url:'/samples/mtron/strings_C4.ogg'}, {name:'strings', note:48, url:'/samples/mtron/strings_C3.ogg'} ] };
+const mtron = await buildMultiInstrument(ctx, { type:'mellotron', preset:presets.mellotron_strings, mellotronMap:mtronMap, plateIRUrl:'/ir/plate.wav' });
+mtron.noteOn(64); setTimeout(()=>mtron.noteOff(), 2000);
+
+const guitar = await buildMultiInstrument(ctx, { type:'guitar', preset:presets.guitar_muffLead, cabinetIRUrl:'/ir/hiwatt_4x12.wav', plateIRUrl:'/ir/plate.wav' });
+guitar.noteOn(74); setTimeout(()=>guitar.noteOff(), 1800);
+```
+
+Куда крутить на слух
+- Орган: drawbars (масса), leslie.fast/slow и accel (качание), chorusMix (ширина), lpf (яркость).
+- Синт: LPF cutoff/Q, ADSR (длина), LFO amount/rate (дыхание), delay mix/hc (мягкость).
+- Меллотрон: wow/flutter rate/depth (характер ленты), noise.level (воздух), lpf/hpf (винтажность).
+- Гитара: pickupLPF (3.2–3.8 кГц), drive.amount (0.15–0.7), post.lpf (4.7–5.2 кГц), phaser rate 0.12–0.2, delays wet/feedback.
+
+Если нужно, добавлю: Leslie 2‑роторную модель (низ/верх с разными LFO/фазой), «scanner vibrato» органа (allpass‑цепочка), более точный тон‑стек Muff, и готовый набор меллотрон‑мапов (strings/choir/flute).
