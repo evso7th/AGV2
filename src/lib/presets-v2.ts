@@ -39,19 +39,18 @@ export const prettyPresets = {
   synth_ambient_pad_lush: {
     type: 'synth',
     osc: [
-      { type: 'sawtooth', detune: -8,    gain: 0.55 }, // базовый слой
-      { type: 'sawtooth', detune: +8,    gain: 0.55 }, // зеркальный детюн
-      { type: 'sine',     detune: 1200, gain: 0.25 }  // +1 октава в центах
+      { type: 'sawtooth', detune: -8,    gain: 0.55 },
+      { type: 'sawtooth', detune: +8,    gain: 0.55 },
+      { type: 'sine',     detune: 1200, gain: 0.25 }
     ],
-    noise: { on: true, color: 'white', gain: 0.02 },   // лёгкий «воздух»
-    adsr:  { a: 2.5, d: 2.0, s: 0.8, r: 4.0 },        // длинные A/R
-    lpf:   { cutoff: 1200, q: 1.5, mode: '24dB' },    // мягкий кат, крутой склон
-    lfo:   { rate: 0.05, amount: 600, target: 'filter' }, // breathing (~20 c период)
-    chorus:{ on: true, rate: 0.20, depth: 0.008, mix: 0.65 }, // глубокий хорус
-    delay: { on: true, time: 0.75, fb: 0.45, hc: 3800, mix: 0.35 }, // длинный дилей с хайкатом
+    noise: { on: true, color: 'white', gain: 0.02 },
+    adsr:  { a: 2.5, d: 2.0, s: 0.8, r: 4.0 },
+    lpf:   { cutoff: 1200, q: 1.5, mode: '24dB' },
+    lfo:   { rate: 0.05, amount: 600, target: 'filter' },
+    chorus:{ on: true, rate: 0.20, depth: 0.008, mix: 0.65 },
+    delay: { on: true, time: 0.75, fb: 0.45, hc: 3800, mix: 0.35 },
     reverbMix: 0.28
   },
-  // Терменвокс: «вокальный синус», вибрато делай внешним (см. подсказки ниже)
   synth_theremin_vocal: {
     type: 'synth',
     osc: [
@@ -59,9 +58,9 @@ export const prettyPresets = {
       { type: 'triangle', detune: +5, gain: 0.20 }
     ],
     noise: { on: false, color: 'white', gain: 0 },
-    adsr:  { a: 0.08, d: 0.4, s: 0.85, r: 0.8 }, // мягкая атака, длинный сустейн
+    adsr:  { a: 0.08, d: 0.4, s: 0.85, r: 0.8 },
     lpf:   { cutoff: 5500, q: 0.6, mode: '12dB' },
-    lfo:   { rate: 0.0, amount: 0, target: 'filter' }, // питч-вибрато делаем снаружи
+    lfo:   { rate: 0.0, amount: 0, target: 'filter' },
     chorus:{ on: false, rate: 0.2, depth: 0.004, mix: 0.15 },
     delay: { on: true, time: 0.45, fb: 0.22, hc: 4200, mix: 0.16 },
     reverbMix: 0.24
@@ -108,6 +107,11 @@ export const prettyPresets = {
   guitar_muffLead: {
     type: 'guitar',
     variant: 'muffLead',
+    osc: [
+        { type: 'sawtooth', detune: 0, octave: 0, gain: 1.0 },
+        { type: 'square', detune: 0, octave: -1, gain: 0.5 },
+        { type: 'pulse', detune: 4, octave: 1, gain: 0.3 }
+    ],
     reverbMix: 0.3,
     drive: { type: 'muff', amount: 0.85 },
     post: { lpf: 4500, mids: [{f:900, q:0.9, g:1.5}, {f:3000, q:1.2, g:-2.5}] },
@@ -126,3 +130,5 @@ export const prettyPresets = {
     reverbMix: 0.15
   }
 };
+
+    
