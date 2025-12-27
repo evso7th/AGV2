@@ -5,7 +5,7 @@ import { ElectronicK, TraditionalK, AmbientK, MelancholicMinorK } from './resona
 import { getScaleForMood, STYLE_DRUM_PATTERNS, generateAmbientBassPhrase, createAccompanimentAxiom, PERCUSSION_SETS, TEXTURE_INSTRUMENT_WEIGHTS_BY_MOOD, getAccompanimentTechnique, createBassFill as createBassFillFromTheory, createDrumFill, AMBIENT_ACCOMPANIMENT_WEIGHTS, chooseHarmonyInstrument, mutateBassPhrase, createMelodyMotif, createDrumAxiom, generateGhostHarmonyTrack, mutateAccompanimentPhrase, createHarmonyAxiom } from './music-theory';
 import { BlueprintNavigator, type NavigationInfo } from './blueprint-navigator';
 import { MelancholicAmbientBlueprint, BLUEPRINT_LIBRARY, getBlueprint } from './blueprints';
-import { prettyPresets } from './presets-v2';
+import { V2_PRESETS } from './presets-v2';
 
 
 export type Branch = {
@@ -279,10 +279,10 @@ export class FractalMusicEngine {
         }
         
         if (part === 'melody' && this.config.useMelodyV2) {
-            const v2PresetNames = Object.keys(prettyPresets);
+            const v2PresetNames = Object.keys(V2_PRESETS);
             if (!selectedInstrument || !v2PresetNames.includes(selectedInstrument as string)) {
                 console.log(`[FME Hint Correction] V2 Engine is active. Hint '${selectedInstrument}' is not a V2 preset. Choosing a random V2 preset.`);
-                selectedInstrument = v2PresetNames[this.random.nextInt(v2PresetNames.length)] as keyof typeof prettyPresets;
+                selectedInstrument = v2PresetNames[this.random.nextInt(v2PresetNames.length)] as keyof typeof V2_PRESETS;
             }
         }
 
