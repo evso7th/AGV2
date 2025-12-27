@@ -277,13 +277,8 @@ export class FractalMusicEngine {
             }
         }
         
-        // #ЗАЧЕМ: Этот блок кода является "защитой от несовместимости" между движками V1 и V2.
-        // #ЧТО: Он проверяет, активен ли движок V2. Если да, и если выбранный инструмент относится к V1 (т.е. его нет в `prettyPresets`),
-        //      он принудительно заменяет его на V2-пресет по умолчанию ('synth_pad_emerald').
-        // #СВЯЗИ: Гарантирует, что `MelodySynthManagerV2` никогда не получит несовместимый `instrumentHint`,
-        //         позволяя автопилоту корректно работать с новым движком.
         if (part === 'melody' && this.config.useMelodyV2) {
-            const v2PresetNames = ["organ_cathedral_warm", "organ_soft_jazz", "synth_pad_emerald", "synth_ambient_pad_lush", "synth_theremin_vocal", "mellotron_strings_majestic", "mellotron_choir_dark", "mellotron_flute_intimate", "guitar_shineOn", "guitar_muffLead", "acoustic_guitar_folk"];
+            const v2PresetNames = Object.keys(prettyPresets);
             if (!selectedInstrument || !v2PresetNames.includes(selectedInstrument as V2MelodyInstrument)) {
                 console.log(`[FME Hint Correction] V2 Engine is active. Swapping incompatible hint '${selectedInstrument}' to 'synth_pad_emerald'.`);
                 selectedInstrument = 'synth_pad_emerald';
@@ -418,24 +413,10 @@ export class FractalMusicEngine {
     instrumentHints.accompaniment = this._chooseInstrumentForPart('accompaniment', navInfo.currentPart);
     instrumentHints.melody = this._chooseInstrumentForPart('melody', navInfo.currentPart);
     
-    const isIntro = navInfo.currentPart.id.startsWith('INTRO');
-    
     let drumEvents = this.generateDrumEvents(navInfo);
     
     let accompEvents: FractalEvent[] = [];
-    if (isIntro && navInfo.currentPart.layers.accompaniment) {
-        if (drumEvents.length > 0) {
-            drumEvents.forEach(drumEvent => {
-                const swell = this._createArpeggiatedChordSwell(drumEvent.time, currentChord);
-                accompEvents.push(...swell);
-            });
-        } else {
-            // Если ударных нет, генерируем одно арпеджио в начале такта
-            const swell = this._createArpeggiatedChordSwell(0, currentChord);
-            accompEvents.push(...swell);
-        }
-        instrumentHints.accompaniment = 'ambientPad'; // Force pad for this effect
-    } else if (navInfo.currentPart.layers.accompaniment) {
+    if (navInfo.currentPart.layers.accompaniment) {
         const registerHint = navInfo.currentPart.instrumentRules?.accompaniment?.register?.preferred;
         if (this.accompPhraseLibrary[this.currentAccompPhraseIndex].length === 0 || this.epoch % 4 === 0) {
             this.accompPhraseLibrary[this.currentAccompPhraseIndex] = createAccompanimentAxiom(currentChord, this.config.mood, this.config.genre, this.random, this.config.tempo, registerHint);
@@ -443,8 +424,7 @@ export class FractalMusicEngine {
         accompEvents = this.accompPhraseLibrary[this.currentAccompPhraseIndex];
     }
     
-    
-    const canVary = !isIntro || navInfo.currentPart.id.includes('3');
+    const canVary = !navInfo.currentPart.id.startsWith('INTRO') || navInfo.currentPart.id.includes('3');
     const PHRASE_VARIATION_INTERVAL = 4;
     
     if (canVary && this.epoch > 0 && this.epoch % PHRASE_VARIATION_INTERVAL === 0) {
@@ -453,7 +433,7 @@ export class FractalMusicEngine {
             this.bassPhraseLibrary[this.currentBassPhraseIndex] = mutateBassPhrase(this.bassPhraseLibrary[this.currentBassPhraseIndex], currentChord, this.config.mood, this.config.genre, this.random);
         }
         this.currentAccompPhraseIndex = (this.currentAccompPhraseIndex + 1) % this.accompPhraseLibrary.length;
-        if (this.random.next() < 0.6 && !isIntro) { 
+        if (this.random.next() < 0.6 && !navInfo.currentPart.id.startsWith('INTRO')) { 
             this.accompPhraseLibrary[this.currentAccompPhraseIndex] = mutateAccompanimentPhrase(this.accompPhraseLibrary[this.currentAccompPhraseIndex], currentChord, this.config.mood, this.config.genre, this.random);
         }
     }
@@ -469,7 +449,7 @@ export class FractalMusicEngine {
             weight: e.weight * 0.8, // Slightly lower volume
         }));
         accompEvents.push(...bassDoubleEvents);
-        instrumentHints.accompaniment = instrument; // Ensure the correct instrument is hinted
+        instrumentHints.accompaniment = instrument;
     }
     
     let harmonyEvents: FractalEvent[] = [];
@@ -481,17 +461,34 @@ export class FractalMusicEngine {
     }
     
     if (navInfo.currentPart.layers.melody) {
-        const melodyRules = navInfo.currentPart.instrumentRules?.melody;
-        // Используем optional chaining и nullish coalescing для безопасного доступа
-        const melodyDensity = melodyRules?.density?.min ?? 0.25; // 25% шанс по умолчанию
-        const minInterval = 2; // Минимальный интервал в тактах
+        if (this.config.genre === 'ambient') {
+            // #ЗАЧЕМ: Специальная логика для эмбиента.
+            // #ЧТО: Извлекает верхние ноты из партии аккомпанемента и создает на их основе мелодию.
+            //      Добавляет квинту для создания гармонического интереса.
+            // #СВЯЗИ: Гарантирует, что в эмбиенте мелодия не "конкурирует", а "вытекает" из гармонии.
+            const topNotes = accompEvents
+                .sort((a, b) => b.note - a.note) // Сортируем по высоте
+                .slice(0, 2); // Берем 2 самые высокие ноты
 
-        if (this.epoch >= this.lastMelodyPlayEpoch + minInterval && this.random.next() < melodyDensity) {
-            if (this.epoch > 0 && this.currentMelodyMotif.length > 0) {
-                this.currentMelodyMotif = createMelodyMotif(currentChord, this.config.mood, this.random, this.currentMelodyMotif);
+            melodyEvents = topNotes.map(noteEvent => ({
+                ...noteEvent,
+                type: 'melody',
+                note: noteEvent.note + 7, // Играем на квинту выше
+                weight: noteEvent.weight * 0.7, // Чуть тише
+            }));
+        } else {
+             // General logic for other genres (previously implemented)
+            const melodyRules = navInfo.currentPart.instrumentRules?.melody;
+            const melodyDensity = melodyRules?.density?.min ?? 0.25;
+            const minInterval = 2;
+
+            if (this.epoch >= this.lastMelodyPlayEpoch + minInterval && this.random.next() < melodyDensity) {
+                if (this.epoch > 0 && this.currentMelodyMotif.length > 0) {
+                    this.currentMelodyMotif = createMelodyMotif(currentChord, this.config.mood, this.random, this.currentMelodyMotif);
+                }
+                melodyEvents = this.currentMelodyMotif;
+                this.lastMelodyPlayEpoch = this.epoch;
             }
-            melodyEvents = this.currentMelodyMotif;
-            this.lastMelodyPlayEpoch = this.epoch;
         }
     }
     
