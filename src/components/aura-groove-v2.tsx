@@ -17,7 +17,7 @@ import type { AuraGrooveProps } from "@/hooks/use-aura-groove";
 import { useRouter } from "next/navigation";
 import { formatTime, cn } from "@/lib/utils";
 import type { BassInstrument, MelodyInstrument, AccompanimentInstrument, Mood, Genre } from '@/types/music';
-import { prettyPresets } from "@/lib/presets-v2";
+import { V2_PRESETS } from "@/lib/presets-v2";
 
 const EQ_BANDS = [
   { freq: '60', label: '60' }, { freq: '125', label: '125' }, { freq: '250', label: '250' },
@@ -43,7 +43,7 @@ export function AuraGrooveV2({
   }, []);
 
   const v1MelodyInstruments: (MelodyInstrument | 'none')[] = ['synth', 'organ', 'mellotron', 'theremin', 'electricGuitar', 'ambientPad', 'acousticGuitar', 'none'];
-  const v2MelodyInstruments = Object.keys(prettyPresets) as (keyof typeof prettyPresets)[];
+  const v2MelodyInstruments = Object.keys(V2_PRESETS) as (keyof typeof V2_PRESETS)[];
   const textureInstrumentList: (AccompanimentInstrument | 'none')[] = ['synth', 'organ', 'mellotron', 'theremin', 'electricGuitar', 'ambientPad', 'acousticGuitar', 'none'];
   const harmonyInstrumentList: ('piano' | 'guitarChords' | 'acousticGuitarSolo' | 'flute' | 'violin' | 'none')[] = ['piano', 'guitarChords', 'acousticGuitarSolo', 'flute', 'violin', 'none'];
   const bassInstrumentList: (BassInstrument | 'none')[] = ['classicBass', 'glideBass', 'ambientDrone', 'resonantGliss', 'hypnoticDrone', 'livingRiff', 'none'];
