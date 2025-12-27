@@ -15,7 +15,7 @@ const JoyfulTranceBlueprint: MusicBlueprint = {
         parts: [
             {
                 id: 'INTRO', name: 'Sunrise', duration: { percent: 15 },
-                layers: { accompaniment: true, drums: true, sfx: true },
+                layers: { accompaniment: true, drums: true, sfx: true, bass: true, melody: true },
                 instrumentation: { accompaniment: { strategy: 'weighted', options: [{ name: 'synth', weight: 1.0 }] } },
                 instrumentRules: { drums: { pattern: 'ambient_beat', density: { min: 0.5, max: 0.7 } } },
                 bundles: [
@@ -52,7 +52,7 @@ const JoyfulTranceBlueprint: MusicBlueprint = {
             },
             {
                 id: 'OUTRO', name: 'Afterglow', duration: { percent: 20 },
-                layers: { accompaniment: true, sfx: true },
+                layers: { accompaniment: true, sfx: true, bass: true, melody: true, drums: true },
                 instrumentation: { accompaniment: { strategy: 'weighted', options: [{ name: 'ambientPad', weight: 1.0 }] } },
                 instrumentRules: {},
                 bundles: [
@@ -217,7 +217,7 @@ export const MelancholicAmbientBlueprint: MusicBlueprint = {
     parts: [
        {
         id: 'INTRO_1', name: 'Emergence', duration: { percent: 8 }, // ~10 bars
-        layers: { accompaniment: true, harmony: false, sfx: false, sparkles: false, drums: true },
+        layers: { accompaniment: true, harmony: false, sfx: false, sparkles: false, drums: true, melody: true },
         instrumentation: { accompaniment: { strategy: 'weighted', options: [{ name: 'ambientPad', weight: 1.0 }] } },
         instrumentRules: {
           accompaniment: { register: { preferred: 'low' } },
@@ -769,7 +769,7 @@ export const CalmAmbientBlueprint: MusicBlueprint = {
   rendering: {}
 };
 
-export const JoyfulAmbientBlueprint: MusicBlueprint = {
+const JoyfulAmbientBlueprint: MusicBlueprint = {
     id: 'joyful_ambient',
     name: 'Golden Horizons',
     description: 'Светлый, энергичный и позитивный эмбиент.',
