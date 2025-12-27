@@ -222,7 +222,7 @@ export const MelancholicAmbientBlueprint: MusicBlueprint = {
         instrumentRules: {
           accompaniment: { register: { preferred: 'low' } },
           drums: { pattern: 'composer', density: { min: 0.1, max: 0.3 }, useSnare: false, rareKick: false, usePerc: true },
-          melody: { melodySource: 'harmony_top_note' },
+          melody: { source: 'harmony_top_note' },
         },
         bundles: [ { id: 'INTRO_BUNDLE_1', name: 'Emergence', duration: { percent: 100 }, characteristics: {}, phrases: {} } ],
         outroFill: null,
@@ -253,7 +253,7 @@ export const MelancholicAmbientBlueprint: MusicBlueprint = {
                 { name: 'common', weight: 0.1 }
               ]
           },
-          melody: { melodySource: 'harmony_top_note' },
+          melody: { source: 'harmony_top_note' },
         },
         bundles: [ { id: 'INTRO_BUNDLE_2', name: 'Stirrings', duration: { percent: 100 }, characteristics: {}, phrases: {} } ],
         outroFill: null,
@@ -268,7 +268,7 @@ export const MelancholicAmbientBlueprint: MusicBlueprint = {
         },
         instrumentRules: {
           accompaniment: { register: { preferred: 'low' } },
-          melody: { melodySource: 'harmony_top_note' },
+          melody: { source: 'harmony_top_note' },
         },
         bundles: [ { id: 'INTRO_BUNDLE_3', name: 'Anticipation', duration: { percent: 100 }, characteristics: {}, phrases: {} } ],
         outroFill: { type: 'filter_sweep', duration: 2, parameters: { filterEnd: 0.95 } },
@@ -283,7 +283,7 @@ export const MelancholicAmbientBlueprint: MusicBlueprint = {
         },
         instrumentRules: { 
             drums: { pattern: 'ambient_beat', density: { min: 0.4, max: 0.6 } },
-            melody: { melodySource: 'harmony_top_note' },
+            melody: { source: 'harmony_top_note' },
         },
         bundles: [
             { id: 'BUILD_BUNDLE_1', name: 'Stirring', duration: { percent: 50 }, characteristics: {}, phrases: {} },
@@ -305,7 +305,7 @@ export const MelancholicAmbientBlueprint: MusicBlueprint = {
                 density: { min: 0.6, max: 0.8 },
                 ride: { enabled: true, quietWindows: [{ start: 0.5, end: 0.65 }] }
             },
-            melody: { melodySource: 'harmony_top_note' },
+            melody: { source: 'harmony_top_note' },
         },
         bundles: [
             { id: 'MAIN_BUNDLE_1', name: 'Arrival', duration: { percent: 33 }, characteristics: {}, phrases: {} },
@@ -324,7 +324,7 @@ export const MelancholicAmbientBlueprint: MusicBlueprint = {
         },
         instrumentRules: { 
             drums: { enabled: false },
-            melody: { melodySource: 'harmony_top_note' },
+            melody: { source: 'harmony_top_note' },
         },
         bundles: [
             { id: 'RELEASE_BUNDLE_1', name: 'Softening', duration: { percent: 50 }, characteristics: {}, phrases: {} },
@@ -413,7 +413,7 @@ export const DarkAmbientBlueprint: MusicBlueprint = {
             },
             instrumentRules: {
               drums: { pattern: 'composer', density: { min: 0.3, max: 0.5 }, useSnare: false, usePerc: true, useGhostHat: true, rareKick: true },
-              melody: { register: { preferred: 'high' }},
+              melody: { register: { preferred: 'high' } },
               sfx: {
                   eventProbability: 0.25,
                   categories: [

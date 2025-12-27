@@ -146,22 +146,6 @@ export type TimerSettings = {
 export type ScoreName = 'evolve' | 'omega' | 'journey' | 'dreamtales' | 'multeity' | 'neuro_f_matrix';
 export type Genre = 'trance' | 'ambient' | 'progressive' | 'rock' | 'house' | 'rnb' | 'ballad' | 'reggae' | 'blues' | 'celtic';
 
-// Settings sent from the UI to the main engine/worker.
-export type WorkerSettings = {
-    bpm: number;
-    score: ScoreName;
-    genre: Genre;
-    drumSettings: Omit<DrumSettings, 'volume'>;
-    instrumentSettings: InstrumentSettings;
-    textureSettings: TextureSettings;
-    density: number; // Controls musical density, 0 to 1
-    composerControlsInstruments: boolean;
-    mood: Mood;
-    seed?: number;
-    useMelodyV2?: boolean; // Flag to control which melody engine to use
-};
-
-
 // --- BLUEPRINT STRUCTURE ---
 
 export type MutationType = 'transpose' | 'rhythmic_shift' | 'velocity_curve' | 'inversion' | 'register_shift' | 'voicing_change' | 'retrograde' | 'augmentation';
@@ -178,9 +162,11 @@ export type FillPolicy = {
   parameters: any;
 };
 
+type MelodySource = 'motif' | 'harmony_top_note';
+
 export type InstrumentRules = {
   melody?: {
-    melodySource?: 'motif' | 'harmony_top_note';
+    source?: MelodySource; // КАК генерировать мелодию
     [key: string]: any;
   };
   [key: string]: any;
