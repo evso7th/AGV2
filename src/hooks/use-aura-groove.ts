@@ -6,7 +6,7 @@ import { useState, useEffect, useCallback, useRef } from "react";
 import { useRouter } from "next/navigation";
 import type { DrumSettings, InstrumentSettings, ScoreName, WorkerSettings, BassInstrument, InstrumentPart, MelodyInstrument, AccompanimentInstrument, BassTechnique, TextureSettings, TimerSettings, Mood, Genre, SfxSettings } from '@/types/music';
 import { useAudioEngine } from "@/contexts/audio-engine-context";
-import { prettyPresets } from "@/lib/presets-v2";
+import { V2_PRESETS } from "@/lib/presets-v2";
 
 const FADE_OUT_DURATION = 120; // 2 minutes
 
@@ -18,7 +18,7 @@ export type AuraGrooveProps = {
   drumSettings: DrumSettings;
   setDrumSettings: (settings: React.SetStateAction<DrumSettings>) => void;
   instrumentSettings: InstrumentSettings;
-  setInstrumentSettings: (part: keyof InstrumentSettings, name: BassInstrument | MelodyInstrument | AccompanimentInstrument | keyof typeof prettyPresets) => void;
+  setInstrumentSettings: (part: keyof InstrumentSettings, name: BassInstrument | MelodyInstrument | AccompanimentInstrument | keyof typeof V2_PRESETS) => void;
   handleBassTechniqueChange: (technique: BassTechnique) => void;
   handleVolumeChange: (part: InstrumentPart, value: number) => void;
   textureSettings: Omit<TextureSettings, 'pads'>;
@@ -154,7 +154,7 @@ export const useAuraGroove = (): AuraGrooveProps => {
   // #ЧТО: Он следит за изменением флага `useMelodyV2`. Как только флаг меняется,
   //      он немедленно вызывает `updateSettings` для отправки полного, обновленного объекта
   //      настроек в Web Worker.
-  // #СВЯЗИ: Это решает проблему "разделенного сознания", когда UI и воркер имели разные
+  // #СВЯЗИ: Решает проблему "разделенного сознания", когда UI и воркер имели разные
   //         представления о том, какой движок мелодии активен.
   useEffect(() => {
       if (isInitialized) {
@@ -212,7 +212,7 @@ export const useAuraGroove = (): AuraGrooveProps => {
   }, [isPlaying, setEngineIsPlaying, resetWorker]);
 
 
-  const handleInstrumentChange = (part: keyof InstrumentSettings, name: BassInstrument | MelodyInstrument | AccompanimentInstrument | keyof typeof prettyPresets) => {
+  const handleInstrumentChange = (part: keyof InstrumentSettings, name: BassInstrument | MelodyInstrument | AccompanimentInstrument | keyof typeof V2_PRESETS) => {
     
     let newInstrumentName = name;
     

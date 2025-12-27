@@ -114,11 +114,18 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
   
   const { toast } = useToast();
 
+  const updateSettingsCallback = useCallback((settings: Partial<WorkerSettings>) => {
+     if (!isInitialized || !workerRef.current) return;
+     // Update the ref immediately
+     settingsRef.current = { ...settingsRef.current, ...settings } as WorkerSettings;
+     workerRef.current.postMessage({ command: 'update_settings', data: settingsRef.current });
+  }, [isInitialized]);
+
   const toggleMelodyEngine = useCallback(() => {
     setUseMelodyV2(prev => {
         const newValue = !prev;
-        console.log(`Toggling V2 Engine for Melody & Accompaniment: ${newValue}`);
-        // Ensure notes from the previous engine are stopped
+        console.log(`[AudioEngineContext] Toggling V2 Engine for Melody & Accompaniment: ${newValue}`);
+        
         if(newValue) {
             melodyManagerRef.current?.allNotesOff();
             accompanimentManagerRef.current?.allNotesOff();
@@ -126,9 +133,16 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
             melodyManagerV2Ref.current?.allNotesOff();
             accompanimentManagerV2Ref.current?.allNotesOff();
         }
+
+        // Immediately update the worker with the new engine state
+        if (settingsRef.current) {
+            const newSettings = { ...settingsRef.current, useMelodyV2: newValue };
+            updateSettingsCallback(newSettings);
+        }
+
         return newValue;
     });
-  }, []);
+  }, [updateSettingsCallback]);
 
   const setInstrumentCallback = useCallback((part: 'bass' | 'melody' | 'accompaniment' | 'harmony', name: BassInstrument | MelodyInstrument | AccompanimentInstrument | 'piano' | 'guitarChords' | 'violin' | 'flute' | 'acousticGuitarSolo' | keyof typeof V2_PRESETS) => {
     if (!isInitialized) return;
@@ -423,12 +437,6 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
   }, []);
 
 
-  const updateSettingsCallback = useCallback((settings: Partial<WorkerSettings>) => {
-     if (!isInitialized || !workerRef.current) return;
-     // Update the ref immediately
-     settingsRef.current = { ...settingsRef.current, ...settings } as WorkerSettings;
-     workerRef.current.postMessage({ command: 'update_settings', data: settingsRef.current });
-  }, [isInitialized]);
 
   const setVolumeCallback = useCallback((part: InstrumentPart, volume: number) => {
     if (part === 'pads' || part === 'effects') return;
