@@ -194,7 +194,12 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
         accompanimentManagerRef.current.schedule(accompanimentEvents, barStartTime, tempo, instrumentHints?.accompaniment);
     }
     
-    // Logic to switch between melody synth managers
+    // #ЗАЧЕМ: Этот блок - "сердце" маршрутизации мелодии.
+    // #ЧТО: Он жестко проверяет флаг `useMelodyV2`. Если флаг `true`, все события мелодии
+    //      безоговорочно отправляются в новый `MelodySynthManagerV2`. В противном случае - в старый.
+    // #СВЯЗИ: Решает проблему "разделенного сознания", когда аудио-движок пытался
+    //         интерпретировать подсказки от воркера, не зная о реальном состоянии UI.
+    //         Теперь состояние UI (`useMelodyV2`) является единственным источником правды.
     if (melodyEvents.length > 0) {
         if (useMelodyV2) {
             if (melodyManagerV2Ref.current) {
