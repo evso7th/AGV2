@@ -255,5 +255,3 @@ export type MusicBlueprint = {
     continuity: any; // Define this type more strictly later
     rendering: any; // Define this type more strictly later
 };
-
-    

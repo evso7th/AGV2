@@ -3,7 +3,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { SlidersHorizontal, Music, Pause, Speaker, FileMusic, Drum, GitBranch, Atom, Piano, Home, X, Sparkles, Sprout, LayoutGrid, Timer, Guitar, RefreshCw, Bot, Waves } from "lucide-react";
+import { SlidersHorizontal, Music, Pause, Speaker, FileMusic, Drum, GitBranch, Atom, Piano, Home, X, Sparkles, Sprout, LayoutGrid, Timer, Guitar, RefreshCw, Bot, Waves, Cog } from "lucide-react";
 import Image from "next/image";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -13,10 +13,11 @@ import { Slider } from "@/components/ui/slider";
 import { Switch } from "@/components/ui/switch";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
-import type { AuraGrooveProps } from "./aura-groove";
+import type { AuraGrooveProps } from "@/hooks/use-aura-groove";
 import { useRouter } from "next/navigation";
 import { formatTime, cn } from "@/lib/utils";
 import type { BassInstrument, MelodyInstrument, AccompanimentInstrument, Mood, Genre } from '@/types/music';
+import { prettyPresets } from "@/lib/presets-v2";
 
 const EQ_BANDS = [
   { freq: '60', label: '60' }, { freq: '125', label: '125' }, { freq: '250', label: '250' },
@@ -31,6 +32,7 @@ export function AuraGrooveV2({
   timerSettings, handleTimerDurationChange, handleToggleTimer,
   composerControlsInstruments, setComposerControlsInstruments,
   mood, setMood, genre, setGenre, isRegenerating,
+  useMelodyV2, toggleMelodyEngine
 }: AuraGrooveProps) {
 
   const router = useRouter();
@@ -40,7 +42,8 @@ export function AuraGrooveV2({
     setIsClient(true);
   }, []);
 
-  const melodyInstrumentList: (MelodyInstrument | 'none')[] = ['synth', 'organ', 'mellotron', 'theremin', 'electricGuitar', 'ambientPad', 'acousticGuitar', 'none'];
+  const v1MelodyInstruments: (MelodyInstrument | 'none')[] = ['synth', 'organ', 'mellotron', 'theremin', 'electricGuitar', 'ambientPad', 'acousticGuitar', 'none'];
+  const v2MelodyInstruments = Object.keys(prettyPresets) as (keyof typeof prettyPresets)[];
   const textureInstrumentList: (AccompanimentInstrument | 'none')[] = ['synth', 'organ', 'mellotron', 'theremin', 'electricGuitar', 'ambientPad', 'acousticGuitar', 'none'];
   const harmonyInstrumentList: ('piano' | 'guitarChords' | 'acousticGuitarSolo' | 'flute' | 'violin' | 'none')[] = ['piano', 'guitarChords', 'acousticGuitarSolo', 'flute', 'violin', 'none'];
   const bassInstrumentList: (BassInstrument | 'none')[] = ['classicBass', 'glideBass', 'ambientDrone', 'resonantGliss', 'hypnoticDrone', 'livingRiff', 'none'];
@@ -55,7 +58,21 @@ export function AuraGrooveV2({
     'acousticGuitar': 'Acoustic Guitar',
     'neuro_f_matrix': 'Neuro F-Matrix',
     'rnb': 'R&B',
+    // V2 presets
+    'organ_cathedral_warm': 'Cathedral Organ',
+    'organ_soft_jazz': 'Soft Jazz Organ',
+    'synth_pad_emerald': 'Emerald Pad',
+    'synth_theremin_vocal': 'Vocal Theremin',
+    'mellotron_strings_majestic': 'Majestic Strings',
+    'mellotron_choir_dark': 'Dark Choir',
+    'mellotron_flute_intimate': 'Intimate Flute',
+    'guitar_shineOn': 'Shine On Guitar',
+    'guitar_muffLead': 'Muff Lead Guitar',
+    'acoustic_guitar_folk': 'Folk Acoustic',
   };
+  
+  const melodyInstrumentList = useMelodyV2 ? v2MelodyInstruments : v1MelodyInstruments;
+
 
   const isFractalStyle = score === 'neuro_f_matrix';
   const composerControl = isFractalStyle && composerControlsInstruments;
@@ -235,6 +252,12 @@ export function AuraGrooveV2({
                                         </SelectContent>
                                     </Select>
                                 </div>
+                                {part === 'melody' && (
+                                  <div className="grid grid-cols-2 items-center gap-2">
+                                    <Label htmlFor="v2-engine-switch" className="font-semibold flex items-center gap-1.5 capitalize text-xs"><Cog className="h-4 w-4"/>V2 Engine</Label>
+                                    <Switch id="v2-engine-switch" checked={useMelodyV2} onCheckedChange={toggleMelodyEngine} disabled={isInitializing || isPlaying}/>
+                                  </div>
+                                )}
                                  {part === 'bass' && 'technique' in settings && (settings.name as BassInstrument | 'none') !== 'none' && (
                                     <div className="grid grid-cols-2 items-center gap-2">
                                         <Label className="font-semibold flex items-center gap-1.5 capitalize text-xs"><GitBranch className="h-4 w-4"/>Technique</Label>

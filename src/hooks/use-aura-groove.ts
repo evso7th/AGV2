@@ -6,17 +6,61 @@ import { useState, useEffect, useCallback, useRef } from "react";
 import { useRouter } from "next/navigation";
 import type { DrumSettings, InstrumentSettings, ScoreName, WorkerSettings, BassInstrument, InstrumentPart, MelodyInstrument, AccompanimentInstrument, BassTechnique, TextureSettings, TimerSettings, Mood, Genre, SfxSettings } from '@/types/music';
 import { useAudioEngine } from "@/contexts/audio-engine-context";
+import { prettyPresets } from "@/lib/presets-v2";
 
 const FADE_OUT_DURATION = 120; // 2 minutes
+
+export type AuraGrooveProps = {
+  isPlaying: boolean;
+  isInitializing: boolean;
+  isRegenerating: boolean;
+  loadingText: string;
+  drumSettings: DrumSettings;
+  setDrumSettings: (settings: React.SetStateAction<DrumSettings>) => void;
+  instrumentSettings: InstrumentSettings;
+  setInstrumentSettings: (part: keyof InstrumentSettings, name: BassInstrument | MelodyInstrument | AccompanimentInstrument | keyof typeof prettyPresets) => void;
+  handleBassTechniqueChange: (technique: BassTechnique) => void;
+  handleVolumeChange: (part: InstrumentPart, value: number) => void;
+  textureSettings: Omit<TextureSettings, 'pads'>;
+  handleTextureEnabledChange: (part: 'sparkles' | 'sfx', enabled: boolean) => void;
+  bpm: number;
+  handleBpmChange: (value: number) => void;
+  score: ScoreName;
+  handleScoreChange: (value: ScoreName) => void;
+  handlePlayPause: () => void;
+  handleRegenerate: () => void;
+  density: number;
+  setDensity: (value: number) => void;
+  composerControlsInstruments: boolean;
+  setComposerControlsInstruments: (value: boolean) => void;
+  handleGoHome: () => void;
+  handleExit?: () => void;
+  isEqModalOpen: boolean;
+  setIsEqModalOpen: (isOpen: boolean) => void;
+  eqSettings: number[];
+  handleEqChange: (bandIndex: number, gain: number) => void;
+  timerSettings: TimerSettings;
+  handleTimerDurationChange: (minutes: number) => void;
+  handleToggleTimer: () => void;
+  mood: Mood;
+  setMood: (mood: Mood) => void;
+  genre: Genre;
+  setGenre: (genre: Genre) => void;
+  useMelodyV2: boolean;
+  toggleMelodyEngine: () => void;
+};
+
 
 /**
  * Полная версия хука для основного UI управления музыкой.
  */
-export const useAuraGroove = () => {
+export const useAuraGroove = (): AuraGrooveProps => {
   const { 
     isInitialized,
     isInitializing,
-    isPlaying, 
+    isPlaying,
+    useMelodyV2, 
+    toggleMelodyEngine,
     initialize, 
     setIsPlaying: setEngineIsPlaying, 
     updateSettings,
@@ -161,13 +205,26 @@ export const useAuraGroove = () => {
   }, [isPlaying, setEngineIsPlaying, resetWorker]);
 
 
-  const handleInstrumentChange = (part: keyof InstrumentSettings, name: BassInstrument | MelodyInstrument | AccompanimentInstrument | 'piano' | 'guitarChords') => {
+  const handleInstrumentChange = (part: keyof InstrumentSettings, name: BassInstrument | MelodyInstrument | AccompanimentInstrument | keyof typeof prettyPresets) => {
+    
+    // When switching engines, select a default preset for the new engine
+    let newInstrumentName = name;
+    if (part === 'melody') {
+      const isSwitchingToV2 = !useMelodyV2; // This seems counter-intuitive but it's the state *before* the toggle
+      if (useMelodyV2 && !Object.keys(prettyPresets).includes(name as string)) {
+          newInstrumentName = Object.keys(prettyPresets)[0] as keyof typeof prettyPresets;
+      } else if (!useMelodyV2 && Object.keys(prettyPresets).includes(name as string)) {
+          newInstrumentName = 'synth';
+      }
+    }
+
+
     const newSettings = {
       ...instrumentSettings,
-      [part]: { ...instrumentSettings[part as keyof typeof instrumentSettings], name }
+      [part]: { ...instrumentSettings[part as keyof typeof instrumentSettings], name: newInstrumentName }
     };
     setInstrumentSettings(newSettings);
-    setInstrument(part, name as any);
+    setInstrument(part, newInstrumentName as any);
 
     if (isInitialized) {
       updateSettings({
@@ -186,7 +243,7 @@ export const useAuraGroove = () => {
   };
 
   const handleVolumeChange = (part: InstrumentPart, value: number) => {
-    if (part === 'bass' || part === 'melody' || part === 'accompaniment' || part === 'harmony' || part === 'piano' || part === 'violin' || part === 'flute' || part === 'guitarChords' || part === 'acousticGuitarSolo') {
+    if (part === 'bass' || part === 'melody' || part === 'accompaniment' || part === 'harmony' || part === 'piano' || part === 'violin' || part === 'flute' || part === 'guitarChords' || part === 'acousticGuitarSolo' || part === 'electricGuitar') {
       setInstrumentSettings(prev => ({ ...prev, [part]: { ...prev[part as keyof typeof prev], volume: value }}));
       setVolume(part, value);
     } else if (part === 'drums') {
@@ -284,6 +341,8 @@ export const useAuraGroove = () => {
     mood,
     setMood,
     genre,
-    setGenre
+    setGenre,
+    useMelodyV2,
+    toggleMelodyEngine
   };
 };
