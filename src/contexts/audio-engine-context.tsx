@@ -10,6 +10,7 @@ import { SamplerPlayer } from '@/lib/sampler-player';
 import { ViolinSamplerPlayer } from '@/lib/violin-sampler-player';
 import { FluteSamplerPlayer } from '@/lib/flute-sampler-player';
 import { AccompanimentSynthManager } from '@/lib/accompaniment-synth-manager';
+import { AccompanimentSynthManagerV2 } from '@/lib/accompaniment-synth-manager-v2';
 import { MelodySynthManager } from '@/lib/melody-synth-manager';
 import { BassSynthManager } from '@/lib/bass-synth-manager';
 import { SparklePlayer } from '@/lib/sparkle-player';
@@ -94,6 +95,7 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
   const drumMachineRef = useRef<DrumMachine | null>(null);
   const bassManagerRef = useRef<BassSynthManager | null>(null);
   const accompanimentManagerRef = useRef<AccompanimentSynthManager | null>(null);
+  const accompanimentManagerV2Ref = useRef<AccompanimentSynthManagerV2 | null>(null);
   const melodyManagerRef = useRef<MelodySynthManager | null>(null);
   const melodyManagerV2Ref = useRef<MelodySynthManagerV2 | null>(null);
   const harmonyManagerRef = useRef<HarmonySynthManager | null>(null);
@@ -114,12 +116,14 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
   const toggleMelodyEngine = useCallback(() => {
     setUseMelodyV2(prev => {
         const newValue = !prev;
-        console.log(`Toggling Melody Engine to V2: ${newValue}`);
+        console.log(`Toggling V2 Engine for Melody & Accompaniment: ${newValue}`);
         // Ensure notes from the previous engine are stopped
         if(newValue) {
             melodyManagerRef.current?.allNotesOff();
+            accompanimentManagerRef.current?.allNotesOff();
         } else {
             melodyManagerV2Ref.current?.allNotesOff();
+            accompanimentManagerV2Ref.current?.allNotesOff();
         }
         return newValue;
     });
@@ -127,8 +131,12 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
 
   const setInstrumentCallback = useCallback((part: 'bass' | 'melody' | 'accompaniment' | 'harmony', name: BassInstrument | MelodyInstrument | AccompanimentInstrument | 'piano' | 'guitarChords' | 'violin' | 'flute' | 'acousticGuitarSolo' | keyof typeof V2_PRESETS) => {
     if (!isInitialized) return;
-    if (part === 'accompaniment' && accompanimentManagerRef.current) {
-      accompanimentManagerRef.current.setInstrument(name as AccompanimentInstrument);
+    if (part === 'accompaniment') {
+      if(useMelodyV2 && accompanimentManagerV2Ref.current) {
+        accompanimentManagerV2Ref.current.setInstrument(name as keyof typeof V2_PRESETS);
+      } else if (accompanimentManagerRef.current) {
+        accompanimentManagerRef.current.setInstrument(name as AccompanimentInstrument);
+      }
     } else if (part === 'melody') {
         if(useMelodyV2 && melodyManagerV2Ref.current) {
             melodyManagerV2Ref.current.setInstrument(name as keyof typeof V2_PRESETS);
@@ -189,18 +197,20 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
         }
     }
 
-    if (accompanimentManagerRef.current && accompanimentEvents.length > 0) {
-        accompanimentManagerRef.current.schedule(accompanimentEvents, barStartTime, tempo, instrumentHints?.accompaniment);
+    if (accompanimentEvents.length > 0) {
+        if (useMelodyV2) {
+            if (accompanimentManagerV2Ref.current) {
+                console.log("Scheduling accompaniment with V2 engine");
+                accompanimentManagerV2Ref.current.schedule(accompanimentEvents, barStartTime, tempo);
+            }
+        } else {
+            if (accompanimentManagerRef.current) {
+                console.log("Scheduling accompaniment with V1 engine");
+                accompanimentManagerRef.current.schedule(accompanimentEvents, barStartTime, tempo, instrumentHints?.accompaniment);
+            }
+        }
     }
     
-    // #ЗАЧЕМ: Этот блок - "сердце" маршрутизации мелодии. Он гарантирует, что выбор синтезатора
-    //         безоговорочно подчиняется состоянию UI (переключателю V2 Engine).
-    // #ЧТО: Он жестко проверяет флаг `useMelodyV2`, который приходит из состояния React.
-    //      Если флаг `true`, все события мелодии отправляются в новый `MelodySynthManagerV2`.
-    //      В противном случае - в старый `MelodySynthManager`.
-    // #СВЯЗИ: Решает проблему "разделенного сознания", когда аудио-движок пытался
-    //         интерпретировать подсказки от воркера, не зная о реальном состоянии UI.
-    //         Теперь состояние UI является единственным источником правды.
     if (melodyEvents.length > 0) {
         if (useMelodyV2) {
             if (melodyManagerV2Ref.current) {
@@ -277,6 +287,11 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
         if (!accompanimentManagerRef.current) {
             accompanimentManagerRef.current = new AccompanimentSynthManager(context, gainNodesRef.current.accompaniment!);
             initPromises.push(accompanimentManagerRef.current.init());
+        }
+
+        if (!accompanimentManagerV2Ref.current) {
+            accompanimentManagerV2Ref.current = new AccompanimentSynthManagerV2(context, gainNodesRef.current.accompaniment!);
+            initPromises.push(accompanimentManagerV2Ref.current.init());
         }
 
         if (!melodyManagerRef.current) {
@@ -369,6 +384,7 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
     bassManagerRef.current?.allNotesOff();
     drumMachineRef.current?.stop();
     accompanimentManagerRef.current?.allNotesOff();
+    accompanimentManagerV2Ref.current?.allNotesOff();
     melodyManagerRef.current?.allNotesOff();
     melodyManagerV2Ref.current?.allNotesOff();
     harmonyManagerRef.current?.allNotesOff();
