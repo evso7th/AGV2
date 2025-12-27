@@ -148,7 +148,7 @@ const Scheduler = {
         const hintsString = JSON.stringify(scorePayload.instrumentHints || {});
 
         console.log(
-            `[Worker.tick] Dispatching: Total=${scorePayload.events.length}, Bass=${bassCount}, Melody=${melodyCount}, Accomp=${accompanimentCount}, Drums=${drumsCount}, Harmony=${harmonyCount}, Sparkles=${sparklesCount}, SFX=${sfxCount}, Hints: ${hintsString}`
+            `[Worker.tick @ Bar ${this.barCount}] Dispatching: Total=${scorePayload.events.length}, Bass=${bassCount}, Melody=${melodyCount}, Accomp=${accompanimentCount}, Drums=${drumsCount}, Harmony=${harmonyCount}, Sparkles=${sparklesCount}, SFX=${sfxCount}, Hints: ${hintsString}`
         );
         
         const mainScoreEvents: FractalEvent[] = [];
