@@ -5,6 +5,7 @@ import { ElectronicK, TraditionalK, AmbientK, MelancholicMinorK } from './resona
 import { getScaleForMood, STYLE_DRUM_PATTERNS, generateAmbientBassPhrase, createAccompanimentAxiom, PERCUSSION_SETS, TEXTURE_INSTRUMENT_WEIGHTS_BY_MOOD, getAccompanimentTechnique, createBassFill as createBassFillFromTheory, createDrumFill, AMBIENT_ACCOMPANIMENT_WEIGHTS, chooseHarmonyInstrument, mutateBassPhrase, createMelodyMotif, createDrumAxiom, generateGhostHarmonyTrack, mutateAccompanimentPhrase, createHarmonyAxiom } from './music-theory';
 import { BlueprintNavigator, type NavigationInfo } from './blueprint-navigator';
 import { MelancholicAmbientBlueprint, BLUEPRINT_LIBRARY, getBlueprint } from './blueprints';
+import { prettyPresets } from './presets-v2';
 
 
 export type Branch = {
@@ -461,32 +462,29 @@ export class FractalMusicEngine {
     }
     
     if (navInfo.currentPart.layers.melody) {
-        if (this.config.genre === 'ambient') {
-            // #ЗАЧЕМ: Специальная логика для эмбиента.
-            // #ЧТО: Извлекает верхние ноты из партии аккомпанемента и создает на их основе мелодию.
-            //      Добавляет квинту для создания гармонического интереса.
-            // #СВЯЗИ: Гарантирует, что в эмбиенте мелодия не "конкурирует", а "вытекает" из гармонии.
-            const topNotes = accompEvents
-                .sort((a, b) => b.note - a.note) // Сортируем по высоте
-                .slice(0, 2); // Берем 2 самые высокие ноты
-
+        // #ЗАЧЕМ: Этот блок реализует декларативное управление генерацией мелодии.
+        // #ЧТО: Он считывает `melodySource` из блюпринта. Если `harmony_top_note`, он извлекает
+        //      верхние ноты аккомпанемента. В противном случае, он использует стандартную логику мотивов.
+        // #СВЯЗИ: Заменяет жестко закодированную проверку на `genre === 'ambient'`.
+        const melodyRules = navInfo.currentPart.instrumentRules?.melody;
+        if (melodyRules?.melodySource === 'harmony_top_note') {
+            const topNotes = accompEvents.sort((a, b) => b.note - a.note).slice(0, 2);
             melodyEvents = topNotes.map(noteEvent => ({
                 ...noteEvent,
                 type: 'melody',
                 note: noteEvent.note + 7, // Играем на квинту выше
-                weight: noteEvent.weight * 0.7, // Чуть тише
+                weight: noteEvent.weight * 0.7,
             }));
         } else {
-             // General logic for other genres (previously implemented)
-            const melodyRules = navInfo.currentPart.instrumentRules?.melody;
+            // Стандартная логика с мотивом
             const melodyDensity = melodyRules?.density?.min ?? 0.25;
-            const minInterval = 2;
+            const minInterval = 2; // Кулдаун
 
             if (this.epoch >= this.lastMelodyPlayEpoch + minInterval && this.random.next() < melodyDensity) {
                 if (this.epoch > 0 && this.currentMelodyMotif.length > 0) {
                     this.currentMelodyMotif = createMelodyMotif(currentChord, this.config.mood, this.random, this.currentMelodyMotif);
                 }
-                melodyEvents = this.currentMelodyMotif;
+                melodyEvents = this.currentMelodyMotif.slice(0, 4); // Возвращаемся к надежному варианту
                 this.lastMelodyPlayEpoch = this.epoch;
             }
         }
