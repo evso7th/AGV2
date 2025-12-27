@@ -6,12 +6,25 @@
 
 // ───── Helpers ─────
 const loadIR = async (ctx: AudioContext, url: string | null) => {
+    // #ЗАЧЕМ: Загружает и декодирует аудиофайл для использования в ConvolverNode (импульсный отклик).
+    // #ЧТО: Асинхронно запрашивает файл по URL, преобразует его в ArrayBuffer и декодирует в AudioBuffer.
+    // #СВЯЗИ: Используется для создания реверберации и эмуляции кабинетов.
     if (!url) return null;
-    const res = await fetch(url);
-    const buf = await res.arrayBuffer();
-    return await ctx.decodeAudioData(buf);
+    try {
+        console.log(`[InstrumentFactory] Fetching IR from: ${url}`);
+        const res = await fetch(url);
+        if (!res.ok) throw new Error(`Failed to fetch IR: ${res.statusText}`);
+        const buf = await res.arrayBuffer();
+        const decoded = await ctx.decodeAudioData(buf);
+        console.log(`[InstrumentFactory] IR successfully loaded and decoded from ${url}`);
+        return decoded;
+    } catch (error) {
+        console.error(`[InstrumentFactory] CRITICAL ERROR loading IR from ${url}:`, error);
+        throw error; // Re-throw to be caught by the main builder
+    }
 };
 const loadSample = async (ctx: AudioContext, url: string) => {
+    // #ЗАЧЕМ: Загружает и декодирует аудиофайл для сэмплера (Mellotron).
     const res = await fetch(url);
     const buf = await res.arrayBuffer();
     return await ctx.decodeAudioData(buf);
@@ -129,10 +142,26 @@ export async function buildMultiInstrument(ctx: AudioContext, {
   mellotronMap = null,       // { name:'strings', zones: [{note:60,url:'...'}, ...] }
   output = ctx.destination
 } = {}) {
+  // #ЗАЧЕМ: Главная "фабрика" по созданию сложных V2-инструментов.
+  // #ЧТО: В зависимости от параметра 'type' собирает сложную цепочку Web Audio узлов (граф)
+  //      для эмуляции различных инструментов: органа, аналогового синтезатора, меллотрона или электрогитары.
+  //      Возвращает стандартизированный API для управления этим инструментом.
+  // #СВЯЗИ: Вызывается из V2-менеджеров (MelodySynthManagerV2, AccompanimentSynthManagerV2).
+  
+  console.log(`%c[InstrumentFactory] Build process STARTING for type: ${type}`, 'color: #FFA500; font-weight: bold;');
 
   // ───── Master FX (plate ревёрб общий)
   const master = ctx.createGain(); master.gain.value = 0.8;
-  const reverb = ctx.createConvolver(); if (plateIRUrl) reverb.buffer = await loadIR(ctx, plateIRUrl);
+  const reverb = ctx.createConvolver();
+  try {
+      if (plateIRUrl) {
+          reverb.buffer = await loadIR(ctx, plateIRUrl);
+          console.log('[InstrumentFactory] Plate Reverb IR loaded.');
+      }
+  } catch (e) {
+      console.error('[InstrumentFactory] Failed to load plate reverb IR, continuing without it.', e);
+  }
+
   const revMix = ctx.createGain(); revMix.gain.value = preset.reverbMix ?? 0.18;
   if (reverb.buffer) {
     reverb.connect(master);
@@ -144,6 +173,7 @@ export async function buildMultiInstrument(ctx: AudioContext, {
   // ──────────────────────────────────────────────────────────────────────────
   // ORGAN (drawbar + Leslie)
   if (type === 'organ') {
+    console.log('[InstrumentFactory] Building ORGAN...');
     const {
       drawbars = [8,0,8,8,0,4,0,2,0], // 16',5 1/3',8',4',2 2/3',2',1 3/5',1 1/3',1'
       vibratoRate = 6.0, vibratoDepth = 0.003,
@@ -245,14 +275,12 @@ export async function buildMultiInstrument(ctx: AudioContext, {
       if (k==='pickupLPF'||k==='lpf') organLPF.frequency.value = v;
     };
     api.setPreset = (p)=>{ /* можно маппить drawbars/vibrato/leslie */ };
-
-    // выход
-    return api;
   }
   
   // ──────────────────────────────────────────────────────────────────────────
   // SYNTH (subtractive pad/lead)
-  if (type === 'synth') {
+  else if (type === 'synth') {
+    console.log('[InstrumentFactory] Building SYNTH...');
     const {
         osc = [],
         noise = { on: false, color: 'white', gain: 0.0 },
@@ -360,12 +388,12 @@ export async function buildMultiInstrument(ctx: AudioContext, {
       delete activeVoices[midi];
     };
     api.setParam = (k,v)=>{ if (k==='cutoff') filt.frequency.value=v; };
-    return api;
   }
 
   // ──────────────────────────────────────────────────────────────────────────
   // MELLotron (sample + wow/flutter + tapeNoise)
-  if (type === 'mellotron') {
+  else if (type === 'mellotron') {
+    console.log('[InstrumentFactory] Building MELLOTRON...');
     const {
       instrument = 'strings', // 'strings'|'choir'|'flute' (подберите карту)
       attack = 0.04, release = 0.35,
@@ -436,12 +464,12 @@ export async function buildMultiInstrument(ctx: AudioContext, {
       try { current.lfoWow.stop(when+release+0.05); current.lfoFl.stop(when+release+0.05); } catch{}
       delete activeNotes[midi];
     };
-    return api;
   }
 
   // ──────────────────────────────────────────────────────────────────────────
   // GUITAR (Gilmour shineOn / muffLead)
-  if (type === 'guitar') {
+  else if (type === 'guitar') {
+    console.log('[InstrumentFactory] Building GUITAR...');
     const {
       variant='shineOn', // 'shineOn' | 'muffLead'
       pickup = { cutoff: 3600, q: 1.0 },
@@ -486,7 +514,13 @@ export async function buildMultiInstrument(ctx: AudioContext, {
     const mid2 = ctx.createBiquadFilter(); mid2.type='peaking'; mid2.frequency.value=post.mids[1].f; mid2.Q.value=post.mids[1].q; mid2.gain.value=post.mids[1].g;
     const postLPF = ctx.createBiquadFilter(); postLPF.type='lowpass'; postLPF.frequency.value=post.lpf; postLPF.Q.value=0.7;
 
-    const cab = ctx.createConvolver(); if (cabinetIRUrl) cab.buffer = await loadIR(ctx, cabinetIRUrl);
+    const cab = ctx.createConvolver(); 
+    try {
+      if (cabinetIRUrl) cab.buffer = await loadIR(ctx, cabinetIRUrl);
+    } catch(e) {
+      console.error('[InstrumentFactory] Failed to load cabinet IR, continuing without it.', e);
+    }
+
 
     const ph = makePhaser(ctx, phaser);
     const dA = makeFilteredDelay(ctx, {time:delayA.time, fb:delayA.fb, hc:delayA.hc, wet:delayA.wet});
@@ -554,12 +588,17 @@ export async function buildMultiInstrument(ctx: AudioContext, {
       if (k==='pickupLPF') pickupLPF.frequency.value=v;
       if (k==='drive') shaper.curve=(drive.type==='muff')?makeMuff(v):makeSoftClip(v);
     };
-    return api;
+  } else {
+      console.log(`[InstrumentFactory] Unknown or unhandled instrument type: ${type}. Creating fallback gain node.`);
   }
 
-  // fallback
+  // #РЕШЕНИЕ: Гарантированное подключение к выходу.
+  // #ЗАЧЕМ: Если `output` по какой-то причине не был передан или является `null`,
+  //        мы все равно подключаемся к главному выходу аудиоконтекста (`ctx.destination`),
+  //        чтобы избежать "тихого" сбоя и гарантировать, что звук будет слышен.
   master.connect(output || ctx.destination);
+  
   // TELEMETRY POINT
-  console.log(`%c[InstrumentFactory] Instrument of type '${type}' built. Final output connected.`, 'color: #00FF7F;');
+  console.log(`%c[InstrumentFactory] Build process COMPLETED for type: ${type}. Final output connected.`, 'color: #32CD32;');
   return api;
 }
