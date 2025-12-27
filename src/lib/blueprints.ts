@@ -17,7 +17,10 @@ const JoyfulTranceBlueprint: MusicBlueprint = {
                 id: 'INTRO', name: 'Sunrise', duration: { percent: 15 },
                 layers: { accompaniment: true, drums: true, sfx: true, bass: true, melody: true },
                 instrumentation: { accompaniment: { strategy: 'weighted', options: [{ name: 'synth', weight: 1.0 }] } },
-                instrumentRules: { drums: { pattern: 'ambient_beat', density: { min: 0.5, max: 0.7 } } },
+                instrumentRules: { 
+                    drums: { pattern: 'ambient_beat', density: { min: 0.5, max: 0.7 } },
+                    melody: { source: 'motif' } 
+                },
                 bundles: [
                     { id: 'INTRO_BUNDLE_1', name: 'Main', duration: { percent: 100 }, characteristics: {}, phrases: {} }
                 ],
@@ -30,7 +33,10 @@ const JoyfulTranceBlueprint: MusicBlueprint = {
                     accompaniment: { strategy: 'weighted', options: [{ name: 'synth', weight: 1.0 }] },
                     bass: { strategy: 'weighted', options: [{ name: 'classicBass', weight: 1.0 }] }
                 },
-                instrumentRules: { drums: { pattern: 'ambient_beat', density: { min: 0.7, max: 0.9 } } },
+                instrumentRules: { 
+                    drums: { pattern: 'ambient_beat', density: { min: 0.7, max: 0.9 } },
+                    melody: { source: 'motif' } 
+                },
                 bundles: [
                     { id: 'BUILD_BUNDLE_1', name: 'Main', duration: { percent: 100 }, characteristics: {}, phrases: {} }
                 ],
@@ -44,7 +50,10 @@ const JoyfulTranceBlueprint: MusicBlueprint = {
                     bass: { strategy: 'weighted', options: [{ name: 'classicBass', weight: 1.0 }] },
                     melody: { strategy: 'weighted', options: [{ name: 'theremin', weight: 1.0 }] }
                 },
-                instrumentRules: { drums: { pattern: 'composer', density: { min: 0.8, max: 1.0 } } },
+                instrumentRules: { 
+                    drums: { pattern: 'composer', density: { min: 0.8, max: 1.0 } },
+                    melody: { source: 'motif' } 
+                },
                 bundles: [
                     { id: 'PEAK_BUNDLE_1', name: 'Main', duration: { percent: 100 }, characteristics: {}, phrases: {} }
                 ],
@@ -54,7 +63,9 @@ const JoyfulTranceBlueprint: MusicBlueprint = {
                 id: 'OUTRO', name: 'Afterglow', duration: { percent: 20 },
                 layers: { accompaniment: true, sfx: true, bass: true, melody: true, drums: true },
                 instrumentation: { accompaniment: { strategy: 'weighted', options: [{ name: 'ambientPad', weight: 1.0 }] } },
-                instrumentRules: {},
+                instrumentRules: {
+                    melody: { source: 'motif' }
+                },
                 bundles: [
                     { id: 'OUTRO_BUNDLE_1', name: 'Main', duration: { percent: 100 }, characteristics: {}, phrases: {} }
                 ],
@@ -80,7 +91,9 @@ const MelancholicTranceBlueprint: MusicBlueprint = {
                 id: 'INTRO', name: 'Departure', duration: { percent: 20 },
                 layers: { accompaniment: true, sfx: true },
                 instrumentation: { accompaniment: { strategy: 'weighted', options: [{ name: 'ambientPad', weight: 1.0 }] } },
-                instrumentRules: {},
+                instrumentRules: {
+                    melody: { source: 'motif' }
+                },
                 bundles: [
                     { id: 'INTRO_BUNDLE_1', name: 'Main', duration: { percent: 100 }, characteristics: {}, phrases: {} }
                 ],
@@ -93,7 +106,10 @@ const MelancholicTranceBlueprint: MusicBlueprint = {
                     accompaniment: { strategy: 'weighted', options: [{ name: 'synth', weight: 1.0 }] },
                     bass: { strategy: 'weighted', options: [{ name: 'glideBass', weight: 1.0 }] }
                 },
-                instrumentRules: { drums: { pattern: 'ambient_beat', density: { min: 0.6, max: 0.8 } } },
+                instrumentRules: { 
+                    drums: { pattern: 'ambient_beat', density: { min: 0.6, max: 0.8 } },
+                    melody: { source: 'motif' } 
+                },
                 bundles: [
                     { id: 'BUILD_BUNDLE_1', name: 'Main', duration: { percent: 100 }, characteristics: {}, phrases: {} }
                 ],
@@ -107,7 +123,10 @@ const MelancholicTranceBlueprint: MusicBlueprint = {
                     bass: { strategy: 'weighted', options: [{ name: 'glideBass', weight: 1.0 }] },
                     melody: { strategy: 'weighted', options: [{ name: 'synth', weight: 1.0 }] }
                 },
-                instrumentRules: { drums: { pattern: 'composer', density: { min: 0.8, max: 1.0 } } },
+                instrumentRules: { 
+                    drums: { pattern: 'composer', density: { min: 0.8, max: 1.0 } },
+                    melody: { source: 'motif' } 
+                },
                 bundles: [
                     { id: 'PEAK_BUNDLE_1', name: 'Main', duration: { percent: 100 }, characteristics: {}, phrases: {} }
                 ],
@@ -117,7 +136,9 @@ const MelancholicTranceBlueprint: MusicBlueprint = {
                 id: 'OUTRO', name: 'Fade to Silence', duration: { percent: 15 },
                 layers: { accompaniment: true, sfx: true },
                 instrumentation: { accompaniment: { strategy: 'weighted', options: [{ name: 'ambientPad', weight: 1.0 }] } },
-                instrumentRules: {},
+                instrumentRules: {
+                    melody: { source: 'motif' }
+                },
                 bundles: [
                     { id: 'OUTRO_BUNDLE_1', name: 'Main', duration: { percent: 100 }, characteristics: {}, phrases: {} }
                 ],
@@ -143,7 +164,9 @@ const NeutralTranceBlueprint: MusicBlueprint = {
                 id: 'INTRO', name: 'Launch', duration: { percent: 15 },
                 layers: { accompaniment: true, sfx: true },
                 instrumentation: { accompaniment: { strategy: 'weighted', options: [{ name: 'ambientPad', weight: 1.0 }] } },
-                instrumentRules: {},
+                instrumentRules: {
+                    melody: { source: 'motif' }
+                },
                 bundles: [
                     { id: 'INTRO_BUNDLE_1', name: 'Main', duration: { percent: 100 }, characteristics: {}, phrases: {} }
                 ],
@@ -156,7 +179,10 @@ const NeutralTranceBlueprint: MusicBlueprint = {
                     accompaniment: { strategy: 'weighted', options: [{ name: 'synth', weight: 1.0 }] },
                     bass: { strategy: 'weighted', options: [{ name: 'classicBass', weight: 1.0 }] }
                 },
-                instrumentRules: { drums: { pattern: 'ambient_beat', density: { min: 0.7, max: 0.9 } } },
+                instrumentRules: { 
+                    drums: { pattern: 'ambient_beat', density: { min: 0.7, max: 0.9 } },
+                    melody: { source: 'motif' } 
+                },
                 bundles: [
                     { id: 'BUILD_BUNDLE_1', name: 'Main', duration: { percent: 100 }, characteristics: {}, phrases: {} }
                 ],
@@ -170,7 +196,10 @@ const NeutralTranceBlueprint: MusicBlueprint = {
                     bass: { strategy: 'weighted', options: [{ name: 'classicBass', weight: 1.0 }] },
                     melody: { strategy: 'weighted', options: [{ name: 'synth', weight: 1.0 }] }
                 },
-                instrumentRules: { drums: { pattern: 'composer', density: { min: 0.8, max: 1.0 } } },
+                instrumentRules: { 
+                    drums: { pattern: 'composer', density: { min: 0.8, max: 1.0 } },
+                    melody: { source: 'motif' } 
+                },
                 bundles: [
                     { id: 'PEAK_BUNDLE_1', name: 'Main', duration: { percent: 100 }, characteristics: {}, phrases: {} }
                 ],
@@ -180,7 +209,9 @@ const NeutralTranceBlueprint: MusicBlueprint = {
                 id: 'OUTRO', name: 'Re-entry', duration: { percent: 15 },
                 layers: { accompaniment: true, sfx: true },
                 instrumentation: { accompaniment: { strategy: 'weighted', options: [{ name: 'ambientPad', weight: 1.0 }] } },
-                instrumentRules: {},
+                instrumentRules: {
+                    melody: { source: 'motif' }
+                },
                 bundles: [
                     { id: 'OUTRO_BUNDLE_1', name: 'Main', duration: { percent: 100 }, characteristics: {}, phrases: {} }
                 ],
@@ -367,7 +398,8 @@ export const DarkAmbientBlueprint: MusicBlueprint = {
             instrumentation: { bass: { strategy: 'weighted', options: [{ name: 'livingRiff', weight: 1.0 }] } },
             instrumentRules: { 
                 bass: { density: {min: 0.2, max: 0.4}, techniques: [{value: 'drone', weight: 1.0}]},
-                drums: { pattern: 'composer', density: { min: 0.1, max: 0.3 }, useSnare: false, rareKick: false, usePerc: true }
+                drums: { pattern: 'composer', density: { min: 0.1, max: 0.3 }, useSnare: false, rareKick: false, usePerc: true },
+                melody: { source: 'harmony_top_note' }
             },
             bundles: [ { id: 'DARK_INTRO_BUNDLE', name: 'Drone', duration: { percent: 100 }, characteristics: {}, phrases: {} } ],
             outroFill: null,
@@ -391,7 +423,8 @@ export const DarkAmbientBlueprint: MusicBlueprint = {
                     { name: 'dark', weight: 0.3 },
                     { name: 'common', weight: 0.1 }
                   ]
-                }
+                },
+                melody: { source: 'harmony_top_note' }
             },
             bassAccompanimentDouble: {
               enabled: true,
@@ -413,7 +446,7 @@ export const DarkAmbientBlueprint: MusicBlueprint = {
             },
             instrumentRules: {
               drums: { pattern: 'composer', density: { min: 0.3, max: 0.5 }, useSnare: false, usePerc: true, useGhostHat: true, rareKick: true },
-              melody: { register: { preferred: 'high' } },
+              melody: { register: { preferred: 'high' }, source: 'harmony_top_note' },
               sfx: {
                   eventProbability: 0.25,
                   categories: [
@@ -441,7 +474,8 @@ export const DarkAmbientBlueprint: MusicBlueprint = {
                 accompaniment: { strategy: 'weighted', options: [{ name: 'electricGuitar', weight: 1.0 }]}
             },
             instrumentRules: {
-                accompaniment: { techniques: [{value: 'swell', weight: 1.0}], register: { preferred: 'low' } }
+                accompaniment: { techniques: [{value: 'swell', weight: 1.0}], register: { preferred: 'low' } },
+                melody: { source: 'harmony_top_note' }
             },
             bundles: [ { id: 'DARK_OUTRO_BUNDLE', name: 'Decay', duration: { percent: 100 }, characteristics: {}, phrases: {} } ],
             outroFill: null,
@@ -483,6 +517,7 @@ export const DreamyAmbientBlueprint: MusicBlueprint = {
         instrumentRules: {
           accompaniment: { register: { preferred: 'high' } },
           sparkles: { eventProbability: 0.25 },
+          melody: { source: 'harmony_top_note' }
         },
         bundles: [{ id: 'DREAMY_INTRO_1', name: 'Glimmer', duration: { percent: 100 }, characteristics: {}, phrases: {} }],
         outroFill: null,
@@ -505,6 +540,7 @@ export const DreamyAmbientBlueprint: MusicBlueprint = {
         },
         instrumentRules: {
           bass: { techniques: [{ value: 'floating', weight: 1.0 }], register: { preferred: 'mid' } },
+          melody: { source: 'harmony_top_note' }
         },
         bundles: [{ id: 'DREAMY_INTRO_2', name: 'Floating', duration: { percent: 100 }, characteristics: {}, phrases: {} }],
         outroFill: null,
@@ -527,6 +563,7 @@ export const DreamyAmbientBlueprint: MusicBlueprint = {
         },
         instrumentRules: {
           drums: { pattern: 'ambient_beat', density: { min: 0.3, max: 0.5 }, kickVolume: 0.8 },
+          melody: { source: 'harmony_top_note' }
         },
         bundles: [{ id: 'DREAMY_INTRO_3', name: 'Light Pulse', duration: { percent: 100 }, characteristics: {}, phrases: {} }],
         outroFill: { type: 'shimmer_burst', duration: 2, parameters: {} },
@@ -541,7 +578,8 @@ export const DreamyAmbientBlueprint: MusicBlueprint = {
         },
         instrumentRules: {
             bass: { techniques: [{ value: 'arpeggio_slow', weight: 0.6 }, {value: 'melodic', weight: 0.4}] },
-            drums: { pattern: 'composer', density: { min: 0.5, max: 0.7 } }
+            drums: { pattern: 'composer', density: { min: 0.5, max: 0.7 } },
+            melody: { source: 'harmony_top_note' }
         },
         bundles: [
             { id: 'DREAMY_MAIN_1', name: 'Soaring', duration: { percent: 50 }, characteristics: {}, phrases: {} },
@@ -557,7 +595,8 @@ export const DreamyAmbientBlueprint: MusicBlueprint = {
             melody: { strategy: 'weighted', options: [{ name: 'organ', weight: 0.5 }, { name: 'mellotron', weight: 0.5 }] }
         },
         instrumentRules: {
-            accompaniment: { register: { preferred: 'high' } }
+            accompaniment: { register: { preferred: 'high' } },
+            melody: { source: 'harmony_top_note' }
         },
         bundles: [ { id: 'DREAMY_OUTRO_1', name: 'Quietude', duration: { percent: 100 }, characteristics: {}, phrases: {} } ],
         outroFill: null,
@@ -597,7 +636,7 @@ export const EnthusiasticAmbientBlueprint: MusicBlueprint = {
                 },
                 instrumentRules: {
                     accompaniment: { techniques: [{ value: 'arpeggio-fast', weight: 1.0 }], density: { min: 0.6, max: 0.8 } },
-                    melody: { density: { min: 0.4, max: 0.6 } }
+                    melody: { density: { min: 0.4, max: 0.6 }, source: 'harmony_top_note' }
                 },
                 bundles: [{ id: 'ENT_INTRO_1', name: 'Spark', duration: { percent: 100 }, characteristics: {}, phrases: {} }],
                 outroFill: null,
@@ -613,6 +652,7 @@ export const EnthusiasticAmbientBlueprint: MusicBlueprint = {
                 instrumentRules: {
                     bass: { techniques: [{ value: 'melodic', weight: 0.5 }, { value: 'arpeggio_fast', weight: 0.5 }], density: { min: 0.7, max: 0.9 } },
                     drums: { pattern: 'composer', density: { min: 0.6, max: 0.8 } },
+                    melody: { source: 'harmony_top_note' }
                 },
                 bundles: [{ id: 'ENT_BUILD_1', name: 'Climb', duration: { percent: 100 }, characteristics: {}, phrases: {} }],
                 outroFill: { type: 'roll', duration: 2, parameters: {} },
@@ -627,7 +667,8 @@ export const EnthusiasticAmbientBlueprint: MusicBlueprint = {
                 },
                 instrumentRules: {
                     bass: { techniques: [{ value: 'syncopated', weight: 1.0 }], density: { min: 0.85, max: 1.0 } },
-                    drums: { pattern: 'composer', density: { min: 0.8, max: 1.0 }, kickVolume: 1.2 }
+                    drums: { pattern: 'composer', density: { min: 0.8, max: 1.0 }, kickVolume: 1.2 },
+                    melody: { source: 'harmony_top_note' }
                 },
                 bundles: [{ id: 'ENT_MAIN_1', name: 'Peak', duration: { percent: 100 }, characteristics: {}, phrases: {} }],
                 outroFill: null,
@@ -640,7 +681,8 @@ export const EnthusiasticAmbientBlueprint: MusicBlueprint = {
                     melody: { strategy: 'weighted', options: [{ name: 'synth', weight: 1.0 }] },
                 },
                 instrumentRules: {
-                    drums: { pattern: 'ambient_beat', density: { min: 0.5, max: 0.7 } }
+                    drums: { pattern: 'ambient_beat', density: { min: 0.5, max: 0.7 } },
+                    melody: { source: 'harmony_top_note' }
                 },
                 bundles: [{ id: 'ENT_RELEASE_1', name: 'Glide', duration: { percent: 100 }, characteristics: {}, phrases: {} }],
                 outroFill: { type: 'density_pause', duration: 2, parameters: { soloLayer: 'accompaniment' } },
@@ -652,7 +694,8 @@ export const EnthusiasticAmbientBlueprint: MusicBlueprint = {
                     accompaniment: { strategy: 'weighted', options: [{ name: 'ambientPad', weight: 1.0 }] }
                 },
                 instrumentRules: {
-                    sparkles: { eventProbability: 0.3 }
+                    sparkles: { eventProbability: 0.3 },
+                    melody: { source: 'harmony_top_note' }
                 },
                 bundles: [{ id: 'ENT_OUTRO_1', name: 'Fade', duration: { percent: 100 }, characteristics: {}, phrases: {} }],
                 outroFill: null,
@@ -698,6 +741,7 @@ export const CalmAmbientBlueprint: MusicBlueprint = {
         },
         instrumentRules: {
           accompaniment: { density: { min: 0.4, max: 0.6 } },
+          melody: { source: 'harmony_top_note' }
         },
         bundles: [{ id: 'CALM_INTRO_BUNDLE', name: 'First Breath', duration: { percent: 100 }, characteristics: {}, phrases: {} }],
         outroFill: null,
@@ -716,7 +760,8 @@ export const CalmAmbientBlueprint: MusicBlueprint = {
           }
         },
         instrumentRules: {
-           drums: { pattern: 'ambient_beat', density: { min: 0.3, max: 0.5 } }
+           drums: { pattern: 'ambient_beat', density: { min: 0.3, max: 0.5 } },
+           melody: { source: 'harmony_top_note' }
         },
         bundles: [{ id: 'CALM_BUILD_BUNDLE', name: 'Movement', duration: { percent: 100 }, characteristics: {}, phrases: {} }],
         outroFill: null,
@@ -735,7 +780,7 @@ export const CalmAmbientBlueprint: MusicBlueprint = {
           }
         },
         instrumentRules: {
-           melody: { density: { min: 0.2, max: 0.4 } }
+           melody: { density: { min: 0.2, max: 0.4 }, source: 'harmony_top_note' }
         },
         bundles: [{ id: 'CALM_MAIN_BUNDLE', name: 'Clarity', duration: { percent: 100 }, characteristics: {}, phrases: {} }],
         outroFill: null,
@@ -751,6 +796,7 @@ export const CalmAmbientBlueprint: MusicBlueprint = {
         },
         instrumentRules: {
             accompaniment: { density: { min: 0.3, max: 0.5 } },
+            melody: { source: 'harmony_top_note' }
         },
         bundles: [{ id: 'CALM_RELEASE_BUNDLE', name: 'Return', duration: { percent: 100 }, characteristics: {}, phrases: {} }],
         outroFill: null,
@@ -764,7 +810,9 @@ export const CalmAmbientBlueprint: MusicBlueprint = {
             options: [{ name: 'ambientPad', weight: 1.0 }]
           }
         },
-        instrumentRules: { },
+        instrumentRules: {
+            melody: { source: 'harmony_top_note' }
+        },
         bundles: [{ id: 'CALM_OUTRO_BUNDLE', name: 'End', duration: { percent: 100 }, characteristics: {}, phrases: {} }],
         outroFill: null,
       }
@@ -801,7 +849,8 @@ export const JoyfulAmbientBlueprint: MusicBlueprint = {
                     accompaniment: { strategy: 'weighted', options: [{ name: 'synth', weight: 0.6 }, { name: 'organ', weight: 0.4 }] }
                 },
                 instrumentRules: {
-                    accompaniment: { techniques: [{ value: 'arpeggio-fast', weight: 1.0 }], density: { min: 0.5, max: 0.7 } }
+                    accompaniment: { techniques: [{ value: 'arpeggio-fast', weight: 1.0 }], density: { min: 0.5, max: 0.7 } },
+                    melody: { source: 'harmony_top_note' }
                 },
                 bundles: [{ id: 'JOY_INTRO_1', name: 'First Light', duration: { percent: 100 }, characteristics: {}, phrases: {} }],
                 outroFill: null,
@@ -815,7 +864,8 @@ export const JoyfulAmbientBlueprint: MusicBlueprint = {
                 },
                 instrumentRules: {
                     drums: { pattern: 'composer', density: { min: 0.5, max: 0.7 } },
-                    bass: { techniques: [{ value: 'walking', weight: 0.7 }, { value: 'melodic', weight: 0.3 }] }
+                    bass: { techniques: [{ value: 'walking', weight: 0.7 }, { value: 'melodic', weight: 0.3 }] },
+                    melody: { source: 'harmony_top_note' }
                 },
                 bundles: [{ id: 'JOY_BUILD_1', name: 'Awakening', duration: { percent: 100 }, characteristics: {}, phrases: {} }],
                 outroFill: { type: 'roll', duration: 2, parameters: {} },
@@ -828,7 +878,8 @@ export const JoyfulAmbientBlueprint: MusicBlueprint = {
                     accompaniment: { strategy: 'weighted', options: [{ name: 'organ', weight: 1.0 }] }
                 },
                 instrumentRules: {
-                    drums: { pattern: 'composer', density: { min: 0.7, max: 0.9 }, kickVolume: 1.1 }
+                    drums: { pattern: 'composer', density: { min: 0.7, max: 0.9 }, kickVolume: 1.1 },
+                    melody: { source: 'harmony_top_note' }
                 },
                 bundles: [{ id: 'JOY_MAIN_1', name: 'Celebration', duration: { percent: 100 }, characteristics: {}, phrases: {} }],
                 outroFill: null,
@@ -840,7 +891,8 @@ export const JoyfulAmbientBlueprint: MusicBlueprint = {
                     accompaniment: { strategy: 'weighted', options: [{ name: 'ambientPad', weight: 1.0 }] }
                 },
                 instrumentRules: {
-                    drums: { pattern: 'ambient_beat', density: { min: 0.4, max: 0.6 } }
+                    drums: { pattern: 'ambient_beat', density: { min: 0.4, max: 0.6 } },
+                    melody: { source: 'harmony_top_note' }
                 },
                 bundles: [{ id: 'JOY_RELEASE_1', name: 'Reflection', duration: { percent: 100 }, characteristics: {}, phrases: {} }],
                 outroFill: null,
@@ -851,7 +903,9 @@ export const JoyfulAmbientBlueprint: MusicBlueprint = {
                 instrumentation: {
                     accompaniment: { strategy: 'weighted', options: [{ name: 'ambientPad', weight: 1.0 }] }
                 },
-                instrumentRules: {},
+                instrumentRules: {
+                    melody: { source: 'harmony_top_note' }
+                },
                 bundles: [{ id: 'JOY_OUTRO_1', name: 'Fade', duration: { percent: 100 }, characteristics: {}, phrases: {} }],
                 outroFill: null,
             }
@@ -892,7 +946,8 @@ export const EpicAmbientBlueprint: MusicBlueprint = {
                     accompaniment: { strategy: 'weighted', options: [{ name: 'ambientPad', weight: 1.0 }] }
                 },
                 instrumentRules: {
-                    accompaniment: { register: { preferred: 'low' }, density: { min: 0.3, max: 0.5 } }
+                    accompaniment: { register: { preferred: 'low' }, density: { min: 0.3, max: 0.5 } },
+                    melody: { source: 'harmony_top_note' }
                 },
                 bundles: [{ id: 'EPIC_INTRO_1', name: 'Mists', duration: { percent: 100 }, characteristics: {}, phrases: {} }],
                 outroFill: null
@@ -906,7 +961,8 @@ export const EpicAmbientBlueprint: MusicBlueprint = {
                     harmony: { strategy: 'weighted', options: [{ name: 'violin', weight: 1.0 }] }
                 },
                 instrumentRules: {
-                    drums: { pattern: 'composer', density: { min: 0.2, max: 0.4 }, useSnare: false, rareKick: true, usePerc: true }
+                    drums: { pattern: 'composer', density: { min: 0.2, max: 0.4 }, useSnare: false, rareKick: true, usePerc: true },
+                    melody: { source: 'harmony_top_note' }
                 },
                 bundles: [
                     { id: 'EPIC_BUILD_1', name: 'Calling', duration: { percent: 50 }, characteristics: {}, phrases: {} },
@@ -924,7 +980,7 @@ export const EpicAmbientBlueprint: MusicBlueprint = {
                     harmony: { strategy: 'weighted', options: [{ name: 'mellotron', weight: 1.0 }] }
                 },
                 instrumentRules: {
-                    melody: { density: { min: 0.3, max: 0.5 } },
+                    melody: { density: { min: 0.3, max: 0.5 }, source: 'harmony_top_note' },
                     drums: { pattern: 'composer', density: { min: 0.5, max: 0.7 }, kickVolume: 1.1 }
                 },
                 bundles: [
@@ -938,7 +994,9 @@ export const EpicAmbientBlueprint: MusicBlueprint = {
                 instrumentation: {
                     accompaniment: { strategy: 'weighted', options: [{ name: 'ambientPad', weight: 1.0 }] }
                 },
-                instrumentRules: {},
+                instrumentRules: {
+                    melody: { source: 'harmony_top_note' }
+                },
                 bundles: [{ id: 'EPIC_OUTRO_1', name: 'Echoes', duration: { percent: 100 }, characteristics: {}, phrases: {} }],
                 outroFill: null
             }
@@ -973,7 +1031,8 @@ export const AnxiousAmbientBlueprint: MusicBlueprint = {
                 },
                 instrumentRules: {
                     accompaniment: { density: { min: 0.2, max: 0.4 }, techniques: [{ value: 'arpeggio-fast', weight: 1.0 }] },
-                    sfx: { eventProbability: 0.3, categories: [{ name: 'dark', weight: 0.7 }, { name: 'laser', weight: 0.3 }] }
+                    sfx: { eventProbability: 0.3, categories: [{ name: 'dark', weight: 0.7 }, { name: 'laser', weight: 0.3 }] },
+                    melody: { source: 'harmony_top_note' }
                 },
                 bundles: [{ id: 'ANX_INTRO_1', name: 'Jitters', duration: { percent: 100 }, characteristics: {}, phrases: {} }],
                 outroFill: null,
@@ -987,7 +1046,8 @@ export const AnxiousAmbientBlueprint: MusicBlueprint = {
                 },
                 instrumentRules: {
                     drums: { pattern: 'composer', density: { min: 0.4, max: 0.7 }, useSnare: true, useGhostHat: true },
-                    bass: { techniques: [{ value: 'glissando', weight: 1.0 }] }
+                    bass: { techniques: [{ value: 'glissando', weight: 1.0 }] },
+                    melody: { source: 'harmony_top_note' }
                 },
                 bundles: [{ id: 'ANX_BUILD_1', name: 'Escalation', duration: { percent: 100 }, characteristics: {}, phrases: {} }],
                 outroFill: { type: 'roll', duration: 1, parameters: {} },
@@ -1002,7 +1062,7 @@ export const AnxiousAmbientBlueprint: MusicBlueprint = {
                 },
                 instrumentRules: {
                     drums: { pattern: 'composer', density: { min: 0.7, max: 0.9 }, kickVolume: 1.3 },
-                    melody: { register: { preferred: 'high' } }
+                    melody: { register: { preferred: 'high' }, source: 'harmony_top_note' }
                 },
                 bundles: [{ id: 'ANX_MAIN_1', name: 'Chaos', duration: { percent: 100 }, characteristics: {}, phrases: {} }],
                 outroFill: null,
@@ -1014,7 +1074,8 @@ export const AnxiousAmbientBlueprint: MusicBlueprint = {
                     accompaniment: { strategy: 'weighted', options: [{ name: 'synth', weight: 1.0 }] }
                 },
                 instrumentRules: {
-                    sfx: { eventProbability: 0.4, categories: [{ name: 'laser', weight: 1.0 }] }
+                    sfx: { eventProbability: 0.4, categories: [{ name: 'laser', weight: 1.0 }] },
+                    melody: { source: 'harmony_top_note' }
                 },
                 bundles: [{ id: 'ANX_OUTRO_1', name: 'Echoes', duration: { percent: 100 }, characteristics: {}, phrases: {} }],
                 outroFill: null,
@@ -1049,7 +1110,8 @@ export const NeutralAmbientBlueprint: MusicBlueprint = {
                     accompaniment: { strategy: 'weighted', options: [{ name: 'piano', weight: 0.6 }, { name: 'synth', weight: 0.4 }] },
                 },
                 instrumentRules: {
-                    accompaniment: { density: {min: 0.4, max: 0.6} }
+                    accompaniment: { density: {min: 0.4, max: 0.6} },
+                    melody: { source: 'harmony_top_note' }
                 },
                 bundles: [{ id: 'NEUTRAL_INTRO_1', name: 'Clarity', duration: { percent: 100 }, characteristics: {}, phrases: {} }],
                 outroFill: null,
@@ -1062,7 +1124,8 @@ export const NeutralAmbientBlueprint: MusicBlueprint = {
                     bass: { strategy: 'weighted', options: [{ name: 'classicBass', weight: 1.0 }] }
                 },
                  instrumentRules: {
-                   drums: { pattern: 'ambient_beat', density: { min: 0.2, max: 0.4 }, usePerc: true, useSnare: false, useGhostHat: true }
+                   drums: { pattern: 'ambient_beat', density: { min: 0.2, max: 0.4 }, usePerc: true, useSnare: false, useGhostHat: true },
+                   melody: { source: 'harmony_top_note' }
                 },
                 bundles: [{ id: 'NEUTRAL_BUILD_1', name: 'Flow', duration: { percent: 100 }, characteristics: {}, phrases: {} }],
                 outroFill: null,
@@ -1075,7 +1138,7 @@ export const NeutralAmbientBlueprint: MusicBlueprint = {
                     melody: { strategy: 'weighted', options: [{ name: 'synth', weight: 1.0 }] }
                 },
                 instrumentRules: {
-                    melody: { density: { min: 0.15, max: 0.3 } },
+                    melody: { density: { min: 0.15, max: 0.3 }, source: 'harmony_top_note' },
                     drums: { density: { min: 0.3, max: 0.5 } }
                 },
                 bundles: [{ id: 'NEUTRAL_MAIN_1', name: 'Concentration', duration: { percent: 100 }, characteristics: {}, phrases: {} }],
@@ -1087,7 +1150,9 @@ export const NeutralAmbientBlueprint: MusicBlueprint = {
                  instrumentation: {
                     accompaniment: { strategy: 'weighted', options: [{ name: 'piano', weight: 1.0 }] },
                 },
-                instrumentRules: { },
+                instrumentRules: {
+                    melody: { source: 'harmony_top_note' }
+                },
                 bundles: [{ id: 'NEUTRAL_RELEASE_1', name: 'Conclusion', duration: { percent: 100 }, characteristics: {}, phrases: {} }],
                 outroFill: null,
             },
@@ -1097,7 +1162,9 @@ export const NeutralAmbientBlueprint: MusicBlueprint = {
                  instrumentation: {
                     accompaniment: { strategy: 'weighted', options: [{ name: 'ambientPad', weight: 1.0 }] },
                 },
-                instrumentRules: {},
+                instrumentRules: {
+                    melody: { source: 'harmony_top_note' }
+                },
                 bundles: [{ id: 'NEUTRAL_OUTRO_1', name: 'Fade', duration: { percent: 100 }, characteristics: {}, phrases: {} }],
                 outroFill: null,
             },
