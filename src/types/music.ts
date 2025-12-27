@@ -1,6 +1,7 @@
 
 
 import type { Mood as FractalMood, InstrumentHints as FractalInstrumentHints } from './fractal';
+import { prettyPresets } from '@/lib/presets-v2';
 
 export type Mood = FractalMood;
 
@@ -42,7 +43,10 @@ export type EffectsScore = SamplerNote[];
 
 // --- UI Types ---
 export type BassInstrument = 'classicBass' | 'glideBass' | 'ambientDrone' | 'resonantGliss' | 'hypnoticDrone' | 'livingRiff' | 'none';
-export type MelodyInstrument = 'synth' | 'organ' | 'mellotron' | 'theremin' | 'electricGuitar' | 'ambientPad' | 'acousticGuitar' | 'E-Bells_melody' | 'G-Drops' | 'piano' | 'violin' | 'flute' | 'acousticGuitarSolo' | 'none';
+export type V1MelodyInstrument = 'synth' | 'organ' | 'mellotron' | 'theremin' | 'electricGuitar' | 'ambientPad' | 'acousticGuitar' | 'E-Bells_melody' | 'G-Drops' | 'piano' | 'violin' | 'flute' | 'acousticGuitarSolo' | 'none';
+export type V2MelodyInstrument = keyof typeof prettyPresets;
+export type MelodyInstrument = V1MelodyInstrument | V2MelodyInstrument;
+
 export type AccompanimentInstrument = Exclude<MelodyInstrument, 'piano' | 'violin' | 'flute' | 'acousticGuitarSolo'> | 'guitarChords';
 export type EffectInstrument = 
     'autopilot_effect_star' | 'autopilot_effect_meteor' | 'autopilot_effect_warp' | 
@@ -154,6 +158,7 @@ export type WorkerSettings = {
     composerControlsInstruments: boolean;
     mood: Mood;
     seed?: number;
+    useMelodyV2?: boolean; // Flag to control which melody engine to use
 };
 
 

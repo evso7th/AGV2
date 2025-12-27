@@ -1,6 +1,6 @@
 
 
-import type { FractalEvent, Mood, Genre, Technique, BassSynthParams, InstrumentType, MelodyInstrument, BassInstrument, AccompanimentInstrument, ResonanceMatrix, InstrumentHints, AccompanimentTechnique, GhostChord, SfxRule } from '@/types/fractal';
+import type { FractalEvent, Mood, Genre, Technique, BassSynthParams, InstrumentType, MelodyInstrument, BassInstrument, AccompanimentInstrument, ResonanceMatrix, InstrumentHints, AccompanimentTechnique, GhostChord, SfxRule, V1MelodyInstrument, V2MelodyInstrument } from '@/types/fractal';
 import { ElectronicK, TraditionalK, AmbientK, MelancholicMinorK } from './resonance-matrices';
 import { getScaleForMood, STYLE_DRUM_PATTERNS, generateAmbientBassPhrase, createAccompanimentAxiom, PERCUSSION_SETS, TEXTURE_INSTRUMENT_WEIGHTS_BY_MOOD, getAccompanimentTechnique, createBassFill as createBassFillFromTheory, createDrumFill, AMBIENT_ACCOMPANIMENT_WEIGHTS, chooseHarmonyInstrument, mutateBassPhrase, createMelodyMotif, createDrumAxiom, generateGhostHarmonyTrack, mutateAccompanimentPhrase, createHarmonyAxiom } from './music-theory';
 import { BlueprintNavigator, type NavigationInfo } from './blueprint-navigator';
@@ -27,6 +27,7 @@ interface EngineConfig {
   drumSettings: any;
   seed: number;
   composerControlsInstruments?: boolean;
+  useMelodyV2?: boolean;
 }
 
 type PlayPlanItem = {
@@ -235,25 +236,13 @@ export class FractalMusicEngine {
   }
   
   private _chooseInstrumentForPart(part: 'melody' | 'accompaniment', currentPartInfo: BlueprintPart | null): MelodyInstrument | AccompanimentInstrument | undefined {
-        if (!currentPartInfo || !currentPartInfo.instrumentation || !currentPartInfo.instrumentation[part]) {
-            const moodWeights = TEXTURE_INSTRUMENT_WEIGHTS_BY_MOOD[this.config.mood] || TEXTURE_INSTRUMENT_WEIGHTS_BY_MOOD['calm'];
-            const options = Object.entries(moodWeights).map(([name, weight]) => ({ name: name as MelodyInstrument, weight }));
-            
-            if (options.length === 0) return undefined;
-            
-            const totalWeight = options.reduce((sum, opt) => sum + opt.weight, 0);
-            let rand = this.random.next() * totalWeight;
+        let selectedInstrument: MelodyInstrument | AccompanimentInstrument | undefined = undefined;
+        let rules: InstrumentationRules<any> | undefined;
 
-            for (const option of options) {
-                rand -= option.weight;
-                if (rand <= 0) {
-                    return option.name;
-                }
-            }
-            return options[0].name;
+        if (currentPartInfo?.instrumentation?.[part]) {
+            rules = currentPartInfo.instrumentation[part];
         }
 
-        const rules = currentPartInfo.instrumentation[part] as InstrumentationRules<any>;
         if (rules && rules.strategy === 'weighted' && rules.options.length > 0) {
             const totalWeight = rules.options.reduce((sum, opt) => sum + opt.weight, 0);
             let rand = this.random.next() * totalWeight;
@@ -261,13 +250,47 @@ export class FractalMusicEngine {
             for (const option of rules.options) {
                 rand -= option.weight;
                 if (rand <= 0) {
-                    return option.name;
+                    selectedInstrument = option.name;
+                    break;
                 }
             }
-            return rules.options[0].name; // Fallback to first option
+             if (!selectedInstrument) {
+                selectedInstrument = rules.options[0].name;
+            }
+        } else {
+            // Fallback logic
+            const moodWeights = TEXTURE_INSTRUMENT_WEIGHTS_BY_MOOD[this.config.mood] || TEXTURE_INSTRUMENT_WEIGHTS_BY_MOOD['calm'];
+            const options = Object.entries(moodWeights).map(([name, weight]) => ({ name: name as MelodyInstrument, weight }));
+            if (options.length > 0) {
+                const totalWeight = options.reduce((sum, opt) => sum + opt.weight, 0);
+                let rand = this.random.next() * totalWeight;
+                for (const option of options) {
+                    rand -= option.weight;
+                    if (rand <= 0) {
+                        selectedInstrument = option.name;
+                        break;
+                    }
+                }
+                 if (!selectedInstrument) {
+                    selectedInstrument = options[0].name;
+                }
+            }
+        }
+        
+        // #ЗАЧЕМ: Этот блок кода является "защитой от несовместимости" между движками V1 и V2.
+        // #ЧТО: Он проверяет, активен ли движок V2. Если да, и если выбранный инструмент относится к V1 (т.е. его нет в `prettyPresets`),
+        //      он принудительно заменяет его на V2-пресет по умолчанию ('synth_pad_emerald').
+        // #СВЯЗИ: Гарантирует, что `MelodySynthManagerV2` никогда не получит несовместимый `instrumentHint`,
+        //         позволяя автопилоту корректно работать с новым движком.
+        if (part === 'melody' && this.config.useMelodyV2) {
+            const v2PresetNames = ["organ_cathedral_warm", "organ_soft_jazz", "synth_pad_emerald", "synth_ambient_pad_lush", "synth_theremin_vocal", "mellotron_strings_majestic", "mellotron_choir_dark", "mellotron_flute_intimate", "guitar_shineOn", "guitar_muffLead", "acoustic_guitar_folk"];
+            if (!selectedInstrument || !v2PresetNames.includes(selectedInstrument as V2MelodyInstrument)) {
+                console.log(`[FME Hint Correction] V2 Engine is active. Swapping incompatible hint '${selectedInstrument}' to 'synth_pad_emerald'.`);
+                selectedInstrument = 'synth_pad_emerald';
+            }
         }
 
-        return undefined;
+        return selectedInstrument;
     }
 
 
@@ -524,4 +547,3 @@ export class FractalMusicEngine {
     return { events, instrumentHints };
   }
 }
-

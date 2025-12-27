@@ -1,4 +1,5 @@
 
+
 import type { MusicBlueprint, Mood, Genre, BlueprintPart, SfxRule } from '@/types/music';
 
 const JoyfulTranceBlueprint: MusicBlueprint = {
@@ -261,7 +262,7 @@ export const MelancholicAmbientBlueprint: MusicBlueprint = {
         instrumentation: {
           accompaniment: { strategy: 'weighted', options: [{ name: 'ambientPad', weight: 0.8 }, { name: 'mellotron', weight: 0.2 }] },
           bass: { strategy: 'weighted', options: [{ name: 'classicBass', weight: 1.0 }] },
-          melody: { strategy: 'weighted', options: [{ name: 'synth', weight: 1.0 }] }
+          melody: { strategy: 'weighted', options: [{ name: 'synth', weight: 0.5 }, { name: 'synth_pad_emerald', weight: 0.5 }] }
         },
         instrumentRules: {
           accompaniment: { register: { preferred: 'low' } }
@@ -275,7 +276,7 @@ export const MelancholicAmbientBlueprint: MusicBlueprint = {
          instrumentation: {
             accompaniment: { strategy: 'weighted', options: [{ name: 'ambientPad', weight: 0.7 }, { name: 'organ', weight: 0.3 }] },
             bass: { strategy: 'weighted', options: [{ name: 'classicBass', weight: 1.0 }] },
-            melody: { strategy: 'weighted', options: [{ name: 'synth', weight: 1.0 }] }
+            melody: { strategy: 'weighted', options: [{ name: 'synth', weight: 0.4 }, { name: 'synth_theremin_vocal', weight: 0.6 }] }
         },
         instrumentRules: { drums: { pattern: 'ambient_beat', density: { min: 0.4, max: 0.6 } } },
         bundles: [
@@ -290,7 +291,7 @@ export const MelancholicAmbientBlueprint: MusicBlueprint = {
          instrumentation: {
             accompaniment: { strategy: 'weighted', options: [{ name: 'ambientPad', weight: 0.6 }, { name: 'organ', weight: 0.4 }] },
             bass: { strategy: 'weighted', options: [{ name: 'livingRiff', weight: 1.0 }] },
-            melody: { strategy: 'weighted', options: [{ name: 'synth', weight: 0.7 }, { name: 'theremin', weight: 0.3 }] }
+            melody: { strategy: 'weighted', options: [{ name: 'synth', weight: 0.3 }, { name: 'theremin', weight: 0.3 }, { name: 'guitar_shineOn', weight: 0.4 }] }
         },
         instrumentRules: { 
             drums: { 
@@ -312,7 +313,7 @@ export const MelancholicAmbientBlueprint: MusicBlueprint = {
         instrumentation: {
             accompaniment: { strategy: 'weighted', options: [{ name: 'ambientPad', weight: 1.0 }] },
             bass: { strategy: 'weighted', options: [{ name: 'glideBass', weight: 1.0 }] },
-            melody: { strategy: 'weighted', options: [{ name: 'synth', weight: 1.0 }] }
+            melody: { strategy: 'weighted', options: [{ name: 'synth', weight: 0.5 }, { name: 'synth_pad_emerald', weight: 0.5 }] }
         },
         instrumentRules: { drums: { enabled: false } },
         bundles: [
@@ -1132,4 +1133,3 @@ export function getBlueprint(genre: Genre, mood: Mood): MusicBlueprint {
 }
 
 export default MelancholicAmbientBlueprint;
-
