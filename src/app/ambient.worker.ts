@@ -137,6 +137,20 @@ const Scheduler = {
         
         const scorePayload = fractalMusicEngine.evolve(this.barDuration, this.barCount);
         
+        const bassCount = scorePayload.events.filter(e => e.type === 'bass').length;
+        const melodyCount = scorePayload.events.filter(e => e.type === 'melody').length;
+        const accompanimentCount = scorePayload.events.filter(e => e.type === 'accompaniment').length;
+        const harmonyCount = scorePayload.events.filter(e => e.type === 'harmony').length;
+        const drumsCount = scorePayload.events.filter(e => (e.type as string).startsWith('drum_') || (e.type as string).startsWith('perc-')).length;
+        const sfxCount = scorePayload.events.filter(e => e.type === 'sfx').length;
+        const sparklesCount = scorePayload.events.filter(e => e.type === 'sparkle').length;
+
+        const hintsString = JSON.stringify(scorePayload.instrumentHints || {});
+
+        console.log(
+            `[Worker.tick] Dispatching: Total=${scorePayload.events.length}, Bass=${bassCount}, Melody=${melodyCount}, Accomp=${accompanimentCount}, Drums=${drumsCount}, Harmony=${harmonyCount}, Sparkles=${sparklesCount}, SFX=${sfxCount}, Hints: ${hintsString}`
+        );
+        
         const mainScoreEvents: FractalEvent[] = [];
         const sfxEvents: FractalEvent[] = [];
         const sparkleEvents: FractalEvent[] = [];
@@ -153,8 +167,6 @@ const Scheduler = {
                 mainScoreEvents.push(event);
             }
         }
-        
-        console.log(`[Worker.tick] Dispatching Events: Total=${scorePayload.events.length}, Harmony=${harmonyEvents.length}, Melody=${scorePayload.events.filter(e => e.type === 'melody').length}`);
 
         self.postMessage({ 
             type: 'SCORE_READY', 
@@ -166,21 +178,18 @@ const Scheduler = {
         });
         
         if (sfxEvents.length > 0) {
-            console.log(`[Worker.tick] Dispatching ${sfxEvents.length} SFX events.`);
             sfxEvents.forEach(event => {
                 self.postMessage({ type: 'sfx', payload: event });
             });
         }
         
         if (sparkleEvents.length > 0) {
-            console.log(`[Worker.tick] Dispatching ${sparkleEvents.length} Sparkle events.`);
             sparkleEvents.forEach(event => {
                 self.postMessage({ type: 'sparkle', payload: event });
             });
         }
 
         if (harmonyEvents.length > 0) {
-             console.log(`[Worker.tick] Dispatching ${harmonyEvents.length} Harmony events.`);
              const harmonyPayload = {
                  events: harmonyEvents,
                  instrumentHints: scorePayload.instrumentHints,
