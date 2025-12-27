@@ -339,7 +339,7 @@ export async function buildMultiInstrument(ctx: AudioContext, {
       const f = midiToHz(midi);
       
       const vGain = ctx.createGain(); vGain.gain.value = 0.0;
-      vGain.connect(pre);
+      pre.connect(vGain);
 
       const oscs = osc.map((o: any)=>{
         const x = ctx.createOscillator(); x.type=o.type as OscillatorType; 
