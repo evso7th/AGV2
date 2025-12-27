@@ -129,8 +129,9 @@ export const useAuraGroove = (): AuraGrooveProps => {
       composerControlsInstruments,
       mood,
       seed: initialSeed,
+      useMelodyV2,
     };
-  }, [bpm, score, genre, instrumentSettings, drumSettings, textureSettings, density, composerControlsInstruments, mood, initialSeed]);
+  }, [bpm, score, genre, instrumentSettings, drumSettings, textureSettings, density, composerControlsInstruments, mood, initialSeed, useMelodyV2]);
 
   // Initial settings sync
   useEffect(() => {
@@ -155,7 +156,7 @@ export const useAuraGroove = (): AuraGrooveProps => {
           const fullSettings = getFullSettings();
           updateSettings(fullSettings);
       }
-  }, [bpm, score, genre, density, drumSettings, textureSettings, composerControlsInstruments, mood, isInitialized, updateSettings, getFullSettings]);
+  }, [bpm, score, genre, density, drumSettings, textureSettings, composerControlsInstruments, mood, isInitialized, updateSettings, getFullSettings, useMelodyV2]);
 
   // Timer logic
   useEffect(() => {
@@ -346,3 +347,5 @@ export const useAuraGroove = (): AuraGrooveProps => {
     toggleMelodyEngine
   };
 };
+
+    

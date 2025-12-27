@@ -280,9 +280,9 @@ export class FractalMusicEngine {
         
         if (part === 'melody' && this.config.useMelodyV2) {
             const v2PresetNames = Object.keys(prettyPresets);
-            if (!selectedInstrument || !v2PresetNames.includes(selectedInstrument as V2MelodyInstrument)) {
-                console.log(`[FME Hint Correction] V2 Engine is active. Swapping incompatible hint '${selectedInstrument}' to 'synth_pad_emerald'.`);
-                selectedInstrument = 'synth_pad_emerald';
+            if (!selectedInstrument || !v2PresetNames.includes(selectedInstrument as string)) {
+                console.log(`[FME Hint Correction] V2 Engine is active. Hint '${selectedInstrument}' is not a V2 preset. Choosing a random V2 preset.`);
+                selectedInstrument = v2PresetNames[this.random.nextInt(v2PresetNames.length)] as keyof typeof prettyPresets;
             }
         }
 
@@ -467,7 +467,7 @@ export class FractalMusicEngine {
         //      верхние ноты аккомпанемента. В противном случае, он использует стандартную логику мотивов.
         // #СВЯЗИ: Заменяет жестко закодированную проверку на `genre === 'ambient'`.
         const melodyRules = navInfo.currentPart.instrumentRules?.melody;
-        if (melodyRules?.melodySource === 'harmony_top_note') {
+        if (melodyRules?.source === 'harmony_top_note') {
             const topNotes = accompEvents.sort((a, b) => b.note - a.note).slice(0, 2);
             melodyEvents = topNotes.map(noteEvent => ({
                 ...noteEvent,
@@ -546,3 +546,5 @@ export class FractalMusicEngine {
     return { events, instrumentHints };
   }
 }
+
+    

@@ -137,6 +137,20 @@ export type TextureSettings = {
     sfx: SfxSettings;
 };
 
+export type WorkerSettings = {
+  bpm: number;
+  score: ScoreName;
+  genre: Genre;
+  instrumentSettings: InstrumentSettings;
+  drumSettings: DrumSettings;
+  textureSettings: TextureSettings;
+  density: number;
+  composerControlsInstruments: boolean;
+  mood: Mood;
+  seed?: number;
+  useMelodyV2?: boolean;
+};
+
 export type TimerSettings = {
     duration: number; // in seconds
     timeLeft: number;
@@ -167,6 +181,7 @@ type MelodySource = 'motif' | 'harmony_top_note';
 export type InstrumentRules = {
   melody?: {
     source?: MelodySource; // КАК генерировать мелодию
+    density?: { min: number, max: number };
     [key: string]: any;
   };
   [key: string]: any;
@@ -249,3 +264,5 @@ export type MusicBlueprint = {
     continuity: any; // Define this type more strictly later
     rendering: any; // Define this type more strictly later
 };
+
+    
