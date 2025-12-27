@@ -150,13 +150,19 @@ export const useAuraGroove = (): AuraGrooveProps => {
     }
   }, [isInitialized]);
 
-  // Sync settings with engine whenever they change
+  // #ЗАЧЕМ: Этот useEffect гарантирует, что воркер ВСЕГДА будет знать актуальное состояние V2-движка.
+  // #ЧТО: Он следит за изменением флага `useMelodyV2`. Как только флаг меняется,
+  //      он немедленно вызывает `updateSettings` для отправки полного, обновленного объекта
+  //      настроек в Web Worker.
+  // #СВЯЗИ: Это решает проблему "разделенного сознания", когда UI и воркер имели разные
+  //         представления о том, какой движок мелодии активен.
   useEffect(() => {
       if (isInitialized) {
-          const fullSettings = getFullSettings();
-          updateSettings(fullSettings);
+          console.log(`[useAuraGroove] Syncing settings with worker, useMelodyV2 is now: ${useMelodyV2}`);
+          updateSettings(getFullSettings());
       }
-  }, [bpm, score, genre, density, drumSettings, textureSettings, composerControlsInstruments, mood, isInitialized, updateSettings, getFullSettings, useMelodyV2]);
+  }, [useMelodyV2, isInitialized, getFullSettings, updateSettings]);
+
 
   // Timer logic
   useEffect(() => {
@@ -208,31 +214,14 @@ export const useAuraGroove = (): AuraGrooveProps => {
 
   const handleInstrumentChange = (part: keyof InstrumentSettings, name: BassInstrument | MelodyInstrument | AccompanimentInstrument | keyof typeof prettyPresets) => {
     
-    // When switching engines, select a default preset for the new engine
     let newInstrumentName = name;
-    if (part === 'melody') {
-      const isSwitchingToV2 = !useMelodyV2; // This seems counter-intuitive but it's the state *before* the toggle
-      if (useMelodyV2 && !Object.keys(prettyPresets).includes(name as string)) {
-          newInstrumentName = Object.keys(prettyPresets)[0] as keyof typeof prettyPresets;
-      } else if (!useMelodyV2 && Object.keys(prettyPresets).includes(name as string)) {
-          newInstrumentName = 'synth';
-      }
-    }
-
-
-    const newSettings = {
-      ...instrumentSettings,
-      [part]: { ...instrumentSettings[part as keyof typeof instrumentSettings], name: newInstrumentName }
-    };
-    setInstrumentSettings(newSettings);
+    
+    setInstrumentSettings(prev => ({
+        ...prev,
+        [part]: { ...prev[part], name: newInstrumentName }
+    }));
+    
     setInstrument(part, newInstrumentName as any);
-
-    if (isInitialized) {
-      updateSettings({
-        ...getFullSettings(),
-        instrumentSettings: newSettings
-      });
-    }
   };
   
   const handleBassTechniqueChange = (technique: BassTechnique) => {
