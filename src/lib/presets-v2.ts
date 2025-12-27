@@ -36,6 +36,21 @@ export const prettyPresets = {
     delay: { on: true, time: 0.38, fb: 0.25, hc: 3800, mix: 0.18 },
     reverbMix: 0.22
   },
+  synth_ambient_pad_lush: {
+    type: 'synth',
+    osc: [
+      { type: 'sawtooth', detune: -8,    gain: 0.55 }, // базовый слой
+      { type: 'sawtooth', detune: +8,    gain: 0.55 }, // зеркальный детюн
+      { type: 'sine',     detune: 1200, gain: 0.25 }  // +1 октава в центах
+    ],
+    noise: { on: true, color: 'white', gain: 0.02 },   // лёгкий «воздух»
+    adsr:  { a: 2.5, d: 2.0, s: 0.8, r: 4.0 },        // длинные A/R
+    lpf:   { cutoff: 1200, q: 1.5, mode: '24dB' },    // мягкий кат, крутой склон
+    lfo:   { rate: 0.05, amount: 600, target: 'filter' }, // breathing (~20 c период)
+    chorus:{ on: true, rate: 0.20, depth: 0.008, mix: 0.65 }, // глубокий хорус
+    delay: { on: true, time: 0.75, fb: 0.45, hc: 3800, mix: 0.35 }, // длинный дилей с хайкатом
+    reverbMix: 0.28
+  },
   // Терменвокс: «вокальный синус», вибрато делай внешним (см. подсказки ниже)
   synth_theremin_vocal: {
     type: 'synth',
@@ -88,24 +103,26 @@ export const prettyPresets = {
   guitar_shineOn: {
     type: 'guitar',
     variant: 'shineOn',
-    // можно тонко править: pickupLPF/postLPF/drive/phaser/delays/reverbMix
     reverbMix: 0.18
   },
   guitar_muffLead: {
     type: 'guitar',
     variant: 'muffLead',
-    reverbMix: 0.20
+    reverbMix: 0.3,
+    drive: { type: 'muff', amount: 0.85 },
+    post: { lpf: 4500, mids: [{f:900, q:0.9, g:1.5}, {f:3000, q:1.2, g:-2.5}] },
+    delayA: { time: 0.5, fb: 0.45, hc:3200, wet:0.3 },
   },
 
   // ───────────────────────── ACOUSTIC (через Mellotron-семплы) ─────────────────────────
   acoustic_guitar_folk: {
     type: 'mellotron',
-    instrument: 'acoustic', // см. карту зон ниже
-    attack: 0.012, release: 0.22,
-    wow: { rate: 0.1, depth: 0.0008 },   // почти без лент-дерганий
-    flutter: { rate: 6.0, depth: 0.0004 },
-    noise: { level: -40 },
-    lpf: 7800, hpf: 110,
-    reverbMix: 0.18
+    instrument: 'acoustic',
+    attack: 0.01, release: 0.3,
+    wow: { rate: 0.1, depth: 0.0005 },
+    flutter: { rate: 7.0, depth: 0.0003 },
+    noise: { level: -42 },
+    lpf: 8200, hpf: 100,
+    reverbMix: 0.15
   }
 };
