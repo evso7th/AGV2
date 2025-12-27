@@ -299,7 +299,8 @@ export async function buildMultiInstrument(ctx: AudioContext, {
     const use2pole = (lpf.mode!=='24dB');
 
     pre.connect(filt); 
-    (use2pole?filt:filt.connect(filt2), filt2).connect(master);
+    const mainChain = use2pole ? filt : (filt.connect(filt2), filt2);
+    mainChain.connect(master);
     
     // FX sends
     const chorusNode = chorus.on ? makeChorus(ctx, chorus) : null;
@@ -308,11 +309,20 @@ export async function buildMultiInstrument(ctx: AudioContext, {
     if (reverb.buffer) {
         revSend.connect(reverb);
     }
-
-    const sink = use2pole? filt : (filt.connect(filt2), filt2);
-    if (chorusNode){ sink.connect(chorusNode.input); chorusNode.output.connect(master); chorusNode.output.connect(revSend); }
-    if (delayNode){ sink.connect(delayNode.input); delayNode.output.connect(master); delayNode.output.connect(revSend); }
-    sink.connect(revSend);
+    
+    // #ИСПРАВЛЕНИЕ: Сигнал после фильтра теперь идет и на эффекты, и на мастер
+    mainChain.connect(revSend); // Send to reverb
+    if (chorusNode) { 
+        mainChain.connect(chorusNode.input); 
+        chorusNode.output.connect(master); 
+        chorusNode.output.connect(revSend); 
+    }
+    if (delayNode) {
+        mainChain.connect(delayNode.input); 
+        delayNode.output.connect(master); 
+        delayNode.output.connect(revSend);
+    }
+    
 
     // LFO
     if (lfo?.amount > 0){
@@ -339,7 +349,7 @@ export async function buildMultiInstrument(ctx: AudioContext, {
       const f = midiToHz(midi);
       
       const vGain = ctx.createGain(); vGain.gain.value = 0.0;
-      pre.connect(vGain);
+      vGain.connect(pre); // #ИСПРАВЛЕНИЕ: Осцилляторы теперь идут в vGain, а vGain в pre-фильтр
 
       const oscs = osc.map((o: any)=>{
         const x = ctx.createOscillator(); x.type=o.type as OscillatorType; 
@@ -602,3 +612,4 @@ export async function buildMultiInstrument(ctx: AudioContext, {
   console.log(`%c[InstrumentFactory] Build process COMPLETED for type: ${type}. Final output connected.`, 'color: #32CD32;');
   return api;
 }
+
