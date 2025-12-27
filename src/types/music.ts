@@ -179,8 +179,13 @@ export type FillPolicy = {
 };
 
 export type InstrumentRules = {
-  // Simplified for now
+  melody?: {
+    melodySource?: 'motif' | 'harmony_top_note';
+    [key: string]: any;
+  };
+  [key: string]: any;
 };
+
 
 export type InstrumentOption<T> = {
     name: T;
@@ -214,9 +219,7 @@ export type BlueprintPart = {
   };
   instrumentEntry?: { [key: string]: number };
   instrumentExit?: { [key: string]: number };
-  instrumentRules: {
-    [key: string]: any;
-  };
+  instrumentRules: InstrumentRules;
   bassAccompanimentDouble?: {
     enabled: boolean;
     instrument: AccompanimentInstrument;

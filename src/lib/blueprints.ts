@@ -217,18 +217,19 @@ export const MelancholicAmbientBlueprint: MusicBlueprint = {
     parts: [
        {
         id: 'INTRO_1', name: 'Emergence', duration: { percent: 8 }, // ~10 bars
-        layers: { accompaniment: true, harmony: false, sfx: false, sparkles: false, drums: true, melody: true },
+        layers: { accompaniment: true, drums: true, melody: true },
         instrumentation: { accompaniment: { strategy: 'weighted', options: [{ name: 'ambientPad', weight: 1.0 }] } },
         instrumentRules: {
           accompaniment: { register: { preferred: 'low' } },
-          drums: { pattern: 'composer', density: { min: 0.1, max: 0.3 }, useSnare: false, rareKick: false, usePerc: true }
+          drums: { pattern: 'composer', density: { min: 0.1, max: 0.3 }, useSnare: false, rareKick: false, usePerc: true },
+          melody: { melodySource: 'harmony_top_note' },
         },
         bundles: [ { id: 'INTRO_BUNDLE_1', name: 'Emergence', duration: { percent: 100 }, characteristics: {}, phrases: {} } ],
         outroFill: null,
       },
       {
         id: 'INTRO_2', name: 'Stirrings', duration: { percent: 6 }, // ~7 bars
-        layers: { accompaniment: true, bass: true, sparkles: true, sfx: true, harmony: false, melody: true },
+        layers: { accompaniment: true, bass: true, sparkles: true, sfx: true, melody: true },
         instrumentation: {
           accompaniment: { strategy: 'weighted', options: [{ name: 'ambientPad', weight: 0.9 }, { name: 'organ', weight: 0.1 }] },
           bass: { strategy: 'weighted', options: [{ name: 'ambientDrone', weight: 1.0 }] },
@@ -251,7 +252,8 @@ export const MelancholicAmbientBlueprint: MusicBlueprint = {
                 { name: 'dark', weight: 0.3 },
                 { name: 'common', weight: 0.1 }
               ]
-          }
+          },
+          melody: { melodySource: 'harmony_top_note' },
         },
         bundles: [ { id: 'INTRO_BUNDLE_2', name: 'Stirrings', duration: { percent: 100 }, characteristics: {}, phrases: {} } ],
         outroFill: null,
@@ -265,7 +267,8 @@ export const MelancholicAmbientBlueprint: MusicBlueprint = {
           melody: { strategy: 'weighted', options: [{ name: 'synth', weight: 0.5 }, { name: 'synth_pad_emerald', weight: 0.5 }] }
         },
         instrumentRules: {
-          accompaniment: { register: { preferred: 'low' } }
+          accompaniment: { register: { preferred: 'low' } },
+          melody: { melodySource: 'harmony_top_note' },
         },
         bundles: [ { id: 'INTRO_BUNDLE_3', name: 'Anticipation', duration: { percent: 100 }, characteristics: {}, phrases: {} } ],
         outroFill: { type: 'filter_sweep', duration: 2, parameters: { filterEnd: 0.95 } },
@@ -278,7 +281,10 @@ export const MelancholicAmbientBlueprint: MusicBlueprint = {
             bass: { strategy: 'weighted', options: [{ name: 'classicBass', weight: 1.0 }] },
             melody: { strategy: 'weighted', options: [{ name: 'synth', weight: 0.4 }, { name: 'synth_theremin_vocal', weight: 0.6 }] }
         },
-        instrumentRules: { drums: { pattern: 'ambient_beat', density: { min: 0.4, max: 0.6 } } },
+        instrumentRules: { 
+            drums: { pattern: 'ambient_beat', density: { min: 0.4, max: 0.6 } },
+            melody: { melodySource: 'harmony_top_note' },
+        },
         bundles: [
             { id: 'BUILD_BUNDLE_1', name: 'Stirring', duration: { percent: 50 }, characteristics: {}, phrases: {} },
             { id: 'BUILD_BUNDLE_2', name: 'Intensifying', duration: { percent: 50 }, characteristics: {}, phrases: {} }
@@ -298,7 +304,8 @@ export const MelancholicAmbientBlueprint: MusicBlueprint = {
                 pattern: 'composer', 
                 density: { min: 0.6, max: 0.8 },
                 ride: { enabled: true, quietWindows: [{ start: 0.5, end: 0.65 }] }
-            } 
+            },
+            melody: { melodySource: 'harmony_top_note' },
         },
         bundles: [
             { id: 'MAIN_BUNDLE_1', name: 'Arrival', duration: { percent: 33 }, characteristics: {}, phrases: {} },
@@ -315,7 +322,10 @@ export const MelancholicAmbientBlueprint: MusicBlueprint = {
             bass: { strategy: 'weighted', options: [{ name: 'glideBass', weight: 1.0 }] },
             melody: { strategy: 'weighted', options: [{ name: 'synth', weight: 0.5 }, { name: 'synth_pad_emerald', weight: 0.5 }] }
         },
-        instrumentRules: { drums: { enabled: false } },
+        instrumentRules: { 
+            drums: { enabled: false },
+            melody: { melodySource: 'harmony_top_note' },
+        },
         bundles: [
             { id: 'RELEASE_BUNDLE_1', name: 'Softening', duration: { percent: 50 }, characteristics: {}, phrases: {} },
             { id: 'RELEASE_BUNDLE_2', name: 'Settling', duration: { percent: 50 }, characteristics: {}, phrases: {} }
@@ -369,7 +379,7 @@ export const DarkAmbientBlueprint: MusicBlueprint = {
              instrumentation: {
               bass: { strategy: 'weighted', options: [{ name: 'livingRiff', weight: 1.0 }]},
               accompaniment: { strategy: 'weighted', options: [{ name: 'electricGuitar', weight: 0.8 }, {name: 'organ', weight: 0.2}]},
-              harmony: { strategy: 'weighted', options: [ { name: 'violin', weight: 0.45, octaveShift: -1 }, { name: 'flute', weight: 0.45 }, { name: 'guitarChords', weight: 0.1 } ]}
+              harmony: { strategy: 'weighted', options: [ { name: 'violin', weight: 0.45 }, { name: 'flute', weight: 0.45 }, { name: 'guitarChords', weight: 0.1 } ]}
             },
             instrumentRules: {
                 drums: { pattern: 'composer', density: { min: 0.2, max: 0.4 }, useSnare: false, usePerc: true, useGhostHat: true, rareKick: true },
@@ -399,7 +409,7 @@ export const DarkAmbientBlueprint: MusicBlueprint = {
               bass: { strategy: 'weighted', options: [{ name: 'livingRiff', weight: 1.0 }]},
               accompaniment: { strategy: 'weighted', options: [{ name: 'electricGuitar', weight: 1.0 }]},
               melody: { strategy: 'weighted', options: [{ name: 'theremin', weight: 0.6 }, { name: 'synth', weight: 0.4 }] },
-              harmony: { strategy: 'weighted', options: [ { name: 'violin', weight: 0.45, octaveShift: -1 }, { name: 'flute', weight: 0.45 }, { name: 'guitarChords', weight: 0.1 } ]}
+              harmony: { strategy: 'weighted', options: [ { name: 'violin', weight: 0.45 }, { name: 'flute', weight: 0.45 }, { name: 'guitarChords', weight: 0.1 } ]}
             },
             instrumentRules: {
               drums: { pattern: 'composer', density: { min: 0.3, max: 0.5 }, useSnare: false, usePerc: true, useGhostHat: true, rareKick: true },
@@ -769,7 +779,7 @@ export const CalmAmbientBlueprint: MusicBlueprint = {
   rendering: {}
 };
 
-const JoyfulAmbientBlueprint: MusicBlueprint = {
+export const JoyfulAmbientBlueprint: MusicBlueprint = {
     id: 'joyful_ambient',
     name: 'Golden Horizons',
     description: 'Светлый, энергичный и позитивный эмбиент.',
