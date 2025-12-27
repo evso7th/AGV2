@@ -1,6 +1,5 @@
-
 // src/lib/music-theory.ts
-import type { FractalEvent, Mood, Genre, Technique, BassSynthParams, InstrumentType, AccompanimentInstrument, InstrumentHints, AccompanimentTechnique, GhostChord } from '@/types/fractal';
+import type { FractalEvent, Mood, Genre, Technique, BassSynthParams, InstrumentType, AccompanimentInstrument, InstrumentHints, AccompanimentTechnique, GhostChord, SfxRule } from '@/types/fractal';
 import { ElectronicK, TraditionalK, AmbientK, MelancholicMinorK } from './resonance-matrices';
 import { BlueprintNavigator, type NavigationInfo } from './blueprint-navigator';
 import { MelancholicAmbientBlueprint, BLUEPRINT_LIBRARY, getBlueprint } from './blueprints';
@@ -311,9 +310,14 @@ export function generateAmbientBassPhrase(chord: GhostChord, mood: Mood, genre: 
         
         currentTime += duration;
     }
+
+    // Глобальное повышение октавы
+    phrase.forEach(event => {
+        event.note += 12; // Транспонируем на одну октаву вверх
+    });
     
     const phraseNotes = phrase.map(e => e.note).join(' -> ');
-    console.log(`%c[BassAxiom] New phrase generated: ${phraseNotes}`, 'color: #98FB98');
+    console.log(`%c[BassAxiom] New transposed phrase generated: ${phraseNotes}`, 'color: #98FB98');
     
     return phrase;
 };
@@ -1119,6 +1123,7 @@ export function createMelodyMotif(chord: GhostChord, mood: Mood, random: { next:
 
 
     
+
 
 
 
