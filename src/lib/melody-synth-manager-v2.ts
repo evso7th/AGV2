@@ -15,7 +15,7 @@ export class MelodySynthManagerV2 {
     public isInitialized = false;
     private instrument: any | null = null; // Will hold the instance from the factory
     private activePresetName: keyof typeof V2_PRESETS = 'synth';
-    private activeNotes = new Map<number, () => void>(); // Maps MIDI note to a noteOff function
+    private activeNotes = new Map<number, () => void>(); // Maps MIDI note to a cleanup function
 
     constructor(audioContext: AudioContext, destination: AudioNode) {
         this.audioContext = audioContext;
@@ -69,22 +69,23 @@ export class MelodySynthManagerV2 {
             const noteOnTime = barStartTime + (event.time * beatDuration);
             const noteOffTime = noteOnTime + (event.duration * beatDuration);
             
-            // Check if note is already playing, if so, trigger noteOff first
+            // Check if note is already playing, if so, stop it before restarting
             if (this.activeNotes.has(event.note)) {
-                this.activeNotes.get(event.note)?.();
+                 this.instrument.noteOff(event.note, this.audioContext.currentTime);
+                 this.activeNotes.delete(event.note);
             }
 
+            // Schedule noteOn and noteOff with the instrument
             this.instrument.noteOn(event.note, noteOnTime);
+            this.instrument.noteOff(event.note, noteOffTime);
             
-            const noteOff = () => {
-                this.instrument.noteOff(event.note, noteOffTime); // Pass MIDI note to noteOff
+            // Use setTimeout only to clean up the tracking map
+            const cleanup = () => {
                 this.activeNotes.delete(event.note);
             };
-
-            this.activeNotes.set(event.note, noteOff);
+            this.activeNotes.set(event.note, cleanup);
             
-            // Schedule the note off
-            const timeoutId = setTimeout(noteOff, (noteOffTime - this.audioContext.currentTime) * 1000);
+            const timeoutId = setTimeout(cleanup, (noteOffTime - this.audioContext.currentTime + 0.1) * 1000);
         });
     }
     
