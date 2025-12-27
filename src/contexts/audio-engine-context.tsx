@@ -212,13 +212,13 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
 
     if (accompanimentEvents.length > 0) {
         if (useMelodyV2) {
+            console.log('[AudioEngine] V2 ENGINE IS ACTIVE. Routing to V2 managers.');
             if (accompanimentManagerV2Ref.current) {
-                console.log(`%c[AudioEngine @ Bar ${barCount}] Routing ${accompanimentEvents.length} accomp events to V2 Engine.`, 'color: lightgreen');
                 accompanimentManagerV2Ref.current.schedule(accompanimentEvents, barStartTime, tempo, instrumentHints?.accompaniment as keyof typeof V2_PRESETS);
             }
         } else {
+            console.log('[AudioEngine] V2 ENGINE IS INACTIVE. Routing to V1 managers.');
             if (accompanimentManagerRef.current) {
-                console.log(`[AudioEngine @ Bar ${barCount}] Routing ${accompanimentEvents.length} accomp events to V1 Engine.`);
                 accompanimentManagerRef.current.schedule(accompanimentEvents, barStartTime, tempo, instrumentHints?.accompaniment);
             }
         }
@@ -227,12 +227,10 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
     if (melodyEvents.length > 0) {
         if (useMelodyV2) {
             if (melodyManagerV2Ref.current) {
-                console.log(`%c[AudioEngine @ Bar ${barCount}] Routing ${melodyEvents.length} melody events to V2 Engine.`, 'color: lightgreen');
                 melodyManagerV2Ref.current.schedule(melodyEvents, barStartTime, tempo, instrumentHints?.melody as keyof typeof V2_PRESETS);
             }
         } else {
             if (melodyManagerRef.current) {
-                console.log(`[AudioEngine @ Bar ${barCount}] Routing ${melodyEvents.length} melody events to V1 Engine.`);
                 melodyManagerRef.current.schedule(melodyEvents, barStartTime, tempo, instrumentHints?.melody);
             }
         }
