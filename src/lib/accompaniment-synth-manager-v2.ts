@@ -53,7 +53,11 @@ export class AccompanimentSynthManagerV2 {
         }
     }
 
-    public schedule(events: FractalEvent[], barStartTime: number, tempo: number) {
+    public async schedule(events: FractalEvent[], barStartTime: number, tempo: number, instrumentHint?: keyof typeof V2_PRESETS) {
+        if (instrumentHint && instrumentHint !== this.activePresetName) {
+            await this.loadInstrument(instrumentHint);
+        }
+
         if (!this.instrument) return;
 
         const beatDuration = 60 / tempo;
@@ -71,7 +75,7 @@ export class AccompanimentSynthManagerV2 {
             this.instrument.noteOn(event.note, noteOnTime);
             
             const noteOff = () => {
-                this.instrument.noteOff(noteOffTime);
+                this.instrument.noteOff(event.note, noteOffTime);
                 this.activeNotes.delete(event.note);
             };
 
@@ -89,7 +93,9 @@ export class AccompanimentSynthManagerV2 {
 
     public allNotesOff() {
         if (this.instrument) {
-            this.activeNotes.forEach((noteOff) => noteOff());
+             this.activeNotes.forEach((noteOff, note) => {
+                this.instrument.noteOff(note, this.audioContext.currentTime + 0.01);
+            });
             this.activeNotes.clear();
         }
     }
