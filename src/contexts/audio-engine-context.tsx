@@ -21,6 +21,8 @@ import { GuitarChordsSampler } from '@/lib/guitar-chords-sampler';
 import { AcousticGuitarSoloSampler } from '@/lib/acoustic-guitar-solo-sampler';
 import type { FractalEvent, InstrumentHints } from '@/types/fractal';
 import * as Tone from 'tone';
+import { MelodySynthManagerV2 } from '@/lib/melody-synth-manager-v2';
+import { prettyPresets } from '@/lib/presets-v2';
 
 export function noteToMidi(note: string): number {
     return new (Tone.Frequency as any)(note).toMidi();
@@ -53,17 +55,19 @@ interface AudioEngineContextType {
   isInitialized: boolean;
   isInitializing: boolean;
   isPlaying: boolean;
+  useMelodyV2: boolean;
   initialize: () => Promise<boolean>;
   setIsPlaying: (playing: boolean) => void;
   updateSettings: (settings: Partial<WorkerSettings>) => void;
   resetWorker: () => void;
   setVolume: (part: InstrumentPart, volume: number) => void;
-  setInstrument: (part: 'bass' | 'melody' | 'accompaniment' | 'harmony', name: BassInstrument | MelodyInstrument | AccompanimentInstrument) => void;
+  setInstrument: (part: 'bass' | 'melody' | 'accompaniment' | 'harmony', name: BassInstrument | MelodyInstrument | AccompanimentInstrument | keyof typeof prettyPresets) => void;
   setBassTechnique: (technique: BassTechnique) => void;
   setTextureSettings: (settings: Omit<TextureSettings, 'pads' | 'sfx'>) => void;
   setEQGain: (bandIndex: number, gain: number) => void;
   startMasterFadeOut: (durationInSeconds: number) => void;
   cancelMasterFadeOut: () => void;
+  toggleMelodyEngine: () => void;
 }
 
 const AudioEngineContext = createContext<AudioEngineContextType | null>(null);
@@ -81,6 +85,7 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
   const [isInitialized, setIsInitialized] = useState(false);
   const [isInitializing, setIsInitializing] = useState(false);
   const [isPlaying, setIsPlaying] = useState(false);
+  const [useMelodyV2, setUseMelodyV2] = useState(false);
   
   const workerRef = useRef<Worker | null>(null);
   const audioContextRef = useRef<AudioContext | null>(null);
@@ -90,6 +95,7 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
   const bassManagerRef = useRef<BassSynthManager | null>(null);
   const accompanimentManagerRef = useRef<AccompanimentSynthManager | null>(null);
   const melodyManagerRef = useRef<MelodySynthManager | null>(null);
+  const melodyManagerV2Ref = useRef<MelodySynthManagerV2 | null>(null);
   const harmonyManagerRef = useRef<HarmonySynthManager | null>(null);
   const sparklePlayerRef = useRef<SparklePlayer | null>(null);
   const sfxSynthManagerRef = useRef<SfxSynthManager | null>(null);
@@ -105,18 +111,36 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
   
   const { toast } = useToast();
 
-  const setInstrumentCallback = useCallback((part: 'bass' | 'melody' | 'accompaniment' | 'harmony', name: BassInstrument | MelodyInstrument | AccompanimentInstrument | 'piano' | 'guitarChords' | 'violin' | 'flute' | 'acousticGuitarSolo') => {
+  const toggleMelodyEngine = useCallback(() => {
+    setUseMelodyV2(prev => {
+        const newValue = !prev;
+        console.log(`Toggling Melody Engine to V2: ${newValue}`);
+        // Ensure notes from the previous engine are stopped
+        if(newValue) {
+            melodyManagerRef.current?.allNotesOff();
+        } else {
+            melodyManagerV2Ref.current?.allNotesOff();
+        }
+        return newValue;
+    });
+  }, []);
+
+  const setInstrumentCallback = useCallback((part: 'bass' | 'melody' | 'accompaniment' | 'harmony', name: BassInstrument | MelodyInstrument | AccompanimentInstrument | 'piano' | 'guitarChords' | 'violin' | 'flute' | 'acousticGuitarSolo' | keyof typeof prettyPresets) => {
     if (!isInitialized) return;
     if (part === 'accompaniment' && accompanimentManagerRef.current) {
       accompanimentManagerRef.current.setInstrument(name as AccompanimentInstrument);
-    } else if (part === 'melody' && melodyManagerRef.current) {
-      melodyManagerRef.current.setInstrument(name as AccompanimentInstrument);
+    } else if (part === 'melody') {
+        if(useMelodyV2 && melodyManagerV2Ref.current) {
+            melodyManagerV2Ref.current.setInstrument(name as keyof typeof prettyPresets);
+        } else if (melodyManagerRef.current) {
+            melodyManagerRef.current.setInstrument(name as AccompanimentInstrument);
+        }
     } else if (part === 'bass' && bassManagerRef.current) {
         bassManagerRef.current.setPreset(name as BassInstrument);
     } else if (part === 'harmony' && harmonyManagerRef.current) {
         harmonyManagerRef.current.setInstrument(name as 'piano' | 'guitarChords' | 'violin' | 'flute' | 'acousticGuitarSolo' | 'none');
     }
-  }, [isInitialized]);
+  }, [isInitialized, useMelodyV2]);
 
   const scheduleEvents = useCallback((events: FractalEvent[], barStartTime: number, tempo: number, instrumentHints?: InstrumentHints) => {
     console.log(`[AudioEngine.scheduleEvents] Received Events: Total=${events.length}, Harmony=${events.filter(e => e.type === 'harmony').length}, Melody=${events.filter(e => e.type === 'melody').length}`);
@@ -170,8 +194,15 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
         accompanimentManagerRef.current.schedule(accompanimentEvents, barStartTime, tempo, instrumentHints?.accompaniment);
     }
     
-    if (melodyManagerRef.current && melodyEvents.length > 0) {
-        melodyManagerRef.current.schedule(melodyEvents, barStartTime, tempo, instrumentHints?.melody);
+    // Logic to switch between melody synth managers
+    if (melodyEvents.length > 0) {
+        if (useMelodyV2 && melodyManagerV2Ref.current) {
+            console.log("Scheduling melody with V2 engine");
+            melodyManagerV2Ref.current.schedule(melodyEvents, barStartTime, tempo);
+        } else if (melodyManagerRef.current) {
+            console.log("Scheduling melody with V1 engine");
+            melodyManagerRef.current.schedule(melodyEvents, barStartTime, tempo, instrumentHints?.melody);
+        }
     }
 
     if (harmonyManagerRef.current && harmonyEvents.length > 0) {
@@ -181,7 +212,7 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
     if (sfxSynthManagerRef.current && sfxEvents.length > 0) {
         sfxSynthManagerRef.current.trigger(sfxEvents, barStartTime, tempo);
     }
-  }, []);
+  }, [useMelodyV2]);
 
   const setBassTechniqueCallback = useCallback((technique: BassTechnique) => {
     if (bassManagerRef.current) {
@@ -241,6 +272,11 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
         if (!melodyManagerRef.current) {
             melodyManagerRef.current = new MelodySynthManager(context, gainNodesRef.current.melody!);
             initPromises.push(melodyManagerRef.current.init());
+        }
+
+        if (!melodyManagerV2Ref.current) {
+            melodyManagerV2Ref.current = new MelodySynthManagerV2(context, gainNodesRef.current.melody!);
+            initPromises.push(melodyManagerV2Ref.current.init());
         }
         
         if (!harmonyManagerRef.current) {
@@ -324,6 +360,7 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
     drumMachineRef.current?.stop();
     accompanimentManagerRef.current?.allNotesOff();
     melodyManagerRef.current?.allNotesOff();
+    melodyManagerV2Ref.current?.allNotesOff();
     harmonyManagerRef.current?.allNotesOff();
     sparklePlayerRef.current?.stopAll();
     sfxSynthManagerRef.current?.allNotesOff();
@@ -384,12 +421,13 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
 
   return (
     <AudioEngineContext.Provider value={{
-        isInitialized, isInitializing, isPlaying, initialize,
+        isInitialized, isInitializing, isPlaying, useMelodyV2, initialize,
         setIsPlaying: setIsPlayingCallback, updateSettings: updateSettingsCallback,
         resetWorker: resetWorkerCallback,
         setVolume: setVolumeCallback, setInstrument: setInstrumentCallback,
         setBassTechnique: setBassTechniqueCallback, setTextureSettings: setTextureSettingsCallback,
         setEQGain: setEQGainCallback, startMasterFadeOut, cancelMasterFadeOut,
+        toggleMelodyEngine,
     }}>
       {children}
     </AudioEngineContext.Provider>
