@@ -156,7 +156,7 @@ export async function buildMultiInstrument(ctx: AudioContext, {
   try {
       if (plateIRUrl) {
           reverb.buffer = await loadIR(ctx, plateIRUrl);
-          console.log('[InstrumentFactory] Plate Reverb IR loaded.');
+          // console.log('[InstrumentFactory] Plate Reverb IR loaded.');
       }
   } catch (e) {
       console.error('[InstrumentFactory] Failed to load plate reverb IR, continuing without it.', e);
@@ -164,7 +164,7 @@ export async function buildMultiInstrument(ctx: AudioContext, {
 
   const revMix = ctx.createGain(); revMix.gain.value = preset.reverbMix ?? 0.18;
   if (reverb.buffer) {
-    console.log('[InstrumentFactory] Connecting reverb to master.');
+    // console.log('[InstrumentFactory] Connecting reverb to master.');
     reverb.connect(master);
   }
 
@@ -185,42 +185,33 @@ export async function buildMultiInstrument(ctx: AudioContext, {
     } = preset;
 
     const organOut = ctx.createGain(); organOut.gain.value = 0.6; console.log('[Organ] Created organOut');
-    const organLPF = ctx.createBiquadFilter(); organLPF.type='lowpass'; organLPF.frequency.value=lpf; organLPF.Q.value=0.7; console.log('[Organ] Created organLPF');
-    const organHPF = ctx.createBiquadFilter(); organHPF.type='highpass'; organHPF.frequency.value=hpf; organHPF.Q.value=0.7; console.log('[Organ] Created organHPF');
-    const chorus = makeChorus(ctx, {rate:0.7, depth:0.005, mix:chorusMix}); console.log('[Organ] Created chorus');
+    const organLPF = ctx.createBiquadFilter(); organLPF.type='lowpass'; organLPF.frequency.value=lpf; organLPF.Q.value=0.7;
+    const organHPF = ctx.createBiquadFilter(); organHPF.type='highpass'; organHPF.frequency.value=hpf; organHPF.Q.value=0.7;
+    const chorus = makeChorus(ctx, {rate:0.7, depth:0.005, mix:chorusMix});
 
-    // Leslie (упрощённо): амп‑мод+пан‑мод с ускорением
-    const pan = ctx.createStereoPanner(); pan.pan.value = 0; console.log('[Organ] Created pan');
-    const trem = ctx.createGain(); trem.gain.value = 1.0; console.log('[Organ] Created trem');
+    const pan = ctx.createStereoPanner(); pan.pan.value = 0;
+    const trem = ctx.createGain(); trem.gain.value = 1.0;
     const lfo = ctx.createOscillator(); lfo.type='sine';
     const lfoPanGain = ctx.createGain(); const lfoAmpGain = ctx.createGain();
-    lfoPanGain.gain.value = 0.7; lfoAmpGain.gain.value = 0.08; // ширина/амп‑колесо
+    lfoPanGain.gain.value = 0.7; lfoAmpGain.gain.value = 0.08;
     lfo.connect(lfoPanGain); lfo.connect(lfoAmpGain);
     lfoPanGain.connect(pan.pan); lfoAmpGain.connect(trem.gain);
     lfo.start();
-    console.log('[Organ] Leslie LFO setup complete');
 
 
-    // Drawbar partials
     const foot = [16, 5.333, 8, 4, 2.666, 2, 1.6, 1.333, 1];
     const gains = drawbars.map(v => (v/8));
     const activeOscs = new Map();
 
-    // chain
     const revSend = ctx.createGain(); revSend.gain.value = reverbMix;
     organOut.connect(master);
     if(reverb.buffer) {
         organOut.connect(revSend); revSend.connect(reverb);
     }
-    console.log('[Organ] Master chain connected');
 
-
-    // vibrato (мелкий pitch LFO на все осцилляторы)
     const vib = ctx.createOscillator(); vib.type='sine'; vib.frequency.value=vibratoRate;
     const vibGain = ctx.createGain(); vibGain.gain.value = vibratoDepth; vib.connect(vibGain); vib.start();
-    console.log('[Organ] Vibrato setup complete');
 
-    // leslie speed control
     let targetRate = (leslie.mode==='fast'? leslie.fast : leslie.slow);
     lfo.frequency.value = targetRate;
     const setLeslie = (mode: 'fast' | 'slow')=>{
@@ -239,38 +230,32 @@ export async function buildMultiInstrument(ctx: AudioContext, {
       
       const voiceGain = ctx.createGain(); voiceGain.gain.value = 0; console.log(`[Organ MIDI=${midi}] Created voiceGain`);
       
-      // #ЗАЧЕМ: Этот блок подключает индивидуальный гейн голоса к основной цепи эффектов.
-      // #ЧТО: voiceGain -> chorus -> HPF -> LPF -> trem -> pan -> organOut
-      // #СВЯЗИ: Если эта цепочка неверна, звук не пройдет обработку.
       voiceGain.connect(chorus.input); console.log(`[Organ MIDI=${midi}] Connected voiceGain -> chorus`);
-      chorus.output.connect(organHPF); console.log(`[Organ MIDI=${midi}] Connected chorus -> HPF`);
-      organHPF.connect(organLPF); console.log(`[Organ MIDI=${midi}] Connected HPF -> LPF`);
-      organLPF.connect(trem); console.log(`[Organ MIDI=${midi}] Connected LPF -> trem`);
-      trem.connect(pan); console.log(`[Organ MIDI=${midi}] Connected trem -> pan`);
+      chorus.output.connect(organHPF);
+      organHPF.connect(organLPF);
+      organLPF.connect(trem);
+      trem.connect(pan);
       pan.connect(organOut); console.log(`[Organ MIDI=${midi}] Connected pan -> organOut`);
 
 
-      // key click (очень короткий шумовой импульс)
       const kc = ctx.createBufferSource();
       const noise = ctx.createBuffer(1, Math.floor(ctx.sampleRate*keyClick), ctx.sampleRate);
       const d = noise.getChannelData(0); for(let i=0;i<d.length;i++) d[i]=(Math.random()*2-1)*0.2;
       kc.buffer=noise; const kcEnv=ctx.createGain(); kcEnv.gain.value=0.6; kc.connect(kcEnv); kcEnv.connect(voiceGain); kc.start(when); kc.stop(when+keyClick);
 
-      // Частоты гармоник по футам
       const oscs = foot.map((ft, i) => {
         const osc = ctx.createOscillator();
-        osc.type = 'sine'; // гладкие паршалы
-        const ratio = (8/ft); // основной 8'
+        osc.type = 'sine';
+        const ratio = (8/ft);
         osc.frequency.setValueAtTime(f0*ratio, when);
         const g = ctx.createGain(); g.gain.value = gains[i]*0.4;
         osc.connect(g); g.connect(voiceGain);
-        vibGain.connect(osc.detune); // vibrato
+        vibGain.connect(osc.detune);
         osc.start(when);
         return {osc,g};
       });
       activeOscs.set(midi, { oscs, voiceGain });
       
-      // envelope (у органа почти нет ADSR — делаем мягкий gate)
       voiceGain.gain.cancelScheduledValues(when);
       voiceGain.gain.linearRampToValueAtTime(1.0, when+0.01);
     };
@@ -305,46 +290,33 @@ export async function buildMultiInstrument(ctx: AudioContext, {
         reverbMix = 0.18
     } = preset;
 
-    const pre = ctx.createGain(); pre.gain.value = 0.9; console.log('[Synth] Created pre-gain');
+    const pre = ctx.createGain(); pre.gain.value = 0.9;
     
-    const filt = ctx.createBiquadFilter(); filt.type='lowpass'; filt.frequency.value=lpf.cutoff; filt.Q.value=lpf.q; console.log('[Synth] Created filter 1');
-    const filt2 = ctx.createBiquadFilter(); filt2.type='lowpass'; filt2.frequency.value=lpf.cutoff; filt2.Q.value=lpf.q; console.log('[Synth] Created filter 2');
+    const filt = ctx.createBiquadFilter(); filt.type='lowpass'; filt.frequency.value=lpf.cutoff; filt.Q.value=lpf.q;
+    const filt2 = ctx.createBiquadFilter(); filt2.type='lowpass'; filt2.frequency.value=lpf.cutoff; filt2.Q.value=lpf.q;
     const use2pole = (lpf.mode!=='24dB');
 
-    // #ЗАЧЕМ: Это основная цепь прохождения "сухого" сигнала.
-    // #ЧТО: pre -> vGain -> filt -> (filt2) -> master
-    // #СВЯЗИ: Ошибки здесь приведут к отсутствию основного звука.
     const mainChain = use2pole ? filt : (filt.connect(filt2), filt2);
     mainChain.connect(master);
-    console.log(`[Synth] Main dry chain connected: ${use2pole ? '1-pole (filt)' : '2-pole (filt2)'} -> master`);
     
     // FX sends
     const chorusNode = chorus.on ? makeChorus(ctx, chorus) : null;
-    if(chorusNode) console.log('[Synth] Created chorusNode');
     const delayNode  = delay.on  ? makeFilteredDelay(ctx, delay) : null;
-    if(delayNode) console.log('[Synth] Created delayNode');
     const revSend = ctx.createGain(); revSend.gain.value = reverbMix;
     if (reverb.buffer) {
         revSend.connect(reverb);
-        console.log('[Synth] Reverb send connected to main reverb');
     }
     
-    // #ЗАЧЕМ: Это цепь эффектов. Звук должен разветвляться и идти сюда.
-    // #ЧТО: mainChain -> revSend (-> reverb)
-    //      mainChain -> chorusNode -> master/revSend
-    //      mainChain -> delayNode -> master/revSend
-    // #СВЯЗИ: Ошибки здесь приведут к отсутствию эффектов.
     mainChain.connect(revSend);
-    console.log('[Synth] mainChain -> revSend');
     if (chorusNode) { 
-        mainChain.connect(chorusNode.input); console.log('[Synth] mainChain -> chorusNode');
-        chorusNode.output.connect(master); console.log('[Synth] chorusNode -> master');
-        chorusNode.output.connect(revSend); console.log('[Synth] chorusNode -> revSend');
+        mainChain.connect(chorusNode.input);
+        chorusNode.output.connect(master);
+        chorusNode.output.connect(revSend);
     }
     if (delayNode) {
-        mainChain.connect(delayNode.input); console.log('[Synth] mainChain -> delayNode');
-        delayNode.output.connect(master); console.log('[Synth] delayNode -> master');
-        delayNode.output.connect(revSend); console.log('[Synth] delayNode -> revSend');
+        mainChain.connect(delayNode.input);
+        delayNode.output.connect(master);
+        delayNode.output.connect(revSend);
     }
     
 
@@ -355,7 +327,6 @@ export async function buildMultiInstrument(ctx: AudioContext, {
       l.connect(lg);
       if (lfo.target==='filter'){ lg.connect(filt.frequency); if (!use2pole) lg.connect(filt2.frequency); }
       l.start();
-      console.log('[Synth] LFO created and connected');
     }
 
     // OSCs
@@ -375,11 +346,8 @@ export async function buildMultiInstrument(ctx: AudioContext, {
       const f = midiToHz(midi);
       
       const vGain = ctx.createGain(); vGain.gain.value = 0.0;
-      // #ЗАЧЕМ: vGain - это ADSR-огибающая для КОНКРЕТНОЙ ноты. Она должна получать сигнал от осцилляторов и передавать его дальше в общую цепь.
-      // #ЧТО: pre (сумматор) -> vGain (ADSR) -> filt (общий фильтр)
-      // #СВЯЗИ: Это подключение было исправлено в предыдущих планах.
-      pre.connect(vGain); console.log(`[Synth MIDI=${midi}] Connected pre -> vGain`);
-      vGain.connect(filt); console.log(`[Synth MIDI=${midi}] Connected vGain -> filt`);
+      pre.connect(vGain);
+      vGain.connect(filt);
 
       const oscs = osc.map((o: any)=>{
         const x = ctx.createOscillator(); x.type=o.type as OscillatorType; 
@@ -388,12 +356,10 @@ export async function buildMultiInstrument(ctx: AudioContext, {
         x.frequency.setValueAtTime(f * detuneFactor * octaveFactor, when);
         
         const g = ctx.createGain(); g.gain.value=o.gain;
-        x.connect(g); g.connect(vGain); // Осцилляторы этой ноты идут на ее персональный vGain
+        x.connect(g); g.connect(vGain);
         x.start(when);
         return {x,g};
       });
-      console.log(`[Synth MIDI=${midi}] Created and connected ${oscs.length} oscillators`);
-
 
       let noiseNode = null;
       if (noise.on && noiseBuffer){
@@ -401,14 +367,12 @@ export async function buildMultiInstrument(ctx: AudioContext, {
         n.buffer = noiseBuffer;
         n.loop = true;
         const ng = ctx.createGain(); ng.gain.value=noise.gain;
-        n.connect(ng); ng.connect(vGain); n.start(when); // Шум тоже идет на персональный vGain
+        n.connect(ng); ng.connect(vGain); n.start(when);
         noiseNode = {n,ng};
-        console.log(`[Synth MIDI=${midi}] Created and connected noise source`);
       }
       
       activeVoices.set(midi, { oscs, noise: noiseNode, gain: vGain });
 
-      // ADSR
       vGain.gain.cancelScheduledValues(when);
       vGain.gain.setValueAtTime(0.0001, when);
       vGain.gain.linearRampToValueAtTime(1.0, when+adsr.a);
@@ -639,14 +603,8 @@ export async function buildMultiInstrument(ctx: AudioContext, {
       console.log(`[InstrumentFactory] Unknown or unhandled instrument type: ${type}. Creating fallback gain node.`);
   }
 
-  // #РЕШЕНИЕ: Гарантированное подключение к выходу.
-  // #ЗАЧЕМ: Если `output` по какой-то причине не был передан или является `null`,
-  //        мы все равно подключаемся к главному выходу аудиоконтекста (`ctx.destination`),
-  //        чтобы избежать "тихого" сбоя и гарантировать, что звук будет слышен.
   master.connect(output || ctx.destination);
   
-  // TELEMETRY POINT
   console.log(`%c[InstrumentFactory] Build process COMPLETED for type: ${type}. Final output connected.`, 'color: #32CD32;');
   return api;
 }
-
