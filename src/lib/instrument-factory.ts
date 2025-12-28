@@ -164,6 +164,7 @@ export async function buildMultiInstrument(ctx: AudioContext, {
 
   const revMix = ctx.createGain(); revMix.gain.value = preset.reverbMix ?? 0.18;
   if (reverb.buffer) {
+    console.log('[InstrumentFactory] Connecting reverb to master.');
     reverb.connect(master);
   }
 
@@ -183,20 +184,22 @@ export async function buildMultiInstrument(ctx: AudioContext, {
       chorusMix = 0.2, reverbMix = 0.15
     } = preset;
 
-    const organOut = ctx.createGain(); organOut.gain.value = 0.6;
-    const organLPF = ctx.createBiquadFilter(); organLPF.type='lowpass'; organLPF.frequency.value=lpf; organLPF.Q.value=0.7;
-    const organHPF = ctx.createBiquadFilter(); organHPF.type='highpass'; organHPF.frequency.value=hpf; organHPF.Q.value=0.7;
-    const chorus = makeChorus(ctx, {rate:0.7, depth:0.005, mix:chorusMix});
+    const organOut = ctx.createGain(); organOut.gain.value = 0.6; console.log('[Organ] Created organOut');
+    const organLPF = ctx.createBiquadFilter(); organLPF.type='lowpass'; organLPF.frequency.value=lpf; organLPF.Q.value=0.7; console.log('[Organ] Created organLPF');
+    const organHPF = ctx.createBiquadFilter(); organHPF.type='highpass'; organHPF.frequency.value=hpf; organHPF.Q.value=0.7; console.log('[Organ] Created organHPF');
+    const chorus = makeChorus(ctx, {rate:0.7, depth:0.005, mix:chorusMix}); console.log('[Organ] Created chorus');
 
     // Leslie (упрощённо): амп‑мод+пан‑мод с ускорением
-    const pan = ctx.createStereoPanner(); pan.pan.value = 0;
-    const trem = ctx.createGain(); trem.gain.value = 1.0;
+    const pan = ctx.createStereoPanner(); pan.pan.value = 0; console.log('[Organ] Created pan');
+    const trem = ctx.createGain(); trem.gain.value = 1.0; console.log('[Organ] Created trem');
     const lfo = ctx.createOscillator(); lfo.type='sine';
     const lfoPanGain = ctx.createGain(); const lfoAmpGain = ctx.createGain();
     lfoPanGain.gain.value = 0.7; lfoAmpGain.gain.value = 0.08; // ширина/амп‑колесо
     lfo.connect(lfoPanGain); lfo.connect(lfoAmpGain);
     lfoPanGain.connect(pan.pan); lfoAmpGain.connect(trem.gain);
     lfo.start();
+    console.log('[Organ] Leslie LFO setup complete');
+
 
     // Drawbar partials
     const foot = [16, 5.333, 8, 4, 2.666, 2, 1.6, 1.333, 1];
@@ -209,10 +212,13 @@ export async function buildMultiInstrument(ctx: AudioContext, {
     if(reverb.buffer) {
         organOut.connect(revSend); revSend.connect(reverb);
     }
+    console.log('[Organ] Master chain connected');
+
 
     // vibrato (мелкий pitch LFO на все осцилляторы)
     const vib = ctx.createOscillator(); vib.type='sine'; vib.frequency.value=vibratoRate;
     const vibGain = ctx.createGain(); vibGain.gain.value = vibratoDepth; vib.connect(vibGain); vib.start();
+    console.log('[Organ] Vibrato setup complete');
 
     // leslie speed control
     let targetRate = (leslie.mode==='fast'? leslie.fast : leslie.slow);
@@ -225,18 +231,24 @@ export async function buildMultiInstrument(ctx: AudioContext, {
     };
 
     api.noteOn = (midi, when=ctx.currentTime) => {
+      console.log(`%c[Organ] noteOn triggered for MIDI: ${midi}`, 'color: lightblue');
       if (activeOscs.has(midi)) {
           api.noteOff(midi, when);
       }
       const f0 = midiToHz(midi);
       
-      const voiceGain = ctx.createGain(); voiceGain.gain.value = 0;
-      voiceGain.connect(chorus.input);
-      chorus.output.connect(organHPF);
-      organHPF.connect(organLPF);
-      organLPF.connect(trem);
-      trem.connect(pan);
-      pan.connect(organOut);
+      const voiceGain = ctx.createGain(); voiceGain.gain.value = 0; console.log(`[Organ MIDI=${midi}] Created voiceGain`);
+      
+      // #ЗАЧЕМ: Этот блок подключает индивидуальный гейн голоса к основной цепи эффектов.
+      // #ЧТО: voiceGain -> chorus -> HPF -> LPF -> trem -> pan -> organOut
+      // #СВЯЗИ: Если эта цепочка неверна, звук не пройдет обработку.
+      voiceGain.connect(chorus.input); console.log(`[Organ MIDI=${midi}] Connected voiceGain -> chorus`);
+      chorus.output.connect(organHPF); console.log(`[Organ MIDI=${midi}] Connected chorus -> HPF`);
+      organHPF.connect(organLPF); console.log(`[Organ MIDI=${midi}] Connected HPF -> LPF`);
+      organLPF.connect(trem); console.log(`[Organ MIDI=${midi}] Connected LPF -> trem`);
+      trem.connect(pan); console.log(`[Organ MIDI=${midi}] Connected trem -> pan`);
+      pan.connect(organOut); console.log(`[Organ MIDI=${midi}] Connected pan -> organOut`);
+
 
       // key click (очень короткий шумовой импульс)
       const kc = ctx.createBufferSource();
@@ -263,6 +275,7 @@ export async function buildMultiInstrument(ctx: AudioContext, {
       voiceGain.gain.linearRampToValueAtTime(1.0, when+0.01);
     };
     api.noteOff = (midi, when=ctx.currentTime) => {
+      console.log(`%c[Organ] noteOff triggered for MIDI: ${midi}`, 'color: lightcoral');
       const voice = activeOscs.get(midi);
       if (!voice) return;
       voice.voiceGain.gain.cancelScheduledValues(when);
@@ -292,33 +305,46 @@ export async function buildMultiInstrument(ctx: AudioContext, {
         reverbMix = 0.18
     } = preset;
 
-    const pre = ctx.createGain(); pre.gain.value = 0.9;
+    const pre = ctx.createGain(); pre.gain.value = 0.9; console.log('[Synth] Created pre-gain');
     
-    const filt = ctx.createBiquadFilter(); filt.type='lowpass'; filt.frequency.value=lpf.cutoff; filt.Q.value=lpf.q;
-    const filt2 = ctx.createBiquadFilter(); filt2.type='lowpass'; filt2.frequency.value=lpf.cutoff; filt2.Q.value=lpf.q;
+    const filt = ctx.createBiquadFilter(); filt.type='lowpass'; filt.frequency.value=lpf.cutoff; filt.Q.value=lpf.q; console.log('[Synth] Created filter 1');
+    const filt2 = ctx.createBiquadFilter(); filt2.type='lowpass'; filt2.frequency.value=lpf.cutoff; filt2.Q.value=lpf.q; console.log('[Synth] Created filter 2');
     const use2pole = (lpf.mode!=='24dB');
 
+    // #ЗАЧЕМ: Это основная цепь прохождения "сухого" сигнала.
+    // #ЧТО: pre -> vGain -> filt -> (filt2) -> master
+    // #СВЯЗИ: Ошибки здесь приведут к отсутствию основного звука.
     const mainChain = use2pole ? filt : (filt.connect(filt2), filt2);
     mainChain.connect(master);
+    console.log(`[Synth] Main dry chain connected: ${use2pole ? '1-pole (filt)' : '2-pole (filt2)'} -> master`);
     
     // FX sends
     const chorusNode = chorus.on ? makeChorus(ctx, chorus) : null;
+    if(chorusNode) console.log('[Synth] Created chorusNode');
     const delayNode  = delay.on  ? makeFilteredDelay(ctx, delay) : null;
+    if(delayNode) console.log('[Synth] Created delayNode');
     const revSend = ctx.createGain(); revSend.gain.value = reverbMix;
     if (reverb.buffer) {
         revSend.connect(reverb);
+        console.log('[Synth] Reverb send connected to main reverb');
     }
     
-    mainChain.connect(revSend); // Send to reverb
+    // #ЗАЧЕМ: Это цепь эффектов. Звук должен разветвляться и идти сюда.
+    // #ЧТО: mainChain -> revSend (-> reverb)
+    //      mainChain -> chorusNode -> master/revSend
+    //      mainChain -> delayNode -> master/revSend
+    // #СВЯЗИ: Ошибки здесь приведут к отсутствию эффектов.
+    mainChain.connect(revSend);
+    console.log('[Synth] mainChain -> revSend');
     if (chorusNode) { 
-        mainChain.connect(chorusNode.input); 
-        chorusNode.output.connect(master); 
-        chorusNode.output.connect(revSend); 
+        mainChain.connect(chorusNode.input); console.log('[Synth] mainChain -> chorusNode');
+        chorusNode.output.connect(master); console.log('[Synth] chorusNode -> master');
+        chorusNode.output.connect(revSend); console.log('[Synth] chorusNode -> revSend');
     }
     if (delayNode) {
-        mainChain.connect(delayNode.input); 
-        delayNode.output.connect(master); 
-        delayNode.output.connect(revSend);
+        mainChain.connect(delayNode.input); console.log('[Synth] mainChain -> delayNode');
+        delayNode.output.connect(master); console.log('[Synth] delayNode -> master');
+        delayNode.output.connect(revSend); console.log('[Synth] delayNode -> revSend');
     }
     
 
@@ -329,6 +355,7 @@ export async function buildMultiInstrument(ctx: AudioContext, {
       l.connect(lg);
       if (lfo.target==='filter'){ lg.connect(filt.frequency); if (!use2pole) lg.connect(filt2.frequency); }
       l.start();
+      console.log('[Synth] LFO created and connected');
     }
 
     // OSCs
@@ -344,10 +371,15 @@ export async function buildMultiInstrument(ctx: AudioContext, {
 
 
     api.noteOn = (midi, when=ctx.currentTime) => {
+      console.log(`%c[Synth] noteOn triggered for MIDI: ${midi}`, 'color: lightblue');
       const f = midiToHz(midi);
       
       const vGain = ctx.createGain(); vGain.gain.value = 0.0;
-      vGain.connect(filt);
+      // #ЗАЧЕМ: vGain - это ADSR-огибающая для КОНКРЕТНОЙ ноты. Она должна получать сигнал от осцилляторов и передавать его дальше в общую цепь.
+      // #ЧТО: pre (сумматор) -> vGain (ADSR) -> filt (общий фильтр)
+      // #СВЯЗИ: Это подключение было исправлено в предыдущих планах.
+      pre.connect(vGain); console.log(`[Synth MIDI=${midi}] Connected pre -> vGain`);
+      vGain.connect(filt); console.log(`[Synth MIDI=${midi}] Connected vGain -> filt`);
 
       const oscs = osc.map((o: any)=>{
         const x = ctx.createOscillator(); x.type=o.type as OscillatorType; 
@@ -356,10 +388,12 @@ export async function buildMultiInstrument(ctx: AudioContext, {
         x.frequency.setValueAtTime(f * detuneFactor * octaveFactor, when);
         
         const g = ctx.createGain(); g.gain.value=o.gain;
-        x.connect(g); g.connect(vGain);
+        x.connect(g); g.connect(vGain); // Осцилляторы этой ноты идут на ее персональный vGain
         x.start(when);
         return {x,g};
       });
+      console.log(`[Synth MIDI=${midi}] Created and connected ${oscs.length} oscillators`);
+
 
       let noiseNode = null;
       if (noise.on && noiseBuffer){
@@ -367,8 +401,9 @@ export async function buildMultiInstrument(ctx: AudioContext, {
         n.buffer = noiseBuffer;
         n.loop = true;
         const ng = ctx.createGain(); ng.gain.value=noise.gain;
-        n.connect(ng); ng.connect(vGain); n.start(when);
+        n.connect(ng); ng.connect(vGain); n.start(when); // Шум тоже идет на персональный vGain
         noiseNode = {n,ng};
+        console.log(`[Synth MIDI=${midi}] Created and connected noise source`);
       }
       
       activeVoices.set(midi, { oscs, noise: noiseNode, gain: vGain });
@@ -381,6 +416,7 @@ export async function buildMultiInstrument(ctx: AudioContext, {
     };
 
     api.noteOff = (midi, when=ctx.currentTime) => {
+      console.log(`%c[Synth] noteOff triggered for MIDI: ${midi}`, 'color: lightcoral');
       const voice = activeVoices.get(midi);
       if (!voice) return;
       
@@ -539,7 +575,8 @@ export async function buildMultiInstrument(ctx: AudioContext, {
         revSend.connect(reverb);
     }
     
-    let activeVoice: any = null;
+    let activeVoices = new Map<number, { oscMain: OscillatorNode, oscDet: OscillatorNode, oscSub: OscillatorNode }>();
+
 
     api.noteOn = (midi, when=ctx.currentTime)=>{
       const f = midiToHz(midi);
@@ -578,19 +615,21 @@ export async function buildMultiInstrument(ctx: AudioContext, {
       vGain.gain.linearRampToValueAtTime(1.0, when+adsr.a);
       vGain.gain.setTargetAtTime(adsr.s, when+adsr.a, adsr.d / 3);
 
-      activeVoice = { oscMain, oscDet, oscSub };
+      activeVoices.set(midi, { oscMain, oscDet, oscSub });
     };
     api.noteOff=(midi, when=ctx.currentTime)=>{
+      const voice = activeVoices.get(midi);
+      if(!voice) return;
+
       vGain.gain.cancelScheduledValues(when);
       vGain.gain.setValueAtTime(vGain.gain.value, when);
       vGain.gain.setTargetAtTime(0.0001, when, adsr.r / 3);
-      if (activeVoice) {
-          const stopTime = when + adsr.r;
-          activeVoice.oscMain.stop(stopTime);
-          activeVoice.oscDet.stop(stopTime);
-          activeVoice.oscSub.stop(stopTime);
-          activeVoice = null;
-      }
+      
+      const stopTime = when + adsr.r;
+      voice.oscMain.stop(stopTime);
+      voice.oscDet.stop(stopTime);
+      voice.oscSub.stop(stopTime);
+      activeVoices.delete(midi);
     };
     api.setParam=(k,v)=>{
       if (k==='pickupLPF') pickupLPF.frequency.value=v;
