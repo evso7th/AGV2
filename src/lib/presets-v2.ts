@@ -1,4 +1,5 @@
 
+
 // V2 Presets — орган, синты/пэды/терменвокс, меллотрон (струн/хор/флейта/акустика),
 // гитары (гилмор: shineOn/muffLead). Все пресеты совместимы с buildMultiInstrument().
 
@@ -9,15 +10,20 @@ export const V2_PRESETS = {
     drawbars: [8, 8, 4, 2, 0, 0, 0, 1, 0], // Классический "церковный"
     vibratoRate: 5.8, vibratoDepth: 0.002,
     leslie: { mode: 'slow', slow: 0.5, fast: 6.0, accel: 0.7 },
-    lpf: 7500, hpf: 80, chorusMix: 0.3, reverbMix: 0.25
+    lpf: 4500, hpf: 80, chorusMix: 0.3, reverbMix: 0.25,
+    // #ПЛАН316: Добавлен саб-бас слой для "веса"
+    osc: [ { type: 'sine', detune: 0, octave: -1, gain: 0.4 } ]
   },
 
   organ_soft_jazz: {
     type: 'organ',
-    drawbars: [8, 8, 0, 0, 0, 0, 0, 0, 0], // Мягкий, только первые два регистра
+    // #ПЛАН316: Изменены drawbars для уникального джазового тембра
+    drawbars: [8, 4, 2, 0, 0, 0, 0, 0, 0], 
     vibratoRate: 5.2, vibratoDepth: 0.002,
     leslie: { mode: 'slow', slow: 0.8, fast: 6.5, accel: 0.5 },
-    lpf: 6000, hpf: 120, chorusMix: 0.2, reverbMix: 0.15
+    lpf: 4000, hpf: 120, chorusMix: 0.2, reverbMix: 0.15,
+    // #ПЛАН316: Добавлен саб-бас слой
+    osc: [ { type: 'sine', detune: 0, octave: -1, gain: 0.5 } ]
   },
 
   // ───────────────────────── SYNTH (AMBIENT PAD / THEREMIN) ─────────────────────────
@@ -30,8 +36,9 @@ export const V2_PRESETS = {
     ],
     noise: { on: true, color: 'pink', gain: 0.03 },
     adsr:  { a: 0.8, d: 1.2, s: 0.7, r: 3.0 },
-    lpf:   { cutoff: 1800, q: 1.2, mode: '24dB' },
-    lfo:   { rate: 0.15, amount: 400, target: 'filter' },
+    // #ПЛАН316: Слегка подрезан LPF для мягкости
+    lpf:   { cutoff: 1600, q: 1.2, mode: '24dB' }, 
+    lfo:   { rate: 0.18, amount: 450, target: 'filter' },
     chorus:{ on: true, rate: 0.2, depth: 0.007, mix: 0.4 },
     delay: { on: true, time: 0.5, fb: 0.3, hc: 4000, mix: 0.2 },
     reverbMix: 0.25
@@ -57,7 +64,9 @@ export const V2_PRESETS = {
     type: 'synth',
     osc: [
       { type: 'sine', detune: 0,  gain: 1.0 },
-      { type: 'sine', detune: 5, gain: 0.15 } // slight harmonic
+      { type: 'sine', detune: 5, gain: 0.15 }, // slight harmonic
+      // #ПЛАН316: Добавлен саб-бас слой
+      { type: 'sine', detune: 0, octave: -1, gain: 0.35 }
     ],
     noise: { on: false },
     adsr:  { a: 0.4, d: 0.1, s: 0.9, r: 0.8 },
@@ -120,11 +129,13 @@ export const V2_PRESETS = {
   electricGuitar: { // Muff Lead
     type: 'guitar',
     variant: 'muffLead',
-    osc: { width: 0.48, detune: 7, mainGain: 0.8, detGain: 0.2, subGain: 0.3 },
+    // #ПЛАН316: Исправлен detune, чтобы убрать расстроенность, добавлен sub-bass
+    osc: { width: 0.48, detune: 0, mainGain: 0.8, detGain: 0.2, subGain: 0.4 },
     pickup: { cutoff: 3400, q: 1.1 },
     comp:   { threshold: -20, ratio: 4, attack: 0.008, release: 0.14, makeup: +4 },
     drive:  { type: 'muff', amount: 0.65 },
-    post:   { lpf: 4500, mids: [{ f: 900, q: 0.9, g: +1.5 }, { f: 3000, q: 1.2, g: -2.5 }] },
+    // #ПЛАН316: Снижен LPF для менее резкого звука
+    post:   { lpf: 4200, mids: [{ f: 900, q: 0.9, g: +1.5 }, { f: 3000, q: 1.2, g: -2.5 }] },
     phaser: { stages: 4, base: 900, depth: 700, rate: 0.18, fb: 0.12, mix: 0.18 },
     delayA: { time: 0.50, fb: 0.45, hc: 3200, wet: 0.28 },
     delayB: { time: 0.00, fb: 0.00, hc: 0,    wet: 0.00 },
