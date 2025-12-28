@@ -40,13 +40,12 @@ export const V2_PRESETS = {
     reverbMix: 0.22
   },
 
-  // Пышный, медленно дышащий пад
   synth_ambient_pad_lush: {
     type: 'synth',
     osc: [
       { type: 'sawtooth', detune: -8,    gain: 0.55 },
       { type: 'sawtooth', detune: +8,    gain: 0.55 },
-      { type: 'sine',     detune: 1200, gain: 0.25 }  // +1 октава (детюн в центах)
+      { type: 'sine',     detune: 1200, gain: 0.25 }
     ],
     noise: { on: true, color: 'white', gain: 0.02 },
     adsr:  { a: 2.5, d: 2.0, s: 0.8, r: 4.0 },
@@ -57,7 +56,6 @@ export const V2_PRESETS = {
     reverbMix: 0.28
   },
 
-  // Терменвокс (вокальный синус), вибрато — внешним LFO/пальцем
   theremin: {
     type: 'synth',
     osc: [
@@ -107,7 +105,6 @@ export const V2_PRESETS = {
     reverbMix: 0.20
   },
 
-  // Акустическая (через mellotron-семплы)
   acousticGuitar: {
     type: 'mellotron',
     instrument: 'acoustic',

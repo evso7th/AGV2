@@ -4,7 +4,7 @@
 // MultiInstrument WebAudio: organ | synth | mellotron | guitar
 // ─────────────────────────────────────────────────────────────────────────────
 
-// ───── Helpers ─────
+// ───── Helpers
 const loadIR = async (ctx: AudioContext, url: string | null) => {
     // #ЗАЧЕМ: Загружает и декодирует аудиофайл для использования в ConvolverNode (импульсный отклик).
     // #ЧТО: Асинхронно запрашивает файл по URL, преобразует его в ArrayBuffer и декодирует в AudioBuffer.
@@ -156,7 +156,7 @@ export async function buildMultiInstrument(ctx: AudioContext, {
   try {
       if (plateIRUrl) {
           reverb.buffer = await loadIR(ctx, plateIRUrl);
-          // console.log('[InstrumentFactory] Plate Reverb IR loaded.');
+          console.log('[InstrumentFactory] Plate Reverb IR loaded.');
       }
   } catch (e) {
       console.error('[InstrumentFactory] Failed to load plate reverb IR, continuing without it.', e);
@@ -164,12 +164,12 @@ export async function buildMultiInstrument(ctx: AudioContext, {
 
   const revMix = ctx.createGain(); revMix.gain.value = preset.reverbMix ?? 0.18;
   if (reverb.buffer) {
-    // console.log('[InstrumentFactory] Connecting reverb to master.');
+    console.log('[InstrumentFactory] Connecting reverb to master.');
     reverb.connect(master);
   }
 
   // API, общий выход
-  const api = { connect:(dest?: AudioNode)=>master.connect(dest||output), setParam:(k: string,v: any)=>{}, noteOn:(midi: number, when?: number)=>{}, noteOff:(midi: number, when?: number)=>{}, setPreset:(p: any)=>{} };
+  const api = { connect:(dest?: AudioNode)=>master.connect(dest||output), setParam:(k: string,v: any)=>{}, noteOn:(midi: number, when?: number)=>{}, noteOff:(midi: number, when?: number)=>{}, setPreset:(p: any)=>{}, allNotesOff: () => {} };
 
   // ──────────────────────────────────────────────────────────────────────────
   // ORGAN (drawbar + Leslie)
@@ -185,12 +185,12 @@ export async function buildMultiInstrument(ctx: AudioContext, {
     } = preset;
 
     const organOut = ctx.createGain(); organOut.gain.value = 0.6; console.log('[Organ] Created organOut');
-    const organLPF = ctx.createBiquadFilter(); organLPF.type='lowpass'; organLPF.frequency.value=lpf; organLPF.Q.value=0.7;
+    const organLPF = ctx.createBiquadFilter(); organLPF.type='lowpass'; organLPF.frequency.value=lpf; organLPF.Q.value=0.7; console.log('[Organ] Created organLPF');
     const organHPF = ctx.createBiquadFilter(); organHPF.type='highpass'; organHPF.frequency.value=hpf; organHPF.Q.value=0.7;
-    const chorus = makeChorus(ctx, {rate:0.7, depth:0.005, mix:chorusMix});
+    const chorus = makeChorus(ctx, {rate:0.7, depth:0.005, mix:chorusMix}); console.log('[Organ] Created chorus');
 
-    const pan = ctx.createStereoPanner(); pan.pan.value = 0;
-    const trem = ctx.createGain(); trem.gain.value = 1.0;
+    const pan = ctx.createStereoPanner(); pan.pan.value = 0; console.log('[Organ] Created pan');
+    const trem = ctx.createGain(); trem.gain.value = 1.0; console.log('[Organ] Created trem');
     const lfo = ctx.createOscillator(); lfo.type='sine';
     const lfoPanGain = ctx.createGain(); const lfoAmpGain = ctx.createGain();
     lfoPanGain.gain.value = 0.7; lfoAmpGain.gain.value = 0.08;
@@ -198,9 +198,8 @@ export async function buildMultiInstrument(ctx: AudioContext, {
     lfoPanGain.connect(pan.pan); lfoAmpGain.connect(trem.gain);
     lfo.start();
 
-
-    const foot = [16, 5.333, 8, 4, 2.666, 2, 1.6, 1.333, 1];
-    const gains = drawbars.map(v => (v/8));
+    const foot = [0.5, 0.75, 1, 2, 3, 4, 5, 6, 8];
+    const gains = drawbars.map((v: number) => (v/8));
     const activeOscs = new Map();
 
     const revSend = ctx.createGain(); revSend.gain.value = reverbMix;
@@ -210,7 +209,7 @@ export async function buildMultiInstrument(ctx: AudioContext, {
     }
 
     const vib = ctx.createOscillator(); vib.type='sine'; vib.frequency.value=vibratoRate;
-    const vibGain = ctx.createGain(); vibGain.gain.value = vibratoDepth; vib.connect(vibGain); vib.start();
+    const vibGain = ctx.createGain(); vibGain.gain.value = vibratoDepth * 100; vib.connect(vibGain); vib.start();
 
     let targetRate = (leslie.mode==='fast'? leslie.fast : leslie.slow);
     lfo.frequency.value = targetRate;
@@ -246,8 +245,7 @@ export async function buildMultiInstrument(ctx: AudioContext, {
       const oscs = foot.map((ft, i) => {
         const osc = ctx.createOscillator();
         osc.type = 'sine';
-        const ratio = (8/ft);
-        osc.frequency.setValueAtTime(f0*ratio, when);
+        osc.frequency.setValueAtTime(f0*ft, when);
         const g = ctx.createGain(); g.gain.value = gains[i]*0.4;
         osc.connect(g); g.connect(voiceGain);
         vibGain.connect(osc.detune);
@@ -272,6 +270,11 @@ export async function buildMultiInstrument(ctx: AudioContext, {
       if (k==='leslie') setLeslie(v); 
       if (k==='pickupLPF'||k==='lpf') organLPF.frequency.value = v;
     };
+    api.allNotesOff = () => {
+      activeOscs.forEach((value, key) => {
+        api.noteOff(key, ctx.currentTime);
+      });
+    };
     api.setPreset = (p)=>{ /* можно маппить drawbars/vibrato/leslie */ };
   }
   
@@ -290,34 +293,27 @@ export async function buildMultiInstrument(ctx: AudioContext, {
         reverbMix = 0.18
     } = preset;
 
-    const pre = ctx.createGain(); pre.gain.value = 0.9;
+    const pre = ctx.createGain(); pre.gain.value = 0.9; console.log('[Synth] Created pre-gain');
     
-    const filt = ctx.createBiquadFilter(); filt.type='lowpass'; filt.frequency.value=lpf.cutoff; filt.Q.value=lpf.q;
-    const filt2 = ctx.createBiquadFilter(); filt2.type='lowpass'; filt2.frequency.value=lpf.cutoff; filt2.Q.value=lpf.q;
+    const filt = ctx.createBiquadFilter(); filt.type='lowpass'; filt.frequency.value=lpf.cutoff; filt.Q.value=lpf.q; console.log('[Synth] Created filter 1');
+    const filt2 = ctx.createBiquadFilter(); filt2.type='lowpass'; filt2.frequency.value=lpf.cutoff; filt2.Q.value=lpf.q; console.log('[Synth] Created filter 2');
     const use2pole = (lpf.mode!=='24dB');
 
     const mainChain = use2pole ? filt : (filt.connect(filt2), filt2);
+    console.log(`[Synth] Main dry chain connected: ${use2pole ? '1-pole (filt)' : '2-pole (filt2)'} -> master`);
     mainChain.connect(master);
     
     // FX sends
-    const chorusNode = chorus.on ? makeChorus(ctx, chorus) : null;
-    const delayNode  = delay.on  ? makeFilteredDelay(ctx, delay) : null;
+    const chorusNode = chorus.on ? makeChorus(ctx, chorus) : null; if(chorusNode) console.log('[Synth] Created chorusNode');
+    const delayNode  = delay.on  ? makeFilteredDelay(ctx, delay) : null; if(delayNode) console.log('[Synth] Created delayNode');
     const revSend = ctx.createGain(); revSend.gain.value = reverbMix;
     if (reverb.buffer) {
         revSend.connect(reverb);
     }
     
-    mainChain.connect(revSend);
-    if (chorusNode) { 
-        mainChain.connect(chorusNode.input);
-        chorusNode.output.connect(master);
-        chorusNode.output.connect(revSend);
-    }
-    if (delayNode) {
-        mainChain.connect(delayNode.input);
-        delayNode.output.connect(master);
-        delayNode.output.connect(revSend);
-    }
+    console.log(`[Synth] mainChain -> revSend`); mainChain.connect(revSend);
+    if (chorusNode) { console.log(`[Synth] mainChain -> chorusNode`); mainChain.connect(chorusNode.input); console.log(`[Synth] chorusNode -> master`); chorusNode.output.connect(master); console.log(`[Synth] chorusNode -> revSend`); chorusNode.output.connect(revSend); }
+    if (delayNode) { console.log(`[Synth] mainChain -> delayNode`); mainChain.connect(delayNode.input); console.log(`[Synth] delayNode -> master`); delayNode.output.connect(master); console.log(`[Synth] delayNode -> revSend`); delayNode.output.connect(revSend); }
     
 
     // LFO
@@ -327,6 +323,7 @@ export async function buildMultiInstrument(ctx: AudioContext, {
       l.connect(lg);
       if (lfo.target==='filter'){ lg.connect(filt.frequency); if (!use2pole) lg.connect(filt2.frequency); }
       l.start();
+      console.log(`[Synth] LFO created and connected`);
     }
 
     // OSCs
@@ -346,8 +343,8 @@ export async function buildMultiInstrument(ctx: AudioContext, {
       const f = midiToHz(midi);
       
       const vGain = ctx.createGain(); vGain.gain.value = 0.0;
-      pre.connect(vGain);
-      vGain.connect(filt);
+      pre.connect(vGain); console.log(`[Synth MIDI=${midi}] Connected pre -> vGain`);
+      vGain.connect(filt); console.log(`[Synth MIDI=${midi}] Connected vGain -> filt`);
 
       const oscs = osc.map((o: any)=>{
         const x = ctx.createOscillator(); x.type=o.type as OscillatorType; 
@@ -360,6 +357,7 @@ export async function buildMultiInstrument(ctx: AudioContext, {
         x.start(when);
         return {x,g};
       });
+      console.log(`[Synth MIDI=${midi}] Created and connected ${oscs.length} oscillators`);
 
       let noiseNode = null;
       if (noise.on && noiseBuffer){
@@ -369,9 +367,12 @@ export async function buildMultiInstrument(ctx: AudioContext, {
         const ng = ctx.createGain(); ng.gain.value=noise.gain;
         n.connect(ng); ng.connect(vGain); n.start(when);
         noiseNode = {n,ng};
+        console.log(`[Synth MIDI=${midi}] Created and connected noise source`);
       }
       
-      activeVoices.set(midi, { oscs, noise: noiseNode, gain: vGain });
+      const voicePackage = { oscs, noise: noiseNode, gain: vGain };
+      activeVoices.set(midi, voicePackage);
+      console.log(`[Synth MIDI=${midi}] Stored voice package in activeVoices.`);
 
       vGain.gain.cancelScheduledValues(when);
       vGain.gain.setValueAtTime(0.0001, when);
@@ -382,7 +383,11 @@ export async function buildMultiInstrument(ctx: AudioContext, {
     api.noteOff = (midi, when=ctx.currentTime) => {
       console.log(`%c[Synth] noteOff triggered for MIDI: ${midi}`, 'color: lightcoral');
       const voice = activeVoices.get(midi);
-      if (!voice) return;
+      if (!voice) {
+        console.log(`[Synth MIDI=${midi}] No voice package found to stop.`);
+        return;
+      }
+      console.log(`[Synth MIDI=${midi}] Found voice package to stop.`);
       
       const vGain = voice.gain;
       const r = adsr.r || 1.0;
@@ -390,12 +395,22 @@ export async function buildMultiInstrument(ctx: AudioContext, {
       vGain.gain.setTargetAtTime(0.0001, when, r / 3);
       
       const stopTime = when + r * 2;
+      console.log(`[Synth MIDI=${midi}] Stopping ${voice.oscs.length} oscillators at time ${stopTime}.`);
       voice.oscs.forEach(({x}: any)=>x.stop(stopTime));
-      if (voice.noise){ voice.noise.n.stop(stopTime); }
+      if (voice.noise){
+          console.log(`[Synth MIDI=${midi}] Stopping noise source at time ${stopTime}.`);
+          voice.noise.n.stop(stopTime);
+      }
 
       activeVoices.delete(midi);
+      console.log(`[Synth MIDI=${midi}] Deleted voice package from activeVoices.`);
     };
-    api.setParam = (k,v)=>{ if (k==='cutoff') filt.frequency.value=v; };
+    api.allNotesOff = () => {
+      activeVoices.forEach((value, key) => {
+        api.noteOff(key, ctx.currentTime);
+      });
+    };
+    api.setParam=(k,v)=>{ if (k==='cutoff') filt.frequency.value=v; };
   }
 
   // ──────────────────────────────────────────────────────────────────────────
@@ -435,7 +450,7 @@ export async function buildMultiInstrument(ctx: AudioContext, {
     noiseB.buffer=nb; noiseB.loop=true;
     const noiseG = ctx.createGain(); noiseG.gain.value = dB(noise.level); noiseB.connect(noiseG); noiseG.connect(lp); noiseB.start();
 
-    let activeNotes: Record<number, any> = {};
+    const activeNotes = new Map();
 
     api.noteOn = (midi, when=ctx.currentTime) => {
       // nearest zone
@@ -454,23 +469,28 @@ export async function buildMultiInstrument(ctx: AudioContext, {
       const lfoFg = ctx.createGain(); lfoFg.gain.value = flutter.depth*playback;
       lfoWow.connect(lfoWg); lfoFl.connect(lfoFg);
       lfoWg.connect(src.playbackRate); lfoFg.connect(src.playbackRate);
-      lfoWow.start(); lfoFl.start();
+      lfoWow.start(when); lfoFl.start(when);
 
       const vg = ctx.createGain(); vg.gain.value=0.0;
       src.connect(vg); vg.connect(out);
       src.start(when);
       vg.gain.linearRampToValueAtTime(1.0, when+attack);
 
-      activeNotes[midi] = {src, vg, lfoWow, lfoFl};
+      activeNotes.set(midi, {src, vg, lfoWow, lfoFl});
     };
     api.noteOff = (midi, when=ctx.currentTime) => {
-      const current = activeNotes[midi];
+      const current = activeNotes.get(midi);
       if (!current) return;
       current.vg.gain.cancelScheduledValues(when);
       current.vg.gain.linearRampToValueAtTime(0.0001, when+release);
       current.src.stop(when+release+0.05);
       try { current.lfoWow.stop(when+release+0.05); current.lfoFl.stop(when+release+0.05); } catch{}
-      delete activeNotes[midi];
+      activeNotes.delete(midi);
+    };
+     api.allNotesOff = () => {
+      activeNotes.forEach((value, key) => {
+        api.noteOff(key, ctx.currentTime);
+      });
     };
   }
 
@@ -539,18 +559,19 @@ export async function buildMultiInstrument(ctx: AudioContext, {
         revSend.connect(reverb);
     }
     
-    let activeVoices = new Map<number, { oscMain: OscillatorNode, oscDet: OscillatorNode, oscSub: OscillatorNode }>();
+    let activeVoices = new Map<number, { oscMain: OscillatorNode, oscDet: OscillatorNode, oscSub: OscillatorNode, vGain: GainNode }>();
 
 
     api.noteOn = (midi, when=ctx.currentTime)=>{
       const f = midiToHz(midi);
+      const vGain = ctx.createGain(); vGain.gain.value=0.0;
 
-      const oscMain = createPulseOsc(ctx, f, preset.osc?.width);
-      const oscDet  = createPulseOsc(ctx, f, (preset.osc?.width || 0.5)+0.06); oscDet.detune.value = preset.osc?.detune || 0;
+      const oscMain = createPulseOsc(ctx, f, osc.width);
+      const oscDet  = createPulseOsc(ctx, f, (osc.width || 0.5)+0.06); oscDet.detune.value = osc.detune || 0;
       const oscSub  = ctx.createOscillator(); oscSub.type='sine'; oscSub.frequency.value=f/2;
-      const gMain=ctx.createGain(); gMain.gain.value=preset.osc?.mainGain || 0;
-      const gDet =ctx.createGain(); gDet.gain.value =preset.osc?.detGain || 0;
-      const gSub =ctx.createGain(); gSub.gain.value =preset.osc?.subGain || 0;
+      const gMain=ctx.createGain(); gMain.gain.value=osc.mainGain;
+      const gDet =ctx.createGain(); gDet.gain.value =osc.detGain;
+      const gSub =ctx.createGain(); gSub.gain.value =osc.subGain;
       const sum = ctx.createGain(); sum.gain.value=0.8;
       oscMain.connect(gMain).connect(sum);
       oscDet.connect(gDet).connect(sum);
@@ -579,21 +600,27 @@ export async function buildMultiInstrument(ctx: AudioContext, {
       vGain.gain.linearRampToValueAtTime(1.0, when+adsr.a);
       vGain.gain.setTargetAtTime(adsr.s, when+adsr.a, adsr.d / 3);
 
-      activeVoices.set(midi, { oscMain, oscDet, oscSub });
+      activeVoices.set(midi, { oscMain, oscDet, oscSub, vGain });
     };
     api.noteOff=(midi, when=ctx.currentTime)=>{
       const voice = activeVoices.get(midi);
       if(!voice) return;
+      const { oscMain, oscDet, oscSub, vGain } = voice;
 
       vGain.gain.cancelScheduledValues(when);
       vGain.gain.setValueAtTime(vGain.gain.value, when);
       vGain.gain.setTargetAtTime(0.0001, when, adsr.r / 3);
       
       const stopTime = when + adsr.r;
-      voice.oscMain.stop(stopTime);
-      voice.oscDet.stop(stopTime);
-      voice.oscSub.stop(stopTime);
+      oscMain.stop(stopTime);
+      oscDet.stop(stopTime);
+      oscSub.stop(stopTime);
       activeVoices.delete(midi);
+    };
+     api.allNotesOff = () => {
+      activeVoices.forEach((value, key) => {
+        api.noteOff(key, ctx.currentTime);
+      });
     };
     api.setParam=(k,v)=>{
       if (k==='pickupLPF') pickupLPF.frequency.value=v;
