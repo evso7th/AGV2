@@ -201,7 +201,7 @@ export async function buildMultiInstrument(ctx: AudioContext, {
     // Drawbar partials
     const foot = [16, 5.333, 8, 4, 2.666, 2, 1.6, 1.333, 1];
     const gains = drawbars.map(v => (v/8));
-    let activeOscs: any = {};
+    const activeOscs = new Map();
 
     // chain
     const revSend = ctx.createGain(); revSend.gain.value = reverbMix;
@@ -225,10 +225,10 @@ export async function buildMultiInstrument(ctx: AudioContext, {
     };
 
     api.noteOn = (midi, when=ctx.currentTime) => {
-      const f0 = midiToHz(midi);
-      if (activeOscs[midi]) {
+      if (activeOscs.has(midi)) {
           api.noteOff(midi, when);
       }
+      const f0 = midiToHz(midi);
       
       const voiceGain = ctx.createGain(); voiceGain.gain.value = 0;
       voiceGain.connect(chorus.input);
@@ -256,19 +256,19 @@ export async function buildMultiInstrument(ctx: AudioContext, {
         osc.start(when);
         return {osc,g};
       });
-      activeOscs[midi] = { oscs, voiceGain };
+      activeOscs.set(midi, { oscs, voiceGain });
       
       // envelope (у органа почти нет ADSR — делаем мягкий gate)
       voiceGain.gain.cancelScheduledValues(when);
       voiceGain.gain.linearRampToValueAtTime(1.0, when+0.01);
     };
     api.noteOff = (midi, when=ctx.currentTime) => {
-      const voice = activeOscs[midi];
+      const voice = activeOscs.get(midi);
       if (!voice) return;
       voice.voiceGain.gain.cancelScheduledValues(when);
       voice.voiceGain.gain.linearRampToValueAtTime(0.0001, when+0.05);
       voice.oscs.forEach(({osc}: any)=>osc.stop(when+0.06));
-      delete activeOscs[midi];
+      activeOscs.delete(midi);
     };
     api.setParam = (k,v)=>{
       if (k==='leslie') setLeslie(v); 
@@ -298,7 +298,6 @@ export async function buildMultiInstrument(ctx: AudioContext, {
     const filt2 = ctx.createBiquadFilter(); filt2.type='lowpass'; filt2.frequency.value=lpf.cutoff; filt2.Q.value=lpf.q;
     const use2pole = (lpf.mode!=='24dB');
 
-    pre.connect(filt); 
     const mainChain = use2pole ? filt : (filt.connect(filt2), filt2);
     mainChain.connect(master);
     
@@ -310,7 +309,6 @@ export async function buildMultiInstrument(ctx: AudioContext, {
         revSend.connect(reverb);
     }
     
-    // #ИСПРАВЛЕНИЕ: Сигнал после фильтра теперь идет и на эффекты, и на мастер
     mainChain.connect(revSend); // Send to reverb
     if (chorusNode) { 
         mainChain.connect(chorusNode.input); 
@@ -334,7 +332,7 @@ export async function buildMultiInstrument(ctx: AudioContext, {
     }
 
     // OSCs
-    const activeVoices: Record<number, {oscs: any[], noise: any, gain: GainNode}> = {};
+    const activeVoices = new Map();
     let noiseBuffer: AudioBuffer | null = null;
     if(noise.on) {
         noiseBuffer = ctx.createBuffer(1, ctx.sampleRate * 2, ctx.sampleRate);
@@ -349,7 +347,7 @@ export async function buildMultiInstrument(ctx: AudioContext, {
       const f = midiToHz(midi);
       
       const vGain = ctx.createGain(); vGain.gain.value = 0.0;
-      vGain.connect(pre); // #ИСПРАВЛЕНИЕ: Осцилляторы теперь идут в vGain, а vGain в pre-фильтр
+      vGain.connect(filt);
 
       const oscs = osc.map((o: any)=>{
         const x = ctx.createOscillator(); x.type=o.type as OscillatorType; 
@@ -373,7 +371,7 @@ export async function buildMultiInstrument(ctx: AudioContext, {
         noiseNode = {n,ng};
       }
       
-      activeVoices[midi] = { oscs, noise: noiseNode, gain: vGain };
+      activeVoices.set(midi, { oscs, noise: noiseNode, gain: vGain });
 
       // ADSR
       vGain.gain.cancelScheduledValues(when);
@@ -383,7 +381,7 @@ export async function buildMultiInstrument(ctx: AudioContext, {
     };
 
     api.noteOff = (midi, when=ctx.currentTime) => {
-      const voice = activeVoices[midi];
+      const voice = activeVoices.get(midi);
       if (!voice) return;
       
       const vGain = voice.gain;
@@ -392,10 +390,10 @@ export async function buildMultiInstrument(ctx: AudioContext, {
       vGain.gain.setTargetAtTime(0.0001, when, r / 3);
       
       const stopTime = when + r * 2;
-      voice.oscs.forEach(({x})=>x.stop(stopTime));
+      voice.oscs.forEach(({x}: any)=>x.stop(stopTime));
       if (voice.noise){ voice.noise.n.stop(stopTime); }
 
-      delete activeVoices[midi];
+      activeVoices.delete(midi);
     };
     api.setParam = (k,v)=>{ if (k==='cutoff') filt.frequency.value=v; };
   }
