@@ -44,8 +44,7 @@ export const V2_PRESETS = {
     reverbMix: 0.25
   },
   
-  // #ПЛАН 371: ИЗОЛИРОВАННЫЙ ТЕСТ АТАКИ
-  // Копируем рабочий 'synth', но меняем ТОЛЬКО атаку на проблемное значение.
+  // #ПЛАН 372: Возвращаем оригинальные D, S, R, оставляя атаку рабочей.
   synth_ambient_pad_lush: {
     type: 'synth',
     osc: [
@@ -54,7 +53,7 @@ export const V2_PRESETS = {
       { type: 'sine',     detune: 0, octave: -1, gain: 0.7 }
     ],
     noise: { on: true, color: 'pink', gain: 0.03 },
-    adsr:  { a: 0.99, d: 1.2, s: 0.7, r: 3.0 }, // <--- ИЗМЕНЕНИЕ: Атака установлена в 0.99с
+    adsr:  { a: 0.99, d: 2.0, s: 0.8, r: 4.0 }, // <--- ИЗМЕНЕНИЕ: Возвращены D, S, R. Атака остается 0.99.
     lpf:   { cutoff: 1600, q: 1.2, mode: '24dB' }, 
     lfo:   { rate: 0.18, amount: 450, target: 'filter' },
     chorus:{ on: true, rate: 0.2, depth: 0.007, mix: 0.4 },
