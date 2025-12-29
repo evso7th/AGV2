@@ -129,15 +129,15 @@ export const V2_PRESETS = {
   acousticGuitar: {
     type: 'synth',
     osc: [
-      { type: 'triangle', detune: 0, octave: 0, gain: 1.0 },
-      { type: 'noise', detune: 0, octave: 0, gain: 0.15 },
-      { type: 'sine', detune: 5, octave: 1, gain: 0.2 },
-      { type: 'sine', detune: 0, octave: -1, gain: 0.3 },
+        { type: 'triangle', detune: 0, octave: 0, gain: 1.0 },    // Core tone
+        { type: 'noise', detune: 0, octave: 0, gain: 0.15 },      // Pluck
+        { type: 'sine', detune: 5, octave: 1, gain: 0.2 },        // Brightness
+        { type: 'sine', detune: 0, octave: -1, gain: 0.3 }        // Body
     ],
     adsr: { attack: 0.001, decay: 0.3, sustain: 0.05, release: 0.3 },
     lpf: { cutoff: 2000, q: 4.0, mode: '12dB' },
     lfo: { rate: 0, amount: 0, target: 'pitch' },
-    chorus:{ on: true, rate: 0.1, depth: 0.001, mix: 0.1 },
+    chorus: { on: true, rate: 0.1, depth: 0.001, mix: 0.1 },
     delay: { on: false, time: 0, fb: 0, hc: 0, mix: 0 },
     reverbMix: 0.18
   },
@@ -161,11 +161,11 @@ export const V2_PRESETS = {
   electricGuitar: { // Muff Lead
     type: 'guitar',
     variant: 'muffLead',
-    osc: { width: 0.48, mainGain: 0.8, detGain: 0.2, subGain: 0.4 },
+    osc: { width: 0.48, mainGain: 0.8, detGain: 0.2, subGain: 0.4, octave: -1 }, // Added sub-bass
     pickup: { cutoff: 3400, q: 1.1 },
     comp:   { threshold: -20, ratio: 4, attack: 0.008, release: 0.14, makeup: +4 },
     drive:  { type: 'muff', amount: 0.65 },
-    post:   { lpf: 4200, mids: [{ f: 900, q: 0.9, g: +1.5 }, { f: 3000, q: 1.2, g: -2.5 }] },
+    post:   { lpf: 4000, mids: [{ f: 900, q: 0.9, g: +1.5 }, { f: 3000, q: 1.2, g: -2.5 }] },
     phaser: { stages: 4, base: 900, depth: 700, rate: 0.18, fb: 0.12, mix: 0.18 },
     delayA: { time: 0.50, fb: 0.45, hc: 3200, wet: 0.28 },
     delayB: { time: 0.00, fb: 0.00, hc: 0,    wet: 0.00 },
