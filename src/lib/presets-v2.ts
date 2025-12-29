@@ -116,7 +116,7 @@ export const V2_PRESETS = {
     osc: [
       { type: 'sine', detune: 0, octave: 0, gain: 0.9 },
       { type: 'triangle', detune: 2, octave: 1, gain: 0.2 },
-      { type: 'noise', color: 'white', gain: 0.07, detune: 0, octave: 0 } // "Дыхание"
+      { type: 'noise', color: 'white', gain: 0.07, detune: 0, octave: 0 }
     ],
     adsr: { a: 0.05, d: 0.2, s: 0.8, r: 0.3 },
     lpf: { cutoff: 7500, q: 0.8, mode: '12dB' },
@@ -129,10 +129,10 @@ export const V2_PRESETS = {
   acousticGuitar: { // Folk Acoustic
     type: 'synth',
     osc: [
-      { type: 'triangle', detune: 0, octave: 0, gain: 1.0 },       // 2. Тело струны
-      { type: 'noise', detune: 0, octave: 0, gain: 0.15 },          // 1. Щипок
-      { type: 'sine', detune: 5, octave: 1, gain: 0.2 },            // 3. Обертоны
-      { type: 'sine', detune: 0, octave: -1, gain: 0.3 },           // 4. Резонанс корпуса
+      { type: 'triangle', detune: 0, octave: 0, gain: 1.0 },
+      { type: 'noise',    detune: 0, octave: 0, gain: 0.15 },
+      { type: 'sine',     detune: 5, octave: 1, gain: 0.2 },
+      { type: 'sine',     detune: 0, octave: -1, gain: 0.3 },
     ],
     adsr: { attack: 0.001, decay: 0.3, sustain: 0.05, release: 0.3 },
     lpf: { cutoff: 2000, q: 4.0, mode: '12dB' },
@@ -146,8 +146,16 @@ export const V2_PRESETS = {
   guitar_shineOn: {
     type: 'guitar',
     variant: 'shineOn',
-    osc: { width: 0.46, detune: 5, mainGain: 0.85, detGain: 0.18, subGain: 0.25 },
-    reverbMix: 0.18
+    osc: { width: 0.48, detune: 2, mainGain: 0.9, detGain: 0.15, subGain: 0.3 },
+    pickup: { cutoff: 3800, q: 1.2 },
+    comp: { threshold: -22, ratio: 5, attack: 0.005, release: 0.2, makeup: 6 },
+    drive: { type: 'soft', amount: 0.15 },
+    post: { lpf: 5500, mids: [{ f: 900, q: 1.0, g: +1 }, { f: 2800, q: 1.2, g: -1 }] },
+    phaser: { stages: 4, base: 800, depth: 600, rate: 0.12, fb: 0.15, mix: 0.25 },
+    delayA: { time: 0.48, fb: 0.35, hc: 3500, wet: 0.28 }, // Dotted 8th at ~78BPM
+    delayB: null,
+    reverbMix: 0.22,
+    adsr: { a: 0.01, d: 0.4, s: 0.8, r: 2.2 }
   },
   
   electricGuitar: { // Muff Lead
