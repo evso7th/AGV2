@@ -138,50 +138,55 @@ export const V2_PRESETS = {
     reverbMix: 0.15
   },
 
-  acousticGuitar: {
+  // --- НОВЫЕ СИНТЕТИЧЕСКИЕ ГИТАРЫ (ПЛАН 390) ---
+
+  acousticGuitar: { // Folk Acoustic
     type: 'synth',
     osc: [
-      { type: 'triangle', detune: 0, octave: 0, gain: 1.0 },    // Core tone
-      { type: 'noise',    detune: 0, octave: 0, gain: 0.15 },    // Pluck
-      { type: 'sine',     detune: 5, octave: 1, gain: 0.2 },     // Brightness
-      { type: 'sine',     detune: 0, octave: -1, gain: 0.3 }     // Body
+      { type: 'triangle', detune: -2, octave: 0, gain: 1.0 }, // Основной тон
+      { type: 'sine', detune: 2, octave: 1, gain: 0.3 },     // Верхние обертоны
+      { type: 'sine', detune: 0, octave: -1, gain: 0.2 },    // Резонанс корпуса
     ],
-    adsr: { attack: 0.001, decay: 0.3, sustain: 0.05, release: 0.3 },
-    lpf: { cutoff: 2000, q: 4.0, mode: '12dB' },
-    lfo: { rate: 0, amount: 0, target: 'pitch' },
-    chorus: { on: true, rate: 0.1, depth: 0.001, mix: 0.1 },
-    delay: { on: false, time: 0, fb: 0, hc: 0, mix: 0 },
-    reverbMix: 0.18
+    noise: { on: true, color: 'white', gain: 0.15 },         // "Щипок"
+    adsr:  { a: 0.001, d: 0.3, s: 0.05, r: 0.3 },             // Короткая "щипковая" огибающая
+    lpf:   { cutoff: 2500, q: 3.5, mode: '24dB' },            // Фильтр для "деревянного" тембра
+    lfo:   { rate: 0, amount: 0, target: 'pitch' },
+    chorus:{ on: true, rate: 0.1, depth: 0.001, mix: 0.1 },   // Эффект "комнаты"
+    delay: { on: false },
+    reverbMix: 0.15
   },
 
-  // ───────────────────────── GUITAR (электро, Гилмор) ─────────────────────────
-  guitar_shineOn: {
-    type: 'guitar',
-    variant: 'shineOn',
-    adsr: { a: 0.01, d: 0.4, s: 0.8, r: 2.2 },
-    osc: { width: 0.48, detune: 2, mainGain: 0.9, detGain: 0.15, subGain: 0.3 },
-    pickup: { cutoff: 3800, q: 1.2 },
-    comp: { threshold: -22, ratio: 5, attack: 0.005, release: 0.2, makeup: 6 },
-    drive: { type: 'soft', amount: 0.15 },
-    post: { lpf: 5500, mids: [{ f: 900, q: 1.0, g: +1 }, { f: 2800, q: 1.2, g: -1 }] },
-    phaser: { stages: 4, base: 800, depth: 600, rate: 0.12, fb: 0.15, mix: 0.25 },
-    delayA: { time: 0.48, fb: 0.35, hc: 3500, wet: 0.28 },
-    delayB: null,
-    reverbMix: 0.22,
+  guitar_shineOn: { // Shine On Lead
+    type: 'synth',
+    osc: [
+      { type: 'sawtooth', detune: -3, octave: 0, gain: 0.6 },
+      { type: 'sawtooth', detune: 3, octave: 0, gain: 0.6 },
+      { type: 'sine', detune: 0, octave: -1, gain: 0.4 },
+    ],
+    noise: { on: false },
+    adsr:  { a: 0.1, d: 0.8, s: 0.7, r: 2.5 }, // Певучий сустейн
+    lpf:   { cutoff: 2800, q: 2.0, mode: '24dB' },
+    lfo:   { rate: 0.15, amount: 400, target: 'filter' }, // Медленное движение фильтра
+    chorus:{ on: true, rate: 0.12, depth: 0.006, mix: 0.4 }, // Фейзер-подобный хорус
+    delay: { on: true, time: 0.48, fb: 0.35, hc: 3500, mix: 0.28 }, // Доттед-дилэй
+    reverbMix: 0.25
   },
   
   electricGuitar: { // Muff Lead
-    type: 'guitar',
-    variant: 'muffLead',
-    adsr: { a: 0.02, d: 0.8, s: 0.7, r: 1.5 },
-    osc: { width: 0.48, mainGain: 0.8, detGain: 0.2, subGain: 0.4, octave: -1 }, // Added sub-bass
-    pickup: { cutoff: 3400, q: 1.1 },
-    comp:   { threshold: -20, ratio: 4, attack: 0.008, release: 0.14, makeup: +4 },
-    drive:  { type: 'muff', amount: 0.65 },
-    post:   { lpf: 4000, mids: [{ f: 900, q: 0.9, g: +1.5 }, { f: 3000, q: 1.2, g: -2.5 }] },
-    phaser: { stages: 4, base: 900, depth: 700, rate: 0.18, fb: 0.12, mix: 0.18 },
-    delayA: { time: 0.50, fb: 0.45, hc: 3200, wet: 0.28 },
-    delayB: { time: 0.00, fb: 0.00, hc: 0,    wet: 0.00 },
-    reverbMix: 0.30,
+    type: 'synth',
+    osc: [
+      { type: 'sawtooth', detune: -8, octave: 0, gain: 0.9 }, // Жирный пилящий звук
+      { type: 'sawtooth', detune: 8, octave: 0, gain: 0.9 },
+      { type: 'square', detune: 0, octave: -1, gain: 0.7 }, // "Тело" и вес
+    ],
+    noise: { on: true, color: 'brown', gain: 0.05 },
+    adsr:  { a: 0.02, d: 1.0, s: 0.8, r: 1.5 }, // Мощная атака и долгий сустейн
+    lpf:   { cutoff: 1500, q: 3.0, mode: '24dB' }, // Срезаем верха для "мутного" звука
+    lfo:   { rate: 0, amount: 0, target: 'filter' },
+    // Главное - дисторшн
+    distortion: 0.8, 
+    chorus:{ on: true, rate: 0.1, depth: 0.002, mix: 0.2 },
+    delay: { on: false },
+    reverbMix: 0.15
   }
 };
