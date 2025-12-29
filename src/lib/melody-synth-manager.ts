@@ -180,7 +180,7 @@ export class MelodySynthManager {
                      const lfo = this.audioContext.createOscillator();
                      lfo.frequency.value = preset.lfo.rate;
                      const lfoGain = this.audioContext.createGain();
-                     lfoGain.gain.value = preset.lfo.amount * 100;
+                     lfoGain.gain.value = preset.lfo.amount; // Direct cents value
                      lfo.connect(lfoGain).connect(osc.detune);
                      lfo.start(noteOnTime);
                      lfo.stop(releaseEndTime + 0.1);

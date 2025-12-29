@@ -149,7 +149,9 @@ export const V2_PRESETS = {
       { type: 'sawtooth', detune: -8, octave: 0, gain: 0.9 },
       { type: 'sawtooth', detune: 8, octave: 0, gain: 0.9 },
       { type: 'square', detune: 0, octave: -1, gain: 0.7 },
-      { type: 'sine', detune: 0, octave: -1, gain: 0.5 }
+      // #ИСПРАВЛЕНО: Слой с высоким detune был причиной ошибки.
+      // Заменен на более мягкий гармонический слой.
+      { type: 'sawtooth', detune: 4, octave: 0, gain: 0.3 }
     ],
     noise: { on: true, color: 'brown', gain: 0.05 },
     adsr:  { a: 0.02, d: 0.8, s: 0.7, r: 1.5 },
@@ -161,5 +163,3 @@ export const V2_PRESETS = {
     reverbMix: 0.15
   }
 };
-
-    
