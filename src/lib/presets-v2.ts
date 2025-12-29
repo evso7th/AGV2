@@ -52,7 +52,7 @@ export const V2_PRESETS = {
         { type: 'sine',     detune: 0,  octave: -1, gain: 0.7 } // Саб-бас слой
     ],
     noise: { on: true, color: 'pink', gain: 0.03 },
-    adsr:  { a: 0.99, d: 2.0, s: 0.8, r: 4.0 }, // Пышная огибающая
+    adsr:  { a: 0.99, d: 2, s: 0.8, r: 4 }, // Пышная огибающая
     lpf:   { cutoff: 1600, q: 1.2, mode: '24dB' }, 
     lfo:   { rate: 0.18, amount: 450, target: 'filter' },
     chorus:{ on: true, rate: 0.2, depth: 0.007, mix: 0.4 },
@@ -69,7 +69,7 @@ export const V2_PRESETS = {
         { type: 'triangle', detune: 0, octave: 0, gain: 0.1 }
     ],
     noise: { on: false },
-    adsr:  { a: 0.4, d: 0.1, s: 0.9, r: 2.8 }, // Увеличенный release для портаменто
+    adsr:  { a: 0.4, d: 0.1, s: 0.9, r: 2.8 },
     lpf:   { cutoff: 5000, q: 0.7, mode: '12dB' },
     lfo:   { rate: 5.5, amount: 3, target: 'pitch' },
     chorus:{ on: true, rate: 0.1, depth: 0.002, mix: 0.2 },
@@ -77,15 +77,21 @@ export const V2_PRESETS = {
     reverbMix: 0.28
   },
 
-  // ───────────────────────── MELLOTRON ─────────────────────────
+  // ───────────────────────── MELLOTRON (переделан в струнный синтезатор) ─────────────────────────
   mellotron: { // Majestic Strings
-    type: 'mellotron',
-    instrument: 'strings',
-    attack: 0.1, release: 0.4,
-    wow: { rate: 0.25, depth: 0.0028 },
-    flutter: { rate: 5.8, depth: 0.0007 },
-    noise: { level: -38 },
-    lpf: 8500, hpf: 110, reverbMix: 0.25
+    type: 'synth',
+    osc: [
+      { type: 'sawtooth', detune: -5, octave: 0, gain: 0.5 },
+      { type: 'sawtooth', detune: 5, octave: 0, gain: 0.5 },
+      { type: 'sawtooth', detune: 0, octave: -1, gain: 0.4 } // Body
+    ],
+    noise: { on: true, color: 'brown', gain: 0.02 },
+    adsr:  { a: 0.4, d: 0.8, s: 0.7, r: 1.5 },
+    lpf:   { cutoff: 3200, q: 1.5, mode: '24dB' },
+    lfo:   { rate: 4.5, amount: 4, target: 'pitch' }, // String vibrato
+    chorus:{ on: true, rate: 0.3, depth: 0.008, mix: 0.5 },
+    delay: { on: true, time: 0.3, fb: 0.2, hc: 4500, mix: 0.15 },
+    reverbMix: 0.35
   },
 
   mellotron_choir_dark: {
