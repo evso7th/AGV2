@@ -1,4 +1,5 @@
 
+
 import type { Note, MelodyInstrument, InstrumentType } from "@/types/music";
 
 type VelocitySample = {
@@ -150,34 +151,35 @@ export type GuitarTechniqueSamples = {
 };
 
 export const ACOUSTIC_GUITAR_SOLO_SAMPLES: Record<string, GuitarTechniqueSamples> = {
-    'E4': {
-        pick: '/assets/acoustic_guitar_samples/8393_speedy_clean_e1st_str_pick.mp3',
-        pluck: '/assets/acoustic_guitar_samples/8394_speedy_clean_e1st_str_pluck.mp3',
+    'E2': {
+        pick: '/assets/acoustic_guitar_samples/8396_speedy_clean_e_str_pick.mp3',
+        pluck: '/assets/acoustic_guitar_samples/8397_speedy_clean_e_str_pluck.mp3',
         harm: '/assets/acoustic_guitar_samples/8395_speedy_clean_e_harm.mp3'
-    },
-    'B3': {
-        pick: '/assets/acoustic_guitar_samples/8385_speedy_clean_b_str_pick.mp3',
-        pluck: '/assets/acoustic_guitar_samples/8386_speedy_clean_b_str_pluck.mp3',
-        harm: '/assets/acoustic_guitar_samples/8384_speedy_clean_b_harm.mp3'
-    },
-    'G3': {
-        pick: '/assets/acoustic_guitar_samples/8402_speedy_clean_g_str_pick.mp3',
-        pluck: '/assets/acoustic_guitar_samples/8403_speedy_clean_g_str_pluck.mp3',
-        harm: '/assets/acoustic_guitar_samples/8400_speedy_clean_g_harm.mp3'
-    },
-    'D3': {
-        pick: '/assets/acoustic_guitar_samples/8388_speedy_clean_d_str_pick.mp3',
-        pluck: '/assets/acoustic_guitar_samples/8389_speedy_clean_d_str_pluck.mp3',
-        harm: '/assets/acoustic_guitar_samples/8387_speedy_clean_d_harm.mp3'
     },
     'A2': {
         pick: '/assets/acoustic_guitar_samples/8382_speedy_clean_a_str_pick.mp3',
         pluck: '/assets/acoustic_guitar_samples/8383_speedy_clean_a_str_pluck.mp3',
         harm: '/assets/acoustic_guitar_samples/8381_speedy_clean_a_harm.mp3'
     },
-     'E2': {
-        pick: '/assets/acoustic_guitar_samples/8396_speedy_clean_e_str_pick.mp3',
-        pluck: '/assets/acoustic_guitar_samples/8397_speedy_clean_e_str_pluck.mp3',
+    'D3': {
+        pick: '/assets/acoustic_guitar_samples/8388_speedy_clean_d_str_pick.mp3',
+        pluck: '/assets/acoustic_guitar_samples/8389_speedy_clean_d_str_pluck.mp3',
+        harm: '/assets/acoustic_guitar_samples/8387_speedy_clean_d_harm.mp3'
+    },
+    'G3': {
+        pick: '/assets/acoustic_guitar_samples/8402_speedy_clean_g_str_pick.mp3',
+        pluck: '/assets/acoustic_guitar_samples/8403_speedy_clean_g_str_pluck.mp3',
+        harm: '/assets/acoustic_guitar_samples/8401_speedy_clean_g_harm.mp3'
+    },
+    'B3': {
+        pick: '/assets/acoustic_guitar_samples/8385_speedy_clean_b_str_pick.mp3',
+        pluck: '/assets/acoustic_guitar_samples/8386_speedy_clean_b_str_pluck.mp3',
+        harm: '/assets/acoustic_guitar_samples/8384_speedy_clean_b_harm.mp3'
+    },
+    'E4': {
+        pick: '/assets/acoustic_guitar_samples/8393_speedy_clean_e1st_str_pick.mp3',
+        pluck: '/assets/acoustic_guitar_samples/8394_speedy_clean_e1st_str_pluck.mp3',
+        harm: '/assets/acoustic_guitar_samples/8392_speedy_clean_e1st_harm.mp3'
     },
 };
 
@@ -185,3 +187,5 @@ export const ACOUSTIC_GUITAR_SLIDE_SAMPLES: string[] = [
     '/assets/acoustic_guitar_samples/8398_speedy_clean_finger_slide2_delay.mp3',
     '/assets/acoustic_guitar_samples/8399_speedy_clean_finger_slide_delay.mp3'
 ];
+
+    
