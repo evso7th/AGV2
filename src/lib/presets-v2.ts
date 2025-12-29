@@ -44,20 +44,20 @@ export const V2_PRESETS = {
     reverbMix: 0.25
   },
 
-  synth_ambient_pad_lush: {
+  synth_ambient_pad_lush: { // Lush Pad - CLONE OF EMERALD FOR TESTING
     type: 'synth',
-    osc: [ // Структура от 'synth'
+    osc: [
       { type: 'sawtooth', detune: -4, octave: 0,  gain: 0.5 },
       { type: 'sawtooth', detune: +4, octave: 0,  gain: 0.5 },
-      { type: 'sine',     detune: 0, octave: -1, gain: 0.7 } 
+      { type: 'sine',     detune: 0, octave: -1, gain: 0.7 } // Sub-bass
     ],
-    noise: { on: true, color: 'pink', gain: 0.015 }, // Шум от 'synth', но тише
-    adsr:  { a: 3.5, d: 2.5, s: 0.85, r: 5.0 }, // Уникальная медленная огибающая
-    lpf:   { cutoff: 1200, q: 1.5, mode: '24dB' }, // Уникальный фильтр
-    lfo:   { rate: 0.08, amount: 600, target: 'filter' }, // Уникальное медленное LFO
-    chorus:{ on: true, rate: 0.2, depth: 0.008, mix: 0.7 }, // Уникальный глубокий хорус
-    delay: { on: true, time: 0.75, fb: 0.45, hc: 3500, mix: 0.4 }, // Уникальный дилэй
-    reverbMix: 0.35 // Уникальный реверб
+    noise: { on: true, color: 'pink', gain: 0.03 },
+    adsr:  { a: 0.8, d: 1.2, s: 0.7, r: 3.0 },
+    lpf:   { cutoff: 1600, q: 1.2, mode: '24dB' }, 
+    lfo:   { rate: 0.18, amount: 450, target: 'filter' },
+    chorus:{ on: true, rate: 0.2, depth: 0.007, mix: 0.4 },
+    delay: { on: true, time: 0.5, fb: 0.3, hc: 4000, mix: 0.2 },
+    reverbMix: 0.25
   },
 
   theremin: {

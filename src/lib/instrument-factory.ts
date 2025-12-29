@@ -80,40 +80,51 @@ const makePhaser = (ctx: AudioContext, { stages = 4, base = 800, depth = 600, ra
     wet.connect(out);
     return { input, output: out, setRate: (r: number) => (lfo.frequency.value = r), setDepth: (d: number) => (lfoG.gain.value = d) };
 };
-const makeChorus = (ctx: AudioContext, { rate = 0.25, depth = 0.006, mix = 0.25 }) => {
-    const input = ctx.createGain(), out = ctx.createGain(), wet = ctx.createGain(), dry = ctx.createGain();
-    wet.gain.value = mix;
+
+const makeChorus = (ctx: AudioContext, {rate = 0.25, depth = 0.006, mix = 0.25}) => {
+    const input = ctx.createGain();
+    const output = ctx.createGain();
+    const wet = ctx.createGain();
+    const dry = ctx.createGain();
+
     dry.gain.value = 1 - mix;
-    const d1 = ctx.createDelay(0.03), d2 = ctx.createDelay(0.03);
-    const l1 = ctx.createOscillator(), g1 = ctx.createGain();
-    l1.type = 'sine';
-    l1.frequency.value = rate;
-    g1.gain.value = depth;
-    l1.connect(g1);
-    g1.connect(d1.delayTime);
-    l1.start();
-    const l2 = ctx.createOscillator(), g2 = ctx.createGain();
-    l2.type = 'sine';
-    l2.frequency.value = rate * 1.11;
-    g2.gain.value = depth * 1.1;
-    l2.connect(g2);
-    g2.connect(d2.delayTime);
-    l2.start();
-    const s1 = ctx.createGain(), s2 = ctx.createGain();
-    input.connect(s1);
-    input.connect(s2);
-    s1.connect(d1);
-    s2.connect(d2);
-    d1.connect(wet);
-    d2.connect(wet);
-    input.connect(dry);
-    dry.connect(out);
-    wet.connect(out);
-    return { input, output: out };
+    wet.gain.value = mix;
+
+    // This connection was the source of the error. It bypassed the wet/dry mix.
+    // input.connect(dry); 
+    dry.connect(output);
+
+    const delay = ctx.createDelay(0.025); // base delay
+    const lfo = ctx.createOscillator();
+    const lfoGain = ctx.createGain();
+
+    lfo.type = 'sine';
+    lfo.frequency.value = rate;
+    lfoGain.gain.value = depth;
+
+    input.connect(delay);
+    delay.connect(wet);
+    wet.connect(output);
+
+    lfo.connect(lfoGain);
+    lfoGain.connect(delay.delayTime);
+    lfo.start();
+
+    return { input, output };
 };
-const makeFilteredDelay = (ctx: AudioContext, { time = 0.38, fb = 0.26, hc = 3600, wet = 0.2 }) => {
-    const input = ctx.createGain(), out = ctx.createGain(), wetG = ctx.createGain();
+
+const makeFilteredDelay = (ctx: AudioContext, {time = 0.38, fb = 0.26, hc = 3600, wet = 0.2}) => {
+    const input = ctx.createGain();
+    const output = ctx.createGain();
+    const dry = ctx.createGain();
+    const wetG = ctx.createGain();
+    
+    dry.gain.value = 1.0 - wet;
     wetG.gain.value = wet;
+
+    input.connect(dry);
+    dry.connect(output);
+
     const d = ctx.createDelay(2.0);
     d.delayTime.value = time;
     const loop = ctx.createGain();
@@ -122,13 +133,15 @@ const makeFilteredDelay = (ctx: AudioContext, { time = 0.38, fb = 0.26, hc = 360
     lp.type = 'lowpass';
     lp.frequency.value = hc;
     lp.Q.value = 0.7;
+
     input.connect(d);
     d.connect(lp);
     lp.connect(loop);
     loop.connect(d);
     lp.connect(wetG);
-    wetG.connect(out);
-    return { input, output: out };
+    wetG.connect(output);
+    
+    return {input, output};
 };
 
 export async function buildMultiInstrument(ctx: AudioContext, {
@@ -284,6 +297,9 @@ export async function buildMultiInstrument(ctx: AudioContext, {
   // ──────────────────────────────────────────────────────────────────────────
   // SYNTH (subtractive pad/lead)
   else if (type === 'synth') {
+    // DIAGNOSTIC LOG 1
+    console.log(`[Factory:Synth] Building with preset:`, preset);
+
     const {
         osc = [],
         noise = { on: false, color: 'white', gain: 0.0 },
@@ -301,18 +317,28 @@ export async function buildMultiInstrument(ctx: AudioContext, {
     const filt2 = ctx.createBiquadFilter(); filt2.type='lowpass'; filt2.frequency.value=lpf.cutoff; filt2.Q.value=lpf.q;
     const use2pole = (lpf.mode!=='24dB');
     const mainChain = use2pole ? (pre.connect(filt), filt) : (pre.connect(filt), filt.connect(filt2), filt2);
-    mainChain.connect(master);
     
-    const chorusNode = chorus.on ? makeChorus(ctx, chorus) : null;
-    const delayNode  = delay.on  ? makeFilteredDelay(ctx, delay) : null;
-    const revSend = ctx.createGain(); revSend.gain.value = reverbMix;
-    if (reverb.buffer) {
-        revSend.connect(reverb);
+    const finalChain = ctx.createGain();
+    mainChain.connect(finalChain);
+
+    if (chorus.on) {
+        const chorusNode = makeChorus(ctx, chorus);
+        mainChain.connect(chorusNode.input);
+        chorusNode.output.connect(finalChain);
+    }
+    if (delay.on) {
+        const delayNode = makeFilteredDelay(ctx, delay);
+        finalChain.connect(delayNode.input);
+        delayNode.output.connect(master); // Connect delay output to master
+    } else {
+        finalChain.connect(master);
     }
     
-    if (chorusNode) { mainChain.connect(chorusNode.input); chorusNode.output.connect(master); chorusNode.output.connect(revSend); }
-    if (delayNode) { mainChain.connect(delayNode.input); delayNode.output.connect(master); delayNode.output.connect(revSend); }
-    mainChain.connect(revSend);
+    const revSend = ctx.createGain(); revSend.gain.value = reverbMix;
+    if (reverb.buffer) {
+        finalChain.connect(revSend);
+        revSend.connect(reverb);
+    }
 
     if (lfo?.amount > 0){
       const l = ctx.createOscillator(); l.type='sine'; l.frequency.value=lfo.rate;
@@ -333,6 +359,9 @@ export async function buildMultiInstrument(ctx: AudioContext, {
     }
 
     api.noteOn = (midi, when=ctx.currentTime) => {
+      // DIAGNOSTIC LOG 2
+      console.log(`%c[Factory:Synth] api.noteOn triggered - MIDI: ${midi}, Time: ${when}`, 'color: yellow');
+
       const f = midiToHz(midi);
       
       const vGain = ctx.createGain(); vGain.gain.value = 0.0;
@@ -362,6 +391,9 @@ export async function buildMultiInstrument(ctx: AudioContext, {
       
       const voicePackage = { oscs, noise: noiseNode, gain: vGain };
       activeVoices.set(midi, voicePackage);
+      
+      // DIAGNOSTIC LOG 3
+      console.log(`[Factory:Synth] ADSR applied: a=${adsr.a}, d=${adsr.d}, s=${adsr.s}`);
 
       vGain.gain.cancelScheduledValues(when);
       vGain.gain.setValueAtTime(0.0001, when);
@@ -397,7 +429,7 @@ export async function buildMultiInstrument(ctx: AudioContext, {
   // MELLOTRON (sample + wow/flutter + tapeNoise)
   else if (type === 'mellotron') {
     const {
-      instrument = 'strings', // 'strings'|'choir'|'flute'
+      instrument = 'strings', // 'strings'|'choir'|'flute' (подберите карту)
       attack = 0.04, release = 0.35,
       wow = { rate: 0.3, depth: 0.003 },
       flutter = { rate: 5.5, depth: 0.0008 },
