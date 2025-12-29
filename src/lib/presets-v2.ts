@@ -54,7 +54,7 @@ export const V2_PRESETS = {
       { type: 'sine',     detune: 0, octave: -1, gain: 0.7 }
     ],
     noise: { on: true, color: 'pink', gain: 0.03 },
-    adsr:  { a: 2.5, d: 1.2, s: 0.7, r: 3.0 }, // <--- ТОЛЬКО ЭТО ИЗМЕНЕНИЕ
+    adsr:  { a: 1.2, d: 1.2, s: 0.7, r: 3.0 }, // <--- ИЗМЕНЕНИЕ: Атака установлена в 1.2с
     lpf:   { cutoff: 1600, q: 1.2, mode: '24dB' }, 
     lfo:   { rate: 0.18, amount: 450, target: 'filter' },
     chorus:{ on: true, rate: 0.2, depth: 0.007, mix: 0.4 },
