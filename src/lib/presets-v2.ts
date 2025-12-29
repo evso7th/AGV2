@@ -110,18 +110,6 @@ export const V2_PRESETS = {
     reverbMix: 0.35
   },
 
-  mellotron_choir_dark: {
-    type: 'mellotron',
-    instrument: 'choir',
-    attack: 0.08, release: 0.45,
-    adsr:  { a: 0.1, d: 0.2, s: 0.9, r: 1.2 },
-    wow: { rate: 0.25, depth: 0.0028 },
-    flutter: { rate: 5.5, depth: 0.0008 },
-    noise: { level: -34 },
-    lpf: 8500, hpf: 140,
-    reverbMix: 0.26
-  },
-
   mellotron_flute_intimate: {
     type: 'synth',
     osc: [
@@ -138,23 +126,6 @@ export const V2_PRESETS = {
   },
 
   // --- НОВЫЕ СИНТЕТИЧЕСКИЕ ГИТАРЫ (ПЛАН 390) ---
-
-  acousticGuitar: { // Folk Acoustic - Reworked in Plan 392
-    type: 'synth',
-    osc: [
-      { type: 'triangle', detune: -2, octave: 0, gain: 0.9 }, // Основной тон
-      { type: 'sine', detune: 2, octave: 1, gain: 0.25 },    // Верхние обертоны
-      { type: 'sine', detune: 0, octave: -1, gain: 0.35 },   // Резонанс корпуса
-      { type: 'sine', detune: 0, octave: -2, gain: 0.15 }    // Глубокий резонанс
-    ],
-    noise: { on: true, color: 'white', gain: 0.15 },         // "Щипок" - уменьшен
-    adsr:  { a: 0.001, d: 0.1, s: 0.8, r: 0.3 },              // Имитация компрессии
-    lpf:   { cutoff: 2000, q: 2.5, mode: '24dB' },            // Имитация EQ
-    lfo:   { rate: 0, amount: 0, target: 'pitch' },
-    chorus:{ on: true, rate: 0.1, depth: 0.001, mix: 0.1 },
-    delay: { on: false },
-    reverbMix: 0.20 // Больше пространства
-  },
 
   guitar_shineOn: { // Shine On Lead
     type: 'synth',
@@ -190,3 +161,5 @@ export const V2_PRESETS = {
     reverbMix: 0.15
   }
 };
+
+    
