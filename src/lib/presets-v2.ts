@@ -116,7 +116,7 @@ export const V2_PRESETS = {
     osc: [
       { type: 'sine', detune: 0, octave: 0, gain: 0.9 },
       { type: 'triangle', detune: 2, octave: 1, gain: 0.2 },
-      { type: 'noise', color: 'white', gain: 0.07, detune: 0, octave: 0 }
+      { type: 'noise', gain: 0.07, detune: 0, octave: 0 }
     ],
     adsr: { a: 0.05, d: 0.2, s: 0.8, r: 0.3 },
     lpf: { cutoff: 7500, q: 0.8, mode: '12dB' },
@@ -126,13 +126,13 @@ export const V2_PRESETS = {
     reverbMix: 0.15
   },
 
-  acousticGuitar: { // Folk Acoustic
+  acousticGuitar: {
     type: 'synth',
     osc: [
       { type: 'triangle', detune: 0, octave: 0, gain: 1.0 },
-      { type: 'noise',    detune: 0, octave: 0, gain: 0.15 },
-      { type: 'sine',     detune: 5, octave: 1, gain: 0.2 },
-      { type: 'sine',     detune: 0, octave: -1, gain: 0.3 },
+      { type: 'noise', detune: 0, octave: 0, gain: 0.15 },
+      { type: 'sine', detune: 5, octave: 1, gain: 0.2 },
+      { type: 'sine', detune: 0, octave: -1, gain: 0.3 },
     ],
     adsr: { attack: 0.001, decay: 0.3, sustain: 0.05, release: 0.3 },
     lpf: { cutoff: 2000, q: 4.0, mode: '12dB' },
@@ -152,7 +152,7 @@ export const V2_PRESETS = {
     drive: { type: 'soft', amount: 0.15 },
     post: { lpf: 5500, mids: [{ f: 900, q: 1.0, g: +1 }, { f: 2800, q: 1.2, g: -1 }] },
     phaser: { stages: 4, base: 800, depth: 600, rate: 0.12, fb: 0.15, mix: 0.25 },
-    delayA: { time: 0.48, fb: 0.35, hc: 3500, wet: 0.28 }, // Dotted 8th at ~78BPM
+    delayA: { time: 0.48, fb: 0.35, hc: 3500, wet: 0.28 },
     delayB: null,
     reverbMix: 0.22,
     adsr: { a: 0.01, d: 0.4, s: 0.8, r: 2.2 }
@@ -161,12 +161,10 @@ export const V2_PRESETS = {
   electricGuitar: { // Muff Lead
     type: 'guitar',
     variant: 'muffLead',
-    // #ПЛАН316: Исправлен detune, чтобы убрать расстроенность, добавлен sub-bass
-    osc: { width: 0.48, detune: 0, mainGain: 0.8, detGain: 0.2, subGain: 0.4 },
+    osc: { width: 0.48, mainGain: 0.8, detGain: 0.2, subGain: 0.4 },
     pickup: { cutoff: 3400, q: 1.1 },
     comp:   { threshold: -20, ratio: 4, attack: 0.008, release: 0.14, makeup: +4 },
     drive:  { type: 'muff', amount: 0.65 },
-    // #ПЛАН316: Снижен LPF для менее резкого звука
     post:   { lpf: 4200, mids: [{ f: 900, q: 0.9, g: +1.5 }, { f: 3000, q: 1.2, g: -2.5 }] },
     phaser: { stages: 4, base: 900, depth: 700, rate: 0.18, fb: 0.12, mix: 0.18 },
     delayA: { time: 0.50, fb: 0.45, hc: 3200, wet: 0.28 },
