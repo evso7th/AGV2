@@ -116,7 +116,7 @@ export const V2_PRESETS = {
     osc: [
       { type: 'sine', detune: 0, octave: 0, gain: 0.9 },
       { type: 'triangle', detune: 2, octave: 1, gain: 0.2 },
-      { type: 'noise', gain: 0.07, detune: 0, octave: 0 }
+      { type: 'noise', gain: 0.07, detune: 0, octave: 0 } // #ПЛАН382: "Дыхание"
     ],
     adsr: { a: 0.05, d: 0.2, s: 0.8, r: 0.3 },
     lpf: { cutoff: 7500, q: 0.8, mode: '12dB' },
@@ -129,10 +129,10 @@ export const V2_PRESETS = {
   acousticGuitar: {
     type: 'synth',
     osc: [
-        { type: 'triangle', detune: 0, octave: 0, gain: 1.0 },    // Core tone
-        { type: 'noise', detune: 0, octave: 0, gain: 0.15 },      // Pluck
-        { type: 'sine', detune: 5, octave: 1, gain: 0.2 },        // Brightness
-        { type: 'sine', detune: 0, octave: -1, gain: 0.3 }        // Body
+      { type: 'triangle', detune: 0, octave: 0, gain: 1.0 },    // Core tone
+      { type: 'noise',    detune: 0, octave: 0, gain: 0.15 },    // Pluck
+      { type: 'sine',     detune: 5, octave: 1, gain: 0.2 },     // Brightness
+      { type: 'sine',     detune: 0, octave: -1, gain: 0.3 }     // Body
     ],
     adsr: { attack: 0.001, decay: 0.3, sustain: 0.05, release: 0.3 },
     lpf: { cutoff: 2000, q: 4.0, mode: '12dB' },
@@ -146,6 +146,7 @@ export const V2_PRESETS = {
   guitar_shineOn: {
     type: 'guitar',
     variant: 'shineOn',
+    adsr: { a: 0.01, d: 0.4, s: 0.8, r: 2.2 },
     osc: { width: 0.48, detune: 2, mainGain: 0.9, detGain: 0.15, subGain: 0.3 },
     pickup: { cutoff: 3800, q: 1.2 },
     comp: { threshold: -22, ratio: 5, attack: 0.005, release: 0.2, makeup: 6 },
@@ -155,12 +156,12 @@ export const V2_PRESETS = {
     delayA: { time: 0.48, fb: 0.35, hc: 3500, wet: 0.28 },
     delayB: null,
     reverbMix: 0.22,
-    adsr: { a: 0.01, d: 0.4, s: 0.8, r: 2.2 }
   },
   
   electricGuitar: { // Muff Lead
     type: 'guitar',
     variant: 'muffLead',
+    adsr: { a: 0.02, d: 0.8, s: 0.7, r: 1.5 },
     osc: { width: 0.48, mainGain: 0.8, detGain: 0.2, subGain: 0.4, octave: -1 }, // Added sub-bass
     pickup: { cutoff: 3400, q: 1.1 },
     comp:   { threshold: -20, ratio: 4, attack: 0.008, release: 0.14, makeup: +4 },
