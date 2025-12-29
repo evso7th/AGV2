@@ -65,10 +65,9 @@ export const V2_PRESETS = {
     osc: [
       { type: 'sine', detune: 0, octave: 0, gain: 1.0 },
       { type: 'sine', detune: 2, octave: 1, gain: 0.3 },
-      { type: 'sine', detune: -2, octave: -1, gain: 0.2 },
-      { type: 'triangle', detune: 0, octave: 0, gain: 0.1 }
     ],
     noise: { on: false },
+    // #ПЛАН377: Увеличен release для плавности
     adsr:  { a: 0.4, d: 0.1, s: 0.9, r: 2.8 },
     lpf:   { cutoff: 5000, q: 0.7, mode: '12dB' },
     lfo:   { rate: 5.5, amount: 3, target: 'pitch' },
@@ -115,26 +114,32 @@ export const V2_PRESETS = {
   mellotron_flute_intimate: {
     type: 'synth',
     osc: [
-      { type: 'sine', detune: 0, octave: 0, gain: 0.9 },     // Основной тон
-      { type: 'triangle', detune: 2, octave: 1, gain: 0.2 },   // Верхние гармоники
-      { type: 'noise', detune: 0, octave: 0, gain: 0.07 }     // Имитация дыхания
+      { type: 'sine', detune: 0, octave: 0, gain: 0.9 },
+      { type: 'triangle', detune: 2, octave: 1, gain: 0.2 },
+      { type: 'noise', color: 'white', gain: 0.07, detune: 0, octave: 0 } // "Дыхание"
     ],
     adsr: { a: 0.05, d: 0.2, s: 0.8, r: 0.3 },
     lpf: { cutoff: 7500, q: 0.8, mode: '12dB' },
-    lfo: { rate: 4.8, amount: 2.5, target: 'pitch' }, // Легкое вибрато
+    lfo: { rate: 4.8, amount: 2.5, target: 'pitch' },
     chorus: { on: false },
     delay: { on: true, time: 0.15, fb: 0.1, hc: 5000, mix: 0.1 },
     reverbMix: 0.15
   },
 
   acousticGuitar: { // Folk Acoustic
-    type: 'mellotron',
-    instrument: 'acoustic',
-    attack: 0.01, release: 0.3,
-    wow: { rate: 0.1, depth: 0.0005 },
-    flutter: { rate: 7.0, depth: 0.0003 },
-    noise: { level: -45 },
-    lpf: 8500, hpf: 100, reverbMix: 0.18
+    type: 'synth',
+    osc: [
+      { type: 'triangle', detune: 0, octave: 0, gain: 1.0 },       // 2. Тело струны
+      { type: 'noise', detune: 0, octave: 0, gain: 0.15 },          // 1. Щипок
+      { type: 'sine', detune: 5, octave: 1, gain: 0.2 },            // 3. Обертоны
+      { type: 'sine', detune: 0, octave: -1, gain: 0.3 },           // 4. Резонанс корпуса
+    ],
+    adsr: { attack: 0.001, decay: 0.3, sustain: 0.05, release: 0.3 },
+    lpf: { cutoff: 2000, q: 4.0, mode: '12dB' },
+    lfo: { rate: 0, amount: 0, target: 'pitch' },
+    chorus:{ on: true, rate: 0.1, depth: 0.001, mix: 0.1 },
+    delay: { on: false, time: 0, fb: 0, hc: 0, mix: 0 },
+    reverbMix: 0.18
   },
 
   // ───────────────────────── GUITAR (электро, Гилмор) ─────────────────────────
