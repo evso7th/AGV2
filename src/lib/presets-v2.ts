@@ -45,6 +45,7 @@ export const V2_PRESETS = {
   },
   
   // #ПЛАН 369: Полностью копируем рабочий `synth`, чтобы создать стабильную базу для отладки.
+  // #ПЛАН 370: Восстанавливаем оригинальные значения ADSR для теста.
   synth_ambient_pad_lush: {
     type: 'synth',
     osc: [
@@ -53,7 +54,7 @@ export const V2_PRESETS = {
       { type: 'sine',     detune: 0, octave: -1, gain: 0.7 }
     ],
     noise: { on: true, color: 'pink', gain: 0.03 },
-    adsr:  { a: 0.8, d: 1.2, s: 0.7, r: 3.0 },
+    adsr:  { a: 2.5, d: 2.0, s: 0.8, r: 4.0 }, // Оригинальные "пышные" значения
     lpf:   { cutoff: 1600, q: 1.2, mode: '24dB' }, 
     lfo:   { rate: 0.18, amount: 450, target: 'filter' },
     chorus:{ on: true, rate: 0.2, depth: 0.007, mix: 0.4 },
