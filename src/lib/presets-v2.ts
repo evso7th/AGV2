@@ -112,16 +112,6 @@ export const V2_PRESETS = {
     reverbMix: 0.35
   },
 
-  mellotron_choir_dark: {
-    type: 'mellotron',
-    instrument: 'choir',
-    attack: 0.15, release: 0.5,
-    wow: { rate: 0.28, depth: 0.003 },
-    flutter: { rate: 5.2, depth: 0.0009 },
-    noise: { level: -35 },
-    lpf: 7800, hpf: 150, reverbMix: 0.3
-  },
-
   mellotron_flute_intimate: {
     type: 'mellotron',
     instrument: 'flute',
