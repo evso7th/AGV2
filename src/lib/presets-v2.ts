@@ -47,31 +47,31 @@ export const V2_PRESETS = {
   synth_ambient_pad_lush: {
     type: 'synth',
     osc: [
-      { type: 'sawtooth', detune: -4, octave: 0, gain: 0.5 },
-      { type: 'sawtooth', detune: 4, octave: 0, gain: 0.5 },
-      { type: 'sine', detune: 0, octave: -1, gain: 0.7 }
+        { type: 'sawtooth', detune: -4, octave: 0,  gain: 0.5 },
+        { type: 'sawtooth', detune: +4, octave: 0,  gain: 0.5 },
+        { type: 'sine',     detune: 0,  octave: -1, gain: 0.7 } // Саб-бас слой
     ],
     noise: { on: true, color: 'pink', gain: 0.03 },
-    adsr:  { a: 0.99, d: 2.0, s: 0.8, r: 4.0 },
+    adsr:  { a: 0.99, d: 2.0, s: 0.8, r: 4.0 }, // Пышная огибающая
     lpf:   { cutoff: 1600, q: 1.2, mode: '24dB' }, 
     lfo:   { rate: 0.18, amount: 450, target: 'filter' },
     chorus:{ on: true, rate: 0.2, depth: 0.007, mix: 0.4 },
     delay: { on: true, time: 0.5, fb: 0.3, hc: 4000, mix: 0.2 },
     reverbMix: 0.25
   },
-
+  
   theremin: {
     type: 'synth',
     osc: [
-      { type: 'sine', detune: 0, octave: 0, gain: 1.0 },
-      { type: 'sine', detune: 2, octave: 1, gain: 0.3 },
-      { type: 'sine', detune: -2, octave: -1, gain: 0.2 },
-      { type: 'triangle', detune: 0, octave: 0, gain: 0.1 }
+        { type: 'sine', detune: 0, octave: 0, gain: 1.0 },
+        { type: 'sine', detune: 2, octave: 1, gain: 0.3 },
+        { type: 'sine', detune: -2, octave: -1, gain: 0.2 },
+        { type: 'triangle', detune: 0, octave: 0, gain: 0.1 }
     ],
     noise: { on: false },
-    adsr:  { a: 0.4, d: 0.1, s: 0.9, r: 0.8 },
+    adsr:  { a: 0.4, d: 0.1, s: 0.9, r: 2.8 }, // Увеличенный release для портаменто
     lpf:   { cutoff: 5000, q: 0.7, mode: '12dB' },
-    lfo:   { rate: 5.5, amount: 3, target: 'pitch' }, // Note: LFO to pitch needs external handling
+    lfo:   { rate: 5.5, amount: 3, target: 'pitch' },
     chorus:{ on: true, rate: 0.1, depth: 0.002, mix: 0.2 },
     delay: { on: false },
     reverbMix: 0.28
