@@ -45,17 +45,16 @@ export function AuraGrooveV2({
   const v1MelodyInstruments: (MelodyInstrument | 'none')[] = ['synth', 'organ', 'mellotron', 'theremin', 'electricGuitar', 'ambientPad', 'acousticGuitar', 'none'];
   const v1AccompanimentInstruments: (AccompanimentInstrument | 'none')[] = ['synth', 'organ', 'mellotron', 'theremin', 'electricGuitar', 'ambientPad', 'acousticGuitar', 'none'];
   const v2MelodyInstruments = Object.keys(V2_PRESETS) as (keyof typeof V2_PRESETS)[];
-  const harmonyInstrumentList: ('piano' | 'guitarChords' | 'acousticGuitarSolo' | 'flute' | 'violin' | 'none')[] = ['piano', 'guitarChords', 'acousticGuitarSolo', 'flute', 'violin', 'none'];
+  const harmonyInstrumentList: ('piano' | 'guitarChords' | 'flute' | 'violin' | 'none')[] = ['piano', 'guitarChords', 'flute', 'violin', 'none'];
   const bassInstrumentList: (BassInstrument | 'none')[] = ['classicBass', 'glideBass', 'ambientDrone', 'resonantGliss', 'hypnoticDrone', 'livingRiff', 'none'];
   const moodList: Mood[] = ['epic', 'joyful', 'enthusiastic', 'melancholic', 'dark', 'anxious', 'dreamy', 'contemplative', 'calm'];
   const genreList: Genre[] = ['trance', 'ambient', 'progressive', 'rock', 'house', 'rnb', 'ballad', 'reggae', 'blues', 'celtic'];
 
   const displayNames: Record<string, string> = {
     'guitarChords': 'Guitar Chords',
-    'acousticGuitarSolo': 'Acoustic Solo',
     'electricGuitar': 'Muff Lead Guitar',
     'ambientPad': 'Ambient Pad',
-    'acousticGuitar': 'Folk Acoustic',
+    'acousticGuitar': 'Acoustic Folk',
     'neuro_f_matrix': 'Neuro F-Matrix',
     'rnb': 'R&B',
     // V2 presets
@@ -64,7 +63,6 @@ export function AuraGrooveV2({
     'synth': 'Emerald Pad',
     'theremin': 'Vocal Theremin',
     'mellotron': 'Majestic Strings',
-    'mellotron_choir_dark': 'Dark Choir',
     'mellotron_flute_intimate': 'Intimate Flute',
     'guitar_shineOn': 'Shine On Guitar',
     'synth_ambient_pad_lush': 'Lush Pad'

@@ -4,10 +4,10 @@ import type { FractalEvent } from '@/types/fractal';
 import type { Note } from "@/types/music";
 import { SamplerPlayer } from '@/lib/sampler-player';
 import { GuitarChordsSampler } from '@/lib/guitar-chords-sampler';
-import { PIANO_SAMPLES, VIOLIN_SAMPLES, FLUTE_SAMPLES, ACOUSTIC_GUITAR_SOLO_SAMPLES } from "@/lib/samples";
+import { PIANO_SAMPLES, VIOLIN_SAMPLES, FLUTE_SAMPLES } from "@/lib/samples";
 import { ViolinSamplerPlayer } from './violin-sampler-player';
 import { FluteSamplerPlayer } from './flute-sampler-player';
-import { AcousticGuitarSoloSampler } from './acoustic-guitar-solo-sampler';
+// import { AcousticGuitarSoloSampler } from './acoustic-guitar-solo-sampler';
 
 /**
  * Manages the "harmony" layer, specifically for rhythmic/harmonic instruments
@@ -24,7 +24,7 @@ export class HarmonySynthManager {
     private guitarChords: GuitarChordsSampler;
     private violin: ViolinSamplerPlayer;
     private flute: FluteSamplerPlayer;
-    private acousticGuitarSolo: AcousticGuitarSoloSampler;
+    // private acousticGuitarSolo: AcousticGuitarSoloSampler;
 
 
     constructor(audioContext: AudioContext, destination: AudioNode) {
@@ -35,7 +35,7 @@ export class HarmonySynthManager {
         this.guitarChords = new GuitarChordsSampler(audioContext, this.destination);
         this.violin = new ViolinSamplerPlayer(audioContext, this.destination);
         this.flute = new FluteSamplerPlayer(audioContext, this.destination);
-        this.acousticGuitarSolo = new AcousticGuitarSoloSampler(audioContext, this.destination);
+        // this.acousticGuitarSolo = new AcousticGuitarSoloSampler(audioContext, this.destination);
     }
 
     async init() {
@@ -48,7 +48,7 @@ export class HarmonySynthManager {
             this.guitarChords.init(),
             this.violin.loadInstrument('violin', VIOLIN_SAMPLES),
             this.flute.loadInstrument('flute', FLUTE_SAMPLES),
-            this.acousticGuitarSolo.init(),
+            // this.acousticGuitarSolo.init(),
         ]);
         
         this.setInstrument(this.activeInstrumentName); // Set initial volume
@@ -94,9 +94,9 @@ export class HarmonySynthManager {
             case 'flute':
                 this.flute.schedule(notes, barStartTime);
                 break;
-            case 'acousticGuitarSolo':
-                this.acousticGuitarSolo.schedule(notes, barStartTime);
-                break;
+            // case 'acousticGuitarSolo':
+            //     this.acousticGuitarSolo.schedule(notes, barStartTime);
+            //     break;
         }
     }
 
@@ -113,7 +113,7 @@ export class HarmonySynthManager {
         this.guitarChords.setVolume(instrumentName === 'guitarChords' ? 1.0 : 0);
         this.violin.setVolume(instrumentName === 'violin' ? 1.0 : 0);
         this.flute.setVolume(instrumentName === 'flute' ? 1.0 : 0);
-        this.acousticGuitarSolo.setVolume(instrumentName === 'acousticGuitarSolo' ? 1.0 : 0);
+        // this.acousticGuitarSolo.setVolume(instrumentName === 'acousticGuitarSolo' ? 1.0 : 0);
     }
 
     public allNotesOff() {
@@ -121,12 +121,14 @@ export class HarmonySynthManager {
         this.guitarChords.stopAll();
         this.violin.stopAll();
         this.flute.stopAll();
-        this.acousticGuitarSolo.stopAll();
+        // this.acousticGuitarSolo.stopAll();
     }
 
     public stop() {
         this.allNotesOff();
     }
+
+
 
     public dispose() {
         this.stop();
@@ -134,6 +136,6 @@ export class HarmonySynthManager {
         this.guitarChords.dispose();
         this.violin.dispose();
         this.flute.dispose();
-        this.acousticGuitarSolo.dispose();
+        // this.acousticGuitarSolo.dispose();
     }
 }
