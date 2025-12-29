@@ -49,7 +49,7 @@ export const V2_PRESETS = {
     osc: [
         { type: 'sawtooth', detune: -4, octave: 0,  gain: 0.5 },
         { type: 'sawtooth', detune: +4, octave: 0,  gain: 0.5 },
-        { type: 'sine',     detune: 0,  octave: -1, gain: 0.7 } // Саб-бас слой
+        { type: 'sine',     detune: 0, octave: -1, gain: 0.7 } // Саб-бас слой
     ],
     noise: { on: true, color: 'pink', gain: 0.03 },
     adsr:  { a: 0.99, d: 2, s: 0.8, r: 4 }, // Пышная огибающая
@@ -75,6 +75,24 @@ export const V2_PRESETS = {
     chorus:{ on: true, rate: 0.1, depth: 0.002, mix: 0.2 },
     delay: { on: false },
     reverbMix: 0.28
+  },
+
+  synth_cave_pad: {
+    type: 'synth',
+    osc: [
+        { type: 'sawtooth', detune: -6, octave: 0,  gain: 0.4 },
+        { type: 'sawtooth', detune: +6, octave: 0,  gain: 0.4 },
+        { type: 'sawtooth', detune: 0, octave: 1, gain: 0.25 },
+        { type: 'sine',     detune: 0, octave: -1, gain: 0.8 },
+        { type: 'triangle', detune: 2, octave: -1, gain: 0.5 }
+    ],
+    noise: { on: true, color: 'brown', gain: 0.04 },
+    adsr:  { a: 1.5, d: 2.0, s: 0.8, r: 5.0 },
+    lpf:   { cutoff: 1400, q: 1.1, mode: '24dB' },
+    lfo:   { rate: 0.1, amount: 5, target: 'pitch' },
+    chorus:{ on: true, rate: 0.15, depth: 0.008, mix: 0.6 },
+    delay: { on: true, time: 0.52, fb: 0.45, hc: 2500, mix: 0.35 },
+    reverbMix: 0.45
   },
 
   // ───────────────────────── MELLOTRON (переделан в струнный синтезатор) ─────────────────────────

@@ -90,10 +90,11 @@ const makeChorus = (ctx: AudioContext, {rate = 0.25, depth = 0.006, mix = 0.25})
     dry.gain.value = 1 - mix;
     wet.gain.value = mix;
 
-    // This connection was the source of the error. It bypassed the wet/dry mix.
-    // input.connect(dry); 
+    // #ИСПРАВЛЕНО: Добавлена недостающая связь с `dry` каналом.
+    input.connect(dry);
     dry.connect(output);
 
+    // #ИЗМЕНЕНО: Упрощено до одного дилэя для чистоты
     const delay = ctx.createDelay(0.025); // base delay
     const lfo = ctx.createOscillator();
     const lfoGain = ctx.createGain();
@@ -113,36 +114,50 @@ const makeChorus = (ctx: AudioContext, {rate = 0.25, depth = 0.006, mix = 0.25})
     return { input, output };
 };
 
-const makeFilteredDelay = (ctx: AudioContext, {time = 0.38, fb = 0.26, hc = 3600, wet = 0.2}) => {
+const makeFilteredDelay = (ctx: AudioContext, { time = 0.38, fb = 0.26, hc = 3600, mix = 0.2 }) => {
+    // #ЗАЧЕМ: Создает стерео-дилэй с эффектом пинг-понга.
+    // #ЧТО: Использует две линии задержки с перекрестной обратной связью.
+    // #СВЯЗИ: Является insert-эффектом, смешивая сухой и обработанный сигналы.
     const input = ctx.createGain();
     const output = ctx.createGain();
-    const dry = ctx.createGain();
-    const wetG = ctx.createGain();
-    
-    dry.gain.value = 1.0 - wet;
-    wetG.gain.value = wet;
+    const dry = ctx.createGain(); dry.gain.value = 1.0 - mix;
+    const wet = ctx.createGain(); wet.gain.value = mix;
 
+    // Сухой сигнал
     input.connect(dry);
     dry.connect(output);
 
-    const d = ctx.createDelay(2.0);
-    d.delayTime.value = time;
-    const loop = ctx.createGain();
-    loop.gain.value = fb;
-    const lp = ctx.createBiquadFilter();
-    lp.type = 'lowpass';
-    lp.frequency.value = hc;
-    lp.Q.value = 0.7;
+    // Мокрый сигнал (стерео)
+    const delayL = ctx.createDelay(5.0);
+    const delayR = ctx.createDelay(5.0);
+    delayL.delayTime.value = time;
+    delayR.delayTime.value = time;
 
-    input.connect(d);
-    d.connect(lp);
-    lp.connect(loop);
-    loop.connect(d);
-    lp.connect(wetG);
-    wetG.connect(output);
+    const feedback = ctx.createGain();
+    feedback.gain.value = fb;
     
-    return {input, output};
+    const filter = ctx.createBiquadFilter();
+    filter.type = 'lowpass';
+    filter.frequency.value = hc;
+    filter.Q.value = 0.7;
+    
+    const merger = ctx.createChannelMerger(2);
+
+    // Цепочка
+    input.connect(delayL);
+    delayL.connect(filter).connect(delayR);
+    delayR.connect(feedback).connect(delayL); // Обратная связь
+
+    // Выход на стерео
+    delayL.connect(merger, 0, 0); // Левый канал
+    delayR.connect(merger, 0, 1); // Правый канал
+    
+    merger.connect(wet);
+    wet.connect(output);
+    
+    return { input, output };
 };
+
 
 export async function buildMultiInstrument(ctx: AudioContext, {
   type = 'organ',            // 'organ' | 'synth' | 'mellotron' | 'guitar'
@@ -319,20 +334,22 @@ export async function buildMultiInstrument(ctx: AudioContext, {
     const mainChain = use2pole ? (pre.connect(filt), filt) : (pre.connect(filt), filt.connect(filt2), filt2);
     
     const finalChain = ctx.createGain();
-    mainChain.connect(finalChain);
+    let currentOutput = mainChain;
 
     if (chorus.on) {
         const chorusNode = makeChorus(ctx, chorus);
-        mainChain.connect(chorusNode.input);
-        chorusNode.output.connect(finalChain);
+        currentOutput.connect(chorusNode.input);
+        currentOutput = chorusNode.output;
     }
+
     if (delay.on) {
         const delayNode = makeFilteredDelay(ctx, delay);
-        finalChain.connect(delayNode.input);
-        delayNode.output.connect(master); // Connect delay output to master
-    } else {
-        finalChain.connect(master);
+        currentOutput.connect(delayNode.input);
+        currentOutput = delayNode.output;
     }
+
+    currentOutput.connect(finalChain);
+    finalChain.connect(master);
     
     const revSend = ctx.createGain(); revSend.gain.value = reverbMix;
     if (reverb.buffer) {
@@ -551,8 +568,8 @@ export async function buildMultiInstrument(ctx: AudioContext, {
     } catch(e) { console.error('[Guitar] Failed to load cabinet IR', e); }
 
     const ph = makePhaser(ctx, phaser);
-    const dA = makeFilteredDelay(ctx, {time:delayA.time, fb:delayA.fb, hc:delayA.hc, wet:delayA.wet});
-    const dB_node = delayB ? makeFilteredDelay(ctx, {time:delayB.time, fb:delayB.fb, hc:delayB.hc, wet:delayB.wet}) : null;
+    const dA = makeFilteredDelay(ctx, {time:delayA.time, fb:delayA.fb, hc:delayA.hc, mix:delayA.wet});
+    const dB_node = delayB ? makeFilteredDelay(ctx, {time:delayB.time, fb:delayB.fb, hc:delayB.hc, mix:delayB.wet}) : null;
 
     const revSend = ctx.createGain(); revSend.gain.value = reverbMix;
     if(reverb.buffer) { revSend.connect(reverb); }
@@ -584,12 +601,14 @@ export async function buildMultiInstrument(ctx: AudioContext, {
       postHPF.connect(mid1); mid1.connect(mid2); mid2.connect(postLPF);
       const afterCab = (cabinetIRUrl && cab.buffer ? (postLPF.connect(cab), cab) : postLPF);
 
-      afterCab.connect(ph.input);
-      if(dA) ph.output.connect(dA.input);
-      if (dB_node) ph.output.connect(dB_node.input);
+      let lastInChain = afterCab.connect(ph.input);
+      if (dA) lastInChain = ph.output.connect(dA.input);
+      if (dB_node) (dA ? dA.output : ph.output).connect(dB_node.input);
+      
+      const finalFxOut = dB_node ? dB_node.output : (dA ? dA.output : ph.output);
 
-      ph.output.connect(master); ph.output.connect(revSend);
-      if(dA) dA.output.connect(revSend); if (dB_node) dB_node.output.connect(revSend);
+      finalFxOut.connect(master);
+      finalFxOut.connect(revSend);
 
       vGain.gain.cancelScheduledValues(when);
       vGain.gain.setValueAtTime(vGain.gain.value, when);
