@@ -46,18 +46,18 @@ export const V2_PRESETS = {
 
   synth_ambient_pad_lush: {
     type: 'synth',
-    osc: [
-      { type: 'sawtooth', detune: -8, octave: 0, gain: 0.5 },
-      { type: 'sawtooth', detune: 8,  octave: 0, gain: 0.5 },
-      { type: 'sine', detune: 0, octave: 1, gain: 0.3 }
+    osc: [ // Структура от 'synth'
+      { type: 'sawtooth', detune: -4, octave: 0,  gain: 0.5 },
+      { type: 'sawtooth', detune: +4, octave: 0,  gain: 0.5 },
+      { type: 'sine',     detune: 0, octave: -1, gain: 0.7 } 
     ],
-    noise: { on: true, color: 'white', gain: 0.015 },
-    adsr:  { a: 3.5, d: 2.5, s: 0.85, r: 5.0 },
-    lpf:   { cutoff: 1200, q: 1.5, mode: '24dB' },
-    lfo:   { rate: 0.08, amount: 600, target: 'filter' },
-    chorus:{ on: true, rate: 0.2, depth: 0.008, mix: 0.7 },
-    delay: { on: true, time: 0.75, fb: 0.45, hc: 3500, mix: 0.4 },
-    reverbMix: 0.35
+    noise: { on: true, color: 'pink', gain: 0.015 }, // Шум от 'synth', но тише
+    adsr:  { a: 3.5, d: 2.5, s: 0.85, r: 5.0 }, // Уникальная медленная огибающая
+    lpf:   { cutoff: 1200, q: 1.5, mode: '24dB' }, // Уникальный фильтр
+    lfo:   { rate: 0.08, amount: 600, target: 'filter' }, // Уникальное медленное LFO
+    chorus:{ on: true, rate: 0.2, depth: 0.008, mix: 0.7 }, // Уникальный глубокий хорус
+    delay: { on: true, time: 0.75, fb: 0.45, hc: 3500, mix: 0.4 }, // Уникальный дилэй
+    reverbMix: 0.35 // Уникальный реверб
   },
 
   theremin: {
