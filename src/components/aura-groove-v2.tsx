@@ -53,9 +53,9 @@ export function AuraGrooveV2({
   const displayNames: Record<string, string> = {
     'guitarChords': 'Guitar Chords',
     'acousticGuitarSolo': 'Acoustic Solo',
-    'electricGuitar': 'Electric Guitar',
+    'electricGuitar': 'Muff Lead Guitar',
     'ambientPad': 'Ambient Pad',
-    'acousticGuitar': 'Acoustic Guitar',
+    'acousticGuitar': 'Folk Acoustic',
     'neuro_f_matrix': 'Neuro F-Matrix',
     'rnb': 'R&B',
     // V2 presets
@@ -67,8 +67,6 @@ export function AuraGrooveV2({
     'mellotron_choir_dark': 'Dark Choir',
     'mellotron_flute_intimate': 'Intimate Flute',
     'guitar_shineOn': 'Shine On Guitar',
-    'electricGuitar': 'Muff Lead Guitar',
-    'acousticGuitar': 'Folk Acoustic',
     'synth_ambient_pad_lush': 'Lush Pad'
   };
   
@@ -150,6 +148,12 @@ export function AuraGrooveV2({
                               <SelectItem value="neuro_f_matrix">{displayNames['neuro_f_matrix'] || 'Neuro F-Matrix'}</SelectItem>
                           </SelectContent>
                       </Select>
+                  </div>
+                  <div className="grid grid-cols-3 items-center gap-2">
+                    <Label htmlFor="v2-engine-switch" className="text-right text-xs flex items-center gap-1.5 justify-end"><Cog className="h-3 w-3"/>V2 Engine</Label>
+                    <div className="col-span-2 flex items-center">
+                        <Switch id="v2-engine-switch" checked={useMelodyV2} onCheckedChange={toggleMelodyEngine} disabled={isInitializing || isPlaying}/>
+                    </div>
                   </div>
                    {isFractalStyle && (
                     <>
@@ -254,12 +258,6 @@ export function AuraGrooveV2({
                                         </SelectContent>
                                     </Select>
                                 </div>
-                                {part === 'melody' && (
-                                  <div className="grid grid-cols-2 items-center gap-2">
-                                    <Label htmlFor="v2-engine-switch" className="font-semibold flex items-center gap-1.5 capitalize text-xs"><Cog className="h-4 w-4"/>V2 Engine</Label>
-                                    <Switch id="v2-engine-switch" checked={useMelodyV2} onCheckedChange={toggleMelodyEngine} disabled={isInitializing || isPlaying}/>
-                                  </div>
-                                )}
                                  {part === 'bass' && 'technique' in settings && (settings.name as BassInstrument | 'none') !== 'none' && (
                                     <div className="grid grid-cols-2 items-center gap-2">
                                         <Label className="font-semibold flex items-center gap-1.5 capitalize text-xs"><GitBranch className="h-4 w-4"/>Technique</Label>
