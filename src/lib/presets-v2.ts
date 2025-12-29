@@ -44,13 +44,12 @@ export const V2_PRESETS = {
     reverbMix: 0.25
   },
   
-  // #ПЛАН 374: Добавляем саб-бас для глубины.
   synth_ambient_pad_lush: {
     type: 'synth',
     osc: [
-      { type: 'sawtooth', detune: -4, octave: 0,  gain: 0.5 },
-      { type: 'sawtooth', detune: +4, octave: 0,  gain: 0.5 },
-      { type: 'sine',     detune: 0, octave: -1, gain: 0.7 } // Sub-bass
+      { type: 'sawtooth', detune: -4, octave: 0, gain: 0.5 },
+      { type: 'sawtooth', detune: 4, octave: 0, gain: 0.5 },
+      { type: 'sine', detune: 0, octave: -1, gain: 0.7 }
     ],
     noise: { on: true, color: 'pink', gain: 0.03 },
     adsr:  { a: 0.99, d: 2.0, s: 0.8, r: 4.0 },
@@ -64,10 +63,10 @@ export const V2_PRESETS = {
   theremin: {
     type: 'synth',
     osc: [
-      { type: 'sine', detune: 0,  gain: 1.0 },
-      { type: 'sine', detune: 5, gain: 0.15 }, // slight harmonic
-      // #ПЛАН316: Добавлен саб-бас слой
-      { type: 'sine', detune: 0, octave: -1, gain: 0.35 }
+      { type: 'sine', detune: 0, octave: 0, gain: 1.0 },
+      { type: 'sine', detune: 2, octave: 1, gain: 0.3 },
+      { type: 'sine', detune: -2, octave: -1, gain: 0.2 },
+      { type: 'triangle', detune: 0, octave: 0, gain: 0.1 }
     ],
     noise: { on: false },
     adsr:  { a: 0.4, d: 0.1, s: 0.9, r: 0.8 },
