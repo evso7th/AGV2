@@ -63,10 +63,10 @@ export const V2_PRESETS = {
   theremin: {
     type: 'synth',
     osc: [
-        { type: 'sine', detune: 0, octave: 0, gain: 1.0 },
-        { type: 'sine', detune: 2, octave: 1, gain: 0.3 },
-        { type: 'sine', detune: -2, octave: -1, gain: 0.2 },
-        { type: 'triangle', detune: 0, octave: 0, gain: 0.1 }
+      { type: 'sine', detune: 0, octave: 0, gain: 1.0 },
+      { type: 'sine', detune: 2, octave: 1, gain: 0.3 },
+      { type: 'sine', detune: -2, octave: -1, gain: 0.2 },
+      { type: 'triangle', detune: 0, octave: 0, gain: 0.1 }
     ],
     noise: { on: false },
     adsr:  { a: 0.4, d: 0.1, s: 0.9, r: 2.8 },
@@ -112,14 +112,30 @@ export const V2_PRESETS = {
     reverbMix: 0.35
   },
 
-  mellotron_flute_intimate: {
+  mellotron_choir_dark: {
     type: 'mellotron',
-    instrument: 'flute',
-    attack: 0.04, release: 0.3,
-    wow: { rate: 0.3, depth: 0.002 },
-    flutter: { rate: 6.2, depth: 0.0006 },
-    noise: { level: -37 },
-    lpf: 9200, hpf: 160, reverbMix: 0.22
+    instrument: 'choir',
+    attack: 0.08, release: 0.45,
+    wow: { rate: 0.25, depth: 0.0028 },
+    flutter: { rate: 5.5, depth: 0.0008 },
+    noise: { level: -34 },
+    lpf: 8500, hpf: 140, reverbMix: 0.26
+  },
+  
+  mellotron_flute_intimate: {
+    type: 'synth',
+    osc: [
+      { type: 'sine', detune: 0, octave: 0, gain: 0.9 },     // Основной тон
+      { type: 'triangle', detune: 2, octave: 1, gain: 0.2 },   // Верхние гармоники
+      { type: 'noise', color: 'white', gain: 0.07 }         // Имитация дыхания
+    ],
+    noise: { on: true, color: 'white', gain: 0.07 },
+    adsr: { a: 0.05, d: 0.2, s: 0.8, r: 0.3 },
+    lpf: { cutoff: 7500, q: 0.8, mode: '12dB' },
+    lfo: { rate: 4.8, amount: 2.5, target: 'pitch' }, // Легкое вибрато
+    chorus: { on: false },
+    delay: { on: true, time: 0.15, fb: 0.1, hc: 5000, mix: 0.1 },
+    reverbMix: 0.15
   },
 
   acousticGuitar: { // Folk Acoustic
