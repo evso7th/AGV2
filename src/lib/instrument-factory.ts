@@ -452,7 +452,8 @@ export async function buildMultiInstrument(ctx: AudioContext, {
       flutter = { rate: 5.5, depth: 0.0008 },
       noise = { level: -36 }, // dB
       lpf = 9000, hpf = 120,
-      reverbMix = 0.2
+      reverbMix = 0.2,
+      adsr = { a: 0.1, d: 0.2, s: 0.9, r: 1.2 }
     } = preset;
 
     const zones = (mellotronMap?.zones ?? []).filter((z: any)=>z.name===instrument || !z.name);
@@ -523,8 +524,12 @@ export async function buildMultiInstrument(ctx: AudioContext, {
   // ──────────────────────────────────────────────────────────────────────────
   // GUITAR (Gilmour shineOn / muffLead)
   else if (type === 'guitar') {
+    // #ЗАЧЕМ: Этот блок кода собирает сложную цепь эффектов для эмуляции электрогитары.
+    // #ЧТО: Он создает и настраивает все необходимые узлы: компрессор, драйв, эквалайзер,
+    //      фейзер, дилэй и реверберацию.
+    // #СВЯЗИ: Этот блок активируется только при `type === 'guitar'`.
     const {
-      variant='shineOn', // 'shineOn' | 'muffLead'
+      variant='shineOn',
       pickup = { cutoff: 3600, q: 1.0 },
       drive = { type: (variant==='muffLead'?'muff':'soft'), amount: (variant==='muffLead'?0.65:0.2) },
       comp  = { threshold: (variant==='muffLead'?-20:-18), ratio:(variant==='muffLead'?4:3), attack:0.01, release:0.12, makeup: +3 },
@@ -548,29 +553,24 @@ export async function buildMultiInstrument(ctx: AudioContext, {
         const o = ctx.createOscillator(); o.setPeriodicWave(wave); o.frequency.value=freq; return o;
     };
     
+    // --- Создание всех узлов эффектов ---
     const pickupLPF = ctx.createBiquadFilter(); pickupLPF.type='lowpass'; pickupLPF.frequency.value=pickup.cutoff; pickupLPF.Q.value=pickup.q;
     const hpf = ctx.createBiquadFilter(); hpf.type='highpass'; hpf.frequency.value=90; hpf.Q.value=0.7;
-
     const compNode = ctx.createDynamicsCompressor();
     compNode.threshold.value=comp.threshold; compNode.ratio.value=comp.ratio; compNode.attack.value=comp.attack; compNode.release.value=comp.release;
     const compMakeup = ctx.createGain(); compMakeup.gain.value = dB(comp.makeup||0);
-
     const shaper = ctx.createWaveShaper(); shaper.curve = (drive.type==='muff') ? makeMuff(drive.amount) : makeSoftClip(drive.amount); shaper.oversample='4x';
-
     const postHPF = ctx.createBiquadFilter(); postHPF.type='highpass'; postHPF.frequency.value=80; postHPF.Q.value=0.7;
     const mid1 = ctx.createBiquadFilter(); mid1.type='peaking'; mid1.frequency.value=post.mids[0].f; mid1.Q.value=post.mids[0].q; mid1.gain.value=post.mids[0].g;
     const mid2 = ctx.createBiquadFilter(); mid2.type='peaking'; mid2.frequency.value=post.mids[1].f; mid2.Q.value=post.mids[1].q; mid2.gain.value=post.mids[1].g;
     const postLPF = ctx.createBiquadFilter(); postLPF.type='lowpass'; postLPF.frequency.value=post.lpf; postLPF.Q.value=0.7;
-
     const cab = ctx.createConvolver(); 
     try {
       if (cabinetIRUrl) cab.buffer = await loadIR(ctx, cabinetIRUrl);
     } catch(e) { console.error('[Guitar] Failed to load cabinet IR', e); }
-
     const ph = makePhaser(ctx, phaser);
     const dA = makeFilteredDelay(ctx, {time:delayA.time, fb:delayA.fb, hc:delayA.hc, mix:delayA.wet});
     const dB_node = delayB ? makeFilteredDelay(ctx, {time:delayB.time, fb:delayB.fb, hc:delayB.hc, mix:delayB.wet}) : null;
-
     const revSend = ctx.createGain(); revSend.gain.value = reverbMix;
     if(reverb.buffer) { revSend.connect(reverb); }
     
@@ -592,23 +592,43 @@ export async function buildMultiInstrument(ctx: AudioContext, {
       oscSub.connect(gSub).connect(sum);
       oscMain.start(when); oscDet.start(when); oscSub.start(when);
 
+      // --- ПРАВИЛЬНАЯ ПОСЛЕДОВАТЕЛЬНАЯ ЦЕПОЧКА ЭФФЕКТОВ ---
+      // #ЗАЧЕМ: Этот блок гарантирует, что звук проходит через все эффекты в правильном порядке.
+      // #ЧТО: Сигнал последовательно проходит через гейн, фильтры, компрессор, драйв, EQ,
+      //      кабинет, фейзер, дилэй и, наконец, на мастер-выход и посыл на реверберацию.
+      // #СВЯЗИ: Устраняет проблему неправильного (параллельного) подключения, которое было ранее.
       sum.connect(vGain);
       vGain.connect(pickupLPF);
       pickupLPF.connect(hpf);
-      hpf.connect(compNode); compNode.connect(compMakeup);
+      hpf.connect(compNode);
+      compNode.connect(compMakeup);
       compMakeup.connect(shaper);
       shaper.connect(postHPF);
-      postHPF.connect(mid1); mid1.connect(mid2); mid2.connect(postLPF);
-      const afterCab = (cabinetIRUrl && cab.buffer ? (postLPF.connect(cab), cab) : postLPF);
+      postHPF.connect(mid1);
+      mid1.connect(mid2);
+      mid2.connect(postLPF);
 
-      let lastInChain = afterCab.connect(ph.input);
-      if (dA) lastInChain = ph.output.connect(dA.input);
-      if (dB_node) (dA ? dA.output : ph.output).connect(dB_node.input);
+      const afterCab = (cabinetIRUrl && cab.buffer) ? cab : postLPF;
+      if (cabinetIRUrl && cab.buffer) {
+        postLPF.connect(cab);
+      }
       
-      const finalFxOut = dB_node ? dB_node.output : (dA ? dA.output : ph.output);
+      afterCab.connect(ph.input);
 
-      finalFxOut.connect(master);
-      finalFxOut.connect(revSend);
+      let lastInChain: AudioNode = ph.output;
+
+      if (dA) {
+          lastInChain.connect(dA.input);
+          lastInChain = dA.output;
+      }
+      if (dB_node) {
+          lastInChain.connect(dB_node.input);
+          lastInChain = dB_node.output;
+      }
+      
+      // Финальное подключение к мастеру и реверберации
+      lastInChain.connect(master);
+      lastInChain.connect(revSend);
 
       vGain.gain.cancelScheduledValues(when);
       vGain.gain.setValueAtTime(vGain.gain.value, when);
