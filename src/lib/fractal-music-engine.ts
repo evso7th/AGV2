@@ -97,29 +97,40 @@ export class FractalMusicEngine {
 
   constructor(config: EngineConfig) {
     this.config = { ...config };
-    this.navigator = new BlueprintNavigator(getBlueprint(config.genre, config.mood), config.seed, config.genre, config.mood, config.introBars);
     this.random = seededRandom(config.seed);
     this.nextWeatherEventEpoch = 0;
+    
+    // Initialize navigator synchronously with a default blueprint
+    const staticBlueprint = MelancholicAmbientBlueprint;
+    this.navigator = new BlueprintNavigator(staticBlueprint, config.seed, config.genre, config.mood, config.introBars);
+
     this.initialize();
+
+    // Asynchronously load the correct blueprint and re-initialize if needed
+    getBlueprint(config.genre, config.mood).then(blueprint => {
+        console.log(`[FME] Blueprint now active: ${blueprint.name}`);
+        this.navigator = new BlueprintNavigator(blueprint, config.seed, config.genre, config.mood, config.introBars);
+        this.initialize();
+    });
   }
 
   public get tempo(): number { return this.config.tempo; }
   
 
-  public updateConfig(newConfig: Partial<EngineConfig>) {
+  public async updateConfig(newConfig: Partial<EngineConfig>) {
       const moodOrGenreChanged = newConfig.mood !== this.config.mood || newConfig.genre !== this.config.genre;
       const introBarsChanged = newConfig.introBars !== this.config.introBars;
+      const seedChanged = newConfig.seed !== undefined && newConfig.seed !== this.config.seed;
       
-      const oldSeed = this.config.seed;
       this.config = { ...this.config, ...newConfig };
       
-      if (newConfig.seed !== undefined && newConfig.seed !== oldSeed) {
-          this.random = seededRandom(newConfig.seed);
-      }
-      
-      if(moodOrGenreChanged || introBarsChanged) {
+      if(moodOrGenreChanged || introBarsChanged || seedChanged) {
           console.log(`[FME] Config changed. Re-initializing. New mood: ${this.config.mood}, New intro: ${this.config.introBars}`);
-          const blueprint = getBlueprint(this.config.genre, this.config.mood);
+          const blueprint = await getBlueprint(this.config.genre, this.config.mood);
+          console.log(`[FME] Blueprint now active: ${blueprint.name}`);
+          if (seedChanged) {
+            this.random = seededRandom(this.config.seed);
+          }
           this.navigator = new BlueprintNavigator(blueprint, this.config.seed, this.config.genre, this.config.mood, this.config.introBars);
           this.initialize();
       }
@@ -552,5 +563,3 @@ export class FractalMusicEngine {
     return { events, instrumentHints };
   }
 }
-
-    

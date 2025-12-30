@@ -51,7 +51,7 @@ export async function getBlueprint(genre: Genre, mood: Mood): Promise<MusicBluep
     // Priority 1: Check static library (for ambient)
     const staticBlueprint = STATIC_BLUEPRINT_LIBRARY[genre]?.[mood];
     if (staticBlueprint) {
-        console.log(`[getBlueprint] Found statically loaded blueprint: ${staticBlueprint.name}`);
+        console.log(`[getBlueprint] Found statically loaded blueprint: ${staticBlueprint.name}. All ambient blueprints are pre-loaded.`);
         return staticBlueprint;
     }
 
