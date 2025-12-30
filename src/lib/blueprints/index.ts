@@ -12,6 +12,9 @@ import { NeutralAmbientBlueprint } from './ambient/neutral';
 import { EpicAmbientBlueprint } from './ambient/epic';
 import { AnxiousAmbientBlueprint } from './ambient/anxious';
 
+// Export the default blueprint so it can be imported directly
+export { MelancholicAmbientBlueprint };
+
 // --- Static Library for Immediately Available Blueprints ---
 export const STATIC_BLUEPRINT_LIBRARY: Partial<Record<Genre, Partial<Record<Mood, MusicBlueprint>>>> = {
     ambient: {
