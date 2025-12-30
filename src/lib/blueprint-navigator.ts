@@ -43,8 +43,9 @@ function formatInstrumentation(instrumentation?: { [key: string]: any }): string
 
     const parts = Object.keys(instrumentation).map(partKey => {
         const rule = instrumentation[partKey] as InstrumentationRules<any>;
-        if (rule && rule.strategy === 'weighted' && rule.options) {
-            const optionsStr = rule.options
+        if (rule && rule.strategy === 'weighted' && (rule.options || rule.v1Options || rule.v2Options)) {
+            const options = rule.options || rule.v1Options || rule.v2Options || [];
+            const optionsStr = options
                 .map(opt => `${opt.name}:${Math.round(opt.weight * 100)}%`)
                 .join(',');
             return `${partKey}(${optionsStr})`;
@@ -67,91 +68,110 @@ export class BlueprintNavigator {
     public totalBars: number;
     private genre: Genre;
     private mood: Mood;
+    private introBars: number;
 
-    constructor(blueprint: MusicBlueprint, seed: number, genre: Genre, mood: Mood) {
+    constructor(blueprint: MusicBlueprint, seed: number, genre: Genre, mood: Mood, introBars: number) {
         this.blueprint = blueprint;
         this.genre = genre;
         this.mood = mood;
-        
-        // Use a fixed, preferred total duration for predictability.
+        this.introBars = introBars;
         this.totalBars = this.blueprint.structure.totalDuration.preferredBars;
+
         let currentBar = 0;
+        const allParts = this.blueprint.structure.parts;
 
-        const totalPercentage = this.blueprint.structure.parts.reduce((sum, part) => sum + part.duration.percent, 0);
-        if (Math.abs(totalPercentage - 100) > 1) {
-            console.warn(`[NAVIGATOR] Sum of part percentages is ${totalPercentage}, not 100. Durations may be skewed.`);
-        }
-
-        const numParts = this.blueprint.structure.parts.length;
-        for (let partIndex = 0; partIndex < numParts; partIndex++) {
-            const part = this.blueprint.structure.parts[partIndex];
-            const isLastPart = partIndex === numParts - 1;
-            
-            const calculatedPartDuration = Math.round((part.duration.percent / 100) * this.totalBars);
-            const partDuration = isLastPart ? this.totalBars - currentBar : calculatedPartDuration;
-            
+        // --- NEW LOGIC FOR INTRO BARS ---
+        const introParts = allParts.filter(p => p.id.startsWith('INTRO_'));
+        const mainParts = allParts.filter(p => !p.id.startsWith('INTRO_'));
+        
+        let introDurationTotal = 0;
+        
+        // Calculate boundaries for INTRO parts first, using the fixed introBars value
+        introParts.forEach(part => {
+            const partDuration = this.introBars;
             const partStartBar = currentBar;
             const partEndBar = partStartBar + partDuration - 1;
-
-            const partBoundary: PartBoundary = {
-                part,
-                startBar: partStartBar,
-                endBar: partEndBar,
-                bundleBoundaries: []
-            };
-
-            let bundleStartInPart = 0;
-            const bundleCount = part.bundles.length;
             
-            if (bundleCount > 0) {
-                const bundleDurations = part.bundles.map(b => b.duration.percent);
-                const totalBundlePercent = bundleDurations.reduce((a, b) => a + b, 0);
+            const partBoundary = this.createPartBoundary(part, partStartBar, partDuration);
+            this.partBoundaries.push(partBoundary);
+            
+            currentBar += partDuration;
+            introDurationTotal += partDuration;
+        });
 
-                if (totalBundlePercent > 0) {
-                    let accumulatedDuration = 0;
-                    for (let i = 0; i < bundleCount; i++) {
-                        const bundleSpec = part.bundles[i];
-                        const isLastBundleInPart = i === bundleCount - 1;
+        // Calculate remaining bars and percentage for main parts
+        const remainingBars = this.totalBars - introDurationTotal;
+        const mainPartsTotalPercent = mainParts.reduce((sum, part) => sum + part.duration.percent, 0);
 
+        if (mainPartsTotalPercent <= 0 && mainParts.length > 0) {
+            console.error("[NAVIGATOR] Main parts have a total percentage of 0. Cannot distribute remaining bars.");
+        } else {
+            mainParts.forEach((part, index) => {
+                const isLastPart = index === mainParts.length - 1;
+                let partDuration;
+
+                if (isLastPart) {
+                    // Last part takes all remaining bars to avoid rounding errors
+                    partDuration = this.totalBars - currentBar;
+                } else {
+                    const proportion = part.duration.percent / mainPartsTotalPercent;
+                    partDuration = Math.round(proportion * remainingBars);
+                }
+
+                const partStartBar = currentBar;
+                const partBoundary = this.createPartBoundary(part, partStartBar, partDuration);
+                this.partBoundaries.push(partBoundary);
+                
+                currentBar += partDuration;
+            });
+        }
+        
+        // Ensure the navigator is robust by sorting and logging
+        this.partBoundaries.sort((a,b) => a.startBar - b.startBar);
+        console.log('[NAVIGATOR] Initialized with part boundaries:', this.partBoundaries.map(p => ({id: p.part.id, start: p.startBar, end: p.endBar, bundles: p.bundleBoundaries.length})));
+    }
+    
+    private createPartBoundary(part: BlueprintPart, startBar: number, duration: number): PartBoundary {
+        const partBoundary: PartBoundary = {
+            part,
+            startBar,
+            endBar: startBar + duration - 1,
+            bundleBoundaries: []
+        };
+        
+        let bundleStartInPart = 0;
+        const bundleCount = part.bundles.length;
+        
+        if (bundleCount > 0) {
+            const bundleDurations = part.bundles.map(b => b.duration.percent);
+            const totalBundlePercent = bundleDurations.reduce((a, b) => a + b, 0);
+
+            if (totalBundlePercent > 0) {
+                let accumulatedDuration = 0;
+                for (let i = 0; i < bundleCount; i++) {
+                    const bundleSpec = part.bundles[i];
+                    const isLastBundleInPart = i === bundleCount - 1;
+
+                    let bundleDuration;
+                    if (isLastBundleInPart) {
+                        bundleDuration = duration - accumulatedDuration;
+                    } else {
                         const proportion = bundleDurations[i] / totalBundlePercent;
-                        let bundleDuration;
-
-                        if (isLastBundleInPart) {
-                            // Last bundle gets the remainder to ensure full coverage of the part
-                            bundleDuration = partDuration - accumulatedDuration;
-                        } else {
-                            bundleDuration = Math.round(proportion * partDuration);
-                        }
-                        
-                        const bundleEndBar = partStartBar + accumulatedDuration + bundleDuration - 1;
-
-                        partBoundary.bundleBoundaries.push({
-                            bundle: bundleSpec,
-                            startBar: partStartBar + accumulatedDuration,
-                            endBar: bundleEndBar
-                        });
-                        accumulatedDuration += bundleDuration;
+                        bundleDuration = Math.round(proportion * duration);
                     }
+                    
+                    partBoundary.bundleBoundaries.push({
+                        bundle: bundleSpec,
+                        startBar: startBar + accumulatedDuration,
+                        endBar: startBar + accumulatedDuration + bundleDuration - 1
+                    });
+                    accumulatedDuration += bundleDuration;
                 }
             }
-
-
-            this.partBoundaries.push(partBoundary);
-            currentBar += partDuration;
         }
-
-        // Final check to ensure the last part covers the total duration
-        if (this.partBoundaries.length > 0) {
-            const lastPartBoundary = this.partBoundaries[this.partBoundaries.length - 1];
-            if (lastPartBoundary.endBar !== this.totalBars - 1) {
-                 lastPartBoundary.endBar = this.totalBars - 1;
-                 if (lastPartBoundary.bundleBoundaries.length > 0) {
-                     const lastBundle = lastPartBoundary.bundleBoundaries[lastPartBoundary.bundleBoundaries.length - 1];
-                     lastBundle.endBar = this.totalBars - 1;
-                 }
-            }
-        }
+        return partBoundary;
     }
+
 
     /**
      * Calculates the current position in the blueprint for a given bar number.
@@ -171,6 +191,16 @@ export class BlueprintNavigator {
         const bundleInfo = partInfo.bundleBoundaries.find(b => effectiveBar >= b.startBar && effectiveBar <= b.endBar);
         if (!bundleInfo) {
             console.error(`[NAVIGATOR @ Bar ${effectiveBar}] CRITICAL: Could not find bundle in part ${partInfo.part.id}`);
+            // Fallback to the first bundle if none is found (can happen at the very edge)
+             if (partInfo.bundleBoundaries.length > 0) {
+                 return {
+                    currentPart: partInfo.part,
+                    currentBundle: partInfo.bundleBoundaries[0].bundle,
+                    isPartTransition: effectiveBar === partInfo.startBar,
+                    isBundleTransition: false,
+                    logMessage: `[NAVIGATOR @ Bar ${effectiveBar}] Fallback to first bundle in part ${partInfo.part.id}.`
+                 };
+             }
             return null;
         }
 
