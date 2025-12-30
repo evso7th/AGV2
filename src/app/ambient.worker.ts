@@ -39,6 +39,7 @@ const Scheduler = {
         composerControlsInstruments: true,
         mood: 'melancholic' as Mood,
         useMelodyV2: false, // Default to V1 engine
+        introBars: 7, // Default intro length
     } as WorkerSettings,
 
     get barDuration() { 
@@ -56,6 +57,7 @@ const Scheduler = {
             genre: settings.genre,
             seed: settings.seed ?? Date.now(),
             useMelodyV2: settings.useMelodyV2,
+            introBars: settings.introBars,
         });
         this.barCount = 0;
     },
@@ -102,6 +104,7 @@ const Scheduler = {
        const moodChanged = newSettings.mood && newSettings.mood !== this.settings.mood;
        const genreChanged = newSettings.genre && newSettings.genre !== this.settings.genre;
        const seedChanged = newSettings.seed !== undefined && newSettings.seed !== this.settings.seed;
+       const introBarsChanged = newSettings.introBars !== undefined && newSettings.introBars !== this.settings.introBars;
        const wasNotInitialized = !fractalMusicEngine;
        
        if (needsRestart) this.stop();
@@ -116,7 +119,7 @@ const Scheduler = {
         };
 
 
-       if (wasNotInitialized || scoreChanged || moodChanged || genreChanged || seedChanged) {
+       if (wasNotInitialized || scoreChanged || moodChanged || genreChanged || seedChanged || introBarsChanged) {
            this.initializeEngine(this.settings);
        } else if (fractalMusicEngine) {
            // #РЕШЕНИЕ: Передаем ВЕСЬ объект настроек, чтобы гарантировать, что useMelodyV2 всегда актуален.
