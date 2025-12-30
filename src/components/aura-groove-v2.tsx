@@ -185,7 +185,7 @@ export function AuraGrooveV2({
                   )}
                   <div className="grid grid-cols-[1fr_2fr_auto] items-center gap-2">
                     <Label htmlFor="bpm-slider" className="text-right text-xs">BPM</Label>
-                    <Slider id="bpm-slider" value={[bpm]} min={60} max={160} step={5} onValueChange={(v) => handleBpmChange(v[0])} className="col-span-1" disabled={isInitializing}/>
+                    <Slider id="bpm-slider" value={[bpm]} min={60} max={160} step={5} onValueChange={(v) => handleBpmChange(v[0])} className="col-span-1" disabled={isInitializing || composerControl}/>
                     <span className="text-xs w-8 text-right font-mono">{bpm}</span>
                   </div>
                   <div className="grid grid-cols-3 items-center gap-2">
