@@ -1,0 +1,102 @@
+Ниже — референс-настройка на 120 тактов для нейтрального, сбалансированного прог/psy-транса (Equilibrium Grid), с привязкой к «Призрачному кондуктору» (ghost harmony), секциям, бас/барабанным паттернам, техникам аккомпанемента/лидов, автоматизациям и микс-целям. Формат легко адаптируется под Joyful/Melancholic — скажите, сделаю альтернативы.
+
+Обзор
+- Mood: Neutral (balanced prog/psy)
+- BPM: 134 (4/4)
+- Тонцентр/лад: D Ionian (с лёгкой модальной «подсветкой» Dorian в отдельных аккордах)
+- Длина: 120 тактов (~3:34 при 134 BPM; как компактный эпизод/мини-сюита)
+- Архитектура: Blueprint-секции + Ghost Conductor (гармония/педаль/плотность/мосты) + Engine-исполнители
+- Sidechain: на пэды/бас от кика обязательно
+
+Ghost Conductor (скелет)
+- Harmony grammar (Ionian, без жёсткой доминанты; мягкие sus/add9/11):
+  - Ступени: Imaj9, IVmaj7(add9), vi(m7 add11), ii(m7), V(sus2/4 редкий), (опц.) bVII(add2) как заимствование
+  - Длительности: преимущественно 8 тактов; внутри некоторых 8-тактовых блоков есть мягкие 4-тактовые подхваты
+- Pedal plan: держим root (D) на плато и в брейке; 5 (A) — на подводах и мостах
+- Density plan: рост к Peak A, спад в Mid/Break, новый рост на Peak B, спад в Outro
+
+План на 120 тактов (по 8-тактовым блокам)
+| Такты | Секция     | Ghost chord(s)                                       | Бас-паттерн         | Ударные/перкуссия                              | Аккомпанемент/Лиды                         | Автоматизации/Примечания |
+|------:|------------|-------------------------------------------------------|---------------------|-----------------------------------------------|--------------------------------------------|--------------------------|
+| 1–8   | Intro      | Imaj9 (Dmaj9)                                         | —                   | нет кика; редкий closed hat (1/16, −18 dB)    | Pad: long-chords (open), LPF 3.5→5 kГц     | Ширина 110→130%; без sparkles |
+| 9–16  | Intro      | vi(m7 add11) (Bm7 add11)                              | —                   | Kick 4/4 входит т.9 (тихо), hat 1/16 ghost    | Pad: choral слитно; легкий arp 1/8 dotted  | Sidechain −2 dB на pad   |
+| 17–24 | Intro→Build| IVmaj7(add9) (Gmaj7 add9)                             | Offbeat (3,7,11,15) | Добавить offbeat open-hat; лёгкий clap 2/4    | Pad шире; arp точечный ниже −12 dB         | LPF pad 5→7 кГц; вход баса т.17 |
+| 25–32 | Build      | Imaj9                                                 | Offbeat             | Kick/hat стабильны; ghost акценты каждые 8 т. | Pad long-chords; shimmer минимум            | Малый EQ-dip 250–400 Гц −1 dB |
+| 33–40 | Build      | ii(m7) (Em7)                                          | Offbeat             | Добавить ride лёгкими штрихами (раз в 4 т.)   | Arp 1/8 dotted + 1/4 ping-pong низко       | Тиха́я подсветка 9 ступени |
+| 41–48 | Peak A     | Imaj9 (первый пик)                                    | Rolling (3,7,11,15) | Хэт 1/16 плотнее; clap 2/4 чуть выше          | Лид минимал: короткие мотивы, детюн 6–8 ц  | Sidechain −3..−4 dB      |
+| 49–56 | Peak A     | IVmaj7(add9)                                          | Rolling             | Ride регулярнее (каждый 2-й такт)             | Pad open; топ-голос шагает 9↔add11 мягко   | Фильтр‑свип лидов вверху |
+| 57–64 | Peak A     | vi(m7 add11)                                          | Rolling (вариации)  | Тонкие томовые ghost (1/16, очень тихо)       | Арп чуть ярче (не громче)                  | Плотность ~макс в сюите  |
+| 65–72 | Peak A     | 65–68: V(sus2) (Asus2), 69–72: Imaj9 (разрешение)     | Rolling→Offbeat     | Мост к брейку: том-ролл в 71–72               | Лид уходит вниз, pad берет «дыхание»        | Сброс яркости на 1–1.5 dB |
+| 73–80 | Mid/Break  | Imaj9 (plateau, педаль)                               | Offbeat (редкий)    | Снять ride, clap; оставить kick+hat тише      | Pad крупнее, LPF 6→5 кГц; арп почти off     | Duck у́меньшить до −2 dB |
+| 81–88 | Mid/Break  | IVmaj7(add9)                                          | Offbeat (минимум)   | Голос хэта редеет; один короткий uplifter     | Добавить ширину 140–150%, лид молчит       | Подготовка к Peak B      |
+| 89–96 | Peak B     | Imaj9 (второй подъём)                                 | Offbeat→Rolling     | Вернуть ride (wash), clap мягко               | Лид чуть длиннее фразы, детюн 8–10 ц       | Shimmer +0.5 dB          |
+| 97–104| Peak B     | vi(m7 add11)                                          | Rolling + gallop    | Микро-филл на 15 шаге (хэт/том)               | Арп плотнее (1/8 dotted), pad стабилен     | Sidechain держать −3 dB  |
+|105–112| Peak B     | IVmaj7(add9)                                          | Offbeat (с акцентом)| Ride реже, clap по вкусу                      | Лид редеет, pad «поёт»                      | Подготовка к outro       |
+|113–120| Outro      | Imaj9 (тон. педаль)                                   | Offbeat→none (118)  | Убрать ride (113), затем clap (115), хэт (118)| Pad long-chords, LPF 7→4 кГц, хвост         | Fade по кривой S         |
+
+Примечание к таблице
+- Offbeat = ноты баса на 3,7,11,15 шагах 16-шаговой сетки; Rolling = 3,7,11,15 (+ возможные двойные 16-е на 4/8/12/16).
+- Ghost chord — всего 15 блоков по 8 тактов = 120 тактов; в блоке 65–72 указана 4+4 подмена (мягкое разрешение).
+
+Паттерны (1 бар = 16 шагов)
+- Kick (всегда): X . . . | . . . . | X . . . | . . . .
+- Bass Offbeat: . . X . | . . X . | . . X . | . . X .
+- Bass Rolling: . . X X | . . X X | . . X X | . . X X (вариативно: двойные последние 16-е)
+- Hats 1/16 (ghost): x x x x | x x x x | x x x x | x x x x (велосити «дышит»)
+- Open-hat offbeat (кроме интро/брейка): . . . O | . . . O | . . . O | . . . O
+- Clap 2/4 (по вкусу): . . . . | X . . . | . . . . | X . . .
+- Ride (на пиках): . . . . | r . . . | . . . . | r . . .
+
+Техники рендеринга партий (читая currentChord из ghost)
+- Bass
+  - Нота: root (80%), на подводах — 5 или проход 2→1 (мягко).
+  - Энвелоп: A=0–2 мс, D=90–110 мс, S≈0, R=20–40 мс; LPF 100–140 Гц; моно ≤120 Гц.
+  - Сатурация THD ~1–2%; компенсация EQ −1..−2 dB @250–350 Гц.
+- Accompaniment (Pads)
+  - От realizeGhostChord(currentChord): voicing «open» или «drop2», add9/11 как в ступени.
+  - Техники: long-chords (Intro/Break/Outro), choral/soft-arp (Build/Peaks).
+  - LPF 3.5→7 кГц в интро/билде; на пиках 7–9 кГц; в брейке 6→5 кГц.
+  - Width 130–150%; shimmer умеренно (не «сверлить»).
+- Leads/Arps
+  - Лид: короткие мотивы в Peak A/B; unison 5–7 голосов, detune 6–10 ц; EQ dip 2.5–3 кГц −1..−2 dB.
+  - Арп: 1/8 dotted + 1/4 ping-pong (низкий mix), в Peak A/B — немного выше.
+- Drums
+  - Kick: короткий tail (65–85 мс), HPF 25–30 Гц; true peak на шине кика ≤ −3 dBFS до мастера.
+  - Hats: closed 1/16 (ghost), open offbeat — мягко; Ride — только на пиках.
+  - Томы: только swells/короткие филлы на переходах (71–72, 104, 112).
+- FX (минимально, без перегруза)
+  - Uplifter короткий в 80–88 (к Peak B); downlifter к 112; реверс‑cym тихо.
+  - Сайдчейн duck: −3..−5 dB на pad/arp/lead (быстрое восстановление, 80–120 мс).
+
+Мосты/переходы
+- 24→25 (Intro→Build): pivot на I (держим D), том‑ролл 2 такта, открываем open‑hat.
+- 40→41 (Build→Peak A): fifth 1→5→1, мини‑филл баса (gallop на такт), ride включается.
+- 72→73 (Peak A→Break): downlifter, снятие ride/лида, LPF падов вниз.
+- 88→89 (Break→Peak B): short uplifter + открытие хэта, bass offbeat→rolling.
+- 112→113 (Peak B→Outro): снятие ride/лида, возвращение к Imaj9, LPF падов вниз.
+
+Сайдчейн/микс-ориентиры
+- Sidechain (SC input: kick): ratio 3:1, attack 5–10 мс, release 80–120 мс, GR цель −3..−5 dB на пиках у падов/арпов; на брейке −2 dB.
+- LUFS (pre-master): −10..−9 LUFS; на финальном мастере можно довести до −8..−7.
+- True peak: ≤ −1.0 dBTP.
+- Низ: моно ≤120 Гц; общий dip mid 250–400 Гц −1..−2 dB (анти‑муть).
+- Хай‑шельф на лидах/арпах: +0.5..+1 dB >10 кГц (если не режет ухо).
+
+Интеграция в движок (быстро)
+- Blueprint.sections:
+  - Intro(1–24): instrumentation ['pads','hats_soft','kick_late','bass_late'], accomp: 'long_chords'
+  - Build(25–40): ['kick','hats','bass','pads','arp_low'], accomp: 'choral'
+  - PeakA(41–72): ['kick','hats','ride','bass','pads','lead','arp'], lead: 'melodic_short'
+  - Break(73–88): ['kick','hats_soft','pads'], bass: 'offbeat_min', accomp: 'long_chords'
+  - PeakB(89–112): как PeakA, но lead чуть тише/длиннее
+  - Outro(113–120): ['kick','pads'] → к 118 снять хэт/бас, к 120 снять кик
+- Ghost Conductor:
+  - Harmony: как в таблице, barIndex для O(1).
+  - PedalPlan: root на 73–80, 113–120; 5 на мостах.
+  - DensityPlan: [низко→средне→высоко→низко→средне/высоко→низко].
+- Генераторы:
+  - Bass: pattern=Offbeat/Rolling по секции; ноты = currentChord.root (иногда 5, редкий 2→1).
+  - Pads: voicing от currentChord (Imaj9, IVmaj7(add9), vi(m7 add11), ii(m7), V(sus2/4)); spread=open/drop2.
+  - Leads/Arps: по section.technique; никуда не лезем в «V→I» как жёсткую доминанту — только sus.
+
+

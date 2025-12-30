@@ -1,0 +1,106 @@
+Ниже — референс-настройка на 120 тактов для Joyful @138 BPM (G Lydian, яркий #11), с «Призрачным Кондуктором» (ghost harmony), секциями блюпринта, бас/барабанными паттернами, техниками пэдов/лидов, переходами и микс-ориентирами. Формат повторяет нейтральную версию, но акцентирует Lydian‑краску (#11), более ранний драйв и светлый саунд.
+
+Обзор
+- Mood: Joyful (bright, uplift)
+- BPM: 138, размер 4/4 (1 такт ≈ 1.739 с)
+- Тонцентр/лад: G Lydian (G A B C# D E F#), аккорд‑цвет: Imaj7(#11 add9)
+- Длина: 120 тактов (≈ 3:29)
+- Архитектура: Blueprint‑секции + Ghost Conductor (harmony/pedal/density/bridges) + Engine‑исполнители
+- Sidechain: обязателен (пэды/арпы/лид/нейро‑слои от кика)
+
+Ghost Conductor (скелет)
+- Гармоническая грамматика (Lydian с мягкими модальными заимствованиями, без «жёстких» доминант):
+  - Пул ступеней: Imaj7(#11 add9), II(m7) [заимств.], bVII(add2) [заимств.], V(sus2/4)
+  - Переходы (веса): I→II (0.30), I→bVII (0.30), II→I (0.30), bVII→I (0.30), V→I (0.25)
+  - Длительности: 8 тактов (основа), редкие 4‑тактовые подхваты внутри блока
+- Pedal plan: педаль 1 (G) на плато/брейке; 5 (D) на подводах и мостах
+- Density plan: рост к Peak A, спад в Break, новый рост к Peak B, спад в Outro
+
+План на 120 тактов (15 блоков по 8 тактов)
+| Такты | Секция        | Ghost chord(s)                                   | Бас-паттерн             | Ударные/перкуссия                                   | Пэды/Лиды/Арпы                                 | Автоматизации/Примечания |
+|------:|---------------|---------------------------------------------------|-------------------------|-----------------------------------------------------|------------------------------------------------|--------------------------|
+| 1–8   | Intro A       | Imaj7(#11 add9) Gmaj7(#11,A, C#)                  | —                       | Нет кика; закрытый хэт 1/16 (−18 dB, ghost)         | Pad: long‑chords (open), LPF 3.5→5.5 кГц       | Ширина 110→135%; без sparkles/SFX |
+| 9–16  | Intro B       | II(m7) Am7 (модальная смесь, мягко)               | —                       | Kick 4/4 входит т.9 (тихо); open‑hat offbeat тихо   | Pad choral; низкий арп 1/8 dotted (−18 dB)     | Sidechain −2 dB на pad/arp |
+| 17–24 | Build A       | bVII(add2) Fadd2 (заимств. из мажора)             | Offbeat (3,7,11,15)     | Kick стабильный; open‑hat offbeat; лёгкий clap 2/4  | Pad шире; арп погромче (−14 dB)                 | LPF pad 5.5→7 кГц; вход баса т.17 |
+| 25–32 | Build B       | Imaj7(#11 add9)                                   | Offbeat                 | Хэты плотнее; ghost‑акценты раз в 8 тактов          | Pad long‑chords; shimmer +0.5 dB                | Mid‑dip −1 dB @250–400 Гц |
+| 33–40 | Peak A‑1      | Imaj7(#11 add9), топ‑голос «9↔#11»                | Rolling (3,7,11,15)     | Хэт 1/16 плотный; clap 2/4; ride первые штрихи      | Лид (supersaw) короткие мотивы; детюн 6–8 ц     | Sidechain −3..−4 dB       |
+| 41–48 | Peak A‑2      | II(m7)                                            | Rolling                 | Ride регулярнее (каждый 2‑й такт); том‑ghost тихо   | Арп 1/8 dotted + 1/4 ping‑pong чуть выше        | Топ‑голос «дышит» 9 ступенью |
+| 49–56 | Peak A‑3      | bVII(add2)                                        | Rolling (вариации двойных 16‑х) | Хэты вверху, clap стабилен                    | Пэды открытее; лид делает «ответ» короче        | EQ лид −1..−2 dB @2.5–3 кГц |
+| 57–64 | Peak A‑4      | V(sus4) Dsus4 (57–60) → Imaj9(#11) (61–64)        | Rolling→Offbeat (на 61) | Мост к брейку: том‑ролл 63–64, ride fade‑            | Лид на спад; pad берёт «дыхание»                | Сброс яркости −1..−1.5 dB |
+| 65–72 | Break A       | Imaj7(#11 add9) plateau                           | Offbeat (минимально)    | Снять ride/clap; оставить kick + закрытый хэт тише  | Pad крупнее, LPF 6.5→5.5 кГц; арп почти off     | Duck до −2 dB              |
+| 73–80 | Break B       | bVII(add2)                                        | Offbeat (редкий)        | Хэт редеет; короткий uplifter к 80                  | Стерео 140–150%; лид молчит                     | Готовим пик B             |
+| 81–88 | Peak B‑1      | Imaj7(#11 add9)                                   | Offbeat→Rolling         | Вернуть ride (wash); clap мягко                     | Лид чуть длиннее, детюн 8–10 ц; арп выше        | Shimmer +0.5..+1 dB       |
+| 89–96 | Peak B‑2      | II(m7)                                            | Rolling + gallop вставки| Микро‑филл хэта/тома на 15‑м шаге                   | Арп плотнее (1/8 dotted), pad стабилен          | Sidechain держать −3 dB    |
+| 97–104| Peak B‑3      | bVII(add2)                                        | Rolling→Offbeat         | Ride реже; clap по вкусу                            | Лид редеет; pad «поёт»                           | Подготовка к outro         |
+|105–112| Peak B‑4      | Imaj7(#11 add9), топ‑голос «#11→9→maj7»           | Offbeat                 | Том‑fill в 111–112                                  | Лид «прощальный» мотив (2 такта)                 | Постепенный LPF лид        |
+|113–120| Outro         | Imaj7(#11 add9)                                    | Offbeat→none (118)      | Убрать ride (113), к 115 — clap, к 118 — хэт        | Pad long‑chords, LPF 7→4.5 кГц; хвост            | Fade S‑кривой, мастер −1 dBTP |
+
+Пояснения к гармонии и voicings (для рендера от currentChord)
+- Imaj7(#11 add9) (G): voicing (open/drop2): G2–D3–B3–C#4–A4 (верх «#11/9» мягко)
+- II(m7) (Am7, заимств.): A2–E3–G3–C4 (иногда add9 B тихо)
+- bVII(add2) (Fadd2, заимств.): F2–C3–G3–A3 (без «жёсткой» терции)
+- V(sus4 / sus2) (D): D2–A2–G3 (sus4) или D2–A2–E3 (sus2), разрешений в мажор — избегаем
+
+Барабанно‑басовые паттерны (1 такт = 16 шагов)
+- Kick (везде): X . . . | . . . . | X . . . | . . . .
+- Bass Offbeat: . . X . | . . X . | . . X . | . . X .  (ноты: root; иногда 5 на переходах)
+- Bass Rolling: . . X X | . . X X | . . X X | . . X X  (вариативно двойные 16‑е на (4,8,12,16))
+- Hats 1/16: x x x x | x x x x | x x x x | x x x x (велюсити «дышит»; humanize ±5–10%)
+- Open‑hat offbeat: . . . O | . . . O | . . . O | . . . O
+- Clap 2/4: . . . . | X . . . | . . . . | X . . .
+- Ride (пики): . . . . | r . . . | . . . . | r . . .
+- Tom fill (переходы): Euclid 5/16 (тихо), 1–2 такта перед сменой секции
+
+Техники рендера (читая currentChord из ghost)
+- Bass
+  - Нота: root (80%), на подводах — 5; редкий 2→1 как «подхват»
+  - Env: A=0–2 мс, D=90–110 мс, S≈0, R=20–40 мс; LPF 110–140 Гц; моно ≤120 Гц
+  - Сатурация: THD 1–2%; EQ компенсация −1..−2 dB @250–350 Гц
+- Pads (Accompaniment)
+  - realizeGhostChord(currentChord): spread='open' или 'drop2'; верхний голос подчёркивает 9/#11 в пиках
+  - Техники: Intro/Break/Outro — long‑chords; Build/Peaks — choral/soft‑arp (низкий микс)
+  - LPF: 3.5→7 кГц (Intro/Build), 7–9 кГц (Peaks), 6→5 кГц (Break), 7→4.5 кГц (Outro)
+  - Width 130–155%; shimmer аккуратно (Joyful: можно +0.5..+1 dB на пиках)
+- Leads/Arps
+  - Лид (supersaw/полилед): короткие мотивы в Peak A/B; unison 5–7 голосов, detune 6–10 ц; high‑shelf +0.5..+1 dB >10 кГц при отсутствии «рези»
+  - Арп: 1/8 dotted + 1/4 ping‑pong; на пиках можно поднять mix, но держать ниже лида
+  - Важное: избегать «жёстких» V→I; держим sus/общие звуки
+- Drums
+  - Kick: tail 65–85 мс; HPF 25–30 Гц; true peak шины кика ≤ −3 dBFS до мастера
+  - Hats: closed 1/16 (ghost динамика), open offbeat — огиба́ние (A короткая, R короче)
+  - Ride: только на пиках; в брейке — off
+
+Мосты/переходы
+- Build→Peak A (32→33): fifth 1→5→1 (басовая мини‑фраза на такт), ride включается
+- Peak A→Break (64→65): downlifter тихо, снятие ride/лида, LPF падов вниз
+- Break→Peak B (80→81): uplifter короткий, open‑hat активней, offbeat→rolling
+- Peak B→Outro (112→113): снятие ride/лида, возврат к Imaj7(#11), LPF плавно вниз
+
+Сайдчейн/микс‑ориентиры
+- Sidechain (SC input: kick): ratio 3:1, attack 5–10 мс, release 80–120 мс
+  - Pad/arp/lead GR цель −3..−5 dB (пики), в Break −2 dB
+- Пред‑мастер LUFS: −9..−8; на финальном мастере можно довести до −7..−6
+- True peak: ≤ −1.0 dBTP
+- Низ: моно ≤120 Гц; общий mid‑dip −1..−2 dB @250–400 Гц (анти‑муть)
+- High‑shelf (лид/арпы): +0.5..+1 dB >10 кГц (если не режет)
+
+Интеграция в блюпринт/движок
+- Blueprint.sections:
+  - IntroA(1–8): ['pads','hats_soft']; accomp='long_chords'
+  - IntroB(9–16): ['kick_soft','hats','pads']; bass='none' (ещё не входит)
+  - BuildA(17–24): ['kick','hats','bass','pads','arp_low']; bassPattern='offbeat'
+  - BuildB(25–32): как BuildA, shimmer on
+  - PeakA1–A4(33–64): ['kick','hats','ride','bass','pads','lead','arp']; bass='rolling'; lead='melodic_short'
+  - BreakA–B(65–80): ['kick','hats_soft','pads']; bass='offbeat_min'; accomp='long_chords'
+  - PeakB1–B4(81–112): как PeakA, но лид длиннее/чуть тише; возможны gallop вставки
+  - Outro(113–120): ['kick','pads'] → к 118 снять хэт/бас; к 120 — кик
+- Ghost Conductor:
+  - Harmony: как в таблице; barIndex для O(1) доступа
+  - PedalPlan: root на 65–72 и 113–120; 5 на мостах 32→33, 80→81
+  - DensityPlan: [низко→средне→высоко→низко→средне/высоко→низко]
+- Генераторы:
+  - Bass: по секции (offbeat/rolling), ноты от currentChord.root (+редкий 5/2→1 подхват)
+  - Pads: voicings от currentChord (Imaj7#11/add9, II m7, bVII add2, V sus), spread=open/drop2
+  - Leads/Arps: читают contour/scale; подчёркивают 9/#11 на I
+
+Хотите — дам готовые voicing‑списки (по MIDI) на каждый 8‑тактовый блок и маски 16‑шагов для баса/хэтов/клапа, или сделаю альтернативу Melancholic @132 BPM (дорийский окрас) тем же форматом.

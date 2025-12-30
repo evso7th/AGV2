@@ -11,6 +11,8 @@ import { EnthusiasticAmbientBlueprint } from './ambient/enthusiastic';
 import { NeutralAmbientBlueprint } from './ambient/neutral';
 import { EpicAmbientBlueprint } from './ambient/epic';
 import { AnxiousAmbientBlueprint } from './ambient/anxious';
+import { MelancholicTranceBlueprint } from './trance/melancholic';
+
 
 // Export the default blueprint so it can be imported directly
 export { MelancholicAmbientBlueprint };
@@ -34,7 +36,7 @@ export const STATIC_BLUEPRINT_LIBRARY: Partial<Record<Genre, Partial<Record<Mood
 const DYNAMIC_BLUEPRINT_MAP: Partial<Record<Genre, Partial<Record<Mood, () => Promise<{ default: { [key: string]: MusicBlueprint } }>>>>> = {
     trance: {
         joyful: () => import('./trance/joyful'),
-        melancholic: () => import('./trance/melancholic'),
+        melancholic: () => import('./trance/melancholic').then(m => ({ default: { MelancholicTranceBlueprint: m.MelancholicTranceBlueprint } })),
         calm: () => import('./trance/neutral'), // Assuming neutral is the fallback for calm in trance
         // Add other trance moods here as they are created
     },

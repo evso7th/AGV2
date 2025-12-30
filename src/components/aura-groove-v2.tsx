@@ -72,8 +72,8 @@ export function AuraGrooveV2({
   
   const isFractalStyle = score === 'neuro_f_matrix';
 
-  const genreList: Genre[] = isFractalStyle 
-    ? ['ambient'] 
+  const genreList: Genre[] = isFractalStyle
+    ? ['ambient', 'trance']
     : ['trance', 'ambient', 'progressive', 'rock', 'house', 'rnb', 'ballad', 'reggae', 'blues', 'celtic'];
 
   const displayNames: Record<string, string> = {
