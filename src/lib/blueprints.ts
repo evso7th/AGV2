@@ -404,19 +404,52 @@ export const DarkAmbientBlueprint: MusicBlueprint = {
         totalDuration: { preferredBars: 120 },
         parts: [
           {
-            id: 'INTRO', name: 'The Void',
-            duration: { percent: 20 },
-            layers: { bass: true, sfx: true, drums: true, accompaniment: true },
+            id: 'INTRO_1', name: 'The Void', duration: { percent: 8 },
+            layers: { bass: true, accompaniment: true },
             instrumentation: { 
               bass: { strategy: 'weighted', options: [{ name: 'ambientDrone', weight: 1.0 }] },
-              accompaniment: { strategy: 'weighted', v1Options: [{name: 'organ', weight: 1.0}], v2Options: [{name: 'synth_cave_pad', weight: 1.0}] }
+              accompaniment: { strategy: 'weighted', v1Options: [{name: 'ambientPad', weight: 1.0}], v2Options: [{name: 'synth_cave_pad', weight: 1.0}] }
             },
             instrumentRules: { 
                 bass: { density: {min: 0.2, max: 0.4}, techniques: [{value: 'drone', weight: 1.0}]},
-                drums: { pattern: 'composer', density: { min: 0.1, max: 0.3 }, useSnare: false, rareKick: true, usePerc: true },
+                drums: { enabled: false },
                 melody: { source: 'harmony_top_note' }
             },
-            bundles: [ { id: 'DARK_INTRO_BUNDLE', name: 'Drone', duration: { percent: 100 }, characteristics: {}, phrases: {} } ],
+            bundles: [ { id: 'DARK_INTRO_BUNDLE_1', name: 'Drone', duration: { percent: 100 }, characteristics: {}, phrases: {} } ],
+            outroFill: null,
+          },
+          {
+            id: 'INTRO_2', name: 'First Echoes', duration: { percent: 6 },
+            layers: { bass: true, accompaniment: true, melody: true, sfx: true },
+            instrumentation: { 
+              bass: { strategy: 'weighted', options: [{ name: 'ambientDrone', weight: 1.0 }] },
+              accompaniment: { strategy: 'weighted', v1Options: [{name: 'ambientPad', weight: 1.0}], v2Options: [{name: 'synth_cave_pad', weight: 1.0}] },
+              melody: { strategy: 'weighted', v1Options: [{name: 'theremin', weight: 1.0}], v2Options: [{name: 'guitar_shineOn', weight: 1.0}] }
+            },
+            instrumentRules: { 
+                drums: { enabled: false },
+                sfx: { eventProbability: 0.2, categories: [{name: 'dark', weight: 1.0}] },
+                melody: { source: 'harmony_top_note' }
+            },
+            bundles: [ { id: 'DARK_INTRO_BUNDLE_2', name: 'Echoes', duration: { percent: 100 }, characteristics: {}, phrases: {} } ],
+            outroFill: null,
+          },
+          {
+            id: 'INTRO_3', name: 'Full Ensemble', duration: { percent: 6 },
+            layers: { bass: true, sfx: true, drums: true, melody: true, accompaniment: true, harmony: true, sparkles: true },
+            instrumentation: {
+              bass: { strategy: 'weighted', options: [{ name: 'ambientDrone', weight: 1.0 }]},
+              accompaniment: { strategy: 'weighted', v1Options: [{name: 'organ', weight: 0.8 }, {name: 'theremin', weight: 0.2}], v2Options: [{name: 'synth_cave_pad', weight: 1.0}] },
+              melody: { strategy: 'weighted', v1Options: [{name: 'theremin', weight: 1.0}], v2Options: [{name: 'guitar_shineOn', weight: 1.0}] },
+              harmony: { strategy: 'weighted', options: [ { name: 'violin', weight: 0.45 }, { name: 'flute', weight: 0.45 }, { name: 'guitarChords', weight: 0.1 } ]}
+            },
+            instrumentRules: {
+                drums: { pattern: 'composer', density: { min: 0.2, max: 0.4 }, useSnare: false, usePerc: true, useGhostHat: true, rareKick: true, alternatePerc: false },
+                bass: { density: {min: 0.5, max: 0.7} },
+                sfx: { eventProbability: 0.25, categories: [{ name: 'voice', weight: 0.6 }, { name: 'dark', weight: 0.3 }] },
+                melody: { source: 'harmony_top_note' }
+            },
+            bundles: [ { id: 'DARK_INTRO_BUNDLE_3', name: 'Ensemble', duration: { percent: 100 }, characteristics: {}, phrases: {} } ],
             outroFill: null,
           },
           {
@@ -731,7 +764,7 @@ export const EnthusiasticAmbientBlueprint: MusicBlueprint = {
     },
     mutations: {},
     ambientEvents: [
-        { type: 'sparkle', probability: 0.18, activeParts: ['BUILD', 'MAIN', 'RELEASE'] }, // Bells
+        { type: 'sparkle', probability: 0.18, activeParts: ['BUILD', 'MAIN', 'RELEASE'] }, // Bell
         { type: 'shimmer_burst', probability: 0.10, activeParts: ['BUILD', 'MAIN'] },
     ],
     continuity: {},
@@ -1242,3 +1275,6 @@ export function getBlueprint(genre: Genre, mood: Mood): MusicBlueprint {
 
 export default MelancholicAmbientBlueprint;
 
+
+
+    
