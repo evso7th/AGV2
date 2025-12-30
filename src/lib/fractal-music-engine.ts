@@ -1,6 +1,6 @@
 
 
-import type { FractalEvent, Mood, Genre, Technique, BassSynthParams, InstrumentType, MelodyInstrument, BassInstrument, AccompanimentInstrument, ResonanceMatrix, InstrumentHints, AccompanimentTechnique, GhostChord, SfxRule, V1MelodyInstrument, V2MelodyInstrument } from '@/types/fractal';
+import type { FractalEvent, Mood, Genre, Technique, BassSynthParams, InstrumentType, MelodyInstrument, BassInstrument, AccompanimentInstrument, ResonanceMatrix, InstrumentHints, AccompanimentTechnique, GhostChord, SfxRule, V1MelodyInstrument, V2MelodyInstrument, BlueprintPart, InstrumentationRules } from '@/types/fractal';
 import { ElectronicK, TraditionalK, AmbientK, MelancholicMinorK } from './resonance-matrices';
 import { getScaleForMood, STYLE_DRUM_PATTERNS, generateAmbientBassPhrase, createAccompanimentAxiom, PERCUSSION_SETS, TEXTURE_INSTRUMENT_WEIGHTS_BY_MOOD, getAccompanimentTechnique, createBassFill as createBassFillFromTheory, createDrumFill, AMBIENT_ACCOMPANIMENT_WEIGHTS, chooseHarmonyInstrument, mutateBassPhrase, createMelodyMotif, createDrumAxiom, generateGhostHarmonyTrack, mutateAccompanimentPhrase, createHarmonyAxiom } from './music-theory';
 import { BlueprintNavigator, type NavigationInfo } from './blueprint-navigator';
@@ -28,7 +28,8 @@ interface EngineConfig {
   drumSettings: any;
   seed: number;
   composerControlsInstruments?: boolean;
-  useMelodyV2?: boolean; // #РЕШЕНИЕ: Добавлено поле для флага V2
+  useMelodyV2?: boolean;
+  introBars: number;
 }
 
 type PlayPlanItem = {
@@ -95,8 +96,8 @@ export class FractalMusicEngine {
 
 
   constructor(config: EngineConfig) {
-    this.config = { ...config }; // #РЕШЕНИЕ: Сохраняем полную конфигурацию
-    this.navigator = new BlueprintNavigator(getBlueprint(config.genre, config.mood), config.seed, config.genre, config.mood);
+    this.config = { ...config };
+    this.navigator = new BlueprintNavigator(getBlueprint(config.genre, config.mood), config.seed, config.genre, config.mood, config.introBars);
     this.random = seededRandom(config.seed);
     this.nextWeatherEventEpoch = 0;
     this.initialize();
@@ -107,19 +108,19 @@ export class FractalMusicEngine {
 
   public updateConfig(newConfig: Partial<EngineConfig>) {
       const moodOrGenreChanged = newConfig.mood !== this.config.mood || newConfig.genre !== this.config.genre;
+      const introBarsChanged = newConfig.introBars !== this.config.introBars;
       
       const oldSeed = this.config.seed;
-      // #РЕШЕНИЕ: Обновляем полную конфигурацию
       this.config = { ...this.config, ...newConfig };
       
       if (newConfig.seed !== undefined && newConfig.seed !== oldSeed) {
           this.random = seededRandom(newConfig.seed);
       }
       
-      if(moodOrGenreChanged) {
-          console.log(`[FME] Mood or Genre changed. Re-initializing with new blueprint for mood: ${this.config.mood}`);
+      if(moodOrGenreChanged || introBarsChanged) {
+          console.log(`[FME] Config changed. Re-initializing. New mood: ${this.config.mood}, New intro: ${this.config.introBars}`);
           const blueprint = getBlueprint(this.config.genre, this.config.mood);
-          this.navigator = new BlueprintNavigator(blueprint, this.config.seed, this.config.genre, this.config.mood);
+          this.navigator = new BlueprintNavigator(blueprint, this.config.seed, this.config.genre, this.config.mood, this.config.introBars);
           this.initialize();
       }
   }
@@ -130,10 +131,9 @@ export class FractalMusicEngine {
     const root = scale[0];
     const durationInBeats = 16; // 4 bars * 4 beats
   
-    // 1. Sustained Bass/Pad Drone (Foundation)
     promenade.push({
       type: 'bass',
-      note: root - 12, // Sub-bass
+      note: root - 12,
       duration: durationInBeats,
       time: 0,
       weight: 0.5,
@@ -144,9 +144,9 @@ export class FractalMusicEngine {
     });
     promenade.push({
         type: 'accompaniment',
-        note: root, // Mid-range
+        note: root,
         duration: durationInBeats,
-        time: 0.5, // Slightly offset
+        time: 0.5,
         weight: 0.4,
         technique: 'swell',
         dynamics: 'p',
@@ -154,20 +154,18 @@ export class FractalMusicEngine {
         params: { attack: 4.0, release: 6.0 }
     });
   
-    // 2. Textural Percussion (Using `perc-*` samples)
     const percSamples: InstrumentType[] = ['perc-007', 'perc-011', 'perc-014', 'drum_a_ride2'];
     for (let i = 0; i < 8; i++) {
         promenade.push({
             type: percSamples[i % percSamples.length],
-            note: 60, // Dummy note
+            note: 60,
             duration: 1.0,
-            time: i * 2.0 + this.random.next() * 0.5, // Every 2 beats, with jitter
-            weight: 0.2 + this.random.next() * 0.1, // Very quiet
+            time: i * 2.0 + this.random.next() * 0.5,
+            weight: 0.2 + this.random.next() * 0.1,
             technique: 'hit', dynamics: 'pp', phrasing: 'staccato', params: {}
         });
     }
   
-    // 3. Atmospheric SFX
     promenade.push({
       type: 'sfx',
       note: 60,
@@ -178,11 +176,10 @@ export class FractalMusicEngine {
       params: { mood: this.config.mood, genre: 'ambient', rules: { eventProbability: 1.0, categories: [{name: 'common', weight: 1.0}]} }
     });
   
-    // 4. Melodic "Sparkle"
     promenade.push({
       type: 'sparkle',
       note: 60,
-      time: durationInBeats / 2, // Right in the middle
+      time: durationInBeats / 2,
       duration: 1,
       weight: 0.6,
       technique: 'hit', dynamics: 'mp', phrasing: 'legato',
@@ -200,7 +197,6 @@ export class FractalMusicEngine {
     this.nextAccompanimentDelay = this.random.next() * 7 + 5; 
     this.hasBassBeenMutated = false;
     
-    // --- GHOST HARMONY INITIALIZATION ---
     const key = getScaleForMood(this.config.mood)[0];
     this.ghostHarmonyTrack = generateGhostHarmonyTrack(this.navigator.totalBars, this.config.mood, key, this.random);
     if (this.ghostHarmonyTrack.length === 0) {
@@ -217,12 +213,6 @@ export class FractalMusicEngine {
 
     const firstChord = this.ghostHarmonyTrack[0];
     
-    // #ЗАЧЕМ: Этот блок кода отвечает за создание НАЧАЛЬНОЙ библиотеки фраз для аккомпанемента.
-    // #ЧТО: Он считывает информацию о навигации для самого первого такта (bar 0), чтобы получить
-    //      правила для интро. Затем он извлекает из этих правил `registerHint` (указание на регистр)
-    //      и передает его в `createAccompanimentAxiom` при создании фраз.
-    // #СВЯЗИ: Решает проблему "инициализации вслепую", когда начальные фразы создавались
-    //         без учета правил блюпринта, что приводило к неправильному регистру в интро.
     const initialNavInfo = this.navigator.tick(0);
     const initialRegisterHint = initialNavInfo?.currentPart.instrumentRules?.accompaniment?.register?.preferred;
     
@@ -239,73 +229,81 @@ export class FractalMusicEngine {
   
   private _chooseInstrumentForPart(part: 'melody' | 'accompaniment', currentPartInfo: BlueprintPart | null): MelodyInstrument | AccompanimentInstrument | undefined {
         let selectedInstrument: MelodyInstrument | AccompanimentInstrument | undefined = undefined;
-        let rules: InstrumentationRules<any> | undefined;
-
-        // #РЕШЕНИЕ: Добавлен лог для проверки состояния флага V2.
+        const rules = currentPartInfo?.instrumentation?.[part];
+        
         console.log(`%c[FME @ Bar ${this.epoch}] Choosing instrument for '${part}'. V2 Engine Active: ${this.config.useMelodyV2}`, 'color: #9370DB');
+        
+        let options: { name: any; weight: number; }[] | undefined;
 
-
-        if (currentPartInfo?.instrumentation?.[part]) {
-            rules = currentPartInfo.instrumentation[part];
-        }
-
-        if (rules && rules.strategy === 'weighted' && rules.options.length > 0) {
-            const totalWeight = rules.options.reduce((sum, opt) => sum + opt.weight, 0);
-            let rand = this.random.next() * totalWeight;
-
-            for (const option of rules.options) {
-                rand -= option.weight;
-                if (rand <= 0) {
-                    selectedInstrument = option.name;
-                    break;
-                }
-            }
-             if (!selectedInstrument) {
-                selectedInstrument = rules.options[0].name;
-            }
-        } else {
-            // Fallback logic
-            const moodWeights = TEXTURE_INSTRUMENT_WEIGHTS_BY_MOOD[this.config.mood] || TEXTURE_INSTRUMENT_WEIGHTS_BY_MOOD['calm'];
-            const options = Object.entries(moodWeights).map(([name, weight]) => ({ name: name as MelodyInstrument, weight }));
-            if (options.length > 0) {
-                const totalWeight = options.reduce((sum, opt) => sum + opt.weight, 0);
-                let rand = this.random.next() * totalWeight;
-                for (const option of options) {
-                    rand -= option.weight;
-                    if (rand <= 0) {
-                        selectedInstrument = option.name;
-                        break;
-                    }
-                }
-                 if (!selectedInstrument) {
-                    selectedInstrument = options[0].name;
-                }
+        if (rules?.strategy === 'weighted') {
+            if (this.config.useMelodyV2 && rules.v2Options && rules.v2Options.length > 0) {
+                options = rules.v2Options;
+                console.log(`[FME] Using V2 options for ${part}.`);
+            } else if (!this.config.useMelodyV2 && rules.v1Options && rules.v1Options.length > 0) {
+                options = rules.v1Options;
+                console.log(`[FME] Using V1 options for ${part}.`);
+            } else if (rules.options && rules.options.length > 0) {
+                options = rules.options; // Fallback to generic options
+                console.log(`[FME] Using generic options for ${part}.`);
             }
         }
         
+        if (options && options.length > 0) {
+             const totalWeight = options.reduce((sum, opt) => sum + opt.weight, 0);
+             let rand = this.random.next() * totalWeight;
+
+             for (const option of options) {
+                 rand -= option.weight;
+                 if (rand <= 0) {
+                     selectedInstrument = option.name;
+                     break;
+                 }
+             }
+             if (!selectedInstrument) {
+                 selectedInstrument = options[0].name;
+             }
+        } else {
+             // Fallback logic if no rules are defined
+             const moodWeights = TEXTURE_INSTRUMENT_WEIGHTS_BY_MOOD[this.config.mood] || TEXTURE_INSTRUMENT_WEIGHTS_BY_MOOD['calm'];
+             const fallbackOptions = Object.entries(moodWeights).map(([name, weight]) => ({ name: name as MelodyInstrument, weight }));
+             if (fallbackOptions.length > 0) {
+                 const totalWeight = fallbackOptions.reduce((sum, opt) => sum + opt.weight, 0);
+                 let rand = this.random.next() * totalWeight;
+                 for (const option of fallbackOptions) {
+                     rand -= option.weight;
+                     if (rand <= 0) {
+                         selectedInstrument = option.name;
+                         break;
+                     }
+                 }
+                 if (!selectedInstrument) {
+                     selectedInstrument = fallbackOptions[0].name;
+                 }
+             }
+        }
+
+        // Final check to ensure the chosen instrument is compatible with the engine version
         if (this.config.useMelodyV2) {
             const v2PresetNames = Object.keys(V2_PRESETS);
             if (!selectedInstrument || !v2PresetNames.includes(selectedInstrument as string)) {
-                console.log(`[FME @ Bar ${this.epoch}] V2 Engine active. Hint '${selectedInstrument}' is not V2. Choosing random V2 preset.`);
+                console.log(`[FME] V2 Engine compatibility check: '${selectedInstrument}' is not V2. Choosing random V2 preset.`);
                 selectedInstrument = v2PresetNames[this.random.nextInt(v2PresetNames.length)] as keyof typeof V2_PRESETS;
             }
         } else {
-            // Ensure we don't accidentally select a V2-only preset for V1 engine
             const v1InstrumentList: string[] = ['synth', 'organ', 'mellotron', 'theremin', 'electricGuitar', 'ambientPad', 'acousticGuitar', 'E-Bells_melody', 'G-Drops', 'piano', 'violin', 'flute', 'acousticGuitarSolo', 'guitarChords'];
              if (selectedInstrument && !v1InstrumentList.includes(selectedInstrument)) {
-                console.log(`[FME @ Bar ${this.epoch}] V1 Engine active. Hint '${selectedInstrument}' is not V1. Choosing random V1 preset.`);
+                console.log(`[FME] V1 Engine compatibility check: '${selectedInstrument}' is not V1. Choosing random V1 preset.`);
                 selectedInstrument = v1InstrumentList[this.random.nextInt(v1InstrumentList.length)] as MelodyInstrument;
              }
         }
         
         console.log(`%c[FME @ Bar ${this.epoch}] Selected instrument hint for '${part}': ${selectedInstrument}`, 'color: #9370DB');
         return selectedInstrument;
-    }
+  }
 
 
   public generateExternalImpulse() {
     // This functionality is currently disabled to simplify the logic.
-    // We can re-enable it once the core composition is stable.
   }
   
   private applyNaturalDecay(events: FractalEvent[], barDuration: number): FractalEvent[] {
@@ -397,10 +395,10 @@ export class FractalMusicEngine {
         chordNotes.forEach((note, index) => {
             arpeggio.push({
                 type: 'accompaniment',
-                note: note + 12 * 2, // Play in a mid-low register
-                duration: 4.0, // Long duration for overlapping
-                time: startTime + (index * 0.06), // Very fast succession
-                weight: 0.6 - (index * 0.05), // Slightly decreasing volume
+                note: note + 12 * 2,
+                duration: 4.0,
+                time: startTime + (index * 0.06),
+                weight: 0.6 - (index * 0.05),
                 technique: 'swell',
                 dynamics: 'p',
                 phrasing: 'legato',
@@ -460,7 +458,7 @@ export class FractalMusicEngine {
             ...e,
             type: 'accompaniment',
             note: e.note + (12 * octaveShift),
-            weight: e.weight * 0.8, // Slightly lower volume
+            weight: e.weight * 0.8,
         }));
         accompEvents.push(...bassDoubleEvents);
         instrumentHints.accompaniment = instrument;
@@ -475,29 +473,24 @@ export class FractalMusicEngine {
     }
     
     if (navInfo.currentPart.layers.melody) {
-        // #ЗАЧЕМ: Этот блок реализует декларативное управление генерацией мелодии.
-        // #ЧТО: Он считывает `melodySource` из блюпринта. Если `harmony_top_note`, он извлекает
-        //      верхние ноты аккомпанемента. В противном случае, он использует стандартную логику мотивов.
-        // #СВЯЗИ: Заменяет жестко закодированную проверку на `genre === 'ambient'`.
         const melodyRules = navInfo.currentPart.instrumentRules?.melody;
         if (melodyRules?.source === 'harmony_top_note') {
             const topNotes = accompEvents.sort((a, b) => b.note - a.note).slice(0, 2);
             melodyEvents = topNotes.map(noteEvent => ({
                 ...noteEvent,
                 type: 'melody',
-                note: noteEvent.note + 7, // Играем на квинту выше
+                note: noteEvent.note + 7,
                 weight: noteEvent.weight * 0.7,
             }));
         } else {
-            // Стандартная логика с мотивом
             const melodyDensity = melodyRules?.density?.min ?? 0.25;
-            const minInterval = 2; // Кулдаун
+            const minInterval = 2;
 
             if (this.epoch >= this.lastMelodyPlayEpoch + minInterval && this.random.next() < melodyDensity) {
                 if (this.epoch > 0 && this.currentMelodyMotif.length > 0) {
                     this.currentMelodyMotif = createMelodyMotif(currentChord, this.config.mood, this.random, this.currentMelodyMotif);
                 }
-                melodyEvents = this.currentMelodyMotif.slice(0, 4); // Возвращаемся к надежному варианту
+                melodyEvents = this.currentMelodyMotif.slice(0, 4);
                 this.lastMelodyPlayEpoch = this.epoch;
             }
         }
@@ -528,7 +521,7 @@ export class FractalMusicEngine {
       console.log(`%c[FME] Resetting for new suite.`, 'color: green; font-weight: bold;');
       this.epoch = 0;
       this.isPromenadeActive = false;
-      this.initialize(); // Re-initialize everything for a fresh start
+      this.initialize();
   }
 
   public evolve(barDuration: number, barCount: number): { events: FractalEvent[], instrumentHints: InstrumentHints } {
