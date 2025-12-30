@@ -249,7 +249,13 @@ export const MelancholicAmbientBlueprint: MusicBlueprint = {
        {
         id: 'INTRO_1', name: 'Emergence', duration: { percent: 8 }, // ~10 bars
         layers: { accompaniment: true, drums: true, melody: true },
-        instrumentation: { accompaniment: { strategy: 'weighted', options: [{ name: 'synth_ambient_pad_lush', weight: 1.0 }] } },
+        instrumentation: { 
+            accompaniment: {
+                strategy: 'weighted',
+                v1Options: [{ name: 'ambientPad', weight: 1.0 }],
+                v2Options: [{ name: 'synth_cave_pad', weight: 1.0 }],
+            } 
+        },
         instrumentRules: {
           accompaniment: { register: { preferred: 'low' } },
           drums: { pattern: 'composer', density: { min: 0.1, max: 0.3 }, useSnare: false, rareKick: false, usePerc: true },
