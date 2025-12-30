@@ -1,5 +1,4 @@
 
-
 'use client';
 
 import { useState, useEffect, useCallback, useRef } from "react";
@@ -48,6 +47,8 @@ export type AuraGrooveProps = {
   setGenre: (genre: Genre) => void;
   useMelodyV2: boolean;
   toggleMelodyEngine: () => void;
+  introBars: number;
+  setIntroBars: (bars: number) => void;
 };
 
 
@@ -93,6 +94,7 @@ export const useAuraGroove = (): AuraGrooveProps => {
   const [density, setDensity] = useState(0.5);
   const [composerControlsInstruments, setComposerControlsInstruments] = useState(true);
   const [mood, setMood] = useState<Mood>('melancholic');
+  const [introBars, setIntroBars] = useState(7);
 
   const [isEqModalOpen, setIsEqModalOpen] = useState(false);
   const [eqSettings, setEqSettings] = useState<number[]>(Array(7).fill(0));
@@ -130,8 +132,9 @@ export const useAuraGroove = (): AuraGrooveProps => {
       mood,
       seed: initialSeed,
       useMelodyV2,
+      introBars,
     };
-  }, [bpm, score, genre, instrumentSettings, drumSettings, textureSettings, density, composerControlsInstruments, mood, initialSeed, useMelodyV2]);
+  }, [bpm, score, genre, instrumentSettings, drumSettings, textureSettings, density, composerControlsInstruments, mood, initialSeed, useMelodyV2, introBars]);
 
   // Initial settings sync
   useEffect(() => {
@@ -333,7 +336,9 @@ export const useAuraGroove = (): AuraGrooveProps => {
     genre,
     setGenre,
     useMelodyV2,
-    toggleMelodyEngine
+    toggleMelodyEngine,
+    introBars,
+    setIntroBars,
   };
 };
 
