@@ -80,7 +80,7 @@ export const useAuraGroove = (): AuraGrooveProps => {
   const [drumSettings, setDrumSettings] = useState<DrumSettings>({ pattern: 'composer', volume: 0.5, kickVolume: 1.0, enabled: true });
   const [instrumentSettings, setInstrumentSettings] = useState<InstrumentSettings>({
     bass: { name: "glideBass", volume: 0.5, technique: 'portamento' },
-    melody: { name: "ambientPad", volume: 0.8 },
+    melody: { name: "ambientPad", volume: 0.5 },
     accompaniment: { name: "synth", volume: 0.7 },
     harmony: { name: "guitarChords", volume: 0.25 },
   });
@@ -341,5 +341,7 @@ export const useAuraGroove = (): AuraGrooveProps => {
     setIntroBars,
   };
 };
+
+    
 
     
