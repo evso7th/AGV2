@@ -32,7 +32,7 @@ export function AuraGrooveV2({
   timerSettings, handleTimerDurationChange, handleToggleTimer,
   composerControlsInstruments, setComposerControlsInstruments,
   mood, setMood, genre, setGenre, isRegenerating,
-  useMelodyV2, toggleMelodyEngine
+  useMelodyV2, toggleMelodyEngine, introBars, setIntroBars,
 }: AuraGrooveProps) {
 
   const router = useRouter();
@@ -192,6 +192,11 @@ export function AuraGrooveV2({
                     <Label htmlFor="density-slider" className="text-right text-xs">Density</Label>
                     <Slider id="density-slider" value={[density]} min={0.1} max={1} step={0.05} onValueChange={(v) => setDensity(v[0])} className="col-span-2" disabled={isInitializing}/>
                   </div>
+                   <div className="grid grid-cols-[1fr_2fr_auto] items-center gap-2">
+                    <Label htmlFor="intro-slider" className="text-right text-xs">Intro Length</Label>
+                    <Slider id="intro-slider" value={[introBars]} min={1} max={10} step={1} onValueChange={(v) => setIntroBars(v[0])} className="col-span-1" disabled={isInitializing || isPlaying}/>
+                    <span className="text-xs w-8 text-right font-mono">{introBars}</span>
+                  </div>
                 </CardContent>
               </Card>
                <Card className="border-0 shadow-none mt-2">
@@ -343,3 +348,6 @@ export function AuraGrooveV2({
   );
 }
 
+
+
+    
