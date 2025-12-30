@@ -196,7 +196,9 @@ export type InstrumentOption<T> = {
 
 export type InstrumentationRules<T> = {
     strategy: 'weighted';
-    options: InstrumentOption<T>[];
+    options?: InstrumentOption<T>[];
+    v1Options?: InstrumentOption<T>[];
+    v2Options?: InstrumentOption<T>[];
 };
 
 export type BlueprintBundle = {
@@ -266,3 +268,4 @@ export type MusicBlueprint = {
     continuity: any; // Define this type more strictly later
     rendering: any; // Define this type more strictly later
 };
+
