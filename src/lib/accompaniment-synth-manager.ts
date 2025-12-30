@@ -105,6 +105,16 @@ export class AccompanimentSynthManager {
     public schedule(events: FractalEvent[], barStartTime: number, tempo: number, instrumentHint?: AccompanimentInstrument, composerControlsInstruments: boolean = true) {
         if (!this.isInitialized) return;
         const instrumentToPlay = (composerControlsInstruments && instrumentHint) ? instrumentHint : this.activeInstrumentName;
+        
+        // #ЗАЧЕМ: Добавлена проверка, чтобы избежать ошибки 'split' of undefined.
+        // #ЧТО: Если `instrumentToPlay` не определен (например, при инициализации),
+        //      мы немедленно прекращаем выполнение функции, чтобы избежать сбоя.
+        // #СВЯЗИ: Устраняет критическую ошибку, приводившую к падению приложения.
+        if (!instrumentToPlay) {
+            console.warn('[AccompManager] Schedule called with no instrument selected or hinted. Skipping.');
+            return;
+        }
+        
         if (instrumentToPlay === 'none' || !(instrumentToPlay in SYNTH_PRESETS)) return;
 
         const beatDuration = 60 / tempo;
