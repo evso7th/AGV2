@@ -24,6 +24,27 @@ const EQ_BANDS = [
   { freq: '500', label: '500' }, { freq: '1k', label: '1k' }, { freq: '2k', label: '2k' }, { freq: '4k', label: '4k' },
 ];
 
+type MoodCategory = 'light' | 'neutral' | 'dark';
+
+const MOOD_CATEGORIES: Record<Mood, MoodCategory> = {
+  epic: 'light',
+  joyful: 'light',
+  enthusiastic: 'light',
+  dreamy: 'neutral',
+  contemplative: 'neutral',
+  calm: 'neutral',
+  melancholic: 'dark',
+  dark: 'dark',
+  anxious: 'dark',
+};
+
+const MOOD_COLOR_CLASSES: Record<MoodCategory, string> = {
+  light: 'text-primary',
+  neutral: 'text-primary/75',
+  dark: 'text-primary/50',
+};
+
+
 export function AuraGrooveV2({
   isPlaying, isInitializing, handlePlayPause, handleRegenerate, drumSettings, setDrumSettings, instrumentSettings,
   setInstrumentSettings, handleBassTechniqueChange, handleVolumeChange, textureSettings, handleTextureEnabledChange,
@@ -173,7 +194,15 @@ export function AuraGrooveV2({
                           <Select value={mood} onValueChange={(v) => setMood(v as Mood)} disabled={isInitializing || isPlaying}>
                               <SelectTrigger id="mood-selector" className="col-span-2 h-8 text-xs"><SelectValue /></SelectTrigger>
                               <SelectContent>
-                                  {moodList.map(m => <SelectItem key={m} value={m} className="text-xs capitalize">{m}</SelectItem>)}
+                                {moodList.map(m => {
+                                    const category = MOOD_CATEGORIES[m];
+                                    const colorClass = MOOD_COLOR_CLASSES[category];
+                                    return (
+                                        <SelectItem key={m} value={m} className={cn("text-xs capitalize", colorClass)}>
+                                            {m}
+                                        </SelectItem>
+                                    );
+                                })}
                               </SelectContent>
                           </Select>
                       </div>
