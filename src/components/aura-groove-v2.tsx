@@ -48,7 +48,12 @@ export function AuraGrooveV2({
   const harmonyInstrumentList: ('piano' | 'guitarChords' | 'flute' | 'violin' | 'none')[] = ['piano', 'guitarChords', 'flute', 'violin', 'none'];
   const bassInstrumentList: (BassInstrument | 'none')[] = ['classicBass', 'glideBass', 'ambientDrone', 'resonantGliss', 'hypnoticDrone', 'livingRiff', 'none'];
   const moodList: Mood[] = ['epic', 'joyful', 'enthusiastic', 'melancholic', 'dark', 'anxious', 'dreamy', 'contemplative', 'calm'];
-  const genreList: Genre[] = ['trance', 'ambient', 'progressive', 'rock', 'house', 'rnb', 'ballad', 'reggae', 'blues', 'celtic'];
+  
+  const isFractalStyle = score === 'neuro_f_matrix';
+
+  const genreList: Genre[] = isFractalStyle 
+    ? ['ambient'] 
+    : ['trance', 'ambient', 'progressive', 'rock', 'house', 'rnb', 'ballad', 'reggae', 'blues', 'celtic'];
 
   const displayNames: Record<string, string> = {
     'guitarChords': 'Guitar Chords',
@@ -72,7 +77,6 @@ export function AuraGrooveV2({
   const textureInstrumentList = useMelodyV2 ? v2MelodyInstruments : v1AccompanimentInstruments;
 
 
-  const isFractalStyle = score === 'neuro_f_matrix';
   const composerControl = isFractalStyle && composerControlsInstruments;
 
 
