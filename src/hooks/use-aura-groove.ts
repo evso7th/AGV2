@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import type { DrumSettings, InstrumentSettings, ScoreName, WorkerSettings, BassInstrument, InstrumentPart, MelodyInstrument, AccompanimentInstrument, BassTechnique, TextureSettings, TimerSettings, Mood, Genre, SfxSettings } from '@/types/music';
 import { useAudioEngine } from "@/contexts/audio-engine-context";
 import { V2_PRESETS } from "@/lib/presets-v2";
+import { getBlueprint } from "@/lib/blueprints";
 
 const FADE_OUT_DURATION = 120; // 2 minutes
 
@@ -165,6 +166,28 @@ export const useAuraGroove = (): AuraGrooveProps => {
           updateSettings(getFullSettings());
       }
   }, [useMelodyV2, isInitialized, getFullSettings, updateSettings]);
+
+  // #ЗАЧЕМ: Этот useEffect синхронизирует BPM в UI с темпом, заданным в блюпринте.
+  // #ЧТО: При смене жанра или настроения он асинхронно загружает нужный блюпринт,
+  //      извлекает из него базовый темп и устанавливает его в состояние `bpm`.
+  // #СВЯЗИ: Обеспечивает, что UI всегда отражает актуальный темп композитора.
+  useEffect(() => {
+    const fetchBlueprintBpm = async () => {
+      try {
+        const blueprint = await getBlueprint(genre, mood);
+        if (blueprint && blueprint.musical.bpm.base) {
+          setBpm(blueprint.musical.bpm.base);
+          console.log(`[useAuraGroove] BPM updated from blueprint: ${blueprint.musical.bpm.base}`);
+        }
+      } catch (error) {
+        console.error("Failed to fetch blueprint BPM:", error);
+      }
+    };
+
+    if (isInitialized && score === 'neuro_f_matrix') {
+        fetchBlueprintBpm();
+    }
+  }, [genre, mood, score, isInitialized]);
 
 
   // Timer logic
@@ -341,7 +364,3 @@ export const useAuraGroove = (): AuraGrooveProps => {
     setIntroBars,
   };
 };
-
-    
-
-    
