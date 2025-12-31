@@ -92,7 +92,7 @@ export class FractalMusicEngine {
   private currentAccompPhraseIndex = 0;
 
   private currentMelodyMotif: FractalEvent[] = [];
-  private lastMelodyPlayEpoch: number = -8; // Start with a delay, now 2 bars long
+  private lastMelodyPlayEpoch: number = -16; // Start with a delay, now 4 bars long
 
 
   constructor(config: EngineConfig) {
@@ -228,7 +228,7 @@ export class FractalMusicEngine {
     }
     
     this.currentMelodyMotif = createMelodyMotif(firstChord, this.config.mood, this.random);
-    this.lastMelodyPlayEpoch = -8; // Motif is now 2 bars long
+    this.lastMelodyPlayEpoch = -16; // Motif is now 4 bars long, increased cooldown
     
     this.needsBassReset = false;
   }
@@ -496,30 +496,33 @@ export class FractalMusicEngine {
         harmonyEvents = createHarmonyAxiom(currentChord, this.config.mood, this.config.genre, this.random);
     }
     
-    // --- MELODY GENERATION (REFACTORED) ---
+    // --- MELODY GENERATION (REFACTORED for 4-bar motifs) ---
     if (navInfo.currentPart.layers.melody) {
         const melodyRules = navInfo.currentPart.instrumentRules?.melody;
         const melodyDensity = melodyRules?.density?.min ?? 0.25;
         const minInterval = 8; // Don't play motifs too close together
-        
-        // Decide IF a melody should play in this epoch
-        if (this.epoch >= this.lastMelodyPlayEpoch + minInterval && this.random.next() < melodyDensity) {
-            
-            // Decide if we should generate a NEW motif or mutate the old one
-            const shouldMutate = this.currentMelodyMotif.length > 0 && this.random.next() > 0.3; // 70% chance to mutate
+        const motifBarIndex = this.epoch - this.lastMelodyPlayEpoch;
+
+        if (motifBarIndex >= 0 && motifBarIndex < 4 && this.currentMelodyMotif.length > 0) {
+            // We are inside a 4-bar motif playback cycle
+            const barStartBeat = motifBarIndex * 4.0;
+            const barEndBeat = (motifBarIndex + 1) * 4.0;
+            melodyEvents = this.currentMelodyMotif
+                .filter(e => e.time >= barStartBeat && e.time < barEndBeat)
+                .map(e => ({ ...e, time: e.time - barStartBeat })); // Make time relative to current bar
+        } else if (this.epoch >= this.lastMelodyPlayEpoch + minInterval && this.random.next() < melodyDensity) {
+            // Time to start a NEW 4-bar motif
+            const shouldMutate = this.currentMelodyMotif.length > 0 && this.random.next() > 0.3;
             const registerHint = melodyRules?.register?.preferred;
 
-            // Generate or mutate the 2-bar motif
             this.currentMelodyMotif = createMelodyMotif(currentChord, this.config.mood, this.random, shouldMutate ? this.currentMelodyMotif : undefined, registerHint);
             
-            // This epoch, we play the FIRST bar of the motif
-            melodyEvents = this.currentMelodyMotif.filter(e => e.time < 4.0);
-            
+            // Play the FIRST bar of the new motif now
+            melodyEvents = this.currentMelodyMotif
+                .filter(e => e.time < 4.0)
+                .map(e => ({ ...e, time: e.time }));
+                
             this.lastMelodyPlayEpoch = this.epoch;
-        } else if (this.epoch === this.lastMelodyPlayEpoch + 1 && this.currentMelodyMotif.length > 0) {
-            // This epoch, we play the SECOND bar of the motif
-             melodyEvents = this.currentMelodyMotif.filter(e => e.time >= 4.0)
-                .map(e => ({ ...e, time: e.time - 4.0 })); // Adjust time to be relative to the current bar
         }
     }
     

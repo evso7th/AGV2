@@ -876,7 +876,7 @@ export function createDrumFill(random: { next: () => number, nextInt: (max: numb
     }
 
     // Add final accent
-    const climaxTime = currentTime + numHits * 0.25;
+    const climaxTime = Math.min(3.75, fillTime);
     const numRides = random.next() > 0.5 ? 2 : 1;
     for (let i = 0; i < numRides; i++) {
          fill.push({
@@ -1086,7 +1086,7 @@ function extractTopNotes(events: FractalEvent[], maxNotes: number = 4): FractalE
 }
 
 /**
- * #ЗАЧЕМ: Генерирует мелодический мотив на 2 такта (8 долей) с разнообразным ритмом.
+ * #ЗАЧЕМ: Генерирует мелодический мотив на 4 такта (16 долей) с разнообразным ритмом.
  * #ЧТО: Выбирает ритмический паттерн и мелодический контур. Генерирует массив FractalEvent,
  *       где каждая нота имеет свою длительность и время начала, создавая полноценную фразу.
  *       Может мутировать существующий мотив для создания вариаций.
@@ -1100,10 +1100,10 @@ export function createMelodyMotif(chord: GhostChord, mood: Mood, random: { next:
         const mutationType = random.nextInt(4);
 
         switch (mutationType) {
-            case 0: // Ритмическое смещение
-                 console.log('%c[MelodyMutation] Type: Rhythmic Shift', 'color: #20B2AA');
-                const shiftAmount = (random.next() > 0.5 ? 0.25 : -0.25);
-                newMotif.forEach(e => e.time = (e.time + shiftAmount + 8) % 8);
+            case 0: // Ритмическая Компрессия/Растяжение
+                 console.log('%c[MelodyMutation] Type: Rhythmic Compression/Expansion', 'color: #20B2AA');
+                const factor = random.next() > 0.5 ? 2.0 : 0.5;
+                newMotif.forEach(e => e.duration *= factor);
                 break;
             case 1: // Инверсия интервалов
                  console.log('%c[MelodyMutation] Type: Inversion', 'color: #20B2AA');
@@ -1113,22 +1113,34 @@ export function createMelodyMotif(chord: GhostChord, mood: Mood, random: { next:
                     e.note = firstNote - interval;
                 });
                 break;
-            case 2: // Замена одной ноты
-                console.log('%c[MelodyMutation] Type: Note Swap', 'color: #20B2AA');
-                const noteToSwap = newMotif[random.nextInt(newMotif.length)];
-                const scale = getScaleForMood(mood);
-                noteToSwap.note = scale[random.nextInt(scale.length)];
+            case 2: // Ретроград (обратное проигрывание)
+                console.log('%c[MelodyMutation] Type: Retrograde', 'color: #20B2AA');
+                const totalDuration = newMotif.reduce((sum, e) => sum + e.duration, 0);
+                newMotif.reverse().forEach(e => e.time = totalDuration - e.time - e.duration);
                 break;
-            default: // Изменение длительности
-                 console.log('%c[MelodyMutation] Type: Duration Change', 'color: #20B2AA');
-                const noteToChange = newMotif[random.nextInt(newMotif.length)];
-                noteToChange.duration *= (random.next() > 0.5 ? 1.5 : 0.5);
+            case 3: // Смена регистра
+                 console.log('%c[MelodyMutation] Type: Register Shift', 'color: #20B2AA');
+                const octaveShift = (random.next() > 0.5) ? 12 : -12;
+                newMotif.forEach(e => e.note += octaveShift);
                 break;
         }
-        return newMotif.sort((a,b) => a.time - b.time);
+        
+        // Нормализация времени и длительности после мутации
+        let currentTime = 0;
+        newMotif.sort((a,b) => a.time - b.time);
+        const totalDur = newMotif.reduce((sum, e) => sum + e.duration, 0);
+        const scaleFactor = 16.0 / totalDur; // Нормализуем к 4 тактам (16 долей)
+        
+        newMotif.forEach(e => {
+            e.duration *= scaleFactor;
+            e.time = currentTime;
+            currentTime += e.duration;
+        });
+        
+        return newMotif;
     }
     
-    // --- Генерация нового мотива с нуля ---
+    // --- Генерация нового 4-тактового мотива с нуля ---
     const motif: FractalEvent[] = [];
     const scale = getScaleForMood(mood);
     let baseOctave = 4;
@@ -1137,29 +1149,32 @@ export function createMelodyMotif(chord: GhostChord, mood: Mood, random: { next:
 
     const rootNote = chord.rootNote + 12 * baseOctave;
 
-    // Ритмические паттерны (сумма длительностей = 8 долей)
+    // Ритмические паттерны (сумма длительностей = 16 долей, т.е. 4 такта)
     const rhythmicPatterns = [
-        [2, 1, 1, 2, 2],       // [half, quarter, quarter, half, half]
-        [1.5, 0.5, 2, 1, 3],   // [dotted quarter, eighth, half, quarter, dotted half]
-        [4, 2, 2],             // [whole, half, half]
-        [1, 1, 1, 1, 1, 1, 1, 1] // [straight quarters]
+        [4, 4, 4, 4],                        // [whole, whole, whole, whole]
+        [2, 2, 2, 2, 2, 2, 2, 2],            // [half, half, ...]
+        [3, 1, 3, 1, 4, 4],                  // [dotted half, quarter, ...]
+        [8, 4, 4],                           // [double whole, whole, whole]
+        [1, 1, 2, 1, 1, 2, 4, 4]             // [quarters, halves, wholes]
     ];
     const durations = rhythmicPatterns[random.nextInt(rhythmicPatterns.length)];
     
     // Мелодические контуры (направления)
     const contours = [
-      [0, 2, 1, 3, 2], // Up-down
-      [0, 1, 2, 3, 4], // Ascending
-      [4, 3, 2, 1, 0], // Descending
-      [0, 3, -1, 4, 1] // Jagged
+      [0, 2, 1, 3, 2, 4, 3, 1], // Up-down
+      [0, 1, 2, 3, 4, 5, 6, 7], // Ascending
+      [7, 6, 5, 4, 3, 2, 1, 0], // Descending
+      [0, 4, -2, 5, 1, 6, -1, 3] // Jagged
     ];
     const contour = contours[random.nextInt(contours.length)];
 
     let currentTime = 0;
     const baseNoteIndex = scale.findIndex(n => n % 12 === rootNote % 12);
+    if (baseNoteIndex === -1) return []; // Should not happen
 
     for (let i = 0; i < durations.length; i++) {
-        const noteIndex = (baseNoteIndex + (contour[i] || 0) + scale.length) % scale.length;
+        const contourIndex = i % contour.length;
+        const noteIndex = (baseNoteIndex + (contour[contourIndex] || 0) + scale.length) % scale.length;
         const note = scale[noteIndex];
         
         motif.push({
@@ -1172,7 +1187,7 @@ export function createMelodyMotif(chord: GhostChord, mood: Mood, random: { next:
         currentTime += durations[i];
     }
     
-    console.log(`%c[MelodyAxiom] New 2-bar motif generated. Rhythm: [${durations.join(', ')}]`, 'color: #DA70D6');
+    console.log(`%c[MelodyAxiom] New 4-bar motif generated. Rhythm: [${durations.join(', ')}]`, 'color: #DA70D6');
     return motif;
 }
     
@@ -1182,6 +1197,7 @@ export function createMelodyMotif(chord: GhostChord, mood: Mood, random: { next:
 
 
     
+
 
 
 
