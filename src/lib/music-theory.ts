@@ -325,11 +325,6 @@ export function generateAmbientBassPhrase(chord: GhostChord, mood: Mood, genre: 
 };
 
 export function createAccompanimentAxiom(chord: GhostChord, mood: Mood, genre: Genre, random: { next: () => number; nextInt: (max: number) => number }, tempo: number = 120, registerHint?: 'low' | 'mid' | 'high'): FractalEvent[] {
-    // #ЗАЧЕМ: Этот `console.log` нужен для отладки регистра аккомпанемента.
-    // #ЧТО: Он выводит в консоль полученный `registerHint` и итоговую выбранную `baseOctave`.
-    // #СВЯЗИ: Помогает проверить, правильно ли движок передает команду из блюпринта.
-    console.log(`[AccompAxiom] Received registerHint: ${registerHint}`);
-
     const swellParams = { cutoff: 300, resonance: 0.8, distortion: 0.02, portamento: 0.0, attack: 1.5, release: 2.5 };
     const axiom: FractalEvent[] = [];
     
@@ -343,22 +338,15 @@ export function createAccompanimentAxiom(chord: GhostChord, mood: Mood, genre: G
     const chordNotes = [rootMidi, third, fifth].filter(n => scale.some(scaleNote => scaleNote % 12 === n % 12));
     if (chordNotes.length < 2) return [];
 
-    // #ЗАЧЕМ: Этот блок кода определяет базовую октаву для аккомпанемента.
-    // #ЧТО: Он проверяет `registerHint`. Если hint равен 'low', он устанавливает базовую октаву на 2,
-    //      в противном случае — на 3, что является поведением по умолчанию.
-    // #СВЯЗИ: Это позволяет блюпринту управлять высотой звучания аккомпанемента в разных частях композиции.
     let baseOctave = 3;
     if (registerHint === 'low') {
         baseOctave = 2;
     }
-    console.log(`[AccompAxiom] Using baseOctave: ${baseOctave}`);
-
 
     const numNotes = 2 + random.nextInt(2);
     let currentTime = 0;
 
     for (let i = 0; i < numNotes; i++) {
-        // #РЕШЕНИЕ: Исправлена ошибка. Убрано случайное добавление октавы.
         const noteMidi = chordNotes[random.nextInt(chordNotes.length)] + 12 * baseOctave;
         const duration = 4.0 / numNotes;
         
@@ -372,11 +360,6 @@ export function createAccompanimentAxiom(chord: GhostChord, mood: Mood, genre: G
         currentTime += duration;
     }
     
-    // #ЗАЧЕМ: Этот `console.log` нужен для проверки итоговой высоты сгенерированных нот.
-    // #ЧТО: Он выводит MIDI-ноты созданной фразы.
-    // #СВЯЗИ: Позволяет нам убедиться, что логика выбора октавы сработала корректно.
-    console.log(`[AccompAxiom] Generated phrase notes: ${axiom.map(e => e.note).join(', ')}`);
-
     return axiom;
 }
 
@@ -1015,9 +998,6 @@ function extractTopNotes(events: FractalEvent[], maxNotes: number = 4): FractalE
 }
 
 export function createMelodyMotif(chord: GhostChord, mood: Mood, random: { next: () => number; nextInt: (max: number) => number; }, previousMotif?: FractalEvent[], registerHint?: 'low' | 'mid' | 'high'): FractalEvent[] {
-    // --- AUDIT LOG ---
-    console.log(`%c[createMelodyMotif] Received registerHint: ${registerHint}`, 'color: cyan');
-
     const motif: FractalEvent[] = [];
     const scale = getScaleForMood(mood);
     
@@ -1027,13 +1007,9 @@ export function createMelodyMotif(chord: GhostChord, mood: Mood, random: { next:
     } else if (registerHint === 'low') {
         baseOctave = 2;
     }
-
-    // --- AUDIT LOG ---
-    console.log(`%c[createMelodyMotif] Final baseOctave selected: ${baseOctave}`, 'color: cyan');
-
+    
     let baseNote = chord.rootNote;
     while (baseNote > 50) baseNote -= 12;
-    // #ИСПРАВЛЕНИЕ: Заменена ошибочная переменная `rootOctave` на `baseOctave`.
     baseNote += (12 * baseOctave);
 
     if (previousMotif && random.next() > 0.2) { 
@@ -1110,6 +1086,7 @@ export function createMelodyMotif(chord: GhostChord, mood: Mood, random: { next:
 
 
     
+
 
 
 
