@@ -1,5 +1,4 @@
 
-
 // src/lib/music-theory.ts
 import type { FractalEvent, Mood, Genre, Technique, BassSynthParams, InstrumentType, AccompanimentInstrument, InstrumentHints, AccompanimentTechnique, GhostChord, SfxRule, V1MelodyInstrument, V2MelodyInstrument } from '@/types/fractal';
 import { ElectronicK, TraditionalK, AmbientK, MelancholicMinorK } from './resonance-matrices';
@@ -1049,7 +1048,7 @@ export function createMelodyMotif(chord: GhostChord, mood: Mood, random: { next:
 
     let baseNote = chord.rootNote;
     while (baseNote > 50) baseNote -= 12;
-    baseNote += (12 * rootOctave);
+    baseNote += (12 * baseOctave); // ИСПРАВЛЕНО: `rootOctave` заменена на `baseOctave`
 
     if (previousMotif && random.next() > 0.2) { 
         const variationType = random.nextInt(4);
@@ -1129,6 +1128,7 @@ export function createMelodyMotif(chord: GhostChord, mood: Mood, random: { next:
 
 
     
+
 
 
 
