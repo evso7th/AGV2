@@ -1,10 +1,10 @@
 
 
-import type { FractalEvent, Mood, Genre, Technique, BassSynthParams, InstrumentType, MelodyInstrument, BassInstrument, AccompanimentInstrument, ResonanceMatrix, InstrumentHints, AccompanimentTechnique, GhostChord, SfxRule, V1MelodyInstrument, V2MelodyInstrument, BlueprintPart, InstrumentationRules } from '@/types/fractal';
+import type { FractalEvent, Mood, Genre, Technique, BassSynthParams, InstrumentType, MelodyInstrument, BassInstrument, AccompanimentInstrument, ResonanceMatrix, InstrumentHints, AccompanimentTechnique, GhostChord, SfxRule, V1MelodyInstrument, V2MelodyInstrument, BlueprintPart, InstrumentationRules } from './fractal';
 import { ElectronicK, TraditionalK, AmbientK, MelancholicMinorK } from './resonance-matrices';
 import { getScaleForMood, STYLE_DRUM_PATTERNS, generateAmbientBassPhrase, createAccompanimentAxiom, PERCUSSION_SETS, TEXTURE_INSTRUMENT_WEIGHTS_BY_MOOD, getAccompanimentTechnique, createBassFill as createBassFillFromTheory, createDrumFill, AMBIENT_ACCOMPANIMENT_WEIGHTS, chooseHarmonyInstrument, mutateBassPhrase, createMelodyMotif, createDrumAxiom, generateGhostHarmonyTrack, mutateAccompanimentPhrase, createHarmonyAxiom } from './music-theory';
 import { BlueprintNavigator, type NavigationInfo } from './blueprint-navigator';
-import { MelancholicAmbientBlueprint, getBlueprint } from './blueprints';
+import { getBlueprint } from './blueprints';
 import { V2_PRESETS } from './presets-v2';
 
 
@@ -80,7 +80,7 @@ export class FractalMusicEngine {
   
   private ghostHarmonyTrack: GhostChord[] = []; // The harmonic "skeleton"
   
-  public navigator: BlueprintNavigator;
+  public navigator: BlueprintNavigator | null = null;
   private isPromenadeActive: boolean = false;
   private promenadeBars: FractalEvent[] = [];
 
@@ -99,19 +99,8 @@ export class FractalMusicEngine {
     this.config = { ...config };
     this.random = seededRandom(config.seed);
     this.nextWeatherEventEpoch = 0;
-    
-    // Initialize navigator synchronously with a default blueprint
-    const staticBlueprint = MelancholicAmbientBlueprint;
-    this.navigator = new BlueprintNavigator(staticBlueprint, config.seed, config.genre, config.mood, config.introBars);
 
-    this.initialize();
-
-    // Asynchronously load the correct blueprint and re-initialize if needed
-    getBlueprint(config.genre, config.mood).then(blueprint => {
-        console.log(`[FME] Blueprint now active: ${blueprint.name}`);
-        this.navigator = new BlueprintNavigator(blueprint, config.seed, config.genre, config.mood, config.introBars);
-        this.initialize();
-    });
+    // #ИЗМЕНЕНО: Инициализация отложена до асинхронной загрузки блюпринта в updateConfig/initialize
   }
 
   public get tempo(): number { return this.config.tempo; }
@@ -124,15 +113,12 @@ export class FractalMusicEngine {
       
       this.config = { ...this.config, ...newConfig };
       
-      if(moodOrGenreChanged || introBarsChanged || seedChanged) {
-          console.log(`[FME] Config changed. Re-initializing. New mood: ${this.config.mood}, New intro: ${this.config.introBars}`);
-          const blueprint = await getBlueprint(this.config.genre, this.config.mood);
-          console.log(`[FME] Blueprint now active: ${blueprint.name}`);
+      if(!this.navigator || moodOrGenreChanged || introBarsChanged || seedChanged) {
+          console.log(`[FME] Config changed or initial setup. Re-initializing. New mood: ${this.config.mood}, New intro: ${this.config.introBars}`);
           if (seedChanged) {
             this.random = seededRandom(this.config.seed);
           }
-          this.navigator = new BlueprintNavigator(blueprint, this.config.seed, this.config.genre, this.config.mood, this.config.introBars);
-          this.initialize();
+          await this.initialize(true); // Force re-initialization
       }
   }
 
@@ -201,12 +187,19 @@ export class FractalMusicEngine {
     console.log(`[FME] Generated enriched Promenade with ${this.promenadeBars.length} events.`);
   }
 
-  private initialize() {
+  private async initialize(force: boolean = false) {
+    if (this.navigator && !force) return;
+
     this.random = seededRandom(this.config.seed);
     this.nextWeatherEventEpoch = this.random.nextInt(12) + 8;
     this.lastAccompanimentEndTime = -Infinity;
     this.nextAccompanimentDelay = this.random.next() * 7 + 5; 
     this.hasBassBeenMutated = false;
+
+    // #ИЗМЕНЕНО: Асинхронная загрузка блюпринта
+    const blueprint = await getBlueprint(this.config.genre, this.config.mood);
+    console.log(`[FME] Blueprint now active: ${blueprint.name}`);
+    this.navigator = new BlueprintNavigator(blueprint, this.config.seed, this.config.genre, this.config.mood, this.config.introBars);
     
     const key = getScaleForMood(this.config.mood)[0];
     this.ghostHarmonyTrack = generateGhostHarmonyTrack(this.navigator.totalBars, this.config.mood, key, this.random);
@@ -532,10 +525,15 @@ export class FractalMusicEngine {
       console.log(`%c[FME] Resetting for new suite.`, 'color: green; font-weight: bold;');
       this.epoch = 0;
       this.isPromenadeActive = false;
-      this.initialize();
+      this.initialize(true);
   }
 
   public evolve(barDuration: number, barCount: number): { events: FractalEvent[], instrumentHints: InstrumentHints } {
+    if (!this.navigator) {
+        console.warn("[FME] Evolve called but navigator is not ready. Waiting for initialization.");
+        return { events: [], instrumentHints: {} };
+    }
+
     this.epoch = barCount;
 
     if (!this.isPromenadeActive && this.epoch >= this.navigator.totalBars && this.navigator.totalBars > 0) {
