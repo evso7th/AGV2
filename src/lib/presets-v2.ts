@@ -115,8 +115,8 @@ export const V2_PRESETS = {
     osc: [
       { type: 'sine', detune: 0, octave: 0, gain: 0.9 },
       { type: 'triangle', detune: 2, octave: 1, gain: 0.2 },
-      { type: 'noise', gain: 0.07, detune: 0, octave: 0 } // #ПЛАН382: "Дыхание"
     ],
+    noise: { on: true, color: 'white', gain: 0.07 }, // #ИСПРАВЛЕНО: Шум вынесен сюда
     adsr: { a: 0.05, d: 0.2, s: 0.8, r: 0.3 },
     lpf: { cutoff: 7500, q: 0.8, mode: '12dB' },
     lfo: { rate: 4.8, amount: 2.5, target: 'pitch' },
