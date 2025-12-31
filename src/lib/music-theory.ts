@@ -555,21 +555,6 @@ export const STYLE_DRUM_PATTERNS: Record<Genre, GenreRhythmGrammar> = {
            }
        ],
     },
-    reggae: {
-        loops: [
-            { 
-                kick: [],
-                snare: [{ type: 'drum_kick', time: 2, duration: 0.5, weight: 1.0 }], // Kick and snare together
-                hihat: [
-                    { type: 'drum_hihat_closed', time: 0.5, duration: 0.5, weight: 0.8 },
-                    { type: 'drum_hihat_closed', time: 1.5, duration: 0.5, weight: 0.8 },
-                    { type: 'drum_hihat_closed', time: 2.5, duration: 0.5, weight: 0.8 },
-                    { type: 'drum_hihat_closed', time: 3.5, duration: 0.5, weight: 0.8 },
-                ],
-                tags: ['one-drop']
-            }
-        ],
-    },
     blues: {
         loops: [
             { 
@@ -827,7 +812,7 @@ export function createDrumFill(random: { next: () => number, nextInt: (max: numb
             type: 'drum_ride',
             note: 59,
             duration: 0.5,
-            time: finalTime + i * 0.25,
+            time: climaxTime + i * 0.25,
             weight: baseWeight * 0.6, // Quieter accent
             technique: 'hit',
             dynamics: 'mp',
@@ -907,7 +892,7 @@ export function generateGhostHarmonyTrack(totalBars: number, mood: Mood, key: nu
   return harmonyTrack;
 }
     
-export function createDrumAxiom(genre: Genre, mood: Mood, tempo: number, random: { next: () => number, nextInt: (max: number) => number }): { events: FractalEvent[], tags: string[] } {
+export function createDrumAxiom(genre: Genre, mood: Mood, tempo: number, random: { next: () => number, nextInt: (max: number) => number }, rules?: any): { events: FractalEvent[], tags: string[] } {
     const hitParams = {}; // Params now come from events
     const grammar = STYLE_DRUM_PATTERNS[genre] || STYLE_DRUM_PATTERNS['ambient'];
     
@@ -1048,7 +1033,8 @@ export function createMelodyMotif(chord: GhostChord, mood: Mood, random: { next:
 
     let baseNote = chord.rootNote;
     while (baseNote > 50) baseNote -= 12;
-    baseNote += (12 * baseOctave); // ИСПРАВЛЕНО: `rootOctave` заменена на `baseOctave`
+    // #ИСПРАВЛЕНИЕ: Заменена ошибочная переменная `rootOctave` на `baseOctave`.
+    baseNote += (12 * baseOctave);
 
     if (previousMotif && random.next() > 0.2) { 
         const variationType = random.nextInt(4);
@@ -1124,6 +1110,7 @@ export function createMelodyMotif(chord: GhostChord, mood: Mood, random: { next:
 
 
     
+
 
 
 

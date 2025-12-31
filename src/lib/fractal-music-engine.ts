@@ -478,6 +478,9 @@ export class FractalMusicEngine {
     
     if (navInfo.currentPart.layers.melody) {
         const melodyRules = navInfo.currentPart.instrumentRules?.melody;
+        // #РЕШЕНИЕ: Явно извлекаем `registerHint` прямо из `navInfo`.
+        const registerHint = navInfo.currentPart.instrumentRules?.melody?.register?.preferred;
+        
         // --- AUDIT LOG ---
         console.log(`%c[FME - generateOneBar] Melody rules for bar ${this.epoch}:`, 'color: orange', JSON.stringify(melodyRules || {}));
 
@@ -495,7 +498,8 @@ export class FractalMusicEngine {
 
             if (this.epoch >= this.lastMelodyPlayEpoch + minInterval && this.random.next() < melodyDensity) {
                 if (this.epoch > 0 && this.currentMelodyMotif.length > 0) {
-                    this.currentMelodyMotif = createMelodyMotif(currentChord, this.config.mood, this.random, this.currentMelodyMotif, melodyRules?.register?.preferred);
+                    // #РЕШЕНИЕ: Передаем извлеченный `registerHint` напрямую в функцию.
+                    this.currentMelodyMotif = createMelodyMotif(currentChord, this.config.mood, this.random, this.currentMelodyMotif, registerHint);
                 }
                 melodyEvents = this.currentMelodyMotif.slice(0, 4);
                 this.lastMelodyPlayEpoch = this.epoch;
