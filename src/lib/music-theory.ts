@@ -820,7 +820,7 @@ export function createDrumFill(random: { next: () => number, nextInt: (max: numb
     }
 
     // Add final accent
-    const finalTime = currentTime + numHits * 0.25;
+    const climaxTime = currentTime + numHits * 0.25;
     const numRides = random.next() > 0.5 ? 2 : 1;
     for (let i = 0; i < numRides; i++) {
          fill.push({
@@ -1112,10 +1112,6 @@ export function createMelodyMotif(chord: GhostChord, mood: Mood, random: { next:
         });
     });
     
-    if (instrumentHints && instrumentHints.melody === 'electricGuitar') {
-        motif.forEach(e => e.note += 24);
-    }
-
     const motifNotes = motif.map(e => e.note);
     console.log(`%c[MelodyAxiom] New motif generated: ${motifNotes.join(' -> ')}`, 'color: #DA70D6');
     
@@ -1128,6 +1124,7 @@ export function createMelodyMotif(chord: GhostChord, mood: Mood, random: { next:
 
 
     
+
 
 
 
