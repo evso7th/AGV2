@@ -46,7 +46,7 @@ export const DarkTranceBlueprint: MusicBlueprint = {
                     bass: { strategy: 'weighted', options: [{ name: 'resonantGliss', weight: 1.0 }] }
                 },
                 instrumentRules: { 
-                    drums: { pattern: 'composer', density: { min: 0.7, max: 0.9 }, kickVolume: 1.2 },
+                    drums: { pattern: 'composer', density: { min: 0.7, max: 0.9 }, useSnare: true, rareKick: true, usePerc: true, alternatePerc: true, kickVolume: 1.2 },
                     bass: { techniques: [{value: 'glissando', weight: 1.0}]},
                     melody: { source: 'harmony_top_note' }
                 },
@@ -62,7 +62,7 @@ export const DarkTranceBlueprint: MusicBlueprint = {
                     melody: { strategy: 'weighted', v1Options: [{ name: 'electricGuitar', weight: 1.0 }], v2Options: [{ name: 'electricGuitar', weight: 1.0 }] }
                 },
                 instrumentRules: { 
-                    drums: { pattern: 'composer', density: { min: 0.9, max: 1.0 }, kickVolume: 1.4, usePerc: true, alternatePerc: true },
+                    drums: { pattern: 'composer', density: { min: 0.9, max: 1.0 }, useSnare: true, rareKick: true, usePerc: true, alternatePerc: true, kickVolume: 1.4 },
                     melody: { source: 'harmony_top_note' }
                 },
                 bundles: [{ id: 'PEAK_BUNDLE_1', name: 'Main', duration: { percent: 100 }, characteristics: {}, phrases: {} }],
