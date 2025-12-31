@@ -478,6 +478,9 @@ export class FractalMusicEngine {
     
     if (navInfo.currentPart.layers.melody) {
         const melodyRules = navInfo.currentPart.instrumentRules?.melody;
+        // --- AUDIT LOG ---
+        console.log(`%c[FME - generateOneBar] Melody rules for bar ${this.epoch}:`, 'color: orange', JSON.stringify(melodyRules || {}));
+
         if (melodyRules?.source === 'harmony_top_note') {
             const topNotes = accompEvents.sort((a, b) => b.note - a.note).slice(0, 2);
             melodyEvents = topNotes.map(noteEvent => ({
@@ -492,7 +495,7 @@ export class FractalMusicEngine {
 
             if (this.epoch >= this.lastMelodyPlayEpoch + minInterval && this.random.next() < melodyDensity) {
                 if (this.epoch > 0 && this.currentMelodyMotif.length > 0) {
-                    this.currentMelodyMotif = createMelodyMotif(currentChord, this.config.mood, this.random, this.currentMelodyMotif);
+                    this.currentMelodyMotif = createMelodyMotif(currentChord, this.config.mood, this.random, this.currentMelodyMotif, melodyRules?.register?.preferred);
                 }
                 melodyEvents = this.currentMelodyMotif.slice(0, 4);
                 this.lastMelodyPlayEpoch = this.epoch;
