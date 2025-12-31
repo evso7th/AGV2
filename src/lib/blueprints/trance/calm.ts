@@ -5,7 +5,7 @@ export const CalmTranceBlueprint: MusicBlueprint = {
     id: 'calm_trance', name: 'Orbital Path', description: 'Steady and hypnotic trance.', mood: 'calm',
     musical: {
         key: { root: 'G', scale: 'mixolydian', octave: 3 },
-        bpm: { base: 124, range: [120, 128], modifier: 1.0 }, // ЗАМЕДЛЕНО
+        bpm: { base: 80, range: [78, 84], modifier: 1.0 }, // SLOWED DOWN
         timeSignature: { numerator: 4, denominator: 4 },
         harmonicJourney: [], tensionProfile: { type: 'plateau', peakPosition: 0.4, curve: (p, pp) => p < pp ? p / pp : (p < 0.8 ? 1.0 : 1 - ((p - 0.8) / 0.2)) }
     },
@@ -13,7 +13,7 @@ export const CalmTranceBlueprint: MusicBlueprint = {
         totalDuration: { preferredBars: 128 },
         parts: [
             {
-                id: 'INTRO', name: 'Launch', duration: { percent: 20 }, // УВЕЛИЧЕНО
+                id: 'INTRO', name: 'Launch', duration: { percent: 25 }, // INCREASED
                 layers: { accompaniment: true, sfx: true, bass: true, drums: true },
                 instrumentation: { 
                     accompaniment: { strategy: 'weighted', v2Options: [{ name: 'synth_ambient_pad_lush', weight: 1.0 }], v1Options: [{ name: 'ambientPad', weight: 1.0 }] },
@@ -21,8 +21,8 @@ export const CalmTranceBlueprint: MusicBlueprint = {
                 },
                 instrumentRules: {
                     melody: { source: 'motif' },
-                    drums: { pattern: 'ambient_beat', density: { min: 0.3, max: 0.5 }, useSnare: false }, // СМЯГЧЕНО
-                    bass: { techniques: [{ value: 'arpeggio_slow', weight: 1.0 }] }
+                    drums: { pattern: 'ambient_beat', density: { min: 0.2, max: 0.4 }, useSnare: false, usePerc: true }, // SOFTER
+                    bass: { techniques: [{ value: 'pulse', weight: 1.0 }] }
                 },
                 bundles: [
                     { id: 'INTRO_BUNDLE_1', name: 'Main', duration: { percent: 100 }, characteristics: {}, phrases: {} }
@@ -37,16 +37,16 @@ export const CalmTranceBlueprint: MusicBlueprint = {
                     bass: { strategy: 'weighted', options: [{ name: 'classicBass', weight: 1.0 }] }
                 },
                 instrumentRules: { 
-                    drums: { pattern: 'ambient_beat', density: { min: 0.6, max: 0.8 } }, // СМЯГЧЕНО
+                    drums: { pattern: 'composer', density: { min: 0.5, max: 0.7 }, useSnare: true, usePerc: true }, // SOFTER
                     melody: { source: 'motif' } 
                 },
                 bundles: [
                     { id: 'BUILD_BUNDLE_1', name: 'Main', duration: { percent: 100 }, characteristics: {}, phrases: {} }
                 ],
-                outroFill: { type: 'roll', duration: 2, parameters: {} },
+                outroFill: { type: 'reverb_burst', duration: 2, parameters: {} },
             },
             {
-                id: 'PEAK', name: 'Orbit', duration: { percent: 35 }, // УМЕНЬШЕНО
+                id: 'PEAK', name: 'Orbit', duration: { percent: 30 },
                 layers: { bass: true, melody: true, accompaniment: true, drums: true, sfx: true },
                 instrumentation: {
                     accompaniment: { strategy: 'weighted', v1Options: [{ name: 'synth', weight: 1.0 }], v2Options: [{ name: 'synth', weight: 1.0 }] },
@@ -54,7 +54,7 @@ export const CalmTranceBlueprint: MusicBlueprint = {
                     melody: { strategy: 'weighted', v1Options: [{ name: 'synth', weight: 1.0 }], v2Options: [{ name: 'synth', weight: 1.0 }] }
                 },
                 instrumentRules: { 
-                    drums: { pattern: 'composer', density: { min: 0.7, max: 0.9 }, kickVolume: 0.9 }, // СМЯГЧЕНО
+                    drums: { pattern: 'composer', density: { min: 0.6, max: 0.8 }, kickVolume: 0.9 }, // SOFTER
                     melody: { source: 'motif' } 
                 },
                 bundles: [
@@ -63,7 +63,7 @@ export const CalmTranceBlueprint: MusicBlueprint = {
                 outroFill: null,
             },
             {
-                id: 'OUTRO', name: 'Re-entry', duration: { percent: 20 }, // УВЕЛИЧЕНО
+                id: 'OUTRO', name: 'Re-entry', duration: { percent: 20 },
                 layers: { accompaniment: true, sfx: true },
                 instrumentation: { accompaniment: { strategy: 'weighted', v2Options: [{ name: 'synth_ambient_pad_lush', weight: 1.0 }], v1Options: [{ name: 'ambientPad', weight: 1.0 }] } },
                 instrumentRules: {

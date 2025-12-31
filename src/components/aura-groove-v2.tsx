@@ -83,6 +83,7 @@ export function AuraGrooveV2({
     'acousticGuitar': 'Acoustic Folk',
     'neuro_f_matrix': 'Neuro F-Matrix',
     'rnb': 'R&B',
+    'trance': 'SlowTrance', // UI RENAME
     // V2 presets
     'organ': 'Cathedral Organ',
     'organ_soft_jazz': 'Soft Jazz Organ',
