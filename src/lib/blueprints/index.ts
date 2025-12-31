@@ -27,6 +27,8 @@ import { JoyfulBluesBlueprint } from './blues/joyful';
 import { NeutralBluesBlueprint } from './blues/neutral';
 import { CalmBluesBlueprint } from './blues/calm';
 import { DreamyBluesBlueprint } from './blues/dreamy';
+import { EpicBluesBlueprint } from './blues/epic';
+import { AnxiousBluesBlueprint } from './blues/anxious';
 
 /**
  * A simple, unified library of all available blueprints.
@@ -64,6 +66,8 @@ export const BLUEPRINT_LIBRARY: Record<Genre, Partial<Record<Mood, MusicBlueprin
         contemplative: NeutralBluesBlueprint,
         calm: CalmBluesBlueprint,
         dreamy: DreamyBluesBlueprint,
+        epic: EpicBluesBlueprint,
+        anxious: AnxiousBluesBlueprint,
     },
     // Other genres can be added here...
     progressive: {},
