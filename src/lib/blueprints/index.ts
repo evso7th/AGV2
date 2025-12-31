@@ -18,6 +18,7 @@ import { JoyfulTranceBlueprint } from './trance/joyful';
 import { CalmTranceBlueprint } from './trance/calm';
 import { EpicTranceBlueprint } from './trance/epic';
 import { EnthusiasticTranceBlueprint } from './trance/enthusiastic';
+import { DreamyTranceBlueprint } from './trance/dreamy';
 
 /**
  * A simple, unified library of all available blueprints.
@@ -44,6 +45,7 @@ export const BLUEPRINT_LIBRARY: Record<Genre, Partial<Record<Mood, MusicBlueprin
         calm: CalmTranceBlueprint,
         epic: EpicTranceBlueprint,
         enthusiastic: EnthusiasticTranceBlueprint,
+        dreamy: DreamyTranceBlueprint,
         // Other trance moods can be added here...
     },
     // Other genres can be added here...
