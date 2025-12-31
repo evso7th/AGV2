@@ -18,9 +18,19 @@ export const MelancholicTranceBlueprint: MusicBlueprint = {
         parts: [
             {
                 id: 'INTRO_1', name: 'Atmosphere', duration: { percent: 6 },
-                layers: { accompaniment: true, sfx: true },
-                instrumentation: { accompaniment: { strategy: 'weighted', v2Options: [{ name: 'synth_ambient_pad_lush', weight: 1.0 }], v1Options: [{ name: 'ambientPad', weight: 1.0 }] } },
-                instrumentRules: { melody: { source: 'harmony_top_note' } },
+                layers: { accompaniment: true, sfx: true, bass: true, drums: true },
+                instrumentation: { 
+                    accompaniment: { 
+                        strategy: 'weighted', 
+                        v1Options: [{ name: 'ambientPad', weight: 1.0 }],
+                        v2Options: [{ name: 'synth_cave_pad', weight: 1.0 }] 
+                    } 
+                },
+                instrumentRules: { 
+                    melody: { source: 'harmony_top_note' },
+                    drums: { pattern: 'ambient_beat', density: { min: 0.3, max: 0.5 }, useSnare: false },
+                    bass: { techniques: [{ value: 'pulse', weight: 1.0 }] }
+                },
                 bundles: [{ id: 'TR_INTRO1_B1', name: 'Pad', duration: { percent: 100 }, characteristics: {}, phrases: {} }],
                 outroFill: null,
             },

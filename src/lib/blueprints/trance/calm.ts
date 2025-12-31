@@ -14,10 +14,15 @@ export const CalmTranceBlueprint: MusicBlueprint = {
         parts: [
             {
                 id: 'INTRO', name: 'Launch', duration: { percent: 15 },
-                layers: { accompaniment: true, sfx: true },
-                instrumentation: { accompaniment: { strategy: 'weighted', v2Options: [{ name: 'synth_ambient_pad_lush', weight: 1.0 }], v1Options: [{ name: 'ambientPad', weight: 1.0 }] } },
+                layers: { accompaniment: true, sfx: true, bass: true, drums: true },
+                instrumentation: { 
+                    accompaniment: { strategy: 'weighted', v2Options: [{ name: 'synth_ambient_pad_lush', weight: 1.0 }], v1Options: [{ name: 'ambientPad', weight: 1.0 }] },
+                    bass: { strategy: 'weighted', options: [{ name: 'classicBass', weight: 1.0 }] }
+                },
                 instrumentRules: {
-                    melody: { source: 'motif' }
+                    melody: { source: 'motif' },
+                    drums: { pattern: 'ambient_beat', density: { min: 0.4, max: 0.6 } },
+                    bass: { techniques: [{ value: 'arpeggio_slow', weight: 1.0 }] }
                 },
                 bundles: [
                     { id: 'INTRO_BUNDLE_1', name: 'Main', duration: { percent: 100 }, characteristics: {}, phrases: {} }
