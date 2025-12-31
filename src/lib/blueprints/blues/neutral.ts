@@ -8,7 +8,7 @@ export const NeutralBluesBlueprint: MusicBlueprint = {
     mood: 'contemplative', // Using for neutral mood
     musical: {
         key: { root: 'G', scale: 'ionian', octave: 2 },
-        bpm: { base: 118, range: [112, 124], modifier: 1.0 },
+        bpm: { base: 82, range: [78, 88], modifier: 1.0 },
         timeSignature: { numerator: 4, denominator: 4 }, // Interpreted as 12/8 shuffle
         harmonicJourney: [], // Driven by 12-bar blues structure in the engine
         tensionProfile: { type: 'plateau', peakPosition: 0.4, curve: (p, pp) => p < pp ? p / pp : 1.0 }

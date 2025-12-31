@@ -8,7 +8,7 @@ export const MelancholicBluesBlueprint: MusicBlueprint = {
     mood: 'melancholic',
     musical: {
         key: { root: 'E', scale: 'phrygian', octave: 2 },
-        bpm: { base: 65, range: [60, 70], modifier: 1.0 },
+        bpm: { base: 64, range: [60, 68], modifier: 1.0 },
         timeSignature: { numerator: 4, denominator: 4 },
         harmonicJourney: [], // Will be driven by a 12-bar structure in the engine
         tensionProfile: { type: 'plateau', peakPosition: 0.5, curve: (p, pp) => p < pp ? p / pp : 1.0 }

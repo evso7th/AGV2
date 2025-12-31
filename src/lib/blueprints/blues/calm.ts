@@ -8,7 +8,7 @@ export const CalmBluesBlueprint: MusicBlueprint = {
     mood: 'calm',
     musical: {
         key: { root: 'G', scale: 'ionian', octave: 2 },
-        bpm: { base: 98, range: [96, 108], modifier: 1.0 },
+        bpm: { base: 68, range: [64, 72], modifier: 1.0 },
         timeSignature: { numerator: 4, denominator: 4 },
         harmonicJourney: [], // 12-bar structure
         tensionProfile: { type: 'plateau', peakPosition: 0.3, curve: (p, pp) => p < pp ? p / pp : 1.0 }
@@ -24,7 +24,7 @@ export const CalmBluesBlueprint: MusicBlueprint = {
                     melody: { strategy: 'weighted', v1Options: [{ name: 'electricGuitar', weight: 1.0 }], v2Options: [{ name: 'electricGuitar', weight: 1.0 }] }
                 },
                 instrumentRules: {
-                    drums: { pattern: 'composer', density: { min: 0.4, max: 0.6 }, useSnare: true, useGhostHat: false },
+                    drums: { pattern: 'composer', density: { min: 0.4, max: 0.6 }, useSnare: true, useGhostHat: false, ride: { enabled: false } },
                     bass: { techniques: [{ value: 'riff', weight: 1.0 }] }, // Conceptual technique for a repeating riff
                     melody: { source: 'motif', density: { min: 0.2, max: 0.4 } }
                 },
@@ -38,7 +38,7 @@ export const CalmBluesBlueprint: MusicBlueprint = {
                     melody: { strategy: 'weighted', v1Options: [{ name: 'electricGuitar', weight: 1.0 }], v2Options: [{ name: 'electricGuitar', weight: 1.0 }] }
                 },
                 instrumentRules: {
-                    drums: { pattern: 'composer', density: { min: 0.5, max: 0.7 } },
+                    drums: { pattern: 'composer', density: { min: 0.5, max: 0.7 }, ride: { enabled: false } },
                     melody: { 
                         source: 'motif', 
                         density: { min: 0.6, max: 0.8 },

@@ -8,7 +8,7 @@ export const AnxiousBluesBlueprint: MusicBlueprint = {
     mood: 'anxious',
     musical: {
         key: { root: 'A', scale: 'mixolydian', octave: 3 },
-        bpm: { base: 150, range: [148, 154], modifier: 1.0 },
+        bpm: { base: 88, range: [85, 92], modifier: 1.0 },
         timeSignature: { numerator: 4, denominator: 4 },
         harmonicJourney: [], // 12-bar major
         tensionProfile: { type: 'wave', peakPosition: 0.5, curve: (p, pp) => 0.5 + 0.5 * Math.sin(p * Math.PI * 8) }

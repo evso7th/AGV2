@@ -8,7 +8,7 @@ export const DreamyBluesBlueprint: MusicBlueprint = {
     mood: 'dreamy',
     musical: {
         key: { root: 'Bb', scale: 'ionian', octave: 2 },
-        bpm: { base: 78, range: [72, 86], modifier: 1.0 },
+        bpm: { base: 72, range: [68, 78], modifier: 1.0 },
         timeSignature: { numerator: 4, denominator: 4 }, // Interpreted as 12/8
         harmonicJourney: [], // 12-bar structure with 7th and 9th chords
         tensionProfile: { type: 'arc', peakPosition: 0.6, curve: (p, pp) => p < pp ? p/pp : 1 - ((p-pp)/(1-pp)) }

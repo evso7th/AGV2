@@ -8,7 +8,7 @@ export const JoyfulBluesBlueprint: MusicBlueprint = {
     mood: 'joyful',
     musical: {
         key: { root: 'A', scale: 'ionian', octave: 2 },
-        bpm: { base: 138, range: [132, 144], modifier: 1.0 },
+        bpm: { base: 90, range: [88, 98], modifier: 1.0 },
         timeSignature: { numerator: 4, denominator: 4 }, // Interpreted as 12/8 shuffle
         harmonicJourney: [], // Driven by 12-bar blues structure in the engine
         tensionProfile: { type: 'crescendo', peakPosition: 0.7, curve: (p, pp) => p } // Steady energy

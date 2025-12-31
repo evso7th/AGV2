@@ -8,7 +8,7 @@ export const EnthusiasticBluesBlueprint: MusicBlueprint = {
     mood: 'enthusiastic',
     musical: {
         key: { root: 'E', scale: 'mixolydian', octave: 2 },
-        bpm: { base: 148, range: [144, 156], modifier: 1.0 },
+        bpm: { base: 90, range: [88, 96], modifier: 1.0 },
         timeSignature: { numerator: 4, denominator: 4 },
         harmonicJourney: [], // Driven by 12-bar blues structure in the engine
         tensionProfile: { type: 'crescendo', peakPosition: 0.75, curve: (p, pp) => Math.pow(p, 1.2) }
