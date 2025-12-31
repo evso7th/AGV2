@@ -2,7 +2,7 @@
 
 import type { FractalEvent, Mood, Genre, Technique, BassSynthParams, InstrumentType, MelodyInstrument, BassInstrument, AccompanimentInstrument, ResonanceMatrix, InstrumentHints, AccompanimentTechnique, GhostChord, SfxRule, V1MelodyInstrument, V2MelodyInstrument, BlueprintPart, InstrumentationRules } from './fractal';
 import { ElectronicK, TraditionalK, AmbientK, MelancholicMinorK } from './resonance-matrices';
-import { getScaleForMood, STYLE_DRUM_PATTERNS, generateAmbientBassPhrase, createAccompanimentAxiom, PERCUSSION_SETS, TEXTURE_INSTRUMENT_WEIGHTS_BY_MOOD, getAccompanimentTechnique, createBassFill as createBassFillFromTheory, createDrumFill, AMBIENT_ACCOMPANIMENT_WEIGHTS, chooseHarmonyInstrument, mutateBassPhrase, createMelodyMotif, createDrumAxiom, generateGhostHarmonyTrack, mutateAccompanimentPhrase, createHarmonyAxiom } from './music-theory';
+import { getScaleForMood, STYLE_DRUM_PATTERNS, generateAmbientBassPhrase, createAccompanimentAxiom, PERCUSSION_SETS, TEXTURE_INSTRUMENT_WEIGHTS_BY_MOOD, getAccompanimentTechnique, createBassFillFromTheory, createDrumFill, AMBIENT_ACCOMPANIMENT_WEIGHTS, chooseHarmonyInstrument, mutateBassPhrase, createMelodyMotif, createDrumAxiom, generateGhostHarmonyTrack, mutateAccompanimentPhrase, createHarmonyAxiom, generateBluesBassRiff } from './music-theory';
 import { BlueprintNavigator, type NavigationInfo } from './blueprint-navigator';
 import { getBlueprint } from './blueprints';
 import { V2_PRESETS } from './presets-v2';
@@ -221,7 +221,9 @@ export class FractalMusicEngine {
     const initialRegisterHint = initialNavInfo?.currentPart.instrumentRules?.accompaniment?.register?.preferred;
     
     for (let i = 0; i < 4; i++) {
-        this.bassPhraseLibrary.push(generateAmbientBassPhrase(firstChord, this.config.mood, this.config.genre, this.random, this.config.tempo));
+        // #ИЗМЕНЕНО: Вызываем generateAmbientBassPhrase с указанием техники, даже если для эмбиента она одна
+        const bassTechnique = initialNavInfo?.currentPart.instrumentRules?.bass?.techniques?.[0]?.value as Technique || 'drone';
+        this.bassPhraseLibrary.push(generateAmbientBassPhrase(firstChord, this.config.mood, this.config.genre, this.random, this.config.tempo, bassTechnique));
         this.accompPhraseLibrary.push(createAccompanimentAxiom(firstChord, this.config.mood, this.config.genre, this.random, this.config.tempo, initialRegisterHint));
     }
     
@@ -454,7 +456,25 @@ export class FractalMusicEngine {
         }
     }
 
-    let bassEvents = navInfo.currentPart.layers.bass ? this.bassPhraseLibrary[this.currentBassPhraseIndex] : [];
+    // --- BASS GENERATION ---
+    let bassEvents: FractalEvent[] = [];
+    if (navInfo.currentPart.layers.bass) {
+      // #ИЗМЕНЕНО: Логика выбора генератора баса
+      const bassRules = navInfo.currentPart.instrumentRules?.bass;
+      const bassTechnique = bassRules?.techniques?.[0]?.value as Technique || 'drone';
+
+      if (this.config.genre === 'blues') {
+        bassEvents = generateBluesBassRiff(currentChord, bassTechnique, this.random);
+      } else {
+        // Используем старую логику для других жанров
+        // Обновляем фразу, если нужно
+        if (this.bassPhraseLibrary.length === 0 || (this.epoch > 0 && this.epoch % PHRASE_VARIATION_INTERVAL === 0)) {
+           this.currentBassPhraseIndex = (this.currentBassPhraseIndex + 1) % this.bassPhraseLibrary.length;
+           this.bassPhraseLibrary[this.currentBassPhraseIndex] = generateAmbientBassPhrase(currentChord, this.config.mood, this.config.genre, this.random, this.config.tempo, bassTechnique);
+        }
+        bassEvents = this.bassPhraseLibrary[this.currentBassPhraseIndex];
+      }
+    }
     
     if (navInfo.currentPart.bassAccompanimentDouble?.enabled) {
         const { instrument, octaveShift } = navInfo.currentPart.bassAccompanimentDouble;
@@ -564,3 +584,4 @@ export class FractalMusicEngine {
     return { events, instrumentHints };
   }
 }
+

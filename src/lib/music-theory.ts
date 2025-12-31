@@ -1,4 +1,5 @@
 
+
 // src/lib/music-theory.ts
 import type { FractalEvent, Mood, Genre, Technique, BassSynthParams, InstrumentType, AccompanimentInstrument, InstrumentHints, AccompanimentTechnique, GhostChord, SfxRule, V1MelodyInstrument, V2MelodyInstrument } from '@/types/fractal';
 import { ElectronicK, TraditionalK, AmbientK, MelancholicMinorK } from './resonance-matrices';
@@ -64,7 +65,7 @@ const isRhythmic = (event: FractalEvent): boolean => (event.type as string).star
 
 // === АКСОМЫ И ТРАНСФОРМАЦИИ ===
 export function mutateBassPhrase(phrase: FractalEvent[], chord: GhostChord, mood: Mood, genre: Genre, random: { next: () => number, nextInt: (max: number) => number }): FractalEvent[] {
-    if (phrase.length === 0) return generateAmbientBassPhrase(chord, mood, genre, random, 120);
+    if (phrase.length === 0) return generateAmbientBassPhrase(chord, mood, genre, random, 120, 'drone');
 
     const newPhrase: FractalEvent[] = JSON.parse(JSON.stringify(phrase));
     const mutationType = random.nextInt(4);
@@ -96,7 +97,7 @@ export function mutateBassPhrase(phrase: FractalEvent[], chord: GhostChord, mood
             mutationDescription = "Partial Regeneration";
             if (newPhrase.length > 2) {
                 const half = Math.ceil(newPhrase.length / 2);
-                const newHalf = generateAmbientBassPhrase(chord, mood, genre, random, 120).slice(0, half);
+                const newHalf = generateAmbientBassPhrase(chord, mood, genre, random, 120, 'drone').slice(0, half);
                 newPhrase.splice(0, half, ...newHalf);
             }
             break;
@@ -275,7 +276,16 @@ export function getScaleForMood(mood: Mood): number[] {
   return fullScale;
 }
 
-export function generateAmbientBassPhrase(chord: GhostChord, mood: Mood, genre: Genre, random: { next: () => number, nextInt: (max: number) => number }, tempo: number = 120): FractalEvent[] {
+export function generateAmbientBassPhrase(chord: GhostChord, mood: Mood, genre: Genre, random: { next: () => number, nextInt: (max: number) => number }, tempo: number, technique: Technique): FractalEvent[] {
+    // #ЗАЧЕМ: Маршрутизатор басовых партий.
+    // #ЧТО: Проверяет жанр. Если это 'blues', вызывает специализированный блюзовый генератор.
+    //       В противном случае генерирует стандартную эмбиент-партию.
+    // #СВЯЗИ: Является единой точкой входа для создания баса, вызываемой из `fractal-music-engine`.
+    if (genre === 'blues') {
+        return generateBluesBassRiff(chord, technique, random);
+    }
+    
+    // --- Старая логика для эмбиента и других жанров ---
     const phrase: FractalEvent[] = [];
     const scale = getScaleForMood(mood);
     const rootNote = chord.rootNote;
@@ -319,10 +329,88 @@ export function generateAmbientBassPhrase(chord: GhostChord, mood: Mood, genre: 
     });
     
     const phraseNotes = phrase.map(e => e.note).join(' -> ');
-    console.log(`%c[BassAxiom] New transposed phrase generated: ${phraseNotes}`, 'color: #98FB98');
+    console.log(`%c[BassAxiom] New ambient phrase generated: ${phraseNotes}`, 'color: #98FB98');
     
     return phrase;
 };
+
+/**
+ * #ЗАЧЕМ: Эта функция является "мозгом" блюзового басиста.
+ * #ЧТО: Она генерирует аутентичные блюзовые басовые риффы в зависимости от запрошенной техники.
+ *       Поддерживает 'walking' (ходячий бас), 'boogie' (буги-вуги), 'riff' (простой рифф) и 'long_notes' (балладный стиль).
+ * #СВЯЗИ: Вызывается из `generateAmbientBassPhrase`, когда `genre === 'blues'`.
+ */
+export function generateBluesBassRiff(chord: GhostChord, technique: Technique, random: { next: () => number, nextInt: (max: number) => number }): FractalEvent[] {
+    const phrase: FractalEvent[] = [];
+    const root = chord.rootNote;
+    const isMajor = chord.chordType === 'major' || chord.chordType === 'dominant';
+    
+    const R = root;
+    const m3 = root + 3;
+    const M3 = root + 4;
+    const P4 = root + 5;
+    const aug4 = root + 6;
+    const P5 = root + 7;
+    const m6 = root + 8;
+    const M6 = root + 9;
+    const m7 = root + 10;
+    
+    let pattern: { note: number; time: number; duration: number; }[] = [];
+    const barDuration = 4.0; // 4 beats for one bar
+
+    console.log(`%c[BluesBass] Generating riff for ${chord.rootNote} with technique: ${technique}`, 'color: #4682B4');
+
+    switch(technique) {
+        case 'walking': // Классический ходячий бас 4/4
+            pattern = [
+                { note: R, time: 0, duration: 1 },
+                { note: isMajor ? M3 : m3, time: 1, duration: 1 },
+                { note: P5, time: 2, duration: 1 },
+                { note: M6, time: 3, duration: 1 },
+            ];
+            break;
+        case 'boogie': // Буги-вуги рифф
+            pattern = [
+                { note: R, time: 0, duration: 1.5 },
+                { note: P5, time: 1.5, duration: 0.5 },
+                { note: M6, time: 2, duration: 1 },
+                { note: m7, time: 3, duration: 1 },
+            ];
+            break;
+        case 'riff': // Простой рифф на основе пентатоники
+            pattern = [
+                { note: R, time: 0, duration: 1 },
+                { note: m3, time: 1, duration: 0.5 },
+                { note: P4, time: 1.5, duration: 0.5 },
+                { note: aug4, time: 2.0, duration: 0.5 },
+                { note: P5, time: 2.5, duration: 1.5 },
+            ];
+            break;
+        case 'long_notes': // Балладный стиль
+        default:
+             pattern = [
+                { note: R, time: 0, duration: barDuration }
+             ];
+            break;
+    }
+
+    pattern.forEach(p => {
+        phrase.push({
+            type: 'bass',
+            note: p.note,
+            time: p.time,
+            duration: p.duration,
+            weight: 0.8 + random.next() * 0.1,
+            technique: technique,
+            dynamics: 'mf',
+            phrasing: 'legato',
+            params: { cutoff: 800, resonance: 0.7, distortion: 0.15, portamento: 0.0 }
+        });
+    });
+
+    return phrase;
+}
+
 
 export function createAccompanimentAxiom(chord: GhostChord, mood: Mood, genre: Genre, random: { next: () => number; nextInt: (max: number) => number }, tempo: number = 120, registerHint?: 'low' | 'mid' | 'high'): FractalEvent[] {
     const swellParams = { cutoff: 300, resonance: 0.8, distortion: 0.02, portamento: 0.0, attack: 1.5, release: 2.5 };
@@ -1086,6 +1174,7 @@ export function createMelodyMotif(chord: GhostChord, mood: Mood, random: { next:
 
 
     
+
 
 
 
