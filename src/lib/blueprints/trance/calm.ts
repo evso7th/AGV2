@@ -1,8 +1,8 @@
 
 import type { MusicBlueprint } from '@/types/music';
 
-export const NeutralTranceBlueprint: MusicBlueprint = {
-    id: 'neutral_trance', name: 'Orbital Path', description: 'Steady and hypnotic trance.', mood: 'calm',
+export const CalmTranceBlueprint: MusicBlueprint = {
+    id: 'calm_trance', name: 'Orbital Path', description: 'Steady and hypnotic trance.', mood: 'calm',
     musical: {
         key: { root: 'G', scale: 'mixolydian', octave: 3 },
         bpm: { base: 135, range: [132, 138], modifier: 1.0 },
