@@ -8,7 +8,7 @@ export const DarkTranceBlueprint: MusicBlueprint = {
     mood: 'dark',
     musical: {
         key: { root: 'E', scale: 'phrygian', octave: 2 },
-        bpm: { base: 136, range: [134, 140], modifier: 1.0 },
+        bpm: { base: 128, range: [126, 132], modifier: 1.0 }, // ЗАМЕДЛЕНО
         timeSignature: { numerator: 4, denominator: 4 },
         harmonicJourney: [],
         tensionProfile: { type: 'wave', peakPosition: 0.5, curve: (p, pp) => 0.5 + 0.5 * Math.sin(p * Math.PI * 6) } // Faster, more nervous wave
@@ -17,7 +17,7 @@ export const DarkTranceBlueprint: MusicBlueprint = {
         totalDuration: { preferredBars: 128 },
         parts: [
             {
-                id: 'INTRO_1', name: 'Static', duration: { percent: 10 },
+                id: 'INTRO_1', name: 'Static', duration: { percent: 15 }, // УВЕЛИЧЕНО
                 layers: { accompaniment: true, sfx: true, drums: true, bass: true },
                 instrumentation: { 
                     accompaniment: { strategy: 'weighted', v2Options: [{ name: 'synth_cave_pad', weight: 1.0 }], v1Options: [{ name: 'ambientPad', weight: 1.0 }] },
@@ -33,25 +33,25 @@ export const DarkTranceBlueprint: MusicBlueprint = {
                 outroFill: null,
             },
             {
-                id: 'INTRO_2', name: 'Broken Beat', duration: { percent: 10 },
+                id: 'INTRO_2', name: 'Broken Beat', duration: { percent: 15 }, // УВЕЛИЧЕНО
                 layers: { accompaniment: true, sfx: true, drums: true },
                 instrumentation: { accompaniment: { strategy: 'weighted', v2Options: [{ name: 'synth_cave_pad', weight: 1.0 }], v1Options: [{ name: 'ambientPad', weight: 1.0 }] } },
                 instrumentRules: { 
-                    drums: { pattern: 'composer', density: { min: 0.4, max: 0.6 }, useSnare: true, kickVolume: 1.1, usePerc: true, alternatePerc: true, rareKick: true },
+                    drums: { pattern: 'composer', density: { min: 0.4, max: 0.6 }, useSnare: true, kickVolume: 1.0, usePerc: true, alternatePerc: true, rareKick: true },
                     melody: { source: 'harmony_top_note' }
                 },
                 bundles: [{ id: 'TR_DARK_INTRO2', name: 'Syncopation', duration: { percent: 100 }, characteristics: {}, phrases: {} }],
                 outroFill: null,
             },
             {
-                id: 'BUILD', name: 'The Chase', duration: { percent: 25 },
+                id: 'BUILD', name: 'The Chase', duration: { percent: 20 }, // УМЕНЬШЕНО
                 layers: { bass: true, accompaniment: true, drums: true, sfx: true },
                 instrumentation: {
                     accompaniment: { strategy: 'weighted', v1Options: [{ name: 'synth', weight: 1.0 }], v2Options: [{ name: 'synth', weight: 1.0 }] },
                     bass: { strategy: 'weighted', options: [{ name: 'resonantGliss', weight: 1.0 }] }
                 },
                 instrumentRules: { 
-                    drums: { pattern: 'composer', density: { min: 0.7, max: 0.9 }, useSnare: true, rareKick: true, usePerc: true, alternatePerc: true, kickVolume: 1.2 },
+                    drums: { pattern: 'composer', density: { min: 0.7, max: 0.9 }, useSnare: true, rareKick: true, usePerc: true, alternatePerc: true, kickVolume: 1.1 }, // СМЯГЧЕНО
                     bass: { techniques: [{value: 'glissando', weight: 1.0}]},
                     melody: { source: 'harmony_top_note' }
                 },
@@ -59,7 +59,7 @@ export const DarkTranceBlueprint: MusicBlueprint = {
                 outroFill: { type: 'roll', duration: 1, parameters: { crescendo: true } },
             },
             {
-                id: 'PEAK', name: 'Red Line', duration: { percent: 40 },
+                id: 'PEAK', name: 'Red Line', duration: { percent: 30 }, // УМЕНЬШЕНО
                 layers: { bass: true, melody: true, accompaniment: true, drums: true, sfx: true },
                 instrumentation: {
                     accompaniment: { strategy: 'weighted', v1Options: [{ name: 'organ', weight: 1.0 }], v2Options: [{ name: 'organ', weight: 1.0 }] },
@@ -67,14 +67,14 @@ export const DarkTranceBlueprint: MusicBlueprint = {
                     melody: { strategy: 'weighted', v1Options: [{ name: 'electricGuitar', weight: 1.0 }], v2Options: [{ name: 'electricGuitar', weight: 1.0 }] }
                 },
                 instrumentRules: { 
-                    drums: { pattern: 'composer', density: { min: 0.9, max: 1.0 }, useSnare: true, rareKick: true, usePerc: true, alternatePerc: true, kickVolume: 1.4 },
+                    drums: { pattern: 'composer', density: { min: 0.9, max: 1.0 }, useSnare: true, rareKick: true, usePerc: true, alternatePerc: true, kickVolume: 1.2 }, // СМЯГЧЕНО
                     melody: { source: 'harmony_top_note' }
                 },
                 bundles: [{ id: 'PEAK_BUNDLE_1', name: 'Main', duration: { percent: 100 }, characteristics: {}, phrases: {} }],
                 outroFill: null,
             },
             {
-                id: 'OUTRO', name: 'Cool Down', duration: { percent: 15 },
+                id: 'OUTRO', name: 'Cool Down', duration: { percent: 20 }, // УВЕЛИЧЕНО
                 layers: { accompaniment: true, sfx: true, drums: true },
                 instrumentation: { accompaniment: { strategy: 'weighted', v2Options: [{ name: 'synth_cave_pad', weight: 1.0 }], v1Options: [{ name: 'ambientPad', weight: 1.0 }] } },
                 instrumentRules: { 

@@ -5,7 +5,7 @@ export const JoyfulTranceBlueprint: MusicBlueprint = {
     id: 'joyful_trance', name: 'Sunrise Pulse', description: 'Uplifting and energetic trance.', mood: 'joyful',
     musical: {
         key: { root: 'E', scale: 'ionian', octave: 3 },
-        bpm: { base: 138, range: [135, 142], modifier: 1.0 },
+        bpm: { base: 128, range: [126, 132], modifier: 1.0 }, // ЗАМЕДЛЕНО
         timeSignature: { numerator: 4, denominator: 4 },
         harmonicJourney: [], tensionProfile: { type: 'arc', peakPosition: 0.6, curve: (p, pp) => p < pp ? p / pp : 1 - ((p - pp) / (1 - pp)) }
     },
@@ -13,11 +13,11 @@ export const JoyfulTranceBlueprint: MusicBlueprint = {
         totalDuration: { preferredBars: 128 },
         parts: [
             {
-                id: 'INTRO', name: 'Sunrise', duration: { percent: 15 },
+                id: 'INTRO', name: 'Sunrise', duration: { percent: 20 }, // УВЕЛИЧЕНО
                 layers: { accompaniment: true, drums: true, sfx: true, bass: true, melody: true },
                 instrumentation: { accompaniment: { strategy: 'weighted', v1Options: [{ name: 'synth', weight: 1.0 }], v2Options: [{ name: 'synth', weight: 1.0 }] } },
                 instrumentRules: { 
-                    drums: { pattern: 'ambient_beat', density: { min: 0.5, max: 0.7 } },
+                    drums: { pattern: 'ambient_beat', density: { min: 0.4, max: 0.6 } }, // СМЯГЧЕНО
                     melody: { source: 'motif' } 
                 },
                 bundles: [
@@ -33,7 +33,7 @@ export const JoyfulTranceBlueprint: MusicBlueprint = {
                     bass: { strategy: 'weighted', options: [{ name: 'classicBass', weight: 1.0 }] }
                 },
                 instrumentRules: { 
-                    drums: { pattern: 'ambient_beat', density: { min: 0.7, max: 0.9 } },
+                    drums: { pattern: 'ambient_beat', density: { min: 0.6, max: 0.8 } }, // СМЯГЧЕНО
                     melody: { source: 'motif' } 
                 },
                 bundles: [
@@ -42,7 +42,7 @@ export const JoyfulTranceBlueprint: MusicBlueprint = {
                 outroFill: { type: 'roll', duration: 2, parameters: {} },
             },
             {
-                id: 'PEAK', name: 'Zenith', duration: { percent: 40 },
+                id: 'PEAK', name: 'Zenith', duration: { percent: 35 }, // УМЕНЬШЕНО
                 layers: { bass: true, melody: true, accompaniment: true, drums: true, sfx: true, sparkles: true },
                 instrumentation: {
                     accompaniment: { strategy: 'weighted', v1Options: [{ name: 'synth', weight: 0.8 }, { name: 'organ', weight: 0.2 }], v2Options: [{ name: 'synth', weight: 0.8 }, { name: 'organ', weight: 0.2 }] },
@@ -50,7 +50,7 @@ export const JoyfulTranceBlueprint: MusicBlueprint = {
                     melody: { strategy: 'weighted', v1Options: [{ name: 'theremin', weight: 1.0 }], v2Options: [{ name: 'theremin', weight: 1.0 }] }
                 },
                 instrumentRules: { 
-                    drums: { pattern: 'composer', density: { min: 0.8, max: 1.0 } },
+                    drums: { pattern: 'composer', density: { min: 0.7, max: 0.9 }, kickVolume: 0.9 }, // СМЯГЧЕНО
                     melody: { source: 'motif' } 
                 },
                 bundles: [

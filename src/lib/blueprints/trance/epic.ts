@@ -8,7 +8,7 @@ export const EpicTranceBlueprint: MusicBlueprint = {
     mood: 'epic',
     musical: {
         key: { root: 'D', scale: 'ionian', octave: 2 },
-        bpm: { base: 134, range: [132, 138], modifier: 1.0 },
+        bpm: { base: 126, range: [124, 130], modifier: 1.0 }, // ЗАМЕДЛЕНО
         timeSignature: { numerator: 4, denominator: 4 },
         harmonicJourney: [],
         tensionProfile: { type: 'crescendo', peakPosition: 0.85, curve: (p, pp) => Math.pow(p, 1.8) }
@@ -17,14 +17,14 @@ export const EpicTranceBlueprint: MusicBlueprint = {
         totalDuration: { preferredBars: 180 },
         parts: [
             {
-                id: 'INTRO_1', name: 'The Summoning', duration: { percent: 15 },
+                id: 'INTRO', name: 'The Summoning', duration: { percent: 20 }, // УВЕЛИЧЕНО
                 layers: { accompaniment: true, drums: true, sfx: true, bass: true },
                 instrumentation: {
                     accompaniment: { strategy: 'weighted', v2Options: [{ name: 'organ', weight: 1.0 }], v1Options: [{ name: 'organ', weight: 1.0 }] },
                     bass: { strategy: 'weighted', options: [{ name: 'ambientDrone', weight: 1.0 }] }
                 },
                 instrumentRules: {
-                    drums: { pattern: 'ambient_beat', density: { min: 0.4, max: 0.6 }, useSnare: false, rareKick: true },
+                    drums: { pattern: 'ambient_beat', density: { min: 0.3, max: 0.5 }, useSnare: false, rareKick: true }, // СМЯГЧЕНО
                     bass: { techniques: [{ value: 'drone', weight: 1.0 }] },
                     melody: { source: 'harmony_top_note' }
                 },
@@ -32,7 +32,7 @@ export const EpicTranceBlueprint: MusicBlueprint = {
                 outroFill: null,
             },
             {
-                id: 'BUILD', name: 'The Gathering', duration: { percent: 35 },
+                id: 'BUILD', name: 'The Gathering', duration: { percent: 30 }, // УМЕНЬШЕНО
                 layers: { accompaniment: true, bass: true, drums: true, sfx: true, harmony: true },
                 instrumentation: {
                     accompaniment: { strategy: 'weighted', v1Options: [{ name: 'organ', weight: 0.7 }, { name: 'mellotron', weight: 0.3 }], v2Options: [{ name: 'organ', weight: 0.7 }, { name: 'mellotron', weight: 0.3 }] },
@@ -40,7 +40,7 @@ export const EpicTranceBlueprint: MusicBlueprint = {
                     harmony: { strategy: 'weighted', options: [{ name: 'violin', weight: 1.0 }] }
                 },
                 instrumentRules: {
-                    drums: { pattern: 'composer', density: { min: 0.5, max: 0.7 }, useSnare: false, rareKick: true, usePerc: true },
+                    drums: { pattern: 'composer', density: { min: 0.4, max: 0.6 }, useSnare: false, rareKick: true, usePerc: true }, // СМЯГЧЕНО
                     bass: { techniques: [{ value: 'offbeat', weight: 1.0 }] },
                     melody: { source: 'harmony_top_note' }
                 },
@@ -51,18 +51,17 @@ export const EpicTranceBlueprint: MusicBlueprint = {
                 outroFill: { type: 'roll', duration: 4, parameters: { crescendo: true } }
             },
             {
-                id: 'PEAK', name: 'The Vista', duration: { percent: 40 },
+                id: 'PEAK', name: 'The Vista', duration: { percent: 35 }, // УМЕНЬШЕНО
                 layers: { bass: true, melody: true, accompaniment: true, drums: true, sparkles: true, sfx: true, harmony: true },
                 instrumentation: {
                     accompaniment: { strategy: 'weighted', v1Options: [{ name: 'organ', weight: 1.0 }], v2Options: [{ name: 'organ', weight: 1.0 }] },
-                    bass: { strategy: 'weighted', options: [{ name: 'classicBass', weight: 1.0 }] },
+                    bass: { strategy: 'weighted', options: [{ name: 'resonantGliss', weight: 1.0 }] },
                     melody: { strategy: 'weighted', v1Options: [{ name: 'violin', weight: 0.6 }, { name: 'synth', weight: 0.4 }], v2Options: [{ name: 'violin', weight: 0.6 }, { name: 'synth', weight: 0.4 }] },
                     harmony: { strategy: 'weighted', options: [{ name: 'mellotron', weight: 1.0 }] }
                 },
                 instrumentRules: {
                     melody: { density: { min: 0.3, max: 0.5 }, source: 'harmony_top_note' },
-                    drums: { pattern: 'composer', density: { min: 0.8, max: 1.0 }, kickVolume: 1.2, useSnare: true },
-                    bass: { techniques: [{ value: 'rolling', weight: 1.0 }] }
+                    drums: { pattern: 'composer', density: { min: 0.7, max: 0.9 }, kickVolume: 1.1, useSnare: true } // СМЯГЧЕНО
                 },
                 bundles: [
                   { id: 'EPIC_PEAK_1', name: 'Vista', duration: { percent: 100 }, characteristics: {}, phrases: {} }
@@ -70,7 +69,7 @@ export const EpicTranceBlueprint: MusicBlueprint = {
                 outroFill: null
             },
             {
-                id: 'OUTRO', name: 'The Echoes', duration: { percent: 10 },
+                id: 'OUTRO', name: 'The Echoes', duration: { percent: 15 }, // УВЕЛИЧЕНО
                 layers: { accompaniment: true, sfx: true, sparkles: true },
                 instrumentation: {
                     accompaniment: { strategy: 'weighted', v2Options: [{ name: 'synth_ambient_pad_lush', weight: 1.0 }], v1Options: [{ name: 'ambientPad', weight: 1.0 }] }
