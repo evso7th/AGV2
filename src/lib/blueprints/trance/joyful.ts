@@ -74,5 +74,3 @@ export const JoyfulTranceBlueprint: MusicBlueprint = {
     },
     mutations: {}, ambientEvents: [], continuity: {}, rendering: {}
 };
-
-export default { JoyfulTranceBlueprint };
