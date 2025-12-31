@@ -21,7 +21,7 @@ export const CalmBluesBlueprint: MusicBlueprint = {
                 layers: { bass: true, drums: true, accompaniment: true, harmony: true, melody: true },
                 instrumentation: {
                     accompaniment: { strategy: 'weighted', v1Options: [{ name: 'organ', weight: 1.0 }], v2Options: [{ name: 'organ', weight: 1.0 }] },
-                    melody: { strategy: 'weighted', v1Options: [{ name: 'electricGuitar', weight: 1.0 }], v2Options: [{ name: 'electricGuitar', weight: 1.0 }] }
+                    melody: { strategy: 'weighted', v1Options: [{ name: 'guitar_shineOn', weight: 1.0 }], v2Options: [{ name: 'guitar_shineOn', weight: 1.0 }] }
                 },
                 instrumentRules: {
                     drums: { pattern: 'composer', density: { min: 0.4, max: 0.6 }, useSnare: true, useGhostHat: true, ride: { enabled: false } }, // GHOST HAT ADDED
@@ -35,7 +35,7 @@ export const CalmBluesBlueprint: MusicBlueprint = {
                 id: 'SOLO', name: 'Solo', duration: { percent: 25 },
                 layers: { bass: true, drums: true, melody: true },
                  instrumentation: {
-                    melody: { strategy: 'weighted', v1Options: [{ name: 'electricGuitar', weight: 1.0 }], v2Options: [{ name: 'electricGuitar', weight: 1.0 }] }
+                    melody: { strategy: 'weighted', v1Options: [{ name: 'guitar_shineOn', weight: 1.0 }], v2Options: [{ name: 'guitar_shineOn', weight: 1.0 }] }
                 },
                 instrumentRules: {
                     drums: { pattern: 'composer', density: { min: 0.5, max: 0.7 }, ride: { enabled: false }, useGhostHat: true }, // GHOST HAT ADDED
