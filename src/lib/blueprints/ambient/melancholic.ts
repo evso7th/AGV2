@@ -5,6 +5,7 @@ export const MelancholicAmbientBlueprint: MusicBlueprint = {
   id: 'melancholic_ambient',
   name: 'Melancholic Drift',
   description: 'Задумчивый, интроспективный ambient с плавными гармоническими переходами',
+  
   mood: 'melancholic',
   
   musical: {
@@ -26,7 +27,7 @@ export const MelancholicAmbientBlueprint: MusicBlueprint = {
     totalDuration: { preferredBars: 120 },
     parts: [
        {
-        id: 'INTRO_1', name: 'Emergence', duration: { percent: 8 }, // ~10 bars
+        id: 'INTRO_1', name: 'Emergence', duration: { percent: 8 },
         layers: { accompaniment: true, drums: true, melody: true },
         instrumentation: { 
             accompaniment: {
@@ -44,7 +45,7 @@ export const MelancholicAmbientBlueprint: MusicBlueprint = {
         outroFill: null,
       },
       {
-        id: 'INTRO_2', name: 'Stirrings', duration: { percent: 6 }, // ~7 bars
+        id: 'INTRO_2', name: 'Stirrings', duration: { percent: 6 },
         layers: { accompaniment: true, bass: true, sparkles: true, sfx: true, melody: true },
         instrumentation: {
           accompaniment: { strategy: 'weighted', v1Options: [{ name: 'ambientPad', weight: 0.9 }, { name: 'organ', weight: 0.1 }], v2Options: [{ name: 'synth_ambient_pad_lush', weight: 0.9 }, { name: 'organ', weight: 0.1 }] },
@@ -81,7 +82,7 @@ export const MelancholicAmbientBlueprint: MusicBlueprint = {
         outroFill: null,
       },
       {
-        id: 'INTRO_3', name: 'Anticipation', duration: { percent: 6 }, // ~7 bars
+        id: 'INTRO_3', name: 'Anticipation', duration: { percent: 6 },
         layers: { accompaniment: true, bass: true, melody: true, harmony: true, sfx: true, sparkles: true },
         instrumentation: {
           accompaniment: { strategy: 'weighted', v1Options: [{ name: 'ambientPad', weight: 0.8 }, { name: 'mellotron', weight: 0.2 }], v2Options: [{ name: 'synth_ambient_pad_lush', weight: 0.8 }, { name: 'mellotron', weight: 0.2 }] },
@@ -96,7 +97,7 @@ export const MelancholicAmbientBlueprint: MusicBlueprint = {
         outroFill: { type: 'filter_sweep', duration: 2, parameters: { filterEnd: 0.95 } },
       },
       {
-        id: 'BUILD', name: 'Rising', duration: { percent: 25 }, // ~30 bars
+        id: 'BUILD', name: 'Rising', duration: { percent: 25 },
         layers: { accompaniment: true, bass: true, drums: true, sfx: true, melody: true, harmony: true, sparkles: true },
          instrumentation: {
             accompaniment: { strategy: 'weighted', v1Options: [{ name: 'ambientPad', weight: 0.7 }, { name: 'organ', weight: 0.3 }], v2Options: [{ name: 'synth_ambient_pad_lush', weight: 0.7 }, { name: 'organ', weight: 0.3 }] },
@@ -114,7 +115,7 @@ export const MelancholicAmbientBlueprint: MusicBlueprint = {
         outroFill: { type: 'filter_sweep', duration: 2, parameters: { filterEnd: 0.95 } },
       },
       {
-        id: 'MAIN', name: 'Apex', duration: { percent: 35 }, // ~42 bars
+        id: 'MAIN', name: 'Apex', duration: { percent: 35 },
         layers: { accompaniment: true, bass: true, drums: true, melody: true, sparkles: true, sfx: true, harmony: true },
          instrumentation: {
             accompaniment: { strategy: 'weighted', v1Options: [{ name: 'ambientPad', weight: 0.6 }, { name: 'organ', weight: 0.4 }], v2Options: [{ name: 'synth_ambient_pad_lush', weight: 0.6 }, { name: 'organ', weight: 0.4 }] },
@@ -137,7 +138,7 @@ export const MelancholicAmbientBlueprint: MusicBlueprint = {
         outroFill: { type: 'reverb_burst', duration: 2, parameters: {} },
       },
       {
-        id: 'RELEASE', name: 'Descent', duration: { percent: 20 }, // ~24 bars
+        id: 'RELEASE', name: 'Descent', duration: { percent: 20 },
         layers: { accompaniment: true, bass: true, sparkles: true, sfx: true, melody: true, harmony: true },
         instrumentation: {
             accompaniment: { strategy: 'weighted', v1Options: [{ name: 'ambientPad', weight: 1.0 }], v2Options: [{ name: 'synth_ambient_pad_lush', weight: 1.0 }] },
@@ -157,7 +158,7 @@ export const MelancholicAmbientBlueprint: MusicBlueprint = {
     ]
   },
   
-  mutations: { /* Simplified for now */ },
+  mutations: { },
   ambientEvents: [],
   continuity: {},
   rendering: {}
