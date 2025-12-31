@@ -22,6 +22,7 @@ import { DreamyTranceBlueprint } from './trance/dreamy';
 import { ContemplativeTranceBlueprint } from './trance/contemplative';
 import { MelancholicBluesBlueprint } from './blues/melancholic';
 import { DarkBluesBlueprint } from './blues/dark';
+import { EnthusiasticBluesBlueprint } from './blues/enthusiastic';
 
 /**
  * A simple, unified library of all available blueprints.
@@ -54,6 +55,7 @@ export const BLUEPRINT_LIBRARY: Record<Genre, Partial<Record<Mood, MusicBlueprin
     blues: {
         melancholic: MelancholicBluesBlueprint,
         dark: DarkBluesBlueprint,
+        enthusiastic: EnthusiasticBluesBlueprint,
     },
     // Other genres can be added here...
     progressive: {},
