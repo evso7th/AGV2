@@ -25,7 +25,7 @@ export const DreamyBluesBlueprint: MusicBlueprint = {
                 },
                 instrumentRules: {
                     drums: { pattern: 'composer', density: { min: 0.3, max: 0.5 }, useSnare: true, useGhostHat: true },
-                    bass: { techniques: [{ value: 'long_notes', weight: 1.0 }] },
+                    bass: { techniques: [{ value: 'long_notes', weight: 1.0 }] }, // UNIQUE TECHNIQUE
                     melody: { source: 'motif', density: { min: 0.3, max: 0.5 } }
                 },
                 bundles: [{ id: 'BLUES_DREAMY_VERSE_BUNDLE', name: 'Verse', duration: { percent: 100 }, characteristics: {}, phrases: {} }],

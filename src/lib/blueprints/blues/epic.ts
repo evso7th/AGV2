@@ -25,7 +25,7 @@ export const EpicBluesBlueprint: MusicBlueprint = {
                 },
                 instrumentRules: {
                     drums: { pattern: 'composer', density: { min: 0.5, max: 0.7 }, useSnare: true, useGhostHat: false },
-                    bass: { techniques: [{ value: 'long_notes', weight: 1.0 }] },
+                    bass: { techniques: [{ value: 'long_notes', weight: 1.0 }] }, // UNIQUE TECHNIQUE
                     melody: { source: 'motif', density: { min: 0.2, max: 0.4 }, register: { preferred: 'high' } }
                 },
                 bundles: [{ id: 'BLUES_EPIC_VERSE_BUNDLE', name: 'Main Theme', duration: { percent: 100 }, characteristics: {}, phrases: {} }],

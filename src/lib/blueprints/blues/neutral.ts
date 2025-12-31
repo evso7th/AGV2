@@ -25,7 +25,7 @@ export const NeutralBluesBlueprint: MusicBlueprint = {
                 },
                 instrumentRules: {
                     drums: { pattern: 'composer', density: { min: 0.6, max: 0.8 }, useSnare: true, useGhostHat: true },
-                    bass: { techniques: [{ value: 'walking', weight: 1.0 }] },
+                    bass: { techniques: [{ value: 'walking', weight: 1.0 }] }, // UNIQUE TECHNIQUE
                     melody: { source: 'harmony_top_note' }
                 },
                 bundles: [{ id: 'BLUES_NEUTRAL_INTRO_BUNDLE', name: 'Verses 1-2', duration: { percent: 100 }, characteristics: {}, phrases: {} }],

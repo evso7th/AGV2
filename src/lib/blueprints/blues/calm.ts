@@ -24,8 +24,8 @@ export const CalmBluesBlueprint: MusicBlueprint = {
                     melody: { strategy: 'weighted', v1Options: [{ name: 'electricGuitar', weight: 1.0 }], v2Options: [{ name: 'electricGuitar', weight: 1.0 }] }
                 },
                 instrumentRules: {
-                    drums: { pattern: 'composer', density: { min: 0.4, max: 0.6 }, useSnare: true, useGhostHat: false, ride: { enabled: false } },
-                    bass: { techniques: [{ value: 'riff', weight: 1.0 }] }, // Conceptual technique for a repeating riff
+                    drums: { pattern: 'composer', density: { min: 0.4, max: 0.6 }, useSnare: true, useGhostHat: true, ride: { enabled: false } }, // GHOST HAT ADDED
+                    bass: { techniques: [{ value: 'riff', weight: 1.0 }] }, // UNIQUE TECHNIQUE
                     melody: { source: 'motif', density: { min: 0.2, max: 0.4 } }
                 },
                 bundles: [{ id: 'BLUES_CALM_VERSE_BUNDLE', name: 'Main Riff', duration: { percent: 100 }, characteristics: {}, phrases: {} }],
@@ -38,7 +38,7 @@ export const CalmBluesBlueprint: MusicBlueprint = {
                     melody: { strategy: 'weighted', v1Options: [{ name: 'electricGuitar', weight: 1.0 }], v2Options: [{ name: 'electricGuitar', weight: 1.0 }] }
                 },
                 instrumentRules: {
-                    drums: { pattern: 'composer', density: { min: 0.5, max: 0.7 }, ride: { enabled: false } },
+                    drums: { pattern: 'composer', density: { min: 0.5, max: 0.7 }, ride: { enabled: false }, useGhostHat: true }, // GHOST HAT ADDED
                     melody: { 
                         source: 'motif', 
                         density: { min: 0.6, max: 0.8 },

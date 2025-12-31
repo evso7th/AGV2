@@ -8,7 +8,7 @@ export const EnthusiasticBluesBlueprint: MusicBlueprint = {
     mood: 'enthusiastic',
     musical: {
         key: { root: 'E', scale: 'mixolydian', octave: 2 },
-        bpm: { base: 90, range: [88, 96], modifier: 1.0 },
+        bpm: { base: 84, range: [82, 90], modifier: 1.0 }, // TEMPO ADJUSTED
         timeSignature: { numerator: 4, denominator: 4 },
         harmonicJourney: [], // Driven by 12-bar blues structure in the engine
         tensionProfile: { type: 'crescendo', peakPosition: 0.75, curve: (p, pp) => Math.pow(p, 1.2) }
@@ -24,7 +24,7 @@ export const EnthusiasticBluesBlueprint: MusicBlueprint = {
                 },
                 instrumentRules: {
                     drums: { pattern: 'composer', density: { min: 0.6, max: 0.8 }, useSnare: true, useGhostHat: true },
-                    bass: { techniques: [{ value: 'walking', weight: 1.0 }] },
+                    bass: { techniques: [{ value: 'walking', weight: 1.0 }] }, // UNIQUE TECHNIQUE
                     melody: { source: 'harmony_top_note' }
                 },
                 bundles: [{ id: 'BLUES_ENT_INTRO_BUNDLE', name: 'Verse 1', duration: { percent: 100 }, characteristics: {}, phrases: {} }],
@@ -38,7 +38,7 @@ export const EnthusiasticBluesBlueprint: MusicBlueprint = {
                     melody: { strategy: 'weighted', v1Options: [{ name: 'electricGuitar', weight: 1.0 }], v2Options: [{ name: 'electricGuitar', weight: 1.0 }] }
                 },
                 instrumentRules: {
-                    drums: { pattern: 'composer', density: { min: 0.7, max: 0.9 }, kickVolume: 1.3 },
+                    drums: { pattern: 'composer', density: { min: 0.7, max: 0.9 }, kickVolume: 1.3, ride: { enabled: true } }, // RIDE ADDED
                     melody: { density: { min: 0.5, max: 0.7 }, source: 'motif' }, // Higher density for more active soloing
                     bass: { techniques: [{ value: 'walking', weight: 1.0 }] },
                 },
