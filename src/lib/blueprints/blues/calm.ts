@@ -39,7 +39,11 @@ export const CalmBluesBlueprint: MusicBlueprint = {
                 },
                 instrumentRules: {
                     drums: { pattern: 'composer', density: { min: 0.5, max: 0.7 } },
-                    melody: { source: 'motif', density: { min: 0.5, max: 0.7 } },
+                    melody: { 
+                        source: 'motif', 
+                        density: { min: 0.6, max: 0.8 },
+                        register: { preferred: 'high' }
+                    },
                     bass: { techniques: [{ value: 'riff', weight: 1.0 }] },
                 },
                 bundles: [{ id: 'BLUES_CALM_SOLO_BUNDLE', name: 'Solo', duration: { percent: 100 }, characteristics: {}, phrases: {} }],
