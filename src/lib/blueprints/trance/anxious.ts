@@ -18,10 +18,11 @@ export const AnxiousTranceBlueprint: MusicBlueprint = {
         parts: [
             {
                 id: 'INTRO_1', name: 'Signal Lost', duration: { percent: 10 },
-                layers: { sfx: true, accompaniment: true },
+                layers: { sfx: true, accompaniment: true, drums: true },
                 instrumentation: { accompaniment: { strategy: 'weighted', v2Options: [{ name: 'synth', weight: 1.0 }], v1Options: [{ name: 'synth', weight: 1.0 }] } },
                 instrumentRules: { 
                     accompaniment: { techniques: [{value: 'arpeggio-fast', weight: 1.0}], density: {min: 0.3, max: 0.5} },
+                    drums: { pattern: 'composer', density: {min: 0.7, max: 0.9}, useSnare: true, kickVolume: 0.9, usePerc: true, alternatePerc: true },
                     melody: { source: 'harmony_top_note' } 
                 },
                 bundles: [{ id: 'TR_ANX_INTRO1', name: 'Static', duration: { percent: 100 }, characteristics: {}, phrases: {} }],

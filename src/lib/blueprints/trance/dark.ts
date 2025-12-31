@@ -18,10 +18,15 @@ export const DarkTranceBlueprint: MusicBlueprint = {
         parts: [
             {
                 id: 'INTRO_1', name: 'Static', duration: { percent: 10 },
-                layers: { accompaniment: true, sfx: true },
-                instrumentation: { accompaniment: { strategy: 'weighted', v2Options: [{ name: 'synth_cave_pad', weight: 1.0 }], v1Options: [{ name: 'ambientPad', weight: 1.0 }] } },
+                layers: { accompaniment: true, sfx: true, drums: true, bass: true },
+                instrumentation: { 
+                    accompaniment: { strategy: 'weighted', v2Options: [{ name: 'synth_cave_pad', weight: 1.0 }], v1Options: [{ name: 'ambientPad', weight: 1.0 }] },
+                    bass: { strategy: 'weighted', options: [{ name: 'ambientDrone', weight: 1.0 }] }
+                },
                 instrumentRules: { 
                     accompaniment: { density: {min: 0.1, max: 0.3} },
+                    drums: { pattern: 'composer', density: { min: 0.2, max: 0.4 }, useSnare: false, rareKick: true },
+                    bass: { techniques: [{ value: 'drone', weight: 1.0 }] },
                     melody: { source: 'harmony_top_note' } 
                 },
                 bundles: [{ id: 'TR_DARK_INTRO1', name: 'Noise Floor', duration: { percent: 100 }, characteristics: {}, phrases: {} }],
