@@ -187,7 +187,7 @@ export class FractalMusicEngine {
     console.log(`[FME] Generated enriched Promenade with ${this.promenadeBars.length} events.`);
   }
 
-  private async initialize(force: boolean = false) {
+  public async initialize(force: boolean = false) {
     if (this.navigator && !force) return;
 
     this.random = seededRandom(this.config.seed);
@@ -550,6 +550,8 @@ export class FractalMusicEngine {
     
     if (this.isPromenadeActive) {
       this._resetForNewSuite();
+      // #ИСПРАВЛЕНО: Добавлен возврат пустого, но валидного объекта, чтобы избежать ошибки.
+      return { events: [], instrumentHints: {} };
     }
     
     if (!isFinite(barDuration)) return { events: [], instrumentHints: {} };
