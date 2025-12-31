@@ -46,8 +46,13 @@ const Scheduler = {
         return (60 / this.settings.bpm) * 4; // 4 beats per bar
     },
 
-    initializeEngine(settings: WorkerSettings) {
-        fractalMusicEngine = new FractalMusicEngine({
+    async initializeEngine(settings: WorkerSettings, force: boolean = false) {
+        // #ЗАЧЕМ: Этот метод инициализирует или переинициализирует музыкальный движок.
+        // #ЧТО: Он создает новый экземпляр FractalMusicEngine и асинхронно ждет его полной инициализации (включая загрузку блюпринта).
+        // #СВЯЗИ: Вызывается из updateSettings и reset. `force` используется для принудительной пересоздания.
+        if (fractalMusicEngine && !force) return;
+
+        const newEngine = new FractalMusicEngine({
             tempo: settings.bpm,
             density: settings.density,
             lambda: 1.0 - (settings.density * 0.5 + 0.3),
@@ -59,6 +64,11 @@ const Scheduler = {
             useMelodyV2: settings.useMelodyV2,
             introBars: settings.introBars,
         });
+
+        // Ожидаем, пока движок загрузит блюпринт и будет готов к работе.
+        await (newEngine as any).initialize(force); 
+        
+        fractalMusicEngine = newEngine;
         this.barCount = 0;
     },
 
@@ -68,7 +78,7 @@ const Scheduler = {
         this.isRunning = true;
         
         if (!fractalMusicEngine) {
-            this.initializeEngine(this.settings);
+            this.initializeEngine(this.settings, true);
         }
 
         const loop = () => {
@@ -88,17 +98,17 @@ const Scheduler = {
         }
     },
     
-    reset() {
+    async reset() {
         if (this.isRunning) {
             this.stop();
         }
-        this.initializeEngine(this.settings);
+        await this.initializeEngine(this.settings, true);
         if (this.settings.bpm > 0) {
             this.start();
         }
     },
 
-    updateSettings(newSettings: Partial<WorkerSettings>) {
+    async updateSettings(newSettings: Partial<WorkerSettings>) {
        const needsRestart = this.isRunning && (newSettings.bpm !== undefined && newSettings.bpm !== this.settings.bpm);
        const scoreChanged = newSettings.score && newSettings.score !== this.settings.score;
        const moodChanged = newSettings.mood && newSettings.mood !== this.settings.mood;
@@ -109,8 +119,7 @@ const Scheduler = {
        
        if (needsRestart) this.stop();
        
-       // Defensive update
-        this.settings = {
+       this.settings = {
             ...this.settings,
             ...newSettings,
             drumSettings: newSettings.drumSettings ? { ...this.settings.drumSettings, ...newSettings.drumSettings } : this.settings.drumSettings,
@@ -118,12 +127,12 @@ const Scheduler = {
             textureSettings: newSettings.textureSettings ? { ...this.settings.textureSettings, ...newSettings.textureSettings } : this.settings.textureSettings,
         };
 
-
        if (wasNotInitialized || scoreChanged || moodChanged || genreChanged || seedChanged || introBarsChanged) {
-           this.initializeEngine(this.settings);
+           // #ИСПРАВЛЕНО: Добавлено `await` для гарантии полной инициализации движка перед продолжением.
+           await this.initializeEngine(this.settings, true);
        } else if (fractalMusicEngine) {
            // #РЕШЕНИЕ: Передаем ВЕСЬ объект настроек, чтобы гарантировать, что useMelodyV2 всегда актуален.
-           fractalMusicEngine.updateConfig(this.settings);
+           await fractalMusicEngine.updateConfig(this.settings);
        }
        
        if (needsRestart) this.start();
@@ -215,8 +224,8 @@ self.onmessage = async (event: MessageEvent) => {
     try {
         switch (command) {
             case 'init':
-                Scheduler.updateSettings(data);
-                Scheduler.initializeEngine(data);
+                await Scheduler.updateSettings(data);
+                await Scheduler.initializeEngine(data, true);
                 break;
             
             case 'start':
@@ -228,11 +237,11 @@ self.onmessage = async (event: MessageEvent) => {
                 break;
 
             case 'reset':
-                Scheduler.reset();
+                await Scheduler.reset();
                 break;
 
             case 'update_settings':
-                Scheduler.updateSettings(data);
+                await Scheduler.updateSettings(data);
                 break;
                 
             case 'external_impulse':
