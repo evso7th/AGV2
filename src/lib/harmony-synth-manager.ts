@@ -51,7 +51,9 @@ export class HarmonySynthManager {
             // this.acousticGuitarSolo.init(),
         ]);
         
-        this.setInstrument(this.activeInstrumentName); // Set initial volume
+        // #РЕШЕНИЕ: Вызов setInstrument перенесен сюда, ПОСЛЕ полной загрузки всех сэмплеров,
+        //          чтобы гарантировать, что мы управляем громкостью только инициализированных инструментов.
+        this.setInstrument(this.activeInstrumentName);
 
         this.isInitialized = true;
         console.log('[HarmonyManager] Harmony instruments initialized.');
