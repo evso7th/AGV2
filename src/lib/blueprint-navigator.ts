@@ -87,17 +87,23 @@ export class BlueprintNavigator {
         let introDurationTotal = 0;
         
         // Calculate boundaries for INTRO parts first, using the fixed introBars value
-        introParts.forEach(part => {
-            const partDuration = this.introBars;
-            const partStartBar = currentBar;
-            const partEndBar = partStartBar + partDuration - 1;
+        if (introParts.length > 0) {
+            const durationPerIntroPart = Math.floor(this.introBars / introParts.length);
+            let remainingIntroBars = this.introBars;
             
-            const partBoundary = this.createPartBoundary(part, partStartBar, partDuration);
-            this.partBoundaries.push(partBoundary);
-            
-            currentBar += partDuration;
-            introDurationTotal += partDuration;
-        });
+            introParts.forEach((part, index) => {
+                const isLast = index === introParts.length - 1;
+                const partDuration = isLast ? remainingIntroBars : durationPerIntroPart;
+                
+                const partBoundary = this.createPartBoundary(part, currentBar, partDuration);
+                this.partBoundaries.push(partBoundary);
+                
+                currentBar += partDuration;
+                remainingIntroBars -= partDuration;
+                introDurationTotal += partDuration;
+            });
+        }
+
 
         // Calculate remaining bars and percentage for main parts
         const remainingBars = this.totalBars - introDurationTotal;
@@ -105,25 +111,26 @@ export class BlueprintNavigator {
 
         if (mainPartsTotalPercent <= 0 && mainParts.length > 0) {
             console.error("[NAVIGATOR] Main parts have a total percentage of 0. Cannot distribute remaining bars.");
-        } else {
+        } else if (mainParts.length > 0) {
+            let accumulatedMainBars = 0;
             mainParts.forEach((part, index) => {
                 const isLastPart = index === mainParts.length - 1;
                 let partDuration;
 
                 if (isLastPart) {
-                    // Last part takes all remaining bars to avoid rounding errors
-                    partDuration = this.totalBars - currentBar;
+                    partDuration = remainingBars - accumulatedMainBars;
                 } else {
                     const proportion = part.duration.percent / mainPartsTotalPercent;
                     partDuration = Math.round(proportion * remainingBars);
                 }
 
-                const partStartBar = currentBar;
+                const partStartBar = currentBar + accumulatedMainBars;
                 const partBoundary = this.createPartBoundary(part, partStartBar, partDuration);
                 this.partBoundaries.push(partBoundary);
                 
-                currentBar += partDuration;
+                accumulatedMainBars += partDuration;
             });
+            currentBar += accumulatedMainBars;
         }
         
         // Ensure the navigator is robust by sorting and logging
@@ -139,7 +146,6 @@ export class BlueprintNavigator {
             bundleBoundaries: []
         };
         
-        let bundleStartInPart = 0;
         const bundleCount = part.bundles.length;
         
         if (bundleCount > 0) {
