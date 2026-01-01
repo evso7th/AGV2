@@ -29,7 +29,7 @@ export const DarkBluesBlueprint: MusicBlueprint = {
                     accompaniment: { density: { min: 0.1, max: 0.2 } },
                     melody: { source: 'harmony_top_note' }
                 },
-                bundles: [{ id: 'BLUES_INTRO_BUNDLE_1', name: 'Verse 1', duration: { percent: 100 }, characteristics: {}, phrases: {}, outroFill: { type: 'roll', duration: 1, parameters: { instrument: 'tom', density: 0.5, dynamics: 'pp' } } }],
+                bundles: [{ id: 'BLUES_INTRO_BUNDLE_1', name: 'Verse 1', duration: { percent: 100 }, characteristics: {}, phrases: {} }],
                 outroFill: null,
             },
             {
@@ -45,7 +45,7 @@ export const DarkBluesBlueprint: MusicBlueprint = {
                     accompaniment: { density: { min: 0.1, max: 0.2 } },
                     melody: { source: 'harmony_top_note' }
                 },
-                bundles: [{ id: 'BLUES_INTRO_BUNDLE_2', name: 'Verse 2', duration: { percent: 100 }, characteristics: {}, phrases: {}, outroFill: { type: 'roll', duration: 1, parameters: { instrument: 'tom', density: 0.5, dynamics: 'pp' } } }],
+                bundles: [{ id: 'BLUES_INTRO_BUNDLE_2', name: 'Verse 2', duration: { percent: 100 }, characteristics: {}, phrases: {} }],
                 outroFill: null,
             },
             {
@@ -56,13 +56,13 @@ export const DarkBluesBlueprint: MusicBlueprint = {
                     harmony: { strategy: 'weighted', options: [{ name: 'guitarChords', weight: 1.0 }] }
                 },
                 instrumentRules: {
-                    drums: { pattern: 'composer', density: { min: 0.3, max: 0.5 }, useSnare: true, useGhostHat: true, usePerc: true },
+                    drums: { pattern: 'composer', density: { min: 0.3, max: 0.5 }, useSnare: true, useGhostHat: true, usePerc: true, fills: { onBundleBoundary: true } },
                     bass: { techniques: [{ value: 'walking', weight: 1.0 }] },
                     accompaniment: { density: { min: 0.1, max: 0.2 } },
-                    sfx: { eventProbability: 0.25, categories: [{ name: 'voice', weight: 0.8 }, { name: 'dark', weight: 0.2 }] },
+                    sfx: { eventProbability: 0.1, categories: [{ name: 'voice', weight: 0.8 }, { name: 'dark', weight: 0.2 }] },
                     melody: { source: 'harmony_top_note' }
                 },
-                bundles: [{ id: 'BLUES_INTRO_BUNDLE_3', name: 'Verse 3', duration: { percent: 100 }, characteristics: {}, phrases: {}, outroFill: { type: 'roll', duration: 1, parameters: { instrument: 'tom', density: 0.6, dynamics: 'p' } } }],
+                bundles: [{ id: 'BLUES_INTRO_BUNDLE_3', name: 'Verse 3', duration: { percent: 100 }, characteristics: {}, phrases: {}, outroFill: { type: 'roll', duration: 1, parameters: { instrument: 'tom', density: 0.5, dynamics: 'pp' } } }],
                 outroFill: null,
             },
             {
@@ -78,7 +78,6 @@ export const DarkBluesBlueprint: MusicBlueprint = {
                         pattern: 'composer', 
                         density: { min: 0.4, max: 0.6 }, 
                         kickVolume: 1.2,
-                        ride: { enabled: false },
                         usePerc: true,
                         fills: { onBundleBoundary: true },
                         useGhostHat: true
@@ -86,7 +85,7 @@ export const DarkBluesBlueprint: MusicBlueprint = {
                     melody: { density: { min: 0.4, max: 0.6 }, source: 'motif' },
                     bass: { techniques: [{ value: 'walking', weight: 1.0 }] },
                     accompaniment: { density: { min: 0.1, max: 0.2 } },
-                    sfx: { eventProbability: 0.25, categories: [{ name: 'voice', weight: 0.8 }, { name: 'dark', weight: 0.2 }] }
+                    sfx: { eventProbability: 0.1, categories: [{ name: 'voice', weight: 0.8 }, { name: 'dark', weight: 0.2 }] }
                 },
                 bundles: [{ id: 'BLUES_MAIN_BUNDLE', name: 'Solo Section', duration: { percent: 100 }, characteristics: {}, phrases: {}, outroFill: { type: 'roll', duration: 1, parameters: { instrument: 'crash', density: 0.4, dynamics: 'mf' } } }],
                 outroFill: { type: 'roll', duration: 1, parameters: {} },
@@ -101,7 +100,7 @@ export const DarkBluesBlueprint: MusicBlueprint = {
                     drums: { pattern: 'composer', density: { min: 0.3, max: 0.5 }, useGhostHat: true },
                     bass: { techniques: [{ value: 'walking', weight: 1.0 }] },
                     accompaniment: { density: { min: 0.1, max: 0.2 } },
-                    sfx: { eventProbability: 0.25, categories: [{ name: 'voice', weight: 0.8 }, { name: 'dark', weight: 0.2 }] },
+                    sfx: { eventProbability: 0.1, categories: [{ name: 'voice', weight: 0.8 }, { name: 'dark', weight: 0.2 }] },
                     melody: { source: 'harmony_top_note' }
                 },
                 bundles: [{ id: 'BLUES_OUTRO_BUNDLE', name: 'Last Verse', duration: { percent: 100 }, characteristics: {}, phrases: {}, outroFill: { type: 'roll', duration: 2, parameters: { instrument: 'crash', density: 0.2, dynamics: 'p' } } }],
