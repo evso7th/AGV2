@@ -24,7 +24,7 @@ export const DreamyBluesBlueprint: MusicBlueprint = {
                     melody: { strategy: 'weighted', v1Options: [{ name: 'electricGuitar', weight: 1.0 }], v2Options: [{ name: 'guitar_shineOn', weight: 1.0 }] }
                 },
                 instrumentRules: {
-                    drums: { pattern: 'composer', density: { min: 0.3, max: 0.5 }, useSnare: true, useGhostHat: true },
+                    drums: { pattern: 'composer', density: { min: 0.3, max: 0.5 }, useSnare: true, useGhostHat: true, ride: { enabled: true, volume: 0.3, probability: 0.4 } },
                     bass: { techniques: [{ value: 'long_notes', weight: 1.0 }] }, 
                     melody: { source: 'motif', density: { min: 0.3, max: 0.5 } }
                 },
@@ -63,7 +63,7 @@ export const DreamyBluesBlueprint: MusicBlueprint = {
                     accompaniment: { strategy: 'weighted', v1Options: [{ name: 'organ', weight: 1.0 }], v2Options: [{ name: 'organ_soft_jazz', weight: 1.0 }] }
                 },
                 instrumentRules: {
-                    drums: { pattern: 'composer', density: { min: 0.2, max: 0.4 } },
+                    drums: { pattern: 'composer', density: { min: 0.2, max: 0.4 }, ride: { enabled: true, volume: 0.3, probability: 0.4 } },
                     bass: { techniques: [{ value: 'long_notes', weight: 1.0 }] },
                     melody: { source: 'motif', density: { min: 0.2, max: 0.4 } } // Return to lower density
                 },
