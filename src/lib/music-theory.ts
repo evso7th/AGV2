@@ -1047,24 +1047,54 @@ function extractTopNotes(events: FractalEvent[], maxNotes: number = 4): FractalE
 /**
  * #ЗАЧЕМ: Генерирует мелодический мотив на 4 такта (16 долей).
  * #ЧТО: Выбирает ритмический паттерн и мелодический контур. Генерирует массив FractalEvent.
- * #ИЗМЕНЕНО: Добавлена логика для использования PARANOID_STYLE_RIFF и продвинутых мутаций.
+ * #ИЗМЕНЕНО: Добавлена специальная логика для блюза и продвинутые мутации.
  */
 export function createMelodyMotif(chord: GhostChord, mood: Mood, random: { next: () => number; nextInt: (max: number) => number; }, previousMotif?: FractalEvent[], registerHint?: 'low' | 'mid' | 'high', genre?: Genre): FractalEvent[] {
     const motif: FractalEvent[] = [];
     
-    // Специальная логика для дарк-блюза
-    if (genre === 'blues' && mood === 'dark') {
-        console.log(`%c[MelodyAxiom] Applying PARANOID_STYLE_RIFF for dark blues.`, 'color: #FF6347');
-        const riffEvents: FractalEvent[] = PARANOID_STYLE_RIFF.map(riffNote => ({
-            ...riffNote,
-            type: 'melody',
-            weight: 0.9 + random.next() * 0.1, // Add some velocity variation
-            technique: 'hit',
-            dynamics: 'f',
-            phrasing: 'staccato',
-            params: {}
-        }));
-        return riffEvents;
+    // Специальная логика для блюза
+    if (genre === 'blues') {
+        console.log(`%c[MelodyAxiom] Generating special BLUES motif.`, 'color: #4682B4');
+        const scale = getScaleForMood(mood); // E.g., Phrygian for dark blues
+        const root = chord.rootNote;
+        
+        // Classic blues pentatonic notes relative to root
+        const bluesIntervals = [0, 3, 5, 6, 7, 10, 12]; // Root, b3, 4, #4, 5, b7, Octave
+        
+        const phrase: { noteOffset: number, time: number, duration: number }[] = [
+            { noteOffset: 7, time: 0, duration: 1.5 },   // 5th
+            { noteOffset: 10, time: 1.5, duration: 0.5 }, // b7
+            { noteOffset: 12, time: 2, duration: 2 },   // Octave (hold)
+            
+            { noteOffset: 10, time: 4, duration: 1 },   // b7
+            { noteOffset: 7, time: 5, duration: 1 },    // 5th
+            { noteOffset: 6, time: 6, duration: 1 },    // #4/b5 (blue note)
+            { noteOffset: 5, time: 7, duration: 1 },    // 4th
+            
+            { noteOffset: 3, time: 8, duration: 2 },    // b3
+            { noteOffset: 0, time: 10, duration: 2 },   // Root
+            
+            { noteOffset: 3, time: 12, duration: 1 },   // b3
+            { noteOffset: 5, time: 13, duration: 1 },   // 4th
+            { noteOffset: 3, time: 14, duration: 1 },   // b3
+            { noteOffset: 0, time: 15, duration: 1 },   // Root
+        ];
+
+        phrase.forEach(p => {
+             motif.push({
+                type: 'melody',
+                note: root + p.noteOffset + 24, // Транспонируем на 2 октавы вверх
+                duration: p.duration,
+                time: p.time,
+                weight: 0.8 + random.next() * 0.1,
+                technique: 'pick', // Blues often uses a pick
+                dynamics: 'f',
+                phrasing: 'legato',
+                params: {}
+            });
+        });
+        
+        return motif;
     }
 
     // --- Логика мутаций (если есть предыдущий мотив) ---
@@ -1152,6 +1182,7 @@ export function createMelodyMotif(chord: GhostChord, mood: Mood, random: { next:
 
 
     
+
 
 
 

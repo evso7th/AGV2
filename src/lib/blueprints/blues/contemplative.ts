@@ -74,12 +74,7 @@ export const ContemplativeBluesBlueprint: MusicBlueprint = {
                         pattern: 'composer', 
                         density: { min: 0.6, max: 0.8 }, 
                         kickVolume: 1.1,
-                        ride: {
-                            enabled: true,
-                            quietWindows: [
-                                { start: 0.25, end: 0.65 }
-                            ]
-                        },
+                        ride: { enabled: false },
                         usePerc: true,
                     },
                     melody: { density: { min: 0.4, max: 0.6 }, source: 'motif' },
