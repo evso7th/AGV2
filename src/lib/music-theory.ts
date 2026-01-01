@@ -825,7 +825,7 @@ export function createDrumFill(random: { next: () => number, nextInt: (max: numb
 
     for (let i = 0; i < numHits; i++) {
         const tom = toms[random.nextInt(toms.length)];
-        const duration = (1.0 / numHits);
+        const duration = (1.0 / numHits) * (0.8 + random.next() * 0.4); // slightly variable duration
         const time = currentTime + i * duration;
         
         fill.push({
@@ -922,12 +922,21 @@ export function createDrumAxiom(genre: Genre, mood: Mood, tempo: number, random:
 
     if (!loop) return { events: [], tags: [] };
 
-    // Этап 1: Генерация основного бита (Kick, Snare, Hi-hat)
     const allBaseEvents = [...(loop.kick || []), ...(loop.snare || []), ...(loop.hihat || [])];
     for (const baseEvent of allBaseEvents) {
         if (baseEvent.probability && random.next() > baseEvent.probability) {
             continue;
         }
+
+        // #ИСПРАВЛЕНИЕ: Добавлены проверки на основе `rules`
+        const eventTypeStr = Array.isArray(baseEvent.type) ? baseEvent.type[0] : baseEvent.type;
+
+        if (eventTypeStr.includes('snare') && rules?.useSnare === false) continue;
+        if (eventTypeStr.startsWith('perc-') && rules?.usePerc === false) continue;
+        if (eventTypeStr.includes('tom') && rules?.usePerc === false) continue;
+        if (eventTypeStr.includes('ride') && rules?.ride?.enabled === false) continue;
+        if (eventTypeStr.includes('hihat') && rules?.useGhostHat === false && !eventTypeStr.includes('open')) continue; // Allows open, blocks others if false
+
 
         let instrumentType: InstrumentType;
         if (Array.isArray(baseEvent.type)) {
@@ -948,7 +957,7 @@ export function createDrumAxiom(genre: Genre, mood: Mood, tempo: number, random:
         } else {
             instrumentType = baseEvent.type;
         }
-
+        
         console.log(`%c[DrumAxiom] Generating drum event: type='${instrumentType}', controlled by rules: ${JSON.stringify(rules || {})}`, 'color: #FFA500');
 
         axiomEvents.push({
@@ -1144,6 +1153,7 @@ export function createMelodyMotif(chord: GhostChord, mood: Mood, random: { next:
 
 
     
+
 
 
 
