@@ -548,10 +548,15 @@ export class FractalMusicEngine {
 
 
   private _resetForNewSuite() {
-      console.log(`%c[FME] Resetting for new suite.`, 'color: green; font-weight: bold;');
-      this.epoch = 0;
-      this.isPromenadeActive = false;
-      this.initialize(true);
+    // #ЗАЧЕМ: Этот метод обеспечивает полную "перезагрузку" музыкальной логики в конце сюиты.
+    // #ЧТО: Вместо того, чтобы просто сбросить счетчик тактов, он отправляет воркеру
+    //      команду 'reset', которая запускает тот же механизм, что и кнопка 'Regenerate' в UI.
+    //      Это гарантирует создание нового `seed`, нового `FractalMusicEngine`, новой "Призрачной
+    //      Гармонии" и, следовательно, совершенно новых риффов и ритмов.
+    // #СВЯЗИ: Этот метод вызывается в конце "Променада" и является ключевым для решения
+    //         проблемы однообразия между сюитами.
+    console.log(`%c[FME] Suite ended. Posting 'reset' command to self for full regeneration.`, 'color: #FF4500; font-weight: bold;');
+    self.postMessage({ command: 'reset' });
   }
 
   public evolve(barDuration: number, barCount: number): { events: FractalEvent[], instrumentHints: InstrumentHints } {
@@ -571,9 +576,17 @@ export class FractalMusicEngine {
       };
     }
     
+    // #ИЗМЕНЕНО: Логика вызова _resetForNewSuite перенесена сюда.
+    //            Променад длится 4 такта. Мы ждем его завершения, прежде чем перезапускаться.
     if (this.isPromenadeActive) {
-      this._resetForNewSuite();
-      return { events: [], instrumentHints: {} };
+        const promenadeDuration = 4;
+        if (this.epoch >= this.navigator.totalBars + promenadeDuration) {
+             this._resetForNewSuite();
+             // Возвращаем пустой массив, так как ресет асинхронен и следующий 'tick' получит уже новые данные.
+             return { events: [], instrumentHints: {} };
+        }
+        // Пока променад играет, возвращаем пустые события.
+        return { events: [], instrumentHints: {} };
     }
     
     if (!isFinite(barDuration)) return { events: [], instrumentHints: {} };
@@ -588,4 +601,3 @@ export class FractalMusicEngine {
     return { events, instrumentHints };
   }
 }
-
