@@ -6,6 +6,8 @@ import { getScaleForMood, STYLE_DRUM_PATTERNS, generateAmbientBassPhrase, create
 import { BlueprintNavigator, type NavigationInfo } from './blueprint-navigator';
 import { getBlueprint } from './blueprints';
 import { V2_PRESETS } from './presets-v2';
+import { PARANOID_STYLE_RIFF } from './assets/rock-riffs';
+import { BLUES_BASS_RIFFS } from './assets/blues-bass-riffs';
 
 
 export type Branch = {
@@ -436,8 +438,13 @@ export class FractalMusicEngine {
     let accompEvents: FractalEvent[] = [];
     if (navInfo.currentPart.layers.accompaniment) {
         const registerHint = navInfo.currentPart.instrumentRules?.accompaniment?.register?.preferred;
-        if (this.accompPhraseLibrary[this.currentAccompPhraseIndex].length === 0 || this.epoch % 4 === 0) {
-            this.accompPhraseLibrary[this.currentAccompPhraseIndex] = createAccompanimentAxiom(currentChord, this.config.mood, this.config.genre, this.random, this.config.tempo, registerHint);
+        if (this.accompPhraseLibrary.length === 0 || this.currentAccompPhraseIndex >= this.accompPhraseLibrary.length || this.accompPhraseLibrary[this.currentAccompPhraseIndex].length === 0 || this.epoch % 4 === 0) {
+            const newAxiom = createAccompanimentAxiom(currentChord, this.config.mood, this.config.genre, this.random, this.config.tempo, registerHint);
+            if (this.accompPhraseLibrary.length === 0) {
+                this.accompPhraseLibrary.push(newAxiom);
+            } else {
+                this.accompPhraseLibrary[this.currentAccompPhraseIndex] = newAxiom;
+            }
         }
         accompEvents = this.accompPhraseLibrary[this.currentAccompPhraseIndex];
     }
@@ -462,11 +469,18 @@ export class FractalMusicEngine {
       const bassRules = navInfo.currentPart.instrumentRules?.bass;
       const bassTechnique = bassRules?.techniques?.[0]?.value as Technique || 'drone';
 
+      // #ИЗМЕНЕНО: Передаем `mood` в генератор блюзового риффа
       if (this.config.genre === 'blues') {
-        bassEvents = generateBluesBassRiff(currentChord, bassTechnique, this.random);
+        bassEvents = generateBluesBassRiff(currentChord, bassTechnique, this.random, this.config.mood);
       } else {
-        if (this.bassPhraseLibrary.length === 0 || this.epoch % PHRASE_VARIATION_INTERVAL === 0) {
-           this.bassPhraseLibrary[this.currentBassPhraseIndex] = generateAmbientBassPhrase(currentChord, this.config.mood, this.config.genre, this.random, this.config.tempo, bassTechnique);
+        // #ИСПРАВЛЕНО: Убрано дублирование, используется единая точка генерации фраз
+        if (!this.bassPhraseLibrary[this.currentBassPhraseIndex] || this.bassPhraseLibrary[this.currentBassPhraseIndex].length === 0 || this.epoch % PHRASE_VARIATION_INTERVAL === 0) {
+           const newPhrase = generateAmbientBassPhrase(currentChord, this.config.mood, this.config.genre, this.random, this.config.tempo, bassTechnique);
+            if (this.bassPhraseLibrary.length <= this.currentBassPhraseIndex) {
+                 this.bassPhraseLibrary.push(newPhrase);
+            } else {
+                this.bassPhraseLibrary[this.currentBassPhraseIndex] = newPhrase;
+            }
         }
         bassEvents = this.bassPhraseLibrary[this.currentBassPhraseIndex];
       }
@@ -476,12 +490,13 @@ export class FractalMusicEngine {
         const { instrument, octaveShift } = navInfo.currentPart.bassAccompanimentDouble;
         const bassDoubleEvents: FractalEvent[] = bassEvents.map(e => ({
             ...e,
-            type: 'accompaniment',
+            type: 'melody', // #ИЗМЕНЕНО: Тип изменен на 'melody', чтобы его играл мелодический менеджер
             note: e.note + (12 * octaveShift),
             weight: e.weight * 0.8,
         }));
-        accompEvents.push(...bassDoubleEvents);
-        instrumentHints.accompaniment = instrument;
+        // Вместо добавления к аккомпанементу, мы добавляем это как события мелодии
+        allEvents.push(...bassDoubleEvents);
+        instrumentHints.melody = instrument; // Указываем, какой инструмент должен играть эту партию
     }
     
     let harmonyEvents: FractalEvent[] = [];
@@ -493,7 +508,7 @@ export class FractalMusicEngine {
     }
     
     // --- MELODY GENERATION (REFACTORED for 4-bar motifs) ---
-    if (navInfo.currentPart.layers.melody) {
+    if (navInfo.currentPart.layers.melody && !navInfo.currentPart.bassAccompanimentDouble?.enabled) { // Не генерируем мелодию, если уже есть дублирование баса
         const melodyRules = navInfo.currentPart.instrumentRules?.melody;
         const melodyDensity = melodyRules?.density?.min ?? 0.25;
         const minInterval = 8; // Don't play motifs too close together
@@ -547,7 +562,7 @@ export class FractalMusicEngine {
     //       чтобы сгенерировать переходные сбивки, и добавляет их к событиям этого такта.
     // #СВЯЗИ: Этот механизм позволяет декларативно управлять филлами через блюпринты,
     //         не зашивая логику в код движка.
-    if (navInfo.currentBundle && 'outroFill' in navInfo.currentBundle && navInfo.currentBundle.outroFill && isLastBarOfBundle) {
+    if (navInfo.currentBundle && navInfo.currentBundle.outroFill && isLastBarOfBundle) {
         const fillParams = navInfo.currentBundle.outroFill.parameters || {};
         console.log(`%c[FME @ Bar ${this.epoch}] Generating outro fill for bundle: ${navInfo.currentBundle.id}`, 'color: #FF8C00');
         const drumFill = createDrumFill(this.random, fillParams);

@@ -7,6 +7,7 @@ import { getBlueprint } from './blueprints';
 import { V2_PRESETS } from './presets-v2';
 import { PARANOID_STYLE_RIFF } from './assets/rock-riffs';
 import { BLUES_BASS_RIFFS } from './assets/blues-bass-riffs';
+import { NEUTRAL_BLUES_BASS_RIFFS } from './assets/neutral-blues-riffs';
 
 
 export type Branch = {
@@ -212,11 +213,6 @@ export type PercussionRule = {
     type?: 'electronic' | 'acoustic';
 };
 
-type GenreRhythmGrammar = {
-    loops: DrumKitPattern[];
-    percussion?: PercussionRule;
-};
-
 type BassPatternEvent = {
     note: number; // Scale degree (0=root, 1=second, etc.)
     time: number; // Beat
@@ -283,7 +279,7 @@ export function generateAmbientBassPhrase(chord: GhostChord, mood: Mood, genre: 
     //       В противном случае генерирует стандартную эмбиент-партию.
     // #СВЯЗИ: Является единой точкой входа для создания баса, вызываемой из `fractal-music-engine`.
     if (genre === 'blues') {
-        return generateBluesBassRiff(chord, technique, random);
+        return generateBluesBassRiff(chord, technique, random, mood);
     }
     
     // --- Старая логика для эмбиента и других жанров ---
@@ -337,25 +333,28 @@ export function generateAmbientBassPhrase(chord: GhostChord, mood: Mood, genre: 
 
 /**
  * #ЗАЧЕМ: Эта функция является "мозгом" блюзового басиста.
- * #ЧТО: Она генерирует аутентичные блюзовые басовые риффы, случайным образом выбирая один из 10
- *       классических паттернов из библиотеки `BLUES_BASS_RIFFS`.
+ * #ЧТО: Она генерирует аутентичные блюзовые басовые риффы, случайным образом выбирая один из
+ *       классических паттернов из соответствующей библиотеки (`BLUES_BASS_RIFFS` или `NEUTRAL_BLUES_BASS_RIFFS`).
  * #СВЯЗИ: Вызывается из `generateAmbientBassPhrase`, когда `genre === 'blues'`.
  */
-export function generateBluesBassRiff(chord: GhostChord, technique: Technique, random: { next: () => number, nextInt: (max: number) => number }): FractalEvent[] {
+export function generateBluesBassRiff(chord: GhostChord, technique: Technique, random: { next: () => number, nextInt: (max: number) => number }, mood: Mood): FractalEvent[] {
     const phrase: FractalEvent[] = [];
     const root = chord.rootNote;
     const barDurationInBeats = 4.0;
     const ticksPerBeat = 3; // 12/8 time feel
 
-    console.log(`%c[BluesBass] Generating riff for ${chord.rootNote} with technique: ${technique}`, 'color: #4682B4');
+    // #ИЗМЕНЕНО: Выбор библиотеки риффов в зависимости от настроения
+    const riffLibrary = mood === 'contemplative' ? NEUTRAL_BLUES_BASS_RIFFS : BLUES_BASS_RIFFS;
+    const libraryName = mood === 'contemplative' ? 'NEUTRAL' : 'DARK';
 
-    // Выбираем случайный рифф из библиотеки.
-    const riffIndex = random.nextInt(BLUES_BASS_RIFFS.length);
-    const selectedRiff = BLUES_BASS_RIFFS[riffIndex];
-    console.log(`[BluesBass] Selected Riff #${riffIndex + 1}`);
+    console.log(`%c[BluesBass] Generating riff for ${chord.rootNote} from ${libraryName} library.`, 'color: #4682B4');
+
+    const riffIndex = random.nextInt(riffLibrary.length);
+    const selectedRiff = riffLibrary[riffIndex];
+    console.log(`[BluesBass] Selected Riff #${riffIndex + 1} from ${libraryName} library.`);
 
     let barOffset = 0;
-    // Предполагаем, что рифф должен заполнить 2 такта (стандартно для этих риффов)
+    // Предполагаем, что рифф должен заполнить количество тактов, равное его длине в библиотеке
     for (const barPattern of selectedRiff) {
         for (const riffNote of barPattern) {
             phrase.push({
@@ -928,14 +927,14 @@ export function createDrumAxiom(genre: Genre, mood: Mood, tempo: number, random:
             continue;
         }
 
-        // #ИСПРАВЛЕНИЕ: Добавлены проверки на основе `rules`
         const eventTypeStr = Array.isArray(baseEvent.type) ? baseEvent.type[0] : baseEvent.type;
 
+        // #ИЗМЕНЕНО: Добавлена серия проверок для строгого подчинения правилам
         if (eventTypeStr.includes('snare') && rules?.useSnare === false) continue;
         if (eventTypeStr.startsWith('perc-') && rules?.usePerc === false) continue;
         if (eventTypeStr.includes('tom') && rules?.usePerc === false) continue;
-        if (eventTypeStr.includes('ride') && rules?.ride?.enabled === false) continue;
-        if (eventTypeStr.includes('hihat') && rules?.useGhostHat === false && !eventTypeStr.includes('open')) continue; // Allows open, blocks others if false
+        if ((eventTypeStr.includes('ride') || eventTypeStr.includes('cymbal')) && rules?.ride?.enabled === false) continue;
+        if (eventTypeStr.includes('hat') && rules?.useGhostHat === false) continue;
 
 
         let instrumentType: InstrumentType;
@@ -1153,6 +1152,7 @@ export function createMelodyMotif(chord: GhostChord, mood: Mood, random: { next:
 
 
     
+
 
 
 
