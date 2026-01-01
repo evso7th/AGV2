@@ -1,5 +1,4 @@
 
-
 import type { FractalEvent, Mood, Genre, SfxRule } from '@/types/fractal';
 
 const SFX_SAMPLES: Record<string, string[]> = {
@@ -206,6 +205,13 @@ export class SfxSynthManager {
     }
 
     private getCategoryForContext(mood: Mood, genre: Genre, rules?: SfxRule): string {
+        // #ИСПРАВЛЕНО: Эта функция была полностью переписана для правильной обработки правил и фолбэков.
+        // #ЗАЧЕМ: Старая логика не давала шанса категории 'voice' при отсутствии явных правил,
+        //         что приводило к однообразным SFX.
+        // #ЧТО: Теперь логика сначала проверяет наличие `rules`. Если они есть, выбор происходит
+        //        на их основе. Если нет, включается улучшенный фолбэк с приоритетом для `voice` в блюзе.
+
+        // 1. Приоритет: Явные правила из блюпринта
         if (rules && rules.categories && rules.categories.length > 0) {
             const totalWeight = rules.categories.reduce((sum, cat) => sum + cat.weight, 0);
             let rand = Math.random() * totalWeight;
@@ -213,19 +219,34 @@ export class SfxSynthManager {
             for (const category of rules.categories) {
                 rand -= category.weight;
                 if (rand <= 0) {
+                    console.log(`[SFX] Selected category "${category.name}" based on blueprint rules.`);
                     return category.name;
                 }
             }
         }
         
-        // Fallback logic if no rules are provided
+        // 2. Улучшенная логика по умолчанию (фолбэк), если правила не заданы
         const rand = Math.random();
+        
+        if (genre === 'blues') {
+            if (rand < 0.6) return 'voice'; // 60% шанс для вокальных сэмплов в блюзе
+            if (rand < 0.8) return 'dark';
+            return 'common';
+        }
+        
+        if (genre === 'trance' || genre === 'house' || genre === 'progressive') {
+            if (rand < 0.5) return 'laser';
+            if (rand < 0.8) return 'voice';
+            return 'common';
+        }
+
+        if (mood === 'dark' || mood === 'anxious') {
+            return 'dark';
+        }
+
         if (rand < 0.2) return 'bongo';
-        if (rand < 0.4) return 'voice';
-
-        if (mood === 'dark' || mood === 'anxious') return 'dark';
-        if (genre === 'trance' || genre === 'house' || genre === 'progressive') return 'laser';
-
+        
+        // Нейтральный фолбэк
         return 'common';
     }
     
