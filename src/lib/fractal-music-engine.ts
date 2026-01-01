@@ -447,7 +447,7 @@ export class FractalMusicEngine {
     
     if (canVary && this.epoch > 0 && this.epoch % PHRASE_VARIATION_INTERVAL === 0) {
         this.currentBassPhraseIndex = (this.currentBassPhraseIndex + 1) % this.bassPhraseLibrary.length;
-        if (this.random.next() < 0.6) {
+        if (this.random.next() < 0.6) { // 60% chance to mutate
             this.bassPhraseLibrary[this.currentBassPhraseIndex] = mutateBassPhrase(this.bassPhraseLibrary[this.currentBassPhraseIndex], currentChord, this.config.mood, this.config.genre, this.random);
         }
         this.currentAccompPhraseIndex = (this.currentAccompPhraseIndex + 1) % this.accompPhraseLibrary.length;
@@ -459,17 +459,13 @@ export class FractalMusicEngine {
     // --- BASS GENERATION ---
     let bassEvents: FractalEvent[] = [];
     if (navInfo.currentPart.layers.bass) {
-      // #ИЗМЕНЕНО: Логика выбора генератора баса
       const bassRules = navInfo.currentPart.instrumentRules?.bass;
       const bassTechnique = bassRules?.techniques?.[0]?.value as Technique || 'drone';
 
       if (this.config.genre === 'blues') {
         bassEvents = generateBluesBassRiff(currentChord, bassTechnique, this.random);
       } else {
-        // Используем старую логику для других жанров
-        // Обновляем фразу, если нужно
-        if (this.bassPhraseLibrary.length === 0 || (this.epoch > 0 && this.epoch % PHRASE_VARIATION_INTERVAL === 0)) {
-           this.currentBassPhraseIndex = (this.currentBassPhraseIndex + 1) % this.bassPhraseLibrary.length;
+        if (this.bassPhraseLibrary.length === 0 || this.epoch % PHRASE_VARIATION_INTERVAL === 0) {
            this.bassPhraseLibrary[this.currentBassPhraseIndex] = generateAmbientBassPhrase(currentChord, this.config.mood, this.config.genre, this.random, this.config.tempo, bassTechnique);
         }
         bassEvents = this.bassPhraseLibrary[this.currentBassPhraseIndex];
@@ -548,15 +544,7 @@ export class FractalMusicEngine {
 
 
   private _resetForNewSuite() {
-    // #ЗАЧЕМ: Этот метод обеспечивает полную "перезагрузку" музыкальной логики в конце сюиты.
-    // #ЧТО: Вместо того, чтобы просто сбросить счетчик тактов, он отправляет воркеру
-    //      команду 'reset', которая запускает тот же механизм, что и кнопка 'Regenerate' в UI.
-    //      Это гарантирует создание нового `seed`, нового `FractalMusicEngine`, новой "Призрачной
-    //      Гармонии" и, следовательно, совершенно новых риффов и ритмов.
-    // #СВЯЗИ: Этот метод вызывается в конце "Променада" и является ключевым для решения
-    //         проблемы однообразия между сюитами.
-    console.log(`%c[FME] Suite ended. Posting 'reset' command to self for full regeneration.`, 'color: #FF4500; font-weight: bold;');
-    self.postMessage({ command: 'reset' });
+    // This method is now obsolete. The worker will post a 'reset' message to itself.
   }
 
   public evolve(barDuration: number, barCount: number): { events: FractalEvent[], instrumentHints: InstrumentHints } {
@@ -567,25 +555,30 @@ export class FractalMusicEngine {
 
     this.epoch = barCount;
 
-    if (!this.isPromenadeActive && this.epoch >= this.navigator.totalBars && this.navigator.totalBars > 0) {
-      console.log(`%c[FME] End of suite reached. Activating PROMENADE.`, 'color: #FFD700; font-weight: bold');
+    if (!this.isPromenadeActive && this.epoch > 0 && this.epoch >= this.navigator.totalBars) {
+      console.log(`%c[FME] End of suite reached at bar ${this.epoch}. Activating PROMENADE.`, 'color: #FFD700; font-weight: bold');
       this.isPromenadeActive = true;
+      // Immediately start the promenade
       return {
         events: this.promenadeBars,
         instrumentHints: { bass: 'glideBass', accompaniment: 'synth' }
       };
     }
     
-    // #ИЗМЕНЕНО: Логика вызова _resetForNewSuite перенесена сюда.
-    //            Променад длится 4 такта. Мы ждем его завершения, прежде чем перезапускаться.
     if (this.isPromenadeActive) {
-        const promenadeDuration = 4;
-        if (this.epoch >= this.navigator.totalBars + promenadeDuration) {
-             this._resetForNewSuite();
-             // Возвращаем пустой массив, так как ресет асинхронен и следующий 'tick' получит уже новые данные.
+        const promenadeDuration = 4; // Promenade is 4 bars long
+        const promenadeEndEpoch = this.navigator.totalBars + promenadeDuration;
+        
+        if (this.epoch >= promenadeEndEpoch) {
+             console.log(`%c[FME] Promenade ended. Posting 'reset' command to self for full regeneration.`, 'color: #FF4500; font-weight: bold;');
+             // Use the existing 'reset' command logic
+             self.postMessage({ command: 'reset' });
+             this.isPromenadeActive = false; // Reset state
+             // Return empty for this tick, as the reset will handle the next state
              return { events: [], instrumentHints: {} };
         }
-        // Пока променад играет, возвращаем пустые события.
+        // While promenade is playing, but before reset, return empty to let it finish.
+        // The first tick of promenade already sent the events.
         return { events: [], instrumentHints: {} };
     }
     
