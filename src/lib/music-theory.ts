@@ -1,4 +1,5 @@
 
+
 import type { FractalEvent, Mood, Genre, Technique, BassSynthParams, InstrumentType, AccompanimentInstrument, InstrumentHints, AccompanimentTechnique, GhostChord, SfxRule, V1MelodyInstrument, V2MelodyInstrument, BlueprintPart, InstrumentationRules } from './fractal';
 import { ElectronicK, TraditionalK, AmbientK, MelancholicMinorK } from './resonance-matrices';
 import { BlueprintNavigator, type NavigationInfo } from './blueprint-navigator';
@@ -380,17 +381,21 @@ export function createAccompanimentAxiom(chord: GhostChord, mood: Mood, genre: G
     const scale = getScaleForMood(mood);
     const rootMidi = chord.rootNote;
     
-    // #ЗАЧЕМ: Эта функция строит полноценный аккорд на основе "Призрачного Аккорда".
-    // #ЧТО: Она определяет терцию и квинту, а затем создает массив событий для каждой ноты аккорда.
-    // #СВЯЗИ: Вызывается движком для создания гармонической основы.
-    
-    const isMinor = chord.chordType === 'minor' || chord.chordType === 'diminished';
-    const third = rootMidi + (isMinor ? 3 : 4);
-    const fifth = rootMidi + 7;
+    // #ИЗМЕНЕНО: Эта функция теперь правильно строит доминантсептаккорды для блюза.
+    const isDominant = chord.chordType === 'dominant';
+    const third = rootMidi + 4; // Major third for dominant
+    const fifth = rootMidi + 7; // Perfect fifth
+    const seventh = rootMidi + 10; // Minor seventh for dominant 7th
 
-    const chordNotes = [rootMidi, third, fifth].filter(n => scale.some(scaleNote => scaleNote % 12 === n % 12));
-    if (chordNotes.length < 2) {
-      console.warn(`[AccompAxiom] Could not form a valid chord from root ${rootMidi}`);
+    let chordNotes = [rootMidi, third, fifth];
+    if (isDominant) {
+        chordNotes.push(seventh);
+    }
+    
+    // Проверяем, есть ли ноты в текущем ладу. Если нет, это проблема.
+    const validNotes = chordNotes.filter(n => scale.some(scaleNote => scaleNote % 12 === n % 12));
+    if (validNotes.length < (isDominant ? 3 : 2)) {
+      console.warn(`[AccompAxiom] Could not form a valid ${isDominant ? 'dominant 7th' : 'chord'} from root ${rootMidi} in the current scale.`);
       return [];
     }
     
@@ -400,13 +405,13 @@ export function createAccompanimentAxiom(chord: GhostChord, mood: Mood, genre: G
 
     const duration = 4.0; // Play the chord for the whole bar
 
-    chordNotes.forEach((note, index) => {
+    validNotes.forEach((note, index) => {
         axiom.push({
             type: 'accompaniment',
             note: note + 12 * baseOctave,
             duration: duration,
             time: 0, // All notes start at the same time
-            weight: 0.6 - (index * 0.05), // Slightly vary weight for texture
+            weight: 0.6 - (index * 0.05),
             technique: 'long-chords',
             dynamics: 'p',
             phrasing: 'legato',
@@ -414,7 +419,7 @@ export function createAccompanimentAxiom(chord: GhostChord, mood: Mood, genre: G
         });
     });
 
-    console.log(`[AccompAxiom] Generated a ${chordNotes.length}-note chord for root ${rootMidi}.`);
+    console.log(`[AccompAxiom] Generated a ${validNotes.length}-note ${isDominant ? 'dominant' : ''} chord for root ${rootMidi}.`);
     return axiom;
 }
 
@@ -883,19 +888,19 @@ export function generateGhostHarmonyTrack(totalBars: number, mood: Mood, key: nu
     while (currentBar < totalBars) {
         // Defines the 12-bar structure with chord root and duration in bars.
         const structure = [
-            { root: I,  duration: 4 }, // Bars 1-4
-            { root: IV, duration: 2 }, // Bars 5-6
-            { root: I,  duration: 2 }, // Bars 7-8
-            { root: V,  duration: 1 }, // Bar 9
-            { root: IV, duration: 1 }, // Bar 10
-            { root: I,  duration: 1 }, // Bar 11
-            { root: V,  duration: 1 }, // Bar 12 (Turnaround)
+            { root: I,  duration: 4, step: 'I' },
+            { root: IV, duration: 2, step: 'IV' },
+            { root: I,  duration: 2, step: 'I' },
+            { root: V,  duration: 1, step: 'V' },
+            { root: IV, duration: 1, step: 'IV' },
+            { root: I,  duration: 1, step: 'I' },
+            { root: V,  duration: 1, step: 'V' }, // Turnaround
         ];
 
         for (const segment of structure) {
             if (currentBar >= totalBars) break;
             
-            // For blues, all chords are typically dominant 7ths.
+            // #ИСПРАВЛЕНО: Для блюза все аккорды I, IV, V являются доминантсептаккордами.
             const chordType: GhostChord['chordType'] = 'dominant';
 
             const duration = Math.min(segment.duration, totalBars - currentBar);
@@ -1185,6 +1190,7 @@ export function createMelodyMotif(chord: GhostChord, mood: Mood, random: { next:
 
 
     
+
 
 
 
