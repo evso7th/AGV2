@@ -2,7 +2,7 @@
 
 import type { FractalEvent, Mood, Genre, Technique, BassSynthParams, InstrumentType, MelodyInstrument, BassInstrument, AccompanimentInstrument, ResonanceMatrix, InstrumentHints, AccompanimentTechnique, GhostChord, SfxRule, V1MelodyInstrument, V2MelodyInstrument, BlueprintPart, InstrumentationRules } from './fractal';
 import { ElectronicK, TraditionalK, AmbientK, MelancholicMinorK } from './resonance-matrices';
-import { getScaleForMood, STYLE_DRUM_PATTERNS, generateAmbientBassPhrase, createAccompanimentAxiom, PERCUSSION_SETS, TEXTURE_INSTRUMENT_WEIGHTS_BY_MOOD, getAccompanimentTechnique, createBassFillFromTheory, createDrumFill, AMBIENT_ACCOMPANIMENT_WEIGHTS, chooseHarmonyInstrument, mutateBassPhrase, createMelodyMotif, createDrumAxiom, generateGhostHarmonyTrack, mutateAccompanimentPhrase, createHarmonyAxiom, generateBluesBassRiff } from './music-theory';
+import { getScaleForMood, STYLE_DRUM_PATTERNS, generateAmbientBassPhrase, createAccompanimentAxiom, PERCUSSION_SETS, TEXTURE_INSTRUMENT_WEIGHTS_BY_MOOD, getAccompanimentTechnique, createBassFill, createDrumFill, AMBIENT_ACCOMPANIMENT_WEIGHTS, chooseHarmonyInstrument, mutateBassPhrase, createMelodyMotif, createDrumAxiom, generateGhostHarmonyTrack, mutateAccompanimentPhrase, createHarmonyAxiom, generateBluesBassRiff } from './music-theory';
 import { BlueprintNavigator, type NavigationInfo } from './blueprint-navigator';
 import { getBlueprint } from './blueprints';
 import { V2_PRESETS } from './presets-v2';
@@ -511,7 +511,7 @@ export class FractalMusicEngine {
             const shouldMutate = this.currentMelodyMotif.length > 0 && this.random.next() > 0.3;
             const registerHint = melodyRules?.register?.preferred;
 
-            this.currentMelodyMotif = createMelodyMotif(currentChord, this.config.mood, this.random, shouldMutate ? this.currentMelodyMotif : undefined, registerHint);
+            this.currentMelodyMotif = createMelodyMotif(currentChord, this.config.mood, this.random, shouldMutate ? this.currentMelodyMotif : undefined, registerHint, this.config.genre);
             
             // Play the FIRST bar of the new motif now
             melodyEvents = this.currentMelodyMotif
@@ -537,6 +537,22 @@ export class FractalMusicEngine {
 
     if (navInfo.currentPart.layers.sparkles && this.random.next() < 0.1) {
         allEvents.push({ type: 'sparkle', note: 60, time: this.random.next() * 4, duration: 1, weight: 0.5, technique: 'hit', dynamics: 'p', phrasing: 'legato', params: {mood: this.config.mood, genre: this.config.genre}});
+    }
+    
+    // --- FILL GENERATION ---
+    const isLastBarOfBundle = navInfo.currentBundle && this.epoch === navInfo.currentBundle.endBar;
+    // #ЗАЧЕМ: Этот блок кода проверяет, является ли текущий такт последним в бандле и есть ли в
+    //         блюпринте инструкция `outroFill` для этого бандла.
+    // #ЧТО: Если оба условия истинны, он вызывает функции `createDrumFill` и `createBassFill`,
+    //       чтобы сгенерировать переходные сбивки, и добавляет их к событиям этого такта.
+    // #СВЯЗИ: Этот механизм позволяет декларативно управлять филлами через блюпринты,
+    //         не зашивая логику в код движка.
+    if (navInfo.currentBundle && 'outroFill' in navInfo.currentBundle && navInfo.currentBundle.outroFill && isLastBarOfBundle) {
+        const fillParams = navInfo.currentBundle.outroFill.parameters || {};
+        console.log(`%c[FME @ Bar ${this.epoch}] Generating outro fill for bundle: ${navInfo.currentBundle.id}`, 'color: #FF8C00');
+        const drumFill = createDrumFill(this.random, fillParams);
+        const bassFill = createBassFill(currentChord, this.config.mood, this.random);
+        allEvents.push(...drumFill, ...bassFill);
     }
     
     return { events: allEvents, instrumentHints };
