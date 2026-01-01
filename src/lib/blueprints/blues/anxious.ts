@@ -28,10 +28,18 @@ export const AnxiousBluesBlueprint: MusicBlueprint = {
                     sparkles: false,
                 },
                 instrumentation: {
-                    accompaniment: { 
-                        strategy: 'weighted', 
-                        v1Options: [{ name: 'synth', weight: 1.0 }],
-                        v2Options: [{ name: 'synth', weight: 1.0 }]
+                    accompaniment: {
+                        strategy: 'weighted',
+                        // Опции для старого движка (для совместимости)
+                        v1Options: [
+                            { name: 'mellotron', weight: 0.8 }, // 80% шанс струнных
+                            { name: 'flute', weight: 0.2 }      // 20% шанс флейты
+                        ],
+                        // Опции для нового V2 движка
+                        v2Options: [
+                            { name: 'mellotron', weight: 0.8 },
+                            { name: 'mellotron_flute_intimate', weight: 0.2 }
+                        ]
                     },
                 },
                 instrumentRules: {
@@ -60,13 +68,12 @@ export const AnxiousBluesBlueprint: MusicBlueprint = {
                             }
                         },
                         phrases: {},
-                        outroFill: { type: 'roll', duration: 1, parameters: { instrument: 'tom', density: 0.6 } }
                     }
                 ],
-                outroFill: null,
+                outroFill: { type: 'roll', duration: 1, parameters: { instrument: 'tom', density: 0.6 } }
             },
             {
-                id: 'MAIN_A', name: 'Frantic Solo', duration: { percent: 35 },
+                id: 'MAIN_A', name: 'Frantic Riff', duration: { percent: 35 },
                 layers: { bass: true, drums: true, accompaniment: true, melody: true },
                 instrumentation: {
                     accompaniment: { strategy: 'weighted', v1Options: [{ name: 'organ', weight: 1.0 }], v2Options: [{ name: 'organ', weight: 1.0 }] },
@@ -80,6 +87,7 @@ export const AnxiousBluesBlueprint: MusicBlueprint = {
                     },
                     bass: { techniques: [{ value: 'boogie', weight: 1.0 }] },
                     bassAccompanimentDouble: { enabled: true, instrument: 'electricGuitar', octaveShift: 1 },
+                    melody: { source: 'harmony_top_note' }
                 },
                 bundles: [{ id: 'BLUES_ANX_MAIN_A_BUNDLE', name: 'Main Riff A', duration: { percent: 100 }, characteristics: {}, phrases: {} }],
                 outroFill: { type: 'roll', duration: 1, parameters: { instrument: 'tom', density: 0.7 } },
@@ -98,7 +106,7 @@ export const AnxiousBluesBlueprint: MusicBlueprint = {
                         useSnare: true, kickVolume: 1.2, usePerc: true, ride: { enabled: true }, useGhostHat: true
                     },
                     bass: { techniques: [{ value: 'boogie', weight: 1.0 }] },
-                    bassAccompanimentDouble: { enabled: false, instrument: 'electricGuitar', octaveShift: 1 },
+                    bassAccompanimentDouble: { enabled: false },
                     melody: { 
                         source: 'motif', 
                         density: { min: 0.6, max: 0.8 },
@@ -123,8 +131,9 @@ export const AnxiousBluesBlueprint: MusicBlueprint = {
                     },
                     bass: { techniques: [{ value: 'boogie', weight: 1.0 }] },
                     bassAccompanimentDouble: { enabled: true, instrument: 'electricGuitar', octaveShift: 1 },
+                    melody: { source: 'harmony_top_note' }
                 },
-                bundles: [{ id: 'BLUES_ANX_MAIN_B_BUNDLE', name: 'Main Riff B', duration: { percent: 100 }, characteristics: {}, phrases: {} }],
+                bundles: [{ id: 'BLUES_ANX_MAIN_B_BUNDLE', name: 'Riff Return', duration: { percent: 100 }, characteristics: {}, phrases: {} }],
                 outroFill: null,
             }
         ]
