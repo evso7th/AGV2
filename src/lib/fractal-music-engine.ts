@@ -1,5 +1,4 @@
 
-
 import type { FractalEvent, Mood, Genre, Technique, BassSynthParams, InstrumentType, MelodyInstrument, BassInstrument, AccompanimentInstrument, ResonanceMatrix, InstrumentHints, AccompanimentTechnique, GhostChord, SfxRule, V1MelodyInstrument, V2MelodyInstrument, BlueprintPart, InstrumentationRules } from './fractal';
 import { ElectronicK, TraditionalK, AmbientK, MelancholicMinorK } from './resonance-matrices';
 import { getScaleForMood, STYLE_DRUM_PATTERNS, generateAmbientBassPhrase, createAccompanimentAxiom, PERCUSSION_SETS, TEXTURE_INSTRUMENT_WEIGHTS_BY_MOOD, getAccompanimentTechnique, createBassFill, createDrumFill, AMBIENT_ACCOMPANIMENT_WEIGHTS, chooseHarmonyInstrument, mutateBassPhrase, createMelodyMotif, createDrumAxiom, generateGhostHarmonyTrack, mutateAccompanimentPhrase, createHarmonyAxiom, generateBluesBassRiff } from './music-theory';
@@ -8,6 +7,7 @@ import { getBlueprint } from './blueprints';
 import { V2_PRESETS } from './presets-v2';
 import { PARANOID_STYLE_RIFF } from './assets/rock-riffs';
 import { BLUES_BASS_RIFFS } from './assets/blues-bass-riffs';
+import { NEUTRAL_BLUES_BASS_RIFFS } from './assets/neutral-blues-riffs';
 
 
 export type Branch = {
@@ -465,29 +465,30 @@ export class FractalMusicEngine {
 
     // --- BASS GENERATION ---
     let bassEvents: FractalEvent[] = [];
+    
+    // --- DIAGNOSTIC LOGS ---
     const bassRules = navInfo.currentPart.instrumentRules?.bass;
+    console.log(`%c[FME Bass-Check] Blueprint rules for bass: ${JSON.stringify(bassRules)}`, 'color: #FFD700');
+    
     const bassTechnique = bassRules?.techniques?.[0]?.value as Technique || 'drone';
+    console.log(`%c[FME Bass-Check] Final chosen bass technique: ${bassTechnique}`, 'color: #FFA500');
+    // --- END DIAGNOSTIC LOGS ---
 
     if (navInfo.currentPart.layers.bass) {
-        // #ИЗМЕНЕНО: Новая логика для техники 'riff'
         if (bassTechnique === 'riff') {
             const isNewBundle = navInfo.isBundleTransition || this.epoch === 0;
-            // Генерируем новый рифф (и мутируем его) только на границе бандла
             if (isNewBundle || this.bassPhraseLibrary[this.currentBassPhraseIndex]?.length === 0) {
                 const newRiffAxiom = generateBluesBassRiff(currentChord, 'riff', this.random, this.config.mood);
-                const mutatedRiff = this.epoch > 0 ? mutateBassPhrase(newRiffAxiom, currentChord, this.config.mood, this.config.genre, this.random) : newRiffAxiom; // Не мутируем самый первый рифф
-                
-                // Риффы могут быть многотактовыми, мы должны их "нарезать"
-                // Для простоты, пока будем использовать только первый такт риффа, повторяя его
+                const mutatedRiff = this.epoch > 0 ? mutateBassPhrase(newRiffAxiom, currentChord, this.config.mood, this.config.genre, this.random) : newRiffAxiom;
                 const oneBarRiff = mutatedRiff.filter(e => e.time < 4.0);
                 this.bassPhraseLibrary[this.currentBassPhraseIndex] = oneBarRiff;
                 console.log(`%c[FME @ Bar ${this.epoch}] Generated and stored new mutated blues riff.`, 'color: #ADD8E6');
             }
             bassEvents = this.bassPhraseLibrary[this.currentBassPhraseIndex];
 
-        } else if (this.config.genre === 'blues') { // Старая логика для других блюзовых техник
+        } else if (this.config.genre === 'blues') {
             bassEvents = generateBluesBassRiff(currentChord, bassTechnique, this.random, this.config.mood);
-        } else { // Старая логика для эмбиента
+        } else {
             if (!this.bassPhraseLibrary[this.currentBassPhraseIndex] || this.bassPhraseLibrary[this.currentBassPhraseIndex].length === 0 || navInfo.isBundleTransition) {
                const newPhrase = generateAmbientBassPhrase(currentChord, this.config.mood, this.config.genre, this.random, this.config.tempo, bassTechnique);
                 if (this.bassPhraseLibrary.length <= this.currentBassPhraseIndex) {
@@ -504,13 +505,12 @@ export class FractalMusicEngine {
         const { instrument, octaveShift } = navInfo.currentPart.bassAccompanimentDouble;
         const bassDoubleEvents: FractalEvent[] = bassEvents.map(e => ({
             ...e,
-            type: 'melody', // #ИЗМЕНЕНО: Тип изменен на 'melody', чтобы его играл мелодический менеджер
+            type: 'melody',
             note: e.note + (12 * octaveShift),
             weight: e.weight * 0.8,
         }));
-        // Вместо добавления к аккомпанементу, мы добавляем это как события мелодии
         allEvents.push(...bassDoubleEvents);
-        instrumentHints.melody = instrument; // Указываем, какой инструмент должен играть эту партию
+        instrumentHints.melody = instrument;
     }
     
     let harmonyEvents: FractalEvent[] = [];
@@ -521,32 +521,25 @@ export class FractalMusicEngine {
         harmonyEvents = createHarmonyAxiom(currentChord, this.config.mood, this.config.genre, this.random);
     }
     
-    // --- MELODY GENERATION (REFACTORED for 4-bar motifs) ---
-    if (navInfo.currentPart.layers.melody && !navInfo.currentPart.bassAccompanimentDouble?.enabled) { // Не генерируем мелодию, если уже есть дублирование баса
+    if (navInfo.currentPart.layers.melody && !navInfo.currentPart.bassAccompanimentDouble?.enabled) {
         const melodyRules = navInfo.currentPart.instrumentRules?.melody;
         const melodyDensity = melodyRules?.density?.min ?? 0.25;
-        const minInterval = 8; // Don't play motifs too close together
+        const minInterval = 8;
         const motifBarIndex = this.epoch - this.lastMelodyPlayEpoch;
 
         if (motifBarIndex >= 0 && motifBarIndex < 4 && this.currentMelodyMotif.length > 0) {
-            // We are inside a 4-bar motif playback cycle
             const barStartBeat = motifBarIndex * 4.0;
             const barEndBeat = (motifBarIndex + 1) * 4.0;
             melodyEvents = this.currentMelodyMotif
                 .filter(e => e.time >= barStartBeat && e.time < barEndBeat)
-                .map(e => ({ ...e, time: e.time - barStartBeat })); // Make time relative to current bar
+                .map(e => ({ ...e, time: e.time - barStartBeat }));
         } else if (this.epoch >= this.lastMelodyPlayEpoch + minInterval && this.random.next() < melodyDensity) {
-            // Time to start a NEW 4-bar motif
             const shouldMutate = this.currentMelodyMotif.length > 0 && this.random.next() > 0.3;
             const registerHint = melodyRules?.register?.preferred;
-
             this.currentMelodyMotif = createMelodyMotif(currentChord, this.config.mood, this.random, shouldMutate ? this.currentMelodyMotif : undefined, registerHint, this.config.genre);
-            
-            // Play the FIRST bar of the new motif now
             melodyEvents = this.currentMelodyMotif
                 .filter(e => e.time < 4.0)
                 .map(e => ({ ...e, time: e.time }));
-                
             this.lastMelodyPlayEpoch = this.epoch;
         }
     }
@@ -568,14 +561,7 @@ export class FractalMusicEngine {
         allEvents.push({ type: 'sparkle', note: 60, time: this.random.next() * 4, duration: 1, weight: 0.5, technique: 'hit', dynamics: 'p', phrasing: 'legato', params: {mood: this.config.mood, genre: this.config.genre}});
     }
     
-    // --- FILL GENERATION ---
     const isLastBarOfBundle = navInfo.currentBundle && this.epoch === navInfo.currentBundle.endBar;
-    // #ЗАЧЕМ: Этот блок кода проверяет, является ли текущий такт последним в бандле и есть ли в
-    //         блюпринте инструкция `outroFill` для этого бандла.
-    // #ЧТО: Если оба условия истинны, он вызывает функции `createDrumFill` и `createBassFill`,
-    //       чтобы сгенерировать переходные сбивки, и добавляет их к событиям этого такта.
-    // #СВЯЗИ: Этот механизм позволяет декларативно управлять филлами через блюпринты,
-    //         не зашивая логику в код движка.
     if (navInfo.currentBundle && navInfo.currentBundle.outroFill && isLastBarOfBundle) {
         const fillParams = navInfo.currentBundle.outroFill.parameters || {};
         console.log(`%c[FME @ Bar ${this.epoch}] Generating outro fill for bundle: ${navInfo.currentBundle.id}`, 'color: #FF8C00');
@@ -603,7 +589,6 @@ export class FractalMusicEngine {
     if (!this.isPromenadeActive && this.epoch > 0 && this.epoch >= this.navigator.totalBars) {
       console.log(`%c[FME] End of suite reached at bar ${this.epoch}. Activating PROMENADE.`, 'color: #FFD700; font-weight: bold');
       this.isPromenadeActive = true;
-      // Immediately start the promenade
       return {
         events: this.promenadeBars,
         instrumentHints: { bass: 'glideBass', accompaniment: 'synth' }
@@ -611,19 +596,15 @@ export class FractalMusicEngine {
     }
     
     if (this.isPromenadeActive) {
-        const promenadeDuration = 4; // Promenade is 4 bars long
+        const promenadeDuration = 4;
         const promenadeEndEpoch = this.navigator.totalBars + promenadeDuration;
         
         if (this.epoch >= promenadeEndEpoch) {
              console.log(`%c[FME] Promenade ended. Posting 'reset' command to self for full regeneration.`, 'color: #FF4500; font-weight: bold;');
-             // Use the existing 'reset' command logic
              self.postMessage({ command: 'reset' });
-             this.isPromenadeActive = false; // Reset state
-             // Return empty for this tick, as the reset will handle the next state
+             this.isPromenadeActive = false;
              return { events: [], instrumentHints: {} };
         }
-        // While promenade is playing, but before reset, return empty to let it finish.
-        // The first tick of promenade already sent the events.
         return { events: [], instrumentHints: {} };
     }
     
