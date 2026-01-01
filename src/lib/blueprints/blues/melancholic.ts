@@ -17,7 +17,7 @@ export const MelancholicBluesBlueprint: MusicBlueprint = {
         totalDuration: { preferredBars: 144 }, // 12 loops of 12 bars
         parts: [
             {
-                id: 'INTRO', name: 'First Verse', duration: { percent: 25 },
+                id: 'INTRO', name: 'Verse 1', duration: { percent: 25 },
                 layers: { bass: true, drums: true, accompaniment: true, harmony: true },
                 instrumentation: {
                     accompaniment: { strategy: 'weighted', v1Options: [{ name: 'organ', weight: 1.0 }], v2Options: [{ name: 'organ', weight: 1.0 }] },
@@ -39,7 +39,18 @@ export const MelancholicBluesBlueprint: MusicBlueprint = {
                     melody: { strategy: 'weighted', v1Options: [{ name: 'guitar_shineOn', weight: 1.0 }], v2Options: [{ name: 'guitar_shineOn', weight: 1.0 }] }
                 },
                 instrumentRules: {
-                    drums: { pattern: 'composer', density: { min: 0.6, max: 0.8 }, kickVolume: 1.1 },
+                    drums: { 
+                        pattern: 'composer', 
+                        density: { min: 0.6, max: 0.8 }, 
+                        kickVolume: 1.1,
+                        ride: {
+                            enabled: true,
+                            quietWindows: [
+                                { start: 0.25, end: 0.65 } // Молчать с 25% до 65% части
+                            ]
+                        },
+                        usePerc: true, // Разрешить томы
+                    },
                     melody: { density: { min: 0.4, max: 0.6 }, source: 'motif' },
                     bass: { techniques: [{ value: 'walking', weight: 1.0 }] },
                 },
