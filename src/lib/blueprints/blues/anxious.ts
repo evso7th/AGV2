@@ -7,7 +7,7 @@ export const AnxiousBluesBlueprint: MusicBlueprint = {
     description: 'A fast, chaotic, and tense blues shuffle that builds from an empty start.',
     mood: 'anxious',
     musical: {
-        key: { root: 'E', scale: 'mixolydian', octave: 2 },
+        key: { root: 'E', scale: 'ionian', octave: 2 },
         bpm: { base: 82, range: [80, 88], modifier: 1.0 },
         timeSignature: { numerator: 4, denominator: 4 },
         harmonicJourney: [], // 12-bar major
@@ -30,12 +30,10 @@ export const AnxiousBluesBlueprint: MusicBlueprint = {
                 instrumentation: {
                     accompaniment: {
                         strategy: 'weighted',
-                        // Опции для старого движка (для совместимости)
                         v1Options: [
-                            { name: 'mellotron', weight: 0.8 }, // 80% шанс струнных
-                            { name: 'flute', weight: 0.2 }      // 20% шанс флейты
+                            { name: 'mellotron', weight: 0.8 }, 
+                            { name: 'flute', weight: 0.2 }      
                         ],
-                        // Опции для нового V2 движка
                         v2Options: [
                             { name: 'mellotron', weight: 0.8 },
                             { name: 'mellotron_flute_intimate', weight: 0.2 }
