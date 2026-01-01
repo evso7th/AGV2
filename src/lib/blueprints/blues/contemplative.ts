@@ -40,10 +40,7 @@ export const ContemplativeBluesBlueprint: MusicBlueprint = {
                     drums: { pattern: 'composer', density: { min: 0.5, max: 0.7 }, useSnare: true, useGhostHat: true },
                     bass: { techniques: [{ value: 'walking', weight: 1.0 }] },
                     accompaniment: { techniques: [{value: 'long-chords', weight: 1.0}]},
-                    melody: { 
-                        source: 'motif',
-                        density: { min: 0.3, max: 0.5 }
-                    },
+                    bassAccompanimentDouble: { enabled: true, instrument: 'electricGuitar', octaveShift: 1 },
                     sparkles: { 
                         eventProbability: 0.15,
                         categories: [
@@ -77,9 +74,9 @@ export const ContemplativeBluesBlueprint: MusicBlueprint = {
                         ride: { enabled: false },
                         usePerc: true,
                     },
-                    melody: { density: { min: 0.4, max: 0.6 }, source: 'motif' },
                     bass: { techniques: [{ value: 'walking', weight: 1.0 }] },
                     accompaniment: { techniques: [{value: 'long-chords', weight: 1.0}]},
+                    bassAccompanimentDouble: { enabled: true, instrument: 'electricGuitar', octaveShift: 1 },
                     sparkles: { eventProbability: 0.15, categories: [{ name: 'electro', weight: 0.5 }, { name: 'ambient_common', weight: 0.5 }] },
                     sfx: { 
                         eventProbability: 0.1, 
@@ -94,15 +91,15 @@ export const ContemplativeBluesBlueprint: MusicBlueprint = {
             },
             {
                 id: 'OUTRO', name: 'Final Verse', duration: { percent: 25 },
-                layers: { bass: true, drums: true, accompaniment: true, harmony: true, sparkles: true, sfx: true },
+                layers: { bass: true, drums: true, accompaniment: true, harmony: true, sparkles: true, sfx: true, melody: true },
                 instrumentation: {
                     accompaniment: { strategy: 'weighted', v1Options: [{ name: 'organ', weight: 1.0 }], v2Options: [{ name: 'organ', weight: 1.0 }] }
                 },
                 instrumentRules: {
-                    drums: { pattern: 'composer', density: { min: 0.4, max: 0.6 } },
+                    drums: { pattern: 'composer', density: { min: 0.4, max: 0.6 }, useGhostHat: true },
                     bass: { techniques: [{ value: 'walking', weight: 1.0 }] },
                     accompaniment: { techniques: [{value: 'long-chords', weight: 1.0}]},
-                    melody: { source: 'harmony_top_note' },
+                    bassAccompanimentDouble: { enabled: true, instrument: 'electricGuitar', octaveShift: 1 },
                     sparkles: { eventProbability: 0.15, categories: [{ name: 'electro', weight: 0.5 }, { name: 'ambient_common', weight: 0.5 }] },
                     sfx: { 
                         eventProbability: 0.1, 

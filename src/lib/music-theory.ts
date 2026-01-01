@@ -1,5 +1,4 @@
 
-
 import type { FractalEvent, Mood, Genre, Technique, BassSynthParams, InstrumentType, AccompanimentInstrument, InstrumentHints, AccompanimentTechnique, GhostChord, SfxRule, V1MelodyInstrument, V2MelodyInstrument } from '@/types/fractal';
 import { ElectronicK, TraditionalK, AmbientK, MelancholicMinorK } from './resonance-matrices';
 import { BlueprintNavigator, type NavigationInfo } from './blueprint-navigator';
@@ -377,41 +376,45 @@ export function generateBluesBassRiff(chord: GhostChord, technique: Technique, r
 
 
 export function createAccompanimentAxiom(chord: GhostChord, mood: Mood, genre: Genre, random: { next: () => number; nextInt: (max: number) => number }, tempo: number = 120, registerHint?: 'low' | 'mid' | 'high'): FractalEvent[] {
-    const swellParams = { cutoff: 300, resonance: 0.8, distortion: 0.02, portamento: 0.0, attack: 1.5, release: 2.5 };
     const axiom: FractalEvent[] = [];
-    
     const scale = getScaleForMood(mood);
     const rootMidi = chord.rootNote;
+    
+    // #ЗАЧЕМ: Эта функция строит полноценный аккорд на основе "Призрачного Аккорда".
+    // #ЧТО: Она определяет терцию и квинту, а затем создает массив событий для каждой ноты аккорда.
+    // #СВЯЗИ: Вызывается движком для создания гармонической основы.
     
     const isMinor = chord.chordType === 'minor' || chord.chordType === 'diminished';
     const third = rootMidi + (isMinor ? 3 : 4);
     const fifth = rootMidi + 7;
 
     const chordNotes = [rootMidi, third, fifth].filter(n => scale.some(scaleNote => scaleNote % 12 === n % 12));
-    if (chordNotes.length < 2) return [];
-
-    let baseOctave = 3;
-    if (registerHint === 'low') {
-        baseOctave = 2;
-    }
-
-    const numNotes = 2 + random.nextInt(2);
-    let currentTime = 0;
-
-    for (let i = 0; i < numNotes; i++) {
-        const noteMidi = chordNotes[random.nextInt(chordNotes.length)] + 12 * baseOctave;
-        const duration = 4.0 / numNotes;
-        
-        const mainEvent: FractalEvent = {
-            type: 'accompaniment', note: noteMidi, duration: duration,
-            time: currentTime, weight: 0.6 + random.next() * 0.2, technique: 'swell',
-            dynamics: 'p', phrasing: 'legato', params: swellParams
-        };
-        axiom.push(mainEvent);
-
-        currentTime += duration;
+    if (chordNotes.length < 2) {
+      console.warn(`[AccompAxiom] Could not form a valid chord from root ${rootMidi}`);
+      return [];
     }
     
+    let baseOctave = 3;
+    if (registerHint === 'low') baseOctave = 2;
+    if (registerHint === 'high') baseOctave = 4;
+
+    const duration = 4.0; // Play the chord for the whole bar
+
+    chordNotes.forEach((note, index) => {
+        axiom.push({
+            type: 'accompaniment',
+            note: note + 12 * baseOctave,
+            duration: duration,
+            time: 0, // All notes start at the same time
+            weight: 0.6 - (index * 0.05), // Slightly vary weight for texture
+            technique: 'swell',
+            dynamics: 'p',
+            phrasing: 'legato',
+            params: { attack: 0.5, release: duration }
+        });
+    });
+
+    console.log(`[AccompAxiom] Generated a ${chordNotes.length}-note chord for root ${rootMidi}.`);
     return axiom;
 }
 
@@ -1055,7 +1058,6 @@ export function createMelodyMotif(chord: GhostChord, mood: Mood, random: { next:
     // Специальная логика для блюза
     if (genre === 'blues') {
         console.log(`%c[MelodyAxiom] Generating special BLUES motif.`, 'color: #4682B4');
-        const scale = getScaleForMood(mood); // E.g., Phrygian for dark blues
         const root = chord.rootNote;
         
         // Classic blues pentatonic notes relative to root
@@ -1182,6 +1184,7 @@ export function createMelodyMotif(chord: GhostChord, mood: Mood, random: { next:
 
 
     
+
 
 
 
