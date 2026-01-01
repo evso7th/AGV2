@@ -43,13 +43,8 @@ export const DarkBluesBlueprint: MusicBlueprint = {
                         pattern: 'composer', 
                         density: { min: 0.6, max: 0.8 }, 
                         kickVolume: 1.2,
-                        ride: {
-                            enabled: true,
-                            quietWindows: [
-                                { start: 0.0, end: 0.4 }, // Молчать первые 40% части
-                                { start: 0.6, end: 1.0 }  // Молчать последние 40% части
-                            ]
-                        }
+                        ride: { enabled: true, quietWindows: [ { start: 0.0, end: 0.2 }, { start: 0.4, end: 0.6 }, { start: 0.8, end: 1.0 } ] },
+                        usePerc: true
                     },
                     melody: { density: { min: 0.4, max: 0.6 }, source: 'motif' },
                     bass: { techniques: [{ value: 'walking', weight: 1.0 }] },
