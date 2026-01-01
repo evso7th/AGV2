@@ -20,12 +20,12 @@ export const DreamyBluesBlueprint: MusicBlueprint = {
                 id: 'VERSE', name: 'Verse', duration: { percent: 60 },
                 layers: { bass: true, drums: true, accompaniment: true, harmony: true, melody: true },
                 instrumentation: {
-                    accompaniment: { strategy: 'weighted', v1Options: [{ name: 'organ', weight: 0.6 }, { name: 'piano', weight: 0.4 }], v2Options: [{ name: 'organ', weight: 0.6 }, { name: 'piano', weight: 0.4 }] },
-                    melody: { strategy: 'weighted', v1Options: [{ name: 'guitar_shineOn', weight: 1.0 }], v2Options: [{ name: 'guitar_shineOn', weight: 1.0 }] }
+                    accompaniment: { strategy: 'weighted', v1Options: [{ name: 'organ', weight: 0.6 }, { name: 'piano', weight: 0.4 }], v2Options: [{ name: 'organ_soft_jazz', weight: 0.6 }, { name: 'piano', weight: 0.4 }] },
+                    melody: { strategy: 'weighted', v1Options: [{ name: 'electricGuitar', weight: 1.0 }], v2Options: [{ name: 'guitar_shineOn', weight: 1.0 }] }
                 },
                 instrumentRules: {
                     drums: { pattern: 'composer', density: { min: 0.3, max: 0.5 }, useSnare: true, useGhostHat: true },
-                    bass: { techniques: [{ value: 'long_notes', weight: 1.0 }] }, // UNIQUE TECHNIQUE
+                    bass: { techniques: [{ value: 'long_notes', weight: 1.0 }] }, 
                     melody: { source: 'motif', density: { min: 0.3, max: 0.5 } }
                 },
                 bundles: [{ id: 'BLUES_DREAMY_VERSE_BUNDLE', name: 'Verse', duration: { percent: 100 }, characteristics: {}, phrases: {} }],
@@ -35,7 +35,7 @@ export const DreamyBluesBlueprint: MusicBlueprint = {
                 id: 'OUTRO', name: 'Fade Out', duration: { percent: 40 },
                 layers: { bass: true, drums: true, accompaniment: true },
                 instrumentation: {
-                    accompaniment: { strategy: 'weighted', v1Options: [{ name: 'organ', weight: 1.0 }], v2Options: [{ name: 'organ', weight: 1.0 }] }
+                    accompaniment: { strategy: 'weighted', v1Options: [{ name: 'organ', weight: 1.0 }], v2Options: [{ name: 'organ_soft_jazz', weight: 1.0 }] }
                 },
                 instrumentRules: {
                     drums: { pattern: 'composer', density: { min: 0.2, max: 0.4 } },
