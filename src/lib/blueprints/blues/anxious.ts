@@ -7,7 +7,7 @@ export const AnxiousBluesBlueprint: MusicBlueprint = {
     description: 'A fast, chaotic, and tense blues shuffle that builds from an empty start.',
     mood: 'anxious',
     musical: {
-        key: { root: 'A', scale: 'mixolydian', octave: 3 },
+        key: { root: 'E', scale: 'ionian', octave: 2 },
         bpm: { base: 82, range: [80, 88], modifier: 1.0 },
         timeSignature: { numerator: 4, denominator: 4 },
         harmonicJourney: [], // 12-bar major
