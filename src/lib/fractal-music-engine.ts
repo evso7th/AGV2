@@ -465,25 +465,39 @@ export class FractalMusicEngine {
 
     // --- BASS GENERATION ---
     let bassEvents: FractalEvent[] = [];
-    if (navInfo.currentPart.layers.bass) {
-      const bassRules = navInfo.currentPart.instrumentRules?.bass;
-      const bassTechnique = bassRules?.techniques?.[0]?.value as Technique || 'drone';
+    const bassRules = navInfo.currentPart.instrumentRules?.bass;
+    const bassTechnique = bassRules?.techniques?.[0]?.value as Technique || 'drone';
 
-      // #ИЗМЕНЕНО: Передаем `mood` в генератор блюзового риффа
-      if (this.config.genre === 'blues') {
-        bassEvents = generateBluesBassRiff(currentChord, bassTechnique, this.random, this.config.mood);
-      } else {
-        // #ИСПРАВЛЕНО: Убрано дублирование, используется единая точка генерации фраз
-        if (!this.bassPhraseLibrary[this.currentBassPhraseIndex] || this.bassPhraseLibrary[this.currentBassPhraseIndex].length === 0 || this.epoch % PHRASE_VARIATION_INTERVAL === 0) {
-           const newPhrase = generateAmbientBassPhrase(currentChord, this.config.mood, this.config.genre, this.random, this.config.tempo, bassTechnique);
-            if (this.bassPhraseLibrary.length <= this.currentBassPhraseIndex) {
-                 this.bassPhraseLibrary.push(newPhrase);
-            } else {
-                this.bassPhraseLibrary[this.currentBassPhraseIndex] = newPhrase;
+    if (navInfo.currentPart.layers.bass) {
+        // #ИЗМЕНЕНО: Новая логика для техники 'riff'
+        if (bassTechnique === 'riff') {
+            const isNewBundle = navInfo.isBundleTransition || this.epoch === 0;
+            // Генерируем новый рифф (и мутируем его) только на границе бандла
+            if (isNewBundle || this.bassPhraseLibrary[this.currentBassPhraseIndex]?.length === 0) {
+                const newRiffAxiom = generateBluesBassRiff(currentChord, 'riff', this.random, this.config.mood);
+                const mutatedRiff = this.epoch > 0 ? mutateBassPhrase(newRiffAxiom, currentChord, this.config.mood, this.config.genre, this.random) : newRiffAxiom; // Не мутируем самый первый рифф
+                
+                // Риффы могут быть многотактовыми, мы должны их "нарезать"
+                // Для простоты, пока будем использовать только первый такт риффа, повторяя его
+                const oneBarRiff = mutatedRiff.filter(e => e.time < 4.0);
+                this.bassPhraseLibrary[this.currentBassPhraseIndex] = oneBarRiff;
+                console.log(`%c[FME @ Bar ${this.epoch}] Generated and stored new mutated blues riff.`, 'color: #ADD8E6');
             }
+            bassEvents = this.bassPhraseLibrary[this.currentBassPhraseIndex];
+
+        } else if (this.config.genre === 'blues') { // Старая логика для других блюзовых техник
+            bassEvents = generateBluesBassRiff(currentChord, bassTechnique, this.random, this.config.mood);
+        } else { // Старая логика для эмбиента
+            if (!this.bassPhraseLibrary[this.currentBassPhraseIndex] || this.bassPhraseLibrary[this.currentBassPhraseIndex].length === 0 || navInfo.isBundleTransition) {
+               const newPhrase = generateAmbientBassPhrase(currentChord, this.config.mood, this.config.genre, this.random, this.config.tempo, bassTechnique);
+                if (this.bassPhraseLibrary.length <= this.currentBassPhraseIndex) {
+                     this.bassPhraseLibrary.push(newPhrase);
+                } else {
+                    this.bassPhraseLibrary[this.currentBassPhraseIndex] = newPhrase;
+                }
+            }
+            bassEvents = this.bassPhraseLibrary[this.currentBassPhraseIndex];
         }
-        bassEvents = this.bassPhraseLibrary[this.currentBassPhraseIndex];
-      }
     }
     
     if (navInfo.currentPart.bassAccompanimentDouble?.enabled) {
