@@ -25,7 +25,11 @@ export const AnxiousBluesBlueprint: MusicBlueprint = {
                     melody: false 
                 },
                 instrumentation: {
-                    accompaniment: { strategy: 'weighted', v1Options: [{ name: 'organ', weight: 1.0 }], v2Options: [{ name: 'organ', weight: 1.0 }] },
+                    accompaniment: { 
+                        strategy: 'weighted', 
+                        v1Options: [{ name: 'synth', weight: 1.0 }], // Emerald Pad for V1
+                        v2Options: [{ name: 'synth', weight: 1.0 }]  // Emerald Pad for V2
+                    },
                 },
                 instrumentRules: {
                     accompaniment: { density: { min: 0.4, max: 0.6 } },
@@ -45,11 +49,10 @@ export const AnxiousBluesBlueprint: MusicBlueprint = {
                     drums: { 
                         pattern: 'composer', 
                         density: { min: 0.8, max: 1.0 }, 
-                        useSnare: true, 
+                        useSnare: false, // OFF
                         kickVolume: 1.1,
-                        useGhostHat: false, // Explicitly disable hi-hats
-                        usePerc: true, // Enable toms
-                        ride: { enabled: false } // Explicitly disable ride
+                        usePerc: false, // OFF
+                        ride: { enabled: false }
                     },
                     bass: { 
                         techniques: [{ value: 'boogie', weight: 1.0 }] // Use boogie for shuffle feel
