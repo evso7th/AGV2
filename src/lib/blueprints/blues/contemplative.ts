@@ -39,7 +39,7 @@ export const ContemplativeBluesBlueprint: MusicBlueprint = {
                 instrumentRules: {
                     drums: { pattern: 'composer', density: { min: 0.5, max: 0.7 }, useSnare: true, useGhostHat: true },
                     bass: { techniques: [{ value: 'walking', weight: 1.0 }] },
-                    accompaniment: { techniques: [{value: 'choral', weight: 1.0}]},
+                    accompaniment: { techniques: [{value: 'long-chords', weight: 1.0}]},
                     melody: { 
                         source: 'motif',
                         density: { min: 0.3, max: 0.5 }
@@ -79,6 +79,7 @@ export const ContemplativeBluesBlueprint: MusicBlueprint = {
                     },
                     melody: { density: { min: 0.4, max: 0.6 }, source: 'motif' },
                     bass: { techniques: [{ value: 'walking', weight: 1.0 }] },
+                    accompaniment: { techniques: [{value: 'long-chords', weight: 1.0}]},
                     sparkles: { eventProbability: 0.15, categories: [{ name: 'electro', weight: 0.5 }, { name: 'ambient_common', weight: 0.5 }] },
                     sfx: { 
                         eventProbability: 0.1, 
@@ -100,7 +101,7 @@ export const ContemplativeBluesBlueprint: MusicBlueprint = {
                 instrumentRules: {
                     drums: { pattern: 'composer', density: { min: 0.4, max: 0.6 } },
                     bass: { techniques: [{ value: 'walking', weight: 1.0 }] },
-                    accompaniment: { techniques: [{value: 'choral', weight: 1.0}]},
+                    accompaniment: { techniques: [{value: 'long-chords', weight: 1.0}]},
                     melody: { source: 'harmony_top_note' },
                     sparkles: { eventProbability: 0.15, categories: [{ name: 'electro', weight: 0.5 }, { name: 'ambient_common', weight: 0.5 }] },
                     sfx: { 
