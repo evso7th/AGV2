@@ -1,4 +1,5 @@
 
+
 import type { FractalEvent, Mood, Genre, Technique, BassSynthParams, InstrumentType, AccompanimentInstrument, InstrumentHints, AccompanimentTechnique, GhostChord, SfxRule, V1MelodyInstrument, V2MelodyInstrument, BlueprintPart, InstrumentationRules } from './fractal';
 import { ElectronicK, TraditionalK, AmbientK, MelancholicMinorK } from './resonance-matrices';
 import { BlueprintNavigator, type NavigationInfo } from './blueprint-navigator';
@@ -379,16 +380,19 @@ export function createAccompanimentAxiom(chord: GhostChord, mood: Mood, genre: G
     const axiom: FractalEvent[] = [];
     const rootMidi = chord.rootNote;
     
-    // #ИСПРАВЛЕНО: Эта функция теперь не проверяет принадлежность нот к ладу,
-    // # а строит аккорд хроматически, как и положено в блюзе.
+    // #ЗАЧЕМ: Этот блок кода теперь строит аккорд хроматически, без проверки на принадлежность к ладу.
+    // #ЧТО: Он определяет ноты для мажорного, минорного или доминантного аккорда, просто добавляя
+    //       полутона к базовой ноте (rootMidi), что является правильным подходом для блюзовой гармонии,
+    //       где аккорды часто содержат ноты, не входящие в основную диатоническую гамму.
+    // #СВЯЗИ: Устраняет ошибку "Could not form a valid dominant 7th".
     let chordNotes: number[] = [];
     if (chord.chordType === 'dominant') {
-        chordNotes = [rootMidi, rootMidi + 4, rootMidi + 7, rootMidi + 10]; // Tonic, Major 3rd, Perfect 5th, Minor 7th
-        console.log(`[AccompAxiom] Building dominant 7th for root ${rootMidi}.`);
+        // Строим доминантсептаккорд: Тоника, Большая терция, Квинта, Малая септима
+        chordNotes = [rootMidi, rootMidi + 4, rootMidi + 7, rootMidi + 10];
     } else {
         const isMinor = chord.chordType === 'minor' || chord.chordType === 'diminished';
+        // Строим мажорное или минорное трезвучие
         chordNotes = [rootMidi, rootMidi + (isMinor ? 3 : 4), rootMidi + 7];
-        console.log(`[AccompAxiom] Building ${isMinor ? 'minor' : 'major'} triad for root ${rootMidi}.`);
     }
     
     let baseOctave = 3;
@@ -595,13 +599,13 @@ export const STYLE_DRUM_PATTERNS: Record<Genre, any> = {
                 kick: [{ type: 'drum_kick', time: 0, duration: 0.5, weight: 0.9 }, { type: 'drum_kick', time: 2, duration: 0.5, weight: 0.9 }],
                 snare: [{ type: 'drum_snare', time: 1, duration: 0.5, weight: 1.0 }, { type: 'drum_snare', time: 3, duration: 0.5, weight: 1.0 }],
                 hihat: [
-                    { type: 'drum_ride', time: 0, duration: 0.66, weight: 0.6 },
+                    { type: 'drum_ride', time: 0, duration: 0.66, weight: 0.4 },
                     { type: 'drum_ride', time: 0.66, duration: 0.33, weight: 0.4 },
-                    { type: 'drum_ride', time: 1, duration: 0.66, weight: 0.6 },
+                    { type: 'drum_ride', time: 1, duration: 0.66, weight: 0.4 },
                     { type: 'drum_ride', time: 1.66, duration: 0.33, weight: 0.4 },
-                    { type: 'drum_ride', time: 2, duration: 0.66, weight: 0.6 },
+                    { type: 'drum_ride', time: 2, duration: 0.66, weight: 0.4 },
                     { type: 'drum_ride', time: 2.66, duration: 0.33, weight: 0.4 },
-                    { type: 'drum_ride', time: 3, duration: 0.66, weight: 0.6 },
+                    { type: 'drum_ride', time: 3, duration: 0.66, weight: 0.4 },
                     { type: 'drum_ride', time: 3.66, duration: 0.33, weight: 0.4 },
                 ],
                 tags: ['shuffle']
@@ -1215,3 +1219,6 @@ export function createMelodyMotif(chord: GhostChord, mood: Mood, random: { next:
 
 
 
+
+
+    
