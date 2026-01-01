@@ -1,5 +1,4 @@
 
-
 // src/lib/music-theory.ts
 import type { FractalEvent, Mood, Genre, Technique, BassSynthParams, InstrumentType, AccompanimentInstrument, InstrumentHints, AccompanimentTechnique, GhostChord, SfxRule, V1MelodyInstrument, V2MelodyInstrument } from '@/types/fractal';
 import { ElectronicK, TraditionalK, AmbientK, MelancholicMinorK } from './resonance-matrices';
@@ -7,6 +6,7 @@ import { BlueprintNavigator, type NavigationInfo } from './blueprint-navigator';
 import { getBlueprint } from './blueprints';
 import { V2_PRESETS } from './presets-v2';
 import { PARANOID_STYLE_RIFF } from './assets/rock-riffs';
+import { BLUES_BASS_RIFFS } from './assets/blues-bass-riffs';
 
 
 export type Branch = {
@@ -337,77 +337,41 @@ export function generateAmbientBassPhrase(chord: GhostChord, mood: Mood, genre: 
 
 /**
  * #ЗАЧЕМ: Эта функция является "мозгом" блюзового басиста.
- * #ЧТО: Она генерирует аутентичные блюзовые басовые риффы в зависимости от запрошенной техники.
- *       Поддерживает 'walking' (ходячий бас), 'boogie' (буги-вуги), 'riff' (простой рифф) и 'long_notes' (балладный стиль).
+ * #ЧТО: Она генерирует аутентичные блюзовые басовые риффы, случайным образом выбирая один из 10
+ *       классических паттернов из библиотеки `BLUES_BASS_RIFFS`.
  * #СВЯЗИ: Вызывается из `generateAmbientBassPhrase`, когда `genre === 'blues'`.
  */
 export function generateBluesBassRiff(chord: GhostChord, technique: Technique, random: { next: () => number, nextInt: (max: number) => number }): FractalEvent[] {
     const phrase: FractalEvent[] = [];
     const root = chord.rootNote;
-    const isMajor = chord.chordType === 'major' || chord.chordType === 'dominant';
-    
-    const R = root;
-    const m3 = root + 3;
-    const M3 = root + 4;
-    const P4 = root + 5;
-    const aug4 = root + 6;
-    const P5 = root + 7;
-    const m6 = root + 8;
-    const M6 = root + 9;
-    const m7 = root + 10;
-    
-    let pattern: { note: number; time: number; duration: number; }[] = [];
-    const barDuration = 4.0; // 4 beats for one bar
+    const barDurationInBeats = 4.0;
+    const ticksPerBeat = 3; // 12/8 time feel
 
     console.log(`%c[BluesBass] Generating riff for ${chord.rootNote} with technique: ${technique}`, 'color: #4682B4');
 
-    switch(technique) {
-        case 'walking': // Классический ходячий бас 4/4
-            pattern = [
-                { note: R, time: 0, duration: 1 },
-                { note: isMajor ? M3 : m3, time: 1, duration: 1 },
-                { note: P5, time: 2, duration: 1 },
-                { note: M6, time: 3, duration: 1 },
-            ];
-            break;
-        case 'boogie': // Буги-вуги рифф
-            pattern = [
-                { note: R, time: 0, duration: 1.5 },
-                { note: P5, time: 1.5, duration: 0.5 },
-                { note: M6, time: 2, duration: 1 },
-                { note: m7, time: 3, duration: 1 },
-            ];
-            break;
-        case 'riff': // Простой рифф на основе пентатоники
-            pattern = [
-                { note: R, time: 0, duration: 1 },
-                { note: m3, time: 1, duration: 0.5 },
-                { note: P4, time: 1.5, duration: 0.5 },
-                { note: aug4, time: 2.0, duration: 0.5 },
-                { note: P5, time: 2.5, duration: 1.5 },
-            ];
-            break;
-        case 'long_notes': // Балладный стиль
-        default:
-             pattern = [
-                { note: R, time: 0, duration: barDuration }
-             ];
-            break;
-    }
+    // Выбираем случайный рифф из библиотеки.
+    const riffIndex = random.nextInt(BLUES_BASS_RIFFS.length);
+    const selectedRiff = BLUES_BASS_RIFFS[riffIndex];
+    console.log(`[BluesBass] Selected Riff #${riffIndex + 1}`);
 
-    pattern.forEach(p => {
-        phrase.push({
-            type: 'bass',
-            note: p.note,
-            time: p.time,
-            duration: p.duration,
-            weight: 0.8 + random.next() * 0.1,
-            technique: technique,
-            dynamics: 'mf',
-            phrasing: 'legato',
-            params: { cutoff: 800, resonance: 0.7, distortion: 0.15, portamento: 0.0 }
-        });
-    });
+    let barOffset = 0;
+    // Предполагаем, что рифф должен заполнить 2 такта (стандартно для этих риффов)
+    for (const barPattern of selectedRiff) {
+        for (const riffNote of barPattern) {
+            phrase.push({
+                type: 'bass',
+                note: root + riffNote.note,
+                time: barOffset + (riffNote.tick / ticksPerBeat),
+                duration: riffNote.dur / ticksPerBeat,
+                weight: 0.85 + random.next() * 0.1,
+                technique: 'pluck', // Blues uses a more defined pluck
+                dynamics: 'mf',
+                phrasing: 'legato',
+                params: { cutoff: 800, resonance: 0.7, distortion: 0.15, portamento: 0.0 }
+            });
+        }
+        barOffset += barDurationInBeats;
+    }
 
     return phrase;
 }
@@ -877,7 +841,7 @@ export function createDrumFill(random: { next: () => number, nextInt: (max: numb
     }
 
     // Add final accent
-    const climaxTime = Math.min(3.75, fillTime);
+    const climaxTime = Math.min(3.75, currentTime);
     const numRides = random.next() > 0.5 ? 2 : 1;
     for (let i = 0; i < numRides; i++) {
          fill.push({
@@ -1194,6 +1158,7 @@ export function createMelodyMotif(chord: GhostChord, mood: Mood, random: { next:
 
 
     
+
 
 
 
