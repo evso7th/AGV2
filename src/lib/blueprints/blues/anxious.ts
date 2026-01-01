@@ -7,7 +7,7 @@ export const AnxiousBluesBlueprint: MusicBlueprint = {
     description: 'A fast, chaotic, and tense blues shuffle that builds from an empty start.',
     mood: 'anxious',
     musical: {
-        key: { root: 'E', scale: 'ionian', octave: 2 },
+        key: { root: 'E', scale: 'mixolydian', octave: 2 },
         bpm: { base: 82, range: [80, 88], modifier: 1.0 },
         timeSignature: { numerator: 4, denominator: 4 },
         harmonicJourney: [], // 12-bar major
@@ -37,7 +37,7 @@ export const AnxiousBluesBlueprint: MusicBlueprint = {
                 instrumentRules: {
                     drums: { pattern: 'composer', density: {min: 0.0, max: 0.0}, useSnare: false, usePerc: false, kickVolume: 1.1, ride: { enabled: false }, useGhostHat: false },
                     bass: { techniques: [{ value: 'boogie', weight: 1.0 }] },
-                    melody: { source: 'harmony_top_note' }
+                    bassAccompanimentDouble: { enabled: true, instrument: 'electricGuitar', octaveShift: 1 },
                 },
                 bundles: [
                     { 
@@ -66,10 +66,11 @@ export const AnxiousBluesBlueprint: MusicBlueprint = {
                 outroFill: null,
             },
             {
-                id: 'MAIN_A', name: 'Main Riff', duration: { percent: 35 },
+                id: 'MAIN_A', name: 'Frantic Solo', duration: { percent: 35 },
                 layers: { bass: true, drums: true, accompaniment: true, melody: true },
                 instrumentation: {
                     accompaniment: { strategy: 'weighted', v1Options: [{ name: 'organ', weight: 1.0 }], v2Options: [{ name: 'organ', weight: 1.0 }] },
+                    melody: { strategy: 'weighted', v1Options: [{ name: 'electricGuitar', weight: 1.0 }], v2Options: [{ name: 'electricGuitar', weight: 1.0 }] }
                 },
                 instrumentRules: {
                     drums: { 
@@ -88,7 +89,7 @@ export const AnxiousBluesBlueprint: MusicBlueprint = {
                 layers: { bass: true, drums: true, accompaniment: true, melody: true },
                 instrumentation: {
                     accompaniment: { strategy: 'weighted', v1Options: [{ name: 'organ', weight: 1.0 }], v2Options: [{ name: 'organ', weight: 1.0 }] },
-                    melody: { strategy: 'weighted', v1Options: [{ name: 'electricGuitar', weight: 1.0 }], v2Options: [{ name: 'guitar_shineOn', weight: 1.0 }] }
+                    melody: { strategy: 'weighted', v1Options: [{ name: 'guitar_shineOn', weight: 1.0 }], v2Options: [{ name: 'guitar_shineOn', weight: 1.0 }] }
                 },
                 instrumentRules: {
                     drums: { 
@@ -100,7 +101,7 @@ export const AnxiousBluesBlueprint: MusicBlueprint = {
                     bassAccompanimentDouble: { enabled: false, instrument: 'electricGuitar', octaveShift: 1 },
                     melody: { 
                         source: 'motif', 
-                        density: { min: 0.7, max: 0.9 },
+                        density: { min: 0.6, max: 0.8 },
                         register: { preferred: 'high' } 
                     }
                 },
@@ -112,6 +113,7 @@ export const AnxiousBluesBlueprint: MusicBlueprint = {
                 layers: { bass: true, drums: true, accompaniment: true, melody: true },
                 instrumentation: {
                     accompaniment: { strategy: 'weighted', v1Options: [{ name: 'organ', weight: 1.0 }], v2Options: [{ name: 'organ', weight: 1.0 }] },
+                    melody: { strategy: 'weighted', v1Options: [{ name: 'electricGuitar', weight: 1.0 }], v2Options: [{ name: 'electricGuitar', weight: 1.0 }] }
                 },
                 instrumentRules: {
                     drums: { 
