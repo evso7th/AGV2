@@ -39,7 +39,18 @@ export const DarkBluesBlueprint: MusicBlueprint = {
                     melody: { strategy: 'weighted', v1Options: [{ name: 'electricGuitar', weight: 1.0 }], v2Options: [{ name: 'electricGuitar', weight: 1.0 }] }
                 },
                 instrumentRules: {
-                    drums: { pattern: 'composer', density: { min: 0.6, max: 0.8 }, kickVolume: 1.2 },
+                    drums: { 
+                        pattern: 'composer', 
+                        density: { min: 0.6, max: 0.8 }, 
+                        kickVolume: 1.2,
+                        ride: {
+                            enabled: true,
+                            quietWindows: [
+                                { start: 0.0, end: 0.4 }, // Молчать первые 40% части
+                                { start: 0.6, end: 1.0 }  // Молчать последние 40% части
+                            ]
+                        }
+                    },
                     melody: { density: { min: 0.4, max: 0.6 }, source: 'motif' },
                     bass: { techniques: [{ value: 'walking', weight: 1.0 }] },
                 },
