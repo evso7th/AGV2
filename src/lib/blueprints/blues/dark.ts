@@ -56,7 +56,7 @@ export const DarkBluesBlueprint: MusicBlueprint = {
                     harmony: { strategy: 'weighted', options: [{ name: 'guitarChords', weight: 1.0 }] }
                 },
                 instrumentRules: {
-                    drums: { pattern: 'composer', density: { min: 0.5, max: 0.7 }, useSnare: true, useGhostHat: true },
+                    drums: { pattern: 'composer', density: { min: 0.3, max: 0.5 }, useSnare: true, useGhostHat: true, usePerc: true },
                     bass: { techniques: [{ value: 'walking', weight: 1.0 }] },
                     accompaniment: { density: { min: 0.1, max: 0.2 } },
                     sfx: { eventProbability: 0.25, categories: [{ name: 'voice', weight: 0.8 }, { name: 'dark', weight: 0.2 }] },
@@ -76,11 +76,12 @@ export const DarkBluesBlueprint: MusicBlueprint = {
                 instrumentRules: {
                     drums: { 
                         pattern: 'composer', 
-                        density: { min: 0.6, max: 0.8 }, 
+                        density: { min: 0.4, max: 0.6 }, 
                         kickVolume: 1.2,
-                        ride: { enabled: true, quietWindows: [ { start: 0.0, end: 0.2 }, { start: 0.4, end: 0.6 }, { start: 0.8, end: 1.0 } ] },
+                        ride: { enabled: false },
                         usePerc: true,
-                        fills: { onBundleBoundary: true } // Enable fills
+                        fills: { onBundleBoundary: true },
+                        useGhostHat: true
                     },
                     melody: { density: { min: 0.4, max: 0.6 }, source: 'motif' },
                     bass: { techniques: [{ value: 'walking', weight: 1.0 }] },
@@ -97,7 +98,7 @@ export const DarkBluesBlueprint: MusicBlueprint = {
                     accompaniment: { strategy: 'weighted', v1Options: [{ name: 'synth', weight: 1.0 }], v2Options: [{ name: 'synth_cave_pad', weight: 1.0 }] }
                 },
                 instrumentRules: {
-                    drums: { pattern: 'composer', density: { min: 0.4, max: 0.6 } },
+                    drums: { pattern: 'composer', density: { min: 0.3, max: 0.5 }, useGhostHat: true },
                     bass: { techniques: [{ value: 'walking', weight: 1.0 }] },
                     accompaniment: { density: { min: 0.1, max: 0.2 } },
                     sfx: { eventProbability: 0.25, categories: [{ name: 'voice', weight: 0.8 }, { name: 'dark', weight: 0.2 }] },
