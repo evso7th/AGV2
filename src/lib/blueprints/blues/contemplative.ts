@@ -25,15 +25,15 @@ export const ContemplativeBluesBlueprint: MusicBlueprint = {
                     harmony: true,
                     sparkles: true,
                     sfx: true,
-                    melody: true // Мелодия включена с самого начала
+                    melody: true
                 },
                 instrumentation: {
                     accompaniment: { strategy: 'weighted', v1Options: [{ name: 'organ', weight: 1.0 }], v2Options: [{ name: 'organ', weight: 1.0 }] },
                     harmony: { strategy: 'weighted', options: [{ name: 'guitarChords', weight: 1.0 }] },
-                    melody: { // Правило для инструмента мелодии
+                    melody: { 
                         strategy: 'weighted', 
-                        v1Options: [{ name: 'electricGuitar', weight: 1.0 }], // Аналог для V1
-                        v2Options: [{ name: 'guitar_shineOn', weight: 1.0 }] // Желаемый инструмент для V2
+                        v1Options: [{ name: 'electricGuitar', weight: 1.0 }],
+                        v2Options: [{ name: 'guitar_shineOn', weight: 1.0 }]
                     }
                 },
                 instrumentRules: {
@@ -42,7 +42,7 @@ export const ContemplativeBluesBlueprint: MusicBlueprint = {
                     accompaniment: { techniques: [{value: 'choral', weight: 1.0}]},
                     melody: { 
                         source: 'motif',
-                        density: { min: 0.2, max: 0.4 } // Умеренная плотность для вступления
+                        density: { min: 0.2, max: 0.4 }
                     },
                     sparkles: { 
                         eventProbability: 0.15,
