@@ -39,7 +39,13 @@ export const DreamyBluesBlueprint: MusicBlueprint = {
                     melody: { strategy: 'weighted', v1Options: [{ name: 'electricGuitar', weight: 1.0 }], v2Options: [{ name: 'guitar_shineOn', weight: 1.0 }] }
                 },
                 instrumentRules: {
-                    drums: { pattern: 'composer', density: { min: 0.4, max: 0.6 }, useSnare: true, useGhostHat: true, ride: { enabled: true } },
+                    drums: {
+                        pattern: 'composer',
+                        density: { min: 0.4, max: 0.6 },
+                        useSnare: true,
+                        useGhostHat: true,
+                        ride: { enabled: true, volume: 0.3, probability: 0.4 }
+                    },
                     bass: { techniques: [{ value: 'long_notes', weight: 1.0 }] }, 
                     melody: { 
                         source: 'motif', 
