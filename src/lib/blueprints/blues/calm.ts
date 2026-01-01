@@ -17,28 +17,29 @@ export const CalmBluesBlueprint: MusicBlueprint = {
         totalDuration: { preferredBars: 120 }, // 10 loops of 12 bars
         parts: [
             {
-                id: 'VERSE', name: 'Main Riff', duration: { percent: 75 },
+                id: 'VERSE', name: 'Main Riff', duration: { percent: 40 },
                 layers: { bass: true, drums: true, accompaniment: true, harmony: true, melody: true },
                 instrumentation: {
                     accompaniment: { strategy: 'weighted', v1Options: [{ name: 'organ', weight: 1.0 }], v2Options: [{ name: 'organ', weight: 1.0 }] },
                     melody: { strategy: 'weighted', v1Options: [{ name: 'guitar_shineOn', weight: 1.0 }], v2Options: [{ name: 'guitar_shineOn', weight: 1.0 }] }
                 },
                 instrumentRules: {
-                    drums: { pattern: 'composer', density: { min: 0.4, max: 0.6 }, useSnare: false, useGhostHat: true, ride: { enabled: false } }, // GHOST HAT ADDED
-                    bass: { techniques: [{ value: 'riff', weight: 1.0 }] }, // UNIQUE TECHNIQUE
+                    drums: { pattern: 'composer', density: { min: 0.4, max: 0.6 }, useSnare: false, useGhostHat: true, ride: { enabled: false } },
+                    bass: { techniques: [{ value: 'riff', weight: 1.0 }] }, 
                     melody: { source: 'motif', density: { min: 0.2, max: 0.4 } }
                 },
                 bundles: [{ id: 'BLUES_CALM_VERSE_BUNDLE', name: 'Main Riff', duration: { percent: 100 }, characteristics: {}, phrases: {} }],
                 outroFill: null,
             },
             {
-                id: 'SOLO', name: 'Solo', duration: { percent: 25 },
-                layers: { bass: true, drums: true, melody: true },
+                id: 'SOLO', name: 'Solo', duration: { percent: 35 },
+                layers: { bass: true, drums: true, melody: true, accompaniment: true },
                  instrumentation: {
-                    melody: { strategy: 'weighted', v1Options: [{ name: 'guitar_shineOn', weight: 1.0 }], v2Options: [{ name: 'guitar_shineOn', weight: 1.0 }] }
+                    melody: { strategy: 'weighted', v1Options: [{ name: 'guitar_shineOn', weight: 1.0 }], v2Options: [{ name: 'guitar_shineOn', weight: 1.0 }] },
+                    accompaniment: { strategy: 'weighted', v1Options: [{ name: 'organ', weight: 1.0 }], v2Options: [{ name: 'organ', weight: 1.0 }] },
                 },
                 instrumentRules: {
-                    drums: { pattern: 'composer', density: { min: 0.5, max: 0.7 }, ride: { enabled: false }, useGhostHat: true }, // GHOST HAT ADDED
+                    drums: { pattern: 'composer', density: { min: 0.5, max: 0.7 }, ride: { enabled: true }, useGhostHat: true, useSnare: false },
                     melody: { 
                         source: 'motif', 
                         density: { min: 0.6, max: 0.8 },
@@ -48,7 +49,22 @@ export const CalmBluesBlueprint: MusicBlueprint = {
                 },
                 bundles: [{ id: 'BLUES_CALM_SOLO_BUNDLE', name: 'Solo', duration: { percent: 100 }, characteristics: {}, phrases: {} }],
                 outroFill: null,
-            }
+            },
+             {
+                id: 'OUTRO', name: 'Return to Riff', duration: { percent: 25 },
+                layers: { bass: true, drums: true, accompaniment: true, harmony: true, melody: true },
+                instrumentation: {
+                    accompaniment: { strategy: 'weighted', v1Options: [{ name: 'organ', weight: 1.0 }], v2Options: [{ name: 'organ', weight: 1.0 }] },
+                    melody: { strategy: 'weighted', v1Options: [{ name: 'guitar_shineOn', weight: 1.0 }], v2Options: [{ name: 'guitar_shineOn', weight: 1.0 }] }
+                },
+                instrumentRules: {
+                    drums: { pattern: 'composer', density: { min: 0.4, max: 0.6 }, useSnare: false, useGhostHat: true, ride: { enabled: false } },
+                    bass: { techniques: [{ value: 'riff', weight: 1.0 }] }, 
+                    melody: { source: 'motif', density: { min: 0.2, max: 0.4 } }
+                },
+                bundles: [{ id: 'BLUES_CALM_OUTRO_BUNDLE', name: 'Final Riff', duration: { percent: 100 }, characteristics: {}, phrases: {} }],
+                outroFill: null,
+            },
         ]
     },
     mutations: {},
