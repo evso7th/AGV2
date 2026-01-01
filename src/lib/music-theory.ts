@@ -1,5 +1,5 @@
 
-import type { FractalEvent, Mood, Genre, Technique, BassSynthParams, InstrumentType, AccompanimentInstrument, InstrumentHints, AccompanimentTechnique, GhostChord, SfxRule, V1MelodyInstrument, V2MelodyInstrument } from '@/types/fractal';
+import type { FractalEvent, Mood, Genre, Technique, BassSynthParams, InstrumentType, AccompanimentInstrument, InstrumentHints, AccompanimentTechnique, GhostChord, SfxRule, V1MelodyInstrument, V2MelodyInstrument, BlueprintPart, InstrumentationRules } from './fractal';
 import { ElectronicK, TraditionalK, AmbientK, MelancholicMinorK } from './resonance-matrices';
 import { BlueprintNavigator, type NavigationInfo } from './blueprint-navigator';
 import { getBlueprint } from './blueprints';
@@ -407,7 +407,7 @@ export function createAccompanimentAxiom(chord: GhostChord, mood: Mood, genre: G
             duration: duration,
             time: 0, // All notes start at the same time
             weight: 0.6 - (index * 0.05), // Slightly vary weight for texture
-            technique: 'swell',
+            technique: 'long-chords',
             dynamics: 'p',
             phrasing: 'legato',
             params: { attack: 0.5, release: duration }
@@ -463,7 +463,7 @@ export function createHarmonyAxiom(chord: GhostChord, mood: Mood, genre: Genre, 
 }
 
 // Rhythmic Grammar Library for Drums
-export const STYLE_DRUM_PATTERNS: Record<Genre, GenreRhythmGrammar> = {
+export const STYLE_DRUM_PATTERNS: Record<Genre, any> = {
     ambient: {
         loops: [
             { 
@@ -871,47 +871,48 @@ export function chooseHarmonyInstrument(mood: Mood, random: { next: () => number
     return 'guitarChords'; // Fallback
 }
 
-export function generateGhostHarmonyTrack(totalBars: number, mood: Mood, key: number, random: { next: () => number, nextInt: (max: number) => number }): GhostChord[] {
-  console.log(`[Harmony] Generating Ghost Harmony for ${totalBars} bars in key ${key} (${mood}).`);
-  
-  const harmonyTrack: GhostChord[] = [];
-  const scale = getScaleForMood(mood);
+export function generateGhostHarmonyTrack(totalBars: number, mood: Mood, key: number, random: { next: () => number; nextInt: (max: number) => number; }): GhostChord[] {
+    console.log(`[Harmony] Generating 12-Bar Blues Harmony for ${totalBars} bars in key ${key}.`);
+    
+    const harmonyTrack: GhostChord[] = [];
+    const I = key;
+    const IV = key + 5;
+    const V = key + 7;
+    
+    let currentBar = 0;
+    while (currentBar < totalBars) {
+        // Defines the 12-bar structure with chord root and duration in bars.
+        const structure = [
+            { root: I,  duration: 4 }, // Bars 1-4
+            { root: IV, duration: 2 }, // Bars 5-6
+            { root: I,  duration: 2 }, // Bars 7-8
+            { root: V,  duration: 1 }, // Bar 9
+            { root: IV, duration: 1 }, // Bar 10
+            { root: I,  duration: 1 }, // Bar 11
+            { root: V,  duration: 1 }, // Bar 12 (Turnaround)
+        ];
 
-  // Define scale degrees
-  const I = scale[0];
-  const IV = scale[3];
-  const V = scale[4];
-  const VI = mood === 'joyful' || mood === 'epic' ? scale[5] : scale[5] -1; // Aeolian has a minor 6th
+        for (const segment of structure) {
+            if (currentBar >= totalBars) break;
+            
+            // For blues, all chords are typically dominant 7ths.
+            const chordType: GhostChord['chordType'] = 'dominant';
 
-  const progressionRoots = [I, VI, IV, V]; 
-  const chordTypes: GhostChord['chordType'][] = mood.includes('dark') || mood.includes('melancholic')
-    ? ['minor', 'major', 'major', 'minor']
-    : ['major', 'minor', 'minor', 'major'];
+            const duration = Math.min(segment.duration, totalBars - currentBar);
+            if (duration <= 0) continue;
 
-  let currentBar = 0;
-  while (currentBar < totalBars) {
-    const progressionIndex = Math.floor(currentBar / 4) % progressionRoots.length;
-    const rootNote = progressionRoots[progressionIndex];
-    const duration = 4; // Each chord lasts 4 bars for simplicity
-
-    if (rootNote === undefined) {
-        console.error(`[Harmony] Error: Could not determine root note for chord at bar ${currentBar}. Skipping.`);
-        currentBar += duration;
-        continue;
+            harmonyTrack.push({
+                rootNote: segment.root,
+                chordType: chordType,
+                bar: currentBar,
+                durationBars: duration,
+            });
+            currentBar += duration;
+        }
     }
 
-    harmonyTrack.push({
-      rootNote: rootNote,
-      chordType: chordTypes[progressionIndex % chordTypes.length],
-      bar: currentBar,
-      durationBars: duration,
-    });
-
-    currentBar += duration;
-  }
-
-  console.log(`[Harmony] Ghost Harmony generated. ${harmonyTrack.length} chords.`);
-  return harmonyTrack;
+    console.log(`[Harmony] 12-Bar Blues Ghost Harmony generated. ${harmonyTrack.length} chords.`);
+    return harmonyTrack;
 }
     
 export function createDrumAxiom(genre: Genre, mood: Mood, tempo: number, random: { next: () => number, nextInt: (max: number) => number }, rules?: any): { events: FractalEvent[], tags: string[] } {
@@ -1184,6 +1185,7 @@ export function createMelodyMotif(chord: GhostChord, mood: Mood, random: { next:
 
 
     
+
 
 
 
