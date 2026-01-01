@@ -1,5 +1,5 @@
 
-// src/lib/music-theory.ts
+
 import type { FractalEvent, Mood, Genre, Technique, BassSynthParams, InstrumentType, AccompanimentInstrument, InstrumentHints, AccompanimentTechnique, GhostChord, SfxRule, V1MelodyInstrument, V2MelodyInstrument } from '@/types/fractal';
 import { ElectronicK, TraditionalK, AmbientK, MelancholicMinorK } from './resonance-matrices';
 import { BlueprintNavigator, type NavigationInfo } from './blueprint-navigator';
@@ -800,16 +800,32 @@ export function createBassFill(mood: Mood, genre: Genre, random: { next: () => n
 /**
  * Creates a drum fill synchronized with a bass fill.
  */
-export function createDrumFill(random: { next: () => number, nextInt: (max: number) => number }): FractalEvent[] {
+export function createDrumFill(random: { next: () => number, nextInt: (max: number) => number }, params: any = {}): FractalEvent[] {
+    const { instrument = 'tom', density = 0.5, dynamics = 'mf' } = params;
     const fill: FractalEvent[] = [];
-    const numHits = random.nextInt(3) + 2; // 2-4 hits
-    const toms: InstrumentType[] = ['drum_tom_low', 'drum_tom_mid', 'drum_tom_high', 'drum_snare'];
+    const numHits = Math.floor(2 + (density * 6)); // 2 to 8 hits
+    let toms: InstrumentType[];
+    
+    switch(instrument) {
+        case 'snare':
+            toms = ['drum_snare', 'drum_snare_ghost_note'];
+            break;
+        case 'tom':
+        default:
+            toms = ['drum_tom_low', 'drum_tom_mid', 'drum_tom_high'];
+            break;
+        case 'crash':
+            toms = ['drum_crash', 'drum_ride'];
+            break;
+    }
+
     let currentTime = 3.0; // Start the fill on the 4th beat
-    const baseWeight = 0.75;
+    const weightMap = { 'pp': 0.4, 'p': 0.5, 'mp': 0.6, 'mf': 0.75, 'f': 0.9, 'ff': 1.0 };
+    const baseWeight = weightMap[dynamics as keyof typeof weightMap] || 0.75;
 
     for (let i = 0; i < numHits; i++) {
         const tom = toms[random.nextInt(toms.length)];
-        const duration = 0.25; // 16th note
+        const duration = (1.0 / numHits);
         const time = currentTime + i * duration;
         
         fill.push({
@@ -817,42 +833,10 @@ export function createDrumFill(random: { next: () => number, nextInt: (max: numb
             note: 40 + i, // Arbitrary midi note for uniqueness
             duration,
             time,
-            weight: baseWeight + (random.next() * 0.1),
+            weight: baseWeight + (random.next() * 0.1) - 0.05,
             technique: 'hit',
-            dynamics: 'mf',
+            dynamics: dynamics,
             phrasing: 'staccato',
-            params: {}
-        });
-
-        // Add a ghost hi-hat with 50% probability
-        if (random.next() < 0.5) {
-             fill.push({
-                type: 'drum_closed_hi_hat_ghost',
-                note: 42,
-                duration: 0.125,
-                time: time + duration / 2,
-                weight: baseWeight * 0.5,
-                technique: 'ghost',
-                dynamics: 'p',
-                phrasing: 'staccato',
-                params: {}
-            });
-        }
-    }
-
-    // Add final accent
-    const climaxTime = Math.min(3.75, currentTime);
-    const numRides = random.next() > 0.5 ? 2 : 1;
-    for (let i = 0; i < numRides; i++) {
-         fill.push({
-            type: 'drum_ride',
-            note: 59,
-            duration: 0.5,
-            time: climaxTime + i * 0.25,
-            weight: baseWeight * 0.6, // Quieter accent
-            technique: 'hit',
-            dynamics: 'mp',
-            phrasing: 'legato',
             params: {}
         });
     }
@@ -964,6 +948,8 @@ export function createDrumAxiom(genre: Genre, mood: Mood, tempo: number, random:
         } else {
             instrumentType = baseEvent.type;
         }
+
+        console.log(`%c[DrumAxiom] Generating drum event: type='${instrumentType}', controlled by rules: ${JSON.stringify(rules || {})}`, 'color: #FFA500');
 
         axiomEvents.push({
             ...baseEvent,
@@ -1158,6 +1144,7 @@ export function createMelodyMotif(chord: GhostChord, mood: Mood, random: { next:
 
 
     
+
 
 
 
