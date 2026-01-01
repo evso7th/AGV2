@@ -18,24 +18,39 @@ export const ContemplativeBluesBlueprint: MusicBlueprint = {
         parts: [
             {
                 id: 'INTRO', name: 'Verse 1', duration: { percent: 25 },
-                layers: { 
-                    bass: true, 
-                    drums: true, 
-                    accompaniment: true, 
+                layers: {
+                    bass: true,
+                    drums: true,
+                    accompaniment: true,
                     harmony: true,
-                    sparkles: true, // Sparkles from the start
-                    sfx: true       // SFX from the start
+                    sparkles: true,
+                    sfx: true,
+                    melody: true // Мелодия включена с самого начала
                 },
                 instrumentation: {
                     accompaniment: { strategy: 'weighted', v1Options: [{ name: 'organ', weight: 1.0 }], v2Options: [{ name: 'organ', weight: 1.0 }] },
-                    harmony: { strategy: 'weighted', options: [{ name: 'guitarChords', weight: 1.0 }] }
+                    harmony: { strategy: 'weighted', options: [{ name: 'guitarChords', weight: 1.0 }] },
+                    melody: { // Правило для инструмента мелодии
+                        strategy: 'weighted', 
+                        v1Options: [{ name: 'electricGuitar', weight: 1.0 }], // Аналог для V1
+                        v2Options: [{ name: 'guitar_shineOn', weight: 1.0 }] // Желаемый инструмент для V2
+                    }
                 },
                 instrumentRules: {
                     drums: { pattern: 'composer', density: { min: 0.5, max: 0.7 }, useSnare: true, useGhostHat: true },
                     bass: { techniques: [{ value: 'walking', weight: 1.0 }] },
-                    accompaniment: { techniques: [{value: 'choral', weight: 1.0}]}, // Ensure chords
-                    melody: { source: 'harmony_top_note' },
-                    sparkles: { eventProbability: 0.15 }, // Moderate probability
+                    accompaniment: { techniques: [{value: 'choral', weight: 1.0}]},
+                    melody: { 
+                        source: 'motif',
+                        density: { min: 0.2, max: 0.4 } // Умеренная плотность для вступления
+                    },
+                    sparkles: { 
+                        eventProbability: 0.15,
+                        categories: [
+                            { name: 'electro', weight: 0.5 },
+                            { name: 'ambient_common', weight: 0.5 }
+                        ]
+                    },
                     sfx: { 
                         eventProbability: 0.1, 
                         categories: [
@@ -52,7 +67,7 @@ export const ContemplativeBluesBlueprint: MusicBlueprint = {
                 layers: { bass: true, drums: true, accompaniment: true, melody: true, harmony: true, sparkles: true, sfx: true },
                  instrumentation: {
                     accompaniment: { strategy: 'weighted', v1Options: [{ name: 'organ', weight: 1.0 }], v2Options: [{ name: 'organ', weight: 1.0 }] },
-                    melody: { strategy: 'weighted', v1Options: [{ name: 'guitar_shineOn', weight: 1.0 }], v2Options: [{ name: 'guitar_shineOn', weight: 1.0 }] }
+                    melody: { strategy: 'weighted', v1Options: [{ name: 'electricGuitar', weight: 1.0 }], v2Options: [{ name: 'guitar_shineOn', weight: 1.0 }] }
                 },
                 instrumentRules: {
                     drums: { 
@@ -69,7 +84,7 @@ export const ContemplativeBluesBlueprint: MusicBlueprint = {
                     },
                     melody: { density: { min: 0.4, max: 0.6 }, source: 'motif' },
                     bass: { techniques: [{ value: 'walking', weight: 1.0 }] },
-                    sparkles: { eventProbability: 0.15 },
+                    sparkles: { eventProbability: 0.15, categories: [{ name: 'electro', weight: 0.5 }, { name: 'ambient_common', weight: 0.5 }] },
                     sfx: { 
                         eventProbability: 0.1, 
                         categories: [
@@ -92,7 +107,7 @@ export const ContemplativeBluesBlueprint: MusicBlueprint = {
                     bass: { techniques: [{ value: 'walking', weight: 1.0 }] },
                     accompaniment: { techniques: [{value: 'choral', weight: 1.0}]},
                     melody: { source: 'harmony_top_note' },
-                    sparkles: { eventProbability: 0.15 },
+                    sparkles: { eventProbability: 0.15, categories: [{ name: 'electro', weight: 0.5 }, { name: 'ambient_common', weight: 0.5 }] },
                     sfx: { 
                         eventProbability: 0.1, 
                         categories: [
