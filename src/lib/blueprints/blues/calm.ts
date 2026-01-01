@@ -24,7 +24,7 @@ export const CalmBluesBlueprint: MusicBlueprint = {
                     melody: { strategy: 'weighted', v1Options: [{ name: 'guitar_shineOn', weight: 1.0 }], v2Options: [{ name: 'guitar_shineOn', weight: 1.0 }] }
                 },
                 instrumentRules: {
-                    drums: { pattern: 'composer', density: { min: 0.4, max: 0.6 }, useSnare: true, useGhostHat: true, ride: { enabled: false } }, // GHOST HAT ADDED
+                    drums: { pattern: 'composer', density: { min: 0.4, max: 0.6 }, useSnare: false, useGhostHat: true, ride: { enabled: false } }, // GHOST HAT ADDED
                     bass: { techniques: [{ value: 'riff', weight: 1.0 }] }, // UNIQUE TECHNIQUE
                     melody: { source: 'motif', density: { min: 0.2, max: 0.4 } }
                 },
