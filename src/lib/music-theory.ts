@@ -6,6 +6,7 @@ import { ElectronicK, TraditionalK, AmbientK, MelancholicMinorK } from './resona
 import { BlueprintNavigator, type NavigationInfo } from './blueprint-navigator';
 import { getBlueprint } from './blueprints';
 import { V2_PRESETS } from './presets-v2';
+import { PARANOID_STYLE_RIFF } from './assets/rock-riffs';
 
 
 export type Branch = {
@@ -1086,43 +1087,87 @@ function extractTopNotes(events: FractalEvent[], maxNotes: number = 4): FractalE
 }
 
 /**
- * #ЗАЧЕМ: Генерирует мелодический мотив на 2 такта (8 долей) с разнообразным ритмом.
- * #ЧТО: Выбирает ритмический паттерн и мелодический контур. Генерирует массив FractalEvent,
- *       где каждая нота имеет свою длительность и время начала, создавая полноценную фразу.
- * #СВЯЗИ: Вызывается из `FractalMusicEngine` для создания основной мелодической линии.
+ * #ЗАЧЕМ: Генерирует мелодический мотив на 4 такта (16 долей).
+ * #ЧТО: Выбирает ритмический паттерн и мелодический контур. Генерирует массив FractalEvent.
+ * #ИЗМЕНЕНО: Добавлена логика для использования PARANOID_STYLE_RIFF и продвинутых мутаций.
  */
-export function createMelodyMotif(chord: GhostChord, mood: Mood, random: { next: () => number; nextInt: (max: number) => number; }, previousMotif?: FractalEvent[], registerHint?: 'low' | 'mid' | 'high'): FractalEvent[] {
+export function createMelodyMotif(chord: GhostChord, mood: Mood, random: { next: () => number; nextInt: (max: number) => number; }, previousMotif?: FractalEvent[], registerHint?: 'low' | 'mid' | 'high', genre?: Genre): FractalEvent[] {
     const motif: FractalEvent[] = [];
+    
+    // Специальная логика для дарк-блюза
+    if (genre === 'blues' && mood === 'dark') {
+        console.log(`%c[MelodyAxiom] Applying PARANOID_STYLE_RIFF for dark blues.`, 'color: #FF6347');
+        const riffEvents: FractalEvent[] = PARANOID_STYLE_RIFF.map(riffNote => ({
+            ...riffNote,
+            type: 'melody',
+            weight: 0.9 + random.next() * 0.1, // Add some velocity variation
+            technique: 'hit',
+            dynamics: 'f',
+            phrasing: 'staccato',
+            params: {}
+        }));
+        return riffEvents;
+    }
+
+    // --- Логика мутаций (если есть предыдущий мотив) ---
+    if (previousMotif && previousMotif.length > 0 && random.next() < 0.7) { // 70% шанс мутации
+        const newPhrase = [...previousMotif];
+        const mutationType = random.nextInt(4);
+        let mutationDescription = "Unknown";
+
+        switch(mutationType) {
+            case 0: // Retrograde
+                mutationDescription = "Retrograde";
+                const times = newPhrase.map(e => e.time).sort((a, b) => b - a);
+                const totalDur = newPhrase.reduce((sum, e) => sum + e.duration, 0);
+                newPhrase.reverse().forEach((e, i) => { e.time = (totalDur - times[i]) - e.duration; });
+                break;
+            case 1: // Register Shift
+                mutationDescription = "Register Shift";
+                const octaveShift = (random.next() > 0.5) ? 12 : -12;
+                newPhrase.forEach(e => e.note += octaveShift);
+                break;
+            case 2: // Rhythmic Compression/Expansion
+                const factor = random.next() > 0.5 ? 2.0 : 0.5;
+                mutationDescription = `Rhythmic ${factor > 1 ? 'Expansion' : 'Compression'}`;
+                newPhrase.forEach(e => { e.duration *= factor; e.time *= factor; });
+                break;
+            case 3: // Pitch Inversion (around root)
+                 mutationDescription = "Pitch Inversion";
+                 const firstNote = newPhrase[0].note;
+                 newPhrase.forEach(e => {
+                     const interval = e.note - firstNote;
+                     e.note = firstNote - interval;
+                 });
+                 break;
+        }
+        console.log(`%c[MelodyMutation] Applied Mutation: ${mutationDescription}`, 'color: #9ACD32');
+        return newPhrase;
+    }
+
+    // --- Оригинальная логика генерации нового 4-тактового мотива ---
     const scale = getScaleForMood(mood);
     let baseOctave = 4;
     if (registerHint === 'high') baseOctave = 5;
     if (registerHint === 'low') baseOctave = 3;
-
     const rootNote = chord.rootNote + 12 * baseOctave;
 
-    // Ритмические паттерны (сумма длительностей = 8 долей, т.е. 2 такта)
     const rhythmicPatterns = [
-        [3, 1, 4],          // dotted half, quarter, whole
-        [2, 2, 4],          // half, half, whole
-        [4, 4],             // whole, whole
-        [1.5, 0.5, 2, 1, 3], // syncopated
-        [2, 1, 1, 2, 2],
-        [8]                 // double whole
+        [4, 4, 4, 4],          // Four whole notes
+        [3, 1, 3, 1, 4, 4],    // Syncopated start
+        [2, 2, 2, 2, 2, 2, 2, 2], // Steady halves
+        [8, 8],                // Two long notes
+        [1,1,1,1, 1,1,1,1, 1,1,1,1, 1,1,1,1], // Busy quarters
+        [4, 2, 2, 4, 4]        // Mixed
     ];
     const durations = rhythmicPatterns[random.nextInt(rhythmicPatterns.length)];
     
-    // Мелодические контуры (направления)
-    const contours = [
-      [0, 2, 1, 3], // Up-down
-      [0, 1, 2, 3], // Ascending
-      [3, 2, 1, 0], // Descending
-      [0, 4, -2, 5] // Jagged
-    ];
+    const contours = [ [0, 2, 1, 3, 4, 1, 0], [0, 1, 2, 3, 4, 5, 6], [6, 5, 4, 3, 2, 1, 0], [0, 5, -2, 7, 3, 6, 1] ];
     const contour = contours[random.nextInt(contours.length)];
 
     let currentTime = 0;
     const baseNoteIndex = scale.findIndex(n => n % 12 === rootNote % 12);
-    if (baseNoteIndex === -1) return []; // Should not happen
+    if (baseNoteIndex === -1) return [];
 
     for (let i = 0; i < durations.length; i++) {
         const contourIndex = i % contour.length;
@@ -1139,7 +1184,7 @@ export function createMelodyMotif(chord: GhostChord, mood: Mood, random: { next:
         currentTime += durations[i];
     }
     
-    console.log(`%c[MelodyAxiom] New 2-bar motif generated. Rhythm: [${durations.join(', ')}]`, 'color: #DA70D6');
+    console.log(`%c[MelodyAxiom] New 4-bar motif generated. Rhythm: [${durations.join(', ')}]`, 'color: #DA70D6');
     return motif;
 }
     
@@ -1149,6 +1194,7 @@ export function createMelodyMotif(chord: GhostChord, mood: Mood, random: { next:
 
 
     
+
 
 
 
