@@ -7,7 +7,7 @@ export const AnxiousBluesBlueprint: MusicBlueprint = {
     description: 'A fast, chaotic, and tense blues shuffle that builds from an empty start.',
     mood: 'anxious',
     musical: {
-        key: { root: 'E', scale: 'ionian', octave: 2 },
+        key: { root: 'E', scale: 'mixolydian', octave: 2 },
         bpm: { base: 82, range: [80, 88], modifier: 1.0 },
         timeSignature: { numerator: 4, denominator: 4 },
         harmonicJourney: [], // 12-bar major
@@ -31,8 +31,8 @@ export const AnxiousBluesBlueprint: MusicBlueprint = {
                     accompaniment: {
                         strategy: 'weighted',
                         v1Options: [
-                            { name: 'mellotron', weight: 0.8 }, 
-                            { name: 'flute', weight: 0.2 }      
+                            { name: 'mellotron', weight: 0.8 },
+                            { name: 'flute', weight: 0.2 }
                         ],
                         v2Options: [
                             { name: 'mellotron', weight: 0.8 },
@@ -44,19 +44,20 @@ export const AnxiousBluesBlueprint: MusicBlueprint = {
                     drums: { pattern: 'composer', density: {min: 0.0, max: 0.0}, useSnare: false, usePerc: false, kickVolume: 1.1, ride: { enabled: false }, useGhostHat: false },
                     bass: { techniques: [{ value: 'boogie', weight: 1.0 }] },
                     bassAccompanimentDouble: { enabled: true, instrument: 'electricGuitar', octaveShift: 1 },
+                    melody: { source: 'harmony_top_note' }
                 },
                 bundles: [
-                    { 
-                        id: 'BLUES_ANX_INTRO_BUNDLE_1', name: 'Pad Only', duration: { percent: 50 }, 
+                    {
+                        id: 'BLUES_ANX_INTRO_BUNDLE_1', name: 'Pad Only', duration: { percent: 50 },
                         characteristics: { activeLayers: ['accompaniment'] },
                         phrases: {}
                     },
-                    { 
+                    {
                         id: 'BLUES_ANX_INTRO_BUNDLE_2', name: 'Unison Riff', duration: { percent: 50 },
-                        characteristics: { 
+                        characteristics: {
                             activeLayers: ['bass', 'drums', 'melody'],
-                            bassAccompanimentDouble: { 
-                                enabled: true, 
+                            bassAccompanimentDouble: {
+                                enabled: true,
                                 instrument: 'electricGuitar',
                                 octaveShift: 1
                             },
@@ -78,9 +79,9 @@ export const AnxiousBluesBlueprint: MusicBlueprint = {
                     melody: { strategy: 'weighted', v1Options: [{ name: 'electricGuitar', weight: 1.0 }], v2Options: [{ name: 'electricGuitar', weight: 1.0 }] }
                 },
                 instrumentRules: {
-                    drums: { 
-                        pattern: 'composer', 
-                        density: { min: 0.8, max: 1.0 }, 
+                    drums: {
+                        pattern: 'composer',
+                        density: { min: 0.8, max: 1.0 },
                         useSnare: true, kickVolume: 1.1, usePerc: true, ride: { enabled: true }, useGhostHat: true
                     },
                     bass: { techniques: [{ value: 'boogie', weight: 1.0 }] },
@@ -98,17 +99,17 @@ export const AnxiousBluesBlueprint: MusicBlueprint = {
                     melody: { strategy: 'weighted', v1Options: [{ name: 'guitar_shineOn', weight: 1.0 }], v2Options: [{ name: 'guitar_shineOn', weight: 1.0 }] }
                 },
                 instrumentRules: {
-                    drums: { 
-                        pattern: 'composer', 
-                        density: { min: 0.85, max: 1.0 }, 
+                    drums: {
+                        pattern: 'composer',
+                        density: { min: 0.85, max: 1.0 },
                         useSnare: true, kickVolume: 1.2, usePerc: true, ride: { enabled: true }, useGhostHat: true
                     },
                     bass: { techniques: [{ value: 'boogie', weight: 1.0 }] },
                     bassAccompanimentDouble: { enabled: false },
-                    melody: { 
-                        source: 'motif', 
+                    melody: {
+                        source: 'motif',
                         density: { min: 0.6, max: 0.8 },
-                        register: { preferred: 'high' } 
+                        register: { preferred: 'high' }
                     }
                 },
                 bundles: [{ id: 'BLUES_ANX_SOLO_BUNDLE', name: 'Solo Section', duration: { percent: 100 }, characteristics: {}, phrases: {} }],
@@ -122,9 +123,9 @@ export const AnxiousBluesBlueprint: MusicBlueprint = {
                     melody: { strategy: 'weighted', v1Options: [{ name: 'electricGuitar', weight: 1.0 }], v2Options: [{ name: 'electricGuitar', weight: 1.0 }] }
                 },
                 instrumentRules: {
-                    drums: { 
-                        pattern: 'composer', 
-                        density: { min: 0.8, max: 1.0 }, 
+                    drums: {
+                        pattern: 'composer',
+                        density: { min: 0.8, max: 1.0 },
                         useSnare: true, kickVolume: 1.1, usePerc: true, ride: { enabled: true }, useGhostHat: true
                     },
                     bass: { techniques: [{ value: 'boogie', weight: 1.0 }] },

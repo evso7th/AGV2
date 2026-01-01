@@ -1,5 +1,4 @@
 
-
 import type { FractalEvent, Mood, Genre, Technique, BassSynthParams, InstrumentType, AccompanimentInstrument, InstrumentHints, AccompanimentTechnique, GhostChord, SfxRule, V1MelodyInstrument, V2MelodyInstrument, BlueprintPart, InstrumentationRules } from './fractal';
 import { ElectronicK, TraditionalK, AmbientK, MelancholicMinorK } from './resonance-matrices';
 import { BlueprintNavigator, type NavigationInfo } from './blueprint-navigator';
@@ -244,10 +243,10 @@ export function getScaleForMood(mood: Mood): number[] {
       baseScale = [0, 2, 4, 7, 9];
       break;
     case 'contemplative': // E Mixolydian
+    case 'calm':
         baseScale = [0, 2, 4, 5, 7, 9, 10];
         break;
     case 'melancholic': // E Dorian
-    case 'calm':
       baseScale = [0, 2, 3, 5, 7, 9, 10];
       break;
     case 'dark':        // E Aeolian (Natural Minor)
@@ -378,25 +377,18 @@ export function generateBluesBassRiff(chord: GhostChord, technique: Technique, r
 
 export function createAccompanimentAxiom(chord: GhostChord, mood: Mood, genre: Genre, random: { next: () => number; nextInt: (max: number) => number }, tempo: number = 120, registerHint?: 'low' | 'mid' | 'high'): FractalEvent[] {
     const axiom: FractalEvent[] = [];
-    const scale = getScaleForMood(mood);
     const rootMidi = chord.rootNote;
     
-    // #ИЗМЕНЕНО: Эта функция теперь правильно строит доминантсептаккорды для блюза.
-    const isDominant = chord.chordType === 'dominant';
-    const third = rootMidi + 4; // Major third for dominant
-    const fifth = rootMidi + 7; // Perfect fifth
-    const seventh = rootMidi + 10; // Minor seventh for dominant 7th
-
-    let chordNotes = [rootMidi, third, fifth];
-    if (isDominant) {
-        chordNotes.push(seventh);
-    }
-    
-    // Проверяем, есть ли ноты в текущем ладу. Если нет, это проблема.
-    const validNotes = chordNotes.filter(n => scale.some(scaleNote => scaleNote % 12 === n % 12));
-    if (validNotes.length < (isDominant ? 3 : 2)) {
-      console.warn(`[AccompAxiom] Could not form a valid ${isDominant ? 'dominant 7th' : 'chord'} from root ${rootMidi} in the current scale.`);
-      return [];
+    // #ИСПРАВЛЕНО: Эта функция теперь не проверяет принадлежность нот к ладу,
+    // # а строит аккорд хроматически, как и положено в блюзе.
+    let chordNotes: number[] = [];
+    if (chord.chordType === 'dominant') {
+        chordNotes = [rootMidi, rootMidi + 4, rootMidi + 7, rootMidi + 10]; // Tonic, Major 3rd, Perfect 5th, Minor 7th
+        console.log(`[AccompAxiom] Building dominant 7th for root ${rootMidi}.`);
+    } else {
+        const isMinor = chord.chordType === 'minor' || chord.chordType === 'diminished';
+        chordNotes = [rootMidi, rootMidi + (isMinor ? 3 : 4), rootMidi + 7];
+        console.log(`[AccompAxiom] Building ${isMinor ? 'minor' : 'major'} triad for root ${rootMidi}.`);
     }
     
     let baseOctave = 3;
@@ -405,7 +397,7 @@ export function createAccompanimentAxiom(chord: GhostChord, mood: Mood, genre: G
 
     const duration = 4.0; // Play the chord for the whole bar
 
-    validNotes.forEach((note, index) => {
+    chordNotes.forEach((note, index) => {
         axiom.push({
             type: 'accompaniment',
             note: note + 12 * baseOctave,
@@ -419,7 +411,6 @@ export function createAccompanimentAxiom(chord: GhostChord, mood: Mood, genre: G
         });
     });
 
-    console.log(`[AccompAxiom] Generated a ${validNotes.length}-note ${isDominant ? 'dominant' : ''} chord for root ${rootMidi}.`);
     return axiom;
 }
 
@@ -900,7 +891,7 @@ export function generateGhostHarmonyTrack(totalBars: number, mood: Mood, key: nu
         for (const segment of structure) {
             if (currentBar >= totalBars) break;
             
-            // #ИСПРАВЛЕНО: Для блюза все аккорды I, IV, V являются доминантсептаккордами.
+            // #ИСПРАВЛЕНО: Для блюза аккорды I, IV, V являются доминантсептаккордами.
             const chordType: GhostChord['chordType'] = 'dominant';
 
             const duration = Math.min(segment.duration, totalBars - currentBar);
@@ -1190,6 +1181,7 @@ export function createMelodyMotif(chord: GhostChord, mood: Mood, random: { next:
 
 
     
+
 
 
 
