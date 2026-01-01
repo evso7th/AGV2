@@ -42,7 +42,7 @@ export const ContemplativeBluesBlueprint: MusicBlueprint = {
                     accompaniment: { techniques: [{value: 'choral', weight: 1.0}]},
                     melody: { 
                         source: 'motif',
-                        density: { min: 0.2, max: 0.4 }
+                        density: { min: 0.3, max: 0.5 }
                     },
                     sparkles: { 
                         eventProbability: 0.15,
