@@ -2,7 +2,7 @@
 
 import type { FractalEvent, Mood, Genre, Technique, BassSynthParams, InstrumentType, MelodyInstrument, BassInstrument, AccompanimentInstrument, ResonanceMatrix, InstrumentHints, AccompanimentTechnique, GhostChord, SfxRule, V1MelodyInstrument, V2MelodyInstrument, BlueprintPart, InstrumentationRules } from './fractal';
 import { ElectronicK, TraditionalK, AmbientK, MelancholicMinorK } from './resonance-matrices';
-import { getScaleForMood, STYLE_DRUM_PATTERNS, generateAmbientBassPhrase, createAccompanimentAxiom, PERCUSSION_SETS, TEXTURE_INSTRUMENT_WEIGHTS_BY_MOOD, getAccompanimentTechnique, createBassFill, createDrumFill, AMBIENT_ACCOMPANIMENT_WEIGHTS, chooseHarmonyInstrument, mutateBassPhrase, createMelodyMotif, createDrumAxiom, generateGhostHarmonyTrack, mutateAccompanimentPhrase } from './music-theory';
+import { getScaleForMood, STYLE_DRUM_PATTERNS, createAccompanimentAxiom, PERCUSSION_SETS, TEXTURE_INSTRUMENT_WEIGHTS_BY_MOOD, getAccompanimentTechnique, createBassFill, createDrumFill, AMBIENT_ACCOMPANIMENT_WEIGHTS, chooseHarmonyInstrument, mutateBassPhrase, createMelodyMotif, createDrumAxiom, generateGhostHarmonyTrack, mutateAccompanimentPhrase, generateBluesBassRiff, createAmbientBassAxiom } from './music-theory';
 import { BlueprintNavigator, type NavigationInfo } from './blueprint-navigator';
 import { getBlueprint } from './blueprints';
 import { V2_PRESETS } from './presets-v2';
@@ -155,8 +155,7 @@ export class FractalMusicEngine {
     const initialRegisterHint = initialNavInfo?.currentPart.instrumentRules?.accompaniment?.register?.preferred;
     
     for (let i = 0; i < 4; i++) {
-        const bassTechnique = initialNavInfo?.currentPart.instrumentRules?.bass?.techniques?.[0]?.value as Technique || 'drone';
-        this.bassPhraseLibrary.push(generateAmbientBassPhrase(firstChord, this.config.mood, this.config.genre, this.random, this.config.tempo, bassTechnique));
+        this.bassPhraseLibrary.push(this._generateBassPhrase(firstChord, this.config.mood, this.config.genre, this.random, this.config.tempo, 'drone'));
         this.accompPhraseLibrary.push(createAccompanimentAxiom(firstChord, this.config.mood, this.config.genre, this.random, this.config.tempo, initialRegisterHint));
     }
     
@@ -347,13 +346,19 @@ export class FractalMusicEngine {
         return arpeggio;
     }
 
+    private _generateBassPhrase(chord: GhostChord, mood: Mood, genre: Genre, random: { next: () => number, nextInt: (max: number) => number }, tempo: number, technique: Technique): FractalEvent[] {
+        if (genre === 'blues') {
+            return generateBluesBassRiff(chord, technique, random, mood);
+        }
+        return createAmbientBassAxiom(chord, mood, genre, random, tempo, technique);
+    }
+
   private generateOneBar(barDuration: number, navInfo: NavigationInfo | null): { events: FractalEvent[], instrumentHints: InstrumentHints } {
     let instrumentHints: InstrumentHints = {};
     if (!navInfo || !this.navigator) {
         return { events: [], instrumentHints: {} };
     }
     
-    // #ИЗМЕНЕНО: Добавлен оператор % для зацикливания гармонии, предотвращая ошибку выхода за пределы массива.
     const effectiveBar = this.epoch % this.navigator.totalBars;
     const currentChord = this.ghostHarmonyTrack.find(chord => 
         effectiveBar >= chord.bar && effectiveBar < chord.bar + chord.durationBars
@@ -404,30 +409,15 @@ export class FractalMusicEngine {
     const bassTechnique = bassRules?.techniques?.[0]?.value as Technique || 'drone';
 
     if (navInfo.currentPart.layers.bass) {
-        if (bassTechnique === 'riff') {
-            const isNewBundle = navInfo.isBundleTransition || this.epoch === 0;
-            if (isNewBundle || this.bassPhraseLibrary[this.currentBassPhraseIndex]?.length === 0) {
-                const newRiffAxiom = generateBluesBassRiff(currentChord, 'riff', this.random, this.config.mood);
-                const mutatedRiff = this.epoch > 0 ? mutateBassPhrase(newRiffAxiom, currentChord, this.config.mood, this.config.genre, this.random) : newRiffAxiom;
-                const oneBarRiff = mutatedRiff.filter(e => e.time < 4.0);
-                this.bassPhraseLibrary[this.currentBassPhraseIndex] = oneBarRiff;
-                console.log(`%c[FME @ Bar ${this.epoch}] Generated and stored new mutated blues riff.`, 'color: #ADD8E6');
+        if (this.bassPhraseLibrary.length <= this.currentBassPhraseIndex || !this.bassPhraseLibrary[this.currentBassPhraseIndex] || navInfo.isBundleTransition) {
+           const newPhrase = this._generateBassPhrase(currentChord, this.config.mood, this.config.genre, this.random, this.config.tempo, bassTechnique);
+            if (this.bassPhraseLibrary.length <= this.currentBassPhraseIndex) {
+                 this.bassPhraseLibrary.push(newPhrase);
+            } else {
+                this.bassPhraseLibrary[this.currentBassPhraseIndex] = newPhrase;
             }
-            bassEvents = this.bassPhraseLibrary[this.currentBassPhraseIndex];
-
-        } else if (this.config.genre === 'blues') {
-            bassEvents = generateBluesBassRiff(currentChord, bassTechnique, this.random, this.config.mood);
-        } else {
-            if (!this.bassPhraseLibrary[this.currentBassPhraseIndex] || this.bassPhraseLibrary[this.currentBassPhraseIndex].length === 0 || navInfo.isBundleTransition) {
-               const newPhrase = generateAmbientBassPhrase(currentChord, this.config.mood, this.config.genre, this.random, this.config.tempo, bassTechnique);
-                if (this.bassPhraseLibrary.length <= this.currentBassPhraseIndex) {
-                     this.bassPhraseLibrary.push(newPhrase);
-                } else {
-                    this.bassPhraseLibrary[this.currentBassPhraseIndex] = newPhrase;
-                }
-            }
-            bassEvents = this.bassPhraseLibrary[this.currentBassPhraseIndex];
         }
+        bassEvents = this.bassPhraseLibrary[this.currentBassPhraseIndex];
     }
     
     if (navInfo.currentPart.bassAccompanimentDouble?.enabled) {
@@ -505,11 +495,18 @@ export class FractalMusicEngine {
 
     this.epoch = barCount;
 
-    if (this.epoch >= this.navigator.totalBars) {
+    // Check if it's time to trigger a suite reset
+    if (this.epoch >= this.navigator.totalBars + 4) { // 4 bars for promenade
       console.log(`%c[FME @ Bar ${this.epoch}] End of suite detected. Posting SUITE_ENDED command.`, 'color: red; font-weight: bold;');
-      // Вместо прямого вызова reset, отправляем сообщение в воркер
       self.postMessage({ command: 'SUITE_ENDED' });
-      return { events: [], instrumentHints: {} }; // Возвращаем пустоту, пока воркер перезагружается
+      return { events: [], instrumentHints: {} }; 
+    }
+    
+    // Check if we are in the "Promenade" section
+    if (this.epoch >= this.navigator.totalBars) {
+        const promenadeBar = this.epoch - this.navigator.totalBars;
+        const promenadeEvents = this._generatePromenade(promenadeBar);
+        return { events: promenadeEvents, instrumentHints: {} };
     }
 
     if (!isFinite(barDuration)) return { events: [], instrumentHints: {} };
@@ -523,4 +520,24 @@ export class FractalMusicEngine {
     const { events, instrumentHints } = this.generateOneBar(barDuration, navigationInfo);
     return { events, instrumentHints };
   }
+
+  private _generatePromenade(promenadeBar: number): FractalEvent[] {
+    const events: FractalEvent[] = [];
+    if (promenadeBar === 0) {
+        // Deep bass drone
+        events.push({ type: 'bass', note: 36, duration: 8, time: 0, weight: 0.6, technique: 'drone', dynamics: 'p', phrasing: 'legato', params: { attack: 3.5, release: 4.5, cutoff: 120, resonance: 0.5, distortion: 0.1, portamento: 0 } });
+        // Ambient pad
+        events.push({ type: 'accompaniment', note: 48, duration: 8, time: 0, weight: 0.4, technique: 'swell', dynamics: 'p', phrasing: 'legato', params: { attack: 4.0, release: 4.0 } });
+        // Very soft, sparse percussion
+        events.push({ type: 'perc-013', note: 60, time: 1.5, duration: 0.5, weight: 0.2, technique: 'hit', dynamics: 'pp', phrasing: 'staccato', params: {} });
+    }
+    if (promenadeBar === 2) {
+         // A single sparkle or sfx
+         events.push({ type: 'sparkle', note: 72, time: 0.5, duration: 1, weight: 0.5, technique: 'hit', dynamics: 'p', phrasing: 'legato', params: { mood: this.config.mood, genre: this.config.genre }});
+         events.push({ type: 'sfx', note: 60, time: 2.5, duration: 2, weight: 0.3, technique: 'swell', dynamics: 'p', phrasing: 'legato', params: { mood: this.config.mood, genre: this.config.genre } });
+    }
+    return events;
+  }
+
 }
+

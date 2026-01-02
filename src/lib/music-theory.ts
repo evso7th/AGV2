@@ -67,7 +67,7 @@ const isRhythmic = (event: FractalEvent): boolean => (event.type as string).star
 
 // === АКСОМЫ И ТРАНСФОРМАЦИИ ===
 export function mutateBassPhrase(phrase: FractalEvent[], chord: GhostChord, mood: Mood, genre: Genre, random: { next: () => number, nextInt: (max: number) => number }): FractalEvent[] {
-    if (phrase.length === 0) return generateAmbientBassPhrase(chord, mood, genre, random, 120, 'drone');
+    if (phrase.length === 0) return createAmbientBassAxiom(chord, mood, genre, random, 120, 'drone');
 
     const newPhrase: FractalEvent[] = JSON.parse(JSON.stringify(phrase));
     const mutationType = random.nextInt(4);
@@ -99,7 +99,7 @@ export function mutateBassPhrase(phrase: FractalEvent[], chord: GhostChord, mood
             mutationDescription = "Partial Regeneration";
             if (newPhrase.length > 2) {
                 const half = Math.ceil(newPhrase.length / 2);
-                const newHalf = generateAmbientBassPhrase(chord, mood, genre, random, 120, 'drone').slice(0, half);
+                const newHalf = createAmbientBassAxiom(chord, mood, genre, random, 120, 'drone').slice(0, half);
                 newPhrase.splice(0, half, ...newHalf);
             }
             break;
@@ -317,16 +317,7 @@ export function generateBluesBassRiff(chord: GhostChord, technique: Technique, r
     return phrase;
 }
 
-export function generateAmbientBassPhrase(chord: GhostChord, mood: Mood, genre: Genre, random: { next: () => number, nextInt: (max: number) => number }, tempo: number, technique: Technique): FractalEvent[] {
-    // #ЗАЧЕМ: Маршрутизатор басовых партий.
-    // #ЧТО: Проверяет жанр. Если это 'blues', вызывает специализированный блюзовый генератор.
-    //       В противном случае генерирует стандартную эмбиент-партию.
-    // #СВЯЗИ: Является единой точкой входа для создания баса, вызываемой из `fractal-music-engine`.
-    if (genre === 'blues') {
-        return generateBluesBassRiff(chord, technique, random, mood);
-    }
-    
-    // --- Старая логика для эмбиента и других жанров ---
+export function createAmbientBassAxiom(chord: GhostChord, mood: Mood, genre: Genre, random: { next: () => number, nextInt: (max: number) => number }, tempo: number, technique: Technique): FractalEvent[] {
     const phrase: FractalEvent[] = [];
     const scale = getScaleForMood(mood);
     const rootNote = chord.rootNote;
@@ -380,18 +371,11 @@ export function createAccompanimentAxiom(chord: GhostChord, mood: Mood, genre: G
     const axiom: FractalEvent[] = [];
     const rootMidi = chord.rootNote;
     
-    // #ЗАЧЕМ: Этот блок кода теперь строит аккорд хроматически, без проверки на принадлежность к ладу.
-    // #ЧТО: Он определяет ноты для мажорного, минорного или доминантного аккорда, просто добавляя
-    //       полутона к базовой ноте (rootMidi), что является правильным подходом для блюзовой гармонии,
-    //       где аккорды часто содержат ноты, не входящие в основную диатоническую гамму.
-    // #СВЯЗИ: Устраняет ошибку "Could not form a valid dominant 7th".
     let chordNotes: number[] = [];
     if (chord.chordType === 'dominant') {
-        // Строим доминантсептаккорд: Тоника, Большая терция, Квинта, Малая септима
         chordNotes = [rootMidi, rootMidi + 4, rootMidi + 7, rootMidi + 10];
     } else {
         const isMinor = chord.chordType === 'minor' || chord.chordType === 'diminished';
-        // Строим мажорное или минорное трезвучие
         chordNotes = [rootMidi, rootMidi + (isMinor ? 3 : 4), rootMidi + 7];
     }
     
@@ -418,13 +402,6 @@ export function createAccompanimentAxiom(chord: GhostChord, mood: Mood, genre: G
     return axiom;
 }
 
-/**
- * #ЗАЧЕМ: Эта функция создает базовую музыкальную фразу (аксиому) для слоя 'harmony'.
- * #ЧТО: Она генерирует 2-3 ноты, основываясь на переданном "призрачном" аккорде (GhostChord),
- *         выбирая ноты из этого аккорда и размещая их в 3-й октаве.
- * #СВЯЗИ: Вызывается движком (FractalMusicEngine), когда нужно создать новую гармоническую идею.
- *          Результат передается в HarmonySynthManager для воспроизведения.
- */
 export function createHarmonyAxiom(chord: GhostChord, mood: Mood, genre: Genre, random: { next: () => number; nextInt: (max: number) => number }): FractalEvent[] {
     const axiom: FractalEvent[] = [];
     const scale = getScaleForMood(mood);
@@ -895,7 +872,6 @@ export function generateGhostHarmonyTrack(totalBars: number, mood: Mood, key: nu
         for (const segment of structure) {
             if (currentBar >= totalBars) break;
             
-            // #ИСПРАВЛЕНО: Для блюза аккорды I, IV, V являются доминантсептаккордами.
             const chordType: GhostChord['chordType'] = 'dominant';
 
             const duration = Math.min(segment.duration, totalBars - currentBar);
@@ -933,7 +909,6 @@ export function createDrumAxiom(genre: Genre, mood: Mood, tempo: number, random:
 
         const eventTypeStr = Array.isArray(baseEvent.type) ? baseEvent.type[0] : baseEvent.type;
 
-        // #ИЗМЕНЕНО: Добавлена серия проверок для строгого подчинения правилам
         if (eventTypeStr.includes('snare') && rules?.useSnare === false) continue;
         if (eventTypeStr.startsWith('perc-') && rules?.usePerc === false) continue;
         if (eventTypeStr.includes('tom') && rules?.usePerc === false) continue;
@@ -1222,4 +1197,5 @@ export function createMelodyMotif(chord: GhostChord, mood: Mood, random: { next:
 
 
     
+
 
