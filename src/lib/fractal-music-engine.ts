@@ -466,13 +466,8 @@ export class FractalMusicEngine {
     // --- BASS GENERATION ---
     let bassEvents: FractalEvent[] = [];
     
-    // --- DIAGNOSTIC LOGS ---
     const bassRules = navInfo.currentPart.instrumentRules?.bass;
-    console.log(`%c[FME Bass-Check] Blueprint rules for bass: ${JSON.stringify(bassRules)}`, 'color: #FFD700');
-    
     const bassTechnique = bassRules?.techniques?.[0]?.value as Technique || 'drone';
-    console.log(`%c[FME Bass-Check] Final chosen bass technique: ${bassTechnique}`, 'color: #FFA500');
-    // --- END DIAGNOSTIC LOGS ---
 
     if (navInfo.currentPart.layers.bass) {
         if (bassTechnique === 'riff') {
