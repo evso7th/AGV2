@@ -228,7 +228,7 @@ export async function buildMultiInstrument(ctx: AudioContext, {
     lfoPanGain.connect(pan.pan); lfoAmpGain.connect(trem.gain);
     lfo.start();
 
-    const foot = [0.5, 0.75, 1, 2, 3, 4, 5, 6, 8];
+    const foot = [16, 5.333, 8, 4, 2.666, 2, 1.6, 1.333, 1];
     const activeVoices = new Map();
 
     const revSend = ctx.createGain(); revSend.gain.value = reverbMix;
@@ -275,7 +275,10 @@ export async function buildMultiInstrument(ctx: AudioContext, {
         if(drawbars[i] === 0) return null;
         const osc = ctx.createOscillator();
         osc.type = 'sine';
-        osc.frequency.setValueAtTime(f0*ft, when);
+        // #ИСПРАВЛЕНО: Заменен неверный расчет 'ratio' на правильную формулу с логарифмами,
+        //             которая корректно вычисляет октавное смещение для каждой гармоники.
+        const ratio = Math.pow(2, 3 - Math.log2(ft));
+        osc.frequency.setValueAtTime(f0 * ratio, when);
         vibGain.connect(osc.detune);
         const g = ctx.createGain(); g.gain.value = (drawbars[i]/8)*0.4;
         osc.connect(g); g.connect(voiceGain);
