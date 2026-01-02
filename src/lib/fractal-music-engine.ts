@@ -2,7 +2,7 @@
 
 import type { FractalEvent, Mood, Genre, Technique, BassSynthParams, InstrumentType, MelodyInstrument, BassInstrument, AccompanimentInstrument, ResonanceMatrix, InstrumentHints, AccompanimentTechnique, GhostChord, SfxRule, V1MelodyInstrument, V2MelodyInstrument, BlueprintPart, InstrumentationRules } from './fractal';
 import { ElectronicK, TraditionalK, AmbientK, MelancholicMinorK } from './resonance-matrices';
-import { getScaleForMood, STYLE_DRUM_PATTERNS, generateAmbientBassPhrase, createAccompanimentAxiom, PERCUSSION_SETS, TEXTURE_INSTRUMENT_WEIGHTS_BY_MOOD, getAccompanimentTechnique, createBassFill, createDrumFill, AMBIENT_ACCOMPANIMENT_WEIGHTS, chooseHarmonyInstrument, mutateBassPhrase, createMelodyMotif, createDrumAxiom, generateGhostHarmonyTrack, mutateAccompanimentPhrase, createHarmonyAxiom, generateBluesBassRiff } from './music-theory';
+import { getScaleForMood, STYLE_DRUM_PATTERNS, generateAmbientBassPhrase, createAccompanimentAxiom, PERCUSSION_SETS, TEXTURE_INSTRUMENT_WEIGHTS_BY_MOOD, getAccompanimentTechnique, createBassFill, createDrumFill, AMBIENT_ACCOMPANIMENT_WEIGHTS, chooseHarmonyInstrument, mutateBassPhrase, createMelodyMotif, createDrumAxiom, generateGhostHarmonyTrack, mutateAccompanimentPhrase } from './music-theory';
 import { BlueprintNavigator, type NavigationInfo } from './blueprint-navigator';
 import { getBlueprint } from './blueprints';
 import { V2_PRESETS } from './presets-v2';
@@ -84,8 +84,6 @@ export class FractalMusicEngine {
   private ghostHarmonyTrack: GhostChord[] = []; // The harmonic "skeleton"
   
   public navigator: BlueprintNavigator | null = null;
-  private isPromenadeActive: boolean = false;
-  private promenadeBars: FractalEvent[] = [];
 
 
   private bassPhraseLibrary: FractalEvent[][] = [];
@@ -125,71 +123,6 @@ export class FractalMusicEngine {
       }
   }
 
-  private _generatePromenade() {
-    const promenade: FractalEvent[] = [];
-    const scale = getScaleForMood(this.config.mood);
-    const root = scale[0];
-    const durationInBeats = 16; // 4 bars * 4 beats
-  
-    promenade.push({
-      type: 'bass',
-      note: root - 12,
-      duration: durationInBeats,
-      time: 0,
-      weight: 0.5,
-      technique: 'drone',
-      dynamics: 'p',
-      phrasing: 'legato',
-      params: { attack: 3.0, release: 5.0, cutoff: 200, resonance: 0.5, distortion: 0, portamento: 0.1 }
-    });
-    promenade.push({
-        type: 'accompaniment',
-        note: root,
-        duration: durationInBeats,
-        time: 0.5,
-        weight: 0.4,
-        technique: 'swell',
-        dynamics: 'p',
-        phrasing: 'legato',
-        params: { attack: 4.0, release: 6.0 }
-    });
-  
-    const percSamples: InstrumentType[] = ['perc-007', 'perc-011', 'perc-014', 'drum_a_ride2'];
-    for (let i = 0; i < 8; i++) {
-        promenade.push({
-            type: percSamples[i % percSamples.length],
-            note: 60,
-            duration: 1.0,
-            time: i * 2.0 + this.random.next() * 0.5,
-            weight: 0.2 + this.random.next() * 0.1,
-            technique: 'hit', dynamics: 'pp', phrasing: 'staccato', params: {}
-        });
-    }
-  
-    promenade.push({
-      type: 'sfx',
-      note: 60,
-      time: 1.0,
-      duration: durationInBeats - 2.0,
-      weight: 0.35,
-      technique: 'swell', dynamics: 'p', phrasing: 'legato',
-      params: { mood: this.config.mood, genre: 'ambient', rules: { eventProbability: 1.0, categories: [{name: 'common', weight: 1.0}]} }
-    });
-  
-    promenade.push({
-      type: 'sparkle',
-      note: 60,
-      time: durationInBeats / 2,
-      duration: 1,
-      weight: 0.6,
-      technique: 'hit', dynamics: 'mp', phrasing: 'legato',
-      params: { mood: this.config.mood, genre: this.config.genre }
-    });
-  
-    this.promenadeBars = promenade;
-    console.log(`[FME] Generated enriched Promenade with ${this.promenadeBars.length} events.`);
-  }
-
   public async initialize(force: boolean = false) {
     if (this.navigator && !force) return;
 
@@ -210,7 +143,6 @@ export class FractalMusicEngine {
     }
 
     console.log(`[FractalMusicEngine] Initialized with blueprint "${this.navigator.blueprint.name}". Total duration: ${this.navigator.totalBars} bars.`);
-    this._generatePromenade();
 
     this.bassPhraseLibrary = [];
     this.currentBassPhraseIndex = 0;
@@ -417,11 +349,16 @@ export class FractalMusicEngine {
 
   private generateOneBar(barDuration: number, navInfo: NavigationInfo | null): { events: FractalEvent[], instrumentHints: InstrumentHints } {
     let instrumentHints: InstrumentHints = {};
-    if (!navInfo) {
+    if (!navInfo || !this.navigator) {
         return { events: [], instrumentHints: {} };
     }
     
-    const currentChord = this.ghostHarmonyTrack.find(chord => this.epoch >= chord.bar && this.epoch < chord.bar + chord.durationBars);
+    // #ИЗМЕНЕНО: Добавлен оператор % для зацикливания гармонии, предотвращая ошибку выхода за пределы массива.
+    const effectiveBar = this.epoch % this.navigator.totalBars;
+    const currentChord = this.ghostHarmonyTrack.find(chord => 
+        effectiveBar >= chord.bar && effectiveBar < chord.bar + chord.durationBars
+    );
+
     if (!currentChord) {
         console.error(`[Engine] CRITICAL ERROR in bar ${this.epoch}: Could not find chord in 'Ghost Harmony'.`);
         return { events: [], instrumentHints: {} };
@@ -568,8 +505,12 @@ export class FractalMusicEngine {
 
     this.epoch = barCount;
 
-    // #ИЗМЕНЕНО: Логика перехода между сюитами и Променадом удалена отсюда.
-    //            Теперь этим управляет `tick()` в воркере.
+    if (this.epoch >= this.navigator.totalBars) {
+      console.log(`%c[FME @ Bar ${this.epoch}] End of suite detected. Posting SUITE_ENDED command.`, 'color: red; font-weight: bold;');
+      // Вместо прямого вызова reset, отправляем сообщение в воркер
+      self.postMessage({ command: 'SUITE_ENDED' });
+      return { events: [], instrumentHints: {} }; // Возвращаем пустоту, пока воркер перезагружается
+    }
 
     if (!isFinite(barDuration)) return { events: [], instrumentHints: {} };
     
