@@ -108,7 +108,6 @@ export const useAuraGroove = (): AuraGrooveProps => {
   const timerIntervalRef = useRef<NodeJS.Timeout | null>(null);
 
   const [isRegenerating, setIsRegenerating] = useState(false);
-  const [initialSeed, setInitialSeed] = useState(() => Date.now());
 
 
   // Automatically initialize the engine when the component mounts
@@ -117,7 +116,7 @@ export const useAuraGroove = (): AuraGrooveProps => {
   }, [initialize]);
 
 
-  const getFullSettings = useCallback((): WorkerSettings => {
+  const getFullSettings = useCallback((): Omit<WorkerSettings, 'seed'> => {
     return {
       bpm,
       score,
@@ -131,11 +130,10 @@ export const useAuraGroove = (): AuraGrooveProps => {
       density,
       composerControlsInstruments,
       mood,
-      seed: initialSeed,
       useMelodyV2,
       introBars,
     };
-  }, [bpm, score, genre, instrumentSettings, drumSettings, textureSettings, density, composerControlsInstruments, mood, initialSeed, useMelodyV2, introBars]);
+  }, [bpm, score, genre, instrumentSettings, drumSettings, textureSettings, density, composerControlsInstruments, mood, useMelodyV2, introBars]);
 
   // Initial settings sync
   useEffect(() => {
@@ -228,7 +226,7 @@ export const useAuraGroove = (): AuraGrooveProps => {
 
   const handleRegenerate = useCallback(() => {
     setIsRegenerating(true);
-    setInitialSeed(Date.now());
+    // #ИЗМЕНЕНО: Удалена логика с setInitialSeed. Теперь воркер сам генерирует seed.
     setTimeout(() => setIsRegenerating(false), 500); 
 
     if (isPlaying) {
@@ -364,3 +362,5 @@ export const useAuraGroove = (): AuraGrooveProps => {
     setIntroBars,
   };
 };
+
+    
