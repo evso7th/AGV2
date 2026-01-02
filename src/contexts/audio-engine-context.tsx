@@ -32,6 +32,7 @@ export function noteToMidi(note: string): number {
 // --- Type Definitions ---
 type WorkerMessage = {
     type: 'SCORE_READY' | 'HARMONY_SCORE_READY' | 'error' | 'debug' | 'sparkle' | 'sfx';
+    command?: 'reset' | 'SUITE_ENDED';
     payload?: {
         events?: FractalEvent[];
         barDuration?: number;
@@ -113,6 +114,13 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
   const impulseTimerRef = useRef<NodeJS.Timeout | null>(null);
   
   const { toast } = useToast();
+
+  const resetWorkerCallback = useCallback(() => {
+    if (workerRef.current) {
+      console.log("[AudioEngineContext] Calling resetWorker, posting 'reset' command to worker.");
+      workerRef.current.postMessage({ command: 'reset' });
+    }
+  }, []);
 
   const updateSettingsCallback = useCallback((settings: Partial<WorkerSettings>) => {
      if (!isInitialized || !workerRef.current) return;
@@ -249,7 +257,7 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
     }
   }, []);
 
-  // #ЗАЧЕМ: Этот `useEffect` отвечает за подписку на сообщения от Web Worker'а.
+  // #ЗАЧЕМ: Этот useEffect отвечает за подписку на сообщения от Web Worker'а.
   // #ЧТО: Он устанавливает `worker.onmessage` и обрабатывает входящие события.
   // #СВЯЗИ: Критически важно, что теперь он зависит от `scheduleEvents`. Когда
   //         `scheduleEvents` пересоздается (из-за изменения `useMelodyV2`),
@@ -260,7 +268,14 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
     if (workerRef.current) {
         const worker = workerRef.current;
         const messageHandler = (event: MessageEvent<WorkerMessage>) => {
-             const { type, payload, error } = event.data;
+             const { type, command, payload, error } = event.data;
+
+                // --- НОВЫЙ БЛОК: Обработка команд от воркера ---
+                if (command === 'reset' || command === 'SUITE_ENDED') {
+                    console.log(`[AudioEngineContext] Received "${command}" command from worker. Triggering regeneration...`);
+                    resetWorkerCallback();
+                    return; // Команда обработана, выходим
+                }
                 
                 if (type === 'SCORE_READY' && payload && 'events' in payload) {
                     const { events, barDuration, instrumentHints, barCount } = payload;
@@ -292,7 +307,7 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
             worker.onmessage = null; // Clean up the message handler
         };
     }
-  }, [scheduleEvents, toast]);
+  }, [scheduleEvents, toast, resetWorkerCallback]);
 
 
   const initialize = useCallback(async () => {
@@ -437,15 +452,6 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
         workerRef.current.postMessage({ command: 'stop' });
     }
   }, [isInitialized, stopAllSounds, scheduleNextImpulse]);
-
-  const resetWorkerCallback = useCallback(() => {
-    if (!workerRef.current) return;
-    if (settingsRef.current) {
-      workerRef.current.postMessage({ command: 'init', data: settingsRef.current });
-    }
-  }, []);
-
-
 
   const setVolumeCallback = useCallback((part: InstrumentPart, volume: number) => {
     if (part === 'pads' || part === 'effects') return;

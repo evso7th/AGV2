@@ -201,11 +201,15 @@ const Scheduler = {
              self.postMessage({ type: 'HARMONY_SCORE_READY', payload: harmonyPayload });
         }
 
-
         this.barCount++;
+        // #ЗАЧЕМ: Этот блок отправляет команду на перезапуск сюиты.
+        // #ЧТО: Когда `barCount` превышает общую длину сюиты (включая 4 такта "променада"),
+        //      он отправляет в основной поток команду `SUITE_ENDED`.
+        // #СВЯЗИ: Основной поток (`audio-engine-context.tsx`) должен слушать эту команду
+        //         и вызывать `resetWorker()`, чтобы начать новую сюиту.
         if (fractalMusicEngine && this.barCount >= fractalMusicEngine.navigator.totalBars + 4) {
-             console.log(`%c[Worker] End of suite detected. Posting 'reset' command.`, 'color: red; font-weight: bold;');
-             self.postMessage({ command: 'reset' });
+             console.log(`%c[Worker] End of suite detected. Posting 'SUITE_ENDED' command.`, 'color: red; font-weight: bold;');
+             self.postMessage({ command: 'SUITE_ENDED' });
         }
     }
 };
