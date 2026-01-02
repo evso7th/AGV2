@@ -24,8 +24,8 @@ export const JoyfulBluesBlueprint: MusicBlueprint = {
                     harmony: { strategy: 'weighted', options: [{ name: 'guitarChords', weight: 1.0 }] }
                 },
                 instrumentRules: {
-                    drums: { pattern: 'composer', density: { min: 0.7, max: 0.9 }, useSnare: true, useGhostHat: true },
-                    bass: { techniques: [{ value: 'boogie', weight: 1.0 }] }, // UNIQUE TECHNIQUE
+                    drums: { pattern: 'composer', density: { min: 0.7, max: 0.9 }, useSnare: true, useGhostHat: true, usePerc: true, ride: { enabled: false } },
+                    bass: { techniques: [{ value: 'boogie', weight: 1.0 }] },
                     melody: { source: 'harmony_top_note' }
                 },
                 bundles: [{ id: 'BLUES_JOY_INTRO_BUNDLE', name: 'Verses 1-2', duration: { percent: 100 }, characteristics: {}, phrases: {} }],
@@ -33,13 +33,13 @@ export const JoyfulBluesBlueprint: MusicBlueprint = {
             },
             {
                 id: 'MAIN', name: 'Solo Section', duration: { percent: 50 },
-                layers: { bass: true, drums: true, accompaniment: true, melody: true, harmony: true },
+                layers: { bass: true, drums: true, accompaniment: true, melody: true, harmony: true, sparkles: true },
                  instrumentation: {
                     accompaniment: { strategy: 'weighted', v1Options: [{ name: 'organ', weight: 1.0 }], v2Options: [{ name: 'organ', weight: 1.0 }] },
                     melody: { strategy: 'weighted', v1Options: [{ name: 'electricGuitar', weight: 1.0 }], v2Options: [{ name: 'electricGuitar', weight: 1.0 }] }
                 },
                 instrumentRules: {
-                    drums: { pattern: 'composer', density: { min: 0.8, max: 1.0 }, kickVolume: 1.1 },
+                    drums: { pattern: 'composer', density: { min: 0.8, max: 1.0 }, kickVolume: 1.1, useSnare: true, useGhostHat: true, usePerc: true, ride: { enabled: false } },
                     melody: { density: { min: 0.6, max: 0.8 }, source: 'motif' },
                     bass: { techniques: [{ value: 'boogie', weight: 1.0 }] },
                 },
@@ -53,7 +53,7 @@ export const JoyfulBluesBlueprint: MusicBlueprint = {
                     accompaniment: { strategy: 'weighted', v1Options: [{ name: 'organ', weight: 1.0 }], v2Options: [{ name: 'organ', weight: 1.0 }] }
                 },
                 instrumentRules: {
-                    drums: { pattern: 'composer', density: { min: 0.7, max: 0.9 } },
+                    drums: { pattern: 'composer', density: { min: 0.7, max: 0.9 }, useSnare: true, useGhostHat: true, usePerc: true, ride: { enabled: false } },
                     bass: { techniques: [{ value: 'boogie', weight: 1.0 }] },
                     melody: { source: 'harmony_top_note' }
                 },
@@ -63,7 +63,9 @@ export const JoyfulBluesBlueprint: MusicBlueprint = {
         ]
     },
     mutations: {},
-    ambientEvents: [],
+    ambientEvents: [
+        { type: 'sparkle', probability: 0.1, activeParts: ['MAIN'] },
+    ],
     continuity: {},
     rendering: {}
 };
