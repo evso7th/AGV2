@@ -1,4 +1,5 @@
 
+
 import type { FractalEvent, Mood, Genre, Technique, BassSynthParams, InstrumentType, MelodyInstrument, BassInstrument, AccompanimentInstrument, ResonanceMatrix, InstrumentHints, AccompanimentTechnique, GhostChord, SfxRule, V1MelodyInstrument, V2MelodyInstrument, BlueprintPart, InstrumentationRules } from './fractal';
 import { ElectronicK, TraditionalK, AmbientK, MelancholicMinorK } from './resonance-matrices';
 import { getScaleForMood, STYLE_DRUM_PATTERNS, generateAmbientBassPhrase, createAccompanimentAxiom, PERCUSSION_SETS, TEXTURE_INSTRUMENT_WEIGHTS_BY_MOOD, getAccompanimentTechnique, createBassFill, createDrumFill, AMBIENT_ACCOMPANIMENT_WEIGHTS, chooseHarmonyInstrument, mutateBassPhrase, createMelodyMotif, createDrumAxiom, generateGhostHarmonyTrack, mutateAccompanimentPhrase, createHarmonyAxiom, generateBluesBassRiff } from './music-theory';
@@ -102,7 +103,7 @@ export class FractalMusicEngine {
     this.random = seededRandom(config.seed);
     this.nextWeatherEventEpoch = 0;
 
-    // #ИЗМЕНЕНО: Инициализация отложена до асинхронной загрузки блюпринта в updateConfig/initialize
+    // Инициализация отложена до асинхронной загрузки блюпринта в updateConfig/initialize
   }
 
   public get tempo(): number { return this.config.tempo; }
@@ -198,7 +199,6 @@ export class FractalMusicEngine {
     this.nextAccompanimentDelay = this.random.next() * 7 + 5; 
     this.hasBassBeenMutated = false;
 
-    // #ИЗМЕНЕНО: Асинхронная загрузка блюпринта
     const blueprint = await getBlueprint(this.config.genre, this.config.mood);
     console.log(`[FME] Blueprint now active: ${blueprint.name}`);
     this.navigator = new BlueprintNavigator(blueprint, this.config.seed, this.config.genre, this.config.mood, this.config.introBars);
@@ -223,14 +223,13 @@ export class FractalMusicEngine {
     const initialRegisterHint = initialNavInfo?.currentPart.instrumentRules?.accompaniment?.register?.preferred;
     
     for (let i = 0; i < 4; i++) {
-        // #ИЗМЕНЕНО: Вызываем generateAmbientBassPhrase с указанием техники, даже если для эмбиента она одна
         const bassTechnique = initialNavInfo?.currentPart.instrumentRules?.bass?.techniques?.[0]?.value as Technique || 'drone';
         this.bassPhraseLibrary.push(generateAmbientBassPhrase(firstChord, this.config.mood, this.config.genre, this.random, this.config.tempo, bassTechnique));
         this.accompPhraseLibrary.push(createAccompanimentAxiom(firstChord, this.config.mood, this.config.genre, this.random, this.config.tempo, initialRegisterHint));
     }
     
     this.currentMelodyMotif = createMelodyMotif(firstChord, this.config.mood, this.random);
-    this.lastMelodyPlayEpoch = -16; // Motif is now 4 bars long, increased cooldown
+    this.lastMelodyPlayEpoch = -16; 
     
     this.needsBassReset = false;
   }
@@ -290,7 +289,6 @@ export class FractalMusicEngine {
              }
         }
 
-        // Final check to ensure the chosen instrument is compatible with the engine version
         if (this.config.useMelodyV2) {
             const v2PresetNames = Object.keys(V2_PRESETS);
             if (!selectedInstrument || !v2PresetNames.includes(selectedInstrument as string)) {
@@ -463,7 +461,6 @@ export class FractalMusicEngine {
         }
     }
 
-    // --- BASS GENERATION ---
     let bassEvents: FractalEvent[] = [];
     
     const bassRules = navInfo.currentPart.instrumentRules?.bass;
@@ -508,14 +505,8 @@ export class FractalMusicEngine {
         instrumentHints.melody = instrument;
     }
     
-    let harmonyEvents: FractalEvent[] = [];
     let melodyEvents: FractalEvent[] = [];
 
-    if (navInfo.currentPart.layers.harmony) {
-        instrumentHints.harmony = chooseHarmonyInstrument(this.config.mood, this.random);
-        harmonyEvents = createHarmonyAxiom(currentChord, this.config.mood, this.config.genre, this.random);
-    }
-    
     if (navInfo.currentPart.layers.melody && !navInfo.currentPart.bassAccompanimentDouble?.enabled) {
         const melodyRules = navInfo.currentPart.instrumentRules?.melody;
         const melodyDensity = melodyRules?.density?.min ?? 0.25;
@@ -539,7 +530,7 @@ export class FractalMusicEngine {
         }
     }
     
-    allEvents.push(...bassEvents, ...drumEvents, ...accompEvents, ...harmonyEvents, ...melodyEvents);
+    allEvents.push(...bassEvents, ...drumEvents, ...accompEvents, ...melodyEvents);
     
     const sfxRules = navInfo.currentPart.instrumentRules?.sfx as SfxRule | undefined;
     const sfxChance = sfxRules?.eventProbability ?? 0.08;
@@ -569,10 +560,6 @@ export class FractalMusicEngine {
   }
 
 
-  private _resetForNewSuite() {
-    // This method is now obsolete. The worker will post a 'reset' message to itself.
-  }
-
   public evolve(barDuration: number, barCount: number): { events: FractalEvent[], instrumentHints: InstrumentHints } {
     if (!this.navigator) {
         console.warn("[FME] Evolve called but navigator is not ready. Waiting for initialization.");
@@ -581,28 +568,9 @@ export class FractalMusicEngine {
 
     this.epoch = barCount;
 
-    if (!this.isPromenadeActive && this.epoch > 0 && this.epoch >= this.navigator.totalBars) {
-      console.log(`%c[FME] End of suite reached at bar ${this.epoch}. Activating PROMENADE.`, 'color: #FFD700; font-weight: bold');
-      this.isPromenadeActive = true;
-      return {
-        events: this.promenadeBars,
-        instrumentHints: { bass: 'glideBass', accompaniment: 'synth' }
-      };
-    }
-    
-    if (this.isPromenadeActive) {
-        const promenadeDuration = 4;
-        const promenadeEndEpoch = this.navigator.totalBars + promenadeDuration;
-        
-        if (this.epoch >= promenadeEndEpoch) {
-             console.log(`%c[FME] Promenade ended. Posting 'reset' command to self for full regeneration.`, 'color: #FF4500; font-weight: bold;');
-             self.postMessage({ command: 'reset' });
-             this.isPromenadeActive = false;
-             return { events: [], instrumentHints: {} };
-        }
-        return { events: [], instrumentHints: {} };
-    }
-    
+    // #ИЗМЕНЕНО: Логика перехода между сюитами и Променадом удалена отсюда.
+    //            Теперь этим управляет `tick()` в воркере.
+
     if (!isFinite(barDuration)) return { events: [], instrumentHints: {} };
     
     const navigationInfo = this.navigator.tick(this.epoch);

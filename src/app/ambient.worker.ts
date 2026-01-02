@@ -52,21 +52,18 @@ const Scheduler = {
         // #СВЯЗИ: Вызывается из updateSettings и reset. `force` используется для принудительной пересоздания.
         if (fractalMusicEngine && !force) return;
 
+        // #ИЗМЕНЕНО: Принудительно генерируем новый seed для каждой инициализации,
+        //            чтобы каждая новая сюита была уникальной.
+        const newSeed = Date.now();
+        console.log(`%c[Worker] Initializing new engine with NEW SEED: ${newSeed}`, 'color: #FFD700; font-weight:bold;');
+        
         const newEngine = new FractalMusicEngine({
-            tempo: settings.bpm,
-            density: settings.density,
-            lambda: 1.0 - (settings.density * 0.5 + 0.3),
-            organic: settings.density,
-            drumSettings: settings.drumSettings,
-            mood: settings.mood,
-            genre: settings.genre,
-            seed: settings.seed ?? Date.now(),
-            useMelodyV2: settings.useMelodyV2,
-            introBars: settings.introBars,
+            ...settings,
+            seed: newSeed,
         });
 
         // Ожидаем, пока движок загрузит блюпринт и будет готов к работе.
-        await (newEngine as any).initialize(force); 
+        await (newEngine as any).initialize(true); // force=true для перезагрузки блюпринта
         
         fractalMusicEngine = newEngine;
         this.barCount = 0;
@@ -102,6 +99,7 @@ const Scheduler = {
         if (this.isRunning) {
             this.stop();
         }
+        // #ИЗМЕНЕНО: Принудительно пересоздаем движок с новым seed.
         await this.initializeEngine(this.settings, true);
         if (this.settings.bpm > 0) {
             this.start();
@@ -128,10 +126,8 @@ const Scheduler = {
         };
 
        if (wasNotInitialized || scoreChanged || moodChanged || genreChanged || seedChanged || introBarsChanged) {
-           // #ИСПРАВЛЕНО: Добавлено `await` для гарантии полной инициализации движка перед продолжением.
            await this.initializeEngine(this.settings, true);
        } else if (fractalMusicEngine) {
-           // #РЕШЕНИЕ: Передаем ВЕСЬ объект настроек, чтобы гарантировать, что useMelodyV2 всегда актуален.
            await fractalMusicEngine.updateConfig(this.settings);
        }
        
@@ -207,8 +203,9 @@ const Scheduler = {
 
 
         this.barCount++;
-        if (fractalMusicEngine && this.barCount > fractalMusicEngine.navigator.totalBars + 3) {
-            this.barCount = 0;
+        if (fractalMusicEngine && this.barCount >= fractalMusicEngine.navigator.totalBars + 4) {
+             console.log(`%c[Worker] End of suite detected. Posting 'reset' command.`, 'color: red; font-weight: bold;');
+             self.postMessage({ command: 'reset' });
         }
     }
 };
