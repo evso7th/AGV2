@@ -9,6 +9,7 @@ import { V2_PRESETS } from './presets-v2';
 import { PARANOID_STYLE_RIFF } from './assets/rock-riffs';
 import { BLUES_BASS_RIFFS } from './assets/blues-bass-riffs';
 import { NEUTRAL_BLUES_BASS_RIFFS } from './assets/neutral-blues-riffs';
+import { BLUES_MELODY_RIFFS, type BluesRiffDegree, type BluesRiffEvent, type BluesMelodyPhrase, type BluesMelody } from './assets/blues-melody-riffs';
 
 
 export type Branch = {
@@ -266,7 +267,8 @@ export class FractalMusicEngine {
         return [];
     }
     
-    const baseAxiom = createDrumAxiom(this.config.genre, this.config.mood, this.config.tempo, this.random, drumRules).events;
+    const axiomResult = createDrumAxiom(this.config.genre, this.config.mood, this.config.tempo, this.random, drumRules);
+    const baseAxiom = axiomResult.events || [];
     
     if (navInfo.currentPart.id.includes('INTRO') || navInfo.currentPart.id.includes('RELEASE')) {
         if (!drumRules?.ride?.enabled) {
@@ -373,7 +375,7 @@ export class FractalMusicEngine {
     instrumentHints.accompaniment = this._chooseInstrumentForPart('accompaniment', navInfo.currentPart);
     instrumentHints.melody = this._chooseInstrumentForPart('melody', navInfo.currentPart);
     
-    let drumEvents = this.generateDrumEvents(navInfo);
+    const drumEvents = this.generateDrumEvents(navInfo) || [];
     
     let accompEvents: FractalEvent[] = [];
     if (navInfo.currentPart.layers.accompaniment) {
@@ -386,7 +388,7 @@ export class FractalMusicEngine {
                 this.accompPhraseLibrary[this.currentAccompPhraseIndex] = newAxiom;
             }
         }
-        accompEvents = this.accompPhraseLibrary[this.currentAccompPhraseIndex];
+        accompEvents = this.accompPhraseLibrary[this.currentAccompPhraseIndex] || [];
     }
     
     const canVary = !navInfo.currentPart.id.startsWith('INTRO') || navInfo.currentPart.id.includes('3');
@@ -417,7 +419,7 @@ export class FractalMusicEngine {
                 this.bassPhraseLibrary[this.currentBassPhraseIndex] = newPhrase;
             }
         }
-        bassEvents = this.bassPhraseLibrary[this.currentBassPhraseIndex];
+        bassEvents = this.bassPhraseLibrary[this.currentBassPhraseIndex] || [];
     }
     
     if (navInfo.currentPart.bassAccompanimentDouble?.enabled) {
@@ -541,3 +543,4 @@ export class FractalMusicEngine {
 
 }
 
+    
