@@ -54,7 +54,8 @@ export const ContemplativeBluesBlueprint: MusicBlueprint = {
                             { name: 'dark', weight: 0.5 }, 
                             { name: 'common', weight: 0.5 }
                         ] 
-                    }
+                    },
+                    melody: { register: { preferred: 'mid' } }
                 },
                 bundles: [{ id: 'BLUES_INTRO_BUNDLE', name: 'Verse 1', duration: { percent: 100 }, characteristics: {}, phrases: {} }],
                 outroFill: null,
@@ -72,7 +73,8 @@ export const ContemplativeBluesBlueprint: MusicBlueprint = {
                     accompaniment: { techniques: [{value: 'long-chords', weight: 1.0}]},
                     bassAccompanimentDouble: { enabled: true, instrument: 'electricGuitar', octaveShift: 1 },
                     sparkles: { eventProbability: 0.15, categories: [{ name: 'electro', weight: 0.5 }, { name: 'ambient_common', weight: 0.5 }] },
-                    sfx: { eventProbability: 0.1, categories: [{ name: 'dark', weight: 0.5 }, { name: 'common', weight: 0.5 }] }
+                    sfx: { eventProbability: 0.1, categories: [{ name: 'dark', weight: 0.5 }, { name: 'common', weight: 0.5 }] },
+                    melody: { register: { preferred: 'mid' } }
                 },
                 bundles: [{ id: 'BLUES_MAIN_A_BUNDLE', name: 'Main Riff', duration: { percent: 100 }, characteristics: {}, phrases: {} }],
                 outroFill: null,
@@ -92,7 +94,7 @@ export const ContemplativeBluesBlueprint: MusicBlueprint = {
                     melody: { 
                         source: 'motif', 
                         density: { min: 0.6, max: 0.8 },
-                        register: { preferred: 'high' } // Повышаем регистр для соло
+                        register: { preferred: 'mid' } // Повышаем регистр для соло
                     },
                     sparkles: { eventProbability: 0.2, categories: [{ name: 'electro', weight: 0.8 }, { name: 'ambient_common', weight: 0.2 }] },
                     sfx: { eventProbability: 0.15, categories: [{ name: 'dark', weight: 0.2 }, { name: 'common', weight: 0.8 }] }
@@ -113,7 +115,8 @@ export const ContemplativeBluesBlueprint: MusicBlueprint = {
                     accompaniment: { techniques: [{value: 'long-chords', weight: 1.0}]},
                     bassAccompanimentDouble: { enabled: true, instrument: 'electricGuitar', octaveShift: 1 }, // Возвращаем рифф
                     sparkles: { eventProbability: 0.15, categories: [{ name: 'electro', weight: 0.5 }, { name: 'ambient_common', weight: 0.5 }] },
-                    sfx: { eventProbability: 0.1, categories: [{ name: 'dark', weight: 0.5 }, { name: 'common', weight: 0.5 }] }
+                    sfx: { eventProbability: 0.1, categories: [{ name: 'dark', weight: 0.5 }, { name: 'common', weight: 0.5 }] },
+                    melody: { register: { preferred: 'mid' } }
                 },
                 bundles: [{ id: 'BLUES_MAIN_B_BUNDLE', name: 'Riff Return', duration: { percent: 100 }, characteristics: {}, phrases: {} }],
                 outroFill: null,
@@ -136,7 +139,8 @@ export const ContemplativeBluesBlueprint: MusicBlueprint = {
                             { name: 'dark', weight: 0.5 }, 
                             { name: 'common', weight: 0.5 }
                         ] 
-                    }
+                    },
+                    melody: { register: { preferred: 'mid' } }
                 },
                 bundles: [{ id: 'BLUES_OUTRO_BUNDLE', name: 'Last Verse', duration: { percent: 100 }, characteristics: {}, phrases: {} }],
                 outroFill: null,

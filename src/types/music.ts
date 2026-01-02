@@ -183,6 +183,7 @@ export type InstrumentRules = {
   melody?: {
     source?: MelodySource; // КАК генерировать мелодию
     density?: { min: number, max: number };
+    register?: { preferred: 'low' | 'mid' | 'high' }; // <-- ADDED THIS
     [key: string]: any;
   };
   [key: string]: any;
@@ -268,4 +269,5 @@ export type MusicBlueprint = {
     continuity: any; // Define this type more strictly later
     rendering: any; // Define this type more strictly later
 };
+
 

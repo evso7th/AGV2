@@ -44,7 +44,7 @@ export const AnxiousBluesBlueprint: MusicBlueprint = {
                     drums: { pattern: 'composer', density: {min: 0.0, max: 0.0}, useSnare: false, usePerc: false, kickVolume: 1.1, ride: { enabled: false }, useGhostHat: false },
                     bass: { techniques: [{ value: 'boogie', weight: 1.0 }] },
                     bassAccompanimentDouble: { enabled: true, instrument: 'electricGuitar', octaveShift: 1 },
-                    melody: { source: 'harmony_top_note' }
+                    melody: { source: 'harmony_top_note', register: { preferred: 'high' } }
                 },
                 bundles: [
                     {
@@ -86,7 +86,7 @@ export const AnxiousBluesBlueprint: MusicBlueprint = {
                     },
                     bass: { techniques: [{ value: 'boogie', weight: 1.0 }] },
                     bassAccompanimentDouble: { enabled: true, instrument: 'electricGuitar', octaveShift: 1 },
-                    melody: { source: 'harmony_top_note' }
+                    melody: { source: 'harmony_top_note', register: { preferred: 'high' } }
                 },
                 bundles: [{ id: 'BLUES_ANX_MAIN_A_BUNDLE', name: 'Main Riff A', duration: { percent: 100 }, characteristics: {}, phrases: {} }],
                 outroFill: { type: 'roll', duration: 1, parameters: { instrument: 'tom', density: 0.7 } },
@@ -130,7 +130,7 @@ export const AnxiousBluesBlueprint: MusicBlueprint = {
                     },
                     bass: { techniques: [{ value: 'boogie', weight: 1.0 }] },
                     bassAccompanimentDouble: { enabled: true, instrument: 'electricGuitar', octaveShift: 1 },
-                    melody: { source: 'harmony_top_note' }
+                    melody: { source: 'harmony_top_note', register: { preferred: 'high' } }
                 },
                 bundles: [{ id: 'BLUES_ANX_MAIN_B_BUNDLE', name: 'Riff Return', duration: { percent: 100 }, characteristics: {}, phrases: {} }],
                 outroFill: null,

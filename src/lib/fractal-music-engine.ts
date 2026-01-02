@@ -379,7 +379,6 @@ export class FractalMusicEngine {
     instrumentHints.accompaniment = this._chooseInstrumentForPart('accompaniment', navInfo.currentPart);
     instrumentHints.melody = this._chooseInstrumentForPart('melody', navInfo.currentPart);
     
-    // --- НАЧАЛО ИСПРАВЛЕНИЯ "ДВОЙНАЯ БРОНЯ" ---
     const drumEvents = this.generateDrumEvents(navInfo) || [];
 
     let accompEvents: FractalEvent[] = [];
@@ -440,36 +439,31 @@ export class FractalMusicEngine {
     
     let melodyEvents: FractalEvent[] = [];
 
-    // #ЗАЧЕМ: Этот блок управляет генерацией и воспроизведением блюзовых мелодий.
-    // #ЧТО: Он определяет начало 12-тактового хоруса, генерирует его с помощью новой функции,
-    //      кэширует результат и затем на каждом такте "извлекает" нужный фрагмент для воспроизведения.
-    // #СВЯЗИ: Полностью заменяет старую, примитивную логику генерации мелодии для блюза.
     if (this.config.genre === 'blues' && navInfo.currentPart.layers.melody && !navInfo.currentPart.bassAccompanimentDouble?.enabled) {
         const barInChorus = this.epoch % 12;
+        const melodyRules = navInfo.currentPart.instrumentRules?.melody;
+        const registerHint = melodyRules?.register?.preferred;
         
-        // 1. Если это начало нового 12-тактового хоруса, генерируем и кэшируем его
         if (barInChorus === 0 || this.bluesChorusCache === null) {
             const chorusBarStart = this.epoch - barInChorus;
             const chorusChords = this.ghostHarmonyTrack.filter(c => c.bar >= chorusBarStart && c.bar < chorusBarStart + 12);
             if (chorusChords.length > 0) {
                  this.bluesChorusCache = {
                     barStart: chorusBarStart,
-                    ...generateBluesMelodyChorus(chorusChords, this.config.mood, this.random)
+                    ...generateBluesMelodyChorus(chorusChords, this.config.mood, this.random, registerHint)
                  };
                  console.log(`[FME @ Bar ${this.epoch}] Telemetry: ${this.bluesChorusCache.log}`);
             }
         }
         
-        // 2. На каждом такте извлекаем ноты из кэша
         if (this.bluesChorusCache) {
             const barStartBeat = (this.epoch - this.bluesChorusCache.barStart) * 4.0;
             const barEndBeat = barStartBeat + 4.0;
             melodyEvents = this.bluesChorusCache.events
                 .filter(e => e.time >= barStartBeat && e.time < barEndBeat)
-                .map(e => ({ ...e, time: e.time - barStartBeat })); // Делаем время относительным для текущего такта
+                .map(e => ({ ...e, time: e.time - barStartBeat }));
         }
     } 
-    // Старая логика для других жанров
     else if (navInfo.currentPart.layers.melody && !navInfo.currentPart.bassAccompanimentDouble?.enabled) {
         const melodyRules = navInfo.currentPart.instrumentRules?.melody;
         const melodyDensity = melodyRules?.density?.min ?? 0.25;
@@ -493,7 +487,7 @@ export class FractalMusicEngine {
         }
     }
     
-    allEvents.push(...bassEvents, ...drumEvents, ...accompEvents, ...melodyEvents);
+    allEvents.push(...(bassEvents || []), ...(drumEvents || []), ...(accompEvents || []), ...(melodyEvents || []));
     
     const sfxRules = navInfo.currentPart.instrumentRules?.sfx as SfxRule | undefined;
     const sfxChance = sfxRules?.eventProbability ?? 0.08;
@@ -531,14 +525,12 @@ export class FractalMusicEngine {
 
     this.epoch = barCount;
 
-    // Check if it's time to trigger a suite reset
-    if (this.epoch >= this.navigator.totalBars + 4) { // 4 bars for promenade
+    if (this.epoch >= this.navigator.totalBars + 4) {
       console.log(`%c[FME @ Bar ${this.epoch}] End of suite detected. Posting SUITE_ENDED command.`, 'color: red; font-weight: bold;');
       self.postMessage({ command: 'SUITE_ENDED' });
       return { events: [], instrumentHints: {} }; 
     }
     
-    // Check if we are in the "Promenade" section
     if (this.epoch >= this.navigator.totalBars) {
         const promenadeBar = this.epoch - this.navigator.totalBars;
         const promenadeEvents = this._generatePromenade(promenadeBar);
@@ -560,15 +552,11 @@ export class FractalMusicEngine {
   private _generatePromenade(promenadeBar: number): FractalEvent[] {
     const events: FractalEvent[] = [];
     if (promenadeBar === 0) {
-        // Deep bass drone
         events.push({ type: 'bass', note: 36, duration: 8, time: 0, weight: 0.6, technique: 'drone', dynamics: 'p', phrasing: 'legato', params: { attack: 3.5, release: 4.5, cutoff: 120, resonance: 0.5, distortion: 0.1, portamento: 0 } });
-        // Ambient pad
         events.push({ type: 'accompaniment', note: 48, duration: 8, time: 0, weight: 0.4, technique: 'swell', dynamics: 'p', phrasing: 'legato', params: { attack: 4.0, release: 4.0 } });
-        // Very soft, sparse percussion
         events.push({ type: 'perc-013', note: 60, time: 1.5, duration: 0.5, weight: 0.2, technique: 'hit', dynamics: 'pp', phrasing: 'staccato', params: {} });
     }
     if (promenadeBar === 2) {
-         // A single sparkle or sfx
          events.push({ type: 'sparkle', note: 72, time: 0.5, duration: 1, weight: 0.5, technique: 'hit', dynamics: 'p', phrasing: 'legato', params: { mood: this.config.mood, genre: this.config.genre }});
          events.push({ type: 'sfx', note: 60, time: 2.5, duration: 2, weight: 0.3, technique: 'swell', dynamics: 'p', phrasing: 'legato', params: { mood: this.config.mood, genre: this.config.genre } });
     }

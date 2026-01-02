@@ -25,7 +25,7 @@ export const EnthusiasticBluesBlueprint: MusicBlueprint = {
                 instrumentRules: {
                     drums: { pattern: 'composer', density: { min: 0.6, max: 0.8 }, useSnare: true, useGhostHat: true },
                     bass: { techniques: [{ value: 'walking', weight: 1.0 }] }, // UNIQUE TECHNIQUE
-                    melody: { source: 'harmony_top_note' }
+                    melody: { source: 'harmony_top_note', register: { preferred: 'high' } }
                 },
                 bundles: [{ id: 'BLUES_ENT_INTRO_BUNDLE', name: 'Verse 1', duration: { percent: 100 }, characteristics: {}, phrases: {} }],
                 outroFill: null,
@@ -39,7 +39,7 @@ export const EnthusiasticBluesBlueprint: MusicBlueprint = {
                 },
                 instrumentRules: {
                     drums: { pattern: 'composer', density: { min: 0.7, max: 0.9 }, kickVolume: 1.3, ride: { enabled: true } }, // RIDE ADDED
-                    melody: { density: { min: 0.5, max: 0.7 }, source: 'motif' }, // Higher density for more active soloing
+                    melody: { density: { min: 0.5, max: 0.7 }, source: 'motif', register: { preferred: 'high' } }, // Higher density for more active soloing
                     bass: { techniques: [{ value: 'walking', weight: 1.0 }] },
                 },
                 bundles: [{ id: 'BLUES_ENT_MAIN_BUNDLE', name: 'Solo Section', duration: { percent: 100 }, characteristics: {}, phrases: {} }],
@@ -54,7 +54,7 @@ export const EnthusiasticBluesBlueprint: MusicBlueprint = {
                 instrumentRules: {
                     drums: { pattern: 'composer', density: { min: 0.6, max: 0.8 } },
                     bass: { techniques: [{ value: 'walking', weight: 1.0 }] },
-                    melody: { source: 'harmony_top_note' }
+                    melody: { source: 'harmony_top_note', register: { preferred: 'high' } }
                 },
                 bundles: [{ id: 'BLUES_ENT_OUTRO_BUNDLE', name: 'Final Verse', duration: { percent: 100 }, characteristics: {}, phrases: {} }],
                 outroFill: null,

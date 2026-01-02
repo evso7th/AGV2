@@ -252,6 +252,7 @@ export function getScaleForMood(mood: Mood): number[] {
       baseScale = [0, 2, 3, 5, 7, 9, 10];
       break;
     case 'dark':        // E Aeolian (Natural Minor)
+    case 'gloomy':
       baseScale = [0, 2, 3, 5, 7, 8, 10];
       break;
     case 'anxious':     // E Locrian
@@ -280,9 +281,8 @@ export function generateBluesBassRiff(chord: GhostChord, technique: Technique, r
     const barDurationInBeats = 4.0;
     const ticksPerBeat = 3; // 12/8 time feel
 
-    // #ИЗМЕНЕНО: Выбор библиотеки риффов в зависимости от настроения
-    const riffLibrary = mood === 'contemplative' || mood === 'calm' ? NEUTRAL_BLUES_BASS_RIFFS : BLUES_BASS_RIFFS;
-    const libraryName = mood === 'contemplative' || mood === 'calm' ? 'NEUTRAL' : 'DARK';
+    const riffLibrary = (mood === 'contemplative' || mood === 'calm' || mood === 'dreamy') ? NEUTRAL_BLUES_BASS_RIFFS : BLUES_BASS_RIFFS;
+    const libraryName = (mood === 'contemplative' || mood === 'calm' || mood === 'dreamy') ? 'NEUTRAL' : 'DARK';
 
     console.log(`%c[BluesBass] Generating riff for ${chord.rootNote} from ${libraryName} library.`, 'color: #4682B4');
 
@@ -291,7 +291,6 @@ export function generateBluesBassRiff(chord: GhostChord, technique: Technique, r
     console.log(`[BluesBass] Selected Riff #${riffIndex + 1} from ${libraryName} library.`);
 
     let barOffset = 0;
-    // Предполагаем, что рифф должен заполнить количество тактов, равное его длине в библиотеке
     for (const barPattern of selectedRiff) {
         for (const riffNote of barPattern) {
             phrase.push({
@@ -300,7 +299,7 @@ export function generateBluesBassRiff(chord: GhostChord, technique: Technique, r
                 time: barOffset + (riffNote.tick / ticksPerBeat),
                 duration: riffNote.dur / ticksPerBeat,
                 weight: 0.85 + random.next() * 0.1,
-                technique: 'pluck', // Blues uses a more defined pluck
+                technique: 'pluck',
                 dynamics: 'mf',
                 phrasing: 'legato',
                 params: { cutoff: 800, resonance: 0.7, distortion: 0.15, portamento: 0.0 }
@@ -566,23 +565,7 @@ export const STYLE_DRUM_PATTERNS: Record<Genre, any> = {
        ],
     },
     blues: {
-        loops: [
-            { 
-                kick: [{ type: 'drum_kick', time: 0, duration: 0.5, weight: 0.9 }, { type: 'drum_kick', time: 2, duration: 0.5, weight: 0.9 }],
-                snare: [{ type: 'drum_snare', time: 1, duration: 0.5, weight: 1.0 }, { type: 'drum_snare', time: 3, duration: 0.5, weight: 1.0 }],
-                hihat: [
-                    { type: 'drum_ride', time: 0, duration: 0.66, weight: 0.4 },
-                    { type: 'drum_ride', time: 0.66, duration: 0.33, weight: 0.4 },
-                    { type: 'drum_ride', time: 1, duration: 0.66, weight: 0.4 },
-                    { type: 'drum_ride', time: 1.66, duration: 0.33, weight: 0.4 },
-                    { type: 'drum_ride', time: 2, duration: 0.66, weight: 0.4 },
-                    { type: 'drum_ride', time: 2.66, duration: 0.33, weight: 0.4 },
-                    { type: 'drum_ride', time: 3, duration: 0.66, weight: 0.4 },
-                    { type: 'drum_ride', time: 3.66, duration: 0.33, weight: 0.4 },
-                ],
-                tags: ['shuffle']
-            }
-        ],
+        loops: [], // This will now be handled dynamically
     },
     celtic: {
         loops: [ { kick: [], snare: [], hihat: [], tags: ['bodhran-pulse'] } ],
@@ -599,18 +582,12 @@ export const STYLE_DRUM_PATTERNS: Record<Genre, any> = {
     },
 };
 
-/**
- * Грамматика для генерации SFX.
- * Определяет "строительные блоки" для создания разнообразных звуковых эффектов.
- */
 export const SFX_GRAMMAR = {
-  // Типы осцилляторов для разных текстур
   textures: {
     industrial: ['sawtooth', 'square'],
     ambient: ['sine', 'triangle'],
     vocal: ['fatsine'],
   },
-  // Диапазоны частот для разных регистров и движений
   freqRanges: {
     low: { min: 30, max: 150 },
     mid: { min: 150, max: 800 },
@@ -618,13 +595,11 @@ export const SFX_GRAMMAR = {
     'wide-sweep-up': { minStart: 100, maxStart: 400, minEnd: 1500, maxEnd: 3000 },
     'wide-sweep-down': { minStart: 1500, maxStart: 3000, minEnd: 100, maxEnd: 400 },
   },
-  // Характеристики огибающей для разной артикуляции
   envelopes: {
     percussive: { attack: {min: 0.01, max: 0.05}, decay: {min: 0.1, max: 0.3}, sustain: 0.1, release: {min: 0.1, max: 0.4} },
     pad: { attack: {min: 0.5, max: 1.5}, decay: {min: 1.0, max: 2.0}, sustain: 0.8, release: {min: 1.0, max: 2.5} },
     swell: { attack: {min: 0.2, max: 0.8}, decay: {min: 0.5, max: 1.0}, sustain: 0.6, release: {min: 0.5, max: 1.5} },
   },
-  // Типы движения панорамы
   panning: {
     static: 'static',
     sweep: 'sweep',
@@ -657,18 +632,15 @@ export const AMBIENT_ACCOMPANIMENT_WEIGHTS: Record<Mood, Record<Exclude<Accompan
 };
 
 export function getAccompanimentTechnique(genre: Genre, mood: Mood, density: number, tempo: number, barCount: number, random: { next: () => number }): AccompanimentTechnique {
-    // Intro phase: prioritize calm, sustained techniques
     if (barCount < 4) {
         if (random.next() < 0.7) return 'long-chords';
         return 'choral';
     }
 
-    // Main logic based on genre, density, and randomness
     const rand = random.next();
     const isHighEnergyGenre = ['trance', 'house', 'progressive', 'rock'].includes(genre);
     const isLowEnergyGenre = ['ambient', 'ballad', 'celtic'].includes(genre);
     
-    // Higher density and tempo push towards more active techniques
     const activityPressure = (density * 0.7) + (tempo / 160 * 0.3);
 
     if (activityPressure > 0.65 && isHighEnergyGenre) {
@@ -678,7 +650,6 @@ export function getAccompanimentTechnique(genre: Genre, mood: Mood, density: num
     }
     
     if (activityPressure > 0.4) {
-        // For ambient, explicitly forbid chord-pulsation at this stage
         if (genre === 'ambient') {
             if (rand < 0.6) return 'alberti-bass';
             return 'paired-notes';
@@ -689,14 +660,12 @@ export function getAccompanimentTechnique(genre: Genre, mood: Mood, density: num
         return 'paired-notes';
     }
 
-    // Low activity pressure defaults to calmer techniques
     if (isLowEnergyGenre || activityPressure <= 0.4) {
         if (rand < 0.6) return 'long-chords';
         if (rand < 0.9) return 'choral';
         return 'paired-notes';
     }
     
-    // Fallback
     return 'choral';
 }
 
@@ -708,7 +677,6 @@ export function createBassFill(mood: Mood, genre: Genre, random: { next: () => n
     const numNotes = random.nextInt(4) + 7; // 7 to 10 notes
     let currentTime = 0;
     
-    // Predominantly low, infrequently mid
     const selectNote = (): number => {
       const rand = random.next();
       if (rand < 0.75) { // 75% chance low register
@@ -731,7 +699,6 @@ export function createBassFill(mood: Mood, genre: Genre, random: { next: () => n
         let step;
         let attempts = 0;
 
-        // "Запрет на монотонность"
         do {
             step = random.next() > 0.7 ? (random.next() > 0.5 ? 2 : -2) : (random.next() > 0.5 ? 1 : -1);
             let newNoteIndex = (noteIndex + step + scale.length) % scale.length;
@@ -771,9 +738,6 @@ export function createBassFill(mood: Mood, genre: Genre, random: { next: () => n
     return { events: fill, penalty };
 }
 
-/**
- * Creates a drum fill synchronized with a bass fill.
- */
 export function createDrumFill(random: { next: () => number, nextInt: (max: number) => number }, params: any = {}): FractalEvent[] {
     const { instrument = 'tom', density = 0.5, dynamics = 'mf' } = params;
     const fill: FractalEvent[] = [];
@@ -827,9 +791,6 @@ export function chooseHarmonyInstrument(mood: Mood, random: { next: () => number
         { instrument: 'violin', weight: 0.1 },
     ];
     
-    // Note: Mood can be used here in the future to adjust weights.
-    // For now, we use the static distribution.
-
     const totalWeight = weights.reduce((sum, item) => sum + item.weight, 0);
     let rand = random.next() * totalWeight;
 
@@ -853,7 +814,6 @@ export function generateGhostHarmonyTrack(totalBars: number, mood: Mood, key: nu
     
     let currentBar = 0;
     while (currentBar < totalBars) {
-        // Defines the 12-bar structure with chord root and duration in bars.
         const structure = [
             { root: I,  duration: 4, step: 'I' },
             { root: IV, duration: 2, step: 'IV' },
@@ -1024,17 +984,19 @@ function extractTopNotes(events: FractalEvent[], maxNotes: number = 4): FractalE
 
 const DEGREE_TO_SEMITONE: Record<BluesRiffDegree, number> = { 'R': 0, 'b2': 1, '2': 2, 'b3': 3, '3': 4, '4': 5, '#4': 6, 'b5': 6, '5': 7, 'b6': 8, '6': 9, 'b7': 10, '9': 14, '11': 17, 'R+8': 12 };
 
-export function generateBluesMelodyChorus(chorusChords: GhostChord[], mood: Mood, random: { next: () => number, nextInt: (max: number) => number }): { events: FractalEvent[], log: string } {
+export function generateBluesMelodyChorus(chorusChords: GhostChord[], mood: Mood, random: { next: () => number, nextInt: (max: number) => number }, registerHint?: 'low' | 'mid' | 'high'): { events: FractalEvent[], log: string } {
     const chorusEvents: FractalEvent[] = [];
     
-    // 1. Выбрать подходящую мелодию из библиотеки
     const suitableMelodies = BLUES_MELODY_RIFFS.filter(m => m.moods.includes(mood));
     const selectedMelody = suitableMelodies[random.nextInt(suitableMelodies.length)] || BLUES_MELODY_RIFFS[0];
     
-    // 2. Сгенерировать 12-тактовую мелодию
     const barDurationInBeats = 4;
     const ticksPerBeat = 3;
     
+    let octaveShift = 0;
+    if (registerHint === 'mid') octaveShift = 12;
+    if (registerHint === 'high') octaveShift = 24;
+
     for (let barIndex = 0; barIndex < 12; barIndex++) {
         const barChord = chorusChords[barIndex];
         if (!barChord) continue;
@@ -1042,7 +1004,6 @@ export function generateBluesMelodyChorus(chorusChords: GhostChord[], mood: Mood
         const chordRoot = barChord.rootNote;
         let phrase: BluesMelodyPhrase;
 
-        // Выбираем фразу в зависимости от ступени аккорда
         const I_CHORD_STEP = 0;
         const IV_CHORD_STEP = 5;
         const V_CHORD_STEP = 7;
@@ -1060,7 +1021,7 @@ export function generateBluesMelodyChorus(chorusChords: GhostChord[], mood: Mood
         }
 
         for (const event of phrase) {
-            const noteMidi = chordRoot + DEGREE_TO_SEMITONE[event.deg];
+            const noteMidi = chordRoot + DEGREE_TO_SEMITONE[event.deg] + octaveShift;
             chorusEvents.push({
                 type: 'melody',
                 note: noteMidi,
@@ -1075,8 +1036,7 @@ export function generateBluesMelodyChorus(chorusChords: GhostChord[], mood: Mood
         }
     }
 
-    // 3. Применить мутацию (опционально)
-    const shouldMutate = random.next() < 0.4; // 40% шанс мутации на хорус
+    const shouldMutate = random.next() < 0.4;
     let mutationLog = "None";
     if (shouldMutate && chorusEvents.length > 0) {
         const mutationType = random.nextInt(3);
@@ -1087,8 +1047,8 @@ export function generateBluesMelodyChorus(chorusChords: GhostChord[], mood: Mood
                 break;
             case 1:
                 mutationLog = "Register Shift";
-                const octaveShift = (random.next() > 0.5) ? 12 : -12;
-                chorusEvents.forEach(e => { e.note += octaveShift; });
+                const eventOctaveShift = (random.next() > 0.5) ? 12 : -12;
+                chorusEvents.forEach(e => { e.note += eventOctaveShift; });
                 break;
             case 2:
                 mutationLog = "Note Removal";
@@ -1098,45 +1058,38 @@ export function generateBluesMelodyChorus(chorusChords: GhostChord[], mood: Mood
         }
     }
 
-    const log = `Using riff: "${selectedMelody.id}". Mutation: "${mutationLog}".`;
+    const log = `Using riff: "${selectedMelody.id}". Mutation: "${mutationLog}". Register: ${registerHint || 'default (low)'}`;
     console.log(`%c[BluesMelodyChorus] ${log}`, 'color: #00BCD4');
     
     return { events: chorusEvents, log };
 }
 
-
-/**
- * #ЗАЧЕМ: Генерирует мелодический мотив на 4 такта (16 долей).
- * #ЧТО: Выбирает ритмический паттерн и мелодический контур. Генерирует массив FractalEvent.
- * #ИЗМЕНЕНО: Удалена специфическая логика для блюза. Она перенесена в generateBluesMelodyChorus.
- */
 export function createMelodyMotif(chord: GhostChord, mood: Mood, random: { next: () => number; nextInt: (max: number) => number; }, previousMotif?: FractalEvent[], registerHint?: 'low' | 'mid' | 'high', genre?: Genre): FractalEvent[] {
     const motif: FractalEvent[] = [];
     
-    // --- Логика мутаций (если есть предыдущий мотив) ---
     if (previousMotif && previousMotif.length > 0 && random.next() < 0.7) { // 70% шанс мутации
         const newPhrase = [...previousMotif];
         const mutationType = random.nextInt(4);
         let mutationDescription = "Unknown";
 
         switch(mutationType) {
-            case 0: // Retrograde
+            case 0:
                 mutationDescription = "Retrograde";
                 const times = newPhrase.map(e => e.time).sort((a, b) => b - a);
                 const totalDur = newPhrase.reduce((sum, e) => sum + e.duration, 0);
                 newPhrase.reverse().forEach((e, i) => { e.time = (totalDur - times[i]) - e.duration; });
                 break;
-            case 1: // Register Shift
+            case 1:
                 mutationDescription = "Register Shift";
                 const octaveShift = (random.next() > 0.5) ? 12 : -12;
                 newPhrase.forEach(e => e.note += octaveShift);
                 break;
-            case 2: // Rhythmic Compression/Expansion
+            case 2:
                 const factor = random.next() > 0.5 ? 2.0 : 0.5;
                 mutationDescription = `Rhythmic ${factor > 1 ? 'Expansion' : 'Compression'}`;
                 newPhrase.forEach(e => { e.duration *= factor; e.time *= factor; });
                 break;
-            case 3: // Pitch Inversion (around root)
+            case 3:
                  mutationDescription = "Pitch Inversion";
                  const firstNote = newPhrase[0].note;
                  newPhrase.forEach(e => {
@@ -1149,7 +1102,6 @@ export function createMelodyMotif(chord: GhostChord, mood: Mood, random: { next:
         return newPhrase;
     }
 
-    // --- Оригинальная логика генерации нового 4-тактового мотива ---
     const scale = getScaleForMood(mood);
     let baseOctave = 4;
     if (registerHint === 'high') baseOctave = 5;
@@ -1157,12 +1109,12 @@ export function createMelodyMotif(chord: GhostChord, mood: Mood, random: { next:
     const rootNote = chord.rootNote + 12 * baseOctave;
 
     const rhythmicPatterns = [
-        [4, 4, 4, 4],          // Four whole notes
-        [3, 1, 3, 1, 4, 4],    // Syncopated start
-        [2, 2, 2, 2, 2, 2, 2, 2], // Steady halves
-        [8, 8],                // Two long notes
-        [1,1,1,1, 1,1,1,1, 1,1,1,1, 1,1,1,1], // Busy quarters
-        [4, 2, 2, 4, 4]        // Mixed
+        [4, 4, 4, 4],
+        [3, 1, 3, 1, 4, 4],
+        [2, 2, 2, 2, 2, 2, 2, 2],
+        [8, 8],
+        [1,1,1,1, 1,1,1,1, 1,1,1,1, 1,1,1,1],
+        [4, 2, 2, 4, 4]
     ];
     const durations = rhythmicPatterns[random.nextInt(rhythmicPatterns.length)];
     
@@ -1191,48 +1143,3 @@ export function createMelodyMotif(chord: GhostChord, mood: Mood, random: { next:
     console.log(`%c[MelodyAxiom] New 4-bar motif generated. Rhythm: [${durations.join(', ')}]`, 'color: #DA70D6');
     return motif;
 }
-    
-    
-
-    
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-    
-
-
-
-

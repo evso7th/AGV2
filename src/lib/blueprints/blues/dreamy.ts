@@ -26,7 +26,7 @@ export const DreamyBluesBlueprint: MusicBlueprint = {
                 instrumentRules: {
                     drums: { pattern: 'composer', density: { min: 0.3, max: 0.5 }, useSnare: true, useGhostHat: true, ride: { enabled: true, volume: 0.08, probability: 0.4 } },
                     bass: { techniques: [{ value: 'long_notes', weight: 1.0 }] }, 
-                    melody: { source: 'motif', density: { min: 0.3, max: 0.5 } }
+                    melody: { source: 'motif', density: { min: 0.3, max: 0.5 }, register: { preferred: 'high' } }
                 },
                 bundles: [{ id: 'BLUES_DREAMY_VERSE_BUNDLE', name: 'Verse', duration: { percent: 100 }, characteristics: {}, phrases: {} }],
                 outroFill: null,
@@ -65,7 +65,7 @@ export const DreamyBluesBlueprint: MusicBlueprint = {
                 instrumentRules: {
                     drums: { pattern: 'composer', density: { min: 0.2, max: 0.4 }, ride: { enabled: true, volume: 0.08, probability: 0.4 } },
                     bass: { techniques: [{ value: 'long_notes', weight: 1.0 }] },
-                    melody: { source: 'motif', density: { min: 0.2, max: 0.4 } } // Return to lower density
+                    melody: { source: 'motif', density: { min: 0.2, max: 0.4 }, register: { preferred: 'high' } } // Return to lower density
                 },
                 bundles: [{ id: 'BLUES_DREAMY_OUTRO_BUNDLE', name: 'Outro', duration: { percent: 100 }, characteristics: {}, phrases: {} }],
                 outroFill: null,

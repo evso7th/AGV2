@@ -26,7 +26,7 @@ export const JoyfulBluesBlueprint: MusicBlueprint = {
                 instrumentRules: {
                     drums: { pattern: 'composer', density: { min: 0.7, max: 0.9 }, useSnare: true, useGhostHat: true, usePerc: true, ride: { enabled: false } },
                     bass: { techniques: [{ value: 'boogie', weight: 1.0 }] },
-                    melody: { source: 'harmony_top_note' }
+                    melody: { source: 'harmony_top_note', register: { preferred: 'high' } }
                 },
                 bundles: [{ id: 'BLUES_JOY_INTRO_BUNDLE', name: 'Verses 1-2', duration: { percent: 100 }, characteristics: {}, phrases: {} }],
                 outroFill: null,
@@ -40,7 +40,7 @@ export const JoyfulBluesBlueprint: MusicBlueprint = {
                 },
                 instrumentRules: {
                     drums: { pattern: 'composer', density: { min: 0.8, max: 1.0 }, kickVolume: 1.1, useSnare: true, useGhostHat: true, usePerc: true, ride: { enabled: false } },
-                    melody: { density: { min: 0.6, max: 0.8 }, source: 'motif' },
+                    melody: { density: { min: 0.6, max: 0.8 }, source: 'motif', register: { preferred: 'high' } },
                     bass: { techniques: [{ value: 'boogie', weight: 1.0 }] },
                 },
                 bundles: [{ id: 'BLUES_JOY_MAIN_BUNDLE', name: 'Guitar Solo', duration: { percent: 100 }, characteristics: {}, phrases: {} }],
@@ -55,7 +55,7 @@ export const JoyfulBluesBlueprint: MusicBlueprint = {
                 instrumentRules: {
                     drums: { pattern: 'composer', density: { min: 0.7, max: 0.9 }, useSnare: true, useGhostHat: true, usePerc: true, ride: { enabled: false } },
                     bass: { techniques: [{ value: 'boogie', weight: 1.0 }] },
-                    melody: { source: 'harmony_top_note' }
+                    melody: { source: 'harmony_top_note', register: { preferred: 'high' } }
                 },
                 bundles: [{ id: 'BLUES_JOY_OUTRO_BUNDLE', name: 'Outro Verses', duration: { percent: 100 }, characteristics: {}, phrases: {} }],
                 outroFill: null,

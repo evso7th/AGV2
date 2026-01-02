@@ -26,7 +26,7 @@ export const CalmBluesBlueprint: MusicBlueprint = {
                 instrumentRules: {
                     drums: { pattern: 'composer', density: { min: 0.4, max: 0.6 }, useSnare: false, useGhostHat: true, ride: { enabled: false } },
                     bass: { techniques: [{ value: 'riff', weight: 1.0 }] }, 
-                    melody: { source: 'motif', density: { min: 0.2, max: 0.4 } }
+                    melody: { source: 'motif', density: { min: 0.2, max: 0.4 }, register: { preferred: 'mid' } }
                 },
                 bundles: [{ id: 'BLUES_CALM_VERSE_BUNDLE', name: 'Main Riff', duration: { percent: 100 }, characteristics: {}, phrases: {} }],
                 outroFill: null,
@@ -43,7 +43,7 @@ export const CalmBluesBlueprint: MusicBlueprint = {
                     melody: { 
                         source: 'motif', 
                         density: { min: 0.6, max: 0.8 },
-                        register: { preferred: 'high' }
+                        register: { preferred: 'mid' }
                     },
                     bass: { techniques: [{ value: 'riff', weight: 1.0 }] },
                 },
@@ -60,7 +60,7 @@ export const CalmBluesBlueprint: MusicBlueprint = {
                 instrumentRules: {
                     drums: { pattern: 'composer', density: { min: 0.4, max: 0.6 }, useSnare: false, useGhostHat: true, ride: { enabled: false } },
                     bass: { techniques: [{ value: 'riff', weight: 1.0 }] }, 
-                    melody: { source: 'motif', density: { min: 0.2, max: 0.4 } }
+                    melody: { source: 'motif', density: { min: 0.2, max: 0.4 }, register: { preferred: 'mid' } }
                 },
                 bundles: [{ id: 'BLUES_CALM_OUTRO_BUNDLE', name: 'Final Riff', duration: { percent: 100 }, characteristics: {}, phrases: {} }],
                 outroFill: null,

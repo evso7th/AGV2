@@ -26,7 +26,7 @@ export const NeutralBluesBlueprint: MusicBlueprint = {
                 instrumentRules: {
                     drums: { pattern: 'composer', density: { min: 0.6, max: 0.8 }, useSnare: true, useGhostHat: true, ride: { enabled: false } },
                     bass: { techniques: [{ value: 'riff', weight: 1.0 }] }, 
-                    melody: { source: 'harmony_top_note' }
+                    melody: { source: 'harmony_top_note', register: { preferred: 'mid' } }
                 },
                 bundles: [{ id: 'BLUES_NEUTRAL_INTRO_BUNDLE', name: 'Verses 1-2', duration: { percent: 100 }, characteristics: {}, phrases: {} }],
                 outroFill: null,
@@ -54,7 +54,7 @@ export const NeutralBluesBlueprint: MusicBlueprint = {
                 },
                 instrumentRules: {
                     drums: { pattern: 'composer', density: { min: 0.7, max: 0.9 }, kickVolume: 1.0, ride: { enabled: false } },
-                    melody: { density: { min: 0.5, max: 0.7 }, source: 'motif' },
+                    melody: { density: { min: 0.5, max: 0.7 }, source: 'motif', register: { preferred: 'mid' } },
                     bass: { techniques: [{ value: 'riff', weight: 1.0 }] },
                 },
                 bundles: [{ id: 'BLUES_NEUTRAL_MAIN_BUNDLE', name: 'Solo Section', duration: { percent: 100 }, characteristics: {}, phrases: {} }],
@@ -69,7 +69,7 @@ export const NeutralBluesBlueprint: MusicBlueprint = {
                 instrumentRules: {
                     drums: { pattern: 'composer', density: { min: 0.5, max: 0.7 }, useSnare: true, useGhostHat: true, ride: { enabled: false } },
                     bass: { techniques: [{ value: 'riff', weight: 1.0 }] },
-                    melody: { source: 'harmony_top_note' }
+                    melody: { source: 'harmony_top_note', register: { preferred: 'mid' } }
                 },
                 bundles: [{ id: 'BLUES_NEUTRAL_OUTRO_BUNDLE', name: 'Last Verse', duration: { percent: 100 }, characteristics: {}, phrases: {} }],
                 outroFill: null,
