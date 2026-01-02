@@ -1,3 +1,4 @@
+
 import type { FractalEvent } from '@/types/fractal';
 
 // Helper type for defining a riff note pattern.

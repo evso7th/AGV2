@@ -273,12 +273,6 @@ export function getScaleForMood(mood: Mood): number[] {
   return fullScale;
 }
 
-/**
- * #ЗАЧЕМ: Эта функция является "мозгом" блюзового басиста.
- * #ЧТО: Она генерирует аутентичные блюзовые басовые риффы, случайным образом выбирая один из
- *       классических паттернов из соответствующей библиотеки (`BLUES_BASS_RIFFS` или `NEUTRAL_BLUES_BASS_RIFFS`).
- * #СВЯЗИ: Вызывается из `generateAmbientBassPhrase`, когда `genre === 'blues'`.
- */
 export function generateBluesBassRiff(chord: GhostChord, technique: Technique, random: { next: () => number, nextInt: (max: number) => number }, mood: Mood): FractalEvent[] {
     const phrase: FractalEvent[] = [];
     const root = chord.rootNote;
@@ -286,8 +280,8 @@ export function generateBluesBassRiff(chord: GhostChord, technique: Technique, r
     const ticksPerBeat = 3; // 12/8 time feel
 
     // #ИЗМЕНЕНО: Выбор библиотеки риффов в зависимости от настроения
-    const riffLibrary = mood === 'contemplative' ? NEUTRAL_BLUES_BASS_RIFFS : BLUES_BASS_RIFFS;
-    const libraryName = mood === 'contemplative' ? 'NEUTRAL' : 'DARK';
+    const riffLibrary = mood === 'contemplative' || mood === 'calm' ? NEUTRAL_BLUES_BASS_RIFFS : BLUES_BASS_RIFFS;
+    const libraryName = mood === 'contemplative' || mood === 'calm' ? 'NEUTRAL' : 'DARK';
 
     console.log(`%c[BluesBass] Generating riff for ${chord.rootNote} from ${libraryName} library.`, 'color: #4682B4');
 
@@ -1159,9 +1153,6 @@ export function createMelodyMotif(chord: GhostChord, mood: Mood, random: { next:
     
 
 
-    
-
-
 
 
 
@@ -1197,5 +1188,6 @@ export function createMelodyMotif(chord: GhostChord, mood: Mood, random: { next:
 
 
     
+
 
 
