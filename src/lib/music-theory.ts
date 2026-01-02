@@ -8,6 +8,7 @@ import { V2_PRESETS } from './presets-v2';
 import { PARANOID_STYLE_RIFF } from './assets/rock-riffs';
 import { BLUES_BASS_RIFFS } from './assets/blues-bass-riffs';
 import { NEUTRAL_BLUES_BASS_RIFFS } from './assets/neutral-blues-riffs';
+import { BLUES_MELODY_RIFFS, type BluesRiffDegree, type BluesRiffEvent, type BluesMelodyPhrase, type BluesMelody } from './assets/blues-melody-riffs';
 
 
 export type Branch = {
@@ -889,6 +890,10 @@ export function createDrumAxiom(genre: Genre, mood: Mood, tempo: number, random:
     const hitParams = {}; // Params now come from events
     const grammar = STYLE_DRUM_PATTERNS[genre] || STYLE_DRUM_PATTERNS['ambient'];
     
+    if (!grammar || !grammar.loops || grammar.loops.length === 0) {
+        return { events: [], tags: [] };
+    }
+
     const loop = grammar.loops[random.nextInt(grammar.loops.length)];
     
     const axiomEvents: FractalEvent[] = [];
@@ -1017,58 +1022,97 @@ function extractTopNotes(events: FractalEvent[], maxNotes: number = 4): FractalE
         .slice(0, maxNotes);
 }
 
-/**
- * #ЗАЧЕМ: Генерирует мелодический мотив на 4 такта (16 долей).
- * #ЧТО: Выбирает ритмический паттерн и мелодический контур. Генерирует массив FractalEvent.
- * #ИЗМЕНЕНО: Добавлена специальная логика для блюза и продвинутые мутации.
- */
-export function createMelodyMotif(chord: GhostChord, mood: Mood, random: { next: () => number; nextInt: (max: number) => number; }, previousMotif?: FractalEvent[], registerHint?: 'low' | 'mid' | 'high', genre?: Genre): FractalEvent[] {
-    const motif: FractalEvent[] = [];
-    
-    // Специальная логика для блюза
-    if (genre === 'blues') {
-        console.log(`%c[MelodyAxiom] Generating special BLUES motif.`, 'color: #4682B4');
-        const root = chord.rootNote;
-        
-        // Classic blues pentatonic notes relative to root
-        const bluesIntervals = [0, 3, 5, 6, 7, 10, 12]; // Root, b3, 4, #4, 5, b7, Octave
-        
-        const phrase: { noteOffset: number, time: number, duration: number }[] = [
-            { noteOffset: 7, time: 0, duration: 1.5 },   // 5th
-            { noteOffset: 10, time: 1.5, duration: 0.5 }, // b7
-            { noteOffset: 12, time: 2, duration: 2 },   // Octave (hold)
-            
-            { noteOffset: 10, time: 4, duration: 1 },   // b7
-            { noteOffset: 7, time: 5, duration: 1 },    // 5th
-            { noteOffset: 6, time: 6, duration: 1 },    // #4/b5 (blue note)
-            { noteOffset: 5, time: 7, duration: 1 },    // 4th
-            
-            { noteOffset: 3, time: 8, duration: 2 },    // b3
-            { noteOffset: 0, time: 10, duration: 2 },   // Root
-            
-            { noteOffset: 3, time: 12, duration: 1 },   // b3
-            { noteOffset: 5, time: 13, duration: 1 },   // 4th
-            { noteOffset: 3, time: 14, duration: 1 },   // b3
-            { noteOffset: 0, time: 15, duration: 1 },   // Root
-        ];
+const DEGREE_TO_SEMITONE: Record<BluesRiffDegree, number> = { 'R': 0, 'b2': 1, '2': 2, 'b3': 3, '3': 4, '4': 5, '#4': 6, 'b5': 6, '5': 7, 'b6': 8, '6': 9, 'b7': 10, '9': 14, '11': 17, 'R+8': 12 };
 
-        phrase.forEach(p => {
-             motif.push({
+export function generateBluesMelodyChorus(chorusChords: GhostChord[], mood: Mood, random: { next: () => number, nextInt: (max: number) => number }): { events: FractalEvent[], log: string } {
+    const chorusEvents: FractalEvent[] = [];
+    
+    // 1. Выбрать подходящую мелодию из библиотеки
+    const suitableMelodies = BLUES_MELODY_RIFFS.filter(m => m.moods.includes(mood));
+    const selectedMelody = suitableMelodies[random.nextInt(suitableMelodies.length)] || BLUES_MELODY_RIFFS[0];
+    
+    // 2. Сгенерировать 12-тактовую мелодию
+    const barDurationInBeats = 4;
+    const ticksPerBeat = 3;
+    
+    for (let barIndex = 0; barIndex < 12; barIndex++) {
+        const barChord = chorusChords[barIndex];
+        if (!barChord) continue;
+
+        const chordRoot = barChord.rootNote;
+        let phrase: BluesMelodyPhrase;
+
+        // Выбираем фразу в зависимости от ступени аккорда
+        const I_CHORD_STEP = 0;
+        const IV_CHORD_STEP = 5;
+        const V_CHORD_STEP = 7;
+
+        const chordStep = (chordRoot - chorusChords[0].rootNote + 12) % 12;
+
+        if (barIndex === 11) {
+            phrase = selectedMelody.phraseTurnaround;
+        } else if (chordStep === IV_CHORD_STEP) {
+            phrase = selectedMelody.phraseIV;
+        } else if (chordStep === V_CHORD_STEP) {
+            phrase = selectedMelody.phraseV;
+        } else {
+            phrase = selectedMelody.phraseI;
+        }
+
+        for (const event of phrase) {
+            const noteMidi = chordRoot + DEGREE_TO_SEMITONE[event.deg];
+            chorusEvents.push({
                 type: 'melody',
-                note: root + p.noteOffset + 24, // Транспонируем на 2 октавы вверх
-                duration: p.duration,
-                time: p.time,
-                weight: 0.8 + random.next() * 0.1,
-                technique: 'pick', // Blues often uses a pick
+                note: noteMidi,
+                time: (barIndex * barDurationInBeats) + (event.t / ticksPerBeat),
+                duration: event.d / ticksPerBeat,
+                weight: 0.85,
+                technique: 'pick',
                 dynamics: 'f',
                 phrasing: 'legato',
                 params: {}
             });
-        });
-        
-        return motif;
+        }
     }
 
+    // 3. Применить мутацию (опционально)
+    const shouldMutate = random.next() < 0.4; // 40% шанс мутации на хорус
+    let mutationLog = "None";
+    if (shouldMutate && chorusEvents.length > 0) {
+        const mutationType = random.nextInt(3);
+        switch (mutationType) {
+            case 0:
+                mutationLog = "Rhythmic Shift";
+                chorusEvents.forEach(e => { e.time += (random.next() - 0.5) * 0.25; });
+                break;
+            case 1:
+                mutationLog = "Register Shift";
+                const octaveShift = (random.next() > 0.5) ? 12 : -12;
+                chorusEvents.forEach(e => { e.note += octaveShift; });
+                break;
+            case 2:
+                mutationLog = "Note Removal";
+                const indexToRemove = random.nextInt(chorusEvents.length);
+                chorusEvents.splice(indexToRemove, 1);
+                break;
+        }
+    }
+
+    const log = `Using riff: "${selectedMelody.id}". Mutation: "${mutationLog}".`;
+    console.log(`%c[BluesMelodyChorus] ${log}`, 'color: #00BCD4');
+    
+    return { events: chorusEvents, log };
+}
+
+
+/**
+ * #ЗАЧЕМ: Генерирует мелодический мотив на 4 такта (16 долей).
+ * #ЧТО: Выбирает ритмический паттерн и мелодический контур. Генерирует массив FractalEvent.
+ * #ИЗМЕНЕНО: Удалена специфическая логика для блюза. Она перенесена в generateBluesMelodyChorus.
+ */
+export function createMelodyMotif(chord: GhostChord, mood: Mood, random: { next: () => number; nextInt: (max: number) => number; }, previousMotif?: FractalEvent[], registerHint?: 'low' | 'mid' | 'high', genre?: Genre): FractalEvent[] {
+    const motif: FractalEvent[] = [];
+    
     // --- Логика мутаций (если есть предыдущий мотив) ---
     if (previousMotif && previousMotif.length > 0 && random.next() < 0.7) { // 70% шанс мутации
         const newPhrase = [...previousMotif];
@@ -1188,6 +1232,7 @@ export function createMelodyMotif(chord: GhostChord, mood: Mood, random: { next:
 
 
     
+
 
 
 

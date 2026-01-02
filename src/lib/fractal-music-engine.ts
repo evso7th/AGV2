@@ -2,7 +2,7 @@
 
 import type { FractalEvent, Mood, Genre, Technique, BassSynthParams, InstrumentType, MelodyInstrument, BassInstrument, AccompanimentInstrument, ResonanceMatrix, InstrumentHints, AccompanimentTechnique, GhostChord, SfxRule, V1MelodyInstrument, V2MelodyInstrument, BlueprintPart, InstrumentationRules } from './fractal';
 import { ElectronicK, TraditionalK, AmbientK, MelancholicMinorK } from './resonance-matrices';
-import { getScaleForMood, STYLE_DRUM_PATTERNS, createAccompanimentAxiom, PERCUSSION_SETS, TEXTURE_INSTRUMENT_WEIGHTS_BY_MOOD, getAccompanimentTechnique, createBassFill, createDrumFill, AMBIENT_ACCOMPANIMENT_WEIGHTS, chooseHarmonyInstrument, mutateBassPhrase, createMelodyMotif, createDrumAxiom, generateGhostHarmonyTrack, mutateAccompanimentPhrase, generateBluesBassRiff, createAmbientBassAxiom } from './music-theory';
+import { getScaleForMood, STYLE_DRUM_PATTERNS, createAccompanimentAxiom, PERCUSSION_SETS, TEXTURE_INSTRUMENT_WEIGHTS_BY_MOOD, getAccompanimentTechnique, createBassFill, createDrumFill, AMBIENT_ACCOMPANIMENT_WEIGHTS, chooseHarmonyInstrument, mutateBassPhrase, createMelodyMotif, createDrumAxiom, generateGhostHarmonyTrack, mutateAccompanimentPhrase, generateBluesBassRiff, createAmbientBassAxiom, generateBluesMelodyChorus } from './music-theory';
 import { BlueprintNavigator, type NavigationInfo } from './blueprint-navigator';
 import { getBlueprint } from './blueprints';
 import { V2_PRESETS } from './presets-v2';
@@ -96,6 +96,8 @@ export class FractalMusicEngine {
   private currentMelodyMotif: FractalEvent[] = [];
   private lastMelodyPlayEpoch: number = -16; // Start with a delay, now 4 bars long
 
+  private bluesChorusCache: { barStart: number, events: FractalEvent[], log: string } | null = null;
+
 
   constructor(config: EngineConfig) {
     this.config = { ...config };
@@ -132,6 +134,7 @@ export class FractalMusicEngine {
     this.lastAccompanimentEndTime = -Infinity;
     this.nextAccompanimentDelay = this.random.next() * 7 + 5; 
     this.hasBassBeenMutated = false;
+    this.bluesChorusCache = null; // Clear cache on re-init
 
     const blueprint = await getBlueprint(this.config.genre, this.config.mood);
     console.log(`[FME] Blueprint now active: ${blueprint.name}`);
@@ -268,6 +271,7 @@ export class FractalMusicEngine {
     }
     
     const axiomResult = createDrumAxiom(this.config.genre, this.config.mood, this.config.tempo, this.random, drumRules);
+    // #ИСПРАВЛЕНО: Защита от undefined при отсутствии паттерна.
     const baseAxiom = axiomResult.events || [];
     
     if (navInfo.currentPart.id.includes('INTRO') || navInfo.currentPart.id.includes('RELEASE')) {
@@ -375,8 +379,9 @@ export class FractalMusicEngine {
     instrumentHints.accompaniment = this._chooseInstrumentForPart('accompaniment', navInfo.currentPart);
     instrumentHints.melody = this._chooseInstrumentForPart('melody', navInfo.currentPart);
     
+    // --- НАЧАЛО ИСПРАВЛЕНИЯ "ДВОЙНАЯ БРОНЯ" ---
     const drumEvents = this.generateDrumEvents(navInfo) || [];
-    
+
     let accompEvents: FractalEvent[] = [];
     if (navInfo.currentPart.layers.accompaniment) {
         const registerHint = navInfo.currentPart.instrumentRules?.accompaniment?.register?.preferred;
@@ -390,7 +395,7 @@ export class FractalMusicEngine {
         }
         accompEvents = this.accompPhraseLibrary[this.currentAccompPhraseIndex] || [];
     }
-    
+
     const canVary = !navInfo.currentPart.id.startsWith('INTRO') || navInfo.currentPart.id.includes('3');
     const PHRASE_VARIATION_INTERVAL = 4;
     
@@ -406,7 +411,6 @@ export class FractalMusicEngine {
     }
 
     let bassEvents: FractalEvent[] = [];
-    
     const bassRules = navInfo.currentPart.instrumentRules?.bass;
     const bassTechnique = bassRules?.techniques?.[0]?.value as Technique || 'drone';
 
@@ -421,7 +425,7 @@ export class FractalMusicEngine {
         }
         bassEvents = this.bassPhraseLibrary[this.currentBassPhraseIndex] || [];
     }
-    
+
     if (navInfo.currentPart.bassAccompanimentDouble?.enabled) {
         const { instrument, octaveShift } = navInfo.currentPart.bassAccompanimentDouble;
         const bassDoubleEvents: FractalEvent[] = bassEvents.map(e => ({
@@ -436,7 +440,37 @@ export class FractalMusicEngine {
     
     let melodyEvents: FractalEvent[] = [];
 
-    if (navInfo.currentPart.layers.melody && !navInfo.currentPart.bassAccompanimentDouble?.enabled) {
+    // #ЗАЧЕМ: Этот блок управляет генерацией и воспроизведением блюзовых мелодий.
+    // #ЧТО: Он определяет начало 12-тактового хоруса, генерирует его с помощью новой функции,
+    //      кэширует результат и затем на каждом такте "извлекает" нужный фрагмент для воспроизведения.
+    // #СВЯЗИ: Полностью заменяет старую, примитивную логику генерации мелодии для блюза.
+    if (this.config.genre === 'blues' && navInfo.currentPart.layers.melody && !navInfo.currentPart.bassAccompanimentDouble?.enabled) {
+        const barInChorus = this.epoch % 12;
+        
+        // 1. Если это начало нового 12-тактового хоруса, генерируем и кэшируем его
+        if (barInChorus === 0 || this.bluesChorusCache === null) {
+            const chorusBarStart = this.epoch - barInChorus;
+            const chorusChords = this.ghostHarmonyTrack.filter(c => c.bar >= chorusBarStart && c.bar < chorusBarStart + 12);
+            if (chorusChords.length > 0) {
+                 this.bluesChorusCache = {
+                    barStart: chorusBarStart,
+                    ...generateBluesMelodyChorus(chorusChords, this.config.mood, this.random)
+                 };
+                 console.log(`[FME @ Bar ${this.epoch}] Telemetry: ${this.bluesChorusCache.log}`);
+            }
+        }
+        
+        // 2. На каждом такте извлекаем ноты из кэша
+        if (this.bluesChorusCache) {
+            const barStartBeat = (this.epoch - this.bluesChorusCache.barStart) * 4.0;
+            const barEndBeat = barStartBeat + 4.0;
+            melodyEvents = this.bluesChorusCache.events
+                .filter(e => e.time >= barStartBeat && e.time < barEndBeat)
+                .map(e => ({ ...e, time: e.time - barStartBeat })); // Делаем время относительным для текущего такта
+        }
+    } 
+    // Старая логика для других жанров
+    else if (navInfo.currentPart.layers.melody && !navInfo.currentPart.bassAccompanimentDouble?.enabled) {
         const melodyRules = navInfo.currentPart.instrumentRules?.melody;
         const melodyDensity = melodyRules?.density?.min ?? 0.25;
         const minInterval = 8;
