@@ -178,7 +178,7 @@ export class FractalMusicEngine {
     } else {
         // Стандартная логика для эмбиента и других жанров
         for (let i = 0; i < 4; i++) {
-            this.bassPhraseLibrary.push(createAmbientBassAxiom(firstChord, this.config.mood, this.config.genre, this.random, this.config.tempo, initialBassTechnique));
+            this.bassPhraseLibrary.push(createAmbientBassAxiom(chord, this.config.mood, this.config.genre, this.random, this.config.tempo, initialBassTechnique));
             this.accompPhraseLibrary.push(createAccompanimentAxiom(firstChord, this.config.mood, this.config.genre, this.random, this.config.tempo, initialRegisterHint));
         }
         this.currentMelodyMotif = createMelodyMotif(firstChord, this.config.mood, this.random);
@@ -189,52 +189,46 @@ export class FractalMusicEngine {
   }
   
   private _chooseInstrumentForPart(
-    part: 'melody' | 'accompaniment',
-    navInfo: NavigationInfo | null
+      part: 'melody' | 'accompaniment',
+      navInfo: NavigationInfo | null
   ): MelodyInstrument | AccompanimentInstrument | undefined {
-    // #ЗАЧЕМ: Эта функция определяет, какой именно инструмент (пресет) будет использован для конкретной партии в текущем такте.
-    // #ЧТО: Она читает правила `instrumentation` из текущей части блюпринта и, в зависимости от флага V2,
-    //      выбирает подходящий пресет из `v1Options` или `v2Options`.
-    // #ИЗМЕНЕНО: Логика полностью переписана для надежности и точного логирования.
-    console.log(`[FME @ Bar ${this.epoch}] Choosing instrument for '${part}'. V2 Engine Active: ${this.config.useMelodyV2}`);
+      // #ЗАЧЕМ: Эта функция определяет, какой именно инструмент (пресет) будет использован для конкретной партии в текущем такте.
+      // #ЧТО: Она читает правила `instrumentation` из текущей части блюпринта и, в зависимости от флага V2,
+      //      выбирает подходящий пресет из `v1Options` или `v2Options`.
+      console.log(`[FME @ Bar ${this.epoch}] Choosing instrument for '${part}'. V2 Engine Active: ${this.config.useMelodyV2}`);
   
-    if (!navInfo) {
-      console.warn(`[FME] _chooseInstrumentForPart called with no navInfo for part '${part}'.`);
-      return undefined;
-    }
-  
-    const rules = navInfo.currentPart.instrumentation?.[part as keyof typeof navInfo.currentPart.instrumentation];
-  
-    if (!rules || rules.strategy !== 'weighted') {
-      console.log(`[FME] No specific weighted rules for '${part}'. Using fallback.`);
-      const fallback = part === 'melody' ? 'organ' : 'synth';
-      console.log(`[FME @ Bar ${this.epoch}] Selected instrument hint for '${part}': ${fallback} (Fallback)`);
-      return fallback;
-    }
-  
-    const options = this.config.useMelodyV2 ? rules.v2Options : rules.v1Options;
-  
-    if (!options || options.length === 0) {
-      const fallbackEngine = this.config.useMelodyV2 ? 'V1' : 'V2';
-      const fallbackOptions = this.config.useMelodyV2 ? rules.v1Options : rules.v2Options;
-      console.log(`[FME] No V${this.config.useMelodyV2 ? '2' : '1'} options for '${part}'. Trying ${fallbackEngine} options.`);
-      
-      if (!fallbackOptions || fallbackOptions.length === 0) {
-          const fallback = part === 'melody' ? 'organ' : 'synth';
-          console.log(`[FME] No fallback options either for '${part}'. Using ultimate fallback: ${fallback}`);
-          console.log(`[FME @ Bar ${this.epoch}] Selected instrument hint for '${part}': ${fallback} (Ultimate Fallback)`);
-          return fallback;
+      if (!navInfo) {
+          console.warn(`[FME] _chooseInstrumentForPart called with no navInfo.`);
+          return undefined;
       }
-      // Use fallback options if primary are not available
-      const chosenFromFallback = this.performWeightedChoice(fallbackOptions);
-      console.log(`[FME @ Bar ${this.epoch}] Selected instrument hint for '${part}': ${chosenFromFallback} (From ${fallbackEngine} Fallback)`);
-      return chosenFromFallback;
-    }
   
-    console.log(`[FME] Using V${this.config.useMelodyV2 ? '2' : '1'} options for ${part}.`);
-    const chosenInstrument = this.performWeightedChoice(options);
-    console.log(`[FME @ Bar ${this.epoch}] Selected instrument hint for '${part}': ${chosenInstrument}`);
-    return chosenInstrument;
+      const rules = navInfo.currentPart.instrumentation?.[part as keyof typeof navInfo.currentPart.instrumentation];
+  
+      if (!rules || rules.strategy !== 'weighted') {
+          console.log(`[FME] No specific weighted rules for '${part}'. Using fallback.`);
+          return part === 'melody' ? 'organ' : 'synth';
+      }
+  
+      const options = this.config.useMelodyV2 ? rules.v2Options : rules.v1Options;
+      const engineVersion = this.config.useMelodyV2 ? 'V2' : 'V1';
+  
+      if (!options || options.length === 0) {
+          console.log(`[FME] No ${engineVersion} options for '${part}'. Trying opposite engine.`);
+          const fallbackOptions = !this.config.useMelodyV2 ? rules.v2Options : rules.v1Options;
+          if (!fallbackOptions || fallbackOptions.length === 0) {
+              const fallback = part === 'melody' ? 'organ' : 'synth';
+              console.log(`[FME] No fallback options either for '${part}'. Using ultimate fallback: ${fallback}`);
+              return fallback;
+          }
+          const chosen = this.performWeightedChoice(fallbackOptions);
+          console.log(`[FME @ Bar ${this.epoch}] Selected instrument hint for '${part}': ${chosen} (From Fallback)`);
+          return chosen;
+      }
+  
+      console.log(`[FME] Using ${engineVersion} options for ${part}.`);
+      const chosenInstrument = this.performWeightedChoice(options);
+      console.log(`[FME @ Bar ${this.epoch}] Selected instrument hint for '${part}': ${chosenInstrument}`);
+      return chosenInstrument;
   }
   
   private performWeightedChoice(options: {name: any, weight: number}[]): any {
@@ -480,6 +474,15 @@ export class FractalMusicEngine {
         bassEvents = this.bassPhraseLibrary[this.currentBassPhraseIndex] || [];
     }
 
+    // --- НОВАЯ ЛОГИКА: ПРИМЕНЕНИЕ СДВИГА ОКТАВЫ ДЛЯ БАСА ---
+    const octaveShift = navInfo.currentPart.instrumentRules?.bass?.presetModifiers?.octaveShift;
+    if (octaveShift && bassEvents.length > 0) {
+        console.log(`%c[FME @ Bar ${this.epoch}] Applying octave shift of ${octaveShift} to bass part.`, 'color: #FFD700');
+        bassEvents.forEach(event => {
+            event.note += 12 * octaveShift;
+        });
+    }
+
     if (navInfo.currentPart.bassAccompanimentDouble?.enabled) {
         const { instrument, octaveShift } = navInfo.currentPart.bassAccompanimentDouble;
         const bassDoubleEvents: FractalEvent[] = bassEvents.map(e => ({
@@ -584,7 +587,6 @@ export class FractalMusicEngine {
     return allEvents;
   }
 
-  // #ИСПРАВЛЕНО: Полностью переписан метод для восстановления правильного потока данных.
   public evolve(barDuration: number, barCount: number): { events: FractalEvent[], instrumentHints: InstrumentHints } {
       if (!this.navigator) {
           console.warn("[FME] Evolve called but navigator is not ready. Waiting for initialization.");
@@ -594,14 +596,12 @@ export class FractalMusicEngine {
       this.epoch = barCount;
 
       if (this.epoch >= this.navigator.totalBars + 4) {
-        // Логика для окончания сюиты остается прежней
         console.log(`%c[FME @ Bar ${this.epoch}] End of suite detected. Posting SUITE_ENDED command.`, 'color: red; font-weight: bold;');
         self.postMessage({ command: 'SUITE_ENDED' });
         return { events: [], instrumentHints: {} }; 
       }
       
       if (this.epoch >= this.navigator.totalBars) {
-          // Логика для "Променада" остается прежней
           const promenadeBar = this.epoch - this.navigator.totalBars;
           const promenadeEvents = this._generatePromenade(promenadeBar);
           return { events: promenadeEvents, instrumentHints: {} };
@@ -609,20 +609,16 @@ export class FractalMusicEngine {
 
       if (!isFinite(barDuration)) return { events: [], instrumentHints: {} };
       
-      // === ВОССТАНОВЛЕННЫЙ ПОТОК ДАННЫХ ===
-      // 1. Сначала получаем навигационную информацию.
       const navigationInfo = this.navigator.tick(this.epoch);
       if (navigationInfo?.logMessage) {
         console.log(navigationInfo.logMessage);
       }
       
-      // 2. Затем, на ее основе, выбираем инструменты.
       const instrumentHints: InstrumentHints = {
           accompaniment: this._chooseInstrumentForPart('accompaniment', navigationInfo),
           melody: this._chooseInstrumentForPart('melody', navigationInfo),
       };
 
-      // 3. И только потом генерируем такт, передавая все необходимые данные.
       const events = this.generateOneBar(barDuration, navigationInfo, instrumentHints);
       
       return { events, instrumentHints };
@@ -644,3 +640,5 @@ export class FractalMusicEngine {
   }
 
 }
+
+
