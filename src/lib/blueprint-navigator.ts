@@ -45,36 +45,29 @@ function formatInstrumentation(instrumentation?: { [key: string]: any }, v2Melod
         const rule = instrumentation[partKey] as InstrumentationRules<any>;
         
         if (rule && rule.strategy === 'weighted') {
-            let options: { name: any; weight: number; }[] | undefined;
-            
-            // #ИСПРАВЛЕНО: v2MelodyHint - это не просто индикатор, это конкретный выбранный инструмент.
-            // Теперь мы используем этот хинт, чтобы показать, что БЫЛО выбрано, если это V2 пресет.
-            // Если хинт не предоставлен, мы просто показываем первые опции V1.
-            
-            let isV2 = false;
-            if (rule.v2Options && rule.v2Options.length > 0) {
-                 const v2Names = rule.v2Options.map(o => o.name);
-                 if (v2MelodyHint && v2Names.includes(v2MelodyHint as V2MelodyInstrument)) {
-                     isV2 = true;
-                 } else if (partKey !== 'melody') { 
-                    // Для других партий предполагаем V2, если опции есть. Это упрощение.
-                    isV2 = true;
-                 }
+            // #ИСПРАВЛЕНО: Логика для мелодии теперь напрямую использует v2MelodyHint
+            if (partKey === 'melody' && v2MelodyHint) {
+                return `melody(V2: ${v2MelodyHint})`;
             }
+
+            let options: { name: any; weight: number; }[] | undefined;
+            let engineVersion = 'V1';
             
-            if (isV2) {
-                 options = rule.v2Options;
-                 const selected = v2MelodyHint && partKey === 'melody' ? v2MelodyHint : options?.[0]?.name || 'unknown_v2';
-                 return `${partKey}(V2: ${selected})`;
+            // Предпочитаем V2, если есть опции, иначе V1
+            if (rule.v2Options && rule.v2Options.length > 0) {
+                options = rule.v2Options;
+                engineVersion = 'V2';
             } else {
-                 options = rule.v1Options || rule.options || [];
+                options = rule.v1Options || rule.options || [];
             }
             
             if (options && options.length > 0) {
                 const optionsStr = options
                     .map(opt => `${opt.name}:${Math.round(opt.weight * 100)}%`)
                     .join(',');
-                return `${partKey}(${optionsStr})`;
+                // Показываем версию движка только если это V2 (для ясности)
+                const versionTag = engineVersion === 'V2' ? '(V2)' : '';
+                return `${partKey}${versionTag}(${optionsStr})`;
             }
         }
         return null;

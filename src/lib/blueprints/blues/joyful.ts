@@ -25,7 +25,7 @@ export const JoyfulBluesBlueprint: MusicBlueprint = {
                 },
                 instrumentRules: {
                     drums: { pattern: 'composer', density: { min: 0.7, max: 0.9 }, useSnare: true, useGhostHat: true, usePerc: true, ride: { enabled: false }, useBrushes: true },
-                    bass: { techniques: [{ value: 'boogie', weight: 1.0 }] },
+                    bass: { techniques: [{ value: 'boogie', weight: 1.0 }], presetModifiers: { octaveShift: 1 } },
                     melody: { source: 'harmony_top_note', register: { preferred: 'high' } }
                 },
                 bundles: [{ id: 'BLUES_JOY_INTRO_BUNDLE', name: 'Verses 1-2', duration: { percent: 100 }, characteristics: {}, phrases: {} }],
@@ -36,7 +36,7 @@ export const JoyfulBluesBlueprint: MusicBlueprint = {
                 layers: { bass: true, drums: true, accompaniment: true, melody: true, harmony: true, sparkles: true },
                  instrumentation: {
                     accompaniment: { strategy: 'weighted', v1Options: [{ name: 'organ', weight: 1.0 }], v2Options: [{ name: 'organ', weight: 1.0 }] },
-                    melody: { strategy: 'weighted', v1Options: [{ name: 'electricGuitar', weight: 1.0 }], v2Options: [{ name: 'electricGuitar', weight: 1.0 }] }
+                    melody: { strategy: 'weighted', v1Options: [{ name: 'electricGuitar', weight: 1.0 }], v2Options: [{ name: 'guitar_shineOn', weight: 1.0 }] }
                 },
                 instrumentRules: {
                     drums: { pattern: 'composer', density: { min: 0.8, max: 1.0 }, kickVolume: 1.1, useSnare: true, useGhostHat: true, usePerc: true, ride: { enabled: false }, useBrushes: true },
@@ -45,7 +45,7 @@ export const JoyfulBluesBlueprint: MusicBlueprint = {
                         density: { min: 0.6, max: 0.8 },
                         register: { preferred: 'high' }
                     },
-                    bass: { techniques: [{ value: 'boogie', weight: 1.0 }] },
+                    bass: { techniques: [{ value: 'boogie', weight: 1.0 }], presetModifiers: { octaveShift: 1 } },
                 },
                 bundles: [{ id: 'BLUES_JOY_MAIN_BUNDLE', name: 'Guitar Solo', duration: { percent: 100 }, characteristics: {}, phrases: {} }],
                 outroFill: { type: 'roll', duration: 1, parameters: {} },
@@ -58,7 +58,7 @@ export const JoyfulBluesBlueprint: MusicBlueprint = {
                 },
                 instrumentRules: {
                     drums: { pattern: 'composer', density: { min: 0.7, max: 0.9 }, useSnare: true, useGhostHat: true, usePerc: true, ride: { enabled: false }, useBrushes: true },
-                    bass: { techniques: [{ value: 'boogie', weight: 1.0 }] },
+                    bass: { techniques: [{ value: 'boogie', weight: 1.0 }], presetModifiers: { octaveShift: 1 } },
                     melody: { source: 'harmony_top_note', register: { preferred: 'high' } }
                 },
                 bundles: [{ id: 'BLUES_JOY_OUTRO_BUNDLE', name: 'Outro Verses', duration: { percent: 100 }, characteristics: {}, phrases: {} }],
