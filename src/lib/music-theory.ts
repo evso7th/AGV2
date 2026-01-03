@@ -1,6 +1,6 @@
 
 
-import type { FractalEvent, Mood, Genre, Technique, BassSynthParams, InstrumentType, AccompanimentInstrument, InstrumentHints, AccompanimentTechnique, GhostChord, SfxRule, V1MelodyInstrument, V2MelodyInstrument, BlueprintPart, InstrumentationRules } from './fractal';
+import type { FractalEvent, Mood, Genre, Technique, BassSynthParams, InstrumentType, AccompanimentInstrument, InstrumentHints, AccompanimentTechnique, GhostChord, SfxRule, V1MelodyInstrument, V2MelodyInstrument, BlueprintPart, InstrumentationRules, InstrumentBehaviorRules } from './fractal';
 import { ElectronicK, TraditionalK, AmbientK, MelancholicMinorK } from './resonance-matrices';
 import { BlueprintNavigator, type NavigationInfo } from './blueprint-navigator';
 import { getBlueprint } from './blueprints';
@@ -110,7 +110,7 @@ export function mutateBassPhrase(phrase: FractalEvent[], chord: GhostChord, mood
             if (newPhrase.length > 1) {
                 const insertIndex = random.nextInt(newPhrase.length - 1) + 1;
                 const prevNote = newPhrase[insertIndex-1];
-                const scale = getScaleForMood(mood);
+                const scale = getScaleForMood(mood, genre);
                 const passingNoteMidi = scale[Math.floor(random.next() * scale.length)];
                 
                 const newNote: FractalEvent = {
@@ -166,7 +166,7 @@ export function mutateAccompanimentPhrase(phrase: FractalEvent[], chord: GhostCh
             break;
         case 3: // Добавление гармонического тона
             if (newPhrase.length < 5) {
-                const scale = getScaleForMood(mood);
+                const scale = getScaleForMood(mood, genre);
                 const newNoteMidi = scale[random.nextInt(scale.length)] + 12 * 4;
                 const lastNote = newPhrase[newPhrase.length - 1];
                 newPhrase.push({ ...lastNote, note: newNoteMidi, time: lastNote.time + 0.1 });
@@ -229,38 +229,49 @@ export type BassPatternDefinition = {
     tags: string[];
 };
 
-export function getScaleForMood(mood: Mood): number[] {
+export function getScaleForMood(mood: Mood, genre?: Genre): number[] {
   const E1 = 28;
   let baseScale: number[];
 
-  switch (mood) {
-    case 'joyful':      // C Ionian (Major) - transposed to E
-      baseScale = [0, 2, 4, 5, 7, 9, 11];
-      break;
-    case 'epic':        // E Lydian
-    case 'enthusiastic':
-      baseScale = [0, 2, 4, 6, 7, 9, 11];
-      break;
-    case 'dreamy':      // E Pentatonic Major
-      baseScale = [0, 2, 4, 7, 9];
-      break;
-    case 'contemplative': // E Mixolydian
-    case 'calm':
-        baseScale = [0, 2, 4, 5, 7, 9, 10];
-        break;
-    case 'melancholic': // E Dorian
-      baseScale = [0, 2, 3, 5, 7, 9, 10];
-      break;
-    case 'dark':        // E Aeolian (Natural Minor)
-    case 'gloomy':
-      baseScale = [0, 2, 3, 5, 7, 8, 10];
-      break;
-    case 'anxious':     // E Locrian
-      baseScale = [0, 1, 3, 5, 6, 8, 10];
-      break;
-    default:            // Fallback to E Aeolian
-      baseScale = [0, 2, 3, 5, 7, 8, 10];
-      break;
+  // Blues scales are often pentatonic or have specific "blue notes"
+  if (genre === 'blues') {
+      if (mood === 'dark' || mood === 'gloomy' || mood === 'melancholic' || mood === 'anxious') {
+           // Minor Blues Scale: R, b3, 4, #4/b5, 5, b7
+           baseScale = [0, 3, 5, 6, 7, 10];
+      } else {
+          // Major Blues Scale: R, 2, b3, 3, 5, 6
+          baseScale = [0, 2, 3, 4, 7, 9];
+      }
+  } else {
+      switch (mood) {
+        case 'joyful':      // C Ionian (Major) - transposed to E
+          baseScale = [0, 2, 4, 5, 7, 9, 11];
+          break;
+        case 'epic':        // E Lydian
+        case 'enthusiastic':
+          baseScale = [0, 2, 4, 6, 7, 9, 11];
+          break;
+        case 'dreamy':      // E Pentatonic Major
+          baseScale = [0, 2, 4, 7, 9];
+          break;
+        case 'contemplative': // E Mixolydian
+        case 'calm':
+            baseScale = [0, 2, 4, 5, 7, 9, 10];
+            break;
+        case 'melancholic': // E Dorian
+          baseScale = [0, 2, 3, 5, 7, 9, 10];
+          break;
+        case 'dark':        // E Aeolian (Natural Minor)
+        case 'gloomy':
+          baseScale = [0, 2, 3, 5, 7, 8, 10];
+          break;
+        case 'anxious':     // E Locrian
+          baseScale = [0, 1, 3, 5, 6, 8, 10];
+          break;
+        default:            // Fallback to E Aeolian
+          baseScale = [0, 2, 3, 5, 7, 8, 10];
+          break;
+      }
   }
 
 
@@ -313,7 +324,7 @@ export function generateBluesBassRiff(chord: GhostChord, technique: Technique, r
 
 export function createAmbientBassAxiom(chord: GhostChord, mood: Mood, genre: Genre, random: { next: () => number, nextInt: (max: number) => number }, tempo: number, technique: Technique): FractalEvent[] {
     const phrase: FractalEvent[] = [];
-    const scale = getScaleForMood(mood);
+    const scale = getScaleForMood(mood, genre);
     const rootNote = chord.rootNote;
 
     const numNotes = 4 + random.nextInt(5); // 4 to 8 notes over two bars
@@ -398,7 +409,7 @@ export function createAccompanimentAxiom(chord: GhostChord, mood: Mood, genre: G
 
 export function createHarmonyAxiom(chord: GhostChord, mood: Mood, genre: Genre, random: { next: () => number; nextInt: (max: number) => number }): FractalEvent[] {
     const axiom: FractalEvent[] = [];
-    const scale = getScaleForMood(mood);
+    const scale = getScaleForMood(mood, genre);
     const rootMidi = chord.rootNote;
     
     const isMinor = chord.chordType === 'minor' || chord.chordType === 'diminished';
@@ -688,7 +699,7 @@ export function getAccompanimentTechnique(genre: Genre, mood: Mood, density: num
 
 export function createBassFill(mood: Mood, genre: Genre, random: { next: () => number, nextInt: (max: number) => number }): { events: FractalEvent[], penalty: number } {
     const fill: FractalEvent[] = [];
-    const scale = getScaleForMood(mood);
+    const scale = getScaleForMood(mood, genre);
     const fillParams = { cutoff: 1200, resonance: 0.6, distortion: 0.25, portamento: 0.0 };
     const numHits = random.nextInt(4) + 7; // 7 to 10 notes
     let currentTime = 0;
@@ -820,49 +831,85 @@ export function chooseHarmonyInstrument(mood: Mood, random: { next: () => number
     return 'guitarChords'; // Fallback
 }
 
-export function generateGhostHarmonyTrack(totalBars: number, mood: Mood, key: number, random: { next: () => number; nextInt: (max: number) => number; }): GhostChord[] {
-    console.log(`[Harmony] Generating 12-Bar Blues Harmony for ${totalBars} bars in key ${key}.`);
+export function generateGhostHarmonyTrack(totalBars: number, mood: Mood, key: number, random: { next: () => number; nextInt: (max: number) => number; }, genre: Genre): GhostChord[] {
+    console.log(`[Harmony] Generating Ghost Harmony for ${totalBars} bars in key ${key}, genre ${genre}.`);
     
     const harmonyTrack: GhostChord[] = [];
-    const I = key;
-    const IV = key + 5;
-    const V = key + 7;
     
-    let currentBar = 0;
-    while (currentBar < totalBars) {
-        const structure = [
-            { root: I,  duration: 4, step: 'I' },
-            { root: IV, duration: 2, step: 'IV' },
-            { root: I,  duration: 2, step: 'I' },
-            { root: V,  duration: 1, step: 'V' },
-            { root: IV, duration: 1, step: 'IV' },
-            { root: I,  duration: 1, step: 'I' },
-            { root: V,  duration: 1, step: 'V' }, // Turnaround
-        ];
+    if (genre === 'blues') {
+        const I = key;
+        const IV = key + 5;
+        const V = key + 7;
+        
+        let currentBar = 0;
+        while (currentBar < totalBars) {
+            const structure = [
+                { root: I,  duration: 4, step: 'I' },
+                { root: IV, duration: 2, step: 'IV' },
+                { root: I,  duration: 2, step: 'I' },
+                { root: V,  duration: 1, step: 'V' },
+                { root: IV, duration: 1, step: 'IV' },
+                { root: I,  duration: 1, step: 'I' },
+                { root: V,  duration: 1, step: 'V' }, // Turnaround
+            ];
 
-        for (const segment of structure) {
-            if (currentBar >= totalBars) break;
-            
-            const chordType: GhostChord['chordType'] = 'dominant';
+            for (const segment of structure) {
+                if (currentBar >= totalBars) break;
+                
+                const chordType: GhostChord['chordType'] = 'dominant';
 
-            const duration = Math.min(segment.duration, totalBars - currentBar);
-            if (duration <= 0) continue;
+                const duration = Math.min(segment.duration, totalBars - currentBar);
+                if (duration <= 0) continue;
+
+                harmonyTrack.push({
+                    rootNote: segment.root,
+                    chordType: chordType,
+                    bar: currentBar,
+                    durationBars: duration,
+                });
+                currentBar += duration;
+            }
+        }
+        console.log(`[Harmony] 12-Bar Blues Ghost Harmony generated. ${harmonyTrack.length} chords.`);
+
+    } else { // Ambient/Trance/etc. logic
+        const scale = getScaleForMood(mood, genre);
+        const I = scale[0];
+        const IV = scale[3];
+        const V = scale[4];
+        const VI = scale[5];
+
+        const progression = [I, VI, IV, V]; 
+        const chordTypes: GhostChord['chordType'][] = ['minor', 'major', 'major', 'minor']; // Example for minor mood
+
+        let currentBar = 0;
+        while (currentBar < totalBars) {
+            const progressionIndex = Math.floor(currentBar / 4) % progression.length;
+            const rootNote = progression[progressionIndex];
+            const duration = 4;
+
+            if (rootNote === undefined) {
+                console.error(`[Harmony] Error: Could not determine root note for chord at bar ${currentBar}. Skipping.`);
+                currentBar += duration;
+                continue;
+            }
 
             harmonyTrack.push({
-                rootNote: segment.root,
-                chordType: chordType,
+                rootNote: rootNote,
+                chordType: chordTypes[progressionIndex], // Simplified
                 bar: currentBar,
                 durationBars: duration,
             });
+
             currentBar += duration;
         }
+        console.log(`[Harmony] Modal Ambient Ghost Harmony generated. ${harmonyTrack.length} chords.`);
     }
 
-    console.log(`[Harmony] 12-Bar Blues Ghost Harmony generated. ${harmonyTrack.length} chords.`);
     return harmonyTrack;
 }
     
-export function createDrumAxiom(genre: Genre, mood: Mood, tempo: number, random: { next: () => number, nextInt: (max: number) => number }, rules?: any): { events: FractalEvent[], tags: string[] } {
+export function createDrumAxiom(genre: Genre, mood: Mood, tempo: number, random: { next: () => number, nextInt: (max: number) => number }, rules?: InstrumentBehaviorRules): { events: FractalEvent[], tags: string[] } {
     const hitParams = {}; // Params now come from events
     const grammar = STYLE_DRUM_PATTERNS[genre] || STYLE_DRUM_PATTERNS['ambient'];
     
@@ -911,7 +958,15 @@ export function createDrumAxiom(genre: Genre, mood: Mood, tempo: number, random:
             instrumentType = baseEvent.type;
         }
         
-        console.log(`%c[DrumAxiom] Generating drum event: type='${instrumentType}', controlled by rules: ${JSON.stringify(rules || {})}`, 'color: #FFA500');
+        // #ЗАЧЕМ: Добавляем логику для использования щеток.
+        // #ЧТО: Если в правилах указано `useBrushes: true`, мы заменяем hihat-ы на случайный сэмпл щетки.
+        // #СВЯЗИ: Управляется новым полем в `InstrumentBehaviorRules` из блюпринта.
+        if (rules?.useBrushes && instrumentType.toString().includes('hat')) {
+            const brushSamples: InstrumentType[] = ['drum_brush1', 'drum_brush2', 'drum_brush3', 'drum_brush4'];
+            instrumentType = brushSamples[random.nextInt(brushSamples.length)];
+             console.log(`%c[DrumAxiom] Swapping hi-hat for brush: ${instrumentType}`, 'color: #D2B48C');
+        }
+
 
         axiomEvents.push({
             ...baseEvent,
@@ -931,7 +986,7 @@ export function createSfxScenario(mood: Mood, genre: Genre, random: { next: () =
     const bassFill: FractalEvent[] = [];
     const accompanimentFill: FractalEvent[] = [];
     
-    const scale = getScaleForMood(mood);
+    const scale = getScaleForMood(mood, genre);
     const rootNote = scale[random.nextInt(Math.floor(scale.length / 2))]; // Select a root from the lower half of the scale
     const isMinor = mood === 'melancholic' || mood === 'dark';
     const third = rootNote + (isMinor ? 3 : 4);
@@ -1118,7 +1173,7 @@ export function createMelodyMotif(chord: GhostChord, mood: Mood, random: { next:
         return newPhrase;
     }
 
-    const scale = getScaleForMood(mood);
+    const scale = getScaleForMood(mood, genre);
     let baseOctave = 4;
     if (registerHint === 'high') baseOctave = 5;
     if (registerHint === 'low') baseOctave = 3;

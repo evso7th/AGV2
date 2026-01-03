@@ -70,6 +70,7 @@ export type DrumAndPercussionInstrument =
     | 'drum_closed_hi_hat_ghost'
     | 'drum_hihat_open'
     | 'drum_hihat_closed'
+    | 'drum_crash'
     | 'cymbal_bell1'
     | 'hh_bark_short'
     | 'perc-001'
@@ -86,7 +87,12 @@ export type DrumAndPercussionInstrument =
     | 'perc-012'
     | 'perc-013'
     | 'perc-014'
-    | 'perc-015';
+    | 'perc-015'
+    // New Brush Types
+    | 'drum_brush1'
+    | 'drum_brush2'
+    | 'drum_brush3'
+    | 'drum_brush4';
 
 export type InstrumentType = BassInstrument | MelodyInstrument | AccompanimentInstrument | EffectInstrument | DrumAndPercussionInstrument | 'portamento' | 'autopilot_bass' | 'none';
 
@@ -191,10 +197,11 @@ export type InstrumentBehaviorRules = {
     kickVolume?: number;
     source?: MelodySource;
     techniques?: { value: string; weight: number }[];
-    ride?: {
+     ride?: {
         enabled: boolean;
         quietWindows?: { start: number, end: number }[];
     };
+    useBrushes?: boolean; // NEW: Flag to use brush samples instead of hi-hats
     presetModifiers?: {
         octaveShift?: number;
     };
