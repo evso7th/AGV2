@@ -68,7 +68,13 @@ const isRhythmic = (event: FractalEvent): boolean => (event.type as string).star
 
 // === АКСОМЫ И ТРАНСФОРМАЦИИ ===
 export function mutateBassPhrase(phrase: FractalEvent[], chord: GhostChord, mood: Mood, genre: Genre, random: { next: () => number, nextInt: (max: number) => number }): FractalEvent[] {
-    if (phrase.length === 0) return createAmbientBassAxiom(chord, mood, genre, random, 120, 'drone');
+    // --- ИСПРАВЛЕНИЕ: Гарантируем, что для блюза вызывается блюзовый генератор ---
+    if (phrase.length === 0) {
+        if (genre === 'blues') {
+            return generateBluesBassRiff(chord, 'riff', random, mood);
+        }
+        return createAmbientBassAxiom(chord, mood, genre, random, 120, 'drone');
+    }
 
     const newPhrase: FractalEvent[] = JSON.parse(JSON.stringify(phrase));
     const mutationType = random.nextInt(4);
@@ -100,7 +106,10 @@ export function mutateBassPhrase(phrase: FractalEvent[], chord: GhostChord, mood
             mutationDescription = "Partial Regeneration";
             if (newPhrase.length > 2) {
                 const half = Math.ceil(newPhrase.length / 2);
-                const newHalf = createAmbientBassAxiom(chord, mood, genre, random, 120, 'drone').slice(0, half);
+                // --- ИСПРАВЛЕНИЕ: Вызываем правильный генератор в зависимости от жанра ---
+                const newHalf = genre === 'blues'
+                    ? generateBluesBassRiff(chord, 'riff', random, mood).slice(0, half)
+                    : createAmbientBassAxiom(chord, mood, genre, random, 120, 'drone').slice(0, half);
                 newPhrase.splice(0, half, ...newHalf);
             }
             break;
@@ -127,7 +136,7 @@ export function mutateBassPhrase(phrase: FractalEvent[], chord: GhostChord, mood
 
     let totalDuration = newPhrase.reduce((sum, e) => sum + e.duration, 0);
     if (totalDuration > 0) {
-        const scaleFactor = 4.0 / totalDuration;
+        const scaleFactor = (genre === 'blues' ? 8.0 : 4.0) / totalDuration;
         let runningTime = 0;
         newPhrase.forEach(e => {
             e.duration *= scaleFactor;
