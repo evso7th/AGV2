@@ -188,82 +188,51 @@ export class FractalMusicEngine {
     this.needsBassReset = false;
   }
   
-  private _chooseInstrumentForPart(part: 'melody' | 'accompaniment', currentPartInfo: BlueprintPart | null): MelodyInstrument | AccompanimentInstrument | undefined {
-    let selectedInstrument: MelodyInstrument | AccompanimentInstrument | undefined = undefined;
-    const rules = currentPartInfo?.instrumentation?.[part];
+  private _chooseInstrumentForPart(part: 'melody' | 'accompaniment', navInfo: NavigationInfo | null): MelodyInstrument | AccompanimentInstrument | undefined {
+    // #ЗАЧЕМ: Эта функция определяет, какой именно инструмент (пресет) будет использован для конкретной партии в текущем такте.
+    // #ЧТО: Она читает правила `instrumentation` из текущей части блюпринта и, в зависимости от флага V2,
+    //      выбирает подходящий пресет из `v1Options` или `v2Options`.
+    // #СВЯЗИ: Вызывается в `generateOneBar` перед генерацией событий для мелодии и аккомпанемента.
+    //         Возвращаемое значение используется в `instrumentHints` для отправки в основной поток.
     
     console.log(`%c[FME @ Bar ${this.epoch}] Choosing instrument for '${part}'. V2 Engine Active: ${this.config.useMelodyV2}`, 'color: #9370DB');
     
-    // --- НОВАЯ, УПРОЩЕННАЯ ЛОГИКА ВЫБОРА ---
-    
-    let options: { name: any; weight: number; }[] | undefined;
-
-    if (rules?.strategy === 'weighted') {
-        if (this.config.useMelodyV2 && rules.v2Options && rules.v2Options.length > 0) {
-            console.log(`[FME] Using V2 options for ${part}.`);
-            options = rules.v2Options;
-        } else if (!this.config.useMelodyV2 && rules.v1Options && rules.v1Options.length > 0) {
-            console.log(`[FME] Using V1 options for ${part}.`);
-            options = rules.v1Options;
-        } else if (rules.options && rules.options.length > 0) {
-            console.log(`[FME] Using generic (fallback) options for ${part}.`);
-            options = rules.options;
-        }
+    if (!navInfo) {
+      console.warn(`[FME] _chooseInstrumentForPart called with no navInfo.`);
+      return undefined;
     }
     
-    if (options && options.length > 0) {
-        const totalWeight = options.reduce((sum, opt) => sum + opt.weight, 0);
-        let rand = this.random.next() * totalWeight;
+    const rules = navInfo.currentPart.instrumentation?.[part];
+    if (!rules || rules.strategy !== 'weighted') {
+        console.log(`[FME] No specific weighted rules for '${part}'. Using fallback.`);
+        // Fallback logic can be added here if needed.
+        return undefined;
+    }
 
-        for (const option of options) {
-            rand -= option.weight;
-            if (rand <= 0) {
-                selectedInstrument = option.name;
-                break;
-            }
-        }
-        // Fallback to the first option if random selection fails
-        if (!selectedInstrument) {
-            selectedInstrument = options[0].name;
+    const options = this.config.useMelodyV2 ? rules.v2Options : rules.v1Options;
+
+    if (!options || options.length === 0) {
+        console.log(`[FME] No V${this.config.useMelodyV2 ? '2' : '1'} options available for '${part}'.`);
+        return undefined;
+    }
+    
+    console.log(`[FME] Using V${this.config.useMelodyV2 ? '2' : '1'} options for ${part}.`);
+
+    const totalWeight = options.reduce((sum, opt) => sum + opt.weight, 0);
+    if (totalWeight <= 0) {
+        console.warn(`[FME] Total weight for '${part}' options is zero.`);
+        return options[0]?.name; // Return first if available
+    }
+
+    let rand = this.random.next() * totalWeight;
+    for (const option of options) {
+        rand -= option.weight;
+        if (rand <= 0) {
+            return option.name;
         }
     }
 
-    // Fallback if no rules or options are defined
-    if (!selectedInstrument) {
-         console.warn(`[FME] No specific rules for '${part}'. Using fallback.`);
-         const moodWeights = TEXTURE_INSTRUMENT_WEIGHTS_BY_MOOD[this.config.mood] || TEXTURE_INSTRUMENT_WEIGHTS_BY_MOOD['calm'];
-         const fallbackOptions = Object.entries(moodWeights).map(([name, weight]) => ({ name: name as MelodyInstrument, weight }));
-         if (fallbackOptions.length > 0) {
-             const totalWeight = fallbackOptions.reduce((sum, opt) => sum + opt.weight, 0);
-             let rand = this.random.next() * totalWeight;
-             for (const option of fallbackOptions) {
-                 rand -= option.weight;
-                 if (rand <= 0) {
-                     selectedInstrument = option.name;
-                     break;
-                 }
-             }
-             if (!selectedInstrument) {
-                 selectedInstrument = fallbackOptions[0].name;
-             }
-         }
-    }
-
-    // Final compatibility check
-    if (this.config.useMelodyV2) {
-        const v2PresetNames = Object.keys(V2_PRESETS);
-        if (!selectedInstrument || !v2PresetNames.includes(selectedInstrument as string)) {
-            selectedInstrument = v2PresetNames[this.random.nextInt(v2PresetNames.length)] as keyof typeof V2_PRESETS;
-        }
-    } else {
-        const v1InstrumentList: string[] = ['synth', 'organ', 'mellotron', 'theremin', 'electricGuitar', 'ambientPad', 'acousticGuitar', 'E-Bells_melody', 'G-Drops', 'piano', 'violin', 'flute', 'acousticGuitarSolo', 'guitarChords'];
-        if (selectedInstrument && !v1InstrumentList.includes(selectedInstrument)) {
-           selectedInstrument = v1InstrumentList[this.random.nextInt(v1InstrumentList.length)] as MelodyInstrument;
-        }
-    }
-
-    console.log(`%c[FME @ Bar ${this.epoch}] Selected instrument hint for '${part}': ${selectedInstrument}`, 'color: #9370DB');
-    return selectedInstrument;
+    return options[options.length - 1].name; // Fallback to the last item
   }
 
 
@@ -446,9 +415,8 @@ export class FractalMusicEngine {
     
     let allEvents: FractalEvent[] = [];
     
-    instrumentHints.accompaniment = this._chooseInstrumentForPart('accompaniment', navInfo.currentPart);
-    const v2MelodyHint = this._chooseInstrumentForPart('melody', navInfo.currentPart);
-    instrumentHints.melody = v2MelodyHint;
+    instrumentHints.accompaniment = this._chooseInstrumentForPart('accompaniment', navInfo);
+    instrumentHints.melody = this._chooseInstrumentForPart('melody', navInfo);
     
     const drumEvents = this.generateDrumEvents(navInfo) || [];
 
@@ -650,3 +618,6 @@ export class FractalMusicEngine {
   }
 
 }
+
+
+    
