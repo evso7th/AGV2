@@ -27,9 +27,10 @@ export class MelodySynthManagerV2 {
     async init() {
         if (this.isInitialized) return;
         console.log('[MelodyManagerV2] Initializing...');
+        // #ИЗМЕНЕНО: Инструмент создается один раз при инициализации.
         await this.loadInstrument(this.activePresetName);
         this.isInitialized = true;
-        console.log('[MelodyManagerV2] Initialized.');
+        console.log('[MelodyManagerV2] Initialized with a persistent instrument.');
     }
     
     private async loadInstrument(presetName: keyof typeof V2_PRESETS) {
@@ -40,7 +41,7 @@ export class MelodySynthManagerV2 {
             return;
         }
 
-        console.log(`[MelodyManagerV2] Loading instrument with preset: ${presetName}`, preset);
+        console.log(`[MelodyManagerV2] Loading instrument with preset: ${presetName}`);
 
         try {
             this.instrument = await buildMultiInstrument(this.audioContext, {
@@ -57,8 +58,9 @@ export class MelodySynthManagerV2 {
 
 
     public async schedule(events: FractalEvent[], barStartTime: number, tempo: number, instrumentHint?: keyof typeof V2_PRESETS) {
+        // #ИЗМЕНЕНО: Больше не вызываем loadInstrument. Вместо этого вызываем setPreset.
         if (instrumentHint && instrumentHint !== this.activePresetName) {
-            await this.loadInstrument(instrumentHint);
+            this.setInstrument(instrumentHint);
         }
         
         if (!this.instrument) {
@@ -73,43 +75,32 @@ export class MelodySynthManagerV2 {
             
             const noteOnTime = barStartTime + (event.time * beatDuration);
             const noteOffTime = noteOnTime + (event.duration * beatDuration);
-            
-            // Check if note is already playing, if so, stop it before restarting
-            if (this.activeNotes.has(event.note)) {
-                 this.instrument.noteOff(event.note, this.audioContext.currentTime);
-                 this.activeNotes.delete(event.note);
-            }
 
-            // TELEMETRY POINT
             console.log(`%c[MelodyManagerV2] Scheduling Note: MIDI=${event.note}, On=${noteOnTime.toFixed(2)}, Off=${noteOffTime.toFixed(2)}`, 'color: #87CEFA;');
 
-            // Schedule noteOn and noteOff with the instrument
+            // Schedule noteOn and noteOff with the persistent instrument
             this.instrument.noteOn(event.note, noteOnTime);
             this.instrument.noteOff(event.note, noteOffTime);
-            
-            // Use setTimeout only to clean up the tracking map after the note has fully released
-            const cleanupTime = (noteOffTime - this.audioContext.currentTime + (this.instrument.preset?.adsr?.r || 2) + 0.1) * 1000;
-            const timeoutId = setTimeout(() => {
-                this.activeNotes.delete(event.note);
-            }, cleanupTime);
-
-            this.activeNotes.set(event.note, () => clearTimeout(timeoutId));
         });
     }
     
+    // #ИЗМЕНЕНО: setInstrument теперь только обновляет пресет, не пересоздавая инструмент.
     public setInstrument(instrumentName: keyof typeof V2_PRESETS) {
-       if (this.activePresetName !== instrumentName) {
-           this.loadInstrument(instrumentName);
+       if (!this.instrument || instrumentName === this.activePresetName) return;
+       
+       const newPreset = V2_PRESETS[instrumentName];
+       if (newPreset && this.instrument.setPreset) {
+           this.instrument.setPreset(newPreset);
+           this.activePresetName = instrumentName;
+           console.log(`[MelodyManagerV2] Preset updated to: ${instrumentName}`);
+       } else {
+           console.error(`[MelodyManagerV2] Failed to set preset: ${instrumentName}. Preset or setPreset method not found.`);
        }
     }
 
     public allNotesOff() {
-        if (this.instrument) {
-            this.activeNotes.forEach((clearTimeoutFunc, note) => {
-                this.instrument.noteOff(note, this.audioContext.currentTime);
-                clearTimeoutFunc();
-            });
-            this.activeNotes.clear();
+        if (this.instrument && this.instrument.allNotesOff) {
+            this.instrument.allNotesOff();
         }
     }
 

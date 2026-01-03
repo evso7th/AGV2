@@ -205,7 +205,7 @@ export async function buildMultiInstrument(ctx: AudioContext, {
   // ──────────────────────────────────────────────────────────────────────────
   // ORGAN (drawbar + Leslie)
   if (type === 'organ') {
-    const {
+    let {
       drawbars = [8,0,8,8,0,4,0,2,0], // 16',5 1/3',8',4',2 2/3',2',1 3/5',1 1/3',1'
       vibratoRate = 6.0, vibratoDepth = 0.003,
       leslie = { mode:'slow', slow:0.6, fast:6.0, accel:0.6 },
@@ -257,14 +257,14 @@ export async function buildMultiInstrument(ctx: AudioContext, {
       }
       const f0 = midiToHz(midi);
       
-      const voiceGain = ctx.createGain(); voiceGain.gain.value = 0; console.log(`[Organ MIDI=${midi}] Created voiceGain`);
+      const voiceGain = ctx.createGain(); voiceGain.gain.value = 0;
       
-      voiceGain.connect(chorus.input); console.log(`[Organ MIDI=${midi}] Connected voiceGain -> chorus`);
+      voiceGain.connect(chorus.input);
       chorus.output.connect(organHPF);
       organHPF.connect(organLPF);
       organLPF.connect(trem);
       trem.connect(pan);
-      pan.connect(organOut); console.log(`[Organ MIDI=${midi}] Connected pan -> organOut`);
+      pan.connect(organOut);
 
       const kc = ctx.createBufferSource();
       const noise = ctx.createBuffer(1, Math.floor(ctx.sampleRate*keyClick), ctx.sampleRate);
@@ -275,8 +275,6 @@ export async function buildMultiInstrument(ctx: AudioContext, {
         if(drawbars[i] === 0) return null;
         const osc = ctx.createOscillator();
         osc.type = 'sine';
-        // #ИСПРАВЛЕНО: Заменен неверный расчет 'ratio' на правильную формулу с логарифмами,
-        //             которая корректно вычисляет октавное смещение для каждой гармоники.
         const ratio = Math.pow(2, 3 - Math.log2(ft));
         osc.frequency.setValueAtTime(f0 * ratio, when);
         vibGain.connect(osc.detune);
@@ -309,140 +307,158 @@ export async function buildMultiInstrument(ctx: AudioContext, {
         api.noteOff(key, ctx.currentTime);
       });
     };
-    api.setPreset = (p)=>{ api.preset = p; /* Logic to update params */ };
+    api.setPreset = (p: any)=>{ 
+        api.preset = p;
+        drawbars = p.drawbars || drawbars;
+        vibratoRate = p.vibratoRate || vibratoRate;
+        vib.frequency.value = vibratoRate;
+        vibratoDepth = p.vibratoDepth || vibratoDepth;
+        vibGain.gain.value = vibratoDepth * 100;
+        leslie = p.leslie || leslie;
+        lpf = p.lpf || lpf;
+        organLPF.frequency.value = lpf;
+        hpf = p.hpf || hpf;
+        organHPF.frequency.value = hpf;
+    };
   }
   
   // ──────────────────────────────────────────────────────────────────────────
   // SYNTH (subtractive pad/lead)
   else if (type === 'synth') {
-    // DIAGNOSTIC LOG 1
-    console.log(`[Factory:Synth] Building with preset:`, preset);
+      let currentPreset = { ...preset };
 
-    const {
-        osc = [],
-        noise = { on: false, color: 'white', gain: 0.0 },
-        adsr = { a: 0.1, d: 0.5, s: 0.5, r: 1.0 },
-        lpf = { cutoff: 3000, q: 1, mode: '12dB' },
-        lfo = { rate: 0, amount: 0, target: 'filter' },
-        chorus = { on: false, rate: 0, depth: 0, mix: 0 },
-        delay = { on: false, time: 0, fb: 0, hc: 0, mix: 0 },
-        reverbMix = 0.18
-    } = preset;
-
-    const pre = ctx.createGain(); pre.gain.value = 0.9;
-    
-    const filt = ctx.createBiquadFilter(); filt.type='lowpass'; filt.frequency.value=lpf.cutoff; filt.Q.value=lpf.q;
-    const filt2 = ctx.createBiquadFilter(); filt2.type='lowpass'; filt2.frequency.value=lpf.cutoff; filt2.Q.value=lpf.q;
-    const use2pole = (lpf.mode!=='24dB');
-    const mainChain = use2pole ? (pre.connect(filt), filt) : (pre.connect(filt), filt.connect(filt2), filt2);
-    
-    const finalChain = ctx.createGain();
-    let currentOutput = mainChain;
-
-    if (chorus.on) {
-        const chorusNode = makeChorus(ctx, chorus);
-        currentOutput.connect(chorusNode.input);
-        currentOutput = chorusNode.output;
-    }
-
-    if (delay.on) {
-        const delayNode = makeFilteredDelay(ctx, delay);
-        currentOutput.connect(delayNode.input);
-        currentOutput = delayNode.output;
-    }
-
-    currentOutput.connect(finalChain);
-    finalChain.connect(master);
-    
-    const revSend = ctx.createGain(); revSend.gain.value = reverbMix;
-    if (reverb.buffer) {
-        finalChain.connect(revSend);
-        revSend.connect(reverb);
-    }
-
-    if (lfo?.amount > 0){
-      const l = ctx.createOscillator(); l.type='sine'; l.frequency.value=lfo.rate;
-      const lg=ctx.createGain(); lg.gain.value=lfo.amount;
-      l.connect(lg);
-      if (lfo.target==='filter'){ lg.connect(filt.frequency); if (!use2pole) lg.connect(filt2.frequency); }
-      l.start();
-    }
-
-    const activeVoices = new Map();
-    let noiseBuffer: AudioBuffer | null = null;
-    if(noise.on) {
-        noiseBuffer = ctx.createBuffer(1, ctx.sampleRate * 2, ctx.sampleRate);
-        const d = noiseBuffer.getChannelData(0);
-        for(let i=0; i<d.length; i++) {
-            d[i] = (Math.random() * 2 - 1);
-        }
-    }
-
-    api.noteOn = (midi, when=ctx.currentTime) => {
-      // DIAGNOSTIC LOG 2
-      console.log(`%c[Factory:Synth] api.noteOn triggered - MIDI: ${midi}, Time: ${when}`, 'color: yellow');
-
-      const f = midiToHz(midi);
+      const pre = ctx.createGain(); pre.gain.value = 0.9;
+      const filt = ctx.createBiquadFilter();
+      const filt2 = ctx.createBiquadFilter();
+      const use2pole = (currentPreset.lpf?.mode !== '24dB');
+      const mainChain = use2pole ? (pre.connect(filt), filt) : (pre.connect(filt), filt.connect(filt2), filt2);
       
-      const vGain = ctx.createGain(); vGain.gain.value = 0.0;
-      vGain.connect(pre);
+      const finalChain = ctx.createGain();
+      let chorusNode = makeChorus(ctx, currentPreset.chorus || {});
+      let delayNode = makeFilteredDelay(ctx, currentPreset.delay || {});
+      
+      const lfo = ctx.createOscillator();
+      const lfoGain = ctx.createGain();
+      lfo.start();
 
-      const oscs = osc.map((o: any)=>{
-        const x = ctx.createOscillator(); x.type=o.type as OscillatorType; 
-        const detuneFactor = Math.pow(2, (o.detune || 0) / 1200);
-        const octaveFactor = Math.pow(2, o.octave || 0);
-        x.frequency.setValueAtTime(f * detuneFactor * octaveFactor, when);
+      let currentOutput: AudioNode = mainChain;
+      if (currentPreset.chorus?.on) {
+          currentOutput.connect(chorusNode.input);
+          currentOutput = chorusNode.output;
+      }
+      if (currentPreset.delay?.on) {
+          currentOutput.connect(delayNode.input);
+          currentOutput = delayNode.output;
+      }
+      currentOutput.connect(finalChain);
+      finalChain.connect(master);
+      
+      const revSend = ctx.createGain();
+      if (reverb.buffer) {
+          finalChain.connect(revSend);
+          revSend.connect(reverb);
+      }
+
+      const activeVoices = new Map();
+      let noiseBuffer: AudioBuffer | null = null;
+      
+      const updateNodesFromPreset = (p: any) => {
+          filt.type = 'lowpass';
+          filt.frequency.value = p.lpf?.cutoff || 3000;
+          filt.Q.value = p.lpf?.q || 1;
+          filt2.type = 'lowpass';
+          filt2.frequency.value = p.lpf?.cutoff || 3000;
+          filt2.Q.value = p.lpf?.q || 1;
+          
+          lfo.type = p.lfo?.shape || 'sine';
+          lfo.frequency.value = p.lfo?.rate || 0;
+          lfoGain.gain.value = p.lfo?.amount || 0;
+          
+          if(lfoGain.gain.value > 0) {
+              if (p.lfo?.target === 'filter') {
+                  lfo.connect(lfoGain);
+                  lfoGain.connect(filt.frequency);
+                  if (!use2pole) lfoGain.connect(filt2.frequency);
+              }
+          } else {
+             try { lfoGain.disconnect(); } catch(e){}
+          }
+          
+          revSend.gain.value = p.reverbMix || 0.18;
+
+          if(p.noise?.on) {
+            noiseBuffer = ctx.createBuffer(1, ctx.sampleRate * 2, ctx.sampleRate);
+            const d = noiseBuffer.getChannelData(0);
+            for(let i=0; i<d.length; i++) d[i] = (Math.random() * 2 - 1);
+          } else {
+            noiseBuffer = null;
+          }
+      };
+
+      updateNodesFromPreset(currentPreset);
+
+      api.noteOn = (midi, when=ctx.currentTime) => {
+        const f = midiToHz(midi);
         
-        const g = ctx.createGain(); g.gain.value=o.gain;
-        x.connect(g); g.connect(vGain);
-        x.start(when);
-        return {x,g};
-      });
+        const vGain = ctx.createGain(); vGain.gain.value = 0.0;
+        vGain.connect(pre);
 
-      let noiseNode = null;
-      if (noise.on && noiseBuffer){
-        const n = ctx.createBufferSource();
-        n.buffer = noiseBuffer;
-        n.loop = true;
-        const ng = ctx.createGain(); ng.gain.value=noise.gain;
-        n.connect(ng); ng.connect(vGain); n.start(when);
-        noiseNode = {n,ng};
-      }
-      
-      const voicePackage = { oscs, noise: noiseNode, gain: vGain };
-      activeVoices.set(midi, voicePackage);
-      
-      // DIAGNOSTIC LOG 3
-      console.log(`[Factory:Synth] ADSR applied: a=${adsr.a}, d=${adsr.d}, s=${adsr.s}`);
+        const oscs = (currentPreset.osc || []).map((o: any)=>{
+          const x = ctx.createOscillator(); x.type=o.type as OscillatorType; 
+          const detuneFactor = Math.pow(2, (o.detune || 0) / 1200);
+          const octaveFactor = Math.pow(2, o.octave || 0);
+          x.frequency.setValueAtTime(f * detuneFactor * octaveFactor, when);
+          
+          const g = ctx.createGain(); g.gain.value=o.gain;
+          x.connect(g); g.connect(vGain);
+          x.start(when);
+          return {x,g};
+        });
 
-      vGain.gain.cancelScheduledValues(when);
-      vGain.gain.setValueAtTime(0.0001, when);
-      vGain.gain.linearRampToValueAtTime(1.0, when+adsr.a);
-      vGain.gain.setTargetAtTime(adsr.s, when+adsr.a, adsr.d / 3);
-    };
+        let noiseNode = null;
+        if (currentPreset.noise?.on && noiseBuffer){
+          const n = ctx.createBufferSource(); n.buffer = noiseBuffer; n.loop = true;
+          const ng = ctx.createGain(); ng.gain.value=currentPreset.noise.gain;
+          n.connect(ng); ng.connect(vGain); n.start(when);
+          noiseNode = {n,ng};
+        }
+        
+        const voicePackage = { oscs, noise: noiseNode, gain: vGain };
+        activeVoices.set(midi, voicePackage);
+        
+        const adsr = currentPreset.adsr || { a: 0.1, d: 0.5, s: 0.5, r: 1.0 };
+        vGain.gain.cancelScheduledValues(when);
+        vGain.gain.setValueAtTime(0.0001, when);
+        vGain.gain.linearRampToValueAtTime(1.0, when + adsr.a);
+        vGain.gain.setTargetAtTime(adsr.s, when + adsr.a, adsr.d / 3);
+      };
 
-    api.noteOff = (midi, when=ctx.currentTime) => {
-      const voice = activeVoices.get(midi);
-      if (!voice) return;
+      api.noteOff = (midi, when=ctx.currentTime) => {
+        const voice = activeVoices.get(midi);
+        if (!voice) return;
+        
+        const vGain = voice.gain;
+        const r = currentPreset.adsr?.r || 1.0;
+        vGain.gain.cancelScheduledValues(when);
+        vGain.gain.setTargetAtTime(0.0001, when, r / 3);
+        
+        const stopTime = when + r * 2;
+        voice.oscs.forEach(({x}: any)=>x.stop(stopTime));
+        if (voice.noise) voice.noise.n.stop(stopTime);
+        activeVoices.delete(midi);
+      };
       
-      const vGain = voice.gain;
-      const r = adsr.r || 1.0;
-      vGain.gain.cancelScheduledValues(when);
-      vGain.gain.setTargetAtTime(0.0001, when, r / 3);
-      
-      const stopTime = when + r * 2;
-      voice.oscs.forEach(({x}: any)=>x.stop(stopTime));
-      if (voice.noise){
-          voice.noise.n.stop(stopTime);
-      }
-      activeVoices.delete(midi);
-    };
-    api.allNotesOff = () => {
-      activeVoices.forEach((value, key) => {
-        api.noteOff(key, ctx.currentTime);
-      });
-    };
-    api.setParam=(k,v)=>{ if (k==='cutoff') filt.frequency.value=v; };
+      api.allNotesOff = () => {
+        activeVoices.forEach((value, key) => api.noteOff(key, ctx.currentTime));
+      };
+
+      api.setPreset = (p) => {
+          console.log('[Factory:Synth] setPreset called with:', p);
+          api.allNotesOff();
+          currentPreset = p;
+          api.preset = p;
+          updateNodesFromPreset(p);
+      };
   }
 
   // ──────────────────────────────────────────────────────────────────────────
