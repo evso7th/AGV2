@@ -36,7 +36,7 @@ export const MelancholicBluesBlueprint: MusicBlueprint = {
                 layers: { bass: true, drums: true, accompaniment: true, melody: true, harmony: true },
                  instrumentation: {
                     accompaniment: { strategy: 'weighted', v1Options: [{ name: 'organ', weight: 1.0 }], v2Options: [{ name: 'organ', weight: 1.0 }] },
-                    melody: { strategy: 'weighted', v1Options: [{ name: 'guitar_shineOn', weight: 1.0 }], v2Options: [{ name: 'guitar_shineOn', weight: 1.0 }] }
+                    melody: { strategy: 'weighted', v1Options: [{ name: 'guitar_shineOn', weight: 1.0 }], v2Options: [{ name: 'electricGuitar', weight: 1.0 }] }
                 },
                 instrumentRules: {
                     drums: { 
@@ -51,7 +51,12 @@ export const MelancholicBluesBlueprint: MusicBlueprint = {
                         },
                         usePerc: true, // Разрешить томы
                     },
-                    melody: { density: { min: 0.4, max: 0.6 }, source: 'motif', register: { preferred: 'low' } },
+                    melody: {
+                        density: { min: 0.4, max: 0.6 },
+                        source: 'motif',
+                        register: { preferred: 'low' },
+                        presetModifiers: { octaveShift: 0 } // Use base, lower octave
+                    },
                     bass: { techniques: [{ value: 'walking', weight: 1.0 }] },
                 },
                 bundles: [{ id: 'BLUES_MAIN_BUNDLE', name: 'Solo Section', duration: { percent: 100 }, characteristics: {}, phrases: {} }],

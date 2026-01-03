@@ -39,7 +39,12 @@ export const EnthusiasticBluesBlueprint: MusicBlueprint = {
                 },
                 instrumentRules: {
                     drums: { pattern: 'composer', density: { min: 0.7, max: 0.9 }, kickVolume: 1.3, ride: { enabled: true } }, // RIDE ADDED
-                    melody: { density: { min: 0.5, max: 0.7 }, source: 'motif', register: { preferred: 'high' } }, // Higher density for more active soloing
+                    melody: {
+                        density: { min: 0.5, max: 0.7 },
+                        source: 'motif',
+                        register: { preferred: 'high' },
+                        presetModifiers: { octaveShift: 1 } // Play solo one octave higher
+                    },
                     bass: { techniques: [{ value: 'walking', weight: 1.0 }] },
                 },
                 bundles: [{ id: 'BLUES_ENT_MAIN_BUNDLE', name: 'Solo Section', duration: { percent: 100 }, characteristics: {}, phrases: {} }],

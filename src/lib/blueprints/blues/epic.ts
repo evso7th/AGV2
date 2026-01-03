@@ -58,7 +58,8 @@ export const EpicBluesBlueprint: MusicBlueprint = {
                     melody: { 
                         source: 'motif', 
                         density: { min: 0.7, max: 0.9 }, // Higher density for solo
-                        register: { preferred: 'high' }
+                        register: { preferred: 'high' },
+                        presetModifiers: { octaveShift: 1 } // Play solo one octave higher
                     },
                     bass: { techniques: [{ value: 'walking', weight: 1.0 }] },
                 },

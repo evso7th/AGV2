@@ -22,12 +22,17 @@ export const GloomyBluesBlueprint: MusicBlueprint = {
                 layers: { bass: true, drums: true, accompaniment: true, harmony: true, melody: true },
                 instrumentation: {
                     accompaniment: { strategy: 'weighted', v1Options: [{ name: 'organ', weight: 1.0 }], v2Options: [{ name: 'organ_soft_jazz', weight: 1.0 }] },
-                    melody: { strategy: 'weighted', v1Options: [{ name: 'electricGuitar', weight: 1.0 }], v2Options: [{ name: 'guitar_shineOn', weight: 1.0 }] }
+                    melody: { strategy: 'weighted', v1Options: [{ name: 'electricGuitar', weight: 1.0 }], v2Options: [{ name: 'electricGuitar', weight: 1.0 }] }
                 },
                 instrumentRules: {
                     drums: { pattern: 'composer', density: { min: 0.3, max: 0.5 }, useSnare: false, useGhostHat: true },
                     bass: { techniques: [{ value: 'riff', weight: 1.0 }] }, 
-                    melody: { source: 'motif', density: { min: 0.3, max: 0.5 }, register: { preferred: 'low' } }
+                    melody: {
+                        source: 'motif',
+                        density: { min: 0.3, max: 0.5 },
+                        register: { preferred: 'low' },
+                        presetModifiers: { octaveShift: 0 } // Use base, lower octave
+                    }
                 },
                 bundles: [{ id: 'GLOOMY_BLUES_MAIN_BUNDLE', name: 'Riff', duration: { percent: 100 }, characteristics: {}, phrases: {} }],
                 outroFill: null,
@@ -43,7 +48,8 @@ export const GloomyBluesBlueprint: MusicBlueprint = {
                     melody: { 
                         source: 'motif', 
                         density: { min: 0.5, max: 0.7 },
-                        register: { preferred: 'low' }
+                        register: { preferred: 'low' },
+                        presetModifiers: { octaveShift: 0 } // Use base, lower octave
                     },
                     bass: { techniques: [{ value: 'riff', weight: 1.0 }] },
                 },

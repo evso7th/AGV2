@@ -70,7 +70,7 @@ export const DarkBluesBlueprint: MusicBlueprint = {
                 layers: { bass: true, drums: true, accompaniment: true, melody: true, harmony: true, sfx: true },
                  instrumentation: {
                     accompaniment: { strategy: 'weighted', v1Options: [{ name: 'synth', weight: 1.0 }], v2Options: [{ name: 'synth_cave_pad', weight: 1.0 }] },
-                    melody: { strategy: 'weighted', v1Options: [{ name: 'guitar_shineOn', weight: 1.0 }], v2Options: [{ name: 'guitar_shineOn', weight: 1.0 }] },
+                    melody: { strategy: 'weighted', v1Options: [{ name: 'guitar_shineOn', weight: 1.0 }], v2Options: [{ name: 'electricGuitar', weight: 1.0 }] },
                     bassAccompanimentDouble: { enabled: true, instrument: 'electricGuitar', octaveShift: 1 }
                 },
                 instrumentRules: {
@@ -82,7 +82,12 @@ export const DarkBluesBlueprint: MusicBlueprint = {
                         fills: { onBundleBoundary: true },
                         useGhostHat: true
                     },
-                    melody: { density: { min: 0.4, max: 0.6 }, source: 'motif', register: { preferred: 'low' } },
+                    melody: {
+                        density: { min: 0.4, max: 0.6 },
+                        source: 'motif',
+                        register: { preferred: 'low' },
+                        presetModifiers: { octaveShift: 0 } // Use base, lower octave
+                    },
                     bass: { techniques: [{ value: 'walking', weight: 1.0 }] },
                     accompaniment: { density: { min: 0.1, max: 0.2 } },
                     sfx: { eventProbability: 0.1, categories: [{ name: 'voice', weight: 0.8 }, { name: 'dark', weight: 0.2 }] }

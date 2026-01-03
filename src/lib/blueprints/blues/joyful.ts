@@ -40,7 +40,12 @@ export const JoyfulBluesBlueprint: MusicBlueprint = {
                 },
                 instrumentRules: {
                     drums: { pattern: 'composer', density: { min: 0.8, max: 1.0 }, kickVolume: 1.1, useSnare: true, useGhostHat: true, usePerc: true, ride: { enabled: false } },
-                    melody: { density: { min: 0.6, max: 0.8 }, source: 'motif', register: { preferred: 'high' } },
+                    melody: {
+                        source: 'motif',
+                        density: { min: 0.6, max: 0.8 },
+                        register: { preferred: 'high' },
+                        presetModifiers: { octaveShift: 1 } // Play solo one octave higher
+                    },
                     bass: { techniques: [{ value: 'boogie', weight: 1.0 }] },
                 },
                 bundles: [{ id: 'BLUES_JOY_MAIN_BUNDLE', name: 'Guitar Solo', duration: { percent: 100 }, characteristics: {}, phrases: {} }],

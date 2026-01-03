@@ -179,14 +179,25 @@ export type FillPolicy = {
 
 type MelodySource = 'motif' | 'harmony_top_note';
 
-export type InstrumentRules = {
-  melody?: {
-    source?: MelodySource; // КАК генерировать мелодию
+export type InstrumentBehaviorRules = {
     density?: { min: number, max: number };
-    register?: { preferred: 'low' | 'mid' | 'high' }; // <-- ADDED THIS
-    [key: string]: any;
-  };
-  [key: string]: any;
+    register?: { preferred: 'low' | 'mid' | 'high' };
+    pattern?: 'ambient_beat' | 'composer' | 'none';
+    useSnare?: boolean;
+    rareKick?: boolean;
+    usePerc?: boolean;
+    alternatePerc?: boolean;
+    useGhostHat?: boolean;
+    kickVolume?: number;
+    source?: MelodySource;
+    techniques?: { value: string; weight: number }[];
+    ride?: {
+        enabled: boolean;
+        quietWindows?: { start: number, end: number }[];
+    };
+    presetModifiers?: {
+        octaveShift?: number;
+    };
 };
 
 
@@ -269,5 +280,3 @@ export type MusicBlueprint = {
     continuity: any; // Define this type more strictly later
     rendering: any; // Define this type more strictly later
 };
-
-
