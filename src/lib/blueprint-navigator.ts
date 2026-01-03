@@ -36,13 +36,18 @@ export type NavigationInfo = {
   logMessage: string | null;
 };
 
-function formatInstrumentation(instrumentation?: { [key: string]: any }): string {
+function formatInstrumentation(instrumentation?: { [key: string]: any }, v2MelodyHint?: MelodyInstrument): string {
     if (!instrumentation) {
         return 'Instrumentation: (none)';
     }
 
     const parts = Object.keys(instrumentation).map(partKey => {
         const rule = instrumentation[partKey] as InstrumentationRules<any>;
+        
+        if (partKey === 'melody' && v2MelodyHint) {
+             return `melody(V2: ${v2MelodyHint})`;
+        }
+
         if (rule && rule.strategy === 'weighted' && (rule.options || rule.v1Options || rule.v2Options)) {
             const options = rule.options || rule.v1Options || rule.v2Options || [];
             const optionsStr = options
@@ -184,7 +189,7 @@ export class BlueprintNavigator {
      * @param currentBar The current bar number (epoch).
      * @returns NavigationInfo object with details about the current position and transitions.
      */
-    public tick(currentBar: number): NavigationInfo | null {
+    public tick(currentBar: number, v2MelodyHint?: MelodyInstrument): NavigationInfo | null {
         // Wrap the bar count if it exceeds the total duration, allowing for looping.
         const effectiveBar = currentBar % this.totalBars;
 
@@ -217,7 +222,7 @@ export class BlueprintNavigator {
         if (isPartTransition || isBundleTransition) {
             const transitionType = isPartTransition ? "Part" : "Bundle";
             const mutationType = isPartTransition ? "MACRO" : "micro";
-            const instrumentationLog = formatInstrumentation(partInfo.part.instrumentation);
+            const instrumentationLog = formatInstrumentation(partInfo.part.instrumentation, v2MelodyHint);
             
             logMessage = `%c[NAVIGATOR @ Bar ${currentBar}] ${transitionType} Transition: ${partInfo.part.id} / ${bundleInfo.bundle.id}\n` +
                          `  - Context: Genre: ${this.genre}, Mood: ${this.mood}, BP: ${this.blueprint.name}\n` +

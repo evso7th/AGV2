@@ -1,6 +1,6 @@
 
 
-import type { FractalEvent, Mood, Genre, Technique, BassSynthParams, InstrumentType, MelodyInstrument, BassInstrument, AccompanimentInstrument, ResonanceMatrix, InstrumentHints, AccompanimentTechnique, GhostChord, SfxRule, V1MelodyInstrument, V2MelodyInstrument, BlueprintPart, InstrumentationRules } from './fractal';
+import type { FractalEvent, Mood, Genre, Technique, BassSynthParams, InstrumentType, MelodyInstrument, AccompanimentInstrument, ResonanceMatrix, InstrumentHints, AccompanimentTechnique, GhostChord, SfxRule, V1MelodyInstrument, V2MelodyInstrument, BlueprintPart, InstrumentationRules } from './fractal';
 import { ElectronicK, TraditionalK, AmbientK, MelancholicMinorK } from './resonance-matrices';
 import { getScaleForMood, STYLE_DRUM_PATTERNS, createAccompanimentAxiom, PERCUSSION_SETS, TEXTURE_INSTRUMENT_WEIGHTS_BY_MOOD, getAccompanimentTechnique, createBassFill, createDrumFill, AMBIENT_ACCOMPANIMENT_WEIGHTS, chooseHarmonyInstrument, mutateBassPhrase, createMelodyMotif, createDrumAxiom, generateGhostHarmonyTrack, mutateAccompanimentPhrase, generateBluesBassRiff, createAmbientBassAxiom, generateBluesMelodyChorus } from './music-theory';
 import { BlueprintNavigator, type NavigationInfo } from './blueprint-navigator';
@@ -571,14 +571,17 @@ export class FractalMusicEngine {
 
     if (!isFinite(barDuration)) return { events: [], instrumentHints: {} };
     
-    const navigationInfo = this.navigator.tick(this.epoch);
+    const { events, instrumentHints } = this.generateOneBar(barDuration, null); // Pass null for navInfo initially
+    
+    const navigationInfo = this.navigator.tick(this.epoch, this.config.useMelodyV2 ? instrumentHints.melody : undefined);
 
     if (navigationInfo && navigationInfo.logMessage) {
         console.log(navigationInfo.logMessage);
     }
     
-    const { events, instrumentHints } = this.generateOneBar(barDuration, navigationInfo);
-    return { events, instrumentHints };
+    const finalEvents = this.generateOneBar(barDuration, navigationInfo);
+    
+    return finalEvents;
   }
 
   private _generatePromenade(promenadeBar: number): FractalEvent[] {
