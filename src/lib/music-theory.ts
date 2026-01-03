@@ -565,7 +565,23 @@ export const STYLE_DRUM_PATTERNS: Record<Genre, any> = {
        ],
     },
     blues: {
-        loops: [], // This will now be handled dynamically
+        loops: [
+            {
+                kick: [{ type: 'drum_kick', time: 0, duration: 0.25, weight: 0.9, probability: 1.0 }, { type: 'drum_kick', time: 2, duration: 0.25, weight: 0.8, probability: 0.8 }],
+                snare: [{ type: 'drum_snare', time: 1, duration: 0.25, weight: 1.0 }, { type: 'drum_snare_ghost_note', time: 2.66, duration: 0.25, weight: 0.4, probability: 0.6 }, { type: 'drum_snare', time: 3, duration: 0.25, weight: 0.9 }],
+                hihat: [
+                    { type: 'drum_hihat_closed', time: 0, duration: 0.25, weight: 0.7 }, { type: 'drum_hihat_closed', time: 0.66, duration: 0.25, weight: 0.5 }, { type: 'drum_hihat_closed', time: 1, duration: 0.25, weight: 0.7 }, { type: 'drum_hihat_closed', time: 1.66, duration: 0.25, weight: 0.5 },
+                    { type: 'drum_hihat_closed', time: 2, duration: 0.25, weight: 0.7 }, { type: 'drum_hihat_closed', time: 2.66, duration: 0.25, weight: 0.5 }, { type: 'drum_hihat_closed', time: 3, duration: 0.25, weight: 0.7 }, { type: 'drum_hihat_closed', time: 3.66, duration: 0.25, weight: 0.5 },
+                ],
+                tags: ['slow-shuffle']
+            },
+            {
+                kick: [{ type: 'drum_kick', time: 0, duration: 0.25, weight: 1.0 }, { type: 'drum_kick', time: 1, duration: 0.25, weight: 0.8, probability: 0.5 }, { type: 'drum_kick', time: 2, duration: 0.25, weight: 1.0 }, { type: 'drum_kick', time: 3, duration: 0.25, weight: 0.8, probability: 0.5 }],
+                snare: [{ type: 'drum_snare', time: 1, duration: 0.25, weight: 1.0 }, { type: 'drum_snare', time: 3, duration: 0.25, weight: 1.0 }],
+                hihat: [{ type: 'drum_ride', time: 0, duration: 1, weight: 0.7 }, { type: 'drum_ride', time: 1, duration: 1, weight: 0.7 }, { type: 'drum_ride', time: 2, duration: 1, weight: 0.7 }, { type: 'drum_ride', time: 3, duration: 1, weight: 0.7 }],
+                tags: ['mid-tempo-groove']
+            }
+        ],
     },
     celtic: {
         loops: [ { kick: [], snare: [], hihat: [], tags: ['bodhran-pulse'] } ],
