@@ -10,6 +10,7 @@ import { PARANOID_STYLE_RIFF } from './assets/rock-riffs';
 import { BLUES_BASS_RIFFS } from './assets/blues-bass-riffs';
 import { NEUTRAL_BLUES_BASS_RIFFS } from './assets/neutral-blues-riffs';
 import { BLUES_MELODY_RIFFS, type BluesRiffDegree, type BluesRiffEvent, type BluesMelodyPhrase, type BluesMelody } from './assets/blues-melody-riffs';
+import { BLUES_DRUM_RIFFS } from './assets/blues-drum-riffs';
 
 
 export type Branch = {
@@ -263,15 +264,46 @@ export class FractalMusicEngine {
   }
   
   private generateDrumEvents(navInfo: NavigationInfo | null): FractalEvent[] {
-    if (!navInfo) return [];
+    if (!navInfo || !this.navigator) return [];
     
     const drumRules = navInfo.currentPart.instrumentRules?.drums;
     if (!navInfo.currentPart.layers.drums || (drumRules && drumRules.pattern === 'none')) {
         return [];
     }
+
+    // --- NEW BLUES LOGIC ---
+    if (this.config.genre === 'blues') {
+        const moodRiffs = BLUES_DRUM_RIFFS[this.config.mood] || BLUES_DRUM_RIFFS['contemplative'];
+        if (!moodRiffs || moodRiffs.length === 0) return [];
+        
+        const pattern = moodRiffs[this.random.nextInt(moodRiffs.length)];
+        const events: FractalEvent[] = [];
+        const ticksPerBeat = 3.0; // 12/8 time
+
+        const addEvents = (ticks: number[] | undefined, type: InstrumentType) => {
+            if (ticks) {
+                ticks.forEach(tick => {
+                    events.push({
+                        type, note: 60, time: tick / ticksPerBeat, duration: 1 / ticksPerBeat,
+                        weight: 0.8 + (this.random.next() * 0.2), technique: 'hit', dynamics: 'mf', phrasing: 'staccato', params: {}
+                    });
+                });
+            }
+        };
+
+        addEvents(pattern.K, 'drum_kick');
+        addEvents(pattern.SD, 'drum_snare');
+        addEvents(pattern.ghostSD, 'drum_snare_ghost_note');
+        addEvents(pattern.HH, 'drum_hihat_closed');
+        addEvents(pattern.OH, 'drum_hihat_open');
+        addEvents(pattern.R, 'drum_ride');
+        addEvents(pattern.T, 'drum_tom_mid');
+
+        return events;
+    }
+    // --- END NEW BLUES LOGIC ---
     
     const axiomResult = createDrumAxiom(this.config.genre, this.config.mood, this.config.tempo, this.random, drumRules);
-    // #ИСПРАВЛЕНО: Защита от undefined при отсутствии паттерна.
     const baseAxiom = axiomResult.events || [];
     
     if (navInfo.currentPart.id.includes('INTRO') || navInfo.currentPart.id.includes('RELEASE')) {
@@ -566,3 +598,4 @@ export class FractalMusicEngine {
 }
 
     
+
