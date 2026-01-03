@@ -24,7 +24,10 @@ export const EpicBluesBlueprint: MusicBlueprint = {
                 },
                 instrumentRules: {
                     drums: { pattern: 'composer', density: { min: 0.3, max: 0.5 }, useSnare: true, useGhostHat: true, kickVolume: 0.0, usePerc: false, ride: { enabled: false } },
-                    bass: { techniques: [{ value: 'walking', weight: 1.0 }] },
+                    bass: { 
+                        techniques: [{ value: 'walking', weight: 1.0 }],
+                        presetModifiers: { octaveShift: 1 } 
+                    },
                     accompaniment: { techniques: [{ value: 'long-chords', weight: 1.0 }], portamento: 0.05 }, // Adding portamento effect
                     melody: { source: 'harmony_top_note' } // Melody is silent here but rule is needed
                 },
@@ -40,7 +43,10 @@ export const EpicBluesBlueprint: MusicBlueprint = {
                 },
                 instrumentRules: {
                     drums: { pattern: 'composer', density: { min: 0.6, max: 0.8 }, useSnare: true, useGhostHat: true, kickVolume: 1.1, usePerc: true },
-                    bass: { techniques: [{ value: 'walking', weight: 1.0 }] },
+                    bass: { 
+                        techniques: [{ value: 'walking', weight: 1.0 }],
+                        presetModifiers: { octaveShift: 1 } 
+                    },
                     melody: { source: 'motif', density: { min: 0.3, max: 0.5 } }
                 },
                 bundles: [{ id: 'EPIC_BLUES_VERSE_BUNDLE', name: 'Theme', duration: { percent: 100 }, characteristics: {}, phrases: {} }],
@@ -60,7 +66,10 @@ export const EpicBluesBlueprint: MusicBlueprint = {
                         density: { min: 0.7, max: 0.9 }, // Higher density for solo
                         register: { preferred: 'high' }
                     },
-                    bass: { techniques: [{ value: 'walking', weight: 1.0 }] },
+                    bass: { 
+                        techniques: [{ value: 'walking', weight: 1.0 }],
+                        presetModifiers: { octaveShift: 1 }
+                    },
                 },
                 bundles: [{ id: 'EPIC_BLUES_SOLO_BUNDLE', name: 'Lead Break', duration: { percent: 100 }, characteristics: {}, phrases: {} }],
                 outroFill: { type: 'roll', duration: 1, parameters: { instrument: 'crash' } },
@@ -74,7 +83,10 @@ export const EpicBluesBlueprint: MusicBlueprint = {
                 },
                 instrumentRules: {
                     drums: { pattern: 'composer', density: { min: 0.6, max: 0.8 }, useSnare: true, useGhostHat: true, kickVolume: 1.1 },
-                    bass: { techniques: [{ value: 'walking', weight: 1.0 }] },
+                    bass: { 
+                        techniques: [{ value: 'walking', weight: 1.0 }],
+                        presetModifiers: { octaveShift: 1 }
+                    },
                     melody: { source: 'motif', density: { min: 0.3, max: 0.5 } } // Return to main theme density
                 },
                 bundles: [{ id: 'EPIC_BLUES_OUTRO_BUNDLE', name: 'Outro Theme', duration: { percent: 100 }, characteristics: {}, phrases: {} }],

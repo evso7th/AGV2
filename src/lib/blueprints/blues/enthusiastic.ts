@@ -24,7 +24,10 @@ export const EnthusiasticBluesBlueprint: MusicBlueprint = {
                 },
                 instrumentRules: {
                     drums: { pattern: 'composer', density: { min: 0.6, max: 0.8 }, useSnare: true, useGhostHat: true },
-                    bass: { techniques: [{ value: 'walking', weight: 1.0 }] }, // UNIQUE TECHNIQUE
+                    bass: { 
+                        techniques: [{ value: 'walking', weight: 1.0 }],
+                        presetModifiers: { octaveShift: 1 }
+                    },
                     melody: { source: 'harmony_top_note', register: { preferred: 'high' } }
                 },
                 bundles: [{ id: 'BLUES_ENT_INTRO_BUNDLE', name: 'Verse 1', duration: { percent: 100 }, characteristics: {}, phrases: {} }],
@@ -44,7 +47,10 @@ export const EnthusiasticBluesBlueprint: MusicBlueprint = {
                         source: 'motif',
                         register: { preferred: 'high' }
                     },
-                    bass: { techniques: [{ value: 'walking', weight: 1.0 }] },
+                    bass: { 
+                        techniques: [{ value: 'walking', weight: 1.0 }],
+                        presetModifiers: { octaveShift: 1 }
+                    },
                 },
                 bundles: [{ id: 'BLUES_ENT_MAIN_BUNDLE', name: 'Solo Section', duration: { percent: 100 }, characteristics: {}, phrases: {} }],
                 outroFill: { type: 'roll', duration: 2, parameters: { crescendo: true } },
@@ -57,7 +63,10 @@ export const EnthusiasticBluesBlueprint: MusicBlueprint = {
                 },
                 instrumentRules: {
                     drums: { pattern: 'composer', density: { min: 0.6, max: 0.8 } },
-                    bass: { techniques: [{ value: 'walking', weight: 1.0 }] },
+                    bass: { 
+                        techniques: [{ value: 'walking', weight: 1.0 }],
+                        presetModifiers: { octaveShift: 1 }
+                    },
                     melody: { source: 'harmony_top_note', register: { preferred: 'high' } }
                 },
                 bundles: [{ id: 'BLUES_ENT_OUTRO_BUNDLE', name: 'Final Verse', duration: { percent: 100 }, characteristics: {}, phrases: {} }],
