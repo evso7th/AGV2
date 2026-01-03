@@ -17,7 +17,7 @@ type RiffPattern = RiffNote[];
 export const BLUES_BASS_RIFFS: RiffPattern[][] = [
     // 1) Swamp Drone (2 bars, мрачно-минорный "стон")
     [
-        [{ note: 0, tick: 0, dur: 12 }], // Bar 1: Root
+        [{ note: 0, tick: 0, dur: 12 }], // Bar 1: Root (long note)
         [{ note: 0, tick: 0, dur: 2 }, { note: 3, tick: 2, dur: 2 }, { note: 5, tick: 4, dur: 2 }, { note: 6, tick: 6, dur: 2 }, { note: 5, tick: 8, dur: 2 }, { note: 3, tick: 10, dur: 2 }] // Bar 2: R-b3-4-b5-4-b3
     ],
     // 2) Boogie Graveyard (2 такта, тяжёлый буги с падающей второй строкой)
