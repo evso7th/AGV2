@@ -192,9 +192,9 @@ export class FractalMusicEngine {
     // #ЗАЧЕМ: Эта функция определяет, какой именно инструмент (пресет) будет использован для конкретной партии в текущем такте.
     // #ЧТО: Она читает правила `instrumentation` из текущей части блюпринта и, в зависимости от флага V2,
     //      выбирает подходящий пресет из `v1Options` или `v2Options`.
-    // #СВЯЗИ: Вызывается в `generateOneBar` перед генерацией событий для мелодии и аккомпанемента.
-    //         Возвращаемое значение используется в `instrumentHints` для отправки в основной поток.
-    
+    // #ИЗМЕНЕНО: Эта функция была полностью переписана для устранения логических ошибок,
+    //           приводивших к неправильному выбору инструмента.
+
     console.log(`%c[FME @ Bar ${this.epoch}] Choosing instrument for '${part}'. V2 Engine Active: ${this.config.useMelodyV2}`, 'color: #9370DB');
     
     if (!navInfo) {
@@ -202,37 +202,40 @@ export class FractalMusicEngine {
       return undefined;
     }
     
-    const rules = navInfo.currentPart.instrumentation?.[part];
+    const rules = navInfo.currentPart.instrumentation?.[part as keyof typeof navInfo.currentPart.instrumentation];
     if (!rules || rules.strategy !== 'weighted') {
         console.log(`[FME] No specific weighted rules for '${part}'. Using fallback.`);
-        // Fallback logic can be added here if needed.
-        return undefined;
+        return part === 'melody' ? 'organ' : 'synth'; // Fallback
     }
 
     const options = this.config.useMelodyV2 ? rules.v2Options : rules.v1Options;
 
     if (!options || options.length === 0) {
         console.log(`[FME] No V${this.config.useMelodyV2 ? '2' : '1'} options available for '${part}'.`);
-        return undefined;
+        // Если для V2 нет опций, пробуем V1, и наоборот
+        const fallbackOptions = this.config.useMelodyV2 ? rules.v1Options : rules.v2Options;
+        if (!fallbackOptions || fallbackOptions.length === 0) {
+             return part === 'melody' ? 'organ' : 'synth'; // Ultimate fallback
+        }
+        console.log(`[FME] Falling back to V${!this.config.useMelodyV2 ? '2' : '1'} options.`);
+        return fallbackOptions[0].name as any;
     }
     
-    console.log(`[FME] Using V${this.config.useMelodyV2 ? '2' : '1'} options for ${part}.`);
-
     const totalWeight = options.reduce((sum, opt) => sum + opt.weight, 0);
     if (totalWeight <= 0) {
         console.warn(`[FME] Total weight for '${part}' options is zero.`);
-        return options[0]?.name; // Return first if available
+        return options[0]?.name;
     }
 
     let rand = this.random.next() * totalWeight;
     for (const option of options) {
         rand -= option.weight;
         if (rand <= 0) {
-            return option.name;
+            return option.name as any;
         }
     }
 
-    return options[options.length - 1].name; // Fallback to the last item
+    return options[options.length - 1].name as any; // Fallback to the last item
   }
 
 
@@ -397,10 +400,9 @@ export class FractalMusicEngine {
         return createAmbientBassAxiom(chord, mood, genre, random, tempo, technique);
     }
 
-  private generateOneBar(barDuration: number, navInfo: NavigationInfo | null): { events: FractalEvent[], instrumentHints: InstrumentHints } {
-    let instrumentHints: InstrumentHints = {};
+  private generateOneBar(barDuration: number, navInfo: NavigationInfo | null, instrumentHints: InstrumentHints): FractalEvent[] {
     if (!navInfo || !this.navigator) {
-        return { events: [], instrumentHints: {} };
+        return [];
     }
     
     const effectiveBar = this.epoch % this.navigator.totalBars;
@@ -410,13 +412,10 @@ export class FractalMusicEngine {
 
     if (!currentChord) {
         console.error(`[Engine] CRITICAL ERROR in bar ${this.epoch}: Could not find chord in 'Ghost Harmony'.`);
-        return { events: [], instrumentHints: {} };
+        return [];
     }
     
     let allEvents: FractalEvent[] = [];
-    
-    instrumentHints.accompaniment = this._chooseInstrumentForPart('accompaniment', navInfo);
-    instrumentHints.melody = this._chooseInstrumentForPart('melody', navInfo);
     
     const drumEvents = this.generateDrumEvents(navInfo) || [];
 
@@ -565,43 +564,52 @@ export class FractalMusicEngine {
         allEvents.push(...drumFill, ...bassFill);
     }
     
-    return { events: allEvents, instrumentHints };
+    return allEvents;
   }
 
 
   public evolve(barDuration: number, barCount: number): { events: FractalEvent[], instrumentHints: InstrumentHints } {
-    if (!this.navigator) {
-        console.warn("[FME] Evolve called but navigator is not ready. Waiting for initialization.");
-        return { events: [], instrumentHints: {} };
-    }
+      if (!this.navigator) {
+          console.warn("[FME] Evolve called but navigator is not ready. Waiting for initialization.");
+          return { events: [], instrumentHints: {} };
+      }
 
-    this.epoch = barCount;
+      this.epoch = barCount;
 
-    if (this.epoch >= this.navigator.totalBars + 4) {
-      console.log(`%c[FME @ Bar ${this.epoch}] End of suite detected. Posting SUITE_ENDED command.`, 'color: red; font-weight: bold;');
-      self.postMessage({ command: 'SUITE_ENDED' });
-      return { events: [], instrumentHints: {} }; 
-    }
-    
-    if (this.epoch >= this.navigator.totalBars) {
-        const promenadeBar = this.epoch - this.navigator.totalBars;
-        const promenadeEvents = this._generatePromenade(promenadeBar);
-        return { events: promenadeEvents, instrumentHints: {} };
-    }
+      if (this.epoch >= this.navigator.totalBars + 4) {
+        console.log(`%c[FME @ Bar ${this.epoch}] End of suite detected. Posting SUITE_ENDED command.`, 'color: red; font-weight: bold;');
+        self.postMessage({ command: 'SUITE_ENDED' });
+        return { events: [], instrumentHints: {} }; 
+      }
+      
+      if (this.epoch >= this.navigator.totalBars) {
+          const promenadeBar = this.epoch - this.navigator.totalBars;
+          const promenadeEvents = this._generatePromenade(promenadeBar);
+          return { events: promenadeEvents, instrumentHints: {} };
+      }
 
-    if (!isFinite(barDuration)) return { events: [], instrumentHints: {} };
-    
-    const v2MelodyHint = this.config.useMelodyV2 ? this._chooseInstrumentForPart('melody', null) : undefined;
-    const navigationInfo = this.navigator.tick(this.epoch, v2MelodyHint);
+      if (!isFinite(barDuration)) return { events: [], instrumentHints: {} };
+      
+      // #ИСПРАВЛЕНИЕ: Поток данных восстановлен.
+      // 1. Сначала получаем навигационную информацию.
+      const navigationInfo = this.navigator.tick(this.epoch);
 
-    if (navigationInfo && navigationInfo.logMessage) {
-        console.log(navigationInfo.logMessage);
-    }
-    
-    const { events, instrumentHints } = this.generateOneBar(barDuration, navigationInfo);
-    
-    return { events, instrumentHints };
+      // 2. Затем, на ее основе, выбираем инструменты.
+      const instrumentHints: InstrumentHints = {
+          accompaniment: this._chooseInstrumentForPart('accompaniment', navigationInfo),
+          melody: this._chooseInstrumentForPart('melody', navigationInfo),
+      };
+      
+      // 3. И только потом генерируем такт, передавая все необходимые данные.
+      if (navigationInfo && navigationInfo.logMessage) {
+          console.log(navigationInfo.logMessage);
+      }
+      
+      const events = this.generateOneBar(barDuration, navigationInfo, instrumentHints);
+      
+      return { events, instrumentHints };
   }
+
 
   private _generatePromenade(promenadeBar: number): FractalEvent[] {
     const events: FractalEvent[] = [];
@@ -620,4 +628,5 @@ export class FractalMusicEngine {
 }
 
 
+    
     
