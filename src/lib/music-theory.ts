@@ -331,10 +331,10 @@ export function generateBluesBassRiff(chord: GhostChord, technique: Technique, r
     return phrase;
 }
 
-export function createAmbientBassAxiom(chord: GhostChord, mood: Mood, genre: Genre, random: { next: () => number, nextInt: (max: number) => number }, tempo: number, technique: Technique): FractalEvent[] {
+export function createAmbientBassAxiom(currentChord: GhostChord, mood: Mood, genre: Genre, random: { next: () => number, nextInt: (max: number) => number }, tempo: number, technique: Technique): FractalEvent[] {
     const phrase: FractalEvent[] = [];
     const scale = getScaleForMood(mood, genre);
-    const rootNote = chord.rootNote;
+    const rootNote = currentChord.rootNote;
 
     const numNotes = 4 + random.nextInt(5); // 4 to 8 notes over two bars
     let currentTime = 0;
@@ -345,7 +345,7 @@ export function createAmbientBassAxiom(chord: GhostChord, mood: Mood, genre: Gen
         
         let note = rootNote;
         if (i > 0 && random.next() > 0.4) {
-            const isMinor = chord.chordType === 'minor' || chord.chordType === 'diminished';
+            const isMinor = currentChord.chordType === 'minor' || currentChord.chordType === 'diminished';
             const possibleNotes = [
                 rootNote,
                 rootNote + 7, // 5th
@@ -1223,3 +1223,4 @@ export function createMelodyMotif(chord: GhostChord, mood: Mood, random: { next:
     console.log(`%c[MelodyAxiom] New 4-bar motif generated. Rhythm: [${durations.join(', ')}]`, 'color: #DA70D6');
     return motif;
 }
+
