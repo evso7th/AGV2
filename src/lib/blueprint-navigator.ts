@@ -44,16 +44,34 @@ function formatInstrumentation(instrumentation?: { [key: string]: any }, v2Melod
     const parts = Object.keys(instrumentation).map(partKey => {
         const rule = instrumentation[partKey] as InstrumentationRules<any>;
         
-        if (partKey === 'melody' && v2MelodyHint) {
-             return `melody(V2: ${v2MelodyHint})`;
-        }
+        if (rule && rule.strategy === 'weighted') {
+            let options: { name: any; weight: number; }[] | undefined;
+            // #ЗАЧЕМ: Эта логика определяет, какие опции инструментов отображать в логе в зависимости от того,
+            //          какой движок (V1 или V2) сейчас активен. `v2MelodyHint` служит индикатором V2.
+            // #ЧТО: Если `v2MelodyHint` предоставлен, мы ищем и отображаем V2-совместимый пресет.
+            //       В противном случае, мы показываем пресеты V1.
+            // #СВЯЗИ: Эта функция вызывается из `tick()` навигатора и помогает в отладке, показывая
+            //         в логах, какой именно инструмент (V1 или V2) выбрал бы композитор.
+            if (partKey === 'melody' && v2MelodyHint) {
+                // Пытаемся найти V2-опцию, соответствующую хинту, для более точного лога
+                const v2Option = (rule.v2Options || []).find(opt => opt.name === v2MelodyHint);
+                if (v2Option) {
+                    return `melody(V2: ${v2Option.name})`;
+                }
+                // Если точного совпадения нет (маловероятно), просто показываем первый V2
+                if (rule.v2Options && rule.v2Options.length > 0) {
+                     return `melody(V2: ${rule.v2Options[0].name})`;
+                }
+            }
 
-        if (rule && rule.strategy === 'weighted' && (rule.options || rule.v1Options || rule.v2Options)) {
-            const options = rule.options || rule.v1Options || rule.v2Options || [];
-            const optionsStr = options
-                .map(opt => `${opt.name}:${Math.round(opt.weight * 100)}%`)
-                .join(',');
-            return `${partKey}(${optionsStr})`;
+            // Логика для V1 или как фолбэк
+            options = rule.v1Options || rule.options || [];
+            if (options.length > 0) {
+                const optionsStr = options
+                    .map(opt => `${opt.name}:${Math.round(opt.weight * 100)}%`)
+                    .join(',');
+                return `${partKey}(${optionsStr})`;
+            }
         }
         return null;
     }).filter(Boolean);

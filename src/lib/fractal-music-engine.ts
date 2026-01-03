@@ -476,7 +476,7 @@ export class FractalMusicEngine {
         const melodyRules = navInfo.currentPart.instrumentRules?.melody;
         const registerHint = melodyRules?.register?.preferred;
         
-        if (barInChorus === 0 || this.bluesChorusCache === null) {
+        if (barInChorus === 0 || this.bluesChorusCache === null || this.epoch < this.bluesChorusCache.barStart || this.epoch >= this.bluesChorusCache.barStart + 12) {
             const chorusBarStart = this.epoch - barInChorus;
             const chorusChords = this.ghostHarmonyTrack.filter(c => c.bar >= chorusBarStart && c.bar < chorusBarStart + 12);
             if (chorusChords.length > 0) {
@@ -489,7 +489,7 @@ export class FractalMusicEngine {
         }
         
         if (this.bluesChorusCache) {
-            const barStartBeat = (this.epoch - this.bluesChorusCache.barStart) * 4.0;
+            const barStartBeat = ((this.epoch - this.bluesChorusCache.barStart) % 12) * 4.0;
             const barEndBeat = barStartBeat + 4.0;
             melodyEvents = this.bluesChorusCache.events
                 .filter(e => e.time >= barStartBeat && e.time < barEndBeat)
@@ -571,9 +571,9 @@ export class FractalMusicEngine {
 
     if (!isFinite(barDuration)) return { events: [], instrumentHints: {} };
     
-    const { events, instrumentHints } = this.generateOneBar(barDuration, null); // Pass null for navInfo initially
+    const instrumentHintMelody = this._chooseInstrumentForPart('melody', null);
     
-    const navigationInfo = this.navigator.tick(this.epoch, this.config.useMelodyV2 ? instrumentHints.melody : undefined);
+    const navigationInfo = this.navigator.tick(this.epoch, this.config.useMelodyV2 ? instrumentHintMelody : undefined);
 
     if (navigationInfo && navigationInfo.logMessage) {
         console.log(navigationInfo.logMessage);

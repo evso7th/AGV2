@@ -690,7 +690,7 @@ export function createBassFill(mood: Mood, genre: Genre, random: { next: () => n
     const fill: FractalEvent[] = [];
     const scale = getScaleForMood(mood);
     const fillParams = { cutoff: 1200, resonance: 0.6, distortion: 0.25, portamento: 0.0 };
-    const numNotes = random.nextInt(4) + 7; // 7 to 10 notes
+    const numHits = random.nextInt(4) + 7; // 7 to 10 notes
     let currentTime = 0;
     
     const selectNote = (): number => {
@@ -708,7 +708,7 @@ export function createBassFill(mood: Mood, genre: Genre, random: { next: () => n
     let lastNote = -1;
     let secondLastNote = -1;
 
-    for (let i = 0; i < numNotes; i++) {
+    for (let i = 0; i < numHits; i++) {
         const duration = (genre === 'rock' || genre === 'trance' || genre === 'progressive') ? 0.25 : 0.5;
         
         let noteIndex = scale.indexOf(currentNote);
@@ -941,7 +941,7 @@ export function createSfxScenario(mood: Mood, genre: Genre, random: { next: () =
     const fillParams = { cutoff: 1200, resonance: 0.6, distortion: 0.25, portamento: 0.0 };
 
     const fillDensity = random.nextInt(4) + 3; // 3 to 6 notes for the core rhythm
-    let fillTime = 3.0; // Start the fill in the last beat
+    let fillTime = 3.0; // Start the fill on the 4th beat
 
     for(let i = 0; i < fillDensity; i++) {
         const duration = (1.0 / fillDensity) * (0.8 + random.next() * 0.4); // slightly variable duration
@@ -1009,28 +1009,28 @@ export function generateBluesMelodyChorus(chorusChords: GhostChord[], mood: Mood
     const barDurationInBeats = 4;
     const ticksPerBeat = 3;
     
-    let octaveShift = 0;
-    if (registerHint === 'mid') octaveShift = 12;
-    if (registerHint === 'high') octaveShift = 24;
+    let octaveShift = 12 * 2; // Default to 2 octaves above root
+    if (registerHint === 'mid') octaveShift = 12 * 3;
+    if (registerHint === 'high') octaveShift = 12 * 4;
 
     for (let barIndex = 0; barIndex < 12; barIndex++) {
-        const barChord = chorusChords[barIndex];
+        const barChord = chorusChords.find(c => c.bar % 12 === barIndex);
         if (!barChord) continue;
 
         const chordRoot = barChord.rootNote;
         let phrase: BluesMelodyPhrase;
 
-        const I_CHORD_STEP = 0;
-        const IV_CHORD_STEP = 5;
-        const V_CHORD_STEP = 7;
-
-        const chordStep = (chordRoot - chorusChords[0].rootNote + 12) % 12;
-
+        // Simplified step detection for I, IV, V
+        const rootI = chorusChords[0].rootNote;
+        const step = (chordRoot - rootI + 12) % 12;
+        const IV_STEP = 5;
+        const V_STEP = 7;
+        
         if (barIndex === 11) {
             phrase = selectedMelody.phraseTurnaround;
-        } else if (chordStep === IV_CHORD_STEP) {
+        } else if (step === IV_STEP) {
             phrase = selectedMelody.phraseIV;
-        } else if (chordStep === V_CHORD_STEP) {
+        } else if (step === V_STEP) {
             phrase = selectedMelody.phraseV;
         } else {
             phrase = selectedMelody.phraseI;
