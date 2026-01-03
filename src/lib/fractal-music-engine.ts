@@ -169,9 +169,11 @@ export class FractalMusicEngine {
         
         // Генерируем полный 12-тактовый хорус для мелодии
         const chorusChords = this.ghostHarmonyTrack.filter(c => c.bar >= 0 && c.bar < 12);
-        const melodyChorus = generateBluesMelodyChorus(chorusChords, this.config.mood, this.random, initialRegisterHint);
-        this.currentMelodyMotif = melodyChorus.events;
-        console.log(`%c[BluesInit] ${melodyChorus.log}`, 'color: #00BCD4');
+        this.bluesChorusCache = {
+            barStart: 0,
+            ...generateBluesMelodyChorus(chorusChords, this.config.mood, this.random, initialRegisterHint)
+        };
+        console.log(`%c[FME @ Bar 0] Initializing Blues: ${this.bluesChorusCache.log}`, 'color: #00BCD4; font-weight: bold');
         this.lastMelodyPlayEpoch = -12; // Устанавливаем длительность "мотива" в 12 тактов
     } else {
         // Стандартная логика для эмбиента и других жанров
@@ -427,8 +429,8 @@ export class FractalMusicEngine {
     let allEvents: FractalEvent[] = [];
     
     instrumentHints.accompaniment = this._chooseInstrumentForPart('accompaniment', navInfo.currentPart);
-    const v2Hint = this._chooseInstrumentForPart('melody', navInfo.currentPart);
-    instrumentHints.melody = v2Hint;
+    const v2MelodyHint = this._chooseInstrumentForPart('melody', navInfo.currentPart);
+    instrumentHints.melody = v2MelodyHint;
     
     const drumEvents = this.generateDrumEvents(navInfo) || [];
 
@@ -490,27 +492,26 @@ export class FractalMusicEngine {
     
     let melodyEvents: FractalEvent[] = [];
     
-    // --- ИСПРАВЛЕНИЕ: Логика генерации мелодии полностью разделена для блюза и других жанров ---
     if (this.config.genre === 'blues') {
         const melodyRules = navInfo.currentPart.instrumentRules?.melody;
         if (navInfo.currentPart.layers.melody && !navInfo.currentPart.bassAccompanimentDouble?.enabled && melodyRules?.source === 'motif') {
             const barInChorus = this.epoch % 12;
             const registerHint = melodyRules?.register?.preferred;
             
-            // Генерируем новый 12-тактовый хорус только в начале каждого 12-тактового цикла
             if (barInChorus === 0 || this.bluesChorusCache === null) {
                 const chorusBarStart = this.epoch - barInChorus;
                 const chorusChords = this.ghostHarmonyTrack.filter(c => c.bar >= chorusBarStart && c.bar < chorusBarStart + 12);
                 if (chorusChords.length > 0) {
+                    const chorusResult = generateBluesMelodyChorus(chorusChords, this.config.mood, this.random, registerHint);
                     this.bluesChorusCache = {
                         barStart: chorusBarStart,
-                        ...generateBluesMelodyChorus(chorusChords, this.config.mood, this.random, registerHint)
+                        ...chorusResult
                     };
-                    console.log(`%c[FME @ Bar ${this.epoch}] Telemetry: ${this.bluesChorusCache.log}`, 'color: #00BCD4');
+                    // *** ВОТ НОВЫЙ ЛОГ ***
+                    console.log(`%c[FME @ Bar ${this.epoch}] Generating NEW 12-bar blues chorus. ${this.bluesChorusCache.log}`, 'color: #00BCD4; font-weight: bold;');
                 }
             }
             
-            // Извлекаем события для ТЕКУЩЕГО такта из кеша
             if (this.bluesChorusCache) {
                 const barStartBeat = ((this.epoch - this.bluesChorusCache.barStart) % 12) * 4.0;
                 const barEndBeat = barStartBeat + 4.0;
@@ -545,7 +546,6 @@ export class FractalMusicEngine {
     }
     
     
-    // #ИСПРАВЛЕНО: Применяем модификаторы к сгенерированной мелодии
     const melodyRules = navInfo.currentPart.instrumentRules?.melody;
     if (melodyRules?.presetModifiers?.octaveShift && melodyEvents.length > 0) {
         const shift = melodyRules.presetModifiers.octaveShift;
@@ -605,7 +605,6 @@ export class FractalMusicEngine {
 
     if (!isFinite(barDuration)) return { events: [], instrumentHints: {} };
     
-    // #ИСПРАВЛЕНО: Передаем правильный v2MelodyHint в formatInstrumentation логгера навигатора
     const v2MelodyHint = this.config.useMelodyV2 ? this._chooseInstrumentForPart('melody', null) : undefined;
     const navigationInfo = this.navigator.tick(this.epoch, v2MelodyHint);
 
@@ -633,8 +632,3 @@ export class FractalMusicEngine {
   }
 
 }
-
-    
-
-
-
