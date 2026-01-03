@@ -141,8 +141,8 @@ export class FractalMusicEngine {
     console.log(`[FME] Blueprint now active: ${blueprint.name}`);
     this.navigator = new BlueprintNavigator(blueprint, this.config.seed, this.config.genre, this.config.mood, this.config.introBars);
     
-    const key = getScaleForMood(this.config.mood)[0];
-    this.ghostHarmonyTrack = generateGhostHarmonyTrack(this.navigator.totalBars, this.config.mood, key, this.random);
+    const key = getScaleForMood(this.config.mood, this.config.genre)[0];
+    this.ghostHarmonyTrack = generateGhostHarmonyTrack(this.navigator.totalBars, this.config.mood, key, this.random, this.config.genre);
     if (this.ghostHarmonyTrack.length === 0) {
       throw new Error("[Engine] CRITICAL ERROR: Could not generate 'Ghost Harmony'. Music is not possible.");
     }
@@ -155,17 +155,25 @@ export class FractalMusicEngine {
     this.currentAccompPhraseIndex = 0;
 
     const firstChord = this.ghostHarmonyTrack[0];
-    
     const initialNavInfo = this.navigator.tick(0);
     const initialRegisterHint = initialNavInfo?.currentPart.instrumentRules?.accompaniment?.register?.preferred;
+    const initialBassTechnique = initialNavInfo?.currentPart.instrumentRules?.bass?.techniques?.[0].value as Technique || 'drone';
     
     for (let i = 0; i < 4; i++) {
-        this.bassPhraseLibrary.push(this._generateBassPhrase(firstChord, this.config.mood, this.config.genre, this.random, this.config.tempo, 'drone'));
+        // #ИСПРАВЛЕНО: Генерация баса теперь зависит от жанра
+        this.bassPhraseLibrary.push(this._generateBassPhrase(firstChord, this.config.mood, this.config.genre, this.random, this.config.tempo, initialBassTechnique));
         this.accompPhraseLibrary.push(createAccompanimentAxiom(firstChord, this.config.mood, this.config.genre, this.random, this.config.tempo, initialRegisterHint));
     }
     
-    this.currentMelodyMotif = createMelodyMotif(firstChord, this.config.mood, this.random);
-    this.lastMelodyPlayEpoch = -16; 
+    // #ИСПРАВЛЕНО: Генерация мелодии теперь зависит от жанра
+    if (this.config.genre === 'blues') {
+        const chorusChords = this.ghostHarmonyTrack.filter(c => c.bar >= 0 && c.bar < 12);
+        this.currentMelodyMotif = generateBluesMelodyChorus(chorusChords, this.config.mood, this.random, initialRegisterHint).events;
+        this.lastMelodyPlayEpoch = -12; // Set to play immediately, spanning 12 bars
+    } else {
+        this.currentMelodyMotif = createMelodyMotif(firstChord, this.config.mood, this.random);
+        this.lastMelodyPlayEpoch = -16; // 4-bar motif
+    }
     
     this.needsBassReset = false;
   }
@@ -225,16 +233,17 @@ export class FractalMusicEngine {
              }
         }
 
+        // #ИСПРАВЛЕНО: Корректная проверка совместимости V1/V2
         if (this.config.useMelodyV2) {
             const v2PresetNames = Object.keys(V2_PRESETS);
             if (!selectedInstrument || !v2PresetNames.includes(selectedInstrument as string)) {
-                console.log(`[FME] V2 Engine compatibility check: '${selectedInstrument}' is not V2. Choosing random V2 preset.`);
+                console.log(`[FME] V2 Engine compatibility check: '${selectedInstrument}' is not a V2 preset. Choosing a random V2 preset.`);
                 selectedInstrument = v2PresetNames[this.random.nextInt(v2PresetNames.length)] as keyof typeof V2_PRESETS;
             }
         } else {
-            const v1InstrumentList: string[] = ['synth', 'organ', 'mellotron', 'theremin', 'electricGuitar', 'ambientPad', 'acousticGuitar', 'E-Bells_melody', 'G-Drops', 'piano', 'violin', 'flute', 'acousticGuitarSolo', 'guitarChords'];
+             const v1InstrumentList: string[] = ['synth', 'organ', 'mellotron', 'theremin', 'electricGuitar', 'ambientPad', 'acousticGuitar', 'E-Bells_melody', 'G-Drops', 'piano', 'violin', 'flute', 'acousticGuitarSolo', 'guitarChords'];
              if (selectedInstrument && !v1InstrumentList.includes(selectedInstrument)) {
-                console.log(`[FME] V1 Engine compatibility check: '${selectedInstrument}' is not V1. Choosing random V1 preset.`);
+                console.log(`[FME] V1 Engine compatibility check: '${selectedInstrument}' is not a V1 preset. Choosing a random V1 preset.`);
                 selectedInstrument = v1InstrumentList[this.random.nextInt(v1InstrumentList.length)] as MelodyInstrument;
              }
         }
@@ -352,7 +361,7 @@ export class FractalMusicEngine {
   
     private _createArpeggiatedChordSwell(startTime: number, chord: GhostChord): FractalEvent[] {
         const arpeggio: FractalEvent[] = [];
-        const scale = getScaleForMood(this.config.mood);
+        const scale = getScaleForMood(this.config.mood, this.config.genre);
         const rootMidi = chord.rootNote;
         
         const isMinor = chord.chordType === 'minor' || chord.chordType === 'diminished';
@@ -408,6 +417,9 @@ export class FractalMusicEngine {
     }
     
     let allEvents: FractalEvent[] = [];
+    
+    // #ИСПРАВЛЕНО: Убрана проверка на composerControlsInstruments, так как она применялась неверно.
+    //              Выбор инструмента теперь всегда происходит, а используется ли он - решается в use-aura-groove.
     instrumentHints.accompaniment = this._chooseInstrumentForPart('accompaniment', navInfo.currentPart);
     instrumentHints.melody = this._chooseInstrumentForPart('melody', navInfo.currentPart);
     
@@ -470,7 +482,8 @@ export class FractalMusicEngine {
     }
     
     let melodyEvents: FractalEvent[] = [];
-
+    
+    // #ИСПРАВЛЕНО: Генерация мелодии теперь использует кешированный 12-тактовый хорус для блюза.
     if (this.config.genre === 'blues' && navInfo.currentPart.layers.melody && !navInfo.currentPart.bassAccompanimentDouble?.enabled) {
         const barInChorus = this.epoch % 12;
         const melodyRules = navInfo.currentPart.instrumentRules?.melody;
@@ -484,7 +497,7 @@ export class FractalMusicEngine {
                     barStart: chorusBarStart,
                     ...generateBluesMelodyChorus(chorusChords, this.config.mood, this.random, registerHint)
                  };
-                 console.log(`[FME @ Bar ${this.epoch}] Telemetry: ${this.bluesChorusCache.log}`);
+                 console.log(`%c[FME @ Bar ${this.epoch}] Telemetry: ${this.bluesChorusCache.log}`, 'color: #00BCD4');
             }
         }
         
@@ -519,6 +532,14 @@ export class FractalMusicEngine {
         }
     }
     
+    // #ИСПРАВЛЕНО: Применяем модификаторы к сгенерированной мелодии
+    const melodyRules = navInfo.currentPart.instrumentRules?.melody;
+    if (melodyRules?.presetModifiers?.octaveShift && melodyEvents.length > 0) {
+        const shift = melodyRules.presetModifiers.octaveShift;
+        melodyEvents.forEach(e => e.note += 12 * shift);
+        console.log(`%c[FME @ Bar ${this.epoch}] Applied octave shift of ${shift} to melody.`, 'color: #FFD700');
+    }
+
     allEvents.push(...(bassEvents || []), ...(drumEvents || []), ...(accompEvents || []), ...(melodyEvents || []));
     
     const sfxRules = navInfo.currentPart.instrumentRules?.sfx as SfxRule | undefined;
@@ -601,4 +622,5 @@ export class FractalMusicEngine {
 }
 
     
+
 
