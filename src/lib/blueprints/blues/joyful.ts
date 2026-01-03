@@ -43,8 +43,7 @@ export const JoyfulBluesBlueprint: MusicBlueprint = {
                     melody: {
                         source: 'motif',
                         density: { min: 0.6, max: 0.8 },
-                        register: { preferred: 'high' },
-                        presetModifiers: { octaveShift: 1 } // Play solo one octave higher
+                        register: { preferred: 'high' }
                     },
                     bass: { techniques: [{ value: 'boogie', weight: 1.0 }] },
                 },

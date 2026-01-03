@@ -42,8 +42,7 @@ export const EnthusiasticBluesBlueprint: MusicBlueprint = {
                     melody: {
                         density: { min: 0.5, max: 0.7 },
                         source: 'motif',
-                        register: { preferred: 'high' },
-                        presetModifiers: { octaveShift: 1 } // Play solo one octave higher
+                        register: { preferred: 'high' }
                     },
                     bass: { techniques: [{ value: 'walking', weight: 1.0 }] },
                 },
