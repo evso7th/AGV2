@@ -1,6 +1,6 @@
 
 
-import type { MusicBlueprint, BlueprintPart, BlueprintBundle, Genre, Mood, InstrumentationRules, MelodyInstrument, AccompanimentInstrument, BassInstrument } from '@/types/music';
+import type { MusicBlueprint, BlueprintPart, BlueprintBundle, Genre, Mood, InstrumentationRules, MelodyInstrument, AccompanimentInstrument, BassInstrument, V2MelodyInstrument } from '@/types/music';
 
 // Helper function for seeded random numbers - kept for potential future use in axiom selection
 function seededRandom(seed: number) {
@@ -46,27 +46,31 @@ function formatInstrumentation(instrumentation?: { [key: string]: any }, v2Melod
         
         if (rule && rule.strategy === 'weighted') {
             let options: { name: any; weight: number; }[] | undefined;
-            // #ЗАЧЕМ: Эта логика определяет, какие опции инструментов отображать в логе в зависимости от того,
-            //          какой движок (V1 или V2) сейчас активен. `v2MelodyHint` служит индикатором V2.
-            // #ЧТО: Если `v2MelodyHint` предоставлен, мы ищем и отображаем V2-совместимый пресет.
-            //       В противном случае, мы показываем пресеты V1.
-            // #СВЯЗИ: Эта функция вызывается из `tick()` навигатора и помогает в отладке, показывая
-            //         в логах, какой именно инструмент (V1 или V2) выбрал бы композитор.
-            if (partKey === 'melody' && v2MelodyHint) {
-                // Пытаемся найти V2-опцию, соответствующую хинту, для более точного лога
-                const v2Option = (rule.v2Options || []).find(opt => opt.name === v2MelodyHint);
-                if (v2Option) {
-                    return `melody(V2: ${v2Option.name})`;
-                }
-                // Если точного совпадения нет (маловероятно), просто показываем первый V2
-                if (rule.v2Options && rule.v2Options.length > 0) {
-                     return `melody(V2: ${rule.v2Options[0].name})`;
-                }
+            
+            // #ИСПРАВЛЕНО: v2MelodyHint - это не просто индикатор, это конкретный выбранный инструмент.
+            // Теперь мы используем этот хинт, чтобы показать, что БЫЛО выбрано, если это V2 пресет.
+            // Если хинт не предоставлен, мы просто показываем первые опции V1.
+            
+            let isV2 = false;
+            if (rule.v2Options && rule.v2Options.length > 0) {
+                 const v2Names = rule.v2Options.map(o => o.name);
+                 if (v2MelodyHint && v2Names.includes(v2MelodyHint as V2MelodyInstrument)) {
+                     isV2 = true;
+                 } else if (partKey !== 'melody') { 
+                    // Для других партий предполагаем V2, если опции есть. Это упрощение.
+                    isV2 = true;
+                 }
             }
-
-            // Логика для V1 или как фолбэк
-            options = rule.v1Options || rule.options || [];
-            if (options.length > 0) {
+            
+            if (isV2) {
+                 options = rule.v2Options;
+                 const selected = v2MelodyHint && partKey === 'melody' ? v2MelodyHint : options?.[0]?.name || 'unknown_v2';
+                 return `${partKey}(V2: ${selected})`;
+            } else {
+                 options = rule.v1Options || rule.options || [];
+            }
+            
+            if (options && options.length > 0) {
                 const optionsStr = options
                     .map(opt => `${opt.name}:${Math.round(opt.weight * 100)}%`)
                     .join(',');
