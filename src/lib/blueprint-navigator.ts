@@ -44,19 +44,29 @@ function formatInstrumentation(instrumentation?: { [key: string]: any }, v2Melod
     const parts = Object.keys(instrumentation).map(partKey => {
         const rule = instrumentation[partKey] as InstrumentationRules<any>;
         
-        if (rule && rule.strategy === 'weighted') {
-            // #ИСПРАВЛЕНО: Логика для мелодии теперь напрямую использует v2MelodyHint
-            if (partKey === 'melody' && v2MelodyHint) {
-                return `melody(V2: ${v2MelodyHint})`;
+        // #ИСПРАВЛЕНО: Полностью переписанная логика для мелодии
+        if (partKey === 'melody') {
+            if (v2MelodyHint) {
+                 return `melody(V2: ${v2MelodyHint})`;
             }
+            if (rule && rule.strategy === 'weighted' && rule.v1Options && rule.v1Options.length > 0) {
+                 const optionsStr = rule.v1Options
+                    .map(opt => `${opt.name}:${Math.round(opt.weight * 100)}%`)
+                    .join(',');
+                 return `melody(V1)(${optionsStr})`;
+            }
+            // Если для мелодии нет правил, не выводим ничего
+            return null;
+        }
 
+        if (rule && rule.strategy === 'weighted') {
             let options: { name: any; weight: number; }[] | undefined;
-            let engineVersion = 'V1';
+            let engineVersion = '';
             
             // Предпочитаем V2, если есть опции, иначе V1
             if (rule.v2Options && rule.v2Options.length > 0) {
                 options = rule.v2Options;
-                engineVersion = 'V2';
+                engineVersion = '(V2)';
             } else {
                 options = rule.v1Options || rule.options || [];
             }
@@ -65,9 +75,7 @@ function formatInstrumentation(instrumentation?: { [key: string]: any }, v2Melod
                 const optionsStr = options
                     .map(opt => `${opt.name}:${Math.round(opt.weight * 100)}%`)
                     .join(',');
-                // Показываем версию движка только если это V2 (для ясности)
-                const versionTag = engineVersion === 'V2' ? '(V2)' : '';
-                return `${partKey}${versionTag}(${optionsStr})`;
+                return `${partKey}${engineVersion}(${optionsStr})`;
             }
         }
         return null;

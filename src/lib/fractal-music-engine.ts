@@ -194,6 +194,19 @@ export class FractalMusicEngine {
         
         console.log(`%c[FME @ Bar ${this.epoch}] Choosing instrument for '${part}'. V2 Engine Active: ${this.config.useMelodyV2}`, 'color: #9370DB');
         
+        // #ИСПРАВЛЕНО: Приоритетная логика для блюза
+        if (this.config.genre === 'blues' && part === 'melody' && currentPartInfo?.instrumentation?.melody) {
+            const melodyRule = currentPartInfo.instrumentation.melody;
+            if (melodyRule.strategy === 'weighted') {
+                const options = this.config.useMelodyV2 ? melodyRule.v2Options : melodyRule.v1Options;
+                if (options && options.length > 0) {
+                     selectedInstrument = options[0].name; // Временно берем первый, т.к. вес 1.0
+                     console.log(`[FME] Blues Priority: Selected '${selectedInstrument}' for melody from blueprint rule.`);
+                     return selectedInstrument;
+                }
+            }
+        }
+        
         let options: { name: any; weight: number; }[] | undefined;
 
         if (rules?.strategy === 'weighted') {
@@ -296,8 +309,8 @@ export class FractalMusicEngine {
         if (!moodRiffs || moodRiffs.length === 0) return [];
         
         const pattern = moodRiffs[this.random.nextInt(moodRiffs.length)];
-        const events: FractalEvent[] = [];
-        const ticksPerBeat = 3.0; // 12/8 time
+        let events: FractalEvent[] = [];
+        const ticksPerBeat = 3; // 12/8 time
 
         const addEvents = (ticks: number[] | undefined, type: InstrumentType) => {
             if (ticks) {
@@ -318,6 +331,20 @@ export class FractalMusicEngine {
         addEvents(pattern.R, 'drum_ride');
         addEvents(pattern.T, 'drum_tom_mid');
 
+        // Apply mutations
+        if (this.random.next() < 0.3) { // 30% chance to mutate
+            const mutationType = this.random.nextInt(3);
+            if (mutationType === 0 && events.length > 0) { // Add ghost note
+                const noteType = this.random.next() > 0.5 ? 'drum_snare_ghost_note' : 'drum_tom_low';
+                events.push({ type: noteType, note: 60, time: (this.random.nextInt(4) * ticksPerBeat + 1) / ticksPerBeat, duration: 1/ticksPerBeat, weight: 0.3, technique: 'hit', dynamics: 'p', phrasing: 'staccato', params: {} });
+            } else if (mutationType === 1 && events.length > 0) { // Displace a kick
+                const kickEvent = events.find(e => e.type === 'drum_kick');
+                if (kickEvent) kickEvent.time += (this.random.next() - 0.5) * 0.1;
+            } else if (mutationType === 2 && events.length > 0) { // Accent a hi-hat
+                const hatEvent = events.find(e => e.type === 'drum_hihat_closed');
+                if (hatEvent) hatEvent.weight = Math.min(1.0, hatEvent.weight * 1.2);
+            }
+        }
         return events;
     }
     // --- END NEW BLUES LOGIC ---
@@ -508,7 +535,7 @@ export class FractalMusicEngine {
                         ...chorusResult
                     };
                     // *** ВОТ НОВЫЙ ЛОГ ***
-                    console.log(`%c[FME @ Bar ${this.epoch}] Generating NEW 12-bar blues chorus. ${this.bluesChorusCache.log}`, 'color: #00BCD4; font-weight: bold;');
+                    console.log(`%c[FME @ Bar ${this.epoch}] Generating NEW 12-bar blues chorus. ${this.bluesChorusCache.log}`, 'color: #00BCD4; font-weight: bold');
                 }
             }
             
@@ -612,9 +639,9 @@ export class FractalMusicEngine {
         console.log(navigationInfo.logMessage);
     }
     
-    const finalEvents = this.generateOneBar(barDuration, navigationInfo);
+    const { events, instrumentHints } = this.generateOneBar(barDuration, navigationInfo);
     
-    return finalEvents;
+    return { events, instrumentHints };
   }
 
   private _generatePromenade(promenadeBar: number): FractalEvent[] {
