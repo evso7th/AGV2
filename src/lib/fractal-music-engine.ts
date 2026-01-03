@@ -177,8 +177,9 @@ export class FractalMusicEngine {
         this.lastMelodyPlayEpoch = -12; // Устанавливаем длительность "мотива" в 12 тактов
     } else {
         // Стандартная логика для эмбиента и других жанров
+        const newBassAxiom = createAmbientBassAxiom(firstChord, this.config.mood, this.config.genre, this.random, this.config.tempo, initialBassTechnique);
         for (let i = 0; i < 4; i++) {
-            this.bassPhraseLibrary.push(createAmbientBassAxiom(chord, this.config.mood, this.config.genre, this.random, this.config.tempo, initialBassTechnique));
+            this.bassPhraseLibrary.push(newBassAxiom);
             this.accompPhraseLibrary.push(createAccompanimentAxiom(firstChord, this.config.mood, this.config.genre, this.random, this.config.tempo, initialRegisterHint));
         }
         this.currentMelodyMotif = createMelodyMotif(firstChord, this.config.mood, this.random);
@@ -188,15 +189,10 @@ export class FractalMusicEngine {
     this.needsBassReset = false;
   }
   
-  private _chooseInstrumentForPart(
+    private _chooseInstrumentForPart(
       part: 'melody' | 'accompaniment',
       navInfo: NavigationInfo | null
   ): MelodyInstrument | AccompanimentInstrument | undefined {
-      // #ЗАЧЕМ: Эта функция определяет, какой именно инструмент (пресет) будет использован для конкретной партии в текущем такте.
-      // #ЧТО: Она читает правила `instrumentation` из текущей части блюпринта и, в зависимости от флага V2,
-      //      выбирает подходящий пресет из `v1Options` или `v2Options`.
-      console.log(`[FME @ Bar ${this.epoch}] Choosing instrument for '${part}'. V2 Engine Active: ${this.config.useMelodyV2}`);
-  
       if (!navInfo) {
           console.warn(`[FME] _chooseInstrumentForPart called with no navInfo.`);
           return undefined;
@@ -205,29 +201,30 @@ export class FractalMusicEngine {
       const rules = navInfo.currentPart.instrumentation?.[part as keyof typeof navInfo.currentPart.instrumentation];
   
       if (!rules || rules.strategy !== 'weighted') {
-          console.log(`[FME] No specific weighted rules for '${part}'. Using fallback.`);
-          return part === 'melody' ? 'organ' : 'synth';
+          const fallback = part === 'melody' ? 'organ' : 'synth';
+          console.log(`[FME @ Bar ${this.epoch}] No specific weighted rules for '${part}'. Using fallback: ${fallback}.`);
+          return fallback;
       }
   
-      const options = this.config.useMelodyV2 ? rules.v2Options : rules.v1Options;
-      const engineVersion = this.config.useMelodyV2 ? 'V2' : 'V1';
+      const useV2 = this.config.useMelodyV2;
+      const engineVersion = useV2 ? 'V2' : 'V1';
+      const options = useV2 ? rules.v2Options : rules.v1Options;
   
       if (!options || options.length === 0) {
-          console.log(`[FME] No ${engineVersion} options for '${part}'. Trying opposite engine.`);
-          const fallbackOptions = !this.config.useMelodyV2 ? rules.v2Options : rules.v1Options;
+          const fallbackOptions = !useV2 ? rules.v2Options : rules.v1Options;
+          const fallbackEngineVersion = !useV2 ? 'V2' : 'V1';
           if (!fallbackOptions || fallbackOptions.length === 0) {
-              const fallback = part === 'melody' ? 'organ' : 'synth';
-              console.log(`[FME] No fallback options either for '${part}'. Using ultimate fallback: ${fallback}`);
-              return fallback;
+              const ultimateFallback = part === 'melody' ? 'organ' : 'synth';
+              console.log(`[FME @ Bar ${this.epoch}] No ${engineVersion} or fallback options for '${part}'. Using ultimate fallback: ${ultimateFallback}.`);
+              return ultimateFallback;
           }
           const chosen = this.performWeightedChoice(fallbackOptions);
-          console.log(`[FME @ Bar ${this.epoch}] Selected instrument hint for '${part}': ${chosen} (From Fallback)`);
+          console.log(`[FME @ Bar ${this.epoch}] Selected instrument for '${part}': ${chosen} (from Fallback Engine ${fallbackEngineVersion})`);
           return chosen;
       }
   
-      console.log(`[FME] Using ${engineVersion} options for ${part}.`);
       const chosenInstrument = this.performWeightedChoice(options);
-      console.log(`[FME @ Bar ${this.epoch}] Selected instrument hint for '${part}': ${chosenInstrument}`);
+      console.log(`[FME @ Bar ${this.epoch}] Selected instrument for '${part}': ${chosenInstrument} (from Primary Engine ${engineVersion})`);
       return chosenInstrument;
   }
   
@@ -411,11 +408,7 @@ export class FractalMusicEngine {
         return createAmbientBassAxiom(chord, mood, genre, random, tempo, technique);
     }
 
-  private generateOneBar(barDuration: number, navInfo: NavigationInfo | null, instrumentHints: InstrumentHints): FractalEvent[] {
-    if (!navInfo || !this.navigator) {
-        return [];
-    }
-    
+  private generateOneBar(barDuration: number, navInfo: NavigationInfo, instrumentHints: InstrumentHints): FractalEvent[] {
     const effectiveBar = this.epoch % this.navigator.totalBars;
     const currentChord = this.ghostHarmonyTrack.find(chord => 
         effectiveBar >= chord.bar && effectiveBar < chord.bar + chord.durationBars
@@ -474,14 +467,21 @@ export class FractalMusicEngine {
         bassEvents = this.bassPhraseLibrary[this.currentBassPhraseIndex] || [];
     }
 
-    // --- НОВАЯ ЛОГИКА: ПРИМЕНЕНИЕ СДВИГА ОКТАВЫ ДЛЯ БАСА ---
+    // --- ИСПРАВЛЕННАЯ ЛОГИКА: ПРИМЕНЕНИЕ СДВИГА ОКТАВЫ ДЛЯ БАСА ---
     const octaveShift = navInfo.currentPart.instrumentRules?.bass?.presetModifiers?.octaveShift;
     if (octaveShift && bassEvents.length > 0) {
-        console.log(`%c[FME @ Bar ${this.epoch}] Applying octave shift of ${octaveShift} to bass part.`, 'color: #FFD700');
+        const TARGET_BASS_OCTAVE_MIN_MIDI = 36; // C2
+
+        console.log(`%c[FME @ Bar ${this.epoch}] Applying intelligent octave shift of ${octaveShift} to bass part.`, 'color: #FFD700');
+        
         bassEvents.forEach(event => {
-            event.note += 12 * octaveShift;
+            // Поднимаем ноту, только если она находится ниже целевой октавы
+            if (event.note < TARGET_BASS_OCTAVE_MIN_MIDI) {
+                event.note += 12 * octaveShift;
+            }
         });
     }
+
 
     if (navInfo.currentPart.bassAccompanimentDouble?.enabled) {
         const { instrument, octaveShift } = navInfo.currentPart.bassAccompanimentDouble;
@@ -609,17 +609,17 @@ export class FractalMusicEngine {
 
       if (!isFinite(barDuration)) return { events: [], instrumentHints: {} };
       
+      // Сначала получаем navInfo
       const navigationInfo = this.navigator.tick(this.epoch);
-      if (navigationInfo?.logMessage) {
-        console.log(navigationInfo.logMessage);
-      }
-      
+
+      // Затем, на основе navInfo, выбираем инструменты
       const instrumentHints: InstrumentHints = {
           accompaniment: this._chooseInstrumentForPart('accompaniment', navigationInfo),
           melody: this._chooseInstrumentForPart('melody', navigationInfo),
       };
 
-      const events = this.generateOneBar(barDuration, navigationInfo, instrumentHints);
+      // И только потом генерируем такт
+      const events = this.generateOneBar(barDuration, navigationInfo!, instrumentHints);
       
       return { events, instrumentHints };
   }
@@ -642,3 +642,6 @@ export class FractalMusicEngine {
 }
 
 
+
+
+    
