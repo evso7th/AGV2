@@ -189,44 +189,54 @@ export class FractalMusicEngine {
   }
   
   private _chooseInstrumentForPart(part: 'melody' | 'accompaniment', currentPartInfo: BlueprintPart | null): MelodyInstrument | AccompanimentInstrument | undefined {
-        let selectedInstrument: MelodyInstrument | AccompanimentInstrument | undefined = undefined;
-        const rules = currentPartInfo?.instrumentation?.[part];
-        
-        console.log(`%c[FME @ Bar ${this.epoch}] Choosing instrument for '${part}'. V2 Engine Active: ${this.config.useMelodyV2}`, 'color: #9370DB');
-        
-        // #ИСПРАВЛЕНО: Приоритетная логика для блюза
-        if (this.config.genre === 'blues' && part === 'melody' && currentPartInfo?.instrumentation?.melody) {
-            const melodyRule = currentPartInfo.instrumentation.melody;
-            if (melodyRule.strategy === 'weighted') {
-                const options = this.config.useMelodyV2 ? melodyRule.v2Options : melodyRule.v1Options;
-                if (options && options.length > 0) {
-                     selectedInstrument = options[0].name; // Временно берем первый, т.к. вес 1.0
-                     console.log(`[FME] Blues Priority: Selected '${selectedInstrument}' for melody from blueprint rule.`);
-                     return selectedInstrument;
-                }
-            }
-        }
-        
-        let options: { name: any; weight: number; }[] | undefined;
+    let selectedInstrument: MelodyInstrument | AccompanimentInstrument | undefined = undefined;
+    const rules = currentPartInfo?.instrumentation?.[part];
+    
+    console.log(`%c[FME @ Bar ${this.epoch}] Choosing instrument for '${part}'. V2 Engine Active: ${this.config.useMelodyV2}`, 'color: #9370DB');
+    
+    // --- НОВАЯ, УПРОЩЕННАЯ ЛОГИКА ВЫБОРА ---
+    
+    let options: { name: any; weight: number; }[] | undefined;
 
-        if (rules?.strategy === 'weighted') {
-            if (this.config.useMelodyV2 && rules.v2Options && rules.v2Options.length > 0) {
-                options = rules.v2Options;
-                console.log(`[FME] Using V2 options for ${part}.`);
-            } else if (!this.config.useMelodyV2 && rules.v1Options && rules.v1Options.length > 0) {
-                options = rules.v1Options;
-                console.log(`[FME] Using V1 options for ${part}.`);
-            } else if (rules.options && rules.options.length > 0) {
-                options = rules.options; // Fallback to generic options
-                console.log(`[FME] Using generic options for ${part}.`);
+    if (rules?.strategy === 'weighted') {
+        if (this.config.useMelodyV2 && rules.v2Options && rules.v2Options.length > 0) {
+            console.log(`[FME] Using V2 options for ${part}.`);
+            options = rules.v2Options;
+        } else if (!this.config.useMelodyV2 && rules.v1Options && rules.v1Options.length > 0) {
+            console.log(`[FME] Using V1 options for ${part}.`);
+            options = rules.v1Options;
+        } else if (rules.options && rules.options.length > 0) {
+            console.log(`[FME] Using generic (fallback) options for ${part}.`);
+            options = rules.options;
+        }
+    }
+    
+    if (options && options.length > 0) {
+        const totalWeight = options.reduce((sum, opt) => sum + opt.weight, 0);
+        let rand = this.random.next() * totalWeight;
+
+        for (const option of options) {
+            rand -= option.weight;
+            if (rand <= 0) {
+                selectedInstrument = option.name;
+                break;
             }
         }
-        
-        if (options && options.length > 0) {
-             const totalWeight = options.reduce((sum, opt) => sum + opt.weight, 0);
+        // Fallback to the first option if random selection fails
+        if (!selectedInstrument) {
+            selectedInstrument = options[0].name;
+        }
+    }
+
+    // Fallback if no rules or options are defined
+    if (!selectedInstrument) {
+         console.warn(`[FME] No specific rules for '${part}'. Using fallback.`);
+         const moodWeights = TEXTURE_INSTRUMENT_WEIGHTS_BY_MOOD[this.config.mood] || TEXTURE_INSTRUMENT_WEIGHTS_BY_MOOD['calm'];
+         const fallbackOptions = Object.entries(moodWeights).map(([name, weight]) => ({ name: name as MelodyInstrument, weight }));
+         if (fallbackOptions.length > 0) {
+             const totalWeight = fallbackOptions.reduce((sum, opt) => sum + opt.weight, 0);
              let rand = this.random.next() * totalWeight;
-
-             for (const option of options) {
+             for (const option of fallbackOptions) {
                  rand -= option.weight;
                  if (rand <= 0) {
                      selectedInstrument = option.name;
@@ -234,45 +244,26 @@ export class FractalMusicEngine {
                  }
              }
              if (!selectedInstrument) {
-                 selectedInstrument = options[0].name;
+                 selectedInstrument = fallbackOptions[0].name;
              }
-        } else {
-             // Fallback logic if no rules are defined
-             const moodWeights = TEXTURE_INSTRUMENT_WEIGHTS_BY_MOOD[this.config.mood] || TEXTURE_INSTRUMENT_WEIGHTS_BY_MOOD['calm'];
-             const fallbackOptions = Object.entries(moodWeights).map(([name, weight]) => ({ name: name as MelodyInstrument, weight }));
-             if (fallbackOptions.length > 0) {
-                 const totalWeight = fallbackOptions.reduce((sum, opt) => sum + opt.weight, 0);
-                 let rand = this.random.next() * totalWeight;
-                 for (const option of fallbackOptions) {
-                     rand -= option.weight;
-                     if (rand <= 0) {
-                         selectedInstrument = option.name;
-                         break;
-                     }
-                 }
-                 if (!selectedInstrument) {
-                     selectedInstrument = fallbackOptions[0].name;
-                 }
-             }
-        }
+         }
+    }
 
-        // #ИСПРАВЛЕНО: Корректная проверка совместимости V1/V2
-        if (this.config.useMelodyV2) {
-            const v2PresetNames = Object.keys(V2_PRESETS);
-            if (!selectedInstrument || !v2PresetNames.includes(selectedInstrument as string)) {
-                console.log(`[FME] V2 Engine compatibility check: '${selectedInstrument}' is not a V2 preset. Choosing a random V2 preset.`);
-                selectedInstrument = v2PresetNames[this.random.nextInt(v2PresetNames.length)] as keyof typeof V2_PRESETS;
-            }
-        } else {
-             const v1InstrumentList: string[] = ['synth', 'organ', 'mellotron', 'theremin', 'electricGuitar', 'ambientPad', 'acousticGuitar', 'E-Bells_melody', 'G-Drops', 'piano', 'violin', 'flute', 'acousticGuitarSolo', 'guitarChords'];
-             if (selectedInstrument && !v1InstrumentList.includes(selectedInstrument)) {
-                console.log(`[FME] V1 Engine compatibility check: '${selectedInstrument}' is not a V1 preset. Choosing a random V1 preset.`);
-                selectedInstrument = v1InstrumentList[this.random.nextInt(v1InstrumentList.length)] as MelodyInstrument;
-             }
+    // Final compatibility check
+    if (this.config.useMelodyV2) {
+        const v2PresetNames = Object.keys(V2_PRESETS);
+        if (!selectedInstrument || !v2PresetNames.includes(selectedInstrument as string)) {
+            selectedInstrument = v2PresetNames[this.random.nextInt(v2PresetNames.length)] as keyof typeof V2_PRESETS;
         }
-        
-        console.log(`%c[FME @ Bar ${this.epoch}] Selected instrument hint for '${part}': ${selectedInstrument}`, 'color: #9370DB');
-        return selectedInstrument;
+    } else {
+        const v1InstrumentList: string[] = ['synth', 'organ', 'mellotron', 'theremin', 'electricGuitar', 'ambientPad', 'acousticGuitar', 'E-Bells_melody', 'G-Drops', 'piano', 'violin', 'flute', 'acousticGuitarSolo', 'guitarChords'];
+        if (selectedInstrument && !v1InstrumentList.includes(selectedInstrument)) {
+           selectedInstrument = v1InstrumentList[this.random.nextInt(v1InstrumentList.length)] as MelodyInstrument;
+        }
+    }
+
+    console.log(`%c[FME @ Bar ${this.epoch}] Selected instrument hint for '${part}': ${selectedInstrument}`, 'color: #9370DB');
+    return selectedInstrument;
   }
 
 

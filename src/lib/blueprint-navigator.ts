@@ -44,19 +44,10 @@ function formatInstrumentation(instrumentation?: { [key: string]: any }, v2Melod
     const parts = Object.keys(instrumentation).map(partKey => {
         const rule = instrumentation[partKey] as InstrumentationRules<any>;
         
-        // #ИСПРАВЛЕНО: Полностью переписанная логика для мелодии
-        if (partKey === 'melody') {
-            if (v2MelodyHint) {
-                 return `melody(V2: ${v2MelodyHint})`;
-            }
-            if (rule && rule.strategy === 'weighted' && rule.v1Options && rule.v1Options.length > 0) {
-                 const optionsStr = rule.v1Options
-                    .map(opt => `${opt.name}:${Math.round(opt.weight * 100)}%`)
-                    .join(',');
-                 return `melody(V1)(${optionsStr})`;
-            }
-            // Если для мелодии нет правил, не выводим ничего
-            return null;
+        // --- ИСПРАВЛЕННАЯ ЛОГИКА ---
+        if (partKey === 'melody' && v2MelodyHint) {
+            // Если есть конкретный hint для V2 мелодии, используем его
+            return `melody(V2: ${v2MelodyHint})`;
         }
 
         if (rule && rule.strategy === 'weighted') {
@@ -67,8 +58,11 @@ function formatInstrumentation(instrumentation?: { [key: string]: any }, v2Melod
             if (rule.v2Options && rule.v2Options.length > 0) {
                 options = rule.v2Options;
                 engineVersion = '(V2)';
+            } else if (rule.v1Options && rule.v1Options.length > 0) {
+                 options = rule.v1Options;
+                 engineVersion = '(V1)';
             } else {
-                options = rule.v1Options || rule.options || [];
+                options = rule.options || [];
             }
             
             if (options && options.length > 0) {
@@ -78,11 +72,12 @@ function formatInstrumentation(instrumentation?: { [key: string]: any }, v2Melod
                 return `${partKey}${engineVersion}(${optionsStr})`;
             }
         }
-        return null;
-    }).filter(Boolean);
+        return null; // Если правил нет, не выводим ничего для этого инструмента
+    }).filter(Boolean); // Убираем null значения
 
     return `Instruments: ${parts.join(' | ')}`;
 }
+
 
 /**
  * A class dedicated to navigating the hierarchical structure of a MusicBlueprint.
