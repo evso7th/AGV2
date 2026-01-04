@@ -113,8 +113,6 @@ export class FractalMusicEngine {
     this.nextWeatherEventEpoch = 0;
 
     // #ИЗМЕНЕНО: Инициализация риффов перенесена в метод initialize().
-    // this.bluesDrumRiffIndex = this.random.nextInt(BLUES_DRUM_RIFFS[this.config.mood]?.length ?? 1);
-    // this.bluesBassRiffIndex = this.random.nextInt(BLUES_BASS_RIFFS[this.config.mood]?.length ?? 1);
   }
 
   public get tempo(): number { return this.config.tempo; }
@@ -505,6 +503,7 @@ export class FractalMusicEngine {
             return [];
         }
         
+        // #ИСПРАВЛЕНО: Теперь рифф выбирается по this.bluesBassRiffIndex, который меняется каждую сюиту
         const riffTemplate = moodRiffs[this.bluesBassRiffIndex];
 
         // Определяем ступень аккорда
@@ -561,9 +560,6 @@ export class FractalMusicEngine {
 
     let harmonyEvents: FractalEvent[] = [];
     if (navInfo.currentPart.layers.harmony) {
-        // #ЗАЧЕМ: Этот блок отвечает за создание гармонической "подкладки".
-        // #ЧТО: Он вызывает `createHarmonyAxiom` для генерации событий и добавляет их в общий массив.
-        // #СВЯЗИ: Этот код напрямую исправляет ошибку, из-за которой Harmony=0 в логах.
         const harmonyAxiom = createHarmonyAxiom(currentChord, this.config.mood, this.config.genre, this.random);
         harmonyEvents.push(...harmonyAxiom);
     }
@@ -586,11 +582,18 @@ export class FractalMusicEngine {
           bassEvents = this.bassPhraseLibrary[this.currentBassPhraseIndex] || [];
       }
     }
-
-    if (navInfo.currentPart.bassAccompanimentDouble?.enabled) {
+    
+    // --- ПРАВИЛЬНАЯ ЛОГИКА ДУБЛИРОВАНИЯ И СДВИГА (ПЛАН 708) ---
+    // #ЗАЧЕМ: Этот блок гарантирует, что гитара дублирует ОРИГИНАЛЬНУЮ басовую партию,
+    //         а уже ПОСЛЕ этого сам бас повышается на октаву.
+    // #ЧТО: Сначала создается копия басовых событий для гитары, и только потом
+    //       происходит мутация высоты тона для басовых событий.
+    // #СВЯЗИ: Устраняет ошибку, из-за которой гитара играла слишком высоко.
+    if (navInfo.currentPart.bassAccompanimentDouble?.enabled && bassEvents.length > 0) {
         const { instrument, octaveShift } = navInfo.currentPart.bassAccompanimentDouble;
+        // 1. Создаем дубликат из ОРИГИНАЛЬНЫХ басовых нот
         const bassDoubleEvents: FractalEvent[] = bassEvents.map(e => ({
-            ...e,
+            ...JSON.parse(JSON.stringify(e)), // Deep copy
             type: 'melody',
             note: e.note + (12 * octaveShift),
             weight: e.weight * 0.8,
@@ -599,14 +602,32 @@ export class FractalMusicEngine {
         instrumentHints.melody = instrument; 
     }
     
+    // 2. Теперь, когда дубликат создан, повышаем октаву для самого баса
+    const bassOctaveShift = navInfo.currentPart.instrumentRules?.bass?.presetModifiers?.octaveShift;
+    if (bassOctaveShift && bassEvents.length > 0) {
+        const TARGET_BASS_OCTAVE_MIN_MIDI = 36;
+        bassEvents.forEach(event => {
+            if (event.note < TARGET_BASS_OCTAVE_MIN_MIDI) {
+                event.note += 12 * bassOctaveShift;
+            }
+        });
+    }
+
     let melodyEvents: FractalEvent[] = [];
     const melodyRules = navInfo.currentPart.instrumentRules?.melody;
 
     if (navInfo.currentPart.layers.melody && !navInfo.currentPart.bassAccompanimentDouble?.enabled && melodyRules) {
+        // --- ВОССТАНОВЛЕННАЯ ЛОГИКА БЛЮЗОВОГО СОЛО (ПЛАН 712) ---
+        // #ЗАЧЕМ: Этот блок возвращает логику генерации полноценных 12-тактовых блюзовых соло.
+        // #ЧТО: Он определяет текущий такт внутри 12-тактового квадрата, генерирует и кэширует
+        //       полное соло в начале квадрата, а затем на каждом такте извлекает нужный фрагмент.
+        //       Также применяет мутации к сгенерированному соло.
+        // #СВЯЗИ: Исправляет регрессию, из-за которой соло стало коротким и не мутировало.
         if (this.config.genre === 'blues' && melodyRules.source === 'motif') {
             const barInChorus = this.epoch % 12;
             const registerHint = melodyRules.register?.preferred;
             
+            // Генерируем новый хорус только в начале 12-тактового квадрата
             if (barInChorus === 0 || !this.bluesChorusCache || this.bluesChorusCache.barStart !== (this.epoch - barInChorus)) {
                 const chorusBarStart = this.epoch - barInChorus;
                 const chorusChords = this.ghostHarmonyTrack.filter(c => c.bar >= chorusBarStart && c.bar < chorusBarStart + 12);
@@ -615,17 +636,20 @@ export class FractalMusicEngine {
                         barStart: chorusBarStart,
                         ...this.generateBluesMelodyChorus(chorusChords, this.config.mood, this.random, registerHint)
                     };
+                     console.log(`%c[BluesMelody] Generated new 12-bar chorus starting at bar ${chorusBarStart}. ${this.bluesChorusCache.log}`, 'color: #00BCD4');
                 }
             }
             
+            // Извлекаем ноты для текущего такта из кэша
             if (this.bluesChorusCache) {
-                const barStartBeat = ((this.epoch - this.bluesChorusCache.barStart) % 12) * 4.0;
+                const barStartBeat = barInChorus * 4.0;
                 const barEndBeat = barStartBeat + 4.0;
                 melodyEvents = this.bluesChorusCache.events
                     .filter(e => e.time >= barStartBeat && e.time < barEndBeat)
                     .map(e => ({ ...e, time: e.time - barStartBeat }));
             }
         } else if (melodyRules.source === 'motif') {
+            // (Логика для эмбиент-мотивов остается без изменений)
             const melodyDensity = melodyRules.density?.min ?? 0.25;
             const minInterval = 8;
             const motifBarIndex = this.epoch - this.lastMelodyPlayEpoch;
@@ -648,10 +672,8 @@ export class FractalMusicEngine {
         }
     }
     
-    if (melodyRules?.presetModifiers?.octaveShift && melodyEvents.length > 0) {
-        const shift = melodyRules.presetModifiers.octaveShift;
-        melodyEvents.forEach(e => e.note += 12 * shift);
-    }
+    // --- ПЛАН 709: Логика повышения октавы для соло УДАЛЕНА ОТСЮДА ---
+    // Теперь это управляется напрямую из блюпринтов.
 
     allEvents.push(...(bassEvents || []), ...(drumEvents || []), ...(accompEvents || []), ...(melodyEvents || []), ...(harmonyEvents || []));
     
