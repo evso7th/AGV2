@@ -1,6 +1,6 @@
 
 
-import type { FractalEvent, Mood, Genre, Technique, BassSynthParams, InstrumentType, MelodyInstrument, AccompanimentInstrument, ResonanceMatrix, InstrumentHints, AccompanimentTechnique, GhostChord, SfxRule, V1MelodyInstrument, V2MelodyInstrument, BlueprintPart, InstrumentationRules, InstrumentBehaviorRules, BluesMelody, BluesBassRiff } from './fractal';
+import type { FractalEvent, Mood, Genre, Technique, BassSynthParams, InstrumentType, MelodyInstrument, AccompanimentInstrument, ResonanceMatrix, InstrumentHints, AccompanimentTechnique, GhostChord, SfxRule, V1MelodyInstrument, V2MelodyInstrument, BlueprintPart, InstrumentationRules, InstrumentBehaviorRules, BluesMelody, BluesBassRiff, BluesRiffDegree, BluesRiffNote, BluesRiffPattern, BluesMelodyPhrase } from './fractal';
 import { ElectronicK, TraditionalK, AmbientK, MelancholicMinorK } from './resonance-matrices';
 import { getScaleForMood, STYLE_DRUM_PATTERNS, createAccompanimentAxiom, PERCUSSION_SETS, TEXTURE_INSTRUMENT_WEIGHTS_BY_MOOD, getAccompanimentTechnique, createBassFill, createDrumFill, AMBIENT_ACCOMPANIMENT_WEIGHTS, chooseHarmonyInstrument, mutateBassPhrase, createMelodyMotif, createDrumAxiom, generateGhostHarmonyTrack, mutateAccompanimentPhrase, createAmbientBassAxiom } from './music-theory';
 import { BlueprintNavigator, type NavigationInfo } from './blueprint-navigator';
@@ -8,7 +8,7 @@ import { getBlueprint } from './blueprints';
 import { V2_PRESETS } from './presets-v2';
 import { PARANOID_STYLE_RIFF } from './assets/rock-riffs';
 import { BLUES_BASS_RIFFS } from './assets/blues-bass-riffs';
-import { BLUES_MELODY_RIFFS, type BluesRiffDegree, type BluesMelodyPhrase } from './assets/blues-melody-riffs';
+import { BLUES_MELODY_RIFFS } from './assets/blues-melody-riffs';
 import { BLUES_DRUM_RIFFS } from './assets/blues-drum-riffs';
 
 
@@ -130,9 +130,7 @@ export class FractalMusicEngine {
     const DEGREE_TO_SEMITONE: Record<BluesRiffDegree, number> = { 'R': 0, 'b2': 1, '2': 2, 'b3': 3, '3': 4, '4': 5, '#4': 6, 'b5': 6, '5': 7, 'b6': 8, '6': 9, 'b7': 10, '9': 14, '11': 17, 'R+8': 12 };
 
     for (let barIndex = 0; barIndex < 12; barIndex++) {
-        const chorusStartBar = chorusChords[0]?.bar ?? 0;
-        const absoluteBar = chorusStartBar + barIndex;
-        
+        const absoluteBar = (chorusChords[0]?.bar ?? 0) + barIndex;
         const barChord = chorusChords.find(c => absoluteBar >= c.bar && absoluteBar < (c.bar + c.durationBars));
 
         if (!barChord) {
@@ -349,7 +347,10 @@ export class FractalMusicEngine {
 
     if (this.config.genre === 'blues') {
         const moodRiffs = BLUES_DRUM_RIFFS[this.config.mood] || BLUES_DRUM_RIFFS['contemplative'];
-        if (!moodRiffs || moodRiffs.length === 0) return [];
+        if (!moodRiffs || moodRiffs.length === 0) {
+             console.warn(`[BluesDrums] No drum riffs found for mood: ${this.config.mood}.`);
+             return [];
+        }
         
         const pattern = moodRiffs[this.random.nextInt(moodRiffs.length)];
         let events: FractalEvent[] = [];
@@ -374,6 +375,7 @@ export class FractalMusicEngine {
         addEvents(pattern.R, 'drum_ride', 0.7);
         addEvents(pattern.T, 'drum_tom_mid', 0.75);
 
+        // Simple mutation for variety
         if (this.random.next() < 0.3) {
             const mutationType = this.random.nextInt(3);
             if (mutationType === 0 && events.length > 0) {
@@ -478,7 +480,7 @@ export class FractalMusicEngine {
         const ticksPerBeat = 3;
         const DEGREE_TO_SEMITONE: Record<BluesRiffDegree, number> = { 'R': 0, 'b2': 1, '2': 2, 'b3': 3, '3': 4, '4': 5, '#4': 6, 'b5': 6, '5': 7, 'b6': 8, '6': 9, 'b7': 10, '9': 14, '11': 17, 'R+8': 12 };
 
-        const moodRiffs = BLUES_BASS_RIFFS[mood] || BLUES_BASS_RIFFS['contemplative'];
+        const moodRiffs = BLUES_BASS_RIFFS[mood];
         if (!moodRiffs || moodRiffs.length === 0) {
             console.warn(`[BluesBass] No bass riffs found for mood: ${mood}.`);
             return [];
@@ -697,12 +699,16 @@ export class FractalMusicEngine {
 
       if (!isFinite(barDuration)) return { events: [], instrumentHints: {} };
       
-      const navigationInfo = this.navigator.tick(this.epoch);
-
       const instrumentHints: InstrumentHints = {
-          accompaniment: this._chooseInstrumentForPart('accompaniment', navigationInfo),
-          melody: this._chooseInstrumentForPart('melody', navigationInfo),
+          accompaniment: this._chooseInstrumentForPart('accompaniment', this.navigator.tick(this.epoch)),
+          melody: this._chooseInstrumentForPart('melody', this.navigator.tick(this.epoch)),
       };
+      
+      const navigationInfo = this.navigator.tick(this.epoch, instrumentHints.melody);
+      
+      if (navigationInfo?.logMessage) {
+        console.log(navigationInfo.logMessage, 'color: #DA70D6');
+      }
 
       const events = this.generateOneBar(barDuration, navigationInfo!, instrumentHints);
       
@@ -726,4 +732,5 @@ export class FractalMusicEngine {
 
 }
 
+    
     
