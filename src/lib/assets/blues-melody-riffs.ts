@@ -12,27 +12,7 @@
  *          жанре 'blues'.
  */
 
-export type BluesRiffDegree = 'R' | '2' | 'b2' | 'b3' | '3' | '4' | '#4' | 'b5' | '5' | 'b6' | '6' | 'b7' | '9' | '11' | 'R+8';
-
-export type BluesRiffEvent = {
-  t: number; // tick (0-11 for 12/8 time)
-  d: number; // duration in ticks
-  deg: BluesRiffDegree;
-  vel?: number;
-};
-
-export type BluesMelodyPhrase = BluesRiffEvent[];
-
-export type BluesMelody = {
-  id: string;
-  moods: ('joyful' | 'neutral' | 'enthusiastic' | 'dreamy' | 'calm' | 'melancholic' | 'gloomy' | 'dark')[];
-  type: 'major' | 'minor';
-  progression: ('I' | 'IV' | 'V' | 'i' | 'iv' | 'bVI')[]; // Simplified for now
-  phraseI: BluesMelodyPhrase;
-  phraseIV: BluesMelodyPhrase;
-  phraseV: BluesMelodyPhrase;
-  phraseTurnaround: BluesMelodyPhrase;
-};
+import type { BluesMelody } from '@/types/fractal';
 
 export const BLUES_MELODY_RIFFS: BluesMelody[] = [
   // --- MAJOR BLUES MELODIES ---
@@ -40,6 +20,7 @@ export const BLUES_MELODY_RIFFS: BluesMelody[] = [
     id: 'Joyful-01',
     moods: ['joyful'],
     type: 'major',
+    tags: ['shuffle', 'uptempo'],
     progression: [], // Placeholder
     phraseI: [{t:0,d:3,deg:'5'},{t:3,d:3,deg:'b7'},{t:6,d:6,deg:'R'}],
     phraseIV: [{t:0,d:3,deg:'3'},{t:3,d:3,deg:'5'},{t:6,d:6,deg:'R'}],
@@ -48,8 +29,9 @@ export const BLUES_MELODY_RIFFS: BluesMelody[] = [
   },
   {
     id: 'Joyful-02',
-    moods: ['joyful'],
+    moods: ['joyful', 'enthusiastic'],
     type: 'major',
+    tags: ['shuffle', 'boogie'],
     progression: [],
     phraseI: [{t:0,d:6,deg:'R'},{t:6,d:6,deg:'R+8'}],
     phraseIV:[{t:0,d:3,deg:'R'},{t:3,d:3,deg:'3'},{t:6,d:6,deg:'9'}],
@@ -60,6 +42,7 @@ export const BLUES_MELODY_RIFFS: BluesMelody[] = [
     id: 'Joyful-03',
     moods: ['joyful'],
     type: 'major',
+    tags: ['shuffle', 'mid-tempo'],
     progression: [],
     phraseI: [{t:0,d:4,deg:'R'},{t:4,d:4,deg:'4'},{t:8,d:4,deg:'5'}],
     phraseIV:[{t:0,d:4,deg:'R'},{t:4,d:4,deg:'5'},{t:8,d:4,deg:'6'}],
@@ -68,8 +51,9 @@ export const BLUES_MELODY_RIFFS: BluesMelody[] = [
   },
   {
     id: 'Neutral-01',
-    moods: ['neutral'],
+    moods: ['neutral', 'contemplative'],
     type: 'major',
+    tags: ['shuffle', 'laid-back'],
     progression: [],
     phraseI: [{t:0,d:3,deg:'b3'},{t:3,d:3,deg:'3'},{t:6,d:6,deg:'5'}],
     phraseIV:[{t:0,d:3,deg:'b3'},{t:3,d:3,deg:'3'},{t:6,d:6,deg:'R'}],
@@ -78,8 +62,9 @@ export const BLUES_MELODY_RIFFS: BluesMelody[] = [
   },
   {
     id: 'Neutral-02',
-    moods: ['neutral'],
+    moods: ['neutral', 'calm'],
     type: 'major',
+    tags: ['slow-burn', 'ballad'],
     progression: [],
     phraseI: [{t:0,d:12,deg:'R'}],
     phraseIV:[{t:0,d:6,deg:'R'},{t:6,d:6,deg:'5'}],
@@ -88,8 +73,9 @@ export const BLUES_MELODY_RIFFS: BluesMelody[] = [
   },
   {
     id: 'Dreamy-01',
-    moods: ['dreamy'],
+    moods: ['dreamy', 'calm'],
     type: 'major',
+    tags: ['ballad', 'soul'],
     progression: [],
     phraseI: [{t:0,d:4,deg:'9'},{t:4,d:8,deg:'R'}],
     phraseIV:[{t:0,d:6,deg:'6'},{t:6,d:6,deg:'5'}],
@@ -100,6 +86,7 @@ export const BLUES_MELODY_RIFFS: BluesMelody[] = [
     id: 'Dreamy-02',
     moods: ['dreamy'],
     type: 'major',
+    tags: ['soul', 'laid-back'],
     progression: [],
     phraseI: [{t:0,d:6,deg:'R'},{t:6,d:6,deg:'R+8'}],
     phraseIV:[{t:0,d:3,deg:'3'},{t:3,d:3,deg:'5'},{t:6,d:6,deg:'6'}],
@@ -108,8 +95,9 @@ export const BLUES_MELODY_RIFFS: BluesMelody[] = [
   },
   {
     id: 'Calm-01',
-    moods: ['calm'],
+    moods: ['calm', 'contemplative'],
     type: 'major',
+    tags: ['slow-burn', 'ballad'],
     progression: [],
     phraseI: [{t:0,d:6,deg:'R'},{t:6,d:6,deg:'5'}],
     phraseIV:[{t:0,d:6,deg:'R'},{t:6,d:6,deg:'3'}],
@@ -118,8 +106,9 @@ export const BLUES_MELODY_RIFFS: BluesMelody[] = [
   },
   {
     id: 'Enthusiastic-01',
-    moods: ['enthusiastic'],
+    moods: ['enthusiastic', 'joyful'],
     type: 'major',
+    tags: ['boogie', 'uptempo'],
     progression: [],
     phraseI: [{t:0,d:3,deg:'5'},{t:3,d:3,deg:'6'},{t:6,d:6,deg:'R'}],
     phraseIV:[{t:0,d:3,deg:'5'},{t:3,d:3,deg:'6'},{t:6,d:6,deg:'R'}],
@@ -127,9 +116,10 @@ export const BLUES_MELODY_RIFFS: BluesMelody[] = [
     phraseTurnaround: [{t:0,d:3,deg:'2'},{t:3,d:3,deg:'b3'},{t:6,d:3,deg:'3'},{t:9,d:3,deg:'4'}]
   },
   {
-    id: 'Joyful-04', // Another joyful one
+    id: 'Joyful-04',
     moods: ['joyful'],
     type: 'major',
+    tags: ['shuffle', 'driving'],
     progression: [],
     phraseI: [{t:0,d:3,deg:'b3'},{t:3,d:3,deg:'3'},{t:6,d:6,deg:'9'}],
     phraseIV:[{t:0,d:4,deg:'R'},{t:4,d:8,deg:'5'}],
@@ -142,16 +132,18 @@ export const BLUES_MELODY_RIFFS: BluesMelody[] = [
     id: 'Melancholic-01',
     moods: ['melancholic'],
     type: 'minor',
+    tags: ['slow-burn', 'ballad'],
     progression: [],
     phraseI:  [{t:0,d:6,deg:'b3'},{t:6,d:6,deg:'11'}],
     phraseIV: [{t:0,d:6,deg:'b3'},{t:6,d:6,deg:'9'}],
-    phraseV:  [{t:0,d:3,deg:'5'},{t:3,d:3,deg:'b2'},{t:6,d:6,deg:'R'}], // Using b2 for b9 of dominant
+    phraseV:  [{t:0,d:3,deg:'5'},{t:3,d:3,deg:'b2'},{t:6,d:6,deg:'R'}],
     phraseTurnaround:  [{t:0,d:6,deg:'b7'},{t:6,d:6,deg:'R'}]
   },
   {
     id: 'Melancholic-02',
     moods: ['melancholic'],
     type: 'minor',
+    tags: ['shuffle', 'mid-tempo'],
     progression: [],
     phraseI:  [{t:0,d:4,deg:'R'},{t:4,d:4,deg:'#4'},{t:8,d:4,deg:'5'}],
     phraseIV: [{t:0,d:6,deg:'11'},{t:6,d:6,deg:'9'}],
@@ -160,8 +152,9 @@ export const BLUES_MELODY_RIFFS: BluesMelody[] = [
   },
   {
     id: 'Gloomy-01',
-    moods: ['gloomy'],
+    moods: ['gloomy', 'dark'],
     type: 'minor',
+    tags: ['slow-burn', 'sparse'],
     progression: [],
     phraseI:  [{t:0,d:12,deg:'R'}],
     phraseIV: [{t:0,d:6,deg:'R'},{t:6,d:6,deg:'b3'}],
@@ -172,6 +165,7 @@ export const BLUES_MELODY_RIFFS: BluesMelody[] = [
     id: 'Gloomy-02',
     moods: ['gloomy'],
     type: 'minor',
+    tags: ['shuffle', 'laid-back'],
     progression: [],
     phraseI:  [{t:0,d:3,deg:'b3'},{t:3,d:3,deg:'3'},{t:6,d:6,deg:'5'}],
     phraseIV: [{t:0,d:3,deg:'4'},{t:3,d:9,deg:'9'}],
@@ -182,6 +176,7 @@ export const BLUES_MELODY_RIFFS: BluesMelody[] = [
     id: 'Dark-01',
     moods: ['dark'],
     type: 'minor',
+    tags: ['shuffle', 'heavy'],
     progression: [],
     phraseI:  [{t:0,d:6,deg:'R'},{t:6,d:6,deg:'5'}],
     phraseIV: [{t:0,d:6,deg:'R'},{t:6,d:6,deg:'11'}],
@@ -192,6 +187,7 @@ export const BLUES_MELODY_RIFFS: BluesMelody[] = [
     id: 'Dark-02',
     moods: ['dark'],
     type: 'minor',
+    tags: ['slow-burn', 'drone'],
     progression: [],
     phraseI:  [{t:0,d:12,deg:'b3'}],
     phraseIV: [{t:0,d:12,deg:'11'}],
@@ -200,8 +196,9 @@ export const BLUES_MELODY_RIFFS: BluesMelody[] = [
   },
   {
     id: 'Dreamy-Minor-01',
-    moods: ['dreamy'],
+    moods: ['dreamy', 'melancholic'],
     type: 'minor',
+    tags: ['ballad', 'soul'],
     progression: [],
     phraseI:  [{t:0,d:4,deg:'9'},{t:4,d:8,deg:'b3'}],
     phraseIV: [{t:0,d:4,deg:'11'},{t:4,d:8,deg:'9'}],
@@ -212,6 +209,7 @@ export const BLUES_MELODY_RIFFS: BluesMelody[] = [
     id: 'Melancholic-03',
     moods: ['melancholic'],
     type: 'minor',
+    tags: ['shuffle', 'expressive'],
     progression: [],
     phraseI:  [{t:0,d:3,deg:'2'},{t:3,d:3,deg:'b3'},{t:6,d:6,deg:'5'}],
     phraseIV: [{t:0,d:3,deg:'2'},{t:3,d:3,deg:'4'},{t:6,d:6,deg:'11'}],
@@ -222,6 +220,7 @@ export const BLUES_MELODY_RIFFS: BluesMelody[] = [
     id: 'Gloomy-03',
     moods: ['gloomy'],
     type: 'minor',
+    tags: ['shuffle', 'heavy'],
     progression: [],
     phraseI:  [{t:0,d:6,deg:'R'},{t:6,d:6,deg:'R+8'}],
     phraseIV: [{t:0,d:6,deg:'R'},{t:6,d:6,deg:'R+8'}],
@@ -230,8 +229,9 @@ export const BLUES_MELODY_RIFFS: BluesMelody[] = [
   },
   {
     id: 'Dark-03',
-    moods: ['dark'],
+    moods: ['dark', 'anxious'],
     type: 'minor',
+    tags: ['shuffle', 'dissonant'],
     progression: [],
     phraseI:  [{t:0,d:6,deg:'b3'},{t:6,d:6,deg:'5'}],
     phraseIV: [{t:0,d:6,deg:'11'},{t:6,d:6,deg:'9'}],
