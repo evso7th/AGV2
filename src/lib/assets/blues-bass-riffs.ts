@@ -1,72 +1,187 @@
+/**
+ * #ЗАЧЕМ: Этот файл содержит оцифрованную библиотеку блюзовых басовых риффов,
+ *          сгруппированных по настроениям. Он служит "нотной грамотой" для
+ *          FractalMusicEngine при генерации стилистически верных басовых партий.
+ * #ЧТО: Экспортирует константу BLUES_BASS_RIFFS, где каждый ключ — это настроение,
+ *       а значение — массив риффов, подходящих для этого настроения.
+ * #СВЯЗИ: Используется в `fractal-music-engine.ts` функцией `generateBluesBassRiff`.
+ */
 
-import type { FractalEvent } from '@/types/fractal';
+import type { BluesBassRiff, Mood } from '@/types/fractal';
 
-// Helper type for defining a riff note pattern.
-// Note is represented as semitones from the root of the chord.
-type RiffNote = {
-    note: number; // Semitones from root
-    tick: number; // 0-11 for a 12/8 bar
-    dur: number;  // in ticks
+export const BLUES_BASS_RIFFS: Record<Mood, BluesBassRiff[]> = {
+    joyful: [
+        { // Riff J1 — Classic light boogie
+            I:  [{t:0,deg:'R'},{t:2,deg:'5'},{t:4,deg:'6'},{t:6,deg:'b7'},{t:8,deg:'6'},{t:10,deg:'5'}],
+            IV: [{t:0,deg:'R'},{t:2,deg:'5'},{t:4,deg:'6'},{t:6,deg:'b7'},{t:8,deg:'6'},{t:10,deg:'5'}],
+            V:  [{t:0,deg:'R'},{t:2,deg:'5'},{t:4,deg:'6'},{t:6,deg:'b7'},{t:8,deg:'6'},{t:10,deg:'5'}],
+            turn: [{t:0,deg:'R'},{t:2,deg:'b7'},{t:4,deg:'6'},{t:6,deg:'b6'},{t:8,deg:'5'},{t:10,deg:'#4'}]
+        },
+        { // Riff J2 — Two‑feel с октавой
+            I:  [{t:0,deg:'R',d:4},{t:4,deg:'5',d:4},{t:8,deg:'R+8',d:4}],
+            IV: [{t:0,deg:'R',d:4},{t:4,deg:'6',d:4},{t:8,deg:'5',d:4}],
+            V:  [{t:0,deg:'R',d:4},{t:4,deg:'b7',d:4},{t:8,deg:'5',d:4}],
+            turn: [{t:0,deg:'R'},{t:2,deg:'b7'},{t:4,deg:'6'},{t:6,deg:'b6'},{t:8,deg:'5'},{t:10,deg:'#4'}]
+        },
+        { // Riff J3 — Позитивный подъём к 6
+            I:  [{t:0,deg:'R',d:6},{t:6,deg:'6',d:6}],
+            IV: [{t:0,deg:'R',d:6},{t:6,deg:'6',d:6}],
+            V:  [{t:0,deg:'5',d:6},{t:6,deg:'R',d:6}],
+            turn: [{t:0,deg:'2'},{t:2,deg:'b3'},{t:4,deg:'3'},{t:6,deg:'4'},{t:8,deg:'#4'},{t:10,deg:'5'}]
+        }
+    ],
+    enthusiastic: [
+        { // Riff E1 — Drive shuffle
+            I:  [{t:0,deg:'R'},{t:2,deg:'5'},{t:4,deg:'6'},{t:6,deg:'6'},{t:8,deg:'5'},{t:10,deg:'R'}],
+            IV: [{t:0,deg:'R'},{t:2,deg:'5'},{t:4,deg:'6'},{t:6,deg:'6'},{t:8,deg:'5'},{t:10,deg:'R'}],
+            V:  [{t:0,deg:'R'},{t:2,deg:'5'},{t:4,deg:'6'},{t:6,deg:'6'},{t:8,deg:'5'},{t:10,deg:'R'}],
+            turn: [{t:0,deg:'R'},{t:2,deg:'b7'},{t:4,deg:'6'},{t:6,deg:'b6'},{t:8,deg:'5'},{t:10,deg:'#4'}]
+        },
+        { // Riff E2 — Лёгкий «галоп» в конце бара
+            I:  [{t:0,deg:'R'},{t:2,deg:'5'},{t:4,deg:'6'},{t:6,deg:'b7'},{t:9,deg:'6'},{t:11,deg:'5'}],
+            IV: [{t:0,deg:'R'},{t:2,deg:'5'},{t:4,deg:'6'},{t:6,deg:'b7'},{t:9,deg:'6'},{t:11,deg:'5'}],
+            V:  [{t:0,deg:'R'},{t:2,deg:'5'},{t:4,deg:'6'},{t:6,deg:'b7'},{t:9,deg:'6'},{t:11,deg:'5'}],
+            turn: [{t:0,deg:'R'},{t:3,deg:'b7'},{t:6,deg:'6'},{t:9,deg:'5'}]
+        },
+        { // Riff E3 — Ответ от 4 к 6
+            I:  [{t:0,deg:'R',d:4},{t:4,deg:'4',d:4},{t:8,deg:'6',d:4}],
+            IV: [{t:0,deg:'R',d:4},{t:4,deg:'5',d:4},{t:8,deg:'6',d:4}],
+            V:  [{t:0,deg:'R',d:4},{t:4,deg:'b7',d:4},{t:8,deg:'5',d:4}],
+            turn: [{t:0,deg:'2'},{t:2,deg:'b3'},{t:4,deg:'3'},{t:6,deg:'4'},{t:8,deg:'#4'},{t:10,deg:'5'}]
+        }
+    ],
+    contemplative: [ // Mapped from Neutral
+        { // Riff N1 — Чистый boogie‑6
+            I:  [{t:0,deg:'R'},{t:2,deg:'5'},{t:4,deg:'6'},{t:6,deg:'b7'},{t:8,deg:'6'},{t:10,deg:'5'}],
+            IV: [{t:0,deg:'R'},{t:2,deg:'5'},{t:4,deg:'6'},{t:6,deg:'b7'},{t:8,deg:'6'},{t:10,deg:'5'}],
+            V:  [{t:0,deg:'R'},{t:2,deg:'5'},{t:4,deg:'6'},{t:6,deg:'b7'},{t:8,deg:'6'},{t:10,deg:'5'}],
+            turn: [{t:0,deg:'R'},{t:2,deg:'b7'},{t:4,deg:'6'},{t:6,deg:'b6'},{t:8,deg:'5'},{t:10,deg:'#4'}]
+        },
+        { // Riff N2 — Two‑feel basic
+            I:  [{t:0,deg:'R',d:6},{t:6,deg:'5',d:6}],
+            IV: [{t:0,deg:'R',d:6},{t:6,deg:'3',d:6}],
+            V:  [{t:0,deg:'R',d:6},{t:6,deg:'b7',d:6}],
+            turn: [{t:0,deg:'R'},{t:2,deg:'b7'},{t:4,deg:'6'},{t:6,deg:'b6'},{t:8,deg:'5'},{t:10,deg:'#4'}]
+        },
+        { // Riff N3 — Плотность на конце
+            I:  [{t:0,deg:'R'},{t:2,deg:'5'},{t:4,deg:'6'},{t:6,deg:'b7'},{t:8,deg:'6'},{t:10,deg:'5'}],
+            IV: [{t:0,deg:'R'},{t:2,deg:'5'},{t:4,deg:'6'},{t:6,deg:'b7'},{t:8,deg:'6'},{t:10,deg:'5'}],
+            V:  [{t:0,deg:'R'},{t:2,deg:'5'},{t:4,deg:'6'},{t:6,deg:'b7'},{t:8,deg:'6'},{t:10,deg:'5'}],
+            turn: [{t:0,deg:'R'},{t:2,deg:'b7'},{t:6,deg:'6'},{t:10,deg:'5'}]
+        }
+    ],
+    dreamy: [
+        { // Riff D1 — Тёплая педаль + мягкий ход
+            I:  [{t:0,deg:'R',d:12}],
+            IV: [{t:0,deg:'6',d:4},{t:4,deg:'5',d:4},{t:8,deg:'2',d:4}],
+            V:  [{t:0,deg:'5',d:6},{t:6,deg:'R',d:6}],
+            turn: [{t:0,deg:'6',d:4},{t:4,deg:'5',d:4},{t:8,deg:'R',d:4}]
+        },
+        { // Riff D2 — Октавы «вздохом»
+            I:  [{t:0,deg:'R',d:6},{t:6,deg:'R+8',d:6}],
+            IV: [{t:0,deg:'5',d:6},{t:6,deg:'6',d:6}],
+            V:  [{t:0,deg:'5',d:6},{t:6,deg:'R',d:6}],
+            turn: [{t:0,deg:'2'},{t:2,deg:'b3'},{t:4,deg:'3'},{t:6,deg:'4'},{t:8,deg:'#4'},{t:10,deg:'5'}]
+        },
+        { // Riff D3 — 9 как «пятно света»
+            I:  [{t:0,deg:'9',d:4},{t:4,deg:'R',d:8}],
+            IV: [{t:0,deg:'6',d:6},{t:6,deg:'5',d:6}],
+            V:  [{t:0,deg:'9',d:4},{t:4,deg:'5',d:8}],
+            turn: [{t:0,deg:'2',d:6},{t:6,deg:'R',d:6}]
+        }
+    ],
+    calm: [
+        { // Riff C1 — Минимум движений
+            I:  [{t:0,deg:'R',d:6},{t:6,deg:'5',d:6}],
+            IV: [{t:0,deg:'R',d:6},{t:6,deg:'3',d:6}],
+            V:  [{t:0,deg:'R',d:6},{t:6,deg:'b7',d:6}],
+            turn: [{t:0,deg:'6',d:4},{t:4,deg:'5',d:4},{t:8,deg:'R',d:4}]
+        },
+        { // Riff C2 — Тихий two‑feel с ответом
+            I:  [{t:0,deg:'R',d:4},{t:4,deg:'5',d:4},{t:8,deg:'R+8',d:4}],
+            IV: [{t:0,deg:'R',d:4},{t:4,deg:'6',d:4},{t:8,deg:'5',d:4}],
+            V:  [{t:0,deg:'R',d:4},{t:4,deg:'b7',d:4},{t:8,deg:'5',d:4}],
+            turn: [{t:0,deg:'R'},{t:2,deg:'b7'},{t:4,deg:'6'},{t:6,deg:'b6'},{t:8,deg:'5'},{t:10,deg:'#4'}]
+        },
+        { // Riff C3 — Длинные R/5
+            I:  [{t:0,deg:'R',d:12}],
+            IV: [{t:0,deg:'R',d:6},{t:6,deg:'5',d:6}],
+            V:  [{t:0,deg:'R',d:6},{t:6,deg:'b7',d:6}],
+            turn: [{t:0,deg:'R',d:4},{t:4,deg:'b7',d:4},{t:8,deg:'R',d:4}]
+        }
+    ],
+    melancholic: [
+        { // Riff M1 — Slow minor boogie
+            I:  [{t:0,deg:'R'},{t:2,deg:'5'},{t:4,deg:'6'},{t:6,deg:'b7'},{t:8,deg:'6'},{t:10,deg:'5'}],
+            IV: [{t:0,deg:'R'},{t:2,deg:'5'},{t:4,deg:'6'},{t:6,deg:'b7'},{t:8,deg:'6'},{t:10,deg:'5'}],
+            V:  [{t:0,deg:'5'},{t:2,deg:'b7'},{t:4,deg:'R'},{t:6,deg:'b7'},{t:8,deg:'5'},{t:10,deg:'R'}],
+            turn: [{t:0,deg:'R'},{t:2,deg:'b7'},{t:4,deg:'6'},{t:6,deg:'b6'},{t:8,deg:'5'},{t:10,deg:'#4'}]
+        },
+        { // Riff M2 — b3 и 11 как опоры
+            I:  [{t:0,deg:'b3',d:6},{t:6,deg:'11',d:6}],
+            IV: [{t:0,deg:'b3',d:6},{t:6,deg:'9',d:6}],
+            V:  [{t:0,deg:'5',d:6},{t:6,deg:'b7',d:6}],
+            turn: [{t:0,deg:'b7',d:6},{t:6,deg:'R',d:6}]
+        },
+        { // Riff M3 — Мягкий b5 шёпотом
+            I:  [{t:0,deg:'R',d:6},{t:6,deg:'#4',d:2},{t:8,deg:'5',d:4}],
+            IV: [{t:0,deg:'11',d:6},{t:6,deg:'9',d:6}],
+            V:  [{t:0,deg:'R',d:4},{t:4,deg:'3',d:4},{t:8,deg:'b7',d:4}],
+            turn: [{t:0,deg:'2'},{t:2,deg:'b2'},{t:4,deg:'R',d:8}]
+        }
+    ],
+    gloomy: [
+        { // Riff G1 — Swamp pedal + «грязь»
+            I:  [{t:0,deg:'R',d:12}],
+            IV: [{t:0,deg:'R'},{t:2,deg:'b3'},{t:4,deg:'4'},{t:6,deg:'#4'},{t:8,deg:'4'},{t:10,deg:'b3'}],
+            V:  [{t:0,deg:'5',d:6},{t:6,deg:'b7',d:6}],
+            turn: [{t:0,deg:'R'},{t:2,deg:'b7'},{t:4,deg:'6'},{t:6,deg:'b6'},{t:8,deg:'5'},{t:10,deg:'#4'}]
+        },
+        { // Riff G2 — Ползучая хроматика
+            I:  [{t:0,deg:'5'},{t:2,deg:'#4'},{t:4,deg:'6'},{t:6,deg:'b7'},{t:8,deg:'6'},{t:10,deg:'5'}],
+            IV: [{t:0,deg:'4'},{t:2,deg:'b5'},{t:4,deg:'5'},{t:6,deg:'b5'},{t:8,deg:'4'},{t:10,deg:'b3'}],
+            V:  [{t:0,deg:'5'},{t:2,deg:'R'},{t:4,deg:'b7'},{t:6,deg:'5'},{t:8,deg:'R'},{t:10,deg:'5'}],
+            turn: [{t:0,deg:'R'},{t:2,deg:'b7'},{t:4,deg:'6'},{t:6,deg:'b6'},{t:8,deg:'5'},{t:10,deg:'#4'}]
+        },
+        { // Riff G3 — Низкий turn с паузами
+            I:  [{t:0,deg:'R',d:6},{t:6,deg:'b7',d:6}],
+            IV: [{t:0,deg:'R',d:4},{t:4,deg:'4',d:4},{t:8,deg:'b3',d:4}],
+            V:  [{t:0,deg:'5',d:12}],
+            turn: [{t:0,deg:'R'},{t:2,deg:'b7'},{t:4,deg:'6'},{t:6,deg:'b6'},{t:8,deg:'5'},{t:10,deg:'#4'}]
+        }
+    ],
+    dark: [
+        { // Riff K1 — Тяжёлый up‑down
+            I:  [{t:0,deg:'R'},{t:2,deg:'5'},{t:4,deg:'b6'},{t:6,deg:'6'},{t:8,deg:'5'},{t:10,deg:'R'}],
+            IV: [{t:0,deg:'R'},{t:2,deg:'5'},{t:4,deg:'b6'},{t:6,deg:'6'},{t:8,deg:'5'},{t:10,deg:'R'}],
+            V:  [{t:0,deg:'5'},{t:2,deg:'b7'},{t:4,deg:'R'},{t:6,deg:'b7'},{t:8,deg:'5'},{t:10,deg:'R'}],
+            turn: [{t:0,deg:'R'},{t:2,deg:'b7'},{t:4,deg:'6'},{t:6,deg:'b6'},{t:8,deg:'5'},{t:10,deg:'#4'}]
+        },
+        { // Riff K2 — Длинные держания (стон)
+            I:  [{t:0,deg:'b3',d:12}],
+            IV: [{t:0,deg:'11',d:12}],
+            V:  [{t:0,deg:'5',d:6},{t:6,deg:'b7',d:6}],
+            turn: [{t:0,deg:'R',d:6},{t:6,deg:'b7',d:6}]
+        },
+        { // Riff K3 — Тензии к V (b2/b9)
+            I:  [{t:0,deg:'R',d:6},{t:6,deg:'5',d:6}],
+            IV: [{t:0,deg:'11',d:6},{t:6,deg:'9',d:6}],
+            V:  [{t:0,deg:'b2',d:3},{t:3,deg:'R',d:3},{t:6,deg:'b7',d:6}],
+            turn: [{t:0,deg:'2'},{t:2,deg:'b2'},{t:4,deg:'R',d:8}]
+        }
+    ],
+    // Fallbacks for moods not explicitly defined yet
+    epic: [],
+    anxious: [],
 };
 
-// Represents a 1-bar riff pattern.
-type RiffPattern = RiffNote[];
+// Copy 'neutral' riffs to 'contemplative' as they are aliases
+BLUES_BASS_RIFFS.contemplative = BLUES_BASS_RIFFS.contemplative;
 
-// The library of 10 classic blues bass riffs, transcribed from blues_riff.txt.
-// Each riff is an array of 1-bar patterns.
-export const BLUES_BASS_RIFFS: RiffPattern[][] = [
-    // 1) Swamp Drone (2 bars, мрачно-минорный "стон") - Stretched to 2 bars for breathing room
-    [
-        [{ note: 0, tick: 0, dur: 12 }], // Bar 1: Root (long note)
-        [{ note: 0, tick: 0, dur: 3 }, { note: 3, tick: 3, dur: 3 }, { note: 5, tick: 6, dur: 3 }, { note: 6, tick: 9, dur: 3 }] // Bar 2: R-b3-4-b5
-    ],
-    // 2) Boogie Graveyard (stretched to 4 bars)
-    [
-        [{ note: 0, tick: 0, dur: 6 }, { note: 7, tick: 6, dur: 6 }], // Bar 1: R, 5
-        [{ note: 9, tick: 0, dur: 6 }, { note: 10, tick: 6, dur: 6 }],// Bar 2: 6, b7
-        [{ note: 9, tick: 0, dur: 6 }, { note: 7, tick: 6, dur: 6 }], // Bar 3: 6, 5
-        [{ note: 6, tick: 0, dur: 4 }, { note: 5, tick: 4, dur: 4 }, { note: 3, tick: 8, dur: 4 }]  // Bar 4: b5, 4, b3
-    ],
-    // 3) Chromatic Creep (stretched to 4 bars)
-    [
-        [{ note: 7, tick: 0, dur: 6 }, { note: 8, tick: 6, dur: 6 }], // Bar 1: 5, #5
-        [{ note: 9, tick: 0, dur: 6 }, { note: 10, tick: 6, dur: 6 }],// Bar 2: 6, b7
-        [{ note: 9, tick: 0, dur: 6 }, { note: 7, tick: 6, dur: 6 }], // Bar 3: 6, 5
-        [{ note: 5, tick: 0, dur: 4 }, { note: 6, tick: 4, dur: 4 }, { note: 3, tick: 8, dur: 4 }]  // Bar 4: 4, b5, b3
-    ],
-    // 4) Octave Moan (2 такта, октавы и квинты) - Kept as is, already sparse
-    [
-        [{ note: 0, tick: 0, dur: 4 }, { note: 12, tick: 4, dur: 4 }, { note: 7, tick: 8, dur: 4 }], // Bar 1: R, R+8ve, 5
-        [{ note: 12, tick: 0, dur: 4 }, { note: 10, tick: 4, dur: 4 }, { note: 7, tick: 8, dur: 4 }]  // Bar 2: R+8ve, b7, 5
-    ],
-    // 5) Shuffle Hammer (2 bars - simplified from 4)
-    [
-        [{ note: 0, tick: 0, dur: 4 }, { note: 0, tick: 4, dur: 4 }, { note: 7, tick: 8, dur: 4 }], // Bar 1: R, R, 5
-        [{ note: 2, tick: 0, dur: 2 }, { note: 3, tick: 2, dur: 2 }, { note: 4, tick: 4, dur: 2 }, { note: 5, tick: 6, dur: 2 }, { note: 6, tick: 8, dur: 2 }, { note: 7, tick: 10, dur: 2 }] // Bar 2 (turn-around): 2-b3-3-4-#4-5
-    ],
-    // 6) Delta Crawl (2 такта, редкие "тяжёлые" ноты) - Kept as is
-    [
-        [{ note: 0, tick: 0, dur: 6 }, { note: 10, tick: 6, dur: 6 }], // Bar 1: R, b7
-        [{ note: 0, tick: 0, dur: 4 }, { note: 5, tick: 4, dur: 4 }, { note: 3, tick: 8, dur: 4 }] // Bar 2: R, 4, b3
-    ],
-    // 7) Detroit Drive (stretched to 4 bars)
-    [
-        [{ note: 0, tick: 0, dur: 6 }, { note: 7, tick: 6, dur: 6 }], // Bar 1: R, 5
-        [{ note: 9, tick: 0, dur: 6 }, { note: 10, tick: 6, dur: 6 }],// Bar 2: 6, b7
-        [{ note: 9, tick: 0, dur: 6 }, { note: 7, tick: 6, dur: 6 }], // Bar 3: 6, 5
-        [{ note: 5, tick: 0, dur: 6 }, { note: 3, tick: 6, dur: 6 }]  // Bar 4: 4, b3
-    ],
-    // 8) Minor Howl (2 такта, минорный ход с b5 и октавой) - Kept as is
-    [
-        [{ note: 0, tick: 0, dur: 2 }, { note: 3, tick: 2, dur: 2 }, { note: 5, tick: 4, dur: 2 }, { note: 6, tick: 6, dur: 2 }, { note: 7, tick: 8, dur: 2 }, { note: 3, tick: 10, dur: 2 }], // Bar 1: R-b3-4-#4-5-b3
-        [{ note: 0, tick: 0, dur: 2 }, { note: 12, tick: 2, dur: 2 }, { note: 10, tick: 4, dur: 2 }, { note: 7, tick: 6, dur: 2 }, { note: 3, tick: 8, dur: 2 }, { note: 0, tick: 10, dur: 2 }]  // Bar 2: R-R+8ve-b7-5-b3-R
-    ],
-    // 9) Low Turn (1 такт, "низкий" turnaround для 12-го бара)
-    [
-        [{ note: 0, tick: 0, dur: 2 }, { note: 10, tick: 2, dur: 2 }, { note: 9, tick: 4, dur: 2 }, { note: 8, tick: 6, dur: 2 }, { note: 7, tick: 8, dur: 2 }, { note: 6, tick: 10, dur: 2 }] // R-b7-6-b6-5-#4
-    ],
-    // 10) V-Prep Tension (1 такт, "натяжение" к V)
-    [
-        [{ note: 2, tick: 0, dur: 2 }, { note: 3, tick: 2, dur: 2 }, { note: 4, tick: 4, dur: 2 }, { note: 5, tick: 6, dur: 2 }, { note: 6, tick: 8, dur: 2 }, { note: 7, tick: 10, dur: 2 }] // 2-b3-3-4-#4-5
-    ]
-];
+// Copy 'joyful' to 'epic' as a starting point
+BLUES_BASS_RIFFS.epic = BLUES_BASS_RIFFS.joyful;
+
+// Copy 'dark' to 'anxious' as a starting point
+BLUES_BASS_RIFFS.anxious = BLUES_BASS_RIFFS.dark;
+
+    

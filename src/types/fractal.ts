@@ -24,6 +24,10 @@ export type Technique =
   | 'harmonic' // флажолет
   | 'fill'     // басовый проигрыш (сбивка)
   | 'swell'    // медленное нарастание, как пэд
+  | 'riff'     // Исполнение специфического риффа
+  | 'long_notes' // Длинные, протяжные ноты
+  | 'boogie'   // Классический буги-вуги паттерн
+  | 'walking'  // Шагающий бас
   // Ударные
   | 'hit'
   // Гитара
@@ -35,7 +39,8 @@ export type Technique =
   | 'portamento'
   | 'glissando'
   | 'glide'
-  | 'pulse';    
+  | 'pulse'
+  | 'syncopated';    
 
 /**
  * Динамика (громкость)
@@ -238,26 +243,42 @@ export type GhostChord = {
 };
 
 
-// --- BLUES SOLO TYPES ---
+// --- BLUES TYPES ---
 export type BluesRiffDegree = 'R' | '2' | 'b2' | 'b3' | '3' | '4' | '#4' | 'b5' | '5' | 'b6' | '6' | 'b7' | '9' | '11' | 'R+8';
 
-export type BluesRiffEvent = {
+export type BluesRiffNote = {
+  t: number;      // tick (0-11 for 12/8 time)
+  deg: BluesRiffDegree;
+  d?: number;     // duration in ticks (optional, default 2)
+};
+
+export type BluesRiffPattern = BluesRiffNote[];
+
+export type BluesBassRiff = {
+    I: BluesRiffPattern;
+    IV: BluesRiffPattern;
+    V: BluesRiffPattern;
+    turn: BluesRiffPattern;
+};
+
+
+export type BluesMelodyPhrase = {
   t: number; // tick (0-11 for 12/8 time)
   d: number; // duration in ticks
   deg: BluesRiffDegree;
   vel?: number;
-};
-
-export type BluesMelodyPhrase = BluesRiffEvent[];
+}[];
 
 export type BluesMelody = {
   id: string;
-  moods: ('joyful' | 'neutral' | 'enthusiastic' | 'dreamy' | 'calm' | 'melancholic' | 'gloomy' | 'dark')[];
+  moods: Mood[];
   type: 'major' | 'minor';
-  tags: string[]; // Rhythmic tags like 'shuffle', 'slow-burn', 'boogie'
-  progression: ('I' | 'IV' | 'V' | 'i' | 'iv' | 'bVI')[]; // Placeholder
+  tags: string[];
+  progression: string[]; // Placeholder
   phraseI: BluesMelodyPhrase;
   phraseIV: BluesMelodyPhrase;
   phraseV: BluesMelodyPhrase;
   phraseTurnaround: BluesMelodyPhrase;
 };
+
+    
