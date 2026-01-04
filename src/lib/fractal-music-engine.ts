@@ -1,6 +1,6 @@
 
 
-import type { FractalEvent, Mood, Genre, Technique, BassSynthParams, InstrumentType, MelodyInstrument, AccompanimentInstrument, ResonanceMatrix, InstrumentHints, AccompanimentTechnique, GhostChord, SfxRule, V1MelodyInstrument, V2MelodyInstrument, BlueprintPart, InstrumentationRules, InstrumentBehaviorRules, BluesMelody, BluesBassRiff, BluesRiffDegree, BluesRiffNote, BluesRiffPattern, BluesMelodyPhrase } from './fractal';
+import type { FractalEvent, Mood, Genre, Technique, BassSynthParams, InstrumentType, MelodyInstrument, AccompanimentInstrument, ResonanceMatrix, InstrumentHints, AccompanimentTechnique, GhostChord, SfxRule, V1MelodyInstrument, V2MelodyInstrument, BlueprintPart, InstrumentationRules, InstrumentBehaviorRules, BluesMelody } from './fractal';
 import { ElectronicK, TraditionalK, AmbientK, MelancholicMinorK } from './resonance-matrices';
 import { getScaleForMood, STYLE_DRUM_PATTERNS, createAccompanimentAxiom, PERCUSSION_SETS, TEXTURE_INSTRUMENT_WEIGHTS_BY_MOOD, getAccompanimentTechnique, createBassFill, createDrumFill, AMBIENT_ACCOMPANIMENT_WEIGHTS, chooseHarmonyInstrument, mutateBassPhrase, createMelodyMotif, createDrumAxiom, generateGhostHarmonyTrack, mutateAccompanimentPhrase, createAmbientBassAxiom, createHarmonyAxiom } from './music-theory';
 import { BlueprintNavigator, type NavigationInfo } from './blueprint-navigator';
@@ -9,7 +9,7 @@ import { V2_PRESETS } from './presets-v2';
 import { PARANOID_STYLE_RIFF } from './assets/rock-riffs';
 import { BLUES_BASS_RIFFS } from './assets/blues-bass-riffs';
 import { NEUTRAL_BLUES_BASS_RIFFS } from './assets/neutral-blues-riffs';
-import { BLUES_MELODY_RIFFS } from './assets/blues-melody-riffs';
+import { BLUES_MELODY_RIFFS, type BluesRiffDegree, type BluesRiffEvent, type BluesMelodyPhrase } from './assets/blues-melody-riffs';
 import { BLUES_DRUM_RIFFS } from './assets/blues-drum-riffs';
 
 
@@ -497,16 +497,7 @@ export class FractalMusicEngine {
         const step = (root - rootI + 12) % 12;
         const isTurnaround = (this.epoch % 12) === 11;
         
-        let pattern: BluesRiffPattern;
-        if (isTurnaround) {
-            pattern = riffTemplate.turn;
-        } else if (step === 5) { // IV
-            pattern = riffTemplate.IV;
-        } else if (step === 7) { // V
-            pattern = riffTemplate.V;
-        } else { // I
-            pattern = riffTemplate.I;
-        }
+        let pattern = riffTemplate.I;
         
         // console.log(`[BluesBass] Selected riff for bar ${this.epoch % 12}, mood ${mood}.`);
 
@@ -712,14 +703,21 @@ export class FractalMusicEngine {
 
       if (!isFinite(barDuration)) return { events: [], instrumentHints: {} };
       
+      // #ИСПРАВЛЕНО: Добавлен вызов chooseHarmonyInstrument для определения инструмента гармонии.
+      const navInfo = this.navigator.tick(this.epoch);
+      const harmonyRules = navInfo?.currentPart.instrumentation?.harmony;
+      const chosenHarmonyInstrument = harmonyRules ? chooseHarmonyInstrument(harmonyRules, this.random) : 'piano';
+
       const instrumentHints: InstrumentHints = {
           accompaniment: this._chooseInstrumentForPart('accompaniment', this.navigator.tick(this.epoch)),
           melody: this._chooseInstrumentForPart('melody', this.navigator.tick(this.epoch)),
+          harmony: chosenHarmonyInstrument,
       };
       
       const navigationInfo = this.navigator.tick(this.epoch, instrumentHints.melody);
       
       if (navigationInfo?.logMessage) {
+        // #ИСПРАВЛЕНО: Восстановлен вывод логов навигатора.
         console.log(navigationInfo.logMessage, 'color: #DA70D6');
       }
 

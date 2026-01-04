@@ -1,6 +1,6 @@
 
 
-import type { FractalEvent, Mood, Genre, Technique, BassSynthParams, InstrumentType, AccompanimentInstrument, InstrumentHints, AccompanimentTechnique, GhostChord, SfxRule, V1MelodyInstrument, V2MelodyInstrument, BlueprintPart, InstrumentationRules, InstrumentBehaviorRules } from './fractal';
+import type { FractalEvent, Mood, Genre, Technique, BassSynthParams, InstrumentType, AccompanimentInstrument, InstrumentHints, AccompanimentTechnique, GhostChord, SfxRule, V1MelodyInstrument, V2MelodyInstrument, BlueprintPart, InstrumentationRules, InstrumentBehaviorRules, BluesMelody } from './fractal';
 import { ElectronicK, TraditionalK, AmbientK, MelancholicMinorK } from './resonance-matrices';
 import { BlueprintNavigator, type NavigationInfo } from './blueprint-navigator';
 import { getBlueprint } from './blueprints';
@@ -8,7 +8,8 @@ import { V2_PRESETS } from './presets-v2';
 import { PARANOID_STYLE_RIFF } from './assets/rock-riffs';
 import { BLUES_BASS_RIFFS } from './assets/blues-bass-riffs';
 import { NEUTRAL_BLUES_BASS_RIFFS } from './assets/neutral-blues-riffs';
-import { BLUES_MELODY_RIFFS, type BluesRiffDegree, type BluesRiffEvent, type BluesMelodyPhrase, type BluesMelody } from './assets/blues-melody-riffs';
+import { BLUES_MELODY_RIFFS, type BluesRiffDegree, type BluesRiffEvent, type BluesMelodyPhrase } from './assets/blues-melody-riffs';
+import { BLUES_DRUM_RIFFS } from './assets/blues-drum-riffs';
 
 
 export type Branch = {
@@ -299,35 +300,37 @@ export function generateBluesBassRiff(chord: GhostChord, technique: Technique, r
     const phrase: FractalEvent[] = [];
     const root = chord.rootNote;
     const barDurationInBeats = 4.0;
-    const ticksPerBeat = 3; // 12/8 time feel
+    const ticksPerBeat = 3;
+    const DEGREE_TO_SEMITONE: Record<BluesRiffDegree, number> = { 'R': 0, 'b2': 1, '2': 2, 'b3': 3, '3': 4, '4': 5, '#4': 6, 'b5': 6, '5': 7, 'b6': 8, '6': 9, 'b7': 10, '9': 14, '11': 17, 'R+8': 12 };
 
-    const riffLibrary = (mood === 'contemplative' || mood === 'calm' || mood === 'dreamy') ? NEUTRAL_BLUES_BASS_RIFFS : BLUES_BASS_RIFFS;
-    const libraryName = (mood === 'contemplative' || mood === 'calm' || mood === 'dreamy') ? 'NEUTRAL' : 'DARK';
-
-    console.log(`%c[BluesBass] Generating riff for ${chord.rootNote} from ${libraryName} library.`, 'color: #4682B4');
-
-    const riffIndex = random.nextInt(riffLibrary.length);
-    const selectedRiff = riffLibrary[riffIndex];
-    console.log(`[BluesBass] Selected Riff #${riffIndex + 1} from ${libraryName} library.`);
-
-    let barOffset = 0;
-    for (const barPattern of selectedRiff) {
-        for (const riffNote of barPattern) {
-            phrase.push({
-                type: 'bass',
-                note: root + riffNote.note,
-                time: barOffset + (riffNote.tick / ticksPerBeat),
-                duration: riffNote.dur / ticksPerBeat,
-                weight: 0.85 + random.next() * 0.1,
-                technique: 'pluck',
-                dynamics: 'mf',
-                phrasing: 'legato',
-                params: { cutoff: 800, resonance: 0.7, distortion: 0.15, portamento: 0.0 }
-            });
-        }
-        barOffset += barDurationInBeats;
+    const moodRiffs = BLUES_BASS_RIFFS[mood];
+    if (!moodRiffs || moodRiffs.length === 0) {
+        console.warn(`[BluesBass] No bass riffs found for mood: ${mood}.`);
+        return [];
     }
+    
+    const riffTemplate = moodRiffs[random.nextInt(moodRiffs.length)];
 
+    // Определяем ступень аккорда
+    const rootI = 0; // Simplified
+    const step = (root - rootI + 12) % 12;
+    const isTurnaround = false; // Simplified
+    
+    let pattern = riffTemplate.I; // Simplified to always use 'I' for now
+
+    for (const riffNote of pattern) {
+        phrase.push({
+            type: 'bass',
+            note: root + DEGREE_TO_SEMITONE[riffNote.deg],
+            time: riffNote.t / ticksPerBeat,
+            duration: (riffNote.d || 2) / ticksPerBeat,
+            weight: 0.85 + random.next() * 0.1,
+            technique: 'pluck',
+            dynamics: 'mf',
+            phrasing: 'legato',
+            params: { cutoff: 800, resonance: 0.7, distortion: 0.15, portamento: 0.0 }
+        });
+    }
     return phrase;
 }
 
@@ -818,27 +821,38 @@ export function createDrumFill(random: { next: () => number, nextInt: (max: numb
     return fill;
 }
 
-export function chooseHarmonyInstrument(mood: Mood, random: { next: () => number }): NonNullable<InstrumentHints['harmony']> {
-    const weights: { instrument: NonNullable<InstrumentHints['harmony']>, weight: number }[] = [
-        { instrument: 'guitarChords', weight: 0.6 },
-        { instrument: 'piano', weight: 0.1 },
-        { instrument: 'acousticGuitarSolo', weight: 0.1 },
-        { instrument: 'flute', weight: 0.1 },
-        { instrument: 'violin', weight: 0.1 },
-    ];
+export function chooseHarmonyInstrument(rules: InstrumentationRules<'piano' | 'guitarChords' | 'acousticGuitarSolo' | 'flute' | 'violin'>, random: { next: () => number }): NonNullable<InstrumentHints['harmony']> {
+    // #ЗАЧЕМ: Эта функция инкапсулирует логику выбора инструмента для гармонии.
+    // #ЧТО: Она принимает правила из блюпринта и, используя взвешенный случайный выбор,
+    //      возвращает название инструмента ('guitarChords', 'violin' и т.д.).
+    // #СВЯЗИ: Вызывается из FractalMusicEngine, чтобы определить, какой инструмент
+    //          будет играть гармоническую партию в данном такте.
+
+    const options = rules.options;
+    if (!options || options.length === 0) {
+        console.warn('[chooseHarmonyInstrument] No options provided, defaulting to guitarChords.');
+        return 'guitarChords'; // Fallback
+    }
     
-    const totalWeight = weights.reduce((sum, item) => sum + item.weight, 0);
+    const totalWeight = options.reduce((sum, item) => sum + item.weight, 0);
+    if (totalWeight <= 0) {
+         console.warn('[chooseHarmonyInstrument] Total weight is zero, returning first option.');
+        return options[0].name;
+    }
+
     let rand = random.next() * totalWeight;
 
-    for (const item of weights) {
+    for (const item of options) {
         rand -= item.weight;
         if (rand <= 0) {
-            return item.instrument;
+            return item.name;
         }
     }
 
-    return 'guitarChords'; // Fallback
+    // Fallback just in case, though it should not be reached with correct weights
+    return options[options.length - 1].name;
 }
+
 
 export function generateGhostHarmonyTrack(totalBars: number, mood: Mood, key: number, random: { next: () => number; nextInt: (max: number) => number; }, genre: Genre): GhostChord[] {
     console.log(`[Harmony] Generating Ghost Harmony for ${totalBars} bars in key ${key}, genre ${genre}.`);
@@ -1068,6 +1082,10 @@ export function generateBluesMelodyChorus(chorusChords: GhostChord[], mood: Mood
     const chorusEvents: FractalEvent[] = [];
     
     const suitableMelodies = BLUES_MELODY_RIFFS.filter(m => m.moods.includes(mood));
+    if (suitableMelodies.length === 0) {
+        console.warn(`[BluesMelodyChorus] No suitable melodies found for mood: ${mood}. Falling back to all.`);
+        suitableMelodies.push(...BLUES_MELODY_RIFFS);
+    }
     const selectedMelody = suitableMelodies[random.nextInt(suitableMelodies.length)] || BLUES_MELODY_RIFFS[0];
     
     const barDurationInBeats = 4;
@@ -1078,14 +1096,19 @@ export function generateBluesMelodyChorus(chorusChords: GhostChord[], mood: Mood
     if (registerHint === 'high') octaveShift = 12 * 4;
 
     for (let barIndex = 0; barIndex < 12; barIndex++) {
-        const barChord = chorusChords.find(c => c.bar % 12 === barIndex);
-        if (!barChord) continue;
+        const absoluteBar = (chorusChords[0]?.bar ?? 0) + barIndex;
+        const barChord = chorusChords.find(c => absoluteBar >= c.bar && absoluteBar < (c.bar + c.durationBars));
+
+        if (!barChord) {
+            console.warn(`[BluesMelodyChorus] No chord found for bar ${barIndex} (absolute: ${absoluteBar}).`);
+            continue;
+        };
 
         const chordRoot = barChord.rootNote;
         let phrase: BluesMelodyPhrase;
 
         // Simplified step detection for I, IV, V
-        const rootI = chorusChords[0].rootNote;
+        const rootI = chorusChords.find(c=>c.bar % 12 === 0)?.rootNote || chordRoot;
         const step = (chordRoot - rootI + 12) % 12;
         const IV_STEP = 5;
         const V_STEP = 7;
@@ -1223,4 +1246,3 @@ export function createMelodyMotif(chord: GhostChord, mood: Mood, random: { next:
     console.log(`%c[MelodyAxiom] New 4-bar motif generated. Rhythm: [${durations.join(', ')}]`, 'color: #DA70D6');
     return motif;
 }
-
