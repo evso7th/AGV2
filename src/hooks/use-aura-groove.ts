@@ -1,4 +1,5 @@
 
+
 'use client';
 
 import { useState, useEffect, useCallback, useRef } from "react";
@@ -225,15 +226,33 @@ export const useAuraGroove = (): AuraGrooveProps => {
   }, [isInitialized, isPlaying, setEngineIsPlaying]);
 
   const handleRegenerate = useCallback(() => {
-    setIsRegenerating(true);
-    // #ИЗМЕНЕНО: Удалена логика с setInitialSeed. Теперь воркер сам генерирует seed.
-    setTimeout(() => setIsRegenerating(false), 500); 
+      // #ЗАЧЕМ: Обеспечивает правильную последовательность остановки и регенерации.
+      // #ЧТО: Сначала устанавливает флаг `isRegenerating` для UI. Затем, если музыка играет,
+      //      вызывает `setEngineIsPlaying(false)`, что гарантирует полную остановку
+      //      всех звуков. Если музыка уже остановлена, сразу вызывает `resetWorker`.
+      // #СВЯЗИ: Предотвращает состояние гонки, когда `resetWorker` вызывался до
+      //         полной остановки аудио, что приводило к "каше" из звуков.
+      setIsRegenerating(true);
+      setTimeout(() => setIsRegenerating(false), 500); 
 
-    if (isPlaying) {
-      setEngineIsPlaying(false);
-    }
-    resetWorker();
+      if (isPlaying) {
+        setEngineIsPlaying(false);
+        // useEffect ниже поймает изменение isPlaying и вызовет resetWorker
+      } else {
+        resetWorker();
+      }
   }, [isPlaying, setEngineIsPlaying, resetWorker]);
+  
+  // #ЗАЧЕМ: Этот useEffect является второй частью `handleRegenerate`.
+  // #ЧТО: Он следит за состоянием `isPlaying`. Как только `isPlaying` становится `false`
+  //      после вызова `handleRegenerate`, он инициирует сброс воркера.
+  // #СВЯЗИ: Гарантирует, что `resetWorker` вызывается только ПОСЛЕ того, как
+  //         `AudioEngineContext` подтвердил полную остановку музыки.
+  useEffect(() => {
+    if (!isPlaying && isRegenerating) {
+        resetWorker();
+    }
+  }, [isPlaying, isRegenerating, resetWorker]);
 
 
   const handleInstrumentChange = (part: keyof InstrumentSettings, name: BassInstrument | MelodyInstrument | AccompanimentInstrument | keyof typeof V2_PRESETS) => {
@@ -362,5 +381,3 @@ export const useAuraGroove = (): AuraGrooveProps => {
     setIntroBars,
   };
 };
-
-    
