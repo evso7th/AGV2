@@ -99,13 +99,22 @@ export class FractalMusicEngine {
 
   private bluesChorusCache: { barStart: number, events: FractalEvent[], log: string } | null = null;
 
+  // #ИЗМЕНЕНО: Индексы риффов удалены из свойств класса,
+  //            чтобы они не сохранялись между сюитами.
+  // private bluesDrumRiffIndex: number; 
+  // private bluesBassRiffIndex: number;
+  private bluesDrumRiffIndex: number = 0;
+  private bluesBassRiffIndex: number = 0;
+
 
   constructor(config: EngineConfig) {
     this.config = { ...config };
     this.random = seededRandom(config.seed);
     this.nextWeatherEventEpoch = 0;
 
-    // Инициализация отложена до асинхронной загрузки блюпринта в updateConfig/initialize
+    // #ИЗМЕНЕНО: Инициализация риффов перенесена в метод initialize().
+    // this.bluesDrumRiffIndex = this.random.nextInt(BLUES_DRUM_RIFFS[this.config.mood]?.length ?? 1);
+    // this.bluesBassRiffIndex = this.random.nextInt(BLUES_BASS_RIFFS[this.config.mood]?.length ?? 1);
   }
 
   public get tempo(): number { return this.config.tempo; }
@@ -226,6 +235,11 @@ export class FractalMusicEngine {
     this.nextAccompanimentDelay = this.random.next() * 7 + 5;
     this.hasBassBeenMutated = false;
     this.bluesChorusCache = null;
+
+    // #ИЗМЕНЕНО: Логика выбора риффов перенесена сюда из конструктора.
+    //            Это гарантирует, что для каждой новой сюиты будут выбраны новые риффы.
+    this.bluesDrumRiffIndex = this.random.nextInt(BLUES_DRUM_RIFFS[this.config.mood]?.length ?? 1);
+    this.bluesBassRiffIndex = this.random.nextInt(BLUES_BASS_RIFFS[this.config.mood]?.length ?? 1);
 
     const blueprint = await getBlueprint(this.config.genre, this.config.mood);
     console.log(`[FME] Blueprint now active: ${blueprint.name}`);
@@ -357,7 +371,7 @@ export class FractalMusicEngine {
              return [];
         }
         
-        const pattern = moodRiffs[this.random.nextInt(moodRiffs.length)];
+        const pattern = moodRiffs[this.bluesDrumRiffIndex];
         let events: FractalEvent[] = [];
         const ticksPerBeat = 3;
 
@@ -491,7 +505,7 @@ export class FractalMusicEngine {
             return [];
         }
         
-        const riffTemplate = moodRiffs[random.nextInt(moodRiffs.length)];
+        const riffTemplate = moodRiffs[this.bluesBassRiffIndex];
 
         // Определяем ступень аккорда
         const rootI = 0; // Simplified
@@ -573,36 +587,18 @@ export class FractalMusicEngine {
       }
     }
 
-    // --- ИСПРАВЛЕНИЕ: Логика дублирования и повышения октавы разделена ---
-    // #ЗАЧЕМ: Этот блок решает проблему, когда дублирующая гитара наследовала уже повышенную на октаву басовую партию.
-    // #ЧТО: Сначала создается дублирующая партия из ОРИГИНАЛЬНЫХ басовых нот. 
-    //      И только ПОСЛЕ этого сама басовая партия повышается на октаву, если это необходимо.
-    // #СВЯЗИ: Устраняет "визг" гитары, сохраняя при этом читаемость баса.
-    
-    // Шаг 1: Создаем дублирующую партию из оригинального баса (если нужно).
     if (navInfo.currentPart.bassAccompanimentDouble?.enabled) {
         const { instrument, octaveShift } = navInfo.currentPart.bassAccompanimentDouble;
         const bassDoubleEvents: FractalEvent[] = bassEvents.map(e => ({
             ...e,
-            type: 'melody', // Важно: тип меняется на 'melody'
+            type: 'melody',
             note: e.note + (12 * octaveShift),
             weight: e.weight * 0.8,
         }));
         allEvents.push(...bassDoubleEvents);
-        instrumentHints.melody = instrument; // Назначаем правильный инструмент
+        instrumentHints.melody = instrument; 
     }
-
-    // Шаг 2: Теперь повышаем октаву для самой басовой партии (если нужно).
-    const octaveShiftRule = navInfo.currentPart.instrumentRules?.bass?.presetModifiers?.octaveShift;
-    if (octaveShiftRule && bassEvents.length > 0) {
-        const TARGET_BASS_OCTAVE_MIN_MIDI = 36;
-        bassEvents.forEach(event => {
-            if (event.note < TARGET_BASS_OCTAVE_MIN_MIDI) {
-                event.note += 12 * octaveShiftRule;
-            }
-        });
-    }
-
+    
     let melodyEvents: FractalEvent[] = [];
     const melodyRules = navInfo.currentPart.instrumentRules?.melody;
 
