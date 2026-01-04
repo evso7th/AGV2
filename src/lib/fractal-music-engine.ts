@@ -433,6 +433,7 @@ export class FractalMusicEngine {
   public generateBluesMelodyChorus(chorusChords: GhostChord[], mood: Mood, random: { next: () => number, nextInt: (max: number) => number }, registerHint?: 'low' | 'mid' | 'high'): { events: FractalEvent[], log: string } {
     const baseEvents: FractalEvent[] = [];
     
+    // #ИСПРАВЛЕНО: Возвращена логика случайного выбора риффа.
     const suitableMelodies = BLUES_MELODY_RIFFS.filter(m => m.moods.includes(mood));
     if (suitableMelodies.length === 0) {
       console.warn(`[BluesMelodyChorus] No suitable melodies found for mood: ${mood}. Falling back to all.`);
@@ -516,6 +517,7 @@ export class FractalMusicEngine {
 
     const log = `Using riff: "${selectedMelody.id}". Mutation: "${mutationLog}". Register: ${registerHint || 'default'}`;
     
+    // #ИСПРАВЛЕНО: Возвращаем мутированные события, а не базовые.
     return { events: mutatedEvents, log };
   }
 
@@ -575,8 +577,10 @@ export class FractalMusicEngine {
     }
     
     // --- ПРАВИЛЬНАЯ ЛОГИКА ДУБЛИРОВАНИЯ И СДВИГА (ПЛАН 708) ---
+    // #ИСПРАВЛЕНО: Сначала создаем дубль, потом меняем оригинал.
     if (navInfo.currentPart.bassAccompanimentDouble?.enabled && bassEvents.length > 0) {
         const { instrument, octaveShift } = navInfo.currentPart.bassAccompanimentDouble;
+        // 1. Создаем дубль из *оригинальных* басовых нот.
         const bassDoubleEvents: FractalEvent[] = bassEvents.map(e => ({
             ...JSON.parse(JSON.stringify(e)),
             type: 'melody',
@@ -587,6 +591,7 @@ export class FractalMusicEngine {
         instrumentHints.melody = instrument; 
     }
     
+    // 2. Теперь, *после* создания дубля, применяем сдвиг к басу.
     const bassOctaveShift = navInfo.currentPart.instrumentRules?.bass?.presetModifiers?.octaveShift;
     if (bassOctaveShift && bassEvents.length > 0) {
         const TARGET_BASS_OCTAVE_MIN_MIDI = 36;
