@@ -24,9 +24,9 @@ export const EpicBluesBlueprint: MusicBlueprint = {
                     harmony: {
                         strategy: 'weighted',
                         options: [
-                            { name: 'guitarChords', weight: 0.7 },
-                            { name: 'violin', weight: 0.2 },
-                            { name: 'flute', weight: 0.1 }
+                            { name: 'guitarChords', weight: 0.5 },
+                            { name: 'violin', weight: 0.25 },
+                            { name: 'flute', weight: 0.25 }
                         ]
                     }
                 },
@@ -51,9 +51,9 @@ export const EpicBluesBlueprint: MusicBlueprint = {
                     harmony: {
                         strategy: 'weighted',
                         options: [
-                            { name: 'guitarChords', weight: 0.6 },
-                            { name: 'violin', weight: 0.3 },
-                            { name: 'flute', weight: 0.1 }
+                            { name: 'guitarChords', weight: 0.5 },
+                            { name: 'violin', weight: 0.25 },
+                            { name: 'flute', weight: 0.25 }
                         ]
                     }
                 },
@@ -78,7 +78,8 @@ export const EpicBluesBlueprint: MusicBlueprint = {
                         strategy: 'weighted',
                         options: [
                             { name: 'guitarChords', weight: 0.5 },
-                            { name: 'violin', weight: 0.5 }
+                            { name: 'violin', weight: 0.25 },
+                            { name: 'flute', weight: 0.25 }
                         ]
                     }
                 },
@@ -106,8 +107,9 @@ export const EpicBluesBlueprint: MusicBlueprint = {
                     harmony: {
                         strategy: 'weighted',
                         options: [
-                            { name: 'guitarChords', weight: 0.8 },
-                            { name: 'violin', weight: 0.2 }
+                            { name: 'guitarChords', weight: 0.5 },
+                            { name: 'violin', weight: 0.25 },
+                            { name: 'flute', weight: 0.25 }
                         ]
                     }
                 },
