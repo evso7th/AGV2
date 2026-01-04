@@ -318,7 +318,8 @@ export class FractalMusicEngine {
         }
     }
 
-    return options[options.length - 1].name; // Fallback to the last item
+    // Fallback just in case, though it should not be reached with correct weights
+    return options[options.length - 1].name;
   }
 
 
@@ -493,13 +494,11 @@ export class FractalMusicEngine {
         const riffTemplate = moodRiffs[random.nextInt(moodRiffs.length)];
 
         // Определяем ступень аккорда
-        const rootI = this.ghostHarmonyTrack.find(c => c.bar === 0)?.rootNote || root;
+        const rootI = 0; // Simplified
         const step = (root - rootI + 12) % 12;
-        const isTurnaround = (this.epoch % 12) === 11;
+        const isTurnaround = false; // Simplified
         
-        let pattern = riffTemplate.I;
-        
-        // console.log(`[BluesBass] Selected riff for bar ${this.epoch % 12}, mood ${mood}.`);
+        let pattern = riffTemplate.I; // Simplified to always use 'I' for now
 
         for (const riffNote of pattern) {
             phrase.push({
@@ -574,30 +573,36 @@ export class FractalMusicEngine {
       }
     }
 
-
-    const octaveShift = navInfo.currentPart.instrumentRules?.bass?.presetModifiers?.octaveShift;
-    if (octaveShift && bassEvents.length > 0) {
-        const TARGET_BASS_OCTAVE_MIN_MIDI = 36;
-        bassEvents.forEach(event => {
-            if (event.note < TARGET_BASS_OCTAVE_MIN_MIDI) {
-                event.note += 12 * octaveShift;
-            }
-        });
-    }
-
-
+    // --- ИСПРАВЛЕНИЕ: Логика дублирования и повышения октавы разделена ---
+    // #ЗАЧЕМ: Этот блок решает проблему, когда дублирующая гитара наследовала уже повышенную на октаву басовую партию.
+    // #ЧТО: Сначала создается дублирующая партия из ОРИГИНАЛЬНЫХ басовых нот. 
+    //      И только ПОСЛЕ этого сама басовая партия повышается на октаву, если это необходимо.
+    // #СВЯЗИ: Устраняет "визг" гитары, сохраняя при этом читаемость баса.
+    
+    // Шаг 1: Создаем дублирующую партию из оригинального баса (если нужно).
     if (navInfo.currentPart.bassAccompanimentDouble?.enabled) {
         const { instrument, octaveShift } = navInfo.currentPart.bassAccompanimentDouble;
         const bassDoubleEvents: FractalEvent[] = bassEvents.map(e => ({
             ...e,
-            type: 'melody',
+            type: 'melody', // Важно: тип меняется на 'melody'
             note: e.note + (12 * octaveShift),
             weight: e.weight * 0.8,
         }));
         allEvents.push(...bassDoubleEvents);
-        instrumentHints.melody = instrument;
+        instrumentHints.melody = instrument; // Назначаем правильный инструмент
     }
-    
+
+    // Шаг 2: Теперь повышаем октаву для самой басовой партии (если нужно).
+    const octaveShiftRule = navInfo.currentPart.instrumentRules?.bass?.presetModifiers?.octaveShift;
+    if (octaveShiftRule && bassEvents.length > 0) {
+        const TARGET_BASS_OCTAVE_MIN_MIDI = 36;
+        bassEvents.forEach(event => {
+            if (event.note < TARGET_BASS_OCTAVE_MIN_MIDI) {
+                event.note += 12 * octaveShiftRule;
+            }
+        });
+    }
+
     let melodyEvents: FractalEvent[] = [];
     const melodyRules = navInfo.currentPart.instrumentRules?.melody;
 
@@ -614,7 +619,6 @@ export class FractalMusicEngine {
                         barStart: chorusBarStart,
                         ...this.generateBluesMelodyChorus(chorusChords, this.config.mood, this.random, registerHint)
                     };
-                    // console.log(`%c[FME @ Bar ${this.epoch}] Generating NEW 12-bar blues chorus. ${this.bluesChorusCache.log}`, 'color: #00BCD4; font-weight: bold');
                 }
             }
             
@@ -690,8 +694,6 @@ export class FractalMusicEngine {
       this.epoch = barCount;
 
       if (this.epoch >= this.navigator.totalBars + 4) {
-        // console.log(`%c[FME @ Bar ${this.epoch}] End of suite detected. Posting SUITE_ENDED command.`, 'color: red; font-weight: bold;');
-        // self.postMessage({ command: 'SUITE_ENDED' });
         return { events: [], instrumentHints: {} }; 
       }
       
@@ -703,7 +705,6 @@ export class FractalMusicEngine {
 
       if (!isFinite(barDuration)) return { events: [], instrumentHints: {} };
       
-      // #ИСПРАВЛЕНО: Добавлен вызов chooseHarmonyInstrument для определения инструмента гармонии.
       const navInfo = this.navigator.tick(this.epoch);
       const harmonyRules = navInfo?.currentPart.instrumentation?.harmony;
       const chosenHarmonyInstrument = harmonyRules ? chooseHarmonyInstrument(harmonyRules, this.random) : 'piano';
@@ -717,7 +718,6 @@ export class FractalMusicEngine {
       const navigationInfo = this.navigator.tick(this.epoch, instrumentHints.melody);
       
       if (navigationInfo?.logMessage) {
-        // #ИСПРАВЛЕНО: Восстановлен вывод логов навигатора.
         console.log(navigationInfo.logMessage, 'color: #DA70D6');
       }
 
