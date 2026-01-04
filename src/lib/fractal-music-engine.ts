@@ -2,12 +2,13 @@
 
 import type { FractalEvent, Mood, Genre, Technique, BassSynthParams, InstrumentType, MelodyInstrument, AccompanimentInstrument, ResonanceMatrix, InstrumentHints, AccompanimentTechnique, GhostChord, SfxRule, V1MelodyInstrument, V2MelodyInstrument, BlueprintPart, InstrumentationRules, InstrumentBehaviorRules, BluesMelody, BluesBassRiff, BluesRiffDegree, BluesRiffNote, BluesRiffPattern, BluesMelodyPhrase } from './fractal';
 import { ElectronicK, TraditionalK, AmbientK, MelancholicMinorK } from './resonance-matrices';
-import { getScaleForMood, STYLE_DRUM_PATTERNS, createAccompanimentAxiom, PERCUSSION_SETS, TEXTURE_INSTRUMENT_WEIGHTS_BY_MOOD, getAccompanimentTechnique, createBassFill, createDrumFill, AMBIENT_ACCOMPANIMENT_WEIGHTS, chooseHarmonyInstrument, mutateBassPhrase, createMelodyMotif, createDrumAxiom, generateGhostHarmonyTrack, mutateAccompanimentPhrase, createAmbientBassAxiom } from './music-theory';
+import { getScaleForMood, STYLE_DRUM_PATTERNS, createAccompanimentAxiom, PERCUSSION_SETS, TEXTURE_INSTRUMENT_WEIGHTS_BY_MOOD, getAccompanimentTechnique, createBassFill, createDrumFill, AMBIENT_ACCOMPANIMENT_WEIGHTS, chooseHarmonyInstrument, mutateBassPhrase, createMelodyMotif, createDrumAxiom, generateGhostHarmonyTrack, mutateAccompanimentPhrase, createAmbientBassAxiom, createHarmonyAxiom } from './music-theory';
 import { BlueprintNavigator, type NavigationInfo } from './blueprint-navigator';
 import { getBlueprint } from './blueprints';
 import { V2_PRESETS } from './presets-v2';
 import { PARANOID_STYLE_RIFF } from './assets/rock-riffs';
 import { BLUES_BASS_RIFFS } from './assets/blues-bass-riffs';
+import { NEUTRAL_BLUES_BASS_RIFFS } from './assets/neutral-blues-riffs';
 import { BLUES_MELODY_RIFFS } from './assets/blues-melody-riffs';
 import { BLUES_DRUM_RIFFS } from './assets/blues-drum-riffs';
 
@@ -109,7 +110,7 @@ export class FractalMusicEngine {
 
   public get tempo(): number { return this.config.tempo; }
   
-  private generateBluesMelodyChorus(chorusChords: GhostChord[], mood: Mood, random: { next: () => number, nextInt: (max: number) => number }, registerHint?: 'low' | 'mid' | 'high'): { events: FractalEvent[], log: string } {
+  public generateBluesMelodyChorus(chorusChords: GhostChord[], mood: Mood, random: { next: () => number, nextInt: (max: number) => number }, registerHint?: 'low' | 'mid' | 'high'): { events: FractalEvent[], log: string } {
     const chorusEvents: FractalEvent[] = [];
     
     // 1. Фильтруем риффы по настроению и тегам (если нужно)
@@ -131,6 +132,7 @@ export class FractalMusicEngine {
 
     for (let barIndex = 0; barIndex < 12; barIndex++) {
         const absoluteBar = (chorusChords[0]?.bar ?? 0) + barIndex;
+        // #ИСПРАВЛЕНО: Логика поиска аккорда теперь использует диапазон, а не точное совпадение
         const barChord = chorusChords.find(c => absoluteBar >= c.bar && absoluteBar < (c.bar + c.durationBars));
 
         if (!barChord) {
@@ -141,7 +143,8 @@ export class FractalMusicEngine {
         const chordRoot = barChord.rootNote;
         let phrase: BluesMelodyPhrase;
 
-        const rootI = chorusChords[0].rootNote;
+        // Simplified progression check
+        const rootI = chorusChords.find(c=>c.bar % 12 === 0)?.rootNote || chordRoot;
         const step = (chordRoot - rootI + 12) % 12;
         const IV_STEP = 5;
         const V_STEP = 7;
@@ -196,6 +199,7 @@ export class FractalMusicEngine {
     
     return { events: chorusEvents, log };
   }
+
 
   public async updateConfig(newConfig: Partial<EngineConfig>) {
       const moodOrGenreChanged = newConfig.mood !== this.config.mood || newConfig.genre !== this.config.genre;
@@ -273,7 +277,7 @@ export class FractalMusicEngine {
   
       if (!rules || rules.strategy !== 'weighted') {
           const fallback = part === 'melody' ? 'organ' : 'synth';
-          console.log(`[FME @ Bar ${this.epoch}] No specific weighted rules for '${part}'. Using fallback: ${fallback}.`);
+          // console.log(`[FME @ Bar ${this.epoch}] No specific weighted rules for '${part}'. Using fallback: ${fallback}.`);
           return fallback;
       }
   
@@ -290,12 +294,12 @@ export class FractalMusicEngine {
               return ultimateFallback;
           }
           const chosen = this.performWeightedChoice(fallbackOptions);
-          console.log(`[FME @ Bar ${this.epoch}] Selected instrument for '${part}': ${chosen} (from Fallback Engine ${fallbackEngineVersion})`);
+          // console.log(`[FME @ Bar ${this.epoch}] Selected instrument for '${part}': ${chosen} (from Fallback Engine ${fallbackEngineVersion})`);
           return chosen;
       }
   
       const chosenInstrument = this.performWeightedChoice(options);
-      console.log(`[FME @ Bar ${this.epoch}] Selected instrument for '${part}': ${chosenInstrument} (from Primary Engine ${engineVersion})`);
+      // console.log(`[FME @ Bar ${this.epoch}] Selected instrument for '${part}': ${chosenInstrument} (from Primary Engine ${engineVersion})`);
       return chosenInstrument;
   }
   
@@ -504,7 +508,7 @@ export class FractalMusicEngine {
             pattern = riffTemplate.I;
         }
         
-        console.log(`[BluesBass] Selected riff for bar ${this.epoch % 12}, mood ${mood}.`);
+        // console.log(`[BluesBass] Selected riff for bar ${this.epoch % 12}, mood ${mood}.`);
 
         for (const riffNote of pattern) {
             phrase.push({
@@ -549,6 +553,15 @@ export class FractalMusicEngine {
             }
         }
         accompEvents = this.accompPhraseLibrary[this.currentAccompPhraseIndex] || [];
+    }
+
+    let harmonyEvents: FractalEvent[] = [];
+    if (navInfo.currentPart.layers.harmony) {
+        // #ЗАЧЕМ: Этот блок отвечает за создание гармонической "подкладки".
+        // #ЧТО: Он вызывает `createHarmonyAxiom` для генерации событий и добавляет их в общий массив.
+        // #СВЯЗИ: Этот код напрямую исправляет ошибку, из-за которой Harmony=0 в логах.
+        const harmonyAxiom = createHarmonyAxiom(currentChord, this.config.mood, this.config.genre, this.random);
+        harmonyEvents.push(...harmonyAxiom);
     }
 
     let bassEvents: FractalEvent[] = [];
@@ -610,7 +623,7 @@ export class FractalMusicEngine {
                         barStart: chorusBarStart,
                         ...this.generateBluesMelodyChorus(chorusChords, this.config.mood, this.random, registerHint)
                     };
-                    console.log(`%c[FME @ Bar ${this.epoch}] Generating NEW 12-bar blues chorus. ${this.bluesChorusCache.log}`, 'color: #00BCD4; font-weight: bold');
+                    // console.log(`%c[FME @ Bar ${this.epoch}] Generating NEW 12-bar blues chorus. ${this.bluesChorusCache.log}`, 'color: #00BCD4; font-weight: bold');
                 }
             }
             
@@ -649,7 +662,7 @@ export class FractalMusicEngine {
         melodyEvents.forEach(e => e.note += 12 * shift);
     }
 
-    allEvents.push(...(bassEvents || []), ...(drumEvents || []), ...(accompEvents || []), ...(melodyEvents || []));
+    allEvents.push(...(bassEvents || []), ...(drumEvents || []), ...(accompEvents || []), ...(melodyEvents || []), ...(harmonyEvents || []));
     
     const sfxRules = navInfo.currentPart.instrumentRules?.sfx as SfxRule | undefined;
     const sfxChance = sfxRules?.eventProbability ?? 0.08;
@@ -686,8 +699,8 @@ export class FractalMusicEngine {
       this.epoch = barCount;
 
       if (this.epoch >= this.navigator.totalBars + 4) {
-        console.log(`%c[FME @ Bar ${this.epoch}] End of suite detected. Posting SUITE_ENDED command.`, 'color: red; font-weight: bold;');
-        self.postMessage({ command: 'SUITE_ENDED' });
+        // console.log(`%c[FME @ Bar ${this.epoch}] End of suite detected. Posting SUITE_ENDED command.`, 'color: red; font-weight: bold;');
+        // self.postMessage({ command: 'SUITE_ENDED' });
         return { events: [], instrumentHints: {} }; 
       }
       
@@ -731,6 +744,3 @@ export class FractalMusicEngine {
   }
 
 }
-
-    
-    
