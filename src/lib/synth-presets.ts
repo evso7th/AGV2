@@ -225,8 +225,7 @@ export const SYNTH_PRESETS: Record<Exclude<MelodyInstrument | BassInstrument, 'p
   acousticGuitar: {
     layers: [
       { type: 'triangle', detune: 0, octave: 0, gain: 1.0 },
-      // #ИСПРАВЛЕНО: Заменено на 'triangle' для избежания ошибки.
-      { type: 'triangle', detune: 0, octave: 0, gain: 0.15 },
+      { type: 'noise', detune: 0, octave: 0, gain: 0.15 },
     ],
     adsr: { attack: 0.001, decay: 0.3, sustain: 0.05, release: 0.3 },
     filter: { type: 'bpf', cutoff: 2000, q: 4.0 },
