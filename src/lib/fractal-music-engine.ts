@@ -99,10 +99,6 @@ export class FractalMusicEngine {
 
   private bluesChorusCache: { barStart: number, events: FractalEvent[], log: string } | null = null;
 
-  // #ИЗМЕНЕНО: Индексы риффов удалены из свойств класса,
-  //            чтобы они не сохранялись между сюитами.
-  // private bluesDrumRiffIndex: number; 
-  // private bluesBassRiffIndex: number;
   private bluesDrumRiffIndex: number = 0;
   private bluesBassRiffIndex: number = 0;
 
@@ -111,103 +107,10 @@ export class FractalMusicEngine {
     this.config = { ...config };
     this.random = seededRandom(config.seed);
     this.nextWeatherEventEpoch = 0;
-
-    // #ИЗМЕНЕНО: Инициализация риффов перенесена в метод initialize().
   }
 
   public get tempo(): number { return this.config.tempo; }
   
-  public generateBluesMelodyChorus(chorusChords: GhostChord[], mood: Mood, random: { next: () => number, nextInt: (max: number) => number }, registerHint?: 'low' | 'mid' | 'high'): { events: FractalEvent[], log: string } {
-    const chorusEvents: FractalEvent[] = [];
-    
-    // 1. Фильтруем риффы по настроению и тегам (если нужно)
-    const suitableMelodies = BLUES_MELODY_RIFFS.filter(m => m.moods.includes(mood));
-    if (suitableMelodies.length === 0) {
-      console.warn(`[BluesMelodyChorus] No suitable melodies found for mood: ${mood}. Falling back to all.`);
-      suitableMelodies.push(...BLUES_MELODY_RIFFS);
-    }
-    const selectedMelody = suitableMelodies[random.nextInt(suitableMelodies.length)] || BLUES_MELODY_RIFFS[0];
-    
-    const barDurationInBeats = 4;
-    const ticksPerBeat = 3;
-    
-    let octaveShift = 12 * 2; // Default octave
-    if (registerHint === 'mid') octaveShift = 12 * 3;
-    if (registerHint === 'high') octaveShift = 12 * 4;
-
-    const DEGREE_TO_SEMITONE: Record<BluesRiffDegree, number> = { 'R': 0, 'b2': 1, '2': 2, 'b3': 3, '3': 4, '4': 5, '#4': 6, 'b5': 6, '5': 7, 'b6': 8, '6': 9, 'b7': 10, '9': 14, '11': 17, 'R+8': 12 };
-
-    for (let barIndex = 0; barIndex < 12; barIndex++) {
-        const absoluteBar = (chorusChords[0]?.bar ?? 0) + barIndex;
-        // #ИСПРАВЛЕНО: Логика поиска аккорда теперь использует диапазон, а не точное совпадение
-        const barChord = chorusChords.find(c => absoluteBar >= c.bar && absoluteBar < (c.bar + c.durationBars));
-
-        if (!barChord) {
-            console.warn(`[BluesMelodyChorus] No chord found for bar ${barIndex} (absolute: ${absoluteBar}).`);
-            continue;
-        };
-
-        const chordRoot = barChord.rootNote;
-        let phrase: BluesMelodyPhrase;
-
-        // Simplified progression check
-        const rootI = chorusChords.find(c=>c.bar % 12 === 0)?.rootNote || chordRoot;
-        const step = (chordRoot - rootI + 12) % 12;
-        const IV_STEP = 5;
-        const V_STEP = 7;
-        
-        if (barIndex === 11) {
-            phrase = selectedMelody.phraseTurnaround;
-        } else if (step === IV_STEP) {
-            phrase = selectedMelody.phraseIV;
-        } else if (step === V_STEP) {
-            phrase = selectedMelody.phraseV;
-        } else {
-            phrase = selectedMelody.phraseI;
-        }
-
-        for (const event of phrase) {
-            const noteMidi = chordRoot + DEGREE_TO_SEMITONE[event.deg] + octaveShift;
-            chorusEvents.push({
-                type: 'melody',
-                note: noteMidi,
-                time: (barIndex * barDurationInBeats) + (event.t / ticksPerBeat),
-                duration: event.d / ticksPerBeat,
-                weight: event.vel ? (event.vel / 127) : 0.85,
-                technique: 'pick', // Default technique
-                dynamics: 'f',
-                phrasing: 'legato',
-                params: {}
-            });
-        }
-    }
-
-    const shouldMutate = random.next() < 0.4;
-    let mutationLog = "None";
-    if (shouldMutate && chorusEvents.length > 0) {
-        const mutationType = random.nextInt(3);
-        if (mutationType === 0) { // Rhythmic Shift
-            mutationLog = "Rhythmic Shift";
-            chorusEvents.forEach(e => { e.time += (random.next() - 0.5) * 0.25; });
-        } else if (mutationType === 1) { // Register Shift
-            mutationLog = "Register Shift";
-            const eventOctaveShift = (random.next() > 0.5) ? 12 : -12;
-            chorusEvents.forEach(e => { e.note += eventOctaveShift; });
-        } else { // Note Removal
-            mutationLog = "Note Removal";
-            if(chorusEvents.length > 5) { // Only remove if we have enough notes
-                const indexToRemove = random.nextInt(chorusEvents.length);
-                chorusEvents.splice(indexToRemove, 1);
-            }
-        }
-    }
-
-    const log = `Using riff: "${selectedMelody.id}". Mutation: "${mutationLog}". Register: ${registerHint || 'default'}`;
-    
-    return { events: chorusEvents, log };
-  }
-
-
   public async updateConfig(newConfig: Partial<EngineConfig>) {
       const moodOrGenreChanged = newConfig.mood !== this.config.mood || newConfig.genre !== this.config.genre;
       const introBarsChanged = newConfig.introBars !== this.config.introBars;
@@ -503,10 +406,8 @@ export class FractalMusicEngine {
             return [];
         }
         
-        // #ИСПРАВЛЕНО: Теперь рифф выбирается по this.bluesBassRiffIndex, который меняется каждую сюиту
         const riffTemplate = moodRiffs[this.bluesBassRiffIndex];
 
-        // Определяем ступень аккорда
         const rootI = 0; // Simplified
         const step = (root - rootI + 12) % 12;
         const isTurnaround = false; // Simplified
@@ -528,6 +429,96 @@ export class FractalMusicEngine {
         }
         return phrase;
     }
+
+  public generateBluesMelodyChorus(chorusChords: GhostChord[], mood: Mood, random: { next: () => number, nextInt: (max: number) => number }, registerHint?: 'low' | 'mid' | 'high'): { events: FractalEvent[], log: string } {
+    const baseEvents: FractalEvent[] = [];
+    
+    const suitableMelodies = BLUES_MELODY_RIFFS.filter(m => m.moods.includes(mood));
+    if (suitableMelodies.length === 0) {
+      console.warn(`[BluesMelodyChorus] No suitable melodies found for mood: ${mood}. Falling back to all.`);
+      suitableMelodies.push(...BLUES_MELODY_RIFFS);
+    }
+    const selectedMelody = suitableMelodies[random.nextInt(suitableMelodies.length)] || BLUES_MELODY_RIFFS[0];
+    
+    const barDurationInBeats = 4;
+    const ticksPerBeat = 3;
+    
+    let octaveShift = 12 * 2;
+    if (registerHint === 'mid') octaveShift = 12 * 3;
+    if (registerHint === 'high') octaveShift = 12 * 4;
+
+    const DEGREE_TO_SEMITONE: Record<BluesRiffDegree, number> = { 'R': 0, 'b2': 1, '2': 2, 'b3': 3, '3': 4, '4': 5, '#4': 6, 'b5': 6, '5': 7, 'b6': 8, '6': 9, 'b7': 10, '9': 14, '11': 17, 'R+8': 12 };
+
+    for (let barIndex = 0; barIndex < 12; barIndex++) {
+        const absoluteBar = (chorusChords[0]?.bar ?? 0) + barIndex;
+        const barChord = chorusChords.find(c => absoluteBar >= c.bar && absoluteBar < (c.bar + c.durationBars));
+
+        if (!barChord) {
+            console.warn(`[BluesMelodyChorus] No chord found for bar ${barIndex} (absolute: ${absoluteBar}).`);
+            continue;
+        };
+
+        const chordRoot = barChord.rootNote;
+        let phrase: BluesMelodyPhrase;
+
+        const rootI = chorusChords.find(c=>c.bar % 12 === 0)?.rootNote || chordRoot;
+        const step = (chordRoot - rootI + 12) % 12;
+        const IV_STEP = 5;
+        const V_STEP = 7;
+        
+        if (barIndex === 11) {
+            phrase = selectedMelody.phraseTurnaround;
+        } else if (step === IV_STEP) {
+            phrase = selectedMelody.phraseIV;
+        } else if (step === V_STEP) {
+            phrase = selectedMelody.phraseV;
+        } else {
+            phrase = selectedMelody.phraseI;
+        }
+
+        for (const event of phrase) {
+            const noteMidi = chordRoot + DEGREE_TO_SEMITONE[event.deg] + octaveShift;
+            baseEvents.push({
+                type: 'melody',
+                note: noteMidi,
+                time: (barIndex * barDurationInBeats) + (event.t / ticksPerBeat),
+                duration: event.d / ticksPerBeat,
+                weight: event.vel ? (event.vel / 127) : 0.85,
+                technique: 'pick', 
+                dynamics: 'f',
+                phrasing: 'legato',
+                params: {}
+            });
+        }
+    }
+
+    const shouldMutate = random.next() < 0.4;
+    let mutationLog = "None";
+    let mutatedEvents = [...baseEvents]; // Start with a copy
+
+    if (shouldMutate && baseEvents.length > 0) {
+        const mutationType = random.nextInt(3);
+        if (mutationType === 0) {
+            mutationLog = "Rhythmic Shift";
+            mutatedEvents.forEach(e => { e.time += (random.next() - 0.5) * 0.25; });
+        } else if (mutationType === 1) {
+            mutationLog = "Register Shift";
+            const eventOctaveShift = (random.next() > 0.5) ? 12 : -12;
+            mutatedEvents.forEach(e => { e.note += eventOctaveShift; });
+        } else { 
+            mutationLog = "Note Removal";
+            if(mutatedEvents.length > 5) {
+                const indexToRemove = random.nextInt(mutatedEvents.length);
+                mutatedEvents.splice(indexToRemove, 1);
+            }
+        }
+    }
+
+    const log = `Using riff: "${selectedMelody.id}". Mutation: "${mutationLog}". Register: ${registerHint || 'default'}`;
+    
+    return { events: mutatedEvents, log };
+  }
+
 
   private generateOneBar(barDuration: number, navInfo: NavigationInfo, instrumentHints: InstrumentHints): FractalEvent[] {
     const effectiveBar = this.epoch % this.navigator.totalBars;
@@ -566,7 +557,7 @@ export class FractalMusicEngine {
 
     let bassEvents: FractalEvent[] = [];
     const bassRules = navInfo.currentPart.instrumentRules?.bass;
-    const bassTechnique = bassRules?.techniques?.[0]?.value as Technique || 'drone';
+    const bassTechnique = bassRules?.techniques?.[0].value as Technique || 'drone';
 
     if (navInfo.currentPart.layers.bass) {
       if (this.config.genre === 'blues') {
@@ -584,16 +575,10 @@ export class FractalMusicEngine {
     }
     
     // --- ПРАВИЛЬНАЯ ЛОГИКА ДУБЛИРОВАНИЯ И СДВИГА (ПЛАН 708) ---
-    // #ЗАЧЕМ: Этот блок гарантирует, что гитара дублирует ОРИГИНАЛЬНУЮ басовую партию,
-    //         а уже ПОСЛЕ этого сам бас повышается на октаву.
-    // #ЧТО: Сначала создается копия басовых событий для гитары, и только потом
-    //       происходит мутация высоты тона для басовых событий.
-    // #СВЯЗИ: Устраняет ошибку, из-за которой гитара играла слишком высоко.
     if (navInfo.currentPart.bassAccompanimentDouble?.enabled && bassEvents.length > 0) {
         const { instrument, octaveShift } = navInfo.currentPart.bassAccompanimentDouble;
-        // 1. Создаем дубликат из ОРИГИНАЛЬНЫХ басовых нот
         const bassDoubleEvents: FractalEvent[] = bassEvents.map(e => ({
-            ...JSON.parse(JSON.stringify(e)), // Deep copy
+            ...JSON.parse(JSON.stringify(e)),
             type: 'melody',
             note: e.note + (12 * octaveShift),
             weight: e.weight * 0.8,
@@ -602,7 +587,6 @@ export class FractalMusicEngine {
         instrumentHints.melody = instrument; 
     }
     
-    // 2. Теперь, когда дубликат создан, повышаем октаву для самого баса
     const bassOctaveShift = navInfo.currentPart.instrumentRules?.bass?.presetModifiers?.octaveShift;
     if (bassOctaveShift && bassEvents.length > 0) {
         const TARGET_BASS_OCTAVE_MIN_MIDI = 36;
@@ -617,17 +601,10 @@ export class FractalMusicEngine {
     const melodyRules = navInfo.currentPart.instrumentRules?.melody;
 
     if (navInfo.currentPart.layers.melody && !navInfo.currentPart.bassAccompanimentDouble?.enabled && melodyRules) {
-        // --- ВОССТАНОВЛЕННАЯ ЛОГИКА БЛЮЗОВОГО СОЛО (ПЛАН 712) ---
-        // #ЗАЧЕМ: Этот блок возвращает логику генерации полноценных 12-тактовых блюзовых соло.
-        // #ЧТО: Он определяет текущий такт внутри 12-тактового квадрата, генерирует и кэширует
-        //       полное соло в начале квадрата, а затем на каждом такте извлекает нужный фрагмент.
-        //       Также применяет мутации к сгенерированному соло.
-        // #СВЯЗИ: Исправляет регрессию, из-за которой соло стало коротким и не мутировало.
         if (this.config.genre === 'blues' && melodyRules.source === 'motif') {
             const barInChorus = this.epoch % 12;
             const registerHint = melodyRules.register?.preferred;
             
-            // Генерируем новый хорус только в начале 12-тактового квадрата
             if (barInChorus === 0 || !this.bluesChorusCache || this.bluesChorusCache.barStart !== (this.epoch - barInChorus)) {
                 const chorusBarStart = this.epoch - barInChorus;
                 const chorusChords = this.ghostHarmonyTrack.filter(c => c.bar >= chorusBarStart && c.bar < chorusBarStart + 12);
@@ -640,7 +617,6 @@ export class FractalMusicEngine {
                 }
             }
             
-            // Извлекаем ноты для текущего такта из кэша
             if (this.bluesChorusCache) {
                 const barStartBeat = barInChorus * 4.0;
                 const barEndBeat = barStartBeat + 4.0;
@@ -649,7 +625,6 @@ export class FractalMusicEngine {
                     .map(e => ({ ...e, time: e.time - barStartBeat }));
             }
         } else if (melodyRules.source === 'motif') {
-            // (Логика для эмбиент-мотивов остается без изменений)
             const melodyDensity = melodyRules.density?.min ?? 0.25;
             const minInterval = 8;
             const motifBarIndex = this.epoch - this.lastMelodyPlayEpoch;
@@ -672,9 +647,6 @@ export class FractalMusicEngine {
         }
     }
     
-    // --- ПЛАН 709: Логика повышения октавы для соло УДАЛЕНА ОТСЮДА ---
-    // Теперь это управляется напрямую из блюпринтов.
-
     allEvents.push(...(bassEvents || []), ...(drumEvents || []), ...(accompEvents || []), ...(melodyEvents || []), ...(harmonyEvents || []));
     
     const sfxRules = navInfo.currentPart.instrumentRules?.sfx as SfxRule | undefined;
