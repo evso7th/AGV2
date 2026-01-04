@@ -47,7 +47,7 @@ export const AnxiousTranceBlueprint: MusicBlueprint = {
                 id: 'PEAK', name: 'Red Alert', duration: { percent: 30 },
                 layers: { bass: true, melody: true, sfx: true, drums: true, accompaniment: true },
                 instrumentation: {
-                    accompaniment: { strategy: 'weighted', v1Options: [{ name: 'electricGuitar', weight: 1.0 }], v2Options: [{ name: 'electricGuitar', weight: 1.0 }] },
+                    accompaniment: { strategy: 'weighted', v1Options: [{ name: 'electricGuitar', weight: 1.0 }], v2Options: [{ name: 'guitar_muffLead', weight: 1.0 }] },
                     bass: { strategy: 'weighted', options: [{ name: 'resonantGliss', weight: 1.0 }] },
                     melody: { strategy: 'weighted', v1Options: [{ name: 'theremin', weight: 1.0 }], v2Options: [{ name: 'theremin', weight: 1.0 }] }
                 },

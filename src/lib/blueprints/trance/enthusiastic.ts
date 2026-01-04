@@ -37,7 +37,7 @@ export const EnthusiasticTranceBlueprint: MusicBlueprint = {
                 instrumentation: {
                     bass: { strategy: 'weighted', options: [{ name: 'classicBass', weight: 1.0 }] },
                     accompaniment: { strategy: 'weighted', v1Options: [{ name: 'synth', weight: 1.0 }], v2Options: [{ name: 'synth', weight: 1.0 }] },
-                    melody: { strategy: 'weighted', v1Options: [{ name: 'electricGuitar', weight: 0.5 }, { name: 'theremin', weight: 0.5 }], v2Options: [{ name: 'electricGuitar', weight: 0.5 }, { name: 'theremin', weight: 0.5 }] }
+                    melody: { strategy: 'weighted', v1Options: [{ name: 'electricGuitar', weight: 0.5 }, { name: 'theremin', weight: 0.5 }], v2Options: [{ name: 'guitar_muffLead', weight: 0.5 }, { name: 'theremin', weight: 0.5 }] }
                 },
                 instrumentRules: {
                     bass: { techniques: [{ value: 'pulse', weight: 1.0 }], density: { min: 0.6, max: 0.8 } }, // CHANGED from rolling
@@ -53,7 +53,7 @@ export const EnthusiasticTranceBlueprint: MusicBlueprint = {
                 instrumentation: {
                     bass: { strategy: 'weighted', options: [{ name: 'livingRiff', weight: 1.0 }] },
                     accompaniment: { strategy: 'weighted', v1Options: [{ name: 'synth', weight: 0.5 }, { name: 'organ', weight: 0.5 }], v2Options: [{ name: 'synth', weight: 0.5 }, { name: 'organ', weight: 0.5 }] },
-                    melody: { strategy: 'weighted', v1Options: [{ name: 'electricGuitar', weight: 1.0 }], v2Options: [{ name: 'electricGuitar', weight: 1.0 }] }
+                    melody: { strategy: 'weighted', v1Options: [{ name: 'electricGuitar', weight: 1.0 }], v2Options: [{ name: 'guitar_muffLead', weight: 1.0 }] }
                 },
                 instrumentRules: {
                     bass: { techniques: [{ value: 'pulse', weight: 1.0 }], density: { min: 0.8, max: 1.0 } }, // CHANGED from rolling
