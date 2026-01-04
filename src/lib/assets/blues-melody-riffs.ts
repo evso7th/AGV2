@@ -18,7 +18,7 @@ export const BLUES_MELODY_RIFFS: BluesMelody[] = [
   // --- MAJOR BLUES MELODIES ---
   {
     id: 'Joyful-01',
-    moods: ['joyful'],
+    moods: ['joyful', 'epic'],
     type: 'major',
     tags: ['shuffle', 'uptempo'],
     progression: [], // Placeholder
@@ -40,7 +40,7 @@ export const BLUES_MELODY_RIFFS: BluesMelody[] = [
   },
   {
     id: 'Joyful-03',
-    moods: ['joyful'],
+    moods: ['joyful', 'epic'],
     type: 'major',
     tags: ['shuffle', 'mid-tempo'],
     progression: [],
@@ -51,7 +51,7 @@ export const BLUES_MELODY_RIFFS: BluesMelody[] = [
   },
   {
     id: 'Neutral-01',
-    moods: ['neutral', 'contemplative'],
+    moods: ['contemplative', 'calm'],
     type: 'major',
     tags: ['shuffle', 'laid-back'],
     progression: [],
@@ -62,7 +62,7 @@ export const BLUES_MELODY_RIFFS: BluesMelody[] = [
   },
   {
     id: 'Neutral-02',
-    moods: ['neutral', 'calm'],
+    moods: ['contemplative', 'calm'],
     type: 'major',
     tags: ['slow-burn', 'ballad'],
     progression: [],
@@ -106,7 +106,7 @@ export const BLUES_MELODY_RIFFS: BluesMelody[] = [
   },
   {
     id: 'Enthusiastic-01',
-    moods: ['enthusiastic', 'joyful'],
+    moods: ['enthusiastic', 'joyful', 'epic'],
     type: 'major',
     tags: ['boogie', 'uptempo'],
     progression: [],
@@ -174,7 +174,7 @@ export const BLUES_MELODY_RIFFS: BluesMelody[] = [
   },
   {
     id: 'Dark-01',
-    moods: ['dark'],
+    moods: ['dark', 'anxious'],
     type: 'minor',
     tags: ['shuffle', 'heavy'],
     progression: [],
@@ -239,3 +239,5 @@ export const BLUES_MELODY_RIFFS: BluesMelody[] = [
     phraseTurnaround:  [{t:0,d:3,deg:'2'},{t:3,d:3,deg:'b2'},{t:6,d:6,deg:'R'}]
   },
 ];
+
+  
