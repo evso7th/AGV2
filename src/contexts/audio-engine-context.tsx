@@ -116,18 +116,14 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
   const { toast } = useToast();
 
   const resetWorkerCallback = useCallback(() => {
-    // #ЗАЧЕМ: Гарантирует, что музыка остановлена ПЕРЕД отправкой команды на сброс.
-    // #ЧТО: Если музыка играет, сначала вызывается `setIsPlaying(false)`, которая
-    //      останавливает все звуки и воркер. Затем отправляется команда `reset`.
-    // #СВЯЗИ: Предотвращает "кашу" из старой и новой музыки при регенерации.
-    if (isPlaying) {
-      setIsPlaying(false); // This will trigger stopAllSounds and stop the worker
-    }
+    // #ЗАЧЕМ: Гарантирует, что воркер получает команду на сброс.
+    // #ЧТО: Отправляет команду `reset` в Web Worker, который выполнит "горячую перезагрузку".
+    // #СВЯЗИ: Вызывается как при ручной регенерации, так и автоматически по окончании сюиты.
     if (workerRef.current) {
         console.log("[AudioEngineContext] Calling resetWorker, posting 'reset' command to worker.");
         workerRef.current.postMessage({ command: 'reset' });
     }
-  }, [isPlaying]);
+  }, []);
 
   const updateSettingsCallback = useCallback((settings: Partial<WorkerSettings>) => {
      if (!isInitialized || !workerRef.current) return;
@@ -277,9 +273,9 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
         const messageHandler = (event: MessageEvent<WorkerMessage>) => {
              const { type, command, payload, error } = event.data;
 
-                // --- НОВЫЙ БЛОК: Обработка команд от воркера ---
-                if (command === 'reset' || command === 'SUITE_ENDED') {
-                    console.log(`[AudioEngineContext] Received "${command}" command from worker. Triggering regeneration...`);
+                // #ИСПРАВЛЕНО: Добавлен обработчик для автоматического перезапуска сюиты.
+                if (command === 'SUITE_ENDED') {
+                    console.log(`[AudioEngineContext] Received "${command}" command from worker. Triggering seamless regeneration...`);
                     resetWorkerCallback();
                     return; // Команда обработана, выходим
                 }

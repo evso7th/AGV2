@@ -96,12 +96,16 @@ const Scheduler = {
     },
     
     async reset() {
-        if (this.isRunning) {
+        // #ЗАЧЕМ: "Горячая" перезагрузка движка без остановки цикла воспроизведения.
+        // #ЧТО: Останавливает текущий таймер, принудительно пересоздает движок с новым seed,
+        //      и если музыка играла, немедленно запускает цикл `start()` заново.
+        // #СВЯЗИ: Вызывается по команде 'reset' из UI или автоматически по 'SUITE_ENDED'.
+        const wasRunning = this.isRunning;
+        if (wasRunning) {
             this.stop();
         }
-        // #ИЗМЕНЕНО: Принудительно пересоздаем движок с новым seed.
         await this.initializeEngine(this.settings, true);
-        if (this.settings.bpm > 0) {
+        if (wasRunning) {
             this.start();
         }
     },
