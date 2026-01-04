@@ -1,6 +1,5 @@
 
-
-import type { FractalEvent, Mood, Genre, Technique, BassSynthParams, InstrumentType, MelodyInstrument, AccompanimentInstrument, ResonanceMatrix, InstrumentHints, AccompanimentTechnique, GhostChord, SfxRule, V1MelodyInstrument, V2MelodyInstrument, BlueprintPart, InstrumentationRules, InstrumentBehaviorRules } from './fractal';
+import type { FractalEvent, Mood, Genre, Technique, BassSynthParams, InstrumentType, MelodyInstrument, AccompanimentInstrument, ResonanceMatrix, InstrumentHints, AccompanimentTechnique, GhostChord, SfxRule, V1MelodyInstrument, V2MelodyInstrument, BlueprintPart, InstrumentationRules, InstrumentBehaviorRules, BluesRiffDegree, BluesMelodyPhrase, BluesMelody } from './fractal';
 import { ElectronicK, TraditionalK, AmbientK, MelancholicMinorK } from './resonance-matrices';
 import { getScaleForMood, STYLE_DRUM_PATTERNS, createAccompanimentAxiom, PERCUSSION_SETS, TEXTURE_INSTRUMENT_WEIGHTS_BY_MOOD, getAccompanimentTechnique, createBassFill, createDrumFill, AMBIENT_ACCOMPANIMENT_WEIGHTS, chooseHarmonyInstrument, mutateBassPhrase, createMelodyMotif, createDrumAxiom, generateGhostHarmonyTrack, mutateAccompanimentPhrase, generateBluesBassRiff, createAmbientBassAxiom } from './music-theory';
 import { BlueprintNavigator, type NavigationInfo } from './blueprint-navigator';
@@ -9,7 +8,7 @@ import { V2_PRESETS } from './presets-v2';
 import { PARANOID_STYLE_RIFF } from './assets/rock-riffs';
 import { BLUES_BASS_RIFFS } from './assets/blues-bass-riffs';
 import { NEUTRAL_BLUES_BASS_RIFFS } from './assets/neutral-blues-riffs';
-import { BLUES_MELODY_RIFFS, type BluesRiffDegree, type BluesRiffEvent, type BluesMelodyPhrase, type BluesMelody } from './assets/blues-melody-riffs';
+import { BLUES_MELODY_RIFFS } from './assets/blues-melody-riffs';
 import { BLUES_DRUM_RIFFS } from './assets/blues-drum-riffs';
 
 
@@ -480,7 +479,7 @@ export class FractalMusicEngine {
         return createAmbientBassAxiom(chord, mood, genre, random, tempo, technique);
     }
 
-  private generateOneBar(barDuration: number, navInfo: NavigationInfo, instrumentHints: InstrumentHints): { events: FractalEvent[], instrumentHints: InstrumentHints } {
+  private generateOneBar(barDuration: number, navInfo: NavigationInfo, instrumentHints: InstrumentHints): FractalEvent[] {
     const effectiveBar = this.epoch % this.navigator.totalBars;
     const currentChord = this.ghostHarmonyTrack.find(chord => 
         effectiveBar >= chord.bar && effectiveBar < chord.bar + chord.durationBars
@@ -488,7 +487,7 @@ export class FractalMusicEngine {
 
     if (!currentChord) {
         console.error(`[Engine] CRITICAL ERROR in bar ${this.epoch}: Could not find chord in 'Ghost Harmony'.`);
-        return { events: [], instrumentHints };
+        return [];
     }
     
     let allEvents: FractalEvent[] = [];
@@ -558,14 +557,16 @@ export class FractalMusicEngine {
     }
     
     let melodyEvents: FractalEvent[] = [];
-    
     const melodyRules = navInfo.currentPart.instrumentRules?.melody;
-    
-    if (navInfo.currentPart.layers.melody && !navInfo.currentPart.bassAccompanimentDouble?.enabled && melodyRules?.source === 'motif') {
-        if (this.config.genre === 'blues') {
+
+    // --- ИСПРАВЛЕННЫЙ БЛОК ГЕНЕРАЦИИ МЕЛОДИИ ---
+    if (navInfo.currentPart.layers.melody && !navInfo.currentPart.bassAccompanimentDouble?.enabled && melodyRules) {
+        if (this.config.genre === 'blues' && melodyRules.source === 'motif') {
+            // --- Логика для блюзового соло ---
             const barInChorus = this.epoch % 12;
-            const registerHint = melodyRules?.register?.preferred;
+            const registerHint = melodyRules.register?.preferred;
             
+            // Генерируем новый хорус, если мы в его начале или кэш пуст
             if (barInChorus === 0 || !this.bluesChorusCache || this.bluesChorusCache.barStart !== (this.epoch - barInChorus)) {
                 const chorusBarStart = this.epoch - barInChorus;
                 const chorusChords = this.ghostHarmonyTrack.filter(c => c.bar >= chorusBarStart && c.bar < chorusBarStart + 12);
@@ -578,6 +579,7 @@ export class FractalMusicEngine {
                 }
             }
             
+            // Извлекаем ноты для текущего такта из кэша
             if (this.bluesChorusCache) {
                 const barStartBeat = ((this.epoch - this.bluesChorusCache.barStart) % 12) * 4.0;
                 const barEndBeat = barStartBeat + 4.0;
@@ -585,8 +587,9 @@ export class FractalMusicEngine {
                     .filter(e => e.time >= barStartBeat && e.time < barEndBeat)
                     .map(e => ({ ...e, time: e.time - barStartBeat }));
             }
-        } else { // non-blues motif logic
-            const melodyDensity = melodyRules?.density?.min ?? 0.25;
+        } else if (melodyRules.source === 'motif') {
+            // --- Существующая логика для эмбиент/транс мотивов ---
+            const melodyDensity = melodyRules.density?.min ?? 0.25;
             const minInterval = 8;
             const motifBarIndex = this.epoch - this.lastMelodyPlayEpoch;
 
@@ -598,7 +601,7 @@ export class FractalMusicEngine {
                     .map(e => ({ ...e, time: e.time - barStartBeat }));
             } else if (this.epoch >= this.lastMelodyPlayEpoch + minInterval && this.random.next() < melodyDensity) {
                 const shouldMutate = this.currentMelodyMotif.length > 0 && this.random.next() > 0.3;
-                const registerHint = melodyRules?.register?.preferred;
+                const registerHint = melodyRules.register?.preferred;
                 this.currentMelodyMotif = createMelodyMotif(currentChord, this.config.mood, this.random, shouldMutate ? this.currentMelodyMotif : undefined, registerHint, this.config.genre);
                 melodyEvents = this.currentMelodyMotif
                     .filter(e => e.time < 4.0)
@@ -691,8 +694,3 @@ export class FractalMusicEngine {
   }
 
 }
-
-
-
-
-    
