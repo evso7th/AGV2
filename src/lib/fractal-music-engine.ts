@@ -99,6 +99,8 @@ export class FractalMusicEngine {
 
   private bluesChorusCache: { barStart: number, events: FractalEvent[], log: string } | null = null;
 
+  // #ИЗМЕНЕНО: Добавлено свойство для хранения ID последнего сыгранного риффа, чтобы избежать повторений.
+  private lastSelectedBluesMelodyId: string | null = null;
   private bluesDrumRiffIndex: number = 0;
   private bluesBassRiffIndex: number = 0;
 
@@ -136,6 +138,8 @@ export class FractalMusicEngine {
     this.nextAccompanimentDelay = this.random.next() * 7 + 5;
     this.hasBassBeenMutated = false;
     this.bluesChorusCache = null;
+    // #ИЗМЕНЕНО: Сброс ID последнего риффа при каждой новой сюите.
+    this.lastSelectedBluesMelodyId = null;
 
     // #ИЗМЕНЕНО: Логика выбора риффов перенесена сюда из конструктора.
     //            Это гарантирует, что для каждой новой сюиты будут выбраны новые риффы.
@@ -408,6 +412,7 @@ export class FractalMusicEngine {
         
         const riffTemplate = moodRiffs[this.bluesBassRiffIndex];
 
+        // Определяем ступень аккорда
         const rootI = 0; // Simplified
         const step = (root - rootI + 12) % 12;
         const isTurnaround = false; // Simplified
@@ -433,13 +438,21 @@ export class FractalMusicEngine {
   public generateBluesMelodyChorus(chorusChords: GhostChord[], mood: Mood, random: { next: () => number, nextInt: (max: number) => number }, registerHint?: 'low' | 'mid' | 'high'): { events: FractalEvent[], log: string } {
     const baseEvents: FractalEvent[] = [];
     
-    // #ИСПРАВЛЕНО: Возвращена логика случайного выбора риффа.
-    const suitableMelodies = BLUES_MELODY_RIFFS.filter(m => m.moods.includes(mood));
+    // #ИЗМЕНЕНО: Реализована логика "памяти", чтобы избежать повторения риффов.
+    let suitableMelodies = BLUES_MELODY_RIFFS.filter(m => m.moods.includes(mood) && m.id !== this.lastSelectedBluesMelodyId);
+    
+    // Если после фильтрации не осталось риффов (например, был всего один), сбрасываем фильтр.
+    if (suitableMelodies.length === 0) {
+      suitableMelodies = BLUES_MELODY_RIFFS.filter(m => m.moods.includes(mood));
+    }
+    
     if (suitableMelodies.length === 0) {
       console.warn(`[BluesMelodyChorus] No suitable melodies found for mood: ${mood}. Falling back to all.`);
-      suitableMelodies.push(...BLUES_MELODY_RIFFS);
+      suitableMelodies.push(...BLUES_MELODY_RIFFS.filter(m => m.id !== this.lastSelectedBluesMelodyId));
+      if(suitableMelodies.length === 0) suitableMelodies.push(...BLUES_MELODY_RIFFS);
     }
     const selectedMelody = suitableMelodies[random.nextInt(suitableMelodies.length)] || BLUES_MELODY_RIFFS[0];
+    this.lastSelectedBluesMelodyId = selectedMelody.id;
     
     const barDurationInBeats = 4;
     const ticksPerBeat = 3;
@@ -493,7 +506,8 @@ export class FractalMusicEngine {
         }
     }
 
-    const shouldMutate = random.next() < 0.4;
+    // #ИЗМЕНЕНО: Увеличена вероятность мутации до 70%
+    const shouldMutate = random.next() < 0.7;
     let mutationLog = "None";
     let mutatedEvents = [...baseEvents]; // Start with a copy
 
@@ -517,7 +531,7 @@ export class FractalMusicEngine {
 
     const log = `Using riff: "${selectedMelody.id}". Mutation: "${mutationLog}". Register: ${registerHint || 'default'}`;
     
-    // #ИСПРАВЛЕНО: Возвращаем мутированные события, а не базовые.
+    // #ИСПРАВЛЕНО: Теперь возвращаются мутированные события, а не базовые.
     return { events: mutatedEvents, log };
   }
 
