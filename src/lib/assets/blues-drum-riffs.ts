@@ -73,5 +73,3 @@ BLUES_DRUM_RIFFS.epic = BLUES_DRUM_RIFFS.joyful;
 
 // Copy dark to anxious as a starting point
 BLUES_DRUM_RIFFS.anxious = BLUES_DRUM_RIFFS.dark;
-
-    

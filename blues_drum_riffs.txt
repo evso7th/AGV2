@@ -1,0 +1,825 @@
+Отлично! Ниже — по три барабанных «бита» для каждого блюзового настроения (12/8 shuffle, медленные/средние темпы), плюс правила мутаций и готовые филлы. Формат понятный для движка: указываю tpb=12 (12 триольных восьмых на такт), где удар — tick (0…11). Для шапки: типичный «shuffle» хэт играет первый и третий триоль в каждом бите: ticks = [0,2, 3,5, 6,8, 9,11].
+
+Общее
+- tpb: 12 (триплет‑восьмые). В каждом бите три позиции: n*3, n*3+1, n*3+2; shuffle = «1» и «a»: (n*3) и (n*3+2).
+- Обозначения: HH — closed hi‑hat, OH — open hat, SD — snare, K — kick, R — ride, T — tom. Пример массива: [0,2,3,5,6,8,9,11]
+- Велосити (рекомендации): HH 55–70 (ghost 40–50), SD 78–88 (ghost 55–65), K 75–85, R 60–70, T 65–75.
+
+Быстрый реф: базовый хэт для shuffle
+- HH_SHUFFLE = [0,2, 3,5, 6,8, 9,11]
+
+1) JOYFUL (весёлый, светлый) — 72–80 BPM
+- Beat A (легкий shuffle)
+  - HH: [0,2,3,5,6,8,9,11]
+  - SD: [3,9]
+  - K:  [0,6,8]         // добавка на «а» 3-й доли
+  - R:  —
+- Beat B (offbeat OH чуть шире)
+  - HH: [0,2,3,5,6,8,9,11], OH: [5,11] (тихо)
+  - SD: [3,9], K: [0,6]
+  - R:  —
+- Beat C (ride в припеве/лиде)
+  - R: [3,6,9] (четвертями), HH: [0,2,6,8] (подд. тихо)
+  - SD: [3,9], K: [0,6,10]
+
+2) ENTHUSIASTIC (энергичный, но ≤80 BPM)
+- Beat A (drive shuffle)
+  - HH: [0,2,3,5,6,8,9,11]
+  - SD: [3,9], K: [0,5,6]      // плотнее к середине
+- Beat B (пресс на 2/4 + ghost)
+  - HH: как выше, SD: [3,9] + ghost [2,8]
+  - K: [0,6,8], OH: [11] (тихо)
+- Beat C (ride-on feel)
+  - R: [3,6,9,11], SD: [3,9], K: [0,6]
+
+3) NEUTRAL (классический Chicago) — 68–78 BPM
+- Beat A (чистый mid shuffle)
+  - HH: [0,2,3,5,6,8,9,11], SD: [3,9], K: [0,6]
+- Beat B (плотнее на концах фраз)
+  - HH: тот же, SD: [3,9], K: [0,6,10]
+- Beat C (тонкий рум‑эффект)
+  - HH: [0,2,3,5,6,8,9,11], SD: [3,9], K: [0,6], T(тихо): [11] каждые 2 такта
+
+4) DREAMY (мечтательное, «соул») — 60–72 BPM
+- Beat A (воздушный)
+  - HH: [0,2,6,8] (реже), SD: [3,9], K: [0,6]
+- Beat B (ride‑bell редкий)
+  - R: [3,9], HH: [0,2,6,8] тихо, SD: [3,9], K: [0,6,10]
+- Beat C (щётки‑лайт имитация)
+  - HH: [0,2,3,5,6,8,9,11] (vel 45–55), SD: [3,9] (vel 70–75), K: [0]
+
+5) CALM (спокойный, laid‑back) — 60–70 BPM
+- Beat A (минимум)
+  - HH: [0,2,6,8], SD: [9], K: [0,6]
+- Beat B (shuffle‑ghost)
+  - HH: [0,2,3,5,6,8,9,11] (ghost на [2,5,8,11] vel 45–50), SD: [3,9], K: [0]
+- Beat C (ride выключен, хэт тише)
+  - HH: [0,2,3,5,6,8,9,11] (vel 50–60), SD: [3,9], K: [0,6]
+
+6) MELANCHOLIC (меланхоличный, minor slow) — 56–68 BPM
+- Beat A (тёмный shuffle)
+  - HH: [0,2,3,5,6,8,9,11], SD: [3,9], K: [0,6]
+- Beat B (ломаный кик)
+  - HH: тот же, SD: [3,9], K: [0,6,10] // добавка на конце
+- Beat C (ride в кульминации)
+  - R: [6,9], HH: [0,2], SD: [3,9], K: [0,6]
+
+7) GLOOMY (мрачный, swampy) — 60–70 BPM
+- Beat A (грязноватый свамп)
+  - HH: [0,2,6,8], SD: [9], K: [0,8]    // кик на «а» 4‑го
+- Beat B (ломаные хэты)
+  - HH: [0,2,3,6,8,11], SD: [3,9], K: [0,6]
+- Beat C (том‑подложка)
+  - HH: [0,2,6,8], SD: [9], K: [0,6], T: [3,11] (тихо)
+
+8) DARK (тяжёлый slow blues) — 60–70 BPM
+- Beat A (тяжёлый up‑down)
+  - HH: [0,2,3,5,6,8,9,11], SD: [3,9], K: [0,6,8]
+- Beat B (ударная первая доля)
+  - HH: [0,2,6,8], SD: [3,9], K: [0,6], том‑подбой на [11] иногда
+- Beat C (ride‑plateau)
+  - R: [3,6,9], SD: [3,9], K: [0,6], HH: [0,2] тихо
+
+Правила мутаций (общие и по настроениям)
+Микро (каждый такт/через такт)
+- Ghost‑ноты SD: добавить SD на [2] и/или [8] (vel −20 от SD основного).
+- Open‑hat: OH на [11] раз в 2–4 такта (Joyful/Enthusiastic/Neutral), тише — в Calm/Dreamy (раз в 4–8).
+- Kick‑вариант: заменить [6] → [5] (чуть «тянет» вперёд) или добавить [10] на подъём в бар 12.
+
+Мезо (каждые 4–8 тактов/на границах фраз)
+- Ride on/off: включить Ride (Joyful/Enthusiastic — на соло‑хорах; Melancholic/Dark — только в пике), затем выключить.
+- Ghost хэты → полнотелый shuffle: Dreamy/Calm — чередовать «редкие» HH и полный HH_SHUFFLE.
+- Тихий том на «and of 4»: T [11] или [10–11] в конце фразы.
+
+Макро (секции/стоп‑тайм)
+- Stop‑time (бар 9–10): выключить HH/R, оставить K+SD хиты — [0] и [6/9] (KICK_STOP/SNARE_STOP), лид держит ноту.
+- Бриджи: 1‑барный TOM_FILL перед переходом (см. филлы ниже), затем возврат к исходному паттерну.
+
+Библиотека филлов (готовые)
+Полутактовые (6 тиков)
+- Fill A (snare+tom триоль): SD [0,3], T [4,5] (или [10,11] в конце бара)
+- Fill B (kick‑snare‑kick): K [0,4], SD [3], HH «закрыть» на [5]
+
+Полнотактовые (12 тиков)
+- TOM_FILL_EUCLID (ровный рассыпной): T [0,3,5,8,11], SD [9] (акцент возвращения)
+- Shuffle Roll: SD ghost на [0,2,3,5,6,8,9,11] (vel 55–65), SD акцент [9], K [0,6] — роящий «ролл».
+- Crash‑тапа: в конце секции — OH/Crash (если есть) на [0], затем тишина HH до [3], возвращение в основной бит.
+
+Примеры применения филлов по настроениям
+- Joyful/Enthusiastic: каждые 4–8 тактов Fill A или TOM_FILL_EUCLID; перед соло — Crash на начало хора.
+- Neutral: 8–12 тактов между филлами, лучше короткие (Fill B).
+- Dreamy/Calm: редко; лучше «ghost roll» на [8–11] с тихим SD/Т.
+- Melancholic/Gloomy/Dark: 8–12 тактов; предпочтительнее tom‑филлы на [10–11] и хиты на стоп‑тайме.
+
+Динамика/человечность
+- Humanize тайминг: ±10–20 мс для HH/SD/Т, ±10 мс для K (осторожно).
+- Велосити: варьируй HH (на сильные [0,6] чуть громче), ghost −20…−30 от основного.
+
+Если хочешь — соберу JSON‑клипы для каждого бита (tpb=12) и отдам набором: {hats:[], snare:[], kick:[], ride:[], toms:[]}, плюс «расписание» мутаций и филлов на 2–3 хора (24–36 тактов) под конкретный ключ/темп.
+Ниже — 40 блюзовых битов (по 5 на каждое настроение) для 12/8 (tpb=12), пригодные для прямого рендера. Я даю:
+
+- Общую библиотеку масок (ticks 0..11) для HH/SD/K/R/T и филлов.
+- 40 «рецептов»: для каждого бита — базовый набор масок, вариации, стоп‑тайм (бар 9–10), филл на бар 12.
+- Темповые коридоры и динамику.
+
+Библиотека масок (tpb=12)
+- Хэты (HH)
+  - HH_SHUFFLE = [0,2, 3,5, 6,8, 9,11]         // классический шаффл
+  - HH_SPARSE  = [0,2, 6,8]                     // редкий хэт
+  - HH_GHOST   = [0,2,3,5,6,8,9,11] (ghost на [2,5,8,11] — вел. 45–55)
+  - OH_11      = [11]                           // открытый хэт на «а 4»
+- Малый (SD)
+  - SN_BACK    = [3,9]                          // бэкбит
+  - SN_STOP    = [0,6]                          // стоп‑тайм (хиты на 1 и 3)
+  - SN_GHOST   = [2,8]                          // призрачные
+- Бочка (K)
+  - K_BASE     = [0,6]                          // 1 и 3
+  - K_DRIVE    = [0,6,8]                        // добавка на «а 3»
+  - K_PUSH     = [0,5,6]                        // лёгкий «подъём»
+  - K_SWAMP    = [0,8]                          // «грязноватый» свамп
+  - K_MIN      = [0]                            // минимализм
+  - K_STOP     = [0,6]                          // стоп‑тайм (с SD_STOP)
+- Райд (R)
+  - R_QTR      = [3,6,9]                        // четверти (триольное ощущение)
+  - R_HALF     = [6,9]
+- Тома (T)
+  - T_11       = [11]
+- Филлы (на бар 12, или конец фразы)
+  - F_TOM_EUCL = T: [0,3,5,8,11], SD: [9]       // рассыпной том‑филл + акцент
+  - F_SD_ROLL  = SD: [0,2,3,5,6,8,9,11], K:[0]  // «ролл» щадящий
+  - F_KS_KICK  = K: [0,4], SD: [3]              // короткий KS на пол‑такта
+Динамика (рекомендации)
+- HH 55–70 (ghost 45–55), SD 78–88 (ghost −20), K 75–85, R 60–70, T 65–75.
+
+Как читать «рецепт» бита
+- base: какие маски на барах 1–8 и 11.
+- variations: мелкие мутации (ghost, OH на [11], доп. бочка).
+- bars9_10: стоп‑тайм (или альтернативный шаблон).
+- bar12: филл.
+- ride: где включать/выключать райд (если есть).
+- tempo: целевой коридор (BPM).
+
+— — — — — — — — — — — — — — — — — — — — — — —
+JOYFUL (5 шт., 72–80 BPM; лёгкость, улыбка)
+
+1) Joy-01 Light Shuffle
+- base: HH_SHUFFLE + SD_BACK + K_BASE
+- variations: OH на [11] раз в 2 бара
+- bars9_10: SN_STOP + K_STOP, HH off
+- bar12: F_TOM_EUCL
+- ride: off
+- tempo: 72–78
+
+2) Joy-02 Offbeat Open
+- base: HH_SHUFFLE + SD_BACK + K_DRIVE
+- variations: OH_11 каждый 2‑й бар, SD_GHOST на [2,8]
+- bars9_10: стоп‑тайм
+- bar12: F_SD_ROLL
+- ride: off
+- tempo: 74–80
+
+3) Joy-03 Ride Chorus
+- base: (куплет) HH_SHUFFLE + SD_BACK + K_BASE
+- variations: (припев/лид) R_QTR + HH_SPARSE, SD_BACK, K_BASE
+- bars9_10: стоп‑тайм
+- bar12: F_KS_KICK
+- ride: on в припеве (бары 33–44 условно)
+- tempo: 76–80
+
+4) Joy-04 Brushy Air
+- base: HH_GHOST (тихо) + SD_BACK + K_MIN, OH_11 очень редко
+- bars9_10: SN_STOP + K_STOP
+- bar12: F_SD_ROLL (тихо)
+- ride: off
+- tempo: 72–76
+
+5) Joy-05 Tight & Bright
+- base: HH_SHUFFLE + SD_BACK + K_PUSH
+- variations: OH_11 иногда; T_11 раз в 4 бара (тихо)
+- bars9_10: стоп‑тайм
+- bar12: F_TOM_EUCL
+- ride: off
+- tempo: 76–80
+
+— — — — — — — — — — — — — — — — — — — — — — —
+ENTHUSIASTIC (5 шт., 74–80 BPM; драйв, но блюз)
+
+6) Enth-01 Drive Shuffle
+- base: HH_SHUFFLE + SD_BACK + K_DRIVE
+- variations: SD_GHOST [2,8]
+- bars9_10: стоп‑тайм
+- bar12: F_KS_KICK
+- ride: on на соло (R_QTR)
+- tempo: 76–80
+
+7) Enth-02 Push Mid
+- base: HH_SHUFFLE + SD_BACK + K_PUSH
+- variations: OH_11 по фразе; T_11 редкий
+- bars9_10: стоп‑тайм
+- bar12: F_TOM_EUCL
+- ride: off
+- tempo: 74–78
+
+8) Enth-03 Ride On
+- base: R_QTR + HH_SPARSE + SD_BACK + K_BASE
+- variations: HH_SHUFFLE вернуть в переходах (1–2 бара)
+- bars9_10: стоп‑тайм (ride off)
+- bar12: F_SD_ROLL
+- tempo: 76–80
+
+9) Enth-04 Dense Hat
+- base: HH_SHUFFLE (вел. чуть громче) + SD_BACK + K_DRIVE
+- variations: прихлоп SD на [3,9] чуть сильнее, ghost на [2] мягче
+- bars9_10: стоп‑тайм
+- bar12: F_TOM_EUCL
+- tempo: 78–80
+
+10) Enth-05 Kick Accent
+- base: HH_SHUFFLE + SD_BACK + (чередовать K_BASE/K_DRIVE по барам)
+- variations: OH_11 на каждом 4‑м баре
+- bars9_10: стоп‑тайм
+- bar12: F_KS_KICK
+- ride: off
+- tempo: 76–80
+
+— — — — — — — — — — — — — — — — — — — — — — —
+NEUTRAL (5 шт., 68–78 BPM; классический Chicago)
+
+11) Neut-01 Classic Mid
+- base: HH_SHUFFLE + SD_BACK + K_BASE
+- bars9_10: стоп‑тайм
+- bar12: F_TOM_EUCL
+- ride: off
+- tempo: 70–76
+
+12) Neut-02 Tail Push
+- base: HH_SHUFFLE + SD_BACK + K_BASE
+- variations: добавлять K на [10] в барах 4/8/11
+- bars9_10: стоп‑тайм
+- bar12: F_KS_KICK
+- ride: off
+- tempo: 72–78
+
+13) Neut-03 Brush Ghost
+- base: HH_GHOST + SD_BACK + K_MIN
+- bars9_10: SN_STOP + K_STOP
+- bar12: F_SD_ROLL
+- ride: off
+- tempo: 68–74
+
+14) Neut-04 Tom Hint
+- base: HH_SHUFFLE + SD_BACK + K_BASE + T_11 (раз в 4 бара)
+- bars9_10: стоп‑тайм
+- bar12: F_TOM_EUCL
+- ride: off
+- tempo: 72–76
+
+15) Neut-05 Quarter Ride Tag
+- base: HH_SHUFFLE + SD_BACK + K_BASE
+- variations: R_QTR только на 7–8 барах (подвести к 9)
+- bars9_10: стоп‑тайм (ride off)
+- bar12: F_KS_KICK
+- tempo: 74–78
+
+— — — — — — — — — — — — — — — — — — — — — — —
+DREAMY (5 шт., 60–72 BPM; «воздух», соул)
+
+16) Drm-01 Air Sparse
+- base: HH_SPARSE + SD_BACK + K_BASE
+- bars9_10: SN_STOP + K_STOP
+- bar12: F_SD_ROLL (тихо)
+- ride: off
+- tempo: 60–68
+
+17) Drm-02 Bell Ride
+- base: R_HALF + HH_SPARSE + SD_BACK + K_MIN
+- bars9_10: стоп‑тайм
+- bar12: F_TOM_EUCL
+- tempo: 64–72
+
+18) Drm-03 Brush Full
+- base: HH_GHOST (vel 45–55) + SD_BACK (70–75) + K_MIN
+- variations: OH_11 очень редко
+- bars9_10: SN_STOP + K_STOP
+- bar12: F_SD_ROLL
+- tempo: 60–66
+
+19) Drm-04 Tail Push Soft
+- base: HH_SPARSE + SD_BACK + (K_BASE в начале фраз, K_DRIVE в конце)
+- bars9_10: стоп‑тайм
+- bar12: F_KS_KICK
+- tempo: 66–72
+
+20) Drm-05 Ride Curtains
+- base: R_QTR (тихо) + HH_SPARSE + SD_BACK + K_MIN
+- bars9_10: стоп‑тайм
+- bar12: F_TOM_EUCL
+- tempo: 68–72
+
+— — — — — — — — — — — — — — — — — — — — — — —
+CALM (5 шт., 60–70 BPM; спокойный, «лакированный»)
+
+21) Calm-01 Minimal
+- base: HH_SPARSE + SD_BACK + K_MIN
+- bars9_10: SN_STOP + K_STOP
+- bar12: F_SD_ROLL
+- ride: off
+- tempo: 60–66
+
+22) Calm-02 Soft Shuffle
+- base: HH_SHUFFLE (vel ниже) + SD_BACK + K_BASE
+- variations: SD_GHOST [2,8]
+- bars9_10: стоп‑тайм
+- bar12: F_KS_KICK
+- tempo: 62–70
+
+23) Calm-03 Hat‑Air
+- base: HH_GHOST + SD_BACK + K_MIN, OH_11 иногда
+- bars9_10: SN_STOP + K_STOP
+- bar12: F_TOM_EUCL
+- tempo: 60–68
+
+24) Calm-04 End Push
+- base: HH_SHUFFLE + SD_BACK + (K_BASE, а на бар 11 — K_DRIVE)
+- bars9_10: стоп‑тайм
+- bar12: F_TOM_EUCL
+- tempo: 64–70
+
+25) Calm-05 Half Ride
+- base: R_HALF + HH_SPARSE + SD_BACK + K_BASE
+- bars9_10: стоп‑тайм (ride off)
+- bar12: F_SD_ROLL
+- tempo: 66–70
+
+— — — — — — — — — — — — — — — — — — — — — — —
+MELANCHOLIC (5 шт., 56–68 BPM; минорный slow)
+
+26) Mel-01 Minor Shuffle
+- base: HH_SHUFFLE + SD_BACK + K_BASE
+- bars9_10: стоп‑тайм
+- bar12: F_SD_ROLL
+- ride: off
+- tempo: 56–64
+
+27) Mel-02 Broken Kick
+- base: HH_SHUFFLE + SD_BACK + (чередуй K_BASE/K_DRIVE), K на [10] в барах 4/8/11
+- bars9_10: SN_STOP + K_STOP
+- bar12: F_TOM_EUCL
+- tempo: 60–68
+
+28) Mel-03 Dark Brush
+- base: HH_GHOST + SD_BACK + K_MIN; T_11 (раз в 4 бара тихо)
+- bars9_10: стоп‑тайм
+- bar12: F_SD_ROLL
+- tempo: 58–66
+
+29) Mel-04 Ride‑Peak
+- base: HH_SHUFFLE + SD_BACK + K_BASE
+- variations: R_QTR только на 7–8 барах (подвести к стоп‑тайм)
+- bars9_10: стоп‑тайм (ride off)
+- bar12: F_KS_KICK
+- tempo: 62–68
+
+30) Mel-05 Tail Weight
+- base: HH_SHUFFLE + SD_BACK + K_BASE; добавляй K [10] в концах фраз
+- bars9_10: стоп‑тайм
+- bar12: F_TOM_EUCL
+- tempo: 60–68
+
+— — — — — — — — — — — — — — — — — — — — — — —
+GLOOMY (5 шт., 60–70 BPM; свамп, низ)
+
+31) Glo-01 Swamp Sparse
+- base: HH_SPARSE + SD [9] (только) + K_SWAMP
+- bars9_10: SN_STOP + K_STOP
+- bar12: F_TOM_EUCL
+- ride: off
+- tempo: 60–68
+
+32) Glo-02 Broken Hat
+- base: HH: [0,2,3,6,8,11] + SD_BACK + K_BASE
+- bars9_10: стоп‑тайм
+- bar12: F_SD_ROLL
+- tempo: 62–70
+
+33) Glo-03 Tom Underscore
+- base: HH_SPARSE + SD [9] + K_BASE + T_11 (каждый 2‑й бар)
+- bars9_10: SN_STOP + K_STOP
+- bar12: F_TOM_EUCL
+- tempo: 60–68
+
+34) Glo-04 Thick Backbeat
+- base: HH_SHUFFLE + SD_BACK (чуть громче) + K_SWAMP
+- bars9_10: стоп‑тайм
+- bar12: F_KS_KICK
+- tempo: 64–70
+
+35) Glo-05 Off‑Tail
+- base: HH_SHUFFLE + SD_BACK + K_BASE; OH_11 иногда
+- bars9_10: стоп‑тайм
+- bar12: F_TOM_EUCL
+- tempo: 66–70
+
+— — — — — — — — — — — — — — — — — — — — — — —
+DARK (5 шт., 60–70 BPM; тяжёлый slow)
+
+36) Dark-01 Heavy Up‑Down
+- base: HH_SHUFFLE + SD_BACK + (K_BASE + добавка [8])
+- bars9_10: SN_STOP + K_STOP
+- bar12: F_TOM_EUCL
+- ride: off
+- tempo: 60–68
+
+37) Dark-02 Hammer Sparse
+- base: HH_SPARSE + SD_BACK + K_BASE; T_11 в конце фраз
+- bars9_10: стоп‑тайм
+- bar12: F_KS_KICK
+- tempo: 60–68
+
+38) Dark-03 Ride Plateaus
+- base: R_QTR + HH_SPARSE + SD_BACK + K_BASE
+- bars9_10: стоп‑тайм (ride off)
+- bar12: F_SD_ROLL
+- tempo: 64–70
+
+39) Dark-04 Dense Hat
+- base: HH_SHUFFLE (чуть громче) + SD_BACK + K_DRIVE
+- variations: SD_GHOST [2,8] редко
+- bars9_10: стоп‑тайм
+- bar12: F_TOM_EUCL
+- tempo: 66–70
+
+40) Dark-05 Low Boom
+- base: HH_GHOST + SD [9] + K_SWAMP
+- bars9_10: SN_STOP + K_STOP
+- bar12: F_SD_ROLL
+- tempo: 60–66
+
+Правила рендера (как «сложить» 12 тактов)
+- Бары 1–8 и 11: ставь base‑маски (с вариациями по описанию).
+- Бары 9–10: стоп‑тайм (SN_STOP+K_STOP; HH/R off), если указано.
+- Бар 12: добавь выбранный филл (F_TOM_EUCL / F_SD_ROLL / F_KS_KICK) и возвращайся в base в следующем хоре.
+- Ghost‑ноты и OH: по вариациям — не чаще 1–2 раз в 4 такта.
+
+Быстрый пример развёртки (для битов с «стоп‑тайм»)
+- Bars 1–4: base
+- Bars 5–8: base + вариации (OH_11, T_11, SD_GHOST)
+- Bar 9–10: SN_STOP + K_STOP (HH/R off)
+- Bar 11: base
+- Bar 12: base + [fill]
+
+Если хочешь, отдам любой бит в виде JSON‑клипа на 12/8 с точными тик‑массивами для HH/K/SD/R/T (и вставками филла) — выбери IDs (например, Joy‑02, Dark‑01 и т. п.), и я соберу «на экспорт».
+
+Ниже — 40 блюзовых битов (по 5 на каждое настроение) для 12/8 (tpb=12), пригодные для прямого рендера. Я даю:
+
+- Общую библиотеку масок (ticks 0..11) для HH/SD/K/R/T и филлов.
+- 40 «рецептов»: для каждого бита — базовый набор масок, вариации, стоп‑тайм (бар 9–10), филл на бар 12.
+- Темповые коридоры и динамику.
+
+Библиотека масок (tpb=12)
+- Хэты (HH)
+  - HH_SHUFFLE = [0,2, 3,5, 6,8, 9,11]         // классический шаффл
+  - HH_SPARSE  = [0,2, 6,8]                     // редкий хэт
+  - HH_GHOST   = [0,2,3,5,6,8,9,11] (ghost на [2,5,8,11] — вел. 45–55)
+  - OH_11      = [11]                           // открытый хэт на «а 4»
+- Малый (SD)
+  - SN_BACK    = [3,9]                          // бэкбит
+  - SN_STOP    = [0,6]                          // стоп‑тайм (хиты на 1 и 3)
+  - SN_GHOST   = [2,8]                          // призрачные
+- Бочка (K)
+  - K_BASE     = [0,6]                          // 1 и 3
+  - K_DRIVE    = [0,6,8]                        // добавка на «а 3»
+  - K_PUSH     = [0,5,6]                        // лёгкий «подъём»
+  - K_SWAMP    = [0,8]                          // «грязноватый» свамп
+  - K_MIN      = [0]                            // минимализм
+  - K_STOP     = [0,6]                          // стоп‑тайм (с SD_STOP)
+- Райд (R)
+  - R_QTR      = [3,6,9]                        // четверти (триольное ощущение)
+  - R_HALF     = [6,9]
+- Тома (T)
+  - T_11       = [11]
+- Филлы (на бар 12, или конец фразы)
+  - F_TOM_EUCL = T: [0,3,5,8,11], SD: [9]       // рассыпной том‑филл + акцент
+  - F_SD_ROLL  = SD: [0,2,3,5,6,8,9,11], K:[0]  // «ролл» щадящий
+  - F_KS_KICK  = K: [0,4], SD: [3]              // короткий KS на пол‑такта
+Динамика (рекомендации)
+- HH 55–70 (ghost 45–55), SD 78–88 (ghost −20), K 75–85, R 60–70, T 65–75.
+
+Как читать «рецепт» бита
+- base: какие маски на барах 1–8 и 11.
+- variations: мелкие мутации (ghost, OH на [11], доп. бочка).
+- bars9_10: стоп‑тайм (или альтернативный шаблон).
+- bar12: филл.
+- ride: где включать/выключать райд (если есть).
+- tempo: целевой коридор (BPM).
+
+— — — — — — — — — — — — — — — — — — — — — — —
+JOYFUL (5 шт., 72–80 BPM; лёгкость, улыбка)
+
+1) Joy-01 Light Shuffle
+- base: HH_SHUFFLE + SD_BACK + K_BASE
+- variations: OH на [11] раз в 2 бара
+- bars9_10: SN_STOP + K_STOP, HH off
+- bar12: F_TOM_EUCL
+- ride: off
+- tempo: 72–78
+
+2) Joy-02 Offbeat Open
+- base: HH_SHUFFLE + SD_BACK + K_DRIVE
+- variations: OH_11 каждый 2‑й бар, SD_GHOST на [2,8]
+- bars9_10: стоп‑тайм
+- bar12: F_SD_ROLL
+- ride: off
+- tempo: 74–80
+
+3) Joy-03 Ride Chorus
+- base: (куплет) HH_SHUFFLE + SD_BACK + K_BASE
+- variations: (припев/лид) R_QTR + HH_SPARSE, SD_BACK, K_BASE
+- bars9_10: стоп‑тайм
+- bar12: F_KS_KICK
+- ride: on в припеве (бары 33–44 условно)
+- tempo: 76–80
+
+4) Joy-04 Brushy Air
+- base: HH_GHOST (тихо) + SD_BACK + K_MIN, OH_11 очень редко
+- bars9_10: SN_STOP + K_STOP
+- bar12: F_SD_ROLL (тихо)
+- ride: off
+- tempo: 72–76
+
+5) Joy-05 Tight & Bright
+- base: HH_SHUFFLE + SD_BACK + K_PUSH
+- variations: OH_11 иногда; T_11 раз в 4 бара (тихо)
+- bars9_10: стоп‑тайм
+- bar12: F_TOM_EUCL
+- ride: off
+- tempo: 76–80
+
+— — — — — — — — — — — — — — — — — — — — — — —
+ENTHUSIASTIC (5 шт., 74–80 BPM; драйв, но блюз)
+
+6) Enth-01 Drive Shuffle
+- base: HH_SHUFFLE + SD_BACK + K_DRIVE
+- variations: SD_GHOST [2,8]
+- bars9_10: стоп‑тайм
+- bar12: F_KS_KICK
+- ride: on на соло (R_QTR)
+- tempo: 76–80
+
+7) Enth-02 Push Mid
+- base: HH_SHUFFLE + SD_BACK + K_PUSH
+- variations: OH_11 по фразе; T_11 редкий
+- bars9_10: стоп‑тайм
+- bar12: F_TOM_EUCL
+- ride: off
+- tempo: 74–78
+
+8) Enth-03 Ride On
+- base: R_QTR + HH_SPARSE + SD_BACK + K_BASE
+- variations: HH_SHUFFLE вернуть в переходах (1–2 бара)
+- bars9_10: стоп‑тайм (ride off)
+- bar12: F_SD_ROLL
+- tempo: 76–80
+
+9) Enth-04 Dense Hat
+- base: HH_SHUFFLE (вел. чуть громче) + SD_BACK + K_DRIVE
+- variations: прихлоп SD на [3,9] чуть сильнее, ghost на [2] мягче
+- bars9_10: стоп‑тайм
+- bar12: F_TOM_EUCL
+- tempo: 78–80
+
+10) Enth-05 Kick Accent
+- base: HH_SHUFFLE + SD_BACK + (чередовать K_BASE/K_DRIVE по барам)
+- variations: OH_11 на каждом 4‑м баре
+- bars9_10: стоп‑тайм
+- bar12: F_KS_KICK
+- ride: off
+- tempo: 76–80
+
+— — — — — — — — — — — — — — — — — — — — — — —
+NEUTRAL (5 шт., 68–78 BPM; классический Chicago)
+
+11) Neut-01 Classic Mid
+- base: HH_SHUFFLE + SD_BACK + K_BASE
+- bars9_10: стоп‑тайм
+- bar12: F_TOM_EUCL
+- ride: off
+- tempo: 70–76
+
+12) Neut-02 Tail Push
+- base: HH_SHUFFLE + SD_BACK + K_BASE
+- variations: добавлять K на [10] в барах 4/8/11
+- bars9_10: стоп‑тайм
+- bar12: F_KS_KICK
+- ride: off
+- tempo: 72–78
+
+13) Neut-03 Brush Ghost
+- base: HH_GHOST + SD_BACK + K_MIN
+- bars9_10: SN_STOP + K_STOP
+- bar12: F_SD_ROLL
+- ride: off
+- tempo: 68–74
+
+14) Neut-04 Tom Hint
+- base: HH_SHUFFLE + SD_BACK + K_BASE + T_11 (раз в 4 бара)
+- bars9_10: стоп‑тайм
+- bar12: F_TOM_EUCL
+- ride: off
+- tempo: 72–76
+
+15) Neut-05 Quarter Ride Tag
+- base: HH_SHUFFLE + SD_BACK + K_BASE
+- variations: R_QTR только на 7–8 барах (подвести к 9)
+- bars9_10: стоп‑тайм (ride off)
+- bar12: F_KS_KICK
+- tempo: 74–78
+
+— — — — — — — — — — — — — — — — — — — — — — —
+DREAMY (5 шт., 60–72 BPM; «воздух», соул)
+
+16) Drm-01 Air Sparse
+- base: HH_SPARSE + SD_BACK + K_BASE
+- bars9_10: SN_STOP + K_STOP
+- bar12: F_SD_ROLL (тихо)
+- ride: off
+- tempo: 60–68
+
+17) Drm-02 Bell Ride
+- base: R_HALF + HH_SPARSE + SD_BACK + K_MIN
+- bars9_10: стоп‑тайм
+- bar12: F_TOM_EUCL
+- tempo: 64–72
+
+18) Drm-03 Brush Full
+- base: HH_GHOST (vel 45–55) + SD_BACK (70–75) + K_MIN
+- variations: OH_11 очень редко
+- bars9_10: SN_STOP + K_STOP
+- bar12: F_SD_ROLL
+- tempo: 60–66
+
+19) Drm-04 Tail Push Soft
+- base: HH_SPARSE + SD_BACK + (K_BASE в начале фраз, K_DRIVE в конце)
+- bars9_10: стоп‑тайм
+- bar12: F_KS_KICK
+- tempo: 66–72
+
+20) Drm-05 Ride Curtains
+- base: R_QTR (тихо) + HH_SPARSE + SD_BACK + K_MIN
+- bars9_10: стоп‑тайм
+- bar12: F_TOM_EUCL
+- tempo: 68–72
+
+— — — — — — — — — — — — — — — — — — — — — — —
+CALM (5 шт., 60–70 BPM; спокойный, «лакированный»)
+
+21) Calm-01 Minimal
+- base: HH_SPARSE + SD_BACK + K_MIN
+- bars9_10: SN_STOP + K_STOP
+- bar12: F_SD_ROLL
+- ride: off
+- tempo: 60–66
+
+22) Calm-02 Soft Shuffle
+- base: HH_SHUFFLE (vel ниже) + SD_BACK + K_BASE
+- variations: SD_GHOST [2,8]
+- bars9_10: стоп‑тайм
+- bar12: F_KS_KICK
+- tempo: 62–70
+
+23) Calm-03 Hat‑Air
+- base: HH_GHOST + SD_BACK + K_MIN, OH_11 иногда
+- bars9_10: SN_STOP + K_STOP
+- bar12: F_TOM_EUCL
+- tempo: 60–68
+
+24) Calm-04 End Push
+- base: HH_SHUFFLE + SD_BACK + (K_BASE, а на бар 11 — K_DRIVE)
+- bars9_10: стоп‑тайм
+- bar12: F_TOM_EUCL
+- tempo: 64–70
+
+25) Calm-05 Half Ride
+- base: R_HALF + HH_SPARSE + SD_BACK + K_BASE
+- bars9_10: стоп‑тайм (ride off)
+- bar12: F_SD_ROLL
+- tempo: 66–70
+
+— — — — — — — — — — — — — — — — — — — — — — —
+MELANCHOLIC (5 шт., 56–68 BPM; минорный slow)
+
+26) Mel-01 Minor Shuffle
+- base: HH_SHUFFLE + SD_BACK + K_BASE
+- bars9_10: стоп‑тайм
+- bar12: F_SD_ROLL
+- ride: off
+- tempo: 56–64
+
+27) Mel-02 Broken Kick
+- base: HH_SHUFFLE + SD_BACK + (чередуй K_BASE/K_DRIVE), K на [10] в барах 4/8/11
+- bars9_10: SN_STOP + K_STOP
+- bar12: F_TOM_EUCL
+- tempo: 60–68
+
+28) Mel-03 Dark Brush
+- base: HH_GHOST + SD_BACK + K_MIN; T_11 (раз в 4 бара тихо)
+- bars9_10: стоп‑тайм
+- bar12: F_SD_ROLL
+- tempo: 58–66
+
+29) Mel-04 Ride‑Peak
+- base: HH_SHUFFLE + SD_BACK + K_BASE
+- variations: R_QTR только на 7–8 барах (подвести к стоп‑тайм)
+- bars9_10: стоп‑тайм (ride off)
+- bar12: F_KS_KICK
+- tempo: 62–68
+
+30) Mel-05 Tail Weight
+- base: HH_SHUFFLE + SD_BACK + K_BASE; добавляй K [10] в концах фраз
+- bars9_10: стоп‑тайм
+- bar12: F_TOM_EUCL
+- tempo: 60–68
+
+— — — — — — — — — — — — — — — — — — — — — — —
+GLOOMY (5 шт., 60–70 BPM; свамп, низ)
+
+31) Glo-01 Swamp Sparse
+- base: HH_SPARSE + SD [9] (только) + K_SWAMP
+- bars9_10: SN_STOP + K_STOP
+- bar12: F_TOM_EUCL
+- ride: off
+- tempo: 60–68
+
+32) Glo-02 Broken Hat
+- base: HH: [0,2,3,6,8,11] + SD_BACK + K_BASE
+- bars9_10: стоп‑тайм
+- bar12: F_SD_ROLL
+- tempo: 62–70
+
+33) Glo-03 Tom Underscore
+- base: HH_SPARSE + SD [9] + K_BASE + T_11 (каждый 2‑й бар)
+- bars9_10: SN_STOP + K_STOP
+- bar12: F_TOM_EUCL
+- tempo: 60–68
+
+34) Glo-04 Thick Backbeat
+- base: HH_SHUFFLE + SD_BACK (чуть громче) + K_SWAMP
+- bars9_10: стоп‑тайм
+- bar12: F_KS_KICK
+- tempo: 64–70
+
+35) Glo-05 Off‑Tail
+- base: HH_SHUFFLE + SD_BACK + K_BASE; OH_11 иногда
+- bars9_10: стоп‑тайм
+- bar12: F_TOM_EUCL
+- tempo: 66–70
+
+— — — — — — — — — — — — — — — — — — — — — — —
+DARK (5 шт., 60–70 BPM; тяжёлый slow)
+
+36) Dark-01 Heavy Up‑Down
+- base: HH_SHUFFLE + SD_BACK + (K_BASE + добавка [8])
+- bars9_10: SN_STOP + K_STOP
+- bar12: F_TOM_EUCL
+- ride: off
+- tempo: 60–68
+
+37) Dark-02 Hammer Sparse
+- base: HH_SPARSE + SD_BACK + K_BASE; T_11 в конце фраз
+- bars9_10: стоп‑тайм
+- bar12: F_KS_KICK
+- tempo: 60–68
+
+38) Dark-03 Ride Plateaus
+- base: R_QTR + HH_SPARSE + SD_BACK + K_BASE
+- bars9_10: стоп‑тайм (ride off)
+- bar12: F_SD_ROLL
+- tempo: 64–70
+
+39) Dark-04 Dense Hat
+- base: HH_SHUFFLE (чуть громче) + SD_BACK + K_DRIVE
+- variations: SD_GHOST [2,8] редко
+- bars9_10: стоп‑тайм
+- bar12: F_TOM_EUCL
+- tempo: 66–70
+
+40) Dark-05 Low Boom
+- base: HH_GHOST + SD [9] + K_SWAMP
+- bars9_10: SN_STOP + K_STOP
+- bar12: F_SD_ROLL
+- tempo: 60–66
+
+Правила рендера (как «сложить» 12 тактов)
+- Бары 1–8 и 11: ставь base‑маски (с вариациями по описанию).
+- Бары 9–10: стоп‑тайм (SN_STOP+K_STOP; HH/R off), если указано.
+- Бар 12: добавь выбранный филл (F_TOM_EUCL / F_SD_ROLL / F_KS_KICK) и возвращайся в base в следующем хоре.
+- Ghost‑ноты и OH: по вариациям — не чаще 1–2 раз в 4 такта.
+
+Быстрый пример развёртки (для битов с «стоп‑тайм»)
+- Bars 1–4: base
+- Bars 5–8: base + вариации (OH_11, T_11, SD_GHOST)
+- Bar 9–10: SN_STOP + K_STOP (HH/R off)
+- Bar 11: base
+- Bar 12: base + [fill]
+
+Если хочешь, отдам любой бит в виде JSON‑клипа на 12/8 с точными тик‑массивами для HH/K/SD/R/T (и вставками филла) — выбери IDs (например, Joy‑02, Dark‑01 и т. п.), и я соберу «на экспорт».

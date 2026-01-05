@@ -1,4 +1,3 @@
-
 // src/lib/assets/blues-melody-riffs.ts
 
 /**
@@ -239,5 +238,3 @@ export const BLUES_MELODY_RIFFS: BluesMelody[] = [
     phraseTurnaround:  [{t:0,d:3,deg:'2'},{t:3,d:3,deg:'b2'},{t:6,d:6,deg:'R'}]
   },
 ];
-
-  

@@ -1,6 +1,6 @@
 
 
-import type { FractalEvent, Mood, Genre, Technique, BassSynthParams, InstrumentType, MelodyInstrument, AccompanimentInstrument, ResonanceMatrix, InstrumentHints, AccompanimentTechnique, GhostChord, SfxRule, V1MelodyInstrument, V2MelodyInstrument, BlueprintPart, InstrumentationRules, InstrumentBehaviorRules, BluesMelody, InstrumentPart } from './fractal';
+import type { FractalEvent, Mood, Genre, Technique, BassSynthParams, InstrumentType, MelodyInstrument, AccompanimentInstrument, ResonanceMatrix, InstrumentHints, AccompanimentTechnique, GhostChord, SfxRule, V1MelodyInstrument, V2MelodyInstrument, BlueprintPart, InstrumentationRules, InstrumentBehaviorRules, BluesMelody } from './fractal';
 import { ElectronicK, TraditionalK, AmbientK, MelancholicMinorK } from './resonance-matrices';
 import { getScaleForMood, STYLE_DRUM_PATTERNS, createAccompanimentAxiom, PERCUSSION_SETS, TEXTURE_INSTRUMENT_WEIGHTS_BY_MOOD, getAccompanimentTechnique, createBassFill, createDrumFill, AMBIENT_ACCOMPANIMENT_WEIGHTS, chooseHarmonyInstrument, mutateBassPhrase, createMelodyMotif, createDrumAxiom, generateGhostHarmonyTrack, mutateAccompanimentPhrase, createAmbientBassAxiom, createHarmonyAxiom, generateIntroSequence } from './music-theory';
 import { BlueprintNavigator, type NavigationInfo } from './blueprint-navigator';
@@ -8,7 +8,6 @@ import { getBlueprint } from './blueprints';
 import { V2_PRESETS } from './presets-v2';
 import { PARANOID_STYLE_RIFF } from './assets/rock-riffs';
 import { BLUES_BASS_RIFFS } from './assets/blues-bass-riffs';
-import { NEUTRAL_BLUES_BASS_RIFFS } from './assets/neutral-blues-riffs';
 import { BLUES_MELODY_RIFFS, type BluesRiffDegree, type BluesRiffEvent, type BluesMelodyPhrase } from './assets/blues-melody-riffs';
 import { BLUES_DRUM_RIFFS } from './assets/blues-drum-riffs';
 
@@ -141,8 +140,18 @@ export class FractalMusicEngine {
     this.hasBassBeenMutated = false;
     this.bluesChorusCache = null;
     
-    this.bluesDrumRiffIndex = this.random.nextInt(BLUES_DRUM_RIFFS[this.config.mood]?.length ?? 1);
-    this.bluesBassRiffIndex = this.random.nextInt(BLUES_BASS_RIFFS[this.config.mood]?.length ?? 1);
+    // --- ИСПОЛНЕНИЕ ПЛАНА 728: Выбор уникального бита/риффа для сессии ---
+    const drumRiffsForMood = BLUES_DRUM_RIFFS[this.config.mood];
+    if (drumRiffsForMood && drumRiffsForMood.length > 0) {
+        this.bluesDrumRiffIndex = this.random.nextInt(drumRiffsForMood.length);
+        console.log(`%c[FME Init] Selected Blues Drum Riff Index ${this.bluesDrumRiffIndex} for mood '${this.config.mood}'.`, 'color: orange');
+    }
+    const bassRiffsForMood = BLUES_BASS_RIFFS[this.config.mood];
+    if (bassRiffsForMood && bassRiffsForMood.length > 0) {
+        this.bluesBassRiffIndex = this.random.nextInt(bassRiffsForMood.length);
+        console.log(`%c[FME Init] Selected Blues Bass Riff Index ${this.bluesBassRiffIndex} for mood '${this.config.mood}'.`, 'color: orange');
+    }
+    // ----------------------------------------------------------------------
     
     this.lastSelectedBluesMelodyId = null;
 
@@ -167,16 +176,13 @@ export class FractalMusicEngine {
     this.introInstrumentOrder = [];
     const introPart = this.navigator.blueprint.structure.parts.find(p => p.id.startsWith('INTRO'));
     if (introPart?.introRules) {
-        // Заполняем и перемешиваем порядок вступления
         this.introInstrumentOrder = [...introPart.introRules.allowedInstruments];
-        // Fisher-Yates shuffle
         for (let i = this.introInstrumentOrder.length - 1; i > 0; i--) {
             const j = this.random.nextInt(i + 1);
             [this.introInstrumentOrder[i], this.introInstrumentOrder[j]] = [this.introInstrumentOrder[j], this.introInstrumentOrder[i]];
         }
         console.log(`[IntroSetup] Unique instrument entry order created: [${this.introInstrumentOrder.join(', ')}]`);
 
-        // Заполняем карту тембров для интро
         this.introInstrumentOrder.forEach(part => {
              const instrumentChoice = this._chooseInstrumentForPart(part as any, this.navigator?.tick(0));
              if (instrumentChoice) {
@@ -219,7 +225,6 @@ export class FractalMusicEngine {
   
       if (!rules || rules.strategy !== 'weighted') {
           const fallback = part === 'melody' ? 'organ' : 'synth';
-          // console.log(`[FME @ Bar ${this.epoch}] No specific weighted rules for '${part}'. Using fallback: ${fallback}.`);
           return fallback;
       }
   
@@ -229,20 +234,14 @@ export class FractalMusicEngine {
   
       if (!options || options.length === 0) {
           const fallbackOptions = !useV2 ? rules.v2Options : rules.v1Options;
-          const fallbackEngineVersion = !useV2 ? 'V2' : 'V1';
           if (!fallbackOptions || fallbackOptions.length === 0) {
               const ultimateFallback = part === 'melody' ? 'organ' : 'synth';
-              console.log(`[FME @ Bar ${this.epoch}] No ${engineVersion} or fallback options for '${part}'. Using ultimate fallback: ${ultimateFallback}.`);
               return ultimateFallback;
           }
-          const chosen = this.performWeightedChoice(fallbackOptions);
-          // console.log(`[FME @ Bar ${this.epoch}] Selected instrument for '${part}': ${chosen} (from Fallback Engine ${fallbackEngineVersion})`);
-          return chosen;
+          return this.performWeightedChoice(fallbackOptions);
       }
   
-      const chosenInstrument = this.performWeightedChoice(options);
-      // console.log(`[FME @ Bar ${this.epoch}] Selected instrument for '${part}': ${chosenInstrument} (from Primary Engine ${engineVersion})`);
-      return chosenInstrument;
+      return this.performWeightedChoice(options);
   }
   
   private performWeightedChoice(options: {name: any, weight: number}[]): any {
@@ -260,13 +259,11 @@ export class FractalMusicEngine {
         }
     }
 
-    // Fallback just in case, though it should not be reached with correct weights
     return options[options.length - 1].name;
   }
 
 
   public generateExternalImpulse() {
-    // This functionality is currently disabled to simplify the logic.
   }
   
   private applyNaturalDecay(events: FractalEvent[], barDuration: number): FractalEvent[] {
@@ -322,20 +319,33 @@ export class FractalMusicEngine {
             addEvents(pattern.R, 'drum_ride', 0.7);
             addEvents(pattern.T, 'drum_tom_mid', 0.75);
 
-            // Simple mutation for variety
-            if (this.random.next() < 0.3) {
-                const mutationType = this.random.nextInt(3);
-                if (mutationType === 0 && events.length > 0) {
-                    const noteType = this.random.next() > 0.5 ? 'drum_snare_ghost_note' : 'drum_tom_low';
-                    events.push({ type: noteType, note: 60, time: (this.random.nextInt(4) * ticksPerBeat + 1) / ticksPerBeat, duration: 1/ticksPerBeat, weight: 0.3, technique: 'hit', dynamics: 'p', phrasing: 'staccato', params: {} });
-                } else if (mutationType === 1 && events.length > 0) {
-                    const kickEvent = events.find(e => e.type === 'drum_kick');
-                    if (kickEvent) kickEvent.time += (this.random.next() - 0.5) * 0.1;
-                } else if (mutationType === 2 && events.length > 0) {
-                    const hatEvent = events.find(e => e.type === 'drum_hihat_closed');
-                    if (hatEvent) hatEvent.weight = Math.min(1.0, hatEvent.weight * 1.2);
-                }
+            // --- КОНТЕКСТНЫЕ МУТАЦИИ ---
+            const barInChorus = this.epoch % 12;
+            let mutationLog: string | null = null;
+            
+            // Fill at the end of the chorus
+            if (barInChorus === 11 && this.random.next() < 0.8) {
+                mutationLog = "Turnaround Fill";
+                // Clear existing drums in this bar and add a fill
+                events = []; 
+                addEvents([0,3,5,8,11], 'drum_tom_mid', 0.7);
+                addEvents([9], 'drum_snare', 0.9);
+            } 
+            // Ghost note addition
+            else if (this.random.next() < 0.3) {
+                 mutationLog = "Ghost Snare";
+                 addEvents([2, 8], 'drum_snare_ghost_note', 0.35);
             }
+            // Open-hat variation
+            else if (this.random.next() < 0.25) {
+                mutationLog = "Open-Hat";
+                addEvents([11], 'drum_hihat_open', 0.6);
+            }
+
+            if (mutationLog) {
+                console.log(`%c[DrumMutation @ Bar ${this.epoch}] ${mutationLog}`, 'color: #FFC0CB');
+            }
+
             return events;
         }
         
@@ -436,11 +446,20 @@ export class FractalMusicEngine {
         const riffTemplate = moodRiffs[this.bluesBassRiffIndex];
 
         // Определяем ступень аккорда
-        const rootI = 0; // Simplified
-        const step = (root - rootI + 12) % 12;
-        const isTurnaround = false; // Simplified
+        const barInChorus = this.epoch % 12;
+        const rootOfChorus = this.ghostHarmonyTrack.find(c => c.bar === (this.epoch - barInChorus))?.rootNote ?? root;
+        const step = (root - rootOfChorus + 12) % 12;
         
-        let pattern = riffTemplate.I; // Simplified to always use 'I' for now
+        let patternSource: 'I' | 'IV' | 'V' | 'turn' = 'I';
+        if (barInChorus === 11) {
+            patternSource = 'turn';
+        } else if (step === 5) {
+            patternSource = 'IV';
+        } else if (step === 7) {
+            patternSource = 'V';
+        }
+
+        const pattern = riffTemplate[patternSource];
 
         for (const riffNote of pattern) {
             phrase.push({
@@ -456,103 +475,6 @@ export class FractalMusicEngine {
             });
         }
         return phrase;
-    }
-
-    public generateBluesMelodyChorus(chorusChords: GhostChord[], mood: Mood, random: { next: () => number, nextInt: (max: number) => number }, registerHint?: 'low' | 'mid' | 'high'): { events: FractalEvent[], log: string } {
-        const baseEvents: FractalEvent[] = [];
-        
-        let suitableMelodies = BLUES_MELODY_RIFFS.filter(m => m.moods.includes(mood) && m.id !== this.lastSelectedBluesMelodyId);
-        
-        if (suitableMelodies.length === 0) {
-            suitableMelodies = BLUES_MELODY_RIFFS.filter(m => m.moods.includes(mood));
-        }
-        
-        if (suitableMelodies.length === 0) {
-            console.warn(`[BluesMelodyChorus] No suitable melodies found for mood: ${mood}. Falling back to all.`);
-            suitableMelodies.push(...BLUES_MELODY_RIFFS.filter(m => m.id !== this.lastSelectedBluesMelodyId));
-            if(suitableMelodies.length === 0) suitableMelodies.push(...BLUES_MELODY_RIFFS);
-        }
-        const selectedMelody = suitableMelodies[random.nextInt(suitableMelodies.length)] || BLUES_MELODY_RIFFS[0];
-        this.lastSelectedBluesMelodyId = selectedMelody.id;
-        
-        const barDurationInBeats = 4;
-        const ticksPerBeat = 3;
-        
-        let octaveShift = 12 * 2;
-        if (registerHint === 'mid') octaveShift = 12 * 3;
-        if (registerHint === 'high') octaveShift = 12 * 4;
-
-        const DEGREE_TO_SEMITONE: Record<BluesRiffDegree, number> = { 'R': 0, 'b2': 1, '2': 2, 'b3': 3, '3': 4, '4': 5, '#4': 6, 'b5': 6, '5': 7, 'b6': 8, '6': 9, 'b7': 10, '9': 14, '11': 17, 'R+8': 12 };
-
-        for (let barIndex = 0; barIndex < 12; barIndex++) {
-            const absoluteBar = (chorusChords[0]?.bar ?? 0) + barIndex;
-            const barChord = chorusChords.find(c => absoluteBar >= c.bar && absoluteBar < (c.bar + c.durationBars));
-
-            if (!barChord) {
-                console.warn(`[BluesMelodyChorus] No chord found for bar ${barIndex} (absolute: ${absoluteBar}).`);
-                continue;
-            };
-
-            const chordRoot = barChord.rootNote;
-            let phrase: BluesMelodyPhrase;
-
-            const rootI = chorusChords.find(c=>c.bar % 12 === 0)?.rootNote || chordRoot;
-            const step = (chordRoot - rootI + 12) % 12;
-            const IV_STEP = 5;
-            const V_STEP = 7;
-            
-            if (barIndex === 11) {
-                phrase = selectedMelody.phraseTurnaround;
-            } else if (step === IV_STEP) {
-                phrase = selectedMelody.phraseIV;
-            } else if (step === V_STEP) {
-                phrase = selectedMelody.phraseV;
-            } else {
-                phrase = selectedMelody.phraseI;
-            }
-
-            for (const event of phrase) {
-                const noteMidi = chordRoot + DEGREE_TO_SEMITONE[event.deg] + octaveShift;
-                baseEvents.push({
-                    type: 'melody',
-                    note: noteMidi,
-                    time: (barIndex * barDurationInBeats) + (event.t / ticksPerBeat),
-                    duration: event.d / ticksPerBeat,
-                    weight: 0.85,
-                    technique: 'pick', 
-                    dynamics: 'f',
-                    phrasing: 'legato',
-                    params: {}
-                });
-            }
-        }
-
-        const shouldMutate = random.next() < 0.7; // Increased mutation chance
-        let mutationLog = "None";
-        let mutatedEvents = baseEvents; 
-
-        if (shouldMutate && baseEvents.length > 0) {
-            mutatedEvents = JSON.parse(JSON.stringify(baseEvents)); // Deep copy for mutation
-            const mutationType = random.nextInt(3);
-            if (mutationType === 0) {
-                mutationLog = "Rhythmic Shift";
-                mutatedEvents.forEach(e => { e.time += (random.next() - 0.5) * 0.25; });
-            } else if (mutationType === 1) {
-                mutationLog = "Register Shift";
-                const eventOctaveShift = (random.next() > 0.5) ? 12 : -12;
-                mutatedEvents.forEach(e => { e.note += eventOctaveShift; });
-            } else { 
-                mutationLog = "Note Removal";
-                if(mutatedEvents.length > 5) {
-                    const indexToRemove = random.nextInt(mutatedEvents.length);
-                    mutatedEvents.splice(indexToRemove, 1);
-                }
-            }
-        }
-
-        const log = `Using riff: "${selectedMelody.id}". Mutation: "${mutationLog}". Register: ${registerHint || 'default'}`;
-        
-        return { events: mutatedEvents, log };
     }
 
   public getGhostHarmony(): GhostChord[] {

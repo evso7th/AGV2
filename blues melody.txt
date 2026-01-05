@@ -1,3 +1,261 @@
+{
+  "tpb": 12,
+  "progressions": {
+    "major_quick": ["I","IV","I","I","IV","IV","I","I","V","IV","I","V"],
+    "minor_12bar": ["i","i","i","i","iv","iv","i","i","bVI","V","i","V"]
+  },
+  "melodies": [
+    { "id":"Joyful-01","mood":"joyful","progression":"major_quick",
+      "phraseI":[{"t":0,"d":3,"deg":"5"},{"t":3,"d":3,"deg":"b7"},{"t":6,"d":6,"deg":"R"}],
+      "phraseIV":[{"t":0,"d":3,"deg":"3"},{"t":3,"d":3,"deg":"5"},{"t":6,"d":6,"deg":"R"}],
+      "phraseV":[{"t":0,"d":3,"deg":"5"},{"t":3,"d":3,"deg":"b7"},{"t":6,"d":3,"deg":"3"},{"t":9,"d":3,"deg":"R"}],
+      "phraseT":[{"t":0,"d":3,"deg":"2"},{"t":3,"d":3,"deg":"b3"},{"t":6,"d":3,"deg":"3"},{"t":9,"d":3,"deg":"4"}]
+    },
+    { "id":"Joyful-02","mood":"joyful","progression":"major_quick",
+      "phraseI":[{"t":0,"d":6,"deg":"R"},{"t":6,"d":6,"deg":"R+8"}],
+      "phraseIV":[{"t":0,"d":3,"deg":"R"},{"t":3,"d":3,"deg":"3"},{"t":6,"d":6,"deg":"9"}],
+      "phraseV":[{"t":0,"d":4,"deg":"R"},{"t":4,"d":8,"deg":"b7"}],
+      "phraseT":[{"t":0,"d":2,"deg":"2"},{"t":2,"d":2,"deg":"b3"},{"t":4,"d":2,"deg":"3"},{"t":6,"d":2,"deg":"4"},{"t":8,"d":2,"deg":"#4"},{"t":10,"d":2,"deg":"5"}]
+    },
+    { "id":"Joyful-03","mood":"joyful","progression":"major_quick",
+      "phraseI":[{"t":0,"d":4,"deg":"R"},{"t":4,"d":4,"deg":"4"},{"t":8,"d":4,"deg":"6"}],
+      "phraseIV":[{"t":0,"d":4,"deg":"R"},{"t":4,"d":4,"deg":"5"},{"t":8,"d":4,"deg":"6"}],
+      "phraseV":[{"t":0,"d":3,"deg":"5"},{"t":3,"d":3,"deg":"b7"},{"t":6,"d":6,"deg":"3"}],
+      "phraseT":[{"t":0,"d":3,"deg":"R"},{"t":3,"d":3,"deg":"b7"},{"t":6,"d":6,"deg":"R"}]
+    },
+    { "id":"Joyful-04","mood":"joyful","progression":"major_quick",
+      "phraseI":[{"t":0,"d":3,"deg":"b3"},{"t":3,"d":3,"deg":"3"},{"t":6,"d":6,"deg":"5"}],
+      "phraseIV":[{"t":0,"d":4,"deg":"R"},{"t":4,"d":8,"deg":"5"}],
+      "phraseV":[{"t":0,"d":4,"deg":"R"},{"t":4,"d":8,"deg":"b7"}],
+      "phraseT":[{"t":0,"d":6,"deg":"6"},{"t":6,"d":6,"deg":"R"}]
+    },
+    { "id":"Joyful-05","mood":"joyful","progression":"major_quick",
+      "phraseI":[{"t":0,"d":3,"deg":"9"},{"t":3,"d":3,"deg":"6"},{"t":6,"d":6,"deg":"R"}],
+      "phraseIV":[{"t":0,"d":3,"deg":"9"},{"t":3,"d":9,"deg":"R"}],
+      "phraseV":[{"t":0,"d":3,"deg":"9"},{"t":3,"d":9,"deg":"5"}],
+      "phraseT":[{"t":0,"d":4,"deg":"2"},{"t":4,"d":8,"deg":"R"}]
+    },
+
+    { "id":"Enthusiastic-01","mood":"enthusiastic","progression":"major_quick",
+      "phraseI":[{"t":0,"deg":"R"},{"t":2,"deg":"5"},{"t":4,"deg":"6"},{"t":6,"deg":"6"},{"t":8,"deg":"5"},{"t":10,"deg":"R"}],
+      "phraseIV":[{"t":0,"deg":"R"},{"t":2,"deg":"5"},{"t":4,"deg":"6"},{"t":6,"deg":"6"},{"t":8,"deg":"5"},{"t":10,"deg":"R"}],
+      "phraseV":[{"t":0,"deg":"R"},{"t":2,"deg":"5"},{"t":4,"deg":"b7"},{"t":6,"deg":"5"},{"t":8,"deg":"R"},{"t":10,"deg":"5"}],
+      "phraseT":[{"t":0,"deg":"R"},{"t":3,"deg":"b7"},{"t":6,"deg":"6"},{"t":9,"deg":"5"}]
+    },
+    { "id":"Enthusiastic-02","mood":"enthusiastic","progression":"major_quick",
+      "phraseI":[{"t":0,"d":4,"deg":"R"},{"t":4,"d":4,"deg":"4"},{"t":8,"d":4,"deg":"6"}],
+      "phraseIV":[{"t":0,"d":4,"deg":"R"},{"t":4,"d":4,"deg":"5"},{"t":8,"d":4,"deg":"6"}],
+      "phraseV":[{"t":0,"d":4,"deg":"R"},{"t":4,"d":4,"deg":"b7"},{"t":8,"d":4,"deg":"5"}],
+      "phraseT":[{"t":0,"d":2,"deg":"2"},{"t":2,"d":2,"deg":"b3"},{"t":4,"d":2,"deg":"3"},{"t":6,"d":2,"deg":"4"},{"t":8,"d":2,"deg":"#4"},{"t":10,"d":2,"deg":"5"}]
+    },
+    { "id":"Enthusiastic-03","mood":"enthusiastic","progression":"major_quick",
+      "phraseI":[{"t":0,"d":6,"deg":"R"},{"t":6,"d":6,"deg":"6"}],
+      "phraseIV":[{"t":0,"d":6,"deg":"R"},{"t":6,"d":6,"deg":"6"}],
+      "phraseV":[{"t":0,"d":3,"deg":"5"},{"t":3,"d":3,"deg":"b7"},{"t":6,"d":6,"deg":"3"}],
+      "phraseT":[{"t":0,"d":6,"deg":"6"},{"t":6,"d":6,"deg":"R"}]
+    },
+    { "id":"Enthusiastic-04","mood":"enthusiastic","progression":"major_quick",
+      "phraseI":[{"t":0,"deg":"R"},{"t":2,"deg":"5"},{"t":4,"deg":"6"},{"t":6,"deg":"b7"},{"t":9,"deg":"6"},{"t":11,"deg":"5"}],
+      "phraseIV":[{"t":0,"deg":"R"},{"t":2,"deg":"5"},{"t":4,"deg":"6"},{"t":6,"deg":"b7"},{"t":9,"deg":"6"},{"t":11,"deg":"5"}],
+      "phraseV":[{"t":0,"deg":"5"},{"t":2,"deg":"b7"},{"t":4,"deg":"R"},{"t":6,"deg":"b7"},{"t":8,"deg":"5"},{"t":10,"deg":"R"}],
+      "phraseT":[{"t":0,"deg":"R"},{"t":2,"deg":"b7"},{"t":4,"deg":"6"},{"t":6,"deg":"b6"},{"t":8,"deg":"5"},{"t":10,"deg":"#4"}]
+    },
+    { "id":"Enthusiastic-05","mood":"enthusiastic","progression":"major_quick",
+      "phraseI":[{"t":0,"d":3,"deg":"5"},{"t":3,"d":3,"deg":"6"},{"t":6,"d":6,"deg":"R"}],
+      "phraseIV":[{"t":0,"d":3,"deg":"5"},{"t":3,"d":3,"deg":"6"},{"t":6,"d":6,"deg":"R"}],
+      "phraseV":[{"t":0,"d":3,"deg":"5"},{"t":3,"d":3,"deg":"b7"},{"t":6,"d":6,"deg":"3"}],
+      "phraseT":[{"t":0,"d":3,"deg":"2"},{"t":3,"d":3,"deg":"b3"},{"t":6,"d":6,"deg":"R"}]
+    },
+
+    { "id":"Neutral-01","mood":"neutral","progression":"major_quick",
+      "phraseI":[{"t":0,"deg":"R"},{"t":2,"deg":"5"},{"t":4,"deg":"6"},{"t":6,"deg":"b7"},{"t":8,"deg":"6"},{"t":10,"deg":"5"}],
+      "phraseIV":[{"t":0,"deg":"R"},{"t":2,"deg":"5"},{"t":4,"deg":"6"},{"t":6,"deg":"b7"},{"t":8,"deg":"6"},{"t":10,"deg":"5"}],
+      "phraseV":[{"t":0,"deg":"5"},{"t":2,"deg":"b7"},{"t":4,"deg":"R"},{"t":6,"deg":"b7"},{"t":8,"deg":"5"},{"t":10,"deg":"R"}],
+      "phraseT":[{"t":0,"deg":"R"},{"t":2,"deg":"b7"},{"t":6,"deg":"6"},{"t":10,"deg":"5"}]
+    },
+    { "id":"Neutral-02","mood":"neutral","progression":"major_quick",
+      "phraseI":[{"t":0,"d":6,"deg":"R"},{"t":6,"d":6,"deg":"5"}],
+      "phraseIV":[{"t":0,"d":6,"deg":"R"},{"t":6,"d":6,"deg":"3"}],
+      "phraseV":[{"t":0,"d":6,"deg":"R"},{"t":6,"d":6,"deg":"b7"}],
+      "phraseT":[{"t":0,"d":6,"deg":"6"},{"t":6,"d":6,"deg":"R"}]
+    },
+    { "id":"Neutral-03","mood":"neutral","progression":"major_quick",
+      "phraseI":[{"t":0,"d":4,"deg":"R"},{"t":4,"d":4,"deg":"4"},{"t":8,"d":4,"deg":"5"}],
+      "phraseIV":[{"t":0,"d":4,"deg":"R"},{"t":4,"d":4,"deg":"5"},{"t":8,"d":4,"deg":"6"}],
+      "phraseV":[{"t":0,"d":4,"deg":"R"},{"t":4,"d":4,"deg":"b7"},{"t":8,"d":4,"deg":"5"}],
+      "phraseT":[{"t":0,"d":2,"deg":"2"},{"t":2,"d":2,"deg":"b3"},{"t":4,"d":2,"deg":"3"},{"t":6,"d":2,"deg":"4"},{"t":8,"d":2,"deg":"#4"},{"t":10,"d":2,"deg":"5"}]
+    },
+    { "id":"Neutral-04","mood":"neutral","progression":"major_quick",
+      "phraseI":[{"t":0,"d":12,"deg":"R"}],
+      "phraseIV":[{"t":0,"d":6,"deg":"R"},{"t":6,"d":6,"deg":"5"}],
+      "phraseV":[{"t":0,"d":6,"deg":"R"},{"t":6,"d":6,"deg":"b7"}],
+      "phraseT":[{"t":0,"d":4,"deg":"6"},{"t":4,"d":4,"deg":"5"},{"t":8,"d":4,"deg":"R"}]
+    },
+    { "id":"Neutral-05","mood":"neutral","progression":"major_quick",
+      "phraseI":[{"t":0,"d":3,"deg":"b3"},{"t":3,"d":3,"deg":"3"},{"t":6,"d":6,"deg":"5"}],
+      "phraseIV":[{"t":0,"d":3,"deg":"R"},{"t":3,"d":3,"deg":"3"},{"t":6,"d":6,"deg":"R"}],
+      "phraseV":[{"t":0,"d":3,"deg":"5"},{"t":3,"d":9,"deg":"b7"}],
+      "phraseT":[{"t":0,"d":3,"deg":"R"},{"t":3,"d":3,"deg":"b7"},{"t":6,"d":6,"deg":"R"}]
+    },
+
+    { "id":"Dreamy-01","mood":"dreamy","progression":"major_quick",
+      "phraseI":[{"t":0,"d":6,"deg":"R"},{"t":6,"d":6,"deg":"R+8"}],
+      "phraseIV":[{"t":0,"d":6,"deg":"6"},{"t":6,"d":6,"deg":"5"}],
+      "phraseV":[{"t":0,"d":6,"deg":"5"},{"t":6,"d":6,"deg":"R"}],
+      "phraseT":[{"t":0,"d":6,"deg":"2"},{"t":6,"d":6,"deg":"R"}]
+    },
+    { "id":"Dreamy-02","mood":"dreamy","progression":"major_quick",
+      "phraseI":[{"t":0,"d":4,"deg":"9"},{"t":4,"d":8,"deg":"R"}],
+      "phraseIV":[{"t":0,"d":6,"deg":"6"},{"t":6,"d":6,"deg":"5"}],
+      "phraseV":[{"t":0,"d":4,"deg":"9"},{"t":4,"d":8,"deg":"5"}],
+      "phraseT":[{"t":0,"d":6,"deg":"6"},{"t":6,"d":6,"deg":"R"}]
+    },
+    { "id":"Dreamy-03","mood":"dreamy","progression":"major_quick",
+      "phraseI":[{"t":0,"d":3,"deg":"5"},{"t":3,"d":3,"deg":"6"},{"t":6,"d":6,"deg":"R"}],
+      "phraseIV":[{"t":0,"d":3,"deg":"3"},{"t":3,"d":9,"deg":"R"}],
+      "phraseV":[{"t":0,"d":3,"deg":"5"},{"t":3,"d":9,"deg":"b7"}],
+      "phraseT":[{"t":0,"d":3,"deg":"2"},{"t":3,"d":9,"deg":"R"}]
+    },
+    { "id":"Dreamy-04","mood":"dreamy","progression":"major_quick",
+      "phraseI":[{"t":0,"d":6,"deg":"R"},{"t":6,"d":6,"deg":"9"}],
+      "phraseIV":[{"t":0,"d":6,"deg":"6"},{"t":6,"d":6,"deg":"9"}],
+      "phraseV":[{"t":0,"d":6,"deg":"5"},{"t":6,"d":6,"deg":"9"}],
+      "phraseT":[{"t":0,"d":4,"deg":"6"},{"t":4,"d":8,"deg":"R"}]
+    },
+    { "id":"Dreamy-05","mood":"dreamy","progression":"major_quick",
+      "phraseI":[{"t":0,"d":12,"deg":"R"}],
+      "phraseIV":[{"t":0,"d":12,"deg":"5"}],
+      "phraseV":[{"t":0,"d":12,"deg":"5"}],
+      "phraseT":[{"t":0,"d":6,"deg":"2"},{"t":6,"d":6,"deg":"R"}]
+    },
+
+    { "id":"Calm-01","mood":"calm","progression":"major_quick",
+      "phraseI":[{"t":0,"d":6,"deg":"R"},{"t":6,"d":6,"deg":"5"}],
+      "phraseIV":[{"t":0,"d":6,"deg":"R"},{"t":6,"d":6,"deg":"3"}],
+      "phraseV":[{"t":0,"d":6,"deg":"R"},{"t":6,"d":6,"deg":"b7"}],
+      "phraseT":[{"t":0,"d":4,"deg":"6"},{"t":4,"d":4,"deg":"5"},{"t":8,"d":4,"deg":"R"}]
+    },
+    { "id":"Calm-02","mood":"calm","progression":"major_quick",
+      "phraseI":[{"t":0,"d":12,"deg":"R"}],
+      "phraseIV":[{"t":0,"d":6,"deg":"R"},{"t":6,"d":6,"deg":"5"}],
+      "phraseV":[{"t":0,"d":6,"deg":"R"},{"t":6,"d":6,"deg":"b7"}],
+      "phraseT":[{"t":0,"d":12,"deg":"R"}]
+    },
+    { "id":"Calm-03","mood":"calm","progression":"major_quick",
+      "phraseI":[{"t":0,"d":4,"deg":"R"},{"t":4,"d":4,"deg":"4"},{"t":8,"d":4,"deg":"5"}],
+      "phraseIV":[{"t":0,"d":4,"deg":"R"},{"t":4,"d":4,"deg":"5"},{"t":8,"d":4,"deg":"6"}],
+      "phraseV":[{"t":0,"d":4,"deg":"R"},{"t":4,"d":4,"deg":"b7"},{"t":8,"d":4,"deg":"5"}],
+      "phraseT":[{"t":0,"d":2,"deg":"2"},{"t":2,"d":2,"deg":"b3"},{"t":4,"d":2,"deg":"3"},{"t":6,"d":2,"deg":"4"},{"t":8,"d":2,"deg":"#4"},{"t":10,"d":2,"deg":"5"}]
+    },
+    { "id":"Calm-04","mood":"calm","progression":"major_quick",
+      "phraseI":[{"t":0,"d":3,"deg":"b3"},{"t":3,"d":3,"deg":"3"},{"t":6,"d":6,"deg":"5"}],
+      "phraseIV":[{"t":0,"d":3,"deg":"R"},{"t":3,"d":3,"deg":"3"},{"t":6,"d":6,"deg":"R"}],
+      "phraseV":[{"t":0,"d":3,"deg":"5"},{"t":3,"d":9,"deg":"b7"}],
+      "phraseT":[{"t":0,"d":6,"deg":"6"},{"t":6,"d":6,"deg":"R"}]
+    },
+    { "id":"Calm-05","mood":"calm","progression":"major_quick",
+      "phraseI":[{"t":0,"d":6,"deg":"R"},{"t":6,"d":6,"deg":"6"}],
+      "phraseIV":[{"t":0,"d":6,"deg":"R"},{"t":6,"d":6,"deg":"6"}],
+      "phraseV":[{"t":0,"d":6,"deg":"5"},{"t":6,"d":6,"deg":"R"}],
+      "phraseT":[{"t":0,"d":6,"deg":"2"},{"t":6,"d":6,"deg":"R"}]
+    },
+
+    { "id":"Melancholic-01","mood":"melancholic","progression":"minor_12bar",
+      "phrasei":[{"t":0,"d":6,"deg":"b3"},{"t":6,"d":6,"deg":"11"}],
+      "phraseiv":[{"t":0,"d":6,"deg":"b3"},{"t":6,"d":6,"deg":"9"}],
+      "phraseV":[{"t":0,"d":3,"deg":"5"},{"t":3,"d":3,"deg":"b9"},{"t":6,"d":6,"deg":"R"}],
+      "phraseT":[{"t":0,"d":6,"deg":"b7"},{"t":6,"d":6,"deg":"R"}]
+    },
+    { "id":"Melancholic-02","mood":"melancholic","progression":"minor_12bar",
+      "phrasei":[{"t":0,"d":4,"deg":"R"},{"t":4,"d":4,"deg":"#4"},{"t":8,"d":4,"deg":"5"}],
+      "phraseiv":[{"t":0,"d":6,"deg":"11"},{"t":6,"d":6,"deg":"9"}],
+      "phraseV":[{"t":0,"d":3,"deg":"R"},{"t":3,"d":3,"deg":"3"},{"t":6,"d":6,"deg":"b7"}],
+      "phraseT":[{"t":0,"d":3,"deg":"2"},{"t":3,"d":3,"deg":"b2"},{"t":6,"d":6,"deg":"R"}]
+    },
+    { "id":"Melancholic-03","mood":"melancholic","progression":"minor_12bar",
+      "phrasei":[{"t":0,"d":12,"deg":"b3"}],
+      "phraseiv":[{"t":0,"d":12,"deg":"11"}],
+      "phraseV":[{"t":0,"d":6,"deg":"5"},{"t":6,"d":6,"deg":"b7"}],
+      "phraseT":[{"t":0,"d":6,"deg":"R"},{"t":6,"d":6,"deg":"b7"}]
+    },
+    { "id":"Melancholic-04","mood":"melancholic","progression":"minor_12bar",
+      "phrasei":[{"t":0,"d":3,"deg":"2"},{"t":3,"d":3,"deg":"b3"},{"t":6,"d":6,"deg":"5"}],
+      "phraseiv":[{"t":0,"d":3,"deg":"2"},{"t":3,"d":3,"deg":"4"},{"t":6,"d":6,"deg":"11"}],
+      "phraseV":[{"t":0,"d":3,"deg":"2"},{"t":3,"d":3,"deg":"3"},{"t":6,"d":6,"deg":"b7"}],
+      "phraseT":[{"t":0,"d":3,"deg":"b3"},{"t":3,"d":3,"deg":"2"},{"t":6,"d":6,"deg":"R"}]
+    },
+    { "id":"Melancholic-05","mood":"melancholic","progression":"minor_12bar",
+      "phrasei":[{"t":0,"d":6,"deg":"R"},{"t":6,"d":6,"deg":"5"}],
+      "phraseiv":[{"t":0,"d":6,"deg":"R"},{"t":6,"d":6,"deg":"11"}],
+      "phraseV":[{"t":0,"d":3,"deg":"5"},{"t":3,"d":3,"deg":"b5"},{"t":6,"d":6,"deg":"4"}],
+      "phraseT":[{"t":0,"d":3,"deg":"b3"},{"t":3,"d":3,"deg":"2"},{"t":6,"d":3,"deg":"R"},{"t":9,"d":3,"deg":"b7"}]
+    },
+
+    { "id":"Gloomy-01","mood":"gloomy","progression":"minor_12bar",
+      "phrasei":[{"t":0,"d":12,"deg":"R"}],
+      "phraseiv":[{"t":0,"deg":"R"},{"t":2,"deg":"b3"},{"t":4,"deg":"4"},{"t":6,"deg":"#4"},{"t":8,"deg":"4"},{"t":10,"deg":"b3"}],
+      "phraseV":[{"t":0,"d":6,"deg":"5"},{"t":6,"d":6,"deg":"b7"}],
+      "phraseT":[{"t":0,"deg":"R"},{"t":2,"deg":"b7"},{"t":4,"deg":"6"},{"t":6,"deg":"b6"},{"t":8,"deg":"5"},{"t":10,"deg":"#4"}]
+    },
+    { "id":"Gloomy-02","mood":"gloomy","progression":"minor_12bar",
+      "phrasei":[{"t":0,"deg":"5"},{"t":2,"deg":"#5"},{"t":4,"deg":"6"},{"t":6,"deg":"b7"},{"t":8,"deg":"6"},{"t":10,"deg":"5"}],
+      "phraseiv":[{"t":0,"deg":"4"},{"t":2,"deg":"b5"},{"t":4,"deg":"5"},{"t":6,"deg":"b5"},{"t":8,"deg":"4"},{"t":10,"deg":"b3"}],
+      "phraseV":[{"t":0,"deg":"5"},{"t":2,"deg":"R"},{"t":4,"deg":"b7"},{"t":6,"deg":"5"},{"t":8,"deg":"R"},{"t":10,"deg":"5"}],
+      "phraseT":[{"t":0,"deg":"R"},{"t":2,"deg":"b7"},{"t":4,"deg":"6"},{"t":6,"deg":"b6"},{"t":8,"deg":"5"},{"t":10,"deg":"#4"}]
+    },
+    { "id":"Gloomy-03","mood":"gloomy","progression":"minor_12bar",
+      "phrasei":[{"t":0,"d":6,"deg":"R"},{"t":6,"d":6,"deg":"b7"}],
+      "phraseiv":[{"t":0,"d":4,"deg":"R"},{"t":4,"d":4,"deg":"4"},{"t":8,"d":4,"deg":"b3"}],
+      "phraseV":[{"t":0,"d":12,"deg":"5"}],
+      "phraseT":[{"t":0,"deg":"R"},{"t":2,"deg":"b7"},{"t":4,"deg":"6"},{"t":6,"deg":"b6"},{"t":8,"deg":"5"},{"t":10,"deg":"#4"}]
+    },
+    { "id":"Gloomy-04","mood":"gloomy","progression":"minor_12bar",
+      "phrasei":[{"t":0,"d":3,"deg":"b3"},{"t":3,"d":3,"deg":"3"},{"t":6,"d":6,"deg":"5"}],
+      "phraseiv":[{"t":0,"d":3,"deg":"4"},{"t":3,"d":9,"deg":"9"}],
+      "phraseV":[{"t":0,"d":3,"deg":"5"},{"t":3,"d":9,"deg":"b7"}],
+      "phraseT":[{"t":0,"d":3,"deg":"b3"},{"t":3,"d":9,"deg":"R"}]
+    },
+    { "id":"Gloomy-05","mood":"gloomy","progression":"minor_12bar",
+      "phrasei":[{"t":0,"d":12,"deg":"R"}],
+      "phraseiv":[{"t":0,"d":12,"deg":"11"}],
+      "phraseV":[{"t":0,"d":6,"deg":"5"},{"t":6,"d":6,"deg":"b7"}],
+      "phraseT":[{"t":0,"d":6,"deg":"R"},{"t":6,"d":6,"deg":"b7"}]
+    },
+
+    { "id":"Dark-01","mood":"dark","progression":"minor_12bar",
+      "phrasei":[{"t":0,"deg":"R"},{"t":2,"deg":"5"},{"t":4,"deg":"b6"},{"t":6,"deg":"6"},{"t":8,"deg":"5"},{"t":10,"deg":"R"}],
+      "phraseiv":[{"t":0,"deg":"R"},{"t":2,"deg":"5"},{"t":4,"deg":"b6"},{"t":6,"deg":"6"},{"t":8,"deg":"5"},{"t":10,"deg":"R"}],
+      "phraseV":[{"t":0,"deg":"5"},{"t":2,"deg":"b7"},{"t":4,"deg":"R"},{"t":6,"deg":"b7"},{"t":8,"deg":"5"},{"t":10,"deg":"R"}],
+      "phraseT":[{"t":0,"deg":"R"},{"t":2,"deg":"b7"},{"t":4,"deg":"6"},{"t":6,"deg":"b6"},{"t":8,"deg":"5"},{"t":10,"deg":"#4"}]
+    },
+    { "id":"Dark-02","mood":"dark","progression":"minor_12bar",
+      "phrasei":[{"t":0,"d":12,"deg":"b3"}],
+      "phraseiv":[{"t":0,"d":12,"deg":"11"}],
+      "phraseV":[{"t":0,"d":6,"deg":"5"},{"t":6,"d":6,"deg":"b7"}],
+      "phraseT":[{"t":0,"d":6,"deg":"R"},{"t":6,"d":6,"deg":"b7"}]
+    },
+    { "id":"Dark-03","mood":"dark","progression":"minor_12bar",
+      "phrasei":[{"t":0,"d":6,"deg":"R"},{"t":6,"d":6,"deg":"5"}],
+      "phraseiv":[{"t":0,"d":6,"deg":"11"},{"t":6,"d":6,"deg":"9"}],
+      "phraseV":[{"t":0,"d":3,"deg":"b2"},{"t":3,"d":3,"deg":"R"},{"t":6,"d":6,"deg":"b7"}],
+      "phraseT":[{"t":0,"d":3,"deg":"2"},{"t":3,"d":3,"deg":"b2"},{"t":6,"d":6,"deg":"R"}]
+    },
+    { "id":"Dark-04","mood":"dark","progression":"minor_12bar",
+      "phrasei":[{"t":0,"d":3,"deg":"b3"},{"t":3,"d":3,"deg":"5"},{"t":6,"d":6,"deg":"b7"}],
+      "phraseiv":[{"t":0,"d":3,"deg":"4"},{"t":3,"d":3,"deg":"11"},{"t":6,"d":6,"deg":"9"}],
+      "phraseV":[{"t":0,"d":3,"deg":"5"},{"t":3,"d":3,"deg":"b5"},{"t":6,"d":6,"deg":"4"}],
+      "phraseT":[{"t":0,"d":6,"deg":"R"},{"t":6,"d":6,"deg":"b7"}]
+    },
+    { "id":"Dark-05","mood":"dark","progression":"minor_12bar",
+      "phrasei":[{"t":0,"d":6,"deg":"R"},{"t":6,"d":6,"deg":"R+8"}],
+      "phraseiv":[{"t":0,"d":6,"deg":"R"},{"t":6,"d":6,"deg":"R+8"}],
+      "phraseV":[{"t":0,"d":6,"deg":"5"},{"t":6,"d":6,"deg":"b7"}],
+      "phraseT":[{"t":0,"d":4,"deg":"R"},{"t":4,"d":4,"deg":"b7"},{"t":8,"d":4,"deg":"R"}]
+    }
+  ]
+}
+
+
 Отлично. Ниже — 20 блюзовых мелодий (12 тактов каждая) в разных настроениях, с длительностями. Формат компактный и готов к рендеру: для каждой мелодии задана прогрессия (12-bar quick-change для мейджора или 12-bar minor), и 4 фразы по аккордам (I/IV/V/Turn), каждая фраза — список событий в триольной сетке 12/8.
 
 Как читать и рендерить
@@ -185,3 +443,252 @@
 - Слишком частый b5 на сильной доле — «кислит».
 
 Если нужно — сгенерю полный MIDI‑клип для любой из 20 мелодий: возьму progression, разверну 12 баров с указанными фразами, транспонирую в ваш ключ (например, E), отдам в JSON (bar/t/d/pitch/vel) и/или .mid файл.
+
+{
+  "tpb": 12,
+  "progressions": {
+    "major_quick": ["I", "IV", "I", "I", "IV", "IV", "I", "I", "V", "IV", "I", "V"],
+    "minor_12bar": ["i", "i", "i", "i", "iv", "iv", "i", "i", "bVI", "V", "i", "V"]
+  },
+  "melodies": [
+    // 1. Светлая (Joyful) - Мажор
+    {
+      "id": "Joyful-01",
+      "mood": "joyful",
+      "progression": "major_quick",
+      "phraseI": [
+        { "t": 0, "d": 3, "deg": "5" },
+        { "t": 3, "d": 3, "deg": "b7" },
+        { "t": 6, "d": 6, "deg": "R" }
+      ],
+      "phraseIV": [
+        { "t": 0, "d": 3, "deg": "3" },
+        { "t": 3, "d": 3, "deg": "5" },
+        { "t": 6, "d": 6, "deg": "R" }
+      ],
+      "phraseV": [
+        { "t": 0, "d": 3, "deg": "5" },
+        { "t": 3, "d": 3, "deg": "b7" },
+        { "t": 6, "d": 3, "deg": "3" },
+        { "t": 9, "d": 3, "deg": "R" }
+      ],
+      "phraseT": [
+        { "t": 0, "d": 3, "deg": "2" },
+        { "t": 3, "d": 3, "deg": "b3" },
+        { "t": 6, "d": 3, "deg": "3" },
+        { "t": 9, "d": 3, "deg": "4" }
+      ]
+    },
+    // 2. Светлая (Joyful) - Мажор
+    {
+      "id": "Joyful-02",
+      "mood": "joyful",
+      "progression": "major_quick",
+      "phraseI": [
+        { "t": 0, "d": 2, "deg": "R" },
+        { "t": 2, "d": 2, "deg": "3" },
+        { "t": 4, "d": 2, "deg": "5" },
+        { "t": 6, "d": 2, "deg": "6" },
+        { "t": 8, "d": 2, "deg": "7" },
+        { "t": 10, "d": 2, "deg": "R" }
+      ],
+      "phraseIV": [
+        { "t": 0, "d": 2, "deg": "R" },
+        { "t": 2, "d": 2, "deg": "b3" },
+        { "t": 4, "d": 2, "deg": "5" },
+        { "t": 6, "d": 2, "deg": "6" },
+        { "t": 8, "d": 2, "deg": "7" },
+        { "t": 10, "d": 2, "deg": "R" }
+      ],
+      "phraseV": [
+        { "t": 0, "d": 2, "deg": "R" },
+        { "t": 2, "d": 2, "deg": "3" },
+        { "t": 4, "d": 2, "deg": "5" },
+        { "t": 6, "d": 2, "deg": "6" },
+        { "t": 8, "d": 2, "deg": "7" },
+        { "t": 10, "d": 2, "deg": "R" }
+      ],
+      "phraseT": [
+        { "t": 0, "d": 2, "deg": "R" },
+        { "t": 2, "d": 2, "deg": "3" },
+        { "t": 4, "d": 2, "deg": "5" },
+        { "t": 6, "d": 2, "deg": "6" },
+        { "t": 8, "d": 2, "deg": "7" },
+        { "t": 10, "d": 2, "deg": "R" }
+      ]
+    },
+    // 3. Светлая (Joyful) - Мажор
+    {
+      "id": "Joyful-03",
+      "mood": "joyful",
+      "progression": "major_quick",
+      "phraseI": [
+        { "t": 0, "d": 4, "deg": "R" },
+        { "t": 4, "d": 4, "deg": "3" },
+        { "t": 8, "d": 4, "deg": "5" }
+      ],
+      "phraseIV": [
+        { "t": 0, "d": 4, "deg": "R" },
+        { "t": 4, "d": 4, "deg": "b3" },
+        { "t": 8, "d": 4, "deg": "5" }
+      ],
+      "phraseV": [
+        { "t": 0, "d": 4, "deg": "R" },
+        { "t": 4, "d": 4, "deg": "3" },
+        { "t": 8, "d": 4, "deg": "5" }
+      ],
+      "phraseT": [
+        { "t": 0, "d": 4, "deg": "R" },
+        { "t": 4, "d": 4, "deg": "b3" },
+        { "t": 8, "d": 4, "deg": "5" }
+      ]
+    },
+    // 4. Светлая (Joyful) - Мажор
+    {
+      "id": "Joyful-04",
+      "mood": "joyful",
+      "progression": "major_quick",
+      "phraseI": [
+        { "t": 0, "d": 2, "deg": "R" },
+        { "t": 2, "d": 2, "deg": "3" },
+        { "t": 4, "d": 2, "deg": "5" },
+        { "t": 6, "d": 2, "deg": "6" },
+        { "t": 8, "d": 2, "deg": "7" },
+        { "t": 10, "d": 2, "deg": "R" }
+      ],
+      "phraseIV": [
+        { "t": 0, "d": 2, "deg": "R" },
+        { "t": 2, "d": 2, "deg": "b3" },
+        { "t": 4, "d": 2, "deg": "5" },
+        { "t": 6, "d": 2, "deg": "6" },
+        { "t": 8, "d": 2, "deg": "7" },
+        { "t": 10, "d": 2, "deg": "R" }
+      ],
+      "phraseV": [
+        { "t": 0, "d": 2, "deg": "R" },
+        { "t": 2, "d": 2, "deg": "3" },
+        { "t": 4, "d": 2, "deg": "5" },
+        { "t": 6, "d": 2, "deg": "6" },
+        { "t": 8, "d": 2, "deg": "7" },
+        { "t": 10, "d": 2, "deg": "R" }
+      ],
+      "phraseT": [
+        { "t": 0, "d": 2, "deg": "R" },
+        { "t": 2, "d": 2, "deg": "3" },
+        { "t": 4, "d": 2, "deg": "5" },
+        { "t": 6, "d": 2, "deg": "6" },
+        { "t": 8, "d": 2, "deg": "7" },
+        { "t": 10, "d": 2, "deg": "R" }
+      ]
+    },
+    // 5. Светлая (Joyful) - Мажор
+    {
+      "id": "Joyful-05",
+      "mood": "joyful",
+      "progression": "major_quick",
+      "phraseI": [
+        { "t": 0, "d": 3, "deg": "5" },
+        { "t": 3, "d": 3, "deg": "b7" },
+        { "t": 6, "d": 6, "deg": "R" }
+      ],
+      "phraseIV": [
+        { "t": 0, "d": 3, "deg": "3" },
+        { "t": 3, "d": 3, "deg": "5" },
+        { "t": 6, "d": 6, "deg": "R" }
+      ],
+      "phraseV": [
+        { "t": 0, "d": 3, "deg": "5" },
+        { "t": 3, "d": 3, "deg": "b7" },
+        { "t": 6, "d": 3, "deg": "3" },
+        { "t": 9, "d": 3, "deg": "R" }
+      ],
+      "phraseT": [
+        { "t": 0, "d": 3, "deg": "2" },
+        { "t": 3, "d": 3, "deg": "b3" },
+        { "t": 6, "d": 3, "deg": "3" },
+        { "t": 9, "d": 3, "deg": "4" }
+      ]
+    },
+    // 6. Темная (Dark) - Минор
+    {
+      "id": "Dark-01",
+      "mood": "dark",
+      "progression": "minor_12bar",
+      "phraseI": [
+        { "t": 0, "d": 3, "deg": "b3" },
+        { "t": 3, "d": 3, "deg": "5" },
+        { "t": 6, "d": 6, "deg": "R" }
+      ],
+      "phraseIV": [
+        { "t": 0, "d": 3, "deg": "b3" },
+        { "t": 3, "d": 3, "deg": "5" },
+        { "t": 6, "d": 6, "deg": "R" }
+      ],
+      "phraseV": [
+        { "t": 0, "d": 3, "deg": "b3" },
+        { "t": 3, "d": 3, "deg": "5" },
+        { "t": 6, "d": 3, "deg": "b7" },
+        { "t": 9, "d": 3, "deg": "b3" }
+      ],
+      "phraseT": [
+        { "t": 0, "d": 3, "deg": "b2" },
+        { "t": 3, "d": 3, "deg": "b3" },
+        { "t": 6, "d": 3, "deg": "4" },
+        { "t": 9, "d": 3, "deg": "b5" }
+      ]
+    },
+    // 7. Темная (Dark) - Минор
+    {
+      "id": "Dark-02",
+      "mood": "dark",
+      "progression": "minor_12bar",
+      "phraseI": [
+        { "t": 0, "d": 2, "deg": "R" },
+        { "t": 2, "d": 2, "deg": "b3" },
+        { "t": 4, "d": 2, "deg": "5" },
+        { "t": 6, "d": 2, "deg": "6" },
+        { "t": 8, "d": 2, "deg": "b7" },
+        { "t": 10, "d": 2, "deg": "R" }
+      ],
+      "phraseIV": [
+        { "t": 0, "d": 2, "deg": "R" },
+        { "t": 2, "d": 2, "deg": "b3" },
+        { "t": 4, "d": 2, "deg": "5" },
+        { "t": 6, "d": 2, "deg": "6" },
+        { "t": 8, "d": 2, "deg": "b7" },
+        { "t": 10, "d": 2, "deg": "R" }
+      ],
+      "phraseV": [
+        { "t": 0, "d": 2, "deg": "R" },
+        { "t": 2, "d": 2, "deg": "b3" },
+        { "t": 4, "d": 2, "deg": "5" },
+        { "t": 6, "d": 2, "deg": "6" },
+        { "t": 8, "d": 2, "deg": "b7" },
+        { "t": 10, "d": 2, "deg": "R" }
+      ],
+      "phraseT": [
+        { "t": 0, "d": 2, "deg": "R" },
+        { "t": 2, "d": 2, "deg": "b3" },
+        { "t": 4, "d": 2, "deg": "5" },
+        { "t": 6, "d": 2, "deg": "6" },
+        { "t": 8, "d": 2, "deg": "b7" },
+        { "t": 10, "d": 2, "deg": "R" }
+      ]
+    },
+    // 8. Темная (Dark) - Минор
+    {
+      "id": "Dark-03",
+      "mood": "dark",
+      "progression": "minor_12bar",
+      "phraseI": [
+        { "t": 0, "d": 4, "deg": "R" },
+        { "t": 4, "d": 4, "deg": "b3" },
+        { "t": 8, "d": 4, "deg": "5" }
+      ],
+      "phraseIV": [
+        { "t": 0, "d": 4, "deg": "R" },
+        { "t": 4, "d": 4, "deg": "b3" },
+        { "t": 8, "d": 4, "deg": "5" }
+      ],
+      "phraseV": [
+        { "

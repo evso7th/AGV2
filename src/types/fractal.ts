@@ -261,6 +261,18 @@ export type BluesBassRiff = {
     turn: BluesRiffPattern;
 };
 
+export type BluesDrumPattern = {
+    HH?: number[];
+    OH?: number[];
+    SD?: number[];
+    K?: number[];
+    R?: number[];
+    T?: number[];
+    ghostSD?: number[];
+};
+
+export type BluesDrumRiffs = Partial<Record<Mood, BluesDrumPattern[]>>;
+
 
 export type BluesMelodyPhrase = {
   t: number; // tick (0-11 for 12/8 time)
@@ -280,5 +292,3 @@ export type BluesMelody = {
   phraseV: BluesMelodyPhrase;
   phraseTurnaround: BluesMelodyPhrase;
 };
-
-    

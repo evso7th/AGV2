@@ -183,5 +183,3 @@ BLUES_BASS_RIFFS.epic = BLUES_BASS_RIFFS.joyful;
 
 // Copy 'dark' to 'anxious' as a starting point
 BLUES_BASS_RIFFS.anxious = BLUES_BASS_RIFFS.dark;
-
-    
