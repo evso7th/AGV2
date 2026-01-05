@@ -1096,8 +1096,12 @@ export function createMelodyMotif(chord: GhostChord, mood: Mood, random: { next:
     return motif;
 }
 
-
-// Новая, надежная версия функции для генерации вступления.
+// #ЗАЧЕМ: Новая, исправленная функция для генерации вступления, работающая по принципу "накопителя".
+// #ЧТО: Она не определяет, какой инструмент играет в КАЖДОЙ "коробочке", а постепенно
+//       РАСШИРЯЕТ список активных инструментов, гарантируя, что однажды вступивший
+//       инструмент будет звучать до конца интро.
+// #СВЯЗИ: Решает проблему "тишины", когда очередь инструмента не совпадала с тактом,
+//          в котором для него были сгенерированы ноты.
 export function generateIntroSequence(options: {
     currentBar: number;
     totalIntroBars: number;
@@ -1107,33 +1111,40 @@ export function generateIntroSequence(options: {
 
     const { currentBar, totalIntroBars, mainEngineEvents, instrumentOrder } = options;
     const events: FractalEvent[] = [];
-    const instrumentHints: InstrumentHints = {};
+    
+    // Копируем instrumentHints из основного движка, так как мы используем его события.
+    const instrumentHints: InstrumentHints = (mainEngineEvents.find(e => (e as any).instrumentHints) as any)?.instrumentHints ?? {};
 
-    const progress = totalIntroBars > 0 ? currentBar / totalIntroBars : 1;
-
-    // --- Логика Постепенного Вступления ---
-    const barsPerInstrument = totalIntroBars > 0 ? Math.max(1, Math.floor(totalIntroBars / Math.max(1, instrumentOrder.length))) : 1;
-    const instrumentsToPlayCount = Math.min(instrumentOrder.length, Math.floor(currentBar / barsPerInstrument) + 1);
-    const activeInstruments = new Set(instrumentOrder.slice(0, instrumentsToPlayCount));
+    // 1. Определяем, сколько "коробочек" уже было "вскрыто"
+    const boxes = 4; // 4 "коробочки" по 3 такта в 12-тактовом интро
+    const barsPerBox = totalIntroBars > 0 ? Math.max(1, Math.floor(totalIntroBars / boxes)) : 3;
+    const currentBoxIndex = Math.min(boxes - 1, Math.floor(currentBar / barsPerBox));
+    
+    // 2. Создаем НАКОПИТЕЛЬНЫЙ список активных инструментов
+    const activeInstruments = new Set<InstrumentPart>();
+    for (let i = 0; i <= currentBoxIndex; i++) {
+        if (instrumentOrder[i]) {
+            activeInstruments.add(instrumentOrder[i]);
+        }
+    }
     
     console.log(`%c[IntroSequence @ Bar ${currentBar}] Active instruments: [${Array.from(activeInstruments).join(', ')}]`, 'color: orange');
 
 
-    // --- ФИЛЬТРАЦИЯ СОБЫТИЙ ---
+    // 3. Фильтруем события из основного движка
     for (const event of mainEngineEvents) {
         const eventPart = (event.type as string).startsWith('drum_') || (event.type as string).startsWith('perc-') ? 'drums' : event.type;
         if (activeInstruments.has(eventPart as InstrumentPart)) {
+            // #ЗАЧЕМ: Дополнительная проверка для жанра 'blues'
+            // #ЧТО: Если жанр - блюз, мы пропускаем события ударных, чтобы избежать
+            //       нежелательной перкуссии и дать возможность основному генератору
+            //       создать правильный бит, когда интро закончится.
+            if (options.instrumentOrder.includes('drums') && eventPart === 'drums') {
+                continue;
+            }
             events.push(event);
         }
     }
-    
-    // Копируем instrumentHints из основного движка, так как мы используем его события.
-    const mainHints = mainEngineEvents.find(e => (e as any).instrumentHints)?.instrumentHints ?? {};
-    Object.assign(instrumentHints, mainHints);
 
     return { events, instrumentHints };
 }
-
-
-
-
