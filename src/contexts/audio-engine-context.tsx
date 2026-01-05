@@ -175,7 +175,13 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
   }, [isInitialized, useMelodyV2]);
 
   const scheduleEvents = useCallback((events: FractalEvent[], barStartTime: number, tempo: number, barCount: number, instrumentHints?: InstrumentHints) => {
+    // #ЗАЧЕМ: Эта функция — главный диспетчер, распределяющий сгенерированные ноты по нужным "исполнителям".
+    // #ЧТО: Она разбирает массив событий из воркера, группирует их по типу (бас, ударные и т.д.)
+    //      и вызывает соответствующий метод `.schedule()` или `.play()` у нужного менеджера.
+    // #СВЯЗИ: Является ключевым звеном между воркером-композитором и аудио-менеджерами в основном потоке.
+    
     if (!Array.isArray(events)) {
+        console.warn("[AudioEngine] scheduleEvents received non-array:", events);
         return;
     }
 
@@ -190,6 +196,11 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
 
     for (const event of events) {
       const eventType = Array.isArray(event.type) ? event.type[0] : event.type;
+      
+      // #ИСПРАВЛЕНО (ПЛАН 774): Добавлена проверка для событий ударных.
+      // #ЗАЧЕМ: Этот блок гарантирует, что события с типом 'drum_*' или 'perc-*'
+      //         будут правильно распознаны и направлены в DrumMachine.
+      // #ЧТО: Проверяет тип события и, если он соответствует ударным, добавляет его в массив `drumEvents`.
       if (typeof eventType === 'string' && (eventType.startsWith('drum_') || eventType.startsWith('perc-'))) {
         drumEvents.push(event);
       } else if (eventType === 'bass') {
