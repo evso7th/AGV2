@@ -1246,80 +1246,63 @@ export function createMelodyMotif(chord: GhostChord, mood: Mood, random: { next:
     return motif;
 }
 
-export function generateIntroSequence(
-  currentBar: number,
-  totalIntroBars: number,
-  introRules: IntroRules,
-  harmonyTrack: GhostChord[],
-  settings: any, // Simplified for now
-  random: { next: () => number; nextInt: (max: number) => number },
-  introInstrumentMap: Map<InstrumentPart, any>
-): { events: FractalEvent[]; instrumentHints: InstrumentHints } {
-  const events: FractalEvent[] = [];
-  const instrumentHints: InstrumentHints = {};
+// Новая, надежная версия функции для генерации вступления.
+export function generateIntroSequence(options: {
+  currentBar: number;
+  totalIntroBars: number;
+  introRules: IntroRules;
+  harmonyTrack: GhostChord[];
+  settings: any; // Simplified for now
+  random: { next: () => number; nextInt: (max: number) => number };
+  instrumentOrder: InstrumentPart[];
+}): { events: FractalEvent[]; instrumentHints: InstrumentHints } {
 
-  const currentChord = harmonyTrack.find(chord => currentBar >= chord.bar && currentBar < chord.bar + chord.durationBars);
-  if (!currentChord) return { events, instrumentHints };
-  
-  const enteringInstruments: InstrumentPart[] = [];
-  const availableInstruments = [...introRules.allowedInstruments];
-  
-  // On the first bar, always pick one instrument to start
-  if (currentBar === 0 && availableInstruments.length > 0) {
-      const startIndex = random.nextInt(availableInstruments.length);
-      const startingInstrument = availableInstruments.splice(startIndex, 1)[0];
-      enteringInstruments.push(startingInstrument);
-      console.log(`%c[IntroSequence @ Bar 0] Starting instrument: ${startingInstrument}`, 'color: #BADA55');
-  } else {
-      // Every 2 bars, try to add one more instrument
-      const instrumentsAlreadyPlaying = Math.floor(currentBar / 2);
-      if (currentBar % 2 === 0 && availableInstruments.length > instrumentsAlreadyPlaying) {
-          const nextInstrumentIndex = random.nextInt(availableInstruments.length);
-          const nextInstrument = availableInstruments[nextInstrumentIndex];
-          
-          // Check if it's already playing based on previous bars
-          let alreadyPlaying = false;
-          for(let i=0; i < currentBar; i+=2) {
-              if (Math.floor(i/2) === instrumentsAlreadyPlaying) {
-                 alreadyPlaying = true;
-                 break;
-              }
-          }
-          
-          if (!alreadyPlaying) {
-             enteringInstruments.push(nextInstrument);
-          }
-      }
-  }
+    const { currentBar, totalIntroBars, introRules, harmonyTrack, settings, random, instrumentOrder } = options;
+    const events: FractalEvent[] = [];
+    const instrumentHints: InstrumentHints = {};
 
-
-  console.log(`%c[IntroSequence @ Bar ${currentBar}] Instruments entering this bar: [${enteringInstruments.join(', ')}]`, 'color: #BADA55');
-
-
-  if (enteringInstruments.includes('bass')) {
-    events.push(...createAmbientBassAxiom(currentChord, settings.mood, settings.genre, random, settings.tempo, 'drone'));
-  }
-
-  if (enteringInstruments.includes('accompaniment')) {
-    const accompInstrument = introInstrumentMap.get('accompaniment');
-    if (accompInstrument) {
-        instrumentHints.accompaniment = accompInstrument;
+    const currentChord = harmonyTrack.find(chord => currentBar >= chord.bar && currentBar < chord.bar + chord.durationBars);
+    if (!currentChord) {
+        console.warn(`[IntroSequence @ Bar ${currentBar}] No chord found.`);
+        return { events, instrumentHints };
     }
-    events.push(...createAccompanimentAxiom(currentChord, settings.mood, settings.genre, random, settings.tempo, 'low'));
-  }
 
-  if (enteringInstruments.includes('drums')) {
-    const drumRules = { density: {min: 0.1, max: 0.3}, useSnare: false, rareKick: true, usePerc: true, pattern: 'ambient_beat' };
-    events.push(...createDrumAxiom(settings.genre, settings.mood, settings.tempo, random, drumRules).events);
-  }
+    const progress = currentBar / totalIntroBars;
+    console.log(`[IntroSequence @ Bar ${currentBar}] Progress: ${progress.toFixed(2)}. Chord: ${currentChord.rootNote} ${currentChord.chordType}.`);
 
-  if (enteringInstruments.includes('melody')) {
-      const melodyInstrument = introInstrumentMap.get('melody');
-      if (melodyInstrument) {
-          instrumentHints.melody = melodyInstrument;
-      }
-      events.push(...createMelodyMotif(currentChord, settings.mood, random, undefined, 'mid', settings.genre));
-  }
+    // --- Логика Постепенного Вступления ---
+    const barsPerInstrument = Math.max(1, Math.floor(totalIntroBars / Math.max(1, instrumentOrder.length)));
+    const instrumentsToPlayCount = Math.min(instrumentOrder.length, Math.floor(currentBar / barsPerInstrument) + 1);
+    
+    const activeInstruments = instrumentOrder.slice(0, instrumentsToPlayCount);
 
-  return { events, instrumentHints };
+    console.log(`[IntroSequence @ Bar ${currentBar}] Active instruments for this bar: [${activeInstruments.join(', ')}]`);
+
+    // --- Генерация Партий для Активных Инструментов ---
+    if (activeInstruments.includes('bass')) {
+      events.push(...createAmbientBassAxiom(currentChord, settings.mood, settings.genre, random, settings.tempo, 'drone'));
+    }
+
+    if (activeInstruments.includes('accompaniment')) {
+      instrumentHints.accompaniment = 'ambientPad'; // Default for intro for now
+      events.push(...createAccompanimentAxiom(currentChord, settings.mood, settings.genre, random, settings.tempo, 'low'));
+    }
+
+    if (activeInstruments.includes('drums')) {
+      const drumRules = { density: {min: 0.1, max: 0.3}, useSnare: false, rareKick: true, usePerc: true, pattern: 'ambient_beat' };
+      events.push(...createDrumAxiom(settings.genre, settings.mood, settings.tempo, random, drumRules).events);
+    }
+    
+    if (activeInstruments.includes('melody')) {
+        instrumentHints.melody = 'synth'; // Default for intro for now
+        events.push(...createMelodyMotif(currentChord, settings.mood, random, undefined, 'mid', settings.genre));
+    }
+    
+    if (activeInstruments.includes('harmony')) {
+        instrumentHints.harmony = 'violin'; // Default
+        events.push(...createHarmonyAxiom(currentChord, settings.mood, settings.genre, random));
+    }
+
+
+    return { events, instrumentHints };
 }
