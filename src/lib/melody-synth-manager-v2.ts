@@ -3,7 +3,7 @@
 import type { FractalEvent, AccompanimentInstrument } from '@/types/fractal';
 import type { Note } from "@/types/music";
 import { buildMultiInstrument } from './instrument-factory';
-import { V2_PRESETS } from './presets-v2';
+import { V2_PRESETS, V1_TO_V2_PRESET_MAP } from './presets-v2';
 
 /**
  * A V2 manager for the melody synthesizer.
@@ -27,7 +27,6 @@ export class MelodySynthManagerV2 {
     async init() {
         if (this.isInitialized) return;
         console.log('[MelodyManagerV2] Initializing...');
-        // #ИЗМЕНЕНО: Инструмент создается один раз при инициализации.
         await this.loadInstrument(this.activePresetName);
         this.isInitialized = true;
         console.log('[MelodyManagerV2] Initialized with a persistent instrument.');
@@ -57,10 +56,17 @@ export class MelodySynthManagerV2 {
     }
 
 
-    public async schedule(events: FractalEvent[], barStartTime: number, tempo: number, instrumentHint?: keyof typeof V2_PRESETS) {
-        // #ИЗМЕНЕНО: Больше не вызываем loadInstrument. Вместо этого вызываем setPreset.
-        if (instrumentHint && instrumentHint !== this.activePresetName) {
-            this.setInstrument(instrumentHint);
+    public async schedule(events: FractalEvent[], barStartTime: number, tempo: number, instrumentHint?: string) {
+        // #ЗАЧЕМ: Этот блок транслирует старые названия V1 в новые V2.
+        // #ЧТО: Он проверяет, есть ли `instrumentHint` в карте `V1_TO_V2_PRESET_MAP`.
+        //      Если есть, используется V2-название. Если нет, используется оригинальный hint.
+        // #СВЯЗИ: Устраняет ошибку "Preset not found".
+        const finalInstrumentHint = (instrumentHint && V1_TO_V2_PRESET_MAP[instrumentHint])
+            ? V1_TO_V2_PRESET_MAP[instrumentHint]
+            : instrumentHint;
+
+        if (finalInstrumentHint && finalInstrumentHint !== this.activePresetName) {
+            this.setInstrument(finalInstrumentHint as keyof typeof V2_PRESETS);
         }
         
         if (!this.instrument) {
@@ -78,13 +84,11 @@ export class MelodySynthManagerV2 {
 
             console.log(`%c[MelodyManagerV2] Scheduling Note: MIDI=${event.note}, On=${noteOnTime.toFixed(2)}, Off=${noteOffTime.toFixed(2)}`, 'color: #87CEFA;');
 
-            // Schedule noteOn and noteOff with the persistent instrument
             this.instrument.noteOn(event.note, noteOnTime);
             this.instrument.noteOff(event.note, noteOffTime);
         });
     }
     
-    // #ИЗМЕНЕНО: setInstrument теперь только обновляет пресет, не пересоздавая инструмент.
     public setInstrument(instrumentName: keyof typeof V2_PRESETS) {
        if (!this.instrument || instrumentName === this.activePresetName) return;
        

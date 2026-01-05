@@ -161,3 +161,22 @@ export const V2_PRESETS = {
     reverbMix: 0.15
   }
 };
+
+/**
+ * #ЗАЧЕМ: Эта карта обеспечивает обратную совместимость. Блюпринты могут по-прежнему
+ *         использовать старые названия инструментов (V1), а V2-движок сможет
+ *         автоматически "перевести" их в новые названия пресетов.
+ * #ЧТО: Простой объект, сопоставляющий имя V1 с именем V2.
+ * #СВЯЗИ: Используется в `melody-synth-manager-v2.ts` и `accompaniment-synth-manager-v2.ts`.
+ */
+export const V1_TO_V2_PRESET_MAP: Record<string, keyof typeof V2_PRESETS> = {
+    synth: 'synth',
+    organ: 'organ',
+    mellotron: 'mellotron',
+    theremin: 'theremin',
+    electricGuitar: 'guitar_shineOn',
+    ambientPad: 'synth_ambient_pad_lush',
+    // 'acousticGuitar' не имеет прямого аналога в V2 (не-сэмплерном) движке,
+    // поэтому мы можем сопоставить его с чистым синтезатором или меллотроном как компромисс.
+    acousticGuitar: 'mellotron_flute_intimate'
+};
