@@ -1,4 +1,5 @@
 
+
 import type { FractalEvent, Mood, Genre, Technique, BassSynthParams, InstrumentType, MelodyInstrument, AccompanimentInstrument, ResonanceMatrix, InstrumentHints, AccompanimentTechnique, GhostChord, SfxRule, V1MelodyInstrument, V2MelodyInstrument, BlueprintPart, InstrumentationRules, InstrumentBehaviorRules, BluesMelody, IntroRules, InstrumentPart } from './fractal';
 import { ElectronicK, TraditionalK, AmbientK, MelancholicMinorK } from './resonance-matrices';
 import { getScaleForMood, STYLE_DRUM_PATTERNS, createAccompanimentAxiom, PERCUSSION_SETS, TEXTURE_INSTRUMENT_WEIGHTS_BY_MOOD, getAccompanimentTechnique, createBassFill, createDrumFill, AMBIENT_ACCOMPANIMENT_WEIGHTS, chooseHarmonyInstrument, mutateBassPhrase, createMelodyMotif, createDrumAxiom, generateGhostHarmonyTrack, mutateAccompanimentPhrase, createAmbientBassAxiom, createHarmonyAxiom, generateIntroSequence, DEGREE_TO_SEMITONE } from './music-theory';
@@ -679,6 +680,18 @@ export class FractalMusicEngine {
         console.log(navigationInfo.logMessage, 'color: #DA70D6');
       }
 
+      // #ПЛАН 733: Добавляем логирование DNA в начале каждой части
+      if (navigationInfo?.isPartTransition) {
+          const logDrumRiffId = `index_${this.bluesDrumRiffIndex}`;
+          const logBassRiffId = `index_${this.bluesBassRiffIndex}`;
+          const logMelodyId = this.lastSelectedBluesMelodyId || 'N/A';
+          console.log(
+              `%c[FME Part Info] Active DNA for part ${navigationInfo.currentPart.name}:\n  - Drum Riff ID: ${logDrumRiffId}\n  - Bass Riff ID: ${logBassRiffId}\n  - Melody ID: ${logMelodyId}`,
+              'color: cyan; font-weight: bold;'
+          );
+      }
+
+
       const events = this.generateOneBar(barDuration, navigationInfo!, instrumentHints);
       
       return { events, instrumentHints };
@@ -817,4 +830,3 @@ export class FractalMusicEngine {
 
 
 }
-
