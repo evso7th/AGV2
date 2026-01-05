@@ -653,8 +653,8 @@ export const TEXTURE_INSTRUMENT_WEIGHTS_BY_MOOD: Record<Mood, Record<Exclude<Acc
   dark:          { organ: 0.8, theremin: 0.2, synth: 0.0, piano: 0.0, guitarChords: 0.0, acousticGuitarSolo: 0.0, electricGuitar: 0.0, 'E-Bells_melody': 0.0, 'G-Drops': 0.0, 'mellotron': 0.0, 'none': 0.0, 'ambientPad': 0.0, 'acousticGuitar': 0.0 },
   anxious:       { synth: 0.5, theremin: 0.3, organ: 0.2, piano: 0.0, guitarChords: 0.0, acousticGuitarSolo: 0.0, electricGuitar: 0.0, 'E-Bells_melody': 0.0, 'G-Drops': 0.0, 'mellotron': 0.0, 'none': 0.0, 'ambientPad': 0.0, 'acousticGuitar': 0.0 },
   dreamy:        { synth: 0.3, organ: 0.2, piano: 0.3, guitarChords: 0.0, acousticGuitarSolo: 0.0, electricGuitar: 0.0, 'E-Bells_melody': 0.0, 'G-Drops': 0.0, 'theremin': 0.0, 'mellotron': 0.2, 'none': 0.0, 'ambientPad': 0.0, 'acousticGuitar': 0.0 },
-  contemplative: { organ: 0.4, synth: 0.2, piano: 0.4, guitarChords: 0.0, acousticGuitarSolo: 0.0, electricGuitar: 0.0, 'E-Bells_melody': 0.0, 'G-Drops': 0.0, 'theremin': 0.0, 'mellotron': 0.0, 'none': 0.0, 'ambientPad': 0.0, 'acousticGuitar': 0.0 },
-  calm:          { synth: 0.3, organ: 0.2, piano: 0.5, guitarChords: 0.0, acousticGuitarSolo: 0.0, electricGuitar: 0.0, 'E-Bells_melody': 0.0, 'G-Drops': 0.0, 'theremin': 0.0, 'mellotron': 0.0, 'none': 0.0, 'ambientPad': 0.0, 'acousticGuitar': 0.0 },
+  contemplative: { organ: 0.4, synth: 0.2, piano: 0.4, guitarChords: 0.0, acousticGuitarSolo: 0.0, electricGuitar: 0.0, 'E-Bells_melody': 0.0, 'G-Drops': 0.0, 'theremin': 0.0, 'mellotron': 0, 'none': 0.0, 'ambientPad': 0.0, 'acousticGuitar': 0.0 },
+  calm:          { synth: 0.3, organ: 0.2, piano: 0.5, guitarChords: 0.0, acousticGuitarSolo: 0.0, electricGuitar: 0.0, 'E-Bells_melody': 0.0, 'G-Drops': 0.0, 'theremin': 0.0, 'mellotron': 0, 'none': 0.0, 'ambientPad': 0.0, 'acousticGuitar': 0.0 },
 };
 
 export const AMBIENT_ACCOMPANIMENT_WEIGHTS: Record<Mood, Record<Exclude<AccompanimentInstrument, 'violin' | 'flute' | 'mellotron_choir_dark'>, number>> = {
@@ -1261,19 +1261,37 @@ export function generateIntroSequence(
   const currentChord = harmonyTrack.find(chord => currentBar >= chord.bar && currentBar < chord.bar + chord.durationBars);
   if (!currentChord) return { events, instrumentHints };
   
-  const progress = currentBar / totalIntroBars;
-  const buildUpFactor = Math.pow(progress, 1 / (introRules.buildUpSpeed || 0.5));
-  
-  console.log(`%c[IntroSequence @ Bar ${currentBar}] Progress: ${progress.toFixed(2)}, BuildUp: ${buildUpFactor.toFixed(2)}. Chord: ${currentChord.rootNote} ${currentChord.chordType}.`, 'color: #BADA55');
-  
   const enteringInstruments: InstrumentPart[] = [];
-
-  for (const part of introRules.allowedInstruments) {
-      const entryProbability = buildUpFactor * (part === 'drums' ? 0.6 : 0.8);
-      if (random.next() < entryProbability) {
-          enteringInstruments.push(part);
+  const availableInstruments = [...introRules.allowedInstruments];
+  
+  // On the first bar, always pick one instrument to start
+  if (currentBar === 0 && availableInstruments.length > 0) {
+      const startIndex = random.nextInt(availableInstruments.length);
+      const startingInstrument = availableInstruments.splice(startIndex, 1)[0];
+      enteringInstruments.push(startingInstrument);
+      console.log(`%c[IntroSequence @ Bar 0] Starting instrument: ${startingInstrument}`, 'color: #BADA55');
+  } else {
+      // Every 2 bars, try to add one more instrument
+      const instrumentsAlreadyPlaying = Math.floor(currentBar / 2);
+      if (currentBar % 2 === 0 && availableInstruments.length > instrumentsAlreadyPlaying) {
+          const nextInstrumentIndex = random.nextInt(availableInstruments.length);
+          const nextInstrument = availableInstruments[nextInstrumentIndex];
+          
+          // Check if it's already playing based on previous bars
+          let alreadyPlaying = false;
+          for(let i=0; i < currentBar; i+=2) {
+              if (Math.floor(i/2) === instrumentsAlreadyPlaying) {
+                 alreadyPlaying = true;
+                 break;
+              }
+          }
+          
+          if (!alreadyPlaying) {
+             enteringInstruments.push(nextInstrument);
+          }
       }
   }
+
 
   console.log(`%c[IntroSequence @ Bar ${currentBar}] Instruments entering this bar: [${enteringInstruments.join(', ')}]`, 'color: #BADA55');
 
@@ -1291,7 +1309,7 @@ export function generateIntroSequence(
   }
 
   if (enteringInstruments.includes('drums')) {
-    const drumRules = { density: {min: 0.1, max: 0.3 * buildUpFactor}, useSnare: false, rareKick: true, usePerc: true, pattern: 'ambient_beat' };
+    const drumRules = { density: {min: 0.1, max: 0.3}, useSnare: false, rareKick: true, usePerc: true, pattern: 'ambient_beat' };
     events.push(...createDrumAxiom(settings.genre, settings.mood, settings.tempo, random, drumRules).events);
   }
 
