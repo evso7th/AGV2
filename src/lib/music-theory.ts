@@ -899,9 +899,39 @@ export function generateGhostHarmonyTrack(totalBars: number, mood: Mood, key: nu
 export function createDrumAxiom(genre: Genre, mood: Mood, tempo: number, random: { next: () => number, nextInt: (max: number) => number }, rules?: InstrumentBehaviorRules): { events: FractalEvent[], tags: string[] } {
     const kitName = rules?.kitName || `${genre}_${mood}`.toLowerCase();
     const genreKits = DRUM_KITS[genre];
-    const kit = (genreKits && (genreKits as any)[mood]) ? (genreKits as any)[mood] : (genreKits?.intro || DRUM_KITS.ambient!.intro!);
 
-    console.log(`%c[DrumAxiom] Using Drum Kit: ${kitName} for mood: ${mood}`, 'color: #90EE90; font-weight: bold;');
+    // --- DIAGNOSTIC LOG 1: What kit are we trying to use? ---
+    console.log(`%c[DrumAxiom] Attempting to use Drum Kit: ${kitName} for genre: ${genre}, mood: ${mood}`, 'color: #FFD700; font-weight: bold;');
+    
+    let kit;
+    if (rules?.kitName) {
+        // Find kit by specific name across all genres (less safe but flexible)
+        for (const g in DRUM_KITS) {
+            const specificKit = (DRUM_KITS[g as Genre] as any)[rules.kitName];
+            if (specificKit) {
+                kit = specificKit;
+                break;
+            }
+        }
+        if (!kit) {
+            console.warn(`Kit "${rules.kitName}" not found anywhere. Falling back.`);
+            kit = (genreKits && (genreKits as any)[mood]) ? (genreKits as any)[mood] : (genreKits?.intro || DRUM_KITS.ambient!.intro!);
+        }
+    } else {
+        kit = (genreKits && (genreKits as any)[mood]) ? (genreKits as any)[mood] : (genreKits?.intro || DRUM_KITS.ambient!.intro!);
+    }
+
+
+    // --- DIAGNOSTIC LOG 2: What samples are in the selected kit? ---
+    const allowedSamples = {
+        kick: kit.kick.join(', ') || 'none',
+        snare: kit.snare.join(', ') || 'none',
+        hihat: kit.hihat.join(', ') || 'none',
+        ride: kit.ride.join(', ') || 'none',
+        crash: kit.crash.join(', ') || 'none',
+        perc: kit.perc.join(', ') || 'none',
+    };
+    console.log(`[DrumAxiom] Loaded Kit Contents:`, allowedSamples);
 
     const grammar = STYLE_DRUM_PATTERNS[genre] || STYLE_DRUM_PATTERNS['ambient'];
     if (!grammar || !grammar.loops || grammar.loops.length === 0) return { events: [], tags: [] };
@@ -918,12 +948,19 @@ export function createDrumAxiom(genre: Genre, mood: Mood, tempo: number, random:
         let chosenType: InstrumentType;
 
         if (Array.isArray(types)) {
-            const allowedTypes = types.filter(t => kit.kick.includes(t) || kit.snare.includes(t) || kit.hihat.includes(t));
-            if (allowedTypes.length === 0) continue;
+            const allowedTypes = types.filter(t => kit.kick.includes(t) || kit.snare.includes(t) || kit.hihat.includes(t) || kit.perc.includes(t) || kit.ride.includes(t) || kit.crash.includes(t));
+            if (allowedTypes.length === 0) {
+                 // --- DIAGNOSTIC LOG 3: Sample filtered out ---
+                 console.warn(`[DrumAxiom] Sample filtered out! Original type: ${types.join(',')}. Kit did not allow any.`);
+                 continue;
+            }
             chosenType = allowedTypes[random.nextInt(allowedTypes.length)];
         } else {
             chosenType = types;
         }
+
+        // --- DIAGNOSTIC LOG 4: Final chosen sample ---
+        console.log(`%c[DrumAxiom] Selected Sample: ${chosenType}`, 'color: #9ACD32;');
         
         axiomEvents.push({ ...baseEvent, type: chosenType, note: 36, phrasing: 'staccato', dynamics: 'mf', params: {} } as FractalEvent);
     }
@@ -1161,7 +1198,7 @@ export function generateIntroSequence(options: {
     }
 
     if (activeInstruments.includes('drums')) {
-      console.log(`[IntroSequence @ Bar ${currentBar}] Calling SAFE intro drum generator.`);
+      console.log(`%c[IntroSequence @ Bar ${currentBar}] Calling SAFE intro drum generator.`, 'color: #9ACD32;');
       events.push(...createIntroDrumAxiom(settings.genre, settings.mood, settings.tempo, random));
     }
     
@@ -1178,4 +1215,3 @@ export function generateIntroSequence(options: {
 
     return { events, instrumentHints };
 }
-
