@@ -18,6 +18,10 @@ export const DreamyBluesBlueprint: MusicBlueprint = {
         parts: [
             {
                 id: 'VERSE', name: 'Verse', duration: { percent: 40 },
+                introRules: {
+                    allowedInstruments: ['drums', 'bass', 'accompaniment', 'melody'],
+                    buildUpSpeed: 0.5
+                },
                 layers: { bass: true, drums: true, accompaniment: true, harmony: true, melody: true },
                 instrumentation: {
                     accompaniment: { strategy: 'weighted', v1Options: [{ name: 'organ', weight: 0.6 }, { name: 'piano', weight: 0.4 }], v2Options: [{ name: 'organ_soft_jazz', weight: 0.6 }, { name: 'piano', weight: 0.4 }] },

@@ -18,6 +18,10 @@ export const CalmBluesBlueprint: MusicBlueprint = {
         parts: [
             {
                 id: 'VERSE', name: 'Main Riff', duration: { percent: 40 },
+                introRules: {
+                    allowedInstruments: ['drums', 'bass', 'accompaniment'],
+                    buildUpSpeed: 0.3
+                },
                 layers: { bass: true, drums: true, accompaniment: true, harmony: true, melody: true },
                 instrumentation: {
                     accompaniment: { strategy: 'weighted', v1Options: [{ name: 'organ', weight: 1.0 }], v2Options: [{ name: 'organ', weight: 1.0 }] },

@@ -18,6 +18,10 @@ export const ContemplativeBluesBlueprint: MusicBlueprint = {
         parts: [
             {
                 id: 'INTRO', name: 'Verse 1', duration: { percent: 25 },
+                introRules: {
+                    allowedInstruments: ['drums', 'bass', 'accompaniment', 'harmony'],
+                    buildUpSpeed: 0.4
+                },
                 layers: {
                     bass: true,
                     drums: true,

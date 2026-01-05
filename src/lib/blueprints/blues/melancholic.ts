@@ -18,6 +18,10 @@ export const MelancholicBluesBlueprint: MusicBlueprint = {
         parts: [
             {
                 id: 'INTRO', name: 'Verse 1', duration: { percent: 25 },
+                introRules: {
+                    allowedInstruments: ['drums', 'bass', 'accompaniment', 'melody'],
+                    buildUpSpeed: 0.35
+                },
                 layers: { bass: true, drums: true, accompaniment: true, harmony: true },
                 instrumentation: {
                     accompaniment: { strategy: 'weighted', v1Options: [{ name: 'organ', weight: 1.0 }], v2Options: [{ name: 'organ', weight: 1.0 }] },

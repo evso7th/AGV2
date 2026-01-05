@@ -19,6 +19,10 @@ export const GloomyBluesBlueprint: MusicBlueprint = {
         parts: [
             {
                 id: 'MAIN_RIFF', name: 'Main Riff', duration: { percent: 60 },
+                introRules: {
+                    allowedInstruments: ['bass', 'accompaniment', 'melody'],
+                    buildUpSpeed: 0.3
+                },
                 layers: { bass: true, drums: true, accompaniment: true, harmony: true, melody: true },
                 instrumentation: {
                     accompaniment: { strategy: 'weighted', v1Options: [{ name: 'organ', weight: 1.0 }], v2Options: [{ name: 'organ_soft_jazz', weight: 1.0 }] },

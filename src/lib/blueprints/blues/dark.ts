@@ -18,6 +18,10 @@ export const DarkBluesBlueprint: MusicBlueprint = {
         parts: [
             {
                 id: 'INTRO', name: 'Verse 1', duration: { percent: 25 },
+                introRules: {
+                    allowedInstruments: ['bass', 'accompaniment', 'harmony'],
+                    buildUpSpeed: 0.3
+                },
                 layers: { bass: true, drums: false, accompaniment: true, harmony: true, sfx: false },
                 instrumentation: {
                     accompaniment: { strategy: 'weighted', v1Options: [{ name: 'synth', weight: 1.0 }], v2Options: [{ name: 'synth_cave_pad', weight: 1.0 }] },

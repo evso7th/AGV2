@@ -18,6 +18,10 @@ export const AnxiousBluesBlueprint: MusicBlueprint = {
         parts: [
             {
                 id: 'INTRO', name: 'Nervous Build-up', duration: { percent: 15 },
+                introRules: {
+                    allowedInstruments: ['drums', 'bass', 'accompaniment', 'melody'],
+                    buildUpSpeed: 0.4
+                },
                 layers: {
                     accompaniment: true,
                     bass: true,
