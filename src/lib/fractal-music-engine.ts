@@ -123,11 +123,14 @@ export class FractalMusicEngine {
       
       this.config = { ...this.config, ...newConfig };
       
+      // #ИСПРАВЛЕНО (ПЛАН 736): Принудительно обновляем генератор случайных чисел при смене seed.
+      if (seedChanged) {
+        console.log(`%c[FME.updateConfig] New seed detected: ${this.config.seed}. Re-initializing random generator.`, 'color: #FFD700; font-weight:bold;');
+        this.random = seededRandom(this.config.seed);
+      }
+      
       if(!this.navigator || moodOrGenreChanged || introBarsChanged || seedChanged) {
           console.log(`[FME] Config changed or initial setup. Re-initializing. New mood: ${this.config.mood}, New intro: ${this.config.introBars}`);
-          if (seedChanged) {
-            this.random = seededRandom(this.config.seed);
-          }
           await this.initialize(true); // Force re-initialization
       }
   }
@@ -135,7 +138,10 @@ export class FractalMusicEngine {
   public async initialize(force: boolean = false) {
     if (this.navigator && !force) return;
 
+    // #ИСПРАВЛЕНО (ПЛАН 736): Гарантируем свежий генератор при каждой инициализации.
     this.random = seededRandom(this.config.seed);
+    console.log(`%c[FME.initialize] Using SEED: ${this.config.seed} to create random generator.`, 'color: #FFD700;');
+
     this.nextWeatherEventEpoch = this.random.nextInt(12) + 8;
     this.lastAccompanimentEndTime = -Infinity;
     this.nextAccompanimentDelay = this.random.next() * 7 + 5;
