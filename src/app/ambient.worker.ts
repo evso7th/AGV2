@@ -144,42 +144,36 @@ const Scheduler = {
     tick() {
         if (!this.isRunning || !fractalMusicEngine) return;
 
-        // --- ЛОГИКА ДЕКОРАТОРА (ПЛАН 716/718) ---
+        // --- ЛОГИКА ДЕКОРАТОРА (ПЛАН 716/718/724) ---
         
-        // ШАГ 1: Основной движок ВСЕГДА работает в фоне.
         const mainEnginePayload = fractalMusicEngine.evolve(this.barDuration, this.barCount);
 
         let finalPayload: { events: FractalEvent[], instrumentHints: InstrumentHints };
 
-        // #ИСПРАВЛЕНО (ПЛАН 719): Добавлен лог для проверки значений перед условием.
         console.log(`[Worker.tick @ Bar ${this.barCount}] Checking intro condition: barCount (${this.barCount}) < introBars (${this.settings.introBars}) -> ${this.barCount < this.settings.introBars}`);
 
-        // ШАГ 2: Проверяем, находимся ли мы в периоде интро.
         if (this.barCount < this.settings.introBars) {
             const introPart = fractalMusicEngine.navigator?.blueprint.structure.parts.find(p => p.id.startsWith('INTRO'));
             
             if (introPart?.introRules) {
-                // ШАГ 3А: Если да, подменяем партитуру на сгенерированную "прологом".
                 console.log(`%c[Worker.tick @ Bar ${this.barCount}] Using INTRO GENERATOR.`, 'color: #FF69B4; font-weight: bold;');
-                finalPayload = generateIntroSequence(
-                    this.barCount,
-                    this.settings.introBars,
-                    introPart.introRules,
-                    fractalMusicEngine.getGhostHarmony(),
-                    this.settings,
-                    fractalMusicEngine.random,
-                    fractalMusicEngine.introInstrumentMap // Передаем карту выбранных инструментов
-                );
+                finalPayload = generateIntroSequence({
+                    currentBar: this.barCount,
+                    totalIntroBars: this.settings.introBars,
+                    introRules: introPart.introRules,
+                    harmonyTrack: fractalMusicEngine.getGhostHarmony(),
+                    settings: this.settings,
+                    random: fractalMusicEngine.random,
+                    instrumentOrder: fractalMusicEngine.introInstrumentOrder,
+                });
             } else {
-                // Если правил интро нет, просто играем то, что сгенерировал основной движок.
                 finalPayload = mainEnginePayload;
             }
         } else {
-            // ШАГ 3Б: Интро закончилось, используем основную партитуру.
             finalPayload = mainEnginePayload;
         }
 
-        const scorePayload = finalPayload; // Используем итоговую партитуру
+        const scorePayload = finalPayload; 
         
         const bassCount = scorePayload.events.filter(e => e.type === 'bass').length;
         const melodyCount = scorePayload.events.filter(e => e.type === 'melody').length;
@@ -306,3 +300,4 @@ self.onmessage = async (event: MessageEvent) => {
 
 
     
+

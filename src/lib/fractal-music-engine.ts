@@ -1,7 +1,8 @@
 
+
 import type { FractalEvent, Mood, Genre, Technique, BassSynthParams, InstrumentType, MelodyInstrument, AccompanimentInstrument, ResonanceMatrix, InstrumentHints, AccompanimentTechnique, GhostChord, SfxRule, V1MelodyInstrument, V2MelodyInstrument, BlueprintPart, InstrumentationRules, InstrumentBehaviorRules, BluesMelody, InstrumentPart } from './fractal';
 import { ElectronicK, TraditionalK, AmbientK, MelancholicMinorK } from './resonance-matrices';
-import { getScaleForMood, STYLE_DRUM_PATTERNS, createAccompanimentAxiom, PERCUSSION_SETS, TEXTURE_INSTRUMENT_WEIGHTS_BY_MOOD, getAccompanimentTechnique, createBassFill, createDrumFill, AMBIENT_ACCOMPANIMENT_WEIGHTS, chooseHarmonyInstrument, mutateBassPhrase, createMelodyMotif, createDrumAxiom, generateGhostHarmonyTrack, mutateAccompanimentPhrase, createAmbientBassAxiom, createHarmonyAxiom } from './music-theory';
+import { getScaleForMood, STYLE_DRUM_PATTERNS, createAccompanimentAxiom, PERCUSSION_SETS, TEXTURE_INSTRUMENT_WEIGHTS_BY_MOOD, getAccompanimentTechnique, createBassFill, createDrumFill, AMBIENT_ACCOMPANIMENT_WEIGHTS, chooseHarmonyInstrument, mutateBassPhrase, createMelodyMotif, createDrumAxiom, generateGhostHarmonyTrack, mutateAccompanimentPhrase, createAmbientBassAxiom, createHarmonyAxiom, generateIntroSequence } from './music-theory';
 import { BlueprintNavigator, type NavigationInfo } from './blueprint-navigator';
 import { getBlueprint } from './blueprints';
 import { V2_PRESETS } from './presets-v2';
@@ -87,6 +88,7 @@ export class FractalMusicEngine {
   public navigator: BlueprintNavigator | null = null;
 
   public introInstrumentMap: Map<InstrumentPart, any> = new Map();
+  public introInstrumentOrder: InstrumentPart[] = [];
 
 
   private bassPhraseLibrary: FractalEvent[][] = [];
@@ -160,34 +162,34 @@ export class FractalMusicEngine {
     this.currentBassPhraseIndex = 0;
     this.accompPhraseLibrary = [];
     this.currentAccompPhraseIndex = 0;
+    
+    this.introInstrumentMap.clear();
+    this.introInstrumentOrder = [];
+    const introPart = this.navigator.blueprint.structure.parts.find(p => p.id.startsWith('INTRO'));
+    if (introPart?.introRules) {
+        // Заполняем и перемешиваем порядок вступления
+        this.introInstrumentOrder = [...introPart.introRules.allowedInstruments];
+        // Fisher-Yates shuffle
+        for (let i = this.introInstrumentOrder.length - 1; i > 0; i--) {
+            const j = this.random.nextInt(i + 1);
+            [this.introInstrumentOrder[i], this.introInstrumentOrder[j]] = [this.introInstrumentOrder[j], this.introInstrumentOrder[i]];
+        }
+        console.log(`[IntroSetup] Unique instrument entry order created: [${this.introInstrumentOrder.join(', ')}]`);
+
+        // Заполняем карту тембров для интро
+        this.introInstrumentOrder.forEach(part => {
+             const instrumentChoice = this._chooseInstrumentForPart(part as any, this.navigator?.tick(0));
+             if (instrumentChoice) {
+                 this.introInstrumentMap.set(part, instrumentChoice);
+                 console.log(`[IntroSetup] Instrument '${part}' randomly assigned to '${instrumentChoice}'.`);
+             }
+        });
+    }
 
     const firstChord = this.ghostHarmonyTrack[0];
     const initialNavInfo = this.navigator.tick(0);
     const initialRegisterHint = initialNavInfo?.currentPart.instrumentRules?.accompaniment?.register?.preferred;
     const initialBassTechnique = initialNavInfo?.currentPart.instrumentRules?.bass?.techniques?.[0].value as Technique || 'drone';
-    
-    // --- ПЛАН 718: Логика выбора инструментов для интро ---
-    this.introInstrumentMap.clear();
-    const introPart = this.navigator.blueprint.structure.parts.find(p => p.id.startsWith('INTRO'));
-    if (introPart?.introRules) {
-        const melodyRules = introPart.instrumentation?.melody;
-        if(melodyRules) {
-            const melodyChoice = this._chooseInstrumentForPart('melody', initialNavInfo);
-            if(melodyChoice) {
-                this.introInstrumentMap.set('melody', melodyChoice);
-                console.log(`[IntroSetup] Instrument 'melody' randomly assigned to '${melodyChoice}'.`);
-            }
-        }
-        const accompRules = introPart.instrumentation?.accompaniment;
-        if(accompRules) {
-            const accompChoice = this._chooseInstrumentForPart('accompaniment', initialNavInfo);
-            if(accompChoice) {
-                this.introInstrumentMap.set('accompaniment', accompChoice);
-                console.log(`[IntroSetup] Instrument 'accompaniment' randomly assigned to '${accompChoice}'.`);
-            }
-        }
-    }
-
 
     if (this.config.genre === 'blues') {
         // For blues, we don't pre-generate a library, we generate riffs on the fly
