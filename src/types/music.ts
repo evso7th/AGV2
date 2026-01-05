@@ -155,7 +155,7 @@ export type WorkerSettings = {
   mood: Mood;
   seed?: number;
   useMelodyV2?: boolean;
-  introBars?: number;
+  introBars: number;
 };
 
 export type TimerSettings = {
@@ -205,6 +205,7 @@ export type InstrumentBehaviorRules = {
     presetModifiers?: {
         octaveShift?: number;
     };
+    fills?: { onBundleBoundary?: boolean };
 };
 
 
@@ -226,6 +227,22 @@ export type BlueprintBundle = {
   duration: { percent: number }; // Duration as a percentage of the parent part
   characteristics: any; 
   phrases: any;
+  outroFill?: FillPolicy | null;
+};
+
+// #ЗАЧЕМ: Добавлен тип IntroRules для декларативного управления вступлением.
+// #ЧТО: Он определяет, какие инструменты и техники разрешены, а также скорость нарастания.
+// #СВЯЗИ: Используется в BlueprintPart и читается функцией generateIntroSequence.
+export type IntroRules = {
+  /** Список инструментов, которым разрешено играть в интро. */
+  allowedInstruments: InstrumentPart[];
+  /** Скорость "нарастания" (0.0-1.0), влияет на плотность и динамику. */
+  buildUpSpeed: number;
+  /** Особые техники, разрешенные только в интро. */
+  specialTechniques?: {
+    part: InstrumentPart;
+    technique: Technique;
+  }[];
 };
 
 export type BlueprintPart = {
@@ -243,7 +260,9 @@ export type BlueprintPart = {
   };
   instrumentEntry?: { [key: string]: number };
   instrumentExit?: { [key: string]: number };
-  instrumentRules: InstrumentRules;
+  instrumentRules: {
+      [key: string]: InstrumentBehaviorRules;
+  };
   bassAccompanimentDouble?: {
     enabled: boolean;
     instrument: AccompanimentInstrument;
@@ -251,6 +270,8 @@ export type BlueprintPart = {
   };
   bundles: BlueprintBundle[];
   outroFill: FillPolicy | null;
+  /** Правила для генерации вступления, если эта часть является интро. */
+  introRules?: IntroRules;
 };
 
 export type HarmonicCenter = {
