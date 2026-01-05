@@ -1,5 +1,4 @@
 
-
 import type { FractalEvent, Mood, Genre, Technique, BassSynthParams, InstrumentType, AccompanimentInstrument, InstrumentHints, AccompanimentTechnique, GhostChord, SfxRule, V1MelodyInstrument, V2MelodyInstrument, BlueprintPart, InstrumentationRules, InstrumentBehaviorRules, BluesMelody, IntroRules, InstrumentPart } from './fractal';
 import { ElectronicK, TraditionalK, AmbientK, MelancholicMinorK } from './resonance-matrices';
 import { BlueprintNavigator, type NavigationInfo } from './blueprint-navigator';
@@ -652,8 +651,8 @@ export const TEXTURE_INSTRUMENT_WEIGHTS_BY_MOOD: Record<Mood, Record<Exclude<Acc
   joyful:        { organ: 0.3, synth: 0.2, mellotron: 0.2, piano: 0.3, guitarChords: 0.0, acousticGuitarSolo: 0.0, electricGuitar: 0.0, 'E-Bells_melody': 0.0, 'G-Drops': 0.0, 'theremin': 0.0, 'none': 0.0, 'ambientPad': 0.0, 'acousticGuitar': 0.0 },
   enthusiastic:  { synth: 0.5, organ: 0.4, electricGuitar: 0.1, piano: 0.0, guitarChords: 0.0, acousticGuitarSolo: 0.0, mellotron: 0.0, 'theremin': 0.0, 'E-Bells_melody': 0.0, 'G-Drops': 0.0, 'none': 0.0, 'ambientPad': 0.0, 'acousticGuitar': 0.0 },
   melancholic:   { organ: 0.4, synth: 0.1, piano: 0.2, guitarChords: 0.0, acousticGuitarSolo: 0.0, electricGuitar: 0.0, 'E-Bells_melody': 0.0, 'G-Drops': 0.0, 'theremin': 0.0, 'mellotron': 0.3, 'none': 0.0, 'ambientPad': 0.0, 'acousticGuitar': 0.0 },
-  dark:          { organ: 0.8, theremin: 0.2, synth: 0.0, piano: 0.0, guitarChords: 0.0, acousticGuitarSolo: 0.0, electricGuitar: 0.0, 'E-Bells_melody': 0.0, 'G-Drops': 0.0, 'mellotron': 0.0, 'none': 0.0, 'ambientPad': 0.0, 'acousticGuitar': 0.0 },
-  anxious:       { synth: 0.5, theremin: 0.3, organ: 0.2, piano: 0.0, guitarChords: 0.0, acousticGuitarSolo: 0.0, electricGuitar: 0.0, 'E-Bells_melody': 0.0, 'G-Drops': 0.0, 'mellotron': 0.0, 'none': 0.0, 'ambientPad': 0.0, 'acousticGuitar': 0.0 },
+  dark:          { organ: 0.8, theremin: 0.2, synth: 0.0, piano: 0.0, guitarChords: 0.0, acousticGuitarSolo: 0.0, electricGuitar: 0.0, 'E-Bells_melody': 0.0, 'G-Drops': 0.0, 'theremin': 0.0, 'mellotron': 0.0, 'none': 0.0, 'ambientPad': 0.0, 'acousticGuitar': 0.0 },
+  anxious:       { synth: 0.5, theremin: 0.3, organ: 0.2, piano: 0.0, guitarChords: 0.0, acousticGuitarSolo: 0.0, electricGuitar: 0.0, 'E-Bells_melody': 0.0, 'G-Drops': 0.0, 'theremin': 0.0, 'mellotron': 0.0, 'none': 0.0, 'ambientPad': 0.0, 'acousticGuitar': 0.0 },
   dreamy:        { synth: 0.3, organ: 0.2, piano: 0.3, guitarChords: 0.0, acousticGuitarSolo: 0.0, electricGuitar: 0.0, 'E-Bells_melody': 0.0, 'G-Drops': 0.0, 'theremin': 0.0, 'mellotron': 0.2, 'none': 0.0, 'ambientPad': 0.0, 'acousticGuitar': 0.0 },
   contemplative: { organ: 0.4, synth: 0.2, piano: 0.4, guitarChords: 0.0, acousticGuitarSolo: 0.0, electricGuitar: 0.0, 'E-Bells_melody': 0.0, 'G-Drops': 0.0, 'theremin': 0.0, 'mellotron': 0, 'none': 0.0, 'ambientPad': 0.0, 'acousticGuitar': 0.0 },
   calm:          { synth: 0.3, organ: 0.2, piano: 0.5, guitarChords: 0.0, acousticGuitarSolo: 0.0, electricGuitar: 0.0, 'E-Bells_melody': 0.0, 'G-Drops': 0.0, 'theremin': 0.0, 'mellotron': 0, 'none': 0.0, 'ambientPad': 0.0, 'acousticGuitar': 0.0 },
@@ -781,43 +780,35 @@ export function createBassFill(mood: Mood, genre: Genre, random: { next: () => n
 export function createDrumFill(random: { next: () => number, nextInt: (max: number) => number }, params: any = {}): FractalEvent[] {
     const { instrument = 'tom', density = 0.5, dynamics = 'mf' } = params;
     const fill: FractalEvent[] = [];
-    const numHits = Math.floor(2 + (density * 6)); // 2 to 8 hits
-    let toms: InstrumentType[];
     
-    switch(instrument) {
-        case 'snare':
-            toms = ['drum_snare', 'drum_snare_ghost_note'];
-            break;
-        case 'tom':
-        default:
-            toms = ['drum_tom_low', 'drum_tom_mid', 'drum_tom_high'];
-            break;
-        case 'crash':
-            toms = ['drum_crash', 'drum_ride'];
-            break;
-    }
+    // #ПЛАН 732: Крэш убран из стандартного набора для филлов
+    const fillInstruments: InstrumentType[] = instrument === 'crash'
+        ? ['drum_crash', 'drum_ride']
+        : ['drum_tom_low', 'drum_tom_mid', 'drum_tom_high', 'drum_snare'];
 
+    const numHits = Math.floor(2 + (density * 6)); // 2 to 8 hits
     let currentTime = 3.0; // Start the fill on the 4th beat
     const weightMap = { 'pp': 0.4, 'p': 0.5, 'mp': 0.6, 'mf': 0.75, 'f': 0.9, 'ff': 1.0 };
     const baseWeight = weightMap[dynamics as keyof typeof weightMap] || 0.75;
 
     for (let i = 0; i < numHits; i++) {
-        const tom = toms[random.nextInt(toms.length)];
-        const duration = (1.0 / numHits) * (0.8 + random.next() * 0.4); // slightly variable duration
+        const tom = fillInstruments[random.nextInt(fillInstruments.length)];
+        const duration = (1.0 / numHits) * (0.8 + random.next() * 0.4);
         const time = currentTime + i * duration;
         
         fill.push({
-            type: tom,
-            note: 40 + i, // Arbitrary midi note for uniqueness
-            duration,
-            time,
+            type: tom, note: 40 + i, duration, time,
             weight: baseWeight + (random.next() * 0.1) - 0.05,
-            technique: 'hit',
-            dynamics: dynamics,
-            phrasing: 'staccato',
-            params: {}
+            technique: 'hit', dynamics: dynamics, phrasing: 'staccato', params: {}
         });
     }
+    
+    // #ПЛАН 732: Явное добавление крэша только если он запрошен
+    if(instrument === 'crash') {
+       const climaxTime = Math.min(3.75, currentTime + (1.0 / numHits));
+       fill.push({ type: 'drum_crash', note: 49, duration: 1, time: climaxTime, weight: 0.9, technique: 'hit', dynamics: 'f', phrasing: 'legato', params: {} });
+    }
+
 
     return fill;
 }
@@ -1219,4 +1210,3 @@ export function generateIntroSequence(options: {
 
     return { events, instrumentHints };
 }
-
