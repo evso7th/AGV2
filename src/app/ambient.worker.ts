@@ -158,6 +158,7 @@ const Scheduler = {
             
             if (introPart?.introRules) {
                 // ШАГ 3А: Если да, подменяем партитуру на сгенерированную "прологом".
+                // #ИЗМЕНЕНО (ПЛАН 717): Добавлен лог для отслеживания работы генератора интро.
                 console.log(`%c[Worker.tick @ Bar ${this.barCount}] Using INTRO GENERATOR.`, 'color: #FF69B4; font-weight: bold;');
                 finalPayload = generateIntroSequence(
                     this.barCount,
