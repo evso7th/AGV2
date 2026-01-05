@@ -633,7 +633,7 @@ export const TEXTURE_INSTRUMENT_WEIGHTS_BY_MOOD: Record<Mood, Record<Exclude<Acc
   dark:          { organ: 0.8, theremin: 0.2, synth: 0.0, piano: 0.0, guitarChords: 0.0, acousticGuitarSolo: 0.0, electricGuitar: 0.0, 'E-Bells_melody': 0.0, 'G-Drops': 0.0, 'theremin': 0.0, 'mellotron': 0.0, 'none': 0.0, 'ambientPad': 0.0, 'acousticGuitar': 0.0 },
   anxious:       { synth: 0.5, theremin: 0.3, organ: 0.2, piano: 0.0, guitarChords: 0.0, acousticGuitarSolo: 0.0, electricGuitar: 0.0, 'E-Bells_melody': 0.0, 'G-Drops': 0.0, 'theremin': 0.0, 'mellotron': 0.0, 'none': 0.0, 'ambientPad': 0.0, 'acousticGuitar': 0.0 },
   dreamy:        { synth: 0.3, organ: 0.2, piano: 0.3, guitarChords: 0.0, acousticGuitarSolo: 0.0, electricGuitar: 0.0, 'E-Bells_melody': 0.0, 'G-Drops': 0.0, 'theremin': 0.0, 'mellotron': 0.2, 'none': 0.0, 'ambientPad': 0.0, 'acousticGuitar': 0.0 },
-  contemplative: { organ: 0.4, synth: 0.2, piano: 0.4, guitarChords: 0.0, acousticGuitarSolo: 0.0, electricGuitar: 0.0, 'E-Bells_melody': 0.0, 'G-Drops': 0.0, 'theremin': 0.0, 'mellotron': 0, 'none': 0.0, 'ambientPad': 0.0, 'acousticGuitar': 0.0 },
+  contemplative: { organ: 0.4, synth: 0.2, piano: 0.4, guitarChords: 0, acousticGuitarSolo: 0, electricGuitar: 0, 'E-Bells_melody': 0, 'G-Drops': 0, 'theremin': 0, 'mellotron': 0, 'none': 0.0, 'ambientPad': 0.0, 'acousticGuitar': 0.0 },
   calm:          { synth: 0.3, organ: 0.2, piano: 0.5, guitarChords: 0, acousticGuitarSolo: 0, electricGuitar: 0, 'E-Bells_melody': 0, 'G-Drops': 0, 'theremin': 0, 'mellotron': 0, 'none': 0.0, 'ambientPad': 0.0, 'acousticGuitar': 0.0 },
 };
 
@@ -933,7 +933,9 @@ export function createDrumAxiom(kit: DrumKit, genre: Genre, mood: Mood, tempo: n
             axiomEvents.push({ ...baseEvent, type: chosenType, note: 36, phrasing: 'staccato', dynamics: 'mf', params: {} } as FractalEvent);
         } else {
              // Логируем, если для нужной категории нет сэмплов, но не останавливаемся
-             console.warn(`[createDrumAxiom] No samples in kit for type category: ${originalType}`);
+             if (originalType !== 'drum_ride') { // #ИСПРАВЛЕНО (ПЛАН 770): Убираем лог для райда.
+                console.warn(`[createDrumAxiom] No samples in kit for type category: ${originalType}`);
+            }
         }
     }
     
@@ -1094,87 +1096,44 @@ export function createMelodyMotif(chord: GhostChord, mood: Mood, random: { next:
     return motif;
 }
 
-export function createIntroDrumAxiom(genre: Genre, mood: Mood, tempo: number, random: { next: () => number; nextInt: (max: number) => number; }): FractalEvent[] {
-    // #ЗАЧЕМ: Этот блок генерирует безопасную, минималистичную перкуссию для интро.
-    // #ЧТО: Он создает несколько очень тихих перкуссионных ударов в случайные моменты времени,
-    //      используя только сэмплы из "безопасного" набора `AMBIENT_INTRO_PERC`.
-    // #СВЯЗИ: Эта функция вызывается только из `generateIntroSequence` для не-блюзовых жанров.
-
-    const axiom: FractalEvent[] = [];
-    const loopDuration = 4.0; 
-
-    // Используем безопасный набор перкуссии для интро
-    const percKit = AMBIENT_INTRO_PERC;
-
-    const numHits = 2 + random.nextInt(4); // от 2 до 5 ударов на такт
-    
-    for (let i = 0; i < numHits; i++) {
-        const instrument = percKit[random.nextInt(percKit.length)];
-        const time = random.next() * loopDuration;
-        const duration = 0.1 + random.next() * 0.4;
-        const weight = 0.2 + random.next() * 0.3; // Тихие удары
-
-        axiom.push({
-            type: instrument,
-            note: 60, 
-            duration: duration,
-            time: time,
-            weight: weight,
-            technique: 'hit',
-            dynamics: 'p',
-            phrasing: 'staccato',
-            params: {},
-        });
-    }
-    
-    console.log(`[IntroDrumAxiom] Generated ${axiom.length} safe percussion hits for intro.`);
-    return axiom;
-}
-
 
 // Новая, надежная версия функции для генерации вступления.
 export function generateIntroSequence(options: {
     currentBar: number;
     totalIntroBars: number;
-    mainEngineEvents: FractalEvent[]; // #ИЗМЕНЕНО (ПЛАН 772): Принимает готовую партитуру
+    mainEngineEvents: FractalEvent[];
     instrumentOrder: InstrumentPart[];
 }): { events: FractalEvent[]; instrumentHints: InstrumentHints } {
 
     const { currentBar, totalIntroBars, mainEngineEvents, instrumentOrder } = options;
     const events: FractalEvent[] = [];
-    // #ИСПРАВЛЕНО (ПЛАН 772): `instrumentHints` теперь не генерируются здесь, а извлекаются из основного потока
     const instrumentHints: InstrumentHints = {};
 
-    const progress = currentBar / totalIntroBars;
+    const progress = totalIntroBars > 0 ? currentBar / totalIntroBars : 1;
 
     // --- Логика Постепенного Вступления ---
-    // #ЗАЧЕМ: Этот блок определяет, какие инструменты должны играть на текущем такте интро.
-    // #ЧТО: Он делит длительность интро на количество инструментов и "включает" их по одному.
-    const barsPerInstrument = Math.max(1, Math.floor(totalIntroBars / Math.max(1, instrumentOrder.length)));
+    const barsPerInstrument = totalIntroBars > 0 ? Math.max(1, Math.floor(totalIntroBars / Math.max(1, instrumentOrder.length))) : 1;
     const instrumentsToPlayCount = Math.min(instrumentOrder.length, Math.floor(currentBar / barsPerInstrument) + 1);
     const activeInstruments = new Set(instrumentOrder.slice(0, instrumentsToPlayCount));
-
+    
     console.log(`%c[IntroSequence @ Bar ${currentBar}] Active instruments: [${Array.from(activeInstruments).join(', ')}]`, 'color: orange');
 
-    // --- ФИЛЬТРАЦИЯ СОБЫТИЙ (ПЛАН 772) ---
-    // #ЗАЧЕМ: Вместо генерации новых примитивных партий, мы фильтруем те, что уже создал основной движок.
-    // #ЧТО: Проходим по `mainEngineEvents` и добавляем в `events` только те,
-    //      чей тип (`bass`, `drums`, и т.д.) находится в списке `activeInstruments`.
-    // #СВЯЗИ: Это гарантирует, что в интро будет звучать стилистически верная музыка, но только для разрешенных инструментов.
+
+    // --- ФИЛЬТРАЦИЯ СОБЫТИЙ ---
     for (const event of mainEngineEvents) {
-        const eventPart = event.type.startsWith('drum_') || event.type.startsWith('perc-') ? 'drums' : event.type;
+        const eventPart = (event.type as string).startsWith('drum_') || (event.type as string).startsWith('perc-') ? 'drums' : event.type;
         if (activeInstruments.has(eventPart as InstrumentPart)) {
             events.push(event);
         }
     }
     
     // Копируем instrumentHints из основного движка, так как мы используем его события.
-    // В будущем здесь можно будет переопределять хинты специально для интро.
     const mainHints = mainEngineEvents.find(e => (e as any).instrumentHints)?.instrumentHints ?? {};
     Object.assign(instrumentHints, mainHints);
 
     return { events, instrumentHints };
 }
+
 
 
 
