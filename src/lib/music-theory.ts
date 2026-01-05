@@ -897,11 +897,10 @@ export function generateGhostHarmonyTrack(totalBars: number, mood: Mood, key: nu
 }
     
 export function createDrumAxiom(kit: DrumKit, genre: Genre, mood: Mood, tempo: number, random: { next: () => number, nextInt: (max: number) => number }, rules?: InstrumentBehaviorRules): { events: FractalEvent[], tags: string[] } {
-    // #ЗАЧЕМ: Это "глупый" исполнитель. Он не знает о библиотеках, он просто
-    //          получает готовый набор сэмплов (`kit`) и генерирует ритм.
-    // #ЧТО: Функция выбирает случайный паттерн из `STYLE_DRUM_PATTERNS` для жанра
-    //       и пытается заполнить его, используя ТОЛЬКО сэмплы из переданного `kit`.
-    // #СВЯЗИ: Вызывается из `generateDrumEvents` в движке.
+    // #ЗАЧЕМ: Эта функция теперь выступает в роли "дирижера" для ударных.
+    // #ЧТО: Она определяет, какой кит использовать, динамически его модифицирует
+    //       и передает уже готовый набор сэмплов в "глупую" функцию-исполнитель.
+    // #СВЯЗИ: Вызывается из `generateOneBar`, вызывает `createDrumAxiom`.
     
     console.log(`%c[createDrumAxiom] Received kit with: Kick(${kit.kick.length}), Snare(${kit.snare.length}), HH(${kit.hihat.length}), Ride(${kit.ride.length})`, 'color: #9ACD32;');
 
@@ -924,7 +923,8 @@ export function createDrumAxiom(kit: DrumKit, genre: Genre, mood: Mood, tempo: n
         if (originalType.startsWith('drum_kick')) samplePool = kit.kick;
         else if (originalType.startsWith('drum_snare')) samplePool = kit.snare;
         else if (originalType.startsWith('drum_hihat')) samplePool = kit.hihat;
-        else if (originalType.startsWith('drum_ride') || originalType.startsWith('drum_a_ride')) samplePool = kit.ride;
+        else if (originalType.startsWith('drum_a_ride')) samplePool = kit.ride; // #ИСПРАВЛЕНО
+        else if (originalType.startsWith('drum_ride')) samplePool = kit.ride; // #ИСПРАВЛЕНО
         else if (originalType.startsWith('drum_crash')) samplePool = kit.crash;
         else if (originalType.startsWith('perc') || originalType.startsWith('drum_tom')) samplePool = kit.perc;
 
@@ -1170,8 +1170,16 @@ export function generateIntroSequence(options: {
     }
 
     if (activeInstruments.includes('drums')) {
-      console.log(`%c[IntroSequence @ Bar ${currentBar}] Calling SAFE intro drum generator.`, 'color: #9ACD32;');
-      events.push(...createIntroDrumAxiom(settings.genre, settings.mood, settings.tempo, random));
+        // #ЗАЧЕМ: Устраняет неуместную эмбиент-перкуссию в блюзовых интро.
+        // #ЧТО: Этот блок теперь вызывает "безопасный" генератор ударных ТОЛЬКО для не-блюзовых жанров.
+        //      Для блюза мы полагаемся на основной, более сложный генератор `generateDrumEvents`,
+        //      который вызывается в `FractalMusicEngine` и корректно работает с блюзовыми китами.
+        // #СВЯЗИ: Решает проблему, когда `createIntroDrumAxiom` добавлял эмбиент-звуки
+        //         в блюзовые композиции, игнорируя их стилистику.
+        if (settings.genre !== 'blues') {
+            console.log(`%c[IntroSequence @ Bar ${currentBar}] Calling SAFE intro drum generator for non-blues genre.`, 'color: #9ACD32;');
+            events.push(...createIntroDrumAxiom(settings.genre, settings.mood, settings.tempo, random));
+        }
     }
     
     if (activeInstruments.includes('melody')) {
@@ -1187,4 +1195,5 @@ export function generateIntroSequence(options: {
 
     return { events, instrumentHints };
 }
+
 

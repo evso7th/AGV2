@@ -92,7 +92,7 @@ export const DRUM_KITS: DrumKitLibrary = {
             crash: [],
             perc: ['perc-001', 'perc-013']
         },
-        // КИТ ДЛЯ ЭПИЧЕСКОГО БЛЮЗ-РОКА (ПЛАН 766)
+        // #ИСПРАВЛЕНО (ПЛАН 766): Полностью пересобран для классического блюз-рока без "железа".
         blues_epic: {
             kick: ALL_KICKS,
             snare: ALL_SNARES,
