@@ -98,7 +98,6 @@ export class FractalMusicEngine {
   
   public navigator: BlueprintNavigator | null = null;
 
-  public introInstrumentMap: Map<InstrumentPart, any> = new Map();
   public introInstrumentOrder: InstrumentPart[] = [];
 
 
@@ -157,7 +156,7 @@ export class FractalMusicEngine {
   
   public async updateConfig(newConfig: Partial<EngineConfig>) {
       const moodOrGenreChanged = newConfig.mood !== this.config.mood || newConfig.genre !== this.config.genre;
-      const introBarsChanged = newConfig.introBars !== this.config.introBars;
+      const introBarsChanged = newConfig.introBars !== undefined && newConfig.introBars !== this.config.introBars;
       const seedChanged = newConfig.seed !== undefined && newConfig.seed !== this.config.seed;
       
       this.config = { ...this.config, ...newConfig };
@@ -231,12 +230,12 @@ export class FractalMusicEngine {
     this.accompPhraseLibrary = [];
     this.currentAccompPhraseIndex = 0;
     
-    // #ЗАЧЕМ: Удалена неверная логика introInstrumentMap.
-    //         Выбор инструмента теперь происходит динамически в `evolve`.
+    // #ЗАЧЕМ: Создаем уникальный для каждой сессии порядок вступления инструментов.
+    // #ЧТО: Логика берет список разрешенных инструментов из правил интро и перемешивает его.
+    // #СВЯЗИ: Решает проблему предсказуемости, когда в каждой сюите инструменты вступали одинаково.
     this.introInstrumentOrder = [];
     const introPart = this.navigator.blueprint.structure.parts.find(p => p.id.startsWith('INTRO'));
     if (introPart?.introRules) {
-        // Создаем УНИКАЛЬНЫЙ порядок вступления для КАЖДОЙ сюиты.
         this.introInstrumentOrder = this.random.shuffle([...introPart.introRules.allowedInstruments]);
         console.log(`[IntroSetup] Unique instrument entry order created: [${this.introInstrumentOrder.join(', ')}]`);
     }
@@ -348,11 +347,14 @@ export class FractalMusicEngine {
 
         // 1. Определяем базовый кит из блюпринта или по умолчанию.
         const kitName = drumRules?.kitName || `${genre}_${mood}`.toLowerCase();
-        const baseKit: DrumKit = 
-            (DRUM_KITS[genre] && (DRUM_KITS[genre] as any)[kitName]) ||
-            (DRUM_KITS[genre] && (DRUM_KITS[genre] as any)[mood]) ||
-            (DRUM_KITS[genre]?.intro) ||
-            DRUM_KITS.ambient!.intro!;
+        
+        let baseKit: DrumKit | undefined;
+        if (DRUM_KITS[genre]) {
+            baseKit = (DRUM_KITS[genre] as any)[kitName] || (DRUM_KITS[genre] as any)[mood] || DRUM_KITS[genre]?.intro;
+        }
+        if (!baseKit) {
+            baseKit = DRUM_KITS.ambient!.intro!;
+        }
         
         // 2. Создаем рабочую копию кита для динамических изменений.
         const finalKit: DrumKit = JSON.parse(JSON.stringify(baseKit));
@@ -360,13 +362,12 @@ export class FractalMusicEngine {
         // 3. Динамически модифицируем кит на основе правил ТЕКУЩЕЙ секции.
         if (drumRules?.ride?.enabled === true) {
             // Если блюпринт говорит "включи райд", добавляем все райды в кит.
-            finalKit.ride = [...new Set([...finalKit.ride, ...DRUM_KITS.ambient!.intro!.ride])];
+            finalKit.ride = [...new Set([...finalKit.ride, ...DRUM_KITS.ambient!.intro!.ride!])];
         } else if (drumRules?.ride?.enabled === false) {
             // Если блюпринт говорит "выключи райд", очищаем его.
             finalKit.ride = [];
         }
-        // Здесь можно добавить аналогичную логику для крэшей, перкуссии и т.д.
-        
+
         console.log(`%c[FME.generateDrums @ Bar ${this.epoch}] Using Kit: ${kitName}. Ride enabled: ${finalKit.ride.length > 0}`, 'color: #FFD700;');
 
         // 4. Передаем ГОТОВЫЙ кит в "исполнителя".
@@ -708,7 +709,7 @@ export class FractalMusicEngine {
       // #СВЯЗИ: Решает проблему монотонности интро.
       const instrumentHints: InstrumentHints = {
           accompaniment: this._chooseInstrumentForPart('accompaniment', navInfo),
-          melody: this._chooseInstrumentFor-part('melody', navInfo),
+          melody: this._chooseInstrumentForPart('melody', navInfo),
           harmony: chosenHarmonyInstrument,
       };
       
@@ -880,6 +881,7 @@ export class FractalMusicEngine {
 
 
 }
+
 
 
 
