@@ -91,14 +91,14 @@ export const DRUM_KITS: DrumKitLibrary = {
             crash: [],
             perc: ['perc-001', 'perc-013']
         },
-         // НОВЫЙ КИТ: Сбалансированный для эпического блюза (ПЛАН 757)
+        // КИТ ДЛЯ ЭПИЧЕСКОГО БЛЮЗ-РОКА (ПЛАН 766)
         epic: {
             kick: ALL_KICKS,
             snare: ALL_SNARES,
             hihat: ALL_HIHATS,
-            ride: [], // ПОЛНОСТЬЮ УДАЛЕНО "ЖЕЛЕЗО"
-            crash: [], // ПОЛНОСТЬЮ УДАЛЕНО "ЖЕЛЕЗО"
-            perc: ['drum_tom_mid', 'drum_tom_low'] // Оставляем только томы
+            ride: [], // НИКАКИХ РАЙДОВ
+            crash: [], // НИКАКИХ КРЭШЕЙ
+            perc: ['drum_tom_mid', 'drum_tom_low'] // Только томы для филлов
         },
         // Другие настроения для blues можно добавить здесь
     },
