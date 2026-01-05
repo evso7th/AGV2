@@ -160,10 +160,7 @@ const Scheduler = {
                 finalPayload = generateIntroSequence({
                     currentBar: this.barCount,
                     totalIntroBars: this.settings.introBars,
-                    introRules: introPart.introRules,
-                    harmonyTrack: fractalMusicEngine.getGhostHarmony(),
-                    settings: this.settings,
-                    random: fractalMusicEngine.random,
+                    mainEngineEvents: mainEnginePayload.events,
                     instrumentOrder: fractalMusicEngine.introInstrumentOrder,
                 });
             } else {
@@ -300,5 +297,4 @@ self.onmessage = async (event: MessageEvent) => {
 
 
     
-
 
