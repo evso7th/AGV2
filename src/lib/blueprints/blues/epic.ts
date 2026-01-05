@@ -35,7 +35,7 @@ export const EpicBluesBlueprint: MusicBlueprint = {
                     }
                 },
                 instrumentRules: {
-                    drums: { pattern: 'composer', density: { min: 0.3, max: 0.5 }, useSnare: true, useGhostHat: true, kickVolume: 0.0, usePerc: false, ride: { enabled: false } },
+                    drums: { pattern: 'composer', kitName: 'blues_epic', density: { min: 0.3, max: 0.5 }, useSnare: true, useGhostHat: true, kickVolume: 0.0, usePerc: false, ride: { enabled: false } },
                     bass: { 
                         techniques: [{ value: 'walking', weight: 1.0 }],
                         presetModifiers: { octaveShift: 1 } 
@@ -62,7 +62,7 @@ export const EpicBluesBlueprint: MusicBlueprint = {
                     }
                 },
                 instrumentRules: {
-                    drums: { pattern: 'composer', density: { min: 0.6, max: 0.8 }, useSnare: true, useGhostHat: true, kickVolume: 1.1, usePerc: true },
+                    drums: { pattern: 'composer', kitName: 'blues_epic', density: { min: 0.6, max: 0.8 }, useSnare: true, useGhostHat: true, kickVolume: 1.1, usePerc: true },
                     bass: { 
                         techniques: [{ value: 'walking', weight: 1.0 }],
                         presetModifiers: { octaveShift: 1 } 
@@ -88,7 +88,7 @@ export const EpicBluesBlueprint: MusicBlueprint = {
                     }
                 },
                 instrumentRules: {
-                    drums: { pattern: 'composer', density: { min: 0.8, max: 1.0 }, kickVolume: 1.3, ride: { enabled: true } },
+                    drums: { pattern: 'composer', kitName: 'blues_epic', density: { min: 0.8, max: 1.0 }, kickVolume: 1.3, ride: { enabled: true } },
                     melody: { 
                         source: 'motif', 
                         density: { min: 0.7, max: 0.9 }, // Higher density for solo
@@ -118,7 +118,7 @@ export const EpicBluesBlueprint: MusicBlueprint = {
                     }
                 },
                 instrumentRules: {
-                    drums: { pattern: 'composer', density: { min: 0.6, max: 0.8 }, useSnare: true, useGhostHat: true, kickVolume: 1.1 },
+                    drums: { pattern: 'composer', kitName: 'blues_epic', density: { min: 0.6, max: 0.8 }, useSnare: true, useGhostHat: true, kickVolume: 1.1 },
                     bass: { 
                         techniques: [{ value: 'walking', weight: 1.0 }],
                         presetModifiers: { octaveShift: 1 }

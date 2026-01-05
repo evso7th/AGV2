@@ -199,6 +199,7 @@ export const PERCUSSION_SETS: Record<'NEUTRAL' | 'ELECTRONIC' | 'DARK', Instrume
 export const ALL_RIDES: InstrumentType[] = ['drum_a_ride1', 'drum_a_ride2', 'drum_a_ride3', 'drum_a_ride4'];
 const AMBIENT_SNARES: InstrumentType[] = ['drum_snare_ghost_note', 'drum_snarepress', 'drum_snare_off'];
 const AMBIENT_PERC: InstrumentType[] = [...PERCUSSION_SETS.ELECTRONIC, ...ALL_RIDES];
+const AMBIENT_INTRO_PERC: InstrumentType[] = ['drum_tom_low', 'perc-013', 'perc-015', 'drum_hihat_closed', 'drum_hihat_open'];
 
 
 type DrumPatternEvent = {
@@ -458,6 +459,7 @@ export function createHarmonyAxiom(chord: GhostChord, mood: Mood, genre: Genre, 
     return axiom;
 }
 
+
 // Rhythmic Grammar Library for Drums
 export const STYLE_DRUM_PATTERNS: Record<Genre, any> = {
     ambient: {
@@ -621,31 +623,6 @@ export const STYLE_DRUM_PATTERNS: Record<Genre, any> = {
             }
         ],
     },
-};
-
-export const SFX_GRAMMAR = {
-  textures: {
-    industrial: ['sawtooth', 'square'],
-    ambient: ['sine', 'triangle'],
-    vocal: ['fatsine'],
-  },
-  freqRanges: {
-    low: { min: 30, max: 150 },
-    mid: { min: 150, max: 800 },
-    high: { min: 800, max: 4000 },
-    'wide-sweep-up': { minStart: 100, maxStart: 400, minEnd: 1500, maxEnd: 3000 },
-    'wide-sweep-down': { minStart: 1500, maxStart: 3000, minEnd: 100, maxEnd: 400 },
-  },
-  envelopes: {
-    percussive: { attack: {min: 0.01, max: 0.05}, decay: {min: 0.1, max: 0.3}, sustain: 0.1, release: {min: 0.1, max: 0.4} },
-    pad: { attack: {min: 0.5, max: 1.5}, decay: {min: 1.0, max: 2.0}, sustain: 0.8, release: {min: 1.0, max: 2.5} },
-    swell: { attack: {min: 0.2, max: 0.8}, decay: {min: 0.5, max: 1.0}, sustain: 0.6, release: {min: 0.5, max: 1.5} },
-  },
-  panning: {
-    static: 'static',
-    sweep: 'sweep',
-    random: 'random'
-  }
 };
 
 export const TEXTURE_INSTRUMENT_WEIGHTS_BY_MOOD: Record<Mood, Record<Exclude<AccompanimentInstrument, 'violin' | 'flute' | 'mellotron_choir_dark' >, number>> = {
@@ -920,55 +897,35 @@ export function generateGhostHarmonyTrack(totalBars: number, mood: Mood, key: nu
 }
     
 export function createDrumAxiom(genre: Genre, mood: Mood, tempo: number, random: { next: () => number, nextInt: (max: number) => number }, rules?: InstrumentBehaviorRules): { events: FractalEvent[], tags: string[] } {
-    const hitParams = {}; // Params now come from events
+    const kitName = rules?.kitName || `${genre}_${mood}`.toLowerCase();
+    const genreKits = DRUM_KITS[genre];
+    const kit = (genreKits && (genreKits as any)[mood]) ? (genreKits as any)[mood] : (genreKits?.intro || DRUM_KITS.ambient!.intro!);
+
+    console.log(`%c[DrumAxiom] Using Drum Kit: ${kitName} for mood: ${mood}`, 'color: #90EE90; font-weight: bold;');
+
     const grammar = STYLE_DRUM_PATTERNS[genre] || STYLE_DRUM_PATTERNS['ambient'];
+    if (!grammar || !grammar.loops || grammar.loops.length === 0) return { events: [], tags: [] };
     
-    if (!grammar || !grammar.loops || grammar.loops.length === 0) {
-        return { events: [], tags: [] };
-    }
-
     const loop = grammar.loops[random.nextInt(grammar.loops.length)];
-    
     const axiomEvents: FractalEvent[] = [];
-
     if (!loop) return { events: [], tags: [] };
 
     const allBaseEvents = [...(loop.kick || []), ...(loop.snare || []), ...(loop.hihat || [])];
     for (const baseEvent of allBaseEvents) {
-        if (baseEvent.probability && random.next() > baseEvent.probability) {
-            continue;
-        }
+        if (baseEvent.probability && random.next() > baseEvent.probability) continue;
+        
+        let types: InstrumentType[] | InstrumentType = Array.isArray(baseEvent.type) ? baseEvent.type : [baseEvent.type];
+        let chosenType: InstrumentType;
 
-        const eventTypeStr = Array.isArray(baseEvent.type) ? baseEvent.type[0] : baseEvent.type;
-
-        let instrumentType: InstrumentType;
-        if (Array.isArray(baseEvent.type)) {
-            const types = baseEvent.type as InstrumentType[];
-            const probabilities = baseEvent.probabilities || [];
-            let rand = random.next();
-            let cumulativeProb = 0;
-            
-            let chosenType: InstrumentType | null = null;
-            for (let i = 0; i < types.length; i++) {
-                cumulativeProb += probabilities[i] || (1 / types.length);
-                if (rand <= cumulativeProb) {
-                    chosenType = types[i];
-                    break;
-                }
-            }
-            instrumentType = chosenType || types[types.length - 1];
+        if (Array.isArray(types)) {
+            const allowedTypes = types.filter(t => kit.kick.includes(t) || kit.snare.includes(t) || kit.hihat.includes(t));
+            if (allowedTypes.length === 0) continue;
+            chosenType = allowedTypes[random.nextInt(allowedTypes.length)];
         } else {
-            instrumentType = baseEvent.type;
+            chosenType = types;
         }
         
-        axiomEvents.push({
-            ...baseEvent,
-            type: instrumentType,
-            note: 36, // Placeholder MIDI
-            phrasing: 'staccato',
-            dynamics: 'mf', // Placeholder
-            params: hitParams,
-        } as FractalEvent);
+        axiomEvents.push({ ...baseEvent, type: chosenType, note: 36, phrasing: 'staccato', dynamics: 'mf', params: {} } as FractalEvent);
     }
     
     return { events: axiomEvents, tags: loop.tags };
@@ -1128,6 +1085,39 @@ export function createMelodyMotif(chord: GhostChord, mood: Mood, random: { next:
     return motif;
 }
 
+export function createIntroDrumAxiom(genre: Genre, mood: Mood, tempo: number, random: { next: () => number; nextInt: (max: number) => number; }): FractalEvent[] {
+    const axiom: FractalEvent[] = [];
+    const loopDuration = 4.0; 
+
+    // Используем безопасный набор перкуссии для интро
+    const percKit = AMBIENT_INTRO_PERC;
+
+    const numHits = 2 + random.nextInt(4); // от 2 до 5 ударов на такт
+    
+    for (let i = 0; i < numHits; i++) {
+        const instrument = percKit[random.nextInt(percKit.length)];
+        const time = random.next() * loopDuration;
+        const duration = 0.1 + random.next() * 0.4;
+        const weight = 0.2 + random.next() * 0.3; // Тихие удары
+
+        axiom.push({
+            type: instrument,
+            note: 60, 
+            duration: duration,
+            time: time,
+            weight: weight,
+            technique: 'hit',
+            dynamics: 'p',
+            phrasing: 'staccato',
+            params: {},
+        });
+    }
+    
+    console.log(`[IntroDrumAxiom] Generated ${axiom.length} safe percussion hits for intro.`);
+    return axiom;
+}
+
+
 // Новая, надежная версия функции для генерации вступления.
 export function generateIntroSequence(options: {
   currentBar: number;
@@ -1171,9 +1161,8 @@ export function generateIntroSequence(options: {
     }
 
     if (activeInstruments.includes('drums')) {
-      console.log(`[IntroSequence @ Bar ${currentBar}] Generating INTRO drums.`);
-      const drumRules = { kitName: `${settings.genre}_intro` };
-      events.push(...createDrumAxiom(settings.genre, settings.mood, settings.tempo, random, drumRules).events);
+      console.log(`[IntroSequence @ Bar ${currentBar}] Calling SAFE intro drum generator.`);
+      events.push(...createIntroDrumAxiom(settings.genre, settings.mood, settings.tempo, random));
     }
     
     if (activeInstruments.includes('melody')) {
@@ -1189,3 +1178,4 @@ export function generateIntroSequence(options: {
 
     return { events, instrumentHints };
 }
+

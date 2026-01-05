@@ -7,7 +7,7 @@
  *          стилистически и технически корректных партий ударных.
  */
 
-import type { DrumKitLibrary, InstrumentType } from '@/types/fractal';
+import type { DrumKit, DrumKitLibrary, InstrumentType } from '@/types/fractal';
 
 // --- БАЗОВЫЕ НАБОРЫ СЭМПЛОВ ДЛЯ ПЕРЕИСПОЛЬЗОВАНИЯ ---
 
@@ -81,7 +81,16 @@ export const DRUM_KITS: DrumKitLibrary = {
             ride: ['drum_ride'], // Только основной райд
             crash: [], // Без крэшей
             perc: ['drum_tom_low']
-        }
+        },
+         // НОВЫЙ КИТ: Сбалансированный для эпического блюза
+        epic: {
+            kick: ALL_KICKS,
+            snare: ALL_SNARES,
+            hihat: ALL_HIHATS,
+            ride: ['drum_ride'], // Только один, самый мягкий райд
+            crash: [], // Полностью убираем крэши
+            perc: ['drum_tom_mid', 'drum_tom_low', 'cymbal_bell1'] // Оставляем томы и колокольчик
+        },
         // Другие настроения для blues можно добавить здесь
     },
 
