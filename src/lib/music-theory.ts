@@ -471,7 +471,7 @@ export const STYLE_DRUM_PATTERNS: Record<Genre, any> = {
                     { type: ALL_RIDES, probabilities: [0.3, 0.3, 0.2, 0.2], time: 0, duration: 1, weight: 0.35, probability: 0.9 },
                     { type: AMBIENT_PERC, time: 1.5, duration: 0.5, weight: 0.4, probability: 0.5 },
                     { type: 'drum_tom_low', time: 2.25, duration: 0.25, weight: 0.2, probability: 0.3 },
-                    { type: 'drum_closed_hi_hat_ghost', time: 2.75, duration: 0.25, weight: 0.2, probability: 0.6 },
+                    { type: 'drum_hihat_closed', time: 2.75, duration: 0.25, weight: 0.2, probability: 0.6 },
                     { type: 'drum_a_ride2', time: 3.5, duration: 0.25, weight: 0.3, probability: 0.7 }
                 ],
                 tags: ['ambient-pulse-varied']
@@ -481,7 +481,7 @@ export const STYLE_DRUM_PATTERNS: Record<Genre, any> = {
                 snare: [],
                 hihat: [
                     { type: 'drum_a_ride1', time: 0.75, duration: 0.25, weight: 0.3, probability: 0.8 },
-                    { type: 'drum_closed_hi_hat_ghost', time: 1.5, duration: 0.25, weight: 0.15, probability: 0.6 },
+                    { type: 'drum_hihat_closed', time: 1.5, duration: 0.25, weight: 0.15, probability: 0.6 },
                     { type: 'drum_tom_low', time: 2.25, duration: 0.25, weight: 0.2, probability: 0.5 },
                     { type: 'drum_a_ride2', time: 3.5, duration: 0.25, weight: 0.35, probability: 0.8 }
                 ],
@@ -900,12 +900,10 @@ export function createDrumAxiom(genre: Genre, mood: Mood, tempo: number, random:
     const kitName = rules?.kitName || `${genre}_${mood}`.toLowerCase();
     const genreKits = DRUM_KITS[genre];
 
-    // --- DIAGNOSTIC LOG 1: What kit are we trying to use? ---
-    console.log(`%c[DrumAxiom] Attempting to use Drum Kit: ${kitName} for genre: ${genre}, mood: ${mood}`, 'color: #FFD700; font-weight: bold;');
+    console.log(`%c[DrumAxiom] Using Drum Kit: ${rules?.kitName || 'default'} for genre: ${genre}, mood: ${mood}`, 'color: #FFD700; font-weight: bold;');
     
     let kit;
     if (rules?.kitName) {
-        // Find kit by specific name across all genres (less safe but flexible)
         for (const g in DRUM_KITS) {
             const specificKit = (DRUM_KITS[g as Genre] as any)[rules.kitName];
             if (specificKit) {
@@ -914,24 +912,12 @@ export function createDrumAxiom(genre: Genre, mood: Mood, tempo: number, random:
             }
         }
         if (!kit) {
-            console.warn(`Kit "${rules.kitName}" not found anywhere. Falling back.`);
+            console.warn(`Kit "${rules.kitName}" not found. Falling back.`);
             kit = (genreKits && (genreKits as any)[mood]) ? (genreKits as any)[mood] : (genreKits?.intro || DRUM_KITS.ambient!.intro!);
         }
     } else {
         kit = (genreKits && (genreKits as any)[mood]) ? (genreKits as any)[mood] : (genreKits?.intro || DRUM_KITS.ambient!.intro!);
     }
-
-
-    // --- DIAGNOSTIC LOG 2: What samples are in the selected kit? ---
-    const allowedSamples = {
-        kick: kit.kick.join(', ') || 'none',
-        snare: kit.snare.join(', ') || 'none',
-        hihat: kit.hihat.join(', ') || 'none',
-        ride: kit.ride.join(', ') || 'none',
-        crash: kit.crash.join(', ') || 'none',
-        perc: kit.perc.join(', ') || 'none',
-    };
-    console.log(`[DrumAxiom] Loaded Kit Contents:`, allowedSamples);
 
     const grammar = STYLE_DRUM_PATTERNS[genre] || STYLE_DRUM_PATTERNS['ambient'];
     if (!grammar || !grammar.loops || grammar.loops.length === 0) return { events: [], tags: [] };
@@ -940,7 +926,21 @@ export function createDrumAxiom(genre: Genre, mood: Mood, tempo: number, random:
     const axiomEvents: FractalEvent[] = [];
     if (!loop) return { events: [], tags: [] };
 
-    const allBaseEvents = [...(loop.kick || []), ...(loop.snare || []), ...(loop.hihat || [])];
+    const allBaseEvents = [...(loop.kick || []), ...(loop.snare || [])];
+    
+    // --- ИСПРАВЛЕНИЕ: Логика добавления HiHat/Ride вынесена и управляется правилами ---
+    if (rules?.ride?.enabled) {
+        // Если райд разрешен, добавляем его, но реже чем хэт
+        if(random.next() < 0.4) { // 40% шанс на райд вместо хэта
+            allBaseEvents.push({ type: 'drum_ride', time: 0, duration: 1, weight: 0.6, probability: 0.9 });
+        } else if (loop.hihat) {
+            allBaseEvents.push(...loop.hihat);
+        }
+    } else if (loop.hihat) {
+        // Если райд не разрешен, используем хэты из паттерна
+        allBaseEvents.push(...loop.hihat);
+    }
+    
     for (const baseEvent of allBaseEvents) {
         if (baseEvent.probability && random.next() > baseEvent.probability) continue;
         
@@ -950,7 +950,6 @@ export function createDrumAxiom(genre: Genre, mood: Mood, tempo: number, random:
         if (Array.isArray(types)) {
             const allowedTypes = types.filter(t => kit.kick.includes(t) || kit.snare.includes(t) || kit.hihat.includes(t) || kit.perc.includes(t) || kit.ride.includes(t) || kit.crash.includes(t));
             if (allowedTypes.length === 0) {
-                 // --- DIAGNOSTIC LOG 3: Sample filtered out ---
                  console.warn(`[DrumAxiom] Sample filtered out! Original type: ${types.join(',')}. Kit did not allow any.`);
                  continue;
             }
@@ -959,7 +958,6 @@ export function createDrumAxiom(genre: Genre, mood: Mood, tempo: number, random:
             chosenType = types;
         }
 
-        // --- DIAGNOSTIC LOG 4: Final chosen sample ---
         console.log(`%c[DrumAxiom] Selected Sample: ${chosenType}`, 'color: #9ACD32;');
         
         axiomEvents.push({ ...baseEvent, type: chosenType, note: 36, phrasing: 'staccato', dynamics: 'mf', params: {} } as FractalEvent);
@@ -967,6 +965,7 @@ export function createDrumAxiom(genre: Genre, mood: Mood, tempo: number, random:
     
     return { events: axiomEvents, tags: loop.tags };
 }
+
 
 export function createSfxScenario(mood: Mood, genre: Genre, random: { next: () => number, nextInt: (max: number) => number }): { drumFill: FractalEvent[], bassFill: FractalEvent[], accompanimentFill: FractalEvent[] } {
     const drumFill: FractalEvent[] = [];

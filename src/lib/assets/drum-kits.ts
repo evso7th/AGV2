@@ -82,14 +82,23 @@ export const DRUM_KITS: DrumKitLibrary = {
             crash: [], // Без крэшей
             perc: ['drum_tom_low']
         },
-         // НОВЫЙ КИТ: Сбалансированный для эпического блюза
+        // КИТ ДЛЯ СПОКОЙНОГО БЛЮЗА (ПЛАН 762)
+        calm: {
+            kick: ['drum_kick'],
+            snare: ['drum_snare_ghost_note', ...BRUSHES],
+            hihat: ['drum_hihat_closed'],
+            ride: [],
+            crash: [],
+            perc: ['perc-001', 'perc-013']
+        },
+         // НОВЫЙ КИТ: Сбалансированный для эпического блюза (ПЛАН 757)
         epic: {
             kick: ALL_KICKS,
             snare: ALL_SNARES,
             hihat: ALL_HIHATS,
-            ride: ['drum_ride'], // Только один, самый мягкий райд
-            crash: [], // Полностью убираем крэши
-            perc: ['drum_tom_mid', 'drum_tom_low', 'cymbal_bell1'] // Оставляем томы и колокольчик
+            ride: [], // ПОЛНОСТЬЮ УДАЛЕНО "ЖЕЛЕЗО"
+            crash: [], // ПОЛНОСТЬЮ УДАЛЕНО "ЖЕЛЕЗО"
+            perc: ['drum_tom_mid', 'drum_tom_low'] // Оставляем только томы
         },
         // Другие настроения для blues можно добавить здесь
     },
@@ -106,6 +115,22 @@ export const DRUM_KITS: DrumKitLibrary = {
             ride: [],
             crash: ['drum_crash'],
             perc: ['perc-003', 'perc-008', 'perc-011']
+        },
+        intro: { // Безопасный кит для интро транса
+            kick: ['drum_kick'],
+            snare: [],
+            hihat: ['drum_hihat_closed'],
+            ride: [],
+            crash: [],
+            perc: ['perc-003']
+        },
+        anxious: {
+            kick: ALL_KICKS,
+            snare: ALL_SNARES,
+            hihat: ALL_HIHATS,
+            ride: [],
+            crash: [ALL_CRASHES[0]],
+            perc: ALL_PERC,
         }
         // Другие настроения для trance можно добавить здесь
     }
