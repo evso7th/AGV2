@@ -1,5 +1,4 @@
 
-
 import type { FractalEvent, Mood, Genre, Technique, BassSynthParams, InstrumentType, MelodyInstrument, AccompanimentInstrument, ResonanceMatrix, InstrumentHints, AccompanimentTechnique, GhostChord, SfxRule, V1MelodyInstrument, V2MelodyInstrument, BlueprintPart, InstrumentationRules, InstrumentBehaviorRules, BluesMelody, InstrumentPart } from './fractal';
 import { ElectronicK, TraditionalK, AmbientK, MelancholicMinorK } from './resonance-matrices';
 import { getScaleForMood, STYLE_DRUM_PATTERNS, createAccompanimentAxiom, PERCUSSION_SETS, TEXTURE_INSTRUMENT_WEIGHTS_BY_MOOD, getAccompanimentTechnique, createBassFill, createDrumFill, AMBIENT_ACCOMPANIMENT_WEIGHTS, chooseHarmonyInstrument, mutateBassPhrase, createMelodyMotif, createDrumAxiom, generateGhostHarmonyTrack, mutateAccompanimentPhrase, createAmbientBassAxiom, createHarmonyAxiom } from './music-theory';
@@ -87,6 +86,8 @@ export class FractalMusicEngine {
   
   public navigator: BlueprintNavigator | null = null;
 
+  public introInstrumentMap: Map<InstrumentPart, any> = new Map();
+
 
   private bassPhraseLibrary: FractalEvent[][] = [];
   private currentBassPhraseIndex = 0;
@@ -103,8 +104,6 @@ export class FractalMusicEngine {
   private bluesDrumRiffIndex: number = 0;
   private bluesBassRiffIndex: number = 0;
   
-  public introInstrumentMap: Map<InstrumentPart, any> = new Map();
-
 
   constructor(config: EngineConfig) {
     this.config = { ...config };
@@ -174,12 +173,18 @@ export class FractalMusicEngine {
         const melodyRules = introPart.instrumentation?.melody;
         if(melodyRules) {
             const melodyChoice = this._chooseInstrumentForPart('melody', initialNavInfo);
-            if(melodyChoice) this.introInstrumentMap.set('melody', melodyChoice);
+            if(melodyChoice) {
+                this.introInstrumentMap.set('melody', melodyChoice);
+                console.log(`[IntroSetup] Instrument 'melody' randomly assigned to '${melodyChoice}'.`);
+            }
         }
         const accompRules = introPart.instrumentation?.accompaniment;
         if(accompRules) {
             const accompChoice = this._chooseInstrumentForPart('accompaniment', initialNavInfo);
-            if(accompChoice) this.introInstrumentMap.set('accompaniment', accompChoice);
+            if(accompChoice) {
+                this.introInstrumentMap.set('accompaniment', accompChoice);
+                console.log(`[IntroSetup] Instrument 'accompaniment' randomly assigned to '${accompChoice}'.`);
+            }
         }
     }
 
@@ -511,7 +516,7 @@ export class FractalMusicEngine {
                     note: noteMidi,
                     time: (barIndex * barDurationInBeats) + (event.t / ticksPerBeat),
                     duration: event.d / ticksPerBeat,
-                    weight: event.vel ? (event.vel / 127) : 0.85,
+                    weight: 0.85,
                     technique: 'pick', 
                     dynamics: 'f',
                     phrasing: 'legato',
@@ -763,4 +768,3 @@ export class FractalMusicEngine {
   }
 
 }
-

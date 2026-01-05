@@ -1,5 +1,4 @@
 
-
 import type { FractalEvent, Mood, Genre, Technique, BassSynthParams, InstrumentType, AccompanimentInstrument, InstrumentHints, AccompanimentTechnique, GhostChord, SfxRule, V1MelodyInstrument, V2MelodyInstrument, BlueprintPart, InstrumentationRules, InstrumentBehaviorRules, BluesMelody, IntroRules, InstrumentPart } from './fractal';
 import { ElectronicK, TraditionalK, AmbientK, MelancholicMinorK } from './resonance-matrices';
 import { BlueprintNavigator, type NavigationInfo } from './blueprint-navigator';
@@ -1247,45 +1246,62 @@ export function createMelodyMotif(chord: GhostChord, mood: Mood, random: { next:
     return motif;
 }
 
-// #ИЗМЕНЕНО (ПЛАН 717): Добавлен лог, чтобы видеть, какие инструменты генерируются.
 export function generateIntroSequence(
   currentBar: number,
+  totalIntroBars: number,
   introRules: IntroRules,
   harmonyTrack: GhostChord[],
-  settings: WorkerSettings,
-  random: { next: () => number; nextInt: (max: number) => number }
+  settings: any, // Simplified for now
+  random: { next: () => number; nextInt: (max: number) => number },
+  introInstrumentMap: Map<InstrumentPart, any>
 ): { events: FractalEvent[]; instrumentHints: InstrumentHints } {
   const events: FractalEvent[] = [];
   const instrumentHints: InstrumentHints = {};
 
   const currentChord = harmonyTrack.find(chord => currentBar >= chord.bar && currentBar < chord.bar + chord.durationBars);
   if (!currentChord) return { events, instrumentHints };
-
-  const activeLayers = new Set(introRules.allowedInstruments);
-
-  console.log(`%c[IntroSequence @ Bar ${currentBar}] Chord: ${currentChord.rootNote} ${currentChord.chordType}. Generating for: [${Array.from(activeLayers).join(', ')}]`, 'color: #BADA55');
-
-  if (activeLayers.has('bass')) {
-    const bassAxiom = createAmbientBassAxiom(currentChord, settings.mood, settings.genre, random, settings.tempo, 'drone');
-    events.push(...bassAxiom);
-  }
-
-  if (activeLayers.has('accompaniment')) {
-    const accompAxiom = createAccompanimentAxiom(currentChord, settings.mood, settings.genre, random, settings.tempo, 'low');
-    events.push(...accompAxiom);
-  }
-
-  if (activeLayers.has('drums')) {
-    const drumRules = { density: {min: 0.1, max: 0.3}, useSnare: false, rareKick: true, usePerc: true, pattern: 'ambient_beat' };
-    const drumAxiom = createDrumAxiom(settings.genre, settings.mood, settings.tempo, random, drumRules);
-    events.push(...drumAxiom.events);
-  }
   
-  if (activeLayers.has('melody') && introRules.specialTechniques?.some(t => t.part === 'melody')) {
-      const melodyAxiom = createMelodyMotif(currentChord, settings.mood, random, undefined, 'mid', settings.genre);
-      events.push(...melodyAxiom);
+  const progress = currentBar / totalIntroBars;
+  const buildUpFactor = Math.pow(progress, 1 / (introRules.buildUpSpeed || 0.5));
+  
+  console.log(`%c[IntroSequence @ Bar ${currentBar}] Progress: ${progress.toFixed(2)}, BuildUp: ${buildUpFactor.toFixed(2)}. Chord: ${currentChord.rootNote} ${currentChord.chordType}.`, 'color: #BADA55');
+  
+  const enteringInstruments: InstrumentPart[] = [];
+
+  for (const part of introRules.allowedInstruments) {
+      const entryProbability = buildUpFactor * (part === 'drums' ? 0.6 : 0.8);
+      if (random.next() < entryProbability) {
+          enteringInstruments.push(part);
+      }
+  }
+
+  console.log(`%c[IntroSequence @ Bar ${currentBar}] Instruments entering this bar: [${enteringInstruments.join(', ')}]`, 'color: #BADA55');
+
+
+  if (enteringInstruments.includes('bass')) {
+    events.push(...createAmbientBassAxiom(currentChord, settings.mood, settings.genre, random, settings.tempo, 'drone'));
+  }
+
+  if (enteringInstruments.includes('accompaniment')) {
+    const accompInstrument = introInstrumentMap.get('accompaniment');
+    if (accompInstrument) {
+        instrumentHints.accompaniment = accompInstrument;
+    }
+    events.push(...createAccompanimentAxiom(currentChord, settings.mood, settings.genre, random, settings.tempo, 'low'));
+  }
+
+  if (enteringInstruments.includes('drums')) {
+    const drumRules = { density: {min: 0.1, max: 0.3 * buildUpFactor}, useSnare: false, rareKick: true, usePerc: true, pattern: 'ambient_beat' };
+    events.push(...createDrumAxiom(settings.genre, settings.mood, settings.tempo, random, drumRules).events);
+  }
+
+  if (enteringInstruments.includes('melody')) {
+      const melodyInstrument = introInstrumentMap.get('melody');
+      if (melodyInstrument) {
+          instrumentHints.melody = melodyInstrument;
+      }
+      events.push(...createMelodyMotif(currentChord, settings.mood, random, undefined, 'mid', settings.genre));
   }
 
   return { events, instrumentHints };
 }
-

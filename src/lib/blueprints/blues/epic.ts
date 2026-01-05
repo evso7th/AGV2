@@ -18,7 +18,11 @@ export const EpicBluesBlueprint: MusicBlueprint = {
         parts: [
             {
                 id: 'INTRO', name: 'The Spark', duration: { percent: 15 },
-                layers: { drums: true, accompaniment: true, bass: true, harmony: true },
+                layers: { drums: true, accompaniment: true, bass: true, harmony: true, melody: true },
+                introRules: {
+                    allowedInstruments: ['drums', 'bass', 'accompaniment', 'melody'],
+                    buildUpSpeed: 0.4
+                },
                 instrumentation: {
                     accompaniment: { strategy: 'weighted', v1Options: [{ name: 'organ', weight: 1.0 }], v2Options: [{ name: 'organ_soft_jazz', weight: 1.0 }] },
                     harmony: {

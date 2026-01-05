@@ -144,10 +144,7 @@ const Scheduler = {
     tick() {
         if (!this.isRunning || !fractalMusicEngine) return;
 
-        // --- ЛОГИКА ДЕКОРАТОРА (ПЛАН 716) ---
-        // #ЗАЧЕМ: Реализует безопасное вступление, не трогая ядро основного движка.
-        // #ЧТО: Основной движок всегда работает. Но если мы в интро, его результат
-        //      подменяется простым и предсказуемым результатом от `generateIntroSequence`.
+        // --- ЛОГИКА ДЕКОРАТОРА (ПЛАН 716/718) ---
         
         // ШАГ 1: Основной движок ВСЕГДА работает в фоне.
         const mainEnginePayload = fractalMusicEngine.evolve(this.barDuration, this.barCount);
@@ -171,7 +168,7 @@ const Scheduler = {
                     fractalMusicEngine.getGhostHarmony(),
                     this.settings,
                     fractalMusicEngine.random,
-                    fractalMusicEngine.introInstrumentMap
+                    fractalMusicEngine.introInstrumentMap // Передаем карту выбранных инструментов
                 );
             } else {
                 // Если правил интро нет, просто играем то, что сгенерировал основной движок.
