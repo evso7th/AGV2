@@ -1,6 +1,6 @@
 
 
-import type { MusicBlueprint, BlueprintPart, BlueprintBundle, Genre, Mood, InstrumentationRules, MelodyInstrument, AccompanimentInstrument, BassInstrument, V2MelodyInstrument } from '@/types/music';
+import type { MusicBlueprint, BlueprintPart, BlueprintBundle, Genre, Mood, InstrumentationRules, MelodyInstrument, AccompanimentInstrument, BassInstrument, V2MelodyInstrument, InstrumentBehaviorRules } from '@/types/music';
 
 // Helper function for seeded random numbers - kept for potential future use in axiom selection
 function seededRandom(seed: number) {
@@ -36,17 +36,19 @@ export type NavigationInfo = {
   logMessage: string | null;
 };
 
-function formatInstrumentation(instrumentation?: { [key: string]: any }, v2MelodyHint?: MelodyInstrument): string {
-    if (!instrumentation) {
+function formatInstrumentation(
+    instrumentation?: { [key: string]: any }, 
+    drumRules?: InstrumentBehaviorRules,
+    v2MelodyHint?: MelodyInstrument
+): string {
+    if (!instrumentation && !drumRules?.kitName) {
         return 'Instrumentation: (none)';
     }
 
-    const parts = Object.keys(instrumentation).map(partKey => {
+    const parts = instrumentation ? Object.keys(instrumentation).map(partKey => {
         const rule = instrumentation[partKey] as InstrumentationRules<any>;
         
-        // --- ИСПРАВЛЕННАЯ ЛОГИКА ---
         if (partKey === 'melody' && v2MelodyHint) {
-            // Если есть конкретный hint для V2 мелодии, используем его
             return `melody(V2: ${v2MelodyHint})`;
         }
 
@@ -54,7 +56,6 @@ function formatInstrumentation(instrumentation?: { [key: string]: any }, v2Melod
             let options: { name: any; weight: number; }[] | undefined;
             let engineVersion = '';
             
-            // Предпочитаем V2, если есть опции, иначе V1
             if (rule.v2Options && rule.v2Options.length > 0) {
                 options = rule.v2Options;
                 engineVersion = '(V2)';
@@ -72,10 +73,14 @@ function formatInstrumentation(instrumentation?: { [key: string]: any }, v2Melod
                 return `${partKey}${engineVersion}(${optionsStr})`;
             }
         }
-        return null; // Если правил нет, не выводим ничего для этого инструмента
-    }).filter(Boolean); // Убираем null значения
+        return null;
+    }).filter(Boolean) : [];
 
-    return `Instruments: ${parts.join(' | ')}`;
+    const drumKitLog = drumRules?.kitName ? `- Drum Kit: ${drumRules.kitName}` : null;
+    
+    const instrumentLog = parts.length > 0 ? `Instruments: ${parts.join(' | ')}` : null;
+
+    return [instrumentLog, drumKitLog].filter(Boolean).join('\n  ');
 }
 
 
@@ -104,8 +109,8 @@ export class BlueprintNavigator {
         const allParts = this.blueprint.structure.parts;
 
         // --- NEW LOGIC FOR INTRO BARS ---
-        const introParts = allParts.filter(p => p.id.startsWith('INTRO_'));
-        const mainParts = allParts.filter(p => !p.id.startsWith('INTRO_'));
+        const introParts = allParts.filter(p => p.id.startsWith('INTRO'));
+        const mainParts = allParts.filter(p => !p.id.startsWith('INTRO'));
         
         let introDurationTotal = 0;
         
@@ -240,7 +245,8 @@ export class BlueprintNavigator {
         if (isPartTransition || isBundleTransition) {
             const transitionType = isPartTransition ? "Part" : "Bundle";
             const mutationType = isPartTransition ? "MACRO" : "micro";
-            const instrumentationLog = formatInstrumentation(partInfo.part.instrumentation, v2MelodyHint);
+            const drumRules = partInfo.part.instrumentRules?.drums;
+            const instrumentationLog = formatInstrumentation(partInfo.part.instrumentation, drumRules, v2MelodyHint);
             
             logMessage = `%c[NAVIGATOR @ Bar ${currentBar}] ${transitionType} Transition: ${partInfo.part.id} / ${bundleInfo.bundle.id}\n` +
                          `  - Context: Genre: ${this.genre}, Mood: ${this.mood}, BP: ${this.blueprint.name}\n` +
