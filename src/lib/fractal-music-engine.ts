@@ -1,6 +1,6 @@
 
 
-import type { FractalEvent, Mood, Genre, Technique, BassSynthParams, InstrumentType, MelodyInstrument, AccompanimentInstrument, ResonanceMatrix, InstrumentHints, AccompanimentTechnique, GhostChord, SfxRule, V1MelodyInstrument, V2MelodyInstrument, BlueprintPart, InstrumentationRules, InstrumentBehaviorRules, BluesMelody } from './fractal';
+import type { FractalEvent, Mood, Genre, Technique, BassSynthParams, InstrumentType, MelodyInstrument, AccompanimentInstrument, ResonanceMatrix, InstrumentHints, AccompanimentTechnique, GhostChord, SfxRule, V1MelodyInstrument, V2MelodyInstrument, BlueprintPart, InstrumentationRules, InstrumentBehaviorRules, BluesMelody, InstrumentPart } from './fractal';
 import { ElectronicK, TraditionalK, AmbientK, MelancholicMinorK } from './resonance-matrices';
 import { getScaleForMood, STYLE_DRUM_PATTERNS, createAccompanimentAxiom, PERCUSSION_SETS, TEXTURE_INSTRUMENT_WEIGHTS_BY_MOOD, getAccompanimentTechnique, createBassFill, createDrumFill, AMBIENT_ACCOMPANIMENT_WEIGHTS, chooseHarmonyInstrument, mutateBassPhrase, createMelodyMotif, createDrumAxiom, generateGhostHarmonyTrack, mutateAccompanimentPhrase, createAmbientBassAxiom, createHarmonyAxiom } from './music-theory';
 import { BlueprintNavigator, type NavigationInfo } from './blueprint-navigator';
@@ -99,10 +99,11 @@ export class FractalMusicEngine {
 
   private bluesChorusCache: { barStart: number, events: FractalEvent[], log: string } | null = null;
 
-  // #ИЗМЕНЕНО: Добавлено свойство для хранения ID последнего сыгранного риффа, чтобы избежать повторений.
   private lastSelectedBluesMelodyId: string | null = null;
   private bluesDrumRiffIndex: number = 0;
   private bluesBassRiffIndex: number = 0;
+  
+  public introInstrumentMap: Map<InstrumentPart, any> = new Map();
 
 
   constructor(config: EngineConfig) {
@@ -139,8 +140,6 @@ export class FractalMusicEngine {
     this.hasBassBeenMutated = false;
     this.bluesChorusCache = null;
     
-    // #ИЗМЕНЕНО: Логика выбора риффов перенесена сюда из конструктора.
-    //            Это гарантирует, что для каждой новой сюиты будут выбраны новые риффы.
     this.bluesDrumRiffIndex = this.random.nextInt(BLUES_DRUM_RIFFS[this.config.mood]?.length ?? 1);
     this.bluesBassRiffIndex = this.random.nextInt(BLUES_BASS_RIFFS[this.config.mood]?.length ?? 1);
     
@@ -168,6 +167,23 @@ export class FractalMusicEngine {
     const initialRegisterHint = initialNavInfo?.currentPart.instrumentRules?.accompaniment?.register?.preferred;
     const initialBassTechnique = initialNavInfo?.currentPart.instrumentRules?.bass?.techniques?.[0].value as Technique || 'drone';
     
+    // --- ПЛАН 718: Логика выбора инструментов для интро ---
+    this.introInstrumentMap.clear();
+    const introPart = this.navigator.blueprint.structure.parts.find(p => p.id.startsWith('INTRO'));
+    if (introPart?.introRules) {
+        const melodyRules = introPart.instrumentation?.melody;
+        if(melodyRules) {
+            const melodyChoice = this._chooseInstrumentForPart('melody', initialNavInfo);
+            if(melodyChoice) this.introInstrumentMap.set('melody', melodyChoice);
+        }
+        const accompRules = introPart.instrumentation?.accompaniment;
+        if(accompRules) {
+            const accompChoice = this._chooseInstrumentForPart('accompaniment', initialNavInfo);
+            if(accompChoice) this.introInstrumentMap.set('accompaniment', accompChoice);
+        }
+    }
+
+
     if (this.config.genre === 'blues') {
         // For blues, we don't pre-generate a library, we generate riffs on the fly
     } else {
@@ -438,18 +454,16 @@ export class FractalMusicEngine {
     public generateBluesMelodyChorus(chorusChords: GhostChord[], mood: Mood, random: { next: () => number, nextInt: (max: number) => number }, registerHint?: 'low' | 'mid' | 'high'): { events: FractalEvent[], log: string } {
         const baseEvents: FractalEvent[] = [];
         
-        // #ИЗМЕНЕНО: Реализована логика "памяти", чтобы избежать повторения риффов.
         let suitableMelodies = BLUES_MELODY_RIFFS.filter(m => m.moods.includes(mood) && m.id !== this.lastSelectedBluesMelodyId);
         
-        // Если после фильтрации не осталось риффов (например, был всего один), сбрасываем фильтр.
         if (suitableMelodies.length === 0) {
-        suitableMelodies = BLUES_MELODY_RIFFS.filter(m => m.moods.includes(mood));
+            suitableMelodies = BLUES_MELODY_RIFFS.filter(m => m.moods.includes(mood));
         }
         
         if (suitableMelodies.length === 0) {
-        console.warn(`[BluesMelodyChorus] No suitable melodies found for mood: ${mood}. Falling back to all.`);
-        suitableMelodies.push(...BLUES_MELODY_RIFFS.filter(m => m.id !== this.lastSelectedBluesMelodyId));
-        if(suitableMelodies.length === 0) suitableMelodies.push(...BLUES_MELODY_RIFFS);
+            console.warn(`[BluesMelodyChorus] No suitable melodies found for mood: ${mood}. Falling back to all.`);
+            suitableMelodies.push(...BLUES_MELODY_RIFFS.filter(m => m.id !== this.lastSelectedBluesMelodyId));
+            if(suitableMelodies.length === 0) suitableMelodies.push(...BLUES_MELODY_RIFFS);
         }
         const selectedMelody = suitableMelodies[random.nextInt(suitableMelodies.length)] || BLUES_MELODY_RIFFS[0];
         this.lastSelectedBluesMelodyId = selectedMelody.id;
@@ -506,12 +520,12 @@ export class FractalMusicEngine {
             }
         }
 
-        // #ИЗМЕНЕНО: Увеличена вероятность мутации до 70%
-        const shouldMutate = random.next() < 0.7;
+        const shouldMutate = random.next() < 0.7; // Increased mutation chance
         let mutationLog = "None";
-        let mutatedEvents = [...baseEvents]; // Start with a copy
+        let mutatedEvents = baseEvents; 
 
         if (shouldMutate && baseEvents.length > 0) {
+            mutatedEvents = JSON.parse(JSON.stringify(baseEvents)); // Deep copy for mutation
             const mutationType = random.nextInt(3);
             if (mutationType === 0) {
                 mutationLog = "Rhythmic Shift";
@@ -531,13 +545,9 @@ export class FractalMusicEngine {
 
         const log = `Using riff: "${selectedMelody.id}". Mutation: "${mutationLog}". Register: ${registerHint || 'default'}`;
         
-        // #ИСПРАВЛЕНО: Теперь возвращаются мутированные события, а не базовые.
         return { events: mutatedEvents, log };
     }
 
-  // #ЗАЧЕМ: Добавлен публичный метод для безопасного доступа к гармоническому "скелету".
-  // #ЧТО: Возвращает приватное свойство ghostHarmonyTrack.
-  // #СВЯЗИ: Будет использоваться генератором интро для получения информации об аккордах.
   public getGhostHarmony(): GhostChord[] {
       return this.ghostHarmonyTrack;
   }
@@ -596,11 +606,8 @@ export class FractalMusicEngine {
       }
     }
     
-    // --- ПРАВИЛЬНАЯ ЛОГИКА ДУБЛИРОВАНИЯ И СДВИГА (ПЛАН 708) ---
-    // #ИСПРАВЛЕНО: Сначала создаем дубль, потом меняем оригинал.
     if (navInfo.currentPart.bassAccompanimentDouble?.enabled && bassEvents.length > 0) {
         const { instrument, octaveShift } = navInfo.currentPart.bassAccompanimentDouble;
-        // 1. Создаем дубль из *оригинальных* басовых нот.
         const bassDoubleEvents: FractalEvent[] = bassEvents.map(e => ({
             ...JSON.parse(JSON.stringify(e)),
             type: 'melody',
@@ -611,7 +618,6 @@ export class FractalMusicEngine {
         instrumentHints.melody = instrument; 
     }
     
-    // 2. Теперь, *после* создания дубля, применяем сдвиг к басу.
     const bassOctaveShift = navInfo.currentPart.instrumentRules?.bass?.presetModifiers?.octaveShift;
     if (bassOctaveShift && bassEvents.length > 0) {
         const TARGET_BASS_OCTAVE_MIN_MIDI = 36;
@@ -757,3 +763,4 @@ export class FractalMusicEngine {
   }
 
 }
+
