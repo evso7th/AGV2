@@ -17,7 +17,7 @@ export const DreamyBluesBlueprint: MusicBlueprint = {
         totalDuration: { preferredBars: 96 }, // 8 loops of 12 bars
         parts: [
             {
-                id: 'VERSE', name: 'Verse', duration: { percent: 40 },
+                id: 'INTRO', name: 'Verse', duration: { percent: 40 },
                 introRules: {
                     allowedInstruments: ['drums', 'bass', 'accompaniment', 'melody'],
                     buildUpSpeed: 0.5
