@@ -93,6 +93,11 @@ export type InstrumentType =
   | 'perc-013'
   | 'perc-014'
   | 'perc-015'
+   // Новые типы для щеток
+  | 'drum_brush1'
+  | 'drum_brush2'
+  | 'drum_brush3'
+  | 'drum_brush4'
   // Гармонические инструменты
   | 'accompaniment'
   | 'harmony'
@@ -262,13 +267,13 @@ export type BluesBassRiff = {
 };
 
 export type BluesDrumPattern = {
-    HH?: number[];
-    OH?: number[];
-    SD?: number[];
-    K?: number[];
-    R?: number[];
-    T?: number[];
-    ghostSD?: number[];
+  HH?: number[];
+  OH?: number[];
+  SD?: number[];
+  K?: number[];
+  R?: number[];
+  T?: number[];
+  ghostSD?: number[];
 };
 
 export type BluesDrumRiffs = Partial<Record<Mood, BluesDrumPattern[]>>;
@@ -286,7 +291,7 @@ export type BluesMelody = {
   moods: Mood[];
   type: 'major' | 'minor';
   tags: string[];
-  progression: string[]; // Placeholder
+  progression: string[]; // Placeholder for future use, e.g., ["I", "IV", "I", "I"...]
   phraseI: BluesMelodyPhrase;
   phraseIV: BluesMelodyPhrase;
   phraseV: BluesMelodyPhrase;

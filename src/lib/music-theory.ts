@@ -1,4 +1,5 @@
 
+
 import type { FractalEvent, Mood, Genre, Technique, BassSynthParams, InstrumentType, AccompanimentInstrument, InstrumentHints, AccompanimentTechnique, GhostChord, SfxRule, V1MelodyInstrument, V2MelodyInstrument, BlueprintPart, InstrumentationRules, InstrumentBehaviorRules, BluesMelody, IntroRules, InstrumentPart } from './fractal';
 import { ElectronicK, TraditionalK, AmbientK, MelancholicMinorK } from './resonance-matrices';
 import { BlueprintNavigator, type NavigationInfo } from './blueprint-navigator';
@@ -781,10 +782,11 @@ export function createDrumFill(random: { next: () => number, nextInt: (max: numb
     const { instrument = 'tom', density = 0.5, dynamics = 'mf' } = params;
     const fill: FractalEvent[] = [];
     
-    // #ПЛАН 732: Крэш убран из стандартного набора для филлов
     const fillInstruments: InstrumentType[] = instrument === 'crash'
         ? ['drum_crash', 'drum_ride']
-        : ['drum_tom_low', 'drum_tom_mid', 'drum_tom_high', 'drum_snare'];
+        : instrument === 'brush'
+            ? ['drum_brush1', 'drum_brush2', 'drum_brush3', 'drum_brush4']
+            : ['drum_tom_low', 'drum_tom_mid', 'drum_tom_high', 'drum_snare'];
 
     const numHits = Math.floor(2 + (density * 6)); // 2 to 8 hits
     let currentTime = 3.0; // Start the fill on the 4th beat
@@ -803,7 +805,6 @@ export function createDrumFill(random: { next: () => number, nextInt: (max: numb
         });
     }
     
-    // #ПЛАН 732: Явное добавление крэша только если он запрошен
     if(instrument === 'crash') {
        const climaxTime = Math.min(3.75, currentTime + (1.0 / numHits));
        fill.push({ type: 'drum_crash', note: 49, duration: 1, time: climaxTime, weight: 0.9, technique: 'hit', dynamics: 'f', phrasing: 'legato', params: {} });
