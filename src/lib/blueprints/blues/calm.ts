@@ -28,7 +28,7 @@ export const CalmBluesBlueprint: MusicBlueprint = {
                     melody: { strategy: 'weighted', v1Options: [{ name: 'guitar_shineOn', weight: 1.0 }], v2Options: [{ name: 'guitar_shineOn', weight: 1.0 }] }
                 },
                 instrumentRules: {
-                    drums: { pattern: 'composer', density: { min: 0.4, max: 0.6 }, useSnare: false, useGhostHat: true, ride: { enabled: false } },
+                    drums: { pattern: 'composer', kitName: 'blues_calm', density: { min: 0.4, max: 0.6 } },
                     bass: { techniques: [{ value: 'riff', weight: 1.0 }] }, 
                     melody: { source: 'motif', density: { min: 0.2, max: 0.4 }, register: { preferred: 'mid' } }
                 },
@@ -43,7 +43,7 @@ export const CalmBluesBlueprint: MusicBlueprint = {
                     accompaniment: { strategy: 'weighted', v1Options: [{ name: 'organ', weight: 1.0 }], v2Options: [{ name: 'organ', weight: 1.0 }] },
                 },
                 instrumentRules: {
-                    drums: { pattern: 'composer', density: { min: 0.5, max: 0.7 }, ride: { enabled: true }, useGhostHat: true, useSnare: false },
+                    drums: { pattern: 'composer', kitName: 'blues_calm', density: { min: 0.5, max: 0.7 }, ride: { enabled: true } },
                     melody: { 
                         source: 'motif', 
                         density: { min: 0.6, max: 0.8 },
@@ -62,7 +62,7 @@ export const CalmBluesBlueprint: MusicBlueprint = {
                     melody: { strategy: 'weighted', v1Options: [{ name: 'guitar_shineOn', weight: 1.0 }], v2Options: [{ name: 'guitar_shineOn', weight: 1.0 }] }
                 },
                 instrumentRules: {
-                    drums: { pattern: 'composer', density: { min: 0.4, max: 0.6 }, useSnare: false, useGhostHat: true, ride: { enabled: false } },
+                    drums: { pattern: 'composer', kitName: 'blues_calm', density: { min: 0.4, max: 0.6 } },
                     bass: { techniques: [{ value: 'riff', weight: 1.0 }] }, 
                     melody: { source: 'motif', density: { min: 0.2, max: 0.4 }, register: { preferred: 'mid' } }
                 },

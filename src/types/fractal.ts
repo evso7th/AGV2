@@ -48,11 +48,6 @@ export type Technique =
 export type Dynamics = 'p' | 'mf' | 'f';
 
 /**
- * Фразировка (артикуляция)
- */
-export type Phrasing = 'legato' | 'staccato';
-
-/**
  * Тип инструмента
  */
 export type InstrumentType =
@@ -296,4 +291,32 @@ export type BluesMelody = {
   phraseIV: BluesMelodyPhrase;
   phraseV: BluesMelodyPhrase;
   phraseTurnaround: BluesMelodyPhrase;
+};
+
+
+// --- DRUM KIT TYPES (ПЛАН 756) ---
+
+/**
+ * Описывает состав одной ударной установки.
+ * Каждый массив содержит имена сэмплов, разрешенных для этой партии.
+ */
+export type DrumKit = {
+    kick: InstrumentType[];
+    snare: InstrumentType[];
+    hihat: InstrumentType[];
+    ride: InstrumentType[];
+    crash: InstrumentType[];
+    perc: InstrumentType[]; // Общая перкуссия (томы, блоки и т.д.)
+};
+
+/**
+ * Библиотека всех ударных установок, сгруппированная по жанрам и настроениям.
+ */
+export type DrumKitLibrary = {
+    [genre in Genre]?: {
+        [mood in Mood]?: DrumKit;
+    } & {
+        // Специальный кит для интро, если он нужен
+        intro?: DrumKit;
+    };
 };

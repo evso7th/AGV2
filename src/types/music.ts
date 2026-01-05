@@ -188,12 +188,9 @@ type MelodySource = 'motif' | 'harmony_top_note';
 export type InstrumentBehaviorRules = {
     density?: { min: number, max: number };
     register?: { preferred: 'low' | 'mid' | 'high' };
+    /** The name of the DrumKit to use from the DRUM_KITS library. */
+    kitName?: string; 
     pattern?: 'ambient_beat' | 'composer' | 'none';
-    useSnare?: boolean;
-    rareKick?: boolean;
-    usePerc?: boolean;
-    alternatePerc?: boolean;
-    useGhostHat?: boolean;
     kickVolume?: number;
     source?: MelodySource;
     techniques?: { value: string; weight: number }[];
@@ -201,7 +198,6 @@ export type InstrumentBehaviorRules = {
         enabled: boolean;
         quietWindows?: { start: number, end: number }[];
     };
-    useBrushes?: boolean; // NEW: Flag to use brush samples instead of hi-hats
     presetModifiers?: {
         octaveShift?: number;
     };

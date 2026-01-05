@@ -28,7 +28,7 @@ export const MelancholicTranceBlueprint: MusicBlueprint = {
                 },
                 instrumentRules: { 
                     melody: { source: 'harmony_top_note' },
-                    drums: { pattern: 'ambient_beat', density: { min: 0.1, max: 0.3 }, useSnare: false, usePerc: true, rareKick: true }, // SOFTER
+                    drums: { pattern: 'composer', kitName: 'trance_intro', density: { min: 0.1, max: 0.3 } },
                 },
                 bundles: [{ id: 'TR_INTRO1_B1', name: 'Pad', duration: { percent: 100 }, characteristics: {}, phrases: {} }],
                 outroFill: null,
@@ -41,7 +41,7 @@ export const MelancholicTranceBlueprint: MusicBlueprint = {
                     accompaniment: { strategy: 'weighted', v2Options: [{ name: 'synth_ambient_pad_lush', weight: 1.0 }], v1Options: [{ name: 'ambientPad', weight: 1.0 }] }
                 },
                 instrumentRules: { 
-                    drums: { pattern: 'ambient_beat', density: { min: 0.2, max: 0.4 }, useSnare: false, usePerc: true }, // SOFTER
+                    drums: { pattern: 'composer', kitName: 'trance_melancholic', density: { min: 0.2, max: 0.4 } },
                     bass: { techniques: [{ value: 'pulse', weight: 1.0 }] },
                     melody: { source: 'harmony_top_note' }
                 },
@@ -56,7 +56,7 @@ export const MelancholicTranceBlueprint: MusicBlueprint = {
                     bass: { strategy: 'weighted', options: [{ name: 'glideBass', weight: 1.0 }] }
                 },
                 instrumentRules: { 
-                    drums: { pattern: 'ambient_beat', density: { min: 0.5, max: 0.7 }, useSnare: true, kickVolume: 0.9 }, // SOFTER
+                    drums: { pattern: 'composer', kitName: 'trance_melancholic', density: { min: 0.5, max: 0.7 }, kickVolume: 0.9 },
                     melody: { source: 'motif' } 
                 },
                 bundles: [{ id: 'BUILD_BUNDLE_1', name: 'Main', duration: { percent: 100 }, characteristics: {}, phrases: {} }],
@@ -71,7 +71,7 @@ export const MelancholicTranceBlueprint: MusicBlueprint = {
                     melody: { strategy: 'weighted', v1Options: [{ name: 'synth', weight: 1.0 }], v2Options: [{ name: 'synth', weight: 1.0 }] }
                 },
                 instrumentRules: { 
-                    drums: { pattern: 'composer', density: { min: 0.6, max: 0.8 }, kickVolume: 0.9 }, // SOFTER
+                    drums: { pattern: 'composer', kitName: 'trance_melancholic', density: { min: 0.6, max: 0.8 }, kickVolume: 0.9 },
                     melody: { source: 'motif' } 
                 },
                 bundles: [{ id: 'PEAK_BUNDLE_1', name: 'Main', duration: { percent: 100 }, characteristics: {}, phrases: {} }],

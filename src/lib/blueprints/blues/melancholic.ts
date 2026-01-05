@@ -28,7 +28,7 @@ export const MelancholicBluesBlueprint: MusicBlueprint = {
                     harmony: { strategy: 'weighted', options: [{ name: 'guitarChords', weight: 1.0 }] }
                 },
                 instrumentRules: {
-                    drums: { pattern: 'composer', density: { min: 0.5, max: 0.7 }, useSnare: true, useGhostHat: true },
+                    drums: { pattern: 'composer', kitName: 'blues_melancholic', density: { min: 0.5, max: 0.7 } },
                     bass: { techniques: [{ value: 'walking', weight: 1.0 }] }, // UNIQUE TECHNIQUE
                     melody: { source: 'harmony_top_note', register: { preferred: 'low' } }
                 },
@@ -45,6 +45,7 @@ export const MelancholicBluesBlueprint: MusicBlueprint = {
                 instrumentRules: {
                     drums: { 
                         pattern: 'composer', 
+                        kitName: 'blues_melancholic',
                         density: { min: 0.6, max: 0.8 }, 
                         kickVolume: 1.1,
                         ride: {
@@ -53,7 +54,6 @@ export const MelancholicBluesBlueprint: MusicBlueprint = {
                                 { start: 0.25, end: 0.65 } // Молчать с 25% до 65% части
                             ]
                         },
-                        usePerc: true, // Разрешить томы
                     },
                     melody: {
                         density: { min: 0.4, max: 0.6 },
@@ -73,7 +73,7 @@ export const MelancholicBluesBlueprint: MusicBlueprint = {
                     accompaniment: { strategy: 'weighted', v1Options: [{ name: 'organ', weight: 1.0 }], v2Options: [{ name: 'organ', weight: 1.0 }] }
                 },
                 instrumentRules: {
-                    drums: { pattern: 'composer', density: { min: 0.4, max: 0.6 } },
+                    drums: { pattern: 'composer', kitName: 'blues_melancholic', density: { min: 0.4, max: 0.6 } },
                     bass: { techniques: [{ value: 'walking', weight: 1.0 }] },
                     melody: { source: 'harmony_top_note', register: { preferred: 'low' } }
                 },

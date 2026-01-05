@@ -41,7 +41,7 @@ export const ContemplativeBluesBlueprint: MusicBlueprint = {
                     }
                 },
                 instrumentRules: {
-                    drums: { pattern: 'composer', density: { min: 0.5, max: 0.7 }, useSnare: true, useGhostHat: true },
+                    drums: { pattern: 'composer', kitName: 'blues_contemplative', density: { min: 0.5, max: 0.7 } },
                     bass: { techniques: [{ value: 'walking', weight: 1.0 }] },
                     accompaniment: { techniques: [{value: 'long-chords', weight: 1.0}]},
                     bassAccompanimentDouble: { enabled: true, instrument: 'electricGuitar', octaveShift: 1 },
@@ -72,7 +72,7 @@ export const ContemplativeBluesBlueprint: MusicBlueprint = {
                     melody: { strategy: 'weighted', v1Options: [{ name: 'electricGuitar', weight: 1.0 }], v2Options: [{ name: 'guitar_shineOn', weight: 1.0 }] }
                 },
                 instrumentRules: {
-                    drums: { pattern: 'composer', density: { min: 0.6, max: 0.8 }, kickVolume: 1.1, ride: { enabled: false }, usePerc: true, },
+                    drums: { pattern: 'composer', kitName: 'blues_contemplative', density: { min: 0.6, max: 0.8 }, kickVolume: 1.1, ride: { enabled: false }, usePerc: true, },
                     bass: { techniques: [{ value: 'walking', weight: 1.0 }] },
                     accompaniment: { techniques: [{value: 'long-chords', weight: 1.0}]},
                     bassAccompanimentDouble: { enabled: true, instrument: 'electricGuitar', octaveShift: 1 },
@@ -91,7 +91,7 @@ export const ContemplativeBluesBlueprint: MusicBlueprint = {
                     melody: { strategy: 'weighted', v1Options: [{ name: 'electricGuitar', weight: 1.0 }], v2Options: [{ name: 'guitar_shineOn', weight: 1.0 }] }
                 },
                 instrumentRules: {
-                    drums: { pattern: 'composer', density: { min: 0.7, max: 0.9 }, kickVolume: 1.2, ride: { enabled: true }, usePerc: true },
+                    drums: { pattern: 'composer', kitName: 'blues_contemplative', density: { min: 0.7, max: 0.9 }, kickVolume: 1.2, ride: { enabled: true }, usePerc: true },
                     bass: { techniques: [{ value: 'walking', weight: 1.0 }] },
                     accompaniment: { techniques: [{ value: 'long-chords', weight: 1.0 }] },
                     bassAccompanimentDouble: { enabled: false, instrument: 'electricGuitar', octaveShift: 1 }, // Отключаем дублирование
@@ -114,7 +114,7 @@ export const ContemplativeBluesBlueprint: MusicBlueprint = {
                     melody: { strategy: 'weighted', v1Options: [{ name: 'electricGuitar', weight: 1.0 }], v2Options: [{ name: 'guitar_shineOn', weight: 1.0 }] }
                 },
                 instrumentRules: {
-                    drums: { pattern: 'composer', density: { min: 0.6, max: 0.8 }, kickVolume: 1.1, ride: { enabled: false }, usePerc: true, },
+                    drums: { pattern: 'composer', kitName: 'blues_contemplative', density: { min: 0.6, max: 0.8 }, kickVolume: 1.1, ride: { enabled: false }, usePerc: true, },
                     bass: { techniques: [{ value: 'walking', weight: 1.0 }] },
                     accompaniment: { techniques: [{value: 'long-chords', weight: 1.0}]},
                     bassAccompanimentDouble: { enabled: true, instrument: 'electricGuitar', octaveShift: 1 }, // Возвращаем рифф
@@ -132,7 +132,7 @@ export const ContemplativeBluesBlueprint: MusicBlueprint = {
                     accompaniment: { strategy: 'weighted', v1Options: [{ name: 'organ', weight: 1.0 }], v2Options: [{ name: 'organ', weight: 1.0 }] }
                 },
                 instrumentRules: {
-                    drums: { pattern: 'composer', density: { min: 0.4, max: 0.6 }, useGhostHat: true },
+                    drums: { pattern: 'composer', kitName: 'blues_contemplative', density: { min: 0.4, max: 0.6 } },
                     bass: { techniques: [{ value: 'walking', weight: 1.0 }] },
                     accompaniment: { techniques: [{value: 'long-chords', weight: 1.0}]},
                     bassAccompanimentDouble: { enabled: true, instrument: 'electricGuitar', octaveShift: 1 },

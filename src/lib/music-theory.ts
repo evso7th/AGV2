@@ -10,6 +10,7 @@ import { BLUES_BASS_RIFFS } from './assets/blues-bass-riffs';
 import { NEUTRAL_BLUES_BASS_RIFFS } from './assets/neutral-blues-riffs';
 import { BLUES_MELODY_RIFFS, type BluesRiffDegree, type BluesRiffEvent, type BluesMelodyPhrase } from './assets/blues-melody-riffs';
 import { BLUES_DRUM_RIFFS } from './assets/blues-drum-riffs';
+import { DRUM_KITS } from './assets/drum-kits';
 
 
 export type Branch = {
@@ -940,13 +941,6 @@ export function createDrumAxiom(genre: Genre, mood: Mood, tempo: number, random:
 
         const eventTypeStr = Array.isArray(baseEvent.type) ? baseEvent.type[0] : baseEvent.type;
 
-        if (eventTypeStr.includes('snare') && rules?.useSnare === false) continue;
-        if (eventTypeStr.startsWith('perc-') && rules?.usePerc === false) continue;
-        if (eventTypeStr.includes('tom') && rules?.usePerc === false) continue;
-        if ((eventTypeStr.includes('ride') || eventTypeStr.includes('cymbal')) && rules?.ride?.enabled === false) continue;
-        if (eventTypeStr.includes('hat') && rules?.useGhostHat === false) continue;
-
-
         let instrumentType: InstrumentType;
         if (Array.isArray(baseEvent.type)) {
             const types = baseEvent.type as InstrumentType[];
@@ -967,16 +961,6 @@ export function createDrumAxiom(genre: Genre, mood: Mood, tempo: number, random:
             instrumentType = baseEvent.type;
         }
         
-        // #ЗАЧЕМ: Добавляем логику для использования щеток.
-        // #ЧТО: Если в правилах указано `useBrushes: true`, мы заменяем hihat-ы на случайный сэмпл щетки.
-        // #СВЯЗИ: Управляется новым полем в `InstrumentBehaviorRules` из блюпринта.
-        if (rules?.useBrushes && instrumentType.toString().includes('hat')) {
-            const brushSamples: InstrumentType[] = ['drum_brush1', 'drum_brush2', 'drum_brush3', 'drum_brush4'];
-            instrumentType = brushSamples[random.nextInt(brushSamples.length)];
-             console.log(`%c[DrumAxiom] Swapping hi-hat for brush: ${instrumentType}`, 'color: #D2B48C');
-        }
-
-
         axiomEvents.push({
             ...baseEvent,
             type: instrumentType,
@@ -1174,7 +1158,7 @@ export function generateIntroSequence(options: {
     
     const activeInstruments = instrumentOrder.slice(0, instrumentsToPlayCount);
 
-    console.log(`[IntroSequence @ Bar ${currentBar}] Active instruments for this bar: [${activeInstruments.join(', ')}]`);
+    console.log(`%c[IntroSequence @ Bar ${currentBar}] Active instruments for this bar: [${activeInstruments.join(', ')}]`, 'color: orange');
 
     // --- Генерация Партий для Активных Инструментов ---
     if (activeInstruments.includes('bass')) {
@@ -1187,7 +1171,8 @@ export function generateIntroSequence(options: {
     }
 
     if (activeInstruments.includes('drums')) {
-      const drumRules = { density: {min: 0.1, max: 0.3}, useSnare: false, rareKick: true, usePerc: true, pattern: 'ambient_beat' };
+      console.log(`[IntroSequence @ Bar ${currentBar}] Generating INTRO drums.`);
+      const drumRules = { kitName: `${settings.genre}_intro` };
       events.push(...createDrumAxiom(settings.genre, settings.mood, settings.tempo, random, drumRules).events);
     }
     

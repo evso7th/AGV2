@@ -22,7 +22,7 @@ export const AnxiousTranceBlueprint: MusicBlueprint = {
                 instrumentation: { accompaniment: { strategy: 'weighted', v2Options: [{ name: 'synth', weight: 1.0 }], v1Options: [{ name: 'synth', weight: 1.0 }] } },
                 instrumentRules: { 
                     accompaniment: { techniques: [{value: 'arpeggio-fast', weight: 1.0}], density: {min: 0.3, max: 0.5} },
-                    drums: { pattern: 'composer', density: {min: 0.4, max: 0.6}, useSnare: false, kickVolume: 0.8, usePerc: true, alternatePerc: true }, // SOFTER
+                    drums: { pattern: 'composer', kitName: 'trance_intro', density: {min: 0.4, max: 0.6}, kickVolume: 0.8 }, // Use safe intro kit
                     melody: { source: 'harmony_top_note' } 
                 },
                 bundles: [{ id: 'TR_ANX_INTRO1', name: 'Static', duration: { percent: 100 }, characteristics: {}, phrases: {} }],
@@ -36,7 +36,7 @@ export const AnxiousTranceBlueprint: MusicBlueprint = {
                     bass: { strategy: 'weighted', options: [{ name: 'resonantGliss', weight: 1.0 }] }
                 },
                 instrumentRules: { 
-                    drums: { pattern: 'composer', density: { min: 0.7, max: 0.9 }, useSnare: true, usePerc: true, kickVolume: 1.0 }, // SOFTER
+                    drums: { pattern: 'composer', kitName: 'trance_anxious', density: { min: 0.7, max: 0.9 }, kickVolume: 1.0 },
                     bass: { techniques: [{value: 'glissando', weight: 0.7}, {value: 'pulse', weight: 0.3}]},
                     melody: { source: 'harmony_top_note' }
                 },
@@ -52,7 +52,7 @@ export const AnxiousTranceBlueprint: MusicBlueprint = {
                     melody: { strategy: 'weighted', v1Options: [{ name: 'theremin', weight: 1.0 }], v2Options: [{ name: 'theremin', weight: 1.0 }] }
                 },
                 instrumentRules: { 
-                    drums: { pattern: 'composer', density: { min: 0.8, max: 1.0 }, useSnare: true, usePerc: true, alternatePerc: true, kickVolume: 1.1 }, // SOFTER
+                    drums: { pattern: 'composer', kitName: 'trance_anxious', density: { min: 0.8, max: 1.0 }, kickVolume: 1.1 },
                     melody: { source: 'harmony_top_note' }
                 },
                 bundles: [{ id: 'PEAK_BUNDLE_1', name: 'Chaos', duration: { percent: 100 }, characteristics: {}, phrases: {} }],
@@ -63,7 +63,7 @@ export const AnxiousTranceBlueprint: MusicBlueprint = {
                 layers: { sfx: true, drums: true, accompaniment: true },
                 instrumentation: { accompaniment: { strategy: 'weighted', v1Options: [{ name: 'synth', weight: 1.0 }], v2Options: [{ name: 'synth', weight: 1.0 }] } },
                 instrumentRules: { 
-                    drums: { pattern: 'composer', density: { min: 0.3, max: 0.5 }, useSnare: false, rareKick: true, usePerc: true },
+                    drums: { pattern: 'composer', kitName: 'trance_intro', density: { min: 0.3, max: 0.5 }},
                     melody: { source: 'harmony_top_note' }
                 },
                 bundles: [{ id: 'OUTRO_BUNDLE_1', name: 'Decay', duration: { percent: 100 }, characteristics: {}, phrases: {} }],
