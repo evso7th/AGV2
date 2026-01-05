@@ -53,14 +53,15 @@ const Scheduler = {
         // #СВЯЗИ: Вызывается из updateSettings и reset. `force` используется для принудительной пересоздания.
         if (fractalMusicEngine && !force) return;
 
-        // #ИЗМЕНЕНО: Принудительно генерируем новый seed для каждой инициализации,
-        //            чтобы каждая новая сюита была уникальной.
         const newSeed = Date.now();
         console.log(`%c[Worker] Initializing new engine with NEW SEED: ${newSeed}`, 'color: #FFD700; font-weight:bold;');
         
+        // #ИСПРАВЛЕНО (ПЛАН 719): Явно передаем `introBars` в конструктор, чтобы
+        //                     BlueprintNavigator был создан с правильной длительностью интро.
         const newEngine = new FractalMusicEngine({
             ...settings,
             seed: newSeed,
+            introBars: settings.introBars,
         });
 
         // Ожидаем, пока движок загрузит блюпринт и будет готов к работе.
@@ -130,6 +131,7 @@ const Scheduler = {
             textureSettings: newSettings.textureSettings ? { ...this.settings.textureSettings, ...newSettings.textureSettings } : this.settings.textureSettings,
         };
 
+       // #ИСПРАВЛЕНО (ПЛАН 719): Изменение `introBars` теперь корректно вызывает переинициализацию движка.
        if (wasNotInitialized || scoreChanged || moodChanged || genreChanged || seedChanged || introBarsChanged) {
            await this.initializeEngine(this.settings, true);
        } else if (fractalMusicEngine) {
@@ -152,20 +154,24 @@ const Scheduler = {
 
         let finalPayload: { events: FractalEvent[], instrumentHints: InstrumentHints };
 
+        // #ИСПРАВЛЕНО (ПЛАН 719): Добавлен лог для проверки значений перед условием.
+        console.log(`[Worker.tick @ Bar ${this.barCount}] Checking intro condition: barCount (${this.barCount}) < introBars (${this.settings.introBars}) -> ${this.barCount < this.settings.introBars}`);
+
         // ШАГ 2: Проверяем, находимся ли мы в периоде интро.
         if (this.barCount < this.settings.introBars) {
             const introPart = fractalMusicEngine.navigator?.blueprint.structure.parts.find(p => p.id.startsWith('INTRO'));
             
             if (introPart?.introRules) {
                 // ШАГ 3А: Если да, подменяем партитуру на сгенерированную "прологом".
-                // #ИЗМЕНЕНО (ПЛАН 717): Добавлен лог для отслеживания работы генератора интро.
                 console.log(`%c[Worker.tick @ Bar ${this.barCount}] Using INTRO GENERATOR.`, 'color: #FF69B4; font-weight: bold;');
                 finalPayload = generateIntroSequence(
                     this.barCount,
+                    this.settings.introBars,
                     introPart.introRules,
-                    fractalMusicEngine.getGhostHarmony(), // Безопасно получаем гармонию
+                    fractalMusicEngine.getGhostHarmony(),
                     this.settings,
-                    fractalMusicEngine.random // Передаем тот же генератор случайных чисел
+                    fractalMusicEngine.random,
+                    fractalMusicEngine.introInstrumentMap
                 );
             } else {
                 // Если правил интро нет, просто играем то, что сгенерировал основной движок.
@@ -298,5 +304,8 @@ self.onmessage = async (event: MessageEvent) => {
         self.postMessage({ type: 'error', error: e instanceof Error ? e.message : String(e) });
     }
 };
+
+    
+
 
     
