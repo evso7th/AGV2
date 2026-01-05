@@ -1,6 +1,6 @@
 
 
-import type { FractalEvent, Mood, Genre, Technique, BassSynthParams, InstrumentType, AccompanimentInstrument, InstrumentHints, AccompanimentTechnique, GhostChord, SfxRule, V1MelodyInstrument, V2MelodyInstrument, BlueprintPart, InstrumentationRules, InstrumentBehaviorRules, BluesMelody, IntroRules, InstrumentPart } from './fractal';
+import type { FractalEvent, Mood, Genre, Technique, BassSynthParams, InstrumentType, AccompanimentInstrument, InstrumentHints, AccompanimentTechnique, GhostChord, SfxRule, V1MelodyInstrument, V2MelodyInstrument, BlueprintPart, InstrumentationRules, InstrumentBehaviorRules, BluesMelody, IntroRules, InstrumentPart, DrumKit } from './fractal';
 import { ElectronicK, TraditionalK, AmbientK, MelancholicMinorK } from './resonance-matrices';
 import { BlueprintNavigator, type NavigationInfo } from './blueprint-navigator';
 import { getBlueprint } from './blueprints';
@@ -634,7 +634,7 @@ export const TEXTURE_INSTRUMENT_WEIGHTS_BY_MOOD: Record<Mood, Record<Exclude<Acc
   anxious:       { synth: 0.5, theremin: 0.3, organ: 0.2, piano: 0.0, guitarChords: 0.0, acousticGuitarSolo: 0.0, electricGuitar: 0.0, 'E-Bells_melody': 0.0, 'G-Drops': 0.0, 'theremin': 0.0, 'mellotron': 0.0, 'none': 0.0, 'ambientPad': 0.0, 'acousticGuitar': 0.0 },
   dreamy:        { synth: 0.3, organ: 0.2, piano: 0.3, guitarChords: 0.0, acousticGuitarSolo: 0.0, electricGuitar: 0.0, 'E-Bells_melody': 0.0, 'G-Drops': 0.0, 'theremin': 0.0, 'mellotron': 0.2, 'none': 0.0, 'ambientPad': 0.0, 'acousticGuitar': 0.0 },
   contemplative: { organ: 0.4, synth: 0.2, piano: 0.4, guitarChords: 0.0, acousticGuitarSolo: 0.0, electricGuitar: 0.0, 'E-Bells_melody': 0.0, 'G-Drops': 0.0, 'theremin': 0.0, 'mellotron': 0, 'none': 0.0, 'ambientPad': 0.0, 'acousticGuitar': 0.0 },
-  calm:          { synth: 0.3, organ: 0.2, piano: 0.5, guitarChords: 0.0, acousticGuitarSolo: 0.0, electricGuitar: 0.0, 'E-Bells_melody': 0.0, 'G-Drops': 0.0, 'theremin': 0.0, 'mellotron': 0, 'none': 0.0, 'ambientPad': 0.0, 'acousticGuitar': 0.0 },
+  calm:          { synth: 0.3, organ: 0.2, piano: 0.5, guitarChords: 0, acousticGuitarSolo: 0, electricGuitar: 0, 'E-Bells_melody': 0, 'G-Drops': 0, 'theremin': 0, 'mellotron': 0, 'none': 0.0, 'ambientPad': 0.0, 'acousticGuitar': 0.0 },
 };
 
 export const AMBIENT_ACCOMPANIMENT_WEIGHTS: Record<Mood, Record<Exclude<AccompanimentInstrument, 'violin' | 'flute' | 'mellotron_choir_dark'>, number>> = {
@@ -896,28 +896,14 @@ export function generateGhostHarmonyTrack(totalBars: number, mood: Mood, key: nu
     return harmonyTrack;
 }
     
-export function createDrumAxiom(genre: Genre, mood: Mood, tempo: number, random: { next: () => number, nextInt: (max: number) => number }, rules?: InstrumentBehaviorRules): { events: FractalEvent[], tags: string[] } {
-    const kitName = rules?.kitName || `${genre}_${mood}`.toLowerCase();
-    const genreKits = DRUM_KITS[genre];
-
-    console.log(`%c[DrumAxiom] Using Drum Kit: ${rules?.kitName || 'default'} for genre: ${genre}, mood: ${mood}`, 'color: #FFD700; font-weight: bold;');
+export function createDrumAxiom(kit: DrumKit, genre: Genre, mood: Mood, tempo: number, random: { next: () => number, nextInt: (max: number) => number }, rules?: InstrumentBehaviorRules): { events: FractalEvent[], tags: string[] } {
+    // #ЗАЧЕМ: Это "глупый" исполнитель. Он не знает о библиотеках, он просто
+    //          получает готовый набор сэмплов (`kit`) и генерирует ритм.
+    // #ЧТО: Функция выбирает случайный паттерн из `STYLE_DRUM_PATTERNS` для жанра
+    //       и пытается заполнить его, используя ТОЛЬКО сэмплы из переданного `kit`.
+    // #СВЯЗИ: Вызывается из `generateDrumEvents` в движке.
     
-    let kit;
-    if (rules?.kitName) {
-        for (const g in DRUM_KITS) {
-            const specificKit = (DRUM_KITS[g as Genre] as any)[rules.kitName];
-            if (specificKit) {
-                kit = specificKit;
-                break;
-            }
-        }
-        if (!kit) {
-            console.warn(`Kit "${rules.kitName}" not found. Falling back.`);
-            kit = (genreKits && (genreKits as any)[mood]) ? (genreKits as any)[mood] : (genreKits?.intro || DRUM_KITS.ambient!.intro!);
-        }
-    } else {
-        kit = (genreKits && (genreKits as any)[mood]) ? (genreKits as any)[mood] : (genreKits?.intro || DRUM_KITS.ambient!.intro!);
-    }
+    console.log(`%c[createDrumAxiom] Received kit with: Kick(${kit.kick.length}), Snare(${kit.snare.length}), HH(${kit.hihat.length}), Ride(${kit.ride.length})`, 'color: #9ACD32;');
 
     const grammar = STYLE_DRUM_PATTERNS[genre] || STYLE_DRUM_PATTERNS['ambient'];
     if (!grammar || !grammar.loops || grammar.loops.length === 0) return { events: [], tags: [] };
@@ -926,46 +912,33 @@ export function createDrumAxiom(genre: Genre, mood: Mood, tempo: number, random:
     const axiomEvents: FractalEvent[] = [];
     if (!loop) return { events: [], tags: [] };
 
-    const allBaseEvents = [...(loop.kick || []), ...(loop.snare || [])];
-    
-    // --- ИСПРАВЛЕНИЕ: Логика добавления HiHat/Ride вынесена и управляется правилами ---
-    if (rules?.ride?.enabled) {
-        // Если райд разрешен, добавляем его, но реже чем хэт
-        if(random.next() < 0.4) { // 40% шанс на райд вместо хэта
-            allBaseEvents.push({ type: 'drum_ride', time: 0, duration: 1, weight: 0.6, probability: 0.9 });
-        } else if (loop.hihat) {
-            allBaseEvents.push(...loop.hihat);
-        }
-    } else if (loop.hihat) {
-        // Если райд не разрешен, используем хэты из паттерна
-        allBaseEvents.push(...loop.hihat);
-    }
+    const allBaseEvents = [...(loop.kick || []), ...(loop.snare || []), ...(loop.hihat || [])];
     
     for (const baseEvent of allBaseEvents) {
         if (baseEvent.probability && random.next() > baseEvent.probability) continue;
         
-        let types: InstrumentType[] | InstrumentType = Array.isArray(baseEvent.type) ? baseEvent.type : [baseEvent.type];
-        let chosenType: InstrumentType;
+        let samplePool: InstrumentType[] = [];
+        const originalType = Array.isArray(baseEvent.type) ? baseEvent.type[0] : baseEvent.type;
 
-        if (Array.isArray(types)) {
-            const allowedTypes = types.filter(t => kit.kick.includes(t) || kit.snare.includes(t) || kit.hihat.includes(t) || kit.perc.includes(t) || kit.ride.includes(t) || kit.crash.includes(t));
-            if (allowedTypes.length === 0) {
-                 console.warn(`[DrumAxiom] Sample filtered out! Original type: ${types.join(',')}. Kit did not allow any.`);
-                 continue;
-            }
-            chosenType = allowedTypes[random.nextInt(allowedTypes.length)];
+        // Определяем, к какой категории относится событие
+        if (originalType.startsWith('drum_kick')) samplePool = kit.kick;
+        else if (originalType.startsWith('drum_snare')) samplePool = kit.snare;
+        else if (originalType.startsWith('drum_hihat')) samplePool = kit.hihat;
+        else if (originalType.startsWith('drum_ride') || originalType.startsWith('drum_a_ride')) samplePool = kit.ride;
+        else if (originalType.startsWith('drum_crash')) samplePool = kit.crash;
+        else if (originalType.startsWith('perc') || originalType.startsWith('drum_tom')) samplePool = kit.perc;
+
+        if (samplePool.length > 0) {
+            const chosenType = samplePool[random.nextInt(samplePool.length)];
+            axiomEvents.push({ ...baseEvent, type: chosenType, note: 36, phrasing: 'staccato', dynamics: 'mf', params: {} } as FractalEvent);
         } else {
-            chosenType = types;
+             // Логируем, если для нужной категории нет сэмплов, но не останавливаемся
+             console.warn(`[createDrumAxiom] No samples in kit for type category: ${originalType}`);
         }
-
-        console.log(`%c[DrumAxiom] Selected Sample: ${chosenType}`, 'color: #9ACD32;');
-        
-        axiomEvents.push({ ...baseEvent, type: chosenType, note: 36, phrasing: 'staccato', dynamics: 'mf', params: {} } as FractalEvent);
     }
     
     return { events: axiomEvents, tags: loop.tags };
 }
-
 
 export function createSfxScenario(mood: Mood, genre: Genre, random: { next: () => number, nextInt: (max: number) => number }): { drumFill: FractalEvent[], bassFill: FractalEvent[], accompanimentFill: FractalEvent[] } {
     const drumFill: FractalEvent[] = [];
@@ -1214,3 +1187,4 @@ export function generateIntroSequence(options: {
 
     return { events, instrumentHints };
 }
+

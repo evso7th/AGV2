@@ -16,8 +16,9 @@ const ALL_SNARES: InstrumentType[] = ['drum_snare', 'drum_snare_ghost_note', 'dr
 const ALL_HIHATS: InstrumentType[] = ['drum_hihat_closed', 'drum_hihat_open', 'hh_bark_short'];
 const ALL_RIDES: InstrumentType[] = ['drum_ride', 'drum_a_ride1', 'drum_a_ride2', 'drum_a_ride3', 'drum_a_ride4'];
 const ALL_CRASHES: InstrumentType[] = ['drum_crash', 'cymbal1', 'cymbal2', 'cymbal3', 'cymbal4'];
+const ALL_TOMS: InstrumentType[] = ['drum_tom_low', 'drum_tom_mid', 'drum_tom_high'];
 const ALL_PERC: InstrumentType[] = [
-    'drum_tom_low', 'drum_tom_mid', 'drum_tom_high', 'cymbal_bell1',
+    ...ALL_TOMS, 'cymbal_bell1',
     'perc-001', 'perc-002', 'perc-003', 'perc-004', 'perc-005', 'perc-006', 'perc-007',
     'perc-008', 'perc-009', 'perc-010', 'perc-011', 'perc-012', 'perc-013', 'perc-014', 'perc-015'
 ];
@@ -83,7 +84,7 @@ export const DRUM_KITS: DrumKitLibrary = {
             perc: ['drum_tom_low']
         },
         // КИТ ДЛЯ СПОКОЙНОГО БЛЮЗА (ПЛАН 762)
-        calm: {
+        blues_calm: {
             kick: ['drum_kick'],
             snare: ['drum_snare_ghost_note', ...BRUSHES],
             hihat: ['drum_hihat_closed'],
@@ -92,7 +93,7 @@ export const DRUM_KITS: DrumKitLibrary = {
             perc: ['perc-001', 'perc-013']
         },
         // КИТ ДЛЯ ЭПИЧЕСКОГО БЛЮЗ-РОКА (ПЛАН 766)
-        epic: {
+        blues_epic: {
             kick: ALL_KICKS,
             snare: ALL_SNARES,
             hihat: ALL_HIHATS,

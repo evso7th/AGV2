@@ -1,6 +1,6 @@
 
 
-import type { FractalEvent, Mood, Genre, Technique, BassSynthParams, InstrumentType, MelodyInstrument, AccompanimentInstrument, ResonanceMatrix, InstrumentHints, AccompanimentTechnique, GhostChord, SfxRule, V1MelodyInstrument, V2MelodyInstrument, BlueprintPart, InstrumentationRules, InstrumentBehaviorRules, BluesMelody, IntroRules, InstrumentPart } from './fractal';
+import type { FractalEvent, Mood, Genre, Technique, BassSynthParams, InstrumentType, MelodyInstrument, AccompanimentInstrument, ResonanceMatrix, InstrumentHints, AccompanimentTechnique, GhostChord, SfxRule, V1MelodyInstrument, V2MelodyInstrument, BlueprintPart, InstrumentationRules, InstrumentBehaviorRules, BluesMelody, IntroRules, InstrumentPart, DrumKit } from './fractal';
 import { ElectronicK, TraditionalK, AmbientK, MelancholicMinorK } from './resonance-matrices';
 import { getScaleForMood, STYLE_DRUM_PATTERNS, createAccompanimentAxiom, PERCUSSION_SETS, TEXTURE_INSTRUMENT_WEIGHTS_BY_MOOD, getAccompanimentTechnique, createBassFill, createDrumFill, AMBIENT_ACCOMPANIMENT_WEIGHTS, chooseHarmonyInstrument, mutateBassPhrase, createMelodyMotif, createDrumAxiom, generateGhostHarmonyTrack, mutateAccompanimentPhrase, createAmbientBassAxiom, createHarmonyAxiom, generateIntroSequence, DEGREE_TO_SEMITONE } from './music-theory';
 import { BlueprintNavigator, type NavigationInfo } from './blueprint-navigator';
@@ -11,6 +11,7 @@ import { BLUES_BASS_RIFFS } from './assets/blues-bass-riffs';
 import { NEUTRAL_BLUES_BASS_RIFFS } from './assets/neutral-blues-riffs';
 import { BLUES_MELODY_RIFFS, type BluesRiffDegree, type BluesRiffEvent, type BluesMelodyPhrase } from './assets/blues-melody-riffs';
 import { BLUES_DRUM_RIFFS } from './assets/blues-drum-riffs';
+import { DRUM_KITS } from './assets/drum-kits';
 
 
 export type Branch = {
@@ -230,32 +231,14 @@ export class FractalMusicEngine {
     this.accompPhraseLibrary = [];
     this.currentAccompPhraseIndex = 0;
     
-    // --- ИСПРАВЛЕНИЕ (ПЛАН 761): "Разделение Ответственности" ---
-    // #ЗАЧЕМ: Предотвращает назначение мелодического синтезатора для ударных.
-    // #ЧТО: Теперь цикл `forEach` явно проверяет, что партия не является `drums`,
-    //      прежде чем пытаться назначить для нее тональный инструмент.
-    this.introInstrumentMap.clear();
+    // #ЗАЧЕМ: Удалена неверная логика introInstrumentMap.
+    //         Выбор инструмента теперь происходит динамически в `evolve`.
     this.introInstrumentOrder = [];
     const introPart = this.navigator.blueprint.structure.parts.find(p => p.id.startsWith('INTRO'));
     if (introPart?.introRules) {
-        this.introInstrumentOrder = [...introPart.introRules.allowedInstruments];
-        for (let i = this.introInstrumentOrder.length - 1; i > 0; i--) {
-            const j = this.random.nextInt(i + 1);
-            [this.introInstrumentOrder[i], this.introInstrumentOrder[j]] = [this.introInstrumentOrder[j], this.introInstrumentOrder[i]];
-        }
+        // Создаем УНИКАЛЬНЫЙ порядок вступления для КАЖДОЙ сюиты.
+        this.introInstrumentOrder = this.random.shuffle([...introPart.introRules.allowedInstruments]);
         console.log(`[IntroSetup] Unique instrument entry order created: [${this.introInstrumentOrder.join(', ')}]`);
-
-        this.introInstrumentOrder.forEach(part => {
-             // Пропускаем ударные, так как для них не нужен тональный инструмент
-             if (part === 'drums') {
-                 return;
-             }
-             const instrumentChoice = this._chooseInstrumentForPart(part as any, this.navigator?.tick(0));
-             if (instrumentChoice) {
-                 this.introInstrumentMap.set(part, instrumentChoice);
-                 console.log(`[IntroSetup] Instrument '${part}' randomly assigned to '${instrumentChoice}'.`);
-             }
-        });
     }
 
     const firstChord = this.ghostHarmonyTrack[0];
@@ -349,6 +332,10 @@ export class FractalMusicEngine {
   }
   
     private generateDrumEvents(navInfo: NavigationInfo | null): FractalEvent[] {
+        // #ЗАЧЕМ: Эта функция теперь выступает в роли "дирижера" для ударных.
+        // #ЧТО: Она определяет, какой кит использовать, динамически его модифицирует
+        //       и передает уже готовый набор сэмплов в "глупую" функцию-исполнитель.
+        // #СВЯЗИ: Вызывается из `generateOneBar`, вызывает `createDrumAxiom`.
         if (!navInfo || !this.navigator) return [];
         
         const drumRules = navInfo.currentPart.instrumentRules?.drums;
@@ -356,67 +343,36 @@ export class FractalMusicEngine {
             return [];
         }
 
-        if (this.config.genre === 'blues') {
-            const allDrumRiffs = Object.values(BLUES_DRUM_RIFFS).flat();
-            if (allDrumRiffs.length === 0) return [];
+        const genre = this.config.genre;
+        const mood = this.config.mood;
 
-            const pattern = allDrumRiffs[this.currentDrumRiffIndex % allDrumRiffs.length];
-            let events: FractalEvent[] = [];
-            const ticksPerBeat = 3;
+        // 1. Определяем базовый кит из блюпринта или по умолчанию.
+        const kitName = drumRules?.kitName || `${genre}_${mood}`.toLowerCase();
+        const baseKit: DrumKit = 
+            (DRUM_KITS[genre] && (DRUM_KITS[genre] as any)[kitName]) ||
+            (DRUM_KITS[genre] && (DRUM_KITS[genre] as any)[mood]) ||
+            (DRUM_KITS[genre]?.intro) ||
+            DRUM_KITS.ambient!.intro!;
+        
+        // 2. Создаем рабочую копию кита для динамических изменений.
+        const finalKit: DrumKit = JSON.parse(JSON.stringify(baseKit));
 
-            const addEvents = (ticks: number[] | undefined, type: InstrumentType, weight: number = 0.8) => {
-                if (ticks) {
-                    ticks.forEach(tick => {
-                        events.push({
-                            type, note: 60, time: tick / ticksPerBeat, duration: 1 / ticksPerBeat,
-                            weight: weight + (this.random.next() * 0.1), technique: 'hit', dynamics: 'mf', phrasing: 'staccato', params: {}
-                        });
-                    });
-                }
-            };
-
-            addEvents(pattern.K, 'drum_kick');
-            addEvents(pattern.SD, 'drum_snare');
-            addEvents(pattern.ghostSD, 'drum_snare_ghost_note', 0.4);
-            addEvents(pattern.HH, 'drum_hihat_closed', 0.6);
-            addEvents(pattern.OH, 'drum_hihat_open', 0.7);
-            addEvents(pattern.R, 'drum_ride', 0.7);
-            addEvents(pattern.T, 'drum_tom_mid', 0.75);
-
-            // --- КОНТЕКСТНЫЕ МУТАЦИИ ---
-            const barInChorus = this.epoch % 12;
-            let mutationLog: string | null = null;
-            
-            if (barInChorus === 11 && this.random.next() < 0.8) {
-                mutationLog = "Turnaround Fill";
-                events = createDrumFill(this.random, { instrument: 'tom', density: 0.6 });
-            } 
-            else if (this.random.next() < 0.3) {
-                 mutationLog = "Ghost Snare";
-                 addEvents([2, 8], 'drum_snare_ghost_note', 0.35);
-            }
-            else if (this.random.next() < 0.25) {
-                mutationLog = "Open-Hat";
-                addEvents([11], 'drum_hihat_open', 0.6);
-            }
-
-            if (mutationLog) {
-                console.log(`%c[DrumMutation @ Bar ${this.epoch}] ${mutationLog}`, 'color: #FFC0CB');
-            }
-
-            return events;
+        // 3. Динамически модифицируем кит на основе правил ТЕКУЩЕЙ секции.
+        if (drumRules?.ride?.enabled === true) {
+            // Если блюпринт говорит "включи райд", добавляем все райды в кит.
+            finalKit.ride = [...new Set([...finalKit.ride, ...DRUM_KITS.ambient!.intro!.ride])];
+        } else if (drumRules?.ride?.enabled === false) {
+            // Если блюпринт говорит "выключи райд", очищаем его.
+            finalKit.ride = [];
         }
+        // Здесь можно добавить аналогичную логику для крэшей, перкуссии и т.д.
         
-        const axiomResult = createDrumAxiom(this.config.genre, this.config.mood, this.config.tempo, this.random, drumRules);
-        const baseAxiom = axiomResult.events || [];
+        console.log(`%c[FME.generateDrums @ Bar ${this.epoch}] Using Kit: ${kitName}. Ride enabled: ${finalKit.ride.length > 0}`, 'color: #FFD700;');
+
+        // 4. Передаем ГОТОВЫЙ кит в "исполнителя".
+        const axiomResult = createDrumAxiom(finalKit, genre, mood, this.config.tempo, this.random, drumRules);
         
-        if (navInfo.currentPart.id.includes('INTRO') || navInfo.currentPart.id.includes('RELEASE')) {
-            if (!drumRules?.ride?.enabled) {
-                return baseAxiom.filter(e => !(e.type as string).includes('ride'));
-            }
-        }
-        
-        return baseAxiom;
+        return axiomResult.events || [];
     }
 
   private _applyMicroMutations(phrase: FractalEvent[], epoch: number): FractalEvent[] {
@@ -746,9 +702,13 @@ export class FractalMusicEngine {
       const harmonyRules = navInfo?.currentPart.instrumentation?.harmony;
       const chosenHarmonyInstrument = harmonyRules ? chooseHarmonyInstrument(harmonyRules, this.random) : 'piano';
 
+      // #ЗАЧЕМ: Динамический выбор инструментов перенесен сюда, чтобы на каждом такте интро
+      //         можно было выбирать новый тембр, а не "залипать" на одном.
+      // #ЧТО: `_chooseInstrumentForPart` вызывается теперь здесь, а не в `initialize`.
+      // #СВЯЗИ: Решает проблему монотонности интро.
       const instrumentHints: InstrumentHints = {
           accompaniment: this._chooseInstrumentForPart('accompaniment', navInfo),
-          melody: this._chooseInstrumentForPart('melody', navInfo),
+          melody: this._chooseInstrumentFor-part('melody', navInfo),
           harmony: chosenHarmonyInstrument,
       };
       
@@ -920,6 +880,7 @@ export class FractalMusicEngine {
 
 
 }
+
 
 
 
