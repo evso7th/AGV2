@@ -123,7 +123,6 @@ export class FractalMusicEngine {
       
       this.config = { ...this.config, ...newConfig };
       
-      // #ИСПРАВЛЕНО (ПЛАН 736): Принудительно обновляем генератор случайных чисел при смене seed.
       if (seedChanged) {
         console.log(`%c[FME.updateConfig] New seed detected: ${this.config.seed}. Re-initializing random generator.`, 'color: #FFD700; font-weight:bold;');
         this.random = seededRandom(this.config.seed);
@@ -138,7 +137,6 @@ export class FractalMusicEngine {
   public async initialize(force: boolean = false) {
     if (this.navigator && !force) return;
 
-    // #ИСПРАВЛЕНО (ПЛАН 736): Гарантируем свежий генератор при каждой инициализации.
     this.random = seededRandom(this.config.seed);
     console.log(`%c[FME.initialize] Using SEED: ${this.config.seed} to create random generator.`, 'color: #FFD700;');
 
@@ -148,12 +146,10 @@ export class FractalMusicEngine {
     this.hasBassBeenMutated = false;
     this.bluesChorusCache = null;
     
-    // --- ПЛАН 732: Выбор уникального риффа для сюиты ---
     let logDrumRiffId = 'N/A';
     const drumRiffsForMood = BLUES_DRUM_RIFFS[this.config.mood];
     if (drumRiffsForMood && drumRiffsForMood.length > 0) {
         this.bluesDrumRiffIndex = this.random.nextInt(drumRiffsForMood.length);
-        // Assuming your drum riffs will have an ID in the future, for now we log the index.
         logDrumRiffId = `index_${this.bluesDrumRiffIndex}`;
     }
 
@@ -161,11 +157,10 @@ export class FractalMusicEngine {
     const bassRiffsForMood = BLUES_BASS_RIFFS[this.config.mood];
     if (bassRiffsForMood && bassRiffsForMood.length > 0) {
         this.bluesBassRiffIndex = this.random.nextInt(bassRiffsForMood.length);
-        // Assuming bass riffs might get IDs.
         logBassRiffId = `index_${this.bluesBassRiffIndex}`;
     }
     
-    this.lastSelectedBluesMelodyId = null; // Reset for unique melody selection
+    this.lastSelectedBluesMelodyId = null;
     const initialMelody = this.selectUniqueBluesMelody(this.config.mood);
     const logMelodyId = initialMelody ? initialMelody.id : 'N/A';
 
@@ -173,7 +168,6 @@ export class FractalMusicEngine {
         `%c[FME Init] Blues Suite DNA Selected:\n  - Drum Riff ID: ${logDrumRiffId}\n  - Bass Riff ID: ${logBassRiffId}\n  - Melody ID: ${logMelodyId}`,
         'color: orange; font-weight: bold;'
     );
-    // --- КОНЕЦ ПЛАНА 732 ---
     
     this.lastSelectedBluesMelodyId = logMelodyId;
 
@@ -346,17 +340,14 @@ export class FractalMusicEngine {
             const barInChorus = this.epoch % 12;
             let mutationLog: string | null = null;
             
-            // Fill at the end of the chorus
             if (barInChorus === 11 && this.random.next() < 0.8) {
                 mutationLog = "Turnaround Fill";
                 events = createDrumFill(this.random, { instrument: 'tom', density: 0.6 });
             } 
-            // Ghost note addition
             else if (this.random.next() < 0.3) {
                  mutationLog = "Ghost Snare";
                  addEvents([2, 8], 'drum_snare_ghost_note', 0.35);
             }
-            // Open-hat variation
             else if (this.random.next() < 0.25) {
                 mutationLog = "Open-Hat";
                 addEvents([11], 'drum_hihat_open', 0.6);
@@ -584,11 +575,14 @@ export class FractalMusicEngine {
             const barInChorus = this.epoch % 12;
             const registerHint = melodyRules.register?.preferred;
             
+            // #ПЛАН 737: Соло теперь генерируется для каждого хоруса, а не кэшируется.
+            // При этом мы не регенерируем его на КАЖДЫЙ такт, а только в начале хоруса.
             if (barInChorus === 0 || !this.bluesChorusCache || this.bluesChorusCache.barStart !== (this.epoch - barInChorus)) {
                 const chorusBarStart = this.epoch - barInChorus;
                 const chorusChords = this.ghostHarmonyTrack.filter(c => c.bar >= chorusBarStart && c.bar < chorusBarStart + 12);
                 if (chorusChords.length > 0) {
-                    this.bluesChorusCache = this.generateBluesMelodyChorus(chorusChords, this.config.mood, this.random, registerHint);
+                    // Выбираем новую мелодию для соло, которая отличается от основной темы сюиты.
+                    this.bluesChorusCache = this.generateBluesMelodyChorus(chorusChords, this.config.mood, this.random, registerHint, true); // `isSolo=true`
                 }
             }
             
@@ -682,19 +676,16 @@ export class FractalMusicEngine {
       
       const navigationInfo = this.navigator.tick(this.epoch, instrumentHints.melody);
       
-      if (navigationInfo?.logMessage) {
-        console.log(navigationInfo.logMessage, 'color: #DA70D6');
-      }
-
-      // #ПЛАН 733: Добавляем логирование DNA в начале каждой части
       if (navigationInfo?.isPartTransition) {
-          const logDrumRiffId = `index_${this.bluesDrumRiffIndex}`;
-          const logBassRiffId = `index_${this.bluesBassRiffIndex}`;
-          const logMelodyId = this.lastSelectedBluesMelodyId || 'N/A';
-          console.log(
-              `%c[FME Part Info] Active DNA for part ${navigationInfo.currentPart.name}:\n  - Drum Riff ID: ${logDrumRiffId}\n  - Bass Riff ID: ${logBassRiffId}\n  - Melody ID: ${logMelodyId}`,
-              'color: cyan; font-weight: bold;'
-          );
+        const logDrumRiffId = `index_${this.bluesDrumRiffIndex}`;
+        const logBassRiffId = `index_${this.bluesBassRiffIndex}`;
+        const logMelodyId = this.lastSelectedBluesMelodyId || 'N/A';
+        console.log(
+            `%c[FME Part Info] Active DNA for part ${navigationInfo.currentPart.name}:\n  - Drum Riff ID: ${logDrumRiffId}\n  - Bass Riff ID: ${logBassRiffId}\n  - Melody ID: ${logMelodyId}`,
+            'color: cyan; font-weight: bold;'
+        );
+      } else if (navigationInfo?.logMessage) {
+        console.log(navigationInfo.logMessage, 'color: #DA70D6');
       }
 
 
@@ -718,11 +709,29 @@ export class FractalMusicEngine {
     return events;
   }
   
-  // #ПЛАН 732: Новая функция для выбора уникальной мелодии в начале сюиты
   private selectUniqueBluesMelody(mood: Mood): BluesMelody | null {
-    let suitableMelodies = BLUES_MELODY_RIFFS.filter(m => m.moods.includes(mood));
+    const moodMap = {
+        light: ['joyful', 'epic', 'enthusiastic'],
+        dark: ['dark', 'melancholic', 'gloomy', 'anxious'],
+        neutral: ['calm', 'contemplative', 'dreamy']
+    };
+
+    let moodCategory: keyof typeof moodMap | null = null;
+    for (const category in moodMap) {
+        if ((moodMap[category as keyof typeof moodMap]).includes(mood)) {
+            moodCategory = category as keyof typeof moodMap;
+            break;
+        }
+    }
+
+    if (!moodCategory) return null;
+
+    let suitableMelodies = BLUES_MELODY_RIFFS.filter(m => 
+        m.moods.some(m_mood => moodMap[moodCategory!].includes(m_mood))
+    );
+    
     if (suitableMelodies.length === 0) {
-        console.warn(`[BluesMelodyChorus] No suitable melodies found for mood: ${mood}. Falling back to all.`);
+        console.warn(`[BluesMelody] No suitable melodies found for mood category: ${moodCategory}. Falling back to all.`);
         suitableMelodies = BLUES_MELODY_RIFFS;
     }
     
@@ -734,19 +743,31 @@ export class FractalMusicEngine {
     if (selectableMelodies.length === 0) return null;
 
     const selectedMelody = selectableMelodies[this.random.nextInt(selectableMelodies.length)];
+    this.lastSelectedBluesMelodyId = selectedMelody.id; // Update last selected ID
     return selectedMelody;
   }
 
-  private generateBluesMelodyChorus(chorusChords: GhostChord[], mood: Mood, random: { next: () => number, nextInt: (max: number) => number }, registerHint?: 'low' | 'mid' | 'high'): { events: FractalEvent[], log: string } {
+  private generateBluesMelodyChorus(chorusChords: GhostChord[], mood: Mood, random: { next: () => number, nextInt: (max: number) => number }, registerHint?: 'low' | 'mid' | 'high', isSolo: boolean = false): { events: FractalEvent[], log: string } {
     const chorusEvents: FractalEvent[] = [];
     
-    // #ПЛАН 732: Логика выбора мелодии перенесена в `initialize`, здесь мы используем уже выбранную.
-    //             Но если по какой-то причине она не была выбрана, выбираем здесь.
-    let selectedMelody = BLUES_MELODY_RIFFS.find(m => m.id === this.lastSelectedBluesMelodyId);
-    if (!selectedMelody) {
-        selectedMelody = this.selectUniqueBluesMelody(mood) || BLUES_MELODY_RIFFS[0];
-        this.lastSelectedBluesMelodyId = selectedMelody.id;
+    // #ПЛАН 737: Логика выбора переписана для разнообразия.
+    let selectedMelody: BluesMelody | null = null;
+    if (isSolo) {
+        // Для соло мы ВСЕГДА выбираем новую, свежую мелодию из той же эмоциональной палитры.
+        selectedMelody = this.selectUniqueBluesMelody(mood);
+    } else {
+        // Для основной темы мы используем последнюю выбранную мелодию (если она есть),
+        // чтобы сохранить преемственность в куплетах.
+        selectedMelody = BLUES_MELODY_RIFFS.find(m => m.id === this.lastSelectedBluesMelodyId) || this.selectUniqueBluesMelody(mood);
     }
+
+    if (!selectedMelody) {
+        console.warn('[BluesMelodyChorus] No melody could be selected.');
+        return { events: [], log: "No melody selected." };
+    }
+    
+    // Сохраняем ID только что выбранной мелодии.
+    this.lastSelectedBluesMelodyId = selectedMelody.id;
 
 
     const barDurationInBeats = 4;
@@ -769,7 +790,7 @@ export class FractalMusicEngine {
         let phrase: BluesMelodyPhrase;
 
         // Simplified step detection for I, IV, V
-        const rootOfChorus = this.ghostHarmonyTrack.find(c => c.bar === (this.epoch - barIndex))?.rootNote ?? chordRoot;
+        const rootOfChorus = this.ghostHarmonyTrack.find(c => c.bar === (this.epoch - (this.epoch % 12)))?.rootNote ?? chordRoot;
         const step = (chordRoot - rootOfChorus + 12) % 12;
         const IV_STEP = 5;
         const V_STEP = 7;
@@ -790,7 +811,7 @@ export class FractalMusicEngine {
                 type: 'melody',
                 note: noteMidi,
                 time: (barIndex * barDurationInBeats) + (event.t / ticksPerBeat),
-                duration: event.d / ticksPerBeat,
+                duration: (event.d || 2) / ticksPerBeat,
                 weight: 0.85,
                 technique: 'pick',
                 dynamics: 'f',
