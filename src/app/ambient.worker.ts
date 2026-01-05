@@ -40,7 +40,7 @@ const Scheduler = {
         composerControlsInstruments: true,
         mood: 'melancholic' as Mood,
         useMelodyV2: false, // Default to V1 engine
-        introBars: 7, // Default intro length
+        introBars: 12, // Default intro length
     } as WorkerSettings,
 
     get barDuration() { 
@@ -300,4 +300,5 @@ self.onmessage = async (event: MessageEvent) => {
 
 
     
+
 

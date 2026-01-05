@@ -230,6 +230,10 @@ export class FractalMusicEngine {
     this.accompPhraseLibrary = [];
     this.currentAccompPhraseIndex = 0;
     
+    // --- ИСПРАВЛЕНИЕ (ПЛАН 761): "Разделение Ответственности" ---
+    // #ЗАЧЕМ: Предотвращает назначение мелодического синтезатора для ударных.
+    // #ЧТО: Теперь цикл `forEach` явно проверяет, что партия не является `drums`,
+    //      прежде чем пытаться назначить для нее тональный инструмент.
     this.introInstrumentMap.clear();
     this.introInstrumentOrder = [];
     const introPart = this.navigator.blueprint.structure.parts.find(p => p.id.startsWith('INTRO'));
@@ -242,6 +246,10 @@ export class FractalMusicEngine {
         console.log(`[IntroSetup] Unique instrument entry order created: [${this.introInstrumentOrder.join(', ')}]`);
 
         this.introInstrumentOrder.forEach(part => {
+             // Пропускаем ударные, так как для них не нужен тональный инструмент
+             if (part === 'drums') {
+                 return;
+             }
              const instrumentChoice = this._chooseInstrumentForPart(part as any, this.navigator?.tick(0));
              if (instrumentChoice) {
                  this.introInstrumentMap.set(part, instrumentChoice);
@@ -912,6 +920,7 @@ export class FractalMusicEngine {
 
 
 }
+
 
 
 

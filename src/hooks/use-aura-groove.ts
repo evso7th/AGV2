@@ -96,7 +96,7 @@ export const useAuraGroove = (): AuraGrooveProps => {
   const [density, setDensity] = useState(0.5);
   const [composerControlsInstruments, setComposerControlsInstruments] = useState(true);
   const [mood, setMood] = useState<Mood>('melancholic');
-  const [introBars, setIntroBars] = useState(7);
+  const [introBars, setIntroBars] = useState(12);
 
   const [isEqModalOpen, setIsEqModalOpen] = useState(false);
   const [eqSettings, setEqSettings] = useState<number[]>(Array(7).fill(0));
