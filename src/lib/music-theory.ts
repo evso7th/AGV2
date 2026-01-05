@@ -1,4 +1,5 @@
 
+
 import type { FractalEvent, Mood, Genre, Technique, BassSynthParams, InstrumentType, AccompanimentInstrument, InstrumentHints, AccompanimentTechnique, GhostChord, SfxRule, V1MelodyInstrument, V2MelodyInstrument, BlueprintPart, InstrumentationRules, InstrumentBehaviorRules, BluesMelody, IntroRules, InstrumentPart } from './fractal';
 import { ElectronicK, TraditionalK, AmbientK, MelancholicMinorK } from './resonance-matrices';
 import { BlueprintNavigator, type NavigationInfo } from './blueprint-navigator';
@@ -295,13 +296,14 @@ export function getScaleForMood(mood: Mood, genre?: Genre): number[] {
   return fullScale;
 }
 
+export const DEGREE_TO_SEMITONE: Record<BluesRiffDegree, number> = { 'R': 0, 'b2': 1, '2': 2, 'b3': 3, '3': 4, '4': 5, '#4': 6, 'b5': 6, '5': 7, 'b6': 8, '6': 9, 'b7': 10, '9': 14, '11': 17, 'R+8': 12 };
+
 export function generateBluesBassRiff(chord: GhostChord, technique: Technique, random: { next: () => number, nextInt: (max: number) => number }, mood: Mood): FractalEvent[] {
     const phrase: FractalEvent[] = [];
     const root = chord.rootNote;
     const barDurationInBeats = 4.0;
     const ticksPerBeat = 3;
-    const DEGREE_TO_SEMITONE: Record<BluesRiffDegree, number> = { 'R': 0, 'b2': 1, '2': 2, 'b3': 3, '3': 4, '4': 5, '#4': 6, 'b5': 6, '5': 7, 'b6': 8, '6': 9, 'b7': 10, '9': 14, '11': 17, 'R+8': 12 };
-
+    
     const moodRiffs = BLUES_BASS_RIFFS[mood];
     if (!moodRiffs || moodRiffs.length === 0) {
         console.warn(`[BluesBass] No bass riffs found for mood: ${mood}.`);
@@ -1075,96 +1077,7 @@ function extractTopNotes(events: FractalEvent[], maxNotes: number = 4): FractalE
         .slice(0, maxNotes);
 }
 
-const DEGREE_TO_SEMITONE: Record<BluesRiffDegree, number> = { 'R': 0, 'b2': 1, '2': 2, 'b3': 3, '3': 4, '4': 5, '#4': 6, 'b5': 6, '5': 7, 'b6': 8, '6': 9, 'b7': 10, '9': 14, '11': 17, 'R+8': 12 };
 
-export function generateBluesMelodyChorus(chorusChords: GhostChord[], mood: Mood, random: { next: () => number, nextInt: (max: number) => number }, registerHint?: 'low' | 'mid' | 'high'): { events: FractalEvent[], log: string } {
-    const chorusEvents: FractalEvent[] = [];
-    
-    const suitableMelodies = BLUES_MELODY_RIFFS.filter(m => m.moods.includes(mood));
-    if (suitableMelodies.length === 0) {
-        console.warn(`[BluesMelodyChorus] No suitable melodies found for mood: ${mood}. Falling back to all.`);
-        suitableMelodies.push(...BLUES_MELODY_RIFFS);
-    }
-    const selectedMelody = suitableMelodies[random.nextInt(suitableMelodies.length)] || BLUES_MELODY_RIFFS[0];
-    
-    const barDurationInBeats = 4;
-    const ticksPerBeat = 3;
-    
-    let octaveShift = 12 * 2; // Default to 2 octaves above root
-    if (registerHint === 'mid') octaveShift = 12 * 3;
-    if (registerHint === 'high') octaveShift = 12 * 4;
-
-    for (let barIndex = 0; barIndex < 12; barIndex++) {
-        const absoluteBar = (chorusChords[0]?.bar ?? 0) + barIndex;
-        const barChord = chorusChords.find(c => absoluteBar >= c.bar && absoluteBar < (c.bar + c.durationBars));
-
-        if (!barChord) {
-            console.warn(`[BluesMelodyChorus] No chord found for bar ${barIndex} (absolute: ${absoluteBar}).`);
-            continue;
-        };
-
-        const chordRoot = barChord.rootNote;
-        let phrase: BluesMelodyPhrase;
-
-        // Simplified step detection for I, IV, V
-        const rootI = chorusChords.find(c=>c.bar % 12 === 0)?.rootNote || chordRoot;
-        const step = (chordRoot - rootI + 12) % 12;
-        const IV_STEP = 5;
-        const V_STEP = 7;
-        
-        if (barIndex === 11) {
-            phrase = selectedMelody.phraseTurnaround;
-        } else if (step === IV_STEP) {
-            phrase = selectedMelody.phraseIV;
-        } else if (step === V_STEP) {
-            phrase = selectedMelody.phraseV;
-        } else {
-            phrase = selectedMelody.phraseI;
-        }
-
-        for (const event of phrase) {
-            const noteMidi = chordRoot + DEGREE_TO_SEMITONE[event.deg] + octaveShift;
-            chorusEvents.push({
-                type: 'melody',
-                note: noteMidi,
-                time: (barIndex * barDurationInBeats) + (event.t / ticksPerBeat),
-                duration: event.d / ticksPerBeat,
-                weight: 0.85,
-                technique: 'pick',
-                dynamics: 'f',
-                phrasing: 'legato',
-                params: {}
-            });
-        }
-    }
-
-    const shouldMutate = random.next() < 0.4;
-    let mutationLog = "None";
-    if (shouldMutate && chorusEvents.length > 0) {
-        const mutationType = random.nextInt(3);
-        switch (mutationType) {
-            case 0:
-                mutationLog = "Rhythmic Shift";
-                chorusEvents.forEach(e => { e.time += (random.next() - 0.5) * 0.25; });
-                break;
-            case 1:
-                mutationLog = "Register Shift";
-                const eventOctaveShift = (random.next() > 0.5) ? 12 : -12;
-                chorusEvents.forEach(e => { e.note += eventOctaveShift; });
-                break;
-            case 2:
-                mutationLog = "Note Removal";
-                const indexToRemove = random.nextInt(chorusEvents.length);
-                chorusEvents.splice(indexToRemove, 1);
-                break;
-        }
-    }
-
-    const log = `Using riff: "${selectedMelody.id}". Mutation: "${mutationLog}". Register: ${registerHint || 'default (low)'}`;
-    console.log(`%c[BluesMelodyChorus] ${log}`, 'color: #00BCD4');
-    
-    return { events: chorusEvents, log };
-}
 
 export function createMelodyMotif(chord: GhostChord, mood: Mood, random: { next: () => number; nextInt: (max: number) => number; }, previousMotif?: FractalEvent[], registerHint?: 'low' | 'mid' | 'high', genre?: Genre): FractalEvent[] {
     const motif: FractalEvent[] = [];
@@ -1306,3 +1219,4 @@ export function generateIntroSequence(options: {
 
     return { events, instrumentHints };
 }
+
