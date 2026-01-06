@@ -17,17 +17,10 @@ export const WinterBluesBlueprint: MusicBlueprint = {
         totalDuration: { preferredBars: 120 }, // 10 loops of 12 bars
         parts: [
             {
-                id: 'MAIN', name: 'Main Section', duration: { percent: 100 },
+                id: 'MAIN_THEME', name: 'Main Theme', duration: { percent: 60 },
                 layers: {
-                    // CRITICAL: All sample-based layers are explicitly disabled.
-                    drums: false,
-                    harmony: false,
-                    sfx: false,
-                    sparkles: false,
-                    // Only synth-based layers are active.
-                    bass: true,
-                    accompaniment: true,
-                    melody: true,
+                    drums: false, harmony: false, sfx: false, sparkles: false, // Keep sterile
+                    bass: true, accompaniment: true, melody: true,
                 },
                 instrumentation: {
                     accompaniment: {
@@ -37,17 +30,54 @@ export const WinterBluesBlueprint: MusicBlueprint = {
                     },
                     melody: {
                         strategy: 'weighted',
-                        // #ИЗМЕНЕНО: Заменяем V1/V2 синтезаторы на 'blackAcoustic' для теста
+                        // #ЗАЧЕМ: Указываем, что мелодию должна играть гитара.
+                        // #ЧТО: Используется 'blackAcoustic' как единственный вариант.
+                        // #СВЯЗИ: Эта нотация обрабатывается в audio-engine-context.tsx.
                         v1Options: [{ name: 'blackAcoustic', weight: 1.0 }],
                         v2Options: [{ name: 'blackAcoustic', weight: 1.0 }]
                     }
                 },
                 instrumentRules: {
-                    drums: { pattern: 'none' }, // Explicitly none
+                    drums: { pattern: 'none' },
                     bass: { techniques: [{ value: 'riff', weight: 1.0 }] }, 
-                    melody: { source: 'motif', density: { min: 0.4, max: 0.6 } }
+                    melody: { 
+                        source: 'motif', 
+                        density: { min: 0.4, max: 0.6 },
+                        register: { preferred: 'mid' }
+                    }
                 },
-                bundles: [{ id: 'WINTER_BLUES_MAIN_BUNDLE', name: 'Main Riff', duration: { percent: 100 }, characteristics: {}, phrases: {} }],
+                bundles: [{ id: 'WINTER_BLUES_THEME_BUNDLE', name: 'Main Riff', duration: { percent: 100 }, characteristics: {}, phrases: {} }],
+                outroFill: null,
+            },
+            {
+                id: 'SOLO', name: 'Guitar Solo', duration: { percent: 40 },
+                layers: {
+                    drums: false, harmony: false, sfx: false, sparkles: false, // Keep sterile
+                    bass: true, accompaniment: true, melody: true,
+                },
+                instrumentation: {
+                     accompaniment: {
+                        strategy: 'weighted',
+                        v1Options: [{ name: 'organ', weight: 1.0 }],
+                        v2Options: [{ name: 'organ_soft_jazz', weight: 1.0 }]
+                    },
+                    melody: {
+                        strategy: 'weighted',
+                        v1Options: [{ name: 'blackAcoustic', weight: 1.0 }],
+                        v2Options: [{ name: 'blackAcoustic', weight: 1.0 }]
+                    }
+                },
+                instrumentRules: {
+                    drums: { pattern: 'none' },
+                    bass: { techniques: [{ value: 'riff', weight: 1.0 }] }, 
+                    melody: { 
+                        source: 'motif', 
+                        // #ИЗМЕНЕНО: Увеличиваем плотность и регистр для создания ощущения соло
+                        density: { min: 0.6, max: 0.8 },
+                        register: { preferred: 'high' }
+                    }
+                },
+                bundles: [{ id: 'WINTER_BLUES_SOLO_BUNDLE', name: 'Improvisation', duration: { percent: 100 }, characteristics: {}, phrases: {} }],
                 outroFill: null,
             },
         ]
