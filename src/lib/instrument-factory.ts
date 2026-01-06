@@ -647,9 +647,13 @@ export async function buildMultiInstrument(ctx: AudioContext, {
           lastInChain = dB_node.output;
       }
       
+      // #ИСПРАВЛЕНО (ПЛАН 839): Создаем локальный выход и изолируем цепь.
+      const guitarOutput = ctx.createGain();
+      lastInChain.connect(guitarOutput);
+
       // Финальное подключение к мастеру и реверберации
-      lastInChain.connect(master);
-      lastInChain.connect(revSend);
+      guitarOutput.connect(master);
+      guitarOutput.connect(revSend);
 
       vGain.gain.cancelScheduledValues(when);
       vGain.gain.setValueAtTime(vGain.gain.value, when);
