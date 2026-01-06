@@ -20,6 +20,7 @@ import { getPresetParams } from "@/lib/presets";
 import { PIANO_SAMPLES, VIOLIN_SAMPLES, FLUTE_SAMPLES, ACOUSTIC_GUITAR_CHORD_SAMPLES, ACOUSTIC_GUITAR_SOLO_SAMPLES } from '@/lib/samples';
 import { GuitarChordsSampler } from '@/lib/guitar-chords-sampler';
 import { AcousticGuitarSoloSampler } from '@/lib/acoustic-guitar-solo-sampler';
+import { BlackGuitarSampler } from '@/lib/black-guitar-sampler';
 import type { FractalEvent, InstrumentHints } from '@/types/fractal';
 import * as Tone from 'tone';
 import { MelodySynthManagerV2 } from '@/lib/melody-synth-manager-v2';
@@ -48,7 +49,7 @@ type WorkerMessage = {
 const VOICE_BALANCE: Record<InstrumentPart, number> = {
   bass: 1.0, melody: 0.7, accompaniment: 0.6, drums: 1.0,
   effects: 0.6, sparkles: 0.7, piano: 1.0, violin: 0.8, flute: 0.8, guitarChords: 0.9,
-  acousticGuitarSolo: 0.9, sfx: 0.8, harmony: 0.8, electricGuitar: 0.9,
+  acousticGuitarSolo: 0.9, blackAcoustic: 0.9, sfx: 0.8, harmony: 0.8, electricGuitar: 0.9,
 };
 
 const EQ_FREQUENCIES = [60, 125, 250, 500, 1000, 2000, 4000];
@@ -103,10 +104,11 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
   const harmonyManagerRef = useRef<HarmonySynthManager | null>(null);
   const sparklePlayerRef = useRef<SparklePlayer | null>(null);
   const sfxSynthManagerRef = useRef<SfxSynthManager | null>(null);
+  const blackGuitarSamplerRef = useRef<BlackGuitarSampler | null>(null);
   
   const masterGainNodeRef = useRef<GainNode | null>(null);
   const gainNodesRef = useRef<Record<Exclude<InstrumentPart, 'pads' | 'effects'>, GainNode | null>>({
-    bass: null, melody: null, accompaniment: null, drums: null, sparkles: null, piano: null, violin: null, flute: null, guitarChords: null, acousticGuitarSolo: null, sfx: null, harmony: null, electricGuitar: null
+    bass: null, melody: null, accompaniment: null, drums: null, sparkles: null, piano: null, violin: null, flute: null, guitarChords: null, acousticGuitarSolo: null, blackAcoustic: null, sfx: null, harmony: null, electricGuitar: null
   });
 
   const eqNodesRef = useRef<BiquadFilterNode[]>([]);
@@ -175,11 +177,6 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
   }, [isInitialized, useMelodyV2]);
 
   const scheduleEvents = useCallback((events: FractalEvent[], barStartTime: number, tempo: number, barCount: number, instrumentHints?: InstrumentHints) => {
-    // #ЗАЧЕМ: Эта функция — главный диспетчер, распределяющий сгенерированные ноты по нужным "исполнителям".
-    // #ЧТО: Она разбирает массив событий из воркера, группирует их по типу (бас, ударные и т.д.)
-    //      и вызывает соответствующий метод `.schedule()` или `.play()` у нужного менеджера.
-    // #СВЯЗИ: Является ключевым звеном между воркером-композитором и аудио-менеджерами в основном потоке.
-    
     if (!Array.isArray(events)) {
         console.warn("[AudioEngine] scheduleEvents received non-array:", events);
         return;
@@ -193,20 +190,22 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
     const melodyEvents: FractalEvent[] = [];
     const harmonyEvents: FractalEvent[] = [];
     const sfxEvents: FractalEvent[] = [];
+    const blackAcousticEvents: FractalEvent[] = [];
 
     for (const event of events) {
       const eventType = Array.isArray(event.type) ? event.type[0] : event.type;
       
-      // #ИСПРАВЛЕНО (ПЛАН 774): Добавлена проверка для событий ударных.
-      // #ЗАЧЕМ: Этот блок гарантирует, что события с типом 'drum_*' или 'perc-*'
-      //         будут правильно распознаны и направлены в DrumMachine.
-      // #ЧТО: Проверяет тип события и, если он соответствует ударным, добавляет его в массив `drumEvents`.
       if (typeof eventType === 'string' && (eventType.startsWith('drum_') || eventType.startsWith('perc-'))) {
         drumEvents.push(event);
       } else if (eventType === 'bass') {
         bassEvents.push(event);
       } else if (eventType === 'accompaniment') {
-        accompanimentEvents.push(event);
+          // #ИСПРАВЛЕНО: Маршрутизация для blackAcoustic
+          if (instrumentHints?.accompaniment === 'blackAcoustic') {
+              blackAcousticEvents.push(event);
+          } else {
+              accompanimentEvents.push(event);
+          }
       } else if (eventType === 'melody') {
         melodyEvents.push(event);
       } else if (eventType === 'harmony') {
@@ -255,6 +254,12 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
             }
         }
     }
+    
+    // #ИСПРАВЛЕНО: Воспроизведение для blackAcoustic
+    if (blackGuitarSamplerRef.current && blackAcousticEvents.length > 0) {
+        const notes = blackAcousticEvents.map(e => ({ midi: e.note, time: e.time * (60 / tempo), duration: e.duration * (60 / tempo), velocity: e.weight }));
+        blackGuitarSamplerRef.current.schedule(notes, barStartTime);
+    }
 
     if (harmonyManagerRef.current && harmonyEvents.length > 0) {
       harmonyManagerRef.current.schedule(harmonyEvents, barStartTime, tempo, instrumentHints?.harmony);
@@ -271,24 +276,16 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
     }
   }, []);
 
-  // #ЗАЧЕМ: Этот useEffect отвечает за подписку на сообщения от Web Worker'а.
-  // #ЧТО: Он устанавливает `worker.onmessage` и обрабатывает входящие события.
-  // #СВЯЗИ: Критически важно, что теперь он зависит от `scheduleEvents`. Когда
-  //         `scheduleEvents` пересоздается (из-за изменения `useMelodyV2`),
-  //         этот `useEffect` запускается заново, отписываясь от старого обработчика
-  //         и подписываясь с новым, который содержит правильное, актуальное
-  //         значение `useMelodyV2`. Это разрывает "проклятие замыканий".
   useEffect(() => {
     if (workerRef.current) {
         const worker = workerRef.current;
         const messageHandler = (event: MessageEvent<WorkerMessage>) => {
              const { type, command, payload, error } = event.data;
 
-                // #ИСПРАВЛЕНО: Добавлен обработчик для автоматического перезапуска сюиты.
                 if (command === 'SUITE_ENDED') {
                     console.log(`[AudioEngineContext] Received "${command}" command from worker. Triggering seamless regeneration...`);
                     resetWorkerCallback();
-                    return; // Команда обработана, выходим
+                    return;
                 }
                 
                 if (type === 'SCORE_READY' && payload && 'events' in payload) {
@@ -318,7 +315,7 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
         worker.onmessage = messageHandler;
 
         return () => {
-            worker.onmessage = null; // Clean up the message handler
+            worker.onmessage = null; 
         };
     }
   }, [scheduleEvents, toast, resetWorkerCallback]);
@@ -349,7 +346,7 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
         }
 
         if (!gainNodesRef.current.bass) {
-            const parts: Exclude<InstrumentPart, 'pads' | 'effects'>[] = ['bass', 'melody', 'accompaniment', 'drums', 'sparkles', 'piano', 'violin', 'flute', 'guitarChords', 'acousticGuitarSolo', 'sfx', 'harmony', 'electricGuitar'];
+            const parts: Exclude<InstrumentPart, 'pads' | 'effects'>[] = ['bass', 'melody', 'accompaniment', 'drums', 'sparkles', 'piano', 'violin', 'flute', 'guitarChords', 'acousticGuitarSolo', 'blackAcoustic', 'sfx', 'harmony', 'electricGuitar'];
             parts.forEach(part => {
                 gainNodesRef.current[part] = context.createGain();
                 gainNodesRef.current[part]!.connect(masterGainNodeRef.current!);
@@ -402,6 +399,11 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
             initPromises.push(sfxSynthManagerRef.current.init());
         }
 
+        if (!blackGuitarSamplerRef.current) {
+            blackGuitarSamplerRef.current = new BlackGuitarSampler(context, gainNodesRef.current.blackAcoustic!);
+            initPromises.push(blackGuitarSamplerRef.current.init());
+        }
+
 
         if (!workerRef.current) {
             workerRef.current = new Worker(new URL('@/app/ambient.worker.ts', import.meta.url), { type: 'module' });
@@ -444,6 +446,7 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
     harmonyManagerRef.current?.allNotesOff();
     sparklePlayerRef.current?.stopAll();
     sfxSynthManagerRef.current?.allNotesOff();
+    blackGuitarSamplerRef.current?.stopAll();
     if (impulseTimerRef.current) {
         clearTimeout(impulseTimerRef.current);
         impulseTimerRef.current = null;
