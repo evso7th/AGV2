@@ -222,19 +222,22 @@ export class BlackGuitarSampler {
         this.audioContext = audioContext;
         this.destination = destination;
 
+        this.preamp = this.audioContext.createGain();
+        this.preamp.gain.value = 1.8; // Boost volume by ~2x
+
         this.fxChainInput = this.audioContext.createGain();
 
         // 1. Distortion
         this.distortion = this.audioContext.createWaveShaper();
-        this.distortion.curve = this.makeDistortionCurve(0.1); // Start with mild distortion
+        this.distortion.curve = this.makeDistortionCurve(0.1);
 
         // 2. Chorus
         this.chorusLFO = this.audioContext.createOscillator();
         this.chorusDepth = this.audioContext.createGain();
         this.chorusDelay = this.audioContext.createDelay(0.1);
         this.chorusLFO.type = 'sine';
-        this.chorusLFO.frequency.value = 4; // Default rate
-        this.chorusDepth.gain.value = 0.005; // Default depth
+        this.chorusLFO.frequency.value = 4;
+        this.chorusDepth.gain.value = 0.005;
         this.chorusLFO.connect(this.chorusDepth);
         this.chorusDepth.connect(this.chorusDelay.delayTime);
         this.chorusLFO.start();
@@ -245,12 +248,13 @@ export class BlackGuitarSampler {
         this.delay.delayTime.value = 0.3;
         this.feedback.gain.value = 0.2;
 
-        // Chain: input -> distortion -> chorus -> delay -> destination
+        // Chain: preamp -> fxInput -> distortion -> chorus -> delay -> destination
+        this.preamp.connect(this.fxChainInput);
         this.fxChainInput.connect(this.distortion);
-        this.distortion.connect(this.chorusDelay); // Pass through chorus delay
+        this.distortion.connect(this.chorusDelay);
         this.chorusDelay.connect(this.delay);
         this.delay.connect(this.feedback);
-        this.feedback.connect(this.delay); // Feedback loop
+        this.feedback.connect(this.delay);
         this.delay.connect(this.destination);
         this.fxChainInput.connect(this.destination); // Dry signal
     }
@@ -336,7 +340,7 @@ export class BlackGuitarSampler {
             gainNode.gain.value = note.velocity ?? 0.7;
             
             source.connect(gainNode);
-            gainNode.connect(this.fxChainInput); // Connect to the start of the FX chain
+            gainNode.connect(this.preamp);
 
             const playbackRate = Math.pow(2, (note.midi - sampleMidi) / 12);
             source.playbackRate.value = playbackRate;
@@ -359,7 +363,6 @@ export class BlackGuitarSampler {
     }
     
     private keyToMidi(key: string): number | null {
-        // Simplified parser for keys like 'c6_p_rr2' -> C6
         const parts = key.split('_');
         if (parts.length < 1) return null;
 
@@ -386,6 +389,7 @@ export class BlackGuitarSampler {
     }
 
     public dispose() {
+        this.preamp.disconnect();
         this.fxChainInput.disconnect();
     }
 }

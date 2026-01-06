@@ -18,6 +18,7 @@ export class AcousticGuitarSoloSampler {
     private preamp: GainNode;
     private isLoading = false;
     private lastNoteTime = 0;
+    private slideBuffers: AudioBuffer[] = [];
 
     constructor(audioContext: AudioContext, destination: AudioNode) {
         this.audioContext = audioContext;
@@ -118,7 +119,6 @@ export class AcousticGuitarSoloSampler {
                 }
             }
 
-
             const source = this.audioContext.createBufferSource();
             source.buffer = buffer;
             
@@ -132,17 +132,18 @@ export class AcousticGuitarSoloSampler {
             
             // --- ADSR ENVELOPE IMPLEMENTATION ---
             const velocity = note.velocity ?? 0.7;
-            const attackTime = 0.01; // Quick attack for pluck/pick
-            const releaseTime = Math.max(0.1, note.duration * 0.5); // Release is half the note duration
+            const attackTime = 0.01;
+            const releaseTime = Math.max(0.1, note.duration * 0.5); 
             const noteEndTime = startTime + note.duration;
+            const finalEndTime = noteEndTime + releaseTime + 0.1;
 
             gainNode.gain.setValueAtTime(0, this.audioContext.currentTime);
             gainNode.gain.linearRampToValueAtTime(velocity, startTime + attackTime);
             gainNode.gain.setValueAtTime(velocity, noteEndTime);
-            gainNode.gain.linearRampToValueAtTime(0, noteEndTime + releaseTime);
+            gainNode.gain.linearRampToValueAtTime(0, finalEndTime);
             
             source.start(startTime);
-            source.stop(noteEndTime + releaseTime + 0.1); // Stop after release
+            source.stop(finalEndTime);
         });
     }
 
@@ -163,7 +164,6 @@ export class AcousticGuitarSoloSampler {
             return { buffer: sampleBuffer, midi: closestMidi };
         }
         
-        // Fallback to pluck or pick if the desired technique is not available
         return { buffer: techSamples.pluck || techSamples.pick || null, midi: closestMidi };
     }
 
