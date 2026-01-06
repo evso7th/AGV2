@@ -1,5 +1,6 @@
 
-import type { FractalEvent, Mood, Genre, Technique, BassSynthParams, InstrumentType, MelodyInstrument, AccompanimentInstrument, ResonanceMatrix, InstrumentHints, AccompanimentTechnique, GhostChord, SfxRule, V1MelodyInstrument, V2MelodyInstrument, BlueprintPart, InstrumentationRules, InstrumentBehaviorRules, BluesMelody, IntroRules, InstrumentPart, DrumKit } from './fractal';
+
+import type { FractalEvent, Mood, Genre, Technique, BassSynthParams, InstrumentType, MelodyInstrument, AccompanimentInstrument, ResonanceMatrix, InstrumentHints, AccompanimentTechnique, GhostChord, SfxRule, V1MelodyInstrument, V2MelodyInstrument, BlueprintPart, InstrumentationRules, InstrumentBehaviorRules, BluesMelody, IntroRules, InstrumentPart, DrumKit, BluesGuitarRiff } from './fractal';
 import { ElectronicK, TraditionalK, AmbientK, MelancholicMinorK } from './resonance-matrices';
 import { getScaleForMood, STYLE_DRUM_PATTERNS, createAccompanimentAxiom, PERCUSSION_SETS, TEXTURE_INSTRUMENT_WEIGHTS_BY_MOOD, getAccompanimentTechnique, createBassFill, createDrumFill, AMBIENT_ACCOMPANIMENT_WEIGHTS, chooseHarmonyInstrument, mutateBassPhrase, createMelodyMotif, createDrumAxiom, generateGhostHarmonyTrack, mutateAccompanimentPhrase, createAmbientBassAxiom, createHarmonyAxiom, generateIntroSequence, DEGREE_TO_SEMITONE } from './music-theory';
 import { BlueprintNavigator, type NavigationInfo } from './blueprint-navigator';
@@ -9,6 +10,7 @@ import { PARANOID_STYLE_RIFF } from './assets/rock-riffs';
 import { BLUES_BASS_RIFFS } from './assets/blues-bass-riffs';
 import { NEUTRAL_BLUES_BASS_RIFFS } from './assets/neutral-blues-riffs';
 import { BLUES_MELODY_RIFFS, type BluesRiffDegree, type BluesRiffEvent, type BluesMelodyPhrase } from './assets/blues-melody-riffs';
+import { BLUES_GUITAR_RIFFS, BLUES_GUITAR_VOICINGS } from './assets/blues-guitar-riffs';
 import { BLUES_DRUM_RIFFS } from './assets/blues-drum-riffs';
 import { DRUM_KITS } from './assets/drum-kits';
 
@@ -127,6 +129,12 @@ export class FractalMusicEngine {
   private currentBassRiffIndex: number = 0;
   private currentMelodyId: string | null = null;
   
+  // #ЗАЧЕМ: Добавляем новое свойство для хранения ID текущего гитарного риффа.
+  // #ЧТО: Это свойство будет использоваться для выбора сложной гитарной аранжировки
+  //      из библиотеки `BLUES_GUITAR_RIFFS`.
+  // #СВЯЗИ: Заменяет `currentMelodyId`, так как теперь мы работаем с полными риффами.
+  private currentGuitarRiffId: string | null = null;
+
 
   constructor(config: EngineConfig) {
     this.config = { ...config };
@@ -139,7 +147,7 @@ export class FractalMusicEngine {
     const allDrumRiffs = Object.values(BLUES_DRUM_RIFFS).flat();
     this.shuffledDrumRiffIndices = this.random.shuffle(Array.from({ length: allDrumRiffs.length }, (_, i) => i));
 
-    this.shuffledMelodyIDs = this.random.shuffle(BLUES_MELODY_RIFFS.map(m => m.id));
+    this.shuffledMelodyIDs = this.random.shuffle(BLUES_GUITAR_RIFFS.map(m => m.id)); // ИЗМЕНЕНО: Используем новую библиотеку
   }
 
   public get tempo(): number { return this.config.tempo; }
@@ -187,7 +195,7 @@ export class FractalMusicEngine {
 
     this.currentDrumRiffIndex = this.baseDrumRiffIndex;
     this.currentBassRiffIndex = this.baseBassRiffIndex;
-    this.currentMelodyId = this.baseMelodyId;
+    this.currentGuitarRiffId = this.baseMelodyId; // ИЗМЕНЕНО: Используем новое свойство
 
 
     const blueprint = await getBlueprint(this.config.genre, this.config.mood);
@@ -279,6 +287,7 @@ export class FractalMusicEngine {
         }
     }
 
+    // Fallback just in case, though it should not be reached with correct weights
     return options[options.length - 1].name;
   }
 
@@ -473,19 +482,19 @@ export class FractalMusicEngine {
         if (isSoloSection) {
             this.currentDrumRiffIndex = this.random.nextInt(allDrumRiffs.length);
             this.currentBassRiffIndex = this.random.nextInt(allBassRiffs.length);
-            const soloMelody = this.selectUniqueBluesMelody(this.config.mood, this.baseMelodyId ?? undefined);
-            this.currentMelodyId = soloMelody?.id ?? this.baseMelodyId;
+            const soloMelody = this.selectUniqueBluesGuitarRiff(this.config.mood, this.baseMelodyId ?? undefined);
+            this.currentGuitarRiffId = soloMelody?.id ?? this.baseMelodyId;
         } else {
             this.currentDrumRiffIndex = this.baseDrumRiffIndex;
             this.currentBassRiffIndex = this.baseBassRiffIndex;
-            this.currentMelodyId = this.baseMelodyId;
+            this.currentGuitarRiffId = this.baseMelodyId;
         }
         
         const logDrumRiffId = `index_${this.currentDrumRiffIndex}`;
         const logBassRiffId = `index_${this.currentBassRiffIndex}`;
-        const logMelodyId = this.currentMelodyId || 'N/A';
+        const logMelodyId = this.currentGuitarRiffId || 'N/A';
         console.log(
-            `%c[FME Part Info] Active DNA for part ${navInfo.currentPart.name}:\n  - Drum Riff ID: ${logDrumRiffId}\n  - Bass Riff ID: ${logBassRiffId}\n  - Melody ID: ${logMelodyId}`,
+            `%c[FME Part Info] Active DNA for part ${navInfo.currentPart.name}:\n  - Drum Riff ID: ${logDrumRiffId}\n  - Bass Riff ID: ${logBassRiffId}\n  - Guitar Riff ID: ${logMelodyId}`,
             'color: cyan; font-weight: bold;'
         );
     }
@@ -687,7 +696,7 @@ export class FractalMusicEngine {
     return events;
   }
   
-  private selectUniqueBluesMelody(mood: Mood, excludeId?: string): BluesMelody | null {
+  private selectUniqueBluesGuitarRiff(mood: Mood, excludeId?: string): BluesGuitarRiff | null {
     const moodMap = {
         light: ['joyful', 'epic', 'enthusiastic'],
         dark: ['dark', 'melancholic', 'gloomy', 'anxious'],
@@ -704,124 +713,120 @@ export class FractalMusicEngine {
 
     if (!moodCategory) return null;
 
-    let suitableMelodies = BLUES_MELODY_RIFFS.filter(m => 
+    let suitableRiffs = BLUES_GUITAR_RIFFS.filter(m => 
         m.moods.some(m_mood => moodMap[moodCategory!].includes(m_mood))
     );
     
-    if (suitableMelodies.length === 0) {
-        console.warn(`[BluesMelody] No suitable melodies found for mood category: ${moodCategory}. Falling back to all.`);
-        suitableMelodies = BLUES_MELODY_RIFFS;
+    if (suitableRiffs.length === 0) {
+        suitableRiffs = BLUES_GUITAR_RIFFS;
     }
     
-    let selectableMelodies = suitableMelodies.filter(m => m.id !== excludeId);
-    if (selectableMelodies.length === 0 && suitableMelodies.length > 0) {
-        selectableMelodies = suitableMelodies;
+    let selectableRiffs = suitableRiffs.filter(m => m.id !== excludeId);
+    if (selectableRiffs.length === 0 && suitableRiffs.length > 0) {
+        selectableRiffs = suitableRiffs;
     }
 
-    if (selectableMelodies.length === 0) return null;
+    if (selectableRiffs.length === 0) return null;
 
-    const selectedMelody = selectableMelodies[this.random.nextInt(selectableMelodies.length)];
-    return selectedMelody;
+    return selectableRiffs[this.random.nextInt(selectableRiffs.length)];
   }
 
   private generateBluesMelodyChorus(chorusChords: GhostChord[], mood: Mood, random: { next: () => number; nextInt: (max: number) => number }, registerHint?: 'low' | 'mid' | 'high', isSolo: boolean = false): { events: FractalEvent[], log: string } {
     const chorusEvents: FractalEvent[] = [];
     
-    let selectedMelodyId = this.currentMelodyId;
-    if (isSolo) {
-        const soloMelody = this.selectUniqueBluesMelody(mood, this.baseMelodyId ?? undefined);
-        selectedMelodyId = soloMelody?.id ?? this.baseMelodyId;
+    const selectedGuitarRiff = this.selectUniqueBluesGuitarRiff(mood, isSolo ? this.baseMelodyId : undefined) ?? BLUES_GUITAR_RIFFS[0];
+
+    if (!selectedGuitarRiff) {
+        console.warn(`[BluesGuitarChorus] No guitar riff could be selected for mood: ${mood}.`);
+        return { events: [], log: "No riff selected." };
     }
     
-    const selectedMelody = BLUES_MELODY_RIFFS.find(m => m.id === selectedMelodyId);
-
-    if (!selectedMelody) {
-        console.warn(`[BluesMelodyChorus] No melody could be selected or found for ID: ${selectedMelodyId}.`);
-        return { events: [], log: "No melody selected." };
-    }
-
+    this.currentGuitarRiffId = selectedGuitarRiff.id;
 
     const barDurationInBeats = 4;
     const ticksPerBeat = 3;
     
-    let octaveShift = 12 * 2;
-    if (registerHint === 'mid') octaveShift = 12 * 3;
+    let octaveShift = 12 * 3; // Default to mid register
     if (registerHint === 'high') octaveShift = 12 * 4;
+    if (registerHint === 'low') octaveShift = 12 * 2;
 
     for (let barIndex = 0; barIndex < 12; barIndex++) {
         const absoluteBar = (chorusChords[0]?.bar ?? 0) + barIndex;
         const barChord = chorusChords.find(c => absoluteBar >= c.bar && absoluteBar < (c.bar + c.durationBars));
 
-        if (!barChord) {
-            console.warn(`[BluesMelodyChorus] No chord found for bar ${barIndex} (absolute: ${absoluteBar}).`);
-            continue;
-        };
+        if (!barChord) continue;
 
         const chordRoot = barChord.rootNote;
-        let phrase: BluesMelodyPhrase;
-
-        const rootOfChorus = this.ghostHarmonyTrack.find(c => c.bar === (this.epoch - (this.epoch % 12)))?.rootNote ?? chordRoot;
-        const step = (chordRoot - rootOfChorus + 12) % 12;
-        const IV_STEP = 5;
-        const V_STEP = 7;
         
-        if (barIndex === 11) {
-            phrase = selectedMelody.phraseTurnaround;
-        } else if (step === IV_STEP) {
-            phrase = selectedMelody.phraseIV;
-        } else if (step === V_STEP) {
-            phrase = selectedMelody.phraseV;
-        } else {
-            phrase = selectedMelody.phraseI;
+        const strumPattern = selectedGuitarRiff.strum.find(s => s.bars.includes(barIndex + 1));
+        const fingerstylePattern = selectedGuitarRiff.fingerstyle.find(f => f.bars.includes(barIndex + 1));
+        
+        // Strumming
+        if (strumPattern) {
+            const voicing = BLUES_GUITAR_VOICINGS[strumPattern.voicingName];
+            if(voicing) {
+                const strumDelay = 0.02 + random.next() * 0.01;
+                voicing.forEach((noteMidi, i) => {
+                    chorusEvents.push({
+                        type: 'melody', note: noteMidi,
+                        time: (barIndex * barDurationInBeats) + (i * strumDelay),
+                        duration: 1.5,
+                        weight: 0.8 + (random.next() * 0.1),
+                        technique: 'pick', dynamics: 'f', phrasing: 'staccato', params: {}
+                    });
+                });
+            }
+        } 
+        // Fingerpicking
+        else if (fingerstylePattern) {
+            const voicing = BLUES_GUITAR_VOICINGS[fingerstylePattern.voicingName];
+             if(voicing) {
+                const arpeggioDelay = 0.12 + random.next() * 0.05;
+                 voicing.slice(0, 5).forEach((noteMidi, i) => {
+                    chorusEvents.push({
+                        type: 'melody', note: noteMidi,
+                        time: (barIndex * barDurationInBeats) + (i * arpeggioDelay),
+                        duration: 1.0,
+                        weight: 0.75 + (random.next() * 0.1),
+                        technique: 'pluck', dynamics: 'mf', phrasing: 'legato', params: {}
+                    });
+                });
+            }
         }
+        // Solo
+        else {
+             let phrase: BluesSoloPhrase | undefined;
+            const rootOfChorus = this.ghostHarmonyTrack.find(c => c.bar === (this.epoch - (this.epoch % 12)))?.rootNote ?? chordRoot;
+            const step = (chordRoot - rootOfChorus + 12) % 12;
+            
+            if (barIndex === 11) phrase = selectedGuitarRiff.solo.Turnaround;
+            else if (step === 5) phrase = selectedGuitarRiff.solo.IV;
+            else if (step === 7) phrase = selectedGuitarRiff.solo.V;
+            else phrase = selectedGuitarRiff.solo.I;
 
-        const playStyle = random.next();
-        if (playStyle < 0.2 && phrase.length > 2) { // Strum
-            const strumDelay = 0.02 + random.next() * 0.02;
-            const sortedPhrase = [...phrase].sort((a,b) => a.t - b.t);
+            if (phrase) {
+                for (const event of phrase) {
+                    const noteMidi = chordRoot + DEGREE_TO_SEMITONE[event.deg] + octaveShift;
+                    // #ЗАЧЕМ: Добавляем наслоение нот в соло
+                    // #ЧТО: Увеличиваем длительность нот в 2.5 раза, чтобы они перекрывались
+                    const duration = isSolo ? ((event.d || 2) / ticksPerBeat) * 2.5 : (event.d || 2) / ticksPerBeat;
 
-            sortedPhrase.forEach((event, i) => {
-                 const noteMidi = chordRoot + DEGREE_TO_SEMITONE[event.deg] + octaveShift;
-                 chorusEvents.push({
-                    type: 'melody', note: noteMidi,
-                    time: (barIndex * barDurationInBeats) + (event.t / ticksPerBeat) + (i * strumDelay),
-                    duration: 0.5,
-                    weight: 0.8 + (random.next() * 0.1),
-                    technique: 'pick', dynamics: 'f', phrasing: 'staccato', params: {}
-                 });
-            });
-        } else if (playStyle < 0.4 && phrase.length > 2) { // Fingerpicking
-            const arpeggioDelay = 0.1 + random.next() * 0.1;
-            phrase.forEach((event, i) => {
-                const noteMidi = chordRoot + DEGREE_TO_SEMITONE[event.deg] + octaveShift;
-                chorusEvents.push({
-                    type: 'melody', note: noteMidi,
-                    time: (barIndex * barDurationInBeats) + (i * arpeggioDelay),
-                    duration: isSolo ? 1.2 : 0.8, // Longer duration for solos
-                    weight: 0.75 + (random.next() * 0.1),
-                    technique: 'pluck', dynamics: 'mf', phrasing: 'legato', params: {}
-                });
-            });
-        } else { // Normal Lead
-            for (const event of phrase) {
-                const noteMidi = chordRoot + DEGREE_TO_SEMITONE[event.deg] + octaveShift;
-                chorusEvents.push({
-                    type: 'melody', note: noteMidi,
-                    time: (barIndex * barDurationInBeats) + (event.t / ticksPerBeat),
-                    duration: isSolo ? ((event.d || 2) / ticksPerBeat) * 1.5 : (event.d || 2) / ticksPerBeat,
-                    weight: 0.85,
-                    technique: 'pick', dynamics: 'f', phrasing: 'legato', params: {}
-                });
+                    chorusEvents.push({
+                        type: 'melody', note: noteMidi,
+                        time: (barIndex * barDurationInBeats) + (event.t / ticksPerBeat),
+                        duration: duration,
+                        weight: 0.9,
+                        technique: 'pick', dynamics: 'f', phrasing: 'legato', params: {}
+                    });
+                }
             }
         }
     }
     
-    let mutationLog = "None";
-    
-    const log = `ID: ${selectedMelody.id}. Mutation: ${mutationLog}.`;
-    
+    const log = `RiffID: ${selectedGuitarRiff.id}.`;
     return { events: chorusEvents, log };
 }
 
 
 }
+
