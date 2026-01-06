@@ -1,6 +1,6 @@
 
 
-import type { FractalEvent, Mood, Genre, Technique, BassSynthParams, InstrumentType, MelodyInstrument, AccompanimentInstrument, ResonanceMatrix, InstrumentHints, AccompanimentTechnique, GhostChord, SfxRule, V1MelodyInstrument, V2MelodyInstrument, BlueprintPart, InstrumentationRules, InstrumentBehaviorRules, BluesMelody, IntroRules, InstrumentPart, DrumKit, BluesGuitarRiff, BluesSoloPhrase } from './fractal';
+import type { FractalEvent, Mood, Genre, Technique, BassSynthParams, InstrumentType, MelodyInstrument, AccompanimentInstrument, ResonanceMatrix, InstrumentHints, AccompanimentTechnique, GhostChord, SfxRule, V1MelodyInstrument, V2MelodyInstrument, BlueprintPart, InstrumentationRules, InstrumentBehaviorRules, BluesMelody, IntroRules, InstrumentPart, DrumKit, BluesGuitarRiff, BluesSoloPhrase, BluesRiffDegree } from './fractal';
 import { ElectronicK, TraditionalK, AmbientK, MelancholicMinorK } from './resonance-matrices';
 import { BlueprintNavigator, type NavigationInfo } from './blueprint-navigator';
 import { getBlueprint } from './blueprints';
@@ -8,10 +8,10 @@ import { V2_PRESETS } from './presets-v2';
 import { PARANOID_STYLE_RIFF } from './assets/rock-riffs';
 import { BLUES_BASS_RIFFS } from './assets/blues-bass-riffs';
 import { NEUTRAL_BLUES_BASS_RIFFS } from './assets/neutral-blues-riffs';
-import { BLUES_MELODY_RIFFS } from './assets/blues-melody-riffs';
 import { BLUES_GUITAR_RIFFS, BLUES_GUITAR_VOICINGS } from './assets/blues-guitar-riffs';
 import { BLUES_DRUM_RIFFS } from './assets/blues-drum-riffs';
 import { DRUM_KITS } from './assets/drum-kits';
+import { getScaleForMood, generateGhostHarmonyTrack, createDrumAxiom, createAmbientBassAxiom, createAccompanimentAxiom, createHarmonyAxiom, createMelodyMotif, mutateBassPhrase, createBassFill, createDrumFill, chooseHarmonyInstrument, DEGREE_TO_SEMITONE } from './music-theory';
 
 
 export type Branch = {
@@ -741,7 +741,7 @@ export class FractalMusicEngine {
     
     let octaveShift = 12 * 3;
     if (registerHint === 'high') octaveShift = 12 * 4;
-    if (registerHint === 'low') octaveShift = 12 * 2;
+    if (registerHint === 'low') octaveShift = 12 * 3;
     
     for (let barIndex = 0; barIndex < 12; barIndex++) {
         const absoluteBar = (chorusChords[0]?.bar ?? 0) + barIndex;
@@ -762,7 +762,7 @@ export class FractalMusicEngine {
                 const strumDelay = 0.02 + random.next() * 0.01;
                 voicing.forEach((noteMidi, i) => {
                     let finalNote = noteMidi;
-                    if (finalNote > 81) finalNote -= 12;
+                    if (finalNote > 84) finalNote -= 12; 
                     if (finalNote < 52) finalNote += 12;
                     chorusEvents.push({
                         type: 'melody', note: finalNote,
@@ -780,7 +780,7 @@ export class FractalMusicEngine {
                 const arpeggioDelay = 0.12 + random.next() * 0.05;
                  voicing.slice(0, 5).forEach((noteMidi, i) => {
                     let finalNote = noteMidi;
-                    if (finalNote > 81) finalNote -= 12;
+                    if (finalNote > 84) finalNote -= 12;
                     if (finalNote < 52) finalNote += 12;
                     chorusEvents.push({
                         type: 'melody', note: finalNote,
@@ -805,7 +805,7 @@ export class FractalMusicEngine {
             if (phrase) {
                 for (const event of phrase) {
                     let noteMidi = chordRoot + DEGREE_TO_SEMITONE[event.deg] + octaveShift;
-                    if (noteMidi > 81) noteMidi -= 12;
+                    if (noteMidi > 84) noteMidi -= 12;
                     if (noteMidi < 52) noteMidi += 12;
 
                     const duration = isSolo ? (((event.d || 2) / ticksPerBeat) * 2.5) : ((event.d || 2) / ticksPerBeat);
