@@ -3,7 +3,7 @@
 **НАЧАЛО ПРОТОКОЛА**
 
 **Главное Правило: Обязательное Чтение Протоколов.**
-Перед каждым ответом, я обязан программно перечитать пять файлов: `omega3.txt`, `SOCIAL_CONTRACT.md`, `concept_and_recommendations.txt`, `src/lib/project_history.md` и этот `SYSTEM_PROTOCOL.md`. Я ОБЯЗАН действовать в соответствии с архитектурой "Маг и Фамилиар".
+Перед каждым ответом, я обязан программно перечитать шесть файлов: `omega3.txt`, `SOCIAL_CONTRACT.md`, `concept_and_recommendations.txt`, `src/lib/project_history.md`, `src/lib/v2_architecture_analysis.md` и этот `SYSTEM_PROTOCOL.md`. Я ОБЯЗАН действовать в соответствии с архитектурой "Маг и Фамилиар".
 
 ---
 ### Часть 0: Фундаментальные Принципы
