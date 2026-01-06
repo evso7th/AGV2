@@ -1,6 +1,6 @@
 
 
-import type { FractalEvent, Mood, Genre, Technique, BassSynthParams, InstrumentType, MelodyInstrument, AccompanimentInstrument, ResonanceMatrix, InstrumentHints, AccompanimentTechnique, GhostChord, SfxRule, V1MelodyInstrument, V2MelodyInstrument, BlueprintPart, InstrumentationRules, InstrumentBehaviorRules, BluesMelody, IntroRules, InstrumentPart, DrumKit, BluesGuitarRiff } from './fractal';
+import type { FractalEvent, Mood, Genre, Technique, BassSynthParams, InstrumentType, MelodyInstrument, AccompanimentInstrument, ResonanceMatrix, InstrumentHints, AccompanimentTechnique, GhostChord, SfxRule, V1MelodyInstrument, V2MelodyInstrument, BlueprintPart, InstrumentationRules, InstrumentBehaviorRules, BluesMelody, IntroRules, InstrumentPart, DrumKit, BluesGuitarRiff, BluesSoloPhrase } from './fractal';
 import { ElectronicK, TraditionalK, AmbientK, MelancholicMinorK } from './resonance-matrices';
 import { getScaleForMood, STYLE_DRUM_PATTERNS, createAccompanimentAxiom, PERCUSSION_SETS, TEXTURE_INSTRUMENT_WEIGHTS_BY_MOOD, getAccompanimentTechnique, createBassFill, createDrumFill, AMBIENT_ACCOMPANIMENT_WEIGHTS, chooseHarmonyInstrument, mutateBassPhrase, createMelodyMotif, createDrumAxiom, generateGhostHarmonyTrack, mutateAccompanimentPhrase, createAmbientBassAxiom, createHarmonyAxiom, generateIntroSequence, DEGREE_TO_SEMITONE } from './music-theory';
 import { BlueprintNavigator, type NavigationInfo } from './blueprint-navigator';
@@ -127,12 +127,6 @@ export class FractalMusicEngine {
   
   private currentDrumRiffIndex: number = 0;
   private currentBassRiffIndex: number = 0;
-  private currentMelodyId: string | null = null;
-  
-  // #ЗАЧЕМ: Добавляем новое свойство для хранения ID текущего гитарного риффа.
-  // #ЧТО: Это свойство будет использоваться для выбора сложной гитарной аранжировки
-  //      из библиотеки `BLUES_GUITAR_RIFFS`.
-  // #СВЯЗИ: Заменяет `currentMelodyId`, так как теперь мы работаем с полными риффами.
   private currentGuitarRiffId: string | null = null;
 
 
@@ -746,9 +740,10 @@ export class FractalMusicEngine {
     const barDurationInBeats = 4;
     const ticksPerBeat = 3;
     
-    let octaveShift = 12 * 3; // Default to mid register
-    if (registerHint === 'high') octaveShift = 12 * 4;
-    if (registerHint === 'low') octaveShift = 12 * 2;
+    // #ИСПРАВЛЕНО (ПЛАН 843): Базовая октава поднята с 3-й на 4-ю.
+    let octaveShift = 12 * 4;
+    if (registerHint === 'high') octaveShift = 12 * 5;
+    if (registerHint === 'low') octaveShift = 12 * 3;
 
     for (let barIndex = 0; barIndex < 12; barIndex++) {
         const absoluteBar = (chorusChords[0]?.bar ?? 0) + barIndex;
@@ -761,8 +756,11 @@ export class FractalMusicEngine {
         const strumPattern = selectedGuitarRiff.strum.find(s => s.bars.includes(barIndex + 1));
         const fingerstylePattern = selectedGuitarRiff.fingerstyle.find(f => f.bars.includes(barIndex + 1));
         
-        // Strumming
-        if (strumPattern) {
+        // --- Логика выбора техники ---
+        const techniqueChoice = random.next();
+        
+        // Strumming (20% chance)
+        if (techniqueChoice < 0.2 && strumPattern) {
             const voicing = BLUES_GUITAR_VOICINGS[strumPattern.voicingName];
             if(voicing) {
                 const strumDelay = 0.02 + random.next() * 0.01;
@@ -777,8 +775,8 @@ export class FractalMusicEngine {
                 });
             }
         } 
-        // Fingerpicking
-        else if (fingerstylePattern) {
+        // Fingerpicking (20% chance)
+        else if (techniqueChoice < 0.4 && fingerstylePattern) {
             const voicing = BLUES_GUITAR_VOICINGS[fingerstylePattern.voicingName];
              if(voicing) {
                 const arpeggioDelay = 0.12 + random.next() * 0.05;
@@ -793,7 +791,7 @@ export class FractalMusicEngine {
                 });
             }
         }
-        // Solo
+        // Solo (60% chance)
         else {
              let phrase: BluesSoloPhrase | undefined;
             const rootOfChorus = this.ghostHarmonyTrack.find(c => c.bar === (this.epoch - (this.epoch % 12)))?.rootNote ?? chordRoot;
@@ -830,3 +828,6 @@ export class FractalMusicEngine {
 
 }
 
+
+
+    
