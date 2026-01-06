@@ -101,10 +101,12 @@ export class MelodySynthManager {
         }
     }
 
-    public schedule(events: FractalEvent[], barStartTime: number, tempo: number, instrumentHint?: AccompanimentInstrument, composerControlsInstruments: boolean = true) {
+    public schedule(events: FractalEvent[], barStartTime: number, tempo: number, barCount: number, instrumentHint?: AccompanimentInstrument, composerControlsInstruments: boolean = true) {
         if (!this.isInitialized) return;
         const instrumentToPlay = (composerControlsInstruments && instrumentHint) ? instrumentHint : this.activeInstrumentName;
         if (instrumentToPlay === 'none' || !(instrumentToPlay in SYNTH_PRESETS)) return;
+
+        console.log(`%c[MelodyManagerV1 @ Bar ${barCount}] Instrument: ${instrumentToPlay} | Scheduling ${events.length} notes...`, 'color: #FFC0CB;');
 
         const beatDuration = 60 / tempo;
         const notes: Note[] = events.map(event => ({ midi: event.note, time: event.time * beatDuration, duration: event.duration * beatDuration, velocity: event.weight }));

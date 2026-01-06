@@ -55,7 +55,7 @@ export class AccompanimentSynthManagerV2 {
         }
     }
 
-    public async schedule(events: FractalEvent[], barStartTime: number, tempo: number, instrumentHint?: string) {
+    public async schedule(events: FractalEvent[], barStartTime: number, tempo: number, barCount: number, instrumentHint?: string) {
         // #ЗАЧЕМ: Этот блок транслирует старые названия V1 в новые V2.
         // #ЧТО: Он проверяет, есть ли `instrumentHint` в карте `V1_TO_V2_PRESET_MAP`.
         //      Если есть, используется V2-название. Если нет, используется оригинальный hint.
@@ -81,7 +81,7 @@ export class AccompanimentSynthManagerV2 {
             const noteOnTime = barStartTime + (event.time * beatDuration);
             const noteOffTime = noteOnTime + (event.duration * beatDuration);
             
-            console.log(`%c[AccompanimentManagerV2] Scheduling Note: MIDI=${event.note}, On=${noteOnTime.toFixed(2)}, Off=${noteOffTime.toFixed(2)}`, 'color: #90EE90;');
+            console.log(`%c[AccompManagerV2 @ Bar ${barCount}] Instrument: ${this.activePresetName} | Scheduling Note: MIDI=${event.note}, On=${noteOnTime.toFixed(2)}, Off=${noteOffTime.toFixed(2)}`, 'color: #90EE90;');
 
             this.instrument.noteOn(event.note, noteOnTime);
             this.instrument.noteOff(event.note, noteOffTime);

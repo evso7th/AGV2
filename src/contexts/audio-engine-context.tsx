@@ -49,7 +49,7 @@ type WorkerMessage = {
 const VOICE_BALANCE: Record<InstrumentPart, number> = {
   bass: 1.0, melody: 0.7, accompaniment: 0.6, drums: 1.0,
   effects: 0.6, sparkles: 0.7, piano: 1.0, violin: 0.8, flute: 0.8, guitarChords: 0.9,
-  acousticGuitarSolo: 0.9, blackAcoustic: 0.9, sfx: 0.8, harmony: 0.8, electricGuitar: 0.9,
+  acousticGuitarSolo: 0.9, blackAcoustic: 0.9, sfx: 0.8, harmony: 0.8,
 };
 
 const EQ_FREQUENCIES = [60, 125, 250, 500, 1000, 2000, 4000];
@@ -108,7 +108,7 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
   
   const masterGainNodeRef = useRef<GainNode | null>(null);
   const gainNodesRef = useRef<Record<Exclude<InstrumentPart, 'pads' | 'effects'>, GainNode | null>>({
-    bass: null, melody: null, accompaniment: null, drums: null, sparkles: null, piano: null, violin: null, flute: null, guitarChords: null, acousticGuitarSolo: null, blackAcoustic: null, sfx: null, harmony: null, electricGuitar: null
+    bass: null, melody: null, accompaniment: null, drums: null, sparkles: null, piano: null, violin: null, flute: null, guitarChords: null, acousticGuitarSolo: null, blackAcoustic: null, sfx: null, harmony: null,
   });
 
   const eqNodesRef = useRef<BiquadFilterNode[]>([]);
@@ -237,29 +237,34 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
     if (accompanimentEvents.length > 0) {
         if (useMelodyV2) {
             if (accompanimentManagerV2Ref.current) {
-                accompanimentManagerV2Ref.current.schedule(accompanimentEvents, barStartTime, tempo, instrumentHints?.accompaniment as keyof typeof V2_PRESETS);
+                accompanimentManagerV2Ref.current.schedule(accompanimentEvents, barStartTime, tempo, barCount, instrumentHints?.accompaniment as keyof typeof V2_PRESETS);
             }
         } else {
             if (accompanimentManagerRef.current) {
-                accompanimentManagerRef.current.schedule(accompanimentEvents, barStartTime, tempo, instrumentHints?.accompaniment);
+                accompanimentManagerRef.current.schedule(accompanimentEvents, barStartTime, tempo, barCount, instrumentHints?.accompaniment);
             }
         }
     }
     
     if (melodyEvents.length > 0) {
+        const noteString = melodyEvents.map(e => e.note).join(', ');
+        console.log(`%c[Melody Log @ Bar ${barCount}] Instrument: ${instrumentHints?.melody || (useMelodyV2 ? 'V2 Synth' : 'V1 Synth')} | Notes: [${noteString}]`, 'color: #FFD700;');
+
         if (useMelodyV2) {
             if (melodyManagerV2Ref.current) {
                 melodyManagerV2Ref.current.schedule(melodyEvents, barStartTime, tempo, instrumentHints?.melody as keyof typeof V2_PRESETS);
             }
         } else {
             if (melodyManagerRef.current) {
-                melodyManagerRef.current.schedule(melodyEvents, barStartTime, tempo, instrumentHints?.melody);
+                melodyManagerRef.current.schedule(melodyEvents, barStartTime, tempo, barCount, instrumentHints?.melody);
             }
         }
     }
     
     if (blackGuitarSamplerRef.current && blackAcousticEvents.length > 0) {
-        const notes = blackAcousticEvents.map(e => ({ midi: e.note, time: e.time * (60 / tempo), duration: e.duration * (60 / tempo), velocity: e.weight }));
+        const noteString = blackAcousticEvents.map(e => e.note).join(', ');
+        console.log(`%c[Melody Log @ Bar ${barCount}] Instrument: blackAcoustic | Notes: [${noteString}]`, 'color: #D2B48C;');
+        const notes = blackAcousticEvents.map(e => ({ midi: e.note, time: e.time, duration: e.duration, velocity: e.weight }));
         blackGuitarSamplerRef.current.schedule(notes, barStartTime);
     }
 
@@ -300,9 +305,9 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
                     }
 
                 } else if (type === 'HARMONY_SCORE_READY' && payload && 'events' in payload) {
-                     const { events, barDuration, instrumentHints } = payload;
-                     if(events && barDuration && settingsRef.current){
-                        scheduleEvents(events, nextBarTimeRef.current, settingsRef.current.bpm, -1, instrumentHints);
+                     const { events, barDuration, instrumentHints, barCount } = payload;
+                     if(events && barDuration && settingsRef.current && barCount !== undefined){
+                        scheduleEvents(events, nextBarTimeRef.current, settingsRef.current.bpm, barCount, instrumentHints);
                     }
                 } else if (type === 'sparkle' && payload && 'params' in payload && 'time' in payload) {
                     const { mood, genre } = (payload as FractalEvent).params as { mood: Mood, genre: Genre };
@@ -348,7 +353,7 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
         }
 
         if (!gainNodesRef.current.bass) {
-            const parts: Exclude<InstrumentPart, 'pads' | 'effects'>[] = ['bass', 'melody', 'accompaniment', 'drums', 'sparkles', 'piano', 'violin', 'flute', 'guitarChords', 'acousticGuitarSolo', 'blackAcoustic', 'sfx', 'harmony', 'electricGuitar'];
+            const parts: Exclude<InstrumentPart, 'pads' | 'effects'>[] = ['bass', 'melody', 'accompaniment', 'drums', 'sparkles', 'piano', 'violin', 'flute', 'guitarChords', 'acousticGuitarSolo', 'blackAcoustic', 'sfx', 'harmony'];
             parts.forEach(part => {
                 gainNodesRef.current[part] = context.createGain();
                 gainNodesRef.current[part]!.connect(masterGainNodeRef.current!);
@@ -423,7 +428,7 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
     } finally {
         setIsInitializing(false);
     }
-  }, [isInitialized, isInitializing, toast]);
+  }, [isInitialized, isInitializing, toast, scheduleEvents]);
 
   const scheduleNextImpulse = useCallback(() => {
     if (impulseTimerRef.current) {

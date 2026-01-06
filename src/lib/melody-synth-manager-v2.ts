@@ -82,8 +82,6 @@ export class MelodySynthManagerV2 {
             const noteOnTime = barStartTime + (event.time * beatDuration);
             const noteOffTime = noteOnTime + (event.duration * beatDuration);
 
-            console.log(`%c[MelodyManagerV2] Scheduling Note: MIDI=${event.note}, On=${noteOnTime.toFixed(2)}, Off=${noteOffTime.toFixed(2)}`, 'color: #87CEFA;');
-
             this.instrument.noteOn(event.note, noteOnTime);
             this.instrument.noteOff(event.note, noteOffTime);
         });
