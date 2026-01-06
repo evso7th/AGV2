@@ -1,5 +1,4 @@
 
-
 import type { FractalEvent, Mood, Genre, Technique, BassSynthParams, InstrumentType, MelodyInstrument, AccompanimentInstrument, ResonanceMatrix, InstrumentHints, AccompanimentTechnique, GhostChord, SfxRule, V1MelodyInstrument, V2MelodyInstrument, BlueprintPart, InstrumentationRules, InstrumentBehaviorRules, BluesMelody, IntroRules, InstrumentPart, DrumKit } from './fractal';
 import { ElectronicK, TraditionalK, AmbientK, MelancholicMinorK } from './resonance-matrices';
 import { getScaleForMood, STYLE_DRUM_PATTERNS, createAccompanimentAxiom, PERCUSSION_SETS, TEXTURE_INSTRUMENT_WEIGHTS_BY_MOOD, getAccompanimentTechnique, createBassFill, createDrumFill, AMBIENT_ACCOMPANIMENT_WEIGHTS, chooseHarmonyInstrument, mutateBassPhrase, createMelodyMotif, createDrumAxiom, generateGhostHarmonyTrack, mutateAccompanimentPhrase, createAmbientBassAxiom, createHarmonyAxiom, generateIntroSequence, DEGREE_TO_SEMITONE } from './music-theory';
@@ -833,19 +832,46 @@ export class FractalMusicEngine {
             phrase = selectedMelody.phraseI;
         }
 
-        for (const event of phrase) {
-            const noteMidi = chordRoot + DEGREE_TO_SEMITONE[event.deg] + octaveShift;
-            chorusEvents.push({
-                type: 'melody',
-                note: noteMidi,
-                time: (barIndex * barDurationInBeats) + (event.t / ticksPerBeat),
-                duration: (event.d || 2) / ticksPerBeat,
-                weight: 0.85,
-                technique: 'pick',
-                dynamics: 'f',
-                phrasing: 'legato',
-                params: {}
+        // --- NEW LOGIC FOR ARPEGGIOS AND STRUMS ---
+        const playStyle = random.next();
+        if (playStyle < 0.2 && phrase.length > 2) { // 20% chance for strum
+            const strumDelay = 0.02 + random.next() * 0.02; // 20-40ms
+            const strumDirection = random.next() > 0.5 ? 1 : -1; // 1 for down, -1 for up
+            const sortedPhrase = [...phrase].sort((a,b) => strumDirection * (a.t - b.t));
+
+            sortedPhrase.forEach((event, i) => {
+                 const noteMidi = chordRoot + DEGREE_TO_SEMITONE[event.deg] + octaveShift;
+                 chorusEvents.push({
+                    type: 'melody', note: noteMidi,
+                    time: (barIndex * barDurationInBeats) + (event.t / ticksPerBeat) + (i * strumDelay),
+                    duration: 0.5, // Short duration for strummed notes
+                    weight: 0.8 + (random.next() * 0.1),
+                    technique: 'pick', dynamics: 'f', phrasing: 'staccato', params: {}
+                 });
             });
+        } else if (playStyle < 0.4 && phrase.length > 2) { // 20% chance for arpeggio
+            const arpeggioDelay = 0.1 + random.next() * 0.1; // 100-200ms
+            phrase.forEach((event, i) => {
+                const noteMidi = chordRoot + DEGREE_TO_SEMITONE[event.deg] + octaveShift;
+                chorusEvents.push({
+                    type: 'melody', note: noteMidi,
+                    time: (barIndex * barDurationInBeats) + (i * arpeggioDelay),
+                    duration: 0.8, // Longer duration for arpeggiated notes
+                    weight: 0.75 + (random.next() * 0.1),
+                    technique: 'pluck', dynamics: 'mf', phrasing: 'legato', params: {}
+                });
+            });
+        } else { // 60% chance for normal lead
+            for (const event of phrase) {
+                const noteMidi = chordRoot + DEGREE_TO_SEMITONE[event.deg] + octaveShift;
+                chorusEvents.push({
+                    type: 'melody', note: noteMidi,
+                    time: (barIndex * barDurationInBeats) + (event.t / ticksPerBeat),
+                    duration: (event.d || 2) / ticksPerBeat,
+                    weight: 0.85,
+                    technique: 'pick', dynamics: 'f', phrasing: 'legato', params: {}
+                });
+            }
         }
     }
     
@@ -885,10 +911,3 @@ export class FractalMusicEngine {
 
 
 }
-
-
-
-
-
-
-

@@ -1,8 +1,6 @@
 
 import type { Note, Technique } from "@/types/music";
 
-// #ЗАЧЕМ: Эта карта содержит полный список сэмплов для гитары 'black',
-//          чтобы обеспечить максимальное разнообразие звучания.
 const BLACK_GUITAR_ORD_SAMPLES: Record<string, string> = {
     'c6_p_rr2': '/assets/acoustic_guitar_samples/black/ord/twang_c6_p_rr2.ogg',
     'gb4_mf_rr1': '/assets/acoustic_guitar_samples/black/ord/twang_gb4_mf_rr1.ogg',
@@ -209,10 +207,66 @@ export class BlackGuitarSampler {
     private instruments = new Map<string, SamplerInstrument>();
     public isInitialized = false;
     private isLoading = false;
+    private preamp: GainNode;
+    
+    // --- FX NODES ---
+    private distortion: WaveShaperNode;
+    private delay: DelayNode;
+    private feedback: GainNode;
+    private chorusLFO: OscillatorNode;
+    private chorusDepth: GainNode;
+    private chorusDelay: DelayNode;
+    private fxChainInput: GainNode;
 
     constructor(audioContext: AudioContext, destination: AudioNode) {
         this.audioContext = audioContext;
         this.destination = destination;
+
+        this.fxChainInput = this.audioContext.createGain();
+
+        // 1. Distortion
+        this.distortion = this.audioContext.createWaveShaper();
+        this.distortion.curve = this.makeDistortionCurve(0.1); // Start with mild distortion
+
+        // 2. Chorus
+        this.chorusLFO = this.audioContext.createOscillator();
+        this.chorusDepth = this.audioContext.createGain();
+        this.chorusDelay = this.audioContext.createDelay(0.1);
+        this.chorusLFO.type = 'sine';
+        this.chorusLFO.frequency.value = 4; // Default rate
+        this.chorusDepth.gain.value = 0.005; // Default depth
+        this.chorusLFO.connect(this.chorusDepth);
+        this.chorusDepth.connect(this.chorusDelay.delayTime);
+        this.chorusLFO.start();
+        
+        // 3. Delay
+        this.delay = this.audioContext.createDelay(1.0);
+        this.feedback = this.audioContext.createGain();
+        this.delay.delayTime.value = 0.3;
+        this.feedback.gain.value = 0.2;
+
+        // Chain: input -> distortion -> chorus -> delay -> destination
+        this.fxChainInput.connect(this.distortion);
+        this.distortion.connect(this.chorusDelay); // Pass through chorus delay
+        this.chorusDelay.connect(this.delay);
+        this.delay.connect(this.feedback);
+        this.feedback.connect(this.delay); // Feedback loop
+        this.delay.connect(this.destination);
+        this.fxChainInput.connect(this.destination); // Dry signal
+    }
+
+    private makeDistortionCurve(amount: number): Float32Array {
+        const k = typeof amount === 'number' ? amount : 50;
+        const n_samples = 44100;
+        const curve = new Float32Array(n_samples);
+        const deg = Math.PI / 180;
+        let i = 0;
+        let x;
+        for ( ; i < n_samples; ++i ) {
+            x = i * 2 / n_samples - 1;
+            curve[i] = ( 3 + k ) * x * 20 * deg / ( Math.PI + k * Math.abs(x) );
+        }
+        return curve;
     }
 
     async init(): Promise<boolean> {
@@ -279,26 +333,15 @@ export class BlackGuitarSampler {
             source.buffer = buffer;
             
             const gainNode = this.audioContext.createGain();
+            gainNode.gain.value = note.velocity ?? 0.7;
             
             source.connect(gainNode);
-            gainNode.connect(this.destination); // Connect directly to the provided destination
+            gainNode.connect(this.fxChainInput); // Connect to the start of the FX chain
 
             const playbackRate = Math.pow(2, (note.midi - sampleMidi) / 12);
             source.playbackRate.value = playbackRate;
-
-            // --- ADSR ENVELOPE IMPLEMENTATION ---
-            const velocity = note.velocity ?? 0.7;
-            const attackTime = 0.015; // Fast attack for a picked guitar
-            const releaseTime = Math.max(0.2, note.duration * 0.8); // Natural decay
-            const noteEndTime = noteStartTime + note.duration;
-            const finalEndTime = noteEndTime + releaseTime;
-            
-            gainNode.gain.setValueAtTime(0, this.audioContext.currentTime);
-            gainNode.gain.linearRampToValueAtTime(velocity, noteStartTime + attackTime);
-            gainNode.gain.setTargetAtTime(0, noteEndTime, releaseTime / 3); // Exponential decay
             
             source.start(noteStartTime);
-            source.stop(finalEndTime);
         });
     }
 
@@ -343,6 +386,6 @@ export class BlackGuitarSampler {
     }
 
     public dispose() {
-        // No-op as the destination is managed externally
+        this.fxChainInput.disconnect();
     }
 }
