@@ -2,14 +2,13 @@
 
 import type { FractalEvent, Mood, Genre, Technique, BassSynthParams, InstrumentType, MelodyInstrument, AccompanimentInstrument, ResonanceMatrix, InstrumentHints, AccompanimentTechnique, GhostChord, SfxRule, V1MelodyInstrument, V2MelodyInstrument, BlueprintPart, InstrumentationRules, InstrumentBehaviorRules, BluesMelody, IntroRules, InstrumentPart, DrumKit, BluesGuitarRiff, BluesSoloPhrase } from './fractal';
 import { ElectronicK, TraditionalK, AmbientK, MelancholicMinorK } from './resonance-matrices';
-import { getScaleForMood, STYLE_DRUM_PATTERNS, createAccompanimentAxiom, PERCUSSION_SETS, TEXTURE_INSTRUMENT_WEIGHTS_BY_MOOD, getAccompanimentTechnique, createBassFill, createDrumFill, AMBIENT_ACCOMPANIMENT_WEIGHTS, chooseHarmonyInstrument, mutateBassPhrase, createMelodyMotif, createDrumAxiom, generateGhostHarmonyTrack, mutateAccompanimentPhrase, createAmbientBassAxiom, createHarmonyAxiom, generateIntroSequence, DEGREE_TO_SEMITONE } from './music-theory';
 import { BlueprintNavigator, type NavigationInfo } from './blueprint-navigator';
 import { getBlueprint } from './blueprints';
 import { V2_PRESETS } from './presets-v2';
 import { PARANOID_STYLE_RIFF } from './assets/rock-riffs';
 import { BLUES_BASS_RIFFS } from './assets/blues-bass-riffs';
 import { NEUTRAL_BLUES_BASS_RIFFS } from './assets/neutral-blues-riffs';
-import { BLUES_MELODY_RIFFS, type BluesRiffDegree, type BluesRiffEvent, type BluesMelodyPhrase } from './assets/blues-melody-riffs';
+import { BLUES_MELODY_RIFFS } from './assets/blues-melody-riffs';
 import { BLUES_GUITAR_RIFFS, BLUES_GUITAR_VOICINGS } from './assets/blues-guitar-riffs';
 import { BLUES_DRUM_RIFFS } from './assets/blues-drum-riffs';
 import { DRUM_KITS } from './assets/drum-kits';
@@ -740,11 +739,10 @@ export class FractalMusicEngine {
     const barDurationInBeats = 4;
     const ticksPerBeat = 3;
     
-    // #ИСПРАВЛЕНО (ПЛАН 843): Базовая октава поднята с 3-й на 4-ю.
-    let octaveShift = 12 * 4;
-    if (registerHint === 'high') octaveShift = 12 * 5;
-    if (registerHint === 'low') octaveShift = 12 * 3;
-
+    let octaveShift = 12 * 3;
+    if (registerHint === 'high') octaveShift = 12 * 4;
+    if (registerHint === 'low') octaveShift = 12 * 2;
+    
     for (let barIndex = 0; barIndex < 12; barIndex++) {
         const absoluteBar = (chorusChords[0]?.bar ?? 0) + barIndex;
         const barChord = chorusChords.find(c => absoluteBar >= c.bar && absoluteBar < (c.bar + c.durationBars));
@@ -756,17 +754,18 @@ export class FractalMusicEngine {
         const strumPattern = selectedGuitarRiff.strum.find(s => s.bars.includes(barIndex + 1));
         const fingerstylePattern = selectedGuitarRiff.fingerstyle.find(f => f.bars.includes(barIndex + 1));
         
-        // --- Логика выбора техники ---
         const techniqueChoice = random.next();
         
-        // Strumming (20% chance)
         if (techniqueChoice < 0.2 && strumPattern) {
             const voicing = BLUES_GUITAR_VOICINGS[strumPattern.voicingName];
             if(voicing) {
                 const strumDelay = 0.02 + random.next() * 0.01;
                 voicing.forEach((noteMidi, i) => {
+                    let finalNote = noteMidi;
+                    if (finalNote > 81) finalNote -= 12;
+                    if (finalNote < 52) finalNote += 12;
                     chorusEvents.push({
-                        type: 'melody', note: noteMidi,
+                        type: 'melody', note: finalNote,
                         time: (barIndex * barDurationInBeats) + (i * strumDelay),
                         duration: 1.5,
                         weight: 0.8 + (random.next() * 0.1),
@@ -775,14 +774,16 @@ export class FractalMusicEngine {
                 });
             }
         } 
-        // Fingerpicking (20% chance)
         else if (techniqueChoice < 0.4 && fingerstylePattern) {
             const voicing = BLUES_GUITAR_VOICINGS[fingerstylePattern.voicingName];
              if(voicing) {
                 const arpeggioDelay = 0.12 + random.next() * 0.05;
                  voicing.slice(0, 5).forEach((noteMidi, i) => {
+                    let finalNote = noteMidi;
+                    if (finalNote > 81) finalNote -= 12;
+                    if (finalNote < 52) finalNote += 12;
                     chorusEvents.push({
-                        type: 'melody', note: noteMidi,
+                        type: 'melody', note: finalNote,
                         time: (barIndex * barDurationInBeats) + (i * arpeggioDelay),
                         duration: 1.0,
                         weight: 0.75 + (random.next() * 0.1),
@@ -791,7 +792,6 @@ export class FractalMusicEngine {
                 });
             }
         }
-        // Solo (60% chance)
         else {
              let phrase: BluesSoloPhrase | undefined;
             const rootOfChorus = this.ghostHarmonyTrack.find(c => c.bar === (this.epoch - (this.epoch % 12)))?.rootNote ?? chordRoot;
@@ -804,10 +804,11 @@ export class FractalMusicEngine {
 
             if (phrase) {
                 for (const event of phrase) {
-                    const noteMidi = chordRoot + DEGREE_TO_SEMITONE[event.deg] + octaveShift;
-                    // #ЗАЧЕМ: Добавляем наслоение нот в соло
-                    // #ЧТО: Увеличиваем длительность нот в 2.5 раза, чтобы они перекрывались
-                    const duration = isSolo ? ((event.d || 2) / ticksPerBeat) * 2.5 : (event.d || 2) / ticksPerBeat;
+                    let noteMidi = chordRoot + DEGREE_TO_SEMITONE[event.deg] + octaveShift;
+                    if (noteMidi > 81) noteMidi -= 12;
+                    if (noteMidi < 52) noteMidi += 12;
+
+                    const duration = isSolo ? (((event.d || 2) / ticksPerBeat) * 2.5) : ((event.d || 2) / ticksPerBeat);
 
                     chorusEvents.push({
                         type: 'melody', note: noteMidi,
@@ -827,7 +828,5 @@ export class FractalMusicEngine {
 
 
 }
-
-
 
     

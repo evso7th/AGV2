@@ -1,4 +1,3 @@
-
 import type { Note, Technique } from "@/types/music";
 
 const BLACK_GUITAR_ORD_SAMPLES: Record<string, string> = {
@@ -209,7 +208,6 @@ export class BlackGuitarSampler {
     private isLoading = false;
     private preamp: GainNode;
     
-    // --- FX NODES ---
     private distortion: WaveShaperNode;
     private delay: DelayNode;
     private feedback: GainNode;
@@ -223,15 +221,13 @@ export class BlackGuitarSampler {
         this.destination = destination;
 
         this.preamp = this.audioContext.createGain();
-        this.preamp.gain.value = 1.8; // Boost volume by ~2x
+        this.preamp.gain.value = 1.8; 
 
         this.fxChainInput = this.audioContext.createGain();
 
-        // 1. Distortion
         this.distortion = this.audioContext.createWaveShaper();
         this.distortion.curve = this.makeDistortionCurve(0.1);
 
-        // 2. Chorus
         this.chorusLFO = this.audioContext.createOscillator();
         this.chorusDepth = this.audioContext.createGain();
         this.chorusDelay = this.audioContext.createDelay(0.1);
@@ -242,21 +238,22 @@ export class BlackGuitarSampler {
         this.chorusDepth.connect(this.chorusDelay.delayTime);
         this.chorusLFO.start();
         
-        // 3. Delay
         this.delay = this.audioContext.createDelay(1.0);
         this.feedback = this.audioContext.createGain();
         this.delay.delayTime.value = 0.3;
         this.feedback.gain.value = 0.2;
 
-        // Chain: preamp -> fxInput -> distortion -> chorus -> delay -> destination
         this.preamp.connect(this.fxChainInput);
         this.fxChainInput.connect(this.distortion);
         this.distortion.connect(this.chorusDelay);
         this.chorusDelay.connect(this.delay);
         this.delay.connect(this.feedback);
         this.feedback.connect(this.delay);
-        this.delay.connect(this.destination);
-        this.fxChainInput.connect(this.destination); // Dry signal
+        
+        const mainOutput = this.audioContext.createGain();
+        this.delay.connect(mainOutput);
+        this.fxChainInput.connect(mainOutput); 
+        mainOutput.connect(this.destination);
     }
 
     private makeDistortionCurve(amount: number): Float32Array {
@@ -337,7 +334,6 @@ export class BlackGuitarSampler {
             source.buffer = buffer;
             
             const gainNode = this.audioContext.createGain();
-            gainNode.gain.value = note.velocity ?? 0.7;
             
             source.connect(gainNode);
             gainNode.connect(this.preamp);
@@ -345,7 +341,17 @@ export class BlackGuitarSampler {
             const playbackRate = Math.pow(2, (note.midi - sampleMidi) / 12);
             source.playbackRate.value = playbackRate;
             
-            source.start(noteStartTime);
+            const velocity = note.velocity ?? 0.7;
+            const noteDuration = note.duration;
+            gainNode.gain.setValueAtTime(velocity, noteStartTime);
+
+            if (noteDuration) {
+                 gainNode.gain.setTargetAtTime(0, noteStartTime + noteDuration * 0.8, 0.1);
+                 source.start(noteStartTime);
+                 source.stop(noteStartTime + noteDuration * 1.2);
+            } else {
+                 source.start(noteStartTime);
+            }
         });
     }
 
@@ -365,27 +371,27 @@ export class BlackGuitarSampler {
     private keyToMidi(key: string): number | null {
         const parts = key.split('_');
         if (parts.length < 1) return null;
-
-        const noteStr = parts[0];
+    
+        const noteStr = parts[0].toLowerCase();
         const noteMatch = noteStr.match(/([a-g][b#]?)(\d)/);
+    
         if (!noteMatch) return null;
     
         let [, name, octaveStr] = noteMatch;
         const octave = parseInt(octaveStr, 10);
     
         const noteMap: Record<string, number> = {
-            'c': 0, 'c#': 1, 'db': 1, 'd': 2, 'd#': 3, 'eb': 3, 'e': 4,
-            'f': 5, 'f#': 6, 'gb': 6, 'g': 7, 'g#': 8, 'ab': 8, 'a': 9, 'a#': 10, 'bb': 10, 'b': 11
+            'c': 0, 'c#': 1, 'db': 1, 'd': 2, 'd#': 3, 'eb': 3, 'e': 4, 'f': 5, 'f#': 6, 'gb': 6, 'g': 7, 'g#': 8, 'ab': 8, 'a': 9, 'a#': 10, 'bb': 10, 'b': 11
         };
     
-        const noteValue = noteMap[name.toLowerCase()];
+        const noteValue = noteMap[name];
         if (noteValue === undefined) return null;
     
         return 12 * (octave + 1) + noteValue;
     }
+    
 
     public stopAll() {
-        // One-shot samples, no central stop needed.
     }
 
     public dispose() {
@@ -393,3 +399,5 @@ export class BlackGuitarSampler {
         this.fxChainInput.disconnect();
     }
 }
+
+    

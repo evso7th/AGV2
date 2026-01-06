@@ -1,4 +1,5 @@
 
+
 // src/lib/assets/blues-guitar-riffs.ts
 
 /**
@@ -69,7 +70,7 @@ export const BLUES_GUITAR_RIFFS: BluesGuitarRiff[] = [
       I:  [{t:0,deg:'R'},{t:2,deg:'4',tech:'sl'},{t:4,deg:'#4'},{t:6,deg:'5',tech:'vb'}],
       IV: [{t:0,deg:'R'},{t:4,d:8,deg:'5'}],
       V:  [{t:0,deg:'R'},{t:3,deg:'b7'},{t:6,d:6,deg:'5'}],
-      Turnaround:  [{t:0,deg:'2'},{t:2,deg:'b3'},{t:4,deg:'3'},{t:6,deg:'4'},{t:8,deg:'#4'},{t:10,d:2,deg:'5'}]
+      Turnaround:  [{t:0,deg:'2'},{t:2,deg:'b3'},{t:4,deg:'3'},{t:6,deg:'4'},{t:8,d:2,deg:'#4'},{t:10,d:2,deg:'5'}]
     },
     fingerstyle: [
       { bars: [5,6,2], pattern: 'F_TRAVIS', voicingName: 'A7_open' }
@@ -225,7 +226,168 @@ export const BLUES_GUITAR_RIFFS: BluesGuitarRiff[] = [
     strum: [
        { bars: [1,3,4,7,8,11], pattern: 'S_SWING', voicingName: 'Em7_open' }
     ]
-  }
+  },
+  // --- SLOW BLUES MELODIES ---
+  {
+      id: "MelDense-01",
+      moods: ["melancholic", "gloomy"],
+      type: "minor",
+      tags: ["slow-burn", "dense"],
+      bpm: 60,
+      key: "E",
+      solo: {
+        I:  [ {"t":0,"deg":"b3"}, {"t":2,"deg":"4"}, {"t":4,"deg":"#4"}, {"t":6,"deg":"5"}, {"t":8,"deg":"b7"}, {"t":10,"deg":"5"} ],
+        IV: [ {"t":0,"deg":"11"}, {"t":2,"deg":"9"}, {"t":4,"deg":"5"},  {"t":6,"deg":"11"}, {"t":8,"deg":"9"}, {"t":10,"deg":"5"} ],
+        V:  [ {"t":0,"deg":"5"},  {"t":2,"deg":"b7"}, {"t":4,"deg":"R"}, {"t":6,"deg":"b7"}, {"t":8,"deg":"5"},  {"t":10,"deg":"3"} ],
+        Turnaround:  [ {"t":0,"deg":"2"},  {"t":2,"deg":"b2"}, {"t":4,"deg":"R"}, {"t":6,"deg":"b7"}, {"t":8,"deg":"5"},  {"t":10,"deg":"#4"} ]
+      },
+      fingerstyle: [],
+      strum: []
+    },
+    {
+      id: "MelDense-02",
+      moods: ["melancholic", "dark"],
+      type: "minor",
+      tags: ["slow-burn", "dense", "chromatic"],
+      bpm: 60,
+      key: "E",
+      solo: {
+        I:  [ {"t":0,"deg":"R"}, {"t":2,"deg":"2"}, {"t":4,"deg":"b3"}, {"t":6,"deg":"4"}, {"t":8,"deg":"#4"}, {"t":10,"deg":"5"} ],
+        IV: [ {"t":0,"deg":"R"}, {"t":2,"deg":"2"}, {"t":4,"deg":"11"}, {"t":6,"deg":"9"}, {"t":8,"deg":"5"},  {"t":10,"deg":"11"} ],
+        V:  [ {"t":0,"deg":"5"}, {"t":2,"deg":"R"}, {"t":4,"deg":"b7"}, {"t":6,"deg":"5"}, {"t":8,"deg":"R"},  {"t":10,"deg":"b7"} ],
+        Turnaround:  [ {"t":0,"deg":"b7"}, {"t":2,"deg":"6"}, {"t":4,"deg":"b6"}, {"t":6,"deg":"5"}, {"t":8,"deg":"#4"}, {"t":10,"deg":"R"} ]
+      },
+      fingerstyle: [],
+      strum: []
+    },
+    {
+      id: "MelDense-03",
+      moods: ["gloomy", "dark"],
+      type: "minor",
+      tags: ["slow-burn", "dense"],
+      bpm: 60,
+      key: "E",
+      solo: {
+        I:  [ {"t":0,"deg":"b3"}, {"t":2,"deg":"5"}, {"t":4,"deg":"4"}, {"t":6,"deg":"b3"}, {"t":8,"deg":"2"}, {"t":10,"deg":"R"} ],
+        IV: [ {"t":0,"deg":"11"}, {"t":2,"deg":"9"}, {"t":4,"deg":"5"}, {"t":6,"deg":"9"}, {"t":8,"deg":"11"},{"t":10,"deg":"5"} ],
+        V:  [ {"t":0,"deg":"b2"}, {"t":2,"deg":"R"}, {"t":4,"deg":"b7"}, {"t":6,"deg":"5"}, {"t":8,"deg":"b7"}, {"t":10,"deg":"R"} ],
+        Turnaround:  [ {"t":0,"deg":"2"},  {"t":2,"deg":"b2"}, {"t":4,"deg":"R"}, {"t":6,"deg":"b7"}, {"t":8,"deg":"5"},  {"t":10,"deg":"#4"} ]
+      },
+      fingerstyle: [],
+      strum: []
+    },
+    {
+      id: "MelDense-04",
+      moods: ["melancholic", "dark"],
+      type: "minor",
+      tags: ["slow-burn", "dense"],
+      bpm: 60,
+      key: "E",
+      solo: {
+        I:  [ {"t":0,"deg":"R"}, {"t":2,"deg":"b3"}, {"t":4,"deg":"4"}, {"t":6,"deg":"#4"}, {"t":8,"deg":"5"}, {"t":10,"deg":"b7"} ],
+        IV: [ {"t":0,"deg":"R"}, {"t":2,"deg":"11"}, {"t":4,"deg":"9"}, {"t":6,"deg":"11"}, {"t":8,"deg":"5"}, {"t":10,"deg":"9"} ],
+        V:  [ {"t":0,"deg":"5"}, {"t":2,"deg":"3"},  {"t":4,"deg":"R"}, {"t":6,"deg":"b7"}, {"t":8,"deg":"5"}, {"t":10,"deg":"R"} ],
+        Turnaround:  [ {"t":0,"deg":"2"}, {"t":2,"deg":"b2"}, {"t":4,"deg":"R"}, {"t":6,"deg":"b7"}, {"t":8,"deg":"5"}, {"t":10,"deg":"#4"} ]
+      },
+      fingerstyle: [],
+      strum: []
+    },
+    {
+      id: "MelDense-05",
+      moods: ["melancholic", "gloomy"],
+      type: "minor",
+      tags: ["slow-burn", "dense"],
+      bpm: 60,
+      key: "E",
+      solo: {
+        I:  [ {"t":0,"deg":"b3"}, {"t":2,"deg":"2"}, {"t":4,"deg":"R"}, {"t":6,"deg":"5"}, {"t":8,"deg":"4"}, {"t":10,"deg":"#4"} ],
+        IV: [ {"t":0,"deg":"11"}, {"t":2,"deg":"9"}, {"t":4,"deg":"11"},{"t":6,"deg":"5"}, {"t":8,"deg":"9"}, {"t":10,"deg":"5"} ],
+        V:  [ {"t":0,"deg":"5"}, {"t":2,"deg":"b7"}, {"t":4,"deg":"5"}, {"t":6,"deg":"R"}, {"t":8,"deg":"b7"}, {"t":10,"deg":"5"} ],
+        Turnaround:  [ {"t":0,"deg":"b7"},{"t":2,"deg":"6"},  {"t":4,"deg":"b6"},{"t":6,"deg":"5"}, {"t":8,"deg":"#4"},{"t":10,"deg":"R"} ]
+      },
+      fingerstyle: [],
+      strum: []
+    },
+    {
+      id: "MelDense-06",
+      moods: ["melancholic", "dreamy"],
+      type: "minor",
+      tags: ["slow-burn", "dense"],
+      bpm: 60,
+      key: "E",
+      solo: {
+        I:  [ {"t":0,"deg":"R"}, {"t":2,"deg":"2"}, {"t":4,"deg":"b3"}, {"t":6,"deg":"4"}, {"t":8,"deg":"5"}, {"t":10,"deg":"b7"} ],
+        IV: [ {"t":0,"deg":"R"}, {"t":2,"deg":"11"},{"t":4,"deg":"9"},  {"t":6,"deg":"11"},{"t":8,"deg":"5"}, {"t":10,"deg":"9"} ],
+        V:  [ {"t":0,"deg":"5"}, {"t":2,"deg":"b7"},{"t":4,"deg":"3"},  {"t":6,"deg":"5"}, {"t":8,"deg":"R"}, {"t":10,"deg":"b7"} ],
+        Turnaround:  [ {"t":0,"deg":"2"}, {"t":2,"deg":"b2"}, {"t":4,"deg":"R"},  {"t":6,"deg":"b7"},{"t":8,"deg":"5"},{"t":10,"deg":"#4"} ]
+      },
+      fingerstyle: [],
+      strum: []
+    },
+    {
+      id: "MelDense-07",
+      moods: ["gloomy", "dark"],
+      type: "minor",
+      tags: ["slow-burn", "dense", "chromatic"],
+      bpm: 60,
+      key: "E",
+      solo: {
+        I:  [ {"t":0,"deg":"b3"}, {"t":2,"deg":"4"}, {"t":4,"deg":"5"}, {"t":6,"deg":"#4"}, {"t":8,"deg":"5"}, {"t":10,"deg":"b7"} ],
+        IV: [ {"t":0,"deg":"11"},{"t":2,"deg":"9"},  {"t":4,"deg":"5"}, {"t":6,"deg":"11"}, {"t":8,"deg":"9"}, {"t":10,"deg":"5"} ],
+        V:  [ {"t":0,"deg":"b2"},{"t":2,"deg":"R"},  {"t":4,"deg":"b7"},{"t":6,"deg":"5"},  {"t":8,"deg":"b7"},{"t":10,"deg":"R"} ],
+        Turnaround:  [ {"t":0,"deg":"b7"},{"t":2,"deg":"6"},  {"t":4,"deg":"b6"},{"t":6,"deg":"5"},  {"t":8,"deg":"#4"},{"t":10,"deg":"R"} ]
+      },
+      fingerstyle: [],
+      strum: []
+    },
+    {
+      id: "MelDense-08",
+      moods: ["melancholic", "dark"],
+      type: "minor",
+      tags: ["slow-burn", "dense"],
+      bpm: 60,
+      key: "E",
+      solo: {
+        I:  [ {"t":0,"deg":"R"}, {"t":2,"deg":"b3"}, {"t":4,"deg":"4"}, {"t":6,"deg":"5"}, {"t":8,"deg":"4"}, {"t":10,"deg":"#4"} ],
+        IV: [ {"t":0,"deg":"R"}, {"t":2,"deg":"11"},{"t":4,"deg":"9"}, {"t":6,"deg":"11"},{"t":8,"deg":"5"}, {"t":10,"deg":"11"} ],
+        V:  [ {"t":0,"deg":"5"}, {"t":2,"deg":"3"},  {"t":4,"deg":"R"}, {"t":6,"deg":"b7"},{"t":8,"deg":"5"}, {"t":10,"deg":"R"} ],
+        Turnaround:  [ {"t":0,"deg":"2"}, {"t":2,"deg":"b2"}, {"t":4,"deg":"R"}, {"t":6,"deg":"b7"},{"t":8,"deg":"5"},{"t":10,"deg":"#4"} ]
+      },
+      fingerstyle: [],
+      strum: []
+    },
+    {
+      id: "MelDense-09",
+      moods: ["gloomy", "dark"],
+      type: "minor",
+      tags: ["slow-burn", "dense"],
+      bpm: 60,
+      key: "E",
+      solo: {
+        I:  [ {"t":0,"deg":"b3"},{"t":2,"deg":"2"}, {"t":4,"deg":"R"}, {"t":6,"deg":"5"}, {"t":8,"deg":"b7"}, {"t":10,"deg":"5"} ],
+        IV: [ {"t":0,"deg":"11"},{"t":2,"deg":"9"}, {"t":4,"deg":"5"},  {"t":6,"deg":"11"},{"t":8,"deg":"9"}, {"t":10,"deg":"5"} ],
+        V:  [ {"t":0,"deg":"5"}, {"t":2,"deg":"b7"},{"t":4,"deg":"R"},  {"t":6,"deg":"b7"},{"t":8,"deg":"5"}, {"t":10,"deg":"3"} ],
+        Turnaround:  [ {"t":0,"deg":"2"}, {"t":2,"deg":"b2"},{"t":4,"deg":"R"},  {"t":6,"deg":"b7"},{"t":8,"deg":"5"},{"t":10,"deg":"#4"} ]
+      },
+      fingerstyle: [],
+      strum: []
+    },
+    {
+      id: "MelDense-10",
+      moods: ["melancholic", "gloomy"],
+      type: "minor",
+      tags: ["slow-burn", "dense"],
+      bpm: 60,
+      key: "E",
+      solo: {
+        I:  [ {"t":0,"deg":"R"}, {"t":2,"deg":"2"}, {"t":4,"deg":"b3"}, {"t":6,"deg":"4"}, {"t":8,"deg":"#4"}, {"t":10,"deg":"5"} ],
+        IV: [ {"t":0,"deg":"R"}, {"t":2,"deg":"11"},{"t":4,"deg":"9"},  {"t":6,"deg":"5"},  {"t":8,"deg":"11"},{"t":10,"deg":"9"} ],
+        V:  [ {"t":0,"deg":"5"}, {"t":2,"deg":"b7"}, {"t":4,"deg":"R"}, {"t":6,"deg":"b7"}, {"t":8,"deg":"5"}, {"t":10,"deg":"R"} ],
+        Turnaround:  [ {"t":0,"deg":"b7"},{"t":2,"deg":"6"}, {"t":4,"deg":"b6"}, {"t":6,"deg":"5"},  {"t":8,"deg":"#4"},{"t":10,"deg":"R"} ]
+      },
+      fingerstyle: [],
+      strum: []
+    }
 ];
 
 export const BLUES_GUITAR_VOICINGS: Record<string, number[]> = {
@@ -235,3 +397,5 @@ export const BLUES_GUITAR_VOICINGS: Record<string, number[]> = {
     'Em7_open': [40,47,52,55,62,64],
     'Am7_open': [45,52,55,60,64],
 };
+
+    
