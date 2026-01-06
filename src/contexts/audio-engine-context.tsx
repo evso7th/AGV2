@@ -207,7 +207,7 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
           }
       } else if (eventType === 'melody') {
         if (instrumentHints?.melody === 'blackAcoustic') {
-            blackAcousticEvents.push(event);
+            blackAcousticEvents.push(event); // Route to blackAcousticEvents
         } else {
             melodyEvents.push(event);
         }
@@ -407,7 +407,8 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
         }
 
         if (!blackGuitarSamplerRef.current) {
-            blackGuitarSamplerRef.current = new BlackGuitarSampler(context, gainNodesRef.current.blackAcoustic!);
+            // #ИСПРАВЛЕНО (ПЛАН 834): Гитара подключается к общему каналу мелодии.
+            blackGuitarSamplerRef.current = new BlackGuitarSampler(context, gainNodesRef.current.melody!);
             initPromises.push(blackGuitarSamplerRef.current.init());
         }
 
@@ -479,7 +480,9 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
 
   const setVolumeCallback = useCallback((part: InstrumentPart, volume: number) => {
     if (part === 'pads' || part === 'effects') return;
-    const gainNode = gainNodesRef.current[part as Exclude<InstrumentPart, 'pads' | 'effects'>];
+    // #ИСПРАВЛЕНО (ПЛАН 834): Удаляем бесполезный канал blackAcoustic
+    if (part === 'blackAcoustic') return; 
+    const gainNode = gainNodesRef.current[part as Exclude<InstrumentPart, 'pads' | 'effects'| 'blackAcoustic'>];
     if (gainNode && audioContextRef.current) {
         const balancedVolume = volume * (VOICE_BALANCE[part] ?? 1);
         gainNode.gain.setTargetAtTime(balancedVolume, audioContextRef.current.currentTime, 0.01);
