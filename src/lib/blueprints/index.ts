@@ -20,7 +20,6 @@ import { EpicTranceBlueprint } from './trance/epic';
 import { EnthusiasticTranceBlueprint } from './trance/enthusiastic';
 import { DreamyTranceBlueprint } from './trance/dreamy';
 import { ContemplativeTranceBlueprint } from './trance/contemplative';
-import { MelancholicBluesBlueprint } from './blues/melancholic';
 import { DarkBluesBlueprint } from './blues/dark';
 import { EnthusiasticBluesBlueprint } from './blues/enthusiastic';
 import { JoyfulBluesBlueprint } from './blues/joyful';
@@ -30,6 +29,7 @@ import { DreamyBluesBlueprint } from './blues/dreamy';
 import { EpicBluesBlueprint } from './blues/epic';
 import { AnxiousBluesBlueprint } from './blues/anxious';
 import { ContemplativeBluesBlueprint } from './blues/contemplative';
+import { WinterBluesBlueprint } from './blues/winter';
 
 
 /**
@@ -61,7 +61,7 @@ export const BLUEPRINT_LIBRARY: Record<Genre, Partial<Record<Mood, MusicBlueprin
         contemplative: ContemplativeTranceBlueprint,
     },
     blues: {
-        melancholic: MelancholicBluesBlueprint,
+        melancholic: WinterBluesBlueprint, // Using the new sterile blueprint
         dark: DarkBluesBlueprint,
         enthusiastic: EnthusiasticBluesBlueprint,
         joyful: JoyfulBluesBlueprint,
