@@ -14,7 +14,6 @@ export class AcousticGuitarSoloSampler {
     private audioContext: AudioContext;
     private outputNode: GainNode;
     private instruments = new Map<string, SamplerInstrument>();
-    private slideBuffers: AudioBuffer[] = [];
     public isInitialized = false;
     private preamp: GainNode;
     private isLoading = false;
@@ -108,15 +107,13 @@ export class AcousticGuitarSoloSampler {
 
             const startTime = time + note.time;
 
-            // С вероятностью 15% вставить слайд между нотами
             if (index > 0 && Math.random() < 0.15 && this.slideBuffers.length > 0) {
                 const prevNoteEndTime = time + notes[index - 1].time + notes[index - 1].duration;
-                if (startTime > prevNoteEndTime) { // Убедимся, что есть пауза
+                if (startTime > prevNoteEndTime) {
                     const slideBuffer = this.slideBuffers[Math.floor(Math.random() * this.slideBuffers.length)];
                     const slideSource = this.audioContext.createBufferSource();
                     slideSource.buffer = slideBuffer;
                     slideSource.connect(this.preamp);
-                    // Начинаем слайд в конце предыдущей ноты
                     slideSource.start(prevNoteEndTime);
                 }
             }
@@ -126,16 +123,26 @@ export class AcousticGuitarSoloSampler {
             source.buffer = buffer;
             
             const gainNode = this.audioContext.createGain();
-            gainNode.gain.setValueAtTime(note.velocity ?? 0.7, this.audioContext.currentTime);
-
+            
             source.connect(gainNode);
             gainNode.connect(this.preamp);
 
             const playbackRate = Math.pow(2, (note.midi - sampleMidi) / 12);
             source.playbackRate.value = playbackRate;
             
+            // --- ADSR ENVELOPE IMPLEMENTATION ---
+            const velocity = note.velocity ?? 0.7;
+            const attackTime = 0.01; // Quick attack for pluck/pick
+            const releaseTime = Math.max(0.1, note.duration * 0.5); // Release is half the note duration
+            const noteEndTime = startTime + note.duration;
+
+            gainNode.gain.setValueAtTime(0, this.audioContext.currentTime);
+            gainNode.gain.linearRampToValueAtTime(velocity, startTime + attackTime);
+            gainNode.gain.setValueAtTime(velocity, noteEndTime);
+            gainNode.gain.linearRampToValueAtTime(0, noteEndTime + releaseTime);
+            
             source.start(startTime);
-            this.lastNoteTime = startTime + note.duration;
+            source.stop(noteEndTime + releaseTime + 0.1); // Stop after release
         });
     }
 

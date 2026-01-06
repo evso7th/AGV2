@@ -84,7 +84,7 @@ const BLACK_GUITAR_ORD_SAMPLES: Record<string, string> = {
     'a4_f_rr3': '/assets/acoustic_guitar_samples/black/ord/twang_a4_f_rr3.ogg',
     'c6_mf_rr4': '/assets/acoustic_guitar_samples/black/ord/twang_c6_mf_rr4.ogg',
     'bb5_f_rr3': '/assets/acoustic_guitar_samples/black/ord/twang_bb5_f_rr3.ogg',
-    'ab4_f_rr3': '/assets/acoustic_guitar_samples/black/ord/twang_ab4_f_rr3.ogg',
+    'ab4f_rr3': '/assets/acoustic_guitar_samples/black/ord/twang_ab4_f_rr3.ogg',
     'e5_p_rr2': '/assets/acoustic_guitar_samples/black/ord/twang_e5_p_rr2.ogg',
     'b5_p_rr2': '/assets/acoustic_guitar_samples/black/ord/twang_b5_p_rr2.ogg',
     'c6_mf_rr3': '/assets/acoustic_guitar_samples/black/ord/twang_c6_mf_rr3.ogg',
@@ -208,22 +208,11 @@ export class BlackGuitarSampler {
     private destination: AudioNode;
     private instruments = new Map<string, SamplerInstrument>();
     public isInitialized = false;
-    private preamp: GainNode;
     private isLoading = false;
 
     constructor(audioContext: AudioContext, destination: AudioNode) {
         this.audioContext = audioContext;
         this.destination = destination;
-        
-        this.preamp = this.audioContext.createGain();
-        this.preamp.gain.value = 1.8; 
-        this.preamp.connect(this.destination);
-    }
-    
-    public setVolume(volume: number) {
-        if(this.destination instanceof GainNode) {
-           this.destination.gain.setTargetAtTime(volume, this.audioContext.currentTime, 0.01);
-        }
     }
 
     async init(): Promise<boolean> {
@@ -250,7 +239,7 @@ export class BlackGuitarSampler {
             };
             
             const notePromises = Object.entries(sampleMap).map(async ([key, url]) => {
-                const midi = this.noteToMidi(key);
+                const midi = this.keyToMidi(key);
                 if (midi === null) {
                     console.warn(`[BlackGuitarSampler] Could not parse MIDI from key: ${key}`);
                     return;
@@ -281,7 +270,6 @@ export class BlackGuitarSampler {
         if (!this.isInitialized || !instrument) return;
 
         notes.forEach(note => {
-            // Ignore technique, find closest note from the 'ord' samples.
             const { buffer, midi: sampleMidi } = this.findBestSample(instrument, note.midi);
             if (!buffer) return;
 
@@ -291,15 +279,26 @@ export class BlackGuitarSampler {
             source.buffer = buffer;
             
             const gainNode = this.audioContext.createGain();
-            gainNode.gain.setValueAtTime(note.velocity ?? 0.7, this.audioContext.currentTime);
-
+            
             source.connect(gainNode);
-            gainNode.connect(this.preamp);
+            gainNode.connect(this.destination); // Connect directly to the provided destination
 
             const playbackRate = Math.pow(2, (note.midi - sampleMidi) / 12);
             source.playbackRate.value = playbackRate;
+
+            // --- ADSR ENVELOPE IMPLEMENTATION ---
+            const velocity = note.velocity ?? 0.7;
+            const attackTime = 0.015; // Fast attack for a picked guitar
+            const releaseTime = Math.max(0.2, note.duration * 0.8); // Natural decay
+            const noteEndTime = noteStartTime + note.duration;
+            const finalEndTime = noteEndTime + releaseTime;
+            
+            gainNode.gain.setValueAtTime(0, this.audioContext.currentTime);
+            gainNode.gain.linearRampToValueAtTime(velocity, noteStartTime + attackTime);
+            gainNode.gain.setTargetAtTime(0, noteEndTime, releaseTime / 3); // Exponential decay
             
             source.start(noteStartTime);
+            source.stop(finalEndTime);
         });
     }
 
@@ -315,42 +314,35 @@ export class BlackGuitarSampler {
         
         return { buffer: sampleBuffer || null, midi: closestMidi };
     }
+    
+    private keyToMidi(key: string): number | null {
+        // Simplified parser for keys like 'c6_p_rr2' -> C6
+        const parts = key.split('_');
+        if (parts.length < 1) return null;
 
-    private noteToMidi(key: string): number | null {
-        const cleanedKey = key.toLowerCase().replace(/_p|_f|_mf|_rr\d/g, '');
-        const match = cleanedKey.match(/([a-g][b#]?\d+)/);
-        if (!match) return null;
-        
-        const noteStr = match[1];
-        const noteMatch = noteStr.match(/([a-g])(b|#)?(\d)/);
+        const noteStr = parts[0];
+        const noteMatch = noteStr.match(/([a-g][b#]?)(\d)/);
         if (!noteMatch) return null;
-
-        let [, name, accidental, octaveStr] = noteMatch;
+    
+        let [, name, octaveStr] = noteMatch;
         const octave = parseInt(octaveStr, 10);
-
-        let noteValue = 0;
-        switch (name) {
-            case 'c': noteValue = 0; break;
-            case 'd': noteValue = 2; break;
-            case 'e': noteValue = 4; break;
-            case 'f': noteValue = 5; break;
-            case 'g': noteValue = 7; break;
-            case 'a': noteValue = 9; break;
-            case 'b': noteValue = 11; break;
-        }
-
-        if (accidental === '#') noteValue++;
-        if (accidental === 'b') noteValue--;
-
+    
+        const noteMap: Record<string, number> = {
+            'c': 0, 'c#': 1, 'db': 1, 'd': 2, 'd#': 3, 'eb': 3, 'e': 4,
+            'f': 5, 'f#': 6, 'gb': 6, 'g': 7, 'g#': 8, 'ab': 8, 'a': 9, 'a#': 10, 'bb': 10, 'b': 11
+        };
+    
+        const noteValue = noteMap[name.toLowerCase()];
+        if (noteValue === undefined) return null;
+    
         return 12 * (octave + 1) + noteValue;
     }
-
 
     public stopAll() {
         // One-shot samples, no central stop needed.
     }
 
     public dispose() {
-        this.preamp.disconnect();
+        // No-op as the destination is managed externally
     }
 }
