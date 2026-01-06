@@ -24,7 +24,7 @@ export const MelancholicBluesBlueprint: MusicBlueprint = {
                 },
                 layers: { bass: true, drums: true, accompaniment: true, harmony: true },
                 instrumentation: {
-                    accompaniment: { strategy: 'weighted', v1Options: [{ name: 'blackAcoustic', weight: 1.0 }], v2Options: [{ name: 'blackAcoustic', weight: 1.0 }] },
+                    accompaniment: { strategy: 'weighted', v1Options: [{ name: 'organ', weight: 1.0 }], v2Options: [{ name: 'organ', weight: 1.0 }] },
                     harmony: { strategy: 'weighted', options: [{ name: 'guitarChords', weight: 1.0 }] }
                 },
                 instrumentRules: {
@@ -39,7 +39,7 @@ export const MelancholicBluesBlueprint: MusicBlueprint = {
                 id: 'MAIN', name: 'Guitar Solo', duration: { percent: 50 },
                 layers: { bass: true, drums: true, accompaniment: true, melody: true, harmony: true },
                  instrumentation: {
-                    accompaniment: { strategy: 'weighted', v1Options: [{ name: 'blackAcoustic', weight: 1.0 }], v2Options: [{ name: 'blackAcoustic', weight: 1.0 }] },
+                    accompaniment: { strategy: 'weighted', v1Options: [{ name: 'organ', weight: 1.0 }], v2Options: [{ name: 'organ', weight: 1.0 }] },
                     melody: { strategy: 'weighted', v1Options: [{ name: 'electricGuitar', weight: 1.0 }], v2Options: [{ name: 'guitar_muffLead', weight: 1.0 }] }
                 },
                 instrumentRules: {
@@ -70,7 +70,7 @@ export const MelancholicBluesBlueprint: MusicBlueprint = {
                 id: 'OUTRO', name: 'Final Verse', duration: { percent: 25 },
                 layers: { bass: true, drums: true, accompaniment: true, harmony: true },
                 instrumentation: {
-                    accompaniment: { strategy: 'weighted', v1Options: [{ name: 'blackAcoustic', weight: 1.0 }], v2Options: [{ name: 'blackAcoustic', weight: 1.0 }] }
+                    accompaniment: { strategy: 'weighted', v1Options: [{ name: 'organ', weight: 1.0 }], v2Options: [{ name: 'organ', weight: 1.0 }] }
                 },
                 instrumentRules: {
                     drums: { pattern: 'composer', kitName: 'blues_melancholic', density: { min: 0.4, max: 0.6 } },
