@@ -3,6 +3,7 @@
 import type { FractalEvent, AccompanimentInstrument } from '@/types/fractal';
 import type { Note } from "@/types/music";
 import { SYNTH_PRESETS, type SynthPreset } from './synth-presets';
+import { V2_PRESETS } from './presets-v2';
 
 
 function midiToFreq(midi: number): number {
@@ -105,12 +106,19 @@ export class AccompanimentSynthManager {
 
     public schedule(events: FractalEvent[], barStartTime: number, tempo: number, instrumentHint?: AccompanimentInstrument, composerControlsInstruments: boolean = true) {
         if (!this.isInitialized) return;
+        
+        // --- ШОРЫ ДЛЯ СЛЕПОГО ИСПОЛНИТЕЛЯ (ПЛАН 823) ---
+        // #ЗАЧЕМ: Предотвращает воспроизведение партий, предназначенных для V2-движка.
+        // #ЧТО: Если `instrumentHint` является одним из V2-пресетов (или 'blackAcoustic'),
+        //      этот V1-менеджер игнорирует команду.
+        // #СВЯЗИ: Устраняет корень проблемы "призрачного оркестра".
+        if (instrumentHint && (V2_PRESETS.hasOwnProperty(instrumentHint) || instrumentHint === 'blackAcoustic')) {
+            console.log(`[AccompManagerV1] Ignored V2 hint: ${instrumentHint}`);
+            return;
+        }
+
         const instrumentToPlay = (composerControlsInstruments && instrumentHint) ? instrumentHint : this.activeInstrumentName;
         
-        // #ЗАЧЕМ: Добавлена проверка, чтобы избежать ошибки 'split' of undefined.
-        // #ЧТО: Если `instrumentToPlay` не определен (например, при инициализации),
-        //      мы немедленно прекращаем выполнение функции, чтобы избежать сбоя.
-        // #СВЯЗИ: Устраняет критическую ошибку, приводившую к падению приложения.
         if (!instrumentToPlay) {
             console.warn('[AccompManager] Schedule called with no instrument selected or hinted. Skipping.');
             return;
