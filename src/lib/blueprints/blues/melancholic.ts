@@ -29,7 +29,7 @@ export const MelancholicBluesBlueprint: MusicBlueprint = {
                 },
                 instrumentRules: {
                     drums: { pattern: 'composer', kitName: 'blues_melancholic', density: { min: 0.5, max: 0.7 } },
-                    bass: { techniques: [{ value: 'walking', weight: 1.0 }] }, 
+                    bass: { techniques: [{ value: 'riff', weight: 1.0 }] }, 
                     melody: { source: 'harmony_top_note', register: { preferred: 'low' } }
                 },
                 bundles: [{ id: 'BLUES_INTRO_BUNDLE', name: 'Verse 1', duration: { percent: 100 }, characteristics: {}, phrases: {} }],
@@ -61,7 +61,7 @@ export const MelancholicBluesBlueprint: MusicBlueprint = {
                         register: { preferred: 'low' },
                         presetModifiers: { octaveShift: 0 } // Use base, lower octave
                     },
-                    bass: { techniques: [{ value: 'walking', weight: 1.0 }] },
+                    bass: { techniques: [{ value: 'riff', weight: 1.0 }] },
                 },
                 bundles: [{ id: 'BLUES_MAIN_BUNDLE', name: 'Solo Section', duration: { percent: 100 }, characteristics: {}, phrases: {} }],
                 outroFill: { type: 'roll', duration: 1, parameters: {} },
@@ -74,7 +74,7 @@ export const MelancholicBluesBlueprint: MusicBlueprint = {
                 },
                 instrumentRules: {
                     drums: { pattern: 'composer', kitName: 'blues_melancholic', density: { min: 0.4, max: 0.6 } },
-                    bass: { techniques: [{ value: 'walking', weight: 1.0 }] },
+                    bass: { techniques: [{ value: 'riff', weight: 1.0 }] },
                     melody: { source: 'harmony_top_note', register: { preferred: 'low' } }
                 },
                 bundles: [{ id: 'BLUES_OUTRO_BUNDLE', name: 'Last Verse', duration: { percent: 100 }, characteristics: {}, phrases: {} }],
