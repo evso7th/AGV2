@@ -200,14 +200,19 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
       } else if (eventType === 'bass') {
         bassEvents.push(event);
       } else if (eventType === 'accompaniment') {
-          // #ИСПРАВЛЕНО: Маршрутизация для blackAcoustic
+          // #ИСПРАВЛЕНО (ПЛАН 830): Маршрутизация для blackAcoustic
           if (instrumentHints?.accompaniment === 'blackAcoustic') {
               blackAcousticEvents.push(event);
           } else {
               accompanimentEvents.push(event);
           }
       } else if (eventType === 'melody') {
-        melodyEvents.push(event);
+        // #ИСПРАВЛЕНО (ПЛАН 830): Маршрутизация для blackAcoustic
+        if (instrumentHints?.melody === 'blackAcoustic') {
+            blackAcousticEvents.push(event);
+        } else {
+            melodyEvents.push(event);
+        }
       } else if (eventType === 'harmony') {
         harmonyEvents.push(event);
       } else if (eventType === 'sfx') {
@@ -255,7 +260,7 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
         }
     }
     
-    // #ИСПРАВЛЕНО: Воспроизведение для blackAcoustic
+    // #ИСПРАВЛЕНО (ПЛАН 830): Воспроизведение для blackAcoustic
     if (blackGuitarSamplerRef.current && blackAcousticEvents.length > 0) {
         const notes = blackAcousticEvents.map(e => ({ midi: e.note, time: e.time * (60 / tempo), duration: e.duration * (60 / tempo), velocity: e.weight }));
         blackGuitarSamplerRef.current.schedule(notes, barStartTime);
