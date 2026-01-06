@@ -37,8 +37,9 @@ export const WinterBluesBlueprint: MusicBlueprint = {
                     },
                     melody: {
                         strategy: 'weighted',
-                        v1Options: [{ name: 'electricGuitar', weight: 1.0 }],
-                        v2Options: [{ name: 'guitar_shineOn', weight: 1.0 }]
+                        // #ИЗМЕНЕНО: Заменяем V1/V2 синтезаторы на 'blackAcoustic' для теста
+                        v1Options: [{ name: 'blackAcoustic', weight: 1.0 }],
+                        v2Options: [{ name: 'blackAcoustic', weight: 1.0 }]
                     }
                 },
                 instrumentRules: {
