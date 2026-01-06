@@ -131,6 +131,72 @@ const BLACK_GUITAR_ORD_SAMPLES: Record<string, string> = {
     'a3_p_rr1': '/assets/acoustic_guitar_samples/black/ord/twang_a3_p_rr1.ogg',
     'g4_f_rr4': '/assets/acoustic_guitar_samples/black/ord/twang_g4_f_rr4.ogg',
     'gb3_p_rr2': '/assets/acoustic_guitar_samples/black/ord/twang_gb3_p_rr2.ogg',
+    'g4_mf_rr2': '/assets/acoustic_guitar_samples/black/ord/twang_g4_mf_rr2.ogg',
+    'ab5_p_rr1': '/assets/acoustic_guitar_samples/black/ord/twang_ab5_p_rr1.ogg',
+    'f5_f_rr1': '/assets/acoustic_guitar_samples/black/ord/twang_f5_f_rr1.ogg',
+    'bb5_mf_rr1': '/assets/acoustic_guitar_samples/black/ord/twang_bb5_mf_rr1.ogg',
+    'd4_f_rr4': '/assets/acoustic_guitar_samples/black/ord/twang_d4_f_rr4.ogg',
+    'eb6_f_rr1': '/assets/acoustic_guitar_samples/black/ord/twang_eb6_f_rr1.ogg',
+    'd7_f_rr2': '/assets/acoustic_guitar_samples/black/ord/twang_d7_f_rr2.ogg',
+    'e5_p_rr1': '/assets/acoustic_guitar_samples/black/ord/twang_e5_p_rr1.ogg',
+    'g3_f_rr1': '/assets/acoustic_guitar_samples/black/ord/twang_g3_f_rr1.ogg',
+    'f6_p_rr1': '/assets/acoustic_guitar_samples/black/ord/twang_f6_p_rr1.ogg',
+    'db7_p_rr2': '/assets/acoustic_guitar_samples/black/ord/twang_db7_p_rr2.ogg',
+    'a4_p_rr2': '/assets/acoustic_guitar_samples/black/ord/twang_a4_p_rr2.ogg',
+    'e4_mf_rr4': '/assets/acoustic_guitar_samples/black/ord/twang_e4_mf_rr4.ogg',
+    'g5_p_rr2': '/assets/acoustic_guitar_samples/black/ord/twang_g5_p_rr2.ogg',
+    'c6_mf_rr2': '/assets/acoustic_guitar_samples/black/ord/twang_c6_mf_rr2.ogg',
+    'db5_mf_rr3': '/assets/acoustic_guitar_samples/black/ord/twang_db5_mf_rr3.ogg',
+    'eb5_mf_rr1': '/assets/acoustic_guitar_samples/black/ord/twang_eb5_mf_rr1.ogg',
+    'eb6_mf_rr2': '/assets/acoustic_guitar_samples/black/ord/twang_eb6_mf_rr2.ogg',
+    'b4_p_rr1': '/assets/acoustic_guitar_samples/black/ord/twang_b4_p_rr1.ogg',
+    'b6_mf_rr2': '/assets/acoustic_guitar_samples/black/ord/twang_b6_mf_rr2.ogg',
+    'e3_f_rr2': '/assets/acoustic_guitar_samples/black/ord/twang_e3_f_rr2.ogg',
+    'eb6_f_rr4': '/assets/acoustic_guitar_samples/black/ord/twang_eb6_f_rr4.ogg',
+    'ab4_mf_rr2': '/assets/acoustic_guitar_samples/black/ord/twang_ab4_mf_rr2.ogg',
+    'eb6_p_rr2': '/assets/acoustic_guitar_samples/black/ord/twang_eb6_p_rr2.ogg',
+    'a4_mf_rr3': '/assets/acoustic_guitar_samples/black/ord/twang_a4_mf_rr3.ogg',
+    'g4_mf_rr4': '/assets/acoustic_guitar_samples/black/ord/twang_g4_mf_rr4.ogg',
+    'bb3_p_rr1': '/assets/acoustic_guitar_samples/black/ord/twang_bb3_p_rr1.ogg',
+    'e5_f_rr1': '/assets/acoustic_guitar_samples/black/ord/twang_e5_f_rr1.ogg',
+    'g6_mf_rr2': '/assets/acoustic_guitar_samples/black/ord/twang_g6_mf_rr2.ogg',
+    'a5_mf_rr4': '/assets/acoustic_guitar_samples/black/ord/twang_a5_mf_rr4.ogg',
+    'a5_mf_rr2': '/assets/acoustic_guitar_samples/black/ord/twang_a5_mf_rr2.ogg',
+    'db5_p_rr2': '/assets/acoustic_guitar_samples/black/ord/twang_db5_p_rr2.ogg',
+    'eb6_p_rr1': '/assets/acoustic_guitar_samples/black/ord/twang_eb6_p_rr1.ogg',
+    'd4_mf_rr3': '/assets/acoustic_guitar_samples/black/ord/twang_d4_mf_rr3.ogg',
+    'eb4_p_rr1': '/assets/acoustic_guitar_samples/black/ord/twang_eb4_p_rr1.ogg',
+    'f5_f_rr4': '/assets/acoustic_guitar_samples/black/ord/twang_f5_f_rr4.ogg',
+    'eb5_f_rr2': '/assets/acoustic_guitar_samples/black/ord/twang_eb5_f_rr2.ogg',
+    'bb4_mf_rr2': '/assets/acoustic_guitar_samples/black/ord/twang_bb4_mf_rr2.ogg',
+    'a3_f_rr4': '/assets/acoustic_guitar_samples/black/ord/twang_a3_f_rr4.ogg',
+    'a5_f_rr2': '/assets/acoustic_guitar_samples/black/ord/twang_a5_f_rr2.ogg',
+    'a5_f_rr3': '/assets/acoustic_guitar_samples/black/ord/twang_a5_f_rr3.ogg',
+    'bb4_mf_rr3': '/assets/acoustic_guitar_samples/black/ord/twang_bb4_mf_rr3.ogg',
+    'd7_mf_rr2': '/assets/acoustic_guitar_samples/black/ord/twang_d7_mf_rr2.ogg',
+    'gb5_f_rr4': '/assets/acoustic_guitar_samples/black/ord/twang_gb5_f_rr4.ogg',
+    'f4_mf_rr3': '/assets/acoustic_guitar_samples/black/ord/twang_f4_mf_rr3.ogg',
+    'e4_f_rr2': '/assets/acoustic_guitar_samples/black/ord/twang_e4_f_rr2.ogg',
+    'ab5_f_rr4': '/assets/acoustic_guitar_samples/black/ord/twang_ab5_f_rr4.ogg',
+    'd5_f_rr1': '/assets/acoustic_guitar_samples/black/ord/twang_d5_f_rr1.ogg',
+    'f3_p_rr1': '/assets/acoustic_guitar_samples/black/ord/twang_f3_p_rr1.ogg',
+    'c6_f_rr1': '/assets/acoustic_guitar_samples/black/ord/twang_c6_f_rr1.ogg',
+    'bb4_mf_rr4': '/assets/acoustic_guitar_samples/black/ord/twang_bb4_mf_rr4.ogg',
+    'b5_mf_rr1': '/assets/acoustic_guitar_samples/black/ord/twang_b5_mf_rr1.ogg',
+    'c4_p_rr2': '/assets/acoustic_guitar_samples/black/ord/twang_c4_p_rr2.ogg',
+    'e6_p_rr1': '/assets/acoustic_guitar_samples/black/ord/twang_e6_p_rr1.ogg',
+    'b3_mf_rr4': '/assets/acoustic_guitar_samples/black/ord/twang_b3_mf_rr4.ogg',
+    'ab6_f_rr1': '/assets/acoustic_guitar_samples/black/ord/twang_ab6_f_rr1.ogg',
+    'bb3_mf_rr4': '/assets/acoustic_guitar_samples/black/ord/twang_bb3_mf_rr4.ogg',
+    'e4_mf_rr1': '/assets/acoustic_guitar_samples/black/ord/twang_e4_mf_rr1.ogg',
+    'd6_f_rr4': '/assets/acoustic_guitar_samples/black/ord/twang_d6_f_rr4.ogg',
+    'c6_mf_rr1': '/assets/acoustic_guitar_samples/black/ord/twang_c6_mf_rr1.ogg',
+    'gb3_f_rr2': '/assets/acoustic_guitar_samples/black/ord/twang_gb3_f_rr2.ogg',
+    'c5_mf_rr3': '/assets/acoustic_guitar_samples/black/ord/twang_c5_mf_rr3.ogg',
+    'ab5_p_rr2': '/assets/acoustic_guitar_samples/black/ord/twang_ab5_p_rr2.ogg',
+    'gb4_f_rr3': '/assets/acoustic_guitar_samples/black/ord/twang_gb4_f_rr3.ogg',
+    'c4_f_rr2': '/assets/acoustic_guitar_samples/black/ord/twang_c4_f_rr2.ogg',
+    'b5_f_rr2': '/assets/acoustic_guitar_samples/black/ord/twang_b5_f_rr2.ogg',
 };
 
 type SamplerInstrument = {
@@ -139,7 +205,7 @@ type SamplerInstrument = {
 
 export class BlackGuitarSampler {
     private audioContext: AudioContext;
-    private outputNode: GainNode;
+    private destination: AudioNode;
     private instruments = new Map<string, SamplerInstrument>();
     public isInitialized = false;
     private preamp: GainNode;
@@ -147,17 +213,17 @@ export class BlackGuitarSampler {
 
     constructor(audioContext: AudioContext, destination: AudioNode) {
         this.audioContext = audioContext;
-        this.outputNode = this.audioContext.createGain();
+        this.destination = destination;
         
         this.preamp = this.audioContext.createGain();
         this.preamp.gain.value = 1.8; 
-        this.preamp.connect(this.outputNode);
-
-        this.outputNode.connect(destination);
+        this.preamp.connect(this.destination);
     }
     
     public setVolume(volume: number) {
-        this.outputNode.gain.setTargetAtTime(volume, this.audioContext.currentTime, 0.01);
+        if(this.destination instanceof GainNode) {
+           this.destination.gain.setTargetAtTime(volume, this.audioContext.currentTime, 0.01);
+        }
     }
 
     async init(): Promise<boolean> {
@@ -285,6 +351,6 @@ export class BlackGuitarSampler {
     }
 
     public dispose() {
-        this.outputNode.disconnect();
+        this.preamp.disconnect();
     }
 }
