@@ -337,9 +337,9 @@ export async function buildMultiInstrument(ctx: AudioContext, {
       let chorusNode = makeChorus(ctx, currentPreset.chorus || {});
       let delayNode = makeFilteredDelay(ctx, currentPreset.delay || {});
       
-      const lfo = ctx.createOscillator();
+      const lfoNode = ctx.createOscillator();
       const lfoGain = ctx.createGain();
-      lfo.start();
+      lfoNode.start();
 
       let currentOutput: AudioNode = mainChain;
       if (currentPreset.chorus?.on) {
@@ -370,13 +370,13 @@ export async function buildMultiInstrument(ctx: AudioContext, {
           filt2.frequency.value = p.lpf?.cutoff || 3000;
           filt2.Q.value = p.lpf?.q || 1;
           
-          lfo.type = p.lfo?.shape || 'sine';
-          lfo.frequency.value = p.lfo?.rate || 0;
+          lfoNode.type = p.lfo?.shape || 'sine';
+          lfoNode.frequency.value = p.lfo?.rate || 0;
           lfoGain.gain.value = p.lfo?.amount || 0;
           
           if(lfoGain.gain.value > 0) {
               if (p.lfo?.target === 'filter') {
-                  lfo.connect(lfoGain);
+                  lfoNode.connect(lfoGain);
                   lfoGain.connect(filt.frequency);
                   if (!use2pole) lfoGain.connect(filt2.frequency);
               }
@@ -423,7 +423,7 @@ export async function buildMultiInstrument(ctx: AudioContext, {
           noiseNode = {n,ng};
         }
         
-        const voicePackage = { oscs, noise: noiseNode, gain: vGain };
+        const voicePackage = { oscs, noise: noiseNode, gain: vGain, lfo: lfoNode, lfoGain };
         activeVoices.set(midi, voicePackage);
         
         const adsr = currentPreset.adsr || { a: 0.1, d: 0.5, s: 0.5, r: 1.0 };
@@ -440,11 +440,13 @@ export async function buildMultiInstrument(ctx: AudioContext, {
         const vGain = voice.gain;
         const r = currentPreset.adsr?.r || 1.0;
         vGain.gain.cancelScheduledValues(when);
-        vGain.gain.setTargetAtTime(0.0001, when, r / 3);
+        // Correctly read the current gain value to start the ramp down from
+        vGain.gain.setTargetAtTime(0.0001, when, r / 4);
         
-        const stopTime = when + r * 2;
+        const stopTime = when + r;
         voice.oscs.forEach(({x}: any)=>x.stop(stopTime));
         if (voice.noise) voice.noise.n.stop(stopTime);
+        
         activeVoices.delete(midi);
       };
       
