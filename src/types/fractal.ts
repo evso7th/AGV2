@@ -1,5 +1,4 @@
 
-
 /**
  * Настроение — управляет ладом, динамикой, техникой
  */
@@ -291,6 +290,44 @@ export type BluesMelody = {
   phraseIV: BluesMelodyPhrase;
   phraseV: BluesMelodyPhrase;
   phraseTurnaround: BluesMelodyPhrase;
+};
+
+// --- GUITAR RIFF TYPES ---
+
+export type BluesSoloPhrase = {
+  t: number;
+  d: number;
+  deg: BluesRiffDegree;
+  tech?: 'sl' | 'h/p' | 'bn' | 'vb' | 'gr';
+}[];
+
+export type FingerstylePattern = {
+  bars: number[];
+  pattern: 'F_TRAVIS' | 'F_ROLL12';
+  voicingName: string;
+};
+
+export type StrumPattern = {
+  bars: number[];
+  pattern: 'S_SWING' | 'S_4DOWN';
+  voicingName: string;
+};
+
+export type BluesGuitarRiff = {
+  id: string;
+  moods: Mood[];
+  type: 'major' | 'minor';
+  tags: string[];
+  bpm: number;
+  key: string;
+  solo: {
+    I: BluesSoloPhrase;
+    IV: BluesSoloPhrase;
+    V: BluesSoloPhrase;
+    Turnaround: BluesSoloPhrase;
+  };
+  fingerstyle: FingerstylePattern[];
+  strum: StrumPattern[];
 };
 
 
