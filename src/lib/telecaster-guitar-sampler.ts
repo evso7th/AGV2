@@ -51,7 +51,7 @@ export class TelecasterGuitarSampler {
         // План 874: Абсолютный Минимализм.
         // 1. Создаем только один узел - предусилитель.
         this.preamp = this.audioContext.createGain();
-        this.preamp.gain.value = 4.0; // Сразу ставим высокое усиление для проверки.
+        this.preamp.gain.value = 8.0; // Увеличено в 2 раза согласно Плану 875
 
         // 2. Подключаем его НАПРЯМУЮ к выходу.
         this.preamp.connect(this.destination);
@@ -201,5 +201,3 @@ export class TelecasterGuitarSampler {
         this.preamp.disconnect();
     }
 }
-
-    
