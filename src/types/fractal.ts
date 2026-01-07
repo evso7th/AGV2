@@ -1,4 +1,5 @@
 
+
 /**
  * Настроение — управляет ладом, динамикой, техникой
  */
@@ -292,27 +293,39 @@ export type BluesMelody = {
   phraseTurnaround: BluesMelodyPhrase;
 };
 
-// --- GUITAR RIFF TYPES ---
+// --- GUITAR SOLO & RIFF TYPES (ПЛАН 902.2) ---
 
+/**
+ * Определяет одну ноту внутри гитарного "лика" (короткой фразы).
+ */
 export type BluesSoloPhrase = {
-  t: number;
-  d: number;
-  deg: BluesRiffDegree;
-  tech?: 'sl' | 'h/p' | 'bn' | 'vb' | 'gr';
+  t: number; // Стартовый тик (0-11)
+  d: number; // Длительность в тиках
+  deg: BluesRiffDegree; // Ступень относительно корня аккорда
+  tech?: 'sl' | 'h/p' | 'bn' | 'vb' | 'gr' | 'ds'; // Техника исполнения (slide, hammer/pull, bend, vibrato, grace note, double-stop)
 }[];
 
+/**
+ * Определяет паттерн для игры перебором (фингерстайл).
+ */
 export type FingerstylePattern = {
-  bars: number[];
-  pattern: 'F_TRAVIS' | 'F_ROLL12';
-  voicingName: string;
+  bars: number[]; // Номера тактов, где применяется паттерн
+  pattern: 'F_TRAVIS' | 'F_ROLL12'; // Название паттерна
+  voicingName: string; // Имя воисинга аккорда из библиотеки
 };
 
+/**
+ * Определяет паттерн для игры боем.
+ */
 export type StrumPattern = {
-  bars: number[];
-  pattern: 'S_SWING' | 'S_4DOWN';
-  voicingName: string;
+  bars: number[]; // Номера тактов, где применяется паттерн
+  pattern: 'S_SWING' | 'S_4DOWN'; // Название паттерна
+  voicingName: string; // Имя воисинга аккорда
 };
 
+/**
+ * Полное описание гитарной аранжировки для одного блюзового хоруса.
+ */
 export type BluesGuitarRiff = {
   id: string;
   moods: Mood[];
@@ -320,12 +333,14 @@ export type BluesGuitarRiff = {
   tags: string[];
   bpm: number;
   key: string;
+  // Соло-фразы для каждого типа аккорда в 12-тактовом блюзе
   solo: {
     I: BluesSoloPhrase;
     IV: BluesSoloPhrase;
     V: BluesSoloPhrase;
     Turnaround: BluesSoloPhrase;
   };
+  // Паттерны для ритм-гитары
   fingerstyle: FingerstylePattern[];
   strum: StrumPattern[];
 };
