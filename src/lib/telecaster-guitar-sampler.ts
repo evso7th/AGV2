@@ -57,7 +57,7 @@ export class TelecasterGuitarSampler {
 
         // 1. Создаем предусилитель, который будет единственной точкой входа для нот
         this.preamp = this.audioContext.createGain();
-        this.preamp.gain.value = 4.0; // Устанавливаем высокое значение для проверки
+        this.preamp.gain.value = 4.0; 
 
         // 2. Создаем остальные эффекты
         this.distortion = this.audioContext.createWaveShaper();
@@ -168,8 +168,8 @@ export class TelecasterGuitarSampler {
             
             const gainNode = this.audioContext.createGain();
             
-            // Звук ноты подключается к предусилителю
             source.connect(gainNode);
+            // Звук ноты теперь подключается напрямую к предусилителю
             gainNode.connect(this.preamp);
 
             const playbackRate = Math.pow(2, (note.midi - sampleMidi) / 12);
