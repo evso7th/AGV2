@@ -5,10 +5,22 @@ import { ElectronicK, TraditionalK, AmbientK, MelancholicMinorK } from './resona
 import { BlueprintNavigator, type NavigationInfo } from './blueprint-navigator';
 import { getBlueprint } from './blueprints';
 import { V2_PRESETS } from './presets-v2';
+
+// --- МУЗЫКАЛЬНЫЕ АССЕТЫ (БАЗА ЗНАНИЙ) ---
+// #ЗАЧЕМ: Эти файлы содержат "сырые" музыкальные данные (риффы, биты, мелодии),
+//          которые движок использует как строительные блоки. Это позволяет отделить
+//          музыкальные знания от логики их исполнения.
+// #СВЯЗИ: Используются функциями-генераторами внутри этого файла.
 import { PARANOID_STYLE_RIFF } from './assets/rock-riffs';
 import { BLUES_BASS_RIFFS } from './assets/blues-bass-riffs';
 import { NEUTRAL_BLUES_BASS_RIFFS } from './assets/neutral-blues-riffs';
 import { BLUES_GUITAR_RIFFS, BLUES_GUITAR_VOICINGS } from './assets/blues-guitar-riffs';
+import { BLUES_MELODY_RIFFS } from './assets/blues-melody-riffs';
+// #ИСПРАВЛЕНО (ПЛАН 902.3, ШАГ 1): Импортируем новые библиотеки для соло-гитары.
+// #КОММЕНТАРИЙ (ПЛАН 902.3, Шаг 1, Исправление): Добавляем пояснение к импорту.
+//         Эти библиотеки содержат "лики" (короткие фразы) и "планы" (структуры соло),
+//         которые позволяют движку собирать сложные, заранее срежиссированные импровизации.
+import { BLUES_SOLO_LICKS, BLUES_SOLO_PLANS } from './assets/blues_guitar_solo';
 import { BLUES_DRUM_RIFFS } from './assets/blues-drum-riffs';
 import { DRUM_KITS } from './assets/drum-kits';
 
@@ -306,20 +318,25 @@ export function generateBluesBassRiff(chord: GhostChord, technique: Technique, r
     const barDurationInBeats = 4.0;
     const ticksPerBeat = 3;
     
-    const moodRiffs = BLUES_BASS_RIFFS[mood];
-    if (!moodRiffs || moodRiffs.length === 0) {
-        console.warn(`[BluesBass] No bass riffs found for mood: ${mood}.`);
-        return [];
-    }
+    const allBassRiffs = Object.values(BLUES_BASS_RIFFS).flat();
+    if (allBassRiffs.length === 0) return [];
     
-    const riffTemplate = moodRiffs[random.nextInt(moodRiffs.length)];
+    const riffTemplate = allBassRiffs[random.nextInt(allBassRiffs.length)];
 
-    // Определяем ступень аккорда
-    const rootI = 0; // Simplified
-    const step = (root - rootI + 12) % 12;
-    const isTurnaround = false; // Simplified
+    const barInChorus = 0; // Simplified for now
+    const rootOfChorus = chord.rootNote;
+    const step = (root - rootOfChorus + 12) % 12;
     
-    let pattern = riffTemplate.I; // Simplified to always use 'I' for now
+    let patternSource: 'I' | 'IV' | 'V' | 'turn' = 'I';
+    if (barInChorus === 11) {
+        patternSource = 'turn';
+    } else if (step === 5) {
+        patternSource = 'IV';
+    } else if (step === 7) {
+        patternSource = 'V';
+    }
+
+    const pattern = riffTemplate[patternSource];
 
     for (const riffNote of pattern) {
         phrase.push({
@@ -342,12 +359,13 @@ export function createAmbientBassAxiom(currentChord: GhostChord, mood: Mood, gen
     const scale = getScaleForMood(mood, genre);
     const rootNote = currentChord.rootNote;
 
-    const numNotes = 4 + random.nextInt(5); // 4 to 8 notes over two bars
+    const numNotes = 3 + random.nextInt(4); // 3 to 6 notes over two bars
     let currentTime = 0;
     const totalDurationNormalizer = 8.0; // Two bars
 
     for (let i = 0; i < numNotes; i++) {
-        const duration = totalDurationNormalizer / numNotes;
+        // Use random duration for each note, then normalize
+        const duration = random.next() + 0.5; 
         
         let note = rootNote;
         if (i > 0 && random.next() > 0.4) {
@@ -355,7 +373,8 @@ export function createAmbientBassAxiom(currentChord: GhostChord, mood: Mood, gen
             const possibleNotes = [
                 rootNote,
                 rootNote + 7, // 5th
-                rootNote + (isMinor ? 3 : 4) // 3rd
+                rootNote + (isMinor ? 3 : 4), // 3rd
+                rootNote + 12 // Octave
             ].filter(n => scale.some(scaleNote => scaleNote % 12 === n % 12));
             note = possibleNotes[random.nextInt(possibleNotes.length)] || rootNote;
         }
@@ -364,20 +383,30 @@ export function createAmbientBassAxiom(currentChord: GhostChord, mood: Mood, gen
             type: 'bass',
             note: note,
             duration: duration,
-            time: currentTime,
-            weight: 0.7 + random.next() * 0.3,
+            time: currentTime, // Placeholder time
+            weight: 0.6 + random.next() * 0.3,
             technique: 'swell',
             dynamics: 'mf',
             phrasing: 'legato',
             params: { cutoff: 300, resonance: 0.8, distortion: 0.02, portamento: 0.0, attack: duration * 0.5, release: duration * 1.5 }
         });
         
-        currentTime += duration;
+        currentTime += duration; // This is now un-normalized time
     }
 
-    // Глобальное повышение октавы
+    // Normalize times and durations to fit the 8 beats (2 bars)
+    if (currentTime > 0) {
+        const scaleFactor = totalDurationNormalizer / currentTime;
+        let runningTime = 0;
+        phrase.forEach(e => {
+            e.duration *= scaleFactor;
+            e.time = runningTime;
+            runningTime += e.duration;
+        });
+    }
+
     phrase.forEach(event => {
-        event.note += 12; // Транспонируем на одну октаву вверх
+        event.note += 12; // Transpose up one octave
     });
     
     const phraseNotes = phrase.map(e => e.note).join(' -> ');
@@ -403,21 +432,39 @@ export function createAccompanimentAxiom(chord: GhostChord, mood: Mood, genre: G
     if (registerHint === 'low') baseOctave = 2;
     if (registerHint === 'high') baseOctave = 4;
 
-    const duration = 4.0; // Play the chord for the whole bar
-
-    chordNotes.forEach((note, index) => {
-        axiom.push({
-            type: 'accompaniment',
-            note: note + 12 * baseOctave,
-            duration: duration,
-            time: 0, // All notes start at the same time
-            weight: 0.6 - (index * 0.05),
-            technique: 'long-chords',
-            dynamics: 'p',
-            phrasing: 'legato',
-            params: { attack: 0.5, release: duration }
+    // Use random to decide between long chord and arpeggio
+    if (random.next() < 0.6) { // 60% chance for long chord
+        const duration = 4.0;
+        chordNotes.forEach((note, index) => {
+            axiom.push({
+                type: 'accompaniment',
+                note: note + 12 * baseOctave,
+                duration: duration,
+                time: 0,
+                weight: 0.6 - (index * 0.05),
+                technique: 'long-chords',
+                dynamics: 'p',
+                phrasing: 'legato',
+                params: { attack: 0.5, release: duration }
+            });
         });
-    });
+    } else { // 40% chance for simple arpeggio
+        const numNotes = 4;
+        const duration = 4.0 / numNotes;
+        for (let i = 0; i < numNotes; i++) {
+             axiom.push({
+                type: 'accompaniment',
+                note: chordNotes[i % chordNotes.length] + 12 * baseOctave,
+                duration: duration,
+                time: i * duration,
+                weight: 0.5 + random.next() * 0.1,
+                technique: 'arpeggio-slow',
+                dynamics: 'p',
+                phrasing: 'legato',
+                params: { attack: 0.1, release: duration * 0.9 }
+            });
+        }
+    }
 
     return axiom;
 }
@@ -1165,3 +1212,4 @@ export function generateIntroSequence(options: {
 
     return { events, instrumentHints };
 }
+
