@@ -50,17 +50,16 @@ export class TelecasterGuitarSampler {
     private chorusLFO: OscillatorNode;
     private chorusDepth: GainNode;
     private chorusDelay: DelayNode;
-    private fxChainInput: GainNode;
 
     constructor(audioContext: AudioContext, destination: AudioNode) {
         this.audioContext = audioContext;
         this.destination = destination;
 
+        // 1. Создаем предусилитель, который будет единственной точкой входа для нот
         this.preamp = this.audioContext.createGain();
-        this.preamp.gain.value = 4.0; 
+        this.preamp.gain.value = 4.0; // Устанавливаем высокое значение для проверки
 
-        this.fxChainInput = this.audioContext.createGain();
-
+        // 2. Создаем остальные эффекты
         this.distortion = this.audioContext.createWaveShaper();
         this.distortion.curve = this.makeDistortionCurve(0.1);
 
@@ -79,17 +78,15 @@ export class TelecasterGuitarSampler {
         this.delay.delayTime.value = 0.3;
         this.feedback.gain.value = 0.2;
 
-        this.preamp.connect(this.fxChainInput);
-        this.fxChainInput.connect(this.distortion);
+        // 3. Собираем СТРОГО ПОСЛЕДОВАТЕЛЬНУЮ цепочку эффектов
+        this.preamp.connect(this.distortion);
         this.distortion.connect(this.chorusDelay);
         this.chorusDelay.connect(this.delay);
         this.delay.connect(this.feedback);
         this.feedback.connect(this.delay);
         
-        const mainOutput = this.audioContext.createGain();
-        this.delay.connect(mainOutput);
-        this.fxChainInput.connect(mainOutput); 
-        mainOutput.connect(this.destination);
+        // 4. Выход последнего эффекта в цепи идет на финальный выход
+        this.delay.connect(this.destination);
     }
 
     private makeDistortionCurve(amount: number): Float32Array {
@@ -171,6 +168,7 @@ export class TelecasterGuitarSampler {
             
             const gainNode = this.audioContext.createGain();
             
+            // Звук ноты подключается к предусилителю
             source.connect(gainNode);
             gainNode.connect(this.preamp);
 
@@ -206,7 +204,8 @@ export class TelecasterGuitarSampler {
     
     private keyToMidi(key: string): number | null {
         const noteStr = key.toLowerCase();
-        const noteMatch = noteStr.match(/([a-g][b#]?)(\d)/);
+        // Updated regex to handle note names like 'g_3' or 'a_2' from telecaster samples
+        const noteMatch = noteStr.match(/([a-g][b#]?)_?(\d)/);
     
         if (!noteMatch) return null;
     
@@ -217,10 +216,10 @@ export class TelecasterGuitarSampler {
             'c': 0, 'c#': 1, 'db': 1, 'd': 2, 'd#': 3, 'eb': 3, 'e': 4, 'f': 5, 'f#': 6, 'gb': 6, 'g': 7, 'g#': 8, 'ab': 8, 'a': 9, 'a#': 10, 'bb': 10, 'b': 11
         };
     
-        const noteValue = noteMap[name];
+        const noteValue = noteMap[name.replace('#', 's').replace('b', 'f')]; // Basic sharp/flat to map key if needed
         if (noteValue === undefined) return null;
     
-        return 12 * (octave + 1) + noteValue;
+        return 12 * octave + noteValue;
     }
     
 
@@ -229,6 +228,5 @@ export class TelecasterGuitarSampler {
 
     public dispose() {
         this.preamp.disconnect();
-        this.fxChainInput.disconnect();
     }
 }
