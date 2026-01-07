@@ -170,9 +170,38 @@ export const BLUES_BASS_RIFFS: Record<Mood, BluesBassRiff[]> = {
             turn: [{t:0,deg:'2'},{t:2,deg:'b2'},{t:4,deg:'R',d:8}]
         }
     ],
-    // Fallbacks for moods not explicitly defined yet
-    epic: [],
-    anxious: [],
+    epic: [
+         // Copied from joyful
+        {
+            I:  [{t:0,deg:'R'},{t:2,deg:'5'},{t:4,deg:'6'},{t:6,deg:'b7'},{t:8,deg:'6'},{t:10,deg:'5'}],
+            IV: [{t:0,deg:'R'},{t:2,deg:'5'},{t:4,deg:'6'},{t:6,deg:'b7'},{t:8,deg:'6'},{t:10,deg:'5'}],
+            V:  [{t:0,deg:'R'},{t:2,deg:'5'},{t:4,deg:'6'},{t:6,deg:'b7'},{t:8,deg:'6'},{t:10,deg:'5'}],
+            turn: [{t:0,deg:'R'},{t:2,deg:'b7'},{t:4,deg:'6'},{t:6,deg:'b6'},{t:8,deg:'5'},{t:10,deg:'#4'}]
+        },
+    ],
+    anxious: [
+        // Riff Anx-01 - Heavy Pedal
+        {
+            I:  [{t:0,deg:'R',d:12}],
+            IV: [{t:0,deg:'R',d:6}, {t:6,deg:'b7', d:6}],
+            V:  [{t:0,deg:'5',d:6}, {t:6,deg:'R', d:6}],
+            turn: [{t:0,deg:'b7'},{t:2,deg:'R'},{t:4,deg:'b3'},{t:6,deg:'4'},{t:8,deg:'#4'},{t:10,deg:'5'}]
+        },
+        // Riff Anx-02 - Slow Grind
+        {
+            I:  [{t:0,deg:'R'}, {t:6,deg:'b3'}, {t:9,deg:'4'}],
+            IV: [{t:0,deg:'R'}, {t:6,deg:'b3'}, {t:9,deg:'4'}],
+            V:  [{t:0,deg:'R'}, {t:6,deg:'b3'}, {t:9,deg:'4'}],
+            turn: [{t:0,deg:'R'},{t:2,deg:'b7'},{t:4,deg:'6'},{t:6,deg:'b6'},{t:8,deg:'5'},{t:10,deg:'#4'}]
+        },
+        // Riff Anx-03 - Power Chord Step
+        {
+            I:  [{t:0,deg:'R',d:4},{t:4,deg:'5',d:4},{t:8,deg:'b7',d:4}],
+            IV: [{t:0,deg:'R',d:4},{t:4,deg:'5',d:4},{t:8,deg:'b7',d:4}],
+            V:  [{t:0,deg:'R',d:4},{t:4,deg:'5',d:4},{t:8,deg:'b7',d:4}],
+            turn: [{t:0,deg:'R'},{t:2,deg:'b7'},{t:4,deg:'6'},{t:6,deg:'b6'},{t:8,deg:'5'},{t:10,deg:'#4'}]
+        }
+    ],
 };
 
 // Copy 'neutral' riffs to 'contemplative' as they are aliases
@@ -180,6 +209,3 @@ BLUES_BASS_RIFFS.contemplative = BLUES_BASS_RIFFS.contemplative;
 
 // Copy 'joyful' to 'epic' as a starting point
 BLUES_BASS_RIFFS.epic = BLUES_BASS_RIFFS.joyful;
-
-// Copy 'dark' to 'anxious' as a starting point
-BLUES_BASS_RIFFS.anxious = BLUES_BASS_RIFFS.dark;

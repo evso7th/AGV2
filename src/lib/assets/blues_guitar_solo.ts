@@ -23,11 +23,22 @@ export const BLUES_SOLO_LICKS: Record<string, BluesSoloPhrase> = {
   L09: [{t:0,d:2,deg:'2'},{t:2,d:2,deg:'b3'},{t:4,d:2,deg:'3'},{t:6,d:2,deg:'4'},{t:8,d:2,deg:'#4'},{t:10,d:2,deg:'5'}],
   L10: [{t:0,d:6,deg:'R'},{t:6,d:6,deg:'R+8',tech:'vb'}],
   L11: [{t:0,d:3,deg:'R'},{t:3,d:3,deg:'3'},{t:6,d:6,deg:'6',tech:'vb'}],
-  L12: [{t:0,d:12,deg:'5',tech:'bn'}] // Stop-time scream
+  L12: [{t:0,d:12,deg:'5',tech:'bn'}], // Stop-time scream
+  L13_Sabbath_Scream: [{ t: 0, d: 12, deg: 'b7', tech: 'vb' }], // A single, long, wailing note
 };
 
 // 10 планов соло, каждый на 36 тактов (3 хора по 12 тактов)
 export const BLUES_SOLO_PLANS: Record<string, { choruses: string[][] }> = {
+  "E_minor_heavy_wail": {
+    choruses: [
+      // Chorus 1: Start with the scream, then simple phrases
+      ['L13_Sabbath_Scream', 'L01', 'L04', 'L01', 'L11', 'L04', 'L03', 'L04', 'L05', 'L01', 'L04', 'L09'],
+      // Chorus 2: More movement, stop-time for drama
+      ['L08', 'L03', 'L01', 'L04', 'L11', 'L04', 'L03', 'L10', 'L12', 'L12', 'L01', 'L09'],
+      // Chorus 3: Climax with higher register licks
+      ['L10', 'L11', 'L03', 'L01', 'L11', 'L04', 'L03', 'L10', 'L05', 'L01', 'L13_Sabbath_Scream', 'L09']
+    ]
+  },
   "E_minor_slow_cry": {
     choruses: [
       ['L01', 'L11', 'L03', 'L04', 'L11', 'L04', 'L03', 'L10', 'L04', 'L05', 'L01', 'L09'],
@@ -99,5 +110,3 @@ export const BLUES_SOLO_PLANS: Record<string, { choruses: string[][] }> = {
     ]
   }
 };
-
-    
