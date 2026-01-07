@@ -15,7 +15,9 @@ import { PARANOID_STYLE_RIFF } from './assets/rock-riffs';
 import { BLUES_BASS_RIFFS } from './assets/blues-bass-riffs';
 import { NEUTRAL_BLUES_BASS_RIFFS } from './assets/neutral-blues-riffs';
 import { BLUES_GUITAR_RIFFS, BLUES_GUITAR_VOICINGS } from './assets/blues-guitar-riffs';
+import { BLUES_MELODY_RIFFS } from './assets/blues-melody-riffs';
 import { BLUES_DRUM_RIFFS } from './assets/blues-drum-riffs';
+// #ИСПРАВЛЕНО (ПЛАН 902.3, ШАГ 1): Импортируем новые библиотеки для соло-гитары.
 import { BLUES_SOLO_LICKS, BLUES_SOLO_PLANS } from './assets/blues_guitar_solo';
 import { DRUM_KITS } from './assets/drum-kits';
 
@@ -148,7 +150,7 @@ export class FractalMusicEngine {
     const allDrumRiffs = Object.values(BLUES_DRUM_RIFFS).flat();
     this.shuffledDrumRiffIndices = this.random.shuffle(Array.from({ length: allDrumRiffs.length }, (_, i) => i));
 
-    this.shuffledMelodyIDs = this.random.shuffle(BLUES_GUITAR_RIFFS.map(m => m.id)); // ИЗМЕНЕНО: Используем новую библиотеку
+    this.shuffledMelodyIDs = this.random.shuffle(BLUES_MELODY_RIFFS.map(m => m.id));
   }
 
   public get tempo(): number { return this.config.tempo; }
@@ -196,7 +198,7 @@ export class FractalMusicEngine {
 
     this.currentDrumRiffIndex = this.baseDrumRiffIndex;
     this.currentBassRiffIndex = this.baseBassRiffIndex;
-    this.currentGuitarRiffId = this.baseMelodyId; // ИЗМЕНЕНО: Используем новое свойство
+    this.currentGuitarRiffId = this.baseMelodyId;
 
 
     const blueprint = await getBlueprint(this.config.genre, this.config.mood);
@@ -461,6 +463,110 @@ export class FractalMusicEngine {
   public getGhostHarmony(): GhostChord[] {
       return this.ghostHarmonyTrack;
   }
+  
+    /**
+     * #ЗАЧЕМ: Эта функция реализует "алхимию" сборки блюзовых соло.
+     * #ЧТО: Она принимает индекс текущего хоруса (квадрата) и флаг `isSoloSection`.
+     *       - Если `isSoloSection` === true, она использует `BLUES_SOLO_PLANS` и `BLUES_SOLO_LICKS` для сборки
+     *         фрагмента большого 36-тактового соло.
+     *       - Если `isSoloSection` === false, она использует `BLUES_MELODY_RIFFS` для создания
+     *         стандартной 12-тактовой темы.
+     *       Она преобразует абстрактные "лики" и "фразы" в конкретные `FractalEvent`, согласуя их
+     *       с текущей гармонией из `GhostChord[]`.
+     * #СВЯЗИ: Вызывается из `generateOneBar`, является ядром генерации блюзовых мелодий.
+     */
+    private generateBluesMelodyChorus(
+        chorusChords: GhostChord[],
+        mood: Mood,
+        random: { next: () => number; nextInt: (max: number) => number; },
+        isSoloSection: boolean,
+        chorusIndex: number,
+        registerHint?: 'low' | 'mid' | 'high'
+    ): { events: FractalEvent[], log: string } {
+
+        const finalEvents: FractalEvent[] = [];
+        const barDurationInBeats = 4.0;
+        const ticksPerBeat = 3; // 12 ticks per bar (12/8 time)
+        let logMessage = "";
+
+        if (isSoloSection) {
+            // --- РЕЖИМ "АЛХИМИК": Сборка соло по плану ---
+            const soloPlanName = Object.keys(BLUES_SOLO_PLANS)[0]; // Упрощенный выбор плана
+            const soloPlan = BLUES_SOLO_PLANS[soloPlanName];
+
+            if (!soloPlan || chorusIndex >= soloPlan.choruses.length) {
+                logMessage = `[SoloComposer] Solo plan or chorus index out of bounds. Plan: ${soloPlanName}, Index: ${chorusIndex}`;
+                return { events: [], log: logMessage };
+            }
+
+            const currentChorusPlan = soloPlan.choruses[chorusIndex];
+            logMessage = `[SoloComposer] Assembling solo chorus ${chorusIndex + 1}/${soloPlan.choruses.length} using plan "${soloPlanName}".`;
+
+            for (let barIndex = 0; barIndex < 12; barIndex++) {
+                const lickId = currentChorusPlan[barIndex];
+                const lickTemplate = BLUES_SOLO_LICKS[lickId];
+                const currentChord = chorusChords.find(c => c.bar % 12 === barIndex);
+
+                if (!lickTemplate || !currentChord) continue;
+
+                const chordRoot = currentChord.rootNote;
+                let octaveShift = 12 * (registerHint === 'high' ? 4 : 3);
+
+                for (const noteTemplate of lickTemplate) {
+                    let finalMidiNote = chordRoot + (DEGREE_TO_SEMITONE[noteTemplate.deg as BluesRiffDegree] || 0) + octaveShift;
+                    if (finalMidiNote > 84) finalMidiNote -= 12;
+                    if (finalMidiNote < 52) finalMidiNote += 12;
+
+                    finalEvents.push({
+                        type: 'melody',
+                        note: finalMidiNote,
+                        time: (barIndex * barDurationInBeats) + (noteTemplate.t / ticksPerBeat),
+                        duration: (noteTemplate.d / ticksPerBeat),
+                        weight: 0.9,
+                        technique: (noteTemplate.tech as Technique) || 'pick',
+                        dynamics: 'f', phrasing: 'legato', params: {}
+                    });
+                }
+            }
+        } else {
+            // --- РЕЖИМ "ХРАНИТЕЛЬ ТЕМЫ": Генерация основной мелодии ---
+            const selectedRiff = BLUES_MELODY_RIFFS.find(r => r.moods.includes(mood)) ?? BLUES_MELODY_RIFFS[0];
+            logMessage = `[ThemeKeeper] Generating main theme using riff "${selectedRiff.id}".`;
+
+            for (let barIndex = 0; barIndex < 12; barIndex++) {
+                const currentChord = chorusChords.find(c => c.bar % 12 === barIndex);
+                if (!currentChord) continue;
+                
+                const chordRoot = currentChord.rootNote;
+                const rootOfChorus = chorusChords[0].rootNote;
+                const step = (chordRoot - rootOfChorus + 12) % 12;
+                
+                let phraseSource;
+                if (barIndex === 11) phraseSource = selectedRiff.phraseTurnaround;
+                else if (step === 5) phraseSource = selectedRiff.phraseIV;
+                else if (step === 7) phraseSource = selectedRiff.phraseV;
+                else phraseSource = selectedRiff.phraseI;
+
+                let octaveShift = 12 * (registerHint === 'high' ? 4 : 3);
+
+                for (const noteTemplate of phraseSource) {
+                     let finalMidiNote = chordRoot + (DEGREE_TO_SEMITONE[noteTemplate.deg as BluesRiffDegree] || 0) + octaveShift;
+                     if (finalMidiNote > 84) finalMidiNote -= 12;
+                     if (finalMidiNote < 52) finalMidiNote += 12;
+
+                     finalEvents.push({
+                        type: 'melody',
+                        note: finalMidiNote,
+                        time: (barIndex * barDurationInBeats) + (noteTemplate.t / ticksPerBeat),
+                        duration: (noteTemplate.d / ticksPerBeat),
+                        weight: 0.8,
+                        technique: 'pick', dynamics: 'mf', phrasing: 'legato', params: {}
+                    });
+                }
+            }
+        }
+        return { events: finalEvents, log: logMessage };
+    }
 
   public generateOneBar(barDuration: number, navInfo: NavigationInfo, instrumentHints: InstrumentHints): FractalEvent[] {
     const effectiveBar = this.epoch % this.navigator.totalBars;
@@ -569,14 +675,14 @@ export class FractalMusicEngine {
     if (navInfo.currentPart.layers.melody && !navInfo.currentPart.bassAccompanimentDouble?.enabled && melodyRules) {
         if (this.config.genre === 'blues' && melodyRules.source === 'motif') {
             const barInChorus = this.epoch % 12;
-            const registerHint = melodyRules.register?.preferred;
+            const chorusIndex = Math.floor((this.epoch % 36) / 12);
             const isSoloSection = navInfo.currentPart.id.includes('SOLO');
             
             if (barInChorus === 0 || !this.bluesChorusCache || this.bluesChorusCache.barStart !== (this.epoch - barInChorus)) {
                 const chorusBarStart = this.epoch - barInChorus;
                 const chorusChords = this.ghostHarmonyTrack.filter(c => c.bar >= chorusBarStart && c.bar < chorusBarStart + 12);
                 if (chorusChords.length > 0) {
-                    this.bluesChorusCache = this.generateBluesMelodyChorus(chorusChords, this.config.mood, this.random, registerHint, isSoloSection);
+                    this.bluesChorusCache = this.generateBluesMelodyChorus(chorusChords, this.config.mood, this.random, isSoloSection, chorusIndex, melodyRules.register?.preferred);
                 }
             }
             
@@ -741,111 +847,9 @@ export class FractalMusicEngine {
     return selectableRiffs[this.random.nextInt(selectableRiffs.length)];
   }
 
-  private generateBluesMelodyChorus(chorusChords: GhostChord[], mood: Mood, random: { next: () => number; nextInt: (max: number) => number }, registerHint?: 'low' | 'mid' | 'high', isSolo: boolean = false): { events: FractalEvent[], log: string } {
-    const chorusEvents: FractalEvent[] = [];
-    
-    const selectedGuitarRiff = this.selectUniqueBluesGuitarRiff(mood, isSolo ? this.baseMelodyId : undefined) ?? BLUES_GUITAR_RIFFS[0];
-
-    if (!selectedGuitarRiff) {
-        console.warn(`[BluesGuitarChorus] No guitar riff could be selected for mood: ${mood}.`);
-        return { events: [], log: "No riff selected." };
-    }
-    
-    this.currentGuitarRiffId = selectedGuitarRiff.id;
-
-    const barDurationInBeats = 4;
-    const ticksPerBeat = 3;
-    
-    let octaveShift = 12 * 3;
-    if (registerHint === 'high') octaveShift = 12 * 4;
-    if (registerHint === 'low') octaveShift = 12 * 3;
-    
-    for (let barIndex = 0; barIndex < 12; barIndex++) {
-        const absoluteBar = (chorusChords[0]?.bar ?? 0) + barIndex;
-        const barChord = chorusChords.find(c => absoluteBar >= c.bar && absoluteBar < (c.bar + c.durationBars));
-
-        if (!barChord) continue;
-
-        const chordRoot = barChord.rootNote;
-        
-        const strumPattern = selectedGuitarRiff.strum.find(s => s.bars.includes(barIndex + 1));
-        const fingerstylePattern = selectedGuitarRiff.fingerstyle.find(f => f.bars.includes(barIndex + 1));
-        
-        const techniqueChoice = random.next();
-        
-        if (techniqueChoice < 0.2 && strumPattern) {
-            const voicing = BLUES_GUITAR_VOICINGS[strumPattern.voicingName];
-            if(voicing) {
-                const strumDelay = 0.02 + random.next() * 0.01;
-                voicing.forEach((noteMidi, i) => {
-                    let finalNote = noteMidi;
-                    if (finalNote > 84) finalNote -= 12; 
-                    if (finalNote < 52) finalNote += 12;
-                    chorusEvents.push({
-                        type: 'melody', note: finalNote,
-                        time: (barIndex * barDurationInBeats) + (i * strumDelay),
-                        duration: 1.5,
-                        weight: 0.8 + (random.next() * 0.1),
-                        technique: 'pick', dynamics: 'f', phrasing: 'staccato', params: {}
-                    });
-                });
-            }
-        } 
-        else if (techniqueChoice < 0.4 && fingerstylePattern) {
-            const voicing = BLUES_GUITAR_VOICINGS[fingerstylePattern.voicingName];
-             if(voicing) {
-                const arpeggioDelay = 0.12 + random.next() * 0.05;
-                 voicing.slice(0, 5).forEach((noteMidi, i) => {
-                    let finalNote = noteMidi;
-                    if (finalNote > 84) finalNote -= 12;
-                    if (finalNote < 52) finalNote += 12;
-                    chorusEvents.push({
-                        type: 'melody', note: finalNote,
-                        time: (barIndex * barDurationInBeats) + (i * arpeggioDelay),
-                        duration: 1.0,
-                        weight: 0.75 + (random.next() * 0.1),
-                        technique: 'pluck', dynamics: 'mf', phrasing: 'legato', params: {}
-                    });
-                });
-            }
-        }
-        else {
-             let phrase: BluesSoloPhrase | undefined;
-            const rootOfChorus = this.ghostHarmonyTrack.find(c => c.bar === (this.epoch - (this.epoch % 12)))?.rootNote ?? chordRoot;
-            const step = (chordRoot - rootOfChorus + 12) % 12;
-            
-            if (barIndex === 11) phrase = selectedGuitarRiff.solo.Turnaround;
-            else if (step === 5) phrase = selectedGuitarRiff.solo.IV;
-            else if (step === 7) phrase = selectedGuitarRiff.solo.V;
-            else phrase = selectedGuitarRiff.solo.I;
-
-            if (phrase) {
-                for (const event of phrase) {
-                    let noteMidi = chordRoot + DEGREE_TO_SEMITONE[event.deg] + octaveShift;
-                    if (noteMidi > 84) noteMidi -= 12;
-                    if (noteMidi < 52) noteMidi += 12;
-
-                    const duration = isSolo ? (((event.d || 2) / ticksPerBeat) * 2.5) : ((event.d || 2) / ticksPerBeat);
-
-                    chorusEvents.push({
-                        type: 'melody', note: noteMidi,
-                        time: (barIndex * barDurationInBeats) + (event.t / ticksPerBeat),
-                        duration: duration,
-                        weight: 0.9,
-                        technique: 'pick', dynamics: 'f', phrasing: 'legato', params: {}
-                    });
-                }
-            }
-        }
-    }
-    
-    const log = `RiffID: ${selectedGuitarRiff.id}.`;
-    return { events: chorusEvents, log };
-}
-
-
 }
 
     
 
     
+
