@@ -45,10 +45,10 @@ export const BLUES_MELODY_RIFFS: BluesMelody[] = [
       "phraseTurnaround":[{"t":0,"d":4,"deg":"2"},{"t":4,"d":8,"deg":"R"}]
     },
     { "id":"Enthusiastic-01","moods":["enthusiastic"],"type": "major","tags":["boogie", "uptempo"],
-      "phraseI":[{"t":0,"deg":"R"},{"t":2,"deg":"5"},{"t":4,"deg":"6"},{"t":6,"deg":"6"},{"t":8,"deg":"5"},{"t":10,"deg":"R"}],
-      "phraseIV":[{"t":0,"deg":"R"},{"t":2,"deg":"5"},{"t":4,"deg":"6"},{"t":6,"deg":"6"},{"t":8,"deg":"5"},{"t":10,"deg":"R"}],
-      "phraseV":[{"t":0,"deg":"R"},{"t":2,"deg":"5"},{"t":4,"deg":"b7"},{"t":6,"deg":"5"},{"t":8,"deg":"R"},{"t":10,"deg":"5"}],
-      "phraseTurnaround":[{"t":0,"deg":"R"},{"t":3,"deg":"b7"},{"t":6,"deg":"6"},{"t":9,"deg":"5"}]
+      "phraseI":[{"t":0,"d":2,"deg":"R"},{"t":2,"d":2,"deg":"5"},{"t":4,"d":2,"deg":"6"},{"t":6,"d":2,"deg":"6"},{"t":8,"d":2,"deg":"5"},{"t":10,"d":2,"deg":"R"}],
+      "phraseIV":[{"t":0,"d":2,"deg":"R"},{"t":2,"d":2,"deg":"5"},{"t":4,"d":2,"deg":"6"},{"t":6,"d":2,"deg":"6"},{"t":8,"d":2,"deg":"5"},{"t":10,"d":2,"deg":"R"}],
+      "phraseV":[{"t":0,"d":2,"deg":"R"},{"t":2,"d":2,"deg":"5"},{"t":4,"d":2,"deg":"b7"},{"t":6,"d":2,"deg":"5"},{"t":8,"d":2,"deg":"R"},{"t":10,"d":2,"deg":"5"}],
+      "phraseTurnaround":[{"t":0,"d":3,"deg":"R"},{"t":3,"d":3,"deg":"b7"},{"t":6,"d":3,"deg":"6"},{"t":9,"d":3,"deg":"5"}]
     },
     { "id":"Enthusiastic-02","moods":["enthusiastic"],"type": "major","tags":["boogie", "driving"],
       "phraseI":[{"t":0,"d":4,"deg":"R"},{"t":4,"d":4,"deg":"4"},{"t":8,"d":4,"deg":"6"}],
@@ -63,10 +63,10 @@ export const BLUES_MELODY_RIFFS: BluesMelody[] = [
       "phraseTurnaround":[{"t":0,"d":6,"deg":"6"},{"t":6,"d":6,"deg":"R"}]
     },
     { "id":"Enthusiastic-04","moods":["enthusiastic"],"type": "major","tags":["shuffle", "driving"],
-      "phraseI":[{"t":0,"deg":"R"},{"t":2,"deg":"5"},{"t":4,"deg":"6"},{"t":6,"deg":"b7"},{"t":9,"deg":"6"},{"t":11,"deg":"5"}],
-      "phraseIV":[{"t":0,"deg":"R"},{"t":2,"deg":"5"},{"t":4,"deg":"6"},{"t":6,"deg":"b7"},{"t":9,"deg":"6"},{"t":11,"deg":"5"}],
-      "phraseV":[{"t":0,"deg":"5"},{"t":2,"deg":"b7"},{"t":4,"deg":"R"},{"t":6,"deg":"b7"},{"t":8,"deg":"5"},{"t":10,"deg":"R"}],
-      "phraseTurnaround":[{"t":0,"deg":"R"},{"t":2,"deg":"b7"},{"t":4,"deg":"6"},{"t":6,"deg":"b6"},{"t":8,"deg":"5"},{"t":10,"deg":"#4"}]
+      "phraseI":[{"t":0,"d":2,"deg":"R"},{"t":2,"d":2,"deg":"5"},{"t":4,"d":2,"deg":"6"},{"t":6,"d":3,"deg":"b7"},{"t":9,"d":2,"deg":"6"},{"t":11,"d":1,"deg":"5"}],
+      "phraseIV":[{"t":0,"d":2,"deg":"R"},{"t":2,"d":2,"deg":"5"},{"t":4,"d":2,"deg":"6"},{"t":6,"d":3,"deg":"b7"},{"t":9,"d":2,"deg":"6"},{"t":11,"d":1,"deg":"5"}],
+      "phraseV":[{"t":0,"d":2,"deg":"5"},{"t":2,"d":2,"deg":"b7"},{"t":4,"d":2,"deg":"R"},{"t":6,"d":2,"deg":"b7"},{"t":8,"d":2,"deg":"5"},{"t":10,"d":2,"deg":"R"}],
+      "phraseTurnaround":[{"t":0,"d":2,"deg":"R"},{"t":2,"d":2,"deg":"b7"},{"t":4,"d":2,"deg":"6"},{"t":6,"d":2,"deg":"b6"},{"t":8,"d":2,"deg":"5"},{"t":10,"d":2,"deg":"#4"}]
     },
     { "id":"Enthusiastic-05","moods":["enthusiastic"],"type": "major","tags":["shuffle", "uptempo"],
       "phraseI":[{"t":0,"d":3,"deg":"5"},{"t":3,"d":3,"deg":"6"},{"t":6,"d":6,"deg":"R"}],
@@ -74,12 +74,11 @@ export const BLUES_MELODY_RIFFS: BluesMelody[] = [
       "phraseV":[{"t":0,"d":3,"deg":"5"},{"t":3,"d":3,"deg":"b7"},{"t":6,"d":6,"deg":"3"}],
       "phraseTurnaround":[{"t":0,"d":3,"deg":"2"},{"t":3,"d":3,"deg":"b3"},{"t":6,"d":6,"deg":"R"}]
     },
-
     { "id":"Neutral-01","moods":["contemplative"], "type": "major","tags":["chicago", "mid-tempo"],
-      "phraseI":[{"t":0,"deg":"R"},{"t":2,"deg":"5"},{"t":4,"deg":"6"},{"t":6,"deg":"b7"},{"t":8,"deg":"6"},{"t":10,"deg":"5"}],
-      "phraseIV":[{"t":0,"deg":"R"},{"t":2,"deg":"5"},{"t":4,"deg":"6"},{"t":6,"deg":"b7"},{"t":8,"deg":"6"},{"t":10,"deg":"5"}],
-      "phraseV":[{"t":0,"deg":"5"},{"t":2,"deg":"b7"},{"t":4,"deg":"R"},{"t":6,"deg":"b7"},{"t":8,"deg":"5"},{"t":10,"deg":"R"}],
-      "phraseTurnaround":[{"t":0,"deg":"R"},{"t":2,"deg":"b7"},{"t":6,"deg":"6"},{"t":10,"deg":"5"}]
+      "phraseI":[{"t":0,"d":2,"deg":"R"},{"t":2,"d":2,"deg":"5"},{"t":4,"d":2,"deg":"6"},{"t":6,"d":2,"deg":"b7"},{"t":8,"d":2,"deg":"6"},{"t":10,"d":2,"deg":"5"}],
+      "phraseIV":[{"t":0,"d":2,"deg":"R"},{"t":2,"d":2,"deg":"5"},{"t":4,"d":2,"deg":"6"},{"t":6,"d":2,"deg":"b7"},{"t":8,"d":2,"deg":"6"},{"t":10,"d":2,"deg":"5"}],
+      "phraseV":[{"t":0,"d":2,"deg":"5"},{"t":2,"d":2,"deg":"b7"},{"t":4,"d":2,"deg":"R"},{"t":6,"d":2,"deg":"b7"},{"t":8,"d":2,"deg":"5"},{"t":10,"d":2,"deg":"R"}],
+      "phraseTurnaround":[{"t":0,"d":2,"deg":"R"},{"t":2,"d":4,"deg":"b7"},{"t":6,"d":4,"deg":"6"},{"t":10,"d":2,"deg":"5"}]
     },
     { "id":"Neutral-02","moods":["contemplative"],"type": "major","tags":["chicago", "laid-back"],
       "phraseI":[{"t":0,"d":6,"deg":"R"},{"t":6,"d":6,"deg":"5"}],
@@ -135,7 +134,6 @@ export const BLUES_MELODY_RIFFS: BluesMelody[] = [
       "phraseV":[{"t":0,"d":12,"deg":"5"}],
       "phraseTurnaround":[{"t":0,"d":6,"deg":"2"},{"t":6,"d":6,"deg":"R"}]
     },
-
     { "id":"Calm-01","moods":["calm"],"type": "major","tags":["laid-back", "mid-tempo"],
       "phraseI":[{"t":0,"d":6,"deg":"R"},{"t":6,"d":6,"deg":"5"}],
       "phraseIV":[{"t":0,"d":6,"deg":"R"},{"t":6,"d":6,"deg":"3"}],
@@ -166,7 +164,6 @@ export const BLUES_MELODY_RIFFS: BluesMelody[] = [
       "phraseV":[{"t":0,"d":6,"deg":"5"},{"t":6,"d":6,"deg":"R"}],
       "phraseTurnaround":[{"t":0,"d":6,"deg":"2"},{"t":6,"d":6,"deg":"R"}]
     },
-
     { "id":"Melancholic-01","moods":["melancholic"],"type": "minor","tags":["slow-burn", "ballad"],
       "phraseI":[{"t":0,"d":6,"deg":"b3"},{"t":6,"d":6,"deg":"11"}],
       "phraseIV":[{"t":0,"d":6,"deg":"b3"},{"t":6,"d":6,"deg":"9"}],
@@ -197,24 +194,23 @@ export const BLUES_MELODY_RIFFS: BluesMelody[] = [
       "phraseV":[{"t":0,"d":3,"deg":"5"},{"t":3,"d":3,"deg":"b5"},{"t":6,"d":6,"deg":"4"}],
       "phraseTurnaround":[{"t":0,"d":3,"deg":"b3"},{"t":3,"d":3,"deg":"2"},{"t":6,"d":3,"deg":"R"},{"t":9,"d":3,"deg":"b7"}]
     },
-
     { "id":"Gloomy-01","moods":["gloomy"],"type": "minor","tags":["swamp", "sparse"],
       "phraseI":[{"t":0,"d":12,"deg":"R"}],
-      "phraseIV":[{"t":0,"deg":"R"},{"t":2,"deg":"b3"},{"t":4,"deg":"4"},{"t":6,"deg":"#4"},{"t":8,"deg":"4"},{"t":10,"deg":"b3"}],
+      "phraseIV":[{"t":0,"d":2,"deg":"R"},{"t":2,"d":2,"deg":"b3"},{"t":4,"d":2,"deg":"4"},{"t":6,"d":2,"deg":"#4"},{"t":8,"d":2,"deg":"4"},{"t":10,"d":2,"deg":"b3"}],
       "phraseV":[{"t":0,"d":6,"deg":"5"},{"t":6,"d":6,"deg":"b7"}],
-      "phraseTurnaround":[{"t":0,"deg":"R"},{"t":2,"deg":"b7"},{"t":4,"deg":"6"},{"t":6,"deg":"b6"},{"t":8,"deg":"5"},{"t":10,"deg":"#4"}]
+      "phraseTurnaround":[{"t":0,"d":2,"deg":"R"},{"t":2,"d":2,"deg":"b7"},{"t":4,"d":2,"deg":"6"},{"t":6,"d":2,"deg":"b6"},{"t":8,"d":2,"deg":"5"},{"t":10,"d":2,"deg":"#4"}]
     },
     { "id":"Gloomy-02","moods":["gloomy"],"type": "minor","tags":["swamp", "chromatic"],
-      "phraseI":[{"t":0,"deg":"5"},{"t":2,"deg":"#4"},{"t":4,"deg":"6"},{"t":6,"deg":"b7"},{"t":8,"deg":"6"},{"t":10,"deg":"5"}],
-      "phraseIV":[{"t":0,"deg":"4"},{"t":2,"deg":"b5"},{"t":4,"deg":"5"},{"t":6,"deg":"b5"},{"t":8,"deg":"4"},{"t":10,"deg":"b3"}],
-      "phraseV":[{"t":0,"deg":"5"},{"t":2,"deg":"R"},{"t":4,"deg":"b7"},{"t":6,"deg":"5"},{"t":8,"deg":"R"},{"t":10,"deg":"5"}],
-      "phraseTurnaround":[{"t":0,"deg":"R"},{"t":2,"deg":"b7"},{"t":4,"deg":"6"},{"t":6,"deg":"b6"},{"t":8,"deg":"5"},{"t":10,"deg":"#4"}]
+      "phraseI":[{"t":0,"d":2,"deg":"5"},{"t":2,"d":2,"deg":"#4"},{"t":4,"d":2,"deg":"6"},{"t":6,"d":2,"deg":"b7"},{"t":8,"d":2,"deg":"6"},{"t":10,"d":2,"deg":"5"}],
+      "phraseIV":[{"t":0,"d":2,"deg":"4"},{"t":2,"d":2,"deg":"b5"},{"t":4,"d":2,"deg":"5"},{"t":6,"d":2,"deg":"b5"},{"t":8,"d":2,"deg":"4"},{"t":10,"d":2,"deg":"b3"}],
+      "phraseV":[{"t":0,"d":2,"deg":"5"},{"t":2,"d":2,"deg":"R"},{"t":4,"d":2,"deg":"b7"},{"t":6,"d":2,"deg":"5"},{"t":8,"d":2,"deg":"R"},{"t":10,"d":2,"deg":"5"}],
+      "phraseTurnaround":[{"t":0,"d":2,"deg":"R"},{"t":2,"d":2,"deg":"b7"},{"t":4,"d":2,"deg":"6"},{"t":6,"d":2,"deg":"b6"},{"t":8,"d":2,"deg":"5"},{"t":10,"d":2,"deg":"#4"}]
     },
     { "id":"Gloomy-03","moods":["gloomy"],"type": "minor","tags":["shuffle", "heavy"],
       "phraseI":[{"t":0,"d":6,"deg":"R"},{"t":6,"d":6,"deg":"b7"}],
       "phraseIV":[{"t":0,"d":4,"deg":"R"},{"t":4,"d":4,"deg":"4"},{"t":8,"d":4,"deg":"b3"}],
       "phraseV":[{"t":0,"d":12,"deg":"5"}],
-      "phraseTurnaround":[{"t":0,"deg":"R"},{"t":2,"deg":"b7"},{"t":4,"deg":"6"},{"t":6,"deg":"b6"},{"t":8,"deg":"5"},{"t":10,"deg":"#4"}]
+      "phraseTurnaround":[{"t":0,"d":2,"deg":"R"},{"t":2,"d":2,"deg":"b7"},{"t":4,"d":2,"deg":"6"},{"t":6,"d":2,"deg":"b6"},{"t":8,"d":2,"deg":"5"},{"t":10,"d":2,"deg":"#4"}]
     },
     { "id":"Gloomy-04","moods":["gloomy"],"type": "minor","tags":["slow-burn", "laid-back"],
       "phraseI":[{"t":0,"d":3,"deg":"b3"},{"t":3,"d":3,"deg":"3"},{"t":6,"d":6,"deg":"5"}],
@@ -228,12 +224,11 @@ export const BLUES_MELODY_RIFFS: BluesMelody[] = [
       "phraseV":[{"t":0,"d":6,"deg":"5"},{"t":6,"d":6,"deg":"b7"}],
       "phraseTurnaround":[{"t":0,"d":6,"deg":"R"},{"t":6,"d":6,"deg":"b7"}]
     },
-
     { "id":"Dark-01","moods":["dark", "anxious"],"type": "minor","tags":["shuffle", "heavy"],
-      "phraseI":[{"t":0,"deg":"R"},{"t":2,"deg":"5"},{"t":4,"deg":"b6"},{"t":6,"deg":"6"},{"t":8,"deg":"5"},{"t":10,"deg":"R"}],
-      "phraseIV":[{"t":0,"deg":"R"},{"t":2,"deg":"5"},{"t":4,"deg":"b6"},{"t":6,"deg":"6"},{"t":8,"deg":"5"},{"t":10,"deg":"R"}],
-      "phraseV":[{"t":0,"deg":"5"},{"t":2,"deg":"b7"},{"t":4,"deg":"R"},{"t":6,"deg":"b7"},{"t":8,"deg":"5"},{"t":10,"deg":"R"}],
-      "phraseTurnaround":[{"t":0,"deg":"R"},{"t":2,"deg":"b7"},{"t":4,"deg":"6"},{"t":6,"deg":"b6"},{"t":8,"deg":"5"},{"t":10,"deg":"#4"}]
+      "phraseI":[{"t":0,"d":2,"deg":"R"},{"t":2,"d":2,"deg":"5"},{"t":4,"d":2,"deg":"b6"},{"t":6,"d":2,"deg":"6"},{"t":8,"d":2,"deg":"5"},{"t":10,"d":2,"deg":"R"}],
+      "phraseIV":[{"t":0,"d":2,"deg":"R"},{"t":2,"d":2,"deg":"5"},{"t":4,"d":2,"deg":"b6"},{"t":6,"d":2,"deg":"6"},{"t":8,"d":2,"deg":"5"},{"t":10,"d":2,"deg":"R"}],
+      "phraseV":[{"t":0,"d":2,"deg":"5"},{"t":2,"d":2,"deg":"b7"},{"t":4,"d":2,"deg":"R"},{"t":6,"d":2,"deg":"b7"},{"t":8,"d":2,"deg":"5"},{"t":10,"d":2,"deg":"R"}],
+      "phraseTurnaround":[{"t":0,"d":2,"deg":"R"},{"t":2,"d":2,"deg":"b7"},{"t":4,"d":2,"deg":"6"},{"t":6,"d":2,"deg":"b6"},{"t":8,"d":2,"deg":"5"},{"t":10,"d":2,"deg":"#4"}]
     },
     { "id":"Dark-02","moods":["dark"],"type": "minor","tags":["slow-burn", "drone"],
       "phraseI":[{"t":0,"d":12,"deg":"b3"}],

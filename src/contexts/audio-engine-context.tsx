@@ -194,11 +194,6 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
     for (const event of events) {
       const eventType = Array.isArray(event.type) ? event.type[0] : event.type;
       
-      // [SoloLog] AudioEngine: Logging received melody events
-      if (eventType === 'melody') {
-          console.log(`[SoloLog] AudioEngine: Received melody event`, JSON.parse(JSON.stringify(event)));
-      }
-
       if (typeof eventType === 'string' && (eventType.startsWith('drum_') || eventType.startsWith('perc-'))) {
         drumEvents.push(event);
       } else if (eventType === 'bass') {
@@ -253,9 +248,6 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
     }
     
     if (melodyEvents.length > 0) {
-        const noteString = melodyEvents.map(e => e.note).join(', ');
-        console.log(`%c[Melody Log @ Bar ${barCount}] Instrument: ${instrumentHints?.melody || (useMelodyV2 ? 'V2 Synth' : 'V1 Synth')} | Notes: [${noteString}]`, 'color: #FFD700;');
-
         if (useMelodyV2) {
             if (melodyManagerV2Ref.current) {
                 melodyManagerV2Ref.current.schedule(melodyEvents, barStartTime, tempo, instrumentHints?.melody as keyof typeof V2_PRESETS);
@@ -268,15 +260,11 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
     }
     
     if (blackGuitarSamplerRef.current && blackAcousticEvents.length > 0) {
-        const noteString = blackAcousticEvents.map(e => e.note).join(', ');
-        console.log(`%c[Melody Log @ Bar ${barCount}] Instrument: blackAcoustic | Notes: [${noteString}]`, 'color: #D2B48C;');
         const notes = blackAcousticEvents.map(e => ({ midi: e.note, time: e.time, duration: e.duration, velocity: e.weight }));
         blackGuitarSamplerRef.current.schedule(notes, barStartTime);
     }
 
     if (telecasterSamplerRef.current && telecasterEvents.length > 0) { // ДОБАВЛЕНО
-        const noteString = telecasterEvents.map(e => e.note).join(', ');
-        console.log(`%c[Melody Log @ Bar ${barCount}] Instrument: telecaster | Notes: [${noteString}]`, 'color: #ADD8E6;');
         const notes = telecasterEvents.map(e => ({ midi: e.note, time: e.time, duration: e.duration, velocity: e.weight }));
         telecasterSamplerRef.current.schedule(notes, barStartTime);
     }

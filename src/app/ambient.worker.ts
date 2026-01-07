@@ -149,14 +149,11 @@ const Scheduler = {
 
         let finalPayload: { events: FractalEvent[], instrumentHints: InstrumentHints };
 
-        console.log(`[Worker.tick @ Bar ${this.barCount}] Checking intro condition: barCount (${this.barCount}) < introBars (${this.settings.introBars}) -> ${this.barCount < this.settings.introBars}`);
-
         // 2. Если мы в периоде интро, вызываем ИЗОЛИРОВАННЫЙ генератор пролога.
         if (this.barCount < this.settings.introBars) {
             const introPart = fractalMusicEngine.navigator?.blueprint.structure.parts.find(p => p.id.startsWith('INTRO'));
             
             if (introPart?.introRules) {
-                console.log(`%c[Worker.tick @ Bar ${this.barCount}] Using INTRO GENERATOR.`, 'color: #FF69B4; font-weight: bold;');
                 finalPayload = generateIntroSequence({
                     currentBar: this.barCount,
                     totalIntroBars: this.settings.introBars,
@@ -177,31 +174,12 @@ const Scheduler = {
 
         const scorePayload = finalPayload; 
         
-        const bassCount = scorePayload.events.filter(e => e.type === 'bass').length;
-        const melodyCount = scorePayload.events.filter(e => e.type === 'melody').length;
-        const accompanimentCount = scorePayload.events.filter(e => e.type === 'accompaniment').length;
-        const harmonyCount = scorePayload.events.filter(e => e.type === 'harmony').length;
-        const drumsCount = scorePayload.events.filter(e => (e.type as string).startsWith('drum_') || (e.type as string).startsWith('perc-')).length;
-        const sfxCount = scorePayload.events.filter(e => e.type === 'sfx').length;
-        const sparklesCount = scorePayload.events.filter(e => e.type === 'sparkle').length;
-
-        const hintsString = JSON.stringify(scorePayload.instrumentHints || {});
-
-        console.log(
-            `[Worker.tick @ Bar ${this.barCount}] Dispatching: Total=${scorePayload.events.length}, Bass=${bassCount}, Melody=${melodyCount}, Accomp=${accompanimentCount}, Drums=${drumsCount}, Harmony=${harmonyCount}, Sparkles=${sparklesCount}, SFX=${sfxCount}, Hints: ${hintsString}`
-        );
-        
         const mainScoreEvents: FractalEvent[] = [];
         const sfxEvents: FractalEvent[] = [];
         const sparkleEvents: FractalEvent[] = [];
         const harmonyEvents: FractalEvent[] = [];
         
         for (const event of scorePayload.events) {
-            // [SoloLog] Worker: Logging melody events before postMessage
-            if (event.type === 'melody') {
-                console.log(`[SoloLog] Worker: Sending melody event to main thread`, JSON.parse(JSON.stringify(event)));
-            }
-
             if (event.type === 'sfx') {
                 sfxEvents.push(event);
             } else if (event.type === 'sparkle') {

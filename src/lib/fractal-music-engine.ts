@@ -344,9 +344,7 @@ export class FractalMusicEngine {
         } else if (drumRules?.ride?.enabled === false) {
             finalKit.ride = [];
         }
-
-        console.log(`%c[FME.generateDrums @ Bar ${this.epoch}] Using Kit: ${kitName}. Ride enabled: ${finalKit.ride.length > 0}`, 'color: #FFD700;');
-
+        
         const axiomResult = createDrumAxiom(finalKit, genre, mood, this.config.tempo, this.random, drumRules);
         
         return axiomResult.events || [];
@@ -497,12 +495,12 @@ export class FractalMusicEngine {
             const soloPlan = BLUES_SOLO_PLANS[soloPlanName];
 
             if (!soloPlan || chorusIndex >= soloPlan.choruses.length) {
-                logMessage = `[SoloLog] FME: Solo plan or chorus index out of bounds. Plan: ${soloPlanName}, Index: ${chorusIndex}`;
+                logMessage = `[FME] Solo plan or chorus index out of bounds. Plan: ${soloPlanName}, Index: ${chorusIndex}`;
                 return { events: [], log: logMessage };
             }
 
             const currentChorusPlan = soloPlan.choruses[chorusIndex];
-            logMessage = `[SoloLog] FME: Assembling solo chorus ${chorusIndex + 1}/${soloPlan.choruses.length} using plan "${soloPlanName}".`;
+            logMessage = `[FME] Assembling solo chorus ${chorusIndex + 1}/${soloPlan.choruses.length} using plan "${soloPlanName}".`;
 
             for (let barIndex = 0; barIndex < 12; barIndex++) {
                 const lickId = currentChorusPlan[barIndex];
@@ -528,13 +526,12 @@ export class FractalMusicEngine {
                         technique: (noteTemplate.tech as Technique) || 'pick',
                         dynamics: 'f', phrasing: 'legato', params: {}
                     };
-                    console.log(`[SoloLog] FME: Created solo event`, JSON.parse(JSON.stringify(event)));
                     finalEvents.push(event);
                 }
             }
         } else {
             const selectedRiff = BLUES_MELODY_RIFFS.find(r => r.moods.includes(mood)) ?? BLUES_MELODY_RIFFS[0];
-            logMessage = `[SoloLog] FME: Generating main theme using riff "${selectedRiff.id}".`;
+            logMessage = `[FME] Generating main theme using riff "${selectedRiff.id}".`;
 
             for (let barIndex = 0; barIndex < 12; barIndex++) {
                 const currentChord = chorusChords.find(c => c.bar % 12 === barIndex);
@@ -565,7 +562,6 @@ export class FractalMusicEngine {
                         weight: 0.8,
                         technique: 'pick', dynamics: 'mf', phrasing: 'legato', params: {}
                     };
-                    console.log(`[SoloLog] FME: Created theme event`, JSON.parse(JSON.stringify(event)));
                     finalEvents.push(event);
                 }
             }
@@ -605,10 +601,6 @@ export class FractalMusicEngine {
         const logDrumRiffId = `index_${this.currentDrumRiffIndex}`;
         const logBassRiffId = `index_${this.currentBassRiffIndex}`;
         const logMelodyId = this.currentGuitarRiffId || 'N/A';
-        console.log(
-            `%c[FME Part Info] Active DNA for part ${navInfo.currentPart.name}:\n  - Drum Riff ID: ${logDrumRiffId}\n  - Bass Riff ID: ${logBassRiffId}\n  - Guitar Riff ID: ${logMelodyId}`,
-            'color: cyan; font-weight: bold;'
-        );
     }
     
     const drumEvents = this.generateDrumEvents(navInfo) || [];
@@ -681,7 +673,6 @@ export class FractalMusicEngine {
         if (this.config.genre === 'blues') {
             const barInChorus = this.epoch % 12;
             const chorusIndex = Math.floor((this.epoch % 36) / 12);
-            // #ИСПРАВЛЕНО (ПЛАН 902.3, Шаг 3): Определяем, является ли текущая секция сольной.
             const isSoloSection = navInfo.currentPart.id.includes('SOLO'); 
 
             if (barInChorus === 0 || !this.bluesChorusCache || this.bluesChorusCache.barStart !== (this.epoch - barInChorus)) {
@@ -759,7 +750,6 @@ export class FractalMusicEngine {
       this.epoch = barCount;
 
       if (this.epoch < this.config.introBars) {
-          console.log(`[FME.evolve @ Bar ${this.epoch}] In intro period. Returning empty score.`);
           return { events: [], instrumentHints: {} };
       }
 
@@ -790,10 +780,6 @@ export class FractalMusicEngine {
           harmony: chosenHarmonyInstrument,
       };
       
-      if (navInfo?.logMessage) {
-        console.log(navInfo.logMessage, 'color: #DA70D6');
-      }
-
       const events = this.generateOneBar(barDuration, navInfo!, instrumentHints);
       
       return { events, instrumentHints };
