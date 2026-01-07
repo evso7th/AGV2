@@ -21,7 +21,7 @@ export const WinterBluesBlueprint: MusicBlueprint = {
                 name: 'Intro',
                 duration: { percent: 20 },
                 layers: {
-                    drums: false, harmony: false, sfx: false, sparkles: false,
+                    drums: true, harmony: false, sfx: false, sparkles: false,
                     bass: true, accompaniment: true, melody: true,
                 },
                 instrumentation: {
@@ -49,7 +49,7 @@ export const WinterBluesBlueprint: MusicBlueprint = {
                 name: 'Main Theme',
                 duration: { percent: 25 },
                 layers: {
-                    drums: false, harmony: false, sfx: false, sparkles: false,
+                    drums: true, harmony: false, sfx: false, sparkles: false,
                     bass: true, accompaniment: true, melody: true,
                 },
                 instrumentation: {
@@ -81,7 +81,7 @@ export const WinterBluesBlueprint: MusicBlueprint = {
                 name: 'Guitar Solo',
                 duration: { percent: 30 }, // 36 bars
                 layers: {
-                    drums: false, harmony: false, sfx: false, sparkles: false,
+                    drums: true, harmony: false, sfx: false, sparkles: false,
                     bass: true, accompaniment: true, melody: true,
                 },
                  instrumentation: {
@@ -113,7 +113,7 @@ export const WinterBluesBlueprint: MusicBlueprint = {
                 name: 'Outro',
                 duration: { percent: 25 },
                 layers: {
-                    drums: false, harmony: false, sfx: false, sparkles: false,
+                    drums: true, harmony: false, sfx: false, sparkles: false,
                     bass: true, accompaniment: true, melody: true,
                 },
                  instrumentation: {
