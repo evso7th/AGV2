@@ -116,7 +116,7 @@ export class DrumMachine {
         this.outputNode = destination;
 
         this.preamp = this.audioContext.createGain();
-        this.preamp.gain.value = 4.5;
+        this.preamp.gain.value = 2.25;
         this.preamp.connect(this.outputNode);
     }
 
