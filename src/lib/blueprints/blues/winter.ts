@@ -34,7 +34,6 @@ export const WinterBluesBlueprint: MusicBlueprint = {
                         v1Options: [
                             { name: 'acousticGuitar', weight: 0.4 },
                             { name: 'electricGuitar', weight: 0.4 },
-                            { name: 'telecaster', weight: 0.2 },
                         ],
                         v2Options: [
                             { name: 'telecaster', weight: 0.5 },
@@ -51,13 +50,12 @@ export const WinterBluesBlueprint: MusicBlueprint = {
                 },
                 instrumentRules: {
                     drums: { pattern: 'composer', kitName: 'blues_calm', density: { min: 0.1, max: 0.3 }, useSnare: false, usePerc: true, rareKick: true }, // VERY SOFT INTRO
-                    bass: { techniques: [{ value: 'long_notes', weight: 1.0 }], density: { min: 0.1, max: 0.3 } }, // GENTLE DRONE
+                    bass: { techniques: [{ value: 'riff', weight: 1.0 }], density: { min: 0.3, max: 0.5 } }, // Use Riffs in Intro
                     accompaniment: { density: {min: 0.1, max: 0.3} },
                     melody: { 
                         source: 'motif', 
                         density: { min: 0.2, max: 0.4 }, 
                         register: { preferred: 'mid' },
-                        // #ПЛАН_901: Разрешаем гитаре играть аккорды и арпеджио в интро
                         techniques: [{ value: 'arpeggio-slow', weight: 0.4 }, { value: 'long-chords', weight: 0.6 }] 
                     }
                 },
@@ -118,8 +116,7 @@ export const WinterBluesBlueprint: MusicBlueprint = {
                         strategy: 'weighted', 
                         v1Options: [
                            { name: 'acousticGuitar', weight: 0.4 },
-                           { name: 'telecaster', weight: 0.4 },
-                           { name: 'blackAcoustic', weight: 0.2 },
+                           { name: 'electricGuitar', weight: 0.4 },
                         ],
                         v2Options: [
                             { name: 'telecaster', weight: 0.5 },
