@@ -19,11 +19,13 @@ export const AnxiousBluesBlueprint: MusicBlueprint = {
             {
                 id: 'INTRO', name: 'Nervous Build-up', duration: { percent: 15 },
                 introRules: {
-                    instrumentPool: ['accompaniment'],
-                    stages: 1,
+                    instrumentPool: ['accompaniment', 'bass', 'drums'],
+                    stages: 3,
                 },
                 layers: {
                     accompaniment: true,
+                    bass: true,
+                    drums: true
                 },
                 instrumentation: {
                     accompaniment: {
@@ -47,7 +49,7 @@ export const AnxiousBluesBlueprint: MusicBlueprint = {
             },
             {
                 id: 'MAIN_A', name: 'Frantic Riff', duration: { percent: 35 },
-                layers: { bass: true, drums: true, accompaniment: true, melody: true },
+                layers: { bass: true, drums: true, accompaniment: true, melody: true, harmony: true, sparkles: true },
                 bassAccompanimentDouble: { enabled: true, instrument: 'electricGuitar', octaveShift: 1 },
                 instrumentation: {
                     accompaniment: { strategy: 'weighted', v2Options: [{ name: 'synth_cave_pad', weight: 1.0 }], v1Options: [{ name: 'ambientPad', weight: 1.0 }] },
@@ -61,14 +63,15 @@ export const AnxiousBluesBlueprint: MusicBlueprint = {
                     },
                     bass: { techniques: [{ value: 'riff', weight: 1.0 }] },
                     accompaniment: { register: { preferred: 'low' }, density: { min: 0.2, max: 0.4 } },
-                    melody: { source: 'harmony_top_note' }
+                    melody: { source: 'harmony_top_note' },
+                    sparkles: { eventProbability: 0.2, categories: [{ name: 'dark', weight: 0.8 }, { name: 'electro', weight: 0.2 }] }
                 },
                 bundles: [{ id: 'BLUES_ANX_MAIN_A_BUNDLE', name: 'Main Riff A', duration: { percent: 100 }, characteristics: {}, phrases: {} }],
                 outroFill: { type: 'roll', duration: 1, parameters: { instrument: 'tom', density: 0.7 } },
             },
             {
                 id: 'SOLO', name: 'Guitar Solo', duration: { percent: 30 },
-                layers: { bass: true, drums: true, accompaniment: true, melody: true },
+                layers: { bass: true, drums: true, accompaniment: true, melody: true, harmony: true, sparkles: true },
                 bassAccompanimentDouble: { enabled: true, instrument: 'electricGuitar', octaveShift: 1 },
                 instrumentation: {
                     accompaniment: { strategy: 'weighted', v2Options: [{ name: 'synth_cave_pad', weight: 0.6 }, { name: 'organ', weight: 0.4 }], v1Options: [{ name: 'ambientPad', weight: 0.6 }, { name: 'organ', weight: 0.4 }] },
@@ -88,6 +91,7 @@ export const AnxiousBluesBlueprint: MusicBlueprint = {
                         soloPlan: 'E_minor_heavy_wail'
                     },
                      accompaniment: { register: { preferred: 'low' }, density: { min: 0.2, max: 0.4 } },
+                     sparkles: { eventProbability: 0.25, categories: [{ name: 'dark', weight: 1.0 }] }
                 },
                 bundles: [{ id: 'BLUES_ANX_SOLO_BUNDLE', name: 'Solo Section', duration: { percent: 100 }, characteristics: {}, phrases: {} }],
                 outroFill: { type: 'roll', duration: 1, parameters: { instrument: 'crash', density: 0.5 } },

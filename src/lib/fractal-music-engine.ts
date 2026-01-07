@@ -143,17 +143,12 @@ export class FractalMusicEngine {
 
 
   constructor(config: EngineConfig) {
+    // #ИСПРАВЛЕНО (ПЛАН 915): Конструктор теперь только сохраняет конфиг.
+    //                      Вся инициализация перенесена в метод `initialize()`,
+    //                      чтобы она происходила ПОСЛЕ получения актуальных настроек.
     this.config = { ...config };
     this.random = seededRandom(config.seed);
     this.nextWeatherEventEpoch = 0;
-
-    const allBassRiffs = Object.values(BLUES_BASS_RIFFS).flat();
-    this.shuffledBassRiffIndices = this.random.shuffle(Array.from({ length: allBassRiffs.length }, (_, i) => i));
-
-    const allDrumRiffs = Object.values(BLUES_DRUM_RIFFS).flat();
-    this.shuffledDrumRiffIndices = this.random.shuffle(Array.from({ length: allDrumRiffs.length }, (_, i) => i));
-    
-    this.shuffledMelodyIDs = this.random.shuffle(BLUES_MELODY_RIFFS.map(m => m.id));
   }
 
   public get tempo(): number { return this.config.tempo; }
@@ -165,6 +160,7 @@ export class FractalMusicEngine {
       
       this.config = { ...this.config, ...newConfig };
       
+      // #ИСПРАВЛЕНО (ПЛАН 915): Если изменился seed, пересоздаем генератор случайных чисел.
       if (seedChanged) {
         console.log(`%c[FME.updateConfig] New seed detected: ${this.config.seed}. Re-initializing random generator.`, 'color: #FFD700; font-weight:bold;');
         this.random = seededRandom(this.config.seed);
@@ -188,17 +184,23 @@ export class FractalMusicEngine {
     this.hasBassBeenMutated = false;
     this.bluesChorusCache = null;
     
+    // #ИСПРАВЛЕНО (ПЛАН 918): "Тасование колоды" и выбор "стартовых карт" теперь здесь,
+    //                      внутри `initialize`, что гарантирует уникальность каждой новой сюиты.
     const allBassRiffs = Object.values(BLUES_BASS_RIFFS).flat();
+    this.shuffledBassRiffIndices = this.random.shuffle(Array.from({ length: allBassRiffs.length }, (_, i) => i));
     this.baseBassRiffIndex = this.shuffledBassRiffIndices[this.bassRiffConveyorIndex % this.shuffledBassRiffIndices.length];
-    this.bassRiffConveyorIndex++;
+    this.bassRiffConveyorIndex++; // Сдвигаем конвейер
 
     const allDrumRiffs = Object.values(BLUES_DRUM_RIFFS).flat();
+    this.shuffledDrumRiffIndices = this.random.shuffle(Array.from({ length: allDrumRiffs.length }, (_, i) => i));
     this.baseDrumRiffIndex = this.shuffledDrumRiffIndices[this.drumRiffConveyorIndex % this.shuffledDrumRiffIndices.length];
-    this.drumRiffConveyorIndex++;
+    this.drumRiffConveyorIndex++; // Сдвигаем конвейер
     
+    this.shuffledMelodyIDs = this.random.shuffle(BLUES_MELODY_RIFFS.map(m => m.id));
     this.baseMelodyId = this.shuffledMelodyIDs[this.melodyConveyorIndex % this.shuffledMelodyIDs.length];
-    this.melodyConveyorIndex++;
+    this.melodyConveyorIndex++; // Сдвигаем конвейер
 
+    // Сбрасываем текущие индексы на новые базовые
     this.currentDrumRiffIndex = this.baseDrumRiffIndex;
     this.currentBassRiffIndex = this.baseBassRiffIndex;
     this.currentGuitarRiffId = this.baseMelodyId;
