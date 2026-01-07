@@ -124,7 +124,7 @@ export class TelecasterGuitarSampler {
             
             const loadSample = async (url: string) => {
                 const response = await fetch(url);
-                if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+                if (!response.ok) throw new Error(`HTTP error! status: ${'' + response.status}`);
                 const arrayBuffer = await response.arrayBuffer();
                 return await this.audioContext.decodeAudioData(arrayBuffer);
             };
@@ -172,7 +172,7 @@ export class TelecasterGuitarSampler {
             const gainNode = this.audioContext.createGain();
             
             source.connect(gainNode);
-            gainNode.connect(this.preamp);
+            gainNode.connect(this.fxChainInput);
 
             const playbackRate = Math.pow(2, (note.midi - sampleMidi) / 12);
             source.playbackRate.value = playbackRate;
