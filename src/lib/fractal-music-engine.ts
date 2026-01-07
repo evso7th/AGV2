@@ -1,4 +1,5 @@
 
+
 import type { FractalEvent, Mood, Genre, Technique, BassSynthParams, InstrumentType, MelodyInstrument, AccompanimentInstrument, ResonanceMatrix, InstrumentHints, AccompanimentTechnique, GhostChord, SfxRule, V1MelodyInstrument, V2MelodyInstrument, BlueprintPart, InstrumentationRules, InstrumentBehaviorRules, BluesMelody, IntroRules, InstrumentPart, DrumKit, BluesGuitarRiff, BluesSoloPhrase, BluesRiffDegree } from './fractal';
 import { ElectronicK, TraditionalK, AmbientK, MelancholicMinorK } from './resonance-matrices';
 import { BlueprintNavigator, type NavigationInfo } from './blueprint-navigator';
@@ -9,6 +10,7 @@ import { BLUES_BASS_RIFFS } from './assets/blues-bass-riffs';
 import { NEUTRAL_BLUES_BASS_RIFFS } from './assets/neutral-blues-riffs';
 import { BLUES_GUITAR_RIFFS, BLUES_GUITAR_VOICINGS } from './assets/blues-guitar-riffs';
 import { BLUES_DRUM_RIFFS } from './assets/blues-drum-riffs';
+import { BLUES_SOLO_LICKS, BLUES_SOLO_PLANS } from './assets/blues_guitar_solo';
 import { DRUM_KITS } from './assets/drum-kits';
 import { getScaleForMood, generateGhostHarmonyTrack, createDrumAxiom, createAmbientBassAxiom, createAccompanimentAxiom, createHarmonyAxiom, createMelodyMotif, mutateBassPhrase, createBassFill, createDrumFill, chooseHarmonyInstrument, DEGREE_TO_SEMITONE } from './music-theory';
 
@@ -637,15 +639,11 @@ export class FractalMusicEngine {
 
       this.epoch = barCount;
 
-      // --- РЕЖИМ МОЛЧАНИЯ КОМПОЗИТОРА (ПЛАН 895) ---
-      // #ЗАЧЕМ: Запрещает основному движку генерировать музыку в течение интро.
-      // #ЧТО: Если текущий такт меньше, чем длительность интро, движок возвращает пустую партитуру,
-      //      но продолжает свою внутреннюю работу (например, развитие состояний, если они есть),
-      //      чтобы быть готовым плавно вступить после интро.
+      // #ЗАЧЕМ: Этот блок управляет "режимом молчания" движка во время интро.
+      // #ЧТО: Если текущий такт меньше, чем длительность интро, движок возвращает пустую партитуру.
+      //      Это позволяет внешнему "генератору пролога" работать, не конфликтуя с основным движком.
       // #СВЯЗИ: Является ключевым элементом для работы изолированного генератора интро.
       if (this.epoch < this.config.introBars) {
-          // Движок "прогревается" в тишине.
-          // В будущем здесь можно оставить минимальную логику эволюции состояний, если потребуется.
           console.log(`[FME.evolve @ Bar ${this.epoch}] In intro period. Returning empty score.`);
           return { events: [], instrumentHints: {} };
       }
@@ -840,5 +838,7 @@ export class FractalMusicEngine {
 
 
 }
+
+    
 
     
