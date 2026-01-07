@@ -28,13 +28,38 @@ export const MelancholicAmbientBlueprint: MusicBlueprint = {
     parts: [
        {
         id: 'INTRO_1', name: 'Emergence', duration: { percent: 8 },
-        layers: { accompaniment: true, drums: true, melody: true },
+        introRules: {
+            instrumentPool: ['accompaniment', 'melody', 'bass', 'drums'],
+            stages: 4,
+        },
+        layers: { accompaniment: true, drums: true, melody: true, bass: true },
         instrumentation: { 
+            melody: {
+                strategy: 'weighted',
+                v1Options: [
+                    { name: 'electricGuitar', weight: 0.5 }, 
+                    { name: 'acousticGuitar', weight: 0.5 }
+                ],
+                v2Options: [
+                    { name: 'guitar_shineOn', weight: 0.3 },
+                    { name: 'guitar_muffLead', weight: 0.2 },
+                    { name: 'organ', weight: 0.25 },
+                    { name: 'organ_soft_jazz', weight: 0.25 }
+                ],
+            },
             accompaniment: {
                 strategy: 'weighted',
-                v1Options: [{ name: 'ambientPad', weight: 1.0 }],
-                v2Options: [{ name: 'synth_cave_pad', weight: 1.0 }],
-            } 
+                v1Options: [
+                    { name: 'organ', weight: 0.5 },
+                    { name: 'mellotron', weight: 0.5 }
+                ],
+                v2Options: [
+                    { name: 'organ', weight: 0.3 },
+                    { name: 'organ_soft_jazz', weight: 0.3 },
+                    { name: 'mellotron_flute_intimate', weight: 0.2 },
+                    { name: 'mellotron', weight: 0.2 }
+                ],
+            }
         },
         instrumentRules: {
           accompaniment: { register: { preferred: 'low' } },
