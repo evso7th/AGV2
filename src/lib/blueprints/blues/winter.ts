@@ -50,9 +50,16 @@ export const WinterBluesBlueprint: MusicBlueprint = {
                     }
                 },
                 instrumentRules: {
-                    drums: { pattern: 'composer', kitName: 'blues_calm', density: { min: 0.4, max: 0.6 } },
-                    bass: { techniques: [{ value: 'riff', weight: 1.0 }] }, 
-                    melody: { source: 'motif', density: { min: 0.2, max: 0.4 }, register: { preferred: 'mid' } }
+                    drums: { pattern: 'composer', kitName: 'blues_calm', density: { min: 0.1, max: 0.3 }, useSnare: false, usePerc: true, rareKick: true }, // VERY SOFT INTRO
+                    bass: { techniques: [{ value: 'long_notes', weight: 1.0 }], density: { min: 0.1, max: 0.3 } }, // GENTLE DRONE
+                    accompaniment: { density: {min: 0.1, max: 0.3} },
+                    melody: { 
+                        source: 'motif', 
+                        density: { min: 0.2, max: 0.4 }, 
+                        register: { preferred: 'mid' },
+                        // #ПЛАН_901: Разрешаем гитаре играть аккорды и арпеджио в интро
+                        techniques: [{ value: 'arpeggio-slow', weight: 0.4 }, { value: 'long-chords', weight: 0.6 }] 
+                    }
                 },
                 bundles: [{ id: 'BLUES_WINTER_VERSE_BUNDLE', name: 'Main Riff', duration: { percent: 100 }, characteristics: {}, phrases: {} }],
                 outroFill: null,
