@@ -172,7 +172,7 @@ export class TelecasterGuitarSampler {
             const gainNode = this.audioContext.createGain();
             
             source.connect(gainNode);
-            gainNode.connect(this.fxChainInput);
+            gainNode.connect(this.preamp);
 
             const playbackRate = Math.pow(2, (note.midi - sampleMidi) / 12);
             source.playbackRate.value = playbackRate;
