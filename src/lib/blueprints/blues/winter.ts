@@ -21,7 +21,7 @@ export const WinterBluesBlueprint: MusicBlueprint = {
                 name: 'Intro',
                 duration: { percent: 20 },
                 layers: {
-                    drums: false, harmony: false, sfx: false, sparkles: false,
+                    drums: true, harmony: false, sfx: false, sparkles: false,
                     bass: true, accompaniment: true, melody: true,
                 },
                 instrumentation: {
@@ -37,7 +37,7 @@ export const WinterBluesBlueprint: MusicBlueprint = {
                     }
                 },
                 instrumentRules: {
-                    drums: { pattern: 'none' },
+                    drums: { pattern: 'composer', density: { min: 0.2, max: 0.4 }, useSnare: true, useGhostHat: true, ride: { enabled: false } },
                     bass: { techniques: [{ value: 'riff', weight: 1.0 }] }, 
                     melody: { source: 'motif', density: { min: 0, max: 0 } }, // Melody is silent but instrument is set
                 },
@@ -49,7 +49,7 @@ export const WinterBluesBlueprint: MusicBlueprint = {
                 name: 'Main Theme',
                 duration: { percent: 25 },
                 layers: {
-                    drums: false, harmony: false, sfx: false, sparkles: false,
+                    drums: true, harmony: false, sfx: false, sparkles: false,
                     bass: true, accompaniment: true, melody: true,
                 },
                 instrumentation: {
@@ -65,7 +65,7 @@ export const WinterBluesBlueprint: MusicBlueprint = {
                     }
                 },
                 instrumentRules: {
-                    drums: { pattern: 'none' },
+                    drums: { pattern: 'composer', density: { min: 0.5, max: 0.7 }, useSnare: true, useGhostHat: true, ride: { enabled: false } },
                     bass: { techniques: [{ value: 'riff', weight: 1.0 }] },
                     melody: { 
                         source: 'motif', 
@@ -81,7 +81,7 @@ export const WinterBluesBlueprint: MusicBlueprint = {
                 name: 'Guitar Solo',
                 duration: { percent: 30 }, // 36 bars
                 layers: {
-                    drums: false, harmony: false, sfx: false, sparkles: false,
+                    drums: true, harmony: false, sfx: false, sparkles: false,
                     bass: true, accompaniment: true, melody: true,
                 },
                  instrumentation: {
@@ -97,7 +97,7 @@ export const WinterBluesBlueprint: MusicBlueprint = {
                     }
                 },
                 instrumentRules: {
-                    drums: { pattern: 'none' },
+                    drums: { pattern: 'composer', density: { min: 0.7, max: 0.9 }, useSnare: true, useGhostHat: true, ride: { enabled: true } },
                     bass: { techniques: [{ value: 'riff', weight: 1.0 }] },
                     melody: { 
                         source: 'motif', 
@@ -113,7 +113,7 @@ export const WinterBluesBlueprint: MusicBlueprint = {
                 name: 'Outro',
                 duration: { percent: 25 },
                 layers: {
-                    drums: false, harmony: false, sfx: false, sparkles: false,
+                    drums: true, harmony: false, sfx: false, sparkles: false,
                     bass: true, accompaniment: true, melody: true,
                 },
                  instrumentation: {
@@ -129,7 +129,7 @@ export const WinterBluesBlueprint: MusicBlueprint = {
                     }
                 },
                 instrumentRules: {
-                    drums: { pattern: 'none' },
+                    drums: { pattern: 'composer', density: { min: 0.5, max: 0.7 }, useSnare: true, useGhostHat: true, ride: { enabled: false } },
                     bass: { techniques: [{ value: 'riff', weight: 1.0 }] },
                     melody: { 
                         source: 'motif', 
