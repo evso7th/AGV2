@@ -1,5 +1,4 @@
 
-
 import type { FractalEvent, Mood, Genre, Technique, BassSynthParams, InstrumentType, MelodyInstrument, AccompanimentInstrument, ResonanceMatrix, InstrumentHints, AccompanimentTechnique, GhostChord, SfxRule, V1MelodyInstrument, V2MelodyInstrument, BlueprintPart, InstrumentationRules, InstrumentBehaviorRules, BluesMelody, IntroRules, InstrumentPart, DrumKit, BluesGuitarRiff, BluesSoloPhrase, BluesRiffDegree } from './fractal';
 import { ElectronicK, TraditionalK, AmbientK, MelancholicMinorK } from './resonance-matrices';
 import { BlueprintNavigator, type NavigationInfo } from './blueprint-navigator';
@@ -211,7 +210,7 @@ export class FractalMusicEngine {
     this.introInstrumentOrder = [];
     const introPart = this.navigator.blueprint.structure.parts.find(p => p.id.startsWith('INTRO'));
     if (introPart?.introRules) {
-        this.introInstrumentOrder = this.random.shuffle([...introPart.introRules.allowedInstruments]);
+        this.introInstrumentOrder = this.random.shuffle([...introPart.introRules.instrumentPool]);
         console.log(`[IntroSetup] Unique instrument entry order created: [${this.introInstrumentOrder.join(', ')}]`);
     }
 
@@ -637,6 +636,19 @@ export class FractalMusicEngine {
       }
 
       this.epoch = barCount;
+
+      // --- РЕЖИМ МОЛЧАНИЯ КОМПОЗИТОРА (ПЛАН 895) ---
+      // #ЗАЧЕМ: Запрещает основному движку генерировать музыку в течение интро.
+      // #ЧТО: Если текущий такт меньше, чем длительность интро, движок возвращает пустую партитуру,
+      //      но продолжает свою внутреннюю работу (например, развитие состояний, если они есть),
+      //      чтобы быть готовым плавно вступить после интро.
+      // #СВЯЗИ: Является ключевым элементом для работы изолированного генератора интро.
+      if (this.epoch < this.config.introBars) {
+          // Движок "прогревается" в тишине.
+          // В будущем здесь можно оставить минимальную логику эволюции состояний, если потребуется.
+          console.log(`[FME.evolve @ Bar ${this.epoch}] In intro period. Returning empty score.`);
+          return { events: [], instrumentHints: {} };
+      }
 
       if (this.epoch >= this.navigator.totalBars + 4) {
         return { events: [], instrumentHints: {} }; 
