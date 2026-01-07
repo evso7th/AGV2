@@ -8,7 +8,9 @@
 
 import type { BluesSoloPhrase } from '@/types/fractal';
 
-// Библиотека из 12 универсальных "ликов" (коротких фраз)
+// #ИСПРАВЛЕНО (ПЛАН 905): Добавлены недостающие поля 'd' (длительность)
+//                        для обеспечения целостности данных и предотвращения ошибок.
+// Структура события: { t: tick, d: duration_in_ticks, deg: degree, tech?: technique }
 export const BLUES_SOLO_LICKS: Record<string, BluesSoloPhrase> = {
   L01: [{t:0,d:3,deg:'b3',tech:'bn'}, {t:3,d:3,deg:'R'}, {t:6,d:6,deg:'5',tech:'vb'}],
   L02: [{t:0,d:3,deg:'b3',tech:'gr'}, {t:3,d:3,deg:'3'}, {t:6,d:6,deg:'5',tech:'vb'}],
@@ -97,3 +99,5 @@ export const BLUES_SOLO_PLANS: Record<string, { choruses: string[][] }> = {
     ]
   }
 };
+
+    
