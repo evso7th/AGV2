@@ -32,8 +32,8 @@ export const WinterBluesBlueprint: MusicBlueprint = {
                     },
                     melody: {
                         strategy: 'weighted',
-                        v1Options: [{ name: 'blackAcoustic', weight: 1.0 }],
-                        v2Options: [{ name: 'blackAcoustic', weight: 1.0 }]
+                        v1Options: [{ name: 'telecaster', weight: 1.0 }],
+                        v2Options: [{ name: 'telecaster', weight: 1.0 }]
                     }
                 },
                 instrumentRules: {
@@ -92,8 +92,8 @@ export const WinterBluesBlueprint: MusicBlueprint = {
                     },
                     melody: {
                         strategy: 'weighted',
-                        v1Options: [{ name: 'telecaster', weight: 1.0 }],
-                        v2Options: [{ name: 'telecaster', weight: 1.0 }]
+                        v1Options: [{ name: 'blackAcoustic', weight: 1.0 }],
+                        v2Options: [{ name: 'blackAcoustic', weight: 1.0 }]
                     }
                 },
                 instrumentRules: {
@@ -124,8 +124,8 @@ export const WinterBluesBlueprint: MusicBlueprint = {
                     },
                     melody: {
                         strategy: 'weighted',
-                        v1Options: [{ name: 'blackAcoustic', weight: 1.0 }],
-                        v2Options: [{ name: 'blackAcoustic', weight: 1.0 }]
+                        v1Options: [{ name: 'telecaster', weight: 1.0 }],
+                        v2Options: [{ name: 'telecaster', weight: 1.0 }]
                     }
                 },
                 instrumentRules: {
