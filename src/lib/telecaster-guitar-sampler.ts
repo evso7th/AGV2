@@ -43,6 +43,10 @@ export class TelecasterGuitarSampler {
     public isInitialized = false;
     private isLoading = false;
     private preamp: GainNode;
+    private distortion: WaveShaperNode;
+    private chorusLFO: OscillatorNode;
+    private chorusDepth: GainNode;
+    private chorusDelay: DelayNode;
     private delay: DelayNode;
     private feedback: GainNode;
     private wetMix: GainNode;
@@ -51,36 +55,65 @@ export class TelecasterGuitarSampler {
         this.audioContext = audioContext;
         this.destination = destination;
 
-        // 1. Создаем предусилитель. Он будет точкой входа для всего.
         this.preamp = this.audioContext.createGain();
         this.preamp.gain.value = 8.0;
 
-        // 2. Создаем узлы для эффекта дилэя
+        // Distortion
+        this.distortion = this.audioContext.createWaveShaper();
+        this.distortion.curve = this.makeDistortionCurve(0.1);
+
+        // Chorus
+        this.chorusLFO = this.audioContext.createOscillator();
+        this.chorusDepth = this.audioContext.createGain();
+        this.chorusDelay = this.audioContext.createDelay(0.1);
+        this.chorusLFO.type = 'sine';
+        this.chorusLFO.frequency.value = 4;
+        this.chorusDepth.gain.value = 0.005;
+        this.chorusLFO.connect(this.chorusDepth);
+        this.chorusDepth.connect(this.chorusDelay.delayTime);
+        this.chorusLFO.start();
+
+        // Delay
         this.delay = this.audioContext.createDelay(1.0);
-        this.delay.delayTime.value = 0.4; // время задержки в секундах
-
         this.feedback = this.audioContext.createGain();
-        this.feedback.gain.value = 0.3; // количество повторов (эхо)
-
         this.wetMix = this.audioContext.createGain();
-        this.wetMix.gain.value = 0.35; // громкость эффекта
+        this.delay.delayTime.value = 0.4;
+        this.feedback.gain.value = 0.3;
+        this.wetMix.gain.value = 0.35;
 
-        // 3. Строим аудио-граф по принципу "посыла-возврата"
-
-        // 3.1. "Сухой" путь: усиленный сигнал идет напрямую на выход.
+        // --- Audio Graph ---
+        // DRY PATH: preamp -> destination
         this.preamp.connect(this.destination);
-
-        // 3.2. "Мокрый" путь (Send): копия сигнала с предусилителя отправляется на дилэй.
-        this.preamp.connect(this.delay);
-
-        // 3.3. Петля обратной связи для создания эха.
+        
+        // WET PATH: preamp -> distortion -> chorus -> delay -> wetMix -> destination
+        const effectChain = this.distortion;
+        this.distortion.connect(this.chorusDelay);
+        this.chorusDelay.connect(this.delay);
+        
         this.delay.connect(this.feedback);
         this.feedback.connect(this.delay);
 
-        // 3.4. "Возврат" (Return): обработанный сигнал подмешивается к выходу.
         this.delay.connect(this.wetMix);
         this.wetMix.connect(this.destination);
+
+        // Send signal to the wet chain
+        this.preamp.connect(effectChain);
     }
+    
+    private makeDistortionCurve(amount: number): Float32Array {
+        const k = typeof amount === 'number' ? amount : 50;
+        const n_samples = 44100;
+        const curve = new Float32Array(n_samples);
+        const deg = Math.PI / 180;
+        let i = 0;
+        let x;
+        for ( ; i < n_samples; ++i ) {
+            x = i * 2 / n_samples - 1;
+            curve[i] = ( 3 + k ) * x * 20 * deg / ( Math.PI + k * Math.abs(x) );
+        }
+        return curve;
+    }
+
 
     async init(): Promise<boolean> {
         return this.loadInstrument('telecaster', TELECASTER_SAMPLES);
@@ -212,5 +245,7 @@ export class TelecasterGuitarSampler {
         this.preamp.disconnect();
     }
 }
+
+    
 
     

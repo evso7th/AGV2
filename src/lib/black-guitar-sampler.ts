@@ -1,3 +1,4 @@
+
 import type { Note, Technique } from "@/types/music";
 
 const BLACK_GUITAR_ORD_SAMPLES: Record<string, string> = {
@@ -221,7 +222,7 @@ export class BlackGuitarSampler {
         this.destination = destination;
 
         this.preamp = this.audioContext.createGain();
-        this.preamp.gain.value = 1.8; 
+        this.preamp.gain.value = 1.2; 
 
         this.fxChainInput = this.audioContext.createGain();
 
@@ -399,5 +400,7 @@ export class BlackGuitarSampler {
         this.fxChainInput.disconnect();
     }
 }
+
+    
 
     
