@@ -32,16 +32,13 @@ export const WinterBluesBlueprint: MusicBlueprint = {
                     melody: { 
                         strategy: 'weighted', 
                         v1Options: [
-                            { name: 'electricGuitar', weight: 0.3 },
-                            { name: 'acousticGuitar', weight: 0.3 },
-                            { name: 'telecaster', weight: 0.2 },
+                            { name: 'acousticGuitar', weight: 0.4 },
+                            { name: 'telecaster', weight: 0.4 },
                             { name: 'blackAcoustic', weight: 0.2 },
                         ],
                         v2Options: [
-                            { name: 'guitar_shineOn', weight: 0.4 },
-                            { name: 'guitar_muffLead', weight: 0.1 },
-                            { name: 'telecaster', weight: 0.3 },
-                            { name: 'blackAcoustic', weight: 0.2 },
+                            { name: 'telecaster', weight: 0.5 },
+                            { name: 'blackAcoustic', weight: 0.5 },
                         ]
                     }
                 },
@@ -55,7 +52,7 @@ export const WinterBluesBlueprint: MusicBlueprint = {
             },
             {
                 id: 'SOLO', name: 'Solo', duration: { percent: 35 },
-                layers: { bass: true, drums: true, melody: true, accompaniment: true },
+                layers: { bass: true, drums: true, melody: true, accompaniment: true, harmony: true },
                  instrumentation: {
                     accompaniment: { 
                         strategy: 'weighted', 
@@ -64,17 +61,15 @@ export const WinterBluesBlueprint: MusicBlueprint = {
                     },
                     melody: { 
                         strategy: 'weighted', 
-                         v1Options: [
+                        v1Options: [
                             { name: 'electricGuitar', weight: 0.4 },
-                            { name: 'acousticGuitar', weight: 0.2 },
-                            { name: 'telecaster', weight: 0.2 },
-                            { name: 'blackAcoustic', weight: 0.2 },
+                            { name: 'organ', weight: 0.3 },
+                            { name: 'synth', weight: 0.3 },
                         ],
                         v2Options: [
-                            { name: 'guitar_muffLead', weight: 0.4 },
-                            { name: 'guitar_shineOn', weight: 0.2 },
-                            { name: 'telecaster', weight: 0.2 },
-                            { name: 'blackAcoustic', weight: 0.2 },
+                            { name: 'guitar_shineOn', weight: 0.5 },
+                            { name: 'organ', weight: 0.25 },
+                            { name: 'synth', weight: 0.25 },
                         ]
                     }
                 },
@@ -101,16 +96,14 @@ export const WinterBluesBlueprint: MusicBlueprint = {
                     },
                     melody: { 
                         strategy: 'weighted', 
-                         v1Options: [
-                            { name: 'electricGuitar', weight: 0.3 },
-                            { name: 'acousticGuitar', weight: 0.3 },
-                            { name: 'telecaster', weight: 0.2 },
-                            { name: 'blackAcoustic', weight: 0.2 },
+                        v1Options: [
+                           { name: 'acousticGuitar', weight: 0.4 },
+                           { name: 'telecaster', weight: 0.4 },
+                           { name: 'blackAcoustic', weight: 0.2 },
                         ],
                         v2Options: [
-                            { name: 'guitar_shineOn', weight: 0.4 },
-                            { name: 'telecaster', weight: 0.3 },
-                            { name: 'blackAcoustic', weight: 0.3 },
+                            { name: 'telecaster', weight: 0.5 },
+                            { name: 'blackAcoustic', weight: 0.5 },
                         ]
                     }
                 },
