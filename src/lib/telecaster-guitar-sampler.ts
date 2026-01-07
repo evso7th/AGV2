@@ -1,3 +1,4 @@
+
 import type { Note, Technique } from "@/types/music";
 
 const TELECASTER_SAMPLES: Record<string, string> = {
@@ -56,7 +57,7 @@ export class TelecasterGuitarSampler {
         this.destination = destination;
 
         this.preamp = this.audioContext.createGain();
-        this.preamp.gain.value = 1.8; 
+        this.preamp.gain.value = 2.2; 
 
         this.fxChainInput = this.audioContext.createGain();
 
