@@ -55,7 +55,7 @@ export class TelecasterGuitarSampler {
         this.audioContext = audioContext;
         this.destination = destination;
 
-        // 1. Создаем предусилитель, который будет единственной точкой входа для нот
+        // 1. Создаем предусилитель, который будет ЕДИНСТВЕННОЙ точкой входа для нот
         this.preamp = this.audioContext.createGain();
         this.preamp.gain.value = 4.0; 
 
@@ -79,11 +79,11 @@ export class TelecasterGuitarSampler {
         this.feedback.gain.value = 0.2;
 
         // 3. Собираем СТРОГО ПОСЛЕДОВАТЕЛЬНУЮ цепочку эффектов
-        this.preamp.connect(this.distortion);
-        this.distortion.connect(this.chorusDelay);
-        this.chorusDelay.connect(this.delay);
-        this.delay.connect(this.feedback);
-        this.feedback.connect(this.delay);
+        this.preamp.connect(this.distortion);       // Вход -> Дисторшн
+        this.distortion.connect(this.chorusDelay); // Дисторшн -> Хорус
+        this.chorusDelay.connect(this.delay);      // Хорус -> Дилэй
+        this.delay.connect(this.feedback);         // Дилэй -> Фидбэк
+        this.feedback.connect(this.delay);         // Фидбэк -> обратно на Дилэй
         
         // 4. Выход последнего эффекта в цепи идет на финальный выход
         this.delay.connect(this.destination);
@@ -169,7 +169,7 @@ export class TelecasterGuitarSampler {
             const gainNode = this.audioContext.createGain();
             
             source.connect(gainNode);
-            // Звук ноты теперь подключается напрямую к предусилителю
+            // Звук ноты теперь подключается НАПРЯМУЮ к предусилителю
             gainNode.connect(this.preamp);
 
             const playbackRate = Math.pow(2, (note.midi - sampleMidi) / 12);
@@ -204,7 +204,6 @@ export class TelecasterGuitarSampler {
     
     private keyToMidi(key: string): number | null {
         const noteStr = key.toLowerCase();
-        // Updated regex to handle note names like 'g_3' or 'a_2' from telecaster samples
         const noteMatch = noteStr.match(/([a-g][b#]?)_?(\d)/);
     
         if (!noteMatch) return null;
@@ -216,7 +215,7 @@ export class TelecasterGuitarSampler {
             'c': 0, 'c#': 1, 'db': 1, 'd': 2, 'd#': 3, 'eb': 3, 'e': 4, 'f': 5, 'f#': 6, 'gb': 6, 'g': 7, 'g#': 8, 'ab': 8, 'a': 9, 'a#': 10, 'bb': 10, 'b': 11
         };
     
-        const noteValue = noteMap[name.replace('#', 's').replace('b', 'f')]; // Basic sharp/flat to map key if needed
+        const noteValue = noteMap[name.replace('#', 's').replace('b', 'f')];
         if (noteValue === undefined) return null;
     
         return 12 * octave + noteValue;
