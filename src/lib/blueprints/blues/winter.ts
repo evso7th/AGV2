@@ -3,143 +3,125 @@ import type { MusicBlueprint } from '@/types/music';
 
 export const WinterBluesBlueprint: MusicBlueprint = {
     id: 'winter_blues',
-    name: 'Winter Blues (Sterile)',
-    description: 'A sterile, minimal blues blueprint for debugging. It only uses bass, melody, and accompaniment synthesizers, with all sample-based layers disabled.',
+    name: 'Winter Blues (Calm Foundation)',
+    description: 'A deep, melancholic blues based on a calm, riff-based structure, featuring a wide range of guitars.',
     mood: 'melancholic',
     musical: {
         key: { root: 'E', scale: 'aeolian', octave: 2 },
-        bpm: { base: 64, range: [60, 68], modifier: 1.0 },
+        bpm: { base: 66, range: [64, 72], modifier: 1.0 },
         timeSignature: { numerator: 4, denominator: 4 },
-        harmonicJourney: [], // Uses 12-bar blues structure
-        tensionProfile: { type: 'plateau', peakPosition: 0.5, curve: (p, pp) => p < pp ? p / pp : 1.0 }
+        harmonicJourney: [], // 12-bar structure
+        tensionProfile: { type: 'plateau', peakPosition: 0.3, curve: (p, pp) => p < pp ? p / pp : 1.0 }
     },
     structure: {
         totalDuration: { preferredBars: 120 }, // 10 loops of 12 bars
         parts: [
             {
-                id: 'INTRO',
-                name: 'Intro',
-                duration: { percent: 20 },
-                layers: {
-                    drums: true, harmony: false, sfx: false, sparkles: false,
-                    bass: true, accompaniment: true, melody: true,
+                id: 'INTRO', name: 'Main Riff', duration: { percent: 40 },
+                introRules: {
+                    allowedInstruments: ['drums', 'bass', 'accompaniment'],
+                    buildUpSpeed: 0.3
                 },
+                layers: { bass: true, drums: true, accompaniment: true, harmony: true, melody: true },
                 instrumentation: {
-                    accompaniment: {
-                        strategy: 'weighted',
-                        v1Options: [{ name: 'organ', weight: 1.0 }],
-                        v2Options: [{ name: 'organ_soft_jazz', weight: 1.0 }]
+                    accompaniment: { 
+                        strategy: 'weighted', 
+                        v1Options: [{ name: 'organ', weight: 0.6 }, { name: 'ambientPad', weight: 0.4 }], 
+                        v2Options: [{ name: 'organ_soft_jazz', weight: 0.6 }, { name: 'synth_ambient_pad_lush', weight: 0.4 }] 
                     },
-                    melody: {
-                        strategy: 'weighted',
-                        v1Options: [{ name: 'telecaster', weight: 1.0 }],
-                        v2Options: [{ name: 'telecaster', weight: 1.0 }]
+                    melody: { 
+                        strategy: 'weighted', 
+                        v1Options: [
+                            { name: 'electricGuitar', weight: 0.3 },
+                            { name: 'acousticGuitar', weight: 0.3 },
+                            { name: 'telecaster', weight: 0.2 },
+                            { name: 'blackAcoustic', weight: 0.2 },
+                        ],
+                        v2Options: [
+                            { name: 'guitar_shineOn', weight: 0.4 },
+                            { name: 'guitar_muffLead', weight: 0.1 },
+                            { name: 'telecaster', weight: 0.3 },
+                            { name: 'blackAcoustic', weight: 0.2 },
+                        ]
                     }
                 },
                 instrumentRules: {
-                    drums: { pattern: 'composer', density: { min: 0.2, max: 0.4 }, useSnare: true, useGhostHat: true, ride: { enabled: false } },
+                    drums: { pattern: 'composer', kitName: 'blues_calm', density: { min: 0.4, max: 0.6 } },
                     bass: { techniques: [{ value: 'riff', weight: 1.0 }] }, 
-                    melody: { source: 'motif', density: { min: 0, max: 0 } }, // Melody is silent but instrument is set
+                    melody: { source: 'motif', density: { min: 0.2, max: 0.4 }, register: { preferred: 'mid' } }
                 },
-                bundles: [{ id: 'WINTER_BLUES_INTRO_BUNDLE', name: 'Foundation', duration: { percent: 100 }, characteristics: {}, phrases: {} }],
+                bundles: [{ id: 'BLUES_WINTER_VERSE_BUNDLE', name: 'Main Riff', duration: { percent: 100 }, characteristics: {}, phrases: {} }],
                 outroFill: null,
             },
             {
-                id: 'MAIN_THEME',
-                name: 'Main Theme',
-                duration: { percent: 25 },
-                layers: {
-                    drums: true, harmony: false, sfx: false, sparkles: false,
-                    bass: true, accompaniment: true, melody: true,
+                id: 'SOLO', name: 'Solo', duration: { percent: 35 },
+                layers: { bass: true, drums: true, melody: true, accompaniment: true },
+                 instrumentation: {
+                    accompaniment: { 
+                        strategy: 'weighted', 
+                        v1Options: [{ name: 'organ', weight: 0.7 }, { name: 'ambientPad', weight: 0.3 }], 
+                        v2Options: [{ name: 'organ_soft_jazz', weight: 0.7 }, { name: 'synth_ambient_pad_lush', weight: 0.3 }] 
+                    },
+                    melody: { 
+                        strategy: 'weighted', 
+                         v1Options: [
+                            { name: 'electricGuitar', weight: 0.4 },
+                            { name: 'acousticGuitar', weight: 0.2 },
+                            { name: 'telecaster', weight: 0.2 },
+                            { name: 'blackAcoustic', weight: 0.2 },
+                        ],
+                        v2Options: [
+                            { name: 'guitar_muffLead', weight: 0.4 },
+                            { name: 'guitar_shineOn', weight: 0.2 },
+                            { name: 'telecaster', weight: 0.2 },
+                            { name: 'blackAcoustic', weight: 0.2 },
+                        ]
+                    }
                 },
+                instrumentRules: {
+                    drums: { pattern: 'composer', kitName: 'blues_calm', density: { min: 0.5, max: 0.7 }, ride: { enabled: true } },
+                    melody: { 
+                        source: 'motif', 
+                        density: { min: 0.6, max: 0.8 },
+                        register: { preferred: 'mid' }
+                    },
+                    bass: { techniques: [{ value: 'riff', weight: 1.0 }] },
+                },
+                bundles: [{ id: 'BLUES_WINTER_SOLO_BUNDLE', name: 'Solo', duration: { percent: 100 }, characteristics: {}, phrases: {} }],
+                outroFill: null,
+            },
+             {
+                id: 'OUTRO', name: 'Return to Riff', duration: { percent: 25 },
+                layers: { bass: true, drums: true, accompaniment: true, harmony: true, melody: true },
                 instrumentation: {
-                    accompaniment: {
-                        strategy: 'weighted',
-                        v1Options: [{ name: 'organ', weight: 1.0 }],
-                        v2Options: [{ name: 'organ_soft_jazz', weight: 1.0 }]
+                    accompaniment: { 
+                        strategy: 'weighted', 
+                        v1Options: [{ name: 'organ', weight: 0.6 }, { name: 'ambientPad', weight: 0.4 }], 
+                        v2Options: [{ name: 'organ_soft_jazz', weight: 0.6 }, { name: 'synth_ambient_pad_lush', weight: 0.4 }] 
                     },
-                    melody: {
-                        strategy: 'weighted',
-                        v1Options: [{ name: 'telecaster', weight: 1.0 }],
-                        v2Options: [{ name: 'telecaster', weight: 1.0 }]
+                    melody: { 
+                        strategy: 'weighted', 
+                         v1Options: [
+                            { name: 'electricGuitar', weight: 0.3 },
+                            { name: 'acousticGuitar', weight: 0.3 },
+                            { name: 'telecaster', weight: 0.2 },
+                            { name: 'blackAcoustic', weight: 0.2 },
+                        ],
+                        v2Options: [
+                            { name: 'guitar_shineOn', weight: 0.4 },
+                            { name: 'telecaster', weight: 0.3 },
+                            { name: 'blackAcoustic', weight: 0.3 },
+                        ]
                     }
                 },
                 instrumentRules: {
-                    drums: { pattern: 'composer', density: { min: 0.5, max: 0.7 }, useSnare: true, useGhostHat: true, ride: { enabled: false } },
-                    bass: { techniques: [{ value: 'riff', weight: 1.0 }] },
-                    melody: { 
-                        source: 'motif', 
-                        density: { min: 0.4, max: 0.6 },
-                        register: { preferred: 'mid' }
-                    }
+                    drums: { pattern: 'composer', kitName: 'blues_calm', density: { min: 0.4, max: 0.6 } },
+                    bass: { techniques: [{ value: 'riff', weight: 1.0 }] }, 
+                    melody: { source: 'motif', density: { min: 0.2, max: 0.4 }, register: { preferred: 'mid' } }
                 },
-                bundles: [{ id: 'WINTER_BLUES_THEME_BUNDLE', name: 'Main Riff', duration: { percent: 100 }, characteristics: {}, phrases: {} }],
+                bundles: [{ id: 'BLUES_WINTER_OUTRO_BUNDLE', name: 'Final Riff', duration: { percent: 100 }, characteristics: {}, phrases: {} }],
                 outroFill: null,
             },
-            {
-                id: 'SOLO',
-                name: 'Guitar Solo',
-                duration: { percent: 30 }, // 36 bars
-                layers: {
-                    drums: true, harmony: false, sfx: false, sparkles: false,
-                    bass: true, accompaniment: true, melody: true,
-                },
-                 instrumentation: {
-                     accompaniment: {
-                        strategy: 'weighted',
-                        v1Options: [{ name: 'organ', weight: 1.0 }],
-                        v2Options: [{ name: 'organ_soft_jazz', weight: 1.0 }]
-                    },
-                    melody: {
-                        strategy: 'weighted',
-                        v1Options: [{ name: 'blackAcoustic', weight: 1.0 }],
-                        v2Options: [{ name: 'blackAcoustic', weight: 1.0 }]
-                    }
-                },
-                instrumentRules: {
-                    drums: { pattern: 'composer', density: { min: 0.7, max: 0.9 }, useSnare: true, useGhostHat: true, ride: { enabled: true } },
-                    bass: { techniques: [{ value: 'riff', weight: 1.0 }] },
-                    melody: { 
-                        source: 'motif', 
-                        density: { min: 0.7, max: 0.9 }, // Higher density for solo
-                        register: { preferred: 'high' } // Higher register for solo
-                    }
-                },
-                bundles: [{ id: 'WINTER_BLUES_SOLO_BUNDLE', name: 'Improvisation', duration: { percent: 100 }, characteristics: {}, phrases: {} }],
-                outroFill: null,
-            },
-            {
-                id: 'OUTRO',
-                name: 'Outro',
-                duration: { percent: 25 },
-                layers: {
-                    drums: true, harmony: false, sfx: false, sparkles: false,
-                    bass: true, accompaniment: true, melody: true,
-                },
-                 instrumentation: {
-                    accompaniment: {
-                        strategy: 'weighted',
-                        v1Options: [{ name: 'organ', weight: 1.0 }],
-                        v2Options: [{ name: 'organ_soft_jazz', weight: 1.0 }]
-                    },
-                    melody: {
-                        strategy: 'weighted',
-                        v1Options: [{ name: 'telecaster', weight: 1.0 }],
-                        v2Options: [{ name: 'telecaster', weight: 1.0 }]
-                    }
-                },
-                instrumentRules: {
-                    drums: { pattern: 'composer', density: { min: 0.5, max: 0.7 }, useSnare: true, useGhostHat: true, ride: { enabled: false } },
-                    bass: { techniques: [{ value: 'riff', weight: 1.0 }] },
-                    melody: { 
-                        source: 'motif', 
-                        density: { min: 0.3, max: 0.5 }, // Return to main theme density
-                        register: { preferred: 'mid' }
-                    }
-                },
-                bundles: [{ id: 'WINTER_BLUES_OUTRO_BUNDLE', name: 'Fade Out', duration: { percent: 100 }, characteristics: {}, phrases: {} }],
-                outroFill: null,
-            }
         ]
     },
     mutations: {},

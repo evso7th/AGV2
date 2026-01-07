@@ -61,7 +61,7 @@ export const BLUEPRINT_LIBRARY: Record<Genre, Partial<Record<Mood, MusicBlueprin
         contemplative: ContemplativeTranceBlueprint,
     },
     blues: {
-        melancholic: WinterBluesBlueprint, // Using the new sterile blueprint
+        melancholic: WinterBluesBlueprint,
         dark: DarkBluesBlueprint,
         enthusiastic: EnthusiasticBluesBlueprint,
         joyful: JoyfulBluesBlueprint,

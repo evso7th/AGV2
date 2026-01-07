@@ -44,10 +44,10 @@ const DRUM_SAMPLES: Record<string, string> = {
     'a_ride3': '/assets/drums/a-ride3.mp3',
     'a_ride4': '/assets/drums/a-ride4.mp3',
     // New Brush Samples
-    'brush1': '/assets/drums/brush1.oga',
-    'brush2': '/assets/drums/brush2.oga',
-    'brush3': '/assets/drums/brush3.oga',
-    'brush4': '/assets/drums/brush4.oga',
+    //'brush1': '/assets/drums/brush1.oga',
+    //'brush2': '/assets/drums/brush2.oga',
+    //'brush3': '/assets/drums/brush2.oga',
+    //'brush4': '/assets/drums/brush4.oga',
     // Aliases for compatibility
     'kick': '/assets/drums/kick_drum6.wav',
     'hihat_closed': '/assets/drums/closed_hi_hat_accented.wav',
