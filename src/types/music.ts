@@ -233,12 +233,8 @@ export type BlueprintBundle = {
 };
 
 export type IntroRules = {
-  allowedInstruments: InstrumentPart[];
-  buildUpSpeed: number;
-  specialTechniques?: {
-    part: InstrumentPart;
-    technique: Technique;
-  }[];
+  instrumentPool: InstrumentPart[];
+  stages: number; // e.g., 4 stages means intro is divided into 4 parts
 };
 
 export type BlueprintPart = {
