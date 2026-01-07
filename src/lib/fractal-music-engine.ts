@@ -5,6 +5,12 @@ import { ElectronicK, TraditionalK, AmbientK, MelancholicMinorK } from './resona
 import { BlueprintNavigator, type NavigationInfo } from './blueprint-navigator';
 import { getBlueprint } from './blueprints';
 import { V2_PRESETS } from './presets-v2';
+
+// --- МУЗЫКАЛЬНЫЕ АССЕТЫ (БАЗА ЗНАНИЙ) ---
+// #ЗАЧЕМ: Эти файлы содержат "сырые" музыкальные данные (риффы, биты, мелодии),
+//          которые движок использует как строительные блоки. Это позволяет отделить
+//          музыкальные знания от логики их исполнения.
+// #СВЯЗИ: Используются функциями-генераторами внутри этого файла.
 import { PARANOID_STYLE_RIFF } from './assets/rock-riffs';
 import { BLUES_BASS_RIFFS } from './assets/blues-bass-riffs';
 import { NEUTRAL_BLUES_BASS_RIFFS } from './assets/neutral-blues-riffs';
@@ -12,6 +18,7 @@ import { BLUES_GUITAR_RIFFS, BLUES_GUITAR_VOICINGS } from './assets/blues-guitar
 import { BLUES_DRUM_RIFFS } from './assets/blues-drum-riffs';
 import { BLUES_SOLO_LICKS, BLUES_SOLO_PLANS } from './assets/blues_guitar_solo';
 import { DRUM_KITS } from './assets/drum-kits';
+
 import { getScaleForMood, generateGhostHarmonyTrack, createDrumAxiom, createAmbientBassAxiom, createAccompanimentAxiom, createHarmonyAxiom, createMelodyMotif, mutateBassPhrase, createBassFill, createDrumFill, chooseHarmonyInstrument, DEGREE_TO_SEMITONE } from './music-theory';
 
 
