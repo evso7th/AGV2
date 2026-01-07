@@ -1,5 +1,3 @@
-
-
 /**
  * @file AuraGroove Music Worker (Architecture: "The Dynamic Composer")
  *
@@ -144,14 +142,16 @@ const Scheduler = {
     tick() {
         if (!this.isRunning || !fractalMusicEngine) return;
 
-        // --- ЛОГИКА ДЕКОРАТОРА (ПЛАН 716/718/724) ---
+        // --- ЛОГИКА ДЕКОРАТОРА (ПЛАН 891/894) ---
         
+        // 1. Основной движок ВСЕГДА работает в фоне для "прогрева".
         const mainEnginePayload = fractalMusicEngine.evolve(this.barDuration, this.barCount);
 
         let finalPayload: { events: FractalEvent[], instrumentHints: InstrumentHints };
 
         console.log(`[Worker.tick @ Bar ${this.barCount}] Checking intro condition: barCount (${this.barCount}) < introBars (${this.settings.introBars}) -> ${this.barCount < this.settings.introBars}`);
 
+        // 2. Если мы в периоде интро, вызываем ИЗОЛИРОВАННЫЙ генератор пролога.
         if (this.barCount < this.settings.introBars) {
             const introPart = fractalMusicEngine.navigator?.blueprint.structure.parts.find(p => p.id.startsWith('INTRO'));
             
@@ -160,13 +160,18 @@ const Scheduler = {
                 finalPayload = generateIntroSequence({
                     currentBar: this.barCount,
                     totalIntroBars: this.settings.introBars,
-                    mainEngineEvents: mainEnginePayload.events,
+                    rules: introPart.introRules,
                     instrumentOrder: fractalMusicEngine.introInstrumentOrder,
+                    harmonyTrack: fractalMusicEngine.getGhostHarmony(),
+                    settings: this.settings,
+                    random: (fractalMusicEngine as any).random
                 });
             } else {
-                finalPayload = mainEnginePayload;
+                // Если правил интро нет (маловероятно, но для безопасности), играем "тишину"
+                finalPayload = { events: [], instrumentHints: {} };
             }
         } else {
+            // 3. Интро закончилось, используем основную партитуру от `FractalMusicEngine`.
             finalPayload = mainEnginePayload;
         }
 
@@ -292,9 +297,3 @@ self.onmessage = async (event: MessageEvent) => {
         self.postMessage({ type: 'error', error: e instanceof Error ? e.message : String(e) });
     }
 };
-
-    
-
-
-    
-

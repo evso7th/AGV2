@@ -1,6 +1,6 @@
 
 
-import type { FractalEvent, Mood, Genre, Technique, BassSynthParams, InstrumentType, AccompanimentInstrument, InstrumentHints, AccompanimentTechnique, GhostChord, SfxRule, V1MelodyInstrument, V2MelodyInstrument, BlueprintPart, InstrumentationRules, InstrumentBehaviorRules, BluesMelody, IntroRules, InstrumentPart, DrumKit } from './fractal';
+import type { FractalEvent, Mood, Genre, Technique, BassSynthParams, InstrumentType, AccompanimentInstrument, InstrumentHints, AccompanimentTechnique, GhostChord, SfxRule, V1MelodyInstrument, V2MelodyInstrument, BlueprintPart, InstrumentationRules, InstrumentBehaviorRules, BluesMelody, IntroRules, InstrumentPart, DrumKit, BluesGuitarRiff, BluesSoloPhrase, BluesRiffDegree } from './fractal';
 import { ElectronicK, TraditionalK, AmbientK, MelancholicMinorK } from './resonance-matrices';
 import { BlueprintNavigator, type NavigationInfo } from './blueprint-navigator';
 import { getBlueprint } from './blueprints';
@@ -8,7 +8,7 @@ import { V2_PRESETS } from './presets-v2';
 import { PARANOID_STYLE_RIFF } from './assets/rock-riffs';
 import { BLUES_BASS_RIFFS } from './assets/blues-bass-riffs';
 import { NEUTRAL_BLUES_BASS_RIFFS } from './assets/neutral-blues-riffs';
-import { BLUES_MELODY_RIFFS, type BluesRiffDegree, type BluesRiffEvent, type BluesMelodyPhrase } from './assets/blues-melody-riffs';
+import { BLUES_GUITAR_RIFFS, BLUES_GUITAR_VOICINGS } from './assets/blues-guitar-riffs';
 import { BLUES_DRUM_RIFFS } from './assets/blues-drum-riffs';
 import { DRUM_KITS } from './assets/drum-kits';
 
@@ -1096,55 +1096,72 @@ export function createMelodyMotif(chord: GhostChord, mood: Mood, random: { next:
     return motif;
 }
 
-// #ЗАЧЕМ: Новая, исправленная функция для генерации вступления, работающая по принципу "накопителя".
-// #ЧТО: Она не определяет, какой инструмент играет в КАЖДОЙ "коробочке", а постепенно
-//       РАСШИРЯЕТ список активных инструментов, гарантируя, что однажды вступивший
-//       инструмент будет звучать до конца интро.
-// #СВЯЗИ: Решает проблему "тишины", когда очередь инструмента не совпадала с тактом,
-//          в котором для него были сгенерированы ноты.
+
+// #ЗАЧЕМ: Новая, исправленная функция для генерации вступления.
+// #ЧТО: Она больше не фильтрует события основного движка, а самостоятельно создает музыку
+//       для интро, следуя уникальному порядку инструментов, определенному при инициализации.
+// #СВЯЗИ: Вызывается из `Scheduler.tick()`, использует функции-аксиомы.
 export function generateIntroSequence(options: {
     currentBar: number;
     totalIntroBars: number;
-    mainEngineEvents: FractalEvent[];
+    rules: IntroRules;
     instrumentOrder: InstrumentPart[];
-}): { events: FractalEvent[]; instrumentHints: InstrumentHints } {
+    harmonyTrack: GhostChord[];
+    settings: any; // Simplified for now
+    random: { next: () => number, nextInt: (max: number) => number };
+}): { events: FractalEvent[], instrumentHints: InstrumentHints } {
 
-    const { currentBar, totalIntroBars, mainEngineEvents, instrumentOrder } = options;
+    const { currentBar, totalIntroBars, rules, instrumentOrder, harmonyTrack, settings, random } = options;
     const events: FractalEvent[] = [];
+    const instrumentHints: InstrumentHints = {};
     
-    // Копируем instrumentHints из основного движка, так как мы используем его события.
-    const instrumentHints: InstrumentHints = (mainEngineEvents.find(e => (e as any).instrumentHints) as any)?.instrumentHints ?? {};
+    // 1. Определяем текущий этап вступления ("коробочку")
+    const stages = rules.stages > 0 ? rules.stages : 1;
+    const barsPerStage = totalIntroBars > 0 ? Math.max(1, Math.floor(totalIntroBars / stages)) : 3;
+    const currentStageIndex = Math.min(stages - 1, Math.floor(currentBar / barsPerStage));
 
-    // 1. Определяем, сколько "коробочек" уже было "вскрыто"
-    const boxes = 4; // 4 "коробочки" по 3 такта в 12-тактовом интро
-    const barsPerBox = totalIntroBars > 0 ? Math.max(1, Math.floor(totalIntroBars / boxes)) : 3;
-    const currentBoxIndex = Math.min(boxes - 1, Math.floor(currentBar / barsPerBox));
-    
-    // 2. Создаем НАКОПИТЕЛЬНЫЙ список активных инструментов
+    // 2. Создаем НАКОПИТЕЛЬНЫЙ список активных инструментов для этого этапа
     const activeInstruments = new Set<InstrumentPart>();
-    for (let i = 0; i <= currentBoxIndex; i++) {
+    for (let i = 0; i <= currentStageIndex; i++) {
         if (instrumentOrder[i]) {
             activeInstruments.add(instrumentOrder[i]);
         }
     }
     
-    console.log(`%c[IntroSequence @ Bar ${currentBar}] Active instruments: [${Array.from(activeInstruments).join(', ')}]`, 'color: orange');
-
-
-    // 3. Фильтруем события из основного движка
-    for (const event of mainEngineEvents) {
-        const eventPart = (event.type as string).startsWith('drum_') || (event.type as string).startsWith('perc-') ? 'drums' : event.type;
-        if (activeInstruments.has(eventPart as InstrumentPart)) {
-            // #ЗАЧЕМ: Дополнительная проверка для жанра 'blues'
-            // #ЧТО: Если жанр - блюз, мы пропускаем события ударных, чтобы избежать
-            //       нежелательной перкуссии и дать возможность основному генератору
-            //       создать правильный бит, когда интро закончится.
-            if (options.instrumentOrder.includes('drums') && eventPart === 'drums') {
-                continue;
-            }
-            events.push(event);
-        }
+    console.log(`%c[IntroSequence @ Bar ${currentBar}] Stage: ${currentStageIndex + 1}/${stages}. Active: [${Array.from(activeInstruments).join(', ')}]`, 'color: orange');
+    
+    // 3. Находим текущий аккорд
+    const currentChord = harmonyTrack.find(c => currentBar >= c.bar && currentBar < c.bar + c.durationBars);
+    if (!currentChord) {
+        return { events, instrumentHints };
     }
+
+    // 4. Генерируем партии для КАЖДОГО активного инструмента
+    if (activeInstruments.has('bass')) {
+        const bassAxiom = createAmbientBassAxiom(currentChord, settings.mood, settings.genre, random, settings.tempo, 'drone');
+        events.push(...bassAxiom);
+    }
+    
+    if (activeInstruments.has('accompaniment')) {
+        const accompAxiom = createAccompanimentAxiom(currentChord, settings.mood, settings.genre, random, settings.tempo, 'low');
+        events.push(...accompAxiom);
+    }
+    
+    if (activeInstruments.has('drums')) {
+        // Находим кит для интро (или фолбэк)
+        const drumKit = DRUM_KITS[settings.genre]?.intro ?? DRUM_KITS.ambient!.intro!;
+        // Используем упрощенные правила для интро-барабанов
+        const drumRules = { pattern: 'ambient_beat', density: { min: 0.1, max: 0.3 }, useSnare: false, usePerc: true, rareKick: true };
+        const drumAxiom = createDrumAxiom(drumKit, settings.genre, settings.mood, settings.tempo, random, drumRules);
+        events.push(...drumAxiom.events);
+    }
+    
+    if (activeInstruments.has('melody')) {
+        const melodyAxiom = createMelodyMotif(currentChord, settings.mood, random, undefined, 'mid', settings.genre);
+        events.push(...melodyAxiom);
+    }
+    
+    // И так далее для других инструментов (harmony, sparkles, sfx), если они есть в instrumentPool
 
     return { events, instrumentHints };
 }
