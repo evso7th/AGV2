@@ -526,7 +526,6 @@ export class FractalMusicEngine {
                         technique: (noteTemplate.tech as Technique) || 'pick',
                         dynamics: 'f', phrasing: 'legato', params: {}
                     };
-                    // console.log(`[SoloLog] FME.generateBluesMelodyChorus (SOLO): Generated event`, JSON.parse(JSON.stringify(event)));
                     finalEvents.push(event);
                 }
             }
@@ -563,7 +562,6 @@ export class FractalMusicEngine {
                         weight: 0.8,
                         technique: 'pick', dynamics: 'mf', phrasing: 'legato', params: {}
                     };
-                    // console.log(`[SoloLog] FME.generateBluesMelodyChorus (THEME): Generated event`, JSON.parse(JSON.stringify(event)));
                     finalEvents.push(event);
                 }
             }
@@ -600,9 +598,6 @@ export class FractalMusicEngine {
             this.currentGuitarRiffId = this.baseMelodyId;
         }
         
-        const logDrumRiffId = `index_${this.currentDrumRiffIndex}`;
-        const logBassRiffId = `index_${this.currentBassRiffIndex}`;
-        const logMelodyId = this.currentGuitarRiffId || 'N/A';
     }
     
     const drumEvents = this.generateDrumEvents(navInfo) || [];
@@ -620,6 +615,19 @@ export class FractalMusicEngine {
         }
         accompEvents = this.accompPhraseLibrary[this.currentAccompPhraseIndex] || [];
     }
+
+    if (navInfo.currentPart.accompanimentMelodyDouble?.enabled && accompEvents.length > 0) {
+        const { instrument, octaveShift } = navInfo.currentPart.accompanimentMelodyDouble;
+        const accompDoubleEvents: FractalEvent[] = accompEvents.map(e => ({
+            ...JSON.parse(JSON.stringify(e)),
+            type: 'melody',
+            note: e.note + (12 * octaveShift),
+            weight: e.weight * 0.9,
+        }));
+        allEvents.push(...accompDoubleEvents);
+        instrumentHints.melody = instrument; 
+    }
+
 
     let harmonyEvents: FractalEvent[] = [];
     if (navInfo.currentPart.layers.harmony) {
@@ -767,27 +775,28 @@ export class FractalMusicEngine {
 
       if (!isFinite(barDuration)) return { events: [], instrumentHints: {} };
       
-      const navInfo = this.navigator.tick(this.epoch);
-      if (!navInfo) {
+      const v2MelodyHint = this._chooseInstrumentForPart('melody', this.navigator.tick(this.epoch));
+      const navigationInfo = this.navigator.tick(this.epoch, v2MelodyHint);
+
+      if (navigationInfo && navigationInfo.logMessage) {
+        console.log(navigationInfo.logMessage);
+      }
+      
+      if (!navigationInfo) {
         console.error(`[FME] Evolve failed to get navigation info for bar ${this.epoch}`);
         return { events: [], instrumentHints: {} };
       }
       
-      // #ИСПРАВЛЕНО (ПЛАН 912): Восстанавливаем логирование переходов
-      if (navInfo.logMessage) {
-        console.log(navInfo.logMessage);
-      }
-      
-      const harmonyRules = navInfo?.currentPart.instrumentation?.harmony;
+      const harmonyRules = navigationInfo?.currentPart.instrumentation?.harmony;
       const chosenHarmonyInstrument = harmonyRules ? chooseHarmonyInstrument(harmonyRules, this.random) : 'piano';
 
       const instrumentHints: InstrumentHints = {
-          accompaniment: this._chooseInstrumentForPart('accompaniment', navInfo),
-          melody: this._chooseInstrumentForPart('melody', navInfo),
+          accompaniment: this._chooseInstrumentForPart('accompaniment', navigationInfo),
+          melody: v2MelodyHint,
           harmony: chosenHarmonyInstrument,
       };
       
-      const events = this.generateOneBar(barDuration, navInfo!, instrumentHints);
+      const events = this.generateOneBar(barDuration, navigationInfo!, instrumentHints);
       
       return { events, instrumentHints };
   }
@@ -843,13 +852,3 @@ export class FractalMusicEngine {
   }
 
 }
-
-    
-
-    
-
-
-
-    
-
-    

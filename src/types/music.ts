@@ -1,5 +1,4 @@
 
-
 import type { Mood as FractalMood, InstrumentHints as FractalInstrumentHints } from './fractal';
 import { V2_PRESETS } from '@/lib/presets-v2';
 
@@ -258,6 +257,11 @@ export type BlueprintPart = {
   bassAccompanimentDouble?: {
     enabled: boolean;
     instrument: AccompanimentInstrument;
+    octaveShift: number;
+  };
+  accompanimentMelodyDouble?: {
+    enabled: boolean;
+    instrument: MelodyInstrument;
     octaveShift: number;
   };
   bundles: BlueprintBundle[];

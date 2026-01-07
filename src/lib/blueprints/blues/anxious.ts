@@ -53,6 +53,7 @@ export const AnxiousBluesBlueprint: MusicBlueprint = {
             {
                 id: 'MAIN_A', name: 'Frantic Riff', duration: { percent: 35 },
                 layers: { bass: true, drums: true, accompaniment: true, melody: true },
+                accompanimentMelodyDouble: { enabled: true, instrument: 'electricGuitar', octaveShift: 1 },
                 instrumentation: {
                     accompaniment: { strategy: 'weighted', v2Options: [{ name: 'synth_cave_pad', weight: 1.0 }], v1Options: [{ name: 'synth', weight: 1.0 }] },
                     melody: { strategy: 'weighted', v2Options: [{ name: 'guitar_shineOn', weight: 1.0 }], v1Options: [{ name: 'electricGuitar', weight: 1.0 }] }
@@ -66,7 +67,6 @@ export const AnxiousBluesBlueprint: MusicBlueprint = {
                     bass: { techniques: [{ value: 'boogie', weight: 1.0 }] },
                     melody: { source: 'harmony_top_note' }
                 },
-                bassAccompanimentDouble: { enabled: true, instrument: 'electricGuitar', octaveShift: 1 },
                 bundles: [{ id: 'BLUES_ANX_MAIN_A_BUNDLE', name: 'Main Riff A', duration: { percent: 100 }, characteristics: {}, phrases: {} }],
                 outroFill: { type: 'roll', duration: 1, parameters: { instrument: 'tom', density: 0.7 } },
             },
