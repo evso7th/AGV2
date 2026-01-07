@@ -66,7 +66,7 @@ export const WinterBluesBlueprint: MusicBlueprint = {
                 },
                 instrumentRules: {
                     drums: { pattern: 'none' },
-                    bass: { techniques: [{ value: 'riff', weight: 1.0 }] }, 
+                    bass: { techniques: [{ value: 'riff', weight: 1.0 }] },
                     melody: { 
                         source: 'motif', 
                         density: { min: 0.4, max: 0.6 },
@@ -98,7 +98,7 @@ export const WinterBluesBlueprint: MusicBlueprint = {
                 },
                 instrumentRules: {
                     drums: { pattern: 'none' },
-                    bass: { techniques: [{ value: 'riff', weight: 1.0 }] }, 
+                    bass: { techniques: [{ value: 'riff', weight: 1.0 }] },
                     melody: { 
                         source: 'motif', 
                         density: { min: 0.7, max: 0.9 }, // Higher density for solo
@@ -130,7 +130,7 @@ export const WinterBluesBlueprint: MusicBlueprint = {
                 },
                 instrumentRules: {
                     drums: { pattern: 'none' },
-                    bass: { techniques: [{ value: 'riff', weight: 1.0 }] }, 
+                    bass: { techniques: [{ value: 'riff', weight: 1.0 }] },
                     melody: { 
                         source: 'motif', 
                         density: { min: 0.3, max: 0.5 }, // Return to main theme density
