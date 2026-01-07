@@ -17,9 +17,34 @@ export const WinterBluesBlueprint: MusicBlueprint = {
         totalDuration: { preferredBars: 120 }, // 10 loops of 12 bars
         parts: [
             {
-                id: 'MAIN_THEME', name: 'Main Theme', duration: { percent: 60 },
+                id: 'INTRO',
+                name: 'Intro',
+                duration: { percent: 20 },
                 layers: {
-                    drums: false, harmony: false, sfx: false, sparkles: false, // Keep sterile
+                    drums: false, harmony: false, sfx: false, sparkles: false,
+                    bass: true, accompaniment: true, melody: false,
+                },
+                instrumentation: {
+                    accompaniment: {
+                        strategy: 'weighted',
+                        v1Options: [{ name: 'organ', weight: 1.0 }],
+                        v2Options: [{ name: 'organ_soft_jazz', weight: 1.0 }]
+                    },
+                },
+                instrumentRules: {
+                    drums: { pattern: 'none' },
+                    bass: { techniques: [{ value: 'riff', weight: 1.0 }] }, 
+                    melody: { source: 'motif', density: { min: 0, max: 0 } }, // Melody is silent
+                },
+                bundles: [{ id: 'WINTER_BLUES_INTRO_BUNDLE', name: 'Foundation', duration: { percent: 100 }, characteristics: {}, phrases: {} }],
+                outroFill: null,
+            },
+            {
+                id: 'MAIN_THEME',
+                name: 'Main Theme',
+                duration: { percent: 25 },
+                layers: {
+                    drums: false, harmony: false, sfx: false, sparkles: false,
                     bass: true, accompaniment: true, melody: true,
                 },
                 instrumentation: {
@@ -30,9 +55,6 @@ export const WinterBluesBlueprint: MusicBlueprint = {
                     },
                     melody: {
                         strategy: 'weighted',
-                        // #ЗАЧЕМ: Указываем, что мелодию должна играть гитара.
-                        // #ЧТО: Используется 'blackAcoustic' как единственный вариант.
-                        // #СВЯЗИ: Эта нотация обрабатывается в audio-engine-context.tsx.
                         v1Options: [{ name: 'blackAcoustic', weight: 1.0 }],
                         v2Options: [{ name: 'blackAcoustic', weight: 1.0 }]
                     }
@@ -50,9 +72,11 @@ export const WinterBluesBlueprint: MusicBlueprint = {
                 outroFill: null,
             },
             {
-                id: 'SOLO', name: 'Guitar Solo', duration: { percent: 40 },
+                id: 'SOLO',
+                name: 'Guitar Solo',
+                duration: { percent: 30 }, // 36 bars
                 layers: {
-                    drums: false, harmony: false, sfx: false, sparkles: false, // Keep sterile
+                    drums: false, harmony: false, sfx: false, sparkles: false,
                     bass: true, accompaniment: true, melody: true,
                 },
                 instrumentation: {
@@ -72,14 +96,45 @@ export const WinterBluesBlueprint: MusicBlueprint = {
                     bass: { techniques: [{ value: 'riff', weight: 1.0 }] }, 
                     melody: { 
                         source: 'motif', 
-                        // #ИЗМЕНЕНО: Увеличиваем плотность и регистр для создания ощущения соло
-                        density: { min: 0.6, max: 0.8 },
-                        register: { preferred: 'high' }
+                        density: { min: 0.7, max: 0.9 }, // Higher density for solo
+                        register: { preferred: 'high' } // Higher register for solo
                     }
                 },
                 bundles: [{ id: 'WINTER_BLUES_SOLO_BUNDLE', name: 'Improvisation', duration: { percent: 100 }, characteristics: {}, phrases: {} }],
                 outroFill: null,
             },
+            {
+                id: 'OUTRO',
+                name: 'Outro',
+                duration: { percent: 25 },
+                layers: {
+                    drums: false, harmony: false, sfx: false, sparkles: false,
+                    bass: true, accompaniment: true, melody: true,
+                },
+                 instrumentation: {
+                    accompaniment: {
+                        strategy: 'weighted',
+                        v1Options: [{ name: 'organ', weight: 1.0 }],
+                        v2Options: [{ name: 'organ_soft_jazz', weight: 1.0 }]
+                    },
+                    melody: {
+                        strategy: 'weighted',
+                        v1Options: [{ name: 'blackAcoustic', weight: 1.0 }],
+                        v2Options: [{ name: 'blackAcoustic', weight: 1.0 }]
+                    }
+                },
+                instrumentRules: {
+                    drums: { pattern: 'none' },
+                    bass: { techniques: [{ value: 'riff', weight: 1.0 }] }, 
+                    melody: { 
+                        source: 'motif', 
+                        density: { min: 0.3, max: 0.5 }, // Return to main theme density
+                        register: { preferred: 'mid' }
+                    }
+                },
+                bundles: [{ id: 'WINTER_BLUES_OUTRO_BUNDLE', name: 'Fade Out', duration: { percent: 100 }, characteristics: {}, phrases: {} }],
+                outroFill: null,
+            }
         ]
     },
     mutations: {},
