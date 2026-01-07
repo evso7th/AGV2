@@ -43,50 +43,18 @@ export class TelecasterGuitarSampler {
     public isInitialized = false;
     private isLoading = false;
     private preamp: GainNode;
-    
-    private distortion: WaveShaperNode;
-    private delay: DelayNode;
-    private feedback: GainNode;
-    private chorusLFO: OscillatorNode;
-    private chorusDepth: GainNode;
-    private chorusDelay: DelayNode;
 
     constructor(audioContext: AudioContext, destination: AudioNode) {
         this.audioContext = audioContext;
         this.destination = destination;
 
-        // 1. Создаем предусилитель, который будет ЕДИНСТВЕННОЙ точкой входа для нот
+        // План 874: Абсолютный Минимализм.
+        // 1. Создаем только один узел - предусилитель.
         this.preamp = this.audioContext.createGain();
-        this.preamp.gain.value = 4.0; 
+        this.preamp.gain.value = 4.0; // Сразу ставим высокое усиление для проверки.
 
-        // 2. Создаем остальные эффекты
-        this.distortion = this.audioContext.createWaveShaper();
-        this.distortion.curve = this.makeDistortionCurve(0.1);
-
-        this.chorusLFO = this.audioContext.createOscillator();
-        this.chorusDepth = this.audioContext.createGain();
-        this.chorusDelay = this.audioContext.createDelay(0.1);
-        this.chorusLFO.type = 'sine';
-        this.chorusLFO.frequency.value = 4;
-        this.chorusDepth.gain.value = 0.005;
-        this.chorusLFO.connect(this.chorusDepth);
-        this.chorusDepth.connect(this.chorusDelay.delayTime);
-        this.chorusLFO.start();
-        
-        this.delay = this.audioContext.createDelay(1.0);
-        this.feedback = this.audioContext.createGain();
-        this.delay.delayTime.value = 0.3;
-        this.feedback.gain.value = 0.2;
-
-        // 3. Собираем СТРОГО ПОСЛЕДОВАТЕЛЬНУЮ цепочку эффектов
-        this.preamp.connect(this.distortion);       // Вход -> Дисторшн
-        this.distortion.connect(this.chorusDelay); // Дисторшн -> Хорус
-        this.chorusDelay.connect(this.delay);      // Хорус -> Дилэй
-        this.delay.connect(this.feedback);         // Дилэй -> Фидбэк
-        this.feedback.connect(this.delay);         // Фидбэк -> обратно на Дилэй
-        
-        // 4. Выход последнего эффекта в цепи идет на финальный выход
-        this.delay.connect(this.destination);
+        // 2. Подключаем его НАПРЯМУЮ к выходу.
+        this.preamp.connect(this.destination);
     }
 
     private makeDistortionCurve(amount: number): Float32Array {
@@ -169,7 +137,7 @@ export class TelecasterGuitarSampler {
             const gainNode = this.audioContext.createGain();
             
             source.connect(gainNode);
-            // Звук ноты теперь подключается НАПРЯМУЮ к предусилителю
+            // План 874: Подключаем ноту НАПРЯМУЮ к предусилителю.
             gainNode.connect(this.preamp);
 
             const playbackRate = Math.pow(2, (note.midi - sampleMidi) / 12);
@@ -204,6 +172,7 @@ export class TelecasterGuitarSampler {
     
     private keyToMidi(key: string): number | null {
         const noteStr = key.toLowerCase();
+        // Updated regex to handle note names like 'g_3'
         const noteMatch = noteStr.match(/([a-g][b#]?)_?(\d)/);
     
         if (!noteMatch) return null;
@@ -215,7 +184,10 @@ export class TelecasterGuitarSampler {
             'c': 0, 'c#': 1, 'db': 1, 'd': 2, 'd#': 3, 'eb': 3, 'e': 4, 'f': 5, 'f#': 6, 'gb': 6, 'g': 7, 'g#': 8, 'ab': 8, 'a': 9, 'a#': 10, 'bb': 10, 'b': 11
         };
     
-        const noteValue = noteMap[name.replace('#', 's').replace('b', 'f')];
+        // Normalize note name for lookup
+        const normalizedName = name.replace('#', 's').replace('b', 'f');
+        const noteValue = noteMap[name];
+        
         if (noteValue === undefined) return null;
     
         return 12 * octave + noteValue;
@@ -229,3 +201,5 @@ export class TelecasterGuitarSampler {
         this.preamp.disconnect();
     }
 }
+
+    
