@@ -22,7 +22,7 @@ export const WinterBluesBlueprint: MusicBlueprint = {
                 duration: { percent: 20 },
                 layers: {
                     drums: false, harmony: false, sfx: false, sparkles: false,
-                    bass: true, accompaniment: true, melody: false,
+                    bass: true, accompaniment: true, melody: true,
                 },
                 instrumentation: {
                     accompaniment: {
@@ -30,11 +30,16 @@ export const WinterBluesBlueprint: MusicBlueprint = {
                         v1Options: [{ name: 'organ', weight: 1.0 }],
                         v2Options: [{ name: 'organ_soft_jazz', weight: 1.0 }]
                     },
+                    melody: {
+                        strategy: 'weighted',
+                        v1Options: [{ name: 'blackAcoustic', weight: 1.0 }],
+                        v2Options: [{ name: 'blackAcoustic', weight: 1.0 }]
+                    }
                 },
                 instrumentRules: {
                     drums: { pattern: 'none' },
                     bass: { techniques: [{ value: 'riff', weight: 1.0 }] }, 
-                    melody: { source: 'motif', density: { min: 0, max: 0 } }, // Melody is silent
+                    melody: { source: 'motif', density: { min: 0, max: 0 } }, // Melody is silent but instrument is set
                 },
                 bundles: [{ id: 'WINTER_BLUES_INTRO_BUNDLE', name: 'Foundation', duration: { percent: 100 }, characteristics: {}, phrases: {} }],
                 outroFill: null,
@@ -55,8 +60,8 @@ export const WinterBluesBlueprint: MusicBlueprint = {
                     },
                     melody: {
                         strategy: 'weighted',
-                        v1Options: [{ name: 'blackAcoustic', weight: 1.0 }],
-                        v2Options: [{ name: 'blackAcoustic', weight: 1.0 }]
+                        v1Options: [{ name: 'telecaster', weight: 1.0 }],
+                        v2Options: [{ name: 'telecaster', weight: 1.0 }]
                     }
                 },
                 instrumentRules: {
@@ -79,7 +84,7 @@ export const WinterBluesBlueprint: MusicBlueprint = {
                     drums: false, harmony: false, sfx: false, sparkles: false,
                     bass: true, accompaniment: true, melody: true,
                 },
-                instrumentation: {
+                 instrumentation: {
                      accompaniment: {
                         strategy: 'weighted',
                         v1Options: [{ name: 'organ', weight: 1.0 }],
@@ -87,8 +92,8 @@ export const WinterBluesBlueprint: MusicBlueprint = {
                     },
                     melody: {
                         strategy: 'weighted',
-                        v1Options: [{ name: 'blackAcoustic', weight: 1.0 }],
-                        v2Options: [{ name: 'blackAcoustic', weight: 1.0 }]
+                        v1Options: [{ name: 'telecaster', weight: 1.0 }],
+                        v2Options: [{ name: 'telecaster', weight: 1.0 }]
                     }
                 },
                 instrumentRules: {
