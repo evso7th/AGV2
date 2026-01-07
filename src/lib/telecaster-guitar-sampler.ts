@@ -57,7 +57,7 @@ export class TelecasterGuitarSampler {
         this.destination = destination;
 
         this.preamp = this.audioContext.createGain();
-        this.preamp.gain.value = 2.2; 
+        this.preamp.gain.value = 4.0; 
 
         this.fxChainInput = this.audioContext.createGain();
 
