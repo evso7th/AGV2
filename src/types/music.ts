@@ -45,7 +45,7 @@ export type EffectsScore = SamplerNote[];
 export type BassInstrument = 'classicBass' | 'glideBass' | 'ambientDrone' | 'resonantGliss' | 'hypnoticDrone' | 'livingRiff' | 'none';
 export type V1MelodyInstrument = 'synth' | 'organ' | 'mellotron' | 'theremin' | 'electricGuitar' | 'ambientPad' | 'acousticGuitar' | 'E-Bells_melody' | 'G-Drops' | 'piano' | 'violin' | 'flute' | 'none';
 export type V2MelodyInstrument = keyof typeof V2_PRESETS;
-export type MelodyInstrument = V1MelodyInstrument | V2MelodyInstrument;
+export type MelodyInstrument = V1MelodyInstrument | V2MelodyInstrument | 'telecaster';
 
 export type AccompanimentInstrument = Exclude<MelodyInstrument, 'piano' | 'violin' | 'flute'> | 'guitarChords';
 export type EffectInstrument = 
@@ -96,8 +96,8 @@ export type DrumAndPercussionInstrument =
 
 export type InstrumentType = BassInstrument | MelodyInstrument | AccompanimentInstrument | EffectInstrument | DrumAndPercussionInstrument | 'portamento' | 'autopilot_bass' | 'none';
 
-export type InstrumentPart = 'bass' | 'melody' | 'accompaniment' | 'harmony' | 'drums' | 'effects' | 'sparkles' | 'piano' | 'violin' | 'flute' | 'guitarChords' | 'acousticGuitarSolo' | 'sfx';
-export type BassTechnique = 'arpeggio' | 'portamento' | 'glissando' | 'glide' | 'pulse';
+export type InstrumentPart = 'bass' | 'melody' | 'accompaniment' | 'harmony' | 'drums' | 'effects' | 'sparkles' | 'piano' | 'violin' | 'flute' | 'guitarChords' | 'acousticGuitarSolo' | 'sfx' | 'blackAcoustic' | 'telecaster';
+export type BassTechnique = 'arpeggio' | 'portamento' | 'glissando' | 'glide' | 'pulse' | 'riff' | 'long_notes' | 'walking' | 'boogie' | 'syncopated';
 export type Technique = BassTechnique | 'pluck' | 'pick' | 'harm' | 'slide' | 'hit' | 'ghost' | 'swell' | 'fill';
 export type AccompanimentTechnique = 'choral' | 'alternating-bass-chord' | 'chord-pulsation' | 'arpeggio-fast' | 'arpeggio-slow' | 'alberti-bass' | 'paired-notes' | 'long-chords';
 
@@ -175,12 +175,12 @@ export type MutationPolicy = {
   // Simplified for now
 };
 
-export type FillTechnique = 'filter_sweep' | 'reverb_burst' | 'harmonic_glide' | 'density_pause' | 'granular_freeze' | 'roll' | 'crescendo';
+export type FillTechnique = 'filter_sweep' | 'reverb_burst' | 'harmonic_glide' | 'density_pause' | 'granular_freeze' | 'roll' | 'crescendo' | 'shimmer_burst';
 
 export type FillPolicy = {
   type: FillTechnique;
   duration: number; // in bars
-  parameters: any;
+  parameters?: any;
 };
 
 type MelodySource = 'motif' | 'harmony_top_note';
@@ -202,6 +202,12 @@ export type InstrumentBehaviorRules = {
         octaveShift?: number;
     };
     fills?: { onBundleBoundary?: boolean };
+    useSnare?: boolean;
+    rareKick?: boolean;
+    usePerc?: boolean;
+    alternatePerc?: boolean;
+    useGhostHat?: boolean;
+    useBrushes?: boolean;
 };
 
 
@@ -226,15 +232,9 @@ export type BlueprintBundle = {
   outroFill?: FillPolicy | null;
 };
 
-// #ЗАЧЕМ: Добавлен тип IntroRules для декларативного управления вступлением.
-// #ЧТО: Он определяет, какие инструменты и техники разрешены, а также скорость нарастания.
-// #СВЯЗИ: Используется в BlueprintPart и читается функцией generateIntroSequence.
 export type IntroRules = {
-  /** Список инструментов, которым разрешено играть в интро. */
   allowedInstruments: InstrumentPart[];
-  /** Скорость "нарастания" (0.0-1.0), влияет на плотность и динамику. */
   buildUpSpeed: number;
-  /** Особые техники, разрешенные только в интро. */
   specialTechniques?: {
     part: InstrumentPart;
     technique: Technique;
@@ -266,7 +266,6 @@ export type BlueprintPart = {
   };
   bundles: BlueprintBundle[];
   outroFill: FillPolicy | null;
-  /** Правила для генерации вступления, если эта часть является интро. */
   introRules?: IntroRules;
 };
 

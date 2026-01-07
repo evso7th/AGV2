@@ -21,6 +21,7 @@ import { PIANO_SAMPLES, VIOLIN_SAMPLES, FLUTE_SAMPLES, ACOUSTIC_GUITAR_CHORD_SAM
 import { GuitarChordsSampler } from '@/lib/guitar-chords-sampler';
 import { AcousticGuitarSoloSampler } from '@/lib/acoustic-guitar-solo-sampler';
 import { BlackGuitarSampler } from '@/lib/black-guitar-sampler';
+import { TelecasterGuitarSampler } from '@/lib/telecaster-guitar-sampler'; // ИМПОРТ
 import type { FractalEvent, InstrumentHints } from '@/types/fractal';
 import * as Tone from 'tone';
 import { MelodySynthManagerV2 } from '@/lib/melody-synth-manager-v2';
@@ -50,6 +51,7 @@ const VOICE_BALANCE: Record<InstrumentPart, number> = {
   bass: 0.5, melody: 0.7, accompaniment: 0.6, drums: 1.0,
   effects: 0.6, sparkles: 0.7, piano: 1.0, violin: 0.8, flute: 0.8, guitarChords: 0.9,
   acousticGuitarSolo: 0.9, blackAcoustic: 0.9, sfx: 0.8, harmony: 0.8,
+  telecaster: 0.9, // ДОБАВЛЕНО
 };
 
 const EQ_FREQUENCIES = [60, 125, 250, 500, 1000, 2000, 4000];
@@ -105,10 +107,11 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
   const sparklePlayerRef = useRef<SparklePlayer | null>(null);
   const sfxSynthManagerRef = useRef<SfxSynthManager | null>(null);
   const blackGuitarSamplerRef = useRef<BlackGuitarSampler | null>(null);
+  const telecasterSamplerRef = useRef<TelecasterGuitarSampler | null>(null); // ДОБАВЛЕНО
   
   const masterGainNodeRef = useRef<GainNode | null>(null);
   const gainNodesRef = useRef<Record<Exclude<InstrumentPart, 'pads' | 'effects'>, GainNode | null>>({
-    bass: null, melody: null, accompaniment: null, drums: null, sparkles: null, piano: null, violin: null, flute: null, guitarChords: null, acousticGuitarSolo: null, blackAcoustic: null, sfx: null, harmony: null,
+    bass: null, melody: null, accompaniment: null, drums: null, sparkles: null, piano: null, violin: null, flute: null, guitarChords: null, acousticGuitarSolo: null, blackAcoustic: null, sfx: null, harmony: null, telecaster: null, // ДОБАВЛЕНО
   });
 
   const eqNodesRef = useRef<BiquadFilterNode[]>([]);
@@ -118,9 +121,6 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
   const { toast } = useToast();
 
   const resetWorkerCallback = useCallback(() => {
-    // #ЗАЧЕМ: Гарантирует, что воркер получает команду на сброс.
-    // #ЧТО: Отправляет команду `reset` в Web Worker, который выполнит "горячую перезагрузку".
-    // #СВЯЗИ: Вызывается как при ручной регенерации, так и автоматически по окончании сюиты.
     if (workerRef.current) {
         console.log("[AudioEngineContext] Calling resetWorker, posting 'reset' command to worker.");
         workerRef.current.postMessage({ command: 'reset' });
@@ -129,7 +129,6 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
 
   const updateSettingsCallback = useCallback((settings: Partial<WorkerSettings>) => {
      if (!isInitialized || !workerRef.current) return;
-     // Update the ref immediately
      settingsRef.current = { ...settingsRef.current, ...settings } as WorkerSettings;
      workerRef.current.postMessage({ command: 'update_settings', data: settingsRef.current });
   }, [isInitialized]);
@@ -147,7 +146,6 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
             accompanimentManagerV2Ref.current?.allNotesOff();
         }
 
-        // Immediately update the worker with the new engine state
         updateSettingsCallback({ useMelodyV2: newValue });
 
         return newValue;
@@ -191,6 +189,7 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
     const harmonyEvents: FractalEvent[] = [];
     const sfxEvents: FractalEvent[] = [];
     const blackAcousticEvents: FractalEvent[] = [];
+    const telecasterEvents: FractalEvent[] = []; // ДОБАВЛЕНО
 
     for (const event of events) {
       const eventType = Array.isArray(event.type) ? event.type[0] : event.type;
@@ -207,7 +206,9 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
           }
       } else if (eventType === 'melody') {
         if (instrumentHints?.melody === 'blackAcoustic') {
-            blackAcousticEvents.push(event); // Route to blackAcousticEvents
+            blackAcousticEvents.push(event);
+        } else if (instrumentHints?.melody === 'telecaster') { // ДОБАВЛЕНО
+            telecasterEvents.push(event);
         } else {
             melodyEvents.push(event);
         }
@@ -266,6 +267,13 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
         console.log(`%c[Melody Log @ Bar ${barCount}] Instrument: blackAcoustic | Notes: [${noteString}]`, 'color: #D2B48C;');
         const notes = blackAcousticEvents.map(e => ({ midi: e.note, time: e.time, duration: e.duration, velocity: e.weight }));
         blackGuitarSamplerRef.current.schedule(notes, barStartTime);
+    }
+
+    if (telecasterSamplerRef.current && telecasterEvents.length > 0) { // ДОБАВЛЕНО
+        const noteString = telecasterEvents.map(e => e.note).join(', ');
+        console.log(`%c[Melody Log @ Bar ${barCount}] Instrument: telecaster | Notes: [${noteString}]`, 'color: #ADD8E6;');
+        const notes = telecasterEvents.map(e => ({ midi: e.note, time: e.time, duration: e.duration, velocity: e.weight }));
+        telecasterSamplerRef.current.schedule(notes, barStartTime);
     }
 
     if (harmonyManagerRef.current && harmonyEvents.length > 0) {
@@ -353,7 +361,7 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
         }
 
         if (!gainNodesRef.current.bass) {
-            const parts: Exclude<InstrumentPart, 'pads' | 'effects'>[] = ['bass', 'melody', 'accompaniment', 'drums', 'sparkles', 'piano', 'violin', 'flute', 'guitarChords', 'acousticGuitarSolo', 'blackAcoustic', 'sfx', 'harmony'];
+            const parts: Exclude<InstrumentPart, 'pads' | 'effects'>[] = ['bass', 'melody', 'accompaniment', 'drums', 'sparkles', 'piano', 'violin', 'flute', 'guitarChords', 'acousticGuitarSolo', 'blackAcoustic', 'sfx', 'harmony', 'telecaster']; // ДОБАВЛЕНО
             parts.forEach(part => {
                 gainNodesRef.current[part] = context.createGain();
                 gainNodesRef.current[part]!.connect(masterGainNodeRef.current!);
@@ -407,9 +415,13 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
         }
 
         if (!blackGuitarSamplerRef.current) {
-            // #ИСПРАВЛЕНО (ПЛАН 834): Гитара подключается к общему каналу мелодии.
             blackGuitarSamplerRef.current = new BlackGuitarSampler(context, gainNodesRef.current.melody!);
             initPromises.push(blackGuitarSamplerRef.current.init());
+        }
+
+        if (!telecasterSamplerRef.current) { // ДОБАВЛЕНО
+            telecasterSamplerRef.current = new TelecasterGuitarSampler(context, gainNodesRef.current.melody!);
+            initPromises.push(telecasterSamplerRef.current.init());
         }
 
 
@@ -455,6 +467,7 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
     sparklePlayerRef.current?.stopAll();
     sfxSynthManagerRef.current?.allNotesOff();
     blackGuitarSamplerRef.current?.stopAll();
+    telecasterSamplerRef.current?.stopAll(); // ДОБАВЛЕНО
     if (impulseTimerRef.current) {
         clearTimeout(impulseTimerRef.current);
         impulseTimerRef.current = null;
@@ -480,9 +493,7 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
 
   const setVolumeCallback = useCallback((part: InstrumentPart, volume: number) => {
     if (part === 'pads' || part === 'effects') return;
-    // #ИСПРАВЛЕНО (ПЛАН 834): Удаляем бесполезный канал blackAcoustic
-    if (part === 'blackAcoustic') return; 
-    const gainNode = gainNodesRef.current[part as Exclude<InstrumentPart, 'pads' | 'effects'| 'blackAcoustic'>];
+    const gainNode = gainNodesRef.current[part as Exclude<InstrumentPart, 'pads' | 'effects'>];
     if (gainNode && audioContextRef.current) {
         const balancedVolume = volume * (VOICE_BALANCE[part] ?? 1);
         gainNode.gain.setTargetAtTime(balancedVolume, audioContextRef.current.currentTime, 0.01);
