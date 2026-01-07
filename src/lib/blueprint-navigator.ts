@@ -246,6 +246,7 @@ export class BlueprintNavigator {
             const transitionType = isPartTransition ? "Part" : "Bundle";
             const mutationType = isPartTransition ? "MACRO" : "micro";
             const drumRules = partInfo.part.instrumentRules?.drums;
+            // #ИСПРАВЛЕНО (ПЛАН 912): Восстанавливаем и улучшаем логирование
             const instrumentationLog = formatInstrumentation(partInfo.part.instrumentation, drumRules, v2MelodyHint);
             
             logMessage = `%c[NAVIGATOR @ Bar ${currentBar}] ${transitionType} Transition: ${partInfo.part.id} / ${bundleInfo.bundle.id}\n` +

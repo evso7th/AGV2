@@ -526,6 +526,7 @@ export class FractalMusicEngine {
                         technique: (noteTemplate.tech as Technique) || 'pick',
                         dynamics: 'f', phrasing: 'legato', params: {}
                     };
+                    // console.log(`[SoloLog] FME.generateBluesMelodyChorus (SOLO): Generated event`, JSON.parse(JSON.stringify(event)));
                     finalEvents.push(event);
                 }
             }
@@ -562,6 +563,7 @@ export class FractalMusicEngine {
                         weight: 0.8,
                         technique: 'pick', dynamics: 'mf', phrasing: 'legato', params: {}
                     };
+                    // console.log(`[SoloLog] FME.generateBluesMelodyChorus (THEME): Generated event`, JSON.parse(JSON.stringify(event)));
                     finalEvents.push(event);
                 }
             }
@@ -769,6 +771,11 @@ export class FractalMusicEngine {
       if (!navInfo) {
         console.error(`[FME] Evolve failed to get navigation info for bar ${this.epoch}`);
         return { events: [], instrumentHints: {} };
+      }
+      
+      // #ИСПРАВЛЕНО (ПЛАН 912): Восстанавливаем логирование переходов
+      if (navInfo.logMessage) {
+        console.log(navInfo.logMessage);
       }
       
       const harmonyRules = navInfo?.currentPart.instrumentation?.harmony;
