@@ -17,6 +17,9 @@ import { NEUTRAL_BLUES_BASS_RIFFS } from './assets/neutral-blues-riffs';
 import { BLUES_GUITAR_RIFFS, BLUES_GUITAR_VOICINGS } from './assets/blues-guitar-riffs';
 import { BLUES_MELODY_RIFFS } from './assets/blues-melody-riffs';
 // #ИСПРАВЛЕНО (ПЛАН 902.3, ШАГ 1): Импортируем новые библиотеки для соло-гитары.
+// #КОММЕНТАРИЙ (ПЛАН 902.3, Шаг 1, Исправление): Добавляем пояснение к импорту.
+//         Эти библиотеки содержат "лики" (короткие фразы) и "планы" (структуры соло),
+//         которые позволяют движку собирать сложные, заранее срежиссированные импровизации.
 import { BLUES_SOLO_LICKS, BLUES_SOLO_PLANS } from './assets/blues_guitar_solo';
 import { BLUES_DRUM_RIFFS } from './assets/blues-drum-riffs';
 import { DRUM_KITS } from './assets/drum-kits';
@@ -490,20 +493,16 @@ export class FractalMusicEngine {
         let logMessage = "";
 
         if (isSoloSection) {
-            // #ЗАЧЕМ: Этот блок активирует режим "Алхимика" для создания сложных соло.
-            // #ЧТО: Он выбирает "план" из BLUES_SOLO_PLANS, а затем для каждого такта в плане находит
-            //       соответствующий "лик" из BLUES_SOLO_LICKS и "оживляет" его, превращая в музыкальные события.
-            // #СВЯЗИ: Эта логика напрямую зависит от `isSoloSection = true`.
             const soloPlanName = Object.keys(BLUES_SOLO_PLANS)[0]; // Simplified selection
             const soloPlan = BLUES_SOLO_PLANS[soloPlanName];
 
             if (!soloPlan || chorusIndex >= soloPlan.choruses.length) {
-                logMessage = `[SoloComposer] Solo plan or chorus index out of bounds. Plan: ${soloPlanName}, Index: ${chorusIndex}`;
+                logMessage = `[SoloLog] FME: Solo plan or chorus index out of bounds. Plan: ${soloPlanName}, Index: ${chorusIndex}`;
                 return { events: [], log: logMessage };
             }
 
             const currentChorusPlan = soloPlan.choruses[chorusIndex];
-            logMessage = `[SoloComposer] Assembling solo chorus ${chorusIndex + 1}/${soloPlan.choruses.length} using plan "${soloPlanName}".`;
+            logMessage = `[SoloLog] FME: Assembling solo chorus ${chorusIndex + 1}/${soloPlan.choruses.length} using plan "${soloPlanName}".`;
 
             for (let barIndex = 0; barIndex < 12; barIndex++) {
                 const lickId = currentChorusPlan[barIndex];
@@ -519,8 +518,8 @@ export class FractalMusicEngine {
                     let finalMidiNote = chordRoot + (DEGREE_TO_SEMITONE[noteTemplate.deg as BluesRiffDegree] || 0) + octaveShift;
                     if (finalMidiNote > 84) finalMidiNote -= 12;
                     if (finalMidiNote < 52) finalMidiNote += 12;
-
-                    finalEvents.push({
+                    
+                    const event: FractalEvent = {
                         type: 'melody',
                         note: finalMidiNote,
                         time: (barIndex * barDurationInBeats) + (noteTemplate.t / ticksPerBeat),
@@ -528,16 +527,14 @@ export class FractalMusicEngine {
                         weight: 0.9,
                         technique: (noteTemplate.tech as Technique) || 'pick',
                         dynamics: 'f', phrasing: 'legato', params: {}
-                    });
+                    };
+                    console.log(`[SoloLog] FME: Created solo event`, JSON.parse(JSON.stringify(event)));
+                    finalEvents.push(event);
                 }
             }
         } else {
-            // #ЗАЧЕМ: Этот блок отвечает за генерацию основной, повторяющейся темы блюза.
-            // #ЧТО: Он выбирает одну "мастер-мелодию" из BLUES_MELODY_RIFFS и использует ее фразы
-            //       (phraseI, phraseIV, phraseV, phraseTurnaround) для каждого такта 12-тактового квадрата.
-            // #СВЯЗИ: Эта логика активна, когда `isSoloSection = false`.
             const selectedRiff = BLUES_MELODY_RIFFS.find(r => r.moods.includes(mood)) ?? BLUES_MELODY_RIFFS[0];
-            logMessage = `[ThemeKeeper] Generating main theme using riff "${selectedRiff.id}".`;
+            logMessage = `[SoloLog] FME: Generating main theme using riff "${selectedRiff.id}".`;
 
             for (let barIndex = 0; barIndex < 12; barIndex++) {
                 const currentChord = chorusChords.find(c => c.bar % 12 === barIndex);
@@ -560,14 +557,16 @@ export class FractalMusicEngine {
                      if (finalMidiNote > 84) finalMidiNote -= 12;
                      if (finalMidiNote < 52) finalMidiNote += 12;
 
-                     finalEvents.push({
+                     const event: FractalEvent = {
                         type: 'melody',
                         note: finalMidiNote,
                         time: (barIndex * barDurationInBeats) + (noteTemplate.t / ticksPerBeat),
                         duration: (noteTemplate.d / ticksPerBeat),
                         weight: 0.8,
                         technique: 'pick', dynamics: 'mf', phrasing: 'legato', params: {}
-                    });
+                    };
+                    console.log(`[SoloLog] FME: Created theme event`, JSON.parse(JSON.stringify(event)));
+                    finalEvents.push(event);
                 }
             }
         }
@@ -679,15 +678,11 @@ export class FractalMusicEngine {
     const melodyRules = navInfo.currentPart.instrumentRules?.melody;
 
     if (navInfo.currentPart.layers.melody && !navInfo.currentPart.bassAccompanimentDouble?.enabled && melodyRules) {
-        // #ЗАЧЕМ: Главный маршрутизатор мелодий, решающий, играть основную тему или соло.
-        // #ЧТО: Он проверяет ID текущей секции. Если ID содержит "SOLO", он активирует
-        //       "алхимический" режим сборки соло. В противном случае, он генерирует
-        //       стандартную тему.
-        // #СВЯЗИ: Ключевая точка, соединяющая блюпринт с логикой генерации соло.
         if (this.config.genre === 'blues') {
             const barInChorus = this.epoch % 12;
             const chorusIndex = Math.floor((this.epoch % 36) / 12);
-            const isSoloSection = navInfo.currentPart.id.includes('SOLO'); // <-- Вот он, "ключ зажигания"
+            // #ИСПРАВЛЕНО (ПЛАН 902.3, Шаг 3): Определяем, является ли текущая секция сольной.
+            const isSoloSection = navInfo.currentPart.id.includes('SOLO'); 
 
             if (barInChorus === 0 || !this.bluesChorusCache || this.bluesChorusCache.barStart !== (this.epoch - barInChorus)) {
                 const chorusBarStart = this.epoch - barInChorus;
@@ -763,10 +758,6 @@ export class FractalMusicEngine {
 
       this.epoch = barCount;
 
-      // #ЗАЧЕМ: Этот блок управляет "режимом молчания" движка во время интро.
-      // #ЧТО: Если текущий такт меньше, чем длительность интро, движок возвращает пустую партитуру.
-      //      Это позволяет внешнему "генератору пролога" работать, не конфликтуя с основным движком.
-      // #СВЯЗИ: Является ключевым элементом для работы изолированного генератора интро.
       if (this.epoch < this.config.introBars) {
           console.log(`[FME.evolve @ Bar ${this.epoch}] In intro period. Returning empty score.`);
           return { events: [], instrumentHints: {} };
@@ -865,5 +856,7 @@ export class FractalMusicEngine {
     
 
 
+
+    
 
     

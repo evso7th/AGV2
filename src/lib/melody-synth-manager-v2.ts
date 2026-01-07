@@ -79,9 +79,15 @@ export class MelodySynthManagerV2 {
         events.forEach(event => {
             if(event.type !== 'melody') return;
             
+            // [SoloLog] MelodySynthManagerV2: Logging times before scheduling
             const noteOnTime = barStartTime + (event.time * beatDuration);
+            if (!isFinite(event.duration) || event.duration <= 0) {
+                console.error(`[SoloLog] MelodySynthManagerV2: Invalid duration for event!`, JSON.parse(JSON.stringify(event)));
+                return; // Skip this event
+            }
             const noteOffTime = noteOnTime + (event.duration * beatDuration);
-
+            console.log(`[SoloLog] MelodySynthManagerV2: Scheduling Note: ${event.note}, On: ${noteOnTime.toFixed(2)}, Off: ${noteOffTime.toFixed(2)}, Duration: ${event.duration}`);
+            
             this.instrument.noteOn(event.note, noteOnTime);
             this.instrument.noteOff(event.note, noteOffTime);
         });
@@ -114,3 +120,5 @@ export class MelodySynthManagerV2 {
         this.stop();
     }
 }
+
+    

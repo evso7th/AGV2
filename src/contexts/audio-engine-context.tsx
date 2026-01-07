@@ -194,6 +194,11 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
     for (const event of events) {
       const eventType = Array.isArray(event.type) ? event.type[0] : event.type;
       
+      // [SoloLog] AudioEngine: Logging received melody events
+      if (eventType === 'melody') {
+          console.log(`[SoloLog] AudioEngine: Received melody event`, JSON.parse(JSON.stringify(event)));
+      }
+
       if (typeof eventType === 'string' && (eventType.startsWith('drum_') || eventType.startsWith('perc-'))) {
         drumEvents.push(event);
       } else if (eventType === 'bass') {
@@ -522,3 +527,5 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
     </AudioEngineContext.Provider>
   );
 };
+
+    

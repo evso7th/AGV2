@@ -197,6 +197,11 @@ const Scheduler = {
         const harmonyEvents: FractalEvent[] = [];
         
         for (const event of scorePayload.events) {
+            // [SoloLog] Worker: Logging melody events before postMessage
+            if (event.type === 'melody') {
+                console.log(`[SoloLog] Worker: Sending melody event to main thread`, JSON.parse(JSON.stringify(event)));
+            }
+
             if (event.type === 'sfx') {
                 sfxEvents.push(event);
             } else if (event.type === 'sparkle') {
@@ -297,3 +302,5 @@ self.onmessage = async (event: MessageEvent) => {
         self.postMessage({ type: 'error', error: e instanceof Error ? e.message : String(e) });
     }
 };
+
+    
