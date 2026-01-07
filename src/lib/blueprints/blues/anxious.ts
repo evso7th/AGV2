@@ -1,4 +1,5 @@
 
+
 import type { MusicBlueprint } from '@/types/music';
 
 export const AnxiousBluesBlueprint: MusicBlueprint = {
@@ -28,50 +29,32 @@ export const AnxiousBluesBlueprint: MusicBlueprint = {
                     drums: true,
                     melody: true,
                     harmony: false,
-                    sfx: false,
-                    sparkles: false,
+                    sfx: true, // SFX Enabled
+                    sparkles: true, // Sparkles Enabled
                 },
                 instrumentation: {
                     accompaniment: {
                         strategy: 'weighted',
                         v1Options: [
-                            { name: 'mellotron', weight: 0.8 },
-                            { name: 'flute', weight: 0.2 }
+                            { name: 'organ', weight: 1.0 } // Cathedral Organ for intro
                         ],
                         v2Options: [
-                            { name: 'mellotron', weight: 0.8 },
-                            { name: 'mellotron_flute_intimate', weight: 0.2 }
+                            { name: 'organ', weight: 1.0 }
                         ]
                     },
                 },
                 instrumentRules: {
                     drums: { pattern: 'composer', density: {min: 0.0, max: 0.0}, useSnare: false, usePerc: false, kickVolume: 1.1, ride: { enabled: false }, useGhostHat: false },
                     bass: { techniques: [{ value: 'boogie', weight: 1.0 }] },
-                    bassAccompanimentDouble: { enabled: true, instrument: 'electricGuitar', octaveShift: 1 },
-                    melody: { source: 'harmony_top_note', register: { preferred: 'high' } }
+                    melody: { source: 'harmony_top_note', register: { preferred: 'low' } }, // Keep melody low
+                    sfx: { eventProbability: 0.6, categories: [{name: 'voice', weight: 0.8}, {name: 'dark', weight: 0.2}]}
                 },
                 bundles: [
                     {
-                        id: 'BLUES_ANX_INTRO_BUNDLE_1', name: 'Pad Only', duration: { percent: 50 },
-                        characteristics: { activeLayers: ['accompaniment'] },
+                        id: 'BLUES_ANX_INTRO_BUNDLE_1', name: 'Organ Chords', duration: { percent: 100 },
+                        characteristics: { activeLayers: ['accompaniment', 'sfx'] },
                         phrases: {}
                     },
-                    {
-                        id: 'BLUES_ANX_INTRO_BUNDLE_2', name: 'Unison Riff', duration: { percent: 50 },
-                        characteristics: {
-                            activeLayers: ['bass', 'drums', 'melody'],
-                            bassAccompanimentDouble: {
-                                enabled: true,
-                                instrument: 'electricGuitar',
-                                octaveShift: 1
-                            },
-                             instrumentRules: {
-                                drums: { pattern: 'composer', density: { min: 0.6, max: 0.8 }, useSnare: true, usePerc: true, useGhostHat: true, kickVolume: 1.0, fills: { onBundleBoundary: true } },
-                                bass: { techniques: [{ value: 'boogie', weight: 1.0 }] }
-                            }
-                        },
-                        phrases: {},
-                    }
                 ],
                 outroFill: { type: 'roll', duration: 1, parameters: { instrument: 'tom', density: 0.6 } }
             },
@@ -79,7 +62,7 @@ export const AnxiousBluesBlueprint: MusicBlueprint = {
                 id: 'MAIN_A', name: 'Frantic Riff', duration: { percent: 35 },
                 layers: { bass: true, drums: true, accompaniment: true, melody: true },
                 instrumentation: {
-                    accompaniment: { strategy: 'weighted', v1Options: [{ name: 'organ', weight: 1.0 }], v2Options: [{ name: 'organ', weight: 1.0 }] },
+                    accompaniment: { strategy: 'weighted', v1Options: [{ name: 'synth', weight: 1.0 }], v2Options: [{ name: 'synth_cave_pad', weight: 1.0 }] },
                     melody: { strategy: 'weighted', v1Options: [{ name: 'electricGuitar', weight: 1.0 }], v2Options: [{ name: 'guitar_muffLead', weight: 1.0 }] }
                 },
                 instrumentRules: {
@@ -99,8 +82,8 @@ export const AnxiousBluesBlueprint: MusicBlueprint = {
                 id: 'SOLO', name: 'Guitar Solo', duration: { percent: 30 },
                 layers: { bass: true, drums: true, accompaniment: true, melody: true },
                 instrumentation: {
-                    accompaniment: { strategy: 'weighted', v1Options: [{ name: 'organ', weight: 1.0 }], v2Options: [{ name: 'organ', weight: 1.0 }] },
-                    melody: { strategy: 'weighted', v1Options: [{ name: 'guitar_shineOn', weight: 1.0 }], v2Options: [{ name: 'guitar_shineOn', weight: 1.0 }] }
+                    accompaniment: { strategy: 'weighted', v1Options: [{ name: 'synth', weight: 0.6 }, { name: 'organ', weight: 0.4 }], v2Options: [{ name: 'synth_cave_pad', weight: 0.6 }, { name: 'organ', weight: 0.4 }] },
+                    melody: { strategy: 'weighted', v1Options: [{ name: 'electricGuitar', weight: 1.0 }], v2Options: [{ name: 'guitar_muffLead', weight: 1.0 }] }
                 },
                 instrumentRules: {
                     drums: {
@@ -111,7 +94,7 @@ export const AnxiousBluesBlueprint: MusicBlueprint = {
                     bass: { techniques: [{ value: 'boogie', weight: 1.0 }] },
                     bassAccompanimentDouble: { enabled: false },
                     melody: {
-                        source: 'motif',
+                        source: 'motif', 
                         density: { min: 0.6, max: 0.8 },
                         register: { preferred: 'high' }
                     }
@@ -120,23 +103,17 @@ export const AnxiousBluesBlueprint: MusicBlueprint = {
                 outroFill: { type: 'roll', duration: 1, parameters: { instrument: 'crash', density: 0.5 } },
             },
             {
-                id: 'MAIN_B', name: 'Return to Riff', duration: { percent: 20 },
-                layers: { bass: true, drums: true, accompaniment: true, melody: true },
+                id: 'OUTRO', name: 'Relaxed Fade Out', duration: { percent: 20 },
+                layers: { bass: true, drums: false, accompaniment: true, melody: true },
                 instrumentation: {
-                    accompaniment: { strategy: 'weighted', v1Options: [{ name: 'organ', weight: 1.0 }], v2Options: [{ name: 'organ', weight: 1.0 }] },
-                    melody: { strategy: 'weighted', v1Options: [{ name: 'electricGuitar', weight: 1.0 }], v2Options: [{ name: 'guitar_muffLead', weight: 1.0 }] }
+                    accompaniment: { strategy: 'weighted', v2Options: [{ name: 'synth_ambient_pad_lush', weight: 1.0 }], v1Options: [{ name: 'ambientPad', weight: 1.0 }] },
+                    melody: { strategy: 'weighted', v1Options: [{ name: 'acousticGuitar', weight: 0.5 }, {name: 'telecaster', weight: 0.5}], v2Options: [{ name: 'blackAcoustic', weight: 0.5 }, {name: 'telecaster', weight: 0.5}] }
                 },
                 instrumentRules: {
-                    drums: {
-                        pattern: 'composer',
-                        density: { min: 0.8, max: 1.0 },
-                        useSnare: true, kickVolume: 1.1, usePerc: true, ride: { enabled: true }, useGhostHat: true
-                    },
-                    bass: { techniques: [{ value: 'boogie', weight: 1.0 }] },
-                    bassAccompanimentDouble: { enabled: true, instrument: 'electricGuitar', octaveShift: 1 },
-                    melody: { source: 'harmony_top_note', register: { preferred: 'high' } }
+                    bass: { techniques: [{ value: 'long_notes', weight: 1.0 }], density: {min: 0.2, max: 0.4} },
+                    melody: { source: 'motif', density: { min: 0.1, max: 0.3 }, register: { preferred: 'mid' } }
                 },
-                bundles: [{ id: 'BLUES_ANX_MAIN_B_BUNDLE', name: 'Riff Return', duration: { percent: 100 }, characteristics: {}, phrases: {} }],
+                bundles: [{ id: 'BLUES_ANX_OUTRO_BUNDLE', name: 'Relaxed Riff', duration: { percent: 100 }, characteristics: {}, phrases: {} }],
                 outroFill: null,
             }
         ]
@@ -146,3 +123,5 @@ export const AnxiousBluesBlueprint: MusicBlueprint = {
     continuity: {},
     rendering: {}
 };
+
+    

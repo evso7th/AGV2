@@ -16,9 +16,9 @@ import { BLUES_BASS_RIFFS } from './assets/blues-bass-riffs';
 import { NEUTRAL_BLUES_BASS_RIFFS } from './assets/neutral-blues-riffs';
 import { BLUES_GUITAR_RIFFS, BLUES_GUITAR_VOICINGS } from './assets/blues-guitar-riffs';
 import { BLUES_MELODY_RIFFS } from './assets/blues-melody-riffs';
-import { BLUES_DRUM_RIFFS } from './assets/blues-drum-riffs';
 // #ИСПРАВЛЕНО (ПЛАН 902.3, ШАГ 1): Импортируем новые библиотеки для соло-гитары.
 import { BLUES_SOLO_LICKS, BLUES_SOLO_PLANS } from './assets/blues_guitar_solo';
+import { BLUES_DRUM_RIFFS } from './assets/blues-drum-riffs';
 import { DRUM_KITS } from './assets/drum-kits';
 
 import { getScaleForMood, generateGhostHarmonyTrack, createDrumAxiom, createAmbientBassAxiom, createAccompanimentAxiom, createHarmonyAxiom, createMelodyMotif, mutateBassPhrase, createBassFill, createDrumFill, chooseHarmonyInstrument, DEGREE_TO_SEMITONE } from './music-theory';
@@ -149,7 +149,7 @@ export class FractalMusicEngine {
 
     const allDrumRiffs = Object.values(BLUES_DRUM_RIFFS).flat();
     this.shuffledDrumRiffIndices = this.random.shuffle(Array.from({ length: allDrumRiffs.length }, (_, i) => i));
-
+    
     this.shuffledMelodyIDs = this.random.shuffle(BLUES_MELODY_RIFFS.map(m => m.id));
   }
 
@@ -490,8 +490,11 @@ export class FractalMusicEngine {
         let logMessage = "";
 
         if (isSoloSection) {
-            // --- РЕЖИМ "АЛХИМИК": Сборка соло по плану ---
-            const soloPlanName = Object.keys(BLUES_SOLO_PLANS)[0]; // Упрощенный выбор плана
+            // #ЗАЧЕМ: Этот блок активирует режим "Алхимика" для создания сложных соло.
+            // #ЧТО: Он выбирает "план" из BLUES_SOLO_PLANS, а затем для каждого такта в плане находит
+            //       соответствующий "лик" из BLUES_SOLO_LICKS и "оживляет" его, превращая в музыкальные события.
+            // #СВЯЗИ: Эта логика напрямую зависит от `isSoloSection = true`.
+            const soloPlanName = Object.keys(BLUES_SOLO_PLANS)[0]; // Simplified selection
             const soloPlan = BLUES_SOLO_PLANS[soloPlanName];
 
             if (!soloPlan || chorusIndex >= soloPlan.choruses.length) {
@@ -529,7 +532,10 @@ export class FractalMusicEngine {
                 }
             }
         } else {
-            // --- РЕЖИМ "ХРАНИТЕЛЬ ТЕМЫ": Генерация основной мелодии ---
+            // #ЗАЧЕМ: Этот блок отвечает за генерацию основной, повторяющейся темы блюза.
+            // #ЧТО: Он выбирает одну "мастер-мелодию" из BLUES_MELODY_RIFFS и использует ее фразы
+            //       (phraseI, phraseIV, phraseV, phraseTurnaround) для каждого такта 12-тактового квадрата.
+            // #СВЯЗИ: Эта логика активна, когда `isSoloSection = false`.
             const selectedRiff = BLUES_MELODY_RIFFS.find(r => r.moods.includes(mood)) ?? BLUES_MELODY_RIFFS[0];
             logMessage = `[ThemeKeeper] Generating main theme using riff "${selectedRiff.id}".`;
 
@@ -673,11 +679,16 @@ export class FractalMusicEngine {
     const melodyRules = navInfo.currentPart.instrumentRules?.melody;
 
     if (navInfo.currentPart.layers.melody && !navInfo.currentPart.bassAccompanimentDouble?.enabled && melodyRules) {
-        if (this.config.genre === 'blues' && melodyRules.source === 'motif') {
+        // #ЗАЧЕМ: Главный маршрутизатор мелодий, решающий, играть основную тему или соло.
+        // #ЧТО: Он проверяет ID текущей секции. Если ID содержит "SOLO", он активирует
+        //       "алхимический" режим сборки соло. В противном случае, он генерирует
+        //       стандартную тему.
+        // #СВЯЗИ: Ключевая точка, соединяющая блюпринт с логикой генерации соло.
+        if (this.config.genre === 'blues') {
             const barInChorus = this.epoch % 12;
             const chorusIndex = Math.floor((this.epoch % 36) / 12);
-            const isSoloSection = navInfo.currentPart.id.includes('SOLO');
-            
+            const isSoloSection = navInfo.currentPart.id.includes('SOLO'); // <-- Вот он, "ключ зажигания"
+
             if (barInChorus === 0 || !this.bluesChorusCache || this.bluesChorusCache.barStart !== (this.epoch - barInChorus)) {
                 const chorusBarStart = this.epoch - barInChorus;
                 const chorusChords = this.ghostHarmonyTrack.filter(c => c.bar >= chorusBarStart && c.bar < chorusBarStart + 12);
@@ -853,3 +864,6 @@ export class FractalMusicEngine {
 
     
 
+
+
+    
