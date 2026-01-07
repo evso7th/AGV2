@@ -43,32 +43,43 @@ export class TelecasterGuitarSampler {
     public isInitialized = false;
     private isLoading = false;
     private preamp: GainNode;
+    private delay: DelayNode;
+    private feedback: GainNode;
+    private wetMix: GainNode;
 
     constructor(audioContext: AudioContext, destination: AudioNode) {
         this.audioContext = audioContext;
         this.destination = destination;
 
-        // План 874: Абсолютный Минимализм.
-        // 1. Создаем только один узел - предусилитель.
+        // 1. Создаем предусилитель. Он будет точкой входа для всего.
         this.preamp = this.audioContext.createGain();
-        this.preamp.gain.value = 8.0; // Увеличено в 2 раза согласно Плану 875
+        this.preamp.gain.value = 8.0;
 
-        // 2. Подключаем его НАПРЯМУЮ к выходу.
+        // 2. Создаем узлы для эффекта дилэя
+        this.delay = this.audioContext.createDelay(1.0);
+        this.delay.delayTime.value = 0.4; // время задержки в секундах
+
+        this.feedback = this.audioContext.createGain();
+        this.feedback.gain.value = 0.3; // количество повторов (эхо)
+
+        this.wetMix = this.audioContext.createGain();
+        this.wetMix.gain.value = 0.35; // громкость эффекта
+
+        // 3. Строим аудио-граф по принципу "посыла-возврата"
+
+        // 3.1. "Сухой" путь: усиленный сигнал идет напрямую на выход.
         this.preamp.connect(this.destination);
-    }
 
-    private makeDistortionCurve(amount: number): Float32Array {
-        const k = typeof amount === 'number' ? amount : 50;
-        const n_samples = 44100;
-        const curve = new Float32Array(n_samples);
-        const deg = Math.PI / 180;
-        let i = 0;
-        let x;
-        for ( ; i < n_samples; ++i ) {
-            x = i * 2 / n_samples - 1;
-            curve[i] = ( 3 + k ) * x * 20 * deg / ( Math.PI + k * Math.abs(x) );
-        }
-        return curve;
+        // 3.2. "Мокрый" путь (Send): копия сигнала с предусилителя отправляется на дилэй.
+        this.preamp.connect(this.delay);
+
+        // 3.3. Петля обратной связи для создания эха.
+        this.delay.connect(this.feedback);
+        this.feedback.connect(this.delay);
+
+        // 3.4. "Возврат" (Return): обработанный сигнал подмешивается к выходу.
+        this.delay.connect(this.wetMix);
+        this.wetMix.connect(this.destination);
     }
 
     async init(): Promise<boolean> {
@@ -137,7 +148,7 @@ export class TelecasterGuitarSampler {
             const gainNode = this.audioContext.createGain();
             
             source.connect(gainNode);
-            // План 874: Подключаем ноту НАПРЯМУЮ к предусилителю.
+            // Подключаем ноту к предусилителю
             gainNode.connect(this.preamp);
 
             const playbackRate = Math.pow(2, (note.midi - sampleMidi) / 12);
@@ -172,7 +183,6 @@ export class TelecasterGuitarSampler {
     
     private keyToMidi(key: string): number | null {
         const noteStr = key.toLowerCase();
-        // Updated regex to handle note names like 'g_3'
         const noteMatch = noteStr.match(/([a-g][b#]?)_?(\d)/);
     
         if (!noteMatch) return null;
@@ -184,13 +194,14 @@ export class TelecasterGuitarSampler {
             'c': 0, 'c#': 1, 'db': 1, 'd': 2, 'd#': 3, 'eb': 3, 'e': 4, 'f': 5, 'f#': 6, 'gb': 6, 'g': 7, 'g#': 8, 'ab': 8, 'a': 9, 'a#': 10, 'bb': 10, 'b': 11
         };
     
-        // Normalize note name for lookup
-        const normalizedName = name.replace('#', 's').replace('b', 'f');
         const noteValue = noteMap[name];
         
         if (noteValue === undefined) return null;
     
-        return 12 * octave + noteValue;
+        // Assuming MIDI octave standard where C4 is 60.
+        // A standard 88-key piano starts at A0 (21) and ends at C8 (108).
+        // Let's adjust octave calculation. C4 is MIDI 60.
+        return 12 * (octave + 1) + noteValue;
     }
     
 
@@ -201,3 +212,5 @@ export class TelecasterGuitarSampler {
         this.preamp.disconnect();
     }
 }
+
+    
