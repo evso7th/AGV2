@@ -10,6 +10,7 @@ import type { BluesSoloPhrase } from '@/types/fractal';
 
 // #ИСПРАВЛЕНО (ПЛАН 905): Добавлены недостающие поля 'd' (длительность).
 // #ОБНОВЛЕНО (ПЛАН 926): Расширен список ликов L13-L20.
+// #ИСПРАВЛЕНО (ПЛАН 929): Добавлена пропущенная запятая после L19.
 // Структура события: { t: tick, d: duration_in_ticks, deg: degree, tech?: technique }
 export const BLUES_SOLO_LICKS: Record<string, BluesSoloPhrase> = {
   L01: [{t:0,d:3,deg:'b3',tech:'bn'}, {t:3,d:3,deg:'R'}, {t:6,d:6,deg:'5',tech:'vb'}],
