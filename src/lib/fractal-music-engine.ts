@@ -624,6 +624,49 @@ export class FractalMusicEngine {
         return { events: finalEvents, log: logMessage };
     }
 
+    private generateBluesAccompaniment(chord: GhostChord, drumEvents: FractalEvent[], random: { next: () => number, nextInt: (max: number) => number }): FractalEvent[] {
+        const phrase: FractalEvent[] = [];
+        const rootMidi = chord.rootNote;
+        
+        const isMinor = chord.chordType === 'minor' || chord.chordType === 'diminished';
+        const chordNotes = [
+            rootMidi,
+            rootMidi + (isMinor ? 3 : 4),
+            rootMidi + 7
+        ];
+
+        // Найдем удары бочки
+        const kickTimes = drumEvents.filter(isKick).map(e => e.time);
+        
+        // 1. Паттерн "Ответ на бочку"
+        if (random.next() < 0.7) {
+            const stabTimes = kickTimes.length > 0 ? kickTimes.map(t => t + 0.25) : [0.5, 2.5]; // Если нет бочки, играем на слабые
+            
+            for (const time of stabTimes) {
+                chordNotes.forEach((note, index) => {
+                    phrase.push({
+                        type: 'accompaniment', note: note + 12*3, duration: 0.2, time: time,
+                        weight: 0.6 - index * 0.1, technique: 'staccato', dynamics: 'mf', phrasing: 'detached', params: { attack: 0.01, release: 0.1 }
+                    });
+                });
+            }
+        } 
+        // 2. Паттерн "Пульсация"
+        else {
+            for (let beat = 0; beat < 4; beat++) {
+                 chordNotes.forEach((note, index) => {
+                    phrase.push({
+                        type: 'accompaniment', note: note + 12*3, duration: 0.15, time: beat + 0.5,
+                        weight: 0.5, technique: 'staccato', dynamics: 'p', phrasing: 'detached', params: { attack: 0.01, release: 0.1 }
+                    });
+                });
+            }
+        }
+
+        return phrase;
+    }
+
+
   public evolve(barDuration: number, barCount: number): { events: FractalEvent[], instrumentHints: InstrumentHints } {
       if (!this.navigator) {
           console.error("FME evolve called before navigator was initialized.");
@@ -751,12 +794,10 @@ export class FractalMusicEngine {
     let accompEvents: FractalEvent[] = [];
     if (navInfo.currentPart.layers.accompaniment) {
         const registerHint = navInfo.currentPart.instrumentRules?.accompaniment?.register?.preferred;
-        let axiom = createAccompanimentAxiom(currentChord, this.config.mood, this.config.genre, this.random, this.config.tempo, registerHint);
-        
-        if (this.config.genre === 'blues' && isChorusBoundary) {
-             accompEvents = mutateBluesAccompaniment(axiom, currentChord, drumEvents, this.random);
+        if (this.config.genre === 'blues') {
+            accompEvents = this.generateBluesAccompaniment(currentChord, drumEvents, this.random);
         } else {
-            accompEvents = axiom;
+            accompEvents = createAccompanimentAxiom(currentChord, this.config.mood, this.config.genre, this.random, this.config.tempo, registerHint);
         }
     }
     
@@ -877,4 +918,5 @@ export class FractalMusicEngine {
     return allEvents;
   }
 }
+
 
