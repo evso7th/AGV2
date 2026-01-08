@@ -251,15 +251,16 @@ export class FractalMusicEngine {
     part: 'melody' | 'accompaniment',
     navInfo: NavigationInfo | null
   ): MelodyInstrument | AccompanimentInstrument | undefined {
+      const melodyLogPrefix = `%cMelodyInstrumentLog:`;
+      const melodyLogCss = `color: #DA70D6`;
+      console.log(`${melodyLogPrefix} [1a. _chooseInstrumentForPart] Entering choice logic. useV2: ${this.config.useMelodyV2}`, melodyLogCss);
+
       if (!navInfo) return undefined;
   
       const rules = navInfo.currentPart.instrumentation?.[part as keyof typeof navInfo.currentPart.instrumentation];
       
-      const melodyLogPrefix = `%cMelodyInstrumentLog:`;
-      const melodyLogCss = `color: #DA70D6`;
-      console.log(`${melodyLogPrefix} [1a. _chooseInstrumentForPart] Entering choice logic. useV2: ${this.config.useMelodyV2}`, {color: melodyLogCss});
-      console.log(`${melodyLogPrefix} [1b. _chooseInstrumentForPart] V1 Options:`, rules?.v1Options, {color: melodyLogCss});
-      console.log(`${melodyLogPrefix} [1c. _chooseInstrumentForPart] V2 Options:`, rules?.v2Options, {color: melodyLogCss});
+      console.log(`${melodyLogPrefix} [1b. _chooseInstrumentForPart] V1 Options: `, rules?.v1Options, melodyLogCss);
+      console.log(`${melodyLogPrefix} [1c. _chooseInstrumentForPart] V2 Options: `, rules?.v2Options, melodyLogCss);
 
       if (!rules || rules.strategy !== 'weighted') {
           return part === 'melody' ? 'organ' : 'synth';
@@ -268,8 +269,8 @@ export class FractalMusicEngine {
       const useV2 = this.config.useMelodyV2;
       const options = useV2 ? rules.v2Options : rules.v1Options;
   
-      console.log(`${melodyLogPrefix} [1d. _chooseInstrumentForPart] Selected options array:`, options, {color: melodyLogCss});
-
+      console.log(`${melodyLogPrefix} [1d. _chooseInstrumentForPart] Selected options array: `, options, melodyLogCss);
+      
       if (options && options.length > 0) {
         return this.performWeightedChoice(options);
       }
@@ -629,11 +630,6 @@ export class FractalMusicEngine {
     }
 
   public evolve(barDuration: number, barCount: number): { events: FractalEvent[], instrumentHints: InstrumentHints } {
-      // #ЗАЧЕМ: Этот метод — сердце "Композитора". Он генерирует полную партитуру на один такт.
-      // #ЧТО: Он последовательно выполняет все шаги: определяет текущую секцию, выбирает инструменты,
-      //      вызывает генераторы для каждой партии и собирает все в единый результат.
-      // #ИСПРАВЛЕНО (ПЛАН 949/954): Логика перестроена, чтобы гарантировать, что `instrumentHints`
-      //                             создаются один раз и корректно передаются по всей цепочке.
       if (!this.navigator) {
           return { events: [], instrumentHints: {} };
       }
@@ -652,33 +648,27 @@ export class FractalMusicEngine {
   
       if (!isFinite(barDuration)) return { events: [], instrumentHints: {} };
   
-      // --- ЭТАЛОННАЯ ЛОГИКА (ПЛАН 949/954) ---
-      // 1. Получаем навигационную информацию один раз.
+      const melodyLogPrefix = `%cMelodyInstrumentLog:`;
+      const melodyLogCss = `color: #DA70D6`;
+      console.log(`${melodyLogPrefix} [FME.evolve @ Bar ${this.epoch}] Using Blueprint: ${this.navigator.blueprint.id} (${this.navigator.blueprint.name})`, melodyLogCss);
+  
       const navigationInfo = this.navigator.tick(this.epoch);
   
-      const melodyLogPrefix = `%cMelodyInstrumentLog:`;
-      const melodyLogCss = `color: orange;`;
-      console.log(`${melodyLogPrefix} [FME.evolve @ Bar ${this.epoch}] Using Blueprint: ${this.navigator.blueprint.id} (${this.navigator.blueprint.name})`, {color: melodyLogCss});
-  
-      // 2. Последовательно определяем все хинты.
       const melodyHint = this._chooseInstrumentForPart('melody', navigationInfo);
       const accompanimentHint = this._chooseInstrumentForPart('accompaniment', navigationInfo);
       const harmonyRules = navigationInfo?.currentPart.instrumentation?.harmony;
       const harmonyHint = harmonyRules ? chooseHarmonyInstrument(harmonyRules, this.random) : 'piano';
       
-      // 3. Собираем полный и корректный объект instrumentHints.
       const instrumentHints: InstrumentHints = {
           melody: melodyHint,
           accompaniment: accompanimentHint,
           harmony: harmonyHint,
       };
       
-      console.log(`${melodyLogPrefix} [1. Composer] Generated hint for bar ${this.epoch}: ${instrumentHints.melody}`, {color: '#DA70D6'});
+      console.log(`${melodyLogPrefix} [1. Composer] Generated hint for bar ${this.epoch}: ${instrumentHints.melody}`, melodyLogCss);
   
-      // 4. Генерируем музыку, передавая ПОЛНЫЕ хинты.
       const events = this.generateOneBar(barDuration, navigationInfo!, instrumentHints);
       
-      // 5. Возвращаем результат.
       return { events, instrumentHints };
     }
 
