@@ -175,11 +175,6 @@ const Scheduler = {
         const scorePayload = finalPayload; 
         
         // #РЕШЕНИЕ (ПЛАН 934): Добавлено полное логирование событий по всем партиям.
-        // #ЗАЧЕМ: Обеспечивает полную прозрачность работы композитора для отладки.
-        // #ЧТО: Создается объект-счетчик, который инициализируется нулями. Затем он
-        //      проходит по всем событиям, подсчитывая их по типам. В конце выводится
-        //      отформатированная строка в консоль, включающая все партии, даже нулевые.
-        // #СВЯЗИ: Эта логика использует данные из `finalPayload` и выводит результат в консоль.
         const counts = { drums: 0, bass: 0, melody: 0, accompaniment: 0, harmony: 0, sfx: 0, sparkles: 0 };
         for (const event of scorePayload.events) {
             if (event.type === 'bass') counts.bass++;
@@ -213,14 +208,20 @@ const Scheduler = {
             }
         }
 
+        // #ИСПРАВЛЕНО (ПЛАН 943): Добавлен instrumentHints в payload и логирование.
+        const payloadForMainThread = {
+            events: mainScoreEvents,
+            instrumentHints: scorePayload.instrumentHints,
+            barDuration: this.barDuration,
+            barCount: this.barCount,
+        };
+
+        // Запрошенный лог для отладки
+        console.log('[Worker] Payload being sent to main thread:', JSON.parse(JSON.stringify(payloadForMainThread)));
+
         self.postMessage({ 
             type: 'SCORE_READY', 
-            payload: {
-                events: mainScoreEvents,
-                instrumentHints: scorePayload.instrumentHints,
-                barDuration: this.barDuration,
-                barCount: this.barCount,
-            }
+            payload: payloadForMainThread
         });
         
         if (sfxEvents.length > 0) {
@@ -304,3 +305,4 @@ self.onmessage = async (event: MessageEvent) => {
 };
 
     
+
