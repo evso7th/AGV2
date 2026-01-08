@@ -19,8 +19,8 @@ export const WinterBluesBlueprint: MusicBlueprint = {
             {
                 id: 'INTRO', name: 'Main Riff', duration: { percent: 40 },
                 introRules: {
-                    instrumentPool: ['bass', 'drums', 'accompaniment', 'melody'],
-                    stages: 4,
+                    instrumentPool: ['bass', 'drums', 'melody'],
+                    stages: 3,
                 },
                 layers: { bass: true, drums: true, accompaniment: false, harmony: true, melody: true },
                 instrumentation: {
@@ -46,12 +46,17 @@ export const WinterBluesBlueprint: MusicBlueprint = {
                 instrumentRules: {
                     drums: { pattern: 'composer', kitName: 'blues_calm', density: { min: 0.1, max: 0.3 }, useSnare: false, usePerc: true, rareKick: true }, // VERY SOFT INTRO
                     bass: { techniques: [{ value: 'riff', weight: 1.0 }], density: { min: 0.3, max: 0.5 } }, // Use Riffs in Intro
-                    accompaniment: { density: {min: 0.1, max: 0.3} },
                     melody: { 
                         source: 'motif', 
                         density: { min: 0.2, max: 0.4 }, 
                         register: { preferred: 'mid' },
-                        techniques: [{ value: 'arpeggio-slow', weight: 0.4 }, { value: 'long-chords', weight: 0.6 }] 
+                        techniques: [{ value: 'arpeggio-slow', weight: 0.4 }, { value: 'long-chords', weight: 0.6 }],
+                        fingerstyle: [
+                            { bars: [2, 3, 4, 6, 7, 8, 10, 11], pattern: 'F_TRAVIS', voicingName: 'Em7_open' }
+                        ],
+                        strum: [
+                            { bars: [1, 5, 9, 12], pattern: 'S_SWING', voicingName: 'Em7_open' }
+                        ]
                     }
                 },
                 bundles: [{ id: 'BLUES_WINTER_VERSE_BUNDLE', name: 'Main Riff', duration: { percent: 100 }, characteristics: {}, phrases: {} }],
@@ -88,7 +93,13 @@ export const WinterBluesBlueprint: MusicBlueprint = {
                     melody: { 
                         source: 'motif', 
                         density: { min: 0.6, max: 0.8 },
-                        register: { preferred: 'mid' }
+                        register: { preferred: 'mid' },
+                        fingerstyle: [
+                            { bars: [2, 3, 4, 6, 7, 8, 10, 11], pattern: 'F_TRAVIS', voicingName: 'Em7_open' }
+                        ],
+                        strum: [
+                            { bars: [1, 5, 9, 12], pattern: 'S_SWING', voicingName: 'Em7_open' }
+                        ]
                     },
                     bass: { techniques: [{ value: 'riff', weight: 1.0 }] },
                 },
@@ -126,7 +137,17 @@ export const WinterBluesBlueprint: MusicBlueprint = {
                 instrumentRules: {
                     drums: { pattern: 'composer', kitName: 'blues_calm', density: { min: 0.4, max: 0.6 } },
                     bass: { techniques: [{ value: 'riff', weight: 1.0 }] }, 
-                    melody: { source: 'motif', density: { min: 0.2, max: 0.4 }, register: { preferred: 'mid' } }
+                    melody: { 
+                        source: 'motif', 
+                        density: { min: 0.2, max: 0.4 }, 
+                        register: { preferred: 'mid' },
+                        fingerstyle: [
+                            { bars: [2, 3, 4, 6, 7, 8, 10, 11], pattern: 'F_TRAVIS', voicingName: 'Em7_open' }
+                        ],
+                        strum: [
+                            { bars: [1, 5, 9, 12], pattern: 'S_SWING', voicingName: 'Em7_open' }
+                        ]
+                    }
                 },
                 bundles: [{ id: 'BLUES_WINTER_OUTRO_BUNDLE', name: 'Final Riff', duration: { percent: 100 }, characteristics: {}, phrases: {} }],
                 outroFill: null,
