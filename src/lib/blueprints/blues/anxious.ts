@@ -50,7 +50,6 @@ export const AnxiousBluesBlueprint: MusicBlueprint = {
             {
                 id: 'MAIN_A', name: 'Frantic Riff', duration: { percent: 35 },
                 layers: { bass: true, drums: true, accompaniment: true, melody: true, harmony: true, sparkles: true },
-                bassAccompanimentDouble: { enabled: true, instrument: 'electricGuitar', octaveShift: 1 },
                 instrumentation: {
                     accompaniment: { strategy: 'weighted', v2Options: [{ name: 'synth_cave_pad', weight: 1.0 }], v1Options: [{ name: 'ambientPad', weight: 1.0 }] },
                     melody: { strategy: 'weighted', v2Options: [{ name: 'guitar_muffLead', weight: 1.0 }], v1Options: [{ name: 'electricGuitar', weight: 1.0 }] }
@@ -63,7 +62,10 @@ export const AnxiousBluesBlueprint: MusicBlueprint = {
                     },
                     bass: { techniques: [{ value: 'riff', weight: 1.0 }] },
                     accompaniment: { register: { preferred: 'low' }, density: { min: 0.2, max: 0.4 } },
-                    melody: { source: 'harmony_top_note' },
+                    melody: {
+                        source: 'motif',
+                        density: { min: 0.4, max: 0.6 }
+                    },
                     sparkles: { eventProbability: 0.2, categories: [{ name: 'dark', weight: 0.8 }, { name: 'electro', weight: 0.2 }] }
                 },
                 bundles: [{ id: 'BLUES_ANX_MAIN_A_BUNDLE', name: 'Main Riff A', duration: { percent: 100 }, characteristics: {}, phrases: {} }],
@@ -72,7 +74,6 @@ export const AnxiousBluesBlueprint: MusicBlueprint = {
             {
                 id: 'SOLO', name: 'Guitar Solo', duration: { percent: 30 },
                 layers: { bass: true, drums: true, accompaniment: true, melody: true, harmony: true, sparkles: true },
-                bassAccompanimentDouble: { enabled: true, instrument: 'electricGuitar', octaveShift: 1 },
                 instrumentation: {
                     accompaniment: { strategy: 'weighted', v2Options: [{ name: 'synth_cave_pad', weight: 0.6 }, { name: 'organ', weight: 0.4 }], v1Options: [{ name: 'ambientPad', weight: 0.6 }, { name: 'organ', weight: 0.4 }] },
                     melody: { strategy: 'weighted', v2Options: [{ name: 'guitar_muffLead', weight: 1.0 }], v1Options: [{ name: 'electricGuitar', weight: 1.0 }] }
@@ -86,7 +87,7 @@ export const AnxiousBluesBlueprint: MusicBlueprint = {
                     bass: { techniques: [{ value: 'riff', weight: 1.0 }] },
                     melody: { 
                         source: 'motif', 
-                        density: { min: 0.6, max: 0.8 },
+                        density: { min: 0.7, max: 0.9 },
                         register: { preferred: 'high' },
                         soloPlan: 'E_minor_heavy_wail'
                     },
