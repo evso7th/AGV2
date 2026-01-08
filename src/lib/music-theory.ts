@@ -752,45 +752,57 @@ export function mutateBluesMelody(phrase: FractalEvent[], chord: GhostChord, dru
 export function createBluesOrganLick(
     chord: GhostChord,
     random: { next: () => number; nextInt: (max: number) => number; },
-    noteCount: number = 4
+    isProvocative: boolean = false
 ): FractalEvent[] {
-    const lick: FractalEvent[] = [];
+    const phrase: FractalEvent[] = [];
     const rootNote = chord.rootNote;
-    const ticksPerBeat = 3;
-    
-    // Минорная блюзовая гамма: 1, b3, 4, b5, 5, b7
-    const bluesScaleIntervals = [0, 3, 5, 6, 7, 10]; 
-    
-    let lastNoteIndex = random.nextInt(bluesScaleIntervals.length);
-    let currentTime = 0;
     const barDurationInBeats = 4;
-    const durationPerNote = (barDurationInBeats / noteCount);
-
-    for (let i = 0; i < noteCount; i++) {
-        // Выбираем следующую ноту, которая находится недалеко от предыдущей
-        const step = random.nextInt(3) - 1; // -1, 0, 1
-        let nextNoteIndex = (lastNoteIndex + step + bluesScaleIntervals.length) % bluesScaleIntervals.length;
-        
-        const noteMidi = rootNote + bluesScaleIntervals[nextNoteIndex] + 36; // Сдвигаем в средний регистр
-        
-        lick.push({
-            type: 'accompaniment',
-            note: noteMidi,
-            time: currentTime,
-            duration: durationPerNote * 0.9, // Делаем ноты чуть короче для staccato-эффекта
-            weight: 0.7 + random.next() * 0.1,
-            technique: 'swell',
-            dynamics: 'mf',
-            phrasing: 'staccato',
-            params: {
-                attack: 0.02, // Быстрая атака для органа
-                release: 0.15 // Короткий релиз для "ответа"
-            }
-        });
-
-        currentTime += durationPerNote;
-        lastNoteIndex = nextNoteIndex;
-    }
     
-    return lick;
+    // --- Гармония: Строим "грязный" блюзовый аккорд (септаккорд) ---
+    const isMinor = chord.chordType === 'minor';
+    const third = rootNote + (isMinor ? 3 : 4);
+    const fifth = rootNote + 7;
+    const seventh = rootNote + 10; // b7
+    const bluesNote = rootNote + 6; // b5
+
+    const baseVoicing = [rootNote, third, fifth, seventh];
+    const voicingWithBlueNote = [rootNote, third, bluesNote, seventh];
+
+    const finalVoicing = random.next() < 0.3 ? voicingWithBlueNote : baseVoicing;
+
+    // --- Ритм: "Comping" паттерны ---
+    const patterns = [
+        // "Charleston"
+        [{ t: 0.0, d: 0.4 }, { t: 2.5, d: 1.5 }], 
+        // Syncopated push
+        [{ t: 1.5, d: 0.5 }, { t: 3.5, d: 0.5 }],
+        // Classic "and-a-two"
+        [{ t: 0.5, d: 0.5 }, { t: 1.0, d: 1.0 }],
+        // Provocative fast run
+        isProvocative ? [{ t: 0, d: 0.25 }, { t: 0.5, d: 0.25 }, { t: 1.0, d: 0.25 }, { t: 1.5, d: 0.25 }, { t: 2.0, d: 0.25 }, { t: 2.5, d: 0.25 }] : []
+    ].filter(p => p.length > 0);
+    
+    const selectedPattern = patterns[random.nextInt(patterns.length)];
+
+    // --- Сборка событий ---
+    for (const hit of selectedPattern) {
+        for(const note of finalVoicing) {
+            phrase.push({
+                type: 'accompaniment',
+                note: note + 12 * 3, // В средний регистр
+                time: hit.t,
+                duration: hit.d * 0.9, // Чуть короче для "стаккато"
+                weight: 0.6 + random.next() * 0.15,
+                technique: 'swell',
+                dynamics: 'mf',
+                phrasing: 'staccato',
+                params: {
+                    attack: 0.01,
+                    release: hit.d * 1.2 // небольшой "хвост"
+                }
+            });
+        }
+    }
+
+    return phrase;
 }
