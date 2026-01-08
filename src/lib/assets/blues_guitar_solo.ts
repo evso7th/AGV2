@@ -31,7 +31,7 @@ export const BLUES_SOLO_LICKS: Record<string, BluesSoloPhrase> = {
   L16: [{t:0,d:2,deg:'b2'},{t:2,d:2,deg:'R'},{t:4,d:2,deg:'b7'},{t:6,d:6,deg:'5'}],
   L17: [{t:0,d:3,deg:'5',tech:'ds'},{t:3,d:3,deg:'6',tech:'ds'},{t:6,d:6,deg:'R'}],
   L18: [{t:0,d:4,deg:'11'},{t:4,d:8,deg:'9'}],
-  L19: [{t:0,d:2,deg:'R'},{t:2,d:2,deg:'b7'},{t:4,d:2,deg:'6'},{t:6,d:2,deg:'b6'},{t:8,d:2,deg:'5'},{t:10,d:2,'#4'}],
+  L19: [{t:0,d:2,deg:'R'},{t:2,d:2,deg:'b7'},{t:4,d:2,deg:'6'},{t:6,d:2,deg:'b6'},{t:8,d:2,deg:'5'},{t:10,d:2,deg:'#4'}],
   L20: [{t:0,d:2,deg:'3'},{t:2,d:2,deg:'b3'},{t:4,d:2,deg:'3'},{t:6,d:2,deg:'2'},{t:8,d:2,deg:'R'},{t:10,d:2,deg:'b7'}],
   L13_Sabbath_Scream: [{ t: 0, d: 12, deg: 'b7', tech: 'vb' }], // A single, long, wailing note
 };

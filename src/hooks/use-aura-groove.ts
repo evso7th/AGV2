@@ -109,6 +109,7 @@ export const useAuraGroove = (): AuraGrooveProps => {
   const timerIntervalRef = useRef<NodeJS.Timeout | null>(null);
 
   const [isRegenerating, setIsRegenerating] = useState(false);
+  const [hasPlayedOnce, setHasPlayedOnce] = useState(false);
 
 
   // Automatically initialize the engine when the component mounts
@@ -222,8 +223,16 @@ export const useAuraGroove = (): AuraGrooveProps => {
     if (!isInitialized) {
       return;
     }
+    
+    // #РЕШЕНИЕ (ПЛАН 931): Вызывать регенерацию сюиты только при самом первом нажатии Play.
+    if (!hasPlayedOnce && !isPlaying) {
+      console.log("[useAuraGroove] First play detected. Triggering initial regeneration.");
+      resetWorker();
+      setHasPlayedOnce(true);
+    }
+
     setEngineIsPlaying(!isPlaying);
-  }, [isInitialized, isPlaying, setEngineIsPlaying]);
+  }, [isInitialized, isPlaying, setEngineIsPlaying, hasPlayedOnce, resetWorker]);
 
     const handleRegenerate = useCallback(() => {
         // #ИСПРАВЛЕНО: Логика упрощена. Теперь мы просто вызываем resetWorker.

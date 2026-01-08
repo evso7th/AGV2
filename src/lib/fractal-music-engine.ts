@@ -135,6 +135,7 @@ export class FractalMusicEngine {
   private currentBassRiffIndex: number = 0;
   private currentGuitarRiffId: string | null = null;
 
+  private melodyHistory: string[] = []; // #РЕШЕНИЕ (ПЛАН 931)
 
   constructor(config: EngineConfig) {
     this.config = { ...config };
@@ -504,7 +505,7 @@ export class FractalMusicEngine {
 
         const finalEvents: FractalEvent[] = [];
         const barDurationInBeats = 4.0;
-        const ticksPerBeat = 3; // 12 ticks per bar (12/8 time)
+        const ticksPerBeat = 3;
         let logMessage = "";
 
         if (isSoloSection && soloPlanName) {
@@ -546,9 +547,43 @@ export class FractalMusicEngine {
                 }
             }
         } else {
-            const riffId = this.currentGuitarRiffId || BLUES_GUITAR_RIFFS[0].id;
-            const selectedRiff = BLUES_MELODY_RIFFS.find(r => r.id === riffId) ?? BLUES_MELODY_RIFFS[0];
-            logMessage = `[FME] Generating main theme using melody riff "${selectedRiff.id}".`;
+            // #РЕШЕНИЕ (ПЛАН 931): Логика выбора мелодии теперь учитывает настроение и историю.
+            const moodMap: Record<string, Mood[]> = {
+                light: ['joyful', 'epic', 'enthusiastic'],
+                dark: ['dark', 'melancholic', 'gloomy', 'anxious'],
+                neutral: ['calm', 'dreamy', 'contemplative']
+            };
+
+            const getMoodCategory = (m: Mood): keyof typeof moodMap | null => {
+                for (const category in moodMap) {
+                    if (moodMap[category].includes(m)) return category as keyof typeof moodMap;
+                }
+                return null;
+            };
+
+            const targetCategory = getMoodCategory(mood);
+            let suitableRiffs = BLUES_MELODY_RIFFS.filter(riff => 
+                riff.moods.some(m => moodMap[targetCategory!]?.includes(m))
+            );
+
+            if (suitableRiffs.length === 0) suitableRiffs = BLUES_MELODY_RIFFS;
+
+            // Исключаем недавно использованные мелодии
+            let selectableRiffs = suitableRiffs.filter(riff => !this.melodyHistory.includes(riff.id));
+            if (selectableRiffs.length === 0) { // Если все подходящие уже играли, сбрасываем историю для этой категории
+                this.melodyHistory = [];
+                selectableRiffs = suitableRiffs;
+            }
+
+            const selectedRiff = selectableRiffs[random.nextInt(selectableRiffs.length)];
+
+            // Обновляем историю
+            this.melodyHistory.unshift(selectedRiff.id);
+            if (this.melodyHistory.length > 10) {
+                this.melodyHistory.pop();
+            }
+
+            logMessage = `[FME] Generating main theme using melody riff "${selectedRiff.id}" for mood "${mood}". History: [${this.melodyHistory.join(', ')}]`;
 
             for (let barIndex = 0; barIndex < 12; barIndex++) {
                 const currentChord = chorusChords.find(c => c.bar % 12 === barIndex);
