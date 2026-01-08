@@ -174,7 +174,6 @@ const Scheduler = {
 
         const scorePayload = finalPayload; 
         
-        // #РЕШЕНИЕ (ПЛАН 934): Добавлено полное логирование событий по всем партиям.
         const counts = { drums: 0, bass: 0, melody: 0, accompaniment: 0, harmony: 0, sfx: 0, sparkles: 0 };
         for (const event of scorePayload.events) {
             if (event.type === 'bass') counts.bass++;
@@ -305,4 +304,5 @@ self.onmessage = async (event: MessageEvent) => {
 };
 
     
+
 

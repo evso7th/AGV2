@@ -637,56 +637,54 @@ export class FractalMusicEngine {
     }
 
   public evolve(barDuration: number, barCount: number): { events: FractalEvent[], instrumentHints: InstrumentHints } {
-      if (!this.navigator) {
-          return { events: [], instrumentHints: {} };
-      }
-
-      this.epoch = barCount;
-
-      if (this.epoch < this.config.introBars) {
-          return { events: [], instrumentHints: {} };
-      }
-
-      if (this.epoch >= this.navigator.totalBars + 4) {
-        return { events: [], instrumentHints: {} }; 
-      }
-      
-      if (this.epoch >= this.navigator.totalBars) {
-          const promenadeBar = this.epoch - this.navigator.totalBars;
-          const promenadeEvents = this._generatePromenade(promenadeBar);
-          return { events: promenadeEvents, instrumentHints: {} };
-      }
-
-      if (!isFinite(barDuration)) return { events: [], instrumentHints: {} };
-      
-      const v2MelodyHint = this._chooseInstrumentForPart('melody', this.navigator.tick(this.epoch));
-      const navigationInfo = this.navigator.tick(this.epoch, v2MelodyHint);
-
-      if (navigationInfo && navigationInfo.logMessage) {
-        console.log(navigationInfo.logMessage);
-      }
-      
-      if (!navigationInfo) {
-        console.error(`[FME] Evolve failed to get navigation info for bar ${this.epoch}`);
+    if (!this.navigator) {
         return { events: [], instrumentHints: {} };
-      }
-      
-      const harmonyRules = navigationInfo?.currentPart.instrumentation?.harmony;
-      const chosenHarmonyInstrument = harmonyRules ? chooseHarmonyInstrument(harmonyRules, this.random) : 'piano';
+    }
 
-      const instrumentHints: InstrumentHints = {
-          accompaniment: this._chooseInstrumentForPart('accompaniment', navigationInfo),
-          melody: v2MelodyHint,
-          harmony: chosenHarmonyInstrument,
-      };
+    this.epoch = barCount;
 
-      // #РЕШЕНИЕ (ПЛАН 941): Добавлено детальное логирование для отслеживания `instrumentHint`.
-      // #ИСПРАВЛЕНО (ПЛАН 942): 'instrumentHints' теперь корректно включает 'melody' хинт.
-      console.log(`%cMelodyInstrumentLog: [1. Composer] Generated hint for bar ${this.epoch}: ${instrumentHints.melody}`, 'color: #DA70D6');
-      
-      const events = this.generateOneBar(barDuration, navigationInfo!, instrumentHints);
-      
-      return { events, instrumentHints };
+    if (this.epoch < this.config.introBars) {
+        return { events: [], instrumentHints: {} };
+    }
+
+    if (this.epoch >= this.navigator.totalBars + 4) {
+      return { events: [], instrumentHints: {} }; 
+    }
+    
+    if (this.epoch >= this.navigator.totalBars) {
+        const promenadeBar = this.epoch - this.navigator.totalBars;
+        const promenadeEvents = this._generatePromenade(promenadeBar);
+        return { events: promenadeEvents, instrumentHints: {} };
+    }
+
+    if (!isFinite(barDuration)) return { events: [], instrumentHints: {} };
+    
+    // #ИСПРАВЛЕНО (ПЛАН 944): Установлен единый, последовательный поток данных.
+    // 1. Получаем навигационную информацию один раз.
+    const navigationInfo = this.navigator.tick(this.epoch);
+
+    // 2. Последовательно определяем все хинты.
+    const melodyHint = this._chooseInstrumentForPart('melody', navigationInfo);
+    const accompanimentHint = this._chooseInstrumentForPart('accompaniment', navigationInfo);
+    const harmonyRules = navigationInfo?.currentPart.instrumentation?.harmony;
+    const harmonyHint = harmonyRules ? chooseHarmonyInstrument(harmonyRules, this.random) : 'piano';
+    
+    // 3. Собираем полный и корректный объект instrumentHints.
+    const instrumentHints: InstrumentHints = {
+        melody: melodyHint,
+        accompaniment: accompanimentHint,
+        harmony: harmonyHint,
+    };
+    
+    const melodyLogPrefix = `%cMelodyInstrumentLog:`;
+    const melodyLogCss = `color: #DA70D6`;
+    console.log(`${melodyLogPrefix} [1. Composer] Generated hint for bar ${this.epoch}: ${instrumentHints.melody}`, melodyLogCss);
+
+    // 4. Генерируем музыку, передавая ПОЛНЫЕ хинты.
+    const events = this.generateOneBar(barDuration, navigationInfo!, instrumentHints);
+    
+    // 5. Возвращаем результат.
+    return { events, instrumentHints };
   }
 
 
@@ -900,4 +898,3 @@ export class FractalMusicEngine {
     return allEvents;
   }
 }
-
