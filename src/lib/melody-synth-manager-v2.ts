@@ -4,24 +4,38 @@ import type { FractalEvent, AccompanimentInstrument } from '@/types/fractal';
 import type { Note } from "@/types/music";
 import { buildMultiInstrument } from './instrument-factory';
 import { V2_PRESETS, V1_TO_V2_PRESET_MAP } from './presets-v2';
+import type { TelecasterGuitarSampler } from './telecaster-guitar-sampler';
+import type { BlackGuitarSampler } from './black-guitar-sampler';
 
 /**
  * A V2 manager for the melody synthesizer.
- * This version uses the advanced `instrument-factory` to create a single,
- * powerful, polyphonic instrument instance. It does not manage a pool of simple voices.
+ * This version acts as a "smart performer", routing events to either its
+ * internal synthesizer or to specialized guitar samplers.
  */
 export class MelodySynthManagerV2 {
     private audioContext: AudioContext;
     private destination: AudioNode;
     public isInitialized = false;
-    private instrument: any | null = null; // Will hold the instance from the factory
+    
+    // Internal Instruments
+    private synth: any | null = null; 
+    private telecasterSampler: TelecasterGuitarSampler;
+    private blackAcousticSampler: BlackGuitarSampler;
+
     private activePresetName: keyof typeof V2_PRESETS = 'synth';
     private activeNotes = new Map<number, () => void>(); // Maps MIDI note to a cleanup function
 
-    constructor(audioContext: AudioContext, destination: AudioNode) {
+    constructor(
+        audioContext: AudioContext, 
+        destination: AudioNode,
+        telecasterSampler: TelecasterGuitarSampler,
+        blackAcousticSampler: BlackGuitarSampler
+    ) {
         this.audioContext = audioContext;
         this.destination = destination;
-        console.log('[MelodyManagerV2] Constructor: Destination node is set.');
+        this.telecasterSampler = telecasterSampler;
+        this.blackAcousticSampler = blackAcousticSampler;
+        console.log('[MelodyManagerV2] Constructor: Destination and samplers are set.');
     }
 
     async init() {
@@ -29,7 +43,7 @@ export class MelodySynthManagerV2 {
         console.log('[MelodyManagerV2] Initializing...');
         await this.loadInstrument(this.activePresetName);
         this.isInitialized = true;
-        console.log('[MelodyManagerV2] Initialized with a persistent instrument.');
+        console.log('[MelodyManagerV2] Initialized with a persistent synth and samplers.');
     }
     
     private async loadInstrument(presetName: keyof typeof V2_PRESETS) {
@@ -40,27 +54,37 @@ export class MelodySynthManagerV2 {
             return;
         }
 
-        console.log(`[MelodyManagerV2] Loading instrument with preset: ${presetName}`);
+        console.log(`[MelodyManagerV2] Loading synth instrument with preset: ${presetName}`);
 
         try {
-            this.instrument = await buildMultiInstrument(this.audioContext, {
+            this.synth = await buildMultiInstrument(this.audioContext, {
                 type: preset.type as any,
                 preset: preset,
                 output: this.destination
             });
             this.activePresetName = presetName;
-            console.log(`[MelodyManagerV2] Instrument loaded with preset: ${presetName}`);
+            console.log(`[MelodyManagerV2] Synth instrument loaded with preset: ${presetName}`);
         } catch (error) {
-            console.error(`[MelodyManagerV2] Error loading instrument for preset ${presetName}:`, error);
+            console.error(`[MelodyManagerV2] Error loading synth for preset ${presetName}:`, error);
         }
     }
 
 
     public async schedule(events: FractalEvent[], barStartTime: number, tempo: number, instrumentHint?: string) {
-        // #ЗАЧЕМ: Этот блок транслирует старые названия V1 в новые V2.
-        // #ЧТО: Он проверяет, есть ли `instrumentHint` в карте `V1_TO_V2_PRESET_MAP`.
-        //      Если есть, используется V2-название. Если нет, используется оригинальный hint.
-        // #СВЯЗИ: Устраняет ошибку "Preset not found".
+        
+        // --- SMART ROUTER ---
+        if (instrumentHint === 'telecaster') {
+            const notesToPlay = events.map(e => ({ midi: e.note, time: e.time * (60/tempo), duration: e.duration * (60/tempo), velocity: e.weight }));
+            this.telecasterSampler.schedule(notesToPlay, barStartTime);
+            return;
+        }
+        if (instrumentHint === 'blackAcoustic') {
+             const notesToPlay = events.map(e => ({ midi: e.note, time: e.time * (60/tempo), duration: e.duration * (60/tempo), velocity: e.weight }));
+            this.blackAcousticSampler.schedule(notesToPlay, barStartTime);
+            return;
+        }
+
+        // --- SYNTH LOGIC (if not routed to sampler) ---
         const finalInstrumentHint = (instrumentHint && V1_TO_V2_PRESET_MAP[instrumentHint])
             ? V1_TO_V2_PRESET_MAP[instrumentHint]
             : instrumentHint;
@@ -69,8 +93,8 @@ export class MelodySynthManagerV2 {
             this.setInstrument(finalInstrumentHint as keyof typeof V2_PRESETS);
         }
         
-        if (!this.instrument) {
-            console.warn('[MelodyManagerV2] Schedule called but instrument is not loaded.');
+        if (!this.synth) {
+            console.warn('[MelodyManagerV2] Schedule called for synth but instrument is not loaded.');
             return;
         }
 
@@ -86,28 +110,30 @@ export class MelodySynthManagerV2 {
             }
             const noteOffTime = noteOnTime + (event.duration * beatDuration);
             
-            this.instrument.noteOn(event.note, noteOnTime);
-            this.instrument.noteOff(event.note, noteOffTime);
+            this.synth.noteOn(event.note, noteOnTime);
+            this.synth.noteOff(event.note, noteOffTime);
         });
     }
     
     public setInstrument(instrumentName: keyof typeof V2_PRESETS) {
-       if (!this.instrument || instrumentName === this.activePresetName) return;
+       if (!this.synth || instrumentName === this.activePresetName) return;
        
        const newPreset = V2_PRESETS[instrumentName];
-       if (newPreset && this.instrument.setPreset) {
-           this.instrument.setPreset(newPreset);
+       if (newPreset && this.synth.setPreset) {
+           this.synth.setPreset(newPreset);
            this.activePresetName = instrumentName;
-           console.log(`[MelodyManagerV2] Preset updated to: ${instrumentName}`);
+           console.log(`[MelodyManagerV2] Synth preset updated to: ${instrumentName}`);
        } else {
-           console.error(`[MelodyManagerV2] Failed to set preset: ${instrumentName}. Preset or setPreset method not found.`);
+           console.error(`[MelodyManagerV2] Failed to set synth preset: ${instrumentName}.`);
        }
     }
 
     public allNotesOff() {
-        if (this.instrument && this.instrument.allNotesOff) {
-            this.instrument.allNotesOff();
+        if (this.synth && this.synth.allNotesOff) {
+            this.synth.allNotesOff();
         }
+        this.telecasterSampler?.stopAll();
+        this.blackAcousticSampler?.stopAll();
     }
 
     public stop() {
@@ -118,5 +144,3 @@ export class MelodySynthManagerV2 {
         this.stop();
     }
 }
-
-    
