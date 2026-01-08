@@ -174,6 +174,28 @@ const Scheduler = {
 
         const scorePayload = finalPayload; 
         
+        // #РЕШЕНИЕ (ПЛАН 934): Добавлено полное логирование событий по всем партиям.
+        // #ЗАЧЕМ: Обеспечивает полную прозрачность работы композитора для отладки.
+        // #ЧТО: Создается объект-счетчик, который инициализируется нулями. Затем он
+        //      проходит по всем событиям, подсчитывая их по типам. В конце выводится
+        //      отформатированная строка в консоль, включающая все партии, даже нулевые.
+        // #СВЯЗИ: Эта логика использует данные из `finalPayload` и выводит результат в консоль.
+        const counts = { drums: 0, bass: 0, melody: 0, accompaniment: 0, harmony: 0, sfx: 0, sparkles: 0 };
+        for (const event of scorePayload.events) {
+            if (event.type === 'bass') counts.bass++;
+            else if (event.type === 'melody') counts.melody++;
+            else if (event.type === 'accompaniment') counts.accompaniment++;
+            else if (event.type === 'harmony') counts.harmony++;
+            else if (event.type === 'sfx') counts.sfx++;
+            else if (event.type === 'sparkle') counts.sparkles++;
+            else if ((event.type as string).startsWith('drum_') || (event.type as string).startsWith('perc-')) {
+                counts.drums++;
+            }
+        }
+        const logString = `[Worker @ Bar ${this.barCount}] Events: ${scorePayload.events.length} | Drums: ${counts.drums}, Bass: ${counts.bass}, Melody: ${counts.melody}, Accomp: ${counts.accompaniment}, Harmony: ${counts.harmony}, SFX: ${counts.sfx}, Sparkles: ${counts.sparkles}`;
+        console.log(logString);
+
+
         const mainScoreEvents: FractalEvent[] = [];
         const sfxEvents: FractalEvent[] = [];
         const sparkleEvents: FractalEvent[] = [];
