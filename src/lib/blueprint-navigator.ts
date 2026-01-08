@@ -54,29 +54,25 @@ function formatInstrumentation(
 
         if (rule && rule.strategy === 'weighted') {
             let options: { name: any; weight: number; }[] | undefined;
-            let engineVersion = '';
+            let v1OptionsStr: string | null = null;
+            let v2OptionsStr: string | null = null;
             
+            if (rule.v1Options && rule.v1Options.length > 0) {
+                 v1OptionsStr = `V1(${rule.v1Options.map(opt => `${opt.name}:${Math.round(opt.weight * 100)}%`).join(',')})`;
+            }
             if (rule.v2Options && rule.v2Options.length > 0) {
-                options = rule.v2Options;
-                engineVersion = '(V2)';
-            } else if (rule.v1Options && rule.v1Options.length > 0) {
-                 options = rule.v1Options;
-                 engineVersion = '(V1)';
-            } else {
-                options = rule.options || [];
+                 v2OptionsStr = `V2(${rule.v2Options.map(opt => `${opt.name}:${Math.round(opt.weight * 100)}%`).join(',')})`;
             }
             
-            if (options && options.length > 0) {
-                const optionsStr = options
-                    .map(opt => `${opt.name}:${Math.round(opt.weight * 100)}%`)
-                    .join(',');
-                return `${partKey}${engineVersion}(${optionsStr})`;
+            const finalStr = [v1OptionsStr, v2OptionsStr].filter(Boolean).join(' | ');
+            if(finalStr) {
+                return `${partKey}: ${finalStr}`;
             }
         }
         return null;
     }).filter(Boolean) : [];
 
-    const drumKitLog = drumRules?.kitName ? `- Drum Kit: ${drumRules.kitName}` : null;
+    const drumKitLog = drumRules?.kitName ? `Drum Kit: ${drumRules.kitName}` : null;
     
     const instrumentLog = parts.length > 0 ? `Instruments: ${parts.join(' | ')}` : null;
 
