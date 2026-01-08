@@ -264,14 +264,23 @@ export class FractalMusicEngine {
   
       const useV2 = this.config.useMelodyV2;
       const options = useV2 ? rules.v2Options : rules.v1Options;
+
+      // --- DIAGNOSTIC LOG (ПЛАН 953) ---
+      const melodyLogPrefix = `%cMelodyInstrumentLog:`;
+      const melodyLogCss = `color: #DA70D6`;
+      console.log(`${melodyLogPrefix} [1a. _chooseInstrumentForPart] Entering choice logic. useV2: ${useV2}`, melodyLogCss);
+      console.log(`${melodyLogPrefix} [1b. _chooseInstrumentForPart] V1 Options:`, rules.v1Options, melodyLogCss);
+      console.log(`${melodyLogPrefix} [1c. _chooseInstrumentForPart] V2 Options:`, rules.v2Options, melodyLogCss);
+      console.log(`${melodyLogPrefix} [1d. _chooseInstrumentForPart] Selected options array:`, options, melodyLogCss);
+      // --- END DIAGNOSTIC LOG ---
   
       if (options && options.length > 0) {
         return this.performWeightedChoice(options);
       }
       
-      // Fallback if no specific options are available for the current engine version
       const fallbackOptions = !useV2 ? rules.v2Options : rules.v1Options;
       if (fallbackOptions && fallbackOptions.length > 0) {
+          console.warn(`[FME] No options for current engine version (v2=${useV2}). Falling back to other version's options.`);
           return this.performWeightedChoice(fallbackOptions);
       }
 
@@ -644,6 +653,9 @@ export class FractalMusicEngine {
     // --- ЭТАЛОННАЯ ЛОГИКА (ПЛАН 949) ---
     // 1. Получаем навигационную информацию один раз.
     const navigationInfo = this.navigator.tick(this.epoch);
+
+    // --- DIAGNOSTIC LOG (ПЛАН 953) ---
+    console.log(`%c[FME.evolve @ Bar ${this.epoch}] Using Blueprint: ${this.navigator.blueprint.id} (${this.navigator.blueprint.name})`, 'color: orange;');
 
     // 2. Последовательно определяем все хинты.
     const melodyHint = this._chooseInstrumentForPart('melody', navigationInfo);
