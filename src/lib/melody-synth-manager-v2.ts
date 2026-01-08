@@ -72,19 +72,26 @@ export class MelodySynthManagerV2 {
 
     public async schedule(events: FractalEvent[], barStartTime: number, tempo: number, instrumentHint?: string) {
         
+        const melodyLogPrefix = `%cMelodyInstrumentLog:`;
+        const melodyLogCss = `color: #DA70D6`;
+        console.log(`${melodyLogPrefix} [2. Manager] Received hint: ${instrumentHint}`, melodyLogCss);
+
         // --- SMART ROUTER ---
         if (instrumentHint === 'telecaster') {
+            console.log(`${melodyLogPrefix} [3. Router] Routing to TelecasterSampler`, melodyLogCss);
             const notesToPlay = events.map(e => ({ midi: e.note, time: e.time * (60/tempo), duration: e.duration * (60/tempo), velocity: e.weight }));
             this.telecasterSampler.schedule(notesToPlay, barStartTime);
             return;
         }
         if (instrumentHint === 'blackAcoustic') {
+            console.log(`${melodyLogPrefix} [3. Router] Routing to BlackGuitarSampler`, melodyLogCss);
              const notesToPlay = events.map(e => ({ midi: e.note, time: e.time * (60/tempo), duration: e.duration * (60/tempo), velocity: e.weight }));
             this.blackAcousticSampler.schedule(notesToPlay, barStartTime);
             return;
         }
 
         // --- SYNTH LOGIC (if not routed to sampler) ---
+        console.log(`${melodyLogPrefix} [3. Router] Routing to internal V2 Synth`, melodyLogCss);
         const finalInstrumentHint = (instrumentHint && V1_TO_V2_PRESET_MAP[instrumentHint])
             ? V1_TO_V2_PRESET_MAP[instrumentHint]
             : instrumentHint;

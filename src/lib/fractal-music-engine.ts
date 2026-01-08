@@ -278,13 +278,13 @@ export class FractalMusicEngine {
   
       const chosenName = this.performWeightedChoice(potentialOptions);
       
-      // #РЕШЕНИЕ (ПЛАН 936): Добавлена специальная обработка для гитарных сэмплеров.
-      // #ЗАЧЕМ: Этот блок гарантирует, что если блюпринт запрашивает 'telecaster' или 'blackAcoustic',
-      //         движок вернет именно этот "хинт", а не будет пытаться найти его среди
-      //         синтезаторных V1/V2 пресетов.
+      // #РЕШЕНИЕ (ПЛАН 936): "Железные ворота" для сэмплеров.
+      // #ЗАЧЕМ: Гарантирует, что если блюпринт запрашивает гитарный сэмплер,
+      //         движок вернет именно это имя, не пытаясь найти его среди
+      //         синтезаторных пресетов.
       // #ЧТО: Проверяем, является ли выбранное имя одним из специальных сэмплерных инструментов.
       //      Если да - немедленно возвращаем его.
-      // #СВЯЗИ: Позволяет `audio-engine-context` корректно маршрутизировать события
+      // #СВЯЗИ: Позволяет `AudioEngineContext` корректно маршрутизировать события
       //         в `TelecasterGuitarSampler` или `BlackGuitarSampler`.
       if (chosenName === 'telecaster' || chosenName === 'blackAcoustic') {
           return chosenName as MelodyInstrument;
@@ -679,6 +679,9 @@ export class FractalMusicEngine {
           melody: v2MelodyHint,
           harmony: chosenHarmonyInstrument,
       };
+
+      // #РЕШЕНИЕ (ПЛАН 941): Добавлено детальное логирование для отслеживания `instrumentHint`.
+      console.log(`%cMelodyInstrumentLog: [1. Composer] Generated hint for bar ${this.epoch}: ${instrumentHints.melody}`, 'color: #DA70D6');
       
       const events = this.generateOneBar(barDuration, navigationInfo!, instrumentHints);
       
