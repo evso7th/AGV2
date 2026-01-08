@@ -22,7 +22,7 @@ export const WinterBluesBlueprint: MusicBlueprint = {
                     instrumentPool: ['bass', 'drums', 'accompaniment', 'melody'],
                     stages: 4,
                 },
-                layers: { bass: true, drums: true, accompaniment: true, harmony: true, melody: true },
+                layers: { bass: true, drums: true, accompaniment: true, harmony: false, melody: true },
                 instrumentation: {
                     accompaniment: { 
                         strategy: 'weighted', 
@@ -64,7 +64,7 @@ export const WinterBluesBlueprint: MusicBlueprint = {
             },
             {
                 id: 'SOLO', name: 'Solo', duration: { percent: 35 },
-                layers: { bass: true, drums: true, melody: true, accompaniment: true, harmony: true },
+                layers: { bass: true, drums: true, melody: true, accompaniment: true, harmony: false },
                  instrumentation: {
                     accompaniment: { 
                         strategy: 'weighted', 
