@@ -251,16 +251,15 @@ export class FractalMusicEngine {
     part: 'melody' | 'accompaniment',
     navInfo: NavigationInfo | null
   ): MelodyInstrument | AccompanimentInstrument | undefined {
-      const melodyLogPrefix = `%cMelodyInstrumentLog:`;
-      const melodyLogCss = `color: #DA70D6`;
-      console.log(`${melodyLogPrefix} [1a. _chooseInstrumentForPart] Entering choice logic. useV2: ${this.config.useMelodyV2}`, melodyLogCss);
+      const melodyLogPrefix = `MelodyInstrumentLog:`;
+      console.log(melodyLogPrefix + ` [1a. _chooseInstrumentForPart] Entering choice logic. useV2: ${this.config.useMelodyV2}`);
 
       if (!navInfo) return undefined;
   
       const rules = navInfo.currentPart.instrumentation?.[part as keyof typeof navInfo.currentPart.instrumentation];
       
-      console.log(`${melodyLogPrefix} [1b. _chooseInstrumentForPart] V1 Options: `, rules?.v1Options, melodyLogCss);
-      console.log(`${melodyLogPrefix} [1c. _chooseInstrumentForPart] V2 Options: `, rules?.v2Options, melodyLogCss);
+      console.log(melodyLogPrefix + "[1b. _chooseInstrumentForPart] V1 Options: ", rules?.v1Options);
+      console.log(melodyLogPrefix + "[1c. _chooseInstrumentForPart] V2 Options: ", rules?.v2Options);
 
       if (!rules || rules.strategy !== 'weighted') {
           return part === 'melody' ? 'organ' : 'synth';
@@ -269,13 +268,12 @@ export class FractalMusicEngine {
       const useV2 = this.config.useMelodyV2;
       const options = useV2 ? rules.v2Options : rules.v1Options;
   
-      console.log(`${melodyLogPrefix} [1d. _chooseInstrumentForPart] Selected options array: `, options, melodyLogCss);
+      console.log(melodyLogPrefix + "[1d. _chooseInstrumentForPart] Selected options array: ", options);
       
       if (options && options.length > 0) {
         return this.performWeightedChoice(options);
       }
       
-      // Fallback if no options for the current engine version
       const fallbackOptions = !useV2 ? rules.v2Options : rules.v1Options;
       if (fallbackOptions && fallbackOptions.length > 0) {
           console.warn(`[FME] No options for current engine version (v2=${useV2}). Falling back to other version's options.`);
@@ -555,7 +553,6 @@ export class FractalMusicEngine {
                 }
             }
         } else {
-            // #РЕШЕНИЕ (ПЛАН 931): Логика выбора мелодии теперь учитывает настроение и историю.
             const moodMap: Record<string, Mood[]> = {
                 light: ['joyful', 'epic', 'enthusiastic'],
                 dark: ['dark', 'melancholic', 'gloomy', 'anxious'],
@@ -576,16 +573,14 @@ export class FractalMusicEngine {
 
             if (suitableRiffs.length === 0) suitableRiffs = BLUES_MELODY_RIFFS;
 
-            // Исключаем недавно использованные мелодии
             let selectableRiffs = suitableRiffs.filter(riff => !this.melodyHistory.includes(riff.id));
-            if (selectableRiffs.length === 0) { // Если все подходящие уже играли, сбрасываем историю для этой категории
+            if (selectableRiffs.length === 0) { 
                 this.melodyHistory = [];
                 selectableRiffs = suitableRiffs;
             }
 
             const selectedRiff = selectableRiffs[random.nextInt(selectableRiffs.length)];
 
-            // Обновляем историю
             this.melodyHistory.unshift(selectedRiff.id);
             if (this.melodyHistory.length > 10) {
                 this.melodyHistory.pop();
@@ -631,6 +626,7 @@ export class FractalMusicEngine {
 
   public evolve(barDuration: number, barCount: number): { events: FractalEvent[], instrumentHints: InstrumentHints } {
       if (!this.navigator) {
+          console.error("FME evolve called before navigator was initialized.");
           return { events: [], instrumentHints: {} };
       }
   
@@ -646,26 +642,24 @@ export class FractalMusicEngine {
           return { events: promenadeEvents, instrumentHints: {} };
       }
   
-      if (!isFinite(barDuration)) return { events: [], instrumentHints: {} };
-  
-      const melodyLogPrefix = `%cMelodyInstrumentLog:`;
-      const melodyLogCss = `color: #DA70D6`;
-      console.log(`${melodyLogPrefix} [FME.evolve @ Bar ${this.epoch}] Using Blueprint: ${this.navigator.blueprint.id} (${this.navigator.blueprint.name})`, melodyLogCss);
-  
+      if (!isFinite(barDuration)) {
+          console.error(`[FME] Invalid barDuration: ${barDuration}`);
+          return { events: [], instrumentHints: {} };
+      }
+
       const navigationInfo = this.navigator.tick(this.epoch);
-  
-      const melodyHint = this._chooseInstrumentForPart('melody', navigationInfo);
-      const accompanimentHint = this._chooseInstrumentForPart('accompaniment', navigationInfo);
-      const harmonyRules = navigationInfo?.currentPart.instrumentation?.harmony;
-      const harmonyHint = harmonyRules ? chooseHarmonyInstrument(harmonyRules, this.random) : 'piano';
-      
+
+      const v2MelodyHint = this._chooseInstrumentForPart('melody', navigationInfo);
+
+      console.log(`MelodyInstrumentLog: [FME.evolve @ Bar ${this.epoch}] Using Blueprint: ${this.navigator.blueprint.id} (${this.navigator.blueprint.name})`);
+
       const instrumentHints: InstrumentHints = {
-          melody: melodyHint,
-          accompaniment: accompanimentHint,
-          harmony: harmonyHint,
+          melody: v2MelodyHint,
+          accompaniment: this._chooseInstrumentForPart('accompaniment', navigationInfo),
+          harmony: chooseHarmonyInstrument(navigationInfo?.currentPart.instrumentation?.harmony, this.random)
       };
       
-      console.log(`${melodyLogPrefix} [1. Composer] Generated hint for bar ${this.epoch}: ${instrumentHints.melody}`, melodyLogCss);
+      console.log(`MelodyInstrumentLog: [1. Composer] Generated hint for bar ${this.epoch}: ${instrumentHints.melody}`);
   
       const events = this.generateOneBar(barDuration, navigationInfo!, instrumentHints);
       
@@ -883,3 +877,4 @@ export class FractalMusicEngine {
     return allEvents;
   }
 }
+
