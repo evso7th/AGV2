@@ -265,31 +265,17 @@ export class FractalMusicEngine {
       const useV2 = this.config.useMelodyV2;
       const options = useV2 ? rules.v2Options : rules.v1Options;
   
-      let potentialOptions = options;
-  
-      if (!potentialOptions || potentialOptions.length === 0) {
-          potentialOptions = !useV2 ? rules.v2Options : rules.v1Options;
-          if (!potentialOptions || potentialOptions.length === 0) {
-              const ultimateFallback = part === 'melody' ? 'organ' : 'synth';
-              return ultimateFallback;
-          }
+      if (options && options.length > 0) {
+        return this.performWeightedChoice(options);
       }
-  
-      const chosenName = this.performWeightedChoice(potentialOptions);
       
-      // #РЕШЕНИЕ (ПЛАН 936): "Железные ворота" для сэмплеров.
-      // #ЗАЧЕМ: Гарантирует, что если блюпринт запрашивает гитарный сэмплер,
-      //         движок вернет именно это имя, не пытаясь найти его среди
-      //         синтезаторных пресетов.
-      // #ЧТО: Проверяем, является ли выбранное имя одним из специальных сэмплерных инструментов.
-      //      Если да - немедленно возвращаем его.
-      // #СВЯЗИ: Позволяет `AudioEngineContext` корректно маршрутизировать события
-      //         в `TelecasterGuitarSampler` или `BlackGuitarSampler`.
-      if (chosenName === 'telecaster' || chosenName === 'blackAcoustic') {
-          return chosenName as MelodyInstrument;
+      // Fallback if no specific options are available for the current engine version
+      const fallbackOptions = !useV2 ? rules.v2Options : rules.v1Options;
+      if (fallbackOptions && fallbackOptions.length > 0) {
+          return this.performWeightedChoice(fallbackOptions);
       }
-  
-      return chosenName;
+
+      return part === 'melody' ? 'organ' : 'synth';
   }
   
   private performWeightedChoice(options: {name: any, weight: number}[]): any {
@@ -637,54 +623,51 @@ export class FractalMusicEngine {
     }
 
   public evolve(barDuration: number, barCount: number): { events: FractalEvent[], instrumentHints: InstrumentHints } {
-      if (!this.navigator) {
-          return { events: [], instrumentHints: {} };
-      }
-  
-      this.epoch = barCount;
-  
-      if (this.epoch < this.config.introBars) {
-          return { events: [], instrumentHints: {} };
-      }
-  
-      if (this.epoch >= this.navigator.totalBars + 4) {
-        return { events: [], instrumentHints: {} }; 
-      }
-      
-      if (this.epoch >= this.navigator.totalBars) {
-          const promenadeBar = this.epoch - this.navigator.totalBars;
-          const promenadeEvents = this._generatePromenade(promenadeBar);
-          return { events: promenadeEvents, instrumentHints: {} };
-      }
-  
-      if (!isFinite(barDuration)) return { events: [], instrumentHints: {} };
-      
-      // #ИСПРАВЛЕНО (ПЛАН 949): Восстановлена эталонная, линейная логика.
-      // 1. Получаем навигационную информацию один раз.
-      const navigationInfo = this.navigator.tick(this.epoch);
-  
-      // 2. Последовательно определяем все хинты.
-      const melodyHint = this._chooseInstrumentForPart('melody', navigationInfo);
-      const accompanimentHint = this._chooseInstrumentForPart('accompaniment', navigationInfo);
-      const harmonyRules = navigationInfo?.currentPart.instrumentation?.harmony;
-      const harmonyHint = harmonyRules ? chooseHarmonyInstrument(harmonyRules, this.random) : 'piano';
-      
-      // 3. Собираем полный и корректный объект instrumentHints.
-      const instrumentHints: InstrumentHints = {
-          melody: melodyHint,
-          accompaniment: accompanimentHint,
-          harmony: harmonyHint,
-      };
-      
-      const melodyLogPrefix = `%cMelodyInstrumentLog:`;
-      const melodyLogCss = `color: #DA70D6`;
-      console.log(`${melodyLogPrefix} [1. Composer] Generated hint for bar ${this.epoch}: ${instrumentHints.melody}`, melodyLogCss);
-  
-      // 4. Генерируем музыку, передавая ПОЛНЫЕ хинты.
-      const events = this.generateOneBar(barDuration, navigationInfo!, instrumentHints);
-      
-      // 5. Возвращаем результат.
-      return { events, instrumentHints };
+    if (!this.navigator) {
+        return { events: [], instrumentHints: {} };
+    }
+
+    this.epoch = barCount;
+
+    if (this.epoch >= this.navigator.totalBars + 4) {
+        return { events: [], instrumentHints: {} };
+    }
+
+    if (this.epoch >= this.navigator.totalBars) {
+        const promenadeBar = this.epoch - this.navigator.totalBars;
+        const promenadeEvents = this._generatePromenade(promenadeBar);
+        return { events: promenadeEvents, instrumentHints: {} };
+    }
+
+    if (!isFinite(barDuration)) return { events: [], instrumentHints: {} };
+
+    // --- ЭТАЛОННАЯ ЛОГИКА (ПЛАН 949) ---
+    // 1. Получаем навигационную информацию один раз.
+    const navigationInfo = this.navigator.tick(this.epoch);
+
+    // 2. Последовательно определяем все хинты.
+    const melodyHint = this._chooseInstrumentForPart('melody', navigationInfo);
+    const accompanimentHint = this._chooseInstrumentForPart('accompaniment', navigationInfo);
+    const harmonyRules = navigationInfo?.currentPart.instrumentation?.harmony;
+    const harmonyHint = harmonyRules ? chooseHarmonyInstrument(harmonyRules, this.random) : 'piano';
+    
+    // 3. Собираем полный и корректный объект instrumentHints.
+    const instrumentHints: InstrumentHints = {
+        melody: melodyHint,
+        accompaniment: accompanimentHint,
+        harmony: harmonyHint,
+    };
+    
+    // Диагностический лог
+    const melodyLogPrefix = `%cMelodyInstrumentLog:`;
+    const melodyLogCss = `color: #DA70D6`;
+    console.log(`${melodyLogPrefix} [1. Composer] Generated hint for bar ${this.epoch}: ${instrumentHints.melody}`, melodyLogCss);
+
+    // 4. Генерируем музыку, передавая ПОЛНЫЕ хинты.
+    const events = this.generateOneBar(barDuration, navigationInfo!, instrumentHints);
+    
+    // 5. Возвращаем результат.
+    return { events, instrumentHints };
   }
 
 
@@ -898,6 +881,3 @@ export class FractalMusicEngine {
     return allEvents;
   }
 }
-
-
-    
