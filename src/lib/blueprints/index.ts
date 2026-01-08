@@ -61,6 +61,9 @@ export const BLUEPRINT_LIBRARY: Record<Genre, Partial<Record<Mood, MusicBlueprin
         contemplative: ContemplativeTranceBlueprint,
     },
     blues: {
+        // #ЗАЧЕМ: Этот блок маршрутизирует комбинацию `blues` + `melancholic` на
+        //         специально созданный `WinterBluesBlueprint`.
+        // #СВЯЗИ: Является частью решения проблемы с выбором гитарных сэмплеров.
         melancholic: WinterBluesBlueprint,
         dark: DarkBluesBlueprint,
         enthusiastic: EnthusiasticBluesBlueprint,

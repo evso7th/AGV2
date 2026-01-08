@@ -3,7 +3,7 @@ import type { MusicBlueprint } from '@/types/music';
 
 export const WinterBluesBlueprint: MusicBlueprint = {
     id: 'winter_blues',
-    name: 'Winter Blues (Calm Foundation)',
+    name: 'Winter Blues',
     description: 'A deep, melancholic blues based on a calm, riff-based structure, featuring a wide range of guitars.',
     mood: 'melancholic',
     musical: {
