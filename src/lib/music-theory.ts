@@ -414,14 +414,14 @@ export function createHarmonyAxiom(chord: GhostChord, mood: Mood, genre: Genre, 
 }
 
 export function createDrumAxiom(kit: DrumKit, genre: Genre, mood: Mood, tempo: number, random: { next: () => number, nextInt: (max: number) => number }, rules?: InstrumentBehaviorRules): { events: FractalEvent[], tags: string[] } {
-    const grammar = STYLE_DRUM_PATTERNS[genre] || STYLE_DRUM_PATTERNS['ambient'];
-    if (!grammar || !grammar.loops || grammar.loops.length === 0) return { events: [], tags: [] };
+    const grammar = DRUM_KITS[genre] || DRUM_KITS['ambient'];
+    if (!grammar || !BLUES_DRUM_RIFFS[mood] || BLUES_DRUM_RIFFS[mood]!.length === 0) return { events: [], tags: [] };
     
-    const loop = grammar.loops[random.nextInt(grammar.loops.length)];
+    const loop = BLUES_DRUM_RIFFS[mood]![random.nextInt(BLUES_DRUM_RIFFS[mood]!.length)];
     const axiomEvents: FractalEvent[] = [];
     if (!loop) return { events: [], tags: [] };
 
-    const allBaseEvents = [...(loop.kick || []), ...(loop.snare || []), ...(loop.hihat || [])];
+    const allBaseEvents = [...(loop.K || []).map(t => ({type: 'drum_kick', time:t})), ...(loop.SD || []).map(t => ({type: 'drum_snare', time:t})), ...(loop.HH || []).map(t => ({type: 'drum_hihat_closed', time:t}))];
     
     for (const baseEvent of allBaseEvents) {
         if (baseEvent.probability && random.next() > baseEvent.probability) continue;
@@ -438,7 +438,7 @@ export function createDrumAxiom(kit: DrumKit, genre: Genre, mood: Mood, tempo: n
 
         if (samplePool.length > 0) {
             const chosenType = samplePool[random.nextInt(samplePool.length)];
-            axiomEvents.push({ ...baseEvent, type: chosenType, note: 36, phrasing: 'staccato', dynamics: 'mf', params: {} } as FractalEvent);
+            axiomEvents.push({ ...baseEvent, type: chosenType, note: 36, phrasing: 'staccato', dynamics: 'mf', params: {}, duration: 0.25, weight: 0.8 } as FractalEvent);
         } else {
              if (originalType !== 'drum_ride') { 
                 console.warn(`[createDrumAxiom] No samples in kit for type category: ${originalType}`);
@@ -446,7 +446,7 @@ export function createDrumAxiom(kit: DrumKit, genre: Genre, mood: Mood, tempo: n
         }
     }
     
-    return { events: axiomEvents, tags: loop.tags };
+    return { events: axiomEvents, tags: [] };
 }
 
 export function createSfxScenario(mood: Mood, genre: Genre, random: { next: () => number, nextInt: (max: number) => number }): { drumFill: FractalEvent[], bassFill: FractalEvent[], accompanimentFill: FractalEvent[] } {
@@ -628,6 +628,49 @@ export function createBassFill(chord: GhostChord, mood: Mood, genre: Genre, rand
 
 export function createDrumFill(random: { next: () => number, nextInt: (max: number) => number }, params: any = {}): FractalEvent[] {
     return [];
+}
+
+export function generateBluesBassRiff(chord: GhostChord, technique: Technique, random: { next: () => number, nextInt: (max: number) => number }, mood: Mood): FractalEvent[] {
+    const phrase: FractalEvent[] = [];
+    const root = chord.rootNote;
+    const barDurationInBeats = 4.0;
+    const ticksPerBeat = 3;
+    
+    // Fallback to a neutral riff if the mood-specific one is not found
+    const riffCollection = BLUES_BASS_RIFFS[mood] ?? BLUES_BASS_RIFFS['contemplative'];
+    if (!riffCollection || riffCollection.length === 0) return [];
+    
+    const riffTemplate = riffCollection[random.nextInt(riffCollection.length)];
+
+    const barInChorus = 0; // Simplified for axiom generation
+    const rootOfChorus = root;
+    const step = (root - rootOfChorus + 12) % 12;
+    
+    let patternSource: 'I' | 'IV' | 'V' | 'turn' = 'I';
+    if (barInChorus === 11) {
+        patternSource = 'turn';
+    } else if (step === 5 || step === 4) {
+        patternSource = 'IV';
+    } else if (step === 7) {
+        patternSource = 'V';
+    }
+
+    const pattern = riffTemplate[patternSource];
+
+    for (const riffNote of pattern) {
+        phrase.push({
+            type: 'bass',
+            note: root + (DEGREE_TO_SEMITONE[riffNote.deg as BluesRiffDegree] || 0),
+            time: riffNote.t / ticksPerBeat,
+            duration: (riffNote.d || 2) / ticksPerBeat,
+            weight: 0.85 + random.next() * 0.1,
+            technique: 'pluck',
+            dynamics: 'mf',
+            phrasing: 'legato',
+            params: { cutoff: 800, resonance: 0.7, distortion: 0.15, portamento: 0.0 }
+        });
+    }
+    return phrase;
 }
 
 export function mutateBluesAccompaniment(phrase: FractalEvent[], chord: GhostChord, drumEvents: FractalEvent[], random: { next: () => number }): FractalEvent[] {
