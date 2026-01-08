@@ -32,8 +32,8 @@ export const WinterBluesBlueprint: MusicBlueprint = {
                     melody: { 
                         strategy: 'weighted', 
                         v1Options: [
-                            { name: 'acousticGuitar', weight: 0.4 },
-                            { name: 'electricGuitar', weight: 0.4 },
+                            { name: 'acousticGuitar', weight: 0.5 },
+                            { name: 'electricGuitar', weight: 0.5 },
                         ],
                         v2Options: [
                             { name: 'telecaster', weight: 0.5 },
@@ -74,14 +74,11 @@ export const WinterBluesBlueprint: MusicBlueprint = {
                     melody: { 
                         strategy: 'weighted', 
                         v1Options: [
-                            { name: 'electricGuitar', weight: 0.4 },
-                            { name: 'organ', weight: 0.3 },
-                            { name: 'synth', weight: 0.3 },
+                            { name: 'electricGuitar', weight: 1.0 },
                         ],
                         v2Options: [
                             { name: 'guitar_shineOn', weight: 0.5 },
-                            { name: 'organ', weight: 0.25 },
-                            { name: 'synth', weight: 0.25 },
+                            { name: 'guitar_muffLead', weight: 0.5 },
                         ]
                     },
                     harmony: {
@@ -115,8 +112,8 @@ export const WinterBluesBlueprint: MusicBlueprint = {
                     melody: { 
                         strategy: 'weighted', 
                         v1Options: [
-                           { name: 'acousticGuitar', weight: 0.4 },
-                           { name: 'electricGuitar', weight: 0.4 },
+                           { name: 'acousticGuitar', weight: 0.5 },
+                           { name: 'electricGuitar', weight: 0.5 },
                         ],
                         v2Options: [
                             { name: 'telecaster', weight: 0.5 },
