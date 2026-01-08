@@ -143,38 +143,73 @@ export type InstrumentHints = {
                                                         └─> [revSend] (На посыл реверберации)
 ```
 
-### 7. Дерево Связей Модулей V2 (Обновленное)
-
-```
-[UI]
-  └─ src/app/aura-groove-v2.tsx (управляет всем через хук)
-       │
-       └─ src/hooks/use-aura-groove.ts (вызывает AudioEngineContext)
-            │
-            └─ src/contexts/audio-engine-context.tsx  <──┐
-                 │ (1. Отправляет команды в Worker)      │ (5. Получает партитуру)
-                 │                                       │
-                 ├──> [WORKER THREAD] ───────────────>───┘
-                 │      │
-                 │      └─ src/app/ambient.worker.ts (Композитор)
-                 │           │
-                 │           └─ src/lib/fractal-music-engine.ts
-                 │                │
-                 │                ├─ src/lib/blueprints/ (Правила и Стили)
-                 │                │
-                 │                └─ src/lib/assets/ (Библиотеки Риффов)
-                 │                     ├─ blues-melody-riffs.ts
-                 │                     └─ drum-kits.ts
-                 │
-                 │ (2. Вызывает V2-менеджеры)
-                 │
-                 └──> src/lib/melody-synth-manager-v2.ts
-                        │ (3. Управляет Фабрикой)
-                        └─> src/lib/instrument-factory.ts
-                              │ (4. Читает Чертежи)
-                              └─> src/lib/presets-v2.ts
-```
 ---
+
+### 7. Приложение А: Эталонная Реализация Маршрутизации V2 (Версия 08ea14d)
+
+Этот раздел документирует правильную, работающую цепочку передачи `instrumentHint`, чтобы избежать будущих ошибок.
+
+1.  **"Заказ" (Блюпринт):**
+    В блюпринте (`winter.ts`) явно указывается желаемый инструмент для V2-движка.
+    ```typescript
+    instrumentation: {
+      melody: { 
+        strategy: 'weighted', 
+        v2Options: [ { name: 'telecaster', weight: 0.5 }, { name: 'blackAcoustic', weight: 0.5 } ]
+      }
+    }
+    ```
+
+2.  **"Композитор" (`FractalMusicEngine.evolve`):**
+    Метод `evolve` должен иметь следующую **линейную структуру**:
+    ```typescript
+    // 1. Получить правила от "штурмана"
+    const navigationInfo = this.navigator.tick(this.epoch);
+
+    // 2. Выбрать инструменты для ВСЕХ партий
+    const v2MelodyHint = this._chooseInstrumentForPart('melody', navigationInfo);
+    const accompanimentHint = this._chooseInstrumentForPart('accompaniment', navigationInfo);
+    // ... и т.д.
+
+    // 3. Собрать ПОЛНЫЙ объект "хинтов"
+    const instrumentHints: InstrumentHints = {
+        melody: v2MelodyHint,
+        accompaniment: accompanimentHint,
+        // ...
+    };
+
+    // 4. Сгенерировать партитуру, ПЕРЕДАВАЯ "хинты"
+    const events = this.generateOneBar(barDuration, navigationInfo, instrumentHints);
+
+    // 5. Вернуть полный результат
+    return { events, instrumentHints };
+    ```
+    Критически важно, что `generateOneBar` **не должен** заново создавать пустой `instrumentHints`.
+
+3.  **"Почтальон" (`ambient.worker.ts`):**
+    Воркер должен брать **весь** объект, возвращенный `evolve`, и целиком отправлять его в `payload`.
+    ```typescript
+    // `scorePayload` содержит и events, и instrumentHints
+    const scorePayload = fractalMusicEngine.evolve(this.barDuration, this.barCount);
+    // ...
+    self.postMessage({ 
+        type: 'SCORE_READY', 
+        payload: scorePayload // Отправляется ВЕСЬ объект
+    });
+    ```
+
+4.  **"Исполнитель" (`melody-synth-manager-v2.ts`):**
+    Принимая `instrumentHint` (например, `'telecaster'`), его внутренний маршрутизатор направляет задачу на нужный сэмплер.
+    ```typescript
+    if (instrumentHint === 'telecaster') {
+        this.telecasterSampler.schedule(...);
+        return; // Важно прервать выполнение, чтобы не уйти на стандартный synth
+    }
+    // ... остальная логика для синтезатора
+    ```
+
+**Вывод:** Соблюдение этой строгой последовательности гарантирует, что "заказ" из блюпринта будет без потерь и искажений доставлен до конечного исполнителя. Любое нарушение этой цепочки приводит к ошибкам маршрутизации.
+
 
 ### 8. Конвейер Уникальности: Гарантия Неповторимости Сессий
 
@@ -231,7 +266,7 @@ export type InstrumentHints = {
 
 2.  **"Штурман" (`BlueprintNavigator`):** На каждом такте `FME` запрашивает у "штурмана" правила для текущей позиции. Штурман возвращает весь объект `currentPart`, содержащий наш "заказ" из блюпринта.
 
-3.  **"Композитор" (`FractalMusicEngine`):** Получив правила, `FME` вызывает свой внутренний метод `_chooseInstrumentForPart('melody', ...)`.
+3.  **"Композитор" (`FractalMusicEngine`):** Получив от "штурмана" правила, `FME` приступает к выбору инструмента. Он вызывает свой внутренний метод `_chooseInstrumentForPart('melody', ...)`, передавая ему эти правила.
 
 4.  **"Отдел Кастинга" (`_chooseInstrumentForPart`):** Эта функция выполняет взвешенный случайный выбор из списка `v2Options`. Результатом будет строка: `'telecaster'` или `'blackAcoustic'`.
 
@@ -244,4 +279,6 @@ export type InstrumentHints = {
 
 7.  **"Умный Исполнитель" (`MelodySynthManagerV2`):** Этот менеджер, получив пачку событий и "хинт" `'telecaster'`, не пытается играть их на синтезаторе. Его внутренний маршрутизатор распознает этот специальный "хинт" и перенаправляет задачу на исполнение своему подчиненному — `this.telecasterSampler`.
 
-**Результат:** Эта архитектура гарантирует, что "заказ" из блюпринта будет точно выполнен. Она надежна, легко отлаживается с помощью логов `MelodyInstrumentLog` и исключает возможность "потери" или неверной интерпретации `instrumentHint` на любом из этапов.
+**Вывод:** Эта архитектура гарантирует, что "заказ" из блюпринта будет точно выполнен. Она надежна, легко отлаживается с помощью логов `MelodyInstrumentLog` и исключает возможность "потери" или неверной интерпретации `instrumentHint` на любом из этапов.
+
+    

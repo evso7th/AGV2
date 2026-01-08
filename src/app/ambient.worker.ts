@@ -1,3 +1,4 @@
+
 /**
  * @file AuraGroove Music Worker (Architecture: "The Dynamic Composer")
  *
@@ -145,8 +146,8 @@ const Scheduler = {
         // --- ЛОГИКА ДЕКОРАТОРА (ПЛАН 891/894) ---
         
         // 1. Основной движок ВСЕГДА работает в фоне для "прогрева".
-        const mainEnginePayload = fractalMusicEngine.evolve(this.barDuration, this.barCount);
-
+        const scorePayload = fractalMusicEngine.evolve(this.barDuration, this.barCount);
+        
         let finalPayload: { events: FractalEvent[], instrumentHints: InstrumentHints };
 
         // 2. Если мы в периоде интро, вызываем ИЗОЛИРОВАННЫЙ генератор пролога.
@@ -169,13 +170,11 @@ const Scheduler = {
             }
         } else {
             // 3. Интро закончилось, используем основную партитуру от `FractalMusicEngine`.
-            finalPayload = mainEnginePayload;
+            finalPayload = scorePayload;
         }
 
-        const scorePayload = finalPayload; 
-        
         const counts = { drums: 0, bass: 0, melody: 0, accompaniment: 0, harmony: 0, sfx: 0, sparkles: 0 };
-        for (const event of scorePayload.events) {
+        for (const event of finalPayload.events) {
             if (event.type === 'bass') counts.bass++;
             else if (event.type === 'melody') counts.melody++;
             else if (event.type === 'accompaniment') counts.accompaniment++;
@@ -186,7 +185,7 @@ const Scheduler = {
                 counts.drums++;
             }
         }
-        const logString = `[Worker @ Bar ${this.barCount}] Events: ${scorePayload.events.length} | Drums: ${counts.drums}, Bass: ${counts.bass}, Melody: ${counts.melody}, Accomp: ${counts.accompaniment}, Harmony: ${counts.harmony}, SFX: ${counts.sfx}, Sparkles: ${counts.sparkles}`;
+        const logString = `[Worker @ Bar ${this.barCount}] Events: ${finalPayload.events.length} | Drums: ${counts.drums}, Bass: ${counts.bass}, Melody: ${counts.melody}, Accomp: ${counts.accompaniment}, Harmony: ${counts.harmony}, SFX: ${counts.sfx}, Sparkles: ${counts.sparkles}`;
         console.log(logString);
 
 
@@ -195,7 +194,7 @@ const Scheduler = {
         const sparkleEvents: FractalEvent[] = [];
         const harmonyEvents: FractalEvent[] = [];
         
-        for (const event of scorePayload.events) {
+        for (const event of finalPayload.events) {
             if (event.type === 'sfx') {
                 sfxEvents.push(event);
             } else if (event.type === 'sparkle') {
@@ -207,10 +206,10 @@ const Scheduler = {
             }
         }
 
-        // #ИСПРАВЛЕНО (ПЛАН 943): Добавлен instrumentHints в payload и логирование.
+        // #ИСПРАВЛЕНО (ПЛАН 943/949): `instrumentHints` теперь всегда корректно включаются в payload.
         const payloadForMainThread = {
             events: mainScoreEvents,
-            instrumentHints: scorePayload.instrumentHints,
+            instrumentHints: finalPayload.instrumentHints,
             barDuration: this.barDuration,
             barCount: this.barCount,
         };
@@ -238,7 +237,7 @@ const Scheduler = {
         if (harmonyEvents.length > 0) {
              const harmonyPayload = {
                  events: harmonyEvents,
-                 instrumentHints: scorePayload.instrumentHints,
+                 instrumentHints: finalPayload.instrumentHints,
                  barDuration: this.barDuration
              };
              self.postMessage({ type: 'HARMONY_SCORE_READY', payload: harmonyPayload });
@@ -306,3 +305,6 @@ self.onmessage = async (event: MessageEvent) => {
     
 
 
+
+
+    
