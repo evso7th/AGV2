@@ -45,7 +45,7 @@ export const AnxiousBluesBlueprint: MusicBlueprint = {
                         phrases: {}
                     },
                 ],
-                outroFill: null
+                outroFill: null,
             },
             {
                 id: 'MAIN_A', name: 'Frantic Riff', duration: { percent: 35 },

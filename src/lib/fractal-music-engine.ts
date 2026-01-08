@@ -1,5 +1,4 @@
 
-
 import type { FractalEvent, Mood, Genre, Technique, BassSynthParams, InstrumentType, MelodyInstrument, AccompanimentInstrument, ResonanceMatrix, InstrumentHints, AccompanimentTechnique, GhostChord, SfxRule, V1MelodyInstrument, V2MelodyInstrument, BlueprintPart, InstrumentationRules, InstrumentBehaviorRules, BluesMelody, IntroRules, InstrumentPart, DrumKit, BluesGuitarRiff, BluesSoloPhrase, BluesRiffDegree } from './fractal';
 import { ElectronicK, TraditionalK, AmbientK, MelancholicMinorK } from './resonance-matrices';
 import { BlueprintNavigator, type NavigationInfo } from './blueprint-navigator';
@@ -7,24 +6,16 @@ import { getBlueprint } from './blueprints';
 import { V2_PRESETS } from './presets-v2';
 
 // --- МУЗЫКАЛЬНЫЕ АССЕТЫ (БАЗА ЗНАНИЙ) ---
-// #ЗАЧЕМ: Эти файлы содержат "сырые" музыкальные данные (риффы, биты, мелодии),
-//          которые движок использует как строительные блоки. Это позволяет отделить
-//          музыкальные знания от логики их исполнения.
-// #СВЯЗИ: Используются функциями-генераторами внутри этого файла.
 import { PARANOID_STYLE_RIFF } from './assets/rock-riffs';
 import { BLUES_BASS_RIFFS } from './assets/blues-bass-riffs';
 import { NEUTRAL_BLUES_BASS_RIFFS } from './assets/neutral-blues-riffs';
 import { BLUES_GUITAR_RIFFS, BLUES_GUITAR_VOICINGS } from './assets/blues-guitar-riffs';
 import { BLUES_MELODY_RIFFS } from './assets/blues-melody-riffs';
-// #ИСПРАВЛЕНО (ПЛАН 902.3, ШАГ 1): Импортируем новые библиотеки для соло-гитары.
-// #КОММЕНТАРИЙ (ПЛАН 902.3, Шаг 1, Исправление): Добавляем пояснение к импорту.
-//         Эти библиотеки содержат "лики" (короткие фразы) и "планы" (структуры соло),
-//         которые позволяют движку собирать сложные, заранее срежиссированные импровизации.
 import { BLUES_SOLO_LICKS, BLUES_SOLO_PLANS } from './assets/blues_guitar_solo';
 import { BLUES_DRUM_RIFFS } from './assets/blues-drum-riffs';
 import { DRUM_KITS } from './assets/drum-kits';
 
-import { getScaleForMood, generateGhostHarmonyTrack, createDrumAxiom, createAmbientBassAxiom, createAccompanimentAxiom, createHarmonyAxiom, createMelodyMotif, mutateBassPhrase, createBassFill, createDrumFill, chooseHarmonyInstrument, DEGREE_TO_SEMITONE } from './music-theory';
+import { getScaleForMood, generateGhostHarmonyTrack, createDrumAxiom, createAmbientBassAxiom, createAccompanimentAxiom, createHarmonyAxiom, createMelodyMotif, mutateBassPhrase, createBassFill, createDrumFill, chooseHarmonyInstrument, DEGREE_TO_SEMITONE, mutateBluesAccompaniment, mutateBluesMelody } from './music-theory';
 
 
 export type Branch = {
@@ -125,24 +116,20 @@ export class FractalMusicEngine {
 
   private bluesChorusCache: { barStart: number, events: FractalEvent[], log: string } | null = null;
 
-  // #ИСПРАВЛЕНО (ПЛАН 919): "Конвейер Уникальности" - хранилище для перетасованных индексов/ID
   private shuffledBassRiffIndices: number[] = [];
   private shuffledDrumRiffIndices: number[] = [];
   private shuffledMelodyIDs: string[] = [];
   private shuffledGuitarRiffIDs: string[] = [];
 
-  // #ИСПРАВЛЕНО (ПЛАН 919): Указатели "конвейера", гарантирующие, что мы не будем повторять риффы между сюитами
   private bassRiffConveyorIndex = 0;
   private drumRiffConveyorIndex = 0;
   private melodyConveyorIndex = 0;
   private guitarRiffConveyorIndex = 0;
 
-  // #ИСПРАВЛЕНО (ПЛАН 919): "Базовые" риффы, выбранные для ТЕКУЩЕЙ сюиты
   private baseDrumRiffIndex: number = 0;
   private baseBassRiffIndex: number = 0;
   private baseMelodyId: string | null = null;
   
-  // #ИСПРАВЛЕНО (ПЛАН 919): "Текущие" риффы, которые могут мутировать внутри сюиты
   private currentDrumRiffIndex: number = 0;
   private currentBassRiffIndex: number = 0;
   private currentGuitarRiffId: string | null = null;
@@ -150,8 +137,10 @@ export class FractalMusicEngine {
 
   constructor(config: EngineConfig) {
     this.config = { ...config };
+    // #ИСПРАВЛЕНО (ПЛАН 921): Генератор создается, но initialize() не вызывается,
+    //                        чтобы дождаться финальных настроек.
     this.random = seededRandom(config.seed);
-    this.nextWeatherEventEpoch = 0;
+    this.nextWeatherEventEpoch = 0; 
   }
 
   public get tempo(): number { return this.config.tempo; }
@@ -175,6 +164,8 @@ export class FractalMusicEngine {
   }
 
   public async initialize(force: boolean = false) {
+    // #ИСПРАВЛЕНО (ПЛАН 921): `initialize` теперь вызывается с актуальными данными, а не при создании.
+    //                        Это решает проблему "одинакового первого запуска".
     if (this.navigator && !force) return;
 
     this.random = seededRandom(this.config.seed);
@@ -186,10 +177,11 @@ export class FractalMusicEngine {
     this.hasBassBeenMutated = false;
     this.bluesChorusCache = null;
     
+    // --- Логика "Конвейера Уникальности" ---
     const allBassRiffs = Object.values(BLUES_BASS_RIFFS).flat();
     this.shuffledBassRiffIndices = this.random.shuffle(Array.from({ length: allBassRiffs.length }, (_, i) => i));
     this.baseBassRiffIndex = this.shuffledBassRiffIndices[this.bassRiffConveyorIndex % this.shuffledBassRiffIndices.length];
-    this.bassRiffConveyorIndex++;
+    this.bassRiffConveyorIndex++; // Сдвигаем указатель конвейера
 
     const allDrumRiffs = Object.values(BLUES_DRUM_RIFFS).flat();
     this.shuffledDrumRiffIndices = this.random.shuffle(Array.from({ length: allDrumRiffs.length }, (_, i) => i));
@@ -200,14 +192,14 @@ export class FractalMusicEngine {
     this.baseMelodyId = this.shuffledMelodyIDs[this.melodyConveyorIndex % this.shuffledMelodyIDs.length];
     this.melodyConveyorIndex++;
 
-    // #ИСПРАВЛЕНО (ПЛАН 919): Сбрасываем текущие риффы на базовые для новой сюиты
     this.currentDrumRiffIndex = this.baseDrumRiffIndex;
     this.currentBassRiffIndex = this.baseBassRiffIndex;
     this.currentGuitarRiffId = this.baseMelodyId;
+    
+    console.log(`%c[FME.initialize] New Suite Seeded! Base Riffs -> Bass: ${this.baseBassRiffIndex}, Drums: ${this.baseDrumRiffIndex}, Melody: ${this.baseMelodyId}`, 'color: cyan; font-weight: bold;');
 
 
     const blueprint = await getBlueprint(this.config.genre, this.config.mood);
-    console.log(`[FME] Blueprint now active: ${blueprint.name}`);
     this.navigator = new BlueprintNavigator(blueprint, this.config.seed, this.config.genre, this.config.mood, this.config.introBars);
     
     const key = getScaleForMood(this.config.mood, this.config.genre)[0];
@@ -227,7 +219,6 @@ export class FractalMusicEngine {
     const introPart = this.navigator.blueprint.structure.parts.find(p => p.id.startsWith('INTRO'));
     if (introPart?.introRules) {
         this.introInstrumentOrder = this.random.shuffle([...introPart.introRules.instrumentPool]);
-        console.log(`[IntroSetup] Unique instrument entry order created: [${this.introInstrumentOrder.join(', ')}]`);
     }
 
     const firstChord = this.ghostHarmonyTrack[0];
@@ -236,6 +227,7 @@ export class FractalMusicEngine {
     const initialBassTechnique = initialNavInfo?.currentPart.instrumentRules?.bass?.techniques?.[0].value as Technique || 'drone';
 
     if (this.config.genre === 'blues') {
+        // Blues-специфичная инициализация (может быть пустой, т.к. риффы берутся из библиотек)
     } else {
         const newBassAxiom = createAmbientBassAxiom(firstChord, this.config.mood, this.config.genre, this.random, this.config.tempo, initialBassTechnique);
         for (let i = 0; i < 4; i++) {
@@ -254,7 +246,6 @@ export class FractalMusicEngine {
       navInfo: NavigationInfo | null
   ): MelodyInstrument | AccompanimentInstrument | undefined {
       if (!navInfo) {
-          console.warn(`[FME] _chooseInstrumentForPart called with no navInfo.`);
           return undefined;
       }
   
@@ -283,7 +274,6 @@ export class FractalMusicEngine {
   private performWeightedChoice(options: {name: any, weight: number}[]): any {
     const totalWeight = options.reduce((sum, opt) => sum + opt.weight, 0);
     if (totalWeight <= 0) {
-        console.warn(`[FME] Total weight for options is zero. Returning first option.`);
         return options[0]?.name;
     }
 
@@ -295,7 +285,6 @@ export class FractalMusicEngine {
         }
     }
 
-    // Fallback just in case, though it should not be reached with correct weights
     return options[options.length - 1].name;
   }
 
@@ -329,9 +318,9 @@ export class FractalMusicEngine {
         const genre = this.config.genre;
         const mood = this.config.mood;
 
-        // #ИСПРАВЛЕНО (ПЛАН 919): Для блюза используем "текущий" бит из конвейера
         if (genre === 'blues') {
             const allDrumRiffs = Object.values(BLUES_DRUM_RIFFS).flat();
+            if (allDrumRiffs.length === 0) return [];
             const riffTemplate = allDrumRiffs[this.currentDrumRiffIndex % allDrumRiffs.length];
             if (!riffTemplate) return [];
             
@@ -373,7 +362,7 @@ export class FractalMusicEngine {
         const finalKit: DrumKit = JSON.parse(JSON.stringify(baseKit));
 
         if (drumRules?.ride?.enabled === true) {
-            finalKit.ride = [...new Set([...finalKit.ride, ...DRUM_KITS.ambient!.intro!.ride!])];
+            finalKit.ride = [...new Set([...finalKit.ride, ...ALL_RIDES])];
         } else if (drumRules?.ride?.enabled === false) {
             finalKit.ride = [];
         }
@@ -461,7 +450,6 @@ export class FractalMusicEngine {
         const allBassRiffs = Object.values(BLUES_BASS_RIFFS).flat();
         if (allBassRiffs.length === 0) return [];
         
-        // #ИСПРАВЛЕНО (ПЛАН 919): Используем this.currentBassRiffIndex вместо случайного выбора
         const riffTemplate = allBassRiffs[this.currentBassRiffIndex % allBassRiffs.length];
 
         const barInChorus = this.epoch % 12;
@@ -471,7 +459,7 @@ export class FractalMusicEngine {
         let patternSource: 'I' | 'IV' | 'V' | 'turn' = 'I';
         if (barInChorus === 11) {
             patternSource = 'turn';
-        } else if (step === 5 || step === 4) { // Allow for bV substitution for IV
+        } else if (step === 5 || step === 4) {
             patternSource = 'IV';
         } else if (step === 7) {
             patternSource = 'V';
@@ -514,7 +502,8 @@ export class FractalMusicEngine {
         let logMessage = "";
 
         if (isSoloSection) {
-            const soloPlanName = Object.keys(BLUES_SOLO_PLANS)[0]; // Simplified selection
+            // #ИСПРАВЛЕНО (ПЛАН 919): Эта логика теперь использует планы соло, а не басовые риффы.
+            const soloPlanName = Object.keys(BLUES_SOLO_PLANS)[chorusIndex % Object.keys(BLUES_SOLO_PLANS).length]; // Cycle through plans
             const soloPlan = BLUES_SOLO_PLANS[soloPlanName];
 
             if (!soloPlan || chorusIndex >= soloPlan.choruses.length) {
@@ -522,12 +511,11 @@ export class FractalMusicEngine {
                 return { events: [], log: logMessage };
             }
 
-            const currentChorusPlan = soloPlan.choruses[chorusIndex];
-            logMessage = `[FME] Assembling solo chorus ${chorusIndex + 1}/${soloPlan.choruses.length} using plan "${soloPlanName}".`;
+            const currentChorusPlan = soloPlan.choruses[chorusIndex % soloPlan.choruses.length]; // Use chorus index for progression
+            logMessage = `[FME] Assembling solo chorus ${chorusIndex + 1} using plan "${soloPlanName}".`;
 
             for (let barIndex = 0; barIndex < 12; barIndex++) {
                 const lickId = currentChorusPlan[barIndex];
-                // #ИСПРАВЛЕНО (ПЛАН 919): Используем правильную библиотеку BLUES_SOLO_LICKS
                 const lickTemplate = BLUES_SOLO_LICKS[lickId];
                 const currentChord = chorusChords.find(c => c.bar % 12 === barIndex);
 
@@ -553,10 +541,10 @@ export class FractalMusicEngine {
                     finalEvents.push(event);
                 }
             }
-        } else { // Not a solo section, generate main theme
+        } else { // Not a solo section, generate main theme from melody riffs
             const riffId = this.currentGuitarRiffId || BLUES_MELODY_RIFFS[0].id;
             const selectedRiff = BLUES_MELODY_RIFFS.find(r => r.id === riffId) ?? BLUES_MELODY_RIFFS[0];
-            logMessage = `[FME] Generating main theme using riff "${selectedRiff.id}".`;
+            logMessage = `[FME] Generating main theme using melody riff "${selectedRiff.id}".`;
 
             for (let barIndex = 0; barIndex < 12; barIndex++) {
                 const currentChord = chorusChords.find(c => c.bar % 12 === barIndex);
@@ -596,7 +584,6 @@ export class FractalMusicEngine {
 
   public evolve(barDuration: number, barCount: number): { events: FractalEvent[], instrumentHints: InstrumentHints } {
       if (!this.navigator) {
-          console.warn("[FME] Evolve called but navigator is not ready. Waiting for initialization.");
           return { events: [], instrumentHints: {} };
       }
 
@@ -708,7 +695,6 @@ export class FractalMusicEngine {
     
     let allEvents: FractalEvent[] = [];
 
-    // #ИСПРАВЛЕНО (ПЛАН 919): Логика мутаций для блюза
     const isChorusBoundary = this.config.genre === 'blues' && this.epoch > 0 && this.epoch % 12 === 0;
     if (isChorusBoundary) {
         if (this.random.next() < 0.4) { // 40% шанс сменить басовый рифф
@@ -726,26 +712,22 @@ export class FractalMusicEngine {
     let accompEvents: FractalEvent[] = [];
     if (navInfo.currentPart.layers.accompaniment) {
         const registerHint = navInfo.currentPart.instrumentRules?.accompaniment?.register?.preferred;
-        if (this.accompPhraseLibrary.length === 0 || this.currentAccompPhraseIndex >= this.accompPhraseLibrary.length || this.accompPhraseLibrary[this.currentAccompPhraseIndex].length === 0 || this.epoch % 4 === 0) {
-            const newAxiom = createAccompanimentAxiom(currentChord, this.config.mood, this.config.genre, this.random, this.config.tempo, registerHint);
-            if (this.accompPhraseLibrary.length === 0) {
-                this.accompPhraseLibrary.push(newAxiom);
-            } else {
-                this.accompPhraseLibrary[this.currentAccompPhraseIndex] = newAxiom;
-            }
+        const newAxiom = createAccompanimentAxiom(currentChord, this.config.mood, this.config.genre, this.random, this.config.tempo, registerHint);
+        if (this.config.genre === 'blues' && this.epoch % 2 === 0) {
+            accompEvents = mutateBluesAccompaniment(newAxiom, currentChord, drumEvents, this.random);
+        } else {
+            accompEvents = newAxiom;
         }
-        accompEvents = this.accompPhraseLibrary[this.currentAccompPhraseIndex] || [];
     }
-
+    
     if (navInfo.currentPart.accompanimentMelodyDouble?.enabled && accompEvents.length > 0) {
         const { instrument, octaveShift } = navInfo.currentPart.accompanimentMelodyDouble;
-        const accompDoubleEvents: FractalEvent[] = accompEvents.map(e => ({
+        const doubleEvents = accompEvents.map(e => ({
             ...JSON.parse(JSON.stringify(e)),
-            type: 'melody',
+            type: 'melody' as InstrumentType,
             note: e.note + (12 * octaveShift),
-            weight: e.weight * 0.9,
         }));
-        allEvents.push(...accompDoubleEvents);
+        allEvents.push(...doubleEvents);
         instrumentHints.melody = instrument; 
     }
 
@@ -757,14 +739,10 @@ export class FractalMusicEngine {
     }
 
     let bassEvents: FractalEvent[] = [];
-    const bassRules = navInfo.currentPart.instrumentRules?.bass;
-    const bassTechnique = bassRules?.techniques?.[0].value as Technique || 'drone';
-
     if (navInfo.currentPart.layers.bass) {
       if (this.config.genre === 'blues') {
           bassEvents = this.generateBluesBassRiff(currentChord, 'riff', this.random, this.config.mood);
       } else {
-          // #ИСПРАВЛЕНО (ПЛАН 919): Логика мутаций для эмбиента
           const PHRASE_VARIATION_INTERVAL = 4;
           if (this.epoch > 0 && this.epoch % PHRASE_VARIATION_INTERVAL === 0) {
               this.currentBassPhraseIndex = (this.currentBassPhraseIndex + 1) % this.bassPhraseLibrary.length;
@@ -778,13 +756,13 @@ export class FractalMusicEngine {
     
     if (navInfo.currentPart.bassAccompanimentDouble?.enabled && bassEvents.length > 0) {
         const { instrument, octaveShift } = navInfo.currentPart.bassAccompanimentDouble;
-        const bassDoubleEvents: FractalEvent[] = bassEvents.map(e => ({
+        const doubleEvents = bassEvents.map(e => ({
             ...JSON.parse(JSON.stringify(e)),
-            type: 'melody',
+            type: 'melody' as InstrumentType,
             note: e.note + (12 * octaveShift),
-            weight: e.weight * 0.8,
+            weight: e.weight * 0.9,
         }));
-        allEvents.push(...bassDoubleEvents);
+        allEvents.push(...doubleEvents);
         instrumentHints.melody = instrument; 
     }
     
@@ -801,7 +779,7 @@ export class FractalMusicEngine {
     let melodyEvents: FractalEvent[] = [];
     const melodyRules = navInfo.currentPart.instrumentRules?.melody;
 
-    if (navInfo.currentPart.layers.melody && !navInfo.currentPart.accompanimentMelodyDouble?.enabled && !navInfo.currentPart.bassAccompanimentDouble?.enabled && melodyRules) {
+    if (navInfo.currentPart.layers.melody && !navInfo.currentPart.bassAccompanimentDouble?.enabled && !navInfo.currentPart.accompanimentMelodyDouble?.enabled && melodyRules) {
         if (this.config.genre === 'blues') {
             const barInChorus = this.epoch % 12;
             const chorusIndex = Math.floor((this.epoch % 36) / 12);
@@ -811,8 +789,8 @@ export class FractalMusicEngine {
                 const chorusBarStart = this.epoch - barInChorus;
                 const chorusChords = this.ghostHarmonyTrack.filter(c => c.bar >= chorusBarStart && c.bar < chorusBarStart + 12);
                 if (chorusChords.length > 0) {
-                    // #ИСПРАВЛЕНО (ПЛАН 919): Передаем правильные параметры в генератор соло/мелодии
                     this.bluesChorusCache = this.generateBluesMelodyChorus(chorusChords, this.config.mood, this.random, isSoloSection, chorusIndex, melodyRules.register?.preferred);
+                     console.log(`%c${this.bluesChorusCache.log}`, 'color: #E6E6FA');
                 }
             }
             
@@ -849,9 +827,7 @@ export class FractalMusicEngine {
     allEvents.push(...(bassEvents || []), ...(drumEvents || []), ...(accompEvents || []), ...(melodyEvents || []), ...(harmonyEvents || []));
     
     const sfxRules = navInfo.currentPart.instrumentRules?.sfx as SfxRule | undefined;
-    const sfxChance = sfxRules?.eventProbability ?? 0.08;
-
-    if (navInfo.currentPart.layers.sfx && this.random.next() < sfxChance) {
+    if (navInfo.currentPart.layers.sfx && sfxRules && this.random.next() < sfxRules.eventProbability) {
         allEvents.push({ 
             type: 'sfx', note: 60, time: this.random.next() * 4, duration: 2, weight: 0.6, 
             technique: 'swell', dynamics: 'mf', phrasing: 'legato', 
@@ -859,7 +835,8 @@ export class FractalMusicEngine {
         });
     }
 
-    if (navInfo.currentPart.layers.sparkles && this.random.next() < 0.1) {
+    const sparkleRules = navInfo.currentPart.instrumentRules?.sparkles;
+    if (navInfo.currentPart.layers.sparkles && sparkleRules && this.random.next() < (sparkleRules.eventProbability || 0.1)) {
         allEvents.push({ type: 'sparkle', note: 60, time: this.random.next() * 4, duration: 1, weight: 0.5, technique: 'hit', dynamics: 'p', phrasing: 'legato', params: {mood: this.config.mood, genre: this.config.genre}});
     }
     
@@ -874,5 +851,3 @@ export class FractalMusicEngine {
     return allEvents;
   }
 }
-
-    

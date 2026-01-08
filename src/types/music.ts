@@ -197,8 +197,15 @@ export type InstrumentBehaviorRules = {
         enabled: boolean;
         quietWindows?: { start: number, end: number }[];
     };
+    // #ЗАЧЕМ: Позволяет блюпринту декларативно управлять характером звука.
+    // #ЧТО: Это объект, который может содержать команды для модификации
+    //       стандартного пресета инструмента.
+    // #СВЯЗИ: Читается в `FractalMusicEngine` для динамической настройки звука.
     presetModifiers?: {
-        octaveShift?: number;
+        octaveShift?: number; // Сдвиг октавы для баса
+        cutoff?: number;      // Яркость фильтра
+        resonance?: number;   // Резонанс фильтра
+        distortion?: number;  // Уровень дисторшна
     };
     fills?: { onBundleBoundary?: boolean };
     useSnare?: boolean;
@@ -207,6 +214,7 @@ export type InstrumentBehaviorRules = {
     alternatePerc?: boolean;
     useGhostHat?: boolean;
     useBrushes?: boolean;
+    soloPlan?: string;
 };
 
 
