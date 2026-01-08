@@ -248,7 +248,7 @@ export class FractalMusicEngine {
     this.needsBassReset = false;
   }
   
-    private _chooseInstrumentForPart(
+  private _chooseInstrumentForPart(
       part: 'melody' | 'accompaniment',
       navInfo: NavigationInfo | null
   ): MelodyInstrument | AccompanimentInstrument | undefined {
@@ -266,16 +266,31 @@ export class FractalMusicEngine {
       const useV2 = this.config.useMelodyV2;
       const options = useV2 ? rules.v2Options : rules.v1Options;
   
-      if (!options || options.length === 0) {
-          const fallbackOptions = !useV2 ? rules.v2Options : rules.v1Options;
-          if (!fallbackOptions || fallbackOptions.length === 0) {
+      let potentialOptions = options;
+  
+      if (!potentialOptions || potentialOptions.length === 0) {
+          potentialOptions = !useV2 ? rules.v2Options : rules.v1Options;
+          if (!potentialOptions || potentialOptions.length === 0) {
               const ultimateFallback = part === 'melody' ? 'organ' : 'synth';
               return ultimateFallback;
           }
-          return this.performWeightedChoice(fallbackOptions);
       }
   
-      return this.performWeightedChoice(options);
+      const chosenName = this.performWeightedChoice(potentialOptions);
+      
+      // #РЕШЕНИЕ (ПЛАН 936): Добавлена специальная обработка для гитарных сэмплеров.
+      // #ЗАЧЕМ: Этот блок гарантирует, что если блюпринт запрашивает 'telecaster' или 'blackAcoustic',
+      //         движок вернет именно этот "хинт", а не будет пытаться найти его среди
+      //         синтезаторных V1/V2 пресетов.
+      // #ЧТО: Проверяем, является ли выбранное имя одним из специальных сэмплерных инструментов.
+      //      Если да - немедленно возвращаем его.
+      // #СВЯЗИ: Позволяет `audio-engine-context` корректно маршрутизировать события
+      //         в `TelecasterGuitarSampler` или `BlackGuitarSampler`.
+      if (chosenName === 'telecaster' || chosenName === 'blackAcoustic') {
+          return chosenName as MelodyInstrument;
+      }
+  
+      return chosenName;
   }
   
   private performWeightedChoice(options: {name: any, weight: number}[]): any {
@@ -556,7 +571,7 @@ export class FractalMusicEngine {
 
             const getMoodCategory = (m: Mood): keyof typeof moodMap | null => {
                 for (const category in moodMap) {
-                    if (moodMap[category].includes(m)) return category as keyof typeof moodMap;
+                    if (moodMap[category as keyof typeof moodMap].includes(m)) return category as keyof typeof moodMap;
                 }
                 return null;
             };
