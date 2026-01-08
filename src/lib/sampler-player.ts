@@ -19,7 +19,7 @@ export class SamplerPlayer {
         
         // Create and connect the preamp
         this.preamp = this.audioContext.createGain();
-        this.preamp.gain.value = 2.0; // Boost volume by 2x
+        this.preamp.gain.value = 5.0; // Boost volume by 5x
         this.preamp.connect(this.outputNode);
         
         this.outputNode.connect(destination);
