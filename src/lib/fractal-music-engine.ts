@@ -119,7 +119,6 @@ export class FractalMusicEngine {
 
   private shuffledBassRiffIndices: number[] = [];
   private shuffledDrumRiffIndices: number[] = [];
-  private shuffledMelodyIDs: string[] = [];
   private shuffledGuitarRiffIDs: string[] = [];
 
   private bassRiffConveyorIndex = 0;
@@ -294,6 +293,7 @@ export class FractalMusicEngine {
   }
   
   private performWeightedChoice(options: {name: any, weight: number}[]): any {
+    if (!options || options.length === 0) return undefined;
     const totalWeight = options.reduce((sum, opt) => sum + opt.weight, 0);
     if (totalWeight <= 0) {
         return options[0]?.name;
@@ -571,7 +571,7 @@ export class FractalMusicEngine {
 
             const getMoodCategory = (m: Mood): keyof typeof moodMap | null => {
                 for (const category in moodMap) {
-                    if (moodMap[category as keyof typeof moodMap].includes(m)) return category as keyof typeof moodMap;
+                    if ((moodMap[category as keyof typeof moodMap]).includes(m)) return category as keyof typeof moodMap;
                 }
                 return null;
             };
@@ -681,6 +681,7 @@ export class FractalMusicEngine {
       };
 
       // #РЕШЕНИЕ (ПЛАН 941): Добавлено детальное логирование для отслеживания `instrumentHint`.
+      // #ИСПРАВЛЕНО (ПЛАН 942): 'instrumentHints' теперь корректно включает 'melody' хинт.
       console.log(`%cMelodyInstrumentLog: [1. Composer] Generated hint for bar ${this.epoch}: ${instrumentHints.melody}`, 'color: #DA70D6');
       
       const events = this.generateOneBar(barDuration, navigationInfo!, instrumentHints);
@@ -899,3 +900,4 @@ export class FractalMusicEngine {
     return allEvents;
   }
 }
+
