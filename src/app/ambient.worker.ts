@@ -180,7 +180,7 @@ const Scheduler = {
             else if (event.type === 'accompaniment') counts.accompaniment++;
             else if (event.type === 'harmony') counts.harmony++;
             else if (event.type === 'sfx') counts.sfx++;
-            else if (event.type === 'sparkle') counts.sparkles++;
+            else if (event.type === 'sparkle') counts.sparkle++;
             else if ((event.type as string).startsWith('drum_') || (event.type as string).startsWith('perc-')) {
                 counts.drums++;
             }
@@ -215,7 +215,7 @@ const Scheduler = {
         };
 
         // Запрошенный лог для отладки
-        console.log('[Worker] Payload being sent to main thread:', JSON.parse(JSON.stringify(payloadForMainThread)));
+        console.log('[Worker] Payload being sent to main thread: ', JSON.parse(JSON.stringify(payloadForMainThread)));
 
         self.postMessage({ 
             type: 'SCORE_READY', 
@@ -234,12 +234,15 @@ const Scheduler = {
             });
         }
 
+        // #ИСПРАВЛЕНО (ПЛАН 964): Добавлена отправка событий гармонии.
         if (harmonyEvents.length > 0) {
              const harmonyPayload = {
                  events: harmonyEvents,
                  instrumentHints: finalPayload.instrumentHints,
-                 barDuration: this.barDuration
+                 barDuration: this.barDuration,
+                 barCount: this.barCount
              };
+             console.log('[Worker] Harmony payload being sent to main thread: ', JSON.parse(JSON.stringify(harmonyPayload)));
              self.postMessage({ type: 'HARMONY_SCORE_READY', payload: harmonyPayload });
         }
 
@@ -301,10 +304,5 @@ self.onmessage = async (event: MessageEvent) => {
         self.postMessage({ type: 'error', error: e instanceof Error ? e.message : String(e) });
     }
 };
-
-    
-
-
-
 
     

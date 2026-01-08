@@ -284,6 +284,7 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
 
                 } else if (type === 'HARMONY_SCORE_READY' && payload && 'events' in payload) {
                      const { events, barDuration, instrumentHints, barCount } = payload;
+                     console.log(`%c[AudioEngine] Received HARMONY_SCORE_READY for bar ${barCount} with ${events?.length} events.`, 'color: violet');
                      if(events && barDuration && settingsRef.current && barCount !== undefined){
                         scheduleEvents(events, nextBarTimeRef.current, settingsRef.current.bpm, barCount, instrumentHints);
                     }
@@ -497,3 +498,5 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
     </AudioEngineContext.Provider>
   );
 };
+
+    
