@@ -360,16 +360,21 @@ export function createAccompanimentAxiom(chord: GhostChord, mood: Mood, genre: G
     if (registerHint === 'high') baseOctave = 4;
 
     // #ИСПРАВЛЕНО (ПЛАН 916): Добавлен случайный выбор техники исполнения
-    if (random.next() < 0.6) { // 60% шанс сыграть длинный аккорд
-        const duration = 4.0;
-        chordNotes.forEach((note, index) => {
-            axiom.push({
-                type: 'accompaniment', note: note + 12 * baseOctave, duration: duration, time: 0,
-                weight: 0.6 - (index * 0.05), technique: 'long-chords', dynamics: 'p', phrasing: 'legato', params: { attack: 0.5, release: duration }
+    // #ИСПРАВЛЕНО (ПЛАН 972): Улучшена логика для более музыкального результата
+    if (random.next() < 0.6) { // 60% шанс сыграть пульсирующий аккорд
+        const duration = 0.5; // восьмые ноты
+        const times = [0, 1.5, 2.5, 3.5]; // Пульсирующий ритм
+        times.forEach(time => {
+            chordNotes.forEach((note, index) => {
+                 axiom.push({
+                    type: 'accompaniment', note: note + 12 * baseOctave, duration, time,
+                    weight: 0.5 - (index * 0.05), technique: 'long-chords', dynamics: 'p', phrasing: 'staccato', 
+                    params: { attack: 0.05, release: duration * 0.8 }
+                });
             });
         });
-    } else { // 40% шанс сыграть арпеджио
-        const numNotes = chordNotes.length * 2;
+    } else { // 40% шанс сыграть медленное арпеджио
+        const numNotes = chordNotes.length;
         const duration = 4.0 / numNotes;
         for (let i = 0; i < numNotes; i++) {
              axiom.push({
@@ -424,9 +429,11 @@ export function createDrumAxiom(kit: DrumKit, genre: Genre, mood: Mood, tempo: n
     const allBaseEvents = [...(loop.K || []).map(t => ({type: 'drum_kick', time:t})), ...(loop.SD || []).map(t => ({type: 'drum_snare', time:t})), ...(loop.HH || []).map(t => ({type: 'drum_hihat_closed', time:t}))];
     
     for (const baseEvent of allBaseEvents) {
+        // @ts-ignore
         if (baseEvent.probability && random.next() > baseEvent.probability) continue;
         
         let samplePool: InstrumentType[] = [];
+        // @ts-ignore
         const originalType = Array.isArray(baseEvent.type) ? baseEvent.type[0] : baseEvent.type;
 
         if (originalType.startsWith('drum_kick')) samplePool = kit.kick;
@@ -438,6 +445,7 @@ export function createDrumAxiom(kit: DrumKit, genre: Genre, mood: Mood, tempo: n
 
         if (samplePool.length > 0) {
             const chosenType = samplePool[random.nextInt(samplePool.length)];
+            // @ts-ignore
             axiomEvents.push({ ...baseEvent, type: chosenType, note: 36, phrasing: 'staccato', dynamics: 'mf', params: {}, duration: 0.25, weight: 0.8 } as FractalEvent);
         } else {
              if (originalType !== 'drum_ride') { 
@@ -533,40 +541,55 @@ export function createMelodyMotif(chord: GhostChord, mood: Mood, random: { next:
 }
 
 export function generateIntroSequence(options: { currentBar: number; totalIntroBars: number; rules: IntroRules; instrumentOrder: InstrumentPart[]; harmonyTrack: GhostChord[]; settings: any; random: { next: () => number, nextInt: (max: number) => number }; }): { events: FractalEvent[], instrumentHints: InstrumentHints } {
+    // #ЗАЧЕМ: Эта функция теперь реализует пошаговое, управляемое введение инструментов.
+    // #ЧТО: Она делит интро на "стадии" и активирует инструменты последовательно,
+    //      создавая плавное нарастание сложности.
+    // #СВЯЗИ: Вызывается из `ambient.worker.ts` в течение `introBars`.
     const { currentBar, totalIntroBars, rules, instrumentOrder, harmonyTrack, settings, random } = options;
     const events: FractalEvent[] = [];
     const instrumentHints: InstrumentHints = {};
+
     const stages = rules.stages > 0 ? rules.stages : 1;
     const barsPerStage = totalIntroBars > 0 ? Math.max(1, Math.floor(totalIntroBars / stages)) : 3;
     const currentStageIndex = Math.min(stages - 1, Math.floor(currentBar / barsPerStage));
+
     const activeInstruments = new Set<InstrumentPart>();
     for (let i = 0; i <= currentStageIndex; i++) {
         if (instrumentOrder[i]) {
             activeInstruments.add(instrumentOrder[i]);
         }
     }
+    
+    console.log(`[IntroGen @ Bar ${currentBar}] Stage: ${currentStageIndex + 1}/${stages}. Active: ${Array.from(activeInstruments).join(', ')}`);
+
     const currentChord = harmonyTrack.find(c => currentBar >= c.bar && currentBar < c.bar + c.durationBars);
     if (!currentChord) {
         return { events, instrumentHints };
     }
+    
+    // --- Генерация партий на основе активных инструментов ---
+
     if (activeInstruments.has('bass')) {
         const bassAxiom = createAmbientBassAxiom(currentChord, settings.mood, settings.genre, random, settings.tempo, 'drone');
         events.push(...bassAxiom);
     }
     if (activeInstruments.has('accompaniment')) {
-        const accompAxiom = createAccompanimentAxiom(currentChord, settings.mood, settings.genre, random, settings.tempo, 'low');
+         const registerHint = settings.instrumentSettings?.accompaniment?.register?.preferred || 'low';
+         // #ИСПРАВЛЕНО (ПЛАН 972): Вызываем улучшенную функцию для аккомпанемента
+         const accompAxiom = createAccompanimentAxiom(currentChord, settings.mood, settings.genre, random, settings.tempo, registerHint);
         events.push(...accompAxiom);
     }
     if (activeInstruments.has('drums')) {
         const drumKit = DRUM_KITS[settings.genre]?.intro ?? DRUM_KITS.ambient!.intro!;
         const drumRules = { pattern: 'ambient_beat', density: { min: 0.1, max: 0.3 }, useSnare: false, usePerc: true, rareKick: true };
-        const drumAxiom = createDrumAxiom(drumKit, settings.genre, settings.mood, settings.tempo, random, drumRules);
+        const drumAxiom = createDrumAxiom(drumKit, settings.genre, settings.mood, settings.tempo, random, drumRules as any);
         events.push(...drumAxiom.events);
     }
-    if (activeInstruments.has('melody')) {
+     if (activeInstruments.has('melody')) {
         const melodyAxiom = createMelodyMotif(currentChord, settings.mood, random, undefined, 'mid', settings.genre);
         events.push(...melodyAxiom);
     }
+    
     return { events, instrumentHints };
 }
 
@@ -718,4 +741,56 @@ export function mutateBluesMelody(phrase: FractalEvent[], chord: GhostChord, dru
     }
 
     return newPhrase;
+}
+
+/**
+ * #ЗАЧЕМ: Эта функция создает короткую, осмысленную мелодическую фразу для органа в блюзовом стиле.
+ * #ЧТО: Она использует минорную пентатонику с добавлением блюзовой ноты (b5) и генерирует
+ *       короткий "ответ" на фразу солиста, имитируя диалог в джеме.
+ * #СВЯЗИ: Вызывается из `generateBluesAccompanimentV2` для создания "ответных" фраз.
+ */
+export function createBluesOrganLick(
+    chord: GhostChord,
+    random: { next: () => number; nextInt: (max: number) => number; },
+    noteCount: number = 4
+): FractalEvent[] {
+    const lick: FractalEvent[] = [];
+    const rootNote = chord.rootNote;
+    const ticksPerBeat = 3;
+    
+    // Минорная блюзовая гамма: 1, b3, 4, b5, 5, b7
+    const bluesScaleIntervals = [0, 3, 5, 6, 7, 10]; 
+    
+    let lastNoteIndex = random.nextInt(bluesScaleIntervals.length);
+    let currentTime = 0;
+    const barDurationInBeats = 4;
+    const durationPerNote = (barDurationInBeats / noteCount);
+
+    for (let i = 0; i < noteCount; i++) {
+        // Выбираем следующую ноту, которая находится недалеко от предыдущей
+        const step = random.nextInt(3) - 1; // -1, 0, 1
+        let nextNoteIndex = (lastNoteIndex + step + bluesScaleIntervals.length) % bluesScaleIntervals.length;
+        
+        const noteMidi = rootNote + bluesScaleIntervals[nextNoteIndex] + 36; // Сдвигаем в средний регистр
+        
+        lick.push({
+            type: 'accompaniment',
+            note: noteMidi,
+            time: currentTime,
+            duration: durationPerNote * 0.9, // Делаем ноты чуть короче для staccato-эффекта
+            weight: 0.7 + random.next() * 0.1,
+            technique: 'swell',
+            dynamics: 'mf',
+            phrasing: 'staccato',
+            params: {
+                attack: 0.02, // Быстрая атака для органа
+                release: 0.15 // Короткий релиз для "ответа"
+            }
+        });
+
+        currentTime += durationPerNote;
+        lastNoteIndex = nextNoteIndex;
+    }
+    
+    return lick;
 }
