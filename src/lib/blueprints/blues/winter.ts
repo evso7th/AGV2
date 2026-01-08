@@ -22,13 +22,8 @@ export const WinterBluesBlueprint: MusicBlueprint = {
                     instrumentPool: ['bass', 'drums', 'accompaniment', 'melody'],
                     stages: 4,
                 },
-                layers: { bass: true, drums: true, accompaniment: true, harmony: true, melody: true },
+                layers: { bass: true, drums: true, accompaniment: false, harmony: true, melody: true },
                 instrumentation: {
-                    accompaniment: { 
-                        strategy: 'weighted', 
-                        v1Options: [{ name: 'organ', weight: 0.8 }, { name: 'mellotron', weight: 0.2 }], 
-                        v2Options: [{ name: 'organ_soft_jazz', weight: 0.8 }, { name: 'mellotron', weight: 0.2 }] 
-                    },
                     melody: { 
                         strategy: 'weighted', 
                         v1Options: [
