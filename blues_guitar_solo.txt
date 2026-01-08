@@ -121,3 +121,155 @@ L12 Stop‑time scream (бар 9/10)
 Если хочешь — отдам любое соло как полноценный .mid:
 - укажи ID соло, темп/ключ,
 - я разверну 36 баров, переведу deg→MIDI (регистр E4…A5), применю техники (контроллерами/питч‑бендом), добавлю stop‑time и turnaround в конце каждого хора.
+
+###часть вторая, еще 20 мелодий с ликами и модами
+Держи 20 новых блюз‑соло на 36 тактов (3 хора × 12 тактов) под 85 BPM — эмоциональные, «гитарные», с плотной фразировкой. Формат как раньше: библиотека ликов (готовые фразы) и планы хоров, где на каждый бар указан номер лика с модификаторами. Всё в 12/8 (tpb=12), легко рендерится в движке.
+
+Как читать и рендерить
+- Сетка: 12/8, tpb = 12 тиков (каждые 2 тика = триольная восьмая).
+- Прогрессии:
+  - major_quick: [I, IV, I, I, IV, IV, I, I, V, IV, I, V]
+  - minor_12bar: [i, i, i, i, iv, iv, i, i, bVI, V, i, V]
+- Лик (готовая фраза) — массив событий { t, d, deg, tech? }:
+  - deg относительны корня бара: R, 2, b3, 3, 4, #4(b5), 5, b6, 6, b7, 9, 11, (для V в миноре допустимы b2/b9).
+  - tech (по желанию): sl (slide), h/p (hammer/pull), bn (bend), vb (vibrato), gr (grace), ds(x‑y) (дабл‑стоп).
+- Модификаторы в планах: +oct (выше на октаву), hi (верхний регистр/акцент), long (подержать подольше), var (переставить внутренние тики/ритм), stop (бар стоп‑тайм — держак/крик).
+
+Библиотека ликов (универсальные для I/IV/V и i/iv/V)
+L01 Cry‑bend (minor плач): [{t:0,d:3,deg:'b3',tech:'bn+vb'},{t:3,d:3,deg:'R'},{t:6,d:6,deg:'5',tech:'vb'}]  
+L02 BB‑turn (major b3→3): [{t:0,d:3,deg:'b3',tech:'gr'},{t:3,d:3,deg:'3'},{t:6,d:6,deg:'5',tech:'vb'}]  
+L03 Boogie‑answer: [{t:0,deg:'R'},{t:2,deg:'4'},{t:4,deg:'#4'},{t:6,deg:'5'},{t:8,deg:'6'},{t:10,deg:'5'}]  
+L04 Minor‑11 pad: [{t:0,d:6,deg:'b3',tech:'vb'},{t:6,d:6,deg:'11'}]  
+L05 V‑b9 (для V минор): [{t:0,d:3,deg:'b2',tech:'gr'},{t:3,d:3,deg:'R'},{t:6,d:6,deg:'b7'}]  
+L06 9‑lift (major/dreamy): [{t:0,d:4,deg:'9'},{t:4,d:8,deg:'R',tech:'vb'}]  
+L07 Double‑stop cry: [{t:0,d:6,deg:'5',tech:'ds(3-b7)+vb'},{t:6,d:6,deg:'R'}]  
+L08 Quick pickup: [{t:0,deg:'R'},{t:2,deg:'2'},{t:4,deg:'b3'},{t:6,deg:'3'},{t:8,deg:'4'},{t:10,deg:'#4'}]  
+L09 Turnaround (12‑й бар): [{t:0,deg:'2'},{t:2,deg:'b3'},{t:4,deg:'3'},{t:6,deg:'4'},{t:8,deg:'#4'},{t:10,deg:'5'}]  
+L10 Octave sigh: [{t:0,d:6,deg:'R'},{t:6,d:6,deg:'R+8',tech:'vb'}]  
+L11 IV‑voicing lick: [{t:0,d:3,deg:'R'},{t:3,d:3,deg:'3'},{t:6,d:6,deg:'6',tech:'vb'}]  
+L12 Stop‑scream (bar 9/10): [{t:0,d:12,deg:'5',tech:'bn+vb'}]  
+Новые для 85 BPM (чуть бодрее)  
+L13 Trip‑run major: [{t:0,deg:'R'},{t:2,deg:'b3'},{t:4,deg:'3'},{t:6,deg:'5'},{t:8,deg:'6'},{t:10,deg:'5'}]  
+L14 Slide‑to‑6: [{t:0,d:3,deg:'4',tech:'sl'},{t:3,d:3,deg:'#4'},{t:6,d:6,deg:'6',tech:'vb'}]  
+L15 Minor quick cry: [{t:0,d:3,deg:'b3',tech:'bn'},{t:3,d:3,deg:'2'},{t:6,d:6,deg:'R',tech:'vb'}]  
+L16 Chrom‑to‑V (для V): [{t:0,deg:'b2'},{t:2,deg:'R'},{t:4,deg:'b7'},{t:6,d:6,deg:'5'}]  
+L17 DS‑stabs (major): [{t:0,d:3,deg:'5',tech:'ds(3-b7)'},{t:3,d:3,deg:'6',tech:'ds(3-5)'},{t:6,d:6,deg:'R'}]  
+L18 11‑color (minor/iv): [{t:0,d:4,deg:'11'},{t:4,d:8,deg:'9'}]  
+L19 Turn‑alt (быстрый): [{t:0,deg:'R'},{t:2,deg:'7'},{t:4,deg:'b7'},{t:6,deg:'6'},{t:8,deg:'b6'},{t:10,deg:'5'}]  
+L20 Chuck‑trip: [{t:0,deg:'3'},{t:2,deg:'b3'},{t:4,deg:'3'},{t:6,deg:'2'},{t:8,deg:'R'},{t:10,deg:'b7'}]
+
+20 соло × 3 хора по 12 тактов (85 BPM)
+(Указываю: id, ключ/лад, progression, затем для каждого хора 12 ликов по барам)
+
+1) S01 — E major “Bright Cry” (major_quick)
+- C1: [L02, L11, L13, L06, L11, L06, L17, L10, L13, L11, L02, L09]
+- C2: [L08, L11+var, L13+var, L14, L11, L06+var, L17, L10, L12 stop, L12 stop, L02+hi, L19]
+- C3: [L10+hi, L11+hi, L13+oct, L02+hi, L11, L14, L17+oct, L10+hi, L13, L11, L02+hi, L09]
+
+2) S02 — A major “Sunwalk” (major_quick)
+- C1: [L13, L11, L17, L06, L11, L14, L13, L10, L13, L11, L02, L19]
+- C2: [L08, L11, L13+var, L06, L11+var, L14, L17, L10, L12 stop, L12 stop, L02+hi, L09]
+- C3: [L10+hi, L11+hi, L13+oct, L02+hi, L11, L06, L17+oct, L10+hi, L13, L11, L02+hi, L09]
+
+3) S03 — G major “Ride the 9” (major_quick)
+- C1: [L06, L11, L13, L14, L11, L06, L17, L10, L13, L11, L02, L09]
+- C2: [L08, L11+var, L13+var, L06, L11, L14+var, L17, L10, L12 stop, L12 stop, L02+hi, L19]
+- C3: [L10+hi, L11+hi, L13+oct, L02+hi, L11, L06, L17+oct, L10+hi, L13, L11, L02+hi, L09]
+
+4) S04 — D major “Midnight Smile” (major_quick)
+- C1: [L02, L11, L13, L06, L11, L14, L17, L10, L13, L11, L02, L19]
+- C2: [L08, L11, L13+var, L06, L11+var, L14, L17, L10, L12 stop, L12 stop, L02+hi, L09]
+- C3: [L10+hi, L11+hi, L13+oct, L02+hi, L11, L06, L17+oct, L10+hi, L13, L11, L02+hi, L09]
+
+5) S05 — C major “Sweet Turn” (major_quick)
+- C1: [L02, L11, L17, L06, L11, L14, L13, L10, L13, L11, L02, L09]
+- C2: [L08, L11, L13+var, L06, L11, L14+var, L17, L10, L12 stop, L12 stop, L02+hi, L19]
+- C3: [L10+hi, L11+hi, L13+oct, L02+hi, L11, L06, L17+oct, L10+hi, L13, L11, L02+hi, L09]
+
+6) S06 — E minor “Tear & Steel” (minor_12bar)
+- C1: [L01, L11, L03, L04, L11, L04, L03, L10, L18, L05, L01, L19]
+- C2: [L15, L11, L03+var, L04, L11+var, L04, L03, L10, L12 stop, L12 stop, L01+hi, L09]
+- C3: [L10+hi, L11+hi, L03+oct, L01+hi, L11, L04, L03+oct, L10+hi, L18, L05+hi, L01+hi, L09]
+
+7) S07 — A minor “Velvet Hammer” (minor_12bar)
+- C1: [L01, L11, L03, L04, L11, L18, L03, L10, L18, L05, L01, L19]
+- C2: [L15, L11, L03+var, L04, L11+var, L04, L03, L10, L12 stop, L12 stop, L01+hi, L09]
+- C3: [L10+hi, L11+hi, L03+oct, L01+hi, L11, L04, L03+oct, L10+hi, L18, L05+hi, L01+hi, L09]
+
+8) S08 — G minor “Blue Smoke” (minor_12bar)
+- C1: [L01, L11, L03, L04, L11, L04, L03, L10, L18, L16, L01, L19]
+- C2: [L15, L11+var, L03, L04, L11, L18+var, L03, L10, L12 stop, L12 stop, L01+hi, L09]
+- C3: [L10+hi, L11+hi, L03+oct, L01+hi, L11, L04, L03+oct, L10+hi, L18, L16+hi, L01+hi, L09]
+
+9) S09 — D minor “Gravel Road” (minor_12bar)
+- C1: [L01, L11, L03, L04, L11, L18, L03, L10, L18, L05, L01, L09]
+- C2: [L15, L11, L03+var, L04, L11, L18+var, L03, L10, L12 stop, L12 stop, L01+hi, L19]
+- C3: [L10+hi, L11+hi, L03+oct, L01+hi, L11, L04, L03+oct, L10+hi, L18, L05+hi, L01+hi, L09]
+
+10) S10 — B minor “Edge of Night” (minor_12bar)
+- C1: [L01, L11, L03, L04, L11, L04, L03, L10, L18, L05, L01, L19]
+- C2: [L15, L11, L03+var, L04, L11+var, L04, L03, L10, L12 stop, L12 stop, L01+hi, L09]
+- C3: [L10+hi, L11+hi, L03+oct, L01+hi, L11, L04, L03+oct, L10+hi, L18, L05+hi, L01+hi, L09]
+
+11) S11 — F major “Smile & Sting” (major_quick)
+- C1: [L13, L11, L17, L06, L11, L14, L13, L10, L13, L11, L02, L19]
+- C2: [L08, L11, L13+var, L06, L11, L14+var, L17, L10, L12 stop, L12 stop, L02+hi, L09]
+- C3: [L10+hi, L11+hi, L13+oct, L02+hi, L11, L06, L17+oct, L10+hi, L13, L11, L02+hi, L09]
+
+12) S12 — Bb major “Shine Slow” (major_quick)
+- C1: [L02, L11, L13, L06, L11, L14, L17, L10, L13, L11, L02, L19]
+- C2: [L08, L11, L13+var, L06, L11, L14+var, L17, L10, L12 stop, L12 stop, L02+hi, L09]
+- C3: [L10+hi, L11+hi, L13+oct, L02+hi, L11, L06, L17+oct, L10+hi, L13, L11, L02+hi, L09]
+
+13) S13 — E major “Silver Tongue” (major_quick)
+- C1: [L17, L11, L13, L06, L11, L14, L13, L10, L20, L11, L02, L09]
+- C2: [L08, L11, L13+var, L06, L11, L14+var, L20, L10, L12 stop, L12 stop, L02+hi, L19]
+- C3: [L10+hi, L11+hi, L13+oct, L02+hi, L11, L06, L20+oct, L10+hi, L13, L11, L02+hi, L09]
+
+14) S14 — A major “Drive ‘n’ Cry” (major_quick)
+- C1: [L13, L11, L17, L06, L11, L14, L20, L10, L13, L11, L02, L19]
+- C2: [L08, L11, L13+var, L06, L11+var, L14, L20, L10, L12 stop, L12 stop, L02+hi, L09]
+- C3: [L10+hi, L11+hi, L13+oct, L02+hi, L11, L06, L20+oct, L10+hi, L13, L11, L02+hi, L09]
+
+15) S15 — C# minor “Blue Glass” (minor_12bar)
+- C1: [L01, L11, L03, L04, L11, L18, L03, L10, L18, L05, L01, L19]
+- C2: [L15, L11, L03+var, L04, L11, L18+var, L03, L10, L12 stop, L12 stop, L01+hi, L09]
+- C3: [L10+hi, L11+hi, L03+oct, L01+hi, L11, L04, L03+oct, L10+hi, L18, L05+hi, L01+hi, L09]
+
+16) S16 — F minor “Gravel & Honey” (minor_12bar)
+- C1: [L01, L11, L03, L04, L11, L04, L03, L10, L18, L16, L01, L19]
+- C2: [L15, L11, L03+var, L04, L11+var, L18, L03, L10, L12 stop, L12 stop, L01+hi, L09]
+- C3: [L10+hi, L11+hi, L03+oct, L01+hi, L11, L04, L03+oct, L10+hi, L18, L16+hi, L01+hi, L09]
+
+17) S17 — D minor “Velvet Knife” (minor_12bar)
+- C1: [L01, L11, L03, L04, L11, L18, L03, L10, L18, L05, L01, L19]
+- C2: [L15, L11+var, L03, L04, L11, L18+var, L03, L10, L12 stop, L12 stop, L01+hi, L09]
+- C3: [L10+hi, L11+hi, L03+oct, L01+hi, L11, L04, L03+oct, L10+hi, L18, L05+hi, L01+hi, L09]
+
+18) S18 — G major “Uplift Cry” (major_quick)
+- C1: [L02, L11, L13, L06, L11, L14, L17, L10, L13, L11, L02, L19]
+- C2: [L08, L11+var, L13+var, L06, L11, L14+var, L17, L10, L12 stop, L12 stop, L02+hi, L09]
+- C3: [L10+hi, L11+hi, L13+oct, L02+hi, L11, L06, L17+oct, L10+hi, L13, L11, L02+hi, L09]
+
+19) S19 — A minor “Slow Flame” (minor_12bar)
+- C1: [L01, L11, L03, L04, L11, L18, L03, L10, L18, L05, L01, L09]
+- C2: [L15, L11, L03+var, L04, L11+var, L04, L03, L10, L12 stop, L12 stop, L01+hi, L19]
+- C3: [L10+hi, L11+hi, L03+oct, L01+hi, L11, L04, L03+oct, L10+hi, L18, L05+hi, L01+hi, L09]
+
+20) S20 — E major “Tears & Shine” (major_quick)
+- C1: [L02, L11, L20, L06, L11, L14, L17, L10, L13, L11, L02, L09]
+- C2: [L08, L11, L13+var, L06, L11, L14+var, L17, L10, L12 stop, L12 stop, L02+hi, L19]
+- C3: [L10+hi, L11+hi, L13+oct, L02+hi, L11, L06, L17+oct, L10+hi, L13, L11, L02+hi, L09]
+
+Рендер‑правила (коротко)
+- Для выбранного соло разверни progression на 12 тактов × 3 хора и по каждому бару вставь указанный лик, трактуя deg относительно корня текущего аккорда.
+- stop‑time (bars 9–10, если указан): ритм‑секция бьёт хиты, соло — L12 (длинный бенд/держак).
+- Модификаторы:
+  - +oct/hi — смести регистр вверх (E4…A5 → E5…A6), добавь vb на удержания.
+  - var — переставь внутренние тики (напр., в L13 поменяй местами t:2↔4, t:8↔10).
+  - long — увеличь d удержаний (например, с 6 до 8–10 в рамках бара).
+- Техника:
+  - b3→3 — только в мейджоре и чаще на слабых (t≈2/4/10); в миноре держи b3/11 дольше.
+  - b5/#4 — коротко и на слабые (t=10), как «цвет».
+
+Если хочешь — соберу любые из этих соло в .mid: укажи id, темп (85), ключ (E/A/…), и я выдам MIDI с контроллерами для вибрато/бендов, стоп‑таймом и turnaround’ами.
