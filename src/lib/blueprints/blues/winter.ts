@@ -77,8 +77,8 @@ export const WinterBluesBlueprint: MusicBlueprint = {
                             { name: 'electricGuitar', weight: 1.0 },
                         ],
                         v2Options: [
-                            { name: 'guitar_shineOn', weight: 0.5 },
-                            { name: 'guitar_muffLead', weight: 0.5 },
+                            { name: 'telecaster', weight: 0.5 },
+                            { name: 'blackAcoustic', weight: 0.5 },
                         ]
                     },
                     harmony: {
