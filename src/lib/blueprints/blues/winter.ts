@@ -26,8 +26,8 @@ export const WinterBluesBlueprint: MusicBlueprint = {
                 instrumentation: {
                     accompaniment: { 
                         strategy: 'weighted', 
-                        v1Options: [{ name: 'organ', weight: 0.6 }, { name: 'ambientPad', weight: 0.4 }], 
-                        v2Options: [{ name: 'organ_soft_jazz', weight: 0.6 }, { name: 'synth_ambient_pad_lush', weight: 0.4 }] 
+                        v1Options: [{ name: 'organ', weight: 0.8 }, { name: 'mellotron', weight: 0.2 }], 
+                        v2Options: [{ name: 'organ_soft_jazz', weight: 0.8 }, { name: 'mellotron', weight: 0.2 }] 
                     },
                     melody: { 
                         strategy: 'weighted', 
