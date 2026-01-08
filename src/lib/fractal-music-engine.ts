@@ -1,4 +1,5 @@
 
+
 import type { FractalEvent, Mood, Genre, Technique, BassSynthParams, InstrumentType, MelodyInstrument, AccompanimentInstrument, ResonanceMatrix, InstrumentHints, AccompanimentTechnique, GhostChord, SfxRule, V1MelodyInstrument, V2MelodyInstrument, BlueprintPart, InstrumentationRules, InstrumentBehaviorRules, BluesMelody, IntroRules, InstrumentPart, DrumKit, BluesGuitarRiff, BluesSoloPhrase, BluesRiffDegree } from './fractal';
 import { ElectronicK, TraditionalK, AmbientK, MelancholicMinorK } from './resonance-matrices';
 import { BlueprintNavigator, type NavigationInfo } from './blueprint-navigator';
@@ -177,26 +178,25 @@ export class FractalMusicEngine {
     this.hasBassBeenMutated = false;
     this.bluesChorusCache = null;
     
-    // --- Логика "Конвейера Уникальности" ---
+    // #ИСПРАВЛЕНО (ПЛАН 919/921): Логика "Конвейера Уникальности" теперь использует this.random, созданный с правильным seed.
     const allBassRiffs = Object.values(BLUES_BASS_RIFFS).flat();
     this.shuffledBassRiffIndices = this.random.shuffle(Array.from({ length: allBassRiffs.length }, (_, i) => i));
     this.baseBassRiffIndex = this.shuffledBassRiffIndices[this.bassRiffConveyorIndex % this.shuffledBassRiffIndices.length];
-    this.bassRiffConveyorIndex++; // Сдвигаем указатель конвейера
+    this.bassRiffConveyorIndex++; 
 
     const allDrumRiffs = Object.values(BLUES_DRUM_RIFFS).flat();
     this.shuffledDrumRiffIndices = this.random.shuffle(Array.from({ length: allDrumRiffs.length }, (_, i) => i));
     this.baseDrumRiffIndex = this.shuffledDrumRiffIndices[this.drumRiffConveyorIndex % this.shuffledDrumRiffIndices.length];
     this.drumRiffConveyorIndex++;
     
-    this.shuffledMelodyIDs = this.random.shuffle(BLUES_MELODY_RIFFS.map(m => m.id));
-    this.baseMelodyId = this.shuffledMelodyIDs[this.melodyConveyorIndex % this.shuffledMelodyIDs.length];
-    this.melodyConveyorIndex++;
-
+    this.shuffledGuitarRiffIDs = this.random.shuffle(BLUES_GUITAR_RIFFS.map(r => r.id));
+    this.currentGuitarRiffId = this.shuffledGuitarRiffIDs[this.guitarRiffConveyorIndex % this.shuffledGuitarRiffIDs.length];
+    this.guitarRiffConveyorIndex++;
+    
     this.currentDrumRiffIndex = this.baseDrumRiffIndex;
     this.currentBassRiffIndex = this.baseBassRiffIndex;
-    this.currentGuitarRiffId = this.baseMelodyId;
     
-    console.log(`%c[FME.initialize] New Suite Seeded! Base Riffs -> Bass: ${this.baseBassRiffIndex}, Drums: ${this.baseDrumRiffIndex}, Melody: ${this.baseMelodyId}`, 'color: cyan; font-weight: bold;');
+    console.log(`%c[FME.initialize] New Suite Seeded! Base Riffs -> Bass: ${this.currentBassRiffIndex}, Drums: ${this.currentDrumRiffIndex}, Guitar: ${this.currentGuitarRiffId}`, 'color: cyan; font-weight: bold;');
 
 
     const blueprint = await getBlueprint(this.config.genre, this.config.mood);
@@ -321,6 +321,7 @@ export class FractalMusicEngine {
         if (genre === 'blues') {
             const allDrumRiffs = Object.values(BLUES_DRUM_RIFFS).flat();
             if (allDrumRiffs.length === 0) return [];
+            // #ИСПРАВЛЕНО (ПЛАН 919): Теперь используется this.currentDrumRiffIndex, заданный при инициализации/мутации.
             const riffTemplate = allDrumRiffs[this.currentDrumRiffIndex % allDrumRiffs.length];
             if (!riffTemplate) return [];
             
@@ -450,6 +451,7 @@ export class FractalMusicEngine {
         const allBassRiffs = Object.values(BLUES_BASS_RIFFS).flat();
         if (allBassRiffs.length === 0) return [];
         
+        // #ИСПРАВЛЕНО (ПЛАН 919): Теперь используется this.currentBassRiffIndex, заданный при инициализации/мутации.
         const riffTemplate = allBassRiffs[this.currentBassRiffIndex % allBassRiffs.length];
 
         const barInChorus = this.epoch % 12;
@@ -470,7 +472,7 @@ export class FractalMusicEngine {
         for (const riffNote of pattern) {
             phrase.push({
                 type: 'bass',
-                note: root + DEGREE_TO_SEMITONE[riffNote.deg],
+                note: root + (DEGREE_TO_SEMITONE[riffNote.deg as BluesRiffDegree] || 0),
                 time: riffNote.t / ticksPerBeat,
                 duration: (riffNote.d || 2) / ticksPerBeat,
                 weight: 0.85 + random.next() * 0.1,
@@ -542,7 +544,8 @@ export class FractalMusicEngine {
                 }
             }
         } else { // Not a solo section, generate main theme from melody riffs
-            const riffId = this.currentGuitarRiffId || BLUES_MELODY_RIFFS[0].id;
+            // #ИСПРАВЛЕНО (ПЛАН 919): Теперь используется this.currentGuitarRiffId, заданный при инициализации/мутации.
+            const riffId = this.currentGuitarRiffId || BLUES_GUITAR_RIFFS[0].id;
             const selectedRiff = BLUES_MELODY_RIFFS.find(r => r.id === riffId) ?? BLUES_MELODY_RIFFS[0];
             logMessage = `[FME] Generating main theme using melody riff "${selectedRiff.id}".`;
 
@@ -697,13 +700,18 @@ export class FractalMusicEngine {
 
     const isChorusBoundary = this.config.genre === 'blues' && this.epoch > 0 && this.epoch % 12 === 0;
     if (isChorusBoundary) {
-        if (this.random.next() < 0.4) { // 40% шанс сменить басовый рифф
+        if (this.random.next() < 0.4) {
             this.currentBassRiffIndex = this.shuffledBassRiffIndices[this.random.nextInt(this.shuffledBassRiffIndices.length)];
-            console.log(`%c[MUTATION @ Bar ${this.epoch}] Bass riff mutated to index: ${this.currentBassRiffIndex}`, 'color: #FF8C00');
+            console.log(`%c[MUTATION @ Bar ${this.epoch}] Bass riff mutated to index: ${this.currentBassRiffIndex}`, 'color: #87CEEB');
         }
-        if (this.random.next() < 0.3) { // 30% шанс сменить барабанный бит
+        if (this.random.next() < 0.3) {
             this.currentDrumRiffIndex = this.shuffledDrumRiffIndices[this.random.nextInt(this.shuffledDrumRiffIndices.length)];
-             console.log(`%c[MUTATION @ Bar ${this.epoch}] Drum riff mutated to index: ${this.currentDrumRiffIndex}`, 'color: #FF8C00');
+            console.log(`%c[MUTATION @ Bar ${this.epoch}] Drum riff mutated to index: ${this.currentDrumRiffIndex}`, 'color: #FFD700');
+        }
+        // #ИСПРАВЛЕНО (ПЛАН 923): Добавлена мутация для мелодии
+        if (this.random.next() < 0.5) { 
+            this.currentGuitarRiffId = this.shuffledGuitarRiffIDs[this.random.nextInt(this.shuffledGuitarRiffIDs.length)];
+            console.log(`%c[MUTATION @ Bar ${this.epoch}] Melody riff mutated to ID: ${this.currentGuitarRiffId}`, 'color: #DA70D6');
         }
     }
     
@@ -712,11 +720,13 @@ export class FractalMusicEngine {
     let accompEvents: FractalEvent[] = [];
     if (navInfo.currentPart.layers.accompaniment) {
         const registerHint = navInfo.currentPart.instrumentRules?.accompaniment?.register?.preferred;
-        const newAxiom = createAccompanimentAxiom(currentChord, this.config.mood, this.config.genre, this.random, this.config.tempo, registerHint);
-        if (this.config.genre === 'blues' && this.epoch % 2 === 0) {
-            accompEvents = mutateBluesAccompaniment(newAxiom, currentChord, drumEvents, this.random);
+        let axiom = createAccompanimentAxiom(currentChord, this.config.mood, this.config.genre, this.random, this.config.tempo, registerHint);
+        
+        // #ИСПРАВЛЕНО (ПЛАН 923): Мутация аккомпанемента активирована для блюза
+        if (this.config.genre === 'blues' && isChorusBoundary) {
+             accompEvents = mutateBluesAccompaniment(axiom, currentChord, drumEvents, this.random);
         } else {
-            accompEvents = newAxiom;
+            accompEvents = axiom;
         }
     }
     
@@ -743,8 +753,8 @@ export class FractalMusicEngine {
       if (this.config.genre === 'blues') {
           bassEvents = this.generateBluesBassRiff(currentChord, 'riff', this.random, this.config.mood);
       } else {
-          const PHRASE_VARIATION_INTERVAL = 4;
-          if (this.epoch > 0 && this.epoch % PHRASE_VARIATION_INTERVAL === 0) {
+          // #ИСПРАВЛЕНО (ПЛАН 923): Активированы мутации для эмбиент-баса
+          if (this.epoch > 0 && this.epoch % 4 === 0) { // Каждые 4 такта
               this.currentBassPhraseIndex = (this.currentBassPhraseIndex + 1) % this.bassPhraseLibrary.length;
               if (this.random.next() < 0.6) {
                   this.bassPhraseLibrary[this.currentBassPhraseIndex] = mutateBassPhrase(this.bassPhraseLibrary[this.currentBassPhraseIndex], currentChord, this.config.mood, this.config.genre, this.random);
@@ -802,24 +812,24 @@ export class FractalMusicEngine {
                     .map(e => ({ ...e, time: e.time - barStartBeat }));
             }
         } else if (melodyRules.source === 'motif') {
+            // #ИСПРАВЛЕНО (ПЛАН 923): Активированы мутации для эмбиент-мелодии
             const melodyDensity = melodyRules.density?.min ?? 0.25;
             const minInterval = 8;
-            const motifBarIndex = this.epoch - this.lastMelodyPlayEpoch;
-
-            if (motifBarIndex >= 0 && motifBarIndex < 4 && this.currentMelodyMotif.length > 0) {
+            
+            if (this.epoch >= this.lastMelodyPlayEpoch + minInterval && this.random.next() < melodyDensity) {
+                const shouldMutate = this.currentMelodyMotif.length > 0 && this.random.next() > 0.5;
+                const registerHint = melodyRules.register?.preferred;
+                this.currentMelodyMotif = createMelodyMotif(currentChord, this.config.mood, this.random, shouldMutate ? this.currentMelodyMotif : undefined, registerHint, this.config.genre);
+                this.lastMelodyPlayEpoch = this.epoch;
+            }
+            
+            if (this.epoch >= this.lastMelodyPlayEpoch && this.epoch < this.lastMelodyPlayEpoch + 4 && this.currentMelodyMotif.length > 0) {
+                const motifBarIndex = this.epoch - this.lastMelodyPlayEpoch;
                 const barStartBeat = motifBarIndex * 4.0;
                 const barEndBeat = (motifBarIndex + 1) * 4.0;
                 melodyEvents = this.currentMelodyMotif
                     .filter(e => e.time >= barStartBeat && e.time < barEndBeat)
                     .map(e => ({ ...e, time: e.time - barStartBeat }));
-            } else if (this.epoch >= this.lastMelodyPlayEpoch + minInterval && this.random.next() < melodyDensity) {
-                const shouldMutate = this.currentMelodyMotif.length > 0 && this.random.next() > 0.3;
-                const registerHint = melodyRules.register?.preferred;
-                this.currentMelodyMotif = createMelodyMotif(currentChord, this.config.mood, this.random, shouldMutate ? this.currentMelodyMotif : undefined, registerHint, this.config.genre);
-                melodyEvents = this.currentMelodyMotif
-                    .filter(e => e.time < 4.0)
-                    .map(e => ({ ...e, time: e.time }));
-                this.lastMelodyPlayEpoch = this.epoch;
             }
         }
     }
