@@ -254,16 +254,19 @@ export class FractalMusicEngine {
     navInfo: NavigationInfo | null
   ): MelodyInstrument | AccompanimentInstrument | undefined {
       const melodyLogPrefix = `MelodyInstrumentLog:`;
+      
+      // #ИСПРАВЛЕНО (ПЛАН 1001): Добавлен "охранник", который проверяет наличие правил.
+      const rules = navInfo?.currentPart.instrumentation?.[part as keyof typeof navInfo.currentPart.instrumentation];
+      if (!rules) {
+          // Если для этой партии в текущей секции блюпринта нет никаких правил,
+          // мы не должны ничего выдумывать. Просто возвращаем undefined.
+          console.log(`${melodyLogPrefix} [1x. Guard] No instrumentation rules found for part '${part}' in section '${navInfo?.currentPart.id}'. Returning undefined.`);
+          return undefined;
+      }
+      
       console.log(melodyLogPrefix + ` [1a. _chooseInstrumentForPart] Entering choice logic. useV2: ${this.config.useMelodyV2}`);
 
-      if (!navInfo) return undefined;
-  
-      const rules = navInfo.currentPart.instrumentation?.[part as keyof typeof navInfo.currentPart.instrumentation];
-      
-      console.log(melodyLogPrefix + "[1b. _chooseInstrumentForPart] V1 Options: ", rules?.v1Options);
-      console.log(melodyLogPrefix + "[1c. _chooseInstrumentForPart] V2 Options: ", rules?.v2Options);
-
-      if (!rules || rules.strategy !== 'weighted') {
+      if (rules.strategy !== 'weighted') {
           return part === 'melody' ? 'organ' : 'synth';
       }
   
@@ -703,13 +706,15 @@ export class FractalMusicEngine {
           return { events: [], instrumentHints: {} };
       }
 
-      const navInfo = this.navigator.tick(this.epoch, this._chooseInstrumentForPart('melody', this.navigator.tick(this.epoch)));
+      const v2MelodyHint = this._chooseInstrumentForPart('melody', this.navigator.tick(this.epoch));
+      const navInfo = this.navigator.tick(this.epoch, v2MelodyHint);
+
       if (navInfo?.logMessage) {
         console.log(navInfo.logMessage);
       }
-
+  
       const instrumentHints: InstrumentHints = {
-          melody: this._chooseInstrumentForPart('melody', navInfo),
+          melody: v2MelodyHint,
           accompaniment: this._chooseInstrumentForPart('accompaniment', navInfo),
           harmony: chooseHarmonyInstrument(navInfo?.currentPart.instrumentation?.harmony, this.random)
       };
@@ -934,6 +939,7 @@ export class FractalMusicEngine {
     return { events: allEvents, instrumentHints };
   }
 }
+
 
 
 

@@ -56,6 +56,11 @@ export class AccompanimentSynthManagerV2 {
     }
 
     public async schedule(events: FractalEvent[], barStartTime: number, tempo: number, barCount: number, instrumentHint?: string) {
+        // #ИСПРАВЛЕНО (ПЛАН 1001): Добавлен "охранник", который прерывает исполнение, если нет явного указания.
+        if (!instrumentHint || instrumentHint === 'none') {
+            return;
+        }
+
         // #ЗАЧЕМ: Этот блок транслирует старые названия V1 в новые V2.
         // #ЧТО: Он проверяет, есть ли `instrumentHint` в карте `V1_TO_V2_PRESET_MAP`.
         //      Если есть, используется V2-название. Если нет, используется оригинальный hint.

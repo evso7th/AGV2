@@ -24,7 +24,11 @@ export const WinterBluesBlueprint: MusicBlueprint = {
                 },
                 layers: { bass: true, drums: true, accompaniment: true, harmony: true, melody: true },
                 instrumentation: {
-                    accompaniment: { strategy: 'weighted', v1Options: [{ name: 'organ_soft_jazz', weight: 1.0 }], v2Options: [{ name: 'organ_soft_jazz', weight: 1.0 }] },
+                    accompaniment: {
+                        strategy: 'weighted',
+                        v1Options: [{ name: 'organ_soft_jazz', weight: 1.0 }],
+                        v2Options: [{ name: 'organ_soft_jazz', weight: 1.0 }]
+                    },
                     melody: { 
                         strategy: 'weighted', 
                         v1Options: [{ name: 'acousticGuitar', weight: 1.0 }],
