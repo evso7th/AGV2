@@ -1,6 +1,6 @@
 
 
-import type { FractalEvent, Mood, Genre, Technique, BassSynthParams, InstrumentType, AccompanimentInstrument, InstrumentHints, AccompanimentTechnique, GhostChord, SfxRule, V1MelodyInstrument, V2MelodyInstrument, BlueprintPart, InstrumentationRules, InstrumentBehaviorRules, BluesMelody, IntroRules, InstrumentPart, DrumKit, BluesGuitarRiff, BluesSoloPhrase, BluesRiffDegree } from './fractal';
+import type { FractalEvent, Mood, Genre, Technique, BassSynthParams, InstrumentType, MelodyInstrument, AccompanimentInstrument, ResonanceMatrix, InstrumentHints, AccompanimentTechnique, GhostChord, SfxRule, V1MelodyInstrument, V2MelodyInstrument, BlueprintPart, InstrumentationRules, InstrumentBehaviorRules, BluesMelody, IntroRules, InstrumentPart, DrumKit, BluesGuitarRiff, BluesSoloPhrase, BluesRiffDegree } from './fractal';
 import { ElectronicK, TraditionalK, AmbientK, MelancholicMinorK } from './resonance-matrices';
 import { BlueprintNavigator, type NavigationInfo } from './blueprint-navigator';
 import { getBlueprint } from './blueprints';
@@ -551,7 +551,6 @@ export function generateIntroSequence(options: {
     random: { next: () => number, nextInt: (max: number) => number; shuffle: <T>(array: T[]) => T[] };
     introInstrumentOrder: InstrumentPart[];
 }): { events: FractalEvent[], instrumentHints: InstrumentHints } {
-    // --- ПЛАН 1002: Добавлено полное логирование для отладки ---
     const { currentBar, totalIntroBars, rules, instrumentHints, harmonyTrack, settings, random, introInstrumentOrder } = options;
     const events: FractalEvent[] = [];
     console.log(`%c[IntroSeq @ Bar ${currentBar}] --- START ---`, 'color: #00DDDD');
@@ -573,8 +572,6 @@ export function generateIntroSequence(options: {
     const activeInstrumentsForBar = new Set(introInstrumentOrder.slice(0, currentStage));
     console.log(`[IntroSeq] Current Stage: ${currentStage}/${stageCount}. Active Instruments:`, Array.from(activeInstrumentsForBar));
     
-    // --- Генерация партий на основе активных инструментов ---
-
     if (activeInstrumentsForBar.has('accompaniment') && instrumentHints.accompaniment !== 'none') {
         console.log(`[IntroSeq] Generating accompaniment with hint: ${instrumentHints.accompaniment}`);
         events.push(...createPulsatingAccompaniment(currentChord, random));
@@ -582,7 +579,8 @@ export function generateIntroSequence(options: {
     if (activeInstrumentsForBar.has('melody') && instrumentHints.melody !== 'none') {
         console.log(`[IntroSeq] Generating melody with hint: ${instrumentHints.melody}`);
         const melodyEvents = createMelodyMotif(currentChord, settings.mood, random, undefined, 'mid', settings.genre);
-        melodyEvents.forEach(e => e.note += 24); // Correct register for guitar
+        melodyEvents.forEach(e => e.note += 24); 
+        melodyEvents.forEach(e => e.weight = 0.4); 
         events.push(...melodyEvents);
     }
     if(activeInstrumentsForBar.has('bass')) {
@@ -631,7 +629,6 @@ export function createPulsatingAccompaniment(chord: GhostChord, random: { next: 
 
 
 export function chooseHarmonyInstrument(rules: InstrumentationRules<'piano' | 'guitarChords' | 'acousticGuitarSolo' | 'flute' | 'violin'> | undefined, random: { next: () => number }): NonNullable<InstrumentHints['harmony']> {
-    // #ИСПРАВЛЕНО (ПЛАН 988): Добавлена проверка на существование `rules`.
     if (!rules || !rules.options || rules.options.length === 0) {
         return 'guitarChords'; // Безопасное значение по умолчанию
     }
@@ -850,4 +847,5 @@ export function createBluesOrganLick(
 }
 
     
+
 
