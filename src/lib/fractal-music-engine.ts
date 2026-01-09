@@ -135,7 +135,8 @@ export class FractalMusicEngine {
   private currentBassRiffIndex: number = 0;
   private currentGuitarRiffId: string | null = null;
 
-  private melodyHistory: string[] = []; // #РЕШЕНИЕ (ПЛАН 931)
+  private melodyHistory: string[] = [];
+  private soloPlanHistory: string[] = []; // #ПЛАН 994: "Краткосрочная Память Гитариста"
 
   constructor(config: EngineConfig) {
     this.config = { ...config };
@@ -506,25 +507,41 @@ export class FractalMusicEngine {
         random: { next: () => number; nextInt: (max: number) => number; },
         isSoloSection: boolean,
         chorusIndex: number,
-        registerHint?: 'low' | 'mid' | 'high',
-        soloPlanName?: string
+        registerHint?: 'low' | 'mid' | 'high'
     ): { events: FractalEvent[], log: string } {
 
         const finalEvents: FractalEvent[] = [];
         const barDurationInBeats = 4.0;
         const ticksPerBeat = 3;
         let logMessage = "";
+        let soloPlanName: string | null = null;
 
-        if (isSoloSection && soloPlanName) {
+        if (isSoloSection) {
+            const allPlanIds = Object.keys(BLUES_SOLO_PLANS);
+            let selectablePlans = allPlanIds.filter(id => !this.soloPlanHistory.includes(id));
+            
+            if (selectablePlans.length === 0) {
+                this.soloPlanHistory = []; // Reset history if all plans are used
+                selectablePlans = allPlanIds;
+            }
+
+            soloPlanName = selectablePlans[random.nextInt(selectablePlans.length)];
+            
+            this.soloPlanHistory.unshift(soloPlanName);
+            if (this.soloPlanHistory.length > 5) {
+                this.soloPlanHistory.pop();
+            }
+            logMessage = `[FME] Solo section. Selected plan "${soloPlanName}". History: [${this.soloPlanHistory.join(', ')}]`;
+            
             const soloPlan = BLUES_SOLO_PLANS[soloPlanName];
 
             if (!soloPlan || chorusIndex >= soloPlan.choruses.length) {
-                logMessage = `[FME] Solo plan "${soloPlanName}" or chorus index ${chorusIndex} out of bounds.`;
+                logMessage += ` | Plan "${soloPlanName}" or chorus index ${chorusIndex} out of bounds.`;
                 return { events: [], log: logMessage };
             }
 
             const currentChorusPlan = soloPlan.choruses[chorusIndex % soloPlan.choruses.length];
-            logMessage = `[FME] Assembling solo chorus ${chorusIndex + 1} using plan "${soloPlanName}".`;
+            logMessage += ` | Assembling solo chorus ${chorusIndex + 1}.`;
 
             for (let barIndex = 0; barIndex < 12; barIndex++) {
                 const lickId = currentChorusPlan[barIndex];
@@ -796,7 +813,7 @@ export class FractalMusicEngine {
                 const chorusBarStart = this.epoch - barInChorus;
                 const chorusChords = this.ghostHarmonyTrack.filter(c => c.bar >= chorusBarStart && c.bar < chorusBarStart + 12);
                 if (chorusChords.length > 0) {
-                    this.bluesChorusCache = this.generateBluesMelodyChorus(chorusChords, this.config.mood, this.random, isSoloSection, chorusIndex, melodyRules.register?.preferred, melodyRules.soloPlan);
+                    this.bluesChorusCache = this.generateBluesMelodyChorus(chorusChords, this.config.mood, this.random, isSoloSection, chorusIndex, melodyRules.register?.preferred);
                      console.log(`%c${this.bluesChorusCache.log}`, 'color: #E6E6FA');
                 }
             }
@@ -914,6 +931,7 @@ export class FractalMusicEngine {
     return { events: allEvents, instrumentHints };
   }
 }
+
 
 
 

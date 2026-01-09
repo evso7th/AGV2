@@ -17,15 +17,15 @@ export const WinterBluesBlueprint: MusicBlueprint = {
         totalDuration: { preferredBars: 120 }, // 10 loops of 12 bars
         parts: [
             {
-                id: 'INTRO', name: 'Main Riff', duration: { percent: 15 },
+                id: 'INTRO', name: 'Main Riff Intro', duration: { percent: 15 },
                 introRules: {
                     instrumentPool: ['drums', 'bass', 'melody'],
                     stages: 3,
                 },
                 layers: { bass: true, drums: true, accompaniment: true, harmony: true, melody: true },
                 instrumentation: {
-                    accompaniment: {
-                        strategy: 'weighted',
+                    accompaniment: { 
+                        strategy: 'weighted', 
                         v1Options: [{ name: 'ambientPad', weight: 1.0 }],
                         v2Options: [
                           { name: 'mellotron', weight: 0.5 },
@@ -40,7 +40,7 @@ export const WinterBluesBlueprint: MusicBlueprint = {
                         ],
                         v2Options: [
                             { name: 'telecaster', weight: 0.5 },
-                            { name: 'blackAcoustic', weight: 0.5 }
+                            { name: 'blackAcoustic', weight: 0.5 },
                         ]
                     },
                     harmony: {
@@ -54,25 +54,18 @@ export const WinterBluesBlueprint: MusicBlueprint = {
                 instrumentRules: {
                     drums: { pattern: 'composer', kitName: 'blues_calm', density: { min: 0.1, max: 0.3 }, useSnare: false, usePerc: true, rareKick: true },
                     bass: { techniques: [{ value: 'riff', weight: 1.0 }], density: { min: 0.3, max: 0.5 } },
-                    accompaniment: { density: {min: 0.1, max: 0.3} },
                     melody: { 
                         source: 'motif', 
                         density: { min: 0.2, max: 0.4 }, 
                         register: { preferred: 'mid' },
-                        techniques: [{ value: 'arpeggio-slow', weight: 0.4 }, { value: 'long-chords', weight: 0.6 }],
-                        fingerstyle: [
-                            { bars: [2, 3, 4, 6, 7, 8, 10, 11], pattern: 'F_TRAVIS', voicingName: 'Em7_open' }
-                        ],
-                        strum: [
-                            { bars: [1, 5, 9, 12], pattern: 'S_SWING', voicingName: 'Em7_open' }
-                        ]
+                        techniques: [{ value: 'arpeggio-slow', weight: 0.4 }, { value: 'long-chords', weight: 0.6 }] 
                     }
                 },
                 bundles: [{ id: 'BLUES_WINTER_VERSE_BUNDLE', name: 'Main Riff', duration: { percent: 100 }, characteristics: {}, phrases: {} }],
                 outroFill: null,
             },
             {
-                id: 'BUILD', name: 'Build-Up', duration: { percent: 15 },
+                id: 'BUILD', name: 'Build-Up', duration: { percent: 20 },
                 layers: { bass: true, drums: true, melody: true, accompaniment: true, harmony: true },
                  instrumentation: {
                     accompaniment: { 
@@ -102,7 +95,7 @@ export const WinterBluesBlueprint: MusicBlueprint = {
                 bundles: [{ id: 'BLUES_WINTER_BUILD_BUNDLE', name: 'Build', duration: { percent: 100 }, characteristics: {}, phrases: {} }],
                 outroFill: { type: 'roll', duration: 1, parameters: { crescendo: true } },
             },
-            {
+             {
                 id: 'MAIN-1', name: 'Main Theme A', duration: { percent: 15 },
                 layers: { bass: true, drums: true, melody: true, accompaniment: true, harmony: true },
                 instrumentation: {
@@ -157,8 +150,7 @@ export const WinterBluesBlueprint: MusicBlueprint = {
                     melody: { 
                         source: 'motif', 
                         density: { min: 0.6, max: 0.8 },
-                        register: { preferred: 'high' },
-                        soloPlan: 'E_minor_heavy_wail'
+                        register: { preferred: 'high' }
                     },
                     bass: { techniques: [{ value: 'riff', weight: 1.0 }] },
                 },
@@ -166,7 +158,7 @@ export const WinterBluesBlueprint: MusicBlueprint = {
                 outroFill: { type: 'roll', duration: 1, parameters: {} },
             },
              {
-                id: 'MAIN-2', name: 'Main Theme B', duration: { percent: 15 },
+                id: 'MAIN-2', name: 'Main Theme B', duration: { percent: 10 },
                 layers: { bass: true, drums: true, melody: true, accompaniment: true, harmony: true },
                 instrumentation: {
                     accompaniment: { 
