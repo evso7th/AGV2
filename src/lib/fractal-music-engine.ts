@@ -703,17 +703,20 @@ export class FractalMusicEngine {
           return { events: [], instrumentHints: {} };
       }
 
-      const v2MelodyHint = this._chooseInstrumentForPart('melody', this.navigator.tick(this.epoch));
+      const navInfo = this.navigator.tick(this.epoch, this._chooseInstrumentForPart('melody', this.navigator.tick(this.epoch)));
+      if (navInfo?.logMessage) {
+        console.log(navInfo.logMessage);
+      }
 
       const instrumentHints: InstrumentHints = {
-          melody: v2MelodyHint,
-          accompaniment: this._chooseInstrumentForPart('accompaniment', this.navigator.tick(this.epoch)),
-          harmony: chooseHarmonyInstrument(this.navigator.tick(this.epoch)?.currentPart.instrumentation?.harmony, this.random)
+          melody: this._chooseInstrumentForPart('melody', navInfo),
+          accompaniment: this._chooseInstrumentForPart('accompaniment', navInfo),
+          harmony: chooseHarmonyInstrument(navInfo?.currentPart.instrumentation?.harmony, this.random)
       };
       
       console.log(`MelodyInstrumentLog: [1. Composer] Generated hint for bar ${this.epoch}: ${instrumentHints.melody}`);
   
-      const { events } = this.generateOneBar(barDuration, this.navigator.tick(this.epoch)!, instrumentHints);
+      const { events } = this.generateOneBar(barDuration, navInfo!, instrumentHints);
       
       return { events, instrumentHints };
     }
@@ -931,6 +934,7 @@ export class FractalMusicEngine {
     return { events: allEvents, instrumentHints };
   }
 }
+
 
 
 
