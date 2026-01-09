@@ -30,12 +30,10 @@ export const BLUES_GUITAR_RIFFS: BluesGuitarRiff[] = [
       Turnaround:  [{t:0,d:2,deg:'2'},{t:2,d:2,deg:'b3'},{t:4,d:2,deg:'3'},{t:6,d:2,deg:'4'},{t:8,d:2,deg:'#4'},{t:10,d:2,deg:'5'}]
     },
     fingerstyle: [
-      { bars: [2,5,6], pattern: 'F_TRAVIS', voicingName: 'E7_open' }
+      { probability: 0.6, pattern: 'F_TRAVIS', voicingName: 'E7_open' }
     ],
     strum: [
-      { bars: [1,3,4,7,8,11], pattern: 'S_SWING', voicingName: 'E7_open' },
-      { bars: [10], pattern: 'S_SWING', voicingName: 'A7_open' },
-      { bars: [9], pattern: 'S_SWING', voicingName: 'B7_open' }
+      { probability: 0.4, pattern: 'S_SWING', voicingName: 'E7_open' }
     ]
   },
   {
@@ -52,11 +50,10 @@ export const BLUES_GUITAR_RIFFS: BluesGuitarRiff[] = [
       Turnaround:  [{t:0,d:6,deg:'6'},{t:6,d:6,deg:'R'}]
     },
     fingerstyle: [
-       { bars: [2,6], pattern: 'F_ROLL12', voicingName: 'A7_open' }
+       { probability: 0.5, pattern: 'F_ROLL12', voicingName: 'A7_open' }
     ],
     strum: [
-      { bars: [1,3,5,7,8,11], pattern: 'S_4DOWN', voicingName: 'E7_open' },
-      { bars: [12], pattern: 'S_SWING', voicingName: 'B7_open' }
+      { probability: 0.5, pattern: 'S_4DOWN', voicingName: 'E7_open' }
     ]
   },
   {
@@ -73,12 +70,10 @@ export const BLUES_GUITAR_RIFFS: BluesGuitarRiff[] = [
       Turnaround:  [{t:0,deg:'2'},{t:2,deg:'b3'},{t:4,deg:'3'},{t:6,deg:'4'},{t:8,d:2,deg:'#4'},{t:10,d:2,deg:'5'}]
     },
     fingerstyle: [
-      { bars: [5,6,2], pattern: 'F_TRAVIS', voicingName: 'A7_open' }
+      { probability: 0.7, pattern: 'F_TRAVIS', voicingName: 'A7_open' }
     ],
     strum: [
-      { bars: [1,3,4,7,8,11], pattern: 'S_SWING', voicingName: 'E7_open' },
-      { bars: [9], pattern: 'S_SWING', voicingName: 'B7_open' },
-      { bars: [10], pattern: 'S_SWING', voicingName: 'A7_open' }
+      { probability: 0.3, pattern: 'S_SWING', voicingName: 'E7_open' }
     ]
   },
   {
@@ -95,11 +90,10 @@ export const BLUES_GUITAR_RIFFS: BluesGuitarRiff[] = [
       Turnaround:  [{t:0,deg:'R'},{t:3,deg:'b7'},{t:6,d:6,deg:'R'}]
     },
     fingerstyle: [
-      { bars: [2,5,6], pattern: 'F_TRAVIS', voicingName: 'A7_open' }
+      { probability: 0.6, pattern: 'F_TRAVIS', voicingName: 'A7_open' }
     ],
     strum: [
-      { bars: [1,3,4,7,8,11], pattern: 'S_4DOWN', voicingName: 'E7_open' },
-      { bars: [12], pattern: 'S_SWING', voicingName: 'B7_open' }
+      { probability: 0.2, pattern: 'S_4DOWN', voicingName: 'E7_open' }
     ]
   },
   {
@@ -116,11 +110,10 @@ export const BLUES_GUITAR_RIFFS: BluesGuitarRiff[] = [
       Turnaround:  [{t:0,d:6,deg:'2'},{t:6,d:6,deg:'R'}]
     },
     fingerstyle: [
-      { bars: [2,6], pattern: 'F_ROLL12', voicingName: 'A7_open' },
-      { bars: [5], pattern: 'F_TRAVIS', voicingName: 'A7_open' }
+      { probability: 0.8, pattern: 'F_ROLL12', voicingName: 'A7_open' }
     ],
     strum: [
-      { bars: [1,3,4,7,8,11,10], pattern: 'S_SWING', voicingName: 'E7_open' }
+      { probability: 0.1, pattern: 'S_SWING', voicingName: 'E7_open' }
     ]
   },
   {
@@ -137,10 +130,10 @@ export const BLUES_GUITAR_RIFFS: BluesGuitarRiff[] = [
       Turnaround:  [{t:0,d:4,deg:'6'},{t:4,d:4,deg:'5'},{t:8,d:4,deg:'R'}]
     },
     fingerstyle: [
-      { bars: [2,5], pattern: 'F_TRAVIS', voicingName: 'A7_open' }
+      { probability: 0.5, pattern: 'F_TRAVIS', voicingName: 'A7_open' }
     ],
     strum: [
-       { bars: [1,3,4,7,8,11], pattern: 'S_SWING', voicingName: 'E7_open' }
+       { probability: 0.3, pattern: 'S_SWING', voicingName: 'E7_open' }
     ]
   },
   {
@@ -157,11 +150,10 @@ export const BLUES_GUITAR_RIFFS: BluesGuitarRiff[] = [
       Turnaround:  [{t:0,d:6,deg:'b7'},{t:6,d:6,deg:'R'}]
     },
     fingerstyle: [
-      { bars: [2,5,6], pattern: 'F_ROLL12', voicingName: 'Em7_open' }
+      { probability: 0.7, pattern: 'F_ROLL12', voicingName: 'Em7_open' }
     ],
     strum: [
-      { bars: [1,3,4,7,8,11], pattern: 'S_SWING', voicingName: 'Em7_open' },
-      { bars: [9], pattern: 'S_SWING', voicingName: 'B7_open' }
+      { probability: 0.2, pattern: 'S_SWING', voicingName: 'Em7_open' }
     ]
   },
   {
@@ -178,11 +170,10 @@ export const BLUES_GUITAR_RIFFS: BluesGuitarRiff[] = [
       Turnaround:  [{t:0,deg:'R'},{t:2,deg:'b7'},{t:4,deg:'6'},{t:6,deg:'b6'},{t:8,deg:'5'},{t:10,deg:'#4'}]
     },
     fingerstyle: [
-      { bars: [2,5], pattern: 'F_TRAVIS', voicingName: 'Am7_open' },
-      { bars: [6], pattern: 'F_ROLL12', voicingName: 'Am7_open' }
+      { probability: 0.8, pattern: 'F_TRAVIS', voicingName: 'Am7_open' }
     ],
     strum: [
-      { bars: [1,3,4,7,8,11], pattern: 'S_SWING', voicingName: 'Em7_open' }
+      { probability: 0.1, pattern: 'S_SWING', voicingName: 'Em7_open' }
     ]
   },
   {
@@ -199,12 +190,10 @@ export const BLUES_GUITAR_RIFFS: BluesGuitarRiff[] = [
       Turnaround:  [{t:0,d:3,deg:'2'},{t:3,d:3,deg:'b2'},{t:6,d:6,deg:'R'}]
     },
     fingerstyle: [
-      { bars: [2,6], pattern: 'F_ROLL12', voicingName: 'Am7_open' },
-      { bars: [5], pattern: 'F_TRAVIS', voicingName: 'Am7_open' }
+      { probability: 0.4, pattern: 'F_ROLL12', voicingName: 'Am7_open' }
     ],
     strum: [
-      { bars: [1,3,4,7,8,11], pattern: 'S_4DOWN', voicingName: 'Em7_open' },
-      { bars: [12], pattern: 'S_SWING', voicingName: 'B7_open' }
+      { probability: 0.6, pattern: 'S_4DOWN', voicingName: 'Em7_open' }
     ]
   },
   {
@@ -221,181 +210,10 @@ export const BLUES_GUITAR_RIFFS: BluesGuitarRiff[] = [
       Turnaround:  [{t:0,d:6,deg:'2'},{t:6,d:6,deg:'R'}]
     },
     fingerstyle: [
-      { bars: [2,5,6], pattern: 'F_TRAVIS', voicingName: 'Am7_open' }
+      { probability: 0.9, pattern: 'F_TRAVIS', voicingName: 'Am7_open' }
     ],
     strum: [
-       { bars: [1,3,4,7,8,11], pattern: 'S_SWING', voicingName: 'Em7_open' }
+       { probability: 0.1, pattern: 'S_SWING', voicingName: 'Em7_open' }
     ]
-  },
-  // --- SLOW BLUES MELODIES ---
-  {
-      id: "MelDense-01",
-      moods: ["melancholic", "gloomy"],
-      type: "minor",
-      tags: ["slow-burn", "dense"],
-      bpm: 60,
-      key: "E",
-      solo: {
-        I:  [ {"t":0,"deg":"b3"}, {"t":2,"deg":"4"}, {"t":4,"deg":"#4"}, {"t":6,"deg":"5"}, {"t":8,"deg":"b7"}, {"t":10,"deg":"5"} ],
-        IV: [ {"t":0,"deg":"11"}, {"t":2,"deg":"9"}, {"t":4,"deg":"5"},  {"t":6,"deg":"11"}, {"t":8,"deg":"9"}, {"t":10,"deg":"5"} ],
-        V:  [ {"t":0,"deg":"5"},  {"t":2,"deg":"b7"}, {"t":4,"deg":"R"}, {"t":6,"deg":"b7"}, {"t":8,"deg":"5"},  {"t":10,"deg":"3"} ],
-        Turnaround:  [ {"t":0,"deg":"2"},  {"t":2,"deg":"b2"}, {"t":4,"deg":"R"}, {"t":6,"deg":"b7"}, {"t":8,"deg":"5"},  {"t":10,"deg":"#4"} ]
-      },
-      fingerstyle: [],
-      strum: []
-    },
-    {
-      id: "MelDense-02",
-      moods: ["melancholic", "dark"],
-      type: "minor",
-      tags: ["slow-burn", "dense", "chromatic"],
-      bpm: 60,
-      key: "E",
-      solo: {
-        I:  [ {"t":0,"deg":"R"}, {"t":2,"deg":"2"}, {"t":4,"deg":"b3"}, {"t":6,"deg":"4"}, {"t":8,"deg":"#4"}, {"t":10,"deg":"5"} ],
-        IV: [ {"t":0,"deg":"R"}, {"t":2,"deg":"2"}, {"t":4,"deg":"11"}, {"t":6,"deg":"9"}, {"t":8,"deg":"5"},  {"t":10,"deg":"11"} ],
-        V:  [ {"t":0,"deg":"5"}, {"t":2,"deg":"R"}, {"t":4,"deg":"b7"}, {"t":6,"deg":"5"}, {"t":8,"deg":"R"},  {"t":10,"deg":"b7"} ],
-        Turnaround:  [ {"t":0,"deg":"b7"}, {"t":2,"deg":"6"}, {"t":4,"deg":"b6"}, {"t":6,"deg":"5"}, {"t":8,"deg":"#4"}, {"t":10,"deg":"R"} ]
-      },
-      fingerstyle: [],
-      strum: []
-    },
-    {
-      id: "MelDense-03",
-      moods: ["gloomy", "dark"],
-      type: "minor",
-      tags: ["slow-burn", "dense"],
-      bpm: 60,
-      key: "E",
-      solo: {
-        I:  [ {"t":0,"deg":"b3"}, {"t":2,"deg":"5"}, {"t":4,"deg":"4"}, {"t":6,"deg":"b3"}, {"t":8,"deg":"2"}, {"t":10,"deg":"R"} ],
-        IV: [ {"t":0,"deg":"11"}, {"t":2,"deg":"9"}, {"t":4,"deg":"5"}, {"t":6,"deg":"9"}, {"t":8,"deg":"11"},{"t":10,"deg":"5"} ],
-        V:  [ {"t":0,"deg":"b2"}, {"t":2,"deg":"R"}, {"t":4,"deg":"b7"}, {"t":6,"deg":"5"}, {"t":8,"deg":"b7"}, {"t":10,"deg":"R"} ],
-        Turnaround:  [ {"t":0,"deg":"2"},  {"t":2,"deg":"b2"}, {"t":4,"deg":"R"}, {"t":6,"deg":"b7"}, {"t":8,"deg":"5"},  {"t":10,"deg":"#4"} ]
-      },
-      fingerstyle: [],
-      strum: []
-    },
-    {
-      id: "MelDense-04",
-      moods: ["melancholic", "dark"],
-      type: "minor",
-      tags: ["slow-burn", "dense"],
-      bpm: 60,
-      key: "E",
-      solo: {
-        I:  [ {"t":0,"deg":"R"}, {"t":2,"deg":"b3"}, {"t":4,"deg":"4"}, {"t":6,"deg":"#4"}, {"t":8,"deg":"5"}, {"t":10,"deg":"b7"} ],
-        IV: [ {"t":0,"deg":"R"}, {"t":2,"deg":"11"}, {"t":4,"deg":"9"}, {"t":6,"deg":"11"}, {"t":8,"deg":"5"}, {"t":10,"deg":"9"} ],
-        V:  [ {"t":0,"deg":"5"}, {"t":2,"deg":"3"},  {"t":4,"deg":"R"}, {"t":6,"deg":"b7"}, {"t":8,"deg":"5"}, {"t":10,"deg":"R"} ],
-        Turnaround:  [ {"t":0,"deg":"2"}, {"t":2,"deg":"b2"}, {"t":4,"deg":"R"}, {"t":6,"deg":"b7"}, {"t":8,"deg":"5"}, {"t":10,"deg":"#4"} ]
-      },
-      fingerstyle: [],
-      strum: []
-    },
-    {
-      id: "MelDense-05",
-      moods: ["melancholic", "gloomy"],
-      type: "minor",
-      tags: ["slow-burn", "dense"],
-      bpm: 60,
-      key: "E",
-      solo: {
-        I:  [ {"t":0,"deg":"b3"}, {"t":2,"deg":"2"}, {"t":4,"deg":"R"}, {"t":6,"deg":"5"}, {"t":8,"deg":"4"}, {"t":10,"deg":"#4"} ],
-        IV: [ {"t":0,"deg":"11"}, {"t":2,"deg":"9"}, {"t":4,"deg":"11"},{"t":6,"deg":"5"}, {"t":8,"deg":"9"}, {"t":10,"deg":"5"} ],
-        V:  [ {"t":0,"deg":"5"}, {"t":2,"deg":"b7"}, {"t":4,"deg":"5"}, {"t":6,"deg":"R"}, {"t":8,"deg":"b7"}, {"t":10,"deg":"5"} ],
-        Turnaround:  [ {"t":0,"deg":"b7"},{"t":2,"deg":"6"},  {"t":4,"deg":"b6"},{"t":6,"deg":"5"}, {"t":8,"deg":"#4"},{"t":10,"deg":"R"} ]
-      },
-      fingerstyle: [],
-      strum: []
-    },
-    {
-      id: "MelDense-06",
-      moods: ["melancholic", "dreamy"],
-      type: "minor",
-      tags: ["slow-burn", "dense"],
-      bpm: 60,
-      key: "E",
-      solo: {
-        I:  [ {"t":0,"deg":"R"}, {"t":2,"deg":"2"}, {"t":4,"deg":"b3"}, {"t":6,"deg":"4"}, {"t":8,"deg":"5"}, {"t":10,"deg":"b7"} ],
-        IV: [ {"t":0,"deg":"R"}, {"t":2,"deg":"11"},{"t":4,"deg":"9"},  {"t":6,"deg":"11"},{"t":8,"deg":"5"}, {"t":10,"deg":"9"} ],
-        V:  [ {"t":0,"deg":"5"}, {"t":2,"deg":"b7"},{"t":4,"deg":"3"},  {"t":6,"deg":"5"}, {"t":8,"deg":"R"}, {"t":10,"deg":"b7"} ],
-        Turnaround:  [ {"t":0,"deg":"2"}, {"t":2,"deg":"b2"}, {"t":4,"deg":"R"},  {"t":6,"deg":"b7"},{"t":8,"deg":"5"},{"t":10,"deg":"#4"} ]
-      },
-      fingerstyle: [],
-      strum: []
-    },
-    {
-      id: "MelDense-07",
-      moods: ["gloomy", "dark"],
-      type: "minor",
-      tags: ["slow-burn", "dense", "chromatic"],
-      bpm: 60,
-      key: "E",
-      solo: {
-        I:  [ {"t":0,"deg":"b3"}, {"t":2,"deg":"4"}, {"t":4,"deg":"5"}, {"t":6,"deg":"#4"}, {"t":8,"deg":"5"}, {"t":10,"deg":"b7"} ],
-        IV: [ {"t":0,"deg":"11"},{"t":2,"deg":"9"},  {"t":4,"deg":"5"}, {"t":6,"deg":"11"}, {"t":8,"deg":"9"}, {"t":10,"deg":"5"} ],
-        V:  [ {"t":0,"deg":"b2"},{"t":2,"deg":"R"},  {"t":4,"deg":"b7"},{"t":6,"deg":"5"},  {"t":8,"deg":"b7"},{"t":10,"deg":"R"} ],
-        Turnaround:  [ {"t":0,"deg":"b7"},{"t":2,"deg":"6"},  {"t":4,"deg":"b6"},{"t":6,"deg":"5"},  {"t":8,"deg":"#4"},{"t":10,"deg":"R"} ]
-      },
-      fingerstyle: [],
-      strum: []
-    },
-    {
-      id: "MelDense-08",
-      moods: ["melancholic", "dark"],
-      type: "minor",
-      tags: ["slow-burn", "dense"],
-      bpm: 60,
-      key: "E",
-      solo: {
-        I:  [ {"t":0,"deg":"R"}, {"t":2,"deg":"b3"}, {"t":4,"deg":"4"}, {"t":6,"deg":"5"}, {"t":8,"deg":"4"}, {"t":10,"deg":"#4"} ],
-        IV: [ {"t":0,"deg":"R"}, {"t":2,"deg":"11"},{"t":4,"deg":"9"}, {"t":6,"deg":"11"},{"t":8,"deg":"5"}, {"t":10,"deg":"11"} ],
-        V:  [ {"t":0,"deg":"5"}, {"t":2,"deg":"3"},  {"t":4,"deg":"R"}, {"t":6,"deg":"b7"},{"t":8,"deg":"5"}, {"t":10,"deg":"R"} ],
-        Turnaround:  [ {"t":0,"deg":"2"}, {"t":2,"deg":"b2"}, {"t":4,"deg":"R"}, {"t":6,"deg":"b7"},{"t":8,"deg":"5"},{"t":10,"deg":"#4"} ]
-      },
-      fingerstyle: [],
-      strum: []
-    },
-    {
-      id: "MelDense-09",
-      moods: ["gloomy", "dark"],
-      type: "minor",
-      tags: ["slow-burn", "dense"],
-      bpm: 60,
-      key: "E",
-      solo: {
-        I:  [ {"t":0,"deg":"b3"},{"t":2,"deg":"2"}, {"t":4,"deg":"R"}, {"t":6,"deg":"5"}, {"t":8,"deg":"b7"}, {"t":10,"deg":"5"} ],
-        IV: [ {"t":0,"deg":"11"},{"t":2,"deg":"9"}, {"t":4,"deg":"5"},  {"t":6,"deg":"11"},{"t":8,"deg":"9"}, {"t":10,"deg":"5"} ],
-        V:  [ {"t":0,"deg":"5"}, {"t":2,"deg":"b7"},{"t":4,"deg":"R"},  {"t":6,"deg":"b7"},{"t":8,"deg":"5"}, {"t":10,"deg":"3"} ],
-        Turnaround:  [ {"t":0,"deg":"2"}, {"t":2,"deg":"b2"},{"t":4,"deg":"R"},  {"t":6,"deg":"b7"},{"t":8,"deg":"5"},{"t":10,"deg":"#4"} ]
-      },
-      fingerstyle: [],
-      strum: []
-    },
-    {
-      id: "MelDense-10",
-      moods: ["melancholic", "gloomy"],
-      type: "minor",
-      tags: ["slow-burn", "dense"],
-      bpm: 60,
-      key: "E",
-      solo: {
-        I:  [ {"t":0,"deg":"R"}, {"t":2,"deg":"2"}, {"t":4,"deg":"b3"}, {"t":6,"deg":"4"}, {"t":8,"deg":"#4"}, {"t":10,"deg":"5"} ],
-        IV: [ {"t":0,"deg":"R"}, {"t":2,"deg":"11"},{"t":4,"deg":"9"},  {"t":6,"deg":"5"},  {"t":8,"deg":"11"},{"t":10,"deg":"9"} ],
-        V:  [ {"t":0,"deg":"5"}, {"t":2,"deg":"b7"}, {"t":4,"deg":"R"}, {"t":6,"deg":"b7"}, {"t":8,"deg":"5"}, {"t":10,"deg":"R"} ],
-        Turnaround:  [ {"t":0,"deg":"b7"},{"t":2,"deg":"6"}, {"t":4,"deg":"b6"}, {"t":6,"deg":"5"},  {"t":8,"deg":"#4"},{"t":10,"deg":"R"} ]
-      },
-      fingerstyle: [],
-      strum: []
-    }
+  }
 ];
-
-export const BLUES_GUITAR_VOICINGS: Record<string, number[]> = {
-    'E7_open': [40,47,50,56,59,64],
-    'A7_open': [45,52,55,61,64],
-    'B7_open': [47,51,57,59,66],
-    'Em7_open': [40,47,52,55,62,64],
-    'Am7_open': [45,52,55,60,64],
-};
-
-    

@@ -293,38 +293,38 @@ export type BluesMelody = {
   phraseTurnaround: BluesMelodyPhrase;
 };
 
-// --- GUITAR SOLO & RIFF TYPES (ПЛАН 902.2) ---
+// --- GUITAR SOLO & RIFF TYPES (ПЛАН 902.2 & 989) ---
 
 /**
- * Определяет одну ноту внутри гитарного "лика" (короткой фразы).
+ * Defines a single note within a guitar "lick" (a short musical phrase).
  */
 export type BluesSoloPhrase = {
-  t: number; // Стартовый тик (0-11)
-  d: number; // Длительность в тиках
-  deg: BluesRiffDegree; // Ступень относительно корня аккорда
-  tech?: 'sl' | 'h/p' | 'bn' | 'vb' | 'gr' | 'ds'; // Техника исполнения (slide, hammer/pull, bend, vibrato, grace note, double-stop)
+  t: number; // Start tick (0-11)
+  d: number; // Duration in ticks
+  deg: BluesRiffDegree; // Degree relative to the chord root
+  tech?: 'sl' | 'h/p' | 'bn' | 'vb' | 'gr' | 'ds'; // Performance technique
 }[];
 
 /**
- * Определяет паттерн для игры перебором (фингерстайл).
+ * Defines a fingerpicking pattern.
  */
 export type FingerstylePattern = {
-  bars: number[]; // Номера тактов, где применяется паттерн
-  pattern: 'F_TRAVIS' | 'F_ROLL12'; // Название паттерна
-  voicingName: string; // Имя воисинга аккорда из библиотеки
+  probability: number;
+  pattern: 'F_TRAVIS' | 'F_ROLL12'; // Pattern name
+  voicingName: string; // The chord voicing to use
 };
 
 /**
- * Определяет паттерн для игры боем.
+ * Defines a strumming pattern.
  */
 export type StrumPattern = {
-  bars: number[]; // Номера тактов, где применяется паттерн
-  pattern: 'S_SWING' | 'S_4DOWN'; // Название паттерна
-  voicingName: string; // Имя воисинга аккорда
+  probability: number;
+  pattern: 'S_SWING' | 'S_4DOWN'; // Pattern name
+  voicingName: string; // The chord voicing to use
 };
 
 /**
- * Полное описание гитарной аранжировки для одного блюзового хоруса.
+ * A complete description of a guitar arrangement for a 12-bar blues chorus.
  */
 export type BluesGuitarRiff = {
   id: string;
@@ -333,14 +333,14 @@ export type BluesGuitarRiff = {
   tags: string[];
   bpm: number;
   key: string;
-  // Соло-фразы для каждого типа аккорда в 12-тактовом блюзе
+  // Solo phrases for each chord type in a 12-bar blues progression
   solo: {
     I: BluesSoloPhrase;
     IV: BluesSoloPhrase;
     V: BluesSoloPhrase;
     Turnaround: BluesSoloPhrase;
   };
-  // Паттерны для ритм-гитары
+  // Rhythm guitar patterns
   fingerstyle: FingerstylePattern[];
   strum: StrumPattern[];
 };
@@ -349,8 +349,8 @@ export type BluesGuitarRiff = {
 // --- DRUM KIT TYPES (ПЛАН 756) ---
 
 /**
- * Описывает состав одной ударной установки.
- * Каждый массив содержит имена сэмплов, разрешенных для этой партии.
+ * Describes the composition of a single drum kit.
+ * Each array contains the names of the samples allowed for that part.
  */
 export type DrumKit = {
     kick: InstrumentType[];
@@ -358,17 +358,17 @@ export type DrumKit = {
     hihat: InstrumentType[];
     ride: InstrumentType[];
     crash: InstrumentType[];
-    perc: InstrumentType[]; // Общая перкуссия (томы, блоки и т.д.)
+    perc: InstrumentType[]; // General percussion (toms, blocks, etc.)
 };
 
 /**
- * Библиотека всех ударных установок, сгруппированная по жанрам и настроениям.
+ * The library of all drum kits, grouped by genre and mood.
  */
 export type DrumKitLibrary = {
     [genre in Genre]?: {
         [mood in Mood]?: DrumKit;
     } & {
-        // Специальный кит для интро, если он нужен
+        // A special kit for intros, if needed
         intro?: DrumKit;
     };
 };
