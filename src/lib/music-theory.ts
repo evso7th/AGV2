@@ -543,14 +543,16 @@ export function createMelodyMotif(chord: GhostChord, mood: Mood, random: { next:
 
 export function generateIntroSequence(options: { 
     currentBar: number; 
-    activeInstruments: Set<InstrumentPart>;
+    totalIntroBars: number;
+    rules: IntroRules;
     instrumentHints: InstrumentHints;
     harmonyTrack: GhostChord[]; 
     settings: any; 
     random: { next: () => number, nextInt: (max: number) => number }; 
 }): { events: FractalEvent[], instrumentHints: InstrumentHints } {
-    const { currentBar, activeInstruments, instrumentHints, harmonyTrack, settings, random } = options;
+    const { currentBar, totalIntroBars, rules, instrumentHints, harmonyTrack, settings, random } = options;
     const events: FractalEvent[] = [];
+    const activeInstruments = new Set(rules.instrumentPool);
 
     const currentChord = harmonyTrack.find(c => currentBar >= c.bar && currentBar < c.bar + c.durationBars);
     if (!currentChord) {
