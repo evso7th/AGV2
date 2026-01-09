@@ -50,14 +50,13 @@ export const MelancholicAmbientBlueprint: MusicBlueprint = {
             accompaniment: {
                 strategy: 'weighted',
                 v1Options: [
-                    { name: 'organ', weight: 0.5 },
-                    { name: 'mellotron', weight: 0.5 }
+                    { name: 'mellotron', weight: 0.6 },
+                    { name: 'organ', weight: 0.4 }
                 ],
                 v2Options: [
-                    { name: 'organ', weight: 0.3 },
-                    { name: 'organ_soft_jazz', weight: 0.3 },
-                    { name: 'mellotron_flute_intimate', weight: 0.2 },
-                    { name: 'mellotron', weight: 0.2 }
+                    { name: 'mellotron', weight: 0.4 },
+                    { name: 'mellotron_flute_intimate', weight: 0.3 },
+                    { name: 'organ_soft_jazz', weight: 0.3 }
                 ],
             }
         },
@@ -73,7 +72,18 @@ export const MelancholicAmbientBlueprint: MusicBlueprint = {
         id: 'INTRO_2', name: 'Stirrings', duration: { percent: 6 },
         layers: { accompaniment: true, bass: true, sparkles: true, sfx: true, melody: true },
         instrumentation: {
-          accompaniment: { strategy: 'weighted', v1Options: [{ name: 'ambientPad', weight: 0.9 }, { name: 'organ', weight: 0.1 }], v2Options: [{ name: 'synth_ambient_pad_lush', weight: 0.9 }, { name: 'organ', weight: 0.1 }] },
+          accompaniment: {
+                strategy: 'weighted',
+                v1Options: [
+                    { name: 'mellotron', weight: 0.6 },
+                    { name: 'organ', weight: 0.4 }
+                ],
+                v2Options: [
+                    { name: 'mellotron', weight: 0.4 },
+                    { name: 'mellotron_flute_intimate', weight: 0.3 },
+                    { name: 'organ_soft_jazz', weight: 0.3 }
+                ],
+            },
           bass: { strategy: 'weighted', options: [{ name: 'ambientDrone', weight: 1.0 }] },
            melody: {
             strategy: 'weighted',
@@ -110,7 +120,18 @@ export const MelancholicAmbientBlueprint: MusicBlueprint = {
         id: 'INTRO_3', name: 'Anticipation', duration: { percent: 6 },
         layers: { accompaniment: true, bass: true, melody: true, harmony: true, sfx: true, sparkles: true },
         instrumentation: {
-          accompaniment: { strategy: 'weighted', v1Options: [{ name: 'ambientPad', weight: 0.8 }, { name: 'mellotron', weight: 0.2 }], v2Options: [{ name: 'synth_ambient_pad_lush', weight: 0.8 }, { name: 'mellotron', weight: 0.2 }] },
+          accompaniment: {
+                strategy: 'weighted',
+                v1Options: [
+                    { name: 'mellotron', weight: 0.6 },
+                    { name: 'organ', weight: 0.4 }
+                ],
+                v2Options: [
+                    { name: 'mellotron', weight: 0.4 },
+                    { name: 'mellotron_flute_intimate', weight: 0.3 },
+                    { name: 'organ_soft_jazz', weight: 0.3 }
+                ],
+            },
           bass: { strategy: 'weighted', options: [{ name: 'classicBass', weight: 1.0 }] },
           melody: { strategy: 'weighted', v1Options: [{ name: 'synth', weight: 0.5 }, { name: 'ambientPad', weight: 0.5 }], v2Options: [{ name: 'synth', weight: 0.5 }, { name: 'synth_ambient_pad_lush', weight: 0.5 }] }
         },
@@ -125,7 +146,18 @@ export const MelancholicAmbientBlueprint: MusicBlueprint = {
         id: 'BUILD', name: 'Rising', duration: { percent: 25 },
         layers: { accompaniment: true, bass: true, drums: true, sfx: true, melody: true, harmony: true, sparkles: true },
          instrumentation: {
-            accompaniment: { strategy: 'weighted', v1Options: [{ name: 'ambientPad', weight: 0.7 }, { name: 'organ', weight: 0.3 }], v2Options: [{ name: 'synth_ambient_pad_lush', weight: 0.7 }, { name: 'organ', weight: 0.3 }] },
+            accompaniment: {
+                strategy: 'weighted',
+                v1Options: [
+                    { name: 'mellotron', weight: 0.6 },
+                    { name: 'organ', weight: 0.4 }
+                ],
+                v2Options: [
+                    { name: 'mellotron', weight: 0.4 },
+                    { name: 'mellotron_flute_intimate', weight: 0.3 },
+                    { name: 'organ_soft_jazz', weight: 0.3 }
+                ],
+            },
             bass: { strategy: 'weighted', options: [{ name: 'classicBass', weight: 1.0 }] },
             melody: { strategy: 'weighted', v1Options: [{ name: 'synth', weight: 0.4 }, { name: 'theremin', weight: 0.6 }], v2Options: [{ name: 'synth', weight: 0.4 }, { name: 'theremin', weight: 0.6 }] }
         },
@@ -143,7 +175,18 @@ export const MelancholicAmbientBlueprint: MusicBlueprint = {
         id: 'MAIN', name: 'Apex', duration: { percent: 35 },
         layers: { accompaniment: true, bass: true, drums: true, melody: true, sparkles: true, sfx: true, harmony: true },
          instrumentation: {
-            accompaniment: { strategy: 'weighted', v1Options: [{ name: 'ambientPad', weight: 0.6 }, { name: 'organ', weight: 0.4 }], v2Options: [{ name: 'synth_ambient_pad_lush', weight: 0.6 }, { name: 'organ', weight: 0.4 }] },
+            accompaniment: {
+                strategy: 'weighted',
+                v1Options: [
+                    { name: 'mellotron', weight: 0.6 },
+                    { name: 'organ', weight: 0.4 }
+                ],
+                v2Options: [
+                    { name: 'mellotron', weight: 0.4 },
+                    { name: 'mellotron_flute_intimate', weight: 0.3 },
+                    { name: 'organ_soft_jazz', weight: 0.3 }
+                ],
+            },
             bass: { strategy: 'weighted', options: [{ name: 'livingRiff', weight: 1.0 }] },
             melody: { strategy: 'weighted', v1Options: [{ name: 'synth', weight: 0.3 }, { name: 'theremin', weight: 0.3 }, { name: 'electricGuitar', weight: 0.4 }], v2Options: [{ name: 'synth', weight: 0.3 }, { name: 'theremin', weight: 0.3 }, { name: 'electricGuitar', weight: 0.4 }] }
         },
@@ -166,7 +209,18 @@ export const MelancholicAmbientBlueprint: MusicBlueprint = {
         id: 'RELEASE', name: 'Descent', duration: { percent: 20 },
         layers: { accompaniment: true, bass: true, sparkles: true, sfx: true, melody: true, harmony: true },
         instrumentation: {
-            accompaniment: { strategy: 'weighted', v1Options: [{ name: 'ambientPad', weight: 1.0 }], v2Options: [{ name: 'synth_ambient_pad_lush', weight: 1.0 }] },
+            accompaniment: {
+                strategy: 'weighted',
+                v1Options: [
+                    { name: 'mellotron', weight: 0.6 },
+                    { name: 'organ', weight: 0.4 }
+                ],
+                v2Options: [
+                    { name: 'mellotron', weight: 0.4 },
+                    { name: 'mellotron_flute_intimate', weight: 0.3 },
+                    { name: 'organ_soft_jazz', weight: 0.3 }
+                ],
+            },
             bass: { strategy: 'weighted', options: [{ name: 'glideBass', weight: 1.0 }] },
             melody: { strategy: 'weighted', v1Options: [{ name: 'synth', weight: 0.5 }, { name: 'ambientPad', weight: 0.5 }], v2Options: [{ name: 'synth', weight: 0.5 }, { name: 'synth_ambient_pad_lush', weight: 0.5 }] }
         },
