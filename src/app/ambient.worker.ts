@@ -143,43 +143,45 @@ const Scheduler = {
     tick() {
         if (!this.isRunning || !fractalMusicEngine) return;
 
-        // --- ЛОГИКА ДЕКОРАТОРА (ПЛАН 976.1) ---
-        
-        // 1. Основной движок ВСЕГДА работает в фоне для "прогрева".
-        // Мы вызываем evolve, но пока можем не использовать его результат.
-        const scorePayload = fractalMusicEngine.evolve(this.barDuration, this.barCount);
-        
+        // --- ЛОГИКА ПОЛНОЙ ИЗОЛЯЦИИ ПРОЛОГА (ПЛАН 1002) ---
         let finalPayload: { events: FractalEvent[], instrumentHints: InstrumentHints };
 
-        // 2. Если мы в периоде интро, вызываем ИЗОЛИРОВАННЫЙ генератор пролога.
         if (this.barCount < this.settings.introBars) {
+            // --- ВЕТКА ИНТРО ---
+            // 1. Получаем правила для текущего такта интро
             const navInfo = fractalMusicEngine.navigator?.tick(this.barCount);
+            let introHints: InstrumentHints = {};
+            if (navInfo?.currentPart.instrumentation) {
+                // Выбираем инструменты только для тех партий, что разрешены в интро
+                introHints.melody = (fractalMusicEngine as any)._chooseInstrumentForPart('melody', navInfo);
+                introHints.accompaniment = (fractalMusicEngine as any)._chooseInstrumentForPart('accompaniment', navInfo);
+                introHints.harmony = (fractalMusicEngine as any)._chooseInstrumentForPart('harmony', navInfo);
+            }
             
+            // 2. Генерируем музыку ТОЛЬКО для интро, передавая актуальные хинты
             if (navInfo?.currentPart?.introRules) {
-                // #ЗАЧЕМ: Этот блок реализует выбор инструмента для интро на основе блюпринта.
-                // #ЧТО: Он вызывает `_chooseInstrumentForPart` для определения, какой инструмент
-                //      должен играть аккомпанемент, и передает этот "хинт" в генератор интро.
-                // #СВЯЗИ: Ключевая часть Плана 976.1.
-                const introAccompHint = (fractalMusicEngine as any)._chooseInstrumentForPart('accompaniment', navInfo);
-                const introHints: InstrumentHints = { accompaniment: introAccompHint };
-
                 finalPayload = generateIntroSequence({
                     currentBar: this.barCount,
                     totalIntroBars: this.settings.introBars,
                     rules: navInfo.currentPart.introRules,
-                    instrumentHints: introHints, // Передаем "хинт"
+                    instrumentHints: introHints, // Передаем актуальные хинты
                     harmonyTrack: fractalMusicEngine.getGhostHarmony(),
                     settings: this.settings,
                     random: (fractalMusicEngine as any).random,
-                    // #ИСПРАВЛЕНО (ПЛАН 982): Явно передаем отсортированный список инструментов в генератор.
                     introInstrumentOrder: fractalMusicEngine.introInstrumentOrder
                 });
             } else {
+                // Если правил интро нет, играем тишину.
                 finalPayload = { events: [], instrumentHints: {} };
             }
+            
+            // 3. "Прогреваем" основной движок вхолостую, НЕ ИСПОЛЬЗУЯ его результат.
+            fractalMusicEngine.evolve(this.barDuration, this.barCount);
+            
         } else {
-            // 3. Интро закончилось, используем основную партитуру от `FractalMusicEngine`.
-            finalPayload = scorePayload;
+            // --- ВЕТКА ОСНОВНОЙ ЧАСТИ ---
+            // 1. Интро закончилось, теперь используем основную партитуру от FractalMusicEngine.
+            finalPayload = fractalMusicEngine.evolve(this.barDuration, this.barCount);
         }
 
         const counts = { drums: 0, bass: 0, melody: 0, accompaniment: 0, harmony: 0, sfx: 0, sparkles: 0 };
@@ -215,7 +217,6 @@ const Scheduler = {
             }
         }
 
-        // #ИСПРАВЛЕНО (ПЛАН 949/974): `instrumentHints` теперь всегда корректно включаются в payload.
         const payloadForMainThread = {
             events: mainScoreEvents,
             instrumentHints: finalPayload.instrumentHints,
@@ -223,7 +224,6 @@ const Scheduler = {
             barCount: this.barCount,
         };
 
-        // Запрошенный лог для отладки
         console.log('[Worker] Payload being sent to main thread: ', JSON.parse(JSON.stringify(payloadForMainThread)));
 
         self.postMessage({ 
@@ -243,7 +243,6 @@ const Scheduler = {
             });
         }
 
-        // #ИСПРАВЛЕНО (ПЛАН 964): Добавлена отправка событий гармонии.
         if (harmonyEvents.length > 0) {
              const harmonyPayload = {
                  events: harmonyEvents,
@@ -256,11 +255,6 @@ const Scheduler = {
         }
 
         this.barCount++;
-        // #ЗАЧЕМ: Этот блок отправляет команду на перезапуск сюиты.
-        // #ЧТО: Когда `barCount` превышает общую длину сюиты (включая 4 такта "променада"),
-        //      он отправляет в основной поток команду `SUITE_ENDED`.
-        // #СВЯЗИ: Основной поток (`audio-engine-context.tsx`) должен слушать эту команду
-        //         и вызывать `resetWorker()`, чтобы начать новую сюиту.
         if (fractalMusicEngine && this.barCount >= fractalMusicEngine.navigator.totalBars + 4) {
              console.log(`%c[Worker] End of suite detected. Posting 'SUITE_ENDED' command.`, 'color: red; font-weight: bold;');
              self.postMessage({ command: 'SUITE_ENDED' });

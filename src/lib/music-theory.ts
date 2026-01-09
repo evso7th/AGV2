@@ -550,41 +550,55 @@ export function generateIntroSequence(options: {
     random: { next: () => number, nextInt: (max: number) => number; shuffle: <T>(array: T[]) => T[] };
     introInstrumentOrder: InstrumentPart[];
 }): { events: FractalEvent[], instrumentHints: InstrumentHints } {
+    // --- ПЛАН 1002: Добавлено полное логирование для отладки ---
     const { currentBar, totalIntroBars, rules, instrumentHints, harmonyTrack, settings, random, introInstrumentOrder } = options;
     const events: FractalEvent[] = [];
+    console.log(`%c[IntroSeq @ Bar ${currentBar}] --- START ---`, 'color: #00DDDD');
+    console.log(`[IntroSeq] Received Rules:`, rules);
+    console.log(`[IntroSeq] Received Hints:`, instrumentHints);
+    console.log(`[IntroSeq] Received Instrument Order:`, introInstrumentOrder);
 
     const currentChord = harmonyTrack.find(c => currentBar >= c.bar && currentBar < c.bar + c.durationBars);
     if (!currentChord) {
+        console.error(`[IntroSeq] No chord found for bar ${currentBar}.`);
         return { events, instrumentHints };
     }
+    console.log(`[IntroSeq] Current Chord: ${currentChord.rootNote} ${currentChord.chordType}`);
 
-    const stageCount = rules.stages;
+    const stageCount = rules.stages || 4;
     const barsPerStage = Math.max(1, Math.floor(totalIntroBars / stageCount));
     const currentStage = Math.min(stageCount, Math.floor(currentBar / barsPerStage) + 1);
     
-    // #ИСПРАВЛЕНО (ПЛАН 982): Теперь мы используем `introInstrumentOrder` для определения активных инструментов.
-    // Это гарантирует, что `slice` вызывается на существующем массиве.
     const activeInstrumentsForBar = new Set(introInstrumentOrder.slice(0, currentStage));
+    console.log(`[IntroSeq] Current Stage: ${currentStage}/${stageCount}. Active Instruments:`, Array.from(activeInstrumentsForBar));
     
     // --- Генерация партий на основе активных инструментов ---
 
     if (activeInstrumentsForBar.has('accompaniment') && instrumentHints.accompaniment !== 'none') {
+        console.log(`[IntroSeq] Generating accompaniment with hint: ${instrumentHints.accompaniment}`);
         events.push(...createPulsatingAccompaniment(currentChord, random));
     }
     if (activeInstrumentsForBar.has('melody') && instrumentHints.melody !== 'none') {
+        console.log(`[IntroSeq] Generating melody with hint: ${instrumentHints.melody}`);
         events.push(...createMelodyMotif(currentChord, settings.mood, random, undefined, 'mid', settings.genre));
     }
     if(activeInstrumentsForBar.has('bass')) {
+        console.log(`[IntroSeq] Generating bass.`);
         events.push(...createAmbientBassAxiom(currentChord, settings.mood, settings.genre, random, settings.tempo, 'drone'));
     }
     if(activeInstrumentsForBar.has('drums')) {
+        console.log(`[IntroSeq] Generating drums.`);
         const kit = DRUM_KITS[settings.genre]?.intro ?? DRUM_KITS.ambient!.intro!;
         events.push(...createDrumAxiom(kit, settings.genre, settings.mood, settings.tempo, random, { density: {min: 0.1, max: 0.3} }).events);
     }
      if (activeInstrumentsForBar.has('harmony') && instrumentHints.harmony !== 'none') {
+        console.log(`[IntroSeq] Generating harmony with hint: ${instrumentHints.harmony}`);
         events.push(...createHarmonyAxiom(currentChord, settings.mood, settings.genre, random));
     }
     
+    console.log(`%c[IntroSeq @ Bar ${currentBar}] --- END --- Returning ${events.length} events and hints:`, 'color: #00DDDD', instrumentHints);
+    
+    // --- ПЛАН 999 ИСПРАВЛЕНИЕ: Возвращаем полученные хинты, а не пустой объект ---
     return { events, instrumentHints };
 }
 
