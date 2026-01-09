@@ -16,7 +16,7 @@ import { BLUES_SOLO_LICKS, BLUES_SOLO_PLANS } from './assets/blues_guitar_solo';
 import { BLUES_DRUM_RIFFS } from './assets/blues-drum-riffs';
 import { DRUM_KITS } from './assets/drum-kits';
 
-import { getScaleForMood, generateGhostHarmonyTrack, createDrumAxiom, createAmbientBassAxiom, createAccompanimentAxiom, createHarmonyAxiom, createMelodyMotif, mutateBassPhrase, createBassFill, createDrumFill, chooseHarmonyInstrument, DEGREE_TO_SEMITONE, mutateBluesAccompaniment, mutateBluesMelody, createBluesOrganLick } from './music-theory';
+import { getScaleForMood, generateGhostHarmonyTrack, createDrumAxiom, createAmbientBassAxiom, createAccompanimentAxiom, createHarmonyAxiom, createMelodyMotif, mutateBassPhrase, createBassFill, createDrumFill, chooseHarmonyInstrument, DEGREE_TO_SEMITONE, mutateBluesAccompaniment, mutateBluesMelody, createBluesOrganLick, generateIntroSequence } from './music-theory';
 
 
 export type Branch = {
@@ -686,21 +686,17 @@ export class FractalMusicEngine {
           return { events: [], instrumentHints: {} };
       }
 
-      const navigationInfo = this.navigator.tick(this.epoch);
-
-      const v2MelodyHint = this._chooseInstrumentForPart('melody', navigationInfo);
-
-      console.log(`MelodyInstrumentLog: [FME.evolve @ Bar ${this.epoch}] Using Blueprint: ${this.navigator.blueprint.id} (${this.navigator.blueprint.name})`);
+      const v2MelodyHint = this._chooseInstrumentForPart('melody', this.navigator.tick(this.epoch));
 
       const instrumentHints: InstrumentHints = {
           melody: v2MelodyHint,
-          accompaniment: this._chooseInstrumentForPart('accompaniment', navigationInfo),
-          harmony: chooseHarmonyInstrument(navigationInfo?.currentPart.instrumentation?.harmony, this.random)
+          accompaniment: this._chooseInstrumentForPart('accompaniment', this.navigator.tick(this.epoch)),
+          harmony: chooseHarmonyInstrument(this.navigator.tick(this.epoch)?.currentPart.instrumentation?.harmony, this.random)
       };
       
       console.log(`MelodyInstrumentLog: [1. Composer] Generated hint for bar ${this.epoch}: ${instrumentHints.melody}`);
   
-      const { events } = this.generateOneBar(barDuration, navigationInfo!, instrumentHints);
+      const { events } = this.generateOneBar(barDuration, this.navigator.tick(this.epoch)!, instrumentHints);
       
       return { events, instrumentHints };
     }
@@ -918,6 +914,7 @@ export class FractalMusicEngine {
     return { events: allEvents, instrumentHints };
   }
 }
+
 
 
 

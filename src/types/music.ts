@@ -1,4 +1,5 @@
 
+
 import type { Mood as FractalMood, InstrumentHints as FractalInstrumentHints } from './fractal';
 import { V2_PRESETS } from '@/lib/presets-v2';
 
@@ -44,7 +45,7 @@ export type EffectsScore = SamplerNote[];
 export type BassInstrument = 'classicBass' | 'glideBass' | 'ambientDrone' | 'resonantGliss' | 'hypnoticDrone' | 'livingRiff' | 'none';
 export type V1MelodyInstrument = 'synth' | 'organ' | 'mellotron' | 'theremin' | 'electricGuitar' | 'ambientPad' | 'acousticGuitar' | 'E-Bells_melody' | 'G-Drops' | 'piano' | 'violin' | 'flute' | 'none';
 export type V2MelodyInstrument = keyof typeof V2_PRESETS;
-export type MelodyInstrument = V1MelodyInstrument | V2MelodyInstrument | 'telecaster';
+export type MelodyInstrument = V1MelodyInstrument | V2MelodyInstrument | 'telecaster' | 'blackAcoustic';
 
 export type AccompanimentInstrument = Exclude<MelodyInstrument, 'piano' | 'violin' | 'flute'> | 'guitarChords';
 export type EffectInstrument = 
@@ -96,7 +97,7 @@ export type DrumAndPercussionInstrument =
 export type InstrumentType = BassInstrument | MelodyInstrument | AccompanimentInstrument | EffectInstrument | DrumAndPercussionInstrument | 'portamento' | 'autopilot_bass' | 'none';
 
 export type InstrumentPart = 'bass' | 'melody' | 'accompaniment' | 'harmony' | 'drums' | 'effects' | 'sparkles' | 'piano' | 'violin' | 'flute' | 'guitarChords' | 'acousticGuitarSolo' | 'sfx' | 'blackAcoustic' | 'telecaster';
-export type BassTechnique = 'arpeggio' | 'portamento' | 'glissando' | 'glide' | 'pulse' | 'riff' | 'long_notes' | 'walking' | 'boogie' | 'syncopated';
+export type BassTechnique = 'arpeggio' | 'portamento' | 'glissando' | 'glide' | 'pulse' | 'riff' | 'long_notes' | 'walking' | 'boogie' | 'syncopated' | 'drone' | 'floating' | 'melodic' | 'arpeggio_slow' | 'arpeggio_fast';
 export type Technique = BassTechnique | 'pluck' | 'pick' | 'harm' | 'slide' | 'hit' | 'ghost' | 'swell' | 'fill';
 export type AccompanimentTechnique = 'choral' | 'alternating-bass-chord' | 'chord-pulsation' | 'arpeggio-fast' | 'arpeggio-slow' | 'alberti-bass' | 'paired-notes' | 'long-chords';
 
@@ -215,6 +216,8 @@ export type InstrumentBehaviorRules = {
     useGhostHat?: boolean;
     useBrushes?: boolean;
     soloPlan?: string;
+    fingerstyle?: { bars: number[]; pattern: string; voicingName: string; }[];
+    strum?: { bars: number[]; pattern: string; voicingName: string; }[];
 };
 
 

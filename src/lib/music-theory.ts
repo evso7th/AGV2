@@ -1,4 +1,5 @@
 
+
 import type { FractalEvent, Mood, Genre, Technique, BassSynthParams, InstrumentType, AccompanimentInstrument, InstrumentHints, AccompanimentTechnique, GhostChord, SfxRule, V1MelodyInstrument, V2MelodyInstrument, BlueprintPart, InstrumentationRules, InstrumentBehaviorRules, BluesMelody, IntroRules, InstrumentPart, DrumKit, BluesGuitarRiff, BluesSoloPhrase, BluesRiffDegree } from './fractal';
 import { ElectronicK, TraditionalK, AmbientK, MelancholicMinorK } from './resonance-matrices';
 import { BlueprintNavigator, type NavigationInfo } from './blueprint-navigator';
@@ -364,13 +365,14 @@ export function createAccompanimentAxiom(chord: GhostChord, mood: Mood, genre: G
         const duration = 0.5; // восьмые ноты
         const times = [0, 1.5, 2.5, 3.5]; // Пульсирующий ритм
         times.forEach(time => {
-            chordNotes.forEach((note, index) => {
-                 axiom.push({
+            if (random.next() < 0.7) { // Добавляем немного случайности
+                const note = chordNotes[random.nextInt(chordNotes.length)];
+                axiom.push({
                     type: 'accompaniment', note: note + 12 * baseOctave, duration, time,
-                    weight: 0.5 - (index * 0.05), technique: 'long-chords', dynamics: 'p', phrasing: 'staccato', 
+                    weight: 0.5 - (0 * 0.05), technique: 'long-chords', dynamics: 'p', phrasing: 'staccato', 
                     params: { attack: 0.05, release: duration * 0.8 }
                 });
-            });
+            }
         });
     } else { // 40% шанс сыграть медленное арпеджио
         const numNotes = chordNotes.length;
@@ -541,55 +543,55 @@ export function createMelodyMotif(chord: GhostChord, mood: Mood, random: { next:
 
 export function generateIntroSequence(options: { 
     currentBar: number; 
-    totalIntroBars: number; 
-    rules: IntroRules; 
-    instrumentHints: InstrumentHints; // #ИЗМЕНЕНИЕ: Принимаем хинты
+    activeInstruments: Set<InstrumentPart>;
+    instrumentHints: InstrumentHints;
     harmonyTrack: GhostChord[]; 
     settings: any; 
     random: { next: () => number, nextInt: (max: number) => number }; 
 }): { events: FractalEvent[], instrumentHints: InstrumentHints } {
-    const { currentBar, totalIntroBars, rules, instrumentHints, harmonyTrack, settings, random } = options;
+    const { currentBar, activeInstruments, instrumentHints, harmonyTrack, settings, random } = options;
     const events: FractalEvent[] = [];
 
     const currentChord = harmonyTrack.find(c => currentBar >= c.bar && currentBar < c.bar + c.durationBars);
     if (!currentChord) {
         return { events, instrumentHints };
     }
-
-    const progress = currentBar / totalIntroBars;
-    const density = progress * (rules.buildUpSpeed || 0.5);
-
+    
     // --- Генерация аккомпанемента с учетом "хинта" ---
-    // #ЗАЧЕМ: Этот блок теперь генерирует партию, но тип инструмента берет извне.
-    // #ЧТО: Он создает пульсирующие арпеджио, но поле `type` теперь динамическое.
-    // #СВЯЗИ: Является ядром Плана 976.1
-    if (rules.allowedInstruments.includes('accompaniment') && instrumentHints.accompaniment && instrumentHints.accompaniment !== 'none') {
-        if (random.next() < density) {
-             const baseOctave = 3;
-             const isMinor = currentChord.chordType === 'minor' || currentChord.chordType === 'diminished';
-             const chordNotes = [currentChord.rootNote, currentChord.rootNote + (isMinor ? 3 : 4), currentChord.rootNote + 7];
-             const duration = 0.5;
-             const times = [0, 1.5, 2.5, 3.5];
-             times.forEach(time => {
-                 if (random.next() < 0.7) { // Добавляем немного случайности
-                     const note = chordNotes[random.nextInt(chordNotes.length)];
-                     events.push({
-                         type: 'accompaniment', // Тип остается 'accompaniment', а конкретный инструмент определит AudioEngineContext
-                         note: note + 12 * baseOctave,
-                         duration,
-                         time,
-                         weight: 0.4 + random.next() * 0.2,
-                         technique: 'arpeggio-fast',
-                         dynamics: 'p',
-                         phrasing: 'staccato',
-                         params: {}
-                     });
-                 }
-             });
-        }
+    if (activeInstruments.has('accompaniment') && instrumentHints.accompaniment !== 'none') {
+        const baseOctave = 3;
+        const isMinor = currentChord.chordType === 'minor' || currentChord.chordType === 'diminished';
+        const chordNotes = [currentChord.rootNote, currentChord.rootNote + (isMinor ? 3 : 4), currentChord.rootNote + 7];
+        const duration = 0.5;
+        const times = [0, 1.5, 2.5, 3.5];
+        times.forEach(time => {
+            if (random.next() < 0.7) { 
+                const note = chordNotes[random.nextInt(chordNotes.length)];
+                events.push({
+                    type: 'accompaniment',
+                    note: note + 12 * baseOctave,
+                    duration,
+                    time,
+                    weight: 0.4 + random.next() * 0.2,
+                    technique: 'arpeggio-fast',
+                    dynamics: 'p',
+                    phrasing: 'staccato',
+                    params: {}
+                });
+            }
+        });
+    }
+
+    if(activeInstruments.has('bass')) {
+        events.push(...createAmbientBassAxiom(currentChord, settings.mood, settings.genre, random, settings.tempo, 'drone'));
+    }
+
+    if(activeInstruments.has('drums')) {
+        const kit = DRUM_KITS[settings.genre]?.intro ?? DRUM_KITS.ambient!.intro!;
+        events.push(...createDrumAxiom(kit, settings.genre, settings.mood, settings.tempo, random, { density: {min: 0.1, max: 0.3} }).events);
     }
     
-    // Остальные инструменты (бас, ударные) могут быть добавлены здесь по аналогии...
+    // ... другие инструменты по аналогии
     
     return { events, instrumentHints };
 }
