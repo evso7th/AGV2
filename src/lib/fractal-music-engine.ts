@@ -625,40 +625,35 @@ export class FractalMusicEngine {
         return { events: finalEvents, log: logMessage };
     }
 
-    private generateBluesAccompanimentV2(chord: GhostChord, melodyEvents: FractalEvent[], drumEvents: FractalEvent[], random: { next: () => number }): FractalEvent[] {
-        // #ЗАЧЕМ: Реализует логику "джема" для аккомпанемента в блюзе.
-        // #ЧТО: Анализирует партию мелодии и ударных, чтобы решить, играть ли "ответ",
-        //      поддерживающие аккорды или молчать.
-        // #СВЯЗИ: Вызывается из `generateOneBar`, если жанр - 'blues'.
+    private generateBluesAccompanimentV2(chord: GhostChord, melodyEvents: FractalEvent[], drumEvents: FractalEvent[], random: { next: () => number, nextInt: (max: number) => number }): FractalEvent[] {
         const phrase: FractalEvent[] = [];
         const hasMelody = melodyEvents.length > 0;
     
-        // 1. Логика "Зов и Ответ"
+        // "Зов и Ответ"
         if (this.wasMelodyPlayingLastBar && !hasMelody) {
-            // Мелодия только что замолчала, играем "ответ"
-            if (random.next() < 0.8) { // 80% шанс на ответ
+            if (random.next() < 0.8) { 
                 console.log(`%c[AccompJam] Responding to melody silence.`, 'color: #90EE90');
                 return createBluesOrganLick(chord, random);
             }
         }
     
-        // 2. Логика "Поддержки" или "Паузы", когда мелодия играет
+        // "Поддержка" или "Пауза"
         if (hasMelody) {
-            if (random.next() < 0.7) { // 70% шанс промолчать и "слушать"
+            if (random.next() < 0.7) { 
                 console.log(`%c[AccompJam] Staying silent to listen to melody.`, 'color: #90EE90');
                 return []; 
-            } else { // 30% шанс сыграть поддерживающие аккорды
+            } else { 
                 console.log(`%c[AccompJam] Playing support chords under melody.`, 'color: #90EE90');
                  return createAccompanimentAxiom(chord, this.config.mood, this.config.genre, this.random, this.config.tempo, 'low');
             }
         }
     
-        // 3. Логика "Провокации" или "Заполнения", когда мелодия молчит
+        // "Провокация" или "Заполнение"
         if (!hasMelody) {
-            if (random.next() < 0.15) { // 15% шанс на "провокацию" быстрой фразой
+            if (random.next() < 0.15) { 
                  console.log(`%c[AccompJam] Playing provocative lick.`, 'color: #90EE90');
-                return createBluesOrganLick(chord, random, 8); // более длинный лик
-            } else { // Играем стандартные аккорды
+                return createBluesOrganLick(chord, random, true);
+            } else { 
                  console.log(`%c[AccompJam] Playing standard chords while melody is silent.`, 'color: #90EE90');
                 return createAccompanimentAxiom(chord, this.config.mood, this.config.genre, this.random, this.config.tempo, 'low');
             }
@@ -920,9 +915,10 @@ export class FractalMusicEngine {
         allEvents.push(...drumFill, ...bassFill.events);
     }
     
-    return allEvents;
+    return { events: allEvents, instrumentHints };
   }
 }
+
 
 
 
