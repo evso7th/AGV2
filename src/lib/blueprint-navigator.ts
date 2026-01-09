@@ -41,6 +41,9 @@ function formatInstrumentation(
     drumRules?: InstrumentBehaviorRules,
     v2MelodyHint?: MelodyInstrument
 ): string {
+    // #ЗАЧЕМ: Эта функция создает детальное, удобочитаемое описание текущей инструментовки.
+    // #ЧТО: Она итерирует по правилам инструментовки и ударных из блюпринта и форматирует их в строку.
+    // #СВЯЗИ: Вызывается из `tick()` для формирования лог-сообщения.
     if (!instrumentation && !drumRules?.kitName) {
         return 'Instrumentation: (none)';
     }
@@ -53,7 +56,6 @@ function formatInstrumentation(
         }
 
         if (rule && rule.strategy === 'weighted') {
-            let options: { name: any; weight: number; }[] | undefined;
             let v1OptionsStr: string | null = null;
             let v2OptionsStr: string | null = null;
             
@@ -242,7 +244,7 @@ export class BlueprintNavigator {
             const transitionType = isPartTransition ? "Part" : "Bundle";
             const mutationType = isPartTransition ? "MACRO" : "micro";
             const drumRules = partInfo.part.instrumentRules?.drums;
-            // #ИСПРАВЛЕНО (ПЛАН 912): Восстанавливаем и улучшаем логирование
+            // #ИСПРАВЛЕНО (ПЛАН 990): Восстанавливаем и улучшаем логирование
             const instrumentationLog = formatInstrumentation(partInfo.part.instrumentation, drumRules, v2MelodyHint);
             
             logMessage = `%c[NAVIGATOR @ Bar ${currentBar}] ${transitionType} Transition: ${partInfo.part.id} / ${bundleInfo.bundle.id}\n` +
