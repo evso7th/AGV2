@@ -1,5 +1,9 @@
 
+
 import type { Note, Technique } from "@/types/music";
+import { BLUES_GUITAR_VOICINGS } from './assets/guitar-voicings';
+import { GUITAR_PATTERNS } from './assets/guitar-patterns';
+
 
 const BLACK_GUITAR_ORD_SAMPLES: Record<string, string> = {
     'c6_p_rr2': '/assets/acoustic_guitar_samples/black/ord/twang_c6_p_rr2.ogg',
@@ -216,19 +220,20 @@ export class BlackGuitarSampler {
     private chorusDepth: GainNode;
     private chorusDelay: DelayNode;
     private fxChainInput: GainNode;
+    private wetMix: GainNode;
 
     constructor(audioContext: AudioContext, destination: AudioNode) {
         this.audioContext = audioContext;
         this.destination = destination;
 
         this.preamp = this.audioContext.createGain();
-        this.preamp.gain.value = 1.2; 
+        this.preamp.gain.value = 8.0;
 
-        this.fxChainInput = this.audioContext.createGain();
-
+        // Distortion
         this.distortion = this.audioContext.createWaveShaper();
         this.distortion.curve = this.makeDistortionCurve(0.1);
 
+        // Chorus
         this.chorusLFO = this.audioContext.createOscillator();
         this.chorusDepth = this.audioContext.createGain();
         this.chorusDelay = this.audioContext.createDelay(0.1);
@@ -238,23 +243,33 @@ export class BlackGuitarSampler {
         this.chorusLFO.connect(this.chorusDepth);
         this.chorusDepth.connect(this.chorusDelay.delayTime);
         this.chorusLFO.start();
-        
+
+        // Delay
         this.delay = this.audioContext.createDelay(1.0);
         this.feedback = this.audioContext.createGain();
-        this.delay.delayTime.value = 0.3;
-        this.feedback.gain.value = 0.2;
+        this.wetMix = this.audioContext.createGain();
+        this.delay.delayTime.value = 0.4;
+        this.feedback.gain.value = 0.3;
+        this.wetMix.gain.value = 0.35;
 
+        // FX Chain Input
+        this.fxChainInput = this.audioContext.createGain();
+
+        // --- Audio Graph ---
+        // DRY PATH: preamp -> destination
+        this.preamp.connect(this.destination);
+        
+        // WET PATH: preamp -> fxChainInput -> distortion -> chorus -> delay -> wetMix -> destination
         this.preamp.connect(this.fxChainInput);
         this.fxChainInput.connect(this.distortion);
         this.distortion.connect(this.chorusDelay);
         this.chorusDelay.connect(this.delay);
+        
         this.delay.connect(this.feedback);
         this.feedback.connect(this.delay);
-        
-        const mainOutput = this.audioContext.createGain();
-        this.delay.connect(mainOutput);
-        this.fxChainInput.connect(mainOutput); 
-        mainOutput.connect(this.destination);
+
+        this.delay.connect(this.wetMix);
+        this.wetMix.connect(this.destination);
     }
 
     private makeDistortionCurve(amount: number): Float32Array {
@@ -289,7 +304,7 @@ export class BlackGuitarSampler {
             
             const loadSample = async (url: string) => {
                 const response = await fetch(url);
-                if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+                if (!response.ok) throw new Error(`HTTP error! status: ${'' + response.status}`);
                 const arrayBuffer = await response.arrayBuffer();
                 return await this.audioContext.decodeAudioData(arrayBuffer);
             };
@@ -321,40 +336,91 @@ export class BlackGuitarSampler {
         }
     }
     
-    public schedule(notes: Note[], time: number) {
+    public schedule(notes: Note[], time: number, tempo: number = 120) {
         const instrument = this.instruments.get('blackAcoustic');
         if (!this.isInitialized || !instrument) return;
 
+        const ticksPerBeat = 3;
+        const beatDuration = 60 / tempo;
+
         notes.forEach(note => {
-            const { buffer, midi: sampleMidi } = this.findBestSample(instrument, note.midi);
-            if (!buffer) return;
-
-            const noteStartTime = time + note.time;
-
-            const source = this.audioContext.createBufferSource();
-            source.buffer = buffer;
-            
-            const gainNode = this.audioContext.createGain();
-            
-            source.connect(gainNode);
-            gainNode.connect(this.preamp);
-
-            const playbackRate = Math.pow(2, (note.midi - sampleMidi) / 12);
-            source.playbackRate.value = playbackRate;
-            
-            const velocity = note.velocity ?? 0.7;
-            const noteDuration = note.duration;
-            gainNode.gain.setValueAtTime(velocity, noteStartTime);
-
-            if (noteDuration) {
-                 gainNode.gain.setTargetAtTime(0, noteStartTime + noteDuration * 0.8, 0.1);
-                 source.start(noteStartTime);
-                 source.stop(noteStartTime + noteDuration * 1.2);
+            // Check for complex pattern techniques
+            if (note.technique && (note.technique.startsWith('F_') || note.technique.startsWith('S_'))) {
+                this.playPattern(instrument, note, time);
             } else {
-                 source.start(noteStartTime);
+                // Play single note
+                this.playSingleNote(instrument, note, time);
             }
         });
     }
+
+    private playPattern(instrument: SamplerInstrument, note: Note, barStartTime: number) {
+        const patternName = note.technique as string;
+        const patternData = GUITAR_PATTERNS[patternName];
+        if (!patternData) {
+            console.warn(`[BlackGuitarSampler] Pattern not found: ${patternName}`);
+            this.playSingleNote(instrument, note, barStartTime); // Fallback to single note
+            return;
+        }
+
+        const voicingName = note.params?.voicingName || 'E7_open';
+        const voicing = BLUES_GUITAR_VOICINGS[voicingName];
+        if (!voicing) {
+            console.warn(`[BlackGuitarSampler] Voicing not found: ${voicingName}`);
+            this.playSingleNote(instrument, note, barStartTime); // Fallback
+            return;
+        }
+
+        const ticksPerBeat = 3;
+        const beatDuration = 60 / 120; // Assuming 120BPM for now
+
+        for (const event of patternData.pattern) {
+            for (const tick of event.ticks) {
+                const noteTime = barStartTime + (tick / ticksPerBeat) * beatDuration;
+                
+                for (const stringIndex of event.stringIndices) {
+                    if (stringIndex < voicing.length) {
+                        const midiNote = voicing[stringIndex];
+                        const { buffer, midi: sampleMidi } = this.findBestSample(instrument, midiNote);
+                        if (buffer) {
+                            this.playSample(buffer, sampleMidi, midiNote, noteTime, note.velocity || 0.7);
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    private playSingleNote(instrument: SamplerInstrument, note: Note, startTime: number) {
+        const { buffer, midi: sampleMidi } = this.findBestSample(instrument, note.midi);
+        if (!buffer) return;
+
+        const noteStartTime = startTime + note.time;
+        this.playSample(buffer, sampleMidi, note.midi, noteStartTime, note.velocity || 0.7, note.duration);
+    }
+    
+    private playSample(buffer: AudioBuffer, sampleMidi: number, targetMidi: number, startTime: number, velocity: number, duration?: number) {
+        const source = this.audioContext.createBufferSource();
+        source.buffer = buffer;
+
+        const gainNode = this.audioContext.createGain();
+        source.connect(gainNode);
+        gainNode.connect(this.preamp);
+
+        const playbackRate = Math.pow(2, (targetMidi - sampleMidi) / 12);
+        source.playbackRate.value = playbackRate;
+
+        gainNode.gain.setValueAtTime(velocity, startTime);
+
+        if (duration) {
+            gainNode.gain.setTargetAtTime(0, startTime + duration * 0.8, 0.1);
+            source.start(startTime);
+            source.stop(startTime + duration * 1.2);
+        } else {
+            source.start(startTime);
+        }
+    }
+
 
     private findBestSample(instrument: SamplerInstrument, targetMidi: number): { buffer: AudioBuffer | null, midi: number } {
         const availableMidiNotes = Array.from(instrument.buffers.keys());
@@ -386,6 +452,7 @@ export class BlackGuitarSampler {
         };
     
         const noteValue = noteMap[name];
+        
         if (noteValue === undefined) return null;
     
         return 12 * (octave + 1) + noteValue;
@@ -400,6 +467,8 @@ export class BlackGuitarSampler {
         this.fxChainInput.disconnect();
     }
 }
+
+    
 
     
 

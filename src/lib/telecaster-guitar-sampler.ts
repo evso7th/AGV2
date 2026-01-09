@@ -1,5 +1,9 @@
 
+
 import type { Note, Technique } from "@/types/music";
+import { BLUES_GUITAR_VOICINGS } from './assets/guitar-voicings';
+import { GUITAR_PATTERNS } from './assets/guitar-patterns';
+
 
 const TELECASTER_SAMPLES: Record<string, string> = {
     'c6': '/assets/acoustic_guitar_samples/telecaster/TELECASTER_C6.ogg',
@@ -50,6 +54,8 @@ export class TelecasterGuitarSampler {
     private delay: DelayNode;
     private feedback: GainNode;
     private wetMix: GainNode;
+    private fxChainInput: GainNode;
+
 
     constructor(audioContext: AudioContext, destination: AudioNode) {
         this.audioContext = audioContext;
@@ -80,13 +86,17 @@ export class TelecasterGuitarSampler {
         this.delay.delayTime.value = 0.4;
         this.feedback.gain.value = 0.3;
         this.wetMix.gain.value = 0.35;
+        
+        // FX Chain Input
+        this.fxChainInput = this.audioContext.createGain();
 
         // --- Audio Graph ---
         // DRY PATH: preamp -> destination
         this.preamp.connect(this.destination);
         
-        // WET PATH: preamp -> distortion -> chorus -> delay -> wetMix -> destination
-        const effectChain = this.distortion;
+        // WET PATH: preamp -> fxChainInput -> distortion -> chorus -> delay -> wetMix -> destination
+        this.preamp.connect(this.fxChainInput);
+        this.fxChainInput.connect(this.distortion);
         this.distortion.connect(this.chorusDelay);
         this.chorusDelay.connect(this.delay);
         
@@ -95,9 +105,6 @@ export class TelecasterGuitarSampler {
 
         this.delay.connect(this.wetMix);
         this.wetMix.connect(this.destination);
-
-        // Send signal to the wet chain
-        this.preamp.connect(effectChain);
     }
     
     private makeDistortionCurve(amount: number): Float32Array {
@@ -165,40 +172,85 @@ export class TelecasterGuitarSampler {
         }
     }
     
-    public schedule(notes: Note[], time: number) {
+    public schedule(notes: Note[], time: number, tempo: number = 120) {
         const instrument = this.instruments.get('telecaster');
         if (!this.isInitialized || !instrument) return;
 
         notes.forEach(note => {
-            const { buffer, midi: sampleMidi } = this.findBestSample(instrument, note.midi);
-            if (!buffer) return;
-
-            const noteStartTime = time + note.time;
-
-            const source = this.audioContext.createBufferSource();
-            source.buffer = buffer;
-            
-            const gainNode = this.audioContext.createGain();
-            
-            source.connect(gainNode);
-            // Подключаем ноту к предусилителю
-            gainNode.connect(this.preamp);
-
-            const playbackRate = Math.pow(2, (note.midi - sampleMidi) / 12);
-            source.playbackRate.value = playbackRate;
-            
-            const velocity = note.velocity ?? 0.7;
-            const noteDuration = note.duration;
-            gainNode.gain.setValueAtTime(velocity, noteStartTime);
-
-            if (noteDuration) {
-                 gainNode.gain.setTargetAtTime(0, noteStartTime + noteDuration * 0.8, 0.1);
-                 source.start(noteStartTime);
-                 source.stop(noteStartTime + noteDuration * 1.2);
+            if (note.technique && (note.technique.startsWith('F_') || note.technique.startsWith('S_'))) {
+                this.playPattern(instrument, note, time, tempo);
             } else {
-                 source.start(noteStartTime);
+                this.playSingleNote(instrument, note, time);
             }
         });
+    }
+
+    private playPattern(instrument: SamplerInstrument, note: Note, barStartTime: number, tempo: number) {
+        const patternName = note.technique as string;
+        const patternData = GUITAR_PATTERNS[patternName];
+        if (!patternData) {
+            console.warn(`[TelecasterSampler] Pattern not found: ${patternName}`);
+            this.playSingleNote(instrument, note, barStartTime);
+            return;
+        }
+
+        const voicingName = note.params?.voicingName || 'E7_open';
+        const voicing = BLUES_GUITAR_VOICINGS[voicingName];
+        if (!voicing) {
+            console.warn(`[TelecasterSampler] Voicing not found: ${voicingName}`);
+            this.playSingleNote(instrument, note, barStartTime);
+            return;
+        }
+
+        const beatDuration = 60 / tempo;
+        const ticksPerBeat = 3;
+
+        for (const event of patternData.pattern) {
+            for (const tick of event.ticks) {
+                const noteTimeInBar = (tick / ticksPerBeat) * beatDuration;
+                
+                for (const stringIndex of event.stringIndices) {
+                    if (stringIndex < voicing.length) {
+                        const midiNote = voicing[voicing.length - 1 - stringIndex]; // Reverse for guitar strings (high e is index 0 in most tabs)
+                        const { buffer, midi: sampleMidi } = this.findBestSample(instrument, midiNote);
+                        if (buffer) {
+                             const playTime = barStartTime + noteTimeInBar + ((patternData.rollDuration / ticksPerBeat) * beatDuration * (voicing.length - 1 - stringIndex));
+                             this.playSample(buffer, sampleMidi, midiNote, playTime, note.velocity || 0.7);
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    private playSingleNote(instrument: SamplerInstrument, note: Note, startTime: number) {
+        const { buffer, midi: sampleMidi } = this.findBestSample(instrument, note.midi);
+        if (!buffer) return;
+
+        const noteStartTime = startTime + note.time;
+        this.playSample(buffer, sampleMidi, note.midi, noteStartTime, note.velocity || 0.7, note.duration);
+    }
+
+    private playSample(buffer: AudioBuffer, sampleMidi: number, targetMidi: number, startTime: number, velocity: number, duration?: number) {
+        const source = this.audioContext.createBufferSource();
+        source.buffer = buffer;
+
+        const gainNode = this.audioContext.createGain();
+        source.connect(gainNode);
+        gainNode.connect(this.preamp);
+
+        const playbackRate = Math.pow(2, (targetMidi - sampleMidi) / 12);
+        source.playbackRate.value = playbackRate;
+
+        gainNode.gain.setValueAtTime(velocity, startTime);
+
+        if (duration) {
+            gainNode.gain.setTargetAtTime(0, startTime + duration * 0.8, 0.1);
+            source.start(startTime);
+            source.stop(startTime + duration * 1.2);
+        } else {
+            source.start(startTime);
+        }
     }
 
     private findBestSample(instrument: SamplerInstrument, targetMidi: number): { buffer: AudioBuffer | null, midi: number } {
@@ -231,9 +283,6 @@ export class TelecasterGuitarSampler {
         
         if (noteValue === undefined) return null;
     
-        // Assuming MIDI octave standard where C4 is 60.
-        // A standard 88-key piano starts at A0 (21) and ends at C8 (108).
-        // Let's adjust octave calculation. C4 is MIDI 60.
         return 12 * (octave + 1) + noteValue;
     }
     
@@ -245,7 +294,5 @@ export class TelecasterGuitarSampler {
         this.preamp.disconnect();
     }
 }
-
-    
 
     
