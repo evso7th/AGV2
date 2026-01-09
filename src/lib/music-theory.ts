@@ -534,7 +534,7 @@ export function createMelodyMotif(chord: GhostChord, mood: Mood, random: { next:
         const note = scale[noteIndex];
         motif.push({
             type: 'melody', note: note, duration: durations[i], time: currentTime,
-            weight: 0.65 + random.next() * 0.1, technique: 'swell', dynamics: 'mf', phrasing: 'legato', params: {}
+            weight: 0.7, technique: 'swell', dynamics: 'mf', phrasing: 'legato', params: {}
         });
         currentTime += durations[i];
     }
@@ -580,7 +580,7 @@ export function generateIntroSequence(options: {
         console.log(`[IntroSeq] Generating melody with hint: ${instrumentHints.melody}`);
         const melodyEvents = createMelodyMotif(currentChord, settings.mood, random, undefined, 'mid', settings.genre);
         melodyEvents.forEach(e => e.note += 24); 
-        melodyEvents.forEach(e => e.weight = 0.4); 
+        melodyEvents.forEach(e => e.weight = 0.1); 
         events.push(...melodyEvents);
     }
     if(activeInstrumentsForBar.has('bass')) {
@@ -847,5 +847,6 @@ export function createBluesOrganLick(
 }
 
     
+
 
 

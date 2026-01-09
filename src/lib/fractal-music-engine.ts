@@ -242,7 +242,7 @@ export class FractalMusicEngine {
             this.bassPhraseLibrary.push(newBassAxiom);
             this.accompPhraseLibrary.push(createAccompanimentAxiom(firstChord, this.config.mood, this.config.genre, this.random, this.config.tempo, initialRegisterHint));
         }
-        this.currentMelodyMotif = createMelodyMotif(firstChord, this.config.mood, this.random);
+        this.currentMelodyMotif = createMelodyMotif(currentChord, this.config.mood, this.random);
         this.lastMelodyPlayEpoch = -16;
     }
     
@@ -250,28 +250,30 @@ export class FractalMusicEngine {
   }
   
   private _chooseInstrumentForPart(
-    part: 'melody' | 'accompaniment',
+    part: 'melody' | 'accompaniment' | 'harmony',
     navInfo: NavigationInfo | null
-  ): MelodyInstrument | AccompanimentInstrument | undefined {
+  ): MelodyInstrument | AccompanimentInstrument | 'piano' | 'guitarChords' | 'flute' | 'violin' | undefined {
       const melodyLogPrefix = `MelodyInstrumentLog:`;
       
-      // #ИСПРАВЛЕНО (ПЛАН 1001): Добавлен "охранник", который проверяет наличие правил.
       const rules = navInfo?.currentPart.instrumentation?.[part as keyof typeof navInfo.currentPart.instrumentation];
       if (!rules) {
-          // Если для этой партии в текущей секции блюпринта нет никаких правил,
-          // мы не должны ничего выдумывать. Просто возвращаем undefined.
           console.log(`${melodyLogPrefix} [1x. Guard] No instrumentation rules found for part '${part}' in section '${navInfo?.currentPart.id}'. Returning undefined.`);
           return undefined;
       }
       
-      console.log(melodyLogPrefix + ` [1a. _chooseInstrumentForPart] Entering choice logic. useV2: ${this.config.useMelodyV2}`);
+      console.log(melodyLogPrefix + ` [1a. _chooseInstrumentForPart] Entering choice logic. Part: ${part}, useV2: ${this.config.useMelodyV2}`);
 
       if (rules.strategy !== 'weighted') {
-          return part === 'melody' ? 'organ' : 'synth';
+          return undefined;
       }
   
-      const useV2 = this.config.useMelodyV2;
-      const options = useV2 ? rules.v2Options : rules.v1Options;
+      let options;
+      if (part === 'harmony') {
+          options = (rules as InstrumentationRules<'piano' | 'guitarChords' | 'flute' | 'violin'>).options;
+      } else {
+          const useV2 = this.config.useMelodyV2;
+          options = useV2 ? rules.v2Options : rules.v1Options;
+      }
   
       console.log(melodyLogPrefix + "[1d. _chooseInstrumentForPart] Selected options array: ", options);
       
@@ -279,13 +281,16 @@ export class FractalMusicEngine {
         return this.performWeightedChoice(options);
       }
       
-      const fallbackOptions = !useV2 ? rules.v2Options : rules.v1Options;
-      if (fallbackOptions && fallbackOptions.length > 0) {
-          console.warn(`[FME] No options for current engine version (v2=${useV2}). Falling back to other version's options.`);
-          return this.performWeightedChoice(fallbackOptions);
+      if (part !== 'harmony') {
+          const useV2 = this.config.useMelodyV2;
+          const fallbackOptions = !useV2 ? rules.v2Options : rules.v1Options;
+          if (fallbackOptions && fallbackOptions.length > 0) {
+              console.warn(`[FME] No options for current engine version (v2=${useV2}). Falling back to other version's options.`);
+              return this.performWeightedChoice(fallbackOptions);
+          }
       }
 
-      return part === 'melody' ? 'organ' : 'synth';
+      return undefined;
   }
   
   private performWeightedChoice(options: {name: any, weight: number}[]): any {
@@ -716,7 +721,7 @@ export class FractalMusicEngine {
       const instrumentHints: InstrumentHints = {
           melody: v2MelodyHint,
           accompaniment: this._chooseInstrumentForPart('accompaniment', navInfo),
-          harmony: chooseHarmonyInstrument(navInfo?.currentPart.instrumentation?.harmony, this.random)
+          harmony: this._chooseInstrumentForPart('harmony', navInfo) as any,
       };
       
       console.log(`MelodyInstrumentLog: [1. Composer] Generated hint for bar ${this.epoch}: ${instrumentHints.melody}`);
@@ -939,6 +944,7 @@ export class FractalMusicEngine {
     return { events: allEvents, instrumentHints };
   }
 }
+
 
 
 

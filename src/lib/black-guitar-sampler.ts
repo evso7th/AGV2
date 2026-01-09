@@ -227,7 +227,7 @@ export class BlackGuitarSampler {
         this.destination = destination;
 
         this.preamp = this.audioContext.createGain();
-        this.preamp.gain.value = 8.0;
+        this.preamp.gain.value = 1.0;
 
         // Distortion
         this.distortion = this.audioContext.createWaveShaper();
