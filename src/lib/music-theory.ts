@@ -548,54 +548,69 @@ export function generateIntroSequence(options: {
     instrumentHints: InstrumentHints;
     harmonyTrack: GhostChord[]; 
     settings: any; 
-    random: { next: () => number, nextInt: (max: number) => number }; 
+    random: { next: () => number, nextInt: (max: number) => number; shuffle: <T>(array: T[]) => T[] };
+    introInstrumentOrder: InstrumentPart[];
 }): { events: FractalEvent[], instrumentHints: InstrumentHints } {
-    const { currentBar, totalIntroBars, rules, instrumentHints, harmonyTrack, settings, random } = options;
+    const { currentBar, totalIntroBars, rules, instrumentHints, harmonyTrack, settings, random, introInstrumentOrder } = options;
     const events: FractalEvent[] = [];
-    const activeInstruments = new Set(rules.instrumentPool);
 
     const currentChord = harmonyTrack.find(c => currentBar >= c.bar && currentBar < c.bar + c.durationBars);
     if (!currentChord) {
         return { events, instrumentHints };
     }
-    
-    // --- Генерация аккомпанемента с учетом "хинта" ---
-    if (activeInstruments.has('accompaniment') && instrumentHints.accompaniment !== 'none') {
-        const baseOctave = 3;
-        const isMinor = currentChord.chordType === 'minor' || currentChord.chordType === 'diminished';
-        const chordNotes = [currentChord.rootNote, currentChord.rootNote + (isMinor ? 3 : 4), currentChord.rootNote + 7];
-        const duration = 0.5;
-        const times = [0, 1.5, 2.5, 3.5];
-        times.forEach(time => {
-            if (random.next() < 0.7) { 
-                const note = chordNotes[random.nextInt(chordNotes.length)];
-                events.push({
-                    type: 'accompaniment',
-                    note: note + 12 * baseOctave,
-                    duration,
-                    time,
-                    weight: 0.4 + random.next() * 0.2,
-                    technique: 'arpeggio-fast',
-                    dynamics: 'p',
-                    phrasing: 'staccato',
-                    params: {}
-                });
-            }
-        });
-    }
 
-    if(activeInstruments.has('bass')) {
+    const stageCount = rules.stages;
+    const barsPerStage = Math.max(1, Math.floor(totalIntroBars / stageCount));
+    const currentStage = Math.min(stageCount, Math.floor(currentBar / barsPerStage) + 1);
+    const activeInstrumentCount = currentStage;
+    
+    const activeInstrumentsForBar = new Set(introInstrumentOrder.slice(0, activeInstrumentCount));
+    
+    // --- Генерация партий на основе активных инструментов ---
+
+    if (activeInstrumentsForBar.has('accompaniment') && instrumentHints.accompaniment !== 'none') {
+        events.push(...createPulsatingAccompaniment(currentChord, random));
+    }
+    if (activeInstrumentsForBar.has('melody') && instrumentHints.melody !== 'none') {
+        events.push(...createMelodyMotif(currentChord, settings.mood, random, undefined, 'mid', settings.genre));
+    }
+    if(activeInstrumentsForBar.has('bass')) {
         events.push(...createAmbientBassAxiom(currentChord, settings.mood, settings.genre, random, settings.tempo, 'drone'));
     }
-
-    if(activeInstruments.has('drums')) {
+    if(activeInstrumentsForBar.has('drums')) {
         const kit = DRUM_KITS[settings.genre]?.intro ?? DRUM_KITS.ambient!.intro!;
         events.push(...createDrumAxiom(kit, settings.genre, settings.mood, settings.tempo, random, { density: {min: 0.1, max: 0.3} }).events);
     }
-    
-    // ... другие инструменты по аналогии
+     if (activeInstrumentsForBar.has('harmony') && instrumentHints.harmony !== 'none') {
+        events.push(...createHarmonyAxiom(currentChord, settings.mood, settings.genre, random));
+    }
     
     return { events, instrumentHints };
+}
+
+export function createPulsatingAccompaniment(chord: GhostChord, random: { next: () => number, nextInt: (max: number) => number }): FractalEvent[] {
+    const axiom: FractalEvent[] = [];
+    const rootMidi = chord.rootNote;
+    const isMinor = chord.chordType.includes('minor');
+    const chordNotes = [rootMidi, rootMidi + (isMinor ? 3 : 4), rootMidi + 7];
+    const baseOctave = 3;
+    const duration = 0.5;
+    const times = [0, 1.5, 2.5, 3.5];
+
+    times.forEach(time => {
+        if (random.next() < 0.7) {
+            const note = chordNotes[random.nextInt(chordNotes.length)];
+            axiom.push({
+                type: 'accompaniment',
+                note: note + 12 * baseOctave,
+                duration, time,
+                weight: 0.4 + random.next() * 0.2,
+                technique: 'arpeggio-fast', dynamics: 'p', phrasing: 'staccato',
+                params: {}
+            });
+        }
+    });
+    return axiom;
 }
 
 
@@ -812,5 +827,3 @@ export function createBluesOrganLick(
 
     return phrase;
 }
-
-    

@@ -37,27 +37,21 @@ export const MelancholicAmbientBlueprint: MusicBlueprint = {
             melody: {
                 strategy: 'weighted',
                 v1Options: [
-                    { name: 'electricGuitar', weight: 0.5 }, 
-                    { name: 'acousticGuitar', weight: 0.5 }
+                    { name: 'acousticGuitar', weight: 1.0 }
                 ],
                 v2Options: [
-                    { name: 'guitar_shineOn', weight: 0.3 },
-                    { name: 'guitar_muffLead', weight: 0.2 },
-                    { name: 'organ', weight: 0.25 },
-                    { name: 'organ_soft_jazz', weight: 0.25 }
+                    { name: 'telecaster', weight: 0.5 },
+                    { name: 'blackAcoustic', weight: 0.5 }
                 ],
             },
             accompaniment: {
                 strategy: 'weighted',
-                v1Options: [
-                    { name: 'mellotron', weight: 0.6 },
-                    { name: 'organ', weight: 0.4 }
-                ],
-                v2Options: [
-                    { name: 'mellotron', weight: 0.4 },
-                    { name: 'mellotron_flute_intimate', weight: 0.3 },
-                    { name: 'organ_soft_jazz', weight: 0.3 }
-                ],
+                v1Options: [ { name: 'organ', weight: 1.0 } ],
+                v2Options: [ { name: 'organ_soft_jazz', weight: 1.0 } ]
+            },
+            harmony: {
+                 strategy: 'weighted',
+                 options: [ { name: 'piano', weight: 1.0 } ]
             }
         },
         instrumentRules: {
@@ -70,39 +64,31 @@ export const MelancholicAmbientBlueprint: MusicBlueprint = {
       },
       {
         id: 'INTRO_2', name: 'Stirrings', duration: { percent: 6 },
-        layers: { accompaniment: true, bass: true, sparkles: true, sfx: true, melody: true },
+        introRules: {
+            instrumentPool: ['accompaniment', 'melody', 'bass', 'drums'],
+            stages: 4,
+        },
+        layers: { accompaniment: true, bass: true, sparkles: true, sfx: true, melody: true, drums: true },
         instrumentation: {
           accompaniment: {
                 strategy: 'weighted',
-                v1Options: [
-                    { name: 'mellotron', weight: 0.6 },
-                    { name: 'organ', weight: 0.4 }
-                ],
-                v2Options: [
-                    { name: 'mellotron', weight: 0.4 },
-                    { name: 'mellotron_flute_intimate', weight: 0.3 },
-                    { name: 'organ_soft_jazz', weight: 0.3 }
-                ],
+                v1Options: [ { name: 'organ', weight: 1.0 } ],
+                v2Options: [ { name: 'organ_soft_jazz', weight: 1.0 } ]
             },
           bass: { strategy: 'weighted', options: [{ name: 'ambientDrone', weight: 1.0 }] },
            melody: {
             strategy: 'weighted',
-            v1Options: [
-              { name: 'electricGuitar', weight: 0.2 },
-              { name: 'acousticGuitar', weight: 0.2 },
-              { name: 'organ', weight: 0.3 },
-              { name: 'mellotron', weight: 0.3 },
-            ],
-             v2Options: [
-              { name: 'electricGuitar', weight: 0.2 },
-              { name: 'acousticGuitar', weight: 0.2 },
-              { name: 'organ', weight: 0.3 },
-              { name: 'mellotron', weight: 0.3 },
-            ]
+            v1Options: [ { name: 'acousticGuitar', weight: 1.0 } ],
+             v2Options: [ { name: 'blackAcoustic', weight: 1.0 } ]
+          },
+          harmony: {
+               strategy: 'weighted',
+               options: [ { name: 'piano', weight: 1.0 } ]
           }
         },
         instrumentRules: {
           accompaniment: { register: { preferred: 'low' } },
+          drums: { pattern: 'composer', density: { min: 0.1, max: 0.3 }, useSnare: false, rareKick: false, usePerc: true },
           sfx: {
               eventProbability: 0.25,
               categories: [
@@ -118,25 +104,24 @@ export const MelancholicAmbientBlueprint: MusicBlueprint = {
       },
       {
         id: 'INTRO_3', name: 'Anticipation', duration: { percent: 6 },
-        layers: { accompaniment: true, bass: true, melody: true, harmony: true, sfx: true, sparkles: true },
+        introRules: {
+            instrumentPool: ['accompaniment', 'melody', 'bass', 'drums'],
+            stages: 4,
+        },
+        layers: { accompaniment: true, bass: true, melody: true, harmony: true, sfx: true, sparkles: true, drums: true },
         instrumentation: {
           accompaniment: {
                 strategy: 'weighted',
-                v1Options: [
-                    { name: 'mellotron', weight: 0.6 },
-                    { name: 'organ', weight: 0.4 }
-                ],
-                v2Options: [
-                    { name: 'mellotron', weight: 0.4 },
-                    { name: 'mellotron_flute_intimate', weight: 0.3 },
-                    { name: 'organ_soft_jazz', weight: 0.3 }
-                ],
+                v1Options: [ { name: 'organ', weight: 1.0 } ],
+                v2Options: [ { name: 'organ_soft_jazz', weight: 1.0 } ]
             },
           bass: { strategy: 'weighted', options: [{ name: 'classicBass', weight: 1.0 }] },
-          melody: { strategy: 'weighted', v1Options: [{ name: 'synth', weight: 0.5 }, { name: 'ambientPad', weight: 0.5 }], v2Options: [{ name: 'synth', weight: 0.5 }, { name: 'synth_ambient_pad_lush', weight: 0.5 }] }
+          melody: { strategy: 'weighted', v1Options: [{ name: 'acousticGuitar', weight: 1.0 }], v2Options: [{ name: 'telecaster', weight: 1.0 }] },
+          harmony: { strategy: 'weighted', options: [ { name: 'violin', weight: 1.0 } ] } // <<< Скрипки вступают здесь
         },
         instrumentRules: {
           accompaniment: { register: { preferred: 'low' } },
+          drums: { pattern: 'composer', density: { min: 0.2, max: 0.4 }, useSnare: true, usePerc: true },
           melody: { source: 'harmony_top_note' },
         },
         bundles: [ { id: 'INTRO_BUNDLE_3', name: 'Anticipation', duration: { percent: 100 }, characteristics: {}, phrases: {} } ],
@@ -148,15 +133,8 @@ export const MelancholicAmbientBlueprint: MusicBlueprint = {
          instrumentation: {
             accompaniment: {
                 strategy: 'weighted',
-                v1Options: [
-                    { name: 'mellotron', weight: 0.6 },
-                    { name: 'organ', weight: 0.4 }
-                ],
-                v2Options: [
-                    { name: 'mellotron', weight: 0.4 },
-                    { name: 'mellotron_flute_intimate', weight: 0.3 },
-                    { name: 'organ_soft_jazz', weight: 0.3 }
-                ],
+                v1Options: [ { name: 'mellotron', weight: 0.6 }, { name: 'organ', weight: 0.4 } ],
+                v2Options: [ { name: 'mellotron', weight: 0.4 }, { name: 'mellotron_flute_intimate', weight: 0.3 }, { name: 'organ_soft_jazz', weight: 0.3 } ],
             },
             bass: { strategy: 'weighted', options: [{ name: 'classicBass', weight: 1.0 }] },
             melody: { strategy: 'weighted', v1Options: [{ name: 'synth', weight: 0.4 }, { name: 'theremin', weight: 0.6 }], v2Options: [{ name: 'synth', weight: 0.4 }, { name: 'theremin', weight: 0.6 }] }
@@ -177,15 +155,8 @@ export const MelancholicAmbientBlueprint: MusicBlueprint = {
          instrumentation: {
             accompaniment: {
                 strategy: 'weighted',
-                v1Options: [
-                    { name: 'mellotron', weight: 0.6 },
-                    { name: 'organ', weight: 0.4 }
-                ],
-                v2Options: [
-                    { name: 'mellotron', weight: 0.4 },
-                    { name: 'mellotron_flute_intimate', weight: 0.3 },
-                    { name: 'organ_soft_jazz', weight: 0.3 }
-                ],
+                v1Options: [ { name: 'mellotron', weight: 0.6 }, { name: 'organ', weight: 0.4 } ],
+                v2Options: [ { name: 'mellotron', weight: 0.4 }, { name: 'mellotron_flute_intimate', weight: 0.3 }, { name: 'organ_soft_jazz', weight: 0.3 } ],
             },
             bass: { strategy: 'weighted', options: [{ name: 'livingRiff', weight: 1.0 }] },
             melody: { strategy: 'weighted', v1Options: [{ name: 'synth', weight: 0.3 }, { name: 'theremin', weight: 0.3 }, { name: 'electricGuitar', weight: 0.4 }], v2Options: [{ name: 'synth', weight: 0.3 }, { name: 'theremin', weight: 0.3 }, { name: 'electricGuitar', weight: 0.4 }] }
@@ -211,15 +182,8 @@ export const MelancholicAmbientBlueprint: MusicBlueprint = {
         instrumentation: {
             accompaniment: {
                 strategy: 'weighted',
-                v1Options: [
-                    { name: 'mellotron', weight: 0.6 },
-                    { name: 'organ', weight: 0.4 }
-                ],
-                v2Options: [
-                    { name: 'mellotron', weight: 0.4 },
-                    { name: 'mellotron_flute_intimate', weight: 0.3 },
-                    { name: 'organ_soft_jazz', weight: 0.3 }
-                ],
+                v1Options: [ { name: 'mellotron', weight: 0.6 }, { name: 'organ', weight: 0.4 } ],
+                v2Options: [ { name: 'mellotron', weight: 0.4 }, { name: 'mellotron_flute_intimate', weight: 0.3 }, { name: 'organ_soft_jazz', weight: 0.3 } ],
             },
             bass: { strategy: 'weighted', options: [{ name: 'glideBass', weight: 1.0 }] },
             melody: { strategy: 'weighted', v1Options: [{ name: 'synth', weight: 0.5 }, { name: 'ambientPad', weight: 0.5 }], v2Options: [{ name: 'synth', weight: 0.5 }, { name: 'synth_ambient_pad_lush', weight: 0.5 }] }
