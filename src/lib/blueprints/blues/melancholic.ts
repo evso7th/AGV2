@@ -1,145 +1,209 @@
 
+
 import type { MusicBlueprint } from '@/types/music';
 
-export const WinterBluesBlueprint: MusicBlueprint = {
-    id: 'winter_blues',
-    name: 'Winter Blues (Calm Foundation)',
-    description: 'A deep, melancholic blues based on a calm, riff-based structure, featuring a wide range of guitars.',
-    mood: 'melancholic',
-    musical: {
-        key: { root: 'E', scale: 'aeolian', octave: 2 },
-        bpm: { base: 66, range: [64, 72], modifier: 1.0 },
-        timeSignature: { numerator: 4, denominator: 4 },
-        harmonicJourney: [], // 12-bar structure
-        tensionProfile: { type: 'plateau', peakPosition: 0.3, curve: (p, pp) => p < pp ? p / pp : 1.0 }
-    },
-    structure: {
-        totalDuration: { preferredBars: 120 }, // 10 loops of 12 bars
-        parts: [
-            {
-                id: 'INTRO', name: 'Main Riff', duration: { percent: 40 },
-                introRules: {
-                    instrumentPool: ['bass', 'drums', 'accompaniment', 'melody'],
-                    stages: 4,
-                },
-                layers: { bass: true, drums: true, accompaniment: true, harmony: true, melody: true },
-                instrumentation: {
-                    accompaniment: { 
-                        strategy: 'weighted', 
-                        v1Options: [{ name: 'organ', weight: 0.8 }, { name: 'mellotron', weight: 0.2 }], 
-                        v2Options: [{ name: 'organ_soft_jazz', weight: 0.8 }, { name: 'mellotron', weight: 0.2 }] 
-                    },
-                    melody: { 
-                        strategy: 'weighted', 
-                        v1Options: [
-                            { name: 'acousticGuitar', weight: 0.5 },
-                            { name: 'electricGuitar', weight: 0.5 },
-                        ],
-                        v2Options: [
-                            { name: 'telecaster', weight: 0.5 },
-                            { name: 'blackAcoustic', weight: 0.5 },
-                        ]
-                    },
-                    harmony: {
-                        strategy: 'weighted',
-                        options: [
-                          { name: 'guitarChords', weight: 0.6 },
-                          { name: 'piano', weight: 0.4 }
-                        ]
-                    }
-                },
-                instrumentRules: {
-                    drums: { pattern: 'composer', kitName: 'blues_calm', density: { min: 0.1, max: 0.3 }, useSnare: false, usePerc: true, rareKick: true }, // VERY SOFT INTRO
-                    bass: { techniques: [{ value: 'riff', weight: 1.0 }], density: { min: 0.3, max: 0.5 } }, // Use Riffs in Intro
-                    accompaniment: { density: {min: 0.1, max: 0.3} },
-                    melody: { 
-                        source: 'motif', 
-                        density: { min: 0.2, max: 0.4 }, 
-                        register: { preferred: 'mid' },
-                        techniques: [{ value: 'arpeggio-slow', weight: 0.4 }, { value: 'long-chords', weight: 0.6 }] 
-                    }
-                },
-                bundles: [{ id: 'BLUES_WINTER_VERSE_BUNDLE', name: 'Main Riff', duration: { percent: 100 }, characteristics: {}, phrases: {} }],
-                outroFill: null,
+export const MelancholicAmbientBlueprint: MusicBlueprint = {
+  id: 'melancholic_ambient',
+  name: 'Melancholic Drift',
+  description: 'Задумчивый, интроспективный ambient с плавными гармоническими переходами',
+  
+  mood: 'melancholic',
+  
+  musical: {
+    key: { root: 'D', scale: 'dorian', octave: 3 },
+    bpm: { base: 52, range: [48, 56], modifier: 0.95 },
+    timeSignature: { numerator: 4, denominator: 4 },
+    harmonicJourney: [],
+    tensionProfile: {
+      type: 'arc',
+      peakPosition: 0.58,
+      curve: (progress: number, peakPos: number): number => {
+        if (progress < peakPos) return Math.pow(progress / peakPos, 1.3);
+        else return Math.pow((1 - progress) / (1 - peakPos), 1.8);
+      }
+    }
+  },
+  
+  structure: {
+    totalDuration: { preferredBars: 120 },
+    parts: [
+       {
+        id: 'INTRO_1', name: 'Emergence', duration: { percent: 8 },
+        introRules: {
+            instrumentPool: ['accompaniment', 'melody', 'bass', 'drums'],
+            stages: 4,
+        },
+        layers: { accompaniment: true, drums: true, melody: true, bass: true },
+        instrumentation: { 
+            melody: {
+                strategy: 'weighted',
+                v1Options: [
+                    { name: 'acousticGuitar', weight: 1.0 }
+                ],
+                v2Options: [
+                    { name: 'telecaster', weight: 0.5 },
+                    { name: 'blackAcoustic', weight: 0.5 }
+                ],
             },
-            {
-                id: 'SOLO', name: 'Solo', duration: { percent: 35 },
-                layers: { bass: true, drums: true, melody: true, accompaniment: true, harmony: true },
-                 instrumentation: {
-                    accompaniment: { 
-                        strategy: 'weighted', 
-                        v1Options: [{ name: 'organ', weight: 0.7 }, { name: 'ambientPad', weight: 0.3 }], 
-                        v2Options: [{ name: 'organ_soft_jazz', weight: 0.7 }, { name: 'synth_ambient_pad_lush', weight: 0.3 }] 
-                    },
-                    melody: { 
-                        strategy: 'weighted', 
-                        v1Options: [
-                            { name: 'electricGuitar', weight: 1.0 },
-                        ],
-                        v2Options: [
-                            { name: 'guitar_shineOn', weight: 0.5 },
-                            { name: 'guitar_muffLead', weight: 0.5 },
-                        ]
-                    },
-                    harmony: {
-                        strategy: 'weighted',
-                        options: [
-                          { name: 'piano', weight: 1.0 }
-                        ]
-                    }
-                },
-                instrumentRules: {
-                    drums: { pattern: 'composer', kitName: 'blues_calm', density: { min: 0.5, max: 0.7 }, ride: { enabled: true } },
-                    melody: { 
-                        source: 'motif', 
-                        density: { min: 0.6, max: 0.8 },
-                        register: { preferred: 'mid' }
-                    },
-                    bass: { techniques: [{ value: 'riff', weight: 1.0 }] },
-                },
-                bundles: [{ id: 'BLUES_WINTER_SOLO_BUNDLE', name: 'Solo', duration: { percent: 100 }, characteristics: {}, phrases: {} }],
-                outroFill: null,
+            accompaniment: {
+                strategy: 'weighted',
+                v1Options: [ { name: 'organ', weight: 1.0 } ],
+                v2Options: [ { name: 'organ_soft_jazz', weight: 1.0 } ]
             },
-             {
-                id: 'OUTRO', name: 'Return to Riff', duration: { percent: 25 },
-                layers: { bass: true, drums: true, accompaniment: true, harmony: true, melody: true },
-                instrumentation: {
-                    accompaniment: { 
-                        strategy: 'weighted', 
-                        v1Options: [{ name: 'organ', weight: 0.6 }, { name: 'ambientPad', weight: 0.4 }], 
-                        v2Options: [{ name: 'organ_soft_jazz', weight: 0.6 }, { name: 'synth_ambient_pad_lush', weight: 0.4 }] 
-                    },
-                    melody: { 
-                        strategy: 'weighted', 
-                        v1Options: [
-                           { name: 'acousticGuitar', weight: 0.5 },
-                           { name: 'electricGuitar', weight: 0.5 },
-                        ],
-                        v2Options: [
-                            { name: 'telecaster', weight: 0.5 },
-                            { name: 'blackAcoustic', weight: 0.5 },
-                        ]
-                    },
-                     harmony: {
-                        strategy: 'weighted',
-                        options: [
-                          { name: 'guitarChords', weight: 0.6 },
-                          { name: 'piano', weight: 0.4 }
-                        ]
-                    }
-                },
-                instrumentRules: {
-                    drums: { pattern: 'composer', kitName: 'blues_calm', density: { min: 0.4, max: 0.6 } },
-                    bass: { techniques: [{ value: 'riff', weight: 1.0 }] }, 
-                    melody: { source: 'motif', density: { min: 0.2, max: 0.4 }, register: { preferred: 'mid' } }
-                },
-                bundles: [{ id: 'BLUES_WINTER_OUTRO_BUNDLE', name: 'Final Riff', duration: { percent: 100 }, characteristics: {}, phrases: {} }],
-                outroFill: null,
+            harmony: {
+                 strategy: 'weighted',
+                 options: [ { name: 'piano', weight: 1.0 } ]
+            }
+        },
+        instrumentRules: {
+          accompaniment: { register: { preferred: 'low' } },
+          drums: { pattern: 'composer', density: { min: 0.1, max: 0.3 }, useSnare: false, rareKick: false, usePerc: true },
+          melody: { source: 'harmony_top_note' },
+        },
+        bundles: [ { id: 'INTRO_BUNDLE_1', name: 'Emergence', duration: { percent: 100 }, characteristics: {}, phrases: {} } ],
+        outroFill: null,
+      },
+      {
+        id: 'INTRO_2', name: 'Stirrings', duration: { percent: 6 },
+        introRules: {
+            instrumentPool: ['accompaniment', 'melody', 'bass', 'drums'],
+            stages: 4,
+        },
+        layers: { accompaniment: true, bass: true, sparkles: true, sfx: true, melody: true, drums: true },
+        instrumentation: {
+          accompaniment: {
+                strategy: 'weighted',
+                v1Options: [ { name: 'organ', weight: 1.0 } ],
+                v2Options: [ { name: 'organ_soft_jazz', weight: 1.0 } ]
             },
-        ]
-    },
-    mutations: {},
-    ambientEvents: [],
-    continuity: {},
-    rendering: {}
+          bass: { strategy: 'weighted', options: [{ name: 'ambientDrone', weight: 1.0 }] },
+           melody: {
+            strategy: 'weighted',
+            v1Options: [ { name: 'acousticGuitar', weight: 1.0 } ],
+             v2Options: [ { name: 'blackAcoustic', weight: 1.0 } ]
+          },
+          harmony: {
+               strategy: 'weighted',
+               options: [ { name: 'piano', weight: 1.0 } ]
+          }
+        },
+        instrumentRules: {
+          accompaniment: { register: { preferred: 'low' } },
+          drums: { pattern: 'composer', density: { min: 0.1, max: 0.3 }, useSnare: false, rareKick: false, usePerc: true },
+          sfx: {
+              eventProbability: 0.25,
+              categories: [
+                { name: 'voice', weight: 0.6 },
+                { name: 'dark', weight: 0.3 },
+                { name: 'common', weight: 0.1 }
+              ]
+          },
+          melody: { source: 'harmony_top_note' },
+        },
+        bundles: [ { id: 'INTRO_BUNDLE_2', name: 'Stirrings', duration: { percent: 100 }, characteristics: {}, phrases: {} } ],
+        outroFill: null,
+      },
+      {
+        id: 'INTRO_3', name: 'Anticipation', duration: { percent: 6 },
+        introRules: {
+            instrumentPool: ['accompaniment', 'melody', 'bass', 'drums'],
+            stages: 4,
+        },
+        layers: { accompaniment: true, bass: true, melody: true, harmony: true, sfx: true, sparkles: true, drums: true },
+        instrumentation: {
+          accompaniment: {
+                strategy: 'weighted',
+                v1Options: [ { name: 'organ', weight: 1.0 } ],
+                v2Options: [ { name: 'organ_soft_jazz', weight: 1.0 } ]
+            },
+          bass: { strategy: 'weighted', options: [{ name: 'classicBass', weight: 1.0 }] },
+          melody: { strategy: 'weighted', v1Options: [{ name: 'acousticGuitar', weight: 1.0 }], v2Options: [{ name: 'telecaster', weight: 1.0 }] },
+          harmony: { strategy: 'weighted', options: [ { name: 'violin', weight: 1.0 } ] } // <<< Скрипки вступают здесь
+        },
+        instrumentRules: {
+          accompaniment: { register: { preferred: 'low' } },
+          drums: { pattern: 'composer', density: { min: 0.2, max: 0.4 }, useSnare: true, usePerc: true },
+          melody: { source: 'harmony_top_note' },
+        },
+        bundles: [ { id: 'INTRO_BUNDLE_3', name: 'Anticipation', duration: { percent: 100 }, characteristics: {}, phrases: {} } ],
+        outroFill: { type: 'filter_sweep', duration: 2, parameters: { filterEnd: 0.95 } },
+      },
+      {
+        id: 'BUILD', name: 'Rising', duration: { percent: 25 },
+        layers: { accompaniment: true, bass: true, drums: true, sfx: true, melody: true, harmony: true, sparkles: true },
+         instrumentation: {
+            accompaniment: {
+                strategy: 'weighted',
+                v1Options: [ { name: 'mellotron', weight: 0.6 }, { name: 'organ', weight: 0.4 } ],
+                v2Options: [ { name: 'mellotron', weight: 0.4 }, { name: 'mellotron_flute_intimate', weight: 0.3 }, { name: 'organ_soft_jazz', weight: 0.3 } ],
+            },
+            bass: { strategy: 'weighted', options: [{ name: 'classicBass', weight: 1.0 }] },
+            melody: { strategy: 'weighted', v1Options: [{ name: 'synth', weight: 0.4 }, { name: 'theremin', weight: 0.6 }], v2Options: [{ name: 'synth', weight: 0.4 }, { name: 'theremin', weight: 0.6 }] }
+        },
+        instrumentRules: { 
+            drums: { pattern: 'ambient_beat', density: { min: 0.4, max: 0.6 } },
+            melody: { source: 'harmony_top_note' },
+        },
+        bundles: [
+            { id: 'BUILD_BUNDLE_1', name: 'Stirring', duration: { percent: 50 }, characteristics: {}, phrases: {} },
+            { id: 'BUILD_BUNDLE_2', name: 'Intensifying', duration: { percent: 50 }, characteristics: {}, phrases: {} }
+        ],
+        outroFill: { type: 'filter_sweep', duration: 2, parameters: { filterEnd: 0.95 } },
+      },
+      {
+        id: 'MAIN', name: 'Apex', duration: { percent: 35 },
+        layers: { accompaniment: true, bass: true, drums: true, melody: true, sparkles: true, sfx: true, harmony: true },
+         instrumentation: {
+            accompaniment: {
+                strategy: 'weighted',
+                v1Options: [ { name: 'mellotron', weight: 0.6 }, { name: 'organ', weight: 0.4 } ],
+                v2Options: [ { name: 'mellotron', weight: 0.4 }, { name: 'mellotron_flute_intimate', weight: 0.3 }, { name: 'organ_soft_jazz', weight: 0.3 } ],
+            },
+            bass: { strategy: 'weighted', options: [{ name: 'livingRiff', weight: 1.0 }] },
+            melody: { strategy: 'weighted', v1Options: [{ name: 'synth', weight: 0.3 }, { name: 'theremin', weight: 0.3 }, { name: 'electricGuitar', weight: 0.4 }], v2Options: [{ name: 'synth', weight: 0.3 }, { name: 'theremin', weight: 0.3 }, { name: 'electricGuitar', weight: 0.4 }] }
+        },
+        instrumentRules: { 
+            drums: { 
+                pattern: 'composer', 
+                density: { min: 0.6, max: 0.8 },
+                ride: { enabled: true, quietWindows: [{ start: 0.5, end: 0.65 }] }
+            },
+            melody: { source: 'harmony_top_note' },
+        },
+        bundles: [
+            { id: 'MAIN_BUNDLE_1', name: 'Arrival', duration: { percent: 33 }, characteristics: {}, phrases: {} },
+            { id: 'MAIN_BUNDLE_2', name: 'Plateau', duration: { percent: 34 }, characteristics: {}, phrases: {} },
+            { id: 'MAIN_BUNDLE_3', name: 'Reflection', duration: { percent: 33 }, characteristics: {}, phrases: {} }
+        ],
+        outroFill: { type: 'reverb_burst', duration: 2, parameters: {} },
+      },
+      {
+        id: 'RELEASE', name: 'Descent', duration: { percent: 20 },
+        layers: { accompaniment: true, bass: true, sparkles: true, sfx: true, melody: true, harmony: true },
+        instrumentation: {
+            accompaniment: {
+                strategy: 'weighted',
+                v1Options: [ { name: 'mellotron', weight: 0.6 }, { name: 'organ', weight: 0.4 } ],
+                v2Options: [ { name: 'mellotron', weight: 0.4 }, { name: 'mellotron_flute_intimate', weight: 0.3 }, { name: 'organ_soft_jazz', weight: 0.3 } ],
+            },
+            bass: { strategy: 'weighted', options: [{ name: 'glideBass', weight: 1.0 }] },
+            melody: { strategy: 'weighted', v1Options: [{ name: 'synth', weight: 0.5 }, { name: 'ambientPad', weight: 0.5 }], v2Options: [{ name: 'synth', weight: 0.5 }, { name: 'synth_ambient_pad_lush', weight: 0.5 }] }
+        },
+        instrumentRules: { 
+            drums: { enabled: false },
+            melody: { source: 'harmony_top_note' },
+        },
+        bundles: [
+            { id: 'RELEASE_BUNDLE_1', name: 'Softening', duration: { percent: 50 }, characteristics: {}, phrases: {} },
+            { id: 'RELEASE_BUNDLE_2', name: 'Settling', duration: { percent: 50 }, characteristics: {}, phrases: {} }
+        ],
+        outroFill: { type: 'density_pause', duration: 2, parameters: { soloLayer: 'pad' } },
+      }
+    ]
+  },
+  
+  mutations: { },
+  ambientEvents: [],
+  continuity: {},
+  rendering: {}
 };

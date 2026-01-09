@@ -26,11 +26,8 @@ export const WinterBluesBlueprint: MusicBlueprint = {
                 instrumentation: {
                     accompaniment: { 
                         strategy: 'weighted', 
-                        v1Options: [{ name: 'ambientPad', weight: 1.0 }],
-                        v2Options: [
-                          { name: 'mellotron', weight: 0.5 },
-                          { name: 'mellotron_flute_intimate', weight: 0.5 }
-                        ]
+                        v1Options: [{ name: 'organ', weight: 1.0 }],
+                        v2Options: [{ name: 'organ_soft_jazz', weight: 1.0 }] 
                     },
                     melody: { 
                         strategy: 'weighted', 
@@ -52,8 +49,9 @@ export const WinterBluesBlueprint: MusicBlueprint = {
                     }
                 },
                 instrumentRules: {
-                    drums: { pattern: 'composer', kitName: 'blues_calm', density: { min: 0.1, max: 0.3 }, useSnare: false, usePerc: true, rareKick: true },
-                    bass: { techniques: [{ value: 'riff', weight: 1.0 }], density: { min: 0.3, max: 0.5 } },
+                    drums: { pattern: 'composer', kitName: 'blues_calm', density: { min: 0.1, max: 0.3 }, useSnare: false, usePerc: true, rareKick: true }, // VERY SOFT INTRO
+                    bass: { techniques: [{ value: 'riff', weight: 1.0 }], density: { min: 0.3, max: 0.5 } }, // Use Riffs in Intro
+                    accompaniment: { density: {min: 0.1, max: 0.3} },
                     melody: { 
                         source: 'motif', 
                         density: { min: 0.2, max: 0.4 }, 
@@ -70,8 +68,8 @@ export const WinterBluesBlueprint: MusicBlueprint = {
                  instrumentation: {
                     accompaniment: { 
                         strategy: 'weighted', 
-                        v1Options: [{ name: 'organ', weight: 0.7 }, { name: 'ambientPad', weight: 0.3 }], 
-                        v2Options: [{ name: 'organ_soft_jazz', weight: 0.7 }, { name: 'synth_ambient_pad_lush', weight: 0.3 }] 
+                        v1Options: [{ name: 'organ', weight: 1.0 }], 
+                        v2Options: [{ name: 'organ_soft_jazz', weight: 1.0 }] 
                     },
                     melody: { 
                         strategy: 'weighted', 
@@ -101,8 +99,8 @@ export const WinterBluesBlueprint: MusicBlueprint = {
                 instrumentation: {
                     accompaniment: { 
                         strategy: 'weighted', 
-                        v1Options: [{ name: 'organ', weight: 0.7 }, { name: 'ambientPad', weight: 0.3 }], 
-                        v2Options: [{ name: 'organ_soft_jazz', weight: 0.7 }, { name: 'synth_ambient_pad_lush', weight: 0.3 }] 
+                        v1Options: [{ name: 'organ', weight: 1.0 }], 
+                        v2Options: [{ name: 'organ_soft_jazz', weight: 1.0 }] 
                     },
                     melody: { 
                         strategy: 'weighted', 
@@ -132,8 +130,8 @@ export const WinterBluesBlueprint: MusicBlueprint = {
                  instrumentation: {
                     accompaniment: { 
                         strategy: 'weighted', 
-                        v1Options: [{ name: 'organ', weight: 0.7 }, { name: 'ambientPad', weight: 0.3 }], 
-                        v2Options: [{ name: 'organ_soft_jazz', weight: 0.7 }, { name: 'synth_ambient_pad_lush', weight: 0.3 }] 
+                        v1Options: [{ name: 'organ', weight: 1.0 }], 
+                        v2Options: [{ name: 'organ_soft_jazz', weight: 1.0 }] 
                     },
                     melody: { 
                         strategy: 'weighted', 
@@ -163,8 +161,8 @@ export const WinterBluesBlueprint: MusicBlueprint = {
                 instrumentation: {
                     accompaniment: { 
                         strategy: 'weighted', 
-                        v1Options: [{ name: 'organ', weight: 0.7 }, { name: 'ambientPad', weight: 0.3 }], 
-                        v2Options: [{ name: 'organ_soft_jazz', weight: 0.7 }, { name: 'synth_ambient_pad_lush', weight: 0.3 }] 
+                        v1Options: [{ name: 'organ', weight: 1.0 }], 
+                        v2Options: [{ name: 'organ_soft_jazz', weight: 1.0 }] 
                     },
                     melody: { 
                         strategy: 'weighted', 
@@ -194,8 +192,8 @@ export const WinterBluesBlueprint: MusicBlueprint = {
                 instrumentation: {
                     accompaniment: { 
                         strategy: 'weighted', 
-                        v1Options: [{ name: 'organ', weight: 0.6 }, { name: 'ambientPad', weight: 0.4 }], 
-                        v2Options: [{ name: 'organ_soft_jazz', weight: 0.6 }, { name: 'synth_ambient_pad_lush', weight: 0.4 }] 
+                        v1Options: [{ name: 'organ', weight: 1.0 }], 
+                        v2Options: [{ name: 'organ_soft_jazz', weight: 1.0 }] 
                     },
                     melody: { 
                         strategy: 'weighted', 
