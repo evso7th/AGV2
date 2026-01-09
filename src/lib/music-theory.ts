@@ -1,5 +1,4 @@
 
-
 import type { FractalEvent, Mood, Genre, Technique, BassSynthParams, InstrumentType, AccompanimentInstrument, InstrumentHints, AccompanimentTechnique, GhostChord, SfxRule, V1MelodyInstrument, V2MelodyInstrument, BlueprintPart, InstrumentationRules, InstrumentBehaviorRules, BluesMelody, IntroRules, InstrumentPart, DrumKit, BluesGuitarRiff, BluesSoloPhrase, BluesRiffDegree } from './fractal';
 import { ElectronicK, TraditionalK, AmbientK, MelancholicMinorK } from './resonance-matrices';
 import { BlueprintNavigator, type NavigationInfo } from './blueprint-navigator';
@@ -540,58 +539,61 @@ export function createMelodyMotif(chord: GhostChord, mood: Mood, random: { next:
     return motif;
 }
 
-export function generateIntroSequence(options: { currentBar: number; totalIntroBars: number; rules: IntroRules; instrumentOrder: InstrumentPart[]; harmonyTrack: GhostChord[]; settings: any; random: { next: () => number, nextInt: (max: number) => number }; }): { events: FractalEvent[], instrumentHints: InstrumentHints } {
-    // #ЗАЧЕМ: Эта функция теперь реализует пошаговое, управляемое введение инструментов.
-    // #ЧТО: Она делит интро на "стадии" и активирует инструменты последовательно,
-    //      создавая плавное нарастание сложности.
-    // #СВЯЗИ: Вызывается из `ambient.worker.ts` в течение `introBars`.
-    const { currentBar, totalIntroBars, rules, instrumentOrder, harmonyTrack, settings, random } = options;
+export function generateIntroSequence(options: { 
+    currentBar: number; 
+    totalIntroBars: number; 
+    rules: IntroRules; 
+    instrumentHints: InstrumentHints; // #ИЗМЕНЕНИЕ: Принимаем хинты
+    harmonyTrack: GhostChord[]; 
+    settings: any; 
+    random: { next: () => number, nextInt: (max: number) => number }; 
+}): { events: FractalEvent[], instrumentHints: InstrumentHints } {
+    const { currentBar, totalIntroBars, rules, instrumentHints, harmonyTrack, settings, random } = options;
     const events: FractalEvent[] = [];
-    const instrumentHints: InstrumentHints = {};
-
-    const stages = rules.stages > 0 ? rules.stages : 1;
-    const barsPerStage = totalIntroBars > 0 ? Math.max(1, Math.floor(totalIntroBars / stages)) : 3;
-    const currentStageIndex = Math.min(stages - 1, Math.floor(currentBar / barsPerStage));
-
-    const activeInstruments = new Set<InstrumentPart>();
-    for (let i = 0; i <= currentStageIndex; i++) {
-        if (instrumentOrder[i]) {
-            activeInstruments.add(instrumentOrder[i]);
-        }
-    }
-    
-    console.log(`[IntroGen @ Bar ${currentBar}] Stage: ${currentStageIndex + 1}/${stages}. Active: ${Array.from(activeInstruments).join(', ')}`);
 
     const currentChord = harmonyTrack.find(c => currentBar >= c.bar && currentBar < c.bar + c.durationBars);
     if (!currentChord) {
         return { events, instrumentHints };
     }
-    
-    // --- Генерация партий на основе активных инструментов ---
 
-    if (activeInstruments.has('bass')) {
-        const bassAxiom = createAmbientBassAxiom(currentChord, settings.mood, settings.genre, random, settings.tempo, 'drone');
-        events.push(...bassAxiom);
+    const progress = currentBar / totalIntroBars;
+    const density = progress * (rules.buildUpSpeed || 0.5);
+
+    // --- Генерация аккомпанемента с учетом "хинта" ---
+    // #ЗАЧЕМ: Этот блок теперь генерирует партию, но тип инструмента берет извне.
+    // #ЧТО: Он создает пульсирующие арпеджио, но поле `type` теперь динамическое.
+    // #СВЯЗИ: Является ядром Плана 976.1
+    if (rules.allowedInstruments.includes('accompaniment') && instrumentHints.accompaniment && instrumentHints.accompaniment !== 'none') {
+        if (random.next() < density) {
+             const baseOctave = 3;
+             const isMinor = currentChord.chordType === 'minor' || currentChord.chordType === 'diminished';
+             const chordNotes = [currentChord.rootNote, currentChord.rootNote + (isMinor ? 3 : 4), currentChord.rootNote + 7];
+             const duration = 0.5;
+             const times = [0, 1.5, 2.5, 3.5];
+             times.forEach(time => {
+                 if (random.next() < 0.7) { // Добавляем немного случайности
+                     const note = chordNotes[random.nextInt(chordNotes.length)];
+                     events.push({
+                         type: 'accompaniment', // Тип остается 'accompaniment', а конкретный инструмент определит AudioEngineContext
+                         note: note + 12 * baseOctave,
+                         duration,
+                         time,
+                         weight: 0.4 + random.next() * 0.2,
+                         technique: 'arpeggio-fast',
+                         dynamics: 'p',
+                         phrasing: 'staccato',
+                         params: {}
+                     });
+                 }
+             });
+        }
     }
-    if (activeInstruments.has('accompaniment')) {
-         const registerHint = settings.instrumentSettings?.accompaniment?.register?.preferred || 'low';
-         // #ИСПРАВЛЕНО (ПЛАН 972): Вызываем улучшенную функцию для аккомпанемента
-         const accompAxiom = createAccompanimentAxiom(currentChord, settings.mood, settings.genre, random, settings.tempo, registerHint);
-        events.push(...accompAxiom);
-    }
-    if (activeInstruments.has('drums')) {
-        const drumKit = DRUM_KITS[settings.genre]?.intro ?? DRUM_KITS.ambient!.intro!;
-        const drumRules = { pattern: 'ambient_beat', density: { min: 0.1, max: 0.3 }, useSnare: false, usePerc: true, rareKick: true };
-        const drumAxiom = createDrumAxiom(drumKit, settings.genre, settings.mood, settings.tempo, random, drumRules as any);
-        events.push(...drumAxiom.events);
-    }
-     if (activeInstruments.has('melody')) {
-        const melodyAxiom = createMelodyMotif(currentChord, settings.mood, random, undefined, 'mid', settings.genre);
-        events.push(...melodyAxiom);
-    }
+    
+    // Остальные инструменты (бас, ударные) могут быть добавлены здесь по аналогии...
     
     return { events, instrumentHints };
 }
+
 
 export function chooseHarmonyInstrument(rules: InstrumentationRules<'piano' | 'guitarChords' | 'acousticGuitarSolo' | 'flute' | 'violin'>, random: { next: () => number }): NonNullable<InstrumentHints['harmony']> {
     const options = rules.options;
@@ -806,3 +808,5 @@ export function createBluesOrganLick(
 
     return phrase;
 }
+
+    

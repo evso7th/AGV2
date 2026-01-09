@@ -6,7 +6,7 @@
  * Its goal is to create a continuously evolving piece of music where complexity is controlled by a 'density' parameter.
  * It is completely passive and only composes the next bar when commanded via a 'tick'.
  */
-import type { WorkerSettings, ScoreName, Mood, Genre, IntroRules } from '@/types/music';
+import type { WorkerSettings, ScoreName, Mood, Genre, IntroRules, InstrumentPart } from '@/types/music';
 import { FractalMusicEngine } from '@/lib/fractal-music-engine';
 import { generateIntroSequence } from '@/lib/music-theory';
 import type { FractalEvent, InstrumentHints } from '@/types/fractal';
@@ -143,29 +143,36 @@ const Scheduler = {
     tick() {
         if (!this.isRunning || !fractalMusicEngine) return;
 
-        // --- ЛОГИКА ДЕКОРАТОРА (ПЛАН 891/894) ---
+        // --- ЛОГИКА ДЕКОРАТОРА (ПЛАН 976.1) ---
         
         // 1. Основной движок ВСЕГДА работает в фоне для "прогрева".
+        // Мы вызываем evolve, но пока можем не использовать его результат.
         const scorePayload = fractalMusicEngine.evolve(this.barDuration, this.barCount);
         
         let finalPayload: { events: FractalEvent[], instrumentHints: InstrumentHints };
 
         // 2. Если мы в периоде интро, вызываем ИЗОЛИРОВАННЫЙ генератор пролога.
         if (this.barCount < this.settings.introBars) {
-            const introPart = fractalMusicEngine.navigator?.blueprint.structure.parts.find(p => p.id.startsWith('INTRO'));
+            const navInfo = fractalMusicEngine.navigator?.tick(this.barCount);
             
-            if (introPart?.introRules) {
+            if (navInfo?.currentPart?.introRules) {
+                // #ЗАЧЕМ: Этот блок реализует выбор инструмента для интро на основе блюпринта.
+                // #ЧТО: Он вызывает `_chooseInstrumentForPart` для определения, какой инструмент
+                //      должен играть аккомпанемент, и передает этот "хинт" в генератор интро.
+                // #СВЯЗИ: Ключевая часть Плана 976.1.
+                const introAccompHint = (fractalMusicEngine as any)._chooseInstrumentForPart('accompaniment', navInfo);
+                const introHints: InstrumentHints = { accompaniment: introAccompHint };
+
                 finalPayload = generateIntroSequence({
                     currentBar: this.barCount,
                     totalIntroBars: this.settings.introBars,
-                    rules: introPart.introRules,
-                    instrumentOrder: fractalMusicEngine.introInstrumentOrder,
+                    rules: navInfo.currentPart.introRules,
+                    instrumentHints: introHints, // Передаем "хинт"
                     harmonyTrack: fractalMusicEngine.getGhostHarmony(),
                     settings: this.settings,
                     random: (fractalMusicEngine as any).random
                 });
             } else {
-                // Если правил интро нет (маловероятно, но для безопасности), играем "тишину"
                 finalPayload = { events: [], instrumentHints: {} };
             }
         } else {
@@ -206,7 +213,7 @@ const Scheduler = {
             }
         }
 
-        // #ИСПРАВЛЕНО (ПЛАН 943/949): `instrumentHints` теперь всегда корректно включаются в payload.
+        // #ИСПРАВЛЕНО (ПЛАН 949/974): `instrumentHints` теперь всегда корректно включаются в payload.
         const payloadForMainThread = {
             events: mainScoreEvents,
             instrumentHints: finalPayload.instrumentHints,
