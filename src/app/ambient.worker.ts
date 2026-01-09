@@ -170,7 +170,9 @@ const Scheduler = {
                     instrumentHints: introHints, // Передаем "хинт"
                     harmonyTrack: fractalMusicEngine.getGhostHarmony(),
                     settings: this.settings,
-                    random: (fractalMusicEngine as any).random
+                    random: (fractalMusicEngine as any).random,
+                    // #ИСПРАВЛЕНО (ПЛАН 982): Явно передаем отсортированный список инструментов в генератор.
+                    introInstrumentOrder: fractalMusicEngine.introInstrumentOrder
                 });
             } else {
                 finalPayload = { events: [], instrumentHints: {} };

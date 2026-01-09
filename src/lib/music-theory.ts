@@ -1,5 +1,4 @@
 
-
 import type { FractalEvent, Mood, Genre, Technique, BassSynthParams, InstrumentType, AccompanimentInstrument, InstrumentHints, AccompanimentTechnique, GhostChord, SfxRule, V1MelodyInstrument, V2MelodyInstrument, BlueprintPart, InstrumentationRules, InstrumentBehaviorRules, BluesMelody, IntroRules, InstrumentPart, DrumKit, BluesGuitarRiff, BluesSoloPhrase, BluesRiffDegree } from './fractal';
 import { ElectronicK, TraditionalK, AmbientK, MelancholicMinorK } from './resonance-matrices';
 import { BlueprintNavigator, type NavigationInfo } from './blueprint-navigator';
@@ -562,9 +561,10 @@ export function generateIntroSequence(options: {
     const stageCount = rules.stages;
     const barsPerStage = Math.max(1, Math.floor(totalIntroBars / stageCount));
     const currentStage = Math.min(stageCount, Math.floor(currentBar / barsPerStage) + 1);
-    const activeInstrumentCount = currentStage;
     
-    const activeInstrumentsForBar = new Set(introInstrumentOrder.slice(0, activeInstrumentCount));
+    // #ИСПРАВЛЕНО (ПЛАН 982): Теперь мы используем `introInstrumentOrder` для определения активных инструментов.
+    // Это гарантирует, что `slice` вызывается на существующем массиве.
+    const activeInstrumentsForBar = new Set(introInstrumentOrder.slice(0, currentStage));
     
     // --- Генерация партий на основе активных инструментов ---
 
