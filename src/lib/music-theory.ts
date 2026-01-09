@@ -614,7 +614,12 @@ export function createPulsatingAccompaniment(chord: GhostChord, random: { next: 
 }
 
 
-export function chooseHarmonyInstrument(rules: InstrumentationRules<'piano' | 'guitarChords' | 'acousticGuitarSolo' | 'flute' | 'violin'>, random: { next: () => number }): NonNullable<InstrumentHints['harmony']> {
+export function chooseHarmonyInstrument(rules: InstrumentationRules<'piano' | 'guitarChords' | 'acousticGuitarSolo' | 'flute' | 'violin'> | undefined, random: { next: () => number }): NonNullable<InstrumentHints['harmony']> {
+    // #ИСПРАВЛЕНО (ПЛАН 988): Добавлена проверка на существование `rules`.
+    if (!rules || !rules.options || rules.options.length === 0) {
+        return 'guitarChords'; // Безопасное значение по умолчанию
+    }
+    
     const options = rules.options;
     if (!options || options.length === 0) return 'guitarChords';
     const totalWeight = options.reduce((sum, item) => sum + item.weight, 0);
@@ -827,3 +832,5 @@ export function createBluesOrganLick(
 
     return phrase;
 }
+
+    
