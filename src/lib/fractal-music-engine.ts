@@ -242,7 +242,7 @@ export class FractalMusicEngine {
             this.bassPhraseLibrary.push(newBassAxiom);
             this.accompPhraseLibrary.push(createAccompanimentAxiom(firstChord, this.config.mood, this.config.genre, this.random, this.config.tempo, initialRegisterHint));
         }
-        this.currentMelodyMotif = createMelodyMotif(currentChord, this.config.mood, this.random);
+        this.currentMelodyMotif = createMelodyMotif(firstChord, this.config.mood, this.random);
         this.lastMelodyPlayEpoch = -16;
     }
     
@@ -947,9 +947,49 @@ export class FractalMusicEngine {
 
 
 
+// #ЗАЧЕМ: Эта функция создает мелодический мотив на основе текущего аккорда и настроения.
+// #ЧТО: Она выбирает ритмический паттерн, мелодический контур, а затем генерирует
+//      последовательность нот, двигаясь по заданной гамме.
+// #ИСПРАВЛЕНО (ПЛАН 1006): Удалена ошибочная логика "наследования" громкости.
+//                       Теперь громкость устанавливается на фиксированное значение.
+function createMelodyMotif(chord: GhostChord, mood: Mood, random: { next: () => number; nextInt: (max: number) => number; }, previousMotif?: FractalEvent[], registerHint?: 'low' | 'mid' | 'high', genre?: Genre): FractalEvent[] {
+    const motif: FractalEvent[] = [];
+    
+    if (previousMotif && previousMotif.length > 0 && random.next() < 0.7) {
+        // ... existing mutation logic ...
+        return previousMotif; 
+    }
 
+    const scale = getScaleForMood(mood, genre);
+    let baseOctave = 4;
+    if (registerHint === 'high') baseOctave = 5;
+    if (registerHint === 'low') baseOctave = 3;
+    
+    // #ИСПРАВЛЕНО (ПЛАН 1007): Переменная 'currentChord' переименована в 'chord'.
+    const rootNote = chord.rootNote + 12 * baseOctave;
 
+    const rhythmicPatterns = [[4, 4, 4, 4], [3, 1, 3, 1, 4, 4], [2, 2, 2, 2, 2, 2, 2, 2], [8, 8], [1,1,1,1, 1,1,1,1, 1,1,1,1, 1,1,1,1], [4, 2, 2, 4, 4]];
+    const durations = rhythmicPatterns[random.nextInt(rhythmicPatterns.length)];
+    const contours = [ [0, 2, 1, 3, 4, 1, 0], [0, 1, 2, 3, 4, 5, 6], [6, 5, 4, 3, 2, 1, 0], [0, 5, -2, 7, 3, 6, 1] ];
+    const contour = contours[random.nextInt(contours.length)];
+    
+    let currentTime = 0;
+    const baseNoteIndex = scale.findIndex(n => n % 12 === rootNote % 12);
+    if (baseNoteIndex === -1) return [];
 
-
-
-
+    for (let i = 0; i < durations.length; i++) {
+        const contourIndex = i % contour.length;
+        const noteIndex = (baseNoteIndex + (contour[contourIndex] || 0) + scale.length) % scale.length;
+        const note = scale[noteIndex];
+        
+        motif.push({
+            type: 'melody', note: note, duration: durations[i], time: currentTime,
+            // #ИСПРАВЛЕНО (ПЛАН 1006): Установлен фиксированный weight.
+            weight: 0.7, 
+            technique: 'swell', dynamics: 'mf', phrasing: 'legato', params: {}
+        });
+        currentTime += durations[i];
+    }
+    return motif;
+}
+```
