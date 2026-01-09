@@ -1,4 +1,5 @@
 
+
 import type { FractalEvent, Mood, Genre, Technique, BassSynthParams, InstrumentType, AccompanimentInstrument, InstrumentHints, AccompanimentTechnique, GhostChord, SfxRule, V1MelodyInstrument, V2MelodyInstrument, BlueprintPart, InstrumentationRules, InstrumentBehaviorRules, BluesMelody, IntroRules, InstrumentPart, DrumKit, BluesGuitarRiff, BluesSoloPhrase, BluesRiffDegree } from './fractal';
 import { ElectronicK, TraditionalK, AmbientK, MelancholicMinorK } from './resonance-matrices';
 import { BlueprintNavigator, type NavigationInfo } from './blueprint-navigator';
@@ -561,7 +562,7 @@ export function generateIntroSequence(options: {
     const currentChord = harmonyTrack.find(c => currentBar >= c.bar && currentBar < c.bar + c.durationBars);
     if (!currentChord) {
         console.error(`[IntroSeq] No chord found for bar ${currentBar}.`);
-        return { events, instrumentHints };
+        return { events, instrumentHints: {} };
     }
     console.log(`[IntroSeq] Current Chord: ${currentChord.rootNote} ${currentChord.chordType}`);
 
@@ -580,7 +581,9 @@ export function generateIntroSequence(options: {
     }
     if (activeInstrumentsForBar.has('melody') && instrumentHints.melody !== 'none') {
         console.log(`[IntroSeq] Generating melody with hint: ${instrumentHints.melody}`);
-        events.push(...createMelodyMotif(currentChord, settings.mood, random, undefined, 'mid', settings.genre));
+        const melodyEvents = createMelodyMotif(currentChord, settings.mood, random, undefined, 'mid', settings.genre);
+        melodyEvents.forEach(e => e.note += 24); // Correct register for guitar
+        events.push(...melodyEvents);
     }
     if(activeInstrumentsForBar.has('bass')) {
         console.log(`[IntroSeq] Generating bass.`);
@@ -598,7 +601,6 @@ export function generateIntroSequence(options: {
     
     console.log(`%c[IntroSeq @ Bar ${currentBar}] --- END --- Returning ${events.length} events and hints:`, 'color: #00DDDD', instrumentHints);
     
-    // --- ПЛАН 999 ИСПРАВЛЕНИЕ: Возвращаем полученные хинты, а не пустой объект ---
     return { events, instrumentHints };
 }
 
@@ -848,3 +850,4 @@ export function createBluesOrganLick(
 }
 
     
+
