@@ -22,8 +22,16 @@ export const WinterBluesBlueprint: MusicBlueprint = {
                     instrumentPool: ['drums', 'bass', 'melody'],
                     stages: 3,
                 },
-                layers: { bass: true, drums: true, accompaniment: false, harmony: true, melody: true },
+                layers: { bass: true, drums: true, accompaniment: true, harmony: true, melody: true },
                 instrumentation: {
+                    accompaniment: {
+                        strategy: 'weighted',
+                        v1Options: [{ name: 'ambientPad', weight: 1.0 }],
+                        v2Options: [
+                          { name: 'mellotron', weight: 0.5 },
+                          { name: 'mellotron_flute_intimate', weight: 0.5 }
+                        ]
+                    },
                     melody: { 
                         strategy: 'weighted', 
                         v1Options: [
@@ -46,6 +54,7 @@ export const WinterBluesBlueprint: MusicBlueprint = {
                 instrumentRules: {
                     drums: { pattern: 'composer', kitName: 'blues_calm', density: { min: 0.1, max: 0.3 }, useSnare: false, usePerc: true, rareKick: true },
                     bass: { techniques: [{ value: 'riff', weight: 1.0 }], density: { min: 0.3, max: 0.5 } },
+                    accompaniment: { density: {min: 0.1, max: 0.3} },
                     melody: { 
                         source: 'motif', 
                         density: { min: 0.2, max: 0.4 }, 
@@ -63,7 +72,7 @@ export const WinterBluesBlueprint: MusicBlueprint = {
                 outroFill: null,
             },
             {
-                id: 'BUILD', name: 'Build-Up', duration: { percent: 20 },
+                id: 'BUILD', name: 'Build-Up', duration: { percent: 15 },
                 layers: { bass: true, drums: true, melody: true, accompaniment: true, harmony: true },
                  instrumentation: {
                     accompaniment: { 
@@ -125,7 +134,7 @@ export const WinterBluesBlueprint: MusicBlueprint = {
                 outroFill: null,
             },
             {
-                id: 'SOLO', name: 'Solo', duration: { percent: 25 },
+                id: 'SOLO', name: 'Solo', duration: { percent: 30 },
                 layers: { bass: true, drums: true, melody: true, accompaniment: true, harmony: true },
                  instrumentation: {
                     accompaniment: { 
@@ -148,7 +157,8 @@ export const WinterBluesBlueprint: MusicBlueprint = {
                     melody: { 
                         source: 'motif', 
                         density: { min: 0.6, max: 0.8 },
-                        register: { preferred: 'high' }
+                        register: { preferred: 'high' },
+                        soloPlan: 'E_minor_heavy_wail'
                     },
                     bass: { techniques: [{ value: 'riff', weight: 1.0 }] },
                 },
