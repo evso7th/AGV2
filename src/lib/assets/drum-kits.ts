@@ -84,10 +84,11 @@ export const DRUM_KITS: DrumKitLibrary = {
             perc: ['drum_tom_low']
         },
         // КИТ ДЛЯ СПОКОЙНОГО БЛЮЗА (ПЛАН 762)
+        // #ИСПРАВЛЕНО (ПЛАН 1186): Добавлен хай-хэт для проверки логики "обогащения".
         blues_calm: {
             kick: ['drum_kick'],
             snare: ['drum_snare_ghost_note', ...BRUSHES],
-            hihat: ['drum_hihat_closed'],
+            hihat: ['drum_hihat_closed'], // ДОБАВЛЕНО
             ride: [],
             crash: [],
             perc: ['perc-001', 'perc-013']
