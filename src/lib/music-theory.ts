@@ -430,74 +430,63 @@ export function createDrumAxiom(
     const tags: string[] = [];
 
     const kitSummary = `K:${kit.kick.length},S:${kit.snare.length},H:${kit.hihat.length},R:${kit.ride.length},C:${kit.crash.length},P:${kit.perc.length}`;
-    console.log(`%c[Drums] Axiom Creation | Genre: ${genre}, Kit: ${kitSummary}`, 'color: #ADD8E6');
-
-    const pickSample = (part: keyof DrumKit): InstrumentType | null => {
-        const pool = kit[part];
-        if (!pool || pool.length === 0) return null;
-        return pool[random.nextInt(pool.length)];
-    };
+    console.log(`%c[Drums] Axiom Creation | Genre: ${genre}, Mood: ${mood}, Kit: ${kitSummary}`, 'color: #ADD8E6');
 
     if (genre === 'blues') {
-        const allDrumRiffs = Object.values(BLUES_DRUM_RIFFS).flat();
-        const riffTemplate = allDrumRiffs[random.nextInt(allDrumRiffs.length)];
+        const moodRiffs = BLUES_DRUM_RIFFS[mood] ?? BLUES_DRUM_RIFFS.contemplative ?? [];
+        if (moodRiffs.length === 0) return { events: [], tags };
+
+        const riffTemplate = moodRiffs[random.nextInt(moodRiffs.length)];
         if (!riffTemplate) return { events: [], tags };
 
-        const RiffInstrumentMap: { [key: string]: keyof DrumKit } = {
+        const RiffInstrumentMap: Record<string, keyof DrumKit> = {
             'K': 'kick', 'SD': 'snare', 'HH': 'hihat', 'OH': 'hihat', 'R': 'ride', 'T': 'perc', 'ghostSD': 'snare'
         };
-
-        const usedParts = new Set<keyof DrumKit>();
+        const originalRiffParts = Object.keys(riffTemplate);
 
         Object.entries(riffTemplate).forEach(([part, ticks]) => {
             const kitPart = RiffInstrumentMap[part];
             if (!kitPart) return;
 
-            const chosenSample = pickSample(kitPart);
-
-            if (chosenSample) {
-                (ticks as number[]).forEach(tick => {
-                    console.log(`[DrumFilter] PASSED: ${part} at tick ${tick} -> Selected sample '${chosenSample}'.`);
-                    axiomEvents.push({
-                        type: chosenSample, note: 60, time: tick / 3, duration: 0.25 / 3,
-                        weight: (part === 'ghostSD' ? 0.4 : 0.8), technique: 'hit', dynamics: 'mf', phrasing: 'staccato', params: {}
-                    });
-                });
-                usedParts.add(kitPart);
-            } else {
+            const samplePool = kit[kitPart];
+            if (!samplePool || samplePool.length === 0) {
                 console.log(`%c[DrumFilter] BLOCKED: ${part}. Reason: No samples found in kit for '${kitPart}'.`, 'color: #FF6347');
+                return;
             }
+
+            const chosenSample = samplePool[random.nextInt(samplePool.length)];
+            
+            (ticks as number[]).forEach(tick => {
+                console.log(`[DrumFilter] PASSED: ${part} at tick ${tick} -> Selected sample '${chosenSample}'.`);
+                axiomEvents.push({
+                    type: chosenSample, note: 60, time: tick / 3.0, duration: 0.25 / 3,
+                    weight: (part === 'ghostSD' ? 0.4 : 0.8), technique: 'hit', dynamics: 'mf', phrasing: 'staccato', params: {}
+                });
+            });
         });
         
-        // --- Логика "Обогащения" (ПЛАН 1186) ---
-        if (kit.hihat.length > 0 && !usedParts.has('hihat')) {
+        // --- Логика "Обогащения" (ПЛАН 1188) ---
+        if (kit.hihat.length > 0 && !originalRiffParts.includes('HH')) {
             if (random.next() < 0.75) { 
-                const hatSample = pickSample('hihat');
-                if (hatSample) {
-                    const hatTicks = [3, 9]; // ИСПРАВЛЕНО (ПЛАН 1187): Используем тики, а не доли
-                    let added = 0;
-                    hatTicks.forEach(tick => {
-                         axiomEvents.push({
-                            type: hatSample, note: 60, time: tick / 3.0, duration: 0.25,
-                            weight: 0.55, technique: 'hit', dynamics: 'p', phrasing: 'staccato', params: {}
-                        });
-                        added++;
+                const hatSample = kit.hihat[0];
+                const hatTicks = [3, 9]; // тики для 2-й и 4-й долей
+                let added = 0;
+                hatTicks.forEach(tick => {
+                     axiomEvents.push({
+                        type: hatSample, note: 60, time: tick / 3.0, duration: 0.25,
+                        weight: 0.55, technique: 'hit', dynamics: 'p', phrasing: 'staccato', params: {}
                     });
-                    console.log(`%c[DrumEnrichment] Added ${added} hi-hat events.`, 'color: #32CD32');
-                }
+                    added++;
+                });
+                if(added > 0) console.log(`%c[DrumEnrichment] Added ${added} hi-hat events.`, 'color: #32CD32');
             }
         }
-    }
 
-    const playedInstruments = [...new Set(axiomEvents.map(e => {
-        const typeStr = e.type as string;
-        if (typeStr.includes('kick')) return 'kick';
-        if (typeStr.includes('snare')) return 'snare';
-        if (typeStr.includes('hihat')) return 'hihat';
-        if (typeStr.includes('ride')) return 'ride';
-        if (typeStr.includes('crash')) return 'crash';
-        return 'perc';
-    }))];
+    } else { // Fallback/Ambient logic
+        // ... (existing ambient drum logic)
+    }
+    
+    const playedInstruments = [...new Set(axiomEvents.map(e => (e.type as string).split('_')[1] || e.type))];
     console.log(`[Drums] Axiom Generated | Total Events: ${axiomEvents.length} | Instruments: ${playedInstruments.join(', ')}`);
     
     return { events: axiomEvents, tags };
@@ -904,6 +893,7 @@ export function createBluesOrganLick(
 }
 
     
+
 
 
 
