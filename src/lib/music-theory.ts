@@ -429,9 +429,9 @@ export function createDrumAxiom(
     const axiomEvents: FractalEvent[] = [];
     const tags: string[] = [];
 
-    // --- Уровень 1: Входной Контроль ---
     const kitSummary = `K:${kit.kick.length},S:${kit.snare.length},H:${kit.hihat.length},R:${kit.ride.length},C:${kit.crash.length},P:${kit.perc.length}`;
-    
+    console.log(`%c[Drums] Axiom Creation | Genre: ${genre}, Kit: ${kitSummary}`, 'color: #ADD8E6');
+
     const pickSample = (part: keyof DrumKit): InstrumentType | null => {
         const pool = kit[part];
         if (!pool || pool.length === 0) return null;
@@ -441,17 +441,14 @@ export function createDrumAxiom(
     if (genre === 'blues') {
         const allDrumRiffs = Object.values(BLUES_DRUM_RIFFS).flat();
         const riffTemplate = allDrumRiffs[random.nextInt(allDrumRiffs.length)];
-        
         if (!riffTemplate) return { events: [], tags };
-
-        console.log(`%c[Drums] Axiom Creation | Riff: (Blues), Kit: ${kitSummary}`, 'color: #ADD8E6');
 
         const RiffInstrumentMap: { [key: string]: keyof DrumKit } = {
             'K': 'kick', 'SD': 'snare', 'HH': 'hihat', 'OH': 'hihat', 'R': 'ride', 'T': 'perc', 'ghostSD': 'snare'
         };
+
         const usedParts = new Set<keyof DrumKit>();
 
-        // --- Уровень 2: Процесс Фильтрации ---
         Object.entries(riffTemplate).forEach(([part, ticks]) => {
             const kitPart = RiffInstrumentMap[part];
             if (!kitPart) return;
@@ -460,8 +457,8 @@ export function createDrumAxiom(
 
             if (chosenSample) {
                 (ticks as number[]).forEach(tick => {
-                     console.log(`[DrumFilter] PASSED: ${part} at tick ${tick} -> Selected sample '${chosenSample}'.`);
-                     axiomEvents.push({
+                    console.log(`[DrumFilter] PASSED: ${part} at tick ${tick} -> Selected sample '${chosenSample}'.`);
+                    axiomEvents.push({
                         type: chosenSample, note: 60, time: tick / 3, duration: 0.25 / 3,
                         weight: (part === 'ghostSD' ? 0.4 : 0.8), technique: 'hit', dynamics: 'mf', phrasing: 'staccato', params: {}
                     });
@@ -472,29 +469,26 @@ export function createDrumAxiom(
             }
         });
         
-        // --- Уровень 2.5: Обогащение ---
+        // --- Логика "Обогащения" (ПЛАН 1186) ---
         if (kit.hihat.length > 0 && !usedParts.has('hihat')) {
-            if (random.next() < 0.75) { // 75% шанс добавить хэт, если его нет
+            if (random.next() < 0.75) { 
                 const hatSample = pickSample('hihat');
                 if (hatSample) {
-                    const hatTicks = [0, 1.5, 2, 3.5]; // простой поддерживающий бит
+                    const hatTicks = [3, 9]; // ИСПРАВЛЕНО (ПЛАН 1187): Используем тики, а не доли
+                    let added = 0;
                     hatTicks.forEach(tick => {
-                         console.log(`%c[DrumEnrichment] Added '${hatSample}' at beat ${tick}.`, 'color: #32CD32');
                          axiomEvents.push({
-                            type: hatSample, note: 60, time: tick, duration: 0.25,
+                            type: hatSample, note: 60, time: tick / 3.0, duration: 0.25,
                             weight: 0.55, technique: 'hit', dynamics: 'p', phrasing: 'staccato', params: {}
                         });
+                        added++;
                     });
+                    console.log(`%c[DrumEnrichment] Added ${added} hi-hat events.`, 'color: #32CD32');
                 }
             }
         }
-
-
-    } else { // Fallback for non-blues genres
-        // ... (existing ambient logic)
     }
 
-    // --- Уровень 3: Выходной Контроль ---
     const playedInstruments = [...new Set(axiomEvents.map(e => {
         const typeStr = e.type as string;
         if (typeStr.includes('kick')) return 'kick';
@@ -506,7 +500,7 @@ export function createDrumAxiom(
     }))];
     console.log(`[Drums] Axiom Generated | Total Events: ${axiomEvents.length} | Instruments: ${playedInstruments.join(', ')}`);
     
-    return { events: axiomEvents, tags: [] };
+    return { events: axiomEvents, tags };
 }
 
 
@@ -566,6 +560,7 @@ function extractTopNotes(events: FractalEvent[], maxNotes: number = 4): FractalE
 
 export function createMelodyMotif(chord: GhostChord, mood: Mood, random: { next: () => number; nextInt: (max: number) => number; }, previousMotif?: FractalEvent[], registerHint?: 'low' | 'mid' | 'high', genre?: Genre): FractalEvent[] {
     const motif: FractalEvent[] = [];
+    
     if (previousMotif && previousMotif.length > 0 && random.next() < 0.7) {
         // ... existing mutation logic ...
         return previousMotif; 
@@ -909,6 +904,7 @@ export function createBluesOrganLick(
 }
 
     
+
 
 
 
