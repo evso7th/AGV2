@@ -199,7 +199,7 @@ export const PERCUSSION_SETS: Record<'NEUTRAL' | 'ELECTRONIC' | 'DARK', Instrume
     DARK: ['perc-013', 'drum_snare_off', 'drum_tom_low', 'perc-007', 'perc-015']
 };
 
-export const ALL_RIDES: InstrumentType[] = ['drum_a_ride1', 'drum_a_ride2', 'drum_a_ride3', 'drum_a_ride4'];
+export const ALL_RIDES: InstrumentType[] = ['drum_ride', 'drum_a_ride1', 'drum_a_ride2', 'drum_a_ride3', 'drum_a_ride4'];
 const AMBIENT_SNARES: InstrumentType[] = ['drum_snare_ghost_note', 'drum_snarepress', 'drum_snare_off'];
 const AMBIENT_PERC: InstrumentType[] = [...PERCUSSION_SETS.ELECTRONIC, ...ALL_RIDES];
 const AMBIENT_INTRO_PERC: InstrumentType[] = ['drum_tom_low', 'perc-013', 'perc-015', 'drum_hihat_closed', 'drum_hihat_open'];
@@ -419,67 +419,94 @@ export function createHarmonyAxiom(chord: GhostChord, mood: Mood, genre: Genre, 
     return axiom;
 }
 
-export function createDrumAxiom(kit: DrumKit, genre: Genre, mood: Mood, tempo: number, random: { next: () => number, nextInt: (max: number) => number }, rules?: InstrumentBehaviorRules): { events: FractalEvent[], tags: string[] } {
+export function createDrumAxiom(
+    kit: DrumKit,
+    genre: Genre,
+    mood: Mood,
+    tempo: number,
+    random: { next: () => number; nextInt: (max: number) => number }
+): { events: FractalEvent[]; tags: string[] } {
     const axiomEvents: FractalEvent[] = [];
     const tags: string[] = [];
 
-    // #ИСПРАВЛЕНО (ПЛАН 1012): Добавлена проверка на "интро-кит".
-    // @ts-ignore - Добавляем кастомное свойство для нашей логики
-    if (kit.isIntroKit) {
-        // Логика для интро: простой, безопасный бит
-        const introPattern = [
-            { type: 'drum_kick', time: 0, weight: 0.8 },
-            { type: 'drum_hihat_closed', time: 0, weight: 0.5 },
-            { type: 'drum_hihat_closed', time: 1, weight: 0.5 },
-            { type: 'drum_kick', time: 2, weight: 0.7 },
-            { type: 'drum_hihat_closed', time: 2, weight: 0.5 },
-            { type: 'drum_hihat_closed', time: 3, weight: 0.5 },
-        ];
-        introPattern.forEach(p => {
-             axiomEvents.push({ 
-                ...p, 
-                note: 36, duration: 0.25, technique: 'hit', dynamics: 'mf', phrasing: 'staccato', params: {} 
-            } as FractalEvent);
+    // Level 1: Input Control Logging
+    const kitSummary = `K:${kit.kick.length},S:${kit.snare.length},H:${kit.hihat.length},R:${kit.ride.length},C:${kit.crash.length},P:${kit.perc.length}`;
+    
+    // Helper to get a random sample for a part from the kit
+    const pickSample = (part: keyof DrumKit): InstrumentType | null => {
+        const pool = kit[part];
+        if (!pool || pool.length === 0) return null;
+        return pool[random.nextInt(pool.length)];
+    };
+
+    if (genre === 'blues') {
+        const allDrumRiffs = Object.values(BLUES_DRUM_RIFFS).flat();
+        const riffTemplate = allDrumRiffs[random.nextInt(allDrumRiffs.length)];
+        
+        if (!riffTemplate) return { events: [], tags };
+
+        console.log(`%c[Drums] Axiom Creation | Riff: (Blues), Kit: ${kitSummary}`, 'color: #ADD8E6');
+
+        const RiffInstrumentMap: { [key: string]: keyof DrumKit } = {
+            'K': 'kick', 'SD': 'snare', 'HH': 'hihat', 'OH': 'hihat', 'R': 'ride', 'T': 'perc'
+        };
+
+        Object.entries(riffTemplate).forEach(([part, ticks]) => {
+            const kitPart = RiffInstrumentMap[part];
+            if (!kitPart) return;
+
+            const samplePool = kit[kitPart];
+
+            if (samplePool && samplePool.length > 0) {
+                 (ticks as number[]).forEach(tick => {
+                    const chosenSample = pickSample(kitPart);
+                    if (chosenSample) {
+                        console.log(`[DrumFilter] PASSED: ${part} at tick ${tick} -> Selected sample '${chosenSample}'.`);
+                        axiomEvents.push({
+                            type: chosenSample, note: 60, time: tick / 3, duration: 0.25 / 3,
+                            weight: 0.8, technique: 'hit', dynamics: 'mf', phrasing: 'staccato', params: {}
+                        });
+                    }
+                });
+            } else {
+                 console.log(`%c[DrumFilter] BLOCKED: ${part}. Reason: No samples found in kit for '${kitPart}'.`, 'color: #FF6347');
+            }
         });
-        return { events: axiomEvents, tags: ['intro_beat'] };
+
+    } else { // Fallback for non-blues genres (or ambient)
+        const kickTime = [0, 2];
+        const snareTime = [1, 3];
+        const hihatTime = [0, 0.5, 1, 1.5, 2, 2.5, 3, 3.5];
+
+        kickTime.forEach(time => {
+            const sample = pickSample('kick');
+            if (sample) axiomEvents.push({ type: sample, time, note: 60, duration: 0.25, weight: 0.9, technique: 'hit', dynamics: 'f', phrasing: 'staccato', params: {} } as FractalEvent);
+        });
+        snareTime.forEach(time => {
+            const sample = pickSample('snare');
+            if (sample) axiomEvents.push({ type: sample, time, note: 60, duration: 0.25, weight: 0.8, technique: 'hit', dynamics: 'mf', phrasing: 'staccato', params: {} } as FractalEvent);
+        });
+        hihatTime.forEach(time => {
+            const sample = pickSample('hihat');
+            if (sample) axiomEvents.push({ type: sample, time, note: 60, duration: 0.25, weight: 0.6, technique: 'hit', dynamics: 'p', phrasing: 'staccato', params: {} } as FractalEvent);
+        });
     }
 
-    // Основная "живая" логика для всех остальных случаев
-    const grammar = DRUM_KITS[genre] || DRUM_KITS['ambient'];
-    const riffCollection = BLUES_DRUM_RIFFS[mood];
-
-    if (!grammar || !riffCollection || riffCollection.length === 0) return { events: [], tags: [] };
-    
-    const riffTemplate = riffCollection[random.nextInt(riffCollection.length)];
-    if (!riffTemplate) return { events: [], tags: [] };
-
-    const allBaseEvents = [
-        ...(riffTemplate.K || []).map(t => ({type: 'drum_kick', time: t})),
-        ...(riffTemplate.SD || []).map(t => ({type: 'drum_snare', time: t})),
-        ...(riffTemplate.HH || []).map(t => ({type: 'drum_hihat_closed', time: t})),
-        ...(riffTemplate.OH || []).map(t => ({type: 'drum_hihat_open', time: t})),
-        ...(riffTemplate.R || []).map(t => ({type: 'drum_ride', time: t})),
-    ];
-    
-    for (const baseEvent of allBaseEvents) {
-        let samplePool: InstrumentType[] = [];
-        const originalType = baseEvent.type;
-
-        if (originalType.startsWith('drum_kick')) samplePool = kit.kick;
-        else if (originalType.startsWith('drum_snare')) samplePool = kit.snare;
-        else if (originalType.startsWith('drum_hihat')) samplePool = kit.hihat;
-        else if (originalType.startsWith('drum_ride')) samplePool = kit.ride;
-        else if (originalType.startsWith('drum_crash')) samplePool = kit.crash;
-        else if (originalType.startsWith('perc') || originalType.startsWith('drum_tom')) samplePool = kit.perc;
-
-        if (samplePool.length > 0) {
-            const chosenType = samplePool[random.nextInt(samplePool.length)];
-            axiomEvents.push({ ...baseEvent, type: chosenType, note: 36, phrasing: 'staccato', dynamics: 'mf', params: {}, duration: 0.25, weight: 0.8 } as FractalEvent);
-        }
-    }
+    // Level 3: Output Control Logging
+    const playedInstruments = [...new Set(axiomEvents.map(e => {
+        const typeStr = e.type as string;
+        if (typeStr.includes('kick')) return 'kick';
+        if (typeStr.includes('snare')) return 'snare';
+        if (typeStr.includes('hihat')) return 'hihat';
+        if (typeStr.includes('ride')) return 'ride';
+        if (typeStr.includes('crash')) return 'crash';
+        return 'perc';
+    }))];
+    console.log(`[Drums] Axiom Generated | Total Events: ${axiomEvents.length} | Instruments: ${playedInstruments.join(', ')}`);
     
     return { events: axiomEvents, tags: [] };
 }
+
 
 
 export function createSfxScenario(mood: Mood, genre: Genre, random: { next: () => number, nextInt: (max: number) => number }): { drumFill: FractalEvent[], bassFill: FractalEvent[], accompanimentFill: FractalEvent[] } {
@@ -626,7 +653,7 @@ export function generateIntroSequence(options: {
     }
     if(activeInstrumentsForBar.has('drums')) {
         const kit = DRUM_KITS[settings.genre]?.intro ?? DRUM_KITS.ambient!.intro!;
-        events.push(...createDrumAxiom(kit, settings.genre, settings.mood, settings.tempo, random, { density: {min: 0.1, max: 0.3} }).events);
+        events.push(...createDrumAxiom(kit, settings.genre, settings.mood, settings.tempo, random).events);
     }
      if (activeInstrumentsForBar.has('harmony')) {
         events.push(...createHarmonyAxiom(currentChord, settings.mood, settings.genre, random));
@@ -880,6 +907,7 @@ export function createBluesOrganLick(
 }
 
     
+
 
 
 
