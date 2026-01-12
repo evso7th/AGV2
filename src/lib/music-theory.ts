@@ -1,7 +1,7 @@
 
 
 import type { FractalEvent, Mood, Genre, Technique, BassSynthParams, InstrumentType, MelodyInstrument, AccompanimentInstrument, ResonanceMatrix, InstrumentHints, AccompanimentTechnique, GhostChord, SfxRule, V1MelodyInstrument, V2MelodyInstrument, BlueprintPart, InstrumentationRules, InstrumentBehaviorRules, BluesMelody, IntroRules, InstrumentPart, DrumKit, BluesGuitarRiff, BluesSoloPhrase, BluesRiffDegree } from './fractal';
-import { ElectronicK, TraditionalK, AmbientK, MelancholicMinorK } from './resonance-matrices';
+import { ElectronicK, TraditionalK, AmbientK, MelancholicMinorK } from './resonance_matrices';
 import { BlueprintNavigator, type NavigationInfo } from './blueprint-navigator';
 import { getBlueprint } from './blueprints';
 import { V2_PRESETS } from './presets-v2';
@@ -424,74 +424,76 @@ export function createDrumAxiom(
     genre: Genre,
     mood: Mood,
     tempo: number,
-    random: { next: () => number; nextInt: (max: number) => number }
+    random: { next: () => number; nextInt: (max: number) => number },
+    drumRules?: InstrumentBehaviorRules
 ): { events: FractalEvent[]; tags: string[] } {
     const axiomEvents: FractalEvent[] = [];
     const tags: string[] = [];
 
-    const kitSummary = `K:${kit.kick.length},S:${kit.snare.length},H:${kit.hihat.length},R:${kit.ride.length},C:${kit.crash.length},P:${kit.perc.length}`;
-    console.log(`%c[Drums] Axiom Creation | Genre: ${genre}, Mood: ${mood}, Kit: ${kitSummary}`, 'color: #ADD8E6');
+    if (genre !== 'blues') {
+        // Fallback for non-blues genres
+        return { events: [], tags: [] };
+    }
 
-    if (genre === 'blues') {
-        const moodRiffs = BLUES_DRUM_RIFFS[mood] ?? BLUES_DRUM_RIFFS.contemplative ?? [];
-        if (moodRiffs.length === 0) return { events: [], tags };
+    const moodRiffs = BLUES_DRUM_RIFFS[mood] ?? BLUES_DRUM_RIFFS.contemplative ?? [];
+    if (moodRiffs.length === 0) return { events: [], tags };
 
-        const riffTemplate = moodRiffs[random.nextInt(moodRiffs.length)];
-        if (!riffTemplate) return { events: [], tags };
+    const riffIndex = drumRules?.pattern === 'composer' ? random.nextInt(moodRiffs.length) : 0;
+    const riffTemplate = moodRiffs[riffIndex];
 
-        const RiffInstrumentMap: Record<string, keyof DrumKit> = {
-            'K': 'kick', 'SD': 'snare', 'HH': 'hihat', 'OH': 'hihat', 'R': 'ride', 'T': 'perc', 'ghostSD': 'snare'
-        };
-        const originalRiffParts = Object.keys(riffTemplate);
+    console.log(`%c[Drums] Axiom Creation | Riff Index: ${riffIndex}, Kit: ${drumRules?.kitName || 'default'}`, 'color: #ADD8E6');
 
-        Object.entries(riffTemplate).forEach(([part, ticks]) => {
-            const kitPart = RiffInstrumentMap[part];
-            if (!kitPart) return;
+    const RiffInstrumentMap: Record<string, keyof DrumKit> = {
+        'K': 'kick', 'SD': 'snare', 'HH': 'hihat', 'OH': 'hihat', 'R': 'ride', 'T': 'perc', 'ghostSD': 'snare'
+    };
 
-            const samplePool = kit[kitPart];
-            if (!samplePool || samplePool.length === 0) {
-                console.log(`%c[DrumFilter] BLOCKED: ${part}. Reason: No samples found in kit for '${kitPart}'.`, 'color: #FF6347');
-                return;
-            }
+    const usedParts = new Set<string>();
 
-            const chosenSample = samplePool[random.nextInt(samplePool.length)];
-            
-            (ticks as number[]).forEach(tick => {
-                console.log(`[DrumFilter] PASSED: ${part} at tick ${tick} -> Selected sample '${chosenSample}'.`);
-                axiomEvents.push({
-                    type: chosenSample, note: 60, time: tick / 3.0, duration: 0.25 / 3,
-                    weight: (part === 'ghostSD' ? 0.4 : 0.8), technique: 'hit', dynamics: 'mf', phrasing: 'staccato', params: {}
-                });
-            });
-        });
-        
-        // --- Логика "Обогащения" (ПЛАН 1188) ---
-        if (kit.hihat.length > 0 && !originalRiffParts.includes('HH')) {
-            if (random.next() < 0.75) { 
-                const hatSample = kit.hihat[0];
-                const hatTicks = [3, 9]; // тики для 2-й и 4-й долей
-                let added = 0;
-                hatTicks.forEach(tick => {
-                     axiomEvents.push({
-                        type: hatSample, note: 60, time: tick / 3.0, duration: 0.25,
-                        weight: 0.55, technique: 'hit', dynamics: 'p', phrasing: 'staccato', params: {}
-                    });
-                    added++;
-                });
-                if(added > 0) console.log(`%c[DrumEnrichment] Added ${added} hi-hat events.`, 'color: #32CD32');
-            }
+    Object.entries(riffTemplate).forEach(([part, ticks]) => {
+        const kitPart = RiffInstrumentMap[part];
+        if (!kitPart) return;
+
+        usedParts.add(kitPart);
+        const samplePool = kit[kitPart];
+
+        if (!samplePool || samplePool.length === 0) {
+            console.log(`%c[DrumFilter] BLOCKED: ${part}. Reason: No samples found in kit for '${kitPart}'.`, 'color: #FF6347');
+            return;
         }
 
-    } else { // Fallback/Ambient logic
-        // ... (existing ambient drum logic)
+        const chosenSample = samplePool[random.nextInt(samplePool.length)];
+        
+        (ticks as number[]).forEach(tick => {
+            console.log(`[DrumFilter] PASSED: ${part} at tick ${tick} -> Selected sample '${chosenSample}'.`);
+            axiomEvents.push({
+                type: chosenSample, note: 60, time: tick / 3.0, duration: 0.25 / 3,
+                weight: (part === 'ghostSD' ? 0.4 : 0.8), technique: 'hit', dynamics: 'mf', phrasing: 'staccato', params: {}
+            });
+        });
+    });
+
+    // --- Логика "Обогащения" (ПЛАН 1188, ИСПРАВЛЕНО) ---
+    if (kit.hihat.length > 0 && !('HH' in riffTemplate)) {
+        if (random.next() < 0.75) { 
+            const hatSample = kit.hihat[0];
+            const hatTicks = [3, 9]; // 2-я и 4-я доли
+            let added = 0;
+            hatTicks.forEach(tick => {
+                axiomEvents.push({
+                    type: hatSample, note: 60, time: tick / 3.0, duration: 0.25,
+                    weight: 0.55, technique: 'hit', dynamics: 'p', phrasing: 'staccato', params: {}
+                });
+                added++;
+            });
+            if(added > 0) console.log(`%c[DrumEnrichment] Added ${added} hi-hat events.`, 'color: #32CD32');
+        }
     }
-    
+
     const playedInstruments = [...new Set(axiomEvents.map(e => (e.type as string).split('_')[1] || e.type))];
     console.log(`[Drums] Axiom Generated | Total Events: ${axiomEvents.length} | Instruments: ${playedInstruments.join(', ')}`);
     
     return { events: axiomEvents, tags };
 }
-
 
 
 export function createSfxScenario(mood: Mood, genre: Genre, random: { next: () => number, nextInt: (max: number) => number }): { drumFill: FractalEvent[], bassFill: FractalEvent[], accompanimentFill: FractalEvent[] } {
@@ -893,6 +895,7 @@ export function createBluesOrganLick(
 }
 
     
+
 
 
 
