@@ -328,10 +328,22 @@ export async function buildMultiInstrument(ctx: AudioContext, {
       let currentPreset = { ...preset };
 
       const pre = ctx.createGain(); pre.gain.value = 0.9;
+      
+      // --- ПЛАН 1239: "Регулятор Давления" ---
+      const compNode = ctx.createDynamicsCompressor();
+      compNode.threshold.value = -20;
+      compNode.knee.value = 10;
+      compNode.ratio.value = 12;
+      compNode.attack.value = 0.005;
+      compNode.release.value = 0.1;
+      
+      pre.connect(compNode); // Выход со всех голосов идет на компрессор
+
       const filt = ctx.createBiquadFilter();
       const filt2 = ctx.createBiquadFilter();
       const use2pole = (currentPreset.lpf?.mode !== '24dB');
-      const mainChain = use2pole ? (pre.connect(filt), filt) : (pre.connect(filt), filt.connect(filt2), filt2);
+      // Сигнал после компрессора идет на фильтры
+      const mainChain = use2pole ? (compNode.connect(filt), filt) : (compNode.connect(filt), filt.connect(filt2), filt2);
       
       const finalChain = ctx.createGain();
       let chorusNode = makeChorus(ctx, currentPreset.chorus || {});
@@ -401,7 +413,7 @@ export async function buildMultiInstrument(ctx: AudioContext, {
         const f = midiToHz(midi);
         
         const vGain = ctx.createGain(); vGain.gain.value = 0.0;
-        vGain.connect(pre);
+        vGain.connect(pre); // Каждый голос подключается к общему pre-гейну -> компрессору
 
         const oscs = (currentPreset.osc || []).map((o: any)=>{
           const x = ctx.createOscillator(); x.type=o.type as OscillatorType; 
@@ -439,9 +451,11 @@ export async function buildMultiInstrument(ctx: AudioContext, {
         
         const vGain = voice.gain;
         const r = currentPreset.adsr?.r || 1.0;
-        vGain.gain.cancelScheduledValues(when);
-        // Correctly read the current gain value to start the ramp down from
-        vGain.gain.setTargetAtTime(0.0001, when, r / 4);
+        
+        // --- ПЛАН 1235: "Принудительная Дисциплина" ---
+        vGain.gain.cancelScheduledValues(when); 
+        vGain.gain.setValueAtTime(vGain.gain.value, when); // Захватываем текущее значение
+        vGain.gain.setTargetAtTime(0.0001, when, r / 4); // Плавное затухание
         
         const stopTime = when + r;
         voice.oscs.forEach(({x}: any)=>x.stop(stopTime));
