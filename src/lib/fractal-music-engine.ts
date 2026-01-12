@@ -332,7 +332,6 @@ export class FractalMusicEngine {
   
     private generateDrumEvents(navInfo: NavigationInfo | null): FractalEvent[] {
         if (!navInfo) return [];
-    
         const drumRules = navInfo.currentPart.instrumentRules?.drums;
         if (!navInfo.currentPart.layers.drums || (drumRules && drumRules.pattern === 'none')) {
             return [];
@@ -348,7 +347,6 @@ export class FractalMusicEngine {
                         DRUM_KITS.ambient!.intro!;
         
         console.log(`[DrumLogic] 2. Loading base kit: '${baseKit ? 'Found' : 'Not Found'}'`);
-    
         if (!baseKit) return [];
     
         // Создаем глубокую копию, чтобы не изменять оригинал
@@ -358,11 +356,15 @@ export class FractalMusicEngine {
             console.log(`[DrumLogic] 3. Applying overrides...`);
             if (overrides.add) {
                 overrides.add.forEach(instrument => {
-                    const part = (instrument.split('_')[1] || instrument) as keyof DrumKit;
-                    if(finalKit[part] && !finalKit[part].includes(instrument)) {
-                        finalKit[part].push(instrument);
-                        console.log(`[DrumLogic]   - ADDED: '${instrument}' to '${part}'`);
-                    }
+                    Object.keys(finalKit).forEach(part => {
+                        const key = part as keyof DrumKit;
+                        if (instrument.includes(key.slice(0, -1))) { // e.g. 'kick' in 'kicks'
+                           if(finalKit[key] && !finalKit[key].includes(instrument)) {
+                                finalKit[key].push(instrument);
+                                console.log(`%c[DrumLogic]   - ADDED: '${instrument}' to '${key}'`, 'color: lightblue');
+                            }
+                        }
+                    });
                 });
             }
             if (overrides.remove) {
@@ -372,37 +374,50 @@ export class FractalMusicEngine {
                         const index = finalKit[key].indexOf(instrument);
                         if (index > -1) {
                             finalKit[key].splice(index, 1);
-                             console.log(`[DrumLogic]   - REMOVED: '${instrument}' from '${key}'`);
+                             console.log(`%c[DrumLogic]   - REMOVED: '${instrument}' from '${key}'`, 'color: lightcoral');
                         }
                     });
                 });
             }
-             if (overrides.substitute) {
+            if (overrides.substitute) {
                 Object.entries(overrides.substitute).forEach(([from, to]) => {
+                    const fromInst = from as InstrumentType;
+                    const toInst = to as InstrumentType;
+                    let modified = false;
                     Object.keys(finalKit).forEach(part => {
                         const key = part as keyof DrumKit;
-                        const fromInst = from as InstrumentType;
-                        const toInst = to as InstrumentType;
-                        let modified = false;
-                        finalKit[key] = finalKit[key].map(inst => {
-                            if (inst === fromInst) {
-                                modified = true;
-                                return toInst;
-                            }
-                            return inst;
-                        });
-                        if(modified) console.log(`[DrumLogic]   - SUBSTITUTED: '${from}' with '${to}' in '${key}'`);
+                        const index = finalKit[key].indexOf(fromInst);
+                        if (index > -1) {
+                            finalKit[key][index] = toInst;
+                             modified = true;
+                        }
                     });
+                     if (modified) console.log(`%c[DrumLogic]   - SUBSTITUTED: '${from}' with '${to}'`, 'color: violet');
                 });
             }
         }
         
+        const axiomResult = createDrumAxiom(finalKit, this.config.genre, this.config.mood, this.config.tempo, this.random, drumRules);
+        
         const finalKitParts = Object.entries(finalKit).map(([key, value]) => `${key}:[${(value as string[]).join(',')}]`).join('; ');
         console.log(`[DrumLogic] 4. Final kit for axiom: ${finalKitParts}`);
     
-        const axiomResult = createDrumAxiom(finalKit, this.config.genre, this.config.mood, this.config.tempo, this.random, drumRules);
+        const finalEvents = axiomResult.events.filter(event => {
+            const part = (event.type as string).split('_')[1] || (event.type as string);
+            const kitKey = Object.keys(finalKit).find(k => part.includes(k.slice(0, -1))) as keyof DrumKit | undefined;
+            
+            if (kitKey && finalKit[kitKey]?.includes(event.type as InstrumentType)) {
+                 console.log(`%c[DrumFilter] 2. PASSED: '${event.type}'`, 'color: #98FB98');
+                 return true;
+            }
+            console.log(`%c[DrumFilter] 2. BLOCKED: '${event.type}'`, 'color: #FF6347');
+            return false;
+        });
+
+        const playedInstruments = [...new Set(finalEvents.map(e => (e.type as string).split('_')[1] || e.type))];
+        console.log(`%c[DrumAxiom] 5. Axiom Generated & Filtered | Final Events: ${finalEvents.length} | Instruments: ${playedInstruments.join(', ')}`, 'color: #ADD8E6');
         
-        return axiomResult.events || [];
+        return finalEvents;
     }
 
   private _applyMicroMutations(phrase: FractalEvent[], epoch: number): FractalEvent[] {
@@ -1003,3 +1018,5 @@ function createMelodyMotif(chord: GhostChord, mood: Mood, random: { next: () => 
     }
     return motif;
 }
+
+    
