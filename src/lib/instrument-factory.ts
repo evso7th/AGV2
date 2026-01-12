@@ -82,13 +82,9 @@ const makePhaser = (ctx: AudioContext, { stages = 4, base = 800, depth = 600, ra
 };
 
 const makeChorus = (ctx: AudioContext, {rate = 0.25, depth = 0.006, mix = 0.25}) => {
-    const input = ctx.createGain();
-    const output = ctx.createGain();
-    const wet = ctx.createGain();
-    const dry = ctx.createGain();
-
-    dry.gain.value = 1 - mix;
+    const input = ctx.createGain(), output = ctx.createGain(), wet = ctx.createGain(), dry = ctx.createGain();
     wet.gain.value = mix;
+    dry.gain.value = 1 - mix;
 
     // #ИСПРАВЛЕНО: Добавлена недостающая связь с `dry` каналом.
     input.connect(dry);
@@ -327,8 +323,6 @@ export async function buildMultiInstrument(ctx: AudioContext, {
   else if (type === 'synth') {
       let currentPreset = { ...preset };
 
-      const pre = ctx.createGain(); pre.gain.value = 0.9;
-      
       // --- ПЛАН 1239: "Регулятор Давления" ---
       const compNode = ctx.createDynamicsCompressor();
       compNode.threshold.value = -20;
@@ -337,8 +331,6 @@ export async function buildMultiInstrument(ctx: AudioContext, {
       compNode.attack.value = 0.005;
       compNode.release.value = 0.1;
       
-      pre.connect(compNode); // Выход со всех голосов идет на компрессор
-
       const filt = ctx.createBiquadFilter();
       const filt2 = ctx.createBiquadFilter();
       const use2pole = (currentPreset.lpf?.mode !== '24dB');
@@ -413,7 +405,8 @@ export async function buildMultiInstrument(ctx: AudioContext, {
         const f = midiToHz(midi);
         
         const vGain = ctx.createGain(); vGain.gain.value = 0.0;
-        vGain.connect(pre); // Каждый голос подключается к общему pre-гейну -> компрессору
+        // #ИСПРАВЛЕНО (ПЛАН 1240): Каждый голос подключается к общему компрессору.
+        vGain.connect(compNode);
 
         const oscs = (currentPreset.osc || []).map((o: any)=>{
           const x = ctx.createOscillator(); x.type=o.type as OscillatorType; 
@@ -452,7 +445,7 @@ export async function buildMultiInstrument(ctx: AudioContext, {
         const vGain = voice.gain;
         const r = currentPreset.adsr?.r || 1.0;
         
-        // --- ПЛАН 1235: "Принудительная Дисциплина" ---
+        // #ИСПРАВЛЕНО (ПЛАН 1235): "Принудительная Дисциплина"
         vGain.gain.cancelScheduledValues(when); 
         vGain.gain.setValueAtTime(vGain.gain.value, when); // Захватываем текущее значение
         vGain.gain.setTargetAtTime(0.0001, when, r / 4); // Плавное затухание
@@ -709,3 +702,5 @@ export async function buildMultiInstrument(ctx: AudioContext, {
   console.log(`%c[InstrumentFactory] Build process COMPLETED for type: ${type}. Final output connected.`, 'color: #32CD32;');
   return api;
 }
+
+    
