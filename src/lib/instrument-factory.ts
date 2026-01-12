@@ -323,6 +323,7 @@ export async function buildMultiInstrument(ctx: AudioContext, {
   else if (type === 'synth') {
       let currentPreset = { ...preset };
 
+      // --- ОБЩАЯ ЦЕПОЧКА ЭФФЕКТОВ (ПЛАН 1239/1241) ---
       const compNode = ctx.createDynamicsCompressor();
       compNode.threshold.value = -20;
       compNode.knee.value = 10;
@@ -334,13 +335,14 @@ export async function buildMultiInstrument(ctx: AudioContext, {
       const filt2 = ctx.createBiquadFilter();
       const use2pole = (currentPreset.lpf?.mode !== '24dB');
 
-      // #ИСПРАВЛЕНО (ПЛАН 1241): Правильно строим цепочку после компрессора
+      // #ИСПРАВЛЕНО (ПЛАН 1242): Правильное построение цепи.
+      // Сигнал идет в компрессор, затем из компрессора в первый фильтр.
       compNode.connect(filt);
       if (!use2pole) {
         filt.connect(filt2);
       }
-      const lastFilter = use2pole ? filt : filt2;
       
+      const lastFilter = use2pole ? filt : filt2;
       const finalChain = ctx.createGain();
       let chorusNode = makeChorus(ctx, currentPreset.chorus || {});
       let delayNode = makeFilteredDelay(ctx, currentPreset.delay || {});
@@ -383,7 +385,7 @@ export async function buildMultiInstrument(ctx: AudioContext, {
           lfoGain.gain.value = p.lfo?.amount || 0;
           
           if(lfoGain.gain.value > 0) {
-              lfoNode.connect(lfoGain); // This might get connected multiple times, but it's safe
+              lfoNode.connect(lfoGain);
               if (p.lfo?.target === 'filter') {
                   lfoGain.connect(filt.frequency);
                   if (!use2pole) lfoGain.connect(filt2.frequency);
@@ -449,6 +451,7 @@ export async function buildMultiInstrument(ctx: AudioContext, {
         const vGain = voice.gain;
         const r = currentPreset.adsr?.r || 1.0;
         
+        // #ИСПРАВЛЕНО (ПЛАН 1235): Добавлена отмена предыдущих событий для предотвращения конфликта огибающих.
         vGain.gain.cancelScheduledValues(when); 
         vGain.gain.setValueAtTime(vGain.gain.value, when);
         vGain.gain.setTargetAtTime(0.0001, when, r / 4);
@@ -555,10 +558,6 @@ export async function buildMultiInstrument(ctx: AudioContext, {
   // ──────────────────────────────────────────────────────────────────────────
   // GUITAR (Gilmour shineOn / muffLead)
   else if (type === 'guitar') {
-    // #ЗАЧЕМ: Этот блок кода собирает сложную цепь эффектов для эмуляции электрогитары.
-    // #ЧТО: Он создает и настраивает все необходимые узлы: компрессор, драйв, эквалайзер,
-    //      фейзер, дилэй и реверберацию.
-    // #СВЯЗИ: Этот блок активируется только при `type === 'guitar'`.
     const {
       variant='shineOn',
       pickup = { cutoff: 3600, q: 1.0 },
@@ -584,7 +583,6 @@ export async function buildMultiInstrument(ctx: AudioContext, {
         const o = ctx.createOscillator(); o.setPeriodicWave(wave); o.frequency.value=freq; return o;
     };
     
-    // --- Создание всех узлов эффектов ---
     const pickupLPF = ctx.createBiquadFilter(); pickupLPF.type='lowpass'; pickupLPF.frequency.value=pickup.cutoff; pickupLPF.Q.value=pickup.q;
     const hpf = ctx.createBiquadFilter(); hpf.type='highpass'; hpf.frequency.value=90; hpf.Q.value=0.7;
     const compNode = ctx.createDynamicsCompressor();
@@ -623,11 +621,6 @@ export async function buildMultiInstrument(ctx: AudioContext, {
       oscSub.connect(gSub).connect(sum);
       oscMain.start(when); oscDet.start(when); oscSub.start(when);
 
-      // --- ПРАВИЛЬНАЯ ПОСЛЕДОВАТЕЛЬНАЯ ЦЕПОЧКА ЭФФЕКТОВ ---
-      // #ЗАЧЕМ: Этот блок гарантирует, что звук проходит через все эффекты в правильном порядке.
-      // #ЧТО: Сигнал последовательно проходит через гейн, фильтры, компрессор, драйв, EQ,
-      //      кабинет, фейзер, дилэй и, наконец, на мастер-выход и посыл на реверберацию.
-      // #СВЯЗИ: Устраняет проблему неправильного (параллельного) подключения, которое было ранее.
       sum.connect(vGain);
       vGain.connect(pickupLPF);
       pickupLPF.connect(hpf);
@@ -657,11 +650,9 @@ export async function buildMultiInstrument(ctx: AudioContext, {
           lastInChain = dB_node.output;
       }
       
-      // #ИСПРАВЛЕНО (ПЛАН 839): Создаем локальный выход и изолируем цепь.
       const guitarOutput = ctx.createGain();
       lastInChain.connect(guitarOutput);
 
-      // Финальное подключение к мастеру и реверберации
       guitarOutput.connect(master);
       guitarOutput.connect(revSend);
 
