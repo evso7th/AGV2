@@ -90,7 +90,7 @@ export const WinterBluesBlueprint: MusicBlueprint = {
                     harmony: { strategy: 'weighted', options: [ { name: 'piano', weight: 1.0 } ] }
                 },
                 instrumentRules: {
-                    drums: { pattern: 'composer', kitName: 'blues_calm', density: { min: 0.6, max: 0.8 }, ride: { enabled: true } },
+                    drums: { pattern: 'composer', kitName: 'blues_calm', density: { min: 0.6, max: 0.8 }, ride: { enabled: false } },
                     melody: { source: 'motif', density: { min: 0.5, max: 0.7 }, register: { preferred: 'mid' }, fingerstyle: [ { bars: [0, 1, 2, 3], pattern: 'F_ROLL12', voicingName: 'Em7_open' } ] },
                     bass: { techniques: [{ value: 'riff', weight: 1.0 }] },
                     accompaniment: { density: {min: 0.1, max: 0.3} },
@@ -111,7 +111,7 @@ export const WinterBluesBlueprint: MusicBlueprint = {
                     harmony: { strategy: 'weighted', options: [ { name: 'piano', weight: 1.0 } ] }
                 },
                 instrumentRules: {
-                    drums: { pattern: 'composer', kitName: 'blues_calm', density: { min: 0.7, max: 0.9 }, ride: { enabled: true }, kickVolume: 1.1 },
+                    drums: { pattern: 'composer', kitName: 'blues_calm', density: { min: 0.7, max: 0.9 }, ride: { enabled: false }, kickVolume: 1.1 },
                     melody: { 
                         source: 'motif', 
                         density: { min: 0.6, max: 0.8 },
@@ -137,7 +137,7 @@ export const WinterBluesBlueprint: MusicBlueprint = {
                     harmony: { strategy: 'weighted', options: [ { name: 'piano', weight: 1.0 } ] }
                 },
                 instrumentRules: {
-                    drums: { pattern: 'composer', kitName: 'blues_calm', density: { min: 0.6, max: 0.8 }, ride: { enabled: true } },
+                    drums: { pattern: 'composer', kitName: 'blues_calm', density: { min: 0.6, max: 0.8 }, ride: { enabled: false } },
                     melody: { source: 'motif', density: { min: 0.5, max: 0.7 }, register: { preferred: 'mid' }, strum: [ { bars: [0, 1, 2, 3], pattern: 'S_4DOWN', voicingName: 'Am7_open' } ] },
                     bass: { techniques: [{ value: 'riff', weight: 1.0 }] },
                     accompaniment: { density: {min: 0.1, max: 0.3} },
