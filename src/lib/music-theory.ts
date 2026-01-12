@@ -430,9 +430,7 @@ export function createDrumAxiom(
     const axiomEvents: FractalEvent[] = [];
     const tags: string[] = [];
 
-    // Early exit if the genre isn't blues, as it's the only one with defined riffs for now.
     if (genre !== 'blues') {
-        // Fallback for non-blues genres
         return { events: [], tags: [] };
     }
 
@@ -442,63 +440,42 @@ export function createDrumAxiom(
     const riffIndex = drumRules?.pattern === 'composer' ? random.nextInt(moodRiffs.length) : 0;
     const riffTemplate = moodRiffs[riffIndex];
     if (!riffTemplate) return { events: [], tags };
-    
-    console.log(`%c[DrumAxiom] 1. Riff selected: Index ${riffIndex}`, 'color: #98FB98');
 
+    console.log(`%c[DrumAxiom] 1. Riff selected: Index ${riffIndex}`, 'color: #98FB98');
     const RiffInstrumentMap: Record<string, keyof DrumKit> = { 'K': 'kick', 'SD': 'snare', 'HH': 'hihat', 'OH': 'hihat', 'R': 'ride', 'T': 'perc', 'ghostSD': 'snare' };
     const TicksPerBeat = 3;
-
     const substitutes = drumRules?.kitOverrides?.substitute || {};
 
     Object.entries(riffTemplate).forEach(([part, ticks]) => {
         (ticks as number[]).forEach(tick => {
             const originalPartKey = RiffInstrumentMap[part];
             if (!originalPartKey) return;
+            const instrumentPool = kit[originalPartKey];
+            if (!instrumentPool || instrumentPool.length === 0) return;
+            let instrumentToPlay: InstrumentType | undefined = instrumentPool[0];
 
-            const samplePool = kit[originalPartKey];
-            if (!samplePool || samplePool.length === 0) return;
-            
-            let instrumentToPlay: InstrumentType | undefined = samplePool[0]; // Default to first in pool for that part
-            
-            // --- NEW LOGIC FOR SUBSTITUTION (Plan 1203) ---
-            const originalInstrumentFromRiff = (riffTemplate[part as keyof typeof riffTemplate] as any)?.[0] || samplePool[0]; // Simplification
-            let finalInstrument: InstrumentType = instrumentToPlay;
-
-            // Check if the intended instrument from the riff exists in the final kit
-            let found = Object.values(kit).flat().includes(finalInstrument);
-            
-            // If not found, check for a substitute
-            if (!found && substitutes[finalInstrument as InstrumentType]) {
-                const substituteInstrument = substitutes[finalInstrument as InstrumentType]!;
-                 // Check if the substitute exists in ANY part of the kit
-                if (Object.values(kit).flat().includes(substituteInstrument)) {
-                    console.log(`%c[DrumFilter] 2. SUBSTITUTED & PASSED: Original '${finalInstrument}' -> Played as '${substituteInstrument}' at tick ${tick}.`, 'color: violet');
-                    finalInstrument = substituteInstrument;
-                    found = true;
-                } else {
-                     console.log(`%c[DrumFilter] 2. BLOCKED: Original '${finalInstrument}' substitute '${substituteInstrument}' not in final kit.`, 'color: #FF6347');
-                }
-            }
-            
-            if (found) {
-                console.log(`%c[DrumFilter] 2. PASSED: '${finalInstrument}' at tick ${tick}.`, 'color: #98FB98');
-                 axiomEvents.push({
-                    type: finalInstrument, note: 60, time: tick / TicksPerBeat, duration: 0.25 / TicksPerBeat,
-                    weight: (part === 'ghostSD' ? 0.4 : 0.8), technique: 'hit', dynamics: 'mf', phrasing: 'staccato', params: {}
-                });
+            if (substitutes[instrumentToPlay as InstrumentType]) {
+                const newInstrument = substitutes[instrumentToPlay as InstrumentType]!;
+                console.log(`%c[DrumFilter] 2. SUBSTITUTED & PASSED: Original '${instrumentToPlay}' -> Played as '${newInstrument}' at tick ${tick}.`, 'color: violet');
+                instrumentToPlay = newInstrument;
+            } else if (!instrumentPool.includes(instrumentToPlay)) {
+                 console.log(`%c[DrumFilter] 2. BLOCKED: '${instrumentToPlay}' at tick ${tick} (Not in final kit for part ${originalPartKey}).`, 'color: #FF6347');
+                return;
             } else {
-                 console.log(`%c[DrumFilter] 2. BLOCKED: '${finalInstrument}' at tick ${tick}.`, 'color: #FF6347');
+                 console.log(`%c[DrumFilter] 2. PASSED: '${instrumentToPlay}' at tick ${tick}.`, 'color: #98FB98');
             }
+            
+            axiomEvents.push({
+                type: instrumentToPlay, note: 60, time: tick / TicksPerBeat, duration: 0.25 / TicksPerBeat,
+                weight: (part === 'ghostSD' ? 0.4 : 0.8), technique: 'hit', dynamics: 'mf', phrasing: 'staccato', params: {}
+            });
         });
     });
 
-    const playedInstruments = [...new Set(axiomEvents.map(e => (e.type as string).split('_')[1] || e.type))];
+    const playedInstruments = [...new Set(axiomEvents.map(e => e.type))].map(t => (t as string).replace('drum_', ''));
     console.log(`%c[DrumAxiom] 6. Axiom Generation Complete | Final Events: ${axiomEvents.length} | Instruments: ${playedInstruments.join(', ')}`, 'color: #ADD8E6');
-    
     return { events: axiomEvents, tags };
 }
-
-
 
 export function createSfxScenario(mood: Mood, genre: Genre, random: { next: () => number, nextInt: (max: number) => number }): { drumFill: FractalEvent[], bassFill: FractalEvent[], accompanimentFill: FractalEvent[] } {
     const drumFill: FractalEvent[] = []; const bassFill: FractalEvent[] = []; const accompanimentFill: FractalEvent[] = [];
@@ -899,6 +876,7 @@ export function createBluesOrganLick(
 }
 
     
+
 
 
 
