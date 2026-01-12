@@ -440,57 +440,51 @@ export function createDrumAxiom(
 
     const riffIndex = drumRules?.pattern === 'composer' ? random.nextInt(moodRiffs.length) : 0;
     const riffTemplate = moodRiffs[riffIndex];
+    if (!riffTemplate) return { events: [], tags };
+    
+    console.log(`%c[DrumFilter] 1. Riff selected: Index ${riffIndex}`, 'color: #98FB98');
 
-    console.log(`%c[Drums] Axiom Creation | Riff Index: ${riffIndex}, Kit: ${drumRules?.kitName || 'default'}`, 'color: #ADD8E6');
-
-    const RiffInstrumentMap: Record<string, keyof DrumKit> = {
-        'K': 'kick', 'SD': 'snare', 'HH': 'hihat', 'OH': 'hihat', 'R': 'ride', 'T': 'perc', 'ghostSD': 'snare'
-    };
-
-    const usedParts = new Set<string>();
+    const RiffInstrumentMap: Record<string, keyof DrumKit> = { 'K': 'kick', 'SD': 'snare', 'HH': 'hihat', 'OH': 'hihat', 'R': 'ride', 'T': 'perc', 'ghostSD': 'snare' };
+    const TicksPerBeat = 3;
 
     Object.entries(riffTemplate).forEach(([part, ticks]) => {
         const kitPart = RiffInstrumentMap[part];
         if (!kitPart) return;
 
-        usedParts.add(kitPart);
         const samplePool = kit[kitPart];
-
+        
         if (!samplePool || samplePool.length === 0) {
-            console.log(`%c[DrumFilter] BLOCKED: ${part}. Reason: No samples found in kit for '${kitPart}'.`, 'color: #FF6347');
+            console.log(`%c[DrumFilter] 2. BLOCKED: '${part}'. Reason: No samples found in kit for '${kitPart}'.`, 'color: #FF6347');
             return;
         }
 
         const chosenSample = samplePool[random.nextInt(samplePool.length)];
         
         (ticks as number[]).forEach(tick => {
-            console.log(`[DrumFilter] PASSED: ${part} at tick ${tick} -> Selected sample '${chosenSample}'.`);
+             console.log(`%c[DrumFilter] 2. PASSED: '${part}' at tick ${tick} -> Selected sample '${chosenSample}'.`, 'color: #98FB98');
             axiomEvents.push({
-                type: chosenSample, note: 60, time: tick / 3.0, duration: 0.25 / 3,
+                type: chosenSample, note: 60, time: tick / TicksPerBeat, duration: 0.25 / TicksPerBeat,
                 weight: (part === 'ghostSD' ? 0.4 : 0.8), technique: 'hit', dynamics: 'mf', phrasing: 'staccato', params: {}
             });
         });
     });
 
-    // --- Логика "Обогащения" (ПЛАН 1188, ИСПРАВЛЕНО) ---
-    if (kit.hihat.length > 0 && !('HH' in riffTemplate)) {
-        if (random.next() < 0.75) { 
-            const hatSample = kit.hihat[0];
-            const hatTicks = [3, 9]; // 2-я и 4-я доли
-            let added = 0;
-            hatTicks.forEach(tick => {
-                axiomEvents.push({
-                    type: hatSample, note: 60, time: tick / 3.0, duration: 0.25,
-                    weight: 0.55, technique: 'hit', dynamics: 'p', phrasing: 'staccato', params: {}
-                });
-                added++;
+    if (kit.hihat.length > 0 && !('HH' in riffTemplate) && random.next() < 0.75) {
+        const hatSample = kit.hihat[0];
+        const hatTicks = [3, 9]; // 2nd and 4th beats
+        let added = 0;
+        hatTicks.forEach(tick => {
+            axiomEvents.push({
+                type: hatSample, note: 60, time: tick / TicksPerBeat, duration: 0.25,
+                weight: 0.55, technique: 'hit', dynamics: 'p', phrasing: 'staccato', params: {}
             });
-            if(added > 0) console.log(`%c[DrumEnrichment] Added ${added} hi-hat events.`, 'color: #32CD32');
-        }
+            added++;
+        });
+        if(added > 0) console.log(`%c[DrumFilter] 3. ADDED: ${added} hi-hat events based on enrichment logic.`, 'color: #87CEEB');
     }
 
     const playedInstruments = [...new Set(axiomEvents.map(e => (e.type as string).split('_')[1] || e.type))];
-    console.log(`[Drums] Axiom Generated | Total Events: ${axiomEvents.length} | Instruments: ${playedInstruments.join(', ')}`);
+    console.log(`%c[DrumAxiom] 4. Axiom Generated | Total Events: ${axiomEvents.length} | Instruments: ${playedInstruments.join(', ')}`, 'color: #ADD8E6');
     
     return { events: axiomEvents, tags };
 }
@@ -895,6 +889,7 @@ export function createBluesOrganLick(
 }
 
     
+
 
 
 

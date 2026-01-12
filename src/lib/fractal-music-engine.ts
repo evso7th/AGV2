@@ -331,65 +331,76 @@ export class FractalMusicEngine {
   }
   
     private generateDrumEvents(navInfo: NavigationInfo | null): FractalEvent[] {
-        if (!navInfo || !this.navigator) return [];
-        
+        if (!navInfo) return [];
+    
         const drumRules = navInfo.currentPart.instrumentRules?.drums;
         if (!navInfo.currentPart.layers.drums || (drumRules && drumRules.pattern === 'none')) {
             return [];
         }
-
-        const genre = this.config.genre;
-        const mood = this.config.mood;
-
-        if (genre === 'blues') {
-            const allDrumRiffs = Object.values(BLUES_DRUM_RIFFS).flat();
-            if (allDrumRiffs.length === 0) return [];
-            const riffTemplate = allDrumRiffs[this.currentDrumRiffIndex % allDrumRiffs.length];
-            if (!riffTemplate) return [];
-            
-            const drumEvents: FractalEvent[] = [];
-            const ticksPerBeat = 3;
-
-            Object.entries(riffTemplate).forEach(([part, ticks]) => {
-                let sampleName = '';
-                if(part === 'K') sampleName = 'drum_kick';
-                else if(part === 'SD') sampleName = 'drum_snare';
-                else if(part === 'HH') sampleName = 'drum_hihat_closed';
-                else if(part === 'OH') sampleName = 'drum_hihat_open';
-                else if(part === 'R') sampleName = 'drum_ride';
-                
-                if (sampleName && Array.isArray(ticks)) {
-                    ticks.forEach(tick => {
-                        drumEvents.push({
-                            type: sampleName as InstrumentType, note: 60, time: tick / ticksPerBeat,
-                            duration: 0.25 / ticksPerBeat, weight: 0.8,
-                            technique: 'hit', dynamics: 'mf', phrasing: 'staccato', params: {}
-                        });
-                    });
-                }
-            });
-            return drumEvents;
-        }
-
-        const kitName = drumRules?.kitName || `${genre}_${mood}`.toLowerCase();
+    
+        console.log(`%c[DrumLogic] 1. Reading command from blueprint...`, 'color: #FFD700');
+        const kitName = drumRules?.kitName || `${this.config.genre}_${this.config.mood}`.toLowerCase();
+        const overrides = drumRules?.kitOverrides;
+        console.log(`[DrumLogic]   - Kit Name: '${kitName}', Overrides:`, overrides ? JSON.stringify(overrides) : 'none');
+    
+        const baseKit = (DRUM_KITS[this.config.genre] as any)?.[kitName] ||
+                        (DRUM_KITS[this.config.genre] as any)?.[this.config.mood] ||
+                        DRUM_KITS.ambient!.intro!;
         
-        let baseKit: DrumKit | undefined;
-        if (DRUM_KITS[genre]) {
-            baseKit = (DRUM_KITS[genre] as any)[kitName] || (DRUM_KITS[genre] as any)[mood] || DRUM_KITS[genre]?.intro;
-        }
-        if (!baseKit) {
-            baseKit = DRUM_KITS.ambient!.intro!;
-        }
-        
+        console.log(`[DrumLogic] 2. Loading base kit: '${baseKit ? 'Found' : 'Not Found'}'`);
+    
+        if (!baseKit) return [];
+    
+        // Создаем глубокую копию, чтобы не изменять оригинал
         const finalKit: DrumKit = JSON.parse(JSON.stringify(baseKit));
-
-        if (drumRules?.ride?.enabled === true) {
-            finalKit.ride = [...new Set([...finalKit.ride, ...ALL_RIDES])];
-        } else if (drumRules?.ride?.enabled === false) {
-            finalKit.ride = [];
+        
+        if (overrides) {
+            console.log(`[DrumLogic] 3. Applying overrides...`);
+            if (overrides.add) {
+                overrides.add.forEach(instrument => {
+                    const part = (instrument.split('_')[1] || instrument) as keyof DrumKit;
+                    if(finalKit[part] && !finalKit[part].includes(instrument)) {
+                        finalKit[part].push(instrument);
+                        console.log(`[DrumLogic]   - ADDED: '${instrument}' to '${part}'`);
+                    }
+                });
+            }
+            if (overrides.remove) {
+                 overrides.remove.forEach(instrument => {
+                    Object.keys(finalKit).forEach(part => {
+                        const key = part as keyof DrumKit;
+                        const index = finalKit[key].indexOf(instrument);
+                        if (index > -1) {
+                            finalKit[key].splice(index, 1);
+                             console.log(`[DrumLogic]   - REMOVED: '${instrument}' from '${key}'`);
+                        }
+                    });
+                });
+            }
+             if (overrides.substitute) {
+                Object.entries(overrides.substitute).forEach(([from, to]) => {
+                    Object.keys(finalKit).forEach(part => {
+                        const key = part as keyof DrumKit;
+                        const fromInst = from as InstrumentType;
+                        const toInst = to as InstrumentType;
+                        let modified = false;
+                        finalKit[key] = finalKit[key].map(inst => {
+                            if (inst === fromInst) {
+                                modified = true;
+                                return toInst;
+                            }
+                            return inst;
+                        });
+                        if(modified) console.log(`[DrumLogic]   - SUBSTITUTED: '${from}' with '${to}' in '${key}'`);
+                    });
+                });
+            }
         }
         
-        const axiomResult = createDrumAxiom(finalKit, genre, mood, this.config.tempo, this.random, drumRules);
+        const finalKitParts = Object.entries(finalKit).map(([key, value]) => `${key}:[${(value as string[]).join(',')}]`).join('; ');
+        console.log(`[DrumLogic] 4. Final kit for axiom: ${finalKitParts}`);
+    
+        const axiomResult = createDrumAxiom(finalKit, this.config.genre, this.config.mood, this.config.tempo, this.random, drumRules);
         
         return axiomResult.events || [];
     }
@@ -594,7 +605,7 @@ export class FractalMusicEngine {
 
             const targetCategory = getMoodCategory(mood);
             let suitableRiffs = BLUES_MELODY_RIFFS.filter(riff => 
-                riff.moods.some(m => moodMap[targetCategory!]?.includes(m))
+                riff.moods.some(m_mood => moodMap[targetCategory!]?.includes(m_mood))
             );
 
             if (suitableRiffs.length === 0) suitableRiffs = BLUES_MELODY_RIFFS;
@@ -992,5 +1003,3 @@ function createMelodyMotif(chord: GhostChord, mood: Mood, random: { next: () => 
     }
     return motif;
 }
-
-    
