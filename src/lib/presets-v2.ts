@@ -162,6 +162,43 @@ export const V2_PRESETS = {
     chorus:{ on: true, rate: 0.1, depth: 0.002, mix: 0.2 },
     delay: { on: false },
     reverbMix: 0.15
+  },
+
+  // ───────────────────────── RHODES PIANO (ПЛАН 1218) ─────────────────────────
+  ep_rhodes_warm: {
+    type: 'synth',
+    osc: [
+      { type: 'sine',     detune: 0,     gain: 0.58 },
+      { type: 'triangle', detune: +1200, gain: 0.14 },
+      { type: 'sine',     detune: +1200, gain: 0.08 }
+    ],
+    noise: { on: false },
+    adsr:  { a: 0.008, d: 0.28, s: 0.68, r: 0.90 },
+    lpf:   { cutoff: 3500, q: 0.9, mode: '24dB' },
+    lfo:   { rate: 0, amount: 0, target: 'filter' },
+    chorus:{ on: true, rate: 0.25, depth: 0.006, mix: 0.22 },
+    delay: { on: true, time: 0.26, fb: 0.12, hc: 4500, mix: 0.10 },
+    reverbMix: 0.18
+  },
+  
+  ep_rhodes_70s: {
+    type: 'synth',
+    osc: [
+      { type: 'sine',     detune: 0,     gain: 0.54 },
+      { type: 'triangle', detune: +1200, gain: 0.16 },
+      { type: 'sine',     detune: +1200, gain: 0.06 }
+    ],
+    noise: { on: false },
+    adsr:  { a: 0.008, d: 0.30, s: 0.66, r: 0.95 },
+    lpf:   { cutoff: 4200, q: 0.9, mode: '24dB' },
+    lfo:   { rate: 0, amount: 0, target: 'filter' },
+    chorus:{ on: true, rate: 0.20, depth: 0.006, mix: 0.24 },
+    delay: { on: true, time: 0.28, fb: 0.16, hc: 4200, mix: 0.12 },
+    reverbMix: 0.22,
+    extras: { // These are not used by the current synth factory but are kept for future implementation.
+      tremolo: { on: true, type:'pan', rate: 5.5, depth: 0.28 },
+      phaser:  { on: true, rate: 0.25, depth: 0.5, feedback: 0.12, mix: 0.18 }
+    }
   }
 };
 
