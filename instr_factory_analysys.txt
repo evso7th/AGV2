@@ -1,0 +1,435 @@
+Ответ А
+# Анализ кода: найденные проблемы
+
+## 🔴 Критические проблемы
+
+### 1. **SYNTH: Нет makeup gain после компрессора**
+
+Компрессор с `ratio: 12` и `threshold: -20dB` — это практически лимитер, который сильно понижает громкость, но **нет компенсирующего усиления**:
+
+```typescript
+// Проблема: сигнал после компрессора очень тихий
+const compNode = ctx.createDynamicsCompressor();
+compNode.threshold.value = -20;
+compNode.ratio.value = 12;  // ← Очень агрессивно!
+// ... 
+compNode.connect(filt);  // ← Нет makeup gain!
+```
+
+**В guitar это есть, а в synth — нет:**
+```typescript
+// В guitar правильно:
+const compMakeup = ctx.createGain(); 
+compMakeup.gain.value = dB(comp.makeup||0);
+compNode.connect(compMakeup);  // ✓
+```
+
+---
+
+### 2. **SYNTH: Пустой preset.osc = нет звука**
+
+Если пресет не содержит осцилляторов — звука не будет:
+
+```typescript
+const oscs = (currentPreset.osc || []).map((o: any) => {
+    // Если osc = undefined или [], ничего не создаётся!
+});
+```
+
+---
+
+## 🟡 Исправленный код для SYNTH
+
+```typescript
+else if (type === 'synth') {
+    let currentPreset = { ...preset };
+
+    // --- ОБЩАЯ ЦЕПОЧКА ЭФФЕКТОВ ---
+    const compNode = ctx.createDynamicsCompressor();
+    compNode.threshold.value = -18;  // Менее агрессивно
+    compNode.knee.value = 10;
+    compNode.ratio.value = 4;        // ← Исправлено: было 12!
+    compNode.attack.value = 0.003;
+    compNode.release.value = 0.15;
+    
+    // ✅ ДОБАВЛЕНО: Makeup gain после компрессора
+    const compMakeup = ctx.createGain();
+    compMakeup.gain.value = dB(6);  // +6dB компенсация
+    
+    const filt = ctx.createBiquadFilter();
+    const filt2 = ctx.createBiquadFilter();
+    const use2pole = (currentPreset.lpf?.mode !== '24dB');
+
+    // ✅ ИСПРАВЛЕНО: Правильная цепочка с makeup
+    compNode.connect(compMakeup);
+    compMakeup.connect(filt);
+    
+    if (!use2pole) {
+        filt.connect(filt2);
+    }
+    
+    const lastFilter = use2pole ? filt : filt2;
+    const finalChain = ctx.createGain();
+    finalChain.gain.value = 0.8;  // ✅ Добавлен контроль громкости
+    
+    let chorusNode = makeChorus(ctx, currentPreset.chorus || {});
+    let delayNode = makeFilteredDelay(ctx, currentPreset.delay || {});
+    
+    const lfoNode = ctx.createOscillator();
+    const lfoGain = ctx.createGain();
+    lfoNode.start();
+
+    // ✅ ИСПРАВЛЕНО: Всегда подключаем базовую цепь
+    let currentOutput: AudioNode = lastFilter;
+    
+    if (currentPreset.chorus?.on) {
+        currentOutput.connect(chorusNode.input);
+        currentOutput = chorusNode.output;
+    }
+    if (currentPreset.delay?.on) {
+        currentOutput.connect(delayNode.input);
+        currentOutput = delayNode.output;
+    }
+    currentOutput.connect(finalChain);
+    finalChain.connect(master);
+    
+    const revSend = ctx.createGain();
+    revSend.gain.value = currentPreset.reverbMix || 0.18;
+    if (reverb.buffer) {
+        finalChain.connect(revSend);
+        revSend.connect(reverb);
+    }
+
+    const activeVoices = new Map();
+    let noiseBuffer: AudioBuffer | null = null;
+    
+    // ✅ ДОБАВЛЕНО: Дефолтные осцилляторы если не заданы
+    const getOscConfig = (p: any) => {
+        if (p.osc && p.osc.length > 0) return p.osc;
+        // Дефолтный осциллятор если не задан
+        return [{ type: 'sawtooth', gain: 0.5, octave: 0, detune: 0 }];
+    };
+    
+    const updateNodesFromPreset = (p: any) => {
+        filt.type = 'lowpass';
+        filt.frequency.value = p.lpf?.cutoff || 3000;
+        filt.Q.value = p.lpf?.q || 1;
+        filt2.type = 'lowpass';
+        filt2.frequency.value = p.lpf?.cutoff || 3000;
+        filt2.Q.value = p.lpf?.q || 1;
+        
+        lfoNode.type = p.lfo?.shape || 'sine';
+        lfoNode.frequency.value = p.lfo?.rate || 0;
+        lfoGain.gain.value = p.lfo?.amount || 0;
+        
+        // Безопасное отключение перед переподключением
+        try { lfoGain.disconnect(); } catch(e) {}
+        
+        if (lfoGain.gain.value > 0) {
+            lfoNode.connect(lfoGain);
+            if (p.lfo?.target === 'filter') {
+                lfoGain.connect(filt.frequency);
+                if (!use2pole) lfoGain.connect(filt2.frequency);
+            }
+        }
+        
+        revSend.gain.value = p.reverbMix || 0.18;
+
+        if (p.noise?.on) {
+            noiseBuffer = ctx.createBuffer(1, ctx.sampleRate * 2, ctx.sampleRate);
+            const d = noiseBuffer.getChannelData(0);
+            for (let i = 0; i < d.length; i++) d[i] = (Math.random() * 2 - 1);
+        } else {
+            noiseBuffer = null;
+        }
+    };
+
+    updateNodesFromPreset(currentPreset);
+
+    api.noteOn = (midi, when = ctx.currentTime) => {
+        console.log(`%c[Synth] noteOn: ${midi}`, 'color: #00ff00');
+        
+        const f = midiToHz(midi);
+        const vGain = ctx.createGain();
+        vGain.gain.value = 0.0;
+        vGain.connect(compNode);
+
+        // ✅ Используем getOscConfig для гарантии наличия осцилляторов
+        const oscConfig = getOscConfig(currentPreset);
+        const oscs = oscConfig.map((o: any) => {
+            const x = ctx.createOscillator();
+            x.type = o.type as OscillatorType;
+            const detuneFactor = Math.pow(2, (o.detune || 0) / 1200);
+            const octaveFactor = Math.pow(2, o.octave || 0);
+            x.frequency.setValueAtTime(f * detuneFactor * octaveFactor, when);
+            
+            const g = ctx.createGain();
+            g.gain.value = o.gain ?? 0.5;
+            x.connect(g);
+            g.connect(vGain);
+            x.start(when);
+            return { x, g };
+        });
+
+        let noiseNode = null;
+        if (currentPreset.noise?.on && noiseBuffer) {
+            const n = ctx.createBufferSource();
+            n.buffer = noiseBuffer;
+            n.loop = true;
+            const ng = ctx.createGain();
+            ng.gain.value = currentPreset.noise.gain || 0.1;
+            n.connect(ng);
+            ng.connect(vGain);
+            n.start(when);
+            noiseNode = { n, ng };
+        }
+        
+        activeVoices.set(midi, { oscs, noise: noiseNode, gain: vGain });
+        
+        const adsr = currentPreset.adsr || { a: 0.05, d: 0.3, s: 0.7, r: 0.5 };
+        vGain.gain.cancelScheduledValues(when);
+        vGain.gain.setValueAtTime(0.0001, when);
+        vGain.gain.linearRampToValueAtTime(1.0, when + adsr.a);
+        vGain.gain.setTargetAtTime(adsr.s, when + adsr.a, Math.max(adsr.d / 3, 0.001));
+    };
+
+    api.noteOff = (midi, when = ctx.currentTime) => {
+        const voice = activeVoices.get(midi);
+        if (!voice) return;
+        
+        const vGain = voice.gain;
+        const r = currentPreset.adsr?.r || 0.5;
+        
+        vGain.gain.cancelScheduledValues(when);
+        vGain.gain.setValueAtTime(vGain.gain.value, when);
+        vGain.gain.setTargetAtTime(0.0001, when, Math.max(r / 4, 0.001));
+        
+        const stopTime = when + r + 0.1;
+        voice.oscs.forEach(({ x }: any) => x.stop(stopTime));
+        if (voice.noise) voice.noise.n.stop(stopTime);
+        
+        activeVoices.delete(midi);
+    };
+    
+    api.allNotesOff = () => {
+        activeVoices.forEach((_, key) => api.noteOff(key, ctx.currentTime));
+    };
+
+    api.setPreset = (p) => {
+        console.log('[Factory:Synth] setPreset:', p);
+        api.allNotesOff();
+        currentPreset = { ...p };
+        api.preset = p;
+        updateNodesFromPreset(p);
+    };
+}
+```
+
+---
+
+## 📋 Сводка всех проблем
+
+| Проблема | Тип | Инструмент | Решение |
+|----------|-----|------------|---------|
+| Нет makeup gain после компрессора | 🔴 Критично | Synth | Добавить `compMakeup` gain node |
+| `ratio: 12` слишком агрессивно | 🔴 Критично | Synth | Уменьшить до 3-4 |
+| Пустой `preset.osc` | 🔴 Критично | Synth | Добавить дефолтные осцилляторы |
+| Дублирующиеся connect() | 🟡 Средне | Organ | Вынести статические соединения из noteOn |
+
+---
+
+## 🔧 Быстрая проверка работоспособности
+
+Добавьте этот тест после создания инструмента:
+
+```typescript
+// Тест: проверка цепочки
+console.log('[DEBUG] Checking audio chain...');
+console.log('  compNode:', compNode);
+console.log('  compMakeup:', compMakeup);
+console.log('  filt:', filt);
+console.log('  finalChain:', finalChain);
+console.log('  master:', master);
+console.log('  AudioContext state:', ctx.state);
+
+// Если suspended - нужно resume
+if (ctx.state === 'suspended') {
+    ctx.resume().then(() => console.log('AudioContext resumed'));
+}
+```
+
+
+Хотите, чтобы я показал полностью исправленный файл или разобрал ещё какую-то часть?
+
+Ответ Б
+### 🔍 **Диагностика проблем**
+Я проанализировал код подробно. **Основные проблемы**:
+1. **Нет звука** (в первую очередь в **guitar** и возможно **synth**):
+   - **Критический баг в guitar**: вся цепочка эффектов (`.connect()`) находится **внутри `noteOn`**! При каждой ноте перестраивается routing (pickupLPF.connect(hpf), postLPF.connect(cab), afterCab.connect(ph.input), ph.output.connect(dA.input) и т.д.). Это приводит к **множественным подключениям** (multiple routing paths): сигнал дублируется/мультиплицируется, график WebAudio ломается, звук искажается, становится неуправляемым или пропадает (особенно при полифонии >1). При noteOff не чистится — накапливается хаос.
+   - **В synth**: если `preset.osc` пустой/undefined (по умолчанию `{}`), то `oscs = []` — **нет осцилляторов, звук отсутствует**! Дефолтных осцилляторов нет.
+   - Общее: если `preset.reverbMix` низкий + `master.gain=0.8`, звук тихий. Проверь консоль на ошибки загрузки IR/сэмплов (catch логи).
+
+2. **Компрессор не работает** (в **synth** и **guitar**):
+   - **В synth**: `compNode` создаётся с **фиксированными параметрами** (`threshold=-20` и т.д.). При `setPreset` они **не обновляются**! Если `preset.comp` задан, игнорируется.
+   - **В guitar**: из-за бага с routing в `noteOn` сигнал в `compNode` приходит неправильно (дублированный/с задержкой), компрессор не срабатывает предсказуемо.
+   - Общее: если входной уровень осцилляторов низкий (`o.gain <0.3`), threshold не превышается — компрессия "не слышна". Нет makeup gain после компрессора в synth.
+
+Другие мелкие баги:
+- Нет `api.setPreset` в **mellotron** и **guitar** (только в organ/synth).
+- В **synth** `lfoGain.disconnect()` может не полностью отключать LFO (лучше `gain.value=0`).
+- В **guitar** `guitarOutput` per note — утечка нодов (100 нот = 100 gain to master).
+- Нет `api.setParam` для компрессора/эффектов в synth/guitar.
+- Логи в `noteOn` только для organ — добавь для всех.
+
+**Тестирование**: 
+- Проверь консоль: логи `[Organ]` или ошибки fetch/decode.
+- `api.noteOn(60)` — звук? `api.allNotesOff()`.
+- AudioContext resumed? (`ctx.resume()`).
+- Уровни: подключи AnalyserNode после comp/master, смотри waveform.
+
+### 🛠️ **Исправленный код (ключевые изменения)**
+Вот **полный исправленный блок для guitar** (остальное аналогично). Выноси **routing ДО `api.noteOn`** — shared цепочка. Voices sum в `pickupLPF` (input).
+
+```typescript
+// ──────────────────────────────────────────────────────────────────────────
+// GUITAR (исправленный: фиксированная цепочка + comp params update)
+else if (type === 'guitar') {
+  // ... (destructure preset как есть)
+
+  // Создаём ноды (как есть)
+  const pickupLPF = ctx.createBiquadFilter(); /* ... */
+  // ... все остальные ноды (compNode, shaper и т.д.)
+
+  // ──── КРИТИКАЛЬНО: ПОСТРОЕНИЕ ФИКСИРОВАННОЙ ЦЕПОЧКИ ДО noteOn ────
+  const guitarInput = ctx.createGain();  // Sum point для всех vGain (per note)
+  guitarInput.connect(pickupLPF);
+
+  pickupLPF.connect(hpf);
+  hpf.connect(compNode);
+  compNode.connect(compMakeup);
+  compMakeup.connect(shaper);
+  shaper.connect(postHPF);
+  postHPF.connect(mid1);
+  mid1.connect(mid2);
+  mid2.connect(postLPF);
+
+  // Cab
+  if (cabinetIRUrl && cab.buffer) {
+    postLPF.connect(cab);
+    cab.connect(ph.input);
+  } else {
+    postLPF.connect(ph.input);
+  }
+
+  // Phaser -> Delays -> Final output (shared!)
+  let currentChain: AudioNode = ph.output;
+  if (dA) {
+    currentChain.connect(dA.input);
+    currentChain = dA.output;
+  }
+  if (dB_node) {
+    currentChain.connect(dB_node.input);
+    currentChain = dB_node.output;
+  }
+
+  const guitarOut = ctx.createGain();  // Shared output, НЕ per note!
+  guitarOut.gain.value = 0.9;
+  currentChain.connect(guitarOut);
+  guitarOut.connect(master);
+  guitarOut.connect(revSend);  // revSend уже connect(reverb)
+
+  // ──── API ────
+  let activeVoices = new Map();  // как есть
+
+  api.noteOn = (midi, when = ctx.currentTime) => {
+    console.log(`%c[Guitar] noteOn MIDI: ${midi}`, 'color: orange');  // Добавь лог
+    const f = midiToHz(midi);
+    const vGain = ctx.createGain(); vGain.gain.value = 0.0;
+
+    // Осцилляторы (как есть)
+    const oscMain = createPulseOsc(ctx, f, osc.width);
+    // ... oscDet, oscSub, gMain etc.
+    const sum = ctx.createGain(); sum.gain.value = 0.8;
+    oscMain.connect(gMain).connect(sum);
+    // ... аналогично
+    sum.connect(vGain);
+
+    // ──── КРИТИКАЛЬНО: ТОЛЬКО ЭТО! vGain -> shared input ────
+    vGain.connect(guitarInput);  // Sum в цепочку
+
+    oscMain.start(when); oscDet.start(when); oscSub.start(when);
+
+    // ADSR (как есть)
+    vGain.gain.cancelScheduledValues(when);
+    vGain.gain.linearRampToValueAtTime(1.0, when + adsr.a);
+    vGain.gain.setTargetAtTime(adsr.s, when + adsr.a, adsr.d / 3);
+
+    activeVoices.set(midi, { oscMain, oscDet, oscSub, vGain });
+  };
+
+  api.noteOff = /* как есть, без connect/disconnect */;
+
+  // ──── Добавь setPreset и setParam для comp/drive ────
+  api.setPreset = (p: any) => {
+    console.log('[Guitar] setPreset:', p);
+    api.allNotesOff();
+    api.preset = p;
+    // Обнови comp (добавь!)
+    if (p.comp) {
+      compNode.threshold.value = p.comp.threshold ?? comp.threshold;
+      compNode.ratio.value = p.comp.ratio ?? comp.ratio;
+      compNode.attack.value = p.comp.attack ?? comp.attack;
+      compNode.release.value = p.comp.release ?? comp.release;
+      compMakeup.gain.value = dB(p.comp.makeup ?? comp.makeup);
+    }
+    // Аналогично для других: pickup.cutoff etc.
+    pickupLPF.frequency.value = p.pickup?.cutoff ?? pickup.cutoff;
+    // drive: shaper.curve = ...
+    if (p.drive) shaper.curve = (p.drive.type === 'muff') ? makeMuff(p.drive.amount) : makeSoftClip(p.drive.amount);
+  };
+
+  api.setParam = (k: string, v: any) => {
+    // Расширь
+    if (k === 'comp.threshold') compNode.threshold.value = v;
+    if (k === 'comp.ratio') compNode.ratio.value = v;
+    // ... attack/release
+    if (k === 'drive') shaper.curve = (drive.type === 'muff') ? makeMuff(v) : makeSoftClip(v);
+    // как раньше
+  };
+
+  api.allNotesOff = /* как есть */;
+}
+```
+
+### 🔧 **Исправления для SYNTH (аналогично)**
+```typescript
+// В synth блоке, в updateNodesFromPreset добавь comp:
+if (p.comp) {
+  compNode.threshold.value = p.comp.threshold ?? -20;
+  compNode.knee.value = p.comp.knee ?? 10;
+  compNode.ratio.value = p.comp.ratio ?? 12;
+  compNode.attack.value = p.comp.attack ?? 0.005;
+  compNode.release.value = p.comp.release ?? 0.1;
+}
+
+// Дефолт osc если пусто (в начале synth или setPreset):
+if (!currentPreset.osc || currentPreset.osc.length === 0) {
+  currentPreset.osc = [
+    { type: 'sawtooth' as const, gain: 0.45, octave: 0, detune: 0 },
+    { type: 'square' as const, gain: 0.25, octave: -1, detune: 0 }
+  ];
+}
+
+// Добавь лог в noteOn:
+console.log(`%c[Synth] noteOn MIDI: ${midi}, oscs: ${oscs.length}`, 'color: lightgreen');
+```
+
+### ✅ **Быстрые тесты/улучшения**
+1. **Применить guitar фикс** — звук + компрессор заработают (чистый routing).
+2. **Для synth**: передай preset с `osc: [{type:'sawtooth', gain:0.5}]` и `comp: {threshold:-24, ratio:15}`.
+3. **Компрессор visible**: Добавь `const analyser = ctx.createAnalyser(); compNode.connect(analyser);` — смотри reduction в `analyser.getFloatFrequencyData()`.
+4. **Общий gain boost**: `finalChain.gain.value = 1.2;` (synth/guitar).
+5. **Polyphony limit**: В noteOn if(activeVoices.size > 16) allNotesOff().
+6. **Для всех типов**: Добавь `api.setPreset` как в примере.
+
+Пересобери, протестируй `api.noteOn(60); setTimeout(()=>api.noteOff(60), 1000)`. Если не помогло — скинь **preset** который используешь + тип инструмента + консоль ошибки. Звук будет! 🎸

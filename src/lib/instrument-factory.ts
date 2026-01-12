@@ -86,12 +86,10 @@ const makeChorus = (ctx: AudioContext, {rate = 0.25, depth = 0.006, mix = 0.25})
     wet.gain.value = mix;
     dry.gain.value = 1 - mix;
 
-    // #ИСПРАВЛЕНО: Добавлена недостающая связь с `dry` каналом.
     input.connect(dry);
     dry.connect(output);
 
-    // #ИЗМЕНЕНО: Упрощено до одного дилэя для чистоты
-    const delay = ctx.createDelay(0.025); // base delay
+    const delay = ctx.createDelay(0.025);
     const lfo = ctx.createOscillator();
     const lfoGain = ctx.createGain();
 
@@ -111,19 +109,14 @@ const makeChorus = (ctx: AudioContext, {rate = 0.25, depth = 0.006, mix = 0.25})
 };
 
 const makeFilteredDelay = (ctx: AudioContext, { time = 0.38, fb = 0.26, hc = 3600, mix = 0.2 }) => {
-    // #ЗАЧЕМ: Создает стерео-дилэй с эффектом пинг-понга.
-    // #ЧТО: Использует две линии задержки с перекрестной обратной связью.
-    // #СВЯЗИ: Является insert-эффектом, смешивая сухой и обработанный сигналы.
     const input = ctx.createGain();
     const output = ctx.createGain();
     const dry = ctx.createGain(); dry.gain.value = 1.0 - mix;
     const wet = ctx.createGain(); wet.gain.value = mix;
 
-    // Сухой сигнал
     input.connect(dry);
     dry.connect(output);
 
-    // Мокрый сигнал (стерео)
     const delayL = ctx.createDelay(5.0);
     const delayR = ctx.createDelay(5.0);
     delayL.delayTime.value = time;
@@ -139,14 +132,12 @@ const makeFilteredDelay = (ctx: AudioContext, { time = 0.38, fb = 0.26, hc = 360
     
     const merger = ctx.createChannelMerger(2);
 
-    // Цепочка
     input.connect(delayL);
     delayL.connect(filter).connect(delayR);
-    delayR.connect(feedback).connect(delayL); // Обратная связь
+    delayR.connect(feedback).connect(delayL);
 
-    // Выход на стерео
-    delayL.connect(merger, 0, 0); // Левый канал
-    delayR.connect(merger, 0, 1); // Правый канал
+    delayL.connect(merger, 0, 0);
+    delayR.connect(merger, 0, 1);
     
     merger.connect(wet);
     wet.connect(output);
@@ -156,22 +147,15 @@ const makeFilteredDelay = (ctx: AudioContext, { time = 0.38, fb = 0.26, hc = 360
 
 
 export async function buildMultiInstrument(ctx: AudioContext, {
-  type = 'organ',            // 'organ' | 'synth' | 'mellotron' | 'guitar'
+  type = 'organ',
   preset = {} as any,
-  cabinetIRUrl = null,       // для guitar (и можно для organ)
-  plateIRUrl = null,         // общий plate
-  mellotronMap = null,       // { name:'strings', zones: [{note:60,url:'...'}, ...] }
+  cabinetIRUrl = null,
+  plateIRUrl = null,
+  mellotronMap = null,
   output = ctx.destination
 } = {}) {
-  // #ЗАЧЕМ: Главная "фабрика" по созданию сложных V2-инструментов.
-  // #ЧТО: В зависимости от параметра 'type' собирает сложную цепочку Web Audio узлов (граф)
-  //      для эмуляции различных инструментов: органа, аналогового синтезатора, меллотрона или электрогитары.
-  //      Возвращает стандартизированный API для управления этим инструментом.
-  // #СВЯЗИ: Вызывается из V2-менеджеров (MelodySynthManagerV2, AccompanimentSynthManagerV2).
-  
-  console.log(`%c[InstrumentFactory] Build process STARTING for type: ${type}`, 'color: #FFA500; font-weight: bold;');
+  console.log(`%c[InstrumentFactory] Build STARTING for type: ${type}`, 'color: #FFA500; font-weight: bold;');
 
-  // ───── Master FX (plate ревёрб общий)
   const master = ctx.createGain(); master.gain.value = 0.8;
   const reverb = ctx.createConvolver();
   try {
@@ -179,15 +163,9 @@ export async function buildMultiInstrument(ctx: AudioContext, {
           reverb.buffer = await loadIR(ctx, plateIRUrl);
       }
   } catch (e) {
-      console.error('[InstrumentFactory] Failed to load plate reverb IR, continuing without it.', e);
+      console.error('[InstrumentFactory] Failed to load plate reverb IR.', e);
   }
 
-  const revMix = ctx.createGain(); revMix.gain.value = preset.reverbMix ?? 0.18;
-  if (reverb.buffer) {
-    reverb.connect(master);
-  }
-
-  // API, общий выход
   const api = { 
       connect:(dest?: AudioNode)=>master.connect(dest||output), 
       setParam:(k: string,v: any)=>{}, 
@@ -195,504 +173,310 @@ export async function buildMultiInstrument(ctx: AudioContext, {
       noteOff:(midi: number, when?: number)=>{}, 
       setPreset:(p: any)=>{}, 
       allNotesOff: () => {},
-      preset: preset // Expose preset for easier access
+      preset: preset
   };
 
-  // ──────────────────────────────────────────────────────────────────────────
-  // ORGAN (drawbar + Leslie)
-  if (type === 'organ') {
-    let {
-      drawbars = [8,0,8,8,0,4,0,2,0], // 16',5 1/3',8',4',2 2/3',2',1 3/5',1 1/3',1'
-      vibratoRate = 6.0, vibratoDepth = 0.003,
-      leslie = { mode:'slow', slow:0.6, fast:6.0, accel:0.6 },
-      keyClick = 0.004,
-      lpf = 8000, hpf = 90,
-      chorusMix = 0.2, reverbMix = 0.15
-    } = preset;
+  if (type === 'synth') {
+    let currentPreset = { ...preset };
 
-    const organOut = ctx.createGain(); organOut.gain.value = 0.6;
-    const organLPF = ctx.createBiquadFilter(); organLPF.type='lowpass'; organLPF.frequency.value=lpf; organLPF.Q.value=0.7;
-    const organHPF = ctx.createBiquadFilter(); organHPF.type='highpass'; organHPF.frequency.value=hpf; organHPF.Q.value=0.7;
-    const chorus = makeChorus(ctx, {rate:0.7, depth:0.005, mix:chorusMix});
+    // --- СТАТИЧЕСКАЯ ЦЕПОЧКА ЭФФЕКТОВ (ПЛАН 1245) ---
+    const compNode = ctx.createDynamicsCompressor();
+    const compMakeup = ctx.createGain();
+    const filt = ctx.createBiquadFilter();
+    const filt2 = ctx.createBiquadFilter();
+    let chorusNode = makeChorus(ctx, currentPreset.chorus || {});
+    let delayNode = makeFilteredDelay(ctx, currentPreset.delay || {});
+    const finalChain = ctx.createGain();
+    const lfoNode = ctx.createOscillator();
+    const lfoGain = ctx.createGain();
+    const revSend = ctx.createGain();
 
-    const pan = ctx.createStereoPanner(); pan.pan.value = 0;
-    const trem = ctx.createGain(); trem.gain.value = 1.0;
-    const lfo = ctx.createOscillator(); lfo.type='sine';
-    const lfoPanGain = ctx.createGain(); const lfoAmpGain = ctx.createGain();
-    lfoPanGain.gain.value = 0.7; lfoAmpGain.gain.value = 0.08;
-    lfo.connect(lfoPanGain); lfo.connect(lfoAmpGain);
-    lfoPanGain.connect(pan.pan); lfoAmpGain.connect(trem.gain);
-    lfo.start();
-
-    const foot = [16, 5.333, 8, 4, 2.666, 2, 1.6, 1.333, 1];
-    const activeVoices = new Map();
-
-    const revSend = ctx.createGain(); revSend.gain.value = reverbMix;
-    organOut.connect(master);
-    if(reverb.buffer) {
-        organOut.connect(revSend); revSend.connect(reverb);
+    // Соединяем узлы в правильном порядке ОДИН РАЗ
+    compNode.connect(compMakeup).connect(filt);
+    const use2pole = (currentPreset.lpf?.mode !== '24dB');
+    if (!use2pole) {
+      filt.connect(filt2);
     }
+    const lastFilter = use2pole ? filt : filt2;
 
-    const vib = ctx.createOscillator(); vib.type='sine'; vib.frequency.value=vibratoRate;
-    const vibGain = ctx.createGain(); vibGain.gain.value = vibratoDepth * 100; // vibrato is in cents
-    vib.connect(vibGain); vib.start();
+    let currentOutput: AudioNode = lastFilter;
+    if (currentPreset.chorus?.on) {
+        currentOutput.connect(chorusNode.input);
+        currentOutput = chorusNode.output;
+    }
+    if (currentPreset.delay?.on) {
+        currentOutput.connect(delayNode.input);
+        currentOutput = delayNode.output;
+    }
+    currentOutput.connect(finalChain);
+    finalChain.connect(master);
+    if (reverb.buffer) {
+        finalChain.connect(revSend);
+        revSend.connect(reverb);
+    }
+    lfoNode.start();
 
-    let targetRate = (leslie.mode==='fast'? leslie.fast : leslie.slow);
-    lfo.frequency.value = targetRate;
-    const setLeslie = (mode: 'fast' | 'slow')=>{
-      targetRate = (mode==='fast'? leslie.fast : leslie.slow);
-      const now = ctx.currentTime;
-      lfo.frequency.cancelScheduledValues(now);
-      lfo.frequency.setTargetAtTime(targetRate, now, leslie.accel);
+    const activeVoices = new Map();
+    let noiseBuffer: AudioBuffer | null = null;
+    
+    const getOscConfig = (p: any) => {
+        if (p.osc && p.osc.length > 0) return p.osc;
+        // Дефолтный осциллятор, если не задан
+        return [{ type: 'sawtooth', gain: 0.5, octave: 0, detune: 0 }];
     };
 
-    api.noteOn = (midi, when=ctx.currentTime) => {
-      console.log(`%c[Organ] noteOn triggered for MIDI: ${midi}`, 'color: lightblue');
-      if (activeVoices.has(midi)) {
-          api.noteOff(midi, when);
-      }
-      const f0 = midiToHz(midi);
-      
-      const voiceGain = ctx.createGain(); voiceGain.gain.value = 0;
-      
-      voiceGain.connect(chorus.input);
-      chorus.output.connect(organHPF);
-      organHPF.connect(organLPF);
-      organLPF.connect(trem);
-      trem.connect(pan);
-      pan.connect(organOut);
+    const updateNodesFromPreset = (p: any) => {
+        // Компрессор
+        compNode.threshold.value = p.comp?.threshold ?? -20;
+        compNode.knee.value = p.comp?.knee ?? 10;
+        compNode.ratio.value = p.comp?.ratio ?? 12;
+        compNode.attack.value = p.comp?.attack ?? 0.005;
+        compNode.release.value = p.comp?.release ?? 0.1;
+        compMakeup.gain.value = dB(p.comp?.makeup ?? 0);
+        
+        // Фильтры
+        filt.type = 'lowpass';
+        filt.frequency.value = p.lpf?.cutoff || 3000;
+        filt.Q.value = p.lpf?.q || 1;
+        filt2.type = 'lowpass';
+        filt2.frequency.value = p.lpf?.cutoff || 3000;
+        filt2.Q.value = p.lpf?.q || 1;
+        
+        // LFO
+        lfoNode.type = p.lfo?.shape || 'sine';
+        lfoNode.frequency.value = p.lfo?.rate || 0;
+        lfoGain.gain.value = p.lfo?.amount || 0;
+        
+        try { lfoGain.disconnect(); } catch(e){}
+        if (lfoGain.gain.value > 0) {
+            lfoNode.connect(lfoGain);
+            if (p.lfo?.target === 'filter') {
+                lfoGain.connect(filt.frequency);
+                if (!use2pole) lfoGain.connect(filt2.frequency);
+            }
+        }
+        
+        // FX
+        revSend.gain.value = p.reverbMix || 0.18;
 
-      const kc = ctx.createBufferSource();
-      const noise = ctx.createBuffer(1, Math.floor(ctx.sampleRate*keyClick), ctx.sampleRate);
-      const d = noise.getChannelData(0); for(let i=0;i<d.length;i++) d[i]=(Math.random()*2-1)*0.2;
-      kc.buffer=noise; const kcEnv=ctx.createGain(); kcEnv.gain.value=0.6; kc.connect(kcEnv); kcEnv.connect(voiceGain); kc.start(when); kc.stop(when+keyClick);
-
-      const oscs = foot.map((ft, i) => {
-        if(drawbars[i] === 0) return null;
-        const osc = ctx.createOscillator();
-        osc.type = 'sine';
-        const ratio = Math.pow(2, 3 - Math.log2(ft));
-        osc.frequency.setValueAtTime(f0 * ratio, when);
-        vibGain.connect(osc.detune);
-        const g = ctx.createGain(); g.gain.value = (drawbars[i]/8)*0.4;
-        osc.connect(g); g.connect(voiceGain);
-        osc.start(when);
-        return {osc,g};
-      }).filter(o => o !== null);
-
-      activeVoices.set(midi, { oscs, voiceGain });
-      
-      voiceGain.gain.cancelScheduledValues(when);
-      voiceGain.gain.linearRampToValueAtTime(1.0, when+0.01);
-    };
-    api.noteOff = (midi, when=ctx.currentTime) => {
-      console.log(`%c[Organ] noteOff triggered for MIDI: ${midi}`, 'color: lightcoral');
-      const voice = activeVoices.get(midi);
-      if (!voice) return;
-      voice.voiceGain.gain.cancelScheduledValues(when);
-      voice.voiceGain.gain.linearRampToValueAtTime(0.0001, when+0.05);
-      voice.oscs.forEach(({osc}: any)=>osc.stop(when+0.06));
-      activeVoices.delete(midi);
-    };
-    api.setParam = (k,v)=>{
-      if (k==='leslie') setLeslie(v); 
-      if (k==='lpf') organLPF.frequency.value = v;
-    };
-    api.allNotesOff = () => {
-      activeVoices.forEach((value, key) => {
-        api.noteOff(key, ctx.currentTime);
-      });
-    };
-    api.setPreset = (p: any)=>{ 
-        api.preset = p;
-        drawbars = p.drawbars || drawbars;
-        vibratoRate = p.vibratoRate || vibratoRate;
-        vib.frequency.value = vibratoRate;
-        vibratoDepth = p.vibratoDepth || vibratoDepth;
-        vibGain.gain.value = vibratoDepth * 100;
-        leslie = p.leslie || leslie;
-        lpf = p.lpf || lpf;
-        organLPF.frequency.value = lpf;
-        hpf = p.hpf || hpf;
-        organHPF.frequency.value = hpf;
-    };
-  }
-  
-  // ──────────────────────────────────────────────────────────────────────────
-  // SYNTH (subtractive pad/lead)
-  else if (type === 'synth') {
-      let currentPreset = { ...preset };
-
-      // --- ОБЩАЯ ЦЕПОЧКА ЭФФЕКТОВ (ПЛАН 1239/1241) ---
-      const compNode = ctx.createDynamicsCompressor();
-      compNode.threshold.value = -20;
-      compNode.knee.value = 10;
-      compNode.ratio.value = 12;
-      compNode.attack.value = 0.005;
-      compNode.release.value = 0.1;
-      
-      const filt = ctx.createBiquadFilter();
-      const filt2 = ctx.createBiquadFilter();
-      const use2pole = (currentPreset.lpf?.mode !== '24dB');
-
-      // #ИСПРАВЛЕНО (ПЛАН 1242): Правильное построение цепи.
-      // Сигнал идет в компрессор, затем из компрессора в первый фильтр.
-      compNode.connect(filt);
-      if (!use2pole) {
-        filt.connect(filt2);
-      }
-      
-      const lastFilter = use2pole ? filt : filt2;
-      const finalChain = ctx.createGain();
-      let chorusNode = makeChorus(ctx, currentPreset.chorus || {});
-      let delayNode = makeFilteredDelay(ctx, currentPreset.delay || {});
-      
-      const lfoNode = ctx.createOscillator();
-      const lfoGain = ctx.createGain();
-      lfoNode.start();
-
-      let currentOutput: AudioNode = lastFilter;
-      if (currentPreset.chorus?.on) {
-          currentOutput.connect(chorusNode.input);
-          currentOutput = chorusNode.output;
-      }
-      if (currentPreset.delay?.on) {
-          currentOutput.connect(delayNode.input);
-          currentOutput = delayNode.output;
-      }
-      currentOutput.connect(finalChain);
-      finalChain.connect(master);
-      
-      const revSend = ctx.createGain();
-      if (reverb.buffer) {
-          finalChain.connect(revSend);
-          revSend.connect(reverb);
-      }
-
-      const activeVoices = new Map();
-      let noiseBuffer: AudioBuffer | null = null;
-      
-      const updateNodesFromPreset = (p: any) => {
-          filt.type = 'lowpass';
-          filt.frequency.value = p.lpf?.cutoff || 3000;
-          filt.Q.value = p.lpf?.q || 1;
-          filt2.type = 'lowpass';
-          filt2.frequency.value = p.lpf?.cutoff || 3000;
-          filt2.Q.value = p.lpf?.q || 1;
-          
-          lfoNode.type = p.lfo?.shape || 'sine';
-          lfoNode.frequency.value = p.lfo?.rate || 0;
-          lfoGain.gain.value = p.lfo?.amount || 0;
-          
-          if(lfoGain.gain.value > 0) {
-              lfoNode.connect(lfoGain);
-              if (p.lfo?.target === 'filter') {
-                  lfoGain.connect(filt.frequency);
-                  if (!use2pole) lfoGain.connect(filt2.frequency);
-              }
-          } else {
-             try { lfoGain.disconnect(); } catch(e){}
-          }
-          
-          revSend.gain.value = p.reverbMix || 0.18;
-
-          if(p.noise?.on) {
+        if (p.noise?.on) {
             noiseBuffer = ctx.createBuffer(1, ctx.sampleRate * 2, ctx.sampleRate);
             const d = noiseBuffer.getChannelData(0);
-            for(let i=0; i<d.length; i++) d[i] = (Math.random() * 2 - 1);
-          } else {
+            for (let i = 0; i < d.length; i++) d[i] = (Math.random() * 2 - 1);
+        } else {
             noiseBuffer = null;
-          }
-      };
+        }
+    };
 
-      updateNodesFromPreset(currentPreset);
+    updateNodesFromPreset(currentPreset);
 
-      api.noteOn = (midi, when=ctx.currentTime) => {
+    api.noteOn = (midi, when = ctx.currentTime) => {
         const f = midiToHz(midi);
         
-        const vGain = ctx.createGain(); vGain.gain.value = 0.0;
-        // #ИСПРАВЛЕНО (ПЛАН 1241): Голоса подключаются к общему компрессору.
-        vGain.connect(compNode);
+        // Для каждой ноты создаем ТОЛЬКО источники звука и vGain
+        const vGain = ctx.createGain();
+        vGain.gain.value = 0.0;
+        vGain.connect(compNode); // Подключаем голос к началу СТАТИЧЕСКОЙ цепи
 
-        const oscs = (currentPreset.osc || []).map((o: any)=>{
-          const x = ctx.createOscillator(); x.type=o.type as OscillatorType; 
-          const detuneFactor = Math.pow(2, (o.detune || 0) / 1200);
-          const octaveFactor = Math.pow(2, o.octave || 0);
-          x.frequency.setValueAtTime(f * detuneFactor * octaveFactor, when);
-          
-          const g = ctx.createGain(); g.gain.value=o.gain;
-          x.connect(g); g.connect(vGain);
-          x.start(when);
-          return {x,g};
+        const oscConfig = getOscConfig(currentPreset);
+        const oscs = oscConfig.map((o: any) => {
+            const x = ctx.createOscillator();
+            x.type = o.type as OscillatorType;
+            const detuneFactor = Math.pow(2, (o.detune || 0) / 1200);
+            const octaveFactor = Math.pow(2, o.octave || 0);
+            x.frequency.setValueAtTime(f * detuneFactor * octaveFactor, when);
+            
+            const g = ctx.createGain();
+            g.gain.value = o.gain ?? 0.5;
+            x.connect(g);
+            g.connect(vGain);
+            x.start(when);
+            return { x, g };
         });
 
         let noiseNode = null;
-        if (currentPreset.noise?.on && noiseBuffer){
-          const n = ctx.createBufferSource(); n.buffer = noiseBuffer; n.loop = true;
-          const ng = ctx.createGain(); ng.gain.value=currentPreset.noise.gain;
-          n.connect(ng); ng.connect(vGain); n.start(when);
-          noiseNode = {n,ng};
+        if (currentPreset.noise?.on && noiseBuffer) {
+            const n = ctx.createBufferSource();
+            n.buffer = noiseBuffer;
+            n.loop = true;
+            const ng = ctx.createGain();
+            ng.gain.value = currentPreset.noise.gain || 0.1;
+            n.connect(ng);
+            ng.connect(vGain);
+            n.start(when);
+            noiseNode = { n, ng };
         }
         
-        const voicePackage = { oscs, noise: noiseNode, gain: vGain, lfo: lfoNode, lfoGain };
-        activeVoices.set(midi, voicePackage);
+        activeVoices.set(midi, { oscs, noise: noiseNode, gain: vGain });
         
-        const adsr = currentPreset.adsr || { a: 0.1, d: 0.5, s: 0.5, r: 1.0 };
+        const adsr = currentPreset.adsr || { a: 0.05, d: 0.3, s: 0.7, r: 0.5 };
         vGain.gain.cancelScheduledValues(when);
         vGain.gain.setValueAtTime(0.0001, when);
         vGain.gain.linearRampToValueAtTime(1.0, when + adsr.a);
-        vGain.gain.setTargetAtTime(adsr.s, when + adsr.a, adsr.d / 3);
-      };
+        vGain.gain.setTargetAtTime(adsr.s, when + adsr.a, Math.max(adsr.d / 3, 0.001));
+    };
 
-      api.noteOff = (midi, when=ctx.currentTime) => {
+    api.noteOff = (midi, when = ctx.currentTime) => {
         const voice = activeVoices.get(midi);
         if (!voice) return;
         
         const vGain = voice.gain;
-        const r = currentPreset.adsr?.r || 1.0;
+        const r = currentPreset.adsr?.r || 0.5;
         
-        // #ИСПРАВЛЕНО (ПЛАН 1235): Добавлена отмена предыдущих событий для предотвращения конфликта огибающих.
-        vGain.gain.cancelScheduledValues(when); 
+        vGain.gain.cancelScheduledValues(when);
         vGain.gain.setValueAtTime(vGain.gain.value, when);
-        vGain.gain.setTargetAtTime(0.0001, when, r / 4);
+        vGain.gain.setTargetAtTime(0.0001, when, Math.max(r / 4, 0.001));
         
-        const stopTime = when + r;
-        voice.oscs.forEach(({x}: any)=>x.stop(stopTime));
+        const stopTime = when + r + 0.1;
+        voice.oscs.forEach(({ x }: any) => x.stop(stopTime));
         if (voice.noise) voice.noise.n.stop(stopTime);
         
         activeVoices.delete(midi);
-      };
+    };
+    
+    api.allNotesOff = () => {
+        activeVoices.forEach((_, key) => api.noteOff(key, ctx.currentTime));
+    };
+
+    api.setPreset = (p) => {
+        console.log('[Factory:Synth] setPreset:', p);
+        api.allNotesOff();
+        currentPreset = { ...p };
+        api.preset = p;
+        updateNodesFromPreset(p);
+    };
+  } else if (type === 'guitar') {
+      let {
+        variant='shineOn', pickup, drive, comp, post, phaser, delayA, delayB, reverbMix, osc, adsr
+      } = { ...preset };
+
+      // --- СТАТИЧЕСКАЯ ЦЕПОЧКА ЭФФЕКТОВ ---
+      const guitarInput = ctx.createGain(); 
+      const pickupLPF = ctx.createBiquadFilter(); 
+      const hpf = ctx.createBiquadFilter(); 
+      const compNode = ctx.createDynamicsCompressor();
+      const compMakeup = ctx.createGain();
+      const shaper = ctx.createWaveShaper();
+      const postHPF = ctx.createBiquadFilter();
+      const mid1 = ctx.createBiquadFilter();
+      const mid2 = ctx.createBiquadFilter();
+      const postLPF = ctx.createBiquadFilter();
+      const cab = ctx.createConvolver();
+      const ph = makePhaser(ctx, phaser);
+      const dA = makeFilteredDelay(ctx, delayA);
+      const dB_node = delayB ? makeFilteredDelay(ctx, delayB) : null;
+      const revSend = ctx.createGain();
+
+      guitarInput.connect(pickupLPF).connect(hpf).connect(compNode).connect(compMakeup)
+          .connect(shaper).connect(postHPF).connect(mid1).connect(mid2).connect(postLPF);
       
-      api.allNotesOff = () => {
-        activeVoices.forEach((value, key) => api.noteOff(key, ctx.currentTime));
-      };
-
-      api.setPreset = (p) => {
-          console.log('[Factory:Synth] setPreset called with:', p);
-          api.allNotesOff();
-          currentPreset = p;
-          api.preset = p;
-          updateNodesFromPreset(p);
-      };
-  }
-
-  // ──────────────────────────────────────────────────────────────────────────
-  // MELLOTRON (sample + wow/flutter + tapeNoise)
-  else if (type === 'mellotron') {
-    const {
-      instrument = 'strings', // 'strings'|'choir'|'flute' (подберите карту)
-      attack = 0.04, release = 0.35,
-      wow = { rate: 0.3, depth: 0.003 },
-      flutter = { rate: 5.5, depth: 0.0008 },
-      noise = { level: -36 }, // dB
-      lpf = 9000, hpf = 120,
-      reverbMix = 0.2,
-      adsr = { a: 0.1, d: 0.2, s: 0.9, r: 1.2 }
-    } = preset;
-
-    const zones = (mellotronMap?.zones ?? []).filter((z: any)=>z.name===instrument || !z.name);
-    const cache: Record<string, AudioBuffer> = {};
-    if(zones.length === 0) console.warn(`[Mellotron] No sample zones found for instrument: ${instrument}`);
-    
-    for (const z of zones) {
-        if(z.url) cache[z.note] = await loadSample(ctx, z.url);
-    }
-    
-    const out = ctx.createGain(); out.gain.value=0.9;
-    const lp = ctx.createBiquadFilter(); lp.type='lowpass'; lp.frequency.value=lpf; lp.Q.value=0.5;
-    const hp = ctx.createBiquadFilter(); hp.type='highpass'; hp.frequency.value=hpf; hp.Q.value=0.7;
-    out.connect(hp); hp.connect(lp); lp.connect(master);
-    const revSend = ctx.createGain(); revSend.gain.value = reverbMix;
-    if(reverb.buffer) {
-        lp.connect(revSend); revSend.connect(reverb);
-    }
-
-    const noiseB = ctx.createBufferSource();
-    const nb = ctx.createBuffer(1, ctx.sampleRate*2, ctx.sampleRate); const d = nb.getChannelData(0);
-    for(let i=0;i<d.length;i++) d[i]=(Math.random()*2-1)*0.4;
-    noiseB.buffer=nb; noiseB.loop=true;
-    const noiseG = ctx.createGain(); noiseG.gain.value = dB(noise.level); noiseB.connect(noiseG); noiseG.connect(lp); noiseB.start();
-
-    const activeNotes = new Map();
-
-    api.noteOn = (midi, when=ctx.currentTime) => {
-      const notes = Object.keys(cache).map(n=>+n).sort((a,b)=>Math.abs(a-midi)-Math.abs(b-midi));
-      const root = notes[0] ?? 60;
-      if (!cache[root]) return;
-
-      const src = ctx.createBufferSource(); src.buffer = cache[root]; src.loop = true;
-      const playback = Math.pow(2, (midi - root)/12);
-      src.playbackRate.value = playback;
-
-      const lfoWow = ctx.createOscillator(); lfoWow.type='sine'; lfoWow.frequency.value=wow.rate;
-      const lfoWg = ctx.createGain(); lfoWg.gain.value = wow.depth*playback;
-      const lfoFl = ctx.createOscillator(); lfoFl.type='sine'; lfoFl.frequency.value=flutter.rate;
-      const lfoFg = ctx.createGain(); lfoFg.gain.value = flutter.depth*playback;
-      lfoWow.connect(lfoWg); lfoFl.connect(lfoFg);
-      lfoWg.connect(src.playbackRate); lfoFg.connect(src.playbackRate);
-      lfoWow.start(when); lfoFl.start(when);
-
-      const vg = ctx.createGain(); vg.gain.value=0.0;
-      src.connect(vg); vg.connect(out);
-      src.start(when);
-      vg.gain.linearRampToValueAtTime(1.0, when+attack);
-
-      activeNotes.set(midi, {src, vg, lfoWow, lfoFl});
-    };
-    api.noteOff = (midi, when=ctx.currentTime) => {
-      const current = activeNotes.get(midi);
-      if (!current) return;
-      current.vg.gain.cancelScheduledValues(when);
-      current.vg.gain.linearRampToValueAtTime(0.0001, when+release);
-      current.src.stop(when+release+0.05);
-      try { current.lfoWow.stop(when+release+0.05); current.lfoFl.stop(when+release+0.05); } catch{}
-      activeNotes.delete(midi);
-    };
-     api.allNotesOff = () => {
-      activeNotes.forEach((value, key) => {
-        api.noteOff(key, ctx.currentTime);
-      });
-    };
-  }
-
-  // ──────────────────────────────────────────────────────────────────────────
-  // GUITAR (Gilmour shineOn / muffLead)
-  else if (type === 'guitar') {
-    const {
-      variant='shineOn',
-      pickup = { cutoff: 3600, q: 1.0 },
-      drive = { type: (variant==='muffLead'?'muff':'soft'), amount: (variant==='muffLead'?0.65:0.2) },
-      comp  = { threshold: (variant==='muffLead'?-20:-18), ratio:(variant==='muffLead'?4:3), attack:0.01, release:0.12, makeup: +3 },
-      post = { lpf:(variant==='muffLead'?4700:5200), mids: [{f:850,q:0.9,g:+2},{f:(variant==='muffLead'?3200:2500),q:1.4,g:(variant==='muffLead'?-2:-1.5)}] },
-      phaser = { stages:4, base:(variant==='muffLead'?900:800), depth:(variant==='muffLead'?700:600), rate:(variant==='muffLead'?0.18:0.16), fb:0.12, mix:(variant==='muffLead'?0.18:0.22) },
-      delayA = { time:0.38, fb:(variant==='muffLead'?0.26:0.28), hc:3600, wet:(variant==='muffLead'?0.16:0.22) },
-      delayB = (variant==='muffLead'? { time:0.52, fb:0.22, hc:3600, wet:0.12 } : null),
-      reverbMix = (variant==='muffLead'?0.2:0.18),
-      osc = { width:0.46, detune: (variant==='muffLead'?7:5), mainGain:(variant==='muffLead'?0.8:0.85), detGain:(variant==='muffLead'?0.2:0.18), subGain:(variant==='muffLead'?0.3:0.25) },
-      adsr = { a:(variant==='muffLead'?0.008:0.006), d:(variant==='muffLead'?0.5:0.35), s:(variant==='muffLead'?0.65:0.6), r:(variant==='muffLead'?1.8:1.6) }
-    } = preset;
-
-    const createPulseOsc = (ctx: AudioContext, freq: number, inputWidth = 0.5) => {
-        const width = !isFinite(inputWidth) || inputWidth === null ? 0.5 : inputWidth;
-        const real = new Float32Array(32), imag = new Float32Array(32);
-        for (let n = 1; n < 32; n++) { 
-            const a = (2/(n*Math.PI)) * Math.sin(n*Math.PI*width); 
-            real[n]=a; 
-        }
-        const wave = ctx.createPeriodicWave(real, imag, { disableNormalization:true });
-        const o = ctx.createOscillator(); o.setPeriodicWave(wave); o.frequency.value=freq; return o;
-    };
-    
-    const pickupLPF = ctx.createBiquadFilter(); pickupLPF.type='lowpass'; pickupLPF.frequency.value=pickup.cutoff; pickupLPF.Q.value=pickup.q;
-    const hpf = ctx.createBiquadFilter(); hpf.type='highpass'; hpf.frequency.value=90; hpf.Q.value=0.7;
-    const compNode = ctx.createDynamicsCompressor();
-    compNode.threshold.value=comp.threshold; compNode.ratio.value=comp.ratio; compNode.attack.value=comp.attack; compNode.release.value=comp.release;
-    const compMakeup = ctx.createGain(); compMakeup.gain.value = dB(comp.makeup||0);
-    const shaper = ctx.createWaveShaper(); shaper.curve = (drive.type==='muff') ? makeMuff(drive.amount) : makeSoftClip(drive.amount); shaper.oversample='4x';
-    const postHPF = ctx.createBiquadFilter(); postHPF.type='highpass'; postHPF.frequency.value=80; postHPF.Q.value=0.7;
-    const mid1 = ctx.createBiquadFilter(); mid1.type='peaking'; mid1.frequency.value=post.mids[0].f; mid1.Q.value=post.mids[0].q; mid1.gain.value=post.mids[0].g;
-    const mid2 = ctx.createBiquadFilter(); mid2.type='peaking'; mid2.frequency.value=post.mids[1].f; mid2.Q.value=post.mids[1].q; mid2.gain.value=post.mids[1].g;
-    const postLPF = ctx.createBiquadFilter(); postLPF.type='lowpass'; postLPF.frequency.value=post.lpf; postLPF.Q.value=0.7;
-    const cab = ctx.createConvolver(); 
-    try {
-      if (cabinetIRUrl) cab.buffer = await loadIR(ctx, cabinetIRUrl);
-    } catch(e) { console.error('[Guitar] Failed to load cabinet IR', e); }
-    const ph = makePhaser(ctx, phaser);
-    const dA = makeFilteredDelay(ctx, {time:delayA.time, fb:delayA.fb, hc:delayA.hc, mix:delayA.wet});
-    const dB_node = delayB ? makeFilteredDelay(ctx, {time:delayB.time, fb:delayB.fb, hc:delayB.hc, mix:delayB.wet}) : null;
-    const revSend = ctx.createGain(); revSend.gain.value = reverbMix;
-    if(reverb.buffer) { revSend.connect(reverb); }
-    
-    let activeVoices = new Map<number, { oscMain: OscillatorNode, oscDet: OscillatorNode, oscSub: OscillatorNode, vGain: GainNode }>();
-
-    api.noteOn = (midi, when=ctx.currentTime)=>{
-      const f = midiToHz(midi);
-      const vGain = ctx.createGain(); vGain.gain.value=0.0;
-
-      const oscMain = createPulseOsc(ctx, f, osc.width);
-      const oscDet  = createPulseOsc(ctx, f, (osc.width || 0.5)+0.06); oscDet.detune.value = osc.detune || 0;
-      const oscSub  = ctx.createOscillator(); oscSub.type='sine'; oscSub.frequency.value=f/2;
-      const gMain=ctx.createGain(); gMain.gain.value=osc.mainGain;
-      const gDet =ctx.createGain(); gDet.gain.value =osc.detGain;
-      const gSub =ctx.createGain(); gSub.gain.value =osc.subGain;
-      const sum = ctx.createGain(); sum.gain.value=0.8;
-      oscMain.connect(gMain).connect(sum);
-      oscDet.connect(gDet).connect(sum);
-      oscSub.connect(gSub).connect(sum);
-      oscMain.start(when); oscDet.start(when); oscSub.start(when);
-
-      sum.connect(vGain);
-      vGain.connect(pickupLPF);
-      pickupLPF.connect(hpf);
-      hpf.connect(compNode);
-      compNode.connect(compMakeup);
-      compMakeup.connect(shaper);
-      shaper.connect(postHPF);
-      postHPF.connect(mid1);
-      mid1.connect(mid2);
-      mid2.connect(postLPF);
-
-      const afterCab = (cabinetIRUrl && cab.buffer) ? cab : postLPF;
-      if (cabinetIRUrl && cab.buffer) {
-        postLPF.connect(cab);
+      let lastInChain: AudioNode = postLPF;
+      if (cabinetIRUrl) {
+          try {
+              cab.buffer = await loadIR(ctx, cabinetIRUrl);
+              postLPF.connect(cab);
+              lastInChain = cab;
+          } catch(e) { console.error('[Guitar] Failed to load cabinet IR', e); }
       }
       
-      afterCab.connect(ph.input);
+      lastInChain.connect(ph.input);
+      let fxChain: AudioNode = ph.output;
 
-      let lastInChain: AudioNode = ph.output;
-
-      if (dA) {
-          lastInChain.connect(dA.input);
-          lastInChain = dA.output;
-      }
+      fxChain.connect(dA.input);
+      fxChain = dA.output;
+      
       if (dB_node) {
-          lastInChain.connect(dB_node.input);
-          lastInChain = dB_node.output;
+        fxChain.connect(dB_node.input);
+        fxChain = dB_node.output;
       }
       
-      const guitarOutput = ctx.createGain();
-      lastInChain.connect(guitarOutput);
-
-      guitarOutput.connect(master);
-      guitarOutput.connect(revSend);
-
-      vGain.gain.cancelScheduledValues(when);
-      vGain.gain.setValueAtTime(vGain.gain.value, when);
-      vGain.gain.linearRampToValueAtTime(1.0, when+adsr.a);
-      vGain.gain.setTargetAtTime(adsr.s, when+adsr.a, adsr.d / 3);
-
-      activeVoices.set(midi, { oscMain, oscDet, oscSub, vGain });
-    };
-    api.noteOff=(midi, when=ctx.currentTime)=>{
-      const voice = activeVoices.get(midi);
-      if(!voice) return;
-      const { oscMain, oscDet, oscSub, vGain } = voice;
-
-      vGain.gain.cancelScheduledValues(when);
-      vGain.gain.setValueAtTime(vGain.gain.value, when);
-      vGain.gain.setTargetAtTime(0.0001, when, adsr.r / 3);
+      const guitarOut = ctx.createGain();
+      fxChain.connect(guitarOut);
+      guitarOut.connect(master);
+      if (reverb.buffer) {
+          guitarOut.connect(revSend);
+          revSend.connect(reverb);
+      }
       
-      const stopTime = when + adsr.r;
-      oscMain.stop(stopTime);
-      oscDet.stop(stopTime);
-      oscSub.stop(stopTime);
-      activeVoices.delete(midi);
-    };
-     api.allNotesOff = () => {
-      activeVoices.forEach((value, key) => {
-        api.noteOff(key, ctx.currentTime);
-      });
-    };
-    api.setParam=(k,v)=>{
-      if (k==='pickupLPF') pickupLPF.frequency.value=v;
-      if (k==='drive') shaper.curve=(drive.type==='muff')?makeMuff(v):makeSoftClip(v);
-    };
-  } else {
-      console.log(`[InstrumentFactory] Unknown or unhandled instrument type: ${type}. Creating fallback gain node.`);
+      const activeVoices = new Map();
+      const createPulseOsc = (ctx: AudioContext, freq: number, inputWidth = 0.5) => {
+            const width = !isFinite(inputWidth) || inputWidth === null ? 0.5 : inputWidth;
+            const real = new Float32Array(32), imag = new Float32Array(32);
+            for (let n = 1; n < 32; n++) { 
+                const a = (2/(n*Math.PI)) * Math.sin(n*Math.PI*width); 
+                real[n]=a; 
+            }
+            const wave = ctx.createPeriodicWave(real, imag, { disableNormalization:true });
+            const o = ctx.createOscillator(); o.setPeriodicWave(wave); o.frequency.value=freq; return o;
+        };
+
+      const updateGuitarNodes = (p: any) => {
+          pickupLPF.frequency.value = p.pickup?.cutoff ?? 3600; pickupLPF.Q.value = p.pickup?.q ?? 1.0;
+          hpf.frequency.value = 90; hpf.Q.value = 0.7;
+          compNode.threshold.value = p.comp?.threshold ?? -18; compNode.ratio.value = p.comp?.ratio ?? 3;
+          compNode.attack.value = p.comp?.attack ?? 0.01; compNode.release.value = p.comp?.release ?? 0.12;
+          compMakeup.gain.value = dB(p.comp?.makeup ?? 3);
+          shaper.curve = (p.drive?.type === 'muff') ? makeMuff(p.drive.amount) : makeSoftClip(p.drive.amount);
+          postHPF.frequency.value = 80;
+          mid1.frequency.value = p.post?.mids[0].f ?? 850; mid1.Q.value = p.post?.mids[0].q ?? 0.9; mid1.gain.value = p.post?.mids[0].g ?? 2;
+          mid2.frequency.value = p.post?.mids[1].f ?? 2500; mid2.Q.value = p.post?.mids[1].q ?? 1.4; mid2.gain.value = p.post?.mids[1].g ?? -1.5;
+          postLPF.frequency.value = p.post?.lpf ?? 5200;
+          revSend.gain.value = p.reverbMix ?? 0.18;
+      };
+      
+      updateGuitarNodes(preset);
+
+      api.noteOn = (midi, when = ctx.currentTime) => {
+        const f = midiToHz(midi);
+        const vGain = ctx.createGain(); vGain.gain.value = 0.0;
+
+        const sum = ctx.createGain(); sum.gain.value = 0.8;
+        const oscMain = createPulseOsc(ctx, f, osc.width);
+        const oscDet  = createPulseOsc(ctx, f, (osc.width || 0.5)+0.06); oscDet.detune.value = osc.detune || 0;
+        const oscSub  = ctx.createOscillator(); oscSub.type='sine'; oscSub.frequency.value=f/2;
+        const gMain=ctx.createGain(); gMain.gain.value=osc.mainGain;
+        const gDet =ctx.createGain(); gDet.gain.value =osc.detGain;
+        const gSub =ctx.createGain(); gSub.gain.value =osc.subGain;
+        
+        oscMain.connect(gMain).connect(sum);
+        oscDet.connect(gDet).connect(sum);
+        oscSub.connect(gSub).connect(sum);
+        
+        sum.connect(vGain);
+        vGain.connect(guitarInput);
+
+        oscMain.start(when); oscDet.start(when); oscSub.start(when);
+
+        vGain.gain.cancelScheduledValues(when);
+        vGain.gain.linearRampToValueAtTime(1.0, when + adsr.a);
+        vGain.gain.setTargetAtTime(adsr.s, when + adsr.a, adsr.d / 3);
+
+        activeVoices.set(midi, { oscMain, oscDet, oscSub, vGain });
+      };
+
+      api.noteOff = (midi, when = ctx.currentTime) => {
+        const voice = activeVoices.get(midi);
+        if (!voice) return;
+        voice.vGain.gain.cancelScheduledValues(when);
+        voice.vGain.gain.setValueAtTime(voice.vGain.gain.value, when);
+        voice.vGain.gain.setTargetAtTime(0.0001, when, adsr.r / 3);
+        const stopTime = when + adsr.r;
+        voice.oscMain.stop(stopTime); voice.oscDet.stop(stopTime); voice.oscSub.stop(stopTime);
+        activeVoices.delete(midi);
+      };
+
+      api.allNotesOff = () => activeVoices.forEach((_, key) => api.noteOff(key));
+      api.setPreset = (p) => { 
+          api.allNotesOff(); 
+          preset = p; 
+          api.preset = p;
+          updateGuitarNodes(p);
+      };
   }
 
   master.connect(output || ctx.destination);
-  
-  console.log(`%c[InstrumentFactory] Build process COMPLETED for type: ${type}. Final output connected.`, 'color: #32CD32;');
+  console.log(`%c[InstrumentFactory] Build COMPLETED for type: ${type}.`, 'color: #32CD32;');
   return api;
 }
+
+    
