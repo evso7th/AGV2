@@ -1,5 +1,4 @@
 
-
 import type { Mood as FractalMood, InstrumentHints as FractalInstrumentHints } from './fractal';
 import { V2_PRESETS } from '@/lib/presets-v2';
 
@@ -188,7 +187,6 @@ type MelodySource = 'motif' | 'harmony_top_note';
 export type InstrumentBehaviorRules = {
     density?: { min: number, max: number };
     register?: { preferred: 'low' | 'mid' | 'high' };
-    /** The name of the DrumKit to use from the DRUM_KITS library. */
     kitName?: string; 
     pattern?: 'ambient_beat' | 'composer' | 'none';
     kickVolume?: number;
@@ -198,15 +196,11 @@ export type InstrumentBehaviorRules = {
         enabled: boolean;
         quietWindows?: { start: number, end: number }[];
     };
-    // #ЗАЧЕМ: Позволяет блюпринту декларативно управлять характером звука.
-    // #ЧТО: Это объект, который может содержать команды для модификации
-    //       стандартного пресета инструмента.
-    // #СВЯЗИ: Читается в `FractalMusicEngine` для динамической настройки звука.
     presetModifiers?: {
-        octaveShift?: number; // Сдвиг октавы для баса
-        cutoff?: number;      // Яркость фильтра
-        resonance?: number;   // Резонанс фильтра
-        distortion?: number;  // Уровень дисторшна
+        octaveShift?: number;
+        cutoff?: number;      
+        resonance?: number;   
+        distortion?: number;  
     };
     fills?: { onBundleBoundary?: boolean };
     useSnare?: boolean;
@@ -218,6 +212,11 @@ export type InstrumentBehaviorRules = {
     soloPlan?: string;
     fingerstyle?: { bars: number[]; pattern: string; voicingName: string; }[];
     strum?: { bars: number[]; pattern: string; voicingName: string; }[];
+    kitOverrides?: {
+      add?: InstrumentType[];
+      remove?: InstrumentType[];
+      substitute?: Partial<Record<InstrumentType, InstrumentType>>;
+    };
 };
 
 

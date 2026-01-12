@@ -43,7 +43,16 @@ export const WinterBluesBlueprint: MusicBlueprint = {
                     }
                 },
                 instrumentRules: {
-                    drums: { pattern: 'composer', kitName: 'blues_calm', density: { min: 0.1, max: 0.3 }, useSnare: false, usePerc: true, rareKick: true },
+                    drums: { 
+                        kitName: 'blues_calm',
+                        density: { min: 0.1, max: 0.3 },
+                        kitOverrides: {
+                            substitute: {
+                                'drum_hihat_closed': 'drum_brush1',
+                                'drum_hihat_open': 'drum_brush2',
+                            }
+                        }
+                    },
                     bass: { techniques: [{ value: 'riff', weight: 1.0 }], density: { min: 0.3, max: 0.5 } },
                     accompaniment: { density: {min: 0.1, max: 0.3} },
                     melody: { 
@@ -69,7 +78,7 @@ export const WinterBluesBlueprint: MusicBlueprint = {
                     harmony: { strategy: 'weighted', options: [ { name: 'piano', weight: 1.0 } ] }
                 },
                 instrumentRules: {
-                    drums: { pattern: 'composer', kitName: 'blues_calm', density: { min: 0.5, max: 0.7 }, ride: { enabled: false } },
+                    drums: { kitName: 'blues_no_cymbals', density: { min: 0.5, max: 0.7 } },
                     melody: { source: 'motif', density: { min: 0.5, max: 0.7 }, register: { preferred: 'mid' }, strum: [ { bars: [0, 1, 2, 3], pattern: 'S_SWING', voicingName: 'Am7_open' } ] },
                     bass: { techniques: [{ value: 'riff', weight: 1.0 }] },
                     accompaniment: { density: {min: 0.1, max: 0.3} },
@@ -90,7 +99,7 @@ export const WinterBluesBlueprint: MusicBlueprint = {
                     harmony: { strategy: 'weighted', options: [ { name: 'piano', weight: 1.0 } ] }
                 },
                 instrumentRules: {
-                    drums: { pattern: 'composer', kitName: 'blues_calm', density: { min: 0.6, max: 0.8 }, ride: { enabled: false } },
+                    drums: { kitName: 'blues_no_cymbals', density: { min: 0.6, max: 0.8 } },
                     melody: { source: 'motif', density: { min: 0.5, max: 0.7 }, register: { preferred: 'mid' }, fingerstyle: [ { bars: [0, 1, 2, 3], pattern: 'F_ROLL12', voicingName: 'Em7_open' } ] },
                     bass: { techniques: [{ value: 'riff', weight: 1.0 }] },
                     accompaniment: { density: {min: 0.1, max: 0.3} },
@@ -111,7 +120,14 @@ export const WinterBluesBlueprint: MusicBlueprint = {
                     harmony: { strategy: 'weighted', options: [ { name: 'piano', weight: 1.0 } ] }
                 },
                 instrumentRules: {
-                    drums: { pattern: 'composer', kitName: 'blues_calm', density: { min: 0.7, max: 0.9 }, ride: { enabled: false }, kickVolume: 1.1 },
+                    drums: { 
+                        kitName: 'blues_no_cymbals', 
+                        density: { min: 0.7, max: 0.9 }, 
+                        kickVolume: 1.1,
+                        kitOverrides: {
+                            add: ['drum_ride']
+                        }
+                    },
                     melody: { 
                         source: 'motif', 
                         density: { min: 0.6, max: 0.8 },
@@ -137,7 +153,7 @@ export const WinterBluesBlueprint: MusicBlueprint = {
                     harmony: { strategy: 'weighted', options: [ { name: 'piano', weight: 1.0 } ] }
                 },
                 instrumentRules: {
-                    drums: { pattern: 'composer', kitName: 'blues_calm', density: { min: 0.6, max: 0.8 }, ride: { enabled: false } },
+                    drums: { kitName: 'blues_no_cymbals', density: { min: 0.6, max: 0.8 } },
                     melody: { source: 'motif', density: { min: 0.5, max: 0.7 }, register: { preferred: 'mid' }, strum: [ { bars: [0, 1, 2, 3], pattern: 'S_4DOWN', voicingName: 'Am7_open' } ] },
                     bass: { techniques: [{ value: 'riff', weight: 1.0 }] },
                     accompaniment: { density: {min: 0.1, max: 0.3} },
@@ -164,7 +180,16 @@ export const WinterBluesBlueprint: MusicBlueprint = {
                     }
                 },
                 instrumentRules: {
-                    drums: { pattern: 'composer', kitName: 'blues_calm', density: { min: 0.4, max: 0.6 } },
+                    drums: { 
+                        kitName: 'blues_calm', 
+                        density: { min: 0.4, max: 0.6 },
+                        kitOverrides: {
+                            substitute: {
+                                'drum_hihat_closed': 'drum_brush1',
+                                'drum_hihat_open': 'drum_brush2',
+                            }
+                        }
+                    },
                     bass: { techniques: [{ value: 'riff', weight: 1.0 }] }, 
                     melody: { 
                         source: 'motif', 
