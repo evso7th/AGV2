@@ -1,5 +1,4 @@
 
-
 import type { FractalEvent, Mood, Genre, Technique, BassSynthParams, InstrumentType, MelodyInstrument, AccompanimentInstrument, ResonanceMatrix, InstrumentHints, AccompanimentTechnique, GhostChord, SfxRule, V1MelodyInstrument, V2MelodyInstrument, BlueprintPart, InstrumentationRules, InstrumentBehaviorRules, BluesMelody, IntroRules, InstrumentPart, DrumKit, BluesGuitarRiff, BluesSoloPhrase, BluesRiffDegree } from './fractal';
 import { ElectronicK, TraditionalK, AmbientK, MelancholicMinorK } from './resonance-matrices';
 import { BlueprintNavigator, type NavigationInfo } from './blueprint-navigator';
@@ -450,19 +449,27 @@ export function createDrumAxiom(
         (ticks as number[]).forEach(tick => {
             const originalPartKey = RiffInstrumentMap[part];
             if (!originalPartKey) return;
+
             const instrumentPool = kit[originalPartKey];
             if (!instrumentPool || instrumentPool.length === 0) return;
+            
             let instrumentToPlay: InstrumentType | undefined = instrumentPool[0];
 
-            if (substitutes[instrumentToPlay as InstrumentType]) {
-                const newInstrument = substitutes[instrumentToPlay as InstrumentType]!;
-                console.log(`%c[DrumFilter] 2. SUBSTITUTED & PASSED: Original '${instrumentToPlay}' -> Played as '${newInstrument}' at tick ${tick}.`, 'color: violet');
-                instrumentToPlay = newInstrument;
-            } else if (!instrumentPool.includes(instrumentToPlay)) {
-                 console.log(`%c[DrumFilter] 2. BLOCKED: '${instrumentToPlay}' at tick ${tick} (Not in final kit for part ${originalPartKey}).`, 'color: #FF6347');
-                return;
+            // --- ФИНАЛЬНАЯ ЛОГИКА ФИЛЬТРА (ПЛАН 1205/1206) ---
+            const originalInstrument = instrumentPool[0]; 
+            const substitution = substitutes[originalInstrument as InstrumentType];
+
+            if (substitution) {
+                console.log(`%c[DrumFilter] 2. SUBSTITUTED & PASSED: Original '${originalInstrument}' -> Played as '${substitution}' at tick ${tick}.`, 'color: violet');
+                instrumentToPlay = substitution;
             } else {
-                 console.log(`%c[DrumFilter] 2. PASSED: '${instrumentToPlay}' at tick ${tick}.`, 'color: #98FB98');
+                if (!instrumentPool.includes(originalInstrument)) {
+                    console.log(`%c[DrumFilter] 2. BLOCKED: '${originalInstrument}' at tick ${tick} (Not in final kit for part ${originalPartKey}).`, 'color: #FF6347');
+                    return; // Блокируем, если инструмента нет и нет замены
+                } else {
+                    console.log(`%c[DrumFilter] 2. PASSED: '${originalInstrument}' at tick ${tick}.`, 'color: #98FB98');
+                    instrumentToPlay = originalInstrument;
+                }
             }
             
             axiomEvents.push({
@@ -876,6 +883,7 @@ export function createBluesOrganLick(
 }
 
     
+
 
 
 
