@@ -242,7 +242,7 @@ export class FractalMusicEngine {
             this.bassPhraseLibrary.push(newBassAxiom);
             this.accompPhraseLibrary.push(createAccompanimentAxiom(firstChord, this.config.mood, this.config.genre, this.random, this.config.tempo, initialRegisterHint));
         }
-        this.currentMelodyMotif = createMelodyMotif(firstChord, this.config.mood, this.random);
+        this.currentMelodyMotif = createAmbientMelodyMotif(firstChord, this.config.mood, this.random);
         this.lastMelodyPlayEpoch = -16;
     }
     
@@ -331,17 +331,22 @@ export class FractalMusicEngine {
   }
   
     private generateDrumEvents(navInfo: NavigationInfo | null): FractalEvent[] {
+        // #ЗАЧЕМ: Этот метод отвечает за сборку и генерацию партии ударных для одного такта.
+        // #ЧТО: Он определяет, какой набор ударных (кит) использовать, применяет к нему
+        //      модификации из блюпринта и передает финальный кит "исполнителю" (createDrumAxiom).
+        // #СВЯЗИ: Является "дирижером" для ударной секции, вызывается из generateOneBar.
+    
         if (!navInfo) return [];
         const drumRules = navInfo.currentPart.instrumentRules?.drums;
         if (!navInfo.currentPart.layers.drums || (drumRules && drumRules.pattern === 'none')) {
             return [];
         }
-    
+        
         console.log(`%c[DrumLogic] 1. Reading command from blueprint...`, 'color: #FFD700');
         const kitName = drumRules?.kitName || `${this.config.genre}_${this.config.mood}`.toLowerCase();
         const overrides = drumRules?.kitOverrides;
-        console.log(`[DrumLogic]   - Kit Name: '${kitName}', Overrides:`, overrides ? JSON.stringify(overrides) : 'none');
-    
+        console.log(`[DrumLogic]   - Kit Name: '${kitName}', Overrides:`, overrides ? JSON.parse(JSON.stringify(overrides)) : 'none');
+        
         const baseKit = (DRUM_KITS[this.config.genre] as any)?.[kitName] ||
                         (DRUM_KITS[this.config.genre] as any)?.[this.config.mood] ||
                         DRUM_KITS.ambient!.intro!;
@@ -349,7 +354,6 @@ export class FractalMusicEngine {
         console.log(`[DrumLogic] 2. Loading base kit: '${baseKit ? 'Found' : 'Not Found'}'`);
         if (!baseKit) return [];
     
-        // Создаем глубокую копию, чтобы не изменять оригинал
         const finalKit: DrumKit = JSON.parse(JSON.stringify(baseKit));
         
         if (overrides) {
@@ -358,7 +362,8 @@ export class FractalMusicEngine {
                 overrides.add.forEach(instrument => {
                     Object.keys(finalKit).forEach(part => {
                         const key = part as keyof DrumKit;
-                        if (instrument.includes(key.slice(0, -1))) { // e.g. 'kick' in 'kicks'
+                        // Check if the instrument belongs to this category based on its name prefix
+                        if (instrument.includes(key.slice(0, -1))) { 
                            if(finalKit[key] && !finalKit[key].includes(instrument)) {
                                 finalKit[key].push(instrument);
                                 console.log(`%c[DrumLogic]   - ADDED: '${instrument}' to '${key}'`, 'color: lightblue');
@@ -383,42 +388,26 @@ export class FractalMusicEngine {
                 Object.entries(overrides.substitute).forEach(([from, to]) => {
                     const fromInst = from as InstrumentType;
                     const toInst = to as InstrumentType;
-                    let modified = false;
                     Object.keys(finalKit).forEach(part => {
                         const key = part as keyof DrumKit;
                         const index = finalKit[key].indexOf(fromInst);
                         if (index > -1) {
                             finalKit[key][index] = toInst;
-                             modified = true;
+                            console.log(`%c[DrumLogic]   - SUBSTITUTED: '${from}' with '${to}' in '${key}'`, 'color: violet');
                         }
                     });
-                     if (modified) console.log(`%c[DrumLogic]   - SUBSTITUTED: '${from}' with '${to}'`, 'color: violet');
                 });
             }
         }
         
-        const axiomResult = createDrumAxiom(finalKit, this.config.genre, this.config.mood, this.config.tempo, this.random, drumRules);
-        
-        const finalKitParts = Object.entries(finalKit).map(([key, value]) => `${key}:[${(value as string[]).join(',')}]`).join('; ');
-        console.log(`[DrumLogic] 4. Final kit for axiom: ${finalKitParts}`);
+        // --- ПЛАН 1207: Удаляем дублирующую логику фильтрации ---
+        // Старый ошибочный фильтр был здесь. Теперь его нет.
+        // Метод просто передает собранный кит и правила в `createDrumAxiom`.
     
-        const finalEvents = axiomResult.events.filter(event => {
-            const part = (event.type as string).split('_')[1] || (event.type as string);
-            const kitKey = Object.keys(finalKit).find(k => part.includes(k.slice(0, -1))) as keyof DrumKit | undefined;
-            
-            if (kitKey && finalKit[kitKey]?.includes(event.type as InstrumentType)) {
-                 console.log(`%c[DrumFilter] 2. PASSED: '${event.type}'`, 'color: #98FB98');
-                 return true;
-            }
-            console.log(`%c[DrumFilter] 2. BLOCKED: '${event.type}'`, 'color: #FF6347');
-            return false;
-        });
-
-        const playedInstruments = [...new Set(finalEvents.map(e => (e.type as string).split('_')[1] || e.type))];
-        console.log(`%c[DrumAxiom] 5. Axiom Generated & Filtered | Final Events: ${finalEvents.length} | Instruments: ${playedInstruments.join(', ')}`, 'color: #ADD8E6');
-        
-        return finalEvents;
+        const axiomResult = createDrumAxiom(finalKit, this.config.genre, this.config.mood, this.config.tempo, this.random, drumRules, overrides);
+        return axiomResult.events;
     }
+    
 
   private _applyMicroMutations(phrase: FractalEvent[], epoch: number): FractalEvent[] {
     if (phrase.length === 0) return [];
@@ -819,24 +808,6 @@ export class FractalMusicEngine {
         return { events: [], instrumentHints };
     }
     
-    let allEvents: FractalEvent[] = [];
-
-    const isChorusBoundary = this.config.genre === 'blues' && this.epoch > 0 && this.epoch % 12 === 0;
-    if (isChorusBoundary) {
-        if (this.random.next() < 0.4) {
-            this.currentBassRiffIndex = this.shuffledBassRiffIndices[this.random.nextInt(this.shuffledBassRiffIndices.length)];
-            console.log(`%c[MUTATION @ Bar ${this.epoch}] Bass riff mutated to index: ${this.currentBassRiffIndex}`, 'color: #87CEEB');
-        }
-        if (this.random.next() < 0.3) {
-            this.currentDrumRiffIndex = this.shuffledDrumRiffIndices[this.random.nextInt(this.shuffledDrumRiffIndices.length)];
-            console.log(`%c[MUTATION @ Bar ${this.epoch}] Drum riff mutated to index: ${this.currentDrumRiffIndex}`, 'color: #FFD700');
-        }
-        if (this.random.next() < 0.5) { 
-            this.currentGuitarRiffId = this.shuffledGuitarRiffIDs[this.random.nextInt(this.shuffledGuitarRiffIDs.length)];
-            console.log(`%c[MUTATION @ Bar ${this.epoch}] Melody riff mutated to ID: ${this.currentGuitarRiffId}`, 'color: #DA70D6');
-        }
-    }
-    
     const drumEvents = this.generateDrumEvents(navInfo) || [];
 
     let melodyEvents: FractalEvent[] = [];
@@ -871,7 +842,7 @@ export class FractalMusicEngine {
             if (this.epoch >= this.lastMelodyPlayEpoch + minInterval && this.random.next() < melodyDensity) {
                 const shouldMutate = this.currentMelodyMotif.length > 0 && this.random.next() > 0.5;
                 const registerHint = melodyRules.register?.preferred;
-                this.currentMelodyMotif = createMelodyMotif(currentChord, this.config.mood, this.random, shouldMutate ? this.currentMelodyMotif : undefined, registerHint, this.config.genre);
+                this.currentMelodyMotif = createAmbientMelodyMotif(currentChord, this.config.mood, this.random, shouldMutate ? this.currentMelodyMotif : undefined, registerHint, this.config.genre);
                 this.lastMelodyPlayEpoch = this.epoch;
             }
             
@@ -906,7 +877,7 @@ export class FractalMusicEngine {
             type: 'melody' as InstrumentType,
             note: e.note + (12 * octaveShift),
         }));
-        allEvents.push(...doubleEvents);
+        melodyEvents.push(...doubleEvents);
         instrumentHints.melody = instrument; 
     }
 
@@ -942,8 +913,7 @@ export class FractalMusicEngine {
         });
     }
 
-    
-    allEvents.push(...(bassEvents || []), ...(drumEvents || []), ...(accompEvents || []), ...(melodyEvents || []), ...(harmonyEvents || []));
+    const allEvents = [...(bassEvents || []), ...(drumEvents || []), ...(accompEvents || []), ...(melodyEvents || []), ...(harmonyEvents || [])];
     
     const sfxRules = navInfo.currentPart.instrumentRules?.sfx as SfxRule | undefined;
     if (navInfo.currentPart.layers.sfx && sfxRules && this.random.next() < sfxRules.eventProbability) {
@@ -1018,5 +988,22 @@ function createMelodyMotif(chord: GhostChord, mood: Mood, random: { next: () => 
     }
     return motif;
 }
+
+    
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
     
