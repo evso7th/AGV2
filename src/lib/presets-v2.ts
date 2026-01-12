@@ -17,13 +17,16 @@ export const V2_PRESETS = {
 
   organ_soft_jazz: {
     type: 'organ',
-    // #ПЛАН316: Изменены drawbars для уникального джазового тембра
-    drawbars: [8, 4, 2, 0, 0, 0, 0, 0, 0], 
-    vibratoRate: 5.2, vibratoDepth: 0.002,
-    leslie: { mode: 'slow', slow: 0.8, fast: 6.5, accel: 0.5 },
-    lpf: 4000, hpf: 120, chorusMix: 0.2, reverbMix: 0.15,
-    // #ПЛАН316: Добавлен саб-бас слой
-    osc: [ { type: 'sine', detune: 0, octave: -1, gain: 0.5 } ]
+    // #ПЛАН 1214: Обновлено для аутентичного джазового тембра
+    drawbars: [8, 0, 8, 5, 0, 3, 0, 0, 0],
+    vibratoRate: 6.2,
+    vibratoDepth: 0.0035,
+    leslie: { mode: 'slow', slow: 0.65, fast: 6.3, accel: 0.7 },
+    lpf: 7600,
+    hpf: 90,
+    chorusMix: 0.12,
+    reverbMix: 0.12,
+    osc: [] // #ПЛАН 1214: Удален саб-осциллятор
   },
 
   // ───────────────────────── SYNTH (AMBIENT PAD / THEREMIN) ─────────────────────────
