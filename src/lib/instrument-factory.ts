@@ -323,7 +323,6 @@ export async function buildMultiInstrument(ctx: AudioContext, {
   else if (type === 'synth') {
       let currentPreset = { ...preset };
 
-      // --- ПЛАН 1239: "Регулятор Давления" ---
       const compNode = ctx.createDynamicsCompressor();
       compNode.threshold.value = -20;
       compNode.knee.value = 10;
@@ -334,8 +333,13 @@ export async function buildMultiInstrument(ctx: AudioContext, {
       const filt = ctx.createBiquadFilter();
       const filt2 = ctx.createBiquadFilter();
       const use2pole = (currentPreset.lpf?.mode !== '24dB');
-      // Сигнал после компрессора идет на фильтры
-      const mainChain = use2pole ? (compNode.connect(filt), filt) : (compNode.connect(filt), filt.connect(filt2), filt2);
+
+      // #ИСПРАВЛЕНО (ПЛАН 1241): Правильно строим цепочку после компрессора
+      compNode.connect(filt);
+      if (!use2pole) {
+        filt.connect(filt2);
+      }
+      const lastFilter = use2pole ? filt : filt2;
       
       const finalChain = ctx.createGain();
       let chorusNode = makeChorus(ctx, currentPreset.chorus || {});
@@ -345,7 +349,7 @@ export async function buildMultiInstrument(ctx: AudioContext, {
       const lfoGain = ctx.createGain();
       lfoNode.start();
 
-      let currentOutput: AudioNode = mainChain;
+      let currentOutput: AudioNode = lastFilter;
       if (currentPreset.chorus?.on) {
           currentOutput.connect(chorusNode.input);
           currentOutput = chorusNode.output;
@@ -379,8 +383,8 @@ export async function buildMultiInstrument(ctx: AudioContext, {
           lfoGain.gain.value = p.lfo?.amount || 0;
           
           if(lfoGain.gain.value > 0) {
+              lfoNode.connect(lfoGain); // This might get connected multiple times, but it's safe
               if (p.lfo?.target === 'filter') {
-                  lfoNode.connect(lfoGain);
                   lfoGain.connect(filt.frequency);
                   if (!use2pole) lfoGain.connect(filt2.frequency);
               }
@@ -405,7 +409,7 @@ export async function buildMultiInstrument(ctx: AudioContext, {
         const f = midiToHz(midi);
         
         const vGain = ctx.createGain(); vGain.gain.value = 0.0;
-        // #ИСПРАВЛЕНО (ПЛАН 1240): Каждый голос подключается к общему компрессору.
+        // #ИСПРАВЛЕНО (ПЛАН 1241): Голоса подключаются к общему компрессору.
         vGain.connect(compNode);
 
         const oscs = (currentPreset.osc || []).map((o: any)=>{
@@ -445,10 +449,9 @@ export async function buildMultiInstrument(ctx: AudioContext, {
         const vGain = voice.gain;
         const r = currentPreset.adsr?.r || 1.0;
         
-        // #ИСПРАВЛЕНО (ПЛАН 1235): "Принудительная Дисциплина"
         vGain.gain.cancelScheduledValues(when); 
-        vGain.gain.setValueAtTime(vGain.gain.value, when); // Захватываем текущее значение
-        vGain.gain.setTargetAtTime(0.0001, when, r / 4); // Плавное затухание
+        vGain.gain.setValueAtTime(vGain.gain.value, when);
+        vGain.gain.setTargetAtTime(0.0001, when, r / 4);
         
         const stopTime = when + r;
         voice.oscs.forEach(({x}: any)=>x.stop(stopTime));
@@ -702,5 +705,3 @@ export async function buildMultiInstrument(ctx: AudioContext, {
   console.log(`%c[InstrumentFactory] Build process COMPLETED for type: ${type}. Final output connected.`, 'color: #32CD32;');
   return api;
 }
-
-    
