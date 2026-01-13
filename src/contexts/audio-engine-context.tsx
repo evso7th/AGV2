@@ -24,6 +24,7 @@ import type { FractalEvent, InstrumentHints } from '@/types/fractal';
 import * as Tone from 'tone';
 import { MelodySynthManagerV2 } from '@/lib/melody-synth-manager-v2';
 import { V2_PRESETS } from '@/lib/presets-v2';
+import { HarmonySynthManager } from '@/lib/harmony-synth-manager';
 
 export function noteToMidi(note: string): number {
     return new (Tone.Frequency as any)(note).toMidi();
@@ -499,4 +500,3 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
     </AudioEngineContext.Provider>
   );
 };
- 
