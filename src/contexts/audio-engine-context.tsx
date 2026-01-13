@@ -1,4 +1,5 @@
 
+
 'use client';
 
 import React, { createContext, useContext, useState, useRef, useCallback, useEffect } from 'react';
@@ -11,7 +12,6 @@ import { FluteSamplerPlayer } from '@/lib/flute-sampler-player';
 import { AccompanimentSynthManager } from '@/lib/accompaniment-synth-manager';
 import { AccompanimentSynthManagerV2 } from '@/lib/accompaniment-synth-manager-v2';
 import { MelodySynthManager } from '@/lib/melody-synth-manager';
-import { BassSynthManager } from '@/lib/bass-synth-manager';
 import { SparklePlayer } from '@/lib/sparkle-player';
 import { SfxSynthManager } from '@/lib/sfx-synth-manager';
 import { getPresetParams } from "@/lib/presets";
@@ -346,11 +346,6 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
             initPromises.push(accompanimentManagerV2Ref.current.init());
         }
 
-        if (!melodyManagerRef.current) {
-            melodyManagerRef.current = new MelodySynthManager(context, gainNodesRef.current.melody!);
-            initPromises.push(melodyManagerRef.current.init());
-        }
-
         if (!blackGuitarSamplerRef.current) {
             blackGuitarSamplerRef.current = new BlackGuitarSampler(context, gainNodesRef.current.melody!);
             initPromises.push(blackGuitarSamplerRef.current.init());
@@ -366,7 +361,8 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
                 context, 
                 gainNodesRef.current.melody!, 
                 telecasterSamplerRef.current!, 
-                blackGuitarSamplerRef.current!
+                blackGuitarSamplerRef.current!,
+                'melody'
             );
             initPromises.push(melodyManagerV2Ref.current.init());
         }
@@ -376,7 +372,8 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
                 context,
                 gainNodesRef.current.bass!,
                 telecasterSamplerRef.current!,
-                blackGuitarSamplerRef.current!
+                blackGuitarSamplerRef.current!,
+                'bass'
             );
             initPromises.push(bassManagerV2Ref.current.init());
         }
@@ -435,7 +432,6 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
     drumMachineRef.current?.stop();
     accompanimentManagerRef.current?.allNotesOff();
     accompanimentManagerV2Ref.current?.allNotesOff();
-    melodyManagerRef.current?.allNotesOff();
     melodyManagerV2Ref.current?.allNotesOff();
     bassManagerV2Ref.current?.allNotesOff();
     harmonyManagerRef.current?.allNotesOff();
