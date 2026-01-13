@@ -1,5 +1,4 @@
 
-
 'use client';
 
 import React, { createContext, useContext, useState, useRef, useCallback, useEffect } from 'react';
@@ -62,7 +61,7 @@ interface AudioEngineContextType {
   isInitializing: boolean;
   isPlaying: boolean;
   useMelodyV2: boolean;
-  initialize: (initialSettings: Omit<WorkerSettings, 'seed'>) => Promise<boolean>;
+  initialize: () => Promise<boolean>;
   setIsPlaying: (playing: boolean) => void;
   updateSettings: (settings: Partial<WorkerSettings>) => void;
   resetWorker: () => void;
@@ -102,7 +101,7 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
   const accompanimentManagerV2Ref = useRef<AccompanimentSynthManagerV2 | null>(null);
   const melodyManagerRef = useRef<MelodySynthManager | null>(null);
   const melodyManagerV2Ref = useRef<MelodySynthManagerV2 | null>(null);
-  const bassManagerV2Ref = useRef<MelodySynthManagerV2 | null>(null); // New V2 manager for bass
+  const bassManagerV2Ref = useRef<MelodySynthManagerV2 | null>(null);
   const harmonyManagerRef = useRef<HarmonySynthManager | null>(null);
   const sparklePlayerRef = useRef<SparklePlayer | null>(null);
   const sfxSynthManagerRef = useRef<SfxSynthManager | null>(null);
@@ -218,7 +217,7 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
     if (accompanimentEvents.length > 0) {
         if (useMelodyV2) {
             if (accompanimentManagerV2Ref.current) {
-                accompanimentManagerV2Ref.current.schedule(accompanimentEvents, barStartTime, tempo, instrumentHints?.accompaniment as keyof typeof V2_PRESETS);
+                accompanimentManagerV2Ref.current.schedule(accompanimentEvents, barStartTime, tempo, barCount, instrumentHints?.accompaniment as keyof typeof V2_PRESETS);
             }
         } else {
             if (accompanimentManagerRef.current) {
@@ -298,7 +297,7 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
     }
   }, [scheduleEvents, toast, resetWorkerCallback]);
 
-  const initialize = useCallback(async (initialSettings: Omit<WorkerSettings, 'seed'>) => {
+  const initialize = useCallback(async () => {
     if (isInitialized || isInitializing) return true;
     
     setIsInitializing(true);
@@ -395,10 +394,8 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
 
         if (!workerRef.current) {
             workerRef.current = new Worker(new URL('@/app/ambient.worker.ts', import.meta.url), { type: 'module' });
-             // Send initial settings to the worker
-            const finalInitialSettings = { ...initialSettings, seed: Date.now() };
-            settingsRef.current = finalInitialSettings;
-            workerRef.current.postMessage({ command: 'init', data: finalInitialSettings });
+             // #ИСПРАВЛЕНО (ПЛАН 1286): Отправляем только базовые настройки, без genre/mood
+            workerRef.current.postMessage({ command: 'init', data: {} });
         }
         
         await Promise.all(initPromises);
@@ -464,14 +461,16 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
 
   const setVolumeCallback = useCallback((part: InstrumentPart, volume: number) => {
     if (part === 'pads' || part === 'effects') return;
+
+    if (part === 'bass' && bassManagerV2Ref.current) {
+      (bassManagerV2Ref.current as any).synth.setVolume(volume);
+       return;
+    }
+
     const gainNode = gainNodesRef.current[part as Exclude<InstrumentPart, 'pads' | 'effects'>];
     if (gainNode && audioContextRef.current) {
         const balancedVolume = volume * (VOICE_BALANCE[part] ?? 1);
         gainNode.gain.setTargetAtTime(balancedVolume, audioContextRef.current.currentTime, 0.01);
-    }
-    // Also update the synth managers for V2 instruments
-    if (part === 'bass' && bassManagerV2Ref.current?.synth) {
-      bassManagerV2Ref.current.synth.setVolume(volume);
     }
   }, []);
 
@@ -497,3 +496,5 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
     </AudioEngineContext.Provider>
   );
 };
+
+    

@@ -119,11 +119,14 @@ const Scheduler = {
             textureSettings: newSettings.textureSettings ? { ...this.settings.textureSettings, ...newSettings.textureSettings } : this.settings.textureSettings,
         };
 
-       // #ИСПРАВЛЕНО (ПЛАН 1273): Удалена логика пересоздания движка.
-       // Теперь эта функция только обновляет конфиг существующего движка.
-       if (fractalMusicEngine) {
-           await fractalMusicEngine.updateConfig(this.settings);
-       }
+        // #ИСПРАВЛЕНО (ПЛАН 1286): Логика создания движка перенесена сюда.
+        // Движок создается или обновляется только при получении полных настроек.
+        if (!fractalMusicEngine) {
+            console.log("[Worker] First settings update. Initializing engine...");
+            await this.initializeEngine(this.settings, true);
+        } else {
+            await fractalMusicEngine.updateConfig(this.settings);
+        }
        
        if (needsRestart) this.start();
     },
@@ -255,8 +258,11 @@ self.onmessage = async (event: MessageEvent) => {
 
     try {
         switch (command) {
+            // #ИСПРАВЛЕНО (ПЛАН 1286): 'init' больше не создает движок.
+            // Он только сохраняет базовые настройки.
             case 'init':
-                await Scheduler.initializeEngine(data, true);
+                Scheduler.settings = { ...Scheduler.settings, ...data };
+                console.log('[Worker] Received "init". Settings stored. Waiting for full update.');
                 break;
             
             case 'start':

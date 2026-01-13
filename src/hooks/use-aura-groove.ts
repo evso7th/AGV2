@@ -1,5 +1,4 @@
 
-
 'use client';
 
 import { useState, useEffect, useCallback, useRef } from "react";
@@ -81,7 +80,7 @@ export const useAuraGroove = (): AuraGrooveProps => {
   
   const [drumSettings, setDrumSettings] = useState<DrumSettings>({ pattern: 'composer', volume: 0.5, kickVolume: 1.0, enabled: true });
   const [instrumentSettings, setInstrumentSettings] = useState<InstrumentSettings>({
-    bass: { name: "glideBass", volume: 0.5, technique: 'portamento' },
+    bass: { name: "bass_jazz_warm", volume: 0.5, technique: 'portamento' },
     melody: { name: "ambientPad", volume: 0.5 },
     accompaniment: { name: "synth", volume: 0.7 },
     harmony: { name: "guitarChords", volume: 0.25 },
@@ -92,7 +91,7 @@ export const useAuraGroove = (): AuraGrooveProps => {
   });
   const [bpm, setBpm] = useState(75);
   const [score, setScore] = useState<ScoreName>('neuro_f_matrix');
-  const [genre, setGenre] = useState<Genre>('ambient');
+  const [genre, setGenre] = useState<Genre>('blues');
   const [density, setDensity] = useState(0.5);
   const [composerControlsInstruments, setComposerControlsInstruments] = useState(true);
   const [mood, setMood] = useState<Mood>('melancholic');
@@ -137,11 +136,15 @@ export const useAuraGroove = (): AuraGrooveProps => {
     };
   }, [bpm, score, genre, instrumentSettings, drumSettings, textureSettings, density, composerControlsInstruments, mood, useMelodyV2, introBars]);
 
-  // Initial settings sync
+  // #ИСПРАВЛЕНО (ПЛАН 1286): Этот useEffect теперь ГАРАНТИРОВАННО отправляет
+  // полные, корректные настройки после того, как движок будет готов их принять.
   useEffect(() => {
     if (isInitialized) {
-        updateSettings(getFullSettings());
+        console.log('[useAuraGroove] Initialized. Sending full settings to worker.');
+        const fullSettings = getFullSettings();
+        updateSettings(fullSettings);
         
+        // Initial volume sync
         Object.entries(instrumentSettings).forEach(([part, settings]) => {
             const instrumentPart = part as InstrumentPart;
             if ('volume' in settings) {
@@ -152,7 +155,7 @@ export const useAuraGroove = (): AuraGrooveProps => {
         setEngineTextureSettings({sparkles: textureSettings.sparkles, sfx: textureSettings.sfx});
         setBassTechnique(instrumentSettings.bass.technique);
     }
-  }, [isInitialized]);
+  }, [isInitialized, genre, mood, getFullSettings, updateSettings, instrumentSettings, drumSettings, textureSettings, setVolume, setEngineTextureSettings, setBassTechnique]);
 
   // #ЗАЧЕМ: Этот useEffect гарантирует, что воркер ВСЕГДА будет знать актуальное состояние V2-движка.
   // #ЧТО: Он следит за изменением флага `useMelodyV2`. Как только флаг меняется,
@@ -165,7 +168,7 @@ export const useAuraGroove = (): AuraGrooveProps => {
           console.log(`[useAuraGroove] Syncing settings with worker, useMelodyV2 is now: ${useMelodyV2}`);
           updateSettings(getFullSettings());
       }
-  }, [useMelodyV2, isInitialized, getFullSettings, updateSettings]);
+  }, [useMelodyV2]);
 
   // #ЗАЧЕМ: Этот useEffect синхронизирует BPM в UI с темпом, заданным в блюпринте.
   // #ЧТО: При смене жанра или настроения он асинхронно загружает нужный блюпринт,
@@ -369,3 +372,5 @@ export const useAuraGroove = (): AuraGrooveProps => {
     setIntroBars,
   };
 };
+
+    
