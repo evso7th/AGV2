@@ -125,7 +125,7 @@ const Scheduler = {
             textureSettings: newSettings.textureSettings ? { ...this.settings.textureSettings, ...newSettings.textureSettings } : this.settings.textureSettings,
         };
 
-       if (scoreChanged || moodChanged || genreChanged || introBarsChanged) {
+       if (fractalMusicEngine && (scoreChanged || moodChanged || genreChanged || introBarsChanged)) {
            // При смене стиля/настроения мы не генерируем новый seed, а используем текущий
            await this.initializeEngine(this.settings, true);
        } else if (fractalMusicEngine) {
@@ -180,7 +180,7 @@ const Scheduler = {
             else if (event.type === 'accompaniment') counts.accompaniment++;
             else if (event.type === 'harmony') counts.harmony++;
             else if (event.type === 'sfx') counts.sfx++;
-            else if (event.type === 'sparkle') counts.sparkle++;
+            else if (event.type === 'sparkle') counts.sparkles++;
             else if ((event.type as string).startsWith('drum_') || (event.type as string).startsWith('perc-')) {
                 counts.drums++;
             }
