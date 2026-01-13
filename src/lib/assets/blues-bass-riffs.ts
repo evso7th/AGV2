@@ -1,3 +1,4 @@
+
 /**
  * #ЗАЧЕМ: Этот файл содержит оцифрованную библиотеку блюзовых басовых риффов,
  *          сгруппированных по настроениям. Он служит "нотной грамотой" для
@@ -111,23 +112,110 @@ export const BLUES_BASS_RIFFS: Record<Mood, BluesBassRiff[]> = {
         }
     ],
     melancholic: [
-        { // Riff M1 — Slow minor boogie
-            I:  [{t:0,deg:'R'},{t:2,deg:'5'},{t:4,deg:'6'},{t:6,deg:'b7'},{t:8,deg:'6'},{t:10,deg:'5'}],
-            IV: [{t:0,deg:'R'},{t:2,deg:'5'},{t:4,deg:'6'},{t:6,deg:'b7'},{t:8,deg:'6'},{t:10,deg:'5'}],
-            V:  [{t:0,deg:'5'},{t:2,deg:'b7'},{t:4,deg:'R'},{t:6,deg:'b7'},{t:8,deg:'5'},{t:10,deg:'R'}],
+        // 1. Walking chromatic
+        {
+            I:  [{t:0,deg:'R'},{t:2,deg:'2'},{t:4,deg:'b3'},{t:6,deg:'4'},{t:8,deg:'#4'},{t:10,deg:'5'}],
+            IV: [{t:0,deg:'R'},{t:2,deg:'2'},{t:4,deg:'b3'},{t:6,deg:'4'},{t:8,deg:'#4'},{t:10,deg:'5'}],
+            V:  [{t:0,deg:'R'},{t:2,deg:'b3'},{t:4,deg:'3'},{t:6,deg:'b5'},{t:8,deg:'5'},{t:10,deg:'b7'}],
             turn: [{t:0,deg:'R'},{t:2,deg:'b7'},{t:4,deg:'6'},{t:6,deg:'b6'},{t:8,deg:'5'},{t:10,deg:'#4'}]
         },
-        { // Riff M2 — b3 и 11 как опоры
-            I:  [{t:0,deg:'b3',d:6},{t:6,deg:'11',d:6}],
-            IV: [{t:0,deg:'b3',d:6},{t:6,deg:'9',d:6}],
-            V:  [{t:0,deg:'5',d:6},{t:6,deg:'b7',d:6}],
-            turn: [{t:0,deg:'b7',d:6},{t:6,deg:'R',d:6}]
+        // 2. Minor Boogie
+        {
+            I:  [{t:0,deg:'R'},{t:2,deg:'5'},{t:4,deg:'b7'},{t:6,deg:'R+8'},{t:8,deg:'b7'},{t:10,deg:'5'}],
+            IV: [{t:0,deg:'R'},{t:2,deg:'5'},{t:4,deg:'b7'},{t:6,deg:'R+8'},{t:8,deg:'b7'},{t:10,deg:'5'}],
+            V:  [{t:0,deg:'5'},{t:2,deg:'R'},{t:4,deg:'b3'},{t:6,deg:'3'},{t:8,deg:'b3'},{t:10,deg:'R'}],
+            turn: [{t:0,deg:'R'},{t:2,deg:'b7'},{t:4,deg:'6'},{t:6,deg:'b6'},{t:8,deg:'5'},{t:10,deg:'#4'}]
         },
-        { // Riff M3 — Мягкий b5 шёпотом
-            I:  [{t:0,deg:'R',d:6},{t:6,deg:'#4',d:2},{t:8,deg:'5',d:4}],
-            IV: [{t:0,deg:'11',d:6},{t:6,deg:'9',d:6}],
-            V:  [{t:0,deg:'R',d:4},{t:4,deg:'3',d:4},{t:8,deg:'b7',d:4}],
-            turn: [{t:0,deg:'2'},{t:2,deg:'b2'},{t:4,deg:'R',d:8}]
+        // 3. Two-feel with push
+        {
+            I:  [{t:0,deg:'R',d:4},{t:4,deg:'R',d:2},{t:6,deg:'b3',d:3},{t:9,deg:'4',d:3}],
+            IV: [{t:0,deg:'R',d:4},{t:4,deg:'R',d:2},{t:6,deg:'b3',d:3},{t:9,deg:'4',d:3}],
+            V:  [{t:0,deg:'R',d:4},{t:4,deg:'R',d:2},{t:6,deg:'3',d:3},{t:9,deg:'b3',d:3}],
+            turn: [{t:0,deg:'R'},{t:2,deg:'b7'},{t:4,deg:'6'},{t:6,deg:'b6'},{t:8,deg:'5'},{t:10,deg:'#4'}]
+        },
+        // 4. Arpeggio focus
+        {
+            I:  [{t:0,deg:'R'},{t:2,deg:'b3'},{t:4,deg:'5'},{t:6,deg:'b7'},{t:8,deg:'R+8'},{t:10,deg:'b7'}],
+            IV: [{t:0,deg:'R'},{t:2,deg:'b3'},{t:4,deg:'5'},{t:6,deg:'b7'},{t:8,deg:'R+8'},{t:10,deg:'b7'}],
+            V:  [{t:0,deg:'R'},{t:2,deg:'3'},{t:4,deg:'5'},{t:6,deg:'b7'},{t:8,deg:'R+8'},{t:10,deg:'b7'}],
+            turn: [{t:0,deg:'R'},{t:2,deg:'b7'},{t:4,deg:'6'},{t:6,deg:'b6'},{t:8,deg:'5'},{t:10,deg:'#4'}]
+        },
+        // 5. b5 Passing tone
+        {
+            I:  [{t:0,deg:'R'},{t:2,deg:'b3'},{t:4,deg:'4'},{t:6,deg:'b5'},{t:8,deg:'4'},{t:10,deg:'b3'}],
+            IV: [{t:0,deg:'R'},{t:2,deg:'b3'},{t:4,deg:'4'},{t:6,deg:'b5'},{t:8,deg:'4'},{t:10,deg:'b3'}],
+            V:  [{t:0,deg:'R'},{t:2,deg:'3'},{t:4,deg:'4'},{t:6,deg:'b5'},{t:8,deg:'4'},{t:10,deg:'3'}],
+            turn: [{t:0,deg:'R'},{t:2,deg:'b7'},{t:4,deg:'6'},{t:6,deg:'b6'},{t:8,deg:'5'},{t:10,deg:'#4'}]
+        },
+        // 6. Step-down
+        {
+            I:  [{t:0,deg:'R+8'},{t:2,deg:'b7'},{t:4,deg:'6'},{t:6,deg:'5'},{t:8,deg:'4'},{t:10,deg:'b3'}],
+            IV: [{t:0,deg:'R+8'},{t:2,deg:'b7'},{t:4,deg:'6'},{t:6,deg:'5'},{t:8,deg:'4'},{t:10,deg:'b3'}],
+            V:  [{t:0,deg:'R+8'},{t:2,deg:'b7'},{t:4,deg:'5'},{t:6,deg:'3'},{t:8,deg:'R'},{t:10,deg:'b7'}],
+            turn: [{t:0,deg:'R'},{t:2,deg:'b7'},{t:4,deg:'6'},{t:6,deg:'b6'},{t:8,deg:'5'},{t:10,deg:'#4'}]
+        },
+        // 7. Triplet Feel
+        {
+            I:  [{t:0,deg:'R',d:3},{t:3,deg:'b3',d:3},{t:6,deg:'5',d:3},{t:9,deg:'b7',d:3}],
+            IV: [{t:0,deg:'R',d:3},{t:3,deg:'b3',d:3},{t:6,deg:'5',d:3},{t:9,deg:'b7',d:3}],
+            V:  [{t:0,deg:'R',d:3},{t:3,deg:'3',d:3},{t:6,deg:'5',d:3},{t:9,deg:'b7',d:3}],
+            turn: [{t:0,deg:'R'},{t:2,deg:'b7'},{t:4,deg:'6'},{t:6,deg:'b6'},{t:8,deg:'5'},{t:10,deg:'#4'}]
+        },
+        // 8. Pedal with movement
+        {
+            I:  [{t:0,deg:'R',d:4},{t:4,deg:'b3',d:2},{t:6,deg:'5',d:2},{t:8,deg:'b3',d:4}],
+            IV: [{t:0,deg:'R',d:4},{t:4,deg:'b3',d:2},{t:6,deg:'5',d:2},{t:8,deg:'b3',d:4}],
+            V:  [{t:0,deg:'R',d:4},{t:4,deg:'3',d:2},{t:6,deg:'5',d:2},{t:8,deg:'3',d:4}],
+            turn: [{t:0,deg:'R'},{t:2,deg:'b7'},{t:4,deg:'6'},{t:6,deg:'b6'},{t:8,deg:'5'},{t:10,deg:'#4'}]
+        },
+        // 9. Upper register
+        {
+            I:  [{t:0,deg:'5'},{t:2,deg:'b7'},{t:4,deg:'R+8'},{t:6,deg:'b7'},{t:8,deg:'5'},{t:10,deg:'b3'}],
+            IV: [{t:0,deg:'5'},{t:2,deg:'b7'},{t:4,deg:'R+8'},{t:6,deg:'b7'},{t:8,deg:'5'},{t:10,deg:'b3'}],
+            V:  [{t:0,deg:'5'},{t:2,deg:'b7'},{t:4,deg:'R+8'},{t:6,deg:'b7'},{t:8,deg:'5'},{t:10,deg:'3'}],
+            turn: [{t:0,deg:'R'},{t:2,deg:'b7'},{t:4,deg:'6'},{t:6,deg:'b6'},{t:8,deg:'5'},{t:10,deg:'#4'}]
+        },
+        // 10. Syncopated turn
+        {
+            I:  [{t:0,deg:'R',d:3},{t:3,deg:'5',d:3},{t:6,deg:'b7',d:2},{t:8,deg:'6',d:2},{t:10,deg:'5',d:2}],
+            IV: [{t:0,deg:'R',d:3},{t:3,deg:'5',d:3},{t:6,deg:'b7',d:2},{t:8,deg:'6',d:2},{t:10,deg:'5',d:2}],
+            V:  [{t:0,deg:'R',d:3},{t:3,deg:'5',d:3},{t:6,deg:'b7',d:2},{t:8,deg:'6',d:2},{t:10,deg:'5',d:2}],
+            turn: [{t:0,deg:'R'},{t:2,deg:'b7'},{t:4,deg:'6'},{t:6,deg:'b6'},{t:8,deg:'5'},{t:10,deg:'#4'}]
+        },
+        // 11. Minor 6th color
+        {
+            I:  [{t:0,deg:'R'},{t:2,deg:'b3'},{t:4,deg:'5'},{t:6,deg:'6'},{t:8,deg:'b7'},{t:10,deg:'6'}],
+            IV: [{t:0,deg:'R'},{t:2,deg:'b3'},{t:4,deg:'5'},{t:6,deg:'6'},{t:8,deg:'b7'},{t:10,deg:'6'}],
+            V:  [{t:0,deg:'R'},{t:2,deg:'3'},{t:4,deg:'5'},{t:6,deg:'6'},{t:8,deg:'b7'},{t:10,deg:'6'}],
+            turn: [{t:0,deg:'R'},{t:2,deg:'b7'},{t:4,deg:'6'},{t:6,deg:'b6'},{t:8,deg:'5'},{t:10,deg:'#4'}]
+        },
+        // 12. Question-Answer
+        {
+            I:  [{t:0,deg:'R',d:6},{t:6,deg:'b3',d:2},{t:8,deg:'4',d:2},{t:10,deg:'b5',d:2}],
+            IV: [{t:0,deg:'R',d:6},{t:6,deg:'b3',d:2},{t:8,deg:'4',d:2},{t:10,deg:'b5',d:2}],
+            V:  [{t:0,deg:'R',d:6},{t:6,deg:'3',d:2},{t:8,deg:'4',d:2},{t:10,deg:'b5',d:2}],
+            turn: [{t:0,deg:'R'},{t:2,deg:'b7'},{t:4,deg:'6'},{t:6,deg:'b6'},{t:8,deg:'5'},{t:10,deg:'#4'}]
+        },
+        // 13. Box shape
+        {
+            I:  [{t:0,deg:'R'},{t:3,deg:'b3'},{t:6,deg:'4'},{t:9,deg:'5'}],
+            IV: [{t:0,deg:'R'},{t:3,deg:'b3'},{t:6,deg:'4'},{t:9,deg:'5'}],
+            V:  [{t:0,deg:'R'},{t:3,deg:'3'},{t:6,deg:'4'},{t:9,deg:'5'}],
+            turn: [{t:0,deg:'R'},{t:2,deg:'b7'},{t:4,deg:'6'},{t:6,deg:'b6'},{t:8,deg:'5'},{t:10,deg:'#4'}]
+        },
+        // 14. Descending b7 walk
+        {
+            I:  [{t:0,deg:'R+8'},{t:3,deg:'b7'},{t:6,deg:'5'},{t:9,deg:'b3'}],
+            IV: [{t:0,deg:'R+8'},{t:3,deg:'b7'},{t:6,deg:'5'},{t:9,deg:'b3'}],
+            V:  [{t:0,deg:'R+8'},{t:3,deg:'b7'},{t:6,deg:'5'},{t:9,deg:'3'}],
+            turn: [{t:0,deg:'R'},{t:2,deg:'b7'},{t:4,deg:'6'},{t:6,deg:'b6'},{t:8,deg:'5'},{t:10,deg:'#4'}]
+        },
+        // 15. Simple quarter note feel
+        {
+            I:  [{t:0,deg:'R',d:3},{t:3,deg:'b3',d:3},{t:6,deg:'5',d:3},{t:9,deg:'b3',d:3}],
+            IV: [{t:0,deg:'R',d:3},{t:3,deg:'b3',d:3},{t:6,deg:'5',d:3},{t:9,deg:'b3',d:3}],
+            V:  [{t:0,deg:'R',d:3},{t:3,deg:'3',d:3},{t:6,deg:'5',d:3},{t:9,deg:'3',d:3}],
+            turn: [{t:0,deg:'R'},{t:2,deg:'b7'},{t:4,deg:'6'},{t:6,deg:'b6'},{t:8,deg:'5'},{t:10,deg:'#4'}]
         }
     ],
     gloomy: [
@@ -209,3 +297,5 @@ BLUES_BASS_RIFFS.contemplative = BLUES_BASS_RIFFS.contemplative;
 
 // Copy 'joyful' to 'epic' as a starting point
 BLUES_BASS_RIFFS.epic = BLUES_BASS_RIFFS.joyful;
+
+    
