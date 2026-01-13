@@ -1,3 +1,4 @@
+
 // ─────────────────────────────────────────────────────────────────────────────
 // MultiInstrument WebAudio: organ | synth | mellotron | guitar
 // С адаптивным ADSR и управлением громкостью
@@ -397,6 +398,9 @@ export async function buildMultiInstrument(ctx: AudioContext, {
     // Instrument Volume (управляется через API)
     const instrumentGain = ctx.createGain();
     const presetName = preset.name || type;
+    
+    // #ИСПРАВЛЕНО (ПЛАН 1258): Реализована правильная иерархия определения громкости.
+    //                          Теперь `volume` из пресета имеет наивысший приоритет.
     const baseVolume = preset.volume ?? DEFAULT_VOLUMES[presetName] ?? DEFAULT_VOLUMES[type] ?? 0.7;
     instrumentGain.gain.value = baseVolume;
 
@@ -414,8 +418,7 @@ export async function buildMultiInstrument(ctx: AudioContext, {
             if (buf) reverb.buffer = buf;
         });
     }
-    reverb.connect(reverbWet);
-    reverbWet.connect(master);
+    reverb.connect(master);
 
     // ───── API ─────
     const api: InstrumentAPI = {
@@ -447,9 +450,87 @@ export async function buildMultiInstrument(ctx: AudioContext, {
     };
 
     // ══════════════════════════════════════════════════════════════════════════
-    // SYNTH
+    // ORGAN (drawbar + Leslie)
     // ══════════════════════════════════════════════════════════════════════════
-    if (type === 'synth') {
+    if (type === 'organ') {
+        const activeVoices = new Map<number, VoiceState & { oscs: OscillatorNode[]; click: AudioBufferSourceNode | null }>();
+        const organOut = ctx.createGain();
+        const lpf = ctx.createBiquadFilter(); lpf.type = 'lowpass';
+        const hpf = ctx.createBiquadFilter(); hpf.type = 'highpass';
+        const chorus = makeChorus(ctx);
+        const revSend = ctx.createGain();
+
+        organOut.connect(hpf).connect(lpf).connect(chorus.input);
+        chorus.output.connect(expressionGain).connect(instrumentGain).connect(master);
+        chorus.output.connect(revSend).connect(reverb);
+        
+        const updateNodesFromPreset = (p: any) => {
+            lpf.frequency.value = p.lpf ?? 8000;
+            hpf.frequency.value = p.hpf ?? 90;
+            chorus.setMix(p.chorusMix ?? 0.2);
+            revSend.gain.value = p.reverbMix ?? 0.15;
+            if (p.gain !== undefined) instrumentGain.gain.value = p.gain;
+        };
+        
+        updateNodesFromPreset(preset);
+
+        api.noteOn = (midi, when = ctx.currentTime, velocity = 1.0) => {
+            const f = midiToHz(midi);
+            const p = api.preset;
+            const drawbars = p.drawbars ?? [8, 8, 4, 0, 0, 0, 0, 0, 0];
+            const foot = [16, 5.333, 8, 4, 2.666, 2, 1.6, 1.333, 1];
+            const vGain = ctx.createGain(); vGain.connect(organOut);
+
+            const oscs = drawbars.map((level: number, i: number) => {
+                if (level === 0) return null;
+                const osc = ctx.createOscillator();
+                osc.type = 'sine';
+                const ratio = 8 / foot[i];
+                osc.frequency.setValueAtTime(f * ratio, when);
+                const g = ctx.createGain();
+                g.gain.value = (level / 8) * (1 - (i*0.05)) * 0.4;
+                osc.connect(g).connect(vGain);
+                osc.start(when);
+                return osc;
+            }).filter(Boolean) as OscillatorNode[];
+            
+            let clickNode: AudioBufferSourceNode | null = null;
+            if (p.keyClick > 0) {
+                 const click = ctx.createBufferSource();
+                 const noise = ctx.createBuffer(1, ctx.sampleRate * p.keyClick, ctx.sampleRate);
+                 const d = noise.getChannelData(0);
+                 for (let i = 0; i < d.length; i++) d[i] = (Math.random() * 2 - 1);
+                 click.buffer = noise;
+                 const clickEnv = ctx.createGain(); clickEnv.gain.value = 0.6;
+                 click.connect(clickEnv).connect(vGain);
+                 click.start(when); click.stop(when + p.keyClick);
+                 clickNode = click;
+            }
+
+            const voiceState = adsrController.triggerAttack(vGain, when, p.adsr, velocity);
+            activeVoices.set(midi, { ...voiceState, oscs, click: clickNode });
+        };
+        
+        api.noteOff = (midi, when = ctx.currentTime) => {
+            const voice = activeVoices.get(midi);
+            if (!voice) return;
+            const stopTime = adsrController.triggerRelease(voice, when, api.preset.adsr);
+            voice.oscs.forEach(o => o.stop(stopTime + 0.1));
+            activeVoices.delete(midi);
+        };
+        
+        api.allNotesOff = () => {
+            activeVoices.forEach((voice, midi) => api.noteOff(midi, ctx.currentTime));
+        };
+        
+        api.setPreset = (p) => { api.preset = p; updateNodesFromPreset(p); };
+
+    }
+
+    // ══════════════════════════════════════════════════════════════════════════
+    // SYNTH (subtractive pad/lead)
+    // ══════════════════════════════════════════════════════════════════════════
+    else if (type === 'synth') {
         let currentPreset = { ...preset };
 
         // ─── Static Graph ───
