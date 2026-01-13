@@ -339,7 +339,7 @@ export const buildBassEngine = async (
     
     // ─── Master ───
     const master = ctx.createGain();
-    master.gain.value = 0.85;
+    master.gain.value = 0.425; // Halved from 0.85
     
     // ─── Reverb ───
     const reverb = ctx.createConvolver();
@@ -873,65 +873,6 @@ const makeFilteredDelay = (ctx: AudioContext, opts: { time?: number; fb?: number
     };
 };
 
-const makePhaser = (ctx: AudioContext, opts: any = {}): BypassableFX & { setRate: (r: number) => void; setDepth: (d: number) => void } => {
-    const { stages = 4, base = 800, depth = 600, rate = 0.16, fb = 0.12, mix = 0.2 } = opts;
-    const input = ctx.createGain();
-    const output = ctx.createGain();
-    const dry = ctx.createGain();
-    const wet = ctx.createGain();
-
-    dry.gain.value = 1 - mix;
-    wet.gain.value = mix;
-
-    let head: AudioNode = input;
-    const aps: BiquadFilterNode[] = [];
-
-    for (let i = 0; i < stages; i++) {
-        const ap = ctx.createBiquadFilter();
-        ap.type = 'allpass';
-        ap.frequency.value = base * ((i % 2) ? 1.2 : 0.8);
-        ap.Q.value = 0.6;
-        head.connect(ap);
-        head = ap;
-        aps.push(ap);
-    }
-
-    if (aps.length > 0) {
-        const fbG = ctx.createGain();
-        fbG.gain.value = fb;
-        aps[aps.length - 1].connect(fbG);
-        fbG.connect(aps[0]);
-    }
-
-    const lfo = ctx.createOscillator();
-    lfo.type = 'sine';
-    lfo.frequency.value = rate;
-    const lfoG = ctx.createGain();
-    lfoG.gain.value = depth;
-    lfo.connect(lfoG);
-    aps.forEach(ap => lfoG.connect(ap.frequency));
-    lfo.start();
-
-    input.connect(dry).connect(output);
-    if (aps.length > 0) {
-        aps[aps.length - 1].connect(wet);
-    } else {
-        input.connect(wet);
-    }
-    wet.connect(output);
-
-    return {
-        input, output,
-        setMix: (m: number) => {
-            const v = clamp(m, 0, 1);
-            dry.gain.setTargetAtTime(1 - v, ctx.currentTime, 0.02);
-            wet.gain.setTargetAtTime(v, ctx.currentTime, 0.02);
-        },
-        setRate: (r: number) => { lfo.frequency.value = r; },
-        setDepth: (d: number) => { lfoG.gain.value = d; }
-    };
-};
-
 // ═══════════════════════════════════════════════════════════════════════════
 // АДАПТИВНЫЙ ADSR КОНТРОЛЛЕР
 // ═══════════════════════════════════════════════════════════════════════════
@@ -998,76 +939,6 @@ class AdaptiveADSR {
             nodes: []
         };
     }
-
-    /**
-     * Умный Release — адаптируется к текущей фазе огибающей
-     */
-    triggerRelease(
-        voice: VoiceState,
-        when: number,
-        adsr: Partial<ADSRParams> = {}
-    ): number {
-        const params = { ...this.defaultParams, ...adsr };
-        const r = Math.max(params.r, this.MIN_RELEASE);
-        
-        const now = this.ctx.currentTime;
-        const releaseTime = Math.max(when, now);
-        const elapsed = releaseTime - voice.startTime;
-        
-        const gainNode = voice.gain;
-        
-        // Вычисляем, в какой фазе мы находимся
-        const attackEnd = params.a;
-        const decayEnd = params.a + params.d;
-        
-        gainNode.gain.cancelScheduledValues(releaseTime);
-        
-        if (elapsed < attackEnd) {
-            // ─── Мы всё ещё в Attack ───
-            // Проблема: gain ещё низкий, резкий release = щелчок
-            // Решение: сначала быстро поднять до разумного уровня, потом release
-            
-            const currentApproxGain = (elapsed / attackEnd) * voice.targetPeak;
-            const quickAttackTime = Math.min(0.03, (attackEnd - elapsed) * 0.5);
-            const peakGain = Math.max(currentApproxGain + 0.1, params.s * 0.5);
-            
-            gainNode.gain.setValueAtTime(currentApproxGain, releaseTime);
-            gainNode.gain.linearRampToValueAtTime(peakGain, releaseTime + quickAttackTime);
-            gainNode.gain.setTargetAtTime(0.0001, releaseTime + quickAttackTime, r / 3);
-            
-            return releaseTime + quickAttackTime + r;
-            
-        } else if (elapsed < decayEnd) {
-            // ─── Мы в Decay ───
-            // Gain падает от peak к sustain
-            const decayProgress = (elapsed - attackEnd) / params.d;
-            const currentApproxGain = voice.targetPeak - (voice.targetPeak - params.s) * decayProgress;
-            
-            gainNode.gain.setValueAtTime(currentApproxGain, releaseTime);
-            gainNode.gain.setTargetAtTime(0.0001, releaseTime, r / 3);
-            
-            return releaseTime + r;
-            
-        } else {
-            // ─── Мы в Sustain ───
-            // Нормальный release
-            gainNode.gain.setValueAtTime(params.s, releaseTime);
-            gainNode.gain.setTargetAtTime(0.0001, releaseTime, r / 4);
-            
-            return releaseTime + r;
-        }
-    }
-    
-    /**
-     * Форсированный release для allNotesOff
-     */
-    forceRelease(voice: VoiceState, releaseTime: number = 0.1): number {
-        const now = this.ctx.currentTime;
-        voice.gain.gain.cancelScheduledValues(now);
-        voice.gain.gain.setValueAtTime(voice.gain.gain.value, now);
-        voice.gain.gain.setTargetAtTime(0.0001, now, releaseTime / 4);
-        return now + releaseTime;
-    }
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -1111,95 +982,6 @@ const DEFAULT_VOLUMES: Record<string, number> = {
 // #СВЯЗИ: Вызывается из `buildMultiInstrument`, если `type` пресета равен 'organ'.
 
 interface OrganVoice { oscillators: OscillatorNode[]; gains: GainNode[]; voiceGain: GainNode; percGain?: GainNode; percOsc?: OscillatorNode; clickSource?: AudioBufferSourceNode; startTime: number; midi: number; }
-
-export const buildOrganEngine = async (ctx: AudioContext, preset: any, options: { output?: AudioNode; plateIRUrl?: string | null; } = {}) => {
-    console.log('%c[OrganEngine] Building Hammond-style organ...', 'color: #8B4513; font-weight: bold;');
-    const output = options.output || ctx.destination; let currentPreset = { ...preset };
-    const tonewheelWave = ctx.createPeriodicWave(new Float32Array([0, 1, 0.02, 0.015, 0.008]), new Float32Array(5));
-    const clickIntensity = currentPreset.keyClick ?? 0.004; let clickBuffer = createKeyClick(ctx, 0.008, clickIntensity);
-    const organSum = ctx.createGain(); organSum.gain.value = 0.7;
-    const hpf = ctx.createBiquadFilter(); hpf.type = 'highpass'; hpf.frequency.value = currentPreset.hpf ?? 60;
-    const lpf = ctx.createBiquadFilter(); lpf.type = 'lowpass'; lpf.frequency.value = currentPreset.lpf ?? 5000;
-    const vibrato = createVibratoScanner(ctx, { type: currentPreset.vibrato?.type !== 'off' ? (currentPreset.vibrato?.type || 'C2') : 'C2', rate: currentPreset.vibrato?.rate ?? 6.5 });
-    const vibratoBypass = ctx.createGain(); vibratoBypass.gain.value = currentPreset.vibrato?.type === 'off' ? 1 : 0;
-    const vibratoWet = ctx.createGain(); vibratoWet.gain.value = currentPreset.vibrato?.type === 'off' ? 0 : 1;
-    const leslie = createLeslie(ctx, { mode: currentPreset.leslie?.mode ?? 'slow', slow: currentPreset.leslie?.slow ?? 0.8, fast: currentPreset.leslie?.fast ?? 6.5, accel: currentPreset.leslie?.accel ?? 0.8, hornDepth: 0.8, drumDepth: 0.5, mix: currentPreset.leslie?.mix ?? 0.7 });
-    const leslieBypass = ctx.createGain(); leslieBypass.gain.value = currentPreset.leslie?.on === false ? 1 : 0;
-    const leslieWet = ctx.createGain(); leslieWet.gain.value = currentPreset.leslie?.on === false ? 0 : 1;
-    const instrumentGain = ctx.createGain(); instrumentGain.gain.value = currentPreset.volume ?? 0.7;
-    const expressionGain = ctx.createGain(); expressionGain.gain.value = 1;
-    const master = ctx.createGain(); master.gain.value = 0.8;
-    const reverb = ctx.createConvolver(); const reverbWet = ctx.createGain(); reverbWet.gain.value = currentPreset.reverbMix ?? 0.15;
-    if (options.plateIRUrl) { loadIR(ctx, options.plateIRUrl).then(buf => { if (buf) reverb.buffer = buf; }); }
-    organSum.connect(hpf).connect(lpf);
-    lpf.connect(vibrato.input); lpf.connect(vibratoBypass); vibrato.output.connect(vibratoWet);
-    const vibratoMerge = ctx.createGain(); vibratoBypass.connect(vibratoMerge); vibratoWet.connect(vibratoMerge);
-    vibratoMerge.connect(leslie.input); vibratoMerge.connect(leslieBypass); leslie.output.connect(leslieWet);
-    const leslieMerge = ctx.createGain(); leslieBypass.connect(leslieMerge); leslieWet.connect(leslieMerge);
-    leslieMerge.connect(expressionGain).connect(instrumentGain).connect(master);
-    leslieMerge.connect(reverbWet).connect(reverb).connect(master);
-    master.connect(output);
-    const activeVoices = new Map<number, OrganVoice>();
-    const DRAWBAR_RATIOS = [0.5, 1.498, 1, 2, 2.997, 4, 5.04, 5.994, 8];
-    const adsrController = new AdaptiveADSR(ctx);
-    const noteOn = (midi: number, when = ctx.currentTime, velocity = 1.0) => {
-        if (activeVoices.has(midi)) { noteOff(midi, when); }
-        const f0 = midiToHz(midi); const vel = clamp(velocity, 0, 1);
-        const drawbars = currentPreset.drawbars || [8, 8, 8, 0, 0, 0, 0, 0, 0];
-        const adsr = currentPreset.adsr || { a: 0.005, d: 0.1, s: 0.9, r: 0.1 };
-        const voiceGain = ctx.createGain(); voiceGain.gain.value = 0; voiceGain.connect(organSum);
-        const oscillators: OscillatorNode[] = []; const gains: GainNode[] = [];
-        for (let i = 0; i < 9; i++) {
-            const dbValue = drawbars[i] ?? 0; if (dbValue === 0) continue;
-            const osc = ctx.createOscillator(); osc.setPeriodicWave(tonewheelWave); osc.frequency.value = f0 * DRAWBAR_RATIOS[i];
-            const gain = ctx.createGain(); gain.gain.value = (dbValue / 8) * 0.35 * vel;
-            osc.connect(gain).connect(voiceGain); osc.start(when); oscillators.push(osc); gains.push(gain);
-        }
-        let percGain: GainNode | undefined, percOsc: OscillatorNode | undefined;
-        if (currentPreset.percussion?.on && activeVoices.size === 0) {
-            const percHarmonic = currentPreset.percussion.harmonic === '3rd' ? 2.997 : 2; const percDecay = currentPreset.percussion.decay === 'slow' ? 0.5 : 0.2;
-            const percVol = currentPreset.percussion.volume === 'soft' ? 0.15 : 0.25;
-            percOsc = ctx.createOscillator(); percOsc.setPeriodicWave(tonewheelWave); percOsc.frequency.value = f0 * percHarmonic;
-            percGain = ctx.createGain(); percGain.gain.value = percVol * vel; percGain.gain.setTargetAtTime(0, when, percDecay / 3);
-            percOsc.connect(percGain).connect(voiceGain); percOsc.start(when); percOsc.stop(when + percDecay + 0.1);
-        }
-        let clickSource: AudioBufferSourceNode | undefined;
-        if (clickIntensity > 0 && clickBuffer) {
-            clickSource = ctx.createBufferSource(); clickSource.buffer = clickBuffer; const clickGain = ctx.createGain(); clickGain.gain.value = vel * 0.8;
-            clickSource.connect(clickGain).connect(voiceGain); clickSource.start(when);
-        }
-        const voiceState = adsrController.triggerAttack(vGain, when, adsr, vel);
-        activeVoices.set(midi, { ...voiceState, oscillators, gains, percGain, percOsc, clickSource, startTime: when, midi });
-    };
-    const noteOff = (midi: number, when = ctx.currentTime) => {
-        const voice = activeVoices.get(midi); if (!voice) return;
-        const adsr = currentPreset.adsr || { a: 0.005, d: 0.1, s: 0.9, r: 0.1 };
-        const stopTime = adsrController.triggerRelease(voice, when, adsr);
-        voice.oscillators.forEach(osc => osc.stop(stopTime + 0.1)); if (voice.percOsc) { try { voice.percOsc.stop(stopTime); } catch {} }
-        activeVoices.delete(midi);
-    };
-    const allNotesOff = () => { activeVoices.forEach((voice, midi) => noteOff(midi, ctx.currentTime)); };
-    const updateFromPreset = (p: any) => { /* ... update logic ... */ };
-    console.log('%c[OrganEngine] Ready!', 'color: #32CD32; font-weight: bold;');
-    return {
-        noteOn, noteOff, allNotesOff,
-        connect: (dest?: AudioNode) => master.connect(dest || output), disconnect: () => { try { master.disconnect(); } catch {} },
-        setPreset: (p: any) => { allNotesOff(); currentPreset = { ...p }; updateFromPreset(currentPreset); },
-        setParam: (key: string, value: any) => { /* ... param logic ... */ },
-        setVolume: (v: number) => { instrumentGain.gain.setTargetAtTime(clamp(v, 0, 1), ctx.currentTime, 0.02); },
-        getVolume: () => instrumentGain.gain.value,
-        setExpression: (v: number) => { expressionGain.gain.setTargetAtTime(clamp(v, 0, 1), ctx.currentTime, 0.01); },
-        setLeslie: (mode: 'stop' | 'slow' | 'fast') => leslie.setMode(mode),
-        toggleLeslie: () => { const current = leslie.getMode(); leslie.setMode(current === 'fast' ? 'slow' : 'fast'); },
-        setDrawbar: (index: number, value: number) => { if (currentPreset.drawbars && index >= 0 && index < 9) { currentPreset.drawbars[index] = clamp(value, 0, 8); } },
-        getDrawbars: () => [...(currentPreset.drawbars || [])],
-        preset: currentPreset, type: 'organ' as const
-    };
-};
-
-// ... a similar block for MELLOTRON could be added here
-// ... a similar block for GUITAR could be added here
-// ... etc.
 
 // ═══════════════════════════════════════════════════════════════════════════
 // MAIN FACTORY
@@ -1296,37 +1078,111 @@ export async function buildMultiInstrument(ctx: AudioContext, {
     };
 
     // ══════════════════════════════════════════════════════════════════════════
-    // ORGAN (drawbar + Leslie)
+    // SYNTH (subtractive pad/lead)
     // ══════════════════════════════════════════════════════════════════════════
-    if (type === 'organ') {
-        const organApi = await buildOrganEngine(ctx, preset as any, {
-            output: master,
-            plateIRUrl
-        });
+    if (type === 'synth') {
+        const {
+            osc = [{type:'sawtooth', detune:0, gain:0.6},{type:'triangle', detune:-5, gain:0.35},{type:'sine',detune:+7,gain:0.2}],
+            noise = { on:false, gain:0.0 },
+            adsr = {a:0.3, d:0.6, s:0.6, r:1.6},
+            lpf = { cutoff: 1800, q: 0.7, mode:'12dB' },
+            lfo = { rate:0.15, amount:300, target:'filter' },
+            chorus = { on:true, rate:0.25, depth:0.006, mix:0.25 },
+            delay = { on:true, time:0.38, fb:0.25, hc:3800, mix:0.18 },
+            reverbMix = 0.18
+        } = preset;
+
+        const pre = ctx.createGain(); pre.gain.value = 0.9;
+        const vGain = ctx.createGain(); vGain.gain.value = 0.0;
+        const filt = ctx.createBiquadFilter(); filt.type='lowpass'; filt.frequency.value=lpf.cutoff; filt.Q.value=lpf.q;
+        const filt2 = ctx.createBiquadFilter(); filt2.type='lowpass'; filt2.frequency.value=lpf.cutoff; filt2.Q.value=lpf.q;
+        const use2pole = (lpf.mode!=='24dB');
+
+        // FX chain
+        const chorusNode = makeChorus(ctx, chorus);
+        const delayNode  = makeFilteredDelay(ctx, delay);
         
-        // Map organ API to standard API
-        api.noteOn = organApi.noteOn;
-        api.noteOff = organApi.noteOff;
-        api.allNotesOff = organApi.allNotesOff;
-        api.setPreset = organApi.setPreset;
-        api.setParam = organApi.setParam;
+        const revSend = ctx.createGain(); revSend.gain.value = reverbMix;
+
+        // Routing
+        pre.connect(vGain); vGain.connect(filt); 
+        const lastFilter = use2pole ? filt : (filt.connect(filt2), filt2);
         
-        // Volume controls are already handled by the main instrumentGain/expressionGain
-        // but we can pass the setters down if the organ needs internal control too.
-        (api as any).setLeslie = organApi.setLeslie;
-        (api as any).toggleLeslie = organApi.toggleLeslie;
-        (api as any).setDrawbar = organApi.setDrawbar;
-        (api as any).getDrawbars = organApi.getDrawbars;
+        const chorusMerge = ctx.createGain();
+        chorusNode.output.connect(chorusMerge);
+        lastFilter.connect(chorusNode.input);
+        
+        const delayMerge = ctx.createGain();
+        delayNode.output.connect(delayMerge);
+        chorusMerge.connect(delayNode.input);
+        
+        delayMerge.connect(expressionGain);
+        expressionGain.connect(instrumentGain);
+        instrumentGain.connect(master);
+        delayMerge.connect(revSend);
+        revSend.connect(reverb);
+        
+        // LFO
+        if (lfo?.amount>0){
+          const l = ctx.createOscillator(); l.type='sine'; l.frequency.value=lfo.rate;
+          const lg=ctx.createGain(); lg.gain.value=lfo.amount;
+          l.connect(lg);
+          if (lfo.target==='filter'){ lg.connect(filt.frequency); lg.connect(filt2.frequency); }
+          l.start();
+        }
+
+        // Voice management
+        const activeVoices = new Map<number, { nodes: (OscillatorNode | AudioBufferSourceNode)[], voiceState: VoiceState }>();
+
+        api.noteOn = (midi, when = ctx.currentTime, velocity = 1.0) => {
+            if (activeVoices.has(midi)) { api.noteOff(midi, when); }
+            const f = midiToHz(midi);
+            
+            const voiceNodes: (OscillatorNode | AudioBufferSourceNode)[] = [];
+
+            osc.forEach(o => {
+                const x = ctx.createOscillator(); x.type = o.type; x.detune.value = o.detune;
+                const g = ctx.createGain(); g.gain.value = o.gain;
+                x.frequency.value = f;
+                x.connect(g).connect(pre); x.start(when);
+                voiceNodes.push(x);
+            });
+            
+            if (noise.on) {
+                const n = ctx.createBufferSource();
+                const buffer = ctx.createBuffer(1, ctx.sampleRate*2, ctx.sampleRate);
+                const d = buffer.getChannelData(0); for(let i=0;i<d.length;i++) d[i] = (Math.random()*2-1) * 0.4;
+                n.buffer = buffer; n.loop = true;
+                const ng = ctx.createGain(); ng.gain.value=noise.gain;
+                n.connect(ng).connect(pre); n.start(when);
+                voiceNodes.push(n);
+            }
+
+            const voiceState = adsrController.triggerAttack(vGain, when, adsr, velocity);
+            activeVoices.set(midi, { nodes: voiceNodes, voiceState });
+        };
+        api.noteOff = (midi, when = ctx.currentTime) => {
+            const voice = activeVoices.get(midi);
+            if (!voice) return;
+            const stopTime = adsrController.triggerRelease(voice.voiceState, when, adsr);
+            voice.nodes.forEach(node => node.stop(stopTime + 0.1));
+            activeVoices.delete(midi);
+        };
+        api.allNotesOff = () => {
+            activeVoices.forEach((voice, midi) => api.noteOff(midi, ctx.currentTime));
+        };
     }
-    // ══════════════════════════════════════════════════════════════════════════
-    // BASS ENGINE
-    // ══════════════════════════════════════════════════════════════════════════
-    else if (type === 'bass') {
+    // ... other instrument types
+    else if (type === 'organ') {
+      // Stub for organ
+    }
+     else if (type === 'bass') {
         const bassApi = await buildBassEngine(ctx, preset as BassPreset, {
             output: master,
             plateIRUrl
         });
-
+        
+        // Map bass API to standard API
         api.noteOn = bassApi.noteOn;
         api.noteOff = bassApi.noteOff;
         api.allNotesOff = bassApi.allNotesOff;
@@ -1336,13 +1192,18 @@ export async function buildMultiInstrument(ctx: AudioContext, {
         api.getVolume = bassApi.getVolume;
         api.setExpression = bassApi.setExpression;
     }
-    
+
+
     // ───── Final Connection ─────
     master.connect(output);
 
     console.log(`%c[InstrumentFactory] Build COMPLETED: ${type}`, 'color: #32CD32; font-weight: bold;');
     return api;
 }
+// Helper functions for organ from organ_fab.txt
+// These are simplified and might need to be imported properly
+function createKeyClick(ctx: AudioContext, duration: number, intensity: number): AudioBuffer { return ctx.createBuffer(1,1,ctx.sampleRate); }
+function createVibratoScanner(ctx: AudioContext, config: any) { return { input: ctx.createGain(), output: ctx.createGain(), setType: ()=>{}, setRate: ()=>{} }; }
+function createLeslie(ctx: AudioContext, config: any) { return { input: ctx.createGain(), output: ctx.createGain(), setMode: ()=>{}, setMix: ()=>{}, getMode: ()=> 'slow'}; }
 
 // ... the rest of the file ...
-
