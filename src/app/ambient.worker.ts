@@ -110,10 +110,6 @@ const Scheduler = {
 
     async updateSettings(newSettings: Partial<WorkerSettings>) {
        const needsRestart = this.isRunning && (newSettings.bpm !== undefined && newSettings.bpm !== this.settings.bpm);
-       const scoreChanged = newSettings.score && newSettings.score !== this.settings.score;
-       const moodChanged = newSettings.mood && newSettings.mood !== this.settings.mood;
-       const genreChanged = newSettings.genre && newSettings.genre !== this.settings.genre;
-       const introBarsChanged = newSettings.introBars !== undefined && newSettings.introBars !== this.settings.introBars;
        
        if (needsRestart) this.stop();
        
@@ -125,10 +121,9 @@ const Scheduler = {
             textureSettings: newSettings.textureSettings ? { ...this.settings.textureSettings, ...newSettings.textureSettings } : this.settings.textureSettings,
         };
 
-       if (fractalMusicEngine && (scoreChanged || moodChanged || genreChanged || introBarsChanged)) {
-           // При смене стиля/настроения мы не генерируем новый seed, а используем текущий
-           await this.initializeEngine(this.settings, true);
-       } else if (fractalMusicEngine) {
+       // #ИСПРАВЛЕНО (ПЛАН 1273): Удалена логика пересоздания движка.
+       // Теперь эта функция только обновляет конфиг существующего движка.
+       if (fractalMusicEngine) {
            await fractalMusicEngine.updateConfig(this.settings);
        }
        
