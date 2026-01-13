@@ -93,6 +93,14 @@ export const DRUM_KITS: DrumKitLibrary = {
             crash: [],
             perc: ['perc-001', 'perc-013']
         },
+        blues_calm_intro_outro: {
+            kick: ['drum_kick'],
+            snare: ['drum_snare'],
+            hihat: ['drum_hihat_closed'],
+            ride: [],
+            crash: [],
+            perc: [],
+        },
         // #ИСПРАВЛЕНО (ПЛАН 766): Полностью пересобран для классического блюз-рока без "железа".
         blues_epic: {
             kick: ALL_KICKS,

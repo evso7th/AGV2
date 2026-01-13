@@ -1,4 +1,5 @@
 
+
 import type { FractalEvent, Mood, Genre, Technique, BassSynthParams, InstrumentType, MelodyInstrument, AccompanimentInstrument, ResonanceMatrix, InstrumentHints, AccompanimentTechnique, GhostChord, SfxRule, V1MelodyInstrument, V2MelodyInstrument, BlueprintPart, InstrumentationRules, InstrumentBehaviorRules, BluesMelody, IntroRules, InstrumentPart, DrumKit, BluesGuitarRiff, BluesSoloPhrase, BluesRiffDegree } from './fractal';
 import { ElectronicK, TraditionalK, AmbientK, MelancholicMinorK } from './resonance-matrices';
 import { BlueprintNavigator, type NavigationInfo } from './blueprint-navigator';
@@ -455,7 +456,7 @@ export function createDrumAxiom(
             
             let instrumentToPlay: InstrumentType | undefined = instrumentPool[0];
 
-            // --- ФИНАЛЬНАЯ ЛОГИКА ФИЛЬТРА (ПЛАН 1205/1206) ---
+            // --- ФИНАЛЬНАЯ ЛОГИКА ФИЛЬТРА (ПЛАН 1207/1206) ---
             const originalInstrument = instrumentPool[0]; 
             const substitution = substitutes[originalInstrument as InstrumentType];
 
@@ -599,8 +600,8 @@ export function generateIntroSequence(options: {
     
     const stageCount = rules.stages || 4;
     const barsPerStage = Math.max(1, Math.floor(totalIntroBars / stageCount));
-    // #ИСПРАВЛЕНО (ПЛАН 1018): Гарантируем, что с самого начала активно как минимум два инструмента.
-    const currentStage = Math.min(stageCount, Math.floor(currentBar / barsPerStage) + 2);
+    // #ИСПРАВЛЕНО (ПЛАН 1267): Убрана ошибочная добавка "+ 2", восстановлена корректная логика "+ 1"
+    const currentStage = Math.min(stageCount, Math.floor(currentBar / barsPerStage) + 1);
     
     // Ensure at least one instrument is chosen if hints are sparse
     const tempActive = new Set(introInstrumentOrder.slice(0, currentStage));
@@ -883,6 +884,7 @@ export function createBluesOrganLick(
 }
 
     
+
 
 
 

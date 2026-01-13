@@ -14,13 +14,13 @@ export const WinterBluesBlueprint: MusicBlueprint = {
         tensionProfile: { type: 'plateau', peakPosition: 0.3, curve: (p, pp) => p < pp ? p / pp : 1.0 }
     },
     structure: {
-        totalDuration: { preferredBars: 120 }, // 10 loops of 12 bars = 120 bars total
+        totalDuration: { preferredBars: 120 }, // 10 loops of 12 bars
         parts: [
             {
                 id: 'INTRO', name: 'Main Riff Intro', duration: { percent: 15 },
                 introRules: {
-                    instrumentPool: ['drums', 'bass', 'melody', 'accompaniment'], // ДОБАВЛЕНО
-                    stages: 4, // ИЗМЕНЕНО
+                    instrumentPool: ['drums', 'bass', 'melody', 'accompaniment'],
+                    stages: 4,
                 },
                 layers: { bass: true, drums: true, accompaniment: true, harmony: true, melody: true },
                 instrumentation: {
@@ -32,7 +32,7 @@ export const WinterBluesBlueprint: MusicBlueprint = {
                     melody: { 
                         strategy: 'weighted', 
                         v1Options: [{ name: 'electricGuitar', weight: 1.0 }],
-                        v2Options: [{ name: 'guitar_muffLead', weight: 1.0 }]
+                        v2Options: [{ name: 'blackAcoustic', weight: 1.0 }]
                     },
                     harmony: {
                         strategy: 'weighted',
@@ -44,14 +44,9 @@ export const WinterBluesBlueprint: MusicBlueprint = {
                 },
                 instrumentRules: {
                     drums: { 
-                        kitName: 'blues_calm',
+                        kitName: 'blues_calm_intro_outro',
                         density: { min: 0.1, max: 0.2 },
-                        kitOverrides: {
-                            substitute: {
-                                'drum_hihat_closed': 'drum_brush1',
-                                'drum_hihat_open': 'drum_brush2',
-                            }
-                        }
+                        kitOverrides: { substitute: {} }
                     },
                     bass: { techniques: [{ value: 'riff', weight: 1.0 }], density: { min: 0.3, max: 0.5 } },
                     accompaniment: { density: {min: 0.1, max: 0.3} },
@@ -201,14 +196,9 @@ export const WinterBluesBlueprint: MusicBlueprint = {
                 },
                 instrumentRules: {
                     drums: { 
-                        kitName: 'blues_calm', 
+                        kitName: 'blues_calm_intro_outro', 
                         density: { min: 0.1, max: 0.2 },
-                        kitOverrides: {
-                            substitute: {
-                                'drum_hihat_closed': 'drum_brush1',
-                                'drum_hihat_open': 'drum_brush2',
-                            }
-                        }
+                        kitOverrides: { substitute: {} }
                     },
                     bass: { techniques: [{ value: 'riff', weight: 1.0 }] }, 
                     melody: { 
