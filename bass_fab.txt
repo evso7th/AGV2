@@ -1,0 +1,1460 @@
+# Bass Guitar Engine — Полная эмуляция баса
+
+Создадим мощный басовый движок с поддержкой электрического, синтетического и акустического баса!
+
+```typescript
+// ─────────────────────────────────────────────────────────────────────────────
+// BASS ENGINE — Electric, Synth & Acoustic Bass Emulation
+// ─────────────────────────────────────────────────────────────────────────────
+
+// ═══════════════════════════════════════════════════════════════════════════
+// HELPERS & CURVES
+// ═══════════════════════════════════════════════════════════════════════════
+
+const midiToHz = (m: number) => 440 * Math.pow(2, (m - 69) / 12);
+const dB = (x: number) => Math.pow(10, x / 20);
+const clamp = (v: number, min: number, max: number) => Math.max(min, Math.min(max, v));
+
+// Tube-style saturation (тёплый овердрайв)
+const makeTubeSaturation = (drive = 0.3, n = 65536) => {
+    const curve = new Float32Array(n);
+    const k = drive * 5 + 1;
+    for (let i = 0; i < n; i++) {
+        const x = (i / (n - 1)) * 2 - 1;
+        // Асимметричный клиппинг (как у ламп)
+        const pos = Math.tanh(k * x);
+        const neg = Math.tanh(k * x * 0.8) * 0.9;
+        curve[i] = x >= 0 ? pos : neg;
+    }
+    return curve;
+};
+
+// Fuzz для агрессивного звучания
+const makeFuzz = (intensity = 0.7, n = 65536) => {
+    const curve = new Float32Array(n);
+    for (let i = 0; i < n; i++) {
+        const x = (i / (n - 1)) * 2 - 1;
+        const k = intensity * 20 + 1;
+        curve[i] = Math.sign(x) * (1 - Math.exp(-Math.abs(x) * k));
+    }
+    return curve;
+};
+
+// ═══════════════════════════════════════════════════════════════════════════
+// FILTER ENVELOPE
+// ═══════════════════════════════════════════════════════════════════════════
+
+interface FilterEnvelopeConfig {
+    attack: number;      // Время атаки фильтра
+    decay: number;       // Время затухания
+    sustain: number;     // Уровень sustain (0-1 от depth)
+    release: number;     // Release
+    depth: number;       // Глубина модуляции (Hz)
+    velocity: number;    // Влияние velocity на depth
+}
+
+const applyFilterEnvelope = (
+    ctx: AudioContext,
+    filter: BiquadFilterNode,
+    baseCutoff: number,
+    config: FilterEnvelopeConfig,
+    when: number,
+    velocity: number
+) => {
+    const depth = config.depth * (1 - config.velocity + config.velocity * velocity);
+    const peak = baseCutoff + depth;
+    const sustainLevel = baseCutoff + depth * config.sustain;
+    
+    filter.frequency.cancelScheduledValues(when);
+    filter.frequency.setValueAtTime(baseCutoff, when);
+    filter.frequency.linearRampToValueAtTime(peak, when + config.attack);
+    filter.frequency.setTargetAtTime(sustainLevel, when + config.attack, config.decay / 3);
+};
+
+const releaseFilterEnvelope = (
+    ctx: AudioContext,
+    filter: BiquadFilterNode,
+    baseCutoff: number,
+    releaseTime: number,
+    when: number
+) => {
+    filter.frequency.cancelScheduledValues(when);
+    filter.frequency.setTargetAtTime(baseCutoff, when, releaseTime / 3);
+};
+
+// ═══════════════════════════════════════════════════════════════════════════
+// STRING SIMULATION (для реализма)
+// ═══════════════════════════════════════════════════════════════════════════
+
+const createStringNoise = (ctx: AudioContext, duration: number): AudioBuffer => {
+    // Шум "пальца по струне" / pick attack
+    const length = Math.floor(ctx.sampleRate * duration);
+    const buffer = ctx.createBuffer(1, length, ctx.sampleRate);
+    const data = buffer.getChannelData(0);
+    
+    for (let i = 0; i < length; i++) {
+        const t = i / length;
+        const envelope = Math.exp(-t * 40) * (1 - t * 0.5);
+        data[i] = (Math.random() * 2 - 1) * envelope;
+    }
+    
+    return buffer;
+};
+
+const createSlapNoise = (ctx: AudioContext): AudioBuffer => {
+    // Slap attack — резкий удар
+    const length = Math.floor(ctx.sampleRate * 0.015);
+    const buffer = ctx.createBuffer(1, length, ctx.sampleRate);
+    const data = buffer.getChannelData(0);
+    
+    for (let i = 0; i < length; i++) {
+        const t = i / length;
+        const envelope = Math.exp(-t * 60);
+        const tone = Math.sin(i * 0.3) * 0.5; // ~2kHz transient
+        data[i] = ((Math.random() * 2 - 1) * 0.7 + tone * 0.3) * envelope;
+    }
+    
+    return buffer;
+};
+
+// ═══════════════════════════════════════════════════════════════════════════
+// BASS PRESET INTERFACE
+// ═══════════════════════════════════════════════════════════════════════════
+
+interface BassOscConfig {
+    type: 'sine' | 'triangle' | 'sawtooth' | 'square' | 'pulse';
+    octave: number;
+    detune: number;
+    gain: number;
+    pulseWidth?: number;  // для pulse
+}
+
+interface BassPreset {
+    type: 'bass';
+    name?: string;
+    volume?: number;
+    
+    // ─── Oscillators ───
+    osc: BassOscConfig[];
+    
+    // ─── Sub bass (отдельно для контроля) ───
+    sub?: {
+        on: boolean;
+        type: 'sine' | 'triangle';
+        octave: number;  // обычно -1
+        gain: number;
+    };
+    
+    // ─── Amp Envelope ───
+    adsr: { a: number; d: number; s: number; r: number };
+    
+    // ─── Filter ───
+    filter: {
+        type: 'lowpass' | 'bandpass';
+        cutoff: number;
+        q: number;
+        keyTrack?: number;  // 0-1: следование за нотой
+    };
+    
+    // ─── Filter Envelope ───
+    filterEnv?: {
+        on: boolean;
+        attack: number;
+        decay: number;
+        sustain: number;
+        release: number;
+        depth: number;
+        velocity: number;
+    };
+    
+    // ─── Saturation/Drive ───
+    drive?: {
+        on: boolean;
+        type: 'tube' | 'fuzz' | 'soft';
+        amount: number;
+        tone: number;  // post-drive LPF
+    };
+    
+    // ─── Compressor ───
+    comp?: {
+        threshold: number;
+        ratio: number;
+        attack: number;
+        release: number;
+        makeup: number;
+    };
+    
+    // ─── EQ ───
+    eq?: {
+        lowShelf?: { freq: number; gain: number };
+        mid?: { freq: number; q: number; gain: number };
+        highShelf?: { freq: number; gain: number };
+    };
+    
+    // ─── String noise/attack ───
+    stringNoise?: {
+        on: boolean;
+        type: 'finger' | 'pick' | 'slap';
+        amount: number;
+    };
+    
+    // ─── Effects ───
+    chorus?: { on: boolean; rate: number; depth: number; mix: number };
+    delay?: { on: boolean; time: number; fb: number; mix: number; hc: number };
+    
+    reverbMix?: number;
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// BASS VOICE
+// ═══════════════════════════════════════════════════════════════════════════
+
+interface BassVoice {
+    oscillators: OscillatorNode[];
+    gains: GainNode[];
+    subOsc?: OscillatorNode;
+    subGain?: GainNode;
+    voiceGain: GainNode;
+    filter: BiquadFilterNode;
+    noiseSource?: AudioBufferSourceNode;
+    startTime: number;
+    midi: number;
+    velocity: number;
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// MAIN BASS ENGINE
+// ═══════════════════════════════════════════════════════════════════════════
+
+export const buildBassEngine = async (
+    ctx: AudioContext,
+    preset: BassPreset,
+    options: {
+        output?: AudioNode;
+        plateIRUrl?: string | null;
+    } = {}
+) => {
+    console.log('%c[BassEngine] Building bass...', 'color: #4169E1; font-weight: bold;');
+    
+    const output = options.output || ctx.destination;
+    let currentPreset = { ...preset };
+    
+    // ═══ Prepare Noise Buffers ═══
+    const fingerNoiseBuffer = createStringNoise(ctx, 0.02);
+    const pickNoiseBuffer = createStringNoise(ctx, 0.015);
+    const slapNoiseBuffer = createSlapNoise(ctx);
+    
+    // ═══ Static Audio Graph ═══
+    
+    // ─── Input Stage ───
+    const bassSum = ctx.createGain();
+    bassSum.gain.value = 1;
+    
+    // ─── Pre-filter compression (сглаживание) ───
+    const inputComp = ctx.createDynamicsCompressor();
+    inputComp.threshold.value = -24;
+    inputComp.knee.value = 12;
+    inputComp.ratio.value = 4;
+    inputComp.attack.value = 0.003;
+    inputComp.release.value = 0.1;
+    
+    // ─── Saturation/Drive ───
+    const driveInput = ctx.createGain();
+    driveInput.gain.value = 1;
+    
+    const shaper = ctx.createWaveShaper();
+    shaper.oversample = '4x';
+    
+    const driveTone = ctx.createBiquadFilter();
+    driveTone.type = 'lowpass';
+    driveTone.frequency.value = 3000;
+    driveTone.Q.value = 0.5;
+    
+    const driveWet = ctx.createGain();
+    const driveDry = ctx.createGain();
+    const driveMix = ctx.createGain();
+    
+    // ─── Main Filter (per-voice, but we also have a master filter) ───
+    const masterFilter = ctx.createBiquadFilter();
+    masterFilter.type = 'lowpass';
+    masterFilter.frequency.value = currentPreset.filter?.cutoff ?? 2000;
+    masterFilter.Q.value = currentPreset.filter?.q ?? 1;
+    
+    // ─── EQ Section ───
+    const eqLow = ctx.createBiquadFilter();
+    eqLow.type = 'lowshelf';
+    eqLow.frequency.value = currentPreset.eq?.lowShelf?.freq ?? 100;
+    eqLow.gain.value = currentPreset.eq?.lowShelf?.gain ?? 0;
+    
+    const eqMid = ctx.createBiquadFilter();
+    eqMid.type = 'peaking';
+    eqMid.frequency.value = currentPreset.eq?.mid?.freq ?? 800;
+    eqMid.Q.value = currentPreset.eq?.mid?.q ?? 1;
+    eqMid.gain.value = currentPreset.eq?.mid?.gain ?? 0;
+    
+    const eqHigh = ctx.createBiquadFilter();
+    eqHigh.type = 'highshelf';
+    eqHigh.frequency.value = currentPreset.eq?.highShelf?.freq ?? 3000;
+    eqHigh.gain.value = currentPreset.eq?.highShelf?.gain ?? 0;
+    
+    // ─── Output Compressor ───
+    const outputComp = ctx.createDynamicsCompressor();
+    const compMakeup = ctx.createGain();
+    
+    // ─── Chorus (for fretless/mellow sounds) ───
+    const chorusDelay = ctx.createDelay(0.05);
+    chorusDelay.delayTime.value = 0.015;
+    const chorusLfo = ctx.createOscillator();
+    const chorusLfoGain = ctx.createGain();
+    const chorusWet = ctx.createGain();
+    const chorusDry = ctx.createGain();
+    chorusLfo.type = 'sine';
+    chorusLfo.frequency.value = 0.3;
+    chorusLfoGain.gain.value = 0.003;
+    chorusLfo.connect(chorusLfoGain);
+    chorusLfoGain.connect(chorusDelay.delayTime);
+    chorusLfo.start();
+    
+    // ─── Delay (для dub/reggae) ───
+    const delayNode = ctx.createDelay(2);
+    const delayFeedback = ctx.createGain();
+    const delayFilter = ctx.createBiquadFilter();
+    delayFilter.type = 'lowpass';
+    delayFilter.frequency.value = 2000;
+    const delayWet = ctx.createGain();
+    const delayDry = ctx.createGain();
+    
+    // ─── Volume Control ───
+    const instrumentGain = ctx.createGain();
+    instrumentGain.gain.value = currentPreset.volume ?? 0.75;
+    
+    const expressionGain = ctx.createGain();
+    expressionGain.gain.value = 1;
+    
+    // ─── Master ───
+    const master = ctx.createGain();
+    master.gain.value = 0.85;
+    
+    // ─── Reverb ───
+    const reverb = ctx.createConvolver();
+    const reverbWet = ctx.createGain();
+    reverbWet.gain.value = currentPreset.reverbMix ?? 0.08;
+    
+    if (options.plateIRUrl) {
+        try {
+            const res = await fetch(options.plateIRUrl);
+            const buf = await res.arrayBuffer();
+            reverb.buffer = await ctx.decodeAudioData(buf);
+        } catch (e) {
+            console.warn('[BassEngine] Could not load reverb IR');
+        }
+    }
+    
+    // ═══ Routing ═══
+    
+    // Bass sum -> input comp
+    bassSum.connect(inputComp);
+    
+    // Drive section (parallel wet/dry)
+    inputComp.connect(driveInput);
+    driveInput.connect(shaper);
+    shaper.connect(driveTone);
+    driveTone.connect(driveWet);
+    driveInput.connect(driveDry);
+    driveWet.connect(driveMix);
+    driveDry.connect(driveMix);
+    
+    // Master filter
+    driveMix.connect(masterFilter);
+    
+    // EQ
+    masterFilter.connect(eqLow);
+    eqLow.connect(eqMid);
+    eqMid.connect(eqHigh);
+    
+    // Output comp
+    eqHigh.connect(outputComp);
+    outputComp.connect(compMakeup);
+    
+    // Chorus (parallel)
+    compMakeup.connect(chorusDry);
+    compMakeup.connect(chorusDelay);
+    chorusDelay.connect(chorusWet);
+    const chorusMerge = ctx.createGain();
+    chorusDry.connect(chorusMerge);
+    chorusWet.connect(chorusMerge);
+    
+    // Delay (parallel)
+    chorusMerge.connect(delayDry);
+    chorusMerge.connect(delayNode);
+    delayNode.connect(delayFilter);
+    delayFilter.connect(delayFeedback);
+    delayFeedback.connect(delayNode);
+    delayFilter.connect(delayWet);
+    const delayMerge = ctx.createGain();
+    delayDry.connect(delayMerge);
+    delayWet.connect(delayMerge);
+    
+    // Final chain
+    delayMerge.connect(expressionGain);
+    expressionGain.connect(instrumentGain);
+    instrumentGain.connect(master);
+    
+    // Reverb send
+    delayMerge.connect(reverbWet);
+    reverbWet.connect(reverb);
+    reverb.connect(master);
+    
+    master.connect(output);
+    
+    // ═══ Update from Preset ═══
+    
+    const updateFromPreset = (p: BassPreset) => {
+        // Drive
+        if (p.drive?.on) {
+            const curve = p.drive.type === 'fuzz' 
+                ? makeFuzz(p.drive.amount)
+                : p.drive.type === 'tube'
+                    ? makeTubeSaturation(p.drive.amount)
+                    : makeTubeSaturation(p.drive.amount * 0.5);
+            shaper.curve = curve;
+            driveTone.frequency.value = p.drive.tone ?? 3000;
+            driveWet.gain.value = 0.7;
+            driveDry.gain.value = 0.3;
+        } else {
+            driveWet.gain.value = 0;
+            driveDry.gain.value = 1;
+        }
+        
+        // Master filter
+        masterFilter.frequency.value = p.filter?.cutoff ?? 2000;
+        masterFilter.Q.value = p.filter?.q ?? 1;
+        masterFilter.type = p.filter?.type ?? 'lowpass';
+        
+        // EQ
+        if (p.eq?.lowShelf) {
+            eqLow.frequency.value = p.eq.lowShelf.freq;
+            eqLow.gain.value = p.eq.lowShelf.gain;
+        }
+        if (p.eq?.mid) {
+            eqMid.frequency.value = p.eq.mid.freq;
+            eqMid.Q.value = p.eq.mid.q;
+            eqMid.gain.value = p.eq.mid.gain;
+        }
+        if (p.eq?.highShelf) {
+            eqHigh.frequency.value = p.eq.highShelf.freq;
+            eqHigh.gain.value = p.eq.highShelf.gain;
+        }
+        
+        // Output comp
+        if (p.comp) {
+            outputComp.threshold.value = p.comp.threshold;
+            outputComp.ratio.value = p.comp.ratio;
+            outputComp.attack.value = p.comp.attack;
+            outputComp.release.value = p.comp.release;
+            compMakeup.gain.value = dB(p.comp.makeup);
+        } else {
+            outputComp.threshold.value = -12;
+            outputComp.ratio.value = 4;
+            outputComp.attack.value = 0.005;
+            outputComp.release.value = 0.15;
+            compMakeup.gain.value = dB(4);
+        }
+        
+        // Chorus
+        if (p.chorus?.on) {
+            chorusLfo.frequency.value = p.chorus.rate;
+            chorusLfoGain.gain.value = p.chorus.depth;
+            chorusWet.gain.value = p.chorus.mix;
+            chorusDry.gain.value = 1 - p.chorus.mix * 0.5;
+        } else {
+            chorusWet.gain.value = 0;
+            chorusDry.gain.value = 1;
+        }
+        
+        // Delay
+        if (p.delay?.on) {
+            delayNode.delayTime.value = p.delay.time;
+            delayFeedback.gain.value = p.delay.fb;
+            delayFilter.frequency.value = p.delay.hc ?? 2000;
+            delayWet.gain.value = p.delay.mix;
+            delayDry.gain.value = 1;
+        } else {
+            delayWet.gain.value = 0;
+            delayDry.gain.value = 1;
+        }
+        
+        // Reverb
+        reverbWet.gain.value = p.reverbMix ?? 0.08;
+        
+        // Volume
+        if (p.volume !== undefined) {
+            instrumentGain.gain.value = p.volume;
+        }
+    };
+    
+    updateFromPreset(currentPreset);
+    
+    // ═══ Voice Management ═══
+    
+    const activeVoices = new Map<number, BassVoice>();
+    
+    // Pulse oscillator helper
+    const createPulseOsc = (freq: number, width = 0.5) => {
+        const w = clamp(width, 0.1, 0.9);
+        const real = new Float32Array(32);
+        const imag = new Float32Array(32);
+        for (let n = 1; n < 32; n++) {
+            real[n] = (2 / (n * Math.PI)) * Math.sin(n * Math.PI * w);
+        }
+        const wave = ctx.createPeriodicWave(real, imag, { disableNormalization: true });
+        const osc = ctx.createOscillator();
+        osc.setPeriodicWave(wave);
+        osc.frequency.value = freq;
+        return osc;
+    };
+    
+    // ─── Note On ───
+    const noteOn = (midi: number, when = ctx.currentTime, velocity = 1.0) => {
+        if (activeVoices.has(midi)) {
+            noteOff(midi, when);
+        }
+        
+        const f0 = midiToHz(midi);
+        const vel = clamp(velocity, 0, 1);
+        const adsr = currentPreset.adsr;
+        
+        // Voice gain
+        const voiceGain = ctx.createGain();
+        voiceGain.gain.value = 0;
+        
+        // Per-voice filter (for filter envelope)
+        const voiceFilter = ctx.createBiquadFilter();
+        voiceFilter.type = currentPreset.filter?.type ?? 'lowpass';
+        const baseCutoff = currentPreset.filter?.cutoff ?? 2000;
+        const keyTrack = currentPreset.filter?.keyTrack ?? 0.3;
+        // Key tracking: выше нота = выше cutoff
+        const keyTrackOffset = (midi - 36) * keyTrack * 30;
+        voiceFilter.frequency.value = baseCutoff + keyTrackOffset;
+        voiceFilter.Q.value = currentPreset.filter?.q ?? 1;
+        
+        const oscillators: OscillatorNode[] = [];
+        const gains: GainNode[] = [];
+        
+        // Main oscillators
+        for (const oscConfig of currentPreset.osc) {
+            let osc: OscillatorNode;
+            
+            if (oscConfig.type === 'pulse') {
+                osc = createPulseOsc(f0 * Math.pow(2, oscConfig.octave), oscConfig.pulseWidth ?? 0.5);
+            } else {
+                osc = ctx.createOscillator();
+                osc.type = oscConfig.type;
+                osc.frequency.value = f0 * Math.pow(2, oscConfig.octave);
+            }
+            
+            osc.detune.value = oscConfig.detune;
+            
+            const gain = ctx.createGain();
+            gain.gain.value = oscConfig.gain * vel;
+            
+            osc.connect(gain);
+            gain.connect(voiceGain);
+            osc.start(when);
+            
+            oscillators.push(osc);
+            gains.push(gain);
+        }
+        
+        // Sub oscillator
+        let subOsc: OscillatorNode | undefined;
+        let subGain: GainNode | undefined;
+        
+        if (currentPreset.sub?.on) {
+            subOsc = ctx.createOscillator();
+            subOsc.type = currentPreset.sub.type;
+            subOsc.frequency.value = f0 * Math.pow(2, currentPreset.sub.octave);
+            
+            subGain = ctx.createGain();
+            subGain.gain.value = currentPreset.sub.gain * vel;
+            
+            subOsc.connect(subGain);
+            subGain.connect(voiceGain);
+            subOsc.start(when);
+        }
+        
+        // String noise
+        let noiseSource: AudioBufferSourceNode | undefined;
+        
+        if (currentPreset.stringNoise?.on) {
+            const noiseType = currentPreset.stringNoise.type;
+            const buffer = noiseType === 'slap' ? slapNoiseBuffer
+                : noiseType === 'pick' ? pickNoiseBuffer
+                : fingerNoiseBuffer;
+            
+            noiseSource = ctx.createBufferSource();
+            noiseSource.buffer = buffer;
+            
+            const noiseGain = ctx.createGain();
+            noiseGain.gain.value = currentPreset.stringNoise.amount * vel;
+            
+            // High-pass для шума (убираем низы)
+            const noiseHPF = ctx.createBiquadFilter();
+            noiseHPF.type = 'highpass';
+            noiseHPF.frequency.value = 800;
+            
+            noiseSource.connect(noiseHPF);
+            noiseHPF.connect(noiseGain);
+            noiseGain.connect(voiceGain);
+            noiseSource.start(when);
+        }
+        
+        // Connect voice
+        voiceGain.connect(voiceFilter);
+        voiceFilter.connect(bassSum);
+        
+        // Filter envelope
+        if (currentPreset.filterEnv?.on) {
+            applyFilterEnvelope(
+                ctx,
+                voiceFilter,
+                baseCutoff + keyTrackOffset,
+                {
+                    attack: currentPreset.filterEnv.attack,
+                    decay: currentPreset.filterEnv.decay,
+                    sustain: currentPreset.filterEnv.sustain,
+                    release: currentPreset.filterEnv.release,
+                    depth: currentPreset.filterEnv.depth,
+                    velocity: currentPreset.filterEnv.velocity
+                },
+                when,
+                vel
+            );
+        }
+        
+        // Amp envelope
+        voiceGain.gain.cancelScheduledValues(when);
+        voiceGain.gain.setValueAtTime(0.0001, when);
+        voiceGain.gain.linearRampToValueAtTime(1, when + adsr.a);
+        voiceGain.gain.setTargetAtTime(adsr.s, when + adsr.a, Math.max(adsr.d / 3, 0.001));
+        
+        activeVoices.set(midi, {
+            oscillators,
+            gains,
+            subOsc,
+            subGain,
+            voiceGain,
+            filter: voiceFilter,
+            noiseSource,
+            startTime: when,
+            midi,
+            velocity: vel
+        });
+    };
+    
+    // ─── Note Off ───
+    const noteOff = (midi: number, when = ctx.currentTime) => {
+        const voice = activeVoices.get(midi);
+        if (!voice) return;
+        
+        const adsr = currentPreset.adsr;
+        const releaseTime = Math.max(adsr.r, 0.02);
+        
+        // Adaptive release
+        const elapsed = when - voice.startTime;
+        
+        voice.voiceGain.gain.cancelScheduledValues(when);
+        
+        if (elapsed < adsr.a) {
+            // Still in attack — quick release
+            const currentGain = (elapsed / adsr.a);
+            voice.voiceGain.gain.setValueAtTime(currentGain, when);
+            voice.voiceGain.gain.setTargetAtTime(0.0001, when, 0.02);
+        } else {
+            voice.voiceGain.gain.setValueAtTime(voice.voiceGain.gain.value, when);
+            voice.voiceGain.gain.setTargetAtTime(0.0001, when, releaseTime / 3);
+        }
+        
+        // Filter release
+        if (currentPreset.filterEnv?.on) {
+            const baseCutoff = currentPreset.filter?.cutoff ?? 2000;
+            releaseFilterEnvelope(ctx, voice.filter, baseCutoff, releaseTime, when);
+        }
+        
+        const stopTime = when + releaseTime + 0.1;
+        voice.oscillators.forEach(osc => osc.stop(stopTime));
+        if (voice.subOsc) voice.subOsc.stop(stopTime);
+        
+        activeVoices.delete(midi);
+    };
+    
+    // ─── All Notes Off ───
+    const allNotesOff = () => {
+        const now = ctx.currentTime;
+        activeVoices.forEach((voice) => {
+            voice.voiceGain.gain.cancelScheduledValues(now);
+            voice.voiceGain.gain.setTargetAtTime(0.0001, now, 0.05);
+            voice.oscillators.forEach(osc => osc.stop(now + 0.15));
+            if (voice.subOsc) voice.subOsc.stop(now + 0.15);
+        });
+        activeVoices.clear();
+    };
+    
+    // ═══ API ═══
+    
+    const api = {
+        noteOn,
+        noteOff,
+        allNotesOff,
+        
+        connect: (dest?: AudioNode) => master.connect(dest || output),
+        disconnect: () => { try { master.disconnect(); } catch {} },
+        
+        setPreset: (p: BassPreset) => {
+            allNotesOff();
+            currentPreset = { ...p };
+            updateFromPreset(currentPreset);
+        },
+        
+        setParam: (key: string, value: any) => {
+            switch (key) {
+                case 'volume':
+                    instrumentGain.gain.setTargetAtTime(clamp(value, 0, 1), ctx.currentTime, 0.02);
+                    break;
+                case 'expression':
+                    expressionGain.gain.setTargetAtTime(clamp(value, 0, 1), ctx.currentTime, 0.01);
+                    break;
+                case 'filterCutoff':
+                    masterFilter.frequency.setTargetAtTime(value, ctx.currentTime, 0.02);
+                    break;
+                case 'filterQ':
+                    masterFilter.Q.setTargetAtTime(value, ctx.currentTime, 0.02);
+                    break;
+                case 'drive':
+                    if (currentPreset.drive) {
+                        currentPreset.drive.amount = value;
+                        updateFromPreset(currentPreset);
+                    }
+                    break;
+                case 'delayMix':
+                    delayWet.gain.setTargetAtTime(value, ctx.currentTime, 0.02);
+                    break;
+            }
+        },
+        
+        setVolume: (v: number) => {
+            instrumentGain.gain.setTargetAtTime(clamp(v, 0, 1), ctx.currentTime, 0.02);
+        },
+        getVolume: () => instrumentGain.gain.value,
+        setExpression: (v: number) => {
+            expressionGain.gain.setTargetAtTime(clamp(v, 0, 1), ctx.currentTime, 0.01);
+        },
+        
+        preset: currentPreset,
+        type: 'bass' as const
+    };
+    
+    console.log('%c[BassEngine] Ready!', 'color: #32CD32; font-weight: bold;');
+    return api;
+};
+```
+
+---
+
+## Пресеты для всех жанров
+
+```typescript
+// ═══════════════════════════════════════════════════════════════════════════
+// BASS PRESETS — For Various Genres
+// ═══════════════════════════════════════════════════════════════════════════
+
+export const BASS_PRESETS = {
+
+    // ─────────────────────────────────────────────────────────────────────────
+    // JAZZ BASS — Warm, round, finger-style
+    // ─────────────────────────────────────────────────────────────────────────
+    bass_jazz_warm: {
+        type: 'bass' as const,
+        name: 'Jazz Upright',
+        volume: 0.72,
+        
+        osc: [
+            { type: 'sine' as const, octave: 0, detune: 0, gain: 0.7 },
+            { type: 'triangle' as const, octave: 0, detune: 2, gain: 0.35 },
+            { type: 'sine' as const, octave: 1, detune: 0, gain: 0.12 }  // обертон
+        ],
+        
+        sub: { on: true, type: 'sine' as const, octave: -1, gain: 0.5 },
+        
+        adsr: { a: 0.015, d: 0.4, s: 0.7, r: 0.35 },
+        
+        filter: { type: 'lowpass' as const, cutoff: 1200, q: 0.6, keyTrack: 0.25 },
+        
+        filterEnv: {
+            on: true,
+            attack: 0.01, decay: 0.25, sustain: 0.2, release: 0.2,
+            depth: 600, velocity: 0.5
+        },
+        
+        drive: { on: false, type: 'tube' as const, amount: 0, tone: 2000 },
+        
+        comp: { threshold: -18, ratio: 3, attack: 0.01, release: 0.15, makeup: 4 },
+        
+        eq: {
+            lowShelf: { freq: 80, gain: 3 },
+            mid: { freq: 800, q: 1.2, gain: -2 },  // mid scoop
+            highShelf: { freq: 2500, gain: -4 }
+        },
+        
+        stringNoise: { on: true, type: 'finger' as const, amount: 0.15 },
+        
+        chorus: { on: false, rate: 0.3, depth: 0.003, mix: 0 },
+        delay: { on: false, time: 0.3, fb: 0.2, mix: 0, hc: 2000 },
+        
+        reverbMix: 0.12
+    },
+
+    bass_jazz_fretless: {
+        type: 'bass' as const,
+        name: 'Fretless Jaco',
+        volume: 0.7,
+        
+        osc: [
+            { type: 'sawtooth' as const, octave: 0, detune: 0, gain: 0.55 },
+            { type: 'sine' as const, octave: 0, detune: 0, gain: 0.4 },
+            { type: 'sine' as const, octave: 1, detune: 0, gain: 0.15 }
+        ],
+        
+        sub: { on: true, type: 'sine' as const, octave: -1, gain: 0.4 },
+        
+        adsr: { a: 0.025, d: 0.5, s: 0.75, r: 0.4 },
+        
+        filter: { type: 'lowpass' as const, cutoff: 1800, q: 1.2, keyTrack: 0.4 },
+        
+        filterEnv: {
+            on: true,
+            attack: 0.02, decay: 0.35, sustain: 0.3, release: 0.25,
+            depth: 800, velocity: 0.6
+        },
+        
+        drive: { on: true, type: 'tube' as const, amount: 0.15, tone: 3500 },
+        
+        comp: { threshold: -16, ratio: 3.5, attack: 0.008, release: 0.12, makeup: 5 },
+        
+        eq: {
+            lowShelf: { freq: 100, gain: 2 },
+            mid: { freq: 1200, q: 1.5, gain: 3 },  // mid присутствие (mwah)
+            highShelf: { freq: 3000, gain: -2 }
+        },
+        
+        stringNoise: { on: true, type: 'finger' as const, amount: 0.08 },
+        
+        chorus: { on: true, rate: 0.25, depth: 0.004, mix: 0.2 },
+        delay: { on: false, time: 0.3, fb: 0.2, mix: 0, hc: 2000 },
+        
+        reverbMix: 0.15
+    },
+
+    // ─────────────────────────────────────────────────────────────────────────
+    // BLUES BASS — Warm with slight grit
+    // ─────────────────────────────────────────────────────────────────────────
+    bass_blues: {
+        type: 'bass' as const,
+        name: 'Blues Bass',
+        volume: 0.7,
+        
+        osc: [
+            { type: 'sine' as const, octave: 0, detune: 0, gain: 0.6 },
+            { type: 'triangle' as const, octave: 0, detune: 3, gain: 0.4 },
+            { type: 'sawtooth' as const, octave: 0, detune: 0, gain: 0.15 }
+        ],
+        
+        sub: { on: true, type: 'sine' as const, octave: -1, gain: 0.45 },
+        
+        adsr: { a: 0.012, d: 0.35, s: 0.65, r: 0.3 },
+        
+        filter: { type: 'lowpass' as const, cutoff: 1400, q: 0.8, keyTrack: 0.3 },
+        
+        filterEnv: {
+            on: true,
+            attack: 0.01, decay: 0.2, sustain: 0.25, release: 0.2,
+            depth: 500, velocity: 0.5
+        },
+        
+        drive: { on: true, type: 'tube' as const, amount: 0.25, tone: 2500 },
+        
+        comp: { threshold: -15, ratio: 4, attack: 0.008, release: 0.12, makeup: 5 },
+        
+        eq: {
+            lowShelf: { freq: 90, gain: 2 },
+            mid: { freq: 600, q: 1.0, gain: 1 },
+            highShelf: { freq: 2800, gain: -3 }
+        },
+        
+        stringNoise: { on: true, type: 'finger' as const, amount: 0.12 },
+        
+        chorus: { on: false, rate: 0.3, depth: 0.003, mix: 0 },
+        delay: { on: false, time: 0.3, fb: 0.2, mix: 0, hc: 2000 },
+        
+        reverbMix: 0.1
+    },
+
+    // ─────────────────────────────────────────────────────────────────────────
+    // AMBIENT BASS — Deep, slow, atmospheric
+    // ─────────────────────────────────────────────────────────────────────────
+    bass_ambient: {
+        type: 'bass' as const,
+        name: 'Ambient Sub',
+        volume: 0.65,
+        
+        osc: [
+            { type: 'sine' as const, octave: 0, detune: 0, gain: 0.7 },
+            { type: 'triangle' as const, octave: 0, detune: -3, gain: 0.25 },
+            { type: 'sine' as const, octave: 1, detune: 5, gain: 0.08 }
+        ],
+        
+        sub: { on: true, type: 'sine' as const, octave: -1, gain: 0.8 },  // Heavy sub
+        
+        adsr: { a: 0.3, d: 0.8, s: 0.85, r: 1.5 },  // Slow envelope
+        
+        filter: { type: 'lowpass' as const, cutoff: 600, q: 0.5, keyTrack: 0.15 },
+        
+        filterEnv: {
+            on: true,
+            attack: 0.4, decay: 1.0, sustain: 0.4, release: 0.8,
+            depth: 400, velocity: 0.3
+        },
+        
+        drive: { on: false, type: 'tube' as const, amount: 0, tone: 1500 },
+        
+        comp: { threshold: -20, ratio: 3, attack: 0.02, release: 0.3, makeup: 4 },
+        
+        eq: {
+            lowShelf: { freq: 60, gain: 5 },
+            mid: { freq: 400, q: 0.8, gain: -3 },
+            highShelf: { freq: 1500, gain: -6 }
+        },
+        
+        stringNoise: { on: false, type: 'finger' as const, amount: 0 },
+        
+        chorus: { on: true, rate: 0.1, depth: 0.005, mix: 0.25 },
+        delay: { on: true, time: 0.6, fb: 0.4, mix: 0.2, hc: 1200 },
+        
+        reverbMix: 0.35
+    },
+
+    bass_ambient_dark: {
+        type: 'bass' as const,
+        name: 'Dark Ambient',
+        volume: 0.6,
+        
+        osc: [
+            { type: 'sine' as const, octave: 0, detune: 0, gain: 0.65 },
+            { type: 'triangle' as const, octave: -1, detune: 0, gain: 0.35 }
+        ],
+        
+        sub: { on: true, type: 'sine' as const, octave: -1, gain: 0.9 },
+        
+        adsr: { a: 0.5, d: 1.2, s: 0.9, r: 2.0 },
+        
+        filter: { type: 'lowpass' as const, cutoff: 400, q: 0.4, keyTrack: 0.1 },
+        
+        filterEnv: {
+            on: true,
+            attack: 0.6, decay: 1.5, sustain: 0.3, release: 1.0,
+            depth: 300, velocity: 0.2
+        },
+        
+        drive: { on: false, type: 'tube' as const, amount: 0, tone: 1000 },
+        
+        comp: { threshold: -22, ratio: 2.5, attack: 0.03, release: 0.4, makeup: 3 },
+        
+        eq: {
+            lowShelf: { freq: 50, gain: 6 },
+            mid: { freq: 300, q: 0.6, gain: -4 },
+            highShelf: { freq: 1000, gain: -8 }
+        },
+        
+        stringNoise: { on: false, type: 'finger' as const, amount: 0 },
+        
+        chorus: { on: true, rate: 0.08, depth: 0.006, mix: 0.3 },
+        delay: { on: true, time: 0.8, fb: 0.5, mix: 0.25, hc: 800 },
+        
+        reverbMix: 0.45
+    },
+
+    // ─────────────────────────────────────────────────────────────────────────
+    // TRANCE BASS — Punchy, filter movement
+    // ─────────────────────────────────────────────────────────────────────────
+    bass_trance: {
+        type: 'bass' as const,
+        name: 'Trance Bass',
+        volume: 0.75,
+        
+        osc: [
+            { type: 'sawtooth' as const, octave: 0, detune: 0, gain: 0.7 },
+            { type: 'sawtooth' as const, octave: 0, detune: 5, gain: 0.3 },
+            { type: 'square' as const, octave: -1, detune: 0, gain: 0.25 }
+        ],
+        
+        sub: { on: true, type: 'sine' as const, octave: -1, gain: 0.6 },
+        
+        adsr: { a: 0.003, d: 0.15, s: 0.5, r: 0.15 },  // Punchy
+        
+        filter: { type: 'lowpass' as const, cutoff: 800, q: 3, keyTrack: 0.4 },
+        
+        filterEnv: {
+            on: true,
+            attack: 0.001, decay: 0.12, sustain: 0.1, release: 0.1,
+            depth: 2500, velocity: 0.7  // Aggressive filter
+        },
+        
+        drive: { on: true, type: 'soft' as const, amount: 0.3, tone: 4000 },
+        
+        comp: { threshold: -12, ratio: 6, attack: 0.001, release: 0.08, makeup: 6 },
+        
+        eq: {
+            lowShelf: { freq: 80, gain: 2 },
+            mid: { freq: 1500, q: 2, gain: 2 },
+            highShelf: { freq: 4000, gain: -2 }
+        },
+        
+        stringNoise: { on: false, type: 'finger' as const, amount: 0 },
+        
+        chorus: { on: false, rate: 0.3, depth: 0.003, mix: 0 },
+        delay: { on: false, time: 0.3, fb: 0.2, mix: 0, hc: 2000 },
+        
+        reverbMix: 0.08
+    },
+
+    bass_trance_acid: {
+        type: 'bass' as const,
+        name: 'Acid Bass',
+        volume: 0.72,
+        
+        osc: [
+            { type: 'sawtooth' as const, octave: 0, detune: 0, gain: 0.9 }
+        ],
+        
+        sub: { on: true, type: 'square' as const, octave: -1, gain: 0.4 },
+        
+        adsr: { a: 0.001, d: 0.1, s: 0.3, r: 0.08 },
+        
+        filter: { type: 'lowpass' as const, cutoff: 400, q: 8, keyTrack: 0.5 },  // High resonance!
+        
+        filterEnv: {
+            on: true,
+            attack: 0.001, decay: 0.15, sustain: 0.05, release: 0.08,
+            depth: 4000, velocity: 0.8
+        },
+        
+        drive: { on: true, type: 'tube' as const, amount: 0.4, tone: 5000 },
+        
+        comp: { threshold: -10, ratio: 8, attack: 0.001, release: 0.06, makeup: 7 },
+        
+        eq: {
+            lowShelf: { freq: 100, gain: 1 },
+            mid: { freq: 2000, q: 2.5, gain: 3 },
+            highShelf: { freq: 5000, gain: 0 }
+        },
+        
+        stringNoise: { on: false, type: 'finger' as const, amount: 0 },
+        
+        chorus: { on: false, rate: 0.3, depth: 0.003, mix: 0 },
+        delay: { on: false, time: 0.3, fb: 0.2, mix: 0, hc: 2000 },
+        
+        reverbMix: 0.05
+    },
+
+    // ─────────────────────────────────────────────────────────────────────────
+    // REGGAE BASS — Deep, dubby, short notes
+    // ─────────────────────────────────────────────────────────────────────────
+    bass_reggae: {
+        type: 'bass' as const,
+        name: 'Reggae Bass',
+        volume: 0.75,
+        
+        osc: [
+            { type: 'sine' as const, octave: 0, detune: 0, gain: 0.8 },
+            { type: 'triangle' as const, octave: 0, detune: 0, gain: 0.2 }
+        ],
+        
+        sub: { on: true, type: 'sine' as const, octave: -1, gain: 0.7 },  // Deep sub
+        
+        adsr: { a: 0.008, d: 0.25, s: 0.4, r: 0.15 },  // Short, punchy
+        
+        filter: { type: 'lowpass' as const, cutoff: 900, q: 0.7, keyTrack: 0.2 },
+        
+        filterEnv: {
+            on: true,
+            attack: 0.005, decay: 0.15, sustain: 0.2, release: 0.1,
+            depth: 400, velocity: 0.4
+        },
+        
+        drive: { on: false, type: 'tube' as const, amount: 0, tone: 2000 },
+        
+        comp: { threshold: -14, ratio: 5, attack: 0.005, release: 0.1, makeup: 5 },
+        
+        eq: {
+            lowShelf: { freq: 70, gain: 4 },
+            mid: { freq: 500, q: 1.0, gain: -2 },
+            highShelf: { freq: 2000, gain: -5 }
+        },
+        
+        stringNoise: { on: true, type: 'finger' as const, amount: 0.08 },
+        
+        chorus: { on: false, rate: 0.3, depth: 0.003, mix: 0 },
+        delay: { on: true, time: 0.375, fb: 0.35, mix: 0.18, hc: 1500 },  // Dub delay
+        
+        reverbMix: 0.15
+    },
+
+    bass_dub: {
+        type: 'bass' as const,
+        name: 'Dub Bass',
+        volume: 0.7,
+        
+        osc: [
+            { type: 'sine' as const, octave: 0, detune: 0, gain: 0.75 },
+            { type: 'triangle' as const, octave: 0, detune: -2, gain: 0.25 }
+        ],
+        
+        sub: { on: true, type: 'sine' as const, octave: -1, gain: 0.85 },
+        
+        adsr: { a: 0.01, d: 0.3, s: 0.5, r: 0.25 },
+        
+        filter: { type: 'lowpass' as const, cutoff: 700, q: 1.2, keyTrack: 0.2 },
+        
+        filterEnv: {
+            on: true,
+            attack: 0.01, decay: 0.2, sustain: 0.15, release: 0.15,
+            depth: 600, velocity: 0.5
+        },
+        
+        drive: { on: true, type: 'tube' as const, amount: 0.12, tone: 1800 },
+        
+        comp: { threshold: -16, ratio: 4, attack: 0.008, release: 0.12, makeup: 4 },
+        
+        eq: {
+            lowShelf: { freq: 60, gain: 5 },
+            mid: { freq: 400, q: 0.8, gain: -3 },
+            highShelf: { freq: 1800, gain: -6 }
+        },
+        
+        stringNoise: { on: true, type: 'finger' as const, amount: 0.06 },
+        
+        chorus: { on: false, rate: 0.3, depth: 0.003, mix: 0 },
+        delay: { on: true, time: 0.5, fb: 0.45, mix: 0.25, hc: 1200 },  // Heavy dub delay
+        
+        reverbMix: 0.22
+    },
+
+    // ─────────────────────────────────────────────────────────────────────────
+    // HOUSE BASS — 808-style, punchy, modern
+    // ─────────────────────────────────────────────────────────────────────────
+    bass_house: {
+        type: 'bass' as const,
+        name: 'House Bass',
+        volume: 0.78,
+        
+        osc: [
+            { type: 'sine' as const, octave: 0, detune: 0, gain: 0.85 },
+            { type: 'triangle' as const, octave: 0, detune: 0, gain: 0.15 }
+        ],
+        
+        sub: { on: true, type: 'sine' as const, octave: -1, gain: 0.65 },
+        
+        adsr: { a: 0.002, d: 0.18, s: 0.35, r: 0.12 },  // Tight
+        
+        filter: { type: 'lowpass' as const, cutoff: 1200, q: 0.8, keyTrack: 0.3 },
+        
+        filterEnv: {
+            on: true,
+            attack: 0.001, decay: 0.1, sustain: 0.15, release: 0.08,
+            depth: 800, velocity: 0.6
+        },
+        
+        drive: { on: true, type: 'soft' as const, amount: 0.2, tone: 3000 },
+        
+        comp: { threshold: -10, ratio: 6, attack: 0.001, release: 0.08, makeup: 6 },
+        
+        eq: {
+            lowShelf: { freq: 80, gain: 3 },
+            mid: { freq: 800, q: 1.5, gain: 1 },
+            highShelf: { freq: 3000, gain: -2 }
+        },
+        
+        stringNoise: { on: false, type: 'finger' as const, amount: 0 },
+        
+        chorus: { on: false, rate: 0.3, depth: 0.003, mix: 0 },
+        delay: { on: false, time: 0.3, fb: 0.2, mix: 0, hc: 2000 },
+        
+        reverbMix: 0.06
+    },
+
+    bass_808: {
+        type: 'bass' as const,
+        name: '808 Sub',
+        volume: 0.8,
+        
+        osc: [
+            { type: 'sine' as const, octave: 0, detune: 0, gain: 1.0 }
+        ],
+        
+        sub: { on: true, type: 'sine' as const, octave: -1, gain: 0.7 },
+        
+        adsr: { a: 0.001, d: 0.4, s: 0.2, r: 0.5 },  // Long decay
+        
+        filter: { type: 'lowpass' as const, cutoff: 500, q: 0.5, keyTrack: 0.2 },
+        
+        filterEnv: {
+            on: true,
+            attack: 0.001, decay: 0.25, sustain: 0.1, release: 0.2,
+            depth: 600, velocity: 0.5
+        },
+        
+        drive: { on: true, type: 'tube' as const, amount: 0.35, tone: 2000 },  // 808 distortion
+        
+        comp: { threshold: -8, ratio: 8, attack: 0.001, release: 0.1, makeup: 7 },
+        
+        eq: {
+            lowShelf: { freq: 60, gain: 4 },
+            mid: { freq: 200, q: 1.0, gain: 2 },
+            highShelf: { freq: 1500, gain: -4 }
+        },
+        
+        stringNoise: { on: false, type: 'finger' as const, amount: 0 },
+        
+        chorus: { on: false, rate: 0.3, depth: 0.003, mix: 0 },
+        delay: { on: false, time: 0.3, fb: 0.2, mix: 0, hc: 2000 },
+        
+        reverbMix: 0.04
+    },
+
+    bass_deep_house: {
+        type: 'bass' as const,
+        name: 'Deep House',
+        volume: 0.72,
+        
+        osc: [
+            { type: 'sine' as const, octave: 0, detune: 0, gain: 0.7 },
+            { type: 'sawtooth' as const, octave: 0, detune: 0, gain: 0.25 },
+            { type: 'sine' as const, octave: 1, detune: 0, gain: 0.1 }
+        ],
+        
+        sub: { on: true, type: 'sine' as const, octave: -1, gain: 0.6 },
+        
+        adsr: { a: 0.005, d: 0.2, s: 0.5, r: 0.18 },
+        
+        filter: { type: 'lowpass' as const, cutoff: 1000, q: 1.5, keyTrack: 0.35 },
+        
+        filterEnv: {
+            on: true,
+            attack: 0.003, decay: 0.15, sustain: 0.2, release: 0.12,
+            depth: 1000, velocity: 0.6
+        },
+        
+        drive: { on: true, type: 'tube' as const, amount: 0.18, tone: 2800 },
+        
+        comp: { threshold: -12, ratio: 5, attack: 0.003, release: 0.1, makeup: 5 },
+        
+        eq: {
+            lowShelf: { freq: 90, gain: 2 },
+            mid: { freq: 600, q: 1.2, gain: 0 },
+            highShelf: { freq: 2500, gain: -1 }
+        },
+        
+        stringNoise: { on: false, type: 'finger' as const, amount: 0 },
+        
+        chorus: { on: true, rate: 0.15, depth: 0.003, mix: 0.12 },
+        delay: { on: false, time: 0.3, fb: 0.2, mix: 0, hc: 2000 },
+        
+        reverbMix: 0.1
+    },
+
+    // ─────────────────────────────────────────────────────────────────────────
+    // ROCK/FUNK BASS
+    // ─────────────────────────────────────────────────────────────────────────
+    bass_rock_pick: {
+        type: 'bass' as const,
+        name: 'Rock Pick',
+        volume: 0.75,
+        
+        osc: [
+            { type: 'sawtooth' as const, octave: 0, detune: 0, gain: 0.6 },
+            { type: 'square' as const, octave: 0, detune: 2, gain: 0.25 },
+            { type: 'sine' as const, octave: 0, detune: 0, gain: 0.3 }
+        ],
+        
+        sub: { on: true, type: 'sine' as const, octave: -1, gain: 0.4 },
+        
+        adsr: { a: 0.003, d: 0.2, s: 0.6, r: 0.15 },
+        
+        filter: { type: 'lowpass' as const, cutoff: 2200, q: 1.0, keyTrack: 0.4 },
+        
+        filterEnv: {
+            on: true,
+            attack: 0.002, decay: 0.12, sustain: 0.25, release: 0.1,
+            depth: 1200, velocity: 0.6
+        },
+        
+        drive: { on: true, type: 'tube' as const, amount: 0.4, tone: 4000 },
+        
+        comp: { threshold: -14, ratio: 5, attack: 0.003, release: 0.1, makeup: 5 },
+        
+        eq: {
+            lowShelf: { freq: 100, gain: 1 },
+            mid: { freq: 1000, q: 1.5, gain: 2 },
+            highShelf: { freq: 3500, gain: 1 }
+        },
+        
+        stringNoise: { on: true, type: 'pick' as const, amount: 0.25 },
+        
+        chorus: { on: false, rate: 0.3, depth: 0.003, mix: 0 },
+        delay: { on: false, time: 0.3, fb: 0.2, mix: 0, hc: 2000 },
+        
+        reverbMix: 0.08
+    },
+
+    bass_slap: {
+        type: 'bass' as const,
+        name: 'Slap Bass',
+        volume: 0.72,
+        
+        osc: [
+            { type: 'sawtooth' as const, octave: 0, detune: 0, gain: 0.55 },
+            { type: 'square' as const, octave: 0, detune: 3, gain: 0.3 },
+            { type: 'sine' as const, octave: 1, detune: 0, gain: 0.2 }
+        ],
+        
+        sub: { on: true, type: 'sine' as const, octave: -1, gain: 0.45 },
+        
+        adsr: { a: 0.001, d: 0.15, s: 0.4, r: 0.12 },  // Very punchy
+        
+        filter: { type: 'lowpass' as const, cutoff: 2500, q: 2, keyTrack: 0.5 },
+        
+        filterEnv: {
+            on: true,
+            attack: 0.001, decay: 0.08, sustain: 0.15, release: 0.08,
+            depth: 3000, velocity: 0.8  // Aggressive envelope
+        },
+        
+        drive: { on: true, type: 'tube' as const, amount: 0.25, tone: 5000 },
+        
+        comp: { threshold: -12, ratio: 6, attack: 0.001, release: 0.08, makeup: 6 },
+        
+        eq: {
+            lowShelf: { freq: 80, gain: 2 },
+            mid: { freq: 800, q: 1.2, gain: -2 },  // Scoop
+            highShelf: { freq: 4000, gain: 3 }     // Brightness
+        },
+        
+        stringNoise: { on: true, type: 'slap' as const, amount: 0.35 },
+        
+        chorus: { on: false, rate: 0.3, depth: 0.003, mix: 0 },
+        delay: { on: false, time: 0.3, fb: 0.2, mix: 0, hc: 2000 },
+        
+        reverbMix: 0.06
+    }
+};
+
+// ═══════════════════════════════════════════════════════════════════════════
+// V2 PRESET ADDITIONS
+// ═══════════════════════════════════════════════════════════════════════════
+
+// Добавьте в V2_PRESETS:
+// ...BASS_PRESETS
+
+// ═══════════════════════════════════════════════════════════════════════════
+// V1 -> V2 MAPPING
+// ═══════════════════════════════════════════════════════════════════════════
+
+export const BASS_PRESET_MAP: Record<string, keyof typeof BASS_PRESETS> = {
+    bass: 'bass_jazz_warm',
+    jazzBass: 'bass_jazz_warm',
+    fretlessBass: 'bass_jazz_fretless',
+    bluesBass: 'bass_blues',
+    ambientBass: 'bass_ambient',
+    darkBass: 'bass_ambient_dark',
+    tranceBass: 'bass_trance',
+    acidBass: 'bass_trance_acid',
+    reggaeBass: 'bass_reggae',
+    dubBass: 'bass_dub',
+    houseBass: 'bass_house',
+    '808': 'bass_808',
+    deepHouseBass: 'bass_deep_house',
+    rockBass: 'bass_rock_pick',
+    slapBass: 'bass_slap'
+};
+```
+
+---
+
+## Интеграция в фабрику
+
+```typescript
+// В buildMultiInstrument() добавьте:
+
+else if (type === 'bass') {
+    const bassApi = await buildBassEngine(ctx, preset as BassPreset, {
+        output: master,
+        plateIRUrl
+    });
+    
+    api.noteOn = bassApi.noteOn;
+    api.noteOff = bassApi.noteOff;
+    api.allNotesOff = bassApi.allNotesOff;
+    api.setPreset = bassApi.setPreset;
+    api.setParam = bassApi.setParam;
+    api.setVolume = bassApi.setVolume;
+    api.getVolume = bassApi.getVolume;
+    api.setExpression = bassApi.setExpression;
+}
+```
+
+---
+
+## Использование
+
+```typescript
+// Создание баса
+const bass = await buildBassEngine(audioCtx, BASS_PRESETS.bass_reggae, {
+    plateIRUrl: '/ir/plate.wav'
+});
+
+// Играть
+bass.noteOn(36);  // Low E
+bass.noteOn(36, ctx.currentTime, 0.8);  // С velocity
+bass.noteOff(36);
+
+// Параметры в реальном времени
+bass.setParam('filterCutoff', 800);
+bass.setParam('drive', 0.5);
+bass.setVolume(0.7);
+
+// Смена пресета
+bass.setPreset(BASS_PRESETS.bass_trance_acid);
+```
+
+---
+
+## Шпаргалка по жанрам
+
+| Жанр | Пресет | Характер |
+|------|--------|----------|
+| **Jazz** | `bass_jazz_warm` | Тёплый, finger, мало верхов |
+| **Jazz Fretless** | `bass_jazz_fretless` | Mwah, хорус, mid presence |
+| **Blues** | `bass_blues` | Тёплый + лёгкий grit |
+| **Ambient** | `bass_ambient` | Медленный, много sub, reverb |
+| **Dark Ambient** | `bass_ambient_dark` | Очень low, delay |
+| **Trance** | `bass_trance` | Punchy, filter sweep |
+| **Acid** | `bass_trance_acid` | High resonance, aggressive |
+| **Reggae** | `bass_reggae` | Deep sub, dub delay |
+| **Dub** | `bass_dub` | Heavy delay, low pass |
+| **House** | `bass_house` | Tight, 808-style |
+| **808** | `bass_808` | Pure sine + distortion |
+| **Deep House** | `bass_deep_house` | Warm + movement |
+| **Rock** | `bass_rock_pick` | Pick attack, drive |
+| **Slap** | `bass_slap` | Aggressive filter env |
+
+Теперь бас звучит профессионально для любого жанра! 🎸🔊

@@ -49,18 +49,16 @@ const Scheduler = {
     async initializeEngine(settings: WorkerSettings, force: boolean = false) {
         // #ЗАЧЕМ: Этот метод инициализирует или переинициализирует музыкальный движок.
         // #ЧТО: Он создает новый экземпляр FractalMusicEngine и асинхронно ждет его полной инициализации.
-        // #ИСПРАВЛЕНО (ПЛАН 1270): Удалена генерация 'newSeed'. Движок теперь ВСЕГДА использует 'seed' из переданных настроек.
-        if (fractalMusicEngine && !force) return;
-
+        // #ИСПРАВЛЕНО (ПЛАН 1274): Логика стала проще. Создаем, затем инициализируем.
         console.log(`%c[Worker] Initializing new engine with SEED: ${settings.seed}`, 'color: #FFD700; font-weight:bold;');
         
         const newEngine = new FractalMusicEngine({
             ...settings,
-            seed: settings.seed, // Используем переданный seed
+            seed: settings.seed,
             introBars: settings.introBars,
         });
 
-        await (newEngine as any).initialize(true);
+        await newEngine.initialize(true); // `true` для форсированной инициализации
         
         fractalMusicEngine = newEngine;
         this.barCount = 0;
@@ -161,6 +159,7 @@ const Scheduler = {
                 finalPayload = { events: [], instrumentHints: {} };
             }
             
+            // #ВАЖНО: Основной движок продолжает "думать" в фоне, чтобы быть готовым к плавному переходу
             fractalMusicEngine.evolve(this.barDuration, this.barCount);
             
         } else {
