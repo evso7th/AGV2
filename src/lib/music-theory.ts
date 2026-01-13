@@ -626,7 +626,12 @@ export function generateIntroSequence(options: {
         events.push(...melodyEvents);
     }
     if(activeInstrumentsForBar.has('bass')) {
-        events.push(...createAmbientBassAxiom(currentChord, settings.mood, settings.genre, random, settings.tempo, 'drone'));
+        // #ИСПРАВЛЕНО (ПЛАН 1283): Добавлена проверка жанра.
+        if (settings.genre === 'blues') {
+            events.push(...generateBluesBassRiff(currentChord, 'riff', random, settings.mood));
+        } else {
+            events.push(...createAmbientBassAxiom(currentChord, settings.mood, settings.genre, random, settings.tempo, 'drone'));
+        }
     }
     if(activeInstrumentsForBar.has('drums')) {
         const kit = DRUM_KITS[settings.genre]?.intro ?? DRUM_KITS.ambient!.intro!;
@@ -884,6 +889,8 @@ export function createBluesOrganLick(
 }
 
     
+
+
 
 
 
