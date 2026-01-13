@@ -469,6 +469,10 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
         const balancedVolume = volume * (VOICE_BALANCE[part] ?? 1);
         gainNode.gain.setTargetAtTime(balancedVolume, audioContextRef.current.currentTime, 0.01);
     }
+    // Also update the synth managers for V2 instruments
+    if (part === 'bass' && bassManagerV2Ref.current?.synth) {
+      bassManagerV2Ref.current.synth.setVolume(volume);
+    }
   }, []);
 
   const setTextureSettingsCallback = useCallback((settings: Omit<TextureSettings, 'pads' | 'sfx'>) => {

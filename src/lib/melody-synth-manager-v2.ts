@@ -8,9 +8,10 @@ import type { TelecasterGuitarSampler } from './telecaster-guitar-sampler';
 import type { BlackGuitarSampler } from './black-guitar-sampler';
 
 /**
- * A V2 manager for the melody synthesizer.
+ * A V2 manager for melody and bass parts.
  * This version acts as a "smart performer", routing events to either its
- * internal synthesizer or to specialized guitar samplers.
+ * internal synthesizer (for synth sounds) or to specialized guitar samplers.
+ * It's made universal by accepting a 'partName' to know which events to process.
  */
 export class MelodySynthManagerV2 {
     private audioContext: AudioContext;
@@ -24,7 +25,6 @@ export class MelodySynthManagerV2 {
     private blackAcousticSampler: BlackGuitarSampler;
 
     private activePresetName: keyof typeof V2_PRESETS = 'synth';
-    private activeNotes = new Map<number, () => void>(); // Maps MIDI note to a cleanup function
 
     constructor(
         audioContext: AudioContext, 
@@ -44,12 +44,20 @@ export class MelodySynthManagerV2 {
     async init() {
         if (this.isInitialized) return;
         console.log(`[MelodySynthManagerV2] Initializing for ${this.partName}...`);
-        await this.loadInstrument(this.activePresetName);
+        
+        // #ЗАЧЕМ: Мы определяем тип инструмента на основе его роли.
+        // #ЧТО: Если это менеджер для 'bass', он будет использовать фабрику для создания
+        //      инструмента типа 'bass'. В противном случае, он создаст 'synth'.
+        // #СВЯЗИ: Решает проблему, когда бас звучал как обычный полифонический синтезатор.
+        const instrumentTypeForFactory = this.partName === 'bass' ? 'bass' : 'synth';
+        const initialPreset = this.partName === 'bass' ? 'bass_jazz_warm' : 'synth';
+
+        await this.loadInstrument(initialPreset as keyof typeof V2_PRESETS, instrumentTypeForFactory);
         this.isInitialized = true;
         console.log(`[MelodySynthManagerV2] Initialized for ${this.partName} with a persistent synth and samplers.`);
     }
     
-    private async loadInstrument(presetName: keyof typeof V2_PRESETS) {
+    private async loadInstrument(presetName: keyof typeof V2_PRESETS, instrumentType: 'bass' | 'synth' | 'organ' | 'guitar' = 'synth') {
         this.allNotesOff(); // Stop any previous sound
         const preset = V2_PRESETS[presetName];
         if (!preset) {
@@ -57,16 +65,16 @@ export class MelodySynthManagerV2 {
             return;
         }
 
-        console.log(`[MelodySynthManagerV2] Loading synth instrument for ${this.partName} with preset: ${presetName}`);
+        console.log(`[MelodySynthManagerV2] Loading instrument for ${this.partName} of type ${instrumentType} with preset: ${presetName}`);
 
         try {
             this.synth = await buildMultiInstrument(this.audioContext, {
-                type: preset.type as any,
+                type: instrumentType,
                 preset: preset,
                 output: this.destination
             });
             this.activePresetName = presetName;
-            console.log(`[MelodySynthManagerV2] Synth instrument loaded for ${this.partName} with preset: ${presetName}`);
+            console.log(`[MelodySynthManagerV2] Instrument loaded for ${this.partName} with preset: ${presetName}`);
         } catch (error) {
             console.error(`[MelodySynthManagerV2] Error loading synth for ${this.partName} with preset ${presetName}:`, error);
         }
@@ -79,21 +87,23 @@ export class MelodySynthManagerV2 {
         const logCss = this.partName === 'melody' ? 'color: #DA70D6' : 'color: #4169E1';
         console.log(`${logPrefix} [2. Manager] Received hint: ${instrumentHint}`, logCss);
 
-        // --- SMART ROUTER ---
-        if (instrumentHint === 'telecaster') {
-            console.log(`${logPrefix} [3. Router] Routing to TelecasterSampler`, logCss);
-            const notesToPlay = events.filter(e => e.type === this.partName).map(e => ({ midi: e.note, time: e.time * (60/tempo), duration: e.duration * (60/tempo), velocity: e.weight }));
-            this.telecasterSampler.schedule(notesToPlay, barStartTime);
-            return;
+        // --- SMART ROUTER (только для мелодии) ---
+        if (this.partName === 'melody') {
+            if (instrumentHint === 'telecaster') {
+                console.log(`${logPrefix} [3. Router] Routing to TelecasterSampler`, logCss);
+                const notesToPlay = events.filter(e => e.type === this.partName).map(e => ({ midi: e.note, time: e.time * (60/tempo), duration: e.duration * (60/tempo), velocity: e.weight }));
+                this.telecasterSampler.schedule(notesToPlay, barStartTime);
+                return;
+            }
+            if (instrumentHint === 'blackAcoustic') {
+                console.log(`${logPrefix} [3. Router] Routing to BlackGuitarSampler`, logCss);
+                 const notesToPlay = events.filter(e => e.type === this.partName).map(e => ({ midi: e.note, time: e.time * (60/tempo), duration: e.duration * (60/tempo), velocity: e.weight }));
+                this.blackAcousticSampler.schedule(notesToPlay, barStartTime);
+                return;
+            }
         }
-        if (instrumentHint === 'blackAcoustic') {
-            console.log(`${logPrefix} [3. Router] Routing to BlackGuitarSampler`, logCss);
-             const notesToPlay = events.filter(e => e.type === this.partName).map(e => ({ midi: e.note, time: e.time * (60/tempo), duration: e.duration * (60/tempo), velocity: e.weight }));
-            this.blackAcousticSampler.schedule(notesToPlay, barStartTime);
-            return;
-        }
-
-        // --- SYNTH LOGIC (if not routed to sampler) ---
+        
+        // --- SYNTH LOGIC (если не было маршрутизации на сэмплер) ---
         console.log(`${logPrefix} [3. Router] Routing to internal V2 Synth`, logCss);
         const finalInstrumentHint = (instrumentHint && V1_TO_V2_PRESET_MAP[instrumentHint])
             ? V1_TO_V2_PRESET_MAP[instrumentHint]
@@ -111,12 +121,13 @@ export class MelodySynthManagerV2 {
         const beatDuration = 60 / tempo;
         
         events.forEach(event => {
-            if(event.type !== this.partName) return;
+            // #ИСПРАВЛЕНО: Теперь фильтр гибкий и зависит от роли менеджера
+            if (event.type !== this.partName) return;
             
             const noteOnTime = barStartTime + (event.time * beatDuration);
             if (!isFinite(event.duration) || event.duration <= 0) {
                  console.error(`[MelodySynthManagerV2] Invalid duration for event for part ${this.partName}!`, JSON.parse(JSON.stringify(event)));
-                return; // Skip this event
+                return;
             }
             const noteOffTime = noteOnTime + (event.duration * beatDuration);
             
@@ -128,10 +139,13 @@ export class MelodySynthManagerV2 {
     public async setInstrument(instrumentName: keyof typeof V2_PRESETS) {
        if (instrumentName === this.activePresetName) return;
 
-       if (V2_PRESETS[instrumentName]) {
-           await this.loadInstrument(instrumentName);
+       const newPreset = V2_PRESETS[instrumentName];
+       if (newPreset && this.synth?.setPreset) {
+           this.synth.setPreset(newPreset);
+           this.activePresetName = instrumentName;
+           console.log(`[MelodySynthManagerV2] for ${this.partName} - Preset updated to: ${instrumentName}`);
        } else {
-           console.error(`[MelodySynthManagerV2] Failed to set preset: ${instrumentName}. Preset not found in V2_PRESETS.`);
+           console.error(`[MelodySynthManagerV2] Failed to set preset: ${instrumentName}. Preset or setPreset method not found.`);
        }
     }
 
@@ -139,9 +153,6 @@ export class MelodySynthManagerV2 {
         if (this.synth && this.synth.allNotesOff) {
             this.synth.allNotesOff();
         }
-        // These are shared, so we don't call stopAll from both managers
-        // this.telecasterSampler?.stopAll();
-        // this.blackAcousticSampler?.stopAll();
     }
 
     public stop() {
