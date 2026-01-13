@@ -48,23 +48,19 @@ const Scheduler = {
 
     async initializeEngine(settings: WorkerSettings, force: boolean = false) {
         // #ЗАЧЕМ: Этот метод инициализирует или переинициализирует музыкальный движок.
-        // #ЧТО: Он создает новый экземпляр FractalMusicEngine и асинхронно ждет его полной инициализации (включая загрузку блюпринта).
-        // #СВЯЗИ: Вызывается из updateSettings и reset. `force` используется для принудительной пересоздания.
+        // #ЧТО: Он создает новый экземпляр FractalMusicEngine и асинхронно ждет его полной инициализации.
+        // #ИСПРАВЛЕНО (ПЛАН 1270): Удалена генерация 'newSeed'. Движок теперь ВСЕГДА использует 'seed' из переданных настроек.
         if (fractalMusicEngine && !force) return;
 
-        const newSeed = Date.now();
-        console.log(`%c[Worker] Initializing new engine with NEW SEED: ${newSeed}`, 'color: #FFD700; font-weight:bold;');
+        console.log(`%c[Worker] Initializing new engine with SEED: ${settings.seed}`, 'color: #FFD700; font-weight:bold;');
         
-        // #ИСПРАВЛЕНО (ПЛАН 719): Явно передаем `introBars` в конструктор, чтобы
-        //                     BlueprintNavigator был создан с правильной длительностью интро.
         const newEngine = new FractalMusicEngine({
             ...settings,
-            seed: newSeed,
+            seed: settings.seed, // Используем переданный seed
             introBars: settings.introBars,
         });
 
-        // Ожидаем, пока движок загрузит блюпринт и будет готов к работе.
-        await (newEngine as any).initialize(true); // force=true для перезагрузки блюпринта
+        await (newEngine as any).initialize(true);
         
         fractalMusicEngine = newEngine;
         this.barCount = 0;
@@ -97,15 +93,21 @@ const Scheduler = {
     },
     
     async reset() {
-        // #ЗАЧЕМ: "Горячая" перезагрузка движка без остановки цикла воспроизведения.
-        // #ЧТО: Останавливает текущий таймер, принудительно пересоздает движок с новым seed,
-        //      и если музыка играла, немедленно запускает цикл `start()` заново.
-        // #СВЯЗИ: Вызывается по команде 'reset' из UI или автоматически по 'SUITE_ENDED'.
+        // #ИСПРАВЛЕНО (ПЛАН 1270): Логика генерации уникального "семени" перенесена сюда.
+        // #ЗАЧЕМ: Этот метод теперь является ЕДИНСТВЕННЫМ источником нового "семени" для каждой сюиты.
+        // #ЧТО: Он генерирует новый seed, обновляет глобальные настройки и немедленно пересоздает движок с ним.
+        // #СВЯЗИ: Вызывается по команде 'reset' из UI (при первом Play и при Regenerate).
         const wasRunning = this.isRunning;
         if (wasRunning) {
             this.stop();
         }
-        await this.initializeEngine(this.settings, true);
+        
+        const newSeed = Date.now();
+        console.log(`%c[Worker.reset] Generating NEW SEED: ${newSeed}`, 'color: cyan; font-weight:bold;');
+        this.settings.seed = newSeed; // Обновляем seed в настройках
+
+        await this.initializeEngine(this.settings, true); // Пересоздаем движок с новым seed
+        
         if (wasRunning) {
             this.start();
         }
@@ -116,7 +118,7 @@ const Scheduler = {
        const scoreChanged = newSettings.score && newSettings.score !== this.settings.score;
        const moodChanged = newSettings.mood && newSettings.mood !== this.settings.mood;
        const genreChanged = newSettings.genre && newSettings.genre !== this.settings.genre;
-       const seedChanged = newSettings.seed !== undefined && newSettings.seed !== this.settings.seed;
+       // #ИСПРАВЛЕНО (ПЛАН 1270): Проверка на изменение seed здесь больше не нужна, она централизована в reset().
        const introBarsChanged = newSettings.introBars !== undefined && newSettings.introBars !== this.settings.introBars;
        const wasNotInitialized = !fractalMusicEngine;
        
@@ -130,8 +132,8 @@ const Scheduler = {
             textureSettings: newSettings.textureSettings ? { ...this.settings.textureSettings, ...newSettings.textureSettings } : this.settings.textureSettings,
         };
 
-       // #ИСПРАВЛЕНО (ПЛАН 719): Изменение `introBars` теперь корректно вызывает переинициализацию движка.
-       if (wasNotInitialized || scoreChanged || moodChanged || genreChanged || seedChanged || introBarsChanged) {
+       if (wasNotInitialized || scoreChanged || moodChanged || genreChanged || introBarsChanged) {
+           // При смене стиля/настроения мы не генерируем новый seed, а используем текущий
            await this.initializeEngine(this.settings, true);
        } else if (fractalMusicEngine) {
            await fractalMusicEngine.updateConfig(this.settings);
@@ -148,39 +150,33 @@ const Scheduler = {
 
         if (this.barCount < this.settings.introBars) {
             // --- ВЕТКА ИНТРО ---
-            // 1. Получаем правила для текущего такта интро
             const navInfo = fractalMusicEngine.navigator?.tick(this.barCount);
             let introHints: InstrumentHints = {};
             if (navInfo?.currentPart.instrumentation) {
-                // Выбираем инструменты только для тех партий, что разрешены в интро
                 introHints.melody = (fractalMusicEngine as any)._chooseInstrumentForPart('melody', navInfo);
                 introHints.accompaniment = (fractalMusicEngine as any)._chooseInstrumentForPart('accompaniment', navInfo);
                 introHints.harmony = (fractalMusicEngine as any)._chooseInstrumentForPart('harmony', navInfo);
             }
             
-            // 2. Генерируем музыку ТОЛЬКО для интро, передавая актуальные хинты
             if (navInfo?.currentPart?.introRules) {
                 finalPayload = generateIntroSequence({
                     currentBar: this.barCount,
                     totalIntroBars: this.settings.introBars,
                     rules: navInfo.currentPart.introRules,
-                    instrumentHints: introHints, // Передаем актуальные хинты
+                    instrumentHints: introHints,
                     harmonyTrack: fractalMusicEngine.getGhostHarmony(),
                     settings: this.settings,
                     random: (fractalMusicEngine as any).random,
                     introInstrumentOrder: fractalMusicEngine.introInstrumentOrder
                 });
             } else {
-                // Если правил интро нет, играем тишину.
                 finalPayload = { events: [], instrumentHints: {} };
             }
             
-            // 3. "Прогреваем" основной движок вхолостую, НЕ ИСПОЛЬЗУЯ его результат.
             fractalMusicEngine.evolve(this.barDuration, this.barCount);
             
         } else {
             // --- ВЕТКА ОСНОВНОЙ ЧАСТИ ---
-            // 1. Интро закончилось, теперь используем основную партитуру от FractalMusicEngine.
             finalPayload = fractalMusicEngine.evolve(this.barDuration, this.barCount);
         }
 
