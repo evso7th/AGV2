@@ -1,4 +1,5 @@
 
+
 /**
  * @fileoverview This file acts as a cookbook for bass synthesizer techniques.
  * It defines the sound characteristics for different playing styles,
@@ -6,44 +7,6 @@
  */
 
 import type { BassInstrument } from '@/types/music';
-
-/**
- * Defines the parameters for a specific bass synthesis technique.
- * These values are sent to the bass-processor worklet.
- */
-export type BassTechniqueParams = {
-  cutoff: number;
-  resonance: number;
-  distortion: number;
-  portamento: number;
-};
-
-/**
- * A read-only collection of pre-defined sound recipes for each bass technique.
- * This object serves as the single source of truth for how each technique should sound.
- * Inspired by basstech.txt.
- */
-export const TECHNIQUE_PRESETS: Record<'pluck' | 'ghost' | 'slap', BassTechniqueParams> = {
-  pluck: { 
-    cutoff: 450, 
-    resonance: 0.6, 
-    distortion: 0.05, 
-    portamento: 0 
-  },
-  ghost: { 
-    cutoff: 250, 
-    resonance: 0.3, 
-    distortion: 0.01, 
-    portamento: 0 
-  },
-  slap:  { 
-    cutoff: 800, 
-    resonance: 0.8, 
-    distortion: 0.2, 
-    portamento: 0 
-  }
-} as const;
-
 
 /**
  * Legacy preset definitions for UI mapping and description purposes.
@@ -54,36 +17,29 @@ export type BassPresetInfo = {
   color: string;
 };
 
-export const BASS_PRESET_INFO: Record<BassInstrument, BassPresetInfo | null> = {
-  classicBass: {
-    description: 'Чёткий, ритмичный, как настоящая бас-гитара',
-    color: '#8B4513',
-  },
-  glideBass: {
-    description: 'Плавный, как скольжение по струне',
-    color: '#4169E1',
-  },
-  ambientDrone: {
-    description: 'Тёмный, плотный, как вибрация под землёй',
-    color: '#1A0033',
-  },
-  resonantGliss: {
-    description: 'Резонирующий, с "пением", идеален для глиссандо',
-    color: '#8B008B',
-  },
-  hypnoticDrone: {
-    description: 'Вибрация земли со стерео-движением',
-    color: '#483D8B',
-  },
-  livingRiff: {
-    description: 'Живой, дышащий рифф с характером',
-    color: '#FF4500',
-  },
-  // Instruments that are not bass presets
-  piano: null,
-  violin: null,
-  flute: null,
-  acousticGuitarSolo: null,
-  none: null
+// This info is now mainly for UI purposes. The actual synth parameters are in presets-v2.ts
+export const BASS_PRESET_INFO: Record<string, BassPresetInfo | null> = {
+  // --- New V2 Presets ---
+  bass_jazz_warm: { description: 'Warm, round, finger-style jazz bass.', color: '#A0522D' },
+  bass_jazz_fretless: { description: 'Expressive "mwah" sound of a fretless bass.', color: '#4682B4' },
+  bass_blues: { description: 'Classic blues bass with a slight grit.', color: '#000080' },
+  bass_ambient: { description: 'Deep, slow, atmospheric sub-bass.', color: '#2F4F4F' },
+  bass_ambient_dark: { description: 'Very low, rumbling drone for dark soundscapes.', color: '#191970' },
+  bass_trance: { description: 'Punchy, rolling bassline for trance music.', color: '#00BFFF' },
+  bass_trance_acid: { description: 'Resonant, squelchy acid bass.', color: '#FFD700' },
+  bass_reggae: { description: 'Deep, round, and dubby reggae bass.', color: '#228B22' },
+  bass_dub: { description: 'Heavier dub bass with prominent delay.', color: '#556B2F' },
+  bass_house: { description: 'Tight, modern, 808-style bass for house music.', color: '#FF69B4' },
+  bass_808: { description: 'Classic 808 sub-bass with long decay.', color: '#DC143C' },
+  bass_deep_house: { description: 'Warm and groovy bass for deep house.', color: '#9932CC' },
+  bass_rock_pick: { description: 'Aggressive picked bass for rock music.', color: '#B22222' },
+  bass_slap: { description: 'Bright, percussive slap bass for funk.', color: '#FF4500' },
+  
+  // --- Legacy V1 Presets (for mapping) ---
+  classicBass: { description: 'Classic rock bass sound.', color: '#8B4513' },
+  glideBass: { description: 'Smooth, gliding synth bass.', color: '#4169E1' },
+  ambientDrone: { description: 'Deep, evolving drone.', color: '#1A0033' },
+  resonantGliss: { description: 'Singing, resonant lead bass.', color: '#8B008B' },
+  hypnoticDrone: { description: 'Pulsating, wide drone.', color: '#483D8B' },
+  livingRiff: { description: 'Dynamic, expressive riffing bass.', color: '#FF4500' },
 };
-

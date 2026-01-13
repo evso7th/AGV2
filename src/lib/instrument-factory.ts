@@ -1,11 +1,767 @@
 
 
 // ─────────────────────────────────────────────────────────────────────────────
+// BASS ENGINE — Electric, Synth & Acoustic Bass Emulation
+// ─────────────────────────────────────────────────────────────────────────────
+
+// ═══════════════════════════════════════════════════════════════════════════
+// HELPERS & CURVES
+// ═══════════════════════════════════════════════════════════════════════════
+
+const midiToHz = (m: number) => 440 * Math.pow(2, (m - 69) / 12);
+const dB = (x: number) => Math.pow(10, x / 20);
+const clamp = (v: number, min: number, max: number) => Math.max(min, Math.min(max, v));
+
+// Tube-style saturation (тёплый овердрайв)
+const makeTubeSaturation = (drive = 0.3, n = 65536) => {
+    const curve = new Float32Array(n);
+    const k = drive * 5 + 1;
+    for (let i = 0; i < n; i++) {
+        const x = (i / (n - 1)) * 2 - 1;
+        // Асимметричный клиппинг (как у ламп)
+        const pos = Math.tanh(k * x);
+        const neg = Math.tanh(k * x * 0.8) * 0.9;
+        curve[i] = x >= 0 ? pos : neg;
+    }
+    return curve;
+};
+
+// Fuzz для агрессивного звучания
+const makeFuzz = (intensity = 0.7, n = 65536) => {
+    const curve = new Float32Array(n);
+    for (let i = 0; i < n; i++) {
+        const x = (i / (n - 1)) * 2 - 1;
+        const k = intensity * 20 + 1;
+        curve[i] = Math.sign(x) * (1 - Math.exp(-Math.abs(x) * k));
+    }
+    return curve;
+};
+
+// ═══════════════════════════════════════════════════════════════════════════
+// FILTER ENVELOPE
+// ═══════════════════════════════════════════════════════════════════════════
+
+interface FilterEnvelopeConfig {
+    attack: number;      // Время атаки фильтра
+    decay: number;       // Время затухания
+    sustain: number;     // Уровень sustain (0-1 от depth)
+    release: number;     // Release
+    depth: number;       // Глубина модуляции (Hz)
+    velocity: number;    // Влияние velocity на depth
+}
+
+const applyFilterEnvelope = (
+    ctx: AudioContext,
+    filter: BiquadFilterNode,
+    baseCutoff: number,
+    config: FilterEnvelopeConfig,
+    when: number,
+    velocity: number
+) => {
+    const depth = config.depth * (1 - config.velocity + config.velocity * velocity);
+    const peak = baseCutoff + depth;
+    const sustainLevel = baseCutoff + depth * config.sustain;
+    
+    filter.frequency.cancelScheduledValues(when);
+    filter.frequency.setValueAtTime(baseCutoff, when);
+    filter.frequency.linearRampToValueAtTime(peak, when + config.attack);
+    filter.frequency.setTargetAtTime(sustainLevel, when + config.attack, config.decay / 3);
+};
+
+const releaseFilterEnvelope = (
+    ctx: AudioContext,
+    filter: BiquadFilterNode,
+    baseCutoff: number,
+    releaseTime: number,
+    when: number
+) => {
+    filter.frequency.cancelScheduledValues(when);
+    filter.frequency.setTargetAtTime(baseCutoff, when, releaseTime / 3);
+};
+
+// ═══════════════════════════════════════════════════════════════════════════
+// STRING SIMULATION (для реализма)
+// ═══════════════════════════════════════════════════════════════════════════
+
+const createStringNoise = (ctx: AudioContext, duration: number): AudioBuffer => {
+    // Шум "пальца по струне" / pick attack
+    const length = Math.floor(ctx.sampleRate * duration);
+    const buffer = ctx.createBuffer(1, length, ctx.sampleRate);
+    const data = buffer.getChannelData(0);
+    
+    for (let i = 0; i < length; i++) {
+        const t = i / length;
+        const envelope = Math.exp(-t * 40) * (1 - t * 0.5);
+        data[i] = (Math.random() * 2 - 1) * envelope;
+    }
+    
+    return buffer;
+};
+
+const createSlapNoise = (ctx: AudioContext): AudioBuffer => {
+    // Slap attack — резкий удар
+    const length = Math.floor(ctx.sampleRate * 0.015);
+    const buffer = ctx.createBuffer(1, length, ctx.sampleRate);
+    const data = buffer.getChannelData(0);
+    
+    for (let i = 0; i < length; i++) {
+        const t = i / length;
+        const envelope = Math.exp(-t * 60);
+        const tone = Math.sin(i * 0.3) * 0.5; // ~2kHz transient
+        data[i] = ((Math.random() * 2 - 1) * 0.7 + tone * 0.3) * envelope;
+    }
+    
+    return buffer;
+};
+
+// ═══════════════════════════════════════════════════════════════════════════
+// BASS PRESET INTERFACE
+// ═══════════════════════════════════════════════════════════════════════════
+
+interface BassOscConfig {
+    type: 'sine' | 'triangle' | 'sawtooth' | 'square' | 'pulse';
+    octave: number;
+    detune: number;
+    gain: number;
+    pulseWidth?: number;  // для pulse
+}
+
+export interface BassPreset {
+    type: 'bass';
+    name?: string;
+    volume?: number;
+    
+    // ─── Oscillators ───
+    osc: BassOscConfig[];
+    
+    // ─── Sub bass (отдельно для контроля) ───
+    sub?: {
+        on: boolean;
+        type: 'sine' | 'triangle';
+        octave: number;  // обычно -1
+        gain: number;
+    };
+    
+    // ─── Amp Envelope ───
+    adsr: { a: number; d: number; s: number; r: number };
+    
+    // ─── Filter ───
+    filter: {
+        type: 'lowpass' | 'bandpass';
+        cutoff: number;
+        q: number;
+        keyTrack?: number;  // 0-1: следование за нотой
+    };
+    
+    // ─── Filter Envelope ───
+    filterEnv?: {
+        on: boolean;
+        attack: number;
+        decay: number;
+        sustain: number;
+        release: number;
+        depth: number;
+        velocity: number;
+    };
+    
+    // ─── Saturation/Drive ───
+    drive?: {
+        on: boolean;
+        type: 'tube' | 'fuzz' | 'soft';
+        amount: number;
+        tone: number;  // post-drive LPF
+    };
+    
+    // ─── Compressor ───
+    comp?: {
+        threshold: number;
+        ratio: number;
+        attack: number;
+        release: number;
+        makeup: number;
+    };
+    
+    // ─── EQ ───
+    eq?: {
+        lowShelf?: { freq: number; gain: number };
+        mid?: { freq: number; q: number; gain: number };
+        highShelf?: { freq: number; gain: number };
+    };
+    
+    // ─── String noise/attack ───
+    stringNoise?: {
+        on: boolean;
+        type: 'finger' | 'pick' | 'slap';
+        amount: number;
+    };
+    
+    // ─── Effects ───
+    chorus?: { on: boolean; rate: number; depth: number; mix: number };
+    delay?: { on: boolean; time: number; fb: number; mix: number; hc: number };
+    
+    reverbMix?: number;
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// BASS VOICE
+// ═══════════════════════════════════════════════════════════════════════════
+
+interface BassVoice {
+    oscillators: OscillatorNode[];
+    gains: GainNode[];
+    subOsc?: OscillatorNode;
+    subGain?: GainNode;
+    voiceGain: GainNode;
+    filter: BiquadFilterNode;
+    noiseSource?: AudioBufferSourceNode;
+    startTime: number;
+    midi: number;
+    velocity: number;
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// MAIN BASS ENGINE
+// ═══════════════════════════════════════════════════════════════════════════
+
+export const buildBassEngine = async (
+    ctx: AudioContext,
+    preset: BassPreset,
+    options: {
+        output?: AudioNode;
+        plateIRUrl?: string | null;
+    } = {}
+) => {
+    console.log('%c[BassEngine] Building bass...', 'color: #4169E1; font-weight: bold;');
+    
+    const output = options.output || ctx.destination;
+    let currentPreset = { ...preset };
+    
+    // ═══ Prepare Noise Buffers ═══
+    const fingerNoiseBuffer = createStringNoise(ctx, 0.02);
+    const pickNoiseBuffer = createStringNoise(ctx, 0.015);
+    const slapNoiseBuffer = createSlapNoise(ctx);
+    
+    // ═══ Static Audio Graph ═══
+    
+    // ─── Input Stage ───
+    const bassSum = ctx.createGain();
+    bassSum.gain.value = 1;
+    
+    // ─── Pre-filter compression (сглаживание) ───
+    const inputComp = ctx.createDynamicsCompressor();
+    inputComp.threshold.value = -24;
+    inputComp.knee.value = 12;
+    inputComp.ratio.value = 4;
+    inputComp.attack.value = 0.003;
+    inputComp.release.value = 0.1;
+    
+    // ─── Saturation/Drive ───
+    const driveInput = ctx.createGain();
+    driveInput.gain.value = 1;
+    
+    const shaper = ctx.createWaveShaper();
+    shaper.oversample = '4x';
+    
+    const driveTone = ctx.createBiquadFilter();
+    driveTone.type = 'lowpass';
+    driveTone.frequency.value = 3000;
+    driveTone.Q.value = 0.5;
+    
+    const driveWet = ctx.createGain();
+    const driveDry = ctx.createGain();
+    const driveMix = ctx.createGain();
+    
+    // ─── Main Filter (per-voice, but we also have a master filter) ───
+    const masterFilter = ctx.createBiquadFilter();
+    masterFilter.type = 'lowpass';
+    masterFilter.frequency.value = currentPreset.filter?.cutoff ?? 2000;
+    masterFilter.Q.value = currentPreset.filter?.q ?? 1;
+    
+    // ─── EQ Section ───
+    const eqLow = ctx.createBiquadFilter();
+    eqLow.type = 'lowshelf';
+    eqLow.frequency.value = currentPreset.eq?.lowShelf?.freq ?? 100;
+    eqLow.gain.value = currentPreset.eq?.lowShelf?.gain ?? 0;
+    
+    const eqMid = ctx.createBiquadFilter();
+    eqMid.type = 'peaking';
+    eqMid.frequency.value = currentPreset.eq?.mid?.freq ?? 800;
+    eqMid.Q.value = currentPreset.eq?.mid?.q ?? 1;
+    eqMid.gain.value = currentPreset.eq?.mid?.gain ?? 0;
+    
+    const eqHigh = ctx.createBiquadFilter();
+    eqHigh.type = 'highshelf';
+    eqHigh.frequency.value = currentPreset.eq?.highShelf?.freq ?? 3000;
+    eqHigh.gain.value = currentPreset.eq?.highShelf?.gain ?? 0;
+    
+    // ─── Output Compressor ───
+    const outputComp = ctx.createDynamicsCompressor();
+    const compMakeup = ctx.createGain();
+    
+    // ─── Chorus (for fretless/mellow sounds) ───
+    const chorusDelay = ctx.createDelay(0.05);
+    chorusDelay.delayTime.value = 0.015;
+    const chorusLfo = ctx.createOscillator();
+    const chorusLfoGain = ctx.createGain();
+    const chorusWet = ctx.createGain();
+    const chorusDry = ctx.createGain();
+    chorusLfo.type = 'sine';
+    chorusLfo.frequency.value = 0.3;
+    chorusLfoGain.gain.value = 0.003;
+    chorusLfo.connect(chorusLfoGain);
+    chorusLfoGain.connect(chorusDelay.delayTime);
+    chorusLfo.start();
+    
+    // ─── Delay (для dub/reggae) ───
+    const delayNode = ctx.createDelay(2);
+    const delayFeedback = ctx.createGain();
+    const delayFilter = ctx.createBiquadFilter();
+    delayFilter.type = 'lowpass';
+    delayFilter.frequency.value = 2000;
+    const delayWet = ctx.createGain();
+    const delayDry = ctx.createGain();
+    
+    // ─── Volume Control ───
+    const instrumentGain = ctx.createGain();
+    instrumentGain.gain.value = currentPreset.volume ?? 0.75;
+    
+    const expressionGain = ctx.createGain();
+    expressionGain.gain.value = 1;
+    
+    // ─── Master ───
+    const master = ctx.createGain();
+    master.gain.value = 0.85;
+    
+    // ─── Reverb ───
+    const reverb = ctx.createConvolver();
+    const reverbWet = ctx.createGain();
+    reverbWet.gain.value = currentPreset.reverbMix ?? 0.08;
+    
+    if (options.plateIRUrl) {
+        try {
+            const res = await fetch(options.plateIRUrl);
+            const buf = await res.arrayBuffer();
+            reverb.buffer = await ctx.decodeAudioData(buf);
+        } catch (e) {
+            console.warn('[BassEngine] Could not load reverb IR');
+        }
+    }
+    
+    // ═══ Routing ═══
+    
+    // Bass sum -> input comp
+    bassSum.connect(inputComp);
+    
+    // Drive section (parallel wet/dry)
+    inputComp.connect(driveInput);
+    driveInput.connect(shaper);
+    shaper.connect(driveTone);
+    driveTone.connect(driveWet);
+    inputComp.connect(driveDry);
+    driveWet.connect(driveMix);
+    driveDry.connect(driveMix);
+    
+    // Master filter
+    driveMix.connect(masterFilter);
+    
+    // EQ
+    masterFilter.connect(eqLow);
+    eqLow.connect(eqMid);
+    eqMid.connect(eqHigh);
+    
+    // Output comp
+    eqHigh.connect(outputComp);
+    outputComp.connect(compMakeup);
+    
+    // Chorus (parallel)
+    compMakeup.connect(chorusDry);
+    compMakeup.connect(chorusDelay);
+    chorusDelay.connect(chorusWet);
+    const chorusMerge = ctx.createGain();
+    chorusDry.connect(chorusMerge);
+    chorusWet.connect(chorusMerge);
+    
+    // Delay (parallel)
+    chorusMerge.connect(delayDry);
+    chorusMerge.connect(delayNode);
+    delayNode.connect(delayFilter);
+    delayFilter.connect(delayFeedback);
+    delayFeedback.connect(delayNode);
+    delayFilter.connect(delayWet);
+    const delayMerge = ctx.createGain();
+    delayDry.connect(delayMerge);
+    delayWet.connect(delayMerge);
+    
+    // Final chain
+    delayMerge.connect(expressionGain);
+    expressionGain.connect(instrumentGain);
+    instrumentGain.connect(master);
+    
+    // Reverb send
+    delayMerge.connect(reverbWet);
+    reverbWet.connect(reverb);
+    reverb.connect(master);
+    
+    master.connect(output);
+    
+    // ═══ Update from Preset ═══
+    
+    const updateFromPreset = (p: BassPreset) => {
+        // Drive
+        if (p.drive?.on) {
+            const curve = p.drive.type === 'fuzz' 
+                ? makeFuzz(p.drive.amount)
+                : p.drive.type === 'tube'
+                    ? makeTubeSaturation(p.drive.amount)
+                    : makeTubeSaturation(p.drive.amount * 0.5);
+            shaper.curve = curve;
+            driveTone.frequency.value = p.drive.tone ?? 3000;
+            driveWet.gain.value = 0.7;
+            driveDry.gain.value = 0.3;
+        } else {
+            driveWet.gain.value = 0;
+            driveDry.gain.value = 1;
+        }
+        
+        // Master filter
+        masterFilter.frequency.value = p.filter?.cutoff ?? 2000;
+        masterFilter.Q.value = p.filter?.q ?? 1;
+        masterFilter.type = p.filter?.type ?? 'lowpass';
+        
+        // EQ
+        if (p.eq?.lowShelf) {
+            eqLow.frequency.value = p.eq.lowShelf.freq;
+            eqLow.gain.value = p.eq.lowShelf.gain;
+        }
+        if (p.eq?.mid) {
+            eqMid.frequency.value = p.eq.mid.freq;
+            eqMid.Q.value = p.eq.mid.q;
+            eqMid.gain.value = p.eq.mid.gain;
+        }
+        if (p.eq?.highShelf) {
+            eqHigh.frequency.value = p.eq.highShelf.freq;
+            eqHigh.gain.value = p.eq.highShelf.gain;
+        }
+        
+        // Output comp
+        if (p.comp) {
+            outputComp.threshold.value = p.comp.threshold;
+            outputComp.ratio.value = p.comp.ratio;
+            outputComp.attack.value = p.comp.attack;
+            outputComp.release.value = p.comp.release;
+            compMakeup.gain.value = dB(p.comp.makeup);
+        } else {
+            outputComp.threshold.value = -12;
+            outputComp.ratio.value = 4;
+            outputComp.attack.value = 0.005;
+            outputComp.release.value = 0.15;
+            compMakeup.gain.value = dB(4);
+        }
+        
+        // Chorus
+        if (p.chorus?.on) {
+            chorusLfo.frequency.value = p.chorus.rate;
+            chorusLfoGain.gain.value = p.chorus.depth;
+            chorusWet.gain.value = p.chorus.mix;
+            chorusDry.gain.value = 1 - p.chorus.mix * 0.5;
+        } else {
+            chorusWet.gain.value = 0;
+            chorusDry.gain.value = 1;
+        }
+        
+        // Delay
+        if (p.delay?.on) {
+            delayNode.delayTime.value = p.delay.time;
+            delayFeedback.gain.value = p.delay.fb;
+            delayFilter.frequency.value = p.delay.hc ?? 2000;
+            delayWet.gain.value = p.delay.mix;
+            delayDry.gain.value = 1;
+        } else {
+            delayWet.gain.value = 0;
+            delayDry.gain.value = 1;
+        }
+        
+        // Reverb
+        reverbWet.gain.value = p.reverbMix ?? 0.08;
+        
+        // Volume
+        if (p.volume !== undefined) {
+            instrumentGain.gain.value = p.volume;
+        }
+    };
+    
+    updateFromPreset(currentPreset);
+    
+    // ═══ Voice Management ═══
+    
+    const activeVoices = new Map<number, BassVoice>();
+    
+    // Pulse oscillator helper
+    const createPulseOsc = (freq: number, width = 0.5) => {
+        const w = clamp(width, 0.1, 0.9);
+        const real = new Float32Array(32);
+        const imag = new Float32Array(32);
+        for (let n = 1; n < 32; n++) {
+            real[n] = (2 / (n * Math.PI)) * Math.sin(n * Math.PI * w);
+        }
+        const wave = ctx.createPeriodicWave(real, imag, { disableNormalization: true });
+        const osc = ctx.createOscillator();
+        osc.setPeriodicWave(wave);
+        osc.frequency.value = freq;
+        return osc;
+    };
+    
+    // ─── Note On ───
+    const noteOn = (midi: number, when = ctx.currentTime, velocity = 1.0) => {
+        if (activeVoices.has(midi)) {
+            noteOff(midi, when);
+        }
+        
+        const f0 = midiToHz(midi);
+        const vel = clamp(velocity, 0, 1);
+        const adsr = currentPreset.adsr;
+        
+        // Voice gain
+        const voiceGain = ctx.createGain();
+        voiceGain.gain.value = 0;
+        
+        // Per-voice filter (for filter envelope)
+        const voiceFilter = ctx.createBiquadFilter();
+        voiceFilter.type = currentPreset.filter?.type ?? 'lowpass';
+        const baseCutoff = currentPreset.filter?.cutoff ?? 2000;
+        const keyTrack = currentPreset.filter?.keyTrack ?? 0.3;
+        // Key tracking: выше нота = выше cutoff
+        const keyTrackOffset = (midi - 36) * keyTrack * 30;
+        voiceFilter.frequency.value = baseCutoff + keyTrackOffset;
+        voiceFilter.Q.value = currentPreset.filter?.q ?? 1;
+        
+        const oscillators: OscillatorNode[] = [];
+        const gains: GainNode[] = [];
+        
+        // Main oscillators
+        for (const oscConfig of currentPreset.osc) {
+            let osc: OscillatorNode;
+            
+            if (oscConfig.type === 'pulse') {
+                osc = createPulseOsc(f0 * Math.pow(2, oscConfig.octave), oscConfig.pulseWidth ?? 0.5);
+            } else {
+                osc = ctx.createOscillator();
+                osc.type = oscConfig.type;
+                osc.frequency.value = f0 * Math.pow(2, oscConfig.octave);
+            }
+            
+            osc.detune.value = oscConfig.detune;
+            
+            const gain = ctx.createGain();
+            gain.gain.value = oscConfig.gain * vel;
+            
+            osc.connect(gain);
+            gain.connect(voiceGain);
+            osc.start(when);
+            
+            oscillators.push(osc);
+            gains.push(gain);
+        }
+        
+        // Sub oscillator
+        let subOsc: OscillatorNode | undefined;
+        let subGain: GainNode | undefined;
+        
+        if (currentPreset.sub?.on) {
+            subOsc = ctx.createOscillator();
+            subOsc.type = currentPreset.sub.type;
+            subOsc.frequency.value = f0 * Math.pow(2, currentPreset.sub.octave);
+            
+            subGain = ctx.createGain();
+            subGain.gain.value = currentPreset.sub.gain * vel;
+            
+            subOsc.connect(subGain);
+            subGain.connect(voiceGain);
+            subOsc.start(when);
+        }
+        
+        // String noise
+        let noiseSource: AudioBufferSourceNode | undefined;
+        
+        if (currentPreset.stringNoise?.on) {
+            const noiseType = currentPreset.stringNoise.type;
+            const buffer = noiseType === 'slap' ? slapNoiseBuffer
+                : noiseType === 'pick' ? pickNoiseBuffer
+                : fingerNoiseBuffer;
+            
+            noiseSource = ctx.createBufferSource();
+            noiseSource.buffer = buffer;
+            
+            const noiseGain = ctx.createGain();
+            noiseGain.gain.value = currentPreset.stringNoise.amount * vel;
+            
+            // High-pass для шума (убираем низы)
+            const noiseHPF = ctx.createBiquadFilter();
+            noiseHPF.type = 'highpass';
+            noiseHPF.frequency.value = 800;
+            
+            noiseSource.connect(noiseHPF);
+            noiseHPF.connect(noiseGain);
+            noiseGain.connect(voiceGain);
+            noiseSource.start(when);
+        }
+        
+        // Connect voice
+        voiceGain.connect(voiceFilter);
+        voiceFilter.connect(bassSum);
+        
+        // Filter envelope
+        if (currentPreset.filterEnv?.on) {
+            applyFilterEnvelope(
+                ctx,
+                voiceFilter,
+                baseCutoff + keyTrackOffset,
+                {
+                    attack: currentPreset.filterEnv.attack,
+                    decay: currentPreset.filterEnv.decay,
+                    sustain: currentPreset.filterEnv.sustain,
+                    release: currentPreset.filterEnv.release,
+                    depth: currentPreset.filterEnv.depth,
+                    velocity: currentPreset.filterEnv.velocity
+                },
+                when,
+                vel
+            );
+        }
+        
+        // Amp envelope
+        voiceGain.gain.cancelScheduledValues(when);
+        voiceGain.gain.setValueAtTime(0.0001, when);
+        voiceGain.gain.linearRampToValueAtTime(1, when + adsr.a);
+        voiceGain.gain.setTargetAtTime(adsr.s, when + adsr.a, Math.max(adsr.d / 3, 0.001));
+        
+        activeVoices.set(midi, {
+            oscillators,
+            gains,
+            subOsc,
+            subGain,
+            voiceGain,
+            filter: voiceFilter,
+            noiseSource,
+            startTime: when,
+            midi,
+            velocity: vel
+        });
+    };
+    
+    // ─── Note Off ───
+    const noteOff = (midi: number, when = ctx.currentTime) => {
+        const voice = activeVoices.get(midi);
+        if (!voice) return;
+        
+        const adsr = currentPreset.adsr;
+        const releaseTime = Math.max(adsr.r, 0.02);
+        
+        // Adaptive release
+        const elapsed = when - voice.startTime;
+        
+        voice.voiceGain.gain.cancelScheduledValues(when);
+        
+        if (elapsed < adsr.a) {
+            // Still in attack — quick release
+            const currentGain = (elapsed / adsr.a);
+            voice.voiceGain.gain.setValueAtTime(currentGain, when);
+            voice.voiceGain.gain.setTargetAtTime(0.0001, when, 0.02);
+        } else {
+            voice.voiceGain.gain.setValueAtTime(voice.voiceGain.gain.value, when);
+            voice.voiceGain.gain.setTargetAtTime(0.0001, when, releaseTime / 3);
+        }
+        
+        // Filter release
+        if (currentPreset.filterEnv?.on) {
+            const baseCutoff = currentPreset.filter?.cutoff ?? 2000;
+            releaseFilterEnvelope(ctx, voice.filter, baseCutoff, releaseTime, when);
+        }
+        
+        const stopTime = when + releaseTime + 0.1;
+        voice.oscillators.forEach(osc => osc.stop(stopTime));
+        if (voice.subOsc) voice.subOsc.stop(stopTime);
+        
+        activeVoices.delete(midi);
+    };
+    
+    // ─── All Notes Off ───
+    const allNotesOff = () => {
+        const now = ctx.currentTime;
+        activeVoices.forEach((voice) => {
+            voice.voiceGain.gain.cancelScheduledValues(now);
+            voice.voiceGain.gain.setTargetAtTime(0.0001, now, 0.05);
+            voice.oscillators.forEach(osc => osc.stop(now + 0.15));
+            if (voice.subOsc) voice.subOsc.stop(now + 0.15);
+        });
+        activeVoices.clear();
+    };
+    
+    // ═══ API ═══
+    
+    const api = {
+        noteOn,
+        noteOff,
+        allNotesOff,
+        
+        connect: (dest?: AudioNode) => master.connect(dest || output),
+        disconnect: () => { try { master.disconnect(); } catch {} },
+        
+        setPreset: (p: BassPreset) => {
+            allNotesOff();
+            currentPreset = { ...p };
+            updateFromPreset(currentPreset);
+        },
+        
+        setParam: (key: string, value: any) => {
+            switch (key) {
+                case 'volume':
+                    instrumentGain.gain.setTargetAtTime(clamp(value, 0, 1), ctx.currentTime, 0.02);
+                    break;
+                case 'expression':
+                    expressionGain.gain.setTargetAtTime(clamp(value, 0, 1), ctx.currentTime, 0.01);
+                    break;
+                case 'filterCutoff':
+                    masterFilter.frequency.setTargetAtTime(value, ctx.currentTime, 0.02);
+                    break;
+                case 'filterQ':
+                    masterFilter.Q.setTargetAtTime(value, ctx.currentTime, 0.02);
+                    break;
+                case 'drive':
+                    if (currentPreset.drive) {
+                        currentPreset.drive.amount = value;
+                        updateFromPreset(currentPreset);
+                    }
+                    break;
+                case 'delayMix':
+                    delayWet.gain.setTargetAtTime(value, ctx.currentTime, 0.02);
+                    break;
+            }
+        },
+        
+        setVolume: (v: number) => {
+            instrumentGain.gain.setTargetAtTime(clamp(v, 0, 1), ctx.currentTime, 0.02);
+        },
+        getVolume: () => instrumentGain.gain.value,
+        setExpression: (v: number) => {
+            expressionGain.gain.setTargetAtTime(clamp(v, 0, 1), ctx.currentTime, 0.01);
+        },
+        
+        preset: currentPreset,
+        type: 'bass' as const
+    };
+    
+    console.log('%c[BassEngine] Ready!', 'color: #32CD32; font-weight: bold;');
+    return api;
+};
+
+
+// ─────────────────────────────────────────────────────────────────────────────
 // MultiInstrument WebAudio: organ | synth | mellotron | guitar
 // С адаптивным ADSR и управлением громкостью
 // ─────────────────────────────────────────────────────────────────────────────
 
-// ───── Helpers ─────
+// ───── Helpers
 const loadIR = async (ctx: AudioContext, url: string | null): Promise<AudioBuffer | null> => {
     if (!url) return null;
     try {
@@ -19,11 +775,7 @@ const loadIR = async (ctx: AudioContext, url: string | null): Promise<AudioBuffe
     }
 };
 
-const midiToHz = (m: number) => 440 * Math.pow(2, (m - 69) / 12);
-const dB = (x: number) => Math.pow(10, x / 20);
-const clamp = (v: number, min: number, max: number) => Math.max(min, Math.min(max, v));
-
-// ───── Distortion Curves ─────
+// ───── Distortion Curves
 const makeSoftClip = (amount = 0.5, n = 65536) => {
     const c = new Float32Array(n);
     const k = clamp(amount, 0, 1) * 10 + 1;
@@ -35,17 +787,7 @@ const makeSoftClip = (amount = 0.5, n = 65536) => {
     return c;
 };
 
-const makeMuff = (gain = 0.65, n = 65536) => {
-    const c = new Float32Array(n);
-    const k = 1 + clamp(gain, 0, 1) * 4;
-    for (let i = 0; i < n; i++) {
-        const x = (i / (n - 1)) * 2 - 1;
-        c[i] = Math.tanh(x * k) * 0.9;
-    }
-    return c;
-};
-
-// ───── Bypassable FX ─────
+// ───── Bypassable FX
 interface BypassableFX {
     input: GainNode;
     output: GainNode;
@@ -478,10 +1220,27 @@ export async function buildMultiInstrument(ctx: AudioContext, {
         (api as any).setDrawbar = organApi.setDrawbar;
         (api as any).getDrawbars = organApi.getDrawbars;
     }
+    // ══════════════════════════════════════════════════════════════════════════
+    // BASS ENGINE
+    // ══════════════════════════════════════════════════════════════════════════
+    else if (type === 'bass') {
+        const bassApi = await buildBassEngine(ctx, preset as BassPreset, {
+            output: master,
+            plateIRUrl
+        });
+
+        api.noteOn = bassApi.noteOn;
+        api.noteOff = bassApi.noteOff;
+        api.allNotesOff = bassApi.allNotesOff;
+        api.setPreset = bassApi.setPreset;
+        api.setParam = bassApi.setParam;
+        api.setVolume = bassApi.setVolume;
+        api.getVolume = bassApi.getVolume;
+        api.setExpression = bassApi.setExpression;
+    }
 
     // ══════════════════════════════════════════════════════════════════════════
     // SYNTH (subtractive pad/lead)
-    // ══════════════════════════════════════════════════════════════════════════
     else if (type === 'synth') {
         let currentPreset = { ...preset };
 
@@ -676,8 +1435,7 @@ export async function buildMultiInstrument(ctx: AudioContext, {
     }
 
     // ══════════════════════════════════════════════════════════════════════════
-    // GUITAR
-    // ══════════════════════════════════════════════════════════════════════════
+    // GUITAR (Gilmour shineOn / muffLead)
     else if (type === 'guitar') {
         let currentPreset = { ...preset };
 
@@ -700,7 +1458,7 @@ export async function buildMultiInstrument(ctx: AudioContext, {
 
         const phaser = makePhaser(ctx, currentPreset.phaser || {});
         const delayA = makeFilteredDelay(ctx, currentPreset.delayA || {});
-        const delayB = makeFilteredDelay(ctx, currentPreset.delayB || {});
+        const delayB = currentPreset.delayB ? makeFilteredDelay(ctx, currentPreset.delayB) : null;
 
         const guitarOut = ctx.createGain();
         const revSend = ctx.createGain();
@@ -714,8 +1472,12 @@ export async function buildMultiInstrument(ctx: AudioContext, {
 
         cabMerge.connect(phaser.input);
         phaser.output.connect(delayA.input);
-        delayA.output.connect(delayB.input);
-        delayB.output.connect(guitarOut);
+        if (delayB) {
+           delayA.output.connect(delayB.input);
+           delayB.output.connect(guitarOut);
+        } else {
+           delayA.output.connect(guitarOut);
+        }
 
         // Volume chain
         guitarOut.connect(expressionGain);
@@ -784,7 +1546,7 @@ export async function buildMultiInstrument(ctx: AudioContext, {
             }
 
             delayA.setMix(p.delayA?.on !== false ? (p.delayA?.mix ?? 0.2) : 0);
-            delayB.setMix(p.delayB?.on ? (p.delayB?.mix ?? 0.15) : 0);
+            if(delayB) delayB.setMix(p.delayB?.on ? (p.delayB.mix ?? 0.15) : 0);
 
             revSend.gain.value = p.reverbMix ?? 0.18;
 
@@ -890,87 +1652,6 @@ export async function buildMultiInstrument(ctx: AudioContext, {
 //      вибрато-сканера, динамика Лесли и перкуссии.
 // #СВЯЗИ: Вызывается из `buildMultiInstrument`, если `type` пресета равен 'organ'.
 
-interface LeslieConfig {
-    mode: 'stop' | 'slow' | 'fast';
-    slow: number;
-    fast: number;
-    accel: number;
-    hornDepth: number;
-    drumDepth: number;
-    mix: number;
-}
-const createLeslie = (ctx: AudioContext, config: LeslieConfig) => {
-    const input = ctx.createGain(); const output = ctx.createGain(); const dry = ctx.createGain(); const wet = ctx.createGain();
-    dry.gain.value = 1 - config.mix; wet.gain.value = config.mix;
-    const lowpass = ctx.createBiquadFilter(); lowpass.type = 'lowpass'; lowpass.frequency.value = 800;
-    const highpass = ctx.createBiquadFilter(); highpass.type = 'highpass'; highpass.frequency.value = 800;
-    const hornDelay = ctx.createDelay(0.01); hornDelay.delayTime.value = 0.002;
-    const hornLfo = ctx.createOscillator(); hornLfo.type = 'sine'; hornLfo.frequency.value = config.mode === 'fast' ? config.fast : config.slow;
-    const hornLfoGain = ctx.createGain(); hornLfoGain.gain.value = config.hornDepth * 0.001;
-    const hornAmpLfo = ctx.createGain(); hornAmpLfo.gain.value = 1;
-    const hornAmpMod = ctx.createGain(); hornAmpMod.gain.value = config.hornDepth * 0.15;
-    const drumDelay = ctx.createDelay(0.01); drumDelay.delayTime.value = 0.003;
-    const drumLfo = ctx.createOscillator(); drumLfo.type = 'sine'; drumLfo.frequency.value = (config.mode === 'fast' ? config.fast : config.slow) * 0.85;
-    const drumLfoGain = ctx.createGain(); drumLfoGain.gain.value = config.drumDepth * 0.0015;
-    const drumAmpLfo = ctx.createGain(); drumAmpLfo.gain.value = 1;
-    const drumAmpMod = ctx.createGain(); drumAmpMod.gain.value = config.drumDepth * 0.1;
-    const pannerL = ctx.createStereoPanner(); const pannerR = ctx.createStereoPanner();
-    const panLfoL = ctx.createGain(); const panLfoR = ctx.createGain(); panLfoL.gain.value = 0.7; panLfoR.gain.value = -0.7;
-    input.connect(dry).connect(output); input.connect(lowpass); input.connect(highpass);
-    highpass.connect(hornDelay).connect(hornAmpLfo); hornAmpLfo.connect(pannerL); hornAmpLfo.connect(pannerR);
-    hornLfo.connect(hornLfoGain).connect(hornDelay.delayTime); hornLfo.connect(hornAmpMod).connect(hornAmpLfo.gain);
-    hornLfo.connect(panLfoL).connect(pannerL.pan); hornLfo.connect(panLfoR).connect(pannerR.pan);
-    lowpass.connect(drumDelay).connect(drumAmpLfo); drumAmpLfo.connect(pannerL); drumAmpLfo.connect(pannerR);
-    drumLfo.connect(drumLfoGain).connect(drumDelay.delayTime); drumLfo.connect(drumAmpMod).connect(drumAmpLfo.gain);
-    pannerL.connect(wet); pannerR.connect(wet); wet.connect(output);
-    hornLfo.start(); drumLfo.start();
-    let currentMode = config.mode;
-    const setMode = (mode: 'stop' | 'slow' | 'fast') => {
-        currentMode = mode; const now = ctx.currentTime;
-        let speed: number;
-        switch (mode) { case 'stop': speed = 0.01; break; case 'slow': speed = config.slow; break; case 'fast': speed = config.fast; break; }
-        hornLfo.frequency.cancelScheduledValues(now); hornLfo.frequency.setTargetAtTime(speed, now, config.accel);
-        drumLfo.frequency.cancelScheduledValues(now); drumLfo.frequency.setTargetAtTime(speed * 0.85, now, config.accel * 1.2);
-    };
-    const setMix = (mix: number) => { dry.gain.value = 1 - mix; wet.gain.value = mix; };
-    return { input, output, setMode, setMix, getMode: () => currentMode };
-};
-
-const VIBRATO_SETTINGS: Record<string, { depth: number; mix: number }> = {
-    'V1': { depth: 0.0015, mix: 1.0 }, 'V2': { depth: 0.0025, mix: 1.0 }, 'V3': { depth: 0.0040, mix: 1.0 },
-    'C1': { depth: 0.0015, mix: 0.5 }, 'C2': { depth: 0.0025, mix: 0.5 }, 'C3': { depth: 0.0040, mix: 0.5 },
-};
-const createVibratoScanner = (ctx: AudioContext, config: any) => {
-    const settings = VIBRATO_SETTINGS[config.type] || VIBRATO_SETTINGS['C2'];
-    const input = ctx.createGain(); const output = ctx.createGain(); const dry = ctx.createGain(); const wet = ctx.createGain();
-    dry.gain.value = 1 - settings.mix; wet.gain.value = settings.mix;
-    const delay = ctx.createDelay(0.02); delay.delayTime.value = 0.005;
-    const lfo = ctx.createOscillator(); lfo.type = 'sine'; lfo.frequency.value = config.rate;
-    const lfoGain = ctx.createGain(); lfoGain.gain.value = settings.depth;
-    input.connect(dry); input.connect(delay); delay.connect(wet); dry.connect(output); wet.connect(output);
-    lfo.connect(lfoGain).connect(delay.delayTime); lfo.start();
-    return {
-        input, output,
-        setType: (type: any) => {
-            const s = VIBRATO_SETTINGS[type] || VIBRATO_SETTINGS['C2'];
-            lfoGain.gain.setTargetAtTime(s.depth, ctx.currentTime, 0.1);
-            dry.gain.setTargetAtTime(1 - s.mix, ctx.currentTime, 0.1);
-            wet.gain.setTargetAtTime(s.mix, ctx.currentTime, 0.1);
-        },
-        setRate: (rate: number) => lfo.frequency.setTargetAtTime(rate, ctx.currentTime, 0.1)
-    };
-};
-const createKeyClick = (ctx: AudioContext, duration: number, intensity: number): AudioBuffer => {
-    const length = Math.floor(ctx.sampleRate * duration); const buffer = ctx.createBuffer(1, length, ctx.sampleRate);
-    const data = buffer.getChannelData(0);
-    for (let i = 0; i < length; i++) {
-        const t = i / length; const envelope = Math.exp(-t * 30) * (1 - t);
-        const noise = (Math.random() * 2 - 1) * 0.6; const tone = Math.sin(i * 0.15) * 0.4;
-        data[i] = (noise + tone) * envelope * intensity;
-    }
-    return buffer;
-};
-
 interface OrganVoice { oscillators: OscillatorNode[]; gains: GainNode[]; voiceGain: GainNode; percGain?: GainNode; percOsc?: OscillatorNode; clickSource?: AudioBufferSourceNode; startTime: number; midi: number; }
 
 export const buildOrganEngine = async (ctx: AudioContext, preset: any, options: { output?: AudioNode; plateIRUrl?: string | null; } = {}) => {
@@ -1061,4 +1742,5 @@ export const buildOrganEngine = async (ctx: AudioContext, preset: any, options: 
 // ... a similar block for MELLOTRON could be added here
 // ... a similar block for GUITAR could be added here
 // ... etc.
+
 
