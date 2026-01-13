@@ -265,21 +265,21 @@ export class FractalMusicEngine {
     }
     
     if (options && options.length > 0) {
-      return this.performWeightedChoice(options);
+      return this._performWeightedChoice(options);
     }
     
     if (part !== 'harmony') {
         const useV2 = this.config.useMelodyV2;
         const fallbackOptions = !useV2 ? rules.v2Options : rules.v1Options;
         if (fallbackOptions && fallbackOptions.length > 0) {
-            return this.performWeightedChoice(fallbackOptions);
+            return this._performWeightedChoice(fallbackOptions);
         }
     }
 
     return undefined;
   }
   
-  private performWeightedChoice(options: {name: any, weight: number}[]): any {
+  private _performWeightedChoice(options: {name: any, weight: number}[]): any {
     if (!options || options.length === 0) return undefined;
     const totalWeight = options.reduce((sum, opt) => sum + opt.weight, 0);
     if (totalWeight <= 0) return options[0]?.name;
@@ -287,7 +287,8 @@ export class FractalMusicEngine {
     let rand = this.random.next() * totalWeight;
     for (const option of options) {
         rand -= option.weight;
-        if (rand <= 0) return option.name;
+        if (rand <= 0) {
+            return option.name;
         }
     }
     return options[options.length - 1].name;
@@ -690,18 +691,21 @@ export class FractalMusicEngine {
           return { events: [], instrumentHints: {} };
       }
 
-      const navInfo = this.navigator.tick(this.epoch);
-      
+      const navigationInfo = this.navigator.tick(this.epoch);
+
+      // #ИСПРАВЛЕНО (ПЛАН 1281): Централизация выбора инструмента.
+      // Теперь "хинты" берутся напрямую из блюпринта через навигатор.
+      // Это ЕДИНСТВЕННЫЙ источник правды для выбора инструмента.
       const instrumentHints: InstrumentHints = {
-          melody: this._chooseInstrumentForPart('melody', navInfo),
-          accompaniment: this._chooseInstrumentForPart('accompaniment', navInfo),
-          harmony: this._chooseInstrumentForPart('harmony', navInfo) as any,
-          bass: this._chooseInstrumentForPart('bass', navInfo) as any,
+          melody: this._chooseInstrumentForPart('melody', navigationInfo),
+          accompaniment: this._chooseInstrumentForPart('accompaniment', navigationInfo),
+          harmony: this._chooseInstrumentForPart('harmony', navigationInfo) as any,
+          bass: this._chooseInstrumentForPart('bass', navigationInfo) as any,
       };
 
       console.log(`InstrumentLog: [1. Composer] Generated hints for bar ${this.epoch}: Melody=${instrumentHints.melody}, Bass=${instrumentHints.bass}`);
 
-      const { events } = this.generateOneBar(barDuration, navInfo!, instrumentHints);
+      const { events } = this.generateOneBar(barDuration, navigationInfo!, instrumentHints);
       
       return { events, instrumentHints };
     }
@@ -1254,7 +1258,6 @@ export function createBluesOrganLick(
 }
 
     
-
 
 
 
