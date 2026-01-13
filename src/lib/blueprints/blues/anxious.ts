@@ -76,7 +76,14 @@ export const AnxiousBluesBlueprint: MusicBlueprint = {
                 layers: { bass: true, drums: true, accompaniment: true, melody: true, harmony: true, sparkles: true },
                 instrumentation: {
                     accompaniment: { strategy: 'weighted', v2Options: [{ name: 'synth_cave_pad', weight: 0.6 }, { name: 'organ', weight: 0.4 }], v1Options: [{ name: 'ambientPad', weight: 0.6 }, { name: 'organ', weight: 0.4 }] },
-                    melody: { strategy: 'weighted', v2Options: [{ name: 'guitar_muffLead', weight: 1.0 }], v1Options: [{ name: 'electricGuitar', weight: 1.0 }] }
+                    melody: { 
+                        strategy: 'weighted', 
+                        v2Options: [
+                            { name: 'guitar_muffLead', weight: 0.5 },
+                            { name: 'guitar_shineOn', weight: 0.5 }
+                        ], 
+                        v1Options: [{ name: 'electricGuitar', weight: 1.0 }] 
+                    }
                 },
                 instrumentRules: {
                     drums: {

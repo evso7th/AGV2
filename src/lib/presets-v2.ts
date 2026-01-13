@@ -238,6 +238,7 @@ export const V2_PRESETS = {
 
   guitar_muffLead: {
     type: 'guitar',
+    volume: 0.25,
     comp: { threshold: -20, ratio: 4, attack: 0.005, release: 0.1, makeup: 4 },
     osc: { width: 0.5, detune: 7, mainGain: 0.8, detGain: 0.2, subGain: 0.3 },
     pickup: { cutoff: 3200, q: 1.2 },
