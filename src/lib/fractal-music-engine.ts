@@ -153,6 +153,7 @@ export class FractalMusicEngine {
       
       this.config = { ...this.config, ...newConfig };
       
+      // #ИСПРАВЛЕНО (ПЛАН 1269): Инициализируем `this.random` НОВЫМ сидом, если он изменился.
       if (seedChanged) {
         console.log(`%c[FME.updateConfig] New seed detected: ${this.config.seed}. Re-initializing random generator.`, 'color: #FFD700; font-weight:bold;');
         this.random = seededRandom(this.config.seed);
@@ -167,7 +168,7 @@ export class FractalMusicEngine {
   public async initialize(force: boolean = false) {
     if (this.navigator && !force) return;
 
-    this.random = seededRandom(this.config.seed);
+    // #ИСПРАВЛЕНО (ПЛАН 1269): Используем `this.random`, который был корректно обновлен в `updateConfig`.
     console.log(`%c[FME.initialize] Using SEED: ${this.config.seed} to create random generator.`, 'color: #FFD700;');
 
     this.nextWeatherEventEpoch = this.random.nextInt(12) + 8;
@@ -208,7 +209,8 @@ export class FractalMusicEngine {
 
 
     const blueprint = await getBlueprint(this.config.genre, this.config.mood);
-    this.navigator = new BlueprintNavigator(blueprint, this.config.seed, this.config.genre, this.config.mood, this.config.introBars);
+    // #ИСПРАВЛЕНО (ПЛАН 1269): Передаем `this.random` в навигатор.
+    this.navigator = new BlueprintNavigator(blueprint, this.config.seed, this.config.genre, this.config.mood, this.config.introBars, this.random);
     
     const key = getScaleForMood(this.config.mood, this.config.genre)[0];
     this.ghostHarmonyTrack = generateGhostHarmonyTrack(this.navigator.totalBars, this.config.mood, key, this.random, this.config.genre);
@@ -407,7 +409,6 @@ export class FractalMusicEngine {
         const axiomResult = createDrumAxiom(finalKit, this.config.genre, this.config.mood, this.config.tempo, this.random, drumRules, overrides);
         return axiomResult.events;
     }
-    
 
   private _applyMicroMutations(phrase: FractalEvent[], epoch: number): FractalEvent[] {
     if (phrase.length === 0) return [];
@@ -726,7 +727,7 @@ export class FractalMusicEngine {
           return { events: [], instrumentHints: {} };
       }
 
-      const v2MelodyHint = this._chooseInstrumentForPart('melody', this.navigator.tick(this.epoch));
+      const v2MelodyHint = this._chooseInstrumentForPart('melody', this.navigator.tick(this.epoch, undefined));
       const navInfo = this.navigator.tick(this.epoch, v2MelodyHint);
 
       if (navInfo?.logMessage) {
@@ -805,7 +806,7 @@ export class FractalMusicEngine {
 
     if (!currentChord) {
         console.error(`[Engine] CRITICAL ERROR in bar ${this.epoch}: Could not find chord in 'Ghost Harmony'.`);
-        return { events: [], instrumentHints };
+        return { events: [], instrumentHints: {} };
     }
     
     const drumEvents = this.generateDrumEvents(navInfo) || [];
@@ -988,22 +989,3 @@ function createMelodyMotif(chord: GhostChord, mood: Mood, random: { next: () => 
     }
     return motif;
 }
-
-    
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-    
