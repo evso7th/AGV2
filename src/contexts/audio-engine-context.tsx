@@ -14,7 +14,6 @@ import { MelodySynthManager } from '@/lib/melody-synth-manager';
 import { BassSynthManager } from '@/lib/bass-synth-manager';
 import { SparklePlayer } from '@/lib/sparkle-player';
 import { SfxSynthManager } from '@/lib/sfx-synth-manager';
-import { HarmonySynthManager } from '@/lib/harmony-synth-manager';
 import { getPresetParams } from "@/lib/presets";
 import { PIANO_SAMPLES, VIOLIN_SAMPLES, FLUTE_SAMPLES, ACOUSTIC_GUITAR_CHORD_SAMPLES, ACOUSTIC_GUITAR_SOLO_SAMPLES } from '@/lib/samples';
 import { GuitarChordsSampler } from '@/lib/guitar-chords-sampler';
@@ -61,7 +60,7 @@ interface AudioEngineContextType {
   isInitializing: boolean;
   isPlaying: boolean;
   useMelodyV2: boolean;
-  initialize: () => Promise<boolean>;
+  initialize: (initialSettings: Omit<WorkerSettings, 'seed'>) => Promise<boolean>;
   setIsPlaying: (playing: boolean) => void;
   updateSettings: (settings: Partial<WorkerSettings>) => void;
   resetWorker: () => void;
@@ -306,8 +305,7 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
     }
   }, [scheduleEvents, toast, resetWorkerCallback]);
 
-
-  const initialize = useCallback(async () => {
+  const initialize = useCallback(async (initialSettings: Omit<WorkerSettings, 'seed'>) => {
     if (isInitialized || isInitializing) return true;
     
     setIsInitializing(true);
@@ -376,7 +374,6 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
         }
 
         if (!melodyManagerV2Ref.current) {
-            // #РЕШЕНИЕ (ПЛАН 939): Передаем экземпляры сэмплеров в конструктор V2-менеджера.
             melodyManagerV2Ref.current = new MelodySynthManagerV2(
                 context, 
                 gainNodesRef.current.melody!, 
@@ -403,6 +400,10 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
 
         if (!workerRef.current) {
             workerRef.current = new Worker(new URL('@/app/ambient.worker.ts', import.meta.url), { type: 'module' });
+             // Send initial settings to the worker
+            const finalInitialSettings = { ...initialSettings, seed: Date.now() };
+            settingsRef.current = finalInitialSettings;
+            workerRef.current.postMessage({ command: 'init', data: finalInitialSettings });
         }
         
         await Promise.all(initPromises);
@@ -498,5 +499,4 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
     </AudioEngineContext.Provider>
   );
 };
-
-    
+ 

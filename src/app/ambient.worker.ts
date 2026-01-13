@@ -68,13 +68,8 @@ const Scheduler = {
 
     start() {
         if (this.isRunning) return;
-        
         this.isRunning = true;
         
-        if (!fractalMusicEngine) {
-            this.initializeEngine(this.settings, true);
-        }
-
         const loop = () => {
             if (!this.isRunning) return;
             this.tick();
@@ -118,9 +113,7 @@ const Scheduler = {
        const scoreChanged = newSettings.score && newSettings.score !== this.settings.score;
        const moodChanged = newSettings.mood && newSettings.mood !== this.settings.mood;
        const genreChanged = newSettings.genre && newSettings.genre !== this.settings.genre;
-       // #ИСПРАВЛЕНО (ПЛАН 1270): Проверка на изменение seed здесь больше не нужна, она централизована в reset().
        const introBarsChanged = newSettings.introBars !== undefined && newSettings.introBars !== this.settings.introBars;
-       const wasNotInitialized = !fractalMusicEngine;
        
        if (needsRestart) this.stop();
        
@@ -132,7 +125,7 @@ const Scheduler = {
             textureSettings: newSettings.textureSettings ? { ...this.settings.textureSettings, ...newSettings.textureSettings } : this.settings.textureSettings,
         };
 
-       if (wasNotInitialized || scoreChanged || moodChanged || genreChanged || introBarsChanged) {
+       if (scoreChanged || moodChanged || genreChanged || introBarsChanged) {
            // При смене стиля/настроения мы не генерируем новый seed, а используем текущий
            await this.initializeEngine(this.settings, true);
        } else if (fractalMusicEngine) {
@@ -269,7 +262,6 @@ self.onmessage = async (event: MessageEvent) => {
     try {
         switch (command) {
             case 'init':
-                await Scheduler.updateSettings(data);
                 await Scheduler.initializeEngine(data, true);
                 break;
             
