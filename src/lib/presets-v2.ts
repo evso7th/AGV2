@@ -255,11 +255,13 @@ export const V2_PRESETS = {
 
   organ_soft_jazz: {
     type: 'organ',
-    drawbars: [8, 0, 8, 5, 0, 3, 0, 0, 0],
+    gain: 0.25,
+    drawbars: [6, 0, 8, 6, 0, 2, 0, 0, 0],
+    adsr: { a: 0.08, d: 0.2, s: 0.9, r: 0.8 },
     vibratoRate: 6.2,
     vibratoDepth: 0.0035,
     leslie: { mode: 'slow', slow: 0.65, fast: 6.3, accel: 0.7 },
-    lpf: 7600,
+    lpf: 4200,
     hpf: 90,
     chorusMix: 0.12,
     reverbMix: 0.12,
@@ -286,9 +288,15 @@ export const V1_TO_V2_PRESET_MAP: Record<string, PresetName> = {
   theremin: 'theremin',
   electricGuitar: 'guitar_shineOn',
   ambientPad: 'synth_ambient_pad_lush',
-  // 'acousticGuitar' не имеет прямого аналога в V2 (не-сэмплерном) движке,
-  // поэтому мы можем сопоставить его с чистым синтезатором или меллотроном как компромисс.
-  acousticGuitar: 'mellotron_flute_intimate'
+  acousticGuitar: 'mellotron_flute_intimate',
+  // Новые маппинги
+  strings: 'mellotron',
+  choir: 'mellotron_choir',
+  flute: 'mellotron_flute_intimate',
+  rhodes: 'ep_rhodes_warm',
+  piano: 'ep_rhodes_warm',
+  lead: 'synth_lead_shineOn',
+  pad: 'synth_ambient_pad_lush'
 };
 
 // ═══════════════════════════════════════════════════════════════════════════
