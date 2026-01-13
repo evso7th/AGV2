@@ -281,32 +281,65 @@ export const V2_PRESETS = {
   // ═══════════════════════════════════════════════════════════════════════════
 
   organ: {
-    type: 'organ',
-    drawbars: [8, 8, 4, 2, 0, 0, 0, 1, 0],
-    vibratoRate: 5.8,
-    vibratoDepth: 0.002,
-    leslie: { mode: 'slow', slow: 0.5, fast: 6.0, accel: 0.7 },
-    lpf: 4500,
-    hpf: 80,
-    chorusMix: 0.3,
+    type: 'organ' as const,
+    volume: 0.7,
+    drawbars: [8, 8, 8, 6, 0, 0, 0, 0, 0],  // Full and rich
+    vibrato: { type: 'C3' as const, rate: 6.5 },
+    leslie: { on: true, mode: 'slow' as const, slow: 0.8, fast: 6.5, accel: 0.8, mix: 0.75 },
+    percussion: { on: true, harmonic: '2nd' as const, decay: 'fast' as const, volume: 'normal' as const },
+    keyClick: 0.005,
+    tonewheel: { crosstalk: 0.03, leakage: 0.02, complexity: 0.4 },
+    lpf: 6000,
+    hpf: 50,
+    reverbMix: 0.18,
+    adsr: { a: 0.004, d: 0.1, s: 0.95, r: 0.08 }
+  },
+  
+  organ_soft_jazz: {
+    type: 'organ' as const,
+    volume: 0.15,
+    drawbars: [8, 4, 8, 4, 0, 0, 0, 0, 0],
+    vibrato: { type: 'C2' as const, rate: 5.5 },
+    leslie: { on: true, mode: 'slow' as const, slow: 0.5, fast: 5.5, accel: 1.0, mix: 0.65 },
+    percussion: { on: false, harmonic: '2nd' as const, decay: 'slow' as const, volume: 'soft' as const },
+    keyClick: 0,
+    tonewheel: { crosstalk: 0.01, leakage: 0.005, complexity: 0.15 },
+    lpf: 3500,
+    hpf: 50,
     reverbMix: 0.25,
-    keyClick: 0.004
+    adsr: { a: 0.025, d: 0.3, s: 0.9, r: 0.35 }
   },
 
-  organ_soft_jazz: {
-    type: 'organ',
-    volume: 0.15,
-    drawbars: [8, 0, 8, 5, 0, 3, 0, 0, 0],
-    adsr: { a: 0.08, d: 0.2, s: 0.9, r: 0.8 },
-    vibratoRate: 6.2,
-    vibratoDepth: 0.0035,
-    leslie: { mode: 'slow', slow: 0.65, fast: 6.3, accel: 0.7 },
-    lpf: 4200,
-    hpf: 90,
-    chorusMix: 0.12,
-    reverbMix: 0.12,
-    keyClick: 0.003
+  organ_jimmy_smith: {
+    type: 'organ' as const,
+    volume: 0.65,
+    drawbars: [8, 8, 8, 0, 0, 0, 0, 0, 0],
+    vibrato: { type: 'C3' as const, rate: 6.5 },
+    leslie: { on: true, mode: 'slow' as const, slow: 0.7, fast: 6.2, accel: 0.7, mix: 0.7 },
+    percussion: { on: true, harmonic: '2nd' as const, decay: 'fast' as const, volume: 'soft' as const },
+    keyClick: 0.004,
+    tonewheel: { crosstalk: 0.025, leakage: 0.015, complexity: 0.35 },
+    lpf: 5500,
+    hpf: 55,
+    reverbMix: 0.15,
+    adsr: { a: 0.005, d: 0.12, s: 0.92, r: 0.1 }
+  },
+
+  organ_prog: {
+    type: 'organ' as const,
+    volume: 0.75,
+    drawbars: [8, 6, 8, 8, 4, 5, 3, 2, 0],
+    vibrato: { type: 'V3' as const, rate: 7.0 },
+    leslie: { on: true, mode: 'fast' as const, slow: 1.0, fast: 7.5, accel: 0.5, mix: 0.85 },
+    percussion: { on: true, harmonic: '3rd' as const, decay: 'slow' as const, volume: 'normal' as const },
+    keyClick: 0.007,
+    tonewheel: { crosstalk: 0.05, leakage: 0.03, complexity: 0.6 },
+    lpf: 8000,
+    hpf: 70,
+    reverbMix: 0.22,
+    adsr: { a: 0.003, d: 0.06, s: 0.98, r: 0.05 }
   }
+
 
 } as const;
 

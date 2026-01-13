@@ -1,0 +1,989 @@
+# Hammond-Style Organ Engine
+
+Полноценная эмуляция органа с drawbars, Leslie speaker, percussion и key click!
+
+```typescript
+// ─────────────────────────────────────────────────────────────────────────────
+// ORGAN ENGINE — Hammond B3 Style
+// ─────────────────────────────────────────────────────────────────────────────
+
+// ═══════════════════════════════════════════════════════════════════════════
+// LESLIE SPEAKER EMULATION
+// ═══════════════════════════════════════════════════════════════════════════
+
+interface LeslieConfig {
+    mode: 'stop' | 'slow' | 'fast';
+    slow: number;      // Скорость slow (Hz)
+    fast: number;      // Скорость fast (Hz)
+    accel: number;     // Время разгона/торможения (сек)
+    hornDepth: number; // Глубина модуляции рупора (высокие)
+    drumDepth: number; // Глубина модуляции барабана (низкие)
+    mix: number;       // Wet/dry
+}
+
+const createLeslie = (ctx: AudioContext, config: LeslieConfig) => {
+    // Leslie имеет два вращающихся элемента:
+    // 1. Horn (рупор) — для высоких частот, быстрее
+    // 2. Drum (барабан) — для низких, медленнее
+    
+    const input = ctx.createGain();
+    const output = ctx.createGain();
+    const dry = ctx.createGain();
+    const wet = ctx.createGain();
+    
+    dry.gain.value = 1 - config.mix;
+    wet.gain.value = config.mix;
+    
+    // ─── Crossover (разделение частот) ───
+    const lowpass = ctx.createBiquadFilter();
+    lowpass.type = 'lowpass';
+    lowpass.frequency.value = 800;
+    lowpass.Q.value = 0.5;
+    
+    const highpass = ctx.createBiquadFilter();
+    highpass.type = 'highpass';
+    highpass.frequency.value = 800;
+    highpass.Q.value = 0.5;
+    
+    // ─── Horn (высокие) ───
+    const hornDelay = ctx.createDelay(0.01);
+    hornDelay.delayTime.value = 0.002;
+    
+    const hornLfo = ctx.createOscillator();
+    hornLfo.type = 'sine';
+    hornLfo.frequency.value = config.mode === 'fast' ? config.fast : config.slow;
+    
+    const hornLfoGain = ctx.createGain();
+    hornLfoGain.gain.value = config.hornDepth * 0.001; // Модуляция delay time
+    
+    const hornAmpLfo = ctx.createGain();
+    hornAmpLfo.gain.value = 1;
+    
+    const hornAmpMod = ctx.createGain();
+    hornAmpMod.gain.value = config.hornDepth * 0.15; // Модуляция громкости
+    
+    // ─── Drum (низкие) — вращается медленнее ───
+    const drumDelay = ctx.createDelay(0.01);
+    drumDelay.delayTime.value = 0.003;
+    
+    const drumLfo = ctx.createOscillator();
+    drumLfo.type = 'sine';
+    drumLfo.frequency.value = (config.mode === 'fast' ? config.fast : config.slow) * 0.85;
+    
+    const drumLfoGain = ctx.createGain();
+    drumLfoGain.gain.value = config.drumDepth * 0.0015;
+    
+    const drumAmpLfo = ctx.createGain();
+    drumAmpLfo.gain.value = 1;
+    
+    const drumAmpMod = ctx.createGain();
+    drumAmpMod.gain.value = config.drumDepth * 0.1;
+    
+    // ─── Stereo spread ───
+    const pannerL = ctx.createStereoPanner();
+    const pannerR = ctx.createStereoPanner();
+    
+    const panLfoL = ctx.createGain();
+    const panLfoR = ctx.createGain();
+    panLfoL.gain.value = 0.7;
+    panLfoR.gain.value = -0.7;
+    
+    // ─── Routing ───
+    // Dry path
+    input.connect(dry);
+    dry.connect(output);
+    
+    // Wet path — crossover
+    input.connect(lowpass);
+    input.connect(highpass);
+    
+    // Horn chain
+    highpass.connect(hornDelay);
+    hornDelay.connect(hornAmpLfo);
+    hornAmpLfo.connect(pannerL);
+    hornAmpLfo.connect(pannerR);
+    
+    hornLfo.connect(hornLfoGain);
+    hornLfoGain.connect(hornDelay.delayTime);
+    hornLfo.connect(hornAmpMod);
+    hornAmpMod.connect(hornAmpLfo.gain);
+    hornLfo.connect(panLfoL);
+    panLfoL.connect(pannerL.pan);
+    hornLfo.connect(panLfoR);
+    panLfoR.connect(pannerR.pan);
+    
+    // Drum chain
+    lowpass.connect(drumDelay);
+    drumDelay.connect(drumAmpLfo);
+    drumAmpLfo.connect(pannerL);
+    drumAmpLfo.connect(pannerR);
+    
+    drumLfo.connect(drumLfoGain);
+    drumLfoGain.connect(drumDelay.delayTime);
+    drumLfo.connect(drumAmpMod);
+    drumAmpMod.connect(drumAmpLfo.gain);
+    
+    // Mix
+    pannerL.connect(wet);
+    pannerR.connect(wet);
+    wet.connect(output);
+    
+    // Start LFOs
+    hornLfo.start();
+    drumLfo.start();
+    
+    // ─── Control ───
+    let currentMode = config.mode;
+    let targetSpeed = config.mode === 'fast' ? config.fast : config.slow;
+    
+    const setMode = (mode: 'stop' | 'slow' | 'fast') => {
+        currentMode = mode;
+        const now = ctx.currentTime;
+        
+        let speed: number;
+        switch (mode) {
+            case 'stop': speed = 0.01; break;
+            case 'slow': speed = config.slow; break;
+            case 'fast': speed = config.fast; break;
+        }
+        
+        // Плавное ускорение/торможение (как у реального Leslie)
+        hornLfo.frequency.cancelScheduledValues(now);
+        hornLfo.frequency.setTargetAtTime(speed, now, config.accel);
+        
+        drumLfo.frequency.cancelScheduledValues(now);
+        drumLfo.frequency.setTargetAtTime(speed * 0.85, now, config.accel * 1.2);
+    };
+    
+    const setMix = (mix: number) => {
+        dry.gain.value = 1 - mix;
+        wet.gain.value = mix;
+    };
+    
+    return {
+        input,
+        output,
+        setMode,
+        setMix,
+        getMode: () => currentMode
+    };
+};
+
+// ═══════════════════════════════════════════════════════════════════════════
+// TONEWHEEL GENERATOR
+// ═══════════════════════════════════════════════════════════════════════════
+
+interface TonewheelConfig {
+    crosstalk: number;     // Межколёсное "протекание" (0-1)
+    leakage: number;       // Утечка (лёгкий шум)
+    complexity: number;    // Сложность формы волны (0=sine, 1=full harmonic)
+}
+
+const createTonewheelWave = (ctx: AudioContext, config: TonewheelConfig): PeriodicWave => {
+    // Реальные тонколёса дают не идеальный синус
+    // Добавляем лёгкие гармоники для "тёплого" звучания
+    
+    const real = new Float32Array(16);
+    const imag = new Float32Array(16);
+    
+    real[0] = 0;
+    real[1] = 1;                                    // Основной тон
+    real[2] = config.complexity * 0.02;             // 2-я гармоника
+    real[3] = config.complexity * 0.015;            // 3-я
+    real[4] = config.complexity * 0.008;            // 4-я
+    real[5] = config.complexity * 0.004;            // 5-я
+    
+    // Добавляем асимметрию (чётные/нечётные)
+    real[6] = config.complexity * 0.003;
+    real[7] = config.complexity * 0.002;
+    
+    return ctx.createPeriodicWave(real, imag, { disableNormalization: false });
+};
+
+// ═══════════════════════════════════════════════════════════════════════════
+// DRAWBAR RATIOS
+// ═══════════════════════════════════════════════════════════════════════════
+
+// Hammond drawbar footage -> frequency ratio
+const DRAWBAR_RATIOS = [
+    0.5,      // 16'   — sub-octave
+    1.498,    // 5⅓'   — 5th above (quint)
+    1,        // 8'    — fundamental
+    2,        // 4'    — octave
+    2.997,    // 2⅔'   — octave + 5th
+    4,        // 2'    — 2 octaves
+    5.04,     // 1⅗'   — 2 octaves + major 3rd
+    5.994,    // 1⅓'   — 2 octaves + 5th
+    8         // 1'    — 3 octaves
+];
+
+const DRAWBAR_NAMES = ["16'", "5⅓'", "8'", "4'", "2⅔'", "2'", "1⅗'", "1⅓'", "1'"];
+
+// ═══════════════════════════════════════════════════════════════════════════
+// KEY CLICK GENERATOR
+// ═══════════════════════════════════════════════════════════════════════════
+
+const createKeyClick = (ctx: AudioContext, duration: number, intensity: number): AudioBuffer => {
+    const length = Math.floor(ctx.sampleRate * duration);
+    const buffer = ctx.createBuffer(1, length, ctx.sampleRate);
+    const data = buffer.getChannelData(0);
+    
+    for (let i = 0; i < length; i++) {
+        const t = i / length;
+        // Короткий импульс с быстрым затуханием
+        const envelope = Math.exp(-t * 30) * (1 - t);
+        // Шумовая составляющая + тональная
+        const noise = (Math.random() * 2 - 1) * 0.6;
+        const tone = Math.sin(i * 0.15) * 0.4; // ~1kHz "тик"
+        data[i] = (noise + tone) * envelope * intensity;
+    }
+    
+    return buffer;
+};
+
+// ═══════════════════════════════════════════════════════════════════════════
+// VIBRATO/CHORUS SCANNER
+// ═══════════════════════════════════════════════════════════════════════════
+
+interface VibratoConfig {
+    type: 'V1' | 'V2' | 'V3' | 'C1' | 'C2' | 'C3'; // Hammond vibrato types
+    rate: number;
+}
+
+const VIBRATO_SETTINGS: Record<string, { depth: number; mix: number }> = {
+    'V1': { depth: 0.0015, mix: 1.0 },
+    'V2': { depth: 0.0025, mix: 1.0 },
+    'V3': { depth: 0.0040, mix: 1.0 },
+    'C1': { depth: 0.0015, mix: 0.5 },  // Chorus = vibrato + dry
+    'C2': { depth: 0.0025, mix: 0.5 },
+    'C3': { depth: 0.0040, mix: 0.5 },
+};
+
+const createVibratoScanner = (ctx: AudioContext, config: VibratoConfig) => {
+    const settings = VIBRATO_SETTINGS[config.type] || VIBRATO_SETTINGS['C2'];
+    
+    const input = ctx.createGain();
+    const output = ctx.createGain();
+    const dry = ctx.createGain();
+    const wet = ctx.createGain();
+    
+    dry.gain.value = 1 - settings.mix;
+    wet.gain.value = settings.mix;
+    
+    // Линия задержки для pitch modulation
+    const delay = ctx.createDelay(0.02);
+    delay.delayTime.value = 0.005;
+    
+    const lfo = ctx.createOscillator();
+    lfo.type = 'sine';
+    lfo.frequency.value = config.rate;
+    
+    const lfoGain = ctx.createGain();
+    lfoGain.gain.value = settings.depth;
+    
+    // Routing
+    input.connect(dry);
+    input.connect(delay);
+    delay.connect(wet);
+    dry.connect(output);
+    wet.connect(output);
+    
+    lfo.connect(lfoGain);
+    lfoGain.connect(delay.delayTime);
+    lfo.start();
+    
+    return {
+        input,
+        output,
+        setType: (type: VibratoConfig['type']) => {
+            const s = VIBRATO_SETTINGS[type] || VIBRATO_SETTINGS['C2'];
+            lfoGain.gain.setTargetAtTime(s.depth, ctx.currentTime, 0.1);
+            dry.gain.setTargetAtTime(1 - s.mix, ctx.currentTime, 0.1);
+            wet.gain.setTargetAtTime(s.mix, ctx.currentTime, 0.1);
+        },
+        setRate: (rate: number) => {
+            lfo.frequency.setTargetAtTime(rate, ctx.currentTime, 0.1);
+        }
+    };
+};
+
+// ═══════════════════════════════════════════════════════════════════════════
+// PERCUSSION
+// ═══════════════════════════════════════════════════════════════════════════
+
+interface PercussionConfig {
+    on: boolean;
+    harmonic: '2nd' | '3rd';  // Какая гармоника
+    decay: 'fast' | 'slow';   // Скорость затухания
+    volume: 'soft' | 'normal';
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// MAIN ORGAN ENGINE
+// ═══════════════════════════════════════════════════════════════════════════
+
+interface OrganPreset {
+    type: 'organ';
+    volume?: number;
+    
+    // Drawbars (0-8 для каждого из 9 регистров)
+    drawbars: number[];
+    
+    // Vibrato
+    vibrato?: {
+        type: 'V1' | 'V2' | 'V3' | 'C1' | 'C2' | 'C3' | 'off';
+        rate?: number;
+    };
+    
+    // Leslie
+    leslie?: {
+        on?: boolean;
+        mode?: 'stop' | 'slow' | 'fast';
+        slow?: number;
+        fast?: number;
+        accel?: number;
+        mix?: number;
+    };
+    
+    // Percussion
+    percussion?: PercussionConfig;
+    
+    // Key click
+    keyClick?: number;  // 0-1 intensity
+    
+    // Tonewheel character
+    tonewheel?: TonewheelConfig;
+    
+    // Filters
+    lpf?: number;
+    hpf?: number;
+    
+    // FX
+    reverbMix?: number;
+    
+    // ADSR
+    adsr?: { a: number; d: number; s: number; r: number };
+}
+
+interface OrganVoice {
+    oscillators: OscillatorNode[];
+    gains: GainNode[];
+    voiceGain: GainNode;
+    percGain?: GainNode;
+    percOsc?: OscillatorNode;
+    clickSource?: AudioBufferSourceNode;
+    startTime: number;
+    midi: number;
+}
+
+export const buildOrganEngine = async (
+    ctx: AudioContext,
+    preset: OrganPreset,
+    options: {
+        output?: AudioNode;
+        plateIRUrl?: string | null;
+    } = {}
+) => {
+    console.log('%c[OrganEngine] Building Hammond-style organ...', 'color: #8B4513; font-weight: bold;');
+    
+    const output = options.output || ctx.destination;
+    let currentPreset = { ...preset };
+    
+    // ═══ Audio Graph ═══
+    
+    // Tonewheel wave
+    const tonewheelConfig: TonewheelConfig = currentPreset.tonewheel || {
+        crosstalk: 0.02,
+        leakage: 0.01,
+        complexity: 0.3
+    };
+    let tonewheelWave = createTonewheelWave(ctx, tonewheelConfig);
+    
+    // Key click buffer
+    const clickIntensity = currentPreset.keyClick ?? 0.004;
+    let clickBuffer = createKeyClick(ctx, 0.008, clickIntensity);
+    
+    // ─── Signal Chain ───
+    const organSum = ctx.createGain();
+    organSum.gain.value = 0.7;
+    
+    // HPF (remove rumble)
+    const hpf = ctx.createBiquadFilter();
+    hpf.type = 'highpass';
+    hpf.frequency.value = currentPreset.hpf ?? 60;
+    hpf.Q.value = 0.5;
+    
+    // LPF (warmth)
+    const lpf = ctx.createBiquadFilter();
+    lpf.type = 'lowpass';
+    lpf.frequency.value = currentPreset.lpf ?? 5000;
+    lpf.Q.value = 0.5;
+    
+    // Vibrato Scanner
+    const vibrato = createVibratoScanner(ctx, {
+        type: currentPreset.vibrato?.type !== 'off' ? (currentPreset.vibrato?.type || 'C2') : 'C2',
+        rate: currentPreset.vibrato?.rate ?? 6.5
+    });
+    const vibratoBypass = ctx.createGain();
+    vibratoBypass.gain.value = currentPreset.vibrato?.type === 'off' ? 1 : 0;
+    const vibratoWet = ctx.createGain();
+    vibratoWet.gain.value = currentPreset.vibrato?.type === 'off' ? 0 : 1;
+    
+    // Leslie
+    const leslieConfig: LeslieConfig = {
+        mode: currentPreset.leslie?.mode ?? 'slow',
+        slow: currentPreset.leslie?.slow ?? 0.8,
+        fast: currentPreset.leslie?.fast ?? 6.5,
+        accel: currentPreset.leslie?.accel ?? 0.8,
+        hornDepth: 0.8,
+        drumDepth: 0.5,
+        mix: currentPreset.leslie?.mix ?? 0.7
+    };
+    const leslie = createLeslie(ctx, leslieConfig);
+    const leslieBypass = ctx.createGain();
+    leslieBypass.gain.value = currentPreset.leslie?.on === false ? 1 : 0;
+    const leslieWet = ctx.createGain();
+    leslieWet.gain.value = currentPreset.leslie?.on === false ? 0 : 1;
+    
+    // Volume control
+    const instrumentGain = ctx.createGain();
+    instrumentGain.gain.value = currentPreset.volume ?? 0.7;
+    
+    const expressionGain = ctx.createGain();
+    expressionGain.gain.value = 1;
+    
+    // Master
+    const master = ctx.createGain();
+    master.gain.value = 0.8;
+    
+    // Reverb
+    const reverb = ctx.createConvolver();
+    const reverbWet = ctx.createGain();
+    reverbWet.gain.value = currentPreset.reverbMix ?? 0.15;
+    
+    if (options.plateIRUrl) {
+        try {
+            const res = await fetch(options.plateIRUrl);
+            const buf = await res.arrayBuffer();
+            reverb.buffer = await ctx.decodeAudioData(buf);
+        } catch (e) {
+            console.warn('[OrganEngine] Could not load reverb IR');
+        }
+    }
+    
+    // ─── Routing ───
+    organSum.connect(hpf);
+    hpf.connect(lpf);
+    
+    // Vibrato (parallel wet/dry)
+    lpf.connect(vibrato.input);
+    lpf.connect(vibratoBypass);
+    vibrato.output.connect(vibratoWet);
+    
+    const vibratoMerge = ctx.createGain();
+    vibratoBypass.connect(vibratoMerge);
+    vibratoWet.connect(vibratoMerge);
+    
+    // Leslie (parallel wet/dry)
+    vibratoMerge.connect(leslie.input);
+    vibratoMerge.connect(leslieBypass);
+    leslie.output.connect(leslieWet);
+    
+    const leslieMerge = ctx.createGain();
+    leslieBypass.connect(leslieMerge);
+    leslieWet.connect(leslieMerge);
+    
+    // Final chain
+    leslieMerge.connect(expressionGain);
+    expressionGain.connect(instrumentGain);
+    instrumentGain.connect(master);
+    
+    // Reverb send
+    leslieMerge.connect(reverbWet);
+    reverbWet.connect(reverb);
+    reverb.connect(master);
+    
+    master.connect(output);
+    
+    // ═══ Voice Management ═══
+    const activeVoices = new Map<number, OrganVoice>();
+    const midiToHz = (m: number) => 440 * Math.pow(2, (m - 69) / 12);
+    const clamp = (v: number, min: number, max: number) => Math.max(min, Math.min(max, v));
+    
+    // ─── Note On ───
+    const noteOn = (midi: number, when = ctx.currentTime, velocity = 1.0) => {
+        // Если нота уже играет, сначала выключаем
+        if (activeVoices.has(midi)) {
+            noteOff(midi, when);
+        }
+        
+        const f0 = midiToHz(midi);
+        const vel = clamp(velocity, 0, 1);
+        const drawbars = currentPreset.drawbars || [8, 8, 8, 0, 0, 0, 0, 0, 0];
+        const adsr = currentPreset.adsr || { a: 0.005, d: 0.1, s: 0.9, r: 0.1 };
+        
+        // Voice gain
+        const voiceGain = ctx.createGain();
+        voiceGain.gain.value = 0;
+        voiceGain.connect(organSum);
+        
+        const oscillators: OscillatorNode[] = [];
+        const gains: GainNode[] = [];
+        
+        // Создаём осциллятор для каждого drawbar
+        for (let i = 0; i < 9; i++) {
+            const dbValue = drawbars[i] ?? 0;
+            if (dbValue === 0) continue;
+            
+            const osc = ctx.createOscillator();
+            osc.setPeriodicWave(tonewheelWave);
+            osc.frequency.value = f0 * DRAWBAR_RATIOS[i];
+            
+            const gain = ctx.createGain();
+            // Громкость drawbar: 0-8 -> 0-1, с компрессией
+            gain.gain.value = (dbValue / 8) * 0.35 * vel;
+            
+            osc.connect(gain);
+            gain.connect(voiceGain);
+            osc.start(when);
+            
+            oscillators.push(osc);
+            gains.push(gain);
+        }
+        
+        // ─── Percussion ───
+        let percGain: GainNode | undefined;
+        let percOsc: OscillatorNode | undefined;
+        
+        if (currentPreset.percussion?.on && activeVoices.size === 0) {
+            // Percussion только на первую ноту (как в реальном Hammond)
+            const percHarmonic = currentPreset.percussion.harmonic === '3rd' ? 2.997 : 2;
+            const percDecay = currentPreset.percussion.decay === 'slow' ? 0.5 : 0.2;
+            const percVol = currentPreset.percussion.volume === 'soft' ? 0.15 : 0.25;
+            
+            percOsc = ctx.createOscillator();
+            percOsc.setPeriodicWave(tonewheelWave);
+            percOsc.frequency.value = f0 * percHarmonic;
+            
+            percGain = ctx.createGain();
+            percGain.gain.value = percVol * vel;
+            percGain.gain.setTargetAtTime(0, when, percDecay / 3);
+            
+            percOsc.connect(percGain);
+            percGain.connect(voiceGain);
+            percOsc.start(when);
+            percOsc.stop(when + percDecay + 0.1);
+        }
+        
+        // ─── Key Click ───
+        let clickSource: AudioBufferSourceNode | undefined;
+        
+        if (clickIntensity > 0 && clickBuffer) {
+            clickSource = ctx.createBufferSource();
+            clickSource.buffer = clickBuffer;
+            
+            const clickGain = ctx.createGain();
+            clickGain.gain.value = vel * 0.8;
+            
+            clickSource.connect(clickGain);
+            clickGain.connect(voiceGain);
+            clickSource.start(when);
+        }
+        
+        // ─── Envelope ───
+        voiceGain.gain.cancelScheduledValues(when);
+        voiceGain.gain.setValueAtTime(0.0001, when);
+        voiceGain.gain.linearRampToValueAtTime(1, when + adsr.a);
+        voiceGain.gain.setTargetAtTime(adsr.s, when + adsr.a, Math.max(adsr.d / 3, 0.001));
+        
+        activeVoices.set(midi, {
+            oscillators,
+            gains,
+            voiceGain,
+            percGain,
+            percOsc,
+            clickSource,
+            startTime: when,
+            midi
+        });
+    };
+    
+    // ─── Note Off ───
+    const noteOff = (midi: number, when = ctx.currentTime) => {
+        const voice = activeVoices.get(midi);
+        if (!voice) return;
+        
+        const adsr = currentPreset.adsr || { a: 0.005, d: 0.1, s: 0.9, r: 0.1 };
+        const releaseTime = Math.max(adsr.r, 0.02);
+        
+        // Умный release (адаптивный)
+        const elapsed = when - voice.startTime;
+        const currentGain = voice.voiceGain.gain.value;
+        
+        voice.voiceGain.gain.cancelScheduledValues(when);
+        
+        if (elapsed < adsr.a) {
+            // Ещё в атаке — быстрый микро-release
+            voice.voiceGain.gain.setValueAtTime(currentGain, when);
+            voice.voiceGain.gain.setTargetAtTime(0.0001, when, 0.02);
+        } else {
+            // Нормальный release
+            voice.voiceGain.gain.setValueAtTime(currentGain, when);
+            voice.voiceGain.gain.setTargetAtTime(0.0001, when, releaseTime / 3);
+        }
+        
+        // Key click на release (тише)
+        if (clickIntensity > 0 && clickBuffer) {
+            const releaseClick = ctx.createBufferSource();
+            releaseClick.buffer = clickBuffer;
+            const clickGain = ctx.createGain();
+            clickGain.gain.value = 0.3;
+            releaseClick.connect(clickGain);
+            clickGain.connect(voice.voiceGain);
+            releaseClick.start(when);
+        }
+        
+        const stopTime = when + releaseTime + 0.1;
+        voice.oscillators.forEach(osc => osc.stop(stopTime));
+        if (voice.percOsc) {
+            try { voice.percOsc.stop(stopTime); } catch {}
+        }
+        
+        activeVoices.delete(midi);
+    };
+    
+    // ─── All Notes Off ───
+    const allNotesOff = () => {
+        const now = ctx.currentTime;
+        activeVoices.forEach((voice, midi) => {
+            voice.voiceGain.gain.cancelScheduledValues(now);
+            voice.voiceGain.gain.setTargetAtTime(0.0001, now, 0.05);
+            voice.oscillators.forEach(osc => osc.stop(now + 0.15));
+        });
+        activeVoices.clear();
+    };
+    
+    // ─── Update from preset ───
+    const updateFromPreset = (p: OrganPreset) => {
+        // Filters
+        lpf.frequency.setTargetAtTime(p.lpf ?? 5000, ctx.currentTime, 0.05);
+        hpf.frequency.setTargetAtTime(p.hpf ?? 60, ctx.currentTime, 0.05);
+        
+        // Vibrato
+        if (p.vibrato?.type && p.vibrato.type !== 'off') {
+            vibrato.setType(p.vibrato.type);
+            vibratoBypass.gain.value = 0;
+            vibratoWet.gain.value = 1;
+        } else {
+            vibratoBypass.gain.value = 1;
+            vibratoWet.gain.value = 0;
+        }
+        if (p.vibrato?.rate) {
+            vibrato.setRate(p.vibrato.rate);
+        }
+        
+        // Leslie
+        if (p.leslie?.on !== false) {
+            leslie.setMode(p.leslie?.mode ?? 'slow');
+            leslieBypass.gain.value = 0;
+            leslieWet.gain.value = 1;
+            if (p.leslie?.mix !== undefined) {
+                leslie.setMix(p.leslie.mix);
+            }
+        } else {
+            leslieBypass.gain.value = 1;
+            leslieWet.gain.value = 0;
+        }
+        
+        // Reverb
+        reverbWet.gain.value = p.reverbMix ?? 0.15;
+        
+        // Volume
+        if (p.volume !== undefined) {
+            instrumentGain.gain.setTargetAtTime(p.volume, ctx.currentTime, 0.02);
+        }
+        
+        // Tonewheel character
+        if (p.tonewheel) {
+            tonewheelWave = createTonewheelWave(ctx, p.tonewheel);
+        }
+        
+        // Key click
+        if (p.keyClick !== undefined) {
+            clickBuffer = createKeyClick(ctx, 0.008, p.keyClick);
+        }
+    };
+    
+    // ─── API ───
+    const api = {
+        noteOn,
+        noteOff,
+        allNotesOff,
+        
+        connect: (dest?: AudioNode) => master.connect(dest || output),
+        disconnect: () => { try { master.disconnect(); } catch {} },
+        
+        setPreset: (p: OrganPreset) => {
+            allNotesOff();
+            currentPreset = { ...p };
+            updateFromPreset(currentPreset);
+        },
+        
+        setParam: (key: string, value: any) => {
+            switch (key) {
+                case 'leslie':
+                    leslie.setMode(value);
+                    break;
+                case 'leslieMix':
+                    leslie.setMix(value);
+                    break;
+                case 'vibrato':
+                    vibrato.setType(value);
+                    break;
+                case 'vibratoRate':
+                    vibrato.setRate(value);
+                    break;
+                case 'lpf':
+                    lpf.frequency.setTargetAtTime(value, ctx.currentTime, 0.02);
+                    break;
+                case 'volume':
+                    instrumentGain.gain.setTargetAtTime(value, ctx.currentTime, 0.02);
+                    break;
+                case 'expression':
+                    expressionGain.gain.setTargetAtTime(value, ctx.currentTime, 0.01);
+                    break;
+                case 'drawbars':
+                    currentPreset.drawbars = value;
+                    break;
+            }
+        },
+        
+        setVolume: (v: number) => {
+            instrumentGain.gain.setTargetAtTime(clamp(v, 0, 1), ctx.currentTime, 0.02);
+        },
+        getVolume: () => instrumentGain.gain.value,
+        setExpression: (v: number) => {
+            expressionGain.gain.setTargetAtTime(clamp(v, 0, 1), ctx.currentTime, 0.01);
+        },
+        
+        // Leslie shortcuts
+        setLeslie: (mode: 'stop' | 'slow' | 'fast') => leslie.setMode(mode),
+        toggleLeslie: () => {
+            const current = leslie.getMode();
+            leslie.setMode(current === 'fast' ? 'slow' : 'fast');
+        },
+        
+        // Drawbar control
+        setDrawbar: (index: number, value: number) => {
+            if (currentPreset.drawbars && index >= 0 && index < 9) {
+                currentPreset.drawbars[index] = clamp(value, 0, 8);
+            }
+        },
+        getDrawbars: () => [...(currentPreset.drawbars || [])],
+        
+        preset: currentPreset,
+        type: 'organ' as const
+    };
+    
+    console.log('%c[OrganEngine] Ready!', 'color: #32CD32; font-weight: bold;');
+    return api;
+};
+
+// ═══════════════════════════════════════════════════════════════════════════
+// INTEGRATION INTO MAIN FACTORY
+// ═══════════════════════════════════════════════════════════════════════════
+
+// Добавьте этот блок в buildMultiInstrument():
+
+/*
+else if (type === 'organ') {
+    const organApi = await buildOrganEngine(ctx, preset as OrganPreset, {
+        output: master,
+        plateIRUrl
+    });
+    
+    // Map organ API to standard API
+    api.noteOn = organApi.noteOn;
+    api.noteOff = organApi.noteOff;
+    api.allNotesOff = organApi.allNotesOff;
+    api.setPreset = organApi.setPreset;
+    api.setParam = organApi.setParam;
+    api.setVolume = organApi.setVolume;
+    api.getVolume = organApi.getVolume;
+    api.setExpression = organApi.setExpression;
+    
+    // Organ-specific
+    (api as any).setLeslie = organApi.setLeslie;
+    (api as any).toggleLeslie = organApi.toggleLeslie;
+    (api as any).setDrawbar = organApi.setDrawbar;
+    (api as any).getDrawbars = organApi.getDrawbars;
+}
+*/
+```
+
+---
+
+## Пресеты для органа
+
+```typescript
+// ═══════════════════════════════════════════════════════════════════════════
+// ORGAN PRESETS
+// ═══════════════════════════════════════════════════════════════════════════
+
+export const ORGAN_PRESETS = {
+    
+    // ─── Classic Gospel / Rock ───
+    organ_full: {
+        type: 'organ' as const,
+        volume: 0.7,
+        drawbars: [8, 8, 8, 6, 0, 0, 0, 0, 0],  // Full and rich
+        vibrato: { type: 'C3' as const, rate: 6.5 },
+        leslie: { on: true, mode: 'slow' as const, slow: 0.8, fast: 6.5, accel: 0.8, mix: 0.75 },
+        percussion: { on: true, harmonic: '2nd' as const, decay: 'fast' as const, volume: 'normal' as const },
+        keyClick: 0.005,
+        tonewheel: { crosstalk: 0.03, leakage: 0.02, complexity: 0.4 },
+        lpf: 6000,
+        hpf: 50,
+        reverbMix: 0.18,
+        adsr: { a: 0.004, d: 0.1, s: 0.95, r: 0.08 }
+    },
+    
+    // ─── Soft Jazz (тёплый, округлый) ───
+    organ_soft_jazz: {
+        type: 'organ' as const,
+        volume: 0.55,
+        drawbars: [8, 4, 8, 4, 0, 0, 0, 0, 0],  // Меньше верхних гармоник
+        vibrato: { type: 'C2' as const, rate: 5.5 },  // Мягкое вибрато
+        leslie: { on: true, mode: 'slow' as const, slow: 0.5, fast: 5.5, accel: 1.0, mix: 0.65 },
+        percussion: { on: false, harmonic: '2nd' as const, decay: 'slow' as const, volume: 'soft' as const },
+        keyClick: 0,  // Без клика
+        tonewheel: { crosstalk: 0.01, leakage: 0.005, complexity: 0.15 },  // Чище
+        lpf: 3500,    // Сильно срезаем верха — тепло!
+        hpf: 50,
+        reverbMix: 0.25,
+        adsr: { a: 0.025, d: 0.3, s: 0.9, r: 0.35 }  // Мягкая атака
+    },
+    
+    // ─── Ballad (ещё мягче) ───
+    organ_ballad: {
+        type: 'organ' as const,
+        volume: 0.5,
+        drawbars: [8, 3, 6, 2, 0, 0, 0, 0, 0],
+        vibrato: { type: 'C1' as const, rate: 5.0 },
+        leslie: { on: true, mode: 'slow' as const, slow: 0.35, fast: 4.5, accel: 1.2, mix: 0.55 },
+        percussion: { on: false, harmonic: '2nd' as const, decay: 'slow' as const, volume: 'soft' as const },
+        keyClick: 0,
+        tonewheel: { crosstalk: 0.005, leakage: 0.002, complexity: 0.08 },
+        lpf: 2800,
+        hpf: 45,
+        reverbMix: 0.32,
+        adsr: { a: 0.04, d: 0.4, s: 0.88, r: 0.5 }
+    },
+    
+    // ─── Gospel / Soul ───
+    organ_gospel: {
+        type: 'organ' as const,
+        volume: 0.72,
+        drawbars: [8, 8, 6, 8, 0, 6, 0, 4, 0],  // Больше обертонов
+        vibrato: { type: 'C3' as const, rate: 6.8 },
+        leslie: { on: true, mode: 'fast' as const, slow: 0.9, fast: 7.0, accel: 0.6, mix: 0.8 },
+        percussion: { on: true, harmonic: '3rd' as const, decay: 'fast' as const, volume: 'normal' as const },
+        keyClick: 0.006,
+        tonewheel: { crosstalk: 0.04, leakage: 0.025, complexity: 0.5 },
+        lpf: 7000,
+        hpf: 60,
+        reverbMix: 0.2,
+        adsr: { a: 0.003, d: 0.08, s: 0.95, r: 0.06 }
+    },
+    
+    // ─── Jimmy Smith Style ───
+    organ_jimmy_smith: {
+        type: 'organ' as const,
+        volume: 0.65,
+        drawbars: [8, 8, 8, 0, 0, 0, 0, 0, 0],  // 888000000 — классика
+        vibrato: { type: 'C3' as const, rate: 6.5 },
+        leslie: { on: true, mode: 'slow' as const, slow: 0.7, fast: 6.2, accel: 0.7, mix: 0.7 },
+        percussion: { on: true, harmonic: '2nd' as const, decay: 'fast' as const, volume: 'soft' as const },
+        keyClick: 0.004,
+        tonewheel: { crosstalk: 0.025, leakage: 0.015, complexity: 0.35 },
+        lpf: 5500,
+        hpf: 55,
+        reverbMix: 0.15,
+        adsr: { a: 0.005, d: 0.12, s: 0.92, r: 0.1 }
+    },
+    
+    // ─── Progrock (Yes, ELP style) ───
+    organ_prog: {
+        type: 'organ' as const,
+        volume: 0.75,
+        drawbars: [8, 6, 8, 8, 4, 5, 3, 2, 0],  // Много гармоник
+        vibrato: { type: 'V3' as const, rate: 7.0 },  // Сильное вибрато
+        leslie: { on: true, mode: 'fast' as const, slow: 1.0, fast: 7.5, accel: 0.5, mix: 0.85 },
+        percussion: { on: true, harmonic: '3rd' as const, decay: 'slow' as const, volume: 'normal' as const },
+        keyClick: 0.007,
+        tonewheel: { crosstalk: 0.05, leakage: 0.03, complexity: 0.6 },
+        lpf: 8000,
+        hpf: 70,
+        reverbMix: 0.22,
+        adsr: { a: 0.003, d: 0.06, s: 0.98, r: 0.05 }
+    }
+};
+
+// Добавьте в V2_PRESETS:
+// ...ORGAN_PRESETS
+```
+
+---
+
+## Использование
+
+```typescript
+// Создание органа напрямую
+const organ = await buildOrganEngine(audioCtx, ORGAN_PRESETS.organ_soft_jazz, {
+    plateIRUrl: '/ir/plate-reverb.wav'
+});
+
+// Играть
+organ.noteOn(60);                    // Middle C
+organ.noteOn(64);                    // E
+organ.noteOn(67);                    // G
+organ.noteOff(60);
+
+// Leslie control (живое переключение!)
+organ.setLeslie('fast');             // Быстрый
+organ.setLeslie('slow');             // Медленный
+organ.toggleLeslie();                // Переключить
+
+// Drawbars в реальном времени
+organ.setDrawbar(0, 8);              // 16' на максимум
+organ.setDrawbar(3, 4);              // 4' на половину
+console.log(organ.getDrawbars());    // [8, 4, 8, 4, 0, 0, 0, 0, 0]
+
+// Параметры
+organ.setParam('vibrato', 'C3');
+organ.setParam('lpf', 4000);
+organ.setVolume(0.6);
+organ.setExpression(0.8);
+```
+
+---
+
+## Шпаргалка по drawbars
+
+| Позиция | Footage | Интервал | Характер |
+|---------|---------|----------|----------|
+| 0 | 16' | Sub-октава | Глубокий бас |
+| 1 | 5⅓' | Квинта | "Носовой" |
+| 2 | 8' | Унисон | **Основной тон** |
+| 3 | 4' | Октава | Яркость |
+| 4 | 2⅔' | Октава+квинта | "Кварковый" |
+| 5 | 2' | 2 октавы | Резкость |
+| 6 | 1⅗' | 2 окт + терция | Пронзительный |
+| 7 | 1⅓' | 2 окт + квинта | Очень резкий |
+| 8 | 1' | 3 октавы | Свист |
+
+**Soft Jazz:** `[8,4,8,4,0,0,0,0,0]` — убираем всё выше 4'  
+**Gospel:** `[8,8,6,8,0,6,0,4,0]` — много всего  
+**Clean:** `[0,0,8,0,0,0,0,0,0]` — только 8' (чистый синус)
+
+Теперь орган звучит тепло и аутентично! 🎹✨
