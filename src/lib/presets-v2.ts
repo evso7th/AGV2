@@ -11,6 +11,7 @@ export const V2_PRESETS = {
 
   synth: { // Emerald Pad — основной ambient pad
     type: 'synth',
+    comp: { threshold: -18, ratio: 4, attack: 0.003, release: 0.15, makeup: 6 },
     osc: [
       { type: 'sawtooth', detune: -4, octave: 0, gain: 0.5 },
       { type: 'sawtooth', detune: +4, octave: 0, gain: 0.5 },
@@ -20,7 +21,6 @@ export const V2_PRESETS = {
     adsr: { a: 0.8, d: 1.2, s: 0.7, r: 3.0 },
     lpf: { cutoff: 1600, q: 1.2, mode: '24dB' },
     lfo: { shape: 'sine', rate: 0.18, amount: 450, target: 'filter' },
-    comp: { threshold: -18, ratio: 4, attack: 0.003, release: 0.15, makeup: 6 },
     chorus: { on: true, rate: 0.2, depth: 0.007, mix: 0.4 },
     delay: { on: true, time: 0.5, fb: 0.3, hc: 4000, mix: 0.2 },
     reverbMix: 0.25
@@ -28,6 +28,7 @@ export const V2_PRESETS = {
 
   synth_ambient_pad_lush: {
     type: 'synth',
+    comp: { threshold: -20, ratio: 3, attack: 0.005, release: 0.2, makeup: 5 },
     osc: [
       { type: 'sawtooth', detune: -4, octave: 0, gain: 0.5 },
       { type: 'sawtooth', detune: +4, octave: 0, gain: 0.5 },
@@ -37,7 +38,6 @@ export const V2_PRESETS = {
     adsr: { a: 1.2, d: 2.0, s: 0.8, r: 4.0 },
     lpf: { cutoff: 1400, q: 1.0, mode: '24dB' },
     lfo: { shape: 'sine', rate: 0.15, amount: 500, target: 'filter' },
-    comp: { threshold: -20, ratio: 3, attack: 0.005, release: 0.2, makeup: 5 },
     chorus: { on: true, rate: 0.18, depth: 0.008, mix: 0.45 },
     delay: { on: true, time: 0.55, fb: 0.35, hc: 3500, mix: 0.25 },
     reverbMix: 0.3
@@ -45,6 +45,7 @@ export const V2_PRESETS = {
 
   synth_cave_pad: {
     type: 'synth',
+    comp: { threshold: -22, ratio: 3, attack: 0.01, release: 0.25, makeup: 4 },
     osc: [
       { type: 'sawtooth', detune: -6, octave: 0, gain: 0.4 },
       { type: 'sawtooth', detune: +6, octave: 0, gain: 0.4 },
@@ -56,7 +57,6 @@ export const V2_PRESETS = {
     adsr: { a: 1.5, d: 2.0, s: 0.8, r: 5.0 },
     lpf: { cutoff: 1400, q: 1.1, mode: '24dB' },
     lfo: { shape: 'sine', rate: 0.1, amount: 5, target: 'pitch' }, // TODO: pitch LFO не реализован
-    comp: { threshold: -22, ratio: 3, attack: 0.01, release: 0.25, makeup: 4 },
     chorus: { on: true, rate: 0.15, depth: 0.008, mix: 0.6 },
     delay: { on: true, time: 0.52, fb: 0.45, hc: 2500, mix: 0.35 },
     reverbMix: 0.45
@@ -64,6 +64,7 @@ export const V2_PRESETS = {
 
   theremin: {
     type: 'synth',
+    comp: { threshold: -15, ratio: 2, attack: 0.01, release: 0.1, makeup: 3 },
     osc: [
       { type: 'sine', detune: 0, octave: 0, gain: 1.0 },
       { type: 'sine', detune: 2, octave: 1, gain: 0.3 }
@@ -72,7 +73,6 @@ export const V2_PRESETS = {
     adsr: { a: 0.4, d: 0.1, s: 0.9, r: 2.8 },
     lpf: { cutoff: 5000, q: 0.7, mode: '12dB' },
     lfo: { shape: 'sine', rate: 5.5, amount: 3, target: 'pitch' }, // TODO: pitch LFO
-    comp: { threshold: -15, ratio: 2, attack: 0.01, release: 0.1, makeup: 3 },
     chorus: { on: true, rate: 0.1, depth: 0.002, mix: 0.2 },
     delay: { on: false, time: 0.3, fb: 0.2, hc: 4000, mix: 0 },
     reverbMix: 0.28
@@ -84,6 +84,7 @@ export const V2_PRESETS = {
 
   mellotron: { // Majestic Strings
     type: 'synth',
+    comp: { threshold: -18, ratio: 3, attack: 0.005, release: 0.15, makeup: 5 },
     osc: [
       { type: 'sawtooth', detune: -5, octave: 0, gain: 0.5 },
       { type: 'sawtooth', detune: +5, octave: 0, gain: 0.5 },
@@ -93,7 +94,6 @@ export const V2_PRESETS = {
     adsr: { a: 0.4, d: 0.8, s: 0.7, r: 1.5 },
     lpf: { cutoff: 3200, q: 1.5, mode: '24dB' },
     lfo: { shape: 'sine', rate: 4.5, amount: 4, target: 'pitch' },
-    comp: { threshold: -18, ratio: 3, attack: 0.005, release: 0.15, makeup: 5 },
     chorus: { on: true, rate: 0.3, depth: 0.008, mix: 0.5 },
     delay: { on: true, time: 0.3, fb: 0.2, hc: 4500, mix: 0.15 },
     reverbMix: 0.35
@@ -101,6 +101,7 @@ export const V2_PRESETS = {
 
   mellotron_flute_intimate: {
     type: 'synth',
+    comp: { threshold: -15, ratio: 2, attack: 0.01, release: 0.1, makeup: 4 },
     osc: [
       { type: 'sine', detune: 0, octave: 0, gain: 0.9 },
       { type: 'triangle', detune: 2, octave: 1, gain: 0.2 }
@@ -109,7 +110,6 @@ export const V2_PRESETS = {
     adsr: { a: 0.05, d: 0.2, s: 0.8, r: 0.3 },
     lpf: { cutoff: 7500, q: 0.8, mode: '12dB' },
     lfo: { shape: 'sine', rate: 4.8, amount: 2.5, target: 'pitch' },
-    comp: { threshold: -15, ratio: 2, attack: 0.01, release: 0.1, makeup: 4 },
     chorus: { on: false, rate: 0.2, depth: 0.005, mix: 0 },
     delay: { on: true, time: 0.15, fb: 0.1, hc: 5000, mix: 0.1 },
     reverbMix: 0.15
@@ -117,6 +117,7 @@ export const V2_PRESETS = {
 
   mellotron_choir: {
     type: 'synth',
+    comp: { threshold: -20, ratio: 3, attack: 0.008, release: 0.2, makeup: 5 },
     osc: [
       { type: 'sawtooth', detune: -3, octave: 0, gain: 0.4 },
       { type: 'sawtooth', detune: +3, octave: 0, gain: 0.4 },
@@ -127,7 +128,6 @@ export const V2_PRESETS = {
     adsr: { a: 0.6, d: 1.0, s: 0.75, r: 2.0 },
     lpf: { cutoff: 2800, q: 1.0, mode: '24dB' },
     lfo: { shape: 'sine', rate: 5.2, amount: 3, target: 'pitch' },
-    comp: { threshold: -20, ratio: 3, attack: 0.008, release: 0.2, makeup: 5 },
     chorus: { on: true, rate: 0.25, depth: 0.006, mix: 0.4 },
     delay: { on: true, time: 0.4, fb: 0.25, hc: 3800, mix: 0.2 },
     reverbMix: 0.4
@@ -139,16 +139,16 @@ export const V2_PRESETS = {
 
   ep_rhodes_warm: {
     type: 'synth',
+    comp: { threshold: -16, ratio: 3, attack: 0.003, release: 0.12, makeup: 4 },
     osc: [
       { type: 'sine', detune: 0, octave: 0, gain: 0.58 },
-      { type: 'triangle', detune: 0, octave: 1, gain: 0.14 }, // +1200 cents = +1 octave
+      { type: 'triangle', detune: 0, octave: 1, gain: 0.14 },
       { type: 'sine', detune: 0, octave: 1, gain: 0.08 }
     ],
     noise: { on: false, gain: 0 },
     adsr: { a: 0.008, d: 0.28, s: 0.68, r: 0.90 },
     lpf: { cutoff: 3500, q: 0.9, mode: '24dB' },
     lfo: { shape: 'sine', rate: 0, amount: 0, target: 'filter' },
-    comp: { threshold: -16, ratio: 3, attack: 0.003, release: 0.12, makeup: 4 },
     chorus: { on: true, rate: 0.25, depth: 0.006, mix: 0.22 },
     delay: { on: true, time: 0.26, fb: 0.12, hc: 4500, mix: 0.10 },
     reverbMix: 0.18
@@ -156,6 +156,7 @@ export const V2_PRESETS = {
 
   ep_rhodes_70s: {
     type: 'synth',
+    comp: { threshold: -16, ratio: 3, attack: 0.003, release: 0.12, makeup: 4 },
     osc: [
       { type: 'sine', detune: 0, octave: 0, gain: 0.54 },
       { type: 'triangle', detune: 0, octave: 1, gain: 0.16 },
@@ -165,11 +166,9 @@ export const V2_PRESETS = {
     adsr: { a: 0.008, d: 0.30, s: 0.66, r: 0.95 },
     lpf: { cutoff: 4200, q: 0.9, mode: '24dB' },
     lfo: { shape: 'sine', rate: 0, amount: 0, target: 'filter' },
-    comp: { threshold: -16, ratio: 3, attack: 0.003, release: 0.12, makeup: 4 },
     chorus: { on: true, rate: 0.20, depth: 0.006, mix: 0.24 },
     delay: { on: true, time: 0.28, fb: 0.16, hc: 4200, mix: 0.12 },
     reverbMix: 0.22
-    // NOTE: tremolo и phaser требуют доработки фабрики
   },
 
   // ═══════════════════════════════════════════════════════════════════════════
@@ -178,6 +177,7 @@ export const V2_PRESETS = {
 
   guitar_shineOn: {
     type: 'guitar',
+    volume: 0.25,
     osc: { width: 0.46, detune: 5, mainGain: 0.85, detGain: 0.18, subGain: 0.25 },
     pickup: { cutoff: 3600, q: 1.0 },
     drive: { type: 'soft', amount: 0.2 },
@@ -255,7 +255,7 @@ export const V2_PRESETS = {
 
   organ_soft_jazz: {
     type: 'organ',
-    gain: 0.25,
+    volume: 0.25,
     drawbars: [6, 0, 8, 6, 0, 2, 0, 0, 0],
     adsr: { a: 0.08, d: 0.2, s: 0.9, r: 0.8 },
     vibratoRate: 6.2,
