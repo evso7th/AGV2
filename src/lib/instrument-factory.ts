@@ -86,9 +86,6 @@ const makeChorus = (ctx: AudioContext, {rate = 0.25, depth = 0.006, mix = 0.25})
     wet.gain.value = mix;
     dry.gain.value = 1 - mix;
 
-    input.connect(dry);
-    dry.connect(output);
-
     const delay = ctx.createDelay(0.025);
     const lfo = ctx.createOscillator();
     const lfoGain = ctx.createGain();
@@ -104,6 +101,10 @@ const makeChorus = (ctx: AudioContext, {rate = 0.25, depth = 0.006, mix = 0.25})
     lfo.connect(lfoGain);
     lfoGain.connect(delay.delayTime);
     lfo.start();
+    
+    // #ИСПРАВЛЕНО: Правильная маршрутизация "сухого" сигнала
+    input.connect(dry);
+    dry.connect(output);
 
     return { input, output };
 };
@@ -229,10 +230,10 @@ export async function buildMultiInstrument(ctx: AudioContext, {
         // Компрессор
         compNode.threshold.value = p.comp?.threshold ?? -20;
         compNode.knee.value = p.comp?.knee ?? 10;
-        compNode.ratio.value = p.comp?.ratio ?? 12;
+        compNode.ratio.value = p.comp?.ratio ?? 4; // БОЛЕЕ БЕЗОПАСНЫЙ ДЕФОЛТ
         compNode.attack.value = p.comp?.attack ?? 0.005;
         compNode.release.value = p.comp?.release ?? 0.1;
-        compMakeup.gain.value = dB(p.comp?.makeup ?? 0);
+        compMakeup.gain.value = dB(p.comp?.makeup ?? 6); // ДОБАВЛЕНА КОМПЕНСАЦИЯ
         
         // Фильтры
         filt.type = 'lowpass';
@@ -346,9 +347,7 @@ export async function buildMultiInstrument(ctx: AudioContext, {
         updateNodesFromPreset(p);
     };
   } else if (type === 'guitar') {
-      let {
-        variant='shineOn', pickup, drive, comp, post, phaser, delayA, delayB, reverbMix, osc, adsr
-      } = { ...preset };
+      let currentPreset = { ...preset };
 
       // --- СТАТИЧЕСКАЯ ЦЕПОЧКА ЭФФЕКТОВ ---
       const guitarInput = ctx.createGain(); 
@@ -358,40 +357,54 @@ export async function buildMultiInstrument(ctx: AudioContext, {
       const compMakeup = ctx.createGain();
       const shaper = ctx.createWaveShaper();
       const postHPF = ctx.createBiquadFilter();
-      const mid1 = ctx.createBiquadFilter();
-      const mid2 = ctx.createBiquadFilter();
+      const mid1 = ctx.createBiquadFilter(); mid1.type = 'peaking';
+      const mid2 = ctx.createBiquadFilter(); mid2.type = 'peaking';
       const postLPF = ctx.createBiquadFilter();
       const cab = ctx.createConvolver();
-      const ph = makePhaser(ctx, phaser);
-      const dA = makeFilteredDelay(ctx, delayA);
-      const dB_node = delayB ? makeFilteredDelay(ctx, delayB) : null;
+      const ph = makePhaser(ctx, currentPreset.phaser || {});
+      const dA = makeFilteredDelay(ctx, currentPreset.delayA || {});
+      const dB_node = currentPreset.delayB ? makeFilteredDelay(ctx, currentPreset.delayB) : null;
       const revSend = ctx.createGain();
-
+      const guitarOut = ctx.createGain(); guitarOut.gain.value = 0.9;
+      
+      let lastInChain: AudioNode = postLPF;
+      
       guitarInput.connect(pickupLPF).connect(hpf).connect(compNode).connect(compMakeup)
           .connect(shaper).connect(postHPF).connect(mid1).connect(mid2).connect(postLPF);
       
-      let lastInChain: AudioNode = postLPF;
       if (cabinetIRUrl) {
-          try {
-              cab.buffer = await loadIR(ctx, cabinetIRUrl);
-              postLPF.connect(cab);
-              lastInChain = cab;
-          } catch(e) { console.error('[Guitar] Failed to load cabinet IR', e); }
+        loadIR(ctx, cabinetIRUrl).then(buffer => {
+          if (buffer) {
+            cab.buffer = buffer;
+            postLPF.connect(cab);
+            lastInChain = cab;
+          }
+        }).catch(e => console.error('[Guitar] Failed to load cabinet IR', e));
       }
-      
-      lastInChain.connect(ph.input);
-      let fxChain: AudioNode = ph.output;
 
-      fxChain.connect(dA.input);
-      fxChain = dA.output;
-      
-      if (dB_node) {
-        fxChain.connect(dB_node.input);
-        fxChain = dB_node.output;
-      }
-      
-      const guitarOut = ctx.createGain();
-      fxChain.connect(guitarOut);
+      const connectFxChain = () => {
+          try { lastInChain.disconnect(); } catch(e){} // Disconnect previous path
+          
+          let fxChain: AudioNode = ph.output;
+
+          // Connect Phaser
+          lastInChain.connect(ph.input);
+
+          // Connect Delay A
+          ph.output.connect(dA.input);
+          fxChain = dA.output;
+          
+          // Connect Delay B if it exists
+          if (dB_node) {
+            fxChain.connect(dB_node.input);
+            fxChain = dB_node.output;
+          }
+          
+          // Connect to final output chain
+          fxChain.connect(guitarOut);
+      };
+
+      connectFxChain();
       guitarOut.connect(master);
       if (reverb.buffer) {
           guitarOut.connect(revSend);
@@ -418,16 +431,18 @@ export async function buildMultiInstrument(ctx: AudioContext, {
           compMakeup.gain.value = dB(p.comp?.makeup ?? 3);
           shaper.curve = (p.drive?.type === 'muff') ? makeMuff(p.drive.amount) : makeSoftClip(p.drive.amount);
           postHPF.frequency.value = 80;
-          mid1.frequency.value = p.post?.mids[0].f ?? 850; mid1.Q.value = p.post?.mids[0].q ?? 0.9; mid1.gain.value = p.post?.mids[0].g ?? 2;
-          mid2.frequency.value = p.post?.mids[1].f ?? 2500; mid2.Q.value = p.post?.mids[1].q ?? 1.4; mid2.gain.value = p.post?.mids[1].g ?? -1.5;
+          mid1.frequency.value = p.post?.mids?.[0]?.f ?? 850; mid1.Q.value = p.post?.mids?.[0]?.q ?? 0.9; mid1.gain.value = p.post?.mids?.[0]?.g ?? 2;
+          mid2.frequency.value = p.post?.mids?.[1]?.f ?? 2500; mid2.Q.value = p.post?.mids?.[1]?.q ?? 1.4; mid2.gain.value = p.post?.mids?.[1]?.g ?? -1.5;
           postLPF.frequency.value = p.post?.lpf ?? 5200;
           revSend.gain.value = p.reverbMix ?? 0.18;
       };
       
-      updateGuitarNodes(preset);
+      updateGuitarNodes(currentPreset);
 
       api.noteOn = (midi, when = ctx.currentTime) => {
         const f = midiToHz(midi);
+        const { osc, adsr } = currentPreset; // ИСПОЛЬЗУЕМ ТЕКУЩИЙ ПРЕСЕТ
+        
         const vGain = ctx.createGain(); vGain.gain.value = 0.0;
 
         const sum = ctx.createGain(); sum.gain.value = 0.8;
@@ -448,19 +463,20 @@ export async function buildMultiInstrument(ctx: AudioContext, {
         oscMain.start(when); oscDet.start(when); oscSub.start(when);
 
         vGain.gain.cancelScheduledValues(when);
-        vGain.gain.linearRampToValueAtTime(1.0, when + adsr.a);
-        vGain.gain.setTargetAtTime(adsr.s, when + adsr.a, adsr.d / 3);
+        vGain.gain.linearRampToValueAtTime(1.0, when + (adsr?.a ?? 0.01));
+        vGain.gain.setTargetAtTime((adsr?.s ?? 0.6), when + (adsr?.a ?? 0.01), (adsr?.d ?? 0.5) / 3);
 
         activeVoices.set(midi, { oscMain, oscDet, oscSub, vGain });
       };
 
       api.noteOff = (midi, when = ctx.currentTime) => {
+        const { adsr } = currentPreset; // ИСПОЛЬЗУЕМ ТЕКУЩИЙ ПРЕСЕТ
         const voice = activeVoices.get(midi);
         if (!voice) return;
         voice.vGain.gain.cancelScheduledValues(when);
         voice.vGain.gain.setValueAtTime(voice.vGain.gain.value, when);
-        voice.vGain.gain.setTargetAtTime(0.0001, when, adsr.r / 3);
-        const stopTime = when + adsr.r;
+        voice.vGain.gain.setTargetAtTime(0.0001, when, (adsr?.r ?? 1.6) / 3);
+        const stopTime = when + (adsr?.r ?? 1.6);
         voice.oscMain.stop(stopTime); voice.oscDet.stop(stopTime); voice.oscSub.stop(stopTime);
         activeVoices.delete(midi);
       };
@@ -468,7 +484,7 @@ export async function buildMultiInstrument(ctx: AudioContext, {
       api.allNotesOff = () => activeVoices.forEach((_, key) => api.noteOff(key));
       api.setPreset = (p) => { 
           api.allNotesOff(); 
-          preset = p; 
+          currentPreset = p; 
           api.preset = p;
           updateGuitarNodes(p);
       };
@@ -478,5 +494,3 @@ export async function buildMultiInstrument(ctx: AudioContext, {
   console.log(`%c[InstrumentFactory] Build COMPLETED for type: ${type}.`, 'color: #32CD32;');
   return api;
 }
-
-    

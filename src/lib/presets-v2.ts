@@ -131,7 +131,7 @@ export const V2_PRESETS = {
   // --- НОВЫЕ СИНТЕТИЧЕСКИЕ ГИТАРЫ (ПЛАН 390) ---
 
   guitar_shineOn: { // Shine On Lead
-    type: 'synth',
+    type: 'guitar',
     osc: [
       { type: 'sawtooth', detune: -3, octave: 0, gain: 0.6 },
       { type: 'sawtooth', detune: 3, octave: 0, gain: 0.6 },
@@ -147,7 +147,7 @@ export const V2_PRESETS = {
   },
   
   guitar_muffLead: {
-    type: 'synth',
+    type: 'guitar',
     osc: [
       { type: 'sawtooth', detune: -8, octave: 1, gain: 0.9 },
       { type: 'sawtooth', detune: 8, octave: 1, gain: 0.9 },
