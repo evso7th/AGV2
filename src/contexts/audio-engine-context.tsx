@@ -25,6 +25,7 @@ import * as Tone from 'tone';
 import { MelodySynthManagerV2 } from '@/lib/melody-synth-manager-v2';
 import { V2_PRESETS } from '@/lib/presets-v2';
 import { HarmonySynthManager } from '@/lib/harmony-synth-manager';
+import { buildMultiInstrument } from '@/lib/instrument-factory';
 
 export function noteToMidi(note: string): number {
     return new (Tone.Frequency as any)(note).toMidi();
@@ -97,11 +98,11 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
   const settingsRef = useRef<WorkerSettings | null>(null);
   
   const drumMachineRef = useRef<DrumMachine | null>(null);
-  const bassManagerRef = useRef<BassSynthManager | null>(null);
   const accompanimentManagerRef = useRef<AccompanimentSynthManager | null>(null);
   const accompanimentManagerV2Ref = useRef<AccompanimentSynthManagerV2 | null>(null);
   const melodyManagerRef = useRef<MelodySynthManager | null>(null);
   const melodyManagerV2Ref = useRef<MelodySynthManagerV2 | null>(null);
+  const bassManagerV2Ref = useRef<MelodySynthManagerV2 | null>(null); // New V2 manager for bass
   const harmonyManagerRef = useRef<HarmonySynthManager | null>(null);
   const sparklePlayerRef = useRef<SparklePlayer | null>(null);
   const sfxSynthManagerRef = useRef<SfxSynthManager | null>(null);
@@ -152,7 +153,7 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
   }, [updateSettingsCallback]);
 
 
-  const setInstrumentCallback = useCallback((part: 'bass' | 'melody' | 'accompaniment' | 'harmony', name: BassInstrument | MelodyInstrument | AccompanimentInstrument | 'piano' | 'guitarChords' | 'violin' | 'flute' | 'acousticGuitarSolo' | keyof typeof V2_PRESETS) => {
+  const setInstrumentCallback = useCallback(async (part: 'bass' | 'melody' | 'accompaniment' | 'harmony', name: BassInstrument | MelodyInstrument | AccompanimentInstrument | 'piano' | 'guitarChords' | 'violin' | 'flute' | 'acousticGuitarSolo' | keyof typeof V2_PRESETS) => {
     if (!isInitialized) return;
     if (part === 'accompaniment') {
       if(useMelodyV2 && accompanimentManagerV2Ref.current) {
@@ -166,8 +167,8 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
         } else if (melodyManagerRef.current) {
             melodyManagerRef.current.setInstrument(name as AccompanimentInstrument);
         }
-    } else if (part === 'bass' && bassManagerRef.current) {
-        bassManagerRef.current.setPreset(name as BassInstrument);
+    } else if (part === 'bass' && bassManagerV2Ref.current) {
+        await bassManagerV2Ref.current.setInstrument(name as keyof typeof V2_PRESETS);
     } else if (part === 'harmony' && harmonyManagerRef.current) {
         harmonyManagerRef.current.setInstrument(name as 'piano' | 'guitarChords' | 'violin' | 'flute' | 'acousticGuitarSolo' | 'none');
     }
@@ -210,22 +211,14 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
       drumMachineRef.current.schedule(drumEvents, barStartTime, tempo);
     }
     
-    if (bassManagerRef.current && bassEvents.length > 0) {
-        if (composerControls === false) {
-            const cleanedBassEvents = bassEvents.map(event => {
-                const { params, ...rest } = event;
-                return rest;
-            });
-            bassManagerRef.current.play(cleanedBassEvents, barStartTime, tempo);
-        } else {
-             bassManagerRef.current.play(bassEvents, barStartTime, tempo);
-        }
+    if (bassManagerV2Ref.current && bassEvents.length > 0) {
+        bassManagerV2Ref.current.schedule(bassEvents, barStartTime, tempo, instrumentHints?.bass);
     }
 
     if (accompanimentEvents.length > 0) {
         if (useMelodyV2) {
             if (accompanimentManagerV2Ref.current) {
-                accompanimentManagerV2Ref.current.schedule(accompanimentEvents, barStartTime, tempo, barCount, instrumentHints?.accompaniment as keyof typeof V2_PRESETS);
+                accompanimentManagerV2Ref.current.schedule(accompanimentEvents, barStartTime, tempo, instrumentHints?.accompaniment as keyof typeof V2_PRESETS);
             }
         } else {
             if (accompanimentManagerRef.current) {
@@ -256,9 +249,8 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
   }, [useMelodyV2]);
 
   const setBassTechniqueCallback = useCallback((technique: BassTechnique) => {
-    if (bassManagerRef.current) {
-        bassManagerRef.current.setTechnique(technique);
-    }
+    // This is now handled via instrument presets in V2, but we keep the function for compatibility.
+    // In a future step, this could trigger a preset change.
   }, []);
 
   useEffect(() => {
@@ -344,11 +336,6 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
             initPromises.push(drumMachineRef.current.init());
         }
        
-        if (!bassManagerRef.current) {
-            bassManagerRef.current = new BassSynthManager(context, gainNodesRef.current.bass!);
-            initPromises.push(bassManagerRef.current.init());
-        }
-
         if (!accompanimentManagerRef.current) {
             accompanimentManagerRef.current = new AccompanimentSynthManager(context, gainNodesRef.current.accompaniment!);
             initPromises.push(accompanimentManagerRef.current.init());
@@ -382,6 +369,16 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
                 blackGuitarSamplerRef.current!
             );
             initPromises.push(melodyManagerV2Ref.current.init());
+        }
+
+        if (!bassManagerV2Ref.current) {
+            bassManagerV2Ref.current = new MelodySynthManagerV2(
+                context,
+                gainNodesRef.current.bass!,
+                telecasterSamplerRef.current!,
+                blackGuitarSamplerRef.current!
+            );
+            initPromises.push(bassManagerV2Ref.current.init());
         }
         
         if (!harmonyManagerRef.current) {
@@ -435,12 +432,12 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
   }, [isPlaying]);
 
   const stopAllSounds = useCallback(() => {
-    bassManagerRef.current?.allNotesOff();
     drumMachineRef.current?.stop();
     accompanimentManagerRef.current?.allNotesOff();
     accompanimentManagerV2Ref.current?.allNotesOff();
     melodyManagerRef.current?.allNotesOff();
     melodyManagerV2Ref.current?.allNotesOff();
+    bassManagerV2Ref.current?.allNotesOff();
     harmonyManagerRef.current?.allNotesOff();
     sparklePlayerRef.current?.stopAll();
     sfxSynthManagerRef.current?.allNotesOff();
