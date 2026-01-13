@@ -1,5 +1,4 @@
 
-
 import type { MusicBlueprint, BlueprintPart, BlueprintBundle, Genre, Mood, InstrumentationRules, MelodyInstrument, AccompanimentInstrument, BassInstrument, V2MelodyInstrument, InstrumentBehaviorRules } from '@/types/music';
 
 // Helper function for seeded random numbers - kept for potential future use in axiom selection
@@ -100,66 +99,45 @@ export class BlueprintNavigator {
         this.blueprint = blueprint;
         this.genre = genre;
         this.mood = mood;
-        this.introBars = introBars;
+        this.introBars = introBars; // This might be deprecated if percentages are always used
         this.totalBars = this.blueprint.structure.totalDuration.preferredBars;
 
         let currentBar = 0;
         const allParts = this.blueprint.structure.parts;
+        const totalPercent = allParts.reduce((sum, part) => sum + part.duration.percent, 0);
 
-        // --- NEW LOGIC FOR INTRO BARS ---
-        const introParts = allParts.filter(p => p.id.startsWith('INTRO'));
-        const mainParts = allParts.filter(p => !p.id.startsWith('INTRO'));
+        if (totalPercent <= 0) {
+            console.error("[NAVIGATOR] Blueprint parts have a total percentage of 0. Cannot create navigation map.");
+            return;
+        }
         
-        let introDurationTotal = 0;
-        
-        // Calculate boundaries for INTRO parts first, using the fixed introBars value
-        if (introParts.length > 0) {
-            const durationPerIntroPart = Math.floor(this.introBars / introParts.length);
-            let remainingIntroBars = this.introBars;
+        let accumulatedBars = 0;
+
+        allParts.forEach((part, index) => {
+            const isLastPart = index === allParts.length - 1;
+            let partDuration: number;
+
+            if (isLastPart) {
+                partDuration = this.totalBars - accumulatedBars;
+            } else {
+                const proportion = part.duration.percent / totalPercent;
+                partDuration = Math.round(proportion * this.totalBars);
+            }
+
+            const partStartBar = currentBar + accumulatedBars;
+            const partBoundary = this.createPartBoundary(part, partStartBar, partDuration);
+            this.partBoundaries.push(partBoundary);
             
-            introParts.forEach((part, index) => {
-                const isLast = index === introParts.length - 1;
-                const partDuration = isLast ? remainingIntroBars : durationPerIntroPart;
-                
-                const partBoundary = this.createPartBoundary(part, currentBar, partDuration);
-                this.partBoundaries.push(partBoundary);
-                
-                currentBar += partDuration;
-                remainingIntroBars -= partDuration;
-                introDurationTotal += partDuration;
-            });
+            accumulatedBars += partDuration;
+        });
+
+        // Ensure the last part ends exactly at totalBars
+        if (this.partBoundaries.length > 0) {
+            const lastPart = this.partBoundaries[this.partBoundaries.length - 1];
+            lastPart.endBar = this.totalBars - 1;
         }
 
-
-        // Calculate remaining bars and percentage for main parts
-        const remainingBars = this.totalBars - introDurationTotal;
-        const mainPartsTotalPercent = mainParts.reduce((sum, part) => sum + part.duration.percent, 0);
-
-        if (mainPartsTotalPercent <= 0 && mainParts.length > 0) {
-            console.error("[NAVIGATOR] Main parts have a total percentage of 0. Cannot distribute remaining bars.");
-        } else if (mainParts.length > 0) {
-            let accumulatedMainBars = 0;
-            mainParts.forEach((part, index) => {
-                const isLastPart = index === mainParts.length - 1;
-                let partDuration;
-
-                if (isLastPart) {
-                    partDuration = remainingBars - accumulatedMainBars;
-                } else {
-                    const proportion = part.duration.percent / mainPartsTotalPercent;
-                    partDuration = Math.round(proportion * remainingBars);
-                }
-
-                const partStartBar = currentBar + accumulatedMainBars;
-                const partBoundary = this.createPartBoundary(part, partStartBar, partDuration);
-                this.partBoundaries.push(partBoundary);
-                
-                accumulatedMainBars += partDuration;
-            });
-            currentBar += accumulatedMainBars;
-        }
-        
-        // Ensure the navigator is robust by sorting and logging
+        // Ensure navigator is robust by sorting and logging
         this.partBoundaries.sort((a,b) => a.startBar - b.startBar);
         console.log('[NAVIGATOR] Initialized with part boundaries:', this.partBoundaries.map(p => ({id: p.part.id, start: p.startBar, end: p.endBar, bundles: p.bundleBoundaries.length})));
     }
@@ -220,10 +198,22 @@ export class BlueprintNavigator {
             return null;
         }
 
+        // If no bundles, create a default one for the whole part duration
+        if (partInfo.bundleBoundaries.length === 0) {
+            const isPartTransition = effectiveBar === partInfo.startBar;
+             const logMessage = isPartTransition ? `%c[NAVIGATOR @ Bar ${currentBar}] Part Transition: ${partInfo.part.id} (No Bundles)` : null;
+            return {
+                currentPart: partInfo.part,
+                currentBundle: { id: `${partInfo.part.id}_DEFAULT_BUNDLE`, name: 'Default', duration: { percent: 100 }, characteristics: {}, phrases: {} },
+                isPartTransition,
+                isBundleTransition: false,
+                logMessage
+            };
+        }
+
         const bundleInfo = partInfo.bundleBoundaries.find(b => effectiveBar >= b.startBar && effectiveBar <= b.endBar);
         if (!bundleInfo) {
             console.error(`[NAVIGATOR @ Bar ${effectiveBar}] CRITICAL: Could not find bundle in part ${partInfo.part.id}`);
-            // Fallback to the first bundle if none is found (can happen at the very edge)
              if (partInfo.bundleBoundaries.length > 0) {
                  return {
                     currentPart: partInfo.part,
@@ -263,3 +253,5 @@ export class BlueprintNavigator {
         };
     }
 }
+
+    
