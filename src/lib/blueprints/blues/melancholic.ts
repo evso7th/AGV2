@@ -35,6 +35,7 @@ export const MelancholicAmbientBlueprint: MusicBlueprint = {
         },
         layers: { accompaniment: true, drums: true, melody: true, bass: true },
         instrumentation: { 
+            bass: { strategy: 'weighted', v2Options: [{ name: 'bass_jazz_warm', weight: 1.0 }] },
             melody: {
                 strategy: 'weighted',
                 v1Options: [
