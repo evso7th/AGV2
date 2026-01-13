@@ -142,7 +142,7 @@ export const V2_PRESETS = {
     comp: { threshold: -16, ratio: 3, attack: 0.003, release: 0.12, makeup: 4 },
     osc: [
       { type: 'sine', detune: 0, octave: 0, gain: 0.58 },
-      { type: 'triangle', detune: 0, octave: 1, gain: 0.14 },
+      { type: 'triangle', detune: 0, octave: 1, gain: 0.14 }, // +1200 cents = +1 octave
       { type: 'sine', detune: 0, octave: 1, gain: 0.08 }
     ],
     noise: { on: false, gain: 0 },
@@ -169,6 +169,46 @@ export const V2_PRESETS = {
     chorus: { on: true, rate: 0.20, depth: 0.006, mix: 0.24 },
     delay: { on: true, time: 0.28, fb: 0.16, hc: 4200, mix: 0.12 },
     reverbMix: 0.22
+    // NOTE: tremolo и phaser требуют доработки фабрики
+  },
+
+  // ═══════════════════════════════════════════════════════════════════════════
+  // SYNTH-BASED LEADS (используют synth engine с гитарным характером)
+  // ═══════════════════════════════════════════════════════════════════════════
+
+  synth_lead_shineOn: { // Gilmour-style clean lead
+    type: 'synth',
+    comp: { threshold: -18, ratio: 4, attack: 0.005, release: 0.15, makeup: 6 },
+    osc: [
+      { type: 'sawtooth', detune: -3, octave: 0, gain: 0.6 },
+      { type: 'sawtooth', detune: +3, octave: 0, gain: 0.6 },
+      { type: 'sine', detune: 0, octave: -1, gain: 0.4 }
+    ],
+    noise: { on: false, gain: 0 },
+    adsr: { a: 0.01, d: 0.4, s: 0.8, r: 2.2 },
+    lpf: { cutoff: 2800, q: 2.0, mode: '24dB' },
+    lfo: { shape: 'sine', rate: 0.15, amount: 400, target: 'filter' },
+    chorus: { on: true, rate: 0.12, depth: 0.006, mix: 0.4 },
+    delay: { on: true, time: 0.48, fb: 0.35, hc: 3500, mix: 0.28 },
+    reverbMix: 0.25
+  },
+
+  synth_lead_distorted: { // Muff-style lead (через synth engine)
+    type: 'synth',
+    comp: { threshold: -15, ratio: 6, attack: 0.003, release: 0.1, makeup: 8 },
+    osc: [
+      { type: 'sawtooth', detune: -8, octave: 0, gain: 0.7 },
+      { type: 'sawtooth', detune: +8, octave: 0, gain: 0.7 },
+      { type: 'square', detune: 0, octave: 0, gain: 0.5 },
+      { type: 'sawtooth', detune: 4, octave: 1, gain: 0.3 }
+    ],
+    noise: { on: true, gain: 0.03 },
+    adsr: { a: 0.02, d: 0.6, s: 0.7, r: 1.5 },
+    lpf: { cutoff: 1800, q: 2.5, mode: '24dB' },
+    lfo: { shape: 'sine', rate: 0, amount: 0, target: 'filter' },
+    chorus: { on: true, rate: 0.1, depth: 0.002, mix: 0.2 },
+    delay: { on: false, time: 0.3, fb: 0.2, hc: 4000, mix: 0 },
+    reverbMix: 0.15
   },
 
   // ═══════════════════════════════════════════════════════════════════════════
@@ -178,10 +218,10 @@ export const V2_PRESETS = {
   guitar_shineOn: {
     type: 'guitar',
     volume: 0.25,
+    comp: { threshold: -18, ratio: 3, attack: 0.01, release: 0.12, makeup: 3 },
     osc: { width: 0.46, detune: 5, mainGain: 0.85, detGain: 0.18, subGain: 0.25 },
     pickup: { cutoff: 3600, q: 1.0 },
     drive: { type: 'soft', amount: 0.2 },
-    comp: { threshold: -18, ratio: 3, attack: 0.01, release: 0.12, makeup: 3 },
     post: { 
       lpf: 5200, 
       mids: [
@@ -198,10 +238,10 @@ export const V2_PRESETS = {
 
   guitar_muffLead: {
     type: 'guitar',
+    comp: { threshold: -20, ratio: 4, attack: 0.005, release: 0.1, makeup: 4 },
     osc: { width: 0.5, detune: 7, mainGain: 0.8, detGain: 0.2, subGain: 0.3 },
     pickup: { cutoff: 3200, q: 1.2 },
     drive: { type: 'muff', amount: 0.65 },
-    comp: { threshold: -20, ratio: 4, attack: 0.005, release: 0.1, makeup: 4 },
     post: { 
       lpf: 4700, 
       mids: [
@@ -218,10 +258,10 @@ export const V2_PRESETS = {
 
   guitar_clean_chorus: {
     type: 'guitar',
+    comp: { threshold: -16, ratio: 2.5, attack: 0.01, release: 0.15, makeup: 2 },
     osc: { width: 0.4, detune: 3, mainGain: 0.9, detGain: 0.15, subGain: 0.2 },
     pickup: { cutoff: 4500, q: 0.8 },
     drive: { type: 'soft', amount: 0.1 },
-    comp: { threshold: -16, ratio: 2.5, attack: 0.01, release: 0.15, makeup: 2 },
     post: { 
       lpf: 6000, 
       mids: [
@@ -255,8 +295,8 @@ export const V2_PRESETS = {
 
   organ_soft_jazz: {
     type: 'organ',
-    volume: 0.25,
-    drawbars: [6, 0, 8, 6, 0, 2, 0, 0, 0],
+    volume: 0.15,
+    drawbars: [8, 0, 8, 5, 0, 3, 0, 0, 0],
     adsr: { a: 0.08, d: 0.2, s: 0.9, r: 0.8 },
     vibratoRate: 6.2,
     vibratoDepth: 0.0035,
