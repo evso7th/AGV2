@@ -1,7 +1,5 @@
 
 
-
-
 // V2 Presets — совместимы с buildMultiInstrument()
 // Проверено на соответствие фабрике от 2024-01
 
@@ -175,7 +173,6 @@ export const V2_PRESETS = {
     chorus: { on: true, rate: 0.20, depth: 0.006, mix: 0.24 },
     delay: { on: true, time: 0.28, fb: 0.16, hc: 4200, mix: 0.12 },
     reverbMix: 0.22
-    // NOTE: tremolo и phaser требуют доработки фабрики
   },
 
   // ═══════════════════════════════════════════════════════════════════════════
@@ -218,133 +215,137 @@ export const V2_PRESETS = {
   },
 
   // ═══════════════════════════════════════════════════════════════════════════
-  // GUITAR (правильный формат для guitar engine)
+  // GUITAR (TRANSPLANTED TO SYNTH ENGINE)
   // ═══════════════════════════════════════════════════════════════════════════
 
   guitar_shineOn: {
-    type: 'guitar',
-    volume: 0.25,
+    type: 'synth',
+    volume: 0.6,
     comp: { threshold: -18, ratio: 3, attack: 0.01, release: 0.12, makeup: 3 },
-    osc: { width: 0.46, detune: 5, mainGain: 0.85, detGain: 0.18, subGain: 0.25 },
-    pickup: { cutoff: 3600, q: 1.0 },
-    drive: { type: 'soft', amount: 0.2 },
-    post: { 
-      lpf: 5200, 
-      mids: [
-        { f: 850, q: 0.9, g: 2 }, 
-        { f: 2500, q: 1.4, g: -1.5 }
-      ] 
-    },
-    phaser: { on: true, rate: 0.16, depth: 600, mix: 0.22 },
-    delayA: { on: true, time: 0.38, fb: 0.28, hc: 3600, mix: 0.22 },
-    delayB: { on: false },
-    adsr: { a: 0.006, d: 0.35, s: 0.6, r: 1.6 },
+    osc: [
+        { type: 'sawtooth', detune: -4, octave: 0, gain: 0.7 },
+        { type: 'sine', detune: 4, octave: 0, gain: 0.5 }
+    ],
+    noise: { on: false, gain: 0 },
+    adsr: { a: 0.01, d: 0.4, s: 0.8, r: 2.2 },
+    lpf: { cutoff: 3600, q: 2.0, mode: '24dB' },
+    lfo: { shape: 'sine', rate: 0.15, amount: 400, target: 'filter' },
+    chorus: { on: true, rate: 0.16, depth: 0.007, mix: 0.4 },
+    delay: { on: true, time: 0.38, fb: 0.28, hc: 3600, mix: 0.22 },
     reverbMix: 0.18
   },
 
   guitar_muffLead: {
-    type: 'guitar',
-    volume: 0.25,
+    type: 'synth',
+    volume: 0.65,
     comp: { threshold: -20, ratio: 4, attack: 0.005, release: 0.1, makeup: 4 },
-    osc: { width: 0.5, detune: 7, mainGain: 0.8, detGain: 0.2, subGain: 0.3 },
-    pickup: { cutoff: 3200, q: 1.2 },
-    drive: { type: 'muff', amount: 0.65 },
-    post: { 
-      lpf: 4700, 
-      mids: [
-        { f: 850, q: 0.9, g: 2 }, 
-        { f: 3200, q: 1.4, g: -2 }
-      ] 
-    },
-    phaser: { on: true, rate: 0.18, depth: 700, mix: 0.18 },
-    delayA: { on: true, time: 0.38, fb: 0.26, hc: 3600, mix: 0.16 },
-    delayB: { on: true, time: 0.52, fb: 0.22, hc: 3600, mix: 0.12 },
-    adsr: { a: 0.008, d: 0.5, s: 0.65, r: 1.8 },
+    osc: [
+        { type: 'sawtooth', detune: -8, octave: 0, gain: 0.7 },
+        { type: 'sawtooth', detune: 8, octave: 0, gain: 0.7 },
+        { type: 'square', detune: 0, octave: -1, gain: 0.5 }
+    ],
+    noise: { on: true, gain: 0.03 },
+    adsr: { a: 0.02, d: 0.6, s: 0.7, r: 1.5 },
+    lpf: { cutoff: 1800, q: 2.5, mode: '24dB' },
+    lfo: { shape: 'sine', rate: 0, amount: 0, target: 'filter' },
+    chorus: { on: true, rate: 0.1, depth: 0.002, mix: 0.2 },
+    delay: { on: true, time: 0.38, fb: 0.26, hc: 3600, mix: 0.16 },
     reverbMix: 0.2
   },
 
   guitar_clean_chorus: {
-    type: 'guitar',
+    type: 'synth',
+    volume: 0.7,
     comp: { threshold: -16, ratio: 2.5, attack: 0.01, release: 0.15, makeup: 2 },
-    osc: { width: 0.4, detune: 3, mainGain: 0.9, detGain: 0.15, subGain: 0.2 },
-    pickup: { cutoff: 4500, q: 0.8 },
-    drive: { type: 'soft', amount: 0.1 },
-    post: { 
-      lpf: 6000, 
-      mids: [
-        { f: 800, q: 1.0, g: 1 }, 
-        { f: 2200, q: 1.2, g: 0 }
-      ] 
-    },
-    phaser: { on: false, rate: 0.15, depth: 500, mix: 0 },
-    delayA: { on: true, time: 0.25, fb: 0.2, hc: 5000, mix: 0.15 },
-    delayB: { on: false },
+    osc: [
+        { type: 'triangle', detune: -2, octave: 0, gain: 0.8 },
+        { type: 'sine', detune: 2, octave: 0, gain: 0.7 }
+    ],
+    noise: { on: false, gain: 0 },
     adsr: { a: 0.005, d: 0.3, s: 0.7, r: 1.2 },
+    lpf: { cutoff: 4500, q: 0.8, mode: '12dB' },
+    lfo: { shape: 'sine', rate: 0, amount: 0, target: 'filter' },
+    chorus: { on: true, rate: 0.15, depth: 0.007, mix: 0.35 },
+    delay: { on: true, time: 0.25, fb: 0.2, hc: 5000, mix: 0.15 },
     reverbMix: 0.22
   },
 
+
   // ═══════════════════════════════════════════════════════════════════════════
-  // ORGAN (требует реализации organ engine в фабрике)
+  // ORGAN (TRANSPLANTED TO SYNTH ENGINE)
   // ═══════════════════════════════════════════════════════════════════════════
 
   organ: {
-    type: 'organ' as const,
+    type: 'synth',
     volume: 0.7,
-    drawbars: [8, 8, 8, 6, 0, 0, 0, 0, 0],  // Full and rich
-    vibrato: { type: 'C3' as const, rate: 6.5 },
-    leslie: { on: true, mode: 'slow' as const, slow: 0.8, fast: 6.5, accel: 0.8, mix: 0.75 },
-    percussion: { on: true, harmonic: '2nd' as const, decay: 'fast' as const, volume: 'normal' as const },
-    keyClick: 0.005,
-    tonewheel: { crosstalk: 0.03, leakage: 0.02, complexity: 0.4 },
-    lpf: 6000,
-    hpf: 50,
-    reverbMix: 0.18,
-    adsr: { a: 0.004, d: 0.1, s: 0.95, r: 0.08 }
+    osc: [
+      { type: 'triangle', detune: 0, octave: 0, gain: 1.0 },
+      { type: 'triangle', detune: 2, octave: 1, gain: 0.6 },
+      { type: 'sine', detune: 0, octave: -1, gain: 0.5 }
+    ],
+    noise: { on: true, gain: 0.01 },
+    adsr: { a: 0.01, d: 0.1, s: 0.9, r: 0.2 },
+    lpf: { cutoff: 4500, q: 1.5, mode: '12dB' },
+    lfo: { shape: 'sine', rate: 6.5, amount: 4, target: 'pitch' },
+    comp: { threshold: -18, ratio: 4, attack: 0.003, release: 0.15, makeup: 5 },
+    chorus: { on: true, rate: 0.8, depth: 0.004, mix: 0.75 },
+    delay: { on: false, time: 0, fb: 0, hc: 0, mix: 0 },
+    reverbMix: 0.18
   },
   
   organ_soft_jazz: {
-    type: 'organ' as const,
-    volume: 0.15,
-    drawbars: [8, 4, 8, 4, 0, 0, 0, 0, 0],
-    vibrato: { type: 'C2' as const, rate: 5.5 },
-    leslie: { on: true, mode: 'slow' as const, slow: 0.5, fast: 5.5, accel: 1.0, mix: 0.65 },
-    percussion: { on: false, harmonic: '2nd' as const, decay: 'slow' as const, volume: 'soft' as const },
-    keyClick: 0,
-    tonewheel: { crosstalk: 0.01, leakage: 0.005, complexity: 0.15 },
-    lpf: 3500,
-    hpf: 50,
-    reverbMix: 0.25,
-    adsr: { a: 0.025, d: 0.3, s: 0.9, r: 0.35 }
+    type: 'synth',
+    volume: 0.55,
+    osc: [
+      { type: 'sine', detune: 0, octave: 0, gain: 1.0 },
+      { type: 'sine', detune: 702, octave: 0, gain: 0.4 },
+      { type: 'sine', detune: 2, octave: 1, gain: 0.3 }
+    ],
+    noise: { on: false, gain: 0 },
+    adsr: { a: 0.025, d: 0.3, s: 0.9, r: 0.35 },
+    lpf: { cutoff: 3500, q: 0.9, mode: '12dB' },
+    lfo: { shape: 'sine', rate: 5.5, amount: 3, target: 'pitch' },
+    comp: { threshold: -20, ratio: 3, attack: 0.01, release: 0.2, makeup: 4 },
+    chorus: { on: true, rate: 0.5, depth: 0.005, mix: 0.65 },
+    delay: { on: false, time: 0, fb: 0, hc: 0, mix: 0 },
+    reverbMix: 0.25
   },
 
   organ_jimmy_smith: {
-    type: 'organ' as const,
+    type: 'synth',
     volume: 0.65,
-    drawbars: [8, 8, 8, 0, 0, 0, 0, 0, 0],
-    vibrato: { type: 'C3' as const, rate: 6.5 },
-    leslie: { on: true, mode: 'slow' as const, slow: 0.7, fast: 6.2, accel: 0.7, mix: 0.7 },
-    percussion: { on: true, harmonic: '2nd' as const, decay: 'fast' as const, volume: 'soft' as const },
-    keyClick: 0.004,
-    tonewheel: { crosstalk: 0.025, leakage: 0.015, complexity: 0.35 },
-    lpf: 5500,
-    hpf: 55,
-    reverbMix: 0.15,
-    adsr: { a: 0.005, d: 0.12, s: 0.92, r: 0.1 }
+    osc: [
+        { type: 'triangle', detune: 0, octave: 0, gain: 0.8 },
+        { type: 'square', detune: 5, octave: 0, gain: 0.4 },
+        { type: 'sine', detune: 0, octave: -1, gain: 0.6 }
+    ],
+    noise: { on: true, gain: 0.02 },
+    adsr: { a: 0.005, d: 0.12, s: 0.92, r: 0.1 },
+    lpf: { cutoff: 5500, q: 1.2, mode: '12dB' },
+    lfo: { shape: 'sine', rate: 6.5, amount: 4, target: 'pitch' },
+    comp: { threshold: -15, ratio: 3.5, attack: 0.005, release: 0.12, makeup: 5 },
+    chorus: { on: true, rate: 0.7, depth: 0.005, mix: 0.7 },
+    delay: { on: false, time: 0, fb: 0, hc: 0, mix: 0 },
+    reverbMix: 0.15
   },
 
   organ_prog: {
-    type: 'organ' as const,
+    type: 'synth',
     volume: 0.75,
-    drawbars: [8, 6, 8, 8, 4, 5, 3, 2, 0],
-    vibrato: { type: 'V3' as const, rate: 7.0 },
-    leslie: { on: true, mode: 'fast' as const, slow: 1.0, fast: 7.5, accel: 0.5, mix: 0.85 },
-    percussion: { on: true, harmonic: '3rd' as const, decay: 'slow' as const, volume: 'normal' as const },
-    keyClick: 0.007,
-    tonewheel: { crosstalk: 0.05, leakage: 0.03, complexity: 0.6 },
-    lpf: 8000,
-    hpf: 70,
-    reverbMix: 0.22,
-    adsr: { a: 0.003, d: 0.06, s: 0.98, r: 0.05 }
+    osc: [
+        { type: 'sawtooth', detune: -4, octave: 0, gain: 0.6 },
+        { type: 'sawtooth', detune: 4, octave: 0, gain: 0.6 },
+        { type: 'square', detune: 0, octave: 1, gain: 0.4 },
+        { type: 'sine', detune: 0, octave: -1, gain: 0.5 }
+    ],
+    noise: { on: true, gain: 0.03 },
+    adsr: { a: 0.003, d: 0.06, s: 0.98, r: 0.05 },
+    lpf: { cutoff: 8000, q: 1.5, mode: '24dB' },
+    lfo: { shape: 'sine', rate: 7.0, amount: 5, target: 'pitch' },
+    comp: { threshold: -14, ratio: 5, attack: 0.003, release: 0.1, makeup: 7 },
+    chorus: { on: true, rate: 1.0, depth: 0.006, mix: 0.85 },
+    delay: { on: false, time: 0, fb: 0, hc: 0, mix: 0 },
+    reverbMix: 0.22
   }
 
 
