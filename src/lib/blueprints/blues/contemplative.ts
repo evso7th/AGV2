@@ -4,7 +4,7 @@ import type { MusicBlueprint } from '@/types/music';
 export const ContemplativeBluesBlueprint: MusicBlueprint = {
     id: 'contemplative_blues',
     name: 'Mid-Shuffle Chicago',
-    description: 'A thoughtful, mid-tempo blues shuffle.',
+    description: 'A thoughtful, mid-tempo Chicago blues shuffle.',
     mood: 'contemplative', // Using for neutral mood
     musical: {
         key: { root: 'E', scale: 'phrygian', octave: 2 },
@@ -19,8 +19,8 @@ export const ContemplativeBluesBlueprint: MusicBlueprint = {
             {
                 id: 'INTRO', name: 'Verse 1-2', duration: { percent: 25 },
                 introRules: {
-                    allowedInstruments: ['drums', 'bass', 'accompaniment', 'harmony'],
-                    buildUpSpeed: 0.4
+                    instrumentPool: ['drums', 'bass', 'accompaniment', 'harmony'],
+                    stages: 4
                 },
                 layers: { bass: true, drums: true, accompaniment: true, harmony: true, sparkles: true, sfx: true, melody: true },
                 instrumentation: {

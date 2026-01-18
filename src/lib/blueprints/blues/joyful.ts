@@ -19,8 +19,8 @@ export const JoyfulBluesBlueprint: MusicBlueprint = {
             {
                 id: 'INTRO', name: 'Verse 1-2', duration: { percent: 25 },
                 introRules: {
-                    allowedInstruments: ['drums', 'bass', 'accompaniment', 'harmony'],
-                    buildUpSpeed: 0.7
+                    instrumentPool: ['drums', 'bass', 'accompaniment', 'harmony'],
+                    stages: 4
                 },
                 layers: { bass: true, drums: true, accompaniment: true, harmony: true },
                 instrumentation: {

@@ -19,8 +19,8 @@ export const DreamyBluesBlueprint: MusicBlueprint = {
             {
                 id: 'INTRO', name: 'Verse', duration: { percent: 40 },
                 introRules: {
-                    allowedInstruments: ['drums', 'bass', 'accompaniment', 'melody'],
-                    buildUpSpeed: 0.5
+                    instrumentPool: ['drums', 'bass', 'accompaniment', 'melody'],
+                    stages: 4
                 },
                 layers: { bass: true, drums: true, accompaniment: true, harmony: true, melody: true },
                 instrumentation: {

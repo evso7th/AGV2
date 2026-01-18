@@ -19,8 +19,8 @@ export const EnthusiasticBluesBlueprint: MusicBlueprint = {
             {
                 id: 'INTRO', name: 'Riff Setup', duration: { percent: 15 },
                 introRules: {
-                    allowedInstruments: ['drums', 'bass', 'accompaniment'],
-                    buildUpSpeed: 0.6
+                    instrumentPool: ['drums', 'bass', 'accompaniment'],
+                    stages: 4
                 },
                 layers: { bass: true, drums: true, accompaniment: true },
                 instrumentation: {
@@ -30,7 +30,7 @@ export const EnthusiasticBluesBlueprint: MusicBlueprint = {
                     drums: { pattern: 'composer', density: { min: 0.6, max: 0.8 }, useSnare: true, useGhostHat: true },
                     bass: { 
                         techniques: [{ value: 'walking', weight: 1.0 }],
-                        presetModifiers: { octaveShift: 1 }
+                        presetModifiers: { octaveShift: 1 } 
                     },
                     melody: { source: 'harmony_top_note', register: { preferred: 'high' } }
                 },

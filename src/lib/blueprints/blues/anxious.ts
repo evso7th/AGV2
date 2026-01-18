@@ -20,7 +20,7 @@ export const AnxiousBluesBlueprint: MusicBlueprint = {
                 id: 'INTRO', name: 'Nervous Build-up', duration: { percent: 15 },
                 introRules: {
                     instrumentPool: ['accompaniment', 'bass', 'drums'],
-                    stages: 3,
+                    stages: 3
                 },
                 layers: {
                     accompaniment: true,
