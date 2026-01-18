@@ -24,7 +24,7 @@ export const EpicAmbientBlueprint: MusicBlueprint = {
                 id: 'INTRO', name: 'The Mists', duration: { percent: 15 },
                 layers: { accompaniment: true, sfx: true },
                 instrumentation: {
-                    accompaniment: { strategy: 'weighted', v2Options: [{ name: 'synth_ambient_pad_lush', weight: 1.0 }], v1Options: [{ name: 'ambientPad', weight: 1.0 }] }
+                    accompaniment: { strategy: 'weighted', v2Options: [{ name: 'synth_ambient_pad_lush', weight: 1.0 }], v1Options: [{ name: 'synth_ambient_pad_lush', weight: 1.0 }] }
                 },
                 instrumentRules: {
                     accompaniment: { register: { preferred: 'low' }, density: { min: 0.3, max: 0.5 } },
@@ -38,7 +38,7 @@ export const EpicAmbientBlueprint: MusicBlueprint = {
                 layers: { accompaniment: true, bass: true, drums: true, sfx: true, harmony: true },
                 instrumentation: {
                     accompaniment: { strategy: 'weighted', v1Options: [{ name: 'organ', weight: 0.7 }, { name: 'mellotron', weight: 0.3 }], v2Options: [{ name: 'organ', weight: 0.7 }, { name: 'mellotron', weight: 0.3 }] },
-                    bass: { strategy: 'weighted', options: [{ name: 'ambientDrone', weight: 1.0 }] },
+                    bass: { strategy: 'weighted', v2Options: [{ name: 'ambientDrone', weight: 1.0 }] },
                     harmony: { strategy: 'weighted', options: [{ name: 'violin', weight: 1.0 }] }
                 },
                 instrumentRules: {
@@ -56,8 +56,8 @@ export const EpicAmbientBlueprint: MusicBlueprint = {
                 layers: { bass: true, melody: true, accompaniment: true, drums: true, sparkles: true, sfx: true, harmony: true },
                 instrumentation: {
                     accompaniment: { strategy: 'weighted', v1Options: [{ name: 'organ', weight: 1.0 }], v2Options: [{ name: 'organ', weight: 1.0 }] },
-                    bass: { strategy: 'weighted', options: [{ name: 'resonantGliss', weight: 1.0 }] },
-                    melody: { strategy: 'weighted', v1Options: [{ name: 'violin', weight: 0.6 }, { name: 'synth', weight: 0.4 }], v2Options: [{ name: 'violin', weight: 0.6 }, { name: 'synth', weight: 0.4 }] },
+                    bass: { strategy: 'weighted', v2Options: [{ name: 'resonantGliss', weight: 1.0 }] },
+                    melody: { strategy: 'weighted', v1Options: [{ name: 'mellotron', weight: 0.6 }, { name: 'synth', weight: 0.4 }], v2Options: [{ name: 'mellotron', weight: 0.6 }, { name: 'synth', weight: 0.4 }] },
                     harmony: { strategy: 'weighted', options: [{ name: 'mellotron', weight: 1.0 }] }
                 },
                 instrumentRules: {
@@ -73,7 +73,7 @@ export const EpicAmbientBlueprint: MusicBlueprint = {
                 id: 'OUTRO', name: 'The Echoes', duration: { percent: 10 },
                 layers: { accompaniment: true, sfx: true, sparkles: true },
                 instrumentation: {
-                    accompaniment: { strategy: 'weighted', v2Options: [{ name: 'synth_ambient_pad_lush', weight: 1.0 }], v1Options: [{ name: 'ambientPad', weight: 1.0 }] }
+                    accompaniment: { strategy: 'weighted', v2Options: [{ name: 'synth_ambient_pad_lush', weight: 1.0 }], v1Options: [{ name: 'synth_ambient_pad_lush', weight: 1.0 }] }
                 },
                 instrumentRules: {
                     melody: { source: 'harmony_top_note' }

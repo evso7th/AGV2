@@ -20,7 +20,7 @@ export const NeutralAmbientBlueprint: MusicBlueprint = {
                 id: 'INTRO', name: 'Focus', duration: { percent: 12 },
                 layers: { accompaniment: true, sfx: true, sparkles: true, harmony: true },
                 instrumentation: {
-                    accompaniment: { strategy: 'weighted', v1Options: [{ name: 'piano', weight: 0.6 }, { name: 'synth', weight: 0.4 }], v2Options: [{ name: 'piano', weight: 0.6 }, { name: 'synth', weight: 0.4 }] },
+                    accompaniment: { strategy: 'weighted', v1Options: [{ name: 'ep_rhodes_warm', weight: 0.6 }, { name: 'synth', weight: 0.4 }], v2Options: [{ name: 'ep_rhodes_warm', weight: 0.6 }, { name: 'synth', weight: 0.4 }] },
                 },
                 instrumentRules: {
                     accompaniment: { density: {min: 0.4, max: 0.6} },
@@ -33,8 +33,8 @@ export const NeutralAmbientBlueprint: MusicBlueprint = {
                 id: 'BUILD', name: 'Stream', duration: { percent: 31 },
                 layers: { accompaniment: true, sfx: true, sparkles: true, bass: true, drums: true, harmony: true },
                 instrumentation: {
-                    accompaniment: { strategy: 'weighted', v1Options: [{ name: 'piano', weight: 0.7 }, { name: 'acousticGuitar', weight: 0.3 }], v2Options: [{ name: 'piano', weight: 0.7 }, { name: 'acousticGuitar', weight: 0.3 }] },
-                    bass: { strategy: 'weighted', options: [{ name: 'classicBass', weight: 1.0 }] }
+                    accompaniment: { strategy: 'weighted', v1Options: [{ name: 'ep_rhodes_warm', weight: 0.7 }, { name: 'mellotron_flute_intimate', weight: 0.3 }], v2Options: [{ name: 'ep_rhodes_warm', weight: 0.7 }, { name: 'mellotron_flute_intimate', weight: 0.3 }] },
+                    bass: { strategy: 'weighted', v2Options: [{ name: 'classicBass', weight: 1.0 }] }
                 },
                  instrumentRules: {
                    drums: { pattern: 'ambient_beat', density: { min: 0.2, max: 0.4 }, usePerc: true, useSnare: false, useGhostHat: true },
@@ -47,7 +47,7 @@ export const NeutralAmbientBlueprint: MusicBlueprint = {
                 id: 'MAIN', name: 'Deep Work', duration: { percent: 31 },
                 layers: { accompaniment: true, sfx: true, sparkles: true, bass: true, drums: true, harmony: true, melody: true },
                 instrumentation: {
-                    accompaniment: { strategy: 'weighted', v1Options: [{ name: 'piano', weight: 0.8 }, { name: 'acousticGuitar', weight: 0.2 }], v2Options: [{ name: 'piano', weight: 0.8 }, { name: 'acousticGuitar', weight: 0.2 }] },
+                    accompaniment: { strategy: 'weighted', v1Options: [{ name: 'ep_rhodes_warm', weight: 0.8 }, { name: 'mellotron_flute_intimate', weight: 0.2 }], v2Options: [{ name: 'ep_rhodes_warm', weight: 0.8 }, { name: 'mellotron_flute_intimate', weight: 0.2 }] },
                     melody: { strategy: 'weighted', v1Options: [{ name: 'synth', weight: 1.0 }], v2Options: [{ name: 'synth', weight: 1.0 }] }
                 },
                 instrumentRules: {
@@ -61,7 +61,7 @@ export const NeutralAmbientBlueprint: MusicBlueprint = {
                 id: 'RELEASE', name: 'Resolution', duration: { percent: 19 },
                 layers: { accompaniment: true, sfx: true, sparkles: true, bass: true, harmony: true },
                  instrumentation: {
-                    accompaniment: { strategy: 'weighted', options: [{ name: 'piano', weight: 1.0 }] },
+                    accompaniment: { strategy: 'weighted', v1Options: [{ name: 'ep_rhodes_warm', weight: 1.0 }], v2Options: [{ name: 'ep_rhodes_warm', weight: 1.0 }] },
                 },
                 instrumentRules: {
                     melody: { source: 'harmony_top_note' }
@@ -73,7 +73,7 @@ export const NeutralAmbientBlueprint: MusicBlueprint = {
                 id: 'OUTRO', name: 'Silence', duration: { percent: 7 },
                 layers: { accompaniment: true, sfx: true },
                  instrumentation: {
-                    accompaniment: { strategy: 'weighted', v2Options: [{ name: 'synth_ambient_pad_lush', weight: 1.0 }], v1Options: [{ name: 'ambientPad', weight: 1.0 }] },
+                    accompaniment: { strategy: 'weighted', v2Options: [{ name: 'synth_ambient_pad_lush', weight: 1.0 }], v1Options: [{ name: 'synth_ambient_pad_lush', weight: 1.0 }] },
                 },
                 instrumentRules: {
                     melody: { source: 'harmony_top_note' }

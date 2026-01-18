@@ -26,12 +26,12 @@ export const WinterBluesBlueprint: MusicBlueprint = {
                 instrumentation: {
                     accompaniment: { 
                         strategy: 'weighted', 
-                        v2Options: [{ name: 'ep_rhodes_warm', weight: 1.0 }],
-                        v1Options: [{ name: 'synth', weight: 1.0 }]
+                        v1Options: [{ name: 'ep_rhodes_warm', weight: 1.0 }],
+                        v2Options: [{ name: 'ep_rhodes_warm', weight: 1.0 }]
                     },
                     melody: { 
                         strategy: 'weighted', 
-                        v1Options: [{ name: 'acousticGuitar', weight: 1.0 }],
+                        v1Options: [{ name: 'mellotron_flute_intimate', weight: 1.0 }],
                         v2Options: [{ name: 'blackAcoustic', weight: 1.0 }]
                     },
                     harmony: {
@@ -68,12 +68,12 @@ export const WinterBluesBlueprint: MusicBlueprint = {
                 instrumentation: {
                     accompaniment: { 
                         strategy: 'weighted', 
-                        v2Options: [{ name: 'organ_soft_jazz', weight: 0.5 }, { name: 'ep_rhodes_warm', weight: 0.5 }],
-                        v1Options: [{ name: 'organ', weight: 0.5 }, {name: 'synth', weight: 0.5}] 
+                        v1Options: [{ name: 'organ_soft_jazz', weight: 0.5 }, { name: 'ep_rhodes_warm', weight: 0.5 }],
+                        v2Options: [{ name: 'organ_soft_jazz', weight: 0.5 }, { name: 'ep_rhodes_warm', weight: 0.5}] 
                     },
                     melody: { 
                         strategy: 'weighted', 
-                        v1Options: [{ name: 'electricGuitar', weight: 1.0 }],
+                        v1Options: [{ name: 'guitar_clean_chorus', weight: 1.0 }],
                         v2Options: [{ name: 'blackAcoustic', weight: 1.0 }]
                     },
                     harmony: { strategy: 'weighted', options: [ { name: 'piano', weight: 1.0 } ] }
@@ -93,12 +93,12 @@ export const WinterBluesBlueprint: MusicBlueprint = {
                 instrumentation: {
                     accompaniment: { 
                         strategy: 'weighted', 
-                        v2Options: [{ name: 'organ_soft_jazz', weight: 0.5 }, { name: 'ep_rhodes_warm', weight: 0.5 }],
-                        v1Options: [{ name: 'organ', weight: 0.5 }, {name: 'synth', weight: 0.5}] 
+                        v1Options: [{ name: 'organ_soft_jazz', weight: 0.5 }, { name: 'ep_rhodes_warm', weight: 0.5 }],
+                        v2Options: [{ name: 'organ_soft_jazz', weight: 0.5 }, { name: 'ep_rhodes_warm', weight: 0.5}] 
                     },
                     melody: { 
                         strategy: 'weighted', 
-                        v1Options: [{ name: 'electricGuitar', weight: 1.0 }],
+                        v1Options: [{ name: 'guitar_clean_chorus', weight: 1.0 }],
                         v2Options: [{ name: 'blackAcoustic', weight: 1.0 }]
                     },
                     harmony: { strategy: 'weighted', options: [ { name: 'piano', weight: 1.0 } ] }
@@ -118,12 +118,12 @@ export const WinterBluesBlueprint: MusicBlueprint = {
                 instrumentation: {
                      accompaniment: { 
                         strategy: 'weighted', 
-                        v2Options: [{ name: 'organ_soft_jazz', weight: 0.5 }, { name: 'ep_rhodes_warm', weight: 0.5 }],
-                        v1Options: [{ name: 'organ', weight: 0.5 }, {name: 'synth', weight: 0.5}] 
+                        v1Options: [{ name: 'organ_soft_jazz', weight: 0.5 }, { name: 'ep_rhodes_warm', weight: 0.5 }],
+                        v2Options: [{ name: 'organ_soft_jazz', weight: 0.5 }, { name: 'ep_rhodes_warm', weight: 0.5}] 
                     },
                     melody: { 
                         strategy: 'weighted', 
-                        v1Options: [{ name: 'electricGuitar', weight: 1.0 }],
+                        v1Options: [{ name: 'guitar_muffLead', weight: 1.0 }],
                         v2Options: [{ name: 'guitar_muffLead', weight: 0.5 }, { name: 'guitar_shineOn', weight: 0.5 }]
                     },
                     harmony: { strategy: 'weighted', options: [ { name: 'piano', weight: 1.0 } ] }
@@ -155,12 +155,12 @@ export const WinterBluesBlueprint: MusicBlueprint = {
                 instrumentation: {
                     accompaniment: { 
                         strategy: 'weighted', 
-                        v2Options: [{ name: 'organ_soft_jazz', weight: 0.5 }, { name: 'ep_rhodes_warm', weight: 0.5 }],
-                        v1Options: [{ name: 'organ', weight: 0.5 }, {name: 'synth', weight: 0.5}] 
+                        v1Options: [{ name: 'organ_soft_jazz', weight: 0.5 }, { name: 'ep_rhodes_warm', weight: 0.5 }],
+                        v2Options: [{ name: 'organ_soft_jazz', weight: 0.5 }, { name: 'ep_rhodes_warm', weight: 0.5}] 
                     },
                     melody: { 
                         strategy: 'weighted', 
-                        v1Options: [{ name: 'electricGuitar', weight: 1.0 }],
+                        v1Options: [{ name: 'guitar_clean_chorus', weight: 1.0 }],
                         v2Options: [{ name: 'blackAcoustic', weight: 1.0 }]
                     },
                     harmony: { strategy: 'weighted', options: [ { name: 'piano', weight: 1.0 } ] }
@@ -180,12 +180,12 @@ export const WinterBluesBlueprint: MusicBlueprint = {
                 instrumentation: {
                      accompaniment: { 
                         strategy: 'weighted', 
-                        v2Options: [{ name: 'organ_soft_jazz', weight: 0.5 }, { name: 'ep_rhodes_warm', weight: 0.5 }],
-                        v1Options: [{ name: 'organ', weight: 0.5 }, {name: 'synth', weight: 0.5}] 
+                        v1Options: [{ name: 'organ_soft_jazz', weight: 0.5 }, { name: 'ep_rhodes_warm', weight: 0.5 }],
+                        v2Options: [{ name: 'organ_soft_jazz', weight: 0.5 }, { name: 'ep_rhodes_warm', weight: 0.5}] 
                     },
                     melody: { 
                         strategy: 'weighted', 
-                        v1Options: [{ name: 'acousticGuitar', weight: 1.0 }],
+                        v1Options: [{ name: 'mellotron_flute_intimate', weight: 1.0 }],
                         v2Options: [{ name: 'blackAcoustic', weight: 1.0 }]
                     },
                     harmony: {

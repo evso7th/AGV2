@@ -26,7 +26,7 @@ export const CalmAmbientBlueprint: MusicBlueprint = {
         instrumentation: {
           accompaniment: {
             strategy: 'weighted',
-            v1Options: [{ name: 'ambientPad', weight: 0.7 }, { name: 'synth', weight: 0.3 }],
+            v1Options: [{ name: 'synth_ambient_pad_lush', weight: 0.7 }, { name: 'synth', weight: 0.3 }],
             v2Options: [{ name: 'synth_ambient_pad_lush', weight: 0.7 }, { name: 'synth', weight: 0.3 }],
           }
         },
@@ -43,12 +43,12 @@ export const CalmAmbientBlueprint: MusicBlueprint = {
         instrumentation: {
           accompaniment: {
             strategy: 'weighted',
-            v1Options: [{ name: 'ambientPad', weight: 0.6 }, { name: 'organ', weight: 0.4 }],
+            v1Options: [{ name: 'synth_ambient_pad_lush', weight: 0.6 }, { name: 'organ', weight: 0.4 }],
             v2Options: [{ name: 'synth_ambient_pad_lush', weight: 0.6 }, { name: 'organ', weight: 0.4 }]
           },
           bass: {
             strategy: 'weighted',
-            options: [{ name: 'classicBass', weight: 1.0 }]
+            v2Options: [{ name: 'classicBass', weight: 1.0 }]
           }
         },
         instrumentRules: {
@@ -69,7 +69,8 @@ export const CalmAmbientBlueprint: MusicBlueprint = {
           },
            melody: {
             strategy: 'weighted',
-            options: [{ name: 'flute', weight: 0.6 }, { name: 'piano', weight: 0.4 }]
+            v1Options: [{ name: 'mellotron_flute_intimate', weight: 0.6 }, { name: 'ep_rhodes_warm', weight: 0.4 }],
+            v2Options: [{ name: 'mellotron_flute_intimate', weight: 0.6 }, { name: 'ep_rhodes_warm', weight: 0.4 }]
           }
         },
         instrumentRules: {
@@ -84,7 +85,7 @@ export const CalmAmbientBlueprint: MusicBlueprint = {
         instrumentation: {
            accompaniment: {
             strategy: 'weighted',
-            v1Options: [{ name: 'ambientPad', weight: 1.0 }],
+            v1Options: [{ name: 'synth_ambient_pad_lush', weight: 1.0 }],
             v2Options: [{ name: 'synth_ambient_pad_lush', weight: 1.0 }]
           }
         },
@@ -101,7 +102,7 @@ export const CalmAmbientBlueprint: MusicBlueprint = {
          instrumentation: {
            accompaniment: {
             strategy: 'weighted',
-            v1Options: [{ name: 'ambientPad', weight: 1.0 }],
+            v1Options: [{ name: 'synth_ambient_pad_lush', weight: 1.0 }],
             v2Options: [{ name: 'synth_ambient_pad_lush', weight: 1.0 }]
           }
         },

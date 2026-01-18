@@ -24,8 +24,8 @@ export const DarkAmbientBlueprint: MusicBlueprint = {
             id: 'INTRO_1', name: 'The Void', duration: { percent: 8 },
             layers: { bass: true, accompaniment: true, drums: true },
             instrumentation: { 
-              bass: { strategy: 'weighted', options: [{ name: 'ambientDrone', weight: 1.0 }] },
-              accompaniment: { strategy: 'weighted', v1Options: [{name: 'ambientPad', weight: 1.0}], v2Options: [{name: 'synth_cave_pad', weight: 1.0}] }
+              bass: { strategy: 'weighted', v2Options: [{ name: 'ambientDrone', weight: 1.0 }] },
+              accompaniment: { strategy: 'weighted', v1Options: [{name: 'synth_cave_pad', weight: 1.0}], v2Options: [{name: 'synth_cave_pad', weight: 1.0}] }
             },
             instrumentRules: { 
                 bass: { density: {min: 0.2, max: 0.4}, techniques: [{value: 'drone', weight: 1.0}]},
@@ -39,9 +39,9 @@ export const DarkAmbientBlueprint: MusicBlueprint = {
             id: 'INTRO_2', name: 'First Echoes', duration: { percent: 6 },
             layers: { bass: true, accompaniment: true, melody: true, sfx: true, drums: true },
             instrumentation: { 
-              bass: { strategy: 'weighted', options: [{ name: 'ambientDrone', weight: 1.0 }] },
-              accompaniment: { strategy: 'weighted', v1Options: [{name: 'ambientPad', weight: 1.0}], v2Options: [{name: 'synth_cave_pad', weight: 1.0}] },
-              melody: { strategy: 'weighted', v1Options: [{name: 'theremin', weight: 1.0}], v2Options: [{name: 'guitar_shineOn', weight: 1.0}] }
+              bass: { strategy: 'weighted', v2Options: [{ name: 'ambientDrone', weight: 1.0 }] },
+              accompaniment: { strategy: 'weighted', v1Options: [{name: 'synth_cave_pad', weight: 1.0}], v2Options: [{name: 'synth_cave_pad', weight: 1.0}] },
+              melody: { strategy: 'weighted', v1Options: [{name: 'guitar_shineOn', weight: 1.0}], v2Options: [{name: 'guitar_shineOn', weight: 1.0}] }
             },
             instrumentRules: { 
                 drums: { enabled: true, pattern: 'composer', density: { min: 0.1, max: 0.3 }, useSnare: false, rareKick: true, usePerc: true, alternatePerc: false },
@@ -55,9 +55,9 @@ export const DarkAmbientBlueprint: MusicBlueprint = {
             id: 'INTRO_3', name: 'Full Ensemble', duration: { percent: 6 },
             layers: { bass: true, sfx: true, drums: true, melody: true, accompaniment: true, harmony: true, sparkles: true },
             instrumentation: {
-              bass: { strategy: 'weighted', options: [{ name: 'ambientDrone', weight: 1.0 }]},
-              accompaniment: { strategy: 'weighted', v1Options: [{name: 'organ', weight: 0.8 }, {name: 'theremin', weight: 0.2}], v2Options: [{name: 'synth_cave_pad', weight: 1.0}] },
-              melody: { strategy: 'weighted', v1Options: [{name: 'theremin', weight: 1.0}], v2Options: [{name: 'guitar_shineOn', weight: 1.0}] },
+              bass: { strategy: 'weighted', v2Options: [{ name: 'ambientDrone', weight: 1.0 }]},
+              accompaniment: { strategy: 'weighted', v1Options: [{name: 'organ', weight: 0.8 }, {name: 'theremin', weight: 0.2}], v2Options: [{name: 'organ', weight: 0.8 }, {name: 'theremin', weight: 0.2}] },
+              melody: { strategy: 'weighted', v1Options: [{name: 'guitar_shineOn', weight: 1.0}], v2Options: [{name: 'guitar_shineOn', weight: 1.0}] },
               harmony: { strategy: 'weighted', options: [ { name: 'violin', weight: 0.45 }, { name: 'flute', weight: 0.45 }, { name: 'guitarChords', weight: 0.1 } ]}
             },
             instrumentRules: {
@@ -74,8 +74,8 @@ export const DarkAmbientBlueprint: MusicBlueprint = {
             duration: { percent: 30 },
             layers: { bass: true, sfx: true, drums: true, accompaniment: true, harmony: true },
              instrumentation: {
-              bass: { strategy: 'weighted', options: [{ name: 'ambientDrone', weight: 1.0 }]},
-              accompaniment: { strategy: 'weighted', v1Options: [{name: 'organ', weight: 0.8 }, {name: 'theremin', weight: 0.2}], v2Options: [{name: 'synth_cave_pad', weight: 1.0}] },
+              bass: { strategy: 'weighted', v2Options: [{ name: 'ambientDrone', weight: 1.0 }]},
+              accompaniment: { strategy: 'weighted', v1Options: [{name: 'organ', weight: 0.8 }, {name: 'theremin', weight: 0.2}], v2Options: [{name: 'organ', weight: 0.8 }, {name: 'theremin', weight: 0.2}] },
               harmony: { strategy: 'weighted', options: [ { name: 'violin', weight: 0.45 }, { name: 'flute', weight: 0.45 }, { name: 'guitarChords', weight: 0.1 } ]}
             },
             instrumentRules: {
@@ -104,8 +104,8 @@ export const DarkAmbientBlueprint: MusicBlueprint = {
             duration: { percent: 35 },
             layers: { bass: true, sfx: true, drums: true, melody: true, accompaniment: true, harmony: true },
             instrumentation: {
-              bass: { strategy: 'weighted', options: [{ name: 'ambientDrone', weight: 1.0 }]},
-              accompaniment: { strategy: 'weighted', v1Options: [{name: 'organ', weight: 1.0}], v2Options: [{name: 'synth_cave_pad', weight: 1.0}] },
+              bass: { strategy: 'weighted', v2Options: [{ name: 'ambientDrone', weight: 1.0 }]},
+              accompaniment: { strategy: 'weighted', v1Options: [{name: 'organ', weight: 1.0}], v2Options: [{name: 'organ', weight: 1.0}] },
               melody: { strategy: 'weighted', v1Options: [{ name: 'theremin', weight: 0.6 }, { name: 'synth', weight: 0.4 }], v2Options: [{ name: 'theremin', weight: 0.6 }, { name: 'synth', weight: 0.4 }] },
               harmony: { strategy: 'weighted', options: [ { name: 'violin', weight: 0.45 }, { name: 'flute', weight: 0.45 }, { name: 'guitarChords', weight: 0.1 } ]}
             },
@@ -136,7 +136,7 @@ export const DarkAmbientBlueprint: MusicBlueprint = {
             duration: { percent: 15 },
             layers: { sfx: true, accompaniment: true },
             instrumentation: {
-                accompaniment: { strategy: 'weighted', v1Options: [{name: 'organ', weight: 1.0}], v2Options: [{name: 'synth_cave_pad', weight: 1.0}] }
+                accompaniment: { strategy: 'weighted', v1Options: [{name: 'organ', weight: 1.0}], v2Options: [{name: 'organ', weight: 1.0}] }
             },
             instrumentRules: {
                 accompaniment: { techniques: [{value: 'swell', weight: 1.0}], register: { preferred: 'low' } },

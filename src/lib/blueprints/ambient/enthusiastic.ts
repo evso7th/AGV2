@@ -34,9 +34,9 @@ export const EnthusiasticAmbientBlueprint: MusicBlueprint = {
                 id: 'BUILD', name: 'Ascension', duration: { percent: 29 },
                 layers: { bass: true, accompaniment: true, melody: true, drums: true, sparkles: true, sfx: true, harmony: true },
                 instrumentation: {
-                    bass: { strategy: 'weighted', options: [{ name: 'classicBass', weight: 1.0 }] },
+                    bass: { strategy: 'weighted', v2Options: [{ name: 'classicBass', weight: 1.0 }] },
                     accompaniment: { strategy: 'weighted', v1Options: [{ name: 'synth', weight: 1.0 }], v2Options: [{ name: 'synth', weight: 1.0 }] },
-                    melody: { strategy: 'weighted', v1Options: [{ name: 'electricGuitar', weight: 0.5 }, { name: 'theremin', weight: 0.5 }], v2Options: [{ name: 'electricGuitar', weight: 0.5 }, { name: 'theremin', weight: 0.5 }] }
+                    melody: { strategy: 'weighted', v1Options: [{ name: 'guitar_muffLead', weight: 0.5 }, { name: 'theremin', weight: 0.5 }], v2Options: [{ name: 'guitar_muffLead', weight: 0.5 }, { name: 'theremin', weight: 0.5 }] }
                 },
                 instrumentRules: {
                     bass: { techniques: [{ value: 'melodic', weight: 0.5 }, { value: 'arpeggio_fast', weight: 0.5 }], density: { min: 0.7, max: 0.9 } },
@@ -44,15 +44,15 @@ export const EnthusiasticAmbientBlueprint: MusicBlueprint = {
                     melody: { source: 'harmony_top_note' }
                 },
                 bundles: [{ id: 'ENT_BUILD_1', name: 'Climb', duration: { percent: 100 }, characteristics: {}, phrases: {} }],
-                outroFill: { type: 'roll', duration: 2, parameters: {} },
+                outroFill: { type: 'roll', duration: 2, parameters: { crescendo: true } },
             },
             {
                 id: 'MAIN', name: 'Apex', duration: { percent: 35 },
                 layers: { bass: true, accompaniment: true, melody: true, drums: true, sparkles: true, sfx: true, harmony: true },
                 instrumentation: {
-                    bass: { strategy: 'weighted', options: [{ name: 'livingRiff', weight: 1.0 }] },
+                    bass: { strategy: 'weighted', v2Options: [{ name: 'livingRiff', weight: 1.0 }] },
                     accompaniment: { strategy: 'weighted', v1Options: [{ name: 'synth', weight: 0.5 }, { name: 'organ', weight: 0.5 }], v2Options: [{ name: 'synth', weight: 0.5 }, { name: 'organ', weight: 0.5 }] },
-                    melody: { strategy: 'weighted', v1Options: [{ name: 'electricGuitar', weight: 1.0 }], v2Options: [{ name: 'electricGuitar', weight: 1.0 }] }
+                    melody: { strategy: 'weighted', v1Options: [{ name: 'guitar_muffLead', weight: 1.0 }], v2Options: [{ name: 'guitar_muffLead', weight: 1.0 }] }
                 },
                 instrumentRules: {
                     bass: { techniques: [{ value: 'syncopated', weight: 1.0 }], density: { min: 0.85, max: 1.0 } },
@@ -66,7 +66,7 @@ export const EnthusiasticAmbientBlueprint: MusicBlueprint = {
                 id: 'RELEASE', name: 'Soaring', duration: { percent: 16 },
                 layers: { accompaniment: true, melody: true, drums: true, sparkles: true, sfx: true, harmony: true },
                 instrumentation: {
-                    accompaniment: { strategy: 'weighted', v2Options: [{ name: 'synth_ambient_pad_lush', weight: 1.0 }], v1Options: [{ name: 'ambientPad', weight: 1.0 }] },
+                    accompaniment: { strategy: 'weighted', v2Options: [{ name: 'synth_ambient_pad_lush', weight: 1.0 }], v1Options: [{ name: 'synth_ambient_pad_lush', weight: 1.0 }] },
                     melody: { strategy: 'weighted', v1Options: [{ name: 'synth', weight: 1.0 }], v2Options: [{ name: 'synth', weight: 1.0 }] },
                 },
                 instrumentRules: {
@@ -80,7 +80,7 @@ export const EnthusiasticAmbientBlueprint: MusicBlueprint = {
                 id: 'OUTRO', name: 'Starlight', duration: { percent: 8 },
                 layers: { accompaniment: true, sparkles: true, sfx: true, harmony: true },
                 instrumentation: {
-                    accompaniment: { strategy: 'weighted', v2Options: [{ name: 'synth_ambient_pad_lush', weight: 1.0 }], v1Options: [{ name: 'ambientPad', weight: 1.0 }] }
+                    accompaniment: { strategy: 'weighted', v2Options: [{ name: 'synth_ambient_pad_lush', weight: 1.0 }], v1Options: [{ name: 'synth_ambient_pad_lush', weight: 1.0 }] }
                 },
                 instrumentRules: {
                     sparkles: { eventProbability: 0.3 },

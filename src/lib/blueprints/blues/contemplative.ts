@@ -5,7 +5,7 @@ export const ContemplativeBluesBlueprint: MusicBlueprint = {
     id: 'contemplative_blues',
     name: 'Mid-Shuffle Chicago',
     description: 'A thoughtful, mid-tempo blues shuffle.',
-    mood: 'contemplative',
+    mood: 'contemplative', // Using for neutral mood
     musical: {
         key: { root: 'E', scale: 'phrygian', octave: 2 },
         bpm: { base: 64, range: [60, 68], modifier: 1.0 },
@@ -17,26 +17,18 @@ export const ContemplativeBluesBlueprint: MusicBlueprint = {
         totalDuration: { preferredBars: 144 }, // 12 loops of 12 bars
         parts: [
             {
-                id: 'INTRO', name: 'Verse 1', duration: { percent: 25 },
+                id: 'INTRO', name: 'Verse 1-2', duration: { percent: 25 },
                 introRules: {
                     allowedInstruments: ['drums', 'bass', 'accompaniment', 'harmony'],
                     buildUpSpeed: 0.4
                 },
-                layers: {
-                    bass: true,
-                    drums: true,
-                    accompaniment: true,
-                    harmony: true,
-                    sparkles: true,
-                    sfx: true,
-                    melody: true
-                },
+                layers: { bass: true, drums: true, accompaniment: true, harmony: true, sparkles: true, sfx: true, melody: true },
                 instrumentation: {
                     accompaniment: { strategy: 'weighted', v1Options: [{ name: 'organ', weight: 1.0 }], v2Options: [{ name: 'organ', weight: 1.0 }] },
                     harmony: { strategy: 'weighted', options: [{ name: 'guitarChords', weight: 1.0 }] },
                     melody: { 
                         strategy: 'weighted', 
-                        v1Options: [{ name: 'electricGuitar', weight: 1.0 }],
+                        v1Options: [{ name: 'guitar_shineOn', weight: 1.0 }],
                         v2Options: [{ name: 'guitar_shineOn', weight: 1.0 }]
                     }
                 },
@@ -69,7 +61,7 @@ export const ContemplativeBluesBlueprint: MusicBlueprint = {
                 layers: { bass: true, drums: true, accompaniment: true, melody: true, harmony: true, sparkles: true, sfx: true },
                  instrumentation: {
                     accompaniment: { strategy: 'weighted', v1Options: [{ name: 'organ', weight: 1.0 }], v2Options: [{ name: 'organ', weight: 1.0 }] },
-                    melody: { strategy: 'weighted', v1Options: [{ name: 'electricGuitar', weight: 1.0 }], v2Options: [{ name: 'guitar_shineOn', weight: 1.0 }] }
+                    melody: { strategy: 'weighted', v1Options: [{ name: 'guitar_shineOn', weight: 1.0 }], v2Options: [{ name: 'guitar_shineOn', weight: 1.0 }] }
                 },
                 instrumentRules: {
                     drums: { pattern: 'composer', kitName: 'blues_contemplative', density: { min: 0.6, max: 0.8 }, kickVolume: 1.1, ride: { enabled: false }, usePerc: true, },
@@ -88,7 +80,7 @@ export const ContemplativeBluesBlueprint: MusicBlueprint = {
                 layers: { bass: true, drums: true, accompaniment: true, melody: true, harmony: true, sparkles: true, sfx: true },
                 instrumentation: {
                     accompaniment: { strategy: 'weighted', v1Options: [{ name: 'organ', weight: 1.0 }], v2Options: [{ name: 'organ', weight: 1.0 }] },
-                    melody: { strategy: 'weighted', v1Options: [{ name: 'electricGuitar', weight: 1.0 }], v2Options: [{ name: 'guitar_shineOn', weight: 1.0 }] }
+                    melody: { strategy: 'weighted', v1Options: [{ name: 'guitar_shineOn', weight: 1.0 }], v2Options: [{ name: 'guitar_shineOn', weight: 1.0 }] }
                 },
                 instrumentRules: {
                     drums: { pattern: 'composer', kitName: 'blues_contemplative', density: { min: 0.7, max: 0.9 }, kickVolume: 1.2, ride: { enabled: true }, usePerc: true },
@@ -111,7 +103,7 @@ export const ContemplativeBluesBlueprint: MusicBlueprint = {
                 layers: { bass: true, drums: true, accompaniment: true, melody: true, harmony: true, sparkles: true, sfx: true },
                 instrumentation: {
                     accompaniment: { strategy: 'weighted', v1Options: [{ name: 'organ', weight: 1.0 }], v2Options: [{ name: 'organ', weight: 1.0 }] },
-                    melody: { strategy: 'weighted', v1Options: [{ name: 'electricGuitar', weight: 1.0 }], v2Options: [{ name: 'guitar_shineOn', weight: 1.0 }] }
+                    melody: { strategy: 'weighted', v1Options: [{ name: 'guitar_shineOn', weight: 1.0 }], v2Options: [{ name: 'guitar_shineOn', weight: 1.0 }] }
                 },
                 instrumentRules: {
                     drums: { pattern: 'composer', kitName: 'blues_contemplative', density: { min: 0.6, max: 0.8 }, kickVolume: 1.1, ride: { enabled: false }, usePerc: true, },

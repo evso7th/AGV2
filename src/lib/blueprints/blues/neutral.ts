@@ -49,10 +49,10 @@ export const NeutralBluesBlueprint: MusicBlueprint = {
                             { name: 'mellotron_flute_intimate', weight: 0.1 }
                         ],
                          v1Options: [
-                            { name: 'electricGuitar', weight: 0.7 },
-                            { name: 'ambientPad', weight: 0.1 },
+                            { name: 'guitar_shineOn', weight: 0.7 },
+                            { name: 'synth_ambient_pad_lush', weight: 0.1 },
                             { name: 'mellotron', weight: 0.1 },
-                            { name: 'flute', weight: 0.1 }
+                            { name: 'mellotron_flute_intimate', weight: 0.1 }
                         ]
                     }
                 },

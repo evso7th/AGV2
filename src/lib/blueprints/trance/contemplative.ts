@@ -21,7 +21,7 @@ export const ContemplativeTranceBlueprint: MusicBlueprint = {
                 layers: { accompaniment: true, sfx: true, bass: true, drums: true },
                 instrumentation: {
                     accompaniment: { strategy: 'weighted', v1Options: [{ name: 'synth', weight: 1.0 }], v2Options: [{ name: 'synth', weight: 1.0 }] },
-                    bass: { strategy: 'weighted', options: [{ name: 'classicBass', weight: 1.0 }] }
+                    bass: { strategy: 'weighted', v2Options: [{ name: 'classicBass', weight: 1.0 }] }
                 },
                 instrumentRules: {
                     drums: { pattern: 'ambient_beat', density: { min: 0.2, max: 0.4 }, useSnare: false, usePerc: true, useGhostHat: true }, // SOFTER
@@ -36,7 +36,7 @@ export const ContemplativeTranceBlueprint: MusicBlueprint = {
                 layers: { bass: true, accompaniment: true, drums: true, sfx: true },
                 instrumentation: {
                     accompaniment: { strategy: 'weighted', v1Options: [{ name: 'synth', weight: 1.0 }], v2Options: [{ name: 'synth', weight: 1.0 }] },
-                    bass: { strategy: 'weighted', options: [{ name: 'classicBass', weight: 1.0 }] }
+                    bass: { strategy: 'weighted', v2Options: [{ name: 'classicBass', weight: 1.0 }] }
                 },
                 instrumentRules: {
                     drums: { pattern: 'composer', density: { min: 0.5, max: 0.7 }, useSnare: false, useGhostHat: true }, // SOFTER
@@ -51,9 +51,7 @@ export const ContemplativeTranceBlueprint: MusicBlueprint = {
             {
                 id: 'OUTRO', name: 'Cool Down', duration: { percent: 25 }, // INCREASED
                 layers: { accompaniment: true, sfx: true },
-                instrumentation: {
-                    accompaniment: { strategy: 'weighted', v2Options: [{ name: 'synth_ambient_pad_lush', weight: 1.0 }], v1Options: [{ name: 'ambientPad', weight: 1.0 }] }
-                },
+                instrumentation: { accompaniment: { strategy: 'weighted', v1Options: [{ name: 'synth_ambient_pad_lush', weight: 1.0 }], v2Options: [{ name: 'synth_ambient_pad_lush', weight: 1.0 }] } },
                 instrumentRules: {
                     melody: { source: 'harmony_top_note' }
                 },

@@ -17,9 +17,9 @@ export const CalmBluesBlueprint: MusicBlueprint = {
         totalDuration: { preferredBars: 120 }, // 10 loops of 12 bars
         parts: [
             {
-                id: 'INTRO', name: 'Main Riff', duration: { percent: 40 },
+                id: 'INTRO', name: 'Verse 1', duration: { percent: 40 },
                 introRules: {
-                    allowedInstruments: ['drums', 'bass', 'accompaniment'],
+                    allowedInstruments: ['drums', 'bass', 'accompaniment', 'melody'],
                     buildUpSpeed: 0.3
                 },
                 layers: { bass: true, drums: true, accompaniment: true, harmony: true, melody: true },

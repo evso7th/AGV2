@@ -20,8 +20,8 @@ export const DreamyTranceBlueprint: MusicBlueprint = {
                 id: 'INTRO', name: 'Nebula', duration: { percent: 25 }, // INCREASED
                 layers: { accompaniment: true, bass: true, drums: true, sfx: true },
                 instrumentation: { 
-                    accompaniment: { strategy: 'weighted', v2Options: [{ name: 'synth_ambient_pad_lush', weight: 1.0 }], v1Options: [{ name: 'ambientPad', weight: 1.0 }] },
-                    bass: { strategy: 'weighted', options: [{ name: 'glideBass', weight: 1.0 }] }
+                    accompaniment: { strategy: 'weighted', v1Options: [{ name: 'synth_ambient_pad_lush', weight: 1.0 }], v2Options: [{ name: 'synth_ambient_pad_lush', weight: 1.0 }] },
+                    bass: { strategy: 'weighted', v2Options: [{ name: 'glideBass', weight: 1.0 }] }
                 },
                 instrumentRules: { 
                     drums: { pattern: 'ambient_beat', density: { min: 0.2, max: 0.4 }, kickVolume: 0.8, useSnare: false }, // SOFTER
@@ -36,7 +36,7 @@ export const DreamyTranceBlueprint: MusicBlueprint = {
                 layers: { bass: true, accompaniment: true, drums: true, sfx: true, sparkles: true },
                 instrumentation: {
                     accompaniment: { strategy: 'weighted', v1Options: [{ name: 'synth', weight: 1.0 }], v2Options: [{ name: 'synth', weight: 1.0 }] },
-                    bass: { strategy: 'weighted', options: [{ name: 'classicBass', weight: 1.0 }] }
+                    bass: { strategy: 'weighted', v2Options: [{ name: 'classicBass', weight: 1.0 }] }
                 },
                 instrumentRules: { 
                     drums: { pattern: 'ambient_beat', density: { min: 0.4, max: 0.6 }, useSnare: true, kickVolume: 0.9 }, // SOFTER
@@ -51,7 +51,7 @@ export const DreamyTranceBlueprint: MusicBlueprint = {
                 layers: { bass: true, melody: true, accompaniment: true, drums: true, sfx: true, sparkles: true },
                 instrumentation: {
                     accompaniment: { strategy: 'weighted', v1Options: [{ name: 'synth', weight: 0.7 }, { name: 'organ', weight: 0.3 }], v2Options: [{ name: 'synth', weight: 0.7 }, { name: 'organ', weight: 0.3 }] },
-                    bass: { strategy: 'weighted', options: [{ name: 'classicBass', weight: 1.0 }] },
+                    bass: { strategy: 'weighted', v2Options: [{ name: 'classicBass', weight: 1.0 }] },
                     melody: { strategy: 'weighted', v1Options: [{ name: 'theremin', weight: 0.6 }, { name: 'synth', weight: 0.4 }], v2Options: [{ name: 'theremin', weight: 0.6 }, { name: 'synth', weight: 0.4 }] }
                 },
                 instrumentRules: { 
@@ -66,7 +66,7 @@ export const DreamyTranceBlueprint: MusicBlueprint = {
                 id: 'OUTRO', name: 'Echoes', duration: { percent: 20 },
                 layers: { accompaniment: true, sfx: true, sparkles: true },
                 instrumentation: { 
-                    accompaniment: { strategy: 'weighted', v2Options: [{ name: 'synth_ambient_pad_lush', weight: 1.0 }], v1Options: [{ name: 'ambientPad', weight: 1.0 }] } 
+                    accompaniment: { strategy: 'weighted', v1Options: [{ name: 'synth_ambient_pad_lush', weight: 1.0 }], v2Options: [{ name: 'synth_ambient_pad_lush', weight: 1.0 }] } 
                 },
                 instrumentRules: {
                     sparkles: { eventProbability: 0.2 },

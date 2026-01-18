@@ -30,7 +30,7 @@ export const JoyfulTranceBlueprint: MusicBlueprint = {
                 layers: { bass: true, accompaniment: true, drums: true, sfx: true },
                 instrumentation: {
                     accompaniment: { strategy: 'weighted', v1Options: [{ name: 'synth', weight: 1.0 }], v2Options: [{ name: 'synth', weight: 1.0 }] },
-                    bass: { strategy: 'weighted', options: [{ name: 'classicBass', weight: 1.0 }] }
+                    bass: { strategy: 'weighted', v2Options: [{ name: 'classicBass', weight: 1.0 }] }
                 },
                 instrumentRules: { 
                     drums: { pattern: 'ambient_beat', density: { min: 0.5, max: 0.7 }, useSnare: true }, // SOFTER
@@ -46,7 +46,7 @@ export const JoyfulTranceBlueprint: MusicBlueprint = {
                 layers: { bass: true, melody: true, accompaniment: true, drums: true, sfx: true, sparkles: true },
                 instrumentation: {
                     accompaniment: { strategy: 'weighted', v1Options: [{ name: 'synth', weight: 0.8 }, { name: 'organ', weight: 0.2 }], v2Options: [{ name: 'synth', weight: 0.8 }, { name: 'organ', weight: 0.2 }] },
-                    bass: { strategy: 'weighted', options: [{ name: 'classicBass', weight: 1.0 }] },
+                    bass: { strategy: 'weighted', v2Options: [{ name: 'classicBass', weight: 1.0 }] },
                     melody: { strategy: 'weighted', v1Options: [{ name: 'theremin', weight: 1.0 }], v2Options: [{ name: 'theremin', weight: 1.0 }] }
                 },
                 instrumentRules: { 
@@ -61,7 +61,7 @@ export const JoyfulTranceBlueprint: MusicBlueprint = {
             {
                 id: 'OUTRO', name: 'Afterglow', duration: { percent: 20 },
                 layers: { accompaniment: true, sfx: true, bass: true, melody: true, drums: true },
-                instrumentation: { accompaniment: { strategy: 'weighted', v2Options: [{ name: 'synth_ambient_pad_lush', weight: 1.0 }], v1Options: [{ name: 'ambientPad', weight: 1.0 }] } },
+                instrumentation: { accompaniment: { strategy: 'weighted', v1Options: [{ name: 'synth_ambient_pad_lush', weight: 1.0 }], v2Options: [{ name: 'synth_ambient_pad_lush', weight: 1.0 }] } },
                 instrumentRules: {
                     drums: { pattern: 'ambient_beat', density: { min: 0.2, max: 0.4 }, useSnare: false }, // SOFTER
                     melody: { source: 'motif' }
