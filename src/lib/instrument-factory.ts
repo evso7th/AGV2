@@ -65,7 +65,10 @@ const applyFilterEnvelope = (
     filter.frequency.cancelScheduledValues(when);
     filter.frequency.setValueAtTime(baseCutoff, when);
     filter.frequency.linearRampToValueAtTime(peak, when + config.attack);
-    filter.frequency.setTargetAtTime(sustainLevel, when + config.attack, config.decay / 3);
+    // #ИСПРАВЛЕНО (ПЛАН 1465): Заменена нестабильная логика `setTargetAtTime` на `linearRampToValueAtTime`.
+    // #ЗАЧЕМ: Это полностью устраняет ошибку "BiquadFilterNode: state is bad" при очень коротком `decay`.
+    // #ЧТО: Теперь спад огибающей фильтра является линейным, что гарантирует стабильность Web Audio API.
+    filter.frequency.linearRampToValueAtTime(sustainLevel, when + config.attack + config.decay);
 };
 
 const releaseFilterEnvelope = (
@@ -941,13 +944,12 @@ class AdaptiveADSR {
             // Ещё в атаке — быстрый микро-release
             const currentGain = voiceState.gain.gain.value;
             voiceState.gain.gain.setValueAtTime(currentGain, releaseStartTime);
-            voiceState.gain.gain.linearRampToValueAtTime(0.0001, releaseStartTime + r * 0.2); // Faster release
-            return releaseStartTime + r * 0.2;
+            voiceState.gain.gain.setTargetAtTime(0.0001, releaseStartTime, 0.02);
         } else {
             // Нормальный release
             voiceState.gain.gain.setTargetAtTime(0.0001, releaseStartTime, r / 3);
-            return releaseStartTime + r;
         }
+        return releaseStartTime + r;
     }
 }
 
