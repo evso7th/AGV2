@@ -19,6 +19,7 @@ import { formatTime, cn } from "@/lib/utils";
 import type { BassInstrument, MelodyInstrument, AccompanimentInstrument, Mood, Genre } from '@/types/music';
 import { V2_PRESETS } from "@/lib/presets-v2";
 import { SYNTH_PRESETS } from "@/lib/synth-presets";
+import { BASS_PRESETS } from "@/lib/bass-presets";
 
 const EQ_BANDS = [
   { freq: '60', label: '60' }, { freq: '125', label: '125' }, { freq: '250', label: '250' },
@@ -394,6 +395,7 @@ export function AuraGrooveV2({
     
 
     
+
 
 
 
