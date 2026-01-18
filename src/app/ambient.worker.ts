@@ -137,7 +137,7 @@ const Scheduler = {
         // --- ЛОГИКА ПОЛНОЙ ИЗОЛЯЦИИ ПРОЛОГА (ПЛАН 1002) ---
         let finalPayload: { events: FractalEvent[], instrumentHints: InstrumentHints };
 
-        if (this.barCount < this.settings.introBars) {
+        if (this.settings.genre !== 'ambient' && this.barCount < this.settings.introBars) {
             // --- ВЕТКА ИНТРО ---
             const navInfo = fractalMusicEngine.navigator?.tick(this.barCount);
             let introHints: InstrumentHints = {};
@@ -295,5 +295,3 @@ self.onmessage = async (event: MessageEvent) => {
         self.postMessage({ type: 'error', error: e instanceof Error ? e.message : String(e) });
     }
 };
-
-    
