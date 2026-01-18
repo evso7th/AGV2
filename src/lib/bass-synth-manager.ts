@@ -1,3 +1,4 @@
+
 // src/lib/bass-synth-manager.ts
 import type { FractalEvent, BassInstrument } from '@/types/fractal';
 import type { Note, BassTechnique } from "@/types/music";
@@ -135,8 +136,18 @@ export class BassSynthManager {
     }
     
     private triggerVoice(voice: SynthVoice, note: Note, preset: SynthPreset, barStartTime: number) {
+        const velocity = note.velocity ?? 0.7;
+        const noteTime = note.time;
+        const noteDuration = note.duration;
+
+        // --- Defensive Check for Finite Values ---
+        if (!isFinite(noteTime) || !isFinite(noteDuration) || !isFinite(velocity) || !isFinite(barStartTime)) {
+            console.error('[BassManager] Triggering aborted due to non-finite value:', { noteTime, noteDuration, velocity, barStartTime });
+            return;
+        }
+        
         const now = this.audioContext.currentTime;
-        const noteOnTime = barStartTime + note.time;
+        const noteOnTime = barStartTime + noteTime;
         if (noteOnTime < now) return;
 
         voice.isActive = true;
@@ -155,13 +166,21 @@ export class BassSynthManager {
         voice.dryGain.gain.setValueAtTime(1.0 - wetMix, noteOnTime);
 
         const gainParam = voice.envGain.gain;
-        const velocity = note.velocity ?? 0.7;
         const peakGain = velocity * 0.8; // Bass is louder
-        const attackEndTime = noteOnTime + preset.adsr.attack;
         const sustainValue = peakGain * preset.adsr.sustain;
+        
+        const attackEndTime = noteOnTime + preset.adsr.attack;
         const decayEndTime = attackEndTime + preset.adsr.decay;
-        const noteOffTime = noteOnTime + note.duration;
+        const noteOffTime = noteOnTime + noteDuration;
         const releaseEndTime = noteOffTime + preset.adsr.release;
+        
+        // Check calculated times
+        if (!isFinite(attackEndTime) || !isFinite(decayEndTime) || !isFinite(noteOffTime) || !isFinite(releaseEndTime)) {
+            console.error('[BassManager] Aborting due to non-finite envelope time calculation.');
+            voice.isActive = false;
+            return;
+        }
+
         gainParam.cancelScheduledValues(noteOnTime);
         gainParam.setValueAtTime(0, noteOnTime);
         gainParam.linearRampToValueAtTime(peakGain, attackEndTime);
