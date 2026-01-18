@@ -107,15 +107,10 @@ export class AccompanimentSynthManager {
     public schedule(events: FractalEvent[], barStartTime: number, tempo: number, barCount: number, instrumentHint?: AccompanimentInstrument, composerControlsInstruments: boolean = true) {
         if (!this.isInitialized) return;
         
-        // --- ШОРЫ ДЛЯ СЛЕПОГО ИСПОЛНИТЕЛЯ (ПЛАН 823) ---
-        // #ЗАЧЕМ: Предотвращает воспроизведение партий, предназначенных для V2-движка.
-        // #ЧТО: Если `instrumentHint` является одним из V2-пресетов (или 'blackAcoustic'),
-        //      этот V1-менеджер игнорирует команду.
-        // #СВЯЗИ: Устраняет корень проблемы "призрачного оркестра".
-        if (instrumentHint && (V2_PRESETS.hasOwnProperty(instrumentHint) || instrumentHint === 'blackAcoustic')) {
-            console.log(`[AccompManagerV1] Ignored V2 hint: ${instrumentHint}`);
-            return;
-        }
+        // #ИСПРАВЛЕНО (ПЛАН 1461): Удален ошибочный "охранник".
+        // #ЗАЧЕМ: Предыдущая логика неверно блокировала пресеты с одинаковыми именами (например, 'organ'),
+        //         которые должны были работать в V1. Теперь FME гарантирует, что V1-менеджер получит
+        //         только те "хинты", которые существуют в его собственной библиотеке SYNTH_PRESETS.
 
         const instrumentToPlay = (composerControlsInstruments && instrumentHint) ? instrumentHint : this.activeInstrumentName;
         
@@ -124,7 +119,12 @@ export class AccompanimentSynthManager {
             return;
         }
         
-        if (instrumentToPlay === 'none' || !(instrumentToPlay in SYNTH_PRESETS)) return;
+        if (instrumentToPlay === 'none' || !(instrumentToPlay in SYNTH_PRESETS)) {
+            // #ИСПРАВЛЕНО (ПЛАН 1461): Добавлен более информативный лог для отладки
+            console.warn(`[AccompManagerV1] Hint "${instrumentToPlay}" not found in V1 SYNTH_PRESETS. Skipping.`);
+            return;
+        }
+
 
         console.log(`%c[AccompManagerV1 @ Bar ${barCount}] Instrument: ${instrumentToPlay} | Scheduling ${events.length} notes...`, 'color: #FFC0CB;');
 
