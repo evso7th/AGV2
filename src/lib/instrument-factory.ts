@@ -782,99 +782,50 @@ const loadIR = async (ctx: AudioContext, url: string | null): Promise<AudioBuffe
     }
 };
 
-// ───── Distortion Curves
 const makeSoftClip = (amount = 0.5, n = 65536) => {
-    const c = new Float32Array(n);
-    const k = clamp(amount, 0, 1) * 10 + 1;
+    const c=new Float32Array(n); const k = clamp(amount, 0, 1) * 10 + 1;
     const norm = Math.tanh(k);
-    for (let i = 0; i < n; i++) {
-        const x = (i / (n - 1)) * 2 - 1;
-        c[i] = Math.tanh(k * x) / norm;
-    }
+    for (let i=0;i<n;i++){ const x=i/(n-1)*2-1; c[i]=Math.tanh(k*x)/norm; }
     return c;
 };
-
-// ───── Bypassable FX
-interface BypassableFX {
-    input: GainNode;
-    output: GainNode;
-    setMix: (mix: number) => void;
-}
-
-const makeChorus = (ctx: AudioContext, opts: { rate?: number; depth?: number; mix?: number } = {}): BypassableFX => {
-    const { rate = 0.25, depth = 0.006, mix = 0.25 } = opts;
-    const input = ctx.createGain();
-    const output = ctx.createGain();
-    const dry = ctx.createGain();
-    const wet = ctx.createGain();
-
-    dry.gain.value = 1 - mix;
-    wet.gain.value = mix;
-
-    const delay = ctx.createDelay(0.03);
-    delay.delayTime.value = 0.02;
-
-    const lfo = ctx.createOscillator();
-    const lfoGain = ctx.createGain();
-    lfo.type = 'sine';
-    lfo.frequency.value = rate;
-    lfoGain.gain.value = depth;
-    lfo.connect(lfoGain).connect(delay.delayTime);
-    lfo.start();
-
-    input.connect(dry).connect(output);
-    input.connect(delay).connect(wet).connect(output);
-    
-    return {
-        input, output,
-        setMix: (m: number) => {
-            const v = clamp(m, 0, 1);
-            dry.gain.setTargetAtTime(1 - v, ctx.currentTime, 0.02);
-            wet.gain.setTargetAtTime(v, ctx.currentTime, 0.02);
-        }
-    };
+const makeMuff = (gain=0.65, n=65536) => {
+    const c=new Float32Array(n);
+    for (let i=0;i<n;i++){ const x=i/(n-1)*2-1; const y=Math.tanh(x*(1+gain*4))*0.9; c[i]=y; }
+    return c;
+};
+const makePhaser = (ctx: AudioContext,opts: {stages?: number, base?: number, depth?: number, rate?: number, fb?: number, mix?: number} = {}): BypassableFX => {
+    const {stages=4, base=800, depth=600, rate=0.16, fb=0.12, mix=0.2} = opts;
+    const input=ctx.createGain(), output=ctx.createGain(), wet=ctx.createGain(), dry=ctx.createGain();
+    wet.gain.value=mix; dry.gain.value=1-mix;
+    let head=input; const aps=[]; 
+    for(let i=0;i<stages;i++){ const ap=ctx.createBiquadFilter(); ap.type='allpass'; ap.frequency.value=base*((i%2)?1.2:0.8); ap.Q.value=0.6; head.connect(ap); head=ap; aps.push(ap); }
+    const fbG=ctx.createGain(); fbG.gain.value=fb; aps[aps.length-1].connect(fbG); fbG.connect(aps[0]);
+    const lfo=ctx.createOscillator(); lfo.type='sine'; lfo.frequency.value=rate; const lfoG=ctx.createGain(); lfoG.gain.value=depth; lfo.connect(lfoG); aps.forEach(ap=>lfoG.connect(ap.frequency)); lfo.start();
+    input.connect(dry); aps[aps.length-1].connect(wet); dry.connect(output); wet.connect(output);
+    return {input, output, setMix: (m: number) => { const v = clamp(m,0,1); dry.gain.setTargetAtTime(1-v, ctx.currentTime, 0.02); wet.gain.setTargetAtTime(v, ctx.currentTime, 0.02); }};
+};
+const makeChorus = (ctx: AudioContext,opts: {rate?: number, depth?: number, mix?: number} = {}): BypassableFX => {
+    const {rate=0.25, depth=0.006, mix=0.25} = opts;
+    const input=ctx.createGain(), output=ctx.createGain(), wet=ctx.createGain(), dry=ctx.createGain();
+    wet.gain.value=mix; dry.gain.value=1-mix;
+    const d1=ctx.createDelay(0.03), d2=ctx.createDelay(0.03);
+    const l1=ctx.createOscillator(), g1=ctx.createGain(); l1.type='sine'; l1.frequency.value=rate; g1.gain.value=depth; l1.connect(g1); g1.connect(d1.delayTime); l1.start();
+    const l2=ctx.createOscillator(), g2=ctx.createGain(); l2.type='sine'; l2.frequency.value=rate*1.11; g2.gain.value=depth*1.1; l2.connect(g2); g2.connect(d2.delayTime); l2.start();
+    const s1=ctx.createGain(), s2=ctx.createGain(); input.connect(s1); input.connect(s2); s1.connect(d1); s2.connect(d2); d1.connect(wet); d2.connect(wet);
+    input.connect(dry); dry.connect(output); wet.connect(output);
+    return {input, output, setMix: (m: number) => { const v = clamp(m,0,1); dry.gain.setTargetAtTime(1-v, ctx.currentTime, 0.02); wet.gain.setTargetAtTime(v, ctx.currentTime, 0.02); }};
+};
+const makeFilteredDelay = (ctx: AudioContext,opts: {time?: number, fb?: number, hc?: number, wet?: number} = {}): BypassableFX => {
+    const {time=0.38, fb=0.26, hc=3600, wet=0.2} = opts;
+    const input=ctx.createGain(), output=ctx.createGain(), wetG=ctx.createGain(); wetG.gain.value=wet;
+    const d=ctx.createDelay(2.0); d.delayTime.value=time;
+    const loop=ctx.createGain(); loop.gain.value=fb;
+    const lp=ctx.createBiquadFilter(); lp.type='lowpass'; lp.frequency.value=hc; lp.Q.value=0.7;
+    input.connect(d); d.connect(lp); lp.connect(loop); loop.connect(d);
+    lp.connect(wetG); wetG.connect(output);
+    return {input, output, setMix: (m: number) => { wetG.gain.setTargetAtTime(m, ctx.currentTime, 0.02); }};
 };
 
-const makeFilteredDelay = (ctx: AudioContext, opts: { time?: number; fb?: number; hc?: number; mix?: number } = {}): BypassableFX => {
-    const { time = 0.38, fb = 0.26, hc = 3600, mix = 0.2 } = opts;
-    const input = ctx.createGain();
-    const output = ctx.createGain();
-    const dry = ctx.createGain();
-    const wet = ctx.createGain();
-
-    dry.gain.value = 1 - mix;
-    wet.gain.value = mix;
-
-    const delayL = ctx.createDelay(5.0);
-    delayL.delayTime.value = time;
-    const delayR = ctx.createDelay(5.0);
-    delayR.delayTime.value = time * 1.07;
-
-    const feedback = ctx.createGain();
-    feedback.gain.value = fb;
-
-    const filter = ctx.createBiquadFilter();
-    filter.type = 'lowpass';
-    filter.frequency.value = hc;
-    filter.Q.value = 0.7;
-
-    const merger = ctx.createChannelMerger(2);
-
-    input.connect(dry).connect(output);
-    input.connect(delayL).connect(filter).connect(delayR).connect(feedback).connect(delayL);
-    delayL.connect(merger, 0, 0);
-    delayR.connect(merger, 0, 1);
-    merger.connect(wet).connect(output);
-
-    return {
-        input, output,
-        setMix: (m: number) => {
-            const v = clamp(m, 0, 1);
-            dry.gain.setTargetAtTime(1 - v, ctx.currentTime, 0.02);
-            wet.gain.setTargetAtTime(v, ctx.currentTime, 0.02);
-        }
-    };
-};
 
 // ═══════════════════════════════════════════════════════════════════════════
 // АДАПТИВНЫЙ ADSR КОНТРОЛЛЕР
@@ -1134,3 +1085,9 @@ export async function buildMultiInstrument(ctx: AudioContext, {
 const createKeyClick = (ctx: AudioContext, duration: number, intensity: number): AudioBuffer => { return ctx.createBuffer(1,1,ctx.sampleRate); }
 const createVibratoScanner = (ctx: AudioContext, config: any) => { return { input: ctx.createGain(), output: ctx.createGain(), setType: ()=>{}, setRate: ()=>{} }; }
 const createLeslie = (ctx: AudioContext, config: any) => { return { input: ctx.createGain(), output: ctx.createGain(), setMode: ()=>{}, setMix: ()=>{}, getMode: ()=> 'slow'}; }
+
+interface BypassableFX {
+    input: GainNode;
+    output: GainNode;
+    setMix: (mix: number) => void;
+}
