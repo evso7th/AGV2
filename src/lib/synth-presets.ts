@@ -20,7 +20,7 @@ export type SynthPreset = {
     release: number;// seconds
   };
   filter: {
-    type: 'lpf' | 'hpf' | 'bpf' | 'notch';
+    type: 'lowpass' | 'hpf' | 'bpf' | 'notch';
     cutoff: number; // Hz
     q: number;      // 0.1 to 20
   };
@@ -65,7 +65,7 @@ export const SYNTH_PRESETS: Record<string, SynthPreset> = {
   classicBass: {
     layers: [{ type: 'sawtooth', detune: 0, octave: 0, gain: 1.0 }],
     adsr: { attack: 0.01, decay: 0.2, sustain: 0.5, release: 0.3 },
-    filter: { type: 'lpf', cutoff: 400, q: 1.0 },
+    filter: { type: 'lowpass', cutoff: 400, q: 1.0 },
     lfo: { shape: 'sine', rate: 0, amount: 0, target: 'pitch' },
     effects: { distortion: 0.05, chorus: { rate: 0, depth: 0, mix: 0 }, delay: { time: 0, feedback: 0, mix: 0 } },
     portamento: 0
@@ -73,7 +73,7 @@ export const SYNTH_PRESETS: Record<string, SynthPreset> = {
   glideBass: {
     layers: [{ type: 'triangle', detune: 0, octave: 0, gain: 1.0 }],
     adsr: { attack: 0.05, decay: 0.1, sustain: 0.9, release: 1.5 },
-    filter: { type: 'lpf', cutoff: 300, q: 0.8 },
+    filter: { type: 'lowpass', cutoff: 300, q: 0.8 },
     lfo: { shape: 'sine', rate: 0, amount: 0, target: 'pitch' },
     effects: { distortion: 0, chorus: { rate: 0, depth: 0, mix: 0 }, delay: { time: 0, feedback: 0, mix: 0 } },
     portamento: 0.03
@@ -81,7 +81,7 @@ export const SYNTH_PRESETS: Record<string, SynthPreset> = {
   ambientDrone: {
     layers: [{ type: 'sine', detune: 4, octave: 0, gain: 1.0 }, { type: 'sine', detune: -4, octave: -1, gain: 0.7 }],
     adsr: { attack: 0.8, decay: 1.5, sustain: 0.8, release: 3.0 },
-    filter: { type: 'lpf', cutoff: 150, q: 1.5 },
+    filter: { type: 'lowpass', cutoff: 150, q: 1.5 },
     lfo: { shape: 'sine', rate: 0, amount: 0, target: 'pitch' },
     effects: { distortion: 0, chorus: { rate: 0.1, depth: 0.005, mix: 0.3 }, delay: { time: 0, feedback: 0, mix: 0 } },
     portamento: 0.08
@@ -89,7 +89,7 @@ export const SYNTH_PRESETS: Record<string, SynthPreset> = {
   resonantGliss: {
     layers: [{ type: 'sawtooth', detune: 0, octave: 0, gain: 1.0 }],
     adsr: { attack: 0.02, decay: 0.3, sustain: 0.7, release: 1.0 },
-    filter: { type: 'lpf', cutoff: 500, q: 4.0 },
+    filter: { type: 'lowpass', cutoff: 500, q: 4.0 },
     lfo: { shape: 'sine', rate: 0, amount: 0, target: 'pitch' },
     effects: { distortion: 0.1, chorus: { rate: 0, depth: 0, mix: 0 }, delay: { time: 0, feedback: 0, mix: 0 } },
     portamento: 0.06
@@ -97,7 +97,7 @@ export const SYNTH_PRESETS: Record<string, SynthPreset> = {
   hypnoticDrone: {
     layers: [{ type: 'sine', detune: 0, octave: 0, gain: 1.0 }, { type: 'triangle', detune: 0, octave: 0, gain: 0.8 }],
     adsr: { attack: 0.2, decay: 0.1, sustain: 0.9, release: 3.0 },
-    filter: { type: 'lpf', cutoff: 150, q: 1.0 },
+    filter: { type: 'lowpass', cutoff: 150, q: 1.0 },
     lfo: { shape: 'sine', rate: 0, amount: 0, target: 'pitch' },
     effects: { distortion: 0, chorus: { rate: 0.1, depth: 0.002, mix: 0.4 }, delay: { time: 0.015, feedback: 0, mix: 0 } }, // Stagger simulation
     portamento: 0
@@ -105,7 +105,7 @@ export const SYNTH_PRESETS: Record<string, SynthPreset> = {
   livingRiff: {
     layers: [{ type: 'sine', detune: 0, octave: 0, gain: 1.0 }, { type: 'sawtooth', detune: 0, octave: 0, gain: 0.7 }],
     adsr: { attack: 0.01, decay: 0.5, sustain: 0.6, release: 1.0 },
-    filter: { type: 'lpf', cutoff: 350, q: 1.2 },
+    filter: { type: 'lowpass', cutoff: 350, q: 1.2 },
     lfo: { shape: 'sine', rate: 0, amount: 0, target: 'pitch' },
     effects: { distortion: 0.1, chorus: { rate: 0, depth: 0, mix: 0 }, delay: { time: 0.005, feedback: 0, mix: 0 } },
     portamento: 0
@@ -119,7 +119,7 @@ export const SYNTH_PRESETS: Record<string, SynthPreset> = {
       { type: 'triangle', detune: -2, octave: -1, gain: 0.4 },
     ],
     adsr: { attack: 0.1, decay: 0.1, sustain: 0.9, release: 0.6 },
-    filter: { type: 'lpf', cutoff: 2500, q: 2 },
+    filter: { type: 'lowpass', cutoff: 2500, q: 2 },
     lfo: { shape: 'sine', rate: 5.5, amount: 8, target: 'pitch' },
     effects: {
       distortion: 0,
@@ -135,7 +135,7 @@ export const SYNTH_PRESETS: Record<string, SynthPreset> = {
       { type: 'square', detune: 0, octave: -1, gain: 0.5 },
     ],
     adsr: { attack: 0.05, decay: 0.4, sustain: 0.6, release: 0.8 },
-    filter: { type: 'lpf', cutoff: 1800, q: 3.5 },
+    filter: { type: 'lowpass', cutoff: 1800, q: 3.5 },
     lfo: { shape: 'sine', rate: 0.5, amount: 400, target: 'filter' },
     effects: {
       distortion: 0.1,
@@ -150,7 +150,7 @@ export const SYNTH_PRESETS: Record<string, SynthPreset> = {
       { type: 'sine', detune: 5, octave: 0, gain: 0.7 },
     ],
     adsr: { attack: 0.3, decay: 0.2, sustain: 0.9, release: 1.2 },
-    filter: { type: 'lpf', cutoff: 2200, q: 1.5 },
+    filter: { type: 'lowpass', cutoff: 2200, q: 1.5 },
     lfo: { shape: 'sine', rate: 4.5, amount: 5, target: 'pitch' }, // "Wow and flutter"
     effects: {
       distortion: 0.05,
@@ -165,7 +165,7 @@ export const SYNTH_PRESETS: Record<string, SynthPreset> = {
       { type: 'sine', detune: 2, octave: 1, gain: 0.3 },
     ],
     adsr: { attack: 0.4, decay: 0.1, sustain: 1.0, release: 0.6 },
-    filter: { type: 'lpf', cutoff: 5000, q: 1 },
+    filter: { type: 'lowpass', cutoff: 5000, q: 1 },
     lfo: { shape: 'sine', rate: 5, amount: 5, target: 'pitch' }, // Classic vibrato in cents
     effects: {
       distortion: 0,
@@ -205,7 +205,7 @@ export const SYNTH_PRESETS: Record<string, SynthPreset> = {
   'G-Drops': {
       layers: [ { type: 'triangle', detune: 0, octave: 0, gain: 1.0 } ],
       adsr: { attack: 0.01, decay: 0.7, sustain: 0.1, release: 0.4 },
-      filter: { type: 'lpf', cutoff: 2000, q: 1.5 },
+      filter: { type: 'lowpass', cutoff: 2000, q: 1.5 },
       lfo: { shape: 'sine', rate: 0.5, amount: 0, target: 'pitch' }, // Amount was 3.5, seems too high for pitch
       effects: { 
           distortion: 0.1, 
@@ -221,7 +221,7 @@ export const SYNTH_PRESETS: Record<string, SynthPreset> = {
       { type: 'sine', detune: 0, octave: 1, gain: 0.4 },
     ],
     adsr: { attack: 2.5, decay: 2.0, sustain: 0.8, release: 4.0 },
-    filter: { type: 'lpf', cutoff: 1200, q: 1.5 },
+    filter: { type: 'lowpass', cutoff: 1200, q: 1.5 },
     lfo: { shape: 'sine', rate: 0.05, amount: 600, target: 'filter' },
     effects: {
       distortion: 0,

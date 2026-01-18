@@ -669,12 +669,13 @@ export const buildBassEngine = async (
         
         if (elapsed < adsr.a) {
             // Still in attack — quick release
-            const currentGain = (elapsed / adsr.a);
+            const currentGain = voice.voiceGain.gain.value;
             voice.voiceGain.gain.setValueAtTime(currentGain, when);
-            voice.voiceGain.gain.setTargetAtTime(0.0001, when, 0.02);
+            voice.voiceGain.gain.linearRampToValueAtTime(0.0001, when + 0.05); // Corrected: Use linearRamp
         } else {
+            // Normal release
             voice.voiceGain.gain.setValueAtTime(voice.voiceGain.gain.value, when);
-            voice.voiceGain.gain.setTargetAtTime(0.0001, when, releaseTime / 3);
+            voice.voiceGain.gain.linearRampToValueAtTime(0.0001, when + releaseTime); // Corrected: Use linearRamp
         }
         
         // Filter release
@@ -697,7 +698,7 @@ export const buildBassEngine = async (
         const now = ctx.currentTime;
         activeVoices.forEach((voice) => {
             voice.voiceGain.gain.cancelScheduledValues(now);
-            voice.voiceGain.gain.setTargetAtTime(0.0001, now, 0.05);
+            voice.voiceGain.gain.linearRampToValueAtTime(0.0001, now + 0.05); // Corrected: Use linearRamp
             voice.oscillators.forEach(osc => osc.stop(now + 0.15));
             if (voice.subOsc) voice.subOsc.stop(now + 0.15);
         });
@@ -878,7 +879,8 @@ class AdaptiveADSR {
         gainNode.gain.cancelScheduledValues(startTime);
         gainNode.gain.setValueAtTime(0.0001, startTime);
         gainNode.gain.linearRampToValueAtTime(peak, startTime + a);
-        gainNode.gain.setTargetAtTime(s, startTime + a, d / 3);
+        // #ИСПРАВЛЕНО (ПЛАН 1472): Заменен нестабильный `setTargetAtTime` на `linearRampToValueAtTime`
+        gainNode.gain.linearRampToValueAtTime(s, startTime + a + d);
 
         return { gain: gainNode, startTime, phase: 'attack', targetPeak: peak, nodes: [] };
     }
@@ -895,10 +897,13 @@ class AdaptiveADSR {
             // Ещё в атаке — быстрый микро-release
             const currentGain = voiceState.gain.gain.value;
             voiceState.gain.gain.setValueAtTime(currentGain, releaseStartTime);
-            voiceState.gain.gain.setTargetAtTime(0.0001, releaseStartTime, 0.02);
+            // #ИСПРАВЛЕНО (ПЛАН 1472): Заменен нестабильный `setTargetAtTime`
+            voiceState.gain.gain.linearRampToValueAtTime(0.0001, releaseStartTime + 0.05);
         } else {
             // Нормальный release
-            voiceState.gain.gain.setTargetAtTime(0.0001, releaseStartTime, r / 3);
+            voiceState.gain.gain.setValueAtTime(voiceState.gain.gain.value, releaseStartTime);
+            // #ИСПРАВЛЕНО (ПЛАН 1472): Заменен нестабильный `setTargetAtTime`
+            voiceState.gain.gain.linearRampToValueAtTime(0.0001, releaseStartTime + r);
         }
         return releaseStartTime + r;
     }
@@ -1005,8 +1010,8 @@ export async function buildMultiInstrument(ctx: AudioContext, {
         const filt2 = ctx.createBiquadFilter(); filt2.type = 'lowpass'; filt2.frequency.value = lpf.cutoff || 1800; filt2.Q.value = lpf.q || 0.7;
         const use2pole = (lpf.mode!=='24dB');
 
-        const chorusNode = makeChorus(ctx, chorus);
-        const delayNode = makeFilteredDelay(ctx, delay);
+        const chorusNode = chorus.on ? makeChorus(ctx, chorus) : null;
+        const delayNode  = delay.on  ? makeFilteredDelay(ctx, delay) : null;
         const revSend = ctx.createGain(); revSend.gain.value = reverbMix;
         
         pre.connect(vGain).connect(filt); 

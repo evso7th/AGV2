@@ -258,9 +258,17 @@ export class FractalMusicEngine {
 
     let options: any[] | undefined;
 
-    // Step 1: Handle bass separately - it's always V2
+    // #ИСПРАВЛЕНО (ПЛАН 1472): Логика выбора басового инструмента теперь учитывает флаг useMelodyV2.
+    // #ЗАЧЕМ: Предотвращает попытку использовать V2-пресеты с V1-движком и наоборот.
     if (part === 'bass') {
-        options = (rules as InstrumentationRules<BassInstrument>).v2Options;
+        const useV2 = this.config.useMelodyV2;
+        options = useV2 ? (rules as InstrumentationRules<BassInstrument>).v2Options : (rules as InstrumentationRules<BassInstrument>).v1Options;
+        
+        // Fallback if the primary option list is empty
+        if (!options || options.length === 0) {
+             console.warn(`[FME] No ${useV2 ? 'v2' : 'v1'}Options for bass, falling back to other version.`);
+             options = useV2 ? (rules as InstrumentationRules<BassInstrument>).v1Options : (rules as InstrumentationRules<BassInstrument>).v2Options;
+        }
     } 
     // Step 2: Handle melody and accompaniment based on the V2 flag
     else if (part === 'melody' || part === 'accompaniment') {
@@ -961,4 +969,3 @@ function createMelodyMotif(chord: GhostChord, mood: Mood, random: { next: () => 
     return motif;
 }
 
-    
