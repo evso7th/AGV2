@@ -1,5 +1,4 @@
 
-
 import type { FractalEvent, AccompanimentInstrument } from '@/types/fractal';
 import type { Note } from "@/types/music";
 import { SYNTH_PRESETS, type SynthPreset } from './synth-presets';
@@ -180,7 +179,7 @@ export class AccompanimentSynthManager {
         const releaseEndTime = noteOffTime + preset.adsr.release;
         
         // Check calculated times
-        if (!isFinite(attackEndTime) || !isFinite(decayEndTime) || !isFinite(noteOffTime) || !isFinite(releaseEndTime)) {
+        if (!isFinite(attackEndTime) || !isFinite(decayEndTime) || !isFinite(noteOffTime) || !isFinite(releaseEndTime) || !preset.adsr.attack || !preset.adsr.decay || !preset.adsr.sustain || !preset.adsr.release) {
             console.error('[AccompManager] Aborting due to non-finite envelope time calculation.');
             voice.isActive = false;
             return;

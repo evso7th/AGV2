@@ -173,9 +173,9 @@ export class BassSynthManager {
         const decayEndTime = attackEndTime + preset.adsr.decay;
         const noteOffTime = noteOnTime + noteDuration;
         const releaseEndTime = noteOffTime + preset.adsr.release;
-        
+
         // Check calculated times
-        if (!isFinite(attackEndTime) || !isFinite(decayEndTime) || !isFinite(noteOffTime) || !isFinite(releaseEndTime)) {
+        if (!isFinite(attackEndTime) || !isFinite(decayEndTime) || !isFinite(noteOffTime) || !isFinite(releaseEndTime) || !preset.adsr.attack || !preset.adsr.decay || !preset.adsr.sustain || !preset.adsr.release) {
             console.error('[BassManager] Aborting due to non-finite envelope time calculation.');
             voice.isActive = false;
             return;
