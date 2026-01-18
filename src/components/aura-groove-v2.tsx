@@ -19,6 +19,7 @@ import { formatTime, cn } from "@/lib/utils";
 import type { BassInstrument, MelodyInstrument, AccompanimentInstrument, Mood, Genre } from '@/types/music';
 import { V2_PRESETS } from "@/lib/presets-v2";
 import { BASS_PRESETS } from "@/lib/bass-presets";
+import { SYNTH_PRESETS } from "@/lib/synth-presets";
 
 const EQ_BANDS = [
   { freq: '60', label: '60' }, { freq: '125', label: '125' }, { freq: '250', label: '250' },
@@ -64,11 +65,13 @@ export function AuraGrooveV2({
     setIsClient(true);
   }, []);
 
-  const v1MelodyInstruments: (MelodyInstrument | 'none')[] = ['synth', 'organ', 'mellotron', 'theremin', 'electricGuitar', 'ambientPad', 'acousticGuitar', 'none'];
-  const v1AccompanimentInstruments: (AccompanimentInstrument | 'none')[] = ['synth', 'organ', 'mellotron', 'theremin', 'electricGuitar', 'ambientPad', 'acousticGuitar', 'none'];
-  const v2MelodyInstruments = Object.keys(V2_PRESETS) as (keyof typeof V2_PRESETS)[];
+  const v1SynthInstruments = Object.keys(SYNTH_PRESETS).filter(k => !BASS_PRESETS.hasOwnProperty(k));
+  const v1BassInstruments = Object.keys(SYNTH_PRESETS).filter(k => BASS_PRESETS.hasOwnProperty(k));
+
+  const v2MelodyInstruments = Object.keys(V2_PRESETS).filter(k => V2_PRESETS[k as keyof typeof V2_PRESETS].type !== 'bass');
+  const v2BassInstruments = Object.keys(BASS_PRESETS);
+
   const harmonyInstrumentList: ('piano' | 'guitarChords' | 'flute' | 'violin' | 'none')[] = ['piano', 'guitarChords', 'flute', 'violin', 'none'];
-  const bassInstrumentList = Object.keys(BASS_PRESETS) as (keyof typeof BASS_PRESETS | 'none')[];
   const moodList: Mood[] = ['epic', 'joyful', 'enthusiastic', 'melancholic', 'dark', 'anxious', 'dreamy', 'contemplative', 'calm'];
   
   const isFractalStyle = score === 'neuro_f_matrix';
@@ -96,8 +99,9 @@ export function AuraGrooveV2({
     'synth_ambient_pad_lush': 'Lush Pad'
   };
   
-  const melodyInstrumentList = useMelodyV2 ? v2MelodyInstruments : v1MelodyInstruments;
-  const textureInstrumentList = useMelodyV2 ? v2MelodyInstruments : v1AccompanimentInstruments;
+  const melodyInstrumentList = useMelodyV2 ? v2MelodyInstruments : v1SynthInstruments;
+  const textureInstrumentList = useMelodyV2 ? v2MelodyInstruments : v1SynthInstruments;
+  const bassInstrumentList = useMelodyV2 ? v2BassInstruments : v1BassInstruments;
 
 
   const composerControl = isFractalStyle && composerControlsInstruments;
@@ -273,7 +277,7 @@ export function AuraGrooveV2({
                           const settings = instrumentSettings[part];
                           let instrumentList: (string | 'none')[] = [];
                            if (part === 'bass') {
-                              instrumentList = ['none', ...Object.keys(BASS_PRESETS)];
+                              instrumentList = bassInstrumentList;
                           } else if (part === 'melody') {
                               instrumentList = melodyInstrumentList;
                           } else if (part === 'accompaniment') {
@@ -291,14 +295,14 @@ export function AuraGrooveV2({
                                         <SelectTrigger className="h-8 text-xs"><SelectValue /></SelectTrigger>
                                         <SelectContent>
                                             {instrumentList.map(inst => {
-                                                const preset = (V2_PRESETS as any)[inst] || (BASS_PRESETS as any)[inst];
+                                                const preset = (V2_PRESETS as any)[inst] || (BASS_PRESETS as any)[inst] || (SYNTH_PRESETS as any)[inst];
                                                 const displayName = preset?.name || displayNames[inst] || inst.charAt(0).toUpperCase() + inst.slice(1).replace(/([A-Z])/g, ' $1');
                                                 return <SelectItem key={inst} value={inst} className="text-xs">{displayName}</SelectItem>
                                             })}
                                         </SelectContent>
                                     </Select>
                                 </div>
-                                 {part === 'bass' && 'technique' in settings && (settings.name as BassInstrument | 'none') !== 'none' && (
+                                 {part === 'bass' && 'technique' in settings && (settings.name as BassInstrument | 'none') !== 'none' && !useMelodyV2 && (
                                     <div className="grid grid-cols-2 items-center gap-2">
                                         <Label className="font-semibold flex items-center gap-1.5 capitalize text-xs"><GitBranch className="h-4 w-4"/>Technique</Label>
                                          <Select value={settings.technique} onValueChange={(v) => handleBassTechniqueChange(v as any)} disabled={isDisabled || settings.name === 'none'}>
@@ -390,5 +394,6 @@ export function AuraGrooveV2({
     
 
     
+
 
 

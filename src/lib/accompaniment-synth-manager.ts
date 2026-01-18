@@ -107,7 +107,7 @@ export class AccompanimentSynthManager {
     public schedule(events: FractalEvent[], barStartTime: number, tempo: number, barCount: number, instrumentHint?: AccompanimentInstrument, composerControlsInstruments: boolean = true) {
         if (!this.isInitialized) return;
         
-        // #ИСПРАВЛЕНО (ПЛАН 1461): Удален ошибочный "охранник".
+        // #ИСПРАВЛЕНО (ПЛАН 1463): Удален ошибочный "охранник".
         // #ЗАЧЕМ: Предыдущая логика неверно блокировала пресеты с одинаковыми именами (например, 'organ'),
         //         которые должны были работать в V1. Теперь FME гарантирует, что V1-менеджер получит
         //         только те "хинты", которые существуют в его собственной библиотеке SYNTH_PRESETS.
@@ -120,7 +120,7 @@ export class AccompanimentSynthManager {
         }
         
         if (instrumentToPlay === 'none' || !(instrumentToPlay in SYNTH_PRESETS)) {
-            // #ИСПРАВЛЕНО (ПЛАН 1461): Добавлен более информативный лог для отладки
+            // #ИСПРАВЛЕНО (ПЛАН 1463): Добавлен более информативный лог для отладки
             console.warn(`[AccompManagerV1] Hint "${instrumentToPlay}" not found in V1 SYNTH_PRESETS. Skipping.`);
             return;
         }

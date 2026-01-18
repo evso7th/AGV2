@@ -9,11 +9,12 @@ import { SamplerPlayer } from '@/lib/sampler-player';
 import { ViolinSamplerPlayer } from '@/lib/violin-sampler-player';
 import { FluteSamplerPlayer } from '@/lib/flute-sampler-player';
 import { AccompanimentSynthManager } from '@/lib/accompaniment-synth-manager';
+import { BassSynthManager } from '@/lib/bass-synth-manager';
 import { AccompanimentSynthManagerV2 } from '@/lib/accompaniment-synth-manager-v2';
 import { MelodySynthManager } from '@/lib/melody-synth-manager';
 import { SparklePlayer } from '@/lib/sparkle-player';
 import { SfxSynthManager } from '@/lib/sfx-synth-manager';
-import { getPresetParams } from "@/lib/presets";
+import { getPresetParams } from "@/lib/synth-presets";
 import { PIANO_SAMPLES, VIOLIN_SAMPLES, FLUTE_SAMPLES, ACOUSTIC_GUITAR_CHORD_SAMPLES, ACOUSTIC_GUITAR_SOLO_SAMPLES } from '@/lib/samples';
 import { GuitarChordsSampler } from '@/lib/guitar-chords-sampler';
 import { AcousticGuitarSoloSampler } from '@/lib/acoustic-guitar-solo-sampler';
@@ -97,6 +98,7 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
   const settingsRef = useRef<WorkerSettings | null>(null);
   
   const drumMachineRef = useRef<DrumMachine | null>(null);
+  const bassManagerRef = useRef<BassSynthManager | null>(null);
   const accompanimentManagerRef = useRef<AccompanimentSynthManager | null>(null);
   const accompanimentManagerV2Ref = useRef<AccompanimentSynthManagerV2 | null>(null);
   const melodyManagerRef = useRef<MelodySynthManager | null>(null);
@@ -140,9 +142,11 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
         if(newValue) {
             melodyManagerRef.current?.allNotesOff();
             accompanimentManagerRef.current?.allNotesOff();
+            bassManagerRef.current?.allNotesOff();
         } else {
             melodyManagerV2Ref.current?.allNotesOff();
             accompanimentManagerV2Ref.current?.allNotesOff();
+            bassManagerV2Ref.current?.allNotesOff();
         }
 
         updateSettingsCallback({ useMelodyV2: newValue });
@@ -166,8 +170,12 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
         } else if (melodyManagerRef.current) {
             melodyManagerRef.current.setInstrument(name as AccompanimentInstrument);
         }
-    } else if (part === 'bass' && bassManagerV2Ref.current) {
-        await bassManagerV2Ref.current.setInstrument(name as keyof typeof V2_PRESETS);
+    } else if (part === 'bass') {
+        if(useMelodyV2 && bassManagerV2Ref.current) {
+            await bassManagerV2Ref.current.setInstrument(name as keyof typeof V2_PRESETS);
+        } else if (!useMelodyV2 && bassManagerRef.current) {
+            bassManagerRef.current.setInstrument(name as BassInstrument);
+        }
     } else if (part === 'harmony' && harmonyManagerRef.current) {
         harmonyManagerRef.current.setInstrument(name as 'piano' | 'guitarChords' | 'violin' | 'flute' | 'acousticGuitarSolo' | 'none');
     }
@@ -210,8 +218,12 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
       drumMachineRef.current.schedule(drumEvents, barStartTime, tempo);
     }
     
-    if (bassManagerV2Ref.current && bassEvents.length > 0) {
-        bassManagerV2Ref.current.schedule(bassEvents, barStartTime, tempo, instrumentHints?.bass);
+    if (bassEvents.length > 0) {
+        if (useMelodyV2 && bassManagerV2Ref.current) {
+            bassManagerV2Ref.current.schedule(bassEvents, barStartTime, tempo, instrumentHints?.bass);
+        } else if (!useMelodyV2 && bassManagerRef.current) {
+            bassManagerRef.current.schedule(bassEvents, barStartTime, tempo, barCount, instrumentHints?.bass, composerControls);
+        }
     }
 
     if (accompanimentEvents.length > 0) {
@@ -334,10 +346,20 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
             drumMachineRef.current = new DrumMachine(context, gainNodesRef.current.drums!);
             initPromises.push(drumMachineRef.current.init());
         }
+        
+        if (!bassManagerRef.current) {
+            bassManagerRef.current = new BassSynthManager(context, gainNodesRef.current.bass!);
+            initPromises.push(bassManagerRef.current.init());
+        }
        
         if (!accompanimentManagerRef.current) {
             accompanimentManagerRef.current = new AccompanimentSynthManager(context, gainNodesRef.current.accompaniment!);
             initPromises.push(accompanimentManagerRef.current.init());
+        }
+
+        if (!melodyManagerRef.current) {
+            melodyManagerRef.current = new MelodySynthManager(context, gainNodesRef.current.melody!);
+            initPromises.push(melodyManagerRef.current.init());
         }
 
         if (!accompanimentManagerV2Ref.current) {
@@ -427,7 +449,9 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
 
   const stopAllSounds = useCallback(() => {
     drumMachineRef.current?.stop();
+    bassManagerRef.current?.allNotesOff();
     accompanimentManagerRef.current?.allNotesOff();
+    melodyManagerRef.current?.allNotesOff();
     accompanimentManagerV2Ref.current?.allNotesOff();
     melodyManagerV2Ref.current?.allNotesOff();
     bassManagerV2Ref.current?.allNotesOff();
@@ -496,5 +520,3 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
     </AudioEngineContext.Provider>
   );
 };
-
-    
