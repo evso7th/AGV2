@@ -808,7 +808,7 @@ const makeChorus = (ctx: AudioContext, opts: { rate?: number; depth?: number; mi
     dry.gain.value = 1 - mix;
     wet.gain.value = mix;
 
-    const delay = ctx.createDelay(0.05);
+    const delay = ctx.createDelay(0.03);
     delay.delayTime.value = 0.02;
 
     const lfo = ctx.createOscillator();
@@ -938,11 +938,13 @@ class AdaptiveADSR {
         voiceState.gain.gain.cancelScheduledValues(releaseStartTime);
 
         if (releaseStartTime < voiceState.startTime + params.a) {
+            // Ещё в атаке — быстрый микро-release
             const currentGain = voiceState.gain.gain.value;
             voiceState.gain.gain.setValueAtTime(currentGain, releaseStartTime);
             voiceState.gain.gain.linearRampToValueAtTime(0.0001, releaseStartTime + r * 0.2); // Faster release
             return releaseStartTime + r * 0.2;
         } else {
+            // Нормальный release
             voiceState.gain.gain.setTargetAtTime(0.0001, releaseStartTime, r / 3);
             return releaseStartTime + r;
         }
@@ -1012,8 +1014,7 @@ export async function buildMultiInstrument(ctx: AudioContext, {
     console.log(`%c[InstrumentFactory] Building: ${type}`, 'color: #FFA500; font-weight: bold;');
 
     const adsrController = new AdaptiveADSR(ctx);
-    const master = ctx.createGain();
-    master.gain.value = 0.8;
+    const master = ctx.createGain(); master.gain.value = 0.8;
     const instrumentGain = ctx.createGain();
     const presetName = preset.name || type;
     const baseVolume = preset.volume ?? DEFAULT_VOLUMES[presetName] ?? DEFAULT_VOLUMES[type] ?? 0.7;
@@ -1049,7 +1050,7 @@ export async function buildMultiInstrument(ctx: AudioContext, {
         const vGain = ctx.createGain(); vGain.gain.value = 0.0;
         const filt = ctx.createBiquadFilter(); filt.type = 'lowpass'; filt.frequency.value = lpf.cutoff || 1800; filt.Q.value = lpf.q || 0.7;
         const filt2 = ctx.createBiquadFilter(); filt2.type = 'lowpass'; filt2.frequency.value = lpf.cutoff || 1800; filt2.Q.value = lpf.q || 0.7;
-        const use2pole = (lpf.mode !== '24dB');
+        const use2pole = (lpf.mode!=='24dB');
 
         const chorusNode = makeChorus(ctx, chorus);
         const delayNode = makeFilteredDelay(ctx, delay);
@@ -1058,7 +1059,7 @@ export async function buildMultiInstrument(ctx: AudioContext, {
         pre.connect(vGain).connect(filt); 
         const lastFilter = use2pole ? filt : (filt.connect(filt2), filt2);
         
-        // #ИСПРАВЛЕНО (План 1308): Восстановлена правильная цепочка эффектов
+        // #ИСПРАВЛЕНО (ПЛАН 1308): Восстановлена правильная цепочка эффектов
         lastFilter.connect(chorusNode.input);
         chorusNode.output.connect(delayNode.input);
         delayNode.output.connect(expressionGain);
