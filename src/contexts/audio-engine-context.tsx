@@ -486,9 +486,19 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
   const setVolumeCallback = useCallback((part: InstrumentPart, volume: number) => {
     if (part === 'pads' || part === 'effects') return;
 
-    if (part === 'bass' && bassManagerV2Ref.current) {
-      (bassManagerV2Ref.current as any).synth.setVolume(volume);
-       return;
+    if (part === 'bass') {
+      if (useMelodyV2 && bassManagerV2Ref.current) {
+        // V2 engine handles its own volume internally
+        (bassManagerV2Ref.current as any).synth.setVolume(volume);
+      } else if (!useMelodyV2 && bassManagerRef.current) {
+        // V1 engine: control the main channel gain node.
+        const gainNode = gainNodesRef.current.bass;
+        if (gainNode && audioContextRef.current) {
+            const balancedVolume = volume * (VOICE_BALANCE[part] ?? 1);
+            gainNode.gain.setTargetAtTime(balancedVolume, audioContextRef.current.currentTime, 0.01);
+        }
+      }
+      return; // Early return for bass
     }
 
     const gainNode = gainNodesRef.current[part as Exclude<InstrumentPart, 'pads' | 'effects'>];
@@ -496,7 +506,7 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
         const balancedVolume = volume * (VOICE_BALANCE[part] ?? 1);
         gainNode.gain.setTargetAtTime(balancedVolume, audioContextRef.current.currentTime, 0.01);
     }
-  }, []);
+  }, [useMelodyV2]);
 
   const setTextureSettingsCallback = useCallback((settings: Omit<TextureSettings, 'pads' | 'sfx'>) => {
     setVolumeCallback('sparkles', settings.sparkles.enabled ? settings.sparkles.volume : 0);

@@ -43,7 +43,7 @@ export class BassSynthManager {
         this.destination = destination;
 
         this.preamp = this.audioContext.createGain();
-        this.preamp.gain.value = 1.2; // Bass needs a bit more punch
+        this.preamp.gain.value = 1.0; 
         this.preamp.connect(this.destination);
     }
 
