@@ -248,8 +248,7 @@ export const V2_PRESETS = {
     adsr: { a: 0.02, d: 0.6, s: 0.7, r: 1.5 },
     lpf: { cutoff: 1800, q: 2.5, mode: '24dB' },
     lfo: { shape: 'sine', rate: 0, amount: 0, target: 'filter' },
-    chorus: { on: true, rate: 0.1, depth: 0.002, mix: 0.2 },
-    delay: { on: true, time: 0.38, fb: 0.26, hc: 3600, mix: 0.16 },
+    effects: { distortion: 0.7, chorus: { rate: 0.1, depth: 0.002, mix: 0.2 }, delay: { time: 0.38, feedback: 0.26, mix: 0.16 } },
     reverbMix: 0.2
   },
 

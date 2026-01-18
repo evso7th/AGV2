@@ -13,8 +13,7 @@ import { Switch } from "@/components/ui/switch";
 import type { DrumSettings, InstrumentSettings, ScoreName, BassInstrument, InstrumentPart, MelodyInstrument, AccompanimentInstrument, BassTechnique, TextureSettings, TimerSettings, Mood, Genre } from '@/types/music';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { useRouter } from "next/navigation";
-import { BASS_PRESET_INFO } from "@/lib/bass-presets";
-import { PRESETS } from "@/lib/presets";
+import { SYNTH_PRESETS } from "@/lib/synth-presets";
 import { cn } from "@/lib/utils";
 
 
@@ -111,15 +110,15 @@ export function AuraGroove({
     if (instrumentName === 'none') return 'hsl(var(--muted-foreground))';
     if (instrumentName === 'piano' || instrumentName === 'violin' || instrumentName === 'flute') return 'hsl(var(--primary))';
     if (part === 'bass') {
-        const preset = BASS_PRESET_INFO[instrumentName as BassInstrument];
-        return preset?.color || 'hsl(var(--foreground))';
+        const preset = SYNTH_PRESETS[instrumentName as BassInstrument];
+        return preset ? '#4169E1' : 'hsl(var(--foreground))';
     }
-    const preset = PRESETS[instrumentName as MelodyInstrument];
-    return preset?.color || 'hsl(var(--foreground))';
+    const preset = SYNTH_PRESETS[instrumentName as MelodyInstrument];
+    return preset ? '#DA70D6' : 'hsl(var(--foreground))';
   };
 
   const PartIcon = ({ part }: { part: keyof InstrumentSettings }) => {
-    const color = getPartColor(part);
+    const color = getPartColor(part as keyof InstrumentSettings);
     const instrumentName = instrumentSettings[part].name;
     const iconProps = { className: "h-5 w-5", style: { color } };
     
@@ -462,3 +461,4 @@ export function AuraGroove({
     </Card>
   );
 }
+
