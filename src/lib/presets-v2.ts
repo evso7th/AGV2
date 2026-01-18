@@ -296,10 +296,10 @@ export const V2_PRESETS = {
   organ_soft_jazz: {
     type: 'synth',
     volume: 0.55,
-    osc: [
-      { type: 'sine', detune: 0, octave: 0, gain: 1.0 },
-      { type: 'sine', detune: 702, octave: 0, gain: 0.4 },
-      { type: 'sine', detune: 2, octave: 1, gain: 0.3 }
+     osc: [
+      { type: 'sine', detune: 0, octave: 0, gain: 1.0 }, // 8'
+      { type: 'sine', detune: 702, octave: 0, gain: 0.5 }, // 5 1/3' -> ~+702 cents
+      { type: 'sine', detune: 2, octave: 1, gain: 0.35 } // 4'
     ],
     noise: { on: false, gain: 0 },
     adsr: { a: 0.025, d: 0.3, s: 0.9, r: 0.35 },
