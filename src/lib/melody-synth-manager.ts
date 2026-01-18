@@ -104,9 +104,14 @@ export class MelodySynthManager {
     public schedule(events: FractalEvent[], barStartTime: number, tempo: number, barCount: number, instrumentHint?: AccompanimentInstrument, composerControlsInstruments: boolean = true) {
         if (!this.isInitialized) return;
         const instrumentToPlay = (composerControlsInstruments && instrumentHint) ? instrumentHint : this.activeInstrumentName;
-        if (instrumentToPlay === 'none' || !(instrumentToPlay in SYNTH_PRESETS)) return;
+        if (!instrumentToPlay || instrumentToPlay === 'none' || !(instrumentToPlay in SYNTH_PRESETS)) {
+            if (instrumentToPlay && instrumentToPlay !== 'none') {
+                console.warn(`[MelodySynthManagerV1] Hint "${instrumentToPlay}" not found in V1 SYNTH_PRESETS. Skipping.`);
+            }
+            return;
+        }
 
-        console.log(`%c[MelodyManagerV1 @ Bar ${barCount}] Instrument: ${instrumentToPlay} | Scheduling ${events.length} notes...`, 'color: #FFC0CB;');
+        console.log(`%c[MelodyManagerV1 @ Bar ${barCount}] Instrument: ${instrumentToPlay} | Scheduling ${events.length} notes...`, 'color: #DA70D6;');
 
         const beatDuration = 60 / tempo;
         const notes: Note[] = events.map(event => ({ midi: event.note, time: event.time * beatDuration, duration: event.duration * beatDuration, velocity: event.weight }));
@@ -131,7 +136,7 @@ export class MelodySynthManager {
 
         voice.isActive = true;
         
-        voice.filter.type = preset.filter.type === 'lpf' ? 'lowpass' : preset.filter.type === 'hpf' ? 'highpass' : preset.filter.type === 'bpf' ? 'bandpass' : 'notch';
+        voice.filter.type = preset.filter.type;
         voice.filter.Q.value = preset.filter.q;
         voice.filter.frequency.setValueAtTime(preset.filter.cutoff, noteOnTime);
         const chorus = preset.effects.chorus;

@@ -18,7 +18,6 @@ import { useRouter } from "next/navigation";
 import { formatTime, cn } from "@/lib/utils";
 import type { BassInstrument, MelodyInstrument, AccompanimentInstrument, Mood, Genre } from '@/types/music';
 import { V2_PRESETS } from "@/lib/presets-v2";
-import { BASS_PRESETS } from "@/lib/bass-presets";
 import { SYNTH_PRESETS } from "@/lib/synth-presets";
 
 const EQ_BANDS = [
@@ -65,8 +64,9 @@ export function AuraGrooveV2({
     setIsClient(true);
   }, []);
 
-  const v1SynthInstruments = Object.keys(SYNTH_PRESETS).filter(k => !BASS_PRESETS.hasOwnProperty(k));
-  const v1BassInstruments = Object.keys(SYNTH_PRESETS).filter(k => BASS_PRESETS.hasOwnProperty(k));
+  const v1Instruments = Object.keys(SYNTH_PRESETS);
+  const v1MelodyInstruments = v1Instruments.filter(k => !BASS_PRESETS.hasOwnProperty(k));
+  const v1BassInstruments = v1Instruments.filter(k => BASS_PRESETS.hasOwnProperty(k));
 
   const v2MelodyInstruments = Object.keys(V2_PRESETS).filter(k => V2_PRESETS[k as keyof typeof V2_PRESETS].type !== 'bass');
   const v2BassInstruments = Object.keys(BASS_PRESETS);
@@ -99,8 +99,8 @@ export function AuraGrooveV2({
     'synth_ambient_pad_lush': 'Lush Pad'
   };
   
-  const melodyInstrumentList = useMelodyV2 ? v2MelodyInstruments : v1SynthInstruments;
-  const textureInstrumentList = useMelodyV2 ? v2MelodyInstruments : v1SynthInstruments;
+  const melodyInstrumentList = useMelodyV2 ? v2MelodyInstruments : v1MelodyInstruments;
+  const textureInstrumentList = useMelodyV2 ? v2MelodyInstruments : v1MelodyInstruments;
   const bassInstrumentList = useMelodyV2 ? v2BassInstruments : v1BassInstruments;
 
 
@@ -295,7 +295,7 @@ export function AuraGrooveV2({
                                         <SelectTrigger className="h-8 text-xs"><SelectValue /></SelectTrigger>
                                         <SelectContent>
                                             {instrumentList.map(inst => {
-                                                const preset = (V2_PRESETS as any)[inst] || (BASS_PRESETS as any)[inst] || (SYNTH_PRESETS as any)[inst];
+                                                const preset = (V2_PRESETS as any)[inst] || (SYNTH_PRESETS as any)[inst];
                                                 const displayName = preset?.name || displayNames[inst] || inst.charAt(0).toUpperCase() + inst.slice(1).replace(/([A-Z])/g, ' $1');
                                                 return <SelectItem key={inst} value={inst} className="text-xs">{displayName}</SelectItem>
                                             })}
@@ -394,6 +394,7 @@ export function AuraGrooveV2({
     
 
     
+
 
 
 

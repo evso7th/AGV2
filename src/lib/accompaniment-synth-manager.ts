@@ -107,11 +107,6 @@ export class AccompanimentSynthManager {
     public schedule(events: FractalEvent[], barStartTime: number, tempo: number, barCount: number, instrumentHint?: AccompanimentInstrument, composerControlsInstruments: boolean = true) {
         if (!this.isInitialized) return;
         
-        // #ИСПРАВЛЕНО (ПЛАН 1463): Удален ошибочный "охранник".
-        // #ЗАЧЕМ: Предыдущая логика неверно блокировала пресеты с одинаковыми именами (например, 'organ'),
-        //         которые должны были работать в V1. Теперь FME гарантирует, что V1-менеджер получит
-        //         только те "хинты", которые существуют в его собственной библиотеке SYNTH_PRESETS.
-
         const instrumentToPlay = (composerControlsInstruments && instrumentHint) ? instrumentHint : this.activeInstrumentName;
         
         if (!instrumentToPlay) {
@@ -120,7 +115,6 @@ export class AccompanimentSynthManager {
         }
         
         if (instrumentToPlay === 'none' || !(instrumentToPlay in SYNTH_PRESETS)) {
-            // #ИСПРАВЛЕНО (ПЛАН 1463): Добавлен более информативный лог для отладки
             console.warn(`[AccompManagerV1] Hint "${instrumentToPlay}" not found in V1 SYNTH_PRESETS. Skipping.`);
             return;
         }
@@ -152,8 +146,7 @@ export class AccompanimentSynthManager {
         voice.isActive = true;
         
         // --- CONFIGURE VOICE (Filter, Chorus, Delay) --- 
-        // ... (этот блок без изменений)
-        voice.filter.type = preset.filter.type === 'lpf' ? 'lowpass' : preset.filter.type === 'hpf' ? 'highpass' : preset.filter.type === 'bpf' ? 'bandpass' : 'notch';
+        voice.filter.type = preset.filter.type;
         voice.filter.Q.value = preset.filter.q;
         voice.filter.frequency.setValueAtTime(preset.filter.cutoff, noteOnTime);
         const chorus = preset.effects.chorus;
@@ -167,7 +160,6 @@ export class AccompanimentSynthManager {
         voice.dryGain.gain.setValueAtTime(1.0 - wetMix, noteOnTime);
 
         // --- ADSR ENVELOPE ---
-        // ... (этот блок без изменений)
         const gainParam = voice.envGain.gain;
         const velocity = note.velocity ?? 0.7;
         const peakGain = velocity * 0.5;
@@ -191,14 +183,12 @@ export class AccompanimentSynthManager {
             let sourceNode: OscillatorNode | AudioBufferSourceNode;
 
             if (layer.type === 'noise') {
-                // ИЗМЕНЕНО: Обработка слоя шума
                 if (!this.noiseBuffer) return;
                 const noiseSource = this.audioContext.createBufferSource();
                 noiseSource.buffer = this.noiseBuffer;
                 noiseSource.loop = true;
                 sourceNode = noiseSource;
             } else {
-                // Как и раньше, создаем осциллятор для тональных слоев
                 const osc = this.audioContext.createOscillator();
                 const detuneFactor = Math.pow(2, layer.detune / 1200);
                 const octaveFactor = Math.pow(2, layer.octave);

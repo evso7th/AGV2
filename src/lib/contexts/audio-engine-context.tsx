@@ -14,7 +14,6 @@ import { AccompanimentSynthManagerV2 } from '@/lib/accompaniment-synth-manager-v
 import { MelodySynthManager } from '@/lib/melody-synth-manager';
 import { SparklePlayer } from '@/lib/sparkle-player';
 import { SfxSynthManager } from '@/lib/sfx-synth-manager';
-import { getPresetParams } from "@/lib/synth-presets";
 import { PIANO_SAMPLES, VIOLIN_SAMPLES, FLUTE_SAMPLES, ACOUSTIC_GUITAR_CHORD_SAMPLES, ACOUSTIC_GUITAR_SOLO_SAMPLES } from '@/lib/samples';
 import { GuitarChordsSampler } from '@/lib/guitar-chords-sampler';
 import { AcousticGuitarSoloSampler } from '@/lib/acoustic-guitar-solo-sampler';
@@ -488,17 +487,11 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
 
     if (part === 'bass') {
       if (useMelodyV2 && bassManagerV2Ref.current) {
-        // V2 engine handles its own volume internally
         (bassManagerV2Ref.current as any).setVolume(volume);
       } else if (!useMelodyV2 && bassManagerRef.current) {
-        // V1 engine: control the main channel gain node.
-        const gainNode = gainNodesRef.current.bass;
-        if (gainNode && audioContextRef.current) {
-            const balancedVolume = volume * (VOICE_BALANCE[part] ?? 1);
-            gainNode.gain.setTargetAtTime(balancedVolume, audioContextRef.current.currentTime, 0.01);
-        }
+        bassManagerRef.current.setPreampGain(volume);
       }
-      return; // Early return for bass
+      return; 
     }
 
     const gainNode = gainNodesRef.current[part as Exclude<InstrumentPart, 'pads' | 'effects'>];
