@@ -305,7 +305,7 @@ export function createAmbientBassAxiom(currentChord: GhostChord, mood: Mood, gen
     const scale = getScaleForMood(mood, genre);
     const rootNote = currentChord.rootNote;
 
-    const numNotes = 2 + random.nextInt(3); // Always 2, 3, or 4 notes
+    const numNotes = 2 + random.nextInt(3);
     let currentTime = 0;
     const totalDurationNormalizer = 8.0; 
 
