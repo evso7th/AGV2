@@ -29,8 +29,8 @@ export const DreamyAmbientBlueprint: MusicBlueprint = {
         instrumentation: { 
             accompaniment: { 
                 strategy: 'weighted', 
-                v2Options: [{ name: 'synth_ambient_pad_lush', weight: 1.0 }], 
-                v1Options: [{ name: 'synth_ambient_pad_lush', weight: 1.0 }] 
+                v1Options: [{ name: 'synth_ambient_pad_lush', weight: 1.0 }],
+                v2Options: [{ name: 'synth_ambient_pad_lush', weight: 1.0 }]
             } 
         },
         instrumentRules: {
@@ -45,8 +45,8 @@ export const DreamyAmbientBlueprint: MusicBlueprint = {
         id: 'INTRO_2', name: 'Awakening', duration: { percent: 7 }, // ~11 bars
         layers: { accompaniment: true, bass: true, melody: true, sparkles: true, sfx: true, harmony: true },
         instrumentation: {
-          accompaniment: { strategy: 'weighted', v2Options: [{ name: 'synth_ambient_pad_lush', weight: 1.0 }], v1Options: [{ name: 'synth_ambient_pad_lush', weight: 1.0 }] },
-          bass: { strategy: 'weighted', v2Options: [{ name: 'glideBass', weight: 1.0 }] },
+          accompaniment: { strategy: 'weighted', v1Options: [{ name: 'synth_ambient_pad_lush', weight: 1.0 }], v2Options: [{ name: 'synth_ambient_pad_lush', weight: 1.0 }] },
+          bass: { strategy: 'weighted', v1Options: [{ name: 'glideBass', weight: 1.0 }], v2Options: [{ name: 'glideBass', weight: 1.0 }] },
           melody: {
             strategy: 'weighted',
             v1Options: [
@@ -74,8 +74,8 @@ export const DreamyAmbientBlueprint: MusicBlueprint = {
         id: 'INTRO_3', name: 'Drifting', duration: { percent: 7 }, // ~11 bars
         layers: { accompaniment: true, bass: true, melody: true, drums: true, sparkles: true, sfx: true, harmony: true },
         instrumentation: {
-          accompaniment: { strategy: 'weighted', v2Options: [{ name: 'synth_ambient_pad_lush', weight: 0.8 }, { name: 'synth', weight: 0.2 }], v1Options: [{ name: 'synth_ambient_pad_lush', weight: 0.8 }, { name: 'synth', weight: 0.2 }] },
-          bass: { strategy: 'weighted', v2Options: [{ name: 'glideBass', weight: 1.0 }] },
+          accompaniment: { strategy: 'weighted', v1Options: [{ name: 'synth_ambient_pad_lush', weight: 0.8 }, { name: 'synth', weight: 0.2 }], v2Options: [{ name: 'synth_ambient_pad_lush', weight: 0.8 }, { name: 'synth', weight: 0.2 }] },
+          bass: { strategy: 'weighted', v1Options: [{ name: 'glideBass', weight: 1.0 }], v2Options: [{ name: 'glideBass', weight: 1.0 }] },
           melody: {
             strategy: 'weighted',
             v1Options: [
@@ -103,8 +103,8 @@ export const DreamyAmbientBlueprint: MusicBlueprint = {
         id: 'MAIN', name: 'Celestial expanse', duration: { percent: 50 },
         layers: { bass: true, melody: true, accompaniment: true, drums: true, sparkles: true, sfx: true, harmony: true },
         instrumentation: {
-            accompaniment: { strategy: 'weighted', v2Options: [{ name: 'synth_ambient_pad_lush', weight: 0.5 }, { name: 'synth', weight: 0.5 }], v1Options: [{ name: 'synth_ambient_pad_lush', weight: 0.5 }, { name: 'synth', weight: 0.5 }] },
-            bass: { strategy: 'weighted', v2Options: [{ name: 'glideBass', weight: 1.0 }] },
+            accompaniment: { strategy: 'weighted', v1Options: [{ name: 'synth_ambient_pad_lush', weight: 0.5 }, { name: 'synth', weight: 0.5 }], v2Options: [{ name: 'synth_ambient_pad_lush', weight: 0.5 }, { name: 'synth', weight: 0.5 }] },
+            bass: { strategy: 'weighted', v1Options: [{ name: 'glideBass', weight: 1.0 }], v2Options: [{ name: 'glideBass', weight: 1.0 }] },
             melody: { strategy: 'weighted', v1Options: [{ name: 'guitar_shineOn', weight: 0.25 }, { name: 'organ', weight: 0.4 }, { name: 'mellotron', weight: 0.35 }], v2Options: [{ name: 'guitar_shineOn', weight: 0.25 }, { name: 'organ', weight: 0.4 }, { name: 'mellotron', weight: 0.35 }] }
         },
         instrumentRules: {
@@ -122,7 +122,7 @@ export const DreamyAmbientBlueprint: MusicBlueprint = {
         id: 'OUTRO', name: 'Fading Starlight', duration: { percent: 30 },
         layers: { accompaniment: true, sparkles: true, sfx: true, harmony: true, melody: true },
         instrumentation: {
-            accompaniment: { strategy: 'weighted', v2Options: [{ name: 'synth_ambient_pad_lush', weight: 1.0 }], v1Options: [{ name: 'synth_ambient_pad_lush', weight: 1.0 }] },
+            accompaniment: { strategy: 'weighted', v1Options: [{ name: 'synth_ambient_pad_lush', weight: 1.0 }], v2Options: [{ name: 'synth_ambient_pad_lush', weight: 1.0 }] },
             melody: { strategy: 'weighted', v1Options: [{ name: 'organ', weight: 0.5 }, { name: 'mellotron', weight: 0.5 }], v2Options: [{ name: 'organ', weight: 0.5 }, { name: 'mellotron', weight: 0.5 }] }
         },
         instrumentRules: {

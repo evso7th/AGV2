@@ -41,8 +41,7 @@ export const DarkBluesBlueprint: MusicBlueprint = {
                 layers: { bass: true, drums: true, accompaniment: true, melody: true, harmony: true, sfx: true },
                  instrumentation: {
                     accompaniment: { strategy: 'weighted', v1Options: [{ name: 'synth', weight: 1.0 }], v2Options: [{ name: 'synth_cave_pad', weight: 1.0 }] },
-                    melody: { strategy: 'weighted', v1Options: [{ name: 'electricGuitar', weight: 1.0 }], v2Options: [{ name: 'guitar_muffLead', weight: 1.0 }] },
-                    bassAccompanimentDouble: { enabled: true, instrument: 'electricGuitar', octaveShift: 1 }
+                    melody: { strategy: 'weighted', v1Options: [{ name: 'electricGuitar', weight: 1.0 }], v2Options: [{ name: 'guitar_muffLead', weight: 1.0 }] }
                 },
                 instrumentRules: {
                     drums: { 

@@ -34,7 +34,7 @@ export const AnxiousAmbientBlueprint: MusicBlueprint = {
                 id: 'BUILD', name: 'Rising Panic', duration: { percent: 30 },
                 layers: { bass: true, drums: true, sfx: true, accompaniment: true },
                 instrumentation: {
-                    bass: { strategy: 'weighted', v2Options: [{ name: 'resonantGliss', weight: 1.0 }] },
+                    bass: { strategy: 'weighted', v1Options: [{ name: 'resonantGliss', weight: 1.0 }], v2Options: [{ name: 'resonantGliss', weight: 1.0 }] },
                     accompaniment: { strategy: 'weighted', v1Options: [{ name: 'theremin', weight: 1.0 }], v2Options: [{ name: 'theremin', weight: 1.0 }] }
                 },
                 instrumentRules: {
@@ -49,7 +49,7 @@ export const AnxiousAmbientBlueprint: MusicBlueprint = {
                 id: 'MAIN', name: 'System Overload', duration: { percent: 40 },
                 layers: { bass: true, drums: true, melody: true, sfx: true, accompaniment: true },
                  instrumentation: {
-                    bass: { strategy: 'weighted', v2Options: [{ name: 'resonantGliss', weight: 1.0 }] },
+                    bass: { strategy: 'weighted', v1Options: [{ name: 'resonantGliss', weight: 1.0 }], v2Options: [{ name: 'resonantGliss', weight: 1.0 }] },
                     accompaniment: { strategy: 'weighted', v1Options: [{ name: 'guitar_muffLead', weight: 1.0 }], v2Options: [{ name: 'guitar_muffLead', weight: 1.0 }] },
                     melody: { strategy: 'weighted', v1Options: [{ name: 'synth', weight: 1.0 }], v2Options: [{ name: 'synth', weight: 1.0 }] }
                 },

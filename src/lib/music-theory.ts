@@ -305,19 +305,16 @@ export function createAmbientBassAxiom(currentChord: GhostChord, mood: Mood, gen
     const scale = getScaleForMood(mood, genre);
     const rootNote = currentChord.rootNote;
 
-    // #ИСПРАВЛЕНО (ПЛАН 916): Количество нот и их выбор теперь случайны
-    const numNotes = 1 + random.nextInt(4); // 1 to 4 notes
+    const numNotes = 2 + random.nextInt(3); // Always 2, 3, or 4 notes
     let currentTime = 0;
     const totalDurationNormalizer = 8.0; 
 
     for (let i = 0; i < numNotes; i++) {
-        // #ИСПРАВЛЕНО (ПЛАН 916): Длительность нот теперь случайна
-        const duration = (random.next() * 2) + 0.5; // 0.5 to 2.5 beats
+        const duration = (random.next() * 2) + 0.5;
         
         let note = rootNote;
-        if (i > 0 && random.next() > 0.3) { // 70% шанс сменить ноту
+        if (i > 0 && random.next() > 0.3) {
             const isMinor = currentChord.chordType === 'minor' || currentChord.chordType === 'diminished';
-            // #ИСПРАВЛЕНО (ПЛАН 916): Больше разнообразия в выборе нот из аккорда
             const possibleNotes = [ rootNote, rootNote + 7, rootNote + (isMinor ? 3 : 4), rootNote + 12, rootNote - 5 ].filter(n => scale.some(scaleNote => scaleNote % 12 === n % 12));
             note = possibleNotes[random.nextInt(possibleNotes.length)] || rootNote;
         }
@@ -359,13 +356,11 @@ export function createAccompanimentAxiom(chord: GhostChord, mood: Mood, genre: G
     if (registerHint === 'low') baseOctave = 2;
     if (registerHint === 'high') baseOctave = 4;
 
-    // #ИСПРАВЛЕНО (ПЛАН 916): Добавлен случайный выбор техники исполнения
-    // #ИСПРАВЛЕНО (ПЛАН 972): Улучшена логика для более музыкального результата
-    if (random.next() < 0.6) { // 60% шанс сыграть пульсирующий аккорд
-        const duration = 0.5; // восьмые ноты
-        const times = [0, 1.5, 2.5, 3.5]; // Пульсирующий ритм
+    if (random.next() < 0.6) { 
+        const duration = 0.5;
+        const times = [0, 1.5, 2.5, 3.5];
         times.forEach(time => {
-            if (random.next() < 0.7) { // Добавляем немного случайности
+            if (random.next() < 0.7) { 
                 const note = chordNotes[random.nextInt(chordNotes.length)];
                 axiom.push({
                     type: 'accompaniment', note: note + 12 * baseOctave, duration, time,
@@ -374,7 +369,7 @@ export function createAccompanimentAxiom(chord: GhostChord, mood: Mood, genre: G
                 });
             }
         });
-    } else { // 40% шанс сыграть медленное арпеджио
+    } else { 
         const numNotes = chordNotes.length;
         const duration = 4.0 / numNotes;
         for (let i = 0; i < numNotes; i++) {
@@ -551,7 +546,6 @@ export function createMelodyMotif(chord: GhostChord, mood: Mood, random: { next:
     if (registerHint === 'high') baseOctave = 5;
     if (registerHint === 'low') baseOctave = 3;
     
-    // #ИСПРАВЛЕНО (ПЛАН 1007): Переменная 'currentChord' переименована в 'chord'.
     const rootNote = chord.rootNote + 12 * baseOctave;
 
     const rhythmicPatterns = [[4, 4, 4, 4], [3, 1, 3, 1, 4, 4], [2, 2, 2, 2, 2, 2, 2, 2], [8, 8], [1,1,1,1, 1,1,1,1, 1,1,1,1, 1,1,1,1], [4, 2, 2, 4, 4]];
@@ -570,7 +564,6 @@ export function createMelodyMotif(chord: GhostChord, mood: Mood, random: { next:
         
         motif.push({
             type: 'melody', note: note, duration: durations[i], time: currentTime,
-            // #ИСПРАВЛЕНО (ПЛАН 1006): Установлен фиксированный weight.
             weight: 0.7, 
             technique: 'swell', dynamics: 'mf', phrasing: 'legato', params: {}
         });
@@ -586,7 +579,7 @@ export function generateIntroSequence(options: {
     instrumentHints: InstrumentHints;
     harmonyTrack: GhostChord[]; 
     settings: any; 
-    random: { next: () => number, nextInt: (max: number) => number; shuffle: <T>(array: T[]) => T[] };
+    random: { next: () => number, nextInt: (max: number) => number; };
     introInstrumentOrder: InstrumentPart[];
 }): { events: FractalEvent[], instrumentHints: InstrumentHints } {
     const { currentBar, totalIntroBars, rules, instrumentHints, harmonyTrack, settings, random, introInstrumentOrder } = options;
@@ -600,10 +593,8 @@ export function generateIntroSequence(options: {
     
     const stageCount = rules.stages || 4;
     const barsPerStage = Math.max(1, Math.floor(totalIntroBars / stageCount));
-    // #ИСПРАВЛЕНО (ПЛАН 1267): Убрана ошибочная добавка "+ 2", восстановлена корректная логика "+ 1"
     const currentStage = Math.min(stageCount, Math.floor(currentBar / barsPerStage) + 1);
     
-    // Ensure at least one instrument is chosen if hints are sparse
     const tempActive = new Set(introInstrumentOrder.slice(0, currentStage));
     const activeInstrumentsForBar = new Set<InstrumentPart>();
 
@@ -612,7 +603,6 @@ export function generateIntroSequence(options: {
             activeInstrumentsForBar.add(inst);
         }
     }
-    // Fallback: If after checking hints, no instruments are active (e.g., in the very first stage), force one.
     if (activeInstrumentsForBar.size === 0 && introInstrumentOrder.length > 0) {
         activeInstrumentsForBar.add(introInstrumentOrder[0]);
     }
@@ -626,7 +616,6 @@ export function generateIntroSequence(options: {
         events.push(...melodyEvents);
     }
     if(activeInstrumentsForBar.has('bass')) {
-        // #ИСПРАВЛЕНО (ПЛАН 1283): Добавлена проверка жанра.
         if (settings.genre === 'blues') {
             events.push(...generateBluesBassRiff(currentChord, 'riff', random, settings.mood));
         } else {
@@ -740,7 +729,6 @@ export function generateBluesBassRiff(chord: GhostChord, technique: Technique, r
     const barDurationInBeats = 4.0;
     const ticksPerBeat = 3;
     
-    // Fallback to a neutral riff if the mood-specific one is not found
     const riffCollection = BLUES_BASS_RIFFS[mood] ?? BLUES_BASS_RIFFS['contemplative'];
     if (!riffCollection || riffCollection.length === 0) return [];
     
@@ -781,14 +769,12 @@ export function mutateBluesAccompaniment(phrase: FractalEvent[], chord: GhostCho
     const newPhrase: FractalEvent[] = JSON.parse(JSON.stringify(phrase));
     if (newPhrase.length === 0) return [];
     
-    // Mutation 1: Sync with Kick
     if (random.next() < 0.4 && drumEvents.some(isKick)) {
         const kickTime = drumEvents.find(isKick)!.time;
         newPhrase.forEach(e => e.time = kickTime);
         console.log(`%c[AccompMutation] Synced with kick`, 'color: #90EE90');
     }
 
-    // Mutation 2: Change Voicing
     if (random.next() < 0.3) {
         const isMinor = chord.chordType.includes('minor');
         const root = newPhrase[0].note;
@@ -806,7 +792,6 @@ export function mutateBluesMelody(phrase: FractalEvent[], chord: GhostChord, dru
     const newPhrase: FractalEvent[] = JSON.parse(JSON.stringify(phrase));
     if (newPhrase.length === 0) return [];
     
-    // Mutation 1: Add a grace note
     if (random.next() < 0.25) {
         const noteToDecorate = newPhrase[0];
         const graceNote: FractalEvent = { ...noteToDecorate, duration: 0.1, time: noteToDecorate.time - 0.1, note: noteToDecorate.note - 1, technique: 'gr' };
@@ -814,7 +799,6 @@ export function mutateBluesMelody(phrase: FractalEvent[], chord: GhostChord, dru
         console.log(`%c[MelodyMutation] Added grace note`, 'color: #DA70D6');
     }
 
-    // Mutation 2: Add a bend
     if (random.next() < 0.2) {
         const noteToBend = newPhrase[newPhrase.length - 1];
         noteToBend.technique = 'bn';
@@ -824,12 +808,6 @@ export function mutateBluesMelody(phrase: FractalEvent[], chord: GhostChord, dru
     return newPhrase;
 }
 
-/**
- * #ЗАЧЕМ: Эта функция создает короткую, осмысленную мелодическую фразу для органа в блюзовом стиле.
- * #ЧТО: Она использует минорную пентатонику с добавлением блюзовой ноты (b5) и генерирует
- *       короткий "ответ" на фразу солиста, имитируя диалог в джеме.
- * #СВЯЗИ: Вызывается из `generateBluesAccompanimentV2` для создания "ответных" фраз.
- */
 export function createBluesOrganLick(
     chord: GhostChord,
     random: { next: () => number; nextInt: (max: number) => number; },
@@ -839,7 +817,6 @@ export function createBluesOrganLick(
     const rootNote = chord.rootNote;
     const barDurationInBeats = 4;
     
-    // --- Гармония: Строим "грязный" блюзовый аккорд (септаккорд) ---
     const isMinor = chord.chordType === 'minor';
     const third = rootNote + (isMinor ? 3 : 4);
     const fifth = rootNote + 7;
@@ -851,35 +828,29 @@ export function createBluesOrganLick(
 
     const finalVoicing = random.next() < 0.3 ? voicingWithBlueNote : baseVoicing;
 
-    // --- Ритм: "Comping" паттерны ---
     const patterns = [
-        // "Charleston"
         [{ t: 0.0, d: 0.4 }, { t: 2.5, d: 1.5 }], 
-        // Syncopated push
         [{ t: 1.5, d: 0.5 }, { t: 3.5, d: 0.5 }],
-        // Classic "and-a-two"
         [{ t: 0.5, d: 0.5 }, { t: 1.0, d: 1.0 }],
-        // Provocative fast run
         isProvocative ? [{ t: 0, d: 0.25 }, { t: 0.5, d: 0.25 }, { t: 1.0, d: 0.25 }, { t: 1.5, d: 0.25 }, { t: 2.0, d: 0.25 }, { t: 2.5, d: 0.25 }] : []
     ].filter(p => p.length > 0);
     
     const selectedPattern = patterns[random.nextInt(patterns.length)];
 
-    // --- Сборка событий ---
     for (const hit of selectedPattern) {
         for(const note of finalVoicing) {
             phrase.push({
                 type: 'accompaniment',
-                note: note + 12 * 3, // В средний регистр
+                note: note + 12 * 3,
                 time: hit.t,
-                duration: hit.d * 0.9, // Чуть короче для "стаккато"
+                duration: hit.d * 0.9,
                 weight: 0.6 + random.next() * 0.15,
                 technique: 'swell',
                 dynamics: 'mf',
                 phrasing: 'staccato',
                 params: {
                     attack: 0.01,
-                    release: hit.d * 1.2 // небольшой "хвост"
+                    release: hit.d * 1.2
                 }
             });
         }
@@ -887,22 +858,3 @@ export function createBluesOrganLick(
 
     return phrase;
 }
-
-    
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-

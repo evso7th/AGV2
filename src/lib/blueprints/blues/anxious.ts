@@ -30,8 +30,8 @@ export const AnxiousBluesBlueprint: MusicBlueprint = {
                 instrumentation: {
                     accompaniment: {
                         strategy: 'weighted',
-                        v2Options: [{ name: 'synth_cave_pad', weight: 1.0 }],
-                        v1Options: [{ name: 'ambientPad', weight: 1.0 }]
+                        v1Options: [{ name: 'ambientPad', weight: 1.0 }],
+                        v2Options: [{ name: 'synth_cave_pad', weight: 1.0 }]
                     },
                 },
                 instrumentRules: {
@@ -51,8 +51,8 @@ export const AnxiousBluesBlueprint: MusicBlueprint = {
                 id: 'MAIN_A', name: 'Frantic Riff', duration: { percent: 35 },
                 layers: { bass: true, drums: true, accompaniment: true, melody: true, harmony: true, sparkles: true },
                 instrumentation: {
-                    accompaniment: { strategy: 'weighted', v2Options: [{ name: 'synth_cave_pad', weight: 1.0 }], v1Options: [{ name: 'ambientPad', weight: 1.0 }] },
-                    melody: { strategy: 'weighted', v2Options: [{ name: 'guitar_muffLead', weight: 1.0 }], v1Options: [{ name: 'electricGuitar', weight: 1.0 }] }
+                    accompaniment: { strategy: 'weighted', v1Options: [{ name: 'ambientPad', weight: 1.0 }], v2Options: [{ name: 'synth_cave_pad', weight: 1.0 }] },
+                    melody: { strategy: 'weighted', v1Options: [{ name: 'electricGuitar', weight: 1.0 }], v2Options: [{ name: 'guitar_muffLead', weight: 1.0 }] }
                 },
                 instrumentRules: {
                     drums: {
@@ -75,14 +75,14 @@ export const AnxiousBluesBlueprint: MusicBlueprint = {
                 id: 'SOLO', name: 'Guitar Solo', duration: { percent: 30 },
                 layers: { bass: true, drums: true, accompaniment: true, melody: true, harmony: true, sparkles: true },
                 instrumentation: {
-                    accompaniment: { strategy: 'weighted', v2Options: [{ name: 'synth_cave_pad', weight: 0.6 }, { name: 'organ', weight: 0.4 }], v1Options: [{ name: 'ambientPad', weight: 0.6 }, { name: 'organ', weight: 0.4 }] },
+                    accompaniment: { strategy: 'weighted', v1Options: [{ name: 'ambientPad', weight: 0.6 }, { name: 'organ', weight: 0.4 }], v2Options: [{ name: 'synth_cave_pad', weight: 0.6 }, { name: 'organ', weight: 0.4 }] },
                     melody: { 
                         strategy: 'weighted', 
+                        v1Options: [{ name: 'electricGuitar', weight: 1.0 }], 
                         v2Options: [
                             { name: 'guitar_muffLead', weight: 0.5 },
                             { name: 'guitar_shineOn', weight: 0.5 }
-                        ], 
-                        v1Options: [{ name: 'electricGuitar', weight: 1.0 }] 
+                        ]
                     }
                 },
                 instrumentRules: {
@@ -108,8 +108,8 @@ export const AnxiousBluesBlueprint: MusicBlueprint = {
                 id: 'OUTRO', name: 'Relaxed Fade Out', duration: { percent: 20 },
                 layers: { bass: true, drums: true, accompaniment: true, melody: true },
                 instrumentation: {
-                    accompaniment: { strategy: 'weighted', v2Options: [{ name: 'synth_ambient_pad_lush', weight: 1.0 }], v1Options: [{ name: 'ambientPad', weight: 1.0 }] },
-                    melody: { strategy: 'weighted', v2Options: [{ name: 'telecaster', weight: 0.5 }, { name: 'blackAcoustic', weight: 0.5 }], v1Options: [{ name: 'acousticGuitar', weight: 0.5 }, {name: 'electricGuitar', weight: 0.5}] }
+                    accompaniment: { strategy: 'weighted', v1Options: [{ name: 'ambientPad', weight: 1.0 }], v2Options: [{ name: 'synth_ambient_pad_lush', weight: 1.0 }] },
+                    melody: { strategy: 'weighted', v1Options: [{ name: 'acousticGuitar', weight: 0.5 }, {name: 'electricGuitar', weight: 0.5}], v2Options: [{ name: 'telecaster', weight: 0.5 }, { name: 'blackAcoustic', weight: 0.5 }] }
                 },
                 instrumentRules: {
                     drums: { pattern: 'composer', density: { min: 0.2, max: 0.4 }, useSnare: true },

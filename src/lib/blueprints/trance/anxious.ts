@@ -33,7 +33,7 @@ export const AnxiousTranceBlueprint: MusicBlueprint = {
                 layers: { bass: true, sfx: true, drums: true, accompaniment: true },
                 instrumentation: {
                     accompaniment: { strategy: 'weighted', v1Options: [{ name: 'theremin', weight: 1.0 }], v2Options: [{ name: 'theremin', weight: 1.0 }] },
-                    bass: { strategy: 'weighted', v2Options: [{ name: 'resonantGliss', weight: 1.0 }] }
+                    bass: { strategy: 'weighted', v1Options: [{ name: 'resonantGliss', weight: 1.0 }], v2Options: [{ name: 'resonantGliss', weight: 1.0 }] }
                 },
                 instrumentRules: { 
                     drums: { pattern: 'composer', kitName: 'trance_anxious', density: { min: 0.7, max: 0.9 }, kickVolume: 1.0 },
@@ -48,7 +48,7 @@ export const AnxiousTranceBlueprint: MusicBlueprint = {
                 layers: { bass: true, melody: true, sfx: true, drums: true, accompaniment: true },
                 instrumentation: {
                     accompaniment: { strategy: 'weighted', v1Options: [{ name: 'guitar_muffLead', weight: 1.0 }], v2Options: [{ name: 'guitar_muffLead', weight: 1.0 }] },
-                    bass: { strategy: 'weighted', v2Options: [{ name: 'resonantGliss', weight: 1.0 }] },
+                    bass: { strategy: 'weighted', v1Options: [{ name: 'resonantGliss', weight: 1.0 }], v2Options: [{ name: 'resonantGliss', weight: 1.0 }] },
                     melody: { strategy: 'weighted', v1Options: [{ name: 'theremin', weight: 1.0 }], v2Options: [{ name: 'theremin', weight: 1.0 }] }
                 },
                 instrumentRules: { 

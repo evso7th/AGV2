@@ -37,7 +37,7 @@ export const MelancholicTranceBlueprint: MusicBlueprint = {
                 id: 'INTRO_2', name: 'Pulse', duration: { percent: 15 }, // INCREASED
                 layers: { accompaniment: true, sfx: true, bass: true, drums: true },
                 instrumentation: { 
-                    bass: { strategy: 'weighted', v2Options: [{ name: 'glideBass', weight: 1.0 }] },
+                    bass: { strategy: 'weighted', v1Options: [{ name: 'glideBass', weight: 1.0 }], v2Options: [{ name: 'glideBass', weight: 1.0 }] },
                     accompaniment: { strategy: 'weighted', v1Options: [{ name: 'synth_ambient_pad_lush', weight: 1.0 }], v2Options: [{ name: 'synth_ambient_pad_lush', weight: 1.0 }] }
                 },
                 instrumentRules: { 
@@ -53,7 +53,7 @@ export const MelancholicTranceBlueprint: MusicBlueprint = {
                 layers: { bass: true, accompaniment: true, drums: true, sfx: true, harmony: true },
                 instrumentation: {
                     accompaniment: { strategy: 'weighted', v1Options: [{ name: 'synth', weight: 1.0 }], v2Options: [{ name: 'synth', weight: 1.0 }] },
-                    bass: { strategy: 'weighted', v2Options: [{ name: 'glideBass', weight: 1.0 }] }
+                    bass: { strategy: 'weighted', v1Options: [{ name: 'glideBass', weight: 1.0 }], v2Options: [{ name: 'glideBass', weight: 1.0 }] }
                 },
                 instrumentRules: { 
                     drums: { pattern: 'composer', kitName: 'trance_melancholic', density: { min: 0.5, max: 0.7 }, kickVolume: 0.9 },
@@ -67,7 +67,7 @@ export const MelancholicTranceBlueprint: MusicBlueprint = {
                 layers: { bass: true, melody: true, accompaniment: true, drums: true, sfx: true },
                 instrumentation: {
                     accompaniment: { strategy: 'weighted', v1Options: [{ name: 'organ', weight: 1.0 }], v2Options: [{ name: 'organ', weight: 1.0 }] },
-                    bass: { strategy: 'weighted', v2Options: [{ name: 'glideBass', weight: 1.0 }] },
+                    bass: { strategy: 'weighted', v1Options: [{ name: 'glideBass', weight: 1.0 }], v2Options: [{ name: 'glideBass', weight: 1.0 }] },
                     melody: { strategy: 'weighted', v1Options: [{ name: 'synth', weight: 1.0 }], v2Options: [{ name: 'synth', weight: 1.0 }] }
                 },
                 instrumentRules: { 

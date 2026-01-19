@@ -35,7 +35,6 @@ export const EpicBluesBlueprint: MusicBlueprint = {
                     }
                 },
                 instrumentRules: {
-                    // #ИСПРАВЛЕНО (ПЛАН 768): Указываем конкретный "чистый" кит для интро
                     drums: { pattern: 'composer', kitName: 'blues_epic', density: { min: 0.3, max: 0.5 }, useSnare: true, useGhostHat: true, kickVolume: 0.0, usePerc: false, ride: { enabled: false } },
                     bass: { 
                         techniques: [{ value: 'walking', weight: 1.0 }],
@@ -63,7 +62,6 @@ export const EpicBluesBlueprint: MusicBlueprint = {
                     }
                 },
                 instrumentRules: {
-                    // #ИСПРАВЛЕНО (ПЛАН 767): Явно запрещаем райд в этой секции
                     drums: { pattern: 'composer', kitName: 'blues_epic', density: { min: 0.6, max: 0.8 }, useSnare: true, useGhostHat: true, kickVolume: 1.1, usePerc: true, ride: { enabled: false } },
                     bass: { 
                         techniques: [{ value: 'walking', weight: 1.0 }],

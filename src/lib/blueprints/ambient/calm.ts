@@ -48,6 +48,7 @@ export const CalmAmbientBlueprint: MusicBlueprint = {
           },
           bass: {
             strategy: 'weighted',
+            v1Options: [{ name: 'classicBass', weight: 1.0 }],
             v2Options: [{ name: 'classicBass', weight: 1.0 }]
           }
         },

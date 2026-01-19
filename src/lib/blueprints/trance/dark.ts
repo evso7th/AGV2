@@ -21,7 +21,7 @@ export const DarkTranceBlueprint: MusicBlueprint = {
                 layers: { accompaniment: true, sfx: true, drums: true, bass: true },
                 instrumentation: { 
                     accompaniment: { strategy: 'weighted', v1Options: [{ name: 'synth_cave_pad', weight: 1.0 }], v2Options: [{ name: 'synth_cave_pad', weight: 1.0 }] },
-                    bass: { strategy: 'weighted', v2Options: [{ name: 'ambientDrone', weight: 1.0 }] }
+                    bass: { strategy: 'weighted', v1Options: [{ name: 'ambientDrone', weight: 1.0 }], v2Options: [{ name: 'ambientDrone', weight: 1.0 }] }
                 },
                 instrumentRules: { 
                     accompaniment: { density: {min: 0.1, max: 0.3} },
@@ -37,7 +37,7 @@ export const DarkTranceBlueprint: MusicBlueprint = {
                 layers: { bass: true, accompaniment: true, drums: true, sfx: true },
                 instrumentation: {
                     accompaniment: { strategy: 'weighted', v1Options: [{ name: 'synth', weight: 1.0 }], v2Options: [{ name: 'synth', weight: 1.0 }] },
-                    bass: { strategy: 'weighted', v2Options: [{ name: 'resonantGliss', weight: 1.0 }] }
+                    bass: { strategy: 'weighted', v1Options: [{ name: 'resonantGliss', weight: 1.0 }], v2Options: [{ name: 'resonantGliss', weight: 1.0 }] }
                 },
                 instrumentRules: { 
                     drums: { pattern: 'composer', density: { min: 0.6, max: 0.8 }, useSnare: true, rareKick: true, usePerc: true, alternatePerc: true, kickVolume: 1.1 }, // SOFTER
@@ -52,7 +52,7 @@ export const DarkTranceBlueprint: MusicBlueprint = {
                 layers: { bass: true, melody: true, accompaniment: true, drums: true, sfx: true },
                 instrumentation: {
                     accompaniment: { strategy: 'weighted', v1Options: [{ name: 'organ', weight: 1.0 }], v2Options: [{ name: 'organ', weight: 1.0 }] },
-                    bass: { strategy: 'weighted', v2Options: [{ name: 'resonantGliss', weight: 1.0 }] },
+                    bass: { strategy: 'weighted', v1Options: [{ name: 'resonantGliss', weight: 1.0 }], v2Options: [{ name: 'resonantGliss', weight: 1.0 }] },
                     melody: { strategy: 'weighted', v1Options: [{ name: 'guitar_muffLead', weight: 1.0 }], v2Options: [{ name: 'guitar_muffLead', weight: 1.0 }] }
                 },
                 instrumentRules: { 
