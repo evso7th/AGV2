@@ -2,7 +2,9 @@
 import type { FractalEvent, AccompanimentInstrument } from '@/types/fractal';
 import type { Note } from "@/types/music";
 import { SYNTH_PRESETS, type SynthPreset } from './synth-presets';
-
+import { V1_TO_V2_PRESET_MAP } from './presets-v2';
+import type { TelecasterGuitarSampler } from './telecaster-guitar-sampler';
+import type { BlackGuitarSampler } from './black-guitar-sampler';
 
 function midiToFreq(midi: number): number {
     return Math.pow(2, (midi - 69) / 12) * 440;
@@ -25,21 +27,36 @@ type SynthVoice = {
 
 /**
  * Manages multiple synth voices for the melody part using native AudioNodes.
+ * Now includes a "smart router" to delegate to samplers.
  */
 export class MelodySynthManager {
     private audioContext: AudioContext;
     private destination: AudioNode;
     private activeInstrumentName: AccompanimentInstrument | 'none' = 'organ';
     public isInitialized = false;
+    private partName: 'melody';
 
     private voicePool: SynthVoice[] = [];
     private nextVoice = 0;
     private preamp: GainNode;
     private noiseBuffer: AudioBuffer | null = null;
+    
+    // Sampler dependencies
+    private telecasterSampler: TelecasterGuitarSampler;
+    private blackAcousticSampler: BlackGuitarSampler;
 
-    constructor(audioContext: AudioContext, destination: AudioNode) {
+    constructor(
+        audioContext: AudioContext, 
+        destination: AudioNode,
+        telecasterSampler: TelecasterGuitarSampler,
+        blackAcousticSampler: BlackGuitarSampler,
+        partName: 'melody'
+    ) {
         this.audioContext = audioContext;
         this.destination = destination;
+        this.telecasterSampler = telecasterSampler;
+        this.blackAcousticSampler = blackAcousticSampler;
+        this.partName = partName;
 
         this.preamp = this.audioContext.createGain();
         this.preamp.gain.value = 1.0;
@@ -49,11 +66,11 @@ export class MelodySynthManager {
     async init() {
         if (this.isInitialized) return;
         
-        console.log('[MelodyManager] Initializing native synth voices...');
+        console.log('[MelodyManagerV1] Initializing native synth voices...');
         this.createNoiseBuffer();
-        this.initVoicePool(3); // Мелодии обычно нужно меньше голосов, чем аккомпанементу
+        this.initVoicePool(3); 
         this.isInitialized = true;
-        console.log('[MelodyManager] Native voices initialized.');
+        console.log('[MelodyManagerV1] Native voices initialized.');
     }
 
     private createNoiseBuffer() {
@@ -102,20 +119,41 @@ export class MelodySynthManager {
 
     public schedule(events: FractalEvent[], barStartTime: number, tempo: number, barCount: number, instrumentHint?: AccompanimentInstrument, composerControlsInstruments: boolean = true) {
         if (!this.isInitialized) return;
-        const instrumentToPlay = (composerControlsInstruments && instrumentHint) ? instrumentHint : this.activeInstrumentName;
-        if (!instrumentToPlay || instrumentToPlay === 'none' || !(instrumentToPlay in SYNTH_PRESETS)) {
-            if (instrumentToPlay && instrumentToPlay !== 'none') {
-                console.warn(`[MelodySynthManagerV1] Hint "${instrumentToPlay}" not found in V1 SYNTH_PRESETS. Skipping.`);
-            }
+        
+        const hint = (composerControlsInstruments && instrumentHint) ? instrumentHint : this.activeInstrumentName;
+        
+        const melodyEvents = events.filter(e => e.type === this.partName);
+        if (melodyEvents.length === 0) return;
+
+        // --- SMART ROUTER ---
+        if (hint === 'telecaster') {
+            console.log(`%c[MelodyManagerV1] Routing to TelecasterSampler for bar ${barCount}`, 'color: #DA70D6');
+            const notesToPlay = melodyEvents.map(e => ({ midi: e.note, time: e.time * (60/tempo), duration: e.duration * (60/tempo), velocity: e.weight, technique: e.technique, params: e.params }));
+            this.telecasterSampler.schedule(notesToPlay, barStartTime, tempo);
+            return; // Stop further execution
+        }
+        if (hint === 'blackAcoustic') {
+            console.log(`%c[MelodyManagerV1] Routing to BlackGuitarSampler for bar ${barCount}`, 'color: #DA70D6');
+            const notesToPlay = melodyEvents.map(e => ({ midi: e.note, time: e.time * (60/tempo), duration: e.duration * (60/tempo), velocity: e.weight, technique: e.technique, params: e.params }));
+            this.blackAcousticSampler.schedule(notesToPlay, barStartTime, tempo);
+            return; // Stop further execution
+        }
+        
+        // --- V1 SYNTH LOGIC (Fallback) ---
+        const finalInstrument = V1_TO_V2_PRESET_MAP[hint as keyof typeof V1_TO_V2_PRESET_MAP] || hint;
+        
+        if (!finalInstrument || finalInstrument === 'none' || !(finalInstrument in SYNTH_PRESETS)) {
+            console.warn(`[MelodyManagerV1] Hint "${finalInstrument}" not found in V1 SYNTH_PRESETS. Skipping.`);
             return;
         }
 
-        console.log(`%c[MelodyManagerV1 @ Bar ${barCount}] Instrument: ${instrumentToPlay} | Scheduling ${events.length} notes...`, 'color: #DA70D6;');
+        console.log(`%c[MelodyManagerV1 @ Bar ${barCount}] Using internal synth. Instrument: ${finalInstrument} | Scheduling ${melodyEvents.length} notes...`, 'color: #DA70D6;');
 
         const beatDuration = 60 / tempo;
-        const notes: Note[] = events.map(event => ({ midi: event.note, time: event.time * beatDuration, duration: event.duration * beatDuration, velocity: event.weight }));
-        this.scheduleSynth(instrumentToPlay as keyof typeof SYNTH_PRESETS, notes, barStartTime);
+        const notes: Note[] = melodyEvents.map(event => ({ midi: event.note, time: event.time * beatDuration, duration: event.duration * beatDuration, velocity: event.weight }));
+        this.scheduleSynth(finalInstrument as keyof typeof SYNTH_PRESETS, notes, barStartTime);
     }
+
 
     private scheduleSynth(instrumentName: keyof typeof SYNTH_PRESETS, notes: Note[], barStartTime: number) {
         const preset = SYNTH_PRESETS[instrumentName];
@@ -133,12 +171,11 @@ export class MelodySynthManager {
         const noteTime = note.time;
         const noteDuration = note.duration;
 
-        // --- Defensive Check for Finite Values ---
         if (!isFinite(noteTime) || !isFinite(noteDuration) || !isFinite(velocity) || !isFinite(barStartTime)) {
-            console.error('[MelodyManager] Triggering aborted due to non-finite value:', { noteTime, noteDuration, velocity, barStartTime });
+            console.error('[MelodyManagerV1] Triggering aborted due to non-finite value:', { noteTime, noteDuration, velocity, barStartTime });
             return;
         }
-
+        
         const now = this.audioContext.currentTime;
         const noteOnTime = barStartTime + noteTime;
         if (noteOnTime < now) return;
@@ -167,9 +204,8 @@ export class MelodySynthManager {
         const noteOffTime = noteOnTime + noteDuration;
         const releaseEndTime = noteOffTime + preset.adsr.release;
 
-        // Check calculated times
         if (!isFinite(attackEndTime) || !isFinite(decayEndTime) || !isFinite(noteOffTime) || !isFinite(releaseEndTime) || !preset.adsr.attack || !preset.adsr.decay || !preset.adsr.sustain || !preset.adsr.release) {
-            console.error('[MelodyManager] Aborting due to non-finite envelope time calculation.');
+            console.error('[MelodyManagerV1] Aborting due to non-finite envelope time calculation.');
             voice.isActive = false;
             return;
         }
