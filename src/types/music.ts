@@ -43,7 +43,10 @@ export type EffectsScore = SamplerNote[];
 
 
 // --- UI Types ---
-export type BassInstrument = keyof typeof BASS_PRESETS | 'classicBass' | 'glideBass' | 'ambientDrone' | 'resonantGliss' | 'hypnoticDrone' | 'livingRiff' | 'none';
+export type V1BassInstrument = 'classicBass' | 'glideBass' | 'ambientDrone' | 'resonantGliss' | 'hypnoticDrone' | 'livingRiff';
+export type V2BassInstrument = keyof typeof BASS_PRESETS;
+export type BassInstrument = V1BassInstrument | V2BassInstrument | 'none';
+
 export type V1MelodyInstrument = 'synth' | 'organ' | 'mellotron' | 'theremin' | 'electricGuitar' | 'ambientPad' | 'acousticGuitar' | 'E-Bells_melody' | 'G-Drops' | 'piano' | 'violin' | 'flute' | 'none';
 export type V2MelodyInstrument = keyof typeof V2_PRESETS;
 export type MelodyInstrument = V1MelodyInstrument | V2MelodyInstrument | 'telecaster' | 'blackAcoustic';

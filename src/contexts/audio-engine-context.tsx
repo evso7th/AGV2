@@ -1,4 +1,5 @@
 
+
 'use client';
 
 import React, { createContext, useContext, useState, useRef, useCallback, useEffect } from 'react';
@@ -492,17 +493,17 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
         bassManagerRef.current.setPreampGain(volume);
       }
     } else if (part === 'melody') {
-      if (useMelodyV2 && melodyManagerV2Ref.current) {
-        melodyManagerV2Ref.current.setVolume(volume);
-      } else if (!useMelodyV2 && melodyManagerRef.current) {
-        melodyManagerRef.current.setPreampGain(volume);
-      }
+        if(useMelodyV2 && melodyManagerV2Ref.current) {
+            melodyManagerV2Ref.current.setVolume(volume);
+        } else if (!useMelodyV2 && melodyManagerRef.current) {
+            melodyManagerRef.current.setPreampGain(volume);
+        }
     } else if (part === 'accompaniment') {
-      if (useMelodyV2 && accompanimentManagerV2Ref.current) {
-        accompanimentManagerV2Ref.current.setVolume(volume);
-      } else if (!useMelodyV2 && accompanimentManagerRef.current) {
-        accompanimentManagerRef.current.setPreampGain(volume);
-      }
+        if (useMelodyV2 && accompanimentManagerV2Ref.current) {
+            accompanimentManagerV2Ref.current.setVolume(volume);
+        } else if (!useMelodyV2 && accompanimentManagerRef.current) {
+            accompanimentManagerRef.current.setPreampGain(volume);
+        }
     } else {
       // For drums, sfx, sparkles, and harmony samplers
       const gainNode = gainNodesRef.current[part as keyof typeof gainNodesRef.current];

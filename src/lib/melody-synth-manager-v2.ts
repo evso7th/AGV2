@@ -62,7 +62,7 @@ export class MelodySynthManagerV2 {
             : V2_PRESETS[presetName as keyof typeof V2_PRESETS];
 
         if (!preset) {
-            console.error(`[MelodySynthManagerV2] Preset not found: ${presetName}`);
+            console.error(`[MelodySynthManagerV2] for ${this.partName}: Preset not found: ${presetName}`);
             return;
         }
         
