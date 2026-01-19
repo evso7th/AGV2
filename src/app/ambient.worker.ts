@@ -135,39 +135,45 @@ const Scheduler = {
         if (!this.isRunning || !fractalMusicEngine) return;
 
         // --- ЛОГИКА ПОЛНОЙ ИЗОЛЯЦИИ ПРОЛОГА (ПЛАН 1002) ---
-        let finalPayload: { events: FractalEvent[], instrumentHints: InstrumentHints };
+        // FIX FOR PLAN 1483: Initialize with a safe default to prevent crashes if generation fails.
+        let finalPayload: { events: FractalEvent[], instrumentHints: InstrumentHints } = { events: [], instrumentHints: {} };
 
-        if (this.settings.genre !== 'ambient' && this.barCount < this.settings.introBars) {
-            // --- ВЕТКА ИНТРО ---
-            const navInfo = fractalMusicEngine.navigator?.tick(this.barCount);
-            let introHints: InstrumentHints = {};
-            if (navInfo?.currentPart.instrumentation) {
-                introHints.melody = (fractalMusicEngine as any)._chooseInstrumentForPart('melody', navInfo);
-                introHints.accompaniment = (fractalMusicEngine as any)._chooseInstrumentForPart('accompaniment', navInfo);
-                introHints.harmony = (fractalMusicEngine as any)._chooseInstrumentForPart('harmony', navInfo);
-            }
-            
-            if (navInfo?.currentPart?.introRules) {
-                finalPayload = generateIntroSequence({
-                    currentBar: this.barCount,
-                    totalIntroBars: this.settings.introBars,
-                    rules: navInfo.currentPart.introRules,
-                    instrumentHints: introHints,
-                    harmonyTrack: fractalMusicEngine.getGhostHarmony(),
-                    settings: this.settings,
-                    random: (fractalMusicEngine as any).random,
-                    introInstrumentOrder: fractalMusicEngine.introInstrumentOrder
-                });
+        try {
+            if (this.settings.genre !== 'ambient' && this.barCount < this.settings.introBars) {
+                // --- ВЕТКА ИНТРО ---
+                const navInfo = fractalMusicEngine.navigator?.tick(this.barCount);
+                let introHints: InstrumentHints = {};
+                if (navInfo?.currentPart.instrumentation) {
+                    introHints.melody = (fractalMusicEngine as any)._chooseInstrumentForPart('melody', navInfo);
+                    introHints.accompaniment = (fractalMusicEngine as any)._chooseInstrumentForPart('accompaniment', navInfo);
+                    introHints.harmony = (fractalMusicEngine as any)._chooseInstrumentForPart('harmony', navInfo);
+                }
+                
+                if (navInfo?.currentPart?.introRules) {
+                    finalPayload = generateIntroSequence({
+                        currentBar: this.barCount,
+                        totalIntroBars: this.settings.introBars,
+                        rules: navInfo.currentPart.introRules,
+                        instrumentHints: introHints,
+                        harmonyTrack: fractalMusicEngine.getGhostHarmony(),
+                        settings: this.settings,
+                        random: (fractalMusicEngine as any).random,
+                        introInstrumentOrder: fractalMusicEngine.introInstrumentOrder
+                    });
+                } else {
+                    finalPayload = { events: [], instrumentHints: {} };
+                }
+                
+                // #ВАЖНО: Основной движок продолжает "думать" в фоне, чтобы быть готовым к плавному переходу
+                fractalMusicEngine.evolve(this.barDuration, this.barCount);
+                
             } else {
-                finalPayload = { events: [], instrumentHints: {} };
+                // --- ВЕТКА ОСНОВНОЙ ЧАСТИ ---
+                finalPayload = fractalMusicEngine.evolve(this.barDuration, this.barCount);
             }
-            
-            // #ВАЖНО: Основной движок продолжает "думать" в фоне, чтобы быть готовым к плавному переходу
-            fractalMusicEngine.evolve(this.barDuration, this.barCount);
-            
-        } else {
-            // --- ВЕТКА ОСНОВНОЙ ЧАСТИ ---
-            finalPayload = fractalMusicEngine.evolve(this.barDuration, this.barCount);
+        } catch (e) {
+            console.error('[Worker.tick] CRITICAL ERROR during event generation:', e);
+            // finalPayload remains the safe empty default.
         }
 
         const counts = { drums: 0, bass: 0, melody: 0, accompaniment: 0, harmony: 0, sfx: 0, sparkles: 0 };

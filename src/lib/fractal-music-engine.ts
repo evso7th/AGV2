@@ -709,6 +709,12 @@ export class FractalMusicEngine {
 
       const navigationInfo = this.navigator.tick(this.epoch);
 
+      // FIX FOR PLAN 1483: Add null check for navigationInfo
+      if (!navigationInfo) {
+          console.warn(`[FME] Navigator returned null for bar ${this.epoch}. Returning empty events.`);
+          return { events: [], instrumentHints: {} };
+      }
+
       // #ИСПРАВЛЕНО (ПЛАН 1281): Централизация выбора инструмента.
       // Теперь "хинты" берутся напрямую из блюпринта через навигатор.
       // Это ЕДИНСТВЕННЫЙ источник правды для выбора инструмента.
@@ -721,7 +727,7 @@ export class FractalMusicEngine {
 
       console.log(`InstrumentLog: [1. Composer] Generated hints for bar ${this.epoch}: Melody=${instrumentHints.melody}, Bass=${instrumentHints.bass}`);
 
-      const { events } = this.generateOneBar(barDuration, navigationInfo!, instrumentHints);
+      const { events } = this.generateOneBar(barDuration, navigationInfo, instrumentHints);
       
       return { events, instrumentHints };
     }
@@ -968,4 +974,3 @@ function createMelodyMotif(chord: GhostChord, mood: Mood, random: { next: () => 
     }
     return motif;
 }
-
