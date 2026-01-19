@@ -24,13 +24,30 @@ export const WinterBluesBlueprint: MusicBlueprint = {
                 },
                 layers: { bass: true, drums: true, accompaniment: true, harmony: true, melody: true },
                 instrumentation: {
-                    accompaniment: { 
-                        strategy: 'weighted', 
+                    bass: {
+                        strategy: 'weighted',
+                        v1Options: [
+                            { name: 'bass_jazz_warm', weight: 0.2 },
+                            { name: 'bass_jazz_fretless', weight: 0.2 },
+                            { name: 'classicBass', weight: 0.2 },
+                            { name: 'bass_blues', weight: 0.2 },
+                            { name: 'bass_reggae', weight: 0.2 }
+                        ],
+                        v2Options: [
+                            { name: 'bass_jazz_warm', weight: 0.2 },
+                            { name: 'bass_jazz_fretless', weight: 0.2 },
+                            { name: 'classicBass', weight: 0.2 },
+                            { name: 'bass_blues', weight: 0.2 },
+                            { name: 'bass_reggae', weight: 0.2 }
+                        ]
+                    },
+                    accompaniment: {
+                        strategy: 'weighted',
                         v1Options: [{ name: 'ep_rhodes_warm', weight: 1.0 }],
                         v2Options: [{ name: 'ep_rhodes_warm', weight: 1.0 }]
                     },
-                    melody: { 
-                        strategy: 'weighted', 
+                    melody: {
+                        strategy: 'weighted',
                         v1Options: [{ name: 'blackAcoustic', weight: 1.0 }],
                         v2Options: [{ name: 'blackAcoustic', weight: 1.0 }]
                     },
@@ -43,7 +60,7 @@ export const WinterBluesBlueprint: MusicBlueprint = {
                     }
                 },
                 instrumentRules: {
-                    drums: { 
+                    drums: {
                         kitName: 'blues_calm_intro_outro',
                         density: { min: 0.1, max: 0.2 },
                         kitOverrides: { substitute: {} },
@@ -52,9 +69,9 @@ export const WinterBluesBlueprint: MusicBlueprint = {
                     },
                     bass: { techniques: [{ value: 'riff', weight: 1.0 }], density: { min: 0.3, max: 0.5 } },
                     accompaniment: { density: {min: 0.1, max: 0.3} },
-                    melody: { 
-                        source: 'motif', 
-                        density: { min: 0.2, max: 0.4 }, 
+                    melody: {
+                        source: 'motif',
+                        density: { min: 0.2, max: 0.4 },
                         register: { preferred: 'mid' },
                         fingerstyle: [ { bars: [0, 1, 2, 3], pattern: 'F_TRAVIS', voicingName: 'Em7_open' } ],
                     }
@@ -66,13 +83,30 @@ export const WinterBluesBlueprint: MusicBlueprint = {
                 id: 'BUILD', name: 'Build-Up', duration: { percent: 20 },
                 layers: { bass: true, drums: true, melody: true, accompaniment: true, harmony: true },
                 instrumentation: {
-                    accompaniment: { 
-                        strategy: 'weighted', 
-                        v1Options: [{ name: 'organ_soft_jazz', weight: 0.5 }, { name: 'ep_rhodes_warm', weight: 0.5 }],
-                        v2Options: [{ name: 'organ_soft_jazz', weight: 0.5 }, { name: 'ep_rhodes_warm', weight: 0.5}] 
+                    bass: {
+                        strategy: 'weighted',
+                        v1Options: [
+                            { name: 'bass_jazz_warm', weight: 0.2 },
+                            { name: 'bass_jazz_fretless', weight: 0.2 },
+                            { name: 'classicBass', weight: 0.2 },
+                            { name: 'bass_blues', weight: 0.2 },
+                            { name: 'bass_reggae', weight: 0.2 }
+                        ],
+                        v2Options: [
+                            { name: 'bass_jazz_warm', weight: 0.2 },
+                            { name: 'bass_jazz_fretless', weight: 0.2 },
+                            { name: 'classicBass', weight: 0.2 },
+                            { name: 'bass_blues', weight: 0.2 },
+                            { name: 'bass_reggae', weight: 0.2 }
+                        ]
                     },
-                    melody: { 
-                        strategy: 'weighted', 
+                    accompaniment: {
+                        strategy: 'weighted',
+                        v1Options: [{ name: 'organ_soft_jazz', weight: 0.5 }, { name: 'ep_rhodes_warm', weight: 0.5 }],
+                        v2Options: [{ name: 'organ_soft_jazz', weight: 0.5 }, { name: 'ep_rhodes_warm', weight: 0.5}]
+                    },
+                    melody: {
+                        strategy: 'weighted',
                         v1Options: [{ name: 'blackAcoustic', weight: 1.0 }],
                         v2Options: [{ name: 'blackAcoustic', weight: 1.0 }]
                     },
@@ -91,13 +125,30 @@ export const WinterBluesBlueprint: MusicBlueprint = {
                 id: 'MAIN-1', name: 'Main Theme A', duration: { percent: 15 },
                 layers: { bass: true, drums: true, melody: true, accompaniment: true, harmony: true },
                 instrumentation: {
-                    accompaniment: { 
-                        strategy: 'weighted', 
-                        v1Options: [{ name: 'organ_soft_jazz', weight: 0.5 }, { name: 'ep_rhodes_warm', weight: 0.5 }],
-                        v2Options: [{ name: 'organ_soft_jazz', weight: 0.5 }, { name: 'ep_rhodes_warm', weight: 0.5}] 
+                    bass: {
+                        strategy: 'weighted',
+                        v1Options: [
+                            { name: 'bass_jazz_warm', weight: 0.2 },
+                            { name: 'bass_jazz_fretless', weight: 0.2 },
+                            { name: 'classicBass', weight: 0.2 },
+                            { name: 'bass_blues', weight: 0.2 },
+                            { name: 'bass_reggae', weight: 0.2 }
+                        ],
+                        v2Options: [
+                            { name: 'bass_jazz_warm', weight: 0.2 },
+                            { name: 'bass_jazz_fretless', weight: 0.2 },
+                            { name: 'classicBass', weight: 0.2 },
+                            { name: 'bass_blues', weight: 0.2 },
+                            { name: 'bass_reggae', weight: 0.2 }
+                        ]
                     },
-                    melody: { 
-                        strategy: 'weighted', 
+                    accompaniment: {
+                        strategy: 'weighted',
+                        v1Options: [{ name: 'organ_soft_jazz', weight: 0.5 }, { name: 'ep_rhodes_warm', weight: 0.5 }],
+                        v2Options: [{ name: 'organ_soft_jazz', weight: 0.5 }, { name: 'ep_rhodes_warm', weight: 0.5}]
+                    },
+                    melody: {
+                        strategy: 'weighted',
                         v1Options: [{ name: 'blackAcoustic', weight: 1.0 }],
                         v2Options: [{ name: 'blackAcoustic', weight: 1.0 }]
                     },
@@ -116,29 +167,49 @@ export const WinterBluesBlueprint: MusicBlueprint = {
                 id: 'SOLO', name: 'Solo', duration: { percent: 30 },
                 layers: { bass: true, drums: true, melody: true, accompaniment: true, harmony: true },
                 instrumentation: {
-                     accompaniment: { 
-                        strategy: 'weighted', 
-                        v1Options: [{ name: 'organ_soft_jazz', weight: 0.5 }, { name: 'ep_rhodes_warm', weight: 0.5 }],
-                        v2Options: [{ name: 'organ_soft_jazz', weight: 0.5 }, { name: 'ep_rhodes_warm', weight: 0.5}] 
+                     bass: {
+                        strategy: 'weighted',
+                        v1Options: [
+                            { name: 'bass_jazz_warm', weight: 0.2 },
+                            { name: 'bass_jazz_fretless', weight: 0.2 },
+                            { name: 'classicBass', weight: 0.2 },
+                            { name: 'bass_blues', weight: 0.2 },
+                            { name: 'bass_reggae', weight: 0.2 }
+                        ],
+                        v2Options: [
+                            { name: 'bass_jazz_warm', weight: 0.2 },
+                            { name: 'bass_jazz_fretless', weight: 0.2 },
+                            { name: 'classicBass', weight: 0.2 },
+                            { name: 'bass_blues', weight: 0.2 },
+                            { name: 'bass_reggae', weight: 0.2 }
+                        ]
                     },
-                    melody: { 
-                        strategy: 'weighted', 
+                     accompaniment: {
+                        strategy: 'weighted',
+                        v1Options: [{ name: 'organ_soft_jazz', weight: 0.5 }, { name: 'ep_rhodes_warm', weight: 0.5 }],
+                        v2Options: [{ name: 'organ_soft_jazz', weight: 0.5 }, { name: 'ep_rhodes_warm', weight: 0.5}]
+                    },
+                    melody: {
+                        strategy: 'weighted',
                         v1Options: [{ name: 'guitar_muffLead', weight: 1.0 }],
-                        v2Options: [{ name: 'guitar_muffLead', weight: 0.5 }, { name: 'guitar_shineOn', weight: 0.5 }]
+                        v2Options: [
+                            { name: 'guitar_muffLead', weight: 0.5 },
+                            { name: 'guitar_shineOn', weight: 0.5 }
+                        ]
                     },
                     harmony: { strategy: 'weighted', options: [ { name: 'piano', weight: 1.0 } ] }
                 },
                 instrumentRules: {
-                    drums: { 
-                        kitName: 'blues_no_cymbals', 
-                        density: { min: 0.7, max: 0.9 }, 
+                    drums: {
+                        kitName: 'blues_no_cymbals',
+                        density: { min: 0.7, max: 0.9 },
                         kickVolume: 1.1,
                         kitOverrides: {
                             add: ['drum_ride']
                         }
                     },
-                    melody: { 
-                        source: 'motif', 
+                    melody: {
+                        source: 'motif',
                         density: { min: 0.6, max: 0.8 },
                         register: { preferred: 'high' },
                         soloPlan: 'S06'
@@ -146,20 +217,37 @@ export const WinterBluesBlueprint: MusicBlueprint = {
                     bass: { techniques: [{ value: 'riff', weight: 1.0 }] },
                     accompaniment: { density: {min: 0.1, max: 0.3} },
                 },
-                bundles: [{ id: 'BLUES_WINTER_SOLO_BUNDLE', name: 'Solo', duration: { percent: 100 }, characteristics: {}, phrases: {} }],
+                bundles: [{ id: 'BLUES_WINTER_SOLO_BUNDLE', name: 'Solo Section', duration: { percent: 100 }, characteristics: {}, phrases: {} }],
                 outroFill: { type: 'roll', duration: 1, parameters: {} },
             },
             {
                 id: 'MAIN-2', name: 'Main Theme B', duration: { percent: 10 },
                 layers: { bass: true, drums: true, melody: true, accompaniment: true, harmony: true },
                 instrumentation: {
-                    accompaniment: { 
-                        strategy: 'weighted', 
-                        v1Options: [{ name: 'organ_soft_jazz', weight: 0.5 }, { name: 'ep_rhodes_warm', weight: 0.5 }],
-                        v2Options: [{ name: 'organ_soft_jazz', weight: 0.5 }, { name: 'ep_rhodes_warm', weight: 0.5}] 
+                    bass: {
+                        strategy: 'weighted',
+                        v1Options: [
+                            { name: 'bass_jazz_warm', weight: 0.2 },
+                            { name: 'bass_jazz_fretless', weight: 0.2 },
+                            { name: 'classicBass', weight: 0.2 },
+                            { name: 'bass_blues', weight: 0.2 },
+                            { name: 'bass_reggae', weight: 0.2 }
+                        ],
+                        v2Options: [
+                            { name: 'bass_jazz_warm', weight: 0.2 },
+                            { name: 'bass_jazz_fretless', weight: 0.2 },
+                            { name: 'classicBass', weight: 0.2 },
+                            { name: 'bass_blues', weight: 0.2 },
+                            { name: 'bass_reggae', weight: 0.2 }
+                        ]
                     },
-                    melody: { 
-                        strategy: 'weighted', 
+                    accompaniment: {
+                        strategy: 'weighted',
+                        v1Options: [{ name: 'organ_soft_jazz', weight: 0.5 }, { name: 'ep_rhodes_warm', weight: 0.5 }],
+                        v2Options: [{ name: 'organ_soft_jazz', weight: 0.5 }, { name: 'ep_rhodes_warm', weight: 0.5}]
+                    },
+                    melody: {
+                        strategy: 'weighted',
                         v1Options: [{ name: 'blackAcoustic', weight: 1.0 }],
                         v2Options: [{ name: 'blackAcoustic', weight: 1.0 }]
                     },
@@ -178,13 +266,30 @@ export const WinterBluesBlueprint: MusicBlueprint = {
                 id: 'OUTRO', name: 'Return to Riff', duration: { percent: 10 },
                 layers: { bass: true, drums: true, accompaniment: true, harmony: true, melody: true },
                 instrumentation: {
-                     accompaniment: { 
-                        strategy: 'weighted', 
-                        v1Options: [{ name: 'organ_soft_jazz', weight: 0.5 }, { name: 'ep_rhodes_warm', weight: 0.5 }],
-                        v2Options: [{ name: 'organ_soft_jazz', weight: 0.5 }, { name: 'ep_rhodes_warm', weight: 0.5}] 
+                     bass: {
+                        strategy: 'weighted',
+                        v1Options: [
+                            { name: 'bass_jazz_warm', weight: 0.2 },
+                            { name: 'bass_jazz_fretless', weight: 0.2 },
+                            { name: 'classicBass', weight: 0.2 },
+                            { name: 'bass_blues', weight: 0.2 },
+                            { name: 'bass_reggae', weight: 0.2 }
+                        ],
+                        v2Options: [
+                            { name: 'bass_jazz_warm', weight: 0.2 },
+                            { name: 'bass_jazz_fretless', weight: 0.2 },
+                            { name: 'classicBass', weight: 0.2 },
+                            { name: 'bass_blues', weight: 0.2 },
+                            { name: 'bass_reggae', weight: 0.2 }
+                        ]
                     },
-                    melody: { 
-                        strategy: 'weighted', 
+                     accompaniment: {
+                        strategy: 'weighted',
+                        v1Options: [{ name: 'organ_soft_jazz', weight: 0.5 }, { name: 'ep_rhodes_warm', weight: 0.5 }],
+                        v2Options: [{ name: 'organ_soft_jazz', weight: 0.5 }, { name: 'ep_rhodes_warm', weight: 0.5}]
+                    },
+                    melody: {
+                        strategy: 'weighted',
                         v1Options: [{ name: 'mellotron_flute_intimate', weight: 1.0 }],
                         v2Options: [{ name: 'blackAcoustic', weight: 1.0 }]
                     },
@@ -197,15 +302,15 @@ export const WinterBluesBlueprint: MusicBlueprint = {
                     }
                 },
                 instrumentRules: {
-                    drums: { 
-                        kitName: 'blues_calm_intro_outro', 
+                    drums: {
+                        kitName: 'blues_calm_intro_outro',
                         density: { min: 0.1, max: 0.2 },
                         kitOverrides: { substitute: {} }
                     },
-                    bass: { techniques: [{ value: 'riff', weight: 1.0 }] }, 
-                    melody: { 
-                        source: 'motif', 
-                        density: { min: 0.2, max: 0.4 }, 
+                    bass: { techniques: [{ value: 'riff', weight: 1.0 }] },
+                    melody: {
+                        source: 'motif',
+                        density: { min: 0.2, max: 0.4 },
                         register: { preferred: 'mid' },
                         fingerstyle: [ { bars: [0, 1, 2, 3], pattern: 'F_TRAVIS', voicingName: 'Em7_open' } ],
                     }
