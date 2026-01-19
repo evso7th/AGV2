@@ -73,7 +73,7 @@ export const WinterBluesBlueprint: MusicBlueprint = {
                     },
                     melody: { 
                         strategy: 'weighted', 
-                        v1Options: [{ name: 'guitar_clean_chorus', weight: 1.0 }],
+                        v1Options: [{ name: 'blackAcoustic', weight: 1.0 }],
                         v2Options: [{ name: 'blackAcoustic', weight: 1.0 }]
                     },
                     harmony: { strategy: 'weighted', options: [ { name: 'piano', weight: 1.0 } ] }
@@ -98,7 +98,7 @@ export const WinterBluesBlueprint: MusicBlueprint = {
                     },
                     melody: { 
                         strategy: 'weighted', 
-                        v1Options: [{ name: 'guitar_clean_chorus', weight: 1.0 }],
+                        v1Options: [{ name: 'blackAcoustic', weight: 1.0 }],
                         v2Options: [{ name: 'blackAcoustic', weight: 1.0 }]
                     },
                     harmony: { strategy: 'weighted', options: [ { name: 'piano', weight: 1.0 } ] }
@@ -160,7 +160,7 @@ export const WinterBluesBlueprint: MusicBlueprint = {
                     },
                     melody: { 
                         strategy: 'weighted', 
-                        v1Options: [{ name: 'guitar_clean_chorus', weight: 1.0 }],
+                        v1Options: [{ name: 'blackAcoustic', weight: 1.0 }],
                         v2Options: [{ name: 'blackAcoustic', weight: 1.0 }]
                     },
                     harmony: { strategy: 'weighted', options: [ { name: 'piano', weight: 1.0 } ] }
