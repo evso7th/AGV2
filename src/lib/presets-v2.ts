@@ -145,8 +145,8 @@ export const V2_PRESETS = {
     comp: { threshold: -16, ratio: 3, attack: 0.003, release: 0.12, makeup: 4 },
     osc: [
       { type: 'sine', detune: 0, octave: 0, gain: 0.58 },
-      { type: 'triangle', detune: 1200, octave: 0, gain: 0.14 },
-      { type: 'sine', detune: 1200, octave: 0, gain: 0.08 }
+      { type: 'triangle', detune: 0, octave: 1, gain: 0.14 }, // +1200 cents = +1 octave
+      { type: 'sine', detune: 0, octave: 1, gain: 0.08 }
     ],
     noise: { on: false, gain: 0 },
     adsr: { a: 0.008, d: 0.28, s: 0.68, r: 0.90 },
@@ -162,8 +162,8 @@ export const V2_PRESETS = {
     comp: { threshold: -16, ratio: 3, attack: 0.003, release: 0.12, makeup: 4 },
     osc: [
       { type: 'sine', detune: 0, octave: 0, gain: 0.54 },
-      { type: 'triangle', detune: 1200, octave: 0, gain: 0.16 },
-      { type: 'sine', detune: 1200, octave: 0, gain: 0.06 }
+      { type: 'triangle', detune: 0, octave: 1, gain: 0.16 },
+      { type: 'sine', detune: 0, octave: 1, gain: 0.06 }
     ],
     noise: { on: false, gain: 0 },
     adsr: { a: 0.008, d: 0.30, s: 0.66, r: 0.95 },
@@ -172,6 +172,7 @@ export const V2_PRESETS = {
     chorus: { on: true, rate: 0.20, depth: 0.006, mix: 0.24 },
     delay: { on: true, time: 0.28, fb: 0.16, hc: 4200, mix: 0.12 },
     reverbMix: 0.22
+    // NOTE: tremolo и phaser требуют доработки фабрики
   },
 
   // ═══════════════════════════════════════════════════════════════════════════
@@ -202,7 +203,7 @@ export const V2_PRESETS = {
       { type: 'sawtooth', detune: -8, octave: 0, gain: 0.7 },
       { type: 'sawtooth', detune: +8, octave: 0, gain: 0.7 },
       { type: 'square', detune: 0, octave: 0, gain: 0.5 },
-      { type: 'noise', detune: 0, octave: 0, gain: 0.03 }
+      { type: 'sawtooth', detune: 4, octave: 1, gain: 0.3 }
     ],
     noise: { on: true, gain: 0.03 },
     adsr: { a: 0.02, d: 0.6, s: 0.7, r: 1.5 },
@@ -233,7 +234,7 @@ export const V2_PRESETS = {
     },
     phaser: { on: true, rate: 0.16, depth: 600, mix: 0.22 },
     delayA: { on: true, time: 0.38, fb: 0.28, hc: 3600, mix: 0.22 },
-    delayB: { on: false, time: 0, fb: 0, hc: 0, mix: 0 },
+    delayB: { on: false },
     adsr: { a: 0.006, d: 0.35, s: 0.6, r: 1.6 },
     reverbMix: 0.18
   },
@@ -275,7 +276,7 @@ export const V2_PRESETS = {
     },
     phaser: { on: false, rate: 0.15, depth: 500, mix: 0 },
     delayA: { on: true, time: 0.25, fb: 0.2, hc: 5000, mix: 0.15 },
-    delayB: { on: false, time: 0, fb: 0, hc: 0, mix: 0 },
+    delayB: { on: false },
     adsr: { a: 0.005, d: 0.3, s: 0.7, r: 1.2 },
     reverbMix: 0.22
   },
@@ -356,7 +357,14 @@ export const BASS_PRESET_MAP: Record<string, keyof typeof BASS_PRESETS> = {
     '808': 'bass_808',
     deepHouseBass: 'bass_deep_house',
     rockBass: 'bass_rock_pick',
-    slapBass: 'bass_slap'
+    slapBass: 'bass_slap',
+    // V1 mappings
+    classicBass: 'bass_rock_pick',
+    glideBass: 'bass_house',
+    ambientDrone: 'bass_ambient',
+    resonantGliss: 'bass_trance_acid',
+    hypnoticDrone: 'bass_ambient_dark',
+    livingRiff: 'bass_rock_pick',
 };
 
 // ═══════════════════════════════════════════════════════════════════════════

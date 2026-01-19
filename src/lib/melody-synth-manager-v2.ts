@@ -3,7 +3,7 @@
 import type { FractalEvent, AccompanimentInstrument } from '@/types/fractal';
 import type { Note } from "@/types/music";
 import { buildMultiInstrument } from './instrument-factory';
-import { V2_PRESETS, V1_TO_V2_PRESET_MAP } from './presets-v2';
+import { V2_PRESETS, V1_TO_V2_PRESET_MAP, BASS_PRESET_MAP } from './presets-v2';
 import { BASS_PRESETS } from './bass-presets';
 import type { TelecasterGuitarSampler } from './telecaster-guitar-sampler';
 import type { BlackGuitarSampler } from './black-guitar-sampler';
@@ -105,9 +105,23 @@ export class MelodySynthManagerV2 {
         
         // --- SYNTH LOGIC (если не было маршрутизации на сэмплер) ---
         console.log(`${logPrefix} [3. Router] Routing to internal V2 Synth`, logCss);
-        const finalInstrumentHint = (instrumentHint && V1_TO_V2_PRESET_MAP[instrumentHint])
-            ? V1_TO_V2_PRESET_MAP[instrumentHint]
-            : instrumentHint;
+        
+        // #ИСПРАВЛЕНО (ПЛАН 1485): Маршрутизация пресетов теперь учитывает тип партии (бас или мелодия).
+        let finalInstrumentHint = instrumentHint;
+        if (instrumentHint) {
+            if (this.partName === 'bass') {
+                const mappedName = BASS_PRESET_MAP[instrumentHint];
+                if (mappedName) {
+                    finalInstrumentHint = mappedName;
+                    console.log(`${logPrefix} [3.1 Router] Mapped V1 bass hint "${instrumentHint}" to V2 preset "${finalInstrumentHint}"`, logCss);
+                }
+            } else { // Мелодия
+                const mappedName = V1_TO_V2_PRESET_MAP[instrumentHint];
+                if (mappedName) {
+                    finalInstrumentHint = mappedName;
+                }
+            }
+        }
 
         if (finalInstrumentHint && finalInstrumentHint !== this.activePresetName) {
             await this.setInstrument(finalInstrumentHint as any);
