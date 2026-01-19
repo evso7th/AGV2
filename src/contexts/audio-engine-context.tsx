@@ -485,32 +485,29 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
   const setVolumeCallback = useCallback((part: InstrumentPart, volume: number) => {
     if (part === 'pads' || part === 'effects') return;
 
-    const balancedVolume = volume * (VOICE_BALANCE[part] ?? 1);
-
     if (part === 'bass') {
       if (useMelodyV2 && bassManagerV2Ref.current) {
-        (bassManagerV2Ref.current as any).setVolume(balancedVolume);
+        bassManagerV2Ref.current.setVolume(volume);
       } else if (!useMelodyV2 && bassManagerRef.current) {
-        bassManagerRef.current.setPreampGain(balancedVolume);
+        bassManagerRef.current.setPreampGain(volume);
       }
     } else if (part === 'melody') {
       if (useMelodyV2 && melodyManagerV2Ref.current) {
-        (melodyManagerV2Ref.current as any).setVolume(balancedVolume);
+        melodyManagerV2Ref.current.setVolume(volume);
       } else if (!useMelodyV2 && melodyManagerRef.current) {
-        melodyManagerRef.current.setPreampGain(balancedVolume);
+        melodyManagerRef.current.setPreampGain(volume);
       }
     } else if (part === 'accompaniment') {
       if (useMelodyV2 && accompanimentManagerV2Ref.current) {
-        (accompanimentManagerV2Ref.current as any).setVolume(balancedVolume);
+        accompanimentManagerV2Ref.current.setVolume(volume);
       } else if (!useMelodyV2 && accompanimentManagerRef.current) {
-        accompanimentManagerRef.current.setPreampGain(balancedVolume);
+        accompanimentManagerRef.current.setPreampGain(volume);
       }
     } else {
       // For drums, sfx, sparkles, and harmony samplers
       const gainNode = gainNodesRef.current[part as keyof typeof gainNodesRef.current];
       if (gainNode && audioContextRef.current) {
-        // Drums volume should not be balanced down, user expects 1.0 to be max.
-        const finalVolume = part === 'drums' ? volume : balancedVolume;
+        const finalVolume = volume * (VOICE_BALANCE[part] ?? 1);
         gainNode.gain.setTargetAtTime(finalVolume, audioContextRef.current.currentTime, 0.01);
       }
     }
