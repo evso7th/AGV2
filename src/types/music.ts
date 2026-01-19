@@ -1,6 +1,8 @@
 
+
 import type { Mood as FractalMood, InstrumentHints as FractalInstrumentHints } from './fractal';
 import { V2_PRESETS } from '@/lib/presets-v2';
+import { BASS_PRESETS } from '@/lib/bass-presets';
 
 export type Mood = FractalMood;
 
@@ -41,7 +43,7 @@ export type EffectsScore = SamplerNote[];
 
 
 // --- UI Types ---
-export type BassInstrument = 'classicBass' | 'glideBass' | 'ambientDrone' | 'resonantGliss' | 'hypnoticDrone' | 'livingRiff' | 'none';
+export type BassInstrument = keyof typeof BASS_PRESETS | 'classicBass' | 'glideBass' | 'ambientDrone' | 'resonantGliss' | 'hypnoticDrone' | 'livingRiff' | 'none';
 export type V1MelodyInstrument = 'synth' | 'organ' | 'mellotron' | 'theremin' | 'electricGuitar' | 'ambientPad' | 'acousticGuitar' | 'E-Bells_melody' | 'G-Drops' | 'piano' | 'violin' | 'flute' | 'none';
 export type V2MelodyInstrument = keyof typeof V2_PRESETS;
 export type MelodyInstrument = V1MelodyInstrument | V2MelodyInstrument | 'telecaster' | 'blackAcoustic';
