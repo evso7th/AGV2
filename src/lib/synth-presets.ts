@@ -1,4 +1,5 @@
 
+
 import type { MelodyInstrument, BassInstrument } from "@/types/music";
 
 /**
@@ -46,6 +47,7 @@ export type SynthPreset = {
 };
 
 export const BASS_PRESET_INFO: Record<string, { description: string; color: string; } | null> = {
+  // --- New V2 Presets ---
   bass_jazz_warm: { description: 'Warm, round, finger-style jazz bass.', color: '#A0522D' },
   bass_jazz_fretless: { description: 'Expressive "mwah" sound of a fretless bass.', color: '#4682B4' },
   bass_blues: { description: 'Classic blues bass with a slight grit.', color: '#000080' },
@@ -69,7 +71,7 @@ export const BASS_PRESET_INFO: Record<string, { description: string; color: stri
 };
 
 export const SYNTH_PRESETS: Record<string, SynthPreset> = {
-  // --- BASS PRESETS (V1 Conversions) ---
+  // --- BASS PRESETS (V1 + V2 Adapted for V1) ---
   classicBass: {
     layers: [{ type: 'sawtooth', detune: 0, octave: 0, gain: 1.0 }],
     adsr: { attack: 0.01, decay: 0.2, sustain: 0.5, release: 0.3 },
@@ -247,4 +249,3 @@ export const SYNTH_PRESETS: Record<string, SynthPreset> = {
   telecaster: { layers: [ { type: 'sawtooth', detune: -2, octave: 0, gain: 0.7 }, { type: 'square', detune: 2, octave: 0, gain: 0.5 }, ], adsr: { attack: 0.01, decay: 0.4, sustain: 0.5, release: 0.8 }, filter: { type: 'bandpass', cutoff: 2500, q: 3.0 }, lfo: { shape: 'sine', rate: 0, amount: 0, target: 'pitch' }, effects: { distortion: 0.4, chorus: { rate: 0.2, depth: 0.004, mix: 0.3 }, delay: { time: 0.3, feedback: 0.2, mix: 0.15 }, }, },
 };
 
-    

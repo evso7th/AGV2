@@ -170,9 +170,8 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
             melodyManagerRef.current.setInstrument(name as AccompanimentInstrument);
         }
     } else if (part === 'bass') {
-        if(useMelodyV2 && bassManagerV2Ref.current) {
-            await bassManagerV2Ref.current.setInstrument(name as keyof typeof V2_PRESETS);
-        } else if (!useMelodyV2 && bassManagerRef.current) {
+        // Bass always uses V1 engine now
+        if (bassManagerRef.current) {
             bassManagerRef.current.setInstrument(name as BassInstrument);
         }
     } else if (part === 'harmony' && harmonyManagerRef.current) {
@@ -217,12 +216,12 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
       drumMachineRef.current.schedule(drumEvents, barStartTime, tempo);
     }
     
-    if (bassEvents.length > 0) {
-        if (useMelodyV2 && bassManagerV2Ref.current) {
-            bassManagerV2Ref.current.schedule(bassEvents, barStartTime, tempo, instrumentHints?.bass);
-        } else if (!useMelodyV2 && bassManagerRef.current) {
-            bassManagerRef.current.schedule(bassEvents, barStartTime, tempo, barCount, instrumentHints?.bass, composerControls);
-        }
+    // #ЗАЧЕМ: Упрощена маршрутизация баса. Теперь он всегда использует V1-менеджер.
+    // #ЧТО: Удален условный блок if/else. Теперь все басовые события безусловно
+    //      отправляются в bassManagerRef.current (V1).
+    if (bassEvents.length > 0 && bassManagerRef.current) {
+        // ALWAYS use V1 bass manager for performance
+        bassManagerRef.current.schedule(bassEvents, barStartTime, tempo, barCount, instrumentHints?.bass, composerControls);
     }
 
     if (accompanimentEvents.length > 0) {
@@ -238,18 +237,13 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
     }
     
     if (melodyEvents.length > 0) {
-        const hint = instrumentHints?.melody;
-        if (hint === 'telecaster' && telecasterSamplerRef.current) {
-             console.log("[AudioEngineContext] Routing melody to TelecasterSampler");
-             telecasterSamplerRef.current.schedule(melodyEvents.map(e => ({ midi: e.note, time: e.time * (60/tempo), duration: e.duration * (60/tempo), velocity: e.weight, technique: e.technique, params: e.params })), barStartTime, tempo);
-        } else if (hint === 'blackAcoustic' && blackGuitarSamplerRef.current) {
-             console.log("[AudioEngineContext] Routing melody to BlackGuitarSampler");
-             blackGuitarSamplerRef.current.schedule(melodyEvents.map(e => ({ midi: e.note, time: e.time * (60/tempo), duration: e.duration * (60/tempo), velocity: e.weight, technique: e.technique, params: e.params })), barStartTime, tempo);
+        if (useMelodyV2) {
+            if (melodyManagerV2Ref.current) {
+                melodyManagerV2Ref.current.schedule(melodyEvents, barStartTime, tempo, instrumentHints?.melody);
+            }
         } else {
-            if (useMelodyV2 && melodyManagerV2Ref.current) {
-                melodyManagerV2Ref.current.schedule(melodyEvents, barStartTime, tempo, hint);
-            } else if (melodyManagerRef.current) {
-                melodyManagerRef.current.schedule(melodyEvents, barStartTime, tempo, barCount, hint);
+            if (melodyManagerRef.current) {
+                melodyManagerRef.current.schedule(melodyEvents, barStartTime, tempo, barCount, instrumentHints?.melody);
             }
         }
     }
@@ -498,9 +492,7 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
     if (part === 'pads' || part === 'effects') return;
 
     if (part === 'bass') {
-      if (useMelodyV2 && bassManagerV2Ref.current) {
-        (bassManagerV2Ref.current as any).setVolume(volume);
-      } else if (!useMelodyV2 && bassManagerRef.current) {
+      if (bassManagerRef.current) {
         bassManagerRef.current.setPreampGain(volume);
       }
       return; 
