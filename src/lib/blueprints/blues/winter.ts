@@ -31,7 +31,7 @@ export const WinterBluesBlueprint: MusicBlueprint = {
                     },
                     melody: { 
                         strategy: 'weighted', 
-                        v1Options: [{ name: 'mellotron_flute_intimate', weight: 1.0 }],
+                        v1Options: [{ name: 'blackAcoustic', weight: 1.0 }],
                         v2Options: [{ name: 'blackAcoustic', weight: 1.0 }]
                     },
                     harmony: {
