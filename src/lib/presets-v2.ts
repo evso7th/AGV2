@@ -25,7 +25,7 @@ export const V2_PRESETS = {
     lpf: { cutoff: 1600, q: 1.2, mode: '24dB' },
     lfo: { shape: 'sine', rate: 0.18, amount: 450, target: 'filter' },
     chorus: { on: true, rate: 0.2, depth: 0.007, mix: 0.4 },
-    delay: { on: true, time: 0.5, fb: 0.3, hc: 4000, mix: 0.2 },
+    delay: { on: true, time: 0.5, fb: 0.2, hc: 4000, mix: 0.15 },
     reverbMix: 0.25
   },
 
@@ -42,7 +42,7 @@ export const V2_PRESETS = {
     lpf: { cutoff: 1400, q: 1.0, mode: '24dB' },
     lfo: { shape: 'sine', rate: 0.15, amount: 500, target: 'filter' },
     chorus: { on: true, rate: 0.18, depth: 0.008, mix: 0.45 },
-    delay: { on: true, time: 0.55, fb: 0.35, hc: 3500, mix: 0.25 },
+    delay: { on: true, time: 0.55, fb: 0.25, hc: 3500, mix: 0.18 },
     reverbMix: 0.3
   },
 
@@ -61,7 +61,7 @@ export const V2_PRESETS = {
     lpf: { cutoff: 1400, q: 1.1, mode: '24dB' },
     lfo: { shape: 'sine', rate: 0.1, amount: 5, target: 'pitch' }, // TODO: pitch LFO не реализован
     chorus: { on: true, rate: 0.15, depth: 0.008, mix: 0.6 },
-    delay: { on: true, time: 0.52, fb: 0.45, hc: 2500, mix: 0.35 },
+    delay: { on: true, time: 0.52, fb: 0.2, hc: 2500, mix: 0.15 },
     reverbMix: 0.45
   },
 
@@ -98,7 +98,7 @@ export const V2_PRESETS = {
     lpf: { cutoff: 3200, q: 1.5, mode: '24dB' },
     lfo: { shape: 'sine', rate: 4.5, amount: 4, target: 'pitch' },
     chorus: { on: true, rate: 0.3, depth: 0.008, mix: 0.5 },
-    delay: { on: true, time: 0.3, fb: 0.2, hc: 4500, mix: 0.15 },
+    delay: { on: true, time: 0.3, fb: 0.15, hc: 4500, mix: 0.1 },
     reverbMix: 0.35
   },
 
@@ -132,7 +132,7 @@ export const V2_PRESETS = {
     lpf: { cutoff: 2800, q: 1.0, mode: '24dB' },
     lfo: { shape: 'sine', rate: 5.2, amount: 3, target: 'pitch' },
     chorus: { on: true, rate: 0.25, depth: 0.006, mix: 0.4 },
-    delay: { on: true, time: 0.4, fb: 0.25, hc: 3800, mix: 0.2 },
+    delay: { on: true, time: 0.4, fb: 0.18, hc: 3800, mix: 0.12 },
     reverbMix: 0.4
   },
 
@@ -192,7 +192,7 @@ export const V2_PRESETS = {
     lpf: { cutoff: 2800, q: 2.0, mode: '24dB' },
     lfo: { shape: 'sine', rate: 0.15, amount: 400, target: 'filter' },
     chorus: { on: true, rate: 0.12, depth: 0.006, mix: 0.4 },
-    delay: { on: true, time: 0.48, fb: 0.35, hc: 3500, mix: 0.28 },
+    delay: { on: true, time: 0.48, fb: 0.2, hc: 3500, mix: 0.15 },
     reverbMix: 0.25
   },
 
@@ -233,7 +233,7 @@ export const V2_PRESETS = {
       ] 
     },
     phaser: { on: true, rate: 0.16, depth: 600, mix: 0.22 },
-    delayA: { on: true, time: 0.38, fb: 0.28, hc: 3600, mix: 0.22 },
+    delayA: { on: true, time: 0.38, fb: 0.2, hc: 3600, mix: 0.15 },
     delayB: { on: false },
     adsr: { a: 0.006, d: 0.35, s: 0.6, r: 1.6 },
     reverbMix: 0.18
@@ -254,8 +254,8 @@ export const V2_PRESETS = {
       ] 
     },
     phaser: { on: true, rate: 0.18, depth: 700, mix: 0.18 },
-    delayA: { on: true, time: 0.38, fb: 0.26, hc: 3600, mix: 0.16 },
-    delayB: { on: true, time: 0.52, fb: 0.22, hc: 3600, mix: 0.12 },
+    delayA: { on: true, time: 0.38, fb: 0.18, hc: 3600, mix: 0.12 },
+    delayB: { on: true, time: 0.52, fb: 0.15, hc: 3600, mix: 0.08 },
     adsr: { a: 0.008, d: 0.5, s: 0.65, r: 1.8 },
     reverbMix: 0.2
   },
@@ -275,7 +275,7 @@ export const V2_PRESETS = {
       ] 
     },
     phaser: { on: false, rate: 0.15, depth: 500, mix: 0 },
-    delayA: { on: true, time: 0.25, fb: 0.2, hc: 5000, mix: 0.15 },
+    delayA: { on: true, time: 0.25, fb: 0.15, hc: 5000, mix: 0.1 },
     delayB: { on: false },
     adsr: { a: 0.005, d: 0.3, s: 0.7, r: 1.2 },
     reverbMix: 0.22

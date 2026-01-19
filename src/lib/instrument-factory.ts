@@ -814,7 +814,7 @@ const makeChorus = (ctx: AudioContext,opts: {rate?: number, depth?: number, mix?
     const l2=ctx.createOscillator(), g2=ctx.createGain(); l2.type='sine'; l2.frequency.value=rate*1.11; g2.gain.value=depth*1.1; l2.connect(g2); g2.connect(d2.delayTime); l2.start();
     const s1=ctx.createGain(), s2=ctx.createGain(); input.connect(s1); input.connect(s2); s1.connect(d1); s2.connect(d2); d1.connect(wet); d2.connect(wet);
     input.connect(dry); dry.connect(output); wet.connect(output);
-    return {input, output, setMix: (m: number) => { const v = clamp(m,0,1); dry.gain.setTargetAtTime(1-v, ctx.currentTime, 0.02); wet.gain.setTargetAtTime(v, ctx.currentTime, 0.02); }};
+    return {input, output};
 };
 const makeFilteredDelay = (ctx: AudioContext,opts: {time?: number, fb?: number, hc?: number, wet?: number} = {}): BypassableFX => {
     const {time=0.38, fb=0.26, hc=3600, wet=0.2} = opts;
@@ -1004,27 +1004,28 @@ export async function buildMultiInstrument(ctx: AudioContext, {
 
     if (type === 'synth') {
         const { osc = [], noise = { on: false, gain: 0 }, adsr = {}, lpf = {}, lfo = {}, chorus = {}, delay = {}, reverbMix = 0.18 } = preset;
-        const pre = ctx.createGain(); pre.gain.value = 0.9;
-        const vGain = ctx.createGain(); vGain.gain.value = 0.0;
+        
+        // Main filter chain
         const filt = ctx.createBiquadFilter(); filt.type = 'lowpass'; filt.frequency.value = lpf.cutoff || 1800; filt.Q.value = lpf.q || 0.7;
         const filt2 = ctx.createBiquadFilter(); filt2.type = 'lowpass'; filt2.frequency.value = lpf.cutoff || 1800; filt2.Q.value = lpf.q || 0.7;
-        const use2pole = (lpf.mode!=='24dB');
-
-        const chorusNode = chorus.on ? makeChorus(ctx, chorus) : null;
-        const delayNode  = delay.on  ? makeFilteredDelay(ctx, delay) : null;
-        const revSend = ctx.createGain(); revSend.gain.value = reverbMix;
-        
-        pre.connect(vGain).connect(filt); 
+        const use2pole = (lpf.mode !== '24dB');
         const lastFilter = use2pole ? filt : (filt.connect(filt2), filt2);
-        
-        // #ИСПРАВЛЕНО (ПЛАН 1308): Восстановлена правильная цепочка эффектов
+
+        // FX Chain
+        const chorusNode = chorus.on ? makeChorus(ctx, chorus) : { input: ctx.createGain(), output: ctx.createGain(), setMix: ()=>{} };
+        if (chorus.on) chorusNode.input.connect(chorusNode.output);
+
+        const delayNode = delay.on ? makeFilteredDelay(ctx, delay) : { input: ctx.createGain(), output: ctx.createGain(), setMix: ()=>{} };
+        if (delay.on) delayNode.input.connect(delayNode.output);
+
+        const revSend = ctx.createGain(); revSend.gain.value = reverbMix;
+
         lastFilter.connect(chorusNode.input);
         chorusNode.output.connect(delayNode.input);
         delayNode.output.connect(expressionGain);
-
         expressionGain.connect(instrumentGain).connect(master);
         delayNode.output.connect(revSend).connect(reverb);
-        
+
         if (lfo?.amount > 0) {
           const l = ctx.createOscillator(); l.type = 'sine'; l.frequency.value = lfo.rate || 0;
           const lg = ctx.createGain(); lg.gain.value = lfo.amount || 0;
@@ -1039,11 +1040,16 @@ export async function buildMultiInstrument(ctx: AudioContext, {
             if (activeVoices.has(midi)) api.noteOff(midi, when);
             const f = midiToHz(midi);
             const voiceNodes: AudioNode[] = [];
+            
+            const adsrGain = ctx.createGain();
+            adsrGain.connect(filt);
+
             osc.forEach((o: any) => {
                 const x = ctx.createOscillator(); x.type = o.type; x.detune.value = o.detune;
                 const g = ctx.createGain(); g.gain.value = o.gain;
                 x.frequency.value = f;
-                x.connect(g).connect(pre); x.start(when);
+                x.connect(g).connect(adsrGain);
+                x.start(when);
                 voiceNodes.push(x);
             });
             if (noise.on) {
@@ -1052,10 +1058,11 @@ export async function buildMultiInstrument(ctx: AudioContext, {
                 const d = buffer.getChannelData(0); for (let i = 0; i < d.length; i++) d[i] = (Math.random() * 2 - 1) * 0.4;
                 n.buffer = buffer; n.loop = true;
                 const ng = ctx.createGain(); ng.gain.value = noise.gain;
-                n.connect(ng).connect(pre); n.start(when);
+                n.connect(ng).connect(adsrGain);
+                n.start(when);
                 voiceNodes.push(n);
             }
-            const voiceState = adsrController.triggerAttack(vGain, when, adsr, velocity);
+            const voiceState = adsrController.triggerAttack(adsrGain, when, adsr, velocity);
             activeVoices.set(midi, { nodes: voiceNodes, voiceState });
         };
         api.noteOff = (midi, when = ctx.currentTime) => {
