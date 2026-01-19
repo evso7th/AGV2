@@ -249,7 +249,6 @@ export class AccompanimentSynthManager {
     }
     
     public setPreampGain(gain: number) {
-      console.log(`%c[AccompV1 GAIN] setPreampGain called with: ${gain}`, 'color: #90EE90');
       if (this.preamp) {
         this.preamp.gain.setTargetAtTime(gain, this.audioContext.currentTime, 0.01);
       }

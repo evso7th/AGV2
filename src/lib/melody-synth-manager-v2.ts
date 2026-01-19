@@ -167,8 +167,7 @@ export class MelodySynthManagerV2 {
        }
     }
 
-    public setVolume(volume: number) {
-        console.log(`%c[MelodyV2 GAIN] setVolume called with: ${volume}`, 'color: #DA70D6');
+    public setPreampGain(volume: number) {
         if (this.synth && this.synth.setVolume) {
             this.synth.setVolume(volume);
         }

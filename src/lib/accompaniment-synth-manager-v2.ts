@@ -106,8 +106,7 @@ export class AccompanimentSynthManagerV2 {
        }
     }
 
-    public setVolume(volume: number) {
-        console.log(`%c[AccompV2 GAIN] setVolume called with: ${volume}`, 'color: #90EE90');
+    public setPreampGain(volume: number) {
         if (this.instrument && this.instrument.setVolume) {
             this.instrument.setVolume(volume);
         }

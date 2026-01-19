@@ -1,3 +1,4 @@
+
 'use client';
 
 import React, { createContext, useContext, useState, useRef, useCallback, useEffect } from 'react';
@@ -154,7 +155,7 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
   }, [updateSettingsCallback]);
 
 
-  const setInstrumentCallback = useCallback(async (part: 'bass' | 'melody' | 'accompaniment' | 'harmony', name: BassInstrument | MelodyInstrument | AccompanimentInstrument | 'piano' | 'guitarChords' | 'violin' | 'flute' | 'acousticGuitarSolo' | keyof typeof V2_PRESETS) => {
+  const setInstrumentCallback = useCallback(async (part: 'bass' | 'melody' | 'accompaniment' | 'harmony', name: BassInstrument | MelodyInstrument | AccompanimentInstrument | keyof typeof V2_PRESETS) => {
     if (!isInitialized) return;
     if (part === 'accompaniment') {
       if(useMelodyV2 && accompanimentManagerV2Ref.current) {
@@ -169,8 +170,9 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
             melodyManagerRef.current.setInstrument(name as AccompanimentInstrument);
         }
     } else if (part === 'bass') {
-        // Bass always uses V1 engine now
-        if (bassManagerRef.current) {
+        if(useMelodyV2 && bassManagerV2Ref.current) {
+            await bassManagerV2Ref.current.setInstrument(name as keyof typeof V2_PRESETS);
+        } else if (!useMelodyV2 && bassManagerRef.current) {
             bassManagerRef.current.setInstrument(name as BassInstrument);
         }
     } else if (part === 'harmony' && harmonyManagerRef.current) {
@@ -391,17 +393,6 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
             );
             initPromises.push(melodyManagerV2Ref.current.init());
         }
-
-        if (!bassManagerV2Ref.current) {
-            bassManagerV2Ref.current = new MelodySynthManagerV2(
-                context,
-                gainNodesRef.current.bass!,
-                telecasterSamplerRef.current!,
-                blackGuitarSamplerRef.current!,
-                'bass'
-            );
-            initPromises.push(bassManagerV2Ref.current.init());
-        }
         
         if (!harmonyManagerRef.current) {
             harmonyManagerRef.current = new HarmonySynthManager(context, gainNodesRef.current.harmony!);
@@ -488,11 +479,9 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
   }, [isInitialized, stopAllSounds, scheduleNextImpulse]);
 
   const setVolumeCallback = useCallback((part: InstrumentPart, volume: number) => {
-    console.log(`%c[EngineContext GAIN] setVolumeCallback: part=${part}, volume=${volume}`, 'color: #FFD700');
     if (part === 'pads' || part === 'effects') return;
 
     if (part === 'bass') {
-      // Bass always uses V1 now
       if (bassManagerRef.current) {
         bassManagerRef.current.setPreampGain(volume);
       }
@@ -501,23 +490,27 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
 
     if (part === 'melody') {
         if(useMelodyV2 && melodyManagerV2Ref.current) {
-            melodyManagerV2Ref.current.setVolume(volume);
+            melodyManagerV2Ref.current.setPreampGain(volume);
         } else if (!useMelodyV2 && melodyManagerRef.current) {
             melodyManagerRef.current.setPreampGain(volume);
         }
-    } else if (part === 'accompaniment') {
+        return;
+    } 
+    
+    if (part === 'accompaniment') {
         if (useMelodyV2 && accompanimentManagerV2Ref.current) {
-            accompanimentManagerV2Ref.current.setVolume(volume);
+            accompanimentManagerV2Ref.current.setPreampGain(volume);
         } else if (!useMelodyV2 && accompanimentManagerRef.current) {
             accompanimentManagerRef.current.setPreampGain(volume);
         }
-    } else {
-      // For drums, sfx, sparkles, and harmony samplers
-      const gainNode = gainNodesRef.current[part as keyof typeof gainNodesRef.current];
-      if (gainNode && audioContextRef.current) {
-        const finalVolume = volume * (VOICE_BALANCE[part] ?? 1);
-        gainNode.gain.setTargetAtTime(finalVolume, audioContextRef.current.currentTime, 0.01);
-      }
+        return;
+    } 
+    
+    // For drums, sfx, sparkles, and harmony samplers
+    const gainNode = gainNodesRef.current[part as keyof typeof gainNodesRef.current];
+    if (gainNode && audioContextRef.current) {
+      const finalVolume = volume * (VOICE_BALANCE[part] ?? 1);
+      gainNode.gain.setTargetAtTime(finalVolume, audioContextRef.current.currentTime, 0.01);
     }
   }, [useMelodyV2]);
 

@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useEffect, useCallback, useRef } from "react";
@@ -266,7 +267,6 @@ export const useAuraGroove = (): AuraGrooveProps => {
   };
 
   const handleVolumeChange = (part: InstrumentPart, value: number) => {
-    console.log(`%c[UI GAIN] handleVolumeChange: part=${part}, value=${value}`, 'color: #FF69B4');
     if (part === 'bass' || part === 'melody' || part === 'accompaniment' || part === 'harmony' || part === 'piano' || part === 'violin' || part === 'flute' || part === 'guitarChords' || part === 'acousticGuitarSolo' || part === 'electricGuitar' || part === 'telecaster' || part === 'blackAcoustic') {
       setInstrumentSettings(prev => ({ ...prev, [part]: { ...prev[part as keyof typeof prev], volume: value }}));
       setVolume(part, value);
