@@ -1,8 +1,10 @@
 
+
 import type { FractalEvent, AccompanimentInstrument } from '@/types/fractal';
 import type { Note } from "@/types/music";
 import { buildMultiInstrument } from './instrument-factory';
 import { V2_PRESETS, V1_TO_V2_PRESET_MAP } from './presets-v2';
+import { BASS_PRESETS } from './bass-presets';
 import type { TelecasterGuitarSampler } from './telecaster-guitar-sampler';
 import type { BlackGuitarSampler } from './black-guitar-sampler';
 
@@ -23,7 +25,7 @@ export class MelodySynthManagerV2 {
     private telecasterSampler: TelecasterGuitarSampler;
     private blackAcousticSampler: BlackGuitarSampler;
 
-    private activePresetName: keyof typeof V2_PRESETS = 'synth';
+    private activePresetName: keyof typeof V2_PRESETS | keyof typeof BASS_PRESETS = 'synth';
 
     constructor(
         audioContext: AudioContext, 
@@ -37,33 +39,33 @@ export class MelodySynthManagerV2 {
         this.telecasterSampler = telecasterSampler;
         this.blackAcousticSampler = blackAcousticSampler;
         this.partName = partName;
-        console.log(`[MelodySynthManagerV2] Constructor for ${partName}: Destination and samplers are set.`);
+        console.log(`[MelodySynthManagerV2] Constructor for ${this.partName}: Destination and samplers are set.`);
     }
 
     async init() {
         if (this.isInitialized) return;
         console.log(`[MelodySynthManagerV2] Initializing for ${this.partName}...`);
         
-        // #ЗАЧЕМ: Мы определяем тип инструмента на основе его роли.
-        // #ЧТО: Если это менеджер для 'bass', он будет использовать фабрику для создания
-        //      инструмента типа 'bass'. В противном случае, он создаст 'synth'.
-        // #СВЯЗИ: Решает проблему, когда бас звучал как обычный полифонический синтезатор.
         const instrumentTypeForFactory = this.partName === 'bass' ? 'bass' : 'synth';
         const initialPreset = this.partName === 'bass' ? 'bass_jazz_warm' : 'synth';
 
-        await this.loadInstrument(initialPreset as keyof typeof V2_PRESETS, instrumentTypeForFactory);
+        await this.loadInstrument(initialPreset, instrumentTypeForFactory);
         this.isInitialized = true;
         console.log(`[MelodySynthManagerV2] Initialized for ${this.partName} with a persistent synth and samplers.`);
     }
     
-    private async loadInstrument(presetName: keyof typeof V2_PRESETS, instrumentType: 'bass' | 'synth' | 'organ' | 'guitar' = 'synth') {
-        this.allNotesOff(); // Stop any previous sound
-        const preset = V2_PRESETS[presetName];
+    private async loadInstrument(presetName: keyof typeof V2_PRESETS | keyof typeof BASS_PRESETS, instrumentType: 'bass' | 'synth' | 'organ' | 'guitar' = 'synth') {
+        this.allNotesOff();
+        
+        const preset = instrumentType === 'bass'
+            ? BASS_PRESETS[presetName as keyof typeof BASS_PRESETS]
+            : V2_PRESETS[presetName as keyof typeof V2_PRESETS];
+
         if (!preset) {
             console.error(`[MelodySynthManagerV2] Preset not found: ${presetName}`);
             return;
         }
-
+        
         console.log(`[MelodySynthManagerV2] Loading instrument for ${this.partName} of type ${instrumentType} with preset: ${presetName}`);
 
         try {
@@ -79,7 +81,6 @@ export class MelodySynthManagerV2 {
         }
     }
 
-
     public async schedule(events: FractalEvent[], barStartTime: number, tempo: number, instrumentHint?: string) {
         
         const logPrefix = this.partName === 'melody' ? `%cMelodyInstrumentLog:` : `%cBassInstrumentLog:`;
@@ -91,13 +92,13 @@ export class MelodySynthManagerV2 {
             if (instrumentHint === 'telecaster') {
                 console.log(`${logPrefix} [3. Router] Routing to TelecasterSampler`, logCss);
                 const notesToPlay = events.filter(e => e.type === this.partName).map(e => ({ midi: e.note, time: e.time * (60/tempo), duration: e.duration * (60/tempo), velocity: e.weight }));
-                this.telecasterSampler.schedule(notesToPlay, barStartTime);
+                this.telecasterSampler.schedule(notesToPlay, barStartTime, tempo);
                 return;
             }
             if (instrumentHint === 'blackAcoustic') {
                 console.log(`${logPrefix} [3. Router] Routing to BlackGuitarSampler`, logCss);
                  const notesToPlay = events.filter(e => e.type === this.partName).map(e => ({ midi: e.note, time: e.time * (60/tempo), duration: e.duration * (60/tempo), velocity: e.weight }));
-                this.blackAcousticSampler.schedule(notesToPlay, barStartTime);
+                this.blackAcousticSampler.schedule(notesToPlay, barStartTime, tempo);
                 return;
             }
         }
@@ -109,7 +110,7 @@ export class MelodySynthManagerV2 {
             : instrumentHint;
 
         if (finalInstrumentHint && finalInstrumentHint !== this.activePresetName) {
-            await this.setInstrument(finalInstrumentHint as keyof typeof V2_PRESETS);
+            await this.setInstrument(finalInstrumentHint as any);
         }
         
         if (!this.synth) {
@@ -120,7 +121,6 @@ export class MelodySynthManagerV2 {
         const beatDuration = 60 / tempo;
         
         events.forEach(event => {
-            // #ИСПРАВЛЕНО: Теперь фильтр гибкий и зависит от роли менеджера
             if (event.type !== this.partName) return;
             
             const noteOnTime = barStartTime + (event.time * beatDuration);
@@ -135,10 +135,14 @@ export class MelodySynthManagerV2 {
         });
     }
     
-    public async setInstrument(instrumentName: keyof typeof V2_PRESETS) {
+    public async setInstrument(instrumentName: keyof typeof V2_PRESETS | keyof typeof BASS_PRESETS) {
        if (instrumentName === this.activePresetName) return;
 
-       const newPreset = V2_PRESETS[instrumentName];
+       const isBassPreset = (instrumentName as string) in BASS_PRESETS;
+       const newPreset = isBassPreset
+           ? BASS_PRESETS[instrumentName as keyof typeof BASS_PRESETS]
+           : V2_PRESETS[instrumentName as keyof typeof V2_PRESETS];
+
        if (newPreset && this.synth?.setPreset) {
            this.synth.setPreset(newPreset);
            this.activePresetName = instrumentName;
