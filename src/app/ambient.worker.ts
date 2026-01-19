@@ -108,6 +108,15 @@ const Scheduler = {
 
     async updateSettings(newSettings: Partial<WorkerSettings>) {
        const needsRestart = this.isRunning && (newSettings.bpm !== undefined && newSettings.bpm !== this.settings.bpm);
+       // #ИСПРАВЛЕНО (ПЛАН 1485): Добавлена проверка смены жанра или настроения.
+       const genreOrMoodChanged = (newSettings.genre && newSettings.genre !== this.settings.genre) || (newSettings.mood && newSettings.mood !== this.settings.mood);
+       
+       if (genreOrMoodChanged) {
+           console.log(`[Worker] Genre or Mood changed. Triggering full reset.`);
+           this.settings = { ...this.settings, ...newSettings }; // Обновляем настройки ПЕРЕД сбросом
+           await this.reset();
+           return;
+       }
        
        if (needsRestart) this.stop();
        
@@ -119,8 +128,6 @@ const Scheduler = {
             textureSettings: newSettings.textureSettings ? { ...this.settings.textureSettings, ...newSettings.textureSettings } : this.settings.textureSettings,
         };
 
-        // #ИСПРАВЛЕНО (ПЛАН 1286): Логика создания движка перенесена сюда.
-        // Движок создается или обновляется только при получении полных настроек.
         if (!fractalMusicEngine) {
             console.log("[Worker] First settings update. Initializing engine...");
             await this.initializeEngine(this.settings, true);
@@ -134,7 +141,6 @@ const Scheduler = {
     tick() {
         if (!this.isRunning || !fractalMusicEngine) return;
 
-        // --- ЛОГИКА ПОЛНОЙ ИЗОЛЯЦИИ ПРОЛОГА (ПЛАН 1002) ---
         // FIX FOR PLAN 1483: Initialize with a safe default to prevent crashes if generation fails.
         let finalPayload: { events: FractalEvent[], instrumentHints: InstrumentHints } = { events: [], instrumentHints: {} };
 
@@ -264,8 +270,6 @@ self.onmessage = async (event: MessageEvent) => {
 
     try {
         switch (command) {
-            // #ИСПРАВЛЕНО (ПЛАН 1286): 'init' больше не создает движок.
-            // Он только сохраняет базовые настройки.
             case 'init':
                 Scheduler.settings = { ...Scheduler.settings, ...data };
                 console.log('[Worker] Received "init". Settings stored. Waiting for full update.');
