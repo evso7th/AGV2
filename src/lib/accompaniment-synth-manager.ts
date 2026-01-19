@@ -1,4 +1,5 @@
 
+
 import type { FractalEvent, AccompanimentInstrument } from '@/types/fractal';
 import type { Note } from "@/types/music";
 import { SYNTH_PRESETS, type SynthPreset } from './synth-presets';
@@ -248,6 +249,7 @@ export class AccompanimentSynthManager {
     }
     
     public setPreampGain(gain: number) {
+      console.log(`%c[AccompV1 GAIN] setPreampGain called with: ${gain}`, 'color: #90EE90');
       if (this.preamp) {
         this.preamp.gain.setTargetAtTime(gain, this.audioContext.currentTime, 0.01);
       }

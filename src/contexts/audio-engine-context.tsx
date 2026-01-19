@@ -1,4 +1,3 @@
-
 'use client';
 
 import React, { createContext, useContext, useState, useRef, useCallback, useEffect } from 'react';
@@ -489,9 +488,11 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
   }, [isInitialized, stopAllSounds, scheduleNextImpulse]);
 
   const setVolumeCallback = useCallback((part: InstrumentPart, volume: number) => {
+    console.log(`%c[EngineContext GAIN] setVolumeCallback: part=${part}, volume=${volume}`, 'color: #FFD700');
     if (part === 'pads' || part === 'effects') return;
 
     if (part === 'bass') {
+      // Bass always uses V1 now
       if (bassManagerRef.current) {
         bassManagerRef.current.setPreampGain(volume);
       }

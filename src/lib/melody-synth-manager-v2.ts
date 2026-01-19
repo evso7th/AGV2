@@ -91,15 +91,16 @@ export class MelodySynthManagerV2 {
         if (this.partName === 'melody') {
             if (instrumentHint === 'telecaster') {
                 console.log(`${logPrefix} [3. Router] Routing to TelecasterSampler`, logCss);
-                const notesToPlay = events.filter(e => e.type === this.partName).map(e => ({ midi: e.note, time: e.time * (60/tempo), duration: e.duration * (60/tempo), velocity: e.weight }));
+                const notesToPlay = events.filter(e => e.type === this.partName).map(e => ({ midi: e.note, time: e.time * (60/tempo), duration: e.duration * (60/tempo), velocity: e.weight, technique: e.technique, params: e.params }));
                 this.telecasterSampler.schedule(notesToPlay, barStartTime, tempo);
                 return;
             }
             if (instrumentHint === 'blackAcoustic') {
+                console.log(`[MelodyManagerV2] V2 ROUTER MATCH: 'blackAcoustic'`);
                 console.log(`${logPrefix} [3. Router] Routing to BlackGuitarSampler`, logCss);
-                 const notesToPlay = events.filter(e => e.type === this.partName).map(e => ({ midi: e.note, time: e.time * (60/tempo), duration: e.duration * (60/tempo), velocity: e.weight }));
+                 const notesToPlay = events.filter(e => e.type === this.partName).map(e => ({ midi: e.note, time: e.time * (60/tempo), duration: e.duration * (60/tempo), velocity: e.weight, technique: e.technique, params: e.params }));
                 this.blackAcousticSampler.schedule(notesToPlay, barStartTime, tempo);
-                return;
+                return; // Stop further execution
             }
         }
         
@@ -167,6 +168,7 @@ export class MelodySynthManagerV2 {
     }
 
     public setVolume(volume: number) {
+        console.log(`%c[MelodyV2 GAIN] setVolume called with: ${volume}`, 'color: #DA70D6');
         if (this.synth && this.synth.setVolume) {
             this.synth.setVolume(volume);
         }

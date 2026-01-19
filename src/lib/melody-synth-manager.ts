@@ -269,6 +269,7 @@ export class MelodySynthManager {
     }
     
     public setPreampGain(gain: number) {
+      console.log(`%c[MelodyV1 GAIN] setPreampGain called with: ${gain}`, 'color: #DA70D6');
       if (this.preamp) {
         this.preamp.gain.setTargetAtTime(gain, this.audioContext.currentTime, 0.01);
       }
