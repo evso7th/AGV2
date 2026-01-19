@@ -82,7 +82,7 @@ export const useAuraGroove = (): AuraGrooveProps => {
   const [instrumentSettings, setInstrumentSettings] = useState<InstrumentSettings>({
     bass: { name: "bass_jazz_warm", volume: 0.5, technique: 'portamento' },
     melody: { name: "ambientPad", volume: 0.5 },
-    accompaniment: { name: "synth", volume: 0.7 },
+    accompaniment: { name: "synth", volume: 0.35 },
     harmony: { name: "guitarChords", volume: 0.25 },
   });
   const [textureSettings, setTextureSettings] = useState<TextureSettings>({
@@ -372,5 +372,3 @@ export const useAuraGroove = (): AuraGrooveProps => {
     setIntroBars,
   };
 };
-
-    
