@@ -238,13 +238,18 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
     }
     
     if (melodyEvents.length > 0) {
-        if (useMelodyV2) {
-            if (melodyManagerV2Ref.current) {
-                melodyManagerV2Ref.current.schedule(melodyEvents, barStartTime, tempo, instrumentHints?.melody);
-            }
+        const hint = instrumentHints?.melody;
+        if (hint === 'telecaster' && telecasterSamplerRef.current) {
+             console.log("[AudioEngineContext] Routing melody to TelecasterSampler");
+             telecasterSamplerRef.current.schedule(melodyEvents.map(e => ({ midi: e.note, time: e.time * (60/tempo), duration: e.duration * (60/tempo), velocity: e.weight, technique: e.technique, params: e.params })), barStartTime, tempo);
+        } else if (hint === 'blackAcoustic' && blackGuitarSamplerRef.current) {
+             console.log("[AudioEngineContext] Routing melody to BlackGuitarSampler");
+             blackGuitarSamplerRef.current.schedule(melodyEvents.map(e => ({ midi: e.note, time: e.time * (60/tempo), duration: e.duration * (60/tempo), velocity: e.weight, technique: e.technique, params: e.params })), barStartTime, tempo);
         } else {
-            if (melodyManagerRef.current) {
-                melodyManagerRef.current.schedule(melodyEvents, barStartTime, tempo, barCount, instrumentHints?.melody, composerControls);
+            if (useMelodyV2 && melodyManagerV2Ref.current) {
+                melodyManagerV2Ref.current.schedule(melodyEvents, barStartTime, tempo, hint);
+            } else if (melodyManagerRef.current) {
+                melodyManagerRef.current.schedule(melodyEvents, barStartTime, tempo, barCount, hint);
             }
         }
     }
