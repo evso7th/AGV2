@@ -19,7 +19,7 @@ import { formatTime, cn } from "@/lib/utils";
 import type { BassInstrument, MelodyInstrument, AccompanimentInstrument, Mood, Genre } from '@/types/music';
 import { V2_PRESETS } from "@/lib/presets-v2";
 import { SYNTH_PRESETS } from "@/lib/synth-presets";
-import { BASS_PRESETS } from "@/lib/bass-presets";
+import { BASS_PRESETS, BASS_PRESET_INFO } from "@/lib/bass-presets";
 
 const EQ_BANDS = [
   { freq: '60', label: '60' }, { freq: '125', label: '125' }, { freq: '250', label: '250' },
@@ -65,12 +65,16 @@ export function AuraGrooveV2({
     setIsClient(true);
   }, []);
 
-  const v1Instruments = Object.keys(SYNTH_PRESETS);
-  const v1MelodyInstruments = v1Instruments.filter(k => !BASS_PRESETS.hasOwnProperty(k));
-  const v1BassInstruments = v1Instruments.filter(k => BASS_PRESETS.hasOwnProperty(k));
+  const allV1InstrumentNames = Object.keys(SYNTH_PRESETS);
+  const v1BassInstrumentNames = Object.keys(BASS_PRESET_INFO);
+  const v1MelodyInstruments = allV1InstrumentNames.filter(k => !v1BassInstrumentNames.includes(k));
 
   const v2MelodyInstruments = Object.keys(V2_PRESETS).filter(k => V2_PRESETS[k as keyof typeof V2_PRESETS].type !== 'bass');
   const v2BassInstruments = Object.keys(BASS_PRESETS);
+
+  const melodyInstrumentList = useMelodyV2 ? v2MelodyInstruments : v1MelodyInstruments;
+  const textureInstrumentList = useMelodyV2 ? v2MelodyInstruments : v1MelodyInstruments; // 'accompaniment' uses this
+  const bassInstrumentList = useMelodyV2 ? v2BassInstruments : v1BassInstrumentNames;
 
   const harmonyInstrumentList: ('piano' | 'guitarChords' | 'flute' | 'violin' | 'none')[] = ['piano', 'guitarChords', 'flute', 'violin', 'none'];
   const moodList: Mood[] = ['epic', 'joyful', 'enthusiastic', 'melancholic', 'dark', 'anxious', 'dreamy', 'contemplative', 'calm'];
@@ -99,11 +103,6 @@ export function AuraGrooveV2({
     'guitar_shineOn': 'Shine On Guitar',
     'synth_ambient_pad_lush': 'Lush Pad'
   };
-  
-  const melodyInstrumentList = useMelodyV2 ? v2MelodyInstruments : v1MelodyInstruments;
-  const textureInstrumentList = useMelodyV2 ? v2MelodyInstruments : v1MelodyInstruments;
-  const bassInstrumentList = useMelodyV2 ? v2BassInstruments : v1BassInstruments;
-
 
   const composerControl = isFractalStyle && composerControlsInstruments;
 
@@ -395,6 +394,7 @@ export function AuraGrooveV2({
     
 
     
+
 
 
 
