@@ -106,6 +106,12 @@ export class AccompanimentSynthManagerV2 {
        }
     }
 
+    public setVolume(volume: number) {
+        if (this.instrument && this.instrument.setVolume) {
+            this.instrument.setVolume(volume);
+        }
+    }
+
     public allNotesOff() {
         if (this.instrument && this.instrument.allNotesOff) {
             this.instrument.allNotesOff();

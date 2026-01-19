@@ -14,7 +14,6 @@ import { AccompanimentSynthManagerV2 } from '@/lib/accompaniment-synth-manager-v
 import { MelodySynthManager } from '@/lib/melody-synth-manager';
 import { SparklePlayer } from '@/lib/sparkle-player';
 import { SfxSynthManager } from '@/lib/sfx-synth-manager';
-import { getPresetParams } from "@/lib/synth-presets";
 import { PIANO_SAMPLES, VIOLIN_SAMPLES, FLUTE_SAMPLES, ACOUSTIC_GUITAR_CHORD_SAMPLES, ACOUSTIC_GUITAR_SOLO_SAMPLES } from '@/lib/samples';
 import { GuitarChordsSampler } from '@/lib/guitar-chords-sampler';
 import { AcousticGuitarSoloSampler } from '@/lib/acoustic-guitar-solo-sampler';
@@ -486,25 +485,34 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
   const setVolumeCallback = useCallback((part: InstrumentPart, volume: number) => {
     if (part === 'pads' || part === 'effects') return;
 
+    const balancedVolume = volume * (VOICE_BALANCE[part] ?? 1);
+
     if (part === 'bass') {
       if (useMelodyV2 && bassManagerV2Ref.current) {
-        // V2 engine handles its own volume internally
-        (bassManagerV2Ref.current as any).setVolume(volume);
+        (bassManagerV2Ref.current as any).setVolume(balancedVolume);
       } else if (!useMelodyV2 && bassManagerRef.current) {
-        // V1 engine: control the main channel gain node.
-        const gainNode = gainNodesRef.current.bass;
-        if (gainNode && audioContextRef.current) {
-            const balancedVolume = volume * (VOICE_BALANCE[part] ?? 1);
-            gainNode.gain.setTargetAtTime(balancedVolume, audioContextRef.current.currentTime, 0.01);
-        }
+        bassManagerRef.current.setPreampGain(balancedVolume);
       }
-      return; // Early return for bass
-    }
-
-    const gainNode = gainNodesRef.current[part as Exclude<InstrumentPart, 'pads' | 'effects'>];
-    if (gainNode && audioContextRef.current) {
-        const balancedVolume = volume * (VOICE_BALANCE[part] ?? 1);
-        gainNode.gain.setTargetAtTime(balancedVolume, audioContextRef.current.currentTime, 0.01);
+    } else if (part === 'melody') {
+      if (useMelodyV2 && melodyManagerV2Ref.current) {
+        (melodyManagerV2Ref.current as any).setVolume(balancedVolume);
+      } else if (!useMelodyV2 && melodyManagerRef.current) {
+        melodyManagerRef.current.setPreampGain(balancedVolume);
+      }
+    } else if (part === 'accompaniment') {
+      if (useMelodyV2 && accompanimentManagerV2Ref.current) {
+        (accompanimentManagerV2Ref.current as any).setVolume(balancedVolume);
+      } else if (!useMelodyV2 && accompanimentManagerRef.current) {
+        accompanimentManagerRef.current.setPreampGain(balancedVolume);
+      }
+    } else {
+      // For drums, sfx, sparkles, and harmony samplers
+      const gainNode = gainNodesRef.current[part as keyof typeof gainNodesRef.current];
+      if (gainNode && audioContextRef.current) {
+        // Drums volume should not be balanced down, user expects 1.0 to be max.
+        const finalVolume = part === 'drums' ? volume : balancedVolume;
+        gainNode.gain.setTargetAtTime(finalVolume, audioContextRef.current.currentTime, 0.01);
+      }
     }
   }, [useMelodyV2]);
 

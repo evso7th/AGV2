@@ -149,6 +149,12 @@ export class MelodySynthManagerV2 {
        }
     }
 
+    public setVolume(volume: number) {
+        if (this.synth && this.synth.setVolume) {
+            this.synth.setVolume(volume);
+        }
+    }
+
     public allNotesOff() {
         if (this.synth && this.synth.allNotesOff) {
             this.synth.allNotesOff();
