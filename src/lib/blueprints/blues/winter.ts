@@ -27,18 +27,16 @@ export const WinterBluesBlueprint: MusicBlueprint = {
                     bass: {
                         strategy: 'weighted',
                         v1Options: [
-                            { name: 'bass_jazz_warm', weight: 0.2 },
-                            { name: 'bass_jazz_fretless', weight: 0.2 },
-                            { name: 'classicBass', weight: 0.2 },
-                            { name: 'bass_blues', weight: 0.2 },
-                            { name: 'bass_reggae', weight: 0.2 }
+                            { name: 'bass_jazz_warm', weight: 0.25 },
+                            { name: 'bass_jazz_fretless', weight: 0.25 },
+                            { name: 'bass_blues', weight: 0.25 },
+                            { name: 'bass_reggae', weight: 0.25 }
                         ],
                         v2Options: [
-                            { name: 'bass_jazz_warm', weight: 0.2 },
-                            { name: 'bass_jazz_fretless', weight: 0.2 },
-                            { name: 'classicBass', weight: 0.2 },
-                            { name: 'bass_blues', weight: 0.2 },
-                            { name: 'bass_reggae', weight: 0.2 }
+                            { name: 'bass_jazz_warm', weight: 0.25 },
+                            { name: 'bass_jazz_fretless', weight: 0.25 },
+                            { name: 'bass_blues', weight: 0.25 },
+                            { name: 'bass_reggae', weight: 0.25 }
                         ]
                     },
                     accompaniment: {
@@ -86,18 +84,16 @@ export const WinterBluesBlueprint: MusicBlueprint = {
                     bass: {
                         strategy: 'weighted',
                         v1Options: [
-                            { name: 'bass_jazz_warm', weight: 0.2 },
-                            { name: 'bass_jazz_fretless', weight: 0.2 },
-                            { name: 'classicBass', weight: 0.2 },
-                            { name: 'bass_blues', weight: 0.2 },
-                            { name: 'bass_reggae', weight: 0.2 }
+                            { name: 'bass_jazz_warm', weight: 0.25 },
+                            { name: 'bass_jazz_fretless', weight: 0.25 },
+                            { name: 'bass_blues', weight: 0.25 },
+                            { name: 'bass_reggae', weight: 0.25 }
                         ],
                         v2Options: [
-                            { name: 'bass_jazz_warm', weight: 0.2 },
-                            { name: 'bass_jazz_fretless', weight: 0.2 },
-                            { name: 'classicBass', weight: 0.2 },
-                            { name: 'bass_blues', weight: 0.2 },
-                            { name: 'bass_reggae', weight: 0.2 }
+                            { name: 'bass_jazz_warm', weight: 0.25 },
+                            { name: 'bass_jazz_fretless', weight: 0.25 },
+                            { name: 'bass_blues', weight: 0.25 },
+                            { name: 'bass_reggae', weight: 0.25 }
                         ]
                     },
                     accompaniment: {
@@ -128,18 +124,16 @@ export const WinterBluesBlueprint: MusicBlueprint = {
                     bass: {
                         strategy: 'weighted',
                         v1Options: [
-                            { name: 'bass_jazz_warm', weight: 0.2 },
-                            { name: 'bass_jazz_fretless', weight: 0.2 },
-                            { name: 'classicBass', weight: 0.2 },
-                            { name: 'bass_blues', weight: 0.2 },
-                            { name: 'bass_reggae', weight: 0.2 }
+                            { name: 'bass_jazz_warm', weight: 0.25 },
+                            { name: 'bass_jazz_fretless', weight: 0.25 },
+                            { name: 'bass_blues', weight: 0.25 },
+                            { name: 'bass_reggae', weight: 0.25 }
                         ],
                         v2Options: [
-                            { name: 'bass_jazz_warm', weight: 0.2 },
-                            { name: 'bass_jazz_fretless', weight: 0.2 },
-                            { name: 'classicBass', weight: 0.2 },
-                            { name: 'bass_blues', weight: 0.2 },
-                            { name: 'bass_reggae', weight: 0.2 }
+                            { name: 'bass_jazz_warm', weight: 0.25 },
+                            { name: 'bass_jazz_fretless', weight: 0.25 },
+                            { name: 'bass_blues', weight: 0.25 },
+                            { name: 'bass_reggae', weight: 0.25 }
                         ]
                     },
                     accompaniment: {
@@ -167,21 +161,19 @@ export const WinterBluesBlueprint: MusicBlueprint = {
                 id: 'SOLO', name: 'Solo', duration: { percent: 30 },
                 layers: { bass: true, drums: true, melody: true, accompaniment: true, harmony: true },
                 instrumentation: {
-                     bass: {
+                    bass: {
                         strategy: 'weighted',
                         v1Options: [
-                            { name: 'bass_jazz_warm', weight: 0.2 },
-                            { name: 'bass_jazz_fretless', weight: 0.2 },
-                            { name: 'classicBass', weight: 0.2 },
-                            { name: 'bass_blues', weight: 0.2 },
-                            { name: 'bass_reggae', weight: 0.2 }
+                            { name: 'bass_jazz_warm', weight: 0.25 },
+                            { name: 'bass_jazz_fretless', weight: 0.25 },
+                            { name: 'bass_blues', weight: 0.25 },
+                            { name: 'bass_reggae', weight: 0.25 }
                         ],
                         v2Options: [
-                            { name: 'bass_jazz_warm', weight: 0.2 },
-                            { name: 'bass_jazz_fretless', weight: 0.2 },
-                            { name: 'classicBass', weight: 0.2 },
-                            { name: 'bass_blues', weight: 0.2 },
-                            { name: 'bass_reggae', weight: 0.2 }
+                            { name: 'bass_jazz_warm', weight: 0.25 },
+                            { name: 'bass_jazz_fretless', weight: 0.25 },
+                            { name: 'bass_blues', weight: 0.25 },
+                            { name: 'bass_reggae', weight: 0.25 }
                         ]
                     },
                      accompaniment: {
@@ -191,7 +183,7 @@ export const WinterBluesBlueprint: MusicBlueprint = {
                     },
                     melody: {
                         strategy: 'weighted',
-                        v1Options: [{ name: 'guitar_muffLead', weight: 1.0 }],
+                        v1Options: [{ name: 'organ_soft_jazz', weight: 1.0 }],
                         v2Options: [
                             { name: 'guitar_muffLead', weight: 0.5 },
                             { name: 'guitar_shineOn', weight: 0.5 }
@@ -227,18 +219,16 @@ export const WinterBluesBlueprint: MusicBlueprint = {
                     bass: {
                         strategy: 'weighted',
                         v1Options: [
-                            { name: 'bass_jazz_warm', weight: 0.2 },
-                            { name: 'bass_jazz_fretless', weight: 0.2 },
-                            { name: 'classicBass', weight: 0.2 },
-                            { name: 'bass_blues', weight: 0.2 },
-                            { name: 'bass_reggae', weight: 0.2 }
+                            { name: 'bass_jazz_warm', weight: 0.25 },
+                            { name: 'bass_jazz_fretless', weight: 0.25 },
+                            { name: 'bass_blues', weight: 0.25 },
+                            { name: 'bass_reggae', weight: 0.25 }
                         ],
                         v2Options: [
-                            { name: 'bass_jazz_warm', weight: 0.2 },
-                            { name: 'bass_jazz_fretless', weight: 0.2 },
-                            { name: 'classicBass', weight: 0.2 },
-                            { name: 'bass_blues', weight: 0.2 },
-                            { name: 'bass_reggae', weight: 0.2 }
+                            { name: 'bass_jazz_warm', weight: 0.25 },
+                            { name: 'bass_jazz_fretless', weight: 0.25 },
+                            { name: 'bass_blues', weight: 0.25 },
+                            { name: 'bass_reggae', weight: 0.25 }
                         ]
                     },
                     accompaniment: {

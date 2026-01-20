@@ -604,7 +604,7 @@ export class FractalMusicEngine {
             const selectedRiff = selectableRiffs[random.nextInt(selectableRiffs.length)];
 
             this.melodyHistory.unshift(selectedRiff.id);
-            if (this.melodyHistory.length > 10) {
+            if (this.melodyHistory.length > 15) { // Increased history size
                 this.melodyHistory.pop();
             }
 
@@ -794,6 +794,22 @@ export class FractalMusicEngine {
         return { events: [], instrumentHints: {} };
     }
     
+     // Logic to re-roll riffs every 12 bars for blues
+    if (this.config.genre === 'blues' && this.epoch % 12 === 0 && this.epoch > 0) {
+        const drumRiffsForMood = BLUES_DRUM_RIFFS[this.config.mood] ?? BLUES_DRUM_RIFFS['contemplative'] ?? [];
+        if (drumRiffsForMood.length > 0) {
+            this.currentDrumRiffIndex = this.random.nextInt(drumRiffsForMood.length);
+             console.log(`%c[FME Blues] New 12-bar chorus. Rerolled Drum Riff to index: ${this.currentDrumRiffIndex}`, 'color: #00FFFF');
+        }
+
+        const bassRiffsForMood = BLUES_BASS_RIFFS[this.config.mood] ?? BLUES_BASS_RIFFS['contemplative'] ?? [];
+        if (bassRiffsForMood.length > 0) {
+            this.currentBassRiffIndex = this.random.nextInt(bassRiffsForMood.length);
+             console.log(`%c[FME Blues] New 12-bar chorus. Rerolled Bass Riff to index: ${this.currentBassRiffIndex}`, 'color: #00FFFF');
+        }
+    }
+
+
     const drumEvents = this.generateDrumEvents(navInfo) || [];
 
     let melodyEvents: FractalEvent[] = [];
