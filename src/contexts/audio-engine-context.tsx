@@ -291,8 +291,8 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
                         scheduleEvents(events, nextBarTimeRef.current, settingsRef.current.bpm, barCount, instrumentHints);
                     }
                 } else if (type === 'sparkle' && payload && 'params' in payload && 'time' in payload) {
-                    const { mood, genre } = (payload as FractalEvent).params as { mood: Mood, genre: Genre };
-                    sparklePlayerRef.current?.playRandomSparkle(nextBarTimeRef.current + (payload as FractalEvent).time, genre, mood);
+                    const { mood, genre, category } = (payload as FractalEvent).params as { mood: Mood, genre: Genre, category?: string };
+                    sparklePlayerRef.current?.playRandomSparkle(nextBarTimeRef.current + (payload as FractalEvent).time, genre, mood, category);
                 } else if (type === 'sfx' && payload && 'params' in payload) {
                     sfxSynthManagerRef.current?.trigger([payload as FractalEvent], nextBarTimeRef.current, settingsRef.current?.bpm || 75);
                 } else if (type === 'error') {

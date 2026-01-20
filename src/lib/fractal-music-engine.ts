@@ -741,8 +741,8 @@ export class FractalMusicEngine {
         events.push({ type: 'perc-013', note: 60, time: 1.5, duration: 0.5, weight: 0.2, technique: 'hit', dynamics: 'pp', phrasing: 'staccato', params: {} });
     }
     if (promenadeBar === 2) {
-         events.push({ type: 'sparkle', note: 72, time: 0.5, duration: 1, weight: 0.5, technique: 'hit', dynamics: 'p', phrasing: 'legato', params: {mood: this.config.mood, genre: this.config.genre}});
-         events.push({ type: 'sfx', note: 60, time: 2.5, duration: 2, weight: 0.3, technique: 'swell', dynamics: 'p', phrasing: 'legato', params: { mood: this.config.mood, genre: this.config.genre } });
+         events.push({ type: 'sparkle', note: 72, time: 0.5, duration: 1, weight: 0.5, technique: 'hit', dynamics: 'p', phrasing: 'legato', params: {mood: this.config.mood, genre: this.config.genre, category: 'promenade'}});
+         events.push({ type: 'sfx', note: 60, time: 2.5, duration: 2, weight: 0.3, technique: 'swell', dynamics: 'p', phrasing: 'legato', params: { mood: this.config.mood, genre: this.config.genre, category: 'promenade' } });
     }
     return events;
   }
@@ -795,7 +795,7 @@ export class FractalMusicEngine {
     }
     
      // Logic to re-roll riffs every 12 bars for blues
-    if (this.config.genre === 'blues' && this.epoch % 12 === 0 && this.epoch > 0) {
+    if (this.config.genre === 'blues' && this.epoch > 0 && this.epoch % 12 === 0) {
         const drumRiffsForMood = BLUES_DRUM_RIFFS[this.config.mood] ?? BLUES_DRUM_RIFFS['contemplative'] ?? [];
         if (drumRiffsForMood.length > 0) {
             this.currentDrumRiffIndex = this.random.nextInt(drumRiffsForMood.length);

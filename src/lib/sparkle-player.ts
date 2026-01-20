@@ -1,8 +1,17 @@
 
-
 import type { Genre, Mood } from '@/types/music';
 
 const SPARKLE_SAMPLES = {
+    PROMENADE: [
+        '/assets/music/promenade_ogg/promenade-1.ogg',
+        '/assets/music/promenade_ogg/promenade-2.ogg',
+        '/assets/music/promenade_ogg/promenade-3.ogg',
+        '/assets/music/promenade_ogg/promenade-4.ogg',
+        '/assets/music/promenade_ogg/promenade-5.ogg',
+        '/assets/music/promenade_ogg/promenade-6.ogg',
+        '/assets/music/promenade_ogg/promenade-7.ogg',
+        '/assets/music/promenade_ogg/promenade-8.ogg',
+    ],
     ROOT: [
         '/assets/music/droplets/EPstein.ogg',
         '/assets/music/droplets/Fearsome.ogg',
@@ -169,6 +178,7 @@ export class SparklePlayer {
     private audioContext: AudioContext;
     private gainNode: GainNode;
     private preamp: GainNode;
+    private promenadeBuffers: AudioBuffer[] = [];
     private rootBuffers: AudioBuffer[] = [];
     private darkBuffers: AudioBuffer[] = [];
     private lightBuffers: AudioBuffer[] = [];
@@ -191,6 +201,7 @@ export class SparklePlayer {
         if (this.isInitialized) return;
         try {
             const allUrls = [
+                ...SPARKLE_SAMPLES.PROMENADE,
                 ...SPARKLE_SAMPLES.ROOT,
                 ...SPARKLE_SAMPLES.DARK,
                 ...SPARKLE_SAMPLES.LIGHT,
@@ -202,6 +213,7 @@ export class SparklePlayer {
             const allBuffers = await Promise.all(uniqueUrls.map(url => this.loadSample(url)));
             const urlBufferMap = new Map(uniqueUrls.map((url, i) => [url, allBuffers[i]]));
 
+            this.promenadeBuffers = SPARKLE_SAMPLES.PROMENADE.map(url => urlBufferMap.get(url)).filter(Boolean) as AudioBuffer[];
             this.rootBuffers = SPARKLE_SAMPLES.ROOT.map(url => urlBufferMap.get(url)).filter(Boolean) as AudioBuffer[];
             this.darkBuffers = SPARKLE_SAMPLES.DARK.map(url => urlBufferMap.get(url)).filter(Boolean) as AudioBuffer[];
             this.lightBuffers = SPARKLE_SAMPLES.LIGHT.map(url => urlBufferMap.get(url)).filter(Boolean) as AudioBuffer[];
@@ -209,7 +221,7 @@ export class SparklePlayer {
             this.ambientCommonBuffers = SPARKLE_SAMPLES.AMBIENT_COMMON.map(url => urlBufferMap.get(url)).filter(Boolean) as AudioBuffer[];
 
             this.isInitialized = true;
-            console.log(`[SparklePlayer] Initialized. Loaded: Root(${this.rootBuffers.length}), Dark(${this.darkBuffers.length}), Light(${this.lightBuffers.length}), Electronic(${this.electronicBuffers.length}), Ambient(${this.ambientCommonBuffers.length})`);
+            console.log(`[SparklePlayer] Initialized. Loaded: Promenade(${this.promenadeBuffers.length}), Root(${this.rootBuffers.length}), Dark(${this.darkBuffers.length}), Light(${this.lightBuffers.length}), Electronic(${this.electronicBuffers.length}), Ambient(${this.ambientCommonBuffers.length})`);
         } catch (e) {
             console.error('[SparklePlayer] Failed to initialize:', e);
         }
@@ -232,15 +244,18 @@ export class SparklePlayer {
         }
     }
 
-    public playRandomSparkle(time: number, genre?: Genre, mood?: Mood) {
-        console.log(`[SparklePlayer] Received request to play sparkle at time ${time}.`);
+    public playRandomSparkle(time: number, genre?: Genre, mood?: Mood, category?: string) {
+        console.log(`[SparklePlayer] Received request to play sparkle at time ${time}. Category: ${category}`);
         if (!this.isInitialized) return;
 
         let samplePool: AudioBuffer[] = [];
         let poolName: string = 'DEFAULT';
         const rand = Math.random();
 
-        if (genre === 'ambient') {
+        if (category === 'promenade' && this.promenadeBuffers.length > 0) {
+            samplePool = this.promenadeBuffers;
+            poolName = 'PROMENADE';
+        } else if (genre === 'ambient') {
             switch (mood) {
                 // Нейтральные
                 case 'calm':
@@ -341,5 +356,3 @@ export class SparklePlayer {
         this.gainNode.disconnect();
     }
 }
-
-    
