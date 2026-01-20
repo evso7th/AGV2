@@ -183,7 +183,7 @@ export const WinterBluesBlueprint: MusicBlueprint = {
                     },
                     melody: {
                         strategy: 'weighted',
-                        v1Options: [{ name: 'organ_soft_jazz', weight: 1.0 }],
+                        v1Options: [{ name: 'ep_rhodes_warm', weight: 1.0 }],
                         v2Options: [
                             { name: 'guitar_muffLead', weight: 0.5 },
                             { name: 'guitar_shineOn', weight: 0.5 }

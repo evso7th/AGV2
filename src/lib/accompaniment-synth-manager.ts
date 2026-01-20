@@ -175,23 +175,25 @@ export class AccompanimentSynthManager {
         const sustainValue = peakGain * preset.adsr.sustain;
         
         const attackEndTime = noteOnTime + preset.adsr.attack;
-        const decayEndTime = attackEndTime + preset.adsr.decay;
         const noteOffTime = noteOnTime + noteDuration;
         const releaseEndTime = noteOffTime + preset.adsr.release;
         
         // Check calculated times
-        if (!isFinite(attackEndTime) || !isFinite(decayEndTime) || !isFinite(noteOffTime) || !isFinite(releaseEndTime) || !preset.adsr.attack || !preset.adsr.decay || !preset.adsr.sustain || !preset.adsr.release) {
+        if (!isFinite(attackEndTime) || !isFinite(noteOffTime) || !isFinite(releaseEndTime) || !preset.adsr.attack || !preset.adsr.sustain || !preset.adsr.release) {
             console.error('[AccompManager] Aborting due to non-finite envelope time calculation.');
             voice.isActive = false;
             return;
         }
 
         gainParam.cancelScheduledValues(noteOnTime);
-        gainParam.setValueAtTime(0, noteOnTime);
+        gainParam.setValueAtTime(0.0001, noteOnTime);
         gainParam.linearRampToValueAtTime(peakGain, attackEndTime);
-        gainParam.linearRampToValueAtTime(sustainValue, decayEndTime);
-        gainParam.setValueAtTime(sustainValue, noteOffTime);
-        gainParam.linearRampToValueAtTime(0, releaseEndTime);
+
+        // #FIX: Use setTargetAtTime for a proper exponential decay to the sustain level
+        gainParam.setTargetAtTime(sustainValue, attackEndTime, Math.max(preset.adsr.decay / 5, 0.001));
+
+        // #FIX: Schedule the release to start at noteOffTime, smoothly transitioning from the decay/sustain phase
+        gainParam.setTargetAtTime(0.0001, noteOffTime, preset.adsr.release / 5);
         
         // --- SOUND SOURCES (Oscillators and Noise) ---
         voice.soundSources = [];
@@ -231,16 +233,14 @@ export class AccompanimentSynthManager {
             sourceNode.connect(sourceGain).connect(voice.envGain);
             
             sourceNode.start(noteOnTime);
-            sourceNode.stop(releaseEndTime + 0.1); 
+            sourceNode.stop(releaseEndTime + 0.2); 
             voice.soundSources.push(sourceNode);
         });
 
         // --- CLEANUP ---
         setTimeout(() => {
             voice.isActive = false;
-            voice.soundSources.forEach(source => source.disconnect());
-            voice.soundSources = [];
-        }, (releaseEndTime - now + 0.2) * 1000);
+        }, (releaseEndTime - now + 0.3) * 1000);
     }
 
     public setInstrument(instrumentName: AccompanimentInstrument | 'none') {

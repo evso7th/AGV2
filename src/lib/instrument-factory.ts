@@ -779,110 +779,12 @@ const loadIR = async (ctx: AudioContext, url: string | null): Promise<AudioBuffe
     }
 };
 
-// ───── Distortion Curves
 const makeSoftClip = (amount = 0.5, n = 65536) => {
-    const c = new Float32Array(n);
-    const k = clamp(amount, 0, 1) * 10 + 1;
-    const norm = Math.tanh(k);
-    for (let i = 0; i < n; i++) {
-        const x = (i / (n - 1)) * 2 - 1;
-        c[i] = Math.tanh(k * x) / norm;
-    }
+    const c=new Float32Array(n); const k=clamp(amount, 0, 1) * 10 + 1;
+    for (let i=0;i<n;i++){ const x=i/(n-1)*2-1; c[i]=Math.tanh(k*x)/Math.tanh(k); }
     return c;
 };
 
-// ───── Bypassable FX
-interface BypassableFX {
-    input: GainNode;
-    output: GainNode;
-    setMix: (mix: number) => void;
-}
-
-const makeChorus = (ctx: AudioContext, opts: { rate?: number; depth?: number; mix?: number } = {}): BypassableFX => {
-    const { rate = 0.25, depth = 0.006, mix = 0.25 } = opts;
-    const input = ctx.createGain();
-    const output = ctx.createGain();
-    const dry = ctx.createGain();
-    const wet = ctx.createGain();
-
-    dry.gain.value = 1 - mix;
-    wet.gain.value = mix;
-
-    const delay = ctx.createDelay(0.05);
-    delay.delayTime.value = 0.02;
-
-    const lfo = ctx.createOscillator();
-    const lfoGain = ctx.createGain();
-    lfo.type = 'sine';
-    lfo.frequency.value = rate;
-    lfoGain.gain.value = depth;
-    lfo.connect(lfoGain).connect(delay.delayTime);
-    lfo.start();
-
-    input.connect(dry).connect(output);
-    input.connect(delay).connect(wet).connect(output);
-    
-    return {
-        input, output,
-        setMix: (m: number) => {
-            const v = clamp(m, 0, 1);
-            dry.gain.setTargetAtTime(1 - v, ctx.currentTime, 0.02);
-            wet.gain.setTargetAtTime(v, ctx.currentTime, 0.02);
-        }
-    };
-};
-
-const makeFilteredDelay = (ctx: AudioContext, opts: { time?: number; fb?: number; hc?: number; mix?: number } = {}): BypassableFX => {
-    const { time = 0.38, fb = 0.26, hc = 3600, mix = 0.2 } = opts;
-    const input = ctx.createGain();
-    const output = ctx.createGain();
-    const dry = ctx.createGain();
-    const wet = ctx.createGain();
-
-    dry.gain.value = 1 - mix;
-    wet.gain.value = mix;
-
-    const delayL = ctx.createDelay(5.0);
-    delayL.delayTime.value = time;
-    const delayR = ctx.createDelay(5.0);
-    delayR.delayTime.value = time * 1.07;
-
-    const feedback = ctx.createGain();
-    feedback.gain.value = fb;
-
-    const filter = ctx.createBiquadFilter();
-    filter.type = 'lowpass';
-    filter.frequency.value = hc;
-    filter.Q.value = 0.7;
-
-    const merger = ctx.createChannelMerger(2);
-
-    input.connect(dry).connect(output);
-    input.connect(delayL).connect(filter).connect(delayR).connect(feedback).connect(delayL);
-    delayL.connect(merger, 0, 0);
-    delayR.connect(merger, 0, 1);
-    merger.connect(wet).connect(output);
-
-    return {
-        input, output,
-        setMix: (m: number) => {
-            const v = clamp(m, 0, 1);
-            dry.gain.setTargetAtTime(1 - v, ctx.currentTime, 0.02);
-            wet.gain.setTargetAtTime(v, ctx.currentTime, 0.02);
-        }
-    };
-};
-
-// ═══════════════════════════════════════════════════════════════════════════
-// АДАПТИВНЫЙ ADSR КОНТРОЛЛЕР
-// ═══════════════════════════════════════════════════════════════════════════
-
-interface ADSRParams {
-    a: number;  // Attack time
-    d: number;  // Decay time
-    s: number;  // Sustain level (0-1)
-    r: number;  // Release time
-}
 
 interface VoiceState {
     gain: GainNode;
@@ -938,11 +840,13 @@ class AdaptiveADSR {
         voiceState.gain.gain.cancelScheduledValues(releaseStartTime);
 
         if (releaseStartTime < voiceState.startTime + params.a) {
+            // Ещё в атаке — быстрый микро-release
             const currentGain = voiceState.gain.gain.value;
             voiceState.gain.gain.setValueAtTime(currentGain, releaseStartTime);
             voiceState.gain.gain.linearRampToValueAtTime(0.0001, releaseStartTime + r * 0.2); // Faster release
             return releaseStartTime + r * 0.2;
         } else {
+            // Нормальный release
             voiceState.gain.gain.setTargetAtTime(0.0001, releaseStartTime, r / 3);
             return releaseStartTime + r;
         }
@@ -952,13 +856,6 @@ class AdaptiveADSR {
 // ═══════════════════════════════════════════════════════════════════════════
 // VOLUME MANAGER
 // ═══════════════════════════════════════════════════════════════════════════
-
-interface VolumeConfig {
-    base: number;       // Базовая громкость инструмента (0-1)
-    genre?: number;     // Модификатор по жанру
-    mood?: number;      // Модификатор по настроению
-    expression?: number; // Динамическая экспрессия
-}
 
 const DEFAULT_VOLUMES: Record<string, number> = {
     synth: 0.7,
@@ -1012,8 +909,7 @@ export async function buildMultiInstrument(ctx: AudioContext, {
     console.log(`%c[InstrumentFactory] Building: ${type}`, 'color: #FFA500; font-weight: bold;');
 
     const adsrController = new AdaptiveADSR(ctx);
-    const master = ctx.createGain();
-    master.gain.value = 0.8;
+    const master = ctx.createGain(); master.gain.value = 0.8;
     const instrumentGain = ctx.createGain();
     const presetName = preset.name || type;
     const baseVolume = preset.volume ?? DEFAULT_VOLUMES[presetName] ?? DEFAULT_VOLUMES[type] ?? 0.7;
@@ -1044,69 +940,109 @@ export async function buildMultiInstrument(ctx: AudioContext, {
     };
 
     if (type === 'synth') {
-        const { osc = [], noise = { on: false, gain: 0 }, adsr = {}, lpf = {}, lfo = {}, chorus = {}, delay = {}, reverbMix = 0.18 } = preset;
-        const pre = ctx.createGain(); pre.gain.value = 0.9;
-        const vGain = ctx.createGain(); vGain.gain.value = 0.0;
+        // #ЗАЧЕМ: Этот блок полностью переписан для реализации истинной полифонии и корректной ADSR-огибающей.
+        // #ЧТО: Теперь для каждой ноты создается свой "голосовой канал" с собственным гейном и осцилляторами.
+        //      Это решает проблему "кражи голосов". Также исправлена логика затухания (Decay),
+        //      чтобы устранить "мяукающий" артефакт звука.
+        // #СВЯЗИ: Эта архитектура соответствует профессиональным практикам Web Audio и обеспечивает
+        //         чистое, предсказуемое звучание аккордов и арпеджио.
+        const { lpf = {}, lfo = {} } = preset;
+        const pre = ctx.createGain();
         const filt = ctx.createBiquadFilter(); filt.type = 'lowpass'; filt.frequency.value = lpf.cutoff || 1800; filt.Q.value = lpf.q || 0.7;
-        const filt2 = ctx.createBiquadFilter(); filt2.type = 'lowpass'; filt2.frequency.value = lpf.cutoff || 1800; filt2.Q.value = lpf.q || 0.7;
-        const use2pole = (lpf.mode !== '24dB');
-
-        const chorusNode = makeChorus(ctx, chorus);
-        const delayNode = makeFilteredDelay(ctx, delay);
-        const revSend = ctx.createGain(); revSend.gain.value = reverbMix;
         
-        pre.connect(vGain).connect(filt); 
-        const lastFilter = use2pole ? filt : (filt.connect(filt2), filt2);
-        
-        // #ИСПРАВЛЕНО (План 1308): Восстановлена правильная цепочка эффектов
-        lastFilter.connect(chorusNode.input);
-        chorusNode.output.connect(delayNode.input);
-        delayNode.output.connect(expressionGain);
-
+        pre.connect(filt);
+        filt.connect(expressionGain);
         expressionGain.connect(instrumentGain).connect(master);
-        delayNode.output.connect(revSend).connect(reverb);
         
-        if (lfo?.amount > 0) {
-          const l = ctx.createOscillator(); l.type = 'sine'; l.frequency.value = lfo.rate || 0;
-          const lg = ctx.createGain(); lg.gain.value = lfo.amount || 0;
-          l.connect(lg);
-          if (lfo.target === 'filter') { lg.connect(filt.frequency); lg.connect(filt2.frequency); }
-          l.start();
+        if (lfo?.amount > 0 && lfo.target === 'filter') {
+          const lfoNode = ctx.createOscillator(); lfoNode.type = lfo.shape || 'sine'; lfoNode.frequency.value = lfo.rate || 0;
+          const lfoGain = ctx.createGain(); lfoGain.gain.value = lfo.amount || 0;
+          lfoNode.connect(lfoGain).connect(filt.frequency);
+          lfoNode.start();
         }
-
-        const activeVoices = new Map<number, { nodes: AudioNode[], voiceState: VoiceState }>();
+        
+        const activeVoices = new Map<number, { nodes: AudioNode[], voiceGain: GainNode }>();
+        const noiseBuffer = ctx.createBuffer(1, ctx.sampleRate * 2, ctx.sampleRate);
+        const noiseData = noiseBuffer.getChannelData(0); for (let i = 0; i < noiseData.length; i++) noiseData[i] = (Math.random()*2-1) * 0.4;
 
         api.noteOn = (midi, when = ctx.currentTime, velocity = 1.0) => {
             if (activeVoices.has(midi)) api.noteOff(midi, when);
+            
             const f = midiToHz(midi);
-            const voiceNodes: AudioNode[] = [];
+            const { osc = [], noise = { on: false, gain: 0 }, adsr = {a:0.01, d:0.3, s:0.5, r:1.0} } = api.preset;
+
+            const voiceGain = ctx.createGain();
+            voiceGain.gain.value = 0;
+            voiceGain.connect(pre);
+
+            const voiceNodes: AudioNode[] = [voiceGain];
+            
             osc.forEach((o: any) => {
-                const x = ctx.createOscillator(); x.type = o.type; x.detune.value = o.detune;
+                const x = ctx.createOscillator(); x.type = o.type; x.detune.value = o.detune || 0;
                 const g = ctx.createGain(); g.gain.value = o.gain;
-                x.frequency.value = f;
-                x.connect(g).connect(pre); x.start(when);
-                voiceNodes.push(x);
+                x.frequency.value = f * Math.pow(2, o.octave || 0);
+                x.connect(g).connect(voiceGain);
+                x.start(when);
+                voiceNodes.push(x, g);
             });
+
             if (noise.on) {
                 const n = ctx.createBufferSource();
-                const buffer = ctx.createBuffer(1, ctx.sampleRate * 2, ctx.sampleRate);
-                const d = buffer.getChannelData(0); for (let i = 0; i < d.length; i++) d[i] = (Math.random() * 2 - 1) * 0.4;
-                n.buffer = buffer; n.loop = true;
+                n.buffer = noiseBuffer;
+                n.loop = true;
                 const ng = ctx.createGain(); ng.gain.value = noise.gain;
-                n.connect(ng).connect(pre); n.start(when);
-                voiceNodes.push(n);
+                n.connect(ng).connect(voiceGain);
+                n.start(when);
+                voiceNodes.push(n, ng);
             }
-            const voiceState = adsrController.triggerAttack(vGain, when, adsr, velocity);
-            activeVoices.set(midi, { nodes: voiceNodes, voiceState });
+
+            const peakGain = velocity;
+            const sustainValue = peakGain * adsr.s;
+            const attackEndTime = when + adsr.a;
+            
+            voiceGain.gain.cancelScheduledValues(when);
+            voiceGain.gain.setValueAtTime(0.0001, when);
+            voiceGain.gain.linearRampToValueAtTime(peakGain, attackEndTime);
+            voiceGain.gain.setTargetAtTime(sustainValue, attackEndTime, Math.max(adsr.d / 5, 0.001));
+
+            activeVoices.set(midi, { nodes: voiceNodes, voiceGain });
         };
+
         api.noteOff = (midi, when = ctx.currentTime) => {
             const voice = activeVoices.get(midi);
             if (!voice) return;
-            const stopTime = adsrController.triggerRelease(voice.voiceState, when, adsr);
-            voice.nodes.forEach(node => (node as any).stop(stopTime + 0.1));
+
+            const { adsr = {a:0.01, d:0.3, s:0.5, r:1.0} } = api.preset;
+            const { voiceGain, nodes } = voice;
+            
+            voiceGain.gain.cancelScheduledValues(when);
+            voiceGain.gain.setTargetAtTime(0.0001, when, adsr.r / 5);
+            
+            const stopTime = when + adsr.r * 2;
+            nodes.forEach(node => {
+                if (node instanceof OscillatorNode || node instanceof AudioBufferSourceNode) {
+                    try { (node as any).stop(stopTime); } catch (e) {}
+                }
+            });
+            
             activeVoices.delete(midi);
         };
-        api.allNotesOff = () => activeVoices.forEach((_, midi) => api.noteOff(midi, ctx.currentTime));
+
+        api.allNotesOff = () => {
+            const now = ctx.currentTime;
+            activeVoices.forEach((_, midi) => api.noteOff(midi, now));
+        };
+
+        api.setPreset = (p) => {
+            api.allNotesOff();
+            api.preset = p;
+            const { lpf } = p;
+            if(lpf) {
+                filt.frequency.setTargetAtTime(lpf.cutoff || 1800, ctx.currentTime, 0.02);
+                filt.Q.setTargetAtTime(lpf.q || 0.7, ctx.currentTime, 0.02);
+            }
+        };
+
     } else if (type === 'bass') {
         const bassApi = await buildBassEngine(ctx, preset as BassPreset, {
             output: master,
