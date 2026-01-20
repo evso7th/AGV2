@@ -92,24 +92,23 @@ export const BLUEPRINT_LIBRARY: Record<Genre, Partial<Record<Mood, MusicBlueprin
  * @returns A MusicBlueprint.
  */
 export async function getBlueprint(genre: Genre, mood: Mood): Promise<MusicBlueprint> {
-    console.log(`[getBlueprint] Requesting blueprint for Genre: ${genre}, Mood: ${mood}`);
-
     const genreBlueprints = BLUEPRINT_LIBRARY[genre];
     
     // 1. Try to find the exact mood in the requested genre.
     if (genreBlueprints && genreBlueprints[mood]) {
-        console.log(`[getBlueprint] Found direct match: ${genre}/${mood}`);
-        return genreBlueprints[mood]!;
+        const blueprint = genreBlueprints[mood]!;
+        console.log(`[getBlueprint] Requesting blueprint for Genre: ${genre}, Mood: ${mood}. Found direct match: ${blueprint.id}.ts`);
+        return blueprint;
     }
     
     // 2. Fallback: If mood not in genre, try finding the mood in the 'ambient' genre.
-    console.warn(`[getBlueprint] No specific blueprint for ${genre}/${mood}. Falling back to 'ambient' genre for this mood.`);
     const fallbackBlueprint = BLUEPRINT_LIBRARY['ambient']?.[mood];
     if (fallbackBlueprint) {
+        console.warn(`[getBlueprint] Requesting blueprint for Genre: ${genre}, Mood: ${mood}. No specific blueprint, falling back to 'ambient' genre. Using: ${fallbackBlueprint.id}.ts`);
         return fallbackBlueprint;
     }
     
     // 3. Ultimate Fallback: Return the default melancholic ambient blueprint.
-    console.error(`[getBlueprint] Ultimate fallback to Melancholic Ambient.`);
+    console.error(`[getBlueprint] Requesting blueprint for Genre: ${genre}, Mood: ${mood}. Ultimate fallback to Melancholic Ambient. Using: ${MelancholicAmbientBlueprint.id}.ts`);
     return MelancholicAmbientBlueprint;
 }
