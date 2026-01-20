@@ -155,7 +155,7 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
   }, [updateSettingsCallback]);
 
 
-  const setInstrumentCallback = useCallback(async (part: 'bass' | 'melody' | 'accompaniment' | 'harmony', name: BassInstrument | MelodyInstrument | AccompanimentInstrument | keyof typeof V2_PRESETS) => {
+  const setInstrumentCallback = useCallback(async (part: 'bass' | 'melody' | 'accompaniment' | 'harmony', name: BassInstrument | MelodyInstrument | AccompanimentInstrument | 'piano' | 'guitarChords' | 'violin' | 'flute' | 'acousticGuitarSolo' | keyof typeof V2_PRESETS) => {
     if (!isInitialized) return;
     if (part === 'accompaniment') {
       if(useMelodyV2 && accompanimentManagerV2Ref.current) {
@@ -479,40 +479,25 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
   }, [isInitialized, stopAllSounds, scheduleNextImpulse]);
 
   const setVolumeCallback = useCallback((part: InstrumentPart, volume: number) => {
+    // #ЗАЧЕМ: Этот коллбэк - единая точка управления громкостью для всех инструментальных партий.
+    // #ЧТО: Он находит главный мастер-гейн для указанной партии (`part`) и плавно устанавливает его громкость.
+    //      Это гарантирует, что громкость регулируется на уровне "микшерного канала",
+    //      а не отдельного инструмента, решая проблему с неработающими регуляторами для сэмплеров.
+    // #ИСПРАВЛЕНО (ПЛАН 1290): Удалена вся условная логика, которая пыталась вызывать setPreampGain
+    //                      или другие внутренние методы. Теперь используется единый, универсальный механизм.
+
+    // Игнорируем устаревшие или нерегулируемые партии
     if (part === 'pads' || part === 'effects') return;
 
-    if (part === 'bass') {
-      if (bassManagerRef.current) {
-        bassManagerRef.current.setPreampGain(volume);
-      }
-      return; 
-    }
-
-    if (part === 'melody') {
-        if(useMelodyV2 && melodyManagerV2Ref.current) {
-            melodyManagerV2Ref.current.setPreampGain(volume);
-        } else if (!useMelodyV2 && melodyManagerRef.current) {
-            melodyManagerRef.current.setPreampGain(volume);
-        }
-        return;
-    } 
-    
-    if (part === 'accompaniment') {
-        if (useMelodyV2 && accompanimentManagerV2Ref.current) {
-            accompanimentManagerV2Ref.current.setPreampGain(volume);
-        } else if (!useMelodyV2 && accompanimentManagerRef.current) {
-            accompanimentManagerRef.current.setPreampGain(volume);
-        }
-        return;
-    } 
-    
-    // For drums, sfx, sparkles, and harmony samplers
+    // Находим мастер-гейн для нужного канала
     const gainNode = gainNodesRef.current[part as keyof typeof gainNodesRef.current];
+    
     if (gainNode && audioContextRef.current) {
+      // Применяем балансировочный коэффициент и устанавливаем громкость
       const finalVolume = volume * (VOICE_BALANCE[part] ?? 1);
       gainNode.gain.setTargetAtTime(finalVolume, audioContextRef.current.currentTime, 0.01);
     }
-  }, [useMelodyV2]);
+  }, []);
 
   const setTextureSettingsCallback = useCallback((settings: Omit<TextureSettings, 'pads' | 'sfx'>) => {
     setVolumeCallback('sparkles', settings.sparkles.enabled ? settings.sparkles.volume : 0);
