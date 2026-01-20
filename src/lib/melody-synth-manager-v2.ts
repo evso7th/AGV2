@@ -24,6 +24,7 @@ export class MelodySynthManagerV2 {
     private synth: any | null = null; 
     private telecasterSampler: TelecasterGuitarSampler;
     private blackAcousticSampler: BlackGuitarSampler;
+    private preamp: GainNode;
 
     private activePresetName: keyof typeof V2_PRESETS | keyof typeof BASS_PRESETS = 'synth';
 
@@ -39,7 +40,12 @@ export class MelodySynthManagerV2 {
         this.telecasterSampler = telecasterSampler;
         this.blackAcousticSampler = blackAcousticSampler;
         this.partName = partName;
-        console.log(`[MelodySynthManagerV2] Constructor for ${this.partName}: Destination and samplers are set.`);
+
+        this.preamp = this.audioContext.createGain();
+        this.preamp.gain.value = 1.0;
+        this.preamp.connect(this.destination);
+
+        console.log(`[MelodySynthManagerV2] Constructor for ${this.partName}: Destination and preamp are set.`);
     }
 
     async init() {
@@ -72,7 +78,7 @@ export class MelodySynthManagerV2 {
             this.synth = await buildMultiInstrument(this.audioContext, {
                 type: instrumentType,
                 preset: preset,
-                output: this.destination
+                output: this.preamp // Connect to the manager's preamp
             });
             this.activePresetName = presetName;
             console.log(`[MelodySynthManagerV2] Instrument loaded for ${this.partName} with preset: ${presetName}`);
@@ -85,7 +91,6 @@ export class MelodySynthManagerV2 {
         
         const logPrefix = this.partName === 'melody' ? `%cMelodyInstrumentLog:` : `%cBassInstrumentLog:`;
         const logCss = this.partName === 'melody' ? 'color: #DA70D6' : 'color: #4169E1';
-        console.log(`${logPrefix} [2. Manager] Received hint: ${instrumentHint}`, logCss);
 
         // --- SMART ROUTER (только для мелодии) ---
         if (this.partName === 'melody') {
@@ -107,14 +112,12 @@ export class MelodySynthManagerV2 {
         // --- SYNTH LOGIC (если не было маршрутизации на сэмплер) ---
         console.log(`${logPrefix} [3. Router] Routing to internal V2 Synth`, logCss);
         
-        // #ИСПРАВЛЕНО (ПЛАН 1485): Маршрутизация пресетов теперь учитывает тип партии (бас или мелодия).
         let finalInstrumentHint = instrumentHint;
         if (instrumentHint) {
             if (this.partName === 'bass') {
-                const mappedName = BASS_PRESET_MAP[instrumentHint];
+                const mappedName = BASS_PRESET_MAP[instrumentHint as keyof typeof BASS_PRESET_MAP];
                 if (mappedName) {
                     finalInstrumentHint = mappedName;
-                    console.log(`${logPrefix} [3.1 Router] Mapped V1 bass hint "${instrumentHint}" to V2 preset "${finalInstrumentHint}"`, logCss);
                 }
             } else { // Мелодия
                 const mappedName = V1_TO_V2_PRESET_MAP[instrumentHint];
@@ -168,8 +171,8 @@ export class MelodySynthManagerV2 {
     }
 
     public setPreampGain(volume: number) {
-        if (this.synth && this.synth.setVolume) {
-            this.synth.setVolume(volume);
+        if (this.preamp) {
+            this.preamp.gain.setTargetAtTime(volume, this.audioContext.currentTime, 0.01);
         }
     }
 
@@ -185,5 +188,8 @@ export class MelodySynthManagerV2 {
 
     public dispose() {
         this.stop();
+        if (this.preamp) {
+            this.preamp.disconnect();
+        }
     }
 }

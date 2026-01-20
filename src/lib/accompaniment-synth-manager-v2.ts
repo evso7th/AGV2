@@ -17,11 +17,17 @@ export class AccompanimentSynthManagerV2 {
     private instrument: any | null = null; // Will hold the instance from the factory
     private activePresetName: keyof typeof V2_PRESETS = 'synth';
     private activeNotes = new Map<number, () => void>(); // Maps MIDI note to a cleanup function
+    private preamp: GainNode;
 
     constructor(audioContext: AudioContext, destination: AudioNode) {
         this.audioContext = audioContext;
         this.destination = destination;
-        console.log('[AccompanimentManagerV2] Constructor: Destination node is set.');
+        
+        this.preamp = this.audioContext.createGain();
+        this.preamp.gain.value = 1.0;
+        this.preamp.connect(this.destination);
+
+        console.log('[AccompanimentManagerV2] Constructor: Destination and preamp are set.');
     }
 
     async init() {
@@ -46,7 +52,7 @@ export class AccompanimentSynthManagerV2 {
             this.instrument = await buildMultiInstrument(this.audioContext, {
                 type: preset.type as any,
                 preset: preset,
-                output: this.destination
+                output: this.preamp // Connect to the manager's preamp
             });
             this.activePresetName = presetName;
             console.log(`[AccompanimentManagerV2] Instrument loaded with preset: ${presetName}`);
@@ -56,15 +62,9 @@ export class AccompanimentSynthManagerV2 {
     }
 
     public async schedule(events: FractalEvent[], barStartTime: number, tempo: number, barCount: number, instrumentHint?: string) {
-        // #ИСПРАВЛЕНО (ПЛАН 1001): Добавлен "охранник", который прерывает исполнение, если нет явного указания.
         if (!instrumentHint || instrumentHint === 'none') {
             return;
         }
-
-        // #ЗАЧЕМ: Этот блок транслирует старые названия V1 в новые V2.
-        // #ЧТО: Он проверяет, есть ли `instrumentHint` в карте `V1_TO_V2_PRESET_MAP`.
-        //      Если есть, используется V2-название. Если нет, используется оригинальный hint.
-        // #СВЯЗИ: Устраняет ошибку "Preset not found".
         const finalInstrumentHint = (instrumentHint && V1_TO_V2_PRESET_MAP[instrumentHint])
             ? V1_TO_V2_PRESET_MAP[instrumentHint]
             : instrumentHint;
@@ -86,8 +86,6 @@ export class AccompanimentSynthManagerV2 {
             const noteOnTime = barStartTime + (event.time * beatDuration);
             const noteOffTime = noteOnTime + (event.duration * beatDuration);
             
-            console.log(`%c[AccompManagerV2 @ Bar ${barCount}] Instrument: ${this.activePresetName} | Scheduling Note: MIDI=${event.note}, On=${noteOnTime.toFixed(2)}, Off=${noteOffTime.toFixed(2)}`, 'color: #90EE90;');
-
             this.instrument.noteOn(event.note, noteOnTime);
             this.instrument.noteOff(event.note, noteOffTime);
         });
@@ -107,8 +105,8 @@ export class AccompanimentSynthManagerV2 {
     }
 
     public setPreampGain(volume: number) {
-        if (this.instrument && this.instrument.setVolume) {
-            this.instrument.setVolume(volume);
+        if (this.preamp) {
+            this.preamp.gain.setTargetAtTime(volume, this.audioContext.currentTime, 0.01);
         }
     }
 
@@ -124,5 +122,8 @@ export class AccompanimentSynthManagerV2 {
 
     public dispose() {
         this.stop();
+        if (this.preamp) {
+            this.preamp.disconnect();
+        }
     }
 }
