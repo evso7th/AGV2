@@ -11,7 +11,7 @@ export const WinterBluesBlueprint: MusicBlueprint = {
         bpm: { base: 66, range: [64, 72], modifier: 1.0 },
         timeSignature: { numerator: 4, denominator: 4 },
         harmonicJourney: [], // 12-bar structure
-        tensionProfile: { type: 'plateau', peakPosition: 0.3, curve: (p, pp) => p < pp ? p / pp : 1.0 }
+        tensionProfile: { type: 'plateau', peakPosition: 0.3, curve: (p: number, pp: number) => p < pp ? p / pp : 1.0 }
     },
     structure: {
         totalDuration: { preferredBars: 120 }, // 10 loops of 12 bars
