@@ -153,6 +153,7 @@ const Scheduler = {
                     introHints.melody = (fractalMusicEngine as any)._chooseInstrumentForPart('melody', navInfo);
                     introHints.accompaniment = (fractalMusicEngine as any)._chooseInstrumentForPart('accompaniment', navInfo);
                     introHints.harmony = (fractalMusicEngine as any)._chooseInstrumentForPart('harmony', navInfo);
+                    introHints.bass = (fractalMusicEngine as any)._chooseInstrumentForPart('bass', navInfo); // ИСПРАВЛЕНО
                 }
                 
                 if (navInfo?.currentPart?.introRules) {
