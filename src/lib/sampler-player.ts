@@ -112,18 +112,11 @@ export class SamplerPlayer {
             source.playbackRate.value = playbackRate;
 
             const startTime = time + note.time;
-            const endTime = startTime + note.duration;
-            const releaseDuration = note.duration / 2;
-            const finalEndTime = endTime + releaseDuration;
-
+            
             const velocity = note.velocity ?? 0.7;
-            gainNode.gain.setValueAtTime(0, startTime);
-            gainNode.gain.linearRampToValueAtTime(velocity, startTime + 0.01);
-            gainNode.gain.setValueAtTime(velocity, endTime);
-            gainNode.gain.linearRampToValueAtTime(0, finalEndTime);
-
+            gainNode.gain.setValueAtTime(velocity, startTime);
+            
             source.start(startTime);
-            source.stop(finalEndTime);
 
             source.onended = () => {
                 gainNode.disconnect();
