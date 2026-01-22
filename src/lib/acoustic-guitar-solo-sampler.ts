@@ -17,7 +17,6 @@ export class AcousticGuitarSoloSampler {
     public isInitialized = false;
     private preamp: GainNode;
     private isLoading = false;
-    private lastNoteTime = 0;
     private slideBuffers: AudioBuffer[] = [];
 
     constructor(audioContext: AudioContext, destination: AudioNode) {
@@ -130,20 +129,23 @@ export class AcousticGuitarSoloSampler {
             const playbackRate = Math.pow(2, (note.midi - sampleMidi) / 12);
             source.playbackRate.value = playbackRate;
             
-            // --- ADSR ENVELOPE IMPLEMENTATION ---
             const velocity = note.velocity ?? 0.7;
             const attackTime = 0.01;
             const releaseTime = Math.max(0.1, note.duration * 0.5); 
             const noteEndTime = startTime + note.duration;
             const finalEndTime = noteEndTime + releaseTime + 0.1;
 
-            gainNode.gain.setValueAtTime(0, this.audioContext.currentTime);
+            gainNode.gain.setValueAtTime(0, startTime);
             gainNode.gain.linearRampToValueAtTime(velocity, startTime + attackTime);
             gainNode.gain.setValueAtTime(velocity, noteEndTime);
             gainNode.gain.linearRampToValueAtTime(0, finalEndTime);
             
             source.start(startTime);
             source.stop(finalEndTime);
+            
+            source.onended = () => {
+                gainNode.disconnect();
+            };
         });
     }
 
@@ -175,8 +177,8 @@ export class AcousticGuitarSoloSampler {
         const octave = parseInt(match[3], 10);
         
         const noteMap: Record<string, number> = {
-            'C': 0, 'C#': 1, 'Db': 1, 'D': 2, 'D#': 3, 'Eb': 3, 'E': 4,
-            'F': 5, 'F#': 6, 'Gb': 6, 'G': 7, 'G#': 8, 'Ab': 8, 'A': 9, 'A#': 10, 'BB': 10, 'B': 11
+            'C': 0, 'C#': 1, 'DB': 1, 'D': 2, 'D#': 3, 'EB': 3, 'E': 4,
+            'F': 5, 'F#': 6, 'GB': 6, 'G': 7, 'G#': 8, 'AB': 8, 'A': 9, 'A#': 10, 'BB': 10, 'B': 11
         };
 
         const noteIndex = noteMap[noteName];
@@ -186,7 +188,6 @@ export class AcousticGuitarSoloSampler {
     }
 
     public stopAll() {
-        // One-shot samples, no central stop needed.
     }
 
     public dispose() {

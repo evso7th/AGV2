@@ -5,8 +5,6 @@ import * as Tone from 'tone';
 
 const CHORD_SAMPLE_MAP = ACOUSTIC_GUITAR_CHORD_SAMPLES;
 
-// MIDI root notes for the chords we have samples for.
-// This allows us to map incoming notes to the correct sample.
 const CHORD_ROOT_MIDI_MAP: Record<string, number> = {
     'Dm': 2, // D
     'Em': 4, // E
@@ -19,13 +17,9 @@ const CHORD_ROOT_MIDI_MAP: Record<string, number> = {
     'D': 2,   // D
 };
 
-/**
- * A sampler player for acoustic guitar chords. It maps MIDI notes to chord samples.
- * It pre-loads audio samples and schedules them for playback with precise timing.
- */
 export class GuitarChordsSampler {
     private audioContext: AudioContext;
-    private samples: Map<string, AudioBuffer> = new Map(); // Maps chord name to buffer
+    private samples: Map<string, AudioBuffer> = new Map();
     public output: GainNode;
     public isInitialized: boolean = false;
     private isLoading: boolean = false;
@@ -36,7 +30,7 @@ export class GuitarChordsSampler {
         this.output = this.audioContext.createGain();
         
         this.preamp = this.audioContext.createGain();
-        this.preamp.gain.value = 1.5; // Slightly boost guitar volume
+        this.preamp.gain.value = 1.5; 
         this.preamp.connect(this.output);
         
         this.output.connect(destination);
@@ -74,11 +68,10 @@ export class GuitarChordsSampler {
     public schedule(notes: NoteEvent[], startTime: number) {
         if (!this.isInitialized || notes.length === 0) return;
 
-        const note = notes[0]; // Process only the first note to trigger a chord sample
+        const note = notes[0];
         const chordName = this.midiToChordName(note.midi);
 
         if (!chordName) {
-            // console.warn(`[GuitarChordsSampler] Could not map MIDI ${note.midi} to a chord.`);
             return;
         }
 
@@ -94,12 +87,15 @@ export class GuitarChordsSampler {
             noteGain.connect(this.preamp);
             
             source.start(startTime + note.time);
+
+            source.onended = () => {
+                noteGain.disconnect();
+            };
         } else {
             console.warn(`[GuitarChordsSampler] Sample for chord "${chordName}" not found.`);
         }
     }
     
-    // Maps a MIDI note to the most likely chord name from our sample map
     private midiToChordName(midi: number): string | null {
         const noteDegree = midi % 12;
         let bestMatch: string | null = null;
@@ -114,7 +110,6 @@ export class GuitarChordsSampler {
             }
         }
         
-        // Only return a match if it's exact (distance is 0)
         return minDistance === 0 ? bestMatch : null;
     }
 
@@ -124,7 +119,6 @@ export class GuitarChordsSampler {
     }
 
     public stopAll() {
-        // One-shot samples, no central stop needed.
     }
 
     public dispose() {

@@ -17,9 +17,8 @@ export class SamplerPlayer {
         this.audioContext = audioContext;
         this.outputNode = this.audioContext.createGain();
         
-        // Create and connect the preamp
         this.preamp = this.audioContext.createGain();
-        this.preamp.gain.value = 5.0; // Boost volume by 5x
+        this.preamp.gain.value = 5.0; 
         this.preamp.connect(this.outputNode);
         
         this.outputNode.connect(destination);
@@ -114,18 +113,21 @@ export class SamplerPlayer {
 
             const startTime = time + note.time;
             const endTime = startTime + note.duration;
-            const releaseDuration = note.duration / 2; // Dynamic release based on note duration
+            const releaseDuration = note.duration / 2;
             const finalEndTime = endTime + releaseDuration;
 
-            // ADSR-like envelope using GainNode
             const velocity = note.velocity ?? 0.7;
-            gainNode.gain.setValueAtTime(0, this.audioContext.currentTime); // Start at 0
-            gainNode.gain.linearRampToValueAtTime(velocity, startTime + 0.01); // Quick attack
-            gainNode.gain.setValueAtTime(velocity, endTime); // Sustain
-            gainNode.gain.linearRampToValueAtTime(0, finalEndTime); // Release
+            gainNode.gain.setValueAtTime(0, startTime);
+            gainNode.gain.linearRampToValueAtTime(velocity, startTime + 0.01);
+            gainNode.gain.setValueAtTime(velocity, endTime);
+            gainNode.gain.linearRampToValueAtTime(0, finalEndTime);
 
             source.start(startTime);
             source.stop(finalEndTime);
+
+            source.onended = () => {
+                gainNode.disconnect();
+            };
         });
     }
 
@@ -142,7 +144,6 @@ export class SamplerPlayer {
     }
 
     private noteToMidi(note: string): number | null {
-        // Basic parser for notes like C4, Fs3, F#3
         const match = note.match(/([A-G])([#b]?)(-?\d+)/);
         if (!match) return null;
         
@@ -161,9 +162,6 @@ export class SamplerPlayer {
     }
 
     public stopAll() {
-        // Since we schedule one-shot samples, a global stop isn't easily implemented
-        // without tracking every single source node. For ambient music, letting notes
-        // decay naturally is usually acceptable.
     }
 
     public dispose() {

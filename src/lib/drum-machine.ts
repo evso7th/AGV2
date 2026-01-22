@@ -1,5 +1,4 @@
 
-
 import type { FractalEvent, InstrumentType } from "@/types/fractal";
 
 const DRUM_SAMPLES: Record<string, string> = {
@@ -99,6 +98,14 @@ function createSampler(audioContext: AudioContext, output: AudioNode): Sampler {
         source.connect(gainNode);
         gainNode.connect(output);
         source.start(time);
+
+        // #ЗАЧЕМ: Этот обработчик гарантирует, что узел громкости будет удален из аудио-графа
+        //          сразу после того, как сэмпл закончит играть.
+        // #ЧТО: Он предотвращает "утечку ресурсов", которая приводила к перегрузке
+        //       процессора и сбоям при фоновом воспроизведении.
+        source.onended = () => {
+            gainNode.disconnect();
+        };
     };
 
     return { buffers, load, triggerAttack };
@@ -141,10 +148,8 @@ export class DrumMachine {
             
             const sampleName = eventType.startsWith('drum_') ? eventType.replace('drum_', '') : eventType;
             
-            console.log(`[DrumMachine] Attempting to schedule sample: ${sampleName}`);
-            
             if (!this.sampler.buffers.has(sampleName)) {
-                 console.warn(`[DrumMachine] Sample not found for type: ${sampleName}`);
+                 // Do not log here to avoid console spam for missing samples
                  continue;
             }
 

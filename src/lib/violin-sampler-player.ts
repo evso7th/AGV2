@@ -15,10 +15,14 @@ export class ViolinSamplerPlayer {
     private outputNode: GainNode;
     private instruments = new Map<string, SamplerInstrument>();
     public isInitialized = false;
+    private preamp: GainNode;
 
     constructor(audioContext: AudioContext, destination: AudioNode) {
         this.audioContext = audioContext;
         this.outputNode = this.audioContext.createGain();
+        this.preamp = this.audioContext.createGain();
+        this.preamp.gain.value = 1.5;
+        this.preamp.connect(this.outputNode);
         this.outputNode.connect(destination);
     }
     
@@ -28,7 +32,7 @@ export class ViolinSamplerPlayer {
 
     async loadInstrument(instrumentName: string, sampleMap: Record<string, VelocitySample[]>): Promise<boolean> {
         if (this.instruments.has(instrumentName)) {
-            console.log(`[VelocitySampler] Instrument "${instrumentName}" already loaded.`);
+            console.log(`[ViolinSamplerPlayer] Instrument "${instrumentName}" already loaded.`);
             return true;
         }
 
@@ -38,7 +42,7 @@ export class ViolinSamplerPlayer {
             const loadPromises = Object.entries(sampleMap).flatMap(([noteStr, samples]) => {
                 const midi = this.noteToMidi(noteStr);
                 if (midi === null) {
-                    console.warn(`[VelocitySampler] Could not parse MIDI for note: ${noteStr}`);
+                    console.warn(`[ViolinSamplerPlayer] Could not parse MIDI for note: ${noteStr}`);
                     return [];
                 }
                 
@@ -61,23 +65,22 @@ export class ViolinSamplerPlayer {
 
             await Promise.all(loadPromises);
 
-            // Sort by velocity for faster lookup
             for (const samples of loadedBuffers.values()) {
                 samples.sort((a, b) => a.velocity - b.velocity);
             }
 
             if (Array.from(loadedBuffers.values()).every(arr => arr.length === 0)) {
-                 console.error(`[VelocitySampler] No samples were loaded for instrument "${instrumentName}".`);
+                 console.error(`[ViolinSamplerPlayer] No samples were loaded for instrument "${instrumentName}".`);
                  return false;
             }
             
             this.instruments.set(instrumentName, { buffers: loadedBuffers });
             
-            console.log(`[VelocitySampler] Instrument "${instrumentName}" loaded.`);
+            console.log(`[ViolinSamplerPlayer] Instrument "${instrumentName}" loaded.`);
             this.isInitialized = true;
             return true;
         } catch (error) {
-            console.error(`[VelocitySampler] Failed to load instrument "${instrumentName}":`, error);
+            console.error(`[ViolinSamplerPlayer] Failed to load instrument "${instrumentName}":`, error);
             return false;
         }
     }
@@ -85,7 +88,7 @@ export class ViolinSamplerPlayer {
     public schedule(notes: Note[], time: number) {
         const instrument = this.instruments.get('violin');
         if (!this.isInitialized || !instrument) {
-            console.warn('[VelocitySampler] Tried to schedule before "violin" instrument was initialized.');
+            console.warn('[ViolinSamplerPlayer] Tried to schedule before "violin" instrument was initialized.');
             return;
         }
 
@@ -97,25 +100,26 @@ export class ViolinSamplerPlayer {
             source.buffer = buffer;
             
             const gainNode = this.audioContext.createGain();
-            // Apply note velocity to the overall volume
             gainNode.gain.setValueAtTime(note.velocity ?? 0.7, this.audioContext.currentTime);
 
             source.connect(gainNode);
-            gainNode.connect(this.outputNode);
+            gainNode.connect(this.preamp);
 
-            // Adjust playback rate for pitch shifting
             const playbackRate = Math.pow(2, (note.midi - sampleMidi) / 12);
             source.playbackRate.value = playbackRate;
 
             const startTime = time + note.time;
             source.start(startTime);
+
+            source.onended = () => {
+                gainNode.disconnect();
+            };
         });
     }
 
     private findBestSample(instrument: SamplerInstrument, targetMidi: number, targetVelocity: number = 0.7): { buffer: AudioBuffer | null, midi: number } {
         const availableMidiNotes = Array.from(instrument.buffers.keys());
         
-        // 1. Find the closest MIDI note available in the samples
         if (availableMidiNotes.length === 0) return { buffer: null, midi: targetMidi };
         const closestMidi = availableMidiNotes.reduce((prev, curr) => 
             Math.abs(curr - targetMidi) < Math.abs(prev - targetMidi) ? curr : prev
@@ -126,11 +130,8 @@ export class ViolinSamplerPlayer {
             return { buffer: null, midi: closestMidi };
         }
         
-        // 2. Find the best velocity match for that note
-        // Find the first sample with velocity greater than or equal to the target
         let bestSample = velocityLayers.find(sample => sample.velocity >= targetVelocity);
         
-        // If no sample is loud enough, take the loudest one available
         if (!bestSample) {
             bestSample = velocityLayers[velocityLayers.length - 1];
         }
@@ -157,7 +158,6 @@ export class ViolinSamplerPlayer {
     }
 
     public stopAll() {
-        // One-shot samples, no central stop needed.
     }
 
     public dispose() {

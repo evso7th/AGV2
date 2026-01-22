@@ -15,10 +15,14 @@ export class FluteSamplerPlayer {
     private outputNode: GainNode;
     private instruments = new Map<string, SamplerInstrument>();
     public isInitialized = false;
+    private preamp: GainNode;
 
     constructor(audioContext: AudioContext, destination: AudioNode) {
         this.audioContext = audioContext;
         this.outputNode = this.audioContext.createGain();
+        this.preamp = this.audioContext.createGain();
+        this.preamp.gain.value = 1.5;
+        this.preamp.connect(this.outputNode);
         this.outputNode.connect(destination);
     }
     
@@ -61,7 +65,6 @@ export class FluteSamplerPlayer {
 
             await Promise.all(loadPromises);
 
-            // Sort by velocity for faster lookup
             for (const samples of loadedBuffers.values()) {
                 samples.sort((a, b) => a.velocity - b.velocity);
             }
@@ -100,13 +103,17 @@ export class FluteSamplerPlayer {
             gainNode.gain.setValueAtTime(note.velocity ?? 0.7, this.audioContext.currentTime);
 
             source.connect(gainNode);
-            gainNode.connect(this.outputNode);
+            gainNode.connect(this.preamp);
 
             const playbackRate = Math.pow(2, (note.midi - sampleMidi) / 12);
             source.playbackRate.value = playbackRate;
 
             const startTime = time + note.time;
             source.start(startTime);
+
+            source.onended = () => {
+                gainNode.disconnect();
+            };
         });
     }
 
@@ -151,7 +158,6 @@ export class FluteSamplerPlayer {
     }
 
     public stopAll() {
-        // One-shot samples, no central stop needed.
     }
 
     public dispose() {
