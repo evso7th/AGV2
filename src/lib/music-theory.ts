@@ -1,6 +1,6 @@
 
 
-import type { FractalEvent, Mood, Genre, Technique, BassSynthParams, InstrumentType, MelodyInstrument, AccompanimentInstrument, ResonanceMatrix, InstrumentHints, AccompanimentTechnique, GhostChord, SfxRule, V1MelodyInstrument, V2MelodyInstrument, BlueprintPart, InstrumentationRules, InstrumentBehaviorRules, BluesMelody, IntroRules, InstrumentPart, DrumKit, BluesGuitarRiff, BluesSoloPhrase, BluesRiffDegree } from './fractal';
+import type { FractalEvent, Mood, Genre, Technique, BassSynthParams, InstrumentType, MelodyInstrument, AccompanimentInstrument, ResonanceMatrix, InstrumentHints, AccompanimentTechnique, GhostChord, SfxRule, V1MelodyInstrument, V2MelodyInstrument, BlueprintPart, InstrumentationRules, InstrumentBehaviorRules, BluesMelody, IntroRules, InstrumentPart, DrumKit, BluesGuitarRiff, BluesSoloPhrase, BluesRiffDegree, SuiteDNA, RhythmicFeel, BassStyle, DrumStyle } from './fractal';
 import { ElectronicK, TraditionalK, AmbientK, MelancholicMinorK } from './resonance-matrices';
 import { BlueprintNavigator, type NavigationInfo } from './blueprint-navigator';
 import { getBlueprint } from './blueprints';
@@ -429,7 +429,7 @@ export function createDrumAxiom(
         return { events: [], tags: [] };
     }
 
-    const moodRiffs = BLUES_DRUM_RIFFS[mood] ?? BLUES_DRUM_RIFFS.contemplative ?? [];
+    const moodRiffs = BLUES_DRUM_RIFFS[mood] ?? BLUES_DRUM_RIFFS['contemplative'] ?? [];
     if (moodRiffs.length === 0) return { events: [], tags };
 
     const riffIndex = drumRules?.pattern === 'composer' ? random.nextInt(moodRiffs.length) : 0;
@@ -676,44 +676,382 @@ export function chooseHarmonyInstrument(rules: InstrumentationRules<'piano' | 'g
     return options[options.length - 1].name;
 }
 
-export function generateGhostHarmonyTrack(totalBars: number, mood: Mood, key: number, random: { next: () => number; nextInt: (max: number) => number; }, genre: Genre): GhostChord[] {
-    console.log(`[Harmony] Generating Ghost Harmony for ${totalBars} bars in key ${key}, genre ${genre}.`);
+/**
+ * #ЗАЧЕМ: Эта функция — "Лаборатория", где зарождается уникальная жизнь каждой пьесы.
+ * #ЧТО: Она генерирует "ДНК Сюиты" — неизменный генетический код, который определяет
+ *       уникальную гармонию, темп и ритмический стиль для всей композиции.
+ *       Использует цепи Маркова для создания непредсказуемой, но логичной гармонии.
+ * #СВЯЗИ: Вызывается один раз при инициализации `FractalMusicEngine`.
+ * @param totalBars Общая длительность сюиты в тактах.
+ * @param mood Текущее настроение, для выбора лада и стилей.
+ * @param key Тоника (основная нота) для всей сьюиты (MIDI).
+ * @param random Генератор псевдослучайных чисел.
+ * @param genre Текущий жанр.
+ * @returns Объект `SuiteDNA`, содержащий полный генетический код пьесы.
+ */
+export function generateSuiteDNA(
+    totalBars: number,
+    mood: Mood,
+    key: number,
+    random: { next: () => number; nextInt: (max: number) => number; },
+    genre: Genre
+): SuiteDNA {
+    console.log(`[DNA Composer] Generating Suite DNA for ${totalBars} bars. Mood: ${mood}, Genre: ${genre}`);
+
+    // --- 1. Генерация Гармонической Карты (Цепь Маркова) ---
     const harmonyTrack: GhostChord[] = [];
-    if (genre === 'blues') {
-        const I = key; const IV = key + 5; const V = key + 7;
-        let currentBar = 0;
-        while (currentBar < totalBars) {
-            const structure = [
-                { root: I,  duration: 4, step: 'I' }, { root: IV, duration: 2, step: 'IV' },
-                { root: I,  duration: 2, step: 'I' }, { root: V,  duration: 1, step: 'V' },
-                { root: IV, duration: 1, step: 'IV' }, { root: I,  duration: 1, step: 'I' },
-                { root: V,  duration: 1, step: 'V' },
-            ];
-            for (const segment of structure) {
-                if (currentBar >= totalBars) break;
-                const duration = Math.min(segment.duration, totalBars - currentBar);
-                if (duration <= 0) continue;
-                harmonyTrack.push({ rootNote: segment.root, chordType: 'dominant', bar: currentBar, durationBars: duration });
-                currentBar += duration;
+    const scale = getScaleForMood(mood, genre);
+
+    // Определяем ступени
+    const I = scale[0];
+    const IV = scale.length > 3 ? scale[3] : I + 5;
+    const V = scale.length > 4 ? scale[4] : I + 7;
+    const VI = scale.length > 5 ? scale[5] : I + 9;
+
+    const bluesProgressionMap = {
+        'I': { transitions: { 'IV': 0.6, 'I': 0.4 }, chordType: 'dominant' as GhostChord['chordType'] },
+        'IV': { transitions: { 'I': 0.5, 'V': 0.5 }, chordType: 'dominant' as GhostChord['chordType'] },
+        'V': { transitions: { 'I': 1.0 }, chordType: 'dominant' as GhostChord['chordType'] },
+    };
+
+    const ambientProgressionMap = {
+        'I': { transitions: { 'IV': 0.4, 'VI': 0.4, 'I': 0.2 }, chordType: 'minor' as GhostChord['chordType'] },
+        'IV': { transitions: { 'V': 0.5, 'I': 0.5 }, chordType: 'major' as GhostChord['chordType'] },
+        'V': { transitions: { 'VI': 0.6, 'I': 0.4 }, chordType: 'minor' as GhostChord['chordType'] },
+        'VI': { transitions: { 'IV': 0.7, 'I': 0.3 }, chordType: 'major' as GhostChord['chordType'] },
+    };
+
+    const progressionMap = genre === 'blues' ? bluesProgressionMap : ambientProgressionMap;
+
+    let currentChordStep: keyof typeof progressionMap = 'I';
+    let currentBar = 0;
+
+    while (currentBar < totalBars) {
+        const chordInfo = progressionMap[currentChordStep];
+        if (!chordInfo) {
+            currentChordStep = 'I'; // Fallback
+            continue;
+        }
+
+        const duration = (random.next() > 0.7) ? 2 : 4;
+
+        let rootNote;
+        switch (currentChordStep) {
+            case 'I': rootNote = I; break;
+            case 'IV': rootNote = IV; break;
+            case 'V': rootNote = V; break;
+            case 'VI': rootNote = VI; break;
+            default: rootNote = I;
+        }
+
+        if (rootNote === undefined) {
+            console.error(`[DNA Composer] Could not determine root note for step ${currentChordStep}.`);
+            currentBar += duration;
+            continue;
+        }
+
+        harmonyTrack.push({
+            rootNote: rootNote,
+            chordType: chordInfo.chordType,
+            bar: currentBar,
+            durationBars: Math.min(duration, totalBars - currentBar),
+        });
+
+        currentBar += duration;
+
+        const transitions = chordInfo.transitions;
+        let rand = random.next();
+        let nextStep: keyof typeof progressionMap = 'I'; // Fallback
+        for (const step in transitions) {
+            rand -= transitions[step as keyof typeof transitions];
+            if (rand <= 0) {
+                nextStep = step as keyof typeof progressionMap;
+                break;
             }
         }
-    } else {
-        const scale = getScaleForMood(mood, genre);
-        const I = scale[0]; const IV = scale[3]; const V = scale[4]; const VI = scale[5];
-        const progression = [I, VI, IV, V]; 
-        const chordTypes: GhostChord['chordType'][] = ['minor', 'major', 'major', 'minor'];
-        let currentBar = 0;
-        while (currentBar < totalBars) {
-            const progressionIndex = Math.floor(currentBar / 4) % progression.length;
-            const rootNote = progression[progressionIndex];
-            const duration = 4;
-            if (rootNote === undefined) { currentBar += duration; continue; }
-            harmonyTrack.push({ rootNote: rootNote, chordType: chordTypes[progressionIndex], bar: currentBar, durationBars: duration });
-            currentBar += duration;
+        currentChordStep = nextStep;
+    }
+    
+    // --- 2. Выбор Ритмического Характера ---
+    const possibleTempos: Partial<Record<Mood, number[]>> = {
+      calm: [60, 64, 68, 72],
+      melancholic: [60, 66, 70],
+      dark: [58, 62, 66],
+      joyful: [72, 78, 84, 90],
+      enthusiastic: [80, 88, 96],
+    };
+    const tempoPool = possibleTempos[mood] || [68, 72, 76, 80];
+    const baseTempo = tempoPool[random.nextInt(tempoPool.length)];
+
+    const rhythmicFeel: RhythmicFeel = random.next() > 0.3 ? 'shuffle' : 'straight';
+
+    // --- 3. Выбор Стилей Исполнения ---
+    const bassStyles: BassStyle[] = ['boogie', 'walking', 'pedal'];
+    const drumStyles: DrumStyle[] = ['heavy_backbeat', 'light_brushes', 'shuffle_A'];
+
+    const bassStyle = bassStyles[random.nextInt(bassStyles.length)];
+    const drumStyle = drumStyles[random.nextInt(drumStyles.length)];
+
+    console.log(`[DNA Composer] Suite DNA Generated: Tempo=${baseTempo}, Feel=${rhythmicFeel}, Bass=${bassStyle}, Drums=${drumStyle}`);
+
+    return {
+        harmonyTrack,
+        baseTempo,
+        rhythmicFeel,
+        bassStyle,
+        drumStyle,
+    };
+}
+
+
+export function createBassFill(chord: GhostChord, mood: Mood, genre: Genre, random: { next: () => number, nextInt: (max: number) => number }): { events: FractalEvent[], penalty: number } {
+    return { events: [], penalty: 0 };
+}
+
+export function createDrumFill(random: { next: () => number, nextInt: (max: number) => number }, params: any = {}): FractalEvent[] {
+    return [];
+}
+
+export function generateBluesBassRiff(chord: GhostChord, technique: Technique, random: { next: () => number, nextInt: (max: number) => number }, mood: Mood): FractalEvent[] {
+    const phrase: FractalEvent[] = [];
+    const root = chord.rootNote;
+    const barDurationInBeats = 4.0;
+    const ticksPerBeat = 3;
+    
+    const riffCollection = BLUES_BASS_RIFFS[mood] ?? BLUES_BASS_RIFFS['contemplative'];
+    if (!riffCollection || riffCollection.length === 0) return [];
+    
+    const riffTemplate = riffCollection[random.nextInt(riffCollection.length)];
+
+    const barInChorus = 0; // Simplified for axiom generation
+    const rootOfChorus = root;
+    const step = (root - rootOfChorus + 12) % 12;
+    
+    let patternSource: 'I' | 'IV' | 'V' | 'turn' = 'I';
+    if (barInChorus === 11) {
+        patternSource = 'turn';
+    } else if (step === 5 || step === 4) {
+        patternSource = 'IV';
+    } else if (step === 7) {
+        patternSource = 'V';
+    }
+
+    const pattern = riffTemplate[patternSource];
+
+    for (const riffNote of pattern) {
+        phrase.push({
+            type: 'bass',
+            note: root + (DEGREE_TO_SEMITONE[riffNote.deg as BluesRiffDegree] || 0),
+            time: riffNote.t / ticksPerBeat,
+            duration: (riffNote.d || 2) / ticksPerBeat,
+            weight: 0.85 + random.next() * 0.1,
+            technique: 'pluck',
+            dynamics: 'mf',
+            phrasing: 'legato',
+            params: { cutoff: 800, resonance: 0.7, distortion: 0.15, portamento: 0.0 }
+        });
+    }
+    return phrase;
+}
+
+export function mutateBluesAccompaniment(phrase: FractalEvent[], chord: GhostChord, drumEvents: FractalEvent[], random: { next: () => number }): FractalEvent[] {
+    const newPhrase: FractalEvent[] = JSON.parse(JSON.stringify(phrase));
+    if (newPhrase.length === 0) return [];
+    
+    if (random.next() < 0.4 && drumEvents.some(isKick)) {
+        const kickTime = drumEvents.find(isKick)!.time;
+        newPhrase.forEach(e => e.time = kickTime);
+        console.log(`%c[AccompMutation] Synced with kick`, 'color: #90EE90');
+    }
+
+    if (random.next() < 0.3) {
+        const isMinor = chord.chordType.includes('minor');
+        const root = newPhrase[0].note;
+        newPhrase.forEach(e => {
+            const interval = e.note - root;
+            if (interval === (isMinor ? 3 : 4)) e.note += 12; // Invert third up
+        });
+         console.log(`%c[AccompMutation] Voicing changed`, 'color: #90EE90');
+    }
+    
+    return newPhrase;
+}
+
+export function mutateBluesMelody(phrase: FractalEvent[], chord: GhostChord, drumEvents: FractalEvent[], random: { next: () => number }): FractalEvent[] {
+    const newPhrase: FractalEvent[] = JSON.parse(JSON.stringify(phrase));
+    if (newPhrase.length === 0) return [];
+    
+    if (random.next() < 0.25) {
+        const noteToDecorate = newPhrase[0];
+        const graceNote: FractalEvent = { ...noteToDecorate, duration: 0.1, time: noteToDecorate.time - 0.1, note: noteToDecorate.note - 1, technique: 'gr' };
+        newPhrase.unshift(graceNote);
+        console.log(`%c[MelodyMutation] Added grace note`, 'color: #DA70D6');
+    }
+
+    if (random.next() < 0.2) {
+        const noteToBend = newPhrase[newPhrase.length - 1];
+        noteToBend.technique = 'bn';
+        console.log(`%c[MelodyMutation] Added bend`, 'color: #DA70D6');
+    }
+
+    return newPhrase;
+}
+
+export function createBluesOrganLick(
+    chord: GhostChord,
+    random: { next: () => number; nextInt: (max: number) => number; },
+    isProvocative: boolean = false
+): FractalEvent[] {
+    const phrase: FractalEvent[] = [];
+    const rootNote = chord.rootNote;
+    const barDurationInBeats = 4;
+    
+    const isMinor = chord.chordType === 'minor';
+    const third = rootNote + (isMinor ? 3 : 4);
+    const fifth = rootNote + 7;
+    const seventh = rootNote + 10; // b7
+    const bluesNote = rootNote + 6; // b5
+
+    const baseVoicing = [rootNote, third, fifth, seventh];
+    const voicingWithBlueNote = [rootNote, third, bluesNote, seventh];
+
+    const finalVoicing = random.next() < 0.3 ? voicingWithBlueNote : baseVoicing;
+
+    const patterns = [
+        [{ t: 0.0, d: 0.4 }, { t: 2.5, d: 1.5 }], 
+        [{ t: 1.5, d: 0.5 }, { t: 3.5, d: 0.5 }],
+        [{ t: 0.5, d: 0.5 }, { t: 1.0, d: 1.0 }],
+        isProvocative ? [{ t: 0, d: 0.25 }, { t: 0.5, d: 0.25 }, { t: 1.0, d: 0.25 }, { t: 1.5, d: 0.25 }, { t: 2.0, d: 0.25 }, { t: 2.5, d: 0.25 }] : []
+    ].filter(p => p.length > 0);
+    
+    const selectedPattern = patterns[random.nextInt(patterns.length)];
+
+    for (const hit of selectedPattern) {
+        for(const note of finalVoicing) {
+            phrase.push({
+                type: 'accompaniment',
+                note: note + 12 * 3,
+                time: hit.t,
+                duration: hit.d * 0.9,
+                weight: 0.6 + random.next() * 0.15,
+                technique: 'swell',
+                dynamics: 'mf',
+                phrasing: 'staccato',
+                params: {
+                    attack: 0.01,
+                    release: hit.d * 1.2
+                }
+            });
         }
     }
-    return harmonyTrack;
+
+    return phrase;
 }
+
+export function generateIntroSequence(options: { 
+    currentBar: number; 
+    totalIntroBars: number;
+    rules: IntroRules;
+    instrumentHints: InstrumentHints;
+    harmonyTrack: GhostChord[]; 
+    settings: any; 
+    random: { next: () => number, nextInt: (max: number) => number; };
+    introInstrumentOrder: InstrumentPart[];
+}): { events: FractalEvent[], instrumentHints: InstrumentHints } {
+    const { currentBar, totalIntroBars, rules, instrumentHints, harmonyTrack, settings, random, introInstrumentOrder } = options;
+    const events: FractalEvent[] = [];
+
+    const currentChord = harmonyTrack.find(c => currentBar >= c.bar && currentBar < c.bar + c.durationBars);
+    if (!currentChord) {
+        console.error(`[IntroSeq] No chord found for bar ${currentBar}.`);
+        return { events, instrumentHints: {} };
+    }
+    
+    const stageCount = rules.stages || 4;
+    const barsPerStage = Math.max(1, Math.floor(totalIntroBars / stageCount));
+    const currentStage = Math.min(stageCount, Math.floor(currentBar / barsPerStage) + 1);
+    
+    const tempActive = new Set(introInstrumentOrder.slice(0, currentStage));
+    const activeInstrumentsForBar = new Set<InstrumentPart>();
+
+    for(const inst of tempActive) {
+        if(inst === 'bass' || inst === 'drums' || (instrumentHints[inst] && instrumentHints[inst] !== 'none')) {
+            activeInstrumentsForBar.add(inst);
+        }
+    }
+    if (activeInstrumentsForBar.size === 0 && introInstrumentOrder.length > 0) {
+        activeInstrumentsForBar.add(introInstrumentOrder[0]);
+    }
+    
+    if (activeInstrumentsForBar.has('accompaniment')) {
+        events.push(...createPulsatingAccompaniment(currentChord, random));
+    }
+    if (activeInstrumentsForBar.has('melody')) {
+        const melodyEvents = createMelodyMotif(currentChord, settings.mood, random, undefined, 'mid', settings.genre);
+        melodyEvents.forEach(e => { e.note += 24; e.weight = 0.1; }); 
+        events.push(...melodyEvents);
+    }
+    if(activeInstrumentsForBar.has('bass')) {
+        if (settings.genre === 'blues') {
+            events.push(...generateBluesBassRiff(currentChord, 'riff', random, settings.mood));
+        } else {
+            events.push(...createAmbientBassAxiom(currentChord, settings.mood, settings.genre, random, settings.tempo, 'drone'));
+        }
+    }
+    if(activeInstrumentsForBar.has('drums')) {
+        const kit = DRUM_KITS[settings.genre]?.intro ?? DRUM_KITS.ambient!.intro!;
+        events.push(...createDrumAxiom(kit, settings.genre, settings.mood, settings.tempo, random).events);
+    }
+     if (activeInstrumentsForBar.has('harmony')) {
+        events.push(...createHarmonyAxiom(currentChord, settings.mood, settings.genre, random));
+    }
+    
+    return { events, instrumentHints };
+}
+
+export function createPulsatingAccompaniment(chord: GhostChord, random: { next: () => number, nextInt: (max: number) => number }): FractalEvent[] {
+    const axiom: FractalEvent[] = [];
+    const rootMidi = chord.rootNote;
+    const isMinor = chord.chordType.includes('minor');
+    const chordNotes = [rootMidi, rootMidi + (isMinor ? 3 : 4), rootMidi + 7];
+    const baseOctave = 3;
+    const duration = 0.5;
+    const times = [0, 1.5, 2.5, 3.5];
+
+    times.forEach(time => {
+        if (random.next() < 0.7) {
+            const note = chordNotes[random.nextInt(chordNotes.length)];
+            axiom.push({
+                type: 'accompaniment',
+                note: note + 12 * baseOctave,
+                duration, time,
+                weight: 0.4 + random.next() * 0.2,
+                technique: 'arpeggio-fast', dynamics: 'p', phrasing: 'staccato',
+                params: {}
+            });
+        }
+    });
+    return axiom;
+}
+
+
+export function chooseHarmonyInstrument(rules: InstrumentationRules<'piano' | 'guitarChords' | 'acousticGuitarSolo' | 'flute' | 'violin'> | undefined, random: { next: () => number }): NonNullable<InstrumentHints['harmony']> {
+    if (!rules || !rules.options || rules.options.length === 0) {
+        return 'guitarChords'; // Безопасное значение по умолчанию
+    }
+    
+    const options = rules.options;
+    if (!options || options.length === 0) return 'guitarChords';
+    const totalWeight = options.reduce((sum, item) => sum + item.weight, 0);
+    if (totalWeight <= 0) return options[0].name;
+    let rand = random.next() * totalWeight;
+    for (const item of options) {
+        rand -= item.weight;
+        if (rand <= 0) return item.name;
+    }
+    return options[options.length - 1].name;
+}
+
 
 export function createBassFill(chord: GhostChord, mood: Mood, genre: Genre, random: { next: () => number, nextInt: (max: number) => number }): { events: FractalEvent[], penalty: number } {
     return { events: [], penalty: 0 };

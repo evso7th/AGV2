@@ -249,6 +249,27 @@ export type GhostChord = {
   durationBars: number;
 };
 
+// --- НОВЫЕ ТИПЫ ДЛЯ "ДНК СЮИТЫ" (ПЛАН 1508) ---
+
+export type RhythmicFeel = 'shuffle' | 'straight';
+export type BassStyle = 'boogie' | 'walking' | 'pedal';
+export type DrumStyle = 'heavy_backbeat' | 'light_brushes' | 'shuffle_A' | 'shuffle_B';
+
+/**
+ * #ЗАЧЕМ: "ДНК Сюиты" — это уникальный генетический код для всей пьесы.
+ * #ЧТО: Он создается один раз в начале и определяет глобальные, неизменные
+ *       параметры композиции: гармонию, темп и ритмический стиль.
+ * #СВЯЗИ: Генерируется в `music-theory.ts` (generateSuiteDNA), хранится в
+ *          `fractal-music-engine.ts` и используется для управления генерацией всех партий.
+ */
+export type SuiteDNA = {
+  harmonyTrack: GhostChord[];
+  baseTempo: number;
+  rhythmicFeel: RhythmicFeel;
+  bassStyle: BassStyle;
+  drumStyle: DrumStyle;
+};
+
 
 // --- BLUES TYPES ---
 export type BluesRiffDegree = 'R' | '2' | 'b2' | 'b3' | '3' | '4' | '#4' | 'b5' | '5' | 'b6' | '6' | 'b7' | '9' | '11' | 'R+8';

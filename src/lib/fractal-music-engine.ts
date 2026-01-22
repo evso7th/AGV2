@@ -1,6 +1,6 @@
 
 
-import type { FractalEvent, Mood, Genre, Technique, BassSynthParams, InstrumentType, MelodyInstrument, AccompanimentInstrument, ResonanceMatrix, InstrumentHints, AccompanimentTechnique, GhostChord, SfxRule, V1MelodyInstrument, V2MelodyInstrument, BlueprintPart, InstrumentationRules, InstrumentBehaviorRules, BluesMelody, IntroRules, InstrumentPart, DrumKit, BluesGuitarRiff, BluesSoloPhrase, BluesRiffDegree } from './fractal';
+import type { FractalEvent, Mood, Genre, Technique, BassSynthParams, InstrumentType, MelodyInstrument, AccompanimentInstrument, ResonanceMatrix, InstrumentHints, AccompanimentTechnique, GhostChord, SfxRule, V1MelodyInstrument, V2MelodyInstrument, BlueprintPart, InstrumentationRules, InstrumentBehaviorRules, BluesMelody, IntroRules, InstrumentPart, DrumKit, BluesGuitarRiff, BluesSoloPhrase, BluesRiffDegree, SuiteDNA } from './fractal';
 import { ElectronicK, TraditionalK, AmbientK, MelancholicMinorK } from './resonance-matrices';
 import { BlueprintNavigator, type NavigationInfo } from './blueprint-navigator';
 import { getBlueprint } from './blueprints';
@@ -16,7 +16,7 @@ import { BLUES_SOLO_LICKS, BLUES_SOLO_PLANS } from './assets/blues_guitar_solo';
 import { BLUES_DRUM_RIFFS } from './assets/blues-drum-riffs';
 import { DRUM_KITS } from './assets/drum-kits';
 
-import { getScaleForMood, generateGhostHarmonyTrack, createDrumAxiom, createAmbientBassAxiom, createAccompanimentAxiom, createHarmonyAxiom, createMelodyMotif as createAmbientMelodyMotif, mutateBassPhrase, createBassFill, createDrumFill, chooseHarmonyInstrument, DEGREE_TO_SEMITONE, mutateBluesAccompaniment, mutateBluesMelody, createBluesOrganLick, generateIntroSequence } from './music-theory';
+import { getScaleForMood, generateSuiteDNA, createDrumAxiom, createAmbientBassAxiom, createAccompanimentAxiom, createHarmonyAxiom, createMelodyMotif as createAmbientMelodyMotif, mutateBassPhrase, createBassFill, createDrumFill, chooseHarmonyInstrument, DEGREE_TO_SEMITONE, mutateBluesAccompaniment, mutateBluesMelody, createBluesOrganLick, generateIntroSequence } from './music-theory';
 
 
 export type Branch = {
@@ -99,7 +99,7 @@ export class FractalMusicEngine {
   private nextAccompanimentDelay: number = 0;
   private hasBassBeenMutated = false;
   
-  private ghostHarmonyTrack: GhostChord[] = []; // The harmonic "skeleton"
+  private suiteDNA: SuiteDNA | null = null; // The harmonic "skeleton"
   
   public navigator: BlueprintNavigator | null = null;
 
@@ -208,13 +208,22 @@ export class FractalMusicEngine {
     const blueprint = await getBlueprint(this.config.genre, this.config.mood);
     this.navigator = new BlueprintNavigator(blueprint, this.config.seed, this.config.genre, this.config.mood, this.config.introBars);
     
+    // ГЕНЕРИРУЕМ ДНК ОДИН РАЗ НА ВСЮ СЬЮИТУ
     const key = getScaleForMood(this.config.mood, this.config.genre)[0];
-    this.ghostHarmonyTrack = generateGhostHarmonyTrack(this.navigator.totalBars, this.config.mood, key, this.random, this.config.genre);
-    if (this.ghostHarmonyTrack.length === 0) {
-      throw new Error("[Engine] CRITICAL ERROR: Could not generate 'Ghost Harmony'. Music is not possible.");
+    this.suiteDNA = generateSuiteDNA(
+        this.navigator.totalBars,
+        this.config.mood,
+        key,
+        this.random,
+        this.config.genre
+    );
+    
+    if (!this.suiteDNA || this.suiteDNA.harmonyTrack.length === 0) {
+      throw new Error("[Engine] CRITICAL ERROR: Could not generate 'Suite DNA'. Music is not possible.");
     }
-
-    console.log(`[FractalMusicEngine] Initialized with blueprint "${this.navigator.blueprint.name}". Total duration: ${this.navigator.totalBars} bars.`);
+    
+    // Override tempo from blueprint if not specified in DNA
+    this.config.tempo = this.suiteDNA.baseTempo;
 
     this.bassPhraseLibrary = [];
     this.currentBassPhraseIndex = 0;
@@ -227,12 +236,13 @@ export class FractalMusicEngine {
         this.introInstrumentOrder = this.random.shuffle([...introPart.introRules.instrumentPool]);
     }
 
-    const firstChord = this.ghostHarmonyTrack[0];
+    const firstChord = this.suiteDNA.harmonyTrack[0];
     const initialNavInfo = this.navigator.tick(0);
     const initialRegisterHint = initialNavInfo?.currentPart.instrumentRules?.accompaniment?.register?.preferred;
     const initialBassTechnique = initialNavInfo?.currentPart.instrumentRules?.bass?.techniques?.[0].value as Technique || 'drone';
 
     if (this.config.genre === 'blues') {
+        // Blues logic will be handled within generateOneBar
     } else {
         const newBassAxiom = createAmbientBassAxiom(firstChord, this.config.mood, this.config.genre, this.random, this.config.tempo, initialBassTechnique);
         for (let i = 0; i < 4; i++) {
@@ -258,40 +268,32 @@ export class FractalMusicEngine {
 
     let options: any[] | undefined;
 
-    // #ИСПРАВЛЕНО (ПЛАН 1472): Логика выбора басового инструмента теперь учитывает флаг useMelodyV2.
-    // #ЗАЧЕМ: Предотвращает попытку использовать V2-пресеты с V1-движком и наоборот.
     if (part === 'bass') {
         const useV2 = this.config.useMelodyV2;
         options = useV2 ? (rules as InstrumentationRules<BassInstrument>).v2Options : (rules as InstrumentationRules<BassInstrument>).v1Options;
         
-        // Fallback if the primary option list is empty
         if (!options || options.length === 0) {
              console.warn(`[FME] No ${useV2 ? 'v2' : 'v1'}Options for bass, falling back to other version.`);
              options = useV2 ? (rules as InstrumentationRules<BassInstrument>).v1Options : (rules as InstrumentationRules<BassInstrument>).v2Options;
         }
     } 
-    // Step 2: Handle melody and accompaniment based on the V2 flag
     else if (part === 'melody' || part === 'accompaniment') {
         const useV2 = this.config.useMelodyV2;
         options = useV2 ? rules.v2Options : rules.v1Options;
 
-        // Step 3 (Reliability): Fallback to the other options list if the primary one is missing
         if (!options || options.length === 0) {
             console.warn(`[FME] No ${useV2 ? 'v2' : 'v1'}Options for ${part}, falling back to other version.`);
             options = useV2 ? rules.v1Options : rules.v2Options;
         }
     } 
-    // Handle harmony, which has a single 'options' list
     else if (part === 'harmony') {
         options = (rules as InstrumentationRules<'piano' | 'guitarChords' | 'flute' | 'violin'>).options;
     }
 
-    // If after all checks, we have no options, return undefined.
     if (!options || options.length === 0) {
         return undefined;
     }
     
-    // Perform the weighted choice on the determined options.
     return this._performWeightedChoice(options);
   }
   
@@ -330,7 +332,7 @@ export class FractalMusicEngine {
   }
   
     private generateDrumEvents(navInfo: NavigationInfo | null): FractalEvent[] {
-        if (!navInfo) return [];
+        if (!navInfo || !this.suiteDNA) return [];
         const drumRules = navInfo.currentPart.instrumentRules?.drums;
         if (!navInfo.currentPart.layers.drums || (drumRules && drumRules.pattern === 'none')) {
             return [];
@@ -386,7 +388,7 @@ export class FractalMusicEngine {
             }
         }
         
-        const axiomResult = createDrumAxiom(finalKit, this.config.genre, this.config.mood, this.config.tempo, this.random, drumRules, this.currentDrumRiffIndex, overrides);
+        const axiomResult = createDrumAxiom(finalKit, this.config.genre, this.config.mood, this.suiteDNA.baseTempo, this.random, drumRules);
         return axiomResult.events;
     }
 
@@ -471,7 +473,7 @@ export class FractalMusicEngine {
         const riffTemplate = allBassRiffs[this.currentBassRiffIndex % allBassRiffs.length];
 
         const barInChorus = this.epoch % 12;
-        const rootOfChorus = this.ghostHarmonyTrack.find(c => c.bar === (this.epoch - barInChorus))?.rootNote ?? root;
+        const rootOfChorus = this.suiteDNA!.harmonyTrack.find(c => c.bar === (this.epoch - barInChorus))?.rootNote ?? root;
         const step = (root - rootOfChorus + 12) % 12;
         
         let patternSource: 'I' | 'IV' | 'V' | 'turn' = 'I';
@@ -502,7 +504,7 @@ export class FractalMusicEngine {
     }
 
   public getGhostHarmony(): GhostChord[] {
-      return this.ghostHarmonyTrack;
+      return this.suiteDNA?.harmonyTrack || [];
   }
   
     private generateBluesMelodyChorus(
@@ -664,7 +666,7 @@ export class FractalMusicEngine {
                 console.log(`%c[AccompJam] Staying silent to listen to melody.`, 'color: #90EE90');
                 return []; 
             } else { 
-                console.log(`%c[AccompJam] Playing support chords under melody.`, 'color: #90EE90');
+                 console.log(`%c[AccompJam] Playing support chords under melody.`, 'color: #90EE90');
                  return createAccompanimentAxiom(chord, this.config.mood, this.config.genre, this.random, this.config.tempo, 'low');
             }
         }
@@ -715,9 +717,6 @@ export class FractalMusicEngine {
           return { events: [], instrumentHints: {} };
       }
 
-      // #ИСПРАВЛЕНО (ПЛАН 1281): Централизация выбора инструмента.
-      // Теперь "хинты" берутся напрямую из блюпринта через навигатор.
-      // Это ЕДИНСТВЕННЫЙ источник правды для выбора инструмента.
       const instrumentHints: InstrumentHints = {
           melody: this._chooseInstrumentForPart('melody', navigationInfo),
           accompaniment: this._chooseInstrumentForPart('accompaniment', navigationInfo),
@@ -785,13 +784,19 @@ export class FractalMusicEngine {
   // --- Основная функция генерации на один такт ---
   public generateOneBar(barDuration: number, navInfo: NavigationInfo, instrumentHints: InstrumentHints): { events: FractalEvent[], instrumentHints: InstrumentHints } {
     const effectiveBar = this.epoch;
-    const currentChord = this.ghostHarmonyTrack.find(chord => 
+    
+    if (!this.suiteDNA) {
+        console.error(`[Engine] CRITICAL ERROR in bar ${this.epoch}: SuiteDNA is not initialized.`);
+        return { events: [], instrumentHints: {} };
+    }
+
+    const currentChord = this.suiteDNA.harmonyTrack.find(chord => 
         effectiveBar >= chord.bar && effectiveBar < chord.bar + chord.durationBars
     );
 
     if (!currentChord) {
         console.error(`[Engine] CRITICAL ERROR in bar ${this.epoch}: Could not find chord in 'Ghost Harmony'.`);
-        return { events: [], instrumentHints: {} };
+        return { events: [], instrumentHints };
     }
     
      // Logic to re-roll riffs every 12 bars for blues
@@ -823,7 +828,7 @@ export class FractalMusicEngine {
 
             if (barInChorus === 0 || !this.bluesChorusCache || this.bluesChorusCache.barStart !== (this.epoch - barInChorus)) {
                 const chorusBarStart = this.epoch - barInChorus;
-                const chorusChords = this.ghostHarmonyTrack.filter(c => c.bar >= chorusBarStart && c.bar < chorusBarStart + 12);
+                const chorusChords = this.suiteDNA.harmonyTrack.filter(c => c.bar >= chorusBarStart && c.bar < chorusBarStart + 12);
                 if (chorusChords.length > 0) {
                     this.bluesChorusCache = this.generateBluesMelodyChorus(chorusChords, this.config.mood, this.random, isSoloSection, chorusIndex, melodyRules.register?.preferred);
                      console.log(`%c${this.bluesChorusCache.log}`, 'color: #E6E6FA');
