@@ -8,17 +8,28 @@ type VelocitySample = {
 };
 
 export const PIANO_SAMPLES: Record<string, string> = {
-    'C3': '/assets/piano_samples/the-sound-of-the-note-do.mp3',
-    'D3': '/assets/piano_samples/re-note-sound.mp3',
-    'E3': '/assets/piano_samples/the-sound-of-the-note-mi.mp3',
-    'F3': '/assets/piano_samples/fa-note-sound.mp3',
-    'G3': '/assets/piano_samples/the-sound-of-the-note-sol-extended.mp3',
-    'A3': '/assets/piano_samples/the-sound-of-the-note-la.mp3',
-    'C4': '/assets/piano_samples/c-note-sound.mp3',
-    'C5': '/assets/piano_samples/the-sound-of-the-note-do-in-the-second-octave.mp3',
-    'D5': '/assets/piano_samples/the-sound-of-the-note-d-is-stretched.mp3',
-    'A5': '/assets/piano_samples/the-sound-of-the-note-a-is-stretched.mp3',
-    'C6': '/assets/piano_samples/sound-note-c-stretched.mp3',
+    'A3': '/assets/piano_samples/203502__a3.mp3',
+    'A5': '/assets/piano_samples/203464__a5.mp3',
+    'A4': '/assets/piano_samples/203465__a4.mp3',
+    'B4': '/assets/piano_samples/203462__b4.mp3',
+    'B3': '/assets/piano_samples/203463__b3.mp3',
+    'C3': '/assets/piano_samples/203479__c3.mp3',
+    'B5': '/assets/piano_samples/203467__b5.mp3',
+    'F3': '/assets/piano_samples/203501__f3.mp3',
+    'E3': '/assets/piano_samples/203470__e3.mp3',
+    'E4': '/assets/piano_samples/203471__e4.mp3',
+    'D4': '/assets/piano_samples/203482__d4.mp3',
+    'D5': '/assets/piano_samples/203487__d5.mp3',
+    'E5': '/assets/piano_samples/203476__e5.mp3',
+    'C4': '/assets/piano_samples/203481__c4.mp3',
+    'C5': '/assets/piano_samples/203485__c5.mp3',
+    'D3': '/assets/piano_samples/203486__d3.mp3',
+    'C6': '/assets/piano_samples/203484__c6.mp3',
+    'G3': '/assets/piano_samples/203493__g3.mp3',
+    'F5': '/assets/piano_samples/203499__f5.mp3',
+    'G5': '/assets/piano_samples/203495__g5.mp3',
+    'G4': '/assets/piano_samples/203492__g4.mp3',
+    'F4': '/assets/piano_samples/203500__f4.mp3'
 };
 
 export const VIOLIN_SAMPLES: Record<string, VelocitySample[]> = {
@@ -169,7 +180,7 @@ export const ACOUSTIC_GUITAR_SOLO_SAMPLES: Record<string, GuitarTechniqueSamples
     'G3': {
         pick: '/assets/acoustic_guitar_samples/8402_speedy_clean_g_str_pick.mp3',
         pluck: '/assets/acoustic_guitar_samples/8403_speedy_clean_g_str_pluck.mp3',
-        harm: '/assets/acoustic_guitar_samples/8401_speedy_clean_g_harm.mp3'
+        harm: '/assets/acoustic_guitar_samples/8401_speedy_clean_g_harm1.mp3'
     },
     'B3': {
         pick: '/assets/acoustic_guitar_samples/8385_speedy_clean_b_str_pick.mp3',
@@ -187,5 +198,3 @@ export const ACOUSTIC_GUITAR_SLIDE_SAMPLES: string[] = [
     '/assets/acoustic_guitar_samples/8398_speedy_clean_finger_slide2_delay.mp3',
     '/assets/acoustic_guitar_samples/8399_speedy_clean_finger_slide_delay.mp3'
 ];
-
-    
