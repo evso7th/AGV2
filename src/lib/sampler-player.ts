@@ -18,7 +18,7 @@ export class SamplerPlayer {
         this.outputNode = this.audioContext.createGain();
         
         this.preamp = this.audioContext.createGain();
-        this.preamp.gain.value = 1.25; 
+        this.preamp.gain.value = 0.5; 
         this.preamp.connect(this.outputNode);
         
         this.outputNode.connect(destination);
