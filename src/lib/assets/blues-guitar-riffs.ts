@@ -1,9 +1,7 @@
-
-
 // src/lib/assets/blues-guitar-riffs.ts
 
 /**
- * #ЗАЧЕМ: Этот файл содержит оцифрованную библиотеку блюзовых гитарных партий,
+ * #ЗАЧЕМ: Этот файл хранит оцифрованную библиотеку блюзовых гитарных партий,
  *          предоставленную пользователем. Он служит "партитурой" для
  *          FractalMusicEngine, позволяя исполнять сложные техники, такие как
  *          соло, перебор и аккордовый бой.
@@ -64,10 +62,10 @@ export const BLUES_GUITAR_RIFFS: BluesGuitarRiff[] = [
     bpm: 78,
     key: "E",
     solo: {
-      I:  [{t:0,deg:'R'},{t:2,deg:'4',tech:'sl'},{t:4,deg:'#4'},{t:6,deg:'5',tech:'vb'}],
-      IV: [{t:0,deg:'R'},{t:4,d:8,deg:'5'}],
-      V:  [{t:0,deg:'R'},{t:3,deg:'b7'},{t:6,d:6,deg:'5'}],
-      Turnaround:  [{t:0,deg:'2'},{t:2,deg:'b3'},{t:4,deg:'3'},{t:6,deg:'4'},{t:8,d:2,deg:'#4'},{t:10,d:2,deg:'5'}]
+      I:  [{t:0,d:2,deg:'R'},{t:2,d:2,deg:'4',tech:'sl'},{t:4,d:2,deg:'#4'},{t:6,d:6,deg:'5',tech:'vb'}],
+      IV: [{t:0,d:4,deg:'R'},{t:4,d:8,deg:'5'}],
+      V:  [{t:0,d:3,deg:'R'},{t:3,d:3,deg:'b7'},{t:6,d:6,deg:'5'}],
+      Turnaround:  [{t:0,d:2,deg:'2'},{t:2,d:2,deg:'b3'},{t:4,d:2,deg:'3'},{t:6,d:2,deg:'4'},{t:8,d:2,deg:'#4'},{t:10,d:2,deg:'5'}]
     },
     fingerstyle: [
       { probability: 0.7, pattern: 'F_TRAVIS', voicingName: 'A7_open' }
@@ -84,10 +82,10 @@ export const BLUES_GUITAR_RIFFS: BluesGuitarRiff[] = [
     bpm: 74,
     key: "E",
     solo: {
-      I:  [{t:0,deg:'b3',tech:'gr'},{t:3,deg:'3'},{t:6,d:6,deg:'5'}],
-      IV: [{t:0,deg:'R'},{t:3,deg:'3'},{t:6,d:6,deg:'R'}],
-      V:  [{t:0,deg:'5'},{t:3,d:9,deg:'b7'}],
-      Turnaround:  [{t:0,deg:'R'},{t:3,deg:'b7'},{t:6,d:6,deg:'R'}]
+      I:  [{t:0,d:3,deg:'b3',tech:'gr'},{t:3,d:3,deg:'3'},{t:6,d:6,deg:'5'}],
+      IV: [{t:0,d:3,deg:'R'},{t:3,d:3,deg:'3'},{t:6,d:6,deg:'R'}],
+      V:  [{t:0,d:3,deg:'5'},{t:3,d:9,deg:'b7'}],
+      Turnaround:  [{t:0,d:3,deg:'R'},{t:3,d:3,deg:'b7'},{t:6,d:6,deg:'R'}]
     },
     fingerstyle: [
       { probability: 0.6, pattern: 'F_TRAVIS', voicingName: 'A7_open' }
@@ -146,7 +144,7 @@ export const BLUES_GUITAR_RIFFS: BluesGuitarRiff[] = [
     solo: {
       I:  [{t:0,d:6,deg:'b3',tech:'vb'},{t:6,d:6,deg:'11'}],
       IV: [{t:0,d:6,deg:'b3'},{t:6,d:6,deg:'9'}],
-      V:  [{t:0,deg:'5'},{t:3,deg:'b2'},{t:6,d:6,deg:'R'}],
+      V:  [{t:0,d:3,deg:'5'},{t:3,d:3,deg:'b2'},{t:6,d:6,deg:'R'}],
       Turnaround:  [{t:0,d:6,deg:'b7'},{t:6,d:6,deg:'R'}]
     },
     fingerstyle: [
@@ -165,9 +163,9 @@ export const BLUES_GUITAR_RIFFS: BluesGuitarRiff[] = [
     key: "E",
     solo: {
       I:  [{t:0,d:12,deg:'R'}],
-      IV: [{t:0,deg:'R'},{t:2,deg:'b3'},{t:4,deg:'4'},{t:6,deg:'#4'},{t:8,deg:'4'},{t:10,deg:'b3'}],
+      IV: [{t:0,d:2,deg:'R'},{t:2,d:2,deg:'b3'},{t:4,d:2,deg:'4'},{t:6,d:2,deg:'#4'},{t:8,d:2,deg:'4'},{t:10,d:2,deg:'b3'}],
       V:  [{t:0,d:6,deg:'5'},{t:6,d:6,deg:'b7'}],
-      Turnaround:  [{t:0,deg:'R'},{t:2,deg:'b7'},{t:4,deg:'6'},{t:6,deg:'b6'},{t:8,deg:'5'},{t:10,deg:'#4'}]
+      Turnaround:  [{t:0,d:2,deg:'R'},{t:2,d:2,deg:'b7'},{t:4,d:2,deg:'6'},{t:6,d:2,deg:'b6'},{t:8,d:2,deg:'5'},{t:10,d:2,deg:'#4'}]
     },
     fingerstyle: [
       { probability: 0.8, pattern: 'F_TRAVIS', voicingName: 'Am7_open' }
@@ -217,3 +215,11 @@ export const BLUES_GUITAR_RIFFS: BluesGuitarRiff[] = [
     ]
   }
 ];
+
+export const BLUES_GUITAR_VOICINGS: Record<string, number[]> = {
+    'E7_open': [40, 47, 50, 56, 59, 64],     // E2, B2, D3, G#3, B3, E4
+    'A7_open': [45, 52, 55, 61, 64],        // A2, E3, G3, C#4, E4
+    'B7_open': [47, 51, 57, 59, 66],        // B2, D#3, A3, B3, F#4
+    'Em7_open': [40, 47, 52, 55, 62, 64],   // E2, B2, E3, G3, D4, E4
+    'Am7_open': [45, 52, 55, 60, 64],       // A2, E3, G3, C4, E4
+};

@@ -1,4 +1,3 @@
-
 import type { MusicBlueprint } from '@/types/music';
 
 export const EpicBluesBlueprint: MusicBlueprint = {
@@ -18,30 +17,22 @@ export const EpicBluesBlueprint: MusicBlueprint = {
         parts: [
             {
                 id: 'INTRO', name: 'The Spark', duration: { percent: 15 },
-                layers: { drums: true, accompaniment: true, bass: true, harmony: true, melody: true },
+                layers: { drums: true, accompaniment: true, bass: true, harmony: true },
                 introRules: {
-                    instrumentPool: ['drums', 'bass', 'accompaniment', 'melody'],
-                    stages: 4
+                    instrumentPool: ['drums', 'bass', 'accompaniment'],
+                    stages: 3
                 },
                 instrumentation: {
                     accompaniment: { strategy: 'weighted', v1Options: [{ name: 'organ', weight: 1.0 }], v2Options: [{ name: 'organ_soft_jazz', weight: 1.0 }] },
-                    harmony: {
-                        strategy: 'weighted',
-                        options: [
-                            { name: 'guitarChords', weight: 0.5 },
-                            { name: 'violin', weight: 0.25 },
-                            { name: 'flute', weight: 0.25 }
-                        ]
-                    }
                 },
                 instrumentRules: {
-                    drums: { pattern: 'composer', kitName: 'blues_epic', density: { min: 0.3, max: 0.5 }, useSnare: true, useGhostHat: true, kickVolume: 0.0, usePerc: false, ride: { enabled: false } },
+                    drums: { pattern: 'composer', kitName: 'blues_epic', density: { min: 0.3, max: 0.5 }, useSnare: true, useGhostHat: true, kickVolume: 0.9, usePerc: false, ride: { enabled: false } },
                     bass: { 
                         techniques: [{ value: 'walking', weight: 1.0 }],
                         presetModifiers: { octaveShift: 1 } 
                     },
-                    accompaniment: { techniques: [{ value: 'long-chords', weight: 1.0 }], portamento: 0.05 }, // Adding portamento effect
-                    melody: { source: 'harmony_top_note' } // Melody is silent here but rule is needed
+                    accompaniment: { techniques: [{ value: 'long-chords', weight: 1.0 }], portamento: 0.05 },
+                    melody: { source: 'harmony_top_note' }
                 },
                 bundles: [{ id: 'EPIC_BLUES_INTRO_BUNDLE', name: 'Beat and Organ', duration: { percent: 100 }, characteristics: {}, phrases: {} }],
                 outroFill: { type: 'roll', duration: 1, parameters: { instrument: 'tom', crescendo: true } },
@@ -52,14 +43,6 @@ export const EpicBluesBlueprint: MusicBlueprint = {
                 instrumentation: {
                     accompaniment: { strategy: 'weighted', v1Options: [{ name: 'organ', weight: 1.0 }], v2Options: [{ name: 'organ_soft_jazz', weight: 1.0 }] },
                     melody: { strategy: 'weighted', v1Options: [{ name: 'guitar_shineOn', weight: 1.0 }], v2Options: [{ name: 'guitar_shineOn', weight: 1.0 }] },
-                    harmony: {
-                        strategy: 'weighted',
-                        options: [
-                            { name: 'guitarChords', weight: 0.5 },
-                            { name: 'violin', weight: 0.25 },
-                            { name: 'flute', weight: 0.25 }
-                        ]
-                    }
                 },
                 instrumentRules: {
                     drums: { pattern: 'composer', kitName: 'blues_epic', density: { min: 0.6, max: 0.8 }, useSnare: true, useGhostHat: true, kickVolume: 1.1, usePerc: true, ride: { enabled: false } },
@@ -77,22 +60,15 @@ export const EpicBluesBlueprint: MusicBlueprint = {
                 layers: { bass: true, drums: true, accompaniment: true, melody: true, harmony: true },
                  instrumentation: {
                     accompaniment: { strategy: 'weighted', v1Options: [{ name: 'organ', weight: 1.0 }], v2Options: [{ name: 'organ_soft_jazz', weight: 1.0 }] },
-                    melody: { strategy: 'weighted', v1Options: [{ name: 'guitar_muffLead', weight: 1.0 }], v2Options: [{ name: 'guitar_muffLead', weight: 1.0 }] },
-                    harmony: {
-                        strategy: 'weighted',
-                        options: [
-                            { name: 'guitarChords', weight: 0.5 },
-                            { name: 'violin', weight: 0.25 },
-                            { name: 'flute', weight: 0.25 }
-                        ]
-                    }
+                    melody: { strategy: 'weighted', v1Options: [{ name: 'guitar_muffLead', weight: 1.0 }], v2Options: [{ name: 'guitar_muffLead', weight: 1.0 }] }
                 },
                 instrumentRules: {
-                    drums: { pattern: 'composer', kitName: 'blues_epic', density: { min: 0.8, max: 1.0 }, kickVolume: 1.3, ride: { enabled: false } },
+                    drums: { pattern: 'composer', kitName: 'blues_epic', density: { min: 0.8, max: 1.0 }, kickVolume: 1.3, ride: { enabled: true } },
                     melody: { 
                         source: 'motif', 
                         density: { min: 0.7, max: 0.9 },
-                        register: { preferred: 'mid' }
+                        register: { preferred: 'high' },
+                        soloPlan: 'S01' // Используем первый план соло для примера
                     },
                     bass: { 
                         techniques: [{ value: 'walking', weight: 1.0 }],
@@ -107,15 +83,7 @@ export const EpicBluesBlueprint: MusicBlueprint = {
                 layers: { bass: true, drums: true, accompaniment: true, melody: true, harmony: true },
                 instrumentation: {
                     accompaniment: { strategy: 'weighted', v1Options: [{ name: 'organ', weight: 1.0 }], v2Options: [{ name: 'organ_soft_jazz', weight: 1.0 }] },
-                    melody: { strategy: 'weighted', v1Options: [{ name: 'guitar_shineOn', weight: 1.0 }], v2Options: [{ name: 'guitar_shineOn', weight: 1.0 }] },
-                    harmony: {
-                        strategy: 'weighted',
-                        options: [
-                            { name: 'guitarChords', weight: 0.5 },
-                            { name: 'violin', weight: 0.25 },
-                            { name: 'flute', weight: 0.25 }
-                        ]
-                    }
+                    melody: { strategy: 'weighted', v1Options: [{ name: 'guitar_shineOn', weight: 1.0 }], v2Options: [{ name: 'guitar_shineOn', weight: 1.0 }] }
                 },
                 instrumentRules: {
                     drums: { pattern: 'composer', kitName: 'blues_epic', density: { min: 0.6, max: 0.8 }, useSnare: true, useGhostHat: true, kickVolume: 1.1, ride: { enabled: false } },
