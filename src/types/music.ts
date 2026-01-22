@@ -47,7 +47,7 @@ export type V1BassInstrument = 'classicBass' | 'glideBass' | 'ambientDrone' | 'r
 export type V2BassInstrument = keyof typeof BASS_PRESETS;
 export type BassInstrument = V1BassInstrument | V2BassInstrument | 'none';
 
-export type V1MelodyInstrument = 'synth' | 'organ' | 'mellotron' | 'theremin' | 'electricGuitar' | 'ambientPad' | 'acousticGuitar' | 'E-Bells_melody' | 'G-Drops' | 'piano' | 'violin' | 'flute' | 'none';
+export type V1MelodyInstrument = 'synth' | 'organ' | 'mellotron' | 'theremin' | 'E-Bells_melody' | 'G-Drops' | 'acousticGuitarSolo' | 'electricGuitar' | 'none';
 export type V2MelodyInstrument = keyof typeof V2_PRESETS;
 export type MelodyInstrument = V1MelodyInstrument | V2MelodyInstrument | 'telecaster' | 'blackAcoustic';
 
@@ -101,7 +101,8 @@ export type DrumAndPercussionInstrument =
 export type InstrumentType = BassInstrument | MelodyInstrument | AccompanimentInstrument | EffectInstrument | DrumAndPercussionInstrument | 'portamento' | 'autopilot_bass' | 'none';
 
 export type InstrumentPart = 'bass' | 'melody' | 'accompaniment' | 'harmony' | 'drums' | 'effects' | 'sparkles' | 'piano' | 'violin' | 'flute' | 'guitarChords' | 'acousticGuitarSolo' | 'sfx' | 'blackAcoustic' | 'telecaster';
-export type BassTechnique = 'arpeggio' | 'portamento' | 'glissando' | 'glide' | 'pulse' | 'riff' | 'long_notes' | 'walking' | 'boogie' | 'syncopated' | 'drone' | 'floating' | 'melodic' | 'arpeggio_slow' | 'arpeggio_fast';
+export type BassTechnique = 'arpeggio' | 'portamento' | 'glissando' | 'glide' | 'pulse' | 'riff' | 'long_notes' | 'walking' | 'boogie' | 'syncopated';    
+
 export type Technique = BassTechnique | 'pluck' | 'pick' | 'harm' | 'slide' | 'hit' | 'ghost' | 'swell' | 'fill';
 export type AccompanimentTechnique = 'choral' | 'alternating-bass-chord' | 'chord-pulsation' | 'arpeggio-fast' | 'arpeggio-slow' | 'alberti-bass' | 'paired-notes' | 'long-chords';
 
@@ -121,7 +122,7 @@ export type InstrumentSettings = {
       volume: number; // 0-1
   };
   harmony: {
-      name: 'piano' | 'guitarChords' | 'flute' | 'violin' | 'none';
+      name: 'piano' | 'guitarChords' | 'flute' | 'violin' | 'telecaster' | 'none';
       volume: number; // 0-1
   };
 };
@@ -262,7 +263,7 @@ export type BlueprintPart = {
       melody?: InstrumentationRules<MelodyInstrument>;
       accompaniment?: InstrumentationRules<AccompanimentInstrument>;
       bass?: InstrumentationRules<BassInstrument>;
-      harmony?: InstrumentationRules<'piano' | 'guitarChords' | 'flute' | 'violin'>;
+      harmony?: InstrumentationRules<'piano' | 'guitarChords' | 'flute' | 'violin' | 'telecaster'>;
   };
   instrumentEntry?: { [key: string]: number };
   instrumentExit?: { [key: string]: number };

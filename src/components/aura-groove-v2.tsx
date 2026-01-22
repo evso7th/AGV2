@@ -1,5 +1,5 @@
 
-"use client";
+'use client';
 
 import { useState, useEffect } from "react";
 import { SlidersHorizontal, Music, Pause, Speaker, FileMusic, Drum, GitBranch, Atom, Piano, Home, X, Sparkles, Sprout, LayoutGrid, Timer, Guitar, RefreshCw, Bot, Waves, Cog } from "lucide-react";
@@ -76,7 +76,7 @@ export function AuraGrooveV2({
   const melodyInstrumentList = useMelodyV2 ? v2MelodyInstruments : v1MelodyInstruments;
   const textureInstrumentList = useMelodyV2 ? v2MelodyInstruments : v1MelodyInstruments; // 'accompaniment' uses this
 
-  const harmonyInstrumentList: ('piano' | 'guitarChords' | 'flute' | 'violin' | 'none')[] = ['piano', 'guitarChords', 'flute', 'violin', 'none'];
+  const harmonyInstrumentList: ('piano' | 'guitarChords' | 'flute' | 'violin' | 'telecaster' | 'none')[] = ['piano', 'guitarChords', 'flute', 'violin', 'telecaster', 'none'];
   const moodList: Mood[] = ['epic', 'joyful', 'enthusiastic', 'melancholic', 'dark', 'anxious', 'dreamy', 'contemplative', 'calm'];
   
   const isFractalStyle = score === 'neuro_f_matrix';
@@ -86,7 +86,8 @@ export function AuraGrooveV2({
     : ['trance', 'ambient', 'progressive', 'rock', 'house', 'rnb', 'ballad', 'reggae', 'blues', 'celtic'];
 
   const displayNames: Record<string, string> = {
-    'guitarChords': 'Guitar Chords',
+    'guitarChords': 'Acoustic Chords',
+    'telecaster': 'Telecaster Chords',
     'electricGuitar': 'Muff Lead Guitar',
     'ambientPad': 'Ambient Pad',
     'acousticGuitar': 'Acoustic Folk',
@@ -388,16 +389,3 @@ export function AuraGrooveV2({
     </div>
   );
 }
-
-
-
-    
-
-    
-
-
-
-
-
-
-

@@ -196,13 +196,20 @@ export interface FractalEvent {
    * Рассчитываются композитором, исполняются синтезатором.
    */
   params?: BassSynthParams | SfxSynthParams;
+  
+  /** 
+   * #ЗАЧЕМ: Это поле позволяет композитору явно указать имя аккорда для сэмплеров.
+   * #ЧТО: Содержит строковое представление аккорда, например, "Dm", "G", "Am".
+   * #СВЯЗИ: Заполняется в `createHarmonyAxiom` и используется в `telecaster-chords-sampler.ts`.
+   */
+  chordName?: string;
 }
 
 export type InstrumentHints = {
     bass?: BassInstrument;
     melody?: MelodyInstrument;
     accompaniment?: AccompanimentInstrument;
-    harmony?: 'piano' | 'guitarChords' | 'acousticGuitarSolo' | 'flute' | 'violin';
+    harmony?: 'piano' | 'guitarChords' | 'acousticGuitarSolo' | 'flute' | 'violin' | 'telecaster';
     bassTechnique?: BassTechnique;
 };
 
