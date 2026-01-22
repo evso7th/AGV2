@@ -1,5 +1,3 @@
-
-
 // V2 Presets — совместимы с buildMultiInstrument()
 // Проверено на соответствие фабрике от 2024-01
 
@@ -132,7 +130,7 @@ export const V2_PRESETS = {
     lpf: { cutoff: 2800, q: 1.0, mode: '24dB' },
     lfo: { shape: 'sine', rate: 5.2, amount: 3, target: 'pitch' },
     chorus: { on: true, rate: 0.25, depth: 0.006, mix: 0.4 },
-    delay: { on: true, time: 0.4, fb: 0.18, hc: 3800, mix: 0.12 },
+    delay: { on: true, time: 0.4, fb: 0.25, hc: 3800, mix: 0.2 },
     reverbMix: 0.4
   },
 
@@ -145,7 +143,7 @@ export const V2_PRESETS = {
     comp: { threshold: -16, ratio: 3, attack: 0.003, release: 0.12, makeup: 4 },
     osc: [
       { type: 'sine', detune: 0, octave: 0, gain: 0.58 },
-      { type: 'triangle', detune: 0, octave: 1, gain: 0.14 }, // +1200 cents = +1 octave
+      { type: 'triangle', detune: 0, octave: 1, gain: 0.14 },
       { type: 'sine', detune: 0, octave: 1, gain: 0.08 }
     ],
     noise: { on: false, gain: 0 },
@@ -172,15 +170,15 @@ export const V2_PRESETS = {
     chorus: { on: true, rate: 0.20, depth: 0.006, mix: 0.24 },
     delay: { on: true, time: 0.28, fb: 0.16, hc: 4200, mix: 0.12 },
     reverbMix: 0.22
-    // NOTE: tremolo и phaser требуют доработки фабрики
   },
 
   // ═══════════════════════════════════════════════════════════════════════════
-  // SYNTH-BASED LEADS (используют synth engine с гитарным характером)
+  // SYNTH-BASED LEADS & GUITARS (ALL NOW 'synth' TYPE)
   // ═══════════════════════════════════════════════════════════════════════════
 
-  synth_lead_shineOn: { // Gilmour-style clean lead
+  guitar_shineOn: { // Gilmour-style clean lead
     type: 'synth',
+    name: 'Shine On Guitar',
     comp: { threshold: -18, ratio: 4, attack: 0.005, release: 0.15, makeup: 6 },
     osc: [
       { type: 'sawtooth', detune: -3, octave: 0, gain: 0.6 },
@@ -196,8 +194,9 @@ export const V2_PRESETS = {
     reverbMix: 0.25
   },
 
-  synth_lead_distorted: { // Muff-style lead (через synth engine)
+  guitar_muffLead: { // Muff-style lead
     type: 'synth',
+    name: 'Muff Lead',
     comp: { threshold: -15, ratio: 6, attack: 0.003, release: 0.1, makeup: 8 },
     osc: [
       { type: 'sawtooth', detune: -8, octave: 0, gain: 0.7 },
@@ -214,101 +213,59 @@ export const V2_PRESETS = {
     reverbMix: 0.15
   },
 
-  // ═══════════════════════════════════════════════════════════════════════════
-  // GUITAR (правильный формат для guitar engine)
-  // ═══════════════════════════════════════════════════════════════════════════
-
-  guitar_shineOn: {
-    type: 'guitar',
-    volume: 0.6,
-    comp: { threshold: -18, ratio: 3, attack: 0.01, release: 0.12, makeup: 3 },
-    osc: { width: 0.46, detune: 5, mainGain: 0.85, detGain: 0.18, subGain: 0.25 },
-    pickup: { cutoff: 3600, q: 1.0 },
-    drive: { type: 'soft', amount: 0.2 },
-    post: { 
-      lpf: 5200, 
-      mids: [
-        { f: 850, q: 0.9, g: 2 }, 
-        { f: 2500, q: 1.4, g: -1.5 }
-      ] 
-    },
-    phaser: { on: true, rate: 0.16, depth: 600, mix: 0.22 },
-    delayA: { on: true, time: 0.38, fb: 0.2, hc: 3600, mix: 0.15 },
-    delayB: { on: false },
-    adsr: { a: 0.006, d: 0.35, s: 0.6, r: 1.6 },
-    reverbMix: 0.18
-  },
-
-  guitar_muffLead: {
-    type: 'guitar',
-    volume: 0.65,
-    comp: { threshold: -20, ratio: 4, attack: 0.005, release: 0.1, makeup: 4 },
-    osc: { width: 0.5, detune: 7, mainGain: 0.8, detGain: 0.2, subGain: 0.3 },
-    pickup: { cutoff: 3200, q: 1.2 },
-    drive: { type: 'muff', amount: 0.65 },
-    post: { 
-      lpf: 4700, 
-      mids: [
-        { f: 850, q: 0.9, g: 2 }, 
-        { f: 3200, q: 1.4, g: -2 }
-      ] 
-    },
-    phaser: { on: true, rate: 0.18, depth: 700, mix: 0.18 },
-    delayA: { on: true, time: 0.38, fb: 0.18, hc: 3600, mix: 0.12 },
-    delayB: { on: true, time: 0.52, fb: 0.15, hc: 3600, mix: 0.08 },
-    adsr: { a: 0.008, d: 0.5, s: 0.65, r: 1.8 },
-    reverbMix: 0.2
-  },
-
   guitar_clean_chorus: {
-    type: 'guitar',
-    volume: 0.7,
+    type: 'synth',
+    name: 'Clean Chorus Guitar',
     comp: { threshold: -16, ratio: 2.5, attack: 0.01, release: 0.15, makeup: 2 },
-    osc: { width: 0.4, detune: 3, mainGain: 0.9, detGain: 0.15, subGain: 0.2 },
-    pickup: { cutoff: 4500, q: 0.8 },
-    drive: { type: 'soft', amount: 0.1 },
-    post: { 
-      lpf: 6000, 
-      mids: [
-        { f: 800, q: 1.0, g: 1 }, 
-        { f: 2200, q: 1.2, g: 0 }
-      ] 
-    },
-    phaser: { on: false, rate: 0.15, depth: 500, mix: 0 },
-    delayA: { on: true, time: 0.25, fb: 0.15, hc: 5000, mix: 0.1 },
-    delayB: { on: false },
+    osc: [
+        { type: 'triangle', detune: -2, octave: 0, gain: 0.8 },
+        { type: 'sine', detune: 2, octave: 0, gain: 0.7 }
+    ],
+    noise: { on: false, gain: 0 },
     adsr: { a: 0.005, d: 0.3, s: 0.7, r: 1.2 },
+    lpf: { cutoff: 4500, q: 0.8, mode: '12dB' },
+    lfo: { shape: 'sine', rate: 0, amount: 0, target: 'pitch' },
+    chorus: { on: true, rate: 0.15, depth: 0.007, mix: 0.35 },
+    delay: { on: true, time: 0.25, fb: 0.15, hc: 5000, mix: 0.1 },
     reverbMix: 0.22
   },
 
   // ═══════════════════════════════════════════════════════════════════════════
-  // ORGAN (требует реализации organ engine в фабрике)
+  // ORGAN (ALL NOW 'synth' TYPE)
   // ═══════════════════════════════════════════════════════════════════════════
 
   organ: {
-    type: 'organ',
-    drawbars: [8, 8, 4, 2, 0, 0, 0, 1, 0],
-    vibratoRate: 5.8,
-    vibratoDepth: 0.002,
-    leslie: { mode: 'slow', slow: 0.5, fast: 6.0, accel: 0.7 },
-    lpf: 4500,
-    hpf: 80,
-    chorusMix: 0.3,
-    reverbMix: 0.25,
-    keyClick: 0.004
+    type: 'synth',
+    name: 'Cathedral Organ',
+    osc: [
+        { type: 'triangle', detune: 0, octave: 0, gain: 1.0 },
+        { type: 'triangle', detune: 2, octave: 1, gain: 0.6 },
+        { type: 'triangle', detune: -2, octave: -1, gain: 0.4 },
+    ],
+    noise: { on: false, gain: 0 },
+    adsr: { a: 0.1, d: 0.1, s: 0.9, r: 0.6 },
+    lpf: { cutoff: 2500, q: 2.0, mode: '24dB' },
+    lfo: { shape: 'sine', rate: 5.5, amount: 8, target: 'pitch' },
+    chorus: { on: true, rate: 0.3, depth: 0.004, mix: 0.4 },
+    delay: { on: false, time: 0, fb: 0, hc: 0, mix: 0 },
+    reverbMix: 0.25
   },
   
   organ_soft_jazz: {
-    type: 'organ',
-    drawbars: [8, 0, 8, 5, 0, 3, 0, 0, 0],
-    vibratoRate: 6.2,
-    vibratoDepth: 0.0035,
-    leslie: { mode: 'slow', slow: 0.65, fast: 6.3, accel: 0.7 },
-    lpf: 7600,
-    hpf: 90,
-    chorusMix: 0.12,
+    type: 'synth',
+    name: 'Soft Jazz Organ',
+    osc: [
+        { type: 'sine', detune: 0, octave: 0, gain: 1.0 },
+        { type: 'sine', detune: 702, octave: 0, gain: 0.5 },
+        { type: 'sine', detune: 0, octave: 1, gain: 0.35 }
+    ],
+    noise: { on: false, gain: 0 },
+    adsr: { a: 0.025, d: 0.3, s: 0.9, r: 0.35 },
+    lpf: { cutoff: 3500, q: 0.9, mode: '24dB' },
+    lfo: { shape: 'sine', rate: 6.2, amount: 3, target: 'pitch' },
+    chorus: { on: true, rate: 0.5, depth: 0.005, mix: 0.65 },
+    delay: { on: false, time: 0, fb: 0, hc: 0, mix: 0 },
     reverbMix: 0.12,
-    keyClick: 0.003
   }
 
 } as const;
@@ -329,7 +286,7 @@ export const V1_TO_V2_PRESET_MAP: Record<string, PresetName> = {
   organ: 'organ',
   mellotron: 'mellotron',
   theremin: 'theremin',
-  electricGuitar: 'guitar_shineOn',
+  electricGuitar: 'guitar_muffLead',
   ambientPad: 'synth_ambient_pad_lush',
   acousticGuitar: 'mellotron_flute_intimate',
   // Новые маппинги
