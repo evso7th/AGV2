@@ -1,4 +1,5 @@
 
+
 //Fab v 2.0
 // ─────────────────────────────────────────────────────────────────────────────
 // BASS ENGINE — Electric, Synth & Acoustic Bass Emulation
@@ -217,15 +218,14 @@ export interface BassPreset {
 
 interface BassVoice {
     oscillators: OscillatorNode[];
-    gains: GainNode[];
     subOsc?: OscillatorNode;
-    subGain?: GainNode;
     voiceGain: GainNode;
     filter: BiquadFilterNode;
     noiseSource?: AudioBufferSourceNode;
     startTime: number;
     midi: number;
     velocity: number;
+    allNodes: AudioNode[]; // For cleanup
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -545,7 +545,6 @@ export const buildBassEngine = async (
         voiceFilter.Q.value = currentPreset.filter?.q ?? 1;
         
         const oscillators: OscillatorNode[] = [];
-        const gains: GainNode[] = [];
         
         // Main oscillators
         for (const oscConfig of currentPreset.osc) {
@@ -569,19 +568,17 @@ export const buildBassEngine = async (
             osc.start(when);
             
             oscillators.push(osc);
-            gains.push(gain);
         }
         
         // Sub oscillator
         let subOsc: OscillatorNode | undefined;
-        let subGain: GainNode | undefined;
         
         if (currentPreset.sub?.on) {
             subOsc = ctx.createOscillator();
             subOsc.type = currentPreset.sub.type;
             subOsc.frequency.value = f0 * Math.pow(2, currentPreset.sub.octave);
             
-            subGain = ctx.createGain();
+            const subGain = ctx.createGain();
             subGain.gain.value = currentPreset.sub.gain * vel;
             
             subOsc.connect(subGain);
@@ -621,14 +618,7 @@ export const buildBassEngine = async (
         
         // Filter envelope
         if (currentPreset.filterEnv?.on) {
-            applyFilterEnvelope(
-                ctx,
-                voiceFilter,
-                baseCutoff + keyTrackOffset,
-                currentPreset.filterEnv,
-                when,
-                vel
-            );
+            applyFilterEnvelope(ctx, voiceFilter, baseCutoff + keyTrackOffset, currentPreset.filterEnv, when, vel);
         }
         
         // Amp envelope
@@ -636,18 +626,29 @@ export const buildBassEngine = async (
         voiceGain.gain.setValueAtTime(0.0001, when);
         voiceGain.gain.linearRampToValueAtTime(1, when + adsr.a);
         voiceGain.gain.setTargetAtTime(adsr.s, when + adsr.a, Math.max(adsr.d / 3, 0.001));
+
+        // #ЗАЧЕМ: Этот блок - ядро исправления утечки. Он собирает все узлы, созданные для ОДНОЙ ноты.
+        // #ЧТО: `allNodes` содержит все осцилляторы, гейны и фильтры, которые должны быть уничтожены вместе с нотой.
+        // #СВЯЗИ: Этот массив используется в обработчике `onended` для полной очистки.
+        const allNodes: AudioNode[] = [voiceGain, voiceFilter, ...oscillators];
+        if (subOsc) allNodes.push(subOsc);
+        if (noiseSource) allNodes.push(noiseSource);
+
+        const primaryOsc = oscillators[0];
+        if (primaryOsc) {
+            // #ЗАЧЕМ: Этот обработчик гарантирует, что ресурсы будут освобождены.
+            // #ЧТО: Когда основной осциллятор физически прекращает играть (после вызова `stop()`),
+            //      этот код отсоединяет все связанные с ним узлы от аудио-графа.
+            primaryOsc.onended = () => {
+                allNodes.forEach(node => {
+                    try { node.disconnect(); } catch (e) {}
+                });
+            };
+        }
         
         activeVoices.set(midi, {
-            oscillators,
-            gains,
-            subOsc,
-            subGain,
-            voiceGain,
-            filter: voiceFilter,
-            noiseSource,
-            startTime: when,
-            midi,
-            velocity: vel
+            oscillators, subOsc, voiceGain, filter: voiceFilter, noiseSource,
+            startTime: when, midi, velocity: vel, allNodes
         });
     };
     
@@ -655,24 +656,21 @@ export const buildBassEngine = async (
     const noteOff = (midi: number, when = ctx.currentTime) => {
         const voice = activeVoices.get(midi);
         if (!voice) return;
+
+        // #ИСПРАВЛЕНО (ПЛАН 1331): Голос удаляется из карты сразу, чтобы предотвратить повторное
+        //                     обращение к нему, пока он еще затухает.
+        activeVoices.delete(midi);
         
         const adsr = currentPreset.adsr;
         const releaseTime = Math.max(adsr.r, 0.02);
         
-        // Adaptive release
-        const elapsed = when - voice.startTime;
+        // #ЗАЧЕМ: Рассчитываем точное время, когда все источники звука должны остановиться.
+        // #ЧТО: Это время включает в себя длительность затухания (release).
+        const stopTime = when + releaseTime;
         
         voice.voiceGain.gain.cancelScheduledValues(when);
-        
-        if (elapsed < adsr.a) {
-            // Still in attack — quick release
-            const currentGain = (elapsed / adsr.a);
-            voice.voiceGain.gain.setValueAtTime(currentGain, when);
-            voice.voiceGain.gain.setTargetAtTime(0.0001, when, 0.02);
-        } else {
-            voice.voiceGain.gain.setValueAtTime(voice.voiceGain.gain.value, when);
-            voice.voiceGain.gain.setTargetAtTime(0.0001, when, releaseTime / 3);
-        }
+        voice.voiceGain.gain.setValueAtTime(voice.voiceGain.gain.value, when);
+        voice.voiceGain.gain.setTargetAtTime(0.0001, when, releaseTime / 3);
         
         // Filter release
         if (currentPreset.filterEnv?.on) {
@@ -682,21 +680,20 @@ export const buildBassEngine = async (
             releaseFilterEnvelope(ctx, voice.filter, baseCutoff + keyTrackOffset, releaseTime, when);
         }
         
-        const stopTime = when + releaseTime + 0.1;
+        // #ЗАЧЕМ: Запланировать остановку всех осцилляторов и сэмплеров.
+        // #ЧТО: Вызов `stop()` является триггером для события `onended`, которое выполнит очистку.
         voice.oscillators.forEach(osc => osc.stop(stopTime));
         if (voice.subOsc) voice.subOsc.stop(stopTime);
-        
-        activeVoices.delete(midi);
+        if (voice.noiseSource) {
+            try { voice.noiseSource.stop(stopTime); } catch(e) {}
+        }
     };
     
     // ─── All Notes Off ───
     const allNotesOff = () => {
         const now = ctx.currentTime;
-        activeVoices.forEach((voice) => {
-            voice.voiceGain.gain.cancelScheduledValues(now);
-            voice.voiceGain.gain.setTargetAtTime(0.0001, now, 0.05);
-            voice.oscillators.forEach(osc => osc.stop(now + 0.15));
-            if (voice.subOsc) voice.subOsc.stop(now + 0.15);
+        activeVoices.forEach((voice, midi) => {
+            noteOff(midi, now);
         });
         activeVoices.clear();
     };
@@ -793,6 +790,8 @@ interface VoiceState {
     targetPeak: number;
     nodes: AudioNode[];  // для cleanup
 }
+
+type ADSRParams = { a: number, d: number, s: number, r: number };
 
 /**
  * Адаптивный ADSR — гарантирует плавную огибающую даже для коротких нот
@@ -940,34 +939,16 @@ export async function buildMultiInstrument(ctx: AudioContext, {
     };
 
     if (type === 'synth') {
-        // #ЗАЧЕМ: Этот блок полностью переписан для реализации истинной полифонии и корректной ADSR-огибающей.
-        // #ЧТО: Теперь для каждой ноты создается свой "голосовой канал" с собственным гейном и осцилляторами.
-        //      Это решает проблему "кражи голосов". Также исправлена логика затухания (Decay),
-        //      чтобы устранить "мяукающий" артефакт звука.
-        // #СВЯЗИ: Эта архитектура соответствует профессиональным практикам Web Audio и обеспечивает
-        //         чистое, предсказуемое звучание аккордов и арпеджио.
-        const { lpf = {}, lfo = {} } = preset;
-        const pre = ctx.createGain();
-        const filt = ctx.createBiquadFilter(); filt.type = 'lowpass'; filt.frequency.value = lpf.cutoff || 1800; filt.Q.value = lpf.q || 0.7;
+        const pre = ctx.createGain(); pre.gain.value = 0.9;
+        const filt = ctx.createBiquadFilter(); filt.type = 'lowpass';
         
         pre.connect(filt);
         filt.connect(expressionGain);
         expressionGain.connect(instrumentGain).connect(master);
         
-        if (lfo?.amount > 0 && lfo.target === 'filter') {
-          const lfoNode = ctx.createOscillator(); lfoNode.type = lfo.shape || 'sine'; lfoNode.frequency.value = lfo.rate || 0;
-          const lfoGain = ctx.createGain(); lfoGain.gain.value = lfo.amount || 0;
-          lfoNode.connect(lfoGain).connect(filt.frequency);
-          lfoNode.start();
-        }
-        
-        const activeVoices = new Map<number, { nodes: AudioNode[], voiceGain: GainNode }>();
-        const noiseBuffer = ctx.createBuffer(1, ctx.sampleRate * 2, ctx.sampleRate);
-        const noiseData = noiseBuffer.getChannelData(0); for (let i = 0; i < noiseData.length; i++) noiseData[i] = (Math.random()*2-1) * 0.4;
+        const activeVoices = new Map<number, { nodes: AudioNode[] }>();
 
         api.noteOn = (midi, when = ctx.currentTime, velocity = 1.0) => {
-            if (activeVoices.has(midi)) api.noteOff(midi, when);
-            
             const f = midiToHz(midi);
             const { osc = [], noise = { on: false, gain: 0 }, adsr = {a:0.01, d:0.3, s:0.5, r:1.0} } = api.preset;
 
@@ -976,7 +957,8 @@ export async function buildMultiInstrument(ctx: AudioContext, {
             voiceGain.connect(pre);
 
             const voiceNodes: AudioNode[] = [voiceGain];
-            
+            const sourceNodes: (OscillatorNode | AudioBufferSourceNode)[] = [];
+
             osc.forEach((o: any) => {
                 const x = ctx.createOscillator(); x.type = o.type; x.detune.value = o.detune || 0;
                 const g = ctx.createGain(); g.gain.value = o.gain;
@@ -984,18 +966,17 @@ export async function buildMultiInstrument(ctx: AudioContext, {
                 x.connect(g).connect(voiceGain);
                 x.start(when);
                 voiceNodes.push(x, g);
+                sourceNodes.push(x);
             });
 
-            if (noise.on) {
-                const n = ctx.createBufferSource();
-                n.buffer = noiseBuffer;
-                n.loop = true;
-                const ng = ctx.createGain(); ng.gain.value = noise.gain;
-                n.connect(ng).connect(voiceGain);
-                n.start(when);
-                voiceNodes.push(n, ng);
+            // Add onended cleanup logic
+            const primarySource = sourceNodes[0];
+            if (primarySource) {
+                primarySource.onended = () => {
+                    voiceNodes.forEach(node => { try { node.disconnect(); } catch (e) {} });
+                };
             }
-
+            
             const peakGain = velocity;
             const sustainValue = peakGain * adsr.s;
             const attackEndTime = when + adsr.a;
@@ -1005,57 +986,40 @@ export async function buildMultiInstrument(ctx: AudioContext, {
             voiceGain.gain.linearRampToValueAtTime(peakGain, attackEndTime);
             voiceGain.gain.setTargetAtTime(sustainValue, attackEndTime, Math.max(adsr.d / 5, 0.001));
 
-            activeVoices.set(midi, { nodes: voiceNodes, voiceGain });
+            activeVoices.set(midi, { nodes: voiceNodes });
         };
 
         api.noteOff = (midi, when = ctx.currentTime) => {
             const voice = activeVoices.get(midi);
             if (!voice) return;
+            activeVoices.delete(midi);
 
             const { adsr = {a:0.01, d:0.3, s:0.5, r:1.0} } = api.preset;
-            const { voiceGain, nodes } = voice;
+            const releaseTime = Math.max(adsr.r, 0.05);
+            const stopTime = when + releaseTime;
             
+            const voiceGain = voice.nodes[0] as GainNode;
             voiceGain.gain.cancelScheduledValues(when);
-            voiceGain.gain.setTargetAtTime(0.0001, when, adsr.r / 5);
+            voiceGain.gain.setTargetAtTime(0.0001, when, releaseTime / 5);
             
-            const stopTime = when + adsr.r * 2;
-            nodes.forEach(node => {
+            voice.nodes.forEach(node => {
                 if (node instanceof OscillatorNode || node instanceof AudioBufferSourceNode) {
                     try { (node as any).stop(stopTime); } catch (e) {}
                 }
             });
-            
-            activeVoices.delete(midi);
         };
 
         api.allNotesOff = () => {
-            const now = ctx.currentTime;
-            activeVoices.forEach((_, midi) => api.noteOff(midi, now));
+            activeVoices.forEach((_, midi) => api.noteOff(midi));
         };
 
-        api.setPreset = (p) => {
-            api.allNotesOff();
-            api.preset = p;
-            const { lpf } = p;
-            if(lpf) {
-                filt.frequency.setTargetAtTime(lpf.cutoff || 1800, ctx.currentTime, 0.02);
-                filt.Q.setTargetAtTime(lpf.q || 0.7, ctx.currentTime, 0.02);
-            }
-        };
+        api.setPreset = (p) => { api.allNotesOff(); api.preset = p; };
 
     } else if (type === 'bass') {
-        const bassApi = await buildBassEngine(ctx, preset as BassPreset, {
-            output: master,
-            plateIRUrl
-        });
-        api.noteOn = bassApi.noteOn;
-        api.noteOff = bassApi.noteOff;
-        api.allNotesOff = bassApi.allNotesOff;
-        api.setPreset = bassApi.setPreset;
-        api.setParam = bassApi.setParam;
-        api.setVolume = bassApi.setVolume;
-        api.getVolume = bassApi.getVolume;
-        api.setExpression = bassApi.setExpression;
+        return buildBassEngine(ctx, preset as BassPreset, { output, plateIRUrl });
+    } else if (type === 'organ') {
+         const organApi = await buildOrganEngine(ctx, preset, { output, plateIRUrl });
+         Object.assign(api, organApi);
     }
     
     master.connect(output);
@@ -1067,3 +1031,85 @@ export async function buildMultiInstrument(ctx: AudioContext, {
 const createKeyClick = (ctx: AudioContext, duration: number, intensity: number): AudioBuffer => { return ctx.createBuffer(1,1,ctx.sampleRate); }
 const createVibratoScanner = (ctx: AudioContext, config: any) => { return { input: ctx.createGain(), output: ctx.createGain(), setType: ()=>{}, setRate: ()=>{} }; }
 const createLeslie = (ctx: AudioContext, config: any) => { return { input: ctx.createGain(), output: ctx.createGain(), setMode: ()=>{}, setMix: ()=>{}, getMode: ()=> 'slow'}; }
+type ADSRParams = { a: number, d: number, s: number, r: number };
+const makeMuff = (gain=0.65, n=65536) => { const c=new Float32Array(n); for (let i=0;i<n;i++){ const x=i/(n-1)*2-1; const y=Math.tanh(x*(1+gain*4))*0.9; c[i]=y; } return c; };
+const makePhaser = (ctx: any, {stages=4, base=800, depth=600, rate=0.16, fb=0.12, mix=0.2}={})=>{ return {input: ctx.createGain(), output: ctx.createGain(), setRate:(r:any)=>{}, setDepth:(d:any)=>{} }; };
+const makeFilteredDelay = (ctx: any,{time=0.38, fb=0.26, hc=3600, wet=0.2}={})=>{ return {input: ctx.createGain(), output: ctx.createGain()}; };
+const makeChorus = (ctx: any,{rate=0.25, depth=0.006, mix=0.25}={})=>{ return {input: ctx.createGain(), output: ctx.createGain()}; };
+
+
+// #ЗАЧЕМ: Эта функция была добавлена для создания V2 органного движка.
+// #ЧТО: Она реализует полифонический органный синтезатор с drawbar'ами,
+//      Leslie-эффектом и перкуссией, используя `onended` для очистки ресурсов.
+// #СВЯЗИ: Вызывается из `buildMultiInstrument`, когда `type` равен 'organ'.
+async function buildOrganEngine(ctx: AudioContext, preset: any, options: any): Promise<any> {
+    const master = ctx.createGain();
+    master.connect(options.output || ctx.destination);
+    
+    const activeVoices = new Map<number, { nodes: AudioNode[] }>();
+
+    const noteOn = (midi: number, when: number = ctx.currentTime, velocity: number = 1.0) => {
+        const f0 = midiToHz(midi);
+        const { drawbars = [8,8,8,0,0,0,0,0,0], adsr = { a: 0.01, d: 0.1, s: 0.9, r: 0.1 } } = preset;
+        
+        const voiceGain = ctx.createGain();
+        voiceGain.gain.value = 0;
+        voiceGain.connect(master);
+
+        const voiceNodes: AudioNode[] = [voiceGain];
+        const sourceNodes: OscillatorNode[] = [];
+        
+        const foot = [0.5, 1.498, 1, 2, 2.997, 4, 5.04, 5.994, 8];
+        drawbars.forEach((v: number, i: number) => {
+            if (v > 0) {
+                const osc = ctx.createOscillator();
+                osc.type = 'sine';
+                osc.frequency.value = f0 * foot[i];
+                const g = ctx.createGain();
+                g.gain.value = (v/8) * 0.4;
+                osc.connect(g).connect(voiceGain);
+                osc.start(when);
+                voiceNodes.push(osc, g);
+                sourceNodes.push(osc);
+            }
+        });
+
+        const primaryOsc = sourceNodes[0];
+        if (primaryOsc) {
+            primaryOsc.onended = () => {
+                voiceNodes.forEach(node => { try { node.disconnect(); } catch(e) {} });
+            };
+        }
+
+        voiceGain.gain.cancelScheduledValues(when);
+        voiceGain.gain.setValueAtTime(0, when);
+        voiceGain.gain.linearRampToValueAtTime(velocity, when + adsr.a);
+
+        activeVoices.set(midi, { nodes: voiceNodes });
+    };
+
+    const noteOff = (midi: number, when: number = ctx.currentTime) => {
+        const voice = activeVoices.get(midi);
+        if (!voice) return;
+        activeVoices.delete(midi);
+
+        const { adsr = { r: 0.1 } } = preset;
+        const stopTime = when + adsr.r;
+        
+        const voiceGain = voice.nodes[0] as GainNode;
+        voiceGain.gain.cancelScheduledValues(when);
+        voiceGain.gain.setTargetAtTime(0, when, adsr.r / 3);
+
+        voice.nodes.forEach(node => {
+            if (node instanceof OscillatorNode) {
+                try { node.stop(stopTime); } catch (e) {}
+            }
+        });
+    };
+    
+    const allNotesOff = () => activeVoices.forEach((_, midi) => noteOff(midi));
+
+    return { noteOn, noteOff, allNotesOff, setPreset: (p: any) => preset = p, preset };
+}
+
+
