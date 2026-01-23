@@ -172,15 +172,23 @@ export const WinterBluesBlueprint: MusicBlueprint = {
                     },
                      accompaniment: {
                         strategy: 'weighted',
-                        v1Options: [{ name: 'organ_soft_jazz', weight: 0.5 }, { name: 'ep_rhodes_warm', weight: 0.5 }],
+                        v1Options: [{ name: 'organ_soft_jazz', weight: 0.5 }, { name: 'synth', weight: 0.5 }],
                         v2Options: [{ name: 'organ_soft_jazz', weight: 0.5 }, { name: 'ep_rhodes_warm', weight: 0.5}]
                     },
                     melody: {
                         strategy: 'weighted',
-                        v1Options: [{ name: 'ep_rhodes_warm', weight: 1.0 }],
+                        v1Options: [
+                            { name: 'blackAcoustic', weight: 0.3 },
+                            { name: 'telecaster', weight: 0.3 },
+                            { name: 'organ', weight: 0.3 },
+                            { name: 'synth', weight: 0.1 }
+                        ],
                         v2Options: [
-                            { name: 'guitar_muffLead', weight: 0.5 },
-                            { name: 'guitar_shineOn', weight: 0.5 }
+                            { name: 'blackAcoustic', weight: 0.3 },
+                            { name: 'telecaster', weight: 0.3 },
+                            { name: 'organ_soft_jazz', weight: 0.15 },
+                            { name: 'organ_prog', weight: 0.15 },
+                            { name: 'ep_rhodes_warm', weight: 0.1 }
                         ]
                     },
                     harmony: {
