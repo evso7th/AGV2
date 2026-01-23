@@ -17,7 +17,7 @@ export const WinterBluesBlueprint: MusicBlueprint = {
         totalDuration: { preferredBars: 120 }, // 10 loops of 12 bars
         parts: [
             {
-                id: 'INTRO', name: 'Main Riff Intro', duration: { percent: 15 },
+                id: 'INTRO', name: 'Verse 1', duration: { percent: 15 },
                 introRules: {
                     instrumentPool: ['drums', 'bass', 'melody', 'accompaniment'],
                     stages: 4,
@@ -46,8 +46,10 @@ export const WinterBluesBlueprint: MusicBlueprint = {
                     harmony: {
                         strategy: 'weighted',
                         options: [
-                          { name: 'guitarChords', weight: 0.6 },
-                          { name: 'piano', weight: 0.4 }
+                          { name: 'telecaster', weight: 0.5 },
+                          { name: 'guitarChords', weight: 0.1 },
+                          { name: 'violin', weight: 0.15 },
+                          { name: 'piano', weight: 0.25 }
                         ]
                     }
                 },
@@ -94,7 +96,15 @@ export const WinterBluesBlueprint: MusicBlueprint = {
                         v1Options: [{ name: 'blackAcoustic', weight: 1.0 }],
                         v2Options: [{ name: 'blackAcoustic', weight: 1.0 }]
                     },
-                    harmony: { strategy: 'weighted', options: [ { name: 'piano', weight: 1.0 } ] }
+                    harmony: {
+                         strategy: 'weighted',
+                        options: [
+                          { name: 'telecaster', weight: 0.5 },
+                          { name: 'guitarChords', weight: 0.1 },
+                          { name: 'violin', weight: 0.15 },
+                          { name: 'piano', weight: 0.25 }
+                        ]
+                    }
                 },
                 instrumentRules: {
                     drums: { kitName: 'blues_no_cymbals', density: { min: 0.5, max: 0.7 } },
@@ -128,7 +138,15 @@ export const WinterBluesBlueprint: MusicBlueprint = {
                         v1Options: [{ name: 'blackAcoustic', weight: 1.0 }],
                         v2Options: [{ name: 'blackAcoustic', weight: 1.0 }]
                     },
-                    harmony: { strategy: 'weighted', options: [ { name: 'piano', weight: 1.0 } ] }
+                    harmony: {
+                        strategy: 'weighted',
+                        options: [
+                          { name: 'telecaster', weight: 0.5 },
+                          { name: 'guitarChords', weight: 0.1 },
+                          { name: 'violin', weight: 0.15 },
+                          { name: 'piano', weight: 0.25 }
+                        ]
+                    }
                 },
                 instrumentRules: {
                     drums: { kitName: 'blues_no_cymbals', density: { min: 0.6, max: 0.8 } },
@@ -165,7 +183,15 @@ export const WinterBluesBlueprint: MusicBlueprint = {
                             { name: 'guitar_shineOn', weight: 0.5 }
                         ]
                     },
-                    harmony: { strategy: 'weighted', options: [ { name: 'piano', weight: 1.0 } ] }
+                    harmony: {
+                        strategy: 'weighted',
+                        options: [
+                          { name: 'telecaster', weight: 0.5 },
+                          { name: 'guitarChords', weight: 0.1 },
+                          { name: 'violin', weight: 0.15 },
+                          { name: 'piano', weight: 0.25 }
+                        ]
+                    }
                 },
                 instrumentRules: {
                     drums: {
@@ -211,7 +237,15 @@ export const WinterBluesBlueprint: MusicBlueprint = {
                         v1Options: [{ name: 'blackAcoustic', weight: 1.0 }],
                         v2Options: [{ name: 'blackAcoustic', weight: 1.0 }]
                     },
-                    harmony: { strategy: 'weighted', options: [ { name: 'piano', weight: 1.0 } ] }
+                    harmony: {
+                        strategy: 'weighted',
+                        options: [
+                          { name: 'telecaster', weight: 0.5 },
+                          { name: 'guitarChords', weight: 0.1 },
+                          { name: 'violin', weight: 0.15 },
+                          { name: 'piano', weight: 0.25 }
+                        ]
+                    }
                 },
                 instrumentRules: {
                     drums: { kitName: 'blues_no_cymbals', density: { min: 0.6, max: 0.8 } },
@@ -248,8 +282,10 @@ export const WinterBluesBlueprint: MusicBlueprint = {
                     harmony: {
                         strategy: 'weighted',
                         options: [
-                          { name: 'guitarChords', weight: 0.6 },
-                          { name: 'piano', weight: 0.4 }
+                          { name: 'telecaster', weight: 0.5 },
+                          { name: 'guitarChords', weight: 0.1 },
+                          { name: 'violin', weight: 0.15 },
+                          { name: 'piano', weight: 0.25 }
                         ]
                     }
                 },
