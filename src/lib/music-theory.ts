@@ -477,57 +477,57 @@ export function chooseHarmonyInstrument(rules: InstrumentationRules<'piano' | 'g
 }
 
 export function generateSuiteDNA(totalBars: number, mood: Mood, seed: number, random: { next: () => number, nextInt: (max: number) => number; shuffle: <T>(array: T[]) => T[]; }, genre: Genre, blueprintParts: BlueprintPart[]): SuiteDNA {
-  console.log(`[DNA] Generating Suite DNA for genre: ${genre}, mood: ${mood}`);
+    console.log(`[DNA] Generating Suite DNA for genre: ${genre}, mood: ${mood}`);
 
-  const harmonyTrack: GhostChord[] = [];
-  const key = getScaleForMood(mood, genre)[0];
-  let currentBar = 0;
-  while (currentBar < totalBars) {
-    const duration = 4;
-    harmonyTrack.push({ rootNote: key + random.nextInt(12) - 6, chordType: random.next() > 0.5 ? 'major' : 'minor', bar: currentBar, durationBars: duration });
-    currentBar += duration;
-  }
-  
-  const possibleTempos = {
-    joyful: [76, 90], enthusiastic: [82, 98], contemplative: [68, 76],
-    dreamy: [64, 72], calm: [60, 70], melancholic: [60, 68],
-    gloomy: [62, 70], dark: [60, 68], epic: [70, 80], anxious: [78, 92],
-  };
+    const harmonyTrack: GhostChord[] = [];
+    const key = getScaleForMood(mood, genre)[0];
+    let currentBar = 0;
+    while (currentBar < totalBars) {
+        const duration = 4;
+        harmonyTrack.push({ rootNote: key + random.nextInt(12) - 6, chordType: random.next() > 0.5 ? 'major' : 'minor', bar: currentBar, durationBars: duration });
+        currentBar += duration;
+    }
 
-  const [minTempo, maxTempo] = possibleTempos[mood] || [60, 80];
-  const baseTempo = minTempo + random.nextInt(maxTempo - minTempo + 1);
+    const possibleTempos = {
+        joyful: [76, 90], enthusiastic: [82, 98], contemplative: [68, 76],
+        dreamy: [64, 72], calm: [60, 70], melancholic: [60, 68],
+        gloomy: [62, 70], dark: [60, 68], epic: [70, 80], anxious: [78, 92],
+    };
 
-  const rhythmicFeel: RhythmicFeel = random.next() < 0.7 ? 'shuffle' : 'straight';
-  const bassStyles: BassStyle[] = ['boogie', 'walking', 'pedal'];
-  const bassStyle = bassStyles[random.nextInt(bassStyles.length)];
-  const drumStyles: DrumStyle[] = ['heavy_backbeat', 'light_brushes', 'shuffle_A', 'shuffle_B'];
-  const drumStyle = drumStyles[random.nextInt(drumStyles.length)];
+    const [minTempo, maxTempo] = possibleTempos[mood] || [60, 80];
+    const baseTempo = minTempo + random.nextInt(maxTempo - minTempo + 1);
 
-  // #ЗАЧЕМ: Создает "карту соло" для всей сюиты, обеспечивая разнообразие.
-  // #ЧТО: Для каждой части (part) в блюпринте, если она содержит соло (`SOLO` в ID),
-  //      выбирается случайный план соло и сохраняется в карту.
-  const soloPlanMap = new Map<string, string>();
-  const allPlanIds = Object.keys(BLUES_SOLO_PLANS);
-  const shuffledPlanIds = random.shuffle(allPlanIds);
-  let planIndex = 0;
-  
-  blueprintParts.forEach(part => {
-      if (part.id.includes('SOLO')) {
-          if(planIndex < shuffledPlanIds.length) {
-              soloPlanMap.set(part.id, shuffledPlanIds[planIndex]);
-              planIndex++;
-          } else {
-              // Fallback if we run out of unique plans
-              soloPlanMap.set(part.id, shuffledPlanIds[random.nextInt(shuffledPlanIds.length)]);
-          }
-      }
-  });
+    const rhythmicFeel: RhythmicFeel = random.next() < 0.7 ? 'shuffle' : 'straight';
+    const bassStyles: BassStyle[] = ['boogie', 'walking', 'pedal'];
+    const bassStyle = bassStyles[random.nextInt(bassStyles.length)];
+    const drumStyles: DrumStyle[] = ['heavy_backbeat', 'light_brushes', 'shuffle_A', 'shuffle_B'];
+    const drumStyle = drumStyles[random.nextInt(drumStyles.length)];
 
+    // #ЗАЧЕМ: Создает "карту соло" для КАЖДОЙ части сюиты, обеспечивая музыкальное разнообразие.
+    // #ЧТО: Для каждой части (part) в блюпринте выбирается УНИКАЛЬНЫЙ план соло и сохраняется в карту.
+    //      Это устраняет ошибку "No solo plan found", так как у каждой части теперь есть своя мелодическая "партитура".
+    const soloPlanMap = new Map<string, string>();
+    const allPlanIds = Object.keys(BLUES_SOLO_PLANS);
+    const shuffledPlanIds = random.shuffle(allPlanIds);
+    let planIndex = 0;
+    
+    blueprintParts.forEach(part => {
+        if(planIndex < shuffledPlanIds.length) {
+            soloPlanMap.set(part.id, shuffledPlanIds[planIndex]);
+            planIndex++;
+        } else {
+            // Fallback if we run out of unique plans, start reusing them
+            soloPlanMap.set(part.id, shuffledPlanIds[random.nextInt(shuffledPlanIds.length)]);
+        }
+    });
 
-  console.log(`[DNA] Generated: Tempo=${baseTempo}, Feel=${rhythmicFeel}, Bass=${bassStyle}, Drums=${drumStyle}`);
+    console.log(`[DNA] Generated: Tempo=${baseTempo}, Feel=${rhythmicFeel}, Bass=${bassStyle}, Drums=${drumStyle}`);
+    console.log(`[DNA] Solo plan map created for ${soloPlanMap.size} parts.`);
+    soloPlanMap.forEach((plan, partId) => console.log(`  - Part '${partId}' -> Solo Plan '${plan}'`));
 
-  return { harmonyTrack, baseTempo, rhythmicFeel, bassStyle, drumStyle, soloPlanMap };
+    return { harmonyTrack, baseTempo, rhythmicFeel, bassStyle, drumStyle, soloPlanMap };
 }
+
 
 export function createDrumAxiom(kit: DrumKit, genre: Genre, mood: Mood, tempo: number, random: { next: () => number, nextInt: (max: number) => number }, rules?: InstrumentBehaviorRules): { events: FractalEvent[], log: string } {
     const events: FractalEvent[] = [];
