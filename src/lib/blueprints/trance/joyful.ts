@@ -30,7 +30,7 @@ export const JoyfulTranceBlueprint: MusicBlueprint = {
                 layers: { bass: true, accompaniment: true, drums: true, sfx: true },
                 instrumentation: {
                     accompaniment: { strategy: 'weighted', v1Options: [{ name: 'synth', weight: 1.0 }], v2Options: [{ name: 'synth', weight: 1.0 }] },
-                    bass: { strategy: 'weighted', v1Options: [{ name: 'classicBass', weight: 1.0 }], v2Options: [{ name: 'classicBass', weight: 1.0 }] }
+                    bass: { strategy: 'weighted', v1Options: [{ name: 'bass_jazz_warm', weight: 1.0 }], v2Options: [{ name: 'bass_jazz_warm', weight: 1.0 }] }
                 },
                 instrumentRules: { 
                     drums: { pattern: 'ambient_beat', density: { min: 0.5, max: 0.7 }, useSnare: true }, // SOFTER
@@ -46,7 +46,7 @@ export const JoyfulTranceBlueprint: MusicBlueprint = {
                 layers: { bass: true, melody: true, accompaniment: true, drums: true, sfx: true, sparkles: true },
                 instrumentation: {
                     accompaniment: { strategy: 'weighted', v1Options: [{ name: 'synth', weight: 0.8 }, { name: 'organ', weight: 0.2 }], v2Options: [{ name: 'synth', weight: 0.8 }, { name: 'organ', weight: 0.2 }] },
-                    bass: { strategy: 'weighted', v1Options: [{ name: 'classicBass', weight: 1.0 }], v2Options: [{ name: 'classicBass', weight: 1.0 }] },
+                    bass: { strategy: 'weighted', v1Options: [{ name: 'bass_jazz_warm', weight: 1.0 }], v2Options: [{ name: 'bass_jazz_warm', weight: 1.0 }] },
                     melody: { strategy: 'weighted', v1Options: [{ name: 'theremin', weight: 1.0 }], v2Options: [{ name: 'theremin', weight: 1.0 }] }
                 },
                 instrumentRules: { 

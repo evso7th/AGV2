@@ -112,8 +112,8 @@ export const WinterBluesBlueprint: MusicBlueprint = {
                         v1Options: [ { name: 'organ_soft_jazz', weight: 1.0 } ],
                         v2Options: [ { name: 'organ_soft_jazz', weight: 1.0 } ]
                     },
-                    bass: { strategy: 'weighted', v1Options: [{ name: 'classicBass', weight: 1.0 }], v2Options: [{ name: 'classicBass', weight: 1.0 }] },
-                    melody: { strategy: 'weighted', v1Options: [{ name: 'blackAcoustic', weight: 1.0 }], v2Options: [{ name: 'blackAcoustic', weight: 1.0 }] },
+                    bass: { strategy: 'weighted', v1Options: [{ name: 'bass_jazz_warm', weight: 1.0 }], v2Options: [{ name: 'bass_jazz_warm', weight: 1.0 }] },
+                    melody: { strategy: 'weighted', v1Options: [{ name: 'telecaster', weight: 1.0 }], v2Options: [{ name: 'telecaster', weight: 1.0 }] },
                     harmony: { strategy: 'weighted', options: [ { name: 'violin', weight: 1.0 } ] } // <<< Скрипки вступают здесь
                 },
                 instrumentRules: {
@@ -148,7 +148,7 @@ export const WinterBluesBlueprint: MusicBlueprint = {
                         v2Options: [
                             { name: 'blackAcoustic', weight: 0.3 },
                             { name: 'organ_soft_jazz', weight: 0.15 },
-                            { name: 'organ_soft_jazz', weight: 0.15 }, // Corrected from organ_prog
+                            { name: 'organ_prog', weight: 0.15 }, 
                             { name: 'ep_rhodes_warm', weight: 0.1 }
                         ]
                     },

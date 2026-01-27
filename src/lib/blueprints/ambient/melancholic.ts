@@ -112,7 +112,7 @@ export const MelancholicAmbientBlueprint: MusicBlueprint = {
                 v1Options: [ { name: 'organ_soft_jazz', weight: 1.0 } ],
                 v2Options: [ { name: 'organ_soft_jazz', weight: 1.0 } ]
             },
-          bass: { strategy: 'weighted', v1Options: [{ name: 'classicBass', weight: 1.0 }], v2Options: [{ name: 'classicBass', weight: 1.0 }] },
+          bass: { strategy: 'weighted', v1Options: [{ name: 'bass_jazz_warm', weight: 1.0 }], v2Options: [{ name: 'bass_jazz_warm', weight: 1.0 }] },
           melody: { strategy: 'weighted', v1Options: [{ name: 'telecaster', weight: 1.0 }], v2Options: [{ name: 'telecaster', weight: 1.0 }] },
           harmony: { strategy: 'weighted', options: [ { name: 'violin', weight: 1.0 } ] } // <<< Скрипки вступают здесь
         },
@@ -133,7 +133,7 @@ export const MelancholicAmbientBlueprint: MusicBlueprint = {
                 v1Options: [ { name: 'mellotron', weight: 0.6 }, { name: 'organ', weight: 0.4 } ],
                 v2Options: [ { name: 'mellotron', weight: 0.4 }, { name: 'mellotron_flute_intimate', weight: 0.3 }, { name: 'organ_soft_jazz', weight: 0.3 } ],
             },
-            bass: { strategy: 'weighted', v1Options: [{ name: 'classicBass', weight: 1.0 }], v2Options: [{ name: 'classicBass', weight: 1.0 }] },
+            bass: { strategy: 'weighted', v1Options: [{ name: 'bass_jazz_warm', weight: 1.0 }], v2Options: [{ name: 'bass_jazz_warm', weight: 1.0 }] },
             melody: { strategy: 'weighted', v1Options: [{ name: 'synth', weight: 0.4 }, { name: 'theremin', weight: 0.6 }], v2Options: [{ name: 'synth', weight: 0.4 }, { name: 'theremin', weight: 0.6 }] }
         },
         instrumentRules: { 

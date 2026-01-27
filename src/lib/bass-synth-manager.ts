@@ -31,7 +31,7 @@ type SynthVoice = {
 export class BassSynthManager {
     private audioContext: AudioContext;
     private destination: AudioNode;
-    private activeInstrumentName: BassInstrument | 'none' = 'classicBass';
+    private activeInstrumentName: BassInstrument | 'none' = 'bass_jazz_warm';
     public isInitialized = false;
 
     private voicePool: SynthVoice[] = [];
