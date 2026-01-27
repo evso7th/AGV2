@@ -326,13 +326,13 @@ export class SparklePlayer {
         source.connect(this.preamp);
         
         const sampleUrlForLogging = (buffer as any)?.url || 'Unknown';
-        // Step 4: Sparkle Player Logging
         console.log(`%c[SparklePlayer] Playing from pool "${poolName}". Sample: ${sampleUrlForLogging.substring(sampleUrlForLogging.lastIndexOf('/') + 1)} at time ${time.toFixed(2)}`, 'color: #00FFFF');
         source.start(time);
         
         this.activeSources.add(source);
         source.onended = () => {
             this.activeSources.delete(source);
+            source.disconnect();
         };
     }
     

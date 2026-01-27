@@ -200,22 +200,20 @@ export class MelodySynthManager {
         const sustainValue = peakGain * preset.adsr.sustain;
         
         const attackEndTime = noteOnTime + preset.adsr.attack;
-        const decayEndTime = attackEndTime + preset.adsr.decay;
         const noteOffTime = noteOnTime + noteDuration;
         const releaseEndTime = noteOffTime + preset.adsr.release;
 
-        if (!isFinite(attackEndTime) || !isFinite(decayEndTime) || !isFinite(noteOffTime) || !isFinite(releaseEndTime) || !preset.adsr.attack || !preset.adsr.decay || !preset.adsr.sustain || !preset.adsr.release) {
+        if (!isFinite(attackEndTime) || !isFinite(noteOffTime) || !isFinite(releaseEndTime) || !preset.adsr.attack || !preset.adsr.sustain || !preset.adsr.release) {
             console.error('[MelodyManagerV1] Aborting due to non-finite envelope time calculation.');
             voice.isActive = false;
             return;
         }
 
         gainParam.cancelScheduledValues(noteOnTime);
-        gainParam.setValueAtTime(0, noteOnTime);
+        gainParam.setValueAtTime(0.0001, noteOnTime);
         gainParam.linearRampToValueAtTime(peakGain, attackEndTime);
-        gainParam.linearRampToValueAtTime(sustainValue, decayEndTime);
-        gainParam.setValueAtTime(sustainValue, noteOffTime);
-        gainParam.linearRampToValueAtTime(0, releaseEndTime);
+        gainParam.setTargetAtTime(sustainValue, attackEndTime, Math.max(preset.adsr.decay / 5, 0.001));
+        gainParam.setTargetAtTime(0.0001, noteOffTime, preset.adsr.release / 5);
         
         voice.soundSources = [];
         const baseFrequency = midiToFreq(note.midi);
@@ -253,15 +251,25 @@ export class MelodySynthManager {
             sourceNode.connect(sourceGain).connect(voice.envGain);
             
             sourceNode.start(noteOnTime);
-            sourceNode.stop(releaseEndTime + 0.1); 
             voice.soundSources.push(sourceNode);
         });
+        
+        const primarySource = voice.soundSources.find(s => s instanceof OscillatorNode) || voice.soundSources[0];
+        if (primarySource) {
+            primarySource.onended = () => {
+                voice.isActive = false;
+                voice.soundSources.forEach(source => {
+                    try { source.disconnect(); } catch (e) {}
+                });
+                voice.soundSources = [];
+            };
+        }
 
-        setTimeout(() => {
-            voice.isActive = false;
-            voice.soundSources.forEach(source => source.disconnect());
-            voice.soundSources = [];
-        }, (releaseEndTime - now + 0.2) * 1000);
+        voice.soundSources.forEach(source => {
+            try {
+                source.stop(releaseEndTime + 0.1);
+            } catch(e) {}
+        });
     }
 
     public setInstrument(instrumentName: AccompanimentInstrument | 'none') {

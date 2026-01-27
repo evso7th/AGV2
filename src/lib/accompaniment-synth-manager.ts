@@ -21,7 +21,7 @@ type SynthVoice = {
     chorusLfo: OscillatorNode;
     chorusLfoGain: GainNode;
     panner: StereoPannerNode;
-    soundSources: (OscillatorNode | AudioBufferSourceNode)[]; // ИЗМЕНЕНО: теперь может содержать и осцилляторы, и источники шума
+    soundSources: (OscillatorNode | AudioBufferSourceNode)[];
     isActive: boolean;
 };
 
@@ -38,7 +38,7 @@ export class AccompanimentSynthManager {
     private voicePool: SynthVoice[] = [];
     private nextVoice = 0;
     private preamp: GainNode;
-    private noiseBuffer: AudioBuffer | null = null; // ДОБАВЛЕНО: буфер для белого шума
+    private noiseBuffer: AudioBuffer | null = null;
 
     constructor(audioContext: AudioContext, destination: AudioNode) {
         this.audioContext = audioContext;
@@ -53,14 +53,14 @@ export class AccompanimentSynthManager {
         if (this.isInitialized) return;
         
         console.log('[AccompManager] Initializing native synth voices...');
-        this.createNoiseBuffer(); // ДОБАВЛЕНО: создаем буфер шума при инициализации
+        this.createNoiseBuffer();
         this.initVoicePool(6); 
         this.isInitialized = true;
         console.log('[AccompManager] Native voices initialized.');
     }
 
     private createNoiseBuffer() {
-        const bufferSize = this.audioContext.sampleRate; // 1 секунда шума
+        const bufferSize = this.audioContext.sampleRate;
         this.noiseBuffer = this.audioContext.createBuffer(1, bufferSize, this.audioContext.sampleRate);
         const output = this.noiseBuffer.getChannelData(0);
         for (let i = 0; i < bufferSize; i++) {
@@ -70,7 +70,6 @@ export class AccompanimentSynthManager {
 
     private initVoicePool(poolSize: number) {
         for (let i = 0; i < poolSize; i++) {
-            // ... (код инициализации голоса остается почти без изменений)
             const envGain = this.audioContext.createGain();
             const filter = this.audioContext.createBiquadFilter();
             const panner = this.audioContext.createStereoPanner();
@@ -99,7 +98,7 @@ export class AccompanimentSynthManager {
             this.voicePool.push({
                 envGain, filter, dryGain, wetGain, delayNode, feedbackGain,
                 chorusDelayNode, chorusLfo, chorusLfoGain, panner,
-                soundSources: [], isActive: false, // ИЗМЕНЕНО: oscillators -> soundSources
+                soundSources: [], isActive: false,
             });
         }
     }
@@ -143,7 +142,6 @@ export class AccompanimentSynthManager {
         const noteTime = note.time;
         const noteDuration = note.duration;
 
-        // --- Defensive Check for Finite Values ---
         if (!isFinite(noteTime) || !isFinite(noteDuration) || !isFinite(velocity) || !isFinite(barStartTime)) {
             console.error('[AccompManager] Triggering aborted due to non-finite value:', { noteTime, noteDuration, velocity, barStartTime });
             return;
@@ -155,7 +153,6 @@ export class AccompanimentSynthManager {
 
         voice.isActive = true;
         
-        // --- CONFIGURE VOICE (Filter, Chorus, Delay) --- 
         voice.filter.type = preset.filter.type;
         voice.filter.Q.value = preset.filter.q;
         voice.filter.frequency.setValueAtTime(preset.filter.cutoff, noteOnTime);
@@ -169,7 +166,6 @@ export class AccompanimentSynthManager {
         voice.wetGain.gain.setValueAtTime(wetMix, noteOnTime);
         voice.dryGain.gain.setValueAtTime(1.0 - wetMix, noteOnTime);
 
-        // --- ADSR ENVELOPE ---
         const gainParam = voice.envGain.gain;
         const peakGain = velocity * 0.5;
         const sustainValue = peakGain * preset.adsr.sustain;
@@ -178,7 +174,6 @@ export class AccompanimentSynthManager {
         const noteOffTime = noteOnTime + noteDuration;
         const releaseEndTime = noteOffTime + preset.adsr.release;
         
-        // Check calculated times
         if (!isFinite(attackEndTime) || !isFinite(noteOffTime) || !isFinite(releaseEndTime) || !preset.adsr.attack || !preset.adsr.sustain || !preset.adsr.release) {
             console.error('[AccompManager] Aborting due to non-finite envelope time calculation.');
             voice.isActive = false;
@@ -188,14 +183,9 @@ export class AccompanimentSynthManager {
         gainParam.cancelScheduledValues(noteOnTime);
         gainParam.setValueAtTime(0.0001, noteOnTime);
         gainParam.linearRampToValueAtTime(peakGain, attackEndTime);
-
-        // #FIX: Use setTargetAtTime for a proper exponential decay to the sustain level
         gainParam.setTargetAtTime(sustainValue, attackEndTime, Math.max(preset.adsr.decay / 5, 0.001));
-
-        // #FIX: Schedule the release to start at noteOffTime, smoothly transitioning from the decay/sustain phase
         gainParam.setTargetAtTime(0.0001, noteOffTime, preset.adsr.release / 5);
         
-        // --- SOUND SOURCES (Oscillators and Noise) ---
         voice.soundSources = [];
         const baseFrequency = midiToFreq(note.midi);
         
@@ -233,14 +223,25 @@ export class AccompanimentSynthManager {
             sourceNode.connect(sourceGain).connect(voice.envGain);
             
             sourceNode.start(noteOnTime);
-            sourceNode.stop(releaseEndTime + 0.2); 
             voice.soundSources.push(sourceNode);
         });
 
-        // --- CLEANUP ---
-        setTimeout(() => {
-            voice.isActive = false;
-        }, (releaseEndTime - now + 0.3) * 1000);
+        const primarySource = voice.soundSources.find(s => s instanceof OscillatorNode) || voice.soundSources[0];
+        if (primarySource) {
+            primarySource.onended = () => {
+                voice.isActive = false;
+                voice.soundSources.forEach(source => {
+                    try { source.disconnect(); } catch (e) {}
+                });
+                voice.soundSources = [];
+            };
+        }
+
+        voice.soundSources.forEach(source => {
+            try {
+                source.stop(releaseEndTime + 0.2); 
+            } catch (e) {}
+        });
     }
 
     public setInstrument(instrumentName: AccompanimentInstrument | 'none') {
