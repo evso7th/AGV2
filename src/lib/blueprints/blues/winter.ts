@@ -31,8 +31,8 @@ export const WinterBluesBlueprint: MusicBlueprint = {
                     },
                     accompaniment: {
                         strategy: 'weighted',
-                        v1Options: [{ name: 'ep_rhodes_warm', weight: 1.0 }],
-                        v2Options: [{ name: 'ep_rhodes_warm', weight: 1.0 }]
+                        v1Options: [{ name: 'ambientPad', weight: 1.0 }],
+                        v2Options: [{ name: 'synth', weight: 1.0 }]
                     },
                     melody: {
                         strategy: 'weighted',
@@ -78,8 +78,8 @@ export const WinterBluesBlueprint: MusicBlueprint = {
                     },
                     accompaniment: {
                         strategy: 'weighted',
-                        v1Options: [{ name: 'organ_soft_jazz', weight: 0.5 }, { name: 'ep_rhodes_warm', weight: 0.5 }],
-                        v2Options: [{ name: 'organ_soft_jazz', weight: 0.5 }, { name: 'ep_rhodes_warm', weight: 0.5}]
+                        v1Options: [{ name: 'ambientPad', weight: 1.0 }],
+                        v2Options: [{ name: 'synth', weight: 1.0 }]
                     },
                     melody: {
                         strategy: 'weighted',
@@ -114,8 +114,8 @@ export const WinterBluesBlueprint: MusicBlueprint = {
                     },
                     accompaniment: {
                         strategy: 'weighted',
-                        v1Options: [{ name: 'organ_soft_jazz', weight: 0.5 }, { name: 'ep_rhodes_warm', weight: 0.5 }],
-                        v2Options: [{ name: 'organ_soft_jazz', weight: 0.5 }, { name: 'ep_rhodes_warm', weight: 0.5}]
+                        v1Options: [{ name: 'ambientPad', weight: 1.0 }],
+                        v2Options: [{ name: 'synth', weight: 1.0 }]
                     },
                     melody: {
                         strategy: 'weighted',
@@ -125,8 +125,8 @@ export const WinterBluesBlueprint: MusicBlueprint = {
                     harmony: {
                         strategy: 'weighted',
                         options: [
-                           { name: 'telecaster', weight: 0.5 },
-                          { name: 'guitarChords', weight: 0.5 }
+                          { name: 'telecaster', weight: 0.5 },
+                           { name: 'guitarChords', weight: 0.5 }
                         ]
                     }
                 },

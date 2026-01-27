@@ -512,12 +512,10 @@ export class FractalMusicEngine {
         const ticksPerBeat = 3;
         let logMessage = "";
         
-        // #ЗАЧЕМ: Используем карту, чтобы для каждой секции было свое, но постоянное соло.
-        // #ЧТО: Если для `partId` еще нет плана, выбираем новый и сохраняем.
         let soloPlanName = this.suiteDNA?.soloPlanMap.get(partId);
 
         if (!soloPlanName) {
-            console.error(`[FME] No solo plan found in DNA for partId: ${partId}`);
+            console.error(`[FME] No solo plan found in DNA for partId: ${partId}. Returning empty.`);
             return { events: [], log: `No solo plan for partId ${partId}`};
         }
 
@@ -526,6 +524,7 @@ export class FractalMusicEngine {
 
         if (!soloPlan || chorusIndex >= soloPlan.choruses.length) {
             logMessage += ` | Plan "${soloPlanName}" or chorus index ${chorusIndex} out of bounds.`;
+            console.warn(logMessage);
             return { events: [], log: logMessage };
         }
 
@@ -533,17 +532,38 @@ export class FractalMusicEngine {
         logMessage += ` | Assembling solo chorus ${chorusIndex + 1}.`;
 
         for (let barIndex = 0; barIndex < 12; barIndex++) {
-            const lickId = currentChorusPlan[barIndex];
+            const lickIdWithModifiers = currentChorusPlan[barIndex];
+            const [lickId, ...modifiers] = lickIdWithModifiers.split('+');
+
             const lickTemplate = BLUES_SOLO_LICKS[lickId];
             const currentChord = chorusChords.find(c => c.bar % 12 === barIndex);
 
             if (!lickTemplate || !currentChord) continue;
 
-            const chordRoot = currentChord.rootNote;
-            let octaveShift = 12 * (registerHint === 'high' ? 4 : 3);
+            let phraseEvents: BluesSoloPhrase = JSON.parse(JSON.stringify(lickTemplate));
 
-            for (const noteTemplate of lickTemplate) {
-                let finalMidiNote = chordRoot + (DEGREE_TO_SEMITONE[noteTemplate.deg as BluesRiffDegree] || 0) + octaveShift;
+            let octaveShift = 12 * (registerHint === 'high' ? 4 : 3);
+            if (modifiers.includes('oct') || modifiers.includes('hi')) {
+                octaveShift += 12;
+            }
+
+            if (modifiers.includes('long')) {
+                const lastNote = phraseEvents[phraseEvents.length - 1];
+                if (lastNote) {
+                    lastNote.d = (lastNote.d || 2) * 1.5;
+                }
+            }
+
+            if (modifiers.includes('var') && phraseEvents.length > 1) {
+                const i = random.nextInt(phraseEvents.length - 1);
+                const tempTime = phraseEvents[i].t;
+                phraseEvents[i].t = phraseEvents[i + 1].t;
+                phraseEvents[i + 1].t = tempTime;
+                phraseEvents.sort((a, b) => a.t - b.t);
+            }
+
+            for (const noteTemplate of phraseEvents) {
+                let finalMidiNote = currentChord.rootNote + (DEGREE_TO_SEMITONE[noteTemplate.deg as BluesRiffDegree] || 0) + octaveShift;
                 if (finalMidiNote > 84) finalMidiNote -= 12;
                 if (finalMidiNote < 52) finalMidiNote += 12;
                 
@@ -551,7 +571,7 @@ export class FractalMusicEngine {
                     type: 'melody',
                     note: finalMidiNote,
                     time: (barIndex * barDurationInBeats) + (noteTemplate.t / ticksPerBeat),
-                    duration: (noteTemplate.d / ticksPerBeat),
+                    duration: ((noteTemplate.d || 2) / ticksPerBeat),
                     weight: 0.9,
                     technique: (noteTemplate.tech as Technique) || 'pick',
                     dynamics: 'f', phrasing: 'legato', params: {}
