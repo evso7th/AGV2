@@ -5,7 +5,6 @@ import type { Note } from "@/types/music";
 import { buildMultiInstrument } from './instrument-factory';
 import { V2_PRESETS, V1_TO_V2_PRESET_MAP, BASS_PRESET_MAP } from './presets-v2';
 import { BASS_PRESETS } from './bass-presets';
-import type { TelecasterGuitarSampler } from './telecaster-guitar-sampler';
 import type { BlackGuitarSampler } from './black-guitar-sampler';
 
 /**
@@ -22,7 +21,6 @@ export class MelodySynthManagerV2 {
     
     // Internal Instruments
     private synth: any | null = null; 
-    private telecasterSampler: TelecasterGuitarSampler;
     private blackAcousticSampler: BlackGuitarSampler;
     private preamp: GainNode;
 
@@ -31,13 +29,11 @@ export class MelodySynthManagerV2 {
     constructor(
         audioContext: AudioContext, 
         destination: AudioNode,
-        telecasterSampler: TelecasterGuitarSampler,
         blackAcousticSampler: BlackGuitarSampler,
         partName: 'melody' | 'bass'
     ) {
         this.audioContext = audioContext;
         this.destination = destination;
-        this.telecasterSampler = telecasterSampler;
         this.blackAcousticSampler = blackAcousticSampler;
         this.partName = partName;
 
@@ -94,12 +90,6 @@ export class MelodySynthManagerV2 {
 
         // --- SMART ROUTER (только для мелодии) ---
         if (this.partName === 'melody') {
-            if (instrumentHint === 'telecaster') {
-                console.log(`${logPrefix} [3. Router] Routing to TelecasterSampler`, logCss);
-                const notesToPlay = events.filter(e => e.type === this.partName).map(e => ({ midi: e.note, time: e.time * (60/tempo), duration: e.duration * (60/tempo), velocity: e.weight, technique: e.technique, params: e.params }));
-                this.telecasterSampler.schedule(notesToPlay, barStartTime, tempo);
-                return;
-            }
             if (instrumentHint === 'blackAcoustic') {
                 console.log(`[MelodyManagerV2] V2 ROUTER MATCH: 'blackAcoustic'`);
                 console.log(`${logPrefix} [3. Router] Routing to BlackGuitarSampler`, logCss);

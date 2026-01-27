@@ -7,7 +7,6 @@ import { GuitarChordsSampler } from '@/lib/guitar-chords-sampler';
 import { PIANO_SAMPLES, VIOLIN_SAMPLES, FLUTE_SAMPLES } from "@/lib/samples";
 import { ViolinSamplerPlayer } from './violin-sampler-player';
 import { FluteSamplerPlayer } from './flute-sampler-player';
-import { TelecasterChordsSampler } from './telecaster-chords-sampler';
 
 
 /**
@@ -17,7 +16,7 @@ import { TelecasterChordsSampler } from './telecaster-chords-sampler';
 export class HarmonySynthManager {
     private audioContext: AudioContext;
     private destination: AudioNode;
-    private activeInstrumentName: 'piano' | 'guitarChords' | 'acousticGuitarSolo' | 'flute' | 'violin' | 'telecaster' | 'none' = 'piano';
+    private activeInstrumentName: 'piano' | 'guitarChords' | 'acousticGuitarSolo' | 'flute' | 'violin' | 'none' = 'piano';
     public isInitialized = false;
 
     // Sampler Instruments
@@ -25,7 +24,6 @@ export class HarmonySynthManager {
     private guitarChords: GuitarChordsSampler;
     private violin: ViolinSamplerPlayer;
     private flute: FluteSamplerPlayer;
-    private telecasterChords: TelecasterChordsSampler;
 
 
     constructor(audioContext: AudioContext, destination: AudioNode) {
@@ -36,7 +34,6 @@ export class HarmonySynthManager {
         this.guitarChords = new GuitarChordsSampler(audioContext, this.destination);
         this.violin = new ViolinSamplerPlayer(audioContext, this.destination);
         this.flute = new FluteSamplerPlayer(audioContext, this.destination);
-        this.telecasterChords = new TelecasterChordsSampler(audioContext, this.destination);
     }
 
     async init() {
@@ -49,7 +46,6 @@ export class HarmonySynthManager {
             this.guitarChords.init(),
             this.violin.loadInstrument('violin', VIOLIN_SAMPLES),
             this.flute.loadInstrument('flute', FLUTE_SAMPLES),
-            this.telecasterChords.init(),
         ]);
         
         this.setInstrument(this.activeInstrumentName);
@@ -58,7 +54,7 @@ export class HarmonySynthManager {
         console.log('[HarmonyManager] Harmony instruments initialized.');
     }
     
-    public schedule(events: FractalEvent[], barStartTime: number, tempo: number, instrumentHint?: 'piano' | 'guitarChords' | 'acousticGuitarSolo' | 'flute' | 'violin' | 'telecaster') {
+    public schedule(events: FractalEvent[], barStartTime: number, tempo: number, instrumentHint?: 'piano' | 'guitarChords' | 'acousticGuitarSolo' | 'flute' | 'violin') {
         if (!this.isInitialized) {
             return;
         }
@@ -96,13 +92,10 @@ export class HarmonySynthManager {
             case 'flute':
                 this.flute.schedule(notes, barStartTime);
                 break;
-            case 'telecaster':
-                 this.telecasterChords.schedule(notes, barStartTime);
-                 break;
         }
     }
 
-    public setInstrument(instrumentName: 'piano' | 'guitarChords' | 'acousticGuitarSolo' | 'flute' | 'violin' | 'telecaster' | 'none') {
+    public setInstrument(instrumentName: 'piano' | 'guitarChords' | 'acousticGuitarSolo' | 'flute' | 'violin' | 'none') {
         if (!this.isInitialized) {
             console.warn('[HarmonyManager] setInstrument called before initialization.');
             return;
@@ -115,7 +108,6 @@ export class HarmonySynthManager {
         this.guitarChords.setVolume(instrumentName === 'guitarChords' ? 0.45 : 0);
         this.violin.setVolume(instrumentName === 'violin' ? 1.0 : 0);
         this.flute.setVolume(instrumentName === 'flute' ? 1.0 : 0);
-        this.telecasterChords.setVolume(instrumentName === 'telecaster' ? 1.0 : 0);
     }
 
     public allNotesOff() {
@@ -123,7 +115,6 @@ export class HarmonySynthManager {
         this.guitarChords.stopAll();
         this.violin.stopAll();
         this.flute.stopAll();
-        this.telecasterChords.stopAll();
     }
 
     public stop() {
@@ -136,6 +127,5 @@ export class HarmonySynthManager {
         this.guitarChords.dispose();
         this.violin.dispose();
         this.flute.dispose();
-        this.telecasterChords.dispose();
     }
 }

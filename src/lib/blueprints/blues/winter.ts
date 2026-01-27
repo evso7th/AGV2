@@ -42,8 +42,8 @@ export const WinterBluesBlueprint: MusicBlueprint = {
                     harmony: {
                         strategy: 'weighted',
                         options: [
-                          { name: 'telecaster', weight: 0.5 },
-                          { name: 'guitarChords', weight: 0.5 },
+                          { name: 'piano', weight: 0.5 },
+                          { name: 'guitarChords', weight: 0.5 }
                         ]
                     }
                 },
@@ -89,7 +89,7 @@ export const WinterBluesBlueprint: MusicBlueprint = {
                     harmony: {
                         strategy: 'weighted',
                         options: [
-                           { name: 'telecaster', weight: 0.5 },
+                           { name: 'piano', weight: 0.5 },
                            { name: 'guitarChords', weight: 0.5 }
                         ]
                     }
@@ -104,40 +104,25 @@ export const WinterBluesBlueprint: MusicBlueprint = {
                 outroFill: { type: 'roll', duration: 1, parameters: { crescendo: true } },
             },
             {
-                id: 'prolog-3', name: 'Main Theme A', duration: { percent: 15 },
-                layers: { bass: true, drums: true, melody: true, accompaniment: true, harmony: true },
+                id: 'prolog-3', name: 'Anticipation', duration: { percent: 15 },
+                layers: { accompaniment: true, bass: true, melody: true, harmony: true, sfx: true, sparkles: true, drums: true },
                 instrumentation: {
-                    bass: {
-                        strategy: 'weighted',
-                        v1Options: [ { name: 'bass_jazz_warm', weight: 1.0 } ],
-                        v2Options: [ { name: 'bass_jazz_warm', weight: 1.0 } ]
-                    },
                     accompaniment: {
                         strategy: 'weighted',
-                        v1Options: [{ name: 'ambientPad', weight: 1.0 }],
-                        v2Options: [{ name: 'synth', weight: 1.0 }]
+                        v1Options: [ { name: 'organ_soft_jazz', weight: 1.0 } ],
+                        v2Options: [ { name: 'organ_soft_jazz', weight: 1.0 } ]
                     },
-                    melody: {
-                        strategy: 'weighted',
-                        v1Options: [{ name: 'blackAcoustic', weight: 1.0 }],
-                        v2Options: [{ name: 'blackAcoustic', weight: 1.0 }]
-                    },
-                    harmony: {
-                        strategy: 'weighted',
-                        options: [
-                          { name: 'telecaster', weight: 0.5 },
-                           { name: 'guitarChords', weight: 0.5 }
-                        ]
-                    }
+                    bass: { strategy: 'weighted', v1Options: [{ name: 'classicBass', weight: 1.0 }], v2Options: [{ name: 'classicBass', weight: 1.0 }] },
+                    melody: { strategy: 'weighted', v1Options: [{ name: 'blackAcoustic', weight: 1.0 }], v2Options: [{ name: 'blackAcoustic', weight: 1.0 }] },
+                    harmony: { strategy: 'weighted', options: [ { name: 'violin', weight: 1.0 } ] } // <<< Скрипки вступают здесь
                 },
                 instrumentRules: {
-                    drums: { kitName: 'blues_no_cymbals', density: { min: 0.6, max: 0.8 } },
-                    melody: { source: 'motif', density: { min: 0.7, max: 0.9 }, register: { preferred: 'mid' }, fingerstyle: [ { bars: [0, 1, 2, 3], pattern: 'F_ROLL12', voicingName: 'Em7_open' } ] },
-                    bass: { techniques: [{ value: 'riff', weight: 1.0 }] },
-                    accompaniment: { density: {min: 0.3, max: 0.5} },
+                    accompaniment: { register: { preferred: 'low' } },
+                    drums: { pattern: 'composer', density: { min: 0.2, max: 0.4 }, useSnare: true, usePerc: true },
+                    melody: { source: 'harmony_top_note' },
                 },
-                bundles: [{ id: 'BLUES_WINTER_MAIN1_BUNDLE', name: 'Main A', duration: { percent: 100 }, characteristics: {}, phrases: {} }],
-                outroFill: null,
+                bundles: [ { id: 'BLUES_WINTER_INTRO_BUNDLE_3', name: 'Anticipation', duration: { percent: 100 }, characteristics: {}, phrases: {} } ],
+                outroFill: { type: 'filter_sweep', duration: 2, parameters: { filterEnd: 0.95 } },
             },
             {
                 id: 'SOLO', name: 'Solo', duration: { percent: 30 },
@@ -157,13 +142,11 @@ export const WinterBluesBlueprint: MusicBlueprint = {
                         strategy: 'weighted',
                         v1Options: [
                             { name: 'blackAcoustic', weight: 0.3 },
-                            { name: 'telecaster', weight: 0.3 },
                             { name: 'organ', weight: 0.3 },
                             { name: 'synth', weight: 0.1 }
                         ],
                         v2Options: [
                             { name: 'blackAcoustic', weight: 0.3 },
-                            { name: 'telecaster', weight: 0.3 },
                             { name: 'organ_soft_jazz', weight: 0.15 },
                             { name: 'organ_soft_jazz', weight: 0.15 }, // Corrected from organ_prog
                             { name: 'ep_rhodes_warm', weight: 0.1 }
@@ -172,7 +155,7 @@ export const WinterBluesBlueprint: MusicBlueprint = {
                     harmony: {
                         strategy: 'weighted',
                         options: [
-                           { name: 'telecaster', weight: 0.5 },
+                           { name: 'piano', weight: 0.5 },
                            { name: 'guitarChords', weight: 0.5 }
                         ]
                     }
@@ -220,7 +203,7 @@ export const WinterBluesBlueprint: MusicBlueprint = {
                     harmony: {
                         strategy: 'weighted',
                         options: [
-                          { name: 'telecaster', weight: 0.5 },
+                          { name: 'piano', weight: 0.5 },
                            { name: 'guitarChords', weight: 0.5 }
                         ]
                     }
@@ -256,7 +239,7 @@ export const WinterBluesBlueprint: MusicBlueprint = {
                     harmony: {
                         strategy: 'weighted',
                         options: [
-                           { name: 'telecaster', weight: 0.5 },
+                           { name: 'piano', weight: 0.5 },
                            { name: 'guitarChords', weight: 0.5 }
                         ]
                     }

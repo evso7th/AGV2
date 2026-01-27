@@ -1,9 +1,9 @@
 
+
 import type { FractalEvent, AccompanimentInstrument } from '@/types/fractal';
 import type { Note } from "@/types/music";
 import { SYNTH_PRESETS, type SynthPreset } from './synth-presets';
 import { V1_TO_V2_PRESET_MAP } from './presets-v2';
-import type { TelecasterGuitarSampler } from './telecaster-guitar-sampler';
 import type { BlackGuitarSampler } from './black-guitar-sampler';
 
 function midiToFreq(midi: number): number {
@@ -42,19 +42,16 @@ export class MelodySynthManager {
     private noiseBuffer: AudioBuffer | null = null;
     
     // Sampler dependencies
-    private telecasterSampler: TelecasterGuitarSampler;
     private blackAcousticSampler: BlackGuitarSampler;
 
     constructor(
         audioContext: AudioContext, 
         destination: AudioNode,
-        telecasterSampler: TelecasterGuitarSampler,
         blackAcousticSampler: BlackGuitarSampler,
         partName: 'melody'
     ) {
         this.audioContext = audioContext;
         this.destination = destination;
-        this.telecasterSampler = telecasterSampler;
         this.blackAcousticSampler = blackAcousticSampler;
         this.partName = partName;
 
@@ -126,12 +123,6 @@ export class MelodySynthManager {
         if (melodyEvents.length === 0) return;
 
         // --- SMART ROUTER ---
-        if (hint === 'telecaster') {
-            console.log(`%c[MelodyManagerV1] Routing to TelecasterSampler for bar ${barCount}`, 'color: #DA70D6');
-            const notesToPlay = melodyEvents.map(e => ({ midi: e.note, time: e.time * (60/tempo), duration: e.duration * (60/tempo), velocity: e.weight, technique: e.technique, params: e.params }));
-            this.telecasterSampler.schedule(notesToPlay, barStartTime, tempo);
-            return; // Stop further execution
-        }
         if (hint === 'blackAcoustic') {
             console.log(`%c[MelodyManagerV1] Routing to BlackGuitarSampler for bar ${barCount}`, 'color: #DA70D6');
             const notesToPlay = melodyEvents.map(e => ({ midi: e.note, time: e.time * (60/tempo), duration: e.duration * (60/tempo), velocity: e.weight, technique: e.technique, params: e.params }));
