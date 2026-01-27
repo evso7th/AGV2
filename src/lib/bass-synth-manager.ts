@@ -182,7 +182,7 @@ export class BassSynthManager {
         gainParam.setValueAtTime(0.0001, noteOnTime);
         gainParam.linearRampToValueAtTime(peakGain, attackEndTime);
         gainParam.setTargetAtTime(sustainValue, attackEndTime, Math.max(preset.adsr.decay / 5, 0.001));
-        gainParam.setTargetAtTime(0.0001, noteOffTime, preset.adsr.release / 5);
+        gainParam.setTargetAtTime(0.0001, noteOffTime, preset.adsr.release / 3);
         
         voice.soundSources = [];
         const baseFrequency = midiToFreq(note.midi);

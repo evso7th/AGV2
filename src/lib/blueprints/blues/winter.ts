@@ -40,16 +40,16 @@ export const WinterBluesBlueprint: MusicBlueprint = {
                         v2Options: [{ name: 'blackAcoustic', weight: 1.0 }]
                     },
                     harmony: {
-                        strategy: 'weighted',
-                        options: [
-                          { name: 'piano', weight: 0.5 },
-                          { name: 'guitarChords', weight: 0.5 }
-                        ]
+                         strategy: 'weighted',
+                         options: [
+                           { name: 'piano', weight: 0.6 },
+                           { name: 'guitarChords', weight: 0.4 }
+                         ]
                     }
                 },
                 instrumentRules: {
                     drums: {
-                        kitName: 'blues_calm_intro_outro',
+                        kitName: 'blues_winter_prolog',
                         density: { min: 0.1, max: 0.2 },
                         kitOverrides: { substitute: {} },
                         useSnare: true,
@@ -95,7 +95,7 @@ export const WinterBluesBlueprint: MusicBlueprint = {
                     }
                 },
                 instrumentRules: {
-                    drums: { kitName: 'blues_no_cymbals', density: { min: 0.5, max: 0.7 } },
+                    drums: { kitName: 'blues_winter_prolog', density: { min: 0.5, max: 0.7 } },
                     melody: { source: 'motif', density: { min: 0.6, max: 0.8 }, register: { preferred: 'mid' }, strum: [ { bars: [0, 1, 2, 3], pattern: 'S_SWING', voicingName: 'Am7_open' } ] },
                     bass: { techniques: [{ value: 'riff', weight: 1.0 }] },
                     accompaniment: { density: {min: 0.2, max: 0.4} },
@@ -114,12 +114,12 @@ export const WinterBluesBlueprint: MusicBlueprint = {
                     },
                     bass: { strategy: 'weighted', v1Options: [{ name: 'bass_jazz_warm', weight: 1.0 }], v2Options: [{ name: 'bass_jazz_warm', weight: 1.0 }] },
                     melody: { strategy: 'weighted', v1Options: [{ name: 'telecaster', weight: 1.0 }], v2Options: [{ name: 'telecaster', weight: 1.0 }] },
-                    harmony: { strategy: 'weighted', options: [ { name: 'violin', weight: 1.0 } ] } // <<< Скрипки вступают здесь
+                    harmony: { strategy: 'weighted', options: [ { name: 'piano', weight: 0.6 }, { name: 'guitarChords', weight: 0.4 } ] } 
                 },
                 instrumentRules: {
                     accompaniment: { register: { preferred: 'low' } },
-                    drums: { pattern: 'composer', density: { min: 0.2, max: 0.4 }, useSnare: true, usePerc: true },
-                    melody: { source: 'harmony_top_note' },
+                    drums: { pattern: 'composer', kitName: 'blues_winter_prolog', density: { min: 0.2, max: 0.4 }, useSnare: true, usePerc: true },
+                    melody: { source: 'motif' },
                 },
                 bundles: [ { id: 'BLUES_WINTER_INTRO_BUNDLE_3', name: 'Anticipation', duration: { percent: 100 }, characteristics: {}, phrases: {} } ],
                 outroFill: { type: 'filter_sweep', duration: 2, parameters: { filterEnd: 0.95 } },

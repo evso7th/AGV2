@@ -110,6 +110,15 @@ export const DRUM_KITS: DrumKitLibrary = {
             crash: [], // НИКАКИХ КРЭШЕЙ
             perc: ['drum_tom_mid', 'drum_tom_low'] // Только томы для филлов
         },
+        // #ДОБАВЛЕНО (ПЛАН 1567): Специальный кит для зимнего блюза
+        blues_winter_prolog: {
+            kick: ['drum_kick'],
+            snare: ['drum_snare_ghost_note'],
+            hihat: ['drum_hihat_closed'],
+            ride: [],
+            crash: [],
+            perc: ['perc-013']
+        }
         // Другие настроения для blues можно добавить здесь
     },
 

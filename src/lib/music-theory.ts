@@ -54,7 +54,17 @@ function seededRandom(seed: number) {
       state = (state * 1664525 + 1013904223) % Math.pow(2, 32);
       return state / Math.pow(2, 32);
     },
-    nextInt: (max: number) => Math.floor(self.next() * max)
+    nextInt: (max: number) => Math.floor(self.next() * max),
+     shuffle: <T>(array: T[]): T[] => {
+        let currentIndex = array.length, randomIndex;
+        const newArray = [...array];
+        while (currentIndex !== 0) {
+            randomIndex = Math.floor(self.next() * currentIndex);
+            currentIndex--;
+            [newArray[currentIndex], newArray[randomIndex]] = [newArray[randomIndex], newArray[currentIndex]];
+        }
+        return newArray;
+    }
   };
   return self;
 }
@@ -503,9 +513,6 @@ export function generateSuiteDNA(totalBars: number, mood: Mood, seed: number, ra
     const drumStyles: DrumStyle[] = ['heavy_backbeat', 'light_brushes', 'shuffle_A', 'shuffle_B'];
     const drumStyle = drumStyles[random.nextInt(drumStyles.length)];
 
-    // #ЗАЧЕМ: Создает "карту соло" для КАЖДОЙ части сюиты, обеспечивая музыкальное разнообразие.
-    // #ЧТО: Для каждой части (part) в блюпринте выбирается УНИКАЛЬНЫЙ план соло и сохраняется в карту.
-    //      Это устраняет ошибку "No solo plan found", так как у каждой части теперь есть своя мелодическая "партитура".
     const soloPlanMap = new Map<string, string>();
     const allPlanIds = Object.keys(BLUES_SOLO_PLANS);
     const shuffledPlanIds = random.shuffle(allPlanIds);
@@ -516,7 +523,6 @@ export function generateSuiteDNA(totalBars: number, mood: Mood, seed: number, ra
             soloPlanMap.set(part.id, shuffledPlanIds[planIndex]);
             planIndex++;
         } else {
-            // Fallback if we run out of unique plans, start reusing them
             soloPlanMap.set(part.id, shuffledPlanIds[random.nextInt(shuffledPlanIds.length)]);
         }
     });
@@ -688,11 +694,10 @@ export function generateIntroSequence(options: {
         return { events, instrumentHints: {} };
     }
     
-    const stageCount = rules.stages || 4;
-    const barsPerStage = Math.max(1, Math.floor(totalIntroBars / stageCount));
-    const currentStage = Math.min(stageCount, Math.floor(currentBar / barsPerStage) + 1);
-    
-    const tempActive = new Set(introInstrumentOrder.slice(0, currentStage));
+    // #ИСПРАВЛЕНО (ПЛАН 1567): Ускорен ввод инструментов.
+    const numInstrumentsToAdd = Math.floor(currentBar / 2) + 1;
+    const tempActive = new Set(introInstrumentOrder.slice(0, numInstrumentsToAdd));
+
     const activeInstrumentsForBar = new Set<InstrumentPart>();
 
     for(const inst of tempActive) {
@@ -754,4 +759,3 @@ export function createPulsatingAccompaniment(chord: GhostChord, random: { next: 
     });
     return axiom;
 }
-
