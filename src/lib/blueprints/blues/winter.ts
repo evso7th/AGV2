@@ -17,21 +17,17 @@ export const WinterBluesBlueprint: MusicBlueprint = {
         totalDuration: { preferredBars: 120 }, // 10 loops of 12 bars
         parts: [
             {
-                id: 'INTRO', name: 'Verse 1', duration: { percent: 15 },
+                id: 'prolog-1', name: 'Verse 1', duration: { percent: 15 },
                 introRules: {
-                    instrumentPool: ['drums', 'bass', 'melody', 'accompaniment'],
+                    instrumentPool: ['drums', 'bass', 'accompaniment', 'melody'],
                     stages: 4,
                 },
                 layers: { bass: true, drums: true, accompaniment: true, harmony: true, melody: true },
                 instrumentation: {
                     bass: {
                         strategy: 'weighted',
-                        v1Options: [
-                            { name: 'bass_jazz_warm', weight: 1.0 }
-                        ],
-                        v2Options: [
-                            { name: 'bass_jazz_warm', weight: 1.0 }
-                        ]
+                        v1Options: [ { name: 'bass_jazz_warm', weight: 1.0 } ],
+                        v2Options: [ { name: 'bass_jazz_warm', weight: 1.0 } ]
                     },
                     accompaniment: {
                         strategy: 'weighted',
@@ -47,9 +43,7 @@ export const WinterBluesBlueprint: MusicBlueprint = {
                         strategy: 'weighted',
                         options: [
                           { name: 'telecaster', weight: 0.5 },
-                          { name: 'guitarChords', weight: 0.1 },
-                          { name: 'violin', weight: 0.15 },
-                          { name: 'piano', weight: 0.25 }
+                          { name: 'guitarChords', weight: 0.5 },
                         ]
                     }
                 },
@@ -65,7 +59,7 @@ export const WinterBluesBlueprint: MusicBlueprint = {
                     accompaniment: { density: {min: 0.1, max: 0.3} },
                     melody: {
                         source: 'motif',
-                        density: { min: 0.2, max: 0.4 },
+                        density: { min: 0.5, max: 0.7 },
                         register: { preferred: 'mid' },
                         fingerstyle: [ { bars: [0, 1, 2, 3], pattern: 'F_TRAVIS', voicingName: 'Em7_open' } ],
                     }
@@ -74,17 +68,13 @@ export const WinterBluesBlueprint: MusicBlueprint = {
                 outroFill: null,
             },
             {
-                id: 'BUILD', name: 'Build-Up', duration: { percent: 20 },
+                id: 'prolog-2', name: 'Build-Up', duration: { percent: 20 },
                 layers: { bass: true, drums: true, melody: true, accompaniment: true, harmony: true },
                 instrumentation: {
                     bass: {
                         strategy: 'weighted',
-                        v1Options: [
-                            { name: 'bass_jazz_warm', weight: 1.0 }
-                        ],
-                        v2Options: [
-                            { name: 'bass_jazz_warm', weight: 1.0 }
-                        ]
+                        v1Options: [ { name: 'bass_jazz_warm', weight: 1.0 } ],
+                        v2Options: [ { name: 'bass_jazz_warm', weight: 1.0 } ]
                     },
                     accompaniment: {
                         strategy: 'weighted',
@@ -97,36 +87,30 @@ export const WinterBluesBlueprint: MusicBlueprint = {
                         v2Options: [{ name: 'blackAcoustic', weight: 1.0 }]
                     },
                     harmony: {
-                         strategy: 'weighted',
+                        strategy: 'weighted',
                         options: [
-                          { name: 'telecaster', weight: 0.5 },
-                          { name: 'guitarChords', weight: 0.1 },
-                          { name: 'violin', weight: 0.15 },
-                          { name: 'piano', weight: 0.25 }
+                           { name: 'telecaster', weight: 0.5 },
+                           { name: 'guitarChords', weight: 0.5 }
                         ]
                     }
                 },
                 instrumentRules: {
                     drums: { kitName: 'blues_no_cymbals', density: { min: 0.5, max: 0.7 } },
-                    melody: { source: 'motif', density: { min: 0.5, max: 0.7 }, register: { preferred: 'mid' }, strum: [ { bars: [0, 1, 2, 3], pattern: 'S_SWING', voicingName: 'Am7_open' } ] },
+                    melody: { source: 'motif', density: { min: 0.6, max: 0.8 }, register: { preferred: 'mid' }, strum: [ { bars: [0, 1, 2, 3], pattern: 'S_SWING', voicingName: 'Am7_open' } ] },
                     bass: { techniques: [{ value: 'riff', weight: 1.0 }] },
-                    accompaniment: { density: {min: 0.1, max: 0.3} },
+                    accompaniment: { density: {min: 0.2, max: 0.4} },
                 },
                 bundles: [{ id: 'BLUES_WINTER_BUILD_BUNDLE', name: 'Build', duration: { percent: 100 }, characteristics: {}, phrases: {} }],
                 outroFill: { type: 'roll', duration: 1, parameters: { crescendo: true } },
             },
             {
-                id: 'MAIN-1', name: 'Main Theme A', duration: { percent: 15 },
+                id: 'prolog-3', name: 'Main Theme A', duration: { percent: 15 },
                 layers: { bass: true, drums: true, melody: true, accompaniment: true, harmony: true },
                 instrumentation: {
                     bass: {
                         strategy: 'weighted',
-                        v1Options: [
-                            { name: 'bass_jazz_warm', weight: 1.0 }
-                        ],
-                        v2Options: [
-                            { name: 'bass_jazz_warm', weight: 1.0 }
-                        ]
+                        v1Options: [ { name: 'bass_jazz_warm', weight: 1.0 } ],
+                        v2Options: [ { name: 'bass_jazz_warm', weight: 1.0 } ]
                     },
                     accompaniment: {
                         strategy: 'weighted',
@@ -141,18 +125,16 @@ export const WinterBluesBlueprint: MusicBlueprint = {
                     harmony: {
                         strategy: 'weighted',
                         options: [
-                          { name: 'telecaster', weight: 0.5 },
-                          { name: 'guitarChords', weight: 0.1 },
-                          { name: 'violin', weight: 0.15 },
-                          { name: 'piano', weight: 0.25 }
+                           { name: 'telecaster', weight: 0.5 },
+                          { name: 'guitarChords', weight: 0.5 }
                         ]
                     }
                 },
                 instrumentRules: {
                     drums: { kitName: 'blues_no_cymbals', density: { min: 0.6, max: 0.8 } },
-                    melody: { source: 'motif', density: { min: 0.5, max: 0.7 }, register: { preferred: 'mid' }, fingerstyle: [ { bars: [0, 1, 2, 3], pattern: 'F_ROLL12', voicingName: 'Em7_open' } ] },
+                    melody: { source: 'motif', density: { min: 0.7, max: 0.9 }, register: { preferred: 'mid' }, fingerstyle: [ { bars: [0, 1, 2, 3], pattern: 'F_ROLL12', voicingName: 'Em7_open' } ] },
                     bass: { techniques: [{ value: 'riff', weight: 1.0 }] },
-                    accompaniment: { density: {min: 0.1, max: 0.3} },
+                    accompaniment: { density: {min: 0.3, max: 0.5} },
                 },
                 bundles: [{ id: 'BLUES_WINTER_MAIN1_BUNDLE', name: 'Main A', duration: { percent: 100 }, characteristics: {}, phrases: {} }],
                 outroFill: null,
@@ -163,12 +145,8 @@ export const WinterBluesBlueprint: MusicBlueprint = {
                 instrumentation: {
                     bass: {
                         strategy: 'weighted',
-                        v1Options: [
-                            { name: 'bass_jazz_warm', weight: 1.0 }
-                        ],
-                        v2Options: [
-                            { name: 'bass_jazz_warm', weight: 1.0 }
-                        ]
+                        v1Options: [ { name: 'bass_jazz_warm', weight: 1.0 } ],
+                        v2Options: [ { name: 'bass_jazz_warm', weight: 1.0 } ]
                     },
                      accompaniment: {
                         strategy: 'weighted',
@@ -187,17 +165,15 @@ export const WinterBluesBlueprint: MusicBlueprint = {
                             { name: 'blackAcoustic', weight: 0.3 },
                             { name: 'telecaster', weight: 0.3 },
                             { name: 'organ_soft_jazz', weight: 0.15 },
-                            { name: 'organ_prog', weight: 0.15 },
+                            { name: 'organ_soft_jazz', weight: 0.15 }, // Corrected from organ_prog
                             { name: 'ep_rhodes_warm', weight: 0.1 }
                         ]
                     },
                     harmony: {
                         strategy: 'weighted',
                         options: [
-                          { name: 'telecaster', weight: 0.5 },
-                          { name: 'guitarChords', weight: 0.1 },
-                          { name: 'violin', weight: 0.15 },
-                          { name: 'piano', weight: 0.25 }
+                           { name: 'telecaster', weight: 0.5 },
+                           { name: 'guitarChords', weight: 0.5 }
                         ]
                     }
                 },
@@ -212,12 +188,12 @@ export const WinterBluesBlueprint: MusicBlueprint = {
                     },
                     melody: {
                         source: 'motif',
-                        density: { min: 0.6, max: 0.8 },
+                        density: { min: 0.8, max: 1.0 },
                         register: { preferred: 'high' },
                         soloPlan: 'S06'
                     },
                     bass: { techniques: [{ value: 'riff', weight: 1.0 }] },
-                    accompaniment: { density: {min: 0.1, max: 0.3} },
+                    accompaniment: { density: {min: 0.2, max: 0.4} },
                 },
                 bundles: [{ id: 'BLUES_WINTER_SOLO_BUNDLE', name: 'Solo Section', duration: { percent: 100 }, characteristics: {}, phrases: {} }],
                 outroFill: { type: 'roll', duration: 1, parameters: {} },
@@ -228,12 +204,8 @@ export const WinterBluesBlueprint: MusicBlueprint = {
                 instrumentation: {
                     bass: {
                         strategy: 'weighted',
-                        v1Options: [
-                            { name: 'bass_jazz_warm', weight: 1.0 }
-                        ],
-                        v2Options: [
-                            { name: 'bass_jazz_warm', weight: 1.0 }
-                        ]
+                        v1Options: [ { name: 'bass_jazz_warm', weight: 1.0 } ],
+                        v2Options: [ { name: 'bass_jazz_warm', weight: 1.0 } ]
                     },
                     accompaniment: {
                         strategy: 'weighted',
@@ -249,17 +221,15 @@ export const WinterBluesBlueprint: MusicBlueprint = {
                         strategy: 'weighted',
                         options: [
                           { name: 'telecaster', weight: 0.5 },
-                          { name: 'guitarChords', weight: 0.1 },
-                          { name: 'violin', weight: 0.15 },
-                          { name: 'piano', weight: 0.25 }
+                           { name: 'guitarChords', weight: 0.5 }
                         ]
                     }
                 },
                 instrumentRules: {
                     drums: { kitName: 'blues_no_cymbals', density: { min: 0.6, max: 0.8 } },
-                    melody: { source: 'motif', density: { min: 0.5, max: 0.7 }, register: { preferred: 'mid' }, strum: [ { bars: [0, 1, 2, 3], pattern: 'S_4DOWN', voicingName: 'Am7_open' } ] },
+                    melody: { source: 'motif', density: { min: 0.7, max: 0.9 }, register: { preferred: 'mid' }, strum: [ { bars: [0, 1, 2, 3], pattern: 'S_4DOWN', voicingName: 'Am7_open' } ] },
                     bass: { techniques: [{ value: 'riff', weight: 1.0 }] },
-                    accompaniment: { density: {min: 0.1, max: 0.3} },
+                    accompaniment: { density: {min: 0.3, max: 0.5} },
                 },
                 bundles: [{ id: 'BLUES_WINTER_MAIN2_BUNDLE', name: 'Main B', duration: { percent: 100 }, characteristics: {}, phrases: {} }],
                 outroFill: null,
@@ -270,12 +240,8 @@ export const WinterBluesBlueprint: MusicBlueprint = {
                 instrumentation: {
                      bass: {
                         strategy: 'weighted',
-                        v1Options: [
-                            { name: 'bass_jazz_warm', weight: 1.0 }
-                        ],
-                        v2Options: [
-                            { name: 'bass_jazz_warm', weight: 1.0 }
-                        ]
+                        v1Options: [ { name: 'bass_jazz_warm', weight: 1.0 } ],
+                        v2Options: [ { name: 'bass_jazz_warm', weight: 1.0 } ]
                     },
                      accompaniment: {
                         strategy: 'weighted',
@@ -290,10 +256,8 @@ export const WinterBluesBlueprint: MusicBlueprint = {
                     harmony: {
                         strategy: 'weighted',
                         options: [
-                          { name: 'telecaster', weight: 0.5 },
-                          { name: 'guitarChords', weight: 0.1 },
-                          { name: 'violin', weight: 0.15 },
-                          { name: 'piano', weight: 0.25 }
+                           { name: 'telecaster', weight: 0.5 },
+                           { name: 'guitarChords', weight: 0.5 }
                         ]
                     }
                 },
@@ -306,7 +270,7 @@ export const WinterBluesBlueprint: MusicBlueprint = {
                     bass: { techniques: [{ value: 'riff', weight: 1.0 }] },
                     melody: {
                         source: 'motif',
-                        density: { min: 0.2, max: 0.4 },
+                        density: { min: 0.5, max: 0.7 },
                         register: { preferred: 'mid' },
                         fingerstyle: [ { bars: [0, 1, 2, 3], pattern: 'F_TRAVIS', voicingName: 'Em7_open' } ],
                     }

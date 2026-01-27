@@ -1,6 +1,6 @@
 
 
-import type { FractalEvent, Mood, Genre, Technique, BassSynthParams, InstrumentType, MelodyInstrument, AccompanimentInstrument, ResonanceMatrix, InstrumentHints, AccompanimentTechnique, GhostChord, SfxRule, V1MelodyInstrument, V2MelodyInstrument, BlueprintPart, InstrumentationRules, InstrumentBehaviorRules, BluesMelody, IntroRules, InstrumentPart, DrumKit, BluesGuitarRiff, BluesSoloPhrase, BluesRiffDegree, SuiteDNA, RhythmicFeel, BassStyle, DrumStyle, BluesMelodyPhrase } from './fractal';
+import type { FractalEvent, Mood, Genre, Technique, BassSynthParams, InstrumentType, MelodyInstrument, AccompanimentInstrument, ResonanceMatrix, InstrumentHints, AccompanimentTechnique, GhostChord, SfxRule, V1MelodyInstrument, V2MelodyInstrument, BlueprintPart, InstrumentationRules, InstrumentBehaviorRules, BluesMelody, IntroRules, InstrumentPart, DrumKit, BluesGuitarRiff, BluesSoloPhrase, BluesRiffDegree, SuiteDNA, RhythmicFeel, BassStyle, DrumStyle } from './fractal';
 import { ElectronicK, TraditionalK, AmbientK, MelancholicMinorK } from './resonance-matrices';
 import { BlueprintNavigator, type NavigationInfo } from './blueprint-navigator';
 import { getBlueprint } from './blueprints';
@@ -379,6 +379,19 @@ export function createAccompanimentAxiom(chord: GhostChord, mood: Mood, genre: G
     return axiom;
 }
 
+const midiToChordName = (rootNote: number, chordType: 'major' | 'minor' | 'diminished' | 'dominant'): string => {
+    const noteNames = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B'];
+    const rootName = noteNames[rootNote % 12];
+    switch (chordType) {
+        case 'minor': return `${rootName}m`;
+        case 'diminished': return `${rootName}dim`;
+        case 'dominant': return `${rootName}7`;
+        case 'major':
+        default:
+            return rootName;
+    }
+};
+
 export function createHarmonyAxiom(chord: GhostChord, mood: Mood, genre: Genre, random: { next: () => number; nextInt: (max: number) => number }): FractalEvent[] {
     const axiom: FractalEvent[] = [];
     const scale = getScaleForMood(mood, genre);
@@ -400,7 +413,9 @@ export function createHarmonyAxiom(chord: GhostChord, mood: Mood, genre: Genre, 
         
         axiom.push({
             type: 'harmony', note: noteMidi, duration: duration, time: currentTime,
-            weight: 0.5 + random.next() * 0.15, technique: 'swell', dynamics: 'p', phrasing: 'legato', params: { attack: 2.0, release: 3.0 }
+            weight: 0.5 + random.next() * 0.15, technique: 'swell', dynamics: 'p', phrasing: 'legato', 
+            params: { attack: 2.0, release: 3.0 },
+            chordName: midiToChordName(chord.rootNote, chord.chordType)
         });
 
         currentTime += duration;
@@ -412,10 +427,6 @@ export function createHarmonyAxiom(chord: GhostChord, mood: Mood, genre: Genre, 
 export function createMelodyMotif(chord: GhostChord, mood: Mood, random: { next: () => number; nextInt: (max: number) => number; }, previousMotif?: FractalEvent[], registerHint?: 'low' | 'mid' | 'high', genre?: Genre): FractalEvent[] {
     const motif: FractalEvent[] = [];
     
-    if (previousMotif && previousMotif.length > 0 && random.next() < 0.7) {
-        return previousMotif; 
-    }
-
     const scale = getScaleForMood(mood, genre);
     let baseOctave = 4;
     if (registerHint === 'high') baseOctave = 5;
@@ -465,29 +476,22 @@ export function chooseHarmonyInstrument(rules: InstrumentationRules<'piano' | 'g
     return options[options.length - 1].name;
 }
 
-export function generateSuiteDNA(totalBars: number, mood: Mood, key: number, random: { next: () => number, nextInt: (max: number) => number }, genre: Genre): SuiteDNA {
+export function generateSuiteDNA(totalBars: number, mood: Mood, seed: number, random: { next: () => number, nextInt: (max: number) => number; shuffle: <T>(array: T[]) => T[]; }, genre: Genre, blueprintParts: BlueprintPart[]): SuiteDNA {
   console.log(`[DNA] Generating Suite DNA for genre: ${genre}, mood: ${mood}`);
 
-  const progressionMap = { /* ... */ }; 
   const harmonyTrack: GhostChord[] = [];
+  const key = getScaleForMood(mood, genre)[0];
   let currentBar = 0;
   while (currentBar < totalBars) {
     const duration = 4;
-    harmonyTrack.push({ rootNote: key, chordType: 'major', bar: currentBar, durationBars: duration });
+    harmonyTrack.push({ rootNote: key + random.nextInt(12) - 6, chordType: random.next() > 0.5 ? 'major' : 'minor', bar: currentBar, durationBars: duration });
     currentBar += duration;
   }
   
   const possibleTempos = {
-    joyful: [76, 90],
-    enthusiastic: [82, 98],
-    contemplative: [68, 76],
-    dreamy: [64, 72],
-    calm: [60, 70],
-    melancholic: [60, 68],
-    gloomy: [62, 70],
-    dark: [60, 68],
-    epic: [70, 80],
-    anxious: [78, 92],
+    joyful: [76, 90], enthusiastic: [82, 98], contemplative: [68, 76],
+    dreamy: [64, 72], calm: [60, 70], melancholic: [60, 68],
+    gloomy: [62, 70], dark: [60, 68], epic: [70, 80], anxious: [78, 92],
   };
 
   const [minTempo, maxTempo] = possibleTempos[mood] || [60, 80];
@@ -499,9 +503,30 @@ export function generateSuiteDNA(totalBars: number, mood: Mood, key: number, ran
   const drumStyles: DrumStyle[] = ['heavy_backbeat', 'light_brushes', 'shuffle_A', 'shuffle_B'];
   const drumStyle = drumStyles[random.nextInt(drumStyles.length)];
 
+  // #ЗАЧЕМ: Создает "карту соло" для всей сюиты, обеспечивая разнообразие.
+  // #ЧТО: Для каждой части (part) в блюпринте, если она содержит соло (`SOLO` в ID),
+  //      выбирается случайный план соло и сохраняется в карту.
+  const soloPlanMap = new Map<string, string>();
+  const allPlanIds = Object.keys(BLUES_SOLO_PLANS);
+  const shuffledPlanIds = random.shuffle(allPlanIds);
+  let planIndex = 0;
+  
+  blueprintParts.forEach(part => {
+      if (part.id.includes('SOLO')) {
+          if(planIndex < shuffledPlanIds.length) {
+              soloPlanMap.set(part.id, shuffledPlanIds[planIndex]);
+              planIndex++;
+          } else {
+              // Fallback if we run out of unique plans
+              soloPlanMap.set(part.id, shuffledPlanIds[random.nextInt(shuffledPlanIds.length)]);
+          }
+      }
+  });
+
+
   console.log(`[DNA] Generated: Tempo=${baseTempo}, Feel=${rhythmicFeel}, Bass=${bassStyle}, Drums=${drumStyle}`);
 
-  return { harmonyTrack, baseTempo, rhythmicFeel, bassStyle, drumStyle };
+  return { harmonyTrack, baseTempo, rhythmicFeel, bassStyle, drumStyle, soloPlanMap };
 }
 
 export function createDrumAxiom(kit: DrumKit, genre: Genre, mood: Mood, tempo: number, random: { next: () => number, nextInt: (max: number) => number }, rules?: InstrumentBehaviorRules): { events: FractalEvent[], log: string } {
