@@ -14,7 +14,7 @@ import type { DrumKit, DrumKitLibrary, InstrumentType } from '@/types/fractal';
 
 const ALL_KICKS: InstrumentType[] = ['drum_kick'];
 const ALL_SNARES: InstrumentType[] = ['drum_snare', 'drum_snare_ghost_note', 'drum_snare_off', 'drum_snarepress'];
-const ALL_HIHATS: InstrumentType[] = ['drum_hihat_closed', 'drum_hihat_open', 'hh_bark_short'];
+const ALL_HIHATS: InstrumentType[] = ['drum_hihat_closed', 'drum_hihat_open', 'hh_bark_short', 'drum_closed_hi_hat_ghost'];
 const ALL_RIDES: InstrumentType[] = ['drum_ride', 'drum_ride2', 'drum_ride3', 'drum_ride4'];
 const ALL_CRASHES: InstrumentType[] = ['drum_crash', 'drum_crash2'];
 const ALL_TOMS: InstrumentType[] = ['drum_tom_low', 'drum_tom_mid', 'drum_tom_high'];
