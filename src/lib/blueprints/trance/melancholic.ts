@@ -22,8 +22,8 @@ export const MelancholicTranceBlueprint: MusicBlueprint = {
                 instrumentation: { 
                     accompaniment: { 
                         strategy: 'weighted', 
-                        v1Options: [{ name: 'synth_cave_pad', weight: 1.0 }],
-                        v2Options: [{ name: 'synth_cave_pad', weight: 1.0 }] 
+                        v1Options: [{ name: 'synth', weight: 0.5 }, { name: 'ambientPad', weight: 0.5 }],
+                        v2Options: [{ name: 'synth', weight: 0.5 }, { name: 'synth_ambient_pad_lush', weight: 0.5 }]
                     } 
                 },
                 instrumentRules: { 
@@ -38,7 +38,11 @@ export const MelancholicTranceBlueprint: MusicBlueprint = {
                 layers: { accompaniment: true, sfx: true, bass: true, drums: true },
                 instrumentation: { 
                     bass: { strategy: 'weighted', v1Options: [{ name: 'glideBass', weight: 1.0 }], v2Options: [{ name: 'glideBass', weight: 1.0 }] },
-                    accompaniment: { strategy: 'weighted', v1Options: [{ name: 'synth_ambient_pad_lush', weight: 1.0 }], v2Options: [{ name: 'synth_ambient_pad_lush', weight: 1.0 }] }
+                    accompaniment: { 
+                        strategy: 'weighted', 
+                        v1Options: [{ name: 'synth', weight: 0.5 }, { name: 'ambientPad', weight: 0.5 }],
+                        v2Options: [{ name: 'synth', weight: 0.5 }, { name: 'synth_ambient_pad_lush', weight: 0.5 }]
+                    }
                 },
                 instrumentRules: { 
                     drums: { pattern: 'composer', kitName: 'trance_melancholic', density: { min: 0.2, max: 0.4 } },
@@ -52,7 +56,11 @@ export const MelancholicTranceBlueprint: MusicBlueprint = {
                 id: 'BUILD', name: 'Journey', duration: { percent: 25 }, // INCREASED
                 layers: { bass: true, accompaniment: true, drums: true, sfx: true, harmony: true },
                 instrumentation: {
-                    accompaniment: { strategy: 'weighted', v1Options: [{ name: 'synth', weight: 1.0 }], v2Options: [{ name: 'synth', weight: 1.0 }] },
+                    accompaniment: { 
+                        strategy: 'weighted', 
+                        v1Options: [{ name: 'synth', weight: 0.5 }, { name: 'ambientPad', weight: 0.5 }],
+                        v2Options: [{ name: 'synth', weight: 0.5 }, { name: 'synth_ambient_pad_lush', weight: 0.5 }]
+                    },
                     bass: { strategy: 'weighted', v1Options: [{ name: 'glideBass', weight: 1.0 }], v2Options: [{ name: 'glideBass', weight: 1.0 }] }
                 },
                 instrumentRules: { 
@@ -66,7 +74,11 @@ export const MelancholicTranceBlueprint: MusicBlueprint = {
                 id: 'PEAK', name: 'Reflection', duration: { percent: 30 },
                 layers: { bass: true, melody: true, accompaniment: true, drums: true, sfx: true },
                 instrumentation: {
-                    accompaniment: { strategy: 'weighted', v1Options: [{ name: 'organ', weight: 1.0 }], v2Options: [{ name: 'organ', weight: 1.0 }] },
+                    accompaniment: { 
+                        strategy: 'weighted', 
+                        v1Options: [{ name: 'synth', weight: 0.5 }, { name: 'ambientPad', weight: 0.5 }],
+                        v2Options: [{ name: 'synth', weight: 0.5 }, { name: 'synth_ambient_pad_lush', weight: 0.5 }]
+                    },
                     bass: { strategy: 'weighted', v1Options: [{ name: 'glideBass', weight: 1.0 }], v2Options: [{ name: 'glideBass', weight: 1.0 }] },
                     melody: { strategy: 'weighted', v1Options: [{ name: 'synth', weight: 1.0 }], v2Options: [{ name: 'synth', weight: 1.0 }] }
                 },
@@ -80,7 +92,13 @@ export const MelancholicTranceBlueprint: MusicBlueprint = {
             {
                 id: 'OUTRO', name: 'Fade to Silence', duration: { percent: 15 },
                 layers: { accompaniment: true, sfx: true },
-                instrumentation: { accompaniment: { strategy: 'weighted', v1Options: [{ name: 'synth_ambient_pad_lush', weight: 1.0 }], v2Options: [{ name: 'synth_ambient_pad_lush', weight: 1.0 }] } },
+                instrumentation: { 
+                    accompaniment: { 
+                        strategy: 'weighted', 
+                        v1Options: [{ name: 'synth', weight: 0.5 }, { name: 'ambientPad', weight: 0.5 }],
+                        v2Options: [{ name: 'synth', weight: 0.5 }, { name: 'synth_ambient_pad_lush', weight: 0.5 }]
+                    }
+                },
                 instrumentRules: { melody: { source: 'motif' } },
                 bundles: [{ id: 'OUTRO_BUNDLE_1', name: 'Main', duration: { percent: 100 }, characteristics: {}, phrases: {} }],
                 outroFill: null,

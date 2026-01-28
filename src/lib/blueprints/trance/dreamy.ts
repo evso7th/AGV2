@@ -20,7 +20,11 @@ export const DreamyTranceBlueprint: MusicBlueprint = {
                 id: 'INTRO', name: 'Nebula', duration: { percent: 25 }, // INCREASED
                 layers: { accompaniment: true, bass: true, drums: true, sfx: true },
                 instrumentation: { 
-                    accompaniment: { strategy: 'weighted', v1Options: [{ name: 'synth_ambient_pad_lush', weight: 1.0 }], v2Options: [{ name: 'synth_ambient_pad_lush', weight: 1.0 }] },
+                    accompaniment: { 
+                        strategy: 'weighted', 
+                        v1Options: [{ name: 'synth', weight: 0.5 }, { name: 'ambientPad', weight: 0.5 }],
+                        v2Options: [{ name: 'synth', weight: 0.5 }, { name: 'synth_ambient_pad_lush', weight: 0.5 }]
+                    },
                     bass: { strategy: 'weighted', v1Options: [{ name: 'glideBass', weight: 1.0 }], v2Options: [{ name: 'glideBass', weight: 1.0 }] }
                 },
                 instrumentRules: { 
@@ -35,7 +39,11 @@ export const DreamyTranceBlueprint: MusicBlueprint = {
                 id: 'BUILD', name: 'Starlight', duration: { percent: 25 },
                 layers: { bass: true, accompaniment: true, drums: true, sfx: true, sparkles: true },
                 instrumentation: {
-                    accompaniment: { strategy: 'weighted', v1Options: [{ name: 'synth', weight: 1.0 }], v2Options: [{ name: 'synth', weight: 1.0 }] },
+                    accompaniment: { 
+                        strategy: 'weighted', 
+                        v1Options: [{ name: 'synth', weight: 0.5 }, { name: 'ambientPad', weight: 0.5 }],
+                        v2Options: [{ name: 'synth', weight: 0.5 }, { name: 'synth_ambient_pad_lush', weight: 0.5 }]
+                    },
                     bass: { strategy: 'weighted', v1Options: [{ name: 'bass_jazz_warm', weight: 1.0 }], v2Options: [{ name: 'bass_jazz_warm', weight: 1.0 }] }
                 },
                 instrumentRules: { 
@@ -50,7 +58,11 @@ export const DreamyTranceBlueprint: MusicBlueprint = {
                 id: 'PEAK', name: 'Supernova', duration: { percent: 30 },
                 layers: { bass: true, melody: true, accompaniment: true, drums: true, sfx: true, sparkles: true },
                 instrumentation: {
-                    accompaniment: { strategy: 'weighted', v1Options: [{ name: 'synth', weight: 0.7 }, { name: 'organ', weight: 0.3 }], v2Options: [{ name: 'synth', weight: 0.7 }, { name: 'organ', weight: 0.3 }] },
+                    accompaniment: { 
+                        strategy: 'weighted', 
+                        v1Options: [{ name: 'synth', weight: 0.5 }, { name: 'ambientPad', weight: 0.5 }],
+                        v2Options: [{ name: 'synth', weight: 0.5 }, { name: 'synth_ambient_pad_lush', weight: 0.5 }]
+                    },
                     bass: { strategy: 'weighted', v1Options: [{ name: 'bass_jazz_warm', weight: 1.0 }], v2Options: [{ name: 'bass_jazz_warm', weight: 1.0 }] },
                     melody: { strategy: 'weighted', v1Options: [{ name: 'theremin', weight: 0.6 }, { name: 'synth', weight: 0.4 }], v2Options: [{ name: 'theremin', weight: 0.6 }, { name: 'synth', weight: 0.4 }] }
                 },
@@ -66,7 +78,11 @@ export const DreamyTranceBlueprint: MusicBlueprint = {
                 id: 'OUTRO', name: 'Echoes', duration: { percent: 20 },
                 layers: { accompaniment: true, sfx: true, sparkles: true },
                 instrumentation: { 
-                    accompaniment: { strategy: 'weighted', v1Options: [{ name: 'synth_ambient_pad_lush', weight: 1.0 }], v2Options: [{ name: 'synth_ambient_pad_lush', weight: 1.0 }] } 
+                    accompaniment: { 
+                        strategy: 'weighted', 
+                        v1Options: [{ name: 'synth', weight: 0.5 }, { name: 'ambientPad', weight: 0.5 }],
+                        v2Options: [{ name: 'synth', weight: 0.5 }, { name: 'synth_ambient_pad_lush', weight: 0.5 }]
+                    } 
                 },
                 instrumentRules: {
                     sparkles: { eventProbability: 0.2 },

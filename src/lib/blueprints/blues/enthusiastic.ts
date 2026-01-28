@@ -18,13 +18,13 @@ export const EnthusiasticBluesBlueprint: MusicBlueprint = {
         parts: [
             {
                 id: 'INTRO', name: 'Riff Setup', duration: { percent: 15 },
-                introRules: {
-                    instrumentPool: ['drums', 'bass', 'accompaniment'],
-                    stages: 4
-                },
                 layers: { bass: true, drums: true, accompaniment: true },
                 instrumentation: {
-                    accompaniment: { strategy: 'weighted', v1Options: [{ name: 'organ', weight: 1.0 }], v2Options: [{ name: 'organ', weight: 1.0 }] },
+                    accompaniment: { 
+                        strategy: 'weighted', 
+                        v1Options: [{ name: 'synth', weight: 0.5 }, { name: 'ambientPad', weight: 0.5 }],
+                        v2Options: [{ name: 'synth', weight: 0.5 }, { name: 'synth_ambient_pad_lush', weight: 0.5 }]
+                    },
                 },
                 instrumentRules: {
                     drums: { pattern: 'composer', density: { min: 0.6, max: 0.8 }, useSnare: true, useGhostHat: true },
@@ -41,7 +41,11 @@ export const EnthusiasticBluesBlueprint: MusicBlueprint = {
                 id: 'MAIN', name: 'Lead Guitar Solo', duration: { percent: 60 },
                 layers: { bass: true, drums: true, accompaniment: true, melody: true, harmony: true },
                  instrumentation: {
-                    accompaniment: { strategy: 'weighted', v1Options: [{ name: 'organ', weight: 1.0 }], v2Options: [{ name: 'organ', weight: 1.0 }] },
+                    accompaniment: { 
+                        strategy: 'weighted', 
+                        v1Options: [{ name: 'synth', weight: 0.5 }, { name: 'ambientPad', weight: 0.5 }],
+                        v2Options: [{ name: 'synth', weight: 0.5 }, { name: 'synth_ambient_pad_lush', weight: 0.5 }]
+                    },
                     melody: { strategy: 'weighted', v1Options: [{ name: 'guitar_muffLead', weight: 1.0 }], v2Options: [{ name: 'guitar_muffLead', weight: 1.0 }] }
                 },
                 instrumentRules: {
@@ -63,7 +67,11 @@ export const EnthusiasticBluesBlueprint: MusicBlueprint = {
                 id: 'OUTRO', name: 'Final Riff Out', duration: { percent: 25 },
                 layers: { bass: true, drums: true, accompaniment: true, harmony: true },
                 instrumentation: {
-                    accompaniment: { strategy: 'weighted', v1Options: [{ name: 'organ', weight: 1.0 }], v2Options: [{ name: 'organ', weight: 1.0 }] }
+                    accompaniment: { 
+                        strategy: 'weighted', 
+                        v1Options: [{ name: 'synth', weight: 0.5 }, { name: 'ambientPad', weight: 0.5 }],
+                        v2Options: [{ name: 'synth', weight: 0.5 }, { name: 'synth_ambient_pad_lush', weight: 0.5 }]
+                    }
                 },
                 instrumentRules: {
                     drums: { pattern: 'composer', density: { min: 0.6, max: 0.8 } },

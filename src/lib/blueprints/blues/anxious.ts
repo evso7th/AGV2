@@ -18,10 +18,6 @@ export const AnxiousBluesBlueprint: MusicBlueprint = {
         parts: [
             {
                 id: 'INTRO', name: 'Nervous Build-up', duration: { percent: 15 },
-                introRules: {
-                    instrumentPool: ['accompaniment', 'bass', 'drums'],
-                    stages: 3
-                },
                 layers: {
                     accompaniment: true,
                     bass: true,
@@ -30,8 +26,8 @@ export const AnxiousBluesBlueprint: MusicBlueprint = {
                 instrumentation: {
                     accompaniment: {
                         strategy: 'weighted',
-                        v1Options: [{ name: 'synth_cave_pad', weight: 1.0 }],
-                        v2Options: [{ name: 'synth_cave_pad', weight: 1.0 }]
+                        v1Options: [{ name: 'synth', weight: 0.5 }, { name: 'ambientPad', weight: 0.5 }],
+                        v2Options: [{ name: 'synth', weight: 0.5 }, { name: 'synth_ambient_pad_lush', weight: 0.5 }]
                     },
                 },
                 instrumentRules: {
@@ -51,7 +47,11 @@ export const AnxiousBluesBlueprint: MusicBlueprint = {
                 id: 'MAIN_A', name: 'Frantic Riff', duration: { percent: 35 },
                 layers: { bass: true, drums: true, accompaniment: true, melody: true, harmony: true, sparkles: true },
                 instrumentation: {
-                    accompaniment: { strategy: 'weighted', v1Options: [{ name: 'synth_cave_pad', weight: 1.0 }], v2Options: [{ name: 'synth_cave_pad', weight: 1.0 }] },
+                    accompaniment: { 
+                        strategy: 'weighted', 
+                        v1Options: [{ name: 'synth', weight: 0.5 }, { name: 'ambientPad', weight: 0.5 }],
+                        v2Options: [{ name: 'synth', weight: 0.5 }, { name: 'synth_ambient_pad_lush', weight: 0.5 }]
+                    },
                     melody: { strategy: 'weighted', v1Options: [{ name: 'guitar_muffLead', weight: 1.0 }], v2Options: [{ name: 'guitar_muffLead', weight: 1.0 }] }
                 },
                 instrumentRules: {
@@ -75,7 +75,11 @@ export const AnxiousBluesBlueprint: MusicBlueprint = {
                 id: 'SOLO', name: 'Guitar Solo', duration: { percent: 30 },
                 layers: { bass: true, drums: true, accompaniment: true, melody: true, harmony: true, sparkles: true },
                 instrumentation: {
-                    accompaniment: { strategy: 'weighted', v1Options: [{ name: 'synth_cave_pad', weight: 0.6 }, { name: 'organ', weight: 0.4 }], v2Options: [{ name: 'synth_cave_pad', weight: 0.6 }, { name: 'organ', weight: 0.4 }] },
+                    accompaniment: { 
+                        strategy: 'weighted', 
+                        v1Options: [{ name: 'synth', weight: 0.5 }, { name: 'ambientPad', weight: 0.5 }],
+                        v2Options: [{ name: 'synth', weight: 0.5 }, { name: 'synth_ambient_pad_lush', weight: 0.5 }]
+                    },
                     melody: { 
                         strategy: 'weighted', 
                         v1Options: [{ name: 'guitar_muffLead', weight: 1.0 }], 
@@ -108,7 +112,11 @@ export const AnxiousBluesBlueprint: MusicBlueprint = {
                 id: 'OUTRO', name: 'Relaxed Fade Out', duration: { percent: 20 },
                 layers: { bass: true, drums: true, accompaniment: true, melody: true },
                 instrumentation: {
-                    accompaniment: { strategy: 'weighted', v1Options: [{ name: 'synth_ambient_pad_lush', weight: 1.0 }], v2Options: [{ name: 'synth_ambient_pad_lush', weight: 1.0 }] },
+                    accompaniment: { 
+                        strategy: 'weighted', 
+                        v1Options: [{ name: 'synth', weight: 0.5 }, { name: 'ambientPad', weight: 0.5 }],
+                        v2Options: [{ name: 'synth', weight: 0.5 }, { name: 'synth_ambient_pad_lush', weight: 0.5 }]
+                    },
                     melody: { strategy: 'weighted', v1Options: [{ name: 'acousticGuitar', weight: 0.5 }, {name: 'electricGuitar', weight: 0.5}], v2Options: [{ name: 'telecaster', weight: 0.5 }, { name: 'blackAcoustic', weight: 0.5 }] }
                 },
                 instrumentRules: {

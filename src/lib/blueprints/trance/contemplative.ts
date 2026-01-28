@@ -20,7 +20,11 @@ export const ContemplativeTranceBlueprint: MusicBlueprint = {
                 id: 'INTRO', name: 'Focus', duration: { percent: 25 }, // INCREASED
                 layers: { accompaniment: true, sfx: true, bass: true, drums: true },
                 instrumentation: {
-                    accompaniment: { strategy: 'weighted', v1Options: [{ name: 'synth', weight: 1.0 }], v2Options: [{ name: 'synth', weight: 1.0 }] },
+                    accompaniment: { 
+                        strategy: 'weighted', 
+                        v1Options: [{ name: 'synth', weight: 0.5 }, { name: 'ambientPad', weight: 0.5 }],
+                        v2Options: [{ name: 'synth', weight: 0.5 }, { name: 'synth_ambient_pad_lush', weight: 0.5 }]
+                    },
                     bass: { strategy: 'weighted', v1Options: [{ name: 'bass_jazz_warm', weight: 1.0 }], v2Options: [{ name: 'bass_jazz_warm', weight: 1.0 }] }
                 },
                 instrumentRules: {
@@ -35,7 +39,11 @@ export const ContemplativeTranceBlueprint: MusicBlueprint = {
                 id: 'MAIN', name: 'Deep Work', duration: { percent: 50 },
                 layers: { bass: true, accompaniment: true, drums: true, sfx: true },
                 instrumentation: {
-                    accompaniment: { strategy: 'weighted', v1Options: [{ name: 'synth', weight: 1.0 }], v2Options: [{ name: 'synth', weight: 1.0 }] },
+                    accompaniment: { 
+                        strategy: 'weighted', 
+                        v1Options: [{ name: 'synth', weight: 0.5 }, { name: 'ambientPad', weight: 0.5 }],
+                        v2Options: [{ name: 'synth', weight: 0.5 }, { name: 'synth_ambient_pad_lush', weight: 0.5 }]
+                    },
                     bass: { strategy: 'weighted', v1Options: [{ name: 'bass_jazz_warm', weight: 1.0 }], v2Options: [{ name: 'bass_jazz_warm', weight: 1.0 }] }
                 },
                 instrumentRules: {
@@ -51,7 +59,13 @@ export const ContemplativeTranceBlueprint: MusicBlueprint = {
             {
                 id: 'OUTRO', name: 'Cool Down', duration: { percent: 25 }, // INCREASED
                 layers: { accompaniment: true, sfx: true },
-                instrumentation: { accompaniment: { strategy: 'weighted', v1Options: [{ name: 'synth_ambient_pad_lush', weight: 1.0 }], v2Options: [{ name: 'synth_ambient_pad_lush', weight: 1.0 }] } },
+                instrumentation: { 
+                    accompaniment: { 
+                        strategy: 'weighted', 
+                        v1Options: [{ name: 'synth', weight: 0.5 }, { name: 'ambientPad', weight: 0.5 }],
+                        v2Options: [{ name: 'synth', weight: 0.5 }, { name: 'synth_ambient_pad_lush', weight: 0.5 }]
+                    }
+                },
                 instrumentRules: {
                     melody: { source: 'harmony_top_note' }
                 },

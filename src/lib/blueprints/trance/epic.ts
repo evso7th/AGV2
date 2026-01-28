@@ -20,7 +20,11 @@ export const EpicTranceBlueprint: MusicBlueprint = {
                 id: 'INTRO', name: 'The Summoning', duration: { percent: 25 }, // INCREASED
                 layers: { accompaniment: true, sfx: true, bass: true, drums: true },
                 instrumentation: {
-                    accompaniment: { strategy: 'weighted', v1Options: [{ name: 'organ', weight: 1.0 }], v2Options: [{ name: 'organ', weight: 1.0 }] },
+                    accompaniment: { 
+                        strategy: 'weighted', 
+                        v1Options: [{ name: 'synth', weight: 0.5 }, { name: 'ambientPad', weight: 0.5 }],
+                        v2Options: [{ name: 'synth', weight: 0.5 }, { name: 'synth_ambient_pad_lush', weight: 0.5 }]
+                    },
                     bass: { strategy: 'weighted', v1Options: [{ name: 'ambientDrone', weight: 1.0 }], v2Options: [{ name: 'ambientDrone', weight: 1.0 }] }
                 },
                 instrumentRules: {
@@ -35,7 +39,11 @@ export const EpicTranceBlueprint: MusicBlueprint = {
                 id: 'BUILD', name: 'The Gathering', duration: { percent: 30 },
                 layers: { accompaniment: true, bass: true, drums: true, sfx: true, harmony: true },
                 instrumentation: {
-                    accompaniment: { strategy: 'weighted', v1Options: [{ name: 'organ', weight: 0.7 }, { name: 'mellotron', weight: 0.3 }], v2Options: [{ name: 'organ', weight: 0.7 }, { name: 'mellotron', weight: 0.3 }] },
+                    accompaniment: { 
+                        strategy: 'weighted', 
+                        v1Options: [{ name: 'synth', weight: 0.5 }, { name: 'ambientPad', weight: 0.5 }],
+                        v2Options: [{ name: 'synth', weight: 0.5 }, { name: 'synth_ambient_pad_lush', weight: 0.5 }]
+                    },
                     bass: { strategy: 'weighted', v1Options: [{ name: 'classicBass', weight: 1.0 }], v2Options: [{ name: 'classicBass', weight: 1.0 }] },
                     harmony: { strategy: 'weighted', options: [{ name: 'violin', weight: 1.0 }] }
                 },
@@ -54,7 +62,11 @@ export const EpicTranceBlueprint: MusicBlueprint = {
                 id: 'PEAK', name: 'The Vista', duration: { percent: 35 },
                 layers: { bass: true, melody: true, accompaniment: true, drums: true, sparkles: true, sfx: true, harmony: true },
                 instrumentation: {
-                    accompaniment: { strategy: 'weighted', v1Options: [{ name: 'organ', weight: 1.0 }], v2Options: [{ name: 'organ', weight: 1.0 }] },
+                    accompaniment: { 
+                        strategy: 'weighted', 
+                        v1Options: [{ name: 'synth', weight: 0.5 }, { name: 'ambientPad', weight: 0.5 }],
+                        v2Options: [{ name: 'synth', weight: 0.5 }, { name: 'synth_ambient_pad_lush', weight: 0.5 }]
+                    },
                     bass: { strategy: 'weighted', v1Options: [{ name: 'resonantGliss', weight: 1.0 }], v2Options: [{ name: 'resonantGliss', weight: 1.0 }] },
                     melody: { strategy: 'weighted', v1Options: [{ name: 'mellotron', weight: 0.6 }, { name: 'synth', weight: 0.4 }], v2Options: [{ name: 'mellotron', weight: 0.6 }, { name: 'synth', weight: 0.4 }] },
                     harmony: { strategy: 'weighted', options: [{ name: 'mellotron', weight: 1.0 }] }
@@ -72,7 +84,11 @@ export const EpicTranceBlueprint: MusicBlueprint = {
                 id: 'OUTRO', name: 'The Echoes', duration: { percent: 10 },
                 layers: { accompaniment: true, sfx: true, sparkles: true },
                 instrumentation: {
-                    accompaniment: { strategy: 'weighted', v1Options: [{ name: 'synth_ambient_pad_lush', weight: 1.0 }], v2Options: [{ name: 'synth_ambient_pad_lush', weight: 1.0 }] }
+                    accompaniment: { 
+                        strategy: 'weighted', 
+                        v1Options: [{ name: 'synth', weight: 0.5 }, { name: 'ambientPad', weight: 0.5 }],
+                        v2Options: [{ name: 'synth', weight: 0.5 }, { name: 'synth_ambient_pad_lush', weight: 0.5 }]
+                    }
                 },
                 instrumentRules: {
                     melody: { source: 'harmony_top_note' }

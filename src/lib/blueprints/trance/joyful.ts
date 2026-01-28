@@ -15,7 +15,13 @@ export const JoyfulTranceBlueprint: MusicBlueprint = {
             {
                 id: 'INTRO', name: 'Sunrise', duration: { percent: 25 }, // INCREASED
                 layers: { accompaniment: true, drums: true, sfx: true, bass: true, melody: true },
-                instrumentation: { accompaniment: { strategy: 'weighted', v1Options: [{ name: 'synth', weight: 1.0 }], v2Options: [{ name: 'synth', weight: 1.0 }] } },
+                instrumentation: { 
+                    accompaniment: { 
+                        strategy: 'weighted', 
+                        v1Options: [{ name: 'synth', weight: 0.5 }, { name: 'ambientPad', weight: 0.5 }],
+                        v2Options: [{ name: 'synth', weight: 0.5 }, { name: 'synth_ambient_pad_lush', weight: 0.5 }]
+                    }
+                },
                 instrumentRules: { 
                     drums: { pattern: 'ambient_beat', density: { min: 0.3, max: 0.5 }, useSnare: false, usePerc: true }, // SOFTER
                     melody: { source: 'motif' } 
@@ -29,7 +35,11 @@ export const JoyfulTranceBlueprint: MusicBlueprint = {
                 id: 'BUILD', name: 'Ascension', duration: { percent: 25 },
                 layers: { bass: true, accompaniment: true, drums: true, sfx: true },
                 instrumentation: {
-                    accompaniment: { strategy: 'weighted', v1Options: [{ name: 'synth', weight: 1.0 }], v2Options: [{ name: 'synth', weight: 1.0 }] },
+                    accompaniment: { 
+                        strategy: 'weighted', 
+                        v1Options: [{ name: 'synth', weight: 0.5 }, { name: 'ambientPad', weight: 0.5 }],
+                        v2Options: [{ name: 'synth', weight: 0.5 }, { name: 'synth_ambient_pad_lush', weight: 0.5 }]
+                    },
                     bass: { strategy: 'weighted', v1Options: [{ name: 'bass_jazz_warm', weight: 1.0 }], v2Options: [{ name: 'bass_jazz_warm', weight: 1.0 }] }
                 },
                 instrumentRules: { 
@@ -45,7 +55,11 @@ export const JoyfulTranceBlueprint: MusicBlueprint = {
                 id: 'PEAK', name: 'Zenith', duration: { percent: 30 },
                 layers: { bass: true, melody: true, accompaniment: true, drums: true, sfx: true, sparkles: true },
                 instrumentation: {
-                    accompaniment: { strategy: 'weighted', v1Options: [{ name: 'synth', weight: 0.8 }, { name: 'organ', weight: 0.2 }], v2Options: [{ name: 'synth', weight: 0.8 }, { name: 'organ', weight: 0.2 }] },
+                    accompaniment: { 
+                        strategy: 'weighted', 
+                        v1Options: [{ name: 'synth', weight: 0.5 }, { name: 'ambientPad', weight: 0.5 }],
+                        v2Options: [{ name: 'synth', weight: 0.5 }, { name: 'synth_ambient_pad_lush', weight: 0.5 }]
+                    },
                     bass: { strategy: 'weighted', v1Options: [{ name: 'bass_jazz_warm', weight: 1.0 }], v2Options: [{ name: 'bass_jazz_warm', weight: 1.0 }] },
                     melody: { strategy: 'weighted', v1Options: [{ name: 'theremin', weight: 1.0 }], v2Options: [{ name: 'theremin', weight: 1.0 }] }
                 },
@@ -61,7 +75,13 @@ export const JoyfulTranceBlueprint: MusicBlueprint = {
             {
                 id: 'OUTRO', name: 'Afterglow', duration: { percent: 20 },
                 layers: { accompaniment: true, sfx: true, bass: true, melody: true, drums: true },
-                instrumentation: { accompaniment: { strategy: 'weighted', v1Options: [{ name: 'synth_ambient_pad_lush', weight: 1.0 }], v2Options: [{ name: 'synth_ambient_pad_lush', weight: 1.0 }] } },
+                instrumentation: { 
+                    accompaniment: { 
+                        strategy: 'weighted', 
+                        v1Options: [{ name: 'synth', weight: 0.5 }, { name: 'ambientPad', weight: 0.5 }],
+                        v2Options: [{ name: 'synth', weight: 0.5 }, { name: 'synth_ambient_pad_lush', weight: 0.5 }]
+                    }
+                },
                 instrumentRules: {
                     drums: { pattern: 'ambient_beat', density: { min: 0.2, max: 0.4 }, useSnare: false }, // SOFTER
                     melody: { source: 'motif' }

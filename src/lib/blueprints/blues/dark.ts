@@ -18,13 +18,13 @@ export const DarkBluesBlueprint: MusicBlueprint = {
         parts: [
             {
                 id: 'INTRO', name: 'Verse 1', duration: { percent: 25 },
-                introRules: {
-                    allowedInstruments: ['bass', 'accompaniment', 'harmony'],
-                    buildUpSpeed: 0.3
-                },
                 layers: { bass: true, drums: false, accompaniment: true, harmony: true, sfx: false },
                 instrumentation: {
-                    accompaniment: { strategy: 'weighted', v1Options: [{ name: 'synth_cave_pad', weight: 1.0 }], v2Options: [{ name: 'synth_cave_pad', weight: 1.0 }] },
+                    accompaniment: { 
+                        strategy: 'weighted', 
+                        v1Options: [{ name: 'synth', weight: 0.5 }, { name: 'ambientPad', weight: 0.5 }],
+                        v2Options: [{ name: 'synth', weight: 0.5 }, { name: 'synth_ambient_pad_lush', weight: 0.5 }]
+                    },
                     harmony: { strategy: 'weighted', options: [{ name: 'guitarChords', weight: 1.0 }] }
                 },
                 instrumentRules: {
@@ -40,7 +40,11 @@ export const DarkBluesBlueprint: MusicBlueprint = {
                 id: 'MAIN', name: 'Solo Section', duration: { percent: 50 },
                 layers: { bass: true, drums: true, accompaniment: true, melody: true, harmony: true, sfx: true },
                  instrumentation: {
-                    accompaniment: { strategy: 'weighted', v1Options: [{ name: 'synth_cave_pad', weight: 1.0 }], v2Options: [{ name: 'synth_cave_pad', weight: 1.0 }] },
+                    accompaniment: { 
+                        strategy: 'weighted', 
+                        v1Options: [{ name: 'synth', weight: 0.5 }, { name: 'ambientPad', weight: 0.5 }],
+                        v2Options: [{ name: 'synth', weight: 0.5 }, { name: 'synth_ambient_pad_lush', weight: 0.5 }]
+                    },
                     melody: { strategy: 'weighted', v1Options: [{ name: 'guitar_muffLead', weight: 1.0 }], v2Options: [{ name: 'guitar_muffLead', weight: 1.0 }] }
                 },
                 instrumentRules: {
@@ -68,7 +72,11 @@ export const DarkBluesBlueprint: MusicBlueprint = {
                 id: 'OUTRO', name: 'Final Verse', duration: { percent: 25 },
                 layers: { bass: true, drums: true, accompaniment: true, harmony: true, sfx: true },
                 instrumentation: {
-                    accompaniment: { strategy: 'weighted', v1Options: [{ name: 'synth_cave_pad', weight: 1.0 }], v2Options: [{ name: 'synth_cave_pad', weight: 1.0 }] }
+                    accompaniment: { 
+                        strategy: 'weighted', 
+                        v1Options: [{ name: 'synth', weight: 0.5 }, { name: 'ambientPad', weight: 0.5 }],
+                        v2Options: [{ name: 'synth', weight: 0.5 }, { name: 'synth_ambient_pad_lush', weight: 0.5 }]
+                    }
                 },
                 instrumentRules: {
                     drums: { pattern: 'composer', density: { min: 0.3, max: 0.5 }, useGhostHat: true },

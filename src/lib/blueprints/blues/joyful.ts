@@ -18,14 +18,13 @@ export const JoyfulBluesBlueprint: MusicBlueprint = {
         parts: [
             {
                 id: 'INTRO', name: 'Verse 1-2', duration: { percent: 25 },
-                introRules: {
-                    instrumentPool: ['drums', 'bass', 'accompaniment', 'harmony'],
-                    stages: 4
-                },
                 layers: { bass: true, drums: true, accompaniment: true, harmony: true },
                 instrumentation: {
-                    accompaniment: { strategy: 'weighted', v1Options: [{ name: 'organ', weight: 1.0 }], v2Options: [{ name: 'organ', weight: 1.0 }] },
-                    harmony: { strategy: 'weighted', options: [{ name: 'guitarChords', weight: 1.0 }] }
+                    accompaniment: { 
+                        strategy: 'weighted', 
+                        v1Options: [{ name: 'synth', weight: 0.5 }, { name: 'ambientPad', weight: 0.5 }],
+                        v2Options: [{ name: 'synth', weight: 0.5 }, { name: 'synth_ambient_pad_lush', weight: 0.5 }]
+                    },
                 },
                 instrumentRules: {
                     drums: { pattern: 'composer', density: { min: 0.7, max: 0.9 }, useSnare: true, useGhostHat: true, usePerc: true, ride: { enabled: false }, useBrushes: true },
@@ -42,7 +41,11 @@ export const JoyfulBluesBlueprint: MusicBlueprint = {
                 id: 'MAIN', name: 'Solo Section', duration: { percent: 50 },
                 layers: { bass: true, drums: true, accompaniment: true, melody: true, harmony: true, sparkles: true },
                  instrumentation: {
-                    accompaniment: { strategy: 'weighted', v1Options: [{ name: 'organ', weight: 1.0 }], v2Options: [{ name: 'organ', weight: 1.0 }] },
+                    accompaniment: { 
+                        strategy: 'weighted', 
+                        v1Options: [{ name: 'synth', weight: 0.5 }, { name: 'ambientPad', weight: 0.5 }],
+                        v2Options: [{ name: 'synth', weight: 0.5 }, { name: 'synth_ambient_pad_lush', weight: 0.5 }]
+                    },
                     melody: { strategy: 'weighted', v1Options: [{ name: 'guitar_shineOn', weight: 1.0 }], v2Options: [{ name: 'guitar_shineOn', weight: 1.0 }] }
                 },
                 instrumentRules: {
@@ -64,7 +67,11 @@ export const JoyfulBluesBlueprint: MusicBlueprint = {
                 id: 'OUTRO', name: 'Final Verses', duration: { percent: 25 },
                 layers: { bass: true, drums: true, accompaniment: true, harmony: true },
                 instrumentation: {
-                    accompaniment: { strategy: 'weighted', v1Options: [{ name: 'organ', weight: 1.0 }], v2Options: [{ name: 'organ', weight: 1.0 }] }
+                    accompaniment: { 
+                        strategy: 'weighted', 
+                        v1Options: [{ name: 'synth', weight: 0.5 }, { name: 'ambientPad', weight: 0.5 }],
+                        v2Options: [{ name: 'synth', weight: 0.5 }, { name: 'synth_ambient_pad_lush', weight: 0.5 }]
+                    }
                 },
                 instrumentRules: {
                     drums: { pattern: 'composer', density: { min: 0.7, max: 0.9 }, useSnare: true, useGhostHat: true, usePerc: true, ride: { enabled: false }, useBrushes: true },

@@ -18,13 +18,13 @@ export const ContemplativeBluesBlueprint: MusicBlueprint = {
         parts: [
             {
                 id: 'INTRO', name: 'Verse 1-2', duration: { percent: 25 },
-                introRules: {
-                    instrumentPool: ['drums', 'bass', 'accompaniment', 'harmony'],
-                    stages: 4
-                },
                 layers: { bass: true, drums: true, accompaniment: true, harmony: true, sparkles: true, sfx: true, melody: true },
                 instrumentation: {
-                    accompaniment: { strategy: 'weighted', v1Options: [{ name: 'organ', weight: 1.0 }], v2Options: [{ name: 'organ', weight: 1.0 }] },
+                    accompaniment: { 
+                        strategy: 'weighted', 
+                        v1Options: [{ name: 'synth', weight: 0.5 }, { name: 'ambientPad', weight: 0.5 }],
+                        v2Options: [{ name: 'synth', weight: 0.5 }, { name: 'synth_ambient_pad_lush', weight: 0.5 }]
+                    },
                     harmony: { strategy: 'weighted', options: [{ name: 'guitarChords', weight: 1.0 }] },
                     melody: { 
                         strategy: 'weighted', 
@@ -60,7 +60,11 @@ export const ContemplativeBluesBlueprint: MusicBlueprint = {
                 id: 'MAIN_A', name: 'Main Riff', duration: { percent: 20 },
                 layers: { bass: true, drums: true, accompaniment: true, melody: true, harmony: true, sparkles: true, sfx: true },
                  instrumentation: {
-                    accompaniment: { strategy: 'weighted', v1Options: [{ name: 'organ', weight: 1.0 }], v2Options: [{ name: 'organ', weight: 1.0 }] },
+                    accompaniment: { 
+                        strategy: 'weighted', 
+                        v1Options: [{ name: 'synth', weight: 0.5 }, { name: 'ambientPad', weight: 0.5 }],
+                        v2Options: [{ name: 'synth', weight: 0.5 }, { name: 'synth_ambient_pad_lush', weight: 0.5 }]
+                    },
                     melody: { strategy: 'weighted', v1Options: [{ name: 'guitar_shineOn', weight: 1.0 }], v2Options: [{ name: 'guitar_shineOn', weight: 1.0 }] }
                 },
                 instrumentRules: {
@@ -79,7 +83,11 @@ export const ContemplativeBluesBlueprint: MusicBlueprint = {
                 id: 'SOLO', name: 'Guitar Solo', duration: { percent: 20 },
                 layers: { bass: true, drums: true, accompaniment: true, melody: true, harmony: true, sparkles: true, sfx: true },
                 instrumentation: {
-                    accompaniment: { strategy: 'weighted', v1Options: [{ name: 'organ', weight: 1.0 }], v2Options: [{ name: 'organ', weight: 1.0 }] },
+                    accompaniment: { 
+                        strategy: 'weighted', 
+                        v1Options: [{ name: 'synth', weight: 0.5 }, { name: 'ambientPad', weight: 0.5 }],
+                        v2Options: [{ name: 'synth', weight: 0.5 }, { name: 'synth_ambient_pad_lush', weight: 0.5 }]
+                    },
                     melody: { strategy: 'weighted', v1Options: [{ name: 'guitar_shineOn', weight: 1.0 }], v2Options: [{ name: 'guitar_shineOn', weight: 1.0 }] }
                 },
                 instrumentRules: {
@@ -102,7 +110,11 @@ export const ContemplativeBluesBlueprint: MusicBlueprint = {
                 id: 'MAIN_B', name: 'Return to Riff', duration: { percent: 10 },
                 layers: { bass: true, drums: true, accompaniment: true, melody: true, harmony: true, sparkles: true, sfx: true },
                 instrumentation: {
-                    accompaniment: { strategy: 'weighted', v1Options: [{ name: 'organ', weight: 1.0 }], v2Options: [{ name: 'organ', weight: 1.0 }] },
+                    accompaniment: { 
+                        strategy: 'weighted', 
+                        v1Options: [{ name: 'synth', weight: 0.5 }, { name: 'ambientPad', weight: 0.5 }],
+                        v2Options: [{ name: 'synth', weight: 0.5 }, { name: 'synth_ambient_pad_lush', weight: 0.5 }]
+                    },
                     melody: { strategy: 'weighted', v1Options: [{ name: 'guitar_shineOn', weight: 1.0 }], v2Options: [{ name: 'guitar_shineOn', weight: 1.0 }] }
                 },
                 instrumentRules: {
@@ -121,7 +133,11 @@ export const ContemplativeBluesBlueprint: MusicBlueprint = {
                 id: 'OUTRO', name: 'Final Verse', duration: { percent: 25 },
                 layers: { bass: true, drums: true, accompaniment: true, harmony: true, sparkles: true, sfx: true, melody: true },
                 instrumentation: {
-                    accompaniment: { strategy: 'weighted', v1Options: [{ name: 'organ', weight: 1.0 }], v2Options: [{ name: 'organ', weight: 1.0 }] }
+                    accompaniment: { 
+                        strategy: 'weighted', 
+                        v1Options: [{ name: 'synth', weight: 0.5 }, { name: 'ambientPad', weight: 0.5 }],
+                        v2Options: [{ name: 'synth', weight: 0.5 }, { name: 'synth_ambient_pad_lush', weight: 0.5 }]
+                    }
                 },
                 instrumentRules: {
                     drums: { pattern: 'composer', kitName: 'blues_contemplative', density: { min: 0.4, max: 0.6 } },

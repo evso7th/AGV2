@@ -18,12 +18,12 @@ export const EpicBluesBlueprint: MusicBlueprint = {
             {
                 id: 'INTRO', name: 'The Spark', duration: { percent: 15 },
                 layers: { drums: true, accompaniment: true, bass: true, harmony: true },
-                introRules: {
-                    instrumentPool: ['drums', 'bass', 'accompaniment'],
-                    stages: 3
-                },
                 instrumentation: {
-                    accompaniment: { strategy: 'weighted', v1Options: [{ name: 'organ', weight: 1.0 }], v2Options: [{ name: 'organ_soft_jazz', weight: 1.0 }] },
+                    accompaniment: { 
+                        strategy: 'weighted', 
+                        v1Options: [{ name: 'synth', weight: 0.5 }, { name: 'ambientPad', weight: 0.5 }],
+                        v2Options: [{ name: 'synth', weight: 0.5 }, { name: 'synth_ambient_pad_lush', weight: 0.5 }]
+                    },
                 },
                 instrumentRules: {
                     drums: { pattern: 'composer', kitName: 'blues_epic', density: { min: 0.3, max: 0.5 }, useSnare: true, useGhostHat: true, kickVolume: 0.9, usePerc: false, ride: { enabled: false } },
@@ -41,7 +41,11 @@ export const EpicBluesBlueprint: MusicBlueprint = {
                 id: 'VERSE', name: 'Main Theme', duration: { percent: 35 },
                 layers: { bass: true, drums: true, accompaniment: true, melody: true, harmony: true },
                 instrumentation: {
-                    accompaniment: { strategy: 'weighted', v1Options: [{ name: 'organ', weight: 1.0 }], v2Options: [{ name: 'organ_soft_jazz', weight: 1.0 }] },
+                    accompaniment: { 
+                        strategy: 'weighted', 
+                        v1Options: [{ name: 'synth', weight: 0.5 }, { name: 'ambientPad', weight: 0.5 }],
+                        v2Options: [{ name: 'synth', weight: 0.5 }, { name: 'synth_ambient_pad_lush', weight: 0.5 }]
+                    },
                     melody: { strategy: 'weighted', v1Options: [{ name: 'guitar_shineOn', weight: 1.0 }], v2Options: [{ name: 'guitar_shineOn', weight: 1.0 }] },
                 },
                 instrumentRules: {
@@ -59,7 +63,11 @@ export const EpicBluesBlueprint: MusicBlueprint = {
                 id: 'SOLO', name: 'Guitar Solo', duration: { percent: 30 },
                 layers: { bass: true, drums: true, accompaniment: true, melody: true, harmony: true },
                  instrumentation: {
-                    accompaniment: { strategy: 'weighted', v1Options: [{ name: 'organ', weight: 1.0 }], v2Options: [{ name: 'organ_soft_jazz', weight: 1.0 }] },
+                    accompaniment: { 
+                        strategy: 'weighted', 
+                        v1Options: [{ name: 'synth', weight: 0.5 }, { name: 'ambientPad', weight: 0.5 }],
+                        v2Options: [{ name: 'synth', weight: 0.5 }, { name: 'synth_ambient_pad_lush', weight: 0.5 }]
+                    },
                     melody: { strategy: 'weighted', v1Options: [{ name: 'guitar_muffLead', weight: 1.0 }], v2Options: [{ name: 'guitar_muffLead', weight: 1.0 }] }
                 },
                 instrumentRules: {
@@ -82,7 +90,11 @@ export const EpicBluesBlueprint: MusicBlueprint = {
                 id: 'OUTRO', name: 'Final Riff', duration: { percent: 20 },
                 layers: { bass: true, drums: true, accompaniment: true, melody: true, harmony: true },
                 instrumentation: {
-                    accompaniment: { strategy: 'weighted', v1Options: [{ name: 'organ', weight: 1.0 }], v2Options: [{ name: 'organ_soft_jazz', weight: 1.0 }] },
+                    accompaniment: { 
+                        strategy: 'weighted', 
+                        v1Options: [{ name: 'synth', weight: 0.5 }, { name: 'ambientPad', weight: 0.5 }],
+                        v2Options: [{ name: 'synth', weight: 0.5 }, { name: 'synth_ambient_pad_lush', weight: 0.5 }]
+                    },
                     melody: { strategy: 'weighted', v1Options: [{ name: 'guitar_shineOn', weight: 1.0 }], v2Options: [{ name: 'guitar_shineOn', weight: 1.0 }] }
                 },
                 instrumentRules: {

@@ -1,6 +1,6 @@
 
 
-import type { FractalEvent, Mood, Genre, Technique, BassSynthParams, InstrumentType, MelodyInstrument, AccompanimentInstrument, ResonanceMatrix, InstrumentHints, AccompanimentTechnique, GhostChord, SfxRule, V1MelodyInstrument, V2MelodyInstrument, BlueprintPart, InstrumentationRules, InstrumentBehaviorRules, BluesMelody, IntroRules, InstrumentPart, DrumKit, BluesGuitarRiff, BluesSoloPhrase, BluesRiffDegree, SuiteDNA, RhythmicFeel, BassStyle, DrumStyle } from './fractal';
+import type { FractalEvent, Mood, Genre, Technique, BassSynthParams, InstrumentType, MelodyInstrument, AccompanimentInstrument, ResonanceMatrix, InstrumentHints, AccompanimentTechnique, GhostChord, SfxRule, V1MelodyInstrument, V2MelodyInstrument, BlueprintPart, InstrumentationRules, InstrumentBehaviorRules, BluesMelody, InstrumentPart, DrumKit, BluesGuitarRiff, BluesSoloPhrase, BluesRiffDegree, SuiteDNA, RhythmicFeel, BassStyle, DrumStyle } from './fractal';
 import { ElectronicK, TraditionalK, AmbientK, MelancholicMinorK } from './resonance-matrices';
 import { BlueprintNavigator, type NavigationInfo } from './blueprint-navigator';
 import { getBlueprint } from './blueprints';
@@ -200,12 +200,12 @@ export function mutateAccompanimentPhrase(phrase: FractalEvent[], chord: GhostCh
 
 
 export const PERCUSSION_SETS: Record<'NEUTRAL' | 'ELECTRONIC' | 'DARK', InstrumentType[]> = {
-    NEUTRAL: ['perc-001', 'perc-002', 'perc-005', 'perc-006', 'perc-013', 'perc-014', 'perc-015', 'drum_ride', 'cymbal_bell1'],
-    ELECTRONIC: ['perc-003', 'perc-004', 'perc-007', 'perc-008', 'perc-009', 'perc-010', 'perc-011', 'perc-012', 'hh_bark_short'],
+    NEUTRAL: ['perc-001', 'perc-002', 'perc-005', 'perc-006', 'perc-013', 'perc-014', 'perc-015', 'drum_ride', 'drum_cymbal_bell1'],
+    ELECTRONIC: ['perc-003', 'perc-004', 'perc-007', 'perc-008', 'perc-009', 'perc-010', 'perc-011', 'perc-012', 'drum_25691__walter_odington__fastlinger'],
     DARK: ['perc-013', 'drum_snare_off', 'drum_tom_low', 'perc-007', 'perc-015']
 };
 
-export const ALL_RIDES: InstrumentType[] = ['drum_ride', 'drum_a_ride1', 'drum_a_ride2', 'drum_a_ride3', 'drum_a_ride4'];
+export const ALL_RIDES: InstrumentType[] = ['drum_ride', 'drum_a-ride1', 'drum_a-ride2', 'drum_a-ride3', 'drum_a-ride4', 'drum_cymbal1', 'drum_cymbal2', 'drum_cymbal3', 'drum_cymbal4'];
 const AMBIENT_SNARES: InstrumentType[] = ['drum_snare_ghost_note', 'drum_snarepress', 'drum_snare_off'];
 const AMBIENT_PERC: InstrumentType[] = [...PERCUSSION_SETS.ELECTRONIC, ...ALL_RIDES];
 const AMBIENT_INTRO_PERC: InstrumentType[] = ['drum_tom_low', 'perc-013', 'perc-015', 'drum_hihat_closed', 'drum_hihat_open'];
@@ -672,67 +672,6 @@ export function createBluesOrganLick(
     isProvocative: boolean = false
 ): FractalEvent[] {
     return [];
-}
-
-
-export function generateIntroSequence(options: { 
-    currentBar: number; 
-    totalIntroBars: number;
-    rules: IntroRules;
-    instrumentHints: InstrumentHints;
-    harmonyTrack: GhostChord[]; 
-    settings: any; 
-    random: { next: () => number, nextInt: (max: number) => number; };
-    introInstrumentOrder: InstrumentPart[];
-}): { events: FractalEvent[], instrumentHints: InstrumentHints } {
-    const { currentBar, totalIntroBars, rules, instrumentHints, harmonyTrack, settings, random, introInstrumentOrder } = options;
-    const events: FractalEvent[] = [];
-
-    const currentChord = harmonyTrack.find(c => currentBar >= c.bar && currentBar < c.bar + c.durationBars);
-    if (!currentChord) {
-        console.error(`[IntroSeq] No chord found for bar ${currentBar}.`);
-        return { events, instrumentHints: {} };
-    }
-    
-    // #ИСПРАВЛЕНО (ПЛАН 1567): Ускорен ввод инструментов.
-    const numInstrumentsToAdd = Math.floor(currentBar / 2) + 1;
-    const tempActive = new Set(introInstrumentOrder.slice(0, numInstrumentsToAdd));
-
-    const activeInstrumentsForBar = new Set<InstrumentPart>();
-
-    for(const inst of tempActive) {
-        if(inst === 'bass' || inst === 'drums' || (instrumentHints[inst] && instrumentHints[inst] !== 'none')) {
-            activeInstrumentsForBar.add(inst);
-        }
-    }
-    if (activeInstrumentsForBar.size === 0 && introInstrumentOrder.length > 0) {
-        activeInstrumentsForBar.add(introInstrumentOrder[0]);
-    }
-    
-    if (activeInstrumentsForBar.has('accompaniment')) {
-        events.push(...createPulsatingAccompaniment(currentChord, random));
-    }
-    if (activeInstrumentsForBar.has('melody')) {
-        const melodyEvents = createMelodyMotif(currentChord, settings.mood, random, undefined, 'mid', settings.genre);
-        melodyEvents.forEach(e => { e.note += 24; e.weight = 0.1; }); 
-        events.push(...melodyEvents);
-    }
-    if(activeInstrumentsForBar.has('bass')) {
-        if (settings.genre === 'blues') {
-            events.push(...generateBluesBassRiff(currentChord, 'riff', random, settings.mood));
-        } else {
-            events.push(...createAmbientBassAxiom(currentChord, settings.mood, settings.genre, random, settings.tempo, 'drone'));
-        }
-    }
-    if(activeInstrumentsForBar.has('drums')) {
-        const kit = DRUM_KITS[settings.genre]?.intro ?? DRUM_KITS.ambient!.intro!;
-        events.push(...createDrumAxiom(kit, settings.genre, settings.mood, settings.tempo, random).events);
-    }
-     if (activeInstrumentsForBar.has('harmony')) {
-        events.push(...createHarmonyAxiom(currentChord, settings.mood, settings.genre, random));
-    }
-    
-    return { events, instrumentHints };
 }
 
 export function createPulsatingAccompaniment(chord: GhostChord, random: { next: () => number, nextInt: (max: number) => number }): FractalEvent[] {

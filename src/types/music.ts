@@ -67,15 +67,15 @@ export type DrumAndPercussionInstrument =
     | 'drum_tom_mid'
     | 'drum_tom_high'
     | 'drum_ride'
-    | 'drum_a_ride1'
-    | 'drum_a_ride2'
-    | 'drum_a_ride3'
-    | 'drum_a_ride4'
+    | 'drum_a-ride1'
+    | 'drum_a-ride2'
+    | 'drum_a-ride3'
+    | 'drum_a-ride4'
     | 'drum_closed_hi_hat_ghost'
     | 'drum_hihat_open'
     | 'drum_hihat_closed'
     | 'drum_crash'
-    | 'cymbal_bell1'
+    | 'drum_cymbal_bell1'
     | 'hh_bark_short'
     | 'perc-001'
     | 'perc-002'
@@ -247,11 +247,6 @@ export type BlueprintBundle = {
   outroFill?: FillPolicy | null;
 };
 
-export type IntroRules = {
-  instrumentPool: InstrumentPart[];
-  stages: number; // e.g., 4 stages means intro is divided into 4 parts
-};
-
 export type BlueprintPart = {
   id: string;
   name: string;
@@ -282,7 +277,6 @@ export type BlueprintPart = {
   };
   bundles: BlueprintBundle[];
   outroFill: FillPolicy | null;
-  introRules?: IntroRules;
 };
 
 export type HarmonicCenter = {

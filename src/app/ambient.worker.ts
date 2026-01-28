@@ -6,9 +6,8 @@
  * Its goal is to create a continuously evolving piece of music where complexity is controlled by a 'density' parameter.
  * It is completely passive and only composes the next bar when commanded via a 'tick'.
  */
-import type { WorkerSettings, ScoreName, Mood, Genre, IntroRules, InstrumentPart } from '@/types/music';
+import type { WorkerSettings, ScoreName, Mood, Genre, InstrumentPart } from '@/types/music';
 import { FractalMusicEngine } from '@/lib/fractal-music-engine';
-import { generateIntroSequence } from '@/lib/music-theory';
 import type { FractalEvent, InstrumentHints } from '@/types/fractal';
 
 // --- FRACTAL ENGINE ---
@@ -145,39 +144,9 @@ const Scheduler = {
         let finalPayload: { events: FractalEvent[], instrumentHints: InstrumentHints } = { events: [], instrumentHints: {} };
 
         try {
-            if (this.settings.genre !== 'ambient' && this.barCount < this.settings.introBars) {
-                // --- ВЕТКА ИНТРО ---
-                const navInfo = fractalMusicEngine.navigator?.tick(this.barCount);
-                let introHints: InstrumentHints = {};
-                if (navInfo?.currentPart.instrumentation) {
-                    introHints.melody = (fractalMusicEngine as any)._chooseInstrumentForPart('melody', navInfo);
-                    introHints.accompaniment = (fractalMusicEngine as any)._chooseInstrumentForPart('accompaniment', navInfo);
-                    introHints.harmony = (fractalMusicEngine as any)._chooseInstrumentForPart('harmony', navInfo);
-                    introHints.bass = (fractalMusicEngine as any)._chooseInstrumentForPart('bass', navInfo); // ИСПРАВЛЕНО
-                }
-                
-                if (navInfo?.currentPart?.introRules) {
-                    finalPayload = generateIntroSequence({
-                        currentBar: this.barCount,
-                        totalIntroBars: this.settings.introBars,
-                        rules: navInfo.currentPart.introRules,
-                        instrumentHints: introHints,
-                        harmonyTrack: fractalMusicEngine.getGhostHarmony(),
-                        settings: this.settings,
-                        random: (fractalMusicEngine as any).random,
-                        introInstrumentOrder: fractalMusicEngine.introInstrumentOrder
-                    });
-                } else {
-                    finalPayload = { events: [], instrumentHints: {} };
-                }
-                
-                // #ВАЖНО: Основной движок продолжает "думать" в фоне, чтобы быть готовым к плавному переходу
-                fractalMusicEngine.evolve(this.barDuration, this.barCount);
-                
-            } else {
-                // --- ВЕТКА ОСНОВНОЙ ЧАСТИ ---
-                finalPayload = fractalMusicEngine.evolve(this.barDuration, this.barCount);
-            }
+            // #ЗАЧЕМ: УДАЛЕНА вся логика `generateIntroSequence`
+            // #ЧТО: Теперь основной движок управляет музыкой с первого такта.
+            finalPayload = fractalMusicEngine.evolve(this.barDuration, this.barCount);
         } catch (e) {
             console.error('[Worker.tick] CRITICAL ERROR during event generation:', e);
             // finalPayload remains the safe empty default.

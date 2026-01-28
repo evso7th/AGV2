@@ -18,13 +18,13 @@ export const DreamyBluesBlueprint: MusicBlueprint = {
         parts: [
             {
                 id: 'INTRO', name: 'Verse', duration: { percent: 40 },
-                introRules: {
-                    instrumentPool: ['drums', 'bass', 'accompaniment', 'melody'],
-                    stages: 4
-                },
                 layers: { bass: true, drums: true, accompaniment: true, harmony: true, melody: true },
                 instrumentation: {
-                    accompaniment: { strategy: 'weighted', v1Options: [{ name: 'organ', weight: 0.6 }, { name: 'ep_rhodes_warm', weight: 0.4 }], v2Options: [{ name: 'organ_soft_jazz', weight: 0.6 }, { name: 'ep_rhodes_warm', weight: 0.4 }] },
+                    accompaniment: { 
+                        strategy: 'weighted', 
+                        v1Options: [{ name: 'synth', weight: 0.5 }, { name: 'ambientPad', weight: 0.5 }],
+                        v2Options: [{ name: 'synth', weight: 0.5 }, { name: 'synth_ambient_pad_lush', weight: 0.5 }]
+                    },
                     melody: { strategy: 'weighted', v1Options: [{ name: 'guitar_shineOn', weight: 1.0 }], v2Options: [{ name: 'guitar_shineOn', weight: 1.0 }] }
                 },
                 instrumentRules: {
@@ -39,7 +39,11 @@ export const DreamyBluesBlueprint: MusicBlueprint = {
                 id: 'SOLO', name: 'Solo', duration: { percent: 35 },
                 layers: { bass: true, drums: true, accompaniment: true, harmony: true, melody: true },
                 instrumentation: {
-                    accompaniment: { strategy: 'weighted', v1Options: [{ name: 'organ', weight: 0.7 }, { name: 'ep_rhodes_warm', weight: 0.3 }], v2Options: [{ name: 'organ_soft_jazz', weight: 0.7 }, { name: 'ep_rhodes_warm', weight: 0.3 }] },
+                    accompaniment: { 
+                        strategy: 'weighted', 
+                        v1Options: [{ name: 'synth', weight: 0.5 }, { name: 'ambientPad', weight: 0.5 }],
+                        v2Options: [{ name: 'synth', weight: 0.5 }, { name: 'synth_ambient_pad_lush', weight: 0.5 }]
+                    },
                     melody: { strategy: 'weighted', v1Options: [{ name: 'guitar_shineOn', weight: 1.0 }], v2Options: [{ name: 'guitar_shineOn', weight: 1.0 }] }
                 },
                 instrumentRules: {
@@ -64,7 +68,11 @@ export const DreamyBluesBlueprint: MusicBlueprint = {
                 id: 'OUTRO', name: 'Fade Out', duration: { percent: 25 },
                 layers: { bass: true, drums: true, accompaniment: true, harmony: true, melody: true },
                 instrumentation: {
-                    accompaniment: { strategy: 'weighted', v1Options: [{ name: 'organ_soft_jazz', weight: 1.0 }], v2Options: [{ name: 'organ_soft_jazz', weight: 1.0 }] }
+                    accompaniment: { 
+                        strategy: 'weighted', 
+                        v1Options: [{ name: 'synth', weight: 0.5 }, { name: 'ambientPad', weight: 0.5 }],
+                        v2Options: [{ name: 'synth', weight: 0.5 }, { name: 'synth_ambient_pad_lush', weight: 0.5 }]
+                    }
                 },
                 instrumentRules: {
                     drums: { pattern: 'composer', density: { min: 0.2, max: 0.4 }, ride: { enabled: true, volume: 0.08, probability: 0.4 } },

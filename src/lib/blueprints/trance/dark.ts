@@ -20,7 +20,11 @@ export const DarkTranceBlueprint: MusicBlueprint = {
                 id: 'INTRO_1', name: 'Static', duration: { percent: 20 }, // INCREASED
                 layers: { accompaniment: true, sfx: true, drums: true, bass: true },
                 instrumentation: { 
-                    accompaniment: { strategy: 'weighted', v1Options: [{ name: 'synth_cave_pad', weight: 1.0 }], v2Options: [{ name: 'synth_cave_pad', weight: 1.0 }] },
+                    accompaniment: { 
+                        strategy: 'weighted', 
+                        v1Options: [{ name: 'synth', weight: 0.5 }, { name: 'ambientPad', weight: 0.5 }],
+                        v2Options: [{ name: 'synth', weight: 0.5 }, { name: 'synth_ambient_pad_lush', weight: 0.5 }]
+                    },
                     bass: { strategy: 'weighted', v1Options: [{ name: 'ambientDrone', weight: 1.0 }], v2Options: [{ name: 'ambientDrone', weight: 1.0 }] }
                 },
                 instrumentRules: { 
@@ -36,7 +40,11 @@ export const DarkTranceBlueprint: MusicBlueprint = {
                 id: 'BUILD', name: 'The Chase', duration: { percent: 30 }, // INCREASED
                 layers: { bass: true, accompaniment: true, drums: true, sfx: true },
                 instrumentation: {
-                    accompaniment: { strategy: 'weighted', v1Options: [{ name: 'synth', weight: 1.0 }], v2Options: [{ name: 'synth', weight: 1.0 }] },
+                    accompaniment: { 
+                        strategy: 'weighted', 
+                        v1Options: [{ name: 'synth', weight: 0.5 }, { name: 'ambientPad', weight: 0.5 }],
+                        v2Options: [{ name: 'synth', weight: 0.5 }, { name: 'synth_ambient_pad_lush', weight: 0.5 }]
+                    },
                     bass: { strategy: 'weighted', v1Options: [{ name: 'resonantGliss', weight: 1.0 }], v2Options: [{ name: 'resonantGliss', weight: 1.0 }] }
                 },
                 instrumentRules: { 
@@ -51,7 +59,11 @@ export const DarkTranceBlueprint: MusicBlueprint = {
                 id: 'PEAK', name: 'Red Line', duration: { percent: 30 },
                 layers: { bass: true, melody: true, accompaniment: true, drums: true, sfx: true },
                 instrumentation: {
-                    accompaniment: { strategy: 'weighted', v1Options: [{ name: 'organ', weight: 1.0 }], v2Options: [{ name: 'organ', weight: 1.0 }] },
+                    accompaniment: { 
+                        strategy: 'weighted', 
+                        v1Options: [{ name: 'synth', weight: 0.5 }, { name: 'ambientPad', weight: 0.5 }],
+                        v2Options: [{ name: 'synth', weight: 0.5 }, { name: 'synth_ambient_pad_lush', weight: 0.5 }]
+                    },
                     bass: { strategy: 'weighted', v1Options: [{ name: 'resonantGliss', weight: 1.0 }], v2Options: [{ name: 'resonantGliss', weight: 1.0 }] },
                     melody: { strategy: 'weighted', v1Options: [{ name: 'guitar_muffLead', weight: 1.0 }], v2Options: [{ name: 'guitar_muffLead', weight: 1.0 }] }
                 },
@@ -65,7 +77,13 @@ export const DarkTranceBlueprint: MusicBlueprint = {
             {
                 id: 'OUTRO', name: 'Cool Down', duration: { percent: 20 }, // INCREASED
                 layers: { accompaniment: true, sfx: true, drums: true },
-                instrumentation: { accompaniment: { strategy: 'weighted', v1Options: [{ name: 'synth_cave_pad', weight: 1.0 }], v2Options: [{ name: 'synth_cave_pad', weight: 1.0 }] } },
+                instrumentation: { 
+                    accompaniment: { 
+                        strategy: 'weighted', 
+                        v1Options: [{ name: 'synth', weight: 0.5 }, { name: 'ambientPad', weight: 0.5 }],
+                        v2Options: [{ name: 'synth', weight: 0.5 }, { name: 'synth_ambient_pad_lush', weight: 0.5 }]
+                    }
+                },
                 instrumentRules: { 
                     drums: { pattern: 'composer', density: { min: 0.2, max: 0.4 }, useSnare: false, rareKick: true }, // SOFTER
                     melody: { source: 'harmony_top_note' }
