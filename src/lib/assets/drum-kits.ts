@@ -12,16 +12,41 @@ import type { DrumKit, DrumKitLibrary, InstrumentType } from '@/types/fractal';
 
 // --- БАЗОВЫЕ НАБОРЫ СЭМПЛОВ ДЛЯ ПЕРЕИСПОЛЬЗОВАНИЯ ---
 
-const ALL_KICKS: InstrumentType[] = ['drum_kick'];
-const ALL_SNARES: InstrumentType[] = ['drum_snare', 'drum_snare_ghost_note', 'drum_snare_off', 'drum_snarepress'];
-const ALL_HIHATS: InstrumentType[] = ['drum_hihat_closed', 'drum_hihat_open', 'hh_bark_short', 'drum_closed_hi_hat_ghost'];
-const ALL_RIDES: InstrumentType[] = ['drum_ride', 'drum_ride2', 'drum_ride3', 'drum_ride4'];
+const ALL_KICKS: InstrumentType[] = ['drum_kick', 'drum_cajon_kick', 'drum_drum_kick_reso', 'drum_kick_drum6', 'drum_kick_soft'];
+const ALL_SNARES: InstrumentType[] = ['drum_snare', 'drum_snare_ghost_note', 'drum_snare_off', 'drum_snarepress', 'drum_brush1', 'drum_brush2', 'drum_brush3', 'drum_brush4'];
+const ALL_HIHATS: InstrumentType[] = [
+    'drum_hihat_closed', 'drum_hihat_open', 'drum_closed_hi_hat_ghost', 'drum_open_hh_bottom2', 'drum_open_hh_top2',
+    'drum_25677__walter_odington__alex-hat', 'drum_25678__walter_odington__avalanche-hat', 'drum_25687__walter_odington__blip-hat',
+    'drum_25688__walter_odington__brushed-bell-hat', 'drum_25693__walter_odington__hackney-hat-1',
+    'drum_25694__walter_odington__hackney-hat-2', 'drum_25695__walter_odington__hackney-hat-3',
+    'drum_25696__walter_odington__hackney-hat-4', 'drum_25701__walter_odington__new-years-hat-1',
+    'drum_25702__walter_odington__new-years-hat-2'
+];
+const ALL_RIDES: InstrumentType[] = ['drum_ride', 'drum_ride_wetter', 'drum_a-ride1', 'drum_a-ride2', 'drum_a-ride3', 'drum_a-ride4', 'drum_cymbal1', 'drum_cymbal2', 'drum_cymbal3', 'drum_cymbal4'];
 const ALL_CRASHES: InstrumentType[] = ['drum_crash', 'drum_crash2'];
-const ALL_TOMS: InstrumentType[] = ['drum_tom_low', 'drum_tom_mid', 'drum_tom_high'];
+const ALL_TOMS: InstrumentType[] = [
+    'drum_tom_low', 'drum_tom_mid', 'drum_tom_high',
+    'drum_lowtom', 'drum_midtom', 'drum_hightom',
+    'drum_lowtom_soft', 'drum_midtom_soft', 'drum_hightom_soft',
+    'drum_Sonor_Classix_Low_Tom', 'drum_Sonor_Classix_Mid_Tom', 'drum_Sonor_Classix_High_Tom'
+];
 const ALL_PERC: InstrumentType[] = [
-    ...ALL_TOMS, 'cymbal_bell1', 'cymbal_bell2',
+    ...ALL_TOMS, 
+    'drum_cowbell', 'drum_cymbal_bell1', 'drum_cymbal_bell2',
+    'drum_25691__walter_odington__fastlinger',
     'perc-001', 'perc-002', 'perc-003', 'perc-004', 'perc-005', 'perc-006', 'perc-007',
-    'perc-008', 'perc-009', 'perc-010', 'perc-011', 'perc-012', 'perc-013', 'perc-014', 'perc-015'
+    'perc-008', 'perc-009', 'perc-010', 'perc-011', 'perc-012', 'perc-013', 'perc-014', 'perc-015',
+    'drum_Bell_-_Ambient', 'drum_Bell_-_Analog', 'drum_Bell_-_Astro', 'drum_Bell_-_Background', 'drum_Bell_-_Bright',
+    'drum_Bell_-_Broken', 'drum_Bell_-_Cheap', 'drum_Bell_-_Cheesy', 'drum_Bell_-_Chorus', 'drum_Bell_-_Click',
+    'drum_Bell_-_Crystals', 'drum_Bell_-_Deep', 'drum_Bell_-_Detuned', 'drum_Bell_-_Easy', 'drum_Bell_-_Echo',
+    'drum_Bell_-_Evil', 'drum_Bell_-_Faded', 'drum_Bell_-_Far_Away', 'drum_Bell_-_Fast', 'drum_Bell_-_Futuristic',
+    'drum_Bell_-_Glide', 'drum_Bell_-_Gong', 'drum_Bell_-_Higher', 'drum_Bell_-_High', 'drum_Bell_-_Horror',
+    'drum_Bell_-_Long', 'drum_Bell_-_Moonlight', 'drum_Bell_-_Nasty', 'drum_Bell_-_Normal', 'drum_Bell_-_Plug',
+    'drum_Bell_-_Quick', 'drum_Bell_-_Reverb', 'drum_Bell_-_Ring', 'drum_Bell_-_Slide', 'drum_Bell_-_Smooth',
+    'drum_Bell_-_Soft', 'drum_Bell_-_Tap', 'drum_Bell_-_Too_Easy', 'drum_Bell_-_Unstable', 'drum_Bell_-_Vintage',
+    'drum_Bell_-_Weird', 'drum_Bell_-_Wind',
+    'drum_bongo_pc-01', 'drum_bongo_pc-02', 'drum_bongo_pc-03',
+    'drum_bongo_pvc-tube-01', 'drum_bongo_pvc-tube-02', 'drum_bongo_pvc-tube-03',
 ];
 
 // --- БИБЛИОТЕКА УДАРНЫХ УСТАНОВОК ---
@@ -33,30 +58,30 @@ export const DRUM_KITS: DrumKitLibrary = {
     ambient: {
         // "Безопасный" кит для всех интро. НЕТ крэшей, НЕТ райдов.
         intro: {
-            kick: ['drum_kick'],
+            kick: ['drum_kick_soft', 'drum_cajon_kick'],
             snare: ['drum_snare_ghost_note'],
-            hihat: ['drum_hihat_closed'],
+            hihat: ['drum_closed_hi_hat_ghost'],
             ride: [], // ПУСТО
             crash: [], // ПУСТО
-            perc: ['drum_tom_low', 'perc-013', 'perc-015']
+            perc: ['drum_lowtom_soft', 'perc-013', 'perc-015', 'drum_Bell_-_Soft']
         },
         // Кит для спокойного эмбиента
         calm: {
-            kick: ['drum_kick'],
-            snare: ['drum_snare_ghost_note', 'drum_snarepress'],
-            hihat: ['drum_hihat_closed'],
-            ride: ['drum_ride'],
+            kick: ['drum_kick_soft'],
+            snare: ['drum_snare_ghost_note', 'drum_snarepress', 'drum_brush1'],
+            hihat: ['drum_closed_hi_hat_ghost'],
+            ride: ['drum_ride_wetter'],
             crash: [], // Без крэшей для спокойствия
-            perc: ['perc-001', 'perc-005', 'perc-013', 'cymbal_bell1']
+            perc: ['perc-001', 'perc-005', 'perc-013', 'drum_cymbal_bell1', 'drum_Bell_-_Ambient']
         },
         // Кит для темного эмбиента
         dark: {
-            kick: ['drum_kick'],
+            kick: ['drum_kick_reso'],
             snare: ['drum_snare_off'],
             hihat: [], // Без хэтов, только перкуссия
             ride: [],
-            crash: ['drum_crash'], // Редкий, гулкий крэш
-            perc: ['drum_tom_low', 'perc-007', 'perc-015']
+            crash: ['drum_crash2'], // Редкий, гулкий крэш
+            perc: ['drum_lowtom', 'perc-007', 'perc-015', 'drum_Bell_-_Gong']
         }
         // Другие настроения для ambient можно добавить здесь
     },
@@ -71,30 +96,29 @@ export const DRUM_KITS: DrumKitLibrary = {
             snare: ALL_SNARES,
             hihat: ALL_HIHATS,
             ride: ALL_RIDES,
-            crash: ['drum_crash'],
+            crash: ['drum_crash2'],
             perc: ['drum_tom_mid', 'drum_tom_low']
         },
         // Кит для медленного, меланхоличного блюза
         melancholic: {
             kick: ALL_KICKS,
-            snare: ['drum_snare', 'drum_snarepress'],
+            snare: ['drum_snare', 'drum_snarepress', 'drum_brush1', 'drum_brush2'],
             hihat: ALL_HIHATS,
-            ride: ['drum_ride'], // Только основной райд
+            ride: ['drum_ride', 'drum_ride_wetter'],
             crash: [], // Без крэшей
-            perc: ['drum_tom_low']
+            perc: ['drum_lowtom']
         },
         // КИТ ДЛЯ СПОКОЙНОГО БЛЮЗА (ПЛАН 762)
-        // #ИСПРАВЛЕНО (ПЛАН 1186): Добавлен хай-хэт для проверки логики "обогащения".
         blues_calm: {
-            kick: ['drum_kick'],
-            snare: ['drum_snare_ghost_note'],
-            hihat: ['drum_hihat_closed'],
+            kick: ['drum_kick_soft'],
+            snare: ['drum_snare_ghost_note', 'drum_brush1'],
+            hihat: ['drum_closed_hi_hat_ghost', 'drum_25688__walter_odington__brushed-bell-hat'],
             ride: [],
             crash: [],
             perc: ['perc-001', 'perc-013']
         },
         blues_calm_intro_outro: {
-            kick: ['drum_kick'],
+            kick: ['drum_kick_soft'],
             snare: ['drum_snare_ghost_note'],
             hihat: ['drum_closed_hi_hat_ghost'],
             ride: [],
@@ -112,12 +136,12 @@ export const DRUM_KITS: DrumKitLibrary = {
         },
         // #ДОБАВЛЕНО (ПЛАН 1567): Специальный кит для зимнего блюза
         blues_winter_prolog: {
-            kick: [],
+            kick: ['drum_kick_soft'],
             snare: [],
             hihat: ['drum_closed_hi_hat_ghost'],
             ride: [],
             crash: [],
-            perc: ['drum_tom_low', 'perc-013', 'perc-015']
+            perc: ['drum_lowtom', 'perc-013', 'perc-015']
         }
         // Другие настроения для blues можно добавить здесь
     },
@@ -128,17 +152,17 @@ export const DRUM_KITS: DrumKitLibrary = {
     trance: {
         // Типичный кит для транса
         melancholic: {
-            kick: ['drum_kick'],
+            kick: ['drum_kick_drum6'],
             snare: ['drum_snare', 'perc-009'],
-            hihat: ['drum_hihat_open', 'drum_hihat_closed'],
+            hihat: ['drum_open_hh_top2', 'drum_closed_hi_hat_ghost'],
             ride: [],
-            crash: ['drum_crash'],
+            crash: ['drum_crash2'],
             perc: ['perc-003', 'perc-008', 'perc-011']
         },
         intro: { // Безопасный кит для интро транса
-            kick: ['drum_kick'],
+            kick: ['drum_kick_soft'],
             snare: [],
-            hihat: ['drum_hihat_closed'],
+            hihat: ['drum_closed_hi_hat_ghost'],
             ride: [],
             crash: [],
             perc: ['perc-003']
