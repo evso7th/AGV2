@@ -20,10 +20,13 @@ export const WinterBluesBlueprint: MusicBlueprint = {
                 id: 'prolog-1', name: 'Frost', duration: { percent: 10 },
                 layers: { drums: false, bass: true, accompaniment: true, harmony: true, melody: true, sfx: true },
                 instrumentation: {
-                    accompaniment: { strategy: 'weighted', v2Options: [{ name: 'ep_rhodes_warm', weight: 1.0 }] },
+                    accompaniment: { 
+                        strategy: 'weighted', 
+                        v1Options: [{ name: 'synth', weight: 0.5 }, { name: 'ambientPad', weight: 0.5 }],
+                        v2Options: [{ name: 'synth', weight: 0.5 }, { name: 'synth_ambient_pad_lush', weight: 0.5 }]
+                    },
                 },
                 instrumentRules: {
-                    drums: { pattern: 'composer', kitName: 'blues_winter_prolog', density: { min: 0.1, max: 0.2 }, useSnare: false, useGhostHat: true, rareKick: true },
                     bass: { techniques: [{ value: 'long_notes', weight: 1.0 }] },
                     melody: { source: 'harmony_top_note' }
                 },
@@ -34,11 +37,14 @@ export const WinterBluesBlueprint: MusicBlueprint = {
                 id: 'prolog-2', name: 'First Snow', duration: { percent: 10 },
                 layers: { drums: false, bass: true, accompaniment: true, harmony: true, melody: true, sfx: true },
                 instrumentation: {
-                    accompaniment: { strategy: 'weighted', v2Options: [{ name: 'ep_rhodes_warm', weight: 1.0 }] },
+                    accompaniment: { 
+                        strategy: 'weighted', 
+                        v1Options: [{ name: 'synth', weight: 0.5 }, { name: 'ambientPad', weight: 0.5 }],
+                        v2Options: [{ name: 'synth', weight: 0.5 }, { name: 'synth_ambient_pad_lush', weight: 0.5 }]
+                    },
                     melody: { strategy: 'weighted', v2Options: [{ name: 'mellotron_flute_intimate', weight: 1.0 }] }
                 },
                 instrumentRules: {
-                    drums: { pattern: 'composer', kitName: 'blues_winter_prolog', density: { min: 0.2, max: 0.3 }, useSnare: false, useGhostHat: true, rareKick: true, usePerc: true },
                     bass: { techniques: [{ value: 'long_notes', weight: 1.0 }] },
                     melody: { source: 'harmony_top_note' }
                 },
@@ -49,11 +55,14 @@ export const WinterBluesBlueprint: MusicBlueprint = {
                 id: 'prolog-3', name: 'Frozen Lake', duration: { percent: 5 },
                 layers: { drums: false, bass: true, accompaniment: true, harmony: true, melody: true, sfx: true },
                 instrumentation: {
-                    accompaniment: { strategy: 'weighted', v2Options: [{ name: 'organ_soft_jazz', weight: 1.0 }] },
+                    accompaniment: { 
+                        strategy: 'weighted', 
+                        v1Options: [{ name: 'synth', weight: 0.5 }, { name: 'ambientPad', weight: 0.5 }],
+                        v2Options: [{ name: 'synth', weight: 0.5 }, { name: 'synth_ambient_pad_lush', weight: 0.5 }]
+                    },
                     melody: { strategy: 'weighted', v2Options: [{ name: 'theremin', weight: 1.0 }] }
                 },
                 instrumentRules: {
-                    drums: { pattern: 'composer', kitName: 'blues_winter_prolog', density: { min: 0.2, max: 0.4 }, useSnare: true, useGhostHat: true, rareKick: true, usePerc: true },
                     bass: { techniques: [{ value: 'walking', weight: 1.0 }] },
                     melody: { source: 'harmony_top_note' }
                 },
@@ -65,7 +74,11 @@ export const WinterBluesBlueprint: MusicBlueprint = {
                 layers: { drums: true, bass: true, accompaniment: true, harmony: true, melody: true, sfx: true },
                 instrumentation: {
                     melody: { strategy: 'weighted', v2Options: [{ name: 'guitar_muffLead', weight: 1.0 }] },
-                    accompaniment: { strategy: 'weighted', v2Options: [{ name: 'organ_soft_jazz', weight: 1.0 }] }
+                    accompaniment: { 
+                        strategy: 'weighted', 
+                        v1Options: [{ name: 'synth', weight: 0.5 }, { name: 'ambientPad', weight: 0.5 }],
+                        v2Options: [{ name: 'synth', weight: 0.5 }, { name: 'synth_ambient_pad_lush', weight: 0.5 }]
+                    }
                 },
                 instrumentRules: {
                     drums: { pattern: 'composer', kitName: 'blues_calm', density: { min: 0.5, max: 0.7 } },
@@ -79,8 +92,12 @@ export const WinterBluesBlueprint: MusicBlueprint = {
                 id: 'SOLO', name: 'Solo', duration: { percent: 25 },
                 layers: { drums: true, bass: true, accompaniment: true, melody: true, sfx: true },
                 instrumentation: {
-                    melody: { strategy: 'weighted', v2Options: [{ name: 'guitar_muffLead', weight: 1.0 }] },
-                    accompaniment: { strategy: 'weighted', v2Options: [{ name: 'organ_soft_jazz', weight: 1.0 }] }
+                    melody: { strategy: 'weighted', v2Options: [{ name: 'guitar_muffLead', weight: 0.5 }, { name: 'guitar_shineOn', weight: 0.5 }] },
+                    accompaniment: { 
+                        strategy: 'weighted', 
+                        v1Options: [{ name: 'synth', weight: 0.5 }, { name: 'ambientPad', weight: 0.5 }],
+                        v2Options: [{ name: 'synth', weight: 0.5 }, { name: 'synth_ambient_pad_lush', weight: 0.5 }]
+                    }
                 },
                 instrumentRules: {
                     drums: { pattern: 'composer', kitName: 'blues_calm', density: { min: 0.6, max: 0.8 }, ride: { enabled: true } },
@@ -95,7 +112,11 @@ export const WinterBluesBlueprint: MusicBlueprint = {
                 layers: { drums: true, bass: true, accompaniment: true, harmony: true, melody: true },
                 instrumentation: {
                     melody: { strategy: 'weighted', v2Options: [{ name: 'guitar_muffLead', weight: 1.0 }] },
-                    accompaniment: { strategy: 'weighted', v2Options: [{ name: 'organ_soft_jazz', weight: 1.0 }] }
+                    accompaniment: { 
+                        strategy: 'weighted', 
+                        v1Options: [{ name: 'synth', weight: 0.5 }, { name: 'ambientPad', weight: 0.5 }],
+                        v2Options: [{ name: 'synth', weight: 0.5 }, { name: 'synth_ambient_pad_lush', weight: 0.5 }]
+                    }
                 },
                 instrumentRules: {
                     drums: { pattern: 'composer', kitName: 'blues_calm', density: { min: 0.2, max: 0.4 } }, // REDUCED DENSITY
