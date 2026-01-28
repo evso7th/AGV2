@@ -47,7 +47,7 @@ export type V1BassInstrument = 'classicBass' | 'glideBass' | 'ambientDrone' | 'r
 export type V2BassInstrument = keyof typeof BASS_PRESETS;
 export type BassInstrument = V1BassInstrument | V2BassInstrument | 'none';
 
-export type V1MelodyInstrument = 'synth' | 'organ' | 'mellotron' | 'theremin' | 'E-Bells_melody' | 'G-Drops' | 'acousticGuitarSolo' | 'electricGuitar' | 'none';
+export type V1MelodyInstrument = 'synth' | 'organ' | 'mellotron' | 'theremin' | 'E-Bells_melody' | 'G-Drops' | 'acousticGuitarSolo' | 'electricGuitar' | 'ambientPad' | 'acousticGuitar' | 'none';
 export type V2MelodyInstrument = keyof typeof V2_PRESETS;
 export type MelodyInstrument = V1MelodyInstrument | V2MelodyInstrument | 'blackAcoustic';
 
@@ -100,7 +100,7 @@ export type DrumAndPercussionInstrument =
 
 export type InstrumentType = BassInstrument | MelodyInstrument | AccompanimentInstrument | EffectInstrument | DrumAndPercussionInstrument | 'portamento' | 'autopilot_bass' | 'none';
 
-export type InstrumentPart = 'bass' | 'melody' | 'accompaniment' | 'harmony' | 'drums' | 'effects' | 'sparkles' | 'piano' | 'violin' | 'flute' | 'guitarChords' | 'acousticGuitarSolo' | 'sfx' | 'blackAcoustic';
+export type InstrumentPart = 'bass' | 'melody' | 'accompaniment' | 'harmony' | 'drums' | 'effects' | 'sparkles' | 'piano' | 'violin' | 'flute' | 'guitarChords' | 'acousticGuitarSolo' | 'sfx' | 'blackAcoustic' | 'telecaster';
 export type BassTechnique = 'arpeggio' | 'portamento' | 'glissando' | 'glide' | 'pulse' | 'riff' | 'long_notes' | 'walking' | 'boogie' | 'syncopated';    
 
 export type Technique = BassTechnique | 'pluck' | 'pick' | 'harm' | 'slide' | 'hit' | 'ghost' | 'swell' | 'fill';
