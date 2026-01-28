@@ -3,9 +3,9 @@
 import type { MusicBlueprint } from '@/types/music';
 
 export const MelancholicAmbientBlueprint: MusicBlueprint = {
-  id: 'melancholic_ambient',
+  id: 'melancholic_blues',
   name: 'Melancholic Drift',
-  description: 'Задумчивый, интроспективный ambient с плавными гармоническими переходами',
+  description: 'Задумчивый, интроспективный bundles с плавными гармоническими переходами',
   
   mood: 'melancholic',
   

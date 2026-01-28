@@ -1,3 +1,4 @@
+
 /**
  * #ЗАЧЕМ: Этот файл — центральный "Арсенал Барабанщика". Он декларативно описывает,
  *          какие именно сэмплы ударных доступны для каждого жанра и настроения.
@@ -14,15 +15,14 @@ import type { DrumKit, DrumKitLibrary, InstrumentType } from '@/types/fractal';
 const ALL_KICKS: InstrumentType[] = ['drum_kick'];
 const ALL_SNARES: InstrumentType[] = ['drum_snare', 'drum_snare_ghost_note', 'drum_snare_off', 'drum_snarepress'];
 const ALL_HIHATS: InstrumentType[] = ['drum_hihat_closed', 'drum_hihat_open', 'hh_bark_short'];
-const ALL_RIDES: InstrumentType[] = ['drum_ride', 'drum_a_ride1', 'drum_a_ride2', 'drum_a_ride3', 'drum_a_ride4'];
-const ALL_CRASHES: InstrumentType[] = ['drum_crash', 'cymbal1', 'cymbal2', 'cymbal3', 'cymbal4'];
+const ALL_RIDES: InstrumentType[] = ['drum_ride', 'drum_ride2', 'drum_ride3', 'drum_ride4'];
+const ALL_CRASHES: InstrumentType[] = ['drum_crash', 'drum_crash2'];
 const ALL_TOMS: InstrumentType[] = ['drum_tom_low', 'drum_tom_mid', 'drum_tom_high'];
 const ALL_PERC: InstrumentType[] = [
-    ...ALL_TOMS, 'cymbal_bell1',
+    ...ALL_TOMS, 'cymbal_bell1', 'cymbal_bell2',
     'perc-001', 'perc-002', 'perc-003', 'perc-004', 'perc-005', 'perc-006', 'perc-007',
     'perc-008', 'perc-009', 'perc-010', 'perc-011', 'perc-012', 'perc-013', 'perc-014', 'perc-015'
 ];
-const BRUSHES: InstrumentType[] = ['drum_brush1', 'drum_brush2', 'drum_brush3', 'drum_brush4'];
 
 // --- БИБЛИОТЕКА УДАРНЫХ УСТАНОВОК ---
 
@@ -77,7 +77,7 @@ export const DRUM_KITS: DrumKitLibrary = {
         // Кит для медленного, меланхоличного блюза
         melancholic: {
             kick: ALL_KICKS,
-            snare: ['drum_snare', 'drum_snarepress', ...BRUSHES], // Добавляем щетки
+            snare: ['drum_snare', 'drum_snarepress'],
             hihat: ALL_HIHATS,
             ride: ['drum_ride'], // Только основной райд
             crash: [], // Без крэшей
@@ -87,16 +87,16 @@ export const DRUM_KITS: DrumKitLibrary = {
         // #ИСПРАВЛЕНО (ПЛАН 1186): Добавлен хай-хэт для проверки логики "обогащения".
         blues_calm: {
             kick: ['drum_kick'],
-            snare: ['drum_snare_ghost_note', ...BRUSHES],
-            hihat: ['drum_hihat_closed'], // ДОБАВЛЕНО
+            snare: ['drum_snare_ghost_note'],
+            hihat: ['drum_hihat_closed'],
             ride: [],
             crash: [],
             perc: ['perc-001', 'perc-013']
         },
         blues_calm_intro_outro: {
             kick: ['drum_kick'],
-            snare: ['drum_snare'],
-            hihat: ['drum_hihat_closed'],
+            snare: ['drum_snare_ghost_note'],
+            hihat: ['drum_closed_hi_hat_ghost'],
             ride: [],
             crash: [],
             perc: [],
@@ -112,12 +112,12 @@ export const DRUM_KITS: DrumKitLibrary = {
         },
         // #ДОБАВЛЕНО (ПЛАН 1567): Специальный кит для зимнего блюза
         blues_winter_prolog: {
-            kick: ['drum_kick'],
-            snare: ['drum_snare_ghost_note'],
-            hihat: ['drum_hihat_closed'],
+            kick: [],
+            snare: [],
+            hihat: ['drum_closed_hi_hat_ghost'],
             ride: [],
             crash: [],
-            perc: ['perc-013']
+            perc: ['drum_tom_low', 'perc-013', 'perc-015']
         }
         // Другие настроения для blues можно добавить здесь
     },

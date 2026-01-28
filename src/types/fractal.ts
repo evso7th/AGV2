@@ -1,5 +1,4 @@
 
-
 /**
  * Настроение — управляет ладом, динамикой, техникой
  */
@@ -56,22 +55,23 @@ export type InstrumentType =
   // Ударные (сэмплы)
   | 'drum_kick'
   | 'drum_snare'
-  | 'drum_snare_ghost_note'
   | 'drum_snare_off'
+  | 'drum_snare_ghost_note'
   | 'drum_snarepress'
   | 'drum_tom_low'
   | 'drum_tom_mid'
   | 'drum_tom_high'
   | 'drum_ride'
-  | 'drum_a_ride1'
-  | 'drum_a_ride2'
-  | 'drum_a_ride3'
-  | 'drum_a_ride4'
+  | 'drum_ride2'
+  | 'drum_ride3'
+  | 'drum_ride4'
   | 'drum_closed_hi_hat_ghost'
   | 'drum_hihat_open'
   | 'drum_hihat_closed'
   | 'drum_crash'
+  | 'drum_crash2'
   | 'cymbal_bell1'
+  | 'cymbal_bell2'
   | 'hh_bark_short'
   | 'perc-001'
   | 'perc-002'
@@ -88,11 +88,6 @@ export type InstrumentType =
   | 'perc-013'
   | 'perc-014'
   | 'perc-015'
-   // Новые типы для щеток
-  | 'drum_brush1'
-  | 'drum_brush2'
-  | 'drum_brush3'
-  | 'drum_brush4'
   // Гармонические инструменты
   | 'accompaniment'
   | 'harmony'
