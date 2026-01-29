@@ -1,9 +1,11 @@
 
+
 import type { FractalEvent, AccompanimentInstrument, MelodyInstrument } from '@/types/fractal';
 import type { Note } from "@/types/music";
 import { SYNTH_PRESETS, type SynthPreset } from './synth-presets';
 import { V1_TO_V2_PRESET_MAP } from './presets-v2';
 import type { BlackGuitarSampler } from './black-guitar-sampler';
+import type { TelecasterGuitarSampler } from './telecaster-guitar-sampler';
 
 function midiToFreq(midi: number): number {
     return Math.pow(2, (midi - 69) / 12) * 440;
@@ -31,7 +33,7 @@ type SynthVoice = {
 export class MelodySynthManager {
     private audioContext: AudioContext;
     private destination: AudioNode;
-    private activeInstrumentName: AccompanimentInstrument | 'none' = 'organ';
+    private activeInstrumentName: MelodyInstrument | 'none' = 'organ';
     public isInitialized = false;
     private partName: 'melody';
 
@@ -42,16 +44,19 @@ export class MelodySynthManager {
     
     // Sampler dependencies
     private blackAcousticSampler: BlackGuitarSampler;
+    private telecasterSampler: TelecasterGuitarSampler;
 
     constructor(
         audioContext: AudioContext, 
         destination: AudioNode,
         blackAcousticSampler: BlackGuitarSampler,
+        telecasterSampler: TelecasterGuitarSampler,
         partName: 'melody'
     ) {
         this.audioContext = audioContext;
         this.destination = destination;
         this.blackAcousticSampler = blackAcousticSampler;
+        this.telecasterSampler = telecasterSampler;
         this.partName = partName;
 
         this.preamp = this.audioContext.createGain();
@@ -135,6 +140,11 @@ export class MelodySynthManager {
             const notesToPlay = melodyEvents.map(e => ({ midi: e.note, time: e.time * (60/tempo), duration: e.duration * (60/tempo), velocity: e.weight, technique: e.technique, params: e.params }));
             this.blackAcousticSampler.schedule(notesToPlay, barStartTime, tempo);
             return; // Stop further execution
+        } else if (hint === 'telecaster') {
+            console.log(`${logPrefix} Routing to TelecasterGuitarSampler`, logCss);
+            const notesToPlay = melodyEvents.map(e => ({ midi: e.note, time: e.time * (60/tempo), duration: e.duration * (60/tempo), velocity: e.weight, technique: e.technique, params: e.params }));
+            this.telecasterSampler.schedule(notesToPlay, barStartTime, tempo);
+            return;
         }
         
         // --- V1 SYNTH LOGIC (Fallback) ---
