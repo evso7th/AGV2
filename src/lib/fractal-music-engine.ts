@@ -1,6 +1,6 @@
 
 
-import type { FractalEvent, Mood, Genre, Technique, BassSynthParams, InstrumentType, MelodyInstrument, AccompanimentInstrument, ResonanceMatrix, InstrumentHints, AccompanimentTechnique, GhostChord, SfxRule, V1MelodyInstrument, V2MelodyInstrument, BlueprintPart, InstrumentationRules, InstrumentBehaviorRules, BluesMelody, IntroRules, InstrumentPart, DrumKit, BluesGuitarRiff, BluesSoloPhrase, BluesRiffDegree, SuiteDNA, RhythmicFeel, BassStyle, DrumStyle } from './fractal';
+import type { FractalEvent, Mood, Genre, Technique, BassSynthParams, InstrumentType, MelodyInstrument, AccompanimentInstrument, ResonanceMatrix, InstrumentHints, AccompanimentTechnique, GhostChord, SfxRule, V1MelodyInstrument, V2MelodyInstrument, BlueprintPart, InstrumentationRules, InstrumentBehaviorRules, BluesMelody, InstrumentPart, DrumKit, BluesGuitarRiff, BluesSoloPhrase, BluesRiffDegree, SuiteDNA, RhythmicFeel, BassStyle, DrumStyle } from './fractal';
 import { ElectronicK, TraditionalK, AmbientK, MelancholicMinorK } from './resonance-matrices';
 import { BlueprintNavigator, type NavigationInfo } from './blueprint-navigator';
 import { getBlueprint } from './blueprints';
@@ -221,10 +221,6 @@ export class FractalMusicEngine {
     this.currentAccompPhraseIndex = 0;
     
     this.introInstrumentOrder = [];
-    const introPart = this.navigator.blueprint.structure.parts.find(p => p.id.startsWith('prolog'));
-    if (introPart?.introRules) {
-        this.introInstrumentOrder = this.random.shuffle([...introPart.introRules.instrumentPool]);
-    }
 
     const firstChord = this.suiteDNA.harmonyTrack[0];
     const initialNavInfo = this.navigator.tick(0);
@@ -330,12 +326,18 @@ export class FractalMusicEngine {
         
         const kitName = drumRules?.kitName || `${this.config.genre}_${this.config.mood}`.toLowerCase();
         const overrides = drumRules?.kitOverrides;
+
+        // --- ДИАГНОСТИКА (ПЛАН 1588) ---
+        console.log(`%c[DrumAudit @ Bar ${this.epoch}] 1. Request: Looking for kitName: "${kitName}"`, 'color: orange;');
         
         const baseKit = (DRUM_KITS[this.config.genre] as any)?.[kitName] ||
                         (DRUM_KITS[this.config.genre] as any)?.[this.config.mood] ||
                         DRUM_KITS.ambient!.intro!;
         
-        if (!baseKit) return [];
+        if (!baseKit) {
+            console.error(`%c[DrumAudit @ Bar ${this.epoch}] 2. Selection FAILED: No baseKit found for "${kitName}" or fallbacks.`, 'color: red;');
+            return [];
+        }
     
         const finalKit: DrumKit = JSON.parse(JSON.stringify(baseKit));
         
@@ -377,8 +379,15 @@ export class FractalMusicEngine {
                 });
             }
         }
+
+        // --- ДИАГНОСТИКА (ПЛАН 1588) ---
+        console.log(`%c[DrumAudit @ Bar ${this.epoch}] 2. Selection SUCCESS: Final kit composition:`, 'color: orange;', finalKit);
         
         const axiomResult = createDrumAxiom(finalKit, this.config.genre, this.config.mood, this.suiteDNA.baseTempo, this.random, drumRules);
+
+        // --- ДИАГНОСТИКА (ПЛАН 1588) ---
+        console.log(`%c[DrumAudit @ Bar ${this.epoch}] 3. Generation Result: Axiom created ${axiomResult.events.length} events. Types:`, 'color: orange;', axiomResult.events.map(e => e.type));
+        
         return axiomResult.events;
     }
 
@@ -831,46 +840,4 @@ export class FractalMusicEngine {
     
     return { events: allEvents, instrumentHints };
   }
-}
-
-
-
-// #ЗАЧЕМ: Эта функция создает мелодический мотив на основе текущего аккорда и настроения.
-// #ЧТО: Она выбирает ритмический паттерн, мелодический контур, а затем генерирует
-//      последовательность нот, двигаясь по заданной гамме.
-function createMelodyMotif(chord: GhostChord, mood: Mood, random: { next: () => number; nextInt: (max: number) => number; }, previousMotif?: FractalEvent[], registerHint?: 'low' | 'mid' | 'high', genre?: Genre): FractalEvent[] {
-    const motif: FractalEvent[] = [];
-    
-    // #ИСПРАВЛЕНО (ПЛАН 1562): Убрана логика "переиспользования" мотива.
-    // #ЗАЧЕМ: Это заставляет движок генерировать новую мелодию каждый такт, устраняя монотонность.
-    
-    const scale = getScaleForMood(mood, genre);
-    let baseOctave = 4;
-    if (registerHint === 'high') baseOctave = 5;
-    if (registerHint === 'low') baseOctave = 3;
-    
-    const rootNote = chord.rootNote + 12 * baseOctave;
-
-    const rhythmicPatterns = [[4, 4, 4, 4], [3, 1, 3, 1, 4, 4], [2, 2, 2, 2, 2, 2, 2, 2], [8, 8], [1,1,1,1, 1,1,1,1, 1,1,1,1, 1,1,1,1], [4, 2, 2, 4, 4]];
-    const durations = rhythmicPatterns[random.nextInt(rhythmicPatterns.length)];
-    const contours = [ [0, 2, 1, 3, 4, 1, 0], [0, 1, 2, 3, 4, 5, 6], [6, 5, 4, 3, 2, 1, 0], [0, 5, -2, 7, 3, 6, 1] ];
-    const contour = contours[random.nextInt(contours.length)];
-    
-    let currentTime = 0;
-    const baseNoteIndex = scale.findIndex(n => n % 12 === rootNote % 12);
-    if (baseNoteIndex === -1) return [];
-
-    for (let i = 0; i < durations.length; i++) {
-        const contourIndex = i % contour.length;
-        const noteIndex = (baseNoteIndex + (contour[contourIndex] || 0) + scale.length) % scale.length;
-        const note = scale[noteIndex];
-        
-        motif.push({
-            type: 'melody', note: note, duration: durations[i], time: currentTime,
-            weight: 0.7, 
-            technique: 'swell', dynamics: 'mf', phrasing: 'legato', params: {}
-        });
-        currentTime += durations[i];
-    }
-    return motif;
 }
