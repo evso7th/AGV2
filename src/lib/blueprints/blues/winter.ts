@@ -26,7 +26,7 @@ export const WinterBluesBlueprint: MusicBlueprint = {
                 },
                 instrumentRules: {
                     bass: { techniques: [{ value: 'long_notes', weight: 1.0 }] },
-                    melody: { source: 'blues_solo', density: { min: 0.5, max: 0.9 } }, // CHANGED from 'motif'
+                    melody: { source: 'blues_solo', density: { min: 0.5, max: 0.9 } }, // FIXED
                     drums: { pattern: 'composer', kitName: 'winter_blues_prolog1', density: { min: 0.1, max: 0.2 } }
                 },
                 bundles: [{ id: 'WINTER_INTRO_1', name: 'Icy Breath', duration: { percent: 100 }, characteristics: {}, phrases: {} }],
