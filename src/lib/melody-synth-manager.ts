@@ -115,6 +115,9 @@ export class MelodySynthManager {
     }
 
     public schedule(events: FractalEvent[], barStartTime: number, tempo: number, barCount: number, instrumentHint?: AccompanimentInstrument, composerControlsInstruments: boolean = true) {
+        // #ЗАЧЕМ: Диагностический лог для отслеживания потока событий (План 1595).
+        console.log(`%c[MelodyManagerV1 @ Bar ${barCount}] Received schedule command. Instrument Hint: ${instrumentHint}, Events: ${events.length}`, 'color: violet;');
+
         if (!this.isInitialized) return;
         
         const hint = (composerControlsInstruments && instrumentHint) ? instrumentHint : this.activeInstrumentName;

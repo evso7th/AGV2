@@ -89,6 +89,10 @@ export class MelodySynthManagerV2 {
 
     public async schedule(events: FractalEvent[], barStartTime: number, tempo: number, instrumentHint?: string) {
         
+        // #ЗАЧЕМ: Диагностический лог для отслеживания потока событий (План 1595).
+        const barCount = events.length > 0 ? (events[0].params as any)?.barCount || 'N/A' : 'N/A'; // Heuristic
+        console.log(`%c[MelodyManagerV2 @ Bar ${barCount}] Received schedule for ${this.partName}. Instrument Hint: ${instrumentHint}, Events: ${events.length}`, 'color: cyan;');
+
         const logPrefix = this.partName === 'melody' ? `%cMelodyInstrumentLog:` : `%cBassInstrumentLog:`;
         const logCss = this.partName === 'melody' ? 'color: #DA70D6' : 'color: #4169E1';
 
@@ -119,7 +123,7 @@ export class MelodySynthManagerV2 {
                     finalInstrumentHint = mappedName;
                 }
             } else { // Мелодия
-                const mappedName = V1_TO_V2_PRESET_MAP[instrumentHint];
+                const mappedName = V1_TO_V2_PRESET_MAP[instrumentHint as keyof typeof V1_TO_V2_PRESET_MAP];
                 if (mappedName) {
                     finalInstrumentHint = mappedName;
                 }
