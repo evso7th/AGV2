@@ -327,15 +327,11 @@ export class FractalMusicEngine {
         const kitName = drumRules?.kitName || `${this.config.genre}_${this.config.mood}`.toLowerCase();
         const overrides = drumRules?.kitOverrides;
 
-        // --- ДИАГНОСТИКА (ПЛАН 1588) ---
-        console.log(`%c[DrumAudit @ Bar ${this.epoch}] 1. Request: Looking for kitName: "${kitName}"`, 'color: orange;');
-        
         const baseKit = (DRUM_KITS[this.config.genre] as any)?.[kitName] ||
                         (DRUM_KITS[this.config.genre] as any)?.[this.config.mood] ||
                         DRUM_KITS.ambient!.intro!;
         
         if (!baseKit) {
-            console.error(`%c[DrumAudit @ Bar ${this.epoch}] 2. Selection FAILED: No baseKit found for "${kitName}" or fallbacks.`, 'color: red;');
             return [];
         }
     
@@ -379,14 +375,8 @@ export class FractalMusicEngine {
                 });
             }
         }
-
-        // --- ДИАГНОСТИКА (ПЛАН 1588) ---
-        console.log(`%c[DrumAudit @ Bar ${this.epoch}] 2. Selection SUCCESS: Final kit composition:`, 'color: orange;', finalKit);
         
         const axiomResult = createDrumAxiom(finalKit, this.config.genre, this.config.mood, this.suiteDNA.baseTempo, this.random, drumRules);
-
-        // --- ДИАГНОСТИКА (ПЛАН 1588) ---
-        console.log(`%c[DrumAudit @ Bar ${this.epoch}] 3. Generation Result: Axiom created ${axiomResult.events.length} events. Types:`, 'color: orange;', axiomResult.events.map(e => e.type));
         
         return axiomResult.events;
     }
@@ -660,48 +650,108 @@ export class FractalMusicEngine {
     return events;
   }
   
-    private selectUniqueBluesGuitarRiff(mood: Mood, excludeId?: string): BluesGuitarRiff | null {
-    const moodMap = {
-        light: ['joyful', 'epic', 'enthusiastic'],
-        dark: ['dark', 'melancholic', 'gloomy', 'anxious'],
-        neutral: ['calm', 'dreamy', 'contemplative']
-    };
+    private generateBluesMelodyChorus(
+        chorusChords: GhostChord[],
+        mood: Mood,
+        random: { next: () => number; nextInt: (max: number) => number; },
+        isSoloSection: boolean,
+        chorusIndex: number,
+        partId: string,
+        registerHint?: 'low' | 'mid' | 'high'
+    ): { events: FractalEvent[], log: string } {
 
-    let moodCategory: keyof typeof moodMap | null = null;
-    for (const category in moodMap) {
-        if ((moodMap[category as keyof typeof moodMap]).includes(mood)) {
-            moodCategory = category as keyof typeof moodMap;
-            break;
+        const finalEvents: FractalEvent[] = [];
+        const barDurationInBeats = 4.0;
+        const ticksPerBeat = 3;
+        let logMessage = "";
+        
+        let soloPlanName = this.suiteDNA?.soloPlanMap.get(partId);
+
+        if (!soloPlanName) {
+            console.error(`[FME] No solo plan found in DNA for partId: ${partId}. Returning empty.`);
+            return { events: [], log: `No solo plan for partId ${partId}`};
         }
+
+        logMessage = `[FME] Solo section ${partId}. Using plan "${soloPlanName}".`;
+        const soloPlan = BLUES_SOLO_PLANS[soloPlanName];
+
+        if (!soloPlan || chorusIndex >= soloPlan.choruses.length) {
+            logMessage += ` | Plan "${soloPlanName}" or chorus index ${chorusIndex} out of bounds.`;
+            console.warn(logMessage);
+            return { events: [], log: logMessage };
+        }
+
+        const currentChorusPlan = soloPlan.choruses[chorusIndex % soloPlan.choruses.length];
+        logMessage += ` | Assembling solo chorus ${chorusIndex + 1}.`;
+
+        for (let barIndex = 0; barIndex < 12; barIndex++) {
+            const lickIdWithModifiers = currentChorusPlan[barIndex];
+            const [lickId, ...modifiers] = lickIdWithModifiers.split('+');
+
+            const lickTemplate = BLUES_SOLO_LICKS[lickId];
+            const currentChord = chorusChords.find(c => c.bar % 12 === barIndex);
+
+            if (!lickTemplate || !currentChord) continue;
+
+            let phraseEvents: BluesSoloPhrase = JSON.parse(JSON.stringify(lickTemplate));
+
+            let octaveShift = 12 * (registerHint === 'high' ? 4 : 3);
+            if (modifiers.includes('oct') || modifiers.includes('hi')) {
+                octaveShift += 12;
+            }
+
+            if (modifiers.includes('long')) {
+                const lastNote = phraseEvents[phraseEvents.length - 1];
+                if (lastNote) {
+                    lastNote.d = (lastNote.d || 2) * 1.5;
+                }
+            }
+
+            if (modifiers.includes('var') && phraseEvents.length > 1) {
+                const i = random.nextInt(phraseEvents.length - 1);
+                const tempTime = phraseEvents[i].t;
+                phraseEvents[i].t = phraseEvents[i + 1].t;
+                phraseEvents[i + 1].t = tempTime;
+                phraseEvents.sort((a, b) => a.t - b.t);
+            }
+
+            for (const noteTemplate of phraseEvents) {
+                let finalMidiNote = currentChord.rootNote + (DEGREE_TO_SEMITONE[noteTemplate.deg as BluesRiffDegree] || 0) + octaveShift;
+                if (finalMidiNote > 84) finalMidiNote -= 12;
+                if (finalMidiNote < 52) finalMidiNote += 12;
+                
+                const event: FractalEvent = {
+                    type: 'melody',
+                    note: finalMidiNote,
+                    time: (barIndex * barDurationInBeats) + (noteTemplate.t / ticksPerBeat),
+                    duration: ((noteTemplate.d || 2) / ticksPerBeat),
+                    weight: 0.9,
+                    technique: (noteTemplate.tech as Technique) || 'pick',
+                    dynamics: 'f', phrasing: 'legato', params: {}
+                };
+                finalEvents.push(event);
+            }
+        }
+        
+        return { events: finalEvents, log: logMessage };
     }
 
-    if (!moodCategory) return null;
-
-    let suitableRiffs = BLUES_GUITAR_RIFFS.filter(m => 
-        m.moods.some(m_mood => moodMap[moodCategory!].includes(m_mood))
-    );
-    
-    if (suitableRiffs.length === 0) {
-        suitableRiffs = BLUES_GUITAR_RIFFS;
-    }
-    
-    let selectableRiffs = suitableRiffs.filter(m => m.id !== excludeId);
-    if (selectableRiffs.length === 0 && suitableRiffs.length > 0) {
-        selectableRiffs = suitableRiffs;
+    private generateBluesAccompanimentV2(chord: GhostChord, melodyEvents: FractalEvent[], drumEvents: FractalEvent[], random: { next: () => number, nextInt: (max: number) => number }): FractalEvent[] {
+        // #ИСПРАВЛЕНО (ПЛАН 1562): Логика "джема" полностью удалена.
+        // #ЗАЧЕМ: Предыдущая реализация была нестабильной и создавала хаос.
+        // #ЧТО: Теперь аккомпанемент просто играет поддерживающие аккорды, обеспечивая
+        //       надежную и предсказуемую гармоническую основу.
+        return createAccompanimentAxiom(chord, this.config.mood, this.config.genre, this.random, this.config.tempo, 'low');
     }
 
-    if (selectableRiffs.length === 0) return null;
-
-    return selectableRiffs[this.random.nextInt(selectableRiffs.length)];
-  }
 
   // --- Основная функция генерации на один такт ---
-  public generateOneBar(barDuration: number, navInfo: NavigationInfo, instrumentHints: InstrumentHints): { events: FractalEvent[], instrumentHints: InstrumentHints } {
+  private generateOneBar(barDuration: number, navInfo: NavigationInfo, instrumentHints: InstrumentHints): { events: FractalEvent[] } {
     const effectiveBar = this.epoch;
     
     if (!this.suiteDNA) {
         console.error(`[Engine] CRITICAL ERROR in bar ${this.epoch}: SuiteDNA is not initialized.`);
-        return { events: [], instrumentHints: {} };
+        return { events: [] };
     }
 
     const currentChord = this.suiteDNA.harmonyTrack.find(chord => 
@@ -710,19 +760,15 @@ export class FractalMusicEngine {
 
     if (!currentChord) {
         console.error(`[Engine] CRITICAL ERROR in bar ${this.epoch}: Could not find chord in 'Ghost Harmony'.`);
-        return { events: [], instrumentHints };
+        return { events: [] };
     }
     
-    // #ЗАЧЕМ: Реализует "Конвейер Грува".
-    // #ЧТО: Каждые 12 тактов для блюза выбирается СЛЕДУЮЩИЙ рифф из "перетасованного" списка.
     if (this.config.genre === 'blues' && this.epoch > 0 && this.epoch % 12 === 0) {
         this.drumRiffConveyorIndex = (this.drumRiffConveyorIndex + 1) % this.shuffledDrumRiffIndices.length;
         this.currentDrumRiffIndex = this.shuffledDrumRiffIndices[this.drumRiffConveyorIndex];
-        console.log(`%c[FME Blues] New 12-bar chorus. Switched to Drum Riff index: ${this.currentDrumRiffIndex}`, 'color: #00FFFF');
 
         this.bassRiffConveyorIndex = (this.bassRiffConveyorIndex + 1) % this.shuffledBassRiffIndices.length;
         this.currentBassRiffIndex = this.shuffledBassRiffIndices[this.bassRiffConveyorIndex];
-        console.log(`%c[FME Blues] New 12-bar chorus. Switched to Bass Riff index: ${this.currentBassRiffIndex}`, 'color: #00FFFF');
     }
 
 
@@ -754,7 +800,6 @@ export class FractalMusicEngine {
                     .map(e => ({ ...e, time: e.time - barStartBeat }));
             }
         } else if (melodyRules.source === 'motif') {
-            // #ИСПРАВЛЕНО (ПЛАН 1562): Мелодия генерируется КАЖДЫЙ такт.
             this.currentMelodyMotif = createAmbientMelodyMotif(currentChord, this.config.mood, this.random, this.currentMelodyMotif, melodyRules.register?.preferred, this.config.genre);
             melodyEvents = this.currentMelodyMotif;
         }
@@ -763,8 +808,6 @@ export class FractalMusicEngine {
 
     let accompEvents: FractalEvent[] = [];
     if (navInfo.currentPart.layers.accompaniment) {
-        // #ЗАЧЕМ: Упрощение. Удалена сложная логика "джема".
-        // #ЧТО: Аккомпанемент теперь всегда генерирует базовую гармоническую поддержку.
         const registerHint = navInfo.currentPart.instrumentRules?.accompaniment?.register?.preferred;
         accompEvents = createAccompanimentAxiom(currentChord, this.config.mood, this.config.genre, this.random, this.config.tempo, registerHint);
     }
@@ -838,6 +881,6 @@ export class FractalMusicEngine {
         allEvents.push(...drumFill, ...bassFill.events);
     }
     
-    return { events: allEvents, instrumentHints };
+    return { events: allEvents };
   }
 }

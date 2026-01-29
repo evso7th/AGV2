@@ -1,0 +1,1504 @@
+Blues Scales for Piano
+Adding what sometimes is referred to as a “blue note” to the regular Pentatonic Scale, results in the Blues Scale. These scales are for obvious reasons perfect when playing blues on the piano. The “Minor Blues Scale” is slightly more common than “Major Blues Scale”, and is sometimes referred to simple as the “Blues Scale”.
+
+The blues originates from a mix of different sources in music, so there is no satisfying explanation in theoretical terms about this scale. But the most important thing is of course how it sounds when you are using it. Try these scales below and you will hear the blues!
+
+Minor Blues Scales
+Here are pictures and notes of the Minor Pentatonic Blues scales. See also Major Blues Scales.
+
+Cm Pentatonic Blues
+C Minor Pentatonic Blues scale diagram
+Notes: C, Eb, F, F#, G, Bb, C
+
+C#m / Dbm Blues
+C# Minor Pentatonic Blues scale diagram
+Notes: C#, E, F#, G, G#, B, C#
+
+Dm Blues
+D Minor Pentatonic Blues scale diagram
+Notes: D, F, G, G#, A, C, D
+
+D#m / Ebm Blues
+D# Minor Pentatonic Blues scale diagram
+Notes: D#, F#, G#, A, A#, C#, D#
+
+Em Blues
+E Minor Pentatonic Blues scale diagram
+Notes: E, G, A, A#, B, D, E
+
+Fm Blues
+F Minor Pentatonic Blues scale diagram
+Notes: F, Ab, Bb, B, C, Eb, F
+
+F#m / Gbm Blues
+F# Minor Pentatonic Blues scale diagram
+Notes: F#, A, B, C, C#, E, F#
+
+Gm Blues
+G Minor Pentatonic Blues scale diagram
+Notes: G, Bb, C, Db, D, F, G
+
+G#m / Abm Blues
+G# Minor Pentatonic Blues scale diagram
+Notes: G#, B, C#, D, D#, F#, G#
+
+Am Blues
+A Minor Pentatonic Blues scale diagram
+Notes: A, C, D, D#, E, G, A
+
+A#m / Bbm Blues
+A# Minor Pentatonic Blues scale diagram
+Notes: A#, C#, D#, E, F, G#, A#
+
+Bm Blues
+B Minor Pentatonic Blues scale diagram
+Notes: B, D, E, F, F#, A, B
+
+Sceenshot posterMinor Blues scales digital poster
+
+This digital poster includes all Minor Blues scales with diagrams and note letters visible. The digital poster is in pdf A4 format.
+
+See Printable scales digital posters for more info
+
+
+
+Minor Pentatonic Blues Scales overview
+C: C, Eb, F, F#, G, Bb, C
+C#/Db: C#, E, F#, G, G#, B, C# / Db, E, Gb, G, Ab, B, Db
+D: D, F, G, G#, A, C, D
+D#/Eb: D#, F#, G#, A, A#, C#, D# / Eb, Gb, Ab, A, Bb, Db, Eb
+E: E, G, A, A#, B, D, E
+F: F, Ab, Bb, B, C, Eb, F
+F#/Gb: F#, A, B, C, C#, E, F# / Gb, A, B, C, Db, E, Gb
+G: G, Bb, C, Db, D, F, G
+G#/Ab: G#, B, C#, D, D#, F#, G# / Ab, B, Db, D, Eb, Gb, Ab
+A: A, C, D, D#, E, G, A
+A#/Bb: A#, C#, D#, E, F, G#, A# / Bb, Db, Eb, E, F, Ab, Bb
+B: B, D, E, F, F#, A, B
+
+Intervals and steps
+Intervals: 1, b3, 4, b5, 5, b7
+Semitones: 3 - 2 - 1 - 1 - 3 - 2
+Formula: Whole and a half, Whole, Half, Half, Whole and a half, Whole
+
+Theory and tips for improvisation
+The Pentatonic Blues Scale is built on three dominant chords. In the case of C Pentatonic, the three chords are C7 – F7 – G7. We can see the relationship when comparing the notes in the scale:
+
+C, Eb, F, F#, G, Bb
+with the notes in the three chords:
+
+(C7) C, E, G, Bb – (F7) F A C Eb – (G7) G B D F
+There is a close correlation as you can see.
+
+So how can you improvise on the piano with blues scales? By learning these scales you will gain great tools for improvising in the musical style of blues (these scales can also be used in jazz improvisation). A tip is to use the left hand for a chord and play notes from the scale with the right. You can, for example, combine the C Blues Scale with C7, F7 and G7 chords. Or, in the same way, the G Blues Scale with the chords G7, C7 and D7. See jam tracks below.
+
+To visualize progressions, it is helpful to organize them in a structure like this:
+
+12-bar blues progression with I-IV-V
+C7
+I
+— C Blues —
+F7
+IV
+— C Blues —
+C7
+I
+— C Blues —
+C7
+I
+— C Blues —
+F7
+IV
+— C Blues —
+F7
+VI
+— C Blues —
+C7
+I
+— C Blues —
+C7
+I
+— C Blues —
+G7
+V
+— C Blues —
+F7
+IV
+— C Blues —
+C7
+I
+— C Blues —
+G7
+I
+— C Blues —
+This 12-bar progression uses the typical I-IV-V (with a quick change in the second bar and a turnaround in the twelfth). The chords, the Roman numerals as well as suggestions for scales to use over the chords are indicated. As said earlier, you can highlight the chords in a higher degree by changing scales with the chord changes (i.e. using F Blues Scale over F7 and using G Blues Scale over G7).
+
+You can improvise blues in minor keys as well. A nice combination is the chords Am7, Dm7 and E7 together with the Am Pentatonic Blues Scale. Further reading: 12-bar blues.
+
+Major Blues Scales
+Here are pictures and notes of the Major Blues Scale (a.k.a. Major Pentatonic Blues) in all keys. See also Mixo-blues Scales.
+
+C Blues
+C Major Pentatonic Blues diagram
+Notes: C, D, Eb, E, G, A, C
+
+C# / Db Blues
+C# Major Pentatonic Blues diagram
+Notes: C#, D#, E, F, G#, A#, C#
+
+D Blues
+D Major Pentatonic Blues diagram
+Notes: D, E, F, F#, A, B, D
+
+D# / Eb Blues
+D# Major Pentatonic Blues diagram
+Notes: D#, F, F#, G, A#, C, D#
+
+E Blues
+E Major Pentatonic Blues diagram
+Notes: E, F#, G, G#, B, C#, E
+
+F Blues
+F Major Pentatonic Blues diagram
+Notes: F, G, Ab, A, C, D, F
+
+F# / Gb Blues
+F# Major Pentatonic Blues diagram
+Notes: F#, G#, A, A#, C#, D#, F#
+
+G Blues
+G Pentatonic Blues diagram
+Notes: G, A, Bb, B, D, E, G
+
+G# / Ab Blues
+G# Major Pentatonic Blues diagram
+Notes: G#, A#, B, C, D#, F, G#
+
+A Blues
+A Major Pentatonic Blues diagram
+Notes: A, B, C, C#, E, F#, A
+
+A# / Bb Blues
+A# Major Pentatonic Blues diagram
+Notes: A#, C, C#, D, F, G, A#
+
+B Blues
+B Major Pentatonic Blues diagram
+Notes: B, C#, D, D#, F#, G#, B
+
+Sceenshot posterMajor Blues scales digital poster
+
+This digital poster includes all Major Blues scales with diagrams and note letters visible. The digital poster is in pdf A4 format.
+
+See Printable scales digital posters for more info
+
+ 
+
+Major Pentatonic Blues Scales overview
+C: C, D, Eb, E, G, A, C
+C#/Db: C#, D#, E, F, G#, A#, C# / Db, Eb, E, F, Ab, Bb, Db
+D: D, E, F, F#, A, B, D
+D#/Eb: D#, F, F#, G, A#, C, D# / Eb, F, Gb, G, Bb, C, Eb
+E: E, F#, G, G#, B, C#, E
+F: F, G, Ab, A, C, D, F
+F#/Gb: F#, G#, A, A#, C#, D#, F# / Gb, Ab, A, Bb, Db, Eb, Gb
+G: G, A, Bb, B, D, E, G
+G#/Ab: G#, A#, B, C, D#, F, G# / Ab, Bb, B, C, Eb, F, Ab
+A: A, B, C, C#, E, F#, A
+A#/Bb: A#, C, C#, D, F, G, A# / Bb, C, Db, D, F, G, Bb
+B: B, C#, D, D#, F#, G#, B
+
+Intervals and steps
+Intervals: 1, 2, b3, 3, 5, 6
+Semitones: 2 - 1 - 1 - 3 - 2 - 3
+Formula: Whole, Half, Half, Whole and a half, Whole, Whole and a half
+
+Dorian with blue notes
+Another choice for blues is the Dorian Add 5 Scale, which can be seen as a hybrid combining the Pentatonic Blues scales based on the Dorian mode.
+
+Dorian add 5 Scale
+Dorian add 5 can be seen as a hybrid scale between the Major and Minor Blues Pentatonic and based on the Dorian mode. The scale is identical with the Dorian apart from the added flat fifth. It is an eight-note scale and must not be confused with the Dorian b5.
+
+Whereas the Dorian mode is associated with jazz, the Dorian add 5 will deliver a bluesy sound but not as distinct as for the Blues Scale and with a slight Oriental character. It is suitable to use in refined blues and jazz-blues styles.
+
+C
+C Dorian add5 scale diagram
+Notes: C, D, Eb, F, Gb, G, A, Bb, C
+
+C# / Db
+C# Dorian add5 scale diagram
+Notes: C#, D#, E, F#, G, G#, A#, B, C#
+
+D
+D Dorian add5 scale diagram
+Notes: D, E, F, G, Ab, A, B, C, D
+
+D# /Eb
+D# Dorian add5 scale diagram
+Notes: D#, F, F#, G#, A, A#, C, C#, D#
+
+E
+E Dorian add5 scale diagram
+Notes: E, F#, G, A, Bb, B, C#, D, E
+
+F
+F Dorian add5 scale diagram
+Notes: F, G, Ab, Bb, B, C, D, Eb, F
+
+F# / Gb
+F# Dorian add5 scale diagram
+Notes: F#, G#, A, B, C, C#, D#, E, F#
+
+G
+G Dorian add5 scale diagram
+Notes: G, A, Bb, C, Db, D, E, F, G
+
+G# / Ab
+G# Dorian add5 scale diagram
+Notes: G#, A#, B, C#, D, D#, F, F#, G#
+
+A
+A Dorian add5 scale diagram
+Notes: A, B, C, D, Eb, E, F#, G, A
+
+A# / Bb
+A# Dorian add5 scale diagram
+Notes: Bb, C, Db, Eb, E, F, G, Ab, Bb
+
+B
+B Dorian add5 scale diagram
+Notes: B, C#, D, E, F, F#, G#, A, B
+
+Dorian add 5 Scales overview
+C: C, D, Eb, F, Gb, G, A, Bb, C
+C#/Db: C#, D#, E, F#, G, G#, A#, B, C#
+D: D, E, F, G, Ab, A, B, C, D
+D#/Eb: Eb (F), F, Gb, Ab, A, Bb, C, Db, Eb
+E: E, F#, G, A, Bb, B, C#, D, E
+F: F, G, Ab, Bb, B, C, D, Eb, F
+F#/Gb: F#, G#, A, B, C, C#, D#, E, F#
+G: G, A, Bb, C, Db, D, E, F, G
+G#/Ab: G#, A#, B, C#, D, D#, E# (F), F#, G#
+A: A, B, C, D, Eb, E, F#, G, A
+A#/Bb: Bb, C, Db, Eb, E, F, G, Ab, Bb
+B: B, C#, D, E, F, F#, G#, A, B
+
+Intervals: 1, 2, b3, 4, b5, 5, 6, b7
+Semitones: 2 - 1 - 2 - 1 - 1 - 2 - 1 - 2
+Formula: Whole, Half, Whole, Half, Half, Whole, Half, Whole
+
+Piano Pentatonic Scales
+The Pentatonic Scale is frequently used in lots of popular music styles. There is both Pentatonic Major and Minor – the Minor is slightly more often used.
+
+Note that A Minor Pentatonic has identical notes with C Major Pentatonic but in different order; D Minor Pentatonic has the same notes as F Major Pentatonic and so on (a complete list can be seen below). Knowing this will make it easier for you to memorize the scales.
+
+Minor Pentatonic Scales
+Compared to the Natural Minor, the Minor Pentatonic omits the half step intervals (the 2 and b6 degrees). Here are pictures and notes of the Minor Pentatonic scales. These scales are very common in many styles, not least in pop and rock music. As well in Japanese folk music as the Minyo Scale (Min'yô). See also Major Pentatonic Scales.
+
+Cm
+C Pentatonic minor scale diagram
+Notes: C, Eb, F, G, Bb, C
+Fingering (LH): 1, 3, 2, 1, 2, 1
+Fingering (RH): 1, 2, 3, 1, 2, 3
+
+C#m / Dbm
+C# Pentatonic minor scale diagram
+Notes: C#, E, F#, G#, B, C#
+Fingering (LH): 2, 1, 3, 2, 1, 2
+Fingering (RH): 2, 1, 2, 3, 1, 2
+
+Dm
+D Pentatonic minor scale diagram
+Notes: D, F, G, A, C, D
+Fingering (LH): 3, 2, 1, 3, 2, 1
+Fingering (RH): 1, 2, 3, 1, 2, 3
+
+D#m / Ebm
+D# Pentatonic minor scale diagram
+Notes: D#, F#, G#, A#, C#, D#
+Fingering (LH): 3, 2, 1, 3, 2, 1
+Fingering (RH): 1, 2, 3, 1, 2, 3
+
+Em
+E Pentatonic minor scale diagram
+Notes: E, G, A, B, D, E
+Fingering (LH): 3, 2, 1, 3, 2, 1
+Fingering (RH): 1, 2, 3, 1, 2, 3
+
+Fm
+F Pentatonic minor scale diagram
+Notes: F, Ab, Bb, C, Eb, F
+Fingering (LH): 4, 3, 2, 1, 2, 1
+Fingering (RH): 1, 2, 3, 1, 2, 3
+
+F#m / Gbm
+F# Pentatonic minor scale diagram
+Notes: F#, A, B, C#, E, F#
+Fingering (LH): 3, 2, 1, 2, 1, 3
+Fingering (RH): 2, 1, 2, 3, 1, 2
+
+Gm
+G Pentatonic minor scale diagram
+Notes: G, Bb, C, D, F, G
+Fingering (LH): 1, 3, 2, 1, 2, 1
+Fingering (RH): 1, 2, 1, 2, 3, 1
+
+G#m / Abm
+G# Pentatonic minor scale diagram
+Notes: G#, B, C#, D#, F#, G#
+Fingering (LH): 2, 1, 5, 4, 3, 2
+Fingering (RH): 2, 1, 2, 3, 4, 5
+
+Am
+A Pentatonic minor scale diagram
+Notes: A, C, D, E, G, A
+Fingering (LH): 3, 2, 1, 3, 2, 1
+Fingering (RH): 1, 2, 3, 1, 2, 3
+
+A#m / Bbm
+A# Pentatonic minor scale diagram
+Notes: Bb, Db, Eb, F, Ab, Bb
+Fingering (LH): 4, 3, 2, 1, 4, 3
+Fingering (RH): 2, 3, 4, 1, 2, 3
+
+Bm
+B Pentatonic minor scale diagram
+Notes: B, D, E, F#, A, B
+Fingering (LH): 3, 2, 1, 3, 2, 1
+Fingering (RH): 2, 1, 2, 3, 1, 2
+
+Sceenshot posterPentatonic scales digital poster
+
+The hi-res digital poster includes all Minor and Major Pentatonic scales, as well as Hybrid and Dominant Pentatonic scales. Diagrams and note letters are visible. The digital poster is in pdf A3 format.
+
+See Printable scales - digital posters for more info
+
+Pentatonic Minor Scales overview
+C: C, Eb, F, G, Bb, C
+C#/Db: C#, E, F#, G#, B, C# / Db, E, Gb, Ab, B, Db
+D: D, F, G, A, C, D
+D#/Eb: D#, F#, G#, A#, C#, D# / Eb, Gb, Ab, Bb, Db, Eb
+E: E, G, A, B, D, E
+F: F, Ab, Bb, C, Eb, F
+F#/Gb: F#, A, B, C#, E, F# / Gb, A, B, Db, E, Gb
+G: G, Bb, C, D, F, G
+G#/Ab: G#, B, C#, D#, F#, G# / Ab, B, Db, Eb, Gb, Ab
+A: A, C, D, E, G, A
+A#/Bb: A#, C#, D#, E# (F), G#, A# / Bb, Db, Eb, F, Ab, Bb
+B: B, D, E, F#, A, B
+
+Intervals: 1, b3, 4, 5, b7
+Semitones: 3 - 2 - 2 - 3 - 2
+Formula: Whole and a half, Whole, Whole, Whole and a half, Whole
+
+Minor Pentatonic scales with note letters (sheet music PDF)
+
+Piano backing tracks for Minor Pentatonic scales
+Improvise with pentatonic scales over music tracks with the piano part removed.
+
+Major Pentatonic Scales
+This five-note scale is similar to the seven-note Major Scale, but without the 4th and 7th degrees (the semi-tone intervals, which are the least consonant). The missing leading tone (see Scale degrees) in the Major Pentatonic scales makes their tonality a bit vague. Major Pentatonic scales are especially common in folk music, country and gospel. Here are pictures and notes of the Major Pentatonic scale.
+
+C
+C Pentatonic major scale diagram
+Notes: C, D, E, G, A, C
+Fingering (LH): 3, 2, 1, 2, 1, 3
+Fingering (RH): 1, 2, 3, 1, 2, 3
+
+C# / Db
+C# Pentatonic major scale diagram
+Notes: C#, D#, F, G#, A#, C#
+Fingering (LH): 3, 2, 1, 4, 3, 2
+Fingering (RH): 2, 3, 1, 2, 3, 4
+
+D
+D Pentatonic major scale diagram
+Notes: D, E, F#, A, B, D
+Fingering (LH): 2, 1, 3, 2, 1, 2
+Fingering (RH): 1, 2, 3, 1, 2, 4
+
+D# / Eb
+D# Pentatonic major scale diagram
+Notes: D#, F, G, A#, C, D#
+Fingering (LH): 3, 2, 1, 2, 1, 3
+Fingering (RH): 2, 1, 2, 3, 1, 2
+
+E
+E Pentatonic major scale diagram
+Notes: E, F#, G#, B, C#, E
+Fingering (LH): 4, 3, 2, 1, 2, 1
+Fingering (RH): 1, 2, 3, 1, 2, 3
+
+F
+F Pentatonic major scale diagram
+Notes: F, G, A, C, D, F
+Fingering (LH): 3, 2, 1, 2, 1, 3
+Fingering (RH): 1, 2, 3, 1, 2, 4
+
+F# / Gb
+F# Pentatonic major scale diagram
+Notes: F#, G#, A#, C#, D#, F#
+Fingering (LH): 3, 2, 1, 3, 2, 1
+Fingering (RH): 1, 2, 3, 1, 2, 3
+
+G
+G Pentatonic major scale diagram
+Notes: G, A, B, D, E, G
+Fingering (LH): 3, 2, 1, 2, 1, 3
+Fingering (RH): 1, 2, 3, 1, 2, 4
+
+G# / Ab
+G# Pentatonic major scale diagram
+Notes: G#, A#, C, D#, F, G#
+Fingering (LH): 3, 2, 1, 2, 1, 3
+Fingering (RH): 2, 3, 1, 2, 1, 2
+
+A
+A Pentatonic major scale diagram
+Notes: A, B, C#, E, F#, A
+Fingering (LH): 2, 1, 2, 1, 3, 2
+Fingering (RH): 1, 2, 3, 1, 2, 1
+
+A# / Bb
+A# Pentatonic major scale diagram
+Notes: A#, C, D, F, G, A#
+Fingering (LH): 3, 2, 1, 2, 1, 3
+Fingering (RH): 3, 1, 2, 1, 2, 3
+
+B
+B Pentatonic major scale diagram
+Notes: B, C#, D#, F#, G#, B
+Fingering (LH): 1, 5, 4, 3, 2, 1
+Fingering (RH): 1, 2, 3, 4, 5, 1
+
+Pentatonic Major Scales overview
+C: C, D, E, G, A, C
+C#/Db: C#, D#, F, G#, A#, C# / Db, Eb, F, Ab, Bb, Db
+D: D, E, F#, A, B, D
+D#/Eb: D#, F, G, A#, C, D# / Eb, F, G, Bb, C, Eb
+E: E, F#, G#, B, C#, E
+F: F, G, A, C, D, F
+F#/Gb: F#, G#, A#, C#, D#, F# / Gb, Ab, Bb, Db, Eb, Gb
+G: G, A, B, D, E, G
+G#/Ab: G#, A#, C, D#, F, G# / Ab, Bb, C, Eb, F, Ab
+A: A, B, C#, E, F#, A
+A#/Bb: A#, C, D, F, G, A# / Bb, C, D, F, G, Bb
+B: B, C#, D#, F#, G#, B
+
+Intervals: 1, 2, 3, 5, 6
+Semitones: 2 - 2 - 3 - 2 - 3
+Formula: Whole, Whole, Whole and a half, Whole, Whole and a half
+
+Major Pentatonic scales with note letters (sheet music PDF)
+
+The Minor and Major Pentatonic scales in musical notation are available in the member area.
+The scales (without note names and including the Dominant Pentatonic) in all keys can be downloaded as PDF-files.
+
+Relative keys – Minor and Major Pentatonic
+The same notes can be found in Minor and Major Pentatonic scales:
+
+C Minor – Eb Major
+C# Minor – E Major
+D Minor – F Major
+D# Minor – F# Major
+E Minor – G Major
+F Minor – G# Major
+F# Minor – A Major
+G Minor – A# Major
+G# Minor – B Major
+A Minor – C Major
+A# Minor – C# Major
+B Minor – D Major
+The relationship is the same as for the Natural Minor and regular Major.
+
+Variants of the scale
+Besides the two standard version of the Pentatonic Scale there are some variants:
+
+Pentatonic Dominant (including the b7)
+Major Pentatonic add4 (including the 4th)
+Minor Pentatonic add2 (including the 2nd)
+
+The Pentatonic scales can also be blended into the Pentatonic Hybrid.
+
+Pentatonic Modes
+There are also some modes of the Pentatonic Scale:
+
+Dorian Pentatonic (R, 2, b3, 5, 6)
+Lydian Pentatonic (R, 3, #4, 5, 7)
+Mixolydian Pentatonic (R, 3, 4, 5, b7)
+Locrian Pentatonic (R, b3, 4, b5, b7)
+
+These are all based on the Minor Pentatonic. Note that Mixolydian Pentatonic is identical with the Pentatonic Dominant.
+
+Improvising with the Pentatonic Scale
+The Pentatonic Scale is a flexible scale for improvising and apart from the standard way, which is combining a scale with chords in the same key, you could also be outside the key. By “being outside the key” means that you don't necessarily play chords and scale that match considering notes. For example, you can play G Major Pentatonic over a C Major chord or E Minor Pentatonic over an A Minor chord.
+
+hat is a scale? The easiest way to explain scales is as a collection of notes that because of a musical reason have been grouped together. The benefit of knowing scales in music is that you know how to orient yourself among notes. This will among other things give you a foundation for improvising – notes in a particular scale always sound good played together – and composing.
+
+You don't need to read music to be able to learn scales, but it is always good to be acquainted with note reading. Neither do you have to know a lot of chords, but if you already know some chords the scales will be much easier to relate to and subsequently memorize. And by knowing scales you will be able to learn chord easier – chords derive from scales.
+
+Fundamentals
+A scale often consists of seven notes – this is the case of the Major and Minor scales. Scales repeat across octaves, which means the pattern of notes is the same regardless if you play a scale on the left, the middle or the right side of the keyboard.
+
+On a full-scale piano, there is a total of 88 keys, but there are only twelve different tones which are repeated from low to high tones, from the base to the treble.
+
+Keyboard illustrated with notes
+On the illustration above, you can see twelve tones that make one octave and these notes also form the Chromatic Scale. C# is sometimes written Db, D# is sometimes written Eb and so on. These are called enharmonic notes and how they are written depends on the key they belong to. The symbols after the letter (accidentals) are known as sharps and flats. C# is spelled “C sharp” and Db is spelled “D flat”. This is of course only theory and don't affect the sound, but is nevertheless good to know about.
+
+We can use the G Major Scale as a first example:
+G scale
+The notes are G - A - B - C - D - E - F# - G.
+
+And now look at the F Major Scale:
+F scale
+The notes are F - G - A - Bb - C - D - E - F.
+
+You have seen two different scales where sharps (#) and flats (b) are used. The rule that decides if the note is raised or lowered depends on the intervals between notes in the scale. In the examples above, F# is a raised F and Bb is a lowered B.
+
+On some occasions you may observe two sharps or flats in adjunction to a described note in a piano score. These are called double-sharps and double-flats and need a theoretical explanation. If we take the key of D# as an example. This key includes both D# and D, but to make it functional in a score with a key signature it must be D# and C##; otherwise, you would be lured to play a D# instead of a D.
+
+This affects how notes in scales are written out. For example, the C# Major Scale is correctly written: C#, D#, E#, F#, G#, A#, B#. Notice that B# is written instead of C. B# does not exist in reality and the note is played as a C. (There are many beginners using the site and mentions such as B# would clearly confuse some, therefore C is sometimes written instead of B# to avoid confusing whereas the formally correct notes are presented below in the scale overviews.)
+
+See all double-sharps and double-flats listed in Appendix A.
+
+How to Learn and Memorize Major Scales (theory lesson in PDF)
+All lessons are available in the member area.
+
+Changing keys
+Music pieces are written in a certain key, like “Brandenburg Concerto No 1 in F Major” by J.S. Bach. It would be feasible to re-arrange this concerto to another key, like for example D Major. It would musically still be the same to a large extent, but the timbre would be different. See also The difference between scales and keys.
+
+Relative and parallel keys
+Certain major and minor scales are related by sharing the same notes. C Major and A Minor, for example, inherit the same notes (they differ by starting on different notes and therefore also differ in intervals). This relationship is named called relative keys, which is not the same as parallel keys. C Major and C Minor are an example of the latter.
+
+Tonality
+Most songs start and end with the same tone which tends to be the first note, the tonic, in the scale. Then you play notes from a scale, you can hear that the music seems to gravitate towards the first note, it is like some tension is left until you return to the first note. This phenomenon is called tonality.
+
+Scale degrees
+There is also something called scale degrees that refers to the relations of every particular note in the scale on a general basis. For example, the Major Scale can be written 1, 2, 3, 4, 5, 6, 7 and the Natural Minor can be written 1, 2, b3, 4, 5, b6, b7, referring to the degrees.
+
+The piano scale degrees tool can be used as an interactive learning tool and dictionary.
+
+Scale degrees can also be described by their functions and with Roman numerals as seen below:
+
+Tonic (I): the first note of a scale which the scale is based upon, sometimes called the root.
+Super tonic (II): second scale degree, one step above the tonic.
+Mediant (III): third scale degree with a position halfway between the tonic and the dominant.
+Subdominant (IV): fourth scale degree, a fifth below the tonic and next to the dominant.
+Dominant (V): fifth scale degree.
+Submediant (VI): sixth scale degree and sometimes called supermediant.
+Subtonic (VII): seventh scale degree which is also referred to as leading tone because it musically “leads” back to the tonic by a half step interval. Whereas the leading tone applies in major scales and harmonic/melodic minor does the subtonic (bVII)m with flatted seventh appear in the Natural Minor.
+
+Whereas seven-note scales include all of these scale degrees, five-note scales lack two of them, which affects the sound character.
+
+Why should you learn these terms? One great thing about knowing them is that you can have a better understanding of scales and chords in an abstract way. For one of many reasons, this will help you transposing music to another key and give you hints while you are composing music.
+
+To give a concrete example: in blues you frequently use the tonic (I), subdominant (IV) and the dominant (V) in regard of chord progressions. By knowing this theoretical relationship, you can better understand how to play blues in different keys.
+
+Steps and intervals
+A way to describe the structure of a scale is by steps, which refer to the distance between notes. The most used terms are half steps and whole steps. Between C and C# there is one half step, and between C and D there is one whole step.
+
+In the scale overviews on this site you will also see “Semitones” (equivalent to half steps) and “formulas” used to describe the scales. It is mainly the same thing only described in a different way. For the Major Scale this will look like: 2 - 2 - 1 - 2 - 2 - 2 - 1 (semitones) or Whole, Whole, Half, Whole, Whole, Whole, Half (formula).
+
+See all steps listed in Appendix B.
+
+Closely related to steps are intervals, which is explained in a separate section.
+
+Order
+When a scale is presented, the tones are ordered from the root note followed by the tones that comes in order. This doesn't mean that scales should be played in a certain order. When practicing, yes, when improvising, no.
+
+Since the tones in scales are not played simultaneously where is no need for inversions of piano scales as sometimes is the case concerning chords.
+
+Tones and notes
+The words tones and notes are sometimes treated as synonyms, but they can be distinguished. The sound in music is made from tones. A note rather describes the tone in matters of pitch and duration. Notes are used as symbols in sheet music for describing how the music should be played in measurable ways, such as a whole note being played be the C key on the fifth octave, a quarter note being played on the E key in the sixth octave.
+
+Related to tones and notes are pitch, duration and dynamics. Pitch describes the highness or lowness of a tone, duration describes the length of a tone and dynamics are the loudness or softness of a tone.
+
+Continue and learn more about basic piano terms
+
+Appendix A
+All double-sharps and double-flats and the notes they represent.
+C##: the same as D natural.
+D##: the same as E.
+E#: the same as F.
+F##: the same as G.
+G##: the same as A.
+A##: the same as B.
+B#: the same as C.
+Cb: the same as B.
+Dbb: the same as C.
+Ebb: the same as D.
+Fb: the same as E.
+Gbb: the same as F.
+Abb: the same as G.
+Bbb: the same as A.
+
+The blues scale formula is a fundamental concept every piano player should know. This sassy scale lets you riff, solo, and improvise as you play your favorite rock or blues songs! 
+
+The major blues scale formula is 1 – 2 – ♭3 – ♮3 – 5 – 6. Which means the C major blues scale consists of the notes C – D – E♭ – E♮ – G – A. The minor blues scale formula is 1 – ♭3 – 4 – ♭5 – 5 – ♭7, so the C minor blues scale has the notes C – E♭ – F – G♭ – G – B♭.
+
+In this lesson, we’ll explain the theory behind the blues scale formula and show you all the major and minor blues scales in all 12 keys.
+
+Table of Contents:
+
+Major Blues Scale Formula & Theory
+Every Major Blues Scale
+Other Ways to Understand the Major Blues Scale
+Minor Blues Scale Formula & Theory
+Every Minor Blues Scale
+Other Ways to Understand the Minor Blues Scale
+More About Blues Scales
+🎹 Sign up for a FREE Blues Bootcamp
+Love the Blues? Enter your email and you’ll get 4 FREE Play-along lessons to get you started with this amazing style.
+
+Email Address...
+start for free
+Major Blues Scale Formula & Theory
+The major blues scale formula is 1 – 2 – ♭3 – ♮3 – 5 – 6. Which means the C major blues scale consists of the notes C – D – E♭ – E♮ – G – A. 
+
+Every Major Blues Scale
+Here are all the major blues scales in all 12 keys:
+
+A-Flat Major Blues
+Notes: A♭-B♭-C♭-C-E♭-F-A♭
+
+A-flat major blues scale with keys highlighted in red.
+B-Flat Major Blues
+Notes: B♭-C-D♭-D-F-G-B♭
+
+B-flat major blues scale with keys highlighted in red.
+C Major Blues
+Notes: C-D-E♭-E-G-A-C
+
+D major blues scale with keys highlighted in red.
+D Major Blues
+Notes: D-E-F-F♯-A-B-D
+
+A-flat major blues scale with keys highlighted in red.
+E Major Blues
+Notes: E-F♯-G-G♯-B-C♯-E
+
+E major blues scale with keys highlighted in red.
+F-Sharp / G-Flat Major Blues
+Notes: F♯-G♯-A-A♯-C♯-D♯-F♯
+
+F-sharp major blues scale with keys highlighted in red.
+A Major Blues
+Notes: A-B-C-C♯-E-F♯-A
+
+A major blues scale with keys highlighted in red.
+B major Blues
+Notes: B-C♯-D-D♯-F♯-G♯-B
+
+B major blues scale with keys highlighted in red.
+C-Sharp / D-Flat Major Blues
+Notes: D♭-E♭-F♭-F-A♭-B♭-D♭
+
+D-flat major blues scale with keys highlighted in red.
+E-Flat Major Blues
+Notes: E♭-F-G♭-G-B♭-C-E♭
+
+E-flat major blues scale with keys highlighted in red.
+F Major Blues
+Notes: F-G-A♭-A-C-D-F
+
+F major blues scale with keys highlighted in red.
+G Major Blues
+Notes: G-A-B♭-B-D-E-G
+
+G major blues scale with keys highlighted in red.
+Other Ways to Understand the Major Blues Scale
+Another way to remember the major blues scale formula is as a series of steps: whole step – half step – half step – minor 3rd (3 half steps) – whole step.
+
+Blues scale formula. Keyboard diagram of a C major blues scale with keys highlighted in red and labelled and whole, half, and intervals labelled.
+If you know the major pentatonic scale formula, you can also think of the major blues scale formula as the same thing except we flat the third and repeat it as a natural note. The flatted third is our blue note.
+
+Major pentatonic scale formula and major blues scale formula in numbered form with flat 3rd in blue.
+🎹 Your Go-To Place for All Things Piano
+Get exclusive interviews, fascinating articles, and inspiring lessons delivered straight to your inbox.
+
+
+By signing up you’ll also receive our ongoing free lessons and special offers. Don’t worry, we value your privacy and you can unsubscribe at any time.
+Minor Blues Scale Formula & Theory
+The minor blues scale is more common than the major blues. Chances are, if someone says “play a blues scale,” what they’re referring to is the minor blues scale.
+
+The minor blues scale formula is 1 – ♭3 – 4 – ♭5 – 5 – ♭7, so the C minor blues scale has the notes C -E♭ – F – G♭ – G – B♭. (Note that the blues scale formula is based on the major scale.)
+
+Every Minor Blues Scale
+Here are all the minor blues scales in all 12 keys:
+
+A-Flat Minor Blues
+Notes: A♭-C♭-D♭-E♭♭-E♭-G♭-A♭
+
+A-flat minor blues scale with keys highlighted in red.
+B-Flat Minor Blues
+Notes: B♭-D♭-E♭-F♭-F-A♭-B♭
+
+B-flat minor blues scale with keys highlighted in red.
+C Minor Blues
+C-E♭-F-G♭-G-B♭-C
+
+C minor blues scale with keys highlighted in red.
+D Minor Blues
+Notes: D-F-G-A♭-A-C-D
+
+D minor blues scale with keys highlighted in red.
+E Minor Blues
+Notes: E-G-A-B♭-B-D-E
+
+E minor blues scale with keys highlighted in red.
+F-Sharp / G-Flat Minor Blues
+Notes: F♯-A-B-C-C♯-E-F♯
+
+F-sharp minor blues scale with keys highlighted in red.
+A Minor Blues
+Notes: A-C-D-E♭-E-G-A
+
+A minor blues scale with keys highlighted in red.
+B Minor Blues
+Notes: B-D-E-F-F♯-A-B
+
+B minor blues scale with keys highlighted in red.
+C-Sharp / D-Flat Minor Blues
+Notes: C♯-E-F♯-G-G♯-B-C♯
+
+C-sharp minor blues scale with keys highlighted in red.
+E-Flat Minor Blues
+Notes: E♭-G♭-A♭-B♭♭-B♭-D♭-E♭
+
+E-flat minor blues scale with keys highlighted in red.
+F Minor Blues
+Notes: F-A♭-B♭-C♭-C-E♭-F
+
+Keyboard diagram of F minor blues scale with keys highlighted in red and labelled.
+G Minor Blues
+Notes: G-B♭-C-D♭-D-F-G
+
+G minor blues scale with keys highlighted in red.
+Other Ways to Understand the Minor Blues Scale
+Another way to remember the minor blues scale formula as a series of steps: minor 3rd (3 half steps) – whole step – half step – half step – minor 3rd.
+
+Blues scale formula. Keyboard diagram of a C minor blues scale with keys highlighted in red and labelled and whole, half, and intervals labelled.
+If you know the minor pentatonic scale formula, you can also think of the minor blues scale formula as the same thing except we add a flatted fifth. This fifth is our blue note.
+
+Minor pentatonic scale formula and minor blues scale formula in numbered form with flat 3rd in blue.
+
+The Minor Blues Scale on Piano
+The minor blues scale is THE most popular blues scale. In fact, most of the time, when people talk about the “blues scale,” they’re referring to the minor blues scale.
+
+The formula for the minor blues scale is:
+
+1, ♭3, 4, ♭5, ♮5, ♭7
+
+In C Minor, here’s what this looks like on the piano keyboard:
+
+Diagram of C Minor blues scale with notes labelled and highlighted in red (C, Eb, F, Gb, G, Bb) and formula (1, b3, 4, b5, 5, b7).
+And here is what the blues scale looks like in standard piano notation:
+
+C Minor blues scale on staff with notes labelled in red and formula (numbers) in black.
+📜🎹 HISTORY BITE: Most people think the blues scale originated in America during the slavery era at the end of the 1800s, but its history goes way back. For example, a book from 1870 documents a blues-scale-like scale in West Africa, which suggests that the scale developed independently in the region. For an in-depth, Afrocentric discussion of the blues scale’s origins, check out journalist Adam Hudson’s essay on the cultural origins of the scale.
+Explaining the Minor Blues Scale Formula
+The minor blues scale formula can be confusing because it’s based on the major scale, not the minor scale. So, if you see “E Minor Blues Scale,” consider the formula in the context of the E Major key signature.
+
+Another thing: “flat” in this context is better understood as “lower by a half-step,” not a literal flat sign.
+
+So, let’s take the notes of the E Major scale:
+
+1 = E
+2 = F#
+3 = G#
+4 = A
+5 = B
+6 = C#
+7 = D#
+
+…and by applying the minor blues formula, we’ll get:
+
+1 = E
+♭3 = G♮
+4 = A
+♭5 = B♭
+♮5 = B
+♭7 = D♮
+
+Embed from Getty Images
+
+If you can play the blues, you can do anything.
+
+Ray Charles
+🎹 Your Go-To Place for All Things Piano
+Subscribe to The Note for exclusive interviews, fascinating articles, and inspiring lessons delivered straight to your inbox. Unsubscribe at any time.
+
+
+The Major Blues Scale
+The major blues scale is less common, but it’s still a good scale to know. Here’s the formula for it:
+
+1, 2, ♭3, ♮3, 5, 6
+
+Here’s what it looks like on the piano keyboard:
+
+Diagram of C Major blues scale with notes labelled and highlighted in red (C, D, Eb, E, G, A) and formula (1, 2, b3, 3, 5, 6).
+And here’s what it looks like on the staff:
+
+
+Explaining the Major Blues Scale Formula
+Like the minor blues scale, the formula is based on the major scale. Again, if we use E Major as an example:
+
+1 = E
+2 = F#
+3 = G#
+4 = A
+5 = B
+6 = C#
+7 = D#
+
+…then apply the major blues scale formula, we’ll get:
+
+1 = E
+2 = F#
+♭3 = G♮
+♮3 = G#
+5 = B
+6 = C#
+
+3 Essential Blues Riffs
+Once you’re familiar with the basic building blocks of the blues scale, jumpstart your mastery by learning these three essential riffs. You can download a notated PDF of these riffs and more here.
+
+Riff 1
+C Minor blues riff notated.
+Riff 2
+C Minor blues riff notated.
+Riff 3
+C Minor blues riff notated.
+Our PDF download will include both simpler and more complex versions of these riffs.
+
+2 Pro-Tips:
+Practice with a backing track. This will get you up to speed and to really internalize that blues rhythm. You can download a backing track for the above riffs here (with click) and here (without click).
+Swing! To sound really bluesy, you need to swing the rhythm. Don’t be too exact with rhythm. Make things a little syncopated.
+Tips on Improvising Using the Blues Scale on Piano
+When you first start improvising with the blues scale, it’s tempting to just go up and down the scale. While this is a great way to familiarize yourself with the notes, it can quickly get bland. Here are some ideas to help you take improvisation to the next level:
+
+It’s all about rhythm
+Sometimes, we can get anxious about what notes to play and forget about rhythm. But rhythm can be the difference between an okay solo and a fantastic one. So take a look at your solos: are you playing in all quarter notes? Can you add an extra triplet in there, or maybe hold out a whole note? Rhythmic variations keep things interesting!
+
+Pick a small handful of notes
+You don’t have to use all the notes in the blue scale. Try limiting yourself to a small area of notes and see what you can create from that small palette. You may be surprised!
+
+Come up with licks you can re-use in all 12 keys
+Learning to improvise is all about building vocabulary. If you find a lick that works, practice it in all 12 keys so that you can throw it into any song. Then, keep expanding your vocabulary!
+
+Think in short, narrative phrases
+Thinking, “I need to come up with a solo that lasts dozens of bars!” can feel overwhelming. Instead, think in short, small chunks that are only a few measures long.
+
+Practice with a backing track
+Practicing with a backing track will help you stay in tempo and let you focus on improvising melodic lines without worrying too much about comping. You can find backing tracks downloadable online and on YouTube.
+
+More lessons you might like:
+
+How to Improvise on the Piano: A Beginner’s Guide
+Play 12 Bar Blues Like Ray Charles
+Brilliant Blues Licks for the Piano
+
+Basic Improvisation Tools
+Before you start improvising, make time to understand the tools:
+
+Key signature: If you haven’t already, learn how to find what sharps or flats appear in a given key. You’ll know exactly what notes to work with when you know the key.
+Scales: After you learn key signatures, practice the scales in those key signatures. Scales are the foundation to memorable and impressive runs in your improvisations.
+Chords: A basic knowledge of chords goes a long way. Make sure you’re familiar with the concept of diatonic chords.
+The number system: While understanding the number system is not required per se, it can certainly help you make sense of chord theory and to transpose songs.
+Need some extra help? Check out our favorite resources:
+
+Types of Scales & How to Apply Them
+How to Play ALL Piano Chords (Major, Minor, 7ths)
+Chord Symbols, Explained
+Basic Improvisation Techniques
+Here’s a pro-tip: improvisation doesn’t have to be super fancy to count as improvisation. In fact, sometimes simple is best! Here are some easy-to-understand, beginner-friendly improvisation techniques you can start today if you know the basics of piano.
+
+In our video lesson, Justin Stanton uses the jazz classic “Autumn Leaves” by Joseph Kosma as an example. Here’s the melody we’ll work with:
+
+Autumn Leaves melody in standard notation.
+Rhythmic Variations
+Guess what? You can improvise without overthinking scales, keys, chords, and all that. Simply varying the rhythm can dramatically change the character of a song. So take a melody you know and simply try playing it with a different rhythm. Draw out some notes, shorten some other ones. Add some syncopation. You can even experiment with silence!
+
+Autumn Leaves melody with rhythmic variation in standard notation.
+Embellishments
+Now let’s try playing with the melody. We can add embellishments to the melody here and there to make it sound a little unique. For example, you can slide into a target note from a semitone above or below. You can also try enclosures—that’s when you go up and below before playing a target note (or down and above). Try not to overthink this. Just see it as adding little flourishes around an existing melody.
+
+Autumn Leaves melody in standard notation with embellishments.
+Some more examples:
+
+Example of enclosure to target note.
+Put it all together!
+You can do a lot with just these two simple techniques. Try mixing things up and putting things together. See what you can create.
+
+Embellished Autumn Leaves melody in standard notation.
+5 Levels of Improvisation With Justin Stanton
+Justin Stanton is a talented multi-instrumentalist known for his work as a trumpeter, keyboardist, and composer with the Grammy-winning jazz fusion band Snarky Puppy. You can now access his challenge series, “5 Levels of Improvisation,” as a Pianote Member. Not a Member yet? Try it for 7 days!
+
+
+How to Improvise on Piano: Exercises for Beginners
+The best way to learn how to improvise on the piano is not to read about it, but to practice with some intentional exercises. We recommend you start with these very simple ones:
+
+Improvise with just 3 notes
+
+> Create Emotional Piano Music (Just 3 Notes)
+
+Now try 4 notes!
+
+> Create Emotion With 4 Notes
+
+Improvise with just 1 chord
+
+> Sound Amazing on the Piano in 5 Minutes
+
+Learn some riffs and fills
+
+> Riffs and Fills Made Easy (or take the full course: Piano Riffs & Fills)
+
+Use Motifs and Scales
+In this video, Jesús Molina shows you how to improvise with just a motif and notes from the same scale.
+
+
+IMPROV CHEATS:
+Notes that belong to the scale of the key you’re in are all fair game—they will sound good.
+Lisa’s tip: If a note sounds bad, play the note next to it. That should solve the problem!
+Thirds and sixths harmonize—they will sound good.
+My tip: Trills sound cool. For a classical feel, add trills!
+When in doubt, go back to the I chord. That’s home!
+How to Improvise on Piano: Take It to the Next Level
+See? Improvising isn’t scary at all!
+
+Once you feel comfortable with the beginner exercises above, see if you can add more tools to your piano improv toolbox. Learn some fancy scales, try solo-ing, and branch out into different styles. Borrow, mix, and match from different areas.
+
+Learn fancy scales
+Expand your improv vocabulary with scales. Good scales to learn include the blues scale and the major and minor pentatonic scales.
+
+If you’re up for a challenge, learn modes. Modes take some extra time to wrap your mind around, and there are a few funny words to memorize, but they’ll help you conquer the frequent key changes in jazz.
+
+Piano Scales: Types of Scales & How to Apply Them
+Modes: A Friendly Guide
+The Blues Scale Formula
+The Mighty Pentatonic Scale
+Try your hand at solo-ing
+
+> Easy Piano Improvisation Exercises
+
+Learn reharmonization
+“Reharming” is a more advanced technique that can dramatically alter the mood of a song. This is what arrangers use to create an upbeat version of a moody ballad or a moody ballad version of an upbeat bop! This is also what jazz musicians use to create lush, complex sounding music. Make sure you’ve mastered chord theory before you try reharming.
+
+> How to Arrange a Song: Arranging & Reharmonization Tips
+
+Experiment with different styles and moods
+
+> You’ve Never Heard “Twinkle Twinkle Little Star” Like This Before!
+
+IMPROVISATION: A CLASSICAL PERSPECTIVE
+Classical piano lessons typically don’t teach improvisation. Case in point, I (the author of the article!) didn’t really know how to improvise until I started branching out into other types of music. I first learned chord symbols through playing guitar, and then later developed an interest in jazz. It’s been a challenging yet interesting journey; here are some things I’ve learned:
+
+Know your chord theory. Review your chord types, chord symbols, the chord-scale relationship, and inversion shapes! This will make learning new standards way easier.
+Don’t worry about sounding fancy. Fancy doesn’t always sound good. It’s better to play simple and confidently than fancy and haphazardly.
+Your musical background will help! Even if you don’t know how to improvise, you won’t start from square one. You probably have a developed sense of musicality, an understanding of theory, and even a unique sound.
+Stay humble. If you come to improvisation as a more advanced classical pianist, you’ll likely feel frustrated because you’ll feel like a beginner again. But be humble and embrace that! Learning jazz is almost like learning a related yet different language.
+> A Classical Pianist Learns to Improvise
+
+Final Tips
+Constraints lead to creativity
+A common piece of advice is to “play whatever you like.” And while this sounds freeing, many people are overwhelmed by the infinite possibilities of playing “anything.”
+
+Instead, it may be helpful to give yourself constraints to work within. Set some rules: use a limited number of notes, set a rhythm, or use a short set chord progression (like the 2-5-1).
+
+Research now suggests that rules, limits, and constraints are more conducive to creativity than total freedom.
+
+It doesn’t have to be complicated 🙂
+Dizzying runs. Dreamy arpeggios. Complex chords. These all sound impressive but at the end of the day, complexity isn’t necessary for a successful improv performance.
+
+In fact, worrying about being intricate can stifle your creativity. Too much ornamentation can also sound busy. If you’ve just started learning how to improvise on piano, try not to overthink. Keep it simple. And don’t forget to have fun!
+
+Despite it being “the blues,” blues piano can be very fun to play! This lesson introduces you to three simple ingredients for a killer blues song: a riff, a chord progression, and a rhythm.
+
+Learning how to play the blues on the piano will build your hand coordination and a good sense of rhythm. You’ll also learn a little about blues theory here today.
+
+The Riff
+Let’s dive right in by starting with a simple, left-hand riff to introduce the song. The notes you will be playing are F-F#-A-B-D.
+
+
+We’ll end the riff with a D major triad (D-F#-A). You’ll play this triad on beat one at the same time as the last riff note (D).
+
+This means the riff starts slightly later on an offbeat and the D major triad lands on beat one.
+
+
+If this sounds confusing, it makes a lot more sense when you hear it! Feel free to rewind the video a few times and play or sing along to get comfortable with the riff.
+
+The Chord Progression
+Once you’re familiar with the riff, let’s move on to the chord progression! This 1-4-5 progression is what gives the 12 bar blues its unique, bluesy feel.
+
+The chords we’ll be playing are: D, G, D, A, D
+
+(There’s a little jump between the D and A major chords, so remember to look ahead and get ready for the next chord!)
+
+We’ll play triads of these chords and play each note separately on the downbeat. This will create a running chord progression and bluesy bass line in your left hand.
+
+D major chord: D-F#-A-F#
+G major chord: G-B-D-B
+D major chord: D-F#-A-F#
+A major chord: A-C#-E-C#
+D major chord: D-F#-A-F#
+
+
+The Rhythm
+Now that we have an opening riff and a funky bass line, let’s add in some right hand!
+
+The right-hand triads are the same chords as the left hand, and you’ll play the right-hand triads on the offbeat between the left-hand notes.
+
+If you count “one and two and three and four and,” your right-hand triads will sync with the “and.” Play each chord for eight beats.
+
+
+Again, this makes more sense when you hear it. You can replay the video a few times to get familiar with how it sounds.
+
+Put It All Together
+Embed from Getty Images
+
+Practice the riff and the chord progression on their own until you’re comfortable, and then put it all together for a Ray Charles style performance!
+
+If you want to take your playing to the next level, here are some improv ideas:
+
+Inversions
+Mix up the order of the notes in your chords by playing inversions. If you’re new to chord theory, learn what are chord inversions right here on the Pianote blog.
+
+Turnarounds
+Turnarounds are little licks that connect sections together. Even a simple rising or descending scale can be a cool-sounding turnaround.
+
+Get more out of licks by learning the blues scale formula on the piano.
+
+Slides
+Slides are fun and can be done anywhere on the keyboard! No theory required. Just pick a starting point and gently sweep your fingernail across the keyboard.
+
+Experiment and enjoy yourself; the possibilities are endless. In no time, you’ll be playing blues piano just like Ray Charles.
+
+A guide to the piano blues scale for beginners
+blue scale
+Table of Contents
+
+What is the blues scale?
+How to play the minor blues scale
+How to play the major blues scale
+Exercising the blues scales
+Playing the blues forever and ever
+Learning the blues is an integral part of modern music making. The power and influence of the style can be felt in most forms of contemporary popular music and the music carries historical lessons and legacies that are vitally important. Particular scales have emerged out of the music called the blues scales. You might be asking yourself what is a blues scale, because understanding this is an important access point to playing the music on the piano!
+
+Key Takeaways
+There are differences between major and minor blues scales
+Pentatonic scales only have five notes, while blues scales have six
+Chords in a blues form are almost always the same in every key
+The formula for the blues scales are different for major or minor
+Fingerings for the pentatonic scales and the blues scales are different
+
+Start your musical journey
+Fall in love with the music - Learn your favorite songs, at a level suitable for you.
+Enjoy interactive piano lessons - Explore courses covering music theory, technique chords & more.
+Get real-time feedback - Skoove's feedback tells you what went well and what needs practice.
+
+Book a trial lesson
+No credit card details required
+What is the blues scale?
+Firstly, there is not just one ‘blues scale’, there are two: a major and a minor variation. Odds are when someone says to you “play a blues scale”, what they mean is play the minor version, so it will come first here. 
+
+Blues scales are very common in music. They are found all over the world, in music on the radio and classical music. The important thing to remember is that both of these major and minor variations are based off of pentatonic scales, with a flat 5th added, making each scale have six notes total. 
+
+C Major Blues:	C D Eb E G A
+C Minor Blues:
+C Eb F F# G Bb
+How to play the minor blues scale
+The minor blues scale piano is a six note scale that has emerged from Blues music. It has a powerful, soulful, and often melancholic timbre. It is used across many styles of music including traditional twelve-bar Blues, Boogie-Woogie, Soul, RnB, Jazz, and Funk to name a few. This scale is a variation on the minor pentatonic scale with an added flat fifth scale degree.
+
+Minor pentatonic scales explained
+The minor pentatonic scale is a five note scale. It is a common piano scale that is found in many music cultures across the world. If you randomly ask someone on the street to sing a five note scale, chances are they will sing the minor pentatonic scale. 
+
+Seriously, try it! It is somehow ingrained in the human subconscious, especially the first minor third interval.
+
+The minor pentatonic scale follows the scale degree formula 1 – ♭3 – 4 – 5 – ♭7. To play the minor pentatonic scale from C on the piano, follow the diagram below. The finger numbers for the minor pentatonic scale are notated beneath the notes.
+
+the blues scale
+
+To transform the minor pentatonic scale into the minor blues scale, all you need to do is add in the flat fifth scale degree to the minor pentatonic scale. In the key of C minor pentatonic, that means you will add the note G♭. Check out the diagram below to see this new scale notated.minor blues scale
+
+Learning the minor blues scale formula
+The formula for this new minor blues scale is 1 – ♭3 – 4 – ♭5 – ♮5 – ♭7. 
+
+In vocal styles, the pitch of the flat fifth scale degree is bent up and down for added inflection, expressive power, and emotional impact. However, in tempered pitched instruments with unbending intonation, the flat fifth scale degree cannot be manipulated in the same way.
+
+ We also call this flat fifth scale degree the blue note. Adding the blue note to the minor is your gateway to the blues.
+
+Playing the minor blues scale in multiple positions
+Can you use the formula and finger pattern you just learned to move the minor blues scale around the piano? Try to use your knowledge to build the scale from D, F, G, and A. Remember, the formula is 1 – ♭3 – 4 – ♭5 – ♮5 – ♭7, or the minor pentatonic scale with an added flat fifth scale degree.
+
+From D, the scale is spelled D – F – G – G# – A♮ – C. The blue note in this minor scale is A flat. Check out the diagram below to see it notated:d minor blues scale
+From F, the scale is spelled F – A♭ – B♭ – B – C♮ – E♭. The blue note in this minor scale is C flat Check out the diagram below to see it notated:f minor blues scaleNotice the change in finger pattern here. Instead of your first finger on the third note, you continue with your fourth finger and land with your first finger on C♭. Practice this different finger pattern until you feel comfortable.Remember, practicing with proper piano technique and fingering means greater technique, control, and creativity down the road!
+From G, the minor blues scale is spelled G – B♭ – C – C# – D – F. The blue note in this minor scale is D flat. Check out the diagram below for the finger pattern:g minor blues scaleThe finger pattern for G minor blues scale is the same as it was for C and D. This is a common finger pattern for the minor blues scale and you will see it again!
+From A, the A minor blues scale is spelled A – C – D – E♭ – E♮ – G. The blue note in this minor scale is E flat. Check out the diagram below for the finger pattern, you will find it familiar:a minor blues scale
+Ok! Now that you have played through five different positions of the minor blues scales (C, D, F, G, A), you are ready for some exercise!
+
+First, play through all five patterns in a row, beginning with C, followed by D, F, G, then A and returning to C again one octave higher.
+
+How to play the major blues scale
+The major blues scale is a variation on the scale with a major sounding quality as opposed to a minor sounding quality. It is based off of the major pentatonic scale, just like our minor scale was based off of the minor pentatonic scale. We also have just one note to change, and then we’re off to play! 
+ The harmonic seventh interval, also known as the septimal minor seventh,[2][3] or subminor seventh,[4][5][6] is one with an exact 7:4 ratio[7] (about 969 cents).[8] This is about 32 cents narrower, with a more stable and consonant sound, than a minor seventh in equal temperament, and is up to 49 cents narrower than and is, "particularly sweet",[9] "sweeter in quality" than an "ordinary"[10] just minor seventh, which has an intonation ratio of 9:5[11] (about 1018 cents).
+
+
+Harmonic seventh, septimal seventh
+Duration: 0 seconds.0:00
+The harmonic seventh arises from the harmonic series as the interval between the fourth harmonic (second octave of the fundamental) and the seventh harmonic; in that octave, harmonics 4, 5, 6, and 7 constitute the four notes (in order) of a purely consonant major chord (root position) with an added minor seventh (or augmented sixth, depending on the tuning system used).
+
+Fixed pitch: Not a scale note
+Although the word "seventh" in the name suggests the seventh note in a scale, and although the seventh pitch up from the tonic is indeed used to form a harmonic seventh in a few tuning systems, the harmonic seventh is a pitch relation to the tonic, not an ordinal note position in a scale. As a pitch relation (968.826 cents up from the reference or tonic note) rather than a scale-position note, a harmonic seventh is produced by different notes in different tuning systems:
+
+In equal temperament, the harmonic seventh is about 32 cents smaller than the equal tempered minor seventh.
+In 5-limit just intonation the harmonic 7th is very near precisely an acute diminished seventh: 7double flat￪ .[a]
+In multiple slight variations of quarter comma meantone, the harmonic seventh is accurately rendered by the augmented sixth interval (rather than a seventh).[b]
+In 31 tone equal temperament, the harmonic seventh is quite accurately rendered as 25 steps out of 31 that make up the octave,[c] while several other just intervals are as relatively well approximated as they are in quarter comma meantone.
+Actual use in musical practice
+
+Use of the seventh harmonic in the prologue to Britten's Serenade for Tenor, Horn and Strings
+
+Play
+
+Mute
+
+Captions
+
+More information
+When played on the natural horn, the note is often adjusted to 16:9 of the root as a compromise (for C maj7♭, the substituted note is B♭-, 996.09 cents), but some pieces call for the pure harmonic seventh, including Britten's Serenade for Tenor, Horn and Strings.[12] Composer Ben Johnston uses a small "7" as an accidental to indicate a note is lowered 49 cents (1018 − 969 = 49) (or 32 cents lowered compared to equal temperament, or an upside-down "7" to indicate a note is raised 49 cents (or raised 32 cents compared to equal temperament. Thus, in C major, "the seventh partial", or harmonic seventh, is notated as ♭ note with "7" written above the flat.[13][14]
+
+
+Inverse, septimal major second on B7♭
+Duration: 0 seconds.0:00
+The harmonic seventh is also expected from barbershop quartet singers, when they tune dominant seventh chords (harmonic seventh chord), and is considered an essential aspect of the barbershop style.[15][16][17][d]
+
+
+Origin of large and small seconds and thirds in harmonic series.[18]
+In quarter-comma meantone tuning, standard in the Baroque and earlier, the augmented sixth is 965.78 cents – only 3 cents below 7:4, well within normal tuning error and vibrato. Pipe organs were the last fixed-tuning instrument to adopt equal temperament. With the transition of organ tuning from meantone to equal-temperament in the late 19th and early 20th centuries the formerly harmonic Gmaj7♭ and B♭maj7♭ became "lost chords" (among other chords).
+
+The harmonic seventh differs from the just 5-limit augmented sixth of ⁠
+ 225 
+/
+128
+⁠ by a septimal kleisma (⁠
+ 225 
+/
+224
+⁠, 7.71 cents), or about ⁠
+ 1 
+/
+3
+⁠ Pythagorean comma.[19] The harmonic seventh note is about ⁠
+ 1 
+/
+3
+⁠ semitone ( ≈ 31 cents ) flatter than an equal-tempered minor seventh. When this flatter seventh is used, the dominant seventh chord's "need to resolve" down a fifth is weak or non-existent. This chord is often used on the tonic (written as I7) and functions as a "fully resolved" final chord.[20]
+
+The twenty-first harmonic (470.78 cents) is the harmonic seventh of the dominant, and would then arise in chains of secondary dominants (known as the Ragtime progression) in styles using harmonic sevenths, such as barbershop music.
+
+See also
+augmented sixth
+quarter comma meantone
+31 tone equal temperament
+Notes
+ A just acute diminished seventh is a just seventh (⁠
+ 15 
+/
+8
+⁠) flattened twice (first flat is min 7, second flat is dim 7, each just flat lowers the pitch by 70.672 ¢) sharpened by a syntonic comma ("acute") (raises pitch by about 21.506 ¢), hence:
+7double flat￪ 
+=
+15
+ 
+8
+ 
+×
+(
+ 
+24
+ 
+25
+)
+2
+×
+ 
+81
+ 
+80
+=
+3
+7
+ 
+2
+×
+5
+4
+ 
+=
+2187
+ 
+1250
+ 
+ 
+.
+{\displaystyle ={\tfrac {15}{\ 8\ }}\times \left({\tfrac {\ 24\ }{25}}\right)^{2}\times {\tfrac {\ 81\ }{80}}={\tfrac {3^{7}}{\ 2\times 5^{4}\ }}={\frac {2187}{\ 1250\ }}~.}
+cents
+(
+7
+ 
+4
+ 
+)
+=
+968.826
+{\displaystyle \operatorname {cents} \!\left({\tfrac {7}{\ 4\ }}\right)\quad =968.826} ¢; compare this to
+cents
+(
+2187
+ 
+1250
+ 
+)
+=
+968.430
+{\displaystyle \operatorname {cents} \!\left({\tfrac {2187}{\ 1250\ }}\right)=968.430} ¢, only 0.396 ¢ flat.
+Regardless of how accurately it reproduces the interval of a seventh harmonic, a 5-limit justly intoned acute diminished seventh is only a theoretical pitch: The pitch's position in the just tone net is too far separated from its tonic for both to be played together in the same chord without many more notes in the tone network. It is a correctly specified note that does exist among the extended network of just intonation pitches, but the theoretical note cannot be put to practical use: An acute diminished seventh cannot be reached from its tonic in any feasible justly intoned octave made up of only 12 notes.
+ A small modification of meantone – the fifth about one seventh of a comma flat, slightly sharper than exactly one quarter of a comma flat – adjusts the tuning to exactly reproduce the seventh harmonic as an augmented sixth: The adjusted quarter comma uses a fifth that is 
+ 
+(
+56
+)
+1
+/
+10
+ 
+,
+{\displaystyle \ \left(56\right)^{1/10}\ ,} about 696.883 ¢ instead of 
+ 
+(
+5
+)
+1
+/
+4
+ 
+,
+{\displaystyle \ \left(5\right)^{1/4}\ ,} or about 696.578  ¢, used for conventional quarter comma meantone (which produces pure major thirds by letting fifths fall a quarter-comma flat).
+ 
+ 
+2
+25
+/
+31
+≈
+1.749
+≈
+7
+ 
+4
+ 
+{\displaystyle \ 2^{25/31}\approx 1.749\approx {\tfrac {7}{\ 4\ }}} which is 967.742 cents so only 1.084 ¢ flat
+ Hagerman & Sundberg (1980)[17] present empirical data that challenges the accuracy of the claim.
+
+Major pentatonic scales explained
+The major blues scale is a variation on the major pentatonic scale. It shares the same addition of the flat fifth scale degree. 
+
+The scale degree formula for the major pentatonic scale is 1 – 2 – 3 – 5 – 6. In the key of C major, this is spelled C – D – E – G – A. Check out this notation below:c major pentatonic
+
+Learning the major blues scale formula
+All we need to do to transform this C major scale into the C major blues scale is add the flat 3rd scale degree. 
+
+This means the new formula for the major blues scale will be 1 – 2 – b3 – 3 – 5 – 6. In the key of C, we spell this C – D – Eb – E – G – A. The blue note in this major scale is E flat. 
+
+Try substituting the major blues scale for all the exercises you practiced above. Pay attention to how the major blues scale sounds compared to the minor blues scales. Also make sure to note how the blue notes differ between the major scale and minor scale.
+
+Playing the major blues scale in multiple positions
+Because we know that all of our major blues scales are being pulled from the major pentatonic scale, and we know that they all have the same formula, we can learn a lot of them very quickly! Remember to think about the music in scale degrees, 1 – b3 – 3 – 5 – 6. Let’s try it in a bunch of different positions! 
+
+From D, the scale is spelled: D, E, F, F#, A, B, Dd major blues scale
+From F, the scale is spelled: F, G, Ab, A, C, D, Ff major blues scale
+From G, the scale is spelled: G, A, Bb, B, D, E, Gg major blues scale
+From A, the scale is spelled: A, B, C, C#, E, F#, Aa major blues scale
+Exercising the blues scales
+You can incorporate some exercises into your practice such as sequences. Practice playing your piano chords. Check out a three note sequence in the C minor blues scale below:c minor blues scalec minor blues scale
+
+This sequence pattern is a great exercise to practice to gain dexterity and flexibility with the minor blues scale. You can apply this pattern to any other scales like the piano chromatic scale you are practicing! 
+
+Get comfortable playing through the blues form in quarter notes. Practicing this will build your fluidity with these shapes and help develop your ears. There are a few points of tension and release that you should become comfortable with.
+
+The first is the transition in and out of the IV chord in measures 5-7 and the second is the turnaround, the V-IV-I progression in measures 9-12. These points act as springboards in the form. 
+
+You can use these points to build up tension in your improvisation or as release or resolution points. 
+
+Once you feel comfortable with the form in C, modulate the progression to D, F, G, and A. 
+
+In the key of D, the I, IV, and V chords are D, G, and A. 
+In the key of F, the I, IV, and V chords are F, B♭, and C. 
+In the key of G, the I, IV, and V chords are G, C, and D. 
+And in the key of A, the I, IV, and V chords are A, D, and E.
+Playing the blues forever and ever
+Learning how to play blues scale on piano is a crucial part of developing as a pianist and musician. There are so many aspects of the style to learn about, from the different blues scales to progressions, riffs, and iconic melodies – not to mention important social and musical history!
+
+Remember that Skoove features over 400 lessons, monthly updates, one on one support from piano instructors, access to special courses, and an artificial intelligence engine that listens and helps you to improve as you play. You can keep the power of the blues in your hands, and the music in your heart. 
+
+The harmonic seventh interval, also known as the septimal minor seventh,[2][3] or subminor seventh,[4][5][6] is one with an exact 7:4 ratio[7] (about 969 cents).[8] This is about 32 cents narrower, with a more stable and consonant sound, than a minor seventh in equal temperament, and is up to 49 cents narrower than and is, "particularly sweet",[9] "sweeter in quality" than an "ordinary"[10] just minor seventh, which has an intonation ratio of 9:5[11] (about 1018 cents).
+
+
+Harmonic seventh, septimal seventh
+Duration: 0 seconds.0:00
+The harmonic seventh arises from the harmonic series as the interval between the fourth harmonic (second octave of the fundamental) and the seventh harmonic; in that octave, harmonics 4, 5, 6, and 7 constitute the four notes (in order) of a purely consonant major chord (root position) with an added minor seventh (or augmented sixth, depending on the tuning system used).
+
+Fixed pitch: Not a scale note
+Although the word "seventh" in the name suggests the seventh note in a scale, and although the seventh pitch up from the tonic is indeed used to form a harmonic seventh in a few tuning systems, the harmonic seventh is a pitch relation to the tonic, not an ordinal note position in a scale. As a pitch relation (968.826 cents up from the reference or tonic note) rather than a scale-position note, a harmonic seventh is produced by different notes in different tuning systems:
+
+In equal temperament, the harmonic seventh is about 32 cents smaller than the equal tempered minor seventh.
+In 5-limit just intonation the harmonic 7th is very near precisely an acute diminished seventh: 7double flat￪ .[a]
+In multiple slight variations of quarter comma meantone, the harmonic seventh is accurately rendered by the augmented sixth interval (rather than a seventh).[b]
+In 31 tone equal temperament, the harmonic seventh is quite accurately rendered as 25 steps out of 31 that make up the octave,[c] while several other just intervals are as relatively well approximated as they are in quarter comma meantone.
+Actual use in musical practice
+
+Use of the seventh harmonic in the prologue to Britten's Serenade for Tenor, Horn and Strings
+
+Play
+
+Mute
+
+Captions
+
+More information
+When played on the natural horn, the note is often adjusted to 16:9 of the root as a compromise (for C maj7♭, the substituted note is B♭-, 996.09 cents), but some pieces call for the pure harmonic seventh, including Britten's Serenade for Tenor, Horn and Strings.[12] Composer Ben Johnston uses a small "7" as an accidental to indicate a note is lowered 49 cents (1018 − 969 = 49) (or 32 cents lowered compared to equal temperament, or an upside-down "7" to indicate a note is raised 49 cents (or raised 32 cents compared to equal temperament. Thus, in C major, "the seventh partial", or harmonic seventh, is notated as ♭ note with "7" written above the flat.[13][14]
+
+
+Inverse, septimal major second on B7♭
+Duration: 0 seconds.0:00
+The harmonic seventh is also expected from barbershop quartet singers, when they tune dominant seventh chords (harmonic seventh chord), and is considered an essential aspect of the barbershop style.[15][16][17][d]
+
+
+Origin of large and small seconds and thirds in harmonic series.[18]
+In quarter-comma meantone tuning, standard in the Baroque and earlier, the augmented sixth is 965.78 cents – only 3 cents below 7:4, well within normal tuning error and vibrato. Pipe organs were the last fixed-tuning instrument to adopt equal temperament. With the transition of organ tuning from meantone to equal-temperament in the late 19th and early 20th centuries the formerly harmonic Gmaj7♭ and B♭maj7♭ became "lost chords" (among other chords).
+
+The harmonic seventh differs from the just 5-limit augmented sixth of ⁠
+ 225 
+/
+128
+⁠ by a septimal kleisma (⁠
+ 225 
+/
+224
+⁠, 7.71 cents), or about ⁠
+ 1 
+/
+3
+⁠ Pythagorean comma.[19] The harmonic seventh note is about ⁠
+ 1 
+/
+3
+⁠ semitone ( ≈ 31 cents ) flatter than an equal-tempered minor seventh. When this flatter seventh is used, the dominant seventh chord's "need to resolve" down a fifth is weak or non-existent. This chord is often used on the tonic (written as I7) and functions as a "fully resolved" final chord.[20]
+
+The twenty-first harmonic (470.78 cents) is the harmonic seventh of the dominant, and would then arise in chains of secondary dominants (known as the Ragtime progression) in styles using harmonic sevenths, such as barbershop music.
+
+See also
+augmented sixth
+quarter comma meantone
+31 tone equal temperament
+Notes
+ A just acute diminished seventh is a just seventh (⁠
+ 15 
+/
+8
+⁠) flattened twice (first flat is min 7, second flat is dim 7, each just flat lowers the pitch by 70.672 ¢) sharpened by a syntonic comma ("acute") (raises pitch by about 21.506 ¢), hence:
+7double flat￪ 
+=
+15
+ 
+8
+ 
+×
+(
+ 
+24
+ 
+25
+)
+2
+×
+ 
+81
+ 
+80
+=
+3
+7
+ 
+2
+×
+5
+4
+ 
+=
+2187
+ 
+1250
+ 
+ 
+.
+{\displaystyle ={\tfrac {15}{\ 8\ }}\times \left({\tfrac {\ 24\ }{25}}\right)^{2}\times {\tfrac {\ 81\ }{80}}={\tfrac {3^{7}}{\ 2\times 5^{4}\ }}={\frac {2187}{\ 1250\ }}~.}
+cents
+(
+7
+ 
+4
+ 
+)
+=
+968.826
+{\displaystyle \operatorname {cents} \!\left({\tfrac {7}{\ 4\ }}\right)\quad =968.826} ¢; compare this to
+cents
+(
+2187
+ 
+1250
+ 
+)
+=
+968.430
+{\displaystyle \operatorname {cents} \!\left({\tfrac {2187}{\ 1250\ }}\right)=968.430} ¢, only 0.396 ¢ flat.
+Regardless of how accurately it reproduces the interval of a seventh harmonic, a 5-limit justly intoned acute diminished seventh is only a theoretical pitch: The pitch's position in the just tone net is too far separated from its tonic for both to be played together in the same chord without many more notes in the tone network. It is a correctly specified note that does exist among the extended network of just intonation pitches, but the theoretical note cannot be put to practical use: An acute diminished seventh cannot be reached from its tonic in any feasible justly intoned octave made up of only 12 notes.
+ A small modification of meantone – the fifth about one seventh of a comma flat, slightly sharper than exactly one quarter of a comma flat – adjusts the tuning to exactly reproduce the seventh harmonic as an augmented sixth: The adjusted quarter comma uses a fifth that is 
+ 
+(
+56
+)
+1
+/
+10
+ 
+,
+{\displaystyle \ \left(56\right)^{1/10}\ ,} about 696.883 ¢ instead of 
+ 
+(
+5
+)
+1
+/
+4
+ 
+,
+{\displaystyle \ \left(5\right)^{1/4}\ ,} or about 696.578  ¢, used for conventional quarter comma meantone (which produces pure major thirds by letting fifths fall a quarter-comma flat).
+ 
+ 
+2
+25
+/
+31
+≈
+1.749
+≈
+7
+ 
+4
+ 
+{\displaystyle \ 2^{25/31}\approx 1.749\approx {\tfrac {7}{\ 4\ }}} which is 967.742 cents so only 1.084 ¢ flat
+ Hagerman & Sundberg (1980)[17] present empirical data that challenges the accuracy of the claim.
+
