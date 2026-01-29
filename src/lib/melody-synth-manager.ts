@@ -1,5 +1,4 @@
 
-
 import type { FractalEvent, AccompanimentInstrument, MelodyInstrument } from '@/types/fractal';
 import type { Note } from "@/types/music";
 import { SYNTH_PRESETS, type SynthPreset } from './synth-presets';
@@ -195,7 +194,7 @@ export class MelodySynthManager {
         voice.dryGain.gain.setValueAtTime(1.0 - wetMix, noteOnTime);
 
         const gainParam = voice.envGain.gain;
-        const peakGain = velocity * 0.5;
+        const peakGain = velocity * 0.9;
         const sustainValue = peakGain * preset.adsr.sustain;
         
         const attackEndTime = noteOnTime + preset.adsr.attack;
@@ -271,9 +270,9 @@ export class MelodySynthManager {
         });
     }
 
-    public setInstrument(instrumentName: AccompanimentInstrument | 'none') {
+    public setInstrument(instrumentName: MelodyInstrument | 'none') {
         if (!this.isInitialized) return;
-        this.activeInstrumentName = instrumentName;
+        this.activeInstrumentName = instrumentName as AccompanimentInstrument;
     }
     
     public setPreampGain(gain: number) {

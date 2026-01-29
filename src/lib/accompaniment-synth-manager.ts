@@ -108,13 +108,10 @@ export class AccompanimentSynthManager {
         
         const instrumentToPlay = (composerControlsInstruments && instrumentHint) ? instrumentHint : this.activeInstrumentName;
         
-        if (!instrumentToPlay) {
-            console.warn('[AccompManager] Schedule called with no instrument selected or hinted. Skipping.');
-            return;
-        }
-        
-        if (instrumentToPlay === 'none' || !(instrumentToPlay in SYNTH_PRESETS)) {
-            console.warn(`[AccompManagerV1] Hint "${instrumentToPlay}" not found in V1 SYNTH_PRESETS. Skipping.`);
+        if (!instrumentToPlay || instrumentToPlay === 'none' || !(instrumentToPlay in SYNTH_PRESETS)) {
+            if (instrumentToPlay && instrumentToPlay !== 'none') {
+                console.warn(`[AccompManagerV1] Hint "${instrumentToPlay}" not found in V1 SYNTH_PRESETS. Skipping.`);
+            }
             return;
         }
 
@@ -172,7 +169,7 @@ export class AccompanimentSynthManager {
         voice.dryGain.gain.setValueAtTime(1.0 - wetMix, noteOnTime);
 
         const gainParam = voice.envGain.gain;
-        const peakGain = velocity * 0.5;
+        const peakGain = velocity * 0.9;
         const sustainValue = peakGain * preset.adsr.sustain;
         
         const attackEndTime = noteOnTime + preset.adsr.attack;
