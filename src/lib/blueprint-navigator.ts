@@ -1,4 +1,5 @@
 
+
 import type { MusicBlueprint, BlueprintPart, BlueprintBundle, Genre, Mood, InstrumentationRules, MelodyInstrument, AccompanimentInstrument, BassInstrument, V2MelodyInstrument, InstrumentBehaviorRules } from '@/types/music';
 
 // Helper function for seeded random numbers - kept for potential future use in axiom selection
@@ -233,13 +234,33 @@ export class BlueprintNavigator {
         if (isPartTransition || isBundleTransition) {
             const transitionType = isPartTransition ? "Part" : "Bundle";
             const mutationType = isPartTransition ? "MACRO" : "micro";
-            const drumRules = partInfo.part.instrumentRules?.drums;
-            // #ИСПРАВЛЕНО (ПЛАН 990): Восстанавливаем и улучшаем логирование
-            const instrumentationLog = formatInstrumentation(partInfo.part.instrumentation, drumRules, v2MelodyHint);
             
-            logMessage = `%c[NAVIGATOR @ Bar ${currentBar}] ${transitionType} Transition: ${partInfo.part.id} / ${bundleInfo.bundle.id}\n` +
+            // #ЗАЧЕМ: Формирование детального лога для отладки.
+            // #ЧТО: Собирает информацию о текущей секции, включая инструменты, правила и длительность.
+            // #СВЯЗИ: Вызывается из tick() для формирования лог-сообщения.
+            const partDuration = partInfo.endBar - partInfo.startBar + 1;
+            const bundleDuration = bundleInfo.endBar - bundleInfo.startBar + 1;
+
+            const rulesLog: string[] = [];
+            if (partInfo.part.instrumentRules) {
+                Object.entries(partInfo.part.instrumentRules).forEach(([key, value]) => {
+                    const density = value.density ? `density:[${value.density.min}-${value.density.max}]` : '';
+                    const source = value.source ? `src:${value.source}` : '';
+                    const solo = value.soloPlan ? `solo:${value.soloPlan}` : '';
+                    const kit = value.kitName ? `kit:${value.kitName}` : '';
+                    const rulesStr = [density, source, solo, kit].filter(Boolean).join(' ');
+                    if (rulesStr) {
+                        rulesLog.push(`${key}(${rulesStr})`);
+                    }
+                });
+            }
+
+            const instrumentationLog = formatInstrumentation(partInfo.part.instrumentation, partInfo.part.instrumentRules?.drums, v2MelodyHint);
+            
+            logMessage = `%c[NAVIGATOR @ Bar ${currentBar}] ${transitionType} Transition: ${partInfo.part.id} (${partDuration} bars) / ${bundleInfo.bundle.id} (${bundleDuration} bars)\n` +
                          `  - Context: Genre: ${this.genre}, Mood: ${this.mood}, BP: ${this.blueprint.name}\n` +
                          `  - ${instrumentationLog}\n` +
+                         `  - Rules: ${rulesLog.join(' | ')}\n` +
                          `  - Mutation: ${mutationType}`;
         }
 
@@ -253,5 +274,3 @@ export class BlueprintNavigator {
         };
     }
 }
-
-    

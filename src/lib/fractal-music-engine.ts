@@ -117,8 +117,6 @@ export class FractalMusicEngine {
   private lastMelodyPlayEpoch: number = -16;
   private wasMelodyPlayingLastBar: boolean = false;
 
-  private bluesChorusCache: { barStart: number, events: FractalEvent[], log: string } | null = null;
-
   // "Конвейеры" для уникальности
   private shuffledBassRiffIndices: number[] = [];
   private shuffledDrumRiffIndices: number[] = [];
@@ -174,7 +172,6 @@ export class FractalMusicEngine {
     this.lastAccompanimentEndTime = -Infinity;
     this.nextAccompanimentDelay = this.random.next() * 7 + 5;
     this.hasBassBeenMutated = false;
-    this.bluesChorusCache = null;
     
     // #ЗАЧЕМ: Гарантирует уникальность риффов для каждой новой сюиты.
     // #ЧТО: При каждой инициализации создаются новые "перетасованные" плейлисты риффов.
@@ -535,7 +532,9 @@ export class FractalMusicEngine {
           bass: this._chooseInstrumentForPart('bass', navigationInfo) as any,
       };
 
-      console.log(`InstrumentLog: [1. Composer] Generated hints for bar ${this.epoch}: Melody=${instrumentHints.melody}, Bass=${instrumentHints.bass}`);
+      if (navigationInfo.logMessage) {
+        console.log(navigationInfo.logMessage);
+      }
 
       const { events } = this.generateOneBar(barDuration, navigationInfo, instrumentHints);
       
@@ -557,101 +556,6 @@ export class FractalMusicEngine {
     return events;
   }
   
-    private generateBluesMelodyChorus(
-        chorusChords: GhostChord[],
-        mood: Mood,
-        random: { next: () => number; nextInt: (max: number) => number; },
-        isSoloSection: boolean,
-        chorusIndex: number,
-        partId: string,
-        registerHint?: 'low' | 'mid' | 'high'
-    ): { events: FractalEvent[], log: string } {
-
-        const finalEvents: FractalEvent[] = [];
-        const barDurationInBeats = 4.0;
-        const ticksPerBeat = 3;
-        let logMessage = "";
-        
-        let soloPlanName = this.suiteDNA?.soloPlanMap.get(partId);
-
-        if (!soloPlanName) {
-            console.error(`[FME] No solo plan found in DNA for partId: ${partId}. Returning empty.`);
-            return { events: [], log: `No solo plan for partId ${partId}`};
-        }
-
-        logMessage = `[FME] Solo section ${partId}. Using plan "${soloPlanName}".`;
-        const soloPlan = BLUES_SOLO_PLANS[soloPlanName];
-
-        if (!soloPlan || chorusIndex >= soloPlan.choruses.length) {
-            logMessage += ` | Plan "${soloPlanName}" or chorus index ${chorusIndex} out of bounds.`;
-            console.warn(logMessage);
-            return { events: [], log: logMessage };
-        }
-
-        const currentChorusPlan = soloPlan.choruses[chorusIndex % soloPlan.choruses.length];
-        logMessage += ` | Assembling solo chorus ${chorusIndex + 1}.`;
-
-        for (let barIndex = 0; barIndex < 12; barIndex++) {
-            const lickIdWithModifiers = currentChorusPlan[barIndex];
-            const [lickId, ...modifiers] = lickIdWithModifiers.split('+');
-
-            const lickTemplate = BLUES_SOLO_LICKS[lickId];
-            const currentChord = chorusChords.find(c => c.bar % 12 === barIndex);
-
-            if (!lickTemplate || !currentChord) continue;
-
-            let phraseEvents: BluesSoloPhrase = JSON.parse(JSON.stringify(lickTemplate));
-
-            let octaveShift = 12 * (registerHint === 'high' ? 4 : 3);
-            if (modifiers.includes('oct') || modifiers.includes('hi')) {
-                octaveShift += 12;
-            }
-
-            if (modifiers.includes('long')) {
-                const lastNote = phraseEvents[phraseEvents.length - 1];
-                if (lastNote) {
-                    lastNote.d = (lastNote.d || 2) * 1.5;
-                }
-            }
-
-            if (modifiers.includes('var') && phraseEvents.length > 1) {
-                const i = random.nextInt(phraseEvents.length - 1);
-                const tempTime = phraseEvents[i].t;
-                phraseEvents[i].t = phraseEvents[i + 1].t;
-                phraseEvents[i + 1].t = tempTime;
-                phraseEvents.sort((a, b) => a.t - b.t);
-            }
-
-            for (const noteTemplate of phraseEvents) {
-                let finalMidiNote = currentChord.rootNote + (DEGREE_TO_SEMITONE[noteTemplate.deg as BluesRiffDegree] || 0) + octaveShift;
-                if (finalMidiNote > 84) finalMidiNote -= 12;
-                if (finalMidiNote < 52) finalMidiNote += 12;
-                
-                const event: FractalEvent = {
-                    type: 'melody',
-                    note: finalMidiNote,
-                    time: (barIndex * barDurationInBeats) + (noteTemplate.t / ticksPerBeat),
-                    duration: ((noteTemplate.d || 2) / ticksPerBeat),
-                    weight: 0.9,
-                    technique: (noteTemplate.tech as Technique) || 'pick',
-                    dynamics: 'f', phrasing: 'legato', params: {}
-                };
-                finalEvents.push(event);
-            }
-        }
-        
-        return { events: finalEvents, log: logMessage };
-    }
-
-    private generateBluesAccompanimentV2(chord: GhostChord, melodyEvents: FractalEvent[], drumEvents: FractalEvent[], random: { next: () => number, nextInt: (max: number) => number }): FractalEvent[] {
-        // #ИСПРАВЛЕНО (ПЛАН 1562): Логика "джема" полностью удалена.
-        // #ЗАЧЕМ: Предыдущая реализация была нестабильной и создавала хаос.
-        // #ЧТО: Теперь аккомпанемент просто играет поддерживающие аккорды, обеспечивая
-        //       надежную и предсказуемую гармоническую основу.
-        return createAccompanimentAxiom(chord, this.config.mood, this.config.genre, this.random, this.config.tempo, 'low');
-    }
-
-
   // --- Основная функция генерации на один такт ---
   private generateOneBar(barDuration: number, navInfo: NavigationInfo, instrumentHints: InstrumentHints): { events: FractalEvent[] } {
     const effectiveBar = this.epoch;
@@ -689,22 +593,56 @@ export class FractalMusicEngine {
             const barInChorus = this.epoch % 12;
             const chorusIndex = Math.floor((this.epoch % 36) / 12);
             const partId = navInfo.currentPart.id;
+            const soloPlanName = this.suiteDNA?.soloPlanMap.get(partId);
 
-            if (barInChorus === 0 || !this.bluesChorusCache || this.bluesChorusCache.barStart !== (this.epoch - barInChorus)) {
-                const chorusBarStart = this.epoch - barInChorus;
-                const chorusChords = this.suiteDNA.harmonyTrack.filter(c => c.bar >= chorusBarStart && c.bar < chorusBarStart + 12);
-                if (chorusChords.length > 0) {
-                    this.bluesChorusCache = this.generateBluesMelodyChorus(chorusChords, this.config.mood, this.random, true, chorusIndex, partId, melodyRules.register?.preferred);
-                    console.log(`%c${this.bluesChorusCache.log}`, 'color: #E6E6FA');
+            if (soloPlanName) {
+                const soloPlan = BLUES_SOLO_PLANS[soloPlanName];
+                if (soloPlan && chorusIndex < soloPlan.choruses.length) {
+                    const currentChorusPlan = soloPlan.choruses[chorusIndex];
+                    const lickIdWithModifiers = currentChorusPlan[barInChorus];
+                    const [lickId, ...modifiers] = lickIdWithModifiers.split('+');
+
+                    const lickTemplate = BLUES_SOLO_LICKS[lickId];
+
+                    if (lickTemplate && currentChord) {
+                        const ticksPerBeat = 3;
+                        let phraseEvents: BluesSoloPhrase = JSON.parse(JSON.stringify(lickTemplate));
+                        let octaveShift = 12 * (melodyRules.register?.preferred === 'high' ? 4 : 3);
+                        if (modifiers.includes('oct') || modifiers.includes('hi')) {
+                            octaveShift += 12;
+                        }
+
+                        if (modifiers.includes('var') && phraseEvents.length > 1) {
+                            const i = this.random.nextInt(phraseEvents.length - 1);
+                            const tempTime = phraseEvents[i].t;
+                            phraseEvents[i].t = phraseEvents[i + 1].t;
+                            phraseEvents[i + 1].t = tempTime;
+                            phraseEvents.sort((a, b) => a.t - b.t);
+                        }
+                         if (modifiers.includes('long')) {
+                            const lastNote = phraseEvents[phraseEvents.length - 1];
+                            if (lastNote) {
+                                lastNote.d = (lastNote.d || 2) * 1.5;
+                            }
+                        }
+
+                        for (const noteTemplate of phraseEvents) {
+                            let finalMidiNote = currentChord.rootNote + (DEGREE_TO_SEMITONE[noteTemplate.deg as BluesRiffDegree] || 0) + octaveShift;
+                            if (finalMidiNote > 84) finalMidiNote -= 12;
+                            if (finalMidiNote < 52) finalMidiNote += 12;
+
+                            melodyEvents.push({
+                                type: 'melody',
+                                note: finalMidiNote,
+                                time: (noteTemplate.t / ticksPerBeat),
+                                duration: ((noteTemplate.d || 2) / ticksPerBeat),
+                                weight: 0.9,
+                                technique: (noteTemplate.tech as Technique) || 'pick',
+                                dynamics: 'f', phrasing: 'legato', params: {}
+                            });
+                        }
+                    }
                 }
-            }
-            
-            if (this.bluesChorusCache) {
-                const barStartBeat = barInChorus * 4.0;
-                const barEndBeat = barStartBeat + 4.0;
-                melodyEvents = this.bluesChorusCache.events
-                    .filter(e => e.time >= barStartBeat && e.time < barEndBeat)
-                    .map(e => ({ ...e, time: e.time - barStartBeat }));
             }
         } else if (melodyRules.source === 'motif') {
             this.currentMelodyMotif = createAmbientMelodyMotif(currentChord, this.config.mood, this.random, this.currentMelodyMotif, melodyRules.register?.preferred, this.config.genre);
