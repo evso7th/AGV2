@@ -13,7 +13,7 @@ import type { DrumKit, DrumKitLibrary, InstrumentType } from '@/types/fractal';
 // --- БАЗОВЫЕ НАБОРЫ СЭМПЛОВ ДЛЯ ПЕРЕИСПОЛЬЗОВАНИЯ ---
 
 const ALL_KICKS: InstrumentType[] = ['drum_kick', 'drum_cajon_kick', 'drum_drum_kick_reso', 'drum_kick_drum6', 'drum_kick_soft'];
-const ALL_SNARES: InstrumentType[] = ['drum_snare', 'drum_snare_ghost_note', 'drum_snare_off', 'drum_snarepress', 'drum_brush1', 'drum_brush2', 'drum_brush3', 'drum_brush4'];
+const ALL_SNARES: InstrumentType[] = ['drum_snare', 'drum_snare_ghost_note', 'drum_snarepress', 'drum_brush2', 'drum_brush3', 'drum_brush4'];
 const ALL_HIHATS: InstrumentType[] = [
     'drum_25677__walter_odington__alex-hat',
     'drum_25678__walter_odington__avalanche-hat',
@@ -28,11 +28,10 @@ const ALL_HIHATS: InstrumentType[] = [
     'drum_closed_hi_hat_ghost',
     'drum_open_hh_bottom2',
     'drum_open_hh_top2',
-    'drum_brush1',
     'drum_brush4'
 ];
 const ALL_RIDES: InstrumentType[] = ['drum_ride', 'drum_ride_wetter', 'drum_a-ride1', 'drum_a-ride2', 'drum_a-ride3', 'drum_a-ride4', 'drum_cymbal1', 'drum_cymbal2', 'drum_cymbal3', 'drum_cymbal4'];
-const ALL_CRASHES: InstrumentType[] = ['drum_crash', 'drum_crash2'];
+const ALL_CRASHES: InstrumentType[] = ['drum_crash2'];
 const ALL_TOMS: InstrumentType[] = [
     'drum_tom_low', 'drum_tom_mid', 'drum_tom_high',
     'drum_lowtom', 'drum_midtom', 'drum_hightom',
@@ -62,22 +61,8 @@ const ALL_PERC: InstrumentType[] = [
 
 const bluesMelancholicMaster: DrumKit = {
     kick: ['drum_kick_reso', 'drum_kick_drum6'],
-    snare: ['drum_brush3', 'drum_snare', 'drum_snare_ghost_note', 'drum_snare_off'],
-    hihat: [
-        'drum_25677__walter_odington__alex-hat',
-        'drum_25678__walter_odington__avalanche-hat',
-        'drum_25687__walter_odington__blip-hat',
-        'drum_25688__walter_odington__brushed-bell-hat',
-        'drum_25693__walter_odington__hackney-hat-1',
-        'drum_25694__walter_odington__hackney-hat-2',
-        'drum_25695__walter_odington__hackney-hat-3',
-        'drum_25696__walter_odington__hackney-hat-4',
-        'drum_closed_hi_hat_ghost',
-        'drum_open_hh_bottom2',
-        'drum_open_hh_top2',
-        'drum_brush1',
-        'drum_brush4'
-    ],
+    snare: ['drum_brush3', 'drum_snare', 'drum_snare_ghost_note'],
+    hihat: ['drum_25693__walter_odington__hackney-hat-1', 'drum_25694__walter_odington__hackney-hat-2'],
     ride: [
         'drum_a-ride1',
         'drum_a-ride4',
@@ -177,7 +162,7 @@ export const DRUM_KITS: DrumKitLibrary = {
         },
         winter_blues_prolog3: {
             kick: ['drum_kick_reso'],
-            snare: ['drum_snare_ghost_note', 'drum_snare_off'],
+            snare: ['drum_snare_ghost_note'],
             hihat: ['drum_25693__walter_odington__hackney-hat-1', 'drum_25694__walter_odington__hackney-hat-2'],
             ride: [],
             crash: [],

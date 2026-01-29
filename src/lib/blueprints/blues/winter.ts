@@ -76,7 +76,7 @@ export const WinterBluesBlueprint: MusicBlueprint = {
                     harmony: { strategy: 'weighted', options: [{ name: 'piano', weight: 0.3 }, { name: 'guitarChords', weight: 0.7 }] }
                 },
                 instrumentRules: {
-                    drums: { pattern: 'composer', kitName: 'blues_melancholic_master', density: { min: 0.5, max: 0.7 } },
+                    drums: { pattern: 'composer', kitName: 'blues_melancholic_master', density: { min: 0.5, max: 0.7 }, ride: { enabled: true, probability: 0.15 } },
                     bass: { techniques: [{ value: 'riff', weight: 1.0 }] },
                     melody: { source: 'motif', density: { min: 0.5, max: 0.9 }, register: { preferred: 'mid' } }
                 },
@@ -93,7 +93,7 @@ export const WinterBluesBlueprint: MusicBlueprint = {
                     harmony: { strategy: 'weighted', options: [{ name: 'piano', weight: 0.3 }, { name: 'guitarChords', weight: 0.7 }] }
                 },
                 instrumentRules: {
-                    drums: { pattern: 'composer', kitName: 'blues_melancholic_master', density: { min: 0.6, max: 0.8 }, ride: { enabled: true } },
+                    drums: { pattern: 'composer', kitName: 'blues_melancholic_master', density: { min: 0.6, max: 0.8 }, ride: { enabled: true, probability: 0.15 } },
                     bass: { techniques: [{ value: 'walking', weight: 1.0 }] },
                     melody: { source: 'motif', density: { min: 0.5, max: 0.9 }, register: { preferred: 'high' }, soloPlan: 'S06' }
                 },
@@ -110,7 +110,7 @@ export const WinterBluesBlueprint: MusicBlueprint = {
                     harmony: { strategy: 'weighted', options: [{ name: 'piano', weight: 0.3 }, { name: 'guitarChords', weight: 0.7 }] }
                 },
                 instrumentRules: {
-                    drums: { pattern: 'composer', kitName: 'blues_melancholic_master', density: { min: 0.2, max: 0.4 } }, // REDUCED DENSITY
+                    drums: { pattern: 'composer', kitName: 'blues_melancholic_master', density: { min: 0.2, max: 0.4 }, ride: { enabled: true, probability: 0.15 } }, // REDUCED DENSITY
                     bass: { techniques: [{ value: 'riff', weight: 1.0 }] },
                     melody: { source: 'motif', density: { min: 0.5, max: 0.9 }, register: { preferred: 'mid' } }
                 },
