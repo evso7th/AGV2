@@ -1,5 +1,4 @@
 
-
 import type { MusicBlueprint } from '@/types/music';
 
 export const WinterBluesBlueprint: MusicBlueprint = {
@@ -27,7 +26,7 @@ export const WinterBluesBlueprint: MusicBlueprint = {
                 },
                 instrumentRules: {
                     bass: { techniques: [{ value: 'long_notes', weight: 1.0 }] },
-                    melody: { source: 'motif', density: { min: 0.5, max: 0.9 } },
+                    melody: { source: 'blues_solo', density: { min: 0.5, max: 0.9 } }, // CHANGED from 'motif'
                     drums: { pattern: 'composer', kitName: 'winter_blues_prolog1', density: { min: 0.1, max: 0.2 } }
                 },
                 bundles: [{ id: 'WINTER_INTRO_1', name: 'Icy Breath', duration: { percent: 100 }, characteristics: {}, phrases: {} }],
@@ -96,7 +95,7 @@ export const WinterBluesBlueprint: MusicBlueprint = {
                 instrumentRules: {
                     drums: { pattern: 'composer', kitName: 'blues_melancholic_master', density: { min: 0.6, max: 0.8 }, ride: { enabled: true, probability: 0.15 } },
                     bass: { techniques: [{ value: 'walking', weight: 1.0 }] },
-                    melody: { source: 'blues_solo', density: { min: 0.5, max: 0.9 }, register: { preferred: 'high' }, soloPlan: 'S06' }
+                    melody: { source: 'blues_solo', density: { min: 0.5, max: 0.9 }, register: { preferred: 'high' } }
                 },
                 bundles: [{ id: 'WINTER_SOLO_1', name: 'The Cry', duration: { percent: 100 }, characteristics: {}, phrases: {} }],
                 outroFill: { type: 'roll', duration: 1, parameters: { instrument: 'crash' } },

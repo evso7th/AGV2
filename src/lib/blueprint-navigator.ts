@@ -260,7 +260,11 @@ export class BlueprintNavigator {
                 const density = value.density ? `density:[${value.density.min}-${value.density.max}]` : '';
                 const source = value.source ? `src:${value.source}` : '';
                 const kit = value.kitName ? `kit:${value.kitName}` : '';
-                const soloPlan = value.soloPlan ? `solo:${value.soloPlan}` : '';
+                
+                // #ЗАЧЕМ: Добавляет ID плана соло в лог для отладки.
+                // #ЧТО: Проверяет, есть ли для текущей части (part.id) план соло в карте soloPlanMap.
+                // #СВЯЗИ: Эта карта передается в конструктор навигатора из FME.
+                const soloPlan = (key === 'melody' && this.soloPlanMap.has(partInfo.part.id)) ? `solo:${this.soloPlanMap.get(partInfo.part.id)}` : '';
                 
                 const rulesStr = [density, source, kit, soloPlan].filter(Boolean).join(' ');
                 if (rulesStr) {
