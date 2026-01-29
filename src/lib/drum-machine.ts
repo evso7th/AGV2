@@ -209,10 +209,17 @@ export class DrumMachine {
             const eventType = Array.isArray(event.type) ? event.type[0] : event.type;
             if (typeof eventType !== 'string' || (!eventType.startsWith('drum_') && !eventType.startsWith('perc-') && !Object.keys(DRUM_SAMPLES).some(key => key === eventType))) continue;
             
-            const sampleName = eventType.startsWith('drum_') ? eventType.replace('drum_', '') : eventType;
+            // #ИСПРАВЛЕНО (ПЛАН 1589): Улучшена логика поиска сэмпла.
+            // #ЗАЧЕМ: Эта логика решает проблему с inconsistently-named-assets.
+            //         Она сначала пытается найти сэмпл по его полному имени
+            //         (e.g., 'drum_kick_reso') и, если не находит, пробует
+            //         короткое имя ('kick_reso'), как это делают другие сэмплы.
+            let sampleName = eventType;
+            if (!this.sampler.buffers.has(sampleName)) {
+                sampleName = eventType.replace('drum_', '');
+            }
             
             if (!this.sampler.buffers.has(sampleName)) {
-                 // Do not log here to avoid console spam for missing samples
                  continue;
             }
 
