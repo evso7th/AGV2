@@ -360,7 +360,7 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
             accompanimentManagerV2Ref.current = new AccompanimentSynthManagerV2(context, gainNodesRef.current.accompaniment!);
             initPromises.push(accompanimentManagerV2Ref.current.init());
         }
-
+        
         if (!blackGuitarSamplerRef.current) {
             blackGuitarSamplerRef.current = new BlackGuitarSampler(context, gainNodesRef.current.melody!);
             initPromises.push(blackGuitarSamplerRef.current.init());
@@ -370,8 +370,27 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
             telecasterSamplerRef.current = new TelecasterGuitarSampler(context, gainNodesRef.current.melody!);
             initPromises.push(telecasterSamplerRef.current.init());
         }
+        
+        if (!melodyManagerRef.current) {
+            if (!blackGuitarSamplerRef.current?.isInitialized) {
+                 await blackGuitarSamplerRef.current?.init();
+            }
+            melodyManagerRef.current = new MelodySynthManager(
+                context, 
+                gainNodesRef.current.melody!, 
+                blackGuitarSamplerRef.current!, 
+                'melody'
+            );
+            initPromises.push(melodyManagerRef.current.init());
+        }
 
         if (!melodyManagerV2Ref.current) {
+            if (!blackGuitarSamplerRef.current?.isInitialized) {
+                 await blackGuitarSamplerRef.current?.init();
+            }
+            if (!telecasterSamplerRef.current?.isInitialized) {
+                await telecasterSamplerRef.current?.init();
+            }
             melodyManagerV2Ref.current = new MelodySynthManagerV2(
                 context, 
                 gainNodesRef.current.melody!, 
@@ -383,6 +402,12 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
         }
 
         if (!bassManagerV2Ref.current) {
+             if (!blackGuitarSamplerRef.current?.isInitialized) {
+                 await blackGuitarSamplerRef.current?.init();
+            }
+            if (!telecasterSamplerRef.current?.isInitialized) {
+                await telecasterSamplerRef.current?.init();
+            }
             bassManagerV2Ref.current = new MelodySynthManagerV2(
                 context,
                 gainNodesRef.current.bass!,
