@@ -95,13 +95,15 @@ export class BlueprintNavigator {
     private genre: Genre;
     private mood: Mood;
     private introBars: number;
+    private soloPlanMap: Map<string, string>;
 
-    constructor(blueprint: MusicBlueprint, seed: number, genre: Genre, mood: Mood, introBars: number) {
+    constructor(blueprint: MusicBlueprint, seed: number, genre: Genre, mood: Mood, introBars: number, soloPlanMap: Map<string, string>) {
         this.blueprint = blueprint;
         this.genre = genre;
         this.mood = mood;
         this.introBars = introBars; // This might be deprecated if percentages are always used
         this.totalBars = this.blueprint.structure.totalDuration.preferredBars;
+        this.soloPlanMap = soloPlanMap;
 
         let currentBar = 0;
         const allParts = this.blueprint.structure.parts;
@@ -246,9 +248,14 @@ export class BlueprintNavigator {
                 Object.entries(partInfo.part.instrumentRules).forEach(([key, value]) => {
                     const density = value.density ? `density:[${value.density.min}-${value.density.max}]` : '';
                     const source = value.source ? `src:${value.source}` : '';
-                    const solo = value.soloPlan ? `solo:${value.soloPlan}` : '';
                     const kit = value.kitName ? `kit:${value.kitName}` : '';
-                    const rulesStr = [density, source, solo, kit].filter(Boolean).join(' ');
+                    
+                    let soloPlanLog: string | null = null;
+                    if (key === 'melody' && this.soloPlanMap.has(partInfo.part.id)) {
+                        soloPlanLog = `solo:${this.soloPlanMap.get(partInfo.part.id)}`;
+                    }
+
+                    const rulesStr = [density, source, soloPlanLog, kit].filter(Boolean).join(' ');
                     if (rulesStr) {
                         rulesLog.push(`${key}(${rulesStr})`);
                     }

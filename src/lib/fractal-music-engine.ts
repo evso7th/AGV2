@@ -173,8 +173,6 @@ export class FractalMusicEngine {
     this.nextAccompanimentDelay = this.random.next() * 7 + 5;
     this.hasBassBeenMutated = false;
     
-    // #ЗАЧЕМ: Гарантирует уникальность риффов для каждой новой сюиты.
-    // #ЧТО: При каждой инициализации создаются новые "перетасованные" плейлисты риффов.
     const allBassRiffs = Object.values(BLUES_BASS_RIFFS).flat();
     this.shuffledBassRiffIndices = this.random.shuffle(Array.from({ length: allBassRiffs.length }, (_, i) => i));
     this.bassRiffConveyorIndex = 0;
@@ -186,7 +184,6 @@ export class FractalMusicEngine {
     this.shuffledGuitarRiffIDs = this.random.shuffle(BLUES_GUITAR_RIFFS.map(r => r.id));
     this.guitarRiffConveyorIndex = 0;
     
-    // Установка стартовых риффов
     this.currentBassRiffIndex = this.shuffledBassRiffIndices[this.bassRiffConveyorIndex++] ?? 0;
     this.currentDrumRiffIndex = this.shuffledDrumRiffIndices[this.drumRiffConveyorIndex++] ?? 0;
     this.currentGuitarRiffId = this.shuffledGuitarRiffIDs[this.guitarRiffConveyorIndex++] ?? null;
@@ -195,20 +192,21 @@ export class FractalMusicEngine {
 
 
     const blueprint = await getBlueprint(this.config.genre, this.config.mood);
-    this.navigator = new BlueprintNavigator(blueprint, this.config.seed, this.config.genre, this.config.mood, this.config.introBars);
     
     this.suiteDNA = generateSuiteDNA(
-        this.navigator.totalBars,
+        blueprint.structure.totalDuration.preferredBars,
         this.config.mood,
         this.config.seed,
         this.random,
         this.config.genre,
-        this.navigator.blueprint.structure.parts // Передаем части для создания карты соло
+        blueprint.structure.parts
     );
     
     if (!this.suiteDNA || this.suiteDNA.harmonyTrack.length === 0) {
       throw new Error("[Engine] CRITICAL ERROR: Could not generate 'Suite DNA'. Music is not possible.");
     }
+    
+    this.navigator = new BlueprintNavigator(blueprint, this.config.seed, this.config.genre, this.config.mood, this.config.introBars, this.suiteDNA.soloPlanMap);
     
     this.config.tempo = this.suiteDNA.baseTempo;
 
@@ -240,62 +238,6 @@ export class FractalMusicEngine {
     this.isInitialized = true;
   }
   
-  private _chooseInstrumentForPart(
-    part: InstrumentPart,
-    navInfo: NavigationInfo | null
-  ): MelodyInstrument | AccompanimentInstrument | 'piano' | 'guitarChords' | 'flute' | 'violin' | undefined {
-    const rules = navInfo?.currentPart.instrumentation?.[part as keyof typeof navInfo.currentPart.instrumentation];
-    if (!rules || rules.strategy !== 'weighted') {
-        return undefined;
-    }
-
-    let options: any[] | undefined;
-
-    if (part === 'bass') {
-        const useV2 = this.config.useMelodyV2;
-        options = useV2 ? (rules as InstrumentationRules<BassInstrument>).v2Options : (rules as InstrumentationRules<BassInstrument>).v1Options;
-        
-        if (!options || options.length === 0) {
-             console.warn(`[FME] No ${useV2 ? 'v2' : 'v1'}Options for bass, falling back to other version.`);
-             options = useV2 ? (rules as InstrumentationRules<BassInstrument>).v1Options : (rules as InstrumentationRules<BassInstrument>).v2Options;
-        }
-    } 
-    else if (part === 'melody' || part === 'accompaniment') {
-        const useV2 = this.config.useMelodyV2;
-        options = useV2 ? rules.v2Options : rules.v1Options;
-
-        if (!options || options.length === 0) {
-            console.warn(`[FME] No ${useV2 ? 'v2' : 'v1'}Options for ${part}, falling back to other version.`);
-            options = useV2 ? rules.v1Options : rules.v2Options;
-        }
-    } 
-    else if (part === 'harmony') {
-        options = (rules as InstrumentationRules<'piano' | 'guitarChords' | 'flute' | 'violin'>).options;
-    }
-
-    if (!options || options.length === 0) {
-        return undefined;
-    }
-    
-    return this._performWeightedChoice(options);
-  }
-  
-  private _performWeightedChoice(options: {name: any, weight: number}[]): any {
-    if (!options || options.length === 0) return undefined;
-    const totalWeight = options.reduce((sum, opt) => sum + opt.weight, 0);
-    if (totalWeight <= 0) return options[0]?.name;
-
-    let rand = this.random.next() * totalWeight;
-    for (const option of options) {
-        rand -= option.weight;
-        if (rand <= 0) {
-            return option.name;
-        }
-    }
-    return options[options.length - 1].name;
-  }
-
-
   public generateExternalImpulse() {
   }
   
@@ -516,15 +458,14 @@ export class FractalMusicEngine {
           return { events: [], instrumentHints: {} };
       }
 
-      const navigationInfo = this.navigator.tick(this.epoch);
+      const v2MelodyHint = this._chooseInstrumentForPart('melody', this.navigator.tick(this.epoch));
+      const navigationInfo = this.navigator.tick(this.epoch, v2MelodyHint);
 
       if (!navigationInfo) {
           console.warn(`[FME] Navigator returned null for bar ${this.epoch}. Returning empty events.`);
           return { events: [], instrumentHints: {} };
       }
       
-      const v2MelodyHint = this._chooseInstrumentForPart('melody', navigationInfo);
-
       const instrumentHints: InstrumentHints = {
           melody: v2MelodyHint,
           accompaniment: this._chooseInstrumentForPart('accompaniment', navigationInfo),
@@ -589,34 +530,29 @@ export class FractalMusicEngine {
     const melodyRules = navInfo.currentPart.instrumentRules?.melody;
 
     if (navInfo.currentPart.layers.melody && !navInfo.currentPart.accompanimentMelodyDouble?.enabled && melodyRules) {
-        if (this.config.genre === 'blues') {
-            const barInChorus = this.epoch % 12;
-            const chorusIndex = Math.floor((this.epoch % 36) / 12);
-            const partId = navInfo.currentPart.id;
-            const soloPlanName = this.suiteDNA?.soloPlanMap.get(partId);
+        const partId = navInfo.currentPart.id;
+        const soloPlanName = this.suiteDNA?.soloPlanMap.get(partId);
 
-            if (soloPlanName) {
-                const soloPlan = BLUES_SOLO_PLANS[soloPlanName];
-                if (soloPlan && chorusIndex < soloPlan.choruses.length) {
+        if (melodyRules.source === 'blues_solo' && soloPlanName && this.config.genre === 'blues') {
+            const soloPlan = BLUES_SOLO_PLANS[soloPlanName];
+            if (soloPlan) {
+                const barInChorus = this.epoch % 12;
+                const chorusIndex = Math.floor((this.epoch % 36) / 12);
+                
+                if (chorusIndex < soloPlan.choruses.length) {
                     const currentChorusPlan = soloPlan.choruses[chorusIndex];
                     const lickIdWithModifiers = currentChorusPlan[barInChorus];
                     const [lickId, ...modifiers] = lickIdWithModifiers.split('+');
-
                     const lickTemplate = BLUES_SOLO_LICKS[lickId];
 
-                    if (lickTemplate && currentChord) {
-                        const ticksPerBeat = 3;
+                    if (lickTemplate) {
                         let phraseEvents: BluesSoloPhrase = JSON.parse(JSON.stringify(lickTemplate));
                         let octaveShift = 12 * (melodyRules.register?.preferred === 'high' ? 4 : 3);
-                        if (modifiers.includes('oct') || modifiers.includes('hi')) {
-                            octaveShift += 12;
-                        }
-
+                        
+                        if (modifiers.includes('oct') || modifiers.includes('hi')) octaveShift += 12;
                         if (modifiers.includes('var') && phraseEvents.length > 1) {
                             const i = this.random.nextInt(phraseEvents.length - 1);
-                            const tempTime = phraseEvents[i].t;
-                            phraseEvents[i].t = phraseEvents[i + 1].t;
-                            phraseEvents[i + 1].t = tempTime;
+                            [phraseEvents[i].t, phraseEvents[i+1].t] = [phraseEvents[i+1].t, phraseEvents[i].t];
                             phraseEvents.sort((a, b) => a.t - b.t);
                         }
                          if (modifiers.includes('long')) {
@@ -632,13 +568,9 @@ export class FractalMusicEngine {
                             if (finalMidiNote < 52) finalMidiNote += 12;
 
                             melodyEvents.push({
-                                type: 'melody',
-                                note: finalMidiNote,
-                                time: (noteTemplate.t / ticksPerBeat),
-                                duration: ((noteTemplate.d || 2) / ticksPerBeat),
-                                weight: 0.9,
-                                technique: (noteTemplate.tech as Technique) || 'pick',
-                                dynamics: 'f', phrasing: 'legato', params: {}
+                                type: 'melody', note: finalMidiNote,
+                                time: noteTemplate.t / 3, duration: (noteTemplate.d || 2) / 3,
+                                weight: 0.9, technique: (noteTemplate.tech || 'pick') as Technique, dynamics: 'f', phrasing: 'legato', params: {}
                             });
                         }
                     }
