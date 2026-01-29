@@ -1,6 +1,6 @@
 
 
-import type { MusicBlueprint, BlueprintPart, BlueprintBundle, Genre, Mood, InstrumentationRules, MelodyInstrument, AccompanimentInstrument, BassInstrument, V2MelodyInstrument, InstrumentBehaviorRules } from '@/types/music';
+import type { MusicBlueprint, BlueprintPart, BlueprintBundle, Genre, Mood, InstrumentationRules, MelodyInstrument, AccompanimentInstrument, BassInstrument, V2MelodyInstrument, InstrumentBehaviorRules, InstrumentHints } from '@/types/music';
 
 // Helper function for seeded random numbers - kept for potential future use in axiom selection
 function seededRandom(seed: number) {
@@ -41,9 +41,6 @@ function formatInstrumentation(
     drumRules?: InstrumentBehaviorRules,
     v2MelodyHint?: MelodyInstrument
 ): string {
-    // #ЗАЧЕМ: Эта функция создает детальное, удобочитаемое описание текущей инструментовки.
-    // #ЧТО: Она итерирует по правилам инструментовки и ударных из блюпринта и форматирует их в строку.
-    // #СВЯЗИ: Вызывается из `tick()` для формирования лог-сообщения.
     if (!instrumentation && !drumRules?.kitName) {
         return 'Instrumentation: (none)';
     }
@@ -191,7 +188,7 @@ export class BlueprintNavigator {
      * @param currentBar The current bar number (epoch).
      * @returns NavigationInfo object with details about the current position and transitions.
      */
-    public tick(currentBar: number, v2MelodyHint?: MelodyInstrument): NavigationInfo | null {
+    public tick(currentBar: number): NavigationInfo | null {
         // Wrap the bar count if it exceeds the total duration, allowing for looping.
         const effectiveBar = currentBar % this.totalBars;
 
@@ -204,13 +201,13 @@ export class BlueprintNavigator {
         // If no bundles, create a default one for the whole part duration
         if (partInfo.bundleBoundaries.length === 0) {
             const isPartTransition = effectiveBar === partInfo.startBar;
-             const logMessage = isPartTransition ? `%c[NAVIGATOR @ Bar ${currentBar}] Part Transition: ${partInfo.part.id} (No Bundles)` : null;
+             const shouldLog = isPartTransition;
             return {
                 currentPart: partInfo.part,
                 currentBundle: { id: `${partInfo.part.id}_DEFAULT_BUNDLE`, name: 'Default', duration: { percent: 100 }, characteristics: {}, phrases: {} },
                 isPartTransition,
                 isBundleTransition: false,
-                logMessage
+                logMessage: shouldLog ? "Transition detected" : null
             };
         }
 
@@ -223,7 +220,7 @@ export class BlueprintNavigator {
                     currentBundle: partInfo.bundleBoundaries[0].bundle,
                     isPartTransition: effectiveBar === partInfo.startBar,
                     isBundleTransition: false,
-                    logMessage: `[NAVIGATOR @ Bar ${effectiveBar}] Fallback to first bundle in part ${partInfo.part.id}.`
+                    logMessage: "[NAVIGATOR @ Bar ${effectiveBar}] Fallback to first bundle in part ${partInfo.part.id}."
                  };
              }
             return null;
@@ -231,53 +228,53 @@ export class BlueprintNavigator {
 
         const isPartTransition = effectiveBar === partInfo.startBar;
         const isBundleTransition = !isPartTransition && effectiveBar === bundleInfo.startBar;
-        
-        let logMessage: string | null = null;
-        if (isPartTransition || isBundleTransition) {
-            const transitionType = isPartTransition ? "Part" : "Bundle";
-            const mutationType = isPartTransition ? "MACRO" : "micro";
-            
-            // #ЗАЧЕМ: Формирование детального лога для отладки.
-            // #ЧТО: Собирает информацию о текущей секции, включая инструменты, правила и длительность.
-            // #СВЯЗИ: Вызывается из tick() для формирования лог-сообщения.
-            const partDuration = partInfo.endBar - partInfo.startBar + 1;
-            const bundleDuration = bundleInfo.endBar - bundleInfo.startBar + 1;
-
-            const rulesLog: string[] = [];
-            if (partInfo.part.instrumentRules) {
-                Object.entries(partInfo.part.instrumentRules).forEach(([key, value]) => {
-                    const density = value.density ? `density:[${value.density.min}-${value.density.max}]` : '';
-                    const source = value.source ? `src:${value.source}` : '';
-                    const kit = value.kitName ? `kit:${value.kitName}` : '';
-                    
-                    let soloPlanLog: string | null = null;
-                    if (key === 'melody' && this.soloPlanMap.has(partInfo.part.id)) {
-                        soloPlanLog = `solo:${this.soloPlanMap.get(partInfo.part.id)}`;
-                    }
-
-                    const rulesStr = [density, source, soloPlanLog, kit].filter(Boolean).join(' ');
-                    if (rulesStr) {
-                        rulesLog.push(`${key}(${rulesStr})`);
-                    }
-                });
-            }
-
-            const instrumentationLog = formatInstrumentation(partInfo.part.instrumentation, partInfo.part.instrumentRules?.drums, v2MelodyHint);
-            
-            logMessage = `%c[NAVIGATOR @ Bar ${currentBar}] ${transitionType} Transition: ${partInfo.part.id} (${partDuration} bars) / ${bundleInfo.bundle.id} (${bundleDuration} bars)\n` +
-                         `  - Context: Genre: ${this.genre}, Mood: ${this.mood}, BP: ${this.blueprint.name}\n` +
-                         `  - ${instrumentationLog}\n` +
-                         `  - Rules: ${rulesLog.join(' | ')}\n` +
-                         `  - Mutation: ${mutationType}`;
-        }
-
+        const shouldLog = isPartTransition || isBundleTransition;
 
         return {
             currentPart: partInfo.part,
             currentBundle: bundleInfo.bundle,
             isPartTransition,
             isBundleTransition,
-            logMessage
+            logMessage: shouldLog ? "Transition detected" : null,
         };
+    }
+    
+    public formatLogMessage(navInfo: NavigationInfo, hints: InstrumentHints, currentBar: number): string | null {
+        if (!navInfo) return null;
+
+        const partInfo = this.partBoundaries.find(p => p.part.id === navInfo.currentPart.id);
+        if (!partInfo) return null;
+
+        const bundleInfo = partInfo.bundleBoundaries.find(b => b.bundle.id === navInfo.currentBundle.id);
+        if (!bundleInfo) return null;
+
+        const partDuration = partInfo.endBar - partInfo.startBar + 1;
+        const bundleDuration = bundleInfo.endBar - bundleInfo.startBar + 1;
+        
+        const transitionType = navInfo.isPartTransition ? "Part" : "Bundle";
+        const mutationType = navInfo.isPartTransition ? "MACRO" : "micro";
+
+        const rulesLog: string[] = [];
+        if (partInfo.part.instrumentRules) {
+            Object.entries(partInfo.part.instrumentRules).forEach(([key, value]) => {
+                const density = value.density ? `density:[${value.density.min}-${value.density.max}]` : '';
+                const source = value.source ? `src:${value.source}` : '';
+                const kit = value.kitName ? `kit:${value.kitName}` : '';
+                const soloPlan = value.soloPlan ? `solo:${value.soloPlan}` : '';
+                
+                const rulesStr = [density, source, kit, soloPlan].filter(Boolean).join(' ');
+                if (rulesStr) {
+                    rulesLog.push(`${key}(${rulesStr})`);
+                }
+            });
+        }
+        
+        const instrumentationLog = formatInstrumentation(partInfo.part.instrumentation, partInfo.part.instrumentRules?.drums, hints.melody as MelodyInstrument);
+
+        return `%c[NAVIGATOR @ Bar ${currentBar}] ${transitionType} Transition: ${partInfo.part.id} (${partDuration} bars) / ${bundleInfo.bundle.id} (${bundleDuration} bars)\n` +
+                     `  - Context: Genre: ${this.genre}, Mood: ${this.mood}, BP: ${this.blueprint.name}\n` +
+                     `  - ${instrumentationLog}\n` +
+                     `  - Rules: ${rulesLog.join(' | ')}\n` +
+                     `  - Mutation: ${mutationType}`;
     }
 }

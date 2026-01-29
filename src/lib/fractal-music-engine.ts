@@ -238,6 +238,45 @@ export class FractalMusicEngine {
     this.isInitialized = true;
   }
   
+  private _chooseInstrumentForPart(part: 'melody' | 'bass' | 'accompaniment' | 'harmony', navInfo: NavigationInfo | null): any {
+    const rules = navInfo?.currentPart.instrumentation?.[part];
+    if (!rules || !rules.strategy || rules.strategy !== 'weighted') {
+        return 'none';
+    }
+
+    // Determine which options to use based on the V2 engine flag
+    const options = (this.config.useMelodyV2 && rules.v2Options && rules.v2Options.length > 0) ? rules.v2Options : rules.v1Options;
+
+    if (!options || options.length === 0) {
+        // Fallback if the preferred engine has no options, but the other one does
+        const fallbackOptions = (this.config.useMelodyV2 ? rules.v1Options : rules.v2Options);
+        if(!fallbackOptions || fallbackOptions.length === 0) return 'none';
+        
+        const totalFallbackWeight = fallbackOptions.reduce((sum, item) => sum + item.weight, 0);
+        if (totalFallbackWeight <= 0 && fallbackOptions.length > 0) return fallbackOptions[0].name;
+        if (totalFallbackWeight <= 0) return 'none';
+
+        let randFallback = this.random.next() * totalFallbackWeight;
+        for (const item of fallbackOptions) {
+            randFallback -= item.weight;
+            if (randFallback <= 0) return item.name;
+        }
+        return fallbackOptions[fallbackOptions.length - 1].name;
+    }
+
+    const totalWeight = options.reduce((sum, item) => sum + item.weight, 0);
+    if (totalWeight <= 0 && options.length > 0) return options[0].name;
+    if (totalWeight <= 0) return 'none';
+
+    let rand = this.random.next() * totalWeight;
+    for (const item of options) {
+        rand -= item.weight;
+        if (rand <= 0) return item.name;
+    }
+
+    return options[options.length - 1].name;
+}
+
   public generateExternalImpulse() {
   }
   
@@ -436,51 +475,55 @@ export class FractalMusicEngine {
   }
   
   public evolve(barDuration: number, barCount: number): { events: FractalEvent[], instrumentHints: InstrumentHints } {
-      if (!this.navigator) {
-          console.error("FME evolve called before navigator was initialized.");
-          return { events: [], instrumentHints: {} };
-      }
-  
-      this.epoch = barCount;
-  
-      if (this.epoch >= this.navigator.totalBars + 4) {
-          return { events: [], instrumentHints: {} };
-      }
-  
-      if (this.epoch >= this.navigator.totalBars) {
-          const promenadeBar = this.epoch - this.navigator.totalBars;
-          const promenadeEvents = this._generatePromenade(promenadeBar);
-          return { events: promenadeEvents, instrumentHints: {} };
-      }
-  
-      if (!isFinite(barDuration)) {
-          console.error(`[FME] Invalid barDuration: ${barDuration}`);
-          return { events: [], instrumentHints: {} };
-      }
-
-      const v2MelodyHint = this._chooseInstrumentForPart('melody', this.navigator.tick(this.epoch));
-      const navigationInfo = this.navigator.tick(this.epoch, v2MelodyHint);
-
-      if (!navigationInfo) {
-          console.warn(`[FME] Navigator returned null for bar ${this.epoch}. Returning empty events.`);
-          return { events: [], instrumentHints: {} };
-      }
-      
-      const instrumentHints: InstrumentHints = {
-          melody: v2MelodyHint,
-          accompaniment: this._chooseInstrumentForPart('accompaniment', navigationInfo),
-          harmony: this._chooseInstrumentForPart('harmony', navigationInfo) as any,
-          bass: this._chooseInstrumentForPart('bass', navigationInfo) as any,
-      };
-
-      if (navigationInfo.logMessage) {
-        console.log(navigationInfo.logMessage);
-      }
-
-      const { events } = this.generateOneBar(barDuration, navigationInfo, instrumentHints);
-      
-      return { events, instrumentHints };
+    if (!this.navigator) {
+        console.error("FME evolve called before navigator was initialized.");
+        return { events: [], instrumentHints: {} };
     }
+
+    this.epoch = barCount;
+
+    if (this.epoch >= this.navigator.totalBars + 4) {
+        return { events: [], instrumentHints: {} };
+    }
+
+    if (this.epoch >= this.navigator.totalBars) {
+        const promenadeBar = this.epoch - this.navigator.totalBars;
+        const promenadeEvents = this._generatePromenade(promenadeBar);
+        return { events: promenadeEvents, instrumentHints: {} };
+    }
+
+    if (!isFinite(barDuration)) {
+        console.error(`[FME] Invalid barDuration: ${barDuration}`);
+        return { events: [], instrumentHints: {} };
+    }
+
+    const navigationInfo = this.navigator.tick(this.epoch);
+
+    if (!navigationInfo) {
+        console.warn(`[FME] Navigator returned null for bar ${this.epoch}. Returning empty events.`);
+        return { events: [], instrumentHints: {} };
+    }
+    
+    const melodyHint = this._chooseInstrumentForPart('melody', navigationInfo);
+    
+    const instrumentHints: InstrumentHints = {
+        melody: melodyHint,
+        accompaniment: this._chooseInstrumentForPart('accompaniment', navigationInfo),
+        harmony: this._chooseInstrumentForPart('harmony', navigationInfo) as any,
+        bass: this._chooseInstrumentForPart('bass', navigationInfo) as any,
+    };
+    
+    if (navigationInfo.logMessage) {
+        const fullLog = this.navigator.formatLogMessage(navigationInfo, instrumentHints, this.epoch);
+        if (fullLog) {
+            console.log(fullLog);
+        }
+    }
+
+    const { events } = this.generateOneBar(barDuration, navigationInfo, instrumentHints);
+    
+    return { events, instrumentHints };
+}
 
 
   private _generatePromenade(promenadeBar: number): FractalEvent[] {
