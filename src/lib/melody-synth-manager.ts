@@ -122,7 +122,11 @@ export class MelodySynthManager {
         
         const hint = (composerControlsInstruments && instrumentHint) ? instrumentHint : this.activeInstrumentName;
         
-        const melodyEvents = events.filter(e => e.type === this.partName);
+        // #ИСПРАВЛЕНО (ПЛАН 1596): Фильтр теперь корректно обрабатывает `type` как массив.
+        const melodyEvents = events.filter(e => 
+            Array.isArray(e.type) ? e.type.includes(this.partName) : e.type === this.partName
+        );
+
         if (melodyEvents.length === 0) return;
 
         // --- SMART ROUTER ---

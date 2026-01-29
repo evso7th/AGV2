@@ -1,4 +1,5 @@
 
+
 // src/lib/bass-synth-manager.ts
 import type { FractalEvent, BassInstrument } from '@/types/fractal';
 import type { Note, BassTechnique } from "@/types/music";
@@ -114,12 +115,16 @@ export class BassSynthManager {
             return;
         }
 
-        console.log(`%c[BassSynthManagerV1 @ Bar ${barCount}] Instrument: ${instrumentToPlay} | Scheduling ${events.length} notes...`, 'color: #87CEEB;');
+        const filteredEvents = events.filter(e => 
+            Array.isArray(e.type) ? e.type.includes('bass') : e.type === 'bass'
+        );
+
+        if (filteredEvents.length === 0) return;
+
+        console.log(`%c[BassSynthManagerV1 @ Bar ${barCount}] Instrument: ${instrumentToPlay} | Scheduling ${filteredEvents.length} notes...`, 'color: #87CEEB;');
 
         const beatDuration = 60 / tempo;
-        const notes: Note[] = events
-            .filter(e => e.type === 'bass')
-            .map(event => ({ midi: event.note, time: event.time * beatDuration, duration: event.duration * beatDuration, velocity: event.weight }));
+        const notes: Note[] = filteredEvents.map(event => ({ midi: event.note, time: event.time * beatDuration, duration: event.duration * beatDuration, velocity: event.weight }));
             
         this.scheduleSynth(instrumentToPlay as keyof typeof SYNTH_PRESETS, notes, barStartTime);
     }

@@ -118,11 +118,16 @@ export class AccompanimentSynthManager {
             return;
         }
 
+        const filteredEvents = events.filter(e => 
+            Array.isArray(e.type) ? e.type.includes('accompaniment') : e.type === 'accompaniment'
+        );
 
-        console.log(`%c[AccompManagerV1 @ Bar ${barCount}] Instrument: ${instrumentToPlay} | Scheduling ${events.length} notes...`, 'color: #FFC0CB;');
+        if (filteredEvents.length === 0) return;
+
+        console.log(`%c[AccompManagerV1 @ Bar ${barCount}] Instrument: ${instrumentToPlay} | Scheduling ${filteredEvents.length} notes...`, 'color: #FFC0CB;');
 
         const beatDuration = 60 / tempo;
-        const notes: Note[] = events.map(event => ({ midi: event.note, time: event.time * beatDuration, duration: event.duration * beatDuration, velocity: event.weight }));
+        const notes: Note[] = filteredEvents.map(event => ({ midi: event.note, time: event.time * beatDuration, duration: event.duration * beatDuration, velocity: event.weight }));
         this.scheduleSynth(instrumentToPlay as keyof typeof SYNTH_PRESETS, notes, barStartTime);
     }
 
@@ -219,7 +224,6 @@ export class AccompanimentSynthManager {
 
             const sourceGain = this.audioContext.createGain();
             sourceGain.gain.value = layer.gain;
-            
             sourceNode.connect(sourceGain).connect(voice.envGain);
             
             sourceNode.start(noteOnTime);
