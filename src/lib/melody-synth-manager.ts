@@ -1,6 +1,6 @@
 
 
-import type { FractalEvent, AccompanimentInstrument } from '@/types/fractal';
+import type { FractalEvent, AccompanimentInstrument, MelodyInstrument } from '@/types/fractal';
 import type { Note } from "@/types/music";
 import { SYNTH_PRESETS, type SynthPreset } from './synth-presets';
 import { V1_TO_V2_PRESET_MAP } from './presets-v2';
@@ -114,24 +114,25 @@ export class MelodySynthManager {
         }
     }
 
-    public schedule(events: FractalEvent[], barStartTime: number, tempo: number, barCount: number, instrumentHint?: AccompanimentInstrument, composerControlsInstruments: boolean = true) {
-        // #ЗАЧЕМ: Диагностический лог для отслеживания потока событий (План 1595).
-        console.log(`%c[MelodyManagerV1 @ Bar ${barCount}] Received schedule command. Instrument Hint: ${instrumentHint}, Events: ${events.length}`, 'color: violet;');
+    public schedule(events: FractalEvent[], barStartTime: number, tempo: number, barCount: number, instrumentHint?: MelodyInstrument, composerControlsInstruments: boolean = true) {
+        const logPrefix = `%c[MelodyManagerV1 @ Bar ${barCount}]`;
+        const logCss = 'color: #DA70D6';
+        
+        console.log(`${logPrefix} Received schedule command. Instrument Hint: ${instrumentHint}, Events: ${events.length}`, logCss);
 
         if (!this.isInitialized) return;
         
-        const hint = (composerControlsInstruments && instrumentHint) ? instrumentHint : this.activeInstrumentName;
-        
-        // #ИСПРАВЛЕНО (ПЛАН 1596): Фильтр теперь корректно обрабатывает `type` как массив.
         const melodyEvents = events.filter(e => 
             Array.isArray(e.type) ? e.type.includes(this.partName) : e.type === this.partName
         );
 
         if (melodyEvents.length === 0) return;
 
+        const hint = (composerControlsInstruments && instrumentHint) ? instrumentHint : this.activeInstrumentName;
+        
         // --- SMART ROUTER ---
         if (hint === 'blackAcoustic') {
-            console.log(`%c[MelodyManagerV1] Routing to BlackGuitarSampler for bar ${barCount}`, 'color: #DA70D6');
+            console.log(`${logPrefix} Routing to BlackGuitarSampler`, logCss);
             const notesToPlay = melodyEvents.map(e => ({ midi: e.note, time: e.time * (60/tempo), duration: e.duration * (60/tempo), velocity: e.weight, technique: e.technique, params: e.params }));
             this.blackAcousticSampler.schedule(notesToPlay, barStartTime, tempo);
             return; // Stop further execution
@@ -141,11 +142,11 @@ export class MelodySynthManager {
         const finalInstrument = V1_TO_V2_PRESET_MAP[hint as keyof typeof V1_TO_V2_PRESET_MAP] || hint;
         
         if (!finalInstrument || finalInstrument === 'none' || !(finalInstrument in SYNTH_PRESETS)) {
-            console.warn(`[MelodyManagerV1] Hint "${finalInstrument}" not found in V1 SYNTH_PRESETS. Skipping.`);
+            console.warn(`${logPrefix} Hint "${finalInstrument}" not found in V1 SYNTH_PRESETS. Skipping.`, logCss);
             return;
         }
 
-        console.log(`%c[MelodyManagerV1 @ Bar ${barCount}] Using internal synth. Instrument: ${finalInstrument} | Scheduling ${melodyEvents.length} notes...`, 'color: #DA70D6;');
+        console.log(`${logPrefix} Using internal synth. Instrument: ${finalInstrument} | Scheduling ${melodyEvents.length} notes...`, logCss);
 
         const beatDuration = 60 / tempo;
         const notes: Note[] = melodyEvents.map(event => ({ midi: event.note, time: event.time * beatDuration, duration: event.duration * beatDuration, velocity: event.weight }));
