@@ -18,7 +18,7 @@ const ALL_HIHATS: InstrumentType[] = [
     'drum_25677__walter_odington__alex-hat',
     'drum_25678__walter_odington__avalanche-hat',
     'drum_25687__walter_odington__blip-hat',
-    'drum_25688__walter_odington__brushed-bell-hat',
+    'drum_25691__walter_odington__fastlinger',
     'drum_25693__walter_odington__hackney-hat-1',
     'drum_25694__walter_odington__hackney-hat-2',
     'drum_25695__walter_odington__hackney-hat-3',
@@ -64,12 +64,8 @@ const bluesMelancholicMaster: DrumKit = {
     snare: ['drum_brush3', 'drum_snare', 'drum_snare_ghost_note'],
     hihat: ['drum_25693__walter_odington__hackney-hat-1', 'drum_25694__walter_odington__hackney-hat-2'],
     ride: [
-        'drum_a-ride1',
-        'drum_a-ride4',
-        'drum_cymbal_bell1',
-        'drum_cymbal_bell2',
         'drum_ride',
-        'drum_ride_wetter'
+        'drum_ride_wetter',
     ],
     crash: ['drum_cymbal2', 'drum_cymbal3', 'drum_cymbal4'],
     perc: [
@@ -209,3 +205,4 @@ export const DRUM_KITS: DrumKitLibrary = {
 
     // Другие жанры можно добавить здесь
 };
+
