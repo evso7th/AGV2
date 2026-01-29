@@ -51,6 +51,49 @@ const ALL_PERC: InstrumentType[] = [
 
 // --- БИБЛИОТЕКА УДАРНЫХ УСТАНОВОК ---
 
+const bluesMelancholicMaster: DrumKit = {
+    kick: ['drum_kick_reso', 'kick_drum6'],
+    snare: ['brush3', 'snare', 'snare_ghost_note', 'snare_off'],
+    hihat: [
+        '25677__walter_odington__alex-hat',
+        '25678__walter_odington__avalanche-hat',
+        '25687__walter_odington__blip-hat',
+        '25688__walter_odington__brushed-bell-hat',
+        '25693__walter_odington__hackney-hat-1',
+        '25694__walter_odington__hackney-hat-2',
+        '25695__walter_odington__hackney-hat-3',
+        '25696__walter_odington__hackney-hat-4',
+        'closed_hi_hat_ghost',
+        'open_hh_bottom2',
+        'open_hh_top2',
+        'brush1',
+        'brush4'
+    ],
+    ride: [
+        'a-ride1',
+        'a-ride4',
+        'cymbal_bell1',
+        'cymbal_bell2',
+        'ride',
+        'ride_wetter'
+    ],
+    crash: ['cymbal2', 'cymbal3', 'cymbal4'],
+    perc: [
+        'hightom',
+        'lowtom',
+        'midtom',
+        'Sonor_Classix_High_Tom',
+        'Sonor_Classix_Low_Tom',
+        'Sonor_Classix_Mid_Tom',
+        'cowbell',
+        'perc-012',
+        'perc-013',
+        'perc-014',
+        'perc-015'
+    ]
+};
+
+
 export const DRUM_KITS: DrumKitLibrary = {
     // =========================================================================
     // AMBIENT KITS
@@ -100,14 +143,7 @@ export const DRUM_KITS: DrumKitLibrary = {
             perc: ['drum_tom_mid', 'drum_tom_low']
         },
         // Кит для медленного, меланхоличного блюза
-        melancholic: {
-            kick: ALL_KICKS,
-            snare: ['drum_snare', 'drum_snarepress', 'drum_brush1', 'drum_brush2'],
-            hihat: ALL_HIHATS,
-            ride: ['drum_ride', 'drum_ride_wetter'],
-            crash: [], // Без крэшей
-            perc: ['drum_lowtom']
-        },
+        melancholic: bluesMelancholicMaster,
         // КИТ ДЛЯ СПОКОЙНОГО БЛЮЗА (ПЛАН 762)
         blues_calm: {
             kick: ['drum_kick_soft'],
