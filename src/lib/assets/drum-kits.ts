@@ -15,12 +15,21 @@ import type { DrumKit, DrumKitLibrary, InstrumentType } from '@/types/fractal';
 const ALL_KICKS: InstrumentType[] = ['drum_kick', 'drum_cajon_kick', 'drum_drum_kick_reso', 'drum_kick_drum6', 'drum_kick_soft'];
 const ALL_SNARES: InstrumentType[] = ['drum_snare', 'drum_snare_ghost_note', 'drum_snare_off', 'drum_snarepress', 'drum_brush1', 'drum_brush2', 'drum_brush3', 'drum_brush4'];
 const ALL_HIHATS: InstrumentType[] = [
-    'drum_hihat_closed', 'drum_hihat_open', 'drum_closed_hi_hat_ghost', 'drum_open_hh_bottom2', 'drum_open_hh_top2',
-    'drum_25677__walter_odington__alex-hat', 'drum_25678__walter_odington__avalanche-hat', 'drum_25687__walter_odington__blip-hat',
-    'drum_25688__walter_odington__brushed-bell-hat', 'drum_25693__walter_odington__hackney-hat-1',
-    'drum_25694__walter_odington__hackney-hat-2', 'drum_25695__walter_odington__hackney-hat-3',
-    'drum_25696__walter_odington__hackney-hat-4', 'drum_25701__walter_odington__new-years-hat-1',
-    'drum_25702__walter_odington__new-years-hat-2'
+    'drum_25677__walter_odington__alex-hat',
+    'drum_25678__walter_odington__avalanche-hat',
+    'drum_25687__walter_odington__blip-hat',
+    'drum_25688__walter_odington__brushed-bell-hat',
+    'drum_25693__walter_odington__hackney-hat-1',
+    'drum_25694__walter_odington__hackney-hat-2',
+    'drum_25695__walter_odington__hackney-hat-3',
+    'drum_25696__walter_odington__hackney-hat-4',
+    'drum_25701__walter_odington__new-years-hat-1',
+    'drum_25702__walter_odington__new-years-hat-2',
+    'drum_closed_hi_hat_ghost',
+    'drum_open_hh_bottom2',
+    'drum_open_hh_top2',
+    'drum_brush1',
+    'drum_brush4'
 ];
 const ALL_RIDES: InstrumentType[] = ['drum_ride', 'drum_ride_wetter', 'drum_a-ride1', 'drum_a-ride2', 'drum_a-ride3', 'drum_a-ride4', 'drum_cymbal1', 'drum_cymbal2', 'drum_cymbal3', 'drum_cymbal4'];
 const ALL_CRASHES: InstrumentType[] = ['drum_crash', 'drum_crash2'];
@@ -52,44 +61,36 @@ const ALL_PERC: InstrumentType[] = [
 // --- БИБЛИОТЕКА УДАРНЫХ УСТАНОВОК ---
 
 const bluesMelancholicMaster: DrumKit = {
-    kick: ['drum_kick_reso', 'kick_drum6'],
-    snare: ['brush3', 'snare', 'snare_ghost_note', 'snare_off'],
+    kick: ['drum_kick_reso', 'drum_kick_drum6'],
+    snare: ['drum_brush3', 'drum_snare', 'drum_snare_ghost_note', 'drum_snare_off'],
     hihat: [
-        '25677__walter_odington__alex-hat',
-        '25678__walter_odington__avalanche-hat',
-        '25687__walter_odington__blip-hat',
-        '25688__walter_odington__brushed-bell-hat',
-        '25693__walter_odington__hackney-hat-1',
-        '25694__walter_odington__hackney-hat-2',
-        '25695__walter_odington__hackney-hat-3',
-        '25696__walter_odington__hackney-hat-4',
-        'closed_hi_hat_ghost',
-        'open_hh_bottom2',
-        'open_hh_top2',
-        'brush1',
-        'brush4'
+        'drum_25677__walter_odington__alex-hat',
+        'drum_25678__walter_odington__avalanche-hat',
+        'drum_25687__walter_odington__blip-hat',
+        'drum_25688__walter_odington__brushed-bell-hat',
+        'drum_25693__walter_odington__hackney-hat-1',
+        'drum_25694__walter_odington__hackney-hat-2',
+        'drum_25695__walter_odington__hackney-hat-3',
+        'drum_25696__walter_odington__hackney-hat-4',
+        'drum_closed_hi_hat_ghost',
+        'drum_open_hh_bottom2',
+        'drum_open_hh_top2',
+        'drum_brush1',
+        'drum_brush4'
     ],
     ride: [
-        'a-ride1',
-        'a-ride4',
-        'cymbal_bell1',
-        'cymbal_bell2',
-        'ride',
-        'ride_wetter'
+        'drum_a-ride1',
+        'drum_a-ride4',
+        'drum_cymbal_bell1',
+        'drum_cymbal_bell2',
+        'drum_ride',
+        'drum_ride_wetter'
     ],
-    crash: ['cymbal2', 'cymbal3', 'cymbal4'],
+    crash: ['drum_cymbal2', 'drum_cymbal3', 'drum_cymbal4'],
     perc: [
-        'hightom',
-        'lowtom',
-        'midtom',
-        'Sonor_Classix_High_Tom',
-        'Sonor_Classix_Low_Tom',
-        'Sonor_Classix_Mid_Tom',
-        'cowbell',
-        'perc-012',
-        'perc-013',
-        'perc-014',
-        'perc-015'
+        'drum_hightom', 'drum_lowtom', 'drum_midtom',
+        'drum_Sonor_Classix_High_Tom', 'drum_Sonor_Classix_Low_Tom', 'drum_Sonor_Classix_Mid_Tom',
+        'drum_cowbell', 'perc-012', 'perc-013', 'perc-014', 'perc-015'
     ]
 };
 
@@ -144,23 +145,6 @@ export const DRUM_KITS: DrumKitLibrary = {
         },
         // Кит для медленного, меланхоличного блюза
         melancholic: bluesMelancholicMaster,
-        // КИТ ДЛЯ СПОКОЙНОГО БЛЮЗА (ПЛАН 762)
-        blues_calm: {
-            kick: ['drum_kick_soft'],
-            snare: ['drum_snare_ghost_note', 'drum_brush1'],
-            hihat: ['drum_closed_hi_hat_ghost', 'drum_25688__walter_odington__brushed-bell-hat'],
-            ride: [],
-            crash: [],
-            perc: ['perc-001', 'perc-013']
-        },
-        blues_calm_intro_outro: {
-            kick: ['drum_kick_soft'],
-            snare: ['drum_snare_ghost_note'],
-            hihat: ['drum_closed_hi_hat_ghost'],
-            ride: [],
-            crash: [],
-            perc: [],
-        },
         // #ИСПРАВЛЕНО (ПЛАН 766): Полностью пересобран для классического блюз-рока без "железа".
         blues_epic: {
             kick: ALL_KICKS,
@@ -170,14 +154,38 @@ export const DRUM_KITS: DrumKitLibrary = {
             crash: [], // НИКАКИХ КРЭШЕЙ
             perc: ['drum_tom_mid', 'drum_tom_low'] // Только томы для филлов
         },
-        // #ДОБАВЛЕНО (ПЛАН 1567): Специальный кит для зимнего блюза
-        blues_winter_prolog: {
-            kick: ['drum_kick_soft'],
+        // --- НОВЫЕ КИТЫ ДЛЯ WINTER BLUES (ПЛАН 1587) ---
+        winter_blues_prolog1: {
+            kick: ['drum_kick_reso'],
             snare: [],
-            hihat: ['drum_closed_hi_hat_ghost'],
+            hihat: ['drum_25693__walter_odington__hackney-hat-1', 'drum_25694__walter_odington__hackney-hat-2'],
             ride: [],
             crash: [],
-            perc: ['drum_lowtom', 'perc-013', 'perc-015']
+            perc: ['perc-012', 'perc-013', 'perc-014', 'perc-015', 'drum_cowbell']
+        },
+        winter_blues_prolog2: {
+            kick: ['drum_kick_reso'],
+            snare: [],
+            hihat: ['drum_25693__walter_odington__hackney-hat-1', 'drum_25694__walter_odington__hackney-hat-2'],
+            ride: [],
+            crash: [],
+            perc: [
+                'drum_hightom_soft', 'drum_lowtom_soft', 'drum_midtom_soft',
+                'drum_Sonor_Classix_High_Tom', 'drum_Sonor_Classix_Low_Tom', 'drum_Sonor_Classix_Mid_Tom',
+                'perc-012', 'perc-013', 'perc-014', 'perc-015', 'drum_cowbell'
+            ]
+        },
+        winter_blues_prolog3: {
+            kick: ['drum_kick_reso'],
+            snare: ['drum_snare_ghost_note', 'drum_snare_off'],
+            hihat: ['drum_25693__walter_odington__hackney-hat-1', 'drum_25694__walter_odington__hackney-hat-2'],
+            ride: [],
+            crash: [],
+            perc: [
+                'drum_hightom_soft', 'drum_lowtom_soft', 'drum_midtom_soft',
+                'drum_Sonor_Classix_High_Tom', 'drum_Sonor_Classix_Low_Tom', 'drum_Sonor_Classix_Mid_Tom',
+                'perc-012', 'perc-013', 'perc-014', 'perc-015', 'drum_cowbell'
+            ]
         }
         // Другие настроения для blues можно добавить здесь
     },

@@ -18,81 +18,48 @@ export const WinterBluesBlueprint: MusicBlueprint = {
         parts: [
             {
                 id: 'prolog-1', name: 'Frost', duration: { percent: 10 },
-                layers: { drums: false, bass: true, accompaniment: true, harmony: true, melody: true, sfx: true },
+                layers: { drums: true, bass: true, accompaniment: true, harmony: true, melody: true, sfx: true },
                 instrumentation: {
-                    accompaniment: {
-                        strategy: 'weighted',
-                        v1Options: [{ name: 'synth', weight: 0.5 }, { name: 'ambientPad', weight: 0.5 }],
-                        v2Options: [{ name: 'synth', weight: 0.5 }, { name: 'synth_ambient_pad_lush', weight: 0.5 }]
-                    },
-                    melody: {
-                        strategy: 'weighted',
-                        v1Options: [{ name: 'blackAcoustic', weight: 1.0 }],
-                        v2Options: [{ name: 'blackAcoustic', weight: 1.0 }]
-                    },
-                    bass: {
-                        strategy: 'weighted',
-                        v1Options: [{ name: 'bass_jazz_warm', weight: 1.0 }],
-                        v2Options: [{ name: 'bass_jazz_warm', weight: 1.0 }]
-                    },
+                    accompaniment: { strategy: 'weighted', v1Options: [{ name: 'synth', weight: 0.5 }, { name: 'ambientPad', weight: 0.5 }], v2Options: [{ name: 'synth', weight: 0.5 }, { name: 'synth_ambient_pad_lush', weight: 0.5 }] },
+                    melody: { strategy: 'weighted', v1Options: [{ name: 'blackAcoustic', weight: 1.0 }], v2Options: [{ name: 'blackAcoustic', weight: 1.0 }] },
+                    bass: { strategy: 'weighted', v1Options: [{ name: 'bass_jazz_warm', weight: 1.0 }], v2Options: [{ name: 'bass_jazz_warm', weight: 1.0 }] }
                 },
                 instrumentRules: {
                     bass: { techniques: [{ value: 'long_notes', weight: 1.0 }] },
-                    melody: { source: 'harmony_top_note' }
+                    melody: { source: 'harmony_top_note' },
+                    drums: { pattern: 'composer', kitName: 'winter_blues_prolog1', density: { min: 0.1, max: 0.2 } }
                 },
                 bundles: [{ id: 'WINTER_INTRO_1', name: 'Icy Breath', duration: { percent: 100 }, characteristics: {}, phrases: {} }],
                 outroFill: null,
             },
             {
                 id: 'prolog-2', name: 'First Snow', duration: { percent: 10 },
-                layers: { drums: false, bass: true, accompaniment: true, harmony: true, melody: true, sfx: true },
+                layers: { drums: true, bass: true, accompaniment: true, harmony: true, melody: true, sfx: true },
                 instrumentation: {
-                    accompaniment: {
-                        strategy: 'weighted',
-                        v1Options: [{ name: 'synth', weight: 0.5 }, { name: 'ambientPad', weight: 0.5 }],
-                        v2Options: [{ name: 'synth', weight: 0.5 }, { name: 'synth_ambient_pad_lush', weight: 0.5 }]
-                    },
-                     melody: {
-                        strategy: 'weighted',
-                        v1Options: [{ name: 'blackAcoustic', weight: 1.0 }],
-                        v2Options: [{ name: 'blackAcoustic', weight: 1.0 }]
-                    },
-                    bass: {
-                        strategy: 'weighted',
-                        v1Options: [{ name: 'bass_jazz_warm', weight: 1.0 }],
-                        v2Options: [{ name: 'bass_jazz_warm', weight: 1.0 }]
-                    },
+                    accompaniment: { strategy: 'weighted', v1Options: [{ name: 'synth', weight: 0.5 }, { name: 'ambientPad', weight: 0.5 }], v2Options: [{ name: 'synth', weight: 0.5 }, { name: 'synth_ambient_pad_lush', weight: 0.5 }] },
+                     melody: { strategy: 'weighted', v1Options: [{ name: 'blackAcoustic', weight: 1.0 }], v2Options: [{ name: 'blackAcoustic', weight: 1.0 }] },
+                    bass: { strategy: 'weighted', v1Options: [{ name: 'bass_jazz_warm', weight: 1.0 }], v2Options: [{ name: 'bass_jazz_warm', weight: 1.0 }] }
                 },
                 instrumentRules: {
                     bass: { techniques: [{ value: 'long_notes', weight: 1.0 }] },
-                    melody: { source: 'harmony_top_note' }
+                    melody: { source: 'harmony_top_note' },
+                    drums: { pattern: 'composer', kitName: 'winter_blues_prolog2', density: { min: 0.2, max: 0.3 } }
                 },
                 bundles: [{ id: 'WINTER_INTRO_2', name: 'Flurries', duration: { percent: 100 }, characteristics: {}, phrases: {} }],
                 outroFill: null,
             },
             {
                 id: 'prolog-3', name: 'Frozen Lake', duration: { percent: 5 },
-                layers: { drums: false, bass: true, accompaniment: true, harmony: true, melody: true, sfx: true },
+                layers: { drums: true, bass: true, accompaniment: true, harmony: true, melody: true, sfx: true },
                 instrumentation: {
-                    accompaniment: {
-                        strategy: 'weighted',
-                        v1Options: [{ name: 'synth', weight: 0.5 }, { name: 'ambientPad', weight: 0.5 }],
-                        v2Options: [{ name: 'synth', weight: 0.5 }, { name: 'synth_ambient_pad_lush', weight: 0.5 }]
-                    },
-                     melody: {
-                        strategy: 'weighted',
-                        v1Options: [{ name: 'blackAcoustic', weight: 1.0 }],
-                        v2Options: [{ name: 'blackAcoustic', weight: 1.0 }]
-                    },
-                    bass: {
-                        strategy: 'weighted',
-                        v1Options: [{ name: 'bass_jazz_warm', weight: 1.0 }],
-                        v2Options: [{ name: 'bass_jazz_warm', weight: 1.0 }]
-                    },
+                    accompaniment: { strategy: 'weighted', v1Options: [{ name: 'synth', weight: 0.5 }, { name: 'ambientPad', weight: 0.5 }], v2Options: [{ name: 'synth', weight: 0.5 }, { name: 'synth_ambient_pad_lush', weight: 0.5 }] },
+                     melody: { strategy: 'weighted', v1Options: [{ name: 'blackAcoustic', weight: 1.0 }], v2Options: [{ name: 'blackAcoustic', weight: 1.0 }] },
+                    bass: { strategy: 'weighted', v1Options: [{ name: 'bass_jazz_warm', weight: 1.0 }], v2Options: [{ name: 'bass_jazz_warm', weight: 1.0 }] }
                 },
                 instrumentRules: {
                     bass: { techniques: [{ value: 'walking', weight: 1.0 }] },
-                    melody: { source: 'harmony_top_note' }
+                    melody: { source: 'harmony_top_note' },
+                    drums: { pattern: 'composer', kitName: 'winter_blues_prolog3', density: { min: 0.3, max: 0.4 }, useSnare: true }
                 },
                 bundles: [{ id: 'WINTER_INTRO_3', name: 'Mirror', duration: { percent: 100 }, characteristics: {}, phrases: {} }],
                 outroFill: { type: 'roll', duration: 1, parameters: { instrument: 'tom', density: 0.5 } },
@@ -101,24 +68,12 @@ export const WinterBluesBlueprint: MusicBlueprint = {
                 id: 'MAIN-1', name: 'Verse', duration: { percent: 25 },
                 layers: { drums: true, bass: true, accompaniment: true, harmony: true, melody: true, sfx: true },
                 instrumentation: {
-                    accompaniment: {
-                        strategy: 'weighted',
-                        v1Options: [{ name: 'synth', weight: 0.5 }, { name: 'ambientPad', weight: 0.5 }],
-                        v2Options: [{ name: 'synth', weight: 0.5 }, { name: 'synth_ambient_pad_lush', weight: 0.5 }]
-                    },
-                     melody: {
-                        strategy: 'weighted',
-                        v1Options: [{ name: 'blackAcoustic', weight: 1.0 }],
-                        v2Options: [{ name: 'blackAcoustic', weight: 1.0 }]
-                    },
-                    bass: {
-                        strategy: 'weighted',
-                        v1Options: [{ name: 'bass_jazz_warm', weight: 1.0 }],
-                        v2Options: [{ name: 'bass_jazz_warm', weight: 1.0 }]
-                    },
+                    accompaniment: { strategy: 'weighted', v1Options: [{ name: 'synth', weight: 0.5 }, { name: 'ambientPad', weight: 0.5 }], v2Options: [{ name: 'synth', weight: 0.5 }, { name: 'synth_ambient_pad_lush', weight: 0.5 }] },
+                     melody: { strategy: 'weighted', v1Options: [{ name: 'blackAcoustic', weight: 1.0 }], v2Options: [{ name: 'blackAcoustic', weight: 1.0 }] },
+                    bass: { strategy: 'weighted', v1Options: [{ name: 'bass_jazz_warm', weight: 1.0 }], v2Options: [{ name: 'bass_jazz_warm', weight: 1.0 }] },
                 },
                 instrumentRules: {
-                    drums: { pattern: 'composer', kitName: 'blues_calm', density: { min: 0.5, max: 0.7 } },
+                    drums: { pattern: 'composer', kitName: 'blues_melancholic_master', density: { min: 0.5, max: 0.7 } },
                     bass: { techniques: [{ value: 'riff', weight: 1.0 }] },
                     melody: { source: 'motif', density: { min: 0.3, max: 0.5 }, register: { preferred: 'mid' } }
                 },
@@ -129,24 +84,12 @@ export const WinterBluesBlueprint: MusicBlueprint = {
                 id: 'SOLO', name: 'Solo', duration: { percent: 25 },
                 layers: { drums: true, bass: true, accompaniment: true, melody: true, sfx: true },
                 instrumentation: {
-                    accompaniment: {
-                        strategy: 'weighted',
-                        v1Options: [{ name: 'synth', weight: 0.5 }, { name: 'ambientPad', weight: 0.5 }],
-                        v2Options: [{ name: 'synth', weight: 0.5 }, { name: 'synth_ambient_pad_lush', weight: 0.5 }]
-                    },
-                     melody: {
-                        strategy: 'weighted',
-                        v1Options: [{ name: 'blackAcoustic', weight: 1.0 }],
-                        v2Options: [{ name: 'blackAcoustic', weight: 1.0 }]
-                    },
-                    bass: {
-                        strategy: 'weighted',
-                        v1Options: [{ name: 'bass_jazz_warm', weight: 1.0 }],
-                        v2Options: [{ name: 'bass_jazz_warm', weight: 1.0 }]
-                    },
+                    accompaniment: { strategy: 'weighted', v1Options: [{ name: 'synth', weight: 0.5 }, { name: 'ambientPad', weight: 0.5 }], v2Options: [{ name: 'synth', weight: 0.5 }, { name: 'synth_ambient_pad_lush', weight: 0.5 }] },
+                     melody: { strategy: 'weighted', v1Options: [{ name: 'blackAcoustic', weight: 1.0 }], v2Options: [{ name: 'blackAcoustic', weight: 1.0 }] },
+                    bass: { strategy: 'weighted', v1Options: [{ name: 'bass_jazz_warm', weight: 1.0 }], v2Options: [{ name: 'bass_jazz_warm', weight: 1.0 }] },
                 },
                 instrumentRules: {
-                    drums: { pattern: 'composer', kitName: 'blues_calm', density: { min: 0.6, max: 0.8 }, ride: { enabled: true } },
+                    drums: { pattern: 'composer', kitName: 'blues_melancholic_master', density: { min: 0.6, max: 0.8 }, ride: { enabled: true } },
                     bass: { techniques: [{ value: 'walking', weight: 1.0 }] },
                     melody: { source: 'motif', density: { min: 0.6, max: 0.8 }, register: { preferred: 'high' }, soloPlan: 'S06' }
                 },
@@ -157,24 +100,12 @@ export const WinterBluesBlueprint: MusicBlueprint = {
                 id: 'MAIN-2', name: 'Final Verse', duration: { percent: 20 },
                 layers: { drums: true, bass: true, accompaniment: true, harmony: true, melody: true },
                 instrumentation: {
-                    accompaniment: {
-                        strategy: 'weighted',
-                        v1Options: [{ name: 'synth', weight: 0.5 }, { name: 'ambientPad', weight: 0.5 }],
-                        v2Options: [{ name: 'synth', weight: 0.5 }, { name: 'synth_ambient_pad_lush', weight: 0.5 }]
-                    },
-                     melody: {
-                        strategy: 'weighted',
-                        v1Options: [{ name: 'blackAcoustic', weight: 1.0 }],
-                        v2Options: [{ name: 'blackAcoustic', weight: 1.0 }]
-                    },
-                    bass: {
-                        strategy: 'weighted',
-                        v1Options: [{ name: 'bass_jazz_warm', weight: 1.0 }],
-                        v2Options: [{ name: 'bass_jazz_warm', weight: 1.0 }]
-                    },
+                    accompaniment: { strategy: 'weighted', v1Options: [{ name: 'synth', weight: 0.5 }, { name: 'ambientPad', weight: 0.5 }], v2Options: [{ name: 'synth', weight: 0.5 }, { name: 'synth_ambient_pad_lush', weight: 0.5 }] },
+                     melody: { strategy: 'weighted', v1Options: [{ name: 'blackAcoustic', weight: 1.0 }], v2Options: [{ name: 'blackAcoustic', weight: 1.0 }] },
+                    bass: { strategy: 'weighted', v1Options: [{ name: 'bass_jazz_warm', weight: 1.0 }], v2Options: [{ name: 'bass_jazz_warm', weight: 1.0 }] },
                 },
                 instrumentRules: {
-                    drums: { pattern: 'composer', kitName: 'blues_calm', density: { min: 0.2, max: 0.4 } }, // REDUCED DENSITY
+                    drums: { pattern: 'composer', kitName: 'blues_melancholic_master', density: { min: 0.2, max: 0.4 } }, // REDUCED DENSITY
                     bass: { techniques: [{ value: 'riff', weight: 1.0 }] },
                     melody: { source: 'motif', density: { min: 0.3, max: 0.5 }, register: { preferred: 'mid' } }
                 },
