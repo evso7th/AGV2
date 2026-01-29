@@ -18,6 +18,7 @@ import { PIANO_SAMPLES, VIOLIN_SAMPLES, FLUTE_SAMPLES, ACOUSTIC_GUITAR_CHORD_SAM
 import { GuitarChordsSampler } from '@/lib/guitar-chords-sampler';
 import { AcousticGuitarSoloSampler } from '@/lib/acoustic-guitar-solo-sampler';
 import { BlackGuitarSampler } from '@/lib/black-guitar-sampler';
+import { TelecasterGuitarSampler } from '@/lib/telecaster-guitar-sampler';
 import type { FractalEvent, InstrumentHints } from '@/types/fractal';
 import * as Tone from 'tone';
 import { MelodySynthManagerV2 } from '@/lib/melody-synth-manager-v2';
@@ -47,8 +48,9 @@ type WorkerMessage = {
 // --- Constants ---
 const VOICE_BALANCE: Record<InstrumentPart, number> = {
   bass: 0.5, melody: 0.7, accompaniment: 0.6, drums: 1.0,
-  effects: 0.6, sparkles: 0.7, piano: 0.8, violin: 0.8, flute: 0.8, guitarChords: 0.45,
+  effects: 0.6, sparkles: 0.7, piano: 1.0, violin: 0.8, flute: 0.8, guitarChords: 0.9,
   acousticGuitarSolo: 0.9, blackAcoustic: 0.9, sfx: 0.8, harmony: 0.8,
+  telecaster: 0.9,
 };
 
 const EQ_FREQUENCIES = [60, 125, 250, 500, 1000, 2000, 4000];
@@ -105,10 +107,11 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
   const sparklePlayerRef = useRef<SparklePlayer | null>(null);
   const sfxSynthManagerRef = useRef<SfxSynthManager | null>(null);
   const blackGuitarSamplerRef = useRef<BlackGuitarSampler | null>(null);
+  const telecasterSamplerRef = useRef<TelecasterGuitarSampler | null>(null);
   
   const masterGainNodeRef = useRef<GainNode | null>(null);
-  const gainNodesRef = useRef<Record<Exclude<InstrumentPart, 'pads' | 'effects' | 'telecaster'>, GainNode | null>>({
-    bass: null, melody: null, accompaniment: null, drums: null, sparkles: null, piano: null, violin: null, flute: null, guitarChords: null, acousticGuitarSolo: null, blackAcoustic: null, sfx: null, harmony: null,
+  const gainNodesRef = useRef<Record<Exclude<InstrumentPart, 'pads' | 'effects'>, GainNode | null>>({
+    bass: null, melody: null, accompaniment: null, drums: null, sparkles: null, piano: null, violin: null, flute: null, guitarChords: null, acousticGuitarSolo: null, blackAcoustic: null, sfx: null, harmony: null, telecaster: null,
   });
 
   const eqNodesRef = useRef<BiquadFilterNode[]>([]);
@@ -173,7 +176,7 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
             bassManagerRef.current.setInstrument(name as BassInstrument);
         }
     } else if (part === 'harmony' && harmonyManagerRef.current) {
-        harmonyManagerRef.current.setInstrument(name as 'piano' | 'guitarChords' | 'violin' | 'flute' | 'acousticGuitarSolo' | 'none');
+        harmonyManagerRef.current.setInstrument(name as 'piano' | 'guitarChords' | 'violin' | 'flute' | 'acousticGuitarSolo' | 'telecaster' | 'none');
     }
   }, [isInitialized, useMelodyV2]);
 
@@ -330,7 +333,7 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
         }
 
         if (!gainNodesRef.current.bass) {
-            const parts: Exclude<InstrumentPart, 'pads' | 'effects' | 'telecaster'>[] = ['bass', 'melody', 'accompaniment', 'drums', 'sparkles', 'piano', 'violin', 'flute', 'guitarChords', 'acousticGuitarSolo', 'blackAcoustic', 'sfx', 'harmony'];
+            const parts: Exclude<InstrumentPart, 'pads' | 'effects'>[] = ['bass', 'melody', 'accompaniment', 'drums', 'sparkles', 'piano', 'violin', 'flute', 'guitarChords', 'acousticGuitarSolo', 'blackAcoustic', 'sfx', 'harmony', 'telecaster'];
             parts.forEach(part => {
                 gainNodesRef.current[part] = context.createGain();
                 gainNodesRef.current[part]!.connect(masterGainNodeRef.current!);
@@ -363,21 +366,16 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
             initPromises.push(blackGuitarSamplerRef.current.init());
         }
 
-        if (!melodyManagerRef.current) {
-            melodyManagerRef.current = new MelodySynthManager(
-                context, 
-                gainNodesRef.current.melody!,
-                blackGuitarSamplerRef.current!,
-                'melody'
-            );
-            initPromises.push(melodyManagerRef.current.init());
+        if (!telecasterSamplerRef.current) {
+            telecasterSamplerRef.current = new TelecasterGuitarSampler(context, gainNodesRef.current.melody!);
+            initPromises.push(telecasterSamplerRef.current.init());
         }
-
 
         if (!melodyManagerV2Ref.current) {
             melodyManagerV2Ref.current = new MelodySynthManagerV2(
                 context, 
                 gainNodesRef.current.melody!, 
+                telecasterSamplerRef.current!, 
                 blackGuitarSamplerRef.current!,
                 'melody'
             );
@@ -388,6 +386,7 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
             bassManagerV2Ref.current = new MelodySynthManagerV2(
                 context,
                 gainNodesRef.current.bass!,
+                telecasterSamplerRef.current!,
                 blackGuitarSamplerRef.current!,
                 'bass'
             );
@@ -454,6 +453,7 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
     sparklePlayerRef.current?.stopAll();
     sfxSynthManagerRef.current?.allNotesOff();
     blackGuitarSamplerRef.current?.stopAll();
+    telecasterSamplerRef.current?.stopAll();
     if (impulseTimerRef.current) {
         clearTimeout(impulseTimerRef.current);
         impulseTimerRef.current = null;
@@ -482,7 +482,7 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
 
     if (part === 'bass') {
       if (useMelodyV2 && bassManagerV2Ref.current) {
-        (bassManagerV2Ref.current as any).setVolume(volume);
+        (bassManagerV2Ref.current as any).setPreampGain(volume);
       } else if (!useMelodyV2 && bassManagerRef.current) {
         bassManagerRef.current.setPreampGain(volume);
       }
