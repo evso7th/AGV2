@@ -11,7 +11,7 @@ export const WinterBluesBlueprint: MusicBlueprint = {
         bpm: { base: 64, range: [60, 68], modifier: 1.0 },
         timeSignature: { numerator: 4, denominator: 4 },
         harmonicJourney: [],
-        tensionProfile: { type: 'arc', peakPosition: 0.6, curve: (p, pp) => p < pp ? Math.pow(p / pp, 1.4) : 1 - Math.pow((p - pp) / (1 - pp), 1.2) }
+        tensionProfile: { type: 'arc', peakPosition: 0.6, curve: (p, pp) => p < pp ? Math.pow(p / pp, 1.4) : 1 - Math.pow((p - pp) / (1 - pp)) }
     },
     structure: {
         totalDuration: { preferredBars: 144 }, // 12 loops of 12 bars
@@ -26,7 +26,7 @@ export const WinterBluesBlueprint: MusicBlueprint = {
                 },
                 instrumentRules: {
                     bass: { techniques: [{ value: 'long_notes', weight: 1.0 }] },
-                    melody: { source: 'harmony_top_note' },
+                    melody: { source: 'motif', density: { min: 0.5, max: 0.9 } },
                     drums: { pattern: 'composer', kitName: 'winter_blues_prolog1', density: { min: 0.1, max: 0.2 } }
                 },
                 bundles: [{ id: 'WINTER_INTRO_1', name: 'Icy Breath', duration: { percent: 100 }, characteristics: {}, phrases: {} }],
@@ -43,7 +43,7 @@ export const WinterBluesBlueprint: MusicBlueprint = {
                 },
                 instrumentRules: {
                     bass: { techniques: [{ value: 'long_notes', weight: 1.0 }] },
-                    melody: { source: 'harmony_top_note' },
+                    melody: { source: 'motif', density: { min: 0.5, max: 0.9 } },
                     drums: { pattern: 'composer', kitName: 'winter_blues_prolog2', density: { min: 0.2, max: 0.3 } }
                 },
                 bundles: [{ id: 'WINTER_INTRO_2', name: 'Flurries', duration: { percent: 100 }, characteristics: {}, phrases: {} }],
@@ -60,7 +60,7 @@ export const WinterBluesBlueprint: MusicBlueprint = {
                 },
                 instrumentRules: {
                     bass: { techniques: [{ value: 'walking', weight: 1.0 }] },
-                    melody: { source: 'harmony_top_note' },
+                    melody: { source: 'motif', density: { min: 0.5, max: 0.9 } },
                     drums: { pattern: 'composer', kitName: 'winter_blues_prolog3', density: { min: 0.3, max: 0.4 }, useSnare: true }
                 },
                 bundles: [{ id: 'WINTER_INTRO_3', name: 'Mirror', duration: { percent: 100 }, characteristics: {}, phrases: {} }],

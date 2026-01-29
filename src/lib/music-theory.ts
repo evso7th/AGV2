@@ -362,28 +362,13 @@ export function createAccompanimentAxiom(chord: GhostChord, mood: Mood, genre: G
     if (registerHint === 'low') baseOctave = 2;
     if (registerHint === 'high') baseOctave = 4;
 
-    if (random.next() < 0.6) { 
-        const duration = 0.5;
-        const times = [0, 1.5, 2.5, 3.5];
-        times.forEach(time => {
-            if (random.next() < 0.7) { 
-                const note = chordNotes[random.nextInt(chordNotes.length)];
-                axiom.push({
-                    type: 'accompaniment', note: note + 12 * baseOctave, duration, time,
-                    weight: 0.5 - (0 * 0.05), technique: 'long-chords', dynamics: 'p', phrasing: 'staccato', 
-                    params: { attack: 0.05, release: duration * 0.8 }
-                });
-            }
+    const numNotes = chordNotes.length;
+    const duration = 4.0 / numNotes;
+    for (let i = 0; i < numNotes; i++) {
+         axiom.push({
+            type: 'accompaniment', note: chordNotes[i % chordNotes.length] + 12 * baseOctave, duration: duration, time: i * duration,
+            weight: 0.5 + random.next() * 0.1, technique: 'arpeggio-slow', dynamics: 'p', phrasing: 'legato', params: { attack: 0.1, release: duration * 0.9 }
         });
-    } else { 
-        const numNotes = chordNotes.length;
-        const duration = 4.0 / numNotes;
-        for (let i = 0; i < numNotes; i++) {
-             axiom.push({
-                type: 'accompaniment', note: chordNotes[i % chordNotes.length] + 12 * baseOctave, duration: duration, time: i * duration,
-                weight: 0.5 + random.next() * 0.1, technique: 'arpeggio-slow', dynamics: 'p', phrasing: 'legato', params: { attack: 0.1, release: duration * 0.9 }
-            });
-        }
     }
 
     return axiom;
@@ -537,7 +522,7 @@ export function generateSuiteDNA(totalBars: number, mood: Mood, seed: number, ra
 
 export function createDrumAxiom(kit: DrumKit, genre: Genre, mood: Mood, tempo: number, random: { next: () => number, nextInt: (max: number) => number }, rules?: InstrumentBehaviorRules): { events: FractalEvent[], log: string } {
     const events: FractalEvent[] = [];
-    let log = '[DrumAxiom] ';
+    let log = '[DrumAudit] 3. Generation Result: ';
     
     const drumRiffsForMood = BLUES_DRUM_RIFFS[mood] ?? BLUES_DRUM_RIFFS['contemplative'] ?? [];
     if (drumRiffsForMood.length === 0) return {events, log: "No drum riffs for mood."};
@@ -697,4 +682,8 @@ export function createPulsatingAccompaniment(chord: GhostChord, random: { next: 
         }
     });
     return axiom;
+}
+
+export function generateIntroSequence(currentBar: number, introRules: any, harmonyTrack: GhostChord[], settings: any, random: { next: () => number; nextInt: (max: number) => number; }): { events: FractalEvent[], instrumentHints: InstrumentHints } {
+  return { events: [], instrumentHints: {} };
 }
