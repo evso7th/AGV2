@@ -67,13 +67,32 @@ const Scheduler = {
         if (this.isRunning) return;
         this.isRunning = true;
         
-        const loop = () => {
-            if (!this.isRunning) return;
-            this.tick();
-            this.loopId = setTimeout(loop, this.barDuration * 1000);
+        let attempts = 0;
+        const maxAttempts = 10;
+        const attemptInterval = 100; // ms
+
+        const tryStart = () => {
+            if (fractalMusicEngine) {
+                console.log(`%c[Worker.start] Engine ready after ${attempts} attempts. Starting loop.`, 'color: #32CD32;');
+                const loop = () => {
+                    if (!this.isRunning) return;
+                    this.tick();
+                    this.loopId = setTimeout(loop, this.barDuration * 1000);
+                };
+                loop();
+            } else {
+                attempts++;
+                if (attempts < maxAttempts) {
+                    console.log(`[Worker.start] Engine not ready, attempt ${attempts}. Retrying in ${attemptInterval}ms...`);
+                    setTimeout(tryStart, attemptInterval);
+                } else {
+                    console.error('[Worker.start] Engine failed to initialize after multiple attempts. Playback aborted.');
+                    this.isRunning = false;
+                }
+            }
         };
-        
-        loop();
+
+        tryStart();
     },
 
     stop() {
