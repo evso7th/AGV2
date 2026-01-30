@@ -1,4 +1,5 @@
 
+
 import type { FractalEvent, Mood, Genre, Technique, BassSynthParams, InstrumentType, MelodyInstrument, AccompanimentInstrument, ResonanceMatrix, InstrumentHints, AccompanimentTechnique, GhostChord, SfxRule, V1MelodyInstrument, V2MelodyInstrument, BlueprintPart, InstrumentationRules, InstrumentBehaviorRules, BluesMelody, InstrumentPart, DrumKit, BluesGuitarRiff, BluesSoloPhrase, BluesRiffDegree, SuiteDNA, RhythmicFeel, BassStyle, DrumStyle } from './fractal';
 import { ElectronicK, TraditionalK, AmbientK, MelancholicMinorK } from './resonance-matrices';
 import { BlueprintNavigator, type NavigationInfo } from './blueprint-navigator';
@@ -571,7 +572,6 @@ export class FractalMusicEngine {
     }
     
     if (!options || options.length === 0) {
-        // This is a fallback that might not be perfect for harmony, but it's better than nothing.
         const fallbackOptions = rules.v1Options || (rules as any).options;
         if(!fallbackOptions || fallbackOptions.length === 0) return 'none';
         
@@ -686,7 +686,8 @@ export class FractalMusicEngine {
 
     let harmonyEvents: FractalEvent[] = [];
     if (navInfo.currentPart.layers.harmony) {
-        const harmonyAxiom = createHarmonyAxiom(currentChord, this.config.mood, this.config.genre, this.random);
+        // #ИСПРАВЛЕНО (ПЛАН 1612): Передаем `effectiveBar` для сквозного логирования.
+        const harmonyAxiom = createHarmonyAxiom(currentChord, this.config.mood, this.config.genre, this.random, effectiveBar);
         harmonyEvents.push(...harmonyAxiom);
     }
 
@@ -716,6 +717,12 @@ export class FractalMusicEngine {
     }
 
     const allEvents = [...(bassEvents || []), ...(drumEvents || []), ...(accompEvents || []), ...(melodyEvents || []), ...(harmonyEvents || [])];
+
+    // Добавляем barCount ко всем событиям для аудита
+    allEvents.forEach(e => {
+        if (!e.params) e.params = {};
+        (e.params as any).barCount = effectiveBar;
+    });
     
     const sfxRules = navInfo.currentPart.instrumentRules?.sfx as SfxRule | undefined;
     if (navInfo.currentPart.layers.sfx && sfxRules && this.random.next() < sfxRules.eventProbability) {
@@ -742,5 +749,3 @@ export class FractalMusicEngine {
     return { events: allEvents };
   }
 }
-
-    

@@ -63,7 +63,12 @@ export class GuitarChordsSampler {
         if (!this.isInitialized || notes.length === 0) return;
 
         notes.forEach(note => {
+            const barCount = (note.params as any)?.barCount ?? 'N/A';
+            console.log(`[HarmonyAudit] [Sampler Exec] Bar: ${barCount} - Received note. Requesting chordName: "${note.chordName}"`);
+
             const chordName = this.findBestChordMatch(note.chordName || '');
+            
+            console.log(`[HarmonyAudit] [Sampler Exec] Bar: ${barCount} - Matched to: "${chordName}". Playing sample.`);
             
             if (!chordName) {
                 return;
@@ -117,5 +122,3 @@ export class GuitarChordsSampler {
         this.output.disconnect();
     }
 }
-
-    

@@ -155,7 +155,7 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
   }, [updateSettingsCallback]);
 
 
-  const setInstrumentCallback = useCallback(async (part: 'bass' | 'melody' | 'accompaniment' | 'harmony', name: BassInstrument | MelodyInstrument | AccompanimentInstrument | keyof typeof V2_PRESETS) => {
+  const setInstrumentCallback = useCallback(async (part: 'bass' | 'melody' | 'accompaniment' | 'harmony', name: BassInstrument | MelodyInstrument | AccompanimentInstrument | 'piano' | 'guitarChords' | 'violin' | 'flute' | 'none') => {
     if (!isInitialized) return;
     if (part === 'accompaniment') {
       if(useMelodyV2 && accompanimentManagerV2Ref.current) {
@@ -170,13 +170,12 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
             melodyManagerRef.current.setInstrument(name as AccompanimentInstrument);
         }
     } else if (part === 'bass') {
-        if(useMelodyV2 && bassManagerV2Ref.current) {
-            await bassManagerV2Ref.current.setInstrument(name as keyof typeof V2_PRESETS);
-        } else if (!useMelodyV2 && bassManagerRef.current) {
+        // Bass always uses V1 now
+        if (bassManagerRef.current) {
             bassManagerRef.current.setInstrument(name as BassInstrument);
         }
     } else if (part === 'harmony' && harmonyManagerRef.current) {
-        harmonyManagerRef.current.setInstrument(name as 'piano' | 'guitarChords' | 'violin' | 'flute' | 'acousticGuitarSolo' | 'telecaster' | 'none');
+        harmonyManagerRef.current.setInstrument(name as 'piano' | 'guitarChords' | 'violin' | 'flute' | 'none');
     }
   }, [isInitialized, useMelodyV2]);
 
@@ -286,7 +285,7 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
 
                 } else if (type === 'HARMONY_SCORE_READY' && payload && 'events' in payload) {
                      const { events, barDuration, instrumentHints, barCount } = payload;
-                     console.log(`%c[AudioEngine] Received HARMONY_SCORE_READY for bar ${barCount} with ${events?.length} events.`, 'color: violet');
+                     console.log(`[HarmonyAudit] [Engine Receive] Bar: ${barCount} - Received ${events?.length || 0} harmony events.`);
                      if(events && barDuration && settingsRef.current && barCount !== undefined){
                         scheduleEvents(events, nextBarTimeRef.current, settingsRef.current.bpm, barCount, instrumentHints);
                     }

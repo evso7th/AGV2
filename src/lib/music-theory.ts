@@ -387,37 +387,47 @@ const midiToChordName = (rootNote: number, chordType: 'major' | 'minor' | 'dimin
     }
 };
 
-export function createHarmonyAxiom(chord: GhostChord, mood: Mood, genre: Genre, random: { next: () => number; nextInt: (max: number) => number }): FractalEvent[] {
+export function createHarmonyAxiom(chord: GhostChord, mood: Mood, genre: Genre, random: { next: () => number; nextInt: (max: number) => number; }, epoch: number): FractalEvent[] {
     const axiom: FractalEvent[] = [];
-    const scale = getScaleForMood(mood, genre);
     const rootMidi = chord.rootNote;
+    const chordName = midiToChordName(chord.rootNote, chord.chordType);
     
-    const isMinor = chord.chordType === 'minor' || chord.chordType === 'diminished';
-    const third = rootMidi + (isMinor ? 3 : 4);
-    const fifth = rootMidi + 7;
-
-    const chordNotes = [rootMidi, third, fifth].filter(n => scale.some(scaleNote => scaleNote % 12 === n % 12));
-    if (chordNotes.length < 2) return [];
+    const isMinor = chord.chordType.includes('minor') || chord.chordType.includes('diminished');
+    const chordNotes = [
+        rootMidi,
+        rootMidi + (isMinor ? 3 : 4),
+        rootMidi + 7
+    ];
     
-    const numNotes = 2 + random.nextInt(2);
+    const numNotes = 2 + random.nextInt(2); // 2 or 3 notes
     let currentTime = 0;
+    const baseOctave = 3;
 
     for (let i = 0; i < numNotes; i++) {
-        const noteMidi = chordNotes[random.nextInt(chordNotes.length)] + 12 * 3;
+        const noteMidi = chordNotes[random.nextInt(chordNotes.length)] + 12 * baseOctave;
         const duration = 4.0 / numNotes;
         
         axiom.push({
-            type: 'harmony', note: noteMidi, duration: duration, time: currentTime,
-            weight: 0.5 + random.next() * 0.15, technique: 'swell', dynamics: 'p', phrasing: 'legato', 
+            type: 'harmony',
+            note: noteMidi,
+            duration: duration,
+            time: currentTime,
+            weight: 0.5 + random.next() * 0.15,
+            technique: 'swell',
+            dynamics: 'p',
+            phrasing: 'legato', 
             params: { attack: 2.0, release: 3.0 },
-            chordName: midiToChordName(chord.rootNote, chord.chordType)
+            chordName: chordName
         });
 
         currentTime += duration;
     }
+    
+    console.log(`[HarmonyAudit] [Create] Bar: ${epoch} - Generated ${axiom.length} harmony events for chord: ${chordName}`);
 
     return axiom;
 }
+
 
 export function createMelodyMotif(chord: GhostChord, mood: Mood, random: { next: () => number; nextInt: (max: number) => number; }, previousMotif?: FractalEvent[], registerHint?: 'low' | 'mid' | 'high', genre?: Genre): FractalEvent[] {
     const motif: FractalEvent[] = [];

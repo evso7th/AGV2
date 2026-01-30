@@ -53,7 +53,7 @@ export class HarmonySynthManager {
         console.log('[HarmonyManager] Harmony instruments initialized.');
     }
     
-    public schedule(events: FractalEvent[], barStartTime: number, tempo: number, instrumentHint?: 'piano' | 'guitarChords' | 'violin' | 'flute') {
+    public schedule(events: FractalEvent[], barStartTime: number, tempo: number, instrumentHint?: 'piano' | 'guitarChords' | 'violin' | 'flute' | 'none') {
         if (!this.isInitialized) {
             return;
         }
@@ -65,17 +65,21 @@ export class HarmonySynthManager {
         }
 
         const beatDuration = 60 / tempo;
-        const notes: (Note & { chordName?: string })[] = events.map(event => ({
+        const notes: (Note & { chordName?: string, params?: any })[] = events.map(event => ({
             midi: event.note,
             time: event.time * beatDuration,
             duration: event.duration * beatDuration,
             velocity: event.weight,
             chordName: event.chordName,
+            params: event.params,
         }));
         
         if (notes.length === 0) {
             return;
         }
+
+        const barCount = (notes[0].params as any)?.barCount ?? 'N/A';
+        console.log(`[HarmonyAudit] [Manager Dispatch] Bar: ${barCount} - Dispatching ${notes.length} events to instrument: ${instrumentToPlay}`);
 
         switch (instrumentToPlay) {
             case 'piano':
@@ -127,5 +131,3 @@ export class HarmonySynthManager {
         this.flute.dispose();
     }
 }
-
-    

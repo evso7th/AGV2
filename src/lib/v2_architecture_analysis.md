@@ -1,3 +1,4 @@
+
 # AuraGroove V2: Архитектурный Паспорт (Версия "Прозрачный Композитор")
 
 Этот документ описывает полный путь прохождения звука в V2-архитектуре, от зарождения музыкальной идеи до ее воспроизведения. Он служит "рентгеновским снимком" системы для точной диагностики и дальнейшей разработки.
@@ -87,6 +88,7 @@ export interface FractalEvent {
   dynamics: Dynamics;                      // Динамика
   phrasing: Phrasing;                      // Фразировка
   params?: BassSynthParams | SfxSynthParams; // Параметры для синтеза
+  chordName?: string; // Для сэмплеров аккордов
 }
 ```
 
@@ -106,7 +108,7 @@ export type InstrumentHints = {
     bass?: BassInstrument;
     melody?: MelodyInstrument;
     accompaniment?: AccompanimentInstrument;
-    harmony?: 'piano' | 'guitarChords' | 'acousticGuitarSolo' | 'flute' | 'violin';
+    harmony?: 'piano' | 'guitarChords' | 'violin' | 'flute' | 'none';
     bassTechnique?: BassTechnique;
 };
 ```
@@ -168,17 +170,19 @@ export type InstrumentHints = {
     // 2. Выбрать инструменты для ВСЕХ партий
     const v2MelodyHint = this._chooseInstrumentForPart('melody', navigationInfo);
     const accompanimentHint = this._chooseInstrumentForPart('accompaniment', navigationInfo);
+    const harmonyHint = this._chooseInstrumentForPart('harmony', navigationInfo);
     // ... и т.д.
 
     // 3. Собрать ПОЛНЫЙ объект "хинтов"
     const instrumentHints: InstrumentHints = {
         melody: v2MelodyHint,
         accompaniment: accompanimentHint,
+        harmony: harmonyHint,
         // ...
     };
 
     // 4. Сгенерировать партитуру, ПЕРЕДАВАЯ "хинты"
-    const events = this.generateOneBar(barDuration, navigationInfo, instrumentHints);
+    const { events } = this.generateOneBar(barDuration, navigationInfo, instrumentHints);
 
     // 5. Вернуть полный результат
     return { events, instrumentHints };

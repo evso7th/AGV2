@@ -1,4 +1,5 @@
 
+
 /**
  * Настроение — управляет ладом, динамикой, техникой
  */
@@ -271,10 +272,9 @@ export interface FractalEvent {
   phrasing: Phrasing;
   
   /**
-   * Параметры синтеза (только для 'bass')
-   * Рассчитываются композитором, исполняются синтезатором.
+   * Параметры синтеза.
    */
-  params?: BassSynthParams | SfxSynthParams;
+  params?: BassSynthParams | SfxSynthParams | { barCount?: number; voicingName?: string };
   
   /** 
    * #ЗАЧЕМ: Это поле позволяет композитору явно указать имя аккорда для сэмплеров.
@@ -288,7 +288,7 @@ export type InstrumentHints = {
     bass?: BassInstrument;
     melody?: MelodyInstrument;
     accompaniment?: AccompanimentInstrument;
-    harmony?: 'piano' | 'guitarChords' | 'acousticGuitarSolo' | 'flute' | 'violin' | 'telecaster';
+    harmony?: 'piano' | 'guitarChords' | 'violin' | 'flute' | 'none';
     bassTechnique?: BassTechnique;
 };
 
@@ -347,6 +347,7 @@ export type SuiteDNA = {
   rhythmicFeel: RhythmicFeel;
   bassStyle: BassStyle;
   drumStyle: DrumStyle;
+  soloPlanMap: Map<string, string>;
 };
 
 
