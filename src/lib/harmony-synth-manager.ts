@@ -57,7 +57,6 @@ export class HarmonySynthManager {
         if (!this.isInitialized) {
             return;
         }
-        console.log(`[HarmonyManager] Received ${events.length} events to schedule.`);
         
         const instrumentToPlay = instrumentHint || this.activeInstrumentName;
 
@@ -104,7 +103,7 @@ export class HarmonySynthManager {
 
         // Manage volumes of child samplers
         this.piano.setVolume(instrumentName === 'piano' ? 0.8 : 0);
-        this.guitarChords.setVolume(instrumentName === 'guitarChords' ? 0.45 : 0);
+        this.guitarChords.setVolume(instrumentName === 'guitarChords' ? 0.9 : 0);
         this.violin.setVolume(instrumentName === 'violin' ? 1.0 : 0);
         this.flute.setVolume(instrumentName === 'flute' ? 1.0 : 0);
     }
@@ -128,3 +127,5 @@ export class HarmonySynthManager {
         this.flute.dispose();
     }
 }
+
+    

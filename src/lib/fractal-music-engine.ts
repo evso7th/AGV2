@@ -1,5 +1,4 @@
 
-
 import type { FractalEvent, Mood, Genre, Technique, BassSynthParams, InstrumentType, MelodyInstrument, AccompanimentInstrument, ResonanceMatrix, InstrumentHints, AccompanimentTechnique, GhostChord, SfxRule, V1MelodyInstrument, V2MelodyInstrument, BlueprintPart, InstrumentationRules, InstrumentBehaviorRules, BluesMelody, InstrumentPart, DrumKit, BluesGuitarRiff, BluesSoloPhrase, BluesRiffDegree, SuiteDNA, RhythmicFeel, BassStyle, DrumStyle } from './fractal';
 import { ElectronicK, TraditionalK, AmbientK, MelancholicMinorK } from './resonance-matrices';
 import { BlueprintNavigator, type NavigationInfo } from './blueprint-navigator';
@@ -564,10 +563,16 @@ export class FractalMusicEngine {
         return 'none';
     }
 
-    const options = (this.config.useMelodyV2 && rules.v2Options && rules.v2Options.length > 0) ? rules.v2Options : rules.v1Options;
-
+    let options: InstrumentOption<any>[] | undefined;
+    if (part === 'harmony' && rules.options) {
+        options = rules.options;
+    } else {
+        options = (this.config.useMelodyV2 && rules.v2Options && rules.v2Options.length > 0) ? rules.v2Options : rules.v1Options;
+    }
+    
     if (!options || options.length === 0) {
-        const fallbackOptions = (this.config.useMelodyV2 ? rules.v1Options : rules.v2Options);
+        // This is a fallback that might not be perfect for harmony, but it's better than nothing.
+        const fallbackOptions = rules.v1Options || (rules as any).options;
         if(!fallbackOptions || fallbackOptions.length === 0) return 'none';
         
         const totalFallbackWeight = fallbackOptions.reduce((sum, item) => sum + item.weight, 0);
@@ -737,3 +742,5 @@ export class FractalMusicEngine {
     return { events: allEvents };
   }
 }
+
+    

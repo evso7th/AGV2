@@ -24,7 +24,7 @@ export class GuitarChordsSampler {
         this.output = this.audioContext.createGain();
         
         this.preamp = this.audioContext.createGain();
-        this.preamp.gain.value = 5.0; // Temporarily increased gain for debugging
+        this.preamp.gain.value = 0.9;
         this.preamp.connect(this.output);
         
         this.output.connect(destination);
@@ -63,19 +63,14 @@ export class GuitarChordsSampler {
         if (!this.isInitialized || notes.length === 0) return;
 
         notes.forEach(note => {
-            console.log(`[GuitarChordsSampler] 1. Received event with chordName: '${note.chordName}'`);
-
             const chordName = this.findBestChordMatch(note.chordName || '');
-            console.log(`[GuitarChordsSampler] 2. Matched to chord: '${chordName}'`);
             
             if (!chordName) {
-                console.warn(`[GuitarChordsSampler] 3. No suitable match found. Aborting.`);
                 return;
             }
 
             const buffer = this.samples.get(chordName);
             if (buffer) {
-                console.log(`[GuitarChordsSampler] 3. SUCCESS: Found audio buffer for '${chordName}'. Scheduling playback.`);
                 const source = this.audioContext.createBufferSource();
                 source.buffer = buffer;
                 
@@ -91,8 +86,6 @@ export class GuitarChordsSampler {
                 source.onended = () => {
                     noteGain.disconnect();
                 };
-            } else {
-                console.warn(`[GuitarChordsSampler] 3. FAILURE: Sample for resolved chord "${chordName}" not found in map.`);
             }
         });
     }
@@ -124,3 +117,5 @@ export class GuitarChordsSampler {
         this.output.disconnect();
     }
 }
+
+    
