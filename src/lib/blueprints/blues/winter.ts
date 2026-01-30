@@ -8,7 +8,7 @@ export const WinterBluesBlueprint: MusicBlueprint = {
     description: 'A slow, atmospheric blues with a melancholic feel.',
     mood: 'melancholic',
     musical: {
-        key: { root: 'E', scale: 'dorian', octave: 2 },
+        key: { root: 'E', scale: 'dorian', octave: 1 }, // Lowered octave for deeper feel
         bpm: { base: 64, range: [60, 68], modifier: 1.0 },
         timeSignature: { numerator: 4, denominator: 4 },
         harmonicJourney: [],
@@ -24,19 +24,20 @@ export const WinterBluesBlueprint: MusicBlueprint = {
                     accompaniment: { strategy: 'weighted', v1Options: [{ name: 'synth', weight: 0.5 }, { name: 'ambientPad', weight: 0.5 }], v2Options: [{ name: 'synth', weight: 0.5 }, { name: 'synth_ambient_pad_lush', weight: 0.5 }] },
                     melody: {
                         strategy: 'weighted',
-                        v1Options: [{ name: 'telecaster', weight: 1.0 }],
-                        v2Options: [{ name: 'telecaster', weight: 1.0 }]
+                        v1Options: [{ name: 'telecaster', weight: 0.5 }, { name: 'blackAcoustic', weight: 0.5 }],
+                        v2Options: [{ name: 'telecaster', weight: 0.5 }, { name: 'blackAcoustic', weight: 0.5 }]
                     },
                     bass: { strategy: 'weighted', v1Options: [{ name: 'bass_jazz_warm', weight: 1.0 }], v2Options: [{ name: 'bass_jazz_warm', weight: 1.0 }] },
                     harmony: {
                         strategy: 'weighted',
                         options: [
-                           { name: 'piano', weight: 1.0 }
+                           { name: 'piano', weight: 0.5 },
+                           { name: 'guitarChords', weight: 0.5 }
                         ]
                     }
                 },
                 instrumentRules: {
-                    bass: { techniques: [{ value: 'long_notes', weight: 1.0 }] },
+                    bass: { techniques: [{ value: 'long_notes', weight: 1.0 }], presetModifiers: { octaveShift: 1 } },
                     melody: { source: 'blues_solo', density: { min: 0.5, max: 0.9 }, soloPlan: "S06" },
                     drums: { pattern: 'composer', kitName: 'winter_blues_prolog1', density: { min: 0.1, max: 0.2 } }
                 },
@@ -50,19 +51,20 @@ export const WinterBluesBlueprint: MusicBlueprint = {
                     accompaniment: { strategy: 'weighted', v1Options: [{ name: 'organ', weight: 0.5 }, { name: 'synth', weight: 0.5 }], v2Options: [{ name: 'synth', weight: 0.5 }, { name: 'organ_soft_jazz', weight: 0.5 }] },
                     melody: {
                         strategy: 'weighted',
-                        v1Options: [{ name: 'telecaster', weight: 1.0 }],
-                        v2Options: [{ name: 'telecaster', weight: 1.0 }]
+                        v1Options: [{ name: 'telecaster', weight: 0.5 }, { name: 'blackAcoustic', weight: 0.5 }],
+                        v2Options: [{ name: 'telecaster', weight: 0.5 }, { name: 'blackAcoustic', weight: 0.5 }]
                     },
                     bass: { strategy: 'weighted', v1Options: [{ name: 'bass_jazz_warm', weight: 1.0 }], v2Options: [{ name: 'bass_jazz_warm', weight: 1.0 }] },
                     harmony: {
                         strategy: 'weighted',
                         options: [
-                           { name: 'piano', weight: 1.0 }
+                           { name: 'piano', weight: 0.5 },
+                           { name: 'guitarChords', weight: 0.5 }
                         ]
                     }
                 },
                 instrumentRules: {
-                    bass: { techniques: [{ value: 'long_notes', weight: 1.0 }] },
+                    bass: { techniques: [{ value: 'long_notes', weight: 1.0 }], presetModifiers: { octaveShift: 1 } },
                     melody: { source: 'blues_solo', density: { min: 0.5, max: 0.9 }, soloPlan: "S07" },
                     drums: { pattern: 'composer', kitName: 'winter_blues_prolog2', density: { min: 0.2, max: 0.3 } }
                 },
@@ -76,19 +78,20 @@ export const WinterBluesBlueprint: MusicBlueprint = {
                     accompaniment: { strategy: 'weighted', v1Options: [{ name: 'organ', weight: 0.5 }, { name: 'synth', weight: 0.5 }], v2Options: [{ name: 'synth', weight: 0.5 }, { name: 'organ_soft_jazz', weight: 0.5 }] },
                     melody: {
                         strategy: 'weighted',
-                        v1Options: [{ name: 'telecaster', weight: 1.0 }],
-                        v2Options: [{ name: 'telecaster', weight: 1.0 }]
+                        v1Options: [{ name: 'telecaster', weight: 0.5 }, { name: 'blackAcoustic', weight: 0.5 }],
+                        v2Options: [{ name: 'telecaster', weight: 0.5 }, { name: 'blackAcoustic', weight: 0.5 }]
                     },
                     bass: { strategy: 'weighted', v1Options: [{ name: 'bass_jazz_warm', weight: 1.0 }], v2Options: [{ name: 'bass_jazz_warm', weight: 1.0 }] },
                     harmony: {
                         strategy: 'weighted',
                         options: [
-                           { name: 'piano', weight: 1.0 }
+                           { name: 'piano', weight: 0.5 },
+                           { name: 'guitarChords', weight: 0.5 }
                         ]
                     }
                 },
                 instrumentRules: {
-                    bass: { techniques: [{ value: 'walking', weight: 1.0 }] },
+                    bass: { techniques: [{ value: 'walking', weight: 1.0 }], presetModifiers: { octaveShift: 1 } },
                     melody: { source: 'blues_solo', density: { min: 0.5, max: 0.9 }, soloPlan: "S08" },
                     drums: { pattern: 'composer', kitName: 'winter_blues_prolog3', density: { min: 0.3, max: 0.4 }, useSnare: true }
                 },
@@ -102,20 +105,21 @@ export const WinterBluesBlueprint: MusicBlueprint = {
                     accompaniment: { strategy: 'weighted', v1Options: [{ name: 'organ', weight: 0.5 }, { name: 'synth', weight: 0.5 }], v2Options: [{ name: 'synth', weight: 0.5 }, { name: 'organ_soft_jazz', weight: 0.5 }] },
                     melody: {
                         strategy: 'weighted',
-                        v1Options: [{ name: 'telecaster', weight: 1.0 }],
-                        v2Options: [{ name: 'telecaster', weight: 1.0 }]
+                        v1Options: [{ name: 'telecaster', weight: 0.5 }, { name: 'blackAcoustic', weight: 0.5 }],
+                        v2Options: [{ name: 'telecaster', weight: 0.5 }, { name: 'blackAcoustic', weight: 0.5 }]
                     },
                     bass: { strategy: 'weighted', v1Options: [{ name: 'bass_jazz_warm', weight: 1.0 }], v2Options: [{ name: 'bass_jazz_warm', weight: 1.0 }] },
                     harmony: {
                         strategy: 'weighted',
                         options: [
-                           { name: 'piano', weight: 1.0 }
+                           { name: 'piano', weight: 0.5 },
+                           { name: 'guitarChords', weight: 0.5 }
                         ]
                     }
                 },
                 instrumentRules: {
                     drums: { pattern: 'composer', kitName: 'blues_melancholic_master', density: { min: 0.5, max: 0.7 }, ride: { enabled: true, probability: 0.15 } },
-                    bass: { techniques: [{ value: 'riff', weight: 1.0 }] },
+                    bass: { techniques: [{ value: 'riff', weight: 1.0 }], presetModifiers: { octaveShift: 1 } },
                     melody: { source: 'blues_solo', density: { min: 0.5, max: 0.9 }, register: { preferred: 'mid' }, soloPlan: "S09" }
                 },
                 bundles: [{ id: 'WINTER_MAIN_1', name: 'The Riff', duration: { percent: 100 }, characteristics: {}, phrases: {} }],
@@ -128,20 +132,21 @@ export const WinterBluesBlueprint: MusicBlueprint = {
                     accompaniment: { strategy: 'weighted', v1Options: [{ name: 'organ', weight: 0.5 }, { name: 'synth', weight: 0.5 }], v2Options: [{ name: 'synth', weight: 0.5 }, { name: 'organ_soft_jazz', weight: 0.5 }] },
                     melody: {
                         strategy: 'weighted',
-                        v1Options: [{ name: 'telecaster', weight: 1.0 }],
-                        v2Options: [{ name: 'telecaster', weight: 1.0 }]
+                        v1Options: [{ name: 'telecaster', weight: 0.5 }, { name: 'blackAcoustic', weight: 0.5 }],
+                        v2Options: [{ name: 'telecaster', weight: 0.5 }, { name: 'blackAcoustic', weight: 0.5 }]
                     },
                     bass: { strategy: 'weighted', v1Options: [{ name: 'bass_jazz_warm', weight: 1.0 }], v2Options: [{ name: 'bass_jazz_warm', weight: 1.0 }] },
                     harmony: {
                         strategy: 'weighted',
                         options: [
-                           { name: 'piano', weight: 1.0 }
+                           { name: 'piano', weight: 0.5 },
+                           { name: 'guitarChords', weight: 0.5 }
                         ]
                     }
                 },
                 instrumentRules: {
                     drums: { pattern: 'composer', kitName: 'blues_melancholic_master', density: { min: 0.6, max: 0.8 }, ride: { enabled: true, probability: 0.15 } },
-                    bass: { techniques: [{ value: 'walking', weight: 1.0 }] },
+                    bass: { techniques: [{ value: 'walking', weight: 1.0 }], presetModifiers: { octaveShift: 1 } },
                     melody: { source: 'blues_solo', density: { min: 0.5, max: 0.9 }, register: { preferred: 'high' }, soloPlan: "S10" }
                 },
                 bundles: [{ id: 'WINTER_SOLO_1', name: 'The Cry', duration: { percent: 100 }, characteristics: {}, phrases: {} }],
@@ -154,20 +159,21 @@ export const WinterBluesBlueprint: MusicBlueprint = {
                     accompaniment: { strategy: 'weighted', v1Options: [{ name: 'organ', weight: 0.5 }, { name: 'synth', weight: 0.5 }], v2Options: [{ name: 'synth', weight: 0.5 }, { name: 'organ_soft_jazz', weight: 0.5 }] },
                     melody: {
                         strategy: 'weighted',
-                        v1Options: [{ name: 'telecaster', weight: 1.0 }],
-                        v2Options: [{ name: 'telecaster', weight: 1.0 }]
+                        v1Options: [{ name: 'telecaster', weight: 0.5 }, { name: 'blackAcoustic', weight: 0.5 }],
+                        v2Options: [{ name: 'telecaster', weight: 0.5 }, { name: 'blackAcoustic', weight: 0.5 }]
                     },
                     bass: { strategy: 'weighted', v1Options: [{ name: 'bass_jazz_warm', weight: 1.0 }], v2Options: [{ name: 'bass_jazz_warm', weight: 1.0 }] },
                     harmony: {
                         strategy: 'weighted',
                         options: [
-                           { name: 'piano', weight: 1.0 }
+                           { name: 'piano', weight: 0.5 },
+                           { name: 'guitarChords', weight: 0.5 }
                         ]
                     }
                 },
                 instrumentRules: {
                     drums: { pattern: 'composer', kitName: 'blues_melancholic_master', density: { min: 0.2, max: 0.4 }, ride: { enabled: true, probability: 0.15 } },
-                    bass: { techniques: [{ value: 'riff', weight: 1.0 }] },
+                    bass: { techniques: [{ value: 'riff', weight: 1.0 }], presetModifiers: { octaveShift: 1 } },
                     melody: { source: 'blues_solo', density: { min: 0.5, max: 0.9 }, register: { preferred: 'mid' }, soloPlan: "S15" }
                 },
                 bundles: [{ id: 'WINTER_MAIN_2', name: 'The Last Riff', duration: { percent: 100 }, characteristics: {}, phrases: {} }],
