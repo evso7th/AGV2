@@ -45,7 +45,7 @@ const Scheduler = {
         return (60 / this.settings.bpm) * 4; // 4 beats per bar
     },
 
-    async initializeEngine(settings: WorkerSettings, force: boolean = false) {
+    initializeEngine(settings: WorkerSettings, force: boolean = false) {
         // #ЗАЧЕМ: Этот метод инициализирует или переинициализирует музыкальный движок.
         // #ЧТО: Он создает новый экземпляр FractalMusicEngine и асинхронно ждет его полной инициализации.
         // #ИСПРАВЛЕНО (ПЛАН 1274): Логика стала проще. Создаем, затем инициализируем.
@@ -57,7 +57,7 @@ const Scheduler = {
             introBars: settings.introBars,
         });
 
-        await newEngine.initialize(true); // `true` для форсированной инициализации
+        newEngine.initialize(true); // `true` для форсированной инициализации
         
         fractalMusicEngine = newEngine;
         this.barCount = 0;
@@ -84,7 +84,7 @@ const Scheduler = {
         }
     },
     
-    async reset() {
+    reset() {
         // #ИСПРАВЛЕНО (ПЛАН 1270): Логика генерации уникального "семени" перенесена сюда.
         // #ЗАЧЕМ: Этот метод теперь является ЕДИНСТВЕННЫМ источником нового "семени" для каждой сюиты.
         // #ЧТО: Он генерирует новый seed, обновляет глобальные настройки и немедленно пересоздает движок с ним.
@@ -98,14 +98,14 @@ const Scheduler = {
         console.log(`%c[Worker.reset] Generating NEW SEED: ${newSeed}`, 'color: cyan; font-weight:bold;');
         this.settings.seed = newSeed; // Обновляем seed в настройках
 
-        await this.initializeEngine(this.settings, true); // Пересоздаем движок с новым seed
+        this.initializeEngine(this.settings, true); // Пересоздаем движок с новым seed
         
         if (wasRunning) {
             this.start();
         }
     },
 
-    async updateSettings(newSettings: Partial<WorkerSettings>) {
+    updateSettings(newSettings: Partial<WorkerSettings>) {
        console.log('[Worker.updateSettings] Received raw settings:', JSON.parse(JSON.stringify(newSettings)));
        const needsRestart = this.isRunning && (newSettings.bpm !== undefined && newSettings.bpm !== this.settings.bpm);
        // #ИСПРАВЛЕНО (ПЛАН 1485): Добавлена проверка смены жанра или настроения.
@@ -114,7 +114,7 @@ const Scheduler = {
        if (genreOrMoodChanged) {
            console.log(`[Worker] Genre or Mood changed. Triggering full reset.`);
            this.settings = { ...this.settings, ...newSettings }; // Обновляем настройки ПЕРЕД сбросом
-           await this.reset();
+           this.reset();
            return;
        }
        
@@ -130,9 +130,9 @@ const Scheduler = {
 
         if (!fractalMusicEngine) {
             console.log("[Worker] First settings update. Initializing engine...");
-            await this.initializeEngine(this.settings, true);
+            this.initializeEngine(this.settings, true);
         } else {
-            await fractalMusicEngine.updateConfig(this.settings);
+            fractalMusicEngine.updateConfig(this.settings);
         }
        
        if (needsRestart) this.start();
@@ -233,7 +233,7 @@ const Scheduler = {
 };
 
 // --- MessageBus (The "Kafka" entry point) ---
-self.onmessage = async (event: MessageEvent) => {
+self.onmessage = (event: MessageEvent) => {
     if (!event.data || !event.data.command) {
         return;
     }
@@ -256,11 +256,11 @@ self.onmessage = async (event: MessageEvent) => {
                 break;
 
             case 'reset':
-                await Scheduler.reset();
+                Scheduler.reset();
                 break;
 
             case 'update_settings':
-                await Scheduler.updateSettings(data);
+                Scheduler.updateSettings(data);
                 break;
                 
             case 'external_impulse':

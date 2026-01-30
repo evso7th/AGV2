@@ -141,7 +141,7 @@ export class FractalMusicEngine {
 
   public get tempo(): number { return this.config.tempo; }
   
-  public async updateConfig(newConfig: Partial<EngineConfig>) {
+  public updateConfig(newConfig: Partial<EngineConfig>) {
       const moodOrGenreChanged = newConfig.mood !== this.config.mood || newConfig.genre !== this.config.genre;
       const introBarsChanged = newConfig.introBars !== undefined && newConfig.introBars !== this.config.introBars;
       const seedChanged = newConfig.seed !== undefined && newConfig.seed !== this.config.seed;
@@ -155,11 +155,11 @@ export class FractalMusicEngine {
       
       if(moodOrGenreChanged || introBarsChanged || seedChanged) {
           console.log(`[FME] Config changed requiring re-initialization. Mood: ${this.config.mood}, Intro: ${this.config.introBars}`);
-          await this.initialize(true);
+          this.initialize(true);
       }
   }
 
-  public async initialize(force: boolean = false) {
+  public initialize(force: boolean = false) {
     if (this.isInitialized && !force) {
         return;
     }
@@ -190,7 +190,7 @@ export class FractalMusicEngine {
     console.log(`%c[FME.initialize] New Suite Seeded! Base Riffs -> Bass: ${this.currentBassRiffIndex}, Drums: ${this.currentDrumRiffIndex}, Guitar: ${this.currentGuitarRiffId}`, 'color: cyan; font-weight: bold;');
 
 
-    const blueprint = await getBlueprint(this.config.genre, this.config.mood);
+    const blueprint = getBlueprint(this.config.genre, this.config.mood);
     
     this.suiteDNA = generateSuiteDNA(
         blueprint.structure.totalDuration.preferredBars,

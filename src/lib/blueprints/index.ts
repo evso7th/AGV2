@@ -91,7 +91,7 @@ export const BLUEPRINT_LIBRARY: Record<Genre, Partial<Record<Mood, MusicBlueprin
  * @param mood The musical mood.
  * @returns A MusicBlueprint.
  */
-export async function getBlueprint(genre: Genre, mood: Mood): Promise<MusicBlueprint> {
+export function getBlueprint(genre: Genre, mood: Mood): MusicBlueprint {
     const genreBlueprints = BLUEPRINT_LIBRARY[genre];
     
     // 1. Try to find the exact mood in the requested genre.
