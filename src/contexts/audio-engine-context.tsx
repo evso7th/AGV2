@@ -155,7 +155,7 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
   }, [updateSettingsCallback]);
 
 
-  const setInstrumentCallback = useCallback(async (part: 'bass' | 'melody' | 'accompaniment' | 'harmony', name: BassInstrument | MelodyInstrument | AccompanimentInstrument | 'piano' | 'guitarChords' | 'violin' | 'flute' | 'acousticGuitarSolo' | keyof typeof V2_PRESETS | 'telecaster') => {
+  const setInstrumentCallback = useCallback(async (part: 'bass' | 'melody' | 'accompaniment' | 'harmony', name: BassInstrument | MelodyInstrument | AccompanimentInstrument | keyof typeof V2_PRESETS) => {
     if (!isInitialized) return;
     if (part === 'accompaniment') {
       if(useMelodyV2 && accompanimentManagerV2Ref.current) {
@@ -167,7 +167,7 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
         if(useMelodyV2 && melodyManagerV2Ref.current) {
             melodyManagerV2Ref.current.setInstrument(name as keyof typeof V2_PRESETS);
         } else if (melodyManagerRef.current) {
-            melodyManagerRef.current.setInstrument(name as MelodyInstrument);
+            melodyManagerRef.current.setInstrument(name as AccompanimentInstrument);
         }
     } else if (part === 'bass') {
         if(useMelodyV2 && bassManagerV2Ref.current) {
@@ -511,7 +511,7 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
 
     if (part === 'bass') {
       if (useMelodyV2 && bassManagerV2Ref.current) {
-        (bassManagerV2Ref.current as any).setVolume(volume);
+        (bassManagerV2Ref.current as any).setPreampGain(volume);
       } else if (!useMelodyV2 && bassManagerRef.current) {
         bassManagerRef.current.setPreampGain(volume);
       }
