@@ -1,4 +1,5 @@
 
+
 import type { Note as NoteEvent } from "@/types/music";
 import { ACOUSTIC_GUITAR_CHORD_SAMPLES } from "./samples";
 import * as Tone from 'tone';
@@ -96,15 +97,65 @@ export class GuitarChordsSampler {
     }
 
     private findBestChordMatch(requestedChord: string): string | null {
-        if (this.samples.has(requestedChord)) {
-            return requestedChord;
+        if (!requestedChord) return null;
+    
+        const originalChord = requestedChord.trim();
+        
+        // 1. Direct Match
+        if (this.samples.has(originalChord)) {
+            return originalChord;
+        }
+    
+        // Enharmonic equivalents map
+        const enharmonics: Record<string, string> = {
+            'A#': 'Bb', 'C#': 'Db', 'D#': 'Eb', 'F#': 'Gb', 'G#': 'Ab'
+        };
+        const reverseEnharmonics: Record<string, string> = {
+            'Bb': 'A#', 'Db': 'C#', 'Eb': 'D#', 'Gb': 'F#', 'Ab': 'G#'
+        };
+        
+        let currentChord = originalChord;
+        
+        // 2. Enharmonic Match
+        for (const [from, to] of Object.entries(enharmonics)) {
+            if (currentChord.startsWith(from)) {
+                const enharmonicChord = currentChord.replace(from, to);
+                if (this.samples.has(enharmonicChord)) return enharmonicChord;
+            }
+        }
+         for (const [from, to] of Object.entries(reverseEnharmonics)) {
+            if (currentChord.startsWith(from)) {
+                const enharmonicChord = currentChord.replace(from, to);
+                if (this.samples.has(enharmonicChord)) return enharmonicChord;
+            }
         }
 
-        const root = requestedChord.replace(/m$/, '');
-        if (this.samples.has(root)) {
-            return root;
+        // 3. Simplify and search (e.g., Am7 -> Am -> A)
+        let simplifiedChord = currentChord;
+    
+        // Try removing extensions and complex types (m7, maj9, dim, aug, etc.)
+        simplifiedChord = simplifiedChord.replace(/(m?)(maj|dim|aug|sus|add)?\d+$/, '$1'); // Cmaj9 -> C, Am7 -> Am
+        
+        if (simplifiedChord !== currentChord && this.samples.has(simplifiedChord)) {
+            return simplifiedChord;
         }
-
+    
+        // If it's a minor chord, try finding the major equivalent (e.g., Am -> A)
+        if (simplifiedChord.endsWith('m')) {
+            const majorEquivalent = simplifiedChord.slice(0, -1);
+            if (this.samples.has(majorEquivalent)) {
+                return majorEquivalent;
+            }
+        }
+        
+        // Fallback: just the root note
+        const rootNote = currentChord.match(/^[A-G][#b]?/);
+        if (rootNote) {
+            if(this.samples.has(rootNote[0])) return rootNote[0];
+            const enharmonicRoot = enharmonics[rootNote[0]] || reverseEnharmonics[rootNote[0]];
+            if(enharmonicRoot && this.samples.has(enharmonicRoot)) return enharmonicRoot;
+        }
+    
         return null;
     }
 

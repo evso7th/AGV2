@@ -16,6 +16,8 @@ import { BLUES_SOLO_LICKS, BLUES_SOLO_PLANS } from './assets/blues_guitar_solo';
 import { BLUES_DRUM_RIFFS } from './assets/blues-drum-riffs';
 import { DRUM_KITS } from './assets/drum-kits';
 
+import { getScaleForMood, createDrumAxiom, createAmbientBassAxiom, createAccompanimentAxiom, createMelodyMotif as createAmbientMelodyMotif, mutateBassPhrase, createBassFill, createDrumFill, chooseHarmonyInstrument, DEGREE_TO_SEMITONE, mutateBluesAccompaniment, mutateBluesMelody, createBluesOrganLick, generateIntroSequence } from './music-theory';
+
 
 export type Branch = {
   id: string;
@@ -37,6 +39,8 @@ interface EngineConfig {
   drumSettings: any;
   seed: number;
   composerControlsInstruments?: boolean;
+  useMelodyV2?: boolean;
+  introBars: number;
 }
 
 type PlayPlanItem = {
@@ -389,41 +393,23 @@ const midiToChordName = (rootNote: number, chordType: 'major' | 'minor' | 'dimin
 
 export function createHarmonyAxiom(chord: GhostChord, mood: Mood, genre: Genre, random: { next: () => number; nextInt: (max: number) => number; }, epoch: number): FractalEvent[] {
     const axiom: FractalEvent[] = [];
-    const rootMidi = chord.rootNote;
     const chordName = midiToChordName(chord.rootNote, chord.chordType);
     
-    const isMinor = chord.chordType.includes('minor') || chord.chordType.includes('diminished');
-    const chordNotes = [
-        rootMidi,
-        rootMidi + (isMinor ? 3 : 4),
-        rootMidi + 7
-    ];
-    
-    const numNotes = 2 + random.nextInt(2); // 2 or 3 notes
-    let currentTime = 0;
-    const baseOctave = 3;
+    // The console.log is intentionally kept for debugging as requested.
+    console.log(`[HarmonyAudit] [Create] Bar: ${epoch} - Generating 1 harmony event for chord: ${chordName}`);
 
-    for (let i = 0; i < numNotes; i++) {
-        const noteMidi = chordNotes[random.nextInt(chordNotes.length)] + 12 * baseOctave;
-        const duration = 4.0 / numNotes;
-        
-        axiom.push({
-            type: 'harmony',
-            note: noteMidi,
-            duration: duration,
-            time: currentTime,
-            weight: 0.5 + random.next() * 0.15,
-            technique: 'swell',
-            dynamics: 'p',
-            phrasing: 'legato', 
-            params: { attack: 2.0, release: 3.0 },
-            chordName: chordName
-        });
-
-        currentTime += duration;
-    }
-    
-    console.log(`[HarmonyAudit] [Create] Bar: ${epoch} - Generated ${axiom.length} harmony events for chord: ${chordName}`);
+    axiom.push({
+        type: 'harmony',
+        note: chord.rootNote, 
+        duration: 4.0,       
+        time: 0,             
+        weight: 0.7,
+        technique: 'choral',
+        dynamics: 'mf',
+        phrasing: 'legato',
+        params: { barCount: epoch },
+        chordName: chordName
+    });
 
     return axiom;
 }
@@ -486,13 +472,45 @@ export function generateSuiteDNA(totalBars: number, mood: Mood, seed: number, ra
 
     const harmonyTrack: GhostChord[] = [];
     const key = getScaleForMood(mood, genre)[0];
-    let currentBar = 0;
-    while (currentBar < totalBars) {
-        const duration = 4;
-        harmonyTrack.push({ rootNote: key + random.nextInt(12) - 6, chordType: random.next() > 0.5 ? 'major' : 'minor', bar: currentBar, durationBars: duration });
-        currentBar += duration;
-    }
 
+    if (genre === 'blues') {
+        console.log(`[DNA] Blues genre detected. Generating 12-bar progression.`);
+        const isMinor = mood === 'melancholic' || mood === 'dark' || mood === 'gloomy' || mood === 'anxious';
+
+        const majorProgression = [
+            { root: 0, type: 'dominant' }, { root: 5, type: 'dominant' }, { root: 0, type: 'dominant' }, { root: 0, type: 'dominant' },
+            { root: 5, type: 'dominant' }, { root: 5, type: 'dominant' }, { root: 0, type: 'dominant' }, { root: 0, type: 'dominant' },
+            { root: 7, type: 'dominant' }, { root: 5, type: 'dominant' }, { root: 0, type: 'dominant' }, { root: 7, type: 'dominant' }
+        ];
+        const minorProgression = [
+            { root: 0, type: 'minor' }, { root: 0, type: 'minor' }, { root: 0, type: 'minor' }, { root: 0, type: 'minor' },
+            { root: 5, type: 'minor' }, { root: 5, type: 'minor' }, { root: 0, type: 'minor' }, { root: 0, type: 'minor' },
+            { root: 8, type: 'major' }, { root: 7, type: 'dominant' }, { root: 0, type: 'minor' }, { root: 7, type: 'dominant' }
+        ];
+
+        const progression = isMinor ? minorProgression : majorProgression;
+        
+        for (let bar = 0; bar < totalBars; bar++) {
+            const barInChorus = bar % 12;
+            const chordInProg = progression[barInChorus];
+            
+            harmonyTrack.push({
+                rootNote: key + chordInProg.root,
+                chordType: chordInProg.type as 'major' | 'minor' | 'dominant' | 'diminished',
+                bar: bar,
+                durationBars: 1
+            });
+        }
+    } else { // Fallback for other genres
+        let currentBar = 0;
+        while (currentBar < totalBars) {
+            const duration = 4;
+            const chordRoot = key + [0, 5, 7, -5, 4][random.nextInt(5)];
+            harmonyTrack.push({ rootNote: chordRoot, chordType: random.next() > 0.5 ? 'major' : 'minor', bar: currentBar, durationBars: duration });
+            currentBar += duration;
+        }
+    }
+    
     const possibleTempos = {
         joyful: [76, 90], enthusiastic: [82, 98], contemplative: [68, 76],
         dreamy: [64, 72], calm: [60, 70], melancholic: [60, 68],
