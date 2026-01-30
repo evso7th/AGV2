@@ -106,6 +106,7 @@ const Scheduler = {
     },
 
     async updateSettings(newSettings: Partial<WorkerSettings>) {
+       console.log('[Worker.updateSettings] Received raw settings:', JSON.parse(JSON.stringify(newSettings)));
        const needsRestart = this.isRunning && (newSettings.bpm !== undefined && newSettings.bpm !== this.settings.bpm);
        // #ИСПРАВЛЕНО (ПЛАН 1485): Добавлена проверка смены жанра или настроения.
        const genreOrMoodChanged = (newSettings.genre && newSettings.genre !== this.settings.genre) || (newSettings.mood && newSettings.mood !== this.settings.mood);
@@ -135,6 +136,7 @@ const Scheduler = {
         }
        
        if (needsRestart) this.start();
+       console.log('[Worker.updateSettings] Final computed settings:', JSON.parse(JSON.stringify(this.settings)));
     },
 
     tick() {
