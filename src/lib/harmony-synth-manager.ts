@@ -1,5 +1,4 @@
 
-
 import type { FractalEvent } from '@/types/fractal';
 import type { Note } from "@/types/music";
 import { SamplerPlayer } from '@/lib/sampler-player';
@@ -16,7 +15,7 @@ import { FluteSamplerPlayer } from './flute-sampler-player';
 export class HarmonySynthManager {
     private audioContext: AudioContext;
     private destination: AudioNode;
-    private activeInstrumentName: 'piano' | 'guitarChords' | 'acousticGuitarSolo' | 'flute' | 'violin' | 'none' = 'piano';
+    private activeInstrumentName: 'piano' | 'guitarChords' | 'violin' | 'flute' | 'none' = 'piano';
     public isInitialized = false;
 
     // Sampler Instruments
@@ -54,7 +53,7 @@ export class HarmonySynthManager {
         console.log('[HarmonyManager] Harmony instruments initialized.');
     }
     
-    public schedule(events: FractalEvent[], barStartTime: number, tempo: number, instrumentHint?: 'piano' | 'guitarChords' | 'acousticGuitarSolo' | 'flute' | 'violin') {
+    public schedule(events: FractalEvent[], barStartTime: number, tempo: number, instrumentHint?: 'piano' | 'guitarChords' | 'violin' | 'flute') {
         if (!this.isInitialized) {
             return;
         }
@@ -95,7 +94,7 @@ export class HarmonySynthManager {
         }
     }
 
-    public setInstrument(instrumentName: 'piano' | 'guitarChords' | 'acousticGuitarSolo' | 'flute' | 'violin' | 'none') {
+    public setInstrument(instrumentName: 'piano' | 'guitarChords' | 'violin' | 'flute' | 'none') {
         if (!this.isInitialized) {
             console.warn('[HarmonyManager] setInstrument called before initialization.');
             return;

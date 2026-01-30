@@ -1,4 +1,5 @@
 
+
 import type { MusicBlueprint } from '@/types/music';
 
 export const WinterBluesBlueprint: MusicBlueprint = {
@@ -30,8 +31,7 @@ export const WinterBluesBlueprint: MusicBlueprint = {
                     harmony: {
                         strategy: 'weighted',
                         options: [
-                            { name: 'piano', weight: 0.4 },
-                            { name: 'guitarChords', weight: 0.6 }
+                            { name: 'guitarChords', weight: 1.0 }
                         ]
                     }
                 },
@@ -57,8 +57,7 @@ export const WinterBluesBlueprint: MusicBlueprint = {
                     harmony: {
                         strategy: 'weighted',
                         options: [
-                            { name: 'piano', weight: 0.4 },
-                            { name: 'guitarChords', weight: 0.6 }
+                            { name: 'guitarChords', weight: 1.0 }
                         ]
                     }
                 },
@@ -84,8 +83,7 @@ export const WinterBluesBlueprint: MusicBlueprint = {
                     harmony: {
                         strategy: 'weighted',
                         options: [
-                            { name: 'piano', weight: 0.4 },
-                            { name: 'guitarChords', weight: 0.6 }
+                           { name: 'guitarChords', weight: 1.0 }
                         ]
                     }
                 },
@@ -111,8 +109,7 @@ export const WinterBluesBlueprint: MusicBlueprint = {
                     harmony: {
                         strategy: 'weighted',
                         options: [
-                            { name: 'piano', weight: 0.4 },
-                            { name: 'guitarChords', weight: 0.6 }
+                           { name: 'guitarChords', weight: 1.0 }
                         ]
                     }
                 },
@@ -138,8 +135,7 @@ export const WinterBluesBlueprint: MusicBlueprint = {
                     harmony: {
                         strategy: 'weighted',
                         options: [
-                            { name: 'piano', weight: 0.4 },
-                            { name: 'guitarChords', weight: 0.6 }
+                           { name: 'guitarChords', weight: 1.0 }
                         ]
                     }
                 },
@@ -165,8 +161,7 @@ export const WinterBluesBlueprint: MusicBlueprint = {
                     harmony: {
                         strategy: 'weighted',
                         options: [
-                            { name: 'piano', weight: 0.4 },
-                            { name: 'guitarChords', weight: 0.6 }
+                           { name: 'guitarChords', weight: 1.0 }
                         ]
                     }
                 },

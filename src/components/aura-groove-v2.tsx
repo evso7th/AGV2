@@ -76,7 +76,7 @@ export function AuraGrooveV2({
   const melodyInstrumentList = useMelodyV2 ? v2MelodyInstruments : v1MelodyInstruments;
   const textureInstrumentList = useMelodyV2 ? v2MelodyInstruments : v1MelodyInstruments; // 'accompaniment' uses this
 
-  const harmonyInstrumentList: ('piano' | 'guitarChords' | 'flute' | 'violin' | 'telecaster' | 'none')[] = ['piano', 'guitarChords', 'flute', 'violin', 'telecaster', 'none'];
+  const harmonyInstrumentList: ('piano' | 'guitarChords' | 'flute' | 'violin' | 'none')[] = ['piano', 'guitarChords', 'flute', 'violin', 'none'];
   const moodList: Mood[] = ['epic', 'joyful', 'enthusiastic', 'melancholic', 'dark', 'anxious', 'dreamy', 'contemplative', 'calm'];
   
   const isFractalStyle = score === 'neuro_f_matrix';
@@ -87,7 +87,6 @@ export function AuraGrooveV2({
 
   const displayNames: Record<string, string> = {
     'guitarChords': 'Acoustic Chords',
-    'telecaster': 'Telecaster Chords',
     'electricGuitar': 'Muff Lead Guitar',
     'ambientPad': 'Ambient Pad',
     'acousticGuitar': 'Acoustic Folk',

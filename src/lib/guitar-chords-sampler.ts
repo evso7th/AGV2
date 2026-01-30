@@ -1,22 +1,15 @@
-
 import type { Note as NoteEvent } from "@/types/music";
 import { ACOUSTIC_GUITAR_CHORD_SAMPLES } from "./samples";
 import * as Tone from 'tone';
 
 const CHORD_SAMPLE_MAP = ACOUSTIC_GUITAR_CHORD_SAMPLES;
 
-const CHORD_ROOT_MIDI_MAP: Record<string, number> = {
-    'Dm': 2, // D
-    'Em': 4, // E
-    'Fm': 5, // F
-    'G': 7,  // G
-    'A': 9,  // A
-    'Am': 9, // A
-    'Bm': 11, // B
-    'C': 0,   // C
-    'D': 2,   // D
-};
-
+/**
+ * #ЗАЧЕМ: Этот сэмплер отвечает за воспроизведение аккордов акустической гитары.
+ * #ЧТО: Он загружает сэмплы из `samples.ts` и проигрывает
+ *       их на основе точного имени аккорда, полученного от композитора.
+ * #СВЯЗИ: Управляется `HarmonySynthManager`.
+ */
 export class GuitarChordsSampler {
     private audioContext: AudioContext;
     private samples: Map<string, AudioBuffer> = new Map();
@@ -36,7 +29,7 @@ export class GuitarChordsSampler {
         this.output.connect(destination);
     }
 
-    public async init() {
+    async init() {
         if (this.isInitialized || this.isLoading) return;
         this.isLoading = true;
         console.log(`[GuitarChordsSampler] Initializing... Loading ${Object.keys(CHORD_SAMPLE_MAP).length} samples.`);
@@ -65,52 +58,54 @@ export class GuitarChordsSampler {
         }
     }
     
-    public schedule(notes: NoteEvent[], startTime: number) {
+    public schedule(notes: (NoteEvent & { chordName?: string })[], startTime: number) {
         if (!this.isInitialized || notes.length === 0) return;
 
-        const note = notes[0];
-        const chordName = this.midiToChordName(note.midi);
-
-        if (!chordName) {
-            return;
-        }
-
-        const buffer = this.samples.get(chordName);
-        if (buffer) {
-            const source = this.audioContext.createBufferSource();
-            source.buffer = buffer;
+        notes.forEach(note => {
+            // #ЗАЧЕМ: Использует точное имя аккорда, переданное от композитора.
+            // #ЧТО: Читает `note.chordName` и напрямую ищет сэмпл в карте.
+            // #СВЯЗИ: Устраняет необходимость в "угадывании" аккорда по MIDI-ноте.
+            const chordName = this.findBestChordMatch(note.chordName || '');
             
-            const noteGain = this.audioContext.createGain();
-            noteGain.gain.value = note.velocity ?? 0.7;
-            
-            source.connect(noteGain);
-            noteGain.connect(this.preamp);
-            
-            source.start(startTime + note.time);
-
-            source.onended = () => {
-                noteGain.disconnect();
-            };
-        } else {
-            console.warn(`[GuitarChordsSampler] Sample for chord "${chordName}" not found.`);
-        }
-    }
-    
-    private midiToChordName(midi: number): string | null {
-        const noteDegree = midi % 12;
-        let bestMatch: string | null = null;
-        let minDistance = Infinity;
-
-        for (const chordName in CHORD_ROOT_MIDI_MAP) {
-            const chordRootDegree = CHORD_ROOT_MIDI_MAP[chordName];
-            const distance = Math.abs(noteDegree - chordRootDegree);
-            if (distance < minDistance) {
-                minDistance = distance;
-                bestMatch = chordName;
+            if (!chordName) {
+                console.warn(`[GuitarChordsSampler] Could not find a suitable match for chord: ${note.chordName}`);
+                return;
             }
+
+            const buffer = this.samples.get(chordName);
+            if (buffer) {
+                const source = this.audioContext.createBufferSource();
+                source.buffer = buffer;
+                
+                const noteGain = this.audioContext.createGain();
+                noteGain.gain.value = note.velocity ?? 0.7;
+                
+                source.connect(noteGain);
+                noteGain.connect(this.preamp);
+                
+                const playTime = startTime + note.time;
+                source.start(playTime);
+
+                source.onended = () => {
+                    noteGain.disconnect();
+                };
+            } else {
+                console.warn(`[GuitarChordsSampler] Sample for resolved chord "${chordName}" not found.`);
+            }
+        });
+    }
+
+    private findBestChordMatch(requestedChord: string): string | null {
+        if (this.samples.has(requestedChord)) {
+            return requestedChord;
         }
-        
-        return minDistance === 0 ? bestMatch : null;
+
+        const root = requestedChord.replace(/m$/, '');
+        if (this.samples.has(root)) {
+            return root;
+        }
+
+        return null;
     }
 
 
@@ -119,6 +114,7 @@ export class GuitarChordsSampler {
     }
 
     public stopAll() {
+        // Since sources are short-lived, we don't need to track them to stop them.
     }
 
     public dispose() {
