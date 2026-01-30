@@ -1,0 +1,62 @@
+1. HiHats
+25677__walter_odington__alex-hat.ogg - обычный зарытый 
+25678__walter_odington__avalanche-hat.ogg - рассыпчатый звук
+25687__walter_odington__blip-hat.ogg - тихий закрытый
+25688__walter_odington__brushed-bell-hat.ogg - рассыпчатый звук
+25693__walter_odington__hackney-hat-1.ogg - обычный тихий закрытый хэт
+25693__walter_odington__hackney-hat-2.ogg - обычный тихий закрытый хэт
+25693__walter_odington__hackney-hat-3.ogg - обычный тихий закрытый хэт
+25693__walter_odington__hackney-hat-4.ogg - обычный тихий закрытый хэт
+closed_hi_hat_ghost.ogg - закрытый хэт призрачная нота
+open_hh_bottom2.ogg - открытй, нижняя тарелка,мягкий длинный звук
+open_hh_top2.ogg - открытый, верхняя тарелка, нормальный звук 
+
+2. Райды
+a-ride1.ogg - китайский гонг
+a-ride4.ogg - просто райд
+cymbal_bell1.ogg - звонкий короткий
+cymbal_bell2.ogg - звонкий длиннее
+ride.ogg - нежный тихий райд
+ride_wetter.ogg - тихий мягкий расспычтаый длинный звук
+
+3. Браши
+brush1.ogg - закрытый хэт со щетками
+brush3.ogg - снейр со щетками
+brush4.ogg - открытый хэт со щетками
+
+4.Краши
+cymbal2.ogg
+cymbal3.ogg
+cymbal4.ogg
+
+4. Кик
+drum_kick_reso.ogg - мягкий резонирующий кик
+kick_drum6.ogg - слегка приглушенный мягкий кик
+
+5. снейр 
+brush3.ogg - снейр со щетками
+snare.ogg - обычный снейр
+snare_ghost_note.ogg - призрачный снейр
+snare_off.ogg - короткий звук без резонанса
+
+5.Томы
+hightom.ogg - тихий мягкий
+lowtom.ogg - тихий мягкий
+midtom.ogg - тихий мягкий
+Sonor_Classix_High_Tom.ogg - тихий мягкий с резонансом
+Sonor_Classix_Low_Tom.ogg - тихий мягкий с резонансом
+Sonor_Classix_Mid_Tom.ogg - тихий мягкий с резонансом
+
+6. Перкуссия
+cowbell.ogg
+perk-12.ogg
+perk-13.ogg
+perk-14.ogg
+perk-15.ogg
+
+
+
+
+
+
+

@@ -1,91 +1,82 @@
-
 import type { MusicBlueprint } from '@/types/music';
 
 export const DarkBluesBlueprint: MusicBlueprint = {
     id: 'dark_blues',
-    name: 'Heavy Sorrow Blues',
-    description: 'A slow, heavy, and gritty blues with a lot of tension.',
+    name: 'Ritual Blues',
+    description: 'A slow, heavy, and ritualistic blues with a sense of dread.',
     mood: 'dark',
     musical: {
         key: { root: 'E', scale: 'phrygian', octave: 2 },
         bpm: { base: 62, range: [60, 66], modifier: 1.0 },
         timeSignature: { numerator: 4, denominator: 4 },
-        harmonicJourney: [], // Will be driven by a 12-bar structure in the engine
+        harmonicJourney: [], // 12-bar minor progression
         tensionProfile: { type: 'plateau', peakPosition: 0.6, curve: (p, pp) => p < pp ? p / pp : 1.0 }
     },
     structure: {
-        totalDuration: { preferredBars: 144 }, // 12 loops of 12 bars
+        totalDuration: { preferredBars: 120 }, // 10 loops of 12 bars
         parts: [
             {
-                id: 'INTRO', name: 'Verse 1', duration: { percent: 25 },
-                layers: { bass: true, drums: false, accompaniment: true, harmony: true, sfx: false },
+                id: 'INTRO', name: 'The Summoning', duration: { percent: 25 },
+                layers: { drums: true, accompaniment: true },
                 instrumentation: {
-                    accompaniment: { 
-                        strategy: 'weighted', 
-                        v1Options: [{ name: 'synth', weight: 0.5 }, { name: 'ambientPad', weight: 0.5 }],
-                        v2Options: [{ name: 'synth', weight: 0.5 }, { name: 'synth_ambient_pad_lush', weight: 0.5 }]
+                    accompaniment: {
+                        strategy: 'weighted',
+                        v1Options: [{ name: 'organ_soft_jazz', weight: 1.0 }],
+                        v2Options: [{ name: 'organ_soft_jazz', weight: 1.0 }]
                     },
-                    harmony: { strategy: 'weighted', options: [{ name: 'guitarChords', weight: 1.0 }] }
                 },
                 instrumentRules: {
-                    drums: { pattern: 'composer', density: { min: 0.1, max: 0.2 }, useSnare: false, rareKick: true, usePerc: true, useGhostHat: true },
-                    bass: { techniques: [{ value: 'walking', weight: 1.0 }] },
-                    accompaniment: { density: { min: 0.1, max: 0.2 } },
-                    melody: { source: 'harmony_top_note', register: { preferred: 'low' } }
+                    drums: { pattern: 'composer', kitName: 'blues_dark', density: { min: 0.1, max: 0.2 }, useSnare: false, rareKick: true },
+                    accompaniment: { register: { preferred: 'low' }, density: { min: 0.1, max: 0.3 } },
+                    melody: { source: 'harmony_top_note' }
                 },
-                bundles: [{ id: 'BLUES_INTRO_BUNDLE_1', name: 'Verse 1', duration: { percent: 100 }, characteristics: {}, phrases: {} }],
+                bundles: [{ id: 'BLUES_DARK_INTRO_BUNDLE', name: 'Ritual Start', duration: { percent: 100 }, characteristics: {}, phrases: {} }],
                 outroFill: null,
             },
             {
-                id: 'MAIN', name: 'Solo Section', duration: { percent: 50 },
-                layers: { bass: true, drums: true, accompaniment: true, melody: true, harmony: true, sfx: true },
-                 instrumentation: {
-                    accompaniment: { 
-                        strategy: 'weighted', 
-                        v1Options: [{ name: 'synth', weight: 0.5 }, { name: 'ambientPad', weight: 0.5 }],
-                        v2Options: [{ name: 'synth', weight: 0.5 }, { name: 'synth_ambient_pad_lush', weight: 0.5 }]
-                    },
-                    melody: { strategy: 'weighted', v1Options: [{ name: 'guitar_muffLead', weight: 1.0 }], v2Options: [{ name: 'guitar_muffLead', weight: 1.0 }] }
-                },
-                instrumentRules: {
-                    drums: { 
-                        pattern: 'composer', 
-                        density: { min: 0.4, max: 0.6 }, 
-                        kickVolume: 1.2,
-                        usePerc: true,
-                        fills: { onBundleBoundary: true },
-                        useGhostHat: true
+                id: 'MAIN', name: 'The Chant', duration: { percent: 50 },
+                layers: { bass: true, drums: true, accompaniment: true, melody: true },
+                instrumentation: {
+                    accompaniment: {
+                        strategy: 'weighted',
+                        v1Options: [{ name: 'organ_soft_jazz', weight: 1.0 }],
+                        v2Options: [{ name: 'organ_soft_jazz', weight: 1.0 }]
                     },
                     melody: {
-                        density: { min: 0.4, max: 0.6 },
-                        source: 'motif',
-                        register: { preferred: 'low' }
-                    },
-                    bass: { techniques: [{ value: 'walking', weight: 1.0 }] },
-                    accompaniment: { density: { min: 0.1, max: 0.2 } },
-                    sfx: { eventProbability: 0.1, categories: [{ name: 'voice', weight: 0.8 }, { name: 'dark', weight: 0.2 }] }
-                },
-                bundles: [{ id: 'BLUES_MAIN_BUNDLE', name: 'Solo Section', duration: { percent: 100 }, characteristics: {}, phrases: {}, outroFill: { type: 'roll', duration: 1, parameters: { instrument: 'crash', density: 0.4, dynamics: 'mf' } } }],
-                outroFill: { type: 'roll', duration: 1, parameters: {} },
-            },
-            {
-                id: 'OUTRO', name: 'Final Verse', duration: { percent: 25 },
-                layers: { bass: true, drums: true, accompaniment: true, harmony: true, sfx: true },
-                instrumentation: {
-                    accompaniment: { 
-                        strategy: 'weighted', 
-                        v1Options: [{ name: 'synth', weight: 0.5 }, { name: 'ambientPad', weight: 0.5 }],
-                        v2Options: [{ name: 'synth', weight: 0.5 }, { name: 'synth_ambient_pad_lush', weight: 0.5 }]
+                        strategy: 'weighted',
+                        v1Options: [{ name: 'blackAcoustic', weight: 1.0 }],
+                        v2Options: [{ name: 'blackAcoustic', weight: 1.0 }]
                     }
                 },
                 instrumentRules: {
-                    drums: { pattern: 'composer', density: { min: 0.3, max: 0.5 }, useGhostHat: true },
-                    bass: { techniques: [{ value: 'walking', weight: 1.0 }] },
-                    accompaniment: { density: { min: 0.1, max: 0.2 } },
-                    sfx: { eventProbability: 0.1, categories: [{ name: 'voice', weight: 0.8 }, { name: 'dark', weight: 0.2 }] },
-                    melody: { source: 'harmony_top_note', register: { preferred: 'low' } }
+                    drums: { pattern: 'composer', kitName: 'blues_dark', density: { min: 0.4, max: 0.6 }, useSnare: true, kickVolume: 1.2, ride: { enabled: true, probability: 0.1 } },
+                    bass: { techniques: [{ value: 'drone', weight: 1.0 }] },
+                    melody: {
+                        source: 'blues_solo',
+                        density: { min: 0.3, max: 0.5 },
+                        register: { preferred: 'low' },
+                        soloPlan: "S06",
+                        presetModifiers: { reverbMix: 0.6, delay: { on: true, time: 0.5, fb: 0.4, hc: 2000, mix: 0.3 } } // FX for "ghost" guitar
+                    }
                 },
-                bundles: [{ id: 'BLUES_OUTRO_BUNDLE', name: 'Last Verse', duration: { percent: 100 }, characteristics: {}, phrases: {}, outroFill: { type: 'roll', duration: 2, parameters: { instrument: 'crash', density: 0.2, dynamics: 'p' } } }],
+                bundles: [{ id: 'BLUES_DARK_MAIN_BUNDLE', name: 'Main Chant', duration: { percent: 100 }, characteristics: {}, phrases: {} }],
+                outroFill: { type: 'roll', duration: 1, parameters: { instrument: 'ride' } },
+            },
+            {
+                id: 'OUTRO', name: 'Fading Echoes', duration: { percent: 25 },
+                layers: { drums: true, accompaniment: true, sfx: true },
+                 instrumentation: {
+                    accompaniment: {
+                        strategy: 'weighted',
+                        v1Options: [{ name: 'organ_soft_jazz', weight: 1.0 }],
+                        v2Options: [{ name: 'organ_soft_jazz', weight: 1.0 }]
+                    }
+                },
+                instrumentRules: {
+                    drums: { pattern: 'composer', kitName: 'blues_dark', density: { min: 0.1, max: 0.3 }, useSnare: false, ride: { enabled: true, probability: 0.05 } },
+                    melody: { source: 'harmony_top_note' }
+                },
+                bundles: [{ id: 'BLUES_DARK_OUTRO_BUNDLE', name: 'Fade Out', duration: { percent: 100 }, characteristics: {}, phrases: {} }],
                 outroFill: null,
             }
         ]

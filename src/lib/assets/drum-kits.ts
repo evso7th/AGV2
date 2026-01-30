@@ -1,4 +1,3 @@
-
 /**
  * #ЗАЧЕМ: Этот файл — центральный "Арсенал Барабанщика". Он декларативно описывает,
  *          какие именно сэмплы ударных доступны для каждого жанра и настроения.
@@ -42,8 +41,7 @@ const ALL_PERC: InstrumentType[] = [
     ...ALL_TOMS, 
     'drum_cowbell', 'drum_cymbal_bell1', 'drum_cymbal_bell2',
     'drum_25691__walter_odington__fastlinger',
-    'perc-001', 'perc-002', 'perc-003', 'perc-004', 'perc-005', 'perc-006', 'perc-007',
-    'perc-008', 'perc-009', 'perc-010', 'perc-011', 'perc-012', 'perc-013', 'perc-014', 'perc-015',
+    'perc-001', 'perc-002', 'perc-005', 'perc-006', 'perc-013', 'perc-014', 'perc-015',
     'drum_Bell_-_Ambient', 'drum_Bell_-_Analog', 'drum_Bell_-_Astro', 'drum_Bell_-_Background', 'drum_Bell_-_Bright',
     'drum_Bell_-_Broken', 'drum_Bell_-_Cheap', 'drum_Bell_-_Cheesy', 'drum_Bell_-_Chorus', 'drum_Bell_-_Click',
     'drum_Bell_-_Crystals', 'drum_Bell_-_Deep', 'drum_Bell_-_Detuned', 'drum_Bell_-_Easy', 'drum_Bell_-_Echo',
@@ -135,6 +133,14 @@ export const DRUM_KITS: DrumKitLibrary = {
             crash: [], // НИКАКИХ КРЭШЕЙ
             perc: ['drum_tom_mid', 'drum_tom_low'] // Только томы для филлов
         },
+        blues_dark: {
+            kick: ['drum_kick_reso'],
+            snare: ['drum_snare_off'],
+            hihat: ['drum_closed_hi_hat_ghost'],
+            ride: ['drum_a-ride1'],
+            crash: [],
+            perc: ['drum_lowtom', 'drum_Sonor_Classix_Low_Tom']
+        },
         // --- НОВЫЕ КИТЫ ДЛЯ WINTER BLUES (ПЛАН 1587) ---
         winter_blues_prolog1: {
             kick: ['drum_kick_reso'],
@@ -205,4 +211,3 @@ export const DRUM_KITS: DrumKitLibrary = {
 
     // Другие жанры можно добавить здесь
 };
-
