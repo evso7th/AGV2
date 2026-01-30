@@ -66,7 +66,7 @@ export class HarmonySynthManager {
 
         const beatDuration = 60 / tempo;
         const notes: (Note & { chordName?: string, params?: any })[] = events.map(event => ({
-            midi: event.note + 12,
+            midi: event.note + 24,
             time: event.time * beatDuration,
             duration: event.duration * beatDuration,
             velocity: event.weight,
