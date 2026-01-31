@@ -11,31 +11,31 @@ import type { BluesSoloPhrase } from '@/types/fractal';
 // #ИСПРАВЛЕНО (ПЛАН 905): Добавлены недостающие поля 'd' (длительность).
 // #ОБНОВЛЕНО (ПЛАН 926): Расширен список ликов L13-L20.
 // #ИСПРАВЛЕНО (ПЛАН 929): Добавлена пропущенная запятая после L19.
+// #ИСПРАВЛЕНО (ПЛАН 1628): Лики теперь содержат теги для семантического выбора.
 // Структура события: { t: tick, d: duration_in_ticks, deg: degree, tech?: technique }
-export const BLUES_SOLO_LICKS: Record<string, BluesSoloPhrase> = {
-  L01: [{t:0,d:3,deg:'b3',tech:'bn'}, {t:3,d:3,deg:'R'}, {t:6,d:6,deg:'5',tech:'vb'}],
-  L02: [{t:0,d:3,deg:'b3',tech:'gr'}, {t:3,d:3,deg:'3'}, {t:6,d:6,deg:'5',tech:'vb'}],
-  L03: [{t:0,d:2,deg:'R'}, {t:2,d:2,deg:'4'}, {t:4,d:2,deg:'#4'}, {t:6,d:2,deg:'5'}, {t:8,d:2,deg:'6'}, {t:10,d:2,deg:'5'}],
-  L04: [{t:0,d:6,deg:'b3',tech:'vb'}, {t:6,d:6,deg:'11'}],
-  L05: [{t:0,d:3,deg:'b2',tech:'gr'}, {t:3,d:3,deg:'R'}, {t:6,d:6,deg:'b7'}],
-  L06: [{t:0,d:4,deg:'9'}, {t:4,d:8,deg:'R',tech:'vb'}],
-  L07: [{t:0,d:6,deg:'5',tech:'ds'}, {t:6,d:6,deg:'R'}], // ds(3-b7) would need more complex logic, simplified for now
-  L08: [{t:8,d:2,deg:'2'}, {t:10,d:2,deg:'b3'}, {t:0,d:3,deg:'3',tech:'h'}], // Note: this lick starts on tick 8
-  L09: [{t:0,d:2,deg:'2'},{t:2,d:2,deg:'b3'},{t:4,d:2,deg:'3'},{t:6,d:2,deg:'4'},{t:8,d:2,deg:'#4'},{t:10,d:2,deg:'5'}],
-  L10: [{t:0,d:6,deg:'R'},{t:6,d:6,deg:'R+8',tech:'vb'}],
-  L11: [{t:0,d:3,deg:'R'},{t:3,d:3,deg:'3'},{t:6,d:6,deg:'6',tech:'vb'}],
-  L12: [{t:0,d:12,deg:'5',tech:'bn'}], // Stop-time scream
-  L13: [{t:0,d:2,deg:'R'},{t:2,d:2,deg:'b3'},{t:4,d:2,deg:'3'},{t:6,d:2,deg:'5'},{t:8,d:2,deg:'6'},{t:10,d:2,deg:'5'}],
-  L14: [{t:0,d:3,deg:'4',tech:'sl'},{t:3,d:3,deg:'#4'},{t:6,d:6,deg:'6',tech:'vb'}],
-  L15: [{t:0,d:3,deg:'b3',tech:'bn'},{t:3,d:3,deg:'2'},{t:6,d:6,deg:'R',tech:'vb'}],
-  L16: [{t:0,d:2,deg:'b2'},{t:2,d:2,deg:'R'},{t:4,d:2,deg:'b7'},{t:6,d:6,deg:'5'}],
-  L17: [{t:0,d:3,deg:'5',tech:'ds'},{t:3,d:3,deg:'6',tech:'ds'},{t:6,d:6,deg:'R'}],
-  L18: [{t:0,d:4,deg:'11'},{t:4,d:8,deg:'9'}],
-  L19: [{t:0,d:2,deg:'R'},{t:2,d:2,deg:'b7'},{t:4,d:2,deg:'6'},{t:6,d:2,deg:'b6'},{t:8,d:2,deg:'5'},{t:10,d:2,deg:'#4'}],
-  L20: [{t:0,d:2,deg:'3'},{t:2,d:2,deg:'b3'},{t:4,d:2,deg:'3'},{t:6,d:2,deg:'2'},{t:8,d:2,deg:'R'},{t:10,d:2,deg:'b7'}],
-  L13_Sabbath_Scream: [{ t: 0, d: 12, deg: 'b7', tech: 'vb' }], // A single, long, wailing note
+export const BLUES_SOLO_LICKS: Record<string, { phrase: BluesSoloPhrase; tags: string[] }> = {
+  L01: { phrase: [{t:0,d:3,deg:'b3',tech:'bn'}, {t:3,d:3,deg:'R'}, {t:6,d:6,deg:'5',tech:'vb'}], tags: ['minor', 'cry', 'slow-bend'] },
+  L02: { phrase: [{t:0,d:3,deg:'b3',tech:'gr'}, {t:3,d:3,deg:'3'}, {t:6,d:6,deg:'5',tech:'vb'}], tags: ['major', 'turn', 'classic'] },
+  L03: { phrase: [{t:0,d:2,deg:'R'}, {t:2,d:2,deg:'4'}, {t:4,d:2,deg:'#4'}, {t:6,d:2,deg:'5'}, {t:8,d:2,deg:'6'}, {t:10,d:2,deg:'5'}], tags: ['major', 'boogie', 'answer'] },
+  L04: { phrase: [{t:0,d:6,deg:'b3',tech:'vb'}, {t:6,d:6,deg:'11'}], tags: ['minor', 'pad', 'drone'] },
+  L05: { phrase: [{t:0,d:3,deg:'b2',tech:'gr'}, {t:3,d:3,deg:'R'}, {t:6,d:6,deg:'b7'}], tags: ['minor', 'V-chord', 'tension'] },
+  L06: { phrase: [{t:0,d:4,deg:'9'}, {t:4,d:8,deg:'R',tech:'vb'}], tags: ['major', 'dreamy', 'lift'] },
+  L07: { phrase: [{t:0,d:6,deg:'5',tech:'ds'}, {t:6,d:6,deg:'R'}], tags: ['major', 'double-stop', 'cry'] },
+  L08: { phrase: [{t:8,d:2,deg:'2'}, {t:10,d:2,deg:'b3'}, {t:0,d:3,deg:'3',tech:'h'}], tags: ['major', 'pickup', 'intro'] },
+  L09: { phrase: [{t:0,d:2,deg:'2'},{t:2,d:2,deg:'b3'},{t:4,d:2,deg:'3'},{t:6,d:2,deg:'4'},{t:8,d:2,deg:'#4'},{t:10,d:2,deg:'5'}], tags: ['turnaround', 'chromatic', 'classic'] },
+  L10: { phrase: [{t:0,d:6,deg:'R'},{t:6,d:6,deg:'R+8',tech:'vb'}], tags: ['major', 'minor', 'octave-jump', 'sigh'] },
+  L11: { phrase: [{t:0,d:3,deg:'R'},{t:3,d:3,deg:'3'},{t:6,d:6,deg:'6',tech:'vb'}], tags: ['major', 'IV-chord', 'voicing'] },
+  L12: { phrase: [{t:0,d:12,deg:'5',tech:'bn'}], tags: ['stop-time', 'scream', 'high-sustain'] },
+  L13: { phrase: [{t:0,d:2,deg:'R'},{t:2,d:2,deg:'b3'},{t:4,d:2,deg:'3'},{t:6,d:2,deg:'5'},{t:8,d:2,deg:'6'},{t:10,d:2,deg:'5'}], tags: ['major', 'run', 'boogie'] },
+  L14: { phrase: [{t:0,d:3,deg:'4',tech:'sl'},{t:3,d:3,deg:'#4'},{t:6,d:6,deg:'6',tech:'vb'}], tags: ['major', 'slide', 'lift'] },
+  L15: { phrase: [{t:0,d:3,deg:'b3',tech:'bn'},{t:3,d:3,deg:'2'},{t:6,d:6,deg:'R',tech:'vb'}], tags: ['minor', 'cry', 'quick'] },
+  L16: { phrase: [{t:0,d:2,deg:'b2'},{t:2,d:2,deg:'R'},{t:4,d:2,deg:'b7'},{t:6,d:6,deg:'5'}], tags: ['minor', 'V-chord', 'chromatic'] },
+  L17: { phrase: [{t:0,d:3,deg:'5',tech:'ds'},{t:3,d:3,deg:'6',tech:'ds'},{t:6,d:6,deg:'R'}], tags: ['major', 'double-stop', 'stabs'] },
+  L18: { phrase: [{t:0,d:4,deg:'11'},{t:4,d:8,deg:'9'}], tags: ['minor', 'IV-chord', 'color'] },
+  L19: { phrase: [{t:0,d:2,deg:'R'},{t:2,d:2,deg:'b7'},{t:4,d:2,deg:'6'},{t:6,d:2,deg:'b6'},{t:8,d:2,deg:'5'},{t:10,d:2,deg:'#4'}], tags: ['turnaround', 'chromatic', 'descending'] },
+  L20: { phrase: [{t:0,d:2,deg:'3'},{t:2,d:2,deg:'b3'},{t:4,d:2,deg:'3'},{t:6,d:2,deg:'2'},{t:8,d:2,deg:'R'},{t:10,d:2,deg:'b7'}], tags: ['major', 'chuck-berry', 'fast-run'] },
+  L13_Sabbath_Scream: { phrase: [{ t: 0, d: 12, deg: 'b7', tech: 'vb' }], tags: ['dark', 'scream', 'high-sustain'] },
 };
-
 // 20 планов соло, каждый на 36 тактов (3 хора по 12 тактов)
 export const BLUES_SOLO_PLANS: Record<string, { choruses: string[][] }> = {
   "S01": {
