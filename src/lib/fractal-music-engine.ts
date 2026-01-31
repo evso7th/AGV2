@@ -865,11 +865,12 @@ export class FractalMusicEngine {
     const axiom: FractalEvent[] = [];
     const rootNote = chord.rootNote;
     const isMinor = chord.chordType === 'minor' || chord.chordType === 'diminished';
+    const octaveShift = 24; // +2 octaves
 
     // Left hand - bass note
     axiom.push({
         type: 'pianoAccompaniment',
-        note: rootNote - 12, // One octave lower
+        note: rootNote - 12 + octaveShift,
         duration: 2.0, // Half note
         time: 0,
         weight: 0.6,
@@ -880,7 +881,7 @@ export class FractalMusicEngine {
     if (random.next() > 0.5) {
          axiom.push({
             type: 'pianoAccompaniment',
-            note: rootNote - 5, // Fifth below
+            note: rootNote - 5 + octaveShift,
             duration: 2.0, // Half note
             time: 2.0,
             weight: 0.55,
@@ -902,7 +903,7 @@ export class FractalMusicEngine {
         if(random.next() < 0.6) {
             axiom.push({
                 type: 'pianoAccompaniment',
-                note: chordNotes[random.nextInt(chordNotes.length)],
+                note: chordNotes[random.nextInt(chordNotes.length)] + octaveShift,
                 duration: 0.5,
                 time: time,
                 weight: 0.4 + random.next() * 0.2,
