@@ -25,15 +25,16 @@ export class PianoAccompanimentManager {
     async init() {
         if (this.isInitialized) return;
         
-        console.log('[PianoAccompManager] Initializing...');
+        console.log('[pianosacc] Initializing...');
         await this.piano.loadInstrument('piano', PIANO_SAMPLES);
         this.isInitialized = true;
-        console.log('[PianoAccompManager] Initialized.');
+        console.log('[pianosacc] Initialized.');
     }
     
     public schedule(notes: Note[], startTime: number) {
         if (!this.isInitialized) return;
-        this.piano.schedule('piano', notes, startTime);
+        console.log(`[pianosacc] Received ${notes.length} notes to play.`);
+        this.piano.schedule('piano', notes, startTime, 'pianosacc');
     }
 
     public setVolume(volume: number) {

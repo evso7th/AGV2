@@ -84,22 +84,30 @@ export class SamplerPlayer {
         }
     }
     
-    public schedule(instrumentName: string, notes: Note[], time: number) {
+    public schedule(instrumentName: string, notes: Note[], time: number, loggerPrefix?: string) {
         if (!this.isInitialized) {
-            console.warn('[SamplerPlayer] Tried to schedule before initialized.');
+            if (loggerPrefix) console.warn(`[${loggerPrefix}] Tried to schedule before initialized.`);
             return;
         }
         
         const instrument = this.instruments.get(instrumentName);
         if (!instrument) {
-            console.warn(`[SamplerPlayer] Instrument "${instrumentName}" not loaded.`);
+            if (loggerPrefix) console.warn(`[${loggerPrefix}] Instrument "${instrumentName}" not loaded.`);
             return;
         }
 
         notes.forEach(note => {
             const { buffer, midi: sampleMidi } = this.findClosestSample(instrument, note.midi);
-            if (!buffer) return;
+            if (!buffer) {
+                 if (loggerPrefix) console.warn(`[${loggerPrefix}] Note ${note.midi}: No suitable sample found.`);
+                return;
+            }
 
+            if (loggerPrefix) {
+                const barCount = (note.params as any)?.barCount ?? 'N/A';
+                console.log(`[${loggerPrefix}] Bar: ${barCount} | Note ${note.midi}: Matched to sample for MIDI ${sampleMidi}. Scheduling play at ${(time + note.time).toFixed(2)}.`);
+            }
+            
             const source = this.audioContext.createBufferSource();
             source.buffer = buffer;
             
