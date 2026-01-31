@@ -100,7 +100,7 @@ export type DrumAndPercussionInstrument =
 
 export type InstrumentType = BassInstrument | MelodyInstrument | AccompanimentInstrument | EffectInstrument | DrumAndPercussionInstrument | 'portamento' | 'autopilot_bass' | 'none';
 
-export type InstrumentPart = 'bass' | 'melody' | 'accompaniment' | 'harmony' | 'drums' | 'effects' | 'sparkles' | 'piano' | 'violin' | 'flute' | 'guitarChords' | 'acousticGuitarSolo' | 'sfx' | 'blackAcoustic';
+export type InstrumentPart = 'bass' | 'melody' | 'accompaniment' | 'harmony' | 'drums' | 'effects' | 'sparkles' | 'piano' | 'violin' | 'flute' | 'guitarChords' | 'acousticGuitarSolo' | 'sfx' | 'blackAcoustic' | 'telecaster';
 export type BassTechnique = 'arpeggio' | 'portamento' | 'glissando' | 'glide' | 'pulse' | 'riff' | 'long_notes' | 'walking' | 'boogie' | 'syncopated';    
 
 export type Technique = BassTechnique | 'pluck' | 'pick' | 'harm' | 'slide' | 'hit' | 'ghost' | 'swell' | 'fill';
@@ -201,6 +201,8 @@ export type InstrumentBehaviorRules = {
      ride?: {
         enabled: boolean;
         quietWindows?: { start: number, end: number }[];
+        probability?: number;
+        volume?: number;
     };
     presetModifiers?: {
         octaveShift?: number;
@@ -236,6 +238,12 @@ export type InstrumentationRules<T> = {
     options?: InstrumentOption<T>[];
     v1Options?: InstrumentOption<T>[];
     v2Options?: InstrumentOption<T>[];
+};
+
+export type HarmonicCenter = {
+    center: string;
+    satellites: string[];
+    weight: number;
 };
 
 export type BlueprintBundle = {
@@ -278,6 +286,7 @@ export type BlueprintPart = {
   bundles: BlueprintBundle[];
   outroFill: FillPolicy | null;
   introRules?: any;
+  harmonicJourney?: HarmonicCenter[];
 };
 
 export type HarmonicCenter = {
@@ -314,5 +323,3 @@ export type MusicBlueprint = {
     continuity: any; // Define this type more strictly later
     rendering: any; // Define this type more strictly later
 };
-
-    

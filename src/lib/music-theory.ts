@@ -1,6 +1,6 @@
 
 
-import type { FractalEvent, Mood, Genre, Technique, BassSynthParams, InstrumentType, MelodyInstrument, AccompanimentInstrument, ResonanceMatrix, InstrumentHints, AccompanimentTechnique, GhostChord, SfxRule, V1MelodyInstrument, V2MelodyInstrument, BlueprintPart, InstrumentationRules, InstrumentBehaviorRules, BluesMelody, InstrumentPart, DrumKit, BluesGuitarRiff, BluesSoloPhrase, BluesRiffDegree, SuiteDNA, RhythmicFeel, BassStyle, DrumStyle } from './fractal';
+import type { FractalEvent, Mood, Genre, Technique, BassSynthParams, InstrumentType, MelodyInstrument, AccompanimentInstrument, ResonanceMatrix, InstrumentHints, AccompanimentTechnique, GhostChord, SfxRule, V1MelodyInstrument, V2MelodyInstrument, BlueprintPart, InstrumentationRules, InstrumentBehaviorRules, BluesMelody, InstrumentPart, DrumKit, BluesGuitarRiff, BluesSoloPhrase, BluesRiffDegree, SuiteDNA, RhythmicFeel, BassStyle, DrumStyle, HarmonicCenter } from './fractal';
 import { ElectronicK, TraditionalK, AmbientK, MelancholicMinorK } from './resonance-matrices';
 import { BlueprintNavigator, type NavigationInfo } from './blueprint-navigator';
 import { getBlueprint } from './blueprints';
@@ -474,43 +474,91 @@ export function generateSuiteDNA(totalBars: number, mood: Mood, seed: number, ra
     const key = getScaleForMood(mood, genre)[0];
 
     if (genre === 'blues') {
-        console.log(`[DNA] Blues genre detected. Generating 12-bar progression.`);
-        const isMinor = mood === 'melancholic' || mood === 'dark' || mood === 'gloomy' || mood === 'anxious';
-
-        const majorProgression = [
-            { root: 0, type: 'dominant' }, { root: 5, type: 'dominant' }, { root: 0, type: 'dominant' }, { root: 0, type: 'dominant' },
-            { root: 5, type: 'dominant' }, { root: 5, type: 'dominant' }, { root: 0, type: 'dominant' }, { root: 0, type: 'dominant' },
-            { root: 7, type: 'dominant' }, { root: 5, type: 'dominant' }, { root: 0, type: 'dominant' }, { root: 7, type: 'dominant' }
-        ];
-        const minorProgression = [
-            { root: 0, type: 'minor' }, { root: 0, type: 'minor' }, { root: 0, type: 'minor' }, { root: 0, type: 'minor' },
-            { root: 5, type: 'minor' }, { root: 5, type: 'minor' }, { root: 0, type: 'minor' }, { root: 0, type: 'minor' },
-            { root: 8, type: 'major' }, { root: 7, type: 'dominant' }, { root: 0, type: 'minor' }, { root: 7, type: 'dominant' }
+        const romanToDegree: Record<string, { root: number; type: GhostChord['chordType'] }> = {
+            'i': { root: 0, type: 'minor' }, 'iv': { root: 5, type: 'minor' }, 'v': { root: 7, type: 'minor' },
+            'V': { root: 7, type: 'dominant' }, 'bVI': { root: 8, type: 'major' },
+        };
+        const defaultProg = [
+            { root: 0, type: 'minor' }, { root: 5, type: 'minor' }, { root: 0, type: 'minor' }, { root: 7, type: 'dominant' }
         ];
 
-        const progression = isMinor ? minorProgression : majorProgression;
-        
-        for (let bar = 0; bar < totalBars; bar++) {
-            const barInChorus = bar % 12;
-            const chordInProg = progression[barInChorus];
-            
-            harmonyTrack.push({
-                rootNote: key + chordInProg.root,
-                chordType: chordInProg.type as 'major' | 'minor' | 'dominant' | 'diminished',
-                bar: bar,
-                durationBars: 1
-            });
-        }
-    } else { // Fallback for other genres
+        let currentBar = 0;
+
+        blueprintParts.forEach((part, index) => {
+            const partStartBar = currentBar;
+            const partDuration = Math.round((part.duration.percent / 100) * totalBars);
+            const partEndBar = Math.min(partStartBar + partDuration, totalBars);
+            const journey = part.harmonicJourney?.[0];
+
+            if (journey) {
+                let currentRoman = journey.center;
+                while (currentBar < partEndBar) {
+                    const duration = [2, 4, 4, 8][random.nextInt(4)];
+                    const nextBar = currentBar + duration;
+                    if (nextBar > partEndBar) {
+                         // Truncate if overshooting, or just break
+                        const remaining = partEndBar - currentBar;
+                        if (remaining > 0) {
+                             const chordInfo = romanToDegree[currentRoman];
+                             harmonyTrack.push({ rootNote: key + chordInfo.root, chordType: chordInfo.type, bar: currentBar, durationBars: remaining });
+                        }
+                        currentBar = partEndBar;
+                        break;
+                    }
+
+                    const chordInfo = romanToDegree[currentRoman];
+                    harmonyTrack.push({ rootNote: key + chordInfo.root, chordType: chordInfo.type, bar: currentBar, durationBars: duration });
+                    currentBar = nextBar;
+
+                    const useCenter = random.next() < journey.weight;
+                    currentRoman = useCenter ? journey.center : journey.satellites[random.nextInt(journey.satellites.length)];
+                }
+            } else {
+                 let localBar = 0;
+                 while (currentBar < partEndBar) {
+                    const barInChorus = localBar % 12;
+                    const chordInfo = (mood === 'dark' || mood === 'melancholic' || mood === 'gloomy' || mood === 'anxious')
+                        ? [{ root: 0, type: 'minor' }, { root: 5, type: 'minor' }, { root: 8, type: 'major' }, { root: 7, type: 'dominant' }][barInChorus % 4]
+                        : defaultProg[barInChorus % 4];
+                    
+                    harmonyTrack.push({ rootNote: key + chordInfo.root, chordType: chordInfo.type as any, bar: currentBar, durationBars: 1 });
+                    currentBar++;
+                    localBar++;
+                 }
+            }
+        });
+
+    } else {
         let currentBar = 0;
         while (currentBar < totalBars) {
-            const duration = 4;
-            const chordRoot = key + [0, 5, 7, -5, 4][random.nextInt(5)];
+            const duration = [2, 4, 8, 4][random.nextInt(4)];
+            const chordRoot = key + [0, 5, 7, -5, 4, 2, -7][random.nextInt(7)];
             harmonyTrack.push({ rootNote: chordRoot, chordType: random.next() > 0.5 ? 'major' : 'minor', bar: currentBar, durationBars: duration });
             currentBar += duration;
         }
     }
     
+    // Final check to ensure track is contiguous and covers all bars
+    let lastBar = 0;
+    harmonyTrack.forEach(chord => {
+        if(chord.bar !== lastBar) {
+            console.warn(`[DNA] Gap in harmony track at bar ${lastBar}. Patching.`);
+            const prevChord = harmonyTrack.find(c => c.bar + c.durationBars === lastBar);
+            if(prevChord) prevChord.durationBars += (chord.bar - lastBar);
+        }
+        lastBar = chord.bar + chord.durationBars;
+    });
+
+    if (lastBar < totalBars) {
+        const lastChord = harmonyTrack[harmonyTrack.length - 1];
+        if (lastChord) lastChord.durationBars += (totalBars - lastBar);
+    }
+    if(lastBar > totalBars) {
+        const lastChord = harmonyTrack[harmonyTrack.length-1];
+        if(lastChord) lastChord.durationBars -= (lastBar - totalBars);
+    }
+
+
     const possibleTempos = {
         joyful: [76, 90], enthusiastic: [82, 98], contemplative: [68, 76],
         dreamy: [64, 72], calm: [60, 70], melancholic: [60, 68],
@@ -532,11 +580,10 @@ export function generateSuiteDNA(totalBars: number, mood: Mood, seed: number, ra
     let planIndex = 0;
     
     blueprintParts.forEach(part => {
-        if(planIndex < shuffledPlanIds.length) {
-            soloPlanMap.set(part.id, shuffledPlanIds[planIndex]);
+        if (part.instrumentRules?.melody?.source === 'blues_solo') {
+            const assignedPlan = shuffledPlanIds[planIndex % shuffledPlanIds.length];
+            soloPlanMap.set(part.id, assignedPlan);
             planIndex++;
-        } else {
-            soloPlanMap.set(part.id, shuffledPlanIds[random.nextInt(shuffledPlanIds.length)]);
         }
     });
 
