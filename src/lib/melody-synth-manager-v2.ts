@@ -73,7 +73,7 @@ export class MelodySynthManagerV2 {
             this.synth = await buildMultiInstrument(this.audioContext, {
                 type: instrumentType,
                 preset: preset,
-                output: this.preamp
+                output: this.preamp // Connect to the manager's preamp
             });
             this.activePresetName = presetName;
         } catch (error) {
