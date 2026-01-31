@@ -55,7 +55,7 @@ export const BLUES_BASS_RIFFS: Record<Mood, BluesBassRiff[]> = {
             I:  [{t:0,d:2,deg:'R'},{t:2,d:2,deg:'5'},{t:4,d:2,deg:'6'},{t:6,d:2,deg:'b7'},{t:8,d:2,deg:'6'},{t:10,d:2,deg:'5'}],
             IV: [{t:0,d:2,deg:'R'},{t:2,d:2,deg:'5'},{t:4,d:2,deg:'6'},{t:6,d:2,deg:'b7'},{t:8,d:2,deg:'6'},{t:10,d:2,deg:'5'}],
             V:  [{t:0,d:2,deg:'R'},{t:2,d:2,deg:'5'},{t:4,d:2,deg:'6'},{t:6,d:2,deg:'b7'},{t:8,d:2,deg:'6'},{t:10,d:2,deg:'5'}],
-            turn: [{t:0,d:2,deg:'R'},{t:2,d:2,deg:'b7'},{t:6,d:2,deg:'6'},{t:10,d:2,deg:'5'}]
+            turn: [{t:0,d:2,deg:'R'},{t:2,d:4,deg:'b7'},{t:6,d:4,deg:'6'},{t:10,d:2,deg:'5'}]
         },
         { // Riff N2 — Two‑feel basic
             I:  [{t:0,d:6,deg:'R'},{t:6,d:6,deg:'5'}],
@@ -67,7 +67,7 @@ export const BLUES_BASS_RIFFS: Record<Mood, BluesBassRiff[]> = {
             I:  [{t:0,d:2,deg:'R'},{t:2,d:2,deg:'5'},{t:4,d:2,deg:'6'},{t:6,d:2,deg:'b7'},{t:8,d:2,deg:'6'},{t:10,d:2,deg:'5'}],
             IV: [{t:0,d:2,deg:'R'},{t:2,d:2,deg:'5'},{t:4,d:2,deg:'6'},{t:6,d:2,deg:'b7'},{t:8,d:2,deg:'6'},{t:10,d:2,deg:'5'}],
             V:  [{t:0,d:2,deg:'R'},{t:2,d:2,deg:'5'},{t:4,d:2,deg:'6'},{t:6,d:2,deg:'b7'},{t:8,d:2,deg:'6'},{t:10,d:2,deg:'5'}],
-            turn: [{t:0,d:2,deg:'R'},{t:2,d:2,deg:'b7'},{t:6,d:2,deg:'6'},{t:10,d:2,deg:'5'}]
+            turn: [{t:0,d:2,deg:'R'},{t:2,d:4,deg:'b7'},{t:6,d:4,deg:'6'},{t:10,d:2,deg:'5'}]
         }
     ],
     dreamy: [

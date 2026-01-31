@@ -48,6 +48,11 @@ export type Technique =
 export type Dynamics = 'p' | 'mf' | 'f';
 
 /**
+ * Фразировка
+ */
+export type Phrasing = 'legato' | 'staccato' | 'detached';
+
+/**
  * Тип инструмента
  */
 export type InstrumentType =
@@ -178,14 +183,18 @@ export type InstrumentType =
   | 'harmony'
   // Мелодические инструменты
   | 'melody'
+  | 'pianoAccompaniment' // New part for piano
   // Спецэффекты
   | 'sfx'
   | 'sparkle';
 
-export type MelodyInstrument = 'piano' | 'violin' | 'flute' | 'synth' | 'organ' | 'mellotron' | 'theremin' | 'E-Bells_melody' | 'G-Drops' | 'acousticGuitarSolo' | 'electricGuitar' | 'none';
+export type MelodyInstrument = 'piano' | 'violin' | 'flute' | 'synth' | 'organ' | 'mellotron' | 'theremin' | 'E-Bells_melody' | 'G-Drops' | 'acousticGuitarSolo' | 'electricGuitar' | 'none' | 'blackAcoustic' | 'telecaster';
 export type BassInstrument = 'classicBass' | 'glideBass' | 'ambientDrone' | 'resonantGliss' | 'hypnoticDrone' | 'livingRiff' | 'none';
 export type AccompanimentInstrument = MelodyInstrument | 'guitarChords';
+export type V1MelodyInstrument = 'synth' | 'organ' | 'mellotron' | 'theremin' | 'E-Bells_melody' | 'G-Drops' | 'acousticGuitarSolo' | 'electricGuitar' | 'ambientPad' | 'acousticGuitar' | 'none';
+export type V2MelodyInstrument = 'guitar_muffLead' | 'guitar_shineOn' | 'ep_rhodes_warm' | 'synth_ambient_pad_lush' | 'synth_cave_pad' | 'mellotron_flute_intimate' | 'mellotron_choir' | 'ep_rhodes_70s' | 'synth_lead_shineOn' | 'synth_lead_distorted' | 'guitar_clean_chorus' | 'organ_soft_jazz' | 'organ_jimmy_smith' | 'organ_prog';
 
+export type InstrumentPart = 'bass' | 'melody' | 'accompaniment' | 'harmony' | 'drums' | 'effects' | 'sparkles' | 'piano' | 'violin' | 'flute' | 'guitarChords' | 'acousticGuitarSolo' | 'sfx' | 'blackAcoustic' | 'telecaster' | 'pianoAccompaniment';
 
 /**
  * Параметры для синтезатора баса.
@@ -289,7 +298,7 @@ export type InstrumentHints = {
     melody?: MelodyInstrument;
     accompaniment?: AccompanimentInstrument;
     harmony?: 'piano' | 'guitarChords' | 'violin' | 'flute' | 'none';
-    bassTechnique?: BassTechnique;
+    pianoAccompaniment?: 'piano';
 };
 
 /**
@@ -312,7 +321,7 @@ export type ResonanceMatrix = (
   }
 ) => number;
 
-export type AccompanimentTechnique = 'choral' | 'alternating-bass-chord' | 'chord-pulsation' | 'arpeggio-fast' | 'arpeggio-slow' | 'alberti-bass' | 'paired-notes' | 'long-chords';
+export type AccompanimentTechnique = 'choral' | 'alternating-bass-chord' | 'chord-pulsation' | 'arpeggio-fast' | 'arpeggio-slow' | 'alberti-bass' | 'paired-notes' | 'long-chords' | 'rhythmic-comp';
 
 /**
  * Описывает один аккорд в неслышимой гармонической основе (скелете) сьюиты.
