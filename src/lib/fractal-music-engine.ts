@@ -16,7 +16,7 @@ import { BLUES_SOLO_LICKS, BLUES_SOLO_PLANS } from './assets/blues_guitar_solo';
 import { BLUES_DRUM_RIFFS } from './assets/blues-drum-riffs';
 import { DRUM_KITS } from './assets/drum-kits';
 
-import { getScaleForMood, generateSuiteDNA, createDrumAxiom, createAmbientBassAxiom, createAccompanimentAxiom as createDefaultAccompanimentAxiom, createMelodyMotif as createAmbientMelodyMotif, mutateBassPhrase, createBassFill, createDrumFill, chooseHarmonyInstrument, DEGREE_TO_SEMITONE, mutateBluesAccompaniment, mutateBluesMelody, createBluesOrganLick, generateIntroSequence } from './music-theory';
+import { getScaleForMood, generateSuiteDNA, createDrumAxiom, createAmbientBassAxiom, mutateBassPhrase, createBassFill, createDrumFill, chooseHarmonyInstrument, DEGREE_TO_SEMITONE, mutateBluesAccompaniment, mutateBluesMelody, createBluesOrganLick, generateIntroSequence } from './music-theory';
 
 
 export type Branch = {
@@ -173,10 +173,13 @@ export class FractalMusicEngine {
     this.hasBassBeenMutated = false;
     
     const allBassRiffs = BLUES_BASS_RIFFS[this.config.mood] ?? BLUES_BASS_RIFFS['contemplative'];
+    if (!allBassRiffs || allBassRiffs.length === 0) return;
+    
     this.shuffledBassRiffIndices = this.random.shuffle(Array.from({ length: allBassRiffs.length }, (_, i) => i));
     this.bassRiffConveyorIndex = 0;
 
     const allDrumRiffs = BLUES_DRUM_RIFFS[this.config.mood] ?? BLUES_DRUM_RIFFS['contemplative'] ?? [];
+    if (allDrumRiffs.length === 0) return;
     this.shuffledDrumRiffIndices = this.random.shuffle(Array.from({ length: allDrumRiffs.length }, (_, i) => i));
     this.drumRiffConveyorIndex = 0;
     
@@ -735,7 +738,7 @@ export class FractalMusicEngine {
     return { events: allEvents };
   }
 
-  private createAccompanimentAxiom(chord: GhostChord, mood: Mood, genre: Genre, random: { next: () => number; nextInt: (max: number) => number; }, tempo: number = 120, registerHint: 'low' | 'mid' | 'high' = 'mid', technique: AccompanimentTechnique): FractalEvent[] {
+  private createAccompanimentAxiom(chord: GhostChord, mood: Mood, genre: Genre, random: { next: () => number; nextInt: (max: number) => number; }, tempo: number, registerHint: 'low' | 'mid' | 'high' = 'mid', technique: AccompanimentTechnique): FractalEvent[] {
     const axiom: FractalEvent[] = [];
     const rootMidi = chord.rootNote;
     const isMinor = chord.chordType.includes('minor');
@@ -803,4 +806,3 @@ export class FractalMusicEngine {
     return axiom;
   }
 }
-```
