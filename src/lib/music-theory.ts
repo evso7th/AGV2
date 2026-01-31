@@ -1,5 +1,4 @@
 
-
 import type { FractalEvent, Mood, Genre, Technique, BassSynthParams, InstrumentType, MelodyInstrument, AccompanimentInstrument, ResonanceMatrix, InstrumentHints, AccompanimentTechnique, GhostChord, SfxRule, V1MelodyInstrument, V2MelodyInstrument, BlueprintPart, InstrumentationRules, InstrumentBehaviorRules, BluesMelody, InstrumentPart, DrumKit, BluesGuitarRiff, BluesSoloPhrase, BluesRiffDegree, SuiteDNA, RhythmicFeel, BassStyle, DrumStyle, HarmonicCenter } from './fractal';
 import { ElectronicK, TraditionalK, AmbientK, MelancholicMinorK } from './resonance-matrices';
 import { BlueprintNavigator, type NavigationInfo } from './blueprint-navigator';
@@ -16,7 +15,7 @@ import { BLUES_SOLO_LICKS, BLUES_SOLO_PLANS } from './assets/blues_guitar_solo';
 import { BLUES_DRUM_RIFFS } from './assets/blues-drum-riffs';
 import { DRUM_KITS } from './assets/drum-kits';
 
-import { getScaleForMood, createDrumAxiom, createAmbientBassAxiom, createAccompanimentAxiom, createMelodyMotif as createAmbientMelodyMotif, mutateBassPhrase, createBassFill, createDrumFill, chooseHarmonyInstrument, DEGREE_TO_SEMITONE, mutateBluesAccompaniment, mutateBluesMelody, createBluesOrganLick, generateIntroSequence } from './music-theory';
+import { createDrumAxiom, createAmbientBassAxiom, createAccompanimentAxiom, createMelodyMotif as createAmbientMelodyMotif, mutateBassPhrase, createBassFill, createDrumFill, chooseHarmonyInstrument, DEGREE_TO_SEMITONE, mutateBluesAccompaniment, mutateBluesMelody, createBluesOrganLick, generateIntroSequence } from './music-theory';
 
 
 export type Branch = {
@@ -254,15 +253,24 @@ export type BassPatternDefinition = {
     tags: string[];
 };
 
-export function getScaleForMood(mood: Mood, genre?: Genre): number[] {
+export function getScaleForMood(mood: Mood, genre?: Genre, chordType?: 'major' | 'minor' | 'dominant' | 'diminished'): number[] {
   const E1 = 28;
   let baseScale: number[];
 
   if (genre === 'blues') {
-      if (mood === 'dark' || mood === 'gloomy' || mood === 'melancholic' || mood === 'anxious') {
-           baseScale = [0, 3, 5, 6, 7, 10];
-      } else {
+      if (chordType === 'major' || chordType === 'dominant') {
+          // Major Blues Scale: 1, 2, b3, 3, 5, 6
           baseScale = [0, 2, 3, 4, 7, 9];
+      } else if (chordType === 'minor' || chordType === 'diminished') {
+          // Minor Blues Scale: 1, b3, 4, b5, 5, b7
+          baseScale = [0, 3, 5, 6, 7, 10];
+      } else {
+          // Fallback based on mood if chordType is not specified
+          if (mood === 'dark' || mood === 'gloomy' || mood === 'melancholic' || mood === 'anxious') {
+               baseScale = [0, 3, 5, 6, 7, 10]; // Minor Blues
+          } else {
+              baseScale = [0, 2, 3, 4, 7, 9]; // Major Blues
+          }
       }
   } else {
       switch (mood) {
@@ -350,33 +358,6 @@ export function createAmbientBassAxiom(currentChord: GhostChord, mood: Mood, gen
 };
 
 
-export function createAccompanimentAxiom(chord: GhostChord, mood: Mood, genre: Genre, random: { next: () => number; nextInt: (max: number) => number }, tempo: number = 120, registerHint?: 'low' | 'mid' | 'high'): FractalEvent[] {
-    const axiom: FractalEvent[] = [];
-    const rootMidi = chord.rootNote;
-    
-    let chordNotes: number[] = [];
-    if (chord.chordType === 'dominant') {
-        chordNotes = [rootMidi, rootMidi + 4, rootMidi + 7, rootMidi + 10];
-    } else {
-        const isMinor = chord.chordType === 'minor' || chord.chordType === 'diminished';
-        chordNotes = [rootMidi, rootMidi + (isMinor ? 3 : 4), rootMidi + 7];
-    }
-    
-    let baseOctave = 3;
-    if (registerHint === 'low') baseOctave = 2;
-    if (registerHint === 'high') baseOctave = 4;
-
-    const numNotes = chordNotes.length;
-    const duration = 4.0 / numNotes;
-    for (let i = 0; i < numNotes; i++) {
-         axiom.push({
-            type: 'accompaniment', note: chordNotes[i % chordNotes.length] + 12 * baseOctave, duration: duration, time: i * duration,
-            weight: 0.5 + random.next() * 0.1, technique: 'arpeggio-slow', dynamics: 'p', phrasing: 'legato', params: { attack: 0.1, release: duration * 0.9 }
-        });
-    }
-
-    return axiom;
-}
 
 const midiToChordName = (rootNote: number, chordType: 'major' | 'minor' | 'diminished' | 'dominant'): string => {
     const noteNames = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B'];

@@ -1,5 +1,4 @@
 
-
 import type { FractalEvent, Mood, Genre, Technique, BassSynthParams, InstrumentType, MelodyInstrument, AccompanimentInstrument, ResonanceMatrix, InstrumentHints, AccompanimentTechnique, GhostChord, SfxRule, V1MelodyInstrument, V2MelodyInstrument, BlueprintPart, InstrumentationRules, InstrumentBehaviorRules, BluesMelody, InstrumentPart, DrumKit, BluesGuitarRiff, BluesSoloPhrase, BluesRiffDegree, SuiteDNA, RhythmicFeel, BassStyle, DrumStyle, HarmonicCenter } from './fractal';
 import { ElectronicK, TraditionalK, AmbientK, MelancholicMinorK } from './resonance-matrices';
 import { BlueprintNavigator, type NavigationInfo } from './blueprint-navigator';
@@ -16,7 +15,7 @@ import { BLUES_SOLO_LICKS, BLUES_SOLO_PLANS } from './assets/blues_guitar_solo';
 import { BLUES_DRUM_RIFFS } from './assets/blues-drum-riffs';
 import { DRUM_KITS } from './assets/drum-kits';
 
-import { getScaleForMood, generateSuiteDNA, createDrumAxiom, createAmbientBassAxiom, mutateBassPhrase, createBassFill, createDrumFill, chooseHarmonyInstrument, DEGREE_TO_SEMITONE, mutateBluesAccompaniment, mutateBluesMelody, createBluesOrganLick, generateIntroSequence, createHarmonyAxiom } from './music-theory';
+import { getScaleForMood, generateSuiteDNA, createDrumAxiom, createAmbientBassAxiom, createMelodyMotif as createAmbientMelodyMotif, mutateBassPhrase, createBassFill, createDrumFill, chooseHarmonyInstrument, DEGREE_TO_SEMITONE, mutateBluesAccompaniment, mutateBluesMelody, createBluesOrganLick, generateIntroSequence, createHarmonyAxiom } from './music-theory';
 
 
 export type Branch = {
@@ -298,7 +297,7 @@ export class FractalMusicEngine {
                  overrides.remove.forEach(instrument => {
                     Object.keys(finalKit).forEach(part => {
                         const key = part as keyof DrumKit;
-                        const typedKey = key as keyof DrumKit;
+                         const typedKey = key as keyof DrumKit;
                         if (finalKit[typedKey]) {
                             const index = finalKit[typedKey]!.indexOf(instrument);
                             if (index > -1) {
@@ -451,19 +450,28 @@ export class FractalMusicEngine {
         const events: FractalEvent[] = [];
         let log: string[] = [];
 
-        // #ЗАЧЕМ: Генерация и кэширование 12-тактового соло.
-        // #ЧТО: Если мы в начале 12-тактового цикла, сочиняем новое соло.
         const barInChorus = epoch % 12;
         if (barInChorus === 0 || this.cachedMelodyChorus.bar === -1) {
-            this.cachedMelodyChorus.events = []; // Очищаем кэш
+            this.cachedMelodyChorus.events = [];
             this.cachedMelodyChorus.bar = epoch;
             let fullChorusLog = "[BluesComposer] New 12-bar chorus: ";
 
             for (let bar = 0; bar < 12; bar++) {
+                const chordForThisBar = this.suiteDNA!.harmonyTrack.find(c => (epoch + bar) >= c.bar && (epoch + bar) < c.bar + c.durationBars) || currentChord;
+                
+                const isMajorChord = chordForThisBar.chordType === 'major' || chordForThisBar.chordType === 'dominant';
+                
                 const availableLicks = Object.keys(BLUES_SOLO_LICKS).filter(id => {
                     const tags = BLUES_SOLO_LICKS[id].tags;
-                    return !this.melodyHistory.slice(-5).includes(id) && (tags.includes('major') || tags.includes('minor'));
+                    if (this.melodyHistory.slice(-5).includes(id)) return false;
+                    
+                    if (isMajorChord) {
+                        return tags.includes('major') || tags.includes('classic') || tags.includes('boogie');
+                    } else {
+                        return tags.includes('minor') || tags.includes('classic') || tags.includes('chromatic') || tags.includes('cry');
+                    }
                 });
+
                 const lickId = availableLicks.length > 0 ? availableLicks[random.nextInt(availableLicks.length)] : Object.keys(BLUES_SOLO_LICKS)[0];
                 
                 if (lickId) {
@@ -471,7 +479,6 @@ export class FractalMusicEngine {
                     if(this.melodyHistory.length > 6) this.melodyHistory.shift();
 
                     const lickTemplate = BLUES_SOLO_LICKS[lickId].phrase;
-                    const chordForThisBar = this.suiteDNA!.harmonyTrack.find(c => (epoch + bar) >= c.bar && (epoch + bar) < c.bar + c.durationBars) || currentChord;
                     
                     let octaveShift = 12 * (registerHint === 'high' ? 4 : (registerHint === 'low' ? 2 : 3));
                     for (const noteTemplate of lickTemplate) {
@@ -482,7 +489,7 @@ export class FractalMusicEngine {
                         this.cachedMelodyChorus.events.push({
                             type: 'melody',
                             note: finalMidiNote,
-                            time: bar * 4 + (noteTemplate.t / 3), // Absolute time within chorus
+                            time: bar * 4 + (noteTemplate.t / 3), 
                             duration: (noteTemplate.d || 2) / 3,
                             weight: 0.9 + (random.next() * 0.1),
                             technique: (noteTemplate.tech || 'pick') as Technique,
@@ -495,17 +502,15 @@ export class FractalMusicEngine {
             console.log(fullChorusLog);
         }
 
-        // #ЗАЧЕМ: Извлечение нот из кэша для текущего такта.
-        // #ЧТО: Фильтрует все сгенерированные ноты, чтобы вернуть только те, которые относятся к текущему бару.
         const barStartTimeInBeats = barInChorus * 4;
         const barEndTimeInBeats = barStartTimeInBeats + 4;
         
         const currentBarEvents = this.cachedMelodyChorus.events.filter(e => {
-            const eventTimeInChorus = e.time - (this.cachedMelodyChorus.bar % 12) * 4;
+            const eventTimeInChorus = e.time - ((this.cachedMelodyChorus.bar % 12) * 4);
             return eventTimeInChorus >= barStartTimeInBeats && eventTimeInChorus < barEndTimeInBeats;
         }).map(e => ({
             ...e,
-            time: e.time - barStartTimeInBeats // Convert to time relative to the current bar
+            time: e.time - barStartTimeInBeats 
         }));
 
         log.push(`[BluesMelody] Bar ${barInChorus}, Lick from cache. Events: ${currentBarEvents.length}`);
