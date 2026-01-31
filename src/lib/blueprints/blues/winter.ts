@@ -1,5 +1,4 @@
 
-
 import type { MusicBlueprint } from '@/types/music';
 
 export const WinterBluesBlueprint: MusicBlueprint = {
@@ -103,7 +102,7 @@ export const WinterBluesBlueprint: MusicBlueprint = {
             },
             {
                 id: 'MAIN-1', name: 'Verse', duration: { percent: 25 },
-                layers: { drums: true, bass: true, accompaniment: true, harmony: true, melody: true, sfx: true },
+                layers: { drums: true, bass: true, accompaniment: true, harmony: true, melody: true, sfx: true, pianoAccompaniment: true },
                 instrumentation: {
                     accompaniment: { strategy: 'weighted', v1Options: [{ name: 'organ', weight: 0.5 }, { name: 'synth', weight: 0.5 }], v2Options: [{ name: 'synth', weight: 0.5 }, { name: 'organ_soft_jazz', weight: 0.5 }] },
                     melody: {
@@ -131,7 +130,7 @@ export const WinterBluesBlueprint: MusicBlueprint = {
             },
             {
                 id: 'SOLO', name: 'Solo', duration: { percent: 25 },
-                layers: { drums: true, bass: true, accompaniment: true, melody: true, sfx: true, harmony: true },
+                layers: { drums: true, bass: true, accompaniment: true, melody: true, sfx: true, harmony: true, pianoAccompaniment: true },
                 instrumentation: {
                     accompaniment: { strategy: 'weighted', v1Options: [{ name: 'organ', weight: 0.5 }, { name: 'synth', weight: 0.5 }], v2Options: [{ name: 'synth', weight: 0.5 }, { name: 'organ_soft_jazz', weight: 0.5 }] },
                     melody: {
@@ -159,7 +158,7 @@ export const WinterBluesBlueprint: MusicBlueprint = {
             },
             {
                 id: 'MAIN-2', name: 'Final Verse', duration: { percent: 20 },
-                layers: { drums: true, bass: true, accompaniment: true, harmony: true, melody: true },
+                layers: { drums: true, bass: true, accompaniment: true, harmony: true, melody: true, pianoAccompaniment: true },
                 instrumentation: {
                     accompaniment: { strategy: 'weighted', v1Options: [{ name: 'organ', weight: 0.5 }, { name: 'synth', weight: 0.5 }], v2Options: [{ name: 'synth', weight: 0.5 }, { name: 'organ_soft_jazz', weight: 0.5 }] },
                     melody: {
