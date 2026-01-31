@@ -1,4 +1,5 @@
 
+
 import type { FractalEvent, Mood, Genre, Technique, BassSynthParams, InstrumentType, MelodyInstrument, AccompanimentInstrument, ResonanceMatrix, InstrumentHints, AccompanimentTechnique, GhostChord, SfxRule, V1MelodyInstrument, V2MelodyInstrument, BlueprintPart, InstrumentationRules, InstrumentBehaviorRules, BluesMelody, InstrumentPart, DrumKit, BluesGuitarRiff, BluesSoloPhrase, BluesRiffDegree, SuiteDNA, RhythmicFeel, BassStyle, DrumStyle, HarmonicCenter } from './fractal';
 import { ElectronicK, TraditionalK, AmbientK, MelancholicMinorK } from './resonance-matrices';
 import { BlueprintNavigator, type NavigationInfo } from './blueprint-navigator';
@@ -486,15 +487,46 @@ export class FractalMusicEngine {
                         if (finalMidiNote > 88) finalMidiNote -= 12;
                         if (finalMidiNote < 55) finalMidiNote += 12;
 
-                        this.cachedMelodyChorus.events.push({
+                        const baseEvent: Omit<FractalEvent, 'time' | 'duration'> = {
                             type: 'melody',
                             note: finalMidiNote,
-                            time: bar * 4 + (noteTemplate.t / 3), 
-                            duration: (noteTemplate.d || 2) / 3,
                             weight: 0.9 + (random.next() * 0.1),
                             technique: (noteTemplate.tech || 'pick') as Technique,
                             dynamics: 'mf', phrasing: 'legato', params: {}
-                        });
+                        };
+
+                        if (random.next() < 0.4) {
+                            const shouldShiftTime = random.next() > 0.5;
+                            if (shouldShiftTime && noteTemplate.d && noteTemplate.d > 1) {
+                                const shift = (random.next() - 0.5) * 0.5;
+                                this.cachedMelodyChorus.events.push({
+                                    ...baseEvent,
+                                    time: bar * 4 + (noteTemplate.t / 3) + (shift / 3),
+                                    duration: ((noteTemplate.d || 2) / 3),
+                                });
+                            } else {
+                                const graceNote: FractalEvent = {
+                                    ...baseEvent,
+                                    note: finalMidiNote - 1,
+                                    time: bar * 4 + (noteTemplate.t / 3) - (0.5 / 3),
+                                    duration: 0.1,
+                                    weight: baseEvent.weight * 0.7,
+                                    technique: 'gr'
+                                };
+                                this.cachedMelodyChorus.events.push(graceNote);
+                                this.cachedMelodyChorus.events.push({
+                                    ...baseEvent,
+                                    time: bar * 4 + (noteTemplate.t / 3),
+                                    duration: ((noteTemplate.d || 2) / 3),
+                                });
+                            }
+                        } else {
+                            this.cachedMelodyChorus.events.push({
+                                ...baseEvent,
+                                time: bar * 4 + (noteTemplate.t / 3),
+                                duration: ((noteTemplate.d || 2) / 3),
+                            });
+                        }
                     }
                     fullChorusLog += `${lickId}, `;
                 }

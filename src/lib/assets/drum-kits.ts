@@ -65,9 +65,10 @@ const bluesMelancholicMaster: DrumKit = {
         'drum_ride',
         'drum_ride_wetter',
     ],
-    crash: ['drum_cymbal2', 'drum_cymbal3', 'drum_cymbal4'],
+    crash: ['drum_crash2', 'drum_cymbal3', 'drum_cymbal4'],
     perc: [
         'drum_hightom', 'drum_lowtom', 'drum_midtom',
+        'drum_hightom_soft', 'drum_lowtom_soft', 'drum_midtom_soft', // Added soft toms
         'drum_Sonor_Classix_High_Tom', 'drum_Sonor_Classix_Low_Tom', 'drum_Sonor_Classix_Mid_Tom',
         'drum_cowbell', 'perc-012', 'perc-013', 'perc-014', 'perc-015'
     ]

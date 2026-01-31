@@ -39,7 +39,8 @@ export const WinterBluesBlueprint: MusicBlueprint = {
                 instrumentRules: {
                     bass: { techniques: [{ value: 'long_notes', weight: 1.0 }], presetModifiers: { octaveShift: 1 } },
                     melody: { source: 'blues_solo', density: { min: 0.5, max: 0.9 }, soloPlan: "S06" },
-                    drums: { pattern: 'composer', kitName: 'winter_blues_prolog1', density: { min: 0.1, max: 0.2 } }
+                    drums: { pattern: 'composer', kitName: 'winter_blues_prolog1', density: { min: 0.1, max: 0.2 } },
+                    accompaniment: { techniques: [{ value: 'long-chords', weight: 1.0 }] }
                 },
                 bundles: [{ id: 'WINTER_INTRO_1', name: 'Icy Breath', duration: { percent: 100 }, characteristics: {}, phrases: {} }],
                 outroFill: null,
@@ -66,7 +67,8 @@ export const WinterBluesBlueprint: MusicBlueprint = {
                 instrumentRules: {
                     bass: { techniques: [{ value: 'long_notes', weight: 1.0 }], presetModifiers: { octaveShift: 1 } },
                     melody: { source: 'blues_solo', density: { min: 0.5, max: 0.9 }, soloPlan: "S07" },
-                    drums: { pattern: 'composer', kitName: 'winter_blues_prolog2', density: { min: 0.2, max: 0.3 } }
+                    drums: { pattern: 'composer', kitName: 'winter_blues_prolog2', density: { min: 0.2, max: 0.3 } },
+                    accompaniment: { techniques: [{ value: 'rhythmic-comp', weight: 1.0 }] }
                 },
                 bundles: [{ id: 'WINTER_INTRO_2', name: 'Flurries', duration: { percent: 100 }, characteristics: {}, phrases: {} }],
                 outroFill: null,
@@ -93,7 +95,8 @@ export const WinterBluesBlueprint: MusicBlueprint = {
                 instrumentRules: {
                     bass: { techniques: [{ value: 'walking', weight: 1.0 }], presetModifiers: { octaveShift: 1 } },
                     melody: { source: 'blues_solo', density: { min: 0.5, max: 0.9 }, soloPlan: "S08" },
-                    drums: { pattern: 'composer', kitName: 'winter_blues_prolog3', density: { min: 0.3, max: 0.4 }, useSnare: true }
+                    drums: { pattern: 'composer', kitName: 'winter_blues_prolog3', density: { min: 0.3, max: 0.4 }, useSnare: true },
+                    accompaniment: { techniques: [{ value: 'long-chords', weight: 1.0 }] }
                 },
                 bundles: [{ id: 'WINTER_INTRO_3', name: 'Mirror', duration: { percent: 100 }, characteristics: {}, phrases: {} }],
                 outroFill: { type: 'roll', duration: 1, parameters: { instrument: 'tom', density: 0.5 } },
@@ -120,7 +123,8 @@ export const WinterBluesBlueprint: MusicBlueprint = {
                 instrumentRules: {
                     drums: { pattern: 'composer', kitName: 'blues_melancholic_master', density: { min: 0.5, max: 0.7 }, ride: { enabled: true, probability: 0.15 } },
                     bass: { techniques: [{ value: 'riff', weight: 1.0 }], presetModifiers: { octaveShift: 1 } },
-                    melody: { source: 'blues_solo', density: { min: 0.5, max: 0.9 }, register: { preferred: 'mid' }, soloPlan: "S09" }
+                    melody: { source: 'blues_solo', density: { min: 0.5, max: 0.9 }, register: { preferred: 'mid' }, soloPlan: "S09" },
+                    accompaniment: { techniques: [{ value: 'rhythmic-comp', weight: 1.0 }] }
                 },
                 bundles: [{ id: 'WINTER_MAIN_1', name: 'The Riff', duration: { percent: 100 }, characteristics: {}, phrases: {} }],
                 outroFill: null,
@@ -147,10 +151,11 @@ export const WinterBluesBlueprint: MusicBlueprint = {
                 instrumentRules: {
                     drums: { pattern: 'composer', kitName: 'blues_melancholic_master', density: { min: 0.6, max: 0.8 }, ride: { enabled: true, probability: 0.15 } },
                     bass: { techniques: [{ value: 'walking', weight: 1.0 }], presetModifiers: { octaveShift: 1 } },
-                    melody: { source: 'blues_solo', density: { min: 0.5, max: 0.9 }, register: { preferred: 'high' }, soloPlan: "S10" }
+                    melody: { source: 'blues_solo', density: { min: 0.5, max: 0.9 }, register: { preferred: 'high' }, soloPlan: "S10" },
+                    accompaniment: { techniques: [{ value: 'long-chords', weight: 1.0 }] }
                 },
                 bundles: [{ id: 'WINTER_SOLO_1', name: 'The Cry', duration: { percent: 100 }, characteristics: {}, phrases: {} }],
-                outroFill: { type: 'roll', duration: 1, parameters: { instrument: 'crash' } },
+                outroFill: { type: 'roll', duration: 2, parameters: { instrument: 'ride' } },
             },
             {
                 id: 'MAIN-2', name: 'Final Verse', duration: { percent: 20 },
@@ -174,7 +179,8 @@ export const WinterBluesBlueprint: MusicBlueprint = {
                 instrumentRules: {
                     drums: { pattern: 'composer', kitName: 'blues_melancholic_master', density: { min: 0.2, max: 0.4 }, ride: { enabled: true, probability: 0.15 } },
                     bass: { techniques: [{ value: 'riff', weight: 1.0 }], presetModifiers: { octaveShift: 1 } },
-                    melody: { source: 'blues_solo', density: { min: 0.5, max: 0.9 }, register: { preferred: 'mid' }, soloPlan: "S15" }
+                    melody: { source: 'blues_solo', density: { min: 0.5, max: 0.9 }, register: { preferred: 'mid' }, soloPlan: "S15" },
+                    accompaniment: { techniques: [{ value: 'rhythmic-comp', weight: 1.0 }] }
                 },
                 bundles: [{ id: 'WINTER_MAIN_2', name: 'The Last Riff', duration: { percent: 100 }, characteristics: {}, phrases: {} }],
                 outroFill: null,
