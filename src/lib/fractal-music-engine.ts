@@ -1,6 +1,6 @@
 
 
-import type { FractalEvent, Mood, Genre, Technique, BassSynthParams, InstrumentType, MelodyInstrument, AccompanimentInstrument, ResonanceMatrix, InstrumentHints, AccompanimentTechnique, GhostChord, SfxRule, V1MelodyInstrument, V2MelodyInstrument, BlueprintPart, InstrumentationRules, InstrumentBehaviorRules, BluesMelody, InstrumentPart, DrumKit, BluesGuitarRiff, BluesSoloPhrase, BluesRiffDegree, SuiteDNA, RhythmicFeel, BassStyle, DrumStyle } from './fractal';
+import type { FractalEvent, Mood, Genre, Technique, BassSynthParams, InstrumentType, MelodyInstrument, AccompanimentInstrument, ResonanceMatrix, InstrumentHints, AccompanimentTechnique, GhostChord, SfxRule, V1MelodyInstrument, V2MelodyInstrument, BlueprintPart, InstrumentationRules, InstrumentBehaviorRules, BluesMelody, InstrumentPart, DrumKit, BluesGuitarRiff, BluesSoloPhrase, BluesRiffDegree, SuiteDNA, RhythmicFeel, BassStyle, DrumStyle, HarmonicCenter } from './fractal';
 import { ElectronicK, TraditionalK, AmbientK, MelancholicMinorK } from './resonance-matrices';
 import { BlueprintNavigator, type NavigationInfo } from './blueprint-navigator';
 import { getBlueprint } from './blueprints';
@@ -16,7 +16,7 @@ import { BLUES_SOLO_LICKS, BLUES_SOLO_PLANS } from './assets/blues_guitar_solo';
 import { BLUES_DRUM_RIFFS } from './assets/blues-drum-riffs';
 import { DRUM_KITS } from './assets/drum-kits';
 
-import { getScaleForMood, generateSuiteDNA, createDrumAxiom, createAmbientBassAxiom, createAccompanimentAxiom, createHarmonyAxiom, createMelodyMotif as createAmbientMelodyMotif, mutateBassPhrase, createBassFill, createDrumFill, chooseHarmonyInstrument, DEGREE_TO_SEMITONE, mutateBluesAccompaniment, mutateBluesMelody, createBluesOrganLick, generateIntroSequence } from './music-theory';
+import { getScaleForMood, generateSuiteDNA, createDrumAxiom, createAmbientBassAxiom, createAccompanimentAxiom as createDefaultAccompanimentAxiom, createMelodyMotif as createAmbientMelodyMotif, mutateBassPhrase, createBassFill, createDrumFill, chooseHarmonyInstrument, DEGREE_TO_SEMITONE, mutateBluesAccompaniment, mutateBluesMelody, createBluesOrganLick, generateIntroSequence } from './music-theory';
 
 
 export type Branch = {
@@ -172,11 +172,11 @@ export class FractalMusicEngine {
     this.nextAccompanimentDelay = this.random.next() * 7 + 5;
     this.hasBassBeenMutated = false;
     
-    const allBassRiffs = Object.values(BLUES_BASS_RIFFS).flat();
+    const allBassRiffs = BLUES_BASS_RIFFS[this.config.mood] ?? BLUES_BASS_RIFFS['contemplative'];
     this.shuffledBassRiffIndices = this.random.shuffle(Array.from({ length: allBassRiffs.length }, (_, i) => i));
     this.bassRiffConveyorIndex = 0;
 
-    const allDrumRiffs = Object.values(BLUES_DRUM_RIFFS).flat();
+    const allDrumRiffs = BLUES_DRUM_RIFFS[this.config.mood] ?? BLUES_DRUM_RIFFS['contemplative'] ?? [];
     this.shuffledDrumRiffIndices = this.random.shuffle(Array.from({ length: allDrumRiffs.length }, (_, i) => i));
     this.drumRiffConveyorIndex = 0;
     
@@ -218,7 +218,6 @@ export class FractalMusicEngine {
 
     const firstChord = this.suiteDNA.harmonyTrack[0];
     const initialNavInfo = this.navigator.tick(0);
-    const initialRegisterHint = initialNavInfo?.currentPart.instrumentRules?.accompaniment?.register?.preferred;
     const initialBassTechnique = initialNavInfo?.currentPart.instrumentRules?.bass?.techniques?.[0].value as Technique || 'drone';
 
     if (this.config.genre === 'blues') {
@@ -227,7 +226,9 @@ export class FractalMusicEngine {
         const newBassAxiom = createAmbientBassAxiom(firstChord, this.config.mood, this.config.genre, this.random, this.config.tempo, initialBassTechnique);
         for (let i = 0; i < 4; i++) {
             this.bassPhraseLibrary.push(newBassAxiom);
-            this.accompPhraseLibrary.push(createAccompanimentAxiom(firstChord, this.config.mood, this.config.genre, this.random, this.config.tempo, initialRegisterHint));
+            const registerHint = initialNavInfo?.currentPart.instrumentRules?.accompaniment?.register?.preferred;
+            const accompTechnique = initialNavInfo?.currentPart.instrumentRules?.accompaniment?.techniques?.[0].value as AccompanimentTechnique || 'long-chords';
+            this.accompPhraseLibrary.push(this.createAccompanimentAxiom(firstChord, this.config.mood, this.config.genre, this.random, this.config.tempo, registerHint, accompTechnique));
         }
         this.currentMelodyMotif = createAmbientMelodyMotif(firstChord, this.config.mood, this.random);
         this.lastMelodyPlayEpoch = -16;
@@ -281,8 +282,8 @@ export class FractalMusicEngine {
                     Object.keys(finalKit).forEach(part => {
                         const key = part as keyof DrumKit;
                         if (instrument.includes(key.slice(0, -1))) { 
-                           if(finalKit[key] && !finalKit[key].includes(instrument)) {
-                                finalKit[key].push(instrument);
+                           if(finalKit[key] && !finalKit[key]!.includes(instrument)) {
+                                finalKit[key]!.push(instrument);
                             }
                         }
                     });
@@ -292,9 +293,12 @@ export class FractalMusicEngine {
                  overrides.remove.forEach(instrument => {
                     Object.keys(finalKit).forEach(part => {
                         const key = part as keyof DrumKit;
-                        const index = finalKit[key].indexOf(instrument);
-                        if (index > -1) {
-                            finalKit[key].splice(index, 1);
+                        const typedKey = key as keyof DrumKit;
+                        if (finalKit[typedKey]) {
+                            const index = finalKit[typedKey]!.indexOf(instrument);
+                            if (index > -1) {
+                                finalKit[typedKey]!.splice(index, 1);
+                            }
                         }
                     });
                 });
@@ -305,9 +309,11 @@ export class FractalMusicEngine {
                     const toInst = to as InstrumentType;
                     Object.keys(finalKit).forEach(part => {
                         const key = part as keyof DrumKit;
-                        const index = finalKit[key].indexOf(fromInst);
-                        if (index > -1) {
-                            finalKit[key][index] = toInst;
+                         if (finalKit[key]) {
+                            const index = finalKit[key]!.indexOf(fromInst);
+                            if (index > -1) {
+                                finalKit[key]![index] = toInst;
+                            }
                         }
                     });
                 });
@@ -429,63 +435,50 @@ export class FractalMusicEngine {
         }
         return phrase;
     }
-
+    
     private generateBluesMelodyChorus(
-        chord: GhostChord,
+        currentChord: GhostChord,
         random: { next: () => number; nextInt: (max: number) => number; },
-        soloPlanId: string,
+        partId: string,
         epoch: number,
         registerHint?: 'low' | 'mid' | 'high'
     ): { events: FractalEvent[], log: string } {
         const events: FractalEvent[] = [];
-        const log: string[] = [];
+        let log: string[] = [];
     
-        const barInChorus = epoch % 12;
-        
-        const soloPlan = BLUES_SOLO_PLANS[soloPlanId];
-        if (!soloPlan) {
-            log.push(`[BluesMelody] Warning: Solo plan '${soloPlanId}' not found.`);
-            return { events, log: log.join(' ') };
-        }
-        
-        const chorusIndex = Math.floor((epoch % 36) / 12);
-        const currentChorusPlan = soloPlan.choruses[chorusIndex];
-        if (!currentChorusPlan) {
-            log.push(`[BluesMelody] Warning: Chorus ${chorusIndex} not found in plan '${soloPlanId}'.`);
-            return { events, log: log.join(' ') };
-        }
+        if (epoch % 12 === 0) {
+            this.melodyHistory = []; 
     
-        const lickIdWithModifiers = currentChorusPlan[barInChorus];
-        const [lickId, ...modifiers] = lickIdWithModifiers.split('+');
-        const lickTemplate = BLUES_SOLO_LICKS[lickId];
+            for (let bar = 0; bar < 12; bar++) {
+                const availableLicks = Object.keys(BLUES_SOLO_LICKS).filter(id => {
+                    const tags = BLUES_SOLO_LICKS[id].tags;
+                    return !this.melodyHistory.slice(-3).includes(id) && (tags.includes('major') || tags.includes('minor'));
+                });
     
-        if (!lickTemplate) {
-            log.push(`[BluesMelody] Lick '${lickId}' not found for bar ${barInChorus}.`);
-            return { events, log: log.join(' ') };
-        }
-        
-        log.push(`[BluesMelody] Bar ${barInChorus}, Plan ${soloPlanId}, Lick ${lickIdWithModifiers}.`);
-    
-        let phraseEvents: BluesSoloPhrase = JSON.parse(JSON.stringify(lickTemplate));
-        let octaveShift = 12 * (registerHint === 'high' ? 4 : (registerHint === 'low' ? 2 : 3));
-    
-        if (modifiers.includes('oct') || modifiers.includes('hi')) octaveShift += 12;
-    
-        if (modifiers.includes('var') && phraseEvents.length > 1) {
-            const i = random.nextInt(phraseEvents.length - 1);
-            [phraseEvents[i].t, phraseEvents[i+1].t] = [phraseEvents[i+1].t, phraseEvents[i].t];
-            phraseEvents.sort((a, b) => a.t - b.t);
-        }
-         if (modifiers.includes('long')) {
-            const lastNote = phraseEvents[phraseEvents.length - 1];
-            if (lastNote) {
-                lastNote.d = (lastNote.d || 2) * 1.5;
+                const lickId = availableLicks[random.nextInt(availableLicks.length)];
+                if (lickId) {
+                    this.melodyHistory.push(lickId);
+                } else {
+                     this.melodyHistory.push(Object.keys(BLUES_SOLO_LICKS)[0]);
+                }
             }
         }
     
-        for (const noteTemplate of phraseEvents) {
-            let finalMidiNote = chord.rootNote + (DEGREE_TO_SEMITONE[noteTemplate.deg as BluesRiffDegree] || 0) + octaveShift;
-            
+        const barInChorus = epoch % 12;
+        const lickId = this.melodyHistory[barInChorus];
+        if (!lickId || !BLUES_SOLO_LICKS[lickId]) {
+            log.push(`[BluesMelody] No lick found for bar ${barInChorus}.`);
+            return { events, log: log.join(' ') };
+        }
+    
+        log.push(`[BluesMelody] Bar ${barInChorus}, Lick ${lickId}.`);
+    
+        const lickTemplate = BLUES_SOLO_LICKS[lickId].phrase;
+        let octaveShift = 12 * (registerHint === 'high' ? 4 : (registerHint === 'low' ? 2 : 3));
+    
+        for (const noteTemplate of lickTemplate) {
+            let finalMidiNote = currentChord.rootNote + (DEGREE_TO_SEMITONE[noteTemplate.deg as BluesRiffDegree] || 0) + octaveShift;
+    
             if (finalMidiNote > 88) finalMidiNote -= 12;
             if (finalMidiNote < 55) finalMidiNote += 12;
     
@@ -504,6 +497,7 @@ export class FractalMusicEngine {
     
         return { events, log: log.join(' ') };
     }
+
 
   public getGhostHarmony(): GhostChord[] {
       return this.suiteDNA?.harmonyTrack || [];
@@ -648,15 +642,8 @@ export class FractalMusicEngine {
 
     if (navInfo.currentPart.layers.melody && !navInfo.currentPart.accompanimentMelodyDouble?.enabled && melodyRules) {
         if (melodyRules.source === 'blues_solo') {
-            const partId = navInfo.currentPart.id;
-            const soloPlanId = this.suiteDNA.soloPlanMap.get(partId);
-            
-            if (soloPlanId) {
-                const chorusResult = this.generateBluesMelodyChorus(currentChord, this.random, soloPlanId, this.epoch, melodyRules.register?.preferred);
-                melodyEvents = chorusResult.events;
-            } else {
-                 console.warn(`[FME @ Bar ${this.epoch}] Melody source is 'blues_solo' but no solo plan found for part '${partId}'.`);
-            }
+            const { events: soloEvents } = this.generateBluesMelodyChorus(currentChord, this.random, navInfo.currentPart.id, this.epoch, melodyRules.register?.preferred);
+            melodyEvents = soloEvents;
         } else if (melodyRules.source === 'motif') {
             this.currentMelodyMotif = createAmbientMelodyMotif(currentChord, this.config.mood, this.random, this.currentMelodyMotif, melodyRules.register?.preferred, this.config.genre);
             melodyEvents = this.currentMelodyMotif;
@@ -666,8 +653,10 @@ export class FractalMusicEngine {
 
     let accompEvents: FractalEvent[] = [];
     if (navInfo.currentPart.layers.accompaniment) {
-        const registerHint = navInfo.currentPart.instrumentRules?.accompaniment?.register?.preferred;
-        accompEvents = createAccompanimentAxiom(currentChord, this.config.mood, this.config.genre, this.random, this.config.tempo, registerHint);
+        const accompRules = navInfo.currentPart.instrumentRules?.accompaniment;
+        const registerHint = accompRules?.register?.preferred;
+        const technique = (accompRules?.techniques?.[0]?.value || 'long-chords') as AccompanimentTechnique;
+        accompEvents = this.createAccompanimentAxiom(currentChord, this.config.mood, this.config.genre, this.random, this.config.tempo, registerHint, technique);
     }
     
     this.wasMelodyPlayingLastBar = melodyEvents.length > 0;
@@ -686,7 +675,6 @@ export class FractalMusicEngine {
 
     let harmonyEvents: FractalEvent[] = [];
     if (navInfo.currentPart.layers.harmony) {
-        // #ИСПРАВЛЕНО (ПЛАН 1612): Передаем `effectiveBar` для сквозного логирования.
         const harmonyAxiom = createHarmonyAxiom(currentChord, this.config.mood, this.config.genre, this.random, effectiveBar);
         harmonyEvents.push(...harmonyAxiom);
     }
@@ -699,7 +687,7 @@ export class FractalMusicEngine {
           if (this.epoch > 0 && this.epoch % 4 === 0) {
               this.currentBassPhraseIndex = (this.currentBassPhraseIndex + 1) % this.bassPhraseLibrary.length;
               if (this.random.next() < 0.6) {
-                  this.bassPhraseLibrary[this.currentBassPhraseIndex] = mutateBassPhrase(this.bassPhraseLibrary[this.currentBassPhraseIndex], currentChord, this.config.mood, this.config.genre, this.random);
+                  this.bassPhraseLibrary[this.currentBassPhraseIndex] = mutateBassPhrase(this.bassPhraseLibrary[this.currentBassPhraseIndex]!, currentChord, this.config.mood, this.config.genre, this.random);
               }
           }
           bassEvents = this.bassPhraseLibrary[this.currentBassPhraseIndex] || [];
@@ -717,8 +705,6 @@ export class FractalMusicEngine {
     }
 
     const allEvents = [...(bassEvents || []), ...(drumEvents || []), ...(accompEvents || []), ...(melodyEvents || []), ...(harmonyEvents || [])];
-
-    // Добавляем barCount ко всем событиям для аудита
     allEvents.forEach(e => {
         if (!e.params) e.params = {};
         (e.params as any).barCount = effectiveBar;
@@ -748,4 +734,73 @@ export class FractalMusicEngine {
     
     return { events: allEvents };
   }
+
+  private createAccompanimentAxiom(chord: GhostChord, mood: Mood, genre: Genre, random: { next: () => number; nextInt: (max: number) => number; }, tempo: number = 120, registerHint: 'low' | 'mid' | 'high' = 'mid', technique: AccompanimentTechnique): FractalEvent[] {
+    const axiom: FractalEvent[] = [];
+    const rootMidi = chord.rootNote;
+    const isMinor = chord.chordType.includes('minor');
+    const chordNotes = [
+        rootMidi,
+        rootMidi + (isMinor ? 3 : 4), // 3rd
+        rootMidi + 7,                  // 5th
+        rootMidi + (isMinor ? 10 : 11),// 7th
+        rootMidi + 14,                 // 9th
+    ];
+
+    let baseOctave = 3;
+    if (registerHint === 'low') baseOctave = 2;
+    if (registerHint === 'high') baseOctave = 4;
+
+    switch (technique) {
+        case 'rhythmic-comp':
+            const times = [0, 1.5, 2.5, 3.5]; // Example rhythmic stabs
+            times.forEach(time => {
+                if (random.next() < 0.6) {
+                    axiom.push({
+                        type: 'accompaniment',
+                        note: chordNotes[random.nextInt(chordNotes.length)] + 12 * baseOctave,
+                        duration: 0.4,
+                        time: time,
+                        weight: 0.5 + random.next() * 0.2,
+                        technique: 'staccato', dynamics: 'mf', phrasing: 'detached',
+                        params: {}
+                    });
+                }
+            });
+            break;
+        
+        case 'arpeggio-slow':
+            const arpNotes = [chordNotes[0], chordNotes[1], chordNotes[2], chordNotes[1] + 12];
+            arpNotes.forEach((note, i) => {
+                axiom.push({
+                    type: 'accompaniment',
+                    note: note + 12 * baseOctave,
+                    duration: 1.5,
+                    time: i * 1.0,
+                    weight: 0.5,
+                    technique: 'arpeggio-slow', dynamics: 'p', phrasing: 'legato',
+                    params: { attack: 0.1, release: 1.4 }
+                });
+            });
+            break;
+            
+        case 'long-chords':
+        default:
+            chordNotes.slice(0, 3).forEach((note, i) => {
+                axiom.push({
+                    type: 'accompaniment',
+                    note: note + 12 * baseOctave,
+                    duration: 4.0,
+                    time: i * 0.05, // Slight "strum"
+                    weight: 0.6 - (i * 0.1),
+                    technique: 'choral', dynamics: 'mp', phrasing: 'legato',
+                    params: { attack: 0.8, release: 3.2 }
+                });
+            });
+            break;
+    }
+
+    return axiom;
+  }
 }
+```
