@@ -261,7 +261,7 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
     }
 
     if (pianoAccompanimentManagerRef.current && pianoEvents.length > 0) {
-        pianoAccompanimentManagerRef.current.schedule(pianoEvents, barStartTime);
+        pianoAccompanimentManagerRef.current.schedule(pianoEvents, barStartTime, tempo);
     }
 
     if (sfxSynthManagerRef.current && sfxEvents.length > 0) {

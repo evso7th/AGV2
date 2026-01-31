@@ -1,5 +1,7 @@
+
 // src/lib/piano-accompaniment-manager.ts
 import type { Note } from "@/types/music";
+import type { FractalEvent } from "@/types/fractal";
 import { SamplerPlayer } from '@/lib/sampler-player';
 import { PIANO_SAMPLES } from "@/lib/samples";
 
@@ -31,9 +33,24 @@ export class PianoAccompanimentManager {
         console.log('[pianosacc] Initialized.');
     }
     
-    public schedule(notes: Note[], startTime: number) {
+    public schedule(events: FractalEvent[], startTime: number, tempo: number) {
         if (!this.isInitialized) return;
-        console.log(`[pianosacc] Received ${notes.length} notes to play.`);
+        
+        const beatDuration = 60 / tempo;
+        if (!isFinite(beatDuration)) {
+            console.error(`[pianosacc] Invalid tempo resulted in non-finite beatDuration: ${tempo}`);
+            return;
+        }
+
+        const notes: Note[] = events.map(event => ({
+            midi: event.note,
+            time: event.time * beatDuration,
+            duration: event.duration * beatDuration,
+            velocity: event.weight,
+            params: event.params
+        }));
+        
+        console.log(`[pianosacc] Received ${events.length} events, converted to ${notes.length} notes to play.`);
         this.piano.schedule('piano', notes, startTime, 'pianosacc');
     }
 
