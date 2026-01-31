@@ -1,5 +1,4 @@
 
-
 import type { FractalEvent, Mood, Genre, Technique, BassSynthParams, InstrumentType, MelodyInstrument, AccompanimentInstrument, ResonanceMatrix, InstrumentHints, AccompanimentTechnique, GhostChord, SfxRule, V1MelodyInstrument, V2MelodyInstrument, BlueprintPart, InstrumentationRules, InstrumentBehaviorRules, BluesMelody, InstrumentPart, DrumKit, BluesGuitarRiff, BluesSoloPhrase, BluesRiffDegree, SuiteDNA, RhythmicFeel, BassStyle, DrumStyle, HarmonicCenter } from './fractal';
 import { ElectronicK, TraditionalK, AmbientK, MelancholicMinorK } from './resonance-matrices';
 import { BlueprintNavigator, type NavigationInfo } from './blueprint-navigator';
@@ -16,7 +15,7 @@ import { BLUES_SOLO_LICKS, BLUES_SOLO_PLANS } from './assets/blues_guitar_solo';
 import { BLUES_DRUM_RIFFS } from './assets/blues-drum-riffs';
 import { DRUM_KITS } from './assets/drum-kits';
 
-import { getScaleForMood, generateSuiteDNA, createDrumAxiom, createAmbientBassAxiom, createMelodyMotif as createAmbientMelodyMotif, mutateBassPhrase, createBassFill, createDrumFill, chooseHarmonyInstrument, DEGREE_TO_SEMITONE, mutateBluesAccompaniment, mutateBluesMelody, createBluesOrganLick, generateIntroSequence, createHarmonyAxiom } from './music-theory';
+import { getScaleForMood, generateSuiteDNA, createDrumAxiom, createHarmonyAxiom, createAmbientMelodyMotif, mutateBassPhrase, createBassFill, createDrumFill, chooseHarmonyInstrument, DEGREE_TO_SEMITONE, mutateBluesAccompaniment, mutateBluesMelody, createBluesOrganLick, generateIntroSequence, createAmbientBassAxiom } from './music-theory';
 
 
 export type Branch = {
@@ -54,12 +53,12 @@ type PlayPlanItem = {
 function seededRandom(seed: number) {
   let state = seed;
   const self = {
-    next: () => {
-      state = (state * 1664525 + 1013904223) % Math.pow(2, 32);
-      return state / Math.pow(2, 32);
-    },
-    nextInt: (max: number) => Math.floor(self.next() * max),
-     shuffle: <T>(array: T[]): T[] => {
+      next: () => {
+        state = (state * 1664525 + 1013904223) % Math.pow(2, 32);
+        return state / Math.pow(2, 32);
+      },
+      nextInt: (max: number) => Math.floor(self.next() * max),
+       shuffle: <T>(array: T[]): T[] => {
         let currentIndex = array.length, randomIndex;
         const newArray = [...array];
         while (currentIndex !== 0) {
@@ -460,13 +459,13 @@ export class FractalMusicEngine {
             for (let bar = 0; bar < 12; bar++) {
                 const chordForThisBar = this.suiteDNA!.harmonyTrack.find(c => (epoch + bar) >= c.bar && (epoch + bar) < c.bar + c.durationBars) || currentChord;
                 
-                const isMajorChord = chordForThisBar.chordType === 'major' || chordForThisBar.chordType === 'dominant';
+                const isMinorChord = chordForThisBar.chordType.includes('minor');
                 
                 const availableLicks = Object.keys(BLUES_SOLO_LICKS).filter(id => {
                     const tags = BLUES_SOLO_LICKS[id].tags;
                     if (this.melodyHistory.slice(-5).includes(id)) return false;
                     
-                    if (isMajorChord) {
+                    if (!isMinorChord) {
                         return tags.includes('major') || tags.includes('classic') || tags.includes('boogie');
                     } else {
                         return tags.includes('minor') || tags.includes('classic') || tags.includes('chromatic') || tags.includes('cry');
@@ -590,6 +589,7 @@ export class FractalMusicEngine {
         accompaniment: this._chooseInstrumentForPart('accompaniment', navInfo),
         harmony: this._chooseInstrumentForPart('harmony', navInfo) as any,
         bass: this._chooseInstrumentForPart('bass', navInfo) as any,
+        pianoAccompaniment: 'piano'
     };
     
     if (navInfo.logMessage) {
@@ -730,6 +730,12 @@ export class FractalMusicEngine {
         const harmonyAxiom = createHarmonyAxiom(currentChord, this.config.mood, this.config.genre, this.random, effectiveBar);
         harmonyEvents.push(...harmonyAxiom);
     }
+    
+    let pianoEvents: FractalEvent[] = [];
+    if (navInfo.currentPart.layers.pianoAccompaniment) {
+        const pianoAxiom = this.createPianoAccompaniment(currentChord, this.random);
+        pianoEvents.push(...pianoAxiom);
+    }
 
     let bassEvents: FractalEvent[] = [];
     if (navInfo.currentPart.layers.bass) {
@@ -756,7 +762,7 @@ export class FractalMusicEngine {
         });
     }
 
-    const allEvents = [...(bassEvents || []), ...(drumEvents || []), ...(accompEvents || []), ...(melodyEvents || []), ...(harmonyEvents || [])];
+    const allEvents = [...(bassEvents || []), ...(drumEvents || []), ...(accompEvents || []), ...(melodyEvents || []), ...(harmonyEvents || []), ...(pianoEvents || [])];
     allEvents.forEach(e => {
         if (!e.params) e.params = {};
         (e.params as any).barCount = effectiveBar;
@@ -851,6 +857,60 @@ export class FractalMusicEngine {
             });
             break;
     }
+
+    return axiom;
+  }
+  
+  private createPianoAccompaniment(chord: GhostChord, random: { next: () => number; nextInt: (max: number) => number; }): FractalEvent[] {
+    const axiom: FractalEvent[] = [];
+    const rootNote = chord.rootNote;
+    const isMinor = chord.chordType === 'minor' || chord.chordType === 'diminished';
+
+    // Left hand - bass note
+    axiom.push({
+        type: 'pianoAccompaniment',
+        note: rootNote - 12, // One octave lower
+        duration: 2.0, // Half note
+        time: 0,
+        weight: 0.6,
+        technique: 'pluck', dynamics: 'p', phrasing: 'legato',
+        params: {}
+    });
+
+    if (random.next() > 0.5) {
+         axiom.push({
+            type: 'pianoAccompaniment',
+            note: rootNote - 5, // Fifth below
+            duration: 2.0, // Half note
+            time: 2.0,
+            weight: 0.55,
+            technique: 'pluck', dynamics: 'p', phrasing: 'legato',
+            params: {}
+        });
+    }
+
+    // Right hand - arpeggio
+    const chordNotes = [
+        rootNote,
+        rootNote + (isMinor ? 3 : 4),
+        rootNote + 7,
+        rootNote + 12
+    ];
+    
+    const arpTimes = [1.0, 1.5, 2.0, 2.5, 3.0, 3.5];
+    arpTimes.forEach(time => {
+        if(random.next() < 0.6) {
+            axiom.push({
+                type: 'pianoAccompaniment',
+                note: chordNotes[random.nextInt(chordNotes.length)],
+                duration: 0.5,
+                time: time,
+                weight: 0.4 + random.next() * 0.2,
+                technique: 'pluck', dynamics: 'p', phrasing: 'staccato',
+                params: {}
+            });
+        }
+    });
 
     return axiom;
   }
