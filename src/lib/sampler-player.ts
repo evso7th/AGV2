@@ -122,6 +122,23 @@ export class SamplerPlayer {
             const startTime = time + note.time;
             
             const velocity = note.velocity ?? 0.7;
+
+            // #ЗАЧЕМ: Предотвращение критической ошибки Web Audio API.
+            // #ЧТО: Этот блок проверяет, являются ли значения `velocity` и `startTime`
+            //      корректными числовыми значениями (не NaN или Infinity).
+            //      Если значение некорректно, мы пропускаем проигрывание этой ноты и
+            //      выводим ошибку в консоль, но не останавливаем все приложение.
+            // #СВЯЗИ: Устраняет ошибку "Failed to set the 'value' property on 'AudioParam':
+            //          The provided float value is non-finite."
+            if (!isFinite(velocity) || !isFinite(startTime)) {
+                console.error(`[${loggerPrefix || 'SamplerPlayer'}] Invalid non-finite value for note scheduling.`, {
+                    velocity,
+                    startTime,
+                    note
+                });
+                return; // Пропустить эту ноту
+            }
+
             gainNode.gain.setValueAtTime(velocity, startTime);
             
             source.start(startTime);
