@@ -141,6 +141,7 @@ export const DRUM_KITS: DrumKitLibrary = {
             crash: [],
             perc: ['drum_lowtom', 'drum_Sonor_Classix_Low_Tom']
         },
+        blues_melancholic_master: bluesMelancholicMaster,
         // --- НОВЫЕ КИТЫ ДЛЯ WINTER BLUES (ПЛАН 1587) ---
         winter_blues_prolog1: {
             kick: ['drum_kick_reso'],
