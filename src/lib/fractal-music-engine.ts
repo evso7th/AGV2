@@ -732,7 +732,7 @@ export class FractalMusicEngine {
     }
     
     let pianoEvents: FractalEvent[] = [];
-    if (navInfo.currentPart.layers.pianoAccompaniment) {
+    if (navInfo.currentPart.layers.pianoAccompaniment && this.epoch % 2 === 0) {
         const pianoAxiom = this.createPianoAccompaniment(currentChord, this.random);
         pianoEvents.push(...pianoAxiom);
     }
