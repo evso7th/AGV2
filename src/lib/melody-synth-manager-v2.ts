@@ -26,7 +26,7 @@ export class MelodySynthManagerV2 {
     private blackAcousticSampler: BlackGuitarSampler;
     private preamp: GainNode;
 
-    private activePresetName: keyof typeof V2_PRESETS | keyof typeof BASS_PRESETS = 'synth';
+    private activePresetName: keyof typeof V2_PRESETS | keyof typeof BASS_PRESETS | 'none' = 'synth';
 
     constructor(
         audioContext: AudioContext, 
@@ -44,8 +44,6 @@ export class MelodySynthManagerV2 {
         this.preamp = this.audioContext.createGain();
         this.preamp.gain.value = 1.0;
         this.preamp.connect(this.destination);
-
-        console.log(`[MelodySynthManagerV2] Constructor for ${this.partName}: Destination and preamp are set.`);
     }
 
     async init() {
@@ -57,7 +55,6 @@ export class MelodySynthManagerV2 {
 
         await this.loadInstrument(initialPreset, instrumentTypeForFactory);
         this.isInitialized = true;
-        console.log(`[MelodySynthManagerV2] Initialized for ${this.partName} with a persistent synth and samplers.`);
     }
     
     private async loadInstrument(presetName: keyof typeof V2_PRESETS | keyof typeof BASS_PRESETS, instrumentType: 'bass' | 'synth' | 'organ' | 'guitar' = 'synth') {
@@ -72,104 +69,98 @@ export class MelodySynthManagerV2 {
             return;
         }
         
-        console.log(`[MelodySynthManagerV2] Loading instrument for ${this.partName} of type ${instrumentType} with preset: ${presetName}`);
-
         try {
             this.synth = await buildMultiInstrument(this.audioContext, {
                 type: instrumentType,
                 preset: preset,
-                output: this.preamp // Connect to the manager's preamp
+                output: this.preamp
             });
             this.activePresetName = presetName;
-            console.log(`[MelodySynthManagerV2] Instrument loaded for ${this.partName} with preset: ${presetName}`);
         } catch (error) {
             console.error(`[MelodySynthManagerV2] Error loading synth for ${this.partName} with preset ${presetName}:`, error);
         }
     }
 
     public async schedule(events: FractalEvent[], barStartTime: number, tempo: number, instrumentHint?: string) {
+        const beatDuration = 60 / tempo;
+        const notesToPlay = events.filter(e => e.type === this.partName).map(e => ({ midi: e.note, time: e.time * beatDuration, duration: e.duration * beatDuration, velocity: e.weight, technique: e.technique, params: e.params }));
         
-        // #ЗАЧЕМ: Диагностический лог для отслеживания потока событий (План 1595).
-        const barCount = events.length > 0 ? (events[0].params as any)?.barCount || 'N/A' : 'N/A'; // Heuristic
-        console.log(`%c[MelodyManagerV2 @ Bar ${barCount}] Received schedule for ${this.partName}. Instrument Hint: ${instrumentHint}, Events: ${events.length}`, 'color: cyan;');
-
-        const logPrefix = this.partName === 'melody' ? `%cMelodyInstrumentLog:` : `%cBassInstrumentLog:`;
-        const logCss = this.partName === 'melody' ? 'color: #DA70D6' : 'color: #4169E1';
+        if (notesToPlay.length === 0) return;
 
         // --- SMART ROUTER (только для мелодии) ---
         if (this.partName === 'melody') {
             if (instrumentHint === 'blackAcoustic') {
-                console.log(`${logPrefix} [3. Router] Routing to BlackGuitarSampler`, logCss);
-                 const notesToPlay = events.filter(e => e.type === this.partName).map(e => ({ midi: e.note, time: e.time * (60/tempo), duration: e.duration * (60/tempo), velocity: e.weight, technique: e.technique, params: e.params }));
                 this.blackAcousticSampler.schedule(notesToPlay, barStartTime, tempo);
-                return; // Stop further execution
+                return;
             }
             if (instrumentHint === 'telecaster') {
-                console.log(`${logPrefix} [3. Router] Routing to TelecasterGuitarSampler`, logCss);
-                const notesToPlay = events.filter(e => e.type === this.partName).map(e => ({ midi: e.note, time: e.time * (60/tempo), duration: e.duration * (60/tempo), velocity: e.weight, technique: e.technique, params: e.params }));
                 this.telecasterSampler.schedule(notesToPlay, barStartTime, tempo);
                 return;
             }
         }
         
-        // --- SYNTH LOGIC (если не было маршрутизации на сэмплер) ---
-        console.log(`${logPrefix} [3. Router] Routing to internal V2 Synth`, logCss);
-        
+        // --- SYNTH LOGIC ---
         let finalInstrumentHint = instrumentHint;
         if (instrumentHint) {
             if (this.partName === 'bass') {
                 const mappedName = BASS_PRESET_MAP[instrumentHint as keyof typeof BASS_PRESET_MAP];
-                if (mappedName) {
-                    finalInstrumentHint = mappedName;
-                }
-            } else { // Мелодия
+                if (mappedName) finalInstrumentHint = mappedName;
+            } else {
                 const mappedName = V1_TO_V2_PRESET_MAP[instrumentHint as keyof typeof V1_TO_V2_PRESET_MAP];
-                if (mappedName) {
-                    finalInstrumentHint = mappedName;
-                }
+                if (mappedName) finalInstrumentHint = mappedName;
             }
+        } else {
+            finalInstrumentHint = this.activePresetName;
         }
 
-        if (finalInstrumentHint && finalInstrumentHint !== this.activePresetName) {
-            await this.setInstrument(finalInstrumentHint as any);
-        }
-        
-        if (!this.synth) {
-            console.warn(`[MelodySynthManagerV2] Schedule called for ${this.partName} but instrument is not loaded.`);
+        if (finalInstrumentHint === 'none') {
+            if (this.activePresetName !== 'none') await this.setInstrument('none');
             return;
         }
 
-        const beatDuration = 60 / tempo;
+        if (finalInstrumentHint !== this.activePresetName) {
+            await this.setInstrument(finalInstrumentHint as any);
+        }
         
-        events.forEach(event => {
-            if (event.type !== this.partName) return;
+        if (!this.synth) return;
+        
+        notesToPlay.forEach(note => {
+            const noteOnTime = barStartTime + note.time;
+            const noteOffTime = noteOnTime + note.duration;
             
-            const noteOnTime = barStartTime + (event.time * beatDuration);
-            if (!isFinite(event.duration) || event.duration <= 0) {
-                 console.error(`[MelodySynthManagerV2] Invalid duration for event for part ${this.partName}!`, JSON.parse(JSON.stringify(event)));
-                return;
+            if (isFinite(note.duration) && note.duration > 0) {
+                 this.synth.noteOn(note.midi, noteOnTime);
+                 this.synth.noteOff(note.midi, noteOffTime);
+            } else {
+                 console.error(`[MelodySynthManagerV2] Invalid duration for event for part ${this.partName}!`, JSON.parse(JSON.stringify(note)));
             }
-            const noteOffTime = noteOnTime + (event.duration * beatDuration);
-            
-            this.synth.noteOn(event.note, noteOnTime);
-            this.synth.noteOff(event.note, noteOffTime);
         });
     }
     
-    public async setInstrument(instrumentName: keyof typeof V2_PRESETS | keyof typeof BASS_PRESETS) {
+    public async setInstrument(instrumentName: keyof typeof V2_PRESETS | keyof typeof BASS_PRESETS | 'none') {
        if (instrumentName === this.activePresetName) return;
 
-       const isBassPreset = (instrumentName as string) in BASS_PRESETS;
-       const newPreset = isBassPreset
+       if (instrumentName === 'none') {
+            this.allNotesOff();
+            this.synth = null;
+            this.activePresetName = 'none';
+            console.log(`[MelodySynthManagerV2] for ${this.partName}: Instrument set to 'none'. Output silenced.`);
+            return;
+       }
+
+       const isBassPreset = this.partName === 'bass';
+       const preset = isBassPreset
            ? BASS_PRESETS[instrumentName as keyof typeof BASS_PRESETS]
            : V2_PRESETS[instrumentName as keyof typeof V2_PRESETS];
 
-       if (newPreset && this.synth?.setPreset) {
-           this.synth.setPreset(newPreset);
+       if (this.synth && this.synth.setPreset && preset) {
+           this.synth.setPreset(preset);
            this.activePresetName = instrumentName;
-           console.log(`[MelodySynthManagerV2] for ${this.partName} - Preset updated to: ${instrumentName}`);
+           console.log(`[MelodySynthManagerV2] for ${this.partName}: Preset updated to: ${instrumentName}`);
+       } else if (preset) {
+           await this.loadInstrument(instrumentName, isBassPreset ? 'bass' : (preset.type || 'synth'));
        } else {
-           console.error(`[MelodySynthManagerV2] Failed to set preset: ${instrumentName}. Preset or setPreset method not found.`);
+           console.error(`[MelodySynthManagerV2] Failed to set preset: ${instrumentName}. Preset not found.`);
        }
     }
 
@@ -185,14 +176,6 @@ export class MelodySynthManagerV2 {
         }
     }
 
-    public stop() {
-        this.allNotesOff();
-    }
-
-    public dispose() {
-        this.stop();
-        if (this.preamp) {
-            this.preamp.disconnect();
-        }
-    }
+    public stop() { this.allNotesOff(); }
+    public dispose() { this.stop(); if (this.preamp) { this.preamp.disconnect(); } }
 }
