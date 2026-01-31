@@ -18,7 +18,7 @@ export type AuraGrooveProps = {
   drumSettings: DrumSettings;
   setDrumSettings: (settings: React.SetStateAction<DrumSettings>) => void;
   instrumentSettings: InstrumentSettings;
-  setInstrumentSettings: (part: keyof InstrumentSettings, name: BassInstrument | MelodyInstrument | AccompanimentInstrument | keyof typeof V2_PRESETS) => void;
+  setInstrumentSettings: (part: keyof InstrumentSettings, name: BassInstrument | MelodyInstrument | AccompanimentInstrument | 'piano' | 'pianoAccompaniment' | 'none') => void;
   handleBassTechniqueChange: (technique: BassTechnique) => void;
   handleVolumeChange: (part: InstrumentPart, value: number) => void;
   textureSettings: Omit<TextureSettings, 'pads'>;
@@ -84,6 +84,7 @@ export const useAuraGroove = (): AuraGrooveProps => {
     melody: { name: "ambientPad", volume: 0.5 },
     accompaniment: { name: "synth", volume: 0.35 },
     harmony: { name: "guitarChords", volume: 0.25 },
+    pianoAccompaniment: { name: "piano", volume: 0.65 },
   });
   const [textureSettings, setTextureSettings] = useState<TextureSettings>({
       sparkles: { enabled: true, volume: 0.35 },
@@ -246,8 +247,7 @@ export const useAuraGroove = (): AuraGrooveProps => {
         resetWorker();
     }, [resetWorker]);
 
-  const handleInstrumentChange = (part: keyof InstrumentSettings, name: BassInstrument | MelodyInstrument | AccompanimentInstrument | keyof typeof V2_PRESETS) => {
-    
+  const handleInstrumentChange = (part: keyof InstrumentSettings, name: BassInstrument | MelodyInstrument | AccompanimentInstrument | 'piano' | 'pianoAccompaniment' | 'none') => {
     let newInstrumentName = name;
     
     setInstrumentSettings(prev => ({
@@ -255,7 +255,7 @@ export const useAuraGroove = (): AuraGrooveProps => {
         [part]: { ...prev[part], name: newInstrumentName }
     }));
     
-    setInstrument(part, newInstrumentName as any);
+    setInstrument(part as any, newInstrumentName as any);
   };
   
   const handleBassTechniqueChange = (technique: BassTechnique) => {
@@ -267,7 +267,7 @@ export const useAuraGroove = (): AuraGrooveProps => {
   };
 
   const handleVolumeChange = (part: InstrumentPart, value: number) => {
-    if (part === 'bass' || part === 'melody' || part === 'accompaniment' || part === 'harmony' || part === 'piano' || part === 'violin' || part === 'flute' || part === 'guitarChords' || part === 'acousticGuitarSolo' || part === 'electricGuitar' || part === 'telecaster' || part === 'blackAcoustic') {
+    if (['bass', 'melody', 'accompaniment', 'harmony', 'pianoAccompaniment', 'piano', 'violin', 'flute', 'guitarChords', 'acousticGuitarSolo', 'electricGuitar', 'telecaster', 'blackAcoustic'].includes(part)) {
       setInstrumentSettings(prev => ({ ...prev, [part]: { ...prev[part as keyof typeof prev], volume: value }}));
       setVolume(part, value);
     } else if (part === 'drums') {

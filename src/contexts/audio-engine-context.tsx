@@ -24,6 +24,7 @@ import * as Tone from 'tone';
 import { MelodySynthManagerV2 } from '@/lib/melody-synth-manager-v2';
 import { V2_PRESETS } from '@/lib/presets-v2';
 import { HarmonySynthManager } from '@/lib/harmony-synth-manager';
+import { PianoAccompanimentManager } from '@/lib/piano-accompaniment-manager';
 import { buildMultiInstrument } from '@/lib/instrument-factory';
 
 export function noteToMidi(note: string): number {
@@ -51,6 +52,7 @@ const VOICE_BALANCE: Record<InstrumentPart, number> = {
   effects: 0.6, sparkles: 0.7, piano: 1.0, violin: 0.8, flute: 0.8, guitarChords: 0.9,
   acousticGuitarSolo: 0.9, blackAcoustic: 0.9, sfx: 0.8, harmony: 0.8,
   telecaster: 0.9,
+  pianoAccompaniment: 0.7,
 };
 
 const EQ_FREQUENCIES = [60, 125, 250, 500, 1000, 2000, 4000];
@@ -66,7 +68,7 @@ interface AudioEngineContextType {
   updateSettings: (settings: Partial<WorkerSettings>) => void;
   resetWorker: () => void;
   setVolume: (part: InstrumentPart, volume: number) => void;
-  setInstrument: (part: 'bass' | 'melody' | 'accompaniment' | 'harmony', name: BassInstrument | MelodyInstrument | AccompanimentInstrument | keyof typeof V2_PRESETS) => void;
+  setInstrument: (part: 'bass' | 'melody' | 'accompaniment' | 'harmony' | 'pianoAccompaniment', name: BassInstrument | MelodyInstrument | AccompanimentInstrument | 'piano' | 'guitarChords' | 'violin' | 'flute' | 'none') => void;
   setBassTechnique: (technique: BassTechnique) => void;
   setTextureSettings: (settings: Omit<TextureSettings, 'pads' | 'sfx'>) => void;
   setEQGain: (bandIndex: number, gain: number) => void;
@@ -104,6 +106,7 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
   const melodyManagerV2Ref = useRef<MelodySynthManagerV2 | null>(null);
   const bassManagerV2Ref = useRef<MelodySynthManagerV2 | null>(null);
   const harmonyManagerRef = useRef<HarmonySynthManager | null>(null);
+  const pianoAccompanimentManagerRef = useRef<PianoAccompanimentManager | null>(null);
   const sparklePlayerRef = useRef<SparklePlayer | null>(null);
   const sfxSynthManagerRef = useRef<SfxSynthManager | null>(null);
   const blackGuitarSamplerRef = useRef<BlackGuitarSampler | null>(null);
@@ -111,7 +114,7 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
   
   const masterGainNodeRef = useRef<GainNode | null>(null);
   const gainNodesRef = useRef<Record<Exclude<InstrumentPart, 'pads' | 'effects'>, GainNode | null>>({
-    bass: null, melody: null, accompaniment: null, drums: null, sparkles: null, piano: null, violin: null, flute: null, guitarChords: null, acousticGuitarSolo: null, blackAcoustic: null, sfx: null, harmony: null, telecaster: null,
+    bass: null, melody: null, accompaniment: null, drums: null, sparkles: null, piano: null, violin: null, flute: null, guitarChords: null, acousticGuitarSolo: null, blackAcoustic: null, sfx: null, harmony: null, telecaster: null, pianoAccompaniment: null,
   });
 
   const eqNodesRef = useRef<BiquadFilterNode[]>([]);
@@ -155,7 +158,7 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
   }, [updateSettingsCallback]);
 
 
-  const setInstrumentCallback = useCallback(async (part: 'bass' | 'melody' | 'accompaniment' | 'harmony', name: BassInstrument | MelodyInstrument | AccompanimentInstrument | 'piano' | 'guitarChords' | 'violin' | 'flute' | 'none') => {
+  const setInstrumentCallback = useCallback(async (part: 'bass' | 'melody' | 'accompaniment' | 'harmony' | 'pianoAccompaniment', name: BassInstrument | MelodyInstrument | AccompanimentInstrument | 'piano' | 'guitarChords' | 'violin' | 'flute' | 'none') => {
     if (!isInitialized) return;
     if (part === 'accompaniment') {
       if(useMelodyV2 && accompanimentManagerV2Ref.current) {
@@ -176,6 +179,8 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
         }
     } else if (part === 'harmony' && harmonyManagerRef.current) {
         harmonyManagerRef.current.setInstrument(name as 'piano' | 'guitarChords' | 'violin' | 'flute' | 'none');
+    } else if (part === 'pianoAccompaniment' && pianoAccompanimentManagerRef.current) {
+        // This part has a fixed instrument, but we could change its properties here in the future
     }
   }, [isInitialized, useMelodyV2]);
 
@@ -192,6 +197,7 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
     const accompanimentEvents: FractalEvent[] = [];
     const melodyEvents: FractalEvent[] = [];
     const harmonyEvents: FractalEvent[] = [];
+    const pianoEvents: FractalEvent[] = [];
     const sfxEvents: FractalEvent[] = [];
 
     for (const event of events) {
@@ -207,6 +213,8 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
         melodyEvents.push(event);
       } else if (eventType === 'harmony') {
         harmonyEvents.push(event);
+      } else if (eventType === 'pianoAccompaniment') {
+        pianoEvents.push(event);
       } else if (eventType === 'sfx') {
         sfxEvents.push(event);
       }
@@ -250,6 +258,10 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
 
     if (harmonyManagerRef.current && harmonyEvents.length > 0) {
       harmonyManagerRef.current.schedule(harmonyEvents, barStartTime, tempo, instrumentHints?.harmony);
+    }
+
+    if (pianoAccompanimentManagerRef.current && pianoEvents.length > 0) {
+        pianoAccompanimentManagerRef.current.schedule(pianoEvents, barStartTime);
     }
 
     if (sfxSynthManagerRef.current && sfxEvents.length > 0) {
@@ -332,7 +344,7 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
         }
 
         if (!gainNodesRef.current.bass) {
-            const parts: Exclude<InstrumentPart, 'pads' | 'effects'>[] = ['bass', 'melody', 'accompaniment', 'drums', 'sparkles', 'piano', 'violin', 'flute', 'guitarChords', 'acousticGuitarSolo', 'blackAcoustic', 'sfx', 'harmony', 'telecaster'];
+            const parts: Exclude<InstrumentPart, 'pads' | 'effects'>[] = ['bass', 'melody', 'accompaniment', 'drums', 'sparkles', 'piano', 'violin', 'flute', 'guitarChords', 'acousticGuitarSolo', 'blackAcoustic', 'sfx', 'harmony', 'telecaster', 'pianoAccompaniment'];
             parts.forEach(part => {
                 gainNodesRef.current[part] = context.createGain();
                 gainNodesRef.current[part]!.connect(masterGainNodeRef.current!);
@@ -426,6 +438,11 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
             initPromises.push(harmonyManagerRef.current.init());
         }
         
+        if(!pianoAccompanimentManagerRef.current) {
+            pianoAccompanimentManagerRef.current = new PianoAccompanimentManager(context, gainNodesRef.current.pianoAccompaniment!);
+            initPromises.push(pianoAccompanimentManagerRef.current.init());
+        }
+        
         if (!sparklePlayerRef.current) {
             sparklePlayerRef.current = new SparklePlayer(context, gainNodesRef.current.sparkles!);
             initPromises.push(sparklePlayerRef.current.init());
@@ -478,6 +495,7 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
     melodyManagerV2Ref.current?.allNotesOff();
     bassManagerV2Ref.current?.allNotesOff();
     harmonyManagerRef.current?.allNotesOff();
+    pianoAccompanimentManagerRef.current?.allNotesOff();
     sparklePlayerRef.current?.stopAll();
     sfxSynthManagerRef.current?.allNotesOff();
     blackGuitarSamplerRef.current?.stopAll();

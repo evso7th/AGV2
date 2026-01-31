@@ -275,6 +275,7 @@ export function AuraGrooveV2({
                   <CardContent className="space-y-1.5 p-3 pt-0">
                       {(Object.keys(instrumentSettings) as Array<keyof typeof instrumentSettings>).map((part) => {
                           const settings = instrumentSettings[part];
+                          if (!settings) return null;
                           let instrumentList: (string | 'none')[] = [];
                            if (part === 'bass') {
                               instrumentList = bassInstrumentList;
@@ -284,23 +285,32 @@ export function AuraGrooveV2({
                               instrumentList = textureInstrumentList;
                           } else if (part === 'harmony') {
                               instrumentList = harmonyInstrumentList;
+                          } else if (part === 'pianoAccompaniment') {
+                              instrumentList = ['piano'];
                           }
                           const isDisabled = isInitializing || isPlaying || composerControl;
 
                           return (
                             <div key={part} className="p-2 border rounded-md space-y-2">
                                <div className="grid grid-cols-2 items-center gap-2">
-                                    <Label className="font-semibold flex items-center gap-1.5 capitalize text-xs"><Waves className="h-4 w-4"/>{part}</Label>
-                                    <Select value={settings.name} onValueChange={(v) => setInstrumentSettings(part as any, v as any)} disabled={isDisabled}>
-                                        <SelectTrigger className="h-8 text-xs"><SelectValue /></SelectTrigger>
-                                        <SelectContent>
-                                            {instrumentList.map(inst => {
-                                                const preset = (V2_PRESETS as any)[inst] || (SYNTH_PRESETS as any)[inst];
-                                                const displayName = preset?.name || displayNames[inst] || inst.charAt(0).toUpperCase() + inst.slice(1).replace(/([A-Z])/g, ' $1');
-                                                return <SelectItem key={inst} value={inst} className="text-xs">{displayName}</SelectItem>
-                                            })}
-                                        </SelectContent>
-                                    </Select>
+                                    <Label className="font-semibold flex items-center gap-1.5 capitalize text-xs">
+                                        {part === 'pianoAccompaniment' ? <Piano className="h-4 w-4"/> : <Waves className="h-4 w-4"/>}
+                                        {part === 'pianoAccompaniment' ? 'Piano' : part}
+                                    </Label>
+                                    {part !== 'pianoAccompaniment' ? (
+                                        <Select value={settings.name} onValueChange={(v) => setInstrumentSettings(part as any, v as any)} disabled={isDisabled}>
+                                            <SelectTrigger className="h-8 text-xs"><SelectValue /></SelectTrigger>
+                                            <SelectContent>
+                                                {instrumentList.map(inst => {
+                                                    const preset = (V2_PRESETS as any)[inst] || (SYNTH_PRESETS as any)[inst];
+                                                    const displayName = preset?.name || displayNames[inst] || inst.charAt(0).toUpperCase() + inst.slice(1).replace(/([A-Z])/g, ' $1');
+                                                    return <SelectItem key={inst} value={inst} className="text-xs">{displayName}</SelectItem>
+                                                })}
+                                            </SelectContent>
+                                        </Select>
+                                    ) : (
+                                        <div className="h-8 text-xs flex items-center justify-end pr-2 text-muted-foreground">Fixed</div>
+                                    )}
                                 </div>
                                  {part === 'bass' && 'technique' in settings && (settings.name as BassInstrument | 'none') !== 'none' && !useMelodyV2 && (
                                     <div className="grid grid-cols-2 items-center gap-2">
@@ -319,7 +329,7 @@ export function AuraGrooveV2({
                                 )}
                                  <div className="flex items-center gap-2">
                                     <Label className="text-xs text-muted-foreground"><Speaker className="h-3 w-3 inline-block mr-1"/>Volume</Label>
-                                    <Slider value={[settings.volume]} max={1} step={0.05} onValueChange={(v) => handleVolumeChange(part as any, v[0])} disabled={isInitializing || settings.name === 'none'}/>
+                                    <Slider value={[settings.volume]} max={1} step={0.05} onValueChange={(v) => handleVolumeChange(part as any, v[0])} disabled={isInitializing || ('name' in settings && settings.name === 'none')}/>
                                     <span className="text-xs w-8 text-right font-mono">{Math.round(settings.volume * 100)}</span>
                                 </div>
                             </div>
@@ -388,5 +398,3 @@ export function AuraGrooveV2({
     </div>
   );
 }
-
-    
