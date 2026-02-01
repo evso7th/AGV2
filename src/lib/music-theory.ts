@@ -1,5 +1,4 @@
 
-
 import type { FractalEvent, Mood, Genre, Technique, BassSynthParams, InstrumentType, MelodyInstrument, AccompanimentInstrument, ResonanceMatrix, InstrumentHints, AccompanimentTechnique, GhostChord, SfxRule, V1MelodyInstrument, V2MelodyInstrument, BlueprintPart, InstrumentationRules, InstrumentBehaviorRules, BluesMelody, InstrumentPart, DrumKit, BluesGuitarRiff, BluesSoloPhrase, BluesRiffDegree, SuiteDNA, RhythmicFeel, BassStyle, DrumStyle, HarmonicCenter } from './fractal';
 import { ElectronicK, TraditionalK, AmbientK, MelancholicMinorK } from './resonance-matrices';
 import { BlueprintNavigator, type NavigationInfo } from './blueprint-navigator';
@@ -113,11 +112,6 @@ export function generateSuiteDNA(totalBars: number, mood: Mood, seed: number, ra
             if (isLastPart) {
                 partDuration = totalBars - accumulatedBars;
             } else {
-                // #ИСПРАВЛЕНО (ПЛАН 1682): Исправлен расчет длительности.
-                // #ЗАЧЕМ: Гарантирует, что и 'Navigator', и 'Composer' используют
-                //         абсолютно одинаковую логику расчета, предотвращая рассинхронизацию.
-                // #ЧТО: Заменено деление на 100 на деление на `totalPercent`, что делает
-                //       расчет пропорциональным и устойчивым к ошибкам в блюпринтах.
                 const proportion = part.duration.percent / totalPercent;
                 partDuration = Math.round(proportion * totalBars);
             }
@@ -341,3 +335,84 @@ function mutateBluesAccompaniment(phrase: FractalEvent[], chord: GhostChord, ran
 function mutateBluesMelody(phrase: BluesSoloPhrase, chord: GhostChord, random: { next: () => number; nextInt: (max: number) => number; }): BluesSoloPhrase { return []; }
 function createBluesOrganLick(chord: GhostChord, random: { next: () => number; nextInt: (max: number) => number; }): FractalEvent[] { return []; }
 function generateIntroSequence(currentBar: number, introRules: any, harmonyTrack: GhostChord[], settings: any, random: any): { events: FractalEvent[], instrumentHints: InstrumentHints } { return { events: [], instrumentHints: {} }; }
+
+// --- MELODY MUTATION FUNCTIONS (PLAN 1712) ---
+
+/**
+ * Transposes a melody by a given interval in semitones.
+ */
+export function transposeMelody(phrase: BluesSoloPhrase, interval: number): BluesSoloPhrase {
+    if (!phrase) return [];
+    return phrase.map(note => ({
+        ...note,
+        note: (note.note || 0) + interval
+    }));
+}
+
+/**
+ * Inverts a melody around its first note.
+ */
+export function invertMelody(phrase: BluesSoloPhrase): BluesSoloPhrase {
+    if (!phrase || phrase.length === 0) return [];
+    const firstNote = phrase[0].note || 60;
+    return phrase.map(note => ({
+        ...note,
+        note: firstNote - ((note.note || 60) - firstNote)
+    }));
+}
+
+/**
+ * Varies the rhythm of a melody slightly.
+ */
+export function varyRhythm(phrase: BluesSoloPhrase, random: { next: () => number }): BluesSoloPhrase {
+    const newPhrase: BluesSoloPhrase = JSON.parse(JSON.stringify(phrase));
+    if (newPhrase.length < 2) return newPhrase;
+
+    // 50% chance to modify rhythm
+    if (random.next() < 0.5) {
+        const i = Math.floor(random.next() * (newPhrase.length - 1));
+        const note1 = newPhrase[i];
+        const note2 = newPhrase[i + 1];
+
+        // Try to merge two short notes into one longer one
+        if (note1.d < 4 && note2.d < 4) {
+            note1.d += note2.d;
+            newPhrase.splice(i + 1, 1);
+        }
+        // Or split a long note into two shorter ones
+        else if (note1.d > 3) {
+            const splitPoint = Math.floor(note1.d / 2);
+            note1.d = splitPoint;
+            newPhrase.splice(i + 1, 0, {
+                ...note1,
+                t: note1.t + splitPoint,
+                d: note1.d - splitPoint,
+                // deg must be present, copy from note1
+                deg: note1.deg,
+            });
+        }
+    }
+    return newPhrase;
+}
+
+/**
+ * Adds simple ornaments (grace notes) to a melody.
+ */
+export function addOrnaments(phrase: BluesSoloPhrase, random: { next: () => number }): BluesSoloPhrase {
+    if (!phrase) return [];
+    return phrase.map(note => {
+        // 20% chance to add a grace note before the main note
+        if (random.next() < 0.2) {
+            const graceNote: BluesSoloPhrase[0] = {
+                t: note.t,
+                d: 1, // very short
+                deg: note.deg, // This should be calculated or derived if needed, for now just copy
+                tech: 'gr' // grace note technique
+            };
+            note.t += 1; // Shift original note
+            if (note.d > 1) note.d -= 1;
+            return [graceNote, note];
+        }
+        return [note];
+    }).flat();
+}

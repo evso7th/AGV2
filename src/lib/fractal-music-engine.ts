@@ -1,5 +1,4 @@
 
-
 import type { FractalEvent, Mood, Genre, Technique, BassSynthParams, InstrumentType, MelodyInstrument, AccompanimentInstrument, ResonanceMatrix, InstrumentHints, AccompanimentTechnique, GhostChord, SfxRule, V1MelodyInstrument, V2MelodyInstrument, BlueprintPart, InstrumentationRules, InstrumentBehaviorRules, BluesMelody, InstrumentPart, DrumKit, BluesGuitarRiff, BluesSoloPhrase, BluesRiffDegree, SuiteDNA, RhythmicFeel, BassStyle, DrumStyle, HarmonicCenter } from './fractal';
 import { ElectronicK, TraditionalK, AmbientK, MelancholicMinorK } from './resonance-matrices';
 import { BlueprintNavigator, type NavigationInfo } from './blueprint-navigator';
@@ -16,7 +15,26 @@ import { BLUES_SOLO_LICKS, BLUES_SOLO_PLANS } from './assets/blues_guitar_solo';
 import { BLUES_DRUM_RIFFS } from './assets/blues-drum-riffs';
 import { DRUM_KITS } from './assets/drum-kits';
 
-import { getScaleForMood, generateSuiteDNA, createDrumAxiom, createHarmonyAxiom, createAmbientMelodyMotif, mutateBassPhrase, createBassFill, createDrumFill, chooseHarmonyInstrument, DEGREE_TO_SEMITONE, mutateBluesAccompaniment, mutateBluesMelody, createBluesOrganLick, generateIntroSequence, createAmbientBassAxiom } from './music-theory';
+import { 
+    getScaleForMood, 
+    generateSuiteDNA, 
+    createDrumAxiom, 
+    createHarmonyAxiom, 
+    createAmbientMelodyMotif, 
+    mutateBassPhrase, 
+    createBassFill, 
+    createDrumFill, 
+    chooseHarmonyInstrument, 
+    mutateBluesAccompaniment, 
+    mutateBluesMelody, 
+    createBluesOrganLick, 
+    generateIntroSequence, 
+    createAmbientBassAxiom,
+    transposeMelody,
+    invertMelody,
+    varyRhythm,
+    addOrnaments
+} from './music-theory';
 
 
 export type Branch = {
@@ -457,14 +475,14 @@ export class FractalMusicEngine {
       const barInChorus = epoch % 12;
       const isNewChorus = barInChorus === 0;
 
-      // #ЗАЧЕМ: Управляет генерацией и кэшированием полного 12-тактового соло.
-      // #ЧТО: Если это начало нового блюзового квадрата (12 тактов) или кэш пуст,
-      //      генерируется новая полная последовательность мелодических фраз на 12 тактов вперед.
-      // #СВЯЗИ: Является ядром "Композитора Хорусов".
       if (isNewChorus || this.cachedMelodyChorus.bar === -1) {
           this.cachedMelodyChorus.events = [];
-          this.cachedMelodyChorus.bar = epoch - barInChorus; // Align to the start of the chorus
-          let fullChorusLog = `[BluesComposer @ Bar ${this.cachedMelodyChorus.bar}] New 12-bar chorus: `;
+          this.cachedMelodyChorus.bar = epoch - barInChorus;
+          const soloPlanId = this.suiteDNA?.soloPlanMap.get(partId) || 'S01';
+          const soloPlan = BLUES_SOLO_PLANS[soloPlanId];
+          const chorusPlan = soloPlan.choruses[Math.floor((epoch / 12)) % soloPlan.choruses.length];
+  
+          let fullChorusLog = `[BluesComposer @ Bar ${this.cachedMelodyChorus.bar}] New 12-bar chorus (Plan: ${soloPlanId}): `;
   
           for (let bar = 0; bar < 12; bar++) {
               const barTimestamp = this.cachedMelodyChorus.bar + bar;
@@ -475,52 +493,60 @@ export class FractalMusicEngine {
   
               const allLickIds = Object.keys(BLUES_SOLO_LICKS);
   
-              // 1. Фильтр по тональности
               let licksByChordType = allLickIds.filter(id => {
                   const tags = BLUES_SOLO_LICKS[id as keyof typeof BLUES_SOLO_LICKS].tags;
                   return isMinorChord ? tags.includes('minor') : tags.includes('major');
               });
-  
-              // 2. Семантический фильтр по настроению (исключающий)
+
+              // #ЗАЧЕМ: Улучшенная, двухступенчатая фильтрация для эмоциональной осмысленности.
+              // #ЧТО: Сначала выбираются фразы по тональности (мажор/минор), а затем из этого списка
+              //      ИСКЛЮЧАЮТСЯ те, что не подходят по настроению.
+              // #СВЯЗИ: Реализует **План 1705.2**.
               const darkMoods = ['melancholic', 'dark', 'gloomy', 'anxious'];
               const joyfulMoods = ['joyful', 'enthusiastic', 'epic'];
-              const forbiddenTags = new Set<string>();
+              let forbiddenTags = new Set<string>();
 
               if (darkMoods.includes(currentMood)) {
-                  forbiddenTags.add('boogie');
-                  forbiddenTags.add('uptempo');
-                  forbiddenTags.add('fast-run');
+                  forbiddenTags.add('boogie').add('uptempo').add('fast-run');
               } else if (joyfulMoods.includes(currentMood)) {
-                  forbiddenTags.add('cry');
-                  forbiddenTags.add('slow-bend');
-                  forbiddenTags.add('drone');
-              }
-
-              let moodFilteredLicks = licksByChordType;
-              if (forbiddenTags.size > 0) {
-                   moodFilteredLicks = licksByChordType.filter(id => {
-                      const tags = BLUES_SOLO_LICKS[id as keyof typeof BLUES_SOLO_LICKS].tags;
-                      return !tags.some(tag => forbiddenTags.has(tag));
-                  });
+                  forbiddenTags.add('cry').add('slow-bend').add('drone');
               }
               
-              // 3. Фильтр для избежания повторений
+              const moodFilteredLicks = licksByChordType.filter(id => {
+                  const tags = BLUES_SOLO_LICKS[id as keyof typeof BLUES_SOLO_LICKS].tags;
+                  return !tags.some(tag => forbiddenTags.has(tag));
+              });
+
               let finalLicks = moodFilteredLicks.filter(id => !this.melodyHistory.slice(-5).includes(id));
   
               if (finalLicks.length === 0) {
                   finalLicks = moodFilteredLicks.length > 0 ? moodFilteredLicks : licksByChordType;
               }
               
-              const lickId = finalLicks.length > 0 ? finalLicks[random.nextInt(finalLicks.length)] : allLickIds[0];
+              const planLickId = chorusPlan[bar];
+              const [baseLickId] = planLickId.split('+');
+              const chosenLickId = finalLicks.includes(baseLickId) ? baseLickId : (finalLicks.length > 0 ? finalLicks[random.nextInt(finalLicks.length)] : licksByChordType[0]);
               
-              if (lickId) {
+              const [lickId, ...modifiers] = (finalLicks.includes(baseLickId) ? planLickId : chosenLickId).split('+');
+              const lickData = BLUES_SOLO_LICKS[lickId as keyof typeof BLUES_SOLO_LICKS];
+
+              if (lickData) {
+                  let phrase: BluesSoloPhrase = JSON.parse(JSON.stringify(lickData.phrase));
+                  
+                  // #ЗАЧЕМ: Внедрение мутаций для создания "живой" импровизации.
+                  // #ЧТО: Применяет функции-мутаторы в зависимости от модификаторов в плане соло.
+                  // #СВЯЗИ: Реализует **План 1712**.
+                  if (modifiers.includes('var')) phrase = varyRhythm(phrase, this.random);
+                  if (modifiers.includes('oct')) phrase = transposeMelody(phrase, 12);
+                  if (modifiers.includes('hi')) phrase = transposeMelody(phrase, 5);
+                  if (this.random.next() < 0.25) phrase = addOrnaments(phrase, this.random);
+
                   this.melodyHistory.push(lickId);
                   if (this.melodyHistory.length > 6) this.melodyHistory.shift();
   
-                  const lickTemplate = BLUES_SOLO_LICKS[lickId as keyof typeof BLUES_SOLO_LICKS].phrase;
                   let octaveShift = 12 * (registerHint === 'high' ? 4 : (registerHint === 'low' ? 2 : 3));
   
-                  for (const noteTemplate of lickTemplate) {
+                  for (const noteTemplate of phrase) {
                       let finalMidiNote = chordForThisBar.rootNote + (DEGREE_TO_SEMITONE[noteTemplate.deg] || 0) + octaveShift;
                       if (finalMidiNote > 88) finalMidiNote -= 12;
                       if (finalMidiNote < 55) finalMidiNote += 12;
@@ -532,7 +558,7 @@ export class FractalMusicEngine {
                           duration: ((noteTemplate.d || 2) / 3),
                           weight: 0.9 + (random.next() * 0.1),
                           technique: (noteTemplate.tech || 'pick') as Technique,
-                          dynamics: 'mf', phrasing: 'legato', params: {}
+                          dynamics: 'mf', phrasing: 'legato', params: {note: finalMidiNote}
                       });
                   }
                   fullChorusLog += `${lickId}, `;
@@ -724,7 +750,10 @@ export class FractalMusicEngine {
     if (navInfo.currentPart.layers.accompaniment) {
         const accompRules = navInfo.currentPart.instrumentRules?.accompaniment;
         const registerHint = accompRules?.register?.preferred;
-        const technique = (accompRules?.techniques?.[0]?.value || 'long-chords') as AccompanimentTechnique;
+        // #ИСПРАВЛЕНО (ПЛАН 1705.1): Жестко задана техника для блюза.
+        const technique = this.config.genre === 'blues' 
+            ? 'long-chords' 
+            : (accompRules?.techniques?.[0]?.value || 'long-chords') as AccompanimentTechnique;
         accompEvents = this.createAccompanimentAxiom(currentChord, this.config.mood, this.config.genre, this.random, this.config.tempo, registerHint, technique);
     }
     
@@ -814,13 +843,6 @@ export class FractalMusicEngine {
     const axiom: FractalEvent[] = [];
     const rootMidi = chord.rootNote;
     
-    // #ЗАЧЕМ: Установлена жесткая техника для блюза, чтобы гарантировать хоровое звучание.
-    // #ЧТО: Если жанр - 'blues', техника принудительно устанавливается в 'long-chords'.
-    // #СВЯЗИ: Является реализацией Плана 1705, исправляя "провал" аккомпанемента.
-    if (genre === 'blues') {
-        technique = 'long-chords';
-    }
-
     let chordNotes: number[] = [];
     if (chord.chordType === 'dominant') {
         chordNotes = [rootMidi, rootMidi + 4, rootMidi + 7, rootMidi + 10];
