@@ -192,10 +192,26 @@ export function generateSuiteDNA(totalBars: number, mood: Mood, seed: number, ra
     console.log(`[DNA] Solo plan map created for ${soloPlanMap.size} parts.`);
     soloPlanMap.forEach((plan, partId) => console.log(`  - Part '${partId}' -> Solo Plan '${plan}'`));
     
-    console.log("[DNA] Harmony Skeleton (root notes):");
+    // Helper to convert MIDI to chord name for logging
+    const midiToChordName = (rootNote: number, chordType: 'major' | 'minor' | 'diminished' | 'dominant'): string => {
+        const noteNames = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B'];
+        const rootName = noteNames[rootNote % 12];
+        switch (chordType) {
+            case 'minor': return `${rootName}m`;
+            case 'diminished': return `${rootName}dim`;
+            case 'dominant': return `${rootName}7`;
+            case 'major':
+            default:
+                return rootName;
+        }
+    };
+    
+    console.log("--- HARMONY SKELETON ---");
     harmonyTrack.forEach(chord => {
-        console.log(chord.rootNote);
+        console.log(midiToChordName(chord.rootNote, chord.chordType));
     });
+    console.log("------------------------");
+
 
     return { harmonyTrack, baseTempo, rhythmicFeel, bassStyle, drumStyle, soloPlanMap };
 }
