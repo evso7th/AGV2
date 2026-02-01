@@ -113,16 +113,20 @@ export function generateSuiteDNA(totalBars: number, mood: Mood, seed: number, ra
             if (isLastPart) {
                 partDuration = totalBars - accumulatedBars;
             } else {
-                partDuration = Math.round((part.duration.percent / 100) * totalBars);
+                // #ИСПРАВЛЕНО (ПЛАН 1682): Исправлен расчет длительности.
+                // #ЗАЧЕМ: Гарантирует, что и 'Navigator', и 'Composer' используют
+                //         абсолютно одинаковую логику расчета, предотвращая рассинхронизацию.
+                // #ЧТО: Заменено деление на 100 на деление на `totalPercent`, что делает
+                //       расчет пропорциональным и устойчивым к ошибкам в блюпринтах.
+                const proportion = part.duration.percent / totalPercent;
+                partDuration = Math.round(proportion * totalBars);
             }
             
             const partStartBar = accumulatedBars;
-            const partEndBar = partStartBar + partDuration;
-
+            
             if (partDuration <= 0) return;
 
             if (genre === 'blues') {
-                // --- MARKOV CHAIN LOGIC FOR BLUES ---
                 const progressionMap = {
                     i:  [{ to: 'iv', w: 0.6 }, { to: 'v', w: 0.2 }, { to: 'bVI', w: 0.2 }],
                     iv: [{ to: 'i', w: 0.7 }, { to: 'v', w: 0.3 }],
@@ -158,7 +162,6 @@ export function generateSuiteDNA(totalBars: number, mood: Mood, seed: number, ra
                     });
                     currentBarInPart += finalDuration;
 
-                    // Choose next degree
                     const transitions = progressionMap[currentDegree as keyof typeof progressionMap];
                     const totalWeight = transitions.reduce((s, t) => s + t.w, 0);
                     let r = random.next() * totalWeight;
@@ -194,7 +197,6 @@ export function generateSuiteDNA(totalBars: number, mood: Mood, seed: number, ra
         }
     }
 
-
     const possibleTempos = {
         joyful: [76, 90], enthusiastic: [82, 98], contemplative: [68, 76],
         dreamy: [64, 72], calm: [60, 70], melancholic: [60, 68],
@@ -228,20 +230,11 @@ export function generateSuiteDNA(totalBars: number, mood: Mood, seed: number, ra
     soloPlanMap.forEach((plan, partId) => console.log(`  - Part '${partId}' -> Solo Plan '${plan}'`));
     
     // --- FORMATTED TABLE LOG ---
-    const tableHeader = `| Bar   | Chord      | Duration |`;
-    const separator = `+-------+------------+----------+`;
-    console.log(`\n--- HARMONY SKELETON (SEED: ${seed}) ---`);
-    console.log(separator);
-    console.log(tableHeader);
-    console.log(separator);
+    console.log(`\n--- [DNA] Harmony Skeleton (root notes) ---`);
     harmonyTrack.forEach(chord => {
-        const barStr = `${chord.bar}`.padEnd(5);
-        const chordStr = midiToChordName(chord.rootNote, chord.chordType).padEnd(10);
-        const durStr = `${chord.durationBars} bars`.padEnd(8);
-        console.log(`| ${barStr} | ${chordStr} | ${durStr} |`);
+        console.log(chord.rootNote);
     });
-    console.log(separator + "\n");
-
+    console.log(`--- End of Skeleton ---\n`);
 
     return { harmonyTrack, baseTempo, rhythmicFeel, bassStyle, drumStyle, soloPlanMap };
 }
