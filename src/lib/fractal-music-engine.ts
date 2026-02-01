@@ -466,40 +466,45 @@ export class FractalMusicEngine {
                 const isMinorChord = chordForThisBar.chordType.includes('minor');
                 const currentMood = this.config.mood;
     
-                // 1. Get all available lick IDs.
                 const allLickIds = Object.keys(BLUES_SOLO_LICKS);
     
-                // 2. Filter by major/minor chord type.
                 let licksByChordType = allLickIds.filter(id => {
                     const tags = BLUES_SOLO_LICKS[id as keyof typeof BLUES_SOLO_LICKS].tags;
                     return isMinorChord ? tags.includes('minor') : tags.includes('major');
                 });
     
-                // 3. Apply mood-based EXCLUSION filter.
+                // #ЗАЧЕМ: Усиление семантического фильтра для мелодий.
+                // #ЧТО: Внедряет исключающую логику. Для "грустных" настроений активно
+                //      отбраковываются "веселые" теги, и наоборот.
+                // #СВЯЗИ: Является реализацией Плана 1705.2.
                 let moodFilteredLicks: string[] = [];
-                if (['melancholic', 'dark', 'gloomy', 'anxious'].includes(currentMood)) {
-                    moodFilteredLicks = licksByChordType.filter(id => {
+                const darkMoods = ['melancholic', 'dark', 'gloomy', 'anxious'];
+                const joyfulMoods = ['joyful', 'enthusiastic', 'epic'];
+                const forbiddenTags = new Set<string>();
+
+                if (darkMoods.includes(currentMood)) {
+                    forbiddenTags.add('boogie');
+                    forbiddenTags.add('uptempo');
+                    forbiddenTags.add('fast-run');
+                } else if (joyfulMoods.includes(currentMood)) {
+                    forbiddenTags.add('cry');
+                    forbiddenTags.add('slow-bend');
+                    forbiddenTags.add('drone');
+                }
+                
+                if (forbiddenTags.size > 0) {
+                     moodFilteredLicks = licksByChordType.filter(id => {
                         const tags = BLUES_SOLO_LICKS[id as keyof typeof BLUES_SOLO_LICKS].tags;
-                        return !tags.includes('boogie') && !tags.includes('uptempo') && !tags.includes('fast-run');
-                    });
-                } else if (['joyful', 'enthusiastic', 'epic'].includes(currentMood)) {
-                    moodFilteredLicks = licksByChordType.filter(id => {
-                        const tags = BLUES_SOLO_LICKS[id as keyof typeof BLUES_SOLO_LICKS].tags;
-                        return !tags.includes('cry') && !tags.includes('slow-bend');
+                        return !tags.some(tag => forbiddenTags.has(tag));
                     });
                 } else {
-                    moodFilteredLicks = licksByChordType; // No exclusion for neutral moods.
+                    moodFilteredLicks = licksByChordType;
                 }
-    
-                // 4. Prevent immediate repetition.
+                
                 let finalLicks = moodFilteredLicks.filter(id => !this.melodyHistory.slice(-5).includes(id));
     
-                // 5. Fallback if filtering results in an empty list.
                 if (finalLicks.length === 0) {
-                    finalLicks = licksByChordType.filter(id => !this.melodyHistory.slice(-5).includes(id));
-                    if (finalLicks.length === 0) {
-                        finalLicks = licksByChordType; // Last resort: allow repetition.
-                    }
+                    finalLicks = moodFilteredLicks.length > 0 ? moodFilteredLicks : licksByChordType;
                 }
                 
                 const lickId = finalLicks.length > 0 ? finalLicks[random.nextInt(finalLicks.length)] : Object.keys(BLUES_SOLO_LICKS)[0];
@@ -811,9 +816,7 @@ export class FractalMusicEngine {
     const axiom: FractalEvent[] = [];
     const rootMidi = chord.rootNote;
     
-    // #ИСПРАВЛЕНО (ПЛАН 1705): Жестко задана техника 'long-chords' для блюза,
-    //                         чтобы гарантировать непрерывный хоральный аккомпанемент.
-    if(genre === 'blues') {
+    if (genre === 'blues') {
         technique = 'long-chords';
     }
 
@@ -858,6 +861,26 @@ export class FractalMusicEngine {
                     weight: 0.5,
                     technique: 'arpeggio-slow', dynamics: 'p', phrasing: 'legato',
                     params: { attack: 0.1, release: 1.4 }
+                });
+            });
+            break;
+        
+        case 'alberti-bass':
+            const albertPattern = [
+                chordNotes[0], chordNotes[2], chordNotes[1], chordNotes[2],
+                chordNotes[0], chordNotes[2], chordNotes[1], chordNotes[2],
+            ];
+            albertPattern.forEach((note, i) => {
+                axiom.push({
+                    type: 'accompaniment',
+                    note: note + 12 * (baseOctave - 1),
+                    duration: 0.5, // Eighth note
+                    time: i * 0.5, // On each half-beat
+                    weight: 0.55 + random.next() * 0.1,
+                    technique: 'pluck',
+                    dynamics: 'p',
+                    phrasing: 'staccato',
+                    params: {}
                 });
             });
             break;
@@ -953,4 +976,3 @@ function mutateBluesMelody(phrase: BluesSoloPhrase, chord: GhostChord, random: {
 function createBluesOrganLick(chord: GhostChord, random: { next: () => number; nextInt: (max: number) => number; }): FractalEvent[] { return []; }
 function generateIntroSequence(currentBar: number, introRules: any, harmonyTrack: GhostChord[], settings: any, random: any): { events: FractalEvent[], instrumentHints: InstrumentHints } { return { events: [], instrumentHints: {} }; }
 function createAmbientBassAxiom(chord: GhostChord, mood: Mood, genre: Genre, random: { next: () => number; nextInt: (max: number) => number; }, tempo: number, technique: Technique): FractalEvent[] { return []; }
-
