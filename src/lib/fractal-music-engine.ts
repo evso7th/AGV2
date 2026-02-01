@@ -444,120 +444,118 @@ export class FractalMusicEngine {
         return phrase;
     }
     
-    private generateBluesMelodyChorus(
-        currentChord: GhostChord,
-        random: { next: () => number; nextInt: (max: number) => number; },
-        partId: string,
-        epoch: number,
-        registerHint?: 'low' | 'mid' | 'high'
-    ): { events: FractalEvent[], log: string } {
-        const events: FractalEvent[] = [];
-        let log: string[] = [];
-    
-        const barInChorus = epoch % 12;
-        if (barInChorus === 0 || this.cachedMelodyChorus.bar === -1) {
-            this.cachedMelodyChorus.events = [];
-            this.cachedMelodyChorus.bar = epoch;
-            let fullChorusLog = "[BluesComposer] New 12-bar chorus: ";
-    
-            for (let bar = 0; bar < 12; bar++) {
-                const chordForThisBar = this.suiteDNA!.harmonyTrack.find(c => (epoch + bar) >= c.bar && (epoch + bar) < c.bar + c.durationBars) || currentChord;
-    
-                const isMinorChord = chordForThisBar.chordType.includes('minor');
-                const currentMood = this.config.mood;
-    
-                const allLickIds = Object.keys(BLUES_SOLO_LICKS);
-    
-                let licksByChordType = allLickIds.filter(id => {
-                    const tags = BLUES_SOLO_LICKS[id as keyof typeof BLUES_SOLO_LICKS].tags;
-                    return isMinorChord ? tags.includes('minor') : tags.includes('major');
-                });
-    
-                // #ЗАЧЕМ: Усиление семантического фильтра для мелодий.
-                // #ЧТО: Внедряет исключающую логику. Для "грустных" настроений активно
-                //      отбраковываются "веселые" теги, и наоборот.
-                // #СВЯЗИ: Является реализацией Плана 1705.2.
-                let moodFilteredLicks: string[] = [];
-                const darkMoods = ['melancholic', 'dark', 'gloomy', 'anxious'];
-                const joyfulMoods = ['joyful', 'enthusiastic', 'epic'];
-                const forbiddenTags = new Set<string>();
+  private generateBluesMelodyChorus(
+      currentChord: GhostChord,
+      random: { next: () => number; nextInt: (max: number) => number; },
+      partId: string,
+      epoch: number,
+      registerHint?: 'low' | 'mid' | 'high'
+  ): { events: FractalEvent[], log: string } {
+      const events: FractalEvent[] = [];
+      let log: string[] = [];
+  
+      const barInChorus = epoch % 12;
+      const isNewChorus = barInChorus === 0;
 
-                if (darkMoods.includes(currentMood)) {
-                    forbiddenTags.add('boogie');
-                    forbiddenTags.add('uptempo');
-                    forbiddenTags.add('fast-run');
-                } else if (joyfulMoods.includes(currentMood)) {
-                    forbiddenTags.add('cry');
-                    forbiddenTags.add('slow-bend');
-                    forbiddenTags.add('drone');
-                }
-                
-                if (forbiddenTags.size > 0) {
-                     moodFilteredLicks = licksByChordType.filter(id => {
-                        const tags = BLUES_SOLO_LICKS[id as keyof typeof BLUES_SOLO_LICKS].tags;
-                        return !tags.some(tag => forbiddenTags.has(tag));
-                    });
-                } else {
-                    moodFilteredLicks = licksByChordType;
-                }
-                
-                let finalLicks = moodFilteredLicks.filter(id => !this.melodyHistory.slice(-5).includes(id));
-    
-                if (finalLicks.length === 0) {
-                    finalLicks = moodFilteredLicks.length > 0 ? moodFilteredLicks : licksByChordType;
-                }
-                
-                const lickId = finalLicks.length > 0 ? finalLicks[random.nextInt(finalLicks.length)] : Object.keys(BLUES_SOLO_LICKS)[0];
-                
-                if (lickId) {
-                    this.melodyHistory.push(lickId);
-                    if (this.melodyHistory.length > 6) this.melodyHistory.shift();
-    
-                    const lickTemplate = BLUES_SOLO_LICKS[lickId as keyof typeof BLUES_SOLO_LICKS].phrase;
-                    let octaveShift = 12 * (registerHint === 'high' ? 4 : (registerHint === 'low' ? 2 : 3));
-    
-                    for (const noteTemplate of lickTemplate) {
-                        let finalMidiNote = chordForThisBar.rootNote + (DEGREE_TO_SEMITONE[noteTemplate.deg] || 0) + octaveShift;
-                        if (finalMidiNote > 88) finalMidiNote -= 12;
-                        if (finalMidiNote < 55) finalMidiNote += 12;
-    
-                        const baseEvent: Omit<FractalEvent, 'time' | 'duration'> = {
-                            type: 'melody',
-                            note: finalMidiNote,
-                            weight: 0.9 + (random.next() * 0.1),
-                            technique: (noteTemplate.tech || 'pick') as Technique,
-                            dynamics: 'mf', phrasing: 'legato', params: {}
-                        };
-    
-                        this.cachedMelodyChorus.events.push({
-                            ...baseEvent,
-                            time: bar * 4 + (noteTemplate.t / 3),
-                            duration: ((noteTemplate.d || 2) / 3),
-                        });
-                    }
-                    fullChorusLog += `${lickId}, `;
-                }
-            }
-            console.log(fullChorusLog);
-        }
-    
-        const barStartTimeInBeats = barInChorus * 4;
-        const barEndTimeInBeats = barStartTimeInBeats + 4;
-        
-        const currentBarEvents = this.cachedMelodyChorus.events.filter(e => {
-            const eventTimeInBeats = e.time;
-            const chorusStartTimeInBeats = (this.cachedMelodyChorus.bar % 12) * 4;
-            const relativeTimeInChorus = eventTimeInBeats - chorusStartTimeInBeats;
-            return relativeTimeInChorus >= barStartTimeInBeats && relativeTimeInChorus < barEndTimeInBeats;
-        }).map(e => ({
-            ...e,
-            time: e.time - barStartTimeInBeats
-        }));
-    
-        log.push(`[BluesMelody] Bar ${barInChorus}, Lick from cache. Events: ${currentBarEvents.length}`);
-    
-        return { events: currentBarEvents, log: log.join(' ') };
-    }
+      // #ЗАЧЕМ: Управляет генерацией и кэшированием полного 12-тактового соло.
+      // #ЧТО: Если это начало нового блюзового квадрата (12 тактов) или кэш пуст,
+      //      генерируется новая полная последовательность мелодических фраз на 12 тактов вперед.
+      // #СВЯЗИ: Является ядром "Композитора Хорусов".
+      if (isNewChorus || this.cachedMelodyChorus.bar === -1) {
+          this.cachedMelodyChorus.events = [];
+          this.cachedMelodyChorus.bar = epoch - barInChorus; // Align to the start of the chorus
+          let fullChorusLog = `[BluesComposer @ Bar ${this.cachedMelodyChorus.bar}] New 12-bar chorus: `;
+  
+          for (let bar = 0; bar < 12; bar++) {
+              const barTimestamp = this.cachedMelodyChorus.bar + bar;
+              const chordForThisBar = this.suiteDNA!.harmonyTrack.find(c => barTimestamp >= c.bar && barTimestamp < c.bar + c.durationBars) || currentChord;
+  
+              const isMinorChord = chordForThisBar.chordType.includes('minor');
+              const currentMood = this.config.mood;
+  
+              const allLickIds = Object.keys(BLUES_SOLO_LICKS);
+  
+              // 1. Фильтр по тональности
+              let licksByChordType = allLickIds.filter(id => {
+                  const tags = BLUES_SOLO_LICKS[id as keyof typeof BLUES_SOLO_LICKS].tags;
+                  return isMinorChord ? tags.includes('minor') : tags.includes('major');
+              });
+  
+              // 2. Семантический фильтр по настроению (исключающий)
+              const darkMoods = ['melancholic', 'dark', 'gloomy', 'anxious'];
+              const joyfulMoods = ['joyful', 'enthusiastic', 'epic'];
+              const forbiddenTags = new Set<string>();
+
+              if (darkMoods.includes(currentMood)) {
+                  forbiddenTags.add('boogie');
+                  forbiddenTags.add('uptempo');
+                  forbiddenTags.add('fast-run');
+              } else if (joyfulMoods.includes(currentMood)) {
+                  forbiddenTags.add('cry');
+                  forbiddenTags.add('slow-bend');
+                  forbiddenTags.add('drone');
+              }
+
+              let moodFilteredLicks = licksByChordType;
+              if (forbiddenTags.size > 0) {
+                   moodFilteredLicks = licksByChordType.filter(id => {
+                      const tags = BLUES_SOLO_LICKS[id as keyof typeof BLUES_SOLO_LICKS].tags;
+                      return !tags.some(tag => forbiddenTags.has(tag));
+                  });
+              }
+              
+              // 3. Фильтр для избежания повторений
+              let finalLicks = moodFilteredLicks.filter(id => !this.melodyHistory.slice(-5).includes(id));
+  
+              if (finalLicks.length === 0) {
+                  finalLicks = moodFilteredLicks.length > 0 ? moodFilteredLicks : licksByChordType;
+              }
+              
+              const lickId = finalLicks.length > 0 ? finalLicks[random.nextInt(finalLicks.length)] : allLickIds[0];
+              
+              if (lickId) {
+                  this.melodyHistory.push(lickId);
+                  if (this.melodyHistory.length > 6) this.melodyHistory.shift();
+  
+                  const lickTemplate = BLUES_SOLO_LICKS[lickId as keyof typeof BLUES_SOLO_LICKS].phrase;
+                  let octaveShift = 12 * (registerHint === 'high' ? 4 : (registerHint === 'low' ? 2 : 3));
+  
+                  for (const noteTemplate of lickTemplate) {
+                      let finalMidiNote = chordForThisBar.rootNote + (DEGREE_TO_SEMITONE[noteTemplate.deg] || 0) + octaveShift;
+                      if (finalMidiNote > 88) finalMidiNote -= 12;
+                      if (finalMidiNote < 55) finalMidiNote += 12;
+  
+                      this.cachedMelodyChorus.events.push({
+                          type: 'melody',
+                          note: finalMidiNote,
+                          time: bar * 4 + (noteTemplate.t / 3),
+                          duration: ((noteTemplate.d || 2) / 3),
+                          weight: 0.9 + (random.next() * 0.1),
+                          technique: (noteTemplate.tech || 'pick') as Technique,
+                          dynamics: 'mf', phrasing: 'legato', params: {}
+                      });
+                  }
+                  fullChorusLog += `${lickId}, `;
+              }
+          }
+          console.log(fullChorusLog);
+      }
+  
+      const barStartTimeInBeats = barInChorus * 4;
+      const barEndTimeInBeats = barStartTimeInBeats + 4;
+      
+      const currentBarEvents = this.cachedMelodyChorus.events.filter(e => {
+          const relativeTimeInChorus = e.time;
+          return relativeTimeInChorus >= barStartTimeInBeats && relativeTimeInChorus < barEndTimeInBeats;
+      }).map(e => ({
+          ...e,
+          time: e.time - barStartTimeInBeats
+      }));
+  
+      log.push(`[BluesMelody] Bar ${barInChorus}, Licks from cache. Events: ${currentBarEvents.length}`);
+  
+      return { events: currentBarEvents, log: log.join(' ') };
+  }
 
 
   public getGhostHarmony(): GhostChord[] {
@@ -816,6 +814,9 @@ export class FractalMusicEngine {
     const axiom: FractalEvent[] = [];
     const rootMidi = chord.rootNote;
     
+    // #ЗАЧЕМ: Установлена жесткая техника для блюза, чтобы гарантировать хоровое звучание.
+    // #ЧТО: Если жанр - 'blues', техника принудительно устанавливается в 'long-chords'.
+    // #СВЯЗИ: Является реализацией Плана 1705, исправляя "провал" аккомпанемента.
     if (genre === 'blues') {
         technique = 'long-chords';
     }
@@ -833,40 +834,8 @@ export class FractalMusicEngine {
     if (registerHint === 'high') baseOctave = 4;
 
     switch (technique) {
-        case 'rhythmic-comp':
-            const times = [0, 1.5, 2.5, 3.5]; // Example rhythmic stabs
-            times.forEach(time => {
-                if (random.next() < 0.6) {
-                    axiom.push({
-                        type: 'accompaniment',
-                        note: chordNotes[random.nextInt(chordNotes.length)] + 12 * baseOctave,
-                        duration: 0.4,
-                        time: time,
-                        weight: 0.5 + random.next() * 0.2,
-                        technique: 'staccato', dynamics: 'mf', phrasing: 'detached',
-                        params: {}
-                    });
-                }
-            });
-            break;
-        
-        case 'arpeggio-slow':
-            const arpNotes = [chordNotes[0], chordNotes[1], chordNotes[2], chordNotes[1] + 12];
-            arpNotes.forEach((note, i) => {
-                axiom.push({
-                    type: 'accompaniment',
-                    note: note + 12 * baseOctave,
-                    duration: 1.5,
-                    time: i * 1.0,
-                    weight: 0.5,
-                    technique: 'arpeggio-slow', dynamics: 'p', phrasing: 'legato',
-                    params: { attack: 0.1, release: 1.4 }
-                });
-            });
-            break;
-        
         case 'alberti-bass':
-            const albertPattern = [
+             const albertPattern = [
                 chordNotes[0], chordNotes[2], chordNotes[1], chordNotes[2],
                 chordNotes[0], chordNotes[2], chordNotes[1], chordNotes[2],
             ];
@@ -885,6 +854,44 @@ export class FractalMusicEngine {
             });
             break;
             
+        case 'power-chords':
+            const powerChordNotes = [rootMidi, rootMidi + 7]; // Root and fifth
+            powerChordNotes.forEach((note, i) => {
+                axiom.push({
+                    type: 'accompaniment',
+                    note: note + 12 * (baseOctave - 1), // Lower octave for power
+                    duration: 4.0, // Held
+                    time: 0,
+                    weight: 0.8,
+                    technique: 'pluck',
+                    dynamics: 'f',
+                    phrasing: 'legato',
+                    params: { attack: 0.01, release: 1.0, distortion: 0.4 } // Aggressive params
+                });
+            });
+            break;
+
+        case 'rhythmic-comp':
+            const compTimes = [0.5, 1.5, 2.5, 3.5]; // Off-beat 8ths
+            compTimes.forEach(time => {
+                if (random.next() > 0.3) { // Add some randomness
+                    chordNotes.forEach((note, i) => {
+                         axiom.push({
+                            type: 'accompaniment',
+                            note: note + 12 * baseOctave,
+                            duration: 0.2, // Short staccato
+                            time: time + i * 0.02, // slight strum
+                            weight: 0.65 + random.next() * 0.1,
+                            technique: 'staccato',
+                            dynamics: 'mf',
+                            phrasing: 'detached',
+                            params: { attack: 0.01, release: 0.2 }
+                        });
+                    });
+                }
+            });
+            break;
+
         case 'long-chords':
         default:
             chordNotes.slice(0, 3).forEach((note, i) => {

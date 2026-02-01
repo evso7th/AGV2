@@ -195,6 +195,10 @@ export type V1MelodyInstrument = 'synth' | 'organ' | 'mellotron' | 'theremin' | 
 export type V2MelodyInstrument = 'guitar_muffLead' | 'guitar_shineOn' | 'ep_rhodes_warm' | 'synth_ambient_pad_lush' | 'synth_cave_pad' | 'mellotron_flute_intimate' | 'mellotron_choir' | 'ep_rhodes_70s' | 'synth_lead_shineOn' | 'synth_lead_distorted' | 'guitar_clean_chorus' | 'organ_soft_jazz' | 'organ_jimmy_smith' | 'organ_prog';
 
 export type InstrumentPart = 'bass' | 'melody' | 'accompaniment' | 'harmony' | 'drums' | 'effects' | 'sparkles' | 'piano' | 'violin' | 'flute' | 'guitarChords' | 'acousticGuitarSolo' | 'sfx' | 'blackAcoustic' | 'telecaster' | 'pianoAccompaniment';
+export type BassTechnique = 'arpeggio' | 'portamento' | 'glissando' | 'glide' | 'pulse' | 'riff' | 'long_notes' | 'walking' | 'boogie' | 'syncopated';    
+
+export type AccompanimentTechnique = 'choral' | 'alternating-bass-chord' | 'chord-pulsation' | 'arpeggio-fast' | 'arpeggio-slow' | 'alberti-bass' | 'paired-notes' | 'long-chords' | 'power-chords' | 'rhythmic-comp';
+
 
 /**
  * Параметры для синтезатора баса.
@@ -321,7 +325,6 @@ export type ResonanceMatrix = (
   }
 ) => number;
 
-export type AccompanimentTechnique = 'choral' | 'alternating-bass-chord' | 'chord-pulsation' | 'arpeggio-fast' | 'arpeggio-slow' | 'alberti-bass' | 'paired-notes' | 'long-chords' | 'rhythmic-comp';
 
 /**
  * Описывает один аккорд в неслышимой гармонической основе (скелете) сьюиты.
