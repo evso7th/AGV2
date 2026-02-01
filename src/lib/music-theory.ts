@@ -1,4 +1,5 @@
 
+
 import type { FractalEvent, Mood, Genre, Technique, BassSynthParams, InstrumentType, MelodyInstrument, AccompanimentInstrument, ResonanceMatrix, InstrumentHints, AccompanimentTechnique, GhostChord, SfxRule, V1MelodyInstrument, V2MelodyInstrument, BlueprintPart, InstrumentationRules, InstrumentBehaviorRules, BluesMelody, InstrumentPart, DrumKit, BluesGuitarRiff, BluesSoloPhrase, BluesRiffDegree, SuiteDNA, RhythmicFeel, BassStyle, DrumStyle, HarmonicCenter } from './fractal';
 import { ElectronicK, TraditionalK, AmbientK, MelancholicMinorK } from './resonance-matrices';
 import { BlueprintNavigator, type NavigationInfo } from './blueprint-navigator';
@@ -82,88 +83,80 @@ export function generateSuiteDNA(totalBars: number, mood: Mood, seed: number, ra
 
     const harmonyTrack: GhostChord[] = [];
     const key = getScaleForMood(mood, genre)[0];
+    const defaultProg = [{ root: 0, type: 'minor' }, { root: 5, type: 'minor' }, { root: 0, type: 'minor' }, { root: 7, type: 'dominant' }];
 
-    if (genre === 'blues') {
-        const romanToDegree: Record<string, { root: number; type: GhostChord['chordType'] }> = {
-            'i': { root: 0, type: 'minor' }, 'iv': { root: 5, type: 'minor' }, 'v': { root: 7, type: 'minor' },
-            'V': { root: 7, type: 'dominant' }, 'bVI': { root: 8, type: 'major' },
-        };
-        const defaultProg = [
-            { root: 0, type: 'minor' }, { root: 5, type: 'minor' }, { root: 0, type: 'minor' }, { root: 7, type: 'dominant' }
-        ];
+    // #ИСПРАВЛЕНО (ПЛАН 1682): Логика расчета длительности частей синхронизирована с BlueprintNavigator.
+    // #ЗАЧЕМ: Это устраняет "дыры" в harmonyTrack, которые возникали из-за ошибок округления
+    //        и приводили к сбоям в генерации музыки после интро.
+    let accumulatedBars = 0;
+    const totalPercent = blueprintParts.reduce((sum, part) => sum + part.duration.percent, 0);
 
-        let currentBar = 0;
-
+    if (totalPercent <= 0) {
+        console.error("[DNA] Blueprint parts have a total percentage of 0. Cannot generate harmony.");
+        harmonyTrack.push({ rootNote: key, chordType: 'minor', bar: 0, durationBars: totalBars });
+    } else {
         blueprintParts.forEach((part, index) => {
-            const partStartBar = currentBar;
-            const partDuration = Math.round((part.duration.percent / 100) * totalBars);
-            const partEndBar = Math.min(partStartBar + partDuration, totalBars);
-            const journey = part.harmonicJourney?.[0];
+            const isLastPart = index === blueprintParts.length - 1;
+            let partDuration: number;
 
-            if (journey) {
-                let currentRoman = journey.center;
-                while (currentBar < partEndBar) {
-                    const duration = [2, 4, 4, 8][random.nextInt(4)];
-                    const nextBar = currentBar + duration;
-                    if (nextBar > partEndBar) {
-                         const remaining = partEndBar - currentBar;
-                        if (remaining > 0) {
-                             const chordInfo = romanToDegree[currentRoman];
-                             harmonyTrack.push({ rootNote: key + chordInfo.root, chordType: chordInfo.type, bar: currentBar, durationBars: remaining });
-                        }
-                        currentBar = partEndBar;
-                        break;
-                    }
-
-                    const chordInfo = romanToDegree[currentRoman];
-                    harmonyTrack.push({ rootNote: key + chordInfo.root, chordType: chordInfo.type, bar: currentBar, durationBars: duration });
-                    currentBar = nextBar;
-
-                    const useCenter = random.next() < journey.weight;
-                    currentRoman = useCenter ? journey.center : journey.satellites[random.nextInt(journey.satellites.length)];
-                }
+            if (isLastPart) {
+                partDuration = totalBars - accumulatedBars;
             } else {
-                 let localBar = 0;
-                 while (currentBar < partEndBar) {
+                // Используем ту же логику округления, что и навигатор
+                partDuration = Math.round((part.duration.percent / 100) * totalBars);
+            }
+            
+            const partStartBar = accumulatedBars;
+            const partEndBar = partStartBar + partDuration;
+
+            if (partDuration <= 0) return;
+
+            if (genre === 'blues') {
+                let localBar = 0;
+                while ((partStartBar + localBar) < partEndBar) {
                     const barInChorus = localBar % 12;
-                    const chordInfo = (mood === 'dark' || mood === 'melancholic' || mood === 'gloomy' || mood === 'anxious')
-                        ? [{ root: 0, type: 'minor' }, { root: 5, type: 'minor' }, { root: 8, type: 'major' }, { root: 7, type: 'dominant' }][barInChorus % 4]
-                        : defaultProg[barInChorus % 4];
-                    
-                    harmonyTrack.push({ rootNote: key + chordInfo.root, chordType: chordInfo.type as any, bar: currentBar, durationBars: 1 });
-                    currentBar++;
+                    // Note: This progression logic is simplified for blues and might need refinement based on part.harmonicJourney
+                    const progressionMap = [
+                        { root: 0, type: 'minor' },  // I
+                        { root: 5, type: 'minor' },  // IV
+                        { root: 0, type: 'minor' },  // I
+                        { root: 0, type: 'minor' },  // I
+                        { root: 5, type: 'minor' },  // IV
+                        { root: 5, type: 'minor' },  // IV
+                        { root: 0, type: 'minor' },  // I
+                        { root: 0, type: 'minor' },  // I
+                        { root: 7, type: 'dominant' },// V
+                        { root: 5, type: 'minor' },  // IV
+                        { root: 0, type: 'minor' },  // I
+                        { root: 7, type: 'dominant' } // V (Turnaround)
+                    ];
+                    const chordInfo = progressionMap[barInChorus];
+                    harmonyTrack.push({ rootNote: key + chordInfo.root, chordType: chordInfo.type as any, bar: partStartBar + localBar, durationBars: 1 });
                     localBar++;
+                }
+            } else { // Ambient, Trance, etc.
+                 let currentBarInPart = 0;
+                 while(currentBarInPart < partDuration) {
+                    const duration = [4, 8, 4, 2, 4][random.nextInt(5)];
+                    const finalDuration = Math.min(duration, partDuration - currentBarInPart);
+                    const chordRoot = key + [0, 5, 7, -5, 4, 2, -7][random.nextInt(7)];
+                    harmonyTrack.push({ rootNote: chordRoot, chordType: random.next() > 0.5 ? 'major' : 'minor', bar: partStartBar + currentBarInPart, durationBars: finalDuration });
+                    currentBarInPart += finalDuration;
                  }
             }
+            accumulatedBars += partDuration;
         });
 
-    } else {
-        let currentBar = 0;
-        while (currentBar < totalBars) {
-            const duration = [2, 4, 8, 4][random.nextInt(4)];
-            const chordRoot = key + [0, 5, 7, -5, 4, 2, -7][random.nextInt(7)];
-            harmonyTrack.push({ rootNote: chordRoot, chordType: random.next() > 0.5 ? 'major' : 'minor', bar: currentBar, durationBars: duration });
-            currentBar += duration;
+        // Ensure track covers the entire duration, patching any final gaps.
+        let lastBar = harmonyTrack.reduce((max, c) => Math.max(max, c.bar + c.durationBars), 0);
+        if (lastBar < totalBars) {
+            const lastChord = harmonyTrack[harmonyTrack.length - 1];
+            if (lastChord) {
+                lastChord.durationBars += (totalBars - lastBar);
+            } else {
+                 harmonyTrack.push({ rootNote: key, chordType: 'minor', bar: 0, durationBars: totalBars });
+            }
         }
-    }
-    
-    let lastBar = 0;
-    harmonyTrack.forEach(chord => {
-        if(chord.bar !== lastBar) {
-            console.warn(`[DNA] Gap in harmony track at bar ${lastBar}. Patching.`);
-            const prevChord = harmonyTrack.find(c => c.bar + c.durationBars === lastBar);
-            if(prevChord) prevChord.durationBars += (chord.bar - lastBar);
-        }
-        lastBar = chord.bar + chord.durationBars;
-    });
-
-    if (lastBar < totalBars) {
-        const lastChord = harmonyTrack[harmonyTrack.length - 1];
-        if (lastChord) lastChord.durationBars += (totalBars - lastBar);
-    }
-    if(lastBar > totalBars) {
-        const lastChord = harmonyTrack[harmonyTrack.length-1];
-        if(lastChord) lastChord.durationBars -= (lastBar - totalBars);
     }
 
 

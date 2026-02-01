@@ -1,4 +1,5 @@
 
+
 import type { FractalEvent, Mood, Genre, Technique, BassSynthParams, InstrumentType, MelodyInstrument, AccompanimentInstrument, ResonanceMatrix, InstrumentHints, AccompanimentTechnique, GhostChord, SfxRule, V1MelodyInstrument, V2MelodyInstrument, BlueprintPart, InstrumentationRules, InstrumentBehaviorRules, BluesMelody, InstrumentPart, DrumKit, BluesGuitarRiff, BluesSoloPhrase, BluesRiffDegree, SuiteDNA, RhythmicFeel, BassStyle, DrumStyle, HarmonicCenter } from './fractal';
 import { ElectronicK, TraditionalK, AmbientK, MelancholicMinorK } from './resonance-matrices';
 import { BlueprintNavigator, type NavigationInfo } from './blueprint-navigator';
@@ -132,6 +133,8 @@ export class FractalMusicEngine {
 
   private melodyHistory: string[] = [];
   private cachedMelodyChorus: { bar: number, events: FractalEvent[] } = { bar: -1, events: [] };
+  
+  private previousChord: GhostChord | null = null;
 
 
   constructor(config: EngineConfig) {
@@ -221,6 +224,7 @@ export class FractalMusicEngine {
     this.introInstrumentOrder = [];
 
     const firstChord = this.suiteDNA.harmonyTrack[0];
+    this.previousChord = firstChord;
     const initialNavInfo = this.navigator.tick(0);
     const initialBassTechnique = initialNavInfo?.currentPart.instrumentRules?.bass?.techniques?.[0].value as Technique || 'drone';
 
@@ -669,13 +673,27 @@ export class FractalMusicEngine {
         return { events: [] };
     }
 
-    const currentChord = this.suiteDNA.harmonyTrack.find(chord => 
+    // #ИСПРАВЛЕНО (ПЛАН 1682): Добавлен "страховочный" механизм.
+    // #ЗАЧЕМ: Предотвращает сбои, если в `harmonyTrack` по какой-то причине
+    //        образуется "дыра", и `find` вернет `undefined`.
+    // #ЧТО: Если `currentChord` не найден, мы используем `previousChord` и выводим
+    //       в консоль критическое предупреждение, но не останавливаем музыку.
+    const foundChord = this.suiteDNA.harmonyTrack.find(chord => 
         effectiveBar >= chord.bar && effectiveBar < chord.bar + chord.durationBars
     );
 
-    if (!currentChord) {
-        console.error(`[Engine] CRITICAL ERROR in bar ${this.epoch}: Could not find chord in 'Ghost Harmony'.`);
-        return { events: [] };
+    let currentChord: GhostChord;
+    if (foundChord) {
+        currentChord = foundChord;
+        this.previousChord = foundChord; // Обновляем "предыдущий" аккорд
+    } else {
+        console.error(`[Engine] CRITICAL FALLBACK in bar ${this.epoch}: No chord found in 'Ghost Harmony'! Reusing previous chord.`);
+        if (this.previousChord) {
+            currentChord = this.previousChord;
+        } else {
+            console.error(`[Engine] FATAL ERROR in bar ${this.epoch}: No previous chord to fall back on. Aborting bar generation.`);
+            return { events: [] };
+        }
     }
     
     if (this.config.genre === 'blues' && this.epoch > 0 && this.epoch % 12 === 0) {
