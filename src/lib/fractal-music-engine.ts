@@ -453,70 +453,69 @@ export class FractalMusicEngine {
     ): { events: FractalEvent[], log: string } {
         const events: FractalEvent[] = [];
         let log: string[] = [];
-
+    
         const barInChorus = epoch % 12;
         if (barInChorus === 0 || this.cachedMelodyChorus.bar === -1) {
             this.cachedMelodyChorus.events = [];
             this.cachedMelodyChorus.bar = epoch;
             let fullChorusLog = "[BluesComposer] New 12-bar chorus: ";
-
+    
             for (let bar = 0; bar < 12; bar++) {
                 const chordForThisBar = this.suiteDNA!.harmonyTrack.find(c => (epoch + bar) >= c.bar && (epoch + bar) < c.bar + c.durationBars) || currentChord;
-                
-                // #ИСПРАВЛЕНО (ПЛАН 1702): Логика выбора "лика" переписана для учета настроения.
-                // #ЗАЧЕМ: Предыдущая версия игнорировала `mood`, что делало соло "глухим".
-                // #ЧТО: Теперь `availableLicks` фильтруется не только по типу аккорда (мажор/минор),
-                //      но и по семантическим тегам, соответствующим текущему настроению.
+    
                 const isMinorChord = chordForThisBar.chordType.includes('minor');
                 const currentMood = this.config.mood;
-
-                const availableLicks = Object.keys(BLUES_SOLO_LICKS).filter(id => {
+    
+                // 1. Get all available lick IDs.
+                const allLickIds = Object.keys(BLUES_SOLO_LICKS);
+    
+                // 2. Filter by major/minor chord type.
+                let licksByChordType = allLickIds.filter(id => {
                     const tags = BLUES_SOLO_LICKS[id as keyof typeof BLUES_SOLO_LICKS].tags;
-                    if (this.melodyHistory.slice(-5).includes(id)) return false;
-
-                    // Mood-based filtering
-                    switch(currentMood) {
-                        case 'joyful':
-                        case 'enthusiastic':
-                        case 'epic':
-                            if (isMinorChord) return tags.includes('minor'); 
-                            return tags.includes('major') && tags.some(t => ['fast', 'boogie', 'uptempo', 'driving'].includes(t));
-                        
-                        case 'melancholic':
-                        case 'dark':
-                        case 'gloomy':
-                        case 'anxious':
-                             if (!isMinorChord) return tags.includes('major');
-                             return tags.includes('minor') && tags.some(t => ['slow-bend', 'cry', 'chromatic', 'dark', 'tension'].includes(t));
-                        
-                        case 'calm':
-                        case 'dreamy':
-                        case 'contemplative':
-                             if(isMinorChord) return tags.includes('minor') && !tags.some(t => ['fast', 'aggressive'].includes(t));
-                             if(!isMinorChord) return tags.includes('major') && !tags.some(t => ['fast', 'aggressive', 'scream'].includes(t));
-                             return !tags.some(t => ['fast', 'aggressive', 'scream'].includes(t));
-
-                        default:
-                            // Default behavior: just match major/minor
-                            if (isMinorChord) return tags.includes('minor');
-                            return tags.includes('major');
-                    }
+                    return isMinorChord ? tags.includes('minor') : tags.includes('major');
                 });
+    
+                // 3. Apply mood-based EXCLUSION filter.
+                let moodFilteredLicks: string[] = [];
+                if (['melancholic', 'dark', 'gloomy', 'anxious'].includes(currentMood)) {
+                    moodFilteredLicks = licksByChordType.filter(id => {
+                        const tags = BLUES_SOLO_LICKS[id as keyof typeof BLUES_SOLO_LICKS].tags;
+                        return !tags.includes('boogie') && !tags.includes('uptempo') && !tags.includes('fast-run');
+                    });
+                } else if (['joyful', 'enthusiastic', 'epic'].includes(currentMood)) {
+                    moodFilteredLicks = licksByChordType.filter(id => {
+                        const tags = BLUES_SOLO_LICKS[id as keyof typeof BLUES_SOLO_LICKS].tags;
+                        return !tags.includes('cry') && !tags.includes('slow-bend');
+                    });
+                } else {
+                    moodFilteredLicks = licksByChordType; // No exclusion for neutral moods.
+                }
+    
+                // 4. Prevent immediate repetition.
+                let finalLicks = moodFilteredLicks.filter(id => !this.melodyHistory.slice(-5).includes(id));
+    
+                // 5. Fallback if filtering results in an empty list.
+                if (finalLicks.length === 0) {
+                    finalLicks = licksByChordType.filter(id => !this.melodyHistory.slice(-5).includes(id));
+                    if (finalLicks.length === 0) {
+                        finalLicks = licksByChordType; // Last resort: allow repetition.
+                    }
+                }
                 
-                const lickId = availableLicks.length > 0 ? availableLicks[random.nextInt(availableLicks.length)] : Object.keys(BLUES_SOLO_LICKS)[0];
+                const lickId = finalLicks.length > 0 ? finalLicks[random.nextInt(finalLicks.length)] : Object.keys(BLUES_SOLO_LICKS)[0];
                 
                 if (lickId) {
                     this.melodyHistory.push(lickId);
-                    if(this.melodyHistory.length > 6) this.melodyHistory.shift();
-
+                    if (this.melodyHistory.length > 6) this.melodyHistory.shift();
+    
                     const lickTemplate = BLUES_SOLO_LICKS[lickId as keyof typeof BLUES_SOLO_LICKS].phrase;
-                    
                     let octaveShift = 12 * (registerHint === 'high' ? 4 : (registerHint === 'low' ? 2 : 3));
+    
                     for (const noteTemplate of lickTemplate) {
-                        let finalMidiNote = chordForThisBar.rootNote + (DEGREE_TO_SEMITONE[noteTemplate.deg as BluesRiffDegree] || 0) + octaveShift;
+                        let finalMidiNote = chordForThisBar.rootNote + (DEGREE_TO_SEMITONE[noteTemplate.deg] || 0) + octaveShift;
                         if (finalMidiNote > 88) finalMidiNote -= 12;
                         if (finalMidiNote < 55) finalMidiNote += 12;
-
+    
                         const baseEvent: Omit<FractalEvent, 'time' | 'duration'> = {
                             type: 'melody',
                             note: finalMidiNote,
@@ -524,59 +523,34 @@ export class FractalMusicEngine {
                             technique: (noteTemplate.tech || 'pick') as Technique,
                             dynamics: 'mf', phrasing: 'legato', params: {}
                         };
-
-                        if (random.next() < 0.4) {
-                            const shouldShiftTime = random.next() > 0.5;
-                            if (shouldShiftTime && noteTemplate.d && noteTemplate.d > 1) {
-                                const shift = (random.next() - 0.5) * 0.5;
-                                this.cachedMelodyChorus.events.push({
-                                    ...baseEvent,
-                                    time: bar * 4 + (noteTemplate.t / 3) + (shift / 3),
-                                    duration: ((noteTemplate.d || 2) / 3),
-                                });
-                            } else {
-                                const graceNote: FractalEvent = {
-                                    ...baseEvent,
-                                    note: finalMidiNote - 1,
-                                    time: bar * 4 + (noteTemplate.t / 3) - (0.5 / 3),
-                                    duration: 0.1,
-                                    weight: baseEvent.weight * 0.7,
-                                    technique: 'gr'
-                                };
-                                this.cachedMelodyChorus.events.push(graceNote);
-                                this.cachedMelodyChorus.events.push({
-                                    ...baseEvent,
-                                    time: bar * 4 + (noteTemplate.t / 3),
-                                    duration: ((noteTemplate.d || 2) / 3),
-                                });
-                            }
-                        } else {
-                            this.cachedMelodyChorus.events.push({
-                                ...baseEvent,
-                                time: bar * 4 + (noteTemplate.t / 3),
-                                duration: ((noteTemplate.d || 2) / 3),
-                            });
-                        }
+    
+                        this.cachedMelodyChorus.events.push({
+                            ...baseEvent,
+                            time: bar * 4 + (noteTemplate.t / 3),
+                            duration: ((noteTemplate.d || 2) / 3),
+                        });
                     }
                     fullChorusLog += `${lickId}, `;
                 }
             }
             console.log(fullChorusLog);
         }
-
+    
         const barStartTimeInBeats = barInChorus * 4;
         const barEndTimeInBeats = barStartTimeInBeats + 4;
         
         const currentBarEvents = this.cachedMelodyChorus.events.filter(e => {
-            const eventTimeInChorus = e.time - ((this.cachedMelodyChorus.bar % 12) * 4);
-            return eventTimeInChorus >= barStartTimeInBeats && eventTimeInChorus < barEndTimeInBeats;
+            const eventTimeInBeats = e.time;
+            const chorusStartTimeInBeats = (this.cachedMelodyChorus.bar % 12) * 4;
+            const relativeTimeInChorus = eventTimeInBeats - chorusStartTimeInBeats;
+            return relativeTimeInChorus >= barStartTimeInBeats && relativeTimeInChorus < barEndTimeInBeats;
         }).map(e => ({
             ...e,
-            time: e.time - barStartTimeInBeats 
+            time: e.time - barStartTimeInBeats
         }));
-
+    
         log.push(`[BluesMelody] Bar ${barInChorus}, Lick from cache. Events: ${currentBarEvents.length}`);
-
+    
         return { events: currentBarEvents, log: log.join(' ') };
     }
 
@@ -700,11 +674,6 @@ export class FractalMusicEngine {
         return { events: [] };
     }
 
-    // #ИСПРАВЛЕНО (ПЛАН 1682): Добавлен "страховочный" механизм.
-    // #ЗАЧЕМ: Предотвращает сбои, если в `harmonyTrack` по какой-то причине
-    //        образуется "дыра", и `find` вернет `undefined`.
-    // #ЧТО: Если `currentChord` не найден, мы используем `previousChord` и выводим
-    //       в консоль критическое предупреждение, но не останавливаем музыку.
     const foundChord = this.suiteDNA.harmonyTrack.find(chord => 
         effectiveBar >= chord.bar && effectiveBar < chord.bar + chord.durationBars
     );
@@ -712,7 +681,7 @@ export class FractalMusicEngine {
     let currentChord: GhostChord;
     if (foundChord) {
         currentChord = foundChord;
-        this.previousChord = foundChord; // Обновляем "предыдущий" аккорд
+        this.previousChord = foundChord;
     } else {
         console.error(`[Engine] CRITICAL FALLBACK in bar ${this.epoch}: No chord found in 'Ghost Harmony'! Reusing previous chord.`);
         if (this.previousChord) {
@@ -842,6 +811,12 @@ export class FractalMusicEngine {
     const axiom: FractalEvent[] = [];
     const rootMidi = chord.rootNote;
     
+    // #ИСПРАВЛЕНО (ПЛАН 1705): Жестко задана техника 'long-chords' для блюза,
+    //                         чтобы гарантировать непрерывный хоральный аккомпанемент.
+    if(genre === 'blues') {
+        technique = 'long-chords';
+    }
+
     let chordNotes: number[] = [];
     if (chord.chordType === 'dominant') {
         chordNotes = [rootMidi, rootMidi + 4, rootMidi + 7, rootMidi + 10];
@@ -978,3 +953,4 @@ function mutateBluesMelody(phrase: BluesSoloPhrase, chord: GhostChord, random: {
 function createBluesOrganLick(chord: GhostChord, random: { next: () => number; nextInt: (max: number) => number; }): FractalEvent[] { return []; }
 function generateIntroSequence(currentBar: number, introRules: any, harmonyTrack: GhostChord[], settings: any, random: any): { events: FractalEvent[], instrumentHints: InstrumentHints } { return { events: [], instrumentHints: {} }; }
 function createAmbientBassAxiom(chord: GhostChord, mood: Mood, genre: Genre, random: { next: () => number; nextInt: (max: number) => number; }, tempo: number, technique: Technique): FractalEvent[] { return []; }
+
