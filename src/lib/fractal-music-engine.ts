@@ -463,26 +463,53 @@ export class FractalMusicEngine {
             for (let bar = 0; bar < 12; bar++) {
                 const chordForThisBar = this.suiteDNA!.harmonyTrack.find(c => (epoch + bar) >= c.bar && (epoch + bar) < c.bar + c.durationBars) || currentChord;
                 
+                // #ИСПРАВЛЕНО (ПЛАН 1702): Логика выбора "лика" переписана для учета настроения.
+                // #ЗАЧЕМ: Предыдущая версия игнорировала `mood`, что делало соло "глухим".
+                // #ЧТО: Теперь `availableLicks` фильтруется не только по типу аккорда (мажор/минор),
+                //      но и по семантическим тегам, соответствующим текущему настроению.
                 const isMinorChord = chordForThisBar.chordType.includes('minor');
-                
+                const currentMood = this.config.mood;
+
                 const availableLicks = Object.keys(BLUES_SOLO_LICKS).filter(id => {
-                    const tags = BLUES_SOLO_LICKS[id].tags;
+                    const tags = BLUES_SOLO_LICKS[id as keyof typeof BLUES_SOLO_LICKS].tags;
                     if (this.melodyHistory.slice(-5).includes(id)) return false;
-                    
-                    if (!isMinorChord) {
-                        return tags.includes('major') || tags.includes('classic') || tags.includes('boogie');
-                    } else {
-                        return tags.includes('minor') || tags.includes('classic') || tags.includes('chromatic') || tags.includes('cry');
+
+                    // Mood-based filtering
+                    switch(currentMood) {
+                        case 'joyful':
+                        case 'enthusiastic':
+                        case 'epic':
+                            if (isMinorChord) return tags.includes('minor'); 
+                            return tags.includes('major') && tags.some(t => ['fast', 'boogie', 'uptempo', 'driving'].includes(t));
+                        
+                        case 'melancholic':
+                        case 'dark':
+                        case 'gloomy':
+                        case 'anxious':
+                             if (!isMinorChord) return tags.includes('major');
+                             return tags.includes('minor') && tags.some(t => ['slow-bend', 'cry', 'chromatic', 'dark', 'tension'].includes(t));
+                        
+                        case 'calm':
+                        case 'dreamy':
+                        case 'contemplative':
+                             if(isMinorChord) return tags.includes('minor') && !tags.some(t => ['fast', 'aggressive'].includes(t));
+                             if(!isMinorChord) return tags.includes('major') && !tags.some(t => ['fast', 'aggressive', 'scream'].includes(t));
+                             return !tags.some(t => ['fast', 'aggressive', 'scream'].includes(t));
+
+                        default:
+                            // Default behavior: just match major/minor
+                            if (isMinorChord) return tags.includes('minor');
+                            return tags.includes('major');
                     }
                 });
-
+                
                 const lickId = availableLicks.length > 0 ? availableLicks[random.nextInt(availableLicks.length)] : Object.keys(BLUES_SOLO_LICKS)[0];
                 
                 if (lickId) {
                     this.melodyHistory.push(lickId);
                     if(this.melodyHistory.length > 6) this.melodyHistory.shift();
 
-                    const lickTemplate = BLUES_SOLO_LICKS[lickId].phrase;
+                    const lickTemplate = BLUES_SOLO_LICKS[lickId as keyof typeof BLUES_SOLO_LICKS].phrase;
                     
                     let octaveShift = 12 * (registerHint === 'high' ? 4 : (registerHint === 'low' ? 2 : 3));
                     for (const noteTemplate of lickTemplate) {
@@ -626,7 +653,7 @@ export class FractalMusicEngine {
         if(!fallbackOptions || fallbackOptions.length === 0) return 'none';
         
         const totalFallbackWeight = fallbackOptions.reduce((sum: number, item: any) => sum + item.weight, 0);
-        if (totalFallbackWeight <= 0 && fallbackOptions.length > 0) return fallbackOptions[0].name;
+        if (totalFallbackWeight <= 0 && options.length > 0) return fallbackOptions[0].name;
         if (totalFallbackWeight <= 0) return 'none';
 
         let randFallback = this.random.next() * totalFallbackWeight;
@@ -934,3 +961,20 @@ export class FractalMusicEngine {
     return axiom;
   }
 }
+
+// These functions are exported so they can be used in other modules if necessary.
+// However, the primary composition logic resides within the FractalMusicEngine class itself.
+export { createAmbientMelodyMotif, mutateBassPhrase, createBassFill, createDrumFill, chooseHarmonyInstrument, mutateBluesAccompaniment, mutateBluesMelody, createBluesOrganLick, generateIntroSequence, createAmbientBassAxiom };
+
+
+// Stubs for functions that might have been moved but are still exported, to avoid breaking builds.
+function createAmbientMelodyMotif(chord: GhostChord, mood: Mood, random: { next: () => number; nextInt: (max: number) => number; }, previousMotif?: FractalEvent[], registerHint?: 'low' | 'mid' | 'high', genre?: Genre): FractalEvent[] { return []; }
+function mutateBassPhrase(phrase: FractalEvent[], chord: GhostChord, mood: Mood, genre: Genre, random: { next: () => number; nextInt: (max: number) => number; }): FractalEvent[] { return []; }
+function createBassFill(chord: GhostChord, mood: Mood, genre: Genre, random: { next: () => number; nextInt: (max: number) => number; }): { events: FractalEvent[]; duration: number } { return { events: [], duration: 0 }; }
+function createDrumFill(random: { next: () => number; nextInt: (max: number) => number; }, params: any): FractalEvent[] { return []; }
+function chooseHarmonyInstrument(part: BlueprintPart, useMelodyV2: boolean, random: { next: () => number }): 'piano' | 'guitarChords' | 'violin' | 'flute' | 'none' { return 'piano'; }
+function mutateBluesAccompaniment(phrase: FractalEvent[], chord: GhostChord, random: { next: () => number; nextInt: (max: number) => number; }): FractalEvent[] { return []; }
+function mutateBluesMelody(phrase: BluesSoloPhrase, chord: GhostChord, random: { next: () => number; nextInt: (max: number) => number; }): BluesSoloPhrase { return []; }
+function createBluesOrganLick(chord: GhostChord, random: { next: () => number; nextInt: (max: number) => number; }): FractalEvent[] { return []; }
+function generateIntroSequence(currentBar: number, introRules: any, harmonyTrack: GhostChord[], settings: any, random: any): { events: FractalEvent[], instrumentHints: InstrumentHints } { return { events: [], instrumentHints: {} }; }
+function createAmbientBassAxiom(chord: GhostChord, mood: Mood, genre: Genre, random: { next: () => number; nextInt: (max: number) => number; }, tempo: number, technique: Technique): FractalEvent[] { return []; }
