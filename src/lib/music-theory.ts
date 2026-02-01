@@ -78,16 +78,27 @@ export function getScaleForMood(mood: Mood, genre?: Genre, chordType?: 'major' |
   return fullScale;
 }
 
+// Helper to convert MIDI to a readable chord name
+const midiToChordName = (rootNote: number, chordType: 'major' | 'minor' | 'diminished' | 'dominant'): string => {
+    const noteNames = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B'];
+    const rootName = noteNames[rootNote % 12];
+    switch (chordType) {
+        case 'minor': return `${rootName}m`;
+        case 'diminished': return `${rootName}dim`;
+        case 'dominant': return `${rootName}7`;
+        case 'major':
+        default:
+            return rootName;
+    }
+};
+
+
 export function generateSuiteDNA(totalBars: number, mood: Mood, seed: number, random: { next: () => number, nextInt: (max: number) => number; shuffle: <T>(array: T[]) => T[]; }, genre: Genre, blueprintParts: BlueprintPart[]): SuiteDNA {
     console.log(`[DNA] Generating Suite DNA for genre: ${genre}, mood: ${mood}`);
 
     const harmonyTrack: GhostChord[] = [];
     const key = getScaleForMood(mood, genre)[0];
-    const defaultProg = [{ root: 0, type: 'minor' }, { root: 5, type: 'minor' }, { root: 0, type: 'minor' }, { root: 7, type: 'dominant' }];
-
-    // #ИСПРАВЛЕНО (ПЛАН 1682): Логика расчета длительности частей синхронизирована с BlueprintNavigator.
-    // #ЗАЧЕМ: Это устраняет "дыры" в harmonyTrack, которые возникали из-за ошибок округления
-    //        и приводили к сбоям в генерации музыки после интро.
+    
     let accumulatedBars = 0;
     const totalPercent = blueprintParts.reduce((sum, part) => sum + part.duration.percent, 0);
 
@@ -102,7 +113,6 @@ export function generateSuiteDNA(totalBars: number, mood: Mood, seed: number, ra
             if (isLastPart) {
                 partDuration = totalBars - accumulatedBars;
             } else {
-                // Используем ту же логику округления, что и навигатор
                 partDuration = Math.round((part.duration.percent / 100) * totalBars);
             }
             
@@ -112,27 +122,53 @@ export function generateSuiteDNA(totalBars: number, mood: Mood, seed: number, ra
             if (partDuration <= 0) return;
 
             if (genre === 'blues') {
-                let localBar = 0;
-                while ((partStartBar + localBar) < partEndBar) {
-                    const barInChorus = localBar % 12;
-                    // Note: This progression logic is simplified for blues and might need refinement based on part.harmonicJourney
-                    const progressionMap = [
-                        { root: 0, type: 'minor' },  // I
-                        { root: 5, type: 'minor' },  // IV
-                        { root: 0, type: 'minor' },  // I
-                        { root: 0, type: 'minor' },  // I
-                        { root: 5, type: 'minor' },  // IV
-                        { root: 5, type: 'minor' },  // IV
-                        { root: 0, type: 'minor' },  // I
-                        { root: 0, type: 'minor' },  // I
-                        { root: 7, type: 'dominant' },// V
-                        { root: 5, type: 'minor' },  // IV
-                        { root: 0, type: 'minor' },  // I
-                        { root: 7, type: 'dominant' } // V (Turnaround)
-                    ];
-                    const chordInfo = progressionMap[barInChorus];
-                    harmonyTrack.push({ rootNote: key + chordInfo.root, chordType: chordInfo.type as any, bar: partStartBar + localBar, durationBars: 1 });
-                    localBar++;
+                // --- MARKOV CHAIN LOGIC FOR BLUES ---
+                const progressionMap = {
+                    i:  [{ to: 'iv', w: 0.6 }, { to: 'v', w: 0.2 }, { to: 'bVI', w: 0.2 }],
+                    iv: [{ to: 'i', w: 0.7 }, { to: 'v', w: 0.3 }],
+                    v:  [{ to: 'i', w: 0.8 }, { to: 'iv', w: 0.2 }],
+                    bVI: [{ to: 'v', w: 0.9 }, { to: 'iv', w: 0.1 }],
+                };
+                const degreeMap: Record<string, {rootOffset: number, type: GhostChord['chordType']}> = {
+                    'i': { rootOffset: 0, type: 'minor' },
+                    'iv': { rootOffset: 5, type: 'minor' },
+                    'v': { rootOffset: 7, type: 'dominant' },
+                    'bVI': { rootOffset: 8, type: 'major' },
+                };
+                
+                let currentDegree = 'i';
+                let currentBarInPart = 0;
+                while (currentBarInPart < partDuration) {
+                    const durationOptions = [{d: 4, w: 0.6}, {d: 2, w: 0.3}, {d: 8, w: 0.1}];
+                    const totalDurWeight = durationOptions.reduce((s, o) => s + o.w, 0);
+                    let rDur = random.next() * totalDurWeight;
+                    let duration = 4;
+                    for(const opt of durationOptions) {
+                        rDur -= opt.w;
+                        if(rDur <= 0) { duration = opt.d; break; }
+                    }
+
+                    const finalDuration = Math.min(duration, partDuration - currentBarInPart);
+                    const chordInfo = degreeMap[currentDegree];
+                    harmonyTrack.push({
+                        rootNote: key + chordInfo.rootOffset,
+                        chordType: chordInfo.type,
+                        bar: partStartBar + currentBarInPart,
+                        durationBars: finalDuration
+                    });
+                    currentBarInPart += finalDuration;
+
+                    // Choose next degree
+                    const transitions = progressionMap[currentDegree as keyof typeof progressionMap];
+                    const totalWeight = transitions.reduce((s, t) => s + t.w, 0);
+                    let r = random.next() * totalWeight;
+                    for (const transition of transitions) {
+                        r -= transition.w;
+                        if (r <= 0) {
+                            currentDegree = transition.to;
+                            break;
+                        }
+                    }
                 }
             } else { // Ambient, Trance, etc.
                  let currentBarInPart = 0;
@@ -147,7 +183,6 @@ export function generateSuiteDNA(totalBars: number, mood: Mood, seed: number, ra
             accumulatedBars += partDuration;
         });
 
-        // Ensure track covers the entire duration, patching any final gaps.
         let lastBar = harmonyTrack.reduce((max, c) => Math.max(max, c.bar + c.durationBars), 0);
         if (lastBar < totalBars) {
             const lastChord = harmonyTrack[harmonyTrack.length - 1];
@@ -192,25 +227,20 @@ export function generateSuiteDNA(totalBars: number, mood: Mood, seed: number, ra
     console.log(`[DNA] Solo plan map created for ${soloPlanMap.size} parts.`);
     soloPlanMap.forEach((plan, partId) => console.log(`  - Part '${partId}' -> Solo Plan '${plan}'`));
     
-    // Helper to convert MIDI to chord name for logging
-    const midiToChordName = (rootNote: number, chordType: 'major' | 'minor' | 'diminished' | 'dominant'): string => {
-        const noteNames = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B'];
-        const rootName = noteNames[rootNote % 12];
-        switch (chordType) {
-            case 'minor': return `${rootName}m`;
-            case 'diminished': return `${rootName}dim`;
-            case 'dominant': return `${rootName}7`;
-            case 'major':
-            default:
-                return rootName;
-        }
-    };
-    
-    console.log("--- HARMONY SKELETON ---");
+    // --- FORMATTED TABLE LOG ---
+    const tableHeader = `| Bar   | Chord      | Duration |`;
+    const separator = `+-------+------------+----------+`;
+    console.log(`\n--- HARMONY SKELETON (SEED: ${seed}) ---`);
+    console.log(separator);
+    console.log(tableHeader);
+    console.log(separator);
     harmonyTrack.forEach(chord => {
-        console.log(midiToChordName(chord.rootNote, chord.chordType));
+        const barStr = `${chord.bar}`.padEnd(5);
+        const chordStr = midiToChordName(chord.rootNote, chord.chordType).padEnd(10);
+        const durStr = `${chord.durationBars} bars`.padEnd(8);
+        console.log(`| ${barStr} | ${chordStr} | ${durStr} |`);
     });
-    console.log("------------------------");
+    console.log(separator + "\n");
 
 
     return { harmonyTrack, baseTempo, rhythmicFeel, bassStyle, drumStyle, soloPlanMap };
@@ -247,24 +277,10 @@ export function createDrumAxiom(kit: DrumKit, genre: Genre, mood: Mood, tempo: n
     return { events, log };
 }
 
-const midiToChordName = (rootNote: number, chordType: 'major' | 'minor' | 'diminished' | 'dominant'): string => {
-    const noteNames = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B'];
-    const rootName = noteNames[rootNote % 12];
-    switch (chordType) {
-        case 'minor': return `${rootName}m`;
-        case 'diminished': return `${rootName}dim`;
-        case 'dominant': return `${rootName}7`;
-        case 'major':
-        default:
-            return rootName;
-    }
-};
-
 export function createHarmonyAxiom(chord: GhostChord, mood: Mood, genre: Genre, random: { next: () => number; nextInt: (max: number) => number; }, epoch: number): FractalEvent[] {
     const axiom: FractalEvent[] = [];
     const chordName = midiToChordName(chord.rootNote, chord.chordType);
     
-    // The console.log is intentionally kept for debugging as requested.
     console.log(`[HarmonyAudit] [Create] Bar: ${epoch} - Generating 1 harmony event for chord: ${chordName}`);
 
     axiom.push({
