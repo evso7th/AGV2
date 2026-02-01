@@ -198,6 +198,11 @@ export function generateSuiteDNA(totalBars: number, mood: Mood, seed: number, ra
     console.log(`[DNA] Generated: Tempo=${baseTempo}, Feel=${rhythmicFeel}, Bass=${bassStyle}, Drums=${drumStyle}`);
     console.log(`[DNA] Solo plan map created for ${soloPlanMap.size} parts.`);
     soloPlanMap.forEach((plan, partId) => console.log(`  - Part '${partId}' -> Solo Plan '${plan}'`));
+    
+    console.log("[DNA] Harmony Skeleton (root notes):");
+    harmonyTrack.forEach(chord => {
+        console.log(chord.rootNote);
+    });
 
     return { harmonyTrack, baseTempo, rhythmicFeel, bassStyle, drumStyle, soloPlanMap };
 }
