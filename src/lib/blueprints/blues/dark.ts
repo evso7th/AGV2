@@ -17,7 +17,7 @@ export const DarkBluesBlueprint: MusicBlueprint = {
         totalDuration: { preferredBars: 120 },
         parts: [
             {
-                id: 'INTRO_1', name: 'Dark Telecaster Intro', duration: { percent: 15 },
+                id: 'INTRO_1', name: 'The Void', duration: { percent: 15 },
                 layers: { bass: true, accompaniment: true, melody: true, sfx: true, sparkles: true },
                 instrumentation: {
                     melody: {
@@ -27,16 +27,21 @@ export const DarkBluesBlueprint: MusicBlueprint = {
                     accompaniment: {
                         strategy: 'weighted',
                         v2Options: [{ name: 'synth_cave_pad', weight: 1.0 }]
-                    }
+                    },
+                     bass: { 
+                        strategy: 'weighted', 
+                        v1Options: [{ name: 'bass_dub', weight: 1.0 }], 
+                        v2Options: [{ name: 'bass_dub', weight: 1.0 }] 
+                    },
                 },
                 instrumentRules: {
                     bass: { techniques: [{ value: 'riff', weight: 1.0 }], density: { min: 0.2, max: 0.4 } },
                     accompaniment: { techniques: [{ value: 'power-chords', weight: 1.0 }], density: { min: 0.1, max: 0.3 } },
                     melody: {
                         source: 'blues_solo',
-                        soloPlan: 'S06', // <--- ВОТ ИСПРАВЛЕНИЕ
                         soloToPatternRatio: 0.5,
-                        density: { min: 0.2, max: 0.4 }
+                        density: { min: 0.2, max: 0.4 },
+                        soloPlan: "S06",
                     },
                     sfx: { eventProbability: 0.15, categories: [{ name: 'dark', weight: 1.0 }] },
                     sparkles: { eventProbability: 0.2, categories: [{ name: 'dark', weight: 1.0 }] }
@@ -47,12 +52,16 @@ export const DarkBluesBlueprint: MusicBlueprint = {
             {
                 id: 'INTRO_2', name: 'First Echoes', duration: { percent: 10 },
                 layers: { bass: true, accompaniment: true, melody: true, sfx: true, drums: true, sparkles: true },
-                instrumentation: { 
-                  bass: { strategy: 'weighted', v1Options: [{ name: 'ambientDrone', weight: 1.0 }], v2Options: [{ name: 'ambientDrone', weight: 1.0 }] },
+                instrumentation: {
+                  bass: { 
+                    strategy: 'weighted', 
+                    v1Options: [{ name: 'bass_dub', weight: 1.0 }], 
+                    v2Options: [{ name: 'bass_dub', weight: 1.0 }] 
+                  },
                   accompaniment: { strategy: 'weighted', v1Options: [{name: 'synth_cave_pad', weight: 1.0}], v2Options: [{name: 'synth_cave_pad', weight: 1.0}] },
                   melody: { strategy: 'weighted', v1Options: [{name: 'guitar_shineOn', weight: 1.0}], v2Options: [{name: 'guitar_shineOn', weight: 1.0}] }
                 },
-                instrumentRules: { 
+                instrumentRules: {
                     drums: { enabled: true, pattern: 'composer', density: { min: 0.1, max: 0.3 }, useSnare: false, rareKick: true, usePerc: true, alternatePerc: false },
                     sfx: { eventProbability: 0.2, categories: [{name: 'dark', weight: 1.0}] },
                     sparkles: { eventProbability: 0.2, categories: [{ name: 'dark', weight: 1.0 }] },
@@ -66,6 +75,11 @@ export const DarkBluesBlueprint: MusicBlueprint = {
                 layers: { bass: true, sfx: true, drums: true, melody: true, accompaniment: true, harmony: true, sparkles: true },
                 harmonicJourney: [{ center: 'i', satellites: ['iv'], weight: 0.7 }],
                  instrumentation: {
+                    bass: {
+                        strategy: 'weighted',
+                        v1Options: [ { name: 'bass_deep_house', weight: 0.6 }, { name: 'bass_dub', weight: 0.4 } ],
+                        v2Options: [ { name: 'bass_deep_house', weight: 0.6 }, { name: 'bass_dub', weight: 0.4 } ]
+                    },
                     melody: { strategy: 'weighted', v1Options: [{ name: 'guitar_muffLead', weight: 1.0 }], v2Options: [{ name: 'guitar_muffLead', weight: 1.0 }] },
                     accompaniment: { strategy: 'weighted', v1Options: [{ name: 'organ', weight: 1.0 }], v2Options: [{ name: 'organ', weight: 1.0 }] },
                 },
@@ -83,6 +97,11 @@ export const DarkBluesBlueprint: MusicBlueprint = {
                 layers: { bass: true, drums: true, accompaniment: true, melody: true, sfx: true, harmony: true, sparkles: true },
                 harmonicJourney: [{ center: 'bVI', satellites: ['V'], weight: 0.6 }],
                  instrumentation: {
+                    bass: {
+                        strategy: 'weighted',
+                        v1Options: [ { name: 'bass_house', weight: 0.5 }, { name: 'bass_dub', weight: 0.5 } ],
+                        v2Options: [ { name: 'bass_house', weight: 0.5 }, { name: 'bass_dub', weight: 0.5 } ]
+                    },
                     melody: { strategy: 'weighted', v1Options: [{ name: 'guitar_muffLead', weight: 1.0 }], v2Options: [{ name: 'guitar_muffLead', weight: 1.0 }] },
                     accompaniment: { strategy: 'weighted', v1Options: [{ name: 'organ', weight: 1.0 }], v2Options: [{ name: 'organ', weight: 1.0 }] },
                 },
@@ -98,6 +117,13 @@ export const DarkBluesBlueprint: MusicBlueprint = {
             {
                 id: 'OUTRO', name: 'Fading Embers', duration: { percent: 25 },
                 layers: { accompaniment: true, bass: true, drums: true, sfx: true },
+                instrumentation: {
+                    bass: {
+                        strategy: 'weighted',
+                        v1Options: [{ name: 'bass_dub', weight: 1.0 }],
+                        v2Options: [{ name: 'bass_dub', weight: 1.0 }]
+                    },
+                },
                 instrumentRules: {
                     drums: { density: { min: 0.2, max: 0.4 } },
                     bass: { techniques: [{ value: 'long_notes', weight: 1.0 }] },
