@@ -464,12 +464,12 @@ export class FractalMusicEngine {
         return phrase;
     }
     
-  private generateBluesMelodyChorus(
+    private generateBluesMelodyChorus(
       currentChord: GhostChord,
       random: { next: () => number; nextInt: (max: number) => number; },
       partId: string,
       epoch: number,
-      registerHint?: 'low' | 'mid' | 'high'
+      rules: InstrumentBehaviorRules = {}
   ): { events: FractalEvent[], log: string } {
       const events: FractalEvent[] = [];
       let log: string[] = [];
@@ -477,6 +477,7 @@ export class FractalMusicEngine {
       const barInChorus = epoch % 12;
       const isNewChorus = barInChorus === 0;
 
+      // Check if we need to regenerate the chorus melody
       if (isNewChorus || this.cachedMelodyChorus.bar === -1) {
           this.cachedMelodyChorus.events = [];
           this.cachedMelodyChorus.bar = epoch - barInChorus;
@@ -535,18 +536,25 @@ export class FractalMusicEngine {
               if (lickData) {
                   let phrase: BluesSoloPhrase = JSON.parse(JSON.stringify(lickData.phrase));
                   
-                  // #ЗАЧЕМ: Внедрение мутаций для создания "живой" импровизации.
-                  // #ЧТО: Применяет функции-мутаторы в зависимости от модификаторов в плане соло.
-                  // #СВЯЗИ: Реализует **План 1712**.
+                  // Apply mutations based on plan modifiers
                   if (modifiers.includes('var')) phrase = varyRhythm(phrase, this.random);
                   if (modifiers.includes('oct')) phrase = transposeMelody(phrase, 12);
                   if (modifiers.includes('hi')) phrase = transposeMelody(phrase, 5);
-                  if (this.random.next() < 0.25) phrase = addOrnaments(phrase, this.random);
+                  
+                  // Apply mutation at chorus boundary
+                  if (bar === 0 && random.next() < 0.4) {
+                      const mutationType = random.nextInt(4);
+                      if (mutationType === 0) phrase = varyRhythm(phrase, random);
+                      else if (mutationType === 1) phrase = transposeMelody(phrase, random.next() > 0.5 ? 2 : -2);
+                      else if (mutationType === 2) phrase = invertMelody(phrase);
+                      else phrase = addOrnaments(phrase, random);
+                  }
+
 
                   this.melodyHistory.push(lickId);
                   if (this.melodyHistory.length > 6) this.melodyHistory.shift();
   
-                  let octaveShift = 12 * (registerHint === 'high' ? 4 : (registerHint === 'low' ? 2 : 3));
+                  let octaveShift = 12 * (rules.register?.preferred === 'high' ? 4 : (rules.register?.preferred === 'low' ? 2 : 3));
   
                   for (const noteTemplate of phrase) {
                       let finalMidiNote = chordForThisBar.rootNote + (DEGREE_TO_SEMITONE[noteTemplate.deg] || 0) + octaveShift;
@@ -739,7 +747,7 @@ export class FractalMusicEngine {
 
     if (navInfo.currentPart.layers.melody && !navInfo.currentPart.accompanimentMelodyDouble?.enabled && melodyRules) {
         if (melodyRules.source === 'blues_solo') {
-            const { events: soloEvents } = this.generateBluesMelodyChorus(currentChord, this.random, navInfo.currentPart.id, this.epoch, melodyRules.register?.preferred);
+            const { events: soloEvents } = this.generateBluesMelodyChorus(currentChord, this.random, navInfo.currentPart.id, this.epoch, melodyRules);
             melodyEvents = soloEvents;
         } else if (melodyRules.source === 'motif') {
             this.currentMelodyMotif = createAmbientMelodyMotif(currentChord, this.config.mood, this.random, this.currentMelodyMotif, melodyRules.register?.preferred, this.config.genre);
@@ -1011,5 +1019,6 @@ function mutateBluesMelody(phrase: BluesSoloPhrase, chord: GhostChord, random: {
 function createBluesOrganLick(chord: GhostChord, random: { next: () => number; nextInt: (max: number) => number; }): FractalEvent[] { return []; }
 function generateIntroSequence(currentBar: number, introRules: any, harmonyTrack: GhostChord[], settings: any, random: any): { events: FractalEvent[], instrumentHints: InstrumentHints } { return { events: [], instrumentHints: {} }; }
 function createAmbientBassAxiom(chord: GhostChord, mood: Mood, genre: Genre, random: { next: () => number; nextInt: (max: number) => number; }, tempo: number, technique: Technique): FractalEvent[] { return []; }
+
 
 
