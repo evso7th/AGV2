@@ -23,22 +23,26 @@ export const DarkBluesBlueprint: MusicBlueprint = {
                     { // Сцена 1 (0-25%)
                         duration: { percent: 25 },
                         instrumentation: {
-                            bass: { activationChance: 0.7, instrumentOptions: [{ name: 'bass_dub', weight: 0.5 }, { name: 'bass_house', weight: 0.5 }] },
-                            accompaniment: { activationChance: 0.6, instrumentOptions: [{ name: 'synth_cave_pad', weight: 1.0 }] }
+                           melody: {
+                                activationChance: 1.0,
+                                instrumentOptions: [
+                                    { name: 'darkTelecaster', weight: 1.0 }
+                                ]
+                           }
                         }
                     },
                     { // Сцена 2 (25-50%)
                         duration: { percent: 25 },
                         instrumentation: {
-                           melody: { activationChance: 0.7, instrumentOptions: [{ name: 'darkTelecaster', weight: 1.0 }] },
-                           drums: { activationChance: 0.5, instrumentOptions: [{ name: 'winter_blues_prolog1', weight: 1.0 }] }
+                            bass: { activationChance: 0.7, instrumentOptions: [{ name: 'bass_dub', weight: 0.5 }, { name: 'bass_house', weight: 0.5 }] },
+                            drums: { activationChance: 0.5, instrumentOptions: [{ name: 'winter_blues_prolog1', weight: 1.0 }] }
                         }
                     },
                     { // Сцена 3 (50-75%)
                         duration: { percent: 25 },
                         instrumentation: {
-                           harmony: { activationChance: 0.6, instrumentOptions: [{ name: 'violin', weight: 0.6 }, { name: 'flute', weight: 0.4 }] },
-                           sfx: { activationChance: 0.4, instrumentOptions: [] } // sfx is special, handled by rules
+                            harmony: { activationChance: 0.6, instrumentOptions: [{ name: 'violin', weight: 0.6 }, { name: 'flute', weight: 0.4 }] },
+                            sfx: { activationChance: 0.4, instrumentOptions: [] } // sfx is special, handled by rules
                         }
                     },
                     { // Сцена 4 (75-100%)
