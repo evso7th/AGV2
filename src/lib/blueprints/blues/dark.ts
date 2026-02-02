@@ -18,33 +18,44 @@ export const DarkBluesBlueprint: MusicBlueprint = {
         parts: [
             {
                 id: 'INTRO_1', name: 'The Void', duration: { percent: 15 },
-                layers: { bass: true, accompaniment: true, melody: true, sfx: true, sparkles: true },
-                instrumentation: {
-                    melody: {
-                        strategy: 'weighted',
-                        v2Options: [{ name: 'darkTelecaster', weight: 1.0 }]
+                layers: { bass: true, accompaniment: true, melody: true, sfx: true, sparkles: true, drums: true, harmony: true, pianoAccompaniment: true }, // Layers on for potential activation
+                stagedInstrumentation: [
+                    { // Сцена 1 (0-25%)
+                        duration: { percent: 25 },
+                        instrumentation: {
+                            bass: { activationChance: 0.7, instrumentOptions: [{ name: 'bass_dub', weight: 0.5 }, { name: 'bass_house', weight: 0.5 }] },
+                            accompaniment: { activationChance: 0.6, instrumentOptions: [{ name: 'synth_cave_pad', weight: 1.0 }] }
+                        }
                     },
-                    accompaniment: {
-                        strategy: 'weighted',
-                        v2Options: [{ name: 'synth_cave_pad', weight: 1.0 }]
+                    { // Сцена 2 (25-50%)
+                        duration: { percent: 25 },
+                        instrumentation: {
+                           melody: { activationChance: 0.7, instrumentOptions: [{ name: 'darkTelecaster', weight: 1.0 }] },
+                           drums: { activationChance: 0.5, instrumentOptions: [{ name: 'winter_blues_prolog1', weight: 1.0 }] }
+                        }
                     },
-                     bass: { 
-                        strategy: 'weighted', 
-                        v1Options: [{ name: 'bass_dub', weight: 1.0 }], 
-                        v2Options: [{ name: 'bass_dub', weight: 1.0 }] 
+                    { // Сцена 3 (50-75%)
+                        duration: { percent: 25 },
+                        instrumentation: {
+                           harmony: { activationChance: 0.6, instrumentOptions: [{ name: 'violin', weight: 0.6 }, { name: 'flute', weight: 0.4 }] },
+                           sfx: { activationChance: 0.4, instrumentOptions: [] } // sfx is special, handled by rules
+                        }
                     },
-                },
+                    { // Сцена 4 (75-100%)
+                        duration: { percent: 25 },
+                        instrumentation: {
+                           pianoAccompaniment: { activationChance: 0.5, instrumentOptions: [{ name: 'piano', weight: 1.0 }] },
+                           sparkles: { activationChance: 0.3, instrumentOptions: [] } // sparkles is special
+                        }
+                    }
+                ],
                 instrumentRules: {
-                    bass: { techniques: [{ value: 'riff', weight: 1.0 }], density: { min: 0.2, max: 0.4 } },
+                    bass: { techniques: [{ value: 'long_notes', weight: 1.0 }], density: { min: 0.2, max: 0.4 } },
                     accompaniment: { techniques: [{ value: 'power-chords', weight: 1.0 }], density: { min: 0.1, max: 0.3 } },
-                    melody: {
-                        source: 'blues_solo',
-                        soloToPatternRatio: 0.5,
-                        density: { min: 0.2, max: 0.4 },
-                        soloPlan: "S06",
-                    },
+                    melody: { source: 'blues_solo', soloToPatternRatio: 0.5, density: { min: 0.2, max: 0.4 }, soloPlan: "S06" },
+                    drums: { kitName: 'winter_blues_prolog1' },
                     sfx: { eventProbability: 0.15, categories: [{ name: 'dark', weight: 1.0 }] },
-                    sparkles: { eventProbability: 0.2, categories: [{ name: 'dark', weight: 1.0 }] }
+                    sparkles: { eventProbability: 0.1, categories: [{ name: 'dark', weight: 1.0 }] }
                 },
                 bundles: [ { id: 'DARK_INTRO_BUNDLE_1', name: 'Drone', duration: { percent: 100 }, characteristics: {}, phrases: {} } ],
                 outroFill: null,
@@ -53,18 +64,14 @@ export const DarkBluesBlueprint: MusicBlueprint = {
                 id: 'INTRO_2', name: 'First Echoes', duration: { percent: 10 },
                 layers: { bass: true, accompaniment: true, melody: true, sfx: true, drums: true, sparkles: true },
                 instrumentation: {
-                  bass: { 
-                    strategy: 'weighted', 
-                    v1Options: [{ name: 'bass_dub', weight: 1.0 }], 
-                    v2Options: [{ name: 'bass_dub', weight: 1.0 }] 
-                  },
+                  bass: { strategy: 'weighted', v1Options: [{ name: 'bass_dub', weight: 1.0 }], v2Options: [{ name: 'bass_dub', weight: 1.0 }] },
                   accompaniment: { strategy: 'weighted', v1Options: [{name: 'synth_cave_pad', weight: 1.0}], v2Options: [{name: 'synth_cave_pad', weight: 1.0}] },
-                  melody: { strategy: 'weighted', v1Options: [{name: 'guitar_shineOn', weight: 1.0}], v2Options: [{name: 'guitar_shineOn', weight: 1.0}] }
+                  melody: { strategy: 'weighted', v1Options: [{name: 'darkTelecaster', weight: 1.0}], v2Options: [{name: 'darkTelecaster', weight: 1.0}] }
                 },
                 instrumentRules: {
-                    drums: { enabled: true, pattern: 'composer', density: { min: 0.1, max: 0.3 }, useSnare: false, rareKick: true, usePerc: true, alternatePerc: false },
+                    drums: { enabled: true, pattern: 'composer', density: { min: 0.1, max: 0.3 }, useSnare: false, rareKick: true, usePerc: true, alternatePerc: false, kitName: 'winter_blues_prolog2' },
                     sfx: { eventProbability: 0.2, categories: [{name: 'dark', weight: 1.0}] },
-                    sparkles: { eventProbability: 0.2, categories: [{ name: 'dark', weight: 1.0 }] },
+                    sparkles: { eventProbability: 0.15, categories: [{ name: 'dark', weight: 1.0 }] },
                     melody: { source: 'harmony_top_note' }
                 },
                 bundles: [ { id: 'DARK_INTRO_BUNDLE_2', name: 'Echoes', duration: { percent: 100 }, characteristics: {}, phrases: {} } ],

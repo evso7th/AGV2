@@ -1,6 +1,5 @@
 
-
-import type { Mood as FractalMood, InstrumentHints as FractalInstrumentHints } from './fractal';
+import type { Mood as FractalMood, InstrumentHints as FractalInstrumentHints, InstrumentPart as FractalInstrumentPart } from './fractal';
 import { V2_PRESETS } from '@/lib/presets-v2';
 import { BASS_PRESETS } from '@/lib/bass-presets';
 
@@ -100,11 +99,11 @@ export type DrumAndPercussionInstrument =
 
 export type InstrumentType = BassInstrument | MelodyInstrument | AccompanimentInstrument | EffectInstrument | DrumAndPercussionInstrument | 'portamento' | 'autopilot_bass' | 'none';
 
-export type InstrumentPart = 'bass' | 'melody' | 'accompaniment' | 'harmony' | 'drums' | 'effects' | 'sparkles' | 'piano' | 'violin' | 'flute' | 'guitarChords' | 'acousticGuitarSolo' | 'sfx' | 'blackAcoustic' | 'telecaster' | 'pianoAccompaniment' | 'darkTelecaster';
+export type InstrumentPart = FractalInstrumentPart;
 export type BassTechnique = 'arpeggio' | 'portamento' | 'glissando' | 'glide' | 'pulse' | 'riff' | 'long_notes' | 'walking' | 'boogie' | 'syncopated';    
 
 export type Technique = BassTechnique | 'pluck' | 'pick' | 'harm' | 'slide' | 'hit' | 'ghost' | 'swell' | 'fill';
-export type AccompanimentTechnique = 'choral' | 'alternating-bass-chord' | 'chord-pulsation' | 'arpeggio-fast' | 'arpeggio-slow' | 'alberti-bass' | 'paired-notes' | 'long-chords';
+export type AccompanimentTechnique = 'choral' | 'alternating-bass-chord' | 'chord-pulsation' | 'arpeggio-fast' | 'arpeggio-slow' | 'alberti-bass' | 'paired-notes' | 'long-chords' | 'power-chords' | 'rhythmic-comp';
 
 
 export type InstrumentSettings = {
@@ -237,6 +236,21 @@ export type InstrumentOption<T> = {
     weight: number; // 0.0 to 1.0
 };
 
+// #ЗАЧЕМ: Определяет правила активации инструмента внутри одной "сцены".
+// #ЧТО: Включает вероятность активации и список возможных тембров.
+export type InstrumentActivationRule<T = any> = {
+    activationChance: number; // 0.0 to 1.0
+    instrumentOptions: InstrumentOption<T>[];
+};
+
+// #ЗАЧЕМ: Определяет одну "сцену" внутри музыкальной части.
+// #ЧТО: Содержит длительность сцены и набор правил активации для инструментов.
+export type Stage = {
+    duration: { percent: number };
+    instrumentation: Partial<Record<InstrumentPart, InstrumentActivationRule>>;
+};
+
+
 export type InstrumentationRules<T> = {
     strategy: 'weighted';
     options?: InstrumentOption<T>[];
@@ -266,12 +280,14 @@ export type BlueprintPart = {
   layers: {
     [key in InstrumentPart]?: boolean;
   };
+  // #ЗАМЕНЕНО: Старая система `instrumentation` заменяется на `stagedInstrumentation`.
   instrumentation?: {
       melody?: InstrumentationRules<MelodyInstrument>;
       accompaniment?: InstrumentationRules<AccompanimentInstrument>;
       bass?: InstrumentationRules<BassInstrument>;
       harmony?: InstrumentationRules<'piano' | 'guitarChords' | 'flute' | 'violin'>;
   };
+  stagedInstrumentation?: Stage[]; // Новая система "сцен"
   instrumentEntry?: { [key: string]: number };
   instrumentExit?: { [key: string]: number };
   instrumentRules: {
