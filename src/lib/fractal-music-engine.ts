@@ -1,4 +1,5 @@
 
+
 import type { FractalEvent, Mood, Genre, Technique, BassSynthParams, InstrumentType, MelodyInstrument, AccompanimentInstrument, ResonanceMatrix, InstrumentHints, AccompanimentTechnique, GhostChord, SfxRule, V1MelodyInstrument, V2MelodyInstrument, BlueprintPart, InstrumentationRules, InstrumentBehaviorRules, BluesMelody, InstrumentPart, DrumKit, BluesGuitarRiff, BluesSoloPhrase, BluesRiffDegree, SuiteDNA, RhythmicFeel, BassStyle, DrumStyle, HarmonicCenter } from './fractal';
 import { ElectronicK, TraditionalK, AmbientK, MelancholicMinorK } from './resonance-matrices';
 import { BlueprintNavigator, type NavigationInfo } from './blueprint-navigator';
@@ -33,7 +34,8 @@ import {
     transposeMelody,
     invertMelody,
     varyRhythm,
-    addOrnaments
+    addOrnaments,
+    DEGREE_TO_SEMITONE
 } from './music-theory';
 
 
@@ -751,9 +753,13 @@ export class FractalMusicEngine {
         const accompRules = navInfo.currentPart.instrumentRules?.accompaniment;
         const registerHint = accompRules?.register?.preferred;
         // #ИСПРАВЛЕНО (ПЛАН 1705.1): Жестко задана техника для блюза.
-        const technique = this.config.genre === 'blues' 
-            ? 'long-chords' 
+        const technique = (this.config.genre === 'blues' && ['melancholic', 'dark', 'gloomy', 'anxious'].includes(this.config.mood))
+            ? 'long-chords'
             : (accompRules?.techniques?.[0]?.value || 'long-chords') as AccompanimentTechnique;
+
+        if (technique === 'long-chords') {
+          console.log("here")
+        }
         accompEvents = this.createAccompanimentAxiom(currentChord, this.config.mood, this.config.genre, this.random, this.config.tempo, registerHint, technique);
     }
     
@@ -1005,3 +1011,5 @@ function mutateBluesMelody(phrase: BluesSoloPhrase, chord: GhostChord, random: {
 function createBluesOrganLick(chord: GhostChord, random: { next: () => number; nextInt: (max: number) => number; }): FractalEvent[] { return []; }
 function generateIntroSequence(currentBar: number, introRules: any, harmonyTrack: GhostChord[], settings: any, random: any): { events: FractalEvent[], instrumentHints: InstrumentHints } { return { events: [], instrumentHints: {} }; }
 function createAmbientBassAxiom(chord: GhostChord, mood: Mood, genre: Genre, random: { next: () => number; nextInt: (max: number) => number; }, tempo: number, technique: Technique): FractalEvent[] { return []; }
+
+
