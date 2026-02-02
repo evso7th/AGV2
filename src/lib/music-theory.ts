@@ -6,13 +6,13 @@ import { BlueprintNavigator, type NavigationInfo } from './blueprint-navigator';
 import { getBlueprint } from './blueprints';
 import { V2_PRESETS } from './presets-v2';
 import { BLUES_BASS_RIFFS } from './assets/blues-bass-riffs';
+import { BLUES_SOLO_LICKS, BLUES_SOLO_PLANS } from './assets/blues_guitar_solo';
 
 // --- МУЗЫКАЛЬНЫЕ АССЕТЫ (БАЗА ЗНАНИЙ) ---
 import { PARANOID_STYLE_RIFF } from './assets/rock-riffs';
 import { NEUTRAL_BLUES_BASS_RIFFS } from './assets/neutral-blues-riffs';
 import { BLUES_GUITAR_RIFFS, BLUES_GUITAR_VOICINGS } from './assets/blues-guitar-riffs';
 import { BLUES_MELODY_RIFFS } from './assets/blues-melody-riffs';
-import { BLUES_SOLO_LICKS, BLUES_SOLO_PLANS } from './assets/blues_guitar_solo';
 import { BLUES_DRUM_RIFFS } from './assets/blues-drum-riffs';
 import { DRUM_KITS } from './assets/drum-kits';
 
@@ -442,7 +442,7 @@ export function createBluesBassAxiom(
 
 export function generateBluesMelodyChorus(
     currentChord: GhostChord,
-    random: { next: () => number, nextInt: (max: number) => number },
+    random: { next: () => number, nextInt: (max: number) => number; },
     partId: string,
     epoch: number,
     rules: InstrumentBehaviorRules,
@@ -450,9 +450,61 @@ export function generateBluesMelodyChorus(
     melodyHistory: string[],
     cachedMelodyChorus: { bar: number, events: FractalEvent[] }
 ): { events: FractalEvent[], log: string } {
-    console.warn("generateBluesMelodyChorus is a placeholder and not fully implemented.");
-    return { events: [], log: "[Melody] Placeholder function called." };
+    const soloPlanId = rules.soloPlan;
+    if (!soloPlanId || !BLUES_SOLO_PLANS[soloPlanId]) {
+        return { events: [], log: `[Melody] Solo plan '${soloPlanId}' not found.` };
+    }
+
+    const plan = BLUES_SOLO_PLANS[soloPlanId];
+    const chorusLength = 12;
+    const currentChorusIndex = Math.floor(epoch / chorusLength) % plan.choruses.length;
+    const barInChorus = epoch % chorusLength;
+    
+    // Check cache first
+    if (cachedMelodyChorus.bar === epoch) {
+        return { events: cachedMelodyChorus.events, log: `[Melody] Using cached chorus for bar ${epoch}` };
+    }
+
+    const chorusPlan = plan.choruses[currentChorusIndex];
+    if (!chorusPlan || barInChorus >= chorusPlan.length) {
+         return { events: [], log: `[Melody] Invalid plan for chorus ${currentChorusIndex} at bar ${barInChorus}` };
+    }
+
+    const lickId = chorusPlan[barInChorus];
+    const lickData = BLUES_SOLO_LICKS[lickId];
+    if (!lickData) {
+        return { events: [], log: `[Melody] Lick '${lickId}' not found.` };
+    }
+
+    const lickPhrase = lickData.phrase;
+    const rootNote = currentChord.rootNote;
+    const ticksPerBeat = 3; // 12/8 time feel
+
+    const events: FractalEvent[] = lickPhrase.map(note => {
+        const midiNote = rootNote + (DEGREE_TO_SEMITONE[note.deg as BluesRiffDegree] || 0);
+        const timeInBeats = note.t / ticksPerBeat;
+        const durationInBeats = (note.d || 2) / ticksPerBeat;
+        
+        return {
+            type: 'melody',
+            note: midiNote,
+            time: timeInBeats,
+            duration: durationInBeats,
+            weight: note.vel ? note.vel / 127 : 0.8 + random.next() * 0.1,
+            technique: (note.tech || 'pluck') as Technique,
+            dynamics: 'mf',
+            phrasing: 'legato',
+            params: { barCount: epoch }
+        };
+    });
+
+    // Update cache
+    cachedMelodyChorus.bar = epoch;
+    cachedMelodyChorus.events = events;
+
+    return { events, log: `[Melody] Generated ${events.length} notes from lick '${lickId}' for bar ${epoch}` };
 }
+
 
 // These functions are exported so they can be used in other modules if necessary.
 // However, the primary composition logic resides within the FractalMusicEngine class itself.

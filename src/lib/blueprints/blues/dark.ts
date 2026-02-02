@@ -38,7 +38,7 @@ export const DarkBluesBlueprint: MusicBlueprint = {
                     bass: { strategy: 'weighted', v1Options: [{ name: 'ambientDrone', weight: 1.0 }], v2Options: [{ name: 'bass_ambient_dark', weight: 1.0 }] },
                 },
                 instrumentRules: {
-                    drums: { pattern: 'composer', kitName: 'blues_dark', density: { min: 0.1, max: 0.2 }, useSnare: false, rareKick: true },
+                    drums: { pattern: 'composer', kitName: 'blues_melancholic_master', density: { min: 0.1, max: 0.2 }, useSnare: false, rareKick: true },
                     melody: { source: 'motif' },
                     accompaniment: { techniques: [{ value: 'long-chords', weight: 1.0 }] }
                 },
@@ -55,7 +55,7 @@ export const DarkBluesBlueprint: MusicBlueprint = {
                     harmony: { strategy: 'weighted', options: [{ name: 'piano', weight: 1.0 }] }
                 },
                 instrumentRules: {
-                    drums: { pattern: 'composer', density: { min: 0.2, max: 0.4 }, useSnare: false, usePerc: true, useGhostHat: true, rareKick: true, alternatePerc: false },
+                    drums: { pattern: 'composer', kitName: 'blues_melancholic_master', density: { min: 0.2, max: 0.4 }, useSnare: false, usePerc: true, useGhostHat: true, rareKick: true, alternatePerc: false },
                     bass: { density: { min: 0.5, max: 0.7 } },
                     melody: { source: 'motif' },
                     accompaniment: { techniques: [{ value: 'long-chords', weight: 1.0 }] }
@@ -72,7 +72,7 @@ export const DarkBluesBlueprint: MusicBlueprint = {
                     accompaniment: { strategy: 'weighted', v1Options: [{ name: 'organ', weight: 1.0 }], v2Options: [{ name: 'organ', weight: 1.0 }] },
                 },
                 instrumentRules: {
-                    drums: { pattern: 'composer', kitName: 'blues_dark', density: { min: 0.4, max: 0.6 } },
+                    drums: { pattern: 'composer', kitName: 'blues_melancholic_master', density: { min: 0.4, max: 0.6 }, ride: { enabled: false } },
                     melody: { source: 'blues_solo', soloPlan: "S06", density: { min: 0.5, max: 0.9 } },
                     accompaniment: { techniques: [{ value: 'rhythmic-comp', weight: 0.8 }, { value: 'arpeggio-slow', weight: 0.2 }] }
                 },
@@ -88,12 +88,12 @@ export const DarkBluesBlueprint: MusicBlueprint = {
                     accompaniment: { strategy: 'weighted', v1Options: [{ name: 'organ', weight: 1.0 }], v2Options: [{ name: 'organ', weight: 1.0 }] },
                 },
                 instrumentRules: {
-                    drums: { pattern: 'composer', kitName: 'blues_dark', density: { min: 0.5, max: 0.7 }, ride: { enabled: true, probability: 0.3 } },
+                    drums: { pattern: 'composer', kitName: 'blues_melancholic_master', density: { min: 0.5, max: 0.7 }, ride: { enabled: false } },
                     melody: { source: 'blues_solo', soloPlan: "S07", density: { min: 0.6, max: 1.0 } },
                     accompaniment: { techniques: [{ value: 'rhythmic-comp', weight: 0.9 }, { value: 'arpeggio-fast', weight: 0.1 }] }
                 },
                 bundles: [{ id: 'BLUES_DARK_MAIN_B_BUNDLE', name: 'Intensity', duration: { percent: 100 }, characteristics: {}, phrases: {} }],
-                outroFill: { type: 'roll', duration: 2, parameters: { instrument: 'ride' } },
+                outroFill: { type: 'roll', duration: 2, parameters: { instrument: 'tom' } },
             },
             {
                 id: 'MAIN_3', name: 'Waning Chant', duration: { percent: 26 },
@@ -104,7 +104,7 @@ export const DarkBluesBlueprint: MusicBlueprint = {
                     accompaniment: { strategy: 'weighted', v1Options: [{ name: 'organ', weight: 1.0 }], v2Options: [{ name: 'organ', weight: 1.0 }] },
                 },
                 instrumentRules: {
-                    drums: { pattern: 'composer', kitName: 'blues_dark', density: { min: 0.4, max: 0.6 } },
+                    drums: { pattern: 'composer', kitName: 'blues_melancholic_master', density: { min: 0.4, max: 0.6 }, ride: { enabled: false } },
                     melody: { source: 'blues_solo', soloPlan: "S08", density: { min: 0.5, max: 0.8 } },
                     accompaniment: { techniques: [{ value: 'arpeggio-slow', weight: 0.6 }, { value: 'long-chords', weight: 0.4 }] }
                 },
