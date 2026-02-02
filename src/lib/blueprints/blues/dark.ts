@@ -57,7 +57,7 @@ export const DarkBluesBlueprint: MusicBlueprint = {
             },
             {
                 id: 'MAIN_1', name: 'The Chant', duration: { percent: 25 },
-                layers: { bass: true, sfx: true, drums: true, melody: true, accompaniment: true, harmony: true },
+                layers: { bass: true, sfx: true, drums: true, melody: true, accompaniment: true, harmony: true, sparkles: true },
                 harmonicJourney: [{ center: 'i', satellites: ['iv'], weight: 0.7 }],
                  instrumentation: {
                     melody: { strategy: 'weighted', v1Options: [{ name: 'guitar_muffLead', weight: 1.0 }], v2Options: [{ name: 'guitar_muffLead', weight: 1.0 }] },
@@ -66,14 +66,15 @@ export const DarkBluesBlueprint: MusicBlueprint = {
                 instrumentRules: {
                     drums: { pattern: 'composer', kitName: 'blues_melancholic_master', density: { min: 0.4, max: 0.6 }, ride: { enabled: false } },
                     melody: { source: 'blues_solo', soloPlan: "S06", density: { min: 0.5, max: 0.9 } },
-                    accompaniment: { techniques: [{ value: 'rhythmic-comp', weight: 0.8 }, { value: 'arpeggio-slow', weight: 0.2 }] }
+                    accompaniment: { techniques: [{ value: 'rhythmic-comp', weight: 0.8 }, { value: 'arpeggio-slow', weight: 0.2 }] },
+                    sparkles: { eventProbability: 0.15, categories: [{name: 'dark', weight: 1.0}] }
                 },
                 bundles: [{ id: 'DARK_MAIN_BUNDLE_1', name: 'The Chant', duration: { percent: 100 }, characteristics: {}, phrases: {} }],
                 outroFill: null,
             },
             {
                 id: 'MAIN_2', name: 'Ritual Peak', duration: { percent: 25 },
-                layers: { bass: true, drums: true, accompaniment: true, melody: true, sfx: true, harmony: true },
+                layers: { bass: true, drums: true, accompaniment: true, melody: true, sfx: true, harmony: true, sparkles: true },
                 harmonicJourney: [{ center: 'bVI', satellites: ['V'], weight: 0.6 }],
                  instrumentation: {
                     melody: { strategy: 'weighted', v1Options: [{ name: 'guitar_muffLead', weight: 1.0 }], v2Options: [{ name: 'guitar_muffLead', weight: 1.0 }] },
@@ -82,14 +83,15 @@ export const DarkBluesBlueprint: MusicBlueprint = {
                 instrumentRules: {
                     drums: { pattern: 'composer', kitName: 'blues_melancholic_master', density: { min: 0.5, max: 0.7 }, ride: { enabled: false } },
                     melody: { source: 'blues_solo', soloPlan: "S07", density: { min: 0.6, max: 1.0 } },
-                    accompaniment: { techniques: [{ value: 'rhythmic-comp', weight: 0.9 }, { value: 'arpeggio-fast', weight: 0.1 }] }
+                    accompaniment: { techniques: [{ value: 'rhythmic-comp', weight: 0.9 }, { value: 'arpeggio-fast', weight: 0.1 }] },
+                    sparkles: { eventProbability: 0.2, categories: [{name: 'dark', weight: 1.0}] }
                 },
                 bundles: [{ id: 'BLUES_DARK_MAIN_B_BUNDLE', name: 'Intensity', duration: { percent: 100 }, characteristics: {}, phrases: {} }],
                 outroFill: { type: 'roll', duration: 2, parameters: { instrument: 'tom' } },
             },
             {
                 id: 'MAIN_3', name: 'Waning Chant', duration: { percent: 25 },
-                layers: { bass: true, drums: true, accompaniment: true, melody: true, sfx: true, harmony: true },
+                layers: { bass: true, drums: true, accompaniment: true, melody: true, sfx: true, harmony: true, sparkles: true },
                 harmonicJourney: [{ center: 'i', satellites: ['v'], weight: 0.8 }],
                  instrumentation: {
                     melody: { strategy: 'weighted', v1Options: [{ name: 'guitar_muffLead', weight: 1.0 }], v2Options: [{ name: 'guitar_muffLead', weight: 1.0 }] },
@@ -98,7 +100,8 @@ export const DarkBluesBlueprint: MusicBlueprint = {
                 instrumentRules: {
                     drums: { pattern: 'composer', kitName: 'blues_melancholic_master', density: { min: 0.4, max: 0.6 }, ride: { enabled: false } },
                     melody: { source: 'blues_solo', soloPlan: "S08", density: { min: 0.5, max: 0.8 } },
-                    accompaniment: { techniques: [{ value: 'arpeggio-slow', weight: 0.6 }, { value: 'long-chords', weight: 0.4 }] }
+                    accompaniment: { techniques: [{ value: 'arpeggio-slow', weight: 0.6 }, { value: 'long-chords', weight: 0.4 }] },
+                    sparkles: { eventProbability: 0.1, categories: [{name: 'dark', weight: 1.0}] }
                 },
                 bundles: [{ id: 'BLUES_DARK_MAIN_C_BUNDLE', name: 'Waning', duration: { percent: 100 }, characteristics: {}, phrases: {} }],
                 outroFill: null,
