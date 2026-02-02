@@ -1,4 +1,5 @@
 
+
 import type { FractalEvent, Mood, Genre, Technique, BassSynthParams, InstrumentType, MelodyInstrument, AccompanimentInstrument, ResonanceMatrix, InstrumentHints, AccompanimentTechnique, GhostChord, SfxRule, V1MelodyInstrument, V2MelodyInstrument, BlueprintPart, InstrumentationRules, InstrumentBehaviorRules, BluesMelody, InstrumentPart, DrumKit, BluesGuitarRiff, BluesSoloPhrase, BluesRiffDegree, SuiteDNA, RhythmicFeel, BassStyle, DrumStyle, HarmonicCenter } from './fractal';
 import { ElectronicK, TraditionalK, AmbientK, MelancholicMinorK } from './resonance-matrices';
 import { BlueprintNavigator, type NavigationInfo } from './blueprint-navigator';
@@ -148,11 +149,18 @@ export function generateSuiteDNA(totalBars: number, mood: Mood, seed: number, ra
 
                     const finalDuration = Math.min(duration, partDuration - currentBarInPart);
                     const chordInfo = degreeMap[currentDegree];
+                    
+                    let inversion: 0 | 1 | 2 | undefined = undefined;
+                    if (harmonyTrack.length > 0 && random.next() < 0.3) {
+                        inversion = (random.next() > 0.5 ? 1 : 2) as 1 | 2;
+                    }
+                    
                     harmonyTrack.push({
                         rootNote: key + chordInfo.rootOffset,
                         chordType: chordInfo.type,
                         bar: partStartBar + currentBarInPart,
-                        durationBars: finalDuration
+                        durationBars: finalDuration,
+                        inversion: inversion,
                     });
                     currentBarInPart += finalDuration;
 
@@ -173,7 +181,19 @@ export function generateSuiteDNA(totalBars: number, mood: Mood, seed: number, ra
                     const duration = [4, 8, 4, 2, 4][random.nextInt(5)];
                     const finalDuration = Math.min(duration, partDuration - currentBarInPart);
                     const chordRoot = key + [0, 5, 7, -5, 4, 2, -7][random.nextInt(7)];
-                    harmonyTrack.push({ rootNote: chordRoot, chordType: random.next() > 0.5 ? 'major' : 'minor', bar: partStartBar + currentBarInPart, durationBars: finalDuration });
+                    
+                    let inversion: 0 | 1 | 2 | undefined = undefined;
+                    if (harmonyTrack.length > 0 && random.next() < 0.25) { // Lower chance for ambient
+                        inversion = (random.next() > 0.5 ? 1 : 2) as 1 | 2;
+                    }
+
+                    harmonyTrack.push({ 
+                        rootNote: chordRoot, 
+                        chordType: random.next() > 0.5 ? 'major' : 'minor', 
+                        bar: partStartBar + currentBarInPart, 
+                        durationBars: finalDuration,
+                        inversion: inversion
+                    });
                     currentBarInPart += finalDuration;
                  }
             }
@@ -325,17 +345,6 @@ export function createAmbientBassAxiom(
 export { createAmbientMelodyMotif, mutateBassPhrase, createBassFill, createDrumFill, chooseHarmonyInstrument, mutateBluesAccompaniment, mutateBluesMelody, createBluesOrganLick, generateIntroSequence };
 
 
-// Stubs for functions that might have been moved but are still exported, to avoid breaking builds.
-function createAmbientMelodyMotif(chord: GhostChord, mood: Mood, random: { next: () => number; nextInt: (max: number) => number; }, previousMotif?: FractalEvent[], registerHint?: 'low' | 'mid' | 'high', genre?: Genre): FractalEvent[] { return []; }
-function mutateBassPhrase(phrase: FractalEvent[], chord: GhostChord, mood: Mood, genre: Genre, random: { next: () => number; nextInt: (max: number) => number; }): FractalEvent[] { return []; }
-function createBassFill(chord: GhostChord, mood: Mood, genre: Genre, random: { next: () => number; nextInt: (max: number) => number; }): { events: FractalEvent[]; duration: number } { return { events: [], duration: 0 }; }
-function createDrumFill(random: { next: () => number; nextInt: (max: number) => number; }, params: any): FractalEvent[] { return []; }
-function chooseHarmonyInstrument(part: BlueprintPart, useMelodyV2: boolean, random: { next: () => number }): 'piano' | 'guitarChords' | 'violin' | 'flute' | 'none' { return 'piano'; }
-function mutateBluesAccompaniment(phrase: FractalEvent[], chord: GhostChord, random: { next: () => number; nextInt: (max: number) => number; }): FractalEvent[] { return []; }
-function mutateBluesMelody(phrase: BluesSoloPhrase, chord: GhostChord, random: { next: () => number; nextInt: (max: number) => number; }): BluesSoloPhrase { return []; }
-function createBluesOrganLick(chord: GhostChord, random: { next: () => number; nextInt: (max: number) => number; }): FractalEvent[] { return []; }
-function generateIntroSequence(currentBar: number, introRules: any, harmonyTrack: GhostChord[], settings: any, random: any): { events: FractalEvent[], instrumentHints: InstrumentHints } { return { events: [], instrumentHints: {} }; }
-
 // --- MELODY MUTATION FUNCTIONS (PLAN 1712) ---
 
 /**
@@ -345,7 +354,9 @@ export function transposeMelody(phrase: BluesSoloPhrase, interval: number): Blue
     if (!phrase) return [];
     return phrase.map(note => ({
         ...note,
-        note: (note.note || 0) + interval
+        // This is a temporary fix. The 'note' property might not exist on all items in a BluesSoloPhrase.
+        // The real fix would be to ensure that the phrase passed in has the correct structure.
+        note: ((note as any).note || 0) + interval 
     }));
 }
 
@@ -354,10 +365,10 @@ export function transposeMelody(phrase: BluesSoloPhrase, interval: number): Blue
  */
 export function invertMelody(phrase: BluesSoloPhrase): BluesSoloPhrase {
     if (!phrase || phrase.length === 0) return [];
-    const firstNote = phrase[0].note || 60;
+    const firstNote = (phrase[0] as any).note || 60;
     return phrase.map(note => ({
         ...note,
-        note: firstNote - ((note.note || 60) - firstNote)
+        note: firstNote - (((note as any).note || 60) - firstNote)
     }));
 }
 
@@ -365,7 +376,7 @@ export function invertMelody(phrase: BluesSoloPhrase): BluesSoloPhrase {
  * Varies the rhythm of a melody slightly.
  */
 export function varyRhythm(phrase: BluesSoloPhrase, random: { next: () => number }): BluesSoloPhrase {
-    const newPhrase: BluesSoloPhrase = JSON.parse(JSON.stringify(phrase));
+    const newPhrase = JSON.parse(JSON.stringify(phrase)) as BluesSoloPhrase;
     if (newPhrase.length < 2) return newPhrase;
 
     // 50% chance to modify rhythm
@@ -387,7 +398,6 @@ export function varyRhythm(phrase: BluesSoloPhrase, random: { next: () => number
                 ...note1,
                 t: note1.t + splitPoint,
                 d: note1.d - splitPoint,
-                // deg must be present, copy from note1
                 deg: note1.deg,
             });
         }
@@ -416,3 +426,15 @@ export function addOrnaments(phrase: BluesSoloPhrase, random: { next: () => numb
         return [note];
     }).flat();
 }
+
+function createAmbientMelodyMotif(chord: GhostChord, mood: Mood, random: { next: () => number; nextInt: (max: number) => number; }, previousMotif?: FractalEvent[], registerHint?: 'low' | 'mid' | 'high', genre?: Genre): FractalEvent[] { return []; }
+function mutateBassPhrase(phrase: FractalEvent[], chord: GhostChord, mood: Mood, genre: Genre, random: { next: () => number; nextInt: (max: number) => number; }): FractalEvent[] { return []; }
+function createBassFill(chord: GhostChord, mood: Mood, genre: Genre, random: { next: () => number; nextInt: (max: number) => number; }): { events: FractalEvent[]; duration: number } { return { events: [], duration: 0 }; }
+function createDrumFill(random: { next: () => number; nextInt: (max: number) => number; }, params: any): FractalEvent[] { return []; }
+function chooseHarmonyInstrument(part: BlueprintPart, useMelodyV2: boolean, random: { next: () => number }): 'piano' | 'guitarChords' | 'violin' | 'flute' | 'none' { return 'piano'; }
+function mutateBluesAccompaniment(phrase: FractalEvent[], chord: GhostChord, random: { next: () => number; nextInt: (max: number) => number; }): FractalEvent[] { return []; }
+function mutateBluesMelody(phrase: BluesSoloPhrase, chord: GhostChord, random: { next: () => number; nextInt: (max: number) => number; }): BluesSoloPhrase { return []; }
+function createBluesOrganLick(chord: GhostChord, random: { next: () => number; nextInt: (max: number) => number; }): FractalEvent[] { return []; }
+function generateIntroSequence(currentBar: number, introRules: any, harmonyTrack: GhostChord[], settings: any, random: any): { events: FractalEvent[], instrumentHints: InstrumentHints } { return { events: [], instrumentHints: {} }; }
+
+    

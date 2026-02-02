@@ -425,6 +425,22 @@ export class FractalMusicEngine {
     private generateBluesBassRiff(chord: GhostChord, technique: Technique, random: { next: () => number, nextInt: (max: number) => number }, mood: Mood): FractalEvent[] {
         const phrase: FractalEvent[] = [];
         const root = chord.rootNote;
+    
+        // #РЕАЛИЗАЦИЯ (ПЛАН 1715): Если аккорд инвертирован, играем простую педаль на басовой ноте.
+        if (chord.inversion) {
+            const isMinor = chord.chordType === 'minor' || chord.chordType === 'diminished';
+            const third = root + (isMinor ? 3 : 4);
+            const fifth = root + 7;
+            let bassNote = root;
+            if (chord.inversion === 1) bassNote = third;
+            if (chord.inversion === 2) bassNote = fifth;
+    
+            return [
+                { note: bassNote - 12, time: 0, duration: 2.0, weight: 0.85 },
+                { note: bassNote - 12, time: 2.0, duration: 2.0, weight: 0.8 }
+            ].map(e => ({ ...e, type: 'bass', technique: 'pedal', dynamics: 'mf', phrasing: 'legato', params: { cutoff: 800, resonance: 0.7, distortion: 0.15, portamento: 0.0 } }));
+        }
+
         const barDurationInBeats = 4.0;
         const ticksPerBeat = 3;
         
@@ -865,6 +881,14 @@ export class FractalMusicEngine {
         chordNotes = [rootMidi, rootMidi + (isMinor ? 3 : 4), rootMidi + 7];
     }
     
+    if (chord.inversion) {
+        if (chord.inversion === 1) { // 1st inversion (3rd in bass)
+            chordNotes = [chordNotes[1], chordNotes[2], chordNotes[0] + 12];
+        } else if (chord.inversion === 2) { // 2nd inversion (5th in bass)
+            chordNotes = [chordNotes[2], chordNotes[0] + 12, chordNotes[1] + 12];
+        }
+    }
+    
     let baseOctave = 3;
     if (registerHint === 'low') baseOctave = 2;
     if (registerHint === 'high') baseOctave = 4;
@@ -1020,5 +1044,83 @@ function createBluesOrganLick(chord: GhostChord, random: { next: () => number; n
 function generateIntroSequence(currentBar: number, introRules: any, harmonyTrack: GhostChord[], settings: any, random: any): { events: FractalEvent[], instrumentHints: InstrumentHints } { return { events: [], instrumentHints: {} }; }
 function createAmbientBassAxiom(chord: GhostChord, mood: Mood, genre: Genre, random: { next: () => number; nextInt: (max: number) => number; }, tempo: number, technique: Technique): FractalEvent[] { return []; }
 
+// --- MELODY MUTATION FUNCTIONS (PLAN 1712) ---
 
+/**
+ * Transposes a melody by a given interval in semitones.
+ */
+export function transposeMelody(phrase: BluesSoloPhrase, interval: number): BluesSoloPhrase {
+    if (!phrase) return [];
+    return phrase.map(note => ({
+        ...note,
+        note: (note.note || 0) + interval
+    }));
+}
 
+/**
+ * Inverts a melody around its first note.
+ */
+export function invertMelody(phrase: BluesSoloPhrase): BluesSoloPhrase {
+    if (!phrase || phrase.length === 0) return [];
+    const firstNote = phrase[0].note || 60;
+    return phrase.map(note => ({
+        ...note,
+        note: firstNote - ((note.note || 60) - firstNote)
+    }));
+}
+
+/**
+ * Varies the rhythm of a melody slightly.
+ */
+export function varyRhythm(phrase: BluesSoloPhrase, random: { next: () => number }): BluesSoloPhrase {
+    const newPhrase: BluesSoloPhrase = JSON.parse(JSON.stringify(phrase));
+    if (newPhrase.length < 2) return newPhrase;
+
+    // 50% chance to modify rhythm
+    if (random.next() < 0.5) {
+        const i = Math.floor(random.next() * (newPhrase.length - 1));
+        const note1 = newPhrase[i];
+        const note2 = newPhrase[i + 1];
+
+        // Try to merge two short notes into one longer one
+        if (note1.d < 4 && note2.d < 4) {
+            note1.d += note2.d;
+            newPhrase.splice(i + 1, 1);
+        }
+        // Or split a long note into two shorter ones
+        else if (note1.d > 3) {
+            const splitPoint = Math.floor(note1.d / 2);
+            note1.d = splitPoint;
+            newPhrase.splice(i + 1, 0, {
+                ...note1,
+                t: note1.t + splitPoint,
+                d: note1.d - splitPoint,
+                // deg must be present, copy from note1
+                deg: note1.deg,
+            });
+        }
+    }
+    return newPhrase;
+}
+
+/**
+ * Adds simple ornaments (grace notes) to a melody.
+ */
+export function addOrnaments(phrase: BluesSoloPhrase, random: { next: () => number }): BluesSoloPhrase {
+    if (!phrase) return [];
+    return phrase.map(note => {
+        // 20% chance to add a grace note before the main note
+        if (random.next() < 0.2) {
+            const graceNote: BluesSoloPhrase[0] = {
+                t: note.t,
+                d: 1, // very short
+                deg: note.deg, // This should be calculated or derived if needed, for now just copy
+                tech: 'gr' // grace note technique
+            };
+            note.t += 1; // Shift original note
+            if (note.d > 1) note.d -= 1;
+            return [graceNote, note];
+        }
+        return [note];
+    }).flat();
+}
