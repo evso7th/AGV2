@@ -16,6 +16,27 @@ import { BLUES_SOLO_LICKS, BLUES_SOLO_PLANS } from './assets/blues_guitar_solo';
 import { BLUES_DRUM_RIFFS } from './assets/blues-drum-riffs';
 import { DRUM_KITS } from './assets/drum-kits';
 
+import { 
+    getScaleForMood, 
+    generateSuiteDNA, 
+    createDrumAxiom, 
+    createHarmonyAxiom, 
+    createAmbientMelodyMotif, 
+    mutateBassPhrase, 
+    createBassFill, 
+    createDrumFill, 
+    chooseHarmonyInstrument, 
+    mutateBluesAccompaniment, 
+    mutateBluesMelody, 
+    createBluesOrganLick, 
+    generateIntroSequence, 
+    transposeMelody,
+    invertMelody,
+    varyRhythm,
+    addOrnaments,
+    DEGREE_TO_SEMITONE
+} from './music-theory';
+
 
 export const DEGREE_TO_SEMITONE: Record<string, number> = {
     'R': 0, 'b2': 1, '2': 2, 'b3': 3, '3': 4, '4': 5, '#4': 6, 'b5': 6, '5': 7,
@@ -315,27 +336,64 @@ export function createAmbientBassAxiom(
   technique: Technique
 ): FractalEvent[] {
   const axiom: FractalEvent[] = [];
-  const rootNote = chord.rootNote;
-
-  // Simple drone for ambient
-  axiom.push({
-    type: 'bass',
-    note: rootNote - 12, // One octave lower
-    duration: 4.0, // Whole note
-    time: 0,
-    weight: 0.75,
-    technique: 'drone',
-    dynamics: 'p',
-    phrasing: 'legato',
-    params: {
-      attack: 1.5,
-      release: 3.0,
-      cutoff: 200,
-      resonance: 0.8,
+  const rootNote = chord.rootNote - 12; // One octave lower
+  
+  const commonParams = {
+      attack: 1.0,
+      release: 2.0,
+      cutoff: 220,
+      resonance: 0.75,
       distortion: 0.05,
-      portamento: 0.1
+      portamento: 0.08
+  };
+
+  // Decide whether to play a drone or a slow riff
+  if (technique === 'drone' || random.next() < 0.4) {
+    // Play a drone, but make it shorter, not a whole bar
+    axiom.push({
+      type: 'bass',
+      note: rootNote,
+      duration: 3.0, // Dotted half note, leaving one beat of rest
+      time: 0,
+      weight: 0.75,
+      technique: 'drone',
+      dynamics: 'p',
+      phrasing: 'legato',
+      params: { ...commonParams, attack: 1.5, release: 3.0 }
+    });
+  } else {
+    // Play a slow, simple riff
+    const fifth = rootNote + 7;
+    const isMinor = chord.chordType === 'minor' || chord.chordType === 'diminished';
+    const third = rootNote + (isMinor ? 3 : 4);
+
+    const patternChoice = random.next();
+    if (patternChoice < 0.5) {
+        // Pattern 1: Root -> Fifth
+        axiom.push({
+            type: 'bass', note: rootNote, duration: 2.0, time: 0, weight: 0.7,
+            technique: 'long_notes', dynamics: 'p', phrasing: 'legato', params: commonParams
+        });
+        axiom.push({
+            type: 'bass', note: fifth, duration: 2.0, time: 2.0, weight: 0.65,
+            technique: 'long_notes', dynamics: 'p', phrasing: 'legato', params: commonParams
+        });
+    } else {
+        // Pattern 2: Root -> Third -> Root
+         axiom.push({
+            type: 'bass', note: rootNote, duration: 1.5, time: 0, weight: 0.7,
+            technique: 'long_notes', dynamics: 'p', phrasing: 'legato', params: commonParams
+        });
+         axiom.push({
+            type: 'bass', note: third, duration: 1.0, time: 1.5, weight: 0.6,
+            technique: 'long_notes', dynamics: 'p', phrasing: 'legato', params: commonParams
+        });
+        axiom.push({
+            type: 'bass', note: rootNote, duration: 1.5, time: 2.5, weight: 0.65,
+            technique: 'long_notes', dynamics: 'p', phrasing: 'legato', params: commonParams
+        });
     }
-  });
+  }
 
   return axiom;
 }
@@ -354,8 +412,6 @@ export function transposeMelody(phrase: BluesSoloPhrase, interval: number): Blue
     if (!phrase) return [];
     return phrase.map(note => ({
         ...note,
-        // This is a temporary fix. The 'note' property might not exist on all items in a BluesSoloPhrase.
-        // The real fix would be to ensure that the phrase passed in has the correct structure.
         note: ((note as any).note || 0) + interval 
     }));
 }
