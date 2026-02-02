@@ -17,7 +17,7 @@ export const DarkBluesBlueprint: MusicBlueprint = {
         totalDuration: { preferredBars: 120 },
         parts: [
             {
-                id: 'INTRO', name: 'Dark Telecaster Intro', duration: { percent: 15 },
+                id: 'INTRO_1', name: 'Dark Telecaster Intro', duration: { percent: 15 },
                 layers: { bass: true, accompaniment: true, melody: true, sfx: true },
                 instrumentation: {
                     bass: { 
@@ -32,8 +32,8 @@ export const DarkBluesBlueprint: MusicBlueprint = {
                     },
                     melody: {
                         strategy: 'weighted',
-                        v1Options: [{ name: 'electricGuitar', weight: 1.0 }], // Fallback for V1
-                        v2Options: [{ name: 'darkTelecaster', weight: 1.0 }] // V2 uses darkTelecaster
+                        v1Options: [{ name: 'darkTelecaster', weight: 1.0 }],
+                        v2Options: [{ name: 'darkTelecaster', weight: 1.0 }]
                     }
                 },
                 instrumentRules: { 
@@ -53,6 +53,41 @@ export const DarkBluesBlueprint: MusicBlueprint = {
                     sfx: { eventProbability: 0.15, categories: [{name: 'dark', weight: 1.0}] },
                 },
                 bundles: [ { id: 'DARK_INTRO_BUNDLE_1', name: 'Drone', duration: { percent: 100 }, characteristics: {}, phrases: {} } ],
+                outroFill: null,
+            },
+            {
+                id: 'INTRO_2', name: 'First Echoes', duration: { percent: 6 },
+                layers: { bass: true, accompaniment: true, melody: true, sfx: true, drums: true, sparkles: true },
+                instrumentation: { 
+                  bass: { strategy: 'weighted', v1Options: [{ name: 'ambientDrone', weight: 1.0 }], v2Options: [{ name: 'ambientDrone', weight: 1.0 }] },
+                  accompaniment: { strategy: 'weighted', v1Options: [{name: 'synth_cave_pad', weight: 1.0}], v2Options: [{name: 'synth_cave_pad', weight: 1.0}] },
+                  melody: { strategy: 'weighted', v1Options: [{name: 'guitar_shineOn', weight: 1.0}], v2Options: [{name: 'guitar_shineOn', weight: 1.0}] }
+                },
+                instrumentRules: { 
+                    drums: { enabled: true, pattern: 'composer', density: { min: 0.1, max: 0.3 }, useSnare: false, rareKick: true, usePerc: true, alternatePerc: false },
+                    sfx: { eventProbability: 0.2, categories: [{name: 'dark', weight: 1.0}] },
+                    sparkles: { eventProbability: 0.15, categories: [{name: 'dark', weight: 1.0}] },
+                    melody: { source: 'harmony_top_note' }
+                },
+                bundles: [ { id: 'DARK_INTRO_BUNDLE_2', name: 'Echoes', duration: { percent: 100 }, characteristics: {}, phrases: {} } ],
+                outroFill: null,
+            },
+            {
+                id: 'INTRO_3', name: 'Full Ensemble', duration: { percent: 6 },
+                layers: { bass: true, sfx: true, drums: true, melody: true, accompaniment: true, harmony: true, sparkles: true },
+                instrumentation: {
+                  bass: { strategy: 'weighted', v1Options: [{ name: 'ambientDrone', weight: 1.0 }], v2Options: [{ name: 'ambientDrone', weight: 1.0 }]},
+                  accompaniment: { strategy: 'weighted', v1Options: [{name: 'organ', weight: 0.8 }, {name: 'theremin', weight: 0.2}], v2Options: [{name: 'organ', weight: 0.8 }, {name: 'theremin', weight: 0.2}] },
+                  melody: { strategy: 'weighted', v1Options: [{name: 'guitar_shineOn', weight: 1.0}], v2Options: [{name: 'guitar_shineOn', weight: 1.0}] },
+                  harmony: { strategy: 'weighted', options: [ { name: 'violin', weight: 0.45 }, { name: 'flute', weight: 0.45 }, { name: 'guitarChords', weight: 0.1 } ]}
+                },
+                instrumentRules: {
+                    drums: { pattern: 'composer', density: { min: 0.2, max: 0.4 }, useSnare: false, usePerc: true, useGhostHat: true, rareKick: true, alternatePerc: false },
+                    bass: { density: {min: 0.5, max: 0.7} },
+                    sfx: { eventProbability: 0.25, categories: [{ name: 'voice', weight: 0.6 }, { name: 'dark', weight: 0.3 }] },
+                    melody: { source: 'harmony_top_note' }
+                },
+                bundles: [ { id: 'DARK_INTRO_BUNDLE_3', name: 'Ensemble', duration: { percent: 100 }, characteristics: {}, phrases: {} } ],
                 outroFill: null,
             },
             {
@@ -90,7 +125,7 @@ export const DarkBluesBlueprint: MusicBlueprint = {
                 outroFill: { type: 'roll', duration: 2, parameters: { instrument: 'tom' } },
             },
             {
-                id: 'MAIN_3', name: 'Waning Chant', duration: { percent: 25 },
+                id: 'MAIN_3', name: 'Waning Chant', duration: { percent: 10 },
                 layers: { bass: true, drums: true, accompaniment: true, melody: true, sfx: true, harmony: true, sparkles: true },
                 harmonicJourney: [{ center: 'i', satellites: ['v'], weight: 0.8 }],
                  instrumentation: {
