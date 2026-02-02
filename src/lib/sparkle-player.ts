@@ -12,6 +12,26 @@ const SPARKLE_SAMPLES = {
         '/assets/music/promenade_ogg/promenade-7.ogg',
         '/assets/music/promenade_ogg/promenade-8.ogg',
     ],
+    BLUES: [
+        '/assets/music/promenade_ogg/blues/1_Guitar_Riff_in_E_144_bpm.ogg',
+        '/assets/music/promenade_ogg/blues/2_Guitar_Riff__in_E_144_bpm.ogg',
+        '/assets/music/promenade_ogg/blues/3_Guitar_Riff__in_E_144_bpm.ogg',
+        '/assets/music/promenade_ogg/blues/4_Guitar_Riff__in_E_144_bpm.ogg',
+        '/assets/music/promenade_ogg/blues/5_Guitar_Riff_in_E_144_bpm.ogg',
+        '/assets/music/promenade_ogg/blues/6_Guitar_Riff_in_E_144_bpm.ogg',
+        '/assets/music/promenade_ogg/blues/7_Guitar_Riff_in_E_144_bpm_.ogg',
+        '/assets/music/promenade_ogg/blues/8_Guitar_Riff_in_E_144_bpm.ogg',
+        '/assets/music/promenade_ogg/blues/9_Guitar_Riff__in_E_144_bpm.ogg',
+        '/assets/music/promenade_ogg/blues/10_Guitar_Riff__in_E_144_bpm.ogg',
+        '/assets/music/promenade_ogg/blues/11_Guitar_Riff_in_E_166_bpm.ogg',
+        '/assets/music/promenade_ogg/blues/12_Guitar_Riff__in_E_166_bpm.ogg',
+        '/assets/music/promenade_ogg/blues/13_Guitar_Riff_in_E_166_bpm_.ogg',
+        '/assets/music/promenade_ogg/blues/14_Guitar_Riff__in_E_166_bpm.ogg',
+        '/assets/music/promenade_ogg/blues/15_Guitar_Riff__in_E_166_bpm.ogg',
+        '/assets/music/promenade_ogg/blues/promenade_blues1.ogg',
+        '/assets/music/promenade_ogg/blues/promenade_blues2.ogg',
+        '/assets/music/promenade_ogg/blues/promenade_blues3.ogg',
+    ],
     ROOT: [
         '/assets/music/droplets/EPstein.ogg',
         '/assets/music/droplets/Fearsome.ogg',
@@ -179,6 +199,7 @@ export class SparklePlayer {
     private gainNode: GainNode;
     private preamp: GainNode;
     private promenadeBuffers: AudioBuffer[] = [];
+    private bluesBuffers: AudioBuffer[] = [];
     private rootBuffers: AudioBuffer[] = [];
     private darkBuffers: AudioBuffer[] = [];
     private lightBuffers: AudioBuffer[] = [];
@@ -202,6 +223,7 @@ export class SparklePlayer {
         try {
             const allUrls = [
                 ...SPARKLE_SAMPLES.PROMENADE,
+                ...SPARKLE_SAMPLES.BLUES,
                 ...SPARKLE_SAMPLES.ROOT,
                 ...SPARKLE_SAMPLES.DARK,
                 ...SPARKLE_SAMPLES.LIGHT,
@@ -214,6 +236,7 @@ export class SparklePlayer {
             const urlBufferMap = new Map(uniqueUrls.map((url, i) => [url, allBuffers[i]]));
 
             this.promenadeBuffers = SPARKLE_SAMPLES.PROMENADE.map(url => urlBufferMap.get(url)).filter(Boolean) as AudioBuffer[];
+            this.bluesBuffers = SPARKLE_SAMPLES.BLUES.map(url => urlBufferMap.get(url)).filter(Boolean) as AudioBuffer[];
             this.rootBuffers = SPARKLE_SAMPLES.ROOT.map(url => urlBufferMap.get(url)).filter(Boolean) as AudioBuffer[];
             this.darkBuffers = SPARKLE_SAMPLES.DARK.map(url => urlBufferMap.get(url)).filter(Boolean) as AudioBuffer[];
             this.lightBuffers = SPARKLE_SAMPLES.LIGHT.map(url => urlBufferMap.get(url)).filter(Boolean) as AudioBuffer[];
@@ -221,7 +244,7 @@ export class SparklePlayer {
             this.ambientCommonBuffers = SPARKLE_SAMPLES.AMBIENT_COMMON.map(url => urlBufferMap.get(url)).filter(Boolean) as AudioBuffer[];
 
             this.isInitialized = true;
-            console.log(`[SparklePlayer] Initialized. Loaded: Promenade(${this.promenadeBuffers.length}), Root(${this.rootBuffers.length}), Dark(${this.darkBuffers.length}), Light(${this.lightBuffers.length}), Electronic(${this.electronicBuffers.length}), Ambient(${this.ambientCommonBuffers.length})`);
+            console.log(`[SparklePlayer] Initialized. Loaded: Promenade(${this.promenadeBuffers.length}), Blues(${this.bluesBuffers.length}), Root(${this.rootBuffers.length}), Dark(${this.darkBuffers.length}), Light(${this.lightBuffers.length}), Electronic(${this.electronicBuffers.length}), Ambient(${this.ambientCommonBuffers.length})`);
         } catch (e) {
             console.error('[SparklePlayer] Failed to initialize:', e);
         }
@@ -252,7 +275,10 @@ export class SparklePlayer {
         let poolName: string = 'DEFAULT';
         const rand = Math.random();
 
-        if (category === 'promenade' && this.promenadeBuffers.length > 0) {
+        if (category === 'promenade_blues' && this.bluesBuffers.length > 0) {
+            samplePool = this.bluesBuffers;
+            poolName = 'BLUES';
+        } else if (category === 'promenade' && this.promenadeBuffers.length > 0) {
             samplePool = this.promenadeBuffers;
             poolName = 'PROMENADE';
         } else if (genre === 'ambient') {
