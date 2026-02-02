@@ -7,6 +7,7 @@ import { V2_PRESETS, V1_TO_V2_PRESET_MAP, BASS_PRESET_MAP } from './presets-v2';
 import { BASS_PRESETS } from './bass-presets';
 import type { BlackGuitarSampler } from './black-guitar-sampler';
 import type { TelecasterGuitarSampler } from './telecaster-guitar-sampler';
+import type { DarkTelecasterSampler } from './dark-telecaster-sampler';
 
 /**
  * A V2 manager for melody and bass parts.
@@ -24,6 +25,7 @@ export class MelodySynthManagerV2 {
     private synth: any | null = null; 
     private telecasterSampler: TelecasterGuitarSampler;
     private blackAcousticSampler: BlackGuitarSampler;
+    private darkTelecasterSampler: DarkTelecasterSampler;
     private preamp: GainNode;
 
     private activePresetName: keyof typeof V2_PRESETS | keyof typeof BASS_PRESETS | 'none' = 'synth';
@@ -33,12 +35,14 @@ export class MelodySynthManagerV2 {
         destination: AudioNode,
         telecasterSampler: TelecasterGuitarSampler,
         blackAcousticSampler: BlackGuitarSampler,
+        darkTelecasterSampler: DarkTelecasterSampler,
         partName: 'melody' | 'bass'
     ) {
         this.audioContext = audioContext;
         this.destination = destination;
         this.telecasterSampler = telecasterSampler;
         this.blackAcousticSampler = blackAcousticSampler;
+        this.darkTelecasterSampler = darkTelecasterSampler;
         this.partName = partName;
 
         this.preamp = this.audioContext.createGain();
@@ -95,6 +99,10 @@ export class MelodySynthManagerV2 {
             }
             if (instrumentHint === 'telecaster') {
                 this.telecasterSampler.schedule(notesToPlay, barStartTime, tempo);
+                return;
+            }
+            if (instrumentHint === 'darkTelecaster') {
+                this.darkTelecasterSampler.schedule(notesToPlay, barStartTime, tempo);
                 return;
             }
         }
