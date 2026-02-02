@@ -175,6 +175,19 @@ export const DRUM_KITS: DrumKitLibrary = {
                 'drum_Sonor_Classix_High_Tom', 'drum_Sonor_Classix_Low_Tom', 'drum_Sonor_Classix_Mid_Tom',
                 'perc-012', 'perc-013', 'perc-014', 'perc-015', 'drum_cowbell'
             ]
+        },
+        dark_outro: {
+            kick: ['drum_kick_reso'],
+            snare: [],
+            hihat: [],
+            ride: [],
+            crash: [],
+            perc: [
+                'perc-012', 'perc-013', 'perc-014', 'perc-015',
+                'drum_Sonor_Classix_High_Tom',
+                'drum_Sonor_Classix_Low_Tom',
+                'drum_Sonor_Classix_Mid_Tom'
+            ]
         }
         // Другие настроения для blues можно добавить здесь
     },

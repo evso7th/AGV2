@@ -34,7 +34,10 @@ export const BLUES_SOLO_LICKS: Record<string, { phrase: BluesSoloPhrase; tags: s
   L18: { phrase: [{t:0,d:4,deg:'11'},{t:4,d:8,deg:'9'}], tags: ['minor', 'IV-chord', 'color'] },
   L19: { phrase: [{t:0,d:2,deg:'R'},{t:2,d:2,deg:'b7'},{t:4,d:2,deg:'6'},{t:6,d:2,deg:'b6'},{t:8,d:2,deg:'5'},{t:10,d:2,deg:'#4'}], tags: ['turnaround', 'chromatic', 'descending'] },
   L20: { phrase: [{t:0,d:2,deg:'3'},{t:2,d:2,deg:'b3'},{t:4,d:2,deg:'3'},{t:6,d:2,deg:'2'},{t:8,d:2,deg:'R'},{t:10,d:2,deg:'b7'}], tags: ['major', 'chuck-berry', 'fast-run'] },
-  L13_Sabbath_Scream: { phrase: [{ t: 0, d: 12, deg: 'b7', tech: 'vb' }], tags: ['dark', 'scream', 'high-sustain'] },
+  L21_FINGERSTYLE: { 
+    phrase: [{ t: 0, d: 12, deg: 'R', tech: 'F_TRAVIS' }],
+    tags: ['fingerstyle', 'rhythm', 'outro'] 
+  },
 };
 // 20 планов соло, каждый на 36 тактов (3 хора по 12 тактов)
 export const BLUES_SOLO_PLANS: Record<string, { choruses: string[][] }> = {
@@ -176,6 +179,13 @@ export const BLUES_SOLO_PLANS: Record<string, { choruses: string[][] }> = {
       ['L02', 'L11', 'L20', 'L06', 'L11', 'L14', 'L17', 'L10', 'L13', 'L11', 'L02', 'L09'],
       ['L08', 'L11', 'L13', 'L06', 'L11', 'L14', 'L17', 'L10', 'L12', 'L12', 'L02', 'L19'],
       ['L10', 'L11', 'L13', 'L02', 'L11', 'L06', 'L17', 'L10', 'L13', 'L11', 'L02', 'L09']
+    ]
+  },
+  "WINTER_OUTRO_MELODY": {
+    choruses: [
+      ['L21_FINGERSTYLE', 'L21_FINGERSTYLE', 'L21_FINGERSTYLE', 'L21_FINGERSTYLE', 
+       'L21_FINGERSTYLE', 'L21_FINGERSTYLE', 'L21_FINGERSTYLE', 'L21_FINGERSTYLE', 
+       'L21_FINGERSTYLE', 'L21_FINGERSTYLE', 'L21_FINGERSTYLE', 'L21_FINGERSTYLE']
     ]
   }
 };
