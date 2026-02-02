@@ -629,11 +629,18 @@ export class FractalMusicEngine {
     let bassEvents: FractalEvent[] = [];
     if (navInfo.currentPart.layers.bass) {
         const technique = navInfo.currentPart.instrumentRules?.bass?.techniques?.[0].value as Technique || 'drone';
+        let axiomSource = '';
         if (this.config.genre === 'blues') {
             bassEvents = createBluesBassAxiom(currentChord, 'riff', this.random, this.config.mood, this.epoch, this.suiteDNA!, this.currentBassRiffIndex);
+            axiomSource = 'createBluesBassAxiom';
         } else {
             bassEvents = createAmbientBassAxiom(currentChord, this.config.mood, this.config.genre, this.random, this.config.tempo, technique);
+            axiomSource = 'createAmbientBassAxiom';
         }
+        // #ЗАЧЕМ: Добавляет лог для отслеживания источника басовой аксиомы.
+        // #ЧТО: Выводит в консоль, какая функция была вызвана для генерации баса и сколько событий создано.
+        // #СВЯЗИ: Помогает в отладке и понимании, какой генератор активен в данный момент.
+        console.log(`[BassAxiom @ Bar ${this.epoch}] Source: ${axiomSource}, Generated ${bassEvents.length} bass events.`);
     }
     
     const bassOctaveShift = navInfo.currentPart.instrumentRules?.bass?.presetModifiers?.octaveShift;
@@ -679,14 +686,14 @@ export class FractalMusicEngine {
 
   private createAccompanimentAxiom(chord: GhostChord, mood: Mood, genre: Genre, random: { next: () => number; nextInt: (max: number) => number; }, tempo: number, registerHint: 'low' | 'mid' | 'high' = 'mid', technique: AccompanimentTechnique): FractalEvent[] {
     const axiom: FractalEvent[] = [];
-    const rootMidi = chord.rootNote;
+    const rootNote = chord.rootNote;
     
     let chordNotes: number[] = [];
     if (chord.chordType === 'dominant') {
-        chordNotes = [rootMidi, rootMidi + 4, rootMidi + 7, rootMidi + 10];
+        chordNotes = [rootNote, rootNote + 4, rootNote + 7, rootNote + 10];
     } else {
         const isMinor = chord.chordType === 'minor' || chord.chordType === 'diminished';
-        chordNotes = [rootMidi, rootMidi + (isMinor ? 3 : 4), rootMidi + 7];
+        chordNotes = [rootNote, rootNote + (isMinor ? 3 : 4), rootNote + 7];
     }
     
     if (chord.inversion) {
@@ -723,7 +730,7 @@ export class FractalMusicEngine {
             break;
             
         case 'power-chords':
-            const powerChordNotes = [rootMidi, rootMidi + 7]; // Root and fifth
+            const powerChordNotes = [rootNote, rootNote + 7]; // Root and fifth
             powerChordNotes.forEach((note, i) => {
                 axiom.push({
                     type: 'accompaniment',
@@ -835,4 +842,3 @@ export class FractalMusicEngine {
   }
 }
 
-    
