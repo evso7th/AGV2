@@ -32,6 +32,7 @@ import {
     generateIntroSequence, 
     createAmbientBassAxiom,
     createBluesBassAxiom,
+    generateBluesMelodyChorus,
     transposeMelody,
     invertMelody,
     varyRhythm,
@@ -576,7 +577,7 @@ export class FractalMusicEngine {
 
     if (navInfo.currentPart.layers.melody && !navInfo.currentPart.accompanimentMelodyDouble?.enabled && melodyRules) {
         if (melodyRules.source === 'blues_solo') {
-            const { events: soloEvents } = this.generateBluesMelodyChorus(currentChord, this.random, navInfo.currentPart.id, this.epoch, melodyRules);
+            const { events: soloEvents } = generateBluesMelodyChorus(currentChord, this.random, navInfo.currentPart.id, this.epoch, melodyRules, this.suiteDNA, this.melodyHistory, this.cachedMelodyChorus);
             melodyEvents = soloEvents;
         } else if (melodyRules.source === 'motif') {
             this.currentMelodyMotif = createAmbientMelodyMotif(currentChord, this.config.mood, this.random, this.currentMelodyMotif, melodyRules.register?.preferred, this.config.genre);
@@ -589,7 +590,6 @@ export class FractalMusicEngine {
     if (navInfo.currentPart.layers.accompaniment) {
         const accompRules = navInfo.currentPart.instrumentRules?.accompaniment;
         const registerHint = accompRules?.register?.preferred;
-        // #ИСПРАВЛЕНО (ПЛАН 1705.1): Жестко задана техника для блюза.
         const technique = (this.config.genre === 'blues' && ['melancholic', 'dark', 'gloomy', 'anxious'].includes(this.config.mood))
             ? 'long-chords'
             : (accompRules?.techniques?.[0]?.value || 'long-chords') as AccompanimentTechnique;
@@ -631,15 +631,12 @@ export class FractalMusicEngine {
         const technique = navInfo.currentPart.instrumentRules?.bass?.techniques?.[0].value as Technique || 'drone';
         let axiomSource = '';
         if (this.config.genre === 'blues') {
-            bassEvents = createBluesBassAxiom(currentChord, 'riff', this.random, this.config.mood, this.epoch, this.suiteDNA!, this.currentBassRiffIndex);
+            bassEvents = createBluesBassAxiom(currentChord, 'riff', this.random, this.config.mood, this.epoch, this.suiteDNA, this.currentBassRiffIndex);
             axiomSource = 'createBluesBassAxiom';
         } else {
             bassEvents = createAmbientBassAxiom(currentChord, this.config.mood, this.config.genre, this.random, this.config.tempo, technique);
             axiomSource = 'createAmbientBassAxiom';
         }
-        // #ЗАЧЕМ: Добавляет лог для отслеживания источника басовой аксиомы.
-        // #ЧТО: Выводит в консоль, какая функция была вызвана для генерации баса и сколько событий создано.
-        // #СВЯЗИ: Помогает в отладке и понимании, какой генератор активен в данный момент.
         console.log(`[BassAxiom @ Bar ${this.epoch}] Source: ${axiomSource}, Generated ${bassEvents.length} bass events.`);
     }
     
@@ -841,4 +838,3 @@ export class FractalMusicEngine {
     return axiom;
   }
 }
-
