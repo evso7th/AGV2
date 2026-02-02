@@ -11,7 +11,7 @@ import type { BluesSoloPhrase } from '@/types/fractal';
 // #ИСПРАВЛЕНО (ПЛАН 905): Добавлены недостающие поля 'd' (длительность).
 // #ОБНОВЛЕНО (ПЛАН 926): Расширен список ликов L13-L20.
 // #ИСПРАВЛЕНО (ПЛАН 929): Добавлена пропущенная запятая после L19.
-// #ИСПРАВЛЕНО (ПЛАН 1628): Лики теперь содержат теги для семантического выбора.
+// #ИСПРАВЛЕНО (ПЛАН 1717): Добавлены теги для семантического выбора ликов.
 // Структура события: { t: tick, d: duration_in_ticks, deg: degree, tech?: technique }
 export const BLUES_SOLO_LICKS: Record<string, { phrase: BluesSoloPhrase; tags: string[] }> = {
   L01: { phrase: [{t:0,d:3,deg:'b3',tech:'bn'}, {t:3,d:3,deg:'R'}, {t:6,d:6,deg:'5',tech:'vb'}], tags: ['minor', 'cry', 'slow-bend'] },
