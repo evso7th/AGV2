@@ -31,6 +31,7 @@ import {
     createBluesOrganLick, 
     generateIntroSequence, 
     createAmbientBassAxiom,
+    createBluesBassAxiom,
     transposeMelody,
     invertMelody,
     varyRhythm,
@@ -422,194 +423,6 @@ export class FractalMusicEngine {
         return arpeggio;
     }
 
-    private generateBluesBassRiff(chord: GhostChord, technique: Technique, random: { next: () => number, nextInt: (max: number) => number }, mood: Mood): FractalEvent[] {
-        const phrase: FractalEvent[] = [];
-        const root = chord.rootNote;
-    
-        // #РЕАЛИЗАЦИЯ (ПЛАН 1715): Если аккорд инвертирован, играем простую педаль на басовой ноте.
-        if (chord.inversion) {
-            const isMinor = chord.chordType === 'minor' || chord.chordType === 'diminished';
-            const third = root + (isMinor ? 3 : 4);
-            const fifth = root + 7;
-            let bassNote = root;
-            if (chord.inversion === 1) bassNote = third;
-            if (chord.inversion === 2) bassNote = fifth;
-    
-            return [
-                { note: bassNote - 12, time: 0, duration: 2.0, weight: 0.85 },
-                { note: bassNote - 12, time: 2.0, duration: 2.0, weight: 0.8 }
-            ].map(e => ({ ...e, type: 'bass', technique: 'pedal', dynamics: 'mf', phrasing: 'legato', params: { cutoff: 800, resonance: 0.7, distortion: 0.15, portamento: 0.0 } }));
-        }
-
-        const barDurationInBeats = 4.0;
-        const ticksPerBeat = 3;
-        
-        const allBassRiffs = BLUES_BASS_RIFFS[mood] ?? BLUES_BASS_RIFFS['contemplative'];
-        if (!allBassRiffs || allBassRiffs.length === 0) return [];
-        
-        const riffTemplate = allBassRiffs[this.currentBassRiffIndex % allBassRiffs.length];
-
-        const barInChorus = this.epoch % 12;
-        const rootOfChorus = this.suiteDNA!.harmonyTrack.find(c => c.bar === (this.epoch - barInChorus))?.rootNote ?? root;
-        const step = (root - rootOfChorus + 12) % 12;
-        
-        let patternSource: 'I' | 'IV' | 'V' | 'turn' = 'I';
-        if (barInChorus === 11) {
-            patternSource = 'turn';
-        } else if (step === 5 || step === 4) {
-            patternSource = 'IV';
-        } else if (step === 7) {
-            patternSource = 'V';
-        }
-
-        const pattern = riffTemplate[patternSource];
-
-        for (const riffNote of pattern) {
-            phrase.push({
-                type: 'bass',
-                note: root + (DEGREE_TO_SEMITONE[riffNote.deg as BluesRiffDegree] || 0),
-                time: riffNote.t / ticksPerBeat,
-                duration: (riffNote.d || 2) / ticksPerBeat,
-                weight: 0.85 + random.next() * 0.1,
-                technique: 'pluck',
-                dynamics: 'mf',
-                phrasing: 'legato',
-                params: { cutoff: 800, resonance: 0.7, distortion: 0.15, portamento: 0.0 }
-            });
-        }
-        return phrase;
-    }
-    
-    private generateBluesMelodyChorus(
-      currentChord: GhostChord,
-      random: { next: () => number; nextInt: (max: number) => number; },
-      partId: string,
-      epoch: number,
-      rules: InstrumentBehaviorRules = {}
-  ): { events: FractalEvent[], log: string } {
-      const events: FractalEvent[] = [];
-      let log: string[] = [];
-  
-      const barInChorus = epoch % 12;
-      const isNewChorus = barInChorus === 0;
-
-      // Check if we need to regenerate the chorus melody
-      if (isNewChorus || this.cachedMelodyChorus.bar === -1) {
-          this.cachedMelodyChorus.events = [];
-          this.cachedMelodyChorus.bar = epoch - barInChorus;
-          const soloPlanId = this.suiteDNA?.soloPlanMap.get(partId) || 'S01';
-          const soloPlan = BLUES_SOLO_PLANS[soloPlanId];
-          const chorusPlan = soloPlan.choruses[Math.floor((epoch / 12)) % soloPlan.choruses.length];
-  
-          let fullChorusLog = `[BluesComposer @ Bar ${this.cachedMelodyChorus.bar}] New 12-bar chorus (Plan: ${soloPlanId}): `;
-  
-          for (let bar = 0; bar < 12; bar++) {
-              const barTimestamp = this.cachedMelodyChorus.bar + bar;
-              const chordForThisBar = this.suiteDNA!.harmonyTrack.find(c => barTimestamp >= c.bar && barTimestamp < c.bar + c.durationBars) || currentChord;
-  
-              const isMinorChord = chordForThisBar.chordType.includes('minor');
-              const currentMood = this.config.mood;
-  
-              const allLickIds = Object.keys(BLUES_SOLO_LICKS);
-  
-              let licksByChordType = allLickIds.filter(id => {
-                  const tags = BLUES_SOLO_LICKS[id as keyof typeof BLUES_SOLO_LICKS].tags;
-                  return isMinorChord ? tags.includes('minor') : tags.includes('major');
-              });
-
-              // #ЗАЧЕМ: Улучшенная, двухступенчатая фильтрация для эмоциональной осмысленности.
-              // #ЧТО: Сначала выбираются фразы по тональности (мажор/минор), а затем из этого списка
-              //      ИСКЛЮЧАЮТСЯ те, что не подходят по настроению.
-              // #СВЯЗИ: Реализует **План 1705.2**.
-              const darkMoods = ['melancholic', 'dark', 'gloomy', 'anxious'];
-              const joyfulMoods = ['joyful', 'enthusiastic', 'epic'];
-              let forbiddenTags = new Set<string>();
-
-              if (darkMoods.includes(currentMood)) {
-                  forbiddenTags.add('boogie').add('uptempo').add('fast-run');
-              } else if (joyfulMoods.includes(currentMood)) {
-                  forbiddenTags.add('cry').add('slow-bend').add('drone');
-              }
-              
-              const moodFilteredLicks = licksByChordType.filter(id => {
-                  const tags = BLUES_SOLO_LICKS[id as keyof typeof BLUES_SOLO_LICKS].tags;
-                  return !tags.some(tag => forbiddenTags.has(tag));
-              });
-
-              let finalLicks = moodFilteredLicks.filter(id => !this.melodyHistory.slice(-5).includes(id));
-  
-              if (finalLicks.length === 0) {
-                  finalLicks = moodFilteredLicks.length > 0 ? moodFilteredLicks : licksByChordType;
-              }
-              
-              const planLickId = chorusPlan[bar];
-              const [baseLickId] = planLickId.split('+');
-              const chosenLickId = finalLicks.includes(baseLickId) ? baseLickId : (finalLicks.length > 0 ? finalLicks[random.nextInt(finalLicks.length)] : licksByChordType[0]);
-              
-              const [lickId, ...modifiers] = (finalLicks.includes(baseLickId) ? planLickId : chosenLickId).split('+');
-              const lickData = BLUES_SOLO_LICKS[lickId as keyof typeof BLUES_SOLO_LICKS];
-
-              if (lickData) {
-                  let phrase: BluesSoloPhrase = JSON.parse(JSON.stringify(lickData.phrase));
-                  
-                  // Apply mutations based on plan modifiers
-                  if (modifiers.includes('var')) phrase = varyRhythm(phrase, this.random);
-                  if (modifiers.includes('oct')) phrase = transposeMelody(phrase, 12);
-                  if (modifiers.includes('hi')) phrase = transposeMelody(phrase, 5);
-                  
-                  // Apply mutation at chorus boundary
-                  if (bar === 0 && random.next() < 0.4) {
-                      const mutationType = random.nextInt(4);
-                      if (mutationType === 0) phrase = varyRhythm(phrase, random);
-                      else if (mutationType === 1) phrase = transposeMelody(phrase, random.next() > 0.5 ? 2 : -2);
-                      else if (mutationType === 2) phrase = invertMelody(phrase);
-                      else phrase = addOrnaments(phrase, random);
-                  }
-
-
-                  this.melodyHistory.push(lickId);
-                  if (this.melodyHistory.length > 6) this.melodyHistory.shift();
-  
-                  let octaveShift = 12 * (rules.register?.preferred === 'high' ? 4 : (rules.register?.preferred === 'low' ? 2 : 3));
-  
-                  for (const noteTemplate of phrase) {
-                      let finalMidiNote = chordForThisBar.rootNote + (DEGREE_TO_SEMITONE[noteTemplate.deg] || 0) + octaveShift;
-                      if (finalMidiNote > 88) finalMidiNote -= 12;
-                      if (finalMidiNote < 55) finalMidiNote += 12;
-  
-                      this.cachedMelodyChorus.events.push({
-                          type: 'melody',
-                          note: finalMidiNote,
-                          time: bar * 4 + (noteTemplate.t / 3),
-                          duration: ((noteTemplate.d || 2) / 3),
-                          weight: 0.9 + (random.next() * 0.1),
-                          technique: (noteTemplate.tech || 'pick') as Technique,
-                          dynamics: 'mf', phrasing: 'legato', params: {note: finalMidiNote}
-                      });
-                  }
-                  fullChorusLog += `${lickId}, `;
-              }
-          }
-          console.log(fullChorusLog);
-      }
-  
-      const barStartTimeInBeats = barInChorus * 4;
-      const barEndTimeInBeats = barStartTimeInBeats + 4;
-      
-      const currentBarEvents = this.cachedMelodyChorus.events.filter(e => {
-          const relativeTimeInChorus = e.time;
-          return relativeTimeInChorus >= barStartTimeInBeats && relativeTimeInChorus < barEndTimeInBeats;
-      }).map(e => ({
-          ...e,
-          time: e.time - barStartTimeInBeats
-      }));
-  
-      log.push(`[BluesMelody] Bar ${barInChorus}, Licks from cache. Events: ${currentBarEvents.length}`);
-  
-      return { events: currentBarEvents, log: log.join(' ') };
-  }
-
-
   public getGhostHarmony(): GhostChord[] {
       return this.suiteDNA?.harmonyTrack || [];
   }
@@ -815,17 +628,12 @@ export class FractalMusicEngine {
 
     let bassEvents: FractalEvent[] = [];
     if (navInfo.currentPart.layers.bass) {
-      if (this.config.genre === 'blues') {
-          bassEvents = this.generateBluesBassRiff(currentChord, 'riff', this.random, this.config.mood);
-      } else {
-          if (this.epoch > 0 && this.epoch % 4 === 0) {
-              this.currentBassPhraseIndex = (this.currentBassPhraseIndex + 1) % this.bassPhraseLibrary.length;
-              if (this.random.next() < 0.6) {
-                  this.bassPhraseLibrary[this.currentBassPhraseIndex] = mutateBassPhrase(this.bassPhraseLibrary[this.currentBassPhraseIndex]!, currentChord, this.config.mood, this.config.genre, this.random);
-              }
-          }
-          bassEvents = this.bassPhraseLibrary[this.currentBassPhraseIndex] || [];
-      }
+        const technique = navInfo.currentPart.instrumentRules?.bass?.techniques?.[0].value as Technique || 'drone';
+        if (this.config.genre === 'blues') {
+            bassEvents = createBluesBassAxiom(currentChord, 'riff', this.random, this.config.mood, this.epoch, this.suiteDNA!, this.currentBassRiffIndex);
+        } else {
+            bassEvents = createAmbientBassAxiom(currentChord, this.config.mood, this.config.genre, this.random, this.config.tempo, technique);
+        }
     }
     
     const bassOctaveShift = navInfo.currentPart.instrumentRules?.bass?.presetModifiers?.octaveShift;
@@ -1027,100 +835,4 @@ export class FractalMusicEngine {
   }
 }
 
-// These functions are exported so they can be used in other modules if necessary.
-// However, the primary composition logic resides within the FractalMusicEngine class itself.
-export { createAmbientMelodyMotif, mutateBassPhrase, createBassFill, createDrumFill, chooseHarmonyInstrument, mutateBluesAccompaniment, mutateBluesMelody, createBluesOrganLick, generateIntroSequence, createAmbientBassAxiom };
-
-
-// Stubs for functions that might have been moved but are still exported, to avoid breaking builds.
-function createAmbientMelodyMotif(chord: GhostChord, mood: Mood, random: { next: () => number; nextInt: (max: number) => number; }, previousMotif?: FractalEvent[], registerHint?: 'low' | 'mid' | 'high', genre?: Genre): FractalEvent[] { return []; }
-function mutateBassPhrase(phrase: FractalEvent[], chord: GhostChord, mood: Mood, genre: Genre, random: { next: () => number; nextInt: (max: number) => number; }): FractalEvent[] { return []; }
-function createBassFill(chord: GhostChord, mood: Mood, genre: Genre, random: { next: () => number; nextInt: (max: number) => number; }): { events: FractalEvent[]; duration: number } { return { events: [], duration: 0 }; }
-function createDrumFill(random: { next: () => number; nextInt: (max: number) => number; }, params: any): FractalEvent[] { return []; }
-function chooseHarmonyInstrument(part: BlueprintPart, useMelodyV2: boolean, random: { next: () => number }): 'piano' | 'guitarChords' | 'violin' | 'flute' | 'none' { return 'piano'; }
-function mutateBluesAccompaniment(phrase: FractalEvent[], chord: GhostChord, random: { next: () => number; nextInt: (max: number) => number; }): FractalEvent[] { return []; }
-function mutateBluesMelody(phrase: BluesSoloPhrase, chord: GhostChord, random: { next: () => number; nextInt: (max: number) => number; }): BluesSoloPhrase { return []; }
-function createBluesOrganLick(chord: GhostChord, random: { next: () => number; nextInt: (max: number) => number; }): FractalEvent[] { return []; }
-function generateIntroSequence(currentBar: number, introRules: any, harmonyTrack: GhostChord[], settings: any, random: any): { events: FractalEvent[], instrumentHints: InstrumentHints } { return { events: [], instrumentHints: {} }; }
-function createAmbientBassAxiom(chord: GhostChord, mood: Mood, genre: Genre, random: { next: () => number; nextInt: (max: number) => number; }, tempo: number, technique: Technique): FractalEvent[] { return []; }
-
-// --- MELODY MUTATION FUNCTIONS (PLAN 1712) ---
-
-/**
- * Transposes a melody by a given interval in semitones.
- */
-export function transposeMelody(phrase: BluesSoloPhrase, interval: number): BluesSoloPhrase {
-    if (!phrase) return [];
-    return phrase.map(note => ({
-        ...note,
-        note: (note.note || 0) + interval
-    }));
-}
-
-/**
- * Inverts a melody around its first note.
- */
-export function invertMelody(phrase: BluesSoloPhrase): BluesSoloPhrase {
-    if (!phrase || phrase.length === 0) return [];
-    const firstNote = phrase[0].note || 60;
-    return phrase.map(note => ({
-        ...note,
-        note: firstNote - ((note.note || 60) - firstNote)
-    }));
-}
-
-/**
- * Varies the rhythm of a melody slightly.
- */
-export function varyRhythm(phrase: BluesSoloPhrase, random: { next: () => number }): BluesSoloPhrase {
-    const newPhrase: BluesSoloPhrase = JSON.parse(JSON.stringify(phrase));
-    if (newPhrase.length < 2) return newPhrase;
-
-    // 50% chance to modify rhythm
-    if (random.next() < 0.5) {
-        const i = Math.floor(random.next() * (newPhrase.length - 1));
-        const note1 = newPhrase[i];
-        const note2 = newPhrase[i + 1];
-
-        // Try to merge two short notes into one longer one
-        if (note1.d < 4 && note2.d < 4) {
-            note1.d += note2.d;
-            newPhrase.splice(i + 1, 1);
-        }
-        // Or split a long note into two shorter ones
-        else if (note1.d > 3) {
-            const splitPoint = Math.floor(note1.d / 2);
-            note1.d = splitPoint;
-            newPhrase.splice(i + 1, 0, {
-                ...note1,
-                t: note1.t + splitPoint,
-                d: note1.d - splitPoint,
-                // deg must be present, copy from note1
-                deg: note1.deg,
-            });
-        }
-    }
-    return newPhrase;
-}
-
-/**
- * Adds simple ornaments (grace notes) to a melody.
- */
-export function addOrnaments(phrase: BluesSoloPhrase, random: { next: () => number }): BluesSoloPhrase {
-    if (!phrase) return [];
-    return phrase.map(note => {
-        // 20% chance to add a grace note before the main note
-        if (random.next() < 0.2) {
-            const graceNote: BluesSoloPhrase[0] = {
-                t: note.t,
-                d: 1, // very short
-                deg: note.deg, // This should be calculated or derived if needed, for now just copy
-                tech: 'gr' // grace note technique
-            };
-            note.t += 1; // Shift original note
-            if (note.d > 1) note.d -= 1;
-            return [graceNote, note];
-        }
-        return [note];
-    }).flat();
-}
+    

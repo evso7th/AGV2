@@ -5,10 +5,10 @@ import { ElectronicK, TraditionalK, AmbientK, MelancholicMinorK } from './resona
 import { BlueprintNavigator, type NavigationInfo } from './blueprint-navigator';
 import { getBlueprint } from './blueprints';
 import { V2_PRESETS } from './presets-v2';
+import { BLUES_BASS_RIFFS } from './assets/blues-bass-riffs';
 
 // --- МУЗЫКАЛЬНЫЕ АССЕТЫ (БАЗА ЗНАНИЙ) ---
 import { PARANOID_STYLE_RIFF } from './assets/rock-riffs';
-import { BLUES_BASS_RIFFS } from './assets/blues-bass-riffs';
 import { NEUTRAL_BLUES_BASS_RIFFS } from './assets/neutral-blues-riffs';
 import { BLUES_GUITAR_RIFFS, BLUES_GUITAR_VOICINGS } from './assets/blues-guitar-riffs';
 import { BLUES_MELODY_RIFFS } from './assets/blues-melody-riffs';
@@ -397,6 +397,71 @@ export function createAmbientBassAxiom(
 
   return axiom;
 }
+
+export function createBluesBassAxiom(
+    chord: GhostChord,
+    technique: Technique,
+    random: { next: () => number, nextInt: (max: number) => number },
+    mood: Mood,
+    epoch: number,
+    suiteDNA: SuiteDNA,
+    currentBassRiffIndex: number
+): FractalEvent[] {
+    const phrase: FractalEvent[] = [];
+    const root = chord.rootNote;
+
+    if (chord.inversion) {
+        const isMinor = chord.chordType === 'minor' || chord.chordType === 'diminished';
+        const third = root + (isMinor ? 3 : 4);
+        const fifth = root + 7;
+        let bassNote = root;
+        if (chord.inversion === 1) bassNote = third;
+        if (chord.inversion === 2) bassNote = fifth;
+
+        return [
+            { note: bassNote - 12, time: 0, duration: 2.0, weight: 0.85 },
+            { note: bassNote - 12, time: 2.0, duration: 2.0, weight: 0.8 }
+        ].map(e => ({ ...e, type: 'bass', technique: 'pedal', dynamics: 'mf', phrasing: 'legato', params: { cutoff: 800, resonance: 0.7, distortion: 0.15, portamento: 0.0 } as any }));
+    }
+
+    const ticksPerBeat = 3;
+    
+    const allBassRiffs = BLUES_BASS_RIFFS[mood] ?? BLUES_BASS_RIFFS['contemplative'];
+    if (!allBassRiffs || allBassRiffs.length === 0) return [];
+    
+    const riffTemplate = allBassRiffs[currentBassRiffIndex % allBassRiffs.length];
+
+    const barInChorus = epoch % 12;
+    const rootOfChorus = suiteDNA.harmonyTrack.find(c => c.bar === (epoch - barInChorus))?.rootNote ?? root;
+    const step = (root - rootOfChorus + 12) % 12;
+    
+    let patternSource: 'I' | 'IV' | 'V' | 'turn' = 'I';
+    if (barInChorus === 11) {
+        patternSource = 'turn';
+    } else if (step === 5 || step === 4) {
+        patternSource = 'IV';
+    } else if (step === 7) {
+        patternSource = 'V';
+    }
+
+    const pattern = riffTemplate[patternSource];
+
+    for (const riffNote of pattern) {
+        phrase.push({
+            type: 'bass',
+            note: root + (DEGREE_TO_SEMITONE[riffNote.deg as BluesRiffDegree] || 0),
+            time: riffNote.t / ticksPerBeat,
+            duration: ((riffNote.d || 2) / ticksPerBeat) * 0.95,
+            weight: 0.85 + random.next() * 0.1,
+            technique: 'pluck',
+            dynamics: 'mf',
+            phrasing: 'legato',
+            params: { cutoff: 800, resonance: 0.7, distortion: 0.15, portamento: 0.0 }
+        });
+    }
+    return phrase;
+}
+
 
 // These functions are exported so they can be used in other modules if necessary.
 // However, the primary composition logic resides within the FractalMusicEngine class itself.
