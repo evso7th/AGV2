@@ -190,8 +190,10 @@ export class FractalMusicEngine {
     this.nextAccompanimentDelay = this.random.next() * 7 + 5;
     this.hasBassBeenMutated = false;
     
-    // #ЗАЧЕМ: Сброс памяти ансамбля при полной инициализации сюиты.
+    // #ЗАЧЕМ: Сброс памяти ансамбля и истории мелодии при полной инициализации сюиты.
     this.activatedInstruments.clear(); 
+    this.melodyHistory = [];
+    this.cachedMelodyChorus = { bar: -1, events: [] };
     
     const allBassRiffs = BLUES_BASS_RIFFS[this.config.mood] ?? BLUES_BASS_RIFFS['contemplative'];
     if (allBassRiffs && allBassRiffs.length > 0) {
@@ -261,7 +263,6 @@ export class FractalMusicEngine {
     if (!navInfo) return { events: [], instrumentHints: {} };
 
     // #ЗАЧЕМ: Реализация принципа "Смены декораций".
-    // #ЧТО: Очищаем карту "липких" инструментов при переходе между частями (например, INTRO_1 -> INTRO_2).
     if (navInfo.isPartTransition) {
         this.activatedInstruments.clear();
     }
@@ -281,23 +282,21 @@ export class FractalMusicEngine {
             }
         }
 
-        // #ЗАЧЕМ: Лотерея входа и "липкие" тембры.
-        // #ЧТО: Если инструмент уже был выбран в этой части, используем его тембр. 
-        //      Если нет — бросаем кубик на шанс активации.
         Object.entries(currentStage.instrumentation).forEach(([part, rule]) => {
             const p = part as InstrumentPart;
             
             if (rule.transient) {
-                // Временные инструменты бросают кубик каждый такт
                 if (this.random.next() < rule.activationChance) {
-                    (instrumentHints as any)[p] = this.pickWeighted(rule.instrumentOptions);
+                    const timbre = this.pickWeighted(rule.instrumentOptions);
+                    (instrumentHints as any)[p] = timbre;
+                    console.log(`%c[Engine] Transient Activation: Instrument '${p}' joined with timbre '${timbre}'`, 'color: #FF69B4; font-style: italic;');
                 }
             } else {
-                // Липкие инструменты фиксируются до конца части
                 if (!this.activatedInstruments.has(p)) {
                     if (this.random.next() < rule.activationChance) {
                         const chosenTimbre = this.pickWeighted(rule.instrumentOptions);
                         this.activatedInstruments.set(p, chosenTimbre);
+                        console.log(`%c[Engine] Sticky Activation: Instrument '${p}' fixed with timbre '${chosenTimbre}'`, 'color: #00BFFF; font-weight: bold;');
                     }
                 }
                 
@@ -307,7 +306,6 @@ export class FractalMusicEngine {
             }
         });
 
-        // Гарантия не-тишины (только для липких инструментов)
         if (this.activatedInstruments.size === 0) {
             const possible = Object.keys(currentStage.instrumentation) as InstrumentPart[];
             const nonTransient = possible.filter(p => !currentStage.instrumentation[p]?.transient);
@@ -324,6 +322,14 @@ export class FractalMusicEngine {
         instrumentHints.harmony = this._chooseInstrumentForPart('harmony', navInfo) as any;
         instrumentHints.bass = this._chooseInstrumentForPart('bass', navInfo) as any;
         instrumentHints.pianoAccompaniment = 'piano';
+    }
+
+    // #ЗАЧЕМ: Воскрешение детальных логов Навигатора.
+    if (navInfo.logMessage) {
+        const log = this.navigator.formatLogMessage(navInfo, instrumentHints, this.epoch);
+        if (log) {
+            console.log(log, 'color: #32CD32; font-weight: bold; background: #1a1a1a;');
+        }
     }
     
     return { ...this.generateOneBar(barDuration, navInfo, instrumentHints), instrumentHints };
@@ -374,12 +380,10 @@ export class FractalMusicEngine {
 
     if (instrumentHints.melody && melodyRules) {
         const ratio = melodyRules.soloToPatternRatio ?? 0.5;
-        // Logic for solo vs fingerstyle
         if (this.random.next() < ratio && melodyRules.source === 'blues_solo') {
             const { events: soloEvents } = generateBluesMelodyChorus(currentChord, this.random, navInfo.currentPart.id, this.epoch, melodyRules, this.suiteDNA, this.melodyHistory, this.cachedMelodyChorus);
             melodyEvents = soloEvents;
         } else {
-            // Pattern/Fingerstyle branch
             melodyEvents.push({
                 type: 'melody', note: currentChord.rootNote, time: 0, duration: 4.0, weight: 0.8,
                 technique: 'pluck', dynamics: 'mf', phrasing: 'legato',
@@ -388,30 +392,17 @@ export class FractalMusicEngine {
         }
     }
 
-    // Octave Correction for Guitars
     if (['telecaster', 'blackAcoustic', 'darkTelecaster', 'electricGuitar', 'guitar_shineOn', 'guitar_muffLead', 'guitar_nightmare_solo'].includes(instrumentHints.melody || '')) {
         melodyEvents.forEach(e => e.note += 24);
     }
 
-    // 3. Accompaniment (Power Chords for Dark Blues)
+    // 3. Accompaniment
     let accompEvents: FractalEvent[] = [];
     if (instrumentHints.accompaniment) {
         const accompRules = navInfo.currentPart.instrumentRules?.accompaniment;
-        const technique = (this.config.genre === 'blues' && this.config.mood === 'dark') ? 'power-chords' : (accompRules?.techniques?.[0]?.value || 'long-chords') as AccompanimentTechnique;
-
-        if (this.config.genre === 'blues' && this.config.mood === 'dark' && technique === 'power-chords') {
-            // #ЗАЧЕМ: Создание зловещего напряжения в дарк-блюзе.
-            // #ЧТО: Каждые пол-такта происходит смена: Тоника -> Доминанта.
-            const firstHalf = this.createAccompanimentAxiom(currentChord, this.config.mood, this.config.genre, this.random, this.config.tempo, 'low', 'power-chords');
-            const dominantChord: GhostChord = { ...currentChord, rootNote: currentChord.rootNote + 7, chordType: 'dominant' };
-            const secondHalf = this.createAccompanimentAxiom(dominantChord, this.config.mood, this.config.genre, this.random, this.config.tempo, 'low', 'power-chords');
-            
-            firstHalf.forEach(e => { e.duration = 2.0; e.time = e.time / 2; });
-            secondHalf.forEach(e => { e.duration = 2.0; e.time = (e.time / 2) + 2.0; });
-            accompEvents = [...firstHalf, ...secondHalf];
-        } else {
-            accompEvents = this.createAccompanimentAxiom(currentChord, this.config.mood, this.config.genre, this.random, this.config.tempo, accompRules?.register?.preferred, technique);
-        }
+        // #ЗАЧЕМ: Удален принудительный power-chords. Теперь используется техника из Блюпринта.
+        const technique = (accompRules?.techniques?.[0]?.value || 'long-chords') as AccompanimentTechnique;
+        accompEvents = this.createAccompanimentAxiom(currentChord, this.config.mood, this.config.genre, this.random, this.config.tempo, accompRules?.register?.preferred, technique);
     }
 
     // 4. Harmony
