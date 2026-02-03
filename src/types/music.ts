@@ -1,4 +1,3 @@
-
 import type { Mood as FractalMood, InstrumentHints as FractalInstrumentHints, InstrumentPart as FractalInstrumentPart } from './fractal';
 import { V2_PRESETS } from '@/lib/presets-v2';
 import { BASS_PRESETS } from '@/lib/bass-presets';
@@ -221,6 +220,7 @@ export type InstrumentBehaviorRules = {
     useGhostHat?: boolean;
     useBrushes?: boolean;
     soloPlan?: string;
+    soloToPatternRatio?: number;
     fingerstyle?: { bars: number[]; pattern: string; voicingName: string; }[];
     strum?: { bars: number[]; pattern: string; voicingName: string; }[];
     kitOverrides?: {
@@ -342,4 +342,14 @@ export type MusicBlueprint = {
     ambientEvents: any[]; // Define this type more strictly later
     continuity: any; // Define this type more strictly later
     rendering: any; // Define this type more strictly later
+};
+
+export type NavigationInfo = {
+  currentPart: BlueprintPart;
+  currentBundle: BlueprintBundle;
+  isPartTransition: boolean;
+  isBundleTransition: boolean;
+  logMessage: string | null;
+  currentPartStartBar: number;
+  currentPartEndBar: number;
 };

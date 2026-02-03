@@ -1,6 +1,4 @@
-
-
-import type { MusicBlueprint, BlueprintPart, BlueprintBundle, Genre, Mood, InstrumentationRules, MelodyInstrument, AccompanimentInstrument, BassInstrument, V2MelodyInstrument, InstrumentBehaviorRules, InstrumentHints } from '@/types/music';
+import type { MusicBlueprint, BlueprintPart, BlueprintBundle, Genre, Mood, InstrumentationRules, MelodyInstrument, AccompanimentInstrument, BassInstrument, V2MelodyInstrument, InstrumentBehaviorRules, InstrumentHints, NavigationInfo } from '@/types/music';
 
 // Helper function for seeded random numbers - kept for potential future use in axiom selection
 function seededRandom(seed: number) {
@@ -26,14 +24,6 @@ type PartBoundary = {
         startBar: number;
         endBar: number;
     }[];
-};
-
-export type NavigationInfo = {
-  currentPart: BlueprintPart;
-  currentBundle: BlueprintBundle;
-  isPartTransition: boolean;
-  isBundleTransition: boolean;
-  logMessage: string | null;
 };
 
 function formatInstrumentation(
@@ -82,8 +72,6 @@ function formatInstrumentation(
 /**
  * A class dedicated to navigating the hierarchical structure of a MusicBlueprint.
  * It tracks the current position (Part, Bundle) based on the bar count ('epoch').
- * It pre-calculates all boundaries at construction time for deterministic navigation.
- * This version uses a deterministic "bookkeeping" approach.
  */
 export class BlueprintNavigator {
     public blueprint: MusicBlueprint;
@@ -98,7 +86,7 @@ export class BlueprintNavigator {
         this.blueprint = blueprint;
         this.genre = genre;
         this.mood = mood;
-        this.introBars = introBars; // This might be deprecated if percentages are always used
+        this.introBars = introBars;
         this.totalBars = this.blueprint.structure.totalDuration.preferredBars;
         this.soloPlanMap = soloPlanMap;
 
@@ -131,13 +119,11 @@ export class BlueprintNavigator {
             accumulatedBars += partDuration;
         });
 
-        // Ensure the last part ends exactly at totalBars
         if (this.partBoundaries.length > 0) {
             const lastPart = this.partBoundaries[this.partBoundaries.length - 1];
             lastPart.endBar = this.totalBars - 1;
         }
 
-        // Ensure navigator is robust by sorting and logging
         this.partBoundaries.sort((a,b) => a.startBar - b.startBar);
         console.log('[NAVIGATOR] Initialized with part boundaries:', this.partBoundaries.map(p => ({id: p.part.id, start: p.startBar, end: p.endBar, bundles: p.bundleBoundaries.length})));
     }
@@ -189,7 +175,6 @@ export class BlueprintNavigator {
      * @returns NavigationInfo object with details about the current position and transitions.
      */
     public tick(currentBar: number): NavigationInfo | null {
-        // Wrap the bar count if it exceeds the total duration, allowing for looping.
         const effectiveBar = currentBar % this.totalBars;
 
         const partInfo = this.partBoundaries.find(p => effectiveBar >= p.startBar && effectiveBar <= p.endBar);
@@ -198,16 +183,16 @@ export class BlueprintNavigator {
             return null;
         }
 
-        // If no bundles, create a default one for the whole part duration
         if (partInfo.bundleBoundaries.length === 0) {
             const isPartTransition = effectiveBar === partInfo.startBar;
-             const shouldLog = isPartTransition;
             return {
                 currentPart: partInfo.part,
                 currentBundle: { id: `${partInfo.part.id}_DEFAULT_BUNDLE`, name: 'Default', duration: { percent: 100 }, characteristics: {}, phrases: {} },
                 isPartTransition,
                 isBundleTransition: false,
-                logMessage: shouldLog ? "Transition detected" : null
+                logMessage: isPartTransition ? "Transition detected" : null,
+                currentPartStartBar: partInfo.startBar,
+                currentPartEndBar: partInfo.endBar
             };
         }
 
@@ -220,7 +205,9 @@ export class BlueprintNavigator {
                     currentBundle: partInfo.bundleBoundaries[0].bundle,
                     isPartTransition: effectiveBar === partInfo.startBar,
                     isBundleTransition: false,
-                    logMessage: "[NAVIGATOR @ Bar ${effectiveBar}] Fallback to first bundle in part ${partInfo.part.id}."
+                    logMessage: `[NAVIGATOR @ Bar ${effectiveBar}] Fallback to first bundle.`,
+                    currentPartStartBar: partInfo.startBar,
+                    currentPartEndBar: partInfo.endBar
                  };
              }
             return null;
@@ -228,14 +215,15 @@ export class BlueprintNavigator {
 
         const isPartTransition = effectiveBar === partInfo.startBar;
         const isBundleTransition = !isPartTransition && effectiveBar === bundleInfo.startBar;
-        const shouldLog = isPartTransition || isBundleTransition;
 
         return {
             currentPart: partInfo.part,
             currentBundle: bundleInfo.bundle,
             isPartTransition,
             isBundleTransition,
-            logMessage: shouldLog ? "Transition detected" : null,
+            logMessage: (isPartTransition || isBundleTransition) ? "Transition detected" : null,
+            currentPartStartBar: partInfo.startBar,
+            currentPartEndBar: partInfo.endBar
         };
     }
     
@@ -260,10 +248,6 @@ export class BlueprintNavigator {
                 const density = value.density ? `density:[${value.density.min}-${value.density.max}]` : '';
                 const source = value.source ? `src:${value.source}` : '';
                 const kit = value.kitName ? `kit:${value.kitName}` : '';
-                
-                // #ЗАЧЕМ: Добавляет ID плана соло в лог для отладки.
-                // #ЧТО: Проверяет, есть ли для текущей части (part.id) план соло в карте soloPlanMap.
-                // #СВЯЗИ: Эта карта передается в конструктор навигатора из FME.
                 const soloPlan = (key === 'melody' && this.soloPlanMap.has(partInfo.part.id)) ? `solo:${this.soloPlanMap.get(partInfo.part.id)}` : '';
                 
                 const rulesStr = [density, source, kit, soloPlan].filter(Boolean).join(' ');

@@ -266,6 +266,41 @@ export const V2_PRESETS = {
     chorus: { on: true, rate: 0.5, depth: 0.005, mix: 0.65 },
     delay: { on: false, time: 0, fb: 0, hc: 0, mix: 0 },
     reverbMix: 0.12,
+  },
+
+  organ_circus_of_dread: {
+    type: 'synth',
+    name: 'Circus of Dread',
+    osc: [
+        { type: 'sine', detune: 0, octave: 0, gain: 0.8 },
+        { type: 'sine', detune: 1200, octave: 0, gain: 0.6 },
+        { type: 'square', detune: 12, octave: 1, gain: 0.3 }
+    ],
+    noise: { on: true, gain: 0.02 },
+    adsr: { a: 0.05, d: 0.2, s: 0.8, r: 0.6 },
+    lpf: { cutoff: 2200, q: 3.5, mode: '24dB' },
+    lfo: { shape: 'sine', rate: 6.5, amount: 15, target: 'pitch' },
+    chorus: { on: true, rate: 0.8, depth: 0.008, mix: 0.7 },
+    delay: { on: true, time: 0.25, fb: 0.4, hc: 3000, mix: 0.3 },
+    reverbMix: 0.35,
+  },
+
+  guitar_nightmare_solo: {
+    type: 'synth',
+    name: 'Nightmare Solo',
+    comp: { threshold: -25, ratio: 12, attack: 0.001, release: 0.5, makeup: 10 },
+    osc: [
+      { type: 'sawtooth', detune: -12, octave: 0, gain: 0.7 },
+      { type: 'sawtooth', detune: 12, octave: 0, gain: 0.7 },
+      { type: 'square', detune: 0, octave: -1, gain: 0.8 }
+    ],
+    noise: { on: true, gain: 0.05 },
+    adsr: { a: 0.01, d: 0.8, s: 0.9, r: 1.2 },
+    lpf: { cutoff: 1200, q: 4.5, mode: '24dB' },
+    lfo: { shape: 'sine', rate: 0.5, amount: 800, target: 'filter' },
+    chorus: { on: true, rate: 0.4, depth: 0.01, mix: 0.6 },
+    delay: { on: true, time: 0.6, fb: 0.5, hc: 2000, mix: 0.4 },
+    reverbMix: 0.5
   }
 
 } as const;
