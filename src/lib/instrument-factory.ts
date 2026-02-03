@@ -113,7 +113,7 @@ const createSlapNoise = (ctx: AudioContext): AudioBuffer => {
     for (let i = 0; i < length; i++) {
         const t = i / length;
         const envelope = Math.exp(-t * 60);
-        const tone = Math.sin(i * 0.3) * 0.5; 
+        const tone = Math.sin(i * 0.15) * 0.4; 
         data[i] = ((Math.random() * 2 - 1) * 0.7 + tone * 0.3) * envelope;
     }
     return buffer;
@@ -206,6 +206,7 @@ export const buildBassEngine = async (
         plateIRUrl?: string | null;
     } = {}
 ) => {
+    // #ЗАЧЕМ: Логирование начала сборки басового движка.
     console.log('%c[BassEngine] Building bass...', 'color: #4169E1; font-weight: bold;');
     
     const output = options.output || ctx.destination;
@@ -423,10 +424,12 @@ export const buildBassEngine = async (
         },
         setVolume: (v: number) => instrumentGain.gain.setTargetAtTime(clamp(v, 0, 1), ctx.currentTime, 0.02),
         getVolume: () => instrumentGain.gain.value,
+        setVolumeDb: (db) => instrumentGain.gain.setTargetAtTime(dB(clamp(db, -60, 12)), ctx.currentTime, 0.02),
         setExpression: (v: number) => expressionGain.gain.setTargetAtTime(clamp(v, 0, 1), ctx.currentTime, 0.01),
         preset: currentPreset, type: 'bass' as const
     };
     
+    // #ЗАЧЕМ: Логирование готовности басового движка.
     console.log('%c[BassEngine] Ready!', 'color: #32CD32; font-weight: bold;');
     return api;
 };
@@ -486,6 +489,7 @@ const createLeslie = (ctx: AudioContext, config: any) => {
 };
 
 async function buildOrganEngine(ctx: AudioContext, preset: any, options: any): Promise<InstrumentAPI> {
+    // #ЗАЧЕМ: Логирование начала сборки органного движка.
     console.log('%c[OrganEngine] Building Hammond-style organ...', 'color: #8B4513; font-weight: bold;');
     
     const output = options.output || ctx.destination;
@@ -557,6 +561,7 @@ async function buildOrganEngine(ctx: AudioContext, preset: any, options: any): P
     
     const allNotesOff = () => activeVoices.forEach((_, midi) => noteOff(midi));
 
+    // #ЗАЧЕМ: Логирование готовности органного движка.
     console.log('%c[OrganEngine] Ready!', 'color: #32CD32; font-weight: bold;');
 
     return {
@@ -583,32 +588,6 @@ interface VoiceState {
     phase: 'attack' | 'decay' | 'sustain' | 'release';
     targetPeak: number;
     nodes: AudioNode[];  
-}
-
-type ADSRParams = { a: number, d: number, s: number, r: number };
-
-class AdaptiveADSR {
-    private ctx: AudioContext;
-    private defaultParams: ADSRParams = { a: 0.01, d: 0.1, s: 0.8, r: 0.3 };
-    private readonly MIN_ATTACK = 0.003;
-    private readonly MIN_RELEASE = 0.02;
-
-    constructor(ctx: AudioContext) { this.ctx = ctx; }
-
-    triggerAttack(gainNode: GainNode, when: number, adsr: Partial<ADSRParams> = {}, velocity: number = 1.0): VoiceState {
-        const params = { ...this.defaultParams, ...adsr };
-        const a = Math.max(params.a, this.MIN_ATTACK);
-        const d = Math.max(params.d, 0.01);
-        const s = clamp(params.s * velocity, 0, 1);
-        const peak = velocity;
-        const now = this.ctx.currentTime;
-        const startTime = Math.max(when, now);
-        gainNode.gain.cancelScheduledValues(startTime);
-        gainNode.gain.setValueAtTime(0.0001, startTime);
-        gainNode.gain.linearRampToValueAtTime(peak, startTime + a);
-        gainNode.gain.setTargetAtTime(s, startTime + a, d / 3);
-        return { gain: gainNode, startTime, phase: 'attack', targetPeak: peak, nodes: [] };
-    }
 }
 
 const DEFAULT_VOLUMES: Record<string, number> = {
@@ -645,6 +624,7 @@ export async function buildMultiInstrument(ctx: AudioContext, {
     output = ctx.destination
 } = {}): Promise<InstrumentAPI> {
     
+    // #ЗАЧЕМ: Логирование начала сборки инструмента любого типа.
     console.log(`%c[InstrumentFactory] Building: ${type}`, 'color: #FFA500; font-weight: bold;');
 
     const master = ctx.createGain(); master.gain.value = 0.8;
@@ -712,13 +692,19 @@ export async function buildMultiInstrument(ctx: AudioContext, {
         };
         api.allNotesOff = () => { activeVoices.forEach((_, m) => api.noteOff(m)); };
         api.setPreset = (p) => { api.allNotesOff(); api.preset = p; };
+        
+        console.log(`%c[InstrumentFactory] Build COMPLETED: ${type}`, 'color: #32CD32; font-weight: bold;');
     } else if (type === 'bass') {
-        return buildBassEngine(ctx, preset as BassPreset, { output, plateIRUrl });
+        const engine = await buildBassEngine(ctx, preset as BassPreset, { output, plateIRUrl });
+        // #ЗАЧЕМ: Логирование завершения сборки баса.
+        console.log(`%c[InstrumentFactory] Build COMPLETED: ${type}`, 'color: #32CD32; font-weight: bold;');
+        return engine;
     } else if (type === 'organ') {
-         return buildOrganEngine(ctx, preset, { output, plateIRUrl });
+         const engine = await buildOrganEngine(ctx, preset, { output, plateIRUrl });
+         // #ЗАЧЕМ: Логирование завершения сборки органа.
+         console.log(`%c[InstrumentFactory] Build COMPLETED: ${type}`, 'color: #32CD32; font-weight: bold;');
+         return engine;
     }
     
-    master.connect(output);
-    console.log(`%c[InstrumentFactory] Build COMPLETED: ${type}`, 'color: #32CD32; font-weight: bold;');
     return api;
 }

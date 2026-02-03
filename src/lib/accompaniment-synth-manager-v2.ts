@@ -1,5 +1,4 @@
 
-
 import type { FractalEvent, AccompanimentInstrument } from '@/types/fractal';
 import type { Note } from "@/types/music";
 import { buildMultiInstrument } from './instrument-factory';
@@ -15,7 +14,9 @@ export class AccompanimentSynthManagerV2 {
     private destination: AudioNode;
     public isInitialized = false;
     private instrument: any | null = null; // Will hold the instance from the factory
-    private activePresetName: keyof typeof V2_PRESETS | 'none' = 'synth';
+    
+    // #ЗАЧЕМ: Установка органа по умолчанию для немедленной активации конвейера.
+    private activePresetName: keyof typeof V2_PRESETS | 'none' = 'organ_soft_jazz';
     private preamp: GainNode;
 
     constructor(audioContext: AudioContext, destination: AudioNode) {
@@ -30,11 +31,16 @@ export class AccompanimentSynthManagerV2 {
     async init() {
         if (this.isInitialized) return;
         console.log('[AccompanimentManagerV2] Initializing...');
-        await this.loadInstrument(this.activePresetName as keyof typeof V2_PRESETS);
+        
+        // #ЗАЧЕМ: Чтение типа из пресета гарантирует вызов нужного конвейера фабрики.
+        const preset = V2_PRESETS[this.activePresetName as keyof typeof V2_PRESETS];
+        const instrumentType = preset?.type || 'synth';
+        
+        await this.loadInstrument(this.activePresetName as keyof typeof V2_PRESETS, instrumentType as any);
         this.isInitialized = true;
     }
     
-    private async loadInstrument(presetName: keyof typeof V2_PRESETS) {
+    private async loadInstrument(presetName: keyof typeof V2_PRESETS, instrumentType: 'synth' | 'organ' | 'guitar' = 'synth') {
         this.allNotesOff(); // Stop any previous sound
         const preset = V2_PRESETS[presetName];
         if (!preset) {
@@ -44,7 +50,7 @@ export class AccompanimentSynthManagerV2 {
         
         try {
             this.instrument = await buildMultiInstrument(this.audioContext, {
-                type: preset.type as any,
+                type: instrumentType,
                 preset: preset,
                 output: this.preamp // Connect to the manager's preamp
             });
@@ -90,17 +96,18 @@ export class AccompanimentSynthManagerV2 {
             return;
        }
 
-       if (this.instrument && this.instrument.setPreset) {
-           const newPreset = V2_PRESETS[instrumentName as keyof typeof V2_PRESETS];
-           if (newPreset) {
-               this.instrument.setPreset(newPreset);
-               this.activePresetName = instrumentName;
-               console.log(`[AccompanimentManagerV2] Preset updated to: ${instrumentName}`);
-           } else {
-                console.error(`[AccompanimentManagerV2] Failed to set preset: ${instrumentName}. Preset not found.`);
-           }
+       const newPreset = V2_PRESETS[instrumentName as keyof typeof V2_PRESETS];
+       if (!newPreset) {
+            console.error(`[AccompanimentManagerV2] Failed to set preset: ${instrumentName}. Preset not found.`);
+            return;
+       }
+
+       if (this.instrument && this.instrument.type === newPreset.type && this.instrument.setPreset) {
+           this.instrument.setPreset(newPreset);
+           this.activePresetName = instrumentName;
+           console.log(`[AccompanimentManagerV2] Preset updated to: ${instrumentName}`);
        } else { 
-           await this.loadInstrument(instrumentName);
+           await this.loadInstrument(instrumentName, (newPreset as any).type || 'synth');
        }
     }
 

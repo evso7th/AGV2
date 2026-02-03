@@ -1,5 +1,4 @@
 
-
 import type { FractalEvent, AccompanimentInstrument } from '@/types/fractal';
 import type { Note } from "@/types/music";
 import { buildMultiInstrument } from './instrument-factory';
@@ -54,10 +53,16 @@ export class MelodySynthManagerV2 {
         if (this.isInitialized) return;
         console.log(`[MelodySynthManagerV2] Initializing for ${this.partName}...`);
         
-        const instrumentTypeForFactory = this.partName === 'bass' ? 'bass' : 'synth';
-        const initialPreset = this.partName === 'bass' ? 'bass_jazz_warm' : 'synth';
+        // #ЗАЧЕМ: Динамическое определение типа инструмента при инициализации.
+        // #ЧТО: Читаем тип из пресета, а не хардкодим 'synth'.
+        const initialPresetName = this.partName === 'bass' ? 'bass_jazz_warm' : 'synth';
+        const preset = this.partName === 'bass' 
+            ? BASS_PRESETS[initialPresetName as keyof typeof BASS_PRESETS]
+            : V2_PRESETS[initialPresetName as keyof typeof V2_PRESETS];
+            
+        const instrumentTypeForFactory = preset?.type || (this.partName === 'bass' ? 'bass' : 'synth');
 
-        await this.loadInstrument(initialPreset, instrumentTypeForFactory);
+        await this.loadInstrument(initialPresetName as any, instrumentTypeForFactory as any);
         this.isInitialized = true;
     }
     
@@ -161,7 +166,7 @@ export class MelodySynthManagerV2 {
            ? BASS_PRESETS[instrumentName as keyof typeof BASS_PRESETS]
            : V2_PRESETS[instrumentName as keyof typeof V2_PRESETS];
 
-       if (this.synth && this.synth.setPreset && preset) {
+       if (this.synth && this.synth.type === preset?.type && this.synth.setPreset && preset) {
            this.synth.setPreset(preset);
            this.activePresetName = instrumentName;
            console.log(`[MelodySynthManagerV2] for ${this.partName}: Preset updated to: ${instrumentName}`);
