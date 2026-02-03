@@ -95,7 +95,7 @@ export function generateSuiteDNA(totalBars: number, mood: Mood, seed: number, ra
 
     const harmonyTrack: GhostChord[] = [];
     
-    // #ИСПРАВЛЕНО (ПЛАН 10): Рандомизация тональности.
+    // #ИСПРАВЛЕНО: Рандомизация тональности.
     // #ЗАЧЕМ: Чтобы скелеты гармонии не были всегда от одной ноты (E).
     const baseKeyNote = 24 + random.nextInt(12); // Случайная тоника во 2-й октаве
     const key = baseKeyNote;
@@ -472,8 +472,8 @@ export function generateBluesMelodyChorus(
         return { events: [], log: `[Melody] Lick '${lickId}' not found.` };
     }
 
-    // #ИСПРАВЛЕНО (ПЛАН 10): Микро-мутации ликов для вариативности.
-    // #ЗАЧЕМ: Чтобы одни и те же лики звучали по-разному в каждой сюите.
+    // #ЗАЧЕМ: Микро-мутации ликов для вариативности.
+    // #ЧТО: Чтобы одни и те же лики звучали по-разному в каждой сюите.
     let lickPhrase = JSON.parse(JSON.stringify(lickData.phrase)) as BluesSoloPhrase;
     
     // 1. Случайная транспозиция (± терция)
@@ -537,14 +537,12 @@ export function mutateBluesMelody(phrase: BluesSoloPhrase, chord: GhostChord, ra
 export function createBluesOrganLick(chord: GhostChord, random: { next: () => number; nextInt: (max: number) => number; }): FractalEvent[] { return []; }
 export function generateIntroSequence(currentBar: number, introRules: any, harmonyTrack: GhostChord[], settings: any, random: any): { events: FractalEvent[], instrumentHints: InstrumentHints } { return { events: [], instrumentHints: {} }; }
 
-// --- MELODY MUTATION FUNCTIONS (PLAN 1712) ---
+// --- MELODY MUTATION FUNCTIONS ---
 export function transposeMelody(phrase: BluesSoloPhrase, interval: number): BluesSoloPhrase {
     if (!phrase) return [];
     return phrase.map(note => {
-        // Convert degree to semitone, shift, then try to find closest degree
         const currentSemi = DEGREE_TO_SEMITONE[note.deg as string] || 0;
         const newSemi = currentSemi + interval;
-        // Simple fallback degree mapping
         let closestDeg = note.deg;
         for (const [deg, semi] of Object.entries(DEGREE_TO_SEMITONE)) {
             if (semi === newSemi % 12) {

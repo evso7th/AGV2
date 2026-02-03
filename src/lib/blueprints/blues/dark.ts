@@ -3,7 +3,7 @@ import type { MusicBlueprint } from '@/types/music';
 export const DarkBluesBlueprint: MusicBlueprint = {
     id: 'dark_blues',
     name: 'Ritual Blues',
-    description: 'A slow, heavy, and ritualistic blues with a sense of dread. Focused on acoustic guitar and gradual build.',
+    description: 'A slow, heavy, and ritualistic blues with a sense of dread. Focused on acoustic guitar and cumulative orchestration.',
     mood: 'dark',
     musical: {
         key: { root: 'E', scale: 'phrygian', octave: 1 },
@@ -16,22 +16,24 @@ export const DarkBluesBlueprint: MusicBlueprint = {
         totalDuration: { preferredBars: 120 },
         parts: [
             {
-                id: 'INTRO_1', name: 'The Void', duration: { percent: 15 },
+                id: 'INTRO_1', name: 'The Summoning', duration: { percent: 15 },
                 layers: { bass: true, accompaniment: true, melody: true, sfx: true, sparkles: true, drums: true, harmony: true, pianoAccompaniment: true },
+                // #ЗАЧЕМ: Реализация "Оркестровой Лотереи" с липкими тембрами.
+                // #ЧТО: Разделение вступления на 4 стадии с прогрессивным шансом вступления для ВСЕХ инструментов.
                 stagedInstrumentation: [
                     { 
-                        duration: { percent: 25 }, // Stage 1: The First Shivers (30% chance for anyone)
+                        duration: { percent: 25 }, // Stage 1: The Gathering Shadows
                         instrumentation: {
                            melody: {
-                                activationChance: 1.0, // Guitar always plays (70/30 logic applies)
+                                activationChance: 1.0, // Гитара ВСЕГДА звучит (70% соло / 30% перебор)
                                 instrumentOptions: [ { name: 'blackAcoustic', weight: 1.0 } ]
                            },
                            pianoAccompaniment: {
-                               activationChance: 0.3,
+                               activationChance: 0.6,
                                instrumentOptions: [ { name: 'piano', weight: 1.0 } ]
                            },
                            accompaniment: {
-                               activationChance: 0.3,
+                               activationChance: 0.6,
                                instrumentOptions: [ 
                                    { name: 'organ_soft_jazz', weight: 0.6 },
                                    { name: 'synth_cave_pad', weight: 0.4 }
@@ -42,39 +44,40 @@ export const DarkBluesBlueprint: MusicBlueprint = {
                                instrumentOptions: [ { name: 'bass_dub', weight: 0.8 }, { name: 'bass_jazz_warm', weight: 0.2 } ]
                            },
                            drums: {
-                               activationChance: 0.2,
+                               activationChance: 0.3,
                                instrumentOptions: [ { name: 'winter_blues_prolog1', weight: 1.0 } ]
                            }
                         }
                     },
                     {
-                        duration: { percent: 25 }, // Stage 2: Manifestation (50% chance)
+                        duration: { percent: 25 }, // Stage 2: Manifestation
                         instrumentation: {
                            melody: { activationChance: 1.0, instrumentOptions: [ { name: 'blackAcoustic', weight: 1.0 } ] },
-                           pianoAccompaniment: { activationChance: 0.5, instrumentOptions: [ { name: 'piano', weight: 1.0 } ] },
-                           bass: { activationChance: 0.5, instrumentOptions: [ { name: 'bass_dub', weight: 0.7 }, { name: 'bass_house', weight: 0.3 } ] },
-                           drums: { activationChance: 0.5, instrumentOptions: [ { name: 'winter_blues_prolog2', weight: 1.0 } ] },
+                           pianoAccompaniment: { activationChance: 0.8, instrumentOptions: [ { name: 'piano', weight: 1.0 } ] },
+                           accompaniment: { activationChance: 0.8, instrumentOptions: [ { name: 'organ_soft_jazz', weight: 0.5 }, { name: 'synth_cave_pad', weight: 0.5 } ] },
+                           bass: { activationChance: 0.6, instrumentOptions: [ { name: 'bass_dub', weight: 0.7 }, { name: 'bass_house', weight: 0.3 } ] },
+                           drums: { activationChance: 0.6, instrumentOptions: [ { name: 'winter_blues_prolog2', weight: 1.0 } ] },
                            sfx: { activationChance: 0.4, instrumentOptions: [ { name: 'dark', weight: 1.0 } ] }
                         }
                     },
                     {
-                        duration: { percent: 25 }, // Stage 3: Thickening (80% chance)
+                        duration: { percent: 25 }, // Stage 3: Thickening Darkness
                         instrumentation: {
                            melody: { activationChance: 1.0, instrumentOptions: [ { name: 'blackAcoustic', weight: 1.0 } ] },
                            accompaniment: { 
-                               activationChance: 0.8, 
+                               activationChance: 0.9, 
                                instrumentOptions: [ 
                                    { name: 'organ_circus_of_dread', weight: 0.7 },
                                    { name: 'synth_cave_pad', weight: 0.3 }
                                ] 
                            },
-                           bass: { activationChance: 0.8, instrumentOptions: [ { name: 'bass_dub', weight: 1.0 } ] },
-                           drums: { activationChance: 0.8, instrumentOptions: [ { name: 'winter_blues_prolog3', weight: 1.0 } ] },
-                           harmony: { activationChance: 0.6, instrumentOptions: [ { name: 'violin', weight: 0.5 }, { name: 'flute', weight: 0.5 } ] }
+                           bass: { activationChance: 0.9, instrumentOptions: [ { name: 'bass_dub', weight: 1.0 } ] },
+                           drums: { activationChance: 0.9, instrumentOptions: [ { name: 'winter_blues_prolog3', weight: 1.0 } ] },
+                           harmony: { activationChance: 0.7, instrumentOptions: [ { name: 'violin', weight: 0.5 }, { name: 'flute', weight: 0.5 } ] }
                         }
                     },
                     {
-                        duration: { percent: 25 }, // Stage 4: Full Ritual (100% chance)
+                        duration: { percent: 25 }, // Stage 4: Full Ritual
                         instrumentation: {
                            melody: { activationChance: 1.0, instrumentOptions: [ { name: 'blackAcoustic', weight: 1.0 } ] },
                            pianoAccompaniment: { activationChance: 1.0, instrumentOptions: [ { name: 'piano', weight: 1.0 } ] },

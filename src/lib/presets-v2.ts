@@ -243,8 +243,8 @@ export const V2_PRESETS = {
         { type: 'triangle', detune: -2, octave: -1, gain: 0.4 },
     ],
     noise: { on: false, gain: 0 },
-    adsr: { a: 0.1, d: 0.1, s: 0.9, r: 0.6 },
-    lpf: { cutoff: 2500, q: 2.0, mode: '24dB' },
+    adsr: { attack: 0.1, decay: 0.1, sustain: 0.9, release: 0.6 },
+    filter: { type: 'lowpass', cutoff: 2500, q: 2.0, mode: '24dB' },
     lfo: { shape: 'sine', rate: 5.5, amount: 8, target: 'pitch' },
     chorus: { on: true, rate: 0.3, depth: 0.004, mix: 0.4 },
     delay: { on: false, time: 0, fb: 0, hc: 0, mix: 0 },
@@ -355,6 +355,7 @@ export const BASS_PRESET_MAP: Record<string, keyof typeof BASS_PRESETS> = {
     glideBass: 'bass_house',
     ambientDrone: 'bass_ambient',
     resonantGliss: 'bass_trance_acid',
+    hypnoticDrone: 'bass_ambient_dark',
     hypnoticDrone: 'bass_ambient_dark',
     livingRiff: 'bass_rock_pick',
 };

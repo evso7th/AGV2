@@ -295,6 +295,7 @@ export type BlueprintPart = {
   };
   stagedInstrumentation?: Stage[]; // Новая система "сцен"
   instrumentEntry?: { [key: string]: number };
+  instrumentEntry?: { [key: string]: number };
   instrumentExit?: { [key: string]: number };
   instrumentRules: {
       [key: string]: InstrumentBehaviorRules;
