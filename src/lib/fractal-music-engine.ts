@@ -369,7 +369,6 @@ export class FractalMusicEngine {
         }
     }
 
-    // #ЗАЧЕМ: Принудительный октавный сдвиг для гитар в мелодии.
     if (['telecaster', 'blackAcoustic', 'darkTelecaster', 'electricGuitar'].includes(instrumentHints.melody || '')) {
         melodyEvents.forEach(e => e.note += 24);
     }
@@ -377,13 +376,12 @@ export class FractalMusicEngine {
     let accompEvents: FractalEvent[] = [];
     if (instrumentHints.accompaniment || this.isActivated('accompaniment', navInfo)) {
         const accompRules = navInfo.currentPart.instrumentRules?.accompaniment;
-        const technique = (this.config.genre === 'blues' && this.config.mood === 'dark') ? 'long-chords' : (accompRules?.techniques?.[0]?.value || 'long-chords') as AccompanimentTechnique;
+        const technique = (this.config.genre === 'blues' && this.config.mood === 'dark') ? 'power-chords' : (accompRules?.techniques?.[0]?.value || 'long-chords') as AccompanimentTechnique;
 
-        if (this.config.genre === 'blues' && this.config.mood === 'dark' && technique === 'long-chords') {
-            // #ЗАЧЕМ: Ускоренная смена гармонии для Дарк-Блюза.
-            const firstHalf = this.createAccompanimentAxiom(currentChord, this.config.mood, this.config.genre, this.random, this.config.tempo, 'low', 'long-chords');
+        if (this.config.genre === 'blues' && this.config.mood === 'dark' && technique === 'power-chords') {
+            const firstHalf = this.createAccompanimentAxiom(currentChord, this.config.mood, this.config.genre, this.random, this.config.tempo, 'low', 'power-chords');
             const dominantChord: GhostChord = { ...currentChord, rootNote: currentChord.rootNote + 7, chordType: 'dominant' };
-            const secondHalf = this.createAccompanimentAxiom(dominantChord, this.config.mood, this.config.genre, this.random, this.config.tempo, 'low', 'long-chords');
+            const secondHalf = this.createAccompanimentAxiom(dominantChord, this.config.mood, this.config.genre, this.random, this.config.tempo, 'low', 'power-chords');
             firstHalf.forEach(e => { e.duration = 2.0; e.time = e.time / 2; });
             secondHalf.forEach(e => { e.duration = 2.0; e.time = (e.time / 2) + 2.0; });
             accompEvents = [...firstHalf, ...secondHalf];
@@ -429,13 +427,32 @@ export class FractalMusicEngine {
   private createAccompanimentAxiom(chord: GhostChord, mood: Mood, genre: Genre, random: { next: () => number; nextInt: (max: number) => number; }, tempo: number, registerHint: 'low' | 'mid' | 'high' = 'mid', technique: AccompanimentTechnique): FractalEvent[] {
     const axiom: FractalEvent[] = [];
     const rootNote = chord.rootNote;
-    const isMinor = chord.chordType === 'minor' || chord.chordType === 'diminished';
-    const chordNotes = [rootNote, rootNote + (isMinor ? 3 : 4), rootNote + 7];
     const baseOctave = (registerHint === 'low') ? 2 : (registerHint === 'high' ? 4 : 3);
 
-    chordNotes.forEach((note, i) => {
-        axiom.push({ type: 'accompaniment', note: note + 12 * baseOctave, duration: 4.0, time: i * 0.05, weight: 0.6 - (i * 0.1), technique: 'choral', dynamics: 'mp', phrasing: 'legato', params: { attack: 0.8, release: 3.2 } });
-    });
+    if (technique === 'power-chords') {
+        // #ЗАЧЕМ: Реализация тяжелых power-хордов.
+        // #ЧТО: Генерирует только тонику и квинту аккорда в низком регистре.
+        const notes = [rootNote, rootNote + 7];
+        notes.forEach((note, i) => {
+            axiom.push({
+                type: 'accompaniment',
+                note: note + 12 * (baseOctave - 1),
+                duration: 4.0,
+                time: 0,
+                weight: 0.8,
+                technique: 'power-chords',
+                dynamics: 'f',
+                phrasing: 'legato',
+                params: { attack: 0.05, release: 2.5 } as any
+            });
+        });
+    } else {
+        const isMinor = chord.chordType === 'minor' || chord.chordType === 'diminished';
+        const chordNotes = [rootNote, rootNote + (isMinor ? 3 : 4), rootNote + 7];
+        chordNotes.forEach((note, i) => {
+            axiom.push({ type: 'accompaniment', note: note + 12 * baseOctave, duration: 4.0, time: i * 0.05, weight: 0.6 - (i * 0.1), technique: 'choral', dynamics: 'mp', phrasing: 'legato', params: { attack: 0.8, release: 3.2 } });
+        });
+    }
     return axiom;
   }
   
