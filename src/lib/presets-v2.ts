@@ -1,5 +1,5 @@
 
-// V2 Presets — совместимы с buildMultiInstrument()
+// V2 Presets — совместимы with buildMultiInstrument()
 // Проверено на соответствие фабрике от 2024-01
 
 import { BASS_PRESETS } from './bass-presets';
@@ -124,9 +124,9 @@ export const V2_PRESETS = {
       { type: 'sawtooth', detune: -3, octave: 0, gain: 0.4 },
       { type: 'sawtooth', detune: +3, octave: 0, gain: 0.4 },
       { type: 'sine', detune: 0, octave: 0, gain: 0.5 },
-      { type: 'triangle', detune: 5, octave: 1, gain: 0.2 }
+      { type: 'triangle', detune: 5, octave: 1, gain: 0.2 },
+      { type: 'noise', detune: 0, octave: 0, gain: 0.025 }
     ],
-    noise: { on: true, gain: 0.025 },
     adsr: { a: 0.6, d: 1.0, s: 0.75, r: 2.0 },
     lpf: { cutoff: 2800, q: 1.0, mode: '24dB' },
     lfo: { shape: 'sine', rate: 5.2, amount: 3, target: 'pitch' },
@@ -252,8 +252,9 @@ export const V2_PRESETS = {
     name: 'Soft Jazz Organ',
     drawbars: [8, 0, 8, 5, 0, 3, 0, 0, 0],
     vibrato: { type: 'C1', rate: 6.2 },
-    // #ЗАЧЕМ: Уменьшение mix для "склейки" Лесли с основным тоном.
-    leslie: { on: true, mode: 'slow', slow: 0.65, fast: 6.3, accel: 0.7, mix: 0.5 },
+    // #ЗАЧЕМ: Увеличение mix до 0.9 для полной интеграции Лесли. 
+    // #ЧТО: Устраняет эффект "накладки" Лесли поверх неподвижного пэда.
+    leslie: { on: true, mode: 'slow', slow: 0.65, fast: 6.3, accel: 0.7, mix: 0.9 },
     lpf: 3500,
     hpf: 90,
     reverbMix: 0.12,
@@ -292,16 +293,8 @@ export const V2_PRESETS = {
 
 } as const;
 
-// ═══════════════════════════════════════════════════════════════════════════
-// Type Helpers
-// ═══════════════════════════════════════════════════════════════════════════
-
 export type PresetName = keyof typeof V2_PRESETS;
 export type PresetConfig = typeof V2_PRESETS[PresetName];
-
-// ═══════════════════════════════════════════════════════════════════════════
-// V1 -> V2 Mapping
-// ═══════════════════════════════════════════════════════════════════════════
 
 export const V1_TO_V2_PRESET_MAP: Record<string, PresetName> = {
   synth: 'synth',
@@ -311,7 +304,6 @@ export const V1_TO_V2_PRESET_MAP: Record<string, PresetName> = {
   electricGuitar: 'guitar_muffLead',
   ambientPad: 'synth_ambient_pad_lush',
   acousticGuitar: 'mellotron_flute_intimate',
-  // Новые маппинги
   strings: 'mellotron',
   choir: 'mellotron_choir',
   flute: 'mellotron_flute_intimate',
@@ -337,7 +329,6 @@ export const BASS_PRESET_MAP: Record<string, keyof typeof BASS_PRESETS> = {
     deepHouseBass: 'bass_deep_house',
     rockBass: 'bass_rock_pick',
     slapBass: 'bass_slap',
-    // V1 mappings
     classicBass: 'bass_rock_pick',
     glideBass: 'bass_house',
     ambientDrone: 'bass_ambient',
@@ -346,23 +337,14 @@ export const BASS_PRESET_MAP: Record<string, keyof typeof BASS_PRESETS> = {
     livingRiff: 'bass_rock_pick',
 };
 
-// ═══════════════════════════════════════════════════════════════════════════
-// Helper для получения пресета с fallback
-// ═══════════════════════════════════════════════════════════════════════════
-
 export function getPreset(name: string): PresetConfig {
-  // Попробовать напрямую
   if (name in V2_PRESETS) {
     return V2_PRESETS[name as PresetName];
   }
-  
-  // Попробовать через маппинг V1
   if (name in V1_TO_V2_PRESET_MAP) {
     const mapped = V1_TO_V2_PRESET_MAP[name];
     return V2_PRESETS[mapped];
   }
-  
-  // Fallback
   console.warn(`[Presets] Unknown preset "${name}", falling back to "synth"`);
   return V2_PRESETS.synth;
 }

@@ -1,18 +1,13 @@
 
-//Fab v 2.2 - Leslie Physics Improved & Memory Leaks Fixed
+//Fab v 2.3 - Leslie Integration & Note Cleanup Fix
 // ─────────────────────────────────────────────────────────────────────────────
 // BASS ENGINE — Electric, Synth & Acoustic Bass Emulation
 // ─────────────────────────────────────────────────────────────────────────────
-
-// ═══════════════════════════════════════════════════════════════════════════
-// HELPERS & CURVES
-// ═══════════════════════════════════════════════════════════════════════════
 
 const midiToHz = (m: number) => 440 * Math.pow(2, (m - 69) / 12);
 const dB = (x: number) => Math.pow(10, x / 20);
 const clamp = (v: number, min: number, max: number) => Math.max(min, Math.min(max, v));
 
-// Tube-style saturation (тёплый овердрайв)
 const makeTubeSaturation = (drive = 0.3, n = 65536) => {
     const curve = new Float32Array(n);
     const k = drive * 5 + 1;
@@ -25,7 +20,6 @@ const makeTubeSaturation = (drive = 0.3, n = 65536) => {
     return curve;
 };
 
-// Fuzz для агрессивного звучания
 const makeFuzz = (intensity = 0.7, n = 65536) => {
     const curve = new Float32Array(n);
     for (let i = 0; i < n; i++) {
@@ -41,10 +35,6 @@ const makeSoftClip = (amount = 0.5, n = 65536) => {
     for (let i=0;i<n;i++){ const x=i/(n-1)*2-1; c[i]=Math.tanh(k*x)/Math.tanh(k); }
     return c;
 };
-
-// ═══════════════════════════════════════════════════════════════════════════
-// FILTER ENVELOPE
-// ═══════════════════════════════════════════════════════════════════════════
 
 interface FilterEnvelopeConfig {
     attack: number;
@@ -89,10 +79,6 @@ const releaseFilterEnvelope = (
     }
 };
 
-// ═══════════════════════════════════════════════════════════════════════════
-// STRING SIMULATION
-// ═══════════════════════════════════════════════════════════════════════════
-
 const createStringNoise = (ctx: AudioContext, duration: number): AudioBuffer => {
     const length = Math.floor(ctx.sampleRate * duration);
     const buffer = ctx.createBuffer(1, length, ctx.sampleRate);
@@ -117,10 +103,6 @@ const createSlapNoise = (ctx: AudioContext): AudioBuffer => {
     }
     return buffer;
 };
-
-// ═══════════════════════════════════════════════════════════════════════════
-// BASS PRESET INTERFACE
-// ═══════════════════════════════════════════════════════════════════════════
 
 interface BassOscConfig {
     type: 'sine' | 'triangle' | 'sawtooth' | 'square' | 'pulse';
@@ -266,7 +248,6 @@ export const buildBassEngine = async (
     const reverb = ctx.createConvolver();
     const reverbWet = ctx.createGain();
     
-    // Routing
     bassSum.connect(inputComp);
     inputComp.connect(driveInput);
     driveInput.connect(shaper);
@@ -460,7 +441,9 @@ const createKeyClick = (ctx: AudioContext, duration: number, intensity: number):
 };
 
 const createVibratoScanner = (ctx: AudioContext, config: any) => {
-    const settings = { depth: 0.0025, mix: 0.5 };
+    // #ЗАЧЕМ: Scanner Vibrato в джазовом органе должен быть на 100% "мокрым" (Wet).
+    // #ЧТО: Установлен mix: 1.0. Это устраняет эффект "двоения" (static + vibrato).
+    const settings = { depth: 0.0025, mix: 1.0 }; 
     const input = ctx.createGain(); const output = ctx.createGain();
     const dry = ctx.createGain(); const wet = ctx.createGain();
     const delay = ctx.createDelay(0.02); delay.delayTime.value = 0.005;
@@ -468,32 +451,34 @@ const createVibratoScanner = (ctx: AudioContext, config: any) => {
     const lfoGain = ctx.createGain(); lfoGain.gain.value = settings.depth;
     input.connect(dry); input.connect(delay); delay.connect(wet);
     dry.connect(output); wet.connect(output);
+    dry.gain.value = 1 - settings.mix; wet.gain.value = settings.mix;
     lfo.connect(lfoGain); lfoGain.connect(delay.delayTime); lfo.start();
     return { input, output, setType: (t:any) => {}, setRate: (r:any) => lfo.frequency.setTargetAtTime(r, ctx.currentTime, 0.1) };
 };
 
 const createLeslie = (ctx: AudioContext, config: any) => {
-    // #ЗАЧЕМ: Физически корректная модель Лесли для устранения эффекта "сирены" и "отдельности".
-    // #ЧТО: Разделение на рупор (horn) и барабан (drum), снижение глубины девиации частоты (0.0002),
-    //      добавление амплитудной модуляции (AM) для "склейки" текстуры.
     const input = ctx.createGain(); const output = ctx.createGain();
     const dry = ctx.createGain(); const wet = ctx.createGain();
+    
+    // #ЗАЧЕМ: Устранение эффекта "Лесли поверх пэда" через правильный баланс.
+    const initialMix = config.mix ?? 0.9;
+    dry.gain.value = 1 - initialMix;
+    wet.gain.value = initialMix;
+
     const lowpass = ctx.createBiquadFilter(); lowpass.type = 'lowpass'; lowpass.frequency.value = 800;
     const highpass = ctx.createBiquadFilter(); highpass.type = 'highpass'; highpass.frequency.value = 800;
     
-    // Horn (Highs)
     const hornDelay = ctx.createDelay(0.01);
     const hornAmp = ctx.createGain();
     const hornLfo = ctx.createOscillator(); 
-    const hornDepth = ctx.createGain(); hornDepth.gain.value = 0.0002; // Drastically reduced Viu-Viu
-    const hornAmDepth = ctx.createGain(); hornAmDepth.gain.value = 0.12; // Glue effect
+    const hornDepth = ctx.createGain(); hornDepth.gain.value = 0.0002; 
+    const hornAmDepth = ctx.createGain(); hornAmDepth.gain.value = 0.15; 
     
-    // Drum (Lows)
     const drumDelay = ctx.createDelay(0.01);
     const drumAmp = ctx.createGain();
     const drumLfo = ctx.createOscillator();
     const drumDepth = ctx.createGain(); drumDepth.gain.value = 0.0003;
-    const drumAmDepth = ctx.createGain(); drumAmDepth.gain.value = 0.08;
+    const drumAmDepth = ctx.createGain(); drumAmDepth.gain.value = 0.1;
 
     hornLfo.connect(hornDepth); hornDepth.connect(hornDelay.delayTime);
     hornLfo.connect(hornAmDepth); hornAmDepth.connect(hornAmp.gain);
@@ -503,7 +488,7 @@ const createLeslie = (ctx: AudioContext, config: any) => {
 
     const speed = config.mode === 'fast' ? config.fast : config.slow;
     hornLfo.frequency.value = speed;
-    drumLfo.frequency.value = speed * 0.95; // Slight offset for organic feel
+    drumLfo.frequency.value = speed * 0.95; 
     
     hornLfo.start(); drumLfo.start();
 
@@ -523,7 +508,7 @@ const createLeslie = (ctx: AudioContext, config: any) => {
             hornLfo.frequency.setTargetAtTime(target, now, config.accel);
             drumLfo.frequency.setTargetAtTime(target * 0.95, now, config.accel * 1.2);
         }, 
-        setMix: (m:any) => { wet.gain.value = m; dry.gain.value = 1-m; }, 
+        setMix: (m:any) => { wet.gain.setTargetAtTime(m, ctx.currentTime, 0.1); dry.gain.setTargetAtTime(1-m, ctx.currentTime, 0.1); }, 
         getMode: () => config.mode 
     };
 };
@@ -543,7 +528,8 @@ async function buildOrganEngine(ctx: AudioContext, preset: any, options: any): P
         mode: currentPreset.leslie?.mode ?? 'slow', 
         slow: currentPreset.leslie?.slow ?? 0.8, 
         fast: currentPreset.leslie?.fast ?? 6.5, 
-        accel: currentPreset.leslie?.accel ?? 0.8 
+        accel: currentPreset.leslie?.accel ?? 0.8,
+        mix: currentPreset.leslie?.mix ?? 0.9
     });
     
     const instrumentGain = ctx.createGain(); instrumentGain.gain.value = currentPreset.volume ?? 0.7;
@@ -618,7 +604,7 @@ async function buildOrganEngine(ctx: AudioContext, preset: any, options: any): P
         connect: (dest) => master.connect(dest || output),
         disconnect: () => master.disconnect(),
         noteOn, noteOff, allNotesOff,
-        setPreset: (p) => { allNotesOff(); currentPreset = p; },
+        setPreset: (p) => { allNotesOff(); currentPreset = p; leslie.setMix(p.leslie?.mix ?? 0.9); },
         setParam: (k, v) => { if(k==='leslie') leslie.setMode(v); },
         setVolume: (v) => instrumentGain.gain.setTargetAtTime(v, ctx.currentTime, 0.02),
         getVolume: () => instrumentGain.gain.value,
@@ -626,18 +612,6 @@ async function buildOrganEngine(ctx: AudioContext, preset: any, options: any): P
         setExpression: (v) => master.gain.setTargetAtTime(v, ctx.currentTime, 0.01),
         preset: currentPreset, type: 'organ'
     };
-}
-
-// ─────────────────────────────────────────────────────────────────────────────
-// MultiInstrument WebAudio: organ | synth | mellotron | guitar
-// ─────────────────────────────────────────────────────────────────────────────
-
-interface VoiceState {
-    gain: GainNode;
-    startTime: number;
-    phase: 'attack' | 'decay' | 'sustain' | 'release';
-    targetPeak: number;
-    nodes: AudioNode[];  
 }
 
 const DEFAULT_VOLUMES: Record<string, number> = {
