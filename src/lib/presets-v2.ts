@@ -113,6 +113,7 @@ export const V2_PRESETS = {
     adsr: { a: 0.05, d: 0.2, s: 0.8, r: 0.3 },
     lpf: { cutoff: 7500, q: 0.8, mode: '12dB' },
     lfo: { shape: 'sine', rate: 4.8, amount: 2.5, target: 'pitch' },
+    comp: { threshold: -15, ratio: 2, attack: 0.01, release: 0.1, makeup: 4 },
     chorus: { on: false, rate: 0.2, depth: 0.005, mix: 0 },
     delay: { on: true, time: 0.15, fb: 0.1, hc: 5000, mix: 0.1 },
     reverbMix: 0.15
@@ -233,37 +234,36 @@ export const V2_PRESETS = {
   },
 
   // ═══════════════════════════════════════════════════════════════════════════
-  // ORGAN (NOW USING DEDICATED 'organ' TYPE)
+  // ORGAN (Integrated Hammond/Leslie architecture)
   // ═══════════════════════════════════════════════════════════════════════════
 
   organ: {
     type: 'organ',
     name: 'Cathedral Organ',
-    drawbars: [8, 8, 8, 6, 0, 0, 0, 0, 0],
+    drawbars: [8, 8, 4, 2, 0, 0, 0, 1, 0],
     keyClick: 0.005,
     adsr: { a: 0.1, d: 0.1, s: 0.9, r: 0.6 },
-    lpf: 2500,
+    lpf: 4500,
     vibrato: { type: 'C3', rate: 5.5 },
-    leslie: { on: true, mode: 'slow', slow: 0.8, fast: 6.5, accel: 0.8, mix: 0.4 },
-    reverbMix: 0.25
+    leslie: { on: true, mode: 'slow', slow: 0.5, fast: 6.0, accel: 0.7 },
+    reverbMix: 0.25,
+    // #ЗАЧЕМ: Добавлен суб-бас слой для "веса" и фундамента церковного органа.
+    osc: [ { type: 'sine', detune: 0, octave: -1, gain: 0.4 } ]
   },
   
   organ_soft_jazz: {
     type: 'organ',
     name: 'Soft Jazz Organ',
-    // #ЗАЧЕМ: Реализация "чистой" регистрации для прозрачного джазового звучания.
-    // #ЧТО: Отключен 2-й drawbar (квинта 5 1/3'). Это убирает "носовой" призвук.
     drawbars: [8, 0, 8, 5, 0, 3, 0, 0, 0], 
     vibrato: { type: 'C1', rate: 6.2 },
-    // #ЗАЧЕМ: Глубокая интеграция Лесли для цельности инструмента.
-    leslie: { on: true, mode: 'slow', slow: 0.65, fast: 6.3, accel: 0.7, mix: 0.9 },
-    // #ЗАЧЕМ: Открытие фильтра для "дыхания" Leslie через обертоны.
+    leslie: { on: true, mode: 'slow', slow: 0.65, fast: 6.3, accel: 0.7 },
     lpf: 7600,
     hpf: 90,
-    // #ЗАЧЕМ: Естественная огибающая для мягких переходов.
     adsr: { a: 0.02, d: 0.2, s: 0.9, r: 0.3 },
     reverbMix: 0.12,
-    keyClick: 0.003
+    keyClick: 0.003,
+    // #ЗАЧЕМ: Саб-бас для теплоты и "телесности", необходимой в кафе.
+    osc: [ { type: 'sine', detune: 0, octave: -1, gain: 0.3 } ]
   },
 
   organ_circus_of_dread: {
@@ -274,8 +274,9 @@ export const V2_PRESETS = {
     adsr: { a: 0.05, d: 0.2, s: 0.8, r: 0.6 },
     lpf: 2200,
     vibrato: { type: 'V3', rate: 6.5 },
-    leslie: { on: true, mode: 'fast', slow: 0.9, fast: 7.2, accel: 0.5, mix: 0.7 },
+    leslie: { on: true, mode: 'fast', slow: 0.9, fast: 7.2, accel: 0.5 },
     reverbMix: 0.35,
+    osc: [ { type: 'sawtooth', detune: 5, octave: -1, gain: 0.2 } ]
   },
 
   guitar_nightmare_solo: {
