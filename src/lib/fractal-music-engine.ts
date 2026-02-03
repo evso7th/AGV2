@@ -369,7 +369,7 @@ export class FractalMusicEngine {
         }
     }
 
-    if (['telecaster', 'blackAcoustic', 'darkTelecaster', 'electricGuitar'].includes(instrumentHints.melody || '')) {
+    if (['telecaster', 'blackAcoustic', 'darkTelecaster', 'electricGuitar', 'guitar_shineOn', 'guitar_muffLead', 'guitar_nightmare_solo'].includes(instrumentHints.melody || '')) {
         melodyEvents.forEach(e => e.note += 24);
     }
 
@@ -430,8 +430,6 @@ export class FractalMusicEngine {
     const baseOctave = (registerHint === 'low') ? 2 : (registerHint === 'high' ? 4 : 3);
 
     if (technique === 'power-chords') {
-        // #ЗАЧЕМ: Реализация тяжелых power-хордов.
-        // #ЧТО: Генерирует только тонику и квинту аккорда в низком регистре.
         const notes = [rootNote, rootNote + 7];
         notes.forEach((note, i) => {
             axiom.push({
