@@ -1,5 +1,5 @@
 
-//Fab v 2.3 - Leslie Integration & Note Cleanup Fix
+//Fab v 2.4 - Legato Percussion & Leslie Integration Fix
 // ─────────────────────────────────────────────────────────────────────────────
 // BASS ENGINE — Electric, Synth & Acoustic Bass Emulation
 // ─────────────────────────────────────────────────────────────────────────────
