@@ -1,9 +1,10 @@
+
 // src/lib/instrument-factory.ts
 /**
  * #ЗАЧЕМ: Центральная фабрика для создания высококачественных инструментов V2.
  * #ЧТО: Реализует конвейеры синтеза для synth, organ, bass и guitar.
- * #ИСПРАВЛЕНО (ПЛАН 32): Добавлена пропущенная функция createKeyClick. 
- *              Орган работает по схеме Pure Amplitude Leslie для максимальной чистоты.
+ * #ИСПРАВЛЕНО (ПЛАН 33): Добавлена инерция роторов Leslie, Noise Floor и Phase Randomization.
+ *              Возвращены логи строительства пайплайнов.
  */
 
 // ───── HELPERS ─────
@@ -191,29 +192,46 @@ const createKeyClick = (ctx: AudioContext, duration: number, intensity: number):
     return buffer;
 };
 
-// ───── PURE LESLIE HELPER ─────
+// ───── PURE AMPLITUDE LESLIE WITH INERTIA ─────
 
 const createPureLeslie = (ctx: AudioContext, config: any) => {
     const input = ctx.createGain();
     const output = ctx.createGain();
     const hornAmp = ctx.createGain();
     const drumAmp = ctx.createGain();
-    const lfo = ctx.createOscillator();
-    const hornMod = ctx.createGain(); hornMod.gain.value = 0.15;
-    const drumMod = ctx.createGain(); drumMod.gain.value = 0.1;
-    lfo.connect(hornMod).connect(hornAmp.gain);
-    lfo.connect(drumMod).connect(drumAmp.gain);
-    lfo.frequency.value = config.mode === 'fast' ? config.fast : config.slow;
-    lfo.start();
+    
+    // Separate LFOs for Horn and Drum to allow different acceleration
+    const hornLfo = ctx.createOscillator();
+    const drumLfo = ctx.createOscillator();
+    
+    const hornMod = ctx.createGain(); hornMod.gain.value = 0.12; // AM depth
+    const drumMod = ctx.createGain(); drumMod.gain.value = 0.08;
+    
+    hornLfo.connect(hornMod).connect(hornAmp.gain);
+    drumLfo.connect(drumMod).connect(drumAmp.gain);
+    
+    const initialSpeed = config.mode === 'fast' ? config.fast : config.slow;
+    hornLfo.frequency.value = initialSpeed;
+    drumLfo.frequency.value = initialSpeed * 0.85; // Drum always a bit slower
+    
+    hornLfo.start();
+    drumLfo.start();
+    
     const lp = ctx.createBiquadFilter(); lp.type = 'lowpass'; lp.frequency.value = 800;
     const hp = ctx.createBiquadFilter(); hp.type = 'highpass'; hp.frequency.value = 800;
+    
     input.connect(lp).connect(drumAmp).connect(output);
     input.connect(hp).connect(hornAmp).connect(output);
+    
     return {
         input, output,
         setMode: (m: any) => {
+            const now = ctx.currentTime;
             const target = m === 'fast' ? config.fast : (m === 'slow' ? config.slow : 0.01);
-            lfo.frequency.setTargetAtTime(target, ctx.currentTime, config.accel);
+            
+            // INERTIA: Horn is light, Drum is heavy
+            hornLfo.frequency.setTargetAtTime(target, now, 0.6); // Horn acceleration
+            drumLfo.frequency.setTargetAtTime(target * 0.85, now, 2.5); // Drum acceleration (slow)
         }
     };
 };
@@ -244,6 +262,7 @@ export interface InstrumentAPI {
 
 // 1. SYNTH ENGINE
 const buildSynthEngine = (ctx: AudioContext, preset: any, master: GainNode, reverb: ConvolverNode, instrumentGain: GainNode, expressionGain: GainNode) => {
+    console.log(`%c[Factory] Pipeline: Synth - Building standard subtractive chain`, 'color: #87CEEB;');
     let currentPreset = { ...preset };
     const comp = ctx.createDynamicsCompressor();
     const compMakeup = ctx.createGain();
@@ -289,9 +308,21 @@ const buildSynthEngine = (ctx: AudioContext, preset: any, master: GainNode, reve
 const DRAWBAR_RATIOS = [0.5, 1.498, 1, 2, 2.997, 4, 5.04, 5.994, 8];
 
 const buildOrganEngine = (ctx: AudioContext, preset: any, master: GainNode, reverb: ConvolverNode, instrumentGain: GainNode, expressionGain: GainNode) => {
+    console.log(`%c[Factory] Pipeline: Organ - Building Pure Amplitude Leslie chain with Inertia`, 'color: #DEB887;');
     let currentPreset = { ...preset };
     const organSum = ctx.createGain();
     const lpf = ctx.createBiquadFilter(); lpf.type = 'lowpass'; lpf.frequency.value = currentPreset.lpf ?? 7600;
+    
+    // Noise Floor (Tonewheel leakage)
+    const leakageSource = ctx.createBufferSource();
+    const leakBuf = ctx.createBuffer(1, ctx.sampleRate * 2, ctx.sampleRate);
+    const leakData = leakBuf.getChannelData(0);
+    for(let i=0; i<leakData.length; i++) leakData[i] = (Math.random()*2-1)*0.005;
+    leakageSource.buffer = leakBuf; leakageSource.loop = true;
+    const leakGain = ctx.createGain(); leakGain.gain.value = 0.001; // -60dB
+    leakageSource.connect(leakGain).connect(organSum);
+    leakageSource.start();
+
     const leslie = createPureLeslie(ctx, { 
         mode: currentPreset.leslie?.mode ?? 'slow', slow: currentPreset.leslie?.slow ?? 0.65, fast: currentPreset.leslie?.fast ?? 6.3, accel: currentPreset.leslie?.accel ?? 0.7 
     });
@@ -311,10 +342,18 @@ const buildOrganEngine = (ctx: AudioContext, preset: any, master: GainNode, reve
         const voiceGain = ctx.createGain(); voiceGain.gain.value = 0; voiceGain.connect(organSum);
         const voiceNodes: AudioNode[] = [voiceGain];
         const drawbars = currentPreset.drawbars || [8,0,8,5,0,3,0,0,0];
+        
         drawbars.forEach((v: number, i: number) => {
             if (v > 0) {
                 const osc = ctx.createOscillator(); osc.setPeriodicWave(tonewheelWave);
                 osc.frequency.value = f0 * DRAWBAR_RATIOS[i];
+                // PHASE RANDOMIZATION
+                osc.setPeriodicWave(ctx.createPeriodicWave(
+                    new Float32Array([0, 1]), 
+                    new Float32Array([0, Math.random()]), 
+                    { disableNormalization: false }
+                ));
+                
                 const g = ctx.createGain(); g.gain.value = (v/8) * 0.25;
                 osc.connect(g).connect(voiceGain); osc.start(when);
                 voiceNodes.push(osc, g);
@@ -350,6 +389,7 @@ const buildOrganEngine = (ctx: AudioContext, preset: any, master: GainNode, reve
 
 // 3. BASS ENGINE
 const buildBassEngine = (ctx: AudioContext, preset: any, master: GainNode, reverb: ConvolverNode, instrumentGain: GainNode, expressionGain: GainNode) => {
+    console.log(`%c[Factory] Pipeline: Bass - Building deep sub-foundation with tube drive`, 'color: #4169E1;');
     let currentPreset = { ...preset };
     const bassSum = ctx.createGain();
     const hpf = ctx.createBiquadFilter(); hpf.type = 'highpass'; hpf.frequency.value = 35;
@@ -392,6 +432,7 @@ const buildBassEngine = (ctx: AudioContext, preset: any, master: GainNode, rever
 
 // 4. GUITAR ENGINE
 const buildGuitarEngine = (ctx: AudioContext, preset: any, master: GainNode, reverb: ConvolverNode, instrumentGain: GainNode, expressionGain: GainNode) => {
+    console.log(`%c[Factory] Pipeline: Guitar - Building Gilmour-style signal chain`, 'color: #DA70D6;');
     let currentPreset = { ...preset };
     const input = ctx.createGain();
     const pickupLPF = ctx.createBiquadFilter(); pickupLPF.type = 'lowpass'; pickupLPF.frequency.value = 3600;
@@ -435,6 +476,8 @@ export async function buildMultiInstrument(ctx: AudioContext, {
     plateIRUrl = null as string | null,
     output = ctx.destination
 } = {}): Promise<InstrumentAPI> {
+    
+    console.log(`%c[Factory] Building Master Multi-Instrument: ${type}`, 'color: #FFA500; font-weight: bold;');
     
     const master = ctx.createGain(); master.gain.value = 0.8;
     const instrumentGain = ctx.createGain(); instrumentGain.gain.value = preset.volume ?? 0.7;
