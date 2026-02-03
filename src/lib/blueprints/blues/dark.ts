@@ -25,7 +25,8 @@ export const DarkBluesBlueprint: MusicBlueprint = {
                         instrumentation: {
                            melody: { activationChance: 1.0, instrumentOptions: [ { name: 'blackAcoustic', weight: 1.0 } ] },
                            pianoAccompaniment: { activationChance: 0.8, instrumentOptions: [ { name: 'piano', weight: 1.0 } ] },
-                           accompaniment: { activationChance: 0.8, instrumentOptions: [ { name: 'ep_rhodes_warm', weight: 1.0 } ] },
+                           // #ИСПРАВЛЕНО (ПЛАН 41): Возвращен Soft Jazz Organ для атмосферы.
+                           accompaniment: { activationChance: 0.8, instrumentOptions: [ { name: 'organ_soft_jazz', weight: 1.0 } ] },
                            harmony: { activationChance: 1.0, instrumentOptions: [ { name: 'guitarChords', weight: 0.8 }, { name: 'flute', weight: 0.2 } ] }
                         }
                     },
@@ -36,14 +37,14 @@ export const DarkBluesBlueprint: MusicBlueprint = {
                            bass: { activationChance: 0.4, instrumentOptions: [ { name: 'bass_dub', weight: 1.0 } ] },
                            drums: { activationChance: 0.4, instrumentOptions: [ { name: 'blues_melancholic_master', weight: 1.0 } ] },
                            harmony: { activationChance: 1.0, instrumentOptions: [ { name: 'guitarChords', weight: 0.8 }, { name: 'flute', weight: 0.2 } ] },
-                           accompaniment: { activationChance: 1.0, instrumentOptions: [ { name: 'organ_circus_of_dread', weight: 1.0 } ] }
+                           accompaniment: { activationChance: 1.0, instrumentOptions: [ { name: 'organ_soft_jazz', weight: 1.0 } ] }
                         }
                     },
                     {
                         duration: { percent: 20 }, 
                         instrumentation: {
                            melody: { activationChance: 1.0, instrumentOptions: [ { name: 'blackAcoustic', weight: 1.0 } ] },
-                           accompaniment: { activationChance: 1.0, instrumentOptions: [ { name: 'organ_circus_of_dread', weight: 1.0 } ] },
+                           accompaniment: { activationChance: 1.0, instrumentOptions: [ { name: 'organ_soft_jazz', weight: 1.0 } ] },
                            drums: { activationChance: 0.7, instrumentOptions: [ { name: 'blues_melancholic_master', weight: 1.0 } ] },
                            harmony: { activationChance: 1.0, instrumentOptions: [ { name: 'guitarChords', weight: 0.8 }, { name: 'flute', weight: 0.2 } ] }
                         }
@@ -53,7 +54,7 @@ export const DarkBluesBlueprint: MusicBlueprint = {
                         instrumentation: {
                            melody: { activationChance: 1.0, instrumentOptions: [ { name: 'blackAcoustic', weight: 1.0 } ] },
                            pianoAccompaniment: { activationChance: 1.0, instrumentOptions: [ { name: 'piano', weight: 1.0 } ] },
-                           accompaniment: { activationChance: 1.0, instrumentOptions: [ { name: 'organ_circus_of_dread', weight: 1.0 } ] },
+                           accompaniment: { activationChance: 1.0, instrumentOptions: [ { name: 'organ_soft_jazz', weight: 1.0 } ] },
                            bass: { activationChance: 1.0, instrumentOptions: [ { name: 'bass_dub', weight: 1.0 } ] },
                            drums: { activationChance: 1.0, instrumentOptions: [ { name: 'blues_melancholic_master', weight: 1.0 } ] },
                            harmony: { activationChance: 1.0, instrumentOptions: [ { name: 'guitarChords', weight: 0.8 }, { name: 'flute', weight: 0.2 } ] },
@@ -79,7 +80,7 @@ export const DarkBluesBlueprint: MusicBlueprint = {
                 instrumentation: {
                     bass: { strategy: 'weighted', v1Options: [ { name: 'bass_dub', weight: 1.0 } ], v2Options: [ { name: 'bass_dub', weight: 1.0 } ] },
                     melody: { strategy: 'weighted', v1Options: [{name: 'blackAcoustic', weight: 1.0}], v2Options: [{name: 'blackAcoustic', weight: 1.0}] },
-                    accompaniment: { strategy: 'weighted', v1Options: [{ name: 'organ_circus_of_dread', weight: 1.0 }], v2Options: [{ name: 'organ_circus_of_dread', weight: 1.0 }] },
+                    accompaniment: { strategy: 'weighted', v1Options: [{ name: 'organ_soft_jazz', weight: 1.0 }], v2Options: [{ name: 'organ_soft_jazz', weight: 1.0 }] },
                     harmony: { strategy: 'weighted', options: [ { name: 'guitarChords', weight: 0.8 }, { name: 'flute', weight: 0.2 } ] }
                 },
                 instrumentRules: {

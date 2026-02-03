@@ -38,6 +38,7 @@ export const V2_PRESETS = {
     adsr: { a: 1.2, d: 2.0, s: 0.8, r: 4.0 },
     lpf: { cutoff: 1400, q: 1.0, mode: '24dB' },
     lfo: { shape: 'sine', rate: 0.15, amount: 500, target: 'filter' },
+    comp: { threshold: -20, ratio: 3, attack: 0.005, release: 0.2, makeup: 5 },
     chorus: { on: true, rate: 0.18, depth: 0.008, mix: 0.45 },
     delay: { on: true, time: 0.55, fb: 0.35, hc: 3500, mix: 0.25 },
     reverbMix: 0.3
@@ -59,9 +60,8 @@ export const V2_PRESETS = {
     noise: { on: false, gain: 0 },
     adsr: { a: 0.008, d: 0.28, s: 0.68, r: 0.90 },
     lpf: { cutoff: 3500, q: 0.9, mode: '24dB' },
-    // #ЗАЧЕМ: Активация глобальных эффектов модуляции для аутентичности Родоса.
-    leslie: { on: true, mode: 'slow', slow: 0.6, fast: 6.0, mix: 0.3 }, // Органическое мерцание воздуха
-    tremolo: { on: true, rate: 5.5, depth: 0.4, mix: 0.5 },           // Фирменное Suitcase Auto-Pan
+    leslie: { on: true, mode: 'slow', slow: 0.6, fast: 6.0, mix: 0.3 }, 
+    tremolo: { on: true, rate: 5.5, depth: 0.4, mix: 0.5 },           
     chorus: { on: true, rate: 0.25, depth: 0.006, mix: 0.22 },
     delay: { on: true, time: 0.26, fb: 0.12, hc: 4500, mix: 0.10 },
     reverbMix: 0.18
