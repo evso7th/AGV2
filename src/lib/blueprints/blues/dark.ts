@@ -3,7 +3,7 @@ import type { MusicBlueprint } from '@/types/music';
 export const DarkBluesBlueprint: MusicBlueprint = {
     id: 'dark_blues',
     name: 'Ritual Blues',
-    description: 'A slow, heavy, and ritualistic blues with a sense of dread.',
+    description: 'A slow, heavy, and ritualistic blues with a sense of dread. Focused on acoustic guitar and gradual build.',
     mood: 'dark',
     musical: {
         key: { root: 'E', scale: 'phrygian', octave: 1 },
@@ -20,10 +20,10 @@ export const DarkBluesBlueprint: MusicBlueprint = {
                 layers: { bass: true, accompaniment: true, melody: true, sfx: true, sparkles: true, drums: true, harmony: true, pianoAccompaniment: true },
                 stagedInstrumentation: [
                     { 
-                        duration: { percent: 25 }, // Stage 1: Melancholic Acoustic Start
+                        duration: { percent: 25 }, // Stage 1: Fragile Start
                         instrumentation: {
                            melody: {
-                                activationChance: 1.0, // Always play
+                                activationChance: 1.0,
                                 transient: false,
                                 instrumentOptions: [ { name: 'blackAcoustic', weight: 1.0 } ]
                            },
@@ -34,7 +34,7 @@ export const DarkBluesBlueprint: MusicBlueprint = {
                         }
                     },
                     {
-                        duration: { percent: 25 }, // Stage 2: Foundation Enters
+                        duration: { percent: 25 }, // Stage 2: Foundation
                         instrumentation: {
                            bass: {
                                activationChance: 1.0,
@@ -47,7 +47,7 @@ export const DarkBluesBlueprint: MusicBlueprint = {
                         }
                     },
                     {
-                        duration: { percent: 25 }, // Stage 3: Texture and Dread
+                        duration: { percent: 25 }, // Stage 3: Texture
                         instrumentation: {
                            accompaniment: {
                                activationChance: 1.0,
@@ -60,7 +60,7 @@ export const DarkBluesBlueprint: MusicBlueprint = {
                         }
                     },
                     {
-                        duration: { percent: 25 }, // Stage 4: Orchestral Doom
+                        duration: { percent: 25 }, // Stage 4: Orchestration
                         instrumentation: {
                            harmony: {
                                activationChance: 1.0,
@@ -85,32 +85,10 @@ export const DarkBluesBlueprint: MusicBlueprint = {
                 outroFill: null,
             },
             {
-                id: 'INTRO_2', name: 'First Echoes', duration: { percent: 10 },
-                layers: { bass: true, accompaniment: true, melody: true, sfx: true, drums: true, sparkles: true, pianoAccompaniment: true },
-                instrumentation: {
-                  bass: { strategy: 'weighted', v1Options: [{ name: 'bass_dub', weight: 1.0 }], v2Options: [{ name: 'bass_dub', weight: 1.0 }] },
-                  accompaniment: { strategy: 'weighted', v1Options: [{name: 'synth_cave_pad', weight: 1.0}], v2Options: [{name: 'synth_cave_pad', weight: 1.0}] },
-                  melody: { strategy: 'weighted', v1Options: [{name: 'blackAcoustic', weight: 1.0}], v2Options: [{name: 'blackAcoustic', weight: 1.0}] }
-                },
-                instrumentRules: {
-                    drums: { enabled: true, pattern: 'composer', density: { min: 0.3, max: 0.5 }, useSnare: true, rareKick: true, usePerc: true, alternatePerc: false, kitName: 'winter_blues_prolog2' },
-                    sfx: { eventProbability: 0.2, categories: [{name: 'dark', weight: 1.0}] },
-                    sparkles: { eventProbability: 0.25, categories: [{ name: 'dark', weight: 1.0 }] },
-                    melody: { source: 'blues_solo', soloToPatternRatio: 0.7, soloPlan: "S07" }
-                },
-                bundles: [ { id: 'DARK_INTRO_BUNDLE_2', name: 'Echoes', duration: { percent: 100 }, characteristics: {}, phrases: {} } ],
-                outroFill: null,
-            },
-            {
-                id: 'MAIN_1', name: 'The Chant', duration: { percent: 25 },
+                id: 'MAIN_1', name: 'The Chant', duration: { percent: 35 },
                 layers: { bass: true, sfx: true, drums: true, melody: true, accompaniment: true, harmony: true, sparkles: true, pianoAccompaniment: true },
-                harmonicJourney: [{ center: 'i', satellites: ['iv'], weight: 0.7 }],
                  instrumentation: {
-                    bass: {
-                        strategy: 'weighted',
-                        v1Options: [ { name: 'bass_deep_house', weight: 0.6 }, { name: 'bass_dub', weight: 0.4 } ],
-                        v2Options: [ { name: 'bass_deep_house', weight: 0.6 }, { name: 'bass_dub', weight: 0.4 } ]
-                    },
+                    bass: { strategy: 'weighted', v1Options: [ { name: 'bass_dub', weight: 1.0 } ], v2Options: [ { name: 'bass_dub', weight: 1.0 } ] },
                     melody: { strategy: 'weighted', v1Options: [{name: 'blackAcoustic', weight: 1.0}], v2Options: [{name: 'blackAcoustic', weight: 1.0}] },
                     accompaniment: { strategy: 'weighted', v1Options: [{ name: 'organ_circus_of_dread', weight: 1.0 }], v2Options: [{ name: 'organ_circus_of_dread', weight: 1.0 }] },
                 },
@@ -120,70 +98,20 @@ export const DarkBluesBlueprint: MusicBlueprint = {
                     accompaniment: { techniques: [{ value: 'rhythmic-comp', weight: 0.8 }, { value: 'arpeggio-slow', weight: 0.2 }] },
                     sparkles: { eventProbability: 0.25, categories: [{name: 'dark', weight: 1.0}] }
                 },
-                bundles: [{ id: 'DARK_MAIN_BUNDLE_1', name: 'The Chant', duration: { percent: 100 }, characteristics: {}, phrases: {} }],
+                bundles: [{ id: 'DARK_MAIN_BUNDLE_1', name: 'Ritual', duration: { percent: 100 }, characteristics: {}, phrases: {} }],
                 outroFill: null,
-            },
-            {
-                id: 'MAIN_2', name: 'Ritual Peak', duration: { percent: 25 },
-                layers: { bass: true, drums: true, accompaniment: true, melody: true, sfx: true, harmony: true, sparkles: true, pianoAccompaniment: true },
-                harmonicJourney: [{ center: 'bVI', satellites: ['V'], weight: 0.6 }],
-                 instrumentation: {
-                    bass: {
-                        strategy: 'weighted',
-                        v1Options: [ { name: 'bass_house', weight: 0.5 }, { name: 'bass_dub', weight: 0.5 } ],
-                        v2Options: [ { name: 'bass_house', weight: 0.5 }, { name: 'bass_dub', weight: 0.5 } ]
-                    },
-                    melody: { strategy: 'weighted', v1Options: [{name: 'blackAcoustic', weight: 1.0}], v2Options: [{name: 'blackAcoustic', weight: 1.0}] },
-                    accompaniment: { strategy: 'weighted', v1Options: [{ name: 'organ_circus_of_dread', weight: 1.0 }], v2Options: [{ name: 'organ_circus_of_dread', weight: 1.0 }] },
-                },
-                instrumentRules: {
-                    drums: { pattern: 'composer', kitName: 'blues_melancholic_master', density: { min: 0.6, max: 0.8 }, usePerc: true },
-                    melody: { source: 'blues_solo', soloPlan: "S07", density: { min: 0.6, max: 1.0 }, soloToPatternRatio: 0.7 },
-                    accompaniment: { techniques: [{ value: 'rhythmic-comp', weight: 0.9 }, { value: 'arpeggio-fast', weight: 0.1 }] },
-                    sparkles: { eventProbability: 0.25, categories: [{name: 'dark', weight: 1.0}] }
-                },
-                bundles: [{ id: 'BLUES_DARK_MAIN_B_BUNDLE', name: 'Intensity', duration: { percent: 100 }, characteristics: {}, phrases: {} }],
-                outroFill: { type: 'roll', duration: 2, parameters: { instrument: 'tom' } },
             },
             {
                 id: 'OUTRO', name: 'Fading Embers', duration: { percent: 25 },
                 layers: { bass: true, drums: true, melody: true, harmony: true, pianoAccompaniment: true, accompaniment: true },
-                stagedInstrumentation: [
-                  {
-                    duration: { percent: 100 },
-                    instrumentation: {
-                      bass: {
-                        activationChance: 1.0,
-                        instrumentOptions: [{ name: 'bass_dub', weight: 1.0 }]
-                      },
-                      melody: {
-                        activationChance: 1.0,
-                        instrumentOptions: [{ name: 'blackAcoustic', weight: 1.0 }]
-                      },
-                      harmony: {
-                        activationChance: 1.0,
-                        instrumentOptions: [{ name: 'piano', weight: 1.0 }]
-                      },
-                      accompaniment: {
-                        activationChance: 1.0,
-                        instrumentOptions: [{ name: 'synth_ambient_pad_lush', weight: 1.0 }]
-                      },
-                      drums: {
-                        activationChance: 1.0,
-                        instrumentOptions: [{ name: 'blues_dark_outro', weight: 1.0 }]
-                      }
-                    }
-                  }
-                ],
+                instrumentation: {
+                    accompaniment: { strategy: 'weighted', v1Options: [{ name: 'synth_ambient_pad_lush', weight: 1.0 }], v2Options: [{ name: 'synth_ambient_pad_lush', weight: 1.0 }] },
+                    melody: { strategy: 'weighted', v1Options: [{ name: 'blackAcoustic', weight: 1.0 }], v2Options: [{ name: 'blackAcoustic', weight: 1.0 }] }
+                },
                 instrumentRules: {
-                    drums: { pattern: 'composer', kitName: 'blues_dark_outro', density: { min: 0.2, max: 0.4 }, useSnare: false, usePerc: true, rareKick: true },
+                    drums: { pattern: 'composer', kitName: 'dark_outro', density: { min: 0.2, max: 0.4 }, useSnare: false, usePerc: true },
                     bass: { techniques: [{ value: 'long_notes', weight: 1.0 }], density: {min: 0.3, max: 0.5} },
-                    melody: { 
-                      source: 'blues_solo', 
-                      density: { min: 1.0, max: 1.0 },
-                      soloPlan: "WINTER_OUTRO_MELODY",
-                      soloToPatternRatio: 0.0 // Only patterns for fingerstyle feel
-                    },
+                    melody: { source: 'blues_solo', density: { min: 1.0, max: 1.0 }, soloPlan: "WINTER_OUTRO_MELODY", soloToPatternRatio: 0.0 },
                 },
                 bundles: [{ id: 'DARK_OUTRO_BUNDLE', name: 'Embers', duration: { percent: 100 }, characteristics: {}, phrases: {} }],
                 outroFill: null,
