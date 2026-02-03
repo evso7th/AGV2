@@ -1,5 +1,4 @@
 
-
 import type { FractalEvent, Mood, Genre, Technique, BassSynthParams, InstrumentType, MelodyInstrument, AccompanimentInstrument, ResonanceMatrix, InstrumentHints, AccompanimentTechnique, GhostChord, SfxRule, V1MelodyInstrument, V2MelodyInstrument, BlueprintPart, InstrumentationRules, InstrumentBehaviorRules, BluesMelody, InstrumentPart, DrumKit, BluesGuitarRiff, BluesSoloPhrase, BluesRiffDegree, SuiteDNA, RhythmicFeel, BassStyle, DrumStyle, HarmonicCenter } from './fractal';
 import { ElectronicK, TraditionalK, AmbientK, MelancholicMinorK } from './resonance-matrices';
 import { BlueprintNavigator, type NavigationInfo } from './blueprint-navigator';
@@ -96,7 +95,11 @@ export function generateSuiteDNA(totalBars: number, mood: Mood, seed: number, ra
     console.log(`[DNA] Generating Suite DNA for genre: ${genre}, mood: ${mood}`);
 
     const harmonyTrack: GhostChord[] = [];
-    const key = getScaleForMood(mood, genre)[0];
+    
+    // #ИСПРАВЛЕНО (ПЛАН 10): Рандомизация тональности.
+    // #ЗАЧЕМ: Чтобы скелеты гармонии не были всегда от одной ноты (E).
+    const baseKeyNote = 24 + random.nextInt(12); // Случайная тоника во 2-й октаве
+    const key = baseKeyNote;
     
     let accumulatedBars = 0;
     const totalPercent = blueprintParts.reduce((sum, part) => sum + part.duration.percent, 0);
@@ -163,8 +166,8 @@ export function generateSuiteDNA(totalBars: number, mood: Mood, seed: number, ra
                     });
                     currentBarInPart += finalDuration;
 
-                    const transitions = progressionMap[currentDegree as keyof progressionMap];
-                    const totalWeight = transitions.reduce((s, t) => s + t.w, 0);
+                    const transitions = (progressionMap as any)[currentDegree];
+                    const totalWeight = transitions.reduce((s: number, t: any) => s + t.w, 0);
                     let r = random.next() * totalWeight;
                     for (const transition of transitions) {
                         r -= transition.w;
@@ -216,7 +219,7 @@ export function generateSuiteDNA(totalBars: number, mood: Mood, seed: number, ra
         gloomy: [62, 70], dark: [60, 68], epic: [70, 80], anxious: [78, 92],
     };
 
-    const [minTempo, maxTempo] = possibleTempos[mood] || [60, 80];
+    const [minTempo, maxTempo] = (possibleTempos as any)[mood] || [60, 80];
     const baseTempo = minTempo + random.nextInt(maxTempo - minTempo + 1);
 
     const rhythmicFeel: RhythmicFeel = random.next() < 0.7 ? 'shuffle' : 'straight';
@@ -240,12 +243,11 @@ export function generateSuiteDNA(totalBars: number, mood: Mood, seed: number, ra
 
     console.log(`[DNA] Generated: Tempo=${baseTempo}, Feel=${rhythmicFeel}, Bass=${bassStyle}, Drums=${drumStyle}`);
     console.log(`[DNA] Solo plan map created for ${soloPlanMap.size} parts.`);
-    soloPlanMap.forEach((plan, partId) => console.log(`  - Part '${partId}' -> Solo Plan '${plan}'`));
     
     // --- FORMATTED TABLE LOG ---
     console.log(`\n--- [DNA] Harmony Skeleton (root notes) ---`);
     harmonyTrack.forEach(chord => {
-        console.log(chord.rootNote);
+        console.log(`${chord.bar}: ${midiToChordName(chord.rootNote, chord.chordType)} (${chord.durationBars} bars)`);
     });
     console.log(`--- End of Skeleton ---\n`);
 
@@ -256,7 +258,7 @@ export function createDrumAxiom(kit: DrumKit, genre: Genre, mood: Mood, tempo: n
     const events: FractalEvent[] = [];
     let log = '[DrumAudit] 3. Generation Result: ';
     
-    const drumRiffsForMood = BLUES_DRUM_RIFFS[mood] ?? BLUES_DRUM_RIFFS['contemplative'] ?? [];
+    const drumRiffsForMood = (BLUES_DRUM_RIFFS as any)[mood] ?? BLUES_DRUM_RIFFS['contemplative'] ?? [];
     if (drumRiffsForMood.length === 0) return {events, log: "No drum riffs for mood."};
 
     const riff = drumRiffsForMood[random.nextInt(drumRiffsForMood.length)];
@@ -325,13 +327,11 @@ export function createAmbientBassAxiom(
       portamento: 0.08
   };
 
-  // Decide whether to play a drone or a slow riff
   if (technique === 'drone' || random.next() < 0.4) {
-    // Play a drone, but make it shorter, not a whole bar
     axiom.push({
       type: 'bass',
       note: rootNote,
-      duration: 3.0, // Dotted half note, leaving one beat of rest
+      duration: 3.0,
       time: 0,
       weight: 0.75,
       technique: 'drone',
@@ -340,14 +340,12 @@ export function createAmbientBassAxiom(
       params: { ...commonParams, attack: 1.5, release: 3.0 }
     });
   } else {
-    // Play a slow, simple riff
     const fifth = rootNote + 7;
     const isMinor = chord.chordType === 'minor' || chord.chordType === 'diminished';
     const third = rootNote + (isMinor ? 3 : 4);
 
     const patternChoice = random.next();
     if (patternChoice < 0.5) {
-        // Pattern 1: Root -> Fifth
         axiom.push({
             type: 'bass', note: rootNote, duration: 2.0, time: 0, weight: 0.7,
             technique: 'long_notes', dynamics: 'p', phrasing: 'legato', params: commonParams
@@ -357,7 +355,6 @@ export function createAmbientBassAxiom(
             technique: 'long_notes', dynamics: 'p', phrasing: 'legato', params: commonParams
         });
     } else {
-        // Pattern 2: Root -> Third -> Root
          axiom.push({
             type: 'bass', note: rootNote, duration: 1.5, time: 0, weight: 0.7,
             technique: 'long_notes', dynamics: 'p', phrasing: 'legato', params: commonParams
@@ -404,7 +401,7 @@ export function createBluesBassAxiom(
 
     const ticksPerBeat = 3;
     
-    const allBassRiffs = BLUES_BASS_RIFFS[mood] ?? BLUES_BASS_RIFFS['contemplative'];
+    const allBassRiffs = (BLUES_BASS_RIFFS as any)[mood] ?? BLUES_BASS_RIFFS['contemplative'];
     if (!allBassRiffs || allBassRiffs.length === 0) return [];
     
     const riffTemplate = allBassRiffs[currentBassRiffIndex % allBassRiffs.length];
@@ -427,7 +424,7 @@ export function createBluesBassAxiom(
     for (const riffNote of pattern) {
         phrase.push({
             type: 'bass',
-            note: root + (DEGREE_TO_SEMITONE[riffNote.deg as BluesRiffDegree] || 0),
+            note: root + (DEGREE_TO_SEMITONE[riffNote.deg as BluesRiffDegree] || 0) - 12, // Ensure it stays in bass octave
             time: riffNote.t / ticksPerBeat,
             duration: ((riffNote.d || 2) / ticksPerBeat) * 0.95,
             weight: 0.85 + random.next() * 0.1,
@@ -476,12 +473,36 @@ export function generateBluesMelodyChorus(
         return { events: [], log: `[Melody] Lick '${lickId}' not found.` };
     }
 
-    const lickPhrase = lickData.phrase;
+    // #ИСПРАВЛЕНО (ПЛАН 10): Микро-мутации ликов для вариативности.
+    // #ЗАЧЕМ: Чтобы одни и те же лики звучали по-разному в каждой сюите.
+    let lickPhrase = JSON.parse(JSON.stringify(lickData.phrase)) as BluesSoloPhrase;
+    
+    // 1. Случайная транспозиция (± терция)
+    if (random.next() < 0.3) {
+        const transTable: number[] = [-4, -3, 3, 4];
+        const offset = transTable[random.nextInt(transTable.length)];
+        lickPhrase = transposeMelody(lickPhrase, offset);
+    }
+    
+    // 2. Инверсия (зеркальное отражение)
+    if (random.next() < 0.15) {
+        lickPhrase = invertMelody(lickPhrase);
+    }
+    
+    // 3. Ритмическое варьирование
+    if (random.next() < 0.25) {
+        lickPhrase = varyRhythm(lickPhrase, random);
+    }
+
     const rootNote = currentChord.rootNote;
-    const ticksPerBeat = 3; // 12/8 time feel
+    const ticksPerBeat = 3;
 
     const events: FractalEvent[] = lickPhrase.map(note => {
-        const midiNote = rootNote + (DEGREE_TO_SEMITONE[note.deg as BluesRiffDegree] || 0);
+        // Handle transposed degrees correctly or fallback
+        const degree = note.deg as BluesRiffDegree;
+        const midiOffset = DEGREE_TO_SEMITONE[degree] || 0;
+        const midiNote = rootNote + midiOffset;
+        
         const timeInBeats = note.t / ticksPerBeat;
         const durationInBeats = (note.d || 2) / ticksPerBeat;
         
@@ -502,12 +523,11 @@ export function generateBluesMelodyChorus(
     cachedMelodyChorus.bar = epoch;
     cachedMelodyChorus.events = events;
 
-    return { events, log: `[Melody] Generated ${events.length} notes from lick '${lickId}' for bar ${epoch}` };
+    return { events, log: `[Melody] Generated mutated lick '${lickId}' for bar ${epoch}` };
 }
 
 
 // These functions are exported so they can be used in other modules if necessary.
-// However, the primary composition logic resides within the FractalMusicEngine class itself.
 export function createAmbientMelodyMotif(chord: GhostChord, mood: Mood, random: { next: () => number; nextInt: (max: number) => number; }, previousMotif?: FractalEvent[], registerHint?: 'low' | 'mid' | 'high', genre?: Genre): FractalEvent[] { return []; }
 export function mutateBassPhrase(phrase: FractalEvent[], chord: GhostChord, mood: Mood, genre: Genre, random: { next: () => number; nextInt: (max: number) => number; }): FractalEvent[] { return []; }
 export function createBassFill(chord: GhostChord, mood: Mood, genre: Genre, random: { next: () => number; nextInt: (max: number) => number; }): { events: FractalEvent[]; duration: number } { return { events: [], duration: 0 }; }
@@ -521,19 +541,36 @@ export function generateIntroSequence(currentBar: number, introRules: any, harmo
 // --- MELODY MUTATION FUNCTIONS (PLAN 1712) ---
 export function transposeMelody(phrase: BluesSoloPhrase, interval: number): BluesSoloPhrase {
     if (!phrase) return [];
-    return phrase.map(note => ({
-        ...note,
-        note: ((note as any).note || 0) + interval 
-    }));
+    return phrase.map(note => {
+        // Convert degree to semitone, shift, then try to find closest degree
+        const currentSemi = DEGREE_TO_SEMITONE[note.deg as string] || 0;
+        const newSemi = currentSemi + interval;
+        // Simple fallback degree mapping
+        let closestDeg = note.deg;
+        for (const [deg, semi] of Object.entries(DEGREE_TO_SEMITONE)) {
+            if (semi === newSemi % 12) {
+                closestDeg = deg as BluesRiffDegree;
+                break;
+            }
+        }
+        return { ...note, deg: closestDeg as BluesRiffDegree };
+    });
 }
 
 export function invertMelody(phrase: BluesSoloPhrase): BluesSoloPhrase {
     if (!phrase || phrase.length === 0) return [];
-    const firstNote = (phrase[0] as any).note || 60;
-    return phrase.map(note => ({
-        ...note,
-        note: firstNote - (((note as any).note || 60) - firstNote)
-    }));
+    return phrase.map(note => {
+        const semi = DEGREE_TO_SEMITONE[note.deg as string] || 0;
+        const invSemi = (12 - semi) % 12;
+        let closestDeg = note.deg;
+        for (const [deg, s] of Object.entries(DEGREE_TO_SEMITONE)) {
+            if (s === invSemi) {
+                closestDeg = deg as BluesRiffDegree;
+                break;
+            }
+        }
+        return { ...note, deg: closestDeg as BluesRiffDegree };
+    });
 }
 
 export function varyRhythm(phrase: BluesSoloPhrase, random: { next: () => number }): BluesSoloPhrase {
@@ -549,16 +586,6 @@ export function varyRhythm(phrase: BluesSoloPhrase, random: { next: () => number
             note1.d += note2.d;
             newPhrase.splice(i + 1, 1);
         }
-        else if (note1.d > 3) {
-            const splitPoint = Math.floor(note1.d / 2);
-            note1.d = splitPoint;
-            newPhrase.splice(i + 1, 0, {
-                ...note1,
-                t: note1.t + splitPoint,
-                d: note1.d - splitPoint,
-                deg: note1.deg,
-            });
-        }
     }
     return newPhrase;
 }
@@ -569,7 +596,7 @@ export function addOrnaments(phrase: BluesSoloPhrase, random: { next: () => numb
         if (random.next() < 0.2) {
             const graceNote: BluesSoloPhrase[0] = {
                 t: note.t,
-                d: 1, // very short
+                d: 1, 
                 deg: note.deg, 
                 tech: 'gr' 
             };
@@ -580,4 +607,3 @@ export function addOrnaments(phrase: BluesSoloPhrase, random: { next: () => numb
         return [note];
     }).flat();
 }
-    

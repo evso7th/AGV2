@@ -1,3 +1,4 @@
+
 import type { FractalEvent, Mood, Genre, Technique, BassSynthParams, InstrumentType, MelodyInstrument, AccompanimentInstrument, ResonanceMatrix, InstrumentHints, AccompanimentTechnique, GhostChord, SfxRule, V1MelodyInstrument, V2MelodyInstrument, BlueprintPart, InstrumentationRules, InstrumentBehaviorRules, BluesMelody, InstrumentPart, DrumKit, BluesGuitarRiff, BluesSoloPhrase, BluesRiffDegree, SuiteDNA, RhythmicFeel, BassStyle, DrumStyle, HarmonicCenter, NavigationInfo, Stage } from '@/types/music';
 import { ElectronicK, TraditionalK, AmbientK, MelancholicMinorK } from './resonance-matrices';
 import { BlueprintNavigator } from './blueprint-navigator';
@@ -46,7 +47,7 @@ export type Branch = {
   age: number;
   technique: Technique;
   type: 'bass' | 'drums' | 'accompaniment' | 'harmony' | 'melody';
-  endTime: number; // Абсолютное время окончания последнего события в ветке
+  endTime: number; 
 };
 
 interface EngineConfig {
@@ -119,7 +120,7 @@ export class FractalMusicEngine {
   private nextAccompanimentDelay: number = 0;
   private hasBassBeenMutated = false;
   
-  private suiteDNA: SuiteDNA | null = null; // The harmonic "skeleton"
+  private suiteDNA: SuiteDNA | null = null; 
   
   public navigator: BlueprintNavigator | null = null;
 
@@ -137,7 +138,6 @@ export class FractalMusicEngine {
   private lastMelodyPlayEpoch: number = -16;
   private wasMelodyPlayingLastBar: boolean = false;
 
-  // "Конвейеры" для уникальности
   private shuffledBassRiffIndices: number[] = [];
   private shuffledDrumRiffIndices: number[] = [];
   private shuffledGuitarRiffIDs: string[] = [];
@@ -156,8 +156,6 @@ export class FractalMusicEngine {
   
   private previousChord: GhostChord | null = null;
 
-  // #ЗАЧЕМ: Память для декларативного вступления инструментов.
-  // #ЧТО: Хранит набор инструментов, которые уже прошли проверку на активацию.
   private activatedInstruments: Set<InstrumentPart> = new Set();
 
 
@@ -199,7 +197,7 @@ export class FractalMusicEngine {
     this.lastAccompanimentEndTime = -Infinity;
     this.nextAccompanimentDelay = this.random.next() * 7 + 5;
     this.hasBassBeenMutated = false;
-    this.activatedInstruments.clear(); // #ЗАЧЕМ: Сброс памяти активации при новой сюите.
+    this.activatedInstruments.clear(); 
     
     const allBassRiffs = BLUES_BASS_RIFFS[this.config.mood] ?? BLUES_BASS_RIFFS['contemplative'];
     if (!allBassRiffs || allBassRiffs.length === 0) return;
@@ -254,7 +252,7 @@ export class FractalMusicEngine {
     const initialBassTechnique = initialNavInfo?.currentPart.instrumentRules?.bass?.techniques?.[0].value as Technique || 'drone';
 
     if (this.config.genre === 'blues') {
-        // Blues logic will be handled within generateOneBar
+        // Blues handled in generateOneBar
     } else {
         const newBassAxiom = createAmbientBassAxiom(firstChord, this.config.mood, this.config.genre, this.random, this.config.tempo, initialBassTechnique);
         for (let i = 0; i < 4; i++) {
@@ -431,7 +429,6 @@ export class FractalMusicEngine {
       return this.suiteDNA?.harmonyTrack || [];
   }
 
-  // #ЗАЧЕМ: Утилита для выполнения взвешенного выбора.
   private pickWeighted<T>(options: { name: T, weight: number }[]): T {
       const total = options.reduce((sum, opt) => sum + opt.weight, 0);
       let rand = this.random.next() * total;
@@ -442,11 +439,10 @@ export class FractalMusicEngine {
       return options[options.length - 1].name;
   }
 
-  // #ЗАЧЕМ: Утилита для проверки, активирован ли инструмент.
   private isActivated(part: InstrumentPart, navInfo: NavigationInfo): boolean {
       if (!navInfo.currentPart.layers[part]) return false;
       const stages = navInfo.currentPart.stagedInstrumentation;
-      if (!stages || stages.length === 0) return true; // Always active if no staged rules
+      if (!stages || stages.length === 0) return true; 
       return this.activatedInstruments.has(part);
   }
   
@@ -471,9 +467,6 @@ export class FractalMusicEngine {
     const navInfo = this.navigator.tick(this.epoch);
     if (!navInfo) return { events: [], instrumentHints: {} };
 
-    // #ЗАЧЕМ: Реализация Декларативных Сцен.
-    // #ЧТО: Логика определяет текущую сцену и бросает кубик на активацию инструментов.
-    // #СВЯЗИ: Читает `stagedInstrumentation` из блюпринта.
     const instrumentHints: InstrumentHints = {};
     const stages = navInfo.currentPart.stagedInstrumentation;
 
@@ -489,7 +482,6 @@ export class FractalMusicEngine {
             }
         }
 
-        // Activation roll
         Object.entries(currentStage.instrumentation).forEach(([part, rule]) => {
             const p = part as InstrumentPart;
             if (!this.activatedInstruments.has(p)) {
@@ -498,13 +490,11 @@ export class FractalMusicEngine {
                 }
             }
             if (this.activatedInstruments.has(p)) {
-                // Select name for this stage
                 const name = this.pickWeighted(rule.instrumentOptions);
                 (instrumentHints as any)[p] = name;
             }
         });
 
-        // "No silence" rule: if first stage and nothing activated, force one
         if (this.activatedInstruments.size === 0) {
             const possible = Object.keys(currentStage.instrumentation) as InstrumentPart[];
             if (possible.length > 0) {
@@ -514,7 +504,6 @@ export class FractalMusicEngine {
             }
         }
     } else {
-        // Fallback to standard weighting if no stages
         instrumentHints.melody = this._chooseInstrumentForPart('melody', navInfo);
         instrumentHints.accompaniment = this._chooseInstrumentForPart('accompaniment', navInfo);
         instrumentHints.harmony = this._chooseInstrumentForPart('harmony', navInfo) as any;
@@ -557,7 +546,7 @@ export class FractalMusicEngine {
         events.push({ type: 'perc-013', note: 60, time: 1.5, duration: 0.5, weight: 0.2, technique: 'hit', dynamics: 'pp', phrasing: 'staccato', params: {} });
     }
     if (promenadeBar === 2) {
-         events.push({ type: 'sparkle', note: 72, time: 0.5, duration: 1, weight: 0.5, technique: 'hit', dynamics: 'p', phrasing: 'legato', params: {mood: this.config.mood, genre: this.config.genre, category: 'promenade'}});
+         events.push({ type: 'sparkle', note: 72, time: 0.5, duration: 1, weight: 0.5, technique: 'hit', dynamics: 'p', phrasing: 'legato', params: {mood: this.config.mood, genre: this.config.genre, category: 'promenade_blues'}});
          events.push({ type: 'sfx', note: 60, time: 2.5, duration: 2, weight: 0.3, technique: 'swell', dynamics: 'p', phrasing: 'legato', params: { mood: this.config.mood, genre: this.config.genre, category: 'promenade' } });
     }
     return events;
@@ -590,8 +579,9 @@ export class FractalMusicEngine {
         }
     }
 
-    // #ЗАЧЕМ: Октавный сдвиг для конкретных гитар.
-    if (['telecaster', 'blackAcoustic', 'darkTelecaster', 'guitar_nightmare_solo'].includes(instrumentHints.melody || '')) {
+    // #ЗАЧЕМ: Принудительный октавный сдвиг для гитар в мелодии.
+    // #ЧТО: Если инструмент мелодии — гитара, поднимаем ноты на 2 октавы.
+    if (['telecaster', 'blackAcoustic', 'darkTelecaster', 'guitar_nightmare_solo', 'electricGuitar'].includes(instrumentHints.melody || '')) {
         melodyEvents.forEach(e => e.note += 24);
     }
 
@@ -604,8 +594,6 @@ export class FractalMusicEngine {
             ? 'long-chords'
             : (accompRules?.techniques?.[0]?.value || 'long-chords') as AccompanimentTechnique;
 
-        // #ЗАЧЕМ: Ускоренная смена аккордов в Дарк-блюзе.
-        // #ЧТО: Делит такт на две части: основной аккорд и его доминанта.
         if (this.config.genre === 'blues' && this.config.mood === 'dark' && technique === 'long-chords') {
             const firstHalf = this.createAccompanimentAxiom(currentChord, this.config.mood, this.config.genre, this.random, this.config.tempo, registerHint, 'long-chords');
             const dominantChord: GhostChord = { ...currentChord, rootNote: currentChord.rootNote + 7, chordType: 'dominant' };
