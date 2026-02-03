@@ -400,7 +400,6 @@ export class FractalMusicEngine {
     let accompEvents: FractalEvent[] = [];
     if (instrumentHints.accompaniment) {
         const accompRules = navInfo.currentPart.instrumentRules?.accompaniment;
-        // #ЗАЧЕМ: Удален принудительный power-chords. Теперь используется техника из Блюпринта.
         const technique = (accompRules?.techniques?.[0]?.value || 'long-chords') as AccompanimentTechnique;
         accompEvents = this.createAccompanimentAxiom(currentChord, this.config.mood, this.config.genre, this.random, this.config.tempo, accompRules?.register?.preferred, technique);
     }
@@ -452,27 +451,45 @@ export class FractalMusicEngine {
     const axiom: FractalEvent[] = [];
     const rootNote = chord.rootNote;
     const baseOctave = (registerHint === 'low') ? 2 : (registerHint === 'high' ? 4 : 3);
+    const isMinor = chord.chordType === 'minor' || chord.chordType === 'diminished';
+    const chordNotes = [rootNote, rootNote + (isMinor ? 3 : 4), rootNote + 7];
 
-    if (technique === 'power-chords') {
-        const notes = [rootNote, rootNote + 7];
-        notes.forEach((note, i) => {
-            axiom.push({
-                type: 'accompaniment',
-                note: note + 12 * (baseOctave - 1),
-                duration: 4.0,
-                time: 0,
-                weight: 0.8,
-                technique: 'power-chords',
-                dynamics: 'f',
-                phrasing: 'legato',
-                params: { attack: 0.05, release: 2.5 } as any
+    // #ЗАЧЕМ: Реализация требования "побольше аккомпанемента без сверхдлинных звучаний" для блюза.
+    // #ЧТО: Если жанр - блюз, мы генерируем два аккорда по 2 доли (половинные ноты) вместо одного на 4 доли.
+    // #СВЯЗИ: Улучшает динамику в dark.ts и winter.ts.
+    if (genre === 'blues') {
+        const startTimes = [0, 2.0];
+        const durations = [2.0, 2.0];
+
+        startTimes.forEach((startTime, timeIdx) => {
+            chordNotes.forEach((note, i) => {
+                axiom.push({
+                    type: 'accompaniment',
+                    note: note + 12 * baseOctave,
+                    duration: durations[timeIdx],
+                    time: startTime + i * 0.05,
+                    weight: 0.6 - (i * 0.1),
+                    technique: technique,
+                    dynamics: 'mp',
+                    phrasing: 'legato',
+                    params: { attack: 0.1, release: 1.5 }
+                });
             });
         });
     } else {
-        const isMinor = chord.chordType === 'minor' || chord.chordType === 'diminished';
-        const chordNotes = [rootNote, rootNote + (isMinor ? 3 : 4), rootNote + 7];
+        // Стандартная эмбиентная логика: одна целая нота (4 доли)
         chordNotes.forEach((note, i) => {
-            axiom.push({ type: 'accompaniment', note: note + 12 * baseOctave, duration: 4.0, time: i * 0.05, weight: 0.6 - (i * 0.1), technique: 'choral', dynamics: 'mp', phrasing: 'legato', params: { attack: 0.8, release: 3.2 } });
+            axiom.push({
+                type: 'accompaniment',
+                note: note + 12 * baseOctave,
+                duration: 4.0,
+                time: i * 0.05,
+                weight: 0.6 - (i * 0.1),
+                technique: technique,
+                dynamics: 'mp',
+                phrasing: 'legato',
+                params: { attack: 0.8, release: 3.2 }
+            });
         });
     }
     return axiom;
