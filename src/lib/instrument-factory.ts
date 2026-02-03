@@ -1,8 +1,8 @@
 /**
  * #ЗАЧЕМ: Центральная фабрика для создания высококачественных инструментов V2.
  * #ЧТО: Реализует конвейеры синтеза для synth, organ, bass и guitar.
- * #ОБНОВЛЕНО (ПЛАН 37): Оптимизация CPU (Static Waveform), удаление частотных биений
- *              и внедрение монитора активных голосов в консоль.
+ * #ОБНОВЛЕНО (ПЛАН 39): Внедрен Harmonic Foldback (ограничение ВЧ) для органов
+ *              и сохранена оптимизация CPU со счетчиком голосов.
  */
 
 // ───── MONITORING ─────
@@ -157,7 +157,9 @@ const createPureLeslie = (ctx: AudioContext, config: any): SimpleFX => {
             if (k === 'mode') {
                 const target = v === 'fast' ? (config.fast || 6.3) : (v === 'slow' ? (config.slow || 0.65) : 0.01);
                 const now = ctx.currentTime;
+                // Horn (light) accelerates fast (0.7s)
                 hornLfo.frequency.setTargetAtTime(target, now, 0.7);
+                // Drum (heavy) accelerates slow (2.5s)
                 drumLfo.frequency.setTargetAtTime(target * 0.85, now, 2.5);
             }
         }
@@ -285,7 +287,7 @@ const buildSynthEngine = (ctx: AudioContext, preset: any, master: GainNode, reve
 };
 
 const buildOrganEngine = (ctx: AudioContext, preset: any, master: GainNode, reverb: ConvolverNode, instrumentGain: GainNode, expressionGain: GainNode) => {
-    console.log(`%c[Factory] Pipeline: Organ - Building Static Waveform optimized chain`, 'color: #DEB887;');
+    console.log(`%c[Factory] Pipeline: Organ - Building Static Waveform optimized chain with Foldback`, 'color: #DEB887;');
     let currentPreset = { ...preset };
     const organSum = ctx.createGain();
     const leslie = createPureLeslie(ctx, { on: true, mode: currentPreset.leslie?.mode ?? 'slow' });
@@ -294,7 +296,6 @@ const buildOrganEngine = (ctx: AudioContext, preset: any, master: GainNode, reve
     const revSend = ctx.createGain(); revSend.gain.value = currentPreset.reverbMix ?? 0.1;
     leslie.output.connect(revSend).connect(reverb);
 
-    // #ОПТИМИЗАЦИЯ: Пре-генерация волны тонколеса (убираем нагрузку из noteOn)
     const tonewheelWave = ctx.createPeriodicWave(new Float32Array([0, 1, 0.02, 0.01]), new Float32Array(4));
     const activeVoices = new Map<number, { voiceGain: GainNode, voiceState: VoiceState, nodes: AudioNode[] }>();
     const clickBuffer = createKeyClick(ctx, 0.005, currentPreset.keyClick ?? 0.003);
@@ -310,15 +311,23 @@ const buildOrganEngine = (ctx: AudioContext, preset: any, master: GainNode, reve
         drawbars.forEach((v: number, i: number) => {
             if (v > 0) {
                 const osc = ctx.createOscillator();
-                osc.setPeriodicWave(tonewheelWave); // Переиспользуем волну
-                osc.frequency.value = f0 * DRAWBAR_RATIOS[i];
+                osc.setPeriodicWave(tonewheelWave);
+                
+                // #ЗАЧЕМ: Реализация Harmonic Foldback.
+                // #ЧТО: Если расчетная частота выше 6кГц, складываем её назад октавой ниже.
+                let freq = f0 * DRAWBAR_RATIOS[i];
+                while (freq > 6000) {
+                    freq /= 2;
+                }
+                osc.frequency.value = freq;
+                
                 const g = ctx.createGain(); g.gain.value = (v/8) * 0.25;
                 osc.connect(g).connect(voiceGain); osc.start(when);
                 voiceNodes.push(osc, g);
             }
         });
 
-        if (clickBuffer && activeVoices.size === 1) { // Первая нажатая нота
+        if (clickBuffer && activeVoices.size === 1) { 
             const click = ctx.createBufferSource(); click.buffer = clickBuffer;
             const clickG = ctx.createGain(); clickG.gain.value = velocity * 0.4;
             click.connect(clickG).connect(voiceGain); click.start(when);
@@ -415,7 +424,7 @@ const buildGuitarEngine = (ctx: AudioContext, preset: any, master: GainNode, rev
         voice.nodes.forEach(n => { if (n instanceof OscillatorNode) n.stop(stopTime + 0.1); });
         setTimeout(() => { 
             try { 
-                voice.voiceGain.disconnect();
+                voice.voiceGain.disconnect(); 
                 globalActiveVoices--;
             } catch(e){} 
         }, (stopTime - ctx.currentTime + 0.2) * 1000);

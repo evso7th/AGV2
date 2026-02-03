@@ -379,11 +379,29 @@ export class FractalMusicEngine {
     const melodyRules = navInfo.currentPart.instrumentRules?.melody;
 
     if (instrumentHints.melody && melodyRules) {
-        const ratio = melodyRules.soloToPatternRatio ?? 0.5;
+        const ratio = melodyRules.soloToPatternRatio ?? 0.7; // solo vs pattern lottery
+        
         if (this.random.next() < ratio && melodyRules.source === 'blues_solo') {
+            // PLAY SOLO
             const { events: soloEvents } = generateBluesMelodyChorus(currentChord, this.random, navInfo.currentPart.id, this.epoch, melodyRules, this.suiteDNA, this.melodyHistory, this.cachedMelodyChorus);
             melodyEvents = soloEvents;
+        } else if (melodyRules.source === 'blues_solo') {
+            // #ЗАЧЕМ: Реализация требования "30% фингерстайл".
+            // #ЧТО: Если кубик выпал на паттерн, мы генерируем событие перебора (Travis Picking).
+            // #СВЯЗИ: Гитарные сэмплеры отработают это как полноценный аккордовый рисунок.
+            melodyEvents.push({
+                type: 'melody', 
+                note: currentChord.rootNote, 
+                time: 0, 
+                duration: 4.0, 
+                weight: 0.8,
+                technique: 'F_TRAVIS', // Triggers pattern in sampler
+                dynamics: 'mf', 
+                phrasing: 'legato',
+                params: { barCount: effectiveBar, voicingName: 'Em7_open' }
+            });
         } else {
+            // Fallback for non-blues styles
             melodyEvents.push({
                 type: 'melody', note: currentChord.rootNote, time: 0, duration: 4.0, weight: 0.8,
                 technique: 'pluck', dynamics: 'mf', phrasing: 'legato',
