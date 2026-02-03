@@ -252,7 +252,8 @@ export const V2_PRESETS = {
     name: 'Soft Jazz Organ',
     drawbars: [8, 0, 8, 5, 0, 3, 0, 0, 0],
     vibrato: { type: 'C1', rate: 6.2 },
-    leslie: { on: true, mode: 'slow', slow: 0.65, fast: 6.3, accel: 0.7, mix: 0.65 },
+    // #ЗАЧЕМ: Уменьшение mix для "склейки" Лесли с основным тоном.
+    leslie: { on: true, mode: 'slow', slow: 0.65, fast: 6.3, accel: 0.7, mix: 0.5 },
     lpf: 3500,
     hpf: 90,
     reverbMix: 0.12,

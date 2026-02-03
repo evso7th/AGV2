@@ -1,5 +1,5 @@
 
-//Fab v 2.1 - Memory Leaks Fixed
+//Fab v 2.2 - Leslie Physics Improved & Memory Leaks Fixed
 // ─────────────────────────────────────────────────────────────────────────────
 // BASS ENGINE — Electric, Synth & Acoustic Bass Emulation
 // ─────────────────────────────────────────────────────────────────────────────
@@ -18,7 +18,6 @@ const makeTubeSaturation = (drive = 0.3, n = 65536) => {
     const k = drive * 5 + 1;
     for (let i = 0; i < n; i++) {
         const x = (i / (n - 1)) * 2 - 1;
-        // Асимметричный клиппинг (как у ламп)
         const pos = Math.tanh(k * x);
         const neg = Math.tanh(k * x * 0.8) * 0.9;
         curve[i] = x >= 0 ? pos : neg;
@@ -48,12 +47,12 @@ const makeSoftClip = (amount = 0.5, n = 65536) => {
 // ═══════════════════════════════════════════════════════════════════════════
 
 interface FilterEnvelopeConfig {
-    attack: number;      // Время атаки фильтра
-    decay: number;       // Время затухания
-    sustain: number;     // Уровень sustain (0-1 от depth)
-    release: number;     // Release
-    depth: number;       // Глубина модуляции (Hz)
-    velocity: number;    // Влияние velocity на depth
+    attack: number;
+    decay: number;
+    sustain: number;
+    release: number;
+    depth: number;
+    velocity: number;
 }
 
 const applyFilterEnvelope = (
@@ -408,7 +407,6 @@ export const buildBassEngine = async (
         voice.voiceGain.gain.setTargetAtTime(0.0001, when, releaseTime / 3);
         if (currentPreset.filterEnv?.on) releaseFilterEnvelope(ctx, voice.filter, currentPreset.filter?.cutoff ?? 2000, releaseTime, when);
         
-        // Stop all possible source nodes
         voice.allNodes.forEach(node => {
             if (node instanceof OscillatorNode || node instanceof AudioBufferSourceNode) {
                 try { node.stop(stopTime); } catch (e) {}
@@ -475,20 +473,59 @@ const createVibratoScanner = (ctx: AudioContext, config: any) => {
 };
 
 const createLeslie = (ctx: AudioContext, config: any) => {
+    // #ЗАЧЕМ: Физически корректная модель Лесли для устранения эффекта "сирены" и "отдельности".
+    // #ЧТО: Разделение на рупор (horn) и барабан (drum), снижение глубины девиации частоты (0.0002),
+    //      добавление амплитудной модуляции (AM) для "склейки" текстуры.
     const input = ctx.createGain(); const output = ctx.createGain();
     const dry = ctx.createGain(); const wet = ctx.createGain();
     const lowpass = ctx.createBiquadFilter(); lowpass.type = 'lowpass'; lowpass.frequency.value = 800;
     const highpass = ctx.createBiquadFilter(); highpass.type = 'highpass'; highpass.frequency.value = 800;
-    const hornDelay = ctx.createDelay(0.01); const hornLfo = ctx.createOscillator();
-    const hornLfoGain = ctx.createGain(); hornLfoGain.gain.value = 0.0008;
-    hornLfo.frequency.value = config.mode === 'fast' ? config.fast : config.slow;
-    hornLfo.connect(hornLfoGain); hornLfoGain.connect(hornDelay.delayTime); hornLfo.start();
-    input.connect(dry); dry.connect(output); input.connect(lowpass); input.connect(highpass);
-    highpass.connect(hornDelay).connect(wet); lowpass.connect(wet); wet.connect(output);
-    return { input, output, setMode: (m:any) => {
-        const speed = m === 'fast' ? config.fast : (m === 'slow' ? config.slow : 0.01);
-        hornLfo.frequency.setTargetAtTime(speed, ctx.currentTime, config.accel);
-    }, setMix: (m:any) => { wet.gain.value = m; dry.gain.value = 1-m; }, getMode: () => config.mode };
+    
+    // Horn (Highs)
+    const hornDelay = ctx.createDelay(0.01);
+    const hornAmp = ctx.createGain();
+    const hornLfo = ctx.createOscillator(); 
+    const hornDepth = ctx.createGain(); hornDepth.gain.value = 0.0002; // Drastically reduced Viu-Viu
+    const hornAmDepth = ctx.createGain(); hornAmDepth.gain.value = 0.12; // Glue effect
+    
+    // Drum (Lows)
+    const drumDelay = ctx.createDelay(0.01);
+    const drumAmp = ctx.createGain();
+    const drumLfo = ctx.createOscillator();
+    const drumDepth = ctx.createGain(); drumDepth.gain.value = 0.0003;
+    const drumAmDepth = ctx.createGain(); drumAmDepth.gain.value = 0.08;
+
+    hornLfo.connect(hornDepth); hornDepth.connect(hornDelay.delayTime);
+    hornLfo.connect(hornAmDepth); hornAmDepth.connect(hornAmp.gain);
+    
+    drumLfo.connect(drumDepth); drumDepth.connect(drumDelay.delayTime);
+    drumLfo.connect(drumAmDepth); drumAmDepth.connect(drumAmp.gain);
+
+    const speed = config.mode === 'fast' ? config.fast : config.slow;
+    hornLfo.frequency.value = speed;
+    drumLfo.frequency.value = speed * 0.95; // Slight offset for organic feel
+    
+    hornLfo.start(); drumLfo.start();
+
+    input.connect(dry); dry.connect(output); 
+    input.connect(lowpass); input.connect(highpass);
+    
+    highpass.connect(hornDelay).connect(hornAmp).connect(wet);
+    lowpass.connect(drumDelay).connect(drumAmp).connect(wet);
+    
+    wet.connect(output);
+    
+    return { 
+        input, output, 
+        setMode: (m:any) => {
+            const now = ctx.currentTime;
+            const target = m === 'fast' ? config.fast : (m === 'slow' ? config.slow : 0.01);
+            hornLfo.frequency.setTargetAtTime(target, now, config.accel);
+            drumLfo.frequency.setTargetAtTime(target * 0.95, now, config.accel * 1.2);
+        }, 
+        setMix: (m:any) => { wet.gain.value = m; dry.gain.value = 1-m; }, 
+        getMode: () => config.mode 
+    };
 };
 
 async function buildOrganEngine(ctx: AudioContext, preset: any, options: any): Promise<InstrumentAPI> {
@@ -501,8 +538,14 @@ async function buildOrganEngine(ctx: AudioContext, preset: any, options: any): P
     
     const organSum = ctx.createGain();
     const lpf = ctx.createBiquadFilter(); lpf.type = 'lowpass'; lpf.frequency.value = currentPreset.lpf ?? 5000;
-    const vibrato = createVibratoScanner(ctx, { rate: 6.5 });
-    const leslie = createLeslie(ctx, { mode: 'slow', slow: 0.8, fast: 6.5, accel: 0.8 });
+    const vibrato = createVibratoScanner(ctx, { rate: currentPreset.vibrato?.rate ?? 6.5 });
+    const leslie = createLeslie(ctx, { 
+        mode: currentPreset.leslie?.mode ?? 'slow', 
+        slow: currentPreset.leslie?.slow ?? 0.8, 
+        fast: currentPreset.leslie?.fast ?? 6.5, 
+        accel: currentPreset.leslie?.accel ?? 0.8 
+    });
+    
     const instrumentGain = ctx.createGain(); instrumentGain.gain.value = currentPreset.volume ?? 0.7;
     const master = ctx.createGain(); master.gain.value = 0.8;
     
@@ -560,7 +603,6 @@ async function buildOrganEngine(ctx: AudioContext, preset: any, options: any): P
         voiceGain.gain.cancelScheduledValues(when);
         voiceGain.gain.setTargetAtTime(0.0001, when, adsr.r / 3);
         
-        // Stop all possible source nodes in the voice
         voice.nodes.forEach(node => {
             if (node instanceof OscillatorNode || node instanceof AudioBufferSourceNode) {
                 try { node.stop(stopTime); } catch (e) {}
@@ -656,10 +698,10 @@ export async function buildMultiInstrument(ctx: AudioContext, {
         connect: (dest?: AudioNode) => master.connect(dest || output),
         disconnect: () => { try { master.disconnect(); } catch {} },
         noteOn: () => {}, noteOff: () => {}, allNotesOff: () => {}, setPreset: () => {}, setParam: () => {},
-        setVolume: (level: number) => instrumentGain.gain.setTargetAtTime(clamp(level, 0, 1), ctx.currentTime, 0.02),
+        setVolume: (level: number) => instrumentGain.gain.setTargetAtTime(level, ctx.currentTime, 0.02),
         getVolume: () => instrumentGain.gain.value,
         setVolumeDb: (db: number) => instrumentGain.gain.setTargetAtTime(dB(clamp(db, -60, 12)), ctx.currentTime, 0.02),
-        setExpression: (level: number) => expressionGain.gain.setTargetAtTime(clamp(level, 0, 1), ctx.currentTime, 0.01),
+        setExpression: (level: number) => expressionGain.gain.setTargetAtTime(level, ctx.currentTime, 0.01),
         preset: preset,
         type: type
     };
