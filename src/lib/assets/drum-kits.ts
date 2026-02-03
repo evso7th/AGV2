@@ -41,7 +41,7 @@ const ALL_PERC: InstrumentType[] = [
     ...ALL_TOMS, 
     'drum_cowbell', 'drum_cymbal_bell1', 'drum_cymbal_bell2',
     'drum_25691__walter_odington__fastlinger',
-    'perc-001', 'perc-002', 'perc-005', 'perc-006', 'perc-013', 'perc-014', 'perc-015',
+    'perc-001', 'perc-002', 'perc-003', 'perc-004', 'perc-005', 'perc-006', 'perc-007', 'perc-008', 'perc-009', 'perc-010', 'perc-011', 'perc-012', 'perc-013', 'perc-014', 'perc-015',
     'drum_Bell_-_Ambient', 'drum_Bell_-_Analog', 'drum_Bell_-_Astro', 'drum_Bell_-_Background', 'drum_Bell_-_Bright',
     'drum_Bell_-_Broken', 'drum_Bell_-_Cheap', 'drum_Bell_-_Cheesy', 'drum_Bell_-_Chorus', 'drum_Bell_-_Click',
     'drum_Bell_-_Crystals', 'drum_Bell_-_Deep', 'drum_Bell_-_Detuned', 'drum_Bell_-_Easy', 'drum_Bell_-_Echo',
@@ -68,9 +68,12 @@ const bluesMelancholicMaster: DrumKit = {
     crash: ['drum_crash2', 'drum_cymbal3', 'drum_cymbal4'],
     perc: [
         'drum_hightom', 'drum_lowtom', 'drum_midtom',
-        'drum_hightom_soft', 'drum_lowtom_soft', 'drum_midtom_soft', // Added soft toms
+        'drum_hightom_soft', 'drum_lowtom_soft', 'drum_midtom_soft',
         'drum_Sonor_Classix_High_Tom', 'drum_Sonor_Classix_Low_Tom', 'drum_Sonor_Classix_Mid_Tom',
-        'drum_cowbell', 'perc-012', 'perc-013', 'perc-014', 'perc-015'
+        'drum_cowbell',
+        'perc-001', 'perc-002', 'perc-003', 'perc-004', 'perc-005', 'perc-006', 'perc-007', 'perc-008', 'perc-009', 'perc-010', 'perc-011', 'perc-012', 'perc-013', 'perc-014', 'perc-015',
+        'drum_bongo_pc-01', 'drum_bongo_pc-02', 'drum_bongo_pc-03',
+        'drum_bongo_pvc-tube-01', 'drum_bongo_pvc-tube-02', 'drum_bongo_pvc-tube-03'
     ]
 };
 
