@@ -1,3 +1,4 @@
+
 // V2 Presets — совместимы с buildMultiInstrument()
 // Проверено на соответствие фабрике от 2024-01
 
@@ -231,57 +232,42 @@ export const V2_PRESETS = {
   },
 
   // ═══════════════════════════════════════════════════════════════════════════
-  // ORGAN (ALL NOW 'synth' TYPE)
+  // ORGAN (NOW USING DEDICATED 'organ' TYPE)
   // ═══════════════════════════════════════════════════════════════════════════
 
   organ: {
-    type: 'synth',
+    type: 'organ',
     name: 'Cathedral Organ',
-    osc: [
-        { type: 'triangle', detune: 0, octave: 0, gain: 1.0 },
-        { type: 'triangle', detune: 2, octave: 1, gain: 0.6 },
-        { type: 'triangle', detune: -2, octave: -1, gain: 0.4 },
-    ],
-    noise: { on: false, gain: 0 },
-    adsr: { attack: 0.1, decay: 0.1, sustain: 0.9, release: 0.6 },
-    filter: { type: 'lowpass', cutoff: 2500, q: 2.0, mode: '24dB' },
-    lfo: { shape: 'sine', rate: 5.5, amount: 8, target: 'pitch' },
-    chorus: { on: true, rate: 0.3, depth: 0.004, mix: 0.4 },
-    delay: { on: false, time: 0, fb: 0, hc: 0, mix: 0 },
+    drawbars: [8, 8, 8, 6, 0, 0, 0, 0, 0],
+    keyClick: 0.005,
+    adsr: { a: 0.1, d: 0.1, s: 0.9, r: 0.6 },
+    lpf: 2500,
+    vibrato: { type: 'C3', rate: 5.5 },
+    leslie: { on: true, mode: 'slow', slow: 0.8, fast: 6.5, accel: 0.8, mix: 0.4 },
     reverbMix: 0.25
   },
   
   organ_soft_jazz: {
-    type: 'synth',
+    type: 'organ',
     name: 'Soft Jazz Organ',
-    osc: [
-        { type: 'sine', detune: 0, octave: 0, gain: 1.0 },
-        { type: 'sine', detune: 702, octave: 0, gain: 0.5 },
-        { type: 'sine', detune: 0, octave: 1, gain: 0.35 }
-    ],
-    noise: { on: false, gain: 0 },
-    adsr: { a: 0.025, d: 0.3, s: 0.9, r: 0.35 },
-    lpf: { cutoff: 3500, q: 0.9, mode: '24dB' },
-    lfo: { shape: 'sine', rate: 6.2, amount: 3, target: 'pitch' },
-    chorus: { on: true, rate: 0.5, depth: 0.005, mix: 0.65 },
-    delay: { on: false, time: 0, fb: 0, hc: 0, mix: 0 },
+    drawbars: [8, 0, 8, 5, 0, 3, 0, 0, 0],
+    vibrato: { type: 'C1', rate: 6.2 },
+    leslie: { on: true, mode: 'slow', slow: 0.65, fast: 6.3, accel: 0.7, mix: 0.65 },
+    lpf: 3500,
+    hpf: 90,
     reverbMix: 0.12,
+    keyClick: 0.003
   },
 
   organ_circus_of_dread: {
-    type: 'synth',
+    type: 'organ',
     name: 'Circus of Dread',
-    osc: [
-        { type: 'sine', detune: 0, octave: 0, gain: 0.8 },
-        { type: 'sine', detune: 1200, octave: 0, gain: 0.6 },
-        { type: 'square', detune: 12, octave: 1, gain: 0.3 }
-    ],
-    noise: { on: true, gain: 0.02 },
+    drawbars: [8, 8, 0, 0, 8, 0, 4, 0, 8],
+    keyClick: 0.008,
     adsr: { a: 0.05, d: 0.2, s: 0.8, r: 0.6 },
-    lpf: { cutoff: 2200, q: 3.5, mode: '24dB' },
-    lfo: { shape: 'sine', rate: 6.5, amount: 15, target: 'pitch' },
-    chorus: { on: true, rate: 0.8, depth: 0.008, mix: 0.7 },
-    delay: { on: true, time: 0.25, fb: 0.4, hc: 3000, mix: 0.3 },
+    lpf: 2200,
+    vibrato: { type: 'V3', rate: 6.5 },
+    leslie: { on: true, mode: 'fast', slow: 0.9, fast: 7.2, accel: 0.5, mix: 0.7 },
     reverbMix: 0.35,
   },
 
@@ -355,7 +341,6 @@ export const BASS_PRESET_MAP: Record<string, keyof typeof BASS_PRESETS> = {
     glideBass: 'bass_house',
     ambientDrone: 'bass_ambient',
     resonantGliss: 'bass_trance_acid',
-    hypnoticDrone: 'bass_ambient_dark',
     hypnoticDrone: 'bass_ambient_dark',
     livingRiff: 'bass_rock_pick',
 };
