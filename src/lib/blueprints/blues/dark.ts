@@ -1,4 +1,3 @@
-
 import type { MusicBlueprint } from '@/types/music';
 
 export const DarkBluesBlueprint: MusicBlueprint = {
@@ -24,7 +23,8 @@ export const DarkBluesBlueprint: MusicBlueprint = {
                         duration: { percent: 25 }, // Stage 1: Melancholic Acoustic Start
                         instrumentation: {
                            melody: {
-                                activationChance: 1.0,
+                                activationChance: 0.4, // 10% solo + 30% pattern = 40%
+                                transient: true,
                                 instrumentOptions: [ { name: 'blackAcoustic', weight: 1.0 } ]
                            },
                            pianoAccompaniment: {
@@ -34,7 +34,7 @@ export const DarkBluesBlueprint: MusicBlueprint = {
                         }
                     },
                     {
-                        duration: { percent: 25 }, // Stage 2: Heavy Foundation Enters
+                        duration: { percent: 25 }, // Stage 2: Foundation Enters
                         instrumentation: {
                            bass: {
                                activationChance: 1.0,
@@ -45,12 +45,10 @@ export const DarkBluesBlueprint: MusicBlueprint = {
                                instrumentOptions: [ { name: 'winter_blues_prolog1', weight: 1.0 } ]
                            },
                            melody: {
-                               activationChance: 1.0,
-                               instrumentOptions: [ 
-                                   { name: 'darkTelecaster', weight: 0.5 },
-                                   { name: 'blackAcoustic', weight: 0.5 }
-                               ] 
-                           }
+                                activationChance: 0.4,
+                                transient: true,
+                                instrumentOptions: [ { name: 'blackAcoustic', weight: 1.0 } ] 
+                            }
                         }
                     },
                     {
@@ -65,11 +63,9 @@ export const DarkBluesBlueprint: MusicBlueprint = {
                                instrumentOptions: [ { name: 'dark', weight: 1.0 } ]
                            },
                            melody: {
-                                activationChance: 1.0,
-                                instrumentOptions: [ 
-                                    { name: 'darkTelecaster', weight: 0.5 },
-                                    { name: 'blackAcoustic', weight: 0.5 }
-                                ] 
+                                activationChance: 0.4,
+                                transient: true,
+                                instrumentOptions: [ { name: 'blackAcoustic', weight: 1.0 } ] 
                             }
                         }
                     },
@@ -85,11 +81,9 @@ export const DarkBluesBlueprint: MusicBlueprint = {
                                instrumentOptions: [ { name: 'dark', weight: 1.0 } ]
                            },
                            melody: {
-                                activationChance: 1.0,
-                                instrumentOptions: [ 
-                                    { name: 'darkTelecaster', weight: 0.5 },
-                                    { name: 'blackAcoustic', weight: 0.5 }
-                                ] 
+                                activationChance: 0.4,
+                                transient: true,
+                                instrumentOptions: [ { name: 'blackAcoustic', weight: 1.0 } ] 
                             }
                         }
                     }
@@ -97,7 +91,7 @@ export const DarkBluesBlueprint: MusicBlueprint = {
                 instrumentRules: {
                     bass: { techniques: [{ value: 'riff', weight: 1.0 }], density: { min: 0.2, max: 0.4 } },
                     accompaniment: { techniques: [{ value: 'power-chords', weight: 1.0 }], density: { min: 0.1, max: 0.3 } },
-                    melody: { source: 'blues_solo', soloToPatternRatio: 0.5, density: { min: 0.5, max: 0.9 }, soloPlan: "S06" },
+                    melody: { source: 'blues_solo', soloToPatternRatio: 0.25, density: { min: 0.5, max: 0.9 }, soloPlan: "S06" },
                     drums: { kitName: 'winter_blues_prolog1', density: { min: 0.3, max: 0.5 }, usePerc: true },
                     sfx: { eventProbability: 0.15, categories: [{ name: 'dark', weight: 1.0 }] },
                     sparkles: { eventProbability: 0.25, categories: [{ name: 'dark', weight: 1.0 }] }
@@ -111,7 +105,7 @@ export const DarkBluesBlueprint: MusicBlueprint = {
                 instrumentation: {
                   bass: { strategy: 'weighted', v1Options: [{ name: 'bass_dub', weight: 1.0 }], v2Options: [{ name: 'bass_dub', weight: 1.0 }] },
                   accompaniment: { strategy: 'weighted', v1Options: [{name: 'synth_cave_pad', weight: 1.0}], v2Options: [{name: 'synth_cave_pad', weight: 1.0}] },
-                  melody: { strategy: 'weighted', v1Options: [{name: 'darkTelecaster', weight: 0.5}, {name: 'blackAcoustic', weight: 0.5}], v2Options: [{name: 'darkTelecaster', weight: 0.5}, {name: 'blackAcoustic', weight: 0.5}] }
+                  melody: { strategy: 'weighted', v1Options: [{name: 'blackAcoustic', weight: 1.0}], v2Options: [{name: 'blackAcoustic', weight: 1.0}] }
                 },
                 instrumentRules: {
                     drums: { enabled: true, pattern: 'composer', density: { min: 0.3, max: 0.5 }, useSnare: true, rareKick: true, usePerc: true, alternatePerc: false, kitName: 'winter_blues_prolog2' },
@@ -132,12 +126,12 @@ export const DarkBluesBlueprint: MusicBlueprint = {
                         v1Options: [ { name: 'bass_deep_house', weight: 0.6 }, { name: 'bass_dub', weight: 0.4 } ],
                         v2Options: [ { name: 'bass_deep_house', weight: 0.6 }, { name: 'bass_dub', weight: 0.4 } ]
                     },
-                    melody: { strategy: 'weighted', v1Options: [{ name: 'darkTelecaster', weight: 0.5 }, {name: 'blackAcoustic', weight: 0.5}], v2Options: [{ name: 'darkTelecaster', weight: 0.5 }, {name: 'blackAcoustic', weight: 0.5}] },
+                    melody: { strategy: 'weighted', v1Options: [{name: 'blackAcoustic', weight: 1.0}], v2Options: [{name: 'blackAcoustic', weight: 1.0}] },
                     accompaniment: { strategy: 'weighted', v1Options: [{ name: 'organ_circus_of_dread', weight: 1.0 }], v2Options: [{ name: 'organ_circus_of_dread', weight: 1.0 }] },
                 },
                 instrumentRules: {
                     drums: { pattern: 'composer', kitName: 'blues_melancholic_master', density: { min: 0.5, max: 0.7 }, usePerc: true },
-                    melody: { source: 'blues_solo', soloPlan: "S06", density: { min: 0.5, max: 0.9 } },
+                    melody: { source: 'blues_solo', soloPlan: "S06", density: { min: 0.5, max: 0.9 }, soloToPatternRatio: 0.25 },
                     accompaniment: { techniques: [{ value: 'rhythmic-comp', weight: 0.8 }, { value: 'arpeggio-slow', weight: 0.2 }] },
                     sparkles: { eventProbability: 0.25, categories: [{name: 'dark', weight: 1.0}] }
                 },
@@ -154,12 +148,12 @@ export const DarkBluesBlueprint: MusicBlueprint = {
                         v1Options: [ { name: 'bass_house', weight: 0.5 }, { name: 'bass_dub', weight: 0.5 } ],
                         v2Options: [ { name: 'bass_house', weight: 0.5 }, { name: 'bass_dub', weight: 0.5 } ]
                     },
-                    melody: { strategy: 'weighted', v1Options: [{ name: 'darkTelecaster', weight: 0.5 }, {name: 'blackAcoustic', weight: 0.5}], v2Options: [{ name: 'darkTelecaster', weight: 0.5 }, {name: 'blackAcoustic', weight: 0.5}] },
+                    melody: { strategy: 'weighted', v1Options: [{name: 'blackAcoustic', weight: 1.0}], v2Options: [{name: 'blackAcoustic', weight: 1.0}] },
                     accompaniment: { strategy: 'weighted', v1Options: [{ name: 'organ_circus_of_dread', weight: 1.0 }], v2Options: [{ name: 'organ_circus_of_dread', weight: 1.0 }] },
                 },
                 instrumentRules: {
                     drums: { pattern: 'composer', kitName: 'blues_melancholic_master', density: { min: 0.6, max: 0.8 }, usePerc: true },
-                    melody: { source: 'blues_solo', soloPlan: "S07", density: { min: 0.6, max: 1.0 } },
+                    melody: { source: 'blues_solo', soloPlan: "S07", density: { min: 0.6, max: 1.0 }, soloToPatternRatio: 0.25 },
                     accompaniment: { techniques: [{ value: 'rhythmic-comp', weight: 0.9 }, { value: 'arpeggio-fast', weight: 0.1 }] },
                     sparkles: { eventProbability: 0.25, categories: [{name: 'dark', weight: 1.0}] }
                 },
@@ -202,7 +196,8 @@ export const DarkBluesBlueprint: MusicBlueprint = {
                     melody: { 
                       source: 'blues_solo', 
                       density: { min: 1.0, max: 1.0 },
-                      soloPlan: "WINTER_OUTRO_MELODY" 
+                      soloPlan: "WINTER_OUTRO_MELODY",
+                      soloToPatternRatio: 0.0 // Only patterns for fingerstyle feel
                     },
                 },
                 bundles: [{ id: 'DARK_OUTRO_BUNDLE', name: 'Embers', duration: { percent: 100 }, characteristics: {}, phrases: {} }],

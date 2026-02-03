@@ -1,4 +1,3 @@
-
 import type { FractalEvent, Mood, Genre, Technique, BassSynthParams, InstrumentType, MelodyInstrument, AccompanimentInstrument, ResonanceMatrix, InstrumentHints, AccompanimentTechnique, GhostChord, SfxRule, V1MelodyInstrument, V2MelodyInstrument, BlueprintPart, InstrumentationRules, InstrumentBehaviorRules, BluesMelody, InstrumentPart, DrumKit, BluesGuitarRiff, BluesSoloPhrase, BluesRiffDegree, SuiteDNA, RhythmicFeel, BassStyle, DrumStyle, HarmonicCenter, NavigationInfo, Stage } from '@/types/music';
 import { ElectronicK, TraditionalK, AmbientK, MelancholicMinorK } from './resonance-matrices';
 import { BlueprintNavigator } from './blueprint-navigator';
@@ -484,21 +483,36 @@ export class FractalMusicEngine {
 
         Object.entries(currentStage.instrumentation).forEach(([part, rule]) => {
             const p = part as InstrumentPart;
-            if (!this.activatedInstruments.has(p)) {
+            
+            // #ЗАЧЕМ: Реализация временной (transient) активации инструментов.
+            // #ЧТО: Если правило помечено как `transient`, инструмент не добавляется в `activatedInstruments`.
+            //      Это заставляет его проверять шанс активации заново каждый такт.
+            // #СВЯЗИ: Позволяет реализовать точные проценты присутствия (например, 10% мелодии) в блюпринте.
+            if (rule.transient) {
                 if (this.random.next() < rule.activationChance) {
-                    this.activatedInstruments.add(p);
+                    // Временно считаем его активированным ТОЛЬКО для этого такта
+                    const name = this.pickWeighted(rule.instrumentOptions);
+                    (instrumentHints as any)[p] = name;
                 }
-            }
-            if (this.activatedInstruments.has(p)) {
-                const name = this.pickWeighted(rule.instrumentOptions);
-                (instrumentHints as any)[p] = name;
+            } else {
+                if (!this.activatedInstruments.has(p)) {
+                    if (this.random.next() < rule.activationChance) {
+                        this.activatedInstruments.add(p);
+                    }
+                }
+                if (this.activatedInstruments.has(p)) {
+                    const name = this.pickWeighted(rule.instrumentOptions);
+                    (instrumentHints as any)[p] = name;
+                }
             }
         });
 
+        // Гарантия "никакой тишины" для не-transient инструментов
         if (this.activatedInstruments.size === 0) {
             const possible = Object.keys(currentStage.instrumentation) as InstrumentPart[];
-            if (possible.length > 0) {
-                const best = possible.sort((a, b) => (currentStage.instrumentation[b]?.activationChance || 0) - (currentStage.instrumentation[a]?.activationChance || 0))[0];
+            const nonTransient = possible.filter(p => !currentStage.instrumentation[p]?.transient);
+            if (nonTransient.length > 0) {
+                const best = nonTransient.sort((a, b) => (currentStage.instrumentation[b]?.activationChance || 0) - (currentStage.instrumentation[a]?.activationChance || 0))[0];
                 this.activatedInstruments.add(best);
                 (instrumentHints as any)[best] = this.pickWeighted(currentStage.instrumentation[best]!.instrumentOptions);
             }
@@ -569,7 +583,9 @@ export class FractalMusicEngine {
     let melodyEvents: FractalEvent[] = [];
     const melodyRules = navInfo.currentPart.instrumentRules?.melody;
 
-    if (this.isActivated('melody', navInfo) && !navInfo.currentPart.accompanimentMelodyDouble?.enabled && melodyRules) {
+    // #ИСПРАВЛЕНО: Теперь проверяем наличие инструмента в хинтах или прямое наличие слоя.
+    // #ЗАЧЕМ: Чтобы transient-мелодия работала корректно.
+    if ((instrumentHints.melody || this.isActivated('melody', navInfo)) && !navInfo.currentPart.accompanimentMelodyDouble?.enabled && melodyRules) {
         if (melodyRules.source === 'blues_solo') {
             const { events: soloEvents } = generateBluesMelodyChorus(currentChord, this.random, navInfo.currentPart.id, this.epoch, melodyRules, this.suiteDNA, this.melodyHistory, this.cachedMelodyChorus);
             melodyEvents = soloEvents;
@@ -587,7 +603,7 @@ export class FractalMusicEngine {
 
 
     let accompEvents: FractalEvent[] = [];
-    if (this.isActivated('accompaniment', navInfo)) {
+    if (instrumentHints.accompaniment || this.isActivated('accompaniment', navInfo)) {
         const accompRules = navInfo.currentPart.instrumentRules?.accompaniment;
         const registerHint = accompRules?.register?.preferred;
         const technique = (this.config.genre === 'blues' && this.config.mood === 'dark')
@@ -620,7 +636,7 @@ export class FractalMusicEngine {
 
 
     let harmonyEvents: FractalEvent[] = [];
-    if (this.isActivated('harmony', navInfo)) {
+    if (instrumentHints.harmony || this.isActivated('harmony', navInfo)) {
         const harmonyAxiom = createHarmonyAxiom(currentChord, this.config.mood, this.config.genre, this.random, effectiveBar);
         harmonyEvents.push(...harmonyAxiom);
     }
@@ -632,7 +648,7 @@ export class FractalMusicEngine {
     }
 
     let bassEvents: FractalEvent[] = [];
-    if (this.isActivated('bass', navInfo)) {
+    if (instrumentHints.bass || this.isActivated('bass', navInfo)) {
         if (this.config.genre === 'blues') {
             bassEvents = createBluesBassAxiom(currentChord, 'riff', this.random, this.config.mood, this.epoch, this.suiteDNA, this.currentBassRiffIndex);
         } else {
