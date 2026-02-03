@@ -1,5 +1,5 @@
 
-// Fab v2.8 - Fixed buildBassEngine ReferenceError & Serial Organ Cohesion
+// Fab v2.9 - Experimental "Ghost Leslie" (Sub-sensory modulation)
 // ─────────────────────────────────────────────────────────────────────────────
 // HELPERS
 // ─────────────────────────────────────────────────────────────────────────────
@@ -39,7 +39,6 @@ const makeTubeSaturation = (drive = 0.3, n = 8192) => {
     const k = drive * 5 + 1;
     for (let i = 0; i < n; i++) {
         const x = (i / (n - 1)) * 2 - 1;
-        // Ламповая асимметрия
         curve[i] = x >= 0 ? Math.tanh(k * x) : Math.tanh(k * x * 0.8) * 0.9;
     }
     return curve;
@@ -311,24 +310,32 @@ const createLeslie = (ctx: AudioContext, config: any) => {
     const input = ctx.createGain(); const output = ctx.createGain();
     const lowpass = ctx.createBiquadFilter(); lowpass.type = 'lowpass'; lowpass.frequency.value = 800;
     const highpass = ctx.createBiquadFilter(); highpass.type = 'highpass'; highpass.frequency.value = 800;
+    
     const hornDelay = ctx.createDelay(0.01); const hornAmp = ctx.createGain();
     const hornLfo = ctx.createOscillator(); 
-    const hornDepth = ctx.createGain(); hornDepth.gain.value = 0.0001; 
-    const hornAmDepth = ctx.createGain(); hornAmDepth.gain.value = 0.08; 
+    
+    // #ЭКСПЕРИМЕНТ (ПЛАН 29): Минимизация модуляции до грани восприятия
+    const hornFmDepth = ctx.createGain(); hornFmDepth.gain.value = 0.00002; 
+    const hornAmMod = ctx.createGain(); hornAmMod.gain.value = 0.02; 
+    
     const drumDelay = ctx.createDelay(0.01); const drumAmp = ctx.createGain();
     const drumLfo = ctx.createOscillator();
-    const drumDepth = ctx.createGain(); drumDepth.gain.value = 0.00015;
-    const drumAmDepth = ctx.createGain(); drumAmDepth.gain.value = 0.05;
-    hornLfo.connect(hornDepth); hornDepth.connect(hornDelay.delayTime);
-    hornLfo.connect(hornAmDepth); hornAmDepth.connect(hornAmp.gain);
-    drumLfo.connect(drumDepth); drumDepth.connect(drumDelay.delayTime);
-    drumLfo.connect(drumAmDepth); drumAmDepth.connect(drumAmp.gain);
+    const drumFmDepth = ctx.createGain(); drumFmDepth.gain.value = 0.00003;
+    const drumAmMod = ctx.createGain(); drumAmMod.gain.value = 0.01;
+
+    hornLfo.connect(hornFmDepth); hornFmDepth.connect(hornDelay.delayTime);
+    hornLfo.connect(hornAmMod); hornAmMod.connect(hornAmp.gain);
+    drumLfo.connect(drumFmDepth); drumFmDepth.connect(drumDelay.delayTime);
+    drumLfo.connect(drumAmMod); drumAmMod.connect(drumAmp.gain);
+    
     const speed = config.mode === 'fast' ? config.fast : config.slow;
     hornLfo.frequency.value = speed; drumLfo.frequency.value = speed * 0.85;
     hornLfo.start(); drumLfo.start();
+    
     input.connect(lowpass); input.connect(highpass);
     highpass.connect(hornDelay).connect(hornAmp).connect(output);
     lowpass.connect(drumDelay).connect(drumAmp).connect(output);
+    
     return { 
         input, output, 
         setMode: (m:any) => {
@@ -477,6 +484,101 @@ async function buildBassEngine(ctx: AudioContext, preset: any, options: any): Pr
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
+// GUITAR ENGINE (Gilmour-style Chain)
+// ═══════════════════════════════════════════════════════════════════════════
+
+const buildGuitarEngine = (
+    ctx: AudioContext,
+    preset: any,
+    master: GainNode,
+    reverb: ConvolverNode,
+    instrumentGain: GainNode,
+    expressionGain: GainNode
+): Partial<InstrumentAPI> => {
+    
+    let currentPreset = { ...preset };
+    
+    const guitarInput = ctx.createGain();
+    const pickupLPF = ctx.createBiquadFilter(); pickupLPF.type = 'lowpass';
+    const hpf = ctx.createBiquadFilter(); hpf.type = 'highpass'; hpf.frequency.value = 80;
+    const comp = ctx.createDynamicsCompressor();
+    const shaper = ctx.createWaveShaper(); shaper.oversample = '4x';
+    const compMakeup = ctx.createGain();
+    const postHPF = ctx.createBiquadFilter(); postHPF.type = 'highpass'; postHPF.frequency.value = 80;
+    const mid1 = ctx.createBiquadFilter(); mid1.type = 'peaking';
+    const mid2 = ctx.createBiquadFilter(); mid2.type = 'peaking';
+    const postLPF = ctx.createBiquadFilter(); postLPF.type = 'lowpass';
+    const ph = makePhaser(ctx, { rate: 0.16, depth: 600, mix: 0.22 });
+    const dA = makeFilteredDelay(ctx, { time: 0.38, fb: 0.28, hc: 3600, wet: 0.22 });
+    const revSend = ctx.createGain();
+
+    const updateNodes = (p: any) => {
+        pickupLPF.frequency.value = p.pickup?.cutoff ?? 3600;
+        pickupLPF.Q.value = p.pickup?.q ?? 1.0;
+        shaper.curve = p.drive?.type === 'muff' ? makeMuff(p.drive?.amount ?? 0.6) : makeSoftClip(p.drive?.amount ?? 0.2);
+        comp.threshold.value = p.comp?.threshold ?? -18;
+        comp.ratio.value = p.comp?.ratio ?? 3;
+        compMakeup.gain.value = dB(p.comp?.makeup ?? 3);
+        if (p.post?.mids) {
+            mid1.frequency.value = p.post.mids[0].f; mid1.gain.value = p.post.mids[0].g; mid1.Q.value = p.post.mids[0].q;
+            mid2.frequency.value = p.post.mids[1].f; mid2.gain.value = p.post.mids[1].g; mid2.Q.value = p.post.mids[1].q;
+        }
+        postLPF.frequency.value = p.post?.lpf ?? 5000;
+        revSend.gain.value = p.reverbMix ?? 0.2;
+        instrumentGain.gain.value = p.volume ?? 0.7;
+    };
+
+    updateNodes(currentPreset);
+
+    guitarInput.connect(pickupLPF).connect(hpf).connect(comp).connect(shaper).connect(postHPF).connect(mid1).connect(mid2).connect(postLPF).connect(ph.input);
+    ph.output.connect(dA.input);
+    dA.output.connect(expressionGain).connect(instrumentGain).connect(master);
+    dA.output.connect(revSend).connect(reverb);
+
+    const createPulseOsc = (freq: number, width = 0.5) => {
+        const real = new Float32Array(32), imag = new Float32Array(32);
+        for (let n = 1; n < 32; n++) real[n] = (2/(n*Math.PI)) * Math.sin(n*Math.PI*width);
+        const wave = ctx.createPeriodicWave(real, imag, { disableNormalization: true });
+        const o = ctx.createOscillator(); o.setPeriodicWave(wave); o.frequency.value = freq; return o;
+    };
+
+    const activeVoices = new Map<number, { nodes: AudioNode[], voiceState: VoiceGain }>();
+
+    const noteOn = (midi: number, when = ctx.currentTime, velocity = 1.0) => {
+        if (activeVoices.has(midi)) noteOff(midi, when);
+        const f = midiToHz(midi);
+        const voiceGain = ctx.createGain(); voiceGain.gain.value = 0; voiceGain.connect(guitarInput);
+        const voiceNodes: AudioNode[] = [voiceGain];
+        const oscP = currentPreset.osc || { width: 0.45, detune: 5, mainGain: 0.85, detGain: 0.18, subGain: 0.25 };
+        
+        const xMain = createPulseOsc(f, oscP.width);
+        const xDet = createPulseOsc(f, oscP.width + 0.06); xDet.detune.value = oscP.detune;
+        const xSub = ctx.createOscillator(); xSub.type = 'sine'; xSub.frequency.value = f / 2;
+        
+        const gM = ctx.createGain(); gMain.gain.value = oscP.mainGain * velocity;
+        const gD = ctx.createGain(); gDet.gain.value = oscP.detGain * velocity;
+        const gS = ctx.createGain(); gSub.gain.value = oscP.subGain * velocity;
+
+        xMain.connect(gM).connect(voiceGain); xDet.connect(gD).connect(voiceGain); xSub.connect(gS).connect(voiceGain);
+        xMain.start(when); xDet.start(when); xSub.start(when);
+        voiceNodes.push(xMain, xDet, xSub, gM, gD, gS);
+
+        const adsr = currentPreset.adsr || { a: 0.006, d: 0.35, s: 0.6, r: 1.6 };
+        const voiceState = triggerAttack(ctx, voiceGain, when, adsr.a, adsr.d, adsr.s, velocity);
+        activeVoices.set(midi, { nodes: voiceNodes, voiceState });
+    };
+
+    const noteOff = (midi: number, when = ctx.currentTime) => {
+        const voice = activeVoices.get(midi); if (!voice) return; activeVoices.delete(midi);
+        const adsr = currentPreset.adsr || { r: 1.6 };
+        const stopTime = triggerRelease(ctx, voice.voiceState, when, adsr.a, adsr.r);
+        voice.nodes.forEach(n => { if (n instanceof OscillatorNode) try { n.stop(stopTime + 0.1); } catch(e){} });
+    };
+
+    return { noteOn, noteOff, allNotesOff: () => activeVoices.forEach((_, m) => noteOff(m)), setPreset: (p) => { currentPreset = p; updateNodes(p); }, setParam: (k, v) => {} };
+};
+
+// ═══════════════════════════════════════════════════════════════════════════
 // MAIN FACTORY
 // ═══════════════════════════════════════════════════════════════════════════
 
@@ -508,6 +610,19 @@ export async function buildMultiInstrument(ctx: AudioContext, {
     } else if (type === 'organ') {
         const engine = await buildOrganEngine(ctx, preset, { output, plateIRUrl });
         return engine;
+    } else if (type === 'guitar') {
+        const engine = await buildGuitarEngine(ctx, preset, master, reverb, instrumentGain, expressionGain);
+        return {
+            connect: (dest) => master.connect(dest || output),
+            disconnect: () => master.disconnect(),
+            noteOn: engine.noteOn!, noteOff: engine.noteOff!, allNotesOff: engine.allNotesOff!,
+            setPreset: engine.setPreset!, setParam: engine.setParam!,
+            setVolume: (v) => instrumentGain.gain.setTargetAtTime(v, ctx.currentTime, 0.02),
+            getVolume: () => instrumentGain.gain.value,
+            setVolumeDb: (db) => instrumentGain.gain.setTargetAtTime(dB(db), ctx.currentTime, 0.02),
+            setExpression: (v) => master.gain.setTargetAtTime(v, ctx.currentTime, 0.01),
+            preset, type: 'guitar'
+        };
     } else {
         const engine = buildSynthEngine(ctx, preset, master, reverb, instrumentGain, expressionGain);
         console.log(`%c[InstrumentFactory] Build COMPLETED: synth`, 'color: #32CD32; font-weight: bold;');
@@ -519,7 +634,7 @@ export async function buildMultiInstrument(ctx: AudioContext, {
             setVolume: (v) => instrumentGain.gain.setTargetAtTime(v, ctx.currentTime, 0.02),
             getVolume: () => instrumentGain.gain.value,
             setVolumeDb: (db) => instrumentGain.gain.setTargetAtTime(dB(db), ctx.currentTime, 0.02),
-            setExpression: (v) => expressionGain.gain.setTargetAtTime(v, ctx.currentTime, 0.01),
+            setExpression: (v) => master.gain.setTargetAtTime(v, ctx.currentTime, 0.01),
             preset, type: 'synth'
         };
     }

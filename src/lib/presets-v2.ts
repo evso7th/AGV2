@@ -1,5 +1,5 @@
 
-// V2 Presets — совместимы with buildMultiInstrument()
+// V2 Presets — совместимы с buildMultiInstrument()
 // Проверено на соответствие фабрике от 2024-01
 
 import { BASS_PRESETS } from './bass-presets';
@@ -247,14 +247,14 @@ export const V2_PRESETS = {
     vibrato: { type: 'C3', rate: 5.5 },
     leslie: { on: true, mode: 'slow', slow: 0.5, fast: 6.0, accel: 0.7 },
     reverbMix: 0.25,
-    // #ЗАЧЕМ: Добавлен суб-бас слой для "веса" и фундамента церковного органа.
     osc: [ { type: 'sine', detune: 0, octave: -1, gain: 0.4 } ]
   },
   
   organ_soft_jazz: {
     type: 'organ',
     name: 'Soft Jazz Organ',
-    drawbars: [8, 0, 8, 5, 0, 3, 0, 0, 0], 
+    // #ЭКСПЕРИМЕНТ (ПЛАН 29): Возврат квинты для компенсации призрачного Лесли
+    drawbars: [8, 2, 8, 4, 0, 0, 0, 0, 0], 
     vibrato: { type: 'C1', rate: 6.2 },
     leslie: { on: true, mode: 'slow', slow: 0.65, fast: 6.3, accel: 0.7 },
     lpf: 7600,
@@ -262,7 +262,6 @@ export const V2_PRESETS = {
     adsr: { a: 0.02, d: 0.2, s: 0.9, r: 0.3 },
     reverbMix: 0.12,
     keyClick: 0.003,
-    // #ЗАЧЕМ: Саб-бас для теплоты и "телесности", необходимой в кафе.
     osc: [ { type: 'sine', detune: 0, octave: -1, gain: 0.3 } ]
   },
 
