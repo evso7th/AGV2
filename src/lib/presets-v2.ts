@@ -100,6 +100,45 @@ export const V2_PRESETS = {
     leslie: { mode: 'slow', slow: 0.65, fast: 6.3, accel: 0.7 },
     osc: [ { type: 'sine', detune: 0, octave: -1, gain: 0.3 } ],
     tonewheel: { complexity: 0 }
+  },
+
+  organ_jimmy_smith: {
+    type: 'organ',
+    name: 'Jimmy Smith Trio',
+    volume: 0.32,
+    drawbars: [8, 8, 8, 0, 0, 0, 0, 0, 0], // 888000000 - classic trio lead
+    lpf: 8000,
+    hpf: 100,
+    adsr: { a: 0.005, d: 0.1, s: 0.95, r: 0.1 },
+    keyClick: 0.006,
+    leslie: { mode: 'fast', slow: 0.7, fast: 6.8, accel: 0.5 },
+    reverbMix: 0.1
+  },
+
+  organ_gospel: {
+    type: 'organ',
+    name: 'Gospel Shout',
+    volume: 0.38,
+    drawbars: [8, 8, 8, 8, 8, 8, 8, 8, 8], // All Drawbars Out
+    lpf: 9000,
+    hpf: 60,
+    adsr: { a: 0.003, d: 0.05, s: 1.0, r: 0.05 },
+    keyClick: 0.008,
+    leslie: { mode: 'fast', slow: 0.8, fast: 7.2, accel: 0.4 },
+    reverbMix: 0.22
+  },
+
+  organ_circus_of_dread: {
+    type: 'organ',
+    name: 'Circus of Dread',
+    volume: 0.30,
+    drawbars: [8, 0, 0, 8, 0, 0, 8, 0, 8], // Hollow, eerie registration
+    lpf: 5500,
+    hpf: 120,
+    adsr: { a: 0.1, d: 0.2, s: 0.8, r: 1.5 },
+    keyClick: 0.002,
+    leslie: { mode: 'slow', slow: 0.4, fast: 5.5, accel: 1.2 },
+    reverbMix: 0.45 // Very wet for atmosphere
   }
 
 } as const;

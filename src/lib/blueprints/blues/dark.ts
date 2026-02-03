@@ -1,3 +1,4 @@
+
 import type { MusicBlueprint } from '@/types/music';
 
 export const DarkBluesBlueprint: MusicBlueprint = {
@@ -18,39 +19,37 @@ export const DarkBluesBlueprint: MusicBlueprint = {
             {
                 id: 'INTRO_1', name: 'The Summoning', duration: { percent: 15 },
                 layers: { bass: true, accompaniment: true, melody: true, sfx: true, sparkles: true, drums: true, harmony: true, pianoAccompaniment: true },
-                // #ЗАЧЕМ: Сценический сценарий 10+10+20+60.
-                // #ИСПРАВЛЕНО: Повышен шанс вступления аккомпанемента в ранних стадиях.
                 stagedInstrumentation: [
                     { 
-                        duration: { percent: 10 }, // Stage 1: Quick entry
+                        duration: { percent: 10 }, 
                         instrumentation: {
                            melody: { activationChance: 1.0, instrumentOptions: [ { name: 'blackAcoustic', weight: 1.0 } ] },
                            pianoAccompaniment: { activationChance: 0.8, instrumentOptions: [ { name: 'piano', weight: 1.0 } ] },
-                           accompaniment: { activationChance: 0.8, instrumentOptions: [ { name: 'organ_soft_jazz', weight: 1.0 } ] },
+                           accompaniment: { activationChance: 0.8, instrumentOptions: [ { name: 'ep_rhodes_warm', weight: 1.0 } ] },
                            harmony: { activationChance: 1.0, instrumentOptions: [ { name: 'guitarChords', weight: 0.8 }, { name: 'flute', weight: 0.2 } ] }
                         }
                     },
                     {
-                        duration: { percent: 10 }, // Stage 2: Thickening
+                        duration: { percent: 10 }, 
                         instrumentation: {
                            melody: { activationChance: 1.0, instrumentOptions: [ { name: 'blackAcoustic', weight: 1.0 } ] },
                            bass: { activationChance: 0.4, instrumentOptions: [ { name: 'bass_dub', weight: 1.0 } ] },
                            drums: { activationChance: 0.4, instrumentOptions: [ { name: 'blues_melancholic_master', weight: 1.0 } ] },
                            harmony: { activationChance: 1.0, instrumentOptions: [ { name: 'guitarChords', weight: 0.8 }, { name: 'flute', weight: 0.2 } ] },
-                           accompaniment: { activationChance: 1.0, instrumentOptions: [ { name: 'organ_soft_jazz', weight: 1.0 } ] }
+                           accompaniment: { activationChance: 1.0, instrumentOptions: [ { name: 'organ_circus_of_dread', weight: 1.0 } ] }
                         }
                     },
                     {
-                        duration: { percent: 20 }, // Stage 3: Building Tension
+                        duration: { percent: 20 }, 
                         instrumentation: {
                            melody: { activationChance: 1.0, instrumentOptions: [ { name: 'blackAcoustic', weight: 1.0 } ] },
-                           accompaniment: { activationChance: 1.0, instrumentOptions: [ { name: 'synth_cave_pad', weight: 1.0 } ] },
+                           accompaniment: { activationChance: 1.0, instrumentOptions: [ { name: 'organ_circus_of_dread', weight: 1.0 } ] },
                            drums: { activationChance: 0.7, instrumentOptions: [ { name: 'blues_melancholic_master', weight: 1.0 } ] },
                            harmony: { activationChance: 1.0, instrumentOptions: [ { name: 'guitarChords', weight: 0.8 }, { name: 'flute', weight: 0.2 } ] }
                         }
                     },
                     {
-                        duration: { percent: 60 }, // Stage 4: Long Plateau
+                        duration: { percent: 60 }, 
                         instrumentation: {
                            melody: { activationChance: 1.0, instrumentOptions: [ { name: 'blackAcoustic', weight: 1.0 } ] },
                            pianoAccompaniment: { activationChance: 1.0, instrumentOptions: [ { name: 'piano', weight: 1.0 } ] },
@@ -77,7 +76,7 @@ export const DarkBluesBlueprint: MusicBlueprint = {
             {
                 id: 'MAIN_1', name: 'The Chant', duration: { percent: 35 },
                 layers: { bass: true, sfx: true, drums: true, melody: true, accompaniment: true, harmony: true, sparkles: true, pianoAccompaniment: true },
-                 instrumentation: {
+                instrumentation: {
                     bass: { strategy: 'weighted', v1Options: [ { name: 'bass_dub', weight: 1.0 } ], v2Options: [ { name: 'bass_dub', weight: 1.0 } ] },
                     melody: { strategy: 'weighted', v1Options: [{name: 'blackAcoustic', weight: 1.0}], v2Options: [{name: 'blackAcoustic', weight: 1.0}] },
                     accompaniment: { strategy: 'weighted', v1Options: [{ name: 'organ_circus_of_dread', weight: 1.0 }], v2Options: [{ name: 'organ_circus_of_dread', weight: 1.0 }] },
