@@ -2,9 +2,8 @@
 /**
  * #ЗАЧЕМ: Центральная фабрика для создания высококачественных инструментов V2.
  * #ЧТО: Реализует конвейеры синтеза для synth, organ, bass и guitar.
- * #ИСПРАВЛЕНО (ПЛАН 31): Восстановлены все функции (buildSynthEngine, buildBassEngine, etc.), 
- *              удаленные по ошибке. Орган переведен на чисто амплитудное Лесли (без DelayNode) 
- *              для устранения паразитных резонансов и "космического" завывания.
+ * #ИСПРАВЛЕНО (ПЛАН 32): Добавлена пропущенная функция createKeyClick. 
+ *              Орган работает по схеме Pure Amplitude Leslie для максимальной чистоты.
  */
 
 // ───── HELPERS ─────
@@ -176,6 +175,69 @@ const triggerRelease = (
     }
 };
 
+// ───── KEY CLICK HELPER ─────
+
+const createKeyClick = (ctx: AudioContext, duration: number, intensity: number): AudioBuffer => {
+    const length = Math.floor(ctx.sampleRate * duration);
+    const buffer = ctx.createBuffer(1, length, ctx.sampleRate);
+    const data = buffer.getChannelData(0);
+    for (let i = 0; i < length; i++) {
+        const t = i / length;
+        const envelope = Math.exp(-t * 30) * (1 - t);
+        const noise = (Math.random() * 2 - 1) * 0.6;
+        const tone = Math.sin(i * 0.15) * 0.4;
+        data[i] = (noise + tone) * envelope * intensity;
+    }
+    return buffer;
+};
+
+// ───── PURE LESLIE HELPER ─────
+
+const createPureLeslie = (ctx: AudioContext, config: any) => {
+    const input = ctx.createGain();
+    const output = ctx.createGain();
+    const hornAmp = ctx.createGain();
+    const drumAmp = ctx.createGain();
+    const lfo = ctx.createOscillator();
+    const hornMod = ctx.createGain(); hornMod.gain.value = 0.15;
+    const drumMod = ctx.createGain(); drumMod.gain.value = 0.1;
+    lfo.connect(hornMod).connect(hornAmp.gain);
+    lfo.connect(drumMod).connect(drumAmp.gain);
+    lfo.frequency.value = config.mode === 'fast' ? config.fast : config.slow;
+    lfo.start();
+    const lp = ctx.createBiquadFilter(); lp.type = 'lowpass'; lp.frequency.value = 800;
+    const hp = ctx.createBiquadFilter(); hp.type = 'highpass'; hp.frequency.value = 800;
+    input.connect(lp).connect(drumAmp).connect(output);
+    input.connect(hp).connect(hornAmp).connect(output);
+    return {
+        input, output,
+        setMode: (m: any) => {
+            const target = m === 'fast' ? config.fast : (m === 'slow' ? config.slow : 0.01);
+            lfo.frequency.setTargetAtTime(target, ctx.currentTime, config.accel);
+        }
+    };
+};
+
+// ═══════════════════════════════════════════════════════════════════════════
+// INSTRUMENT API INTERFACE
+// ═══════════════════════════════════════════════════════════════════════════
+
+export interface InstrumentAPI {
+    connect: (dest?: AudioNode) => void;
+    disconnect: () => void;
+    noteOn: (midi: number, when?: number, velocity?: number) => void;
+    noteOff: (midi: number, when?: number) => void;
+    allNotesOff: () => void;
+    setPreset: (p: any) => void;
+    setParam: (k: string, v: any) => void;
+    setVolume: (level: number) => void;
+    getVolume: () => number;
+    setVolumeDb: (db: number) => void;
+    setExpression: (level: number) => void;
+    preset: any;
+    type: string;
+}
+
 // ═══════════════════════════════════════════════════════════════════════════
 // INSTRUMENT ENGINES
 // ═══════════════════════════════════════════════════════════════════════════
@@ -223,44 +285,18 @@ const buildSynthEngine = (ctx: AudioContext, preset: any, master: GainNode, reve
     return { noteOn, noteOff, allNotesOff: () => activeVoices.forEach((_, m) => noteOff(m)), setPreset: (p: any) => { currentPreset = p; }, setParam: (k: string, v: any) => {} };
 };
 
-// 2. ORGAN ENGINE (Pure Amplitude Leslie)
+// 2. ORGAN ENGINE
 const DRAWBAR_RATIOS = [0.5, 1.498, 1, 2, 2.997, 4, 5.04, 5.994, 8];
-
-const createPureLeslie = (ctx: AudioContext, config: any) => {
-    const input = ctx.createGain();
-    const output = ctx.createGain();
-    const hornAmp = ctx.createGain();
-    const drumAmp = ctx.createGain();
-    const lfo = ctx.createOscillator();
-    const hornMod = ctx.createGain(); hornMod.gain.value = 0.15;
-    const drumMod = ctx.createGain(); drumMod.gain.value = 0.1;
-    lfo.connect(hornMod).connect(hornAmp.gain);
-    lfo.connect(drumMod).connect(drumAmp.gain);
-    lfo.frequency.value = config.mode === 'fast' ? config.fast : config.slow;
-    lfo.start();
-    const lp = ctx.createBiquadFilter(); lp.type = 'lowpass'; lp.frequency.value = 800;
-    const hp = ctx.createBiquadFilter(); hp.type = 'highpass'; hp.frequency.value = 800;
-    input.connect(lp).connect(drumAmp).connect(output);
-    input.connect(hp).connect(hornAmp).connect(output);
-    return {
-        input, output,
-        setMode: (m: any) => {
-            const target = m === 'fast' ? config.fast : (m === 'slow' ? config.slow : 0.01);
-            lfo.frequency.setTargetAtTime(target, ctx.currentTime, config.accel);
-        }
-    };
-};
 
 const buildOrganEngine = (ctx: AudioContext, preset: any, master: GainNode, reverb: ConvolverNode, instrumentGain: GainNode, expressionGain: GainNode) => {
     let currentPreset = { ...preset };
     const organSum = ctx.createGain();
     const lpf = ctx.createBiquadFilter(); lpf.type = 'lowpass'; lpf.frequency.value = currentPreset.lpf ?? 7600;
-    const shaper = ctx.createWaveShaper(); shaper.curve = makeSoftClip(0.1);
     const leslie = createPureLeslie(ctx, { 
         mode: currentPreset.leslie?.mode ?? 'slow', slow: currentPreset.leslie?.slow ?? 0.65, fast: currentPreset.leslie?.fast ?? 6.3, accel: currentPreset.leslie?.accel ?? 0.7 
     });
     
-    organSum.connect(shaper).connect(lpf).connect(leslie.input);
+    organSum.connect(lpf).connect(leslie.input);
     leslie.output.connect(expressionGain).connect(instrumentGain).connect(master);
     const revSend = ctx.createGain(); revSend.gain.value = currentPreset.reverbMix ?? 0.1;
     leslie.output.connect(revSend).connect(reverb);
@@ -360,7 +396,7 @@ const buildGuitarEngine = (ctx: AudioContext, preset: any, master: GainNode, rev
     const input = ctx.createGain();
     const pickupLPF = ctx.createBiquadFilter(); pickupLPF.type = 'lowpass'; pickupLPF.frequency.value = 3600;
     const shaper = ctx.createWaveShaper(); shaper.curve = makeSoftClip(0.3);
-    const chorus = makeChorus(ctx, { rate: 0.15, depth: 0.005, mix: 0.3 });
+    const chorus = makeChorus(ctx, 0.15, 0.005, 0.3);
     const delay = makeDelay(ctx, 0.35, 0.3, 3500, 0.25);
 
     input.connect(pickupLPF).connect(shaper).connect(chorus.input);
