@@ -1,5 +1,5 @@
 
-//Fab v 2.0 - Organ Engine Activated
+//Fab v 2.1 - Memory Leaks Fixed
 // ─────────────────────────────────────────────────────────────────────────────
 // BASS ENGINE — Electric, Synth & Acoustic Bass Emulation
 // ─────────────────────────────────────────────────────────────────────────────
@@ -206,7 +206,6 @@ export const buildBassEngine = async (
         plateIRUrl?: string | null;
     } = {}
 ) => {
-    // #ЗАЧЕМ: Логирование начала сборки басового движка.
     console.log('%c[BassEngine] Building bass...', 'color: #4169E1; font-weight: bold;');
     
     const output = options.output || ctx.destination;
@@ -349,6 +348,8 @@ export const buildBassEngine = async (
         voiceFilter.frequency.value = (currentPreset.filter?.cutoff ?? 2000) + keyTrackOffset;
         
         const oscillators: OscillatorNode[] = [];
+        const voiceNodes: AudioNode[] = [voiceGain, voiceFilter];
+
         for (const oscConfig of currentPreset.osc) {
             const osc = oscConfig.type === 'pulse' ? createPulseOsc(f0 * Math.pow(2, oscConfig.octave), oscConfig.pulseWidth) : ctx.createOscillator();
             if (oscConfig.type !== 'pulse') { osc.type = oscConfig.type; osc.frequency.value = f0 * Math.pow(2, oscConfig.octave); }
@@ -357,6 +358,7 @@ export const buildBassEngine = async (
             osc.connect(gain).connect(voiceGain);
             osc.start(when);
             oscillators.push(osc);
+            voiceNodes.push(osc, gain);
         }
         
         let subOsc: OscillatorNode | undefined;
@@ -366,6 +368,7 @@ export const buildBassEngine = async (
             const subGain = ctx.createGain(); subGain.gain.value = currentPreset.sub.gain * vel;
             subOsc.connect(subGain).connect(voiceGain);
             subOsc.start(when);
+            voiceNodes.push(subOsc, subGain);
         }
         
         let noiseSource: AudioBufferSourceNode | undefined;
@@ -375,6 +378,7 @@ export const buildBassEngine = async (
             const noiseGain = ctx.createGain(); noiseGain.gain.value = currentPreset.stringNoise.amount * vel;
             noiseSource.connect(noiseGain).connect(voiceGain);
             noiseSource.start(when);
+            voiceNodes.push(noiseSource, noiseGain);
         }
         
         voiceGain.connect(voiceFilter).connect(bassSum);
@@ -385,16 +389,12 @@ export const buildBassEngine = async (
         voiceGain.gain.linearRampToValueAtTime(1, when + adsr.a);
         voiceGain.gain.setTargetAtTime(adsr.s, when + adsr.a, Math.max(adsr.d / 3, 0.001));
 
-        const allNodes: AudioNode[] = [voiceGain, voiceFilter, ...oscillators];
-        if (subOsc) allNodes.push(subOsc);
-        if (noiseSource) allNodes.push(noiseSource);
-
         const primaryOsc = oscillators[0];
         if (primaryOsc) {
-            primaryOsc.onended = () => { allNodes.forEach(node => { try { node.disconnect(); } catch (e) {} }); };
+            primaryOsc.onended = () => { voiceNodes.forEach(node => { try { node.disconnect(); } catch (e) {} }); };
         }
         
-        activeVoices.set(midi, { oscillators, subOsc, voiceGain, filter: voiceFilter, noiseSource, startTime: when, midi, velocity: vel, allNodes });
+        activeVoices.set(midi, { oscillators, subOsc, voiceGain, filter: voiceFilter, noiseSource, startTime: when, midi, velocity: vel, allNodes: voiceNodes });
     };
     
     const noteOff = (midi: number, when = ctx.currentTime) => {
@@ -407,9 +407,13 @@ export const buildBassEngine = async (
         voice.voiceGain.gain.cancelScheduledValues(when);
         voice.voiceGain.gain.setTargetAtTime(0.0001, when, releaseTime / 3);
         if (currentPreset.filterEnv?.on) releaseFilterEnvelope(ctx, voice.filter, currentPreset.filter?.cutoff ?? 2000, releaseTime, when);
-        voice.oscillators.forEach(osc => osc.stop(stopTime));
-        if (voice.subOsc) voice.subOsc.stop(stopTime);
-        if (voice.noiseSource) try { voice.noiseSource.stop(stopTime); } catch(e) {}
+        
+        // Stop all possible source nodes
+        voice.allNodes.forEach(node => {
+            if (node instanceof OscillatorNode || node instanceof AudioBufferSourceNode) {
+                try { node.stop(stopTime); } catch (e) {}
+            }
+        });
     };
     
     const allNotesOff = () => { const now = ctx.currentTime; activeVoices.forEach((v, m) => noteOff(m, now)); activeVoices.clear(); };
@@ -429,7 +433,6 @@ export const buildBassEngine = async (
         preset: currentPreset, type: 'bass' as const
     };
     
-    // #ЗАЧЕМ: Логирование готовности басового движка.
     console.log('%c[BassEngine] Ready!', 'color: #32CD32; font-weight: bold;');
     return api;
 };
@@ -489,7 +492,6 @@ const createLeslie = (ctx: AudioContext, config: any) => {
 };
 
 async function buildOrganEngine(ctx: AudioContext, preset: any, options: any): Promise<InstrumentAPI> {
-    // #ЗАЧЕМ: Логирование начала сборки органного движка.
     console.log('%c[OrganEngine] Building Hammond-style organ...', 'color: #8B4513; font-weight: bold;');
     
     const output = options.output || ctx.destination;
@@ -517,7 +519,7 @@ async function buildOrganEngine(ctx: AudioContext, preset: any, options: any): P
         const voiceGain = ctx.createGain(); voiceGain.gain.value = 0;
         voiceGain.connect(organSum);
         const voiceNodes: AudioNode[] = [voiceGain];
-        const sourceNodes: OscillatorNode[] = [];
+        const sourceNodes: (OscillatorNode | AudioBufferSourceNode)[] = [];
         
         const drawbars = currentPreset.drawbars || [8,8,8,0,0,0,0,0,0];
         drawbars.forEach((v: number, i: number) => {
@@ -534,11 +536,12 @@ async function buildOrganEngine(ctx: AudioContext, preset: any, options: any): P
             const click = ctx.createBufferSource(); click.buffer = clickBuffer;
             const clickG = ctx.createGain(); clickG.gain.value = velocity * 0.5;
             click.connect(clickG).connect(voiceGain); click.start(when);
+            voiceNodes.push(click, clickG); sourceNodes.push(click);
         }
 
-        const primaryOsc = sourceNodes[0];
-        if (primaryOsc) {
-            primaryOsc.onended = () => { voiceNodes.forEach(node => { try { node.disconnect(); } catch(e) {} }); };
+        const primarySource = sourceNodes[0];
+        if (primarySource) {
+            primarySource.onended = () => { voiceNodes.forEach(node => { try { node.disconnect(); } catch(e) {} }); };
         }
 
         voiceGain.gain.cancelScheduledValues(when);
@@ -555,13 +558,18 @@ async function buildOrganEngine(ctx: AudioContext, preset: any, options: any): P
         const stopTime = when + adsr.r;
         const voiceGain = voice.nodes[0] as GainNode;
         voiceGain.gain.cancelScheduledValues(when);
-        voiceGain.gain.setTargetAtTime(0, when, adsr.r / 3);
-        voice.nodes.forEach(node => { if (node instanceof OscillatorNode) try { node.stop(stopTime); } catch (e) {} });
+        voiceGain.gain.setTargetAtTime(0.0001, when, adsr.r / 3);
+        
+        // Stop all possible source nodes in the voice
+        voice.nodes.forEach(node => {
+            if (node instanceof OscillatorNode || node instanceof AudioBufferSourceNode) {
+                try { node.stop(stopTime); } catch (e) {}
+            }
+        });
     };
     
     const allNotesOff = () => activeVoices.forEach((_, midi) => noteOff(midi));
 
-    // #ЗАЧЕМ: Логирование готовности органного движка.
     console.log('%c[OrganEngine] Ready!', 'color: #32CD32; font-weight: bold;');
 
     return {
@@ -624,7 +632,6 @@ export async function buildMultiInstrument(ctx: AudioContext, {
     output = ctx.destination
 } = {}): Promise<InstrumentAPI> {
     
-    // #ЗАЧЕМ: Логирование начала сборки инструмента любого типа.
     console.log(`%c[InstrumentFactory] Building: ${type}`, 'color: #FFA500; font-weight: bold;');
 
     const master = ctx.createGain(); master.gain.value = 0.8;
@@ -669,7 +676,7 @@ export async function buildMultiInstrument(ctx: AudioContext, {
             const voiceGain = ctx.createGain(); voiceGain.gain.value = 0;
             voiceGain.connect(pre);
             const voiceNodes: AudioNode[] = [voiceGain];
-            const sourceNodes: OscillatorNode[] = [];
+            const sourceNodes: (OscillatorNode | AudioBufferSourceNode)[] = [];
             osc.forEach((o: any) => {
                 const x = ctx.createOscillator(); x.type = o.type; x.detune.value = o.detune || 0;
                 const g = ctx.createGain(); g.gain.value = o.gain;
@@ -688,7 +695,11 @@ export async function buildMultiInstrument(ctx: AudioContext, {
             const voice = activeVoices.get(midi); if (!voice) return; activeVoices.delete(midi);
             const { adsr = {r:1.0} } = api.preset; const rt = Math.max(adsr.r, 0.05);
             (voice.nodes[0] as GainNode).gain.setTargetAtTime(0.0001, when, rt / 5);
-            voice.nodes.forEach(n => { if (n instanceof OscillatorNode) n.stop(when + rt); });
+            voice.nodes.forEach(n => { 
+                if (n instanceof OscillatorNode || n instanceof AudioBufferSourceNode) {
+                    try { n.stop(when + rt); } catch(e) {}
+                }
+            });
         };
         api.allNotesOff = () => { activeVoices.forEach((_, m) => api.noteOff(m)); };
         api.setPreset = (p) => { api.allNotesOff(); api.preset = p; };
@@ -696,12 +707,10 @@ export async function buildMultiInstrument(ctx: AudioContext, {
         console.log(`%c[InstrumentFactory] Build COMPLETED: ${type}`, 'color: #32CD32; font-weight: bold;');
     } else if (type === 'bass') {
         const engine = await buildBassEngine(ctx, preset as BassPreset, { output, plateIRUrl });
-        // #ЗАЧЕМ: Логирование завершения сборки баса.
         console.log(`%c[InstrumentFactory] Build COMPLETED: ${type}`, 'color: #32CD32; font-weight: bold;');
         return engine;
     } else if (type === 'organ') {
          const engine = await buildOrganEngine(ctx, preset, { output, plateIRUrl });
-         // #ЗАЧЕМ: Логирование завершения сборки органа.
          console.log(`%c[InstrumentFactory] Build COMPLETED: ${type}`, 'color: #32CD32; font-weight: bold;');
          return engine;
     }
