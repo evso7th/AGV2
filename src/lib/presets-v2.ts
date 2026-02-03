@@ -44,6 +44,30 @@ export const V2_PRESETS = {
   },
 
   // ═══════════════════════════════════════════════════════════════════════════
+  // ELECTRIC PIANO (Rhodes-style via Synth Engine)
+  // ═══════════════════════════════════════════════════════════════════════════
+
+  ep_rhodes_warm: {
+    type: 'synth',
+    name: 'Warm Suitcase Rhodes',
+    volume: 0.68,
+    osc: [
+      { type: 'sine', detune: 0, octave: 0, gain: 0.58 },
+      { type: 'triangle', detune: 0, octave: 1, gain: 0.14 }, // +1 octave bell
+      { type: 'sine', detune: 0, octave: 1, gain: 0.08 }
+    ],
+    noise: { on: false, gain: 0 },
+    adsr: { a: 0.008, d: 0.28, s: 0.68, r: 0.90 },
+    lpf: { cutoff: 3500, q: 0.9, mode: '24dB' },
+    // #ЗАЧЕМ: Активация глобальных эффектов модуляции для аутентичности Родоса.
+    leslie: { on: true, mode: 'slow', slow: 0.6, fast: 6.0, mix: 0.3 }, // Органическое мерцание воздуха
+    tremolo: { on: true, rate: 5.5, depth: 0.4, mix: 0.5 },           // Фирменное Suitcase Auto-Pan
+    chorus: { on: true, rate: 0.25, depth: 0.006, mix: 0.22 },
+    delay: { on: true, time: 0.26, fb: 0.12, hc: 4500, mix: 0.10 },
+    reverbMix: 0.18
+  },
+
+  // ═══════════════════════════════════════════════════════════════════════════
   // ORGAN (Integrated Hammond architecture)
   // ═══════════════════════════════════════════════════════════════════════════
 
@@ -67,11 +91,11 @@ export const V2_PRESETS = {
     lpf: 7600,
     hpf: 90,
     adsr: { a: 0.02, d: 0.2, s: 0.9, r: 0.3 },
-    reverbMix: 0.05, // Минимум ревера для чистоты
+    reverbMix: 0.05, 
     keyClick: 0.003,
     leslie: { mode: 'slow', slow: 0.65, fast: 6.3, accel: 0.7 },
     osc: [ { type: 'sine', detune: 0, octave: -1, gain: 0.3 } ],
-    tonewheel: { complexity: 0 } // Идеально чистые синусы
+    tonewheel: { complexity: 0 }
   }
 
 } as const;
@@ -82,7 +106,9 @@ export type PresetConfig = typeof V2_PRESETS[PresetName];
 export const V1_TO_V2_PRESET_MAP: Record<string, PresetName> = {
   synth: 'synth',
   organ: 'organ',
-  ambientPad: 'synth_ambient_pad_lush'
+  ambientPad: 'synth_ambient_pad_lush',
+  piano: 'ep_rhodes_warm',
+  rhodes: 'ep_rhodes_warm'
 };
 
 export const BASS_PRESET_MAP: Record<string, keyof typeof BASS_PRESETS> = {
