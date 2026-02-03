@@ -21,12 +21,11 @@ export const WinterBluesBlueprint: MusicBlueprint = {
                 layers: { bass: true, accompaniment: true, melody: true, sfx: true, sparkles: true, drums: true, harmony: true, pianoAccompaniment: true },
                 stagedInstrumentation: [
                     { 
-                        duration: { percent: 10 }, // Stage 1: Quick entry
+                        duration: { percent: 10 }, // Stage 1: Rhodes entry
                         instrumentation: {
                            melody: { activationChance: 1.0, instrumentOptions: [ { name: 'blackAcoustic', weight: 1.0 } ] },
-                           // #ЗАЧЕМ: Единственный аккомпанемент для создания атмосферы "кафе".
-                           accompaniment: { activationChance: 1.0, instrumentOptions: [ { name: 'organ_soft_jazz', weight: 1.0 } ] },
-                           // #ЗАЧЕМ: Сохранение гитарных аккордов по запросу пользователя.
+                           // #ИСПРАВЛЕНО (ПЛАН 38): Замена органа на Родос.
+                           accompaniment: { activationChance: 1.0, instrumentOptions: [ { name: 'ep_rhodes_warm', weight: 1.0 } ] },
                            harmony: { activationChance: 1.0, instrumentOptions: [ { name: 'guitarChords', weight: 0.8 }, { name: 'flute', weight: 0.2 } ] }
                         }
                     },
@@ -37,20 +36,22 @@ export const WinterBluesBlueprint: MusicBlueprint = {
                            bass: { activationChance: 0.4, instrumentOptions: [ { name: 'bass_jazz_warm', weight: 1.0 } ] },
                            drums: { activationChance: 0.4, instrumentOptions: [ { name: 'blues_melancholic_master', weight: 1.0 } ] },
                            harmony: { activationChance: 1.0, instrumentOptions: [ { name: 'guitarChords', weight: 0.8 }, { name: 'flute', weight: 0.2 } ] },
-                           accompaniment: { activationChance: 1.0, instrumentOptions: [ { name: 'organ_soft_jazz', weight: 1.0 } ] }
+                           // #ИСПРАВЛЕНО (ПЛАН 38): Замена органа на Родос.
+                           accompaniment: { activationChance: 1.0, instrumentOptions: [ { name: 'ep_rhodes_warm', weight: 1.0 } ] }
                         }
                     },
                     {
                         duration: { percent: 20 }, // Stage 3: Cold Air
                         instrumentation: {
                            melody: { activationChance: 1.0, instrumentOptions: [ { name: 'blackAcoustic', weight: 1.0 } ] },
-                           accompaniment: { activationChance: 1.0, instrumentOptions: [ { name: 'organ_soft_jazz', weight: 1.0 } ] },
+                           // #ИСПРАВЛЕНО (ПЛАН 38): Замена органа на Родос.
+                           accompaniment: { activationChance: 1.0, instrumentOptions: [ { name: 'ep_rhodes_warm', weight: 1.0 } ] },
                            drums: { activationChance: 0.7, instrumentOptions: [ { name: 'blues_melancholic_master', weight: 1.0 } ] },
                            harmony: { activationChance: 1.0, instrumentOptions: [ { name: 'guitarChords', weight: 0.8 }, { name: 'flute', weight: 0.2 } ] }
                         }
                     },
                     {
-                        duration: { percent: 60 }, // Stage 4: Long Wait
+                        duration: { percent: 60 }, // Stage 4: Full ensemble fixed
                         instrumentation: {
                            melody: { activationChance: 1.0, instrumentOptions: [ { name: 'blackAcoustic', weight: 1.0 } ] },
                            accompaniment: { activationChance: 1.0, instrumentOptions: [ { name: 'organ_soft_jazz', weight: 1.0 } ] },
@@ -65,7 +66,8 @@ export const WinterBluesBlueprint: MusicBlueprint = {
                 instrumentRules: {
                     bass: { techniques: [{ value: 'long_notes', weight: 1.0 }], density: { min: 0.2, max: 0.4 } },
                     accompaniment: { techniques: [{ value: 'long-chords', weight: 1.0 }], density: { min: 0.4, max: 0.7 } },
-                    melody: { source: 'blues_solo', soloToPatternRatio: 0.7, density: { min: 0.5, max: 0.9 }, soloPlan: "S07" },
+                    // #ИСПРАВЛЕНО (ПЛАН 38): Гитара играет бодрее (S01, выше плотность).
+                    melody: { source: 'blues_solo', soloToPatternRatio: 0.8, density: { min: 0.7, max: 1.0 }, soloPlan: "S01" },
                     drums: { kitName: 'blues_melancholic_master', density: { min: 0.2, max: 0.4 }, usePerc: true },
                     sfx: { eventProbability: 0.1, categories: [{ name: 'common', weight: 1.0 }] },
                     sparkles: { eventProbability: 0.05, categories: [{ name: 'light', weight: 1.0 }] }
@@ -84,32 +86,38 @@ export const WinterBluesBlueprint: MusicBlueprint = {
                 },
                 instrumentRules: {
                     drums: { pattern: 'composer', kitName: 'blues_melancholic_master', density: { min: 0.5, max: 0.7 }, usePerc: true },
-                    melody: { source: 'blues_solo', soloPlan: "S09", density: { min: 0.5, max: 0.9 }, soloToPatternRatio: 0.7 },
+                    // #ИСПРАВЛЕНО (ПЛАН 38): Бодрое соло S03.
+                    melody: { source: 'blues_solo', soloPlan: "S03", density: { min: 0.7, max: 1.0 }, soloToPatternRatio: 0.8 },
                     accompaniment: { techniques: [{ value: 'long-chords', weight: 1.0 }], density: { min: 0.5, max: 0.8 } },
-                    sparkles: { eventProbability: 0.05 }
+                    sparkles: { eventProbability: 0.05 },
+                    sfx: { eventProbability: 0.15, categories: [{ name: 'common', weight: 1.0 }] }
                 },
                 bundles: [{ id: 'WINTER_MAIN_BUNDLE_1', name: 'Snowfall', duration: { percent: 100 }, characteristics: {}, phrases: {} }],
                 outroFill: null,
             },
             {
                 id: 'SOLO', name: 'Ice Cry', duration: { percent: 25 },
-                layers: { bass: true, drums: true, melody: true, harmony: true, pianoAccompaniment: true, accompaniment: true },
+                layers: { bass: true, drums: true, melody: true, harmony: true, pianoAccompaniment: true, accompaniment: true, sfx: true, sparkles: true },
                 instrumentation: {
                     bass: { strategy: 'weighted', v1Options: [ { name: 'bass_jazz_warm', weight: 1.0 } ], v2Options: [ { name: 'bass_jazz_warm', weight: 1.0 } ] },
                     melody: { strategy: 'weighted', v1Options: [{name: 'blackAcoustic', weight: 1.0}], v2Options: [{name: 'blackAcoustic', weight: 1.0}] },
+                    accompaniment: { strategy: 'weighted', v1Options: [{ name: 'organ_soft_jazz', weight: 1.0 }], v2Options: [{ name: 'organ_soft_jazz', weight: 1.0 }] },
                     harmony: { strategy: 'weighted', options: [ { name: 'guitarChords', weight: 0.8 }, { name: 'flute', weight: 0.2 } ] }
                 },
                 instrumentRules: {
                     drums: { pattern: 'composer', kitName: 'blues_melancholic_master', density: { min: 0.6, max: 0.8 }, usePerc: true },
-                    melody: { source: 'blues_solo', soloPlan: "S10", density: { min: 0.7, max: 1.0 }, soloToPatternRatio: 0.7, register: { preferred: 'high' } },
-                    accompaniment: { techniques: [{ value: 'long-chords', weight: 1.0 }], density: { min: 0.6, max: 0.9 } }
+                    // #ИСПРАВЛЕНО (ПЛАН 38): Кульминационное бодрое соло S01.
+                    melody: { source: 'blues_solo', soloPlan: "S01", density: { min: 0.8, max: 1.0 }, soloToPatternRatio: 0.9, register: { preferred: 'high' } },
+                    accompaniment: { techniques: [{ value: 'long-chords', weight: 1.0 }], density: { min: 0.6, max: 0.9 } },
+                    sfx: { eventProbability: 0.2, categories: [{ name: 'common', weight: 1.0 }] },
+                    sparkles: { eventProbability: 0.1 }
                 },
                 bundles: [{ id: 'WINTER_SOLO_BUNDLE', name: 'Solo Section', duration: { percent: 100 }, characteristics: {}, phrases: {} }],
                 outroFill: { type: 'roll', duration: 1, parameters: { instrument: 'ride' } },
             },
             {
                 id: 'OUTRO', name: 'Dissolution', duration: { percent: 15 },
-                layers: { bass: true, drums: true, melody: true, harmony: true, pianoAccompaniment: true, accompaniment: true },
+                layers: { bass: true, drums: true, melody: true, harmony: true, pianoAccompaniment: true, accompaniment: true, sfx: true, sparkles: true },
                 instrumentation: {
                     accompaniment: { strategy: 'weighted', v1Options: [{ name: 'synth_ambient_pad_lush', weight: 1.0 }], v2Options: [{ name: 'synth_ambient_pad_lush', weight: 1.0 }] },
                     melody: { strategy: 'weighted', v1Options: [{ name: 'blackAcoustic', weight: 1.0 }], v2Options: [{ name: 'blackAcoustic', weight: 1.0 }] },
@@ -119,7 +127,9 @@ export const WinterBluesBlueprint: MusicBlueprint = {
                     drums: { pattern: 'composer', kitName: 'blues_melancholic_master', density: { min: 0.2, max: 0.4 }, useSnare: false },
                     bass: { techniques: [{ value: 'long_notes', weight: 1.0 }], density: {min: 0.3, max: 0.5} },
                     melody: { source: 'blues_solo', density: { min: 1.0, max: 1.0 }, soloPlan: "WINTER_OUTRO_MELODY", soloToPatternRatio: 0.0 },
-                    accompaniment: { density: { min: 0.3, max: 0.5 } }
+                    accompaniment: { density: { min: 0.3, max: 0.5 } },
+                    sfx: { eventProbability: 0.1 },
+                    sparkles: { eventProbability: 0.05 }
                 },
                 bundles: [{ id: 'WINTER_OUTRO_BUNDLE', name: 'Final Embers', duration: { percent: 100 }, characteristics: {}, phrases: {} }],
                 outroFill: null,

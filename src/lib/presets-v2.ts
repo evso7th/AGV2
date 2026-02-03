@@ -1,5 +1,5 @@
 
-// V2 Presets — совместимы с buildMultiInstrument()
+// V2 Presets — совместимы with buildMultiInstrument()
 // Проверено на соответствие фабрике от 2024-01
 
 import { BASS_PRESETS } from './bass-presets';
@@ -74,6 +74,8 @@ export const V2_PRESETS = {
   organ: {
     type: 'organ',
     name: 'Cathedral Organ',
+    // #ИСПРАВЛЕНО (ПЛАН 38): Громкость снижена в 2 раза.
+    volume: 0.35,
     drawbars: [8, 8, 4, 2, 0, 0, 0, 1, 0],
     keyClick: 0.005,
     adsr: { a: 0.1, d: 0.1, s: 0.9, r: 0.6 },
@@ -87,6 +89,8 @@ export const V2_PRESETS = {
   organ_soft_jazz: {
     type: 'organ',
     name: 'Soft Jazz Organ',
+    // #ИСПРАВЛЕНО (ПЛАН 38): Громкость снижена в 2 раза.
+    volume: 0.27,
     drawbars: [8, 0, 8, 5, 0, 3, 0, 0, 0], 
     lpf: 7600,
     hpf: 90,
