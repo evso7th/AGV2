@@ -586,9 +586,27 @@ export class FractalMusicEngine {
     // #ИСПРАВЛЕНО: Теперь проверяем наличие инструмента в хинтах или прямое наличие слоя.
     // #ЗАЧЕМ: Чтобы transient-мелодия работала корректно.
     if ((instrumentHints.melody || this.isActivated('melody', navInfo)) && !navInfo.currentPart.accompanimentMelodyDouble?.enabled && melodyRules) {
+        const ratio = melodyRules.soloToPatternRatio ?? 0.5;
         if (melodyRules.source === 'blues_solo') {
-            const { events: soloEvents } = generateBluesMelodyChorus(currentChord, this.random, navInfo.currentPart.id, this.epoch, melodyRules, this.suiteDNA, this.melodyHistory, this.cachedMelodyChorus);
-            melodyEvents = soloEvents;
+            if (this.random.next() < ratio) {
+                const { events: soloEvents } = generateBluesMelodyChorus(currentChord, this.random, navInfo.currentPart.id, this.epoch, melodyRules, this.suiteDNA, this.melodyHistory, this.cachedMelodyChorus);
+                melodyEvents = soloEvents;
+            } else {
+                // Play fingerstyle pattern
+                const patternName = 'F_TRAVIS';
+                const voicingName = 'Em7_open';
+                melodyEvents.push({
+                    type: 'melody',
+                    note: currentChord.rootNote,
+                    time: 0,
+                    duration: 4.0,
+                    weight: 0.8,
+                    technique: patternName as Technique,
+                    dynamics: 'mf',
+                    phrasing: 'legato',
+                    params: { barCount: effectiveBar, voicingName }
+                });
+            }
         } else if (melodyRules.source === 'motif') {
             this.currentMelodyMotif = createAmbientMelodyMotif(currentChord, this.config.mood, this.random, this.currentMelodyMotif, melodyRules.register?.preferred, this.config.genre);
             melodyEvents = this.currentMelodyMotif;
