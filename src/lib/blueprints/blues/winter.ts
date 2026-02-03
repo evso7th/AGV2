@@ -23,8 +23,8 @@ export const WinterBluesBlueprint: MusicBlueprint = {
                         duration: { percent: 10 }, // Stage 1: Quick entry
                         instrumentation: {
                            melody: { activationChance: 1.0, instrumentOptions: [ { name: 'blackAcoustic', weight: 1.0 } ] },
-                           pianoAccompaniment: { activationChance: 0.8, instrumentOptions: [ { name: 'piano', weight: 1.0 } ] },
-                           accompaniment: { activationChance: 0.8, instrumentOptions: [ { name: 'organ_soft_jazz', weight: 1.0 } ] },
+                           // #ЗАЧЕМ: Пианист удален со сцены интро по запросу пользователя.
+                           accompaniment: { activationChance: 1.0, instrumentOptions: [ { name: 'organ_soft_jazz', weight: 1.0 } ] },
                            harmony: { activationChance: 1.0, instrumentOptions: [ { name: 'guitarChords', weight: 0.8 }, { name: 'flute', weight: 0.2 } ] }
                         }
                     },
@@ -42,7 +42,8 @@ export const WinterBluesBlueprint: MusicBlueprint = {
                         duration: { percent: 20 }, // Stage 3: Cold Air
                         instrumentation: {
                            melody: { activationChance: 1.0, instrumentOptions: [ { name: 'blackAcoustic', weight: 1.0 } ] },
-                           accompaniment: { activationChance: 1.0, instrumentOptions: [ { name: 'synth_ambient_pad_lush', weight: 1.0 } ] },
+                           // #ЗАЧЕМ: Замена синтезатора на настоящий орган для цельности интро.
+                           accompaniment: { activationChance: 1.0, instrumentOptions: [ { name: 'organ_soft_jazz', weight: 1.0 } ] },
                            drums: { activationChance: 0.7, instrumentOptions: [ { name: 'blues_melancholic_master', weight: 1.0 } ] },
                            harmony: { activationChance: 1.0, instrumentOptions: [ { name: 'guitarChords', weight: 0.8 }, { name: 'flute', weight: 0.2 } ] }
                         }
@@ -51,7 +52,7 @@ export const WinterBluesBlueprint: MusicBlueprint = {
                         duration: { percent: 60 }, // Stage 4: Long Wait
                         instrumentation: {
                            melody: { activationChance: 1.0, instrumentOptions: [ { name: 'blackAcoustic', weight: 1.0 } ] },
-                           pianoAccompaniment: { activationChance: 1.0, instrumentOptions: [ { name: 'piano', weight: 1.0 } ] },
+                           // #ЗАЧЕМ: Пианист удален также и из финальной стадии интро.
                            accompaniment: { activationChance: 1.0, instrumentOptions: [ { name: 'organ_soft_jazz', weight: 1.0 } ] },
                            bass: { activationChance: 1.0, instrumentOptions: [ { name: 'bass_jazz_warm', weight: 1.0 } ] },
                            drums: { activationChance: 1.0, instrumentOptions: [ { name: 'blues_melancholic_master', weight: 1.0 } ] },
