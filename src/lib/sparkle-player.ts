@@ -48,57 +48,53 @@ const SPARKLE_SAMPLES = {
         '/assets/music/droplets/BirdFX.ogg',
         '/assets/music/droplets/vibes_a.ogg',
         '/assets/music/droplets/belldom.ogg',
-        //'/assets/music/droplets/Abstruse.ogg',
         '/assets/music/droplets/BladeWalker.ogg',
         '/assets/music/droplets/merimbo.ogg',
-        //'/assets/music/droplets/ocean.mp3',
         '/assets/music/droplets/BeepFreak.ogg',
         '/assets/music/droplets/GlassBell.ogg',
         '/assets/music/droplets/Koto1.ogg',
     ],
     DARK: [
-        '/assets/music/droplets/dark/31_SFX_1.ogg',
-        '/assets/music/droplets/dark/Fearsome.ogg',
-        '/assets/music/droplets/dark/Analog_Stab_Cm_70Bpm.ogg',
-        '/assets/music/droplets/dark/Grounding.ogg',
-        '/assets/music/droplets/dark/CS_Bend_Synth_Dm_70Bpm.ogg',
-        '/assets/music/droplets/dark/22-Synth.ogg',
-        '/assets/music/droplets/dark/50_SFX_2.ogg',
-        '/assets/music/droplets/dark/PianoAm_90Bpm.ogg',
-        '/assets/music/droplets/dark/07Space_Chimes_Am.ogg',
-        '/assets/music/droplets/dark/CS_Grit_Synth_Dm_70Bpm.ogg',
-        '/assets/music/droplets/dark/Pluck_Lead_C_70Bpm.ogg',
-        '/assets/music/droplets/dark/Dark_Kick_70Bpm.ogg',
-        //'/assets/music/droplets/dark/01_SFX.ogg',
+        '/assets/music/droplets/dark/00_-_Curse_of_Darkness.ogg',
+        '/assets/music/droplets/dark/00_-_Dark_spell_-_2.ogg',
+        '/assets/music/droplets/dark/00_-_Dark_whispers.ogg',
+        '/assets/music/droplets/dark/00_-_Door_to_Darkness.ogg',
+        '/assets/music/droplets/dark/00_-_Multiverse_Gate.ogg',
+        '/assets/music/droplets/dark/00_-_Rumbling_Kick.ogg',
+        '/assets/music/droplets/dark/00_-_The_Darkness_Occupied.ogg',
+        '/assets/music/droplets/dark/00_-_Unholy_Bells.ogg',
         '/assets/music/droplets/dark/01_Synth_2.ogg',
-        '/assets/music/droplets/dark/Gulls.ogg',
-        //'/assets/music/droplets/dark/34_SFX.ogg',
-        '/assets/music/droplets/dark/10The_Light_That_Burns_Am_70Bpm.ogg',
-        '/assets/music/droplets/dark/Drill.ogg',
-        '/assets/music/droplets/dark/11-Synth.ogg',
-        '/assets/music/droplets/dark/Bright_Bells_C_70Bpm.ogg',
+        '/assets/music/droplets/dark/03Rain_On_Mars_Am.ogg',
+        '/assets/music/droplets/dark/04In_The_Shadows_Am_70Bpm.ogg',
+        '/assets/music/droplets/dark/07Space_Chimes_Am.ogg',
         '/assets/music/droplets/dark/09_SFX_Hit.ogg',
-        '/assets/music/droplets/dark/Panning_Synth_C_70Bpm.ogg',
-        '/assets/music/droplets/dark/Cosmic_FX_C_70Bpm.ogg',
-        '/assets/music/droplets/dark/Big_Synth_Pad_Hit_Cm_70Bpm.ogg',
-        '/assets/music/droplets/dark/Abstruse.ogg',
-        //'/assets/music/droplets/dark/41_SFX.ogg',
-        '/assets/music/droplets/dark/Synth_Cm.ogg',
-        '/assets/music/droplets/dark/BladeWalker.ogg',
-        //'/assets/music/droplets/dark/02_SFX.ogg',
+        '/assets/music/droplets/dark/09Martian_Forrest_Am_70Bpm.ogg',
+        '/assets/music/droplets/dark/10The_Light_That_Burns_Am_70Bpm.ogg',
+        '/assets/music/droplets/dark/11-Synth.ogg',
+        '/assets/music/droplets/dark/12Broken_Replicant_70Bpm.ogg',
         '/assets/music/droplets/dark/27_SFX_2.ogg',
         '/assets/music/droplets/dark/28_SFX.ogg',
-        '/assets/music/droplets/dark/Ghosthack_-_Warm_Lead_C_70Bpm.ogg',
-        '/assets/music/droplets/dark/10-Synth.ogg',
-        '/assets/music/droplets/dark/03Rain_On_Mars_Am.ogg',
-        '/assets/music/droplets/dark/Light_Bells_Dm_70Bpm.ogg',
-        '/assets/music/droplets/dark/09Martian_Forrest_Am_70Bpm.ogg',
-        '/assets/music/droplets/dark/Reverse_SynthAm_90Bpm.ogg',
-        '/assets/music/droplets/dark/04In_The_Shadows_Am_70Bpm.ogg',
-        '/assets/music/droplets/dark/12Broken_Replicant_70Bpm.ogg',
-        '/assets/music/droplets/dark/Deep_Kick_FX_70Bpm.ogg',
-        '/assets/music/droplets/dark/Bell_Pluck_C_70Bpm.ogg',
+        '/assets/music/droplets/dark/50_SFX_2.ogg',
+        '/assets/music/droplets/dark/683625__dneproman__agony-labyrinth.ogg',
+        '/assets/music/droplets/dark/683626__dneproman__cave-breath.ogg',
+        '/assets/music/droplets/dark/683627__dneproman__dark-spell-1.ogg',
+        '/assets/music/droplets/dark/683629__dneproman__dark-whispers.ogg',
+        '/assets/music/droplets/dark/683631__dneproman__multiverse-gate.ogg',
+        '/assets/music/droplets/dark/683636__dneproman__urse-of-darkness.ogg',
+        '/assets/music/droplets/dark/Analog_Stab_Cm_70Bpm.ogg',
+        '/assets/music/droplets/dark/Big_Synth_Pad_Hit_Cm_70Bpm.ogg',
+        '/assets/music/droplets/dark/Cosmic_FX_C_70Bpm.ogg',
+        '/assets/music/droplets/dark/CS_Grit_Synth_Dm_70Bpm.ogg',
+        '/assets/music/droplets/dark/Dark_Kick_70Bpm.ogg',
         '/assets/music/droplets/dark/Dark_Matter_Synth_C_70Bpm.ogg',
+        '/assets/music/droplets/dark/Deep_Kick_FX_70Bpm.ogg',
+        '/assets/music/droplets/dark/Drill.ogg',
+        '/assets/music/droplets/dark/Fearsome.ogg',
+        '/assets/music/droplets/dark/Grounding.ogg',
+        '/assets/music/droplets/dark/Gulls.ogg',
+        '/assets/music/droplets/dark/Panning_Synth_C_70Bpm.ogg',
+        '/assets/music/droplets/dark/Reverse_SynthAm_90Bpm.ogg',
+        '/assets/music/droplets/dark/Synth_Cm.ogg',
     ],
     LIGHT: [
         '/assets/music/droplets/light/Bpm174_E_MixedFeelings_Pad.ogg',
@@ -281,6 +277,12 @@ export class SparklePlayer {
         } else if (category === 'promenade' && this.promenadeBuffers.length > 0) {
             samplePool = this.promenadeBuffers;
             poolName = 'PROMENADE';
+        } else if (mood === 'dark' || mood === 'anxious') {
+            // #ЗАЧЕМ: Принудительное использование мрачных спарклов для соответствующих настроений.
+            // #ЧТО: Если настроение тёмное или тревожное, мы всегда берем сэмплы из DARK пула,
+            //      игнорируя жанровые фолбэки. Это критично для атмосферы Dark Blues.
+            samplePool = this.darkBuffers;
+            poolName = 'DARK';
         } else if (genre === 'ambient') {
             switch (mood) {
                 // Нейтральные
@@ -315,15 +317,6 @@ export class SparklePlayer {
                     if (rand < 0.5) { samplePool = this.ambientCommonBuffers; poolName = 'AMBIENT_COMMON'; }
                     else if (rand < 0.8) { samplePool = this.lightBuffers; poolName = 'LIGHT'; }
                     else { samplePool = this.darkBuffers; poolName = 'DARK'; }
-                    break;
-                case 'dark':
-                    samplePool = rand < 0.3 ? this.ambientCommonBuffers : this.darkBuffers;
-                    poolName = rand < 0.3 ? 'AMBIENT_COMMON' : 'DARK';
-                    break;
-                case 'anxious':
-                    if (rand < 0.7) { samplePool = this.darkBuffers; poolName = 'DARK'; }
-                    else if (rand < 0.9) { samplePool = this.electronicBuffers; poolName = 'ELECTRONIC'; }
-                    else { samplePool = this.ambientCommonBuffers; poolName = 'AMBIENT_COMMON'; }
                     break;
                 default:
                     samplePool = this.ambientCommonBuffers;
