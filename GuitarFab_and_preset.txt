@@ -1,0 +1,133 @@
+##Guitarpipeline
+
+const buildGuitarEngine = (ctx: AudioContext, preset: any, master: GainNode, reverb: ConvolverNode, instrumentGain: GainNode, expressionGain: GainNode) => {
+  let currentPreset = { ...preset };
+  const guitarIn = ctx.createGain();
+
+  // === PICKUP COMB FILTER ===
+  const pickupComb = ctx.createDelay(0.01);
+  pickupComb.delayTime.value = 0.0025; // ~2.5ms → Strat quack
+  const combFeedback = ctx.createGain(); combFeedback.gain.value = 0.3;
+  pickupComb.connect(combFeedback).connect(pickupComb);
+
+  const cabinetLPF = ctx.createBiquadFilter(); cabinetLPF.type = 'lowpass'; cabinetLPF.frequency.value = 5000;
+  const cabinetLS = ctx.createBiquadFilter(); cabinetLS.type = 'lowshelf'; cabinetLS.frequency.value = 120; cabinetLS.gain.value = 3;
+
+  const comp = ctx.createDynamicsCompressor();
+  const shaper = ctx.createWaveShaper(); shaper.oversample = '2x';
+  const postEQ = ctx.createBiquadFilter(); postEQ.type = 'peaking';
+
+  const chorus = makeChorus(ctx, 0.15, 0.005, 0.2);
+  const delayA = makeDelay(ctx, 0.38, 0.26, 3500, 0.2);
+  const revSend = ctx.createGain();
+
+  guitarIn.connect(pickupComb).connect(cabinetLS).connect(cabinetLPF)
+    .connect(comp).connect(shaper).connect(postEQ).connect(chorus.input);
+  chorus.output.connect(delayA.input);
+  delayA.output.connect(expressionGain).connect(instrumentGain).connect(master);
+  delayA.output.connect(revSend).connect(reverb);
+
+  const activeVoices = new Map<number, { voiceGain: GainNode, voiceState: VoiceState, subNodes: AudioNode[] }>();
+
+  const updateNodes = (p: any) => {
+    combFeedback.gain.value = p.pickup?.combFeedback ?? 0.3;
+    cabinetLPF.frequency.value = p.cabinet?.lpf ?? 5000;
+    cabinetLS.gain.value = p.cabinet?.lsGain ?? 3;
+    comp.threshold.value = p.comp?.threshold ?? -18;
+    shaper.curve = p.drive?.type === 'muff' ? makeMuff(p.drive.amount) : makeSoftClip(p.drive?.amount || 0.2);
+    postEQ.frequency.value = 800; postEQ.gain.value = 2;
+    delayA.setMix(p.delayA?.on ? (p.delayA.mix ?? 0.2) : 0);
+    chorus.setMix(p.chorus?.on ? (p.chorus.mix ?? 0.2) : 0);
+    revSend.gain.value = p.reverbMix ?? 0.15;
+  };
+  updateNodes(currentPreset);
+
+  const engine = {
+    noteOn: (midi: number, when = ctx.currentTime, velocity = 1.0) => {
+      if (activeVoices.has(midi)) engine.noteOff(midi, when);
+      globalActiveVoices++;
+      const f = midiToHz(midi);
+      const voiceGain = ctx.createGain(); voiceGain.gain.value = 0; voiceGain.connect(guitarIn);
+      const subNodes: AudioNode[] = [];
+
+      // === TRANSIENT SAMPLE EMULATION (simple burst) ===
+      const transient = ctx.createBufferSource();
+      const bufSize = Math.floor(ctx.sampleRate * 0.03);
+      const buf = ctx.createBuffer(1, bufSize, ctx.sampleRate);
+      const data = buf.getChannelData(0);
+      for (let i = 0; i < bufSize; i++) {
+        const t = i / ctx.sampleRate;
+        data[i] = Math.exp(-t * 200) * (Math.random() * 2 - 1) * 0.5;
+      }
+      transient.buffer = buf;
+      const transGain = ctx.createGain();
+      transGain.gain.value = 0.6 * velocity;
+      transient.connect(transGain).connect(voiceGain);
+      transient.start(when);
+      transient.stop(when + 0.05);
+      subNodes.push(transient, transGain);
+
+      // === SUSTAIN OSCILLATORS ===
+      const oscMain = createPulseOsc(ctx, f, currentPreset.osc?.width || 0.45);
+      const oscDet = createPulseOsc(ctx, f, (currentPreset.osc?.width || 0.45) + 0.05);
+      oscDet.detune.value = currentPreset.osc?.detune || 5;
+      const oscSub = ctx.createOscillator(); oscSub.type = 'sine'; oscSub.frequency.value = f / 2;
+
+      const gM = ctx.createGain(); gM.gain.value = (currentPreset.osc?.mainGain || 0.8) * velocity * 0.7;
+      const gD = ctx.createGain(); gD.gain.value = (currentPreset.osc?.detGain || 0.2) * velocity * 0.7;
+      const gS = ctx.createGain(); gS.gain.value = (currentPreset.osc?.subGain || 0.25) * velocity * 0.7;
+
+      oscMain.connect(gM).connect(voiceGain);
+      oscDet.connect(gD).connect(voiceGain);
+      oscSub.connect(gS).connect(voiceGain);
+      oscMain.start(when); oscDet.start(when); oscSub.start(when);
+      subNodes.push(oscMain, oscDet, oscSub, gM, gD, gS);
+
+      const adsr = currentPreset.adsr || { a: 0.005, d: 0.3, s: 0.6, r: 1.5 };
+      const voiceState = triggerAttack(ctx, voiceGain, when, adsr.a, adsr.d, adsr.s, velocity);
+      activeVoices.set(midi, { voiceGain, voiceState, subNodes });
+    },
+
+    noteOff: (midi: number, when = ctx.currentTime) => {
+      const v = activeVoices.get(midi); if (!v) return; activeVoices.delete(midi);
+      const stopTime = triggerRelease(ctx, v.voiceState, when, currentPreset.adsr?.a || 0.005, currentPreset.adsr?.r || 1.5);
+      v.subNodes.forEach(n => {
+        if (n instanceof OscillatorNode || n instanceof AudioBufferSourceNode) {
+          try { n.stop(stopTime + 0.1); } catch(e){}
+        }
+      });
+      setTimeout(() => {
+        v.subNodes.forEach(n => { try { n.disconnect(); } catch(e){} });
+        try { v.voiceGain.disconnect(); globalActiveVoices--; } catch(e){}
+      }, Math.max(0, (stopTime - ctx.currentTime + 0.2) * 1000));
+    },
+
+    allNotesOff: () => {
+      const now = ctx.currentTime;
+      activeVoices.forEach((_, midi) => engine.noteOff(midi, now));
+    },
+
+    setPreset: (p: any) => { currentPreset = p; updateNodes(p); },
+    setParam: (k: string, v: any) => {
+      if (k === 'drive') shaper.curve = makeMuff(v);
+    }
+  };
+  return engine;
+};
+
+
+## Gilmour-style Guitar
+guitar_gilmour_authentic: {
+  type: 'guitar',
+  name: 'Gilmour Shine On You',
+  volume: 0.72,
+  osc: { width: 0.48, detune: 4, mainGain: 0.8, detGain: 0.15, subGain: 0.2 },
+  pickup: { combFeedback: 0.35 },
+  cabinet: { lpf: 4800, lsGain: 4 },
+  drive: { type: 'soft', amount: 0.25 },
+  comp: { threshold: -16, ratio: 3, attack: 0.008, release: 0.15, makeup: 4 },
+  delayA: { on: true, time: 0.38, fb: 0.32, mix: 0.3 },
+  chorus: { on: true, mix: 0.4 },
+  adsr: { a: 0.003, d: 0.4, s: 0.65, r: 2.0 },
+  reverbMix: 0.22
+},
