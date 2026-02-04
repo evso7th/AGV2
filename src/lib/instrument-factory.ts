@@ -1,7 +1,7 @@
 /**
  * #ЗАЧЕМ: Центральная фабрика для создания высококачественных инструментов V2.
  * #ЧТО: Реализует конвейеры синтеза для synth, organ, bass и guitar.
- * #ИСПРАВЛЕНО: Устранена ошибка ReferenceError (makeDelay), синхронизированы сигнатуры FX-функций.
+ * #ИСПРАВЛЕНО: План 77 — внедрено физическое моделирование гитары (Pick Attack, Comb Filter, Cab Shelf).
  * #СВЯЗИ: Используется менеджерами V2 для создания экземпляров инструментов.
  */
 
@@ -256,7 +256,6 @@ const buildSynthEngine = (ctx: AudioContext, preset: any, master: GainNode, reve
     const tremolo = makeTremolo(ctx, currentPreset.tremolo?.rate ?? 5.5, currentPreset.tremolo?.depth ?? 0.4, currentPreset.tremolo?.on ? (currentPreset.tremolo?.mix ?? 0.5) : 0);
     const chorus = makeChorus(ctx, currentPreset.chorus?.rate ?? 0.3, currentPreset.chorus?.depth ?? 0.004, currentPreset.chorus?.on ? (currentPreset.chorus.mix ?? 0.3) : 0);
     
-    // ИСПРАВЛЕНО: Вызов makeDelay вместо makeFilteredDelay
     const delay = makeDelay(ctx, 
         currentPreset.delay?.time ?? 0.35, 
         currentPreset.delay?.fb ?? 0.25, 
@@ -297,7 +296,7 @@ const buildSynthEngine = (ctx: AudioContext, preset: any, master: GainNode, reve
         const voice = activeVoices.get(midi); if (!voice) return; activeVoices.delete(midi);
         const stopTime = triggerRelease(ctx, voice.voiceState, when, currentPreset.adsr?.a || 0.1, currentPreset.adsr?.r || 0.5);
         voice.nodes.forEach(n => { if (n instanceof OscillatorNode) n.stop(stopTime + 0.1); });
-        setTimeout(() => { try { voice.voiceGain.disconnect(); globalActiveVoices--; } catch(e){} }, 500); // Расширенный буфер
+        setTimeout(() => { try { voice.voiceGain.disconnect(); globalActiveVoices--; } catch(e){} }, 1000);
     };
 
     return { 
@@ -361,7 +360,7 @@ const buildOrganEngine = (ctx: AudioContext, preset: any, master: GainNode, reve
         const voice = activeVoices.get(midi); if (!voice) return; activeVoices.delete(midi);
         const stopTime = triggerRelease(ctx, voice.voiceState, when, currentPreset.adsr?.a || 0.02, currentPreset.adsr?.r || 1.2);
         voice.nodes.forEach(n => { if (n instanceof OscillatorNode || n instanceof AudioBufferSourceNode) try { n.stop(stopTime + 0.1); } catch(e){} });
-        setTimeout(() => { try { voice.voiceGain.disconnect(); globalActiveVoices--; } catch(e){} }, 500);
+        setTimeout(() => { try { voice.voiceGain.disconnect(); globalActiveVoices--; } catch(e){} }, 1000);
     };
 
     return { 
@@ -401,7 +400,7 @@ const buildBassEngine = (ctx: AudioContext, preset: any, master: GainNode, rever
         const voice = activeVoices.get(midi); if (!voice) return; activeVoices.delete(midi);
         const stopTime = triggerRelease(ctx, voice.voiceState, when, currentPreset.adsr?.a || 0.01, currentPreset.adsr?.r || 0.25);
         voice.nodes.forEach(n => { if (n instanceof OscillatorNode) try { n.stop(stopTime + 0.1); } catch(e){} });
-        setTimeout(() => { try { voice.voiceGain.disconnect(); globalActiveVoices--; } catch(e){} }, 500);
+        setTimeout(() => { try { voice.voiceGain.disconnect(); globalActiveVoices--; } catch(e){} }, 1000);
     };
 
     return { noteOn, noteOff, allNotesOff: () => activeVoices.forEach((_, m) => noteOff(m)), setPreset: (p: any) => { currentPreset = p; }, setParam: (k: string, v: any) => {} };
@@ -410,23 +409,36 @@ const buildBassEngine = (ctx: AudioContext, preset: any, master: GainNode, rever
 const buildGuitarEngine = (ctx: AudioContext, preset: any, master: GainNode, reverb: ConvolverNode, instrumentGain: GainNode, expressionGain: GainNode) => {
     let currentPreset = { ...preset };
     
-    // --- Static Chain ---
+    // --- Transient Pickup (Physical Attack) ---
+    const pickBuffer = createKeyClick(ctx, 0.03, 0.6);
+
+    // --- Pickup Path (Comb Filter) ---
     const guitarInput = ctx.createGain();
+    const pickupComb = ctx.createDelay(0.01);
+    pickupComb.delayTime.value = 0.0025; // Strat quack
+    const combFeedback = ctx.createGain();
+    combFeedback.gain.value = currentPreset.pickup?.combFeedback ?? 0.3;
+    pickupComb.connect(combFeedback).connect(pickupComb);
+
     const pickupLPF = ctx.createBiquadFilter(); pickupLPF.type = 'lowpass'; pickupLPF.frequency.value = currentPreset.pickup?.cutoff || 3600;
     const hpf = ctx.createBiquadFilter(); hpf.type = 'highpass'; hpf.frequency.value = 80;
     const comp = ctx.createDynamicsCompressor(); comp.threshold.value = currentPreset.comp?.threshold || -18;
     const shaper = ctx.createWaveShaper(); shaper.oversample = '4x';
     const compMakeup = ctx.createGain(); compMakeup.gain.value = dB(currentPreset.comp?.makeup || 3);
     
-    // Tone Stack
+    // Tone Stack & Cabinet
     const mid1 = ctx.createBiquadFilter(); mid1.type = 'peaking'; mid1.frequency.value = currentPreset.post?.mids?.[0]?.f || 850; mid1.gain.value = currentPreset.post?.mids?.[0]?.g || 2;
     const mid2 = ctx.createBiquadFilter(); mid2.type = 'peaking'; mid2.frequency.value = currentPreset.post?.mids?.[1]?.f || 2500; mid2.gain.value = currentPreset.post?.mids?.[1]?.g || -1.5;
     const postLPF = ctx.createBiquadFilter(); postLPF.type = 'lowpass'; postLPF.frequency.value = currentPreset.post?.lpf || 5000;
     
+    const cabinetLS = ctx.createBiquadFilter(); 
+    cabinetLS.type = 'lowshelf'; 
+    cabinetLS.frequency.value = 120; 
+    cabinetLS.gain.value = 3; // Warm cabinet resonance
+
     // FX
     const ph = makePhaser(ctx, currentPreset.phaser?.rate || 0.16, currentPreset.phaser?.depth || 600, currentPreset.phaser?.on ? (currentPreset.phaser.mix || 0.2) : 0);
     
-    // ИСПРАВЛЕНО: Использование makeDelay вместо makeFilteredDelay и позиционных аргументов
     const dA = makeDelay(ctx, 
         currentPreset.delayA?.time || 0.38, 
         currentPreset.delayA?.fb || 0.28, 
@@ -444,15 +456,8 @@ const buildGuitarEngine = (ctx: AudioContext, preset: any, master: GainNode, rev
     const revSend = ctx.createGain(); revSend.gain.value = currentPreset.reverbMix || 0.18;
 
     // Routing
-    guitarInput.connect(pickupLPF);
-    pickupLPF.connect(hpf);
-    hpf.connect(comp);
-    comp.connect(shaper);
-    shaper.connect(compMakeup);
-    compMakeup.connect(mid1);
-    mid1.connect(mid2);
-    mid2.connect(postLPF);
-    postLPF.connect(ph.input);
+    guitarInput.connect(pickupComb).connect(pickupLPF).connect(hpf);
+    hpf.connect(comp).connect(shaper).connect(compMakeup).connect(mid1).connect(mid2).connect(postLPF).connect(cabinetLS).connect(ph.input);
     
     ph.output.connect(dA.input); 
     ph.output.connect(dB_node.input);
@@ -483,6 +488,20 @@ const buildGuitarEngine = (ctx: AudioContext, preset: any, master: GainNode, rev
         const sum = ctx.createGain(); sum.gain.value = 0.7; sum.connect(guitarInput);
         const voiceGain = ctx.createGain(); voiceGain.gain.value = 0; voiceGain.connect(sum);
         
+        const voiceNodes: AudioNode[] = [voiceGain, sum];
+
+        // Pick Attack Transient
+        if (pickBuffer) {
+            const pick = ctx.createBufferSource();
+            pick.buffer = pickBuffer;
+            const pickG = ctx.createGain();
+            pickG.gain.value = velocity * 0.5;
+            pick.connect(pickG).connect(voiceGain);
+            pick.start(when);
+            pick.stop(when + 0.05);
+            voiceNodes.push(pick, pickG);
+        }
+
         const oscMain = createPulseOsc(f, oscP.width || 0.45);
         const oscDet = createPulseOsc(f, (oscP.width || 0.45) + 0.06); oscDet.detune.value = oscP.detune || 5;
         const oscSub = ctx.createOscillator(); oscSub.type = 'sine'; oscSub.frequency.value = f / 2;
@@ -496,18 +515,19 @@ const buildGuitarEngine = (ctx: AudioContext, preset: any, master: GainNode, rev
         
         const adsr = currentPreset.adsr || { a: 0.005, d: 0.3, s: 0.6, r: 1.5 };
         const voiceState = triggerAttack(ctx, voiceGain, when, adsr.a, adsr.d, adsr.s, velocity);
-        activeVoices.set(midi, { sum, voiceGain, voiceState, nodes: [oscMain, oscDet, oscSub] });
+        activeVoices.set(midi, { sum, voiceGain, voiceState, nodes: [oscMain, oscDet, oscSub, gMain, gDet, gSub] });
     };
 
     const noteOff = (midi: number, when = ctx.currentTime) => {
         const voice = activeVoices.get(midi); if (!voice) return; activeVoices.delete(midi);
         const stopTime = triggerRelease(ctx, voice.voiceState, when, currentPreset.adsr?.a || 0.005, currentPreset.adsr?.r || 1.5);
         voice.nodes.forEach(n => { if (n instanceof OscillatorNode) try { n.stop(stopTime + 0.1); } catch(e){} });
-        setTimeout(() => { try { voice.sum.disconnect(); globalActiveVoices--; } catch(e){} }, 500);
+        setTimeout(() => { try { voice.sum.disconnect(); globalActiveVoices--; } catch(e){} }, 1500);
     };
 
     const updateNodes = (p: any) => {
         currentPreset = p;
+        combFeedback.gain.value = p.pickup?.combFeedback ?? 0.3;
         pickupLPF.frequency.setTargetAtTime(p.pickup?.cutoff || 3600, ctx.currentTime, 0.05);
         shaper.curve = (p.drive?.type === 'muff') ? makeMuff(p.drive.amount) : makeSoftClip(p.drive.amount);
         ph.setMix(p.phaser?.on ? (p.phaser.mix || 0.2) : 0);
@@ -554,7 +574,7 @@ export async function buildMultiInstrument(ctx: AudioContext, {
     if (plateIRUrl) {
         loadIR(ctx, plateIRUrl).then(buf => { if (buf) reverb.buffer = buf; });
     }
-    reverb.connect(master); // ОБЯЗАТЕЛЬНОЕ ПОДКЛЮЧЕНИЕ REVERB К MASTER
+    reverb.connect(master);
 
     let engine: any;
     if (type === 'bass') {

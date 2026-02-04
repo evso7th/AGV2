@@ -17,8 +17,8 @@ export const V2_PRESETS = {
       { type: 'sawtooth', detune: +4, octave: 0, gain: 0.5 },
       { type: 'sine', detune: 0, octave: -1, gain: 0.7 }
     ],
-    noise: { on: true, gain: 0.03 },
-    adsr: { a: 0.8, d: 1.2, s: 0.7, r: 3.0 },
+    noise: { on: true, gain: 0.02 },
+    adsr: { a: 0.6, d: 0.8, s: 0.7, r: 2.0 },
     lpf: { cutoff: 1600, q: 1.2, mode: '24dB' },
     lfo: { shape: 'sine', rate: 0.18, amount: 450, target: 'filter' },
     chorus: { on: true, rate: 0.2, depth: 0.007, mix: 0.4 },
@@ -147,7 +147,7 @@ export const V2_PRESETS = {
     name: 'Shine On Guitar',
     volume: 0.7,
     osc: { width: 0.46, detune: 5, mainGain: 0.85, detGain: 0.18, subGain: 0.25 },
-    pickup: { cutoff: 3600, q: 1.0 },
+    pickup: { cutoff: 3600, q: 1.0, combFeedback: 0.35 },
     drive: { type: 'soft', amount: 0.2 },
     comp: { threshold: -18, ratio: 3, attack: 0.01, release: 0.12, makeup: 3 },
     post: { 
@@ -157,11 +157,11 @@ export const V2_PRESETS = {
         { f: 2500, q: 1.4, g: -1.5 }
       ] 
     },
-    phaser: { on: true, rate: 0.16, depth: 600, mix: 0.22 },
-    delayA: { on: true, time: 0.38, fb: 0.28, mix: 0.22 },
+    phaser: { on: true, rate: 0.16, depth: 600, mix: 0.18 },
+    delayA: { on: true, time: 0.38, fb: 0.25, mix: 0.15 },
     delayB: { on: false },
-    adsr: { a: 0.006, d: 0.35, s: 0.6, r: 1.6 },
-    reverbMix: 0.18
+    adsr: { a: 0.006, d: 0.4, s: 0.75, r: 2.5 }, // Increased sustain/release
+    reverbMix: 0.22
   },
 
   guitar_muffLead: {
@@ -169,7 +169,7 @@ export const V2_PRESETS = {
     name: 'Muff Lead Guitar',
     volume: 0.62,
     osc: { width: 0.5, detune: 7, mainGain: 0.8, detGain: 0.2, subGain: 0.3 },
-    pickup: { cutoff: 3200, q: 1.2 },
+    pickup: { cutoff: 3200, q: 1.2, combFeedback: 0.4 },
     drive: { type: 'muff', amount: 0.65 },
     comp: { threshold: -20, ratio: 4, attack: 0.005, release: 0.1, makeup: 4 },
     post: { 
@@ -179,11 +179,11 @@ export const V2_PRESETS = {
         { f: 3200, q: 1.4, g: -2 }
       ] 
     },
-    phaser: { on: true, rate: 0.18, depth: 700, mix: 0.18 },
-    delayA: { on: true, time: 0.38, fb: 0.26, mix: 0.16 },
-    delayB: { on: true, time: 0.52, fb: 0.22, mix: 0.12 },
-    adsr: { a: 0.008, d: 0.5, s: 0.65, r: 1.8 },
-    reverbMix: 0.2
+    phaser: { on: true, rate: 0.18, depth: 700, mix: 0.15 },
+    delayA: { on: true, time: 0.38, fb: 0.22, mix: 0.12 },
+    delayB: { on: true, time: 0.52, fb: 0.18, mix: 0.08 },
+    adsr: { a: 0.008, d: 0.5, s: 0.8, r: 3.0 }, // Increased sustain/release
+    reverbMix: 0.25
   }
 
 } as const;
