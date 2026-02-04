@@ -95,8 +95,6 @@ export function generateSuiteDNA(totalBars: number, mood: Mood, seed: number, ra
 
     const harmonyTrack: GhostChord[] = [];
     
-    // #ИСПРАВЛЕНО: Рандомизация тональности.
-    // #ЗАЧЕМ: Чтобы скелеты гармонии не были всегда от одной ноты (E).
     const baseKeyNote = 24 + random.nextInt(12); // Случайная тоника во 2-й октаве
     const key = baseKeyNote;
     
@@ -488,22 +486,23 @@ export function generateBluesMelodyChorus(
         lickPhrase = invertMelody(lickPhrase);
     }
     
-    // 3. Ритмическое варьирование
-    if (random.next() < 0.25) {
-        lickPhrase = varyRhythm(lickPhrase, random);
+    // #ЗАЧЕМ: Реализация требования "мелодия чаще и короче" (Virtuoso Mode).
+    // #ЧТО: Если мы в активной части сюиты, мы принудительно дробим ноты.
+    if (partId === 'MAIN' || partId === 'SOLO' || random.next() < 0.4) {
+        lickPhrase = subdivideRhythm(lickPhrase, random);
     }
 
     const rootNote = currentChord.rootNote;
     const ticksPerBeat = 3;
 
     const events: FractalEvent[] = lickPhrase.map(note => {
-        // Handle transposed degrees correctly or fallback
         const degree = note.deg as BluesRiffDegree;
         const midiOffset = DEGREE_TO_SEMITONE[degree] || 0;
         const midiNote = rootNote + midiOffset;
         
         const timeInBeats = note.t / ticksPerBeat;
-        const durationInBeats = (note.d || 2) / ticksPerBeat;
+        // #ЗАЧЕМ: Делаем артикуляцию "острее" для активных пассажей.
+        const durationInBeats = (note.d || 2) / ticksPerBeat * ( (partId === 'MAIN' || partId === 'SOLO') ? 0.8 : 1.0 );
         
         return {
             type: 'melody',
@@ -538,6 +537,33 @@ export function createBluesOrganLick(chord: GhostChord, random: { next: () => nu
 export function generateIntroSequence(currentBar: number, introRules: any, harmonyTrack: GhostChord[], settings: any, random: any): { events: FractalEvent[], instrumentHints: InstrumentHints } { return { events: [], instrumentHints: {} }; }
 
 // --- MELODY MUTATION FUNCTIONS ---
+
+/**
+ * #ЗАЧЕМ: Дробит длинные ноты на серию быстрых атак.
+ * #ЧТО: Если нота длится > 4 тиков, она заменяется на две ноты половинной длины.
+ * #СВЯЗИ: Решает проблему "органного" звучания гитары.
+ */
+export function subdivideRhythm(phrase: BluesSoloPhrase, random: { next: () => number }): BluesSoloPhrase {
+    const result: BluesSoloPhrase = [];
+    for (const note of phrase) {
+        if (note.d > 4 && random.next() < 0.7) {
+            const halfD = Math.floor(note.d / 2);
+            // Первая нота
+            result.push({ ...note, d: halfD });
+            // Вторая нота (может быть той же или соседней ступенью)
+            result.push({ 
+                ...note, 
+                t: note.t + halfD, 
+                d: note.d - halfD,
+                tech: 'h' // Добавляем Hammer-on для живости
+            });
+        } else {
+            result.push(note);
+        }
+    }
+    return result;
+}
+
 export function transposeMelody(phrase: BluesSoloPhrase, interval: number): BluesSoloPhrase {
     if (!phrase) return [];
     return phrase.map(note => {

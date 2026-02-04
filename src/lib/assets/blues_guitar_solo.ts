@@ -12,6 +12,7 @@ import type { BluesSoloPhrase } from '@/types/fractal';
 // #ОБНОВЛЕНО (ПЛАН 926): Расширен список ликов L13-L20.
 // #ИСПРАВЛЕНО (ПЛАН 929): Добавлена пропущенная запятая после L19.
 // #ИСПРАВЛЕНО (ПЛАН 1717): Добавлены теги для семантического выбора ликов.
+// #ОБНОВЛЕНО (ПЛАН 79): Добавлены высокоплотные лики L22-L25 для виртуозного звучания.
 // Структура события: { t: tick, d: duration_in_ticks, deg: degree, tech?: technique }
 export const BLUES_SOLO_LICKS: Record<string, { phrase: BluesSoloPhrase; tags: string[] }> = {
   L01: { phrase: [{t:0,d:3,deg:'b3',tech:'bn'}, {t:3,d:3,deg:'R'}, {t:6,d:6,deg:'5',tech:'vb'}], tags: ['minor', 'cry', 'slow-bend'] },
@@ -38,7 +39,25 @@ export const BLUES_SOLO_LICKS: Record<string, { phrase: BluesSoloPhrase; tags: s
     phrase: [{ t: 0, d: 12, deg: 'R', tech: 'F_TRAVIS' }],
     tags: ['fingerstyle', 'rhythm', 'outro'] 
   },
+  // --- NEW HIGH DENSITY LICKS ---
+  L22_ACTIVE: {
+    phrase: [{t:0,d:1,deg:'R'},{t:1,d:1,deg:'2'},{t:2,d:1,deg:'b3'},{t:3,d:1,deg:'3'},{t:4,d:2,deg:'5'},{t:6,d:2,deg:'6'},{t:8,d:2,deg:'b7'},{t:10,d:2,deg:'R+8'}],
+    tags: ['virtuoso', 'climb', 'fast']
+  },
+  L23_STACCATO: {
+    phrase: [{t:0,d:1,deg:'5'},{t:2,d:1,deg:'5'},{t:4,d:1,deg:'5'},{t:6,d:2,deg:'b7',tech:'bn'},{t:8,d:2,deg:'R'},{t:10,d:2,deg:'b3'}],
+    tags: ['staccato', 'stabs', 'active']
+  },
+  L24_SHRED: {
+    phrase: [{t:0,d:1,deg:'R+8'},{t:1,d:1,deg:'b7'},{t:2,d:1,deg:'6'},{t:3,d:1,deg:'5'},{t:4,d:1,deg:'4'},{t:5,d:1,deg:'b3'},{t:6,d:2,deg:'R',tech:'vb'},{t:8,d:4,deg:'R'}],
+    tags: ['shred', 'descending', 'virtuoso']
+  },
+  L25_RESPONSE: {
+    phrase: [{t:0,d:3,deg:'R'},{t:3,d:3,deg:'b7'},{t:6,d:1,deg:'5'},{t:7,d:1,deg:'4'},{t:8,d:1,deg:'b3'},{t:9,d:3,deg:'R'}],
+    tags: ['response', 'quick-talk']
+  }
 };
+
 // 20 планов соло, каждый на 36 тактов (3 хора по 12 тактов)
 export const BLUES_SOLO_PLANS: Record<string, { choruses: string[][] }> = {
   "S01": {
@@ -177,8 +196,16 @@ export const BLUES_SOLO_PLANS: Record<string, { choruses: string[][] }> = {
   "S20": {
     choruses: [
       ['L02', 'L11', 'L20', 'L06', 'L11', 'L14', 'L17', 'L10', 'L13', 'L11', 'L02', 'L09'],
-      ['L08', 'L11', 'L13', 'L06', 'L11', 'L14', 'L17', 'L10', 'L12', 'L12', 'L02', 'L09'],
+      ['L08', 'L11', 'L13', 'L06', 'L11', 'L14', 'L17', 'L10', 'L12', 'L12', 'L02', 'L19'],
       ['L10', 'L11', 'L13', 'L02', 'L11', 'L06', 'L17', 'L10', 'L13', 'L11', 'L02', 'L09']
+    ]
+  },
+  // #ЗАЧЕМ: План с высокой плотностью для решения проблемы "длинных органных нот".
+  "S_ACTIVE": {
+    choruses: [
+      ['L22_ACTIVE', 'L23_STACCATO', 'L25_RESPONSE', 'L22_ACTIVE', 'L23_STACCATO', 'L25_RESPONSE', 'L22_ACTIVE', 'L23_STACCATO', 'L24_SHRED', 'L25_RESPONSE', 'L22_ACTIVE', 'L09'],
+      ['L24_SHRED', 'L25_RESPONSE', 'L22_ACTIVE', 'L23_STACCATO', 'L24_SHRED', 'L25_RESPONSE', 'L22_ACTIVE', 'L23_STACCATO', 'L12', 'L12', 'L24_SHRED', 'L19'],
+      ['L22_ACTIVE', 'L24_SHRED', 'L22_ACTIVE', 'L24_SHRED', 'L22_ACTIVE', 'L24_SHRED', 'L22_ACTIVE', 'L24_SHRED', 'L22_ACTIVE', 'L24_SHRED', 'L22_ACTIVE', 'L09']
     ]
   },
   "WINTER_OUTRO_MELODY": {
