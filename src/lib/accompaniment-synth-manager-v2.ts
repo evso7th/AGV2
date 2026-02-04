@@ -1,4 +1,3 @@
-
 import type { FractalEvent, AccompanimentInstrument } from '@/types/fractal';
 import type { Note } from "@/types/music";
 import { buildMultiInstrument } from './instrument-factory';
@@ -79,9 +78,10 @@ export class AccompanimentSynthManagerV2 {
         events.forEach(event => {
             if(event.type !== 'accompaniment') return;
             const noteOnTime = barStartTime + (event.time * beatDuration);
-            const noteOffTime = noteOnTime + (event.duration * beatDuration);
-            this.instrument.noteOn(event.note, noteOnTime);
-            this.instrument.noteOff(event.note, noteOffTime);
+            
+            // #ЗАЧЕМ: Переход на самозавершающиеся ноты.
+            // #ЧТО: Передаем длительность. Нота сама затухнет, позволяя другим наслаиваться.
+            this.instrument.noteOn(event.note, noteOnTime, event.weight, event.duration * beatDuration);
         });
     }
     

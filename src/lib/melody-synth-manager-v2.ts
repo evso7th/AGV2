@@ -1,4 +1,3 @@
-
 import type { FractalEvent, AccompanimentInstrument } from '@/types/fractal';
 import type { Note } from "@/types/music";
 import { buildMultiInstrument } from './instrument-factory';
@@ -139,11 +138,13 @@ export class MelodySynthManagerV2 {
         
         notesToPlay.forEach(note => {
             const noteOnTime = barStartTime + note.time;
-            const noteOffTime = noteOnTime + note.duration;
             
             if (isFinite(note.duration) && note.duration > 0) {
-                 this.synth.noteOn(note.midi, noteOnTime);
-                 this.synth.noteOff(note.midi, noteOffTime);
+                 // #ЗАЧЕМ: Переход на самозавершающиеся ноты (как в сэмплерах).
+                 // #ЧТО: Передаем duration прямо в noteOn. Это позволяет нотам
+                 //      наслаиваться друг на друга (layering), не обрывая хвосты.
+                 //      Метод noteOff в менеджере больше не вызывается.
+                 this.synth.noteOn(note.midi, noteOnTime, note.velocity, note.duration);
             } else {
                  console.error(`[MelodySynthManagerV2] Invalid duration for event for part ${this.partName}!`, JSON.parse(JSON.stringify(note)));
             }
