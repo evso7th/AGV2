@@ -62,7 +62,9 @@ export const WinterBluesBlueprint: MusicBlueprint = {
                 instrumentRules: {
                     bass: { techniques: [{ value: 'long_notes', weight: 1.0 }], density: { min: 0.2, max: 0.4 } },
                     accompaniment: { techniques: [{ value: 'long-chords', weight: 1.0 }], density: { min: 0.4, max: 0.7 } },
-                    melody: { source: 'blues_solo', soloToPatternRatio: 0.7, density: { min: 0.7, max: 1.0 }, soloPlan: "S01" },
+                    // #ЗАЧЕМ: Активация плотной мелодии в интро. 
+                    // #ЧТО: Используется план S04 для отличия от мэйн-части, плотность 0.7-1.0.
+                    melody: { source: 'blues_solo', soloToPatternRatio: 0.7, density: { min: 0.7, max: 1.0 }, soloPlan: "S04" },
                     drums: { kitName: 'blues_melancholic_master', density: { min: 0.2, max: 0.4 }, usePerc: true },
                     sfx: { eventProbability: 0.1, categories: [{ name: 'common', weight: 1.0 }] },
                     sparkles: { eventProbability: 0.05, categories: [{ name: 'light', weight: 1.0 }] }
@@ -81,7 +83,6 @@ export const WinterBluesBlueprint: MusicBlueprint = {
                 },
                 instrumentRules: {
                     drums: { pattern: 'composer', kitName: 'blues_melancholic_master', density: { min: 0.5, max: 0.7 }, usePerc: true },
-                    // #ЗАЧЕМ: Использование нового активного плана соло для повышения плотности мелодии.
                     melody: { source: 'blues_solo', soloPlan: "S_ACTIVE", density: { min: 0.8, max: 1.0 }, soloToPatternRatio: 0.9 },
                     accompaniment: { techniques: [{ value: 'long-chords', weight: 1.0 }], density: { min: 0.5, max: 0.8 } },
                     sparkles: { eventProbability: 0.05 },
