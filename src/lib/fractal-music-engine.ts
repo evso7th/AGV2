@@ -153,6 +153,10 @@ export class FractalMusicEngine {
   // #ЧТО: Карта активированных инструментов и их тембров.
   private activatedInstruments: Map<InstrumentPart, string> = new Map();
 
+  // #ЗАЧЕМ: Память "Тематических Крючков" (Thematic Memory).
+  // #ЧТО: Хранит удачные музыкальные фразы для повторения в конце сюиты.
+  private hookLibrary: { events: FractalEvent[], root: number }[] = [];
+
 
   constructor(config: EngineConfig) {
     this.config = { ...config };
@@ -190,8 +194,9 @@ export class FractalMusicEngine {
     this.nextAccompanimentDelay = this.random.next() * 7 + 5;
     this.hasBassBeenMutated = false;
     
-    // #ЗАЧЕМ: Сброс памяти ансамбля и истории мелодии при полной инициализации сюиты.
+    // #ЗАЧЕМ: Сброс памяти ансамбля, крючков и истории мелодии при полной инициализации сюиты.
     this.activatedInstruments.clear(); 
+    this.hookLibrary = [];
     this.melodyHistory = [];
     this.cachedMelodyChorus = { bar: -1, events: [] };
     
@@ -410,6 +415,34 @@ export class FractalMusicEngine {
         }
     }
 
+    // #ЗАЧЕМ: Реализация "Тематических Крючков" (Dynamic Hooks).
+    // #ЧТО: Запоминает мелодию в начале и возвращает её во второй половине.
+    // 1. Запись (Recording): Если мы в первой трети и есть мелодия
+    if (this.epoch > 12 && this.epoch < 60 && melodyEvents.length > 0 && this.hookLibrary.length < 3) {
+        if (this.random.next() < 0.15) {
+            this.hookLibrary.push({ 
+                events: JSON.parse(JSON.stringify(melodyEvents)), 
+                root: currentChord.rootNote 
+            });
+            console.log(`%c[DNA] Hook Recorded at Bar ${this.epoch}`, 'color: #ADFF2F; font-weight: bold;');
+        }
+    }
+
+    // 2. Реприза (Recall): Если мы во второй половине и есть крючки
+    if (this.epoch > 72 && this.hookLibrary.length > 0 && melodyEvents.length > 0) {
+        if (this.random.next() < 0.25) { // 25% шанс повторить тему
+            const hook = this.hookLibrary[this.random.nextInt(this.hookLibrary.length)];
+            // Умная транспозиция под текущий аккорд
+            melodyEvents = hook.events.map(e => ({
+                ...e,
+                note: e.note - hook.root + currentChord.rootNote,
+                weight: Math.min(1.0, e.weight + 0.05), // Чуть ярче при повторе
+                params: { ...e.params, isHook: true, originalBar: (hook.events[0].params as any)?.barCount }
+            }));
+            console.log(`%c[DNA] Reprise! Hook Recalled at Bar ${this.epoch}`, 'color: #FFD700; font-weight: bold; background: #222;');
+        }
+    }
+
     if (['telecaster', 'blackAcoustic', 'darkTelecaster', 'electricGuitar', 'guitar_shineOn', 'guitar_muffLead', 'guitar_nightmare_solo'].includes(instrumentHints.melody || '')) {
         melodyEvents.forEach(e => e.note += 24);
     }
@@ -450,7 +483,7 @@ export class FractalMusicEngine {
     if (instrumentHints.sfx) {
         const sfxRules = navInfo.currentPart.instrumentRules?.sfx as SfxRule | undefined;
         if (sfxRules && this.random.next() < sfxRules.eventProbability) {
-            allEvents.push({ type: 'sfx', note: 60, time: this.random.next() * 4, duration: 2, weight: 0.6, technique: 'swell', dynamics: 'mf', phrasing: 'legato', params: { mood: this.config.mood, genre: this.config.genre, rules: sfxRules } });
+            allEvents.push({ type: 'sfx', note: 60, time: this.random.next() * 4, duration: 2, weight: 0.6, technique: 'swell', dynamics: 'mf', phrasing: 'legato', params: { mood: this.config.mood, genre: this.config.genre, rules: sfxRules } } as any);
         }
     }
 
@@ -458,7 +491,7 @@ export class FractalMusicEngine {
     if (instrumentHints.sparkles) {
         const sparkleRules = navInfo.currentPart.instrumentRules?.sparkles;
         if (sparkleRules && this.random.next() < (sparkleRules.eventProbability || 0.1)) {
-            allEvents.push({ type: 'sparkle', note: 60, time: this.random.next() * 4, duration: 1, weight: 0.5, technique: 'hit', dynamics: 'p', phrasing: 'legato', params: {mood: this.config.mood, genre: this.config.genre}});
+            allEvents.push({ type: 'sparkle', note: 60, time: this.random.next() * 4, duration: 1, weight: 0.5, technique: 'hit', dynamics: 'p', phrasing: 'legato', params: {mood: this.config.mood, genre: this.config.genre}} as any);
         }
     }
     
