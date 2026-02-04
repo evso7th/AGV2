@@ -3,6 +3,7 @@
  * #ЧТО: Реализует конвейеры синтеза для synth, organ, bass и guitar.
  * #ОБНОВЛЕНО (ПЛАН 78): Переход на самозавершающиеся ноты (Layering). Ноты теперь наслаиваются
  *          друг на друга и затухают естественным образом по заданному duration.
+ * #ОБНОВЛЕНО (ПЛАН 80): Громкость гитарного движка уменьшена в 4 раза для баланса микса.
  * #СВЯЗИ: Используется менеджерами V2 для создания экземпляров инструментов.
  */
 
@@ -238,11 +239,7 @@ const triggerAttack = (ctx: AudioContext, gain: GainNode, when: number, a: numbe
 
 const triggerRelease = (ctx: AudioContext, voiceState: VoiceState, when: number, a: number, r: number): number => {
     const release = Math.max(r, 0.02);
-    const elapsed = when - voiceState.startTime;
     voiceState.node.gain.cancelScheduledValues(when);
-    
-    // Для запланированного затухания (sampler-style) не читаем gain.value сейчас,
-    // так как оно будет другим в будущем. setTargetAtTime начнет с текущего значения в момент 'when'.
     voiceState.node.gain.setTargetAtTime(0.0001, when, release / 3);
     return when + release;
 };
@@ -260,7 +257,27 @@ const createKeyClick = (ctx: AudioContext, duration: number, intensity: number):
 };
 
 // ═══════════════════════════════════════════════════════════════════════════
-// PIPELINE ENGINES
+// INSTRUMENT API INTERFACE
+// ═══════════════════════════════════════════════════════════════════════════
+
+export interface InstrumentAPI {
+    connect: (dest?: AudioNode) => void;
+    disconnect: () => void;
+    noteOn: (midi: number, when?: number, velocity?: number, duration?: number) => void;
+    noteOff: (midi: number, when?: number) => void;
+    allNotesOff: () => void;
+    setPreset: (p: any) => void;
+    setParam: (k: string, v: any) => void;
+    setVolume: (v: number) => void;
+    setVolumeDb: (db: number) => void;
+    getVolume: () => number;
+    setExpression: (v: number) => void;
+    preset: any;
+    type: string;
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// SYNTH ENGINE
 // ═══════════════════════════════════════════════════════════════════════════
 
 const buildSynthEngine = (ctx: AudioContext, preset: any, master: GainNode, reverb: ConvolverNode, instrumentGain: GainNode, expressionGain: GainNode) => {
@@ -343,6 +360,10 @@ const buildSynthEngine = (ctx: AudioContext, preset: any, master: GainNode, reve
     };
 };
 
+// ═══════════════════════════════════════════════════════════════════════════
+// ORGAN ENGINE
+// ═══════════════════════════════════════════════════════════════════════════
+
 const buildOrganEngine = (ctx: AudioContext, preset: any, master: GainNode, reverb: ConvolverNode, instrumentGain: GainNode, expressionGain: GainNode) => {
     let currentPreset = { ...preset };
     const organSum = ctx.createGain();
@@ -424,6 +445,10 @@ const buildOrganEngine = (ctx: AudioContext, preset: any, master: GainNode, reve
     };
 };
 
+// ═══════════════════════════════════════════════════════════════════════════
+// BASS ENGINE
+// ═══════════════════════════════════════════════════════════════════════════
+
 const buildBassEngine = (ctx: AudioContext, preset: any, master: GainNode, reverb: ConvolverNode, instrumentGain: GainNode, expressionGain: GainNode) => {
     let currentPreset = { ...preset };
     const bassSum = ctx.createGain();
@@ -477,7 +502,7 @@ const buildBassEngine = (ctx: AudioContext, preset: any, master: GainNode, rever
             allActiveVoices.forEach(v => {
                 const stopTime = triggerRelease(ctx, v.voiceState, ctx.currentTime, 0.01, 0.1);
                 v.nodes.forEach(n => { if (n instanceof OscillatorNode) try { n.stop(stopTime); } catch(e){} });
-                setTimeout(() => { try { v.voiceGain.disconnect(); } catch(e){} }, 200);
+                setTimeout(() => { try { v.sumNode.disconnect(); } catch(e){} }, 200);
             });
             activeVoices.clear(); allActiveVoices.clear(); globalActiveVoices = 0;
         },
@@ -486,10 +511,16 @@ const buildBassEngine = (ctx: AudioContext, preset: any, master: GainNode, rever
     };
 };
 
+// ═══════════════════════════════════════════════════════════════════════════
+// GUITAR ENGINE
+// ═══════════════════════════════════════════════════════════════════════════
+
 const buildGuitarEngine = (ctx: AudioContext, preset: any, master: GainNode, reverb: ConvolverNode, instrumentGain: GainNode, expressionGain: GainNode) => {
     let currentPreset = { ...preset };
     const pickBuffer = createKeyClick(ctx, 0.03, 0.6);
     const guitarInput = ctx.createGain();
+    
+    // === PICKUP COMB FILTER ("GLASS") ===
     const pickupComb = ctx.createDelay(0.01);
     pickupComb.delayTime.value = 0.0025;
     const combFeedback = ctx.createGain();
@@ -497,7 +528,7 @@ const buildGuitarEngine = (ctx: AudioContext, preset: any, master: GainNode, rev
     pickupComb.connect(combFeedback).connect(pickupComb);
 
     const pickupLPF = ctx.createBiquadFilter(); pickupLPF.type = 'lowpass'; pickupLPF.frequency.value = currentPreset.pickup?.cutoff || 3600;
-    const hpf = ctx.createBiquadFilter(); hpf.type = 'highpass'; hpf.frequency.value = 80;
+    const hpf = ctx.createBiquadFilter(); hpf.type = 'highpass'; hpf.frequency.value = 90;
     const comp = ctx.createDynamicsCompressor(); comp.threshold.value = currentPreset.comp?.threshold || -18;
     const shaper = ctx.createWaveShaper(); shaper.oversample = '4x';
     const compMakeup = ctx.createGain(); compMakeup.gain.value = dB(currentPreset.comp?.makeup || 3);
@@ -505,6 +536,8 @@ const buildGuitarEngine = (ctx: AudioContext, preset: any, master: GainNode, rev
     const mid1 = ctx.createBiquadFilter(); mid1.type = 'peaking'; mid1.frequency.value = currentPreset.post?.mids?.[0]?.f || 850; mid1.gain.value = currentPreset.post?.mids?.[0]?.g || 2;
     const mid2 = ctx.createBiquadFilter(); mid2.type = 'peaking'; mid2.frequency.value = currentPreset.post?.mids?.[1]?.f || 2500; mid2.gain.value = currentPreset.post?.mids?.[1]?.g || -1.5;
     const postLPF = ctx.createBiquadFilter(); postLPF.type = 'lowpass'; postLPF.frequency.value = currentPreset.post?.lpf || 5000;
+    
+    // === CABINET LOW SHELF ("WARMTH") ===
     const cabinetLS = ctx.createBiquadFilter(); cabinetLS.type = 'lowshelf'; cabinetLS.frequency.value = 120; cabinetLS.gain.value = 3;
 
     const ph = makePhaser(ctx, { rate: currentPreset.phaser?.rate || 0.16, depth: currentPreset.phaser?.depth || 600, mix: currentPreset.phaser?.on ? (currentPreset.phaser.mix || 0.2) : 0 });
@@ -534,13 +567,17 @@ const buildGuitarEngine = (ctx: AudioContext, preset: any, master: GainNode, rev
         globalActiveVoices++;
         const f = midiToHz(midi);
         const oscP = currentPreset.osc || { width: 0.45, mainGain: 0.8, detGain: 0.2, subGain: 0.25 };
-        const sumNode = ctx.createGain(); sumNode.gain.value = 0.7; sumNode.connect(guitarInput);
+        
+        // #ЗАЧЕМ: Уменьшение громкости фабричных гитар в 4 раза по запросу.
+        // #ЧТО: sumNode.gain.value снижен с 0.7 до 0.175.
+        const sumNode = ctx.createGain(); sumNode.gain.value = 0.175; sumNode.connect(guitarInput);
         const voiceGain = ctx.createGain(); voiceGain.gain.value = 0; voiceGain.connect(sumNode);
         const voiceNodes: AudioNode[] = [voiceGain, sumNode];
 
         if (pickBuffer) {
             const pick = ctx.createBufferSource(); pick.buffer = pickBuffer;
-            const pickG = ctx.createGain(); pickG.gain.value = velocity * 0.5;
+            // #ЧТО: Громкость щипка pickG.gain.value снижена с 0.5 до 0.125.
+            const pickG = ctx.createGain(); pickG.gain.value = velocity * 0.125;
             pick.connect(pickG).connect(voiceGain); pick.start(when); pick.stop(when + 0.05);
             voiceNodes.push(pick, pickG);
         }
@@ -607,22 +644,6 @@ const buildGuitarEngine = (ctx: AudioContext, preset: any, master: GainNode, rev
 // ═══════════════════════════════════════════════════════════════════════════
 // MAIN FACTORY EXPORT
 // ═══════════════════════════════════════════════════════════════════════════
-
-export interface InstrumentAPI {
-    connect: (dest?: AudioNode) => void;
-    disconnect: () => void;
-    noteOn: (midi: number, when?: number, velocity?: number, duration?: number) => void;
-    noteOff: (midi: number, when?: number) => void;
-    allNotesOff: () => void;
-    setPreset: (p: any) => void;
-    setParam: (k: string, v: any) => void;
-    setVolume: (v: number) => void;
-    setVolumeDb: (db: number) => void;
-    getVolume: () => number;
-    setExpression: (v: number) => void;
-    preset: any;
-    type: string;
-}
 
 export async function buildMultiInstrument(ctx: AudioContext, {
     type = 'synth',
