@@ -160,7 +160,7 @@ export const V2_PRESETS = {
     phaser: { on: true, rate: 0.16, depth: 600, mix: 0.18 },
     delayA: { on: true, time: 0.38, fb: 0.25, mix: 0.15 },
     delayB: { on: false },
-    adsr: { a: 0.006, d: 0.4, s: 0.75, r: 2.5 }, // Increased sustain/release
+    adsr: { a: 0.006, d: 0.4, s: 0.75, r: 3.0 }, // Increased release
     reverbMix: 0.22
   },
 
@@ -182,7 +182,7 @@ export const V2_PRESETS = {
     phaser: { on: true, rate: 0.18, depth: 700, mix: 0.15 },
     delayA: { on: true, time: 0.38, fb: 0.22, mix: 0.12 },
     delayB: { on: true, time: 0.52, fb: 0.18, mix: 0.08 },
-    adsr: { a: 0.008, d: 0.5, s: 0.8, r: 3.0 }, // Increased sustain/release
+    adsr: { a: 0.008, d: 0.5, s: 0.8, r: 3.5 }, // Increased release
     reverbMix: 0.25
   }
 

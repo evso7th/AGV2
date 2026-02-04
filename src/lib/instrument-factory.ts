@@ -2,6 +2,7 @@
  * #ЗАЧЕМ: Центральная фабрика для создания высококачественных инструментов V2.
  * #ЧТО: Реализует конвейеры синтеза для synth, organ, bass и guitar.
  * #ИСПРАВЛЕНО: План 77 — внедрено физическое моделирование гитары (Pick Attack, Comb Filter, Cab Shelf).
+ * #ИСПРАВЛЕНО: Динамические таймауты для предотвращения обрыва длинных хвостов затухания (release).
  * #СВЯЗИ: Используется менеджерами V2 для создания экземпляров инструментов.
  */
 
@@ -164,8 +165,8 @@ const createPureLeslie = (ctx: AudioContext, config: any): SimpleFX => {
     hornLfo.frequency.value = initialSpeed;
     drumLfo.frequency.value = initialSpeed * 0.85;
     hornLfo.start(); drumLfo.start();
-    const lp = ctx.createBiquadFilter(); lp.type = 'lowpass'; lp.frequency.value = 800;
-    const hp = ctx.createBiquadFilter(); hp.type = 'highpass'; hp.frequency.value = 800;
+    const lp = ctx.createBiquadFilter(); lp.type='lowpass'; lp.frequency.value = 800;
+    const hp = ctx.createBiquadFilter(); hp.type='highpass'; hp.frequency.value = 800;
     input.connect(lp).connect(drumAmp).connect(wet).connect(output);
     input.connect(hp).connect(hornAmp).connect(wet).connect(output);
     return {
@@ -227,6 +228,7 @@ const triggerRelease = (ctx: AudioContext, voiceState: VoiceState, when: number,
         voiceState.node.gain.setTargetAtTime(0.0001, when, 0.02);
         return when + 0.05;
     } else {
+        voiceState.node.gain.setValueAtTime(voiceState.node.gain.value, when);
         voiceState.node.gain.setTargetAtTime(0.0001, when, release / 3);
         return when + release;
     }
@@ -254,14 +256,14 @@ const buildSynthEngine = (ctx: AudioContext, preset: any, master: GainNode, reve
     const filt1 = ctx.createBiquadFilter();
     const leslie = createPureLeslie(ctx, currentPreset.leslie || { on: false });
     const tremolo = makeTremolo(ctx, currentPreset.tremolo?.rate ?? 5.5, currentPreset.tremolo?.depth ?? 0.4, currentPreset.tremolo?.on ? (currentPreset.tremolo?.mix ?? 0.5) : 0);
-    const chorus = makeChorus(ctx, currentPreset.chorus?.rate ?? 0.3, currentPreset.chorus?.depth ?? 0.004, currentPreset.chorus?.on ? (currentPreset.chorus.mix ?? 0.3) : 0);
+    const chorus = makeChorus(ctx, { rate: currentPreset.chorus?.rate ?? 0.3, depth: currentPreset.chorus?.depth ?? 0.004, mix: currentPreset.chorus?.on ? (currentPreset.chorus.mix ?? 0.3) : 0 });
     
-    const delay = makeDelay(ctx, 
-        currentPreset.delay?.time ?? 0.35, 
-        currentPreset.delay?.fb ?? 0.25, 
-        3000, 
-        currentPreset.delay?.on ? (currentPreset.delay.mix ?? 0.2) : 0
-    );
+    const delay = makeDelay(ctx, {
+        time: currentPreset.delay?.time ?? 0.35, 
+        fb: currentPreset.delay?.fb ?? 0.25, 
+        hc: 3000, 
+        wet: currentPreset.delay?.on ? (currentPreset.delay.mix ?? 0.2) : 0
+    });
     
     const revSend = ctx.createGain();
 
@@ -294,9 +296,12 @@ const buildSynthEngine = (ctx: AudioContext, preset: any, master: GainNode, reve
 
     const noteOff = (midi: number, when = ctx.currentTime) => {
         const voice = activeVoices.get(midi); if (!voice) return; activeVoices.delete(midi);
-        const stopTime = triggerRelease(ctx, voice.voiceState, when, currentPreset.adsr?.a || 0.1, currentPreset.adsr?.r || 0.5);
+        const adsrR = currentPreset.adsr?.r || 0.5;
+        const stopTime = triggerRelease(ctx, voice.voiceState, when, currentPreset.adsr?.a || 0.1, adsrR);
         voice.nodes.forEach(n => { if (n instanceof OscillatorNode) n.stop(stopTime + 0.1); });
-        setTimeout(() => { try { voice.voiceGain.disconnect(); globalActiveVoices--; } catch(e){} }, 1000);
+        
+        const cleanupMs = (adsrR * 1000) + 500;
+        setTimeout(() => { try { voice.voiceGain.disconnect(); globalActiveVoices--; } catch(e){} }, cleanupMs);
     };
 
     return { 
@@ -358,9 +363,12 @@ const buildOrganEngine = (ctx: AudioContext, preset: any, master: GainNode, reve
 
     const noteOff = (midi: number, when = ctx.currentTime) => {
         const voice = activeVoices.get(midi); if (!voice) return; activeVoices.delete(midi);
-        const stopTime = triggerRelease(ctx, voice.voiceState, when, currentPreset.adsr?.a || 0.02, currentPreset.adsr?.r || 1.2);
+        const adsrR = currentPreset.adsr?.r || 1.2;
+        const stopTime = triggerRelease(ctx, voice.voiceState, when, currentPreset.adsr?.a || 0.02, adsrR);
         voice.nodes.forEach(n => { if (n instanceof OscillatorNode || n instanceof AudioBufferSourceNode) try { n.stop(stopTime + 0.1); } catch(e){} });
-        setTimeout(() => { try { voice.voiceGain.disconnect(); globalActiveVoices--; } catch(e){} }, 1000);
+        
+        const cleanupMs = (adsrR * 1000) + 500;
+        setTimeout(() => { try { voice.voiceGain.disconnect(); globalActiveVoices--; } catch(e){} }, cleanupMs);
     };
 
     return { 
@@ -398,9 +406,12 @@ const buildBassEngine = (ctx: AudioContext, preset: any, master: GainNode, rever
 
     const noteOff = (midi: number, when = ctx.currentTime) => {
         const voice = activeVoices.get(midi); if (!voice) return; activeVoices.delete(midi);
-        const stopTime = triggerRelease(ctx, voice.voiceState, when, currentPreset.adsr?.a || 0.01, currentPreset.adsr?.r || 0.25);
+        const adsrR = currentPreset.adsr?.r || 0.25;
+        const stopTime = triggerRelease(ctx, voice.voiceState, when, currentPreset.adsr?.a || 0.01, adsrR);
         voice.nodes.forEach(n => { if (n instanceof OscillatorNode) try { n.stop(stopTime + 0.1); } catch(e){} });
-        setTimeout(() => { try { voice.voiceGain.disconnect(); globalActiveVoices--; } catch(e){} }, 1000);
+        
+        const cleanupMs = (adsrR * 1000) + 500;
+        setTimeout(() => { try { voice.voiceGain.disconnect(); globalActiveVoices--; } catch(e){} }, cleanupMs);
     };
 
     return { noteOn, noteOff, allNotesOff: () => activeVoices.forEach((_, m) => noteOff(m)), setPreset: (p: any) => { currentPreset = p; }, setParam: (k: string, v: any) => {} };
@@ -437,21 +448,21 @@ const buildGuitarEngine = (ctx: AudioContext, preset: any, master: GainNode, rev
     cabinetLS.gain.value = 3; // Warm cabinet resonance
 
     // FX
-    const ph = makePhaser(ctx, currentPreset.phaser?.rate || 0.16, currentPreset.phaser?.depth || 600, currentPreset.phaser?.on ? (currentPreset.phaser.mix || 0.2) : 0);
+    const ph = makePhaser(ctx, { rate: currentPreset.phaser?.rate || 0.16, depth: currentPreset.phaser?.depth || 600, mix: currentPreset.phaser?.on ? (currentPreset.phaser.mix || 0.2) : 0 });
     
-    const dA = makeDelay(ctx, 
-        currentPreset.delayA?.time || 0.38, 
-        currentPreset.delayA?.fb || 0.28, 
-        3600, 
-        currentPreset.delayA?.on ? (currentPreset.delayA.mix || 0.2) : 0
-    );
+    const dA = makeDelay(ctx, {
+        time: currentPreset.delayA?.time || 0.38, 
+        fb: currentPreset.delayA?.fb || 0.28, 
+        hc: 3600, 
+        wet: currentPreset.delayA?.on ? (currentPreset.delayA.mix || 0.2) : 0
+    });
     
-    const dB_node = makeDelay(ctx, 
-        currentPreset.delayB?.time || 0.52, 
-        currentPreset.delayB?.fb || 0.22, 
-        3600, 
-        currentPreset.delayB?.on ? (currentPreset.delayB.mix || 0.1) : 0
-    );
+    const dB_node = makeDelay(ctx, {
+        time: currentPreset.delayB?.time || 0.52, 
+        fb: currentPreset.delayB?.fb || 0.22, 
+        hc: 3600, 
+        wet: currentPreset.delayB?.on ? (currentPreset.delayB.mix || 0.1) : 0
+    });
     
     const revSend = ctx.createGain(); revSend.gain.value = currentPreset.reverbMix || 0.18;
 
@@ -520,9 +531,12 @@ const buildGuitarEngine = (ctx: AudioContext, preset: any, master: GainNode, rev
 
     const noteOff = (midi: number, when = ctx.currentTime) => {
         const voice = activeVoices.get(midi); if (!voice) return; activeVoices.delete(midi);
-        const stopTime = triggerRelease(ctx, voice.voiceState, when, currentPreset.adsr?.a || 0.005, currentPreset.adsr?.r || 1.5);
+        const adsrR = currentPreset.adsr?.r || 1.5;
+        const stopTime = triggerRelease(ctx, voice.voiceState, when, currentPreset.adsr?.a || 0.005, adsrR);
         voice.nodes.forEach(n => { if (n instanceof OscillatorNode) try { n.stop(stopTime + 0.1); } catch(e){} });
-        setTimeout(() => { try { voice.sum.disconnect(); globalActiveVoices--; } catch(e){} }, 1500);
+        
+        const cleanupMs = (adsrR * 1000) + 500;
+        setTimeout(() => { try { voice.sum.disconnect(); globalActiveVoices--; } catch(e){} }, cleanupMs);
     };
 
     const updateNodes = (p: any) => {
@@ -600,7 +614,7 @@ export async function buildMultiInstrument(ctx: AudioContext, {
         setVolume: (v) => instrumentGain.gain.setTargetAtTime(v, ctx.currentTime, 0.02),
         getVolume: () => instrumentGain.gain.value,
         setVolumeDb: (db) => instrumentGain.gain.setTargetAtTime(dB(db), ctx.currentTime, 0.02),
-        setExpression: (v) => expressionGain.gain.setTargetAtTime(v, ctx.currentTime, 0.01),
+        setExpression: (v) => instrumentGain.gain.setTargetAtTime(v, ctx.currentTime, 0.01),
         preset,
         type
     };
