@@ -1,4 +1,3 @@
-
 import type { FractalEvent, AccompanimentInstrument } from '@/types/fractal';
 import type { Note } from "@/types/music";
 import { buildMultiInstrument } from './instrument-factory';
@@ -13,9 +12,6 @@ import type { DarkTelecasterSampler } from './dark-telecaster-sampler';
  * This version acts as a "smart performer", routing events to either its
  * internal synthesizer (for synth sounds) or to specialized guitar samplers.
  * It's made universal by accepting a 'partName' to know which events to process.
- * 
- * #ОБНОВЛЕНО (ПЛАН 93): Теперь полноценно поддерживает басовый конвейер V2
- * с маппингом V1-имен в современные пресеты фабрики.
  */
 export class MelodySynthManagerV2 {
     private audioContext: AudioContext;
@@ -68,7 +64,6 @@ export class MelodySynthManagerV2 {
     }
     
     private async loadInstrument(presetName: keyof typeof V2_PRESETS | keyof typeof BASS_PRESETS, instrumentType: 'bass' | 'synth' | 'organ' | 'guitar' = 'synth') {
-        // #ЗАЧЕМ: Критически важная очистка старого инструмента.
         if (this.synth) {
             console.log(`[MelodySynthManagerV2] Disposing old instrument before loading ${presetName}`);
             this.synth.disconnect();
@@ -105,9 +100,9 @@ export class MelodySynthManagerV2 {
         // Routing for Samplers (only for melody)
         if (this.partName === 'melody') {
             if (instrumentHint === 'blackAcoustic') {
-                // #ЗАЧЕМ: Подъем Black Acoustic на 2 октавы (+24 полутона) по просьбе пользователя.
-                const liftedNotes = notesToPlay.map(n => ({ ...n, midi: n.midi + 24 }));
-                this.blackAcousticSampler.schedule(liftedNotes, barStartTime, tempo);
+                // #ЗАЧЕМ: Удален подъем на 2 октавы (+24), чтобы вернуть гитару в густой, "грудной" регистр.
+                // #ИСПРАВЛЕНО (ПЛАН 129): Теперь инструмент звучит в 3-й и 4-й октавах, как того требует Блюзовый Мозг.
+                this.blackAcousticSampler.schedule(notesToPlay, barStartTime, tempo);
                 return;
             }
             if (instrumentHint === 'telecaster') {
@@ -124,7 +119,6 @@ export class MelodySynthManagerV2 {
         let finalInstrumentHint = instrumentHint;
         if (instrumentHint) {
             if (this.partName === 'bass') {
-                // #ЗАЧЕМ: Маппинг V1 басовых имен в современные V2 пресеты.
                 const mappedName = BASS_PRESET_MAP[instrumentHint];
                 if (mappedName) {
                     finalInstrumentHint = mappedName;
