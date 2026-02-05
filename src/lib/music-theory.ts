@@ -1,9 +1,9 @@
+
 /**
  * @fileOverview Universal Music Theory Utilities
  * #ЗАЧЕМ: Базовый набор инструментов для работы с нотами, ладами и ритмом.
  * #ЧТО: Функции для получения гамм, инверсий, ретроградов и гуманизации.
  *       Внедрена система цепей Маркова для генерации гармонического скелета.
- * #СВЯЗИ: Используется во всех "Жанровых Мозгах" и FractalMusicEngine.
  */
 
 import type { 
@@ -22,23 +22,14 @@ export const DEGREE_TO_SEMITONE: Record<string, number> = {
     'b6': 8, '6': 9, 'b7': 10, '7': 11, 'R+8': 12, '9': 14, '11': 17
 };
 
-// --- MARKOV HARMONIC MATRICES ---
-
-/**
- * Вероятности переходов между ступенями для блюза.
- * Индексирует: I, IV, V, vi, bVI
- */
 const BLUES_HARMONIC_TRANSITIONS: Record<string, Record<string, number>> = {
-    'I':  { 'I': 0.5, 'IV': 0.35, 'V': 0.1, 'vi': 0.05 },
-    'IV': { 'I': 0.4, 'IV': 0.4, 'V': 0.15, 'bVI': 0.05 },
-    'V':  { 'IV': 0.6, 'I': 0.3, 'V': 0.1 },
+    'I':  { 'I': 0.45, 'IV': 0.4, 'V': 0.1, 'vi': 0.05 },
+    'IV': { 'I': 0.3, 'IV': 0.5, 'V': 0.1, 'bVI': 0.1 },
+    'V':  { 'IV': 0.7, 'I': 0.2, 'V': 0.1 },
     'vi': { 'IV': 0.5, 'V': 0.3, 'I': 0.2 },
-    'bVI': { 'V': 0.8, 'I': 0.2 }
+    'bVI': { 'V': 0.9, 'I': 0.1 }
 };
 
-/**
- * #ЗАЧЕМ: Универсальный выбор следующего состояния по матрице Маркова.
- */
 export function markovNext<T extends string>(matrix: Record<T, Record<T, number>>, current: T, random: any): T {
     const transitions = matrix[current];
     if (!transitions) return current;
@@ -54,10 +45,6 @@ export function markovNext<T extends string>(matrix: Record<T, Record<T, number>
     return entries[entries.length - 1][0];
 }
 
-/**
- * #ЗАЧЕМ: Генерация базовой гармонической подложки (аксиомы).
- * #ЧТО: Создает длинные пэды на основе текущего GhostChord.
- */
 export function createHarmonyAxiom(
     chord: GhostChord,
     mood: Mood,
@@ -69,14 +56,13 @@ export function createHarmonyAxiom(
     const isMinor = chord.chordType === 'minor' || chord.chordType === 'diminished';
     const root = chord.rootNote;
     
-    // Базовое трезвучие для аккомпанемента
     const notes = [root, root + (isMinor ? 3 : 4), root + 7];
     
     notes.forEach((note, i) => {
         events.push({
             type: 'accompaniment',
-            note: note + 24, // Средне-высокий регистр
-            time: i * 0.05, // Легкое арпеджио для живости
+            note: note + 24,
+            time: i * 0.05,
             duration: 4.0,
             weight: 0.5 - (i * 0.1),
             technique: 'swell',
@@ -111,7 +97,7 @@ export function getScaleForMood(mood: Mood, genre?: Genre, chordType?: 'major' |
   }
 
   const fullScale: number[] = [];
-  for (let octave = 0; octave < 3; octave++) {
+  for (let octave = 0; octave < 4; octave++) { // Extended for solo
       for (const note of baseScale) {
           fullScale.push(E1 + (octave * 12) + note);
       }
@@ -125,8 +111,6 @@ export function humanizeEvents(events: FractalEvent[], amount: number, random: a
         e.time = Math.max(0, e.time + shift);
     });
 }
-
-// ───── TECHNIQUES OF MELODIC DEVELOPMENT ─────
 
 export function invertMelody(phrase: any[]): any[] {
     if (phrase.length < 2) return phrase;
@@ -159,7 +143,7 @@ export function retrogradeMelody(phrase: any[]): any[] {
 }
 
 export function applyNewRhythm(phrase: any[], random: any): any[] {
-    const rhythms = [[3, 3, 3, 3], [2, 4, 2, 4], [6, 6], [4, 2, 4, 2]];
+    const rhythms = [[3, 3, 3, 3], [2, 4, 2, 4], [6, 6], [4, 2, 4, 2], [2, 2, 2, 6]];
     const selected = rhythms[Math.floor(random.next() * rhythms.length)];
     let currentTick = phrase[0].t;
     
@@ -183,7 +167,7 @@ export function transposeMelody(phrase: any[], interval: number): any[] {
 export function addOrnaments(phrase: any[], random: any): any[] {
     const result = [];
     for (const note of phrase) {
-        if (note.d >= 3 && random.next() < 0.4) {
+        if (note.d >= 2 && random.next() < 0.5) {
             result.push({ t: Math.max(0, note.t - 1), d: 1, deg: (random.next() > 0.5 ? 'b3' : '2') as any, tech: 'gr' });
             result.push({ ...note, tech: 'sl' });
         } else result.push(note);
@@ -194,11 +178,11 @@ export function addOrnaments(phrase: any[], random: any): any[] {
 export function subdivideRhythm(phrase: any[], random: any): any[] {
     const result = [];
     for (const note of phrase) {
-        if ((note.d || 2) >= 3 && random.next() < 0.75) {
+        if ((note.d || 2) >= 3 && random.next() < 0.8) {
             const first = Math.floor((note.d || 2) / 2);
             const second = (note.d || 2) - first;
             result.push({ ...note, d: first });
-            result.push({ ...note, t: (note.t + first) % 12, d: second, tech: random.next() < 0.5 ? 'h/p' : 'sl' });
+            result.push({ ...note, t: (note.t + first) % 12, d: second, tech: 'h/p' });
         } else result.push(note);
     }
     return result;
@@ -207,9 +191,9 @@ export function subdivideRhythm(phrase: any[], random: any): any[] {
 export function varyRhythm(phrase: any[], random: any): any[] {
     const p = [...phrase];
     if (p.length < 2) return p;
-    if (random.next() < 0.5) {
+    if (random.next() < 0.6) {
         const i = Math.floor(random.next() * (p.length - 1));
-        if ((p[i].d || 2) < 4 && (p[i+1].d || 2) < 4) { 
+        if ((p[i].d || 2) < 6 && (p[i+1].d || 2) < 6) { 
             p[i].d = (p[i].d || 2) + (p[i+1].d || 2); 
             p.splice(i+1, 1); 
         }
@@ -237,10 +221,10 @@ export function generateSuiteDNA(totalBars: number, mood: Mood, seed: number, ra
             
             while (currentBarInPart < partDuration) {
                 const r = random.next();
-                let duration = r < 0.6 ? 4 : (r < 0.9 ? 8 : 12);
+                let duration = r < 0.5 ? 4 : (r < 0.85 ? 8 : 12);
                 
                 if (mood === 'melancholic' && currentDegree === 'IV') {
-                    duration = random.next() < 0.8 ? 8 : 12;
+                    duration = random.next() < 0.85 ? 8 : 12;
                 }
                 
                 const finalDuration = Math.min(duration, partDuration - currentBarInPart);
@@ -278,9 +262,9 @@ export function generateSuiteDNA(totalBars: number, mood: Mood, seed: number, ra
     });
 
     const possibleTempos = {
-        joyful: [110, 135], enthusiastic: [120, 150], contemplative: [72, 88],
-        dreamy: [68, 82], calm: [64, 78], melancholic: [64, 72],
-        gloomy: [66, 76], dark: [62, 70], epic: [115, 140], anxious: [82, 98],
+        joyful: [115, 140], enthusiastic: [125, 155], contemplative: [78, 92],
+        dreamy: [72, 86], calm: [68, 82], melancholic: [64, 76],
+        gloomy: [68, 78], dark: [64, 72], epic: [120, 145], anxious: [88, 105],
     };
 
     const [minTempo, maxTempo] = (possibleTempos as any)[mood] || [60, 80];
