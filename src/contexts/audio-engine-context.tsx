@@ -50,7 +50,7 @@ type WorkerMessage = {
 // --- Constants ---
 const VOICE_BALANCE: Record<InstrumentPart, number> = {
   bass: 0.5, 
-  melody: 1.0, // #ЗАЧЕМ: Поднято с 0.7 для увеличения громкости лида (План №99).
+  melody: 1.0, 
   accompaniment: 0.6, 
   drums: 1.0,
   effects: 0.6, sparkles: 0.7, piano: 1.0, violin: 0.8, flute: 0.8, guitarChords: 0.9,
@@ -68,6 +68,7 @@ interface AudioEngineContextType {
   isInitializing: boolean;
   isPlaying: boolean;
   useMelodyV2: boolean;
+  isRecording: boolean;
   initialize: () => Promise<boolean>;
   setIsPlaying: (playing: boolean) => void;
   updateSettings: (settings: Partial<WorkerSettings>) => void;
@@ -80,6 +81,8 @@ interface AudioEngineContextType {
   startMasterFadeOut: (durationInSeconds: number) => void;
   cancelMasterFadeOut: () => void;
   toggleMelodyEngine: () => void;
+  startRecording: () => void;
+  stopRecording: () => void;
 }
 
 const AudioEngineContext = createContext<AudioEngineContextType | null>(null);
@@ -98,6 +101,7 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
   const [isInitializing, setIsInitializing] = useState(false);
   const [isPlaying, setIsPlaying] = useState(false);
   const [useMelodyV2, setUseMelodyV2] = useState(false);
+  const [isRecording, setIsRecording] = useState(false);
   
   const workerRef = useRef<Worker | null>(null);
   const audioContextRef = useRef<AudioContext | null>(null);
@@ -109,7 +113,7 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
   const accompanimentManagerV2Ref = useRef<AccompanimentSynthManagerV2 | null>(null);
   const melodyManagerRef = useRef<MelodySynthManager | null>(null);
   const melodyManagerV2Ref = useRef<MelodySynthManagerV2 | null>(null);
-  const bassManagerV2Ref = useRef<MelodySynthManagerV2 | null>(null); // Dedicated V2 Bass Manager
+  const bassManagerV2Ref = useRef<MelodySynthManagerV2 | null>(null);
   const harmonyManagerRef = useRef<HarmonySynthManager | null>(null);
   const pianoAccompanimentManagerRef = useRef<PianoAccompanimentManager | null>(null);
   const sparklePlayerRef = useRef<SparklePlayer | null>(null);
@@ -119,6 +123,10 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
   const darkTelecasterSamplerRef = useRef<DarkTelecasterSampler | null>(null);
   
   const masterGainNodeRef = useRef<GainNode | null>(null);
+  const recorderDestinationRef = useRef<MediaStreamAudioDestinationNode | null>(null);
+  const mediaRecorderRef = useRef<MediaRecorder | null>(null);
+  const recordedChunksRef = useRef<Blob[]>([]);
+
   const gainNodesRef = useRef<Record<Exclude<InstrumentPart, 'pads' | 'effects'>, GainNode | null>>({
     bass: null, melody: null, accompaniment: null, drums: null, sparkles: null, piano: null, violin: null, flute: null, guitarChords: null, acousticGuitarSolo: null, blackAcoustic: null, sfx: null, harmony: null, telecaster: null, darkTelecaster: null, pianoAccompaniment: null,
   });
@@ -128,6 +136,42 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
   const impulseTimerRef = useRef<NodeJS.Timeout | null>(null);
   
   const { toast } = useToast();
+
+  const startRecording = useCallback(() => {
+    if (!recorderDestinationRef.current || !isInitialized) return;
+    
+    recordedChunksRef.current = [];
+    const recorder = new MediaRecorder(recorderDestinationRef.current.stream, {
+      mimeType: 'audio/webm;codecs=opus'
+    });
+    
+    recorder.ondataavailable = (e) => {
+      if (e.data.size > 0) recordedChunksRef.current.push(e.data);
+    };
+    
+    recorder.onstop = () => {
+      const blob = new Blob(recordedChunksRef.current, { type: 'audio/webm' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `auragroove-session-${Date.now()}.webm`;
+      a.click();
+      URL.revokeObjectURL(url);
+    };
+    
+    recorder.start();
+    mediaRecorderRef.current = recorder;
+    setIsRecording(true);
+    toast({ title: "Recording Started", description: "Audio is now being captured." });
+  }, [isInitialized, toast]);
+
+  const stopRecording = useCallback(() => {
+    if (mediaRecorderRef.current && isRecording) {
+      mediaRecorderRef.current.stop();
+      setIsRecording(false);
+      toast({ title: "Recording Stopped", description: "Your session has been saved." });
+    }
+  }, [isRecording, toast]);
 
   const resetWorkerCallback = useCallback(() => {
     if (workerRef.current) {
@@ -179,7 +223,6 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
             melodyManagerRef.current.setInstrument(name as AccompanimentInstrument);
         }
     } else if (part === 'bass') {
-        // #ЗАЧЕМ: Поддержка переключения инструментов для V2 басового конвейера.
         if (useMelodyV2 && bassManagerV2Ref.current) {
             await bassManagerV2Ref.current.setInstrument(name as any);
         } else if (!useMelodyV2 && bassManagerRef.current) {
@@ -230,9 +273,6 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
       drumMachineRef.current.schedule(drumEvents, barStartTime, tempo);
     }
     
-    // #ЗАЧЕМ: Реализация переключения между V1 и V2 басовыми конвейерами.
-    // #ЧТО: Если включен режим V2, события баса отправляются в `bassManagerV2Ref` (Steel Foundation).
-    //      В противном случае используется старый V1-менеджер.
     if (bassEvents.length > 0) {
         if (useMelodyV2 && bassManagerV2Ref.current) {
             bassManagerV2Ref.current.schedule(bassEvents, barStartTime, tempo, instrumentHints?.bass);
@@ -279,7 +319,6 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
   }, [useMelodyV2]);
 
   const setBassTechniqueCallback = useCallback((technique: BassTechnique) => {
-    // This is now handled via instrument presets in V2
   }, []);
 
   useEffect(() => {
@@ -349,6 +388,10 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
         if (!masterGainNodeRef.current) {
             masterGainNodeRef.current = context.createGain();
             masterGainNodeRef.current.connect(context.destination);
+            
+            // #ЗАЧЕМ: Создание моста для захвата звука.
+            recorderDestinationRef.current = context.createMediaStreamDestination();
+            masterGainNodeRef.current.connect(recorderDestinationRef.current);
         }
 
         if (!gainNodesRef.current.bass) {
@@ -443,7 +486,6 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
              if (!darkTelecasterSamplerRef.current?.isInitialized) {
                 await darkTelecasterSamplerRef.current?.init();
             }
-            // #ЗАЧЕМ: Инициализация выделенного V2 басового конвейера.
             bassManagerV2Ref.current = new MelodySynthManagerV2(
                 context,
                 gainNodesRef.current.bass!,
@@ -535,8 +577,8 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
         if (audioContextRef.current.state === 'suspended') {
             audioContextRef.current.resume();
         }
-        stopAllSounds(); // Clear any lingering sounds before starting
-        nextBarTimeRef.current = audioContextRef.current.currentTime + 0.2; // Add a buffer
+        stopAllSounds(); 
+        nextBarTimeRef.current = audioContextRef.current.currentTime + 0.2; 
         workerRef.current.postMessage({ command: 'start' });
         scheduleNextImpulse();
     } else {
@@ -574,13 +616,13 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
 
   return (
     <AudioEngineContext.Provider value={{
-        isInitialized, isInitializing, isPlaying, useMelodyV2, initialize,
+        isInitialized, isInitializing, isPlaying, useMelodyV2, isRecording, initialize,
         setIsPlaying: setIsPlayingCallback, updateSettings: updateSettingsCallback,
         resetWorker: resetWorkerCallback,
         setVolume: setVolumeCallback, setInstrument: setInstrumentCallback,
         setBassTechnique: setBassTechniqueCallback, setTextureSettings: setTextureSettingsCallback,
         setEQGain: setEQGainCallback, startMasterFadeOut, cancelMasterFadeOut,
-        toggleMelodyEngine,
+        toggleMelodyEngine, startRecording, stopRecording
     }}>
       {children}
     </AudioEngineContext.Provider>

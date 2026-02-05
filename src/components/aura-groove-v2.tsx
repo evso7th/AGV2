@@ -2,7 +2,7 @@
 'use client';
 
 import { useState, useEffect } from "react";
-import { SlidersHorizontal, Music, Pause, Speaker, FileMusic, Drum, GitBranch, Atom, Piano, Home, X, Sparkles, Sprout, LayoutGrid, Timer, Guitar, RefreshCw, Bot, Waves, Cog } from "lucide-react";
+import { SlidersHorizontal, Music, Pause, Speaker, FileMusic, Drum, GitBranch, Atom, Piano, Home, X, Sparkles, Sprout, LayoutGrid, Timer, Guitar, RefreshCw, Bot, Waves, Cog, Radio } from "lucide-react";
 import Image from "next/image";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -47,7 +47,7 @@ const MOOD_COLOR_CLASSES: Record<MoodCategory, string> = {
 
 
 export function AuraGrooveV2({
-  isPlaying, isInitializing, handlePlayPause, handleRegenerate, drumSettings, setDrumSettings, instrumentSettings,
+  isPlaying, isInitializing, isRecording, handlePlayPause, handleRegenerate, handleToggleRecording, drumSettings, setDrumSettings, instrumentSettings,
   setInstrumentSettings, handleBassTechniqueChange, handleVolumeChange, textureSettings, handleTextureEnabledChange,
   bpm, handleBpmChange, score, handleScoreChange, density, setDensity, handleGoHome,
   isEqModalOpen, setIsEqModalOpen, eqSettings, handleEqChange,
@@ -70,11 +70,10 @@ export function AuraGrooveV2({
 
   const v2MelodyInstruments = Object.keys(V2_PRESETS).filter(k => V2_PRESETS[k as keyof typeof V2_PRESETS].type !== 'bass');
   
-  // Bass always uses V1 instruments now
   const bassInstrumentList = v1BassInstrumentNames;
 
   const melodyInstrumentList = useMelodyV2 ? v2MelodyInstruments : v1MelodyInstruments;
-  const textureInstrumentList = useMelodyV2 ? v2MelodyInstruments : v1MelodyInstruments; // 'accompaniment' uses this
+  const textureInstrumentList = useMelodyV2 ? v2MelodyInstruments : v1MelodyInstruments; 
 
   const harmonyInstrumentList: ('piano' | 'guitarChords' | 'flute' | 'violin' | 'none')[] = ['piano', 'guitarChords', 'flute', 'violin', 'none'];
   const moodList: Mood[] = ['epic', 'joyful', 'enthusiastic', 'melancholic', 'dark', 'anxious', 'dreamy', 'contemplative', 'calm'];
@@ -92,8 +91,7 @@ export function AuraGrooveV2({
     'acousticGuitar': 'Acoustic Folk',
     'neuro_f_matrix': 'Neuro F-Matrix',
     'rnb': 'R&B',
-    'trance': 'SlowTrance', // UI RENAME
-    // V2 presets
+    'trance': 'SlowTrance', 
     'organ': 'Cathedral Organ',
     'organ_soft_jazz': 'Soft Jazz Organ',
     'synth': 'Emerald Pad',
@@ -140,9 +138,19 @@ export function AuraGrooveV2({
           </div>
         </div>
         <div className="flex items-center justify-center gap-2 pt-2 pb-1.5">
-           <Button type="button" onClick={handlePlayPause} disabled={isInitializing} className="w-[50%] text-base h-10">
+           <Button type="button" onClick={handlePlayPause} disabled={isInitializing} className="w-[45%] text-base h-10">
               {isPlaying ? <Pause className="mr-2 h-5 w-5" /> : <Music className="mr-2 h-5 w-5" />}
               {isPlaying ? "Pause" : "Play"}
+           </Button>
+           <Button 
+              type="button" 
+              onClick={handleToggleRecording} 
+              disabled={isInitializing} 
+              variant={isRecording ? "destructive" : "outline"}
+              className="h-10 w-10 p-0"
+              title={isRecording ? "Stop & Download" : "Record Session"}
+           >
+             <Radio className={cn("h-5 w-5", isRecording && "animate-pulse")} />
            </Button>
            <Button type="button" onClick={handleRegenerate} disabled={isInitializing} variant="outline" className="h-10 w-10 p-0">
              <RefreshCw className={cn("h-5 w-5", isRegenerating && "animate-spin")} />

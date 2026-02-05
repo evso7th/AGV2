@@ -14,6 +14,7 @@ export type AuraGrooveProps = {
   isPlaying: boolean;
   isInitializing: boolean;
   isRegenerating: boolean;
+  isRecording: boolean;
   loadingText: string;
   drumSettings: DrumSettings;
   setDrumSettings: (settings: React.SetStateAction<DrumSettings>) => void;
@@ -29,6 +30,7 @@ export type AuraGrooveProps = {
   handleScoreChange: (value: ScoreName) => void;
   handlePlayPause: () => void;
   handleRegenerate: () => void;
+  handleToggleRecording: () => void;
   density: number;
   setDensity: (value: number) => void;
   composerControlsInstruments: boolean;
@@ -62,6 +64,7 @@ export const useAuraGroove = (): AuraGrooveProps => {
     isInitializing,
     isPlaying,
     useMelodyV2, 
+    isRecording,
     toggleMelodyEngine,
     initialize, 
     setIsPlaying: setEngineIsPlaying, 
@@ -74,6 +77,8 @@ export const useAuraGroove = (): AuraGrooveProps => {
     setEQGain,
     startMasterFadeOut,
     cancelMasterFadeOut,
+    startRecording,
+    stopRecording
   } = useAudioEngine();
   
   const router = useRouter();
@@ -112,7 +117,6 @@ export const useAuraGroove = (): AuraGrooveProps => {
   const [hasPlayedOnce, setHasPlayedOnce] = useState(false);
 
 
-  // Automatically initialize the engine when the component mounts
   useEffect(() => {
     initialize();
   }, [initialize]);
@@ -137,8 +141,6 @@ export const useAuraGroove = (): AuraGrooveProps => {
     };
   }, [bpm, score, genre, instrumentSettings, drumSettings, textureSettings, density, composerControlsInstruments, mood, useMelodyV2, introBars]);
 
-  // #ИСПРАВЛЕНО (ПЛАН 1286): Этот useEffect теперь ГАРАНТИРОВАННО отправляет
-  // полные, корректные настройки после того, как движок будет готов их принять.
   useEffect(() => {
     if (isInitialized) {
         console.log('[useAuraGroove] Initialized. Sending full settings to worker.');
@@ -158,12 +160,6 @@ export const useAuraGroove = (): AuraGrooveProps => {
     }
   }, [isInitialized, genre, mood, getFullSettings, updateSettings, instrumentSettings, drumSettings, textureSettings, setVolume, setEngineTextureSettings, setBassTechnique]);
 
-  // #ЗАЧЕМ: Этот useEffect гарантирует, что воркер ВСЕГДА будет знать актуальное состояние V2-движка.
-  // #ЧТО: Он следит за изменением флага `useMelodyV2`. Как только флаг меняется,
-  //      он немедленно вызывает `updateSettings` для отправки полного, обновленного объекта
-  //      настроек в Web Worker.
-  // #СВЯЗИ: Решает проблему "разделенного сознания", когда UI и воркер имели разные
-  //         представления о том, какой движок мелодии активен.
   useEffect(() => {
       if (isInitialized) {
           console.log(`[useAuraGroove] Syncing settings with worker, useMelodyV2 is now: ${useMelodyV2}`);
@@ -171,10 +167,6 @@ export const useAuraGroove = (): AuraGrooveProps => {
       }
   }, [useMelodyV2]);
 
-  // #ЗАЧЕМ: Этот useEffect синхронизирует BPM в UI с темпом, заданным в блюпринте.
-  // #ЧТО: При смене genre или mood он асинхронно загружает нужный блюпринт,
-  //      извлекает из него базовый темп и устанавливает его в состояние `bpm`.
-  // #СВЯЗИ: Обеспечивает, что UI всегда отражает актуальный темп композитора.
   useEffect(() => {
     const fetchBlueprintBpm = async () => {
       try {
@@ -194,7 +186,6 @@ export const useAuraGroove = (): AuraGrooveProps => {
   }, [genre, mood, score, isInitialized]);
 
 
-  // Timer logic
   useEffect(() => {
     if (timerSettings.isActive && timerSettings.timeLeft > 0) {
       timerIntervalRef.current = setInterval(() => {
@@ -228,7 +219,6 @@ export const useAuraGroove = (): AuraGrooveProps => {
       return;
     }
     
-    // #РЕШЕНИЕ (ПЛАН 931): Вызывать регенерацию сюиты только при самом первом нажатии Play.
     if (!hasPlayedOnce && !isPlaying) {
       console.log("[useAuraGroove] First play detected. Triggering initial regeneration.");
       resetWorker();
@@ -239,13 +229,18 @@ export const useAuraGroove = (): AuraGrooveProps => {
   }, [isInitialized, isPlaying, setEngineIsPlaying, hasPlayedOnce, resetWorker]);
 
     const handleRegenerate = useCallback(() => {
-        // #ИСПРАВЛЕНО: Логика упрощена. Теперь мы просто вызываем resetWorker.
-        //              Сам resetWorker (в контексте) и воркер теперь обрабатывают
-        //              "горячую перезагрузку" без необходимости останавливать isPlaying.
         setIsRegenerating(true);
         setTimeout(() => setIsRegenerating(false), 500); 
         resetWorker();
     }, [resetWorker]);
+
+  const handleToggleRecording = useCallback(() => {
+    if (isRecording) {
+      stopRecording();
+    } else {
+      startRecording();
+    }
+  }, [isRecording, startRecording, stopRecording]);
 
   const handleInstrumentChange = (part: keyof InstrumentSettings, name: BassInstrument | MelodyInstrument | AccompanimentInstrument | 'piano' | 'pianoAccompaniment' | 'none') => {
     let newInstrumentName = name;
@@ -334,9 +329,11 @@ export const useAuraGroove = (): AuraGrooveProps => {
     isInitializing,
     isPlaying,
     isRegenerating,
+    isRecording,
     loadingText: isInitializing ? 'Initializing...' : (isInitialized ? 'Ready' : 'Click to initialize audio'),
     handlePlayPause,
     handleRegenerate,
+    handleToggleRecording,
     drumSettings,
     setDrumSettings: handleDrumSettingsChange,
     instrumentSettings,
