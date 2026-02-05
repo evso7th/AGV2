@@ -182,6 +182,11 @@ export class FractalMusicEngine {
       }
   }
 
+  /**
+   * #ЗАЧЕМ: Инициализирует движок с уникальным состоянием.
+   * #ЧТО: Генерирует ДНК, перемешивает индексы риффов, сбрасывает память.
+   * #ОБНОВЛЕНО (ПЛАН 81): Добавлена принудительная встряска при старте для гарантии уникальности первого такта.
+   */
   public initialize(force: boolean = false) {
     if (this.isInitialized && !force) {
         return;
@@ -194,7 +199,7 @@ export class FractalMusicEngine {
     this.nextAccompanimentDelay = this.random.next() * 7 + 5;
     this.hasBassBeenMutated = false;
     
-    // #ЗАЧЕМ: Сброс памяти ансамбля, крючков и истории мелодии при полной инициализации сюиты.
+    // Сброс памяти ансамбля, крючков и истории мелодии
     this.activatedInstruments.clear(); 
     this.hookLibrary = [];
     this.melodyHistory = [];
@@ -232,7 +237,12 @@ export class FractalMusicEngine {
     this.bassPhraseLibrary = [];
     this.accompPhraseLibrary = [];
     
+    // #ЗАЧЕМ: "Встряска" для первого такта.
+    // #ЧТО: Пропускаем несколько холостых циклов рандомайзера.
+    for(let i=0; i < 5; i++) this.random.next();
+
     this.isInitialized = true;
+    console.log(`%c[Engine] Initialized. Mood: ${this.config.mood}, Genre: ${this.config.genre}, Seed: ${this.config.seed}`, 'color: #32CD32; font-weight: bold;');
   }
   
     private generateDrumEvents(navInfo: NavigationInfo | null): FractalEvent[] {

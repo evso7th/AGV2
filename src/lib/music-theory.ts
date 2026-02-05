@@ -434,9 +434,15 @@ export function createBluesBassAxiom(
     return phrase;
 }
 
+/**
+ * #ЗАЧЕМ: Центральный генератор мелодии для блюза с поддержкой классических техник развития.
+ * #ЧТО: Реализует семантический выбор ликов, секвенции, вариации и репризы.
+ * #ОБНОВЛЕНО (ПЛАН 81): Теперь лики выбираются по тегам, а не только по жестким планам. 
+ *          Добавлена поддержка секвенций и агрессивных вариаций.
+ */
 export function generateBluesMelodyChorus(
     currentChord: GhostChord,
-    random: { next: () => number, nextInt: (max: number) => number; },
+    random: { next: () => number, nextInt: (max: number) => number; shuffle: <T>(array: T[]) => T[]; },
     partId: string,
     epoch: number,
     rules: InstrumentBehaviorRules,
@@ -444,50 +450,66 @@ export function generateBluesMelodyChorus(
     melodyHistory: string[],
     cachedMelodyChorus: { bar: number, events: FractalEvent[] }
 ): { events: FractalEvent[], log: string } {
-    const soloPlanId = rules.soloPlan;
-    if (!soloPlanId || !BLUES_SOLO_PLANS[soloPlanId]) {
-        return { events: [], log: `[Melody] Solo plan '${soloPlanId}' not found.` };
-    }
-
-    const plan = BLUES_SOLO_PLANS[soloPlanId];
-    const chorusLength = 12;
-    const currentChorusIndex = Math.floor(epoch / chorusLength) % plan.choruses.length;
-    const barInChorus = epoch % chorusLength;
     
     // Check cache first
     if (cachedMelodyChorus.bar === epoch) {
         return { events: cachedMelodyChorus.events, log: `[Melody] Using cached chorus for bar ${epoch}` };
     }
 
-    const chorusPlan = plan.choruses[currentChorusIndex];
-    if (!chorusPlan || barInChorus >= chorusPlan.length) {
-         return { events: [], log: `[Melody] Invalid plan for chorus ${currentChorusIndex} at bar ${barInChorus}` };
+    const chorusLength = 12;
+    const barInChorus = epoch % chorusLength;
+    const isMinor = currentChord.chordType === 'minor' || currentChord.chordType === 'diminished';
+    
+    // 1. Semantic Tag Selection
+    const targetTag = isMinor ? 'minor' : 'major';
+    const isTurnaround = barInChorus === 11;
+    
+    let lickId: string;
+    let strategy: 'statement' | 'sequence' | 'variation' | 'reprise' = 'statement';
+
+    // #ЗАЧЕМ: Принудительная вариативность при первом запуске и на границах фраз.
+    // #ЧТО: Если мы в начале хора или имеем историю, мы решаем между развитием и новой мыслью.
+    const lastLickId = melodyHistory[melodyHistory.length - 1];
+    
+    if (isTurnaround) {
+        lickId = 'L09'; // Classic turnaround
+    } else if (barInChorus > 0 && barInChorus % 2 === 0 && lastLickId && random.next() < 0.4) {
+        // SEQUENCE OR VARIATION logic
+        strategy = random.next() < 0.5 ? 'sequence' : 'variation';
+        lickId = lastLickId;
+    } else {
+        // NEW STATEMENT
+        const possibleLicks = Object.entries(BLUES_SOLO_LICKS).filter(([id, data]) => {
+            if (isTurnaround) return data.tags.includes('turnaround');
+            return data.tags.includes(targetTag);
+        });
+        lickId = possibleLicks[random.nextInt(possibleLicks.length)][0];
     }
 
-    const lickId = chorusPlan[barInChorus];
-    const lickData = BLUES_SOLO_LICKS[lickId];
-    if (!lickData) {
-        return { events: [], log: `[Melody] Lick '${lickId}' not found.` };
-    }
+    melodyHistory.push(lickId);
+    if (melodyHistory.length > 8) melodyHistory.shift();
 
-    // #ЗАЧЕМ: Микро-мутации ликов для вариативности.
-    // #ЧТО: Чтобы одни и те же лики звучали по-разному в каждой сюите.
+    let lickData = BLUES_SOLO_LICKS[lickId];
     let lickPhrase = JSON.parse(JSON.stringify(lickData.phrase)) as BluesSoloPhrase;
-    
-    // 1. Случайная транспозиция (± терция)
-    if (random.next() < 0.3) {
-        const transTable: number[] = [-4, -3, 3, 4];
-        const offset = transTable[random.nextInt(transTable.length)];
-        lickPhrase = transposeMelody(lickPhrase, offset);
+
+    // --- DEVELOPMENT TECHNIQUES ---
+
+    // 1. SEQUENCE (Секвенция)
+    if (strategy === 'sequence') {
+        const shift = [2, 3, 4, -2, -3][random.nextInt(5)];
+        lickPhrase = transposeMelody(lickPhrase, shift);
+        console.log(`%c[Melody] SEQUENCE: Lick ${lickId} shifted by ${shift}`, 'color: #00BFFF;');
     }
-    
-    // 2. Инверсия (зеркальное отражение)
-    if (random.next() < 0.15) {
-        lickPhrase = invertMelody(lickPhrase);
+
+    // 2. VARIATION (Вариация)
+    if (strategy === 'variation' || random.next() < 0.3) {
+        if (random.next() < 0.5) lickPhrase = invertMelody(lickPhrase);
+        lickPhrase = varyRhythm(lickPhrase, random);
+        lickPhrase = addOrnaments(lickPhrase, random);
+        console.log(`%c[Melody] VARIATION applied to ${lickId}`, 'color: #DA70D6;');
     }
-    
-    // #ЗАЧЕМ: Реализация требования "мелодия чаще и короче" (Virtuoso Mode).
-    // #ЧТО: Если мы в активной части сюиты, мы принудительно дробим ноты.
+
+    // 3. VIRTUOSO SUBDIVISION
     if (partId === 'MAIN' || partId === 'SOLO' || random.next() < 0.4) {
         lickPhrase = subdivideRhythm(lickPhrase, random);
     }
@@ -501,7 +523,6 @@ export function generateBluesMelodyChorus(
         const midiNote = rootNote + midiOffset;
         
         const timeInBeats = note.t / ticksPerBeat;
-        // #ЗАЧЕМ: Делаем артикуляцию "острее" для активных пассажей.
         const durationInBeats = (note.d || 2) / ticksPerBeat * ( (partId === 'MAIN' || partId === 'SOLO') ? 0.8 : 1.0 );
         
         return {
@@ -517,11 +538,10 @@ export function generateBluesMelodyChorus(
         };
     });
 
-    // Update cache
     cachedMelodyChorus.bar = epoch;
     cachedMelodyChorus.events = events;
 
-    return { events, log: `[Melody] Generated mutated lick '${lickId}' for bar ${epoch}` };
+    return { events, log: `[Melody @ Bar ${epoch}] Strategy: ${strategy}, Lick: ${lickId}` };
 }
 
 
@@ -568,10 +588,10 @@ export function transposeMelody(phrase: BluesSoloPhrase, interval: number): Blue
     if (!phrase) return [];
     return phrase.map(note => {
         const currentSemi = DEGREE_TO_SEMITONE[note.deg as string] || 0;
-        const newSemi = currentSemi + interval;
+        const newSemi = (currentSemi + interval + 12) % 12;
         let closestDeg = note.deg;
         for (const [deg, semi] of Object.entries(DEGREE_TO_SEMITONE)) {
-            if (semi === newSemi % 12) {
+            if (semi === newSemi) {
                 closestDeg = deg as BluesRiffDegree;
                 break;
             }
