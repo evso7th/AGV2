@@ -1,23 +1,9 @@
 
-import type { FractalEvent, Mood, Genre, Technique, InstrumentPart, InstrumentHints, AccompanimentTechnique, GhostChord, SuiteDNA, NavigationInfo, Stage, BluesCognitiveState } from '@/types/music';
+import type { FractalEvent, Mood, Genre, InstrumentPart, InstrumentHints, GhostChord, SuiteDNA, NavigationInfo } from '@/types/music';
 import { BlueprintNavigator } from './blueprint-navigator';
 import { getBlueprint } from './blueprints';
-import { V2_PRESETS } from './presets-v2';
-
-import { BLUES_BASS_RIFFS } from './assets/blues-bass-riffs';
-import { BLUES_DRUM_RIFFS } from './assets/blues-drum-riffs';
-import { DRUM_KITS } from './assets/drum-kits';
-
-import { 
-    generateSuiteDNA, 
-    createDrumAxiom, 
-    createHarmonyAxiom, 
-    createAmbientBassAxiom,
-    createBluesBassAxiom,
-    generateBluesMelodyChorus,
-    generateAccompanimentEvents,
-    humanizeEvents
-} from './music-theory';
+import { BluesBrain } from './blues-brain';
+import { generateSuiteDNA, createHarmonyAxiom } from './music-theory';
 
 function seededRandom(seed: number) {
   let state = seed;
@@ -63,19 +49,8 @@ export class FractalMusicEngine {
   public navigator: BlueprintNavigator | null = null;
   private isInitialized = false;
 
-  private currentBassRiffIndex = 0;
-  private currentDrumRiffIndex = 0;
+  private bluesBrain: BluesBrain | null = null;
   private previousChord: GhostChord | null = null;
-
-  private cognitiveState: BluesCognitiveState = {
-      phraseState: 'call',
-      tensionLevel: 0.1,
-      phraseHistory: [],
-      lastPhraseHash: '',
-      blueNotePending: false,
-      emotion: { melancholy: 0.7, darkness: 0.3 }
-  };
-
   private activatedInstruments: Map<InstrumentPart, string> = new Map();
 
   constructor(config: EngineConfig) {
@@ -97,24 +72,13 @@ export class FractalMusicEngine {
     this.random = seededRandom(this.config.seed);
     this.activatedInstruments.clear(); 
     
-    this.cognitiveState = {
-        phraseState: 'call',
-        tensionLevel: 0.1,
-        phraseHistory: [],
-        lastPhraseHash: '',
-        blueNotePending: false,
-        emotion: { 
-            melancholy: ['melancholic', 'dark', 'anxious'].includes(this.config.mood) ? 0.8 : 0.3,
-            darkness: ['dark', 'gloomy'].includes(this.config.mood) ? 0.7 : 0.2
-        }
-    };
+    // Инициализация специализированных "Мозгов"
+    if (this.config.genre === 'blues') {
+        this.bluesBrain = new BluesBrain(this.config.seed, this.config.mood);
+    } else {
+        this.bluesBrain = null;
+    }
 
-    const riffs = BLUES_BASS_RIFFS[this.config.mood] || BLUES_BASS_RIFFS['contemplative'];
-    this.currentBassRiffIndex = this.random.nextInt(riffs.length);
-
-    const drumRiffs = BLUES_DRUM_RIFFS[this.config.mood] || BLUES_DRUM_RIFFS['contemplative'] || [];
-    this.currentDrumRiffIndex = this.random.nextInt(drumRiffs.length);
-    
     const blueprint = getBlueprint(this.config.genre, this.config.mood);
     this.suiteDNA = generateSuiteDNA(blueprint.structure.totalDuration.preferredBars, this.config.mood, this.config.seed, this.random, this.config.genre, blueprint.structure.parts);
     this.navigator = new BlueprintNavigator(blueprint, this.config.seed, this.config.genre, this.config.mood, this.config.introBars, this.suiteDNA.soloPlanMap);
@@ -123,17 +87,9 @@ export class FractalMusicEngine {
     this.isInitialized = true;
   }
 
-  private evolveEmotion() {
-      this.cognitiveState.emotion.melancholy += (this.random.next() - 0.5) * 0.02;
-      this.cognitiveState.emotion.darkness += (this.random.next() - 0.5) * 0.01;
-      this.cognitiveState.emotion.melancholy = Math.max(0.1, Math.min(0.9, this.cognitiveState.emotion.melancholy));
-      this.cognitiveState.emotion.darkness = Math.max(0.1, Math.min(0.9, this.cognitiveState.emotion.darkness));
-  }
-
   public evolve(barDuration: number, barCount: number): { events: FractalEvent[], instrumentHints: InstrumentHints } {
     if (!this.navigator) return { events: [], instrumentHints: {} };
     this.epoch = barCount;
-    this.evolveEmotion();
 
     if (this.epoch >= this.navigator.totalBars) return { events: [], instrumentHints: {} };
 
@@ -179,58 +135,18 @@ export class FractalMusicEngine {
     let currentChord: GhostChord = foundChord || this.previousChord || this.suiteDNA.harmonyTrack[0];
     this.previousChord = currentChord;
     
-    // 1. Drums
-    let drumEvents: FractalEvent[] = [];
-    if (instrumentHints.drums) {
-        const kitName = navInfo.currentPart.instrumentRules?.drums?.kitName || `${this.config.genre}_${this.config.mood}`.toLowerCase();
-        const baseKit = (DRUM_KITS[this.config.genre] as any)?.[kitName] || DRUM_KITS.ambient!.intro!;
-        drumEvents = createDrumAxiom(baseKit, this.config.genre, this.config.mood, this.config.tempo, this.random).events;
+    let allEvents: FractalEvent[] = [];
+
+    // --- ДЕЛЕГИРОВАНИЕ ЖАНРОВОМУ МОЗГУ ---
+    if (this.config.genre === 'blues' && this.bluesBrain) {
+        allEvents = this.bluesBrain.generateBar(this.epoch, currentChord, navInfo, this.suiteDNA, instrumentHints);
+    } else {
+        // Логика по умолчанию (Ambient/Trance)
+        // [Здесь будет AmbientBrain в будущем, сейчас используем базовый рендер]
+        const harmonyEvents = createHarmonyAxiom(currentChord, this.config.mood, this.config.genre, this.random, this.epoch);
+        allEvents.push(...harmonyEvents);
     }
 
-    // 2. Melody (Blues Restoration)
-    let melodyEvents: FractalEvent[] = [];
-    if (instrumentHints.melody) {
-        const rules = navInfo.currentPart.instrumentRules?.melody;
-        const soloRes = generateBluesMelodyChorus(currentChord, this.random, navInfo.currentPart.id, this.epoch, rules, this.suiteDNA, this.cognitiveState, {});
-        melodyEvents = soloRes.events;
-    }
-
-    // 3. Bass (Riff Logic)
-    let bassEvents: FractalEvent[] = [];
-    if (instrumentHints.bass) {
-        if (this.config.genre === 'blues') {
-            bassEvents = createBluesBassAxiom(currentChord, 'riff', this.random, this.config.mood, this.epoch, this.suiteDNA, this.currentBassRiffIndex);
-        } else {
-            bassEvents = createAmbientBassAxiom(currentChord, this.config.mood, this.config.genre, this.random, this.config.tempo, 'drone');
-        }
-    }
-
-    // 4. Accompaniment & Harmony (Piano Support)
-    let accompEvents: FractalEvent[] = [];
-    if (instrumentHints.accompaniment) {
-        const tech = (navInfo.currentPart.instrumentRules?.accompaniment?.techniques?.[0]?.value || 'long-chords') as AccompanimentTechnique;
-        accompEvents = generateAccompanimentEvents(currentChord, tech, this.random, this.cognitiveState);
-    }
-
-    // 5. Piano Support (The Pianist)
-    let pianoEvents: FractalEvent[] = [];
-    if (instrumentHints.pianoAccompaniment) {
-        // #ЗАЧЕМ: Добавление партии пианиста для полноты ансамбля.
-        const isMinor = currentChord.chordType === 'minor' || currentChord.chordType === 'diminished';
-        const notes = [currentChord.rootNote, currentChord.rootNote + (isMinor ? 3 : 4), currentChord.rootNote + 7];
-        notes.forEach((note, i) => {
-            pianoEvents.push({
-                type: 'pianoAccompaniment',
-                note: note + 12,
-                time: i * 0.1,
-                duration: 2.0,
-                weight: 0.5,
-                technique: 'hit', dynamics: 'mf', phrasing: 'staccato', params: { barCount: this.epoch }
-            });
-        });
-    }
-
-    const allEvents = [...bassEvents, ...drumEvents, ...accompEvents, ...melodyEvents, ...pianoEvents];
     return { events: allEvents };
   }
 }
