@@ -1,18 +1,18 @@
 import type { MusicBlueprint } from '@/types/music';
 
 /**
- * #ЗАЧЕМ: Блюпринт "The Bluest Blues" (v10.0 Cognitive & Grounded).
- * #ЧТО: Адаптация под новый BluesBrain. Использование Black Acoustic и активного аккомпанемента.
- * #ИНТЕГРАЦИЯ: Всегда активный ансамбль в диапазоне 48-71.
+ * #ЗАЧЕМ: Блюпринт "The Bluest Blues" (v12.0 - The Grand Soul Synthesis).
+ * #ЧТО: Окончательная калибровка под Black Acoustic и парадигмы Нирхауза.
+ * #ИНТЕГРАЦИЯ: Регистровая дисциплина (MIDI 48-71) и постоянный ансамбль.
  */
 export const WinterBluesBlueprint: MusicBlueprint = {
     id: 'winter_blues',
-    name: 'The Bluest Blues (Cognitive)',
-    description: 'A deep, soulful blues tribute. Driven by music logic, not riffs.',
+    name: 'The Bluest Blues (Nierhaus Synthesis)',
+    description: 'A deep, cognitive blues journey. Melodic syntax, fractal timing, and L-system phrasing.',
     mood: 'melancholic',
     musical: {
         key: { root: 'E', scale: 'dorian', octave: 1 },
-        bpm: { base: 64, range: [60, 68], modifier: 1.0 },
+        bpm: { base: 62, range: [60, 68], modifier: 1.0 },
         timeSignature: { numerator: 4, denominator: 4 },
         harmonicJourney: [],
         tensionProfile: { 
@@ -53,7 +53,7 @@ export const WinterBluesBlueprint: MusicBlueprint = {
                         register: { preferred: 'low' } 
                     }
                 },
-                bundles: [{ id: 'ALVIN_INTRO', name: 'Grounded Start', duration: { percent: 100 }, characteristics: {}, phrases: {} }],
+                bundles: [{ id: 'SYNTHESIS_INTRO', name: 'Grounded Start', duration: { percent: 100 }, characteristics: {}, phrases: {} }],
                 outroFill: null,
             },
             {
@@ -80,7 +80,7 @@ export const WinterBluesBlueprint: MusicBlueprint = {
                         register: { preferred: 'low' } 
                     }
                 },
-                bundles: [{ id: 'ALVIN_MAIN', name: 'The Flow', duration: { percent: 100 }, characteristics: {}, phrases: {} }],
+                bundles: [{ id: 'SYNTHESIS_MAIN', name: 'The Soul Flow', duration: { percent: 100 }, characteristics: {}, phrases: {} }],
                 outroFill: null,
             },
             {
@@ -100,7 +100,7 @@ export const WinterBluesBlueprint: MusicBlueprint = {
                     bass: { techniques: [{ value: 'walking', weight: 1.0 }], density: { min: 0.5, max: 0.7 } },
                     melody: { source: 'motif', density: { min: 0.2, max: 0.4 }, register: { preferred: 'low' } }
                 },
-                bundles: [{ id: 'ALVIN_OUTRO', name: 'Fading Out', duration: { percent: 100 }, characteristics: {}, phrases: {} }],
+                bundles: [{ id: 'SYNTHESIS_OUTRO', name: 'Fading Synthesis', duration: { percent: 100 }, characteristics: {}, phrases: {} }],
                 outroFill: null,
             }
         ]
