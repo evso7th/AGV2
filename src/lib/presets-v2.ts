@@ -73,7 +73,7 @@ export const V2_PRESETS = {
   organ: {
     type: 'organ',
     name: 'Cathedral Organ',
-    volume: 0.35,
+    volume: 0.7, // doubled from 0.35
     drawbars: [8, 8, 4, 2, 0, 0, 0, 1, 0],
     keyClick: 0.005,
     adsr: { a: 0.1, d: 0.1, s: 0.9, r: 1.5 },
@@ -87,7 +87,7 @@ export const V2_PRESETS = {
   organ_soft_jazz: {
     type: 'organ',
     name: 'Soft Jazz Organ',
-    volume: 0.27,
+    volume: 0.54, // doubled from 0.27
     drawbars: [8, 0, 8, 5, 0, 3, 0, 0, 0], 
     lpf: 7600,
     hpf: 90,
@@ -102,7 +102,7 @@ export const V2_PRESETS = {
   organ_jimmy_smith: {
     type: 'organ',
     name: 'Jimmy Smith Trio',
-    volume: 0.32,
+    volume: 0.64, // doubled from 0.32
     drawbars: [8, 8, 8, 0, 0, 0, 0, 0, 0], // 888000000 - classic trio lead
     lpf: 8000,
     hpf: 100,
@@ -115,7 +115,7 @@ export const V2_PRESETS = {
   organ_gospel: {
     type: 'organ',
     name: 'Gospel Shout',
-    volume: 0.38,
+    volume: 0.76, // doubled from 0.38
     drawbars: [8, 8, 8, 8, 8, 8, 8, 8, 8], // All Drawbars Out
     lpf: 9000,
     hpf: 60,
@@ -128,7 +128,7 @@ export const V2_PRESETS = {
   organ_circus_of_dread: {
     type: 'organ',
     name: 'Circus of Dread',
-    volume: 0.30,
+    volume: 0.6, // doubled from 0.3
     drawbars: [8, 0, 0, 8, 0, 0, 8, 0, 8], // Hollow, eerie registration
     lpf: 5500,
     hpf: 120,
@@ -167,7 +167,7 @@ export const V2_PRESETS = {
   guitar_muffLead: {
     type: 'guitar',
     name: 'Muff Lead Guitar',
-    volume: 0.62,
+    volume: 0.7, // Unified with shineOn
     osc: { width: 0.5, detune: 7, mainGain: 0.8, detGain: 0.2, subGain: 0.3 },
     pickup: { cutoff: 3200, q: 1.2, combFeedback: 0.4 },
     drive: { type: 'muff', amount: 0.65 },
