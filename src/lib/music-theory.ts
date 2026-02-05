@@ -3,6 +3,7 @@
  * #ЗАЧЕМ: Базовый набор инструментов для работы с нотами, ладами и ритмом.
  * #ЧТО: Функции для получения гамм, инверсий, ретроградов и гуманизации.
  *       Внедрена система цепей Маркова для генерации гармонического скелета.
+ *       ДОБАВЛЕНО: Математика MusiNum для фрактальной детерминированности.
  */
 
 import type { 
@@ -19,6 +20,21 @@ export const DEGREE_TO_SEMITONE: Record<string, number> = {
     'R': 0, 'b2': 1, '2': 2, 'b3': 3, '3': 4, '4': 5, '#4': 6, 'b5': 6, '5': 7,
     'b6': 8, '6': 9, 'b7': 10, '7': 11, 'R+8': 12, '9': 14, '11': 17
 };
+
+/**
+ * #ЗАЧЕМ: Математическое ядро MusiNum.
+ * #ЧТО: Вычисляет сумму цифр числа в заданной системе счисления с последующим вычетом по модулю.
+ *       Порождает самоподобные (фрактальные) последовательности.
+ */
+export function calculateMusiNum(step: number, base: number = 2, start: number = 0, modulo: number = 8): number {
+    let num = Math.abs(step + start);
+    let sum = 0;
+    while (num > 0) {
+        sum += num % base;
+        num = Math.floor(num / base);
+    }
+    return sum % modulo;
+}
 
 /**
  * #ЗАЧЕМ: Базовая гармоническая аксиома для Ambient/Trance.
@@ -41,7 +57,7 @@ export function createHarmonyAxiom(
         events.push({
             type: 'accompaniment',
             note: note + 12, 
-            time: i * 0.08, // Увеличена задержка для мягкости
+            time: i * 0.08, 
             duration: 4.0,
             weight: 0.4 - (i * 0.05),
             technique: 'swell',
@@ -60,7 +76,6 @@ export function getScaleForMood(mood: Mood, genre?: Genre): number[] {
   let baseScale: number[];
 
   if (genre === 'blues') {
-      // Истинная блюзовая гамма: Dorian Add 5 ([0, 2, 3, 5, 6, 7, 10])
       baseScale = [0, 2, 3, 5, 6, 7, 10]; 
   } else {
       switch (mood) {
@@ -107,7 +122,6 @@ export function generateSuiteDNA(totalBars: number, mood: Mood, seed: number, ra
 
         if (genre === 'blues') {
             let currentBarInPart = 0;
-            // Строгий 12-тактовый цикл для Блюза
             while (currentBarInPart < partDuration) {
                 const progression = [0, 0, 0, 0, 5, 5, 0, 0, 7, 5, 0, 7]; 
                 const chordTypes: ('minor' | 'dominant')[] = ['minor', 'minor', 'minor', 'minor', 'minor', 'minor', 'minor', 'minor', 'dominant', 'minor', 'minor', 'dominant'];
