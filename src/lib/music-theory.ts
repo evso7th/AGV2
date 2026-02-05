@@ -1,9 +1,8 @@
-
 /**
  * @fileOverview Music Theory Utilities and Axiom Generation
  * #ЗАЧЕМ: Центральный хаб музыкальной логики.
  * #ЧТО: Содержит функции для генерации ДНК сюиты, аккордов, мелодий и ритмов.
- * #СВЯЗИ: Является основным потавщиком данных для `FractalMusicEngine`.
+ * #СВЯЗИ: Является основным поставщиком данных для `FractalMusicEngine`.
  */
 
 import type { FractalEvent, Mood, Genre, Technique, InstrumentType, BluesMelody, SuiteDNA, BluesSoloPhrase, BluesRiffDegree, GhostChord, BluesCognitiveState, AccompanimentTechnique } from '@/types/music';
@@ -102,6 +101,7 @@ export function generateSuiteDNA(totalBars: number, mood: Mood, seed: number, ra
                 const r = random.next();
                 let duration = r < 0.6 ? 4 : (r < 0.9 ? 8 : 12);
                 
+                // #ЗАЧЕМ: Эмоциональная деформация формы. В меланхоличном блюзе IV ступень длится дольше.
                 if (mood === 'melancholic' && degree === 'iv') {
                     duration = random.next() < 0.8 ? 8 : 12;
                 }
@@ -249,7 +249,7 @@ export function generateBluesMelodyChorus(
     if (dna.bluesMelodyId) {
         const baseMelody = BLUES_MELODY_RIFFS.find(m => m.id === dna.bluesMelodyId);
         if (baseMelody) {
-            // Выбираем фразу на основе текущей ступени 12-тактовика
+            // #ЗАЧЕМ: Выбор фразы на основе текущей ступени 12-тактовика.
             const barIn12 = barInChorus % 12;
             if (barIn12 === 11) lickPhrase = JSON.parse(JSON.stringify(baseMelody.phraseTurnaround));
             else if (barIn12 === 8) lickPhrase = JSON.parse(JSON.stringify(baseMelody.phraseV));
@@ -303,7 +303,7 @@ export function generateBluesMelodyChorus(
 
     const events: FractalEvent[] = lickPhrase.map((note: any) => ({
         type: 'melody', 
-        note: currentChord.rootNote + (DEGREE_TO_SEMITONE[note.deg] || 0) + 24, // Lifted registration
+        note: currentChord.rootNote + (DEGREE_TO_SEMITONE[note.deg] || 0) + 12, // Lifted registration (+1 oct)
         time: note.t / 3, 
         duration: (note.d || 2) / 3, 
         weight: (0.7 + random.next() * 0.2) * (1 - cognitiveState.emotion.melancholy * 0.3),
