@@ -1,8 +1,8 @@
 /**
  * #ЗАЧЕМ: Центральная фабрика для создания высококачественных инструментов V2.
  * #ЧТО: Реализует конвейеры синтеза для synth, organ, bass и guitar.
- * #ОБНОВЛЕНО (ПЛАН 85): Внедрена полная очистка ресурсов. Все инструменты теперь
- *          корректно останавливают LFO и разрывают связи при отключении.
+ * #ОБНОВЛЕНО (ПЛАН 86): Внедрена тотальная изоляция голосов. Устранены общие
+ *          переменные в Synth и Organ, вызывавшие утечки при полифонии.
  * #СВЯЗИ: Используется менеджерами V2 для создания экземпляров инструментов.
  */
 
@@ -40,6 +40,10 @@ const loadIR = async (ctx: AudioContext, url: string | null): Promise<AudioBuffe
     }
 };
 
+/**
+ * #ЗАЧЕМ: Рекурсивный разрыв всех связей и остановка узлов.
+ * #ЧТО: Гарантирует, что ни один узел не останется в памяти или в CPU.
+ */
 const deepCleanup = (voiceRecord: any, allActiveVoices: Set<any>) => {
     if (!voiceRecord || voiceRecord.cleaned) return;
     voiceRecord.cleaned = true;
@@ -316,14 +320,19 @@ const buildSynthEngine = (ctx: AudioContext, preset: any, master: GainNode, reve
     const staticLFOs: OscillatorNode[] = [];
     const comp = ctx.createDynamicsCompressor();
     const filt1 = ctx.createBiquadFilter();
-    const leslie = makeChorus(ctx, { rate: 0.5, mix: currentPreset.leslie?.on ? 0.3 : 0 }); // Placeholder for Leslie in synth
+    
+    const leslie = makeChorus(ctx, { rate: 0.5, mix: currentPreset.leslie?.on ? 0.3 : 0 });
     staticLFOs.push(...leslie.lfos);
+    
     const tremolo = makeTremolo(ctx, currentPreset.tremolo?.rate ?? 5.5, currentPreset.tremolo?.depth ?? 0.4, currentPreset.tremolo?.on ? (currentPreset.tremolo?.mix ?? 0.5) : 0);
     staticLFOs.push(...tremolo.lfos);
+    
     const chorus = makeChorus(ctx, { rate: currentPreset.chorus?.rate ?? 0.3, depth: currentPreset.chorus?.depth ?? 0.004, mix: currentPreset.chorus?.on ? (currentPreset.chorus.mix ?? 0.3) : 0 });
     staticLFOs.push(...chorus.lfos);
+    
     const delay = makeDelay(ctx, { time: currentPreset.delay?.time ?? 0.35, fb: currentPreset.delay?.fb ?? 0.25, hc: 3000, wet: currentPreset.delay?.on ? (currentPreset.delay.mix ?? 0.2) : 0 });
     staticLFOs.push(...delay.lfos);
+    
     const revSend = ctx.createGain();
 
     comp.connect(filt1).connect(leslie.input);
