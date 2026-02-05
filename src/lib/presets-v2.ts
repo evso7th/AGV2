@@ -1,4 +1,3 @@
-
 // V2 Presets — совместимы with buildMultiInstrument()
 // Проверено на соответствие фабрике от 2024-12
 
@@ -148,7 +147,7 @@ export type PresetConfig = typeof V2_PRESETS[PresetName];
 
 export const V1_TO_V2_PRESET_MAP: Record<string, PresetName> = {
   synth: 'synth',
-  organ: 'organ_soft_jazz',
+  organ: 'organ',
   ambientPad: 'synth_ambient_pad_lush',
   piano: 'ep_rhodes_warm',
   rhodes: 'ep_rhodes_warm'
