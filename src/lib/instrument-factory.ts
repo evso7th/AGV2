@@ -56,9 +56,13 @@ const loadIR = async (ctx: AudioContext, url: string | null): Promise<AudioBuffe
     if (!url) return null;
     try {
         const res = await fetch(url);
+        if (!res.ok) return null;
         const buf = await res.arrayBuffer();
         return await ctx.decodeAudioData(buf);
-    } catch { return null; }
+    } catch {
+        console.warn(`[Factory] Could not load IR: ${url}`);
+        return null;
+    }
 };
 
 // ───── DISTORTION CURVES ─────
@@ -66,9 +70,10 @@ const loadIR = async (ctx: AudioContext, url: string | null): Promise<AudioBuffe
 const makeSoftClip = (amount = 0.5, n = 8192) => {
     const c = new Float32Array(n);
     const k = clamp(amount, 0, 1) * 10 + 1;
+    const norm = Math.tanh(k);
     for (let i = 0; i < n; i++) {
         const x = (i / (n - 1)) * 2 - 1;
-        c[i] = Math.tanh(k * x) / Math.tanh(k);
+        c[i] = Math.tanh(k * x) / norm;
     }
     return c;
 };
@@ -94,7 +99,7 @@ const makeVintageDistortion = (k = 50, n = 8192) => {
     return curve;
 };
 
-// ───── FX FACTORIES ─────
+// ───── SIMPLE FX FACTORIES ─────
 
 interface SimpleFX {
     input: GainNode;
@@ -103,43 +108,74 @@ interface SimpleFX {
     lfo?: OscillatorNode;
 }
 
-const makeChorus = (ctx: AudioContext, mix = 0.3): SimpleFX => {
+const makeChorus = (ctx: AudioContext, mixInput: any = 0.3): SimpleFX => {
+    const mix = typeof mixInput === 'number' ? mixInput : (mixInput?.mix ?? 0.3);
     const input = ctx.createGain();
     const output = ctx.createGain();
     const dry = ctx.createGain(); dry.gain.value = 1 - mix;
     const wet = ctx.createGain(); wet.gain.value = mix;
-    const delay = ctx.createDelay(0.05); delay.delayTime.value = 0.015;
-    const lfo = ctx.createOscillator(); lfo.type = 'sine'; lfo.frequency.value = 0.3;
-    const lfoG = ctx.createGain(); lfoG.gain.value = 0.004;
-    lfo.connect(lfoG).connect(delay.delayTime); lfo.start();
+    
+    const delay = ctx.createDelay(0.05);
+    delay.delayTime.value = 0.015;
+    
+    const lfo = ctx.createOscillator();
+    lfo.type = 'sine';
+    lfo.frequency.value = 0.3;
+    const lfoGain = ctx.createGain();
+    lfoGain.gain.value = 0.004;
+    lfo.connect(lfoGain).connect(delay.delayTime);
+    lfo.start();
+    
     input.connect(dry).connect(output);
     input.connect(delay).connect(wet).connect(output);
-    return { input, output, lfo, setMix: (m) => {
-        const v = clamp(m, 0, 1);
-        wet.gain.setTargetAtTime(v, ctx.currentTime, 0.02);
-        dry.gain.setTargetAtTime(1 - v, ctx.currentTime, 0.02);
-    }};
+    
+    return {
+        input, output, lfo,
+        setMix: (m) => {
+            const v = clamp(m, 0, 1);
+            wet.gain.setTargetAtTime(v, ctx.currentTime, 0.02);
+            dry.gain.setTargetAtTime(1 - v, ctx.currentTime, 0.02);
+        }
+    };
 };
 
-const makeDelay = (ctx: AudioContext, mix = 0.2): SimpleFX => {
+const makeDelay = (ctx: AudioContext, mixInput: any = 0.2): SimpleFX => {
+    const mix = typeof mixInput === 'number' ? mixInput : (mixInput?.mix ?? 0.2);
     const input = ctx.createGain();
     const output = ctx.createGain();
     const dry = ctx.createGain(); dry.gain.value = 1 - mix;
     const wet = ctx.createGain(); wet.gain.value = mix;
-    const d = ctx.createDelay(2.0); d.delayTime.value = 0.35;
-    const fb = ctx.createGain(); fb.gain.value = 0.25;
-    const lp = ctx.createBiquadFilter(); lp.type = 'lowpass'; lp.frequency.value = 3000;
+    
+    const delayNode = ctx.createDelay(2.0);
+    delayNode.delayTime.value = 0.35;
+    
+    const feedback = ctx.createGain();
+    feedback.gain.value = 0.25;
+    
+    const filter = ctx.createBiquadFilter();
+    filter.type = 'lowpass';
+    filter.frequency.value = 3000;
+    
     input.connect(dry).connect(output);
-    input.connect(d).connect(lp).connect(fb).connect(d);
-    lp.connect(wet).connect(output);
-    return { input, output, setMix: (m) => {
-        const v = clamp(m, 0, 1);
-        wet.gain.setTargetAtTime(v, ctx.currentTime, 0.02);
-        dry.gain.setTargetAtTime(1 - v, ctx.currentTime, 0.02);
-    }};
+    input.connect(delayNode).connect(filter).connect(feedback).connect(delayNode);
+    filter.connect(wet).connect(output);
+    
+    return {
+        input, output,
+        setMix: (m) => {
+            const v = clamp(m, 0, 1);
+            wet.gain.setTargetAtTime(v, ctx.currentTime, 0.02);
+            dry.gain.setTargetAtTime(1 - v, ctx.currentTime, 0.02);
+        }
+    };
 };
 
-const makePhaser = (ctx: AudioContext, mix = 0.2): SimpleFX => {
+const makePhaser = (ctx: AudioContext, mixInput: any = 0.2): SimpleFX => {
+    // #ЗАЧЕМ: Защита от TypeError (non-finite value).
+    // #ЧТО: Проверяем тип входящего параметра mix. Если передан объект (что случалось в старом коде),
+    //      извлекаем из него поле mix или используем дефолт.
+    const mix = typeof mixInput === 'number' ? mixInput : (mixInput?.mix ?? 0.2);
+    
     const input = ctx.createGain();
     const output = ctx.createGain();
     const dry = ctx.createGain(); dry.gain.value = 1 - mix;
@@ -218,8 +254,10 @@ const buildSynthEngine = (ctx: AudioContext, preset: any, master: GainNode, reve
     const comp = ctx.createDynamicsCompressor();
     const filt = ctx.createBiquadFilter(); filt.type = 'lowpass';
     const filt2 = ctx.createBiquadFilter(); filt2.type = 'lowpass';
-    const chorus = makeChorus(ctx, currentPreset.chorus?.on ? 0.3 : 0);
-    const delay = makeDelay(ctx, currentPreset.delay?.on ? 0.2 : 0);
+    
+    // #ЗАЧЕМ: Исправлена передача параметров. makeChorus и makeDelay в V3 ожидают только mix (число).
+    const chorus = makeChorus(ctx, currentPreset.chorus?.on ? (currentPreset.chorus.mix ?? 0.3) : 0);
+    const delay = makeDelay(ctx, currentPreset.delay?.on ? (currentPreset.delay.mix ?? 0.2) : 0);
     const revSend = ctx.createGain(); revSend.gain.value = currentPreset.reverbMix ?? 0.18;
 
     comp.connect(filt);
@@ -265,7 +303,13 @@ const buildSynthEngine = (ctx: AudioContext, preset: any, master: GainNode, reve
         },
         allNotesOff: () => { activeVoices.forEach((_, m) => { const v = activeVoices.get(m); if(v) deepCleanup(v); }); activeVoices.clear(); },
         disconnect: () => { staticNodes.forEach(n => { try { if(n instanceof OscillatorNode) n.stop(); n.disconnect(); } catch(e){} }); },
-        setPreset: (p: any) => { currentPreset = p; rebuild(p); filt.frequency.value = p.lpf?.cutoff ?? 2000; chorus.setMix(p.chorus?.on ? 0.3 : 0); revSend.gain.value = p.reverbMix ?? 0.18; }
+        setPreset: (p: any) => { 
+            currentPreset = p; 
+            rebuild(p); 
+            filt.frequency.value = p.lpf?.cutoff ?? 2000; 
+            chorus.setMix(p.chorus?.on ? (p.chorus.mix ?? 0.3) : 0); 
+            revSend.gain.value = p.reverbMix ?? 0.18; 
+        }
     };
 };
 
@@ -349,8 +393,10 @@ const buildGuitarEngine = (ctx: AudioContext, preset: any, master: GainNode, rev
     const comp = ctx.createDynamicsCompressor(); comp.threshold.value = -18;
     const shaper = ctx.createWaveShaper(); shaper.oversample = '4x';
     shaper.curve = makeVintageDistortion(50);
-    const phaser = makePhaser(ctx, { mix: currentPreset.phaser?.on ? 0.2 : 0 });
-    const delay = makeDelay(ctx, currentPreset.delayA?.on ? 0.2 : 0);
+    
+    // #ЗАЧЕМ: Исправлена передача параметров. makePhaser в V3 ожидает mix (число), а не объект.
+    const phaser = makePhaser(ctx, currentPreset.phaser?.on ? (currentPreset.phaser.mix ?? 0.2) : 0);
+    const delay = makeDelay(ctx, currentPreset.delayA?.on ? (currentPreset.delayA.mix ?? 0.2) : 0);
     const revSend = ctx.createGain(); revSend.gain.value = currentPreset.reverbMix ?? 0.2;
 
     guitarIn.connect(comp).connect(shaper).connect(phaser.input);
@@ -383,7 +429,11 @@ const buildGuitarEngine = (ctx: AudioContext, preset: any, master: GainNode, rev
         },
         allNotesOff: () => {},
         disconnect: () => { [guitarIn, comp, shaper, phaser.input, phaser.output, delay.input, delay.output, revSend].forEach(n => { try { if(n instanceof OscillatorNode) n.stop(); n.disconnect(); } catch(e){} }); },
-        setPreset: (p: any) => { currentPreset = p; shaper.curve = p.drive?.type === 'muff' ? makeMuff(p.drive.amount) : makeVintageDistortion((p.drive?.amount || 0.5) * 100); phaser.setMix(p.phaser?.on ? 0.2 : 0); }
+        setPreset: (p: any) => { 
+            currentPreset = p; 
+            shaper.curve = p.drive?.type === 'muff' ? makeMuff(p.drive.amount ?? 0.65) : makeVintageDistortion((p.drive?.amount || 0.5) * 100); 
+            phaser.setMix(p.phaser?.on ? (p.phaser.mix ?? 0.2) : 0); 
+        }
     };
 };
 
