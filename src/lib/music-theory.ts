@@ -23,9 +23,9 @@ export const DEGREE_TO_SEMITONE: Record<string, number> = {
 };
 
 const BLUES_HARMONIC_TRANSITIONS: Record<string, Record<string, number>> = {
-    'I':  { 'I': 0.4, 'IV': 0.4, 'V': 0.15, 'vi': 0.05 },
-    'IV': { 'I': 0.3, 'IV': 0.5, 'V': 0.1, 'bVI': 0.1 },
-    'V':  { 'IV': 0.6, 'I': 0.3, 'V': 0.1 },
+    'I':  { 'I': 0.5, 'IV': 0.35, 'V': 0.1, 'vi': 0.05 },
+    'IV': { 'I': 0.4, 'IV': 0.4, 'V': 0.1, 'bVI': 0.1 },
+    'V':  { 'IV': 0.7, 'I': 0.2, 'V': 0.1 },
     'vi': { 'IV': 0.5, 'V': 0.3, 'I': 0.2 },
     'bVI': { 'V': 0.9, 'I': 0.1 }
 };
