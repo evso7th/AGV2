@@ -24,7 +24,14 @@ export const WinterBluesBlueprint: MusicBlueprint = {
                         instrumentation: {
                            bass: { activationChance: 0.66, instrumentOptions: [ { name: 'bass_jazz_warm', weight: 1.0 } ] },
                            drums: { activationChance: 0.66, instrumentOptions: [ { name: 'blues_melancholic_master', weight: 1.0 } ] },
-                           melody: { activationChance: 0.5, instrumentOptions: [ { name: 'ep_rhodes_warm', weight: 1.0 } ] },
+                           melody: { 
+                               activationChance: 0.5, 
+                               instrumentOptions: [ 
+                                   { name: 'blackAcoustic', weight: 0.33 }, 
+                                   { name: 'guitar_shineOn', weight: 0.33 }, 
+                                   { name: 'guitar_muffLead', weight: 0.34 } 
+                               ] 
+                           },
                            accompaniment: { activationChance: 0.66, instrumentOptions: [ { name: 'organ_soft_jazz', weight: 1.0 } ] }
                         }
                     },
@@ -37,9 +44,9 @@ export const WinterBluesBlueprint: MusicBlueprint = {
                            melody: { 
                                activationChance: 1.0, 
                                instrumentOptions: [ 
-                                   { name: 'guitar_shineOn', weight: 0.25 }, 
-                                   { name: 'guitar_muffLead', weight: 0.25 }, 
-                                   { name: 'ep_rhodes_warm', weight: 0.5 } 
+                                   { name: 'blackAcoustic', weight: 0.33 }, 
+                                   { name: 'guitar_shineOn', weight: 0.33 }, 
+                                   { name: 'guitar_muffLead', weight: 0.34 } 
                                ] 
                            }
                         }
@@ -50,7 +57,14 @@ export const WinterBluesBlueprint: MusicBlueprint = {
                            bass: { activationChance: 1.0, instrumentOptions: [ { name: 'bass_jazz_warm', weight: 1.0 } ] },
                            drums: { activationChance: 1.0, instrumentOptions: [ { name: 'blues_melancholic_master', weight: 1.0 } ] },
                            accompaniment: { activationChance: 1.0, instrumentOptions: [ { name: 'organ_soft_jazz', weight: 1.0 } ] },
-                           melody: { activationChance: 1.0, instrumentOptions: [ { name: 'guitar_shineOn', weight: 0.25 }, { name: 'guitar_muffLead', weight: 0.25 }, { name: 'ep_rhodes_warm', weight: 0.5 } ] },
+                           melody: { 
+                               activationChance: 1.0, 
+                               instrumentOptions: [ 
+                                   { name: 'blackAcoustic', weight: 0.33 }, 
+                                   { name: 'guitar_shineOn', weight: 0.33 }, 
+                                   { name: 'guitar_muffLead', weight: 0.34 } 
+                               ] 
+                           },
                            harmony: { 
                                activationChance: 1.0, 
                                instrumentOptions: [ 
@@ -78,14 +92,25 @@ export const WinterBluesBlueprint: MusicBlueprint = {
                 layers: { bass: true, sfx: true, drums: true, melody: true, accompaniment: true, harmony: true, sparkles: true, pianoAccompaniment: true },
                 instrumentation: {
                     bass: { strategy: 'weighted', v1Options: [ { name: 'bass_jazz_warm', weight: 1.0 } ], v2Options: [ { name: 'bass_jazz_warm', weight: 1.0 } ] },
-                    melody: { strategy: 'weighted', v1Options: [{name: 'guitar_muffLead', weight: 1.0}], v2Options: [{name: 'guitar_muffLead', weight: 1.0}] },
+                    melody: { 
+                        strategy: 'weighted', 
+                        v1Options: [
+                            { name: 'blackAcoustic', weight: 0.33 },
+                            { name: 'guitar_shineOn', weight: 0.33 },
+                            { name: 'guitar_muffLead', weight: 0.34 }
+                        ], 
+                        v2Options: [
+                            { name: 'blackAcoustic', weight: 0.33 },
+                            { name: 'guitar_shineOn', weight: 0.33 },
+                            { name: 'guitar_muffLead', weight: 0.34 }
+                        ] 
+                    },
                     accompaniment: { strategy: 'weighted', v1Options: [{ name: 'organ_soft_jazz', weight: 1.0 }], v2Options: [{ name: 'organ_soft_jazz', weight: 1.0 }] },
                     harmony: { strategy: 'weighted', options: [ { name: 'guitarChords', weight: 0.8 }, { name: 'mellotron_flute_intimate', weight: 0.2 } ] }
                 },
                 instrumentRules: {
                     drums: { pattern: 'composer', kitName: 'blues_melancholic_master', density: { min: 0.5, max: 0.7 }, usePerc: true },
                     melody: { source: 'blues_solo', soloPlan: "S_ACTIVE", density: { min: 0.8, max: 1.0 }, soloToPatternRatio: 1.0 },
-                    // #ЗАЧЕМ: Перевод аккомпанемента на ритмические чопы в основной части.
                     accompaniment: { techniques: [{ value: 'rhythmic-comp', weight: 1.0 }], density: { min: 0.5, max: 0.8 } },
                     sparkles: { eventProbability: 0.05 },
                     sfx: { eventProbability: 0.15, categories: [{ name: 'common', weight: 1.0 }] }
@@ -96,10 +121,24 @@ export const WinterBluesBlueprint: MusicBlueprint = {
             {
                 id: 'SOLO', name: 'Ice Cry', duration: { percent: 25 },
                 layers: { bass: true, drums: true, melody: true, harmony: true, pianoAccompaniment: true, accompaniment: true, sfx: true, sparkles: true },
+                instrumentation: {
+                    melody: { 
+                        strategy: 'weighted', 
+                        v1Options: [
+                            { name: 'blackAcoustic', weight: 0.33 },
+                            { name: 'guitar_shineOn', weight: 0.33 },
+                            { name: 'guitar_muffLead', weight: 0.34 }
+                        ], 
+                        v2Options: [
+                            { name: 'blackAcoustic', weight: 0.33 },
+                            { name: 'guitar_shineOn', weight: 0.33 },
+                            { name: 'guitar_muffLead', weight: 0.34 }
+                        ] 
+                    }
+                },
                 instrumentRules: {
                     drums: { pattern: 'composer', kitName: 'blues_melancholic_master', density: { min: 0.6, max: 0.8 }, usePerc: true },
                     melody: { source: 'blues_solo', soloPlan: "S_ACTIVE", density: { min: 0.9, max: 1.0 }, soloToPatternRatio: 1.0, register: { preferred: 'high' } },
-                    // #ЗАЧЕМ: Поддержка ритма во время соло.
                     accompaniment: { techniques: [{ value: 'rhythmic-comp', weight: 1.0 }], density: { min: 0.6, max: 0.9 } },
                     sfx: { eventProbability: 0.2, categories: [{ name: 'common', weight: 1.0 }] },
                     sparkles: { eventProbability: 0.1 }
@@ -115,7 +154,14 @@ export const WinterBluesBlueprint: MusicBlueprint = {
                         duration: { percent: 33 },
                         instrumentation: {
                            harmony: { activationChance: 0.0, instrumentOptions: [] },
-                           melody: { activationChance: 1.0, instrumentOptions: [ { name: 'ep_rhodes_warm', weight: 1.0 } ] },
+                           melody: { 
+                               activationChance: 1.0, 
+                               instrumentOptions: [ 
+                                   { name: 'blackAcoustic', weight: 0.33 }, 
+                                   { name: 'guitar_shineOn', weight: 0.33 }, 
+                                   { name: 'guitar_muffLead', weight: 0.34 } 
+                               ] 
+                           },
                            bass: { activationChance: 1.0, instrumentOptions: [ { name: 'bass_jazz_warm', weight: 1.0 } ] },
                            drums: { activationChance: 1.0, instrumentOptions: [ { name: 'blues_melancholic_master', weight: 1.0 } ] },
                            accompaniment: { activationChance: 1.0, instrumentOptions: [ { name: 'organ_soft_jazz', weight: 1.0 } ] }
