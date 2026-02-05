@@ -100,9 +100,10 @@ export class MelodySynthManagerV2 {
         // Routing for Samplers (only for melody)
         if (this.partName === 'melody') {
             if (instrumentHint === 'blackAcoustic') {
-                // #ЗАЧЕМ: Удален подъем на 2 октавы (+24), чтобы вернуть гитару в густой, "грудной" регистр.
-                // #ИСПРАВЛЕНО (ПЛАН 129): Теперь инструмент звучит в 3-й и 4-й октавах, как того требует Блюзовый Мозг.
-                this.blackAcousticSampler.schedule(notesToPlay, barStartTime, tempo);
+                // #ЗАЧЕМ: Восстановлен подъем на 2 октавы (+24). Это системная особенность маппинга сэмплов Black Acoustic.
+                // #ИСПРАВЛЕНО (ПЛАН 130): Ноты от "Мозга" (3-4 октавы) теперь правильно адресуются к физическим файлам.
+                const notesToPlayWithLift = notesToPlay.map(n => ({ ...n, midi: n.midi + 24 }));
+                this.blackAcousticSampler.schedule(notesToPlayWithLift, barStartTime, tempo);
                 return;
             }
             if (instrumentHint === 'telecaster') {
@@ -137,7 +138,7 @@ export class MelodySynthManagerV2 {
         }
 
         if (finalInstrumentHint !== this.activePresetName) {
-            await this.setInstrument(finalInstrumentHint as any);
+            await this.setInstrument(finalInstrumentHint as keyof typeof V2_PRESETS);
         }
         
         if (!this.synth) return;
