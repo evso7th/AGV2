@@ -1,4 +1,3 @@
-
 /**
  * @fileOverview Universal Music Theory Utilities
  * #ЗАЧЕМ: Базовый набор инструментов для работы с нотами, ладами и ритмом.
@@ -22,30 +21,36 @@ export const DEGREE_TO_SEMITONE: Record<string, number> = {
     'b6': 8, '6': 9, 'b7': 10, '7': 11, 'R+8': 12, '9': 14, '11': 17
 };
 
-const BLUES_HARMONIC_TRANSITIONS: Record<string, Record<string, number>> = {
-    'I':  { 'I': 0.45, 'IV': 0.4, 'V': 0.1, 'vi': 0.05 },
-    'IV': { 'I': 0.3, 'IV': 0.5, 'V': 0.1, 'bVI': 0.1 },
-    'V':  { 'IV': 0.7, 'I': 0.2, 'V': 0.1 },
-    'vi': { 'IV': 0.5, 'V': 0.3, 'I': 0.2 },
-    'bVI': { 'V': 0.9, 'I': 0.1 }
+// --- MARKOV HARMONIC STATES (SPEC 3.1) ---
+// 0=stable, 1=tension_build, 2=chromatic_approach, 3=resolution
+const BLUES_STATE_MATRIX = [
+  [0.65, 0.25, 0.05, 0.05],
+  [0.10, 0.55, 0.25, 0.10],
+  [0.05, 0.10, 0.20, 0.65],
+  [0.70, 0.15, 0.05, 0.10]
+];
+
+const STATE_TO_CHORD: Record<number, string[]> = {
+    0: ['i7', 'iv7'],
+    1: ['i7#5', 'iv7#5'],
+    2: ['VI7b5', 'ii7b5'],
+    3: ['V7', 'i7']
 };
 
 /**
  * #ЗАЧЕМ: Универсальный Марковский переход.
  */
-export function markovNext<T extends string>(matrix: Record<T, Record<T, number>>, current: T, random: any): T {
+export function markovNext<T extends string | number>(matrix: number[][], current: number, random: any): number {
     const transitions = matrix[current];
     if (!transitions) return current;
 
-    const entries = Object.entries(transitions) as [T, number][];
-    const totalWeight = entries.reduce((sum, [_, weight]) => sum + weight, 0);
-    let r = random.next() * totalWeight;
-
-    for (const [state, weight] of entries) {
-        r -= weight;
-        if (r <= 0) return state;
+    let r = random.next();
+    let cumulative = 0;
+    for (let i = 0; i < transitions.length; i++) {
+        cumulative += transitions[i];
+        if (r < cumulative) return i;
     }
-    return entries[entries.length - 1][0];
+    return transitions.length - 1;
 }
 
 /**
@@ -62,7 +67,6 @@ export function createHarmonyAxiom(
     const isMinor = chord.chordType === 'minor' || chord.chordType === 'diminished';
     const root = chord.rootNote;
     
-    // В Ambient/Trance используем теплые пэды
     const notes = [root, root + (isMinor ? 3 : 4), root + 7];
     
     notes.forEach((note, i) => {
@@ -88,9 +92,7 @@ export function getScaleForMood(mood: Mood, genre?: Genre, chordType?: 'major' |
 
   if (genre === 'blues') {
       // Истинная блюзовая гамма с blue notes (Dorian Add 5)
-      baseScale = (chordType === 'major' || chordType === 'dominant') 
-          ? [0, 2, 3, 4, 7, 9, 10] 
-          : [0, 2, 3, 5, 6, 7, 10]; // Dorian add 5 for minor
+      baseScale = [0, 2, 3, 5, 6, 7, 10]; 
   } else {
       switch (mood) {
         case 'joyful': baseScale = [0, 2, 4, 5, 7, 9, 11]; break;
@@ -138,36 +140,6 @@ export function invertMelody(phrase: any[]): any[] {
     });
 }
 
-export function transposeMelody(phrase: any[], interval: number): any[] {
-    return phrase.map(n => {
-        const s = ((DEGREE_TO_SEMITONE[n.deg] || 0) + interval + 12) % 12;
-        let deg = n.deg;
-        for (const [d, v] of Object.entries(DEGREE_TO_SEMITONE)) { if (v === s) { deg = d as any; break; } }
-        return { ...n, deg };
-    });
-}
-
-export function addOrnaments(phrase: any[], random: any): any[] {
-    const result = [];
-    for (const note of phrase) {
-        // Enclosure logic: approach from semitone above/below
-        if (note.d >= 3 && random.next() < 0.4) {
-            const isRoot = note.deg === 'R';
-            const offset = isRoot ? 1 : (random.next() > 0.5 ? 1 : -1);
-            
-            result.push({ t: Math.max(0, note.t - 1), d: 1, deg: note.deg, tech: 'gr' });
-            result.push({ ...note, tech: 'sl' });
-        } else if (note.d >= 2 && random.next() < 0.5) {
-            // Hammer-on/Pull-off ornament
-            result.push({ ...note, d: Math.floor(note.d / 2) });
-            result.push({ ...note, t: note.t + Math.floor(note.d / 2), d: Math.ceil(note.d / 2), tech: 'h/p' });
-        } else {
-            result.push(note);
-        }
-    }
-    return result;
-}
-
 export function generateSuiteDNA(totalBars: number, mood: Mood, seed: number, random: any, genre: Genre, blueprintParts: any[]): SuiteDNA {
     const harmonyTrack: GhostChord[] = [];
     const baseKeyNote = 24 + Math.floor(random.next() * 12);
@@ -183,33 +155,29 @@ export function generateSuiteDNA(totalBars: number, mood: Mood, seed: number, ra
         if (partDuration <= 0) return;
 
         if (genre === 'blues') {
-            let currentDegree = 'I';
+            // IMPLEMENTING MARKOV HARMONIC STATES FROM SPEC 3.1
+            let currentState = 0; // stable
             let currentBarInPart = 0;
             
             while (currentBarInPart < partDuration) {
-                const r = random.next();
-                // Alvin Lee Melancholy Bias: Subdominant (IV) takes its time
-                let duration = (mood === 'melancholic' && currentDegree === 'IV' && r < 0.8) ? 8 : (r < 0.5 ? 4 : 12);
-                const finalDuration = Math.min(duration, partDuration - currentBarInPart);
+                const dur = [4, 8, 12][Math.floor(random.next() * 3)];
+                const finalDuration = Math.min(dur, partDuration - currentBarInPart);
                 
-                const degreeMap: Record<string, {rootOffset: number, type: GhostChord['chordType']}> = {
-                    'I': { rootOffset: 0, type: 'major' },
-                    'IV': { rootOffset: 5, type: 'major' },
-                    'V': { rootOffset: 7, type: 'dominant' },
-                    'vi': { rootOffset: 9, type: 'minor' },
-                    'bVI': { rootOffset: 8, type: 'major' }
-                };
+                const possibleChords = STATE_TO_CHORD[currentState];
+                const selectedChord = possibleChords[Math.floor(random.next() * possibleChords.length)];
                 
-                const chordInfo = degreeMap[currentDegree] || degreeMap['I'];
+                const rootOffsetMap: Record<string, number> = { 'i7': 0, 'iv7': 5, 'V7': 7, 'VI7b5': 8, 'ii7b5': 2, 'i7#5': 0, 'iv7#5': 5 };
+                const offset = rootOffsetMap[selectedChord] || 0;
+                
                 harmonyTrack.push({
-                    rootNote: key + chordInfo.rootOffset, 
-                    chordType: chordInfo.type,
-                    bar: partStartBar + currentBarInPart, 
-                    durationBars: finalDuration,
+                    rootNote: key + offset,
+                    chordType: (selectedChord.startsWith('i') || selectedChord.startsWith('ii')) ? 'minor' : (selectedChord.startsWith('V') ? 'dominant' : 'major'),
+                    bar: partStartBar + currentBarInPart,
+                    durationBars: finalDuration
                 });
                 
                 currentBarInPart += finalDuration;
-                currentDegree = markovNext(BLUES_HARMONIC_TRANSITIONS, currentDegree, random);
+                currentState = markovNext(BLUES_STATE_MATRIX, currentState, random);
             }
         } else {
              let currentBarInPart = 0;
@@ -226,7 +194,7 @@ export function generateSuiteDNA(totalBars: number, mood: Mood, seed: number, ra
 
     const possibleTempos = {
         joyful: [115, 140], enthusiastic: [125, 155], contemplative: [78, 92],
-        dreamy: [72, 86], calm: [68, 82], melancholic: [64, 76],
+        dreamy: [72, 86], calm: [68, 82], melancholic: [68, 76], // Adjusted to Spec
         gloomy: [68, 78], dark: [64, 72], epic: [120, 145], anxious: [88, 105],
     };
 

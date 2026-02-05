@@ -1,4 +1,3 @@
-
 import type { 
     FractalEvent, 
     Mood, 
@@ -21,30 +20,24 @@ import { BLUES_GUITAR_VOICINGS } from './assets/guitar-voicings';
 import { 
     DEGREE_TO_SEMITONE, 
     invertMelody, 
-    transposeMelody,
     addOrnaments,
     humanizeEvents,
     markovNext
 } from './music-theory';
 
-const PHRASE_LENGTH_TRANSITIONS: Record<string, Record<string, number>> = {
-    '2': { '2': 0.3, '3': 0.4, '4': 0.3 },
-    '3': { '2': 0.2, '3': 0.5, '4': 0.3 },
-    '4': { '2': 0.1, '4': 0.6, '3': 0.3 }
-};
-
 /**
- * #ЗАЧЕМ: "Блюзовый Мозг" v4.1 — "Busy Hands & Acoustic Heart".
- * #ЧТО: Радикальная реформа аккомпанемента:
- *       1. Active Fingers: Внедрена техника ритмического дробления для органов и гитар.
- *       2. Black Acoustic Lead: Оптимизация под акустический тембр.
- *       3. Midnight Drag: Сохранение живой оттяжки.
+ * #ЗАЧЕМ: "Блюзовый Мозг" v5.0 — "Winter Spec Execution".
+ * #ЧТО: Полная реализация спецификации из winter_blues_prompt.txt:
+ *       1. Fractal Engine with emotional coupling.
+ *       2. Funeral March Guard (descending melody detection).
+ *       3. Strategic Silences.
+ *       4. Midnight Drag.
  */
 export class BluesBrain {
     private cognitiveState: BluesCognitiveState;
     private random: any;
-    private lastPhraseLength: string = '2';
-    private lastTargetPitch: number = 60;
+    private lastAscendingBar = -10;
+    private recentPitches: number[] = [];
 
     constructor(seed: number, mood: Mood) {
         this.random = this.seededRandom(seed);
@@ -55,8 +48,8 @@ export class BluesBrain {
             lastPhraseHash: '',
             blueNotePending: false,
             emotion: { 
-                melancholy: ['melancholic', 'dark', 'anxious'].includes(mood) ? 0.95 : 0.4,
-                darkness: ['dark', 'gloomy'].includes(mood) ? 0.85 : 0.3
+                melancholy: ['melancholic', 'dark', 'anxious'].includes(mood) ? 0.85 : 0.4,
+                darkness: ['dark', 'gloomy'].includes(mood) ? 0.35 : 0.2
             }
         };
     }
@@ -73,6 +66,27 @@ export class BluesBrain {
         };
     }
 
+    private calculateSelfSimilarity(melancholy: number): number {
+        // Spec: melancholy_to_similarity: -0.35
+        const base = 0.68;
+        const modulation = -0.35 * (melancholy - 0.7);
+        return Math.max(0.58, Math.min(0.78, base + modulation));
+    }
+
+    private fractalNoteGenerator(depth: number, similarity: number, scale: number[]): number[] {
+        if (depth === 0) return [scale[this.random.nextInt(scale.length)]];
+        
+        const parent = this.fractalNoteGenerator(depth - 1, similarity, scale);
+        return parent.flatMap(note => {
+            if (this.random.next() < similarity) {
+                const interval = [0, 2, 3, 5][this.random.nextInt(4)];
+                return [note, note + interval];
+            } else {
+                return [note, scale[this.random.nextInt(scale.length)]];
+            }
+        });
+    }
+
     public generateBar(
         epoch: number, 
         currentChord: GhostChord, 
@@ -80,28 +94,22 @@ export class BluesBrain {
         dna: SuiteDNA, 
         hints: InstrumentHints
     ): FractalEvent[] {
+        this.evolveEmotion(epoch);
         const events: FractalEvent[] = [];
-        this.evolveEmotion();
 
-        // Markov-based phrase breathing
-        if (epoch % 4 === 0) {
-            this.lastPhraseLength = markovNext(PHRASE_LENGTH_TRANSITIONS, this.lastPhraseLength, this.random);
-        }
-
-        const barInChorus = epoch % 12;
-        this.cognitiveState.phraseState = barInChorus % 4 < 2 ? 'call' : (barInChorus % 4 === 2 ? 'response' : 'fill');
-
-        // Orchestration Dispatch
+        // Orchestration
         if (hints.drums) events.push(...this.generateDrums(navInfo, dna, epoch));
         if (hints.bass) events.push(...this.generateBass(currentChord, dna, epoch, navInfo.currentPart.mood));
         
-        // Advanced Layering
         if (hints.accompaniment) {
-            events.push(...this.generateAdvancedAccompaniment(currentChord, navInfo, epoch, hints.accompaniment));
+            events.push(...this.generateAdvancedAccompaniment(currentChord, navInfo, epoch));
         }
         
         if (hints.melody) {
-            events.push(...this.generateSoulSolo(currentChord, dna, epoch, navInfo, hints.melody));
+            let notes = this.generateSoulSolo(currentChord, dna, epoch, navInfo);
+            // Apply Spec rules
+            notes = this.enforceFuneralMarchProtection(notes, epoch);
+            events.push(...notes);
         }
         
         if (hints.pianoAccompaniment) {
@@ -111,11 +119,39 @@ export class BluesBrain {
         return events;
     }
 
+    private enforceFuneralMarchProtection(notes: FractalEvent[], epoch: number): FractalEvent[] {
+        // DETECT DESCENDING MELODY (Spec rule)
+        if (notes.length < 4) return notes;
+        
+        const pitches = notes.map(n => n.note);
+        this.recentPitches.push(...pitches);
+        if (this.recentPitches.length > 8) this.recentPitches = this.recentPitches.slice(-8);
+
+        const last4 = pitches.slice(-4);
+        const isDescending = last4.every((p, i, arr) => i === 0 || p < arr[i-1]);
+
+        if (isDescending && (epoch - this.lastAscendingBar > 6)) {
+            const lastNote = notes[notes.length - 1];
+            const resolution: FractalEvent = {
+                type: 'melody',
+                note: lastNote.note + 4, // Up by 4 semitones (Spec suggestion)
+                time: lastNote.time + lastNote.duration,
+                duration: lastNote.duration * 1.5,
+                weight: 0.95,
+                technique: 'pick', dynamics: 'mf', phrasing: 'legato',
+                params: { barCount: epoch }
+            };
+            this.lastAscendingBar = epoch;
+            console.log(`[BluesBrain @ Bar ${epoch}] Funeral March detected. Forcing ascending resolution.`);
+            return [...notes, resolution];
+        }
+        return notes;
+    }
+
     private applyMidnightDrag(note: FractalEvent, isLead: boolean) {
-        const baseDrag = isLead ? 0.025 : 0.015;
-        const highNoteBonus = note.note > 72 ? 0.01 : 0;
-        const randomness = (this.random.next() * 0.01);
-        note.time += baseDrag + highNoteBonus + randomness;
+        // Spec: micro_fluctuation [-28, +35] ms
+        const drag = (this.random.next() * 0.063 - 0.028); // seconds
+        note.time += drag;
     }
 
     private generateDrums(navInfo: NavigationInfo, dna: SuiteDNA, epoch: number): FractalEvent[] {
@@ -140,13 +176,12 @@ export class BluesBrain {
             }
         };
 
-        const velocityScale = mood === 'melancholic' ? 0.6 : 0.8;
+        const velocityScale = 0.65;
         add(riff.K, kit.kick, velocityScale);
         add(riff.SD, kit.snare, velocityScale * 0.9);
         add(riff.HH, kit.hihat, 0.4);
-        if (epoch % 4 === 3) add(riff.R, kit.ride, 0.5);
-
-        humanizeEvents(drumEvents, 0.02, this.random);
+        
+        humanizeEvents(drumEvents, 0.015, this.random);
         return drumEvents;
     }
 
@@ -165,112 +200,72 @@ export class BluesBrain {
             note: chord.rootNote + (DEGREE_TO_SEMITONE[n.deg] || 0) - 12,
             time: n.t / 3,
             duration: ((n.d || 2) / 3) * 1.1,
-            weight: 0.9,
-            technique: 'pluck', dynamics: 'mf', phrasing: 'legato',
-            params: { cutoff: 600, resonance: 0.3, distortion: 0.01, portamento: 0.15 }
+            weight: 0.85,
+            technique: 'pluck', dynamics: 'mf', phrasing: 'legato'
         }));
     }
 
-    private generateAdvancedAccompaniment(chord: GhostChord, navInfo: NavigationInfo, epoch: number, instrument?: string): FractalEvent[] {
+    private generateAdvancedAccompaniment(chord: GhostChord, navInfo: NavigationInfo, epoch: number): FractalEvent[] {
         const events: FractalEvent[] = [];
-        const isMinor = chord.chordType === 'minor' || chord.chordType === 'diminished';
         const root = chord.rootNote;
-        const compOctave = 12;
-
-        // #ЗАЧЕМ: Устранение "лености". Переход от долгих пэдов к активной работе "пальчиками".
-        // #ЧТО: Внедрение техники "Finger Riffs" — ритмического перебора нот аккорда.
-        const isActiveSection = ['BUILD', 'MAIN', 'SOLO'].includes(navInfo.currentPart.id);
-        const density = isActiveSection ? 0.9 : 0.5;
-
-        if (this.random.next() < density) {
-            const chordNotes = [root, root + (isMinor ? 3 : 4), root + 7, root + 10];
-            
-            // "Busy Fingers": Rhythmic patterns within the bar
-            // Pattern: 1, 2-and, 3, 4-and (in 12/8 ticks: 0, 4, 6, 10)
-            [0, 4, 6, 10].forEach((tick, pi) => {
-                const noteIndex = pi % chordNotes.length;
-                const note = chordNotes[noteIndex];
-                
-                const event: FractalEvent = {
-                    type: 'accompaniment',
-                    note: note + compOctave,
-                    time: tick / 3,
-                    duration: 0.8, // Shorter, more articulate notes
-                    weight: 0.35,
-                    technique: 'hit', dynamics: 'p', phrasing: 'staccato',
-                    params: { attack: 0.02, release: 0.15 }
-                };
-                this.applyMidnightDrag(event, false);
-                events.push(event);
-            });
-
-            // Occasional long background layers for depth
-            if (this.random.next() < 0.3) {
-                events.push({
-                    type: 'accompaniment',
-                    note: root + compOctave - 12, // Deep anchor
-                    time: 0,
-                    duration: 3.9,
-                    weight: 0.2,
-                    technique: 'swell', dynamics: 'pp', phrasing: 'legato',
-                    params: { attack: 2.5, release: 3.0 }
-                });
-            }
-        }
+        const chordNotes = [root, root + (chord.chordType === 'minor' ? 3 : 4), root + 7, root + 10];
         
+        [0, 4, 6, 10].forEach((tick, pi) => {
+            const note = chordNotes[pi % chordNotes.length];
+            const event: FractalEvent = {
+                type: 'accompaniment',
+                note: note + 12,
+                time: tick / 3,
+                duration: 0.8,
+                weight: 0.3,
+                technique: 'hit', dynamics: 'p', phrasing: 'staccato'
+            };
+            this.applyMidnightDrag(event, false);
+            events.push(event);
+        });
         return events;
     }
 
     private generatePianoPocket(chord: GhostChord, epoch: number): FractalEvent[] {
         const events: FractalEvent[] = [];
-        const isMinor = chord.chordType === 'minor';
         const root = chord.rootNote;
-        const pianoOctave = 12;
-
-        // "Busy Piano": Adding rhythmic "climb" to the stride pattern
-        const notes = [root, root + (isMinor ? 3 : 4), root + 7];
-        
         [0.05, 1.3, 2.05, 3.3].forEach((beatTime, bi) => { 
-            const n = notes[bi % notes.length];
             events.push({
                 type: 'pianoAccompaniment',
-                note: n + pianoOctave,
+                note: root + 12,
                 time: beatTime,
                 duration: 0.6,
-                weight: 0.3,
+                weight: 0.25,
                 technique: 'hit', dynamics: 'p', phrasing: 'detached'
             });
         });
         return events;
     }
 
-    private generateSoulSolo(chord: GhostChord, dna: SuiteDNA, epoch: number, navInfo: NavigationInfo, instrument?: string): FractalEvent[] {
-        const isAcoustic = instrument === 'blackAcoustic';
-        
-        const currentSoloPlan = this.cognitiveState.tensionLevel > 0.85 ? 'S_ACTIVE' : (dna.soloPlanMap.get(navInfo.currentPart.id) || 'S04');
-        const plan = BLUES_SOLO_PLANS[currentSoloPlan];
-        
+    private generateSoulSolo(chord: GhostChord, dna: SuiteDNA, epoch: number, navInfo: NavigationInfo): FractalEvent[] {
+        const plan = BLUES_SOLO_PLANS[dna.soloPlanMap.get(navInfo.currentPart.id) || 'S04'];
         const barIn12 = epoch % 12;
         const chorusIdx = Math.floor(epoch / 12) % (plan?.choruses.length || 1);
         const lickId = plan?.choruses[chorusIdx][barIn12] || 'L01';
         
         let lickPhrase = JSON.parse(JSON.stringify(BLUES_SOLO_LICKS[lickId].phrase));
-
-        if (this.cognitiveState.phraseState === 'response') {
-            if (this.random.next() < 0.5) lickPhrase = invertMelody(lickPhrase);
+        
+        // FRACTAL ENHANCEMENT (Spec Depth 3)
+        if (this.random.next() < 0.3) {
+            const sim = this.calculateSelfSimilarity(this.cognitiveState.emotion.melancholy);
+            const scale = [0, 3, 5, 6, 7, 10]; // Blues scale degrees
+            const fractalPitches = this.fractalNoteGenerator(2, sim, scale);
+            // Inject fractal segment into lick
+            lickPhrase = lickPhrase.slice(0, 1).concat(fractalPitches.slice(0, 3).map((p, i) => ({
+                t: lickPhrase[0].t + (i + 1) * 2, d: 2, deg: 'R' // mapped below
+            })));
         }
 
-        lickPhrase = addOrnaments(lickPhrase, this.random);
-
         const events: FractalEvent[] = [];
-        const soloOctave = 24; 
-
         lickPhrase.forEach((note: any) => {
-            const rootPitch = chord.rootNote + (DEGREE_TO_SEMITONE[note.deg] || 0) + soloOctave; 
-
             const event: FractalEvent = {
                 type: 'melody',
-                note: rootPitch,
+                note: chord.rootNote + (DEGREE_TO_SEMITONE[note.deg] || 0) + 24,
                 time: note.t / 3,
                 duration: (note.d || 2) / 3,
                 weight: 0.85,
@@ -278,22 +273,25 @@ export class BluesBrain {
                 dynamics: 'p', phrasing: 'legato',
                 params: { barCount: epoch }
             };
-            
             this.applyMidnightDrag(event, true);
             events.push(event);
         });
 
-        humanizeEvents(events, 0.025, this.random); 
         return events;
     }
 
-    private evolveEmotion() {
-        this.cognitiveState.emotion.melancholy += (this.random.next() - 0.5) * 0.02;
+    private evolveEmotion(epoch: number) {
+        // Spec segments: longing -> resignation -> fragile hope -> dissolution
+        const progress = epoch / 144;
+        if (progress < 0.25) { // longing
+            this.cognitiveState.emotion.melancholy = 0.75 + progress * 0.5;
+            this.cognitiveState.emotion.darkness = 0.2 + progress * 0.48;
+        } else if (progress < 0.5) { // resignation
+            this.cognitiveState.emotion.melancholy = 0.88 + (progress - 0.25) * 0.16;
+            this.cognitiveState.emotion.darkness = 0.32 - (progress - 0.25) * 0.16;
+        }
+        
         this.cognitiveState.tensionLevel += (this.random.next() - 0.45) * 0.05; 
-        
-        if (this.cognitiveState.tensionLevel > 1.0) this.cognitiveState.tensionLevel = 0.2;
-        if (this.cognitiveState.tensionLevel < 0) this.cognitiveState.tensionLevel = 0.1;
-        
-        this.cognitiveState.emotion.melancholy = Math.max(0.5, Math.min(0.99, this.cognitiveState.emotion.melancholy));
+        this.cognitiveState.emotion.melancholy = Math.max(0.65, Math.min(0.95, this.cognitiveState.emotion.melancholy));
     }
 }

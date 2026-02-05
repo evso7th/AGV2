@@ -1,0 +1,607 @@
+Это исполняемая архитектура, а не просто описание — каждая секция содержит математические правила, параметры для ваших пресетов и защиту от артефактов.
+🎯 ПРОМПТ ДЛЯ ГЕНЕРАТОРА: «Меланхоличный Блюз в Стиле Pink Floyd (Shine On You Crazy Diamond)»
+{
+  "prompt_metadata": {
+    "version": "3.1",
+    "genre": "slow_blues",
+    "mood": "melancholy_contemplative",
+    "tempo_range": [68, 76],
+    "key_center": "G_minor",
+    "reference_track": "Pink Floyd - Shine On You Crazy Diamond (Parts I-V)",
+    "emotional_arc": "longing → resignation → fragile hope → dissolution",
+    "anti_artifacts": ["funeral_march", "music_box", "mechanical_repetition"]
+  },
+  
+  "harmonic_engine": {
+    "progression_template": "12_bar_blues_with_extensions",
+    "base_progression": ["i7", "i7", "i7", "i7", "iv7", "iv7", "i7", "i7", "v7", "iv7", "i7", "v7"],
+    
+    "melancholy_variants": {
+      "quick_change_prob": 0.45,
+      "extended_iv_bars": [4, 5],
+      "turnaround_variants": [
+        {
+          "chords": ["i7", "VI7b5", "ii7b5", "V7"],
+          "weight": 0.7,
+          "emotional_effect": "yearning_delayed_resolution"
+        },
+        {
+          "chords": ["i7", "i7", "i7", "V7"],
+          "weight": 0.3,
+          "emotional_effect": "resigned_acceptance"
+        }
+      ],
+      "chromatic_approaches": {
+        "to_iv": ["i7", "i7#5", "iv7"],
+        "to_v": ["iv7", "iv7#5", "v7"],
+        "probability": 0.35
+      }
+    },
+    
+    "emotional_parameters": {
+      "melancholy": {
+        "range": [0.7, 0.95],
+        "modulation": "brownian_drift",
+        "drift_speed": 0.008,
+        "min_hold_time_bars": 4
+      },
+      "darkness": {
+        "range": [0.15, 0.4],
+        "coupling_to_melancholy": 0.3
+      }
+    },
+    
+    "markov_harmony_matrix": {
+      "description": "Вероятности переходов между гармоническими состояниями (не аккордами!)",
+      "states": ["stable", "tension_build", "chromatic_approach", "resolution"],
+      "matrix": [
+        [0.65, 0.25, 0.05, 0.05],  // stable → ...
+        [0.10, 0.55, 0.25, 0.10],  // tension_build → ...
+        [0.05, 0.10, 0.20, 0.65],  // chromatic_approach → ...
+        [0.70, 0.15, 0.05, 0.10]   // resolution → ...
+      ],
+      "initial_state": "stable",
+      "state_to_chord_mapping": {
+        "stable": ["i7", "iv7"],
+        "tension_build": ["i7#5", "iv7#5"],
+        "chromatic_approach": ["VI7b5", "ii7b5"],
+        "resolution": ["V7", "i7"]
+      }
+    }
+  },
+  
+  "melodic_engine": {
+    "scale_system": {
+      "primary": "minor_pentatonic",
+      "degrees": [0, 3, 5, 7, 10],
+      "blue_note": 6,
+      "chromatic_escape_tones": [1, 4, 8],
+      "modal_borrowing": {
+        "dorian_inflection": [2],    // натуральная 2-я для светлых моментов
+        "probability": 0.18,
+        "context": "after_resolution"
+      }
+    },
+    
+    "phrase_architecture": {
+      "call_response_fill_cycle": 4,
+      "phrase_templates": {
+        "call": [
+          {
+            "pattern": [7, 5, 3, "blue"],
+            "rhythm": "dotted8-16-8-8",
+            "weight": 0.55,
+            "tension_contribution": +0.25,
+            "description": "descending_question"
+          },
+          {
+            "pattern": [10, 7, "blue", 5],
+            "rhythm": "dotted8-16-16-8",
+            "weight": 0.45,
+            "tension_contribution": +0.35,
+            "description": "aching_reach"
+          }
+        ],
+        "response": [
+          {
+            "pattern": [5, 3, 0],
+            "rhythm": "quarter-quarter-dotted8",
+            "weight": 0.75,
+            "tension_contribution": -0.40,
+            "description": "resigned_answer"
+          },
+          {
+            "pattern": [3, 0, "dorian2", 0],
+            "rhythm": "8-8-8-8",
+            "weight": 0.25,
+            "tension_contribution": -0.20,
+            "description": "fleeting_hope"
+          }
+        ],
+        "fill": [
+          {
+            "pattern": ["blue", 5, 7, "blue", 5],
+            "rhythm": "16-16-16-16-16",
+            "weight": 0.65,
+            "tension_contribution": +0.15,
+            "description": "nervous_tremor"
+          },
+          {
+            "pattern": [3, 2, 1, 0],
+            "rhythm": "16-16-16-16",
+            "weight": 0.35,
+            "tension_contribution": -0.30,
+            "description": "sighing_descent"
+          }
+        ]
+      },
+      
+      "blue_note_rules": {
+        "entry_conditions": [
+          {
+            "context": "approach_from_above",
+            "probability": 0.75,
+            "requires": "tension > 0.45"
+          },
+          {
+            "context": "weak_beat_placement",
+            "probability": 0.90,
+            "requires": "phrase_type == 'call'"
+          }
+        ],
+        "resolution_rules": [
+          {
+            "target": "+1_semitone",  // ♭5 → 5
+            "probability": 0.68,
+            "timing": "next_strong_beat",
+            "emotional_effect": "aching_release"
+          },
+          {
+            "target": "-2_semitones", // ♭5 → 3
+            "probability": 0.32,
+            "timing": "weak_beat",
+            "emotional_effect": "resigned_fall"
+          }
+        ],
+        "pending_timeout_bars": 2,
+        "force_resolution": true
+      }
+    },
+    
+    "fractal_melody_parameters": {
+      "depth": 3,
+      "self_similarity": {
+        "range": [0.62, 0.74],
+        "modulation": "emotional_coupling",
+        "melancholy_to_similarity": -0.35,  // чем меланхоличнее → тем ниже самоподобие
+        "safety_clamp": [0.58, 0.78]
+      },
+      "level_mapping": {
+        "level_1": "phrase_contour",      // общая форма фразы (восходящая/нисходящая)
+        "level_2": "note_grouping",       // кластеры нот внутри фразы
+        "level_3": "micro_inflection"     // блюзовые ноты и хроматические проходы
+      }
+    }
+  },
+  
+  "rhythmic_engine": {
+    "tempo": {
+      "base_bpm": 72,
+      "micro_fluctuation": {
+        "range_ms": [-28, +35],
+        "probability": 0.82,
+        "correlation_to_melancholy": 0.65  // чем меланхоличнее → тем больше замедления
+      },
+      "breathing_pattern": {
+        "cycle_bars": 8,
+        "acceleration_phase": [0, 3],
+        "deceleration_phase": [4, 7],
+        "max_deviation_percent": 3.5
+      }
+    },
+    
+    "swing_feel": {
+      "base_ratio": 0.68,  // триольная основа: 2:1 → 0.666, блюзовая вариация 0.68
+      "humanization": {
+        "per_note_offset_ms": [-18, +22],
+        "probability": 0.76,
+        "correlation_to_phrase_position": {
+          "start": 0.4,   // меньше вариации в начале фразы
+          "middle": 0.9,  // максимум вариации в середине
+          "end": 0.6      // умеренная вариация в конце
+        }
+      }
+    },
+    
+    "rest_placement": {
+      "strategic_silences": [
+        {
+          "position": "after_blue_note",
+          "duration_beats": 0.75,
+          "probability": 0.65,
+          "emotional_effect": "aching_pause"
+        },
+        {
+          "position": "end_of_call_phrase",
+          "duration_beats": 1.25,
+          "probability": 0.85,
+          "emotional_effect": "unanswered_question"
+        },
+        {
+          "position": "before_turnaround",
+          "duration_beats": 2.0,
+          "probability": 0.45,
+          "emotional_effect": "dramatic_suspense"
+        }
+      ]
+    }
+  },
+  
+  "timbral_engine": {
+    "instrument": "guitar_shineOn",
+    "preset_parameters": {
+      "base": {
+        "pickup.cutoff": 3400,
+        "pickup.q": 1.0,
+        "drive.type": "soft",
+        "drive.amount": 0.22,
+        "comp.threshold": -18,
+        "comp.ratio": 3,
+        "comp.attack": 0.01,
+        "comp.release": 0.12,
+        "comp.makeup": 3,
+        "adsr.a": 0.006,
+        "adsr.d": 0.35,
+        "adsr.s": 0.6,
+        "adsr.r": 2.1,
+        "delayA.on": true,
+        "delayA.time": 0.42,
+        "delayA.fb": 0.38,
+        "delayA.mix": 0.32,
+        "chorus.on": true,
+        "chorus.mix": 0.38,
+        "reverbMix": 0.24
+      },
+      
+      "emotional_modulation": {
+        "melancholy_coupling": {
+          "pickup.cutoff": {"min": 3100, "max": 3600, "curve": "linear_inverse"},
+          "drive.amount": {"min": 0.18, "max": 0.28, "curve": "linear"},
+          "adsr.r": {"min": 1.8, "max": 2.6, "curve": "linear"},
+          "reverbMix": {"min": 0.20, "max": 0.32, "curve": "linear"},
+          "expressionGain": {"min": 0.65, "max": 0.92, "curve": "linear"}
+        },
+        "update_interval_ms": 3200,
+        "smoothing_time_constant": 0.85
+      }
+    },
+    
+    "articulation_rules": {
+      "bends": [
+        {
+          "context": "blue_note_entry",
+          "direction": "up",
+          "semitones": 0.8,
+          "duration_ms": 180,
+          "probability": 0.72
+        },
+        {
+          "context": "phrase_end_resolution",
+          "direction": "down",
+          "semitones": 0.4,
+          "duration_ms": 220,
+          "probability": 0.58
+        }
+      ],
+      "vibrato": {
+        "after_sustained_note_ms": 800,
+        "depth_semitones": 0.18,
+        "rate_hz": 5.2,
+        "fade_in_ms": 300,
+        "probability": 0.68
+      }
+    }
+  },
+  
+  "anti_artifact_system": {
+    "funeral_march_protection": {
+      "detection_rules": [
+        {
+          "condition": "descending_melody > 4_consecutive_notes",
+          "action": "force_ascending_resolution",
+          "min_interval": "+3_semitones",
+          "probability": 0.95
+        },
+        {
+          "condition": "no_ascending_motion_last_8_bars",
+          "action": "insert_hope_phrase",
+          "phrase_type": "response_with_dorian",
+          "probability": 1.0
+        }
+      ],
+      "mandatory_ascent": {
+        "every_n_bars": 7,
+        "min_interval": 4,
+        "target_scale_degree": 5
+      }
+    },
+    
+    "music_box_protection": {
+      "detection_rules": [
+        {
+          "condition": "phrase_similarity > 0.82_last_3_phrases",
+          "action": "introduce_chromatic_break",
+          "break_type": "4_note_chromatic_run",
+          "probability": 1.0
+        },
+        {
+          "condition": "self_similarity > 0.76",
+          "action": "reduce_fractal_depth",
+          "new_depth": 2,
+          "hold_bars": 4
+        }
+      ],
+      "chromatic_break": {
+        "every_n_phrases": 5,
+        "probability": 0.42,
+        "placement": "end_of_fill_phrase"
+      }
+    },
+    
+    "tension_management": {
+      "max_sustained_tension_bars": 6,
+      "tension_reset_actions": [
+        {
+          "threshold": 0.85,
+          "action": "force_resolution_to_tonic",
+          "hold_duration_beats": 3.0,
+          "probability": 1.0
+        },
+        {
+          "threshold": 0.72,
+          "action": "insert_strategic_silence",
+          "duration_beats": 2.0,
+          "probability": 0.85
+        }
+      ]
+    }
+  },
+  
+  "emotional_arc_engine": {
+    "arc_segments": [
+      {
+        "name": "longing",
+        "bars": [0, 15],
+        "melancholy": [0.75, 0.88],
+        "darkness": [0.20, 0.32],
+        "harmonic_focus": "i7_with_chromatic_approaches",
+        "melodic_contour": "predominantly_descending",
+        "rhythmic_feel": "hesitant_with_silences"
+      },
+      {
+        "name": "resignation",
+        "bars": [16, 31],
+        "melancholy": [0.88, 0.92],
+        "darkness": [0.32, 0.28],
+        "harmonic_focus": "extended_iv_bars",
+        "melodic_contour": "static_with_blue_note_pedal",
+        "rhythmic_feel": "heavily_swinged_with_drag"
+      },
+      {
+        "name": "fragile_hope",
+        "bars": [32, 47],
+        "melancholy": [0.92, 0.78],
+        "darkness": [0.28, 0.18],
+        "harmonic_focus": "dorian_inflections_on_i7",
+        "melodic_contour": "ascending_with_dorian_2",
+        "rhythmic_feel": "slightly_accelerated"
+      },
+      {
+        "name": "dissolution",
+        "bars": [48, 63],
+        "melancholy": [0.78, 0.65],
+        "darkness": [0.18, 0.25],
+        "harmonic_focus": "chromatic_turnaround",
+        "melodic_contour": "fragmented_with_widening_intervals",
+        "rhythmic_feel": "increasing_silences"
+      }
+    ],
+    
+    "transition_rules": {
+      "between_segments": {
+        "minimum_hold_bars": 3,
+        "transition_smoothing_bars": 2,
+        "mandatory_phrase_type": "fill",
+        "emotional_bleed": 0.35
+      }
+    }
+  },
+  
+  "output_specification": {
+    "format": "midi_events_with_expression",
+    "fields": [
+      "pitch_midi",
+      "time_seconds",
+      "duration_seconds",
+      "velocity_0_1",
+      "expression_0_1",
+      "bend_semitones_optional",
+      "vibrato_depth_optional",
+      "harmonic_context",
+      "phrase_type",
+      "emotional_weight_0_1"
+    ],
+    "metadata": {
+      "tempo_bpm": 72,
+      "key_signature": "G_minor",
+      "time_signature": "4/4",
+      "total_bars": 64,
+      "instrument": "guitar_shineOn",
+      "emotional_profile": "melancholy_contemplative"
+    }
+  }
+}
+
+🔑 КЛЮЧЕВЫЕ МАТЕМАТИЧЕСКИЕ ПРАВИЛА (для реализации)
+1. Марковская цепь для гармонических состояний
+// Состояния: 0=stable, 1=tension_build, 2=chromatic_approach, 3=resolution
+const markovMatrix = [
+  [0.65, 0.25, 0.05, 0.05],
+  [0.10, 0.55, 0.25, 0.10],
+  [0.05, 0.10, 0.20, 0.65],
+  [0.70, 0.15, 0.05, 0.10]
+];
+
+function nextState(current: number): number {
+  const rand = Math.random();
+  let cumulative = 0;
+  for (let i = 0; i < 4; i++) {
+    cumulative += markovMatrix[current][i];
+    if (rand < cumulative) return i;
+  }
+  return 3; // fallback
+}
+
+2. Фрактальное самоподобие с эмоциональной модуляцией
+function calculateSelfSimilarity(melancholy: number): number {
+  // Базовое самоподобие 0.68, снижается с ростом меланхолии
+  const base = 0.68;
+  const modulation = -0.35 * (melancholy - 0.7); // при melancholy=0.9 → -0.07
+  return clamp(base + modulation, 0.58, 0.78);
+}
+
+// Применение на уровне фраз → нот → микротонов
+function fractalNoteGenerator(depth: number, similarity: number): number[] {
+  if (depth === 0) return [randomScaleDegree()];
+  
+  const parent = fractalNoteGenerator(depth - 1, similarity);
+  const children = parent.flatMap(note => {
+    if (Math.random() < similarity) {
+      return [note, note + randomSmallInterval()]; // самоподобие
+    } else {
+      return [note, randomScaleDegree()]; // вариация
+    }
+  });
+  
+  return children;
+}
+
+// Применение на уровне фраз → нот → микротонов
+function fractalNoteGenerator(depth: number, similarity: number): number[] {
+  if (depth === 0) return [randomScaleDegree()];
+
+3. Защита от «похоронного марша» (обнаружение + коррекция)
+class FuneralMarchGuard {
+  private lastAscendingBar = -10;
+  
+  enforce(notes: NoteEvent[], currentBar: number): NoteEvent[] {
+    // Обнаружение: 4+ нисходящих нот подряд
+    const last4 = notes.slice(-4);
+    const isDescending = last4.every((n, i, arr) => 
+      i === 0 || n.pitch < arr[i-1].pitch
+    );
+    
+    if (isDescending && currentBar - this.lastAscendingBar > 6) {
+      // Коррекция: принудительное восходящее разрешение
+      const lastNote = notes[notes.length - 1];
+      const resolution: NoteEvent = {
+        pitch: lastNote.pitch + 4, // квинта вверх
+        time: lastNote.time + lastNote.duration,
+        duration: lastNote.duration * 1.5,
+        velocity: lastNote.velocity * 0.85,
+        expression: 0.92
+      };
+      
+      this.lastAscendingBar = currentBar;
+      return [...notes, resolution];
+    }
+    
+    return notes;
+  }
+}
+
+🎸 КОНКРЕТНЫЙ ПРИМЕР ГЕНЕРАЦИИ (первые 8 тактов)
+Такт
+Аккорд
+Фраза
+Ноты (MIDI)
+Ритм
+Эмоция
+1
+Gm7
+call
+67, 65, 62, 63 (♭5)
+dotted8-16-8-8
+longing (+0.25 tension)
+2
+Gm7
+response
+62, 59, 55
+quarter-quarter-dotted8
+resignation (-0.40 tension)
+3
+Gm7
+fill
+63, 62, 64, 63, 62
+16-16-16-16-16
+nervous_tremor (+0.15)
+4
+Gm7#5
+call
+67, 65, 62, 63
+dotted8-16-8-8
+yearning (+0.30)
+5
+Cm7
+response
+62, 59, 55
+quarter-quarter-dotted8
+unanswered (-0.35)
+6
+Cm7
+fill
+59, 58, 57, 55
+16-16-16-16
+sighing_descent (-0.30)
+7
+Gm7
+call
+70, 67, 63, 62
+dotted8-16-16-8
+aching_reach (+0.35)
+8
+Gm7
+response
+62, 55, 56 (dorian), 55
+8-8-8-8
+fleeting_hope (-0.20)
+Параметры синтеза на такте 1–4: pickup.cutoff=3350, drive.amount=0.24, adsr.r=2.3, expression=0.88
+📦 ИНТЕГРАЦИЯ С ВАШЕЙ АРХИТЕКТУРОЙ
+typescript
+12345678910111213141516171819202122232425
+// Пример использования с вашим инструментом
+const bluesSpec = loadJSON('./slow_blues_melancholy_spec.json');
+const generator = new CognitiveBluesGenerator(bluesSpec);
+
+// Инициализация гитары
+const guitar = await buildMultiInstrument(ctx, {
+  type: 'guitar',
+  preset: V2_PRESETS.guitar_shineOn
+});
+
+
+💡 ПОЧЕМУ ЭТО РАБОТАЕТ (а не шарманка/похоронный марш)
+Проблема
+Решение в спецификации
+Похоронный марш
+Обязательное восходящее разрешение каждые 7 тактов + обнаружение 4+ нисходящих нот
+Шарманка
+Самоподобие ограничено 0.58–0.78 + хроматические разрывы каждые 5 фраз
+Механичность
+Микрофлуктуации темпа (±35мс) + триольный свинг с человеческой вариацией
+Потеря жанра
+Фиксированная 12-bar структура + блюзовая нота с правилами разрешения
+Эмоциональная плоскость
+4-сегментная дуга с плавными переходами и «эмоциональным кровотечением»
+Это полноценная исполняемая спецификация — скопируйте JSON в ваш генератор, реализуйте 3 математических правила выше, и получите бесконечно вариативный, но всегда узнаваемый меланхоличный блюз в духе Гилмора.
+
