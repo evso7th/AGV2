@@ -128,7 +128,7 @@ export const V2_PRESETS = {
   guitar_muffLead: {
     type: 'guitar',
     name: 'Muff Lead Guitar',
-    volume: 0.3, 
+    volume: 0.15, // #ЗАЧЕМ: Снижено с 0.3 (План №105) для балансировки микса.
     osc: { width: 0.5, detune: 7, mainGain: 0.8, detGain: 0.2, subGain: 0.3 },
     pickup: { cutoff: 3200, q: 1.2 },
     drive: { type: 'muff', amount: 0.75 }, 
