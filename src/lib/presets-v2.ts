@@ -73,7 +73,7 @@ export const V2_PRESETS = {
   organ: {
     type: 'organ',
     name: 'Cathedral Organ',
-    volume: 0.7, // #ЗАЧЕМ: Удвоено по запросу пользователя (было 0.35)
+    volume: 0.7, 
     drawbars: [8, 8, 4, 2, 0, 0, 0, 1, 0],
     keyClick: 0.005,
     adsr: { a: 0.1, d: 0.1, s: 0.9, r: 1.5 },
@@ -87,7 +87,7 @@ export const V2_PRESETS = {
   organ_soft_jazz: {
     type: 'organ',
     name: 'Soft Jazz Organ',
-    volume: 0.54, // #ЗАЧЕМ: Удвоено по запросу пользователя (было 0.27)
+    volume: 0.54, 
     drawbars: [8, 0, 8, 5, 0, 3, 0, 0, 0], 
     lpf: 7600,
     hpf: 90,
@@ -102,7 +102,7 @@ export const V2_PRESETS = {
   organ_jimmy_smith: {
     type: 'organ',
     name: 'Jimmy Smith Trio',
-    volume: 0.64, // #ЗАЧЕМ: Удвоено по запросу пользователя (было 0.32)
+    volume: 0.64, 
     drawbars: [8, 8, 8, 0, 0, 0, 0, 0, 0], // 888000000 - classic trio lead
     lpf: 8000,
     hpf: 100,
@@ -115,7 +115,7 @@ export const V2_PRESETS = {
   organ_gospel: {
     type: 'organ',
     name: 'Gospel Shout',
-    volume: 0.76, // #ЗАЧЕМ: Удвоено по запросу пользователя (было 0.38)
+    volume: 0.76, 
     drawbars: [8, 8, 8, 8, 8, 8, 8, 8, 8], // All Drawbars Out
     lpf: 9000,
     hpf: 60,
@@ -128,14 +128,14 @@ export const V2_PRESETS = {
   organ_circus_of_dread: {
     type: 'organ',
     name: 'Circus of Dread',
-    volume: 0.6, // #ЗАЧЕМ: Удвоено по запросу пользователя (было 0.3)
+    volume: 0.6, 
     drawbars: [8, 0, 0, 8, 0, 0, 8, 0, 8], // Hollow, eerie registration
     lpf: 5500,
     hpf: 120,
     adsr: { a: 0.1, d: 0.2, s: 0.8, r: 2.5 },
     keyClick: 0.002,
     leslie: { mode: 'slow', slow: 0.4, fast: 5.5, accel: 1.2 },
-    reverbMix: 0.45 // Very wet for atmosphere
+    reverbMix: 0.45 
   },
 
   // ═══════════════════════════════════════════════════════════════════════════
@@ -160,14 +160,14 @@ export const V2_PRESETS = {
     phaser: { on: true, rate: 0.16, depth: 600, mix: 0.18 },
     delayA: { on: true, time: 0.38, fb: 0.25, mix: 0.15 },
     delayB: { on: false },
-    adsr: { a: 0.006, d: 0.4, s: 0.75, r: 3.5 }, // Increased release for layering
+    adsr: { a: 0.006, d: 0.4, s: 0.75, r: 3.5 }, 
     reverbMix: 0.22
   },
 
   guitar_muffLead: {
     type: 'guitar',
     name: 'Muff Lead Guitar',
-    volume: 0.7, // #ЗАЧЕМ: Уравнена с Shine On по запросу пользователя.
+    volume: 0.3, // #ЗАЧЕМ: Уменьшена громкость для динамического баланса в миксе.
     osc: { width: 0.5, detune: 7, mainGain: 0.8, detGain: 0.2, subGain: 0.3 },
     pickup: { cutoff: 3200, q: 1.2, combFeedback: 0.4 },
     drive: { type: 'muff', amount: 0.65 },
@@ -182,7 +182,7 @@ export const V2_PRESETS = {
     phaser: { on: true, rate: 0.18, depth: 700, mix: 0.15 },
     delayA: { on: true, time: 0.38, fb: 0.22, mix: 0.12 },
     delayB: { on: true, time: 0.52, fb: 0.18, mix: 0.08 },
-    adsr: { a: 0.008, d: 0.5, s: 0.8, r: 4.0 }, // Increased release
+    adsr: { a: 0.008, d: 0.5, s: 0.8, r: 4.0 }, 
     reverbMix: 0.25
   }
 
