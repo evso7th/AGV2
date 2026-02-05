@@ -1,7 +1,8 @@
 /**
  * #ЗАЧЕМ: Центральная фабрика для создания высококачественных инструментов V2.
  * #ЧТО: Реализует конвейеры синтеза для synth, organ, bass и guitar.
- * #ОБНОВЛЕНО (ПЛАН 87): Орган переведен на PeriodicWave (1 осциллятор вместо 9). 
+ * #ОБНОВЛЕНО (ПЛАН 87.1): Исправлена ошибка именования LFO-массивов. 
+ *          Орган переведен на PeriodicWave (1 осциллятор вместо 9). 
  *          Внедрена тотальная изоляция эффектов и остановка статических LFO при disconnect.
  * #СВЯЗИ: Используется менеджерами V2 для создания экземпляров инструментов.
  */
@@ -19,7 +20,7 @@ if (typeof window !== 'undefined') {
 
 // ───── CONSTANTS ─────
 
-const DRAWBAR_RATIOS = [0.5, 1.5, 1, 2, 3, 4, 5, 6, 8];
+const DRAWBAR_RATIOS = [0.5, 1.5, 1, 2, 3, 4, 6, 8, 10]; // footage ratios
 
 // ───── HELPERS ─────
 
@@ -98,10 +99,6 @@ const makeTubeSaturation = (drive = 0.3, n = 8192) => {
     return curve;
 };
 
-/**
- * #ЗАЧЕМ: Винтажная кривая искажения (Arctan-Sinh).
- * #ЧТО: Дает более естественное "ламповое" звучание по сравнению с tanh.
- */
 const makeVintageDistortion = (k = 50, n = 8192) => {
     const curve = new Float32Array(n);
     for (let i = 0; i < n; i++) {
@@ -335,7 +332,7 @@ const buildSynthEngine = (ctx: AudioContext, preset: any, master: GainNode, reve
     internalLFOs.push(...chorus.lfos);
     
     const delay = makeDelay(ctx, { time: currentPreset.delay?.time ?? 0.35, fb: currentPreset.delay?.fb ?? 0.25, hc: 3000, wet: currentPreset.delay?.on ? (currentPreset.delay.mix ?? 0.2) : 0 });
-    staticLFOs.push(...delay.lfos);
+    internalLFOs.push(...delay.lfos);
     
     const revSend = ctx.createGain();
 
@@ -607,7 +604,9 @@ const buildGuitarEngine = (ctx: AudioContext, preset: any, master: GainNode, rev
     const ph = makePhaser(ctx, { rate: currentPreset.phaser?.rate || 0.16, depth: currentPreset.phaser?.depth || 600, mix: currentPreset.phaser?.on ? (currentPreset.phaser.mix || 0.2) : 0 });
     internalLFOs.push(...ph.lfos);
     const dA = makeDelay(ctx, { time: currentPreset.delayA?.time || 0.38, fb: currentPreset.delayA?.fb || 0.28, hc: 3600, wet: currentPreset.delayA?.on ? (currentPreset.delayA.mix || 0.2) : 0 });
+    internalLFOs.push(...dA.lfos);
     const dB_node = makeDelay(ctx, { time: currentPreset.delayB?.time || 0.52, fb: currentPreset.delayB?.fb || 0.22, hc: 3600, wet: currentPreset.delayB?.on ? (currentPreset.delayB.mix || 0.1) : 0 });
+    internalLFOs.push(...dB_node.lfos);
     const revSend = ctx.createGain(); revSend.gain.value = currentPreset.reverbMix || 0.18;
 
     guitarInput.connect(pickupComb).connect(pickupLPF).connect(hpf);
