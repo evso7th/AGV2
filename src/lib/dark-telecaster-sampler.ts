@@ -1,3 +1,4 @@
+
 import type { Note, Technique } from "@/types/music";
 import { BLUES_GUITAR_VOICINGS } from './assets/guitar-voicings';
 import { GUITAR_PATTERNS } from './assets/guitar-patterns';
@@ -34,7 +35,7 @@ const TELECASTER_SAMPLES: Record<string, string> = {
 
 // Distortion curve function for Fuzz effect
 function makeDistortionCurve(amount: number) {
-  const k = typeof amount === 'number' ? amount : 50;
+  const k = isFinite(amount) ? amount : 50;
   const n_samples = 44100;
   const curve = new Float32Array(n_samples);
   const deg = Math.PI / 180;
@@ -61,7 +62,7 @@ export class DarkTelecasterSampler {
     private preamp: GainNode;
     private distortion: WaveShaperNode;
     private compressor: DynamicsCompressorNode;
-    private cabinetFilter: BiquadFilterNode; // #ЗАЧЕМ: Убираем "стеклянный" звон
+    private cabinetFilter: BiquadFilterNode;
     
     constructor(audioContext: AudioContext, destination: AudioNode) {
         this.audioContext = audioContext;
@@ -83,7 +84,7 @@ export class DarkTelecasterSampler {
 
         this.cabinetFilter = this.audioContext.createBiquadFilter();
         this.cabinetFilter.type = 'lowpass';
-        this.cabinetFilter.frequency.value = 3200; // #ЧТО: Жестко срезаем верха для "темного" тона
+        this.cabinetFilter.frequency.value = 3200;
         this.cabinetFilter.Q.value = 0.7;
         
         // --- Routing ---
@@ -187,11 +188,16 @@ export class DarkTelecasterSampler {
     private playSingleNote(instrument: SamplerInstrument, note: Note, startTime: number) {
         const { buffer, midi: sampleMidi } = this.findBestSample(instrument, note.midi);
         if (!buffer) return;
-        const noteStartTime = startTime + note.time;
+        const noteStartTime = startTime + (note.time || 0);
         this.playSample(buffer, sampleMidi, note.midi, noteStartTime, note.velocity || 0.7, note.duration);
     }
     
     private playSample(buffer: AudioBuffer, sampleMidi: number, targetMidi: number, startTime: number, velocity: number, duration?: number) {
+        // #ЗАЧЕМ: Предотвращение критической ошибки AudioParam.
+        if (!isFinite(startTime) || !isFinite(velocity) || !isFinite(targetMidi) || !isFinite(sampleMidi)) {
+            return;
+        }
+
         const source = this.audioContext.createBufferSource();
         source.buffer = buffer;
         const gainNode = this.audioContext.createGain();
@@ -199,7 +205,7 @@ export class DarkTelecasterSampler {
         gainNode.connect(this.preamp);
 
         const playbackRate = Math.pow(2, (targetMidi - sampleMidi) / 12);
-        source.playbackRate.value = playbackRate;
+        source.playbackRate.value = isFinite(playbackRate) ? playbackRate : 1.0;
 
         gainNode.gain.setValueAtTime(0, startTime);
         gainNode.gain.linearRampToValueAtTime(velocity, startTime + 0.005);
@@ -237,9 +243,9 @@ export class DarkTelecasterSampler {
     }
 
     public setParam(key: string, value: any) {
-        if (key === 'cutoff') {
+        if (key === 'cutoff' && isFinite(value)) {
             this.cabinetFilter.frequency.setTargetAtTime(value, this.audioContext.currentTime, 0.05);
-        } else if (key === 'drive') {
+        } else if (key === 'drive' && isFinite(value)) {
             this.distortion.curve = makeDistortionCurve(value);
         }
     }

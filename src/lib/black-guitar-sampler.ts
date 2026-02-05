@@ -142,11 +142,17 @@ export class BlackGuitarSampler {
     private playSingleNote(instrument: SamplerInstrument, note: Note, startTime: number) {
         const { buffer, midi: sampleMidi } = this.findBestSample(instrument, note.midi);
         if (!buffer) return;
-        const noteStartTime = startTime + note.time;
+        const noteStartTime = startTime + (note.time || 0);
         this.playSample(buffer, sampleMidi, note.midi, noteStartTime, note.velocity || 0.7, note.duration);
     }
     
     private playSample(buffer: AudioBuffer, sampleMidi: number, targetMidi: number, startTime: number, velocity: number, duration?: number) {
+        // #ЗАЧЕМ: Предотвращение критической ошибки AudioParam.
+        // #ЧТО: Проверка на конечность значений времени и громкости.
+        if (!isFinite(startTime) || !isFinite(velocity) || !isFinite(targetMidi) || !isFinite(sampleMidi)) {
+            return;
+        }
+
         const source = this.audioContext.createBufferSource();
         source.buffer = buffer;
         const gainNode = this.audioContext.createGain();
@@ -154,21 +160,17 @@ export class BlackGuitarSampler {
         gainNode.connect(this.preamp);
 
         const playbackRate = Math.pow(2, (targetMidi - sampleMidi) / 12);
-        source.playbackRate.value = playbackRate;
+        source.playbackRate.value = isFinite(playbackRate) ? playbackRate : 1.0;
 
-        // NO source.stop(): позволяем сэмплу звучать до физического конца буфера.
         gainNode.gain.setValueAtTime(0, startTime);
         gainNode.gain.linearRampToValueAtTime(velocity, startTime + 0.005);
 
         if (duration && isFinite(duration)) {
-            // Если нота короткая (по логике композитора), плавно уводим громкость, 
-            // но НЕ останавливаем осциллятор, чтобы сохранить хвост резонанса.
             gainNode.gain.setTargetAtTime(0, startTime + duration, 0.5);
         }
         
         source.start(startTime);
         
-        // КРИТИЧЕСКИ ВАЖНО: Очистка ресурсов только после физического завершения сэмпла.
         source.onended = () => {
             try { gainNode.disconnect(); } catch(e) {}
         };
