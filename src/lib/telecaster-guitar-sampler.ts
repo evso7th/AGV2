@@ -3,7 +3,6 @@ import type { Note, Technique } from "@/types/music";
 import { BLUES_GUITAR_VOICINGS } from './assets/guitar-voicings';
 import { GUITAR_PATTERNS } from './assets/guitar-patterns';
 
-
 const TELECASTER_SAMPLES: Record<string, string> = {
     'c6': '/assets/acoustic_guitar_samples/telecaster/TELECASTER_C6.ogg',
     'b5': '/assets/acoustic_guitar_samples/telecaster/TELECASTER_B5.ogg',
@@ -34,10 +33,7 @@ const TELECASTER_SAMPLES: Record<string, string> = {
     'e2': '/assets/acoustic_guitar_samples/telecaster/TELECASTER_E2.ogg',
 };
 
-
-type SamplerInstrument = {
-    buffers: Map<number, AudioBuffer>;
-};
+type SamplerInstrument = { buffers: Map<number, AudioBuffer>; };
 
 export class TelecasterGuitarSampler {
     private audioContext: AudioContext;
@@ -50,7 +46,6 @@ export class TelecasterGuitarSampler {
     constructor(audioContext: AudioContext, destination: AudioNode) {
         this.audioContext = audioContext;
         this.destination = destination;
-
         this.preamp = this.audioContext.createGain();
         this.preamp.gain.value = 3.0;
         this.preamp.connect(this.destination);
@@ -63,44 +58,23 @@ export class TelecasterGuitarSampler {
     async loadInstrument(instrumentName: 'telecaster', sampleMap: Record<string, string>): Promise<boolean> {
         if (this.isInitialized || this.isLoading) return true;
         this.isLoading = true;
-
-        if (this.instruments.has(instrumentName)) {
-            this.isLoading = false;
-            return true;
-        }
-
         try {
             const loadedBuffers = new Map<number, AudioBuffer>();
-            
             const loadSample = async (url: string) => {
                 const response = await fetch(url);
-                if (!response.ok) throw new Error(`HTTP error! status: ${'' + response.status}`);
                 const arrayBuffer = await response.arrayBuffer();
                 return await this.audioContext.decodeAudioData(arrayBuffer);
             };
-            
-            const notePromises = Object.entries(sampleMap).map(async ([key, url]) => {
+            const promises = Object.entries(sampleMap).map(async ([key, url]) => {
                 const midi = this.keyToMidi(key);
-                if (midi === null) {
-                    console.warn(`[TelecasterGuitarSampler] Could not parse MIDI from key: ${key}`);
-                    return;
-                };
-
-                try {
-                    const buffer = await loadSample(url);
-                    loadedBuffers.set(midi, buffer);
-                } catch(e) { console.error(`Error loading sample for ${key}`, e); }
+                if (midi) loadedBuffers.set(midi, await loadSample(url));
             });
-
-            await Promise.all(notePromises);
-            
+            await Promise.all(promises);
             this.instruments.set(instrumentName, { buffers: loadedBuffers });
-            console.log(`[TelecasterGuitarSampler] Instrument "${instrumentName}" loaded with ${loadedBuffers.size} samples.`);
             this.isInitialized = true;
             this.isLoading = false;
             return true;
         } catch (error) {
-            console.error(`[TelecasterGuitarSampler] Failed to load instrument "${instrumentName}":`, error);
             this.isLoading = false;
             return false;
         }
@@ -109,7 +83,6 @@ export class TelecasterGuitarSampler {
     public schedule(notes: Note[], time: number, tempo: number = 120) {
         const instrument = this.instruments.get('telecaster');
         if (!this.isInitialized || !instrument) return;
-
         notes.forEach(note => {
             if (note.technique && (note.technique.startsWith('F_') || note.technique.startsWith('S_'))) {
                 this.playPattern(instrument, note, time, tempo);
@@ -122,25 +95,13 @@ export class TelecasterGuitarSampler {
     private playPattern(instrument: SamplerInstrument, note: Note, barStartTime: number, tempo: number) {
         const patternName = note.technique as string;
         const patternData = GUITAR_PATTERNS[patternName];
-        if (!patternData) {
-            this.playSingleNote(instrument, note, barStartTime);
-            return;
-        }
-
-        const voicingName = note.params?.voicingName || 'E7_open';
-        const voicing = BLUES_GUITAR_VOICINGS[voicingName];
-        if (!voicing) {
-            this.playSingleNote(instrument, note, barStartTime);
-            return;
-        }
-
+        const voicing = BLUES_GUITAR_VOICINGS[note.params?.voicingName || 'E7_open'];
+        if (!patternData || !voicing) return;
         const beatDuration = 60 / tempo;
         const ticksPerBeat = 3;
-
         for (const event of patternData.pattern) {
             for (const tick of event.ticks) {
                 const noteTimeInBar = (tick / ticksPerBeat) * beatDuration;
-                
                 for (const stringIndex of event.stringIndices) {
                     if (stringIndex < voicing.length) {
                         const midiNote = voicing[voicing.length - 1 - stringIndex];
@@ -157,76 +118,38 @@ export class TelecasterGuitarSampler {
 
     private playSingleNote(instrument: SamplerInstrument, note: Note, startTime: number) {
         const { buffer, midi: sampleMidi } = this.findBestSample(instrument, note.midi);
-        if (!buffer) return;
-
-        const noteStartTime = startTime + note.time;
-        this.playSample(buffer, sampleMidi, note.midi, noteStartTime, note.velocity || 0.7, note.duration);
+        if (buffer) this.playSample(buffer, sampleMidi, note.midi, startTime + note.time, note.velocity || 0.7, note.duration);
     }
-
+    
     private playSample(buffer: AudioBuffer, sampleMidi: number, targetMidi: number, startTime: number, velocity: number, duration?: number) {
         const source = this.audioContext.createBufferSource();
         source.buffer = buffer;
-
         const gainNode = this.audioContext.createGain();
-        source.connect(gainNode);
-        gainNode.connect(this.preamp);
-
-        const playbackRate = Math.pow(2, (targetMidi - sampleMidi) / 12);
-        source.playbackRate.value = playbackRate;
-
-        gainNode.gain.setValueAtTime(velocity, startTime);
-
-        if (duration) {
-            gainNode.gain.setTargetAtTime(0, startTime + duration * 0.8, 0.1);
-            source.start(startTime);
-            source.stop(startTime + duration * 1.2);
-        } else {
-            source.start(startTime);
-        }
-
-        source.onended = () => {
-            gainNode.disconnect();
-        };
+        source.connect(gainNode).connect(this.preamp);
+        source.playbackRate.value = Math.pow(2, (targetMidi - sampleMidi) / 12);
+        gainNode.gain.setValueAtTime(0, startTime);
+        gainNode.gain.linearRampToValueAtTime(velocity, startTime + 0.005);
+        if (duration) gainNode.gain.setTargetAtTime(0, startTime + duration, 0.4);
+        source.start(startTime);
+        source.onended = () => { try { gainNode.disconnect(); } catch(e){} };
     }
 
     private findBestSample(instrument: SamplerInstrument, targetMidi: number): { buffer: AudioBuffer | null, midi: number } {
         const availableMidiNotes = Array.from(instrument.buffers.keys());
-        
-        if (availableMidiNotes.length === 0) return { buffer: null, midi: targetMidi };
         const closestMidi = availableMidiNotes.reduce((prev, curr) => 
             Math.abs(curr - targetMidi) < Math.abs(prev - targetMidi) ? curr : prev
-        );
-
-        const sampleBuffer = instrument.buffers.get(closestMidi);
-        
-        return { buffer: sampleBuffer || null, midi: closestMidi };
+        , availableMidiNotes[0]);
+        return { buffer: instrument.buffers.get(closestMidi) ?? null, midi: closestMidi };
     }
     
     private keyToMidi(key: string): number | null {
-        const noteStr = key.toLowerCase();
-        const noteMatch = noteStr.match(/([a-g][b#]?)_?(\d)/);
-    
+        const noteMatch = key.toLowerCase().match(/([a-g][b#]?)(\d)/);
         if (!noteMatch) return null;
-    
         let [, name, octaveStr] = noteMatch;
-        const octave = parseInt(octaveStr, 10);
-    
-        const noteMap: Record<string, number> = {
-            'c': 0, 'c#': 1, 'db': 1, 'd': 2, 'd#': 3, 'eb': 3, 'e': 4, 'f': 5, 'f#': 6, 'gb': 6, 'g': 7, 'g#': 8, 'ab': 8, 'a': 9, 'a#': 10, 'bb': 10, 'b': 11
-        };
-    
-        const noteValue = noteMap[name];
-        
-        if (noteValue === undefined) return null;
-    
-        return 12 * (octave + 1) + noteValue;
-    }
-    
-
-    public stopAll() {
+        const noteMap: Record<string, number> = { 'c':0,'c#':1,'db':1,'d':2,'d#':3,'eb':3,'e':4,'f':5,'f#':6,'gb':6,'g':7,'g#':8,'ab':8,'a':9,'a#':10,'bb':10,'b':11 };
+        return 12 * (parseInt(octaveStr) + 1) + noteMap[name];
     }
 
-    public dispose() {
-        this.preamp.disconnect();
-    }
+    public stopAll() {}
+    public dispose() { this.preamp.disconnect(); }
 }
