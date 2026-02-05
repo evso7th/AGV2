@@ -23,8 +23,8 @@ export const DEGREE_TO_SEMITONE: Record<string, number> = {
 };
 
 const BLUES_HARMONIC_TRANSITIONS: Record<string, Record<string, number>> = {
-    'I':  { 'I': 0.5, 'IV': 0.35, 'V': 0.1, 'vi': 0.05 },
-    'IV': { 'I': 0.4, 'IV': 0.4, 'V': 0.1, 'bVI': 0.1 },
+    'I':  { 'I': 0.45, 'IV': 0.4, 'V': 0.1, 'vi': 0.05 },
+    'IV': { 'I': 0.3, 'IV': 0.5, 'V': 0.1, 'bVI': 0.1 },
     'V':  { 'IV': 0.7, 'I': 0.2, 'V': 0.1 },
     'vi': { 'IV': 0.5, 'V': 0.3, 'I': 0.2 },
     'bVI': { 'V': 0.9, 'I': 0.1 }
@@ -62,6 +62,7 @@ export function createHarmonyAxiom(
     const isMinor = chord.chordType === 'minor' || chord.chordType === 'diminished';
     const root = chord.rootNote;
     
+    // В Ambient/Trance используем теплые пэды
     const notes = [root, root + (isMinor ? 3 : 4), root + 7];
     
     notes.forEach((note, i) => {
@@ -86,6 +87,7 @@ export function getScaleForMood(mood: Mood, genre?: Genre, chordType?: 'major' |
   let baseScale: number[];
 
   if (genre === 'blues') {
+      // Истинная блюзовая гамма с blue notes
       baseScale = (chordType === 'major' || chordType === 'dominant') 
           ? [0, 2, 3, 4, 7, 9, 10] 
           : [0, 3, 5, 6, 7, 10];
@@ -189,8 +191,8 @@ export function generateSuiteDNA(totalBars: number, mood: Mood, seed: number, ra
             
             while (currentBarInPart < partDuration) {
                 const r = random.next();
-                // Меланхолия тянет время
-                let duration = (mood === 'melancholic' && r < 0.8) ? 8 : (r < 0.5 ? 4 : 12);
+                // Alvin Lee Melancholy Bias: Субдоминанта (IV) тянет время
+                let duration = (mood === 'melancholic' && currentDegree === 'IV' && r < 0.8) ? 8 : (r < 0.5 ? 4 : 12);
                 const finalDuration = Math.min(duration, partDuration - currentBarInPart);
                 
                 const degreeMap: Record<string, {rootOffset: number, type: GhostChord['chordType']}> = {
