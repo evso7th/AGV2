@@ -2,18 +2,18 @@ import type { MusicBlueprint } from '@/types/music';
 
 export const EpicBluesBlueprint: MusicBlueprint = {
     id: 'epic_blues',
-    name: 'Ascending Blues Epic',
-    description: 'A slow-building, powerful blues-rock piece that grows from a simple beat to a full-blown guitar solo.',
+    name: 'Blues Brothers Epic',
+    description: 'A slow-building, powerful blues-rock piece that grows into a full-blown explosive solo.',
     mood: 'epic',
     musical: {
         key: { root: 'E', scale: 'mixolydian', octave: 2 },
-        bpm: { base: 84, range: [78, 90], modifier: 1.0 },
-        timeSignature: { numerator: 4, denominator: 4 }, // Will be interpreted with a shuffle feel by the engine
-        harmonicJourney: [], // Standard 12-bar blues progression will be used by the engine
+        bpm: { base: 110, range: [100, 125], modifier: 1.0 }, // #ОБНОВЛЕНО (ПЛАН 94.1): Поднято для драйва.
+        timeSignature: { numerator: 4, denominator: 4 },
+        harmonicJourney: [],
         tensionProfile: { type: 'crescendo', peakPosition: 0.8, curve: (p, pp) => Math.pow(p, 1.5) }
     },
     structure: {
-        totalDuration: { preferredBars: 144 }, // 12 loops of 12 bars
+        totalDuration: { preferredBars: 144 },
         parts: [
             {
                 id: 'INTRO', name: 'The Spark', duration: { percent: 15 },
@@ -54,7 +54,7 @@ export const EpicBluesBlueprint: MusicBlueprint = {
                         techniques: [{ value: 'walking', weight: 1.0 }],
                         presetModifiers: { octaveShift: 1 } 
                     },
-                    melody: { source: 'motif', density: { min: 0.3, max: 0.5 } }
+                    melody: { source: 'blues_solo', density: { min: 0.5, max: 0.7 } }
                 },
                 bundles: [{ id: 'EPIC_BLUES_VERSE_BUNDLE', name: 'Theme', duration: { percent: 100 }, characteristics: {}, phrases: {} }],
                 outroFill: { type: 'roll', duration: 2, parameters: { instrument: 'tom', crescendo: true } },
@@ -73,10 +73,10 @@ export const EpicBluesBlueprint: MusicBlueprint = {
                 instrumentRules: {
                     drums: { pattern: 'composer', kitName: 'blues_epic', density: { min: 0.8, max: 1.0 }, kickVolume: 1.3, ride: { enabled: true } },
                     melody: { 
-                        source: 'motif', 
-                        density: { min: 0.7, max: 0.9 },
+                        source: 'blues_solo', 
+                        density: { min: 0.9, max: 1.0 },
                         register: { preferred: 'high' },
-                        soloPlan: 'S01' // Используем первый план соло для примера
+                        soloPlan: 'S_ACTIVE' // #ОБНОВЛЕНО: Принудительный выбор активного соло-плана.
                     },
                     bass: { 
                         techniques: [{ value: 'walking', weight: 1.0 }],
@@ -103,7 +103,7 @@ export const EpicBluesBlueprint: MusicBlueprint = {
                         techniques: [{ value: 'walking', weight: 1.0 }],
                         presetModifiers: { octaveShift: 1 }
                     },
-                    melody: { source: 'motif', density: { min: 0.3, max: 0.5 } } // Return to main theme density
+                    melody: { source: 'blues_solo', density: { min: 0.3, max: 0.5 } } 
                 },
                 bundles: [{ id: 'EPIC_BLUES_OUTRO_BUNDLE', name: 'Outro Theme', duration: { percent: 100 }, characteristics: {}, phrases: {} }],
                 outroFill: null,

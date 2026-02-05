@@ -139,10 +139,9 @@ export function generateSuiteDNA(totalBars: number, mood: Mood, seed: number, ra
     });
 
     const possibleTempos = {
-        // #ОБНОВЛЕНО (ПЛАН 94): Подняты темповые диапазоны для блюзового драйва.
-        joyful: [95, 115], enthusiastic: [100, 125], contemplative: [72, 88],
+        joyful: [110, 135], enthusiastic: [120, 150], contemplative: [72, 88],
         dreamy: [68, 82], calm: [64, 78], melancholic: [64, 72],
-        gloomy: [66, 76], dark: [62, 70], epic: [90, 110], anxious: [82, 98],
+        gloomy: [66, 76], dark: [62, 70], epic: [115, 140], anxious: [82, 98],
     };
 
     const [minTempo, maxTempo] = (possibleTempos as any)[mood] || [60, 80];
@@ -205,7 +204,7 @@ export function createBluesBassAxiom(chord: GhostChord, technique: Technique, ra
 /**
  * #ЗАЧЕМ: Центральный генератор мелодии для блюза с поддержкой классических техник развития.
  * #ЧТО: Реализует семантический выбор ликов, секвенции, вариации и репризы.
- * #ОБНОВЛЕНО (ПЛАН 94): Внедрена техника Subdivision для устранения эффекта "органных нот".
+ * #ОБНОВЛЕНО (ПЛАН 94.1): Улучшен фильтр выбора ликов и усилена техника Subdivision.
  */
 export function generateBluesMelodyChorus(currentChord: GhostChord, random: any, partId: string, epoch: number, rules: any, dna: SuiteDNA, history: string[], cached: any): { events: FractalEvent[], log: string } {
     const barInChorus = epoch % 12;
@@ -221,8 +220,16 @@ export function generateBluesMelodyChorus(currentChord: GhostChord, random: any,
         strategy = random.next() < 0.5 ? 'sequence' : 'variation';
         lickId = lastId;
     } else {
-        const licks = Object.entries(BLUES_SOLO_LICKS).filter(([id, data]) => data.tags.includes(targetTag));
-        lickId = licks[random.nextInt(licks.length)][0];
+        // #ЗАЧЕМ: Приоритетный выбор активных ликов для энергичных частей.
+        let lickPool = Object.entries(BLUES_SOLO_LICKS).filter(([id, data]) => data.tags.includes(targetTag));
+        const isActivePart = ['MAIN', 'SOLO'].includes(partId);
+        
+        if (isActivePart && random.next() < 0.6) {
+            const virtuosoPool = lickPool.filter(([id, data]) => data.tags.includes('virtuoso') || data.tags.includes('active'));
+            if (virtuosoPool.length > 0) lickPool = virtuosoPool;
+        }
+        
+        lickId = lickPool[random.nextInt(lickPool.length)][0];
     }
 
     history.push(lickId);
@@ -231,8 +238,9 @@ export function generateBluesMelodyChorus(currentChord: GhostChord, random: any,
     if (strategy === 'sequence') lickPhrase = transposeMelody(lickPhrase, [2, 3, -2][random.nextInt(3)]);
     if (strategy === 'variation' || random.next() < 0.3) lickPhrase = varyRhythm(lickPhrase, random);
 
-    // #РЕШЕНИЕ (ПЛАН 94): Принудительное дробление нот в "активных" частях сюиты.
-    if (partId === 'MAIN' || partId === 'SOLO' || dna.baseTempo > 100) {
+    // #РЕШЕНИЕ (ПЛАН 94.1): Снижен порог и увеличен шанс дробления для "заводного" звука.
+    const currentTempo = rules.bpm?.base || dna.baseTempo;
+    if (['MAIN', 'SOLO'].includes(partId) || currentTempo > 90) {
         lickPhrase = subdivideRhythm(lickPhrase, random);
     }
 
@@ -248,10 +256,13 @@ export function generateBluesMelodyChorus(currentChord: GhostChord, random: any,
 export function subdivideRhythm(phrase: BluesSoloPhrase, random: any): BluesSoloPhrase {
     const result: BluesSoloPhrase = [];
     for (const note of phrase) {
-        if (note.d > 4 && random.next() < 0.7) {
-            const half = Math.floor(note.d / 2);
-            result.push({ ...note, d: half });
-            result.push({ ...note, t: note.t + half, d: note.d - half, tech: 'h' });
+        // #ЗАЧЕМ: Усиленное дробление для эффекта "говорящей гитары".
+        if (note.d >= 3 && random.next() < 0.75) {
+            const first = Math.floor(note.d / 2);
+            const second = note.d - first;
+            result.push({ ...note, d: first });
+            // Вторая нота часто берется хаммером/слайдом
+            result.push({ ...note, t: note.t + first, d: second, tech: random.next() < 0.5 ? 'h' : 'sl' });
         } else { result.push(note); }
     }
     return result;

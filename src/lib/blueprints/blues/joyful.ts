@@ -1,20 +1,19 @@
-
 import type { MusicBlueprint } from '@/types/music';
 
 export const JoyfulBluesBlueprint: MusicBlueprint = {
     id: 'joyful_blues',
-    name: 'Uptempo Shuffle',
-    description: 'An energetic, joyful, and danceable blues shuffle.',
+    name: 'Detroit Shuffle',
+    description: 'An energetic, joyful, and danceable blues shuffle. Fast and driving.',
     mood: 'joyful',
     musical: {
         key: { root: 'A', scale: 'ionian', octave: 2 },
-        bpm: { base: 90, range: [88, 98], modifier: 1.0 },
-        timeSignature: { numerator: 4, denominator: 4 }, // Interpreted as 12/8 shuffle
-        harmonicJourney: [], // Driven by 12-bar blues structure in the engine
-        tensionProfile: { type: 'crescendo', peakPosition: 0.7, curve: (p, pp) => p } // Steady energy
+        bpm: { base: 112, range: [110, 125], modifier: 1.0 }, // #ОБНОВЛЕНО (ПЛАН 94.1): Поднято для драйва.
+        timeSignature: { numerator: 4, denominator: 4 },
+        harmonicJourney: [],
+        tensionProfile: { type: 'crescendo', peakPosition: 0.7, curve: (p, pp) => p }
     },
     structure: {
-        totalDuration: { preferredBars: 144 }, // 12 loops of 12 bars
+        totalDuration: { preferredBars: 144 },
         parts: [
             {
                 id: 'INTRO', name: 'Verse 1-2', duration: { percent: 25 },
@@ -51,8 +50,8 @@ export const JoyfulBluesBlueprint: MusicBlueprint = {
                 instrumentRules: {
                     drums: { pattern: 'composer', density: { min: 0.8, max: 1.0 }, kickVolume: 1.1, useSnare: true, useGhostHat: true, usePerc: true, ride: { enabled: false }, useBrushes: true },
                     melody: {
-                        source: 'motif',
-                        density: { min: 0.6, max: 0.8 },
+                        source: 'blues_solo', // #ИСПРАВЛЕНО: Явное указание источника для активации ликов.
+                        density: { min: 0.7, max: 0.9 },
                         register: { preferred: 'high' }
                     },
                     bass: { 
@@ -77,7 +76,7 @@ export const JoyfulBluesBlueprint: MusicBlueprint = {
                     drums: { pattern: 'composer', density: { min: 0.7, max: 0.9 }, useSnare: true, useGhostHat: true, usePerc: true, ride: { enabled: false }, useBrushes: true },
                     bass: { 
                         techniques: [{ value: 'boogie', weight: 1.0 }],
-                        presetModifiers: { octaveShift: 1 }
+                        presetModifiers: { octaveShift: 1 } 
                     },
                     melody: { source: 'harmony_top_note', register: { preferred: 'high' } }
                 },

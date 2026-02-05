@@ -1,20 +1,19 @@
-
 import type { MusicBlueprint } from '@/types/music';
 
 export const EnthusiasticBluesBlueprint: MusicBlueprint = {
     id: 'enthusiastic_blues',
-    name: 'Blues Rock Ascent',
-    description: 'An energetic, driving blues-rock blueprint focused on powerful guitar solos.',
+    name: 'Blues Rock Drive',
+    description: 'An energetic, driving blues-rock blueprint focused on high-density guitar solos.',
     mood: 'enthusiastic',
     musical: {
         key: { root: 'E', scale: 'mixolydian', octave: 2 },
-        bpm: { base: 84, range: [82, 90], modifier: 1.0 }, // TEMPO ADJUSTED
+        bpm: { base: 120, range: [115, 140], modifier: 1.0 }, // #ОБНОВЛЕНО (ПЛАН 94.1): Поднято для драйва.
         timeSignature: { numerator: 4, denominator: 4 },
-        harmonicJourney: [], // Driven by 12-bar blues structure in the engine
+        harmonicJourney: [],
         tensionProfile: { type: 'crescendo', peakPosition: 0.75, curve: (p, pp) => Math.pow(p, 1.2) }
     },
     structure: {
-        totalDuration: { preferredBars: 144 }, // 12 loops of 12 bars
+        totalDuration: { preferredBars: 144 },
         parts: [
             {
                 id: 'INTRO', name: 'Riff Setup', duration: { percent: 15 },
@@ -49,10 +48,10 @@ export const EnthusiasticBluesBlueprint: MusicBlueprint = {
                     melody: { strategy: 'weighted', v1Options: [{ name: 'guitar_muffLead', weight: 1.0 }], v2Options: [{ name: 'guitar_muffLead', weight: 1.0 }] }
                 },
                 instrumentRules: {
-                    drums: { pattern: 'composer', density: { min: 0.7, max: 0.9 }, kickVolume: 1.3, ride: { enabled: true } }, // RIDE ADDED
+                    drums: { pattern: 'composer', density: { min: 0.7, max: 0.9 }, kickVolume: 1.3, ride: { enabled: true } },
                     melody: {
-                        density: { min: 0.5, max: 0.7 },
-                        source: 'motif',
+                        density: { min: 0.8, max: 1.0 }, // Плотнее
+                        source: 'blues_solo',
                         register: { preferred: 'high' }
                     },
                     bass: { 
