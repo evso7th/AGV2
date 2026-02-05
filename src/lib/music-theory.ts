@@ -4,6 +4,7 @@
  * #ЧТО: Функции для получения гамм, инверсий, ретроградов и гуманизации.
  *       Внедрена система цепей Маркова для генерации гармонического скелета.
  *       ДОБАВЛЕНО: Математика MusiNum для фрактальной детерминированности.
+ * #ИСПРАВЛЕНО: Добавлены проверки на конечность и защиту от деления на ноль в MusiNum.
  */
 
 import type { 
@@ -27,7 +28,9 @@ export const DEGREE_TO_SEMITONE: Record<string, number> = {
  *       Порождает самоподобные (фрактальные) последовательности. Это ДЕТЕРМИНИРОВАННЫЙ алгоритм.
  */
 export function calculateMusiNum(step: number, base: number = 2, start: number = 0, modulo: number = 8): number {
-    let num = Math.abs(step + start);
+    if (!isFinite(step) || !isFinite(start) || !isFinite(base) || !isFinite(modulo) || modulo <= 0 || base <= 1) return 0;
+    
+    let num = Math.abs(Math.floor(step + start));
     let sum = 0;
     // Отрабатываем алгоритм: перевод в систему счисления Base и суммирование цифр
     while (num > 0) {
