@@ -12,6 +12,9 @@ import type { DarkTelecasterSampler } from './dark-telecaster-sampler';
  * This version acts as a "smart performer", routing events to either its
  * internal synthesizer (for synth sounds) or to specialized guitar samplers.
  * It's made universal by accepting a 'partName' to know which events to process.
+ * 
+ * #ОБНОВЛЕНО (ПЛАН 93): Теперь полноценно поддерживает басовый конвейер V2
+ * с маппингом V1-имен в современные пресеты фабрики.
  */
 export class MelodySynthManagerV2 {
     private audioContext: AudioContext;
@@ -65,9 +68,6 @@ export class MelodySynthManagerV2 {
     
     private async loadInstrument(presetName: keyof typeof V2_PRESETS | keyof typeof BASS_PRESETS, instrumentType: 'bass' | 'synth' | 'organ' | 'guitar' = 'synth') {
         // #ЗАЧЕМ: Критически важная очистка старого инструмента.
-        // #ЧТО: Если инструмент уже существует, мы вызываем его метод disconnect(),
-        //      который теперь (после Плана 85) останавливает все LFO и разрывает связи.
-        // #СВЯЗИ: Предотвращает "слоеный пирог" инструментов и хрип CPU.
         if (this.synth) {
             console.log(`[MelodySynthManagerV2] Disposing old instrument before loading ${presetName}`);
             this.synth.disconnect();
@@ -101,6 +101,7 @@ export class MelodySynthManagerV2 {
         
         if (notesToPlay.length === 0) return;
 
+        // Routing for Samplers (only for melody)
         if (this.partName === 'melody') {
             if (instrumentHint === 'blackAcoustic') {
                 this.blackAcousticSampler.schedule(notesToPlay, barStartTime, tempo);
@@ -116,13 +117,17 @@ export class MelodySynthManagerV2 {
             }
         }
         
+        // --- SMART PRESET ROUTING ---
         let finalInstrumentHint = instrumentHint;
         if (instrumentHint) {
             if (this.partName === 'bass') {
-                const mappedName = BASS_PRESET_MAP[instrumentHint as keyof typeof BASS_PRESET_MAP];
-                if (mappedName) finalInstrumentHint = mappedName;
+                // #ЗАЧЕМ: Маппинг V1 басовых имен в современные V2 пресеты.
+                const mappedName = BASS_PRESET_MAP[instrumentHint];
+                if (mappedName) {
+                    finalInstrumentHint = mappedName;
+                }
             } else {
-                const mappedName = V1_TO_V2_PRESET_MAP[instrumentHint as keyof typeof V1_TO_V2_PRESET_MAP];
+                const mappedName = V1_TO_V2_PRESET_MAP[instrumentHint];
                 if (mappedName) finalInstrumentHint = mappedName;
             }
         } else {
@@ -158,8 +163,8 @@ export class MelodySynthManagerV2 {
             return;
        }
 
-       const isBassPreset = this.partName === 'bass';
-       const preset = isBassPreset
+       const isBassPart = this.partName === 'bass';
+       const preset = isBassPart
            ? BASS_PRESETS[instrumentName as keyof typeof BASS_PRESETS]
            : V2_PRESETS[instrumentName as keyof typeof V2_PRESETS];
 
@@ -167,7 +172,7 @@ export class MelodySynthManagerV2 {
            this.synth.setPreset(preset);
            this.activePresetName = instrumentName;
        } else if (preset) {
-           await this.loadInstrument(instrumentName, isBassPreset ? 'bass' : (preset.type || 'synth'));
+           await this.loadInstrument(instrumentName, isBassPart ? 'bass' : (preset.type || 'synth'));
        }
     }
 

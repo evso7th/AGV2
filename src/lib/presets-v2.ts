@@ -198,9 +198,34 @@ export const V1_TO_V2_PRESET_MAP: Record<string, PresetName> = {
   rhodes: 'ep_rhodes_warm'
 };
 
+/**
+ * #ЗАЧЕМ: Сопоставление V1-имен баса с новыми V2-пресетами.
+ * #ЧТО: Позволяет композитору использовать старые имена инструментов,
+ *       перенаправляя их на современный движок фабрики.
+ */
 export const BASS_PRESET_MAP: Record<string, keyof typeof BASS_PRESETS> = {
     bass: 'bass_jazz_warm',
-    bass_jazz_warm: 'bass_jazz_warm'
+    classicBass: 'bass_rock_pick',
+    glideBass: 'bass_trance',
+    ambientDrone: 'bass_ambient_dark',
+    resonantGliss: 'bass_trance_acid',
+    hypnoticDrone: 'bass_ambient',
+    livingRiff: 'bass_slap',
+    // V2 identity mapping
+    bass_jazz_warm: 'bass_jazz_warm',
+    bass_jazz_fretless: 'bass_jazz_fretless',
+    bass_blues: 'bass_blues',
+    bass_ambient: 'bass_ambient',
+    bass_ambient_dark: 'bass_ambient_dark',
+    bass_trance: 'bass_trance',
+    bass_trance_acid: 'bass_trance_acid',
+    bass_reggae: 'bass_reggae',
+    bass_dub: 'bass_dub',
+    bass_house: 'bass_house',
+    bass_808: 'bass_808',
+    bass_deep_house: 'bass_deep_house',
+    bass_rock_pick: 'bass_rock_pick',
+    bass_slap: 'bass_slap'
 };
 
 export function getPreset(name: string): PresetConfig {

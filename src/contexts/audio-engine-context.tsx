@@ -106,7 +106,7 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
   const accompanimentManagerV2Ref = useRef<AccompanimentSynthManagerV2 | null>(null);
   const melodyManagerRef = useRef<MelodySynthManager | null>(null);
   const melodyManagerV2Ref = useRef<MelodySynthManagerV2 | null>(null);
-  const bassManagerV2Ref = useRef<MelodySynthManagerV2 | null>(null);
+  const bassManagerV2Ref = useRef<MelodySynthManagerV2 | null>(null); // Dedicated V2 Bass Manager
   const harmonyManagerRef = useRef<HarmonySynthManager | null>(null);
   const pianoAccompanimentManagerRef = useRef<PianoAccompanimentManager | null>(null);
   const sparklePlayerRef = useRef<SparklePlayer | null>(null);
@@ -176,14 +176,14 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
             melodyManagerRef.current.setInstrument(name as AccompanimentInstrument);
         }
     } else if (part === 'bass') {
-        // Bass always uses V1 now
-        if (bassManagerRef.current) {
+        // #ЗАЧЕМ: Поддержка переключения инструментов для V2 басового конвейера.
+        if (useMelodyV2 && bassManagerV2Ref.current) {
+            await bassManagerV2Ref.current.setInstrument(name as any);
+        } else if (!useMelodyV2 && bassManagerRef.current) {
             bassManagerRef.current.setInstrument(name as BassInstrument);
         }
     } else if (part === 'harmony' && harmonyManagerRef.current) {
         harmonyManagerRef.current.setInstrument(name as 'piano' | 'guitarChords' | 'violin' | 'flute' | 'none');
-    } else if (part === 'pianoAccompaniment' && pianoAccompanimentManagerRef.current) {
-        // This part has a fixed instrument, but we could change its properties here in the future
     }
   }, [isInitialized, useMelodyV2]);
 
@@ -227,12 +227,15 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
       drumMachineRef.current.schedule(drumEvents, barStartTime, tempo);
     }
     
-    // #ЗАЧЕМ: Упрощена маршрутизация баса. Теперь он всегда использует V1-менеджер.
-    // #ЧТО: Удален условный блок if/else. Теперь все басовые события безусловно
-    //      отправляются в bassManagerRef.current (V1).
-    if (bassEvents.length > 0 && bassManagerRef.current) {
-        // ALWAYS use V1 bass manager for performance
-        bassManagerRef.current.schedule(bassEvents, barStartTime, tempo, barCount, instrumentHints?.bass, composerControls);
+    // #ЗАЧЕМ: Реализация переключения между V1 и V2 басовыми конвейерами.
+    // #ЧТО: Если включен режим V2, события баса отправляются в `bassManagerV2Ref` (Steel Foundation).
+    //      В противном случае используется старый V1-менеджер.
+    if (bassEvents.length > 0) {
+        if (useMelodyV2 && bassManagerV2Ref.current) {
+            bassManagerV2Ref.current.schedule(bassEvents, barStartTime, tempo, instrumentHints?.bass);
+        } else if (!useMelodyV2 && bassManagerRef.current) {
+            bassManagerRef.current.schedule(bassEvents, barStartTime, tempo, barCount, instrumentHints?.bass, composerControls);
+        }
     }
 
     if (accompanimentEvents.length > 0) {
@@ -273,8 +276,7 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
   }, [useMelodyV2]);
 
   const setBassTechniqueCallback = useCallback((technique: BassTechnique) => {
-    // This is now handled via instrument presets in V2, but we keep the function for compatibility.
-    // In a future step, this could trigger a preset change.
+    // This is now handled via instrument presets in V2
   }, []);
 
   useEffect(() => {
@@ -438,6 +440,7 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
              if (!darkTelecasterSamplerRef.current?.isInitialized) {
                 await darkTelecasterSamplerRef.current?.init();
             }
+            // #ЗАЧЕМ: Инициализация выделенного V2 басового конвейера.
             bassManagerV2Ref.current = new MelodySynthManagerV2(
                 context,
                 gainNodesRef.current.bass!,
@@ -471,7 +474,6 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
 
         if (!workerRef.current) {
             workerRef.current = new Worker(new URL('@/app/ambient.worker.ts', import.meta.url), { type: 'module' });
-             // #ИСПРАВЛЕНО (ПЛАН 1286): Отправляем только базовые настройки, без genre/mood
             workerRef.current.postMessage({ command: 'init', data: {} });
         }
         
