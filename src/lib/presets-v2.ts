@@ -1,4 +1,3 @@
-
 // V2 Presets — совместимы with buildMultiInstrument()
 // Проверено на соответствие фабрике от 2024-12
 
@@ -148,7 +147,7 @@ export const V2_PRESETS = {
     volume: 0.7,
     osc: { width: 0.46, detune: 5, mainGain: 0.85, detGain: 0.18, subGain: 0.25 },
     pickup: { cutoff: 3600, q: 1.0, combFeedback: 0.35 },
-    drive: { type: 'soft', amount: 0.2 },
+    drive: { type: 'vintage', amount: 0.25 }, // Использует новую кривую
     comp: { threshold: -18, ratio: 3, attack: 0.01, release: 0.12, makeup: 3 },
     post: { 
       lpf: 5200, 
@@ -167,10 +166,10 @@ export const V2_PRESETS = {
   guitar_muffLead: {
     type: 'guitar',
     name: 'Muff Lead Guitar',
-    volume: 0.3, // #ЗАЧЕМ: Уменьшена громкость для динамического баланса в миксе.
+    volume: 0.3, 
     osc: { width: 0.5, detune: 7, mainGain: 0.8, detGain: 0.2, subGain: 0.3 },
     pickup: { cutoff: 3200, q: 1.2, combFeedback: 0.4 },
-    drive: { type: 'muff', amount: 0.65 },
+    drive: { type: 'vintage', amount: 0.75 }, // Глубокий винтажный перегруз
     comp: { threshold: -20, ratio: 4, attack: 0.005, release: 0.1, makeup: 4 },
     post: { 
       lpf: 4700, 

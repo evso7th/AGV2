@@ -1,8 +1,8 @@
 /**
  * #ЗАЧЕМ: Центральная фабрика для создания высококачественных инструментов V2.
  * #ЧТО: Реализует конвейеры синтеза для synth, organ, bass и guitar.
- * #ОБНОВЛЕНО (ПЛАН 83): Ликвидация утечек памяти. Внедрен Deep Disconnect для всех узлов голоса.
- *          Удален избыточный sumNode в гитаре. Глобальный счетчик голосов защищен от гонки состояний.
+ * #ОБНОВЛЕНО (ПЛАН 84.1): Внедрена винтажная кривая дисторшна (Arctan-Sinh) и Notch-фильтр 1000Гц 
+ *          для очистки тембра гитары на основе рекомендаций из webaudio_guitar.txt.
  * #СВЯЗИ: Используется менеджерами V2 для создания экземпляров инструментов.
  */
 
@@ -40,10 +40,6 @@ const loadIR = async (ctx: AudioContext, url: string | null): Promise<AudioBuffe
     }
 };
 
-/**
- * #ЗАЧЕМ: Гарантированное освобождение памяти.
- * #ЧТО: Рекурсивно отключает все узлы в массиве и удаляет ссылку на голос.
- */
 const deepCleanup = (voiceRecord: any, allActiveVoices: Set<any>) => {
     if (!voiceRecord || voiceRecord.cleaned) return;
     voiceRecord.cleaned = true;
@@ -94,6 +90,21 @@ const makeTubeSaturation = (drive = 0.3, n = 8192) => {
     for (let i = 0; i < n; i++) {
         const x = (i / (n - 1)) * 2 - 1;
         curve[i] = x >= 0 ? Math.tanh(k * x) : Math.tanh(k * x * 0.8) * 0.9;
+    }
+    return curve;
+};
+
+/**
+ * #ЗАЧЕМ: Реализация сложной сигмоиды для теплого, винтажного перегруза.
+ * #ЧТО: Использует Arctan-Sinh формулу из webaudio_guitar.txt.
+ */
+const makeVintageDistortion = (k = 50, n = 8192) => {
+    const curve = new Float32Array(n);
+    for (let i = 0; i < n; i++) {
+        const x = (i / (n - 1)) * 2 - 1;
+        const num = (3 + k) * Math.atan(Math.sinh(x * 0.25) * 5);
+        const den = Math.PI + k * Math.abs(x);
+        curve[i] = num / den;
     }
     return curve;
 };
@@ -532,7 +543,6 @@ const buildGuitarEngine = (ctx: AudioContext, preset: any, master: GainNode, rev
     const pickBuffer = createKeyClick(ctx, 0.03, 0.6);
     const guitarInput = ctx.createGain();
     
-    // === PICKUP COMB FILTER ("GLASS") ===
     const pickupComb = ctx.createDelay(0.01);
     pickupComb.delayTime.value = 0.0025;
     const combFeedback = ctx.createGain();
@@ -541,6 +551,13 @@ const buildGuitarEngine = (ctx: AudioContext, preset: any, master: GainNode, rev
 
     const pickupLPF = ctx.createBiquadFilter(); pickupLPF.type = 'lowpass'; pickupLPF.frequency.value = currentPreset.pickup?.cutoff || 3600;
     const hpf = ctx.createBiquadFilter(); hpf.type = 'highpass'; hpf.frequency.value = 90;
+    
+    // #ЗАЧЕМ: Устранение "носовых" частот для более аутентичного гитарного тона.
+    const cutNasal = ctx.createBiquadFilter(); 
+    cutNasal.type = 'notch'; 
+    cutNasal.frequency.value = 1000; 
+    cutNasal.Q.value = 4;
+
     const comp = ctx.createDynamicsCompressor(); comp.threshold.value = currentPreset.comp?.threshold || -18;
     const shaper = ctx.createWaveShaper(); shaper.oversample = '4x';
     const compMakeup = ctx.createGain(); compMakeup.gain.value = dB(currentPreset.comp?.makeup || 3);
@@ -548,8 +565,6 @@ const buildGuitarEngine = (ctx: AudioContext, preset: any, master: GainNode, rev
     const mid1 = ctx.createBiquadFilter(); mid1.type = 'peaking'; mid1.frequency.value = currentPreset.post?.mids?.[0]?.f || 850; mid1.gain.value = currentPreset.post?.mids?.[0]?.g || 2;
     const mid2 = ctx.createBiquadFilter(); mid2.type = 'peaking'; mid2.frequency.value = currentPreset.post?.mids?.[1]?.f || 2500; mid2.gain.value = currentPreset.post?.mids?.[1]?.g || -1.5;
     const postLPF = ctx.createBiquadFilter(); postLPF.type = 'lowpass'; postLPF.frequency.value = currentPreset.post?.lpf || 5000;
-    
-    // === CABINET LOW SHELF ("WARMTH") ===
     const cabinetLS = ctx.createBiquadFilter(); cabinetLS.type = 'lowshelf'; cabinetLS.frequency.value = 120; cabinetLS.gain.value = 3;
 
     const ph = makePhaser(ctx, { rate: currentPreset.phaser?.rate || 0.16, depth: currentPreset.phaser?.depth || 600, mix: currentPreset.phaser?.on ? (currentPreset.phaser.mix || 0.2) : 0 });
@@ -558,7 +573,8 @@ const buildGuitarEngine = (ctx: AudioContext, preset: any, master: GainNode, rev
     const revSend = ctx.createGain(); revSend.gain.value = currentPreset.reverbMix || 0.18;
 
     guitarInput.connect(pickupComb).connect(pickupLPF).connect(hpf);
-    hpf.connect(comp).connect(shaper).connect(compMakeup).connect(mid1).connect(mid2).connect(postLPF).connect(cabinetLS).connect(ph.input);
+    // Интеграция Notch-фильтра после Distortion
+    hpf.connect(comp).connect(shaper).connect(cutNasal).connect(compMakeup).connect(mid1).connect(mid2).connect(postLPF).connect(cabinetLS).connect(ph.input);
     ph.output.connect(dA.input); ph.output.connect(dB_node.input);
     const fxChainOut = ctx.createGain();
     ph.output.connect(fxChainOut); dA.output.connect(fxChainOut); dB_node.output.connect(fxChainOut);
@@ -580,14 +596,11 @@ const buildGuitarEngine = (ctx: AudioContext, preset: any, master: GainNode, rev
         const f = midiToHz(midi);
         const oscP = currentPreset.osc || { width: 0.45, mainGain: 0.8, detGain: 0.2, subGain: 0.25 };
         
-        // #ЗАЧЕМ: ПЛАН 83: Оптимизация (убран sumNode).
-        // #ЧТО: Множитель 0.175 теперь применяется к базовому voiceGain.
         const voiceGain = ctx.createGain(); voiceGain.gain.value = 0; voiceGain.connect(guitarInput);
         const voiceNodes: AudioNode[] = [voiceGain];
 
         if (pickBuffer) {
             const pick = ctx.createBufferSource(); pick.buffer = pickBuffer;
-            // #ЧТО: Громкость щипка масштабируется коэффициентом 0.175.
             const pickG = ctx.createGain(); pickG.gain.value = velocity * 0.175 * 0.5;
             pick.connect(pickG).connect(voiceGain); pick.start(when); pick.stop(when + 0.05);
             voiceNodes.push(pick, pickG);
@@ -604,7 +617,6 @@ const buildGuitarEngine = (ctx: AudioContext, preset: any, master: GainNode, rev
         voiceNodes.push(oscMain, oscDet, oscSub, gMain, gDet, gSub);
 
         const adsr = currentPreset.adsr || { a: 0.005, d: 0.3, s: 0.6, r: 1.5 };
-        // Применяем финальный множитель 0.175 к огибающей
         const voiceState = triggerAttack(ctx, voiceGain, when, adsr.a, adsr.d, adsr.s, velocity * 0.175);
         const voiceRecord = { midi, voiceGain, voiceState, nodes: voiceNodes, cleaned: false };
         allActiveVoices.add(voiceRecord);
@@ -612,9 +624,7 @@ const buildGuitarEngine = (ctx: AudioContext, preset: any, master: GainNode, rev
         if (duration) {
             const stopTime = triggerRelease(ctx, voiceState, when + duration, adsr.a, adsr.r);
             voiceNodes.forEach(n => { if (n instanceof OscillatorNode) try { n.stop(stopTime + 0.1); } catch(e){} });
-            setTimeout(() => {
-                deepCleanup(voiceRecord, allActiveVoices);
-            }, ((stopTime - ctx.currentTime) * 1000) + 500);
+            setTimeout(() => { deepCleanup(voiceRecord, allActiveVoices); }, ((stopTime - ctx.currentTime) * 1000) + 500);
         } else {
             if (activeVoices.has(midi)) noteOff(midi, when);
             activeVoices.set(midi, voiceRecord);
@@ -629,6 +639,35 @@ const buildGuitarEngine = (ctx: AudioContext, preset: any, master: GainNode, rev
         setTimeout(() => { deepCleanup(voice, allActiveVoices); }, ((stopTime - ctx.currentTime) * 1000) + 500);
     };
 
+    const updateGuitarNodes = (p: any) => {
+        pickupLPF.frequency.setTargetAtTime(p.pickup?.cutoff || 3600, ctx.currentTime, 0.05);
+        combFeedback.gain.setTargetAtTime(p.pickup?.combFeedback ?? 0.3, ctx.currentTime, 0.05);
+        
+        comp.threshold.setTargetAtTime(p.comp?.threshold || -18, ctx.currentTime, 0.05);
+        comp.ratio.setTargetAtTime(p.comp?.ratio || 3, ctx.currentTime, 0.05);
+        compMakeup.gain.setTargetAtTime(dB(p.comp?.makeup || 3), ctx.currentTime, 0.05);
+
+        // Интеллектуальный выбор кривой дисторшна
+        if (p.drive?.type === 'muff') {
+            shaper.curve = makeMuff(p.drive.amount || 0.65);
+        } else if (p.drive?.type === 'vintage') {
+            shaper.curve = makeVintageDistortion((p.drive.amount || 0.5) * 100);
+        } else {
+            shaper.curve = makeSoftClip(p.drive?.amount || 0.2);
+        }
+
+        mid1.frequency.value = p.post?.mids?.[0]?.f || 850;
+        mid1.gain.value = p.post?.mids?.[0]?.g || 2;
+        mid2.frequency.value = p.post?.mids?.[1]?.f || 2500;
+        mid2.gain.value = p.post?.mids?.[1]?.g || -1.5;
+        postLPF.frequency.value = p.post?.lpf || 5000;
+
+        ph.setMix(p.phaser?.on ? (p.phaser.mix || 0.2) : 0);
+        dA.setMix(p.delayA?.on ? (p.delayA.mix || 0.2) : 0);
+        dB_node.setMix(p.delayB?.on ? (p.delayB.mix || 0.1) : 0);
+        revSend.gain.value = p.reverbMix || 0.18;
+    };
+
     return { 
         noteOn, noteOff, 
         allNotesOff: () => {
@@ -637,15 +676,15 @@ const buildGuitarEngine = (ctx: AudioContext, preset: any, master: GainNode, rev
         },
         setPreset: (p: any) => { 
             currentPreset = p; 
-            combFeedback.gain.value = p.pickup?.combFeedback ?? 0.3;
-            pickupLPF.frequency.setTargetAtTime(p.pickup?.cutoff || 3600, ctx.currentTime, 0.05);
-            shaper.curve = (p.drive?.type === 'muff') ? makeMuff(p.drive.amount) : makeSoftClip(p.drive.amount);
-            ph.setMix(p.phaser?.on ? (p.phaser.mix || 0.2) : 0);
-            dA.setMix(p.delayA?.on ? (p.delayA.mix || 0.2) : 0);
-            dB_node.setMix(p.delayB?.on ? (p.delayB.mix || 0.1) : 0);
-            revSend.gain.value = p.reverbMix || 0.18;
+            updateGuitarNodes(p);
         }, 
-        setParam: (k: string, v: any) => {} 
+        setParam: (k: string, v: any) => {
+            if (k === 'drive') {
+                shaper.curve = (currentPreset.drive?.type === 'vintage') 
+                    ? makeVintageDistortion(v * 100) 
+                    : (currentPreset.drive?.type === 'muff' ? makeMuff(v) : makeSoftClip(v));
+            }
+        } 
     };
 };
 
