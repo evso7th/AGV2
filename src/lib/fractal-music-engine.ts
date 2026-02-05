@@ -1,4 +1,3 @@
-
 import type { FractalEvent, Mood, Genre, InstrumentPart, InstrumentHints, GhostChord, SuiteDNA, NavigationInfo } from '@/types/music';
 import { BlueprintNavigator } from './blueprint-navigator';
 import { getBlueprint } from './blueprints';
@@ -72,6 +71,7 @@ export class FractalMusicEngine {
     this.random = seededRandom(this.config.seed);
     this.activatedInstruments.clear(); 
     
+    // #ЗАЧЕМ: Реинициализация мозга при каждом новом семени сюиты.
     if (this.config.genre === 'blues') {
         this.bluesBrain = new BluesBrain(this.config.seed, this.config.mood);
     } else {
@@ -82,6 +82,7 @@ export class FractalMusicEngine {
     this.suiteDNA = generateSuiteDNA(blueprint.structure.totalDuration.preferredBars, this.config.mood, this.config.seed, this.random, this.config.genre, blueprint.structure.parts);
     this.navigator = new BlueprintNavigator(blueprint, this.config.seed, this.config.genre, this.config.mood, this.config.introBars, this.suiteDNA.soloPlanMap);
     
+    // Темп синхронизируется с ДНК
     this.config.tempo = this.suiteDNA.baseTempo;
     this.isInitialized = true;
   }
@@ -145,6 +146,7 @@ export class FractalMusicEngine {
     let allEvents: FractalEvent[] = [];
 
     if (this.config.genre === 'blues' && this.bluesBrain) {
+        // Глубокая интеграция: передаем ДНК и правила Навигатора в Мозг
         allEvents = this.bluesBrain.generateBar(this.epoch, currentChord, navInfo, this.suiteDNA, instrumentHints);
     } else {
         const harmonyEvents = createHarmonyAxiom(currentChord, this.config.mood, this.config.genre, this.random, this.epoch);

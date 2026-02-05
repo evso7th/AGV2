@@ -4,7 +4,7 @@
  * #ЧТО: Функции для получения гамм, инверсий, ретроградов и гуманизации.
  *       Внедрена система цепей Маркова для генерации гармонического скелета.
  *       ДОБАВЛЕНО: Математика MusiNum для фрактальной детерминированности.
- * #ИСПРАВЛЕНО: Добавлены проверки на конечность и защиту от деления на ноль в MusiNum.
+ * #ИСПРАВЛЕНО: Добавлены проверки на конечность и защита от деления на ноль в MusiNum.
  */
 
 import type { 
@@ -13,7 +13,9 @@ import type {
     Genre, 
     GhostChord, 
     SuiteDNA, 
-    BluesCognitiveState 
+    BluesCognitiveState,
+    NavigationInfo,
+    InstrumentPart
 } from '@/types/music';
 import { BLUES_SOLO_PLANS } from './assets/blues_guitar_solo';
 
@@ -38,6 +40,32 @@ export function calculateMusiNum(step: number, base: number = 2, start: number =
         num = Math.floor(num / base);
     }
     return sum % modulo;
+}
+
+/**
+ * #ЗАЧЕМ: Детерминированный выбор из взвешенного списка.
+ * #ЧТО: Использует MusiNum вместо Math.random для выбора из массива опций.
+ */
+export function pickWeightedDeterministic<T>(
+    options: { name?: T, value?: T, weight: number }[], 
+    seed: number, 
+    epoch: number, 
+    offset: number
+): T {
+    if (!options || options.length === 0) return null as any;
+    
+    const totalWeight = options.reduce((sum, opt) => sum + opt.weight, 0);
+    // Используем MusiNum для получения "псевдослучайного" числа от 0 до 100
+    const fractalVal = calculateMusiNum(epoch, 7, seed + offset, 100);
+    const target = (fractalVal / 100) * totalWeight;
+    
+    let acc = 0;
+    for (const opt of options) {
+        acc += opt.weight;
+        if (target <= acc) return (opt.name || opt.value) as T;
+    }
+    
+    return (options[options.length - 1].name || options[options.length - 1].value) as T;
 }
 
 /**
