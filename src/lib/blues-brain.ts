@@ -18,16 +18,18 @@ import {
 } from './music-theory';
 
 /**
- * #ЗАЧЕМ: "Блюзовый Архитектор" v8.1 — "Low Ceiling Soul".
- * #ЧТО: Реализует логику AAB, правила разрешения ♭5 и ЖЕСТКИЙ ПОТОЛОК 70 для гитары.
- * #ИНТЕГРАЦИЯ: Полностью контролирует исполнение Black Acoustic и Organ.
+ * #ЗАЧЕМ: "Блюзовый Архитектор" v8.2 — "Octave Discipline".
+ * #ЧТО: Реализует логику AAB и ЖЕСТКУЮ РЕГИСТРОВУЮ ПОЛИТИКУ (3-4 октавы).
+ * #ИНТЕГРАЦИЯ: Контролирует Black Acoustic и Organ в диапазоне MIDI 48-71.
  */
 export class BluesBrain {
     private state: BluesCognitiveState;
     private random: any;
     private lastAxiom: FractalEvent[] = [];
     private barInChorus = 0;
-    private readonly GUITAR_CEILING = 70; // Жесткий порог: Bb4
+    
+    private readonly COMFORT_CEILING = 71; // Конец 4-й октавы (H4)
+    private readonly EXCEPTIONAL_THRESHOLD = 0.85; // Порог для выхода в 5-ю октаву
 
     constructor(seed: number, mood: Mood) {
         this.random = this.seededRandom(seed);
@@ -56,13 +58,22 @@ export class BluesBrain {
         };
     }
 
-    private clampToCeiling(pitch: number): number {
-        // #ЗАЧЕМ: Соблюдение требования "не лезть высоко".
-        // #ЧТО: Если нота выше 70, переносим её на октаву вниз пока не впишемся в диапазон.
+    private clampToCeiling(pitch: number, isExceptional: boolean = false): number {
+        // #ЗАЧЕМ: Соблюдение правила 3-й и 4-й октав.
+        // #ЧТО: MIDI 48-71 (3 и 4 октавы). Если выше, опускаем на октаву.
+        //      5-я октава (72+) разрешена только в исключительных случаях.
         let result = pitch;
-        while (result > this.GUITAR_CEILING) {
+        const limit = isExceptional ? 83 : this.COMFORT_CEILING;
+        
+        while (result > limit) {
             result -= 12;
         }
+        
+        // Гарантируем, что не опустимся в бас (ниже 48)
+        while (result < 48 && result > 0) {
+            result += 12;
+        }
+        
         return result;
     }
 
@@ -82,10 +93,10 @@ export class BluesBrain {
         // 2. БАС
         if (hints.bass) events.push(...this.generateWalkingBass(currentChord, epoch));
         
-        // 3. АККОМПАНЕМЕНТ: Активный Travis Picking с потолком 70
+        // 3. АККОМПАНЕМЕНТ: Travis Picking в 3-4 октавах
         if (hints.accompaniment) events.push(...this.generateAcousticComping(currentChord, epoch));
         
-        // 4. МЕЛОДИЯ: Когнитивная речь с потолком 70
+        // 4. МЕЛОДИЯ: Когнитивная речь с управляемым выходом в 5-ю октаву
         if (hints.melody) events.push(...this.generateCognitiveMelody(currentChord, epoch, navInfo));
 
         return events;
@@ -151,8 +162,8 @@ export class BluesBrain {
             const noteIdx = i % chordNotes.length;
             let pitch = chordNotes[noteIdx] + 12;
             
-            // Применяем потолок 70
-            pitch = this.clampToCeiling(pitch);
+            // Аккомпанемент строго в 3-4 октавах
+            pitch = this.clampToCeiling(pitch, false);
 
             events.push({
                 type: 'accompaniment',
@@ -171,8 +182,11 @@ export class BluesBrain {
         const phase = this.barInChorus < 4 ? 'A' : (this.barInChorus < 8 ? 'A_VAR' : 'B');
         const events: FractalEvent[] = [];
         
+        // В фазе B (ответ) разрешаем исключительный выход в 5-ю октаву при высоком напряжении
+        const canGoHigh = phase === 'B' && this.state.tensionLevel > this.EXCEPTIONAL_THRESHOLD;
+
         if (phase === 'A') {
-            const motif = this.generateMotifRuleBased(chord.rootNote, 0.5);
+            const motif = this.generateMotifRuleBased(chord.rootNote, 0.5, false);
             this.lastAxiom = motif;
             events.push(...motif);
         } else if (phase === 'A_VAR') {
@@ -180,18 +194,18 @@ export class BluesBrain {
                 let newNote = n.note + (chord.rootNote - (this.lastAxiom[0]?.note || chord.rootNote));
                 return {
                     ...n,
-                    note: this.clampToCeiling(newNote),
+                    note: this.clampToCeiling(newNote, false),
                     time: n.time + (this.random.next() * 0.1)
                 };
             }));
         } else {
-            events.push(...this.generateMotifRuleBased(chord.rootNote, 0.9));
+            events.push(...this.generateMotifRuleBased(chord.rootNote, 0.9, canGoHigh));
         }
 
         return events;
     }
 
-    private generateMotifRuleBased(root: number, energy: number): FractalEvent[] {
+    private generateMotifRuleBased(root: number, energy: number, allowExceptional: boolean): FractalEvent[] {
         const events: FractalEvent[] = [];
         const scale = [0, 3, 5, 6, 7, 10]; 
         const count = 3 + Math.floor(energy * 5);
@@ -208,9 +222,9 @@ export class BluesBrain {
                 this.state.blueNotePending = true;
             }
 
-            // Рассчитываем pitch и применяем потолок 70
+            // Рассчитываем pitch и применяем новую октавную политику
             let pitch = root + degree + 24; 
-            pitch = this.clampToCeiling(pitch);
+            pitch = this.clampToCeiling(pitch, allowExceptional);
 
             const time = (currentTick / 3) + (this.random.next() * 0.05); 
             

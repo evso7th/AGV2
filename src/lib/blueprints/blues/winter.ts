@@ -1,13 +1,13 @@
 import type { MusicBlueprint } from '@/types/music';
 
 /**
- * #ЗАЧЕМ: Специальный блюпринт "The Alvin Lee Tribute" (v4.1 Grounded Soul).
- * #ЧТО: Оптимизирован для живой акустики с жестким потолком регистра 70.
+ * #ЗАЧЕМ: Специальный блюпринт "The Alvin Lee Tribute" (v4.2 Disciplined Soul).
+ * #ЧТО: Жестко ограниченный регистр MIDI 71 для плотного "дымного" звучания.
  */
 export const WinterBluesBlueprint: MusicBlueprint = {
     id: 'winter_blues',
-    name: 'The Bluest Blues (Grounded)',
-    description: 'A deep, soulful acoustic blues tribute. Low register ceiling (MIDI 70), busy fingers.',
+    name: 'The Bluest Blues (Disciplined)',
+    description: 'A deep, soulful acoustic blues tribute. Focused on 3rd and 4th octaves (MIDI 48-71).',
     mood: 'melancholic',
     musical: {
         key: { root: 'E', scale: 'dorian', octave: 1 },
@@ -43,12 +43,12 @@ export const WinterBluesBlueprint: MusicBlueprint = {
                     accompaniment: { 
                         techniques: [{ value: 'rhythmic-comp', weight: 1.0 }], 
                         density: { min: 0.8, max: 1.0 },
-                        register: { preferred: 'low' } // Ограничение регистра в блюпринте
+                        register: { preferred: 'low' } 
                     },
                     melody: { 
                         source: 'blues_solo', 
                         density: { min: 0.6, max: 0.8 },
-                        register: { preferred: 'low' } // Целевой регистр - низкий
+                        register: { preferred: 'low' } 
                     },
                     drums: { kitName: 'blues_melancholic', density: { min: 0.5, max: 0.7 } }
                 },
