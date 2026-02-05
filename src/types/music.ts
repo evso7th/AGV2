@@ -331,3 +331,17 @@ export interface BluesCognitiveState {
   blueNotePending: boolean;
   emotion: { melancholy: number; darkness: number };
 }
+
+/**
+ * #ЗАЧЕМ: "ДНК Сюиты" — это уникальный генетический код для всей пьесы.
+ * #ЧТО: Содержит неизменные параметры: гармонию, темп, ритмический стиль и ИД мелодии.
+ */
+export type SuiteDNA = {
+  harmonyTrack: GhostChord[];
+  baseTempo: number;
+  rhythmicFeel: 'shuffle' | 'straight';
+  bassStyle: 'boogie' | 'walking' | 'pedal';
+  drumStyle: string;
+  soloPlanMap: Map<string, string>;
+  bluesMelodyId?: string; // ТЕМАТИЧЕСКИЙ ЯКОРЬ
+};

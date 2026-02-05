@@ -67,7 +67,6 @@ export class FractalMusicEngine {
   private currentDrumRiffIndex = 0;
   private previousChord: GhostChord | null = null;
 
-  // #ЗАЧЕМ: Блюзовый Интеллект и Эмоциональное Состояние.
   private cognitiveState: BluesCognitiveState = {
       phraseState: 'call',
       tensionLevel: 0.1,
@@ -78,7 +77,6 @@ export class FractalMusicEngine {
   };
 
   private activatedInstruments: Map<InstrumentPart, string> = new Map();
-  private hookLibrary: { events: FractalEvent[], root: number }[] = [];
 
   constructor(config: EngineConfig) {
     this.config = { ...config };
@@ -98,9 +96,7 @@ export class FractalMusicEngine {
 
     this.random = seededRandom(this.config.seed);
     this.activatedInstruments.clear(); 
-    this.hookLibrary = [];
     
-    // Начальное эмоциональное состояние зависит от настроения
     this.cognitiveState = {
         phraseState: 'call',
         tensionLevel: 0.1,
@@ -127,14 +123,9 @@ export class FractalMusicEngine {
     this.isInitialized = true;
   }
 
-  /**
-   * #ЗАЧЕМ: Плавная эволюция внутреннего состояния.
-   */
   private evolveEmotion() {
-      // Медленный дрейф (Brownian walk)
       this.cognitiveState.emotion.melancholy += (this.random.next() - 0.5) * 0.02;
       this.cognitiveState.emotion.darkness += (this.random.next() - 0.5) * 0.01;
-      
       this.cognitiveState.emotion.melancholy = Math.max(0.1, Math.min(0.9, this.cognitiveState.emotion.melancholy));
       this.cognitiveState.emotion.darkness = Math.max(0.1, Math.min(0.9, this.cognitiveState.emotion.darkness));
   }
@@ -196,17 +187,15 @@ export class FractalMusicEngine {
         drumEvents = createDrumAxiom(baseKit, this.config.genre, this.config.mood, this.config.tempo, this.random).events;
     }
 
-    // 2. Melody (Main Logic)
+    // 2. Melody (Blues Restoration)
     let melodyEvents: FractalEvent[] = [];
     if (instrumentHints.melody) {
         const rules = navInfo.currentPart.instrumentRules?.melody;
-        if (rules?.source === 'blues_solo') {
-            const soloRes = generateBluesMelodyChorus(currentChord, this.random, navInfo.currentPart.id, this.epoch, rules, this.suiteDNA, this.cognitiveState, {});
-            melodyEvents = soloRes.events;
-        }
+        const soloRes = generateBluesMelodyChorus(currentChord, this.random, navInfo.currentPart.id, this.epoch, rules, this.suiteDNA, this.cognitiveState, {});
+        melodyEvents = soloRes.events;
     }
 
-    // 3. Bass
+    // 3. Bass (Riff Logic)
     let bassEvents: FractalEvent[] = [];
     if (instrumentHints.bass) {
         if (this.config.genre === 'blues') {
@@ -216,19 +205,32 @@ export class FractalMusicEngine {
         }
     }
 
-    // 4. Accompaniment & Harmony
+    // 4. Accompaniment & Harmony (Piano Support)
     let accompEvents: FractalEvent[] = [];
     if (instrumentHints.accompaniment) {
-        accompEvents = this.createAccompanimentAxiom(currentChord, navInfo);
+        const tech = (navInfo.currentPart.instrumentRules?.accompaniment?.techniques?.[0]?.value || 'long-chords') as AccompanimentTechnique;
+        accompEvents = generateAccompanimentEvents(currentChord, tech, this.random, this.cognitiveState);
     }
 
-    const allEvents = [...bassEvents, ...drumEvents, ...accompEvents, ...melodyEvents];
-    return { events: allEvents };
-  }
+    // 5. Piano Support (The Pianist)
+    let pianoEvents: FractalEvent[] = [];
+    if (instrumentHints.pianoAccompaniment) {
+        // #ЗАЧЕМ: Добавление партии пианиста для полноты ансамбля.
+        const isMinor = currentChord.chordType === 'minor' || currentChord.chordType === 'diminished';
+        const notes = [currentChord.rootNote, currentChord.rootNote + (isMinor ? 3 : 4), currentChord.rootNote + 7];
+        notes.forEach((note, i) => {
+            pianoEvents.push({
+                type: 'pianoAccompaniment',
+                note: note + 12,
+                time: i * 0.1,
+                duration: 2.0,
+                weight: 0.5,
+                technique: 'hit', dynamics: 'mf', phrasing: 'staccato', params: { barCount: this.epoch }
+            });
+        });
+    }
 
-  private createAccompanimentAxiom(chord: GhostChord, navInfo: NavigationInfo): FractalEvent[] {
-    const technique = (navInfo.currentPart.instrumentRules?.accompaniment?.techniques?.[0]?.value || 'long-chords') as AccompanimentTechnique;
-    // #ЗАЧЕМ: Использование новой функции для генерации живого аккомпанемента.
-    return generateAccompanimentEvents(chord, technique, this.random, this.cognitiveState);
+    const allEvents = [...bassEvents, ...drumEvents, ...accompEvents, ...melodyEvents, ...pianoEvents];
+    return { events: allEvents };
   }
 }
