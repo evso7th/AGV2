@@ -1,24 +1,16 @@
 /**
- * #ЗАЧЕМ: Центральная фабрика инструментов V2.0.
- * #ЧТО: Реализует принцип тотальной изоляции голосов (Voice Isolation) и 
- *       автоматическую очистку ресурсов через нативные события onended.
- * #ОБНОВЛЕНО (ПЛАН 88.1): Исправлены ошибки non-finite в эффектах. 
- *          Восстановлена правильная высота тона органов. 
- *          Синтезатор теперь корректно переключает 12/24dB фильтр.
+ * #ЗАЧЕМ: Центральная фабрика инструментов V2.1.
+ * #ЧТО: Реализует принцип "Крепости" (Fortress Architecture):
+ *       1. Voice Stealing: принудительное завершение старых голосов при достижении лимита.
+ *       2. Background Janitor: принудительная очистка узлов по времени (защита от фонового троттлинга).
+ *       3. Finite Guard: защита аудио-параметров от нечисловых значений.
+ * #СВЯЗИ: Является фундаментом для всех V2 менеджеров.
  */
 
-// ───── MONITORING ─────
+// ───── MONITORING & LIMITS ─────
 
 let globalActiveVoices = 0;
-const VOICE_LIMIT = 128; 
-
-if (typeof window !== 'undefined') {
-    setInterval(() => {
-        if (globalActiveVoices > 0) {
-            console.log(`%c[AudioMonitor] Active Voices: ${globalActiveVoices}/${VOICE_LIMIT}`, 'color: #00FF00; font-weight: bold;');
-        }
-    }, 5000);
-}
+const VOICE_LIMIT = 120; // Оставляем запас до 128 для системных нужд
 
 // ───── HELPERS ─────
 
@@ -38,6 +30,10 @@ const loadIR = async (ctx: AudioContext, url: string | null): Promise<AudioBuffe
     }
 };
 
+/**
+ * #ЗАЧЕМ: Тотальная стерилизация ресурсов голоса.
+ * #ЧТО: Рекурсивно разрывает все связи и останавливает источники.
+ */
 const deepCleanup = (voiceRecord: any, allActiveVoices: Set<any>) => {
     if (!voiceRecord || voiceRecord.cleaned) return;
     voiceRecord.cleaned = true;
@@ -47,6 +43,7 @@ const deepCleanup = (voiceRecord: any, allActiveVoices: Set<any>) => {
             try {
                 if (n instanceof OscillatorNode || n instanceof AudioBufferSourceNode) {
                     n.stop();
+                    n.onended = null;
                 }
                 n.disconnect();
             } catch (e) {}
@@ -59,14 +56,28 @@ const deepCleanup = (voiceRecord: any, allActiveVoices: Set<any>) => {
     }
 };
 
+/**
+ * #ЗАЧЕМ: Фоновый чистильщик (Janitor).
+ * #ЧТО: Раз в 2 секунды вычищает голоса, которые "зависли" из-за троттлинга фона.
+ */
+const runJanitor = (ctx: AudioContext, allActiveVoices: Set<any>) => {
+    const now = ctx.currentTime;
+    allActiveVoices.forEach(voice => {
+        if (voice.expectedEndTime && now > voice.expectedEndTime + 1.0) {
+            deepCleanup(voice, allActiveVoices);
+        }
+    });
+};
+
 // ───── DISTORTION CURVES ─────
 
 const makeSoftClip = (amount = 0.5, n = 8192) => {
     const c = new Float32Array(n);
     const k = clamp(amount, 0, 1) * 10 + 1;
+    const norm = Math.tanh(k);
     for (let i = 0; i < n; i++) {
         const x = (i / (n - 1)) * 2 - 1;
-        c[i] = Math.tanh(k * x) / Math.tanh(k);
+        c[i] = Math.tanh(k * x) / norm;
     }
     return c;
 };
@@ -92,21 +103,21 @@ const makeVintageDistortion = (k = 50, n = 8192) => {
     return curve;
 };
 
-// ───── FX FACTORIES (Options-based) ─────
+// ───── FX FACTORIES ─────
 
 interface SimpleFX {
     input: GainNode;
     output: AudioNode;
     setMix: (m: number) => void;
-    lfos: OscillatorNode[];
+    internalLFOs: OscillatorNode[];
 }
 
 const makeChorus = (ctx: AudioContext, options: { rate?: number, depth?: number, mix?: number } = {}): SimpleFX => {
     const { rate = 0.3, depth = 0.004, mix = 0.3 } = options;
     const input = ctx.createGain();
     const output = ctx.createGain();
-    const dry = ctx.createGain(); dry.gain.value = 1 - mix;
-    const wet = ctx.createGain(); wet.gain.value = mix;
+    const dry = ctx.createGain(); dry.gain.value = 1 - clamp(mix, 0, 1);
+    const wet = ctx.createGain(); wet.gain.value = clamp(mix, 0, 1);
     const delay = ctx.createDelay(0.05); delay.delayTime.value = 0.015;
     const lfo = ctx.createOscillator(); lfo.type = 'sine'; lfo.frequency.value = rate;
     const lfoGain = ctx.createGain(); lfoGain.gain.value = depth;
@@ -114,7 +125,7 @@ const makeChorus = (ctx: AudioContext, options: { rate?: number, depth?: number,
     input.connect(dry).connect(output);
     input.connect(delay).connect(wet).connect(output);
     return {
-        input, output, lfos: [lfo],
+        input, output, internalLFOs: [lfo],
         setMix: (m) => {
             const val = clamp(m, 0, 1);
             const now = ctx.currentTime;
@@ -128,8 +139,8 @@ const makeDelay = (ctx: AudioContext, options: { time?: number, fb?: number, hc?
     const { time = 0.35, fb = 0.25, hc = 3000, mix = 0.2 } = options;
     const input = ctx.createGain();
     const output = ctx.createGain();
-    const dry = ctx.createGain(); dry.gain.value = 1 - mix;
-    const wet = ctx.createGain(); wet.gain.value = mix;
+    const dry = ctx.createGain(); dry.gain.value = 1 - clamp(mix, 0, 1);
+    const wet = ctx.createGain(); wet.gain.value = clamp(mix, 0, 1);
     const delayNode = ctx.createDelay(2.0); delayNode.delayTime.value = time;
     const feedback = ctx.createGain(); feedback.gain.value = fb;
     const filter = ctx.createBiquadFilter(); filter.type = 'lowpass'; filter.frequency.value = hc;
@@ -137,7 +148,7 @@ const makeDelay = (ctx: AudioContext, options: { time?: number, fb?: number, hc?
     input.connect(delayNode).connect(filter).connect(feedback).connect(delayNode);
     filter.connect(wet).connect(output);
     return {
-        input, output, lfos: [],
+        input, output, internalLFOs: [],
         setMix: (m) => {
             const val = clamp(m, 0, 1);
             const now = ctx.currentTime;
@@ -151,8 +162,8 @@ const makePhaser = (ctx: AudioContext, options: { rate?: number, depth?: number,
     const { rate = 0.16, depth = 600, mix = 0.2 } = options;
     const input = ctx.createGain();
     const output = ctx.createGain();
-    const dry = ctx.createGain(); dry.gain.value = 1 - mix;
-    const wet = ctx.createGain(); wet.gain.value = mix;
+    const dry = ctx.createGain(); dry.gain.value = 1 - clamp(mix, 0, 1);
+    const wet = ctx.createGain(); wet.gain.value = clamp(mix, 0, 1);
     const filters: BiquadFilterNode[] = [];
     let head: AudioNode = input;
     for (let i = 0; i < 4; i++) {
@@ -165,7 +176,7 @@ const makePhaser = (ctx: AudioContext, options: { rate?: number, depth?: number,
     input.connect(dry).connect(output);
     filters[3].connect(wet).connect(output);
     return {
-        input, output, lfos: [lfo],
+        input, output, internalLFOs: [lfo],
         setMix: (m) => {
             const val = clamp(m, 0, 1);
             const now = ctx.currentTime;
@@ -191,7 +202,7 @@ const triggerAttack = (ctx: AudioContext, gain: GainNode, when: number, a: numbe
     gain.gain.cancelScheduledValues(now);
     gain.gain.setValueAtTime(0.0001, now);
     gain.gain.linearRampToValueAtTime(velocity, now + attack);
-    gain.gain.setTargetAtTime(sustain, now + attack, decay / 3);
+    gain.gain.setTargetAtTime(sustain, now + attack, Math.max(decay / 3, 0.001));
     return { node: gain, startTime: now };
 };
 
@@ -199,7 +210,7 @@ const triggerRelease = (ctx: AudioContext, voiceState: VoiceState, when: number,
     const release = Math.max(r, 0.02);
     const now = Math.max(when, ctx.currentTime);
     voiceState.node.gain.cancelScheduledValues(now);
-    voiceState.node.gain.setTargetAtTime(0.0001, now, release / 3);
+    voiceState.node.gain.setTargetAtTime(0.0001, now, Math.max(release / 3, 0.001));
     return now + release;
 };
 
@@ -230,25 +241,24 @@ export interface InstrumentAPI {
 const buildSynthEngine = (ctx: AudioContext, preset: any, master: GainNode, reverb: ConvolverNode, instrumentGain: GainNode, expressionGain: GainNode) => {
     let currentPreset = { ...preset };
     const internalLFOs: OscillatorNode[] = [];
+    const allActiveVoices = new Set<any>();
+    const activeVoices = new Map<number, any>();
+
     const comp = ctx.createDynamicsCompressor();
-    
     const filt = ctx.createBiquadFilter(); filt.type = 'lowpass';
     const filt2 = ctx.createBiquadFilter(); filt2.type = 'lowpass';
     
     const chorus = makeChorus(ctx, { mix: currentPreset.chorus?.on ? 0.3 : 0 });
     const delay = makeDelay(ctx, { mix: currentPreset.delay?.on ? 0.2 : 0 });
-    internalLFOs.push(...chorus.lfos, ...delay.lfos);
+    internalLFOs.push(...chorus.internalLFOs, ...delay.internalLFOs);
 
     const revSend = ctx.createGain(); revSend.gain.value = currentPreset.reverbMix ?? 0.18;
 
-    // Routing
     comp.connect(filt);
     const rebuildRouting = (p: any) => {
         try { filt.disconnect(); filt2.disconnect(); } catch(e){}
-        const use24dB = (p.lpf?.mode === '24dB');
-        if (use24dB) {
-            filt.connect(filt2);
-            filt2.connect(chorus.input);
+        if (p.lpf?.mode === '24dB') {
+            filt.connect(filt2); filt2.connect(chorus.input);
         } else {
             filt.connect(chorus.input);
         }
@@ -259,11 +269,16 @@ const buildSynthEngine = (ctx: AudioContext, preset: any, master: GainNode, reve
     delay.output.connect(expressionGain).connect(instrumentGain).connect(master);
     delay.output.connect(revSend).connect(reverb);
 
-    const activeVoices = new Map<number, any>();
-    const allActiveVoices = new Set<any>();
+    // Janitor
+    const janitorId = setInterval(() => runJanitor(ctx, allActiveVoices), 2000);
 
     const noteOn = (midi: number, when = ctx.currentTime, velocity = 1.0, duration?: number) => {
-        if (globalActiveVoices >= VOICE_LIMIT) return;
+        // Voice Stealing
+        if (globalActiveVoices >= VOICE_LIMIT) {
+            const oldest = allActiveVoices.values().next().value;
+            if (oldest) deepCleanup(oldest, allActiveVoices);
+        }
+
         globalActiveVoices++;
         const f = midiToHz(midi);
         const voiceGain = ctx.createGain(); voiceGain.gain.value = 0; voiceGain.connect(comp);
@@ -271,7 +286,8 @@ const buildSynthEngine = (ctx: AudioContext, preset: any, master: GainNode, reve
         const oscConfigs = currentPreset.osc || [{ type: 'sawtooth', gain: 0.5 }];
 
         oscConfigs.forEach((o: any) => {
-            const osc = ctx.createOscillator(); osc.type = o.type; osc.frequency.value = f * Math.pow(2, o.octave || 0);
+            const osc = ctx.createOscillator(); osc.type = o.type; 
+            osc.frequency.setValueAtTime(f * Math.pow(2, o.octave || 0), when);
             const g = ctx.createGain(); g.gain.value = (o.gain ?? 0.5) * velocity;
             osc.connect(g).connect(voiceGain); osc.start(when);
             nodes.push(osc, g);
@@ -279,10 +295,13 @@ const buildSynthEngine = (ctx: AudioContext, preset: any, master: GainNode, reve
 
         const adsr = currentPreset.adsr || { a: 0.1, d: 0.2, s: 0.7, r: 1.5 };
         const voiceState = triggerAttack(ctx, voiceGain, when, adsr.a, adsr.d, adsr.s, velocity);
-        const record = { voiceGain, voiceState, nodes, cleaned: false };
+        
+        const expectedDuration = duration || 2.0;
+        const expectedEndTime = when + expectedDuration + adsr.r;
+        const record = { voiceGain, voiceState, nodes, cleaned: false, expectedEndTime };
         allActiveVoices.add(record);
 
-        const stopTime = when + (duration || 2.0);
+        const stopTime = when + expectedDuration;
         const finalTime = triggerRelease(ctx, voiceState, stopTime, adsr.a, adsr.r);
         
         const primaryOsc = nodes.find(n => n instanceof OscillatorNode) as OscillatorNode;
@@ -306,6 +325,7 @@ const buildSynthEngine = (ctx: AudioContext, preset: any, master: GainNode, reve
         noteOn, noteOff,
         allNotesOff: () => { allActiveVoices.forEach(v => deepCleanup(v, allActiveVoices)); activeVoices.clear(); },
         disconnect: () => { 
+            clearInterval(janitorId);
             internalLFOs.forEach(lfo => { try { lfo.stop(); lfo.disconnect(); } catch(e){} });
             comp.disconnect(); revSend.disconnect();
         },
@@ -328,10 +348,11 @@ const buildSynthEngine = (ctx: AudioContext, preset: any, master: GainNode, reve
 const buildOrganEngine = (ctx: AudioContext, preset: any, master: GainNode, reverb: ConvolverNode, instrumentGain: GainNode, expressionGain: GainNode) => {
     let currentPreset = { ...preset };
     const internalLFOs: OscillatorNode[] = [];
+    const allActiveVoices = new Set<any>();
     const organSum = ctx.createGain();
     
     const leslie = makeChorus(ctx, { rate: 0.6, depth: 0.005, mix: 0.5 }); 
-    internalLFOs.push(...leslie.lfos);
+    internalLFOs.push(...leslie.internalLFOs);
 
     const vibLfo = ctx.createOscillator(); vibLfo.type = 'sine'; vibLfo.frequency.value = currentPreset.vibratoRate ?? 6.2;
     const vibGain = ctx.createGain(); vibGain.gain.value = 3.5; 
@@ -343,19 +364,22 @@ const buildOrganEngine = (ctx: AudioContext, preset: any, master: GainNode, reve
     const revSend = ctx.createGain(); revSend.gain.value = currentPreset.reverbMix ?? 0.1;
     leslie.output.connect(revSend).connect(reverb);
 
-    let tonewheelWave: PeriodicWave;
     const updateWave = (drawbars: number[]) => {
         const real = new Float32Array(17), imag = new Float32Array(17);
         const indices = [1, 3, 2, 4, 6, 8, 10, 12, 16];
         drawbars.forEach((v, i) => { if (v > 0) real[indices[i]] = v / 8; });
-        tonewheelWave = ctx.createPeriodicWave(real, imag, { disableNormalization: true });
+        return ctx.createPeriodicWave(real, imag, { disableNormalization: true });
     };
-    updateWave(currentPreset.drawbars || [8,0,8,5,0,3,0,0,0]);
+    let tonewheelWave = updateWave(currentPreset.drawbars || [8,0,8,5,0,3,0,0,0]);
 
-    const allActiveVoices = new Set<any>();
+    const janitorId = setInterval(() => runJanitor(ctx, allActiveVoices), 2000);
 
     const noteOn = (midi: number, when = ctx.currentTime, velocity = 1.0, duration?: number) => {
-        if (globalActiveVoices >= VOICE_LIMIT) return;
+        if (globalActiveVoices >= VOICE_LIMIT) {
+            const oldest = allActiveVoices.values().next().value;
+            if (oldest) deepCleanup(oldest, allActiveVoices);
+        }
+
         globalActiveVoices++;
         const f0 = midiToHz(midi);
         const voiceGain = ctx.createGain(); voiceGain.gain.value = 0; voiceGain.connect(organSum);
@@ -363,18 +387,21 @@ const buildOrganEngine = (ctx: AudioContext, preset: any, master: GainNode, reve
 
         const osc = ctx.createOscillator();
         osc.setPeriodicWave(tonewheelWave);
-        osc.frequency.setValueAtTime(f0, when); // FUNDAMENTAL FIXED (Removed * 0.5)
+        osc.frequency.setValueAtTime(f0, when);
         vibGain.connect(osc.detune);
         osc.connect(voiceGain);
         osc.start(when);
         nodes.push(osc);
 
         const adsr = currentPreset.adsr || { a: 0.02, d: 0.1, s: 0.9, r: 0.2 };
-        const voiceState = triggerAttack(ctx, voiceGain, when, adsr.a, adsr.d, adsr.s, velocity * 0.6); // BOOSTED (from 0.4)
-        const record = { voiceGain, voiceState, nodes, cleaned: false };
+        const voiceState = triggerAttack(ctx, voiceGain, when, adsr.a, adsr.d, adsr.s, velocity * 0.6);
+        
+        const expectedDuration = duration || 1.0;
+        const expectedEndTime = when + expectedDuration + adsr.r;
+        const record = { voiceGain, voiceState, nodes, cleaned: false, expectedEndTime };
         allActiveVoices.add(record);
 
-        const finalTime = triggerRelease(ctx, voiceState, when + (duration || 1.0), adsr.a, adsr.r);
+        const finalTime = triggerRelease(ctx, voiceState, when + expectedDuration, adsr.a, adsr.r);
         osc.stop(finalTime + 0.1);
         osc.onended = () => deepCleanup(record, allActiveVoices);
     };
@@ -383,10 +410,15 @@ const buildOrganEngine = (ctx: AudioContext, preset: any, master: GainNode, reve
         noteOn, noteOff: () => {},
         allNotesOff: () => { allActiveVoices.forEach(v => deepCleanup(v, allActiveVoices)); },
         disconnect: () => {
+            clearInterval(janitorId);
             internalLFOs.forEach(lfo => { try { lfo.stop(); lfo.disconnect(); } catch(e){} });
             organSum.disconnect(); revSend.disconnect();
         },
-        setPreset: (p: any) => { currentPreset = p; updateWave(p.drawbars || [8,0,8,5,0,3,0,0,0]); revSend.gain.value = p.reverbMix ?? 0.1; }
+        setPreset: (p: any) => { 
+            currentPreset = p; 
+            tonewheelWave = updateWave(p.drawbars || [8,0,8,5,0,3,0,0,0]); 
+            revSend.gain.value = p.reverbMix ?? 0.1; 
+        }
     };
 };
 
@@ -401,8 +433,14 @@ const buildBassEngine = (ctx: AudioContext, preset: any, master: GainNode, rever
     bassSum.connect(hpf).connect(expressionGain).connect(instrumentGain).connect(master);
     const allActiveVoices = new Set<any>();
 
+    const janitorId = setInterval(() => runJanitor(ctx, allActiveVoices), 2000);
+
     const noteOn = (midi: number, when = ctx.currentTime, velocity = 1.0, duration?: number) => {
-        if (globalActiveVoices >= VOICE_LIMIT) return;
+        if (globalActiveVoices >= VOICE_LIMIT) {
+            const oldest = allActiveVoices.values().next().value;
+            if (oldest) deepCleanup(oldest, allActiveVoices);
+        }
+
         globalActiveVoices++;
         const f0 = midiToHz(midi);
         const voiceGain = ctx.createGain(); voiceGain.gain.value = 0; voiceGain.connect(bassSum);
@@ -410,7 +448,8 @@ const buildBassEngine = (ctx: AudioContext, preset: any, master: GainNode, rever
         const oscs = currentPreset.osc || [{ type: 'sawtooth', gain: 0.7 }];
 
         oscs.forEach((o: any) => {
-            const x = ctx.createOscillator(); x.type = o.type; x.frequency.value = f0 * Math.pow(2, o.octave || 0);
+            const x = ctx.createOscillator(); x.type = o.type; 
+            x.frequency.setValueAtTime(f0 * Math.pow(2, o.octave || 0), when);
             const g = ctx.createGain(); g.gain.value = (o.gain ?? 0.7) * velocity;
             x.connect(g).connect(voiceGain); x.start(when);
             nodes.push(x, g);
@@ -418,10 +457,13 @@ const buildBassEngine = (ctx: AudioContext, preset: any, master: GainNode, rever
 
         const adsr = currentPreset.adsr || { a: 0.01, d: 0.15, s: 0.7, r: 0.25 };
         const voiceState = triggerAttack(ctx, voiceGain, when, adsr.a, adsr.d, adsr.s, velocity);
-        const record = { voiceGain, voiceState, nodes, cleaned: false };
+        
+        const expectedDuration = duration || 1.0;
+        const expectedEndTime = when + expectedDuration + adsr.r;
+        const record = { voiceGain, voiceState, nodes, cleaned: false, expectedEndTime };
         allActiveVoices.add(record);
 
-        const finalTime = triggerRelease(ctx, voiceState, when + (duration || 1.0), adsr.a, adsr.r);
+        const finalTime = triggerRelease(ctx, voiceState, when + expectedDuration, adsr.a, adsr.r);
         const primary = nodes.find(n => n instanceof OscillatorNode) as OscillatorNode;
         if (primary) {
             primary.stop(finalTime + 0.1);
@@ -432,7 +474,7 @@ const buildBassEngine = (ctx: AudioContext, preset: any, master: GainNode, rever
     return {
         noteOn, noteOff: () => {},
         allNotesOff: () => { allActiveVoices.forEach(v => deepCleanup(v, allActiveVoices)); },
-        disconnect: () => { bassSum.disconnect(); },
+        disconnect: () => { clearInterval(janitorId); bassSum.disconnect(); },
         setPreset: (p: any) => { currentPreset = p; }
     };
 };
@@ -444,6 +486,7 @@ const buildBassEngine = (ctx: AudioContext, preset: any, master: GainNode, rever
 const buildGuitarEngine = (ctx: AudioContext, preset: any, master: GainNode, reverb: ConvolverNode, instrumentGain: GainNode, expressionGain: GainNode) => {
     let currentPreset = { ...preset };
     const internalLFOs: OscillatorNode[] = [];
+    const allActiveVoices = new Set<any>();
     const guitarInput = ctx.createGain();
     
     const comp = ctx.createDynamicsCompressor(); comp.threshold.value = -18;
@@ -451,7 +494,7 @@ const buildGuitarEngine = (ctx: AudioContext, preset: any, master: GainNode, rev
     shaper.curve = makeVintageDistortion(50);
 
     const phaser = makePhaser(ctx, { mix: currentPreset.phaser?.on ? 0.2 : 0 }); 
-    internalLFOs.push(...phaser.lfos);
+    internalLFOs.push(...phaser.internalLFOs);
     
     const delay = makeDelay(ctx, { mix: currentPreset.delayA?.on ? 0.2 : 0 }); 
     const revSend = ctx.createGain(); revSend.gain.value = currentPreset.reverbMix ?? 0.2;
@@ -461,7 +504,7 @@ const buildGuitarEngine = (ctx: AudioContext, preset: any, master: GainNode, rev
     delay.output.connect(expressionGain).connect(instrumentGain).connect(master);
     delay.output.connect(revSend).connect(reverb);
 
-    const allActiveVoices = new Set<any>();
+    const janitorId = setInterval(() => runJanitor(ctx, allActiveVoices), 2000);
 
     const createPulse = (f: number, w: number) => {
         const real = new Float32Array(32), imag = new Float32Array(32);
@@ -471,7 +514,11 @@ const buildGuitarEngine = (ctx: AudioContext, preset: any, master: GainNode, rev
     };
 
     const noteOn = (midi: number, when = ctx.currentTime, velocity = 1.0, duration?: number) => {
-        if (globalActiveVoices >= VOICE_LIMIT) return;
+        if (globalActiveVoices >= VOICE_LIMIT) {
+            const oldest = allActiveVoices.values().next().value;
+            if (oldest) deepCleanup(oldest, allActiveVoices);
+        }
+
         globalActiveVoices++;
         const f = midiToHz(midi);
         const voiceGain = ctx.createGain(); voiceGain.gain.value = 0; voiceGain.connect(guitarInput);
@@ -485,10 +532,13 @@ const buildGuitarEngine = (ctx: AudioContext, preset: any, master: GainNode, rev
 
         const adsr = currentPreset.adsr || { a: 0.005, d: 0.3, s: 0.6, r: 1.5 };
         const voiceState = triggerAttack(ctx, voiceGain, when, adsr.a, adsr.d, adsr.s, velocity * 0.15);
-        const record = { voiceGain, voiceState, nodes, cleaned: false };
+        
+        const expectedDuration = duration || 1.0;
+        const expectedEndTime = when + expectedDuration + adsr.r;
+        const record = { voiceGain, voiceState, nodes, cleaned: false, expectedEndTime };
         allActiveVoices.add(record);
 
-        const finalTime = triggerRelease(ctx, voiceState, when + (duration || 1.0), adsr.a, adsr.r);
+        const finalTime = triggerRelease(ctx, voiceState, when + expectedDuration, adsr.a, adsr.r);
         osc.stop(finalTime + 0.1);
         osc.onended = () => deepCleanup(record, allActiveVoices);
     };
@@ -497,6 +547,7 @@ const buildGuitarEngine = (ctx: AudioContext, preset: any, master: GainNode, rev
         noteOn, noteOff: () => {},
         allNotesOff: () => { allActiveVoices.forEach(v => deepCleanup(v, allActiveVoices)); },
         disconnect: () => {
+            clearInterval(janitorId);
             internalLFOs.forEach(lfo => { try { lfo.stop(); lfo.disconnect(); } catch(e){} });
             guitarInput.disconnect(); revSend.disconnect();
         },
@@ -547,10 +598,10 @@ export async function buildMultiInstrument(ctx: AudioContext, {
         allNotesOff: engine.allNotesOff,
         setPreset: engine.setPreset,
         setParam: (k, v) => engine.setParam?.(k, v),
-        setVolume: (v) => instrumentGain.gain.setTargetAtTime(v, ctx.currentTime, 0.02),
-        setVolumeDb: (db) => instrumentGain.gain.setTargetAtTime(dB(db), ctx.currentTime, 0.02),
+        setVolume: (v) => { if(isFinite(v)) instrumentGain.gain.setTargetAtTime(v, ctx.currentTime, 0.02); },
+        setVolumeDb: (db) => { if(isFinite(db)) instrumentGain.gain.setTargetAtTime(dB(db), ctx.currentTime, 0.02); },
         getVolume: () => instrumentGain.gain.value,
-        setExpression: (v) => expressionGain.gain.setTargetAtTime(v, ctx.currentTime, 0.01),
+        setExpression: (v) => { if(isFinite(v)) expressionGain.gain.setTargetAtTime(v, ctx.currentTime, 0.01); },
         preset, type
     };
 }
