@@ -24,7 +24,6 @@ export const WinterBluesBlueprint: MusicBlueprint = {
                         instrumentation: {
                            bass: { activationChance: 0.66, instrumentOptions: [ { name: 'bass_jazz_warm', weight: 1.0 } ] },
                            drums: { activationChance: 0.66, instrumentOptions: [ { name: 'blues_melancholic_master', weight: 1.0 } ] },
-                           // #ЗАЧЕМ: Акцент на соло с самого начала.
                            melody: { activationChance: 0.5, instrumentOptions: [ { name: 'ep_rhodes_warm', weight: 1.0 } ] },
                            accompaniment: { activationChance: 0.66, instrumentOptions: [ { name: 'organ_soft_jazz', weight: 1.0 } ] }
                         }
@@ -86,7 +85,8 @@ export const WinterBluesBlueprint: MusicBlueprint = {
                 instrumentRules: {
                     drums: { pattern: 'composer', kitName: 'blues_melancholic_master', density: { min: 0.5, max: 0.7 }, usePerc: true },
                     melody: { source: 'blues_solo', soloPlan: "S_ACTIVE", density: { min: 0.8, max: 1.0 }, soloToPatternRatio: 1.0 },
-                    accompaniment: { techniques: [{ value: 'choral', weight: 1.0 }], density: { min: 0.5, max: 0.8 } },
+                    // #ЗАЧЕМ: Перевод аккомпанемента на ритмические чопы в основной части.
+                    accompaniment: { techniques: [{ value: 'rhythmic-comp', weight: 1.0 }], density: { min: 0.5, max: 0.8 } },
                     sparkles: { eventProbability: 0.05 },
                     sfx: { eventProbability: 0.15, categories: [{ name: 'common', weight: 1.0 }] }
                 },
@@ -99,7 +99,8 @@ export const WinterBluesBlueprint: MusicBlueprint = {
                 instrumentRules: {
                     drums: { pattern: 'composer', kitName: 'blues_melancholic_master', density: { min: 0.6, max: 0.8 }, usePerc: true },
                     melody: { source: 'blues_solo', soloPlan: "S_ACTIVE", density: { min: 0.9, max: 1.0 }, soloToPatternRatio: 1.0, register: { preferred: 'high' } },
-                    accompaniment: { techniques: [{ value: 'choral', weight: 1.0 }], density: { min: 0.6, max: 0.9 } },
+                    // #ЗАЧЕМ: Поддержка ритма во время соло.
+                    accompaniment: { techniques: [{ value: 'rhythmic-comp', weight: 1.0 }], density: { min: 0.6, max: 0.9 } },
                     sfx: { eventProbability: 0.2, categories: [{ name: 'common', weight: 1.0 }] },
                     sparkles: { eventProbability: 0.1 }
                 },
@@ -145,7 +146,7 @@ export const WinterBluesBlueprint: MusicBlueprint = {
                     drums: { pattern: 'composer', kitName: 'blues_melancholic_master', density: { min: 0.2, max: 0.4 }, useSnare: false },
                     bass: { techniques: [{ value: 'long_notes', weight: 1.0 }], density: {min: 0.3, max: 0.5} },
                     melody: { source: 'blues_solo', density: { min: 1.0, max: 1.0 }, soloPlan: "WINTER_OUTRO_MELODY", soloToPatternRatio: 0.0 },
-                    accompaniment: { density: { min: 0.3, max: 0.5 } }
+                    accompaniment: { density: { min: 0.3, max: 0.5 }, techniques: [{ value: 'choral', weight: 1.0 }] }
                 },
                 bundles: [{ id: 'WINTER_OUTRO_BUNDLE', name: 'Final Embers', duration: { percent: 100 }, characteristics: {}, phrases: {} }],
                 outroFill: null,

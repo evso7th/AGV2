@@ -1,4 +1,3 @@
-
 import type { FractalEvent, Mood, Genre, Technique, InstrumentPart, InstrumentHints, AccompanimentTechnique, GhostChord, SuiteDNA, NavigationInfo, Stage, BluesCognitiveState } from '@/types/music';
 import { BlueprintNavigator } from './blueprint-navigator';
 import { getBlueprint } from './blueprints';
@@ -15,6 +14,7 @@ import {
     createAmbientBassAxiom,
     createBluesBassAxiom,
     generateBluesMelodyChorus,
+    generateAccompanimentEvents,
     humanizeEvents
 } from './music-theory';
 
@@ -224,21 +224,8 @@ export class FractalMusicEngine {
   }
 
   private createAccompanimentAxiom(chord: GhostChord, navInfo: NavigationInfo): FractalEvent[] {
-    const axiom: FractalEvent[] = [];
-    const isMinor = chord.chordType === 'minor' || chord.chordType === 'diminished';
-    const notes = [chord.rootNote, chord.rootNote + (isMinor ? 3 : 4), chord.rootNote + 7];
     const technique = (navInfo.currentPart.instrumentRules?.accompaniment?.techniques?.[0]?.value || 'long-chords') as AccompanimentTechnique;
-
-    notes.forEach((note, i) => {
-        axiom.push({
-            type: 'accompaniment', note: note + 36, duration: 4.0, time: i * 0.05, weight: 0.5 - (i * 0.1),
-            technique, dynamics: 'mp', phrasing: 'legato', 
-            params: { 
-                attack: 0.1 + (this.cognitiveState.emotion.melancholy * 0.5), 
-                release: 1.5 + (this.cognitiveState.emotion.melancholy * 1.0) 
-            }
-        });
-    });
-    return axiom;
+    // #ЗАЧЕМ: Использование новой функции для генерации живого аккомпанемента.
+    return generateAccompanimentEvents(chord, technique, this.random, this.cognitiveState);
   }
 }

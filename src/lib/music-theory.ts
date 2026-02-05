@@ -1,4 +1,3 @@
-
 /**
  * @fileOverview Music Theory Utilities and Axiom Generation
  * #ЗАЧЕМ: Центральный хаб музыкальной логики.
@@ -6,7 +5,7 @@
  * #СВЯЗИ: Является основным потавщиком данных для `FractalMusicEngine`.
  */
 
-import type { FractalEvent, Mood, Genre, Technique, InstrumentType, BluesMelody, SuiteDNA, BluesSoloPhrase, BluesRiffDegree, GhostChord, BluesCognitiveState } from '@/types/music';
+import type { FractalEvent, Mood, Genre, Technique, InstrumentType, BluesMelody, SuiteDNA, BluesSoloPhrase, BluesRiffDegree, GhostChord, BluesCognitiveState, AccompanimentTechnique } from '@/types/music';
 import { BLUES_BASS_RIFFS } from './assets/blues-bass-riffs';
 import { BLUES_SOLO_LICKS, BLUES_SOLO_PLANS } from './assets/blues_guitar_solo';
 import { BLUES_DRUM_RIFFS } from './assets/blues-drum-riffs';
@@ -141,6 +140,98 @@ export function generateSuiteDNA(totalBars: number, mood: Mood, seed: number, ra
     });
 
     return { harmonyTrack, baseTempo, rhythmicFeel: 'shuffle', bassStyle: 'walking', drumStyle: 'shuffle_A', soloPlanMap };
+}
+
+/**
+ * #ЗАЧЕМ: Генерация ритмически активного аккомпанемента.
+ * #ЧТО: Превращает "гудящие" аккорды в живую пульсацию или чопы.
+ */
+export function generateAccompanimentEvents(
+    chord: GhostChord, 
+    technique: AccompanimentTechnique, 
+    random: any, 
+    cognitiveState: BluesCognitiveState
+): FractalEvent[] {
+    const axiom: FractalEvent[] = [];
+    const isMinor = chord.chordType === 'minor' || chord.chordType === 'diminished';
+    
+    // Построение воисинга (шеллы 3-7 + добавочная 9 для богатства)
+    const third = chord.rootNote + (isMinor ? 3 : 4);
+    const seventh = chord.rootNote + 10;
+    const ninth = chord.rootNote + 14;
+    const chordNotes = [third, seventh, ninth];
+
+    const adsrParams = {
+        attack: 0.05 + (cognitiveState.emotion.melancholy * 0.2),
+        release: 0.8 + (cognitiveState.emotion.melancholy * 1.5)
+    };
+
+    switch (technique) {
+        case 'rhythmic-comp':
+            // "Блюзовые чопы" на слабую долю (тики 4 и 10 в 12/8)
+            [4, 10].forEach(tick => {
+                chordNotes.forEach((note, i) => {
+                    axiom.push({
+                        type: 'accompaniment',
+                        note: note + 24, // Средний регистр
+                        time: tick / 3, // Конвертация тиков в доли
+                        duration: 0.5, // Короткий удар
+                        weight: 0.45 - (i * 0.05),
+                        technique: 'hit',
+                        dynamics: 'mf',
+                        phrasing: 'staccato',
+                        params: adsrParams
+                    });
+                });
+            });
+            break;
+
+        case 'chord-pulsation':
+            // Пульсация четвертями
+            [0, 1, 2, 3].forEach(beat => {
+                if (random.next() < 0.8) { // 20% шанс паузы для "дыхания"
+                    chordNotes.forEach((note, i) => {
+                        axiom.push({
+                            type: 'accompaniment',
+                            note: note + 24,
+                            time: beat,
+                            duration: 0.8,
+                            weight: 0.4,
+                            technique: 'hit',
+                            dynamics: 'p',
+                            phrasing: 'detached',
+                            params: adsrParams
+                        });
+                    });
+                }
+            });
+            break;
+
+        case 'long-chords':
+        case 'choral':
+        default:
+            // Классическое удержание на весь такт
+            chordNotes.forEach((note, i) => {
+                axiom.push({
+                    type: 'accompaniment',
+                    note: note + 24,
+                    time: i * 0.05, // Микро-арпеджио
+                    duration: 4.0,
+                    weight: 0.5 - (i * 0.1),
+                    technique: 'swell',
+                    dynamics: 'mp',
+                    phrasing: 'legato',
+                    params: {
+                        attack: 0.5 + adsrParams.attack,
+                        release: adsrParams.release
+                    }
+                });
+            });
+            break;
+    }
+
+    humanizeEvents(axiom, 0.015, random);
+    return axiom;
 }
 
 /**
