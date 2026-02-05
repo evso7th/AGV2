@@ -52,8 +52,6 @@ export class MelodySynthManagerV2 {
         if (this.isInitialized) return;
         console.log(`[MelodySynthManagerV2] Initializing for ${this.partName}...`);
         
-        // #ЗАЧЕМ: Динамическое определение типа инструмента при инициализации.
-        // #ЧТО: Читаем тип из пресета, а не хардкодим 'synth'.
         const initialPresetName = this.partName === 'bass' ? 'bass_jazz_warm' : 'synth';
         const preset = this.partName === 'bass' 
             ? BASS_PRESETS[initialPresetName as keyof typeof BASS_PRESETS]
@@ -66,7 +64,15 @@ export class MelodySynthManagerV2 {
     }
     
     private async loadInstrument(presetName: keyof typeof V2_PRESETS | keyof typeof BASS_PRESETS, instrumentType: 'bass' | 'synth' | 'organ' | 'guitar' = 'synth') {
-        this.allNotesOff();
+        // #ЗАЧЕМ: Критически важная очистка старого инструмента.
+        // #ЧТО: Если инструмент уже существует, мы вызываем его метод disconnect(),
+        //      который теперь (после Плана 85) останавливает все LFO и разрывает связи.
+        // #СВЯЗИ: Предотвращает "слоеный пирог" инструментов и хрип CPU.
+        if (this.synth) {
+            console.log(`[MelodySynthManagerV2] Disposing old instrument before loading ${presetName}`);
+            this.synth.disconnect();
+            this.synth = null;
+        }
         
         const preset = instrumentType === 'bass'
             ? BASS_PRESETS[presetName as keyof typeof BASS_PRESETS]
@@ -81,7 +87,7 @@ export class MelodySynthManagerV2 {
             this.synth = await buildMultiInstrument(this.audioContext, {
                 type: instrumentType,
                 preset: preset,
-                output: this.preamp // Connect to the manager's preamp
+                output: this.preamp
             });
             this.activePresetName = presetName;
         } catch (error) {
@@ -95,7 +101,6 @@ export class MelodySynthManagerV2 {
         
         if (notesToPlay.length === 0) return;
 
-        // --- SMART ROUTER (только для мелодии) ---
         if (this.partName === 'melody') {
             if (instrumentHint === 'blackAcoustic') {
                 this.blackAcousticSampler.schedule(notesToPlay, barStartTime, tempo);
@@ -111,7 +116,6 @@ export class MelodySynthManagerV2 {
             }
         }
         
-        // --- SYNTH LOGIC ---
         let finalInstrumentHint = instrumentHint;
         if (instrumentHint) {
             if (this.partName === 'bass') {
@@ -138,15 +142,8 @@ export class MelodySynthManagerV2 {
         
         notesToPlay.forEach(note => {
             const noteOnTime = barStartTime + note.time;
-            
             if (isFinite(note.duration) && note.duration > 0) {
-                 // #ЗАЧЕМ: Переход на самозавершающиеся ноты (как в сэмплерах).
-                 // #ЧТО: Передаем duration прямо в noteOn. Это позволяет нотам
-                 //      наслаиваться друг на друга (layering), не обрывая хвосты.
-                 //      Метод noteOff в менеджере больше не вызывается.
                  this.synth.noteOn(note.midi, noteOnTime, note.velocity, note.duration);
-            } else {
-                 console.error(`[MelodySynthManagerV2] Invalid duration for event for part ${this.partName}!`, JSON.parse(JSON.stringify(note)));
             }
         });
     }
@@ -155,10 +152,9 @@ export class MelodySynthManagerV2 {
        if (instrumentName === this.activePresetName) return;
 
        if (instrumentName === 'none') {
-            this.allNotesOff();
+            if (this.synth) this.synth.disconnect();
             this.synth = null;
             this.activePresetName = 'none';
-            console.log(`[MelodySynthManagerV2] for ${this.partName}: Instrument set to 'none'. Output silenced.`);
             return;
        }
 
@@ -170,11 +166,8 @@ export class MelodySynthManagerV2 {
        if (this.synth && this.synth.type === preset?.type && this.synth.setPreset && preset) {
            this.synth.setPreset(preset);
            this.activePresetName = instrumentName;
-           console.log(`[MelodySynthManagerV2] for ${this.partName}: Preset updated to: ${instrumentName}`);
        } else if (preset) {
            await this.loadInstrument(instrumentName, isBassPreset ? 'bass' : (preset.type || 'synth'));
-       } else {
-           console.error(`[MelodySynthManagerV2] Failed to set preset: ${instrumentName}. Preset not found.`);
        }
     }
 
@@ -191,5 +184,9 @@ export class MelodySynthManagerV2 {
     }
 
     public stop() { this.allNotesOff(); }
-    public dispose() { this.stop(); if (this.preamp) { this.preamp.disconnect(); } }
+    public dispose() { 
+        this.stop(); 
+        if (this.synth) this.synth.disconnect();
+        if (this.preamp) { this.preamp.disconnect(); } 
+    }
 }

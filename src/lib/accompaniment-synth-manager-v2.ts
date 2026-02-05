@@ -12,9 +12,8 @@ export class AccompanimentSynthManagerV2 {
     private audioContext: AudioContext;
     private destination: AudioNode;
     public isInitialized = false;
-    private instrument: any | null = null; // Will hold the instance from the factory
+    private instrument: any | null = null; 
     
-    // #ЗАЧЕМ: Установка органа по умолчанию для немедленной активации конвейера.
     private activePresetName: keyof typeof V2_PRESETS | 'none' = 'organ_soft_jazz';
     private preamp: GainNode;
 
@@ -30,28 +29,28 @@ export class AccompanimentSynthManagerV2 {
     async init() {
         if (this.isInitialized) return;
         console.log('[AccompanimentManagerV2] Initializing...');
-        
-        // #ЗАЧЕМ: Чтение типа из пресета гарантирует вызов нужного конвейера фабрики.
         const preset = V2_PRESETS[this.activePresetName as keyof typeof V2_PRESETS];
         const instrumentType = preset?.type || 'synth';
-        
         await this.loadInstrument(this.activePresetName as keyof typeof V2_PRESETS, instrumentType as any);
         this.isInitialized = true;
     }
     
     private async loadInstrument(presetName: keyof typeof V2_PRESETS, instrumentType: 'synth' | 'organ' | 'guitar' = 'synth') {
-        this.allNotesOff(); // Stop any previous sound
-        const preset = V2_PRESETS[presetName];
-        if (!preset) {
-            console.error(`[AccompanimentManagerV2] Preset not found: ${presetName}`);
-            return;
+        // #ЗАЧЕМ: Очистка ресурсов старого инструмента перед созданием нового.
+        if (this.instrument) {
+            console.log(`[AccompanimentManagerV2] Disposing old instrument before loading ${presetName}`);
+            this.instrument.disconnect();
+            this.instrument = null;
         }
+        
+        const preset = V2_PRESETS[presetName];
+        if (!preset) return;
         
         try {
             this.instrument = await buildMultiInstrument(this.audioContext, {
                 type: instrumentType,
                 preset: preset,
-                output: this.preamp // Connect to the manager's preamp
+                output: this.preamp
             });
             this.activePresetName = presetName;
         } catch (error) {
@@ -74,13 +73,9 @@ export class AccompanimentSynthManagerV2 {
         if (!this.instrument) return;
 
         const beatDuration = 60 / tempo;
-        
         events.forEach(event => {
             if(event.type !== 'accompaniment') return;
             const noteOnTime = barStartTime + (event.time * beatDuration);
-            
-            // #ЗАЧЕМ: Переход на самозавершающиеся ноты.
-            // #ЧТО: Передаем длительность. Нота сама затухнет, позволяя другим наслаиваться.
             this.instrument.noteOn(event.note, noteOnTime, event.weight, event.duration * beatDuration);
         });
     }
@@ -89,23 +84,18 @@ export class AccompanimentSynthManagerV2 {
        if (instrumentName === this.activePresetName) return;
 
        if (instrumentName === 'none') {
-            this.allNotesOff();
-            this.instrument = null; // Release the instrument
+            if (this.instrument) this.instrument.disconnect();
+            this.instrument = null;
             this.activePresetName = 'none';
-            console.log(`[AccompanimentManagerV2] Instrument set to 'none'. Output silenced.`);
             return;
        }
 
        const newPreset = V2_PRESETS[instrumentName as keyof typeof V2_PRESETS];
-       if (!newPreset) {
-            console.error(`[AccompanimentManagerV2] Failed to set preset: ${instrumentName}. Preset not found.`);
-            return;
-       }
+       if (!newPreset) return;
 
        if (this.instrument && this.instrument.type === newPreset.type && this.instrument.setPreset) {
            this.instrument.setPreset(newPreset);
            this.activePresetName = instrumentName;
-           console.log(`[AccompanimentManagerV2] Preset updated to: ${instrumentName}`);
        } else { 
            await this.loadInstrument(instrumentName, (newPreset as any).type || 'synth');
        }
@@ -124,5 +114,5 @@ export class AccompanimentSynthManagerV2 {
     }
 
     public stop() { this.allNotesOff(); }
-    public dispose() { this.stop(); this.preamp.disconnect(); }
+    public dispose() { this.stop(); if (this.instrument) this.instrument.disconnect(); this.preamp.disconnect(); }
 }
