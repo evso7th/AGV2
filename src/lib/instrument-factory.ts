@@ -2,9 +2,8 @@
 /**
  * #ЗАЧЕМ: Центральная фабрика для создания высококачественных инструментов V2.
  * #ЧТО: Реализует конвейеры синтеза для synth, organ, bass и guitar.
- * #ОБНОВЛЕНО (ПЛАН 78): Переход на самозавершающиеся ноты (Layering). Ноты теперь наслаиваются
- *          друг на друга и затухают естественным образом по заданному duration.
- * #ОБНОВЛЕНО (ПЛАН 80): Громкость гитарного движка уменьшена в 4 раза для баланса микса.
+ * #ОБНОВЛЕНО (ПЛАН 83): Ликвидация утечек памяти. Внедрен Deep Disconnect для всех узлов голоса.
+ *          Удален избыточный sumNode в гитаре. Глобальный счетчик голосов защищен от гонки состояний.
  * #СВЯЗИ: Используется менеджерами V2 для создания экземпляров инструментов.
  */
 
@@ -39,6 +38,24 @@ const loadIR = async (ctx: AudioContext, url: string | null): Promise<AudioBuffe
     } catch {
         console.warn(`[Factory] Could not load IR: ${url}`);
         return null;
+    }
+};
+
+// #ЗАЧЕМ: Гарантированное освобождение памяти.
+// #ЧТО: Рекурсивно отключает все узлы в массиве и удаляет ссылку на голос.
+const deepCleanup = (voiceRecord: any, allActiveVoices: Set<any>) => {
+    if (!voiceRecord || voiceRecord.cleaned) return;
+    voiceRecord.cleaned = true;
+    
+    if (voiceRecord.nodes) {
+        voiceRecord.nodes.forEach((n: any) => {
+            try { n.disconnect(); } catch (e) {}
+        });
+    }
+    
+    if (allActiveVoices.has(voiceRecord)) {
+        allActiveVoices.delete(voiceRecord);
+        globalActiveVoices = Math.max(0, globalActiveVoices - 1);
     }
 };
 
@@ -222,12 +239,12 @@ const makeTremolo = (ctx: AudioContext, rate = 5.5, depth = 0.4, mix = 0): Simpl
 
 // ───── NOTE LIFECYCLE HELPERS ─────
 
-interface VoiceState {
+interface VoiceGain {
     node: GainNode;
     startTime: number;
 }
 
-const triggerAttack = (ctx: AudioContext, gain: GainNode, when: number, a: number, d: number, s: number, velocity = 1): VoiceState => {
+const triggerAttack = (ctx: AudioContext, gain: GainNode, when: number, a: number, d: number, s: number, velocity = 1): VoiceGain => {
     const attack = Math.max(a, 0.003);
     const decay = Math.max(d, 0.01);
     const sustain = clamp(s, 0, 1) * velocity;
@@ -317,14 +334,14 @@ const buildSynthEngine = (ctx: AudioContext, preset: any, master: GainNode, reve
 
         const adsr = currentPreset.adsr || { a: 0.1, d: 0.2, s: 0.7, r: 0.5 };
         const voiceState = triggerAttack(ctx, voiceGain, when, adsr.a, adsr.d, adsr.s, velocity);
-        const voiceRecord = { midi, voiceGain, voiceState, nodes: voiceNodes };
+        const voiceRecord = { midi, voiceGain, voiceState, nodes: voiceNodes, cleaned: false };
         allActiveVoices.add(voiceRecord);
 
         if (duration) {
             const stopTime = triggerRelease(ctx, voiceState, when + duration, adsr.a, adsr.r);
             voiceNodes.forEach(n => { if (n instanceof OscillatorNode) n.stop(stopTime + 0.1); });
             setTimeout(() => {
-                try { voiceGain.disconnect(); allActiveVoices.delete(voiceRecord); globalActiveVoices--; } catch(e){}
+                deepCleanup(voiceRecord, allActiveVoices);
             }, ((stopTime - ctx.currentTime) * 1000) + 500);
         } else {
             if (activeVoices.has(midi)) noteOff(midi, when);
@@ -337,17 +354,13 @@ const buildSynthEngine = (ctx: AudioContext, preset: any, master: GainNode, reve
         const adsrR = currentPreset.adsr?.r || 0.5;
         const stopTime = triggerRelease(ctx, voice.voiceState, when, currentPreset.adsr?.a || 0.1, adsrR);
         voice.nodes.forEach(n => { if (n instanceof OscillatorNode) n.stop(stopTime + 0.1); });
-        setTimeout(() => { try { voice.voiceGain.disconnect(); allActiveVoices.delete(voice); globalActiveVoices--; } catch(e){} }, ((stopTime - ctx.currentTime) * 1000) + 500);
+        setTimeout(() => { deepCleanup(voice, allActiveVoices); }, ((stopTime - ctx.currentTime) * 1000) + 500);
     };
 
     return { 
         noteOn, noteOff, 
         allNotesOff: () => {
-            allActiveVoices.forEach(v => {
-                const stopTime = triggerRelease(ctx, v.voiceState, ctx.currentTime, 0.01, 0.1);
-                v.nodes.forEach(n => { if (n instanceof OscillatorNode) try { n.stop(stopTime); } catch(e){} });
-                setTimeout(() => { try { v.voiceGain.disconnect(); } catch(e){} }, 200);
-            });
+            allActiveVoices.forEach(v => deepCleanup(v, allActiveVoices));
             activeVoices.clear(); allActiveVoices.clear(); globalActiveVoices = 0;
         },
         setPreset: (p: any) => { 
@@ -408,14 +421,14 @@ const buildOrganEngine = (ctx: AudioContext, preset: any, master: GainNode, reve
 
         const adsr = currentPreset.adsr || { a: 0.02, d: 0.2, s: 0.9, r: 1.2 };
         const voiceState = triggerAttack(ctx, voiceGain, when, adsr.a, adsr.d, adsr.s, velocity);
-        const voiceRecord = { midi, voiceGain, voiceState, nodes: voiceNodes };
+        const voiceRecord = { midi, voiceGain, voiceState, nodes: voiceNodes, cleaned: false };
         allActiveVoices.add(voiceRecord);
 
         if (duration) {
             const stopTime = triggerRelease(ctx, voiceState, when + duration, adsr.a, adsr.r);
             voiceNodes.forEach(n => { if (n instanceof OscillatorNode || n instanceof AudioBufferSourceNode) try { n.stop(stopTime + 0.1); } catch(e){} });
             setTimeout(() => {
-                try { voiceGain.disconnect(); allActiveVoices.delete(voiceRecord); globalActiveVoices--; } catch(e){}
+                deepCleanup(voiceRecord, allActiveVoices);
             }, ((stopTime - ctx.currentTime) * 1000) + 500);
         } else {
             if (activeVoices.has(midi)) noteOff(midi, when);
@@ -428,17 +441,13 @@ const buildOrganEngine = (ctx: AudioContext, preset: any, master: GainNode, reve
         const adsrR = currentPreset.adsr?.r || 1.2;
         const stopTime = triggerRelease(ctx, voice.voiceState, when, currentPreset.adsr?.a || 0.02, adsrR);
         voice.nodes.forEach(n => { if (n instanceof OscillatorNode || n instanceof AudioBufferSourceNode) try { n.stop(stopTime + 0.1); } catch(e){} });
-        setTimeout(() => { try { voice.voiceGain.disconnect(); allActiveVoices.delete(voice); globalActiveVoices--; } catch(e){} }, ((stopTime - ctx.currentTime) * 1000) + 500);
+        setTimeout(() => { deepCleanup(voice, allActiveVoices); }, ((stopTime - ctx.currentTime) * 1000) + 500);
     };
 
     return { 
         noteOn, noteOff, 
         allNotesOff: () => {
-            allActiveVoices.forEach(v => {
-                const stopTime = triggerRelease(ctx, v.voiceState, ctx.currentTime, 0.01, 0.1);
-                v.nodes.forEach(n => { if (n instanceof OscillatorNode || n instanceof AudioBufferSourceNode) try { n.stop(stopTime); } catch(e){} });
-                setTimeout(() => { try { v.voiceGain.disconnect(); } catch(e){} }, 200);
-            });
+            allActiveVoices.forEach(v => deepCleanup(v, allActiveVoices));
             activeVoices.clear(); allActiveVoices.clear(); globalActiveVoices = 0;
         },
         setPreset: (p: any) => { currentPreset = p; leslie.setParam!('mode', p.leslie?.mode); }, 
@@ -474,14 +483,14 @@ const buildBassEngine = (ctx: AudioContext, preset: any, master: GainNode, rever
 
         const adsr = currentPreset.adsr || { a: 0.01, d: 0.15, s: 0.7, r: 0.25 };
         const voiceState = triggerAttack(ctx, voiceGain, when, adsr.a, adsr.d, adsr.s, velocity);
-        const voiceRecord = { midi, voiceGain, voiceState, nodes: voiceNodes };
+        const voiceRecord = { midi, voiceGain, voiceState, nodes: voiceNodes, cleaned: false };
         allActiveVoices.add(voiceRecord);
 
         if (duration) {
             const stopTime = triggerRelease(ctx, voiceState, when + duration, adsr.a, adsr.r);
             voiceNodes.forEach(n => { if (n instanceof OscillatorNode) try { n.stop(stopTime + 0.1); } catch(e){} });
             setTimeout(() => {
-                try { voiceGain.disconnect(); allActiveVoices.delete(voiceRecord); globalActiveVoices--; } catch(e){}
+                deepCleanup(voiceRecord, allActiveVoices);
             }, ((stopTime - ctx.currentTime) * 1000) + 500);
         } else {
             if (activeVoices.has(midi)) noteOff(midi, when);
@@ -494,17 +503,13 @@ const buildBassEngine = (ctx: AudioContext, preset: any, master: GainNode, rever
         const adsrR = currentPreset.adsr?.r || 0.25;
         const stopTime = triggerRelease(ctx, voice.voiceState, when, currentPreset.adsr?.a || 0.01, adsrR);
         voice.nodes.forEach(n => { if (n instanceof OscillatorNode) try { n.stop(stopTime + 0.1); } catch(e){} });
-        setTimeout(() => { try { voice.voiceGain.disconnect(); allActiveVoices.delete(voice); globalActiveVoices--; } catch(e){} }, ((stopTime - ctx.currentTime) * 1000) + 500);
+        setTimeout(() => { deepCleanup(voice, allActiveVoices); }, ((stopTime - ctx.currentTime) * 1000) + 500);
     };
 
     return { 
         noteOn, noteOff, 
         allNotesOff: () => {
-            allActiveVoices.forEach(v => {
-                const stopTime = triggerRelease(ctx, v.voiceState, ctx.currentTime, 0.01, 0.1);
-                v.nodes.forEach(n => { if (n instanceof OscillatorNode) try { n.stop(stopTime); } catch(e){} });
-                setTimeout(() => { try { v.sumNode.disconnect(); } catch(e){} }, 200);
-            });
+            allActiveVoices.forEach(v => deepCleanup(v, allActiveVoices));
             activeVoices.clear(); allActiveVoices.clear(); globalActiveVoices = 0;
         },
         setPreset: (p: any) => { currentPreset = p; }, 
@@ -569,16 +574,15 @@ const buildGuitarEngine = (ctx: AudioContext, preset: any, master: GainNode, rev
         const f = midiToHz(midi);
         const oscP = currentPreset.osc || { width: 0.45, mainGain: 0.8, detGain: 0.2, subGain: 0.25 };
         
-        // #ЗАЧЕМ: Уменьшение громкости фабричных гитар в 4 раза по запросу.
-        // #ЧТО: sumNode.gain.value снижен с 0.7 до 0.175.
-        const sumNode = ctx.createGain(); sumNode.gain.value = 0.175; sumNode.connect(guitarInput);
-        const voiceGain = ctx.createGain(); voiceGain.gain.value = 0; voiceGain.connect(sumNode);
-        const voiceNodes: AudioNode[] = [voiceGain, sumNode];
+        // #ЗАЧЕМ: Уменьшение громкости фабричных гитар в 4 раза по запросу + ПЛАН 83: Оптимизация (убран sumNode).
+        // #ЧТО: Множитель 0.175 теперь применяется к базовому voiceGain.
+        const voiceGain = ctx.createGain(); voiceGain.gain.value = 0; voiceGain.connect(guitarInput);
+        const voiceNodes: AudioNode[] = [voiceGain];
 
         if (pickBuffer) {
             const pick = ctx.createBufferSource(); pick.buffer = pickBuffer;
-            // #ЧТО: Громкость щипка pickG.gain.value снижена с 0.5 до 0.125.
-            const pickG = ctx.createGain(); pickG.gain.value = velocity * 0.125;
+            // #ЧТО: Громкость щипка масштабируется коэффициентом 0.175.
+            const pickG = ctx.createGain(); pickG.gain.value = velocity * 0.175 * 0.5;
             pick.connect(pickG).connect(voiceGain); pick.start(when); pick.stop(when + 0.05);
             voiceNodes.push(pick, pickG);
         }
@@ -594,15 +598,16 @@ const buildGuitarEngine = (ctx: AudioContext, preset: any, master: GainNode, rev
         voiceNodes.push(oscMain, oscDet, oscSub, gMain, gDet, gSub);
 
         const adsr = currentPreset.adsr || { a: 0.005, d: 0.3, s: 0.6, r: 1.5 };
-        const voiceState = triggerAttack(ctx, voiceGain, when, adsr.a, adsr.d, adsr.s, velocity);
-        const voiceRecord = { midi, sumNode, voiceGain, voiceState, nodes: voiceNodes };
+        // Применяем финальный множитель 0.175 к огибающей
+        const voiceState = triggerAttack(ctx, voiceGain, when, adsr.a, adsr.d, adsr.s, velocity * 0.175);
+        const voiceRecord = { midi, voiceGain, voiceState, nodes: voiceNodes, cleaned: false };
         allActiveVoices.add(voiceRecord);
 
         if (duration) {
             const stopTime = triggerRelease(ctx, voiceState, when + duration, adsr.a, adsr.r);
             voiceNodes.forEach(n => { if (n instanceof OscillatorNode) try { n.stop(stopTime + 0.1); } catch(e){} });
             setTimeout(() => {
-                try { sumNode.disconnect(); allActiveVoices.delete(voiceRecord); globalActiveVoices--; } catch(e){}
+                deepCleanup(voiceRecord, allActiveVoices);
             }, ((stopTime - ctx.currentTime) * 1000) + 500);
         } else {
             if (activeVoices.has(midi)) noteOff(midi, when);
@@ -615,17 +620,13 @@ const buildGuitarEngine = (ctx: AudioContext, preset: any, master: GainNode, rev
         const adsrR = currentPreset.adsr?.r || 1.5;
         const stopTime = triggerRelease(ctx, voice.voiceState, when, currentPreset.adsr?.a || 0.005, adsrR);
         voice.nodes.forEach(n => { if (n instanceof OscillatorNode) try { n.stop(stopTime + 0.1); } catch(e){} });
-        setTimeout(() => { try { voice.sumNode.disconnect(); allActiveVoices.delete(voice); globalActiveVoices--; } catch(e){} }, ((stopTime - ctx.currentTime) * 1000) + 500);
+        setTimeout(() => { deepCleanup(voice, allActiveVoices); }, ((stopTime - ctx.currentTime) * 1000) + 500);
     };
 
     return { 
         noteOn, noteOff, 
         allNotesOff: () => {
-            allActiveVoices.forEach(v => {
-                const stopTime = triggerRelease(ctx, v.voiceState, ctx.currentTime, 0.01, 0.1);
-                v.nodes.forEach(n => { if (n instanceof OscillatorNode) try { n.stop(stopTime); } catch(e){} });
-                setTimeout(() => { try { v.sumNode.disconnect(); } catch(e){} }, 200);
-            });
+            allActiveVoices.forEach(v => deepCleanup(v, allActiveVoices));
             activeVoices.clear(); allActiveVoices.clear(); globalActiveVoices = 0;
         },
         setPreset: (p: any) => { 
