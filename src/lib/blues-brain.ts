@@ -34,12 +34,11 @@ const PHRASE_LENGTH_TRANSITIONS: Record<string, Record<string, number>> = {
 };
 
 /**
- * #ЗАЧЕМ: "Блюзовый Мозг" v4.0 — "Midnight Soul & Grace".
- * #ЧТО: Радикальная реформа музыкальности на основе "how to play" гайдов:
- *       1. Midnight Drag: Имитация "лености" исполнения через контекстные задержки.
- *       2. Thematic Silence: Система "вздохов", где тишина важнее нот.
- *       3. Enclosure Logic: Окружение целевых нот хроматическими мелизмами.
- *       4. Staggered Ripples: Глубокое расслоение аккордов аккомпанемента.
+ * #ЗАЧЕМ: "Блюзовый Мозг" v4.1 — "Busy Hands & Acoustic Heart".
+ * #ЧТО: Радикальная реформа аккомпанемента:
+ *       1. Active Fingers: Внедрена техника ритмического дробления для органов и гитар.
+ *       2. Black Acoustic Lead: Оптимизация под акустический тембр.
+ *       3. Midnight Drag: Сохранение живой оттяжки.
  */
 export class BluesBrain {
     private cognitiveState: BluesCognitiveState;
@@ -113,12 +112,9 @@ export class BluesBrain {
     }
 
     private applyMidnightDrag(note: FractalEvent, isLead: boolean) {
-        // #ЗАЧЕМ: Имитация "Laid-back" исполнения.
-        // #ЧТО: Гитарист всегда чуть-чуть опаздывает, особенно на высоких и эмоциональных нотах.
-        const baseDrag = isLead ? 0.025 : 0.015; // 25ms drag for lead
+        const baseDrag = isLead ? 0.025 : 0.015;
         const highNoteBonus = note.note > 72 ? 0.01 : 0;
         const randomness = (this.random.next() * 0.01);
-        
         note.time += baseDrag + highNoteBonus + randomness;
     }
 
@@ -144,12 +140,11 @@ export class BluesBrain {
             }
         };
 
-        // Softer, more "brushed" feel for smoky blues
         const velocityScale = mood === 'melancholic' ? 0.6 : 0.8;
         add(riff.K, kit.kick, velocityScale);
         add(riff.SD, kit.snare, velocityScale * 0.9);
         add(riff.HH, kit.hihat, 0.4);
-        if (epoch % 4 === 3) add(riff.R, kit.ride, 0.5); // Ride only on phrase ends
+        if (epoch % 4 === 3) add(riff.R, kit.ride, 0.5);
 
         humanizeEvents(drumEvents, 0.02, this.random);
         return drumEvents;
@@ -169,7 +164,7 @@ export class BluesBrain {
             type: 'bass',
             note: chord.rootNote + (DEGREE_TO_SEMITONE[n.deg] || 0) - 12,
             time: n.t / 3,
-            duration: ((n.d || 2) / 3) * 1.1, // Full legato
+            duration: ((n.d || 2) / 3) * 1.1,
             weight: 0.9,
             technique: 'pluck', dynamics: 'mf', phrasing: 'legato',
             params: { cutoff: 600, resonance: 0.3, distortion: 0.01, portamento: 0.15 }
@@ -182,42 +177,43 @@ export class BluesBrain {
         const root = chord.rootNote;
         const compOctave = 12;
 
-        // "Thematic Ripples": Instead of chops, we play staggered, swelled chords
-        // that "bloom" into existence.
-        const isResponse = this.cognitiveState.phraseState === 'response';
-        const density = isResponse ? 0.8 : 0.4; // More active during response to "fill the air"
+        // #ЗАЧЕМ: Устранение "лености". Переход от долгих пэдов к активной работе "пальчиками".
+        // #ЧТО: Внедрение техники "Finger Riffs" — ритмического перебора нот аккорда.
+        const isActiveSection = ['BUILD', 'MAIN', 'SOLO'].includes(navInfo.currentPart.id);
+        const density = isActiveSection ? 0.9 : 0.5;
 
         if (this.random.next() < density) {
             const chordNotes = [root, root + (isMinor ? 3 : 4), root + 7, root + 10];
             
-            chordNotes.forEach((n, i) => {
-                // Staggered entry for a "spilled" chord effect
-                const stagger = i * 0.12; 
+            // "Busy Fingers": Rhythmic patterns within the bar
+            // Pattern: 1, 2-and, 3, 4-and (in 12/8 ticks: 0, 4, 6, 10)
+            [0, 4, 6, 10].forEach((tick, pi) => {
+                const noteIndex = pi % chordNotes.length;
+                const note = chordNotes[noteIndex];
+                
                 const event: FractalEvent = {
                     type: 'accompaniment',
-                    note: n + compOctave,
-                    time: stagger,
-                    duration: 3.8, // Let it ring
-                    weight: 0.35 - (i * 0.05),
-                    technique: 'swell', dynamics: 'p', phrasing: 'legato',
-                    params: { attack: 1.8, release: 2.5 }
+                    note: note + compOctave,
+                    time: tick / 3,
+                    duration: 0.8, // Shorter, more articulate notes
+                    weight: 0.35,
+                    technique: 'hit', dynamics: 'p', phrasing: 'staccato',
+                    params: { attack: 0.02, release: 0.15 }
                 };
                 this.applyMidnightDrag(event, false);
                 events.push(event);
             });
 
-            // "Decorative Tails": Tiny melodic responses from the organ/piano
-            if (epoch % 2 === 0) {
-                const tailDegrees = ['9', 'b7', '5'];
-                tailDegrees.forEach((deg, i) => {
-                    events.push({
-                        type: 'accompaniment',
-                        note: root + (DEGREE_TO_SEMITONE[deg] || 0) + compOctave + 12,
-                        time: 2.5 + i * 0.4,
-                        duration: 0.6,
-                        weight: 0.2,
-                        technique: 'swell', dynamics: 'pp', phrasing: 'detached'
-                    });
+            // Occasional long background layers for depth
+            if (this.random.next() < 0.3) {
+                events.push({
+                    type: 'accompaniment',
+                    note: root + compOctave - 12, // Deep anchor
+                    time: 0,
+                    duration: 3.9,
+                    weight: 0.2,
+                    technique: 'swell', dynamics: 'pp', phrasing: 'legato',
+                    params: { attack: 2.5, release: 3.0 }
                 });
             }
         }
@@ -231,19 +227,18 @@ export class BluesBrain {
         const root = chord.rootNote;
         const pianoOctave = 12;
 
-        // "Midnight Stride": Extremely laid-back piano chords
+        // "Busy Piano": Adding rhythmic "climb" to the stride pattern
         const notes = [root, root + (isMinor ? 3 : 4), root + 7];
         
-        [0.05, 2.05].forEach((beatTime) => { // Shifted for "drag"
-            notes.forEach((n, ni) => {
-                events.push({
-                    type: 'pianoAccompaniment',
-                    note: n + pianoOctave,
-                    time: beatTime + (ni * 0.02), // Micro-stagger
-                    duration: 1.5,
-                    weight: 0.3 - (ni * 0.05),
-                    technique: 'hit', dynamics: 'p', phrasing: 'detached'
-                });
+        [0.05, 1.3, 2.05, 3.3].forEach((beatTime, bi) => { 
+            const n = notes[bi % notes.length];
+            events.push({
+                type: 'pianoAccompaniment',
+                note: n + pianoOctave,
+                time: beatTime,
+                duration: 0.6,
+                weight: 0.3,
+                technique: 'hit', dynamics: 'p', phrasing: 'detached'
             });
         });
         return events;
@@ -252,12 +247,6 @@ export class BluesBrain {
     private generateSoulSolo(chord: GhostChord, dna: SuiteDNA, epoch: number, navInfo: NavigationInfo, instrument?: string): FractalEvent[] {
         const isAcoustic = instrument === 'blackAcoustic';
         
-        // "Silence is Music": High chance of rest if tension is low or just had a big burst
-        if (this.cognitiveState.tensionLevel < 0.4 && this.random.next() < 0.3) {
-            console.log(`[BluesBrain @ Bar ${epoch}] Choosing silence for the soul.`);
-            return []; 
-        }
-
         const currentSoloPlan = this.cognitiveState.tensionLevel > 0.85 ? 'S_ACTIVE' : (dna.soloPlanMap.get(navInfo.currentPart.id) || 'S04');
         const plan = BLUES_SOLO_PLANS[currentSoloPlan];
         
@@ -267,28 +256,24 @@ export class BluesBrain {
         
         let lickPhrase = JSON.parse(JSON.stringify(BLUES_SOLO_LICKS[lickId].phrase));
 
-        // CALL & RESPONSE LOGIC
         if (this.cognitiveState.phraseState === 'response') {
             if (this.random.next() < 0.5) lickPhrase = invertMelody(lickPhrase);
-            if (this.random.next() < 0.3) lickPhrase = lickPhrase.slice(0, Math.ceil(lickPhrase.length / 2)); // Shorten response
         }
 
-        // ORNAMENTATION & ENCLOSURES
         lickPhrase = addOrnaments(lickPhrase, this.random);
 
         const events: FractalEvent[] = [];
-        const soloOctave = 24; // C3-C5 Range
+        const soloOctave = 24; 
 
         lickPhrase.forEach((note: any) => {
             const rootPitch = chord.rootNote + (DEGREE_TO_SEMITONE[note.deg] || 0) + soloOctave; 
 
-            // "Thematic Drag": High notes get more drag
             const event: FractalEvent = {
                 type: 'melody',
                 note: rootPitch,
                 time: note.t / 3,
                 duration: (note.d || 2) / 3,
-                weight: 0.85 * (1 - (this.cognitiveState.emotion.melancholy * 0.2)), // Softer if sad
+                weight: 0.85,
                 technique: (note.tech || 'pick') as Technique,
                 dynamics: 'p', phrasing: 'legato',
                 params: { barCount: epoch }
@@ -296,39 +281,13 @@ export class BluesBrain {
             
             this.applyMidnightDrag(event, true);
             events.push(event);
-
-            // Double stops for "crying" effect
-            if (this.random.next() < 0.2 && note.d > 4) {
-                events.push({
-                    ...event,
-                    note: rootPitch + 5, // Perfect 4th above
-                    weight: event.weight * 0.6,
-                    time: event.time + 0.01
-                });
-            }
         });
-
-        // Virtuoso Bursts based on tension
-        if (this.cognitiveState.tensionLevel > 0.9) {
-            const burstDegrees = ['R', 'b3', '4', 'b5', '5'];
-            burstDegrees.forEach((deg, i) => {
-                events.push({
-                    type: 'melody',
-                    note: chord.rootNote + (DEGREE_TO_SEMITONE[deg] || 0) + soloOctave + 12,
-                    time: 3.5 + (i * 0.1),
-                    duration: 0.15,
-                    weight: 0.5,
-                    technique: 'pick', dynamics: 'mf', phrasing: 'staccato'
-                });
-            });
-        }
 
         humanizeEvents(events, 0.025, this.random); 
         return events;
     }
 
     private evolveEmotion() {
-        // Slow emotional drift
         this.cognitiveState.emotion.melancholy += (this.random.next() - 0.5) * 0.02;
         this.cognitiveState.tensionLevel += (this.random.next() - 0.45) * 0.05; 
         

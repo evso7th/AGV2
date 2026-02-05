@@ -5,6 +5,8 @@ import type { MusicBlueprint } from '@/types/music';
  * #ЗАЧЕМ: Специальный блюпринт "The Alvin Lee Tribute" (v2.1 Smoky Soul).
  * #ЧТО: Эмуляция "The Bluest Blues". Оптимизировано для создания пространства.
  *       Увеличены хвосты реверберации, замедлены атаки для "дымного" эффекта.
+ * #ОБНОВЛЕНО (ПЛАН 117): Электрогитары заменены на 100% Black Acoustic.
+ *                         Аккомпанемент переведен в активный режим.
  */
 export const WinterBluesBlueprint: MusicBlueprint = {
     id: 'winter_blues',
@@ -42,7 +44,7 @@ export const WinterBluesBlueprint: MusicBlueprint = {
                         instrumentation: {
                            bass: { activationChance: 0.4, instrumentOptions: [ { name: 'bass_dub', weight: 1.0 } ] },
                            drums: { activationChance: 0.4, instrumentOptions: [ { name: 'winter_blues_prolog1', weight: 1.0 } ] },
-                           melody: { activationChance: 1.0, instrumentOptions: [{ name: 'blackAcoustic', weight: 0.5 }, { name: 'guitar_shineOn', weight: 0.5 }] }
+                           melody: { activationChance: 1.0, instrumentOptions: [{ name: 'blackAcoustic', weight: 1.0 }] }
                         }
                     },
                     {
@@ -61,7 +63,7 @@ export const WinterBluesBlueprint: MusicBlueprint = {
                 ],
                 instrumentRules: {
                     bass: { techniques: [{ value: 'riff', weight: 1.0 }], density: { min: 0.2, max: 0.4 } },
-                    accompaniment: { techniques: [{ value: 'swell', weight: 1.0 }], density: { min: 0.3, max: 0.5 } },
+                    accompaniment: { techniques: [{ value: 'rhythmic-comp', weight: 0.7 }, { value: 'swell', weight: 0.3 }], density: { min: 0.5, max: 0.8 } },
                     melody: { source: 'blues_solo', soloToPatternRatio: 1.0, density: { min: 0.5, max: 0.7 }, soloPlan: "S04" },
                     drums: { kitName: 'winter_blues_prolog1', density: { min: 0.15, max: 0.3 } },
                     sfx: { eventProbability: 0.1, categories: [{ name: 'common', weight: 1.0 }] }
@@ -76,15 +78,15 @@ export const WinterBluesBlueprint: MusicBlueprint = {
                     bass: { strategy: 'weighted', v1Options: [ { name: 'bass_jazz_warm', weight: 1.0 } ], v2Options: [ { name: 'bass_jazz_warm', weight: 1.0 } ] },
                     melody: { 
                         strategy: 'weighted', 
-                        v1Options: [ { name: 'guitar_shineOn', weight: 0.5 }, { name: 'guitar_muffLead', weight: 0.5 } ], 
-                        v2Options: [ { name: 'guitar_shineOn', weight: 0.5 }, { name: 'guitar_muffLead', weight: 0.5 } ] 
+                        v1Options: [ { name: 'blackAcoustic', weight: 1.0 } ], 
+                        v2Options: [ { name: 'blackAcoustic', weight: 1.0 } ] 
                     },
                     accompaniment: { strategy: 'weighted', v1Options: [{ name: 'organ_soft_jazz', weight: 1.0 }], v2Options: [{ name: 'organ_soft_jazz', weight: 1.0 }] }
                 },
                 instrumentRules: {
                     drums: { pattern: 'composer', kitName: 'blues_melancholic_master', density: { min: 0.4, max: 0.6 }, usePerc: true },
                     melody: { source: 'blues_solo', soloPlan: "S01", density: { min: 0.6, max: 0.8 }, soloToPatternRatio: 1.0 },
-                    accompaniment: { techniques: [{ value: 'swell', weight: 1.0 }], density: { min: 0.4, max: 0.6 } }
+                    accompaniment: { techniques: [{ value: 'rhythmic-comp', weight: 0.8 }, { value: 'swell', weight: 0.2 }], density: { min: 0.6, max: 0.9 } }
                 },
                 bundles: [{ id: 'ALVIN_MAIN', name: 'Snowfall', duration: { percent: 100 }, characteristics: {}, phrases: {} }],
                 outroFill: null,
@@ -95,14 +97,14 @@ export const WinterBluesBlueprint: MusicBlueprint = {
                 instrumentation: {
                     melody: { 
                         strategy: 'weighted', 
-                        v1Options: [ { name: 'guitar_muffLead', weight: 1.0 } ], 
-                        v2Options: [ { name: 'guitar_muffLead', weight: 1.0 } ] 
+                        v1Options: [ { name: 'blackAcoustic', weight: 1.0 } ], 
+                        v2Options: [ { name: 'blackAcoustic', weight: 1.0 } ] 
                     }
                 },
                 instrumentRules: {
                     drums: { pattern: 'composer', kitName: 'blues_melancholic_master', density: { min: 0.6, max: 0.8 }, ride: { enabled: true } },
                     melody: { source: 'blues_solo', soloPlan: "S_ACTIVE", density: { min: 0.8, max: 1.0 }, register: { preferred: 'mid' } },
-                    accompaniment: { techniques: [{ value: 'swell', weight: 1.0 }], density: { min: 0.6, max: 0.9 } }
+                    accompaniment: { techniques: [{ value: 'rhythmic-comp', weight: 1.0 }], density: { min: 0.7, max: 1.0 } }
                 },
                 bundles: [{ id: 'ALVIN_SOLO', name: 'The Fire', duration: { percent: 100 }, characteristics: {}, phrases: {} }],
                 outroFill: { type: 'roll', duration: 1, parameters: { instrument: 'ride' } },
@@ -114,7 +116,7 @@ export const WinterBluesBlueprint: MusicBlueprint = {
                     drums: { pattern: 'composer', kitName: 'dark_outro', density: { min: 0.1, max: 0.3 }, useSnare: false },
                     bass: { techniques: [{ value: 'long_notes', weight: 1.0 }] },
                     melody: { source: 'blues_solo', density: { min: 1.0, max: 1.0 }, soloPlan: "WINTER_OUTRO_MELODY", soloToPatternRatio: 0.0 },
-                    accompaniment: { density: { min: 0.2, max: 0.4 }, techniques: [{ value: 'swell', weight: 1.0 }] }
+                    accompaniment: { density: { min: 0.3, max: 0.5 }, techniques: [{ value: 'rhythmic-comp', weight: 0.5 }, { value: 'swell', weight: 0.5 }] }
                 },
                 bundles: [{ id: 'ALVIN_OUTRO', name: 'Dissolution', duration: { percent: 100 }, characteristics: {}, phrases: {} }],
                 outroFill: null,
