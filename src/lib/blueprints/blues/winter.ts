@@ -2,15 +2,14 @@
 import type { MusicBlueprint } from '@/types/music';
 
 /**
- * #ЗАЧЕМ: Специальный блюпринт "The Alvin Lee Tribute" (v2.0 Smoky).
- * #ЧТО: Эмуляция "The Bluest Blues". Медленный темп, низкий регистр, 
- *       размытый аккомпанемент и плачущее соло.
- * #ИСПРАВЛЕНО: Громкость Muff Lead и Shine On снижена, регистр опущен.
+ * #ЗАЧЕМ: Специальный блюпринт "The Alvin Lee Tribute" (v2.1 Smoky Soul).
+ * #ЧТО: Эмуляция "The Bluest Blues". Оптимизировано для создания пространства.
+ *       Увеличены хвосты реверберации, замедлены атаки для "дымного" эффекта.
  */
 export const WinterBluesBlueprint: MusicBlueprint = {
     id: 'winter_blues',
-    name: 'The Bluest Blues (Tribute)',
-    description: 'A slow, soulful, and smoky blues tribute. Low registers and rolling accompaniment.',
+    name: 'The Bluest Blues (Midnight)',
+    description: 'A slow, soulful, and smoky blues tribute. Focused on space, shimmer, and long ringing notes.',
     mood: 'melancholic',
     musical: {
         key: { root: 'E', scale: 'dorian', octave: 1 },
@@ -41,7 +40,7 @@ export const WinterBluesBlueprint: MusicBlueprint = {
                     {
                         duration: { percent: 25 }, 
                         instrumentation: {
-                           bass: { activationChance: 0.4, instrumentOptions: [ { name: 'bass_jazz_warm', weight: 1.0 } ] },
+                           bass: { activationChance: 0.4, instrumentOptions: [ { name: 'bass_dub', weight: 1.0 } ] },
                            drums: { activationChance: 0.4, instrumentOptions: [ { name: 'winter_blues_prolog1', weight: 1.0 } ] },
                            melody: { activationChance: 1.0, instrumentOptions: [{ name: 'blackAcoustic', weight: 0.5 }, { name: 'guitar_shineOn', weight: 0.5 }] }
                         }
@@ -63,8 +62,8 @@ export const WinterBluesBlueprint: MusicBlueprint = {
                 instrumentRules: {
                     bass: { techniques: [{ value: 'riff', weight: 1.0 }], density: { min: 0.2, max: 0.4 } },
                     accompaniment: { techniques: [{ value: 'swell', weight: 1.0 }], density: { min: 0.3, max: 0.5 } },
-                    melody: { source: 'blues_solo', soloToPatternRatio: 1.0, density: { min: 0.6, max: 0.8 }, soloPlan: "S04" },
-                    drums: { kitName: 'winter_blues_prolog1', density: { min: 0.2, max: 0.4 } },
+                    melody: { source: 'blues_solo', soloToPatternRatio: 1.0, density: { min: 0.5, max: 0.7 }, soloPlan: "S04" },
+                    drums: { kitName: 'winter_blues_prolog1', density: { min: 0.15, max: 0.3 } },
                     sfx: { eventProbability: 0.1, categories: [{ name: 'common', weight: 1.0 }] }
                 },
                 bundles: [{ id: 'ALVIN_INTRO', name: 'Wait', duration: { percent: 100 }, characteristics: {}, phrases: {} }],
@@ -84,9 +83,8 @@ export const WinterBluesBlueprint: MusicBlueprint = {
                 },
                 instrumentRules: {
                     drums: { pattern: 'composer', kitName: 'blues_melancholic_master', density: { min: 0.4, max: 0.6 }, usePerc: true },
-                    melody: { source: 'blues_solo', soloPlan: "S01", density: { min: 0.7, max: 0.9 }, soloToPatternRatio: 1.0 },
-                    // #ЗАЧЕМ: Замена резких чопов на мягкие наплывы
-                    accompaniment: { techniques: [{ value: 'swell', weight: 1.0 }], density: { min: 0.4, max: 0.7 } }
+                    melody: { source: 'blues_solo', soloPlan: "S01", density: { min: 0.6, max: 0.8 }, soloToPatternRatio: 1.0 },
+                    accompaniment: { techniques: [{ value: 'swell', weight: 1.0 }], density: { min: 0.4, max: 0.6 } }
                 },
                 bundles: [{ id: 'ALVIN_MAIN', name: 'Snowfall', duration: { percent: 100 }, characteristics: {}, phrases: {} }],
                 outroFill: null,
@@ -113,10 +111,10 @@ export const WinterBluesBlueprint: MusicBlueprint = {
                 id: 'OUTRO', name: 'Fading Memory', duration: { percent: 15 },
                 layers: { bass: true, drums: true, melody: true, harmony: true, pianoAccompaniment: true, accompaniment: true, sfx: true },
                 instrumentRules: {
-                    drums: { pattern: 'composer', kitName: 'dark_outro', density: { min: 0.2, max: 0.4 }, useSnare: false },
+                    drums: { pattern: 'composer', kitName: 'dark_outro', density: { min: 0.1, max: 0.3 }, useSnare: false },
                     bass: { techniques: [{ value: 'long_notes', weight: 1.0 }] },
                     melody: { source: 'blues_solo', density: { min: 1.0, max: 1.0 }, soloPlan: "WINTER_OUTRO_MELODY", soloToPatternRatio: 0.0 },
-                    accompaniment: { density: { min: 0.3, max: 0.5 }, techniques: [{ value: 'swell', weight: 1.0 }] }
+                    accompaniment: { density: { min: 0.2, max: 0.4 }, techniques: [{ value: 'swell', weight: 1.0 }] }
                 },
                 bundles: [{ id: 'ALVIN_OUTRO', name: 'Dissolution', duration: { percent: 100 }, characteristics: {}, phrases: {} }],
                 outroFill: null,

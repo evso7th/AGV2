@@ -87,10 +87,10 @@ export function getScaleForMood(mood: Mood, genre?: Genre, chordType?: 'major' |
   let baseScale: number[];
 
   if (genre === 'blues') {
-      // Истинная блюзовая гамма с blue notes
+      // Истинная блюзовая гамма с blue notes (Dorian Add 5)
       baseScale = (chordType === 'major' || chordType === 'dominant') 
           ? [0, 2, 3, 4, 7, 9, 10] 
-          : [0, 3, 5, 6, 7, 10];
+          : [0, 2, 3, 5, 6, 7, 10]; // Dorian add 5 for minor
   } else {
       switch (mood) {
         case 'joyful': baseScale = [0, 2, 4, 5, 7, 9, 11]; break;
@@ -150,23 +150,20 @@ export function transposeMelody(phrase: any[], interval: number): any[] {
 export function addOrnaments(phrase: any[], random: any): any[] {
     const result = [];
     for (const note of phrase) {
-        if (note.d >= 2 && random.next() < 0.6) {
-            result.push({ t: Math.max(0, note.t - 1), d: 1, deg: (random.next() > 0.5 ? 'b3' : '2') as any, tech: 'gr' });
+        // Enclosure logic: approach from semitone above/below
+        if (note.d >= 3 && random.next() < 0.4) {
+            const isRoot = note.deg === 'R';
+            const offset = isRoot ? 1 : (random.next() > 0.5 ? 1 : -1);
+            
+            result.push({ t: Math.max(0, note.t - 1), d: 1, deg: note.deg, tech: 'gr' });
             result.push({ ...note, tech: 'sl' });
-        } else result.push(note);
-    }
-    return result;
-}
-
-export function subdivideRhythm(phrase: any[], random: any): any[] {
-    const result = [];
-    for (const note of phrase) {
-        if ((note.d || 2) >= 3 && random.next() < 0.8) {
-            const first = Math.floor((note.d || 2) / 2);
-            const second = (note.d || 2) - first;
-            result.push({ ...note, d: first });
-            result.push({ ...note, t: (note.t + first) % 12, d: second, tech: 'h/p' });
-        } else result.push(note);
+        } else if (note.d >= 2 && random.next() < 0.5) {
+            // Hammer-on/Pull-off ornament
+            result.push({ ...note, d: Math.floor(note.d / 2) });
+            result.push({ ...note, t: note.t + Math.floor(note.d / 2), d: Math.ceil(note.d / 2), tech: 'h/p' });
+        } else {
+            result.push(note);
+        }
     }
     return result;
 }
@@ -191,7 +188,7 @@ export function generateSuiteDNA(totalBars: number, mood: Mood, seed: number, ra
             
             while (currentBarInPart < partDuration) {
                 const r = random.next();
-                // Alvin Lee Melancholy Bias: Субдоминанта (IV) тянет время
+                // Alvin Lee Melancholy Bias: Subdominant (IV) takes its time
                 let duration = (mood === 'melancholic' && currentDegree === 'IV' && r < 0.8) ? 8 : (r < 0.5 ? 4 : 12);
                 const finalDuration = Math.min(duration, partDuration - currentBarInPart);
                 
