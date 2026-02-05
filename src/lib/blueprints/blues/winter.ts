@@ -12,7 +12,7 @@ export const WinterBluesBlueprint: MusicBlueprint = {
     mood: 'melancholic',
     musical: {
         key: { root: 'E', scale: 'dorian', octave: 1 },
-        bpm: { base: 62, range: [60, 68], modifier: 1.0 },
+        bpm: { base: 72, range: [68, 78], modifier: 1.0 }, // #ИСПРАВЛЕНО (ПЛАН 134): Темп поднят до 72 BPM для лучшего грува.
         timeSignature: { numerator: 4, denominator: 4 },
         harmonicJourney: [],
         tensionProfile: { 

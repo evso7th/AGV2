@@ -100,10 +100,9 @@ export class MelodySynthManagerV2 {
         // Routing for Samplers (only for melody)
         if (this.partName === 'melody') {
             if (instrumentHint === 'blackAcoustic') {
-                // #ЗАЧЕМ: Восстановлен подъем на 2 октавы (+24). Это системная особенность маппинга сэмплов Black Acoustic.
-                // #ИСПРАВЛЕНО (ПЛАН 130): Ноты от "Мозга" (3-4 октавы) теперь правильно адресуются к физическим файлам.
-                const notesToPlayWithLift = notesToPlay.map(n => ({ ...n, midi: n.midi + 24 }));
-                this.blackAcousticSampler.schedule(notesToPlayWithLift, barStartTime, tempo);
+                // #ЗАЧЕМ: Прямая передача нот в сэмплер без искусственного завышения регистра.
+                // #ИСПРАВЛЕНО (ПЛАН 134): Удален подъем +24, так как когнитивная логика теперь генерирует ноты в правильных октавах.
+                this.blackAcousticSampler.schedule(notesToPlay, barStartTime, tempo);
                 return;
             }
             if (instrumentHint === 'telecaster') {

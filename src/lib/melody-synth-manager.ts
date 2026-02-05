@@ -1,4 +1,3 @@
-
 import type { FractalEvent, AccompanimentInstrument, MelodyInstrument } from '@/types/fractal';
 import type { Note } from "@/types/music";
 import { SYNTH_PRESETS, type SynthPreset } from './synth-presets';
@@ -135,9 +134,10 @@ export class MelodySynthManager {
         
         // --- SMART ROUTER ---
         if (hint === 'blackAcoustic') {
-            console.log(`${logPrefix} Routing to BlackGuitarSampler with +2 Octave lift`, logCss);
-            // #ЗАЧЕМ: Подъем Black Acoustic на 2 октавы (+24 полутона) по просьбе пользователя.
-            const notesToPlay = melodyEvents.map(e => ({ midi: e.note + 24, time: e.time * (60/tempo), duration: e.duration * (60/tempo), velocity: e.weight, technique: e.technique, params: e.params }));
+            console.log(`${logPrefix} Routing to BlackGuitarSampler`, logCss);
+            // #ЗАЧЕМ: Устранение искусственного завышения регистра.
+            // #ИСПРАВЛЕНО (ПЛАН 134): Удалено ручное смещение +24, так как когнитивный мозг теперь работает в нужном диапазоне.
+            const notesToPlay = melodyEvents.map(e => ({ midi: e.note, time: e.time * (60/tempo), duration: e.duration * (60/tempo), velocity: e.weight, technique: e.technique, params: e.params }));
             this.blackAcousticSampler.schedule(notesToPlay, barStartTime, tempo);
             return; // Stop further execution
         } else if (hint === 'telecaster') {
