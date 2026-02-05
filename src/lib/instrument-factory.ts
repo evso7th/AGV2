@@ -1,4 +1,3 @@
-
 /**
  * #ЗАЧЕМ: Центральная фабрика для создания высококачественных инструментов V2.
  * #ЧТО: Реализует конвейеры синтеза для synth, organ, bass и guitar.
@@ -41,15 +40,22 @@ const loadIR = async (ctx: AudioContext, url: string | null): Promise<AudioBuffe
     }
 };
 
-// #ЗАЧЕМ: Гарантированное освобождение памяти.
-// #ЧТО: Рекурсивно отключает все узлы в массиве и удаляет ссылку на голос.
+/**
+ * #ЗАЧЕМ: Гарантированное освобождение памяти.
+ * #ЧТО: Рекурсивно отключает все узлы в массиве и удаляет ссылку на голос.
+ */
 const deepCleanup = (voiceRecord: any, allActiveVoices: Set<any>) => {
     if (!voiceRecord || voiceRecord.cleaned) return;
     voiceRecord.cleaned = true;
     
     if (voiceRecord.nodes) {
         voiceRecord.nodes.forEach((n: any) => {
-            try { n.disconnect(); } catch (e) {}
+            try {
+                if (n instanceof OscillatorNode || n instanceof AudioBufferSourceNode) {
+                    n.stop();
+                }
+                n.disconnect();
+            } catch (e) {}
         });
     }
     
@@ -239,12 +245,12 @@ const makeTremolo = (ctx: AudioContext, rate = 5.5, depth = 0.4, mix = 0): Simpl
 
 // ───── NOTE LIFECYCLE HELPERS ─────
 
-interface VoiceGain {
+interface VoiceState {
     node: GainNode;
     startTime: number;
 }
 
-const triggerAttack = (ctx: AudioContext, gain: GainNode, when: number, a: number, d: number, s: number, velocity = 1): VoiceGain => {
+const triggerAttack = (ctx: AudioContext, gain: GainNode, when: number, a: number, d: number, s: number, velocity = 1): VoiceState => {
     const attack = Math.max(a, 0.003);
     const decay = Math.max(d, 0.01);
     const sustain = clamp(s, 0, 1) * velocity;
@@ -339,7 +345,7 @@ const buildSynthEngine = (ctx: AudioContext, preset: any, master: GainNode, reve
 
         if (duration) {
             const stopTime = triggerRelease(ctx, voiceState, when + duration, adsr.a, adsr.r);
-            voiceNodes.forEach(n => { if (n instanceof OscillatorNode) n.stop(stopTime + 0.1); });
+            voiceNodes.forEach(n => { if (n instanceof OscillatorNode) try { n.stop(stopTime + 0.1); } catch(e){} });
             setTimeout(() => {
                 deepCleanup(voiceRecord, allActiveVoices);
             }, ((stopTime - ctx.currentTime) * 1000) + 500);
@@ -353,7 +359,7 @@ const buildSynthEngine = (ctx: AudioContext, preset: any, master: GainNode, reve
         const voice = activeVoices.get(midi); if (!voice) return; activeVoices.delete(midi);
         const adsrR = currentPreset.adsr?.r || 0.5;
         const stopTime = triggerRelease(ctx, voice.voiceState, when, currentPreset.adsr?.a || 0.1, adsrR);
-        voice.nodes.forEach(n => { if (n instanceof OscillatorNode) n.stop(stopTime + 0.1); });
+        voice.nodes.forEach(n => { if (n instanceof OscillatorNode) try { n.stop(stopTime + 0.1); } catch(e){} });
         setTimeout(() => { deepCleanup(voice, allActiveVoices); }, ((stopTime - ctx.currentTime) * 1000) + 500);
     };
 
@@ -574,7 +580,7 @@ const buildGuitarEngine = (ctx: AudioContext, preset: any, master: GainNode, rev
         const f = midiToHz(midi);
         const oscP = currentPreset.osc || { width: 0.45, mainGain: 0.8, detGain: 0.2, subGain: 0.25 };
         
-        // #ЗАЧЕМ: Уменьшение громкости фабричных гитар в 4 раза по запросу + ПЛАН 83: Оптимизация (убран sumNode).
+        // #ЗАЧЕМ: ПЛАН 83: Оптимизация (убран sumNode).
         // #ЧТО: Множитель 0.175 теперь применяется к базовому voiceGain.
         const voiceGain = ctx.createGain(); voiceGain.gain.value = 0; voiceGain.connect(guitarInput);
         const voiceNodes: AudioNode[] = [voiceGain];
