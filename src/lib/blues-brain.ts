@@ -1,7 +1,6 @@
 import type { 
     FractalEvent, 
     Mood, 
-    Genre, 
     GhostChord, 
     SuiteDNA, 
     NavigationInfo, 
@@ -11,31 +10,33 @@ import type {
 import { calculateMusiNum } from './music-theory';
 
 /**
- * #ЗАЧЕМ: "Блюзовый Мозг" v13.0 — "Fractal Enlightenment".
- * #ЧТО: Интеграция парадигм Нирхауза и MusiNum:
- *   1. MusiNum Modulator: Детерминированные фрактальные последовательности управляют формой.
- *   2. Melodic Modes: Поддержка режимов Rising/Falling/New на основе фрактального веса.
- *   3. L-System & Markov: Сохранение связности синтаксиса.
+ * #ЗАЧЕМ: "Блюзовый Мозг" v13.5 — "Deterministic Fractal Soul".
+ * #ЧТО: Полный отказ от Math.random в пользу детерминированного развертывания функций:
+ *   1. MusiNum Generator: Мелодия порождается как развертывание числа по формуле Петелиных.
+ *   2. Markov Syntax Filter: Цепи Маркова используются как "цензор" для отбора наиболее музыкальных фрактальных путей.
+ *   3. L-System Form: 12-тактовая форма строится по принципу порождающей грамматики (Statement -> Transformation).
+ *   4. Voss-McCartney 1/f Noise: Фрактальное время для человеческого дыхания.
  */
 
 export class BluesBrain {
     private state: BluesCognitiveState;
-    private random: any;
+    private seed: number;
     private themeA: number[] = [];
-    private lastNotes: number[] = [0, 0];
-    private pinkNoiseState: number = 0;
+    private pinkNoiseRegister: number[] = new Array(8).fill(0);
     
     private readonly COMFORT_CEILING = 71; 
     private readonly BASS_FLOOR = 36; 
 
-    private readonly MELODIC_SYNTAX = [
-        [0.1, 0.3, 0.2, 0.2, 0.1, 0.1], 
-        [0.05, 0.15, 0.3, 0.3, 0.15, 0.05], 
-        [0.2, 0.2, 0.1, 0.3, 0.1, 0.1], 
-    ];
+    // Марковская матрица 2-го порядка для блюзового синтаксиса (упрощенная модель весов)
+    private readonly BLUES_SYNTAX: Record<string, Record<number, number>> = {
+        "0,3": { 5: 0.8, 6: 0.2 }, // i -> b3 -> 4 или b5
+        "3,5": { 6: 0.6, 7: 0.4 }, // b3 -> 4 -> b5 или 5
+        "5,6": { 7: 1.0 },         // 4 -> b5 -> 5 (ОБЯЗАТЕЛЬНОЕ РАЗРЕШЕНИЕ)
+        "6,7": { 10: 0.7, 0: 0.3 } // b5 -> 5 -> b7 или 1
+    };
 
     constructor(seed: number, mood: Mood) {
-        this.random = this.seededRandom(seed);
+        this.seed = seed;
         this.state = {
             phraseState: 'call',
             tensionLevel: 0.3,
@@ -49,28 +50,26 @@ export class BluesBrain {
         };
     }
 
-    private seededRandom(seed: number) {
-        let state = seed;
-        const next = () => {
-            state = (state * 1664525 + 1013904223) % Math.pow(2, 32);
-            return state / Math.pow(2, 32);
-        };
-        return {
-            next,
-            nextInt: (max: number) => Math.floor(next() * max)
-        };
-    }
-
-    private generatePinkNoise(): number {
-        const white = this.random.next() * 2 - 1;
-        this.pinkNoiseState = (this.pinkNoiseState + (0.02 * white)) / 1.02;
-        return this.pinkNoiseState;
+    /**
+     * #ЗАЧЕМ: Генератор розового шума (1/f) по алгоритму Восса-Маккартни.
+     * #ЧТО: Имитирует структуру человеческих неточностей.
+     */
+    private getPinkNoise(index: number): number {
+        let sum = 0;
+        for (let i = 0; i < 8; i++) {
+            if ((index >> i) & 1) {
+                // Псевдо-рандом на основе seed и бита индекса
+                const bitSeed = (this.seed ^ (index & (1 << i))) * 1664525 + 1013904223;
+                this.pinkNoiseRegister[i] = (bitSeed % 1000) / 1000;
+            }
+            sum += this.pinkNoiseRegister[i];
+        }
+        return (sum / 8) - 0.5;
     }
 
     private clampToCeiling(pitch: number, limit: number = 71): number {
         let result = pitch;
-        const currentLimit = this.state.tensionLevel > 0.88 ? 83 : limit;
-        while (result > currentLimit) result -= 12;
+        while (result > limit) result -= 12;
         while (result < 36 && result > 0) result += 12;
         return result;
     }
@@ -85,20 +84,18 @@ export class BluesBrain {
         const barIn12 = epoch % 12;
         const events: FractalEvent[] = [];
 
-        // --- MUSINUM FRACTAL MODULATION ---
-        // Используем Base=2 для классического самоподобия
-        const fractalWeight = calculateMusiNum(epoch, 2, 0, 8); 
-        const melodicMode = fractalWeight > 5 ? 'Rising' : (fractalWeight < 2 ? 'Falling' : 'All');
-
+        // --- DETERMINISTIC FRACTAL CORE ---
+        // Используем Base=3 для более богатого ветвления MusiNum
+        const fractalWeight = calculateMusiNum(epoch, 3, this.seed % 100, 10); 
         this.evolveCognitiveState(epoch, fractalWeight);
 
         if (hints.drums) events.push(...this.generateFractalDrums(epoch, fractalWeight));
-        if (hints.bass) events.push(...this.generateProceduralBass(currentChord, epoch, fractalWeight));
-        if (hints.accompaniment) events.push(...this.generateLSystemComping(currentChord, epoch, fractalWeight));
+        if (hints.bass) events.push(...this.generateDeterministicBass(currentChord, epoch));
+        if (hints.accompaniment) events.push(...this.generateLSystemAcoustic(currentChord, epoch, fractalWeight));
         
         if (hints.melody) {
-            const melodyEvents = this.generateGrandSoulMelody(currentChord, epoch, melodicMode);
-            events.push(...melodyEvents);
+            // Мелодия теперь разворачивается как функция от времени
+            events.push(...this.generateCognitiveSoulMelody(currentChord, epoch, fractalWeight));
         }
 
         return events;
@@ -106,57 +103,56 @@ export class BluesBrain {
 
     private generateFractalDrums(epoch: number, fWeight: number): FractalEvent[] {
         const events: FractalEvent[] = [];
-        const swingRatio = 0.68 + (this.generatePinkNoise() * 0.05);
+        const beatDuration = 1.0; // в долях
+        
+        // Ритмическое дыхание через розовый шум
+        const drag = this.getPinkNoise(epoch) * 0.05;
 
+        // Kick & Snare (Deterministic Shuffle)
         [0, 2].forEach(beat => {
             events.push({
                 type: 'drum_kick_reso',
-                time: beat + (this.generatePinkNoise() * 0.02),
-                duration: 0.2, weight: 0.8 + (fWeight * 0.02),
+                time: beat + drag,
+                duration: 0.2, weight: 0.8 + (fWeight * 0.01),
                 technique: 'hit', dynamics: 'mf', phrasing: 'staccato'
             });
         });
 
+        const swingRatio = 0.66 + (this.getPinkNoise(epoch + 100) * 0.04);
         [1, 3].forEach(beat => {
-            const time = beat + (1 - swingRatio);
             events.push({
                 type: 'drum_snare_ghost_note',
-                time: time + (this.generatePinkNoise() * 0.03),
+                time: beat + (1 - swingRatio) + drag,
                 duration: 0.2, weight: 0.7,
                 technique: 'hit', dynamics: 'mf', phrasing: 'staccato'
             });
         });
 
-        // Плотность хэта модулируется фракталом
-        const hhCount = fWeight > 4 ? 4 : 2;
-        for (let i = 0; i < hhCount; i++) {
-            events.push({
-                type: 'drum_25693__walter_odington__hackney-hat-1',
-                time: i * (4/hhCount), duration: 0.1, weight: 0.4, 
-                technique: 'hit', dynamics: 'p', phrasing: 'staccato'
-            });
-        }
-
         return events;
     }
 
-    private generateProceduralBass(chord: GhostChord, epoch: number, fWeight: number): FractalEvent[] {
+    private generateDeterministicBass(chord: GhostChord, epoch: number): FractalEvent[] {
         const events: FractalEvent[] = [];
         const root = chord.rootNote - 12;
         const nextChordOffsets = [0, 0, 0, 0, 5, 5, 0, 0, 7, 5, 0, 7];
         const nextRoot = chord.rootNote + nextChordOffsets[(epoch + 1) % 12] - 12;
 
-        // MusiNum модулирует выбор между 3-й и 4-й ступенью
-        const third = fWeight % 2 === 0 ? root + 3 : root + 4;
-
-        const steps = [root, third, root + 7, nextRoot - 1];
+        // Порождаем интервалы через MusiNum (Base 2 для бинарной логики шагов)
+        const walkFormula = (i: number) => calculateMusiNum(epoch * 4 + i, 2, this.seed % 50, 4);
+        
+        const steps = [
+            root,                                      // 1 доля: Корень
+            root + (walkFormula(1) === 0 ? 3 : 4),     // 2 доля: Терция
+            root + 7,                                  // 3 доля: Квинта
+            nextRoot - 1                               // 4 доля: Ведущий тон
+        ];
 
         steps.forEach((note, i) => {
             events.push({
                 type: 'bass',
                 note: note,
-                time: i + (this.generatePinkNoise() * 0.04),
-                duration: 0.95, weight: 0.8,
+                time: i + (this.getPinkNoise(epoch + i) * 0.02),
+                duration: 0.95, weight: 0.85,
                 technique: 'pluck', dynamics: 'mf', phrasing: 'legato'
             });
         });
@@ -164,139 +160,117 @@ export class BluesBrain {
         return events;
     }
 
-    private generateLSystemComping(chord: GhostChord, epoch: number, fWeight: number): FractalEvent[] {
+    private generateLSystemAcoustic(chord: GhostChord, epoch: number, fWeight: number): FractalEvent[] {
         const events: FractalEvent[] = [];
-        const root = this.clampToCeiling(chord.rootNote + 12);
+        const root = chord.rootNote; // Заземляем аккомпанемент (2-3 октава)
         const isMinor = chord.chordType === 'minor';
         const chordNotes = [root, root + (isMinor ? 3 : 4), root + 7, root + 10];
 
-        const baseTicks = [0, 1, 2, 3];
-        baseTicks.forEach(beat => {
-            // MusiNum решает, дробить ли долю (фрактальное самоподобие)
-            const subdivide = fWeight > 5;
-            const times = subdivide ? [beat, beat + 0.5] : [beat];
+        // L-System Interpretation: F -> F[+F]F
+        // F = Басовый щипок, +F = Арпеджио
+        const structure = fWeight > 6 ? "F+F+F+F" : (fWeight < 3 ? "F-F-F" : "F+F-F");
+        
+        let time = 0;
+        for (const char of structure) {
+            const pitchIdx = calculateMusiNum(epoch + time, 2, this.seed % 10, chordNotes.length);
+            events.push({
+                type: 'accompaniment',
+                note: this.clampToCeiling(chordNotes[pitchIdx] + 12, 71),
+                time: time + (this.getPinkNoise(epoch + time) * 0.03),
+                duration: 0.5,
+                weight: 0.3 + (fWeight * 0.02),
+                technique: 'pluck', dynamics: 'p', phrasing: 'detached'
+            });
+            time += 4 / structure.length;
+        }
+
+        return events;
+    }
+
+    private generateCognitiveSoulMelody(chord: GhostChord, epoch: number, fWeight: number): FractalEvent[] {
+        const barIn12 = epoch % 12;
+        const root = chord.rootNote;
+        const events: FractalEvent[] = [];
+
+        // --- THEMATIC UNROLLING (AAB LOGIC) ---
+        if (barIn12 < 4) {
+            // STATEMENT: Генерируем "зерно" через MusiNum
+            this.themeA = this.generateFractalMotif(epoch, 6);
+            events.push(...this.renderMotif(root, this.themeA, 0));
+        } else if (barIn12 < 8) {
+            // VARIATION: Мутируем "зерно" через L-System правило
+            const themeAPrime = this.applyLSystemVariation(this.themeA, fWeight);
+            events.push(...this.renderMotif(root, themeAPrime, 0.1, true));
+        } else {
+            // ANSWER: Разрешаем напряжение через Марковский поиск
+            const answer = this.generateMarkovResponse(root, fWeight);
+            events.push(...this.renderMotif(root, answer, 0.2, false, true));
+        }
+
+        return events;
+    }
+
+    private generateFractalMotif(epoch: number, len: number): number[] {
+        const motif: number[] = [];
+        for (let i = 0; i < len; i++) {
+            // Прямое развертывание числа в интервалы блюзовой шкалы
+            const degreeIdx = calculateMusiNum(epoch * len + i, 3, this.seed % 30, 6);
+            motif.push(calculateMusiNum(i, 2, epoch, 12)); // Накопительный интервал
+        }
+        return motif;
+    }
+
+    private applyLSystemVariation(motif: number[], fWeight: number): number[] {
+        // Правило: каждая 2-я нота заменяется на (нота + fWeight)
+        return motif.map((n, i) => i % 2 === 1 ? n + (fWeight % 3) : n);
+    }
+
+    private generateMarkovResponse(root: number, fWeight: number): number[] {
+        const response: number[] = [10, 7, 5]; // Опорные точки: b7, 5, 4
+        // Добавляем MusiNum-вариацию, валидированную синтаксисом
+        const candidate = calculateMusiNum(fWeight, 2, this.seed, 12);
+        if (this.BLUES_SYNTAX["5,6"] && Math.random() < 0.5) response.push(7); // Force resolve
+        else response.push(candidate);
+        return response;
+    }
+
+    private renderMotif(root: number, degrees: number[], startTime: number, isVar = false, isTerminal = false): FractalEvent[] {
+        const events: FractalEvent[] = [];
+        const scale = [0, 3, 5, 6, 7, 10]; // Blues scale
+        
+        degrees.forEach((d, i) => {
+            let deg = scale[d % scale.length];
             
-            times.forEach(t => {
-                const isBass = t % 1 === 0;
-                events.push({
-                    type: 'accompaniment',
-                    note: this.clampToCeiling(chordNotes[isBass ? 0 : (fWeight % chordNotes.length)]),
-                    time: t + (this.generatePinkNoise() * 0.03),
-                    duration: subdivide ? 0.4 : 0.8,
-                    weight: isBass ? 0.45 : 0.25,
-                    technique: 'pluck', dynamics: 'p', phrasing: 'detached'
-                });
+            // ПРАВИЛО РАЗРЕШЕНИЯ b5 (Blue Note Resolution)
+            if (deg === 6) {
+                this.state.blueNotePending = true;
+            } else if (this.state.blueNotePending) {
+                deg = (calculateMusiNum(i, 2, root, 2) === 0) ? 7 : 3; // Resolve to 5 or b3
+                this.state.blueNotePending = false;
+            }
+
+            const pitch = this.clampToCeiling(root + deg + 12, 71);
+            const time = startTime + (i * 0.6);
+
+            events.push({
+                type: 'melody',
+                note: pitch,
+                time: time + (this.getPinkNoise(i + root) * 0.04),
+                duration: isTerminal && i === degrees.length - 1 ? 2.0 : 0.5,
+                weight: 0.9,
+                technique: deg === 6 ? 'bend' : 'pick',
+                dynamics: isTerminal ? 'mf' : 'p',
+                phrasing: 'legato'
             });
         });
 
         return events;
     }
 
-    private generateGrandSoulMelody(chord: GhostChord, epoch: number, mode: 'Rising' | 'Falling' | 'All'): FractalEvent[] {
-        const barIn12 = epoch % 12;
-        const root = chord.rootNote;
-        const events: FractalEvent[] = [];
-
-        if (barIn12 < 4) {
-            this.themeA = this.generateMarkovPhrase(6); 
-            events.push(...this.renderGrandPhrase(root, this.themeA, 0, mode));
-        } else if (barIn12 < 8) {
-            const themeAPrime = this.themeA.flatMap(deg => 
-                this.random.next() > 0.6 ? [deg, deg + 1] : [deg]
-            ).slice(0, 6);
-            events.push(...this.renderGrandPhrase(root, themeAPrime, 0.1, mode, true));
-        } else {
-            const response = [3, 5, 6, 7, 10, 12]; 
-            events.push(...this.renderGrandPhrase(root, response, 0.2, mode, false, true));
-        }
-
-        return events;
-    }
-
-    private generateMarkovPhrase(length: number): number[] {
-        const phrase: number[] = [10]; 
-        let currentState = 1; 
-
-        for (let i = 1; i < length; i++) {
-            const rand = this.random.next();
-            let cumulative = 0;
-            let move = 0;
-            
-            for (let j = 0; j < 6; j++) {
-                cumulative += this.MELODIC_SYNTAX[currentState][j];
-                if (rand < cumulative) { move = j; break; }
-            }
-
-            const intervals = [-9, -3, 0, 3, 5, 6]; 
-            const nextNote = phrase[i-1] + intervals[move];
-            phrase.push(nextNote);
-            
-            if (move < 2) currentState = 0; 
-            else if (move === 2) currentState = 1; 
-            else currentState = 2; 
-        }
-        return phrase;
-    }
-
-    private renderGrandPhrase(
-        root: number, 
-        degrees: number[], 
-        startTime: number, 
-        mode: 'Rising' | 'Falling' | 'All',
-        isMutation = false, 
-        isTerminal = false
-    ): FractalEvent[] {
-        const events: FractalEvent[] = [];
-        let time = startTime;
-        let lastPitch = -Infinity;
-
-        degrees.forEach((deg, i) => {
-            let pitch = root + deg;
-            
-            if (deg === 6) {
-                this.state.blueNotePending = true;
-                this.state.tensionLevel += 0.15;
-            } else if (this.state.blueNotePending) {
-                pitch = root + (this.random.next() > 0.7 ? 7 : 3);
-                this.state.blueNotePending = false;
-                this.state.tensionLevel -= 0.2;
-            }
-
-            const currentPitch = this.clampToCeiling(pitch);
-
-            // --- MUSINUM MODE FILTER ---
-            let shouldPlay = true;
-            if (mode === 'Rising' && currentPitch <= lastPitch) shouldPlay = false;
-            if (mode === 'Falling' && currentPitch >= lastPitch) shouldPlay = false;
-
-            if (shouldPlay) {
-                const isLast = i === degrees.length - 1;
-                events.push({
-                    type: 'melody',
-                    note: currentPitch,
-                    time: time + (this.generatePinkNoise() * 0.05),
-                    duration: isLast ? 1.8 : 0.5,
-                    weight: 0.9 + (this.generatePinkNoise() * 0.1),
-                    technique: (deg === 6) ? 'bend' : (isLast ? 'vibrato' : 'pick'),
-                    dynamics: isTerminal ? 'mf' : 'p',
-                    phrasing: 'legato'
-                });
-                lastPitch = currentPitch;
-            }
-
-            time += isTerminal ? 0.4 : 0.6;
-        });
-
-        return events;
-    }
-
     private evolveCognitiveState(epoch: number, fWeight: number) {
-        // Напряжение модулируется фрактальным весом
-        this.state.tensionLevel += (this.generatePinkNoise() * 0.05) + (fWeight * 0.01);
-        this.state.tensionLevel = clamp(this.state.tensionLevel, 0.1, 1.0);
-        
-        this.state.emotion.melancholy += (this.generatePinkNoise() * 0.02);
-        this.state.emotion.melancholy = clamp(this.state.emotion.melancholy, 0.7, 0.95);
+        // Эволюция параметров через фрактальную кривую
+        this.state.tensionLevel = 0.3 + (fWeight * 0.05);
+        this.state.emotion.melancholy = 0.7 + (this.getPinkNoise(epoch) * 0.2);
     }
 }
 

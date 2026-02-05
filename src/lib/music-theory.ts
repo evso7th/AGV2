@@ -24,11 +24,12 @@ export const DEGREE_TO_SEMITONE: Record<string, number> = {
 /**
  * #ЗАЧЕМ: Математическое ядро MusiNum.
  * #ЧТО: Вычисляет сумму цифр числа в заданной системе счисления с последующим вычетом по модулю.
- *       Порождает самоподобные (фрактальные) последовательности.
+ *       Порождает самоподобные (фрактальные) последовательности. Это ДЕТЕРМИНИРОВАННЫЙ алгоритм.
  */
 export function calculateMusiNum(step: number, base: number = 2, start: number = 0, modulo: number = 8): number {
     let num = Math.abs(step + start);
     let sum = 0;
+    // Отрабатываем алгоритм: перевод в систему счисления Base и суммирование цифр
     while (num > 0) {
         sum += num % base;
         num = Math.floor(num / base);
@@ -50,7 +51,7 @@ export function createHarmonyAxiom(
     const isMinor = chord.chordType === 'minor' || chord.chordType === 'diminished';
     const root = chord.rootNote;
     
-    // #ЗАЧЕМ: Мягкое "рассыпание" аккорда для создания объема.
+    // Мягкое "рассыпание" аккорда для создания объема.
     const notes = [root, root + (isMinor ? 3 : 4), root + 7];
     
     notes.forEach((note, i) => {
@@ -76,7 +77,8 @@ export function getScaleForMood(mood: Mood, genre?: Genre): number[] {
   let baseScale: number[];
 
   if (genre === 'blues') {
-      baseScale = [0, 2, 3, 5, 6, 7, 10]; 
+      // Классическая блюзовая пентатоника + b5 (блюзовая нота)
+      baseScale = [0, 3, 5, 6, 7, 10]; 
   } else {
       switch (mood) {
         case 'joyful': baseScale = [0, 2, 4, 5, 7, 9, 11]; break;
@@ -106,6 +108,10 @@ export function humanizeEvents(events: FractalEvent[], amount: number, random: a
     });
 }
 
+/**
+ * #ЗАЧЕМ: Генератор ДНК сюиты.
+ * #ЧТО: Создает неизменные параметры: гармонию, темп и маппинг соло-планов.
+ */
 export function generateSuiteDNA(totalBars: number, mood: Mood, seed: number, random: any, genre: Genre, blueprintParts: any[]): SuiteDNA {
     const harmonyTrack: GhostChord[] = [];
     const baseKeyNote = 24 + Math.floor(random.next() * 12);
