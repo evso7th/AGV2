@@ -319,12 +319,15 @@ export type NavigationInfo = {
 
 /**
  * #ЗАЧЕМ: Когнитивное состояние блюзового исполнителя.
- * #ЧТО: Хранит фазу фразы (зов/ответ), уровень внутреннего напряжения и историю.
+ * #ЧТО: Хранит фазу фразы (зов/ответ), уровень внутреннего напряжения, 
+ *       память последних фраз и флаги разрешения нот.
  * #СВЯЗИ: Используется во FractalMusicEngine и music-theory.ts.
  */
 export interface BluesCognitiveState {
   phraseState: 'call' | 'response' | 'fill';
   tensionLevel: number;
   phraseHistory: string[];
+  lastPhraseHash: string;
+  blueNotePending: boolean;
   emotion: { melancholy: number; darkness: number };
 }

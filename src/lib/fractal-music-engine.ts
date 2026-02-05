@@ -1,3 +1,4 @@
+
 import type { FractalEvent, Mood, Genre, Technique, InstrumentPart, InstrumentHints, AccompanimentTechnique, GhostChord, SuiteDNA, NavigationInfo, Stage, BluesCognitiveState } from '@/types/music';
 import { BlueprintNavigator } from './blueprint-navigator';
 import { getBlueprint } from './blueprints';
@@ -64,7 +65,6 @@ export class FractalMusicEngine {
 
   private currentBassRiffIndex = 0;
   private currentDrumRiffIndex = 0;
-  private melodyHistory: string[] = [];
   private previousChord: GhostChord | null = null;
 
   // #ЗАЧЕМ: Блюзовый Интеллект и Эмоциональное Состояние.
@@ -72,6 +72,8 @@ export class FractalMusicEngine {
       phraseState: 'call',
       tensionLevel: 0.1,
       phraseHistory: [],
+      lastPhraseHash: '',
+      blueNotePending: false,
       emotion: { melancholy: 0.7, darkness: 0.3 }
   };
 
@@ -97,13 +99,14 @@ export class FractalMusicEngine {
     this.random = seededRandom(this.config.seed);
     this.activatedInstruments.clear(); 
     this.hookLibrary = [];
-    this.melodyHistory = [];
     
     // Начальное эмоциональное состояние зависит от настроения
     this.cognitiveState = {
         phraseState: 'call',
         tensionLevel: 0.1,
         phraseHistory: [],
+        lastPhraseHash: '',
+        blueNotePending: false,
         emotion: { 
             melancholy: ['melancholic', 'dark', 'anxious'].includes(this.config.mood) ? 0.8 : 0.3,
             darkness: ['dark', 'gloomy'].includes(this.config.mood) ? 0.7 : 0.2

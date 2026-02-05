@@ -61,11 +61,27 @@ const midiToChordName = (rootNote: number, chordType: 'major' | 'minor' | 'dimin
     }
 };
 
+/**
+ * #ЗАЧЕМ: Человеческое дыхание ритма.
+ * #ЧТО: Сдвигает ноты на случайную величину для разрушения механичности.
+ */
 export function humanizeEvents(events: FractalEvent[], amount: number, random: any) {
     events.forEach(e => {
         const shift = (random.next() - 0.5) * 2 * amount;
         e.time = Math.max(0, e.time + shift);
     });
+}
+
+/**
+ * #ЗАЧЕМ: Расчёт схожести фраз (Anti-Monotony).
+ */
+function calculateSimilarity(phraseA: string, phraseB: string): number {
+    if (!phraseA || !phraseB) return 0;
+    const setA = new Set(phraseA.split(','));
+    const setB = new Set(phraseB.split(','));
+    const intersection = new Set([...setA].filter(x => setB.has(x)));
+    const union = new Set([...setA, ...setB]);
+    return intersection.size / union.size;
 }
 
 export function generateSuiteDNA(totalBars: number, mood: Mood, seed: number, random: any, genre: Genre, blueprintParts: any[]): SuiteDNA {
@@ -84,19 +100,24 @@ export function generateSuiteDNA(totalBars: number, mood: Mood, seed: number, ra
 
         if (genre === 'blues') {
             const bluesSequence = ['i', 'iv', 'i', 'i', 'iv', 'iv', 'i', 'i', 'bVI', 'V', 'i', 'V'];
-            const degreeMap: Record<string, {rootOffset: number, type: GhostChord['chordType']}> = {
-                'i': { rootOffset: 0, type: 'minor' }, 'iv': { rootOffset: 5, type: 'minor' },
-                'v': { rootOffset: 7, type: 'dominant' }, 'V': { rootOffset: 7, type: 'dominant' }, 
-                'bVI': { rootOffset: 8, type: 'major' },
-            };
-            
             let seqIdx = 0;
             let currentBarInPart = 0;
+            
+            // #ЗАЧЕМ: Марковское распределение длительностей для блюза.
             while (currentBarInPart < partDuration) {
                 const degree = bluesSequence[seqIdx % bluesSequence.length];
-                const durationOptions = [4, 8, 12];
-                const duration = durationOptions[random.nextInt(durationOptions.length)];
+                
+                // Взвешенные длительности: 4 такта - 60%, 8 - 30%, 12 - 10%.
+                const r = random.next();
+                const duration = r < 0.6 ? 4 : (r < 0.9 ? 8 : 12);
+                
                 const finalDuration = Math.min(duration, partDuration - currentBarInPart);
+                
+                const degreeMap: Record<string, {rootOffset: number, type: GhostChord['chordType']}> = {
+                    'i': { rootOffset: 0, type: 'minor' }, 'iv': { rootOffset: 5, type: 'minor' },
+                    'v': { rootOffset: 7, type: 'dominant' }, 'V': { rootOffset: 7, type: 'dominant' }, 
+                    'bVI': { rootOffset: 8, type: 'major' },
+                };
                 
                 const chordInfo = degreeMap[degree];
                 harmonyTrack.push({
@@ -260,6 +281,11 @@ export function generateBluesMelodyChorus(
     if (cognitiveState.phraseState === 'call') cognitiveState.tensionLevel += 0.15;
     if (cognitiveState.phraseState === 'fill') cognitiveState.tensionLevel = Math.max(0.1, cognitiveState.tensionLevel - 0.4);
     
+    // #ЗАЧЕМ: Принудительное разрешение при высоком напряжении.
+    if (cognitiveState.tensionLevel > 0.8 && cognitiveState.phraseState !== 'call') {
+        cognitiveState.phraseState = 'fill';
+    }
+
     const isMinor = currentChord.chordType === 'minor' || currentChord.chordType === 'diminished';
     const targetTag = isMinor ? 'minor' : 'major';
     
@@ -292,6 +318,13 @@ export function generateBluesMelodyChorus(
 
     let lickPhrase = JSON.parse(JSON.stringify(BLUES_SOLO_LICKS[lickId].phrase)) as BluesSoloPhrase;
 
+    // #ЗАЧЕМ: Хеширование и проверка схожести (Anti-Monotony).
+    const currentHash = lickPhrase.map(n => n.deg).join(',');
+    if (calculateSimilarity(currentHash, cognitiveState.lastPhraseHash) > 0.8) {
+        lickPhrase = varyRhythm(lickPhrase, random); // Принудительно меняем ритм
+    }
+    cognitiveState.lastPhraseHash = currentHash;
+
     // 4. Применение мутаций и украшательств
     if (strategy === 'sequence') lickPhrase = transposeMelody(lickPhrase, [2, -2, 5, -5][random.nextInt(4)]);
     if (strategy === 'variation' || random.next() < 0.4) lickPhrase = varyRhythm(lickPhrase, random);
@@ -304,6 +337,19 @@ export function generateBluesMelodyChorus(
     // 5. Защита от монотонности
     lickPhrase = enforceAntiMonotony(lickPhrase, epoch, cognitiveState, currentChord.rootNote, random);
 
+    // #ЗАЧЕМ: Разрешение незавершенных блюзовых нот (Strict Blue Note Logic).
+    lickPhrase.forEach((note, i) => {
+        if (note.deg === 'b5') {
+            cognitiveState.blueNotePending = true;
+        } else if (cognitiveState.blueNotePending) {
+            // Если была ♭5, а текущая нота не является разрешением (4 или 5), правим её.
+            if (note.deg !== '4' && note.deg !== '5') {
+                note.deg = random.next() > 0.5 ? '5' : '4';
+            }
+            cognitiveState.blueNotePending = false;
+        }
+    });
+
     // 6. Ритмическое дробление (Subdivision)
     const currentTempo = rules.bpm?.base || dna.baseTempo;
     if (currentTempo > 90 && !['melancholic', 'dark'].includes(dna.harmonyTrack[0].chordType)) {
@@ -312,7 +358,6 @@ export function generateBluesMelodyChorus(
 
     const events: FractalEvent[] = lickPhrase.map(note => ({
         type: 'melody', 
-        // #ЗАЧЕМ: Подъем на одну октаву выше для лид-гитары (План №99).
         note: currentChord.rootNote + (DEGREE_TO_SEMITONE[note.deg] || 0) + 12,
         time: note.t / 3, 
         duration: (note.d || 2) / 3, 
