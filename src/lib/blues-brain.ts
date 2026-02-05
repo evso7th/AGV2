@@ -35,11 +35,11 @@ const PHRASE_LENGTH_TRANSITIONS: Record<string, Record<string, number>> = {
 };
 
 /**
- * #ЗАЧЕМ: "Блюзовый Мозг" v3.5 — "The Alvin Lee Soul".
- * #ЧТО: Когнитивная надстройка для имитации стиля "The Bluest Blues":
- *       1. Emotive Soloing: длинные бенды и глубокое вибрато.
- *       2. Dynamic Bursts: внезапные виртуозные пассажи при росте tension.
- *       3. Pocket Logic: синхронизация ансамбля в медленном темпе.
+ * #ЗАЧЕМ: "Блюзовый Мозг" v3.6 — "Smoky & Grounded".
+ * #ЧТО: Когнитивная надстройка с упором на низкий регистр и мягкую фактуру:
+ *       1. Grounded Solo: Solo lowered by 2 octaves (+24).
+ *       2. Rolling Ripples: Accompaniment staggered and swelled for softness.
+ *       3. Melodic Fill-ins: Accompaniment adds tiny decorations instead of static hits.
  */
 export class BluesBrain {
     private cognitiveState: BluesCognitiveState;
@@ -83,16 +83,13 @@ export class BluesBrain {
         const events: FractalEvent[] = [];
         this.evolveEmotion();
 
-        // 1. Динамическое "дыхание" фраз (Markov)
         if (epoch % 4 === 0) {
             this.lastPhraseLength = markovNext(PHRASE_LENGTH_TRANSITIONS, this.lastPhraseLength, this.random);
         }
 
-        // 2. Фаза цикла (Зов/Ответ/Филл)
         const barInChorus = epoch % 12;
         this.cognitiveState.phraseState = barInChorus % 4 < 2 ? 'call' : (barInChorus % 4 === 2 ? 'response' : 'fill');
 
-        // 3. Инструментальная интерпретация
         if (hints.drums) events.push(...this.generateDrums(navInfo, dna, epoch));
         if (hints.bass) events.push(...this.generateBass(currentChord, dna, epoch, navInfo.currentPart.mood));
         if (hints.accompaniment) events.push(...this.generateAdvancedAccompaniment(currentChord, navInfo, epoch, hints.accompaniment));
@@ -123,13 +120,13 @@ export class BluesBrain {
             }
         };
 
-        add(riff.K, kit.kick, 0.9);
-        add(riff.SD, kit.snare, 0.85);
-        add(riff.HH, kit.hihat, 0.6);
-        add(riff.R, kit.ride, 0.7);
-        add(riff.T, kit.perc, 0.5);
+        add(riff.K, kit.kick, 0.8); // Softer kick
+        add(riff.SD, kit.snare, 0.7);
+        add(riff.HH, kit.hihat, 0.5);
+        add(riff.R, kit.ride, 0.6);
+        add(riff.T, kit.perc, 0.4);
 
-        humanizeEvents(drumEvents, 0.01, this.random);
+        humanizeEvents(drumEvents, 0.015, this.random);
         return drumEvents;
     }
 
@@ -150,7 +147,7 @@ export class BluesBrain {
             duration: ((n.d || 2) / 3) * 0.95,
             weight: 0.95,
             technique: 'pluck', dynamics: 'mf', phrasing: 'legato',
-            params: { cutoff: 1000, resonance: 0.5, distortion: 0.05, portamento: 0.08 }
+            params: { cutoff: 800, resonance: 0.4, distortion: 0.02, portamento: 0.1 }
         }));
     }
 
@@ -160,8 +157,11 @@ export class BluesBrain {
         const isMinor = chord.chordType === 'minor' || chord.chordType === 'diminished';
         const root = chord.rootNote;
         
+        // #РЕГИСТР: Опускаем аккомпанемент на 2 октавы (с +36 до +12)
+        const compOctave = 12;
+
         if (isGuitar) {
-            const patternName = this.random.next() < 0.4 ? 'F_TRAVIS' : 'S_SWING';
+            const patternName = this.random.next() < 0.5 ? 'F_ROLL12' : 'F_TRAVIS';
             const pattern = GUITAR_PATTERNS[patternName];
             const voicingName = isMinor ? 'Em7_open' : 'E7_open';
             const voicing = BLUES_GUITAR_VOICINGS[voicingName];
@@ -172,32 +172,50 @@ export class BluesBrain {
                         const noteOnTime = (t / 3) + (sIdx * (pattern.rollDuration / 12));
                         events.push({
                             type: 'accompaniment',
-                            note: voicing[voicing.length - 1 - idx] + 24,
+                            note: voicing[voicing.length - 1 - idx] + compOctave,
                             time: noteOnTime,
-                            duration: 0.6,
-                            weight: 0.55,
-                            technique: 'pick', dynamics: 'p', phrasing: 'detached',
+                            duration: 1.2, // Longer duration for guitar
+                            weight: 0.45,  // Softer
+                            technique: 'pluck', dynamics: 'p', phrasing: 'legato',
                             params: { barCount: epoch, voicingName }
                         });
                     });
                 });
             });
         } else {
-            // "Блюзовые Чопы" — синхронизированные акценты
-            const shellVoicing = [root + (isMinor ? 3 : 4), root + 10];
-            const chopTicks = [4, 10]; 
-            chopTicks.forEach(tick => {
-                shellVoicing.forEach(n => {
-                    events.push({
-                        type: 'accompaniment',
-                        note: n + 36,
-                        time: tick / 3,
-                        duration: 0.15,
-                        weight: 0.6,
-                        technique: 'hit', dynamics: 'mf', phrasing: 'staccato'
-                    });
+            // "Rolling Ripple" для Органа/Синта
+            // Вместо чопов играем размытые аккорды
+            const chordNotes = [root, root + (isMinor ? 3 : 4), root + 7, root + 10];
+            
+            chordNotes.forEach((n, i) => {
+                // Стаггер (раскачка) начала нот
+                const stagger = i * 0.08;
+                events.push({
+                    type: 'accompaniment',
+                    note: n + compOctave,
+                    time: stagger,
+                    duration: 3.5, // Почти весь такт
+                    weight: 0.4 - (i * 0.05),
+                    technique: 'swell', dynamics: 'p', phrasing: 'legato',
+                    params: { attack: 1.5, release: 2.0 }
                 });
             });
+
+            // Украшательства (Melodic Ornaments)
+            // Добавляем тихую мелодическую линию в аккомпанемент раз в 2 такта
+            if (epoch % 2 === 1) {
+                const ornaments = [chordNotes[3] + 2, chordNotes[3], chordNotes[2]]; // 9 -> 7 -> 5
+                ornaments.forEach((n, i) => {
+                    events.push({
+                        type: 'accompaniment',
+                        note: n + compOctave + 12, // Октавой выше аккорда
+                        time: 2.0 + i * 0.5,
+                        duration: 0.4,
+                        weight: 0.25,
+                        technique: 'swell', dynamics: 'pp', phrasing: 'detached'
+                    });
+                });
+            }
         }
         return events;
     }
@@ -208,16 +226,19 @@ export class BluesBrain {
         const root = chord.rootNote;
         const notes = [root, root + (isMinor ? 3 : 4), root + 7, root + 10];
         
-        // "Pocket" — акцент на 1 и синкопа на 2-и
-        [0, 4.5].forEach(tick => {
-            notes.forEach((n, i) => {
+        // #РЕГИСТР: Опускаем пианиста на 2 октавы (+36 -> +12)
+        const pianoOctave = 12;
+
+        // Мягкий "Страйд" - только на 1 и 3 доли
+        [0, 2].forEach((tickInBeats, i) => {
+            notes.forEach((n, ni) => {
                 events.push({
                     type: 'pianoAccompaniment',
-                    note: n + 36,
-                    time: tick / 3,
-                    duration: 0.3,
-                    weight: 0.5 - (i * 0.05),
-                    technique: 'hit', dynamics: 'p', phrasing: 'staccato'
+                    note: n + pianoOctave,
+                    time: tickInBeats,
+                    duration: 1.0,
+                    weight: 0.35 - (ni * 0.05),
+                    technique: 'hit', dynamics: 'p', phrasing: 'detached'
                 });
             });
         });
@@ -226,8 +247,7 @@ export class BluesBrain {
 
     private generateSoulSolo(chord: GhostChord, dna: SuiteDNA, epoch: number, navInfo: NavigationInfo, instrument?: string): FractalEvent[] {
         const isAcoustic = instrument === 'blackAcoustic';
-        // При высоком напряжении всегда переходим на активный план
-        const currentSoloPlan = this.cognitiveState.tensionLevel > 0.82 ? 'S_ACTIVE' : (dna.soloPlanMap.get(navInfo.currentPart.id) || 'S04');
+        const currentSoloPlan = this.cognitiveState.tensionLevel > 0.85 ? 'S_ACTIVE' : (dna.soloPlanMap.get(navInfo.currentPart.id) || 'S04');
         const plan = BLUES_SOLO_PLANS[currentSoloPlan];
         
         const barIn12 = epoch % 12;
@@ -236,67 +256,69 @@ export class BluesBrain {
         
         let lickPhrase = JSON.parse(JSON.stringify(BLUES_SOLO_LICKS[lickId].phrase));
 
-        // Эмоциональное развитие: инверсия ответа
-        if (this.cognitiveState.phraseState === 'response' && this.random.next() < 0.5) {
+        if (this.cognitiveState.phraseState === 'response' && this.random.next() < 0.4) {
             lickPhrase = invertMelody(lickPhrase);
         }
 
         const events: FractalEvent[] = [];
-        lickPhrase.forEach((note: any) => {
-            // Подъем в зону 60-84 для певучести
-            const rootPitch = chord.rootNote + (DEGREE_TO_SEMITONE[note.deg] || 0) + 48; 
+        
+        // #РЕГИСТР: Опускаем соло на 2 октавы (с +48 до +24)
+        // Теперь соло попадает в диапазон C3-C5
+        const soloOctave = 24;
 
-            // Alvin Lee Double-Stops: добавляем квинту или терцию для "жира"
-            const isEmotiveDouble = this.random.next() < 0.25 && !isAcoustic && note.d > 2;
+        lickPhrase.forEach((note: any) => {
+            const rootPitch = chord.rootNote + (DEGREE_TO_SEMITONE[note.deg] || 0) + soloOctave; 
+
+            // Менее агрессивные дабл-стопы
+            const isEmotiveDouble = this.random.next() < 0.15 && !isAcoustic && note.d > 3;
 
             events.push({
                 type: 'melody',
                 note: rootPitch,
                 time: note.t / 3,
                 duration: (note.d || 2) / 3,
-                weight: 0.98,
+                weight: 0.85, // Lowered for softness
                 technique: (note.tech || 'pick') as Technique,
-                dynamics: 'mf', phrasing: 'legato',
+                dynamics: 'p', phrasing: 'legato',
                 params: { barCount: epoch }
             });
 
             if (isEmotiveDouble) {
                 events.push({
                     type: 'melody',
-                    note: rootPitch + 5, // Квинта
-                    time: note.t / 3 + 0.005,
+                    note: rootPitch + 5, 
+                    time: note.t / 3 + 0.01,
                     duration: (note.d || 2) / 3,
-                    weight: 0.75,
-                    technique: 'pick', dynamics: 'p', phrasing: 'legato'
+                    weight: 0.5,
+                    technique: 'pick', dynamics: 'pp', phrasing: 'legato'
                 });
             }
         });
 
-        // "Alvin Lee Shred": взрывные пассажи при высоком напряжении
-        if (this.cognitiveState.tensionLevel > 0.75 && this.random.next() < 0.4 && !isAcoustic) {
-            const shredDegrees = ['R', '2', 'b3', '3', '5', '6', 'b7', 'R+8'];
+        // "Alvin Lee Shred" только на самом пике и тише
+        if (this.cognitiveState.tensionLevel > 0.88 && this.random.next() < 0.3 && !isAcoustic) {
+            const shredDegrees = ['R', '2', 'b3', '3', '5', '6'];
             shredDegrees.forEach((deg, i) => {
                 events.push({
                     type: 'melody',
-                    note: chord.rootNote + (DEGREE_TO_SEMITONE[deg] || 0) + 48,
-                    time: (i * 0.75) / 12,
+                    note: chord.rootNote + (DEGREE_TO_SEMITONE[deg] || 0) + soloOctave,
+                    time: (i * 0.5) / 12,
                     duration: 0.1,
-                    weight: 0.65,
-                    technique: 'pick', dynamics: 'mf', phrasing: 'staccato'
+                    weight: 0.45,
+                    technique: 'pick', dynamics: 'p', phrasing: 'staccato'
                 });
             });
         }
 
-        humanizeEvents(events, 0.008, this.random);
+        humanizeEvents(events, 0.02, this.random); // Increased humanization for "drag" feel
         return events;
     }
 
     private evolveEmotion() {
-        // Броуновское движение эмоций для живости
-        this.cognitiveState.emotion.melancholy += (this.random.next() - 0.5) * 0.04;
-        this.cognitiveState.tensionLevel += (this.random.next() - 0.3) * 0.06; // Напряжение растет быстрее
+        this.cognitiveState.emotion.melancholy += (this.random.next() - 0.5) * 0.03;
+        this.cognitiveState.tensionLevel += (this.random.next() - 0.4) * 0.04; 
         
-        if (this.cognitiveState.tensionLevel > 1.0) this.cognitiveState.tensionLevel = 0.4;
-        this.cognitiveState.emotion.melancholy = Math.max(0.2, Math.min(0.99, this.cognitiveState.emotion.melancholy));
+        if (this.cognitiveState.tensionLevel > 1.0) this.cognitiveState.tensionLevel = 0.3;
+        this.cognitiveState.emotion.melancholy = Math.max(0.4, Math.min(0.99, this.cognitiveState.emotion.melancholy));
     }
 }
