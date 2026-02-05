@@ -1,15 +1,14 @@
 import type { MusicBlueprint } from '@/types/music';
 
 /**
- * #ЗАЧЕМ: Блюпринт "The Bluest Blues" (v12.0 - The Grand Soul Synthesis).
- * #ЧТО: Окончательная калибровка под Black Acoustic и парадигмы Нирхауза.
- * #ИНТЕГРАЦИЯ: Регистровая дисциплина (MIDI 48-71) и постоянный ансамбль.
- * #ИСПРАВЛЕНО (ПЛАН 137): Аккомпанемент переключен на organ_soft_jazz для разделения ролей.
+ * #ЗАЧЕМ: Блюпринт "The Bluest Blues" (v12.5 - Atmospheric Synthesis).
+ * #ЧТО: Смена манеры аккомпанемента на "soft sustained" (long-chords и arpeggio-slow).
+ * #ИНТЕГРАЦИЯ: Регистровая дисциплина и идеальный фон для Black Acoustic.
  */
 export const WinterBluesBlueprint: MusicBlueprint = {
     id: 'winter_blues',
-    name: 'The Bluest Blues (Nierhaus Synthesis)',
-    description: 'A deep, cognitive blues journey. Melodic syntax, fractal timing, and L-system phrasing.',
+    name: 'The Bluest Blues (Atmospheric Synthesis)',
+    description: 'A deep, cognitive blues journey with a soft, sustained Hammond bed. Melodic syntax and fractal timing.',
     mood: 'melancholic',
     musical: {
         key: { root: 'E', scale: 'dorian', octave: 1 },
@@ -44,7 +43,12 @@ export const WinterBluesBlueprint: MusicBlueprint = {
                 instrumentRules: {
                     bass: { techniques: [{ value: 'walking', weight: 1.0 }], density: { min: 1.0, max: 1.0 } },
                     accompaniment: { 
-                        techniques: [{ value: 'rhythmic-comp', weight: 1.0 }], 
+                        // #ЗАЧЕМ: Смена на мягкую, протяжную манеру игры.
+                        // #ЧТО: Смесь длинных аккордов (80%) и медленных арпеджио (20%).
+                        techniques: [
+                            { value: 'long-chords', weight: 0.8 },
+                            { value: 'arpeggio-slow', weight: 0.2 }
+                        ], 
                         density: { min: 0.9, max: 1.0 },
                         register: { preferred: 'low' } 
                     },
@@ -79,6 +83,13 @@ export const WinterBluesBlueprint: MusicBlueprint = {
                         source: 'blues_solo', 
                         density: { min: 0.8, max: 1.0 },
                         register: { preferred: 'low' } 
+                    },
+                    accompaniment: { 
+                        techniques: [
+                            { value: 'long-chords', weight: 0.7 },
+                            { value: 'arpeggio-slow', weight: 0.3 }
+                        ], 
+                        density: { min: 0.9, max: 1.0 }
                     }
                 },
                 bundles: [{ id: 'SYNTHESIS_MAIN', name: 'The Soul Flow', duration: { percent: 100 }, characteristics: {}, phrases: {} }],
@@ -99,7 +110,8 @@ export const WinterBluesBlueprint: MusicBlueprint = {
                 ],
                 instrumentRules: {
                     bass: { techniques: [{ value: 'walking', weight: 1.0 }], density: { min: 0.5, max: 0.7 } },
-                    melody: { source: 'motif', density: { min: 0.2, max: 0.4 }, register: { preferred: 'low' } }
+                    melody: { source: 'motif', density: { min: 0.2, max: 0.4 }, register: { preferred: 'low' } },
+                    accompaniment: { techniques: [{ value: 'long-chords', weight: 1.0 }] }
                 },
                 bundles: [{ id: 'SYNTHESIS_OUTRO', name: 'Fading Synthesis', duration: { percent: 100 }, characteristics: {}, phrases: {} }],
                 outroFill: null,
