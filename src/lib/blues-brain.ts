@@ -18,9 +18,8 @@ import {
 } from './music-theory';
 
 /**
- * #ЗАЧЕМ: "Блюзовый Архитектор" v8.0 — "Cognitive Soul".
- * #ЧТО: Реализует логику AAB (Statement-Variation-Answer), правила разрешения ♭5,
- *       "Midnight Drag" (оттяжку) и активный Travis Picking.
+ * #ЗАЧЕМ: "Блюзовый Архитектор" v8.1 — "Low Ceiling Soul".
+ * #ЧТО: Реализует логику AAB, правила разрешения ♭5 и ЖЕСТКИЙ ПОТОЛОК 70 для гитары.
  * #ИНТЕГРАЦИЯ: Полностью контролирует исполнение Black Acoustic и Organ.
  */
 export class BluesBrain {
@@ -28,6 +27,7 @@ export class BluesBrain {
     private random: any;
     private lastAxiom: FractalEvent[] = [];
     private barInChorus = 0;
+    private readonly GUITAR_CEILING = 70; // Жесткий порог: Bb4
 
     constructor(seed: number, mood: Mood) {
         this.random = this.seededRandom(seed);
@@ -56,6 +56,16 @@ export class BluesBrain {
         };
     }
 
+    private clampToCeiling(pitch: number): number {
+        // #ЗАЧЕМ: Соблюдение требования "не лезть высоко".
+        // #ЧТО: Если нота выше 70, переносим её на октаву вниз пока не впишемся в диапазон.
+        let result = pitch;
+        while (result > this.GUITAR_CEILING) {
+            result -= 12;
+        }
+        return result;
+    }
+
     public generateBar(
         epoch: number, 
         currentChord: GhostChord, 
@@ -66,16 +76,16 @@ export class BluesBrain {
         this.barInChorus = epoch % 12;
         const events: FractalEvent[] = [];
 
-        // 1. УДАРНЫЕ: Ритмический "кач" с акцентами (не в сетку!)
+        // 1. УДАРНЫЕ
         if (hints.drums) events.push(...this.generateDrums(navInfo, epoch));
 
-        // 2. БАС: Умные риффы с процедурными мостами
+        // 2. БАС
         if (hints.bass) events.push(...this.generateWalkingBass(currentChord, epoch));
         
-        // 3. АККОМПАНЕМЕНТ: Живые "пальцы" (Travis Picking + Strumming)
+        // 3. АККОМПАНЕМЕНТ: Активный Travis Picking с потолком 70
         if (hints.accompaniment) events.push(...this.generateAcousticComping(currentChord, epoch));
         
-        // 4. МЕЛОДИЯ: Когнитивная речь по закону AAB
+        // 4. МЕЛОДИЯ: Когнитивная речь с потолком 70
         if (hints.melody) events.push(...this.generateCognitiveMelody(currentChord, epoch, navInfo));
 
         return events;
@@ -91,7 +101,6 @@ export class BluesBrain {
         const add = (pattern: number[] | undefined, pool: string[], weight = 0.7) => {
             if (pattern && pool.length > 0) {
                 pattern.forEach(t => {
-                    // Midnight Drag для малого барабана и хэта
                     const drag = pool[0].includes('snare') || pool[0].includes('hat') ? (this.random.next() * 0.045) : 0;
                     drumEvents.push({
                         type: pool[this.random.nextInt(pool.length)],
@@ -106,7 +115,7 @@ export class BluesBrain {
         add(riff.K, kit.kick, 0.85);
         add(riff.SD, kit.snare, 0.75);
         add(riff.HH, kit.hihat, 0.45);
-        if (this.barInChorus === 11) add([0, 3, 6, 9], kit.perc, 0.6); // Fill на 12-м такте
+        if (this.barInChorus === 11) add([0, 3, 6, 9], kit.perc, 0.6); 
         
         return drumEvents;
     }
@@ -137,14 +146,17 @@ export class BluesBrain {
         const isMinor = chord.chordType === 'minor';
         const chordNotes = [root, root + (isMinor ? 3 : 4), root + 7, root + 10];
 
-        // "Busy Fingers" Travis Picking
         const ticks = [0, 2, 4, 6, 8, 10];
         ticks.forEach((t, i) => {
             const noteIdx = i % chordNotes.length;
-            // Рассыпаем аккорд (Staggered entry)
+            let pitch = chordNotes[noteIdx] + 12;
+            
+            // Применяем потолок 70
+            pitch = this.clampToCeiling(pitch);
+
             events.push({
                 type: 'accompaniment',
-                note: chordNotes[noteIdx] + 12, 
+                note: pitch, 
                 time: (t / 3) + (i * 0.015),
                 duration: 0.6,
                 weight: 0.35,
@@ -156,9 +168,7 @@ export class BluesBrain {
     }
 
     private generateCognitiveMelody(chord: GhostChord, epoch: number, navInfo: NavigationInfo): FractalEvent[] {
-        // Логика AAB
         const phase = this.barInChorus < 4 ? 'A' : (this.barInChorus < 8 ? 'A_VAR' : 'B');
-        const scale = [0, 3, 5, 6, 7, 10]; // Blues Pentatonic + b5
         const events: FractalEvent[] = [];
         
         if (phase === 'A') {
@@ -166,14 +176,15 @@ export class BluesBrain {
             this.lastAxiom = motif;
             events.push(...motif);
         } else if (phase === 'A_VAR') {
-            // Повтор темы с вариацией регистра или легкой оттяжкой
-            events.push(...this.lastAxiom.map(n => ({
-                ...n,
-                note: n.note + (chord.rootNote - this.lastAxiom[0].note), // Транспозиция под аккорд
-                time: n.time + (this.random.next() * 0.1) // "Ленивая" вариация
-            })));
+            events.push(...this.lastAxiom.map(n => {
+                let newNote = n.note + (chord.rootNote - (this.lastAxiom[0]?.note || chord.rootNote));
+                return {
+                    ...n,
+                    note: this.clampToCeiling(newNote),
+                    time: n.time + (this.random.next() * 0.1)
+                };
+            }));
         } else {
-            // Ответ B: Эмоциональный пик и разрешение
             events.push(...this.generateMotifRuleBased(chord.rootNote, 0.9));
         }
 
@@ -182,7 +193,7 @@ export class BluesBrain {
 
     private generateMotifRuleBased(root: number, energy: number): FractalEvent[] {
         const events: FractalEvent[] = [];
-        const scale = [0, 3, 5, 6, 7, 10]; // 6 = b5 (blue note)
+        const scale = [0, 3, 5, 6, 7, 10]; 
         const count = 3 + Math.floor(energy * 5);
         let currentTick = 0;
 
@@ -190,7 +201,6 @@ export class BluesBrain {
             let degIndex = this.random.nextInt(scale.length);
             let degree = scale[degIndex];
             
-            // ПРАВИЛО РАЗРЕШЕНИЯ b5: если прошлая нота была b5, эта обязана быть 5 или b3
             if (this.state.blueNotePending) {
                 degree = this.random.next() > 0.5 ? 7 : 3;
                 this.state.blueNotePending = false;
@@ -198,8 +208,11 @@ export class BluesBrain {
                 this.state.blueNotePending = true;
             }
 
-            const pitch = root + degree + 24; // C3-C5 range (заземление)
-            const time = (currentTick / 3) + (this.random.next() * 0.05); // Midnight Drag
+            // Рассчитываем pitch и применяем потолок 70
+            let pitch = root + degree + 24; 
+            pitch = this.clampToCeiling(pitch);
+
+            const time = (currentTick / 3) + (this.random.next() * 0.05); 
             
             events.push({
                 type: 'melody',
