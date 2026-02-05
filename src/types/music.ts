@@ -1,30 +1,28 @@
+
 import type { Mood as FractalMood, InstrumentHints as FractalInstrumentHints, InstrumentPart as FractalInstrumentPart } from './fractal';
 import { V2_PRESETS } from '@/lib/presets-v2';
 import { BASS_PRESETS } from '@/lib/bass-presets';
 
 export type Mood = FractalMood;
 
-// A musical note to be played by a synthesizer.
 export type PlayableNote = {
-    midi: number;         // MIDI note number (e.g., 60 for C4).
-    time: number;         // When to play it, in seconds, relative to the start of the audio chunk.
-    duration: number;     // How long the note should last, in seconds.
-    velocity?: number;    // How loud to play it (0-1), optional.
-    part?: 'spark' | 'fill' | string; // Optional identifier for special notes or parts
-    note?: string; // For samplers that use note names
-    params?: any; // To pass synth params from composer
+    midi: number;
+    time: number;
+    duration: number;
+    velocity?: number;
+    part?: 'spark' | 'fill' | string;
+    note?: string;
+    params?: any;
     technique?: Technique;
 };
 
-// A note for the sampler, identified by a string name.
 export type SamplerNote = {
-    note: string;         // Note name corresponding to the sampler mapping (e.g., 'C4' for kick).
-    time: number;         // When to play it, in seconds, relative to the start of the audio chunk.
-    velocity?: number;    // How loud to play it (0-1), optional.
-    midi: number;         // MIDI note number, can be redundant but useful for unification
+    note: string;
+    time: number;
+    velocity?: number;
+    midi: number;
 };
 
-// A score is an object containing arrays of notes for each part.
 export type Score = {
     bass?: PlayableNote[];
     melody?: PlayableNote[];
@@ -32,15 +30,13 @@ export type Score = {
     harmony?: PlayableNote[];
     drums?: DrumsScore;
     effects?: EffectsScore;
-    sparkle?: boolean; // Command to play a sparkle
+    sparkle?: boolean;
     instrumentHints?: FractalInstrumentHints;
 };
 
 export type DrumsScore = PlayableNote[];
 export type EffectsScore = SamplerNote[];
 
-
-// --- UI Types ---
 export type V1BassInstrument = 'classicBass' | 'glideBass' | 'ambientDrone' | 'resonantGliss' | 'hypnoticDrone' | 'livingRiff';
 export type V2BassInstrument = keyof typeof BASS_PRESETS;
 export type BassInstrument = V1BassInstrument | V2BassInstrument | 'none';
@@ -90,7 +86,6 @@ export type DrumAndPercussionInstrument =
     | 'perc-013'
     | 'perc-014'
     | 'perc-015'
-    // New Brush Types
     | 'drum_brush1'
     | 'drum_brush2'
     | 'drum_brush3'
@@ -104,24 +99,23 @@ export type BassTechnique = 'arpeggio' | 'portamento' | 'glissando' | 'glide' | 
 export type Technique = BassTechnique | 'pluck' | 'pick' | 'harm' | 'slide' | 'hit' | 'ghost' | 'swell' | 'fill';
 export type AccompanimentTechnique = 'choral' | 'alternating-bass-chord' | 'chord-pulsation' | 'arpeggio-fast' | 'arpeggio-slow' | 'alberti-bass' | 'paired-notes' | 'long-chords' | 'power-chords' | 'rhythmic-comp';
 
-
 export type InstrumentSettings = {
   bass: {
       name: BassInstrument;
-      volume: number; // 0-1
+      volume: number;
       technique: BassTechnique;
   };
   melody: {
       name: MelodyInstrument;
-      volume: number; // 0-1
+      volume: number;
   };
   accompaniment: {
       name: AccompanimentInstrument;
-      volume: number; // 0-1
+      volume: number;
   };
   harmony: {
       name: 'piano' | 'guitarChords' | 'flute' | 'violin' | 'none';
-      volume: number; // 0-1
+      volume: number;
   };
    pianoAccompaniment: {
     name: 'piano';
@@ -140,7 +134,6 @@ export type SfxSettings = {
     enabled: boolean;
     volume: number;
 };
-
 
 export type TextureSettings = {
     sparkles: {
@@ -166,7 +159,7 @@ export type WorkerSettings = {
 };
 
 export type TimerSettings = {
-    duration: number; // in seconds
+    duration: number;
     timeLeft: number;
     isActive: boolean;
 };
@@ -174,19 +167,13 @@ export type TimerSettings = {
 export type ScoreName = 'evolve' | 'omega' | 'journey' | 'dreamtales' | 'multeity' | 'neuro_f_matrix';
 export type Genre = 'trance' | 'ambient' | 'progressive' | 'rock' | 'house' | 'rnb' | 'ballad' | 'reggae' | 'blues' | 'celtic';
 
-// --- BLUEPRINT STRUCTURE ---
-
 export type MutationType = 'transpose' | 'rhythmic_shift' | 'velocity_curve' | 'inversion' | 'register_shift' | 'voicing_change' | 'retrograde' | 'augmentation';
-
-export type MutationPolicy = {
-  // Simplified for now
-};
 
 export type FillTechnique = 'filter_sweep' | 'reverb_burst' | 'harmonic_glide' | 'density_pause' | 'granular_freeze' | 'roll' | 'crescendo' | 'shimmer_burst';
 
 export type FillPolicy = {
   type: FillTechnique;
-  duration: number; // in bars
+  duration: number;
   parameters?: any;
 };
 
@@ -223,39 +210,23 @@ export type InstrumentBehaviorRules = {
     soloToPatternRatio?: number;
     fingerstyle?: { bars: number[]; pattern: string; voicingName: string; }[];
     strum?: { bars: number[]; pattern: string; voicingName: string; }[];
-    kitOverrides?: {
-      add?: InstrumentType[];
-      remove?: InstrumentType[];
-      substitute?: Partial<Record<InstrumentType, InstrumentType>>;
-    };
 };
-
 
 export type InstrumentOption<T> = {
     name: T;
-    weight: number; // 0.0 to 1.0
+    weight: number;
 };
 
-// #ЗАЧЕМ: Определяет правила активации инструмента внутри одной "сцены".
-// #ЧТО: Включает вероятность активации и список возможных тембров.
-// #ОБНОВЛЕНО: Добавлен флаг `transient` для реализации временной (нелипкой) активации.
 export type InstrumentActivationRule<T = any> = {
-    activationChance: number; // 0.0 to 1.0
+    activationChance: number;
     instrumentOptions: InstrumentOption<T>[];
-    /** 
-     * Если true, инструмент проверяет шанс активации каждый такт заново. 
-     * Если false, один раз активировавшись, он остается в ансамбле до конца части.
-     */
     transient?: boolean;
 };
 
-// #ЗАЧЕМ: Определяет одну "сцену" внутри музыкальной части.
-// #ЧТО: Содержит длительность сцены и набор правил активации для инструментов.
 export type Stage = {
     duration: { percent: number };
     instrumentation: Partial<Record<InstrumentPart, InstrumentActivationRule>>;
 };
-
 
 export type InstrumentationRules<T> = {
     strategy: 'weighted';
@@ -264,16 +235,10 @@ export type InstrumentationRules<T> = {
     v2Options?: InstrumentOption<T>[];
 };
 
-export type HarmonicCenter = {
-    center: string;
-    satellites: string[];
-    weight: number;
-};
-
 export type BlueprintBundle = {
   id: string;
   name: string;
-  duration: { percent: number }; // Duration as a percentage of the parent part
+  duration: { percent: number };
   characteristics: any; 
   phrases: any;
   outroFill?: FillPolicy | null;
@@ -282,32 +247,23 @@ export type BlueprintBundle = {
 export type BlueprintPart = {
   id: string;
   name: string;
-  duration: { percent: number }; // Duration as a percentage of the total suite
+  duration: { percent: number };
   layers: {
     [key in InstrumentPart]?: boolean;
   };
-  // #ЗАМЕНЕНО: Старая система `instrumentation` заменяется на `stagedInstrumentation`.
   instrumentation?: {
       melody?: InstrumentationRules<MelodyInstrument>;
       accompaniment?: InstrumentationRules<AccompanimentInstrument>;
       bass?: InstrumentationRules<BassInstrument>;
       harmony?: InstrumentationRules<'piano' | 'guitarChords' | 'flute' | 'violin'>;
   };
-  stagedInstrumentation?: Stage[]; // Новая система "сцен"
-  instrumentEntry?: { [key: string]: number };
-  instrumentEntry?: { [key: string]: number };
-  instrumentExit?: { [key: string]: number };
+  stagedInstrumentation?: Stage[];
   instrumentRules: {
       [key: string]: InstrumentBehaviorRules;
   };
   bassAccompanimentDouble?: {
     enabled: boolean;
     instrument: AccompanimentInstrument;
-    octaveShift: number;
-  };
-  accompanimentMelodyDouble?: {
-    enabled: boolean;
-    instrument: MelodyInstrument;
     octaveShift: number;
   };
   bundles: BlueprintBundle[];
@@ -338,17 +294,17 @@ export type MusicBlueprint = {
         key: { root: string; scale: string; octave: number };
         bpm: { base: number; range: [number, number], modifier: number };
         timeSignature: { numerator: number; denominator: number };
-        harmonicJourney: any[]; // Define this type more strictly later
-        tensionProfile: any; // Define this type more strictly later
+        harmonicJourney: any[];
+        tensionProfile: any;
     };
     structure: {
         totalDuration: { preferredBars: number };
         parts: BlueprintPart[];
     };
-    mutations: any; // Define this type more strictly later
-    ambientEvents: any[]; // Define this type more strictly later
-    continuity: any; // Define this type more strictly later
-    rendering: any; // Define this type more strictly later
+    mutations: any;
+    ambientEvents: any[];
+    continuity: any;
+    rendering: any;
 };
 
 export type NavigationInfo = {
@@ -360,3 +316,15 @@ export type NavigationInfo = {
   currentPartStartBar: number;
   currentPartEndBar: number;
 };
+
+/**
+ * #ЗАЧЕМ: Когнитивное состояние блюзового исполнителя.
+ * #ЧТО: Хранит фазу фразы (зов/ответ), уровень внутреннего напряжения и историю.
+ * #СВЯЗИ: Используется во FractalMusicEngine и music-theory.ts.
+ */
+export interface BluesCognitiveState {
+  phraseState: 'call' | 'response' | 'fill';
+  tensionLevel: number;
+  phraseHistory: string[];
+  emotion: { melancholy: number; darkness: number };
+}
