@@ -2,6 +2,10 @@
 // НАЧАЛО ЖУРНАЛА ПРОЕКТА "AuraGroove"
 // Этот файл является "живой спецификацией" и содержит историю ключевых решений и изменений.
 
+// --- ЗАПИСЬ: 2024-12-04 (ПЛАН №133: THE TRIAL OF THE FRACTAL SOUL) ---
+// ДЕЙСТВИЕ: Полномасштабная проба новой версии BluesBrain. 
+// СТАБИЛИЗАЦИЯ: Исправление ошибок non-finite в AudioParam. Внедрение защитных фильтров isFinite в инструмент-фабрику.
+
 // --- ЗАПИСЬ: 2024-12-04 (ПЛАН №132: DETERMINISTIC FRACTAL AWAKENING) ---
 // ДЕЙСТВИЕ: Полное исключение Math.random из BluesBrain. 
 // ТЕХНОЛОГИИ: MusiNum-интервалы, L-System Phrasing, Markov Syntax Filter, 1/f Pink Noise Timing.
