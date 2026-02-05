@@ -36,6 +36,9 @@ const BLUES_HARMONIC_TRANSITIONS: Record<string, Record<string, number>> = {
     'bVI': { 'V': 0.8, 'I': 0.2 }
 };
 
+/**
+ * #ЗАЧЕМ: Универсальный выбор следующего состояния по матрице Маркова.
+ */
 export function markovNext<T extends string>(matrix: Record<T, Record<T, number>>, current: T, random: any): T {
     const transitions = matrix[current];
     if (!transitions) return current;
@@ -49,6 +52,41 @@ export function markovNext<T extends string>(matrix: Record<T, Record<T, number>
         if (r <= 0) return state;
     }
     return entries[entries.length - 1][0];
+}
+
+/**
+ * #ЗАЧЕМ: Генерация базовой гармонической подложки (аксиомы).
+ * #ЧТО: Создает длинные пэды на основе текущего GhostChord.
+ */
+export function createHarmonyAxiom(
+    chord: GhostChord,
+    mood: Mood,
+    genre: Genre,
+    random: any,
+    epoch: number
+): FractalEvent[] {
+    const events: FractalEvent[] = [];
+    const isMinor = chord.chordType === 'minor' || chord.chordType === 'diminished';
+    const root = chord.rootNote;
+    
+    // Базовое трезвучие для аккомпанемента
+    const notes = [root, root + (isMinor ? 3 : 4), root + 7];
+    
+    notes.forEach((note, i) => {
+        events.push({
+            type: 'accompaniment',
+            note: note + 24, // Средне-высокий регистр
+            time: i * 0.05, // Легкое арпеджио для живости
+            duration: 4.0,
+            weight: 0.5 - (i * 0.1),
+            technique: 'swell',
+            dynamics: 'p',
+            phrasing: 'legato',
+            params: { barCount: epoch }
+        });
+    });
+
+    return events;
 }
 
 export function getScaleForMood(mood: Mood, genre?: Genre, chordType?: 'major' | 'minor' | 'dominant' | 'diminished'): number[] {
@@ -112,11 +150,11 @@ export function retrogradeMelody(phrase: any[]): any[] {
     if (phrase.length < 2) return phrase;
     const reversed = [...phrase].reverse();
     const startTime = phrase[0].t;
-    const endTime = phrase[phrase.length - 1].t + phrase[phrase.length - 1].d;
+    const endTime = phrase[phrase.length - 1].t + (phrase[phrase.length - 1].d || 2);
     
     return reversed.map((note, i) => {
         const originalOffset = phrase[i].t - startTime;
-        return { ...note, t: endTime - originalOffset - note.d };
+        return { ...note, t: endTime - originalOffset - (note.d || 2) };
     });
 }
 
@@ -135,7 +173,7 @@ export function applyNewRhythm(phrase: any[], random: any): any[] {
 
 export function transposeMelody(phrase: any[], interval: number): any[] {
     return phrase.map(n => {
-        const s = (DEGREE_TO_SEMITONE[n.deg] || 0 + interval + 12) % 12;
+        const s = ((DEGREE_TO_SEMITONE[n.deg] || 0) + interval + 12) % 12;
         let deg = n.deg;
         for (const [d, v] of Object.entries(DEGREE_TO_SEMITONE)) { if (v === s) { deg = d as any; break; } }
         return { ...n, deg };
@@ -156,9 +194,9 @@ export function addOrnaments(phrase: any[], random: any): any[] {
 export function subdivideRhythm(phrase: any[], random: any): any[] {
     const result = [];
     for (const note of phrase) {
-        if (note.d >= 3 && random.next() < 0.75) {
-            const first = Math.floor(note.d / 2);
-            const second = note.d - first;
+        if ((note.d || 2) >= 3 && random.next() < 0.75) {
+            const first = Math.floor((note.d || 2) / 2);
+            const second = (note.d || 2) - first;
             result.push({ ...note, d: first });
             result.push({ ...note, t: (note.t + first) % 12, d: second, tech: random.next() < 0.5 ? 'h/p' : 'sl' });
         } else result.push(note);
@@ -171,7 +209,10 @@ export function varyRhythm(phrase: any[], random: any): any[] {
     if (p.length < 2) return p;
     if (random.next() < 0.5) {
         const i = Math.floor(random.next() * (p.length - 1));
-        if (p[i].d < 4 && p[i+1].d < 4) { p[i].d += p[i+1].d; p.splice(i+1, 1); }
+        if ((p[i].d || 2) < 4 && (p[i+1].d || 2) < 4) { 
+            p[i].d = (p[i].d || 2) + (p[i+1].d || 2); 
+            p.splice(i+1, 1); 
+        }
     }
     return p;
 }
@@ -191,18 +232,13 @@ export function generateSuiteDNA(totalBars: number, mood: Mood, seed: number, ra
         if (partDuration <= 0) return;
 
         if (genre === 'blues') {
-            // #ЗАЧЕМ: Гармония теперь генерируется с помощью цепей Маркова.
-            // #ЧТО: Вместо фиксированной сетки используется матрица переходов.
-            //      Это обеспечивает уникальность "скелета" каждой пьесы.
             let currentDegree = 'I';
             let currentBarInPart = 0;
             
             while (currentBarInPart < partDuration) {
-                // Выбираем длительность блока через Марковское распределение
                 const r = random.next();
                 let duration = r < 0.6 ? 4 : (r < 0.9 ? 8 : 12);
                 
-                // Эмоциональное влияние на длительность (Melancholy Bias)
                 if (mood === 'melancholic' && currentDegree === 'IV') {
                     duration = random.next() < 0.8 ? 8 : 12;
                 }
@@ -226,12 +262,9 @@ export function generateSuiteDNA(totalBars: number, mood: Mood, seed: number, ra
                 });
                 
                 currentBarInPart += finalDuration;
-                
-                // ПЕРЕХОД ПО МАРКОВУ
                 currentDegree = markovNext(BLUES_HARMONIC_TRANSITIONS, currentDegree, random);
             }
         } else {
-             // Фолбэк для других жанров
              let currentBarInPart = 0;
              while(currentBarInPart < partDuration) {
                 const duration = [4, 8, 2][Math.floor(random.next() * 3)];

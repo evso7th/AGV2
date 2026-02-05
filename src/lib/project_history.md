@@ -3,6 +3,18 @@
 
 ---
 
+### ЗАПИСЬ: 2024-12-04 (План №111: "Core API Restoration")
+
+**ЗАДАЧА:**
+Исправить ошибку импорта `createHarmonyAxiom` в `FractalMusicEngine`.
+
+**РЕЗУЛЬТАТ:**
+1.  **Export Restored**: В `src/lib/music-theory.ts` добавлена и экспортирована функция `createHarmonyAxiom`. 
+2.  **Fallback Stability**: Теперь FractalMusicEngine корректно генерирует гармоническую подложку для не-блюзовых жанров, используя универсальную аксиому.
+3.  **Code Consistency**: Исправлены ошибки типизации и пропущенные значения по умолчанию в функциях ретрограда и дробления ритма.
+
+---
+
 ### ЗАПИСЬ: 2024-12-04 (План №110: "Markov Matrix Foundations")
 
 **ЗАДАЧА:**
