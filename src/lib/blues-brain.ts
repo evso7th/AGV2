@@ -18,9 +18,9 @@ import {
 } from './music-theory';
 
 /**
- * #ЗАЧЕМ: "Блюзовый Архитектор" v8.2 — "Octave Discipline".
- * #ЧТО: Реализует логику AAB и ЖЕСТКУЮ РЕГИСТРОВУЮ ПОЛИТИКУ (3-4 октавы).
- * #ИНТЕГРАЦИЯ: Контролирует Black Acoustic и Organ в диапазоне MIDI 48-71.
+ * #ЗАЧЕМ: "Блюзовый Архитектор" v9.0 — "Dark & Grounded Foundation".
+ * #ЧТО: Усиленная регистровая политика (октава +0/+12) и декоративный аккомпанемент.
+ * #ИНТЕГРАЦИЯ: Контролирует Dark Telecaster и Organ в диапазоне MIDI 36-71.
  */
 export class BluesBrain {
     private state: BluesCognitiveState;
@@ -28,8 +28,8 @@ export class BluesBrain {
     private lastAxiom: FractalEvent[] = [];
     private barInChorus = 0;
     
-    private readonly COMFORT_CEILING = 71; // Конец 4-й октавы (H4)
-    private readonly EXCEPTIONAL_THRESHOLD = 0.85; // Порог для выхода в 5-ю октаву
+    private readonly COMFORT_CEILING = 71; 
+    private readonly EXCEPTIONAL_THRESHOLD = 0.85;
 
     constructor(seed: number, mood: Mood) {
         this.random = this.seededRandom(seed);
@@ -59,9 +59,8 @@ export class BluesBrain {
     }
 
     private clampToCeiling(pitch: number, isExceptional: boolean = false): number {
-        // #ЗАЧЕМ: Соблюдение правила 3-й и 4-й октав.
-        // #ЧТО: MIDI 48-71 (3 и 4 октавы). Если выше, опускаем на октаву.
-        //      5-я октава (72+) разрешена только в исключительных случаях.
+        // #ЗАЧЕМ: Ультра-низкая регистровая политика.
+        // #ЧТО: Опускаем потолок до 71 (H4). Если нота выше, опускаем на 2 октавы.
         let result = pitch;
         const limit = isExceptional ? 83 : this.COMFORT_CEILING;
         
@@ -69,8 +68,8 @@ export class BluesBrain {
             result -= 12;
         }
         
-        // Гарантируем, что не опустимся в бас (ниже 48)
-        while (result < 48 && result > 0) {
+        // Гарантируем, что не опустимся в суб-бас (ниже 36)
+        while (result < 36 && result > 0) {
             result += 12;
         }
         
@@ -90,13 +89,13 @@ export class BluesBrain {
         // 1. УДАРНЫЕ
         if (hints.drums) events.push(...this.generateDrums(navInfo, epoch));
 
-        // 2. БАС
+        // 2. БАС (Гарантированная плотность)
         if (hints.bass) events.push(...this.generateWalkingBass(currentChord, epoch));
         
-        // 3. АККОМПАНЕМЕНТ: Travis Picking в 3-4 октавах
-        if (hints.accompaniment) events.push(...this.generateAcousticComping(currentChord, epoch));
+        // 3. АККОМПАНЕМЕНТ: Декоративный перебор в 2-3 октавах
+        if (hints.accompaniment) events.push(...this.generateDecorativeComping(currentChord, epoch));
         
-        // 4. МЕЛОДИЯ: Когнитивная речь с управляемым выходом в 5-ю октаву
+        // 4. МЕЛОДИЯ: Низкая, грудная речь
         if (hints.melody) events.push(...this.generateCognitiveMelody(currentChord, epoch, navInfo));
 
         return events;
@@ -112,7 +111,7 @@ export class BluesBrain {
         const add = (pattern: number[] | undefined, pool: string[], weight = 0.7) => {
             if (pattern && pool.length > 0) {
                 pattern.forEach(t => {
-                    const drag = pool[0].includes('snare') || pool[0].includes('hat') ? (this.random.next() * 0.045) : 0;
+                    const drag = (this.random.next() * 0.035); // Midnight Drag
                     drumEvents.push({
                         type: pool[this.random.nextInt(pool.length)],
                         time: (t / 3) + drag, 
@@ -144,35 +143,48 @@ export class BluesBrain {
         return pattern.map(note => ({
             type: 'bass',
             note: chord.rootNote + DEGREE_TO_SEMITONE[note.deg] - 12,
-            time: (note.t / 3) + (this.random.next() * 0.02),
-            duration: (note.d || 2) / 3,
-            weight: 0.8,
+            time: (note.t / 3) + (this.random.next() * 0.03), // Живая оттяжка баса
+            duration: (note.d || 3) / 3, // Увеличена длительность для поддержки фона
+            weight: 0.85,
             technique: 'walking', dynamics: 'mf', phrasing: 'legato'
         }));
     }
 
-    private generateAcousticComping(chord: GhostChord, epoch: number): FractalEvent[] {
+    private generateDecorativeComping(chord: GhostChord, epoch: number): FractalEvent[] {
         const events: FractalEvent[] = [];
         const root = chord.rootNote;
         const isMinor = chord.chordType === 'minor';
+        // Аккордовые ступени для перебора
         const chordNotes = [root, root + (isMinor ? 3 : 4), root + 7, root + 10];
 
-        const ticks = [0, 2, 4, 6, 8, 10];
+        // Основной ритмический перебор (пальчики работают)
+        const ticks = [0, 3, 6, 9];
         ticks.forEach((t, i) => {
             const noteIdx = i % chordNotes.length;
-            let pitch = chordNotes[noteIdx] + 12;
-            
-            // Аккомпанемент строго в 3-4 октавах
+            let pitch = chordNotes[noteIdx] + 12; // Опущено на 2 октавы от предыдущего +36
             pitch = this.clampToCeiling(pitch, false);
 
             events.push({
                 type: 'accompaniment',
                 note: pitch, 
-                time: (t / 3) + (i * 0.015),
-                duration: 0.6,
-                weight: 0.35,
+                time: (t / 3) + (this.random.next() * 0.04), // Небрежность
+                duration: 0.8,
+                weight: 0.4,
                 technique: 'pluck', dynamics: 'p', phrasing: 'detached'
             });
+
+            // Добавляем "украшательство" (мелизмы) на слабые доли
+            if (this.random.next() > 0.6) {
+                const decoration = chordNotes[this.random.nextInt(chordNotes.length)] + 12 + (this.random.next() > 0.5 ? 2 : -2);
+                events.push({
+                    type: 'accompaniment',
+                    note: this.clampToCeiling(decoration, false),
+                    time: (t / 3) + 0.15,
+                    duration: 0.2,
+                    weight: 0.2,
+                    technique: 'ghost', dynamics: 'pp', phrasing: 'staccato'
+                });
+            }
         });
 
         return events;
@@ -182,7 +194,6 @@ export class BluesBrain {
         const phase = this.barInChorus < 4 ? 'A' : (this.barInChorus < 8 ? 'A_VAR' : 'B');
         const events: FractalEvent[] = [];
         
-        // В фазе B (ответ) разрешаем исключительный выход в 5-ю октаву при высоком напряжении
         const canGoHigh = phase === 'B' && this.state.tensionLevel > this.EXCEPTIONAL_THRESHOLD;
 
         if (phase === 'A') {
@@ -195,7 +206,7 @@ export class BluesBrain {
                 return {
                     ...n,
                     note: this.clampToCeiling(newNote, false),
-                    time: n.time + (this.random.next() * 0.1)
+                    time: n.time + (this.random.next() * 0.08)
                 };
             }));
         } else {
@@ -222,23 +233,23 @@ export class BluesBrain {
                 this.state.blueNotePending = true;
             }
 
-            // Рассчитываем pitch и применяем новую октавную политику
-            let pitch = root + degree + 24; 
+            // РАСЧЕТ PITCH: опускаем на 2 октавы (используем +0 вместо +24)
+            let pitch = root + degree + 0; 
             pitch = this.clampToCeiling(pitch, allowExceptional);
 
-            const time = (currentTick / 3) + (this.random.next() * 0.05); 
+            const time = (currentTick / 3) + (this.random.next() * 0.06); 
             
             events.push({
                 type: 'melody',
                 note: pitch,
                 time: time,
-                duration: 0.4 + (this.random.next() * 0.6),
-                weight: 0.85,
-                technique: degree === 6 ? 'bend' : (this.random.next() > 0.8 ? 'slide' : 'pick'),
+                duration: 0.6 + (this.random.next() * 0.8),
+                weight: 0.9,
+                technique: degree === 6 ? 'bend' : (this.random.next() > 0.7 ? 'slide' : 'pick'),
                 dynamics: 'p', phrasing: 'legato'
             });
 
-            currentTick += 2 + this.random.nextInt(3);
+            currentTick += 2 + this.random.nextInt(4);
             if (currentTick >= 12) break;
         }
 

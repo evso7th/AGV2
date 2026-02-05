@@ -1,13 +1,13 @@
 import type { MusicBlueprint } from '@/types/music';
 
 /**
- * #ЗАЧЕМ: Специальный блюпринт "The Alvin Lee Tribute" (v4.2 Disciplined Soul).
- * #ЧТО: Жестко ограниченный регистр MIDI 71 для плотного "дымного" звучания.
+ * #ЗАЧЕМ: Специальный блюпринт "The Alvin Lee Tribute" (v5.0 Dark & Solid).
+ * #ЧТО: Переход на Dark Telecaster, глубокий регистр и гарантированная активация баса.
  */
 export const WinterBluesBlueprint: MusicBlueprint = {
     id: 'winter_blues',
-    name: 'The Bluest Blues (Disciplined)',
-    description: 'A deep, soulful acoustic blues tribute. Focused on 3rd and 4th octaves (MIDI 48-71).',
+    name: 'The Bluest Blues (Solid Foundation)',
+    description: 'A deep, soulful blues tribute. Now featuring Dark Telecaster and an unbreakable rhythm section.',
     mood: 'melancholic',
     musical: {
         key: { root: 'E', scale: 'dorian', octave: 1 },
@@ -30,16 +30,17 @@ export const WinterBluesBlueprint: MusicBlueprint = {
                     { 
                         duration: { percent: 100 }, 
                         instrumentation: {
-                           melody: { activationChance: 1.0, instrumentOptions: [ { name: 'blackAcoustic', weight: 1.0 } ] },
+                           melody: { activationChance: 1.0, instrumentOptions: [ { name: 'darkTelecaster', weight: 1.0 } ] },
                            pianoAccompaniment: { activationChance: 1.0, instrumentOptions: [ { name: 'piano', weight: 1.0 } ] },
                            bass: { activationChance: 1.0, instrumentOptions: [ { name: 'bass_jazz_warm', weight: 1.0 } ] },
                            drums: { activationChance: 1.0, instrumentOptions: [ { name: 'blues_melancholic', weight: 1.0 } ] },
-                           accompaniment: { activationChance: 1.0, instrumentOptions: [ { name: 'organ_soft_jazz', weight: 1.0 } ] }
+                           accompaniment: { activationChance: 1.0, instrumentOptions: [ { name: 'organ_soft_jazz', weight: 1.0 } ] },
+                           harmony: { activationChance: 1.0, instrumentOptions: [ { name: 'guitarChords', weight: 1.0 } ] }
                         }
                     }
                 ],
                 instrumentRules: {
-                    bass: { techniques: [{ value: 'walking', weight: 1.0 }], density: { min: 0.7, max: 0.9 } },
+                    bass: { techniques: [{ value: 'walking', weight: 1.0 }], density: { min: 0.9, max: 1.0 } },
                     accompaniment: { 
                         techniques: [{ value: 'rhythmic-comp', weight: 1.0 }], 
                         density: { min: 0.8, max: 1.0 },
@@ -57,9 +58,22 @@ export const WinterBluesBlueprint: MusicBlueprint = {
             },
             {
                 id: 'MAIN_1', name: 'Deep Blues', duration: { percent: 50 },
-                layers: { bass: true, drums: true, melody: true, accompaniment: true, harmony: true },
+                layers: { bass: true, drums: true, melody: true, accompaniment: true, harmony: true, pianoAccompaniment: true },
+                stagedInstrumentation: [
+                    { 
+                        duration: { percent: 100 }, 
+                        instrumentation: {
+                           melody: { activationChance: 1.0, instrumentOptions: [ { name: 'darkTelecaster', weight: 1.0 } ] },
+                           bass: { activationChance: 1.0, instrumentOptions: [ { name: 'bass_jazz_warm', weight: 1.0 } ] },
+                           drums: { activationChance: 1.0, instrumentOptions: [ { name: 'blues_melancholic_master', weight: 1.0 } ] },
+                           accompaniment: { activationChance: 1.0, instrumentOptions: [ { name: 'organ_soft_jazz', weight: 1.0 } ] },
+                           harmony: { activationChance: 1.0, instrumentOptions: [ { name: 'guitarChords', weight: 1.0 } ] }
+                        }
+                    }
+                ],
                 instrumentRules: {
                     drums: { pattern: 'composer', kitName: 'blues_melancholic_master', density: { min: 0.7, max: 0.9 } },
+                    bass: { techniques: [{ value: 'walking', weight: 1.0 }], density: { min: 1.0, max: 1.0 } },
                     melody: { 
                         source: 'blues_solo', 
                         soloPlan: "S01", 
@@ -72,9 +86,19 @@ export const WinterBluesBlueprint: MusicBlueprint = {
             },
             {
                 id: 'OUTRO', name: 'Dissolution', duration: { percent: 25 },
-                layers: { bass: true, accompaniment: true, melody: true },
+                layers: { bass: true, accompaniment: true, melody: true, drums: true },
+                stagedInstrumentation: [
+                    { 
+                        duration: { percent: 100 }, 
+                        instrumentation: {
+                           melody: { activationChance: 1.0, instrumentOptions: [ { name: 'darkTelecaster', weight: 1.0 } ] },
+                           bass: { activationChance: 1.0, instrumentOptions: [ { name: 'bass_jazz_warm', weight: 1.0 } ] },
+                           accompaniment: { activationChance: 1.0, instrumentOptions: [ { name: 'organ_soft_jazz', weight: 1.0 } ] }
+                        }
+                    }
+                ],
                 instrumentRules: {
-                    bass: { techniques: [{ value: 'long_notes', weight: 1.0 }] },
+                    bass: { techniques: [{ value: 'walking', weight: 1.0 }], density: { min: 0.5, max: 0.7 } },
                     melody: { source: 'motif', density: { min: 0.2, max: 0.4 }, register: { preferred: 'low' } }
                 },
                 bundles: [{ id: 'ALVIN_OUTRO', name: 'Dissolution', duration: { percent: 100 }, characteristics: {}, phrases: {} }],
