@@ -1,8 +1,8 @@
 /**
  * #ЗАЧЕМ: Центральная фабрика для создания высококачественных инструментов V2.
  * #ЧТО: Реализует конвейеры синтеза для synth, organ, bass и guitar.
- * #ОБНОВЛЕНО (ПЛАН 86): Внедрена тотальная изоляция голосов. Устранены общие
- *          переменные в Synth и Organ, вызывавшие утечки при полифонии.
+ * #ОБНОВЛЕНО (ПЛАН 87): Орган переведен на PeriodicWave (1 осциллятор вместо 9). 
+ *          Внедрена тотальная изоляция эффектов и остановка статических LFO при disconnect.
  * #СВЯЗИ: Используется менеджерами V2 для создания экземпляров инструментов.
  */
 
@@ -98,6 +98,10 @@ const makeTubeSaturation = (drive = 0.3, n = 8192) => {
     return curve;
 };
 
+/**
+ * #ЗАЧЕМ: Винтажная кривая искажения (Arctan-Sinh).
+ * #ЧТО: Дает более естественное "ламповое" звучание по сравнению с tanh.
+ */
 const makeVintageDistortion = (k = 50, n = 8192) => {
     const curve = new Float32Array(n);
     for (let i = 0; i < n; i++) {
@@ -317,18 +321,18 @@ export interface InstrumentAPI {
 
 const buildSynthEngine = (ctx: AudioContext, preset: any, master: GainNode, reverb: ConvolverNode, instrumentGain: GainNode, expressionGain: GainNode) => {
     let currentPreset = { ...preset };
-    const staticLFOs: OscillatorNode[] = [];
+    const internalLFOs: OscillatorNode[] = [];
     const comp = ctx.createDynamicsCompressor();
     const filt1 = ctx.createBiquadFilter();
     
     const leslie = makeChorus(ctx, { rate: 0.5, mix: currentPreset.leslie?.on ? 0.3 : 0 });
-    staticLFOs.push(...leslie.lfos);
+    internalLFOs.push(...leslie.lfos);
     
     const tremolo = makeTremolo(ctx, currentPreset.tremolo?.rate ?? 5.5, currentPreset.tremolo?.depth ?? 0.4, currentPreset.tremolo?.on ? (currentPreset.tremolo?.mix ?? 0.5) : 0);
-    staticLFOs.push(...tremolo.lfos);
+    internalLFOs.push(...tremolo.lfos);
     
     const chorus = makeChorus(ctx, { rate: currentPreset.chorus?.rate ?? 0.3, depth: currentPreset.chorus?.depth ?? 0.004, mix: currentPreset.chorus?.on ? (currentPreset.chorus.mix ?? 0.3) : 0 });
-    staticLFOs.push(...chorus.lfos);
+    internalLFOs.push(...chorus.lfos);
     
     const delay = makeDelay(ctx, { time: currentPreset.delay?.time ?? 0.35, fb: currentPreset.delay?.fb ?? 0.25, hc: 3000, wet: currentPreset.delay?.on ? (currentPreset.delay.mix ?? 0.2) : 0 });
     staticLFOs.push(...delay.lfos);
@@ -389,7 +393,8 @@ const buildSynthEngine = (ctx: AudioContext, preset: any, master: GainNode, reve
             activeVoices.clear(); allActiveVoices.clear(); 
         },
         disconnect: () => {
-            staticLFOs.forEach(lfo => { try { lfo.stop(); lfo.disconnect(); } catch(e){} });
+            internalLFOs.forEach(lfo => { try { lfo.stop(); lfo.disconnect(); } catch(e){} });
+            revSend.disconnect();
             comp.disconnect();
         },
         setPreset: (p: any) => { 
@@ -409,17 +414,37 @@ const buildSynthEngine = (ctx: AudioContext, preset: any, master: GainNode, reve
 
 const buildOrganEngine = (ctx: AudioContext, preset: any, master: GainNode, reverb: ConvolverNode, instrumentGain: GainNode, expressionGain: GainNode) => {
     let currentPreset = { ...preset };
-    const staticLFOs: OscillatorNode[] = [];
+    const internalLFOs: OscillatorNode[] = [];
     const organSum = ctx.createGain();
     const leslie = createPureLeslie(ctx, { on: true, mode: currentPreset.leslie?.mode ?? 'slow' });
-    staticLFOs.push(...leslie.lfos);
+    internalLFOs.push(...leslie.lfos);
     
     organSum.connect(leslie.input);
     leslie.output.connect(expressionGain).connect(instrumentGain).connect(master);
+    
     const revSend = ctx.createGain(); revSend.gain.value = currentPreset.reverbMix ?? 0.1;
     leslie.output.connect(revSend).connect(reverb);
 
-    const tonewheelWave = ctx.createPeriodicWave(new Float32Array([0, 1, 0.02, 0.01]), new Float32Array(4));
+    // #ЗАЧЕМ: Переход на PeriodicWave для радикальной оптимизации.
+    // #ЧТО: Один осциллятор теперь воспроизводит суммарный спектр всех drawbar-регистров.
+    // #СВЯЗИ: Устраняет хрипы при игре аккордами (План 87).
+    let tonewheelWave: PeriodicWave;
+    
+    const updateOrganWave = (drawbars: number[]) => {
+        const real = new Float32Array(17); // До 16-й гармоники
+        const imag = new Float32Array(17);
+        // Маппинг Хаммонда относительно 16' (Интервал 1)
+        const indices = [1, 3, 2, 4, 6, 8, 10, 12, 16];
+        drawbars.forEach((v, i) => {
+            if (v > 0) {
+                real[indices[i]] = (v / 8);
+            }
+        });
+        tonewheelWave = ctx.createPeriodicWave(real, imag, { disableNormalization: false });
+    };
+
+    updateOrganWave(currentPreset.drawbars || [8,0,8,5,0,3,0,0,0]);
+
     const activeVoices = new Map<number, any>();
     const allActiveVoices = new Set<any>();
     const clickBuffer = createKeyClick(ctx, 0.005, currentPreset.keyClick ?? 0.003);
@@ -429,20 +454,13 @@ const buildOrganEngine = (ctx: AudioContext, preset: any, master: GainNode, reve
         const f0 = midiToHz(midi);
         const voiceGain = ctx.createGain(); voiceGain.gain.value = 0; voiceGain.connect(organSum);
         const voiceNodes: AudioNode[] = [voiceGain];
-        const drawbars = currentPreset.drawbars || [8,0,8,5,0,3,0,0,0];
         
-        drawbars.forEach((v: number, i: number) => {
-            if (v > 0) {
-                const osc = ctx.createOscillator();
-                osc.setPeriodicWave(tonewheelWave);
-                let freq = f0 * DRAWBAR_RATIOS[i];
-                while (freq > 6000) freq /= 2;
-                osc.frequency.value = freq;
-                const g = ctx.createGain(); g.gain.value = (v/8) * 0.25;
-                osc.connect(g).connect(voiceGain); osc.start(when);
-                voiceNodes.push(osc, g);
-            }
-        });
+        const osc = ctx.createOscillator();
+        osc.setPeriodicWave(tonewheelWave);
+        osc.frequency.setValueAtTime(f0 * 0.5, when); // База - 16' регистр
+        osc.connect(voiceGain);
+        osc.start(when);
+        voiceNodes.push(osc);
 
         if (clickBuffer && allActiveVoices.size === 0) { 
             const click = ctx.createBufferSource(); click.buffer = clickBuffer;
@@ -481,10 +499,15 @@ const buildOrganEngine = (ctx: AudioContext, preset: any, master: GainNode, reve
             activeVoices.clear(); allActiveVoices.clear(); 
         },
         disconnect: () => {
-            staticLFOs.forEach(lfo => { try { lfo.stop(); lfo.disconnect(); } catch(e){} });
+            internalLFOs.forEach(lfo => { try { lfo.stop(); lfo.disconnect(); } catch(e){} });
+            revSend.disconnect();
             organSum.disconnect();
         },
-        setPreset: (p: any) => { currentPreset = p; leslie.setParam!('mode', p.leslie?.mode); }, 
+        setPreset: (p: any) => { 
+            currentPreset = p; 
+            updateOrganWave(p.drawbars || [8,0,8,5,0,3,0,0,0]);
+            leslie.setParam!('mode', p.leslie?.mode); 
+        }, 
         setParam: (k: string, v: any) => { if(k==='leslie') leslie.setParam!('mode', v); } 
     };
 };
@@ -559,7 +582,7 @@ const buildBassEngine = (ctx: AudioContext, preset: any, master: GainNode, rever
 const buildGuitarEngine = (ctx: AudioContext, preset: any, master: GainNode, reverb: ConvolverNode, instrumentGain: GainNode, expressionGain: GainNode) => {
     let currentPreset = { ...preset };
     const pickBuffer = createKeyClick(ctx, 0.03, 0.6);
-    const staticLFOs: OscillatorNode[] = [];
+    const internalLFOs: OscillatorNode[] = [];
     const guitarInput = ctx.createGain();
     
     const pickupComb = ctx.createDelay(0.01);
@@ -582,7 +605,7 @@ const buildGuitarEngine = (ctx: AudioContext, preset: any, master: GainNode, rev
     const cabinetLS = ctx.createBiquadFilter(); cabinetLS.type = 'lowshelf'; cabinetLS.frequency.value = 120; cabinetLS.gain.value = 3;
 
     const ph = makePhaser(ctx, { rate: currentPreset.phaser?.rate || 0.16, depth: currentPreset.phaser?.depth || 600, mix: currentPreset.phaser?.on ? (currentPreset.phaser.mix || 0.2) : 0 });
-    staticLFOs.push(...ph.lfos);
+    internalLFOs.push(...ph.lfos);
     const dA = makeDelay(ctx, { time: currentPreset.delayA?.time || 0.38, fb: currentPreset.delayA?.fb || 0.28, hc: 3600, wet: currentPreset.delayA?.on ? (currentPreset.delayA.mix || 0.2) : 0 });
     const dB_node = makeDelay(ctx, { time: currentPreset.delayB?.time || 0.52, fb: currentPreset.delayB?.fb || 0.22, hc: 3600, wet: currentPreset.delayB?.on ? (currentPreset.delayB.mix || 0.1) : 0 });
     const revSend = ctx.createGain(); revSend.gain.value = currentPreset.reverbMix || 0.18;
@@ -688,7 +711,8 @@ const buildGuitarEngine = (ctx: AudioContext, preset: any, master: GainNode, rev
             activeVoices.clear(); allActiveVoices.clear(); 
         },
         disconnect: () => {
-            staticLFOs.forEach(lfo => { try { lfo.stop(); lfo.disconnect(); } catch(e){} });
+            internalLFOs.forEach(lfo => { try { lfo.stop(); lfo.disconnect(); } catch(e){} });
+            revSend.disconnect();
             guitarInput.disconnect();
         },
         setPreset: (p: any) => { 
