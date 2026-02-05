@@ -4,7 +4,7 @@ import type { MusicBlueprint } from '@/types/music';
 export const WinterBluesBlueprint: MusicBlueprint = {
     id: 'winter_blues',
     name: 'Winter Blues',
-    description: 'A slow, atmospheric blues with a melancholic feel. Uses staged intro lottery.',
+    description: 'A slow, atmospheric blues with a melancholic feel. Uses sticky orchestra and staged scenes.',
     mood: 'melancholic',
     musical: {
         key: { root: 'E', scale: 'dorian', octave: 1 },
@@ -21,50 +21,53 @@ export const WinterBluesBlueprint: MusicBlueprint = {
                 layers: { bass: true, accompaniment: true, melody: true, sfx: true, sparkles: true, drums: true, harmony: true, pianoAccompaniment: true },
                 stagedInstrumentation: [
                     { 
-                        duration: { percent: 25 },
+                        // Сцена 1: Бас, ударные и аккомпанемент. Шанс 66% для каждого (любые два в среднем).
+                        duration: { percent: 33 },
                         instrumentation: {
-                           melody: { activationChance: 1.0, instrumentOptions: [ { name: 'guitar_shineOn', weight: 1.0 } ] },
-                           // #ЗАЧЕМ: Аккомпанемент и ударные теперь вступают гарантированно с первой сцены.
-                           accompaniment: { activationChance: 1.0, instrumentOptions: [ { name: 'organ_soft_jazz', weight: 1.0 } ] },
-                           drums: { activationChance: 1.0, instrumentOptions: [ { name: 'blues_melancholic_master', weight: 1.0 } ] },
-                           harmony: { activationChance: 1.0, instrumentOptions: [ { name: 'guitarChords', weight: 0.8 }, { name: 'flute', weight: 0.2 } ] }
+                           bass: { activationChance: 0.66, instrumentOptions: [ { name: 'bass_jazz_warm', weight: 1.0 } ] },
+                           drums: { activationChance: 0.66, instrumentOptions: [ { name: 'blues_melancholic_master', weight: 1.0 } ] },
+                           accompaniment: { activationChance: 0.66, instrumentOptions: [ { name: 'organ_soft_jazz', weight: 1.0 } ] }
                         }
                     },
                     {
-                        duration: { percent: 25 },
+                        // Сцена 2: Добавляем проигравшего лотерею + Мелодия (ShineOn/Muff 50% или Piano 50%)
+                        duration: { percent: 33 },
                         instrumentation: {
-                           melody: { activationChance: 1.0, instrumentOptions: [ { name: 'guitar_shineOn', weight: 1.0 } ] },
-                           bass: { activationChance: 0.4, instrumentOptions: [ { name: 'bass_jazz_warm', weight: 1.0 } ] },
-                           drums: { activationChance: 1.0, instrumentOptions: [ { name: 'blues_melancholic_master', weight: 1.0 } ] },
-                           harmony: { activationChance: 1.0, instrumentOptions: [ { name: 'guitarChords', weight: 0.8 }, { name: 'flute', weight: 0.2 } ] },
-                           accompaniment: { activationChance: 1.0, instrumentOptions: [ { name: 'organ_soft_jazz', weight: 1.0 } ] }
-                        }
-                    },
-                    {
-                        duration: { percent: 25 },
-                        instrumentation: {
-                           melody: { activationChance: 1.0, instrumentOptions: [ { name: 'guitar_shineOn', weight: 1.0 } ] },
-                           accompaniment: { activationChance: 1.0, instrumentOptions: [ { name: 'organ_soft_jazz', weight: 1.0 } ] },
-                           drums: { activationChance: 1.0, instrumentOptions: [ { name: 'blues_melancholic_master', weight: 1.0 } ] },
-                           harmony: { activationChance: 1.0, instrumentOptions: [ { name: 'guitarChords', weight: 0.8 }, { name: 'flute', weight: 0.2 } ] }
-                        }
-                    },
-                    {
-                        duration: { percent: 25 },
-                        instrumentation: {
-                           melody: { activationChance: 1.0, instrumentOptions: [ { name: 'guitar_shineOn', weight: 1.0 } ] },
-                           accompaniment: { activationChance: 1.0, instrumentOptions: [ { name: 'organ_soft_jazz', weight: 1.0 } ] },
                            bass: { activationChance: 1.0, instrumentOptions: [ { name: 'bass_jazz_warm', weight: 1.0 } ] },
                            drums: { activationChance: 1.0, instrumentOptions: [ { name: 'blues_melancholic_master', weight: 1.0 } ] },
-                           harmony: { activationChance: 1.0, instrumentOptions: [ { name: 'guitarChords', weight: 0.8 }, { name: 'flute', weight: 0.2 } ] },
-                           sfx: { activationChance: 0.2, instrumentOptions: [ { name: 'common', weight: 1.0 } ], transient: true },
-                           sparkles: { activationChance: 0.05, instrumentOptions: [ { name: 'light', weight: 1.0 } ], transient: true }
+                           accompaniment: { activationChance: 1.0, instrumentOptions: [ { name: 'organ_soft_jazz', weight: 1.0 } ] },
+                           melody: { 
+                               activationChance: 1.0, 
+                               instrumentOptions: [ 
+                                   { name: 'guitar_shineOn', weight: 0.25 }, 
+                                   { name: 'guitar_muffLead', weight: 0.25 }, 
+                                   { name: 'ep_rhodes_warm', weight: 0.5 } 
+                               ] 
+                           }
+                        }
+                    },
+                    {
+                        // Сцена 3: Полный состав + Гармония (Chords 80% / Flute 20%)
+                        duration: { percent: 34 },
+                        instrumentation: {
+                           bass: { activationChance: 1.0, instrumentOptions: [ { name: 'bass_jazz_warm', weight: 1.0 } ] },
+                           drums: { activationChance: 1.0, instrumentOptions: [ { name: 'blues_melancholic_master', weight: 1.0 } ] },
+                           accompaniment: { activationChance: 1.0, instrumentOptions: [ { name: 'organ_soft_jazz', weight: 1.0 } ] },
+                           melody: { activationChance: 1.0, instrumentOptions: [ { name: 'guitar_shineOn', weight: 0.25 }, { name: 'guitar_muffLead', weight: 0.25 }, { name: 'ep_rhodes_warm', weight: 0.5 } ] },
+                           harmony: { 
+                               activationChance: 1.0, 
+                               instrumentOptions: [ 
+                                   { name: 'guitarChords', weight: 0.8 }, 
+                                   { name: 'mellotron_flute_intimate', weight: 0.2 } 
+                               ] 
+                           },
+                           pianoAccompaniment: { activationChance: 1.0, instrumentOptions: [ { name: 'piano', weight: 1.0 } ] }
                         }
                     }
                 ],
                 instrumentRules: {
                     bass: { techniques: [{ value: 'long_notes', weight: 1.0 }], density: { min: 0.2, max: 0.4 } },
-                    accompaniment: { techniques: [{ value: 'long-chords', weight: 1.0 }], density: { min: 0.4, max: 0.7 } },
+                    accompaniment: { techniques: [{ value: 'choral', weight: 1.0 }], density: { min: 0.4, max: 0.7 } },
                     melody: { source: 'blues_solo', soloToPatternRatio: 0.7, density: { min: 0.7, max: 1.0 }, soloPlan: "S04" },
                     drums: { kitName: 'blues_melancholic_master', density: { min: 0.2, max: 0.4 }, usePerc: true },
                     sfx: { eventProbability: 0.1, categories: [{ name: 'common', weight: 1.0 }] },
@@ -80,12 +83,12 @@ export const WinterBluesBlueprint: MusicBlueprint = {
                     bass: { strategy: 'weighted', v1Options: [ { name: 'bass_jazz_warm', weight: 1.0 } ], v2Options: [ { name: 'bass_jazz_warm', weight: 1.0 } ] },
                     melody: { strategy: 'weighted', v1Options: [{name: 'guitar_muffLead', weight: 1.0}], v2Options: [{name: 'guitar_muffLead', weight: 1.0}] },
                     accompaniment: { strategy: 'weighted', v1Options: [{ name: 'organ_soft_jazz', weight: 1.0 }], v2Options: [{ name: 'organ_soft_jazz', weight: 1.0 }] },
-                    harmony: { strategy: 'weighted', options: [ { name: 'guitarChords', weight: 0.8 }, { name: 'flute', weight: 0.2 } ] }
+                    harmony: { strategy: 'weighted', options: [ { name: 'guitarChords', weight: 0.8 }, { name: 'mellotron_flute_intimate', weight: 0.2 } ] }
                 },
                 instrumentRules: {
                     drums: { pattern: 'composer', kitName: 'blues_melancholic_master', density: { min: 0.5, max: 0.7 }, usePerc: true },
                     melody: { source: 'blues_solo', soloPlan: "S_ACTIVE", density: { min: 0.8, max: 1.0 }, soloToPatternRatio: 0.9 },
-                    accompaniment: { techniques: [{ value: 'long-chords', weight: 1.0 }], density: { min: 0.5, max: 0.8 } },
+                    accompaniment: { techniques: [{ value: 'choral', weight: 1.0 }], density: { min: 0.5, max: 0.8 } },
                     sparkles: { eventProbability: 0.05 },
                     sfx: { eventProbability: 0.15, categories: [{ name: 'common', weight: 1.0 }] }
                 },
@@ -95,16 +98,10 @@ export const WinterBluesBlueprint: MusicBlueprint = {
             {
                 id: 'SOLO', name: 'Ice Cry', duration: { percent: 25 },
                 layers: { bass: true, drums: true, melody: true, harmony: true, pianoAccompaniment: true, accompaniment: true, sfx: true, sparkles: true },
-                instrumentation: {
-                    bass: { strategy: 'weighted', v1Options: [ { name: 'bass_jazz_warm', weight: 1.0 } ], v2Options: [ { name: 'bass_jazz_warm', weight: 1.0 } ] },
-                    melody: { strategy: 'weighted', v1Options: [{name: 'guitar_muffLead', weight: 1.0}], v2Options: [{name: 'guitar_muffLead', weight: 1.0}] },
-                    accompaniment: { strategy: 'weighted', v1Options: [{ name: 'organ_soft_jazz', weight: 1.0 }], v2Options: [{ name: 'organ_soft_jazz', weight: 1.0 }] },
-                    harmony: { strategy: 'weighted', options: [ { name: 'guitarChords', weight: 0.8 }, { name: 'flute', weight: 0.2 } ] }
-                },
                 instrumentRules: {
                     drums: { pattern: 'composer', kitName: 'blues_melancholic_master', density: { min: 0.6, max: 0.8 }, usePerc: true },
                     melody: { source: 'blues_solo', soloPlan: "S_ACTIVE", density: { min: 0.9, max: 1.0 }, soloToPatternRatio: 1.0, register: { preferred: 'high' } },
-                    accompaniment: { techniques: [{ value: 'long-chords', weight: 1.0 }], density: { min: 0.6, max: 0.9 } },
+                    accompaniment: { techniques: [{ value: 'choral', weight: 1.0 }], density: { min: 0.6, max: 0.9 } },
                     sfx: { eventProbability: 0.2, categories: [{ name: 'common', weight: 1.0 }] },
                     sparkles: { eventProbability: 0.1 }
                 },
@@ -114,18 +111,46 @@ export const WinterBluesBlueprint: MusicBlueprint = {
             {
                 id: 'OUTRO', name: 'Dissolution', duration: { percent: 15 },
                 layers: { bass: true, drums: true, melody: true, harmony: true, pianoAccompaniment: true, accompaniment: true, sfx: true, sparkles: true },
-                instrumentation: {
-                    accompaniment: { strategy: 'weighted', v1Options: [{ name: 'synth_ambient_pad_lush', weight: 1.0 }], v2Options: [{ name: 'synth_ambient_pad_lush', weight: 1.0 }] },
-                    melody: { strategy: 'weighted', v1Options: [{ name: 'guitar_shineOn', weight: 1.0 }], v2Options: [{ name: 'guitar_shineOn', weight: 1.0 }] },
-                    harmony: { strategy: 'weighted', options: [ { name: 'guitarChords', weight: 0.8 }, { name: 'flute', weight: 0.2 } ] }
-                },
+                stagedInstrumentation: [
+                    { 
+                        // Сцена 1 (Outro): Удаление Гармонии
+                        duration: { percent: 33 },
+                        instrumentation: {
+                           harmony: { activationChance: 0.0, instrumentOptions: [] },
+                           melody: { activationChance: 1.0, instrumentOptions: [ { name: 'ep_rhodes_warm', weight: 1.0 } ] },
+                           bass: { activationChance: 1.0, instrumentOptions: [ { name: 'bass_jazz_warm', weight: 1.0 } ] },
+                           drums: { activationChance: 1.0, instrumentOptions: [ { name: 'blues_melancholic_master', weight: 1.0 } ] },
+                           accompaniment: { activationChance: 1.0, instrumentOptions: [ { name: 'organ_soft_jazz', weight: 1.0 } ] }
+                        }
+                    },
+                    {
+                        // Сцена 2 (Outro): Удаление Мелодии
+                        duration: { percent: 33 },
+                        instrumentation: {
+                           harmony: { activationChance: 0.0, instrumentOptions: [] },
+                           melody: { activationChance: 0.0, instrumentOptions: [] },
+                           bass: { activationChance: 1.0, instrumentOptions: [ { name: 'bass_jazz_warm', weight: 1.0 } ] },
+                           drums: { activationChance: 1.0, instrumentOptions: [ { name: 'blues_melancholic_master', weight: 1.0 } ] },
+                           accompaniment: { activationChance: 1.0, instrumentOptions: [ { name: 'organ_soft_jazz', weight: 1.0 } ] }
+                        }
+                    },
+                    {
+                        // Сцена 3 (Outro): Удаление Ритм-секции (Exit)
+                        duration: { percent: 34 },
+                        instrumentation: {
+                           harmony: { activationChance: 0.0, instrumentOptions: [] },
+                           melody: { activationChance: 0.0, instrumentOptions: [] },
+                           bass: { activationChance: 0.0, instrumentOptions: [] },
+                           drums: { activationChance: 0.0, instrumentOptions: [] },
+                           accompaniment: { activationChance: 0.0, instrumentOptions: [] }
+                        }
+                    }
+                ],
                 instrumentRules: {
                     drums: { pattern: 'composer', kitName: 'blues_melancholic_master', density: { min: 0.2, max: 0.4 }, useSnare: false },
                     bass: { techniques: [{ value: 'long_notes', weight: 1.0 }], density: {min: 0.3, max: 0.5} },
                     melody: { source: 'blues_solo', density: { min: 1.0, max: 1.0 }, soloPlan: "WINTER_OUTRO_MELODY", soloToPatternRatio: 0.0 },
-                    accompaniment: { density: { min: 0.3, max: 0.5 } },
-                    sfx: { eventProbability: 0.1 },
-                    sparkles: { eventProbability: 0.05 }
+                    accompaniment: { density: { min: 0.3, max: 0.5 } }
                 },
                 bundles: [{ id: 'WINTER_OUTRO_BUNDLE', name: 'Final Embers', duration: { percent: 100 }, characteristics: {}, phrases: {} }],
                 outroFill: null,

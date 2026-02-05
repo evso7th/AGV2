@@ -36,7 +36,8 @@ import {
     invertMelody,
     varyRhythm,
     addOrnaments,
-    DEGREE_TO_SEMITONE
+    DEGREE_TO_SEMITONE,
+    subdivideRhythm
 } from './music-theory';
 
 
@@ -185,8 +186,6 @@ export class FractalMusicEngine {
 
   /**
    * #ЗАЧЕМ: Инициализирует движок с уникальным состоянием.
-   * #ЧТО: Генерирует ДНК, перемешивает индексы риффов, сбрасывает память.
-   * #ОБНОВЛЕНО (ПЛАН 81): Добавлена принудительная встряска при старте для гарантии уникальности первого такта.
    */
   public initialize(force: boolean = false) {
     if (this.isInitialized && !force) {
@@ -238,8 +237,6 @@ export class FractalMusicEngine {
     this.bassPhraseLibrary = [];
     this.accompPhraseLibrary = [];
     
-    // #ЗАЧЕМ: "Встряска" для первого такта.
-    // #ЧТО: Пропускаем несколько холостых циклов рандомайзера.
     for(let i=0; i < 5; i++) this.random.next();
 
     this.isInitialized = true;
@@ -278,16 +275,11 @@ export class FractalMusicEngine {
     const navInfo = this.navigator.tick(this.epoch);
     if (!navInfo) return { events: [], instrumentHints: {} };
 
-    // #ЗАЧЕМ: Реализация принципа "Кумулятивного Ансамбля" (Sticky Ensemble).
-    // #ЧТО: Мы перестали очищать память ансамбля на границах частей.
-    //      Теперь инструменты вступают и остаются в оркестре, пока Блюпринт
-    //      не даст явную команду на смену тембра или отключение.
-    // REMOVED: if (navInfo.isPartTransition) { this.activatedInstruments.clear(); }
-
     const instrumentHints: InstrumentHints = {};
     const stages = navInfo.currentPart.stagedInstrumentation;
 
     if (stages && stages.length > 0) {
+        // --- STAGED SCENARIO LOGIC ---
         const progress = (this.epoch - navInfo.currentPartStartBar) / (navInfo.currentPartEndBar - navInfo.currentPartStartBar + 1);
         let accumulated = 0;
         let currentStage: Stage = stages[stages.length - 1];
@@ -303,22 +295,33 @@ export class FractalMusicEngine {
             const p = part as InstrumentPart;
             
             if (rule.transient) {
+                // Transient instruments roll every tick
                 if (this.random.next() < rule.activationChance) {
                     const timbre = this.pickWeighted(rule.instrumentOptions);
                     (instrumentHints as any)[p] = timbre;
                 }
             } else {
+                // #ЗАЧЕМ: Реализация "Липкого Оркестра" и "Сценического Ухода".
+                // #ЧТО: Если инструмент уже активен, проверяем, не требует ли сцена его удаления (chance === 0).
+                //      Если не активен — бросаем кубик на вступление.
                 if (!this.activatedInstruments.has(p)) {
-                    if (this.random.next() < rule.activationChance) {
+                    if (rule.activationChance > 0 && this.random.next() < rule.activationChance) {
                         const chosenTimbre = this.pickWeighted(rule.instrumentOptions);
                         this.activatedInstruments.set(p, chosenTimbre);
-                        console.log(`%c[Engine] Sticky Activation: Instrument '${p}' fixed with timbre '${chosenTimbre}'`, 'color: #00BFFF; font-weight: bold;');
+                        console.log(`%c[Engine] Sticky Activation: Instrument '${p}' joined with timbre '${chosenTimbre}'`, 'color: #00BFFF; font-weight: bold;');
+                    }
+                } else {
+                    // Уже в составе. Проверяем на удаление (для Outro инверсии)
+                    if (rule.activationChance === 0) {
+                        this.activatedInstruments.delete(p);
+                        console.log(`%c[Engine] Sticky Removal: Instrument '${p}' left the ensemble.`, 'color: #FF4500; font-weight: bold;');
                     }
                 }
             }
         });
 
-        if (this.activatedInstruments.size === 0) {
+        // Гарантия отсутствия тишины в начале
+        if (this.activatedInstruments.size === 0 && navInfo.currentPart.id === 'INTRO_1') {
             const possible = Object.keys(currentStage.instrumentation) as InstrumentPart[];
             const nonTransient = possible.filter(p => !currentStage.instrumentation[p]?.transient);
             if (nonTransient.length > 0) {
@@ -328,41 +331,26 @@ export class FractalMusicEngine {
             }
         }
     } else {
-        // #ЗАЧЕМ: Поддержка логики "Если не определено - играет старое" для бесстадийных частей (MAIN, SOLO).
+        // --- LEGACY/FALLBACK INSTRUMENTATION ---
         const instrumentation = navInfo.currentPart.instrumentation;
         if (instrumentation) {
             Object.keys(instrumentation).forEach(partKey => {
                 const p = partKey as InstrumentPart;
-                // Обновляем тембр только если это начало части или инструмент еще не в составе
-                if (navInfo.isPartTransition || !this.activatedInstruments.has(p)) {
+                if (!this.activatedInstruments.has(p)) {
                     const chosenTimbre = this._chooseInstrumentForPart(p as any, navInfo);
                     if (chosenTimbre && chosenTimbre !== 'none') {
                         this.activatedInstruments.set(p, chosenTimbre);
-                    } else if (chosenTimbre === 'none') {
-                        this.activatedInstruments.delete(p);
                     }
                 }
             });
         }
-        
-        // Ударные - липкий кит
-        if (navInfo.currentPart.layers.drums) {
-            if (!this.activatedInstruments.has('drums') || navInfo.isPartTransition) {
-                const kitName = navInfo.currentPart.instrumentRules?.drums?.kitName || 'default';
-                this.activatedInstruments.set('drums', kitName);
-            }
-        } else {
-            this.activatedInstruments.delete('drums');
-        }
     }
 
-    // #ЗАЧЕМ: Синхронизация hints с памятью ансамбля.
-    // #ЧТО: Мы всегда заполняем hints из актуальной памяти activatedInstruments.
+    // Синхронизация Hints
     this.activatedInstruments.forEach((timbre, part) => {
         (instrumentHints as any)[part] = timbre;
     });
     
-    // Принудительные слои
     if (navInfo.currentPart.layers.pianoAccompaniment) {
         instrumentHints.pianoAccompaniment = 'piano';
     }
@@ -421,29 +409,24 @@ export class FractalMusicEngine {
     const melodyRules = navInfo.currentPart.instrumentRules?.melody;
 
     if (instrumentHints.melody && melodyRules) {
-        const ratio = melodyRules.soloToPatternRatio ?? 0.7; // solo vs pattern lottery
+        const ratio = melodyRules.soloToPatternRatio ?? 0.7;
         
         if (this.random.next() < ratio && melodyRules.source === 'blues_solo') {
-            // PLAY SOLO
             const { events: soloEvents } = generateBluesMelodyChorus(currentChord, this.random, navInfo.currentPart.id, this.epoch, melodyRules, this.suiteDNA, this.melodyHistory, this.cachedMelodyChorus);
             melodyEvents = soloEvents;
         } else if (melodyRules.source === 'blues_solo') {
-            // #ЗАЧЕМ: Реализация требования "30% фингерстайл".
-            // #ЧТО: Если кубик выпал на паттерн, мы генерируем событие перебора (Travis Picking).
-            // #СВЯЗИ: Гитарные сэмплеры отработают это как полноценный аккордовый рисунок.
             melodyEvents.push({
                 type: 'melody', 
                 note: currentChord.rootNote, 
                 time: 0, 
                 duration: 4.0, 
                 weight: 0.8,
-                technique: 'F_TRAVIS', // Triggers pattern in sampler
+                technique: 'F_TRAVIS',
                 dynamics: 'mf', 
                 phrasing: 'legato',
                 params: { barCount: effectiveBar, voicingName: 'Em7_open' }
             });
         } else {
-            // Fallback for non-blues styles
             melodyEvents.push({
                 type: 'melody', note: currentChord.rootNote, time: 0, duration: 4.0, weight: 0.8,
                 technique: 'pluck', dynamics: 'mf', phrasing: 'legato',
@@ -452,35 +435,24 @@ export class FractalMusicEngine {
         }
     }
 
-    // #ЗАЧЕМ: Реализация "Тематических Крючков" (Dynamic Hooks).
-    // #ЧТО: Запоминает мелодию в начале и возвращает её во второй половине.
-    // 1. Запись (Recording): Если мы в первой трети и есть мелодия
     if (this.epoch > 12 && this.epoch < 60 && melodyEvents.length > 0 && this.hookLibrary.length < 3) {
         if (this.random.next() < 0.15) {
-            this.hookLibrary.push({ 
-                events: JSON.parse(JSON.stringify(melodyEvents)), 
-                root: currentChord.rootNote 
-            });
-            console.log(`%c[DNA] Hook Recorded at Bar ${this.epoch}`, 'color: #ADFF2F; font-weight: bold;');
+            this.hookLibrary.push({ events: JSON.parse(JSON.stringify(melodyEvents)), root: currentChord.rootNote });
         }
     }
 
-    // 2. Реприза (Recall): Если мы во второй половине и есть крючки
     if (this.epoch > 72 && this.hookLibrary.length > 0 && melodyEvents.length > 0) {
-        if (this.random.next() < 0.25) { // 25% шанс повторить тему
+        if (this.random.next() < 0.25) {
             const hook = this.hookLibrary[this.random.nextInt(this.hookLibrary.length)];
-            // Умная транспозиция под текущий аккорд
             melodyEvents = hook.events.map(e => ({
                 ...e,
                 note: e.note - hook.root + currentChord.rootNote,
-                weight: Math.min(1.0, e.weight + 0.05), // Чуть ярче при повторе
                 params: { ...e.params, isHook: true, originalBar: (hook.events[0].params as any)?.barCount }
             }));
-            console.log(`%c[DNA] Reprise! Hook Recalled at Bar ${this.epoch}`, 'color: #FFD700; font-weight: bold; background: #222;');
         }
     }
 
-    if (['telecaster', 'blackAcoustic', 'darkTelecaster', 'electricGuitar', 'guitar_shineOn', 'guitar_muffLead', 'guitar_nightmare_solo'].includes(instrumentHints.melody || '')) {
+    if (['telecaster', 'blackAcoustic', 'darkTelecaster', 'electricGuitar', 'guitar_shineOn', 'guitar_muffLead'].includes(instrumentHints.melody || '')) {
         melodyEvents.forEach(e => e.note += 24);
     }
 
@@ -542,9 +514,6 @@ export class FractalMusicEngine {
     const isMinor = chord.chordType === 'minor' || chord.chordType === 'diminished';
     const chordNotes = [rootNote, rootNote + (isMinor ? 3 : 4), rootNote + 7];
 
-    // #ЗАЧЕМ: Реализация требования "побольше аккомпанемента без сверхдлинных звучаний" для блюза.
-    // #ЧТО: Если жанр - блюз, мы генерируем два аккорда по 2 доли (половинные ноты) вместо одного на 4 доли.
-    // #СВЯЗИ: Улучшает динамику в dark.ts и winter.ts.
     if (genre === 'blues') {
         const startTimes = [0, 2.0];
         const durations = [2.0, 2.0];
@@ -565,7 +534,6 @@ export class FractalMusicEngine {
             });
         });
     } else {
-        // Стандартная эмбиентная логика: одна целая нота (4 доли)
         chordNotes.forEach((note, i) => {
             axiom.push({
                 type: 'accompaniment',
