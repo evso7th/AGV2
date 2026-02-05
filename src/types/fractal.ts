@@ -1,5 +1,4 @@
 
-
 /**
  * Настроение — управляет ладом, динамикой, техникой
  */
@@ -304,6 +303,7 @@ export type InstrumentHints = {
     accompaniment?: AccompanimentInstrument;
     harmony?: 'piano' | 'guitarChords' | 'violin' | 'flute' | 'none';
     pianoAccompaniment?: 'piano';
+    drums?: string;
 };
 
 /**

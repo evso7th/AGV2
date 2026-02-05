@@ -1,3 +1,4 @@
+
 import type { FractalEvent, Mood, Genre, Technique, BassSynthParams, InstrumentType, MelodyInstrument, AccompanimentInstrument, ResonanceMatrix, InstrumentHints, AccompanimentTechnique, GhostChord, SfxRule, V1MelodyInstrument, V2MelodyInstrument, BlueprintPart, InstrumentationRules, InstrumentBehaviorRules, BluesMelody, InstrumentPart, DrumKit, BluesGuitarRiff, BluesSoloPhrase, BluesRiffDegree, SuiteDNA, RhythmicFeel, BassStyle, DrumStyle, HarmonicCenter, NavigationInfo, Stage } from '@/types/music';
 import { ElectronicK, TraditionalK, AmbientK, MelancholicMinorK } from './resonance-matrices';
 import { BlueprintNavigator } from './blueprint-navigator';
@@ -277,10 +278,11 @@ export class FractalMusicEngine {
     const navInfo = this.navigator.tick(this.epoch);
     if (!navInfo) return { events: [], instrumentHints: {} };
 
-    // #ЗАЧЕМ: Реализация принципа "Смены декораций".
-    if (navInfo.isPartTransition) {
-        this.activatedInstruments.clear();
-    }
+    // #ЗАЧЕМ: Реализация принципа "Кумулятивного Ансамбля" (Sticky Ensemble).
+    // #ЧТО: Мы перестали очищать память ансамбля на границах частей.
+    //      Теперь инструменты вступают и остаются в оркестре, пока Блюпринт
+    //      не даст явную команду на смену тембра или отключение.
+    // REMOVED: if (navInfo.isPartTransition) { this.activatedInstruments.clear(); }
 
     const instrumentHints: InstrumentHints = {};
     const stages = navInfo.currentPart.stagedInstrumentation;
@@ -304,7 +306,6 @@ export class FractalMusicEngine {
                 if (this.random.next() < rule.activationChance) {
                     const timbre = this.pickWeighted(rule.instrumentOptions);
                     (instrumentHints as any)[p] = timbre;
-                    console.log(`%c[Engine] Transient Activation: Instrument '${p}' joined with timbre '${timbre}'`, 'color: #FF69B4; font-style: italic;');
                 }
             } else {
                 if (!this.activatedInstruments.has(p)) {
@@ -313,10 +314,6 @@ export class FractalMusicEngine {
                         this.activatedInstruments.set(p, chosenTimbre);
                         console.log(`%c[Engine] Sticky Activation: Instrument '${p}' fixed with timbre '${chosenTimbre}'`, 'color: #00BFFF; font-weight: bold;');
                     }
-                }
-                
-                if (this.activatedInstruments.has(p)) {
-                    (instrumentHints as any)[p] = this.activatedInstruments.get(p);
                 }
             }
         });
@@ -328,18 +325,48 @@ export class FractalMusicEngine {
                 const best = nonTransient.sort((a, b) => (currentStage.instrumentation[b]?.activationChance || 0) - (currentStage.instrumentation[a]?.activationChance || 0))[0];
                 const chosenTimbre = this.pickWeighted(currentStage.instrumentation[best]!.instrumentOptions);
                 this.activatedInstruments.set(best, chosenTimbre);
-                (instrumentHints as any)[best] = chosenTimbre;
             }
         }
     } else {
-        instrumentHints.melody = this._chooseInstrumentForPart('melody', navInfo);
-        instrumentHints.accompaniment = this._chooseInstrumentForPart('accompaniment', navInfo);
-        instrumentHints.harmony = this._chooseInstrumentForPart('harmony', navInfo) as any;
-        instrumentHints.bass = this._chooseInstrumentForPart('bass', navInfo) as any;
+        // #ЗАЧЕМ: Поддержка логики "Если не определено - играет старое" для бесстадийных частей (MAIN, SOLO).
+        const instrumentation = navInfo.currentPart.instrumentation;
+        if (instrumentation) {
+            Object.keys(instrumentation).forEach(partKey => {
+                const p = partKey as InstrumentPart;
+                // Обновляем тембр только если это начало части или инструмент еще не в составе
+                if (navInfo.isPartTransition || !this.activatedInstruments.has(p)) {
+                    const chosenTimbre = this._chooseInstrumentForPart(p as any, navInfo);
+                    if (chosenTimbre && chosenTimbre !== 'none') {
+                        this.activatedInstruments.set(p, chosenTimbre);
+                    } else if (chosenTimbre === 'none') {
+                        this.activatedInstruments.delete(p);
+                    }
+                }
+            });
+        }
+        
+        // Ударные - липкий кит
+        if (navInfo.currentPart.layers.drums) {
+            if (!this.activatedInstruments.has('drums') || navInfo.isPartTransition) {
+                const kitName = navInfo.currentPart.instrumentRules?.drums?.kitName || 'default';
+                this.activatedInstruments.set('drums', kitName);
+            }
+        } else {
+            this.activatedInstruments.delete('drums');
+        }
+    }
+
+    // #ЗАЧЕМ: Синхронизация hints с памятью ансамбля.
+    // #ЧТО: Мы всегда заполняем hints из актуальной памяти activatedInstruments.
+    this.activatedInstruments.forEach((timbre, part) => {
+        (instrumentHints as any)[part] = timbre;
+    });
+    
+    // Принудительные слои
+    if (navInfo.currentPart.layers.pianoAccompaniment) {
         instrumentHints.pianoAccompaniment = 'piano';
     }
 
-    // #ЗАЧЕМ: Воскрешение детальных логов Навигатора.
     if (navInfo.logMessage) {
         const log = this.navigator.formatLogMessage(navInfo, instrumentHints, this.epoch);
         if (log) {
