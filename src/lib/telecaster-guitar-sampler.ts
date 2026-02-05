@@ -129,13 +129,23 @@ export class TelecasterGuitarSampler {
         source.playbackRate.value = Math.pow(2, (targetMidi - sampleMidi) / 12);
         gainNode.gain.setValueAtTime(0, startTime);
         gainNode.gain.linearRampToValueAtTime(velocity, startTime + 0.005);
-        if (duration) gainNode.gain.setTargetAtTime(0, startTime + duration, 0.4);
+        
+        // NO source.stop() - let it ring naturally.
+        if (duration && isFinite(duration)) {
+            gainNode.gain.setTargetAtTime(0, startTime + duration, 0.4);
+        }
+        
         source.start(startTime);
-        source.onended = () => { try { gainNode.disconnect(); } catch(e){} };
+        
+        // Clean up resources onended
+        source.onended = () => {
+            try { gainNode.disconnect(); } catch(e){}
+        };
     }
 
     private findBestSample(instrument: SamplerInstrument, targetMidi: number): { buffer: AudioBuffer | null, midi: number } {
         const availableMidiNotes = Array.from(instrument.buffers.keys());
+        if (availableMidiNotes.length === 0) return { buffer: null, midi: targetMidi };
         const closestMidi = availableMidiNotes.reduce((prev, curr) => 
             Math.abs(curr - targetMidi) < Math.abs(prev - targetMidi) ? curr : prev
         , availableMidiNotes[0]);
@@ -146,8 +156,9 @@ export class TelecasterGuitarSampler {
         const noteMatch = key.toLowerCase().match(/([a-g][b#]?)(\d)/);
         if (!noteMatch) return null;
         let [, name, octaveStr] = noteMatch;
+        const octave = parseInt(octaveStr) + 1;
         const noteMap: Record<string, number> = { 'c':0,'c#':1,'db':1,'d':2,'d#':3,'eb':3,'e':4,'f':5,'f#':6,'gb':6,'g':7,'g#':8,'ab':8,'a':9,'a#':10,'bb':10,'b':11 };
-        return 12 * (parseInt(octaveStr) + 1) + noteMap[name];
+        return 12 * octave + noteMap[name];
     }
 
     public stopAll() {}

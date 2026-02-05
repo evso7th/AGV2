@@ -106,7 +106,7 @@ export class DarkTelecasterSampler {
             
             const loadSample = async (url: string) => {
                 const response = await fetch(url);
-                if (!response.ok) throw new Error(`HTTP error! status: ${'' + response.status}`);
+                if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
                 const arrayBuffer = await response.arrayBuffer();
                 return await this.audioContext.decodeAudioData(arrayBuffer);
             };
@@ -127,7 +127,6 @@ export class DarkTelecasterSampler {
             await Promise.all(notePromises);
             
             this.instruments.set(instrumentName, { buffers: loadedBuffers });
-            console.log(`[DarkTelecasterSampler] Instrument "${instrumentName}" loaded with ${loadedBuffers.size} samples.`);
             this.isInitialized = true;
             this.isLoading = false;
             return true;
@@ -208,16 +207,16 @@ export class DarkTelecasterSampler {
 
         gainNode.gain.setValueAtTime(velocity, startTime);
 
-        if (duration) {
+        // NO source.stop(): let the fuzz tails ring.
+        if (duration && isFinite(duration)) {
             gainNode.gain.setTargetAtTime(0, startTime + duration * 0.8, 0.1);
-            source.start(startTime);
-            source.stop(startTime + duration * 1.2);
-        } else {
-            source.start(startTime);
         }
 
+        source.start(startTime);
+
+        // Clean up resources onended
         source.onended = () => {
-            gainNode.disconnect();
+            try { gainNode.disconnect(); } catch(e) {}
         };
     }
 
@@ -241,7 +240,7 @@ export class DarkTelecasterSampler {
         if (!noteMatch) return null;
     
         let [, name, octaveStr] = noteMatch;
-        const octave = parseInt(octaveStr, 10);
+        const octave = parseInt(octaveStr, 10) + 1;
     
         const noteMap: Record<string, number> = {
             'c': 0, 'c#': 1, 'db': 1, 'd': 2, 'd#': 3, 'eb': 3, 'e': 4, 'f': 5, 'f#': 6, 'gb': 6, 'g': 7, 'g#': 8, 'ab': 8, 'a': 9, 'a#': 10, 'bb': 10, 'b': 11
@@ -251,7 +250,7 @@ export class DarkTelecasterSampler {
         
         if (noteValue === undefined) return null;
     
-        return 12 * (octave + 1) + noteValue;
+        return 12 * octave + noteValue;
     }
     
 

@@ -4,9 +4,10 @@ import { BLUES_GUITAR_VOICINGS } from './assets/guitar-voicings';
 import { GUITAR_PATTERNS } from './assets/guitar-patterns';
 
 /**
- * #ЗАЧЕМ: Сэмплер Black Acoustic с поддержкой естественных хвостов (tails).
- * #ЧТО: Удалена принудительная остановка source.stop(), сэмплы звучат до конца.
- *       Пополнена карта сэмплов для виртуозного блюза.
+ * #ЗАЧЕМ: Сэмплер Black Acoustic с поддержкой естественных хвостов (tails) и безопасной очисткой ресурсов.
+ * #ЧТО: Полностью удалена принудительная остановка source.stop(). 
+ *       Внедрен обработчик onended для предотвращения утечек памяти.
+ *       Использует расширенную карту сэмплов E3-E6 из сокровищницы.
  */
 const BLACK_GUITAR_ORD_SAMPLES: Record<string, string> = {
     'e3': '/assets/acoustic_guitar_samples/black/ord/twang_e3_f_rr3.ogg',
@@ -155,17 +156,19 @@ export class BlackGuitarSampler {
         const playbackRate = Math.pow(2, (targetMidi - sampleMidi) / 12);
         source.playbackRate.value = playbackRate;
 
-        // NO CUTOFF: Мы используем setTargetAtTime для мягкого затухания, но НЕ останавливаем source.stop()
+        // NO source.stop(): позволяем сэмплу звучать до физического конца буфера.
         gainNode.gain.setValueAtTime(0, startTime);
         gainNode.gain.linearRampToValueAtTime(velocity, startTime + 0.005);
 
         if (duration && isFinite(duration)) {
-            // Мягкое затухание, если нота короткая, но хвост (resonance) остается
-            gainNode.gain.setTargetAtTime(0, startTime + duration, 0.4);
+            // Если нота короткая (по логике композитора), плавно уводим громкость, 
+            // но НЕ останавливаем осциллятор, чтобы сохранить хвост резонанса.
+            gainNode.gain.setTargetAtTime(0, startTime + duration, 0.5);
         }
         
         source.start(startTime);
         
+        // КРИТИЧЕСКИ ВАЖНО: Очистка ресурсов только после физического завершения сэмпла.
         source.onended = () => {
             try { gainNode.disconnect(); } catch(e) {}
         };
