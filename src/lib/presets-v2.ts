@@ -53,7 +53,7 @@ export const V2_PRESETS = {
     volume: 0.68,
     osc: [
       { type: 'sine', detune: 0, octave: 0, gain: 0.58 },
-      { type: 'triangle', detune: 0, octave: 1, gain: 0.14 }, // +1 octave bell
+      { type: 'triangle', detune: 0, octave: 1, gain: 0.14 }, // +1200 cents = +1 octave
       { type: 'sine', detune: 0, octave: 1, gain: 0.08 }
     ],
     noise: { on: false, gain: 0 },
@@ -113,7 +113,7 @@ export const V2_PRESETS = {
   guitar_shineOn: {
     type: 'guitar',
     name: 'Shine On Guitar',
-    volume: 0.7,
+    volume: 1.0, // #ЗАЧЕМ: Увеличено с 0.68 для подъема в миксе (План №99).
     osc: { width: 0.46, detune: 5, mainGain: 0.85, detGain: 0.18, subGain: 0.25 },
     pickup: { cutoff: 3600, q: 1.0 },
     drive: { type: 'soft', amount: 0.25 }, 
@@ -135,7 +135,8 @@ export const V2_PRESETS = {
     comp: { threshold: -20, ratio: 4, attack: 0.005, release: 0.1, makeup: 4 },
     post: { lpf: 4700 },
     phaser: { on: true, rate: 0.18, depth: 700, mix: 0.18 },
-    delayA: { on: true, time: 0.38, fb: 0.22, mix: 0.12 },
+    delayA: { on: true, time: 0.38, fb: 0.26, hc: 3600, mix: 0.16 },
+    delayB: { on: true, time: 0.52, fb: 0.22, hc: 3600, mix: 0.12 },
     adsr: { a: 0.008, d: 0.5, s: 0.8, r: 1.8 }, 
     reverbMix: 0.25
   }

@@ -1,3 +1,4 @@
+
 /**
  * @fileOverview Music Theory Utilities and Axiom Generation
  * #ЗАЧЕМ: Центральный хаб музыкальной логики.
@@ -311,7 +312,8 @@ export function generateBluesMelodyChorus(
 
     const events: FractalEvent[] = lickPhrase.map(note => ({
         type: 'melody', 
-        note: currentChord.rootNote + (DEGREE_TO_SEMITONE[note.deg] || 0),
+        // #ЗАЧЕМ: Подъем на одну октаву выше для лид-гитары (План №99).
+        note: currentChord.rootNote + (DEGREE_TO_SEMITONE[note.deg] || 0) + 12,
         time: note.t / 3, 
         duration: (note.d || 2) / 3, 
         weight: (0.7 + random.next() * 0.2) * (1 - cognitiveState.emotion.melancholy * 0.3),
