@@ -105,7 +105,9 @@ export class MelodySynthManagerV2 {
         // Routing for Samplers (only for melody)
         if (this.partName === 'melody') {
             if (instrumentHint === 'blackAcoustic') {
-                this.blackAcousticSampler.schedule(notesToPlay, barStartTime, tempo);
+                // #ЗАЧЕМ: Подъем Black Acoustic на 2 октавы (+24 полутона) по просьбе пользователя.
+                const liftedNotes = notesToPlay.map(n => ({ ...n, midi: n.midi + 24 }));
+                this.blackAcousticSampler.schedule(liftedNotes, barStartTime, tempo);
                 return;
             }
             if (instrumentHint === 'telecaster') {
