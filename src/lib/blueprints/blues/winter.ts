@@ -1,4 +1,3 @@
-
 import type { MusicBlueprint } from '@/types/music';
 
 export const WinterBluesBlueprint: MusicBlueprint = {
@@ -21,16 +20,16 @@ export const WinterBluesBlueprint: MusicBlueprint = {
                 layers: { bass: true, accompaniment: true, melody: true, sfx: true, sparkles: true, drums: true, harmony: true, pianoAccompaniment: true },
                 stagedInstrumentation: [
                     { 
-                        // Сцена 1: Бас, ударные и аккомпанемент. Шанс 66% для каждого (любые два в среднем).
                         duration: { percent: 33 },
                         instrumentation: {
                            bass: { activationChance: 0.66, instrumentOptions: [ { name: 'bass_jazz_warm', weight: 1.0 } ] },
                            drums: { activationChance: 0.66, instrumentOptions: [ { name: 'blues_melancholic_master', weight: 1.0 } ] },
+                           // #ЗАЧЕМ: Акцент на соло с самого начала.
+                           melody: { activationChance: 0.5, instrumentOptions: [ { name: 'ep_rhodes_warm', weight: 1.0 } ] },
                            accompaniment: { activationChance: 0.66, instrumentOptions: [ { name: 'organ_soft_jazz', weight: 1.0 } ] }
                         }
                     },
                     {
-                        // Сцена 2: Добавляем проигравшего лотерею + Мелодия (ShineOn/Muff 50% или Piano 50%)
                         duration: { percent: 33 },
                         instrumentation: {
                            bass: { activationChance: 1.0, instrumentOptions: [ { name: 'bass_jazz_warm', weight: 1.0 } ] },
@@ -47,7 +46,6 @@ export const WinterBluesBlueprint: MusicBlueprint = {
                         }
                     },
                     {
-                        // Сцена 3: Полный состав + Гармония (Chords 80% / Flute 20%)
                         duration: { percent: 34 },
                         instrumentation: {
                            bass: { activationChance: 1.0, instrumentOptions: [ { name: 'bass_jazz_warm', weight: 1.0 } ] },
@@ -66,9 +64,9 @@ export const WinterBluesBlueprint: MusicBlueprint = {
                     }
                 ],
                 instrumentRules: {
-                    bass: { techniques: [{ value: 'long_notes', weight: 1.0 }], density: { min: 0.2, max: 0.4 } },
+                    bass: { techniques: [{ value: 'riff', weight: 1.0 }], density: { min: 0.2, max: 0.4 } },
                     accompaniment: { techniques: [{ value: 'choral', weight: 1.0 }], density: { min: 0.4, max: 0.7 } },
-                    melody: { source: 'blues_solo', soloToPatternRatio: 0.7, density: { min: 0.7, max: 1.0 }, soloPlan: "S04" },
+                    melody: { source: 'blues_solo', soloToPatternRatio: 1.0, density: { min: 0.7, max: 1.0 }, soloPlan: "S04" },
                     drums: { kitName: 'blues_melancholic_master', density: { min: 0.2, max: 0.4 }, usePerc: true },
                     sfx: { eventProbability: 0.1, categories: [{ name: 'common', weight: 1.0 }] },
                     sparkles: { eventProbability: 0.05, categories: [{ name: 'light', weight: 1.0 }] }
@@ -87,7 +85,7 @@ export const WinterBluesBlueprint: MusicBlueprint = {
                 },
                 instrumentRules: {
                     drums: { pattern: 'composer', kitName: 'blues_melancholic_master', density: { min: 0.5, max: 0.7 }, usePerc: true },
-                    melody: { source: 'blues_solo', soloPlan: "S_ACTIVE", density: { min: 0.8, max: 1.0 }, soloToPatternRatio: 0.9 },
+                    melody: { source: 'blues_solo', soloPlan: "S_ACTIVE", density: { min: 0.8, max: 1.0 }, soloToPatternRatio: 1.0 },
                     accompaniment: { techniques: [{ value: 'choral', weight: 1.0 }], density: { min: 0.5, max: 0.8 } },
                     sparkles: { eventProbability: 0.05 },
                     sfx: { eventProbability: 0.15, categories: [{ name: 'common', weight: 1.0 }] }
@@ -113,7 +111,6 @@ export const WinterBluesBlueprint: MusicBlueprint = {
                 layers: { bass: true, drums: true, melody: true, harmony: true, pianoAccompaniment: true, accompaniment: true, sfx: true, sparkles: true },
                 stagedInstrumentation: [
                     { 
-                        // Сцена 1 (Outro): Удаление Гармонии
                         duration: { percent: 33 },
                         instrumentation: {
                            harmony: { activationChance: 0.0, instrumentOptions: [] },
@@ -124,7 +121,6 @@ export const WinterBluesBlueprint: MusicBlueprint = {
                         }
                     },
                     {
-                        // Сцена 2 (Outro): Удаление Мелодии
                         duration: { percent: 33 },
                         instrumentation: {
                            harmony: { activationChance: 0.0, instrumentOptions: [] },
@@ -135,7 +131,6 @@ export const WinterBluesBlueprint: MusicBlueprint = {
                         }
                     },
                     {
-                        // Сцена 3 (Outro): Удаление Ритм-секции (Exit)
                         duration: { percent: 34 },
                         instrumentation: {
                            harmony: { activationChance: 0.0, instrumentOptions: [] },

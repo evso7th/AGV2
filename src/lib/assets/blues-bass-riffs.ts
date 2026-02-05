@@ -111,23 +111,23 @@ export const BLUES_BASS_RIFFS: Record<Mood, BluesBassRiff[]> = {
         }
     ],
     melancholic: [
-        { // Riff M1 — Slow minor boogie
+        { // Riff M1 — Slow minor boogie (Swing)
             I:  [{t:0,d:2,deg:'R'},{t:2,d:2,deg:'5'},{t:4,d:2,deg:'6'},{t:6,d:2,deg:'b7'},{t:8,d:2,deg:'6'},{t:10,d:2,deg:'5'}],
             IV: [{t:0,d:2,deg:'R'},{t:2,d:2,deg:'5'},{t:4,d:2,deg:'6'},{t:6,d:2,deg:'b7'},{t:8,d:2,deg:'6'},{t:10,d:2,deg:'5'}],
             V:  [{t:0,d:2,deg:'5'},{t:2,d:2,deg:'b7'},{t:4,d:2,deg:'R'},{t:6,d:2,deg:'b7'},{t:8,d:2,deg:'5'},{t:10,d:2,deg:'R'}],
             turn: [{t:0,d:2,deg:'R'},{t:2,d:2,deg:'b7'},{t:4,d:2,deg:'6'},{t:6,d:2,deg:'b6'},{t:8,d:2,deg:'5'},{t:10,d:2,deg:'#4'}]
         },
-        { // Riff M2 — b3 и 11 как опоры
+        { // Riff M2 — b3 и 11 как опоры (Shuffle)
             I:  [{t:0,d:6,deg:'b3'},{t:6,d:6,deg:'11'}],
             IV: [{t:0,d:6,deg:'b3'},{t:6,d:6,deg:'9'}],
             V:  [{t:0,d:6,deg:'5'},{t:6,d:6,deg:'b7'}],
             turn: [{t:0,d:6,deg:'b7'},{t:6,d:6,deg:'R'}]
         },
-        { // Riff M3 — Мягкий b5 шёпотом
-            I:  [{t:0,d:6,deg:'R'},{t:6,d:2,deg:'#4'},{t:8,d:4,deg:'5'}],
-            IV: [{t:0,d:6,deg:'11'},{t:6,d:6,deg:'9'}],
-            V:  [{t:0,d:4,deg:'R'},{t:4,d:4,deg:'3'},{t:8,d:4,deg:'b7'}],
-            turn: [{t:0,d:2,deg:'2'},{t:2,d:2,deg:'b2'},{t:4,d:8,deg:'R'}]
+        { // Riff M3 — Walking Bass (Slow)
+            I:  [{t:0,d:3,deg:'R'},{t:3,d:3,deg:'3'},{t:6,d:3,deg:'5'},{t:9,d:3,deg:'6'}],
+            IV: [{t:0,d:3,deg:'R'},{t:3,d:3,deg:'3'},{t:6,d:3,deg:'5'},{t:9,d:3,deg:'6'}],
+            V:  [{t:0,d:3,deg:'R'},{t:3,d:3,deg:'3'},{t:6,d:3,deg:'5'},{t:9,d:3,deg:'b7'}],
+            turn: [{t:0,d:3,deg:'R'},{t:3,d:3,deg:'b7'},{t:6,d:3,deg:'6'},{t:9,d:3,deg:'5'}]
         }
     ],
     gloomy: [
@@ -151,17 +151,17 @@ export const BLUES_BASS_RIFFS: Record<Mood, BluesBassRiff[]> = {
         }
     ],
     dark: [
-        { // Riff K1 — Тяжёлый up‑down
+        { // Riff K1 — Тяжёлый up‑down (Shuffle)
             I:  [{t:0,d:2,deg:'R'},{t:2,d:2,deg:'5'},{t:4,d:2,deg:'b6'},{t:6,d:2,deg:'6'},{t:8,d:2,deg:'5'},{t:10,d:2,deg:'R'}],
             IV: [{t:0,d:2,deg:'R'},{t:2,d:2,deg:'5'},{t:4,d:2,deg:'b6'},{t:6,d:2,deg:'6'},{t:8,d:2,deg:'5'},{t:10,d:2,deg:'R'}],
             V:  [{t:0,d:2,deg:'5'},{t:2,d:2,deg:'b7'},{t:4,d:2,deg:'R'},{t:6,d:2,deg:'b7'},{t:8,d:2,deg:'5'},{t:10,d:2,deg:'R'}],
             turn: [{t:0,d:2,deg:'R'},{t:2,d:2,deg:'b7'},{t:4,d:2,deg:'6'},{t:6,d:2,deg:'b6'},{t:8,d:2,deg:'5'},{t:10,d:2,deg:'#4'}]
         },
-        { // Riff K2 — Длинные держания (стон)
-            I:  [{t:0,d:12,deg:'b3'}],
-            IV: [{t:0,d:12,deg:'11'}],
-            V:  [{t:0,d:6,deg:'5'},{t:6,d:6,deg:'b7'}],
-            turn: [{t:0,d:6,deg:'R'},{t:6,d:6,deg:'b7'}]
+        { // Riff K2 — Walking Bass (Chrom)
+            I:  [{t:0,d:3,deg:'R'},{t:3,d:3,deg:'b3'},{t:6,d:3,deg:'4'},{t:9,d:3,deg:'#4'}],
+            IV: [{t:0,d:3,deg:'R'},{t:3,d:3,deg:'b3'},{t:6,d:3,deg:'4'},{t:9,d:3,deg:'#4'}],
+            V:  [{t:0,d:3,deg:'5'},{t:3,d:3,deg:'b7'},{t:6,d:3,deg:'R'},{t:9,d:3,deg:'b2'}],
+            turn: [{t:0,d:3,deg:'R'},{t:3,d:3,deg:'b7'},{t:6,d:3,deg:'6'},{t:9,d:3,deg:'5'}]
         },
         { // Riff K3 — Тензии к V (b2/b9)
             I:  [{t:0,d:6,deg:'R'},{t:6,d:6,deg:'5'}],
@@ -170,12 +170,9 @@ export const BLUES_BASS_RIFFS: Record<Mood, BluesBassRiff[]> = {
             turn: [{t:0,d:2,deg:'2'},{t:2,d:2,deg:'b2'},{t:4,d:8,deg:'R'}]
         }
     ],
-    // Fallbacks for moods without specific riffs
     epic: [],
     anxious: [],
 };
 
-// Copy 'joyful' riffs to 'epic' as a starting point
 BLUES_BASS_RIFFS.epic = BLUES_BASS_RIFFS.joyful;
-// Copy 'dark' riffs to 'anxious' as a starting point
 BLUES_BASS_RIFFS.anxious = BLUES_BASS_RIFFS.dark;

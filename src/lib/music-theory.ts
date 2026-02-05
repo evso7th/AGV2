@@ -2,7 +2,7 @@
  * @fileOverview Music Theory Utilities and Axiom Generation
  * #ЗАЧЕМ: Центральный хаб музыкальной логики.
  * #ЧТО: Содержит функции для генерации ДНК сюиты, аккордов, мелодий и ритмов.
- * #СВЯЗИ: Является основным поставщиком данных для `FractalMusicEngine`.
+ * #СВЯЗИ: Является основным потавщиком данных для `FractalMusicEngine`.
  */
 
 import type { FractalEvent, Mood, Genre, Technique, BassSynthParams, InstrumentType, MelodyInstrument, AccompanimentInstrument, ResonanceMatrix, InstrumentHints, AccompanimentTechnique, GhostChord, SfxRule, V1MelodyInstrument, V2MelodyInstrument, BlueprintPart, InstrumentationRules, InstrumentBehaviorRules, BluesMelody, InstrumentPart, DrumKit, BluesGuitarRiff, BluesSoloPhrase, BluesRiffDegree, SuiteDNA, RhythmicFeel, BassStyle, DrumStyle, HarmonicCenter } from '@/types/music';
@@ -80,6 +80,18 @@ const midiToChordName = (rootNote: number, chordType: 'major' | 'minor' | 'dimin
     }
 };
 
+/**
+ * #ЗАЧЕМ: Вносит микро-сдвиги в тайминг событий для имитации человеческой игры.
+ * #ЧТО: Сдвигает e.time на случайную величину (15-40мс в пересчете на доли).
+ */
+export function humanizeEvents(events: FractalEvent[], amount: number, random: any) {
+    events.forEach(e => {
+        // amount обычно 0.01 - 0.04 (соответствует 10-40мс при 120BPM)
+        const shift = (random.next() - 0.5) * 2 * amount;
+        e.time = Math.max(0, e.time + shift);
+    });
+}
+
 export function generateSuiteDNA(totalBars: number, mood: Mood, seed: number, random: any, genre: Genre, blueprintParts: BlueprintPart[]): SuiteDNA {
     const harmonyTrack: GhostChord[] = [];
     const baseKeyNote = 24 + random.nextInt(12);
@@ -95,35 +107,31 @@ export function generateSuiteDNA(totalBars: number, mood: Mood, seed: number, ra
         if (partDuration <= 0) return;
 
         if (genre === 'blues') {
-            const progressionMap = {
-                i:  [{ to: 'iv', w: 0.6 }, { to: 'v', w: 0.2 }, { to: 'bVI', w: 0.2 }],
-                iv: [{ to: 'i', w: 0.7 }, { to: 'v', w: 0.3 }],
-                v:  [{ to: 'i', w: 0.8 }, { to: 'iv', w: 0.2 }],
-                bVI: [{ to: 'v', w: 0.9 }, { to: 'iv', w: 0.1 }],
-            };
+            // #ЗАЧЕМ: Реализация "Expanded 12-bar" — фиксированная последовательность с вариативной длительностью.
+            const bluesSequence = ['i', 'iv', 'i', 'i', 'iv', 'iv', 'i', 'i', 'bVI', 'V', 'i', 'V'];
             const degreeMap: Record<string, {rootOffset: number, type: GhostChord['chordType']}> = {
                 'i': { rootOffset: 0, type: 'minor' }, 'iv': { rootOffset: 5, type: 'minor' },
-                'v': { rootOffset: 7, type: 'dominant' }, 'bVI': { rootOffset: 8, type: 'major' },
+                'v': { rootOffset: 7, type: 'dominant' }, 'V': { rootOffset: 7, type: 'dominant' }, 
+                'bVI': { rootOffset: 8, type: 'major' },
             };
             
-            let currentDegree = 'i';
+            let seqIdx = 0;
             let currentBarInPart = 0;
             while (currentBarInPart < partDuration) {
-                const duration = [4, 2, 8][random.nextInt(3)];
+                const degree = bluesSequence[seqIdx % bluesSequence.length];
+                // Длительность аккорда: 4, 8 или 12 тактов (атмосферный блюз)
+                const durationOptions = [4, 8, 12];
+                const duration = durationOptions[random.nextInt(durationOptions.length)];
                 const finalDuration = Math.min(duration, partDuration - currentBarInPart);
-                const chordInfo = degreeMap[currentDegree];
+                
+                const chordInfo = degreeMap[degree];
                 harmonyTrack.push({
                     rootNote: key + chordInfo.rootOffset, chordType: chordInfo.type,
                     bar: partStartBar + currentBarInPart, durationBars: finalDuration,
                 });
+                
                 currentBarInPart += finalDuration;
-                const transitions = (progressionMap as any)[currentDegree];
-                const totalWeight = transitions.reduce((s: number, t: any) => s + t.w, 0);
-                let r = random.next() * totalWeight;
-                for (const transition of transitions) {
-                    r -= transition.w;
-                    if (r <= 0) { currentDegree = transition.to; break; }
-                }
+                seqIdx++;
             }
         } else {
              let currentBarInPart = 0;
@@ -174,6 +182,10 @@ export function createDrumAxiom(kit: DrumKit, genre: Genre, mood: Mood, tempo: n
         }
     };
     add(riff.K, kit.kick); add(riff.SD, kit.snare); add(riff.HH, kit.hihat); add(riff.OH, kit.hihat); add(riff.R, kit.ride); add(riff.T, kit.perc);
+    
+    // Гуманизация барабанов
+    humanizeEvents(events, 0.01, random);
+    
     return { events, log: "Drums OK" };
 }
 
@@ -184,30 +196,38 @@ export function createHarmonyAxiom(chord: GhostChord, mood: Mood, genre: Genre, 
 export function createAmbientBassAxiom(chord: GhostChord, mood: Mood, genre: Genre, random: any, tempo: number, technique: Technique): FractalEvent[] {
   const root = chord.rootNote - 12;
   const common = { attack: 1.0, release: 2.0, cutoff: 220, resonance: 0.75, distortion: 0.05, portamento: 0.08 };
-  return [{ type: 'bass', note: root, duration: 3.5, time: 0, weight: 0.75, technique: 'drone', dynamics: 'p', phrasing: 'legato', params: { ...common, attack: 1.5, release: 3.0 } }];
+  const events = [{ type: 'bass', note: root, duration: 3.5, time: 0, weight: 0.75, technique: 'drone', dynamics: 'p', phrasing: 'legato', params: { ...common, attack: 1.5, release: 3.0 } }] as FractalEvent[];
+  humanizeEvents(events, 0.02, random);
+  return events;
 }
 
 export function createBluesBassAxiom(chord: GhostChord, technique: Technique, random: any, mood: Mood, epoch: number, dna: SuiteDNA, riffIdx: number): FractalEvent[] {
     const phrase: FractalEvent[] = [];
     const riffs = (BLUES_BASS_RIFFS as any)[mood] ?? BLUES_BASS_RIFFS['contemplative'];
     const riff = riffs[riffIdx % riffs.length];
-    const barInChorus = epoch % 12;
-    const rootOfChorus = dna.harmonyTrack.find(c => c.bar === (epoch - barInChorus))?.rootNote ?? chord.rootNote;
-    const step = (chord.rootNote - rootOfChorus + 12) % 12;
-    let src: 'I' | 'IV' | 'V' | 'turn' = (barInChorus === 11) ? 'turn' : (step === 5 || step === 4) ? 'IV' : (step === 7) ? 'V' : 'I';
+    
+    // Определяем позицию в 12-тактовом цикле на основе harmonyTrack
+    const currentChordIdx = dna.harmonyTrack.findIndex(c => epoch >= c.bar && epoch < c.bar + c.durationBars);
+    const barIn12Cycle = currentChordIdx % 12;
+    
+    let src: 'I' | 'IV' | 'V' | 'turn' = (barIn12Cycle === 11) ? 'turn' : (barIn12Cycle === 1 || barIn12Cycle === 4 || barIn12Cycle === 5 || barIn12Cycle === 9) ? 'IV' : (barIn12Cycle === 8) ? 'V' : 'I';
+    
     for (const n of riff[src]) {
         phrase.push({ type: 'bass', note: chord.rootNote + (DEGREE_TO_SEMITONE[n.deg] || 0) - 12, time: n.t / 3, duration: ((n.d || 2) / 3) * 0.95, weight: 0.85 + random.next() * 0.1, technique: 'pluck', dynamics: 'mf', phrasing: 'legato', params: { cutoff: 800, resonance: 0.7, distortion: 0.15, portamento: 0.0 } });
     }
+    
+    humanizeEvents(phrase, 0.015, random);
     return phrase;
 }
 
 /**
  * #ЗАЧЕМ: Центральный генератор мелодии для блюза с поддержкой классических техник развития.
- * #ЧТО: Реализует семантический выбор ликов, секвенции, вариации и репризы.
- * #ОБНОВЛЕНО (ПЛАН 94.1): Улучшен фильтр выбора ликов и усилена техника Subdivision.
  */
 export function generateBluesMelodyChorus(currentChord: GhostChord, random: any, partId: string, epoch: number, rules: any, dna: SuiteDNA, history: string[], cached: any): { events: FractalEvent[], log: string } {
-    const barInChorus = epoch % 12;
+    // Находим индекс текущего аккорда в последовательности DNA
+    const currentChordIdx = dna.harmonyTrack.findIndex(c => epoch >= c.bar && epoch < c.bar + c.durationBars);
+    const barInChorus = currentChordIdx % 12;
+    
     const isMinor = currentChord.chordType === 'minor' || currentChord.chordType === 'diminished';
     const targetTag = isMinor ? 'minor' : 'major';
     const lastId = history[history.length - 1];
@@ -220,9 +240,9 @@ export function generateBluesMelodyChorus(currentChord: GhostChord, random: any,
         strategy = random.next() < 0.5 ? 'sequence' : 'variation';
         lickId = lastId;
     } else {
-        // #ЗАЧЕМ: Приоритетный выбор активных ликов для энергичных частей.
         let lickPool = Object.entries(BLUES_SOLO_LICKS).filter(([id, data]) => data.tags.includes(targetTag));
         const isActivePart = ['MAIN', 'SOLO'].includes(partId);
+        const isDarkMood = ['dark', 'melancholic', 'anxious'].includes(dna.harmonyTrack[0].chordType); // Approximation
         
         if (isActivePart && random.next() < 0.6) {
             const virtuosoPool = lickPool.filter(([id, data]) => data.tags.includes('virtuoso') || data.tags.includes('active'));
@@ -238,9 +258,8 @@ export function generateBluesMelodyChorus(currentChord: GhostChord, random: any,
     if (strategy === 'sequence') lickPhrase = transposeMelody(lickPhrase, [2, 3, -2][random.nextInt(3)]);
     if (strategy === 'variation' || random.next() < 0.3) lickPhrase = varyRhythm(lickPhrase, random);
 
-    // #РЕШЕНИЕ (ПЛАН 94.1): Снижен порог и увеличен шанс дробления для "заводного" звука.
     const currentTempo = rules.bpm?.base || dna.baseTempo;
-    if (['MAIN', 'SOLO'].includes(partId) || currentTempo > 90) {
+    if ((['MAIN', 'SOLO'].includes(partId) || currentTempo > 90) && !['melancholic', 'dark'].includes(partId.toLowerCase())) {
         lickPhrase = subdivideRhythm(lickPhrase, random);
     }
 
@@ -250,18 +269,19 @@ export function generateBluesMelodyChorus(currentChord: GhostChord, random: any,
         technique: (note.tech || 'pluck') as Technique, dynamics: 'mf', phrasing: 'legato', params: { barCount: epoch }
     }));
 
+    // Применяем гуманизацию
+    humanizeEvents(events, 0.02, random);
+
     return { events, log: `Bar ${epoch}: ${lickId}` };
 }
 
 export function subdivideRhythm(phrase: BluesSoloPhrase, random: any): BluesSoloPhrase {
     const result: BluesSoloPhrase = [];
     for (const note of phrase) {
-        // #ЗАЧЕМ: Усиленное дробление для эффекта "говорящей гитары".
         if (note.d >= 3 && random.next() < 0.75) {
             const first = Math.floor(note.d / 2);
             const second = note.d - first;
             result.push({ ...note, d: first });
-            // Вторая нота часто берется хаммером/слайдом
             result.push({ ...note, t: note.t + first, d: second, tech: random.next() < 0.5 ? 'h' : 'sl' });
         } else { result.push(note); }
     }

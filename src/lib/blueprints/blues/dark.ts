@@ -1,4 +1,3 @@
-
 import type { MusicBlueprint } from '@/types/music';
 
 export const DarkBluesBlueprint: MusicBlueprint = {
@@ -25,7 +24,6 @@ export const DarkBluesBlueprint: MusicBlueprint = {
                         instrumentation: {
                            melody: { activationChance: 1.0, instrumentOptions: [ { name: 'blackAcoustic', weight: 1.0 } ] },
                            pianoAccompaniment: { activationChance: 0.8, instrumentOptions: [ { name: 'piano', weight: 1.0 } ] },
-                           // #ИСПРАВЛЕНО (ПЛАН 41): Возвращен Soft Jazz Organ для атмосферы.
                            accompaniment: { activationChance: 0.8, instrumentOptions: [ { name: 'organ_soft_jazz', weight: 1.0 } ] },
                            harmony: { activationChance: 1.0, instrumentOptions: [ { name: 'guitarChords', weight: 0.8 }, { name: 'flute', weight: 0.2 } ] }
                         }
@@ -66,7 +64,8 @@ export const DarkBluesBlueprint: MusicBlueprint = {
                 instrumentRules: {
                     bass: { techniques: [{ value: 'riff', weight: 1.0 }], density: { min: 0.2, max: 0.4 } },
                     accompaniment: { techniques: [{ value: 'long-chords', weight: 1.0 }], density: { min: 0.4, max: 0.7 } },
-                    melody: { source: 'blues_solo', soloToPatternRatio: 0.7, density: { min: 0.5, max: 0.9 }, soloPlan: "S06" },
+                    // #ЗАЧЕМ: Всегда соло для максимальной выразительности.
+                    melody: { source: 'blues_solo', soloToPatternRatio: 1.0, density: { min: 0.5, max: 0.9 }, soloPlan: "S06" },
                     drums: { kitName: 'blues_melancholic_master', density: { min: 0.3, max: 0.5 }, usePerc: true },
                     sfx: { eventProbability: 0.15, categories: [{ name: 'dark', weight: 1.0 }] },
                     sparkles: { eventProbability: 0.05, categories: [{ name: 'dark', weight: 1.0 }] }
@@ -85,7 +84,7 @@ export const DarkBluesBlueprint: MusicBlueprint = {
                 },
                 instrumentRules: {
                     drums: { pattern: 'composer', kitName: 'blues_melancholic_master', density: { min: 0.5, max: 0.7 }, usePerc: true },
-                    melody: { source: 'blues_solo', soloPlan: "S06", density: { min: 0.5, max: 0.9 }, soloToPatternRatio: 0.7 },
+                    melody: { source: 'blues_solo', soloPlan: "S06", density: { min: 0.5, max: 0.9 }, soloToPatternRatio: 1.0 },
                     accompaniment: { techniques: [{ value: 'long-chords', weight: 1.0 }], density: { min: 0.5, max: 0.8 } },
                     sparkles: { eventProbability: 0.05, categories: [{name: 'dark', weight: 1.0}] }
                 },
