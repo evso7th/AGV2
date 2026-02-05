@@ -82,7 +82,7 @@ export const useAuraGroove = (): AuraGrooveProps => {
   const [instrumentSettings, setInstrumentSettings] = useState<InstrumentSettings>({
     bass: { name: "bass_jazz_warm", volume: 0.5, technique: 'portamento' },
     melody: { name: "ambientPad", volume: 0.5 },
-    accompaniment: { name: "synth", volume: 0.35 },
+    accompaniment: { name: "organ_soft_jazz", volume: 0.35 },
     harmony: { name: "guitarChords", volume: 0.25 },
     pianoAccompaniment: { name: "piano", volume: 0.65 },
   });
@@ -172,7 +172,7 @@ export const useAuraGroove = (): AuraGrooveProps => {
   }, [useMelodyV2]);
 
   // #ЗАЧЕМ: Этот useEffect синхронизирует BPM в UI с темпом, заданным в блюпринте.
-  // #ЧТО: При смене жанра или настроения он асинхронно загружает нужный блюпринт,
+  // #ЧТО: При смене genre или mood он асинхронно загружает нужный блюпринт,
   //      извлекает из него базовый темп и устанавливает его в состояние `bpm`.
   // #СВЯЗИ: Обеспечивает, что UI всегда отражает актуальный темп композитора.
   useEffect(() => {

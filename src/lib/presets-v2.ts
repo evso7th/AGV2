@@ -113,7 +113,7 @@ export const V2_PRESETS = {
   guitar_shineOn: {
     type: 'guitar',
     name: 'Shine On Guitar',
-    volume: 1.0, // #ЗАЧЕМ: Увеличено с 0.68 для подъема в миксе (План №99).
+    volume: 1.0, 
     osc: { width: 0.46, detune: 5, mainGain: 0.85, detGain: 0.18, subGain: 0.25 },
     pickup: { cutoff: 3600, q: 1.0 },
     drive: { type: 'soft', amount: 0.25 }, 
@@ -128,7 +128,7 @@ export const V2_PRESETS = {
   guitar_muffLead: {
     type: 'guitar',
     name: 'Muff Lead Guitar',
-    volume: 0.15, // #ЗАЧЕМ: Снижено с 0.3 (План №105) для балансировки микса.
+    volume: 0.15, 
     osc: { width: 0.5, detune: 7, mainGain: 0.8, detGain: 0.2, subGain: 0.3 },
     pickup: { cutoff: 3200, q: 1.2 },
     drive: { type: 'muff', amount: 0.75 }, 
@@ -148,7 +148,7 @@ export type PresetConfig = typeof V2_PRESETS[PresetName];
 
 export const V1_TO_V2_PRESET_MAP: Record<string, PresetName> = {
   synth: 'synth',
-  organ: 'organ',
+  organ: 'organ_soft_jazz',
   ambientPad: 'synth_ambient_pad_lush',
   piano: 'ep_rhodes_warm',
   rhodes: 'ep_rhodes_warm'
