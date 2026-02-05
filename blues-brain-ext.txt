@@ -1,0 +1,655 @@
+import { buildMultiInstrument, InstrumentAPI } from './instrument-factory';
+import { V2_PRESETS } from './presets-v2';
+
+/**
+ * #ЗАЧЕМ: Настоящий блюзовой генератор — не сборка клише, а язык напряжений (♭5) → разрешений (5/3).
+ * #ЧТО: 4 движка (гармония, бас, соло, ритм) с музыкальными правилами вместо заготовленных паттернов.
+ * #ИНТЕГРАЦИЯ: Полностью совместим с вашими пресетами (guitar_shineOn, bass_jazz_warm).
+ */
+
+// ============================================================================
+// КОНФИГУРАЦИЯ
+// ============================================================================
+
+export interface BluesBrainConfig {
+  tempo: number;           // 68-80 BPM для медленного блюза
+  rootNote: number;        // MIDI root (55 = G3)
+  emotion: {
+    melancholy: number;    // 0.6-0.95
+    darkness: number;      // 0.1-0.4
+  };
+  barsToGenerate: number;  // обычно 12, 24, 48
+}
+
+export const DEFAULT_CONFIG: BluesBrainConfig = {
+  tempo: 72,
+  rootNote: 55, // G3
+  emotion: { melancholy: 0.82, darkness: 0.25 },
+  barsToGenerate: 24
+};
+
+// ============================================================================
+// КОГНИТИВНОЕ СОСТОЯНИЕ (память генератора)
+// ============================================================================
+
+interface BluesCognitiveState {
+  barIndex: number;                // 0..11 в 12-bar цикле
+  phrasePhase: 'call' | 'response' | 'turnaround'; // вопрос-ответ-турнараунд
+  tensionLevel: number;            // 0.0-1.0 — накопленное напряжение от ♭5
+  blueNotePending: boolean;        // ожидает разрешения ♭5 → 5 или 3
+  lastAscendingBar: number;        // защита от похоронного марша
+  emotion: {
+    melancholy: number;
+    darkness: number;
+  };
+}
+
+// ============================================================================
+// БЛЮЗОВАЯ ГАРМОНИЧЕСКАЯ СИСТЕМА
+// ============================================================================
+
+class BluesHarmonyEngine {
+  private readonly progression = [
+    'i7', 'i7', 'i7', 'i7',
+    'iv7', 'iv7', 'i7', 'i7',
+    'v7', 'iv7', 'i7', 'v7'
+  ];
+  
+  getChordForBar(bar: number, emotion: { melancholy: number }): { name: string; extensions: number[] } {
+    const baseIndex = bar % 12;
+    let chordName = this.progression[baseIndex];
+    
+    // Quick change для меланхолии (IV на 2-м такте)
+    if (baseIndex === 1 && emotion.melancholy > 0.7 && Math.random() < 0.4) {
+      chordName = 'iv7';
+    }
+    
+    // Расширения аккордов
+    const extensions: number[] = [];
+    
+    // ♭5 в бас при высокой меланхолии
+    if (emotion.melancholy > 0.8 && Math.random() < 0.6) {
+      extensions.push(-6); // ♭5 relative to root
+    }
+    
+    // ♭9 для мрачных моментов
+    if (emotion.darkness > 0.3 && Math.random() < 0.4) {
+      extensions.push(1); // ♭9
+    }
+    
+    return { name: chordName, extensions };
+  }
+  
+  getNextChordRoot(bar: number, rootNote: number): number {
+    const offsets = [0, 0, 0, 0, 5, 5, 0, 0, 7, 5, 0, 7]; // semitone offsets for G blues
+    const nextBar = (bar + 1) % 12;
+    return rootNote + offsets[nextBar];
+  }
+}
+
+// ============================================================================
+// ВОЛКИНГ-БАС (генерация на лету, не клише!)
+// ============================================================================
+
+class WalkingBassEngine {
+  generateForBar(
+    rootNote: number,
+    chordName: string,
+    barIndex: number,
+    nextRoot: number,
+    tempo: number
+  ): FractalEvent[] {
+    const events: FractalEvent[] = [];
+    const beatDuration = 60 / tempo; // seconds per beat
+    
+    // Правила волкинг-баса:
+    // 1. Доля: корень аккорда
+    // 2. Доля: проходящая нота (диатоническая или хроматическая)
+    // 3. Доля: квинта или септима
+    // 4. Доля: ведущая нота к следующему аккорду
+    
+    const root = rootNote - 12; // октава ниже для баса
+    const fifth = root + 7;
+    const seventh = root + 10;
+    
+    // Проходящая нота: хроматическая к квинте или диатоническая
+    const passingNote = Math.random() < 0.6 
+      ? root + 1  // хроматическая (♭2)
+      : root + 2; // диатоническая (2-я ступень)
+    
+    // Ведущая нота к следующему аккорду (хроматическая)
+    const leadingNote = nextRoot - 13; // на полтона ниже следующего корня
+    
+    // Генерация 4 долей
+    const notes = [root, passingNote, fifth, leadingNote];
+    const dynamics = ['mf', 'mp', 'mp', 'mp']; // акцент только на 1-й доле
+    
+    notes.forEach((note, i) => {
+      // Микрогуманизация: ±15мс на каждую долю
+      const humanOffset = (Math.random() * 30 - 15) / 1000;
+      
+      events.push({
+        type: 'bass',
+        note,
+        time: i * beatDuration + humanOffset,
+        duration: beatDuration * 0.92,
+        weight: 0.9 - i * 0.1, // убывающий вес
+        technique: 'pluck',
+        dynamics: dynamics[i],
+        phrasing: 'legato',
+        harmonicContext: chordName
+      });
+    });
+    
+    return events;
+  }
+}
+
+// ============================================================================
+// МЕЛОДИЧЕСКИЙ ДВИЖОК (язык напряжений ♭5 → разрешений)
+// ============================================================================
+
+class BluesMelodyEngine {
+  // Минорная пентатоника + блюзовая нота (♭5)
+  private readonly bluesScale = [0, 3, 5, 6, 7, 10]; // semitone offsets from root
+  
+  generatePhrase(
+    rootNote: number,
+    phraseType: 'call' | 'response' | 'turnaround',
+    barIndex: number,
+    tempo: number,
+    emotion: { melancholy: number; darkness: number },
+    state: BluesCognitiveState
+  ): FractalEvent[] {
+    const events: FractalEvent[] = [];
+    const beatDuration = 60 / tempo;
+    const phraseStart = 0;
+    
+    // === ВОПРОС (call) — нисходящая фраза с напряжением ===
+    if (phraseType === 'call') {
+      // Базовая нисходящая фраза: 7 → 5 → ♭5 → 3
+      const phraseNotes = [10, 7, 6, 3]; // индексы в блюзовой шкале
+      
+      phraseNotes.forEach((scaleIndex, i) => {
+        const pitch = rootNote + this.bluesScale[scaleIndex] + 24; // +2 октавы для соло
+        
+        // Бенд на ♭5 (индекс 3 в шкале = 6 полутонов = ♭5)
+        const technique = scaleIndex === 3 && Math.random() < 0.75 
+          ? 'bend' 
+          : 'pick';
+        
+        // Длительность: первые ноты короче, последняя — длиннее (вопрос без ответа)
+        const duration = i === phraseNotes.length - 1 
+          ? beatDuration * 1.8 
+          : beatDuration * 0.7;
+        
+        events.push({
+          type: 'melody',
+          note: pitch,
+          time: phraseStart + i * beatDuration * 0.9,
+          duration,
+          weight: 0.85 - i * 0.1,
+          technique,
+          dynamics: 'mp',
+          phrasing: 'legato',
+          harmonicContext: 'i7'
+        });
+      });
+      
+      // Запоминаем напряжение от ♭5
+      if (phraseNotes.includes(3)) {
+        state.tensionLevel = Math.min(1.0, state.tensionLevel + 0.35);
+        state.blueNotePending = true;
+      }
+      
+      // Стратегическая пауза после вопроса («незаконченность»)
+      events.push({
+        type: 'rest',
+        time: phraseStart + phraseNotes.length * beatDuration * 0.9,
+        duration: beatDuration * 1.2,
+        weight: 0.95,
+        phrasing: 'breath'
+      });
+    }
+    
+    // === ОТВЕТ (response) — восходящее разрешение ===
+    else if (phraseType === 'response') {
+      // Разрешение: 3 → 5 → 7 (без ♭5!)
+      const phraseNotes = state.blueNotePending 
+        ? [3, 5, 7]    // если было напряжение — разрешаем
+        : [0, 3, 5];   // иначе — спокойный ответ
+      
+      phraseNotes.forEach((scaleIndex, i) => {
+        const pitch = rootNote + this.bluesScale[scaleIndex] + 24;
+        
+        // Вибрато на последней ноте разрешения
+        const technique = i === phraseNotes.length - 1 && Math.random() < 0.8
+          ? 'vibrato'
+          : 'pick';
+        
+        events.push({
+          type: 'melody',
+          note: pitch,
+          time: phraseStart + i * beatDuration * 1.1,
+          duration: beatDuration * 0.85,
+          weight: 0.8 + i * 0.05, // нарастание веса
+          technique,
+          dynamics: 'mf',
+          phrasing: 'portamento',
+          harmonicContext: 'i7'
+        });
+      });
+      
+      // Сброс напряжения
+      state.tensionLevel = Math.max(0.1, state.tensionLevel - 0.4);
+      state.blueNotePending = false;
+    }
+    
+    // === ТУРНАРАУНД (последние 2 такта) — хроматическое напряжение ===
+    else if (phraseType === 'turnaround') {
+      // Хроматический проход к тонике: 3 → ♭3 → 2 → ♭2 → 1
+      const chromaticRun = [3, 2, 1, 0, -1]; // semitone offsets from root+3
+      
+      chromaticRun.forEach((offset, i) => {
+        const pitch = rootNote + 3 + offset + 24; // начинаем с ♭3
+        
+        events.push({
+          type: 'melody',
+          note: pitch,
+          time: phraseStart + i * beatDuration * 0.45,
+          duration: beatDuration * 0.4,
+          weight: 0.7 + i * 0.06,
+          technique: 'pick',
+          dynamics: 'p',
+          phrasing: 'staccato',
+          harmonicContext: 'v7'
+        });
+      });
+      
+      // Финальное разрешение в тонику
+      events.push({
+        type: 'melody',
+        note: rootNote + 24,
+        time: phraseStart + chromaticRun.length * beatDuration * 0.45,
+        duration: beatDuration * 2.5,
+        weight: 0.95,
+        technique: 'vibrato',
+        dynamics: 'mf',
+        phrasing: 'sostenuto',
+        harmonicContext: 'i7'
+      });
+      
+      state.tensionLevel = 0.2;
+      state.blueNotePending = false;
+    }
+    
+    // === МИКРОАРТИКУЛЯЦИЯ: свинг и гуманизация ===
+    this.applySwingAndHumanization(events, beatDuration, emotion);
+    
+    return events;
+  }
+  
+  private applySwingAndHumanization(
+    events: FractalEvent[],
+    beatDuration: number,
+    emotion: { melancholy: number }
+  ): void {
+    // Свинг: триольное соотношение 2:1 с вариацией
+    const swingRatio = 0.66 + (Math.random() - 0.5) * 0.08; // 0.62-0.70
+    
+    events.forEach((event, i) => {
+      if (event.type !== 'rest') {
+        // Свинг на чётных долях
+        if (i % 2 === 1) {
+          event.time = event.time * swingRatio + (1 - swingRatio) * beatDuration;
+        }
+        
+        // Гуманизация тайминга: ±25мс с корреляцией к позиции в фразе
+        const maxOffsetMs = 20 + emotion.melancholy * 15;
+        const offsetMs = (Math.random() * maxOffsetMs * 2 - maxOffsetMs) / 1000;
+        event.time += offsetMs;
+        
+        // Модуляция громкости для «дыхания»
+        if (event.technique === 'vibrato') {
+          event.weight *= 0.95 + Math.random() * 0.1;
+        }
+      }
+    });
+  }
+}
+
+// ============================================================================
+// РИТМИЧЕСКИЙ ДВИЖОК (барабаны с настоящим свингом)
+// ============================================================================
+
+class BluesRhythmEngine {
+  generateDrumsForBar(
+    barIndex: number,
+    tempo: number,
+    emotion: { melancholy: number }
+  ): FractalEvent[] {
+    const events: FractalEvent[] = [];
+    const beatDuration = 60 / tempo;
+    
+    // Kick: 1 и 3 доли (с вариацией)
+    [0, 2].forEach(beat => {
+      const humanOffset = (Math.random() * 20 - 10) / 1000;
+      events.push({
+        type: 'drum_kick',
+        note: 36, // C1 - kick
+        time: beat * beatDuration + humanOffset,
+        duration: beatDuration * 0.3,
+        weight: 0.9 - beat * 0.1,
+        technique: 'hit',
+        dynamics: 'mf',
+        phrasing: 'staccato'
+      });
+    });
+    
+    // Snare: 2 и 4 доли с свингом
+    const swingOffset = beatDuration * (1 - 0.66); // триольный свинг
+    
+    [1, 3].forEach(beat => {
+      const baseTime = beat * beatDuration;
+      const swungTime = baseTime + (beat === 3 ? swingOffset : 0); // свинг только на 4-й доле
+      
+      const humanOffset = (Math.random() * 25 - 12) / 1000;
+      events.push({
+        type: 'drum_snare',
+        note: 38, // D1 - snare
+        time: swungTime + humanOffset,
+        duration: beatDuration * 0.25,
+        weight: 0.85,
+        technique: 'hit',
+        dynamics: 'mf',
+        phrasing: 'staccato'
+      });
+    });
+    
+    // Hi-hat: восьмые с триольным свингом
+    for (let i = 0; i < 8; i++) {
+      const isTriplet = i % 3 === 0 || i % 3 === 1; // триольная сетка
+      const baseTime = (i / 2) * beatDuration;
+      const swungTime = isTriplet 
+        ? baseTime * 0.66 
+        : baseTime * 0.34 + beatDuration * 0.66;
+      
+      // При меланхолии — пропускаем некоторые хай-хэты («усталость»)
+      if (emotion.melancholy > 0.8 && i % 2 === 1 && Math.random() < 0.4) continue;
+      
+      const humanOffset = (Math.random() * 15 - 7) / 1000;
+      events.push({
+        type: 'drum_hihat',
+        note: 42, // F#1 - closed hihat
+        time: swungTime + humanOffset,
+        duration: beatDuration * 0.15,
+        weight: 0.4 + Math.random() * 0.2,
+        technique: 'hit',
+        dynamics: 'p',
+        phrasing: 'staccato'
+      });
+    }
+    
+    return events;
+  }
+}
+
+// ============================================================================
+// ГЛАВНЫЙ ГЕНЕРАТОР
+// ============================================================================
+
+export interface FractalEvent {
+  type: 'melody' | 'bass' | 'drum_kick' | 'drum_snare' | 'drum_hihat' | 'rest';
+  note?: number;
+  time: number;
+  duration: number;
+  weight: number;
+  technique?: 'pick' | 'bend' | 'vibrato' | 'pluck' | 'hit';
+  dynamics?: 'pp' | 'p' | 'mp' | 'mf' | 'f' | 'ff';
+  phrasing?: 'legato' | 'staccato' | 'portamento' | 'sostenuto' | 'breath';
+  harmonicContext?: string;
+}
+
+export class BluesBrain {
+  private config: BluesBrainConfig;
+  private state: BluesCognitiveState;
+  private harmonyEngine = new BluesHarmonyEngine();
+  private bassEngine = new WalkingBassEngine();
+  private melodyEngine = new BluesMelodyEngine();
+  private rhythmEngine = new BluesRhythmEngine();
+  
+  constructor(config?: Partial<BluesBrainConfig>) {
+    this.config = { ...DEFAULT_CONFIG, ...config };
+    this.state = {
+      barIndex: 0,
+      phrasePhase: 'call',
+      tensionLevel: 0.3,
+      blueNotePending: false,
+      lastAscendingBar: -10,
+      emotion: { ...this.config.emotion }
+    };
+  }
+  
+  // ───── ГЛАВНЫЙ МЕТОД ГЕНЕРАЦИИ ─────
+  
+  generate(): { events: FractalEvent[]; metadata: any } {
+    const barDuration = 60 / this.config.tempo;
+    const allEvents: FractalEvent[] = [];
+    const sections: { name: string; bars: number[] }[] = [];
+    
+    console.log(`🎸 Генерация ${this.config.barsToGenerate} тактов блюза...`);
+    console.log(`   Темп: ${this.config.tempo} BPM | Тональность: ${this.getMidiNoteName(this.config.rootNote)}`);
+    console.log(`   Эмоция: меланхолия ${this.state.emotion.melancholy.toFixed(2)}, мрак ${this.state.emotion.darkness.toFixed(2)}`);
+    
+    for (let bar = 0; bar < this.config.barsToGenerate; bar++) {
+      // Эволюция эмоции (броуновское движение)
+      this.evolveEmotion();
+      
+      // Определение фазы фразы (каждые 4 такта: call → response → call → response)
+      this.updatePhrasePhase(bar);
+      
+      // Гармония
+      const chordInfo = this.harmonyEngine.getChordForBar(bar, this.state.emotion);
+      
+      // Следующий корень для ведущей ноты баса
+      const nextRoot = this.harmonyEngine.getNextChordRoot(bar, this.config.rootNote);
+      
+      // Генерация партий
+      const bassEvents = this.bassEngine.generateForBar(
+        this.config.rootNote,
+        chordInfo.name,
+        bar,
+        nextRoot,
+        this.config.tempo
+      );
+      
+      const melodyEvents = this.melodyEngine.generatePhrase(
+        this.config.rootNote,
+        this.state.phrasePhase,
+        bar,
+        this.config.tempo,
+        this.state.emotion,
+        this.state
+      );
+      
+      const drumEvents = this.rhythmEngine.generateDrumsForBar(
+        bar,
+        this.config.tempo,
+        this.state.emotion
+      );
+      
+      // Смещение времени на текущий такт
+      [bassEvents, melodyEvents, drumEvents].forEach(events => {
+        events.forEach(event => {
+          event.time += bar * barDuration;
+          if (event.type === 'melody') {
+            // Динамическая экспрессия на основе эмоции
+            event.weight *= 0.7 + this.state.emotion.melancholy * 0.35;
+          }
+        });
+        allEvents.push(...events);
+      });
+      
+      // Защита от похоронного марша: обязательное восхождение каждые 6 тактов
+      this.applyAntiFuneralMarch(bar, barDuration, allEvents);
+      
+      // Прогресс в консоли
+      if ((bar + 1) % 12 === 0) {
+        console.log(`   ✓ Сгенерировано ${bar + 1} тактов (напряжение: ${this.state.tensionLevel.toFixed(2)})`);
+      }
+    }
+    
+    // Метаданные
+    const metadata = {
+      totalTime: this.config.barsToGenerate * barDuration,
+      avgTension: this.state.tensionLevel,
+      sections,
+      emotionProfile: {
+        start: { ...this.config.emotion },
+        end: { ...this.state.emotion }
+      }
+    };
+    
+    console.log(`✅ Генерация завершена: ${allEvents.length} событий`);
+    
+    return { events: allEvents, metadata };
+  }
+  
+  // ───── ЗАЩИТА ОТ ПОХОРОННОГО МАРША (музыкальное правило) ─────
+  
+  private applyAntiFuneralMarch(bar: number, barDuration: number, events: FractalEvent[]): void {
+    // Если прошло 6+ тактов без восходящего движения — принудительное разрешение
+    if (bar - this.state.lastAscendingBar >= 6 && this.state.tensionLevel > 0.5) {
+      const lastMelodyEvent = events
+        .filter(e => e.type === 'melody')
+        .slice(-1)[0];
+      
+      if (lastMelodyEvent) {
+        const resolutionNote: FractalEvent = {
+          type: 'melody',
+          note: lastMelodyEvent.note! + 5, // квинта вверх — музыкальное разрешение
+          time: lastMelodyEvent.time + lastMelodyEvent.duration + barDuration * 0.3,
+          duration: barDuration * 1.2,
+          weight: 0.92,
+          technique: 'vibrato',
+          dynamics: 'mf',
+          phrasing: 'sostenuto',
+          harmonicContext: 'i7'
+        };
+        
+        events.push(resolutionNote);
+        this.state.lastAscendingBar = bar;
+        this.state.tensionLevel = 0.2;
+      }
+    }
+  }
+  
+  // ───── ЭМОЦИОНАЛЬНАЯ ЭВОЛЮЦИЯ ─────
+  
+  private evolveEmotion(): void {
+    // Броуновское движение с ограничениями
+    this.state.emotion.melancholy += (Math.random() - 0.5) * 0.06;
+    this.state.emotion.darkness += (Math.random() - 0.5) * 0.04;
+    
+    // Клиппинг
+    this.state.emotion.melancholy = Math.max(0.65, Math.min(0.95, this.state.emotion.melancholy));
+    this.state.emotion.darkness = Math.max(0.15, Math.min(0.45, this.state.emotion.darkness));
+  }
+  
+  private updatePhrasePhase(bar: number): void {
+    const positionIn4BarCycle = bar % 4;
+    
+    if (positionIn4BarCycle === 0) this.state.phrasePhase = 'call';
+    else if (positionIn4BarCycle === 2) this.state.phrasePhase = 'response';
+    else if (bar % 12 >= 10) this.state.phrasePhase = 'turnaround'; // последние 2 такта — турнараунд
+  }
+  
+  // ───── УТИЛИТЫ ─────
+  
+  private getMidiNoteName(midi: number): string {
+    const notes = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B'];
+    const octave = Math.floor(midi / 12) - 1;
+    return `${notes[midi % 12]}${octave}`;
+  }
+  
+  // ───── ВОСПРОИЗВЕДЕНИЕ С ИНСТРУМЕНТАМИ ─────
+  
+  async play(ctx: AudioContext, events: FractalEvent[], when: number = 0): Promise<void> {
+    console.log('▶️ Инициализация инструментов...');
+    
+    // Инициализация гитары (shineOn для меланхолии)
+    const guitar = await buildMultiInstrument(ctx, {
+      type: 'guitar',
+      preset: V2_PRESETS.guitar_shineOn
+    });
+    
+    // Инициализация баса
+    const bass = await buildMultiInstrument(ctx, {
+      type: 'bass',
+      preset: V2_PRESETS.bass_jazz_warm
+    });
+    
+    // Настройка параметров под эмоцию
+    this.updateInstrumentParams(guitar, bass);
+    
+    console.log('🎵 Воспроизведение...');
+    
+    // Воспроизведение событий
+    events.forEach(event => {
+      const time = when + event.time;
+      
+      if (event.type === 'melody' && event.note !== undefined) {
+        guitar.noteOn(event.note, time, event.weight);
+        guitar.noteOff(event.note, time + event.duration);
+        
+        // Бенды эмулируем через автоматизацию (условно)
+        if (event.technique === 'bend') {
+          setTimeout(() => {
+            // В реальной реализации: автоматизация параметра pitchBend
+          }, event.duration * 500);
+        }
+      }
+      
+      if (event.type === 'bass' && event.note !== undefined) {
+        bass.noteOn(event.note, time, event.weight * 0.9);
+        bass.noteOff(event.note, time + event.duration);
+      }
+      
+      // Драмы можно добавить позже через отдельные инструменты
+    });
+    
+    // Автоостановка через общую длительность + 3 секунды
+    const totalTime = events[events.length - 1].time + events[events.length - 1].duration + 3;
+    
+    return new Promise(resolve => {
+      setTimeout(() => {
+        guitar.allNotesOff();
+        bass.allNotesOff();
+        console.log('⏹️ Воспроизведение завершено');
+        resolve();
+      }, totalTime * 1000);
+    });
+  }
+  
+  private updateInstrumentParams(guitar: InstrumentAPI, bass: InstrumentAPI): void {
+    const emotion = this.state.emotion;
+    
+    // Гитара: параметры под меланхолию
+    const cutoff = 3600 - emotion.darkness * 900; // 2700-3600 Hz
+    const driveAmount = 0.18 + emotion.darkness * 0.32;
+    const reverbMix = 0.20 + emotion.melancholy * 0.18;
+    const adsrR = 1.8 + emotion.melancholy * 0.8;
+    const expression = 0.65 + emotion.melancholy * 0.30;
+    
+    guitar.setParam('pickup.cutoff', cutoff);
+    guitar.setParam('drive.amount', driveAmount);
+    guitar.setParam('reverbMix', reverbMix);
+    guitar.setParam('adsr.r', adsrR);
+    guitar.setExpression(expression);
+    
+    // Бас: тёплый, с лёгким компрессором
+    bass.setParam('filter.cutoff', 800 + emotion.melancholy * 200);
+    bass.setParam('compressor.threshold', -16);
+    bass.setParam('compressor.ratio', 3.5);
+  }
+}

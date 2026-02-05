@@ -20,38 +20,6 @@ export const DEGREE_TO_SEMITONE: Record<string, number> = {
     'b6': 8, '6': 9, 'b7': 10, '7': 11, 'R+8': 12, '9': 14, '11': 17
 };
 
-// --- MARKOV HARMONIC STATES (SPEC 3.1) ---
-// 0=stable (I), 1=tension (IV), 2=chromatic/turnaround (VI/ii), 3=resolution (V)
-const BLUES_STATE_MATRIX = [
-  [0.50, 0.35, 0.10, 0.05],
-  [0.30, 0.40, 0.20, 0.10],
-  [0.10, 0.20, 0.40, 0.30],
-  [0.60, 0.10, 0.05, 0.25]
-];
-
-const STATE_TO_CHORD: Record<number, string[]> = {
-    0: ['i7', 'i9'],
-    1: ['iv7', 'iv9'],
-    2: ['VI7b5', 'ii7b5'],
-    3: ['V7', 'V9']
-};
-
-/**
- * #ЗАЧЕМ: Универсальный Марковский переход.
- */
-export function markovNext(matrix: number[][], current: number, random: any): number {
-    const transitions = matrix[current];
-    if (!transitions) return 0;
-
-    let r = random.next();
-    let cumulative = 0;
-    for (let i = 0; i < transitions.length; i++) {
-        cumulative += transitions[i];
-        if (r < cumulative) return i;
-    }
-    return transitions.length - 1;
-}
-
 /**
  * #ЗАЧЕМ: Базовая гармоническая аксиома для Ambient/Trance.
  */
@@ -66,15 +34,16 @@ export function createHarmonyAxiom(
     const isMinor = chord.chordType === 'minor' || chord.chordType === 'diminished';
     const root = chord.rootNote;
     
+    // #ЗАЧЕМ: Мягкое "рассыпание" аккорда для создания объема.
     const notes = [root, root + (isMinor ? 3 : 4), root + 7];
     
     notes.forEach((note, i) => {
         events.push({
             type: 'accompaniment',
-            note: note + 12, // Lowered register per Plan 115
-            time: i * 0.05,
+            note: note + 12, 
+            time: i * 0.08, // Увеличена задержка для мягкости
             duration: 4.0,
-            weight: 0.5 - (i * 0.1),
+            weight: 0.4 - (i * 0.05),
             technique: 'swell',
             dynamics: 'p',
             phrasing: 'legato',
@@ -91,7 +60,7 @@ export function getScaleForMood(mood: Mood, genre?: Genre): number[] {
   let baseScale: number[];
 
   if (genre === 'blues') {
-      // Истинная блюзовая гамма: Dorian Add 5
+      // Истинная блюзовая гамма: Dorian Add 5 ([0, 2, 3, 5, 6, 7, 10])
       baseScale = [0, 2, 3, 5, 6, 7, 10]; 
   } else {
       switch (mood) {
@@ -138,9 +107,9 @@ export function generateSuiteDNA(totalBars: number, mood: Mood, seed: number, ra
 
         if (genre === 'blues') {
             let currentBarInPart = 0;
-            // Strict 12-bar loop generation for Blues
+            // Строгий 12-тактовый цикл для Блюза
             while (currentBarInPart < partDuration) {
-                const progression = [0, 0, 0, 0, 5, 5, 0, 0, 7, 5, 0, 7]; // Classic quick-change offsets
+                const progression = [0, 0, 0, 0, 5, 5, 0, 0, 7, 5, 0, 7]; 
                 const chordTypes: ('minor' | 'dominant')[] = ['minor', 'minor', 'minor', 'minor', 'minor', 'minor', 'minor', 'minor', 'dominant', 'minor', 'minor', 'dominant'];
                 
                 for (let i = 0; i < 12 && currentBarInPart < partDuration; i++) {
