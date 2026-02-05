@@ -1,8 +1,8 @@
-
 /**
  * @fileOverview Universal Music Theory Utilities
  * #ЗАЧЕМ: Базовый набор инструментов для работы с нотами, ладами и ритмом.
  * #ЧТО: Функции для получения гамм, инверсий, ретроградов и гуманизации.
+ *       Внедрена система цепей Маркова для генерации гармонического скелета.
  * #СВЯЗИ: Используется во всех "Жанровых Мозгах" и FractalMusicEngine.
  */
 
@@ -21,6 +21,35 @@ export const DEGREE_TO_SEMITONE: Record<string, number> = {
     'R': 0, 'b2': 1, '2': 2, 'b3': 3, '3': 4, '4': 5, '#4': 6, 'b5': 6, '5': 7,
     'b6': 8, '6': 9, 'b7': 10, '7': 11, 'R+8': 12, '9': 14, '11': 17
 };
+
+// --- MARKOV HARMONIC MATRICES ---
+
+/**
+ * Вероятности переходов между ступенями для блюза.
+ * Индексирует: I, IV, V, vi, bVI
+ */
+const BLUES_HARMONIC_TRANSITIONS: Record<string, Record<string, number>> = {
+    'I':  { 'I': 0.5, 'IV': 0.35, 'V': 0.1, 'vi': 0.05 },
+    'IV': { 'I': 0.4, 'IV': 0.4, 'V': 0.15, 'bVI': 0.05 },
+    'V':  { 'IV': 0.6, 'I': 0.3, 'V': 0.1 },
+    'vi': { 'IV': 0.5, 'V': 0.3, 'I': 0.2 },
+    'bVI': { 'V': 0.8, 'I': 0.2 }
+};
+
+export function markovNext<T extends string>(matrix: Record<T, Record<T, number>>, current: T, random: any): T {
+    const transitions = matrix[current];
+    if (!transitions) return current;
+
+    const entries = Object.entries(transitions) as [T, number][];
+    const totalWeight = entries.reduce((sum, [_, weight]) => sum + weight, 0);
+    let r = random.next() * totalWeight;
+
+    for (const [state, weight] of entries) {
+        r -= weight;
+        if (r <= 0) return state;
+    }
+    return entries[entries.length - 1][0];
+}
 
 export function getScaleForMood(mood: Mood, genre?: Genre, chordType?: 'major' | 'minor' | 'dominant' | 'diminished'): number[] {
   const E1 = 28;
@@ -162,37 +191,47 @@ export function generateSuiteDNA(totalBars: number, mood: Mood, seed: number, ra
         if (partDuration <= 0) return;
 
         if (genre === 'blues') {
-            const bluesSequence = ['i', 'iv', 'i', 'i', 'iv', 'iv', 'i', 'i', 'bVI', 'V', 'i', 'V'];
-            let seqIdx = 0;
+            // #ЗАЧЕМ: Гармония теперь генерируется с помощью цепей Маркова.
+            // #ЧТО: Вместо фиксированной сетки используется матрица переходов.
+            //      Это обеспечивает уникальность "скелета" каждой пьесы.
+            let currentDegree = 'I';
             let currentBarInPart = 0;
             
             while (currentBarInPart < partDuration) {
-                const degree = bluesSequence[seqIdx % bluesSequence.length];
+                // Выбираем длительность блока через Марковское распределение
                 const r = random.next();
                 let duration = r < 0.6 ? 4 : (r < 0.9 ? 8 : 12);
                 
-                if (mood === 'melancholic' && degree === 'iv') {
+                // Эмоциональное влияние на длительность (Melancholy Bias)
+                if (mood === 'melancholic' && currentDegree === 'IV') {
                     duration = random.next() < 0.8 ? 8 : 12;
                 }
                 
                 const finalDuration = Math.min(duration, partDuration - currentBarInPart);
                 
                 const degreeMap: Record<string, {rootOffset: number, type: GhostChord['chordType']}> = {
-                    'i': { rootOffset: 0, type: 'minor' }, 'iv': { rootOffset: 5, type: 'minor' },
-                    'v': { rootOffset: 7, type: 'dominant' }, 'V': { rootOffset: 7, type: 'dominant' }, 
-                    'bVI': { rootOffset: 8, type: 'major' },
+                    'I': { rootOffset: 0, type: 'major' },
+                    'IV': { rootOffset: 5, type: 'major' },
+                    'V': { rootOffset: 7, type: 'dominant' },
+                    'vi': { rootOffset: 9, type: 'minor' },
+                    'bVI': { rootOffset: 8, type: 'major' }
                 };
                 
-                const chordInfo = degreeMap[degree];
+                const chordInfo = degreeMap[currentDegree] || degreeMap['I'];
                 harmonyTrack.push({
-                    rootNote: key + chordInfo.rootOffset, chordType: chordInfo.type,
-                    bar: partStartBar + currentBarInPart, durationBars: finalDuration,
+                    rootNote: key + chordInfo.rootOffset, 
+                    chordType: chordInfo.type,
+                    bar: partStartBar + currentBarInPart, 
+                    durationBars: finalDuration,
                 });
                 
                 currentBarInPart += finalDuration;
-                seqIdx++;
+                
+                // ПЕРЕХОД ПО МАРКОВУ
+                currentDegree = markovNext(BLUES_HARMONIC_TRANSITIONS, currentDegree, random);
             }
         } else {
+             // Фолбэк для других жанров
              let currentBarInPart = 0;
              while(currentBarInPart < partDuration) {
                 const duration = [4, 8, 2][Math.floor(random.next() * 3)];

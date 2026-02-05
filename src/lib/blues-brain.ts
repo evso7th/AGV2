@@ -1,4 +1,3 @@
-
 import type { 
     FractalEvent, 
     Mood, 
@@ -25,18 +24,32 @@ import {
     addOrnaments,
     subdivideRhythm,
     varyRhythm,
-    humanizeEvents
+    humanizeEvents,
+    markovNext
 } from './music-theory';
+
+// --- MARKOV PHRASING MATRICES ---
+
+/**
+ * Вероятности выбора длительности следующей фразы (в тактах).
+ */
+const PHRASE_LENGTH_TRANSITIONS: Record<string, Record<string, number>> = {
+    '2': { '2': 0.6, '3': 0.3, '4': 0.1 },
+    '3': { '2': 0.2, '3': 0.5, '4': 0.3 },
+    '4': { '2': 0.1, '4': 0.5, '3': 0.4 }
+};
 
 /**
  * #ЗАЧЕМ: "Блюзовый Мозг" — автономный модуль музыкального интеллекта.
  * #ЧТО: Хранитель правил и сокровищницы блюза. Умеет в вариативность, 
  *       мутагенез мотивов (секвенции, инверсии) и когнитивный контроль.
+ *       Интегрирована система цепей Маркова для управления формой.
  * #СВЯЗИ: Вызывается из FractalMusicEngine при выборе жанра 'blues'.
  */
 export class BluesBrain {
     private cognitiveState: BluesCognitiveState;
     private random: any;
+    private lastPhraseLength: string = '2';
 
     constructor(seed: number, mood: Mood) {
         this.random = this.seededRandom(seed);
@@ -79,12 +92,19 @@ export class BluesBrain {
         // 1. Управление Эмоцией
         this.evolveEmotion();
 
-        // 2. Определение фазы фразы (Зов / Ответ / Филл)
+        // 2. МАРКОВСКОЕ УПРАВЛЕНИЕ ДЛИТЕЛЬНОСТЬЮ ФРАЗ
+        // Каждые N тактов пересчитываем "план дыхания"
+        if (epoch % 4 === 0) {
+            this.lastPhraseLength = markovNext(PHRASE_LENGTH_TRANSITIONS, this.lastPhraseLength, this.random);
+            console.log(`[BluesBrain] Markov Phrase Transition: Next phrases will aim for ~${this.lastPhraseLength} bars.`);
+        }
+
+        // 3. Определение фазы фразы (Зов / Ответ / Филл)
         const currentChordIdx = dna.harmonyTrack.findIndex(c => epoch >= c.bar && epoch < c.bar + c.durationBars);
         const barInChorus = currentChordIdx % 12;
         this.cognitiveState.phraseState = barInChorus % 4 < 2 ? 'call' : (barInChorus % 4 === 2 ? 'response' : 'fill');
 
-        // 3. Генерация партий
+        // 4. Генерация партий
         if (hints.drums) events.push(...this.generateDrums(navInfo, dna, epoch));
         if (hints.bass) events.push(...this.generateBass(currentChord, dna, epoch, navInfo.currentPart.mood));
         if (hints.accompaniment) events.push(...this.generateAccompaniment(currentChord, navInfo, epoch));
@@ -128,7 +148,6 @@ export class BluesBrain {
 
     private generateBass(chord: GhostChord, dna: SuiteDNA, epoch: number, mood: Mood): FractalEvent[] {
         const riffs = BLUES_BASS_RIFFS[mood] || BLUES_BASS_RIFFS['contemplative'];
-        // Ротация риффа каждые 4 такта
         const selectedRiff = riffs[Math.floor(epoch / 4) % riffs.length];
         
         const currentChordIdx = dna.harmonyTrack.findIndex(c => epoch >= c.bar && epoch < c.bar + c.durationBars);
@@ -159,7 +178,6 @@ export class BluesBrain {
         const isMinor = chord.chordType === 'minor' || chord.chordType === 'diminished';
         const root = chord.rootNote;
         
-        // Shell Voicings (3-7-9)
         const notes = [root + (isMinor ? 3 : 4), root + 10, root + 14];
 
         if (tech === 'rhythmic-comp') {
@@ -198,7 +216,6 @@ export class BluesBrain {
         let lickId = 'custom';
         let developmentType = 'none';
 
-        // --- ЛОГИКА РАЗВИТИЯ (Секвенции, Инверсии) ---
         if (this.cognitiveState.phraseState === 'response' && this.cognitiveState.phraseHistory.length > 0) {
             const lastPhrase = JSON.parse(JSON.stringify(this.cognitiveState.phraseHistory[this.cognitiveState.phraseHistory.length - 1]));
             const r = this.random.next();
@@ -219,7 +236,6 @@ export class BluesBrain {
             lickId = `dev-${developmentType}`;
         }
 
-        // --- ВЫБОР ИЗ СОКРОВИЩНИЦЫ ---
         if (lickPhrase.length === 0) {
             if (dna.bluesMelodyId) {
                 const baseMelody = BLUES_MELODY_RIFFS.find(m => m.id === dna.bluesMelodyId);
@@ -243,7 +259,6 @@ export class BluesBrain {
             }
         }
 
-        // --- Similarity Guard ---
         const currentHash = lickPhrase.map((n: any) => n.deg).join(',');
         if (this.calculateSimilarity(currentHash, this.cognitiveState.lastPhraseHash) > 0.8) {
             lickPhrase = varyRhythm(lickPhrase, this.random);
@@ -256,7 +271,6 @@ export class BluesBrain {
             if (this.cognitiveState.phraseHistory.length > 12) this.cognitiveState.phraseHistory.shift();
         }
 
-        // --- Blue Note Resolve ---
         lickPhrase.forEach((note: any) => {
             if (note.deg === 'b5') this.cognitiveState.blueNotePending = true;
             else if (this.cognitiveState.blueNotePending) {
@@ -265,7 +279,6 @@ export class BluesBrain {
             }
         });
 
-        // --- Tension Override ---
         if (this.cognitiveState.tensionLevel > 0.8 && lickPhrase.length > 0) {
             lickPhrase[lickPhrase.length - 1].deg = 'R';
             lickPhrase[lickPhrase.length - 1].d = 6;
