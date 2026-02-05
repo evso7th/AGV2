@@ -1,4 +1,3 @@
-
 /**
  * @fileOverview Music Theory Utilities and Axiom Generation
  * #ЗАЧЕМ: Центральный хаб музыкальной логики.
@@ -63,7 +62,6 @@ const midiToChordName = (rootNote: number, chordType: 'major' | 'minor' | 'dimin
 
 /**
  * #ЗАЧЕМ: Человеческое дыхание ритма.
- * #ЧТО: Сдвигает ноты на случайную величину для разрушения механичности.
  */
 export function humanizeEvents(events: FractalEvent[], amount: number, random: any) {
     events.forEach(e => {
@@ -73,7 +71,7 @@ export function humanizeEvents(events: FractalEvent[], amount: number, random: a
 }
 
 /**
- * #ЗАЧЕМ: Расчёт схожести фраз (Anti-Monotony).
+ * #ЗАЧЕМ: Расчёт схожести фраз (Jaccard Similarity).
  */
 function calculateSimilarity(phraseA: string, phraseB: string): number {
     if (!phraseA || !phraseB) return 0;
@@ -103,13 +101,18 @@ export function generateSuiteDNA(totalBars: number, mood: Mood, seed: number, ra
             let seqIdx = 0;
             let currentBarInPart = 0;
             
-            // #ЗАЧЕМ: Марковское распределение длительностей для блюза.
             while (currentBarInPart < partDuration) {
                 const degree = bluesSequence[seqIdx % bluesSequence.length];
                 
-                // Взвешенные длительности: 4 такта - 60%, 8 - 30%, 12 - 10%.
+                // --- ИДЕЯ 2: Марковский ритм формы ---
                 const r = random.next();
-                const duration = r < 0.6 ? 4 : (r < 0.9 ? 8 : 12);
+                let duration = r < 0.6 ? 4 : (r < 0.9 ? 8 : 12);
+                
+                // --- ИДЕЯ 5: Деформация траектории (Melancholy Bias) ---
+                if (mood === 'melancholic' && degree === 'iv') {
+                    // Субдоминанта в меланхолии тянется дольше (80% шанс на длинный аккорд)
+                    duration = random.next() < 0.8 ? 8 : 12;
+                }
                 
                 const finalDuration = Math.min(duration, partDuration - currentBarInPart);
                 
@@ -164,10 +167,6 @@ export function generateSuiteDNA(totalBars: number, mood: Mood, seed: number, ra
     return { harmonyTrack, baseTempo, rhythmicFeel: 'shuffle', bassStyle: 'walking', drumStyle: 'shuffle_A', soloPlanMap };
 }
 
-/**
- * #ЗАЧЕМ: Генерация ритмически активного аккомпанемента.
- * #ЧТО: Превращает "гудящие" аккорды в живую пульсацию или чопы.
- */
 export function generateAccompanimentEvents(
     chord: GhostChord, 
     technique: AccompanimentTechnique, 
@@ -176,8 +175,6 @@ export function generateAccompanimentEvents(
 ): FractalEvent[] {
     const axiom: FractalEvent[] = [];
     const isMinor = chord.chordType === 'minor' || chord.chordType === 'diminished';
-    
-    // Построение воисинга (шеллы 3-7 + добавочная 9 для богатства)
     const third = chord.rootNote + (isMinor ? 3 : 4);
     const seventh = chord.rootNote + 10;
     const ninth = chord.rootNote + 14;
@@ -190,76 +187,39 @@ export function generateAccompanimentEvents(
 
     switch (technique) {
         case 'rhythmic-comp':
-            // "Блюзовые чопы" на слабую долю (тики 4 и 10 в 12/8)
             [4, 10].forEach(tick => {
                 chordNotes.forEach((note, i) => {
                     axiom.push({
                         type: 'accompaniment',
-                        note: note + 24, // Средний регистр
-                        time: tick / 3, // Конвертация тиков в доли
-                        duration: 0.5, // Короткий удар
+                        note: note + 24,
+                        time: tick / 3,
+                        duration: 0.5,
                         weight: 0.45 - (i * 0.05),
-                        technique: 'hit',
-                        dynamics: 'mf',
-                        phrasing: 'staccato',
-                        params: adsrParams
+                        technique: 'hit', dynamics: 'mf', phrasing: 'staccato', params: adsrParams
                     });
                 });
             });
             break;
-
-        case 'chord-pulsation':
-            // Пульсация четвертями
-            [0, 1, 2, 3].forEach(beat => {
-                if (random.next() < 0.8) { // 20% шанс паузы для "дыхания"
-                    chordNotes.forEach((note, i) => {
-                        axiom.push({
-                            type: 'accompaniment',
-                            note: note + 24,
-                            time: beat,
-                            duration: 0.8,
-                            weight: 0.4,
-                            technique: 'hit',
-                            dynamics: 'p',
-                            phrasing: 'detached',
-                            params: adsrParams
-                        });
-                    });
-                }
-            });
-            break;
-
         case 'long-chords':
         case 'choral':
         default:
-            // Классическое удержание на весь такт
             chordNotes.forEach((note, i) => {
                 axiom.push({
                     type: 'accompaniment',
                     note: note + 24,
-                    time: i * 0.05, // Микро-арпеджио
+                    time: i * 0.05,
                     duration: 4.0,
                     weight: 0.5 - (i * 0.1),
-                    technique: 'swell',
-                    dynamics: 'mp',
-                    phrasing: 'legato',
-                    params: {
-                        attack: 0.5 + adsrParams.attack,
-                        release: adsrParams.release
-                    }
+                    technique: 'swell', dynamics: 'mp', phrasing: 'legato',
+                    params: { attack: 0.5 + adsrParams.attack, release: adsrParams.release }
                 });
             });
             break;
     }
-
     humanizeEvents(axiom, 0.015, random);
     return axiom;
 }
 
-/**
- * #ЗАЧЕМ: Внедрение "Блюзового Разума" (ПЛАН №97).
- * #ЧТО: Управляет динамикой, фразировкой и защитой от монотонности.
- */
 export function generateBluesMelodyChorus(
     currentChord: GhostChord, 
     random: any, 
@@ -274,14 +234,11 @@ export function generateBluesMelodyChorus(
     const currentChordIdx = dna.harmonyTrack.findIndex(c => epoch >= c.bar && epoch < c.bar + c.durationBars);
     const barInChorus = currentChordIdx % 12;
     
-    // 1. Определение фазы фразы (Call-Response-Fill)
+    // --- ИДЕЯ 3: Tension Resolver ---
     cognitiveState.phraseState = barInChorus % 4 < 2 ? 'call' : (barInChorus % 4 === 2 ? 'response' : 'fill');
-    
-    // 2. Управление напряжением
     if (cognitiveState.phraseState === 'call') cognitiveState.tensionLevel += 0.15;
     if (cognitiveState.phraseState === 'fill') cognitiveState.tensionLevel = Math.max(0.1, cognitiveState.tensionLevel - 0.4);
     
-    // #ЗАЧЕМ: Принудительное разрешение при высоком напряжении.
     if (cognitiveState.tensionLevel > 0.8 && cognitiveState.phraseState !== 'call') {
         cognitiveState.phraseState = 'fill';
     }
@@ -292,9 +249,8 @@ export function generateBluesMelodyChorus(
     let lickId: string;
     let strategy: 'statement' | 'sequence' | 'variation' = 'statement';
 
-    // 3. Умный выбор лика
     if (barInChorus === 11) {
-        lickId = 'L09'; // Turnaround
+        lickId = 'L09'; 
     } else {
         const lastId = cognitiveState.phraseHistory[cognitiveState.phraseHistory.length - 1];
         if (cognitiveState.phraseState === 'response' && lastId && random.next() < 0.7) {
@@ -302,8 +258,6 @@ export function generateBluesMelodyChorus(
             strategy = random.next() < 0.5 ? 'sequence' : 'variation';
         } else {
             let lickPool = Object.entries(BLUES_SOLO_LICKS).filter(([id, data]) => data.tags.includes(targetTag));
-            
-            // Виртуозный фильтр для активных частей
             const isActivePart = ['MAIN', 'SOLO'].includes(partId);
             if (isActivePart && random.next() < 0.6) {
                 const virtuosoPool = lickPool.filter(([id, data]) => data.tags.includes('virtuoso') || data.tags.includes('active'));
@@ -313,36 +267,27 @@ export function generateBluesMelodyChorus(
         }
     }
 
+    let lickPhrase = JSON.parse(JSON.stringify(BLUES_SOLO_LICKS[lickId].phrase)) as BluesSoloPhrase;
+
+    // --- ИДЕЯ 1: Memory & Similarity Guard ---
+    const currentHash = lickPhrase.map(n => n.deg).join(',');
+    if (calculateSimilarity(currentHash, cognitiveState.lastPhraseHash) > 0.8) {
+        lickPhrase = varyRhythm(lickPhrase, random);
+        if (random.next() < 0.5) lickPhrase = subdivideRhythm(lickPhrase, random);
+    }
+    cognitiveState.lastPhraseHash = currentHash;
     cognitiveState.phraseHistory.push(lickId);
     if (cognitiveState.phraseHistory.length > 10) cognitiveState.phraseHistory.shift();
 
-    let lickPhrase = JSON.parse(JSON.stringify(BLUES_SOLO_LICKS[lickId].phrase)) as BluesSoloPhrase;
-
-    // #ЗАЧЕМ: Хеширование и проверка схожести (Anti-Monotony).
-    const currentHash = lickPhrase.map(n => n.deg).join(',');
-    if (calculateSimilarity(currentHash, cognitiveState.lastPhraseHash) > 0.8) {
-        lickPhrase = varyRhythm(lickPhrase, random); // Принудительно меняем ритм
-    }
-    cognitiveState.lastPhraseHash = currentHash;
-
-    // 4. Применение мутаций и украшательств
     if (strategy === 'sequence') lickPhrase = transposeMelody(lickPhrase, [2, -2, 5, -5][random.nextInt(4)]);
     if (strategy === 'variation' || random.next() < 0.4) lickPhrase = varyRhythm(lickPhrase, random);
-    
-    // Добавление мелизмов (украшательств)
-    if (random.next() < 0.3 + (cognitiveState.emotion.melancholy * 0.2)) {
-        lickPhrase = addOrnaments(lickPhrase, random);
-    }
+    if (random.next() < 0.3 + (cognitiveState.emotion.melancholy * 0.2)) lickPhrase = addOrnaments(lickPhrase, random);
 
-    // 5. Защита от монотонности
-    lickPhrase = enforceAntiMonotony(lickPhrase, epoch, cognitiveState, currentChord.rootNote, random);
-
-    // #ЗАЧЕМ: Разрешение незавершенных блюзовых нот (Strict Blue Note Logic).
+    // --- ИДЕЯ 4: Strict Blue Note Resolution ---
     lickPhrase.forEach((note, i) => {
         if (note.deg === 'b5') {
             cognitiveState.blueNotePending = true;
         } else if (cognitiveState.blueNotePending) {
-            // Если была ♭5, а текущая нота не является разрешением (4 или 5), правим её.
             if (note.deg !== '4' && note.deg !== '5') {
                 note.deg = random.next() > 0.5 ? '5' : '4';
             }
@@ -350,7 +295,22 @@ export function generateBluesMelodyChorus(
         }
     });
 
-    // 6. Ритмическое дробление (Subdivision)
+    // Принудительное разрешение Blue Note в конце фразы, если оно "повисло"
+    if (cognitiveState.blueNotePending && lickPhrase.length > 0) {
+        const lastNote = lickPhrase[lickPhrase.length - 1];
+        lickPhrase.push({ t: lastNote.t + 2, d: 2, deg: random.next() > 0.5 ? '5' : '4' });
+        cognitiveState.blueNotePending = false;
+    }
+
+    // --- ИДЕЯ 3 (Resolver): Приземление на тонику при пике напряжения ---
+    if (cognitiveState.tensionLevel > 0.85 && lickPhrase.length > 0) {
+        lickPhrase[lickPhrase.length - 1].deg = 'R';
+        lickPhrase[lickPhrase.length - 1].d = 6;
+        cognitiveState.tensionLevel = 0.2;
+    }
+
+    lickPhrase = enforceAntiMonotony(lickPhrase, epoch, cognitiveState, currentChord.rootNote, random);
+
     const currentTempo = rules.bpm?.base || dna.baseTempo;
     if (currentTempo > 90 && !['melancholic', 'dark'].includes(dna.harmonyTrack[0].chordType)) {
         lickPhrase = subdivideRhythm(lickPhrase, random);
@@ -363,56 +323,40 @@ export function generateBluesMelodyChorus(
         duration: (note.d || 2) / 3, 
         weight: (0.7 + random.next() * 0.2) * (1 - cognitiveState.emotion.melancholy * 0.3),
         technique: (note.tech || 'pluck') as Technique, 
-        dynamics: 'mf', 
-        phrasing: 'legato', 
-        params: { barCount: epoch }
+        dynamics: 'mf', phrasing: 'legato', params: { barCount: epoch }
     }));
 
     humanizeEvents(events, 0.02, random);
-
     return { events, log: `Bar ${epoch}: ${lickId} (${cognitiveState.phraseState})` };
 }
 
-/**
- * #ЗАЧЕМ: Добавляет форшлаги и слайды перед основными нотами.
- */
+export function enforceAntiMonotony(phrase: BluesSoloPhrase, epoch: number, state: BluesCognitiveState, tonic: number, random: any): BluesSoloPhrase {
+    // 1. Против похоронного марша: обязательный восход каждые 8 тактов
+    if (epoch % 8 === 7 && state.tensionLevel > 0.5) {
+        return phrase.map(n => {
+            const semitone = DEGREE_TO_SEMITONE[n.deg] || 0;
+            if (semitone < 7) return { ...n, deg: 'R+8', tech: 'vb' }; 
+            return n;
+        });
+    }
+    // 2. Хроматический прорыв каждые 16 тактов
+    if (epoch % 16 === 15 && phrase.length > 0) {
+        const last = phrase[phrase.length - 1];
+        phrase.push({ t: (last.t + 2) % 12, d: 2, deg: '#4' as any, tech: 'sl' });
+    }
+    return phrase;
+}
+
 export function addOrnaments(phrase: BluesSoloPhrase, random: any): BluesSoloPhrase {
     const result: BluesSoloPhrase = [];
     for (const note of phrase) {
         if (note.d >= 3 && random.next() < 0.4) {
-            // Добавляем короткую ноту-украшение за 1 тик до основной
-            const graceDeg = random.next() > 0.5 ? 'b3' : '2'; // Классические украшения
+            const graceDeg = random.next() > 0.5 ? 'b3' : '2';
             result.push({ t: Math.max(0, note.t - 1), d: 1, deg: graceDeg as any, tech: 'gr' });
             result.push({ ...note, tech: 'sl' });
-        } else {
-            result.push(note);
-        }
+        } else { result.push(note); }
     }
     return result;
-}
-
-/**
- * #ЗАЧЕМ: Гарантирует разрушение "шарманки" через принудительные изменения.
- */
-export function enforceAntiMonotony(phrase: BluesSoloPhrase, epoch: number, state: BluesCognitiveState, tonic: number, random: any): BluesSoloPhrase {
-    // 1. Против похоронного марша: каждые 8 тактов — восходящее разрешение
-    if (epoch % 8 === 7 && state.tensionLevel > 0.5) {
-        return phrase.map(n => {
-            const semitone = DEGREE_TO_SEMITONE[n.deg] || 0;
-            if (semitone < 7) return { ...n, deg: 'R+8', tech: 'vb' }; // Прыжок в октаву
-            return n;
-        });
-    }
-
-    // 2. Хроматический проход каждые 16 тактов
-    if (epoch % 16 === 15) {
-        const last = phrase[phrase.length - 1];
-        if (last) {
-            phrase.push({ t: last.t + last.d, d: 2, deg: '#4' as any, tech: 'sl' });
-        }
-    }
-
-    return phrase;
 }
 
 export function subdivideRhythm(phrase: BluesSoloPhrase, random: any): BluesSoloPhrase {
@@ -422,7 +366,7 @@ export function subdivideRhythm(phrase: BluesSoloPhrase, random: any): BluesSolo
             const first = Math.floor(note.d / 2);
             const second = note.d - first;
             result.push({ ...note, d: first });
-            result.push({ ...note, t: note.t + first, d: second, tech: random.next() < 0.5 ? 'h/p' : 'sl' });
+            result.push({ ...note, t: (note.t + first) % 12, d: second, tech: random.next() < 0.5 ? 'h/p' : 'sl' });
         } else { result.push(note); }
     }
     return result;
@@ -442,18 +386,14 @@ export function varyRhythm(phrase: BluesSoloPhrase, random: any): BluesSoloPhras
     if (p.length < 2) return p;
     if (random.next() < 0.5) {
         const i = Math.floor(random.next() * (p.length - 1));
-        if (p[i].d < 4 && p[i+1].d < 4) { 
-            p[i].d += p[i+1].d; 
-            p.splice(i+1, 1); 
-        }
+        if (p[i].d < 4 && p[i+1].d < 4) { p[i].d += p[i+1].d; p.splice(i+1, 1); }
     }
     return p;
 }
 
 export function createAmbientBassAxiom(chord: GhostChord, mood: Mood, genre: Genre, random: any, tempo: number, technique: Technique): FractalEvent[] {
   const root = chord.rootNote - 12;
-  const common = { attack: 1.0, release: 2.0, cutoff: 220, resonance: 0.75, distortion: 0.05, portamento: 0.08 };
-  const events = [{ type: 'bass', note: root, duration: 3.5, time: 0, weight: 0.75, technique: 'drone', dynamics: 'p', phrasing: 'legato', params: { ...common, attack: 1.5, release: 3.0 } }] as FractalEvent[];
+  const events = [{ type: 'bass', note: root, duration: 3.5, time: 0, weight: 0.75, technique: 'drone', dynamics: 'p', phrasing: 'legato', params: { attack: 1.5, release: 3.0 } }] as FractalEvent[];
   humanizeEvents(events, 0.02, random);
   return events;
 }
@@ -462,26 +402,16 @@ export function createBluesBassAxiom(chord: GhostChord, technique: Technique, ra
     const phrase: FractalEvent[] = [];
     const riffs = (BLUES_BASS_RIFFS as any)[mood] ?? BLUES_BASS_RIFFS['contemplative'];
     const riff = riffs[riffIdx % riffs.length];
-    
     const currentChordIdx = dna.harmonyTrack.findIndex(c => epoch >= c.bar && epoch < c.bar + c.durationBars);
     const barIn12Cycle = currentChordIdx % 12;
-    
     let src: 'I' | 'IV' | 'V' | 'turn' = (barIn12Cycle === 11) ? 'turn' : (barIn12Cycle === 1 || barIn12Cycle === 4 || barIn12Cycle === 5 || barIn12Cycle === 9) ? 'IV' : (barIn12Cycle === 8) ? 'V' : 'I';
-    
     for (const n of riff[src]) {
         phrase.push({ 
-            type: 'bass', 
-            note: chord.rootNote + (DEGREE_TO_SEMITONE[n.deg] || 0) - 12, 
-            time: n.t / 3, 
-            duration: ((n.d || 2) / 3) * 0.95, 
-            weight: 0.85 + random.next() * 0.1, 
-            technique: 'pluck', 
-            dynamics: 'mf', 
-            phrasing: 'legato', 
-            params: { cutoff: 800, resonance: 0.7, distortion: 0.15, portamento: 0.0 } 
+            type: 'bass', note: chord.rootNote + (DEGREE_TO_SEMITONE[n.deg] || 0) - 12, 
+            time: n.t / 3, duration: ((n.d || 2) / 3) * 0.95, weight: 0.85 + random.next() * 0.1, 
+            technique: 'pluck', dynamics: 'mf', phrasing: 'legato', params: { cutoff: 800, resonance: 0.7, distortion: 0.15, portamento: 0.0 } 
         });
     }
-    
     humanizeEvents(phrase, 0.015, random);
     return phrase;
 }
@@ -491,7 +421,6 @@ export function createDrumAxiom(kit: DrumKit, genre: Genre, mood: Mood, tempo: n
     const riffs = (BLUES_DRUM_RIFFS as any)[mood] ?? BLUES_DRUM_RIFFS['contemplative'] ?? [];
     if (riffs.length === 0) return {events, log: "No riffs"};
     const riff = riffs[random.nextInt(riffs.length)];
-
     const add = (pattern: number[] | undefined, pool: InstrumentType[] | undefined) => {
         if (pattern && pool && pool.length > 0) {
             const sample = pool[random.nextInt(pool.length)];
