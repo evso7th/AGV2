@@ -23,13 +23,16 @@ export const DEGREE_TO_SEMITONE: Record<string, number> = {
 };
 
 const BLUES_HARMONIC_TRANSITIONS: Record<string, Record<string, number>> = {
-    'I':  { 'I': 0.45, 'IV': 0.4, 'V': 0.1, 'vi': 0.05 },
+    'I':  { 'I': 0.4, 'IV': 0.4, 'V': 0.15, 'vi': 0.05 },
     'IV': { 'I': 0.3, 'IV': 0.5, 'V': 0.1, 'bVI': 0.1 },
-    'V':  { 'IV': 0.7, 'I': 0.2, 'V': 0.1 },
+    'V':  { 'IV': 0.6, 'I': 0.3, 'V': 0.1 },
     'vi': { 'IV': 0.5, 'V': 0.3, 'I': 0.2 },
     'bVI': { 'V': 0.9, 'I': 0.1 }
 };
 
+/**
+ * #ЗАЧЕМ: Универсальный Марковский переход.
+ */
 export function markovNext<T extends string>(matrix: Record<T, Record<T, number>>, current: T, random: any): T {
     const transitions = matrix[current];
     if (!transitions) return current;
@@ -45,6 +48,9 @@ export function markovNext<T extends string>(matrix: Record<T, Record<T, number>
     return entries[entries.length - 1][0];
 }
 
+/**
+ * #ЗАЧЕМ: Базовая гармоническая аксиома для Ambient/Trance.
+ */
 export function createHarmonyAxiom(
     chord: GhostChord,
     mood: Mood,
@@ -97,7 +103,7 @@ export function getScaleForMood(mood: Mood, genre?: Genre, chordType?: 'major' |
   }
 
   const fullScale: number[] = [];
-  for (let octave = 0; octave < 4; octave++) { // Extended for solo
+  for (let octave = 0; octave < 5; octave++) {
       for (const note of baseScale) {
           fullScale.push(E1 + (octave * 12) + note);
       }
@@ -130,31 +136,6 @@ export function invertMelody(phrase: any[]): any[] {
     });
 }
 
-export function retrogradeMelody(phrase: any[]): any[] {
-    if (phrase.length < 2) return phrase;
-    const reversed = [...phrase].reverse();
-    const startTime = phrase[0].t;
-    const endTime = phrase[phrase.length - 1].t + (phrase[phrase.length - 1].d || 2);
-    
-    return reversed.map((note, i) => {
-        const originalOffset = phrase[i].t - startTime;
-        return { ...note, t: endTime - originalOffset - (note.d || 2) };
-    });
-}
-
-export function applyNewRhythm(phrase: any[], random: any): any[] {
-    const rhythms = [[3, 3, 3, 3], [2, 4, 2, 4], [6, 6], [4, 2, 4, 2], [2, 2, 2, 6]];
-    const selected = rhythms[Math.floor(random.next() * rhythms.length)];
-    let currentTick = phrase[0].t;
-    
-    return phrase.map((note, i) => {
-        const d = selected[i % selected.length];
-        const t = currentTick;
-        currentTick = (currentTick + d) % 12;
-        return { ...note, t, d };
-    });
-}
-
 export function transposeMelody(phrase: any[], interval: number): any[] {
     return phrase.map(n => {
         const s = ((DEGREE_TO_SEMITONE[n.deg] || 0) + interval + 12) % 12;
@@ -167,7 +148,7 @@ export function transposeMelody(phrase: any[], interval: number): any[] {
 export function addOrnaments(phrase: any[], random: any): any[] {
     const result = [];
     for (const note of phrase) {
-        if (note.d >= 2 && random.next() < 0.5) {
+        if (note.d >= 2 && random.next() < 0.6) {
             result.push({ t: Math.max(0, note.t - 1), d: 1, deg: (random.next() > 0.5 ? 'b3' : '2') as any, tech: 'gr' });
             result.push({ ...note, tech: 'sl' });
         } else result.push(note);
@@ -186,19 +167,6 @@ export function subdivideRhythm(phrase: any[], random: any): any[] {
         } else result.push(note);
     }
     return result;
-}
-
-export function varyRhythm(phrase: any[], random: any): any[] {
-    const p = [...phrase];
-    if (p.length < 2) return p;
-    if (random.next() < 0.6) {
-        const i = Math.floor(random.next() * (p.length - 1));
-        if ((p[i].d || 2) < 6 && (p[i+1].d || 2) < 6) { 
-            p[i].d = (p[i].d || 2) + (p[i+1].d || 2); 
-            p.splice(i+1, 1); 
-        }
-    }
-    return p;
 }
 
 export function generateSuiteDNA(totalBars: number, mood: Mood, seed: number, random: any, genre: Genre, blueprintParts: any[]): SuiteDNA {
@@ -221,12 +189,8 @@ export function generateSuiteDNA(totalBars: number, mood: Mood, seed: number, ra
             
             while (currentBarInPart < partDuration) {
                 const r = random.next();
-                let duration = r < 0.5 ? 4 : (r < 0.85 ? 8 : 12);
-                
-                if (mood === 'melancholic' && currentDegree === 'IV') {
-                    duration = random.next() < 0.85 ? 8 : 12;
-                }
-                
+                // Меланхолия тянет время
+                let duration = (mood === 'melancholic' && r < 0.8) ? 8 : (r < 0.5 ? 4 : 12);
                 const finalDuration = Math.min(duration, partDuration - currentBarInPart);
                 
                 const degreeMap: Record<string, {rootOffset: number, type: GhostChord['chordType']}> = {
@@ -270,14 +234,6 @@ export function generateSuiteDNA(totalBars: number, mood: Mood, seed: number, ra
     const [minTempo, maxTempo] = (possibleTempos as any)[mood] || [60, 80];
     const baseTempo = minTempo + Math.floor(random.next() * (maxTempo - minTempo + 1));
 
-    let bluesMelodyId: string | undefined;
-    if (genre === 'blues') {
-        const moodMelodies = BLUES_MELODY_RIFFS.filter(m => m.moods.includes(mood));
-        if (moodMelodies.length > 0) {
-            bluesMelodyId = moodMelodies[Math.floor(random.next() * moodMelodies.length)].id;
-        }
-    }
-
     const soloPlanMap = new Map<string, string>();
     const allPlanIds = Object.keys(BLUES_SOLO_PLANS);
     const shuffledPlanIds = [...allPlanIds].sort(() => random.next() - 0.5);
@@ -289,5 +245,5 @@ export function generateSuiteDNA(totalBars: number, mood: Mood, seed: number, ra
         }
     });
 
-    return { harmonyTrack, baseTempo, rhythmicFeel: 'shuffle', bassStyle: 'walking', drumStyle: 'shuffle_A', soloPlanMap, bluesMelodyId };
+    return { harmonyTrack, baseTempo, rhythmicFeel: 'shuffle', bassStyle: 'walking', drumStyle: 'shuffle_A', soloPlanMap };
 }

@@ -7,24 +7,24 @@ import { generateSuiteDNA, createHarmonyAxiom } from './music-theory';
 
 function seededRandom(seed: number) {
   let state = seed;
-  const self = {
-      next: () => {
-        state = (state * 1664525 + 1013904223) % Math.pow(2, 32);
-        return state / Math.pow(2, 32);
-      },
-      nextInt: (max: number) => Math.floor(self.next() * max),
+  const next = () => {
+    state = (state * 1664525 + 1013904223) % Math.pow(2, 32);
+    return state / Math.pow(2, 32);
+  };
+  return {
+      next,
+      nextInt: (max: number) => Math.floor(next() * max),
        shuffle: <T>(array: T[]): T[] => {
         let currentIndex = array.length, randomIndex;
         const newArray = [...array];
         while (currentIndex !== 0) {
-            randomIndex = Math.floor(self.next() * currentIndex);
+            randomIndex = Math.floor(next() * currentIndex);
             currentIndex--;
             [newArray[currentIndex], newArray[randomIndex]] = [newArray[randomIndex], newArray[currentIndex]];
         }
         return newArray;
     }
   };
-  return self;
 }
 
 interface EngineConfig {
@@ -72,7 +72,6 @@ export class FractalMusicEngine {
     this.random = seededRandom(this.config.seed);
     this.activatedInstruments.clear(); 
     
-    // Инициализация специализированных "Мозгов"
     if (this.config.genre === 'blues') {
         this.bluesBrain = new BluesBrain(this.config.seed, this.config.mood);
     } else {
@@ -103,13 +102,21 @@ export class FractalMusicEngine {
         const progress = (this.epoch - navInfo.currentPartStartBar) / (navInfo.currentPartEndBar - navInfo.currentPartStartBar + 1);
         let currentStage = stages[stages.length - 1];
         let acc = 0;
-        for (const s of stages) { acc += s.duration.percent; if (progress * 100 <= acc) { currentStage = s; break; } }
+        for (const s of stages) { 
+            acc += s.duration.percent; 
+            if (progress * 100 <= acc) { 
+                currentStage = s; 
+                break; 
+            } 
+        }
 
         Object.entries(currentStage.instrumentation).forEach(([part, rule]: [any, any]) => {
             if (rule.transient) {
                 if (this.random.next() < rule.activationChance) (instrumentHints as any)[part] = this.pickWeighted(rule.instrumentOptions);
             } else if (!this.activatedInstruments.has(part)) {
-                if (rule.activationChance > 0 && this.random.next() < rule.activationChance) this.activatedInstruments.set(part, this.pickWeighted(rule.instrumentOptions));
+                if (rule.activationChance > 0 && this.random.next() < rule.activationChance) {
+                    this.activatedInstruments.set(part, this.pickWeighted(rule.instrumentOptions));
+                }
             } else if (rule.activationChance === 0) {
                 this.activatedInstruments.delete(part);
             }
@@ -137,12 +144,9 @@ export class FractalMusicEngine {
     
     let allEvents: FractalEvent[] = [];
 
-    // --- ДЕЛЕГИРОВАНИЕ ЖАНРОВОМУ МОЗГУ ---
     if (this.config.genre === 'blues' && this.bluesBrain) {
         allEvents = this.bluesBrain.generateBar(this.epoch, currentChord, navInfo, this.suiteDNA, instrumentHints);
     } else {
-        // Логика по умолчанию (Ambient/Trance)
-        // [Здесь будет AmbientBrain в будущем, сейчас используем базовый рендер]
         const harmonyEvents = createHarmonyAxiom(currentChord, this.config.mood, this.config.genre, this.random, this.epoch);
         allEvents.push(...harmonyEvents);
     }
