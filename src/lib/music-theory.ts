@@ -13,7 +13,6 @@ import type {
     SuiteDNA, 
     BluesCognitiveState 
 } from '@/types/music';
-import { BLUES_MELODY_RIFFS } from './assets/blues-melody-riffs';
 import { BLUES_SOLO_PLANS } from './assets/blues_guitar_solo';
 
 export const DEGREE_TO_SEMITONE: Record<string, number> = {
@@ -22,27 +21,27 @@ export const DEGREE_TO_SEMITONE: Record<string, number> = {
 };
 
 // --- MARKOV HARMONIC STATES (SPEC 3.1) ---
-// 0=stable, 1=tension_build, 2=chromatic_approach, 3=resolution
+// 0=stable (I), 1=tension (IV), 2=chromatic/turnaround (VI/ii), 3=resolution (V)
 const BLUES_STATE_MATRIX = [
-  [0.65, 0.25, 0.05, 0.05],
-  [0.10, 0.55, 0.25, 0.10],
-  [0.05, 0.10, 0.20, 0.65],
-  [0.70, 0.15, 0.05, 0.10]
+  [0.50, 0.35, 0.10, 0.05],
+  [0.30, 0.40, 0.20, 0.10],
+  [0.10, 0.20, 0.40, 0.30],
+  [0.60, 0.10, 0.05, 0.25]
 ];
 
 const STATE_TO_CHORD: Record<number, string[]> = {
-    0: ['i7', 'iv7'],
-    1: ['i7#5', 'iv7#5'],
+    0: ['i7', 'i9'],
+    1: ['iv7', 'iv9'],
     2: ['VI7b5', 'ii7b5'],
-    3: ['V7', 'i7']
+    3: ['V7', 'V9']
 };
 
 /**
  * #ЗАЧЕМ: Универсальный Марковский переход.
  */
-export function markovNext<T extends string | number>(matrix: number[][], current: number, random: any): number {
+export function markovNext(matrix: number[][], current: number, random: any): number {
     const transitions = matrix[current];
-    if (!transitions) return current;
+    if (!transitions) return 0;
 
     let r = random.next();
     let cumulative = 0;
@@ -72,26 +71,27 @@ export function createHarmonyAxiom(
     notes.forEach((note, i) => {
         events.push({
             type: 'accompaniment',
-            note: note + 24,
+            note: note + 12, // Lowered register per Plan 115
             time: i * 0.05,
             duration: 4.0,
             weight: 0.5 - (i * 0.1),
             technique: 'swell',
             dynamics: 'p',
             phrasing: 'legato',
-            params: { barCount: epoch }
+            params: { barCount: epoch },
+            chordName: (chord as any).name || ''
         });
     });
 
     return events;
 }
 
-export function getScaleForMood(mood: Mood, genre?: Genre, chordType?: 'major' | 'minor' | 'dominant' | 'diminished'): number[] {
+export function getScaleForMood(mood: Mood, genre?: Genre): number[] {
   const E1 = 28;
   let baseScale: number[];
 
   if (genre === 'blues') {
-      // Истинная блюзовая гамма с blue notes (Dorian Add 5)
+      // Истинная блюзовая гамма: Dorian Add 5
       baseScale = [0, 2, 3, 5, 6, 7, 10]; 
   } else {
       switch (mood) {
@@ -122,24 +122,6 @@ export function humanizeEvents(events: FractalEvent[], amount: number, random: a
     });
 }
 
-export function invertMelody(phrase: any[]): any[] {
-    if (phrase.length < 2) return phrase;
-    const pivot = DEGREE_TO_SEMITONE[phrase[0].deg] || 0;
-    return phrase.map(note => {
-        const current = DEGREE_TO_SEMITONE[note.deg] || 0;
-        const diff = current - pivot;
-        const invertedSemitone = (pivot - diff + 12) % 12;
-        
-        let bestDeg = note.deg;
-        let minDiff = 100;
-        for (const [deg, semi] of Object.entries(DEGREE_TO_SEMITONE)) {
-            const d = Math.abs(semi - invertedSemitone);
-            if (d < minDiff) { minDiff = d; bestDeg = deg as any; }
-        }
-        return { ...note, deg: bestDeg };
-    });
-}
-
 export function generateSuiteDNA(totalBars: number, mood: Mood, seed: number, random: any, genre: Genre, blueprintParts: any[]): SuiteDNA {
     const harmonyTrack: GhostChord[] = [];
     const baseKeyNote = 24 + Math.floor(random.next() * 12);
@@ -155,29 +137,22 @@ export function generateSuiteDNA(totalBars: number, mood: Mood, seed: number, ra
         if (partDuration <= 0) return;
 
         if (genre === 'blues') {
-            // IMPLEMENTING MARKOV HARMONIC STATES FROM SPEC 3.1
-            let currentState = 0; // stable
             let currentBarInPart = 0;
-            
+            // Strict 12-bar loop generation for Blues
             while (currentBarInPart < partDuration) {
-                const dur = [4, 8, 12][Math.floor(random.next() * 3)];
-                const finalDuration = Math.min(dur, partDuration - currentBarInPart);
+                const progression = [0, 0, 0, 0, 5, 5, 0, 0, 7, 5, 0, 7]; // Classic quick-change offsets
+                const chordTypes: ('minor' | 'dominant')[] = ['minor', 'minor', 'minor', 'minor', 'minor', 'minor', 'minor', 'minor', 'dominant', 'minor', 'minor', 'dominant'];
                 
-                const possibleChords = STATE_TO_CHORD[currentState];
-                const selectedChord = possibleChords[Math.floor(random.next() * possibleChords.length)];
-                
-                const rootOffsetMap: Record<string, number> = { 'i7': 0, 'iv7': 5, 'V7': 7, 'VI7b5': 8, 'ii7b5': 2, 'i7#5': 0, 'iv7#5': 5 };
-                const offset = rootOffsetMap[selectedChord] || 0;
-                
-                harmonyTrack.push({
-                    rootNote: key + offset,
-                    chordType: (selectedChord.startsWith('i') || selectedChord.startsWith('ii')) ? 'minor' : (selectedChord.startsWith('V') ? 'dominant' : 'major'),
-                    bar: partStartBar + currentBarInPart,
-                    durationBars: finalDuration
-                });
-                
-                currentBarInPart += finalDuration;
-                currentState = markovNext(BLUES_STATE_MATRIX, currentState, random);
+                for (let i = 0; i < 12 && currentBarInPart < partDuration; i++) {
+                    const barIdx = partStartBar + currentBarInPart;
+                    harmonyTrack.push({
+                        rootNote: key + progression[i],
+                        chordType: chordTypes[i],
+                        bar: barIdx,
+                        durationBars: 1
+                    });
+                    currentBarInPart++;
+                }
             }
         } else {
              let currentBarInPart = 0;
@@ -194,7 +169,7 @@ export function generateSuiteDNA(totalBars: number, mood: Mood, seed: number, ra
 
     const possibleTempos = {
         joyful: [115, 140], enthusiastic: [125, 155], contemplative: [78, 92],
-        dreamy: [72, 86], calm: [68, 82], melancholic: [68, 76], // Adjusted to Spec
+        dreamy: [72, 86], calm: [68, 82], melancholic: [64, 72],
         gloomy: [68, 78], dark: [64, 72], epic: [120, 145], anxious: [88, 105],
     };
 
