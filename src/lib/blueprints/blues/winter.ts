@@ -21,16 +21,17 @@ export const WinterBluesBlueprint: MusicBlueprint = {
                 layers: { bass: true, accompaniment: true, melody: true, sfx: true, sparkles: true, drums: true, harmony: true, pianoAccompaniment: true },
                 stagedInstrumentation: [
                     { 
-                        duration: { percent: 10 },
+                        duration: { percent: 25 },
                         instrumentation: {
                            melody: { activationChance: 1.0, instrumentOptions: [ { name: 'guitar_shineOn', weight: 1.0 } ] },
+                           // #ЗАЧЕМ: Аккомпанемент и ударные теперь вступают гарантированно с первой сцены.
                            accompaniment: { activationChance: 1.0, instrumentOptions: [ { name: 'organ_soft_jazz', weight: 1.0 } ] },
                            drums: { activationChance: 1.0, instrumentOptions: [ { name: 'blues_melancholic_master', weight: 1.0 } ] },
                            harmony: { activationChance: 1.0, instrumentOptions: [ { name: 'guitarChords', weight: 0.8 }, { name: 'flute', weight: 0.2 } ] }
                         }
                     },
                     {
-                        duration: { percent: 10 },
+                        duration: { percent: 25 },
                         instrumentation: {
                            melody: { activationChance: 1.0, instrumentOptions: [ { name: 'guitar_shineOn', weight: 1.0 } ] },
                            bass: { activationChance: 0.4, instrumentOptions: [ { name: 'bass_jazz_warm', weight: 1.0 } ] },
@@ -40,7 +41,7 @@ export const WinterBluesBlueprint: MusicBlueprint = {
                         }
                     },
                     {
-                        duration: { percent: 20 },
+                        duration: { percent: 25 },
                         instrumentation: {
                            melody: { activationChance: 1.0, instrumentOptions: [ { name: 'guitar_shineOn', weight: 1.0 } ] },
                            accompaniment: { activationChance: 1.0, instrumentOptions: [ { name: 'organ_soft_jazz', weight: 1.0 } ] },
@@ -49,7 +50,7 @@ export const WinterBluesBlueprint: MusicBlueprint = {
                         }
                     },
                     {
-                        duration: { percent: 60 },
+                        duration: { percent: 25 },
                         instrumentation: {
                            melody: { activationChance: 1.0, instrumentOptions: [ { name: 'guitar_shineOn', weight: 1.0 } ] },
                            accompaniment: { activationChance: 1.0, instrumentOptions: [ { name: 'organ_soft_jazz', weight: 1.0 } ] },
