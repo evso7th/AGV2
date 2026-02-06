@@ -1,16 +1,15 @@
 import type {
   FractalEvent,
-  Mood,
   GhostChord,
-  SuiteDNA,
-  NavigationInfo,
   InstrumentHints,
-  Technique,
   Dynamics,
   Phrasing,
-  BluesRiffDegree
-} from '@/types/music';
-import { calculateMusiNum, pickWeightedDeterministic, DEGREE_TO_SEMITONE } from './music-theory';
+  BluesRiffDegree,
+  Mood,
+  SuiteDNA,
+  NavigationInfo
+} from '@/types/fractal';
+import { calculateMusiNum, DEGREE_TO_SEMITONE } from './music-theory';
 import { BLUES_SOLO_LICKS, BLUES_SOLO_PLANS } from './assets/blues_guitar_solo';
 import { BLUES_DRUM_RIFFS } from './assets/blues-drum-riffs';
 import { BLUES_BASS_RIFFS } from './assets/blues-bass-riffs';
@@ -19,10 +18,7 @@ import { GUITAR_PATTERNS } from './assets/guitar-patterns';
 
 /**
  * #ЗАЧЕМ: Блюзовый Мозг V4.2 — Narrative Soloist (Strict Edition).
- * #ЧТО: Бескомпромиссная иерархия партий.
- *       1. Solo (Melody): 100% приоритет, вес 0.95.
- *       2. Accompaniment (Picking): Вероятность снижена до 20%, разрешено только в паузах соло.
- *       3. Интеграция: Детерминированность через MusiNum сохранена.
+ * #ЧТО: Бескомпромиссная иерархия партий. Исправлены импорты и проверки типов.
  */
 
 export class BluesBrain {
@@ -65,8 +61,6 @@ export class BluesBrain {
     }
 
     // 3. АККОМПАНЕМЕНТ (СПЕЦИЯ)
-    // #ЗАЧЕМ: Перебор не должен мешать соло.
-    // #ЧТО: Снижение вероятности до 20% (val < 2 при modulo 10) + детерминированный "прыжок" через seed.
     const pickingTrigger = calculateMusiNum(epoch, 3, this.seed + 999, 10);
     const isPickingAllowed = pickingTrigger < 2;
 
@@ -87,8 +81,11 @@ export class BluesBrain {
     const tickDur = beatDur / 3;
     
     const kit = BLUES_DRUM_RIFFS[this.mood] || BLUES_DRUM_RIFFS.contemplative;
+    if (!kit || kit.length === 0) return [];
+
     const patternIdx = calculateMusiNum(epoch, 3, this.seed, kit.length);
     const p = kit[patternIdx];
+    if (!p) return [];
 
     const events: FractalEvent[] = [];
 
@@ -110,6 +107,8 @@ export class BluesBrain {
     const tickDur = beatDur / 3;
     
     const riffs = BLUES_BASS_RIFFS[this.mood] || BLUES_BASS_RIFFS.contemplative;
+    if (!riffs || riffs.length === 0) return [];
+
     const riffIdx = calculateMusiNum(epoch, 5, this.seed + 100, riffs.length);
     const riff = riffs[riffIdx];
 
@@ -120,19 +119,18 @@ export class BluesBrain {
     else if ([8, 11].includes(barIn12)) pattern = riff.V;
 
     return pattern.map(n => ({
-      type: 'bass',
+      type: 'bass' as const,
       note: chord.rootNote - 12 + this.degreeToSemitone(n.deg),
       time: n.t * tickDur,
       duration: (n.d || 2) * tickDur,
       weight: 0.8,
-      technique: 'pluck',
-      dynamics: 'mp',
-      phrasing: 'legato'
+      technique: 'pluck' as const,
+      dynamics: 'mp' as const,
+      phrasing: 'legato' as const
     }));
   }
 
   private generateAccompaniment(epoch: number, chord: GhostChord, tempo: number): FractalEvent[] {
-    // #ЗАЧЕМ: Создание редкого, но красивого гитарного фона.
     const beatDur = 60 / tempo;
     const tickDur = beatDur / 3;
     
@@ -145,14 +143,14 @@ export class BluesBrain {
         step.stringIndices.forEach(idx => {
           const note = chord.rootNote + (voicing[idx] - 40);
           events.push({
-            type: 'accompaniment',
+            type: 'accompaniment' as const,
             note,
             time: t * tickDur,
             duration: beatDur * 2,
-            weight: 0.15, // #ИСПРАВЛЕНО: Еще тише, чтобы не мешать соло.
-            technique: 'pluck',
-            dynamics: 'p',
-            phrasing: 'detached'
+            weight: 0.15,
+            technique: 'pluck' as const,
+            dynamics: 'p' as const,
+            phrasing: 'detached' as const
           });
         });
       });
@@ -172,14 +170,14 @@ export class BluesBrain {
     const tickDur = (60 / tempo) / 3;
     
     return lickData.phrase.map(n => ({
-      type: 'melody',
-      note: chord.rootNote + 36 + this.degreeToSemitone(n.deg), // #ИСПРАВЛЕНО: Сохраняем высокий регистр.
+      type: 'melody' as const,
+      note: chord.rootNote + 36 + this.degreeToSemitone(n.deg),
       time: n.t * tickDur,
       duration: n.d * tickDur,
-      weight: 0.95, // СОЛО — ОСНОВНОЕ БЛЮДО
-      technique: (n.tech as any) || 'pick',
-      dynamics: 'mf',
-      phrasing: 'legato'
+      weight: 0.95,
+      technique: (n.tech as any) || ('pick' as const),
+      dynamics: 'mf' as const,
+      phrasing: 'legato' as const
     }));
   }
 
