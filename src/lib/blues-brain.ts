@@ -18,8 +18,9 @@ import { BLUES_GUITAR_VOICINGS } from './assets/guitar-voicings';
 import { GUITAR_PATTERNS } from './assets/guitar-patterns';
 
 /**
- * #ЗАЧЕМ: Блюзовый Мозг V8.2 — Full Generative Conversation with Plan160 Prefix.
- * #ЧТО: Внедрена детальная диагностика "мыслей" ансамбля с меткой плана для СОР Уровня 4.
+ * #ЗАЧЕМ: Блюзовый Мозг V9.0 — L-System Sentence Engine.
+ * #ЧТО: Внедрена логика музыкальных "предложений". 
+ *       Мозг запоминает аксиому (мотив) и развивает её через рекурсивные правила.
  */
 
 const ENERGY_PRICES = {
@@ -34,11 +35,17 @@ const ENERGY_PRICES = {
     sparkles: 5       
 };
 
+type MelodicAxiomNote = { deg: string, t: number, d: number, tech: Technique };
+
 export class BluesBrain {
   private seed: number;
   private mood: Mood;
   private thematicDegree: string;
   private lastAscendingBar: number = -10;
+  
+  // Plan 164: Melodic Memory & L-System
+  private currentAxiom: MelodicAxiomNote[] = [];
+  private axiomAge: number = 0;
 
   constructor(seed: number, mood: Mood) {
     this.seed = seed;
@@ -63,19 +70,19 @@ export class BluesBrain {
     const barIn12 = epoch % 12;
     const tension = dna.tensionMap ? (dna.tensionMap[epoch % dna.tensionMap.length] || 0.5) : 0.5;
     
-    // --- CONVERSATIONAL ANALYSIS (Resonance) ---
+    // --- CONVERSATIONAL ANALYSIS ---
     const lastBarHadCall = lastEvents.some(e => e.type === 'melody' && e.harmonicContext === 'CALL');
     const lastBarHadScream = lastEvents.some(e => e.type === 'melody' && e.note > 74 && e.duration > 0.8);
     const melodyDensity = lastEvents.filter(e => e.type === 'melody').length;
 
-    // Бюджет такта (Level 4)
+    // Бюджет такта
     const barBudget = 100 + (tension * 100);
     let consumedEnergy = 0;
 
-    // 1. SOLO (MELODY)
+    // 1. SOLO (MELODY) - Plan 164: Sentence Level
     let melodyEvents: FractalEvent[] = [];
     if (hints.melody) {
-      melodyEvents = this.generateGenerativeMelody(epoch, currentChord, barIn12, tempo, tension);
+      melodyEvents = this.generateLSystemMelody(epoch, currentChord, barIn12, tempo, tension);
       events.push(...this.applyAntiFuneralMarch(melodyEvents, epoch, tension));
       consumedEnergy += ENERGY_PRICES.solo;
     }
@@ -83,35 +90,22 @@ export class BluesBrain {
     const currentPhase = melodyEvents.length > 0 ? (melodyEvents[0].harmonicContext || 'SILENCE') : 'PAUSE';
     console.log(`%cPlan160 - [Bar ${epoch}] Narrative: ${currentPhase} | Tension: ${tension.toFixed(2)} | Budget: ${consumedEnergy.toFixed(0)}/${barBudget.toFixed(0)}`, 'color: #00BFFF');
 
-    // 2. BASS - Conversational Mode
+    // 2. BASS
     if (hints.bass) {
       const isCrowded = tension > 0.8 && melodyDensity > 6;
       const shouldWalk = lastBarHadCall || tension > 0.6;
-      
       const mode = isCrowded ? 'PEDAL' : (shouldWalk ? 'WALKING' : 'PEDAL');
-      const reason = isCrowded ? 'High melody density' : (shouldWalk ? 'Responding to CALL' : 'Atmospheric pedal');
       
-      if (isCrowded) {
-          console.log(`  %cPlan160 - [Guard] Bass: Simplified to ${mode} (Reason: ${reason})`, 'color: #FF4500');
-      } else {
-          console.log(`  %cPlan160 - [Resonance] Bass: ${mode} (Reason: ${reason})`, 'color: #4169E1');
-      }
-
       const cost = mode === 'WALKING' ? ENERGY_PRICES.bass_walking : ENERGY_PRICES.bass_pedal;
-      
       if (consumedEnergy + cost <= barBudget) {
         events.push(...this.generateBass(epoch, currentChord, tempo, tension, mode === 'WALKING'));
         consumedEnergy += cost;
       }
     }
 
-    // 3. DRUMS - Punctuation
+    // 3. DRUMS
     if (hints.drums) {
       const forceFill = lastBarHadScream && tension > 0.5;
-      if (forceFill) {
-          console.log(`  %cPlan160 - [Resonance] Drums: FILL (Reason: Scream detected!)`, 'color: #FFA500');
-      }
-
       const cost = tension > 0.5 ? ENERGY_PRICES.drums_full : ENERGY_PRICES.drums_minimal;
       if (consumedEnergy + cost <= barBudget) {
         events.push(...this.generateDrums(epoch, tempo, tension, forceFill));
@@ -119,7 +113,7 @@ export class BluesBrain {
       }
     }
 
-    // 4. ACCOMPANIMENT & OTHERS (Weight Floor 0.35 applied)
+    // 4. ACCOMPANIMENT (Weight Floor 0.35)
     if (hints.accompaniment && (consumedEnergy + ENERGY_PRICES.harmony <= barBudget)) {
         events.push(...this.generateHarmony(epoch, currentChord, tempo, tension));
         consumedEnergy += ENERGY_PRICES.harmony;
@@ -130,49 +124,40 @@ export class BluesBrain {
         consumedEnergy += ENERGY_PRICES.piano;
     }
 
-    if (consumedEnergy + 10 <= barBudget && tension > 0.4) {
-        events.push(...this.generateTextures(epoch, tempo, tension, hints));
-    }
-
     return events;
   }
 
-  private generateGenerativeMelody(epoch: number, chord: GhostChord, barIn12: number, tempo: number, tension: number): FractalEvent[] {
+  /**
+   * #ЗАЧЕМ: Реализация L-системы для развития мелодии.
+   * #ЧТО: CALL создает аксиому, RESPONSE эволюционирует её.
+   */
+  private generateLSystemMelody(epoch: number, chord: GhostChord, barIn12: number, tempo: number, tension: number): FractalEvent[] {
     const beatDur = 60 / tempo;
     const tickDur = beatDur / 3;
     
-    let phase: 'CALL' | 'RESPONSE' | 'CLIMAX' | 'TURNAROUND' = 'CALL';
-    if (barIn12 < 4) phase = 'CALL';
-    else if (barIn12 < 8) phase = 'RESPONSE';
-    else if (barIn12 < 11) phase = (tension > 0.7) ? 'CLIMAX' : 'RESPONSE';
-    else phase = 'TURNAROUND';
-
-    const notes: { deg: string, t: number, d: number, tech: Technique }[] = [];
+    // Определяем фазу (4-тактовый цикл)
+    const phaseInSentence = epoch % 4; 
+    let phaseName: 'CALL' | 'RESPONSE' | 'CLIMAX' | 'TURNAROUND' = 'CALL';
     
-    if (phase === 'CALL') {
-        notes.push({ deg: '5', t: 0, d: 3, tech: 'pick' });
-        notes.push({ deg: '4', t: 3, d: 3, tech: 'slide' });
-        notes.push({ deg: 'b3', t: 6, d: 6, tech: 'bend' });
-    } else if (phase === 'RESPONSE') {
-        notes.push({ deg: 'b3', t: 0, d: 2, tech: 'pick' });
-        notes.push({ deg: '4', t: 3, d: 2, tech: 'pick' });
-        notes.push({ deg: '5', t: 6, d: 2, tech: 'pick' });
-        notes.push({ deg: 'R', t: 9, d: 3, tech: 'vibrato' });
-    } else if (phase === 'CLIMAX') {
-        notes.push({ deg: 'b7', t: 0, d: 6, tech: 'bend' });
-        notes.push({ deg: '5', t: 6, d: 2, tech: 'pick' });
-        notes.push({ deg: 'b5', t: 8, d: 2, tech: 'slide' });
-        notes.push({ deg: '4', t: 10, d: 2, tech: 'pick' });
+    if (barIn12 === 11) phaseName = 'TURNAROUND';
+    else if (phaseInSentence === 0 || phaseInSentence === 1) phaseName = 'CALL';
+    else if (phaseInSentence === 2) phaseName = 'RESPONSE';
+    else phaseName = (tension > 0.7) ? 'CLIMAX' : 'RESPONSE';
+
+    // 1. Создание или Эволюция Аксиомы
+    if (phaseInSentence === 0 || this.currentAxiom.length === 0) {
+        this.currentAxiom = this.generateInitialAxiom(tension);
+        this.axiomAge = 0;
+        console.log(`  %cPlan164 - [L-System] NEW AXIOM created for Bar ${epoch}`, 'color: #DA70D6');
     } else {
-        notes.push({ deg: '2', t: 0, d: 2, tech: 'pick' });
-        notes.push({ deg: 'b3', t: 3, d: 2, tech: 'pick' });
-        notes.push({ deg: '3', t: 6, d: 3, tech: 'pick' });
-        notes.push({ deg: '4', t: 9, d: 3, tech: 'pick' });
+        this.currentAxiom = this.evolveAxiom(this.currentAxiom, tension, phaseName);
+        this.axiomAge++;
+        console.log(`  %cPlan164 - [L-System] Axiom EVOLVED (Iteration ${this.axiomAge}) for ${phaseName}`, 'color: #DA70D6');
     }
 
-    const registerLift = tension > 0.7 ? 12 : 0;
+    const registerLift = (tension > 0.7 || phaseName === 'CLIMAX') ? 12 : 0;
 
-    return notes.map(n => ({
+    return this.currentAxiom.map(n => ({
         type: 'melody',
         note: chord.rootNote + 36 + registerLift + (DEGREE_TO_SEMITONE[n.deg] || 0),
         time: n.t * tickDur,
@@ -181,8 +166,52 @@ export class BluesBrain {
         technique: n.tech,
         dynamics: tension > 0.6 ? 'mf' : 'p',
         phrasing: 'legato',
-        harmonicContext: phase
+        harmonicContext: phaseName
     }));
+  }
+
+  private generateInitialAxiom(tension: number): MelodicAxiomNote[] {
+    // Создаем простую структуру из 2-3 нот
+    const axiom: MelodicAxiomNote[] = [];
+    const pool = ['R', 'b3', '4', '5', 'b7', this.thematicDegree];
+    
+    const count = tension > 0.6 ? 3 : 2;
+    for (let i = 0; i < count; i++) {
+        axiom.push({
+            deg: pool[calculateMusiNum(this.seed + i, 3, i, pool.length)],
+            t: i * 3, // На долях
+            d: 3,
+            tech: 'pick'
+        });
+    }
+    return axiom;
+  }
+
+  private evolveAxiom(axiom: MelodicAxiomNote[], tension: number, phase: string): MelodicAxiomNote[] {
+    // Правила L-системы
+    // Rule 1: Growth (добавляем ноту рядом)
+    // Rule 2: Inversion (переворачиваем интервалы)
+    
+    const evolved = axiom.flatMap((note, i) => {
+        if (phase === 'RESPONSE' && i === axiom.length - 1) {
+            // Замена последней ноты на тематический якорь или тонику
+            return [{ ...note, deg: (tension > 0.5 ? this.thematicDegree : 'R'), tech: 'vibrato' as Technique }];
+        }
+        
+        if (phase === 'CLIMAX' && tension > 0.8) {
+            // Удвоение ноты через октаву (Growth)
+            return [
+                note,
+                { ...note, deg: 'R+8', t: note.t + 1, d: 1, tech: 'bend' as Technique }
+            ];
+        }
+
+        // Ритмическое смещение (Variation)
+        return [{ ...note, t: (note.t + 1) % 12 }];
+    });
+
+    // Ограничение длины "предложения", чтобы не захламлять
+    return evolved.slice(0, 6);
   }
 
   private generateDrums(epoch: number, tempo: number, tension: number, forceFill: boolean): FractalEvent[] {
@@ -216,6 +245,7 @@ export class BluesBrain {
 
     return pattern.map(n => {
       let note = chord.rootNote - 12 + (DEGREE_TO_SEMITONE[n.deg] || 0);
+      // Sub-bass protection (Plan 156)
       if (note < 24) note += 12; 
       return {
         type: 'bass',
@@ -245,7 +275,7 @@ export class BluesBrain {
             note: chord.rootNote + (voicing[idx] - 40),
             time: t * tickDur,
             duration: beatDur * 2.0,
-            weight: 0.35 + (tension * 0.2), // Weight Floor 0.35
+            weight: 0.35 + (tension * 0.2),
             technique: 'pluck',
             dynamics: 'p',
             phrasing: 'detached'
@@ -264,42 +294,11 @@ export class BluesBrain {
         note: notes[beat % 2] + 12,
         time: beat * beatDur,
         duration: beatDur * 0.8,
-        weight: 0.35 + (tension * 0.3), // Weight Floor 0.35
+        weight: 0.35 + (tension * 0.3),
         technique: 'hit',
         dynamics: 'p',
         phrasing: 'staccato'
     }));
-  }
-
-  private generateTextures(epoch: number, tempo: number, tension: number, hints: InstrumentHints): FractalEvent[] {
-    const events: FractalEvent[] = [];
-    if (calculateMusiNum(epoch, 7, this.seed, 100) < 15) {
-        events.push({
-            type: 'sfx',
-            note: 60,
-            time: Math.random() * 2,
-            duration: 2.0,
-            weight: 0.5,
-            technique: 'hit',
-            dynamics: 'p',
-            phrasing: 'detached',
-            params: { mood: this.mood, genre: 'blues' }
-        });
-    }
-    if (calculateMusiNum(epoch, 11, this.seed + 50, 100) < 20) {
-        events.push({
-            type: 'sparkle',
-            note: 84,
-            time: Math.random() * 3,
-            duration: 1.0,
-            weight: 0.4,
-            technique: 'hit',
-            dynamics: 'p',
-            phrasing: 'staccato',
-            params: { mood: this.mood, genre: 'blues' }
-        });
-    }
-    return events;
   }
 
   private createDrumEvent(type: any, time: number, weight: number, dynamics: Dynamics): any {
