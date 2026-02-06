@@ -106,7 +106,7 @@ export class BluesBrain {
       const cost = tension > 0.5 ? ENERGY_PRICES.drums_full : ENERGY_PRICES.drums_minimal;
       if (consumedEnergy + cost <= barBudget) {
         events.push(...this.generateDrums(epoch, tempo, tension));
-        consumedEnergy += cost; // ИСПРАВЛЕНО (ПЛАН 155): currentEnergy -> consumedEnergy
+        consumedEnergy += cost;
       }
     }
 
@@ -115,13 +115,10 @@ export class BluesBrain {
       const cost = ENERGY_PRICES.solo;
       if (consumedEnergy + cost <= barBudget) {
         const registerOffset = tension > 0.75 ? 12 : 0;
-        // Передаем lastDrumFill для акцента первой ноты соло
         const melodyEvents = this.generateMelody(epoch, currentChord, barIn12, tempo, tension, registerOffset, lastDrumFill);
         const guardedEvents = this.applyAntiFuneralMarch(melodyEvents, epoch, tension);
         events.push(...guardedEvents);
         consumedEnergy += cost;
-      } else {
-        console.log(`Plan154 - blues-brain/budget: Bar budget ${barBudget.toFixed(0)} exceeded. Solo simplified.`);
       }
     }
 
@@ -189,7 +186,6 @@ export class BluesBrain {
     const barIn12 = epoch % 12;
     let pattern = riff.I;
     
-    // Если энергия низкая и нет принудительного волкинга (резонанс) - играем педаль
     if (tension < 0.3 && !forceWalking) {
         pattern = [{ t: 0, d: 12, deg: 'R' }];
     } else {
@@ -270,8 +266,7 @@ export class BluesBrain {
       duration: n.d * tickDur,
       weight: 0.8 + tension * 0.2, 
       technique: (n.tech as any) || ('pick' as const),
-      // Акцент на первую ноту если был драм-филл
-      dynamics: (idx === 0 && shouldAccent) ? 'f' : (tension > 0.7 ? 'mf' : 'p' as const),
+      dynamics: (idx === 0 && shouldAccent) ? 'mf' : (tension > 0.7 ? 'mf' : 'p' as const),
       phrasing: 'legato' as const
     }));
   }
