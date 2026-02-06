@@ -1,4 +1,3 @@
-
 import type {
   FractalEvent,
   GhostChord,
@@ -12,15 +11,15 @@ import type {
   InstrumentPart,
   Technique
 } from '@/types/music';
-import { calculateMusiNum, DEGREE_TO_SEMITONE, pickWeightedDeterministic } from './music-theory';
+import { calculateMusiNum, DEGREE_TO_SEMITONE } from './music-theory';
 import { BLUES_DRUM_RIFFS } from './assets/blues-drum-riffs';
 import { BLUES_BASS_RIFFS } from './assets/blues-bass-riffs';
 import { BLUES_GUITAR_VOICINGS } from './assets/guitar-voicings';
 import { GUITAR_PATTERNS } from './assets/guitar-patterns';
 
 /**
- * #ЗАЧЕМ: Блюзовый Мозг V12.0 — "Drama & Gravity".
- * #ЧТО: Интеграция механизма постепенного вступления (summonProgress).
+ * #ЗАЧЕМ: Блюзовый Мозг V12.5 — "Revival & Resonance".
+ * #ЧТО: Внедрена ротация паттернов, мутация высоты нот иConversational Mode.
  */
 
 const ENERGY_PRICES = {
@@ -44,6 +43,11 @@ export class BluesBrain {
   private lastAscendingBar: number = -10;
   private currentAxiom: MelodicAxiomNote[] = [];
   private axiomAge: number = 0;
+  
+  // Pattern Rotation State
+  private patternIdx: number = 0;
+  private lastPatternChange: number = 0;
+  private readonly patternOptions: string[] = ['F_TRAVIS', 'F_ROLL12', 'S_SWING'];
 
   constructor(seed: number, mood: Mood) {
     this.seed = seed;
@@ -67,16 +71,24 @@ export class BluesBrain {
     
     this.evaluateTimbralDramaturgy(tension, hints);
 
+    // Conversational detection
     const lastBarHadCall = lastEvents.some(e => e.type === 'melody' && e.harmonicContext === 'CALL');
     const lastBarHadScream = lastEvents.some(e => e.type === 'melody' && e.note > 74 && e.duration > 0.8);
     const melodyDensity = lastEvents.filter(e => e.type === 'melody').length;
+
+    // Pattern Rotation (Stagnation Guard)
+    if (epoch - this.lastPatternChange >= 8 || (tension > 0.8 && epoch - this.lastPatternChange >= 4)) {
+        this.patternIdx = (this.patternIdx + 1) % this.patternOptions.length;
+        this.lastPatternChange = epoch;
+        console.log(`Plan175 - [Rotation] Accomp pattern changed to: ${this.patternOptions[this.patternIdx]}`);
+    }
 
     const barBudget = 100 + (tension * 100);
     let consumedEnergy = 0;
 
     // 1. SOLO (MELODY)
     if (hints.melody) {
-      const melodyEvents = this.generateLSystemMelody(epoch, currentChord, barIn12, tempo, tension);
+      const melodyEvents = this.generateLSystemMelody(epoch, currentChord, barIn12, tempo, tension, dna);
       const prog = hints.summonProgress?.melody ?? 1.0;
       melodyEvents.forEach(e => { e.weight *= prog; });
       events.push(...this.applyAntiFuneralMarch(melodyEvents, epoch, tension));
@@ -97,6 +109,7 @@ export class BluesBrain {
     }
 
     if (hints.drums) {
+      // Tom Fill Resonance (Conversational Mode)
       const forceFill = lastBarHadScream && tension > 0.5;
       const cost = tension > 0.5 ? ENERGY_PRICES.drums_full : ENERGY_PRICES.drums_minimal;
       if (consumedEnergy + cost <= barBudget) {
@@ -110,7 +123,8 @@ export class BluesBrain {
 
     // 3. HARMONY
     if (hints.accompaniment && (consumedEnergy + ENERGY_PRICES.harmony <= barBudget)) {
-        const accEvents = this.generateHarmony(epoch, currentChord, tempo, tension);
+        const currentPattern = this.patternOptions[this.patternIdx];
+        const accEvents = this.generateHarmony(epoch, currentChord, tempo, tension, currentPattern);
         const prog = hints.summonProgress?.accompaniment ?? 1.0;
         accEvents.forEach(e => { e.weight *= prog; });
         events.push(...accEvents);
@@ -130,6 +144,7 @@ export class BluesBrain {
 
   private evaluateTimbralDramaturgy(tension: number, hints: InstrumentHints) {
     if (hints.melody) {
+        // ShineOn removed, using Telecaster for low and Black for high tension
         if (tension < 0.5) hints.melody = 'telecaster' as any;
         else hints.melody = 'blackAcoustic' as any;
     }
@@ -140,11 +155,11 @@ export class BluesBrain {
     }
   }
 
-  private generateLSystemMelody(epoch: number, chord: GhostChord, barIn12: number, tempo: number, tension: number): FractalEvent[] {
+  private generateLSystemMelody(epoch: number, chord: GhostChord, barIn12: number, tempo: number, tension: number, dna: SuiteDNA): FractalEvent[] {
     const beatDur = 60 / tempo;
     const tickDur = beatDur / 3;
     const phaseInSentence = epoch % 4; 
-    let phaseName: 'CALL' | 'RESPONSE' | 'CLIMAX' | 'TURNAROUND' = 'CALL';
+    let phaseName: 'CALL' | 'RESPONSE' | 'CLIMAX' | 'TURNAROUND' | 'call_var' = 'CALL';
     
     if (barIn12 === 11) phaseName = 'TURNAROUND';
     else if (phaseInSentence < 2) phaseName = 'CALL';
@@ -155,7 +170,7 @@ export class BluesBrain {
         this.currentAxiom = this.generateInitialAxiom(tension);
         this.axiomAge = 0;
     } else {
-        this.currentAxiom = this.evolveAxiom(this.currentAxiom, tension, phaseName);
+        this.currentAxiom = this.evolveAxiom(this.currentAxiom, tension, phaseName, dna);
         this.axiomAge++;
     }
 
@@ -179,16 +194,34 @@ export class BluesBrain {
     const pool = ['R', 'b3', '4', '5', 'b7', this.thematicDegree];
     const count = tension > 0.6 ? 3 : 2;
     for (let i = 0; i < count; i++) {
-        axiom.push({ deg: pool[calculateMusiNum(this.seed + i, 3, i, pool.length)], t: i * 3, d: 3, tech: 'pick' });
+        const stepSeed = this.seed + i + Math.floor(Math.random() * 100);
+        axiom.push({ 
+            deg: pool[calculateMusiNum(stepSeed, 3, i, pool.length)], 
+            t: i * 3, 
+            d: 3, 
+            tech: 'pick' 
+        });
     }
     return axiom;
   }
 
-  private evolveAxiom(axiom: MelodicAxiomNote[], tension: number, phase: string): MelodicAxiomNote[] {
+  private evolveAxiom(axiom: MelodicAxiomNote[], tension: number, phase: string, dna: SuiteDNA): MelodicAxiomNote[] {
     const evolved = axiom.flatMap((note, i) => {
-        if (phase === 'RESPONSE' && i === axiom.length - 1) return [{ ...note, deg: (tension > 0.5 ? this.thematicDegree : 'R'), tech: 'vibrato' as Technique }];
-        if (phase === 'CLIMAX' && tension > 0.8) return [note, { ...note, deg: 'R+8', t: (note.t + 1) % 12, d: 1, tech: 'bend' as Technique }];
-        return [{ ...note, t: (note.t + 1) % 12 }];
+        let newDeg = note.deg;
+        let newTech = note.tech;
+
+        // Pitch Mutation Logic (Plan №175)
+        if (tension > 0.6 && phase === 'CLIMAX' && Math.random() < 0.3) {
+            const highPool = ['5', 'b7', 'R+8', '9'];
+            newDeg = highPool[Math.floor(Math.random() * highPool.length)];
+            newTech = 'bend' as Technique;
+        } else if (phase === 'RESPONSE' && i === axiom.length - 1) {
+            // Anchor resolution
+            newDeg = dna.thematicAnchors?.[0] || 'R';
+            newTech = 'vibrato' as Technique;
+        }
+
+        return [{ ...note, deg: newDeg, tech: newTech, t: (note.t + 1) % 12 }];
     });
     return evolved.slice(0, 6);
   }
@@ -200,7 +233,12 @@ export class BluesBrain {
     const p = kitPool[calculateMusiNum(epoch, 3, this.seed, kitPool.length)];
     if (!p) return [];
     const events: FractalEvent[] = [];
-    if (forceFill) [9, 10, 11].forEach(t => events.push(this.createDrumEvent('drum_tom_mid', t * tickDur, 0.8, 'mf')));
+    
+    if (forceFill) {
+        console.log(`Plan175 - [Resonance] Forcing Tom Fill in response to guitar scream`);
+        [9, 10, 11].forEach(t => events.push(this.createDrumEvent('drum_tom_mid', t * tickDur, 0.8, 'mf')));
+    }
+    
     if (tension > 0.3 && p.HH) p.HH.forEach(t => events.push(this.createDrumEvent('drum_hihat', t * tickDur, 0.4 + (tension * 0.2), 'p')));
     if (p.K) p.K.forEach(t => events.push(this.createDrumEvent('drum_kick', t * tickDur, 0.8, tension > 0.7 ? 'mf' : 'p')));
     if (tension > 0.5 && p.SD) p.SD.forEach(t => events.push(this.createDrumEvent('drum_snare', t * tickDur, 0.5 + (tension * 0.3), 'mf')));
@@ -223,17 +261,28 @@ export class BluesBrain {
     });
   }
 
-  private generateHarmony(epoch: number, chord: GhostChord, tempo: number, tension: number): FractalEvent[] {
+  private generateHarmony(epoch: number, chord: GhostChord, tempo: number, tension: number, patternName: string): FractalEvent[] {
     const beatDur = 60 / tempo;
     const tickDur = beatDur / 3;
-    const pattern = GUITAR_PATTERNS['F_TRAVIS'];
+    const pattern = GUITAR_PATTERNS[patternName] || GUITAR_PATTERNS['F_TRAVIS'];
     const voicing = BLUES_GUITAR_VOICINGS['E7_open'];
     const events: FractalEvent[] = [];
-    const steps = tension > 0.6 ? pattern.pattern : [pattern.pattern[0], pattern.pattern[3]];
+    
+    const steps = (tension > 0.6 || patternName.startsWith('S_')) ? pattern.pattern : [pattern.pattern[0]];
+    
     steps.forEach(step => {
       step.ticks.forEach(t => {
         step.stringIndices.forEach(idx => {
-          events.push({ type: 'accompaniment', note: chord.rootNote + (voicing[idx] - 40), time: t * tickDur, duration: beatDur * 2.0, weight: 0.35 + (tension * 0.2), technique: 'pluck', dynamics: 'p', phrasing: 'detached' });
+          events.push({ 
+              type: 'accompaniment', 
+              note: chord.rootNote + (voicing[idx] - 40), 
+              time: t * tickDur, 
+              duration: beatDur * 2.0, 
+              weight: 0.3 + (tension * 0.2), 
+              technique: 'pluck', 
+              dynamics: 'p', 
+              phrasing: 'detached' 
+          });
         });
       });
     });

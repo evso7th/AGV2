@@ -330,7 +330,7 @@ export type NavigationInfo = {
  * #СВЯЗИ: Используется во FractalMusicEngine и music-theory.ts.
  */
 export interface BluesCognitiveState {
-  phraseState: 'call' | 'response' | 'fill';
+  phraseState: 'call' | 'response' | 'fill' | 'CLIMAX' | 'TURNAROUND' | 'call_var';
   tensionLevel: number;
   phraseHistory: string[];
   lastPhraseHash: string;
@@ -351,6 +351,10 @@ export type SuiteDNA = {
   soloPlanMap: Map<string, string>;
   bluesMelodyId?: string; // ТЕМАТИЧЕСКИЙ ЯКОРЬ
   tensionMap: number[]; // Added
+  /** #ЗАЧЕМ: Тип блюзовой сетки (План №175). */
+  bluesGridType?: 'classic' | 'quick-change' | 'minor-blues';
+  /** #ЗАЧЕМ: Тематические якоря сюиты (План №175). */
+  thematicAnchors?: string[];
 };
 
 /**

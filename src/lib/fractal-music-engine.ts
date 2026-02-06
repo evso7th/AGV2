@@ -1,4 +1,3 @@
-
 import type { FractalEvent, Mood, Genre, InstrumentPart, InstrumentHints, GhostChord, SuiteDNA, NavigationInfo } from '@/types/music';
 import { BlueprintNavigator } from './blueprint-navigator';
 import { getBlueprint } from './blueprints';
@@ -42,9 +41,8 @@ interface EngineConfig {
 }
 
 /**
- * #ЗАЧЕМ: Фрактальный Музыкальный Движок V12.0 — "Drama Engine".
- * #ЧТО: Реализует систему "Dramatic Gravity" — вероятностное вступление инструментов
- *       с нарастающей громкостью и сохранением состояния (Persistence).
+ * #ЗАЧЕМ: Фрактальный Музыкальный Движок V12.5 — "Drama & Context".
+ * #ЧТО: Реализует систему "Dramatic Gravity" и передачу контекста (lastEvents) в мозг.
  */
 export class FractalMusicEngine {
   public config: EngineConfig;
@@ -198,6 +196,7 @@ export class FractalMusicEngine {
     let allEvents: FractalEvent[] = [];
 
     if (this.config.genre === 'blues' && this.bluesBrain) {
+        // #ЗАЧЕМ: Передача lastEvents для реализацииConversational Mode (Резонанс).
         allEvents = this.bluesBrain.generateBar(this.epoch, currentChord, navInfo, this.suiteDNA, instrumentHints, this.lastEvents);
     } else {
         const harmonyEvents = createHarmonyAxiom(currentChord, this.config.mood, this.config.genre, this.random, this.epoch);

@@ -4,6 +4,7 @@
  * #ЧТО: Функции для получения гамм, инверсий, ретроградов и гуманизации.
  *       Внедрена система цепей Маркова для генерации гармонического скелета.
  *       ДОБАВЛЕНО: Математика MusiNum для фрактальной детерминированности.
+ * #ОБНОВЛЕНО (ПЛАН №175): Поддержка трех типов блюзовых сеток и тематических якорей.
  */
 
 import type { 
@@ -15,7 +16,7 @@ import type {
     NavigationInfo,
     InstrumentPart
 } from '@/types/music';
-import { BLUES_SOLO_LICKS, BLUES_SOLO_PLANS } from './assets/blues_guitar_solo';
+import { BLUES_SOLO_PLANS } from './assets/blues_guitar_solo';
 
 export const DEGREE_TO_SEMITONE: Record<string, number> = {
     'R': 0, 'b2': 1, '2': 2, 'b3': 3, '3': 4, '4': 5, '#4': 6, 'b5': 6, '5': 7,
@@ -81,7 +82,6 @@ export function generateTensionMap(seed: number, totalBars: number): number[] {
         const finalVal = Math.max(0.05, Math.min(0.95, expanded));
         map.push(finalVal);
     }
-    console.log(`Plan154 - music-theory/generateTensionMap: Contrast expanded. Range: [${Math.min(...map).toFixed(2)} - ${Math.max(...map).toFixed(2)}]. SEED: ${seed}`);
     return map;
 }
 
@@ -107,7 +107,7 @@ export function createHarmonyAxiom(
             note: note + 12, 
             time: 0,
             duration: 4.0,
-            weight: 0.15, // Приподнят вес для слышимости фона
+            weight: 0.15,
             technique: 'swell',
             dynamics: 'p',
             phrasing: 'legato',
@@ -149,12 +149,23 @@ export function getScaleForMood(mood: Mood, genre?: Genre): number[] {
 
 /**
  * #ЗАЧЕМ: Генератор ДНК сюиты.
+ * #ОБНОВЛЕНО: Поддержка 3-х типов блюзовых сеток и тематических якорей.
  */
 export function generateSuiteDNA(totalBars: number, mood: Mood, seed: number, random: any, genre: Genre, blueprintParts: any[]): SuiteDNA {
     const harmonyTrack: GhostChord[] = [];
     const baseKeyNote = 24 + Math.floor(random.next() * 12);
     const key = baseKeyNote;
     
+    // Выбор типа сетки для блюза
+    const gridTypes: ('classic' | 'quick-change' | 'minor-blues')[] = ['classic', 'quick-change', 'minor-blues'];
+    const bluesGridType = gridTypes[calculateMusiNum(seed, 3, seed, 3)];
+
+    const grids = {
+        classic: [0, 0, 0, 0, 5, 5, 0, 0, 7, 5, 0, 7],
+        'quick-change': [0, 5, 0, 0, 5, 5, 0, 0, 7, 5, 0, 7],
+        'minor-blues': [0, 0, 0, 0, 5, 5, 0, 0, 8, 7, 0, 7]
+    };
+
     let accumulatedBars = 0;
     const totalPercent = blueprintParts.reduce((sum: number, part: any) => sum + part.duration.percent, 0);
 
@@ -165,16 +176,15 @@ export function generateSuiteDNA(totalBars: number, mood: Mood, seed: number, ra
         if (partDuration <= 0) return;
 
         if (genre === 'blues') {
+            const progression = grids[bluesGridType];
             let currentBarInPart = 0;
             while (currentBarInPart < partDuration) {
-                const progression = [0, 0, 0, 0, 5, 5, 0, 0, 7, 5, 0, 7]; 
-                const chordTypes: ('minor' | 'dominant')[] = ['minor', 'minor', 'minor', 'minor', 'minor', 'minor', 'minor', 'minor', 'dominant', 'minor', 'minor', 'dominant'];
-                
                 for (let i = 0; i < 12 && currentBarInPart < partDuration; i++) {
                     const barIdx = partStartBar + currentBarInPart;
+                    const offset = progression[i];
                     harmonyTrack.push({
-                        rootNote: key + progression[i],
-                        chordType: chordTypes[i] === 'minor' ? 'minor' : 'major',
+                        rootNote: key + offset,
+                        chordType: (offset === 7 || offset === 8) ? 'major' : 'minor',
                         bar: barIdx,
                         durationBars: 1
                     });
@@ -215,7 +225,23 @@ export function generateSuiteDNA(totalBars: number, mood: Mood, seed: number, ra
     });
 
     const tensionMap = generateTensionMap(seed, totalBars);
-    console.log(`Plan152 - music-theory/generateSuiteDNA: Tension Map embedded into DNA.`);
+    
+    // Генерация тематических якорей (ступеней)
+    const anchorPool = ['R', 'b3', '4', '5', 'b7'];
+    const thematicAnchors = [
+        anchorPool[calculateMusiNum(seed, 3, 0, anchorPool.length)],
+        anchorPool[calculateMusiNum(seed, 5, 1, anchorPool.length)]
+    ];
 
-    return { harmonyTrack, baseTempo, rhythmicFeel: 'shuffle', bassStyle: 'walking', drumStyle: 'shuffle_A', soloPlanMap, tensionMap };
+    return { 
+        harmonyTrack, 
+        baseTempo, 
+        rhythmicFeel: 'shuffle', 
+        bassStyle: 'walking', 
+        drumStyle: 'shuffle_A', 
+        soloPlanMap, 
+        tensionMap,
+        bluesGridType,
+        thematicAnchors
+    };
 }

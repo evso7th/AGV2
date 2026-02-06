@@ -366,6 +366,10 @@ export type SuiteDNA = {
   /** #ЗАЧЕМ: Энергетический скелет сюиты.
    *  #ЧТО: Массив значений 0..1 для каждого такта. */
   tensionMap: number[];
+  /** #ЗАЧЕМ: Тип блюзовой сетки (План №175). */
+  bluesGridType?: 'classic' | 'quick-change' | 'minor-blues';
+  /** #ЗАЧЕМ: Тематические якоря сюиты (План №175). */
+  thematicAnchors?: string[];
 };
 
 
