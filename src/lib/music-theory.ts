@@ -4,7 +4,7 @@
  * #ЧТО: Функции для получения гамм, инверсий, ретроградов и гуманизации.
  *       Внедрена система цепей Маркова для генерации гармонического скелета.
  *       ДОБАВЛЕНО: Математика MusiNum для фрактальной детерминированности.
- * #ИСПРАВЛЕНО: Добавлены проверки на конечность и защита от деления на ноль в MusiNum.
+ * #ИСПРАВЛЕНО: createHarmonyAxiom теперь создает sustained пласты вместо арпеджио.
  */
 
 import type { 
@@ -26,15 +26,12 @@ export const DEGREE_TO_SEMITONE: Record<string, number> = {
 
 /**
  * #ЗАЧЕМ: Математическое ядро MusiNum.
- * #ЧТО: Вычисляет сумму цифр числа в заданной системе счисления с последующим вычетом по модулю.
- *       Порождает самоподобные (фрактальные) последовательности. Это ДЕТЕРМИНИРОВАННЫЙ алгоритм.
  */
 export function calculateMusiNum(step: number, base: number = 2, start: number = 0, modulo: number = 8): number {
     if (!isFinite(step) || !isFinite(start) || !isFinite(base) || !isFinite(modulo) || modulo <= 0 || base <= 1) return 0;
     
     let num = Math.abs(Math.floor(step + start));
     let sum = 0;
-    // Отрабатываем алгоритм: перевод в систему счисления Base и суммирование цифр
     while (num > 0) {
         sum += num % base;
         num = Math.floor(num / base);
@@ -44,7 +41,6 @@ export function calculateMusiNum(step: number, base: number = 2, start: number =
 
 /**
  * #ЗАЧЕМ: Детерминированный выбор из взвешенного списка.
- * #ЧТО: Использует MusiNum вместо Math.random для выбора из массива опций.
  */
 export function pickWeightedDeterministic<T>(
     options: { name?: T, value?: T, weight: number }[], 
@@ -55,7 +51,6 @@ export function pickWeightedDeterministic<T>(
     if (!options || options.length === 0) return null as any;
     
     const totalWeight = options.reduce((sum, opt) => sum + opt.weight, 0);
-    // Используем MusiNum для получения "псевдослучайного" числа от 0 до 100
     const fractalVal = calculateMusiNum(epoch, 7, seed + offset, 100);
     const target = (fractalVal / 100) * totalWeight;
     
@@ -69,7 +64,9 @@ export function pickWeightedDeterministic<T>(
 }
 
 /**
- * #ЗАЧЕМ: Базовая гармоническая аксиома для Ambient/Trance.
+ * #ЗАЧЕМ: Базовая гармоническая аксиома.
+ * #ИСПРАВЛЕНО: Теперь создает плотные sustained пласты звука (Swells)
+ *              вместо раздражающих арпеджио.
  */
 export function createHarmonyAxiom(
     chord: GhostChord,
@@ -82,16 +79,16 @@ export function createHarmonyAxiom(
     const isMinor = chord.chordType === 'minor' || chord.chordType === 'diminished';
     const root = chord.rootNote;
     
-    // Мягкое "рассыпание" аккорда для создания объема.
+    // Плотный аккорд без временного смещения.
     const notes = [root, root + (isMinor ? 3 : 4), root + 7];
     
     notes.forEach((note, i) => {
         events.push({
             type: 'accompaniment',
             note: note + 12, 
-            time: i * 0.08, 
+            time: 0, // СИНХРОННО - НИКАКИХ ПЕРЕБОРОВ
             duration: 4.0,
-            weight: 0.4 - (i * 0.05),
+            weight: 0.3,
             technique: 'swell',
             dynamics: 'p',
             phrasing: 'legato',
@@ -108,7 +105,6 @@ export function getScaleForMood(mood: Mood, genre?: Genre): number[] {
   let baseScale: number[];
 
   if (genre === 'blues') {
-      // Классическая блюзовая пентатоника + b5 (блюзовая нота)
       baseScale = [0, 3, 5, 6, 7, 10]; 
   } else {
       switch (mood) {
@@ -141,7 +137,6 @@ export function humanizeEvents(events: FractalEvent[], amount: number, random: a
 
 /**
  * #ЗАЧЕМ: Генератор ДНК сюиты.
- * #ЧТО: Создает неизменные параметры: гармонию, темп и маппинг соло-планов.
  */
 export function generateSuiteDNA(totalBars: number, mood: Mood, seed: number, random: any, genre: Genre, blueprintParts: any[]): SuiteDNA {
     const harmonyTrack: GhostChord[] = [];
