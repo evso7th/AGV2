@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState, useEffect, useCallback, useRef } from "react";
@@ -86,7 +85,7 @@ export const useAuraGroove = (): AuraGrooveProps => {
   const [drumSettings, setDrumSettings] = useState<DrumSettings>({ pattern: 'composer', volume: 0.25, kickVolume: 1.0, enabled: true });
   const [instrumentSettings, setInstrumentSettings] = useState<InstrumentSettings>({
     bass: { name: "bass_jazz_warm", volume: 0.5, technique: 'portamento' },
-    melody: { name: "guitar_shineOn", volume: 0.5 }, // #ИСПРАВЛЕНО (ПЛАН 162): Установлено 50% для UI
+    melody: { name: "blackAcoustic", volume: 0.5 }, // #ИСПРАВЛЕНО (ПЛАН 167): ShineOn удален, Telecaster/Black Acoustic по умолчанию.
     accompaniment: { name: "organ_soft_jazz", volume: 0.35 },
     harmony: { name: "guitarChords", volume: 0.25 },
     pianoAccompaniment: { name: "piano", volume: 0.65 },
@@ -150,7 +149,7 @@ export const useAuraGroove = (): AuraGrooveProps => {
         // Initial volume sync
         Object.entries(instrumentSettings).forEach(([part, settings]) => {
             const instrumentPart = part as InstrumentPart;
-            if ('volume' in settings) {
+            if (settings && 'volume' in settings) {
               setVolume(instrumentPart, settings.volume);
             }
         });
@@ -247,7 +246,7 @@ export const useAuraGroove = (): AuraGrooveProps => {
     
     setInstrumentSettings(prev => ({
         ...prev,
-        [part]: { ...prev[part], name: newInstrumentName }
+        [part]: { ...prev[part as keyof typeof prev], name: newInstrumentName }
     }));
     
     setInstrument(part as any, newInstrumentName as any);

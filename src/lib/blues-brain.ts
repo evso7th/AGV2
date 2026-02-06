@@ -18,9 +18,10 @@ import { BLUES_GUITAR_VOICINGS } from './assets/guitar-voicings';
 import { GUITAR_PATTERNS } from './assets/guitar-patterns';
 
 /**
- * #ЗАЧЕМ: Блюзовый Мозг V10.0 — Timbral Dramaturgy Engine.
+ * #ЗАЧЕМ: Блюзовый Мозг V10.1 — Timbral Dramaturgy Engine (Updated).
  * #ЧТО: Инструменты меняют свои тембры (пресеты) в зависимости от напряжения (Tension).
- *       CALL создает аксиому, RESPONSE эволюционирует её через L-систему.
+ *       #ИСПРАВЛЕНО (ПЛАН 167): Гитара ShineOn полностью удалена из соло.
+ *       Оставлены только Telecaster (Low Tension) и Black Acoustic (High Tension).
  */
 
 const ENERGY_PRICES = {
@@ -70,7 +71,7 @@ export class BluesBrain {
     const barIn12 = epoch % 12;
     const tension = dna.tensionMap ? (dna.tensionMap[epoch % dna.tensionMap.length] || 0.5) : 0.5;
     
-    // --- Plan 165: TIMBRAL DRAMATURGY ---
+    // --- Plan 165/167: TIMBRAL DRAMATURGY ---
     // Управление "голосами" актеров на основе напряжения
     this.evaluateTimbralDramaturgy(tension, hints);
 
@@ -140,17 +141,18 @@ export class BluesBrain {
 
   /**
    * #ЗАЧЕМ: Управление тембрами в зависимости от напряжения сюжета.
+   * #ИСПРАВЛЕНО (ПЛАН 167): ShineOn удален из семантического выбора.
    */
   private evaluateTimbralDramaturgy(tension: number, hints: InstrumentHints) {
     // 1. Мелодия (Гитара)
     if (hints.melody) {
         const oldMelody = hints.melody;
-        if (tension < 0.4) hints.melody = 'telecaster' as any;
-        else if (tension < 0.7) hints.melody = 'blackAcoustic' as any;
-        else hints.melody = 'guitar_shineOn' as any;
+        // #ИСПРАВЛЕНО (ПЛАН 167): Только Telecaster и Black Acoustic.
+        if (tension < 0.5) hints.melody = 'telecaster' as any;
+        else hints.melody = 'blackAcoustic' as any;
         
         if (oldMelody !== hints.melody) {
-            console.log(`%cPlan165 - [Dramaturgy] Melody morphing to ${hints.melody} (Tension: ${tension.toFixed(2)})`, 'color: #FFA500');
+            console.log(`%cPlan167 - [Dramaturgy] Melody morphing to ${hints.melody} (Tension: ${tension.toFixed(2)})`, 'color: #FFA500');
         }
     }
 

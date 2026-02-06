@@ -1,14 +1,14 @@
 import type { MusicBlueprint } from '@/types/music';
 
 /**
- * #ЗАЧЕМ: Блюпринт "The Bluest Blues" (v12.5 - Atmospheric Synthesis).
- * #ЧТО: Смена манеры аккомпанемента на "soft sustained" (long-chords и arpeggio-slow).
- * #ИНТЕГРАЦИЯ: Регистровая дисциплина и идеальный фон для Shine On Guitar.
+ * #ЗАЧЕМ: Блюпринт "The Bluest Blues" (v12.6 - Dual Guitar Core).
+ * #ЧТО: Смена соло-инструментов на Telecaster и Black Acoustic.
+ * #ИСПРАВЛЕНО (ПЛАН 167): ShineOn удален из статической аранжировки.
  */
 export const WinterBluesBlueprint: MusicBlueprint = {
     id: 'winter_blues',
-    name: 'The Bluest Blues (Atmospheric Synthesis)',
-    description: 'A deep, cognitive blues journey with a soft, sustained Hammond bed. Melodic syntax and fractal timing.',
+    name: 'The Bluest Blues (Acoustic & Tele)',
+    description: 'A deep, cognitive blues journey focused on Telecaster and Black Acoustic tones.',
     mood: 'melancholic',
     musical: {
         key: { root: 'E', scale: 'dorian', octave: 1 },
@@ -31,7 +31,7 @@ export const WinterBluesBlueprint: MusicBlueprint = {
                     { 
                         duration: { percent: 100 }, 
                         instrumentation: {
-                           melody: { activationChance: 1.0, instrumentOptions: [ { name: 'guitar_shineOn', weight: 1.0 } ] },
+                           melody: { activationChance: 1.0, instrumentOptions: [ { name: 'telecaster', weight: 1.0 } ] },
                            pianoAccompaniment: { activationChance: 1.0, instrumentOptions: [ { name: 'piano', weight: 1.0 } ] },
                            bass: { activationChance: 1.0, instrumentOptions: [ { name: 'bass_jazz_warm', weight: 1.0 } ] },
                            drums: { activationChance: 1.0, instrumentOptions: [ { name: 'blues_melancholic', weight: 1.0 } ] },
@@ -66,7 +66,7 @@ export const WinterBluesBlueprint: MusicBlueprint = {
                     { 
                         duration: { percent: 100 }, 
                         instrumentation: {
-                           melody: { activationChance: 1.0, instrumentOptions: [ { name: 'guitar_shineOn', weight: 1.0 } ] },
+                           melody: { activationChance: 1.0, instrumentOptions: [ { name: 'blackAcoustic', weight: 1.0 } ] },
                            bass: { activationChance: 1.0, instrumentOptions: [ { name: 'bass_jazz_warm', weight: 1.0 } ] },
                            drums: { activationChance: 1.0, instrumentOptions: [ { name: 'blues_melancholic_master', weight: 1.0 } ] },
                            accompaniment: { activationChance: 1.0, instrumentOptions: [ { name: 'organ_soft_jazz', weight: 1.0 } ] },
@@ -100,7 +100,7 @@ export const WinterBluesBlueprint: MusicBlueprint = {
                     { 
                         duration: { percent: 100 }, 
                         instrumentation: {
-                           melody: { activationChance: 1.0, instrumentOptions: [ { name: 'guitar_shineOn', weight: 1.0 } ] },
+                           melody: { activationChance: 1.0, instrumentOptions: [ { name: 'telecaster', weight: 1.0 } ] },
                            bass: { activationChance: 1.0, instrumentOptions: [ { name: 'bass_jazz_warm', weight: 1.0 } ] },
                            accompaniment: { activationChance: 1.0, instrumentOptions: [ { name: 'organ_soft_jazz', weight: 1.0 } ] }
                         }
