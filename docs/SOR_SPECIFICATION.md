@@ -43,20 +43,37 @@
 
 ### Уровень 6: Тембральная Драматургия (Timbral Morphing)
 *   **Инструментальная Лестница**: Инструменты меняют "голоса" в зависимости от Tension.
-*   **Гитара**: Telecaster (Low) → Black Acoustic (Med) → Shine On (High).
+*   **Гитара**: Telecaster (Low) → Black Acoustic (High).
 *   **Орган**: Rhodes (Low) → Soft Jazz (Med) → Jimmy Smith (High).
 *   **Функция**: Тембр становится инструментом повествования, а не просто настройкой.
 
+### Уровень 7: Dramatic Gravity (Summoning)
+*   **Probabilistic Entry**: Инструменты вступают согласно `activationChance` в каждой сцене Блюпринта.
+*   **Persistence**: Однажды активированный инструмент остается до конца части.
+*   **Swell Effect**: Коэффициент `summonProgress` плавно поднимает громкость нового инструмента за 3 такта.
+
 ---
 
-## 3. Технические Защитные Системы (Guardrails)
+## 3. Файловая Архитектура и Потоки Данных
+
+### Ключевые файлы:
+1.  **Genetics**: `src/lib/music-theory.ts` (MusiNum & SuiteDNA).
+2.  **Form**: `src/lib/blueprint-navigator.ts` (Structure).
+3.  **Conductor**: `src/app/ambient.worker.ts` (PostMessage Hub).
+4.  **Brain**: `src/lib/fractal-music-engine.ts` (Selection & Gravity).
+5.  **Mind**: `src/lib/blues-brain.ts` (Semantics & L-System).
+6.  **Router**: `src/contexts/audio-engine-context.tsx` (Event Dispatcher).
+7.  **Engine**: `src/lib/instrument-factory.ts` (Physical Synthesis).
+
+### Поток данных (Data Flow):
+`Seed` -> `SuiteDNA` (Harmony/Tension) -> `Navigator` (Section) -> `Engine` (Summoning) -> `Mind` (Phrasing) -> `FractalEvent` + `Hints` -> `Context` -> `Audio Nodes`.
+
+---
+
+## 4. Технические Защитные Системы (Guardrails)
 
 1.  **Bass Floor**: Принудительный подъем нот баса выше MIDI 24 для предотвращения "немого" гула.
 2.  **Anti-Funeral March**: Обнаружение затяжного нисходящего движения и принудительная вставка восходящего разрешения.
 3.  **Crowding Guard**: Автоматическое упрощение баса до педали при критической плотности соло.
 4.  **Weight Normalization**: Установление порога слышимости (0.35) для фоновых инструментов.
-
----
-
-## 4. Контракт Данных
-Вся коммуникация осуществляется через объект `FractalEvent`, дополненный семантическими тэгами `harmonicContext` и параметрами `instrumentHints`.
+5.  **AudioParam Safety**: Тотальная проверка `isFinite()` перед записью в аудио-узлы.
