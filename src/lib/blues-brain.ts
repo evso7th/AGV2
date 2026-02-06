@@ -18,12 +18,8 @@ import { BLUES_GUITAR_VOICINGS } from './assets/guitar-voicings';
 import { GUITAR_PATTERNS } from './assets/guitar-patterns';
 
 /**
- * #ЗАЧЕМ: Блюзовый Мозг V8.0 — Full Generative Conversation.
- * #ЧТО: 
- *   1. Тотальный отказ от статических ликов. Генерация соло на языке интервалов.
- *   2. Внедрен Conversational Mode: бас и барабаны отвечают на семантику соло.
- *   3. Crowding Guard: автоматическое упрощение баса при критической плотности соло.
- *   4. Thematic Consistency: принудительное следование выбранному якорю.
+ * #ЗАЧЕМ: Блюзовый Мозг V8.1 — Full Generative Conversation with Transparency.
+ * #ЧТО: Внедрена детальная диагностика "мыслей" ансамбля для контроля СОР Уровня 4.
  */
 
 const ENERGY_PRICES = {
@@ -48,11 +44,10 @@ export class BluesBrain {
     this.seed = seed;
     this.mood = mood;
     
-    // Якорь выбирается один раз на всю сюиту для узнаваемости
     const anchorDegrees = ['R', 'b3', '5', 'b7'];
     this.thematicDegree = anchorDegrees[calculateMusiNum(seed, 3, seed, anchorDegrees.length)];
 
-    console.log(`%c[BluesBrain] Plan 160: Semantic Assembly Engine Online.`, 'color: #00FF00; font-weight: bold;');
+    console.log(`%c[BluesBrain] Semantic Assembly Engine Online. Thematic Anchor: ${this.thematicDegree}`, 'color: #00FF00; font-weight: bold;');
   }
 
   public generateBar(
@@ -73,11 +68,11 @@ export class BluesBrain {
     const lastBarHadScream = lastEvents.some(e => e.type === 'melody' && e.note > 74 && e.duration > 0.8);
     const melodyDensity = lastEvents.filter(e => e.type === 'melody').length;
 
-    // Бюджет такта
+    // Бюджет такта (Level 4)
     const barBudget = 100 + (tension * 100);
     let consumedEnergy = 0;
 
-    // 1. SOLO (MELODY) - Генерируется первым, задает тон
+    // 1. SOLO (MELODY)
     let melodyEvents: FractalEvent[] = [];
     if (hints.melody) {
       melodyEvents = this.generateGenerativeMelody(epoch, currentChord, barIn12, tempo, tension);
@@ -85,14 +80,19 @@ export class BluesBrain {
       consumedEnergy += ENERGY_PRICES.solo;
     }
 
-    // 2. BASS - Отвечает на призыв или уступает дорогу
+    const currentPhase = melodyEvents.length > 0 ? (melodyEvents[0].harmonicContext || 'SILENCE') : 'PAUSE';
+    console.log(`%c[Bar ${epoch}] Narrative: ${currentPhase} | Tension: ${tension.toFixed(2)} | Budget: ${consumedEnergy.toFixed(0)}/${barBudget.toFixed(0)}`, 'color: #00BFFF');
+
+    // 2. BASS - Conversational Mode
     if (hints.bass) {
-      // Conversational Rule: Если был CALL, отвечаем WALKING.
-      // Crowding Guard: Если очень жарко и гитара частит, уходим в PEDAL.
-      const shouldSimplify = tension > 0.8 && melodyDensity > 6;
+      const isCrowded = tension > 0.8 && melodyDensity > 6;
       const shouldWalk = lastBarHadCall || tension > 0.6;
       
-      const mode = shouldSimplify ? 'PEDAL' : (shouldWalk ? 'WALKING' : 'PEDAL');
+      const mode = isCrowded ? 'PEDAL' : (shouldWalk ? 'WALKING' : 'PEDAL');
+      const reason = isCrowded ? 'High melody density' : (shouldWalk ? 'Responding to CALL' : 'Atmospheric pedal');
+      
+      console.log(`  %c[Resonance] Bass: ${mode} (Reason: ${reason})`, 'color: #4169E1');
+
       const cost = mode === 'WALKING' ? ENERGY_PRICES.bass_walking : ENERGY_PRICES.bass_pedal;
       
       if (consumedEnergy + cost <= barBudget) {
@@ -101,12 +101,14 @@ export class BluesBrain {
       }
     }
 
-    // 3. DRUMS - Пунктуация
+    // 3. DRUMS - Punctuation
     if (hints.drums) {
-      // Conversational Rule: Если гитара кричала, делаем филл (том-подбой)
       const forceFill = lastBarHadScream && tension > 0.5;
+      if (forceFill) {
+          console.log(`  %c[Resonance] Drums: FILL (Reason: Scream detected!)`, 'color: #FFA500');
+      }
+
       const cost = tension > 0.5 ? ENERGY_PRICES.drums_full : ENERGY_PRICES.drums_minimal;
-      
       if (consumedEnergy + cost <= barBudget) {
         events.push(...this.generateDrums(epoch, tempo, tension, forceFill));
         consumedEnergy += cost;
@@ -124,7 +126,6 @@ export class BluesBrain {
         consumedEnergy += ENERGY_PRICES.piano;
     }
 
-    // Textures
     if (consumedEnergy + 10 <= barBudget && tension > 0.4) {
         events.push(...this.generateTextures(epoch, tempo, tension, hints));
     }
@@ -132,44 +133,33 @@ export class BluesBrain {
     return events;
   }
 
-  /**
-   * #ЗАЧЕМ: Генератор мелодии на основе синтаксических правил.
-   * #ЧТО: CALL (нисходящий вопрос), RESPONSE (восходящий ответ), CLIMAX (напряжение).
-   */
   private generateGenerativeMelody(epoch: number, chord: GhostChord, barIn12: number, tempo: number, tension: number): FractalEvent[] {
-    const events: FractalEvent[] = [];
     const beatDur = 60 / tempo;
     const tickDur = beatDur / 3;
     
-    // Семантическая роль такта
     let phase: 'CALL' | 'RESPONSE' | 'CLIMAX' | 'TURNAROUND' = 'CALL';
     if (barIn12 < 4) phase = 'CALL';
     else if (barIn12 < 8) phase = 'RESPONSE';
     else if (barIn12 < 11) phase = (tension > 0.7) ? 'CLIMAX' : 'RESPONSE';
     else phase = 'TURNAROUND';
 
-    // Правила построения фраз (Degrees)
     const notes: { deg: string, t: number, d: number, tech: Technique }[] = [];
     
     if (phase === 'CALL') {
-        // Нисходящий вопрос: 5 -> 4 -> b3
         notes.push({ deg: '5', t: 0, d: 3, tech: 'pick' });
         notes.push({ deg: '4', t: 3, d: 3, tech: 'slide' });
         notes.push({ deg: 'b3', t: 6, d: 6, tech: 'bend' });
     } else if (phase === 'RESPONSE') {
-        // Восходящий ответ: b3 -> 4 -> 5 -> R
         notes.push({ deg: 'b3', t: 0, d: 2, tech: 'pick' });
         notes.push({ deg: '4', t: 3, d: 2, tech: 'pick' });
         notes.push({ deg: '5', t: 6, d: 2, tech: 'pick' });
         notes.push({ deg: 'R', t: 9, d: 3, tech: 'vibrato' });
     } else if (phase === 'CLIMAX') {
-        // Крик: b7 -> 5 -> b5 -> 4
         notes.push({ deg: 'b7', t: 0, d: 6, tech: 'bend' });
         notes.push({ deg: '5', t: 6, d: 2, tech: 'pick' });
         notes.push({ deg: 'b5', t: 8, d: 2, tech: 'slide' });
         notes.push({ deg: '4', t: 10, d: 2, tech: 'pick' });
     } else {
-        // Turnaround: Хроматика 2 -> b3 -> 3 -> 4
         notes.push({ deg: '2', t: 0, d: 2, tech: 'pick' });
         notes.push({ deg: 'b3', t: 3, d: 2, tech: 'pick' });
         notes.push({ deg: '3', t: 6, d: 3, tech: 'pick' });
@@ -187,7 +177,7 @@ export class BluesBrain {
         technique: n.tech,
         dynamics: tension > 0.6 ? 'mf' : 'p',
         phrasing: 'legato',
-        harmonicContext: phase // Передаем семантику для соседа
+        harmonicContext: phase
     }));
   }
 
@@ -199,16 +189,12 @@ export class BluesBrain {
     if (!p) return [];
 
     const events: FractalEvent[] = [];
-    
-    // Если гитара кричала, подмешиваем томы
     if (forceFill) {
         [9, 10, 11].forEach(t => events.push(this.createDrumEvent('drum_tom_mid', t * tickDur, 0.8, 'mf')));
     }
-
     if (tension > 0.3 && p.HH) p.HH.forEach(t => events.push(this.createDrumEvent('drum_hihat', t * tickDur, 0.4 + (tension * 0.2), 'p')));
     if (p.K) p.K.forEach(t => events.push(this.createDrumEvent('drum_kick', t * tickDur, 0.8, tension > 0.7 ? 'mf' : 'p')));
     if (tension > 0.5 && p.SD) p.SD.forEach(t => events.push(this.createDrumEvent('drum_snare', t * tickDur, 0.5 + (tension * 0.3), 'mf')));
-    
     return events;
   }
 
@@ -246,9 +232,7 @@ export class BluesBrain {
     const pattern = GUITAR_PATTERNS['F_TRAVIS'];
     const voicing = BLUES_GUITAR_VOICINGS['E7_open'];
     const events: FractalEvent[] = [];
-    
     const steps = tension > 0.6 ? pattern.pattern : [pattern.pattern[0], pattern.pattern[3]];
-
     steps.forEach(step => {
       step.ticks.forEach(t => {
         step.stringIndices.forEach(idx => {
