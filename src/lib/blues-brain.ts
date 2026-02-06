@@ -18,10 +18,10 @@ import { BLUES_GUITAR_VOICINGS } from './assets/guitar-voicings';
 import { GUITAR_PATTERNS } from './assets/guitar-patterns';
 
 /**
- * #ЗАЧЕМ: Блюзовый Мозг V6.0 — Neighbor Listening & Energy Budget (Plan 154).
+ * #ЗАЧЕМ: Блюзовый Мозг V6.1 — Neighbor Listening & Energy Budget.
  * #ЧТО: Внедрена оркестровка на основе баллов энергии и реакция на соседа.
  *       Инструменты теперь уступают дорогу друг другу для чистого микса.
- * #ИСПРАВЛЕНО: Устранение дрейфа плотности переборов.
+ * #ИСПРАВЛЕНО (ПЛАН 155): Исправлена опечатка currentEnergy -> consumedEnergy в учете бюджета.
  */
 
 // Стоимость инструментов в очках энергии (Plan 154)
@@ -60,7 +60,7 @@ export class BluesBrain {
     navInfo: NavigationInfo,
     dna: SuiteDNA,
     hints: InstrumentHints,
-    lastEvents: FractalEvent[] // ПЛАН 154: Добавлено слушание соседа
+    lastEvents: FractalEvent[]
   ): FractalEvent[] {
     const events: FractalEvent[] = [];
     const tempo = dna.baseTempo || 72;
@@ -106,7 +106,7 @@ export class BluesBrain {
       const cost = tension > 0.5 ? ENERGY_PRICES.drums_full : ENERGY_PRICES.drums_minimal;
       if (consumedEnergy + cost <= barBudget) {
         events.push(...this.generateDrums(epoch, tempo, tension));
-        currentEnergy += cost;
+        consumedEnergy += cost; // ИСПРАВЛЕНО (ПЛАН 155): currentEnergy -> consumedEnergy
       }
     }
 
@@ -246,7 +246,7 @@ export class BluesBrain {
     tempo: number, 
     tension: number, 
     registerOffset: number,
-    shouldAccent: boolean = false // ПЛАН 154: Реакция на драм-филл
+    shouldAccent: boolean = false
   ): FractalEvent[] {
     if (tension < 0.15 && calculateMusiNum(epoch, 3, this.seed, 10) < 5) return [];
 
