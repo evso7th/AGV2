@@ -64,6 +64,25 @@ export function pickWeightedDeterministic<T>(
 }
 
 /**
+ * #ЗАЧЕМ: Генератор детерминированной карты напряжения.
+ * #ЧТО: Создает "сюжетную дугу" на основе Seed.
+ */
+export function generateTensionMap(seed: number, totalBars: number): number[] {
+    const map: number[] = [];
+    // Используем MusiNum для создания низкочастотных волн
+    for (let i = 0; i < totalBars; i++) {
+        const slowWave = calculateMusiNum(i, 11, seed, 100) / 100;
+        const medWave = calculateMusiNum(i, 5, seed + 123, 100) / 100;
+        // Сглаживание: среднее значение между точкой и её соседями (простая симуляция)
+        const combined = (slowWave * 0.7 + medWave * 0.3);
+        map.push(combined);
+    }
+    
+    console.log(`Plan152 - music-theory/generateTensionMap: Map generated for SEED ${seed}. Sample bars (0, 30, 60): [${map[0].toFixed(2)}, ${map[30 % totalBars].toFixed(2)}, ${map[60 % totalBars].toFixed(2)}]`);
+    return map;
+}
+
+/**
  * #ЗАЧЕМ: Базовая гармоническая аксиома.
  * #ИСПРАВЛЕНО: Теперь создает плотные sustained пласты звука (Swells)
  *              вместо раздражающих арпеджио.
@@ -202,5 +221,8 @@ export function generateSuiteDNA(totalBars: number, mood: Mood, seed: number, ra
         }
     });
 
-    return { harmonyTrack, baseTempo, rhythmicFeel: 'shuffle', bassStyle: 'walking', drumStyle: 'shuffle_A', soloPlanMap };
+    const tensionMap = generateTensionMap(seed, totalBars);
+    console.log(`Plan152 - music-theory/generateSuiteDNA: Tension Map embedded into DNA.`);
+
+    return { harmonyTrack, baseTempo, rhythmicFeel: 'shuffle', bassStyle: 'walking', drumStyle: 'shuffle_A', soloPlanMap, tensionMap };
 }

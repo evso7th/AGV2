@@ -127,6 +127,8 @@ export class FractalMusicEngine {
     this.activatedInstruments.forEach((timbre, part) => { (instrumentHints as any)[part] = timbre; });
     if (navInfo.currentPart.layers.pianoAccompaniment) instrumentHints.pianoAccompaniment = 'piano';
 
+    console.log(`Plan152 - engine/evolve: Bar ${this.epoch} narrative context synchronized.`);
+
     return { ...this.generateOneBar(barDuration, navInfo, instrumentHints), instrumentHints };
   }
 

@@ -1,4 +1,3 @@
-
 /**
  * Настроение — управляет ладом, динамикой, техникой
  */
@@ -197,6 +196,7 @@ export type V2MelodyInstrument = 'guitar_muffLead' | 'guitar_shineOn' | 'ep_rhod
 export type InstrumentPart = 'bass' | 'melody' | 'accompaniment' | 'harmony' | 'drums' | 'effects' | 'sparkles' | 'piano' | 'violin' | 'flute' | 'guitarChords' | 'acousticGuitarSolo' | 'sfx' | 'blackAcoustic' | 'telecaster' | 'darkTelecaster' | 'pianoAccompaniment';
 export type BassTechnique = 'arpeggio' | 'portamento' | 'glissando' | 'glide' | 'pulse' | 'riff' | 'long_notes' | 'walking' | 'boogie' | 'syncopated';    
 
+export type Technique = BassTechnique | 'pluck' | 'pick' | 'harm' | 'slide' | 'hit' | 'ghost' | 'swell' | 'fill';
 export type AccompanimentTechnique = 'choral' | 'alternating-bass-chord' | 'chord-pulsation' | 'arpeggio-fast' | 'arpeggio-slow' | 'alberti-bass' | 'paired-notes' | 'long-chords' | 'power-chords' | 'rhythmic-comp';
 
 
@@ -363,6 +363,9 @@ export type SuiteDNA = {
   bassStyle: BassStyle;
   drumStyle: DrumStyle;
   soloPlanMap: Map<string, string>;
+  /** #ЗАЧЕМ: Энергетический скелет сюиты.
+   *  #ЧТО: Массив значений 0..1 для каждого такта. */
+  tensionMap: number[];
 };
 
 
