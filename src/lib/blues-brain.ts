@@ -18,11 +18,11 @@ import { BLUES_GUITAR_VOICINGS } from './assets/guitar-voicings';
 import { GUITAR_PATTERNS } from './assets/guitar-patterns';
 
 /**
- * #ЗАЧЕМ: Блюзовый Мозг V4.1 — Narrative Soloist.
- * #ЧТО: Реализация принципа "Переборы — специя, Соло — основное блюдо".
- *       1. Аккомпанемент (Picking): Снижена вероятность появления до 30%.
- *       2. Соло (Melody): Повышен приоритет и динамический вес.
- *       3. Структура: Сохранение 12-тактового нарратива.
+ * #ЗАЧЕМ: Блюзовый Мозг V4.2 — Narrative Soloist (Strict Edition).
+ * #ЧТО: Бескомпромиссная иерархия партий.
+ *       1. Solo (Melody): 100% приоритет, вес 0.95.
+ *       2. Accompaniment (Picking): Вероятность снижена до 20%, разрешено только в паузах соло.
+ *       3. Интеграция: Детерминированность через MusiNum сохранена.
  */
 
 export class BluesBrain {
@@ -51,26 +51,30 @@ export class BluesBrain {
     const events: FractalEvent[] = [];
     const barDuration = 60 / (dna.baseTempo || 72);
     
-    // Определение позиции в 12-тактовом цикле
     const barIn12 = epoch % 12;
     const chorusIdx = Math.floor(epoch / 12) % 3;
 
-    // 1. УДАРНЫЕ — Блюзовый кач
+    // 1. УДАРНЫЕ
     if (hints.drums) {
       events.push(...this.generateDrums(epoch, dna.baseTempo));
     }
 
-    // 2. БАС — Профессиональные линии
+    // 2. БАС
     if (hints.bass) {
       events.push(...this.generateBass(epoch, currentChord, dna.baseTempo));
     }
 
-    // 3. АККОМПАНЕМЕНТ — Трэвис-пикинг и страм (ТЕПЕРЬ ЭТО СПЕЦИЯ)
-    if (hints.accompaniment) {
+    // 3. АККОМПАНЕМЕНТ (СПЕЦИЯ)
+    // #ЗАЧЕМ: Перебор не должен мешать соло.
+    // #ЧТО: Снижение вероятности до 20% (val < 2 при modulo 10) + детерминированный "прыжок" через seed.
+    const pickingTrigger = calculateMusiNum(epoch, 3, this.seed + 999, 10);
+    const isPickingAllowed = pickingTrigger < 2;
+
+    if (hints.accompaniment && isPickingAllowed) {
       events.push(...this.generateAccompaniment(epoch, currentChord, dna.baseTempo));
     }
 
-    // 4. МЕЛОДИЯ — Исполнение плана соло (ОСНОВНОЕ БЛЮДО)
+    // 4. МЕЛОДИЯ (ОСНОВНОЕ БЛЮДО)
     if (hints.melody) {
       events.push(...this.generateMelody(epoch, currentChord, chorusIdx, barIn12, dna.baseTempo));
     }
@@ -128,10 +132,7 @@ export class BluesBrain {
   }
 
   private generateAccompaniment(epoch: number, chord: GhostChord, tempo: number): FractalEvent[] {
-    // #ЗАЧЕМ: Перебор — это специя (Spice Logic).
-    // #ЧТО: Снижаем вероятность появления перебора до 30% тактов (детерминировано через MusiNum).
-    if (calculateMusiNum(epoch, 5, this.seed + 250, 10) > 2) return [];
-
+    // #ЗАЧЕМ: Создание редкого, но красивого гитарного фона.
     const beatDur = 60 / tempo;
     const tickDur = beatDur / 3;
     
@@ -148,7 +149,7 @@ export class BluesBrain {
             note,
             time: t * tickDur,
             duration: beatDur * 2,
-            weight: 0.2, // Снижен вес, чтобы не спорить с соло
+            weight: 0.15, // #ИСПРАВЛЕНО: Еще тише, чтобы не мешать соло.
             technique: 'pluck',
             dynamics: 'p',
             phrasing: 'detached'
@@ -172,10 +173,10 @@ export class BluesBrain {
     
     return lickData.phrase.map(n => ({
       type: 'melody',
-      note: chord.rootNote + 36 + this.degreeToSemitone(n.deg),
+      note: chord.rootNote + 36 + this.degreeToSemitone(n.deg), // #ИСПРАВЛЕНО: Сохраняем высокий регистр.
       time: n.t * tickDur,
       duration: n.d * tickDur,
-      weight: 0.95, // СОЛО — ОСНОВНОЕ БЛЮДО (High priority)
+      weight: 0.95, // СОЛО — ОСНОВНОЕ БЛЮДО
       technique: (n.tech as any) || 'pick',
       dynamics: 'mf',
       phrasing: 'legato'
