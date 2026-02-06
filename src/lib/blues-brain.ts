@@ -7,7 +7,8 @@ import type {
   BluesRiffDegree,
   Mood,
   SuiteDNA,
-  NavigationInfo
+  NavigationInfo,
+  InstrumentPart
 } from '@/types/fractal';
 import { calculateMusiNum, DEGREE_TO_SEMITONE } from './music-theory';
 import { BLUES_SOLO_LICKS, BLUES_SOLO_PLANS } from './assets/blues_guitar_solo';
@@ -17,15 +18,18 @@ import { BLUES_GUITAR_VOICINGS } from './assets/guitar-voicings';
 import { GUITAR_PATTERNS } from './assets/guitar-patterns';
 
 /**
- * #ЗАЧЕМ: Блюзовый Мозг V5.0 — Dramaturgy Aware (Plan 152).
- * #ЧТО: Плотность, регистр и состав ансамбля теперь зависят от глобальной Карты Напряжения сюиты.
- * #РЕЗОНАНС: Внедрен принцип "Ансамблевого вздоха" и "Скелетного сюжета".
+ * #ЗАЧЕМ: Блюзовый Мозг V5.1 — Dramaturgy Aware & Stable (Plan 153).
+ * #ЧТО: Исправлены ошибки доступа к массивам планов и синхронизированы типы.
+ *       Плотность, регистр и состав ансамбля зависят от Карты Напряжения сюиты.
  */
 
 export class BluesBrain {
   private seed: number;
   private mood: Mood;
   private soloPlanId: string;
+
+  // Защита от артефактов
+  private lastAscendingBar: number = -10;
 
   constructor(seed: number, mood: Mood) {
     this.seed = seed;
@@ -49,46 +53,37 @@ export class BluesBrain {
     const barDuration = 60 / (dna.baseTempo || 72);
     
     const barIn12 = epoch % 12;
-    const chorusIdx = Math.floor(epoch / 12) % 3;
 
-    // --- DRAMATURGY ENGINE (Plan 152) ---
-    const tension = dna.tensionMap[epoch % dna.tensionMap.length] || 0.5;
-    const densityFactor = 0.4 + tension * 0.6; // Scale 0.4..1.0
+    // --- DRAMATURGY ENGINE ---
+    const tension = dna.tensionMap ? (dna.tensionMap[epoch % dna.tensionMap.length] || 0.5) : 0.5;
     const registerOffset = tension > 0.75 ? 12 : 0; // Extra octave for climax
     
-    console.log(`Plan152 - blues-brain/generateBar: Bar ${epoch} Tension: ${tension.toFixed(2)}. Scaling Density to ${densityFactor.toFixed(2)}. Register shift: ${registerOffset}`);
-
-    // 1. УДАРНЫЕ (Энергия влияет на выбор инструментов внутри кита)
+    // 1. УДАРНЫЕ
     if (hints.drums) {
       events.push(...this.generateDrums(epoch, dna.baseTempo, tension));
     }
 
-    // 2. БАС (Фундамент: Низкое напряжение = педаль, Высокое = волкинг)
+    // 2. БАС
     if (hints.bass) {
       events.push(...this.generateBass(epoch, currentChord, dna.baseTempo, tension));
     }
 
     // 3. АККОМПАНЕМЕНТ (Специя с "Ансамблевым вздохом")
-    // #ЗАЧЕМ: Устранение "стены звука". При низком напряжении инструмент берет паузу.
     const isPhraseStart = (epoch % 4 === 0);
     const narrativeBreath = tension < 0.25 && !isPhraseStart;
     
     if (hints.accompaniment && !narrativeBreath) {
-      // Плотность перебора также зависит от напряжения
       const pickingLuck = calculateMusiNum(epoch % 48, 13, this.seed + 777, 100);
-      const dynamicThreshold = 20 + tension * 40; // 20%..60% threshold
+      const dynamicThreshold = 20 + tension * 40; 
       
       if (isPhraseStart || (pickingLuck < dynamicThreshold)) {
         events.push(...this.generateAccompaniment(epoch, currentChord, dna.baseTempo, tension));
       }
-    } else if (narrativeBreath) {
-      console.log(`Plan152 - blues-brain/interaction: Energy below threshold (${tension.toFixed(2)}). Accompaniment is taking a narrative breath.`);
     }
 
-    // 4. МЕЛОДИЯ (Основное блюдо: Энергия влияет на регистр и интенсивность)
+    // 4. МЕЛОДИЯ (Основное блюдо)
     if (hints.melody) {
-      const melodyEvents = this.generateMelody(epoch, currentChord, chorusIdx, barIn12, dna.baseTempo, tension, registerOffset);
-      // Защита от похоронного марша
+      const melodyEvents = this.generateMelody(epoch, currentChord, barIn12, dna.baseTempo, tension, registerOffset);
       const guardedEvents = this.applyAntiFuneralMarch(melodyEvents, epoch, tension);
       events.push(...guardedEvents);
     }
@@ -109,20 +104,20 @@ export class BluesBrain {
 
     const events: FractalEvent[] = [];
 
-    // При низком напряжении убираем тарелки
-    if (tension > 0.2) {
-        (p.HH || []).forEach(t => {
+    if (tension > 0.2 && p.HH) {
+        p.HH.forEach(t => {
             events.push(this.createDrumEvent('drum_hihat', t * tickDur, 0.45 * tension, 'p'));
         });
     }
     
-    (p.K || []).forEach(t => {
-      events.push(this.createDrumEvent('drum_kick', t * tickDur, 0.8, tension > 0.7 ? 'mf' : 'p'));
-    });
+    if (p.K) {
+        p.K.forEach(t => {
+          events.push(this.createDrumEvent('drum_kick', t * tickDur, 0.8, tension > 0.7 ? 'mf' : 'p'));
+        });
+    }
 
-    // Снейр вступает только при среднем напряжении
-    if (tension > 0.4) {
-        (p.SD || []).forEach(t => {
+    if (tension > 0.4 && p.SD) {
+        p.SD.forEach(t => {
             events.push(this.createDrumEvent('drum_snare', t * tickDur, 0.7 * tension, 'mf'));
         });
     }
@@ -143,7 +138,6 @@ export class BluesBrain {
     const barIn12 = epoch % 12;
     let pattern = riff.I;
     
-    // Принудительная ПЕДАЛЬ (длинные ноты) при низком напряжении
     if (tension < 0.3) {
         pattern = [{ t: 0, d: 12, deg: 'R' }];
     } else {
@@ -154,7 +148,7 @@ export class BluesBrain {
 
     return pattern.map(n => ({
       type: 'bass' as const,
-      note: chord.rootNote - 12 + this.degreeToSemitone(n.deg),
+      note: chord.rootNote - 12 + (DEGREE_TO_SEMITONE[n.deg] || 0),
       time: n.t * tickDur,
       duration: (n.d || 2) * tickDur,
       weight: 0.6 + tension * 0.3,
@@ -181,7 +175,7 @@ export class BluesBrain {
             note,
             time: t * tickDur,
             duration: beatDur * 2,
-            weight: 0.1 * tension, // Громкость зависит от напряжения
+            weight: 0.1 * tension,
             technique: 'pluck' as const,
             dynamics: 'p' as const,
             phrasing: 'detached' as const
@@ -193,14 +187,17 @@ export class BluesBrain {
     return events;
   }
 
-  private generateMelody(epoch: number, chord: GhostChord, chorus: number, bar: number, tempo: number, tension: number, registerOffset: number): FractalEvent[] {
-    // При сверх-низком напряжении Alvin Lee может вообще молчать (редко)
+  private generateMelody(epoch: number, chord: GhostChord, barIn12: number, tempo: number, tension: number, registerOffset: number): FractalEvent[] {
     if (tension < 0.15 && calculateMusiNum(epoch, 3, this.seed, 10) < 5) return [];
 
     const plan = BLUES_SOLO_PLANS[this.soloPlanId];
-    if (!plan) return [];
+    if (!plan || !plan.choruses) return [];
 
-    const lickId = plan.choruses[chorus][bar];
+    const chorusIdx = Math.floor(epoch / 12) % plan.choruses.length;
+    const chorus = plan.choruses[chorusIdx];
+    if (!chorus) return [];
+
+    const lickId = chorus[barIn12];
     const lickData = BLUES_SOLO_LICKS[lickId];
     if (!lickData) return [];
 
@@ -208,22 +205,18 @@ export class BluesBrain {
     
     return lickData.phrase.map(n => ({
       type: 'melody' as const,
-      // #ЗАЧЕМ: Динамический регистр. При кульминации гитара лезет выше.
-      note: chord.rootNote + 24 + registerOffset + this.degreeToSemitone(n.deg),
+      // #ЗАЧЕМ: Alvin Lee Register Fix. Смещение +36 для сольного диапазона.
+      note: chord.rootNote + 36 + registerOffset + (DEGREE_TO_SEMITONE[n.deg] || 0),
       time: n.t * tickDur,
       duration: n.d * tickDur,
-      weight: 0.8 + tension * 0.2, // Увеличение экспрессии в пиках
+      weight: 0.8 + tension * 0.2, 
       technique: (n.tech as any) || ('pick' as const),
       dynamics: tension > 0.7 ? 'mf' : 'p' as const,
       phrasing: 'legato' as const
     }));
   }
 
-  private degreeToSemitone(deg: BluesRiffDegree): number {
-    return DEGREE_TO_SEMITONE[deg] || 0;
-  }
-
-  private createDrumEvent(type: string, time: number, weight: number, dynamics: Dynamics): any {
+  private createDrumEvent(type: any, time: number, weight: number, dynamics: Dynamics): any {
     return { type, time, duration: 0.1, weight, technique: 'hit', dynamics, phrasing: 'staccato' };
   }
 
