@@ -1,0 +1,329 @@
+1. Как сделать DNA 100% блюзовой с опорой на настроение?
+Сейчас SuiteDNA в music-theory.ts генерирует:
+harmonyTrack (12-bar progression) — ✅ блюзовая.
+tensionMap — ✅ динамическая, но не привязана к настроению.
+soloPlanMap — ❌ использует заготовки, не блюзовая.
+baseTempo — ✅ привязан к mood, но не влияет на стиль.
+Решение:
+A. Тип блюзовой прогрессии зависит от mood
+В music-theory.ts, в generateSuiteDNA:
+// Вместо жёсткого [0,0,0,0,5,5,0,0,7,5,0,7]
+const getBluesProgressionForMood = (mood: Mood): number[] => {
+  switch (mood) {
+    case 'melancholic':
+      return [0, 0, 0, 0, 5, 5, 0, 0, 7, 5, 0, 7]; // Classic i7
+    case 'dark':
+      return [0, 0, 0, 0, 5, 5, 0, 0, 7, 5, 0, 7]; // Same, but with ♭5 in bass
+    case 'aggressive':
+      return [0, 0, 0, 0, 5, 5, 0, 0, 7, 5, 0, 7]; // Same, but with V7→I resolution (stronger)
+    case 'contemplative':
+      return [0, 0, 0, 0, 5, 5, 0, 0, 7, 5, 0, 7]; // Same, but with extended IV (more space)
+    case 'happy': // (если блюз может быть happy)
+      return [0, 0, 0, 0, 5, 5, 0, 0, 7, 5, 0, 7]; // Major 7th chords
+    default:
+      return [0, 0, 0, 0, 5, 5, 0, 0, 7, 5, 0, 7]; // Fallback
+  }
+};
+
+// В generateSuiteDNA:
+const harmonyType = getBluesProgressionForMood(mood);
+const harmonyTrack = generateHarmonyTrack(totalBars, harmonyType, mood, seed); // <-- НОВЫЙ метод
+
+return {
+  // ... остальные поля
+  harmonyTrack, // <-- Передаём в DNA
+  harmonyType,  // <-- Добавляем новое поле в DNA
+  // ...
+};
+B. Tension Map привязана к mood
+Сейчас generateTensionMap использует seed, но не mood.
+// В generateTensionMap:
+const getTensionProfileForMood = (mood: Mood): 'arc' | 'flat' | 'chaotic' | 'wave' => {
+  switch (mood) {
+    case 'melancholic': return 'arc'; // rise → fall
+    case 'dark': return 'flat';      // sustained high tension
+    case 'aggressive': return 'chaotic'; // spikes
+    case 'contemplative': return 'wave'; // gentle waves
+    default: return 'arc';
+  }
+};
+
+// Используем profile для построения кривой
+const tensionProfile = getTensionProfileForMood(mood);
+const tensionMap = generateTensionMap(totalBars, tensionProfile, seed);
+// В generateSuiteDNA:
+const getThematicAnchorsForMood = (mood: Mood): number[] => {
+  const root = getRootNote(mood); // например, G3 для melancholic
+  const scale = [0, 3, 5, 6, 7, 10]; // blues scale
+
+  switch (mood) {
+    case 'melancholic':
+      return [root + 6, root + 3]; // ♭5, ♭3 (напряжение)
+    case 'dark':
+      return [root + 6, root + 10]; // ♭5, ♭7 (тяжёлый)
+    case 'happy':
+      return [root, root + 7];      // 1, 5 (стабильность)
+    default:
+      return [root + 6, root + 3]; // fallback
+  }
+};
+
+return {
+  // ...
+  thematicAnchors: getThematicAnchorsForMood(mood)
+};
+ 2. Как сделать слышимые отличия в настроениях?
+Сейчас mood влияет на:
+tempo (частично).
+soloPlanMap (не используется).
+BLUES_BASS_RIFFS[mood] (в blues-brain.ts, но это заготовки).
+Решение:
+A. Инструментальные параметры зависят от mood
+В engine.ts, перед вызовом bluesBrain.generateBar, передавать mood:
+// В generateBar:
+const moodSpecificParams = {
+  melancholic: { tensionBoost: 0.1, registerBias: -12 }, // ниже, напряжённее
+  dark: { tensionBoost: 0.2, registerBias: 0 },
+  happy: { tensionBoost: -0.1, registerBias: 12 }, // выше, легче
+  // ...
+};
+
+const params = moodSpecificParams[navInfo.currentPart.mood] || moodSpecificParams.melancholic;
+
+// Передаём в BluesBrain
+const events = this.bluesBrain.generateBar(epoch, currentChord, navInfo, dna, hints, params);
+B. Техники игры зависят от mood
+В blues-brain.ts, в generateSoulSolo (или новом генераторе):
+// В generateSoulSolo:
+const techniquesForMood = {
+  melancholic: ['bend', 'vibrato', 'legato'],
+  dark: ['bend', 'staccato', 'mute'],
+  happy: ['slide', 'staccato', 'open'],
+  // ...
+};
+
+const allowedTech = techniquesForMood[mood] || techniquesForMood.melancholic;
+
+// При генерации:
+const technique = allowedTech[random.nextInt(allowedTech.length)];
+C. Темп модуляции зависит от mood
+В engine.ts или music-theory.ts:
+// В generateSuiteDNA:
+const baseTempo = possibleTempos[mood]?.[0] || 72;
+const tempoMap = generateTempoMap(totalBars, mood); // Может меняться по дуге
+
+return {
+  baseTempo,
+  tempoMap, // <-- НОВОЕ
+  // ...
+};
+3. Как заставить гитариста-мелодиста играть не только соло, а фингерстайл, когда уместно?
+Сейчас blues-brain.ts:
+Использует generateSoulSolo (только соло).
+generateAcousticComping — формально, не вызывается.
+hints.melody — только вкл/выкл, нет выбора стиля.
+Решение:
+A. Расширить InstrumentHints для стиля мелодии
+В @/types/music.ts:
+export interface InstrumentHints {
+  // ... существующие ...
+  style?: 'solo' | 'fingerstyle' | 'chord-melody' | 'slide' | 'clean-lead';
+  // ...
+}
+
+B. В engine.ts решать стиль по контексту
+// В generateBar:
+let melodyStyle: 'solo' | 'fingerstyle' | 'chord-melody' = 'solo';
+
+// Если низкое напряжение и не climax
+if (tension < 0.4 && !isClimax) {
+  melodyStyle = 'fingerstyle';
+}
+// Если аккомпанемент выключен, но нужен текстурный фон
+else if (!hints.accompaniment && tension > 0.3) {
+  melodyStyle = 'chord-melody';
+}
+
+const hintsWithStyle = {
+  ...hints,
+  melody: {
+    ...hints.melody,
+    style: melodyStyle
+  }
+};
+// В generateBar:
+if (hints.melody && hints.melody.activationChance > 0) {
+  switch (hints.melody.style) {
+    case 'fingerstyle':
+      events.push(...this.generateFingerstyle(currentChord, tension, epoch));
+      break;
+    case 'chord-melody':
+      events.push(...this.generateChordMelody(currentChord, tension, epoch));
+      break;
+    case 'slide':
+      events.push(...this.generateSlideGuitar(currentChord, tension, epoch));
+      break;
+    case 'solo': // default
+    default:
+      events.push(...this.generateSoulSolo(currentChord, tension, epoch, navInfo));
+      break;
+  }
+}
+D. Новый генератор: generateFingerstyle
+private generateFingerstyle(chord: GhostChord, tension: number, epoch: number): FractalEvent[] {
+  const events: FractalEvent[] = [];
+  const root = chord.rootNote;
+  const isMinor = chord.chordType === 'minor';
+  const chordNotes = [root, root + (isMinor ? 3 : 4), root + 7, root + 10]; // 1, 3/♭3, 5, ♭7
+
+  // Паттерн: Bass - Melody - Arpeggio - Rest
+  const pattern = [
+    { type: 'bass', note: chordNotes[0] - 12, time: 0, duration: 0.9 }, // Root
+    { type: 'melody', note: chordNotes[2] + 12, time: 0.5, duration: 0.4 }, // 5th (in higher octave)
+    { type: 'arpeggio', note: chordNotes[1] + 12, time: 1.0, duration: 0.3 }, // 3rd
+    { type: 'arpeggio', note: chordNotes[3] + 12, time: 1.5, duration: 0.3 }, // ♭7th
+  ];
+
+  pattern.forEach((step, i) => {
+    events.push({
+      type: step.type === 'bass' ? 'accompaniment' : 'melody', // treat bass as accompaniment here
+      note: step.note,
+      time: step.time,
+      duration: step.duration,
+      weight: step.type === 'bass' ? 0.6 : 0.4,
+      technique: step.type === 'bass' ? 'pluck' : 'pick',
+      dynamics: 'p',
+      phrasing: 'detached'
+    });
+  });
+
+  // Humanize timing
+  humanizeEvents(events, 0.02, this.random);
+
+  return events;
+}
+
+ Выводы
+Что улучшить
+Как
+Результат
+DNA блюзовость
+Привязать harmonyType, tensionProfile, thematicAnchors к mood
+Пьеса звучит как блюз конкретного настроения
+Различия в настроениях
+mood влияет на technique, tempo, tension, register
+Слышимая разница между melancholic и dark
+Разнообразие мелодии
+InstrumentHints.style, разные генераторы (solo, fingerstyle, chord-melody)
+Гитара играет не только соло, но и другими стилями по контексту
+
+Эти изменения не требуют переписи архитектуры, а встраиваются в существующую систему через SuiteDNA, InstrumentHints и BluesBrain.
+
+Вы абсолютно правы: узнаваемый блюзовый грув часто строится на упругом, пульсирующем риффе, а не на случайных нотах. Проблема в том, что чистая генерация (♭5 → разрешение, волкинг-бас) — это язык фраз, а грув — это ритмический каркас, который держит пульс и заставляет слушателя чувствовать «тут», «не тут», «опора», «движение».
+
+Проблема: Генерация vs. Рифф
+Что есть сейчас
+Что нужно
+generateWalkingBass — генерирует 4 ноты по правилам
+Повторяющийся ритмический паттерн (например, R - (passing) - 5 - (leading)), но с вариациями
+generateLSystemComping — формальный L-System
+Пульсирующий аккомпанемент (например, bass - chord - bass - chord), но не статичный
+Нет ритмического ядра
+Нужен ритмический скелет, на котором строится фраза
+💡 Идея: Рифф-базед структура с вариативностью
+1. Рифф = Повторяющийся паттерн с вариациями
+Не R - 5 - R - 5 на 4 такта, а:
+Такт 1: R - (passing) - 5        (опора + движение)
+Такт 2: R - (pause) - 5          (опора + пауза + движение)
+Такт 3: R - (slide to b3) - 5    (опора + напряжение + разрешение)
+Такт 4: R - 5 - (leading to next) (опора + разрешение + подготовка)
+
+И каждый цикл (4 такта) — один из 3-4 вариантов этого риффа.
+2. Рифф-банки по настроению
+В music-theory.ts или blues-brain.ts:
+const BLUES_RIFF_BANKS = {
+  'melancholic': {
+    bass: [
+      // Рифф 1: медленный, с паузами
+      [{ note: 'R', time: 0, dur: 0.5 }, { note: '5', time: 1.0, dur: 0.5 }, /* ... */],
+      // Рифф 2: с хроматикой
+      [{ note: 'R', time: 0, dur: 0.5 }, { note: 'b3', time: 0.7, dur: 0.2 }, { note: '5', time: 1.0, dur: 0.5 }, /* ... */],
+    ],
+    accompaniment: [
+      // Рифф 1: Travis-style
+      [{ note: 'R', time: 0 }, { note: '3', time: 0.5 }, { note: '5', time: 1.0 }, { note: '7', time: 1.5 }],
+      // Рифф 2: Stutter chords
+      [{ note: 'chord', time: 0, dur: 0.2 }, { note: 'chord', time: 0.3, dur: 0.2 }, { note: 'chord', time: 0.6, dur: 0.4 }],
+    ]
+  },
+  'dark': {
+    // ... более тяжёлые, с ♭5, с паузами ...
+  },
+  'aggressive': {
+    // ... быстрые, с синкопами ...
+  }
+};
+
+3. Циклический выбор риффа с вариациями
+В blues-brain.ts, в generateBass:
+private generateBass(chord: GhostChord, epoch: number, mood: Mood): FractalEvent[] {
+  const riffBank = BLUES_RIFF_BANKS[mood].bass;
+  const cycleLength = 4; // 4 такта = 1 рифф-цикл
+  const riffCycleIndex = Math.floor(epoch / cycleLength); // 0, 1, 2...
+  
+  // Выбираем рифф для этого цикла (с возможностью вариации)
+  const selectedRiff = this.selectRiffWithVariation(riffBank, riffCycleIndex);
+  
+  // Применяем к текущему такту в цикле
+  const barInCycle = epoch % cycleLength;
+  
+  // Возвращаем ноты риффа для этого такта
+  return this.extractNotesFromRiff(selectedRiff, barInCycle, chord);
+
+. Вариации внутри риффа
+Чтобы не было шарманки, внутри риффа можно вносить небольшие изменения:
+Свинг на определённых нотах
+Добавление/удаление проходящих нот
+Синкопа на 3-й доле
+Замена ноты на ♭5 на 2-м уд.
+Пауза вместо удара
+private applyVariationToRiff(riff: RiffPattern, tension: number, epoch: number): RiffPattern {
+  const variant = { ...riff };
+  
+  if (tension > 0.7 && this.random() > 0.5) {
+    // В пике напряжения — добавить ♭5
+    variant.notes[2].note = 'b5';
+  }
+  
+  if (this.random() > 0.7) {
+    // С 30% шансом — синкопа
+    variant.notes[1].time += 0.1;
+  }
+  
+  return variant;
+}
+Что даёт такой подход?
+Плюс
+Объяснение
+Узнаваемый грув
+Повторяющийся ритмический паттерн = ощущение "тут-тут-та-та"
+Не шарманка
+Вариации внутри риффа, разные риффы по настроению, циклическая смена
+Совместимо с фразами
+Рифф — это бэкграунд, фразы — форграунд
+Можно сделать 3-4 такта
+Рифф на 4 такта — идеально для 12-bar
+Можно синхронизировать
+Бас и аккомпанемент могут играть в унисон или в канон, усиливая грув
+
+Если хочется больше динамики, можно сделать рифф-контейнер:
+Уровень 1: Базовый паттерн (4 такта)
+Уровень 2: Добавление акцентов (tom-fill, chord-stab)
+Уровень 3: Вариации по напряжению (тише/громче, паузы/напор)
+// В generateBar (engine.ts)
+const baseRiff = getRiffForMoodAndTension(mood, tension);
+const dynamicRiff = applyDynamicLayer(baseRiff, tension, epoch);
+const finalEvents = convertRiffToEvents(dynamicRiff, chord);
+
+Да, рифф-базед структура — это правильный путь для узнаваемого блюзового грува. Но не статичный рифф, а рифф с вариациями, по настроению, с динамикой и синхронизацией между инструментами. Это не шарманка, а живой грув.
+Можно начать с банка басовых риффов (на 4 такта), и циклически выбирать с вариациями. Это сразу даст ощущение «держащей» основы, на которой можно строить фразы и напряжения.

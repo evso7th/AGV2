@@ -4,7 +4,7 @@
  * #ЧТО: Функции для получения гамм, инверсий, ретроградов и гуманизации.
  *       Внедрена система цепей Маркова для генерации гармонического скелета.
  *       ДОБАВЛЕНО: Математика MusiNum для фрактальной детерминированности.
- * #ОБНОВЛЕНО (ПЛАН №175): Поддержка трех типов блюзовых сеток и тематических якорей.
+ * #ОБНОВЛЕНО (ПЛАН №176): Поддержка эмоциональных профилей напряжения и тематических якорей.
  */
 
 import type { 
@@ -14,7 +14,8 @@ import type {
     GhostChord, 
     SuiteDNA, 
     NavigationInfo,
-    InstrumentPart
+    InstrumentPart,
+    TensionProfile
 } from '@/types/music';
 import { BLUES_SOLO_PLANS } from './assets/blues_guitar_solo';
 
@@ -40,7 +41,6 @@ export function calculateMusiNum(step: number, base: number = 2, start: number =
 
 /**
  * #ЗАЧЕМ: Детерминированный выбор из взвешенного списка.
- * #ЧТО: Использует MusiNum для обеспечения воспроизводимости при том же Seed.
  */
 export function pickWeightedDeterministic<T>(
     options: { name?: T, value?: T, weight: number }[], 
@@ -64,23 +64,39 @@ export function pickWeightedDeterministic<T>(
 }
 
 /**
- * #ЗАЧЕМ: Генератор детерминированной карты напряжения.
- * #ЧТО: Создает "сюжетную дугу" на основе Seed.
+ * #ЗАЧЕМ: Генератор детерминированной карты напряжения с учетом настроения.
+ * #ЧТО: Использует MusiNum и профили (Arc, Wave, Plateau).
  */
-export function generateTensionMap(seed: number, totalBars: number): number[] {
+export function generateTensionMap(seed: number, totalBars: number, mood: Mood): number[] {
     const map: number[] = [];
+    
+    // Выбор профиля на основе настроения
+    const getProfile = (m: Mood): TensionProfile['type'] => {
+        if (['melancholic', 'gloomy'].includes(m)) return 'arc';
+        if (['joyful', 'enthusiastic', 'epic'].includes(m)) return 'crescendo';
+        if (['calm', 'contemplative'].includes(m)) return 'plateau';
+        return 'wave';
+    };
+
+    const type = getProfile(mood);
+
     for (let i = 0; i < totalBars; i++) {
-        const slowWave = calculateMusiNum(i, 13, seed, 100) / 100;
-        const medWave = calculateMusiNum(i, 7, seed + 123, 100) / 100;
-        const fastWave = calculateMusiNum(i, 3, seed + 456, 100) / 100;
+        const progress = i / totalBars;
+        let baseTension = 0.5;
+
+        // Применяем профильную кривую
+        switch (type) {
+            case 'arc': baseTension = Math.sin(progress * Math.PI); break;
+            case 'crescendo': baseTension = Math.pow(progress, 1.2); break;
+            case 'plateau': baseTension = progress < 0.2 ? progress / 0.2 : (progress < 0.8 ? 0.8 : 0.8 - (progress - 0.8)); break;
+            case 'wave': baseTension = 0.5 + 0.3 * Math.sin(progress * Math.PI * 4); break;
+        }
+
+        // Добавляем фрактальный шум MusiNum для "живости"
+        const noise = (calculateMusiNum(i, 7, seed, 100) / 100) * 0.2;
+        const combined = baseTension * 0.8 + noise;
         
-        const combined = (slowWave * 0.6 + medWave * 0.3 + fastWave * 0.1);
-        
-        const centered = combined - 0.5;
-        const expanded = 0.5 + Math.sign(centered) * Math.pow(Math.abs(centered) * 2, 0.6) * 0.5;
-        
-        const finalVal = Math.max(0.05, Math.min(0.95, expanded));
-        map.push(finalVal);
+        map.push(Math.max(0.05, Math.min(0.95, combined)));
     }
     return map;
 }
@@ -112,7 +128,7 @@ export function createHarmonyAxiom(
             dynamics: 'p',
             phrasing: 'legato',
             params: { barCount: epoch },
-            chordName: chord.chordType === 'minor' ? 'Am' : 'E' 
+            chordName: isMinor ? 'Am' : 'E' 
         });
     });
 
@@ -149,7 +165,6 @@ export function getScaleForMood(mood: Mood, genre?: Genre): number[] {
 
 /**
  * #ЗАЧЕМ: Генератор ДНК сюиты.
- * #ОБНОВЛЕНО: Поддержка 3-х типов блюзовых сеток и тематических якорей.
  */
 export function generateSuiteDNA(totalBars: number, mood: Mood, seed: number, random: any, genre: Genre, blueprintParts: any[]): SuiteDNA {
     const harmonyTrack: GhostChord[] = [];
@@ -224,7 +239,7 @@ export function generateSuiteDNA(totalBars: number, mood: Mood, seed: number, ra
         }
     });
 
-    const tensionMap = generateTensionMap(seed, totalBars);
+    const tensionMap = generateTensionMap(seed, totalBars, mood);
     
     // Генерация тематических якорей (ступеней)
     const anchorPool = ['R', 'b3', '4', '5', 'b7'];

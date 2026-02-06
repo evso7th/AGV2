@@ -102,7 +102,7 @@ export type InstrumentType = BassInstrument | MelodyInstrument | AccompanimentIn
 export type InstrumentPart = FractalInstrumentPart;
 export type BassTechnique = 'arpeggio' | 'portamento' | 'glissando' | 'glide' | 'pulse' | 'riff' | 'long_notes' | 'walking' | 'boogie' | 'syncopated';    
 
-export type Technique = BassTechnique | 'pluck' | 'pick' | 'harm' | 'slide' | 'hit' | 'ghost' | 'swell' | 'fill';
+export type Technique = BassTechnique | 'pluck' | 'pick' | 'harm' | 'slide' | 'hit' | 'ghost' | 'swell' | 'fill' | 'bend' | 'vibrato';
 export type AccompanimentTechnique = 'choral' | 'alternating-bass-chord' | 'chord-pulsation' | 'arpeggio-fast' | 'arpeggio-slow' | 'alberti-bass' | 'paired-notes' | 'long-chords' | 'power-chords' | 'rhythmic-comp';
 
 export type InstrumentSettings = {
@@ -192,6 +192,7 @@ export type InstrumentBehaviorRules = {
     pattern?: 'ambient_beat' | 'composer' | 'none';
     kickVolume?: number;
     source?: MelodySource;
+    style?: 'solo' | 'fingerstyle' | 'chord-melody'; // #ЗАЧЕМ: Поддержка смены амплуа.
     techniques?: { value: string; weight: number }[];
      ride?: {
         enabled: boolean;
@@ -325,9 +326,6 @@ export type NavigationInfo = {
 
 /**
  * #ЗАЧЕМ: Когнитивное состояние блюзового исполнителя.
- * #ЧТО: Хранит фазу фразы (зов/ответ), уровень внутреннего напряжения, 
- *       память последних фраз и флаги разрешения нот.
- * #СВЯЗИ: Используется во FractalMusicEngine и music-theory.ts.
  */
 export interface BluesCognitiveState {
   phraseState: 'call' | 'response' | 'fill' | 'CLIMAX' | 'TURNAROUND' | 'call_var';
@@ -336,11 +334,13 @@ export interface BluesCognitiveState {
   lastPhraseHash: string;
   blueNotePending: boolean;
   emotion: { melancholy: number; darkness: number };
+  // #ЗАЧЕМ: Отслеживание позиции в 4-тактовом рифф-цикле.
+  barInRiff?: number; 
+  activeRiffId?: string;
 }
 
 /**
  * #ЗАЧЕМ: "ДНК Сюиты" — это уникальный генетический код для всей пьесы.
- * #ЧТО: Содержит неизменные параметры: гармонию, темп, ритмический стиль и ИД мелодии.
  */
 export type SuiteDNA = {
   harmonyTrack: GhostChord[];
@@ -349,8 +349,7 @@ export type SuiteDNA = {
   bassStyle: 'boogie' | 'walking' | 'pedal';
   drumStyle: string;
   soloPlanMap: Map<string, string>;
-  bluesMelodyId?: string; // ТЕМАТИЧЕСКИЙ ЯКОРЬ
-  tensionMap: number[]; // Added
+  tensionMap: number[];
   /** #ЗАЧЕМ: Тип блюзовой сетки (План №175). */
   bluesGridType?: 'classic' | 'quick-change' | 'minor-blues';
   /** #ЗАЧЕМ: Тематические якоря сюиты (План №175). */
@@ -363,7 +362,6 @@ export type SuiteDNA = {
 export type InstrumentHints = FractalInstrumentHints & {
     /** 
      * #ЗАЧЕМ: Реализация архитектуры "Dramatic Gravity".
-     * #ЧТО: Значение 0..1, указывающее на прогресс вступления инструмента.
      */
     summonProgress?: Partial<Record<InstrumentPart, number>>;
 };
