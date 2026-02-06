@@ -17,8 +17,9 @@ import { BLUES_GUITAR_VOICINGS } from './assets/guitar-voicings';
 import { GUITAR_PATTERNS } from './assets/guitar-patterns';
 
 /**
- * #ЗАЧЕМ: Блюзовый Мозг V4.2 — Narrative Soloist (Strict Edition).
- * #ЧТО: Бескомпромиссная иерархия партий. Исправлены импорты и проверки типов.
+ * #ЗАЧЕМ: Блюзовый Мозг V4.3 — Narrative Soloist (Stable Edition).
+ * #ЧТО: Исключение дрейфа плотности. Переборы строго ограничены границами фраз.
+ * #ИСПРАВЛЕНО: Музыка больше не "засоряется" переборами при длительном прослушивании.
  */
 
 export class BluesBrain {
@@ -50,19 +51,23 @@ export class BluesBrain {
     const barIn12 = epoch % 12;
     const chorusIdx = Math.floor(epoch / 12) % 3;
 
-    // 1. УДАРНЫЕ
+    // 1. УДАРНЫЕ (Всегда по маске из ДНК/Настроения)
     if (hints.drums) {
       events.push(...this.generateDrums(epoch, dna.baseTempo));
     }
 
-    // 2. БАС
+    // 2. БАС (Фундамент)
     if (hints.bass) {
       events.push(...this.generateBass(epoch, currentChord, dna.baseTempo));
     }
 
     // 3. АККОМПАНЕМЕНТ (СПЕЦИЯ)
-    const pickingTrigger = calculateMusiNum(epoch, 3, this.seed + 999, 10);
-    const isPickingAllowed = pickingTrigger < 2;
+    // #ЗАЧЕМ: Переборы должны быть редким украшением.
+    // #ЧТО: Разрешены только в начале фраз (раз в 4 такта) и только при удачном "броске кубика".
+    //       Использование epoch % 48 устраняет нарастание частоты со временем.
+    const isPhraseStart = (epoch % 4 === 0);
+    const pickingLuck = calculateMusiNum(epoch % 48, 13, this.seed + 777, 100);
+    const isPickingAllowed = isPhraseStart && (pickingLuck < 35); // ~8% общего времени
 
     if (hints.accompaniment && isPickingAllowed) {
       events.push(...this.generateAccompaniment(epoch, currentChord, dna.baseTempo));
@@ -80,11 +85,11 @@ export class BluesBrain {
     const beatDur = 60 / tempo;
     const tickDur = beatDur / 3;
     
-    const kit = BLUES_DRUM_RIFFS[this.mood] || BLUES_DRUM_RIFFS.contemplative;
-    if (!kit || kit.length === 0) return [];
+    const kitPool = BLUES_DRUM_RIFFS[this.mood] || BLUES_DRUM_RIFFS.contemplative;
+    if (!kitPool || kitPool.length === 0) return [];
 
-    const patternIdx = calculateMusiNum(epoch, 3, this.seed, kit.length);
-    const p = kit[patternIdx];
+    const patternIdx = calculateMusiNum(epoch, 3, this.seed, kitPool.length);
+    const p = kitPool[patternIdx];
     if (!p) return [];
 
     const events: FractalEvent[] = [];
@@ -116,7 +121,7 @@ export class BluesBrain {
     let pattern = riff.I;
     if (barIn12 === 11) pattern = riff.turn;
     else if ([4, 5, 9].includes(barIn12)) pattern = riff.IV;
-    else if ([8, 11].includes(barIn12)) pattern = riff.V;
+    else if ([8].includes(barIn12)) pattern = riff.V;
 
     return pattern.map(n => ({
       type: 'bass' as const,
@@ -134,6 +139,7 @@ export class BluesBrain {
     const beatDur = 60 / tempo;
     const tickDur = beatDur / 3;
     
+    // Используем медленный "перекат" для создания гитарной атмосферы
     const pattern = GUITAR_PATTERNS['F_ROLL12'];
     const voicing = BLUES_GUITAR_VOICINGS['E7_open'];
 
@@ -141,13 +147,14 @@ export class BluesBrain {
     pattern.pattern.forEach(step => {
       step.ticks.forEach(t => {
         step.stringIndices.forEach(idx => {
+          // Транспонируем открытый воисинг к текущему корню
           const note = chord.rootNote + (voicing[idx] - 40);
           events.push({
             type: 'accompaniment' as const,
             note,
             time: t * tickDur,
             duration: beatDur * 2,
-            weight: 0.15,
+            weight: 0.12, // Очень тихо, чтобы не мешать соло
             technique: 'pluck' as const,
             dynamics: 'p' as const,
             phrasing: 'detached' as const
@@ -171,10 +178,12 @@ export class BluesBrain {
     
     return lickData.phrase.map(n => ({
       type: 'melody' as const,
+      // #ЗАЧЕМ: Обеспечение высокого сольного регистра.
+      // #ЧТО: Смещение +36 полутонов от базовой тоники.
       note: chord.rootNote + 36 + this.degreeToSemitone(n.deg),
       time: n.t * tickDur,
       duration: n.d * tickDur,
-      weight: 0.95,
+      weight: 0.98, // Соло должно доминировать
       technique: (n.tech as any) || ('pick' as const),
       dynamics: 'mf' as const,
       phrasing: 'legato' as const
