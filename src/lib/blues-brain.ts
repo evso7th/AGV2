@@ -18,9 +18,9 @@ import { BLUES_GUITAR_VOICINGS } from './assets/guitar-voicings';
 import { GUITAR_PATTERNS } from './assets/guitar-patterns';
 
 /**
- * #ЗАЧЕМ: Блюзовый Мозг V9.0 — L-System Sentence Engine.
- * #ЧТО: Внедрена логика музыкальных "предложений". 
- *       Мозг запоминает аксиому (мотив) и развивает её через рекурсивные правила.
+ * #ЗАЧЕМ: Блюзовый Мозг V10.0 — Timbral Dramaturgy Engine.
+ * #ЧТО: Инструменты меняют свои тембры (пресеты) в зависимости от напряжения (Tension).
+ *       CALL создает аксиому, RESPONSE эволюционирует её через L-систему.
  */
 
 const ENERGY_PRICES = {
@@ -70,16 +70,20 @@ export class BluesBrain {
     const barIn12 = epoch % 12;
     const tension = dna.tensionMap ? (dna.tensionMap[epoch % dna.tensionMap.length] || 0.5) : 0.5;
     
+    // --- Plan 165: TIMBRAL DRAMATURGY ---
+    // Управление "голосами" актеров на основе напряжения
+    this.evaluateTimbralDramaturgy(tension, hints);
+
     // --- CONVERSATIONAL ANALYSIS ---
     const lastBarHadCall = lastEvents.some(e => e.type === 'melody' && e.harmonicContext === 'CALL');
     const lastBarHadScream = lastEvents.some(e => e.type === 'melody' && e.note > 74 && e.duration > 0.8);
     const melodyDensity = lastEvents.filter(e => e.type === 'melody').length;
 
-    // Бюджет такта
+    // Бюджет такта (Базовый 100)
     const barBudget = 100 + (tension * 100);
     let consumedEnergy = 0;
 
-    // 1. SOLO (MELODY) - Plan 164: Sentence Level
+    // 1. SOLO (MELODY) - P1
     let melodyEvents: FractalEvent[] = [];
     if (hints.melody) {
       melodyEvents = this.generateLSystemMelody(epoch, currentChord, barIn12, tempo, tension);
@@ -90,7 +94,7 @@ export class BluesBrain {
     const currentPhase = melodyEvents.length > 0 ? (melodyEvents[0].harmonicContext || 'SILENCE') : 'PAUSE';
     console.log(`%cPlan160 - [Bar ${epoch}] Narrative: ${currentPhase} | Tension: ${tension.toFixed(2)} | Budget: ${consumedEnergy.toFixed(0)}/${barBudget.toFixed(0)}`, 'color: #00BFFF');
 
-    // 2. BASS
+    // 2. BASS & DRUMS - P2
     if (hints.bass) {
       const isCrowded = tension > 0.8 && melodyDensity > 6;
       const shouldWalk = lastBarHadCall || tension > 0.6;
@@ -103,7 +107,6 @@ export class BluesBrain {
       }
     }
 
-    // 3. DRUMS
     if (hints.drums) {
       const forceFill = lastBarHadScream && tension > 0.5;
       const cost = tension > 0.5 ? ENERGY_PRICES.drums_full : ENERGY_PRICES.drums_minimal;
@@ -113,7 +116,7 @@ export class BluesBrain {
       }
     }
 
-    // 4. ACCOMPANIMENT (Weight Floor 0.35)
+    // 3. HARMONY (Weight Floor 0.35) - P3
     if (hints.accompaniment && (consumedEnergy + ENERGY_PRICES.harmony <= barBudget)) {
         events.push(...this.generateHarmony(epoch, currentChord, tempo, tension));
         consumedEnergy += ENERGY_PRICES.harmony;
@@ -124,18 +127,50 @@ export class BluesBrain {
         consumedEnergy += ENERGY_PRICES.piano;
     }
 
+    // 4. TEXTURES - P4
+    if (tension > 0.4) {
+        if (hints.sfx && (consumedEnergy + ENERGY_PRICES.sfx <= barBudget)) {
+            // SFX trigger logic here if needed
+            consumedEnergy += ENERGY_PRICES.sfx;
+        }
+    }
+
     return events;
   }
 
   /**
-   * #ЗАЧЕМ: Реализация L-системы для развития мелодии.
-   * #ЧТО: CALL создает аксиому, RESPONSE эволюционирует её.
+   * #ЗАЧЕМ: Управление тембрами в зависимости от напряжения сюжета.
    */
+  private evaluateTimbralDramaturgy(tension: number, hints: InstrumentHints) {
+    // 1. Мелодия (Гитара)
+    if (hints.melody) {
+        const oldMelody = hints.melody;
+        if (tension < 0.4) hints.melody = 'telecaster' as any;
+        else if (tension < 0.7) hints.melody = 'blackAcoustic' as any;
+        else hints.melody = 'guitar_shineOn' as any;
+        
+        if (oldMelody !== hints.melody) {
+            console.log(`%cPlan165 - [Dramaturgy] Melody morphing to ${hints.melody} (Tension: ${tension.toFixed(2)})`, 'color: #FFA500');
+        }
+    }
+
+    // 2. Аккомпанемент (Орган/EP)
+    if (hints.accompaniment) {
+        const oldAcc = hints.accompaniment;
+        if (tension < 0.4) hints.accompaniment = 'ep_rhodes_warm' as any;
+        else if (tension < 0.7) hints.accompaniment = 'organ_soft_jazz' as any;
+        else hints.accompaniment = 'organ_jimmy_smith' as any;
+
+        if (oldAcc !== hints.accompaniment) {
+            console.log(`%cPlan165 - [Dramaturgy] Accompaniment morphing to ${hints.accompaniment} (Tension: ${tension.toFixed(2)})`, 'color: #FFA500');
+        }
+    }
+  }
+
   private generateLSystemMelody(epoch: number, chord: GhostChord, barIn12: number, tempo: number, tension: number): FractalEvent[] {
     const beatDur = 60 / tempo;
     const tickDur = beatDur / 3;
     
-    // Определяем фазу (4-тактовый цикл)
     const phaseInSentence = epoch % 4; 
     let phaseName: 'CALL' | 'RESPONSE' | 'CLIMAX' | 'TURNAROUND' = 'CALL';
     
@@ -144,7 +179,6 @@ export class BluesBrain {
     else if (phaseInSentence === 2) phaseName = 'RESPONSE';
     else phaseName = (tension > 0.7) ? 'CLIMAX' : 'RESPONSE';
 
-    // 1. Создание или Эволюция Аксиомы
     if (phaseInSentence === 0 || this.currentAxiom.length === 0) {
         this.currentAxiom = this.generateInitialAxiom(tension);
         this.axiomAge = 0;
@@ -171,7 +205,6 @@ export class BluesBrain {
   }
 
   private generateInitialAxiom(tension: number): MelodicAxiomNote[] {
-    // Создаем простую структуру из 2-3 нот
     const axiom: MelodicAxiomNote[] = [];
     const pool = ['R', 'b3', '4', '5', 'b7', this.thematicDegree];
     
@@ -179,7 +212,7 @@ export class BluesBrain {
     for (let i = 0; i < count; i++) {
         axiom.push({
             deg: pool[calculateMusiNum(this.seed + i, 3, i, pool.length)],
-            t: i * 3, // На долях
+            t: i * 3,
             d: 3,
             tech: 'pick'
         });
@@ -188,29 +221,19 @@ export class BluesBrain {
   }
 
   private evolveAxiom(axiom: MelodicAxiomNote[], tension: number, phase: string): MelodicAxiomNote[] {
-    // Правила L-системы
-    // Rule 1: Growth (добавляем ноту рядом)
-    // Rule 2: Inversion (переворачиваем интервалы)
-    
     const evolved = axiom.flatMap((note, i) => {
         if (phase === 'RESPONSE' && i === axiom.length - 1) {
-            // Замена последней ноты на тематический якорь или тонику
             return [{ ...note, deg: (tension > 0.5 ? this.thematicDegree : 'R'), tech: 'vibrato' as Technique }];
         }
         
         if (phase === 'CLIMAX' && tension > 0.8) {
-            // Удвоение ноты через октаву (Growth)
             return [
                 note,
-                { ...note, deg: 'R+8', t: note.t + 1, d: 1, tech: 'bend' as Technique }
+                { ...note, deg: 'R+8', t: (note.t + 1) % 12, d: 1, tech: 'bend' as Technique }
             ];
         }
-
-        // Ритмическое смещение (Variation)
         return [{ ...note, t: (note.t + 1) % 12 }];
     });
-
-    // Ограничение длины "предложения", чтобы не захламлять
     return evolved.slice(0, 6);
   }
 
@@ -245,7 +268,6 @@ export class BluesBrain {
 
     return pattern.map(n => {
       let note = chord.rootNote - 12 + (DEGREE_TO_SEMITONE[n.deg] || 0);
-      // Sub-bass protection (Plan 156)
       if (note < 24) note += 12; 
       return {
         type: 'bass',
