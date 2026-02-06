@@ -4,7 +4,7 @@
  * #ЧТО: Функции для получения гамм, инверсий, ретроградов и гуманизации.
  *       Внедрена система цепей Маркова для генерации гармонического скелета.
  *       ДОБАВЛЕНО: Математика MusiNum для фрактальной детерминированности.
- * #ИСПРАВЛЕНО: generateTensionMap (Plan 154) - расширен контраст драматической дуги (от шепота до крика).
+ * #ИСПРАВЛЕНО: generateTensionMap (Plan 154) - расширен контраст драматической дуги.
  */
 
 import type { 
@@ -13,7 +13,6 @@ import type {
     Genre, 
     GhostChord, 
     SuiteDNA, 
-    BluesCognitiveState,
     NavigationInfo,
     InstrumentPart
 } from '@/types/music';
@@ -66,30 +65,22 @@ export function pickWeightedDeterministic<T>(
 /**
  * #ЗАЧЕМ: Генератор детерминированной карты напряжения.
  * #ЧТО: Создает "сюжетную дугу" на основе Seed.
- * #ИСПРАВЛЕНО (ПЛАН 154): Нелинейный скейлинг для расширения контраста (S-образная кривая).
  */
 export function generateTensionMap(seed: number, totalBars: number): number[] {
     const map: number[] = [];
     for (let i = 0; i < totalBars; i++) {
-        // Многослойные MusiNum-волны
         const slowWave = calculateMusiNum(i, 13, seed, 100) / 100;
         const medWave = calculateMusiNum(i, 7, seed + 123, 100) / 100;
         const fastWave = calculateMusiNum(i, 3, seed + 456, 100) / 100;
         
         const combined = (slowWave * 0.6 + medWave * 0.3 + fastWave * 0.1);
         
-        // --- Plan 154: Dramatic Contrast ---
-        // Тянем значения от 0.5 к краям (0.1 или 0.9)
         const centered = combined - 0.5;
         const expanded = 0.5 + Math.sign(centered) * Math.pow(Math.abs(centered) * 2, 0.6) * 0.5;
         
         const finalVal = Math.max(0.05, Math.min(0.95, expanded));
         map.push(finalVal);
     }
-    
-    const min = Math.min(...map);
-    const max = Math.max(...map);
-    console.log(`Plan154 - music-theory/generateTensionMap: Contrast expanded. Range: [${min.toFixed(2)} - ${max.toFixed(2)}]. SEED: ${seed}`);
     return map;
 }
 
@@ -118,9 +109,9 @@ export function createHarmonyAxiom(
             weight: 0.3,
             technique: 'swell',
             dynamics: 'p',
-            phrasing: 'legato',
+            phrasing: 'legate',
             params: { barCount: epoch },
-            chordName: (chord as any).name || ''
+            chordName: chord.chordType === 'minor' ? 'Am' : 'E' 
         });
     });
 
@@ -155,13 +146,6 @@ export function getScaleForMood(mood: Mood, genre?: Genre): number[] {
   return fullScale;
 }
 
-export function humanizeEvents(events: FractalEvent[], amount: number, random: any) {
-    events.forEach(e => {
-        const shift = (random.next() - 0.5) * 2 * amount;
-        e.time = Math.max(0, e.time + shift);
-    });
-}
-
 /**
  * #ЗАЧЕМ: Генератор ДНК сюиты.
  */
@@ -189,7 +173,7 @@ export function generateSuiteDNA(totalBars: number, mood: Mood, seed: number, ra
                     const barIdx = partStartBar + currentBarInPart;
                     harmonyTrack.push({
                         rootNote: key + progression[i],
-                        chordType: chordTypes[i],
+                        chordType: chordTypes[i] === 'minor' ? 'minor' : 'major',
                         bar: barIdx,
                         durationBars: 1
                     });
@@ -219,7 +203,7 @@ export function generateSuiteDNA(totalBars: number, mood: Mood, seed: number, ra
     const baseTempo = minTempo + Math.floor(random.next() * (maxTempo - minTempo + 1));
 
     const soloPlanMap = new Map<string, string>();
-    const allPlanIds = Object.keys(BLUES_SOLO_PLANS);
+    const allPlanIds = Object.keys(BLUES_SOLO_PLANS).filter(id => !id.includes('OUTRO'));
     const shuffledPlanIds = [...allPlanIds].sort(() => random.next() - 0.5);
     let planIndex = 0;
     blueprintParts.forEach((part: any) => {
@@ -230,7 +214,6 @@ export function generateSuiteDNA(totalBars: number, mood: Mood, seed: number, ra
     });
 
     const tensionMap = generateTensionMap(seed, totalBars);
-    console.log(`Plan152 - music-theory/generateSuiteDNA: Tension Map embedded into DNA.`);
 
     return { harmonyTrack, baseTempo, rhythmicFeel: 'shuffle', bassStyle: 'walking', drumStyle: 'shuffle_A', soloPlanMap, tensionMap };
 }
