@@ -18,13 +18,11 @@ import { BLUES_GUITAR_VOICINGS } from './assets/guitar-voicings';
 import { GUITAR_PATTERNS } from './assets/guitar-patterns';
 
 /**
- * #ЗАЧЕМ: Блюзовый Мозг V7.0 — Semantic Assembly Engine.
+ * #ЗАЧЕМ: Блюзовый Мозг V7.1 — Orchestral Transparency.
  * #ЧТО: 
- *   1. Динамическая сборка соло: лики выбираются по смыслу такта (Call, Response, Climax).
- *   2. Тематический якорь: у каждой сюиты есть "любимая ступень", создающая единство темы.
- *   3. Напряженный синтаксис: сложность фраз напрямую следует за Tension Map.
- *   4. Иерархический бюджет: управление энергией ансамбля сохранено.
- * #ИНТЕГРАЦИЯ: Гитара Alvin Lee (ShineOn) теперь говорит на языке напряжений.
+ *   1. Исправлена проблема тишины: введен Velocity Floor (минимальный вес ноты 0.35).
+ *   2. Умное дакирование: орган (bed) теперь не исчезает при соло, дакируется только пианино.
+ *   3. Динамический бюджет: расширена емкость такта для предотвращения пропуска соло.
  */
 
 const ENERGY_PRICES = {
@@ -33,10 +31,10 @@ const ENERGY_PRICES = {
     bass_pedal: 5,
     drums_full: 25,
     drums_minimal: 10,
-    harmony: 15,      // Гитара или синт аккордами
-    piano: 20,        // Фортепиано
-    sfx: 10,          // Шумовые эффекты
-    sparkles: 5       // Колокольчики/вспышки
+    harmony: 15,      
+    piano: 20,        
+    sfx: 10,          
+    sparkles: 5       
 };
 
 export class BluesBrain {
@@ -49,12 +47,10 @@ export class BluesBrain {
     this.seed = seed;
     this.mood = mood;
     
-    // Выбираем тематический якорь для сюиты (R, b3, 5 или b7)
     const anchorDegrees = ['R', 'b3', '5', 'b7'];
     this.thematicDegree = anchorDegrees[calculateMusiNum(seed, 3, seed, anchorDegrees.length)];
 
     console.log(`%c[BluesBrain] SOP Level 3: Semantic Engine Online.`, 'color: #00FF00; font-weight: bold;');
-    console.log(`Plan160 - blues-brain/dna: Thematic anchor set to degree ${this.thematicDegree}.`);
   }
 
   public generateBar(
@@ -70,17 +66,18 @@ export class BluesBrain {
     const barIn12 = epoch % 12;
     const tension = dna.tensionMap ? (dna.tensionMap[epoch % dna.tensionMap.length] || 0.5) : 0.5;
     
-    // --- ПРИНЦИП РЕЗОНАНСА (Слушание соседа) ---
+    // --- NEIGHBOR LISTENING (Resonance) ---
+    // Определяем, "кричит" ли гитара (ноты выше C5 с длинным сустейном)
     const isHighScream = lastEvents.some(e => e.type === 'melody' && e.note > 72 && e.duration > 1.0);
     const lastDrumFill = lastEvents.some(e => (e.type as string).includes('tom'));
 
-    // Бюджет такта (Base 100 + Tension influence)
-    const barBudget = 100 + (tension * 80);
+    // Бюджет такта (Более щедрый коэффициент для предотвращения "немых" тактов)
+    const barBudget = 100 + (tension * 100);
     let consumedEnergy = 0;
 
     // --- ОЧЕРЕДЬ ПРИОРИТЕТОВ ---
 
-    // 1. SOLO (MELODY) - ТЕПЕРЬ ДИНАМИЧЕСКИЙ СИНТАКСИС
+    // 1. SOLO (MELODY) - Гарантированный вход
     if (hints.melody) {
       const cost = ENERGY_PRICES.solo;
       if (consumedEnergy + cost <= barBudget) {
@@ -110,22 +107,29 @@ export class BluesBrain {
       }
     }
 
-    // 4. HARMONY (Neighbor Listening)
-    if (hints.accompaniment || hints.harmony) {
+    // 4. ACCOMPANIMENT (ORGAN PAD) - Теперь не блокируется криком
+    if (hints.accompaniment) {
       const cost = ENERGY_PRICES.harmony;
-      const shouldPlayHarmony = !isHighScream && (consumedEnergy + cost <= barBudget);
-      if (shouldPlayHarmony) {
+      if (consumedEnergy + cost <= barBudget) {
         events.push(...this.generateHarmony(epoch, currentChord, tempo, tension));
         consumedEnergy += cost;
       }
     }
 
-    // 5. PIANO
-    if (hints.pianoAccompaniment) {
-      const cost = ENERGY_PRICES.piano;
-      if (consumedEnergy + cost <= barBudget && tension > 0.3) {
-        events.push(...this.generatePiano(epoch, currentChord, tempo, tension));
+    // 5. PIANO & EXTRA HARMONY - Дакируется при крике (Neighbor Listening)
+    if (hints.pianoAccompaniment || hints.harmony) {
+      const cost = hints.pianoAccompaniment ? ENERGY_PRICES.piano : ENERGY_PRICES.harmony;
+      const canPlay = !isHighScream && (consumedEnergy + cost <= barBudget);
+      if (canPlay) {
+        if (hints.pianoAccompaniment) {
+            events.push(...this.generatePiano(epoch, currentChord, tempo, tension));
+        } else {
+            // Если включена просто Harmony (аккорды), но не Piano
+            events.push(...this.generateHarmony(epoch, currentChord, tempo, tension));
+        }
         consumedEnergy += cost;
+      } else if (isHighScream) {
+          console.log(`Plan161 - blues-brain/interaction: Solo is screaming. Ducking piano/harmony for clarity.`);
       }
     }
 
@@ -135,14 +139,12 @@ export class BluesBrain {
         consumedEnergy += (ENERGY_PRICES.sfx + ENERGY_PRICES.sparkles);
     }
 
+    console.log(`Plan161 - blues-brain/generateBar: Bar ${epoch} Tension: ${tension.toFixed(2)}. Budget Used: ${consumedEnergy}/${Math.floor(barBudget)}`);
+
     return events;
   }
 
-  /**
-   * #ЗАЧЕМ: Динамический выбор лика на основе семантики такта.
-   */
   private selectLick(epoch: number, barIn12: number, tension: number, chord: GhostChord): string {
-    // 1. Определение семантической фазы
     let category = 'CALL';
     if (barIn12 < 4) category = 'CALL';
     else if (barIn12 < 8) category = 'RESPONSE';
@@ -150,15 +152,10 @@ export class BluesBrain {
     else if (barIn12 === 10) category = 'RESOLUTION';
     else category = 'TURNAROUND';
 
-    console.log(`Plan160 - blues-brain/narrative: Bar ${epoch} semantic role: ${category}.`);
-
-    // 2. Фильтрация пула по тэгам и напряжению
     const allIds = Object.keys(BLUES_SOLO_LICKS);
     let pool = allIds.filter(id => {
         const lick = BLUES_SOLO_LICKS[id];
         const tags = lick.tags;
-
-        // Категориальное соответствие
         const catMatch = 
             (category === 'CALL' && (tags.includes('pickup') || tags.includes('intro') || tags.includes('major') || tags.includes('minor'))) ||
             (category === 'RESPONSE' && (tags.includes('answer') || tags.includes('voicing') || tags.includes('elaboration'))) ||
@@ -168,30 +165,21 @@ export class BluesBrain {
             (category === 'TURNAROUND' && tags.includes('turnaround'));
 
         if (!catMatch) return false;
-
-        // Соответствие типу аккорда
         if (chord.chordType === 'minor' && tags.includes('major') && !tags.includes('minor')) return false;
         if (chord.chordType === 'major' && tags.includes('minor') && !tags.includes('major')) return false;
-
-        // Соответствие бюджету энергии (плотности)
         if (tension < 0.3 && (tags.includes('fast') || tags.includes('shred') || tags.includes('active'))) return false;
         if (tension > 0.8 && (tags.includes('slow') || tags.includes('sparse'))) return false;
-
         return true;
     });
 
-    if (pool.length === 0) pool = allIds; // Fallback
+    if (pool.length === 0) pool = allIds; 
 
-    // 3. Скоринг по Тематическому Якорю
     const scoredOptions = pool.map(id => {
         const lick = BLUES_SOLO_LICKS[id];
         let weight = 1;
-        // Если лик содержит нашу "любимую ступень" сюиты - приоритет выше
         if (lick.phrase.some(n => n.deg === this.thematicDegree)) weight += 2;
         return { name: id, weight };
     });
-
-    console.log(`Plan160 - blues-brain/syntax: Filtering licks by tension ${tension.toFixed(2)}. Found ${pool.length} matches.`);
 
     return pickWeightedDeterministic(scoredOptions, this.seed, epoch, 500);
   }
@@ -207,7 +195,7 @@ export class BluesBrain {
       note: chord.rootNote + 36 + registerOffset + (DEGREE_TO_SEMITONE[n.deg] || 0),
       time: n.t * tickDur,
       duration: n.d * tickDur,
-      weight: 0.8 + tension * 0.2, 
+      weight: 0.75 + tension * 0.25, 
       technique: (n.tech as any) || ('pick' as const),
       dynamics: (idx === 0 && shouldAccent) ? 'mf' : (tension > 0.7 ? 'mf' : 'p' as const),
       phrasing: 'legato' as const
@@ -222,9 +210,9 @@ export class BluesBrain {
     if (!p) return [];
 
     const events: FractalEvent[] = [];
-    if (tension > 0.3 && p.HH) p.HH.forEach(t => events.push(this.createDrumEvent('drum_hihat', t * tickDur, 0.4 * tension, 'p')));
-    if (p.K) p.K.forEach(t => events.push(this.createDrumEvent('drum_kick', t * tickDur, 0.75, tension > 0.7 ? 'mf' : 'p')));
-    if (tension > 0.5 && p.SD) p.SD.forEach(t => events.push(this.createDrumEvent('drum_snare', t * tickDur, 0.6 * tension, 'mf')));
+    if (tension > 0.3 && p.HH) p.HH.forEach(t => events.push(this.createDrumEvent('drum_hihat', t * tickDur, 0.4 + (tension * 0.2), 'p')));
+    if (p.K) p.K.forEach(t => events.push(this.createDrumEvent('drum_kick', t * tickDur, 0.8, tension > 0.7 ? 'mf' : 'p')));
+    if (tension > 0.5 && p.SD) p.SD.forEach(t => events.push(this.createDrumEvent('drum_snare', t * tickDur, 0.5 + (tension * 0.3), 'mf')));
     return events;
   }
 
@@ -241,13 +229,13 @@ export class BluesBrain {
 
     return pattern.map(n => {
       let note = chord.rootNote - 12 + (DEGREE_TO_SEMITONE[n.deg] || 0);
-      if (note < 24) note += 12; // Sub-bass protection
+      if (note < 24) note += 12; 
       return {
         type: 'bass' as const,
         note,
         time: n.t * tickDur,
         duration: (n.d || 2) * tickDur,
-        weight: 0.6 + tension * 0.3,
+        weight: 0.7 + tension * 0.2,
         technique: 'pluck' as const,
         dynamics: (forceWalking || tension > 0.6) ? 'mf' : 'p' as const,
         phrasing: 'legato' as const
@@ -271,8 +259,8 @@ export class BluesBrain {
             type: 'accompaniment' as const,
             note: chord.rootNote + (voicing[idx] - 40),
             time: t * tickDur,
-            duration: beatDur * 1.5,
-            weight: 0.2 * tension,
+            duration: beatDur * 2.0,
+            weight: 0.35 + (tension * 0.2), // Plan161: Raised weight floor
             technique: 'pluck' as const,
             dynamics: 'p' as const,
             phrasing: 'detached' as const,
@@ -292,7 +280,7 @@ export class BluesBrain {
         note: notes[beat % 2] + 12,
         time: beat * beatDur,
         duration: beatDur * 0.8,
-        weight: 0.3 * tension,
+        weight: 0.4 + (tension * 0.2), // Plan161: Raised weight floor
         technique: 'hit' as const,
         dynamics: 'p' as const,
         phrasing: 'staccato' as const
@@ -301,7 +289,6 @@ export class BluesBrain {
 
   private generateTextures(epoch: number, tempo: number, tension: number, hints: InstrumentHints): FractalEvent[] {
     const events: FractalEvent[] = [];
-    
     if (calculateMusiNum(epoch, 7, this.seed, 100) < 15) {
         events.push({
             type: 'sfx',
@@ -315,7 +302,6 @@ export class BluesBrain {
             params: { mood: this.mood, genre: 'blues' }
         });
     }
-
     if (calculateMusiNum(epoch, 11, this.seed + 50, 100) < 20) {
         events.push({
             type: 'sparkle',
