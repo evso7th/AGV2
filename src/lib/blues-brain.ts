@@ -179,7 +179,9 @@ export class BluesBrain {
     
     return lickData.phrase.map(n => ({
       type: 'melody',
-      note: chord.rootNote + 12 + this.degreeToSemitone(n.deg),
+      // #ИСПРАВЛЕНО: Подъем регистра на 2 октавы (+24 к существующим +12 = +36).
+      // #ЗАЧЕМ: Чтобы Black Acoustic гитара играла в сольном диапазоне E4-A5.
+      note: chord.rootNote + 36 + this.degreeToSemitone(n.deg),
       time: n.t * tickDur,
       duration: n.d * tickDur,
       weight: 0.85,
