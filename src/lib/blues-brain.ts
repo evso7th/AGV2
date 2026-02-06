@@ -10,7 +10,7 @@ import type {
   NavigationInfo,
   InstrumentPart
 } from '@/types/music';
-import { calculateMusiNum, DEGREE_TO_SEMITONE } from './music-theory';
+import { calculateMusiNum, DEGREE_TO_SEMITONE, pickWeightedDeterministic } from './music-theory';
 import { BLUES_SOLO_LICKS, BLUES_SOLO_PLANS } from './assets/blues_guitar_solo';
 import { BLUES_DRUM_RIFFS } from './assets/blues-drum-riffs';
 import { BLUES_BASS_RIFFS } from './assets/blues-bass-riffs';
@@ -18,12 +18,13 @@ import { BLUES_GUITAR_VOICINGS } from './assets/guitar-voicings';
 import { GUITAR_PATTERNS } from './assets/guitar-patterns';
 
 /**
- * #ЗАЧЕМ: Блюзовый Мозг V6.5 — Full Ensemble Orchestration.
+ * #ЗАЧЕМ: Блюзовый Мозг V7.0 — Semantic Assembly Engine.
  * #ЧТО: 
- *   1. Единый бюджетный цикл для ВСЕХ инструментов (Solo, Bass, Drums, Harmony, Piano, SFX, Sparkles).
- *   2. Интеллектуальный приоритет: Соло > Ритм > Гармония > Текстуры.
- *   3. Neighbor Listening: Инструменты реагируют на "крики" (sustain high notes) солиста.
- * #ИСПРАВЛЕНО (ПЛАН 158): Возвращен аккомпанемент и добавлены текстурные слои в бюджет.
+ *   1. Динамическая сборка соло: лики выбираются по смыслу такта (Call, Response, Climax).
+ *   2. Тематический якорь: у каждой сюиты есть "любимая ступень", создающая единство темы.
+ *   3. Напряженный синтаксис: сложность фраз напрямую следует за Tension Map.
+ *   4. Иерархический бюджет: управление энергией ансамбля сохранено.
+ * #ИНТЕГРАЦИЯ: Гитара Alvin Lee (ShineOn) теперь говорит на языке напряжений.
  */
 
 const ENERGY_PRICES = {
@@ -41,17 +42,19 @@ const ENERGY_PRICES = {
 export class BluesBrain {
   private seed: number;
   private mood: Mood;
-  private soloPlanId: string;
+  private thematicDegree: string;
   private lastAscendingBar: number = -10;
 
   constructor(seed: number, mood: Mood) {
     this.seed = seed;
     this.mood = mood;
     
-    const planIds = Object.keys(BLUES_SOLO_PLANS).filter(id => !id.includes('OUTRO'));
-    const planIdx = calculateMusiNum(seed, 7, seed, planIds.length);
-    this.soloPlanId = planIds[planIdx];
-    console.log(`%c[BluesBrain] Narrative Solo Plan: ${this.soloPlanId}`, 'color: #00FF00; font-weight: bold;');
+    // Выбираем тематический якорь для сюиты (R, b3, 5 или b7)
+    const anchorDegrees = ['R', 'b3', '5', 'b7'];
+    this.thematicDegree = anchorDegrees[calculateMusiNum(seed, 3, seed, anchorDegrees.length)];
+
+    console.log(`%c[BluesBrain] SOP Level 3: Semantic Engine Online.`, 'color: #00FF00; font-weight: bold;');
+    console.log(`Plan160 - blues-brain/dna: Thematic anchor set to degree ${this.thematicDegree}.`);
   }
 
   public generateBar(
@@ -77,7 +80,7 @@ export class BluesBrain {
 
     // --- ОЧЕРЕДЬ ПРИОРИТЕТОВ ---
 
-    // 1. SOLO (MELODY)
+    // 1. SOLO (MELODY) - ТЕПЕРЬ ДИНАМИЧЕСКИЙ СИНТАКСИС
     if (hints.melody) {
       const cost = ENERGY_PRICES.solo;
       if (consumedEnergy + cost <= barBudget) {
@@ -107,10 +110,9 @@ export class BluesBrain {
       }
     }
 
-    // 4. HARMONY (Guitar Chords / Pads)
+    // 4. HARMONY (Neighbor Listening)
     if (hints.accompaniment || hints.harmony) {
       const cost = ENERGY_PRICES.harmony;
-      // Если солист "кричит", гармония затихает (Neighbor Listening)
       const shouldPlayHarmony = !isHighScream && (consumedEnergy + cost <= barBudget);
       if (shouldPlayHarmony) {
         events.push(...this.generateHarmony(epoch, currentChord, tempo, tension));
@@ -127,15 +129,89 @@ export class BluesBrain {
       }
     }
 
-    // 6. TEXTURES (SFX & Sparkles)
+    // 6. TEXTURES
     if (consumedEnergy + ENERGY_PRICES.sfx <= barBudget && tension > 0.4) {
         events.push(...this.generateTextures(epoch, tempo, tension, hints));
         consumedEnergy += (ENERGY_PRICES.sfx + ENERGY_PRICES.sparkles);
     }
 
-    console.log(`Plan158 - blues-brain/generateBar: Bar ${epoch} Tension: ${tension.toFixed(2)}. Budget: ${consumedEnergy.toFixed(0)}/${barBudget.toFixed(0)}`);
-
     return events;
+  }
+
+  /**
+   * #ЗАЧЕМ: Динамический выбор лика на основе семантики такта.
+   */
+  private selectLick(epoch: number, barIn12: number, tension: number, chord: GhostChord): string {
+    // 1. Определение семантической фазы
+    let category = 'CALL';
+    if (barIn12 < 4) category = 'CALL';
+    else if (barIn12 < 8) category = 'RESPONSE';
+    else if (barIn12 < 10) category = tension > 0.7 ? 'CLIMAX' : 'BRIDGE';
+    else if (barIn12 === 10) category = 'RESOLUTION';
+    else category = 'TURNAROUND';
+
+    console.log(`Plan160 - blues-brain/narrative: Bar ${epoch} semantic role: ${category}.`);
+
+    // 2. Фильтрация пула по тэгам и напряжению
+    const allIds = Object.keys(BLUES_SOLO_LICKS);
+    let pool = allIds.filter(id => {
+        const lick = BLUES_SOLO_LICKS[id];
+        const tags = lick.tags;
+
+        // Категориальное соответствие
+        const catMatch = 
+            (category === 'CALL' && (tags.includes('pickup') || tags.includes('intro') || tags.includes('major') || tags.includes('minor'))) ||
+            (category === 'RESPONSE' && (tags.includes('answer') || tags.includes('voicing') || tags.includes('elaboration'))) ||
+            (category === 'CLIMAX' && (tags.includes('scream') || tags.includes('shred') || tags.includes('virtuoso') || tags.includes('climb') || tags.includes('active'))) ||
+            (category === 'BRIDGE' && (tags.includes('run') || tags.includes('scale') || tags.includes('boogie'))) ||
+            (category === 'RESOLUTION' && (tags.includes('resolution') || tags.includes('sigh') || tags.includes('cry') || tags.includes('response'))) ||
+            (category === 'TURNAROUND' && tags.includes('turnaround'));
+
+        if (!catMatch) return false;
+
+        // Соответствие типу аккорда
+        if (chord.chordType === 'minor' && tags.includes('major') && !tags.includes('minor')) return false;
+        if (chord.chordType === 'major' && tags.includes('minor') && !tags.includes('major')) return false;
+
+        // Соответствие бюджету энергии (плотности)
+        if (tension < 0.3 && (tags.includes('fast') || tags.includes('shred') || tags.includes('active'))) return false;
+        if (tension > 0.8 && (tags.includes('slow') || tags.includes('sparse'))) return false;
+
+        return true;
+    });
+
+    if (pool.length === 0) pool = allIds; // Fallback
+
+    // 3. Скоринг по Тематическому Якорю
+    const scoredOptions = pool.map(id => {
+        const lick = BLUES_SOLO_LICKS[id];
+        let weight = 1;
+        // Если лик содержит нашу "любимую ступень" сюиты - приоритет выше
+        if (lick.phrase.some(n => n.deg === this.thematicDegree)) weight += 2;
+        return { name: id, weight };
+    });
+
+    console.log(`Plan160 - blues-brain/syntax: Filtering licks by tension ${tension.toFixed(2)}. Found ${pool.length} matches.`);
+
+    return pickWeightedDeterministic(scoredOptions, this.seed, epoch, 500);
+  }
+
+  private generateMelody(epoch: number, chord: GhostChord, barIn12: number, tempo: number, tension: number, registerOffset: number, shouldAccent: boolean): FractalEvent[] {
+    const lickId = this.selectLick(epoch, barIn12, tension, chord);
+    const lickData = BLUES_SOLO_LICKS[lickId];
+    if (!lickData) return [];
+
+    const tickDur = (60 / tempo) / 3;
+    return lickData.phrase.map((n, idx) => ({
+      type: 'melody' as const,
+      note: chord.rootNote + 36 + registerOffset + (DEGREE_TO_SEMITONE[n.deg] || 0),
+      time: n.t * tickDur,
+      duration: n.d * tickDur,
+      weight: 0.8 + tension * 0.2, 
+      technique: (n.tech as any) || ('pick' as const),
+      dynamics: (idx === 0 && shouldAccent) ? 'mf' : (tension > 0.7 ? 'mf' : 'p' as const),
+      phrasing: 'legato' as const
+    }));
   }
 
   private generateDrums(epoch: number, tempo: number, tension: number): FractalEvent[] {
@@ -165,7 +241,7 @@ export class BluesBrain {
 
     return pattern.map(n => {
       let note = chord.rootNote - 12 + (DEGREE_TO_SEMITONE[n.deg] || 0);
-      if (note < 24) note += 12;
+      if (note < 24) note += 12; // Sub-bass protection
       return {
         type: 'bass' as const,
         note,
@@ -186,7 +262,6 @@ export class BluesBrain {
     const voicing = BLUES_GUITAR_VOICINGS['E7_open'];
     const events: FractalEvent[] = [];
     
-    // Плотность гармонии зависит от напряжения
     const steps = tension > 0.6 ? pattern.pattern : [pattern.pattern[0], pattern.pattern[3]];
 
     steps.forEach(step => {
@@ -201,7 +276,7 @@ export class BluesBrain {
             technique: 'pluck' as const,
             dynamics: 'p' as const,
             phrasing: 'detached' as const,
-            chordName: chord.chordType === 'minor' ? 'Am' : 'E' // Упрощенно для сэмплера
+            chordName: chord.chordType === 'minor' ? 'Am' : 'E'
           });
         });
       });
@@ -211,7 +286,6 @@ export class BluesBrain {
 
   private generatePiano(epoch: number, chord: GhostChord, tempo: number, tension: number): FractalEvent[] {
     const beatDur = 60 / tempo;
-    // Пианист играет "шеллы" (3-7) на 2 и 4 долю
     const notes = [chord.rootNote + 3, chord.rootNote + 10];
     return [2, 3].map(beat => ({
         type: 'pianoAccompaniment' as const,
@@ -227,13 +301,12 @@ export class BluesBrain {
 
   private generateTextures(epoch: number, tempo: number, tension: number, hints: InstrumentHints): FractalEvent[] {
     const events: FractalEvent[] = [];
-    const beatDur = 60 / tempo;
     
     if (calculateMusiNum(epoch, 7, this.seed, 100) < 15) {
         events.push({
             type: 'sfx',
             note: 60,
-            time: this.random() * 2,
+            time: this.randomVal() * 2,
             duration: 2.0,
             weight: 0.5,
             technique: 'hit',
@@ -247,7 +320,7 @@ export class BluesBrain {
         events.push({
             type: 'sparkle',
             note: 84,
-            time: this.random() * 3,
+            time: this.randomVal() * 3,
             duration: 1.0,
             weight: 0.4,
             technique: 'hit',
@@ -259,28 +332,7 @@ export class BluesBrain {
     return events;
   }
 
-  private generateMelody(epoch: number, chord: GhostChord, barIn12: number, tempo: number, tension: number, registerOffset: number, shouldAccent: boolean): FractalEvent[] {
-    const plan = BLUES_SOLO_PLANS[this.soloPlanId];
-    if (!plan || !plan.choruses) return [];
-    const chorusIdx = Math.floor(epoch / 12) % plan.choruses.length;
-    const chorus = plan.choruses[chorusIdx];
-    const lickId = chorus[barIn12];
-    const lickData = BLUES_SOLO_LICKS[lickId];
-    if (!lickData) return [];
-    const tickDur = (60 / tempo) / 3;
-    return lickData.phrase.map((n, idx) => ({
-      type: 'melody' as const,
-      note: chord.rootNote + 36 + registerOffset + (DEGREE_TO_SEMITONE[n.deg] || 0),
-      time: n.t * tickDur,
-      duration: n.d * tickDur,
-      weight: 0.8 + tension * 0.2, 
-      technique: (n.tech as any) || ('pick' as const),
-      dynamics: (idx === 0 && shouldAccent) ? 'mf' : (tension > 0.7 ? 'mf' : 'p' as const),
-      phrasing: 'legato' as const
-    }));
-  }
-
-  private random() {
+  private randomVal() {
       const x = Math.sin(this.seed + this.lastAscendingBar) * 10000;
       return x - Math.floor(x);
   }

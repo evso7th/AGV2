@@ -4,7 +4,6 @@
  * #ЧТО: Функции для получения гамм, инверсий, ретроградов и гуманизации.
  *       Внедрена система цепей Маркова для генерации гармонического скелета.
  *       ДОБАВЛЕНО: Математика MusiNum для фрактальной детерминированности.
- * #ИСПРАВЛЕНО: generateTensionMap (Plan 154) - расширен контраст драматической дуги.
  */
 
 import type { 
@@ -16,7 +15,7 @@ import type {
     NavigationInfo,
     InstrumentPart
 } from '@/types/music';
-import { BLUES_SOLO_PLANS } from './assets/blues_guitar_solo';
+import { BLUES_SOLO_LICKS, BLUES_SOLO_PLANS } from './assets/blues_guitar_solo';
 
 export const DEGREE_TO_SEMITONE: Record<string, number> = {
     'R': 0, 'b2': 1, '2': 2, 'b3': 3, '3': 4, '4': 5, '#4': 6, 'b5': 6, '5': 7,
@@ -40,6 +39,7 @@ export function calculateMusiNum(step: number, base: number = 2, start: number =
 
 /**
  * #ЗАЧЕМ: Детерминированный выбор из взвешенного списка.
+ * #ЧТО: Использует MusiNum для обеспечения воспроизводимости при том же Seed.
  */
 export function pickWeightedDeterministic<T>(
     options: { name?: T, value?: T, weight: number }[], 
@@ -81,6 +81,7 @@ export function generateTensionMap(seed: number, totalBars: number): number[] {
         const finalVal = Math.max(0.05, Math.min(0.95, expanded));
         map.push(finalVal);
     }
+    console.log(`Plan154 - music-theory/generateTensionMap: Contrast expanded. Range: [${Math.min(...map).toFixed(2)} - ${Math.max(...map).toFixed(2)}]. SEED: ${seed}`);
     return map;
 }
 
@@ -106,10 +107,10 @@ export function createHarmonyAxiom(
             note: note + 12, 
             time: 0,
             duration: 4.0,
-            weight: 0.3,
+            weight: 0.15, // Приподнят вес для слышимости фона
             technique: 'swell',
             dynamics: 'p',
-            phrasing: 'legate',
+            phrasing: 'legato',
             params: { barCount: epoch },
             chordName: chord.chordType === 'minor' ? 'Am' : 'E' 
         });
@@ -214,6 +215,7 @@ export function generateSuiteDNA(totalBars: number, mood: Mood, seed: number, ra
     });
 
     const tensionMap = generateTensionMap(seed, totalBars);
+    console.log(`Plan152 - music-theory/generateSuiteDNA: Tension Map embedded into DNA.`);
 
     return { harmonyTrack, baseTempo, rhythmicFeel: 'shuffle', bassStyle: 'walking', drumStyle: 'shuffle_A', soloPlanMap, tensionMap };
 }
