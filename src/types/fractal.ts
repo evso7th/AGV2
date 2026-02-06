@@ -4,7 +4,7 @@
 export type Mood = 
   | 'epic' | 'joyful' | 'enthusiastic' // Позитивные
   | 'melancholic' | 'dark' | 'anxious'    // Негативные
-  | 'dreamy' | 'contemplative' | 'calm';     // Нейтральные
+  | 'dreamy' | 'contemplative' | 'calm' | 'gloomy';     // Нейтральные
 
 /**
  * Жанр — управляет формой и плотностью

@@ -1,9 +1,15 @@
-
-import type { Mood as FractalMood, InstrumentHints as FractalInstrumentHints, InstrumentPart as FractalInstrumentPart } from './fractal';
+import type { 
+    Mood as FractalMood, 
+    InstrumentHints as FractalInstrumentHints, 
+    InstrumentPart as FractalInstrumentPart,
+    FractalEvent,
+    GhostChord
+} from './fractal';
 import { V2_PRESETS } from '@/lib/presets-v2';
 import { BASS_PRESETS } from '@/lib/bass-presets';
 
 export type Mood = FractalMood;
+export type { FractalEvent, GhostChord };
 
 export type PlayableNote = {
     midi: number;
@@ -344,6 +350,7 @@ export type SuiteDNA = {
   drumStyle: string;
   soloPlanMap: Map<string, string>;
   bluesMelodyId?: string; // ТЕМАТИЧЕСКИЙ ЯКОРЬ
+  tensionMap: number[]; // Added
 };
 
 /**
