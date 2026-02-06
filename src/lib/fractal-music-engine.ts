@@ -1,3 +1,4 @@
+
 import type { FractalEvent, Mood, Genre, InstrumentPart, InstrumentHints, GhostChord, SuiteDNA, NavigationInfo } from '@/types/music';
 import { BlueprintNavigator } from './blueprint-navigator';
 import { getBlueprint } from './blueprints';
@@ -40,6 +41,11 @@ interface EngineConfig {
   introBars: number;
 }
 
+/**
+ * #ЗАЧЕМ: Фрактальный Музыкальный Движок V12.0 — "Drama Engine".
+ * #ЧТО: Реализует систему "Dramatic Gravity" — вероятностное вступление инструментов
+ *       с нарастающей громкостью и сохранением состояния (Persistence).
+ */
 export class FractalMusicEngine {
   public config: EngineConfig;
   public epoch = 0;
@@ -50,10 +56,12 @@ export class FractalMusicEngine {
 
   private bluesBrain: BluesBrain | null = null;
   private previousChord: GhostChord | null = null;
-  private activatedInstruments: Map<InstrumentPart, string> = new Map();
   
-  // #ЗАЧЕМ: Резонансный буфер (Plan 154). Память о событиях предыдущего такта.
-  // #ЧТО: Хранит массив FractalEvent[] от всех инструментов для Neighbor Listening.
+  /** 
+   * #ЗАЧЕМ: Память ансамбля. Хранит активированные инструменты и такт их рождения.
+   */
+  private activatedInstruments: Map<InstrumentPart, { timbre: string, startBar: number }> = new Map();
+  
   private lastEvents: FractalEvent[] = []; 
 
   constructor(config: EngineConfig) {
@@ -74,7 +82,7 @@ export class FractalMusicEngine {
 
     this.random = seededRandom(this.config.seed);
     this.activatedInstruments.clear(); 
-    this.lastEvents = []; // Очистка памяти при сбросе
+    this.lastEvents = [];
     
     if (this.config.genre === 'blues') {
         this.bluesBrain = new BluesBrain(this.config.seed, this.config.mood);
@@ -99,9 +107,10 @@ export class FractalMusicEngine {
     const navInfo = this.navigator.tick(this.epoch);
     if (!navInfo) return { events: [], instrumentHints: {} };
 
-    const instrumentHints: InstrumentHints = {};
+    const instrumentHints: InstrumentHints = { summonProgress: {} };
     const stages = navInfo.currentPart.stagedInstrumentation;
 
+    // --- DRAMATIC GRAVITY: Instrument Activation Logic ---
     if (stages && stages.length > 0) {
         const progress = (this.epoch - navInfo.currentPartStartBar) / (navInfo.currentPartEndBar - navInfo.currentPartStartBar + 1);
         let currentStage = stages[stages.length - 1];
@@ -114,28 +123,60 @@ export class FractalMusicEngine {
             } 
         }
 
-        Object.entries(currentStage.instrumentation).forEach(([part, rule]: [any, any]) => {
+        let atLeastOneActive = false;
+        
+        Object.entries(currentStage.instrumentation).forEach(([partStr, rule]: [any, any]) => {
+            const part = partStr as InstrumentPart;
+            
             if (rule.transient) {
-                if (this.random.next() < rule.activationChance) (instrumentHints as any)[part] = this.pickWeighted(rule.instrumentOptions);
-            } else if (!this.activatedInstruments.has(part)) {
-                if (rule.activationChance > 0 && this.random.next() < rule.activationChance) {
-                    this.activatedInstruments.set(part, this.pickWeighted(rule.instrumentOptions));
+                if (this.random.next() < rule.activationChance) {
+                    (instrumentHints as any)[part] = this.pickWeighted(rule.instrumentOptions);
+                    instrumentHints.summonProgress![part] = 1.0;
+                    atLeastOneActive = true;
                 }
-            } else if (rule.activationChance === 0) {
-                this.activatedInstruments.delete(part);
+            } else {
+                // Persistent summoning logic
+                if (!this.activatedInstruments.has(part)) {
+                    if (rule.activationChance > 0 && this.random.next() < rule.activationChance) {
+                        this.activatedInstruments.set(part, { 
+                            timbre: this.pickWeighted(rule.instrumentOptions), 
+                            startBar: this.epoch 
+                        });
+                        console.log(`Plan171 - [Summon] Instrument ${part} materializing at Bar ${this.epoch}`);
+                    }
+                }
+                
+                if (this.activatedInstruments.has(part)) {
+                    const data = this.activatedInstruments.get(part)!;
+                    (instrumentHints as any)[part] = data.timbre;
+                    
+                    // Progress: 0.33 -> 0.66 -> 1.0 over 3 bars
+                    const age = this.epoch - data.startBar;
+                    const progress = Math.min(1, (age + 1) / 3);
+                    instrumentHints.summonProgress![part] = progress;
+                    atLeastOneActive = true;
+                }
             }
         });
+
+        // RULE: No Silence (Anti-Dead-Air)
+        if (!atLeastOneActive && this.epoch > 0) {
+            const candidates = Object.entries(currentStage.instrumentation)
+                .sort((a, b) => (b[1] as any).activationChance - (a[1] as any).activationChance);
+            if (candidates.length > 0) {
+                const [bestPart, bestRule] = candidates[0];
+                this.activatedInstruments.set(bestPart as InstrumentPart, {
+                    timbre: this.pickWeighted((bestRule as any).instrumentOptions),
+                    startBar: this.epoch
+                });
+                console.warn(`Plan171 - [Guard] Anti-Silence triggered. Forced summoning of ${bestPart}`);
+            }
+        }
     }
 
-    this.activatedInstruments.forEach((timbre, part) => { (instrumentHints as any)[part] = timbre; });
     if (navInfo.currentPart.layers.pianoAccompaniment) instrumentHints.pianoAccompaniment = 'piano';
 
-    // Plan 154: Логирование состояния резонансного буфера
-    console.log(`Plan154 - engine/evolve: Resonance buffer contains ${this.lastEvents.length} events from previous bar.`);
-
     const result = this.generateOneBar(barDuration, navInfo, instrumentHints);
-    
-    // Обновляем память для следующего такта
     this.lastEvents = [...result.events];
 
     return { ...result, instrumentHints };
@@ -157,7 +198,6 @@ export class FractalMusicEngine {
     let allEvents: FractalEvent[] = [];
 
     if (this.config.genre === 'blues' && this.bluesBrain) {
-        // #ЗАЧЕМ: Передача памяти ансамбля (lastEvents) в Мозг.
         allEvents = this.bluesBrain.generateBar(this.epoch, currentChord, navInfo, this.suiteDNA, instrumentHints, this.lastEvents);
     } else {
         const harmonyEvents = createHarmonyAxiom(currentChord, this.config.mood, this.config.genre, this.random, this.epoch);

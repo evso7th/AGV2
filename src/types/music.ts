@@ -345,3 +345,14 @@ export type SuiteDNA = {
   soloPlanMap: Map<string, string>;
   bluesMelodyId?: string; // ТЕМАТИЧЕСКИЙ ЯКОРЬ
 };
+
+/**
+ * #ЗАЧЕМ: Расширенные подсказки для исполнителей.
+ */
+export type InstrumentHints = FractalInstrumentHints & {
+    /** 
+     * #ЗАЧЕМ: Реализация архитектуры "Dramatic Gravity".
+     * #ЧТО: Значение 0..1, указывающее на прогресс вступления инструмента.
+     */
+    summonProgress?: Partial<Record<InstrumentPart, number>>;
+};
