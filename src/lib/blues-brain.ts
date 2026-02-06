@@ -1,4 +1,3 @@
-
 import type {
   FractalEvent,
   GhostChord,
@@ -19,9 +18,9 @@ import { BLUES_GUITAR_VOICINGS } from './assets/guitar-voicings';
 import { GUITAR_PATTERNS } from './assets/guitar-patterns';
 
 /**
- * #ЗАЧЕМ: Блюзовый Мозг V12.8 — "The Mindful Pianist".
- * #ЧТО: Пианино переведено в режим "деликатного фона" с мотивной структурой.
- *       Реализован механизм "Dramatic Gravity" для плавного вступления инструментов.
+ * #ЗАЧЕМ: Блюзовый Мозг V12.8.1 — "The Stabilized Mind".
+ * #ЧТО: Исправлена критическая ошибка инициализации генератора случайных чисел.
+ *       Пианино теперь играет деликатно, не вылезая на передний план.
  */
 
 const ENERGY_PRICES = {
@@ -31,7 +30,7 @@ const ENERGY_PRICES = {
     drums_full: 25,
     drums_minimal: 10,
     harmony: 15,      
-    piano: 15, // Снижена цена для частого, но легкого участия
+    piano: 15, 
     sfx: 10,          
     sparkles: 5       
 };
@@ -45,6 +44,7 @@ export class BluesBrain {
   private lastAscendingBar: number = -10;
   private currentAxiom: MelodicAxiomNote[] = [];
   private lastBarHadClimax = false;
+  private random: any;
   
   // Pattern Rotation State
   private readonly patternOptions: string[] = ['F_TRAVIS', 'F_ROLL12', 'S_SWING'];
@@ -52,8 +52,22 @@ export class BluesBrain {
   constructor(seed: number, mood: Mood) {
     this.seed = seed;
     this.mood = mood;
+    this.random = this.createSeededRandom(seed);
     const anchorDegrees = ['R', 'b3', '5', 'b7'];
     this.thematicDegree = anchorDegrees[calculateMusiNum(seed, 3, seed, anchorDegrees.length)];
+  }
+
+  private createSeededRandom(seed: number) {
+    let state = seed;
+    const next = () => {
+      state = (state * 1664525 + 1013904223) % Math.pow(2, 32);
+      return state / Math.pow(2, 32);
+    };
+    return {
+      next,
+      nextInt: (max: number) => Math.floor(next() * max),
+      nextInRange: (min: number, max: number) => min + next() * (max - min)
+    };
   }
 
   public generateBar(
@@ -124,12 +138,10 @@ export class BluesBrain {
     }
 
     // 3. PIANO (Mindful Background)
-    // #ЗАЧЕМ: Пианино теперь играет деликатно, не вылезая на передний план.
-    // #ЧТО: Генерируется мягкий мотив (broken chord) с низким весом.
     if (hints.pianoAccompaniment && (consumedEnergy + ENERGY_PRICES.piano <= barBudget)) {
         const pianoEvents = this.generatePianoMotif(epoch, currentChord, tempo, tension);
         const prog = hints.summonProgress?.pianoAccompaniment ?? 1.0;
-        pianoEvents.forEach(e => { e.weight *= (0.4 * prog); }); // Фиксированное снижение веса для "фона"
+        pianoEvents.forEach(e => { e.weight *= (0.4 * prog); }); 
         events.push(...pianoEvents);
         consumedEnergy += ENERGY_PRICES.piano;
     }
@@ -156,13 +168,13 @@ export class BluesBrain {
 
   private evaluateTimbralDramaturgy(tension: number, hints: InstrumentHints) {
     if (hints.melody && typeof hints.melody !== 'string') {
-        if (tension < 0.5) hints.melody = 'telecaster' as any;
-        else hints.melody = 'blackAcoustic' as any;
+        if (tension < 0.5) (hints as any).melody = 'telecaster';
+        else (hints as any).melody = 'blackAcoustic';
     }
     if (hints.accompaniment && typeof hints.accompaniment !== 'string') {
-        if (tension < 0.4) hints.accompaniment = 'ep_rhodes_warm' as any;
-        else if (tension < 0.7) hints.accompaniment = 'organ_soft_jazz' as any;
-        else hints.accompaniment = 'organ_jimmy_smith' as any;
+        if (tension < 0.4) (hints as any).accompaniment = 'ep_rhodes_warm';
+        else if (tension < 0.7) (hints as any).accompaniment = 'organ_soft_jazz';
+        else (hints as any).accompaniment = 'organ_jimmy_smith';
     }
   }
 
@@ -229,7 +241,7 @@ export class BluesBrain {
     const pool = ['R', 'b3', '4', '5', 'b7', this.thematicDegree];
     const count = tension > 0.6 ? 3 : 2;
     for (let i = 0; i < count; i++) {
-        const stepSeed = this.seed + i + Math.floor(Math.random() * 100);
+        const stepSeed = this.seed + i + 100;
         axiom.push({ 
             deg: pool[calculateMusiNum(stepSeed, 3, i, pool.length)], 
             t: i * 3, 
@@ -294,9 +306,6 @@ export class BluesBrain {
     });
   }
 
-  /**
-   * #ЗАЧЕМ: Пианино больше не "солирует", а создает мягкий гармонический фон.
-   */
   private generatePianoMotif(epoch: number, chord: GhostChord, tempo: number, tension: number): FractalEvent[] {
     const beatDur = 60 / tempo;
     const root = chord.rootNote + 36;
@@ -304,14 +313,14 @@ export class BluesBrain {
     const notes = [root + 7, root + 10, root + (isMinor ? 15 : 16)]; // 5, b7, 9/8
     
     const events: FractalEvent[] = [];
-    const density = 0.25 + (tension * 0.2); // Сниженная плотность
+    const density = 0.25 + (tension * 0.2); 
     
     [1, 2, 3].forEach(beat => {
         if (calculateMusiNum(epoch + beat, 7, this.seed + 50, 10) / 10 < density) {
             events.push({
                 type: 'pianoAccompaniment',
                 note: notes[calculateMusiNum(epoch + beat, 3, this.seed, 3)],
-                time: beat * beatDur + (this.random.next() * 0.1), // Смещение для "человечности"
+                time: beat * beatDur + (this.random.next() * 0.1), 
                 duration: beatDur * 1.5,
                 weight: 0.35 + (tension * 0.25),
                 technique: 'hit',
@@ -330,7 +339,7 @@ export class BluesBrain {
       const events: FractalEvent[] = [];
 
       if (instrument === 'guitarChords') {
-          const chordName = isMinor ? 'Am7' : 'E7'; // Simplified naming for sampler
+          const chordName = isMinor ? 'Am7' : 'E7'; 
           events.push({
               type: 'harmony',
               note: root + 24,
@@ -344,7 +353,6 @@ export class BluesBrain {
               params: { barCount: epoch }
           });
       } else if (instrument === 'flute') {
-          // Деликатная флейта: одна длинная нота на квинту или тонику
           const degree = (epoch % 8 < 4) ? 7 : 0;
           events.push({
               type: 'harmony',

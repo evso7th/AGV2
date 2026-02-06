@@ -3,13 +3,24 @@ import type {
     InstrumentHints as FractalInstrumentHints, 
     InstrumentPart as FractalInstrumentPart,
     FractalEvent,
-    GhostChord
+    GhostChord,
+    SuiteDNA as FractalSuiteDNA,
+    NavigationInfo as FractalNavigationInfo
 } from './fractal';
 import { V2_PRESETS } from '@/lib/presets-v2';
 import { BASS_PRESETS } from '@/lib/bass-presets';
 
+/**
+ * #ЗАЧЕМ: Центральный хаб типов AuraGroove.
+ * #ЧТО: Ре-экспортирует типы из fractal.ts и определяет UI-специфичные структуры.
+ *       Исправлены ошибки отсутствия экспорта FractalEvent и GhostChord.
+ */
+
 export type Mood = FractalMood;
 export type { FractalEvent, GhostChord };
+export type NavigationInfo = FractalNavigationInfo;
+export type SuiteDNA = FractalSuiteDNA;
+export type InstrumentPart = FractalInstrumentPart;
 
 export type PlayableNote = {
     midi: number;
@@ -99,7 +110,6 @@ export type DrumAndPercussionInstrument =
 
 export type InstrumentType = BassInstrument | MelodyInstrument | AccompanimentInstrument | EffectInstrument | DrumAndPercussionInstrument | 'portamento' | 'autopilot_bass' | 'none';
 
-export type InstrumentPart = FractalInstrumentPart;
 export type BassTechnique = 'arpeggio' | 'portamento' | 'glissando' | 'glide' | 'pulse' | 'riff' | 'long_notes' | 'walking' | 'boogie' | 'syncopated';    
 
 export type Technique = BassTechnique | 'pluck' | 'pick' | 'harm' | 'slide' | 'hit' | 'ghost' | 'swell' | 'fill' | 'bend' | 'vibrato';
@@ -192,7 +202,7 @@ export type InstrumentBehaviorRules = {
     pattern?: 'ambient_beat' | 'composer' | 'none';
     kickVolume?: number;
     source?: MelodySource;
-    style?: 'solo' | 'fingerstyle' | 'chord-melody'; // #ЗАЧЕМ: Поддержка смены амплуа.
+    style?: 'solo' | 'fingerstyle' | 'chord-melody'; 
     techniques?: { value: string; weight: number }[];
      ride?: {
         enabled: boolean;
@@ -314,51 +324,6 @@ export type MusicBlueprint = {
     rendering: any;
 };
 
-export type NavigationInfo = {
-  currentPart: BlueprintPart;
-  currentBundle: BlueprintBundle;
-  isPartTransition: boolean;
-  isBundleTransition: boolean;
-  logMessage: string | null;
-  currentPartStartBar: number;
-  currentPartEndBar: number;
-};
-
-/**
- * #ЗАЧЕМ: Когнитивное состояние блюзового исполнителя.
- */
-export interface BluesCognitiveState {
-  phraseState: 'call' | 'response' | 'fill' | 'CLIMAX' | 'TURNAROUND' | 'call_var';
-  tensionLevel: number;
-  phraseHistory: string[];
-  lastPhraseHash: string;
-  blueNotePending: boolean;
-  emotion: { melancholy: number; darkness: number };
-  // #ЗАЧЕМ: Отслеживание позиции в 4-тактовом рифф-цикле.
-  barInRiff?: number; 
-  activeRiffId?: string;
-}
-
-/**
- * #ЗАЧЕМ: "ДНК Сюиты" — это уникальный генетический код для всей пьесы.
- */
-export type SuiteDNA = {
-  harmonyTrack: GhostChord[];
-  baseTempo: number;
-  rhythmicFeel: 'shuffle' | 'straight';
-  bassStyle: 'boogie' | 'walking' | 'pedal';
-  drumStyle: string;
-  soloPlanMap: Map<string, string>;
-  tensionMap: number[];
-  /** #ЗАЧЕМ: Тип блюзовой сетки (План №175). */
-  bluesGridType?: 'classic' | 'quick-change' | 'minor-blues';
-  /** #ЗАЧЕМ: Тематические якоря сюиты (План №175). */
-  thematicAnchors?: string[];
-};
-
-/**
- * #ЗАЧЕМ: Расширенные подсказки для исполнителей.
- */
 export type InstrumentHints = FractalInstrumentHints & {
     /** 
      * #ЗАЧЕМ: Реализация архитектуры "Dramatic Gravity".
