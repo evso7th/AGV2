@@ -112,17 +112,19 @@ export const V2_PRESETS = {
 
   guitar_shineOn: {
     type: 'guitar',
-    name: 'Shine On Guitar',
-    volume: 0.25, // #ИСПРАВЛЕНО (ПЛАН 162): Снижено в 4 раза (с 1.0 до 0.25)
-    osc: { width: 0.46, detune: 5, mainGain: 0.85, detGain: 0.18, subGain: 0.25 },
-    pickup: { cutoff: 3600, q: 1.0 },
-    drive: { type: 'soft', amount: 0.25 }, 
-    comp: { threshold: -18, ratio: 3, attack: 0.01, release: 0.12, makeup: 3 },
-    post: { lpf: 5200 },
-    phaser: { on: true, rate: 0.16, depth: 600, mix: 0.18 },
-    delayA: { on: true, time: 0.38, fb: 0.25, mix: 0.15 },
-    adsr: { a: 0.006, d: 0.4, s: 0.65, r: 1.6 }, 
-    reverbMix: 0.22
+    name: 'Velvet Lead', // Renamed from Shine On
+    volume: 0.3,
+    // #ИСПРАВЛЕНО (ПЛАН 173): width 0.32 убирает носовой "кошачий" звук (был 0.46).
+    osc: { width: 0.32, detune: 2, mainGain: 0.9, detGain: 0.1, subGain: 0.3 },
+    // #ЗАЧЕМ: Срез на 2200 Hz убирает пластмассовый цифровой свист.
+    pickup: { cutoff: 2200, q: 0.8 },
+    drive: { type: 'soft', amount: 0.15 }, 
+    comp: { threshold: -22, ratio: 4, attack: 0.01, release: 0.2, makeup: 4 },
+    post: { lpf: 3800 },
+    phaser: { on: false }, // Отключен для устранения синтезаторного маркера
+    delayA: { on: true, time: 0.42, fb: 0.25, mix: 0.12 },
+    adsr: { a: 0.015, d: 0.4, s: 0.7, r: 2.4 }, // Смягченная атака
+    reverbMix: 0.2
   },
 
   guitar_muffLead: {
@@ -166,7 +168,7 @@ export const BASS_PRESET_MAP: Record<string, keyof typeof BASS_PRESETS> = {
     ambientDrone: 'bass_ambient_dark',
     resonantGliss: 'bass_trance_acid',
     hypnoticDrone: 'bass_ambient',
-    livingRiff: 'bass_slap',
+    linkRiff: 'bass_slap',
     // V2 identity mapping
     bass_jazz_warm: 'bass_jazz_warm',
     bass_jazz_fretless: 'bass_jazz_fretless',
