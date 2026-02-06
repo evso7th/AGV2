@@ -245,7 +245,7 @@ export function generateSuiteDNA(totalBars: number, mood: Mood, seed: number, ra
     const anchorPool = ['R', 'b3', '4', '5', 'b7'];
     const thematicAnchors = [
         anchorPool[calculateMusiNum(seed, 3, 0, anchorPool.length)],
-        anchorPool[calculateMusiNum(seed, 5, 1, anchorPool.length)]
+        anchorPool[anchorPool.length - 1 - calculateMusiNum(seed, 5, 1, anchorPool.length)]
     ];
 
     return { 

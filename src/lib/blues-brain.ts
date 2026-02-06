@@ -18,8 +18,8 @@ import { BLUES_GUITAR_VOICINGS } from './assets/guitar-voicings';
 import { GUITAR_PATTERNS } from './assets/guitar-patterns';
 
 /**
- * #ЗАЧЕМ: Блюзовый Мозг V12.6 — "Elastic Riff & Style Swell".
- * #ЧТО: Внедрена рифф-базед структура, автоматическая смена стилей гитары и резонанс.
+ * #ЗАЧЕМ: Блюзовый Мозг V12.7 — "Elastic Riff & 4-Bar Consistency".
+ * #ЧТО: Внедрена упругая рифф-базед структура с выбором паттернов блоками по 4 такта.
  */
 
 const ENERGY_PRICES = {
@@ -44,9 +44,7 @@ export class BluesBrain {
   private currentAxiom: MelodicAxiomNote[] = [];
   private axiomAge: number = 0;
   
-  // Pattern Rotation & State
-  private patternIdx: number = 0;
-  private lastPatternChange: number = 0;
+  // Pattern Rotation State
   private readonly patternOptions: string[] = ['F_TRAVIS', 'F_ROLL12', 'S_SWING'];
 
   constructor(seed: number, mood: Mood) {
@@ -80,11 +78,10 @@ export class BluesBrain {
     const lastBarHadScream = lastEvents.some(e => e.type === 'melody' && e.note > 74 && e.duration > 0.8);
     const melodyDensity = lastEvents.filter(e => e.type === 'melody').length;
 
-    // Pattern Rotation
-    if (epoch - this.lastPatternChange >= 8 || (tension > 0.8 && epoch - this.lastPatternChange >= 4)) {
-        this.patternIdx = (this.patternIdx + 1) % this.patternOptions.length;
-        this.lastPatternChange = epoch;
-    }
+    // #ЗАЧЕМ: Детерминированная ротация паттерна аккомпанемента каждые 8 тактов (Stagnation Guard).
+    const patternCycleIndex = Math.floor(epoch / 8);
+    const patternIdx = calculateMusiNum(patternCycleIndex, 3, this.seed, this.patternOptions.length);
+    const currentPattern = this.patternOptions[patternIdx];
 
     const barBudget = 100 + (tension * 100);
     let consumedEnergy = 0;
@@ -132,7 +129,6 @@ export class BluesBrain {
 
     // 3. HARMONY (Stagnation guard)
     if (hints.accompaniment && (consumedEnergy + ENERGY_PRICES.harmony <= barBudget)) {
-        const currentPattern = this.patternOptions[this.patternIdx];
         const accEvents = this.generateHarmony(epoch, currentChord, tempo, tension, currentPattern);
         const prog = hints.summonProgress?.accompaniment ?? 1.0;
         accEvents.forEach(e => { e.weight *= prog; });
@@ -197,14 +193,11 @@ export class BluesBrain {
     }));
   }
 
-  /**
-   * #ЗАЧЕМ: Реализация нежного фингерстайл-режима.
-   */
   private generateFingerstyleMelody(epoch: number, chord: GhostChord, tempo: number, tension: number): FractalEvent[] {
       const beatDur = 60 / tempo;
       const root = chord.rootNote + 36;
       const isMinor = chord.chordType === 'minor';
-      const notes = [root, root + (isMinor ? 3 : 4), root + 7, root + 10]; // 1, 3, 5, 7
+      const notes = [root, root + (isMinor ? 3 : 4), root + 7, root + 10];
       
       const events: FractalEvent[] = [];
       const density = 0.3 + (tension * 0.3);
@@ -248,10 +241,10 @@ export class BluesBrain {
         let newDeg = note.deg;
         let newTech = note.tech;
 
-        // Mutation based on tension & plot semantics
-        if (tension > 0.65 && phase === 'CLIMAX' && Math.random() < 0.35) {
+        // #ЗАЧЕМ: Мутация ступеней на основе напряжения (СОР).
+        if (tension > 0.65 && phase === 'CLIMAX' && calculateMusiNum(this.epoch, 7, this.seed, 10) > 6) {
             const highPool = ['5', 'b7', 'R+8', '9'];
-            newDeg = highPool[Math.floor(Math.random() * highPool.length)];
+            newDeg = highPool[calculateMusiNum(this.epoch + i, 3, this.seed, highPool.length)];
             newTech = 'bend';
         } else if (phase === 'RESPONSE' && i === axiom.length - 1) {
             newDeg = (dna.thematicAnchors?.[0] as any) || 'R';
@@ -283,10 +276,12 @@ export class BluesBrain {
   private generateBass(epoch: number, chord: GhostChord, tempo: number, tension: number, isWalking: boolean): FractalEvent[] {
     const tickDur = (60 / tempo) / 3;
     const riffs = BLUES_BASS_RIFFS[this.mood] || BLUES_BASS_RIFFS.contemplative;
-    const riff = riffs[calculateMusiNum(epoch, 5, this.seed + 100, riffs.length)];
-    const barIn12 = epoch % 12;
     
-    // #ЗАЧЕМ: Упругая рифф-базед структура.
+    // #ЗАЧЕМ: Выбор риффа раз в 4 такта для упругого грува.
+    const riffCycleIndex = Math.floor(epoch / 4);
+    const riff = riffs[calculateMusiNum(riffCycleIndex, 5, this.seed + 100, riffs.length)];
+    
+    const barIn12 = epoch % 12;
     let pattern = (!isWalking) ? [{ t: 0, d: 12, deg: 'R' as BluesRiffDegree }] : riff.I;
     if (barIn12 === 11) pattern = riff.turn;
     else if ([4, 5, 9, 10].includes(barIn12)) pattern = riff.IV;
@@ -315,7 +310,6 @@ export class BluesBrain {
     const voicing = BLUES_GUITAR_VOICINGS['E7_open'];
     const events: FractalEvent[] = [];
     
-    // Riff-based rhythm for harmony
     const steps = (tension > 0.6 || patternName.startsWith('S_')) ? pattern.pattern : [pattern.pattern[0]];
     
     steps.forEach(step => {
