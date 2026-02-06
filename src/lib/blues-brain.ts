@@ -18,13 +18,11 @@ import { BLUES_GUITAR_VOICINGS } from './assets/guitar-voicings';
 import { GUITAR_PATTERNS } from './assets/guitar-patterns';
 
 /**
- * #ЗАЧЕМ: Блюзовый Мозг V4.0 — Structural Narrative Engine.
- * #ЧТО: Полный отказ от микро-генерации нот. Теперь музыка строится
- *       на уровне Фраз (Licks) и Планов (Solo Plans).
- *       1. Ритм: Истинный 12/8 Shuffle из оцифрованной библиотеки.
- *       2. Бас: Живые волкинг-линии из архива.
- *       3. Мелодия: Выполнение "Solo Plan" на 36 тактов.
- * #СВЯЗИ: Является единственным источником музыкальных решений в жанре 'blues'.
+ * #ЗАЧЕМ: Блюзовый Мозг V4.1 — Narrative Soloist.
+ * #ЧТО: Реализация принципа "Переборы — специя, Соло — основное блюдо".
+ *       1. Аккомпанемент (Picking): Снижена вероятность появления до 30%.
+ *       2. Соло (Melody): Повышен приоритет и динамический вес.
+ *       3. Структура: Сохранение 12-тактового нарратива.
  */
 
 export class BluesBrain {
@@ -40,7 +38,7 @@ export class BluesBrain {
     const planIds = Object.keys(BLUES_SOLO_PLANS);
     const planIdx = calculateMusiNum(seed, 7, seed, planIds.length);
     this.soloPlanId = planIds[planIdx];
-    console.log(`%c[BluesBrain] Selected Solo Plan: ${this.soloPlanId}`, 'color: #00FF00; font-weight: bold;');
+    console.log(`%c[BluesBrain] Narrative Solo Plan: ${this.soloPlanId}`, 'color: #00FF00; font-weight: bold;');
   }
 
   public generateBar(
@@ -52,11 +50,10 @@ export class BluesBrain {
   ): FractalEvent[] {
     const events: FractalEvent[] = [];
     const barDuration = 60 / (dna.baseTempo || 72);
-    const beatDuration = barDuration / 4;
     
     // Определение позиции в 12-тактовом цикле
     const barIn12 = epoch % 12;
-    const chorusIdx = Math.floor(epoch / 12) % 3; // Планы обычно на 3 хора
+    const chorusIdx = Math.floor(epoch / 12) % 3;
 
     // 1. УДАРНЫЕ — Блюзовый кач
     if (hints.drums) {
@@ -68,12 +65,12 @@ export class BluesBrain {
       events.push(...this.generateBass(epoch, currentChord, dna.baseTempo));
     }
 
-    // 3. АККОМПАНЕМЕНТ — Трэвис-пикинг и страм
+    // 3. АККОМПАНЕМЕНТ — Трэвис-пикинг и страм (ТЕПЕРЬ ЭТО СПЕЦИЯ)
     if (hints.accompaniment) {
       events.push(...this.generateAccompaniment(epoch, currentChord, dna.baseTempo));
     }
 
-    // 4. МЕЛОДИЯ — Исполнение плана соло
+    // 4. МЕЛОДИЯ — Исполнение плана соло (ОСНОВНОЕ БЛЮДО)
     if (hints.melody) {
       events.push(...this.generateMelody(epoch, currentChord, chorusIdx, barIn12, dna.baseTempo));
     }
@@ -83,27 +80,20 @@ export class BluesBrain {
 
   private generateDrums(epoch: number, tempo: number): FractalEvent[] {
     const beatDur = 60 / tempo;
-    const tpb = 12;
     const tickDur = beatDur / 3;
     
-    // Выбор паттерна из библиотеки по настроению
     const kit = BLUES_DRUM_RIFFS[this.mood] || BLUES_DRUM_RIFFS.contemplative;
     const patternIdx = calculateMusiNum(epoch, 3, this.seed, kit.length);
     const p = kit[patternIdx];
 
     const events: FractalEvent[] = [];
 
-    // Хэты (Shuffle)
     (p.HH || []).forEach(t => {
       events.push(this.createDrumEvent('drum_hihat', t * tickDur, 0.45, 'p'));
     });
-
-    // Кик
     (p.K || []).forEach(t => {
       events.push(this.createDrumEvent('drum_kick', t * tickDur, 0.8, 'mf'));
     });
-
-    // Снейр
     (p.SD || []).forEach(t => {
       events.push(this.createDrumEvent('drum_snare', t * tickDur, 0.7, 'mf'));
     });
@@ -138,24 +128,27 @@ export class BluesBrain {
   }
 
   private generateAccompaniment(epoch: number, chord: GhostChord, tempo: number): FractalEvent[] {
+    // #ЗАЧЕМ: Перебор — это специя (Spice Logic).
+    // #ЧТО: Снижаем вероятность появления перебора до 30% тактов (детерминировано через MusiNum).
+    if (calculateMusiNum(epoch, 5, this.seed + 250, 10) > 2) return [];
+
     const beatDur = 60 / tempo;
     const tickDur = beatDur / 3;
     
-    // Перебор на основе гитарного паттерна
     const pattern = GUITAR_PATTERNS['F_ROLL12'];
-    const voicing = BLUES_GUITAR_VOICINGS['E7_open']; // Упрощенно для фона
+    const voicing = BLUES_GUITAR_VOICINGS['E7_open'];
 
     const events: FractalEvent[] = [];
     pattern.pattern.forEach(step => {
       step.ticks.forEach(t => {
         step.stringIndices.forEach(idx => {
-          const note = chord.rootNote + (voicing[idx] - 40); // Транспозиция формы
+          const note = chord.rootNote + (voicing[idx] - 40);
           events.push({
             type: 'accompaniment',
             note,
             time: t * tickDur,
             duration: beatDur * 2,
-            weight: 0.25,
+            weight: 0.2, // Снижен вес, чтобы не спорить с соло
             technique: 'pluck',
             dynamics: 'p',
             phrasing: 'detached'
@@ -179,12 +172,10 @@ export class BluesBrain {
     
     return lickData.phrase.map(n => ({
       type: 'melody',
-      // #ИСПРАВЛЕНО: Подъем регистра на 2 октавы (+24 к существующим +12 = +36).
-      // #ЗАЧЕМ: Чтобы Black Acoustic гитара играла в сольном диапазоне E4-A5.
       note: chord.rootNote + 36 + this.degreeToSemitone(n.deg),
       time: n.t * tickDur,
       duration: n.d * tickDur,
-      weight: 0.85,
+      weight: 0.95, // СОЛО — ОСНОВНОЕ БЛЮДО (High priority)
       technique: (n.tech as any) || 'pick',
       dynamics: 'mf',
       phrasing: 'legato'
