@@ -22,7 +22,7 @@ export const DarkBluesBlueprint: MusicBlueprint = {
                     { 
                         duration: { percent: 10 }, 
                         instrumentation: {
-                           melody: { activationChance: 1.0, instrumentOptions: [ { name: 'blackAcoustic', weight: 1.0 } ] },
+                           melody: { activationChance: 1.0, instrumentOptions: [ { name: 'guitar_shineOn', weight: 1.0 } ] },
                            pianoAccompaniment: { activationChance: 0.8, instrumentOptions: [ { name: 'piano', weight: 1.0 } ] },
                            accompaniment: { activationChance: 0.8, instrumentOptions: [ { name: 'organ_soft_jazz', weight: 1.0 } ] },
                            harmony: { activationChance: 1.0, instrumentOptions: [ { name: 'guitarChords', weight: 0.8 }, { name: 'flute', weight: 0.2 } ] }
@@ -31,7 +31,7 @@ export const DarkBluesBlueprint: MusicBlueprint = {
                     {
                         duration: { percent: 10 }, 
                         instrumentation: {
-                           melody: { activationChance: 1.0, instrumentOptions: [ { name: 'blackAcoustic', weight: 1.0 } ] },
+                           melody: { activationChance: 1.0, instrumentOptions: [ { name: 'guitar_shineOn', weight: 1.0 } ] },
                            bass: { activationChance: 0.4, instrumentOptions: [ { name: 'bass_dub', weight: 1.0 } ] },
                            drums: { activationChance: 0.4, instrumentOptions: [ { name: 'blues_melancholic_master', weight: 1.0 } ] },
                            harmony: { activationChance: 1.0, instrumentOptions: [ { name: 'guitarChords', weight: 0.8 }, { name: 'flute', weight: 0.2 } ] },
@@ -41,7 +41,7 @@ export const DarkBluesBlueprint: MusicBlueprint = {
                     {
                         duration: { percent: 20 }, 
                         instrumentation: {
-                           melody: { activationChance: 1.0, instrumentOptions: [ { name: 'blackAcoustic', weight: 1.0 } ] },
+                           melody: { activationChance: 1.0, instrumentOptions: [ { name: 'guitar_shineOn', weight: 1.0 } ] },
                            accompaniment: { activationChance: 1.0, instrumentOptions: [ { name: 'organ_soft_jazz', weight: 1.0 } ] },
                            drums: { activationChance: 0.7, instrumentOptions: [ { name: 'blues_melancholic_master', weight: 1.0 } ] },
                            harmony: { activationChance: 1.0, instrumentOptions: [ { name: 'guitarChords', weight: 0.8 }, { name: 'flute', weight: 0.2 } ] }
@@ -50,7 +50,7 @@ export const DarkBluesBlueprint: MusicBlueprint = {
                     {
                         duration: { percent: 60 }, 
                         instrumentation: {
-                           melody: { activationChance: 1.0, instrumentOptions: [ { name: 'blackAcoustic', weight: 1.0 } ] },
+                           melody: { activationChance: 1.0, instrumentOptions: [ { name: 'guitar_shineOn', weight: 1.0 } ] },
                            pianoAccompaniment: { activationChance: 1.0, instrumentOptions: [ { name: 'piano', weight: 1.0 } ] },
                            accompaniment: { activationChance: 1.0, instrumentOptions: [ { name: 'organ_soft_jazz', weight: 1.0 } ] },
                            bass: { activationChance: 1.0, instrumentOptions: [ { name: 'bass_dub', weight: 1.0 } ] },
@@ -64,7 +64,6 @@ export const DarkBluesBlueprint: MusicBlueprint = {
                 instrumentRules: {
                     bass: { techniques: [{ value: 'riff', weight: 1.0 }], density: { min: 0.2, max: 0.4 } },
                     accompaniment: { techniques: [{ value: 'long-chords', weight: 1.0 }], density: { min: 0.4, max: 0.7 } },
-                    // #ЗАЧЕМ: Всегда соло для максимальной выразительности.
                     melody: { source: 'blues_solo', soloToPatternRatio: 1.0, density: { min: 0.5, max: 0.9 }, soloPlan: "S06" },
                     drums: { kitName: 'blues_melancholic_master', density: { min: 0.3, max: 0.5 }, usePerc: true },
                     sfx: { eventProbability: 0.15, categories: [{ name: 'dark', weight: 1.0 }] },
@@ -78,7 +77,7 @@ export const DarkBluesBlueprint: MusicBlueprint = {
                 layers: { bass: true, sfx: true, drums: true, melody: true, accompaniment: true, harmony: true, sparkles: true, pianoAccompaniment: true },
                 instrumentation: {
                     bass: { strategy: 'weighted', v1Options: [ { name: 'bass_dub', weight: 1.0 } ], v2Options: [ { name: 'bass_dub', weight: 1.0 } ] },
-                    melody: { strategy: 'weighted', v1Options: [{name: 'blackAcoustic', weight: 1.0}], v2Options: [{name: 'blackAcoustic', weight: 1.0}] },
+                    melody: { strategy: 'weighted', v1Options: [{name: 'guitar_shineOn', weight: 1.0}], v2Options: [{name: 'guitar_shineOn', weight: 1.0}] },
                     accompaniment: { strategy: 'weighted', v1Options: [{ name: 'organ_soft_jazz', weight: 1.0 }], v2Options: [{ name: 'organ_soft_jazz', weight: 1.0 }] },
                     harmony: { strategy: 'weighted', options: [ { name: 'guitarChords', weight: 0.8 }, { name: 'flute', weight: 0.2 } ] }
                 },
@@ -96,7 +95,7 @@ export const DarkBluesBlueprint: MusicBlueprint = {
                 layers: { bass: true, drums: true, melody: true, harmony: true, pianoAccompaniment: true, accompaniment: true },
                 instrumentation: {
                     accompaniment: { strategy: 'weighted', v1Options: [{ name: 'synth_ambient_pad_lush', weight: 1.0 }], v2Options: [{ name: 'synth_ambient_pad_lush', weight: 1.0 }] },
-                    melody: { strategy: 'weighted', v1Options: [{ name: 'blackAcoustic', weight: 1.0 }], v2Options: [{ name: 'blackAcoustic', weight: 1.0 }] },
+                    melody: { strategy: 'weighted', v1Options: [{ name: 'guitar_shineOn', weight: 1.0 }], v2Options: [{ name: 'guitar_shineOn', weight: 1.0 }] },
                     harmony: { strategy: 'weighted', options: [ { name: 'guitarChords', weight: 0.8 }, { name: 'flute', weight: 0.2 } ] }
                 },
                 instrumentRules: {

@@ -3,7 +3,7 @@ import type { MusicBlueprint } from '@/types/music';
 /**
  * #ЗАЧЕМ: Блюпринт "The Bluest Blues" (v12.5 - Atmospheric Synthesis).
  * #ЧТО: Смена манеры аккомпанемента на "soft sustained" (long-chords и arpeggio-slow).
- * #ИНТЕГРАЦИЯ: Регистровая дисциплина и идеальный фон для Black Acoustic.
+ * #ИНТЕГРАЦИЯ: Регистровая дисциплина и идеальный фон для Shine On Guitar.
  */
 export const WinterBluesBlueprint: MusicBlueprint = {
     id: 'winter_blues',
@@ -31,7 +31,7 @@ export const WinterBluesBlueprint: MusicBlueprint = {
                     { 
                         duration: { percent: 100 }, 
                         instrumentation: {
-                           melody: { activationChance: 1.0, instrumentOptions: [ { name: 'blackAcoustic', weight: 1.0 } ] },
+                           melody: { activationChance: 1.0, instrumentOptions: [ { name: 'guitar_shineOn', weight: 1.0 } ] },
                            pianoAccompaniment: { activationChance: 1.0, instrumentOptions: [ { name: 'piano', weight: 1.0 } ] },
                            bass: { activationChance: 1.0, instrumentOptions: [ { name: 'bass_jazz_warm', weight: 1.0 } ] },
                            drums: { activationChance: 1.0, instrumentOptions: [ { name: 'blues_melancholic', weight: 1.0 } ] },
@@ -43,8 +43,6 @@ export const WinterBluesBlueprint: MusicBlueprint = {
                 instrumentRules: {
                     bass: { techniques: [{ value: 'walking', weight: 1.0 }], density: { min: 1.0, max: 1.0 } },
                     accompaniment: { 
-                        // #ЗАЧЕМ: Смена на мягкую, протяжную манеру игры.
-                        // #ЧТО: Смесь длинных аккордов (80%) и медленных арпеджио (20%).
                         techniques: [
                             { value: 'long-chords', weight: 0.8 },
                             { value: 'arpeggio-slow', weight: 0.2 }
@@ -68,7 +66,7 @@ export const WinterBluesBlueprint: MusicBlueprint = {
                     { 
                         duration: { percent: 100 }, 
                         instrumentation: {
-                           melody: { activationChance: 1.0, instrumentOptions: [ { name: 'blackAcoustic', weight: 1.0 } ] },
+                           melody: { activationChance: 1.0, instrumentOptions: [ { name: 'guitar_shineOn', weight: 1.0 } ] },
                            bass: { activationChance: 1.0, instrumentOptions: [ { name: 'bass_jazz_warm', weight: 1.0 } ] },
                            drums: { activationChance: 1.0, instrumentOptions: [ { name: 'blues_melancholic_master', weight: 1.0 } ] },
                            accompaniment: { activationChance: 1.0, instrumentOptions: [ { name: 'organ_soft_jazz', weight: 1.0 } ] },
@@ -102,7 +100,7 @@ export const WinterBluesBlueprint: MusicBlueprint = {
                     { 
                         duration: { percent: 100 }, 
                         instrumentation: {
-                           melody: { activationChance: 1.0, instrumentOptions: [ { name: 'blackAcoustic', weight: 1.0 } ] },
+                           melody: { activationChance: 1.0, instrumentOptions: [ { name: 'guitar_shineOn', weight: 1.0 } ] },
                            bass: { activationChance: 1.0, instrumentOptions: [ { name: 'bass_jazz_warm', weight: 1.0 } ] },
                            accompaniment: { activationChance: 1.0, instrumentOptions: [ { name: 'organ_soft_jazz', weight: 1.0 } ] }
                         }

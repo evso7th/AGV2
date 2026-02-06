@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState, useEffect, useCallback, useRef } from "react";
@@ -86,7 +85,7 @@ export const useAuraGroove = (): AuraGrooveProps => {
   const [drumSettings, setDrumSettings] = useState<DrumSettings>({ pattern: 'composer', volume: 0.25, kickVolume: 1.0, enabled: true });
   const [instrumentSettings, setInstrumentSettings] = useState<InstrumentSettings>({
     bass: { name: "bass_jazz_warm", volume: 0.5, technique: 'portamento' },
-    melody: { name: "ambientPad", volume: 0.5 },
+    melody: { name: "guitar_shineOn", volume: 1.0 },
     accompaniment: { name: "organ_soft_jazz", volume: 0.35 },
     harmony: { name: "guitarChords", volume: 0.25 },
     pianoAccompaniment: { name: "piano", volume: 0.65 },
