@@ -1,5 +1,3 @@
-
-
 import type { Note, MelodyInstrument, InstrumentType } from "@/types/music";
 
 type VelocitySample = {
@@ -124,6 +122,10 @@ export const FLUTE_SAMPLES: Record<string, VelocitySample[]> = {
     ]
 };
 
+/**
+ * #ЗАЧЕМ: Эта карта содержит только аутентичные сэмплы акустических аккордов.
+ * #ЧТО: Удалены все вхождения Telecaster Clean для предотвращения тембрального конфликта.
+ */
 export const ACOUSTIC_GUITAR_CHORD_SAMPLES: Record<string, string> = {
   'Cdim': '/assets/guitars_hords_samples/1657cdim.ogg',
   'Cm': '/assets/guitars_hords_samples/1658cm.ogg',
@@ -162,21 +164,6 @@ export const ACOUSTIC_GUITAR_CHORD_SAMPLES: Record<string, string> = {
   'Abm6': '/assets/guitars_hords_samples/5845abm-6.ogg',
   'Abm7': '/assets/guitars_hords_samples/5846abm-7.ogg',
   'Abm': '/assets/guitars_hords_samples/5847abm.ogg',
-  'Dm_tele': '/assets/guitars_hords_samples/clear_telecaster/591189__telecaster-clean-dm-hi-r.ogg',
-  'G_tele': '/assets/guitars_hords_samples/clear_telecaster/591194__telecaster-clean-g-low-l.ogg',
-  'Em_tele': '/assets/guitars_hords_samples/clear_telecaster/591210__telecaster-clean-em-low-r.ogg',
-  'Fm_tele': '/assets/guitars_hords_samples/clear_telecaster/591183__telecaster-clean-fm-low-r.ogg',
-  'F_tele': '/assets/guitars_hords_samples/clear_telecaster/591175__telecaster-clean-f-low-l.ogg',
-  'Am_tele': '/assets/guitars_hords_samples/clear_telecaster/591170__telecaster-clean-am-hi-l.ogg',
-  'Bb_tele': '/assets/guitars_hords_samples/clear_telecaster/591202__telecaster-clean-bb-hi-r.ogg',
-  'Eb_tele': '/assets/guitars_hords_samples/clear_telecaster/591216__telecaster-clean-eb-hi-l-001.ogg',
-  'E_tele': '/assets/guitars_hords_samples/clear_telecaster/591178__telecaster-clean-e-hi-l.ogg',
-  'D_tele': '/assets/guitars_hords_samples/clear_telecaster/591191__telecaster-clean-d-hi-r.ogg',
-  'Abm_tele': '/assets/guitars_hords_samples/clear_telecaster/591172__telecaster-clean-abm-low-l.ogg',
-  'C_tele': '/assets/guitars_hords_samples/clear_telecaster/591204__telecaster-clean-c-hi-r.ogg',
-  'Bm_tele': '/assets/guitars_hords_samples/clear_telecaster/591206__telecaster-clean-bm-hi-r.ogg',
-  'A_tele': '/assets/guitars_hords_samples/clear_telecaster/591167__telecaster-clean-a-hi-r.ogg',
-  'B_tele': '/assets/guitars_hords_samples/clear_telecaster/591173__telecaster-clean-b-hi-r.ogg',
 };
 
 export type GuitarTechniqueSamples = {
@@ -222,4 +209,3 @@ export const ACOUSTIC_GUITAR_SLIDE_SAMPLES: string[] = [
     '/assets/acoustic_guitar_samples/8398_speedy_clean_finger_slide2_delay.mp3',
     '/assets/acoustic_guitar_samples/8399_speedy_clean_finger_slide_delay.mp3'
 ];
-

@@ -18,10 +18,12 @@ import { BLUES_GUITAR_VOICINGS } from './assets/guitar-voicings';
 import { GUITAR_PATTERNS } from './assets/guitar-patterns';
 
 /**
- * #ЗАЧЕМ: Блюзовый Мозг V6.1 — Neighbor Listening & Energy Budget.
- * #ЧТО: Внедрена оркестровка на основе баллов энергии и реакция на соседа.
- *       Инструменты теперь уступают дорогу друг другу для чистого микса.
- * #ИСПРАВЛЕНО (ПЛАН 155): Исправлена опечатка currentEnergy -> consumedEnergy в учете бюджета.
+ * #ЗАЧЕМ: Блюзовый Мозг V6.2 — Narrative Vitality & Bass Floor.
+ * #ЧТО: 
+ *   1. Бюджет поднят до 60 (соло теперь играет в интро).
+ *   2. Исключены OUTRO планы из основного повествования.
+ *   3. Защита баса от инфразвука (порог MIDI 24).
+ * #ИСПРАВЛЕНО (ПЛАН 156): Устранены "мертвые зоны" тишины в начале сюиты.
  */
 
 // Стоимость инструментов в очках энергии (Plan 154)
@@ -47,8 +49,8 @@ export class BluesBrain {
     this.seed = seed;
     this.mood = mood;
     
-    // Детерминированный выбор плана соло на всю сюиту
-    const planIds = Object.keys(BLUES_SOLO_PLANS);
+    // #ИСПРАВЛЕНО (ПЛАН 156): Исключаем технические планы (Outro) из основного пула.
+    const planIds = Object.keys(BLUES_SOLO_PLANS).filter(id => !id.includes('OUTRO'));
     const planIdx = calculateMusiNum(seed, 7, seed, planIds.length);
     this.soloPlanId = planIds[planIdx];
     console.log(`%c[BluesBrain] Narrative Solo Plan: ${this.soloPlanId}`, 'color: #00FF00; font-weight: bold;');
@@ -85,9 +87,9 @@ export class BluesBrain {
     if (lastDrumFill) console.log(`Plan154 - blues-brain/resonance: Reacting to Drum Fill. Priming Solo for accent.`);
     if (lastGuitarScream) console.log(`Plan154 - blues-brain/resonance: Reacting to Guitar Scream. Forcing Bass Walking.`);
 
-    // --- Plan 154: Energy Budget (Предотвращение каши) ---
-    // Бюджет очков на этот такт: от 40 (затишье) до 100 (пик)
-    const barBudget = 40 + (tension * 60);
+    // --- Plan 156: Energy Budget (Реформа базового уровня) ---
+    // Базовый бюджет теперь 60, чтобы соло (50) могло играть даже при минимальном напряжении.
+    const barBudget = 60 + (tension * 40);
     let consumedEnergy = 0;
 
     // ПРИОРИТЕТ 1: БАС (Фундамент)
@@ -134,7 +136,7 @@ export class BluesBrain {
       }
     }
 
-    console.log(`Plan154 - blues-brain/generateBar: Bar ${epoch} Tension: ${tension.toFixed(2)}. Budget Used: ${consumedEnergy}/${barBudget.toFixed(0)}`);
+    console.log(`Plan156 - blues-brain/generateBar: Bar ${epoch} Tension: ${tension.toFixed(2)}. Budget Used: ${consumedEnergy}/${barBudget.toFixed(0)}`);
 
     return events;
   }
@@ -194,16 +196,25 @@ export class BluesBrain {
         else if ([8].includes(barIn12)) pattern = riff.V;
     }
 
-    return pattern.map(n => ({
-      type: 'bass' as const,
-      note: chord.rootNote - 12 + (DEGREE_TO_SEMITONE[n.deg] || 0),
-      time: n.t * tickDur,
-      duration: (n.d || 2) * tickDur,
-      weight: 0.6 + tension * 0.3,
-      technique: 'pluck' as const,
-      dynamics: (forceWalking || tension > 0.6) ? 'mf' : 'p' as const,
-      phrasing: 'legato' as const
-    }));
+    return pattern.map(n => {
+      // #ИСПРАВЛЕНО (ПЛАН 156): Защита от инфразвука. Поднимаем ноту, если она ниже MIDI 24.
+      let note = chord.rootNote - 12 + (DEGREE_TO_SEMITONE[n.deg] || 0);
+      if (note < 24) {
+          console.log(`Plan156 - blues-brain/generateBass: Sub-bass protection triggered for note ${note}. Lifting.`);
+          note += 12;
+      }
+      
+      return {
+        type: 'bass' as const,
+        note,
+        time: n.t * tickDur,
+        duration: (n.d || 2) * tickDur,
+        weight: 0.6 + tension * 0.3,
+        technique: 'pluck' as const,
+        dynamics: (forceWalking || tension > 0.6) ? 'mf' : 'p' as const,
+        phrasing: 'legato' as const
+      };
+    });
   }
 
   private generateAccompaniment(epoch: number, chord: GhostChord, tempo: number, tension: number): FractalEvent[] {
