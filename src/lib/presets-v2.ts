@@ -1,3 +1,4 @@
+
 // V2 Presets — совместимы with buildMultiInstrument()
 // Проверено на соответствие фабрике от 2024-12
 
@@ -112,7 +113,7 @@ export const V2_PRESETS = {
   guitar_shineOn: {
     type: 'guitar',
     name: 'Shine On Guitar',
-    volume: 1.0, 
+    volume: 0.25, // #ИСПРАВЛЕНО (ПЛАН 162): Снижено в 4 раза (с 1.0 до 0.25)
     osc: { width: 0.46, detune: 5, mainGain: 0.85, detGain: 0.18, subGain: 0.25 },
     pickup: { cutoff: 3600, q: 1.0 },
     drive: { type: 'soft', amount: 0.25 }, 
