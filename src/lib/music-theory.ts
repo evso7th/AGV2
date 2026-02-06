@@ -4,7 +4,7 @@
  * #ЧТО: Функции для получения гамм, инверсий, ретроградов и гуманизации.
  *       Внедрена система цепей Маркова для генерации гармонического скелета.
  *       ДОБАВЛЕНО: Математика MusiNum для фрактальной детерминированности.
- * #ИСПРАВЛЕНО: createHarmonyAxiom теперь создает sustained пласты вместо арпеджио.
+ * #ИСПРАВЛЕНО: generateTensionMap (Plan 154) - расширен контраст драматической дуги (от шепота до крика).
  */
 
 import type { 
@@ -66,26 +66,35 @@ export function pickWeightedDeterministic<T>(
 /**
  * #ЗАЧЕМ: Генератор детерминированной карты напряжения.
  * #ЧТО: Создает "сюжетную дугу" на основе Seed.
+ * #ИСПРАВЛЕНО (ПЛАН 154): Нелинейный скейлинг для расширения контраста (S-образная кривая).
  */
 export function generateTensionMap(seed: number, totalBars: number): number[] {
     const map: number[] = [];
-    // Используем MusiNum для создания низкочастотных волн
     for (let i = 0; i < totalBars; i++) {
-        const slowWave = calculateMusiNum(i, 11, seed, 100) / 100;
-        const medWave = calculateMusiNum(i, 5, seed + 123, 100) / 100;
-        // Сглаживание: среднее значение между точкой и её соседями (простая симуляция)
-        const combined = (slowWave * 0.7 + medWave * 0.3);
-        map.push(combined);
+        // Многослойные MusiNum-волны
+        const slowWave = calculateMusiNum(i, 13, seed, 100) / 100;
+        const medWave = calculateMusiNum(i, 7, seed + 123, 100) / 100;
+        const fastWave = calculateMusiNum(i, 3, seed + 456, 100) / 100;
+        
+        const combined = (slowWave * 0.6 + medWave * 0.3 + fastWave * 0.1);
+        
+        // --- Plan 154: Dramatic Contrast ---
+        // Тянем значения от 0.5 к краям (0.1 или 0.9)
+        const centered = combined - 0.5;
+        const expanded = 0.5 + Math.sign(centered) * Math.pow(Math.abs(centered) * 2, 0.6) * 0.5;
+        
+        const finalVal = Math.max(0.05, Math.min(0.95, expanded));
+        map.push(finalVal);
     }
     
-    console.log(`Plan152 - music-theory/generateTensionMap: Map generated for SEED ${seed}. Sample bars (0, 30, 60): [${map[0].toFixed(2)}, ${map[30 % totalBars].toFixed(2)}, ${map[60 % totalBars].toFixed(2)}]`);
+    const min = Math.min(...map);
+    const max = Math.max(...map);
+    console.log(`Plan154 - music-theory/generateTensionMap: Contrast expanded. Range: [${min.toFixed(2)} - ${max.toFixed(2)}]. SEED: ${seed}`);
     return map;
 }
 
 /**
  * #ЗАЧЕМ: Базовая гармоническая аксиома.
- * #ИСПРАВЛЕНО: Теперь создает плотные sustained пласты звука (Swells)
- *              вместо раздражающих арпеджио.
  */
 export function createHarmonyAxiom(
     chord: GhostChord,
@@ -98,14 +107,13 @@ export function createHarmonyAxiom(
     const isMinor = chord.chordType === 'minor' || chord.chordType === 'diminished';
     const root = chord.rootNote;
     
-    // Плотный аккорд без временного смещения.
     const notes = [root, root + (isMinor ? 3 : 4), root + 7];
     
     notes.forEach((note, i) => {
         events.push({
             type: 'accompaniment',
             note: note + 12, 
-            time: 0, // СИНХРОННО - НИКАКИХ ПЕРЕБОРОВ
+            time: 0,
             duration: 4.0,
             weight: 0.3,
             technique: 'swell',

@@ -18,10 +18,22 @@ import { BLUES_GUITAR_VOICINGS } from './assets/guitar-voicings';
 import { GUITAR_PATTERNS } from './assets/guitar-patterns';
 
 /**
- * #ЗАЧЕМ: Блюзовый Мозг V5.1 — Dramaturgy Aware & Stable (Plan 153).
- * #ЧТО: Исправлены ошибки доступа к массивам планов и синхронизированы типы.
- *       Плотность, регистр и состав ансамбля зависят от Карты Напряжения сюиты.
+ * #ЗАЧЕМ: Блюзовый Мозг V6.0 — Neighbor Listening & Energy Budget (Plan 154).
+ * #ЧТО: Внедрена оркестровка на основе баллов энергии и реакция на соседа.
+ *       Инструменты теперь уступают дорогу друг другу для чистого микса.
+ * #ИСПРАВЛЕНО: Устранение дрейфа плотности переборов.
  */
+
+// Стоимость инструментов в очках энергии (Plan 154)
+const ENERGY_PRICES = {
+    solo: 50,
+    bass_walking: 30,
+    bass_pedal: 10,
+    picking: 20,
+    harmony: 10,
+    drums_full: 30,
+    drums_minimal: 15
+};
 
 export class BluesBrain {
   private seed: number;
@@ -47,46 +59,85 @@ export class BluesBrain {
     currentChord: GhostChord,
     navInfo: NavigationInfo,
     dna: SuiteDNA,
-    hints: InstrumentHints
+    hints: InstrumentHints,
+    lastEvents: FractalEvent[] // ПЛАН 154: Добавлено слушание соседа
   ): FractalEvent[] {
     const events: FractalEvent[] = [];
-    const barDuration = 60 / (dna.baseTempo || 72);
-    
+    const tempo = dna.baseTempo || 72;
     const barIn12 = epoch % 12;
 
     // --- DRAMATURGY ENGINE ---
     const tension = dna.tensionMap ? (dna.tensionMap[epoch % dna.tensionMap.length] || 0.5) : 0.5;
-    const registerOffset = tension > 0.75 ? 12 : 0; // Extra octave for climax
     
-    // 1. УДАРНЫЕ
-    if (hints.drums) {
-      events.push(...this.generateDrums(epoch, dna.baseTempo, tension));
-    }
+    // --- Plan 154: Resonance Analysis (Слушание соседа) ---
+    const isTom = (t: any) => typeof t === 'string' && t.startsWith('drum_tom');
+    const isHeavySnare = (e: FractalEvent) => (e.type === 'drum_snare' || (Array.isArray(e.type) && e.type.includes('drum_snare'))) && e.weight > 0.8;
+    
+    const lastDrumFill = lastEvents.some(e => {
+        if (Array.isArray(e.type)) return e.type.some(t => isTom(t));
+        return isTom(e.type) || isHeavySnare(e);
+    });
+    
+    const lastGuitarScream = lastEvents.some(e => 
+        e.type === 'melody' && e.note > 72 && (e.technique as string).includes('vb')
+    );
+    
+    if (lastDrumFill) console.log(`Plan154 - blues-brain/resonance: Reacting to Drum Fill. Priming Solo for accent.`);
+    if (lastGuitarScream) console.log(`Plan154 - blues-brain/resonance: Reacting to Guitar Scream. Forcing Bass Walking.`);
 
-    // 2. БАС
+    // --- Plan 154: Energy Budget (Предотвращение каши) ---
+    // Бюджет очков на этот такт: от 40 (затишье) до 100 (пик)
+    const barBudget = 40 + (tension * 60);
+    let consumedEnergy = 0;
+
+    // ПРИОРИТЕТ 1: БАС (Фундамент)
     if (hints.bass) {
-      events.push(...this.generateBass(epoch, currentChord, dna.baseTempo, tension));
-    }
-
-    // 3. АККОМПАНЕМЕНТ (Специя с "Ансамблевым вздохом")
-    const isPhraseStart = (epoch % 4 === 0);
-    const narrativeBreath = tension < 0.25 && !isPhraseStart;
-    
-    if (hints.accompaniment && !narrativeBreath) {
-      const pickingLuck = calculateMusiNum(epoch % 48, 13, this.seed + 777, 100);
-      const dynamicThreshold = 20 + tension * 40; 
+      const forceWalking = lastGuitarScream || tension > 0.7;
+      const cost = forceWalking ? ENERGY_PRICES.bass_walking : ENERGY_PRICES.bass_pedal;
       
-      if (isPhraseStart || (pickingLuck < dynamicThreshold)) {
-        events.push(...this.generateAccompaniment(epoch, currentChord, dna.baseTempo, tension));
+      if (consumedEnergy + cost <= barBudget) {
+        events.push(...this.generateBass(epoch, currentChord, tempo, tension, forceWalking));
+        consumedEnergy += cost;
       }
     }
 
-    // 4. МЕЛОДИЯ (Основное блюдо)
-    if (hints.melody) {
-      const melodyEvents = this.generateMelody(epoch, currentChord, barIn12, dna.baseTempo, tension, registerOffset);
-      const guardedEvents = this.applyAntiFuneralMarch(melodyEvents, epoch, tension);
-      events.push(...guardedEvents);
+    // ПРИОРИТЕТ 2: УДАРНЫЕ
+    if (hints.drums) {
+      const cost = tension > 0.5 ? ENERGY_PRICES.drums_full : ENERGY_PRICES.drums_minimal;
+      if (consumedEnergy + cost <= barBudget) {
+        events.push(...this.generateDrums(epoch, tempo, tension));
+        currentEnergy += cost;
+      }
     }
+
+    // ПРИОРИТЕТ 3: МЕЛОДИЯ (Соло)
+    if (hints.melody) {
+      const cost = ENERGY_PRICES.solo;
+      if (consumedEnergy + cost <= barBudget) {
+        const registerOffset = tension > 0.75 ? 12 : 0;
+        // Передаем lastDrumFill для акцента первой ноты соло
+        const melodyEvents = this.generateMelody(epoch, currentChord, barIn12, tempo, tension, registerOffset, lastDrumFill);
+        const guardedEvents = this.applyAntiFuneralMarch(melodyEvents, epoch, tension);
+        events.push(...guardedEvents);
+        consumedEnergy += cost;
+      } else {
+        console.log(`Plan154 - blues-brain/budget: Bar budget ${barBudget.toFixed(0)} exceeded. Solo simplified.`);
+      }
+    }
+
+    // ПРИОРИТЕТ 4: АККОМПАНЕМЕНТ (Специя)
+    if (hints.accompaniment) {
+      const cost = ENERGY_PRICES.picking;
+      const isPhraseStart = (epoch % 4 === 0);
+      const canPick = isPhraseStart && (calculateMusiNum(epoch % 48, 13, this.seed, 100) < 30);
+      
+      if (canPick && (consumedEnergy + cost <= barBudget)) {
+        events.push(...this.generateAccompaniment(epoch, currentChord, tempo, tension));
+        consumedEnergy += cost;
+      }
+    }
+
+    console.log(`Plan154 - blues-brain/generateBar: Bar ${epoch} Tension: ${tension.toFixed(2)}. Budget Used: ${consumedEnergy}/${barBudget.toFixed(0)}`);
 
     return events;
   }
@@ -125,7 +176,7 @@ export class BluesBrain {
     return events;
   }
 
-  private generateBass(epoch: number, chord: GhostChord, tempo: number, tension: number): FractalEvent[] {
+  private generateBass(epoch: number, chord: GhostChord, tempo: number, tension: number, forceWalking: boolean = false): FractalEvent[] {
     const beatDur = 60 / tempo;
     const tickDur = beatDur / 3;
     
@@ -138,7 +189,8 @@ export class BluesBrain {
     const barIn12 = epoch % 12;
     let pattern = riff.I;
     
-    if (tension < 0.3) {
+    // Если энергия низкая и нет принудительного волкинга (резонанс) - играем педаль
+    if (tension < 0.3 && !forceWalking) {
         pattern = [{ t: 0, d: 12, deg: 'R' }];
     } else {
         if (barIn12 === 11) pattern = riff.turn;
@@ -153,7 +205,7 @@ export class BluesBrain {
       duration: (n.d || 2) * tickDur,
       weight: 0.6 + tension * 0.3,
       technique: 'pluck' as const,
-      dynamics: tension > 0.6 ? 'mf' : 'p' as const,
+      dynamics: (forceWalking || tension > 0.6) ? 'mf' : 'p' as const,
       phrasing: 'legato' as const
     }));
   }
@@ -187,7 +239,15 @@ export class BluesBrain {
     return events;
   }
 
-  private generateMelody(epoch: number, chord: GhostChord, barIn12: number, tempo: number, tension: number, registerOffset: number): FractalEvent[] {
+  private generateMelody(
+    epoch: number, 
+    chord: GhostChord, 
+    barIn12: number, 
+    tempo: number, 
+    tension: number, 
+    registerOffset: number,
+    shouldAccent: boolean = false // ПЛАН 154: Реакция на драм-филл
+  ): FractalEvent[] {
     if (tension < 0.15 && calculateMusiNum(epoch, 3, this.seed, 10) < 5) return [];
 
     const plan = BLUES_SOLO_PLANS[this.soloPlanId];
@@ -203,15 +263,15 @@ export class BluesBrain {
 
     const tickDur = (60 / tempo) / 3;
     
-    return lickData.phrase.map(n => ({
+    return lickData.phrase.map((n, idx) => ({
       type: 'melody' as const,
-      // #ЗАЧЕМ: Alvin Lee Register Fix. Смещение +36 для сольного диапазона.
       note: chord.rootNote + 36 + registerOffset + (DEGREE_TO_SEMITONE[n.deg] || 0),
       time: n.t * tickDur,
       duration: n.d * tickDur,
       weight: 0.8 + tension * 0.2, 
       technique: (n.tech as any) || ('pick' as const),
-      dynamics: tension > 0.7 ? 'mf' : 'p' as const,
+      // Акцент на первую ноту если был драм-филл
+      dynamics: (idx === 0 && shouldAccent) ? 'f' : (tension > 0.7 ? 'mf' : 'p' as const),
       phrasing: 'legato' as const
     }));
   }
