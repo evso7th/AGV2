@@ -18,8 +18,8 @@ import { BLUES_GUITAR_VOICINGS } from './assets/guitar-voicings';
 import { GUITAR_PATTERNS } from './assets/guitar-patterns';
 
 /**
- * #ЗАЧЕМ: Блюзовый Мозг V8.1 — Full Generative Conversation with Transparency.
- * #ЧТО: Внедрена детальная диагностика "мыслей" ансамбля для контроля СОР Уровня 4.
+ * #ЗАЧЕМ: Блюзовый Мозг V8.2 — Full Generative Conversation with Plan160 Prefix.
+ * #ЧТО: Внедрена детальная диагностика "мыслей" ансамбля с меткой плана для СОР Уровня 4.
  */
 
 const ENERGY_PRICES = {
@@ -47,7 +47,7 @@ export class BluesBrain {
     const anchorDegrees = ['R', 'b3', '5', 'b7'];
     this.thematicDegree = anchorDegrees[calculateMusiNum(seed, 3, seed, anchorDegrees.length)];
 
-    console.log(`%c[BluesBrain] Semantic Assembly Engine Online. Thematic Anchor: ${this.thematicDegree}`, 'color: #00FF00; font-weight: bold;');
+    console.log(`%cPlan160 - [BluesBrain] Semantic Assembly Engine Online. Thematic Anchor: ${this.thematicDegree}`, 'color: #00FF00; font-weight: bold;');
   }
 
   public generateBar(
@@ -81,7 +81,7 @@ export class BluesBrain {
     }
 
     const currentPhase = melodyEvents.length > 0 ? (melodyEvents[0].harmonicContext || 'SILENCE') : 'PAUSE';
-    console.log(`%c[Bar ${epoch}] Narrative: ${currentPhase} | Tension: ${tension.toFixed(2)} | Budget: ${consumedEnergy.toFixed(0)}/${barBudget.toFixed(0)}`, 'color: #00BFFF');
+    console.log(`%cPlan160 - [Bar ${epoch}] Narrative: ${currentPhase} | Tension: ${tension.toFixed(2)} | Budget: ${consumedEnergy.toFixed(0)}/${barBudget.toFixed(0)}`, 'color: #00BFFF');
 
     // 2. BASS - Conversational Mode
     if (hints.bass) {
@@ -91,7 +91,11 @@ export class BluesBrain {
       const mode = isCrowded ? 'PEDAL' : (shouldWalk ? 'WALKING' : 'PEDAL');
       const reason = isCrowded ? 'High melody density' : (shouldWalk ? 'Responding to CALL' : 'Atmospheric pedal');
       
-      console.log(`  %c[Resonance] Bass: ${mode} (Reason: ${reason})`, 'color: #4169E1');
+      if (isCrowded) {
+          console.log(`  %cPlan160 - [Guard] Bass: Simplified to ${mode} (Reason: ${reason})`, 'color: #FF4500');
+      } else {
+          console.log(`  %cPlan160 - [Resonance] Bass: ${mode} (Reason: ${reason})`, 'color: #4169E1');
+      }
 
       const cost = mode === 'WALKING' ? ENERGY_PRICES.bass_walking : ENERGY_PRICES.bass_pedal;
       
@@ -105,7 +109,7 @@ export class BluesBrain {
     if (hints.drums) {
       const forceFill = lastBarHadScream && tension > 0.5;
       if (forceFill) {
-          console.log(`  %c[Resonance] Drums: FILL (Reason: Scream detected!)`, 'color: #FFA500');
+          console.log(`  %cPlan160 - [Resonance] Drums: FILL (Reason: Scream detected!)`, 'color: #FFA500');
       }
 
       const cost = tension > 0.5 ? ENERGY_PRICES.drums_full : ENERGY_PRICES.drums_minimal;
@@ -115,7 +119,7 @@ export class BluesBrain {
       }
     }
 
-    // 4. ACCOMPANIMENT & OTHERS
+    // 4. ACCOMPANIMENT & OTHERS (Weight Floor 0.35 applied)
     if (hints.accompaniment && (consumedEnergy + ENERGY_PRICES.harmony <= barBudget)) {
         events.push(...this.generateHarmony(epoch, currentChord, tempo, tension));
         consumedEnergy += ENERGY_PRICES.harmony;
@@ -241,7 +245,7 @@ export class BluesBrain {
             note: chord.rootNote + (voicing[idx] - 40),
             time: t * tickDur,
             duration: beatDur * 2.0,
-            weight: 0.35 + (tension * 0.2),
+            weight: 0.35 + (tension * 0.2), // Weight Floor 0.35
             technique: 'pluck',
             dynamics: 'p',
             phrasing: 'detached'
@@ -260,7 +264,7 @@ export class BluesBrain {
         note: notes[beat % 2] + 12,
         time: beat * beatDur,
         duration: beatDur * 0.8,
-        weight: 0.4 + (tension * 0.2),
+        weight: 0.35 + (tension * 0.3), // Weight Floor 0.35
         technique: 'hit',
         dynamics: 'p',
         phrasing: 'staccato'
