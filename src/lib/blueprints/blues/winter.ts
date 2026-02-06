@@ -2,14 +2,13 @@
 import type { MusicBlueprint } from '@/types/music';
 
 /**
- * #ЗАЧЕМ: Блюпринт "The Bluest Blues" (v12.8 - Radical Lottery Intro).
- * #ЧТО: Радикальное сокращение стадий вступления (1-2 такта на сцену) и добавление гармонического богатства.
- * #ИСПРАВЛЕНО (ПЛАН 177): Сцены сокращены, добавлены правила для Harmony (Flute/Guitar) и Sparkles каждые 3-4 такта.
+ * #ЗАЧЕМ: Блюпринт "The Bluest Blues" (v12.9 - Singing Guitar Update).
+ * #ЧТО: Замена 'telecaster' на 'guitar_shineOn' (Velvet Lead) и оптимизация стадий.
  */
 export const WinterBluesBlueprint: MusicBlueprint = {
     id: 'winter_blues',
-    name: 'The Bluest Blues (Fast Intro)',
-    description: 'A deep, cognitive blues journey with a rapid staged introduction and rich harmonic layering.',
+    name: 'The Bluest Blues (Singing Guitar)',
+    description: 'A deep, cognitive blues journey with a rapid staged introduction and continuous legato guitar phrasing.',
     mood: 'melancholic',
     musical: {
         key: { root: 'E', scale: 'dorian', octave: 1 },
@@ -29,7 +28,7 @@ export const WinterBluesBlueprint: MusicBlueprint = {
                 id: 'INTRO_1', name: 'Rapid Opening', duration: { percent: 25 }, 
                 layers: { bass: true, accompaniment: true, melody: true, drums: true, harmony: true, pianoAccompaniment: true, sparkles: true },
                 stagedInstrumentation: [
-                    // СЦЕНА 1: Ускоренная лотерея (3% от Part ≈ 1 такт)
+                    // СЦЕНА 1: Ускоренная лотерея
                     { 
                         duration: { percent: 3 }, 
                         instrumentation: {
@@ -38,30 +37,30 @@ export const WinterBluesBlueprint: MusicBlueprint = {
                            accompaniment: { activationChance: 0.6, instrumentOptions: [ { name: 'organ_soft_jazz', weight: 1.0 } ] }
                         }
                     },
-                    // СЦЕНА 2: Вступление Гитариста (следующие ~1.5 такта)
+                    // СЦЕНА 2: Вступление Гитариста (Velvet Lead)
                     {
                         duration: { percent: 4 }, 
                         instrumentation: {
                            bass: { activationChance: 1.0, instrumentOptions: [ { name: 'bass_jazz_warm', weight: 1.0 } ] },
                            drums: { activationChance: 1.0, instrumentOptions: [ { name: 'blues_melancholic', weight: 1.0 } ] },
                            accompaniment: { activationChance: 1.0, instrumentOptions: [ { name: 'organ_soft_jazz', weight: 1.0 } ] },
-                           melody: { activationChance: 0.8, instrumentOptions: [ { name: 'telecaster', weight: 1.0 } ] }
+                           melody: { activationChance: 0.8, instrumentOptions: [ { name: 'guitar_shineOn', weight: 1.0 } ] }
                         }
                     },
-                    // СЦЕНА 3: Деликатное Пианино и Тёмные Искры (следующие ~1.5 такта)
+                    // СЦЕНА 3: Деликатное Пианино и Тёмные Искры
                     {
                         duration: { percent: 4 }, 
                         instrumentation: {
-                           melody: { activationChance: 1.0, instrumentOptions: [ { name: 'telecaster', weight: 1.0 } ] },
+                           melody: { activationChance: 1.0, instrumentOptions: [ { name: 'guitar_shineOn', weight: 1.0 } ] },
                            pianoAccompaniment: { activationChance: 0.9, instrumentOptions: [ { name: 'piano', weight: 1.0 } ] },
                            sparkles: { activationChance: 0.7, instrumentOptions: [ { name: 'dark', weight: 1.0 } ], transient: true }
                         }
                     },
-                    // СЦЕНА 4: Полный Глубокий Состав (Остаток интро)
+                    // СЦЕНА 4: Полный Глубокий Состав
                     {
                         duration: { percent: 89 }, 
                         instrumentation: {
-                           melody: { activationChance: 1.0, instrumentOptions: [ { name: 'telecaster', weight: 1.0 } ] },
+                           melody: { activationChance: 1.0, instrumentOptions: [ { name: 'guitar_shineOn', weight: 1.0 } ] },
                            pianoAccompaniment: { activationChance: 1.0, instrumentOptions: [ { name: 'piano', weight: 1.0 } ] },
                            accompaniment: { activationChance: 1.0, instrumentOptions: [ { name: 'organ_soft_jazz', weight: 1.0 } ] },
                            bass: { activationChance: 1.0, instrumentOptions: [ { name: 'bass_jazz_warm', weight: 1.0 } ] },
@@ -93,7 +92,7 @@ export const WinterBluesBlueprint: MusicBlueprint = {
                     { 
                         duration: { percent: 100 }, 
                         instrumentation: {
-                           melody: { activationChance: 1.0, instrumentOptions: [ { name: 'blackAcoustic', weight: 1.0 } ] },
+                           melody: { activationChance: 1.0, instrumentOptions: [ { name: 'guitar_shineOn', weight: 1.0 } ] },
                            bass: { activationChance: 1.0, instrumentOptions: [ { name: 'bass_jazz_warm', weight: 1.0 } ] },
                            drums: { activationChance: 1.0, instrumentOptions: [ { name: 'blues_melancholic_master', weight: 1.0 } ] },
                            accompaniment: { activationChance: 1.0, instrumentOptions: [ { name: 'organ_soft_jazz', weight: 1.0 } ] },
@@ -117,7 +116,7 @@ export const WinterBluesBlueprint: MusicBlueprint = {
                     { 
                         duration: { percent: 100 }, 
                         instrumentation: {
-                           melody: { activationChance: 1.0, instrumentOptions: [ { name: 'telecaster', weight: 1.0 } ] },
+                           melody: { activationChance: 1.0, instrumentOptions: [ { name: 'guitar_shineOn', weight: 1.0 } ] },
                            bass: { activationChance: 1.0, instrumentOptions: [ { name: 'bass_jazz_warm', weight: 1.0 } ] },
                            sparkles: { activationChance: 0.15, instrumentOptions: [ { name: 'dark', weight: 1.0 } ], transient: true }
                         }

@@ -1,3 +1,4 @@
+
 import type {
   FractalEvent,
   GhostChord,
@@ -18,9 +19,9 @@ import { BLUES_GUITAR_VOICINGS } from './assets/guitar-voicings';
 import { GUITAR_PATTERNS } from './assets/guitar-patterns';
 
 /**
- * #ЗАЧЕМ: Блюзовый Мозг V12.8.1 — "The Stabilized Mind".
- * #ЧТО: Исправлена критическая ошибка инициализации генератора случайных чисел.
- *       Пианино теперь играет деликатно, не вылезая на передний план.
+ * #ЗАЧЕМ: Блюзовый Мозг V12.9 — "The Singing Guitar".
+ * #ЧТО: Реализована концепция непрерывного легатного повествования для гитары.
+ *       Паузы теперь — это не отсутствие нот, а музыкальное дыхание.
  */
 
 const ENERGY_PRICES = {
@@ -43,9 +44,11 @@ export class BluesBrain {
   private thematicDegree: string;
   private lastAscendingBar: number = -10;
   private currentAxiom: MelodicAxiomNote[] = [];
-  private lastBarHadClimax = false;
   private random: any;
   
+  // Phrasing state
+  private phrasePauseTimer = 0; 
+
   // Pattern Rotation State
   private readonly patternOptions: string[] = ['F_TRAVIS', 'F_ROLL12', 'S_SWING'];
 
@@ -96,15 +99,24 @@ export class BluesBrain {
     const barBudget = 100 + (tension * 100);
     let consumedEnergy = 0;
 
-    // 1. MELODY
+    // 1. MELODY (Singing Mode)
     if (hints.melody) {
       const prog = hints.summonProgress?.melody ?? 1.0;
       let melodyEvents: FractalEvent[] = [];
 
-      if (melodyStyle === 'solo') {
-          melodyEvents = this.generateLSystemMelody(epoch, currentChord, barIn12, tempo, tension, dna);
+      // Logic for "Breathing" - occasionally skip entire bars
+      if (this.phrasePauseTimer > 0) {
+          this.phrasePauseTimer--;
       } else {
-          melodyEvents = this.generateFingerstyleMelody(epoch, currentChord, tempo, tension);
+          if (melodyStyle === 'solo') {
+              melodyEvents = this.generateLSystemMelody(epoch, currentChord, barIn12, tempo, tension, dna);
+              // After a climax or turnaround, take a breath
+              if (barIn12 === 11 || tension > 0.85) {
+                  this.phrasePauseTimer = 1 + calculateMusiNum(epoch, 3, this.seed, 2);
+              }
+          } else {
+              melodyEvents = this.generateFingerstyleMelody(epoch, currentChord, tempo, tension);
+          }
       }
 
       melodyEvents.forEach(e => { e.weight *= prog; });
@@ -137,7 +149,7 @@ export class BluesBrain {
       }
     }
 
-    // 3. PIANO (Mindful Background)
+    // 3. PIANO
     if (hints.pianoAccompaniment && (consumedEnergy + ENERGY_PRICES.piano <= barBudget)) {
         const pianoEvents = this.generatePianoMotif(epoch, currentChord, tempo, tension);
         const prog = hints.summonProgress?.pianoAccompaniment ?? 1.0;
@@ -146,7 +158,7 @@ export class BluesBrain {
         consumedEnergy += ENERGY_PRICES.piano;
     }
 
-    // 4. HARMONY (Guitar/Flute)
+    // 4. HARMONY
     if (hints.harmony && (consumedEnergy + ENERGY_PRICES.harmony <= barBudget)) {
         const prog = hints.summonProgress?.harmony ?? 1.0;
         const harmEvents = this.generateHarmonyEvents(epoch, currentChord, tempo, tension, hints.harmony);
@@ -168,8 +180,8 @@ export class BluesBrain {
 
   private evaluateTimbralDramaturgy(tension: number, hints: InstrumentHints) {
     if (hints.melody && typeof hints.melody !== 'string') {
-        if (tension < 0.5) (hints as any).melody = 'telecaster';
-        else (hints as any).melody = 'blackAcoustic';
+        // #ИСПРАВЛЕНО: Теперь всегда используем 'guitar_shineOn' для Winter Blues в режиме СОР.
+        (hints as any).melody = 'guitar_shineOn';
     }
     if (hints.accompaniment && typeof hints.accompaniment !== 'string') {
         if (tension < 0.4) (hints as any).accompaniment = 'ep_rhodes_warm';
@@ -197,17 +209,29 @@ export class BluesBrain {
 
     const registerLift = (tension > 0.7 || phaseName === 'CLIMAX') ? 12 : 0;
 
-    return this.currentAxiom.map(n => ({
-        type: 'melody',
-        note: chord.rootNote + 36 + registerLift + (DEGREE_TO_SEMITONE[n.deg] || 0),
-        time: n.t * tickDur,
-        duration: n.d * tickDur,
-        weight: 0.8 + (tension * 0.2),
-        technique: n.tech,
-        dynamics: tension > 0.6 ? 'mf' : 'p',
-        phrasing: 'legato',
-        harmonicContext: phaseName
-    }));
+    return this.currentAxiom.map((n, idx, arr) => {
+        // #ЗАЧЕМ: Реализация непрерывного легатного потока.
+        // #ЧТО: Длительность ноты устанавливается так, чтобы заполнить пространство до следующей ноты.
+        let duration = n.d;
+        if (idx < arr.length - 1) {
+            duration = arr[idx+1].t - n.t;
+        } else if (idx === arr.length - 1) {
+            // Последняя нота фразы тянется для выразительности
+            duration = Math.max(n.d, 6); 
+        }
+
+        return {
+            type: 'melody',
+            note: chord.rootNote + 36 + registerLift + (DEGREE_TO_SEMITONE[n.deg] || 0),
+            time: n.t * tickDur,
+            duration: duration * tickDur,
+            weight: 0.8 + (tension * 0.2),
+            technique: n.tech,
+            dynamics: tension > 0.6 ? 'mf' : 'p',
+            phrasing: 'legato', // Всегда легато внутри фразы
+            harmonicContext: phaseName
+        };
+    });
   }
 
   private generateFingerstyleMelody(epoch: number, chord: GhostChord, tempo: number, tension: number): FractalEvent[] {
@@ -239,12 +263,12 @@ export class BluesBrain {
   private generateInitialAxiom(tension: number): MelodicAxiomNote[] {
     const axiom: MelodicAxiomNote[] = [];
     const pool = ['R', 'b3', '4', '5', 'b7', this.thematicDegree];
-    const count = tension > 0.6 ? 3 : 2;
+    const count = tension > 0.6 ? 4 : 3; // Чуть больше нот для потока
     for (let i = 0; i < count; i++) {
         const stepSeed = this.seed + i + 100;
         axiom.push({ 
             deg: pool[calculateMusiNum(stepSeed, 3, i, pool.length)], 
-            t: i * 3, 
+            t: i * 2.5, // Более тесное расположение для легато
             d: 3, 
             tech: 'pick' 
         });
@@ -266,7 +290,7 @@ export class BluesBrain {
             newTech = 'vibrato';
         }
 
-        return { ...note, deg: newDeg, tech: newTech, t: (note.t + 1) % 12 };
+        return { ...note, deg: newDeg, tech: newTech, t: note.t }; // Сохраняем время для стабильности фразы
     }).slice(0, 6);
   }
 
@@ -310,7 +334,7 @@ export class BluesBrain {
     const beatDur = 60 / tempo;
     const root = chord.rootNote + 36;
     const isMinor = chord.chordType === 'minor';
-    const notes = [root + 7, root + 10, root + (isMinor ? 15 : 16)]; // 5, b7, 9/8
+    const notes = [root + 7, root + 10, root + (isMinor ? 15 : 16)]; 
     
     const events: FractalEvent[] = [];
     const density = 0.25 + (tension * 0.2); 
