@@ -83,7 +83,9 @@ export const V2_PRESETS = {
   organ_soft_jazz: {
     type: 'organ',
     name: 'Soft Jazz Organ',
-    volume: 0.54, 
+    // #ЗАЧЕМ: Уменьшение громкости на 25% по просьбе пользователя.
+    // #ЧТО: volume изменено с 0.54 на 0.4.
+    volume: 0.4, 
     drawbars: [8, 0, 8, 5, 0, 3, 0, 0, 0], 
     lpf: 7600,
     hpf: 90,

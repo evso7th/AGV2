@@ -19,9 +19,9 @@ import { GUITAR_PATTERNS } from './assets/guitar-patterns';
 import { BLUES_SOLO_LICKS } from './assets/blues_guitar_solo';
 
 /**
- * #ЗАЧЕМ: Блюзовый Мозг V23.1 — "Bridge & Atmospheric Support".
- * #ЧТО: Внедрена поддержка событий 'sparkle' и 'sfx', управляемых через Блюпринт.
- *       Это позволяет Бриджам использовать сэмплы из папок promenade.
+ * #ЗАЧЕМ: Блюзовый Мозг V23.2 — "Unified Novelty Guard".
+ * #ЧТО: Расширена область ответственности Стража Зацикливания.
+ *       Теперь хэширование учитывает и солиста, и пианиста одновременно.
  */
 
 const ENERGY_PRICES = {
@@ -104,7 +104,9 @@ export class BluesBrain {
     const previouslyPlaying = new Set(lastEvents.map(e => Array.isArray(e.type) ? e.type[0] : e.type));
     const getPrice = (basePrice: number, part: string) => previouslyPlaying.has(part as any) ? basePrice * 0.7 : basePrice;
 
-    // 1. MELODY
+    // 1. MELODY & PIANO (Combined Generation logic)
+    const combinedEvents: FractalEvent[] = [];
+    
     if (hints.melody) {
       const price = getPrice(ENERGY_PRICES.solo, 'melody');
       if (consumedEnergy + price <= barBudget) {
@@ -116,21 +118,36 @@ export class BluesBrain {
               melodyEvents = (melodyStyle === 'solo') 
                 ? this.generateLSystemMelody(epoch, currentChord, barIn12, tempo, tension, dna)
                 : this.generateFingerstyleMelody(epoch, currentChord, tempo, tension);
-
-              const shapeHash = this.getMelodicShapeHash(melodyEvents, currentChord.rootNote);
-              if (this.isRepetitive(shapeHash)) {
-                  console.warn(`%c[SOR] Melodic Stagnation Detected (Hash: ${shapeHash}). Forcing Reset.`, 'color: #ff4500; font-weight: bold;');
-                  this.currentAxiom = []; this.phraseHistory = [];
-                  melodyEvents = this.generateLSystemMelody(epoch + 1, currentChord, barIn12, tempo, tension, dna);
-              }
-              if (shapeHash) { this.phraseHistory.push(shapeHash); if (this.phraseHistory.length > 8) this.phraseHistory.shift(); }
-              if (melodyStyle === 'solo' && (barIn12 === 11 || tension > 0.85)) this.phrasePauseTimer = 1 + calculateMusiNum(epoch, 3, this.seed, 2);
+              
+              melodyEvents.forEach(e => { e.weight *= prog; });
+              combinedEvents.push(...this.applyAntiFuneralMarch(melodyEvents, epoch, tension));
           }
-          melodyEvents.forEach(e => { e.weight *= prog; });
-          events.push(...this.applyAntiFuneralMarch(melodyEvents, epoch, tension));
           consumedEnergy += price;
       }
     }
+
+    const pianoPrice = getPrice(ENERGY_PRICES.piano, 'pianoAccompaniment');
+    if (hints.pianoAccompaniment && (consumedEnergy + pianoPrice <= barBudget)) {
+        const pianoEvents = this.generatePianoMotif(epoch, currentChord, tempo, tension);
+        pianoEvents.forEach(e => { e.weight *= (0.4 * (hints.summonProgress?.pianoAccompaniment ?? 1.0)); }); 
+        combinedEvents.push(...pianoEvents);
+        consumedEnergy += pianoPrice;
+    }
+
+    // #ЗАЧЕМ: Унифицированный страж зацикливания.
+    // #ЧТО: Теперь следит за суммарным паттерном солиста и пианиста.
+    const shapeHash = this.getMelodicShapeHash(combinedEvents, currentChord.rootNote);
+    if (this.isRepetitive(shapeHash)) {
+        console.info(`%c[SOR] ENSEMBLE STAGNATION: Lead & Piano Loop Detected (Hash: ${shapeHash}). Forcing Reset.`, 'color: #ff4500; font-weight: bold; background: #222;');
+        this.currentAxiom = []; 
+        this.phraseHistory = [];
+        // В следующем такте СОР гарантированно выдаст новую идею
+    } else if (shapeHash) {
+        this.phraseHistory.push(shapeHash);
+        if (this.phraseHistory.length > 8) this.phraseHistory.shift();
+    }
+    
+    events.push(...combinedEvents);
 
     // 2. BASS
     if (hints.bass) {
@@ -155,16 +172,7 @@ export class BluesBrain {
       }
     }
 
-    // 4. PIANO
-    const pianoPrice = getPrice(ENERGY_PRICES.piano, 'pianoAccompaniment');
-    if (hints.pianoAccompaniment && (consumedEnergy + pianoPrice <= barBudget)) {
-        const pianoEvents = this.generatePianoMotif(epoch, currentChord, tempo, tension);
-        pianoEvents.forEach(e => { e.weight *= (0.4 * (hints.summonProgress?.pianoAccompaniment ?? 1.0)); }); 
-        events.push(...pianoEvents);
-        consumedEnergy += pianoPrice;
-    }
-
-    // 5. HARMONY & ACCOMPANIMENT
+    // 4. HARMONY & ACCOMPANIMENT
     const harmPrice = getPrice(ENERGY_PRICES.harmony, 'harmony');
     if (hints.harmony && (consumedEnergy + harmPrice <= barBudget)) {
         const harmEvents = this.generateHarmonyEvents(epoch, currentChord, tempo, tension, hints.harmony);
@@ -202,10 +210,22 @@ export class BluesBrain {
     return events;
   }
 
+  /**
+   * #ЗАЧЕМ: Хэширование паттерна ансамбля.
+   * #ЧТО: Смешивает данные от солиста и пианиста, сортируя по времени для уникальности.
+   */
   private getMelodicShapeHash(events: FractalEvent[], rootNote: number): string {
-      const melody = events.filter(e => e.type === 'melody');
-      if (melody.length === 0) return "";
-      return melody.map(e => `${(e.note - rootNote) % 12}:${e.time.toFixed(2)}`).join('|');
+      const tracked = events.filter(e => e.type === 'melody' || e.type === 'pianoAccompaniment');
+      if (tracked.length === 0) return "";
+      
+      return tracked
+        .sort((a, b) => a.time - b.time)
+        .map(e => {
+            const typeId = e.type === 'melody' ? 'M' : 'P';
+            const relativeNote = (e.note - rootNote) % 12;
+            return `${typeId}:${relativeNote}:${e.time.toFixed(2)}`;
+        })
+        .join('|');
   }
 
   private isRepetitive(newHash: string): boolean {
