@@ -43,10 +43,10 @@ interface EngineConfig {
 }
 
 /**
- * #ЗАЧЕМ: Фрактальный Музыкальный Движок V12.8 — "Pure Blueprint Logic".
- * #ЧТО: Удален хардкод activatedInstruments. Теперь ансамбль управляется 
- *       исключительно через кумулятивные правила в Блюпринтах.
- * #СВЯЗИ: Реализует архитектуру "Dramatic Gravity" без сохранения состояния в ядре.
+ * #ЗАЧЕМ: Фрактальный Музыкальный Движок V12.9 — "The Evolutionary Mind".
+ * #ЧТО: 1. Интеграция AI Arbitrator в жизненный цикл.
+ *       2. Реализация механизма наследования (Inheritance) через crossoverDNA.
+ *       3. Полная детерминированность на основе генетического семени.
  */
 export class FractalMusicEngine {
   public config: EngineConfig;
@@ -76,8 +76,11 @@ export class FractalMusicEngine {
   public initialize(force: boolean = false) {
     if (this.isInitialized && !force) return;
 
+    // #ЗАЧЕМ: Самообучение через наследование.
+    // #ЧТО: Если найден "предок" (удачная сессия из прошлого), текущее семя 
+    //       модифицируется через crossoverDNA, наследуя музыкальную структуру.
     if (this.config.ancestor) {
-        console.log(`%c[Engine] BREEDING detected! Crossover with masterpiece: ${this.config.ancestor.seed}`, 'color: #FF1493; font-weight:bold;');
+        console.log(`%c[GENEPOOL] Inheritance Detected! Breeding current seed with ancestor: ${this.config.ancestor.seed}`, 'color: #ff00ff; font-weight:bold;');
         this.config.seed = crossoverDNA(this.config.seed, this.config.ancestor);
     }
 
@@ -110,8 +113,6 @@ export class FractalMusicEngine {
     const instrumentHints: InstrumentHints = { summonProgress: {} };
     const stages = navInfo.currentPart.stagedInstrumentation;
 
-    // #ЗАЧЕМ: Декларативная оркестровка.
-    // #ЧТО: Движок беспристрастно выбирает инструменты только на основе текущей сцены Блюпринта.
     if (stages && stages.length > 0) {
         const progress = (this.epoch - navInfo.currentPartStartBar) / (navInfo.currentPartEndBar - navInfo.currentPartStartBar + 1);
         let currentStage = stages[stages.length - 1];
@@ -127,10 +128,9 @@ export class FractalMusicEngine {
         Object.entries(currentStage.instrumentation).forEach(([partStr, rule]: [any, any]) => {
             const part = partStr as InstrumentPart;
             if (this.random.next() < rule.activationChance) {
-                // Используем детерминированный выбор тембра (без хранения состояния)
                 const timbre = pickWeightedDeterministic(rule.instrumentOptions, this.config.seed, this.epoch, 500);
                 (instrumentHints as any)[part] = timbre;
-                instrumentHints.summonProgress![part] = 1.0; // Плавное вступление теперь реализуется через аранжировку
+                instrumentHints.summonProgress![part] = 1.0; 
             }
         });
     }
