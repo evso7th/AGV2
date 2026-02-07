@@ -6,6 +6,7 @@
  *       ДОБАВЛЕНО: Математика MusiNum для фрактальной детерминированности.
  * #ОБНОВЛЕНО (ПЛАН №201): Добавлена функция crossoverDNA для генетического скрещивания.
  * #ОБНОВЛЕНО (ПЛАН №218): Внедрена ротация ликов (history of 10) для выбора семантического семени.
+ * #ОБНОВЛЕНО (ПЛАН №220): Добавлен движок трансформации ликов (Genetic Lick Recombination).
  */
 
 import type { 
@@ -16,13 +17,20 @@ import type {
     SuiteDNA, 
     NavigationInfo,
     InstrumentPart,
-    TensionProfile
+    TensionProfile,
+    BluesSoloPhrase,
+    BluesRiffDegree
 } from '@/types/music';
 import { BLUES_SOLO_PLANS, BLUES_SOLO_LICKS } from './assets/blues_guitar_solo';
 
 export const DEGREE_TO_SEMITONE: Record<string, number> = {
     'R': 0, 'b2': 1, '2': 2, 'b3': 3, '3': 4, '4': 5, '#4': 6, 'b5': 6, '5': 7,
     'b6': 8, '6': 9, 'b7': 10, '7': 11, 'R+8': 12, '9': 14, '11': 17
+};
+
+const SEMITONE_TO_DEGREE: Record<number, BluesRiffDegree> = {
+    0: 'R', 1: 'b2', 2: '2', 3: 'b3', 4: '3', 5: '4', 6: '#4', 7: '5',
+    8: 'b6', 9: '6', 10: 'b7', 11: '7', 12: 'R+8', 14: '9', 17: '11'
 };
 
 // --- GLOBAL LICK ROTATION (Persistent in worker memory) ---
@@ -45,14 +53,62 @@ export function calculateMusiNum(step: number, base: number = 2, start: number =
 }
 
 /**
+ * #ЗАЧЕМ: Движок Генетической Рекомбинации Ликов.
+ * #ЧТО: Применяет детерминированные музыкальные трансформации к исходному лику.
+ * #СВЯЗИ: Вызывается в BluesBrain.generateInitialAxiom.
+ */
+export function transformLick(lick: BluesSoloPhrase, seed: number, epoch: number): BluesSoloPhrase {
+    const transformed = JSON.parse(JSON.stringify(lick)) as BluesSoloPhrase;
+    
+    // Выбираем тип трансформации на основе MusiNum
+    const transformType = calculateMusiNum(epoch, 3, seed, 4); // 0..3
+
+    switch (transformType) {
+        case 1: // Inversion (Инверсия интервалов относительно первой ноты)
+            const firstMidi = DEGREE_TO_SEMITONE[transformed[0].deg] || 0;
+            transformed.forEach(n => {
+                const currentMidi = DEGREE_TO_SEMITONE[n.deg] || 0;
+                const invertedMidi = firstMidi - (currentMidi - firstMidi);
+                // Нормализация в октаву и поиск ближайшей степени
+                const normalizedMidi = ((invertedMidi % 12) + 12) % 12;
+                n.deg = SEMITONE_TO_DEGREE[normalizedMidi] || 'R';
+            });
+            break;
+
+        case 2: // Retrograde (Ретроград - проигрывание задом наперед)
+            const totalTicks = 12;
+            const reversed = [...transformed].reverse();
+            reversed.forEach((n, i) => {
+                // Рассчитываем новое время старта
+                const originalEnd = transformed[transformed.length - 1 - i].t + transformed[transformed.length - 1 - i].d;
+                n.t = (totalTicks - originalEnd) % totalTicks;
+            });
+            return reversed;
+
+        case 3: // Transposition (Диатонический сдвиг в пентатонике)
+            const shift = [0, 3, 5, 7, 10][calculateMusiNum(seed, 5, epoch, 5)];
+            transformed.forEach(n => {
+                const currentMidi = DEGREE_TO_SEMITONE[n.deg] || 0;
+                const shiftedMidi = (currentMidi + shift) % 12;
+                n.deg = SEMITONE_TO_DEGREE[shiftedMidi] || 'R';
+            });
+            break;
+
+        default: // No transform or subtle timing shift
+            transformed.forEach(n => {
+                n.t = (n.t + calculateMusiNum(epoch, 2, seed, 2)) % 12;
+            });
+            break;
+    }
+
+    return transformed;
+}
+
+/**
  * #ЗАЧЕМ: Генетическое скрещивание (Breeding).
- * #ЧТО: Смешивает текущее "семя" с параметрами успешного "предка".
  */
 export function crossoverDNA(currentSeed: number, ancestor: any): number {
     if (!ancestor || !ancestor.seed) return currentSeed;
-    
-    // Фрактальное смешивание: берем старшие разряды текущего семени
-    // и младшие разряды предка (или наоборот)
     const blendFactor = 0.5;
     return Math.floor(currentSeed * blendFactor + ancestor.seed * (1 - blendFactor));
 }
@@ -83,7 +139,6 @@ export function pickWeightedDeterministic<T>(
 
 /**
  * #ЗАЧЕМ: Генератор детерминированной карты напряжения с учетом настроения.
- * #ЧТО: Использует MusiNum и профили (Arc, Wave, Plateau).
  */
 export function generateTensionMap(seed: number, totalBars: number, mood: Mood): number[] {
     const map: number[] = [];
@@ -180,7 +235,6 @@ export function getScaleForMood(mood: Mood, genre?: Genre): number[] {
 
 /**
  * #ЗАЧЕМ: Генератор ДНК сюиты.
- * #ЧТО: Теперь включает выбор семантического лика-семени с ротацией.
  */
 export function generateSuiteDNA(totalBars: number, mood: Mood, seed: number, random: any, genre: Genre, blueprintParts: any[]): SuiteDNA {
     const harmonyTrack: GhostChord[] = [];
@@ -262,7 +316,6 @@ export function generateSuiteDNA(totalBars: number, mood: Mood, seed: number, ra
         anchorPool[anchorPool.length - 1 - calculateMusiNum(seed, 5, 1, anchorPool.length)]
     ];
 
-    // #ЗАЧЕМ: Выбор семантического лика для Dark Blues (ПЛАН №218).
     let seedLickId: string | undefined;
     if (genre === 'blues' && (mood === 'dark' || mood === 'gloomy')) {
         const minorLicks = Object.keys(BLUES_SOLO_LICKS).filter(id => 
@@ -271,10 +324,8 @@ export function generateSuiteDNA(totalBars: number, mood: Mood, seed: number, ra
         const candidates = minorLicks.length > 0 ? minorLicks : Object.keys(BLUES_SOLO_LICKS);
         seedLickId = candidates[calculateMusiNum(seed, 7, 42, candidates.length)];
         
-        // Update history
         LICK_HISTORY.push(seedLickId);
         if (LICK_HISTORY.length > MAX_HISTORY_SIZE) LICK_HISTORY.shift();
-        console.log(`%c[Genomics] Selected Semantic Seed: ${seedLickId}. History: ${LICK_HISTORY.join(',')}`, 'color: #DA70D6; font-weight: bold;');
     }
 
     return { 

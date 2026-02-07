@@ -11,7 +11,7 @@ import type {
   InstrumentPart,
   Technique
 } from '@/types/music';
-import { calculateMusiNum, DEGREE_TO_SEMITONE } from './music-theory';
+import { calculateMusiNum, DEGREE_TO_SEMITONE, transformLick } from './music-theory';
 import { BLUES_DRUM_RIFFS } from './assets/blues-drum-riffs';
 import { BLUES_BASS_RIFFS } from './assets/blues-bass-riffs';
 import { BLUES_GUITAR_VOICINGS } from './assets/guitar-voicings';
@@ -19,10 +19,10 @@ import { GUITAR_PATTERNS } from './assets/guitar-patterns';
 import { BLUES_SOLO_LICKS } from './assets/blues_guitar_solo';
 
 /**
- * #ЗАЧЕМ: Блюзовый Мозг V15.0 — "Semantic Axiom Growth".
- * #ЧТО: Реализована поддержка "Лика как Семени" для СОР. 
- *       При инициализации Dark Blues первая аксиома берется из библиотеки.
- * #ИНТЕГРАЦИЯ: Полная совместимость с SuiteDNA.seedLickId.
+ * #ЗАЧЕМ: Блюзовый Мозг V16.0 — "Genetic Axiom Growth".
+ * #ЧТО: Реализована предварительная генетическая трансформация лика-семени.
+ *       Лик мутирует (инверсия, ретроград, сдвиг) ДО того, как стать аксиомой.
+ * #ИНТЕГРАЦИЯ: Полная совместимость с SOR и SuiteDNA.
  */
 
 const ENERGY_PRICES = {
@@ -282,11 +282,18 @@ export class BluesBrain {
   }
 
   private generateInitialAxiom(tension: number, epoch: number, dna: SuiteDNA): MelodicAxiomNote[] {
-    // #ЗАЧЕМ: Реализация семантического семени (ПЛАН №218).
-    // #ЧТО: Если в DNA есть seedLickId, аксиома строится на основе лика из библиотеки.
+    // #ЗАЧЕМ: Реализация трансформированного семантического семени (ПЛАН №220).
+    // #ЧТО: Лик берется из библиотеки и ПРОХОДИТ ТРАНСФОРМАЦИЮ (инверсия, ретроград, сдвиг)
+    //       перед тем как стать аксиомой. Это создает бесконечное разнообразие из одного лика.
     if (dna.seedLickId && BLUES_SOLO_LICKS[dna.seedLickId]) {
-        const lick = BLUES_SOLO_LICKS[dna.seedLickId].phrase;
-        return lick.map(note => ({
+        const rawLick = BLUES_SOLO_LICKS[dna.seedLickId].phrase;
+        
+        // ПРИМЕНЯЕМ ГЕНЕТИЧЕСКУЮ РЕКОМБИНАЦИЮ
+        const transformedLick = transformLick(rawLick, this.seed, epoch);
+        
+        console.log(`%c[BioLogic] Recombining Gene: ${dna.seedLickId} at Bar ${epoch}`, 'color: #32CD32; font-weight: bold;');
+
+        return transformedLick.map(note => ({
             deg: note.deg,
             t: note.t,
             d: note.d,
@@ -294,7 +301,6 @@ export class BluesBrain {
         }));
     }
 
-    // Fallback: Random generation
     const axiom: MelodicAxiomNote[] = [];
     const pool = ['R', 'b3', '4', '5', 'b7', this.thematicDegree];
     const count = tension > 0.6 ? 4 : 3; 
@@ -433,13 +439,13 @@ export class BluesBrain {
       return events;
   }
 
-  private generateAccompaniment(epoch: number, chord: GhostChord, tempo: number, tension: number, patternName: string): FractalEvent[] {
+  private generateAccompaniment(epoch: number, chord: GhostChord, tempo: number, tension: number, currentPattern: string): FractalEvent[] {
     const beatDur = 60 / tempo;
     const tickDur = beatDur / 3;
-    const pattern = GUITAR_PATTERNS[patternName] || GUITAR_PATTERNS['F_TRAVIS'];
+    const pattern = GUITAR_PATTERNS[currentPattern] || GUITAR_PATTERNS['F_TRAVIS'];
     const voicing = BLUES_GUITAR_VOICINGS['E7_open'];
     const events: FractalEvent[] = [];
-    const steps = (tension > 0.6 || patternName.startsWith('S_')) ? pattern.pattern : [pattern.pattern[0]];
+    const steps = (tension > 0.6 || currentPattern.startsWith('S_')) ? pattern.pattern : [pattern.pattern[0]];
     
     steps.forEach(step => {
       step.ticks.forEach(t => {
