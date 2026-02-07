@@ -2,13 +2,13 @@
 import type { MusicBlueprint } from '@/types/music';
 
 /**
- * #ЗАЧЕМ: Блюпринт "The Bluest Blues" (v12.9 - Singing Guitar Update).
- * #ЧТО: Замена 'telecaster' на 'guitar_shineOn' (Velvet Lead) и оптимизация стадий.
+ * #ЗАЧЕМ: Блюпринт "The Bluest Blues" (v13.0 - Delayed Lead Update).
+ * #ЧТО: Гитара перенесена во вторую сцену (с 3-го такта). Сцены сокращены до ~2 тактов.
  */
 export const WinterBluesBlueprint: MusicBlueprint = {
     id: 'winter_blues',
     name: 'The Bluest Blues (Singing Guitar)',
-    description: 'A deep, cognitive blues journey with a rapid staged introduction and continuous legato guitar phrasing.',
+    description: 'A deep, cognitive blues journey with a delayed guitar entry and continuous legato phrasing.',
     mood: 'melancholic',
     musical: {
         key: { root: 'E', scale: 'dorian', octave: 1 },
@@ -28,37 +28,37 @@ export const WinterBluesBlueprint: MusicBlueprint = {
                 id: 'INTRO_1', name: 'Rapid Opening', duration: { percent: 25 }, 
                 layers: { bass: true, accompaniment: true, melody: true, drums: true, harmony: true, pianoAccompaniment: true, sparkles: true },
                 stagedInstrumentation: [
-                    // СЦЕНА 1: Ускоренная лотерея
+                    // СЦЕНА 1: Ритм и Орган (Такты 0-2). ГИТАРЫ НЕТ.
                     { 
-                        duration: { percent: 3 }, 
+                        duration: { percent: 2 }, 
                         instrumentation: {
-                           bass: { activationChance: 0.6, instrumentOptions: [ { name: 'bass_jazz_warm', weight: 1.0 } ] },
-                           drums: { activationChance: 0.6, instrumentOptions: [ { name: 'blues_melancholic', weight: 1.0 } ] },
-                           accompaniment: { activationChance: 0.6, instrumentOptions: [ { name: 'organ_soft_jazz', weight: 1.0 } ] }
+                           bass: { activationChance: 0.8, instrumentOptions: [ { name: 'bass_jazz_warm', weight: 1.0 } ] },
+                           drums: { activationChance: 0.8, instrumentOptions: [ { name: 'blues_melancholic', weight: 1.0 } ] },
+                           accompaniment: { activationChance: 0.8, instrumentOptions: [ { name: 'organ_soft_jazz', weight: 1.0 } ] }
                         }
                     },
-                    // СЦЕНА 2: Вступление Гитариста (Velvet Lead)
+                    // СЦЕНА 2: Вход Гилмора (Такты 3-5).
                     {
-                        duration: { percent: 4 }, 
+                        duration: { percent: 2 }, 
                         instrumentation: {
                            bass: { activationChance: 1.0, instrumentOptions: [ { name: 'bass_jazz_warm', weight: 1.0 } ] },
                            drums: { activationChance: 1.0, instrumentOptions: [ { name: 'blues_melancholic', weight: 1.0 } ] },
                            accompaniment: { activationChance: 1.0, instrumentOptions: [ { name: 'organ_soft_jazz', weight: 1.0 } ] },
-                           melody: { activationChance: 0.8, instrumentOptions: [ { name: 'guitar_shineOn', weight: 1.0 } ] }
+                           melody: { activationChance: 1.0, instrumentOptions: [ { name: 'guitar_shineOn', weight: 1.0 } ] }
                         }
                     },
-                    // СЦЕНА 3: Деликатное Пианино и Тёмные Искры
+                    // СЦЕНА 3: Пианино и Спарклы (Такты 6-8).
                     {
-                        duration: { percent: 4 }, 
+                        duration: { percent: 2 }, 
                         instrumentation: {
                            melody: { activationChance: 1.0, instrumentOptions: [ { name: 'guitar_shineOn', weight: 1.0 } ] },
-                           pianoAccompaniment: { activationChance: 0.9, instrumentOptions: [ { name: 'piano', weight: 1.0 } ] },
+                           pianoAccompaniment: { activationChance: 1.0, instrumentOptions: [ { name: 'piano', weight: 1.0 } ] },
                            sparkles: { activationChance: 0.7, instrumentOptions: [ { name: 'dark', weight: 1.0 } ], transient: true }
                         }
                     },
-                    // СЦЕНА 4: Полный Глубокий Состав
+                    // СЦЕНА 4: Полный Глубокий Состав (Такты 9+).
                     {
-                        duration: { percent: 89 }, 
+                        duration: { percent: 94 }, 
                         instrumentation: {
                            melody: { activationChance: 1.0, instrumentOptions: [ { name: 'guitar_shineOn', weight: 1.0 } ] },
                            pianoAccompaniment: { activationChance: 1.0, instrumentOptions: [ { name: 'piano', weight: 1.0 } ] },
