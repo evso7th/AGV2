@@ -1,11 +1,11 @@
 /**
- * #ЗАЧЕМ: Центральная фабрика инструментов V3.1 — "Stable Foundation".
+ * #ЗАЧЕМ: Центральная фабрика инструментов V3.2 — "Steel Guitar Seal".
  * #ЧТО: Реализует архитектуру тотальной изоляции и глобального контроля ресурсов:
  *       1. Global Voice Registry (GVR): единый учет всех активных нот в системе.
  *       2. Passive Cleanup: очистка только через нативные события Audio API (onended).
  *       3. Wavetable Organ: эффективный синтез для работы в фоне.
  *       4. LFO Purge: принудительная остановка фоновых осцилляторов при смене пресета.
- * #ИСПРАВЛЕНО (ПЛАН 191): Исправлена ошибка 'non-finite value' в эффектах. Сигнатуры унифицированы.
+ * #ИСПРАВЛЕНО (ПЛАН 192): Полная герметизация гитарного конвейера. Удалены setTimeout.
  */
 
 // ───── GLOBAL REGISTRY & LIMITS ─────
@@ -15,7 +15,6 @@ const GLOBAL_VOICE_LIMIT = 100;
 
 /**
  * #ЗАЧЕМ: Глобальная очистка голоса.
- * #ЧТО: Разрывает связи всех узлов и удаляет голос из реестра.
  */
 const deepCleanup = (voiceRecord: any) => {
     if (!voiceRecord || voiceRecord.cleaned) return;
@@ -34,7 +33,7 @@ const deepCleanup = (voiceRecord: any) => {
     }
     
     globalActiveVoices = globalActiveVoices.filter(v => v !== voiceRecord);
-    // #ЗАЧЕМ: Диагностика очистки (ПЛАН 187).
+    // #ЗАЧЕМ: Диагностика очистки. Счетчик Гейгера для памяти.
     console.log(`%c[Factory] Cleaned Voice. GVR: ${globalActiveVoices.length}`, 'color: gray; font-size: 10px;');
 };
 
@@ -95,14 +94,13 @@ const makeVintageDistortion = (k = 50, n = 8192) => {
     return curve;
 };
 
-// ───── FX FACTORIES (SAFE SIGNATURES) ─────
+// ───── FX FACTORIES ─────
 
 interface SimpleFX {
     input: GainNode;
     output: AudioNode;
     stop: () => void;
     setMix: (m: number) => void;
-    lfo?: OscillatorNode;
 }
 
 const makeChorus = (ctx: AudioContext, opt: any = {}): SimpleFX => {
@@ -122,7 +120,7 @@ const makeChorus = (ctx: AudioContext, opt: any = {}): SimpleFX => {
     input.connect(dry).connect(output);
     input.connect(delay).connect(wet).connect(output);
     
-    return { input, output, lfo, 
+    return { input, output, 
         stop: () => { try { lfo.stop(); lfo.disconnect(); } catch(e){} },
         setMix: (m) => {
             const v = clamp(m, 0, 1);
@@ -150,7 +148,7 @@ const makeDelay = (ctx: AudioContext, opt: any = {}): SimpleFX => {
     lp.connect(wet).connect(output);
     
     return { input, output, 
-        stop: () => {}, // No LFOs in delay
+        stop: () => {}, 
         setMix: (m) => {
             const v = clamp(m, 0, 1);
             wet.gain.setTargetAtTime(v, ctx.currentTime, 0.02);
@@ -188,7 +186,7 @@ const makePhaser = (ctx: AudioContext, opt: any = {}): SimpleFX => {
     filters[filters.length - 1].connect(wet); 
     dry.connect(output); wet.connect(output);
     
-    return { input, output, lfo, 
+    return { input, output, 
         stop: () => { try { lfo.stop(); lfo.disconnect(); } catch(e){} },
         setMix: (m) => {
             const v = clamp(m, 0, 1);
@@ -286,7 +284,6 @@ const buildSynthEngine = (ctx: AudioContext, preset: any, master: GainNode, reve
         },
         allNotesOff: () => { activeVoices.forEach((_, m) => { const v = activeVoices.get(m); if(v) deepCleanup(v); }); activeVoices.clear(); },
         disconnect: () => { 
-            console.log(`[Factory] Disconnecting synth. Killing internal oscillators...`);
             chorus.stop();
             staticNodes.forEach(n => { try { n.disconnect(); } catch(e){} }); 
         },
@@ -296,7 +293,6 @@ const buildSynthEngine = (ctx: AudioContext, preset: any, master: GainNode, reve
 
 const buildOrganEngine = (ctx: AudioContext, preset: any, master: GainNode, reverb: ConvolverNode, instrumentGain: GainNode, expressionGain: GainNode) => {
     let currentPreset = { ...preset };
-    const activeVoices = new Map<number, any>();
     const organSum = ctx.createGain();
     const leslie = makeChorus(ctx, currentPreset.leslie || {});
     const vibLfo = ctx.createOscillator(); vibLfo.frequency.value = 6.2;
@@ -329,9 +325,8 @@ const buildOrganEngine = (ctx: AudioContext, preset: any, master: GainNode, reve
             const finalTime = triggerRelease(ctx, voiceState, when + (duration || 1.0), adsr.r);
             osc.stop(finalTime + 0.1); osc.onended = () => deepCleanup(record);
         },
-        allNotesOff: () => { activeVoices.clear(); },
+        allNotesOff: () => {},
         disconnect: () => { 
-            console.log(`[Factory] Disconnecting organ. Killing internal oscillators...`);
             leslie.stop();
             try { vibLfo.stop(); vibLfo.disconnect(); } catch(e){}
             [organSum, leslie.input, revSend].forEach(n => { try { n.disconnect(); } catch(e){} }); 
@@ -369,7 +364,6 @@ const buildBassEngine = (ctx: AudioContext, preset: any, master: GainNode, rever
         },
         allNotesOff: () => {},
         disconnect: () => { 
-            console.log(`[Factory] Disconnecting bass...`);
             try { bassSum.disconnect(); hpf.disconnect(); } catch(e){} 
         },
         setPreset: (p: any) => { currentPreset = p; }
@@ -391,6 +385,8 @@ const buildGuitarEngine = (ctx: AudioContext, preset: any, master: GainNode, rev
     delay.output.connect(expressionGain).connect(instrumentGain).connect(master);
     delay.output.connect(revSend).connect(reverb);
 
+    const activeVoices = new Map<number, any>();
+
     const createPulse = (f: number, w: number) => {
         const real = new Float32Array(32), imag = new Float32Array(32);
         for (let n = 1; n < 32; n++) real[n] = (2 / (n * Math.PI)) * Math.sin(n * Math.PI * w);
@@ -407,20 +403,47 @@ const buildGuitarEngine = (ctx: AudioContext, preset: any, master: GainNode, rev
             const osc = createPulse(f, oscP.width || 0.45);
             const g = ctx.createGain(); g.gain.value = velocity;
             osc.connect(g).connect(voiceGain); osc.start(when);
+            
             const adsr = currentPreset.adsr || { a: 0.005, d: 0.3, s: 0.6, r: 1.5 };
             const voiceState = triggerAttack(ctx, voiceGain, when, adsr.a, adsr.d, adsr.s, velocity * 0.15);
+            
             const record = { nodes: [voiceGain, osc, g], voiceState, cleaned: false };
             globalActiveVoices.push(record);
-            const finalTime = triggerRelease(ctx, voiceState, when + (duration || 1.0), adsr.r);
-            osc.stop(finalTime + 0.1); osc.onended = () => deepCleanup(record);
+
+            if (duration) {
+                const stopTime = triggerRelease(ctx, voiceState, when + duration, adsr.r);
+                osc.stop(stopTime + 0.1);
+                osc.onended = () => deepCleanup(record);
+            } else {
+                activeVoices.set(midi, record);
+            }
         },
-        allNotesOff: () => {},
+        noteOff: (midi: number, when = ctx.currentTime) => {
+            const v = activeVoices.get(midi); if (!v) return; activeVoices.delete(midi);
+            const adsr = currentPreset.adsr || { a: 0.005, d: 0.3, s: 0.6, r: 1.5 };
+            const stopTime = triggerRelease(ctx, v.voiceState, when, adsr.r);
+            v.nodes.forEach((n: any) => {
+                if (n instanceof OscillatorNode) {
+                    n.stop(stopTime + 0.1);
+                    n.onended = () => deepCleanup(v);
+                }
+            });
+        },
+        allNotesOff: () => {
+            activeVoices.forEach((v) => deepCleanup(v));
+            activeVoices.clear();
+        },
         disconnect: () => { 
-            console.log(`[Factory] Disconnecting guitar. Killing internal oscillators...`);
             phaser.stop();
+            activeVoices.forEach((v) => deepCleanup(v));
+            activeVoices.clear();
             [guitarIn, comp, shaper, phaser.input, delay.input, revSend].forEach(n => { try { n.disconnect(); } catch(e){} }); 
         },
-        setPreset: (p: any) => { currentPreset = p; shaper.curve = p.drive?.type === 'muff' ? makeMuff(p.drive.amount) : makeVintageDistortion((p.drive?.amount || 0.5) * 100); phaser.setMix(p.phaser?.on ? 0.2 : 0); }
+        setPreset: (p: any) => { 
+            currentPreset = p; 
+            shaper.curve = p.drive?.type === 'muff' ? makeMuff(p.drive.amount) : makeVintageDistortion((p.drive?.amount || 0.5) * 100); 
+            phaser.setMix(p.phaser?.on ? 0.2 : 0); 
+        }
     };
 };
 
@@ -464,4 +487,20 @@ export async function buildMultiInstrument(ctx: AudioContext, {
         setExpression: (v) => { if(isFinite(v)) expressionGain.gain.setTargetAtTime(v, ctx.currentTime, 0.01); },
         preset, type
     };
+}
+
+export interface InstrumentAPI {
+    connect: (dest?: AudioNode) => void;
+    disconnect: () => void;
+    noteOn: (midi: number, when?: number, velocity?: number, duration?: number) => void;
+    noteOff: (midi: number, when?: number) => void;
+    allNotesOff: () => void;
+    setPreset: (p: any) => void;
+    setParam: (k: string, v: any) => void;
+    setVolume: (level: number) => void;
+    setVolumeDb: (db: number) => void;
+    getVolume: () => number;
+    setExpression: (level: number) => void;
+    preset: any;
+    type: string;
 }
