@@ -1,4 +1,3 @@
-
 /**
  * @file AuraGroove Music Worker (Architecture: "The Dynamic Composer")
  *
@@ -37,27 +36,26 @@ const Scheduler = {
         density: 0.5,
         composerControlsInstruments: true,
         mood: 'melancholic' as Mood,
-        useMelodyV2: false, // Default to V1 engine
-        introBars: 12, // Default intro length
+        useMelodyV2: false, 
+        introBars: 12, 
+        ancestor: null as any // #ЗАЧЕМ: Генетическая память
     } as WorkerSettings,
 
     get barDuration() { 
-        return (60 / this.settings.bpm) * 4; // 4 beats per bar
+        return (60 / this.settings.bpm) * 4; 
     },
 
     initializeEngine(settings: WorkerSettings, force: boolean = false) {
-        // #ЗАЧЕМ: Этот метод инициализирует или переинициализирует музыкальный движок.
-        // #ЧТО: Он создает новый экземпляр FractalMusicEngine и асинхронно ждет его полной инициализации.
-        // #ИСПРАВЛЕНО (ПЛАН 1274): Логика стала проще. Создаем, затем инициализируем.
         console.log(`%c[Worker] Initializing new engine with SEED: ${settings.seed}`, 'color: #FFD700; font-weight:bold;');
         
         const newEngine = new FractalMusicEngine({
             ...settings,
-            seed: settings.seed,
+            seed: settings.seed || Date.now(),
             introBars: settings.introBars,
+            ancestor: settings.ancestor // Передаем предка для скрещивания
         });
 
-        newEngine.initialize(true); // `true` для форсированной инициализации
+        newEngine.initialize(true); 
         
         fractalMusicEngine = newEngine;
         this.barCount = 0;
@@ -73,7 +71,6 @@ const Scheduler = {
 
         const tryStart = () => {
             if (fractalMusicEngine) {
-                console.log(`%c[Worker.start] Engine ready after ${attempts} attempts. Starting loop.`, 'color: #32CD32;');
                 const loop = () => {
                     if (!this.isRunning) return;
                     this.tick();
@@ -83,10 +80,8 @@ const Scheduler = {
             } else {
                 attempts++;
                 if (attempts < maxAttempts) {
-                    console.log(`[Worker.start] Engine not ready, attempt ${attempts}. Retrying in ${attemptInterval}ms...`);
                     setTimeout(tryStart, attemptInterval);
                 } else {
-                    console.error('[Worker.start] Engine failed to initialize after multiple attempts. Playback aborted.');
                     this.isRunning = false;
                 }
             }
@@ -104,20 +99,15 @@ const Scheduler = {
     },
     
     reset() {
-        // #ИСПРАВЛЕНО (ПЛАН 1270): Логика генерации уникального "семени" перенесена сюда.
-        // #ЗАЧЕМ: Этот метод теперь является ЕДИНСТВЕННЫМ источником нового "семени" для каждой сюиты.
-        // #ЧТО: Он генерирует новый seed, обновляет глобальные настройки и немедленно пересоздает движок с ним.
-        // #СВЯЗИ: Вызывается по команде 'reset' из UI (при первом Play и при Regenerate).
         const wasRunning = this.isRunning;
         if (wasRunning) {
             this.stop();
         }
         
         const newSeed = Date.now();
-        console.log(`%c[Worker.reset] Generating NEW SEED: ${newSeed}`, 'color: cyan; font-weight:bold;');
-        this.settings.seed = newSeed; // Обновляем seed в настройках
+        this.settings.seed = newSeed; 
 
-        this.initializeEngine(this.settings, true); // Пересоздаем движок с новым seed
+        this.initializeEngine(this.settings, true); 
         
         if (wasRunning) {
             this.start();
@@ -125,14 +115,11 @@ const Scheduler = {
     },
 
     updateSettings(newSettings: Partial<WorkerSettings>) {
-       console.log('[Worker.updateSettings] Received raw settings:', JSON.parse(JSON.stringify(newSettings)));
        const needsRestart = this.isRunning && (newSettings.bpm !== undefined && newSettings.bpm !== this.settings.bpm);
-       // #ИСПРАВЛЕНО (ПЛАН 1485): Добавлена проверка смены жанра или настроения.
        const genreOrMoodChanged = (newSettings.genre && newSettings.genre !== this.settings.genre) || (newSettings.mood && newSettings.mood !== this.settings.mood);
        
        if (genreOrMoodChanged) {
-           console.log(`[Worker] Genre or Mood changed. Triggering full reset.`);
-           this.settings = { ...this.settings, ...newSettings }; // Обновляем настройки ПЕРЕД сбросом
+           this.settings = { ...this.settings, ...newSettings }; 
            this.reset();
            return;
        }
@@ -148,29 +135,35 @@ const Scheduler = {
         };
 
         if (!fractalMusicEngine) {
-            console.log("[Worker] First settings update. Initializing engine...");
             this.initializeEngine(this.settings, true);
         } else {
             fractalMusicEngine.updateConfig(this.settings);
         }
        
        if (needsRestart) this.start();
-       console.log('[Worker.updateSettings] Final computed settings:', JSON.parse(JSON.stringify(this.settings)));
     },
 
     tick() {
         if (!this.isRunning || !fractalMusicEngine) return;
 
-        // FIX FOR PLAN 1483: Initialize with a safe default to prevent crashes if generation fails.
-        let finalPayload: { events: FractalEvent[], instrumentHints: InstrumentHints } = { events: [], instrumentHints: {} };
+        let finalPayload: { events: FractalEvent[], instrumentHints: InstrumentHints, beautyScore: number } = { 
+            events: [], 
+            instrumentHints: {}, 
+            beautyScore: 0.5 
+        };
 
         try {
-            // #ЗАЧЕМ: УДАЛЕНА вся логика `generateIntroSequence`
-            // #ЧТО: Теперь основной движок управляет музыкой с первого такта.
             finalPayload = fractalMusicEngine.evolve(this.barDuration, this.barCount);
         } catch (e) {
             console.error('[Worker.tick] CRITICAL ERROR during event generation:', e);
-            // finalPayload remains the safe empty default.
+        }
+
+        // #ЗАЧЕМ: Сигнал автоматического шедевра.
+        if (finalPayload.beautyScore > 0.88 && this.barCount > 8) {
+            self.postMessage({ 
+                type: 'HIGH_RESONANCE_DETECTED', 
+                payload: { beautyScore: finalPayload.beautyScore, seed: this.settings.seed } 
+            });
         }
 
         const counts = { drums: 0, bass: 0, melody: 0, accompaniment: 0, harmony: 0, sfx: 0, sparkles: 0 };
@@ -185,9 +178,9 @@ const Scheduler = {
                 counts.drums++;
             }
         }
-        const logString = `[Worker @ Bar ${this.barCount}] Events: ${finalPayload.events.length} | Drums: ${counts.drums}, Bass: ${counts.bass}, Melody: ${counts.melody}, Accomp: ${counts.accompaniment}, Harmony: ${counts.harmony}, SFX: ${counts.sfx}, Sparkles: ${counts.sparkles}`;
+        
+        const logString = `[Worker @ Bar ${this.barCount}] Events: ${finalPayload.events.length} | Beauty: ${finalPayload.beautyScore.toFixed(2)} | D:${counts.drums}, B:${counts.bass}, M:${counts.melody}`;
         console.log(logString);
-
 
         const mainScoreEvents: FractalEvent[] = [];
         const sfxEvents: FractalEvent[] = [];
@@ -195,102 +188,74 @@ const Scheduler = {
         const harmonyEvents: FractalEvent[] = [];
         
         for (const event of finalPayload.events) {
-            if (event.type === 'sfx') {
-                sfxEvents.push(event);
-            } else if (event.type === 'sparkle') {
-                sparkleEvents.push(event);
-            } else if (event.type === 'harmony') {
-                harmonyEvents.push(event);
-            } else {
-                mainScoreEvents.push(event);
-            }
+            if (event.type === 'sfx') sfxEvents.push(event);
+            else if (event.type === 'sparkle') sparkleEvents.push(event);
+            else if (event.type === 'harmony') harmonyEvents.push(event);
+            else mainScoreEvents.push(event);
         }
-
-        const payloadForMainThread = {
-            events: mainScoreEvents,
-            instrumentHints: finalPayload.instrumentHints,
-            barDuration: this.barDuration,
-            barCount: this.barCount,
-        };
-
-        console.log('[Worker] Payload being sent to main thread: ', JSON.parse(JSON.stringify(payloadForMainThread)));
 
         self.postMessage({ 
             type: 'SCORE_READY', 
-            payload: payloadForMainThread
+            payload: {
+                events: mainScoreEvents,
+                instrumentHints: finalPayload.instrumentHints,
+                barDuration: this.barDuration,
+                barCount: this.barCount,
+            }
         });
         
         if (sfxEvents.length > 0) {
-            sfxEvents.forEach(event => {
-                self.postMessage({ type: 'sfx', payload: event });
-            });
+            sfxEvents.forEach(event => { self.postMessage({ type: 'sfx', payload: event }); });
         }
         
         if (sparkleEvents.length > 0) {
-            sparkleEvents.forEach(event => {
-                self.postMessage({ type: 'sparkle', payload: event });
-            });
+            sparkleEvents.forEach(event => { self.postMessage({ type: 'sparkle', payload: event }); });
         }
 
         if (harmonyEvents.length > 0) {
-             const harmonyPayload = {
-                 events: harmonyEvents,
-                 instrumentHints: finalPayload.instrumentHints,
-                 barDuration: this.barDuration,
-                 barCount: this.barCount
-             };
-             console.log('[Worker] Harmony payload being sent to main thread: ', JSON.parse(JSON.stringify(harmonyPayload)));
-             self.postMessage({ type: 'HARMONY_SCORE_READY', payload: harmonyPayload });
+             self.postMessage({ 
+                 type: 'HARMONY_SCORE_READY', 
+                 payload: {
+                     events: harmonyEvents,
+                     instrumentHints: finalPayload.instrumentHints,
+                     barDuration: this.barDuration,
+                     barCount: this.barCount
+                 } 
+             });
         }
 
         this.barCount++;
         if (fractalMusicEngine && this.barCount >= fractalMusicEngine.navigator.totalBars + 4) {
-             console.log(`%c[Worker] End of suite detected. Posting 'SUITE_ENDED' command.`, 'color: red; font-weight: bold;');
              self.postMessage({ command: 'SUITE_ENDED' });
         }
     }
 };
 
-// --- MessageBus (The "Kafka" entry point) ---
+// --- MessageBus ---
 self.onmessage = (event: MessageEvent) => {
-    if (!event.data || !event.data.command) {
-        return;
-    }
-    
+    if (!event.data || !event.data.command) return;
     const { command, data } = event.data;
 
     try {
         switch (command) {
             case 'init':
                 Scheduler.settings = { ...Scheduler.settings, ...data };
-                console.log('[Worker] Received "init". Settings stored. Waiting for full update.');
                 break;
-            
             case 'start':
                 Scheduler.start();
                 break;
-                
             case 'stop':
                 Scheduler.stop();
                 break;
-
             case 'reset':
                 Scheduler.reset();
                 break;
-
             case 'update_settings':
                 Scheduler.updateSettings(data);
                 break;
-                
             case 'external_impulse':
-                if (fractalMusicEngine) {
-                    fractalMusicEngine.generateExternalImpulse();
-                }
+                if (fractalMusicEngine) fractalMusicEngine.generateExternalImpulse();
                 break;
-
-            default:
-                 // No-op for unknown commands
-                 break;
         }
     } catch (e) {
         self.postMessage({ type: 'error', error: e instanceof Error ? e.message : String(e) });

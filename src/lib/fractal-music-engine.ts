@@ -2,7 +2,8 @@ import type { FractalEvent, Mood, Genre, InstrumentPart, InstrumentHints, GhostC
 import { BlueprintNavigator } from './blueprint-navigator';
 import { getBlueprint } from './blueprints';
 import { BluesBrain } from './blues-brain';
-import { generateSuiteDNA, createHarmonyAxiom } from './music-theory';
+import { generateSuiteDNA, createHarmonyAxiom, crossoverDNA } from './music-theory';
+import { ElectronicK, AmbientK, MelancholicMinorK } from './resonance-matrices';
 
 function seededRandom(seed: number) {
   let state = seed;
@@ -38,11 +39,12 @@ interface EngineConfig {
   composerControlsInstruments?: boolean;
   useMelodyV2?: boolean;
   introBars: number;
+  ancestor?: any; // #ЗАЧЕМ: Поддержка генетической памяти
 }
 
 /**
- * #ЗАЧЕМ: Фрактальный Музыкальный Движок V12.5 — "Drama & Context".
- * #ЧТО: Реализует систему "Dramatic Gravity" и передачу контекста (lastEvents) в мозг.
+ * #ЗАЧЕМ: Фрактальный Музыкальный Движок V12.6 — "Genetic Intelligence".
+ * #ЧТО: Реализует расчет Beauty Score и поддержку скрещивания (Breeding).
  */
 export class FractalMusicEngine {
   public config: EngineConfig;
@@ -55,11 +57,7 @@ export class FractalMusicEngine {
   private bluesBrain: BluesBrain | null = null;
   private previousChord: GhostChord | null = null;
   
-  /** 
-   * #ЗАЧЕМ: Память ансамбля. Хранит активированные инструменты и такт их рождения.
-   */
   private activatedInstruments: Map<InstrumentPart, { timbre: string, startBar: number }> = new Map();
-  
   private lastEvents: FractalEvent[] = []; 
 
   constructor(config: EngineConfig) {
@@ -77,6 +75,12 @@ export class FractalMusicEngine {
 
   public initialize(force: boolean = false) {
     if (this.isInitialized && !force) return;
+
+    // #ЗАЧЕМ: Генетическое скрещивание с предком.
+    if (this.config.ancestor) {
+        console.log(`%c[Engine] BREEDING detected! Crossover with masterpiece: ${this.config.ancestor.seed}`, 'color: #FF1493; font-weight:bold;');
+        this.config.seed = crossoverDNA(this.config.seed, this.config.ancestor);
+    }
 
     this.random = seededRandom(this.config.seed);
     this.activatedInstruments.clear(); 
@@ -96,19 +100,18 @@ export class FractalMusicEngine {
     this.isInitialized = true;
   }
 
-  public evolve(barDuration: number, barCount: number): { events: FractalEvent[], instrumentHints: InstrumentHints } {
-    if (!this.navigator) return { events: [], instrumentHints: {} };
+  public evolve(barDuration: number, barCount: number): { events: FractalEvent[], instrumentHints: InstrumentHints, beautyScore: number } {
+    if (!this.navigator) return { events: [], instrumentHints: {}, beautyScore: 0 };
     this.epoch = barCount;
 
-    if (this.epoch >= this.navigator.totalBars) return { events: [], instrumentHints: {} };
+    if (this.epoch >= this.navigator.totalBars) return { events: [], instrumentHints: {}, beautyScore: 0 };
 
     const navInfo = this.navigator.tick(this.epoch);
-    if (!navInfo) return { events: [], instrumentHints: {} };
+    if (!navInfo) return { events: [], instrumentHints: {}, beautyScore: 0 };
 
     const instrumentHints: InstrumentHints = { summonProgress: {} };
     const stages = navInfo.currentPart.stagedInstrumentation;
 
-    // --- DRAMATIC GRAVITY: Instrument Activation Logic ---
     if (stages && stages.length > 0) {
         const progress = (this.epoch - navInfo.currentPartStartBar) / (navInfo.currentPartEndBar - navInfo.currentPartStartBar + 1);
         let currentStage = stages[stages.length - 1];
@@ -133,22 +136,18 @@ export class FractalMusicEngine {
                     atLeastOneActive = true;
                 }
             } else {
-                // Persistent summoning logic
                 if (!this.activatedInstruments.has(part)) {
                     if (rule.activationChance > 0 && this.random.next() < rule.activationChance) {
                         this.activatedInstruments.set(part, { 
                             timbre: this.pickWeighted(rule.instrumentOptions), 
                             startBar: this.epoch 
                         });
-                        console.log(`Plan171 - [Summon] Instrument ${part} materializing at Bar ${this.epoch}`);
                     }
                 }
                 
                 if (this.activatedInstruments.has(part)) {
                     const data = this.activatedInstruments.get(part)!;
                     (instrumentHints as any)[part] = data.timbre;
-                    
-                    // Progress: 0.33 -> 0.66 -> 1.0 over 3 bars
                     const age = this.epoch - data.startBar;
                     const progress = Math.min(1, (age + 1) / 3);
                     instrumentHints.summonProgress![part] = progress;
@@ -157,7 +156,6 @@ export class FractalMusicEngine {
             }
         });
 
-        // RULE: No Silence (Anti-Dead-Air)
         if (!atLeastOneActive && this.epoch > 0) {
             const candidates = Object.entries(currentStage.instrumentation)
                 .sort((a, b) => (b[1] as any).activationChance - (a[1] as any).activationChance);
@@ -167,7 +165,6 @@ export class FractalMusicEngine {
                     timbre: this.pickWeighted((bestRule as any).instrumentOptions),
                     startBar: this.epoch
                 });
-                console.warn(`Plan171 - [Guard] Anti-Silence triggered. Forced summoning of ${bestPart}`);
             }
         }
     }
@@ -177,7 +174,43 @@ export class FractalMusicEngine {
     const result = this.generateOneBar(barDuration, navInfo, instrumentHints);
     this.lastEvents = [...result.events];
 
-    return { ...result, instrumentHints };
+    // #ЗАЧЕМ: Automated Critic - оценка красоты через гармонический резонанс.
+    const beautyScore = this.calculateBeautyScore(result.events);
+
+    return { ...result, instrumentHints, beautyScore };
+  }
+
+  /**
+   * #ЗАЧЕМ: Математическая оценка гармоничности такта.
+   */
+  private calculateBeautyScore(events: FractalEvent[]): number {
+      if (events.length < 2) return 0.5;
+      
+      const matrix = this.getResonanceMatrix();
+      let totalResonance = 0;
+      let pairCount = 0;
+
+      // Сэмплируем пары событий для оценки связности
+      for (let i = 0; i < events.length; i++) {
+          for (let j = i + 1; j < Math.min(i + 5, events.length); j++) {
+              const res = matrix(events[i], events[j], {
+                  mood: this.config.mood,
+                  genre: this.config.genre,
+                  tempo: this.config.tempo,
+                  delta: 0.5
+              });
+              totalResonance += res;
+              pairCount++;
+          }
+      }
+
+      return pairCount > 0 ? totalResonance / pairCount : 0.5;
+  }
+
+  private getResonanceMatrix() {
+      if (this.config.genre === 'ambient') return AmbientK;
+      if (this.config.mood === 'melancholic') return MelancholicMinorK;
+      return ElectronicK;
   }
 
   private pickWeighted<T>(options: { name: T, weight: number }[]): T {
@@ -196,7 +229,6 @@ export class FractalMusicEngine {
     let allEvents: FractalEvent[] = [];
 
     if (this.config.genre === 'blues' && this.bluesBrain) {
-        // #ЗАЧЕМ: Передача lastEvents для реализацииConversational Mode (Резонанс).
         allEvents = this.bluesBrain.generateBar(this.epoch, currentChord, navInfo, this.suiteDNA, instrumentHints, this.lastEvents);
     } else {
         const harmonyEvents = createHarmonyAxiom(currentChord, this.config.mood, this.config.genre, this.random, this.epoch);
@@ -204,5 +236,9 @@ export class FractalMusicEngine {
     }
 
     return { events: allEvents };
+  }
+
+  public generateExternalImpulse() {
+      // Logic for manual user interaction influence
   }
 }

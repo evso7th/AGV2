@@ -4,7 +4,7 @@
  * #ЧТО: Функции для получения гамм, инверсий, ретроградов и гуманизации.
  *       Внедрена система цепей Маркова для генерации гармонического скелета.
  *       ДОБАВЛЕНО: Математика MusiNum для фрактальной детерминированности.
- * #ОБНОВЛЕНО (ПЛАН №178): Исправлены ошибки импорта типов.
+ * #ОБНОВЛЕНО (ПЛАН №201): Добавлена функция crossoverDNA для генетического скрещивания.
  */
 
 import type { 
@@ -40,6 +40,19 @@ export function calculateMusiNum(step: number, base: number = 2, start: number =
 }
 
 /**
+ * #ЗАЧЕМ: Генетическое скрещивание (Breeding).
+ * #ЧТО: Смешивает текущее "семя" с параметрами успешного "предка".
+ */
+export function crossoverDNA(currentSeed: number, ancestor: any): number {
+    if (!ancestor || !ancestor.seed) return currentSeed;
+    
+    // Фрактальное смешивание: берем старшие разряды текущего семени
+    // и младшие разряды предка (или наоборот)
+    const blendFactor = 0.5;
+    return Math.floor(currentSeed * blendFactor + ancestor.seed * (1 - blendFactor));
+}
+
+/**
  * #ЗАЧЕМ: Детерминированный выбор из взвешенного списка.
  */
 export function pickWeightedDeterministic<T>(
@@ -70,7 +83,6 @@ export function pickWeightedDeterministic<T>(
 export function generateTensionMap(seed: number, totalBars: number, mood: Mood): number[] {
     const map: number[] = [];
     
-    // Выбор профиля на основе настроения
     const getProfile = (m: Mood): TensionProfile['type'] => {
         if (['melancholic', 'gloomy'].includes(m)) return 'arc';
         if (['joyful', 'enthusiastic', 'epic'].includes(m)) return 'crescendo';
@@ -84,7 +96,6 @@ export function generateTensionMap(seed: number, totalBars: number, mood: Mood):
         const progress = i / totalBars;
         let baseTension = 0.5;
 
-        // Применяем профильную кривую
         switch (type) {
             case 'arc': baseTension = Math.sin(progress * Math.PI); break;
             case 'crescendo': baseTension = Math.pow(progress, 1.2); break;
@@ -92,7 +103,6 @@ export function generateTensionMap(seed: number, totalBars: number, mood: Mood):
             case 'wave': baseTension = 0.5 + 0.3 * Math.sin(progress * Math.PI * 4); break;
         }
 
-        // Добавляем фрактальный шум MusiNum для "живости"
         const noise = (calculateMusiNum(i, 7, seed, 100) / 100) * 0.2;
         const combined = baseTension * 0.8 + noise;
         
@@ -171,7 +181,6 @@ export function generateSuiteDNA(totalBars: number, mood: Mood, seed: number, ra
     const baseKeyNote = 24 + Math.floor(random.next() * 12);
     const key = baseKeyNote;
     
-    // Выбор типа сетки для блюза
     const gridTypes: ('classic' | 'quick-change' | 'minor-blues')[] = ['classic', 'quick-change', 'minor-blues'];
     const bluesGridType = gridTypes[calculateMusiNum(seed, 3, seed, 3)];
 
@@ -241,7 +250,6 @@ export function generateSuiteDNA(totalBars: number, mood: Mood, seed: number, ra
 
     const tensionMap = generateTensionMap(seed, totalBars, mood);
     
-    // Генерация тематических якорей (ступеней)
     const anchorPool = ['R', 'b3', '4', '5', 'b7'];
     const thematicAnchors = [
         anchorPool[calculateMusiNum(seed, 3, 0, anchorPool.length)],
