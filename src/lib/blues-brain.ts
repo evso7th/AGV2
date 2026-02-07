@@ -22,6 +22,7 @@ import { GUITAR_PATTERNS } from './assets/guitar-patterns';
  * #ЗАЧЕМ: Блюзовый Мозг V12.9 — "The Singing Guitar".
  * #ЧТО: Реализована концепция непрерывного легатного повествования для гитары.
  *       Паузы теперь — это не отсутствие нот, а музыкальное дыхание.
+ * #ИСПРАВЛЕНО (ПЛАН 197): Установлен потолок регистра G5 (79) для сохранения тембра.
  */
 
 const ENERGY_PRICES = {
@@ -46,6 +47,9 @@ export class BluesBrain {
   private currentAxiom: MelodicAxiomNote[] = [];
   private random: any;
   
+  // #ЗАЧЕМ: Защита от цифрового свиста. Лимит — середина 5-й октавы (G5).
+  private readonly MELODY_CEILING = 79;
+
   // Phrasing state
   private phrasePauseTimer = 0; 
 
@@ -180,7 +184,6 @@ export class BluesBrain {
 
   private evaluateTimbralDramaturgy(tension: number, hints: InstrumentHints) {
     if (hints.melody && typeof hints.melody !== 'string') {
-        // #ИСПРАВЛЕНО: Теперь всегда используем 'guitar_shineOn' для Winter Blues в режиме СОР.
         (hints as any).melody = 'guitar_shineOn';
     }
     if (hints.accompaniment && typeof hints.accompaniment !== 'string') {
@@ -202,7 +205,6 @@ export class BluesBrain {
     else phaseName = (tension > 0.7) ? 'CLIMAX' : 'RESPONSE';
 
     if (phaseInSentence === 0 || this.currentAxiom.length === 0) {
-        // #ОБНОВЛЕНО (ПЛАН 182): Передача dna и epoch для более гибкого выбора первой ноты темы.
         this.currentAxiom = this.generateInitialAxiom(tension, epoch, dna);
     } else {
         this.currentAxiom = this.evolveAxiom(this.currentAxiom, tension, phaseName, dna, epoch);
@@ -211,25 +213,26 @@ export class BluesBrain {
     const registerLift = (tension > 0.7 || phaseName === 'CLIMAX') ? 12 : 0;
 
     return this.currentAxiom.map((n, idx, arr) => {
-        // #ЗАЧЕМ: Реализация непрерывного легатного потока.
-        // #ЧТО: Длительность ноты устанавливается так, чтобы заполнить пространство до следующей ноты.
         let duration = n.d;
         if (idx < arr.length - 1) {
             duration = arr[idx+1].t - n.t;
         } else if (idx === arr.length - 1) {
-            // Последняя нота фразы тянется для выразительности
             duration = Math.max(n.d, 6); 
         }
 
+        // #ЗАЧЕМ: Ограничение регистра.
+        // #ЧТО: Применение MELODY_CEILING (79) к финальной ноте.
+        const targetNote = chord.rootNote + 36 + registerLift + (DEGREE_TO_SEMITONE[n.deg] || 0);
+
         return {
             type: 'melody',
-            note: chord.rootNote + 36 + registerLift + (DEGREE_TO_SEMITONE[n.deg] || 0),
+            note: Math.min(targetNote, this.MELODY_CEILING),
             time: n.t * tickDur,
             duration: duration * tickDur,
             weight: 0.8 + (tension * 0.2),
             technique: n.tech,
             dynamics: tension > 0.6 ? 'mf' : 'p',
-            phrasing: 'legato', // Всегда легато внутри фразы
+            phrasing: 'legato',
             harmonicContext: phaseName
         };
     });
@@ -248,7 +251,7 @@ export class BluesBrain {
               const noteIdx = calculateMusiNum(epoch + beat, 5, this.seed, 4);
               events.push({
                   type: 'melody',
-                  note: notes[noteIdx],
+                  note: Math.min(notes[noteIdx], this.MELODY_CEILING),
                   time: beat * beatDur,
                   duration: beatDur * 0.8,
                   weight: 0.5 + (tension * 0.3),
@@ -261,22 +264,15 @@ export class BluesBrain {
       return events;
   }
 
-  /**
-   * #ЗАЧЕМ: Генерация тематического ядра для гитарной фразы.
-   * #ЧТО: Выбор первой ноты темы теперь динамичен.
-   */
   private generateInitialAxiom(tension: number, epoch: number, dna: SuiteDNA): MelodicAxiomNote[] {
     const axiom: MelodicAxiomNote[] = [];
     const pool = ['R', 'b3', '4', '5', 'b7', this.thematicDegree];
     const count = tension > 0.6 ? 4 : 3; 
     
-    // #ЗАЧЕМ: Предотвращение регрессии разнообразия при сохранении тематической фокусировки.
-    // #ЧТО: Первая нота выбирается из пула "Тематических Якорей" (Тоника, Квинта, или спец. якоря ДНК).
     const startAnchors = ['R', '5', ...(dna.thematicAnchors || [])];
     
     for (let i = 0; i < count; i++) {
         const stepSeed = this.seed + i + 100 + epoch;
-        // Первая нота темы теперь детерминированно меняется на протяжении сюиты.
         const deg = (i === 0) 
             ? startAnchors[calculateMusiNum(epoch, 3, this.seed, startAnchors.length)]
             : pool[calculateMusiNum(stepSeed, 3, i, pool.length)];
@@ -434,7 +430,7 @@ export class BluesBrain {
       const melodyEvents = events.filter(e => e.type === 'melody');
       if (melodyEvents.length > 0) {
         const last = melodyEvents[melodyEvents.length - 1];
-        events.push({ type: 'melody', note: last.note! + 5, time: last.time + last.duration + 0.3, duration: 1.2, weight: 0.95, technique: 'vibrato', dynamics: 'mf', phrasing: 'sostenuto', harmonicContext: 'RESOLUTION' });
+        events.push({ type: 'melody', note: Math.min(last.note! + 5, this.MELODY_CEILING), time: last.time + last.duration + 0.3, duration: 1.2, weight: 0.95, technique: 'vibrato', dynamics: 'mf', phrasing: 'sostenuto', harmonicContext: 'RESOLUTION' });
         this.lastAscendingBar = epoch;
       }
     }
