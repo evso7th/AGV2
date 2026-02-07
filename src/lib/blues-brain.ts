@@ -202,7 +202,8 @@ export class BluesBrain {
     else phaseName = (tension > 0.7) ? 'CLIMAX' : 'RESPONSE';
 
     if (phaseInSentence === 0 || this.currentAxiom.length === 0) {
-        this.currentAxiom = this.generateInitialAxiom(tension);
+        // #ОБНОВЛЕНО (ПЛАН 182): Передача dna и epoch для более гибкого выбора первой ноты темы.
+        this.currentAxiom = this.generateInitialAxiom(tension, epoch, dna);
     } else {
         this.currentAxiom = this.evolveAxiom(this.currentAxiom, tension, phaseName, dna, epoch);
     }
@@ -260,16 +261,26 @@ export class BluesBrain {
       return events;
   }
 
-  private generateInitialAxiom(tension: number): MelodicAxiomNote[] {
+  /**
+   * #ЗАЧЕМ: Генерация тематического ядра для гитарной фразы.
+   * #ЧТО: Выбор первой ноты темы теперь динамичен.
+   */
+  private generateInitialAxiom(tension: number, epoch: number, dna: SuiteDNA): MelodicAxiomNote[] {
     const axiom: MelodicAxiomNote[] = [];
     const pool = ['R', 'b3', '4', '5', 'b7', this.thematicDegree];
     const count = tension > 0.6 ? 4 : 3; 
     
-    // #ЗАЧЕМ: Укрепление основной темы.
-    // #ЧТО: Первая нота аксиомы теперь всегда Тоника ('R').
+    // #ЗАЧЕМ: Предотвращение регрессии разнообразия при сохранении тематической фокусировки.
+    // #ЧТО: Первая нота выбирается из пула "Тематических Якорей" (Тоника, Квинта, или спец. якоря ДНК).
+    const startAnchors = ['R', '5', ...(dna.thematicAnchors || [])];
+    
     for (let i = 0; i < count; i++) {
-        const stepSeed = this.seed + i + 100;
-        const deg = (i === 0) ? 'R' : pool[calculateMusiNum(stepSeed, 3, i, pool.length)];
+        const stepSeed = this.seed + i + 100 + epoch;
+        // Первая нота темы теперь детерминированно меняется на протяжении сюиты.
+        const deg = (i === 0) 
+            ? startAnchors[calculateMusiNum(epoch, 3, this.seed, startAnchors.length)]
+            : pool[calculateMusiNum(stepSeed, 3, i, pool.length)];
+            
         axiom.push({ 
             deg, 
             t: i * 2.5, 
