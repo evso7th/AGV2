@@ -34,8 +34,8 @@ export class CS80GuitarSampler {
         this.destination = destination;
         this.preamp = this.audioContext.createGain();
         // #ЗАЧЕМ: Нормализация громкости. Сэмплы CS80 исходно очень громкие.
-        // #ЧТО: Громкость снижена в 6 раз (1.4 / 6 ≈ 0.23).
-        this.preamp.gain.value = 0.23; 
+        // #ЧТО: Громкость установлена в 0.4 (План №211).
+        this.preamp.gain.value = 0.4; 
         this.preamp.connect(this.destination);
     }
 

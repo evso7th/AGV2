@@ -11,7 +11,7 @@ import type { CS80GuitarSampler } from './cs80-guitar-sampler';
 
 /**
  * A V2 manager for melody and bass parts.
- * Updated to support HYBRID synthesis and new CS80 Sampler.
+ * Updated to support HYBRID synthesis and new CS80 Sampler for both parts.
  */
 export class MelodySynthManagerV2 {
     private audioContext: AudioContext;
@@ -105,7 +105,12 @@ export class MelodySynthManagerV2 {
             this.telecasterSampler.schedule(notesToPlay, barStartTime, tempo, true); 
         }
 
-        // --- Sampler Routing ---
+        // --- Sampler Routing (CS80 is shared for Bass and Melody) ---
+        if (instrumentHint === 'cs80') {
+            this.cs80Sampler.schedule(notesToPlay, barStartTime);
+            return;
+        }
+
         if (this.partName === 'melody') {
             if (instrumentHint === 'blackAcoustic') {
                 this.blackAcousticSampler.schedule(notesToPlay, barStartTime, tempo);
@@ -117,10 +122,6 @@ export class MelodySynthManagerV2 {
             }
             if (instrumentHint === 'darkTelecaster') {
                 this.darkTelecasterSampler.schedule(notesToPlay, barStartTime, tempo);
-                return;
-            }
-            if (instrumentHint === 'cs80') {
-                this.cs80Sampler.schedule(notesToPlay, barStartTime);
                 return;
             }
         }

@@ -191,7 +191,8 @@ export const BASS_PRESET_MAP: Record<string, keyof typeof BASS_PRESETS> = {
     bass_deep_house: 'bass_deep_house',
     bottom_heavy: 'bass_ambient_dark',
     rockBass: 'bass_rock_pick',
-    slapBass: 'bass_slap'
+    slapBass: 'bass_slap',
+    cs80: 'bass_cs80' // #ЗАЧЕМ: Поддержка басового режима CS80.
 };
 
 export function getPreset(name: string): PresetConfig {
