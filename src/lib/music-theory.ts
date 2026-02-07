@@ -7,6 +7,7 @@
  * #ОБНОВЛЕНО (ПЛАН №238): Реализован алгоритм "Lick -> Transform -> Crossover -> Sowing".
  *       Теперь наследование (Breeding) влияет на "посев" всей структуры пьесы.
  * #ОБНОВЛЕНО (ПЛАН №241): Добавлена глубокая генетическая телеметрия (логирование эволюции).
+ * #ОБНОВЛЕНО (ПЛАН №242): Трансформация лика перенесена в момент Рождения (Epoch 0).
  */
 
 import type { 
@@ -51,15 +52,16 @@ export function calculateMusiNum(step: number, base: number = 2, start: number =
 
 /**
  * #ЗАЧЕМ: Движок Генетической Рекомбинации Ликов.
- * #ЧТО: Теперь сообщает о типе примененной мутации в консоль.
+ * #ЧТО: Трансформирует базовый лик один раз при зачатии.
  */
-export function transformLick(lick: BluesSoloPhrase, seed: number, epoch: number): BluesSoloPhrase {
+export function transformLick(lick: BluesSoloPhrase, seed: number, epoch: number, isBirth: boolean = false): BluesSoloPhrase {
     const transformed = JSON.parse(JSON.stringify(lick)) as BluesSoloPhrase;
     const transformType = calculateMusiNum(epoch, 3, seed, 4);
+    const logPrefix = isBirth ? "[GENEPOOL] BIRTH TRANSFORMATION:" : "[SOR] Evolution:";
 
     switch (transformType) {
         case 1: // Inversion
-            console.log(`%c[SOR] Transform: INVERSION applied to lick at epoch ${epoch}`, 'color: #32CD32');
+            console.log(`%c${logPrefix} INVERSION applied to lick`, 'color: #32CD32');
             const firstMidi = DEGREE_TO_SEMITONE[transformed[0].deg] || 0;
             transformed.forEach(n => {
                 const currentMidi = DEGREE_TO_SEMITONE[n.deg] || 0;
@@ -69,10 +71,10 @@ export function transformLick(lick: BluesSoloPhrase, seed: number, epoch: number
             });
             break;
         case 2: // Retrograde
-            console.log(`%c[SOR] Transform: RETROGRADE applied to lick at epoch ${epoch}`, 'color: #32CD32');
+            console.log(`%c${logPrefix} RETROGRADE applied to lick`, 'color: #32CD32');
             return [...transformed].reverse().map((n, i) => ({ ...n, t: (12 - (transformed[transformed.length-1-i].t + transformed[transformed.length-1-i].d)) % 12 }));
         case 3: // Transposition
-            console.log(`%c[SOR] Transform: TRANSPOSITION applied to lick at epoch ${epoch}`, 'color: #32CD32');
+            console.log(`%c${logPrefix} TRANSPOSITION applied to lick`, 'color: #32CD32');
             const shift = [0, 3, 5, 7, 10][calculateMusiNum(seed, 5, epoch, 5)];
             transformed.forEach(n => {
                 const currentMidi = DEGREE_TO_SEMITONE[n.deg] || 0;
@@ -80,7 +82,7 @@ export function transformLick(lick: BluesSoloPhrase, seed: number, epoch: number
             });
             break;
         default:
-            console.log(`%c[SOR] Transform: RHYTHMIC JITTER applied to lick at epoch ${epoch}`, 'color: #32CD32');
+            console.log(`%c${logPrefix} RHYTHMIC JITTER applied to lick`, 'color: #32CD32');
             transformed.forEach(n => { n.t = (n.t + calculateMusiNum(epoch, 2, seed, 2)) % 12; });
             break;
     }
@@ -174,13 +176,14 @@ export function getScaleForMood(mood: Mood, genre?: Genre): number[] {
 }
 
 /**
- * #ЗАЧЕМ: Генератор ДНК сюиты V238 — "Evolutionary Sowing".
- * #ЧТО: Реализует цепочку Lick -> Transform -> Crossover -> Final Seed -> Sowing.
- *       Добавлена глубокая телеметрия генетического процесса.
+ * #ЗАЧЕМ: Генератор ДНК сюиты V242 — "Birth Transformation Realignment".
+ * #ЧТО: Лик трансформируется один раз при рождении (Epoch 0).
  */
 export function generateSuiteDNA(totalBars: number, mood: Mood, initialSeed: number, originalRandom: any, genre: Genre, blueprintParts: any[], ancestor?: any): SuiteDNA {
-    // 1. ВЫБОР СЕМАНТИЧЕСКОГО СЕМЕНИ (на основе initialSeed)
+    // 1. BIRTH SELECTION
     let seedLickId: string | undefined;
+    let seedLickNotes: BluesSoloPhrase | undefined;
+
     if (genre === 'blues') {
         const moodTags = (mood === 'dark' || mood === 'anxious' || mood === 'melancholic' || mood === 'gloomy') ? ['minor'] : ['major'];
         const candidates = Object.keys(BLUES_SOLO_LICKS).filter(id => 
@@ -193,20 +196,22 @@ export function generateSuiteDNA(totalBars: number, mood: Mood, initialSeed: num
         if (LICK_HISTORY.length > MAX_HISTORY_SIZE) LICK_HISTORY.shift();
         
         if (seedLickId) {
-            console.log(`%c[GENEPOOL] Seed Lick Picked: ${seedLickId} (${BLUES_SOLO_LICKS[seedLickId].tags.join(', ')})`, 'color: #FFD700; font-weight: bold;');
+            console.log(`%c[GENEPOOL] BIRTH SELECTION: Lick Seed "${seedLickId}" picked.`, 'color: #FFD700; font-weight: bold;');
+            
+            // 2. BIRTH TRANSFORMATION (One-time only!)
+            const rawLick = BLUES_SOLO_LICKS[seedLickId].phrase;
+            seedLickNotes = transformLick(rawLick, initialSeed, 0, true);
         }
     }
 
-    // 2. ГЕНЕТИЧЕСКОЕ СКРЕЩИВАНИЕ (Breeding)
+    // 3. BREEDING (Genetic Crossover)
     const finalSeed = ancestor ? crossoverDNA(initialSeed, ancestor) : initialSeed;
     if (ancestor) {
-        console.log(`%c[GENEPOOL] Breeding: Parent A (Initial: ${initialSeed}) + Parent B (Ancestor: ${ancestor.seed}) -> Final Seed: ${finalSeed}`, 'color: #ff00ff; font-weight: bold;');
-    } else {
-        console.log(`%c[GENEPOOL] Genesis: No ancestor found. Initial Seed preserved: ${finalSeed}`, 'color: #00BFFF;');
+        console.log(`%c[GENEPOOL] BREEDING: Parent A (Initial: ${initialSeed}) + Parent B (Ancestor: ${ancestor.seed}) -> Final Seed: ${finalSeed}`, 'color: #ff00ff; font-weight: bold;');
     }
     
-    // 3. ПОСЕВ (Sowing): Все дальнейшие параметры зависят от finalSeed
-    console.log(`%c[GENEPOOL] Sowing: Applying Final Seed ${finalSeed} to all structural parameters.`, 'color: #4ade80; font-weight: bold;');
+    // 4. SOWING
+    console.log(`%c[GENEPOOL] SOWING: Seeding structural parameters using Final Seed ${finalSeed}.`, 'color: #4ade80; font-weight: bold;');
     
     const sowingRandom = {
         state: finalSeed,
@@ -293,6 +298,6 @@ export function generateSuiteDNA(totalBars: number, mood: Mood, initialSeed: num
 
     return { 
         harmonyTrack, baseTempo, rhythmicFeel: 'shuffle', bassStyle: 'walking', drumStyle: 'shuffle_A', 
-        soloPlanMap, tensionMap, bluesGridType, thematicAnchors, seedLickId
+        soloPlanMap, tensionMap, bluesGridType, thematicAnchors, seedLickId, seedLickNotes
     };
 }

@@ -108,6 +108,7 @@ export type InstrumentType =
   | 'drum_Bell_-_Ring'
   | 'drum_Bell_-_Slide'
   | 'drum_Bell_-_Smooth'
+  | 'drum_Bell_-_Soft'
   | 'drum_Bell_-_Tap'
   | 'drum_Bell_-_Too_Easy'
   | 'drum_Bell_-_Unstable'
@@ -371,6 +372,8 @@ export type SuiteDNA = {
   thematicAnchors?: string[];
   /** #ЗАЧЕМ: Семантическое семя для СОР (План №218). */
   seedLickId?: string;
+  /** #ЗАЧЕМ: Трансформированная аксиома лика для старта эволюции (План №242). */
+  seedLickNotes?: BluesSoloPhrase;
 };
 
 
