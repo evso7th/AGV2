@@ -2,7 +2,7 @@ import type { FractalEvent, Mood, Genre, InstrumentPart, InstrumentHints, GhostC
 import { BlueprintNavigator } from './blueprint-navigator';
 import { getBlueprint } from './blueprints';
 import { BluesBrain } from './blues-brain';
-import { generateSuiteDNA, createHarmonyAxiom, crossoverDNA } from './music-theory';
+import { generateSuiteDNA, createHarmonyAxiom, crossoverDNA, pickWeightedDeterministic } from './music-theory';
 import { ElectronicK, AmbientK, MelancholicMinorK } from './resonance-matrices';
 
 function seededRandom(seed: number) {
@@ -43,9 +43,10 @@ interface EngineConfig {
 }
 
 /**
- * #ЗАЧЕМ: Фрактальный Музыкальный Движок V12.7 — "Persistent Ensemble".
- * #ЧТО: Исправлена ошибка "исчезающего барабанщика". 
- *       Инструменты в activatedInstruments теперь гарантированно остаются в hints.
+ * #ЗАЧЕМ: Фрактальный Музыкальный Движок V12.8 — "Pure Blueprint Logic".
+ * #ЧТО: Удален хардкод activatedInstruments. Теперь ансамбль управляется 
+ *       исключительно через кумулятивные правила в Блюпринтах.
+ * #СВЯЗИ: Реализует архитектуру "Dramatic Gravity" без сохранения состояния в ядре.
  */
 export class FractalMusicEngine {
   public config: EngineConfig;
@@ -57,8 +58,6 @@ export class FractalMusicEngine {
 
   private bluesBrain: BluesBrain | null = null;
   private previousChord: GhostChord | null = null;
-  
-  private activatedInstruments: Map<InstrumentPart, { timbre: string, startBar: number }> = new Map();
   private lastEvents: FractalEvent[] = []; 
 
   constructor(config: EngineConfig) {
@@ -83,7 +82,6 @@ export class FractalMusicEngine {
     }
 
     this.random = seededRandom(this.config.seed);
-    this.activatedInstruments.clear(); 
     this.lastEvents = [];
     
     if (this.config.genre === 'blues') {
@@ -112,6 +110,8 @@ export class FractalMusicEngine {
     const instrumentHints: InstrumentHints = { summonProgress: {} };
     const stages = navInfo.currentPart.stagedInstrumentation;
 
+    // #ЗАЧЕМ: Декларативная оркестровка.
+    // #ЧТО: Движок беспристрастно выбирает инструменты только на основе текущей сцены Блюпринта.
     if (stages && stages.length > 0) {
         const progress = (this.epoch - navInfo.currentPartStartBar) / (navInfo.currentPartEndBar - navInfo.currentPartStartBar + 1);
         let currentStage = stages[stages.length - 1];
@@ -124,43 +124,15 @@ export class FractalMusicEngine {
             } 
         }
 
-        // #ЗАЧЕМ: Гарантированная поддержка однажды активированных инструментов.
-        this.activatedInstruments.forEach((data, part) => {
-            (instrumentHints as any)[part] = data.timbre;
-            const age = this.epoch - data.startBar;
-            instrumentHints.summonProgress![part] = Math.min(1, (age + 1) / 3);
-        });
-
         Object.entries(currentStage.instrumentation).forEach(([partStr, rule]: [any, any]) => {
             const part = partStr as InstrumentPart;
-            
-            if (rule.transient) {
-                if (this.random.next() < rule.activationChance) {
-                    (instrumentHints as any)[part] = this.pickWeighted(rule.instrumentOptions);
-                    instrumentHints.summonProgress![part] = 1.0;
-                }
-            } else if (!this.activatedInstruments.has(part)) {
-                if (rule.activationChance > 0 && this.random.next() < rule.activationChance) {
-                    const timbre = this.pickWeighted(rule.instrumentOptions);
-                    this.activatedInstruments.set(part, { timbre, startBar: this.epoch });
-                    (instrumentHints as any)[part] = timbre;
-                    instrumentHints.summonProgress![part] = 0.33;
-                }
+            if (this.random.next() < rule.activationChance) {
+                // Используем детерминированный выбор тембра (без хранения состояния)
+                const timbre = pickWeightedDeterministic(rule.instrumentOptions, this.config.seed, this.epoch, 500);
+                (instrumentHints as any)[part] = timbre;
+                instrumentHints.summonProgress![part] = 1.0; // Плавное вступление теперь реализуется через аранжировку
             }
         });
-
-        // Fail-safe: Если в основной части вообще ничего не играет
-        if (this.activatedInstruments.size === 0 && this.epoch > 0) {
-            const candidates = Object.entries(currentStage.instrumentation)
-                .sort((a, b) => (b[1] as any).activationChance - (a[1] as any).activationChance);
-            if (candidates.length > 0) {
-                const [bestPart, bestRule] = candidates[0];
-                const timbre = this.pickWeighted((bestRule as any).instrumentOptions);
-                this.activatedInstruments.set(bestPart as InstrumentPart, { timbre, startBar: this.epoch });
-                (instrumentHints as any)[bestPart] = timbre;
-                instrumentHints.summonProgress![bestPart as InstrumentPart] = 0.33;
-            }
-        }
     }
 
     if (navInfo.currentPart.layers.pianoAccompaniment) instrumentHints.pianoAccompaniment = 'piano';
@@ -200,13 +172,6 @@ export class FractalMusicEngine {
       if (this.config.genre === 'ambient') return AmbientK;
       if (this.config.mood === 'melancholic') return MelancholicMinorK;
       return ElectronicK;
-  }
-
-  private pickWeighted<T>(options: { name: T, weight: number }[]): T {
-      const total = options.reduce((sum, opt) => sum + opt.weight, 0);
-      let rand = this.random.next() * total;
-      for (const opt of options) { rand -= opt.weight; if (rand <= 0) return opt.name; }
-      return options[options.length - 1].name;
   }
   
   private generateOneBar(barDuration: number, navInfo: NavigationInfo, instrumentHints: InstrumentHints): { events: FractalEvent[] } {

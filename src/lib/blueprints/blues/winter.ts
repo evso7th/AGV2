@@ -1,16 +1,15 @@
-
 import type { MusicBlueprint } from '@/types/music';
 
 /**
- * #ЗАЧЕМ: Блюпринт "The Bluest Blues" (v18.0 - Dynamic Bass Foundation).
- * #ЧТО: Сохранена кинематографичность CS80 Solo.
- *       Бас переведен на динамическую связку (Jazz -> Reggae -> 808) по напруге.
- * #СТАТУС: FROZEN. Изменения внесены по специальному разрешению.
+ * #ЗАЧЕМ: Блюпринт "The Bluest Blues" (v19.0 - Cumulative Stages).
+ * #ЧТО: Исправлена ошибка прерывистости ансамбля. Сцены теперь кумулятивны.
+ *       Бас управляется динамически через BluesBrain.
+ * #СТАТУС: FROZEN. Изменения внесены по требованию архитектурной целостности.
  */
 export const WinterBluesBlueprint: MusicBlueprint = {
     id: 'winter_blues',
-    name: 'The Bluest Blues (Dynamic Base)',
-    description: 'A deep, cognitive blues journey with a solidifying bass foundation.',
+    name: 'The Bluest Blues (Persistent)',
+    description: 'A deep journey where instruments enter and stay until the end.',
     mood: 'melancholic',
     musical: {
         key: { root: 'E', scale: 'dorian', octave: 1 },
@@ -27,37 +26,48 @@ export const WinterBluesBlueprint: MusicBlueprint = {
         totalDuration: { preferredBars: 144 },
         parts: [
             {
-                id: 'INTRO_1', name: 'Rapid Opening', duration: { percent: 30 }, 
+                id: 'INTRO_1', name: 'Opening Act', duration: { percent: 30 }, 
                 layers: { bass: true, accompaniment: true, melody: true, drums: true, harmony: true, pianoAccompaniment: true, sparkles: true },
                 stagedInstrumentation: [
+                    // Сцена 1: Фундамент (Бас + Орган + Ударные + Аккорды)
                     { 
-                        duration: { percent: 1 }, 
+                        duration: { percent: 25 }, 
                         instrumentation: {
-                           // Бас теперь управляется динамически через BluesBrain
                            bass: { activationChance: 1.0, instrumentOptions: [ { name: 'bass', weight: 1.0 } ] },
                            drums: { activationChance: 1.0, instrumentOptions: [ { name: 'blues_melancholic', weight: 1.0 } ] },
                            accompaniment: { activationChance: 1.0, instrumentOptions: [ { name: 'organ_soft_jazz', weight: 1.0 } ] },
                            harmony: { activationChance: 1.0, instrumentOptions: [ { name: 'guitarChords', weight: 1.0 } ] }
                         }
                     },
+                    // Сцена 2: Вход Солиста (Сохраняем всё из Сцены 1)
                     {
-                        duration: { percent: 1 }, 
+                        duration: { percent: 25 }, 
                         instrumentation: {
-                           melody: { activationChance: 1.0, instrumentOptions: [ { name: 'cs80', weight: 1.0 } ] }
+                           bass: { activationChance: 1.0, instrumentOptions: [ { name: 'bass', weight: 1.0 } ] },
+                           drums: { activationChance: 1.0, instrumentOptions: [ { name: 'blues_melancholic', weight: 1.0 } ] },
+                           accompaniment: { activationChance: 1.0, instrumentOptions: [ { name: 'organ_soft_jazz', weight: 1.0 } ] },
+                           harmony: { activationChance: 1.0, instrumentOptions: [ { name: 'guitarChords', weight: 1.0 } ] },
+                           melody: { activationChance: 1.0, instrumentOptions: [ { name: 'melody', weight: 1.0 } ] }
                         }
                     },
+                    // Сцена 3: Обогащение (Пианино + Искры)
                     {
-                        duration: { percent: 1 }, 
+                        duration: { percent: 25 }, 
                         instrumentation: {
+                           bass: { activationChance: 1.0, instrumentOptions: [ { name: 'bass', weight: 1.0 } ] },
+                           drums: { activationChance: 1.0, instrumentOptions: [ { name: 'blues_melancholic', weight: 1.0 } ] },
+                           accompaniment: { activationChance: 1.0, instrumentOptions: [ { name: 'organ_soft_jazz', weight: 1.0 } ] },
+                           harmony: { activationChance: 1.0, instrumentOptions: [ { name: 'guitarChords', weight: 1.0 } ] },
+                           melody: { activationChance: 1.0, instrumentOptions: [ { name: 'melody', weight: 1.0 } ] },
                            pianoAccompaniment: { activationChance: 1.0, instrumentOptions: [ { name: 'piano', weight: 1.0 } ] },
-                           harmony: { activationChance: 1.0, instrumentOptions: [ { name: 'guitarChords', weight: 0.5 }, { name: 'flute', weight: 0.5 } ] },
-                           sparkles: { activationChance: 0.8, instrumentOptions: [ { name: 'dark', weight: 1.0 } ], transient: true }
+                           sparkles: { activationChance: 0.5, instrumentOptions: [ { name: 'dark', weight: 1.0 } ], transient: true }
                         }
                     },
+                    // Сцена 4: Полный ансамбль
                     {
-                        duration: { percent: 97 }, 
+                        duration: { percent: 25 }, 
                         instrumentation: {
-                           melody: { activationChance: 1.0, instrumentOptions: [ { name: 'cs80', weight: 1.0 } ] },
+                           melody: { activationChance: 1.0, instrumentOptions: [ { name: 'melody', weight: 1.0 } ] },
                            pianoAccompaniment: { activationChance: 1.0, instrumentOptions: [ { name: 'piano', weight: 1.0 } ] },
                            accompaniment: { activationChance: 1.0, instrumentOptions: [ { name: 'organ_soft_jazz', weight: 1.0 } ] },
                            bass: { activationChance: 1.0, instrumentOptions: [ { name: 'bass', weight: 1.0 } ] },
@@ -82,7 +92,7 @@ export const WinterBluesBlueprint: MusicBlueprint = {
                     { 
                         duration: { percent: 100 }, 
                         instrumentation: {
-                           melody: { activationChance: 1.0, instrumentOptions: [ { name: 'cs80', weight: 1.0 } ] },
+                           melody: { activationChance: 1.0, instrumentOptions: [ { name: 'melody', weight: 1.0 } ] },
                            bass: { activationChance: 1.0, instrumentOptions: [ { name: 'bass', weight: 1.0 } ] },
                            drums: { activationChance: 1.0, instrumentOptions: [ { name: 'blues_melancholic_master', weight: 1.0 } ] },
                            accompaniment: { activationChance: 1.0, instrumentOptions: [ { name: 'organ_soft_jazz', weight: 1.0 } ] },
