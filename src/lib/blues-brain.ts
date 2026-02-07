@@ -19,9 +19,10 @@ import { GUITAR_PATTERNS } from './assets/guitar-patterns';
 import { BLUES_SOLO_LICKS } from './assets/blues_guitar_solo';
 
 /**
- * #ЗАЧЕМ: Блюзовый Мозг V17.0 — "Genetic Novelty Guard".
- * #ЧТО: Реализовано системное правило контроля зацикливания. 
- *       Если фраза повторяется > 3 раз, СОР принудительно сбрасывает аксиому.
+ * #ЗАЧЕМ: Блюзовый Мозг V18.0 — "The Loyal Drummer".
+ * #ЧТО: 1. Удалены жесткие пороги напряжения для ударных. Теперь они играют всегда, но тише при низком tension.
+ *       2. Внедрена логика "Детерминированного дыхания" (1-2 паузы на всю пьесу).
+ *       3. Genetic Novelty Guard защищает от зацикливания.
  * #ИНТЕГРАЦИЯ: Полная совместимость с SOR и SuiteDNA.
  */
 
@@ -51,7 +52,6 @@ export class BluesBrain {
   private phrasePauseTimer = 0; 
   private readonly patternOptions: string[] = ['F_TRAVIS', 'F_ROLL12', 'S_SWING'];
 
-  // #ЗАЧЕМ: Система контроля новизны.
   private phraseHistory: string[] = [];
   private readonly MAX_REPETITION_COUNT = 3;
 
@@ -122,11 +122,10 @@ export class BluesBrain {
           if (melodyStyle === 'solo') {
               melodyEvents = this.generateLSystemMelody(epoch, currentChord, barIn12, tempo, tension, dna);
               
-              // #ЗАЧЕМ: Genetic Novelty Guard — контроль зацикливания.
               const currentHash = this.getPhraseHash(melodyEvents);
               if (this.isRepetitive(currentHash)) {
                   console.log(`%c[NoveltyGuard] Loop detected. Forcing Genetic Jump at Bar ${epoch}`, 'color: #FF4500; font-weight: bold;');
-                  this.currentAxiom = []; // Сброс аксиомы
+                  this.currentAxiom = [];
                   melodyEvents = this.generateLSystemMelody(epoch, currentChord, barIn12, tempo, tension, dna);
               }
               this.phraseHistory.push(currentHash);
@@ -375,13 +374,24 @@ export class BluesBrain {
     if (!p) return [];
     const events: FractalEvent[] = [];
     
+    // #ЗАЧЕМ: Реализация правила "Лояльного Барабанщика" (ПЛАН №224).
+    // #ЧТО: Введена логика детерминированного "дыхания". Барабанщик пропускает 1 такт 
+    //       крайне редко (раз на ~100 тактов), в остальное время он в строю.
+    const isBreathBar = calculateMusiNum(epoch, 13, this.seed, 100) === 7;
+    if (isBreathBar && !forceFill) {
+        return [];
+    }
+
     if (forceFill) {
         [9, 10, 11].forEach(t => events.push(this.createDrumEvent('drum_tom_mid', t * tickDur, 0.8, 'mf')));
     }
     
-    if (tension > 0.3 && p.HH) p.HH.forEach(t => events.push(this.createDrumEvent('drum_hihat', t * tickDur, 0.4 + (tension * 0.2), 'p')));
-    if (p.K) p.K.forEach(t => events.push(this.createDrumEvent('drum_kick', t * tickDur, 0.8, tension > 0.7 ? 'mf' : 'p')));
-    if (tension > 0.5 && p.SD) p.SD.forEach(t => events.push(this.createDrumEvent('drum_snare', t * tickDur, 0.5 + (tension * 0.3), 'mf')));
+    // #ЧТО: Удалены пороги (0.3, 0.5). Теперь хэты и снейр играют всегда, 
+    //       но их громкость (weight) плавно следует за дугой напряжения.
+    if (p.HH) p.HH.forEach(t => events.push(this.createDrumEvent('drum_hihat', t * tickDur, 0.3 + (tension * 0.4), 'p')));
+    if (p.K) p.K.forEach(t => events.push(this.createDrumEvent('drum_kick', t * tickDur, 0.7 + (tension * 0.2), tension > 0.7 ? 'mf' : 'p')));
+    if (p.SD) p.SD.forEach(t => events.push(this.createDrumEvent('drum_snare', t * tickDur, 0.3 + (tension * 0.6), 'mf')));
+    
     return events;
   }
 
@@ -459,7 +469,7 @@ export class BluesBrain {
               weight: 0.25 + (tension * 0.2),
               technique: 'swell',
               dynamics: 'p',
-              phrasing: 'legato'
+              phrasing: 'legate'
           });
       }
       return events;
