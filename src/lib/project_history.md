@@ -3,6 +3,23 @@
 
 ---
 
+### ЗАПИСЬ: 2024-12-04 (План №202: «FIREBASE PROVIDER HIERARCHY FIX»)
+
+**ПРОБЛЕМА:**
+Ошибка `useFirebase must be used within a FirebaseProvider` при инициализации `AudioEngineProvider`.
+
+**ПРИЧИНА:**
+`AudioEngineProvider` вызывал `useFirestore()` на верхнем уровне, находясь вне иерархии `FirebaseProvider`.
+
+**РЕШЕНИЕ:**
+1. Barrel-файл `src/firebase/index.ts` теперь экспортирует `FirebaseClientProvider`.
+2. Корневой лейаут `src/app/layout.tsx` обернут в `FirebaseClientProvider`.
+
+**ВЫВОД:**
+Контекст Firebase теперь доступен глобально во всем приложении, что устраняет ошибки инициализации для провайдеров данных.
+
+---
+
 ### ЗАПИСЬ: 2024-12-04 (План №201: «GENETIC BREEDING & AUTO-CRITIC»)
 
 **ПРОБЛЕМА:**
