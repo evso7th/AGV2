@@ -21,7 +21,7 @@ import { BlackGuitarSampler } from '@/lib/black-guitar-sampler';
 import { TelecasterGuitarSampler } from '@/lib/telecaster-guitar-sampler';
 import { DarkTelecasterSampler } from '@/lib/dark-telecaster-sampler';
 import { CS80GuitarSampler } from '@/lib/cs80-guitar-sampler';
-import type { FractalEvent, InstrumentHints } from '@/types/fractal';
+import type { FractalEvent, InstrumentHints, NavigationInfo } from '@/types/fractal';
 import * as Tone from 'tone';
 import { MelodySynthManagerV2 } from '@/lib/melody-synth-manager-v2';
 import { V2_PRESETS } from '@/lib/presets-v2';
@@ -29,7 +29,7 @@ import { HarmonySynthManager } from '@/lib/harmony-synth-manager';
 import { PianoAccompanimentManager } from '@/lib/piano-accompaniment-manager';
 import { buildMultiInstrument } from '@/lib/instrument-factory';
 import { useFirestore } from '@/firebase';
-import { collection, query, limit, getDocs } from 'firebase/firestore';
+import { collection, query, limit, getDocs, orderBy } from 'firebase/firestore';
 import { saveMasterpiece } from '@/lib/firebase-service';
 
 export function noteToMidi(note: string): number {
@@ -142,15 +142,20 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
   
   const { toast } = useToast();
 
+  /**
+   * #ЗАЧЕМ: Загрузка глобальной генетической памяти.
+   * #ЧТО: Извлекает 20 последних шедевров для механизма скрещивания.
+   */
   const loadAncestors = useCallback(async () => {
       try {
+          console.log('[Ancestors] Accessing Global Masterpiece Library...');
           const masterpiecesRef = collection(db, 'masterpieces');
-          const q = query(masterpiecesRef, limit(10));
+          const q = query(masterpiecesRef, orderBy('timestamp', 'desc'), limit(20));
           const snapshot = await getDocs(q);
           ancestorsRef.current = snapshot.docs.map(doc => doc.data());
-          console.log(`[Ancestors] Loaded ${ancestorsRef.current.length} ancestral DNAs for crossover.`);
+          console.log(`%c[GENEPOOL] Successfully loaded ${ancestorsRef.current.length} ancestors from library. Cross-session evolution active.`, 'color: #00BFFF; font-weight: bold;');
       } catch (e) {
-          console.warn('[Ancestors] Could not load genetic memory.');
+          console.warn('[Ancestors] Could not load global memory. Operating in "isolated session" mode.', e);
       }
   }, [db]);
 
@@ -184,6 +189,7 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
 
   const resetWorkerCallback = useCallback(() => {
     if (workerRef.current) {
+        // #ЗАЧЕМ: Обеспечение наследования при сбросе.
         const ancestor = ancestorsRef.current.length > 0 
             ? ancestorsRef.current[Math.floor(Math.random() * ancestorsRef.current.length)]
             : null;
