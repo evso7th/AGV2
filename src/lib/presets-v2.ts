@@ -113,7 +113,8 @@ export const V2_PRESETS = {
   guitar_shineOn: {
     type: 'guitar',
     name: 'Velvet Lead', // Renamed from Shine On
-    volume: 0.3,
+    // #ИСПРАВЛЕНО (ПЛАН 199): Громкость уменьшена в 3 раза для прозрачности микса.
+    volume: 0.23,
     // #ИСПРАВЛЕНО (ПЛАН 173): width 0.32 убирает носовой "кошачий" звук (был 0.46).
     osc: { width: 0.32, detune: 2, mainGain: 0.9, detGain: 0.1, subGain: 0.3 },
     // #ЗАЧЕМ: Срез на 2200 Hz убирает пластмассовый цифровой свист.

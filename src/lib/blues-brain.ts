@@ -23,6 +23,7 @@ import { GUITAR_PATTERNS } from './assets/guitar-patterns';
  * #ЧТО: Реализована концепция непрерывного легатного повествования для гитары.
  *       Паузы теперь — это не отсутствие нот, а музыкальное дыхание.
  * #ИСПРАВЛЕНО (ПЛАН 197): Установлен потолок регистра G5 (79) для сохранения тембра.
+ * #ИСПРАВЛЕНО (ПЛАН 199): Применен регистровый потолок (79) для пианино.
  */
 
 const ENERGY_PRICES = {
@@ -354,7 +355,7 @@ export class BluesBrain {
         if (calculateMusiNum(epoch + beat, 7, this.seed + 50, 10) / 10 < density) {
             events.push({
                 type: 'pianoAccompaniment',
-                note: notes[calculateMusiNum(epoch + beat, 3, this.seed, 3)],
+                note: Math.min(notes[calculateMusiNum(epoch + beat, 3, this.seed, 3)], this.MELODY_CEILING),
                 time: beat * beatDur + (this.random.next() * 0.1), 
                 duration: beatDur * 1.5,
                 weight: 0.35 + (tension * 0.25),
