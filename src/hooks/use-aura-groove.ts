@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useEffect, useCallback, useRef } from "react";
@@ -184,7 +185,10 @@ export const useAuraGroove = (): AuraGrooveProps => {
   const handleSaveMasterpiece = useCallback(async () => {
     if (!isInitialized || !isPlaying) return;
     
-    toast({ title: "Memory Activation", description: "Saving this state to the Elder Knowledge..." });
+    const { dismiss: dismissLoading } = toast({ 
+      title: "Memory Activation", 
+      description: "Saving this state to the Elder Knowledge..." 
+    });
     
     const success = await saveMasterpiece(db, {
       seed: currentSeed,
@@ -195,10 +199,24 @@ export const useAuraGroove = (): AuraGrooveProps => {
       instrumentSettings
     });
 
+    // #ЗАЧЕМ: Принудительное закрытие первого окна после завершения операции.
+    dismissLoading();
+
     if (success) {
-      toast({ title: "Masterpiece Saved!", description: "This soul will help build future generations." });
+      const { dismiss } = toast({ 
+        title: "Masterpiece Saved!", 
+        description: "This soul will help build future generations." 
+      });
+      // #ЗАЧЕМ: Автоматическое скрытие уведомления через 1 секунду по просьбе пользователя.
+      setTimeout(dismiss, 1000);
     } else {
-      toast({ variant: "destructive", title: "Memory Error", description: "Could not save the state." });
+      const { dismiss } = toast({ 
+        variant: "destructive", 
+        title: "Memory Error", 
+        description: "Could not save the state." 
+      });
+      // Ошибки оставляем чуть дольше (3 сек) для возможности анализа.
+      setTimeout(dismiss, 3000);
     }
   }, [isInitialized, isPlaying, db, currentSeed, mood, genre, density, bpm, instrumentSettings]);
 
