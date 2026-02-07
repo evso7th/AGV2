@@ -93,6 +93,60 @@ const makeVintageDistortion = (k = 50, n = 8192) => {
 
 // ───── FX FACTORIES ─────
 
+/**
+ * #ЗАЧЕМ: Реализация фейзера для гитарного движка.
+ */
+const makePhaser = (ctx: AudioContext, mixInput: any = 0.2) => {
+    const mix = typeof mixInput === 'number' ? mixInput : (mixInput?.mix ?? 0.2);
+    const input = ctx.createGain();
+    const output = ctx.createGain();
+    const wet = ctx.createGain(); wet.gain.value = mix;
+    const dry = ctx.createGain(); dry.gain.value = 1 - mix;
+
+    const stages = 4;
+    const baseFreq = 800;
+    const filters: BiquadFilterNode[] = [];
+    let head: AudioNode = input;
+
+    for (let i = 0; i < stages; i++) {
+        const ap = ctx.createBiquadFilter();
+        ap.type = 'allpass';
+        ap.frequency.value = baseFreq;
+        ap.Q.value = 0.7;
+        head.connect(ap);
+        head = ap;
+        filters.push(ap);
+    }
+
+    const feedback = ctx.createGain();
+    feedback.gain.value = 0.15;
+    filters[stages - 1].connect(feedback);
+    feedback.connect(filters[0]);
+
+    const lfo = ctx.createOscillator();
+    lfo.type = 'sine';
+    lfo.frequency.value = 0.16;
+    const lfoGain = ctx.createGain();
+    lfoGain.gain.value = 600;
+    lfo.connect(lfoGain);
+    filters.forEach(f => lfoGain.connect(f.frequency));
+    lfo.start();
+
+    input.connect(dry).connect(output);
+    filters[stages - 1].connect(wet).connect(output);
+
+    return {
+        input,
+        output,
+        setMix: (m: number) => {
+            if (isFinite(m)) {
+                wet.gain.setTargetAtTime(m, ctx.currentTime, 0.02);
+                dry.gain.setTargetAtTime(1 - m, ctx.currentTime, 0.02);
+            }
+        }
+    };
+};
+
 const makeChorus = (ctx: AudioContext, mixInput: any = 0.3) => {
     const mix = typeof mixInput === 'number' ? mixInput : (mixInput?.mix ?? 0.3);
     const input = ctx.createGain();
