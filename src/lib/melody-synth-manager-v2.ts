@@ -1,3 +1,4 @@
+
 import type { FractalEvent, AccompanimentInstrument } from '@/types/fractal';
 import type { Note } from "@/types/music";
 import { buildMultiInstrument } from './instrument-factory';
@@ -9,9 +10,7 @@ import type { DarkTelecasterSampler } from './dark-telecaster-sampler';
 
 /**
  * A V2 manager for melody and bass parts.
- * This version acts as a "smart performer", routing events to either its
- * internal synthesizer (for synth sounds) or to specialized guitar samplers.
- * It's made universal by accepting a 'partName' to know which events to process.
+ * Updated to support HYBRID synthesis: Synth body + Sampled transient donor.
  */
 export class MelodySynthManagerV2 {
     private audioContext: AudioContext;
@@ -97,11 +96,17 @@ export class MelodySynthManagerV2 {
         
         if (notesToPlay.length === 0) return;
 
-        // Routing for Samplers (only for melody)
+        // #ЗАЧЕМ: Реализация гибридного триггера для Гилморовских пресетов.
+        // #ЧТО: Если выбран синтезаторный пресет гитары, мы ДОПОЛНИТЕЛЬНО запускаем
+        //       реальный транзиент щипка из сэмплера Telecaster.
+        if (this.partName === 'melody' && (instrumentHint === 'guitar_shineOn' || instrumentHint === 'guitar_muffLead')) {
+            // Trigger real physical transient donor
+            this.telecasterSampler.schedule(notesToPlay, barStartTime, tempo, true); // true = isTransientMode
+        }
+
+        // Routing for full Samplers (Pure Sample mode)
         if (this.partName === 'melody') {
             if (instrumentHint === 'blackAcoustic') {
-                // #ЗАЧЕМ: Прямая передача нот в сэмплер без искусственного завышения регистра.
-                // #ИСПРАВЛЕНО (ПЛАН 134): Удален подъем +24, так как когнитивная логика теперь генерирует ноты в правильных октавах.
                 this.blackAcousticSampler.schedule(notesToPlay, barStartTime, tempo);
                 return;
             }

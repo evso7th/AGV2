@@ -35,6 +35,10 @@ const TELECASTER_SAMPLES: Record<string, string> = {
 
 type SamplerInstrument = { buffers: Map<number, AudioBuffer>; };
 
+/**
+ * #ЗАЧЕМ: Сэмплер Telecaster с поддержкой режима "Transient Donor".
+ * #ЧТО: Внедрена возможность проигрывания только первых 20мс сэмпла для гибридного синтеза.
+ */
 export class TelecasterGuitarSampler {
     private audioContext: AudioContext;
     private destination: AudioNode;
@@ -80,19 +84,19 @@ export class TelecasterGuitarSampler {
         }
     }
     
-    public schedule(notes: Note[], time: number, tempo: number = 120) {
+    public schedule(notes: Note[], time: number, tempo: number = 120, isTransientMode: boolean = false) {
         const instrument = this.instruments.get('telecaster');
         if (!this.isInitialized || !instrument) return;
         notes.forEach(note => {
             if (note.technique && (note.technique.startsWith('F_') || note.technique.startsWith('S_'))) {
-                this.playPattern(instrument, note, time, tempo);
+                this.playPattern(instrument, note, time, tempo, isTransientMode);
             } else {
-                this.playSingleNote(instrument, note, time);
+                this.playSingleNote(instrument, note, time, isTransientMode);
             }
         });
     }
 
-    private playPattern(instrument: SamplerInstrument, note: Note, barStartTime: number, tempo: number) {
+    private playPattern(instrument: SamplerInstrument, note: Note, barStartTime: number, tempo: number, isTransient: boolean) {
         const patternName = note.technique as string;
         const patternData = GUITAR_PATTERNS[patternName];
         const voicing = BLUES_GUITAR_VOICINGS[note.params?.voicingName || 'E7_open'];
@@ -108,7 +112,7 @@ export class TelecasterGuitarSampler {
                         const { buffer, midi: sampleMidi } = this.findBestSample(instrument, midiNote);
                         if (buffer) {
                              const playTime = barStartTime + noteTimeInBar + ((patternData.rollDuration / ticksPerBeat) * beatDuration * (voicing.length - 1 - stringIndex));
-                             this.playSample(buffer, sampleMidi, midiNote, playTime, note.velocity || 0.7);
+                             this.playSample(buffer, sampleMidi, midiNote, playTime, note.velocity || 0.7, undefined, isTransient);
                         }
                     }
                 }
@@ -116,16 +120,16 @@ export class TelecasterGuitarSampler {
         }
     }
 
-    private playSingleNote(instrument: SamplerInstrument, note: Note, startTime: number) {
+    private playSingleNote(instrument: SamplerInstrument, note: Note, startTime: number, isTransient: boolean) {
         const { buffer, midi: sampleMidi } = this.findBestSample(instrument, note.midi);
         if (buffer) {
             const noteStartTime = startTime + (note.time || 0);
-            this.playSample(buffer, sampleMidi, note.midi, noteStartTime, note.velocity || 0.7, note.duration);
+            this.playSample(buffer, sampleMidi, note.midi, noteStartTime, note.velocity || 0.7, note.duration, isTransient);
         }
     }
     
-    private playSample(buffer: AudioBuffer, sampleMidi: number, targetMidi: number, startTime: number, velocity: number, duration?: number) {
-        // #ЗАЧЕМ: Предотвращение критической ошибки AudioParam.
+    private playSample(buffer: AudioBuffer, sampleMidi: number, targetMidi: number, startTime: number, velocity: number, duration?: number, isTransient: boolean = false) {
+        // #ЗАЧЕМ: Предотвращение критической ошибки AudioParam и реализация "Алгоритмической Хирургии" транзиента.
         if (!isFinite(startTime) || !isFinite(velocity) || !isFinite(targetMidi) || !isFinite(sampleMidi)) {
             return;
         }
@@ -141,7 +145,13 @@ export class TelecasterGuitarSampler {
         gainNode.gain.setValueAtTime(0, startTime);
         gainNode.gain.linearRampToValueAtTime(velocity, startTime + 0.005);
         
-        if (duration && isFinite(duration)) {
+        // #ЗАЧЕМ: Извлечение 20мс транзиента для гибридного синтеза.
+        // #ЧТО: Принудительный стоп с микро-затуханием для предотвращения щелчков.
+        if (isTransient) {
+            const transientDuration = 0.02; // 20ms
+            gainNode.gain.setTargetAtTime(0, startTime + 0.015, 0.002); // Начинаем гасить на 15мс
+            source.stop(startTime + transientDuration);
+        } else if (duration && isFinite(duration)) {
             gainNode.gain.setTargetAtTime(0, startTime + duration, 0.4);
         }
         
