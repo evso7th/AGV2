@@ -36,7 +36,8 @@ const deepCleanup = (voiceRecord: any) => {
     voiceRecord.voiceState = null;
     
     globalActiveVoices = globalActiveVoices.filter(v => v !== voiceRecord);
-    // console.debug(`%c[Factory] Cleaned Voice. GVR: ${globalActiveVoices.length}`, 'color: gray;');
+    // #ИСПРАВЛЕНО (ПЛАН 186): Лог снова активен для контроля утечек.
+    console.debug(`%c[Factory] Cleaned Voice. GVR: ${globalActiveVoices.length}`, 'color: gray;');
 };
 
 const enforceVoiceLimit = () => {
@@ -258,7 +259,7 @@ export interface InstrumentAPI {
     setVolume: (v: number) => void;
     setVolumeDb: (db: number) => void;
     getVolume: () => number;
-    setExpression: (v: number) => void;
+    setExpression: (level: number) => void;
     preset: any;
     type: string;
 }
