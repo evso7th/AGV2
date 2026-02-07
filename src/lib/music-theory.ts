@@ -6,6 +6,7 @@
  *       ДОБАВЛЕНО: Математика MusiNum для фрактальной детерминированности.
  * #ОБНОВЛЕНО (ПЛАН №238): Реализован алгоритм "Lick -> Transform -> Crossover -> Sowing".
  *       Теперь наследование (Breeding) влияет на "посев" всей структуры пьесы.
+ * #ОБНОВЛЕНО (ПЛАН №241): Добавлена глубокая генетическая телеметрия (логирование эволюции).
  */
 
 import type { 
@@ -50,6 +51,7 @@ export function calculateMusiNum(step: number, base: number = 2, start: number =
 
 /**
  * #ЗАЧЕМ: Движок Генетической Рекомбинации Ликов.
+ * #ЧТО: Теперь сообщает о типе примененной мутации в консоль.
  */
 export function transformLick(lick: BluesSoloPhrase, seed: number, epoch: number): BluesSoloPhrase {
     const transformed = JSON.parse(JSON.stringify(lick)) as BluesSoloPhrase;
@@ -57,6 +59,7 @@ export function transformLick(lick: BluesSoloPhrase, seed: number, epoch: number
 
     switch (transformType) {
         case 1: // Inversion
+            console.log(`%c[SOR] Transform: INVERSION applied to lick at epoch ${epoch}`, 'color: #32CD32');
             const firstMidi = DEGREE_TO_SEMITONE[transformed[0].deg] || 0;
             transformed.forEach(n => {
                 const currentMidi = DEGREE_TO_SEMITONE[n.deg] || 0;
@@ -66,8 +69,10 @@ export function transformLick(lick: BluesSoloPhrase, seed: number, epoch: number
             });
             break;
         case 2: // Retrograde
+            console.log(`%c[SOR] Transform: RETROGRADE applied to lick at epoch ${epoch}`, 'color: #32CD32');
             return [...transformed].reverse().map((n, i) => ({ ...n, t: (12 - (transformed[transformed.length-1-i].t + transformed[transformed.length-1-i].d)) % 12 }));
         case 3: // Transposition
+            console.log(`%c[SOR] Transform: TRANSPOSITION applied to lick at epoch ${epoch}`, 'color: #32CD32');
             const shift = [0, 3, 5, 7, 10][calculateMusiNum(seed, 5, epoch, 5)];
             transformed.forEach(n => {
                 const currentMidi = DEGREE_TO_SEMITONE[n.deg] || 0;
@@ -75,6 +80,7 @@ export function transformLick(lick: BluesSoloPhrase, seed: number, epoch: number
             });
             break;
         default:
+            console.log(`%c[SOR] Transform: RHYTHMIC JITTER applied to lick at epoch ${epoch}`, 'color: #32CD32');
             transformed.forEach(n => { n.t = (n.t + calculateMusiNum(epoch, 2, seed, 2)) % 12; });
             break;
     }
@@ -170,6 +176,7 @@ export function getScaleForMood(mood: Mood, genre?: Genre): number[] {
 /**
  * #ЗАЧЕМ: Генератор ДНК сюиты V238 — "Evolutionary Sowing".
  * #ЧТО: Реализует цепочку Lick -> Transform -> Crossover -> Final Seed -> Sowing.
+ *       Добавлена глубокая телеметрия генетического процесса.
  */
 export function generateSuiteDNA(totalBars: number, mood: Mood, initialSeed: number, originalRandom: any, genre: Genre, blueprintParts: any[], ancestor?: any): SuiteDNA {
     // 1. ВЫБОР СЕМАНТИЧЕСКОГО СЕМЕНИ (на основе initialSeed)
@@ -184,12 +191,23 @@ export function generateSuiteDNA(totalBars: number, mood: Mood, initialSeed: num
         
         LICK_HISTORY.push(seedLickId);
         if (LICK_HISTORY.length > MAX_HISTORY_SIZE) LICK_HISTORY.shift();
+        
+        if (seedLickId) {
+            console.log(`%c[GENEPOOL] Seed Lick Picked: ${seedLickId} (${BLUES_SOLO_LICKS[seedLickId].tags.join(', ')})`, 'color: #FFD700; font-weight: bold;');
+        }
     }
 
     // 2. ГЕНЕТИЧЕСКОЕ СКРЕЩИВАНИЕ (Breeding)
     const finalSeed = ancestor ? crossoverDNA(initialSeed, ancestor) : initialSeed;
+    if (ancestor) {
+        console.log(`%c[GENEPOOL] Breeding: Parent A (Initial: ${initialSeed}) + Parent B (Ancestor: ${ancestor.seed}) -> Final Seed: ${finalSeed}`, 'color: #ff00ff; font-weight: bold;');
+    } else {
+        console.log(`%c[GENEPOOL] Genesis: No ancestor found. Initial Seed preserved: ${finalSeed}`, 'color: #00BFFF;');
+    }
     
     // 3. ПОСЕВ (Sowing): Все дальнейшие параметры зависят от finalSeed
+    console.log(`%c[GENEPOOL] Sowing: Applying Final Seed ${finalSeed} to all structural parameters.`, 'color: #4ade80; font-weight: bold;');
+    
     const sowingRandom = {
         state: finalSeed,
         next: function() {
