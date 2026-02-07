@@ -1,14 +1,14 @@
 import type { MusicBlueprint } from '@/types/music';
 
 /**
- * #ЗАЧЕМ: Блюпринт "The Ritual" (Dark Blues v2.1 - Cumulative Fix).
- * #ЧТО: Исправлена оркестровка. Сцены теперь кумулятивны, инструменты не исчезают.
+ * #ЗАЧЕМ: Блюпринт "The Ritual" (Dark Blues v3.0 - Algorithmic Prologue).
+ * #ЧТО: Внедрена секция PROLOGUE для глубокого атмосферного входа.
  * #СВЯЗИ: Управляется BluesBrain.
  */
 export const DarkBluesBlueprint: MusicBlueprint = {
     id: 'dark_blues',
     name: 'Ritual of Morphing Textures',
-    description: 'A heavy, ritualistic blues in E Phrygian. Instruments are cumulative and morph their timbre.',
+    description: 'A heavy, ritualistic blues in E Phrygian. Starts with an algorithmic prologue.',
     mood: 'dark',
     musical: {
         key: { root: 'E', scale: 'phrygian', octave: 1 },
@@ -24,26 +24,52 @@ export const DarkBluesBlueprint: MusicBlueprint = {
     structure: {
         totalDuration: { preferredBars: 128 },
         parts: [
+            // ========================================================================
+            // 0. PROLOGUE (4 такта / 4%) — Алгоритмический вход
+            // ========================================================================
             {
-                id: 'THE_RITUAL', name: 'The Accumulation', duration: { percent: 100 },
+                id: 'PROLOGUE', name: 'The Void Opening', duration: { percent: 4 },
+                layers: { accompaniment: true, sfx: true },
+                stagedInstrumentation: [
+                    { 
+                        duration: { percent: 100 }, 
+                        instrumentation: {
+                           accompaniment: { activationChance: 1.0, instrumentOptions: [ { name: 'synth_cave_pad', weight: 1.0 } ] },
+                           sfx: { activationChance: 0.8, instrumentOptions: [ { name: 'dark', weight: 1.0 } ], transient: true }
+                        }
+                    }
+                ],
+                instrumentRules: {
+                    accompaniment: { techniques: [{ value: 'long-chords', weight: 1.0 }], register: { preferred: 'low' } }
+                },
+                bundles: [ { id: 'DARK_PROLOGUE_BUNDLE', name: 'The Void', duration: { percent: 100 }, characteristics: {}, phrases: {} } ],
+                outroFill: null,
+            },
+            // ========================================================================
+            // 1. THE_RITUAL (96%) — The Accumulation
+            // ========================================================================
+            {
+                id: 'THE_RITUAL', name: 'The Accumulation', duration: { percent: 96 },
                 layers: { bass: true, accompaniment: true, melody: true, sfx: true, sparkles: true, drums: true, harmony: true, pianoAccompaniment: true },
                 stagedInstrumentation: [
-                    // Сцена 1: Одинокий Орган (0-25%).
+                    // Сцена 1: Фундамент (Бас + Орган).
                     { 
-                        duration: { percent: 25 }, 
-                        instrumentation: {
-                           accompaniment: { activationChance: 1.0, instrumentOptions: [ { name: 'accompaniment', weight: 1.0 } ] }
-                        }
-                    },
-                    // Сцена 2: Вход Глубокого Баса (Орган сохраняется).
-                    {
                         duration: { percent: 25 }, 
                         instrumentation: {
                            accompaniment: { activationChance: 1.0, instrumentOptions: [ { name: 'accompaniment', weight: 1.0 } ] },
                            bass: { activationChance: 1.0, instrumentOptions: [ { name: 'bass', weight: 1.0 } ] }
                         }
                     },
-                    // Сцена 3: Вход Гитариста + Барабаны.
+                    // Сцена 2: Вход Гитариста.
+                    {
+                        duration: { percent: 25 }, 
+                        instrumentation: {
+                           accompaniment: { activationChance: 1.0, instrumentOptions: [ { name: 'accompaniment', weight: 1.0 } ] },
+                           bass: { activationChance: 1.0, instrumentOptions: [ { name: 'bass', weight: 1.0 } ] },
+                           melody: { activationChance: 1.0, instrumentOptions: [ { name: 'melody', weight: 1.0 } ] }
+                        }
+                    },
+                    // Сцена 3: Полный Ансамбль.
                     {
                         duration: { percent: 25 }, 
                         instrumentation: {
@@ -53,7 +79,7 @@ export const DarkBluesBlueprint: MusicBlueprint = {
                            drums: { activationChance: 1.0, instrumentOptions: [ { name: 'blues_melancholic_master', weight: 1.0 } ] }
                         }
                     },
-                    // Сцена 4: Полный ансамбль.
+                    // Сцена 4: Кульминация (Искры/Голоса).
                     {
                         duration: { percent: 25 }, 
                         instrumentation: {

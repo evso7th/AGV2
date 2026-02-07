@@ -1,15 +1,15 @@
 import type { MusicBlueprint } from '@/types/music';
 
 /**
- * #ЗАЧЕМ: Блюпринт "The Bluest Blues" (v19.0 - Cumulative Stages).
- * #ЧТО: Исправлена ошибка прерывистости ансамбля. Сцены теперь кумулятивны.
- *       Бас управляется динамически через BluesBrain.
- * #СТАТУС: FROZEN. Изменения внесены по требованию архитектурной целостности.
+ * #ЗАЧЕМ: Блюпринт "The Bluest Blues" (v20.0 - Algorithmic Overture).
+ * #ЧТО: 1. Внедрена секция PROLOGUE (4 такта) для тематического вступления.
+ *       2. Сохранен принцип кумулятивности ансамбля.
+ * #СТАТУС: FROZEN.
  */
 export const WinterBluesBlueprint: MusicBlueprint = {
     id: 'winter_blues',
-    name: 'The Bluest Blues (Persistent)',
-    description: 'A deep journey where instruments enter and stay until the end.',
+    name: 'The Bluest Blues (Prologue)',
+    description: 'A deep journey starting with a thematic overture and building into a soul-drenched blues.',
     mood: 'melancholic',
     musical: {
         key: { root: 'E', scale: 'dorian', octave: 1 },
@@ -25,11 +25,34 @@ export const WinterBluesBlueprint: MusicBlueprint = {
     structure: {
         totalDuration: { preferredBars: 144 },
         parts: [
+            // ========================================================================
+            // 0. PROLOGUE (4 такта / 3%) — Алгоритмическая увертюра
+            // ========================================================================
             {
-                id: 'INTRO_1', name: 'Opening Act', duration: { percent: 30 }, 
+                id: 'PROLOGUE', name: 'The Overture', duration: { percent: 3 },
+                layers: { accompaniment: true, sfx: true },
+                stagedInstrumentation: [
+                    { 
+                        duration: { percent: 100 }, 
+                        instrumentation: {
+                           accompaniment: { activationChance: 1.0, instrumentOptions: [ { name: 'accompaniment', weight: 1.0 } ] },
+                           sfx: { activationChance: 0.7, instrumentOptions: [ { name: 'common', weight: 1.0 } ], transient: true }
+                        }
+                    }
+                ],
+                instrumentRules: {
+                    accompaniment: { techniques: [{ value: 'long-chords', weight: 1.0 }], density: { min: 0.3, max: 0.5 } }
+                },
+                bundles: [{ id: 'WINTER_PROLOGUE', name: 'First Breath', duration: { percent: 100 }, characteristics: {}, phrases: {} }],
+                outroFill: null,
+            },
+            // ========================================================================
+            // 1. INTRO_1 (27%) — Opening Act
+            // ========================================================================
+            {
+                id: 'INTRO_1', name: 'Opening Act', duration: { percent: 27 }, 
                 layers: { bass: true, accompaniment: true, melody: true, drums: true, harmony: true, pianoAccompaniment: true, sparkles: true },
                 stagedInstrumentation: [
-                    // Сцена 1: Фундамент (Бас + Орган + Ударные + Аккорды)
                     { 
                         duration: { percent: 25 }, 
                         instrumentation: {
@@ -39,7 +62,6 @@ export const WinterBluesBlueprint: MusicBlueprint = {
                            harmony: { activationChance: 1.0, instrumentOptions: [ { name: 'guitarChords', weight: 1.0 } ] }
                         }
                     },
-                    // Сцена 2: Вход Солиста (Сохраняем всё из Сцены 1)
                     {
                         duration: { percent: 25 }, 
                         instrumentation: {
@@ -50,7 +72,6 @@ export const WinterBluesBlueprint: MusicBlueprint = {
                            melody: { activationChance: 1.0, instrumentOptions: [ { name: 'melody', weight: 1.0 } ] }
                         }
                     },
-                    // Сцена 3: Обогащение (Пианино + Искры)
                     {
                         duration: { percent: 25 }, 
                         instrumentation: {
@@ -63,7 +84,6 @@ export const WinterBluesBlueprint: MusicBlueprint = {
                            sparkles: { activationChance: 0.5, instrumentOptions: [ { name: 'dark', weight: 1.0 } ], transient: true }
                         }
                     },
-                    // Сцена 4: Полный ансамбль
                     {
                         duration: { percent: 25 }, 
                         instrumentation: {

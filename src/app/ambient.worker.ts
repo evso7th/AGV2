@@ -146,18 +146,11 @@ const Scheduler = {
     tick() {
         if (!this.isRunning || !fractalMusicEngine) return;
 
-        // #ЗАЧЕМ: Реализация променада как вступительного акта новой пьесы (ПЛАН №222).
+        // #ЗАЧЕМ: Реализация пролога как вступительного акта новой пьесы (ПЛАН №233).
+        // #ЧТО: Удален триггер внешнего сэмпла. Теперь вступление полностью алгоритмично
+        //       и определяется секцией PROLOGUE в Блюпринте.
         if (this.barCount === 0) {
-            const cat = this.settings.genre === 'blues' ? 'promenade_blues' : 'promenade';
-            console.log(`%c[Worker] Starting New Suite with PROMENADE: ${cat}`, 'color: #00BFFF; font-weight: bold;');
-            self.postMessage({ 
-                type: 'sparkle', 
-                payload: { 
-                    type: 'sparkle' as any, 
-                    time: 0, 
-                    params: { category: cat } as any
-                } 
-            });
+            console.log(`%c[Worker] Starting New Suite with Algorithmic Overture`, 'color: #00BFFF; font-weight: bold;');
         }
 
         let finalPayload: { events: FractalEvent[], instrumentHints: InstrumentHints, beautyScore: number, navInfo?: NavigationInfo } = { 

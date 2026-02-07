@@ -1,17 +1,14 @@
-
 import type { MusicBlueprint } from '@/types/music';
 
 /**
- * #ЗАЧЕМ: Блюпринт "The Double-Peak Anxiety" (Anxious Blues v3.0).
- * #ЧТО: 1. Сокращенные Intro/Outro (по 12 тактов).
- *       2. Разделение на два Main-блока с коротким "пустым" Bridge между ними.
- *       3. Гарантированный полный состав в Main-секциях.
- * #СВЯЗИ: Управляется BluesBrain и Navigator.
+ * #ЗАЧЕМ: Блюпринт "The Double-Peak Anxiety" (Anxious Blues v4.0 - Algorithmic Prologue).
+ * #ЧТО: Внедрена секция PROLOGUE для резкого холодного входа.
+ * #СВЯЗИ: Управляется BluesBrain.
  */
 export const AnxiousBluesBlueprint: MusicBlueprint = {
     id: 'anxious_blues',
     name: 'Double-Peak Nervous Shuffle',
-    description: 'A high-tension blues structure with rapid build-up and a dramatic breakdown in the middle.',
+    description: 'High-tension blues with an algorithmic prologue, rapid build-up and a dramatic breakdown.',
     mood: 'anxious',
     musical: {
         key: { root: 'E', scale: 'phrygian', octave: 2 },
@@ -22,7 +19,6 @@ export const AnxiousBluesBlueprint: MusicBlueprint = {
             type: 'wave', 
             peakPosition: 0.5, 
             curve: (p, pp) => {
-                // Двойная волна: один пик на 30%, второй на 80%
                 return 0.5 + 0.4 * Math.sin(p * Math.PI * 4);
             }
         }
@@ -31,21 +27,35 @@ export const AnxiousBluesBlueprint: MusicBlueprint = {
         totalDuration: { preferredBars: 144 },
         parts: [
             // ========================================================================
-            // 1. INTRO (12 тактов / 8%) — Быстрый запуск
+            // 0. PROLOGUE (4 такта / 3%) — Холодный старт
             // ========================================================================
             {
-                id: 'INTRO', name: 'Sudden Unease', duration: { percent: 8 },
+                id: 'PROLOGUE', name: 'Cold Start', duration: { percent: 3 },
+                layers: { accompaniment: true, sfx: true },
+                stagedInstrumentation: [
+                    { 
+                        duration: { percent: 100 }, 
+                        instrumentation: {
+                           accompaniment: { activationChance: 1.0, instrumentOptions: [ { name: 'ep_rhodes_warm', weight: 1.0 } ] },
+                           sfx: { activationChance: 0.9, instrumentOptions: [ { name: 'laser', weight: 1.0 } ], transient: true }
+                        }
+                    }
+                ],
+                instrumentRules: {
+                    accompaniment: { techniques: [{ value: 'arpeggio-slow', weight: 1.0 }], density: { min: 0.2, max: 0.4 } }
+                },
+                bundles: [{ id: 'ANX_PROLOGUE', name: 'Glitch Start', duration: { percent: 100 }, characteristics: {}, phrases: {} }],
+                outroFill: null,
+            },
+            // ========================================================================
+            // 1. INTRO (5%) — Sudden Unease
+            // ========================================================================
+            {
+                id: 'INTRO', name: 'Sudden Unease', duration: { percent: 5 },
                 layers: { bass: true, accompaniment: true, melody: true, drums: true, harmony: true, pianoAccompaniment: true },
                 stagedInstrumentation: [
                     { 
-                        duration: { percent: 50 }, // Первые 6 тактов
-                        instrumentation: {
-                           bass: { activationChance: 1.0, instrumentOptions: [ { name: 'bass', weight: 1.0 } ] },
-                           accompaniment: { activationChance: 1.0, instrumentOptions: [ { name: 'accompaniment', weight: 1.0 } ] }
-                        }
-                    },
-                    { 
-                        duration: { percent: 50 }, // Следующие 6 тактов
+                        duration: { percent: 100 }, 
                         instrumentation: {
                            bass: { activationChance: 1.0, instrumentOptions: [ { name: 'bass', weight: 1.0 } ] },
                            accompaniment: { activationChance: 1.0, instrumentOptions: [ { name: 'accompaniment', weight: 1.0 } ] },
@@ -61,7 +71,7 @@ export const AnxiousBluesBlueprint: MusicBlueprint = {
                 outroFill: null,
             },
             // ========================================================================
-            // 2. MAIN 1 (40%) — Первая атака
+            // 2. MAIN_1 (40%) — First Panic
             // ========================================================================
             {
                 id: 'MAIN_1', name: 'First Panic', duration: { percent: 40 },
@@ -87,10 +97,10 @@ export const AnxiousBluesBlueprint: MusicBlueprint = {
                 outroFill: { type: 'density_pause', duration: 2, parameters: { soloLayer: 'sfx' } },
             },
             // ========================================================================
-            // 3. BRIDGE (4%) — Ложная разрядка (Вздох)
+            // 3. BRIDGE (4%) — The Void
             // ========================================================================
             {
-                id: 'BRIDGE', name: 'The Void', duration: { percent: 4 }, // ~6 тактов
+                id: 'BRIDGE', name: 'The Void', duration: { percent: 4 }, 
                 layers: { bass: true, accompaniment: true, sfx: true, pianoAccompaniment: true },
                 stagedInstrumentation: [
                     { 
@@ -109,7 +119,7 @@ export const AnxiousBluesBlueprint: MusicBlueprint = {
                 outroFill: { type: 'roll', duration: 1, parameters: { crescendo: true } },
             },
             // ========================================================================
-            // 4. MAIN 2 (40%) — Финальная Тревога
+            // 4. MAIN_2 (40%) — Final Meltdown
             // ========================================================================
             {
                 id: 'MAIN_2', name: 'Final Meltdown', duration: { percent: 40 },
@@ -136,7 +146,7 @@ export const AnxiousBluesBlueprint: MusicBlueprint = {
                 outroFill: null,
             },
             // ========================================================================
-            // 5. OUTRO (8%) — Быстрое исчезновение
+            // 5. OUTRO (8%) — Exhaustion
             // ========================================================================
             {
                 id: 'OUTRO', name: 'Exhaustion', duration: { percent: 8 },
