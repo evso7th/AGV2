@@ -2,7 +2,7 @@ import type { FractalEvent, Mood, Genre, InstrumentPart, InstrumentHints, GhostC
 import { BlueprintNavigator } from './blueprint-navigator';
 import { getBlueprint } from './blueprints';
 import { BluesBrain } from './blues-brain';
-import { generateSuiteDNA, createHarmonyAxiom, crossoverDNA, pickWeightedDeterministic } from './music-theory';
+import { generateSuiteDNA, createHarmonyAxiom, pickWeightedDeterministic } from './music-theory';
 import { ElectronicK, AmbientK, MelancholicMinorK } from './resonance-matrices';
 
 function seededRandom(seed: number) {
@@ -14,6 +14,7 @@ function seededRandom(seed: number) {
   return {
       next,
       nextInt: (max: number) => Math.floor(next() * max),
+      nextInRange: (min: number, max: number) => min + next() * (max - min),
        shuffle: <T>(array: T[]): T[] => {
         let currentIndex = array.length, randomIndex;
         const newArray = [...array];
@@ -43,10 +44,7 @@ interface EngineConfig {
 }
 
 /**
- * #ЗАЧЕМ: Фрактальный Музыкальный Движок V12.9 — "The Evolutionary Mind".
- * #ЧТО: 1. Интеграция AI Arbitrator в жизненный цикл.
- *       2. Реализация механизма наследования (Inheritance) через crossoverDNA.
- *       3. Полная детерминированность на основе генетического семени.
+ * #ЗАЧЕМ: Фрактальный Музыкальный Движок V13.0 — "Evolutionary Sowing Implementation".
  */
 export class FractalMusicEngine {
   public config: EngineConfig;
@@ -76,16 +74,26 @@ export class FractalMusicEngine {
   public initialize(force: boolean = false) {
     if (this.isInitialized && !force) return;
 
-    // #ЗАЧЕМ: Самообучение через наследование.
-    // #ЧТО: Если найден "предок" (удачная сессия из прошлого), текущее семя 
-    //       модифицируется через crossoverDNA, наследуя музыкальную структуру.
+    const blueprint = getBlueprint(this.config.genre, this.config.mood);
+    
+    // #ЗАЧЕМ: Алгоритм Evolutionary Sowing.
+    // #ЧТО: Скрещивание и посев теперь инкапсулированы в generateSuiteDNA.
+    this.suiteDNA = generateSuiteDNA(
+        blueprint.structure.totalDuration.preferredBars, 
+        this.config.mood, 
+        this.config.seed, 
+        this.random, 
+        this.config.genre, 
+        blueprint.structure.parts,
+        this.config.ancestor
+    );
+
+    // Если произошло скрещивание, обновляем локальный генератор случайных чисел
     if (this.config.ancestor) {
-        console.log(`%c[GENEPOOL] Inheritance Detected! Breeding current seed with ancestor: ${this.config.ancestor.seed}`, 'color: #ff00ff; font-weight:bold;');
-        this.config.seed = crossoverDNA(this.config.seed, this.config.ancestor);
+        console.log(`%c[GENEPOOL] Inheritance Detected! Ancestor Seed: ${this.config.ancestor.seed}`, 'color: #ff00ff; font-weight:bold;');
     }
 
-    this.random = seededRandom(this.config.seed);
-    this.lastEvents = [];
+    this.navigator = new BlueprintNavigator(blueprint, this.config.seed, this.config.genre, this.config.mood, this.config.introBars, this.suiteDNA.soloPlanMap);
     
     if (this.config.genre === 'blues') {
         this.bluesBrain = new BluesBrain(this.config.seed, this.config.mood);
@@ -93,10 +101,6 @@ export class FractalMusicEngine {
         this.bluesBrain = null;
     }
 
-    const blueprint = getBlueprint(this.config.genre, this.config.mood);
-    this.suiteDNA = generateSuiteDNA(blueprint.structure.totalDuration.preferredBars, this.config.mood, this.config.seed, this.random, this.config.genre, blueprint.structure.parts);
-    this.navigator = new BlueprintNavigator(blueprint, this.config.seed, this.config.genre, this.config.mood, this.config.introBars, this.suiteDNA.soloPlanMap);
-    
     this.config.tempo = this.suiteDNA.baseTempo;
     this.isInitialized = true;
   }
@@ -114,7 +118,8 @@ export class FractalMusicEngine {
     const stages = navInfo.currentPart.stagedInstrumentation;
 
     if (stages && stages.length > 0) {
-        const progress = (this.epoch - navInfo.currentPartStartBar) / (navInfo.currentPartEndBar - navInfo.currentPartStartBar + 1);
+        const partBars = navInfo.currentPartEndBar - navInfo.currentPartStartBar + 1;
+        const progress = (this.epoch - navInfo.currentPartStartBar) / partBars;
         let currentStage = stages[stages.length - 1];
         let acc = 0;
         for (const s of stages) { 
@@ -131,6 +136,11 @@ export class FractalMusicEngine {
                 const timbre = pickWeightedDeterministic(rule.instrumentOptions, this.config.seed, this.epoch, 500);
                 (instrumentHints as any)[part] = timbre;
                 instrumentHints.summonProgress![part] = 1.0; 
+                
+                // Передача категории для Sparkles (например, 'promenade')
+                if (part === 'sparkles' && rule.instrumentOptions[0]?.category) {
+                    (instrumentHints as any).sparkleCategory = rule.instrumentOptions[0].category;
+                }
             }
         });
     }
@@ -147,24 +157,15 @@ export class FractalMusicEngine {
 
   private calculateBeautyScore(events: FractalEvent[]): number {
       if (events.length < 2) return 0.5;
-      
       const matrix = this.getResonanceMatrix();
       let totalResonance = 0;
       let pairCount = 0;
-
       for (let i = 0; i < events.length; i++) {
           for (let j = i + 1; j < Math.min(i + 5, events.length); j++) {
-              const res = matrix(events[i], events[j], {
-                  mood: this.config.mood,
-                  genre: this.config.genre,
-                  tempo: this.config.tempo,
-                  delta: 0.5
-              });
-              totalResonance += res;
+              totalResonance += matrix(events[i], events[j], { mood: this.config.mood, genre: this.config.genre, tempo: this.config.tempo, delta: 0.5 });
               pairCount++;
           }
       }
-
       return pairCount > 0 ? totalResonance / pairCount : 0.5;
   }
 
@@ -185,13 +186,11 @@ export class FractalMusicEngine {
     if (this.config.genre === 'blues' && this.bluesBrain) {
         allEvents = this.bluesBrain.generateBar(this.epoch, currentChord, navInfo, this.suiteDNA, instrumentHints, this.lastEvents);
     } else {
-        const harmonyEvents = createHarmonyAxiom(currentChord, this.config.mood, this.config.genre, this.random, this.epoch);
-        allEvents.push(...harmonyEvents);
+        allEvents = createHarmonyAxiom(currentChord, this.config.mood, this.config.genre, this.random, this.epoch);
     }
 
     return { events: allEvents };
   }
 
-  public generateExternalImpulse() {
-  }
+  public generateExternalImpulse() {}
 }

@@ -1,8 +1,8 @@
 import type { MusicBlueprint } from '@/types/music';
 
 /**
- * #ЗАЧЕМ: Mood-specific Anxious Bridge (Promenade v2.0).
- * #ЧТО: Короткий (4 такта) тревожный переход.
+ * #ЗАЧЕМ: Mood-specific Anxious Bridge (The Nervous Knot).
+ * #ЧТО: Короткий (4 такта) тревожный переход. Rhodes-глюки и лазеры.
  */
 export const AnxiousBridgeBlueprint: MusicBlueprint = {
     id: 'anxious_bridge',
@@ -14,7 +14,7 @@ export const AnxiousBridgeBlueprint: MusicBlueprint = {
         bpm: { base: 60, range: [60, 60], modifier: 1.0 },
         timeSignature: { numerator: 4, denominator: 4 },
         harmonicJourney: [],
-        tensionProfile: { type: 'flat', peakPosition: 0.5, curve: () => 0.4 }
+        tensionProfile: { type: 'plateau', peakPosition: 0.5, curve: () => 0.4 }
     },
     structure: {
         totalDuration: { preferredBars: 4 },
@@ -34,7 +34,7 @@ export const AnxiousBridgeBlueprint: MusicBlueprint = {
                 instrumentRules: {
                     accompaniment: { techniques: [{ value: 'arpeggio-slow', weight: 1.0 }], register: { preferred: 'mid' } }
                 },
-                bundles: [{ id: 'ANX_BRIDGE', name: 'Bridge', duration: { percent: 100 }, characteristics: {}, phrases: {} }],
+                bundles: [{ id: 'ANX_BRIDGE_B1', name: 'Glitch Knot', duration: { percent: 100 }, characteristics: {}, phrases: {} }],
                 outroFill: null,
             }
         ]
