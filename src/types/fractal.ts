@@ -108,7 +108,6 @@ export type InstrumentType =
   | 'drum_Bell_-_Ring'
   | 'drum_Bell_-_Slide'
   | 'drum_Bell_-_Smooth'
-  | 'drum_Bell_-_Soft'
   | 'drum_Bell_-_Tap'
   | 'drum_Bell_-_Too_Easy'
   | 'drum_Bell_-_Unstable'
@@ -370,6 +369,8 @@ export type SuiteDNA = {
   bluesGridType?: 'classic' | 'quick-change' | 'minor-blues';
   /** #ЗАЧЕМ: Тематические якоря сюиты (План №175). */
   thematicAnchors?: string[];
+  /** #ЗАЧЕМ: Семантическое семя для СОР (План №218). */
+  seedLickId?: string;
 };
 
 

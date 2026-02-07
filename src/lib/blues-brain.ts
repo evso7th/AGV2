@@ -1,4 +1,3 @@
-
 import type {
   FractalEvent,
   GhostChord,
@@ -17,12 +16,13 @@ import { BLUES_DRUM_RIFFS } from './assets/blues-drum-riffs';
 import { BLUES_BASS_RIFFS } from './assets/blues-bass-riffs';
 import { BLUES_GUITAR_VOICINGS } from './assets/guitar-voicings';
 import { GUITAR_PATTERNS } from './assets/guitar-patterns';
+import { BLUES_SOLO_LICKS } from './assets/blues_guitar_solo';
 
 /**
- * #ЗАЧЕМ: Блюзовый Мозг V14.0 — "Triple Morphing Architecture".
- * #ЧТО: Реализован Закон Динамического Тембра для Winter Blues. 
- *       Мелодия теперь проходит через три стадии: Black Acoustic -> CS80 -> Velvet Lead.
- * #ИНТЕГРАЦИЯ: Полная поддержка порогов напруги (0.5, 0.7).
+ * #ЗАЧЕМ: Блюзовый Мозг V15.0 — "Semantic Axiom Growth".
+ * #ЧТО: Реализована поддержка "Лика как Семени" для СОР. 
+ *       При инициализации Dark Blues первая аксиома берется из библиотеки.
+ * #ИНТЕГРАЦИЯ: Полная совместимость с SuiteDNA.seedLickId.
  */
 
 const ENERGY_PRICES = {
@@ -85,7 +85,6 @@ export class BluesBrain {
     const barIn12 = epoch % 12;
     const tension = dna.tensionMap ? (dna.tensionMap[epoch % dna.tensionMap.length] || 0.5) : 0.5;
     
-    // #ЗАЧЕМ: Применение Закона Динамического Тембра.
     this.evaluateTimbralDramaturgy(tension, hints, this.mood);
     
     const melodyStyle = tension > 0.65 ? 'solo' : 'fingerstyle';
@@ -176,13 +175,8 @@ export class BluesBrain {
     return events;
   }
 
-  /**
-   * #ЗАЧЕМ: Реализация Закона Динамического Тембра.
-   * #ЧТО: Выбор инструмента в зависимости от напряжения и настроения.
-   */
   private evaluateTimbralDramaturgy(tension: number, hints: InstrumentHints, mood: Mood) {
     if (mood === 'dark' || mood === 'gloomy') {
-        // Dark Blues Morphing
         if (hints.melody) {
             if (tension < 0.4) (hints as any).melody = 'blackAcoustic';
             else if (tension < 0.75) (hints as any).melody = 'cs80';
@@ -198,10 +192,7 @@ export class BluesBrain {
             else (hints as any).accompaniment = 'organ_jimmy_smith';
         }
     } else if (mood === 'melancholic') {
-        // Winter Blues Dynamic Morphing
         if (hints.melody) {
-            // #ЗАЧЕМ: Тройной морфинг мелодии.
-            // #ЧТО: Black (до 0.5), CS80 (0.51-0.7), ShineOn (0.7+).
             if (tension <= 0.5) (hints as any).melody = 'blackAcoustic';
             else if (tension <= 0.7) (hints as any).melody = 'cs80';
             else (hints as any).melody = 'guitar_shineOn';
@@ -212,7 +203,6 @@ export class BluesBrain {
             else (hints as any).bass = 'bass_808';
         }
     } else {
-        // Fallback for other moods
         if (hints.melody) (hints as any).melody = 'guitar_shineOn';
         if (hints.accompaniment) {
             if (tension < 0.4) (hints as any).accompaniment = 'ep_rhodes_warm';
@@ -292,6 +282,19 @@ export class BluesBrain {
   }
 
   private generateInitialAxiom(tension: number, epoch: number, dna: SuiteDNA): MelodicAxiomNote[] {
+    // #ЗАЧЕМ: Реализация семантического семени (ПЛАН №218).
+    // #ЧТО: Если в DNA есть seedLickId, аксиома строится на основе лика из библиотеки.
+    if (dna.seedLickId && BLUES_SOLO_LICKS[dna.seedLickId]) {
+        const lick = BLUES_SOLO_LICKS[dna.seedLickId].phrase;
+        return lick.map(note => ({
+            deg: note.deg,
+            t: note.t,
+            d: note.d,
+            tech: (note.tech as Technique) || 'pick'
+        }));
+    }
+
+    // Fallback: Random generation
     const axiom: MelodicAxiomNote[] = [];
     const pool = ['R', 'b3', '4', '5', 'b7', this.thematicDegree];
     const count = tension > 0.6 ? 4 : 3; 

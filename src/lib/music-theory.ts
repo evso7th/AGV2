@@ -5,6 +5,7 @@
  *       Внедрена система цепей Маркова для генерации гармонического скелета.
  *       ДОБАВЛЕНО: Математика MusiNum для фрактальной детерминированности.
  * #ОБНОВЛЕНО (ПЛАН №201): Добавлена функция crossoverDNA для генетического скрещивания.
+ * #ОБНОВЛЕНО (ПЛАН №218): Внедрена ротация ликов (history of 10) для выбора семантического семени.
  */
 
 import type { 
@@ -17,12 +18,16 @@ import type {
     InstrumentPart,
     TensionProfile
 } from '@/types/music';
-import { BLUES_SOLO_PLANS } from './assets/blues_guitar_solo';
+import { BLUES_SOLO_PLANS, BLUES_SOLO_LICKS } from './assets/blues_guitar_solo';
 
 export const DEGREE_TO_SEMITONE: Record<string, number> = {
     'R': 0, 'b2': 1, '2': 2, 'b3': 3, '3': 4, '4': 5, '#4': 6, 'b5': 6, '5': 7,
     'b6': 8, '6': 9, 'b7': 10, '7': 11, 'R+8': 12, '9': 14, '11': 17
 };
+
+// --- GLOBAL LICK ROTATION (Persistent in worker memory) ---
+let LICK_HISTORY: string[] = [];
+const MAX_HISTORY_SIZE = 10;
 
 /**
  * #ЗАЧЕМ: Математическое ядро MusiNum.
@@ -175,6 +180,7 @@ export function getScaleForMood(mood: Mood, genre?: Genre): number[] {
 
 /**
  * #ЗАЧЕМ: Генератор ДНК сюиты.
+ * #ЧТО: Теперь включает выбор семантического лика-семени с ротацией.
  */
 export function generateSuiteDNA(totalBars: number, mood: Mood, seed: number, random: any, genre: Genre, blueprintParts: any[]): SuiteDNA {
     const harmonyTrack: GhostChord[] = [];
@@ -256,6 +262,21 @@ export function generateSuiteDNA(totalBars: number, mood: Mood, seed: number, ra
         anchorPool[anchorPool.length - 1 - calculateMusiNum(seed, 5, 1, anchorPool.length)]
     ];
 
+    // #ЗАЧЕМ: Выбор семантического лика для Dark Blues (ПЛАН №218).
+    let seedLickId: string | undefined;
+    if (genre === 'blues' && (mood === 'dark' || mood === 'gloomy')) {
+        const minorLicks = Object.keys(BLUES_SOLO_LICKS).filter(id => 
+            BLUES_SOLO_LICKS[id].tags.includes('minor') && !LICK_HISTORY.includes(id)
+        );
+        const candidates = minorLicks.length > 0 ? minorLicks : Object.keys(BLUES_SOLO_LICKS);
+        seedLickId = candidates[calculateMusiNum(seed, 7, 42, candidates.length)];
+        
+        // Update history
+        LICK_HISTORY.push(seedLickId);
+        if (LICK_HISTORY.length > MAX_HISTORY_SIZE) LICK_HISTORY.shift();
+        console.log(`%c[Genomics] Selected Semantic Seed: ${seedLickId}. History: ${LICK_HISTORY.join(',')}`, 'color: #DA70D6; font-weight: bold;');
+    }
+
     return { 
         harmonyTrack, 
         baseTempo, 
@@ -265,6 +286,7 @@ export function generateSuiteDNA(totalBars: number, mood: Mood, seed: number, ra
         soloPlanMap, 
         tensionMap,
         bluesGridType,
-        thematicAnchors
+        thematicAnchors,
+        seedLickId
     };
 }
