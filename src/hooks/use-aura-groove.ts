@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState, useEffect, useCallback, useRef } from "react";
@@ -58,7 +57,8 @@ export type AuraGrooveProps = {
 
 
 /**
- * Полная версия хука для основного UI управления музыкой.
+ * #ЗАЧЕМ: Хук управления UI музыкой.
+ * #ИСПРАВЛЕНО (ПЛАН 237): Исправлена логика уведомлений (авто-дисмисс и тайм-ауты).
  */
 export const useAuraGroove = (): AuraGrooveProps => {
   const { 
@@ -185,7 +185,6 @@ export const useAuraGroove = (): AuraGrooveProps => {
   const handleSaveMasterpiece = useCallback(async () => {
     if (!isInitialized || !isPlaying) return;
     
-    // #ЗАЧЕМ: Логирование в консоль для подтверждения пополнения генофонда.
     console.log(`%c[GENEPOOL] USER FEEDBACK: Liking seed ${currentSeed}. Archiving to Masterpieces.`, 'color: #4ade80; font-weight: bold;');
 
     const { dismiss: dismissLoading } = toast({ 
@@ -193,30 +192,34 @@ export const useAuraGroove = (): AuraGrooveProps => {
       description: "Saving this state to the Elder Knowledge..." 
     });
     
-    const success = await saveMasterpiece(db, {
-      seed: currentSeed,
-      mood,
-      genre,
-      density,
-      bpm,
-      instrumentSettings
-    });
+    try {
+        const success = await saveMasterpiece(db, {
+          seed: currentSeed,
+          mood,
+          genre,
+          density,
+          bpm,
+          instrumentSettings
+        });
 
-    dismissLoading();
+        // #ЗАЧЕМ: Гарантированный сброс лоадера и показ результата.
+        dismissLoading();
 
-    if (success) {
-      const { dismiss } = toast({ 
-        title: "Masterpiece Saved!", 
-        description: "This soul will help build future generations." 
-      });
-      setTimeout(dismiss, 1000);
-    } else {
-      const { dismiss } = toast({ 
-        variant: "destructive", 
-        title: "Memory Error", 
-        description: "Could not save the state." 
-      });
-      setTimeout(dismiss, 3000);
+        if (success) {
+          toast({ 
+            title: "Masterpiece Saved!", 
+            description: "This soul will help build future generations." 
+          });
+        } else {
+          toast({ 
+            variant: "destructive", 
+            title: "Memory Error", 
+            description: "Could not save the state." 
+          });
+        }
+    } catch (e) {
+        dismissLoading();
+        toast({ variant: "destructive", title: "Internal Error", description: "Storage system failed." });
     }
   }, [isInitialized, isPlaying, db, currentSeed, mood, genre, density, bpm, instrumentSettings]);
 
@@ -293,7 +296,7 @@ export const useAuraGroove = (): AuraGrooveProps => {
     });
   };
 
-  const handleExit = () => {
+  const handleGoHome = () => {
     setEngineIsPlaying(false);
     window.location.href = '/';
   };
@@ -310,8 +313,8 @@ export const useAuraGroove = (): AuraGrooveProps => {
     score, handleScoreChange: setScore,
     density, setDensity,
     composerControlsInstruments, setComposerControlsInstruments,
-    handleGoHome: handleExit,
-    handleExit,
+    handleGoHome,
+    handleExit: handleGoHome,
     isEqModalOpen, setIsEqModalOpen, eqSettings, handleEqChange,
     timerSettings, handleTimerDurationChange, handleToggleTimer,
     mood, setMood, genre, setGenre, useMelodyV2, toggleMelodyEngine,

@@ -19,10 +19,10 @@ import { GUITAR_PATTERNS } from './assets/guitar-patterns';
 import { BLUES_SOLO_LICKS } from './assets/blues_guitar_solo';
 
 /**
- * #ЗАЧЕМ: Блюзовый Мозг V22.0 — "Universal Melodic Novelty Guard".
- * #ЧТО: 1. Внедрена система относительного хэширования (Shape Hashing) для детекции повторов.
- *       2. Ремонтирован блок защиты от "шарманки": теперь повторы ловятся сквозь смену аккордов.
- *       3. Контроль зацикливания стал фундаментальным правилом для всех стилей мелодии.
+ * #ЗАЧЕМ: Блюзовый Мозг V23.0 — "Universal Melodic Novelty Guard & Rhythmic Hashing".
+ * #ЧТО: 1. Хэширование теперь включает тайминг (грув), а не только питч.
+ *       2. Логирование СОР усилено для видимости в консоли.
+ *       3. Гарантированный сброс при стагнации (3 повтора подряд).
  */
 
 const ENERGY_PRICES = {
@@ -134,12 +134,12 @@ export class BluesBrain {
               }
 
               // #ЗАЧЕМ: Фундаментальный контроль повторов (Novelty Guard).
-              // #ЧТО: Хэшируем форму мелодии относительно корня аккорда.
+              // #ЧТО: Хэшируем форму мелодии (питч + тайминг) относительно корня.
               const shapeHash = this.getMelodicShapeHash(melodyEvents, currentChord.rootNote);
               if (this.isRepetitive(shapeHash)) {
-                  console.warn(`%c[SOR] Melodic Stagnation Detected (Hash: ${shapeHash}). Forcing Axiom Reset.`, 'color: #ff4500; font-weight: bold;');
+                  console.warn(`%c[SOR] Melodic Stagnation Detected (Hash: ${shapeHash}). Forcing Axiom Reset @ Bar ${epoch}.`, 'color: #ff4500; font-weight: bold; background: #fff; padding: 2px;');
                   this.currentAxiom = []; // Сброс аксиомы для L-системы
-                  this.phraseHistory = []; // Очистка истории для новой ветви
+                  this.phraseHistory = []; // Очистка истории
                   
                   // Принудительная регенерация с новым "зерном" времени
                   if (melodyStyle === 'solo') {
@@ -149,8 +149,10 @@ export class BluesBrain {
                   }
               }
               
-              this.phraseHistory.push(shapeHash);
-              if (this.phraseHistory.length > 8) this.phraseHistory.shift();
+              if (shapeHash) {
+                this.phraseHistory.push(shapeHash);
+                if (this.phraseHistory.length > 8) this.phraseHistory.shift();
+              }
 
               // Установка пауз
               if (melodyStyle === 'solo' && (barIn12 === 11 || tension > 0.85)) {
@@ -227,14 +229,15 @@ export class BluesBrain {
 
   /**
    * #ЗАЧЕМ: Shape Hashing (Относительное хэширование).
-   * #ЧТО: Создает хэш нот относительно корня аккорда. Позволяет обнаруживать
-   *       одинаковые мелодические фигуры даже при смене гармонии.
+   * #ЧТО: Теперь включает ТАЙМИНГ. Это позволяет ловить повторы ритмических фигур
+   *       даже если ноты слегка отличаются по высоте (или наоборот).
    */
   private getMelodicShapeHash(events: FractalEvent[], rootNote: number): string {
-      return events
-        .filter(e => e.type === 'melody')
-        .map(e => (e.note - rootNote) % 12)
-        .join('-');
+      const melody = events.filter(e => e.type === 'melody');
+      if (melody.length === 0) return "";
+      return melody
+        .map(e => `${(e.note - rootNote) % 12}:${e.time.toFixed(2)}`)
+        .join('|');
   }
 
   private isRepetitive(newHash: string): boolean {

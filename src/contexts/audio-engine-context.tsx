@@ -1,4 +1,3 @@
-
 'use client';
 
 import React, { createContext, useContext, useState, useRef, useCallback, useEffect } from 'react';
@@ -142,13 +141,8 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
   
   const { toast } = useToast();
 
-  /**
-   * #ЗАЧЕМ: Загрузка глобальной генетической памяти.
-   * #ЧТО: Извлекает 20 последних шедевров для механизма скрещивания.
-   */
   const loadAncestors = useCallback(async () => {
       try {
-          console.log('[Ancestors] Accessing Global Masterpiece Library...');
           const masterpiecesRef = collection(db, 'masterpieces');
           const q = query(masterpiecesRef, orderBy('timestamp', 'desc'), limit(20));
           const snapshot = await getDocs(q);
@@ -189,7 +183,6 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
 
   const resetWorkerCallback = useCallback(() => {
     if (workerRef.current) {
-        // #ЗАЧЕМ: Обеспечение наследования при сбросе.
         const ancestor = ancestorsRef.current.length > 0 
             ? ancestorsRef.current[Math.floor(Math.random() * ancestorsRef.current.length)]
             : null;
@@ -299,6 +292,8 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
                 
                 if (type === 'HIGH_RESONANCE_DETECTED' && payload && 'seed' in payload) {
                     if (settingsRef.current) {
+                        // #ЗАЧЕМ: Усиленная визуализация пополнения генофонда.
+                        console.info(`%c[GENEPOOL] AI ARBITRATOR: Resonance ${payload.beautyScore?.toFixed(3)}! Adding seed ${payload.seed} to global memory.`, 'color: #ff00ff; font-weight: bold; background: #222; padding: 2px 5px; border-radius: 3px;');
                         saveMasterpiece(db, {
                             seed: payload.seed!,
                             mood: settingsRef.current.mood,
