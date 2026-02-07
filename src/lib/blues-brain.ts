@@ -19,11 +19,10 @@ import { BLUES_GUITAR_VOICINGS } from './assets/guitar-voicings';
 import { GUITAR_PATTERNS } from './assets/guitar-patterns';
 
 /**
- * #ЗАЧЕМ: Блюзовый Мозг V12.9 — "The Singing Guitar".
- * #ЧТО: Реализована концепция непрерывного легатного повествования для гитары.
- *       Паузы теперь — это не отсутствие нот, а музыкальное дыхание.
- * #ИСПРАВЛЕНО (ПЛАН 197): Установлен потолок регистра G5 (79) для сохранения тембра.
- * #ИСПРАВЛЕНО (ПЛАН 199): Применен регистровый потолок (79) для пианино.
+ * #ЗАЧЕМ: Блюзовый Мозг V13.0 — "The Morphing Ritual".
+ * #ЧТО: Реализован Закон Динамического Тембра. Инструменты теперь физически
+ *       меняются в зависимости от фрактального напряжения сюиты.
+ * #ИНТЕГРАЦИЯ: Полная поддержка E Phrygian для Dark Blues и обновленный фундамент Winter Blues.
  */
 
 const ENERGY_PRICES = {
@@ -48,13 +47,8 @@ export class BluesBrain {
   private currentAxiom: MelodicAxiomNote[] = [];
   private random: any;
   
-  // #ЗАЧЕМ: Защита от цифрового свиста. Лимит — середина 5-й октавы (G5).
   private readonly MELODY_CEILING = 79;
-
-  // Phrasing state
   private phrasePauseTimer = 0; 
-
-  // Pattern Rotation State
   private readonly patternOptions: string[] = ['F_TRAVIS', 'F_ROLL12', 'S_SWING'];
 
   constructor(seed: number, mood: Mood) {
@@ -91,7 +85,8 @@ export class BluesBrain {
     const barIn12 = epoch % 12;
     const tension = dna.tensionMap ? (dna.tensionMap[epoch % dna.tensionMap.length] || 0.5) : 0.5;
     
-    this.evaluateTimbralDramaturgy(tension, hints);
+    // #ЗАЧЕМ: Применение Закона Динамического Тембра.
+    this.evaluateTimbralDramaturgy(tension, hints, this.mood);
     
     const melodyStyle = tension > 0.65 ? 'solo' : 'fingerstyle';
     const lastBarHadScream = lastEvents.some(e => e.type === 'melody' && e.note > 74 && e.duration > 0.8);
@@ -104,18 +99,16 @@ export class BluesBrain {
     const barBudget = 100 + (tension * 100);
     let consumedEnergy = 0;
 
-    // 1. MELODY (Singing Mode)
+    // 1. MELODY
     if (hints.melody) {
       const prog = hints.summonProgress?.melody ?? 1.0;
       let melodyEvents: FractalEvent[] = [];
 
-      // Logic for "Breathing" - occasionally skip entire bars
       if (this.phrasePauseTimer > 0) {
           this.phrasePauseTimer--;
       } else {
           if (melodyStyle === 'solo') {
               melodyEvents = this.generateLSystemMelody(epoch, currentChord, barIn12, tempo, tension, dna);
-              // After a climax or turnaround, take a breath
               if (barIn12 === 11 || tension > 0.85) {
                   this.phrasePauseTimer = 1 + calculateMusiNum(epoch, 3, this.seed, 2);
               }
@@ -183,14 +176,43 @@ export class BluesBrain {
     return events;
   }
 
-  private evaluateTimbralDramaturgy(tension: number, hints: InstrumentHints) {
-    if (hints.melody && typeof hints.melody !== 'string') {
-        (hints as any).melody = 'guitar_shineOn';
-    }
-    if (hints.accompaniment && typeof hints.accompaniment !== 'string') {
-        if (tension < 0.4) (hints as any).accompaniment = 'ep_rhodes_warm';
-        else if (tension < 0.7) (hints as any).accompaniment = 'organ_soft_jazz';
-        else (hints as any).accompaniment = 'organ_jimmy_smith';
+  /**
+   * #ЗАЧЕМ: Реализация Закона Динамического Тембра.
+   * #ЧТО: Выбор инструмента в зависимости от напряжения и настроения.
+   */
+  private evaluateTimbralDramaturgy(tension: number, hints: InstrumentHints, mood: Mood) {
+    if (mood === 'dark' || mood === 'gloomy') {
+        // Dark Blues Morphing
+        if (hints.melody) {
+            if (tension < 0.4) (hints as any).melody = 'blackAcoustic';
+            else if (tension < 0.75) (hints as any).melody = 'cs80';
+            else (hints as any).melody = 'guitar_shineOn';
+        }
+        if (hints.bass) {
+            if (tension < 0.4) (hints as any).bass = 'bass_dub';
+            else if (tension < 0.7) (hints as any).bass = 'bass_reggae';
+            else (hints as any).bass = 'bass_808';
+        }
+        if (hints.accompaniment) {
+            if (tension < 0.7) (hints as any).accompaniment = 'organ_soft_jazz';
+            else (hints as any).accompaniment = 'organ_jimmy_smith';
+        }
+    } else if (mood === 'melancholic') {
+        // Winter Blues Special Exception
+        if (hints.melody) (hints as any).melody = 'cs80'; // Melody stays CS80
+        if (hints.bass) {
+            if (tension < 0.4) (hints as any).bass = 'bass_jazz_warm';
+            else if (tension < 0.7) (hints as any).bass = 'bass_reggae';
+            else (hints as any).bass = 'bass_808';
+        }
+    } else {
+        // Fallback for other moods
+        if (hints.melody) (hints as any).melody = 'guitar_shineOn';
+        if (hints.accompaniment) {
+            if (tension < 0.4) (hints as any).accompaniment = 'ep_rhodes_warm';
+            else if (tension < 0.7) (hints as any).accompaniment = 'organ_soft_jazz';
+            else (hints as any).accompaniment = 'organ_jimmy_smith';
+        }
     }
   }
 
@@ -221,8 +243,6 @@ export class BluesBrain {
             duration = Math.max(n.d, 6); 
         }
 
-        // #ЗАЧЕМ: Ограничение регистра.
-        // #ЧТО: Применение MELODY_CEILING (79) к финальной ноте.
         const targetNote = chord.rootNote + 36 + registerLift + (DEGREE_TO_SEMITONE[n.deg] || 0);
 
         return {

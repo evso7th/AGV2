@@ -2,15 +2,15 @@
 import type { MusicBlueprint } from '@/types/music';
 
 /**
- * #ЗАЧЕМ: Блюпринт "The Bluest Blues" (v17.0 - Full CS80 Immersion).
- * #ЧТО: И Бас, и Мелодия теперь используют сэмплер CS80 для создания
- *       монолитного, кинематографичного звучания.
- *       Сохранено радикально сокращенное аутро (4%).
+ * #ЗАЧЕМ: Блюпринт "The Bluest Blues" (v18.0 - Dynamic Bass Foundation).
+ * #ЧТО: Сохранена кинематографичность CS80 Solo.
+ *       Бас переведен на динамическую связку (Jazz -> Reggae -> 808) по напруге.
+ * #СТАТУС: FROZEN. Изменения внесены по специальному разрешению.
  */
 export const WinterBluesBlueprint: MusicBlueprint = {
     id: 'winter_blues',
-    name: 'The Bluest Blues (Full CS80)',
-    description: 'A deep, cognitive blues journey featuring the legendary CS80 synth for both bass and solo parts.',
+    name: 'The Bluest Blues (Dynamic Base)',
+    description: 'A deep, cognitive blues journey with a solidifying bass foundation.',
     mood: 'melancholic',
     musical: {
         key: { root: 'E', scale: 'dorian', octave: 1 },
@@ -30,25 +30,22 @@ export const WinterBluesBlueprint: MusicBlueprint = {
                 id: 'INTRO_1', name: 'Rapid Opening', duration: { percent: 30 }, 
                 layers: { bass: true, accompaniment: true, melody: true, drums: true, harmony: true, pianoAccompaniment: true, sparkles: true },
                 stagedInstrumentation: [
-                    // СЦЕНА 1: Фундамент (Такты 0-1).
                     { 
                         duration: { percent: 1 }, 
                         instrumentation: {
-                           // Бас сразу вступает на CS80
-                           bass: { activationChance: 1.0, instrumentOptions: [ { name: 'cs80', weight: 1.0 } ] },
+                           // Бас теперь управляется динамически через BluesBrain
+                           bass: { activationChance: 1.0, instrumentOptions: [ { name: 'bass', weight: 1.0 } ] },
                            drums: { activationChance: 1.0, instrumentOptions: [ { name: 'blues_melancholic', weight: 1.0 } ] },
                            accompaniment: { activationChance: 1.0, instrumentOptions: [ { name: 'organ_soft_jazz', weight: 1.0 } ] },
                            harmony: { activationChance: 1.0, instrumentOptions: [ { name: 'guitarChords', weight: 1.0 } ] }
                         }
                     },
-                    // СЦЕНА 2: Вход CS80 Solo (Такты 2-3).
                     {
                         duration: { percent: 1 }, 
                         instrumentation: {
                            melody: { activationChance: 1.0, instrumentOptions: [ { name: 'cs80', weight: 1.0 } ] }
                         }
                     },
-                    // СЦЕНА 3: Детализация (Такты 4-5).
                     {
                         duration: { percent: 1 }, 
                         instrumentation: {
@@ -57,14 +54,13 @@ export const WinterBluesBlueprint: MusicBlueprint = {
                            sparkles: { activationChance: 0.8, instrumentOptions: [ { name: 'dark', weight: 1.0 } ], transient: true }
                         }
                     },
-                    // СЦЕНА 4: Полный Глубокий Состав (Такты 6+).
                     {
                         duration: { percent: 97 }, 
                         instrumentation: {
                            melody: { activationChance: 1.0, instrumentOptions: [ { name: 'cs80', weight: 1.0 } ] },
                            pianoAccompaniment: { activationChance: 1.0, instrumentOptions: [ { name: 'piano', weight: 1.0 } ] },
                            accompaniment: { activationChance: 1.0, instrumentOptions: [ { name: 'organ_soft_jazz', weight: 1.0 } ] },
-                           bass: { activationChance: 1.0, instrumentOptions: [ { name: 'cs80', weight: 1.0 } ] },
+                           bass: { activationChance: 1.0, instrumentOptions: [ { name: 'bass', weight: 1.0 } ] },
                            drums: { activationChance: 1.0, instrumentOptions: [ { name: 'blues_melancholic_master', weight: 1.0 } ] },
                            harmony: { activationChance: 1.0, instrumentOptions: [ { name: 'guitarChords', weight: 0.6 }, { name: 'flute', weight: 0.4 } ] },
                            sparkles: { activationChance: 0.3, instrumentOptions: [ { name: 'dark', weight: 1.0 } ], transient: true }
@@ -73,15 +69,8 @@ export const WinterBluesBlueprint: MusicBlueprint = {
                 ],
                 instrumentRules: {
                     bass: { techniques: [{ value: 'walking', weight: 1.0 }], density: { min: 1.0, max: 1.0 } },
-                    accompaniment: { 
-                        techniques: [{ value: 'long-chords', weight: 1.0 }], 
-                        density: { min: 0.9, max: 1.0 }
-                    },
-                    melody: { 
-                        source: 'blues_solo', 
-                        density: { min: 0.6, max: 0.8 },
-                        register: { preferred: 'low' } 
-                    }
+                    accompaniment: { techniques: [{ value: 'long-chords', weight: 1.0 }], density: { min: 0.9, max: 1.0 } },
+                    melody: { source: 'blues_solo', density: { min: 0.6, max: 0.8 }, register: { preferred: 'low' } }
                 },
                 bundles: [{ id: 'FAST_INTRO', name: 'Rapid Buildup', duration: { percent: 100 }, characteristics: {}, phrases: {} }],
                 outroFill: null,
@@ -94,7 +83,7 @@ export const WinterBluesBlueprint: MusicBlueprint = {
                         duration: { percent: 100 }, 
                         instrumentation: {
                            melody: { activationChance: 1.0, instrumentOptions: [ { name: 'cs80', weight: 1.0 } ] },
-                           bass: { activationChance: 1.0, instrumentOptions: [ { name: 'cs80', weight: 1.0 } ] },
+                           bass: { activationChance: 1.0, instrumentOptions: [ { name: 'bass', weight: 1.0 } ] },
                            drums: { activationChance: 1.0, instrumentOptions: [ { name: 'blues_melancholic_master', weight: 1.0 } ] },
                            accompaniment: { activationChance: 1.0, instrumentOptions: [ { name: 'organ_soft_jazz', weight: 1.0 } ] },
                            harmony: { activationChance: 1.0, instrumentOptions: [ { name: 'guitarChords', weight: 0.6 }, { name: 'flute', weight: 0.4 } ] },
@@ -117,7 +106,7 @@ export const WinterBluesBlueprint: MusicBlueprint = {
                     { 
                         duration: { percent: 100 }, 
                         instrumentation: {
-                           bass: { activationChance: 1.0, instrumentOptions: [ { name: 'cs80', weight: 1.0 } ] },
+                           bass: { activationChance: 1.0, instrumentOptions: [ { name: 'bass', weight: 1.0 } ] },
                            drums: { activationChance: 1.0, instrumentOptions: [ { name: 'blues_melancholic_master', weight: 1.0 } ] },
                            harmony: { activationChance: 1.0, instrumentOptions: [ { name: 'guitarChords', weight: 1.0 } ] },
                            pianoAccompaniment: { activationChance: 1.0, instrumentOptions: [ { name: 'piano', weight: 1.0 } ] }
