@@ -2,14 +2,14 @@
 import type { MusicBlueprint } from '@/types/music';
 
 /**
- * #ЗАЧЕМ: Блюпринт "The Bluest Blues" (v15.0 - Fast Outro).
- * #ЧТО: Радикально сокращенное аутро (4-6 тактов). 
- *       Остаются только Бас, Ударные, Пианино и Гитарные аккорды.
+ * #ЗАЧЕМ: Блюпринт "The Bluest Blues" (v16.0 - CS80 Solo).
+ * #ЧТО: Главная сольная партия переведена на сэмплер CS80 для "Blade Runner" звучания.
+ *       Сохранено радикально сокращенное аутро (4%).
  */
 export const WinterBluesBlueprint: MusicBlueprint = {
     id: 'winter_blues',
-    name: 'The Bluest Blues (Singing Guitar)',
-    description: 'A deep, cognitive blues journey with a delayed guitar entry and continuous legato phrasing.',
+    name: 'The Bluest Blues (CS80 Edition)',
+    description: 'A deep, cognitive blues journey featuring the legendary CS80 synth for the main solo part.',
     mood: 'melancholic',
     musical: {
         key: { root: 'E', scale: 'dorian', octave: 1 },
@@ -39,11 +39,11 @@ export const WinterBluesBlueprint: MusicBlueprint = {
                            harmony: { activationChance: 1.0, instrumentOptions: [ { name: 'guitarChords', weight: 1.0 } ] }
                         }
                     },
-                    // СЦЕНА 2: Вход Гилмора (Такты 2-3).
+                    // СЦЕНА 2: Вход CS80 (Такты 2-3).
                     {
                         duration: { percent: 1 }, 
                         instrumentation: {
-                           melody: { activationChance: 1.0, instrumentOptions: [ { name: 'guitar_shineOn', weight: 1.0 } ] }
+                           melody: { activationChance: 1.0, instrumentOptions: [ { name: 'cs80', weight: 1.0 } ] }
                         }
                     },
                     // СЦЕНА 3: Детализация (Такты 4-5).
@@ -59,7 +59,7 @@ export const WinterBluesBlueprint: MusicBlueprint = {
                     {
                         duration: { percent: 97 }, 
                         instrumentation: {
-                           melody: { activationChance: 1.0, instrumentOptions: [ { name: 'guitar_shineOn', weight: 1.0 } ] },
+                           melody: { activationChance: 1.0, instrumentOptions: [ { name: 'cs80', weight: 1.0 } ] },
                            pianoAccompaniment: { activationChance: 1.0, instrumentOptions: [ { name: 'piano', weight: 1.0 } ] },
                            accompaniment: { activationChance: 1.0, instrumentOptions: [ { name: 'organ_soft_jazz', weight: 1.0 } ] },
                            bass: { activationChance: 1.0, instrumentOptions: [ { name: 'bass_jazz_warm', weight: 1.0 } ] },
@@ -91,7 +91,7 @@ export const WinterBluesBlueprint: MusicBlueprint = {
                     { 
                         duration: { percent: 100 }, 
                         instrumentation: {
-                           melody: { activationChance: 1.0, instrumentOptions: [ { name: 'guitar_shineOn', weight: 1.0 } ] },
+                           melody: { activationChance: 1.0, instrumentOptions: [ { name: 'cs80', weight: 1.0 } ] },
                            bass: { activationChance: 1.0, instrumentOptions: [ { name: 'bass_jazz_warm', weight: 1.0 } ] },
                            drums: { activationChance: 1.0, instrumentOptions: [ { name: 'blues_melancholic_master', weight: 1.0 } ] },
                            accompaniment: { activationChance: 1.0, instrumentOptions: [ { name: 'organ_soft_jazz', weight: 1.0 } ] },
