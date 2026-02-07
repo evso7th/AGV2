@@ -1,130 +1,81 @@
 
 import type { MusicBlueprint } from '@/types/music';
 
+/**
+ * #ЗАЧЕМ: Блюпринт "The Nervous Shuffle" (Anxious Blues v2.0 - Staged).
+ * #ЧТО: Реализован 4-этапный сценарий входа. Акцент на Rhodes и Phrygian лад.
+ * #СВЯЗИ: Динамически управляется BluesBrain.
+ */
 export const AnxiousBluesBlueprint: MusicBlueprint = {
     id: 'anxious_blues',
     name: 'Nervous Breakdown Shuffle',
-    description: 'A fast, chaotic, and tense blues shuffle that builds from an empty start.',
+    description: 'A jittery, unstable blues in E Phrygian. Features Rhodes and staged accumulation.',
     mood: 'anxious',
     musical: {
-        key: { root: 'E', scale: 'aeolian', octave: 2 },
-        bpm: { base: 66, range: [64, 72], modifier: 1.0 },
+        key: { root: 'E', scale: 'phrygian', octave: 2 },
+        bpm: { base: 88, range: [84, 96], modifier: 1.0 },
         timeSignature: { numerator: 4, denominator: 4 },
-        harmonicJourney: [], // 12-bar minor
-        tensionProfile: { type: 'crescendo', peakPosition: 0.7, curve: (p, pp) => p < pp ? p / pp : 1.0 }
+        harmonicJourney: [],
+        tensionProfile: { 
+            type: 'wave', 
+            peakPosition: 0.5, 
+            curve: (p, pp) => 0.5 + 0.4 * Math.sin(p * Math.PI * 6) // Jittery waves
+        }
     },
     structure: {
-        totalDuration: { preferredBars: 120 }, // 10 loops of 12 bars
+        totalDuration: { preferredBars: 144 },
         parts: [
             {
-                id: 'INTRO', name: 'Nervous Build-up', duration: { percent: 15 },
-                layers: {
-                    accompaniment: true,
-                    bass: true,
-                    drums: true
-                },
-                instrumentation: {
-                    accompaniment: {
-                        strategy: 'weighted',
-                        v1Options: [{ name: 'synth', weight: 0.5 }, { name: 'ambientPad', weight: 0.5 }],
-                        v2Options: [{ name: 'synth', weight: 0.5 }, { name: 'synth_ambient_pad_lush', weight: 0.5 }]
+                id: 'THE_BREAKDOWN', name: 'System Degeneration', duration: { percent: 100 },
+                layers: { bass: true, accompaniment: true, melody: true, sfx: true, sparkles: true, drums: true, harmony: true, pianoAccompaniment: true },
+                stagedInstrumentation: [
+                    // Сцена 1: Rhodes + Пад (Тревожное мерцание)
+                    { 
+                        duration: { percent: 25 }, 
+                        instrumentation: {
+                           accompaniment: { activationChance: 1.0, instrumentOptions: [ { name: 'accompaniment', weight: 1.0 } ] }
+                        }
                     },
-                },
-                instrumentRules: {
-                   accompaniment: { register: { preferred: 'low' }, density: { min: 0.1, max: 0.3 } },
-                   melody: { source: 'harmony_top_note' }
-                },
-                bundles: [
+                    // Сцена 2: Вход Нервного Баса
                     {
-                        id: 'BLUES_ANX_INTRO_BUNDLE_1', name: 'Cave Pad Drone', duration: { percent: 100 },
-                        characteristics: { },
-                        phrases: {}
+                        duration: { percent: 25 }, 
+                        instrumentation: {
+                           accompaniment: { activationChance: 1.0, instrumentOptions: [ { name: 'accompaniment', weight: 1.0 } ] },
+                           bass: { activationChance: 1.0, instrumentOptions: [ { name: 'bass', weight: 1.0 } ] }
+                        }
                     },
-                ],
-                outroFill: null,
-            },
-            {
-                id: 'MAIN_A', name: 'Frantic Riff', duration: { percent: 35 },
-                layers: { bass: true, drums: true, accompaniment: true, melody: true, harmony: true, sparkles: true },
-                instrumentation: {
-                    accompaniment: { 
-                        strategy: 'weighted', 
-                        v1Options: [{ name: 'synth', weight: 0.5 }, { name: 'ambientPad', weight: 0.5 }],
-                        v2Options: [{ name: 'synth', weight: 0.5 }, { name: 'synth_ambient_pad_lush', weight: 0.5 }]
+                    // Сцена 3: Вход Гитариста + Барабаны
+                    {
+                        duration: { percent: 25 }, 
+                        instrumentation: {
+                           accompaniment: { activationChance: 1.0, instrumentOptions: [ { name: 'accompaniment', weight: 1.0 } ] },
+                           bass: { activationChance: 1.0, instrumentOptions: [ { name: 'bass', weight: 1.0 } ] },
+                           melody: { activationChance: 1.0, instrumentOptions: [ { name: 'melody', weight: 1.0 } ] },
+                           drums: { activationChance: 1.0, instrumentOptions: [ { name: 'trance_melancholic', weight: 1.0 } ] }
+                        }
                     },
-                    melody: { strategy: 'weighted', v1Options: [{ name: 'guitar_muffLead', weight: 1.0 }], v2Options: [{ name: 'guitar_muffLead', weight: 1.0 }] }
-                },
-                instrumentRules: {
-                    drums: {
-                        pattern: 'composer',
-                        density: { min: 0.7, max: 0.9 },
-                        useSnare: true, kickVolume: 1.1, usePerc: true, ride: { enabled: true }, useGhostHat: true
-                    },
-                    bass: { techniques: [{ value: 'riff', weight: 1.0 }] },
-                    accompaniment: { register: { preferred: 'low' }, density: { min: 0.2, max: 0.4 } },
-                    melody: {
-                        source: 'motif',
-                        density: { min: 0.4, max: 0.6 }
-                    },
-                    sparkles: { eventProbability: 0.2, categories: [{ name: 'dark', weight: 0.8 }, { name: 'electro', weight: 0.2 }] }
-                },
-                bundles: [{ id: 'BLUES_ANX_MAIN_A_BUNDLE', name: 'Main Riff A', duration: { percent: 100 }, characteristics: {}, phrases: {} }],
-                outroFill: { type: 'roll', duration: 1, parameters: { instrument: 'tom', density: 0.7 } },
-            },
-            {
-                id: 'SOLO', name: 'Guitar Solo', duration: { percent: 30 },
-                layers: { bass: true, drums: true, accompaniment: true, melody: true, harmony: true, sparkles: true },
-                instrumentation: {
-                    accompaniment: { 
-                        strategy: 'weighted', 
-                        v1Options: [{ name: 'synth', weight: 0.5 }, { name: 'ambientPad', weight: 0.5 }],
-                        v2Options: [{ name: 'synth', weight: 0.5 }, { name: 'synth_ambient_pad_lush', weight: 0.5 }]
-                    },
-                    melody: { 
-                        strategy: 'weighted', 
-                        v1Options: [{ name: 'guitar_muffLead', weight: 1.0 }], 
-                        v2Options: [
-                            { name: 'guitar_muffLead', weight: 0.5 },
-                            { name: 'guitar_shineOn', weight: 0.5 }
-                        ]
+                    // Сцена 4: Полный хаос (Искры + Голоса)
+                    {
+                        duration: { percent: 25 }, 
+                        instrumentation: {
+                           melody: { activationChance: 1.0, instrumentOptions: [ { name: 'melody', weight: 1.0 } ] },
+                           accompaniment: { activationChance: 1.0, instrumentOptions: [ { name: 'accompaniment', weight: 1.0 } ] },
+                           bass: { activationChance: 1.0, instrumentOptions: [ { name: 'bass', weight: 1.0 } ] },
+                           drums: { activationChance: 1.0, instrumentOptions: [ { name: 'trance_melancholic', weight: 1.0 } ] },
+                           harmony: { activationChance: 1.0, instrumentOptions: [ { name: 'guitarChords', weight: 1.0 } ] },
+                           pianoAccompaniment: { activationChance: 1.0, instrumentOptions: [ { name: 'piano', weight: 1.0 } ] },
+                           sparkles: { activationChance: 0.4, instrumentOptions: [ { name: 'dark', weight: 1.0 } ], transient: true },
+                           sfx: { activationChance: 0.15, instrumentOptions: [ { name: 'voice', weight: 1.0 } ], transient: true }
+                        }
                     }
-                },
+                ],
                 instrumentRules: {
-                    drums: {
-                        pattern: 'composer',
-                        density: { min: 0.85, max: 1.0 },
-                        useSnare: true, kickVolume: 1.2, usePerc: true, ride: { enabled: true }, useGhostHat: true
-                    },
-                    bass: { techniques: [{ value: 'riff', weight: 1.0 }] },
-                    melody: { 
-                        source: 'motif', 
-                        density: { min: 0.7, max: 0.9 },
-                        register: { preferred: 'high' },
-                        soloPlan: 'S06'
-                    },
-                     accompaniment: { register: { preferred: 'low' }, density: { min: 0.2, max: 0.4 } },
-                     sparkles: { eventProbability: 0.25, categories: [{ name: 'dark', weight: 1.0 }] }
+                    bass: { techniques: [{ value: 'syncopated', weight: 1.0 }], density: { min: 0.4, max: 0.6 } },
+                    accompaniment: { techniques: [{ value: 'arpeggio-fast', weight: 1.0 }], density: { min: 0.6, max: 0.9 } },
+                    melody: { source: 'blues_solo', density: { min: 0.5, max: 0.9 } },
+                    drums: { kitName: 'trance_melancholic', density: { min: 0.5, max: 0.8 }, useSnare: true }
                 },
-                bundles: [{ id: 'BLUES_ANX_SOLO_BUNDLE', name: 'Solo Section', duration: { percent: 100 }, characteristics: {}, phrases: {} }],
-                outroFill: { type: 'roll', duration: 1, parameters: { instrument: 'crash', density: 0.5 } },
-            },
-            {
-                id: 'OUTRO', name: 'Relaxed Fade Out', duration: { percent: 20 },
-                layers: { bass: true, drums: true, accompaniment: true, melody: true },
-                instrumentation: {
-                    accompaniment: { 
-                        strategy: 'weighted', 
-                        v1Options: [{ name: 'synth', weight: 0.5 }, { name: 'ambientPad', weight: 0.5 }],
-                        v2Options: [{ name: 'synth', weight: 0.5 }, { name: 'synth_ambient_pad_lush', weight: 0.5 }]
-                    },
-                    melody: { strategy: 'weighted', v1Options: [{ name: 'acousticGuitar', weight: 0.5 }, {name: 'electricGuitar', weight: 0.5}], v2Options: [{ name: 'telecaster', weight: 0.5 }, { name: 'blackAcoustic', weight: 0.5 }] }
-                },
-                instrumentRules: {
-                    drums: { pattern: 'composer', density: { min: 0.2, max: 0.4 }, useSnare: true },
-                    bass: { techniques: [{ value: 'long_notes', weight: 1.0 }], density: {min: 0.2, max: 0.4} },
-                    melody: { source: 'motif', density: { min: 0.1, max: 0.3 }, register: { preferred: 'mid' } }
-                },
-                bundles: [{ id: 'BLUES_ANX_OUTRO_BUNDLE', name: 'Relaxed Riff', duration: { percent: 100 }, characteristics: {}, phrases: {} }],
+                bundles: [ { id: 'ANXIOUS_CYCLE', name: 'Nervous Loop', duration: { percent: 100 }, characteristics: {}, phrases: {} } ],
                 outroFill: null,
             }
         ]

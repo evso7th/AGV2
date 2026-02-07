@@ -131,7 +131,9 @@ export const V2_PRESETS = {
     volume: 0.15, 
     osc: { width: 0.5, detune: 7, mainGain: 0.8, detGain: 0.2, subGain: 0.3 },
     pickup: { cutoff: 3200, q: 1.2 },
-    drive: { type: 'muff', amount: 0.75 }, 
+    // #ЗАЧЕМ: Системное снижение дисторшна в 3 раза по просьбе пользователя (ПЛАН №225).
+    // #ЧТО: Значение amount уменьшено с 0.75 до 0.25.
+    drive: { type: 'muff', amount: 0.25 }, 
     comp: { threshold: -20, ratio: 4, attack: 0.005, release: 0.1, makeup: 4 },
     post: { lpf: 4700 },
     phaser: { on: true, rate: 0.18, depth: 700, mix: 0.18 },

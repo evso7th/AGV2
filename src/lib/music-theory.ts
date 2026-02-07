@@ -1,3 +1,4 @@
+
 /**
  * @fileOverview Universal Music Theory Utilities
  * #ЗАЧЕМ: Базовый набор инструментов для работы с нотами, ладами и ритмом.
@@ -7,6 +8,7 @@
  * #ОБНОВЛЕНО (ПЛАН №201): Добавлена функция crossoverDNA для генетического скрещивания.
  * #ОБНОВЛЕНО (ПЛАН №218): Внедрена ротация ликов (history of 10) для выбора семантического семени.
  * #ОБНОВЛЕНО (ПЛАН №220): Добавлен движок трансформации ликов (Genetic Lick Recombination).
+ * #ОБНОВЛЕНО (ПЛАН №225): Включение 'anxious' в семантическую цепочку блюза.
  */
 
 import type { 
@@ -317,7 +319,8 @@ export function generateSuiteDNA(totalBars: number, mood: Mood, seed: number, ra
     ];
 
     let seedLickId: string | undefined;
-    if (genre === 'blues' && (mood === 'dark' || mood === 'gloomy')) {
+    // #ЗАЧЕМ: Добавлена поддержка 'anxious' в логику семантического посева (ПЛАН №225).
+    if (genre === 'blues' && (mood === 'dark' || mood === 'gloomy' || mood === 'anxious')) {
         const minorLicks = Object.keys(BLUES_SOLO_LICKS).filter(id => 
             BLUES_SOLO_LICKS[id].tags.includes('minor') && !LICK_HISTORY.includes(id)
         );

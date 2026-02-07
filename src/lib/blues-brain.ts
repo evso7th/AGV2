@@ -1,3 +1,4 @@
+
 import type {
   FractalEvent,
   GhostChord,
@@ -19,11 +20,10 @@ import { GUITAR_PATTERNS } from './assets/guitar-patterns';
 import { BLUES_SOLO_LICKS } from './assets/blues_guitar_solo';
 
 /**
- * #ЗАЧЕМ: Блюзовый Мозг V18.0 — "The Loyal Drummer".
- * #ЧТО: 1. Удалены жесткие пороги напряжения для ударных. Теперь они играют всегда, но тише при низком tension.
- *       2. Внедрена логика "Детерминированного дыхания" (1-2 паузы на всю пьесу).
- *       3. Genetic Novelty Guard защищает от зацикливания.
- * #ИНТЕГРАЦИЯ: Полная совместимость с SOR и SuiteDNA.
+ * #ЗАЧЕМ: Блюзовый Мозг V19.0 — "Anxious Soul".
+ * #ЧТО: 1. Реализован Закон Динамического Тембра для Anxious mood.
+ *       2. Внедрен "Когнитивный Джиттер" тайминга для усиления тревожности.
+ *       3. Добавлена поддержка Rhodes в аккомпанементе.
  */
 
 const ENERGY_PRICES = {
@@ -209,19 +209,22 @@ export class BluesBrain {
   }
 
   private evaluateTimbralDramaturgy(tension: number, hints: InstrumentHints, mood: Mood) {
-    if (mood === 'dark' || mood === 'gloomy') {
+    if (mood === 'dark' || mood === 'gloomy' || mood === 'anxious') {
+        // #ЗАЧЕМ: Реализация Закона Динамического Тембра для тревожных настроений.
         if (hints.melody) {
             if (tension < 0.4) (hints as any).melody = 'blackAcoustic';
             else if (tension < 0.75) (hints as any).melody = 'cs80';
-            else (hints as any).melody = 'guitar_shineOn';
+            else (hints as any).melody = 'guitar_muffLead';
         }
         if (hints.bass) {
-            if (tension < 0.4) (hints as any).bass = 'bass_dub';
+            if (tension < 0.4) (hints as any).bass = 'bass_jazz_warm';
             else if (tension < 0.7) (hints as any).bass = 'bass_reggae';
             else (hints as any).bass = 'bass_808';
         }
         if (hints.accompaniment) {
-            if (tension < 0.7) (hints as any).accompaniment = 'organ_soft_jazz';
+            // #ЗАЧЕМ: Rhodes добавляет тревожное мерцание на малом напряжении.
+            if (tension < 0.5) (hints as any).accompaniment = 'ep_rhodes_warm';
+            else if (tension < 0.7) (hints as any).accompaniment = 'organ_soft_jazz';
             else (hints as any).accompaniment = 'organ_jimmy_smith';
         }
     } else if (mood === 'melancholic') {
@@ -272,12 +275,16 @@ export class BluesBrain {
             duration = Math.max(n.d, 6); 
         }
 
+        // #ЗАЧЕМ: Когнитивный джиттер тайминга для тревожных настроений.
+        const jitter = this.mood === 'anxious' ? (this.random.next() * 0.4 - 0.2) : 0;
+        const timeInTicks = Math.max(0, n.t + jitter);
+
         const targetNote = chord.rootNote + 36 + registerLift + (DEGREE_TO_SEMITONE[n.deg] || 0);
 
         return {
             type: 'melody',
             note: Math.min(targetNote, this.MELODY_CEILING),
-            time: n.t * tickDur,
+            time: timeInTicks * tickDur,
             duration: duration * tickDur,
             weight: 0.8 + (tension * 0.2),
             technique: n.tech,
@@ -374,9 +381,6 @@ export class BluesBrain {
     if (!p) return [];
     const events: FractalEvent[] = [];
     
-    // #ЗАЧЕМ: Реализация правила "Лояльного Барабанщика" (ПЛАН №224).
-    // #ЧТО: Введена логика детерминированного "дыхания". Барабанщик пропускает 1 такт 
-    //       крайне редко (раз на ~100 тактов), в остальное время он в строю.
     const isBreathBar = calculateMusiNum(epoch, 13, this.seed, 100) === 7;
     if (isBreathBar && !forceFill) {
         return [];
@@ -386,8 +390,6 @@ export class BluesBrain {
         [9, 10, 11].forEach(t => events.push(this.createDrumEvent('drum_tom_mid', t * tickDur, 0.8, 'mf')));
     }
     
-    // #ЧТО: Удалены пороги (0.3, 0.5). Теперь хэты и снейр играют всегда, 
-    //       но их громкость (weight) плавно следует за дугой напряжения.
     if (p.HH) p.HH.forEach(t => events.push(this.createDrumEvent('drum_hihat', t * tickDur, 0.3 + (tension * 0.4), 'p')));
     if (p.K) p.K.forEach(t => events.push(this.createDrumEvent('drum_kick', t * tickDur, 0.7 + (tension * 0.2), tension > 0.7 ? 'mf' : 'p')));
     if (p.SD) p.SD.forEach(t => events.push(this.createDrumEvent('drum_snare', t * tickDur, 0.3 + (tension * 0.6), 'mf')));
