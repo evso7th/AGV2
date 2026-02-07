@@ -5,6 +5,7 @@ import type { Note } from "@/types/music";
  * #ЗАЧЕМ: Сэмплер Yamaha CS-80 (Guitar Mode) с поддержкой двух слоев Velocity.
  * #ЧТО: Реализует выбор между 'norm_notes' и 'long_notes' на основе силы удара.
  *       Охватывает диапазон MIDI 36 (C2) - 96 (C7).
+ * #ОБНОВЛЕНО (ПЛАН 214): Добавлен режим forceShort для басовых партий.
  */
 
 const CS80_NOTE_NAMES = ["c", "c", "d", "eb", "e", "f", "f", "g", "g", "a", "bb", "b"];
@@ -76,32 +77,37 @@ export class CS80GuitarSampler {
         }
     }
 
-    public schedule(notes: Note[], time: number) {
+    /**
+     * #ЗАЧЕМ: Планирование воспроизведения.
+     * #ЧТО: Поддерживает forceShort для ритмического баса.
+     */
+    public schedule(notes: Note[], time: number, forceShort: boolean = false) {
         if (!this.isInitialized) return;
 
         notes.forEach(note => {
             const layer = this.buffers.get(note.midi);
             if (!layer) {
                 // Fallback to closest if out of range 36-96
-                this.playClosest(note, time);
+                this.playClosest(note, time, forceShort);
                 return;
             }
 
-            // Velocity Switching: >= 0.7 triggers LONG notes
-            const buffer = (note.velocity || 0.7) >= 0.7 ? layer.long : layer.norm;
+            // Velocity Switching: >= 0.7 triggers LONG notes, unless forceShort is true
+            const buffer = (forceShort || (note.velocity || 0.7) < 0.7) ? layer.norm : layer.long;
             this.playSample(buffer, note.midi, note.midi, time + note.time, note.velocity || 0.7, note.duration);
         });
     }
 
-    private playClosest(note: Note, time: number) {
+    private playClosest(note: Note, time: number, forceShort: boolean = false) {
         const keys = Array.from(this.buffers.keys());
+        if (keys.length === 0) return;
         const closestMidi = keys.reduce((prev, curr) => 
             Math.abs(curr - note.midi) < Math.abs(prev - note.midi) ? curr : prev
         );
         const layer = this.buffers.get(closestMidi);
         if (!layer) return;
 
-        const buffer = (note.velocity || 0.7) >= 0.7 ? layer.long : layer.norm;
+        const buffer = (forceShort || (note.velocity || 0.7) < 0.7) ? layer.norm : layer.long;
         this.playSample(buffer, closestMidi, note.midi, time + note.time, note.velocity || 0.7, note.duration);
     }
 

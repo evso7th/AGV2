@@ -106,8 +106,9 @@ export class MelodySynthManagerV2 {
         }
 
         // --- Sampler Routing (CS80 is shared for Bass and Melody) ---
+        // #ОБНОВЛЕНО (ПЛАН 214): Для баса принудительно используются короткие сэмплы.
         if (instrumentHint === 'cs80') {
-            this.cs80Sampler.schedule(notesToPlay, barStartTime);
+            this.cs80Sampler.schedule(notesToPlay, barStartTime, this.partName === 'bass');
             return;
         }
 
