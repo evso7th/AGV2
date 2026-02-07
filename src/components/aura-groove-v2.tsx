@@ -1,8 +1,7 @@
-
 'use client';
 
 import { useState, useEffect } from "react";
-import { SlidersHorizontal, Music, Pause, Speaker, FileMusic, Drum, GitBranch, Atom, Piano, Home, X, Sparkles, Sprout, LayoutGrid, Timer, Guitar, RefreshCw, Bot, Waves, Cog, Radio } from "lucide-react";
+import { SlidersHorizontal, Music, Pause, Speaker, FileMusic, Drum, GitBranch, Atom, Piano, Home, X, Sparkles, Sprout, LayoutGrid, Timer, Guitar, RefreshCw, Bot, Waves, Cog, Radio, Star } from "lucide-react";
 import Image from "next/image";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -47,7 +46,7 @@ const MOOD_COLOR_CLASSES: Record<MoodCategory, string> = {
 
 
 export function AuraGrooveV2({
-  isPlaying, isInitializing, isRecording, handlePlayPause, handleRegenerate, handleToggleRecording, drumSettings, setDrumSettings, instrumentSettings,
+  isPlaying, isInitializing, isRecording, handlePlayPause, handleRegenerate, handleToggleRecording, handleSaveMasterpiece, drumSettings, setDrumSettings, instrumentSettings,
   setInstrumentSettings, handleBassTechniqueChange, handleVolumeChange, textureSettings, handleTextureEnabledChange,
   bpm, handleBpmChange, score, handleScoreChange, density, setDensity, handleGoHome,
   isEqModalOpen, setIsEqModalOpen, eqSettings, handleEqChange,
@@ -151,6 +150,16 @@ export function AuraGrooveV2({
               title={isRecording ? "Stop & Download" : "Record Session"}
            >
              <Radio className={cn("h-5 w-5", isRecording && "animate-pulse")} />
+           </Button>
+           <Button 
+              type="button" 
+              onClick={handleSaveMasterpiece} 
+              disabled={isInitializing || !isPlaying} 
+              variant="outline"
+              className="h-10 w-10 p-0"
+              title="Save Masterpiece"
+           >
+             <Star className="h-5 w-5 text-yellow-500" />
            </Button>
            <Button type="button" onClick={handleRegenerate} disabled={isInitializing} variant="outline" className="h-10 w-10 p-0">
              <RefreshCw className={cn("h-5 w-5", isRegenerating && "animate-spin")} />
@@ -320,7 +329,7 @@ export function AuraGrooveV2({
                                         <div className="h-8 text-xs flex items-center justify-end pr-2 text-muted-foreground">Fixed</div>
                                     )}
                                 </div>
-                                 {part === 'bass' && 'technique' in settings && (settings.name as BassInstrument | 'none') !== 'none' && !useMelodyV2 && (
+                                 {part === 'bass' && 'technique' in settings && (settings.name as BassInstrument | 'none') !== 'none' && (
                                     <div className="grid grid-cols-2 items-center gap-2">
                                         <Label className="font-semibold flex items-center gap-1.5 capitalize text-xs"><GitBranch className="h-4 w-4"/>Technique</Label>
                                          <Select value={settings.technique} onValueChange={(v) => handleBassTechniqueChange(v as any)} disabled={isDisabled || settings.name === 'none'}>

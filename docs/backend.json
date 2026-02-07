@@ -1,0 +1,28 @@
+{
+  "entities": {
+    "MusicalMasterpiece": {
+      "title": "Musical Masterpiece",
+      "description": "A collection of musical parameters that resulted in a harmonious composition.",
+      "type": "object",
+      "properties": {
+        "seed": { "type": "number", "description": "The unique deterministic seed for the session." },
+        "mood": { "type": "string", "description": "The musical mood." },
+        "genre": { "type": "string", "description": "The musical genre." },
+        "density": { "type": "number", "description": "The note density setting." },
+        "bpm": { "type": "number", "description": "The tempo at time of saving." },
+        "timestamp": { "type": "string", "format": "date-time", "description": "When this was saved." },
+        "instrumentSettings": { "type": "object", "description": "Snapshot of timbre choices." }
+      },
+      "required": ["seed", "mood", "genre", "timestamp"]
+    }
+  },
+  "auth": {
+    "providers": ["google.com"]
+  },
+  "firestore": {
+    "/masterpieces/{id}": {
+      "schema": { "$ref": "#/backend/entities/MusicalMasterpiece" },
+      "description": "Collection of user-vetted musical seeds."
+    }
+  }
+}

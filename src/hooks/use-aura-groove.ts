@@ -4,8 +4,9 @@ import { useState, useEffect, useCallback, useRef } from "react";
 import { useRouter } from "next/navigation";
 import type { DrumSettings, InstrumentSettings, ScoreName, WorkerSettings, BassInstrument, InstrumentPart, MelodyInstrument, AccompanimentInstrument, BassTechnique, TextureSettings, TimerSettings, Mood, Genre, SfxSettings } from '@/types/music';
 import { useAudioEngine } from "@/contexts/audio-engine-context";
-import { V2_PRESETS } from "@/lib/presets-v2";
-import { getBlueprint } from "@/lib/blueprints";
+import { useFirestore } from "@/firebase";
+import { saveMasterpiece } from "@/lib/firebase-service";
+import { toast } from "@/hooks/use-toast";
 
 const FADE_OUT_DURATION = 120; // 2 minutes
 
@@ -30,6 +31,7 @@ export type AuraGrooveProps = {
   handlePlayPause: () => void;
   handleRegenerate: () => void;
   handleToggleRecording: () => void;
+  handleSaveMasterpiece: () => void;
   density: number;
   setDensity: (value: number) => void;
   composerControlsInstruments: boolean;
@@ -80,12 +82,13 @@ export const useAuraGroove = (): AuraGrooveProps => {
     stopRecording
   } = useAudioEngine();
   
+  const db = useFirestore();
   const router = useRouter();
   
   const [drumSettings, setDrumSettings] = useState<DrumSettings>({ pattern: 'composer', volume: 0.25, kickVolume: 1.0, enabled: true });
   const [instrumentSettings, setInstrumentSettings] = useState<InstrumentSettings>({
     bass: { name: "bass_jazz_warm", volume: 0.5, technique: 'portamento' },
-    melody: { name: "blackAcoustic", volume: 0.5 }, // #ИСПРАВЛЕНО (ПЛАН 167): ShineOn удален, Telecaster/Black Acoustic по умолчанию.
+    melody: { name: "blackAcoustic", volume: 0.5 }, 
     accompaniment: { name: "organ_soft_jazz", volume: 0.35 },
     harmony: { name: "guitarChords", volume: 0.25 },
     pianoAccompaniment: { name: "piano", volume: 0.65 },
@@ -101,12 +104,13 @@ export const useAuraGroove = (): AuraGrooveProps => {
   const [composerControlsInstruments, setComposerControlsInstruments] = useState(true);
   const [mood, setMood] = useState<Mood>('melancholic');
   const [introBars, setIntroBars] = useState(12);
+  const [currentSeed, setCurrentSeed] = useState<number>(0);
 
   const [isEqModalOpen, setIsEqModalOpen] = useState(false);
   const [eqSettings, setEqSettings] = useState<number[]>(Array(7).fill(0));
   
   const [timerSettings, setTimerSettings] = useState<TimerSettings>({
-    duration: 0, // in seconds
+    duration: 0, 
     timeLeft: 0,
     isActive: false
   });
@@ -142,11 +146,9 @@ export const useAuraGroove = (): AuraGrooveProps => {
 
   useEffect(() => {
     if (isInitialized) {
-        console.log('[useAuraGroove] Initialized. Sending full settings to worker.');
         const fullSettings = getFullSettings();
         updateSettings(fullSettings);
         
-        // Initial volume sync
         Object.entries(instrumentSettings).forEach(([part, settings]) => {
             const instrumentPart = part as InstrumentPart;
             if (settings && 'volume' in settings) {
@@ -155,71 +157,15 @@ export const useAuraGroove = (): AuraGrooveProps => {
         });
         setVolume('drums', drumSettings.volume);
         setEngineTextureSettings({sparkles: textureSettings.sparkles, sfx: textureSettings.sfx});
-        setBassTechnique(instrumentSettings.bass.technique);
     }
-  }, [isInitialized, genre, mood, getFullSettings, updateSettings, instrumentSettings, drumSettings, textureSettings, setVolume, setEngineTextureSettings, setBassTechnique]);
+  }, [isInitialized, genre, mood, getFullSettings, updateSettings, instrumentSettings, drumSettings, textureSettings, setVolume, setEngineTextureSettings]);
 
-  useEffect(() => {
-      if (isInitialized) {
-          console.log(`[useAuraGroove] Syncing settings with worker, useMelodyV2 is now: ${useMelodyV2}`);
-          updateSettings(getFullSettings());
-      }
-  }, [useMelodyV2]);
-
-  useEffect(() => {
-    const fetchBlueprintBpm = async () => {
-      try {
-        const blueprint = await getBlueprint(genre, mood);
-        if (blueprint && blueprint.musical.bpm.base) {
-          setBpm(blueprint.musical.bpm.base);
-          console.log(`[useAuraGroove] BPM updated from blueprint: ${blueprint.musical.bpm.base}`);
-        }
-      } catch (error) {
-        console.error("Failed to fetch blueprint BPM:", error);
-      }
-    };
-
-    if (isInitialized && score === 'neuro_f_matrix') {
-        fetchBlueprintBpm();
-    }
-  }, [genre, mood, score, isInitialized]);
-
-
-  useEffect(() => {
-    if (timerSettings.isActive && timerSettings.timeLeft > 0) {
-      timerIntervalRef.current = setInterval(() => {
-        setTimerSettings(prev => {
-          const newTimeLeft = prev.timeLeft - 1;
-          if (newTimeLeft === FADE_OUT_DURATION) {
-            startMasterFadeOut(FADE_OUT_DURATION);
-          }
-          if (newTimeLeft <= 0) {
-            clearInterval(timerIntervalRef.current!);
-            setEngineIsPlaying(false);
-            return { ...prev, timeLeft: 0, isActive: false };
-          }
-          return { ...prev, timeLeft: newTimeLeft };
-        });
-      }, 1000);
-    } else if (timerIntervalRef.current) {
-        clearInterval(timerIntervalRef.current);
-        timerIntervalRef.current = null;
-    }
-    
-    return () => {
-        if (timerIntervalRef.current) {
-            clearInterval(timerIntervalRef.current);
-        }
-    };
-  }, [timerSettings.isActive, timerSettings.timeLeft, setEngineIsPlaying, startMasterFadeOut]);
-  
   const handlePlayPause = useCallback(async () => {
-    if (!isInitialized) {
-      return;
-    }
+    if (!isInitialized) return;
     
     if (!hasPlayedOnce && !isPlaying) {
-      console.log("[useAuraGroove] First play detected. Triggering initial regeneration.");
+      const newSeed = Date.now();
+      setCurrentSeed(newSeed);
       resetWorker();
       setHasPlayedOnce(true);
     }
@@ -227,11 +173,34 @@ export const useAuraGroove = (): AuraGrooveProps => {
     setEngineIsPlaying(!isPlaying);
   }, [isInitialized, isPlaying, setEngineIsPlaying, hasPlayedOnce, resetWorker]);
 
-    const handleRegenerate = useCallback(() => {
-        setIsRegenerating(true);
-        setTimeout(() => setIsRegenerating(false), 500); 
-        resetWorker();
-    }, [resetWorker]);
+  const handleRegenerate = useCallback(() => {
+      setIsRegenerating(true);
+      const newSeed = Date.now();
+      setCurrentSeed(newSeed);
+      setTimeout(() => setIsRegenerating(false), 500); 
+      resetWorker();
+  }, [resetWorker]);
+
+  const handleSaveMasterpiece = useCallback(async () => {
+    if (!isInitialized || !isPlaying) return;
+    
+    toast({ title: "Memory Activation", description: "Saving this state to the Elder Knowledge..." });
+    
+    const success = await saveMasterpiece(db, {
+      seed: currentSeed,
+      mood,
+      genre,
+      density,
+      bpm,
+      instrumentSettings
+    });
+
+    if (success) {
+      toast({ title: "Masterpiece Saved!", description: "This soul will help build future generations." });
+    } else {
+      toast({ variant: "destructive", title: "Memory Error", description: "Could not save the state." });
+    }
+  }, [isInitialized, isPlaying, db, currentSeed, mood, genre, density, bpm, instrumentSettings]);
 
   const handleToggleRecording = useCallback(() => {
     if (isRecording) {
@@ -242,14 +211,11 @@ export const useAuraGroove = (): AuraGrooveProps => {
   }, [isRecording, startRecording, stopRecording]);
 
   const handleInstrumentChange = (part: keyof InstrumentSettings, name: BassInstrument | MelodyInstrument | AccompanimentInstrument | 'piano' | 'pianoAccompaniment' | 'none') => {
-    let newInstrumentName = name;
-    
     setInstrumentSettings(prev => ({
         ...prev,
-        [part]: { ...prev[part as keyof typeof prev], name: newInstrumentName }
+        [part]: { ...prev[part as keyof typeof prev], name }
     }));
-    
-    setInstrument(part as any, newInstrumentName as any);
+    setInstrument(part as any, name as any);
   };
   
   const handleBassTechniqueChange = (technique: BassTechnique) => {
@@ -303,68 +269,34 @@ export const useAuraGroove = (): AuraGrooveProps => {
   const handleToggleTimer = () => {
     setTimerSettings(prev => {
         const newIsActive = !prev.isActive;
-        if (newIsActive) {
-            return { ...prev, timeLeft: prev.duration, isActive: true };
-        } else { // Stopping timer
-            cancelMasterFadeOut();
-            if (timerIntervalRef.current) clearInterval(timerIntervalRef.current);
-            return { ...prev, timeLeft: prev.duration, isActive: false };
-        }
+        if (newIsActive) return { ...prev, timeLeft: prev.duration, isActive: true };
+        cancelMasterFadeOut();
+        return { ...prev, timeLeft: prev.duration, isActive: false };
     });
   };
-
 
   const handleExit = () => {
     setEngineIsPlaying(false);
     window.location.href = '/';
   };
 
-  const handleGoHome = () => {
-    handleExit();
-  };
-
-
   return {
-    isInitializing,
-    isPlaying,
-    isRegenerating,
-    isRecording,
+    isInitializing, isPlaying, isRegenerating, isRecording,
     loadingText: isInitializing ? 'Initializing...' : (isInitialized ? 'Ready' : 'Click to initialize audio'),
-    handlePlayPause,
-    handleRegenerate,
-    handleToggleRecording,
-    drumSettings,
-    setDrumSettings: handleDrumSettingsChange,
-    instrumentSettings,
-    setInstrumentSettings: handleInstrumentChange,
-    handleBassTechniqueChange,
-    handleVolumeChange,
-    textureSettings,
-    handleTextureEnabledChange,
-    bpm,
-    handleBpmChange: setBpm,
-    score,
-    handleScoreChange: setScore,
-    density,
-    setDensity,
-    composerControlsInstruments,
-    setComposerControlsInstruments,
-    handleGoHome,
+    handlePlayPause, handleRegenerate, handleToggleRecording, handleSaveMasterpiece,
+    drumSettings, setDrumSettings: handleDrumSettingsChange,
+    instrumentSettings, setInstrumentSettings: handleInstrumentChange,
+    handleBassTechniqueChange, handleVolumeChange,
+    textureSettings, handleTextureEnabledChange,
+    bpm, handleBpmChange: setBpm,
+    score, handleScoreChange: setScore,
+    density, setDensity,
+    composerControlsInstruments, setComposerControlsInstruments,
+    handleGoHome: handleExit,
     handleExit,
-    isEqModalOpen,
-    setIsEqModalOpen,
-    eqSettings,
-    handleEqChange,
-    timerSettings,
-    handleTimerDurationChange,
-    handleToggleTimer,
-    mood,
-    setMood,
-    genre,
-    setGenre,
-    useMelodyV2,
-    toggleMelodyEngine,
-    introBars,
-    setIntroBars,
+    isEqModalOpen, setIsEqModalOpen, eqSettings, handleEqChange,
+    timerSettings, handleTimerDurationChange, handleToggleTimer,
+    mood, setMood, genre, setGenre, useMelodyV2, toggleMelodyEngine,
+    introBars, setIntroBars,
   };
 };
