@@ -2,9 +2,9 @@
 import type { MusicBlueprint } from '@/types/music';
 
 /**
- * #ЗАЧЕМ: Блюпринт "The Bluest Blues" (v14.0 - Main Theme Focus).
- * #ЧТО: Радикально сокращенное интро с мгновенным встулением ритм-секции и гармонии.
- *       Гитара вступает на 2-м такте. Флейта и пианино на 4-м.
+ * #ЗАЧЕМ: Блюпринт "The Bluest Blues" (v15.0 - Fast Outro).
+ * #ЧТО: Радикально сокращенное аутро (4-6 тактов). 
+ *       Остаются только Бас, Ударные, Пианино и Гитарные аккорды.
  */
 export const WinterBluesBlueprint: MusicBlueprint = {
     id: 'winter_blues',
@@ -26,7 +26,7 @@ export const WinterBluesBlueprint: MusicBlueprint = {
         totalDuration: { preferredBars: 144 },
         parts: [
             {
-                id: 'INTRO_1', name: 'Rapid Opening', duration: { percent: 25 }, 
+                id: 'INTRO_1', name: 'Rapid Opening', duration: { percent: 30 }, 
                 layers: { bass: true, accompaniment: true, melody: true, drums: true, harmony: true, pianoAccompaniment: true, sparkles: true },
                 stagedInstrumentation: [
                     // СЦЕНА 1: Фундамент (Такты 0-1).
@@ -85,7 +85,7 @@ export const WinterBluesBlueprint: MusicBlueprint = {
                 outroFill: null,
             },
             {
-                id: 'MAIN_1', name: 'The Soul Flow', duration: { percent: 50 },
+                id: 'MAIN_1', name: 'The Soul Flow', duration: { percent: 66 },
                 layers: { bass: true, drums: true, melody: true, accompaniment: true, harmony: true, pianoAccompaniment: true, sparkles: true },
                 stagedInstrumentation: [
                     { 
@@ -109,21 +109,23 @@ export const WinterBluesBlueprint: MusicBlueprint = {
                 outroFill: null,
             },
             {
-                id: 'OUTRO', name: 'Final Breath', duration: { percent: 25 },
-                layers: { bass: true, accompaniment: true, melody: true, drums: true, sparkles: true },
+                id: 'OUTRO', name: 'Final Breath', duration: { percent: 4 }, 
+                layers: { bass: true, drums: true, melody: false, accompaniment: false, harmony: true, pianoAccompaniment: true, sparkles: false, sfx: false },
                 stagedInstrumentation: [
                     { 
                         duration: { percent: 100 }, 
                         instrumentation: {
-                           melody: { activationChance: 1.0, instrumentOptions: [ { name: 'guitar_shineOn', weight: 1.0 } ] },
                            bass: { activationChance: 1.0, instrumentOptions: [ { name: 'bass_jazz_warm', weight: 1.0 } ] },
-                           sparkles: { activationChance: 0.15, instrumentOptions: [ { name: 'dark', weight: 1.0 } ], transient: true }
+                           drums: { activationChance: 1.0, instrumentOptions: [ { name: 'blues_melancholic_master', weight: 1.0 } ] },
+                           harmony: { activationChance: 1.0, instrumentOptions: [ { name: 'guitarChords', weight: 1.0 } ] },
+                           pianoAccompaniment: { activationChance: 1.0, instrumentOptions: [ { name: 'piano', weight: 1.0 } ] }
                         }
                     }
                 ],
                 instrumentRules: {
-                    melody: { source: 'motif', density: { min: 0.2, max: 0.4 } },
-                    accompaniment: { techniques: [{ value: 'long-chords', weight: 1.0 }] }
+                    bass: { techniques: [{ value: 'pedal', weight: 1.0 }], density: { min: 1.0, max: 1.0 } },
+                    drums: { pattern: 'ambient_beat', density: { min: 0.2, max: 0.4 } },
+                    harmony: { techniques: [{ value: 'long-chords', weight: 1.0 }] }
                 },
                 bundles: [{ id: 'DISSOLUTION', name: 'Fade Away', duration: { percent: 100 }, characteristics: {}, phrases: {} }],
                 outroFill: null,
