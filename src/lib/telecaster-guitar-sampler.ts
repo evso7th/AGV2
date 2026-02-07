@@ -145,6 +145,10 @@ export class TelecasterGuitarSampler {
         gainNode.gain.setValueAtTime(0, startTime);
         gainNode.gain.linearRampToValueAtTime(velocity, startTime + 0.005);
         
+        // #ИСПРАВЛЕНО (ПЛАН 196): source.start() вызывается ПЕРЕД source.stop().
+        // #ЗАЧЕМ: Согласно спецификации Web Audio API, метод stop() может быть вызван только после start().
+        source.start(startTime);
+
         // #ЗАЧЕМ: Извлечение 20мс транзиента для гибридного синтеза.
         // #ЧТО: Принудительный стоп с микро-затуханием для предотвращения щелчков.
         if (isTransient) {
@@ -154,8 +158,6 @@ export class TelecasterGuitarSampler {
         } else if (duration && isFinite(duration)) {
             gainNode.gain.setTargetAtTime(0, startTime + duration, 0.4);
         }
-        
-        source.start(startTime);
         
         source.onended = () => {
             try { gainNode.disconnect(); } catch(e){}
