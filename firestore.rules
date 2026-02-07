@@ -1,86 +1,38 @@
-/**
- * AURA GROOVE V2 SECURITY RULES
- * 
- * CORE PHILOSOPHY:
- * This ruleset enforces a strict, hierarchical user-ownership model. Every piece of data 
- * created within the application is tied to a specific user's identity and is stored 
- * within that user's private data tree. This ensures maximum privacy and 
- * authorization independence.
- * 
- * DATA STRUCTURE:
- * The data is organized hierarchically under the root `/users` collection:
- * - /users/{userId} : User profile information.
- * - /users/{userId}/contentIdeas/{id} : AI-generated ideas owned by the user.
- * - /users/{userId}/canvases/{id} : Creative canvases owned and edited by the user.
- * 
- * KEY SECURITY DECISIONS:
- * 1. Path-Based Authorization: Authorization is derived directly from the document 
- *    path. If a document exists at `/users/ABC/...`, only the user with UID 'ABC' 
- *    can access it.
- * 2. No Public Access: All data, including user profiles, is private to the 
- *    authenticated owner. There are no public "listing" or "discovery" features 
- *    implemented at the database level.
- * 3. Relational Integrity: On creation, the rules enforce that the internal 
- *    'userId' or 'id' fields in the document body match the authenticated user's 
- *    UID and the path parameters.
- * 4. Immutable Ownership: Once a document is created, the fields linking it to 
- *    a user (like 'userId') are made immutable to prevent data hijacking.
- * 
- * DENORMALIZATION FOR AUTHORIZATION:
- * To maintain high performance and avoid costly `get()` or `exists()` calls, 
- * ownership fields (e.g., `userId`) are expected to be present within every 
- * document. This allows for simple, O(1) authorization checks.
- */
-
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
     // --- GLOBAL HELPER FUNCTIONS ---
 
-    /**
-     * @description Checks if the request is made by a signed-in user.
-     */
     function isSignedIn() {
       return request.auth != null;
     }
 
-    /**
-     * @description Checks if the authenticated user's UID matches the provided userId.
-     */
     function isOwner(userId) {
       return isSignedIn() && request.auth.uid == userId;
     }
 
-    /**
-     * @description Combined check for ownership and existence. Used for updates and deletes.
-     */
     function isExistingOwner(userId) {
       return isOwner(userId) && resource != null;
     }
 
     // --- COLLECTION RULES ---
 
-    /**
-     * @description Rules for the User profile document.
-     * @path /users/{userId}
-     * @allow (create) if the authenticated user matches the document ID.
-     * @deny (get) if a user tries to view another user's profile.
-     * @principle Enforces self-creation and strict ownership of profile data.
-     */
+    // Masterpieces: Global genetic memory
+    match /masterpieces/{id} {
+      // Allow any signed-in user to read and save masterpieces
+      allow get, list: if isSignedIn();
+      allow create: if isSignedIn();
+      // No updates or deletes allowed for masterpieces once saved
+      allow update, delete: if false;
+    }
+
     match /users/{userId} {
       allow get, list: if isOwner(userId);
       allow create: if isOwner(userId) && request.resource.data.id == userId;
       allow update: if isExistingOwner(userId) && request.resource.data.id == resource.data.id;
       allow delete: if isExistingOwner(userId);
 
-      /**
-       * @description Rules for AI-generated content ideas.
-       * @path /users/{userId}/contentIdeas/{contentIdeaId}
-       * @allow (list) for the owner of the user path.
-       * @deny (update) if the userId field is modified.
-       * @principle Path-based ownership with relational integrity checks.
-       */
       match /contentIdeas/{contentIdeaId} {
         allow get, list: if isOwner(userId);
         allow create: if isOwner(userId) && request.resource.data.userId == userId;
@@ -88,13 +40,6 @@ service cloud.firestore {
         allow delete: if isExistingOwner(userId);
       }
 
-      /**
-       * @description Rules for user-created canvases.
-       * @path /users/{userId}/canvases/{canvasId}
-       * @allow (create) if the userId in data matches the path and auth UID.
-       * @deny (delete) by any user other than the path owner.
-       * @principle Ensures private creative workspaces via hierarchical nesting.
-       */
       match /canvases/{canvasId} {
         allow get, list: if isOwner(userId);
         allow create: if isOwner(userId) && request.resource.data.userId == userId;
