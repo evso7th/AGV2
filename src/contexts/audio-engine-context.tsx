@@ -1,3 +1,4 @@
+
 'use client';
 
 import React, { createContext, useContext, useState, useRef, useCallback, useEffect } from 'react';
@@ -19,6 +20,7 @@ import { AcousticGuitarSoloSampler } from '@/lib/acoustic-guitar-solo-sampler';
 import { BlackGuitarSampler } from '@/lib/black-guitar-sampler';
 import { TelecasterGuitarSampler } from '@/lib/telecaster-guitar-sampler';
 import { DarkTelecasterSampler } from '@/lib/dark-telecaster-sampler';
+import { CS80GuitarSampler } from '@/lib/cs80-guitar-sampler';
 import type { FractalEvent, InstrumentHints } from '@/types/fractal';
 import * as Tone from 'tone';
 import { MelodySynthManagerV2 } from '@/lib/melody-synth-manager-v2';
@@ -61,6 +63,7 @@ const VOICE_BALANCE: Record<InstrumentPart, number> = {
   acousticGuitarSolo: 0.9, blackAcoustic: 0.9, sfx: 0.8, harmony: 0.8,
   telecaster: 0.9,
   darkTelecaster: 0.9,
+  cs80: 1.0,
   pianoAccompaniment: 0.7,
 };
 
@@ -107,7 +110,7 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
   const audioContextRef = useRef<AudioContext | null>(null);
   const settingsRef = useRef<WorkerSettings | null>(null);
   const db = useFirestore();
-  const ancestorsRef = useRef<any[]>([]); // Пул "предков" для скрещивания
+  const ancestorsRef = useRef<any[]>([]); 
   
   const drumMachineRef = useRef<DrumMachine | null>(null);
   const bassManagerRef = useRef<BassSynthManager | null>(null);
@@ -123,6 +126,7 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
   const blackGuitarSamplerRef = useRef<BlackGuitarSampler | null>(null);
   const telecasterSamplerRef = useRef<TelecasterGuitarSampler | null>(null);
   const darkTelecasterSamplerRef = useRef<DarkTelecasterSampler | null>(null);
+  const cs80SamplerRef = useRef<CS80GuitarSampler | null>(null);
   
   const masterGainNodeRef = useRef<GainNode | null>(null);
   const recorderDestinationRef = useRef<MediaStreamAudioDestinationNode | null>(null);
@@ -130,7 +134,7 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
   const recordedChunksRef = useRef<Blob[]>([]);
 
   const gainNodesRef = useRef<Record<Exclude<InstrumentPart, 'pads' | 'effects'>, GainNode | null>>({
-    bass: null, melody: null, accompaniment: null, drums: null, sparkles: null, piano: null, violin: null, flute: null, guitarChords: null, acousticGuitarSolo: null, blackAcoustic: null, sfx: null, harmony: null, telecaster: null, darkTelecaster: null, pianoAccompaniment: null,
+    bass: null, melody: null, accompaniment: null, drums: null, sparkles: null, piano: null, violin: null, flute: null, guitarChords: null, acousticGuitarSolo: null, blackAcoustic: null, sfx: null, harmony: null, telecaster: null, darkTelecaster: null, cs80: null, pianoAccompaniment: null,
   });
 
   const nextBarTimeRef = useRef<number>(0);
@@ -138,9 +142,6 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
   
   const { toast } = useToast();
 
-  /**
-   * #ЗАЧЕМ: Загрузка памяти предков из Firestore.
-   */
   const loadAncestors = useCallback(async () => {
       try {
           const masterpiecesRef = collection(db, 'masterpieces');
@@ -183,12 +184,10 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
 
   const resetWorkerCallback = useCallback(() => {
     if (workerRef.current) {
-        // Выбираем случайного предка для скрещивания
         const ancestor = ancestorsRef.current.length > 0 
             ? ancestorsRef.current[Math.floor(Math.random() * ancestorsRef.current.length)]
             : null;
             
-        console.log("[AudioEngineContext] Resetting worker with genetic memory.");
         workerRef.current.postMessage({ 
             command: 'update_settings', 
             data: { ancestor } 
@@ -211,7 +210,7 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
             accompanimentManagerRef.current?.allNotesOff();
             bassManagerRef.current?.allNotesOff();
         } else {
-            melodyManagerV2.current?.allNotesOff();
+            melodyManagerV2Ref.current?.allNotesOff();
             accompanimentManagerV2Ref.current?.allNotesOff();
             bassManagerV2Ref.current?.allNotesOff();
         }
@@ -292,9 +291,7 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
              const { type, command, payload, error } = event.data;
                 if (command === 'SUITE_ENDED') { resetWorkerCallback(); return; }
                 
-                // #ЗАЧЕМ: Автоматическое сохранение "шедевров" (высокий резонанс).
                 if (type === 'HIGH_RESONANCE_DETECTED' && payload && 'seed' in payload) {
-                    console.log(`%c[Critic] High resonance detected (Score: ${payload.beautyScore?.toFixed(2)}). Auto-saving...`, 'color: #00FF00');
                     if (settingsRef.current) {
                         saveMasterpiece(db, {
                             seed: payload.seed!,
@@ -343,7 +340,7 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
             recorderDestinationRef.current = context.createMediaStreamDestination(); masterGainNodeRef.current.connect(recorderDestinationRef.current);
         }
         if (!gainNodesRef.current.bass) {
-            const parts: any[] = ['bass', 'melody', 'accompaniment', 'drums', 'sparkles', 'piano', 'violin', 'flute', 'guitarChords', 'acousticGuitarSolo', 'blackAcoustic', 'sfx', 'harmony', 'telecaster', 'darkTelecaster', 'pianoAccompaniment'];
+            const parts: any[] = ['bass', 'melody', 'accompaniment', 'drums', 'sparkles', 'piano', 'violin', 'flute', 'guitarChords', 'acousticGuitarSolo', 'blackAcoustic', 'sfx', 'harmony', 'telecaster', 'darkTelecaster', 'cs80', 'pianoAccompaniment'];
             parts.forEach(part => { gainNodesRef.current[part] = context.createGain(); gainNodesRef.current[part]!.connect(masterGainNodeRef.current!); });
         }
         const initPromises: Promise<any>[] = [];
@@ -354,9 +351,11 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
         if (!blackGuitarSamplerRef.current) { blackGuitarSamplerRef.current = new BlackGuitarSampler(context, gainNodesRef.current.melody!); initPromises.push(blackGuitarSamplerRef.current.init()); }
         if (!telecasterSamplerRef.current) { telecasterSamplerRef.current = new TelecasterGuitarSampler(context, gainNodesRef.current.melody!); initPromises.push(telecasterSamplerRef.current.init()); }
         if (!darkTelecasterSamplerRef.current) { darkTelecasterSamplerRef.current = new DarkTelecasterSampler(context, gainNodesRef.current.melody!); initPromises.push(darkTelecasterSamplerRef.current.init()); }
+        if (!cs80SamplerRef.current) { cs80SamplerRef.current = new CS80GuitarSampler(context, gainNodesRef.current.melody!); initPromises.push(cs80SamplerRef.current.init()); }
+        
         if (!melodyManagerRef.current) { melodyManagerRef.current = new MelodySynthManager(context, gainNodesRef.current.melody!, blackGuitarSamplerRef.current!, telecasterSamplerRef.current!, 'melody'); initPromises.push(melodyManagerRef.current.init()); }
-        if (!melodyManagerV2Ref.current) { melodyManagerV2Ref.current = new MelodySynthManagerV2(context, gainNodesRef.current.melody!, telecasterSamplerRef.current!, blackGuitarSamplerRef.current!, darkTelecasterSamplerRef.current!, 'melody'); initPromises.push(melodyManagerV2Ref.current.init()); }
-        if (!bassManagerV2Ref.current) { bassManagerV2Ref.current = new MelodySynthManagerV2(context, gainNodesRef.current.bass!, telecasterSamplerRef.current!, blackGuitarSamplerRef.current!, darkTelecasterSamplerRef.current!, 'bass'); initPromises.push(bassManagerV2Ref.current.init()); }
+        if (!melodyManagerV2Ref.current) { melodyManagerV2Ref.current = new MelodySynthManagerV2(context, gainNodesRef.current.melody!, telecasterSamplerRef.current!, blackGuitarSamplerRef.current!, darkTelecasterSamplerRef.current!, cs80SamplerRef.current!, 'melody'); initPromises.push(melodyManagerV2Ref.current.init()); }
+        if (!bassManagerV2Ref.current) { bassManagerV2Ref.current = new MelodySynthManagerV2(context, gainNodesRef.current.bass!, telecasterSamplerRef.current!, blackGuitarSamplerRef.current!, darkTelecasterSamplerRef.current!, cs80SamplerRef.current!, 'bass'); initPromises.push(bassManagerV2Ref.current.init()); }
         if (!harmonyManagerRef.current) { harmonyManagerRef.current = new HarmonySynthManager(context, gainNodesRef.current.harmony!); initPromises.push(harmonyManagerRef.current.init()); }
         if(!pianoAccompanimentManagerRef.current) { pianoAccompanimentManagerRef.current = new PianoAccompanimentManager(context, gainNodesRef.current.pianoAccompaniment!); initPromises.push(pianoAccompanimentManagerRef.current.init()); }
         if (!sparklePlayerRef.current) { sparklePlayerRef.current = new SparklePlayer(context, gainNodesRef.current.sparkles!); initPromises.push(sparklePlayerRef.current.init()); }
@@ -364,7 +363,7 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
         if (!workerRef.current) { workerRef.current = new Worker(new URL('@/app/ambient.worker.ts', import.meta.url), { type: 'module' }); workerRef.current.postMessage({ command: 'init', data: {} }); }
         
         await Promise.all(initPromises);
-        await loadAncestors(); // Загружаем память предков
+        await loadAncestors(); 
         setIsInitialized(true);
         return true;
     } catch (e) {
@@ -384,7 +383,7 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
     drumMachineRef.current?.stop();
     [bassManagerRef, accompanimentManagerRef, melodyManagerRef, accompanimentManagerV2Ref, melodyManagerV2Ref, bassManagerV2Ref, harmonyManagerRef, pianoAccompanimentManagerRef, sfxSynthManagerRef].forEach(r => r.current?.allNotesOff());
     sparklePlayerRef.current?.stopAll();
-    [blackGuitarSamplerRef, telecasterSamplerRef, darkTelecasterSamplerRef].forEach(r => r.current?.stopAll());
+    [blackGuitarSamplerRef, telecasterSamplerRef, darkTelecasterSamplerRef, cs80SamplerRef].forEach(r => r.current?.stopAll());
     if (impulseTimerRef.current) { clearTimeout(impulseTimerRef.current); impulseTimerRef.current = null; }
   }, []);
   

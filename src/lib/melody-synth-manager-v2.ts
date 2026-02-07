@@ -7,10 +7,11 @@ import { BASS_PRESETS } from './bass-presets';
 import type { BlackGuitarSampler } from './black-guitar-sampler';
 import type { TelecasterGuitarSampler } from './telecaster-guitar-sampler';
 import type { DarkTelecasterSampler } from './dark-telecaster-sampler';
+import type { CS80GuitarSampler } from './cs80-guitar-sampler';
 
 /**
  * A V2 manager for melody and bass parts.
- * Updated to support HYBRID synthesis: Synth body + Sampled transient donor.
+ * Updated to support HYBRID synthesis and new CS80 Sampler.
  */
 export class MelodySynthManagerV2 {
     private audioContext: AudioContext;
@@ -23,6 +24,7 @@ export class MelodySynthManagerV2 {
     private telecasterSampler: TelecasterGuitarSampler;
     private blackAcousticSampler: BlackGuitarSampler;
     private darkTelecasterSampler: DarkTelecasterSampler;
+    private cs80Sampler: CS80GuitarSampler;
     private preamp: GainNode;
 
     private activePresetName: keyof typeof V2_PRESETS | keyof typeof BASS_PRESETS | 'none' = 'synth';
@@ -33,6 +35,7 @@ export class MelodySynthManagerV2 {
         telecasterSampler: TelecasterGuitarSampler,
         blackAcousticSampler: BlackGuitarSampler,
         darkTelecasterSampler: DarkTelecasterSampler,
+        cs80Sampler: CS80GuitarSampler,
         partName: 'melody' | 'bass'
     ) {
         this.audioContext = audioContext;
@@ -40,6 +43,7 @@ export class MelodySynthManagerV2 {
         this.telecasterSampler = telecasterSampler;
         this.blackAcousticSampler = blackAcousticSampler;
         this.darkTelecasterSampler = darkTelecasterSampler;
+        this.cs80Sampler = cs80Sampler;
         this.partName = partName;
 
         this.preamp = this.audioContext.createGain();
@@ -97,14 +101,11 @@ export class MelodySynthManagerV2 {
         if (notesToPlay.length === 0) return;
 
         // #ЗАЧЕМ: Реализация гибридного триггера для Гилморовских пресетов.
-        // #ЧТО: Если выбран синтезаторный пресет гитары, мы ДОПОЛНИТЕЛЬНО запускаем
-        //       реальный транзиент щипка из сэмплера Telecaster.
         if (this.partName === 'melody' && (instrumentHint === 'guitar_shineOn' || instrumentHint === 'guitar_muffLead')) {
-            // Trigger real physical transient donor
-            this.telecasterSampler.schedule(notesToPlay, barStartTime, tempo, true); // true = isTransientMode
+            this.telecasterSampler.schedule(notesToPlay, barStartTime, tempo, true); 
         }
 
-        // Routing for full Samplers (Pure Sample mode)
+        // --- Sampler Routing ---
         if (this.partName === 'melody') {
             if (instrumentHint === 'blackAcoustic') {
                 this.blackAcousticSampler.schedule(notesToPlay, barStartTime, tempo);
@@ -116,6 +117,10 @@ export class MelodySynthManagerV2 {
             }
             if (instrumentHint === 'darkTelecaster') {
                 this.darkTelecasterSampler.schedule(notesToPlay, barStartTime, tempo);
+                return;
+            }
+            if (instrumentHint === 'cs80') {
+                this.cs80Sampler.schedule(notesToPlay, barStartTime);
                 return;
             }
         }

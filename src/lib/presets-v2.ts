@@ -112,19 +112,16 @@ export const V2_PRESETS = {
 
   guitar_shineOn: {
     type: 'guitar',
-    name: 'Velvet Lead', // Renamed from Shine On
-    // #ИСПРАВЛЕНО (ПЛАН 206): Громкость уменьшена еще в 2 раза (была 0.23) для тонкой настройки микса.
+    name: 'Velvet Lead', 
     volume: 0.11,
-    // #ИСПРАВЛЕНО (ПЛАН 173): width 0.32 убирает носовой "кошачий" звук (был 0.46).
     osc: { width: 0.32, detune: 2, mainGain: 0.9, detGain: 0.1, subGain: 0.3 },
-    // #ЗАЧЕМ: Срез на 2200 Hz убирает пластмассовый цифровой свист.
     pickup: { cutoff: 2200, q: 0.8 },
     drive: { type: 'soft', amount: 0.15 }, 
     comp: { threshold: -22, ratio: 4, attack: 0.01, release: 0.2, makeup: 4 },
     post: { lpf: 3800 },
-    phaser: { on: false }, // Отключен для устранения синтезаторного маркера
+    phaser: { on: false }, 
     delayA: { on: true, time: 0.42, fb: 0.25, mix: 0.12 },
-    adsr: { a: 0.015, d: 0.4, s: 0.7, r: 2.4 }, // Смягченная атака
+    adsr: { a: 0.015, d: 0.4, s: 0.7, r: 2.4 }, 
     reverbMix: 0.2
   },
 
@@ -142,6 +139,17 @@ export const V2_PRESETS = {
     delayB: { on: true, time: 0.52, fb: 0.22, hc: 3600, mix: 0.12 },
     adsr: { a: 0.008, d: 0.5, s: 0.8, r: 1.8 }, 
     reverbMix: 0.25
+  },
+
+  // ═══════════════════════════════════════════════════════════════════════════
+  // LEGENDARY SAMPLERS (Routing identity)
+  // ═══════════════════════════════════════════════════════════════════════════
+
+  cs80: {
+    type: 'guitar', // Sampler mode in manager
+    name: 'Vangelis CS80',
+    volume: 0.75,
+    adsr: { a: 0.01, d: 0.3, s: 0.6, r: 1.5 }
   }
 
 } as const;
@@ -159,8 +167,6 @@ export const V1_TO_V2_PRESET_MAP: Record<string, PresetName> = {
 
 /**
  * #ЗАЧЕМ: Сопоставление V1-имен баса с новыми V2-пресетами.
- * #ЧТО: Позволяет композитору использовать старые имена инструментов,
- *       перенаправляя их на современный движок фабрики.
  */
 export const BASS_PRESET_MAP: Record<string, keyof typeof BASS_PRESETS> = {
     bass: 'bass_jazz_warm',
@@ -183,8 +189,9 @@ export const BASS_PRESET_MAP: Record<string, keyof typeof BASS_PRESETS> = {
     bass_house: 'bass_house',
     bass_808: 'bass_808',
     bass_deep_house: 'bass_deep_house',
-    bass_rock_pick: 'bass_rock_pick',
-    bass_slap: 'bass_slap'
+    bottom_heavy: 'bass_ambient_dark',
+    rockBass: 'bass_rock_pick',
+    slapBass: 'bass_slap'
 };
 
 export function getPreset(name: string): PresetConfig {
