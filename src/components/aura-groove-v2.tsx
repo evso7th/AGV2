@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from "react";
-import { SlidersHorizontal, Music, Pause, Speaker, FileMusic, Drum, GitBranch, Atom, Piano, Home, X, Sparkles, Sprout, LayoutGrid, Timer, Guitar, RefreshCw, Bot, Waves, Cog, Radio, Star } from "lucide-react";
+import { SlidersHorizontal, Music, Pause, Speaker, FileMusic, Drum, GitBranch, Atom, Piano, Home, X, Sparkles, Sprout, LayoutGrid, Timer, Guitar, RefreshCw, Bot, Waves, Cog, Radio, ThumbsUp } from "lucide-react";
 import Image from "next/image";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -159,7 +159,7 @@ export function AuraGrooveV2({
               className="h-10 w-10 p-0"
               title="Save Masterpiece"
            >
-             <Star className="h-5 w-5 text-yellow-500" />
+             <ThumbsUp className="h-5 w-5 text-primary" />
            </Button>
            <Button type="button" onClick={handleRegenerate} disabled={isInitializing} variant="outline" className="h-10 w-10 p-0">
              <RefreshCw className={cn("h-5 w-5", isRegenerating && "animate-spin")} />
