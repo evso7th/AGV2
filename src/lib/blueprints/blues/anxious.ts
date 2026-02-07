@@ -2,8 +2,8 @@
 import type { MusicBlueprint } from '@/types/music';
 
 /**
- * #ЗАЧЕМ: Блюпринт "The Nervous Shuffle" (Anxious Blues v2.0 - Staged).
- * #ЧТО: Реализован 4-этапный сценарий входа. Акцент на Rhodes и Phrygian лад.
+ * #ЗАЧЕМ: Блюпринт "The Nervous Shuffle" (Anxious Blues v2.2 - Stability Fix).
+ * #ЧТО: Сцены сделаны более плотными и кумулятивными. Барабанщик вступает раньше (25%).
  * #СВЯЗИ: Динамически управляется BluesBrain.
  */
 export const AnxiousBluesBlueprint: MusicBlueprint = {
@@ -29,32 +29,37 @@ export const AnxiousBluesBlueprint: MusicBlueprint = {
                 id: 'THE_BREAKDOWN', name: 'System Degeneration', duration: { percent: 100 },
                 layers: { bass: true, accompaniment: true, melody: true, sfx: true, sparkles: true, drums: true, harmony: true, pianoAccompaniment: true },
                 stagedInstrumentation: [
-                    // Сцена 1: Rhodes + Пад (Тревожное мерцание)
+                    // Сцена 1: Rhodes + Пад + Пианино (0-25%). Начальная тревога.
                     { 
                         duration: { percent: 25 }, 
                         instrumentation: {
-                           accompaniment: { activationChance: 1.0, instrumentOptions: [ { name: 'accompaniment', weight: 1.0 } ] }
+                           accompaniment: { activationChance: 1.0, instrumentOptions: [ { name: 'accompaniment', weight: 1.0 } ] },
+                           pianoAccompaniment: { activationChance: 1.0, instrumentOptions: [ { name: 'piano', weight: 1.0 } ] }
                         }
                     },
-                    // Сцена 2: Вход Нервного Баса
+                    // Сцена 2: Вход Баса и Барабанов (25-50%). Появление пульса.
                     {
                         duration: { percent: 25 }, 
                         instrumentation: {
                            accompaniment: { activationChance: 1.0, instrumentOptions: [ { name: 'accompaniment', weight: 1.0 } ] },
-                           bass: { activationChance: 1.0, instrumentOptions: [ { name: 'bass', weight: 1.0 } ] }
-                        }
-                    },
-                    // Сцена 3: Вход Гитариста + Барабаны
-                    {
-                        duration: { percent: 25 }, 
-                        instrumentation: {
-                           accompaniment: { activationChance: 1.0, instrumentOptions: [ { name: 'accompaniment', weight: 1.0 } ] },
+                           pianoAccompaniment: { activationChance: 1.0, instrumentOptions: [ { name: 'piano', weight: 1.0 } ] },
                            bass: { activationChance: 1.0, instrumentOptions: [ { name: 'bass', weight: 1.0 } ] },
-                           melody: { activationChance: 1.0, instrumentOptions: [ { name: 'melody', weight: 1.0 } ] },
                            drums: { activationChance: 1.0, instrumentOptions: [ { name: 'trance_melancholic', weight: 1.0 } ] }
                         }
                     },
-                    // Сцена 4: Полный хаос (Искры + Голоса)
+                    // Сцена 3: Вход Гитариста (50-75%). Нагнетание.
+                    {
+                        duration: { percent: 25 }, 
+                        instrumentation: {
+                           accompaniment: { activationChance: 1.0, instrumentOptions: [ { name: 'accompaniment', weight: 1.0 } ] },
+                           pianoAccompaniment: { activationChance: 1.0, instrumentOptions: [ { name: 'piano', weight: 1.0 } ] },
+                           bass: { activationChance: 1.0, instrumentOptions: [ { name: 'bass', weight: 1.0 } ] },
+                           drums: { activationChance: 1.0, instrumentOptions: [ { name: 'trance_melancholic', weight: 1.0 } ] },
+                           melody: { activationChance: 1.0, instrumentOptions: [ { name: 'melody', weight: 1.0 } ] },
+                           harmony: { activationChance: 1.0, instrumentOptions: [ { name: 'guitarChords', weight: 1.0 } ] }
+                        }
+                    },
+                    // Сцена 4: Полный хаос (75-100%).
                     {
                         duration: { percent: 25 }, 
                         instrumentation: {

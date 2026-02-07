@@ -20,10 +20,10 @@ import { GUITAR_PATTERNS } from './assets/guitar-patterns';
 import { BLUES_SOLO_LICKS } from './assets/blues_guitar_solo';
 
 /**
- * #ЗАЧЕМ: Блюзовый Мозг V20.0 — "The Percussion Dialogue".
- * #ЧТО: 1. Внедрено системное правило диалога перкуссии: барабанщик отвечает на паузы солиста.
- *       2. Реализованы "пробежки" по томам на турнараундах (не быстрее BPM).
- *       3. Добавлен когнитивный джиттер для Anxious mood.
+ * #ЗАЧЕМ: Блюзовый Мозг V21.0 — "Iron Ensemble Persistence".
+ * #ЧТО: 1. Базовый бюджет увеличен до 150 очков.
+ *       2. Реализована "Инерция Ансамбля": играющие инструменты получают скидку 30% на энергию.
+ *       3. Сцены Anxious Blues переработаны для устранения "дыр" в середине пьесы.
  */
 
 const ENERGY_PRICES = {
@@ -104,93 +104,114 @@ export class BluesBrain {
     const melodyDensity = lastEvents.filter(e => e.type === 'melody').length;
     const lastBarHadMelody = melodyDensity > 0;
 
+    // #ЗАЧЕМ: Защита от распада ансамбля на низком напряжении.
+    // #ЧТО: Базовый бюджет увеличен со 100 до 150.
+    const barBudget = 150 + (tension * 100);
+    let consumedEnergy = 0;
+
+    // Детектор игравших инструментов для скидки
+    const previouslyPlaying = new Set(lastEvents.map(e => Array.isArray(e.type) ? e.type[0] : e.type));
+
+    // Функция расчета цены со скидкой
+    const getPrice = (basePrice: number, part: string) => {
+        return previouslyPlaying.has(part as any) ? basePrice * 0.7 : basePrice;
+    };
+
     const patternCycleIndex = Math.floor(epoch / 8);
     const patternIdx = calculateMusiNum(patternCycleIndex, 3, this.seed, this.patternOptions.length);
     const currentPattern = this.patternOptions[patternIdx];
 
-    const barBudget = 100 + (tension * 100);
-    let consumedEnergy = 0;
-
     // 1. MELODY
     if (hints.melody) {
-      const prog = hints.summonProgress?.melody ?? 1.0;
-      let melodyEvents: FractalEvent[] = [];
+      const price = getPrice(ENERGY_PRICES.solo, 'melody');
+      if (consumedEnergy + price <= barBudget) {
+          const prog = hints.summonProgress?.melody ?? 1.0;
+          let melodyEvents: FractalEvent[] = [];
 
-      if (this.phrasePauseTimer > 0) {
-          this.phrasePauseTimer--;
-      } else {
-          if (melodyStyle === 'solo') {
-              melodyEvents = this.generateLSystemMelody(epoch, currentChord, barIn12, tempo, tension, dna);
-              
-              const currentHash = this.getPhraseHash(melodyEvents);
-              if (this.isRepetitive(currentHash)) {
-                  this.currentAxiom = [];
-                  melodyEvents = this.generateLSystemMelody(epoch, currentChord, barIn12, tempo, tension, dna);
-              }
-              this.phraseHistory.push(currentHash);
-              if (this.phraseHistory.length > 8) this.phraseHistory.shift();
-
-              if (barIn12 === 11 || tension > 0.85) {
-                  this.phrasePauseTimer = 1 + calculateMusiNum(epoch, 3, this.seed, 2);
-              }
+          if (this.phrasePauseTimer > 0) {
+              this.phrasePauseTimer--;
           } else {
-              melodyEvents = this.generateFingerstyleMelody(epoch, currentChord, tempo, tension);
-          }
-      }
+              if (melodyStyle === 'solo') {
+                  melodyEvents = this.generateLSystemMelody(epoch, currentChord, barIn12, tempo, tension, dna);
+                  
+                  const currentHash = this.getPhraseHash(melodyEvents);
+                  if (this.isRepetitive(currentHash)) {
+                      this.currentAxiom = [];
+                      melodyEvents = this.generateLSystemMelody(epoch, currentChord, barIn12, tempo, tension, dna);
+                  }
+                  this.phraseHistory.push(currentHash);
+                  if (this.phraseHistory.length > 8) this.phraseHistory.shift();
 
-      melodyEvents.forEach(e => { e.weight *= prog; });
-      events.push(...this.applyAntiFuneralMarch(melodyEvents, epoch, tension));
-      consumedEnergy += ENERGY_PRICES.solo;
+                  if (barIn12 === 11 || tension > 0.85) {
+                      this.phrasePauseTimer = 1 + calculateMusiNum(epoch, 3, this.seed, 2);
+                  }
+              } else {
+                  melodyEvents = this.generateFingerstyleMelody(epoch, currentChord, tempo, tension);
+              }
+          }
+
+          melodyEvents.forEach(e => { e.weight *= prog; });
+          events.push(...this.applyAntiFuneralMarch(melodyEvents, epoch, tension));
+          consumedEnergy += price;
+      }
     }
 
-    // 2. BASS & DRUMS
+    // 2. BASS
     if (hints.bass) {
       const isWalking = (tension > 0.6) && melodyDensity < 12;
-      const cost = isWalking ? ENERGY_PRICES.bass_walking : ENERGY_PRICES.bass_pedal;
-      if (consumedEnergy + cost <= barBudget) {
+      const baseCost = isWalking ? ENERGY_PRICES.bass_walking : ENERGY_PRICES.bass_pedal;
+      const price = getPrice(baseCost, 'bass');
+      
+      if (consumedEnergy + price <= barBudget) {
         const bassEvents = this.generateBass(epoch, currentChord, tempo, tension, isWalking);
         const prog = hints.summonProgress?.bass ?? 1.0;
         bassEvents.forEach(e => { e.weight *= prog; });
         events.push(...bassEvents);
-        consumedEnergy += cost;
+        consumedEnergy += price;
       }
     }
 
+    // 3. DRUMS
     if (hints.drums) {
-      const cost = tension > 0.5 ? ENERGY_PRICES.drums_full : ENERGY_PRICES.drums_minimal;
-      if (consumedEnergy + cost <= barBudget) {
+      const baseCost = tension > 0.5 ? ENERGY_PRICES.drums_full : ENERGY_PRICES.drums_minimal;
+      const price = getPrice(baseCost, 'drums');
+      
+      if (consumedEnergy + price <= barBudget) {
         const drumEvents = this.generateDrums(epoch, tempo, tension, lastBarHadMelody);
         const prog = hints.summonProgress?.drums ?? 1.0;
         drumEvents.forEach(e => { e.weight *= prog; });
         events.push(...drumEvents);
-        consumedEnergy += cost;
+        consumedEnergy += price;
       }
     }
 
-    // 3. PIANO
-    if (hints.pianoAccompaniment && (consumedEnergy + ENERGY_PRICES.piano <= barBudget)) {
+    // 4. PIANO
+    const pianoPrice = getPrice(ENERGY_PRICES.piano, 'pianoAccompaniment');
+    if (hints.pianoAccompaniment && (consumedEnergy + pianoPrice <= barBudget)) {
         const pianoEvents = this.generatePianoMotif(epoch, currentChord, tempo, tension);
         const prog = hints.summonProgress?.pianoAccompaniment ?? 1.0;
         pianoEvents.forEach(e => { e.weight *= (0.4 * prog); }); 
         events.push(...pianoEvents);
-        consumedEnergy += ENERGY_PRICES.piano;
+        consumedEnergy += pianoPrice;
     }
 
-    // 4. HARMONY & ACCOMPANIMENT
-    if (hints.harmony && (consumedEnergy + ENERGY_PRICES.harmony <= barBudget)) {
+    // 5. HARMONY & ACCOMPANIMENT
+    const harmPrice = getPrice(ENERGY_PRICES.harmony, 'harmony');
+    if (hints.harmony && (consumedEnergy + harmPrice <= barBudget)) {
         const prog = hints.summonProgress?.harmony ?? 1.0;
         const harmEvents = this.generateHarmonyEvents(epoch, currentChord, tempo, tension, hints.harmony);
         harmEvents.forEach(e => { e.weight *= prog; });
         events.push(...harmEvents);
-        consumedEnergy += ENERGY_PRICES.harmony;
+        consumedEnergy += harmPrice;
     }
 
-    if (hints.accompaniment && (consumedEnergy + ENERGY_PRICES.harmony <= barBudget)) {
+    const accPrice = getPrice(ENERGY_PRICES.harmony, 'accompaniment');
+    if (hints.accompaniment && (consumedEnergy + accPrice <= barBudget)) {
         const accEvents = this.generateAccompaniment(epoch, currentChord, tempo, tension, currentPattern);
         const prog = hints.summonProgress?.accompaniment ?? 1.0;
         accEvents.forEach(e => { e.weight *= prog; });
         events.push(...accEvents);
-        consumedEnergy += ENERGY_PRICES.harmony;
+        consumedEnergy += accPrice;
     }
 
     return events;
@@ -368,10 +389,6 @@ export class BluesBrain {
     }).slice(0, 6);
   }
 
-  /**
-   * #ЗАЧЕМ: Генерация ударных с "Интеллектуальной Перкуссией".
-   * #ЧТО: Внедрены правила драматургии: ответ перкуссией на паузы мелодии и "пробежки" на турнараундах.
-   */
   private generateDrums(epoch: number, tempo: number, tension: number, lastBarHadMelody: boolean): FractalEvent[] {
     const beatDur = 60 / tempo;
     const tickDur = beatDur / 3;
@@ -382,24 +399,18 @@ export class BluesBrain {
     const events: FractalEvent[] = [];
     const barIn12 = epoch % 12;
     
-    // --- ПРАВИЛО 1: ДЕТЕРМИНИРОВАННОЕ ДЫХАНИЕ ---
     const isBreathBar = calculateMusiNum(epoch, 13, this.seed, 100) === 7;
     if (isBreathBar) return [];
 
-    // --- ПРАВИЛО 2: ПЕРКУССИОННЫЙ ДИАЛОГ (ОТВЕТ НА ПАУЗУ МЕЛОДИИ) ---
-    // Если в прошлом такте не было мелодии, барабанщик добавляет "перестукивание"
     if (!lastBarHadMelody && tension > 0.3) {
         const percIds = ['perc-012', 'perc-013', 'perc-014', 'perc-015'];
         const pId = percIds[calculateMusiNum(epoch, 7, this.seed, percIds.length)];
-        // Перестукивание: строго на 2 и 4 доли (не быстрее BPM)
         [3, 9].forEach(t => {
             events.push(this.createDrumEvent(pId as any, t * tickDur, 0.4 + (tension * 0.2), 'p'));
         });
     }
 
-    // --- ПРАВИЛО 3: ПРОБЕЖКА ПО ТОМАМ НА ТУРНАРАУНДЕ (БАР 11-12) ---
     if (barIn12 === 11) {
-        // Пробежка: строго четверти (0, 3, 6, 9 тики)
         const toms = ['drum_tom_high', 'drum_tom_mid', 'drum_tom_low'];
         [0, 3, 6, 9].forEach((t, i) => {
             const tomId = toms[i % toms.length];
@@ -407,7 +418,6 @@ export class BluesBrain {
         });
     }
     
-    // Базовый ритм
     if (p.HH) p.HH.forEach(t => events.push(this.createDrumEvent('drum_hihat', t * tickDur, 0.3 + (tension * 0.4), 'p')));
     if (p.K) p.K.forEach(t => events.push(this.createDrumEvent('drum_kick', t * tickDur, 0.7 + (tension * 0.2), tension > 0.7 ? 'mf' : 'p')));
     if (p.SD) p.SD.forEach(t => events.push(this.createDrumEvent('drum_snare', t * tickDur, 0.3 + (tension * 0.6), 'mf')));
