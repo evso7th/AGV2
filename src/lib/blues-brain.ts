@@ -19,10 +19,10 @@ import { BLUES_GUITAR_VOICINGS } from './assets/guitar-voicings';
 import { GUITAR_PATTERNS } from './assets/guitar-patterns';
 
 /**
- * #ЗАЧЕМ: Блюзовый Мозг V13.0 — "The Morphing Ritual".
- * #ЧТО: Реализован Закон Динамического Тембра. Инструменты теперь физически
- *       меняются в зависимости от фрактального напряжения сюиты.
- * #ИНТЕГРАЦИЯ: Полная поддержка E Phrygian для Dark Blues и обновленный фундамент Winter Blues.
+ * #ЗАЧЕМ: Блюзовый Мозг V14.0 — "Triple Morphing Architecture".
+ * #ЧТО: Реализован Закон Динамического Тембра для Winter Blues. 
+ *       Мелодия теперь проходит через три стадии: Black Acoustic -> CS80 -> Velvet Lead.
+ * #ИНТЕГРАЦИЯ: Полная поддержка порогов напруги (0.5, 0.7).
  */
 
 const ENERGY_PRICES = {
@@ -198,8 +198,14 @@ export class BluesBrain {
             else (hints as any).accompaniment = 'organ_jimmy_smith';
         }
     } else if (mood === 'melancholic') {
-        // Winter Blues Special Exception
-        if (hints.melody) (hints as any).melody = 'cs80'; // Melody stays CS80
+        // Winter Blues Dynamic Morphing
+        if (hints.melody) {
+            // #ЗАЧЕМ: Тройной морфинг мелодии.
+            // #ЧТО: Black (до 0.5), CS80 (0.51-0.7), ShineOn (0.7+).
+            if (tension <= 0.5) (hints as any).melody = 'blackAcoustic';
+            else if (tension <= 0.7) (hints as any).melody = 'cs80';
+            else (hints as any).melody = 'guitar_shineOn';
+        }
         if (hints.bass) {
             if (tension < 0.4) (hints as any).bass = 'bass_jazz_warm';
             else if (tension < 0.7) (hints as any).bass = 'bass_reggae';
