@@ -263,12 +263,16 @@ export class BluesBrain {
   private generateInitialAxiom(tension: number): MelodicAxiomNote[] {
     const axiom: MelodicAxiomNote[] = [];
     const pool = ['R', 'b3', '4', '5', 'b7', this.thematicDegree];
-    const count = tension > 0.6 ? 4 : 3; // Чуть больше нот для потока
+    const count = tension > 0.6 ? 4 : 3; 
+    
+    // #ЗАЧЕМ: Укрепление основной темы.
+    // #ЧТО: Первая нота аксиомы теперь всегда Тоника ('R').
     for (let i = 0; i < count; i++) {
         const stepSeed = this.seed + i + 100;
+        const deg = (i === 0) ? 'R' : pool[calculateMusiNum(stepSeed, 3, i, pool.length)];
         axiom.push({ 
-            deg: pool[calculateMusiNum(stepSeed, 3, i, pool.length)], 
-            t: i * 2.5, // Более тесное расположение для легато
+            deg, 
+            t: i * 2.5, 
             d: 3, 
             tech: 'pick' 
         });
@@ -290,7 +294,7 @@ export class BluesBrain {
             newTech = 'vibrato';
         }
 
-        return { ...note, deg: newDeg, tech: newTech, t: note.t }; // Сохраняем время для стабильности фразы
+        return { ...note, deg: newDeg, tech: newTech, t: note.t }; 
     }).slice(0, 6);
   }
 

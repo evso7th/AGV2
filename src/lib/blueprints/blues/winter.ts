@@ -2,8 +2,9 @@
 import type { MusicBlueprint } from '@/types/music';
 
 /**
- * #ЗАЧЕМ: Блюпринт "The Bluest Blues" (v13.0 - Delayed Lead Update).
- * #ЧТО: Гитара перенесена во вторую сцену (с 3-го такта). Сцены сокращены до ~2 тактов.
+ * #ЗАЧЕМ: Блюпринт "The Bluest Blues" (v14.0 - Main Theme Focus).
+ * #ЧТО: Радикально сокращенное интро с мгновенным встулением ритм-секции и гармонии.
+ *       Гитара вступает на 2-м такте. Флейта и пианино на 4-м.
  */
 export const WinterBluesBlueprint: MusicBlueprint = {
     id: 'winter_blues',
@@ -28,44 +29,42 @@ export const WinterBluesBlueprint: MusicBlueprint = {
                 id: 'INTRO_1', name: 'Rapid Opening', duration: { percent: 25 }, 
                 layers: { bass: true, accompaniment: true, melody: true, drums: true, harmony: true, pianoAccompaniment: true, sparkles: true },
                 stagedInstrumentation: [
-                    // СЦЕНА 1: Ритм и Орган (Такты 0-2). ГИТАРЫ НЕТ.
+                    // СЦЕНА 1: Фундамент (Такты 0-1).
                     { 
-                        duration: { percent: 2 }, 
-                        instrumentation: {
-                           bass: { activationChance: 0.8, instrumentOptions: [ { name: 'bass_jazz_warm', weight: 1.0 } ] },
-                           drums: { activationChance: 0.8, instrumentOptions: [ { name: 'blues_melancholic', weight: 1.0 } ] },
-                           accompaniment: { activationChance: 0.8, instrumentOptions: [ { name: 'organ_soft_jazz', weight: 1.0 } ] }
-                        }
-                    },
-                    // СЦЕНА 2: Вход Гилмора (Такты 3-5).
-                    {
-                        duration: { percent: 2 }, 
+                        duration: { percent: 1 }, 
                         instrumentation: {
                            bass: { activationChance: 1.0, instrumentOptions: [ { name: 'bass_jazz_warm', weight: 1.0 } ] },
                            drums: { activationChance: 1.0, instrumentOptions: [ { name: 'blues_melancholic', weight: 1.0 } ] },
                            accompaniment: { activationChance: 1.0, instrumentOptions: [ { name: 'organ_soft_jazz', weight: 1.0 } ] },
+                           harmony: { activationChance: 1.0, instrumentOptions: [ { name: 'guitarChords', weight: 1.0 } ] }
+                        }
+                    },
+                    // СЦЕНА 2: Вход Гилмора (Такты 2-3).
+                    {
+                        duration: { percent: 1 }, 
+                        instrumentation: {
                            melody: { activationChance: 1.0, instrumentOptions: [ { name: 'guitar_shineOn', weight: 1.0 } ] }
                         }
                     },
-                    // СЦЕНА 3: Пианино и Спарклы (Такты 6-8).
+                    // СЦЕНА 3: Детализация (Такты 4-5).
                     {
-                        duration: { percent: 2 }, 
+                        duration: { percent: 1 }, 
                         instrumentation: {
-                           melody: { activationChance: 1.0, instrumentOptions: [ { name: 'guitar_shineOn', weight: 1.0 } ] },
                            pianoAccompaniment: { activationChance: 1.0, instrumentOptions: [ { name: 'piano', weight: 1.0 } ] },
-                           sparkles: { activationChance: 0.7, instrumentOptions: [ { name: 'dark', weight: 1.0 } ], transient: true }
+                           harmony: { activationChance: 1.0, instrumentOptions: [ { name: 'guitarChords', weight: 0.5 }, { name: 'flute', weight: 0.5 } ] },
+                           sparkles: { activationChance: 0.8, instrumentOptions: [ { name: 'dark', weight: 1.0 } ], transient: true }
                         }
                     },
-                    // СЦЕНА 4: Полный Глубокий Состав (Такты 9+).
+                    // СЦЕНА 4: Полный Глубокий Состав (Такты 6+).
                     {
-                        duration: { percent: 94 }, 
+                        duration: { percent: 97 }, 
                         instrumentation: {
                            melody: { activationChance: 1.0, instrumentOptions: [ { name: 'guitar_shineOn', weight: 1.0 } ] },
                            pianoAccompaniment: { activationChance: 1.0, instrumentOptions: [ { name: 'piano', weight: 1.0 } ] },
                            accompaniment: { activationChance: 1.0, instrumentOptions: [ { name: 'organ_soft_jazz', weight: 1.0 } ] },
                            bass: { activationChance: 1.0, instrumentOptions: [ { name: 'bass_jazz_warm', weight: 1.0 } ] },
                            drums: { activationChance: 1.0, instrumentOptions: [ { name: 'blues_melancholic_master', weight: 1.0 } ] },
-                           harmony: { activationChance: 1.0, instrumentOptions: [ { name: 'guitarChords', weight: 0.7 }, { name: 'flute', weight: 0.3 } ] },
+                           harmony: { activationChance: 1.0, instrumentOptions: [ { name: 'guitarChords', weight: 0.6 }, { name: 'flute', weight: 0.4 } ] },
                            sparkles: { activationChance: 0.3, instrumentOptions: [ { name: 'dark', weight: 1.0 } ], transient: true }
                         }
                     }
