@@ -1,4 +1,3 @@
-
 import type {
   FractalEvent,
   GhostChord,
@@ -20,10 +19,10 @@ import { GUITAR_PATTERNS } from './assets/guitar-patterns';
 import { BLUES_SOLO_LICKS } from './assets/blues_guitar_solo';
 
 /**
- * #ЗАЧЕМ: Блюзовый Мозг V21.0 — "Iron Ensemble Persistence".
- * #ЧТО: 1. Базовый бюджет увеличен до 150 очков.
- *       2. Реализована "Инерция Ансамбля": играющие инструменты получают скидку 30% на энергию.
- *       3. Сцены Anxious Blues переработаны для устранения "дыр" в середине пьесы.
+ * #ЗАЧЕМ: Блюзовый Мозг V22.0 — "Universal Melodic Novelty Guard".
+ * #ЧТО: 1. Внедрена система относительного хэширования (Shape Hashing) для детекции повторов.
+ *       2. Ремонтирован блок защиты от "шарманки": теперь повторы ловятся сквозь смену аккордов.
+ *       3. Контроль зацикливания стал фундаментальным правилом для всех стилей мелодии.
  */
 
 const ENERGY_PRICES = {
@@ -104,15 +103,11 @@ export class BluesBrain {
     const melodyDensity = lastEvents.filter(e => e.type === 'melody').length;
     const lastBarHadMelody = melodyDensity > 0;
 
-    // #ЗАЧЕМ: Защита от распада ансамбля на низком напряжении.
-    // #ЧТО: Базовый бюджет увеличен со 100 до 150.
     const barBudget = 150 + (tension * 100);
     let consumedEnergy = 0;
 
-    // Детектор игравших инструментов для скидки
     const previouslyPlaying = new Set(lastEvents.map(e => Array.isArray(e.type) ? e.type[0] : e.type));
 
-    // Функция расчета цены со скидкой
     const getPrice = (basePrice: number, part: string) => {
         return previouslyPlaying.has(part as any) ? basePrice * 0.7 : basePrice;
     };
@@ -121,7 +116,7 @@ export class BluesBrain {
     const patternIdx = calculateMusiNum(patternCycleIndex, 3, this.seed, this.patternOptions.length);
     const currentPattern = this.patternOptions[patternIdx];
 
-    // 1. MELODY
+    // 1. MELODY (with Repetition Guard)
     if (hints.melody) {
       const price = getPrice(ENERGY_PRICES.solo, 'melody');
       if (consumedEnergy + price <= barBudget) {
@@ -131,22 +126,35 @@ export class BluesBrain {
           if (this.phrasePauseTimer > 0) {
               this.phrasePauseTimer--;
           } else {
+              // #ЗАЧЕМ: Генерация кандидата на мелодию.
               if (melodyStyle === 'solo') {
                   melodyEvents = this.generateLSystemMelody(epoch, currentChord, barIn12, tempo, tension, dna);
-                  
-                  const currentHash = this.getPhraseHash(melodyEvents);
-                  if (this.isRepetitive(currentHash)) {
-                      this.currentAxiom = [];
-                      melodyEvents = this.generateLSystemMelody(epoch, currentChord, barIn12, tempo, tension, dna);
-                  }
-                  this.phraseHistory.push(currentHash);
-                  if (this.phraseHistory.length > 8) this.phraseHistory.shift();
-
-                  if (barIn12 === 11 || tension > 0.85) {
-                      this.phrasePauseTimer = 1 + calculateMusiNum(epoch, 3, this.seed, 2);
-                  }
               } else {
                   melodyEvents = this.generateFingerstyleMelody(epoch, currentChord, tempo, tension);
+              }
+
+              // #ЗАЧЕМ: Фундаментальный контроль повторов (Novelty Guard).
+              // #ЧТО: Хэшируем форму мелодии относительно корня аккорда.
+              const shapeHash = this.getMelodicShapeHash(melodyEvents, currentChord.rootNote);
+              if (this.isRepetitive(shapeHash)) {
+                  console.warn(`%c[SOR] Melodic Stagnation Detected (Hash: ${shapeHash}). Forcing Axiom Reset.`, 'color: #ff4500; font-weight: bold;');
+                  this.currentAxiom = []; // Сброс аксиомы для L-системы
+                  this.phraseHistory = []; // Очистка истории для новой ветви
+                  
+                  // Принудительная регенерация с новым "зерном" времени
+                  if (melodyStyle === 'solo') {
+                      melodyEvents = this.generateLSystemMelody(epoch + 1, currentChord, barIn12, tempo, tension, dna);
+                  } else {
+                      melodyEvents = this.generateFingerstyleMelody(epoch + 1, currentChord, tempo, tension);
+                  }
+              }
+              
+              this.phraseHistory.push(shapeHash);
+              if (this.phraseHistory.length > 8) this.phraseHistory.shift();
+
+              // Установка пауз
+              if (melodyStyle === 'solo' && (barIn12 === 11 || tension > 0.85)) {
+                  this.phrasePauseTimer = 1 + calculateMusiNum(epoch, 3, this.seed, 2);
               }
           }
 
@@ -217,12 +225,20 @@ export class BluesBrain {
     return events;
   }
 
-  private getPhraseHash(events: FractalEvent[]): string {
-      return events.map(e => e.note).join('-');
+  /**
+   * #ЗАЧЕМ: Shape Hashing (Относительное хэширование).
+   * #ЧТО: Создает хэш нот относительно корня аккорда. Позволяет обнаруживать
+   *       одинаковые мелодические фигуры даже при смене гармонии.
+   */
+  private getMelodicShapeHash(events: FractalEvent[], rootNote: number): string {
+      return events
+        .filter(e => e.type === 'melody')
+        .map(e => (e.note - rootNote) % 12)
+        .join('-');
   }
 
   private isRepetitive(newHash: string): boolean {
-      if (this.phraseHistory.length < this.MAX_REPETITION_COUNT) return false;
+      if (!newHash || this.phraseHistory.length < this.MAX_REPETITION_COUNT) return false;
       const recent = this.phraseHistory.slice(-this.MAX_REPETITION_COUNT);
       return recent.every(h => h === newHash);
   }
