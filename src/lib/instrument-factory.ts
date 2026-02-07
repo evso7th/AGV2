@@ -1,11 +1,10 @@
 /**
- * #ЗАЧЕМ: Центральная фабрика инструментов V3.2 — "Steel Guitar Seal".
+ * #ЗАЧЕМ: Центральная фабрика инструментов V3.3 — "Wavetable Efficiency".
  * #ЧТО: Реализует архитектуру тотальной изоляции и глобального контроля ресурсов:
  *       1. Global Voice Registry (GVR): единый учет всех активных нот в системе.
- *       2. Passive Cleanup: очистка только через нативные события Audio API (onended).
- *       3. Wavetable Organ: эффективный синтез для работы в фоне.
- *       4. LFO Purge: принудительная остановка фоновых осцилляторов при смене пресета.
- * #ИСПРАВЛЕНО (ПЛАН 192): Полная герметизация гитарного конвейера. Удалены setTimeout.
+ *       2. Wavetable Caching: кэширование PeriodicWave для гитары (критично для CPU).
+ *       3. Master Limiter: защита от клиппинга на выходе.
+ *       4. Passive Cleanup: очистка через нативные события Audio API (onended).
  */
 
 // ───── GLOBAL REGISTRY & LIMITS ─────
@@ -32,9 +31,13 @@ const deepCleanup = (voiceRecord: any) => {
         });
     }
     
+    // Зануляем ссылки для помощи Garbage Collector
+    voiceRecord.nodes = null;
+    voiceRecord.voiceState = null;
+    
     globalActiveVoices = globalActiveVoices.filter(v => v !== voiceRecord);
-    // #ЗАЧЕМ: Диагностика очистки. Счетчик Гейгера для памяти.
-    console.log(`%c[Factory] Cleaned Voice. GVR: ${globalActiveVoices.length}`, 'color: gray; font-size: 10px;');
+    // #ЗАЧЕМ: Индикатор здоровья системы. 
+    console.log(`%c[Factory] GVR: ${globalActiveVoices.length}`, 'color: gray; font-size: 9px;');
 };
 
 const enforceVoiceLimit = () => {
@@ -387,11 +390,22 @@ const buildGuitarEngine = (ctx: AudioContext, preset: any, master: GainNode, rev
 
     const activeVoices = new Map<number, any>();
 
-    const createPulse = (f: number, w: number) => {
+    // #ЗАЧЕМ: Кэширование PeriodicWave для предотвращения утечек CPU.
+    // #ЧТО: Волна создается один раз и переиспользуется для всех нот.
+    let cachedWave: PeriodicWave | null = null;
+    let lastWidth = -1;
+
+    const getPulseWave = (w: number) => {
+        const width = clamp(w, 0.1, 0.9);
+        if (cachedWave && width === lastWidth) return cachedWave;
+        
         const real = new Float32Array(32), imag = new Float32Array(32);
-        for (let n = 1; n < 32; n++) real[n] = (2 / (n * Math.PI)) * Math.sin(n * Math.PI * w);
-        const wave = ctx.createPeriodicWave(real, imag, { disableNormalization: true });
-        const o = ctx.createOscillator(); o.setPeriodicWave(wave); o.frequency.value = f; return o;
+        for (let n = 1; n < 32; n++) {
+            real[n] = (2 / (n * Math.PI)) * Math.sin(n * Math.PI * width);
+        }
+        cachedWave = ctx.createPeriodicWave(real, imag, { disableNormalization: true });
+        lastWidth = width;
+        return cachedWave;
     };
 
     return {
@@ -400,7 +414,12 @@ const buildGuitarEngine = (ctx: AudioContext, preset: any, master: GainNode, rev
             const f = midiToHz(midi);
             const voiceGain = ctx.createGain(); voiceGain.gain.value = 0; voiceGain.connect(guitarIn);
             const oscP = currentPreset.osc || { width: 0.45 };
-            const osc = createPulse(f, oscP.width || 0.45);
+            
+            // Используем кэшированную волну вместо создания новой при каждом ударе.
+            const osc = ctx.createOscillator();
+            osc.setPeriodicWave(getPulseWave(oscP.width || 0.45));
+            osc.frequency.value = f;
+            
             const g = ctx.createGain(); g.gain.value = velocity;
             osc.connect(g).connect(voiceGain); osc.start(when);
             
@@ -443,6 +462,8 @@ const buildGuitarEngine = (ctx: AudioContext, preset: any, master: GainNode, rev
             currentPreset = p; 
             shaper.curve = p.drive?.type === 'muff' ? makeMuff(p.drive.amount) : makeVintageDistortion((p.drive?.amount || 0.5) * 100); 
             phaser.setMix(p.phaser?.on ? 0.2 : 0); 
+            // Сбрасываем кэш при смене пресета
+            cachedWave = null;
         }
     };
 };
@@ -471,11 +492,26 @@ export async function buildMultiInstrument(ctx: AudioContext, {
     else if (type === 'guitar') engine = buildGuitarEngine(ctx, preset, master, reverb, instrumentGain, expressionGain);
     else engine = buildSynthEngine(ctx, preset, master, reverb, instrumentGain, expressionGain);
 
-    master.connect(output);
+    // #ЗАЧЕМ: Мастер-Лимитер для предотвращения цифрового перегруза.
+    // #ЧТО: Смягчает пики, когда много инструментов играют одновременно.
+    const limiter = ctx.createDynamicsCompressor();
+    limiter.threshold.value = -1.0;
+    limiter.knee.value = 0;
+    limiter.ratio.value = 20;
+    limiter.attack.value = 0.003;
+    limiter.release.value = 0.1;
+
+    master.connect(limiter);
+    limiter.connect(output || ctx.destination);
 
     return {
-        connect: (dest) => master.connect(dest || output),
-        disconnect: () => { if (engine.allNotesOff) engine.allNotesOff(); if (engine.disconnect) engine.disconnect(); master.disconnect(); },
+        connect: (dest) => limiter.connect(dest || output),
+        disconnect: () => { 
+            if (engine.allNotesOff) engine.allNotesOff(); 
+            if (engine.disconnect) engine.disconnect(); 
+            master.disconnect();
+            limiter.disconnect();
+        },
         noteOn: engine.noteOn,
         noteOff: (m, w) => { if (engine.noteOff) engine.noteOff(m, w); },
         allNotesOff: () => engine.allNotesOff(),
