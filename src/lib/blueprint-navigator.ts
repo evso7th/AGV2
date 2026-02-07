@@ -1,6 +1,6 @@
 import type { MusicBlueprint, BlueprintPart, BlueprintBundle, Genre, Mood, InstrumentationRules, MelodyInstrument, AccompanimentInstrument, BassInstrument, V2MelodyInstrument, InstrumentBehaviorRules, InstrumentHints, NavigationInfo } from '@/types/music';
 
-// Helper function for seeded random numbers - kept for potential future use in axiom selection
+// Helper function for seeded random numbers
 function seededRandom(seed: number) {
   let state = seed;
   const self = {
@@ -14,17 +14,6 @@ function seededRandom(seed: number) {
   };
   return self;
 }
-
-type PartBoundary = {
-    part: BlueprintPart;
-    startBar: number;
-    endBar: number;
-    bundleBoundaries: {
-        bundle: BlueprintBundle;
-        startBar: number;
-        endBar: number;
-    }[];
-};
 
 function formatInstrumentation(
     instrumentation?: { [key: string]: any }, 
@@ -227,8 +216,16 @@ export class BlueprintNavigator {
         };
     }
     
+    /**
+     * #ЗАЧЕМ: Генератор подробного отчета о состоянии навигации.
+     * #ЧТО: Возвращает детализированную строку только на границах частей и бандлов.
+     */
     public formatLogMessage(navInfo: NavigationInfo, hints: InstrumentHints, currentBar: number): string | null {
         if (!navInfo) return null;
+
+        // #ЗАЧЕМ: Защита от спама в консоль.
+        // #ЧТО: Логируем только при фактической смене контекста.
+        if (!navInfo.isPartTransition && !navInfo.isBundleTransition) return null;
 
         const partInfo = this.partBoundaries.find(p => p.part.id === navInfo.currentPart.id);
         if (!partInfo) return null;
@@ -266,3 +263,14 @@ export class BlueprintNavigator {
                      `  - Mutation: ${mutationType}`;
     }
 }
+
+type PartBoundary = {
+    part: BlueprintPart;
+    startBar: number;
+    endBar: number;
+    bundleBoundaries: {
+        bundle: BlueprintBundle;
+        startBar: number;
+        endBar: number;
+    }[];
+};

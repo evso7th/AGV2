@@ -100,7 +100,11 @@ export class FractalMusicEngine {
     this.isInitialized = true;
   }
 
-  public evolve(barDuration: number, barCount: number): { events: FractalEvent[], instrumentHints: InstrumentHints, beautyScore: number } {
+  /**
+   * #ЗАЧЕМ: Основной цикл эволюции.
+   * #ЧТО: Теперь возвращает navInfo для детального логирования в воркере.
+   */
+  public evolve(barDuration: number, barCount: number): { events: FractalEvent[], instrumentHints: InstrumentHints, beautyScore: number, navInfo?: NavigationInfo } {
     if (!this.navigator) return { events: [], instrumentHints: {}, beautyScore: 0 };
     this.epoch = barCount;
 
@@ -174,15 +178,11 @@ export class FractalMusicEngine {
     const result = this.generateOneBar(barDuration, navInfo, instrumentHints);
     this.lastEvents = [...result.events];
 
-    // #ЗАЧЕМ: Automated Critic - оценка красоты через гармонический резонанс.
     const beautyScore = this.calculateBeautyScore(result.events);
 
-    return { ...result, instrumentHints, beautyScore };
+    return { ...result, instrumentHints, beautyScore, navInfo };
   }
 
-  /**
-   * #ЗАЧЕМ: Математическая оценка гармоничности такта.
-   */
   private calculateBeautyScore(events: FractalEvent[]): number {
       if (events.length < 2) return 0.5;
       
@@ -190,7 +190,6 @@ export class FractalMusicEngine {
       let totalResonance = 0;
       let pairCount = 0;
 
-      // Сэмплируем пары событий для оценки связности
       for (let i = 0; i < events.length; i++) {
           for (let j = i + 1; j < Math.min(i + 5, events.length); j++) {
               const res = matrix(events[i], events[j], {
@@ -239,6 +238,5 @@ export class FractalMusicEngine {
   }
 
   public generateExternalImpulse() {
-      // Logic for manual user interaction influence
   }
 }

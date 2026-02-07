@@ -7,7 +7,7 @@
  */
 import type { WorkerSettings, ScoreName, Mood, Genre, InstrumentPart } from '@/types/music';
 import { FractalMusicEngine } from '@/lib/fractal-music-engine';
-import type { FractalEvent, InstrumentHints } from '@/types/fractal';
+import type { FractalEvent, InstrumentHints, NavigationInfo } from '@/types/fractal';
 
 // --- FRACTAL ENGINE ---
 let fractalMusicEngine: FractalMusicEngine | undefined;
@@ -38,7 +38,7 @@ const Scheduler = {
         mood: 'melancholic' as Mood,
         useMelodyV2: false, 
         introBars: 12, 
-        ancestor: null as any // #ЗАЧЕМ: Генетическая память
+        ancestor: null as any 
     } as WorkerSettings,
 
     get barDuration() { 
@@ -52,7 +52,7 @@ const Scheduler = {
             ...settings,
             seed: settings.seed || Date.now(),
             introBars: settings.introBars,
-            ancestor: settings.ancestor // Передаем предка для скрещивания
+            ancestor: settings.ancestor 
         });
 
         newEngine.initialize(true); 
@@ -67,7 +67,7 @@ const Scheduler = {
         
         let attempts = 0;
         const maxAttempts = 10;
-        const attemptInterval = 100; // ms
+        const attemptInterval = 100; 
 
         const tryStart = () => {
             if (fractalMusicEngine) {
@@ -146,7 +146,7 @@ const Scheduler = {
     tick() {
         if (!this.isRunning || !fractalMusicEngine) return;
 
-        let finalPayload: { events: FractalEvent[], instrumentHints: InstrumentHints, beautyScore: number } = { 
+        let finalPayload: { events: FractalEvent[], instrumentHints: InstrumentHints, beautyScore: number, navInfo?: NavigationInfo } = { 
             events: [], 
             instrumentHints: {}, 
             beautyScore: 0.5 
@@ -158,7 +158,19 @@ const Scheduler = {
             console.error('[Worker.tick] CRITICAL ERROR during event generation:', e);
         }
 
-        // #ЗАЧЕМ: Сигнал автоматического шедевра.
+        // #ЗАЧЕМ: Глубокая телеметрия навигатора.
+        // #ЧТО: Выводит подробности о части/бандле при переходе.
+        if (finalPayload.navInfo && fractalMusicEngine.navigator) {
+            const detailedLog = fractalMusicEngine.navigator.formatLogMessage(
+                finalPayload.navInfo, 
+                finalPayload.instrumentHints, 
+                this.barCount
+            );
+            if (detailedLog) {
+                console.log(detailedLog, 'color: #4ade80; font-weight: bold;');
+            }
+        }
+
         if (finalPayload.beautyScore > 0.88 && this.barCount > 8) {
             self.postMessage({ 
                 type: 'HIGH_RESONANCE_DETECTED', 
@@ -166,8 +178,6 @@ const Scheduler = {
             });
         }
 
-        // #ЗАЧЕМ: Запуск финального блюзового риффа на последнем такте (План №205).
-        // #ЧТО: Отправляет сигнал SparklePlayer для воспроизведения случайного сэмпла из папки promenade_blues.
         if (fractalMusicEngine.navigator && this.barCount === (fractalMusicEngine.navigator.totalBars - 1) && this.settings.genre === 'blues') {
             console.log(`%c[Worker] Last bar of blues suite! Triggering final signature riff...`, 'color: #00BFFF; font-weight: bold;');
             self.postMessage({ 
@@ -193,7 +203,10 @@ const Scheduler = {
             }
         }
         
-        const logString = `[Worker @ Bar ${this.barCount}] Events: ${finalPayload.events.length} | Beauty: ${finalPayload.beautyScore.toFixed(2)} | D:${counts.drums}, B:${counts.bass}, M:${counts.melody}`;
+        // #ЗАЧЕМ: Информативный Bar-Log.
+        // #ЧТО: Включает имя текущей секции для понимания контекста.
+        const sectionName = finalPayload.navInfo?.currentPart.name || 'Unknown';
+        const logString = `[Worker @ Bar ${this.barCount}] [${sectionName}] Events: ${finalPayload.events.length} | Beauty: ${finalPayload.beautyScore.toFixed(2)} | D:${counts.drums}, B:${counts.bass}, M:${counts.melody}`;
         console.log(logString);
 
         const mainScoreEvents: FractalEvent[] = [];
