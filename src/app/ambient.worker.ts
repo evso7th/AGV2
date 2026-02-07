@@ -146,6 +146,20 @@ const Scheduler = {
     tick() {
         if (!this.isRunning || !fractalMusicEngine) return;
 
+        // #ЗАЧЕМ: Реализация променада как вступительного акта новой пьесы (ПЛАН №222).
+        if (this.barCount === 0) {
+            const cat = this.settings.genre === 'blues' ? 'promenade_blues' : 'promenade';
+            console.log(`%c[Worker] Starting New Suite with PROMENADE: ${cat}`, 'color: #00BFFF; font-weight: bold;');
+            self.postMessage({ 
+                type: 'sparkle', 
+                payload: { 
+                    type: 'sparkle' as any, 
+                    time: 0, 
+                    params: { category: cat } as any
+                } 
+            });
+        }
+
         let finalPayload: { events: FractalEvent[], instrumentHints: InstrumentHints, beautyScore: number, navInfo?: NavigationInfo } = { 
             events: [], 
             instrumentHints: {}, 
@@ -158,8 +172,6 @@ const Scheduler = {
             console.error('[Worker.tick] CRITICAL ERROR during event generation:', e);
         }
 
-        // #ЗАЧЕМ: Глубокая телеметрия навигатора.
-        // #ЧТО: Выводит подробности о части/бандле при переходе.
         if (finalPayload.navInfo && fractalMusicEngine.navigator) {
             const detailedLog = fractalMusicEngine.navigator.formatLogMessage(
                 finalPayload.navInfo, 
@@ -178,18 +190,6 @@ const Scheduler = {
             });
         }
 
-        if (fractalMusicEngine.navigator && this.barCount === (fractalMusicEngine.navigator.totalBars - 1) && this.settings.genre === 'blues') {
-            console.log(`%c[Worker] Last bar of blues suite! Triggering final signature riff...`, 'color: #00BFFF; font-weight: bold;');
-            self.postMessage({ 
-                type: 'sparkle', 
-                payload: { 
-                    type: 'sparkle' as any, 
-                    time: 0, 
-                    params: { category: 'promenade_blues' } as any
-                } 
-            });
-        }
-
         const counts = { drums: 0, bass: 0, melody: 0, accompaniment: 0, harmony: 0, sfx: 0, sparkles: 0 };
         for (const event of finalPayload.events) {
             if (event.type === 'bass') counts.bass++;
@@ -203,8 +203,6 @@ const Scheduler = {
             }
         }
         
-        // #ЗАЧЕМ: Информативный Bar-Log.
-        // #ЧТО: Включает имя текущей секции для понимания контекста.
         const sectionName = finalPayload.navInfo?.currentPart.name || 'Unknown';
         const logString = `[Worker @ Bar ${this.barCount}] [${sectionName}] Events: ${finalPayload.events.length} | Beauty: ${finalPayload.beautyScore.toFixed(2)} | D:${counts.drums}, B:${counts.bass}, M:${counts.melody}`;
         console.log(logString);

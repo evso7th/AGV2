@@ -19,9 +19,9 @@ import { GUITAR_PATTERNS } from './assets/guitar-patterns';
 import { BLUES_SOLO_LICKS } from './assets/blues_guitar_solo';
 
 /**
- * #ЗАЧЕМ: Блюзовый Мозг V16.0 — "Genetic Axiom Growth".
- * #ЧТО: Реализована предварительная генетическая трансформация лика-семени.
- *       Лик мутирует (инверсия, ретроград, сдвиг) ДО того, как стать аксиомой.
+ * #ЗАЧЕМ: Блюзовый Мозг V17.0 — "Genetic Novelty Guard".
+ * #ЧТО: Реализовано системное правило контроля зацикливания. 
+ *       Если фраза повторяется > 3 раз, СОР принудительно сбрасывает аксиому.
  * #ИНТЕГРАЦИЯ: Полная совместимость с SOR и SuiteDNA.
  */
 
@@ -51,6 +51,10 @@ export class BluesBrain {
   private phrasePauseTimer = 0; 
   private readonly patternOptions: string[] = ['F_TRAVIS', 'F_ROLL12', 'S_SWING'];
 
+  // #ЗАЧЕМ: Система контроля новизны.
+  private phraseHistory: string[] = [];
+  private readonly MAX_REPETITION_COUNT = 3;
+
   constructor(seed: number, mood: Mood) {
     this.seed = seed;
     this.mood = mood;
@@ -68,9 +72,18 @@ export class BluesBrain {
     return {
       next,
       nextInt: (max: number) => Math.floor(next() * max),
-      nextInRange: (min: number, max: number) => min + next() * (max - min)
-    };
-  }
+       shuffle: <T>(array: T[]): T[] => {
+        let currentIndex = array.length, randomIndex;
+        const newArray = [...array];
+        while (currentIndex !== 0) {
+            randomIndex = Math.floor(next() * currentIndex);
+            currentIndex--;
+            [newArray[currentIndex], newArray[randomIndex]] = [newArray[randomIndex], newArray[currentIndex]];
+        }
+        return newArray;
+    }
+  };
+}
 
   public generateBar(
     epoch: number,
@@ -108,6 +121,17 @@ export class BluesBrain {
       } else {
           if (melodyStyle === 'solo') {
               melodyEvents = this.generateLSystemMelody(epoch, currentChord, barIn12, tempo, tension, dna);
+              
+              // #ЗАЧЕМ: Genetic Novelty Guard — контроль зацикливания.
+              const currentHash = this.getPhraseHash(melodyEvents);
+              if (this.isRepetitive(currentHash)) {
+                  console.log(`%c[NoveltyGuard] Loop detected. Forcing Genetic Jump at Bar ${epoch}`, 'color: #FF4500; font-weight: bold;');
+                  this.currentAxiom = []; // Сброс аксиомы
+                  melodyEvents = this.generateLSystemMelody(epoch, currentChord, barIn12, tempo, tension, dna);
+              }
+              this.phraseHistory.push(currentHash);
+              if (this.phraseHistory.length > 8) this.phraseHistory.shift();
+
               if (barIn12 === 11 || tension > 0.85) {
                   this.phrasePauseTimer = 1 + calculateMusiNum(epoch, 3, this.seed, 2);
               }
@@ -173,6 +197,16 @@ export class BluesBrain {
     }
 
     return events;
+  }
+
+  private getPhraseHash(events: FractalEvent[]): string {
+      return events.map(e => e.note).join('-');
+  }
+
+  private isRepetitive(newHash: string): boolean {
+      if (this.phraseHistory.length < this.MAX_REPETITION_COUNT) return false;
+      const recent = this.phraseHistory.slice(-this.MAX_REPETITION_COUNT);
+      return recent.every(h => h === newHash);
   }
 
   private evaluateTimbralDramaturgy(tension: number, hints: InstrumentHints, mood: Mood) {
@@ -282,17 +316,10 @@ export class BluesBrain {
   }
 
   private generateInitialAxiom(tension: number, epoch: number, dna: SuiteDNA): MelodicAxiomNote[] {
-    // #ЗАЧЕМ: Реализация трансформированного семантического семени (ПЛАН №220).
-    // #ЧТО: Лик берется из библиотеки и ПРОХОДИТ ТРАНСФОРМАЦИЮ (инверсия, ретроград, сдвиг)
-    //       перед тем как стать аксиомой. Это создает бесконечное разнообразие из одного лика.
     if (dna.seedLickId && BLUES_SOLO_LICKS[dna.seedLickId]) {
         const rawLick = BLUES_SOLO_LICKS[dna.seedLickId].phrase;
-        
-        // ПРИМЕНЯЕМ ГЕНЕТИЧЕСКУЮ РЕКОМБИНАЦИЮ
         const transformedLick = transformLick(rawLick, this.seed, epoch);
         
-        console.log(`%c[BioLogic] Recombining Gene: ${dna.seedLickId} at Bar ${epoch}`, 'color: #32CD32; font-weight: bold;');
-
         return transformedLick.map(note => ({
             deg: note.deg,
             t: note.t,
@@ -304,7 +331,6 @@ export class BluesBrain {
     const axiom: MelodicAxiomNote[] = [];
     const pool = ['R', 'b3', '4', '5', 'b7', this.thematicDegree];
     const count = tension > 0.6 ? 4 : 3; 
-    
     const startAnchors = ['R', '5', ...(dna.thematicAnchors || [])];
     
     for (let i = 0; i < count; i++) {

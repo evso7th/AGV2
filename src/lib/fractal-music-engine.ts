@@ -39,12 +39,13 @@ interface EngineConfig {
   composerControlsInstruments?: boolean;
   useMelodyV2?: boolean;
   introBars: number;
-  ancestor?: any; // #ЗАЧЕМ: Поддержка генетической памяти
+  ancestor?: any;
 }
 
 /**
- * #ЗАЧЕМ: Фрактальный Музыкальный Движок V12.6 — "Genetic Intelligence".
- * #ЧТО: Реализует расчет Beauty Score и поддержку скрещивания (Breeding).
+ * #ЗАЧЕМ: Фрактальный Музыкальный Движок V12.7 — "Persistent Ensemble".
+ * #ЧТО: Исправлена ошибка "исчезающего барабанщика". 
+ *       Инструменты в activatedInstruments теперь гарантированно остаются в hints.
  */
 export class FractalMusicEngine {
   public config: EngineConfig;
@@ -76,7 +77,6 @@ export class FractalMusicEngine {
   public initialize(force: boolean = false) {
     if (this.isInitialized && !force) return;
 
-    // #ЗАЧЕМ: Генетическое скрещивание с предком.
     if (this.config.ancestor) {
         console.log(`%c[Engine] BREEDING detected! Crossover with masterpiece: ${this.config.ancestor.seed}`, 'color: #FF1493; font-weight:bold;');
         this.config.seed = crossoverDNA(this.config.seed, this.config.ancestor);
@@ -100,10 +100,6 @@ export class FractalMusicEngine {
     this.isInitialized = true;
   }
 
-  /**
-   * #ЗАЧЕМ: Основной цикл эволюции.
-   * #ЧТО: Теперь возвращает navInfo для детального логирования в воркере.
-   */
   public evolve(barDuration: number, barCount: number): { events: FractalEvent[], instrumentHints: InstrumentHints, beautyScore: number, navInfo?: NavigationInfo } {
     if (!this.navigator) return { events: [], instrumentHints: {}, beautyScore: 0 };
     this.epoch = barCount;
@@ -128,8 +124,13 @@ export class FractalMusicEngine {
             } 
         }
 
-        let atLeastOneActive = false;
-        
+        // #ЗАЧЕМ: Гарантированная поддержка однажды активированных инструментов.
+        this.activatedInstruments.forEach((data, part) => {
+            (instrumentHints as any)[part] = data.timbre;
+            const age = this.epoch - data.startBar;
+            instrumentHints.summonProgress![part] = Math.min(1, (age + 1) / 3);
+        });
+
         Object.entries(currentStage.instrumentation).forEach(([partStr, rule]: [any, any]) => {
             const part = partStr as InstrumentPart;
             
@@ -137,38 +138,27 @@ export class FractalMusicEngine {
                 if (this.random.next() < rule.activationChance) {
                     (instrumentHints as any)[part] = this.pickWeighted(rule.instrumentOptions);
                     instrumentHints.summonProgress![part] = 1.0;
-                    atLeastOneActive = true;
                 }
-            } else {
-                if (!this.activatedInstruments.has(part)) {
-                    if (rule.activationChance > 0 && this.random.next() < rule.activationChance) {
-                        this.activatedInstruments.set(part, { 
-                            timbre: this.pickWeighted(rule.instrumentOptions), 
-                            startBar: this.epoch 
-                        });
-                    }
-                }
-                
-                if (this.activatedInstruments.has(part)) {
-                    const data = this.activatedInstruments.get(part)!;
-                    (instrumentHints as any)[part] = data.timbre;
-                    const age = this.epoch - data.startBar;
-                    const progress = Math.min(1, (age + 1) / 3);
-                    instrumentHints.summonProgress![part] = progress;
-                    atLeastOneActive = true;
+            } else if (!this.activatedInstruments.has(part)) {
+                if (rule.activationChance > 0 && this.random.next() < rule.activationChance) {
+                    const timbre = this.pickWeighted(rule.instrumentOptions);
+                    this.activatedInstruments.set(part, { timbre, startBar: this.epoch });
+                    (instrumentHints as any)[part] = timbre;
+                    instrumentHints.summonProgress![part] = 0.33;
                 }
             }
         });
 
-        if (!atLeastOneActive && this.epoch > 0) {
+        // Fail-safe: Если в основной части вообще ничего не играет
+        if (this.activatedInstruments.size === 0 && this.epoch > 0) {
             const candidates = Object.entries(currentStage.instrumentation)
                 .sort((a, b) => (b[1] as any).activationChance - (a[1] as any).activationChance);
             if (candidates.length > 0) {
                 const [bestPart, bestRule] = candidates[0];
-                this.activatedInstruments.set(bestPart as InstrumentPart, {
-                    timbre: this.pickWeighted((bestRule as any).instrumentOptions),
-                    startBar: this.epoch
-                });
+                const timbre = this.pickWeighted((bestRule as any).instrumentOptions);
+                this.activatedInstruments.set(bestPart as InstrumentPart, { timbre, startBar: this.epoch });
+                (instrumentHints as any)[bestPart] = timbre;
+                instrumentHints.summonProgress![bestPart as InstrumentPart] = 0.33;
             }
         }
     }
