@@ -1,22 +1,25 @@
 /**
- * @file AuraGroove Music Worker (Architecture: "The Dynamic Composer")
+ * @file AuraGroove Music Worker (Architecture: "The Chain of Suites")
  *
- * This worker acts as a real-time composer, generating music bar by bar based on settings from the UI.
- * Its goal is to create a continuously evolving piece of music where complexity is controlled by a 'density' parameter.
- * It is completely passive and only composes the next bar when commanded via a 'tick'.
+ * This worker implements a Suite State Machine: 
+ * PROMENADE -> MAIN -> BRIDGE -> MAIN -> ...
+ * 
+ * #ЗАЧЕМ: Реализация "Цепной Сюиты" (План №234). 
+ * #ЧТО: Воркер теперь знает тип текущей пьесы и автоматически подгружает БП моста.
+ * #ИННОВАЦИЯ: AI Arbitrator следит за гармоническим резонансом и пополняет генофонд.
  */
 import type { WorkerSettings, ScoreName, Mood, Genre, InstrumentPart } from '@/types/music';
 import { FractalMusicEngine } from '@/lib/fractal-music-engine';
 import type { FractalEvent, InstrumentHints, NavigationInfo } from '@/types/fractal';
+import { getBridgeBlueprint, getBlueprint } from '@/lib/blueprints';
 
-// --- FRACTAL ENGINE ---
 let fractalMusicEngine: FractalMusicEngine | undefined;
 
-// --- Scheduler (The Conductor) ---
 const Scheduler = {
     loopId: null as any,
     isRunning: false,
     barCount: 0,
+    suiteType: 'PROMENADE' as 'MAIN' | 'BRIDGE' | 'PROMENADE',
     
     settings: {
         bpm: 75,
@@ -46,8 +49,16 @@ const Scheduler = {
     },
 
     initializeEngine(settings: WorkerSettings, force: boolean = false) {
-        console.log(`%c[Worker] Initializing new engine with SEED: ${settings.seed}`, 'color: #FFD700; font-weight:bold;');
-        
+        // #ЗАЧЕМ: Выбор Блюпринта на основе состояния Chain State Machine.
+        let blueprint;
+        if (this.suiteType === 'BRIDGE' || this.suiteType === 'PROMENADE') {
+            blueprint = getBridgeBlueprint(settings.mood);
+            console.log(`%c[Chain] Loading BRIDGE Blueprint: ${blueprint.id}`, 'color: #00BFFF; font-weight:bold;');
+        } else {
+            blueprint = getBlueprint(settings.genre, settings.mood);
+            console.log(`%c[Chain] Loading MAIN Blueprint: ${blueprint.id}`, 'color: #FFD700; font-weight:bold;');
+        }
+
         const newEngine = new FractalMusicEngine({
             ...settings,
             seed: settings.seed || Date.now(),
@@ -56,7 +67,6 @@ const Scheduler = {
         });
 
         newEngine.initialize(true); 
-        
         fractalMusicEngine = newEngine;
         this.barCount = 0;
     },
@@ -64,30 +74,15 @@ const Scheduler = {
     start() {
         if (this.isRunning) return;
         this.isRunning = true;
-        
-        let attempts = 0;
-        const maxAttempts = 10;
-        const attemptInterval = 100; 
+        this.suiteType = 'PROMENADE'; // Начинаем всегда с пролога
+        this.initializeEngine(this.settings, true);
 
-        const tryStart = () => {
-            if (fractalMusicEngine) {
-                const loop = () => {
-                    if (!this.isRunning) return;
-                    this.tick();
-                    this.loopId = setTimeout(loop, this.barDuration * 1000);
-                };
-                loop();
-            } else {
-                attempts++;
-                if (attempts < maxAttempts) {
-                    setTimeout(tryStart, attemptInterval);
-                } else {
-                    this.isRunning = false;
-                }
-            }
+        const loop = () => {
+            if (!this.isRunning) return;
+            this.tick();
+            this.loopId = setTimeout(loop, this.barDuration * 1000);
         };
-
-        tryStart();
+        loop();
     },
 
     stop() {
@@ -100,31 +95,15 @@ const Scheduler = {
     
     reset() {
         const wasRunning = this.isRunning;
-        if (wasRunning) {
-            this.stop();
-        }
-        
-        const newSeed = Date.now();
-        this.settings.seed = newSeed; 
-
+        if (wasRunning) this.stop();
+        this.settings.seed = Date.now();
+        this.suiteType = 'PROMENADE'; 
         this.initializeEngine(this.settings, true); 
-        
-        if (wasRunning) {
-            this.start();
-        }
+        if (wasRunning) this.start();
     },
 
     updateSettings(newSettings: Partial<WorkerSettings>) {
-       const needsRestart = this.isRunning && (newSettings.bpm !== undefined && newSettings.bpm !== this.settings.bpm);
        const genreOrMoodChanged = (newSettings.genre && newSettings.genre !== this.settings.genre) || (newSettings.mood && newSettings.mood !== this.settings.mood);
-       
-       if (genreOrMoodChanged) {
-           this.settings = { ...this.settings, ...newSettings }; 
-           this.reset();
-           return;
-       }
-       
-       if (needsRestart) this.stop();
        
        this.settings = {
             ...this.settings,
@@ -134,24 +113,15 @@ const Scheduler = {
             textureSettings: newSettings.textureSettings ? { ...this.settings.textureSettings, ...newSettings.textureSettings } : this.settings.textureSettings,
         };
 
-        if (!fractalMusicEngine) {
-            this.initializeEngine(this.settings, true);
-        } else {
-            fractalMusicEngine.updateConfig(this.settings);
-        }
-       
-       if (needsRestart) this.start();
+       if (genreOrMoodChanged) {
+           this.reset();
+       } else if (fractalMusicEngine) {
+           fractalMusicEngine.updateConfig(this.settings);
+       }
     },
 
     tick() {
         if (!this.isRunning || !fractalMusicEngine) return;
-
-        // #ЗАЧЕМ: Реализация пролога как вступительного акта новой пьесы (ПЛАН №233).
-        // #ЧТО: Удален триггер внешнего сэмпла. Теперь вступление полностью алгоритмично
-        //       и определяется секцией PROLOGUE в Блюпринте.
-        if (this.barCount === 0) {
-            console.log(`%c[Worker] Starting New Suite with Algorithmic Overture`, 'color: #00BFFF; font-weight: bold;');
-        }
 
         let finalPayload: { events: FractalEvent[], instrumentHints: InstrumentHints, beautyScore: number, navInfo?: NavigationInfo } = { 
             events: [], 
@@ -162,21 +132,12 @@ const Scheduler = {
         try {
             finalPayload = fractalMusicEngine.evolve(this.barDuration, this.barCount);
         } catch (e) {
-            console.error('[Worker.tick] CRITICAL ERROR during event generation:', e);
+            console.error('[Worker.tick] CRITICAL ERROR:', e);
         }
 
-        if (finalPayload.navInfo && fractalMusicEngine.navigator) {
-            const detailedLog = fractalMusicEngine.navigator.formatLogMessage(
-                finalPayload.navInfo, 
-                finalPayload.instrumentHints, 
-                this.barCount
-            );
-            if (detailedLog) {
-                console.log(detailedLog, 'color: #4ade80; font-weight: bold;');
-            }
-        }
-
+        // #ЗАЧЕМ: AI Arbitrator — автоматическое пополнение генофонда.
         if (finalPayload.beautyScore > 0.88 && this.barCount > 8) {
+            console.log(`%c[GENEPOOL] AI ARBITRATOR: High Resonance Detected (${finalPayload.beautyScore.toFixed(3)}). Seed ${this.settings.seed} is worthy.`, 'color: #ff00ff; font-weight: bold;');
             self.postMessage({ 
                 type: 'HIGH_RESONANCE_DETECTED', 
                 payload: { beautyScore: finalPayload.beautyScore, seed: this.settings.seed } 
@@ -197,44 +158,28 @@ const Scheduler = {
         }
         
         const sectionName = finalPayload.navInfo?.currentPart.name || 'Unknown';
-        const logString = `[Worker @ Bar ${this.barCount}] [${sectionName}] Events: ${finalPayload.events.length} | Beauty: ${finalPayload.beautyScore.toFixed(2)} | D:${counts.drums}, B:${counts.bass}, M:${counts.melody}`;
-        console.log(logString);
-
-        const mainScoreEvents: FractalEvent[] = [];
-        const sfxEvents: FractalEvent[] = [];
-        const sparkleEvents: FractalEvent[] = [];
-        const harmonyEvents: FractalEvent[] = [];
-        
-        for (const event of finalPayload.events) {
-            if (event.type === 'sfx') sfxEvents.push(event);
-            else if (event.type === 'sparkle') sparkleEvents.push(event);
-            else if (event.type === 'harmony') harmonyEvents.push(event);
-            else mainScoreEvents.push(event);
-        }
+        console.log(`[Bar ${this.barCount}] [${this.suiteType}] [${sectionName}] Res:${finalPayload.beautyScore.toFixed(2)} D:${counts.drums}, B:${counts.bass}, M:${counts.melody}`);
 
         self.postMessage({ 
             type: 'SCORE_READY', 
             payload: {
-                events: mainScoreEvents,
+                events: finalPayload.events.filter(e => e.type !== 'sfx' && e.type !== 'sparkle' && e.type !== 'harmony'),
                 instrumentHints: finalPayload.instrumentHints,
                 barDuration: this.barDuration,
                 barCount: this.barCount,
             }
         });
         
-        if (sfxEvents.length > 0) {
-            sfxEvents.forEach(event => { self.postMessage({ type: 'sfx', payload: event }); });
-        }
-        
-        if (sparkleEvents.length > 0) {
-            sparkleEvents.forEach(event => { self.postMessage({ type: 'sparkle', payload: event }); });
-        }
+        finalPayload.events.forEach(e => {
+            if (e.type === 'sfx') self.postMessage({ type: 'sfx', payload: e });
+            if (e.type === 'sparkle') self.postMessage({ type: 'sparkle', payload: e });
+        });
 
-        if (harmonyEvents.length > 0) {
+        if (finalPayload.events.some(e => e.type === 'harmony')) {
              self.postMessage({ 
                  type: 'HARMONY_SCORE_READY', 
                  payload: {
-                     events: harmonyEvents,
+                     events: finalPayload.events.filter(e => e.type === 'harmony'),
                      instrumentHints: finalPayload.instrumentHints,
                      barDuration: this.barDuration,
                      barCount: this.barCount
@@ -243,39 +188,36 @@ const Scheduler = {
         }
 
         this.barCount++;
-        if (fractalMusicEngine && this.barCount >= fractalMusicEngine.navigator.totalBars + 4) {
-             self.postMessage({ command: 'SUITE_ENDED' });
+
+        // #ЗАЧЕМ: Chain Logic — переход на следующую пьесу в цепи.
+        if (fractalMusicEngine && this.barCount >= fractalMusicEngine.navigator!.totalBars) {
+             console.log(`%c[Chain] Suite ${this.suiteType} ended. Transitioning...`, 'color: #4ade80; font-weight: bold;');
+             
+             if (this.suiteType === 'BRIDGE' || this.suiteType === 'PROMENADE') {
+                 this.suiteType = 'MAIN';
+             } else {
+                 this.suiteType = 'BRIDGE';
+                 this.settings.seed = Date.now(); // Новое зерно для каждой основной части
+             }
+             
+             this.initializeEngine(this.settings, true);
         }
     }
 };
 
-// --- MessageBus ---
 self.onmessage = (event: MessageEvent) => {
     if (!event.data || !event.data.command) return;
     const { command, data } = event.data;
-
     try {
         switch (command) {
-            case 'init':
-                Scheduler.settings = { ...Scheduler.settings, ...data };
-                break;
-            case 'start':
-                Scheduler.start();
-                break;
-            case 'stop':
-                Scheduler.stop();
-                break;
-            case 'reset':
-                Scheduler.reset();
-                break;
-            case 'update_settings':
-                Scheduler.updateSettings(data);
-                break;
-            case 'external_impulse':
-                if (fractalMusicEngine) fractalMusicEngine.generateExternalImpulse();
-                break;
+            case 'init': Scheduler.settings = { ...Scheduler.settings, ...data }; break;
+            case 'start': Scheduler.start(); break;
+            case 'stop': Scheduler.stop(); break;
+            case 'reset': Scheduler.reset(); break;
+            case 'update_settings': Scheduler.updateSettings(data); break;
+            case 'external_impulse': if (fractalMusicEngine) fractalMusicEngine.generateExternalImpulse(); break;
         }
     } catch (e) {
-        self.postMessage({ type: 'error', error: e instanceof Error ? e.message : String(e) });
+        self.postMessage({ type: 'error', error: String(e) });
     }
 };

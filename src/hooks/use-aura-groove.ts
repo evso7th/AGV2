@@ -185,6 +185,9 @@ export const useAuraGroove = (): AuraGrooveProps => {
   const handleSaveMasterpiece = useCallback(async () => {
     if (!isInitialized || !isPlaying) return;
     
+    // #ЗАЧЕМ: Логирование в консоль для подтверждения пополнения генофонда.
+    console.log(`%c[GENEPOOL] USER FEEDBACK: Liking seed ${currentSeed}. Archiving to Masterpieces.`, 'color: #4ade80; font-weight: bold;');
+
     const { dismiss: dismissLoading } = toast({ 
       title: "Memory Activation", 
       description: "Saving this state to the Elder Knowledge..." 
@@ -199,7 +202,6 @@ export const useAuraGroove = (): AuraGrooveProps => {
       instrumentSettings
     });
 
-    // #ЗАЧЕМ: Принудительное закрытие первого окна после завершения операции.
     dismissLoading();
 
     if (success) {
@@ -207,7 +209,6 @@ export const useAuraGroove = (): AuraGrooveProps => {
         title: "Masterpiece Saved!", 
         description: "This soul will help build future generations." 
       });
-      // #ЗАЧЕМ: Автоматическое скрытие уведомления через 1 секунду по просьбе пользователя.
       setTimeout(dismiss, 1000);
     } else {
       const { dismiss } = toast({ 
@@ -215,7 +216,6 @@ export const useAuraGroove = (): AuraGrooveProps => {
         title: "Memory Error", 
         description: "Could not save the state." 
       });
-      // Ошибки оставляем чуть дольше (3 сек) для возможности анализа.
       setTimeout(dismiss, 3000);
     }
   }, [isInitialized, isPlaying, db, currentSeed, mood, genre, density, bpm, instrumentSettings]);
