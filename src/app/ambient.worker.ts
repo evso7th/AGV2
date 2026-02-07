@@ -166,6 +166,20 @@ const Scheduler = {
             });
         }
 
+        // #ЗАЧЕМ: Запуск финального блюзового риффа на последнем такте (План №205).
+        // #ЧТО: Отправляет сигнал SparklePlayer для воспроизведения случайного сэмпла из папки promenade_blues.
+        if (fractalMusicEngine.navigator && this.barCount === (fractalMusicEngine.navigator.totalBars - 1) && this.settings.genre === 'blues') {
+            console.log(`%c[Worker] Last bar of blues suite! Triggering final signature riff...`, 'color: #00BFFF; font-weight: bold;');
+            self.postMessage({ 
+                type: 'sparkle', 
+                payload: { 
+                    type: 'sparkle' as any, 
+                    time: 0, 
+                    params: { category: 'promenade_blues' } as any
+                } 
+            });
+        }
+
         const counts = { drums: 0, bass: 0, melody: 0, accompaniment: 0, harmony: 0, sfx: 0, sparkles: 0 };
         for (const event of finalPayload.events) {
             if (event.type === 'bass') counts.bass++;
