@@ -20,10 +20,10 @@ import { GUITAR_PATTERNS } from './assets/guitar-patterns';
 import { BLUES_SOLO_LICKS } from './assets/blues_guitar_solo';
 
 /**
- * #ЗАЧЕМ: Блюзовый Мозг V19.0 — "Anxious Soul".
- * #ЧТО: 1. Реализован Закон Динамического Тембра для Anxious mood.
- *       2. Внедрен "Когнитивный Джиттер" тайминга для усиления тревожности.
- *       3. Добавлена поддержка Rhodes в аккомпанементе.
+ * #ЗАЧЕМ: Блюзовый Мозг V20.0 — "The Percussion Dialogue".
+ * #ЧТО: 1. Внедрено системное правило диалога перкуссии: барабанщик отвечает на паузы солиста.
+ *       2. Реализованы "пробежки" по томам на турнараундах (не быстрее BPM).
+ *       3. Добавлен когнитивный джиттер для Anxious mood.
  */
 
 const ENERGY_PRICES = {
@@ -101,8 +101,8 @@ export class BluesBrain {
     this.evaluateTimbralDramaturgy(tension, hints, this.mood);
     
     const melodyStyle = tension > 0.65 ? 'solo' : 'fingerstyle';
-    const lastBarHadScream = lastEvents.some(e => e.type === 'melody' && e.note > 74 && e.duration > 0.8);
     const melodyDensity = lastEvents.filter(e => e.type === 'melody').length;
+    const lastBarHadMelody = melodyDensity > 0;
 
     const patternCycleIndex = Math.floor(epoch / 8);
     const patternIdx = calculateMusiNum(patternCycleIndex, 3, this.seed, this.patternOptions.length);
@@ -124,7 +124,6 @@ export class BluesBrain {
               
               const currentHash = this.getPhraseHash(melodyEvents);
               if (this.isRepetitive(currentHash)) {
-                  console.log(`%c[NoveltyGuard] Loop detected. Forcing Genetic Jump at Bar ${epoch}`, 'color: #FF4500; font-weight: bold;');
                   this.currentAxiom = [];
                   melodyEvents = this.generateLSystemMelody(epoch, currentChord, barIn12, tempo, tension, dna);
               }
@@ -158,10 +157,9 @@ export class BluesBrain {
     }
 
     if (hints.drums) {
-      const forceFill = lastBarHadScream && tension > 0.5;
       const cost = tension > 0.5 ? ENERGY_PRICES.drums_full : ENERGY_PRICES.drums_minimal;
       if (consumedEnergy + cost <= barBudget) {
-        const drumEvents = this.generateDrums(epoch, tempo, tension, forceFill);
+        const drumEvents = this.generateDrums(epoch, tempo, tension, lastBarHadMelody);
         const prog = hints.summonProgress?.drums ?? 1.0;
         drumEvents.forEach(e => { e.weight *= prog; });
         events.push(...drumEvents);
@@ -178,7 +176,7 @@ export class BluesBrain {
         consumedEnergy += ENERGY_PRICES.piano;
     }
 
-    // 4. HARMONY
+    // 4. HARMONY & ACCOMPANIMENT
     if (hints.harmony && (consumedEnergy + ENERGY_PRICES.harmony <= barBudget)) {
         const prog = hints.summonProgress?.harmony ?? 1.0;
         const harmEvents = this.generateHarmonyEvents(epoch, currentChord, tempo, tension, hints.harmony);
@@ -210,7 +208,6 @@ export class BluesBrain {
 
   private evaluateTimbralDramaturgy(tension: number, hints: InstrumentHints, mood: Mood) {
     if (mood === 'dark' || mood === 'gloomy' || mood === 'anxious') {
-        // #ЗАЧЕМ: Реализация Закона Динамического Тембра для тревожных настроений.
         if (hints.melody) {
             if (tension < 0.4) (hints as any).melody = 'blackAcoustic';
             else if (tension < 0.75) (hints as any).melody = 'cs80';
@@ -222,7 +219,6 @@ export class BluesBrain {
             else (hints as any).bass = 'bass_808';
         }
         if (hints.accompaniment) {
-            // #ЗАЧЕМ: Rhodes добавляет тревожное мерцание на малом напряжении.
             if (tension < 0.5) (hints as any).accompaniment = 'ep_rhodes_warm';
             else if (tension < 0.7) (hints as any).accompaniment = 'organ_soft_jazz';
             else (hints as any).accompaniment = 'organ_jimmy_smith';
@@ -275,7 +271,6 @@ export class BluesBrain {
             duration = Math.max(n.d, 6); 
         }
 
-        // #ЗАЧЕМ: Когнитивный джиттер тайминга для тревожных настроений.
         const jitter = this.mood === 'anxious' ? (this.random.next() * 0.4 - 0.2) : 0;
         const timeInTicks = Math.max(0, n.t + jitter);
 
@@ -373,23 +368,46 @@ export class BluesBrain {
     }).slice(0, 6);
   }
 
-  private generateDrums(epoch: number, tempo: number, tension: number, forceFill: boolean): FractalEvent[] {
+  /**
+   * #ЗАЧЕМ: Генерация ударных с "Интеллектуальной Перкуссией".
+   * #ЧТО: Внедрены правила драматургии: ответ перкуссией на паузы мелодии и "пробежки" на турнараундах.
+   */
+  private generateDrums(epoch: number, tempo: number, tension: number, lastBarHadMelody: boolean): FractalEvent[] {
     const beatDur = 60 / tempo;
     const tickDur = beatDur / 3;
     const kitPool = BLUES_DRUM_RIFFS[this.mood] || BLUES_DRUM_RIFFS.contemplative;
     const p = kitPool[calculateMusiNum(epoch, 3, this.seed, kitPool.length)];
     if (!p) return [];
-    const events: FractalEvent[] = [];
     
+    const events: FractalEvent[] = [];
+    const barIn12 = epoch % 12;
+    
+    // --- ПРАВИЛО 1: ДЕТЕРМИНИРОВАННОЕ ДЫХАНИЕ ---
     const isBreathBar = calculateMusiNum(epoch, 13, this.seed, 100) === 7;
-    if (isBreathBar && !forceFill) {
-        return [];
+    if (isBreathBar) return [];
+
+    // --- ПРАВИЛО 2: ПЕРКУССИОННЫЙ ДИАЛОГ (ОТВЕТ НА ПАУЗУ МЕЛОДИИ) ---
+    // Если в прошлом такте не было мелодии, барабанщик добавляет "перестукивание"
+    if (!lastBarHadMelody && tension > 0.3) {
+        const percIds = ['perc-012', 'perc-013', 'perc-014', 'perc-015'];
+        const pId = percIds[calculateMusiNum(epoch, 7, this.seed, percIds.length)];
+        // Перестукивание: строго на 2 и 4 доли (не быстрее BPM)
+        [3, 9].forEach(t => {
+            events.push(this.createDrumEvent(pId as any, t * tickDur, 0.4 + (tension * 0.2), 'p'));
+        });
     }
 
-    if (forceFill) {
-        [9, 10, 11].forEach(t => events.push(this.createDrumEvent('drum_tom_mid', t * tickDur, 0.8, 'mf')));
+    // --- ПРАВИЛО 3: ПРОБЕЖКА ПО ТОМАМ НА ТУРНАРАУНДЕ (БАР 11-12) ---
+    if (barIn12 === 11) {
+        // Пробежка: строго четверти (0, 3, 6, 9 тики)
+        const toms = ['drum_tom_high', 'drum_tom_mid', 'drum_tom_low'];
+        [0, 3, 6, 9].forEach((t, i) => {
+            const tomId = toms[i % toms.length];
+            events.push(this.createDrumEvent(tomId as any, t * tickDur, 0.6 + (tension * 0.2), 'mf'));
+        });
     }
     
+    // Базовый ритм
     if (p.HH) p.HH.forEach(t => events.push(this.createDrumEvent('drum_hihat', t * tickDur, 0.3 + (tension * 0.4), 'p')));
     if (p.K) p.K.forEach(t => events.push(this.createDrumEvent('drum_kick', t * tickDur, 0.7 + (tension * 0.2), tension > 0.7 ? 'mf' : 'p')));
     if (p.SD) p.SD.forEach(t => events.push(this.createDrumEvent('drum_snare', t * tickDur, 0.3 + (tension * 0.6), 'mf')));
