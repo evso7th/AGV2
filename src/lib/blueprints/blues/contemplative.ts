@@ -1,160 +1,124 @@
 
 import type { MusicBlueprint } from '@/types/music';
 
+/**
+ * #ЗАЧЕМ: Блюпринт "Deep Contemplation" (Contemplative Blues v5.0).
+ * #ЧТО: 1. Долгий 144-тактовый цикл с акцентом на "плато раздумий".
+ *       2. Tension зафиксирован в зоне 0.52 - 0.58 для создания эффекта 
+ *          тембрального мерцания между Акустикой и CS80.
+ *       3. Пианино является центральным якорным инструментом.
+ */
 export const ContemplativeBluesBlueprint: MusicBlueprint = {
     id: 'contemplative_blues',
-    name: 'Mid-Shuffle Chicago',
-    description: 'A thoughtful, mid-tempo Chicago blues shuffle.',
-    mood: 'contemplative', // Using for neutral mood
+    name: 'The Inner Dialogue',
+    description: 'A thoughtful, introspective blues in D Dorian. Focus on space, piano echoes and subtle guitar textures.',
+    mood: 'contemplative',
     musical: {
-        key: { root: 'E', scale: 'phrygian', octave: 2 },
-        bpm: { base: 64, range: [60, 68], modifier: 1.0 },
+        key: { root: 'D', scale: 'dorian', octave: 1 },
+        bpm: { base: 78, range: [75, 82], modifier: 1.0 },
         timeSignature: { numerator: 4, denominator: 4 },
-        harmonicJourney: [], // Will be driven by a 12-bar structure in the engine
-        tensionProfile: { type: 'plateau', peakPosition: 0.5, curve: (p, pp) => p < pp ? p / pp : 1.0 }
+        harmonicJourney: [],
+        tensionProfile: { 
+            type: 'plateau', 
+            peakPosition: 0.5, 
+            // #ЗАЧЕМ: Эффект "Задумчивости". 
+            // #ЧТО: Напряжение быстро достигает 0.55 и остается стабильным до самого финала.
+            curve: (p) => {
+                if (p < 0.15) return 0.25 + (p / 0.15) * 0.30; // Прогрев: 0.25 -> 0.55
+                if (p > 0.90) return 0.55 - ((p - 0.90) / 0.10) * 0.30; // Растворение
+                return 0.55 + (Math.sin(p * Math.PI * 10) * 0.03); // Колыхание на плато
+            }
+        }
     },
     structure: {
-        totalDuration: { preferredBars: 144 }, // 12 loops of 12 bars
+        totalDuration: { preferredBars: 144 },
         parts: [
             {
-                id: 'INTRO', name: 'Verse 1-2', duration: { percent: 25 },
-                layers: { bass: true, drums: true, accompaniment: true, harmony: true, sparkles: true, sfx: true, melody: true },
-                instrumentation: {
-                    accompaniment: { 
-                        strategy: 'weighted', 
-                        v1Options: [{ name: 'synth', weight: 0.5 }, { name: 'ambientPad', weight: 0.5 }],
-                        v2Options: [{ name: 'synth', weight: 0.5 }, { name: 'synth_ambient_pad_lush', weight: 0.5 }]
-                    },
-                    harmony: { strategy: 'weighted', options: [{ name: 'guitarChords', weight: 1.0 }] },
-                    melody: { 
-                        strategy: 'weighted', 
-                        v1Options: [{ name: 'guitar_shineOn', weight: 1.0 }],
-                        v2Options: [{ name: 'guitar_shineOn', weight: 1.0 }]
+                id: 'PROLOGUE', name: 'The Silent Thought', duration: { percent: 4 },
+                layers: { sfx: true, pianoAccompaniment: true },
+                stagedInstrumentation: [
+                    { 
+                        duration: { percent: 100 }, 
+                        instrumentation: {
+                           pianoAccompaniment: { activationChance: 1.0, instrumentOptions: [ { name: 'piano', weight: 1.0 } ] },
+                           sfx: { activationChance: 0.7, instrumentOptions: [ { name: 'common', weight: 1.0 } ], transient: true }
+                        }
                     }
-                },
+                ],
                 instrumentRules: {
-                    drums: { pattern: 'composer', kitName: 'blues_contemplative', density: { min: 0.5, max: 0.7 } },
-                    bass: { techniques: [{ value: 'walking', weight: 1.0 }] },
-                    accompaniment: { techniques: [{value: 'long-chords', weight: 1.0}]},
-                    bassAccompanimentDouble: { enabled: true, instrument: 'electricGuitar', octaveShift: 1 },
-                    sparkles: { 
-                        eventProbability: 0.15,
-                        categories: [
-                            { name: 'electro', weight: 0.5 },
-                            { name: 'ambient_common', weight: 0.5 }
-                        ]
-                    },
-                    sfx: { 
-                        eventProbability: 0.1, 
-                        categories: [
-                            { name: 'dark', weight: 0.5 }, 
-                            { name: 'common', weight: 0.5 }
-                        ] 
-                    },
-                    melody: { register: { preferred: 'mid' } }
+                    pianoAccompaniment: { density: { min: 0.2, max: 0.4 } }
                 },
-                bundles: [{ id: 'BLUES_INTRO_BUNDLE', name: 'Verse 1', duration: { percent: 100 }, characteristics: {}, phrases: {} }],
+                bundles: [{ id: 'CT_PROLOGUE', name: 'Silence', duration: { percent: 100 }, characteristics: {}, phrases: {} }],
                 outroFill: null,
             },
             {
-                id: 'MAIN_A', name: 'Main Riff', duration: { percent: 20 },
-                layers: { bass: true, drums: true, accompaniment: true, melody: true, harmony: true, sparkles: true, sfx: true },
-                 instrumentation: {
-                    accompaniment: { 
-                        strategy: 'weighted', 
-                        v1Options: [{ name: 'synth', weight: 0.5 }, { name: 'ambientPad', weight: 0.5 }],
-                        v2Options: [{ name: 'synth', weight: 0.5 }, { name: 'synth_ambient_pad_lush', weight: 0.5 }]
+                id: 'INTRO_1', name: 'Gathering Focus', duration: { percent: 21 },
+                layers: { bass: true, accompaniment: true, pianoAccompaniment: true, sfx: true, sparkles: true },
+                stagedInstrumentation: [
+                    { 
+                        duration: { percent: 50 }, 
+                        instrumentation: {
+                           bass: { activationChance: 1.0, instrumentOptions: [ { name: 'bass_jazz_warm', weight: 1.0 } ] },
+                           pianoAccompaniment: { activationChance: 1.0, instrumentOptions: [ { name: 'piano', weight: 1.0 } ] }
+                        }
                     },
-                    melody: { strategy: 'weighted', v1Options: [{ name: 'guitar_shineOn', weight: 1.0 }], v2Options: [{ name: 'guitar_shineOn', weight: 1.0 }] }
-                },
-                instrumentRules: {
-                    drums: { pattern: 'composer', kitName: 'blues_contemplative', density: { min: 0.6, max: 0.8 }, kickVolume: 1.1, ride: { enabled: false }, usePerc: true, },
-                    bass: { techniques: [{ value: 'walking', weight: 1.0 }] },
-                    accompaniment: { techniques: [{value: 'long-chords', weight: 1.0}]},
-                    bassAccompanimentDouble: { enabled: true, instrument: 'electricGuitar', octaveShift: 1 },
-                    sparkles: { eventProbability: 0.15, categories: [{ name: 'electro', weight: 0.5 }, { name: 'ambient_common', weight: 0.5 }] },
-                    sfx: { eventProbability: 0.1, categories: [{ name: 'dark', weight: 0.5 }, { name: 'common', weight: 0.5 }] },
-                    melody: { register: { preferred: 'mid' } }
-                },
-                bundles: [{ id: 'BLUES_MAIN_A_BUNDLE', name: 'Main Riff', duration: { percent: 100 }, characteristics: {}, phrases: {} }],
-                outroFill: null,
-            },
-            {
-                id: 'SOLO', name: 'Guitar Solo', duration: { percent: 20 },
-                layers: { bass: true, drums: true, accompaniment: true, melody: true, harmony: true, sparkles: true, sfx: true },
-                instrumentation: {
-                    accompaniment: { 
-                        strategy: 'weighted', 
-                        v1Options: [{ name: 'synth', weight: 0.5 }, { name: 'ambientPad', weight: 0.5 }],
-                        v2Options: [{ name: 'synth', weight: 0.5 }, { name: 'synth_ambient_pad_lush', weight: 0.5 }]
-                    },
-                    melody: { strategy: 'weighted', v1Options: [{ name: 'guitar_shineOn', weight: 1.0 }], v2Options: [{ name: 'guitar_shineOn', weight: 1.0 }] }
-                },
-                instrumentRules: {
-                    drums: { pattern: 'composer', kitName: 'blues_contemplative', density: { min: 0.7, max: 0.9 }, kickVolume: 1.2, ride: { enabled: true }, usePerc: true },
-                    bass: { techniques: [{ value: 'walking', weight: 1.0 }] },
-                    accompaniment: { techniques: [{ value: 'long-chords', weight: 1.0 }] },
-                    bassAccompanimentDouble: { enabled: false, instrument: 'electricGuitar', octaveShift: 1 }, // Отключаем дублирование
-                    melody: { 
-                        source: 'motif', 
-                        density: { min: 0.6, max: 0.8 },
-                        register: { preferred: 'mid' } // Повышаем регистр для соло
-                    },
-                    sparkles: { eventProbability: 0.2, categories: [{ name: 'electro', weight: 0.8 }, { name: 'ambient_common', weight: 0.2 }] },
-                    sfx: { eventProbability: 0.15, categories: [{ name: 'dark', weight: 0.2 }, { name: 'common', weight: 0.8 }] }
-                },
-                bundles: [{ id: 'BLUES_SOLO_BUNDLE', name: 'Solo Section', duration: { percent: 100 }, characteristics: {}, phrases: {} }],
-                outroFill: { type: 'roll', duration: 1, parameters: { crescendo: true } },
-            },
-            {
-                id: 'MAIN_B', name: 'Return to Riff', duration: { percent: 10 },
-                layers: { bass: true, drums: true, accompaniment: true, melody: true, harmony: true, sparkles: true, sfx: true },
-                instrumentation: {
-                    accompaniment: { 
-                        strategy: 'weighted', 
-                        v1Options: [{ name: 'synth', weight: 0.5 }, { name: 'ambientPad', weight: 0.5 }],
-                        v2Options: [{ name: 'synth', weight: 0.5 }, { name: 'synth_ambient_pad_lush', weight: 0.5 }]
-                    },
-                    melody: { strategy: 'weighted', v1Options: [{ name: 'guitar_shineOn', weight: 1.0 }], v2Options: [{ name: 'guitar_shineOn', weight: 1.0 }] }
-                },
-                instrumentRules: {
-                    drums: { pattern: 'composer', kitName: 'blues_contemplative', density: { min: 0.6, max: 0.8 }, kickVolume: 1.1, ride: { enabled: false }, usePerc: true, },
-                    bass: { techniques: [{ value: 'walking', weight: 1.0 }] },
-                    accompaniment: { techniques: [{value: 'long-chords', weight: 1.0}]},
-                    bassAccompanimentDouble: { enabled: true, instrument: 'electricGuitar', octaveShift: 1 }, // Возвращаем рифф
-                    sparkles: { eventProbability: 0.15, categories: [{ name: 'electro', weight: 0.5 }, { name: 'ambient_common', weight: 0.5 }] },
-                    sfx: { eventProbability: 0.1, categories: [{ name: 'dark', weight: 0.5 }, { name: 'common', weight: 0.5 }] },
-                    melody: { register: { preferred: 'mid' } }
-                },
-                bundles: [{ id: 'BLUES_MAIN_B_BUNDLE', name: 'Riff Return', duration: { percent: 100 }, characteristics: {}, phrases: {} }],
-                outroFill: null,
-            },
-            {
-                id: 'OUTRO', name: 'Final Verse', duration: { percent: 25 },
-                layers: { bass: true, drums: true, accompaniment: true, harmony: true, sparkles: true, sfx: true, melody: true },
-                instrumentation: {
-                    accompaniment: { 
-                        strategy: 'weighted', 
-                        v1Options: [{ name: 'synth', weight: 0.5 }, { name: 'ambientPad', weight: 0.5 }],
-                        v2Options: [{ name: 'synth', weight: 0.5 }, { name: 'synth_ambient_pad_lush', weight: 0.5 }]
+                    {
+                        duration: { percent: 50 }, 
+                        instrumentation: {
+                           accompaniment: { activationChance: 1.0, instrumentOptions: [ { name: 'ep_rhodes_warm', weight: 1.0 } ] },
+                           sparkles: { activationChance: 0.4, instrumentOptions: [ { name: 'ambient_common', weight: 1.0 } ], transient: true }
+                        }
                     }
-                },
+                ],
                 instrumentRules: {
-                    drums: { pattern: 'composer', kitName: 'blues_contemplative', density: { min: 0.4, max: 0.6 } },
-                    bass: { techniques: [{ value: 'walking', weight: 1.0 }] },
-                    accompaniment: { techniques: [{value: 'long-chords', weight: 1.0}]},
-                    bassAccompanimentDouble: { enabled: true, instrument: 'electricGuitar', octaveShift: 1 },
-                    sparkles: { eventProbability: 0.15, categories: [{ name: 'electro', weight: 0.5 }, { name: 'ambient_common', weight: 0.5 }] },
-                    sfx: { 
-                        eventProbability: 0.1, 
-                        categories: [
-                            { name: 'dark', weight: 0.5 }, 
-                            { name: 'common', weight: 0.5 }
-                        ] 
-                    },
-                    melody: { register: { preferred: 'mid' } }
+                    bass: { techniques: [{ value: 'pedal', weight: 1.0 }], density: { min: 0.4, max: 0.6 } },
+                    accompaniment: { techniques: [{ value: 'long-chords', weight: 1.0 }] }
                 },
-                bundles: [{ id: 'BLUES_OUTRO_BUNDLE', name: 'Last Verse', duration: { percent: 100 }, characteristics: {}, phrases: {} }],
+                bundles: [{ id: 'CT_INTRO_BLOOM', name: 'Foundation', duration: { percent: 100 }, characteristics: {}, phrases: {} }],
+                outroFill: null,
+            },
+            {
+                id: 'MAIN_FLOW', name: 'The Deep Flow', duration: { percent: 65 },
+                layers: { bass: true, drums: true, melody: true, accompaniment: true, harmony: true, pianoAccompaniment: true, sparkles: true, sfx: true },
+                stagedInstrumentation: [
+                    { 
+                        duration: { percent: 100 }, 
+                        instrumentation: {
+                           melody: { activationChance: 1.0, instrumentOptions: [ { name: 'melody', weight: 1.0 } ] },
+                           drums: { activationChance: 1.0, instrumentOptions: [ { name: 'blues_melancholic_master', weight: 1.0 } ] },
+                           bass: { activationChance: 1.0, instrumentOptions: [ { name: 'bass', weight: 1.0 } ] },
+                           pianoAccompaniment: { activationChance: 1.0, instrumentOptions: [ { name: 'piano', weight: 1.0 } ] },
+                           accompaniment: { activationChance: 1.0, instrumentOptions: [ { name: 'accompaniment', weight: 1.0 } ] },
+                           harmony: { activationChance: 0.6, instrumentOptions: [ { name: 'guitarChords', weight: 1.0 } ] }
+                        }
+                    }
+                ],
+                instrumentRules: {
+                    drums: { kitName: 'blues_melancholic_master', density: { min: 0.4, max: 0.6 }, useSnare: true, usePerc: true },
+                    melody: { source: 'blues_solo', density: { min: 0.3, max: 0.5 }, register: { preferred: 'low' } },
+                    bass: { techniques: [{ value: 'walking', weight: 1.0 }] }
+                },
+                bundles: [{ id: 'CT_MAIN_REFLECT', name: 'Thought Cycle', duration: { percent: 100 }, characteristics: {}, phrases: {} }],
+                outroFill: null,
+            },
+            {
+                id: 'OUTRO', name: 'Dissolving Trace', duration: { percent: 10 },
+                layers: { pianoAccompaniment: true, sfx: true, bass: true },
+                stagedInstrumentation: [
+                    { 
+                        duration: { percent: 100 }, 
+                        instrumentation: {
+                           pianoAccompaniment: { activationChance: 1.0, instrumentOptions: [ { name: 'piano', weight: 1.0 } ] },
+                           bass: { activationChance: 1.0, instrumentOptions: [ { name: 'bass_ambient', weight: 1.0 } ] },
+                           sfx: { activationChance: 0.8, instrumentOptions: [ { name: 'common', weight: 1.0 } ], transient: true }
+                        }
+                    }
+                ],
+                instrumentRules: {
+                    pianoAccompaniment: { density: { min: 0.2, max: 0.3 } },
+                    bass: { techniques: [{ value: 'drone', weight: 1.0 }] }
+                },
+                bundles: [{ id: 'CT_OUTRO', name: 'Fade', duration: { percent: 100 }, characteristics: {}, phrases: {} }],
                 outroFill: null,
             }
         ]
