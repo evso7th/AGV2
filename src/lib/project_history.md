@@ -3,6 +3,20 @@
 
 ---
 
+### ЗАПИСЬ: 2024-12-04 (План №256: «ROBUST AUTH & IDEMPOTENT SDK»)
+
+**ПРОБЛЕМА:**
+1. Ошибка `FirebaseError: auth/network-request-failed` при анонимном входе.
+2. Необработанные промисы (unhandled rejections) в консоли.
+3. Повторная инициализация Firestore приводила к нестабильности SDK.
+
+**РЕШЕНИЕ:**
+1. **Idempotent Init**: Функция `getSdks` в `src/firebase/index.ts` теперь проверяет, создан ли Firestore, прежде чем вызывать `initializeFirestore`. Это устраняет конфликты при HMR и ре-рендерах.
+2. **Promise Fix**: `initiateAnonymousSignIn` теперь возвращает `Promise`, что позволяет `AudioEngineProvider` корректно ожидать (`await`) завершения авторизации.
+3. **Robust Error Handling**: В `AudioEngineProvider` добавлен блок `try/catch` вокруг входа. Сетевые сбои авторизации теперь логируются как предупреждения, позволяя приложению работать в "автономном" режиме без падения всего движка.
+
+---
+
 ### ЗАПИСЬ: 2024-12-04 (План №255: «IDENTITY-BASED GENE POOL ACCESS»)
 
 **ПРОБЛЕМА:**
@@ -12,18 +26,5 @@
 1. **Silent Auth**: В метод `initialize()` контекста `AudioEngineProvider` добавлен вызов `initiateAnonymousSignIn`. Теперь каждый пользователь автоматически получает временный ID.
 2. **Rule Upgrade**: В `firestore.rules` доступ к `masterpieces` изменен с анонимного на авторизованный (`if isSignedIn()`). 
 3. **Connectivity**: Подтверждена работоспособность `Long Polling` для стабильного удержания сессии в Studio-среде.
-
----
-
-### ЗАПИСЬ: 2024-12-04 (План №254: «CONNECTIVITY & PERMISSIONS BREAKTHROUGH»)
-
-**ПРОБЛЕМА:**
-1. Ошибка `FirebaseError: Missing or insufficient permissions` при сохранении в `masterpieces`.
-2. Ошибка `WebChannelConnection RPC 'Listen' transport errored` (сетевой транспорт).
-
-**РЕШЕНИЕ:**
-1. **Long Polling**: В `src/firebase/index.ts` включен режим `experimentalForceLongPolling: true`. Это устраняет ошибки сетевого транспорта в Studio/IDX среде.
-2. **Rule Refinement**: Правила Firestore для `masterpieces` упрощены до явного списка `get, list, create: if true`.
-3. **SDK Initialization**: Переход на `initializeFirestore` для гарантированного применения сетевых настроек при старте.
 
 ---

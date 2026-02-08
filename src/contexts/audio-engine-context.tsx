@@ -342,11 +342,17 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
     if (isInitialized || isInitializing) return true;
     setIsInitializing(true);
     try {
-        // #ЗАЧЕМ: Гарантированная авторизация.
-        // #ЧТО: Анонимный вход в систему перед началом работы с облаком.
+        // #ЗАЧЕМ: Гарантированная авторизация с обработкой сетевых сбоев.
+        // #ЧТО: Безопасный анонимный вход. Если сеть недоступна, логируем ошибку, 
+        //      но продолжаем инициализацию аудио (автономный режим).
         if (!auth.currentUser) {
             console.log('[AudioEngine] Authenticating anonymously...');
-            await initiateAnonymousSignIn(auth);
+            try {
+                await initiateAnonymousSignIn(auth);
+                console.log('[AudioEngine] Anonymous authentication successful.');
+            } catch (authError) {
+                console.warn('[AudioEngine] Anonymous authentication failed (network?). Operating in offline mode.', authError);
+            }
         }
 
         if (!audioContextRef.current) audioContextRef.current = new (window.AudioContext || (window as any).webkitAudioContext)({ sampleRate: 44100, latencyHint: 'interactive' });

@@ -3,7 +3,7 @@
 import { firebaseConfig } from '@/firebase/config';
 import { initializeApp, getApps, getApp, FirebaseApp } from 'firebase/app';
 import { getAuth } from 'firebase/auth';
-import { getFirestore, initializeFirestore } from 'firebase/firestore';
+import { getFirestore, initializeFirestore, Firestore } from 'firebase/firestore';
 
 // IMPORTANT: DO NOT MODIFY THIS FUNCTION
 export function initializeFirebase() {
@@ -35,10 +35,17 @@ export function initializeFirebase() {
 export function getSdks(firebaseApp: FirebaseApp) {
   // #ЗАЧЕМ: Исправление сетевых ошибок WebChannel в среде разработки.
   // #ЧТО: Использование принудительного Long Polling. 
-  // #ОБНОВЛЕНО: Гарантированная настройка для стабильной работы анонимной сессии.
-  const firestore = initializeFirestore(firebaseApp, {
-    experimentalForceLongPolling: true,
-  });
+  // #ОБНОВЛЕНО: Идемпотентная инициализация. Если Firestore уже создан, 
+  //             мы не вызываем initializeFirestore повторно, чтобы избежать крэша.
+  let firestore: Firestore;
+  try {
+    firestore = initializeFirestore(firebaseApp, {
+      experimentalForceLongPolling: true,
+    });
+  } catch (e) {
+    // Firestore already initialized, get existing instance
+    firestore = getFirestore(firebaseApp);
+  }
 
   return {
     firebaseApp,
