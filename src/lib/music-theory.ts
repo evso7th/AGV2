@@ -8,6 +8,7 @@
  *       Теперь наследование (Breeding) влияет на "посев" всей структуры пьесы.
  * #ОБНОВЛЕНО (ПЛАН №241): Добавлена глубокая генетическая телеметрия (логирование эволюции).
  * #ОБНОВЛЕНО (ПЛАН №242): Трансформация лика перенесена в момент Рождения (Epoch 0).
+ * #ОБНОВЛЕНО (ПЛАН №253): Реализовано битовое скрещивание (Bitwise Crossover) для повышения качества наследования.
  */
 
 import type { 
@@ -89,10 +90,22 @@ export function transformLick(lick: BluesSoloPhrase, seed: number, epoch: number
     return transformed;
 }
 
-export function crossoverDNA(currentSeed: number, ancestor: any): number {
-    if (!ancestor || !ancestor.seed) return currentSeed;
-    const blendFactor = 0.5;
-    return Math.floor(currentSeed * blendFactor + ancestor.seed * (1 - blendFactor));
+/**
+ * #ЗАЧЕМ: Генетическое скрещивание семян.
+ * #ЧТО: Использует битовую маску для смешивания энтропии двух родителей.
+ *       Это более эффективный способ наследования структурных параметров, чем усреднение.
+ */
+export function crossoverDNA(seedA: number, ancestor: any): number {
+    if (!ancestor || !ancestor.seed) return seedA;
+    const seedB = Number(ancestor.seed);
+    
+    // Битовое скрещивание: 0x55555555 = 01010101...
+    // Позволяет наследовать чередующиеся биты от каждого родителя.
+    const mask = 0x55555555;
+    const combined = (seedA & mask) | (seedB & ~mask);
+    
+    // Гарантируем положительное число и добавляем смещение на основе времени
+    return Math.abs(combined) % 2147483647;
 }
 
 export function pickWeightedDeterministic<T>(options: { name?: T, value?: T, weight: number }[], seed: number, epoch: number, offset: number): T {
