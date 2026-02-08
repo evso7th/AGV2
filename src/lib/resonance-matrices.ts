@@ -1,4 +1,3 @@
-
 import type { FractalEvent, ResonanceMatrix, Mood, Genre, Technique, BassSynthParams, InstrumentType } from '@/types/fractal';
 import { getScaleForMood } from './music-theory';
 
@@ -178,6 +177,10 @@ export const AmbientK: ResonanceMatrix = (
  */
 export const TraditionalK = ElectronicK;
 
+/**
+ * #ЗАЧЕМ: Матрица резонанса для меланхоличного минора.
+ * #ОБНОВЛЕНО (ПЛАН №257): Повышена награда за консонансы до 0.98.
+ */
 export const MelancholicMinorK: ResonanceMatrix = (eventA: FractalEvent, eventB: FractalEvent, context: { mood: Mood; tempo: number; delta: number, genre: Genre }): number => {
     if (!eventA || !eventB) { return 0.5; }
 
@@ -219,7 +222,8 @@ export const MelancholicMinorK: ResonanceMatrix = (eventA: FractalEvent, eventB:
         if (!noteAInScale || !noteBInScale) return 0.2; 
 
         const interval = Math.abs(eventA.note - eventB.note) % 12;
-        if ([3, 4, 7, 8, 9].includes(interval)) return 0.9;
+        // #ЗАЧЕМ: Максимальное вознаграждение за чистую гармонию.
+        if ([3, 4, 7, 8, 9].includes(interval)) return 0.98;
         return 0.6;
     }
 
