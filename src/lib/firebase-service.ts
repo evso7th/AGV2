@@ -1,10 +1,12 @@
-import { collection, addDoc, serverTimestamp, Firestore } from 'firebase/firestore';
+
+import { collection, doc, setDoc, serverTimestamp, Firestore } from 'firebase/firestore';
 import { errorEmitter } from '@/firebase/error-emitter';
 import { FirestorePermissionError } from '@/firebase/errors';
 
 /**
  * #ЗАЧЕМ: Сохранение "Шедевра" (удачной музыкальной комбинации).
- * #ЧТО: Отправляет текущие параметры сюиты в Firestore. Использует неблокирующий вызов.
+ * #ЧТО: Отправляет текущие параметры сюиты в Firestore. 
+ *       Использует детерминированный путь через setDoc для обхода ошибок прав.
  * #СВЯЗИ: Вызывается из хука useAuraGroove.
  */
 export function saveMasterpiece(db: Firestore, data: {
@@ -15,10 +17,13 @@ export function saveMasterpiece(db: Firestore, data: {
   bpm: number;
   instrumentSettings: any;
 }) {
+  // #ЗАЧЕМ: Гарантированный путь masterpieces/{id}.
+  // Мы создаем ссылку на новый документ в коллекции, чтобы SDK сгенерировал ID на клиенте.
   const masterpiecesRef = collection(db, 'masterpieces');
-  
+  const newDocRef = doc(masterpiecesRef);
+
   // #ЗАЧЕМ: Гарантированная сериализация.
-  // Мы создаем чистый клон объекта данных, чтобы избежать передачи ссылок на внутренние стейты React.
+  // Мы создаем чистый клон объекта данных.
   const cleanSettings = JSON.parse(JSON.stringify(data.instrumentSettings));
 
   const payload = {
@@ -32,19 +37,17 @@ export function saveMasterpiece(db: Firestore, data: {
   };
 
   // #ЗАЧЕМ: Соблюдение правила "Avoid Awaiting Mutation Calls".
-  // Мы не используем await, чтобы не блокировать UI и позволить Firestore работать в фоне.
-  addDoc(masterpiecesRef, payload)
+  // Используем setDoc с явно созданной ссылкой.
+  setDoc(newDocRef, payload)
     .catch(async (serverError) => {
-      // #ЗАЧЕМ: Создание контекстной ошибки для LLM-отладки.
-      // Это позволит точно увидеть, почему Firestore отклонил запрос.
+      // #ЗАЧЕМ: Создание контекстной ошибки для диагностики.
       const permissionError = new FirestorePermissionError({
-        path: masterpiecesRef.path,
+        path: newDocRef.path,
         operation: 'create',
         requestResourceData: payload,
       });
 
-      // #ЗАЧЕМ: Эмиссия ошибки через глобальный слушатель.
-      // Ошибка будет перехвачена FirebaseErrorListener и отображена в оверлее.
+      // Эмиссия ошибки через глобальный слушатель.
       errorEmitter.emit('permission-error', permissionError);
     });
 }

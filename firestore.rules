@@ -1,3 +1,4 @@
+
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
@@ -19,11 +20,10 @@ service cloud.firestore {
     // --- COLLECTION RULES ---
 
     // Masterpieces: Global genetic memory
-    // #ЗАЧЕМ: Полностью открытый доступ для Глобальной Памяти (Public Memory).
-    // #ЧТО: Разрешено чтение и создание для всех (включая анонимов).
-    match /masterpieces/{id} {
+    // #ЗАЧЕМ: Тотальный доступ на чтение и создание для реализации Глобальной Памяти.
+    // #ЧТО: Правило вынесено в корень и максимально упрощено для исключения блокировок.
+    match /masterpieces/{document=**} {
       allow read, create: if true;
-      // Запрет на изменение или удаление уже сохраненных шедевров.
       allow update, delete: if false;
     }
 
