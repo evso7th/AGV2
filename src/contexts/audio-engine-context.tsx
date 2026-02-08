@@ -27,7 +27,7 @@ import { V2_PRESETS } from '@/lib/presets-v2';
 import { HarmonySynthManager } from '@/lib/harmony-synth-manager';
 import { PianoAccompanimentManager } from '@/lib/piano-accompaniment-manager';
 import { buildMultiInstrument } from '@/lib/instrument-factory';
-import { useFirestore } from '@/firebase';
+import { useFirestore, useFirebase, initiateAnonymousSignIn } from '@/firebase';
 import { collection, query, limit, getDocs, orderBy } from 'firebase/firestore';
 import { saveMasterpiece } from '@/lib/firebase-service';
 
@@ -107,10 +107,12 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
   const [useMelodyV2, setUseMelodyV2] = useState(false);
   const [isRecording, setIsRecording] = useState(false);
   
+  const firebase = useFirebase();
   const workerRef = useRef<Worker | null>(null);
   const audioContextRef = useRef<AudioContext | null>(null);
   const settingsRef = useRef<WorkerSettings | null>(null);
-  const db = useFirestore();
+  const db = firebase.firestore;
+  const auth = firebase.auth;
   const ancestorsRef = useRef<any[]>([]); 
   
   const drumMachineRef = useRef<DrumMachine | null>(null);
@@ -311,7 +313,6 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
                 if (type === 'SCORE_READY' && payload && 'events' in payload) {
                     const { events, barDuration, instrumentHints, barCount, actualBpm } = payload;
                     
-                    // #ЗАЧЕМ: Обновление темпа в настройках контекста при получении данных от воркера.
                     if (actualBpm && settingsRef.current) {
                         settingsRef.current.bpm = actualBpm;
                     }
@@ -341,6 +342,13 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
     if (isInitialized || isInitializing) return true;
     setIsInitializing(true);
     try {
+        // #ЗАЧЕМ: Гарантированная авторизация.
+        // #ЧТО: Анонимный вход в систему перед началом работы с облаком.
+        if (!auth.currentUser) {
+            console.log('[AudioEngine] Authenticating anonymously...');
+            await initiateAnonymousSignIn(auth);
+        }
+
         if (!audioContextRef.current) audioContextRef.current = new (window.AudioContext || (window as any).webkitAudioContext)({ sampleRate: 44100, latencyHint: 'interactive' });
         if (audioContextRef.current.state === 'suspended') await audioContextRef.current.resume();
         const context = audioContextRef.current;
@@ -380,7 +388,7 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
         toast({ variant: "destructive", title: "Audio Initialization Error" });
         return false;
     } finally { setIsInitializing(false); }
-  }, [isInitialized, isInitializing, toast, loadAncestors]);
+  }, [isInitialized, isInitializing, toast, loadAncestors, auth]);
 
   const scheduleNextImpulse = useCallback(() => {
     if (impulseTimerRef.current) clearTimeout(impulseTimerRef.current);

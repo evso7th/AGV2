@@ -34,7 +34,8 @@ export function initializeFirebase() {
 
 export function getSdks(firebaseApp: FirebaseApp) {
   // #ЗАЧЕМ: Исправление сетевых ошибок WebChannel в среде разработки.
-  // #ЧТО: Использование принудительного Long Polling.
+  // #ЧТО: Использование принудительного Long Polling. 
+  // #ОБНОВЛЕНО: Гарантированная настройка для стабильной работы анонимной сессии.
   const firestore = initializeFirestore(firebaseApp, {
     experimentalForceLongPolling: true,
   });

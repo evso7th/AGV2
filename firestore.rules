@@ -20,10 +20,10 @@ service cloud.firestore {
     // --- COLLECTION RULES ---
 
     // Masterpieces: Global genetic memory
-    // #ЗАЧЕМ: Максимально явные и простые правила для исключения блокировок.
-    // #ЧТО: Явное разрешение get, list, create для любого пользователя.
-    match /masterpieces/{id} {
-      allow get, list, create: if true;
+    // #ЗАЧЕМ: Разрешение записи только авторизованным пользователям.
+    // #ЧТО: Переход от 'if true' к 'if isSignedIn()'.
+    match /masterpieces/{document=**} {
+      allow read, create: if isSignedIn();
       allow update, delete: if false;
     }
 
