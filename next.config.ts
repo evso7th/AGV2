@@ -10,7 +10,6 @@ const withPWA = require('next-pwa')({
 
 const nextConfig: NextConfig = {
   output: 'export',
-  srcDir: 'src',
   typescript: {
     ignoreBuildErrors: true,
   },
@@ -22,4 +21,4 @@ const nextConfig: NextConfig = {
   },
 };
 
-export default withPWA(nextConfig);
+export default nextConfig;
