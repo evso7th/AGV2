@@ -20,10 +20,9 @@ service cloud.firestore {
 
     // Masterpieces: Global genetic memory
     match /masterpieces/{id} {
-      // #ЗАЧЕМ: Открытый доступ на чтение для алгоритма "Evolutionary Sowing".
-      // #ЧТО: allow get, list изменен с isSignedIn() на true.
-      allow get, list: if true;
-      allow create: if isSignedIn();
+      // #ЗАЧЕМ: Полностью открытый доступ для Глобальной Памяти (Public Memory).
+      // #ЧТО: allow get, list, create установлены в true.
+      allow get, list, create: if true;
       // No updates or deletes allowed for masterpieces once saved
       allow update, delete: if false;
     }
