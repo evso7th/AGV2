@@ -1,11 +1,8 @@
-
 import type { MusicBlueprint } from '@/types/music';
 
 /**
- * #ЗАЧЕМ: Блюпринт "The Ritual" (Dark Blues v3.0 - Algorithmic Prologue).
- * #ЧТО: Внедрена секция PROLOGUE для глубокого атмосферного входа.
- * #ОБНОВЛЕНО (ПЛАН 243): Снижен шанс активации sfx и sparkles для обеспечения редкости.
- * #СВЯЗИ: Управляется BluesBrain.
+ * #ЗАЧЕМ: Блюпринт "The Ritual" (Dark Blues v4.0 - Inverse Tension Integration).
+ * #ЧТО: Вероятности sfx и sparkles возвращены к базовым (0.4).
  */
 export const DarkBluesBlueprint: MusicBlueprint = {
     id: 'dark_blues',
@@ -37,7 +34,7 @@ export const DarkBluesBlueprint: MusicBlueprint = {
                         duration: { percent: 100 }, 
                         instrumentation: {
                            accompaniment: { activationChance: 1.0, instrumentOptions: [ { name: 'synth_cave_pad', weight: 1.0 } ] },
-                           sfx: { activationChance: 0.12, instrumentOptions: [ { name: 'dark', weight: 1.0 } ], transient: true }
+                           sfx: { activationChance: 0.45, instrumentOptions: [ { name: 'dark', weight: 1.0 } ], transient: true }
                         }
                     }
                 ],
@@ -87,8 +84,8 @@ export const DarkBluesBlueprint: MusicBlueprint = {
                            drums: { activationChance: 1.0, instrumentOptions: [ { name: 'blues_melancholic_master', weight: 1.0 } ] },
                            harmony: { activationChance: 1.0, instrumentOptions: [ { name: 'guitarChords', weight: 1.0 } ] },
                            pianoAccompaniment: { activationChance: 1.0, instrumentOptions: [ { name: 'piano', weight: 1.0 } ] },
-                           sparkles: { activationChance: 0.1, instrumentOptions: [ { name: 'dark', weight: 1.0 } ], transient: true },
-                           sfx: { activationChance: 0.08, instrumentOptions: [ { name: 'voice', weight: 1.0 } ], transient: true }
+                           sparkles: { activationChance: 0.4, instrumentOptions: [ { name: 'dark', weight: 1.0 } ], transient: true },
+                           sfx: { activationChance: 0.35, instrumentOptions: [ { name: 'voice', weight: 1.0 } ], transient: true }
                         }
                     }
                 ],

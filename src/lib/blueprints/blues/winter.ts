@@ -1,11 +1,9 @@
-
 import type { MusicBlueprint } from '@/types/music';
 
 /**
- * #ЗАЧЕМ: Блюпринт "The Bluest Blues" (v20.0 - Algorithmic Overture).
- * #ЧТО: 1. Внедрена секция PROLOGUE (4 такта) для тематического вступления.
- *       2. Сохранен принцип кумулятивности ансамбля.
- * #ОБНОВЛЕНО (ПЛАН 243): Снижен шанс активации sfx и sparkles для обеспечения редкости.
+ * #ЗАЧЕМ: Блюпринт "The Bluest Blues" (v21.0 - Inverse Tension Integration).
+ * #ЧТО: Вероятности sfx и sparkles возвращены к базовым (0.4), 
+ *       так как движок теперь фильтрует их по напряжению.
  * #СТАТУС: FROZEN.
  */
 export const WinterBluesBlueprint: MusicBlueprint = {
@@ -38,7 +36,7 @@ export const WinterBluesBlueprint: MusicBlueprint = {
                         duration: { percent: 100 }, 
                         instrumentation: {
                            accompaniment: { activationChance: 1.0, instrumentOptions: [ { name: 'accompaniment', weight: 1.0 } ] },
-                           sfx: { activationChance: 0.12, instrumentOptions: [ { name: 'common', weight: 1.0 } ], transient: true }
+                           sfx: { activationChance: 0.45, instrumentOptions: [ { name: 'common', weight: 1.0 } ], transient: true }
                         }
                     }
                 ],
@@ -83,7 +81,7 @@ export const WinterBluesBlueprint: MusicBlueprint = {
                            harmony: { activationChance: 1.0, instrumentOptions: [ { name: 'guitarChords', weight: 1.0 } ] },
                            melody: { activationChance: 1.0, instrumentOptions: [ { name: 'melody', weight: 1.0 } ] },
                            pianoAccompaniment: { activationChance: 1.0, instrumentOptions: [ { name: 'piano', weight: 1.0 } ] },
-                           sparkles: { activationChance: 0.12, instrumentOptions: [ { name: 'dark', weight: 1.0 } ], transient: true }
+                           sparkles: { activationChance: 0.4, instrumentOptions: [ { name: 'dark', weight: 1.0 } ], transient: true }
                         }
                     },
                     {
@@ -95,7 +93,7 @@ export const WinterBluesBlueprint: MusicBlueprint = {
                            bass: { activationChance: 1.0, instrumentOptions: [ { name: 'bass', weight: 1.0 } ] },
                            drums: { activationChance: 1.0, instrumentOptions: [ { name: 'blues_melancholic_master', weight: 1.0 } ] },
                            harmony: { activationChance: 1.0, instrumentOptions: [ { name: 'guitarChords', weight: 0.6 }, { name: 'flute', weight: 0.4 } ] },
-                           sparkles: { activationChance: 0.1, instrumentOptions: [ { name: 'dark', weight: 1.0 } ], transient: true }
+                           sparkles: { activationChance: 0.35, instrumentOptions: [ { name: 'dark', weight: 1.0 } ], transient: true }
                         }
                     }
                 ],
@@ -119,7 +117,7 @@ export const WinterBluesBlueprint: MusicBlueprint = {
                            drums: { activationChance: 1.0, instrumentOptions: [ { name: 'blues_melancholic_master', weight: 1.0 } ] },
                            accompaniment: { activationChance: 1.0, instrumentOptions: [ { name: 'organ_soft_jazz', weight: 1.0 } ] },
                            harmony: { activationChance: 1.0, instrumentOptions: [ { name: 'guitarChords', weight: 0.6 }, { name: 'flute', weight: 0.4 } ] },
-                           sparkles: { activationChance: 0.1, instrumentOptions: [ { name: 'dark', weight: 1.0 } ], transient: true }
+                           sparkles: { activationChance: 0.3, instrumentOptions: [ { name: 'dark', weight: 1.0 } ], transient: true }
                         }
                     }
                 ],

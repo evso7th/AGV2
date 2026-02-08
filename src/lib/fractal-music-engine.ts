@@ -44,7 +44,9 @@ interface EngineConfig {
 }
 
 /**
- * #ЗАЧЕМ: Фрактальный Музыкальный Движок V13.0 — "Evolutionary Sowing Implementation".
+ * #ЗАЧЕМ: Фрактальный Музыкальный Движок V14.0 — "Inverse Tension Decoration".
+ * #ЧТО: Декоративные слои (sfx, sparkles) теперь обратно пропорциональны напряжению сюиты.
+ *       Это обеспечивает "воздух" в кульминациях и глубину в тихих моментах.
  */
 export class FractalMusicEngine {
   public config: EngineConfig;
@@ -77,7 +79,6 @@ export class FractalMusicEngine {
     const blueprint = getBlueprint(this.config.genre, this.config.mood);
     
     // #ЗАЧЕМ: Алгоритм Evolutionary Sowing.
-    // #ЧТО: Скрещивание и посев теперь инкапсулированы в generateSuiteDNA.
     this.suiteDNA = generateSuiteDNA(
         blueprint.structure.totalDuration.preferredBars, 
         this.config.mood, 
@@ -88,7 +89,6 @@ export class FractalMusicEngine {
         this.config.ancestor
     );
 
-    // Если произошло скрещивание, обновляем локальный генератор случайных чисел
     if (this.config.ancestor) {
         console.log(`%c[GENEPOOL] Inheritance Detected! Ancestor Seed: ${this.config.ancestor.seed}`, 'color: #ff00ff; font-weight:bold;');
     }
@@ -120,6 +120,10 @@ export class FractalMusicEngine {
     if (stages && stages.length > 0) {
         const partBars = navInfo.currentPartEndBar - navInfo.currentPartStartBar + 1;
         const progress = (this.epoch - navInfo.currentPartStartBar) / partBars;
+        
+        // #ЗАЧЕМ: Получение актуального напряжения для фильтрации декораций.
+        const tension = this.suiteDNA?.tensionMap?.[this.epoch % (this.suiteDNA.tensionMap.length || 1)] ?? 0.5;
+
         let currentStage = stages[stages.length - 1];
         let acc = 0;
         for (const s of stages) { 
@@ -132,12 +136,19 @@ export class FractalMusicEngine {
 
         Object.entries(currentStage.instrumentation).forEach(([partStr, rule]: [any, any]) => {
             const part = partStr as InstrumentPart;
-            if (this.random.next() < rule.activationChance) {
+            
+            // #ЗАЧЕМ: Закон Обратной Зависимости текстур от напряжения.
+            // #ЧТО: Шанс появления SFX и Sparkles снижается при росте напряжения.
+            let effectiveChance = rule.activationChance;
+            if (part === 'sfx' || part === 'sparkles') {
+                effectiveChance = rule.activationChance * (1.0 - tension);
+            }
+
+            if (this.random.next() < effectiveChance) {
                 const timbre = pickWeightedDeterministic(rule.instrumentOptions, this.config.seed, this.epoch, 500);
                 (instrumentHints as any)[part] = timbre;
                 instrumentHints.summonProgress![part] = 1.0; 
                 
-                // Передача категории для Sparkles (например, 'promenade')
                 if (part === 'sparkles' && rule.instrumentOptions[0]?.category) {
                     (instrumentHints as any).sparkleCategory = rule.instrumentOptions[0].category;
                 }
