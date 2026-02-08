@@ -59,8 +59,6 @@ const Scheduler = {
             console.log(`%c[Chain] Loading MAIN Blueprint: ${blueprint.id}`, 'color: #FFD700; font-weight:bold;');
         }
 
-        // #ИСПРАВЛЕНО (ПЛАН 246): Передаем blueprint в конструктор.
-        // Это предотвращает загрузку неверного Блюпринта внутри движка.
         const newEngine = new FractalMusicEngine({
             ...settings,
             seed: settings.seed || Date.now(),
@@ -70,6 +68,10 @@ const Scheduler = {
 
         newEngine.initialize(true); 
         fractalMusicEngine = newEngine;
+        
+        // #ЗАЧЕМ: Синхронизация темпа. ДНК сюиты определяет BPM, воркер должен принять его.
+        this.settings.bpm = fractalMusicEngine.config.tempo;
+        
         this.barCount = 0;
     },
 
@@ -138,7 +140,6 @@ const Scheduler = {
         }
 
         if (finalPayload.beautyScore > 0.88 && this.barCount > 8) {
-            console.log(`%c[GENEPOOL] AI ARBITRATOR: High Resonance Detected (${finalPayload.beautyScore.toFixed(3)}). Seed ${this.settings.seed} is worthy.`, 'color: #ff00ff; font-weight: bold;');
             self.postMessage({ 
                 type: 'HIGH_RESONANCE_DETECTED', 
                 payload: { beautyScore: finalPayload.beautyScore, seed: this.settings.seed } 
@@ -159,7 +160,8 @@ const Scheduler = {
         }
         
         const sectionName = finalPayload.navInfo?.currentPart.name || 'Unknown';
-        console.log(`[Bar ${this.barCount}] [${this.suiteType}] [${sectionName}] Res:${finalPayload.beautyScore.toFixed(2)} D:${counts.drums}, B:${counts.bass}, M:${counts.melody}`);
+        // #ЗАЧЕМ: Отображение текущего BPM в логах.
+        console.log(`[Bar ${this.barCount}] [${this.suiteType}] [${sectionName}] BPM:${this.settings.bpm} Res:${finalPayload.beautyScore.toFixed(2)} D:${counts.drums}, B:${counts.bass}, M:${counts.melody}`);
 
         self.postMessage({ 
             type: 'SCORE_READY', 
@@ -168,6 +170,8 @@ const Scheduler = {
                 instrumentHints: finalPayload.instrumentHints,
                 barDuration: this.barDuration,
                 barCount: this.barCount,
+                // #ЗАЧЕМ: Передача актуального BPM в UI.
+                actualBpm: this.settings.bpm
             }
         });
         
@@ -190,7 +194,7 @@ const Scheduler = {
 
         this.barCount++;
 
-        // #ЗАЧЕМ: Chain Logic — переход на следующую пьесу в цепи.
+        // Chain Logic
         if (fractalMusicEngine && this.barCount >= fractalMusicEngine.navigator!.totalBars) {
              console.log(`%c[Chain] Suite ${this.suiteType} ended. Transitioning...`, 'color: #4ade80; font-weight: bold;');
              

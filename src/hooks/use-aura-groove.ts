@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState, useEffect, useCallback, useRef } from "react";
@@ -80,8 +79,10 @@ export const useAuraGroove = (): AuraGrooveProps => {
     startMasterFadeOut,
     cancelMasterFadeOut,
     startRecording,
-    stopRecording
-  } = useAudioEngine();
+    stopRecording,
+    // #ЗАЧЕМ: Получение доступа к воркеру для синхронизации темпа.
+    getWorker
+  } = useAudioEngine() as any; 
   
   const db = useFirestore();
   const router = useRouter();
@@ -95,8 +96,6 @@ export const useAuraGroove = (): AuraGrooveProps => {
     pianoAccompaniment: { name: "piano", volume: 0.65 },
   });
   const [textureSettings, setTextureSettings] = useState<TextureSettings>({
-      // #ЗАЧЕМ: Системное снижение громкости в 3 раза.
-      // #ЧТО: volume изменен с 0.35 на 0.12.
       sparkles: { enabled: true, volume: 0.12 },
       sfx: { enabled: true, volume: 0.12 },
   });
@@ -126,6 +125,21 @@ export const useAuraGroove = (): AuraGrooveProps => {
   useEffect(() => {
     initialize();
   }, [initialize]);
+
+  // #ЗАЧЕМ: Слушатель для синхронизации BPM из воркера в UI.
+  useEffect(() => {
+    const worker = getWorker?.();
+    if (!worker) return;
+
+    const handleMessage = (e: MessageEvent) => {
+      if (e.data.type === 'SCORE_READY' && e.data.payload?.actualBpm) {
+        setBpm(e.data.payload.actualBpm);
+      }
+    };
+
+    worker.addEventListener('message', handleMessage);
+    return () => worker.removeEventListener('message', handleMessage);
+  }, [getWorker]);
 
 
   const getFullSettings = useCallback((): Omit<WorkerSettings, 'seed'> => {

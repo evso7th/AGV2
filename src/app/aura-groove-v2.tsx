@@ -243,17 +243,13 @@ export function AuraGrooveV2({
                   )}
                   <div className="grid grid-cols-[1fr_2fr_auto] items-center gap-2">
                     <Label htmlFor="bpm-slider" className="text-right text-xs">BPM</Label>
-                    <Slider id="bpm-slider" value={[bpm]} min={60} max={160} step={5} onValueChange={(v) => handleBpmChange(v[0])} className="col-span-1" disabled={isInitializing || composerControl}/>
+                    {/* #ЗАЧЕМ: Слайдер BPM теперь disabled во время игры, так как темп диктуется DNA. */}
+                    <Slider id="bpm-slider" value={[bpm]} min={60} max={160} step={1} onValueChange={(v) => handleBpmChange(v[0])} className="col-span-1" disabled={isInitializing || isPlaying || composerControl}/>
                     <span className="text-xs w-8 text-right font-mono">{bpm}</span>
                   </div>
                   <div className="grid grid-cols-3 items-center gap-2">
                     <Label htmlFor="density-slider" className="text-right text-xs">Density</Label>
                     <Slider id="density-slider" value={[density]} min={0.1} max={1} step={0.05} onValueChange={(v) => setDensity(v[0])} className="col-span-2" disabled={isInitializing}/>
-                  </div>
-                   <div className="grid grid-cols-[1fr_2fr_auto] items-center gap-2">
-                    <Label htmlFor="intro-slider" className="text-right text-xs">Intro Length</Label>
-                    <Slider id="intro-slider" value={[introBars]} min={1} max={10} step={1} onValueChange={(v) => setIntroBars(v[0])} className="col-span-1" disabled={isInitializing || isPlaying}/>
-                    <span className="text-xs w-8 text-right font-mono">{introBars}</span>
                   </div>
                 </CardContent>
               </Card>

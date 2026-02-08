@@ -46,6 +46,7 @@ type WorkerMessage = {
         barCount?: number;
         beautyScore?: number;
         seed?: number;
+        actualBpm?: number;
     } | FractalEvent;
     error?: string;
     message?: string;
@@ -87,6 +88,7 @@ interface AudioEngineContextType {
   toggleMelodyEngine: () => void;
   startRecording: () => void;
   stopRecording: () => void;
+  getWorker: () => Worker | null;
 }
 
 const AudioEngineContext = createContext<AudioEngineContextType | null>(null);
@@ -140,6 +142,8 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
   const impulseTimerRef = useRef<NodeJS.Timeout | null>(null);
   
   const { toast } = useToast();
+
+  const getWorker = useCallback(() => workerRef.current, []);
 
   const loadAncestors = useCallback(async () => {
       try {
@@ -292,7 +296,6 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
                 
                 if (type === 'HIGH_RESONANCE_DETECTED' && payload && 'seed' in payload) {
                     if (settingsRef.current) {
-                        // #ЗАЧЕМ: Усиленная визуализация пополнения генофонда.
                         console.info(`%c[GENEPOOL] AI ARBITRATOR: Resonance ${payload.beautyScore?.toFixed(3)}! Adding seed ${payload.seed} to global memory.`, 'color: #ff00ff; font-weight: bold; background: #222; padding: 2px 5px; border-radius: 3px;');
                         saveMasterpiece(db, {
                             seed: payload.seed!,
@@ -306,7 +309,13 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
                 }
 
                 if (type === 'SCORE_READY' && payload && 'events' in payload) {
-                    const { events, barDuration, instrumentHints, barCount } = payload;
+                    const { events, barDuration, instrumentHints, barCount, actualBpm } = payload;
+                    
+                    // #ЗАЧЕМ: Обновление темпа в настройках контекста при получении данных от воркера.
+                    if (actualBpm && settingsRef.current) {
+                        settingsRef.current.bpm = actualBpm;
+                    }
+
                     if(events && barDuration && settingsRef.current && barCount !== undefined){
                         scheduleEvents(events, nextBarTimeRef.current, settingsRef.current.bpm, barCount, settingsRef.current.composerControlsInstruments ? instrumentHints : undefined);
                         nextBarTimeRef.current += barDuration;
@@ -420,7 +429,7 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
         resetWorker: resetWorkerCallback, setVolume: setVolumeCallback, setInstrument: setInstrumentCallback,
         setBassTechnique: (t) => {}, setTextureSettings: setTextureSettingsCallback,
         setEQGain: (i, g) => {}, startMasterFadeOut: (d) => {}, cancelMasterFadeOut: () => {},
-        toggleMelodyEngine, startRecording, stopRecording
+        toggleMelodyEngine, startRecording, stopRecording, getWorker
     }}>
       {children}
     </AudioEngineContext.Provider>
