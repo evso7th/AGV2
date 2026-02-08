@@ -19,18 +19,19 @@ import { GUITAR_PATTERNS } from './assets/guitar-patterns';
 import { BLUES_SOLO_LICKS } from './assets/blues_guitar_solo';
 
 /**
- * #ЗАЧЕМ: Блюзовый Мозг V31.0 — "Timbral Intelligence".
- * #ЧТО: 1. Внедрен generateSustainedAccompaniment для Органа/Rhodes.
- *       2. Исправлено "замалчивание" аккомпанемента из-за неверных техник.
- *       3. Оптимизирован бюджет для раннего входа барабанов.
+ * #ЗАЧЕМ: Блюзовый Мозг V32.0 — "Dark Blues Resuscitation".
+ * #ЧТО: 1. Повышена слышимость Органа/Rhodes (weight 0.45+).
+ *       2. Снижена цена ударных для ранней активации.
+ *       3. Исправлено затухание в Dark Blues.
+ * #ОБНОВЛЕНО: Глубокая память и вакцина стагнации сохранены.
  */
 
 const ENERGY_PRICES = {
     solo: 50,
     bass_walking: 20,
     bass_pedal: 5,
-    drums_full: 20, // Снижено для раннего входа
-    drums_minimal: 8,
+    drums_full: 15,   // Снижено для гарантии входа в Dark Blues
+    drums_minimal: 5,
     harmony: 15,      
     piano: 15, 
     sfx: 10,          
@@ -103,7 +104,8 @@ export class BluesBrain {
     
     this.evaluateTimbralDramaturgy(tension, hints, this.mood);
     
-    const barBudget = 150 + (tension * 100);
+    // #ЗАЧЕМ: Увеличенный бюджет для Dark Blues.
+    const barBudget = 180 + (tension * 120); 
     let consumedEnergy = 0;
     
     const combinedEvents: FractalEvent[] = [];
@@ -112,7 +114,7 @@ export class BluesBrain {
     if (hints.melody) {
       const prog = hints.summonProgress?.melody ?? 1.0;
       let melodyEvents: FractalEvent[] = [];
-      const canAffordSolo = (consumedEnergy + ENERGY_PRICES.solo <= barBudget) && tension > 0.45;
+      const canAffordSolo = (consumedEnergy + ENERGY_PRICES.solo <= barBudget) && tension > 0.4;
       
       if (canAffordSolo) {
           melodyEvents = this.generateLSystemMelody(epoch, currentChord, barIn12, tempo, tension, dna, bpmFactor);
@@ -138,7 +140,7 @@ export class BluesBrain {
     events.push(...combinedEvents);
 
     if (hints.bass) {
-      const isWalking = (tension > 0.6);
+      const isWalking = (tension > 0.55);
       const bassEvents = this.generateBass(epoch, currentChord, tempo, tension, isWalking, bpmFactor);
       bassEvents.forEach(e => { e.weight *= (hints.summonProgress?.bass ?? 1.0); });
       events.push(...bassEvents);
@@ -157,7 +159,6 @@ export class BluesBrain {
     }
 
     if (hints.accompaniment) {
-        // #ЗАЧЕМ: Умный выбор техники на основе тембра.
         const timbre = hints.accompaniment as string;
         const isGuitarLike = timbre.includes('guitar') || timbre.includes('blackAcoustic');
         
@@ -166,7 +167,7 @@ export class BluesBrain {
             const currentPattern = this.patternOptions[calculateMusiNum(Math.floor(epoch/8), 3, this.seed, this.patternOptions.length)];
             accEvents = this.generateAccompaniment(epoch, currentChord, tempo, tension, currentPattern);
         } else {
-            // Для Органа/Rhodes используем протяжные аккорды (Sustained)
+            // Орган/Rhodes теперь звучат отчетливо
             accEvents = this.generateSustainedAccompaniment(epoch, currentChord, tempo, tension);
         }
         
@@ -191,7 +192,7 @@ export class BluesBrain {
           if (this.pianoHistory.length > this.MAX_HISTORY_DEPTH) this.pianoHistory.shift();
           const pStag = this.detectSequenceStagnation(this.pianoHistory);
           if (pStag > 0) {
-              console.warn(`%c[SOR] PIANO STAGNATION DETECTED (${pStag}-bar loop). Injecting V3 Vaccine!`, 'color: #ff00ff; font-weight: bold;');
+              console.warn(`%c[SOR] PIANO STAGNATION DETECTED (${pStag}-bar loop). Injecting Heavy Vaccine!`, 'color: #ff00ff; font-weight: bold;');
               this.pianoStagnationOffset += (this.random.nextInt(1000) + 500);
               this.pianoHistory = [];
           }
@@ -289,7 +290,7 @@ export class BluesBrain {
   private generateFingerstyleMelody(epoch: number, chord: GhostChord, tempo: number, tension: number, bpmFactor: number): FractalEvent[] {
       const beatDur = 60 / tempo;
       const root = chord.rootNote + 36;
-      const isMinor = chord.chordType === 'minor';
+      const isMinor = chord.rootNote % 12 === 4 || chord.rootNote % 12 === 9; // Adaptive minor check
       const notes = [root, root + (isMinor ? 3 : 4), root + 7, root + 10];
       const events: FractalEvent[] = [];
       const baseDensity = 0.3 + (tension * 0.3);
@@ -336,7 +337,9 @@ export class BluesBrain {
     const events: FractalEvent[] = [];
     const barIn12 = epoch % 12;
     
-    if (calculateMusiNum(epoch, 13, this.seed, 100) / 100 > bpmFactor) return [];
+    // #ЗАЧЕМ: Улучшенная выживаемость барабанов в медленных темпах.
+    const effectiveBpmFactor = Math.max(bpmFactor, 0.85);
+    if (calculateMusiNum(epoch, 13, this.seed, 100) / 100 > effectiveBpmFactor) return [];
 
     if (!isEnsemble && tension > 0.3) {
         [3, 9].forEach(t => events.push(this.createDrumEvent('perc-013', t * tickDur, 0.4, 'p')));
@@ -345,7 +348,7 @@ export class BluesBrain {
         ['drum_tom_high', 'drum_tom_low'].forEach((tom, i) => events.push(this.createDrumEvent(tom as any, i * 3 * tickDur, 0.7, 'mf')));
     }
     if (p.HH) p.HH.forEach(t => {
-        if (this.random.next() < bpmFactor) events.push(this.createDrumEvent('drum_hihat', t * tickDur, 0.3 + (tension * 0.4), 'p'));
+        if (this.random.next() < effectiveBpmFactor) events.push(this.createDrumEvent('drum_hihat', t * tickDur, 0.3 + (tension * 0.4), 'p'));
     });
     if (p.K) p.K.forEach(t => events.push(this.createDrumEvent('drum_kick', t * tickDur, 0.7 + (tension * 0.2), 'p')));
     if (p.SD) p.SD.forEach(t => events.push(this.createDrumEvent('drum_snare', t * tickDur, 0.3 + (tension * 0.6), 'mf')));
@@ -422,18 +425,22 @@ export class BluesBrain {
     return events;
   }
 
+  /**
+   * #ЗАЧЕМ: Генерация протяжных хоралов для Органа/Rhodes.
+   * #ЧТО: Создает 3-голосные аккорды на весь такт с повышенным весом.
+   */
   private generateSustainedAccompaniment(epoch: number, chord: GhostChord, tempo: number, tension: number): FractalEvent[] {
       const root = chord.rootNote;
       const isMinor = chord.chordType === 'minor' || chord.chordType === 'diminished';
       const notes = [root, root + (isMinor ? 3 : 4), root + 7];
-      const beatDur = 60 / tempo;
       
       return notes.map((note, i) => ({
           type: 'accompaniment',
           note: note + 12,
           time: i * 0.1, 
-          duration: 4.0, // На весь такт
-          weight: 0.25 + (tension * 0.2),
+          duration: 4.0, // Long sustain
+          // #ЗАЧЕМ: Повышенный вес для слышимости.
+          weight: 0.45 + (tension * 0.25), 
           technique: 'swell',
           dynamics: 'p',
           phrasing: 'legato'
