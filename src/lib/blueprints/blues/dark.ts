@@ -1,14 +1,14 @@
 import type { MusicBlueprint } from '@/types/music';
 
 /**
- * #ЗАЧЕМ: Блюпринт "The Ritual" (Dark Blues v10.0 - Longevity Fix).
- * #ЧТО: 1. Длина пьесы зафиксирована на 144 тактах (устранение преждевременного аутро).
- *       2. Гитара вступает раньше (перенесена в первую стадию Ritual).
+ * #ЗАЧЕМ: Блюпринт "The Ritual" (Dark Blues v11.0 - Subtle Opening).
+ * #ЧТО: 1. Внедрен Энергетический Фаде-ин (T: 0.3 -> 0.8) в первые 15% пьесы.
+ *       2. Это гарантирует деликатное вступление гитары (Black Acoustic + Fingerstyle).
  */
 export const DarkBluesBlueprint: MusicBlueprint = {
     id: 'dark_blues',
     name: 'Ritual of Smoldering Textures',
-    description: 'A heavy, ritualistic blues in E Phrygian. Instant ensemble buildup from bar 0.',
+    description: 'A heavy, ritualistic blues in E Phrygian. Starts subtle, builds into a monolith.',
     mood: 'dark',
     musical: {
         key: { root: 'E', scale: 'phrygian', octave: 1 },
@@ -18,14 +18,18 @@ export const DarkBluesBlueprint: MusicBlueprint = {
         tensionProfile: { 
             type: 'wave', 
             peakPosition: 0.5, 
+            // #ЗАЧЕМ: Плавный рост энергии в начале для аккуратного вступления гитары.
             curve: (p, pp) => {
+                if (p < 0.15) {
+                    // Энергетический Фаде-ин: 0.3 -> 0.75
+                    return 0.3 + (p / 0.15) * 0.45;
+                }
+                // Тлеющая волна
                 return 0.75 + 0.15 * Math.sin(p * Math.PI * 2);
             }
         }
     },
     structure: {
-        // #ЗАЧЕМ: Устранение проблемы "короткой пьесы". 
-        // #ЧТО: preferredBars установлено в 144.
         totalDuration: { preferredBars: 144 },
         parts: [
             {
@@ -59,8 +63,6 @@ export const DarkBluesBlueprint: MusicBlueprint = {
                            drums: { activationChance: 1.0, instrumentOptions: [ { name: 'blues_melancholic_master', weight: 1.0 } ] },
                            bass: { activationChance: 1.0, instrumentOptions: [ { name: 'bass', weight: 1.0 } ] },
                            accompaniment: { activationChance: 1.0, instrumentOptions: [ { name: 'accompaniment', weight: 1.0 } ] },
-                           // #ЗАЧЕМ: Ранний вход гитары (бар 8-10).
-                           // #ЧТО: Гитара добавлена в самую первую стадию Ритуала.
                            melody: { activationChance: 0.5, instrumentOptions: [ { name: 'melody', weight: 1.0 } ] }
                         }
                     },

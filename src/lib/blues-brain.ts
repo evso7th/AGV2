@@ -19,10 +19,10 @@ import { GUITAR_PATTERNS } from './assets/guitar-patterns';
 import { BLUES_SOLO_LICKS } from './assets/blues_guitar_solo';
 
 /**
- * #ЗАЧЕМ: Блюзовый Мозг V35.0 — "Energy-Based Guitar Morphing".
- * #ЧТО: 1. Тембральный морфинг гитары теперь привязан к уровню напряжения (Tension).
- *       2. Реализована шкала: 0..0.50 Black, 0.51..0.80 CS80, 0.81..1.0 ShineOn.
- *       3. Громкость сохранена (Volume Sovereignty).
+ * #ЗАЧЕМ: Блюзовый Мозг V36.0 — "Global Energy Enrichment".
+ * #ЧТО: 1. Внедрена энергетическая перкуссия (T > 0.6).
+ *       2. Реализованы "дышащие" тома при низком напряжении (T < 0.4).
+ *       3. Интегрирован деликатный вход через внешнее управление Tension.
  */
 
 const ENERGY_PRICES = {
@@ -233,13 +233,8 @@ export class BluesBrain {
       return tracked.sort((a, b) => a.time - b.time).map(e => `${e.type === 'melody' ? 'M' : 'P'}:${(e.note - rootNote) % 12}:${Math.round(e.time / tickDur)}`).join('|');
   }
 
-  /**
-   * #ЗАЧЕМ: Управление тембрами на основе энергии (Tension).
-   * #ЧТО: Гитара теперь меняется по порогам напряжения: 0..0.50 Black, 0.51..0.80 CS80, 0.81..1.0 ShineOn.
-   */
   private evaluateTimbralDramaturgy(tension: number, hints: InstrumentHints, mood: Mood, epoch: number) {
     if (hints.melody) {
-        // #ЗАЧЕМ: Реализация правила "Гитара по энергии" (Fix Plan 266).
         if (tension <= 0.50) (hints as any).melody = 'blackAcoustic';
         else if (tension <= 0.80) (hints as any).melody = 'cs80';
         else (hints as any).melody = 'guitar_shineOn';
@@ -331,6 +326,11 @@ export class BluesBrain {
     }).slice(0, 6);
   }
 
+  /**
+   * #ЗАЧЕМ: Энергетическое обогащение ударных.
+   * #ЧТО: 1. При T > 0.6 добавляется перкуссия (perc-012..015).
+   *       2. При T < 0.4 добавляются редкие "дышащие" тома.
+   */
   private generateDrums(epoch: number, tempo: number, tension: number, isEnsemble: boolean, bpmFactor: number): FractalEvent[] {
     const tickDur = (60 / tempo) / 3;
     const kitPool = BLUES_DRUM_RIFFS[this.mood] || BLUES_DRUM_RIFFS.contemplative;
@@ -341,6 +341,23 @@ export class BluesBrain {
     
     const effectiveBpmFactor = Math.max(bpmFactor, 0.85);
     if (calculateMusiNum(epoch, 13, this.seed, 100) / 100 > effectiveBpmFactor) return [];
+
+    // --- Energy-Based Percussion (Enrichment) ---
+    if (tension > 0.6) {
+        // Добавляем "рассыпчатую" перкуссию при высокой энергии
+        const extraTicks = [2, 5, 8, 11];
+        extraTicks.forEach(t => {
+            if (this.random.next() < 0.3 * tension) {
+                const percId = `perc-01${12 + this.random.nextInt(4)}` as any;
+                events.push(this.createDrumEvent(percId, t * tickDur, 0.3, 'p'));
+            }
+        });
+    } else if (tension < 0.4) {
+        // Добавляем редкие глубокие тома при низкой энергии ("дыхание")
+        if (calculateMusiNum(epoch, 5, this.seed, 10) > 8) {
+            events.push(this.createDrumEvent('drum_Sonor_Classix_Low_Tom', 10 * tickDur, 0.4, 'p'));
+        }
+    }
 
     if (!isEnsemble && tension > 0.3) {
         [3, 9].forEach(t => events.push(this.createDrumEvent('perc-013', t * tickDur, 0.4, 'p')));

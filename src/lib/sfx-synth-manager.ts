@@ -1,4 +1,3 @@
-
 import type { FractalEvent, Mood, Genre, SfxRule } from '@/types/fractal';
 
 const SFX_SAMPLES: Record<string, string[]> = {
@@ -221,8 +220,9 @@ export class SfxSynthManager {
         
         const rand = Math.random();
         if (genre === 'blues') {
-            if (rand < 0.6) return 'voice'; 
-            if (rand < 0.8) return 'dark';
+            // #ЗАЧЕМ: Реформа SFX для блюза. Уменьшение голоса, увеличение атмосферы.
+            if (rand < 0.1) return 'voice'; // Снижено с 0.6
+            if (rand < 0.7) return 'dark';  // Приоритет dark
             return 'common';
         }
         if (genre === 'trance' || genre === 'house' || genre === 'progressive') {
