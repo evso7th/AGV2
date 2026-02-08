@@ -19,10 +19,10 @@ import { GUITAR_PATTERNS } from './assets/guitar-patterns';
 import { BLUES_SOLO_LICKS } from './assets/blues_guitar_solo';
 
 /**
- * #ЗАЧЕМ: Блюзовый Мозг V24.0 — "Organic L-Logic Restoration".
- * #ЧТО: Удалена принудительная трансформация каждые 4 такта.
- *       Теперь развитие фразы идет исключительно через L-систему (evolveAxiom).
- *       Первоначальный "ген" лика берется из dna.seedLickNotes.
+ * #ЗАЧЕМ: Блюзовый Мозг V25.0 — "Stable Novelty Guard".
+ * #ЧТО: 1. Хэширование мелодии переведено на квантованные тики (стабильность против джиттера).
+ *       2. Добавлена прозрачная телеметрия [SOR] для мониторинга зацикливания.
+ *       3. Л-логика теперь получает "инъекцию хаоса" при обнаружении стагнации.
  */
 
 const ENERGY_PRICES = {
@@ -135,12 +135,13 @@ export class BluesBrain {
         consumedEnergy += pianoPrice;
     }
 
-    const shapeHash = this.getMelodicShapeHash(combinedEvents, currentChord.rootNote);
+    // #ЗАЧЕМ: Стабилизированный детектор стагнации.
+    // #ЧТО: Хэширование теперь игнорирует микро-джиттер за счет квантования по тикам.
+    const shapeHash = this.getMelodicShapeHash(combinedEvents, currentChord.rootNote, tempo);
     if (this.isRepetitive(shapeHash)) {
-        console.info(`%c[SOR] ENSEMBLE STAGNATION: Lead & Piano Loop Detected. Forcing Organic Shift.`, 'color: #ff4500; font-weight: bold; background: #222;');
-        // #ЗАЧЕМ: При зацикливании мы не просто сбрасываем аксиому, 
-        //         мы принудительно вызываем эволюцию Л-системы.
-        this.currentAxiom = this.evolveAxiom(this.currentAxiom, tension, 'CLIMAX', dna, epoch);
+        console.warn(`%c[SOR] ENSEMBLE STAGNATION DETECTED (3x cycle)! Forcing Organic Evolution.`, 'color: #ffffff; background: #ff4500; font-weight: bold; padding: 2px 5px;');
+        // Принудительно мутируем аксиому, внедряя повышенную случайность
+        this.currentAxiom = this.evolveAxiom(this.currentAxiom, 0.95, 'CLIMAX', dna, epoch);
         this.phraseHistory = [];
     } else if (shapeHash) {
         this.phraseHistory.push(shapeHash);
@@ -209,18 +210,29 @@ export class BluesBrain {
     return events;
   }
 
-  private getMelodicShapeHash(events: FractalEvent[], rootNote: number): string {
+  /**
+   * #ЗАЧЕМ: Стабильное хэширование мелодической формы.
+   * #ЧТО: Использует квантование по тикам (1/3 доли) вместо секунд.
+   *       Это позволяет игнорировать микро-джиттер гуманизации.
+   */
+  private getMelodicShapeHash(events: FractalEvent[], rootNote: number, tempo: number): string {
       const tracked = events.filter(e => e.type === 'melody' || e.type === 'pianoAccompaniment');
       if (tracked.length === 0) return "";
       
-      return tracked
+      const tickDur = (60 / tempo) / 3;
+
+      const hash = tracked
         .sort((a, b) => a.time - b.time)
         .map(e => {
             const typeId = e.type === 'melody' ? 'M' : 'P';
             const relativeNote = (e.note - rootNote) % 12;
-            return `${typeId}:${relativeNote}:${e.time.toFixed(2)}`;
+            // Квантуем время до ближайшего тика
+            const tick = Math.round(e.time / tickDur);
+            return `${typeId}:${relativeNote}:${tick}`;
         })
         .join('|');
+
+      return hash;
   }
 
   private isRepetitive(newHash: string): boolean {
@@ -260,10 +272,6 @@ export class BluesBrain {
     }
   }
 
-  /**
-   * #ЗАЧЕМ: Реализация Л-логики развития мелодии.
-   * #ЧТО: Берет лик-ген из dna.seedLickNotes при рождении, затем только эволюционирует.
-   */
   private generateLSystemMelody(epoch: number, chord: GhostChord, barIn12: number, tempo: number, tension: number, dna: SuiteDNA): FractalEvent[] {
     const beatDur = 60 / tempo;
     const tickDur = beatDur / 3;
@@ -274,7 +282,6 @@ export class BluesBrain {
     else if (phaseInSentence === 2) phaseName = 'RESPONSE';
     else phaseName = (tension > 0.7) ? 'CLIMAX' : 'RESPONSE';
 
-    // #ИСПРАВЛЕНО (ПЛАН 242): Первоначальная аксиома берется из ДНК (уже трансформированная).
     if (this.currentAxiom.length === 0) {
         if (dna.seedLickNotes) {
             console.log(`%c[SOR] L-SYSTEM: Initializing with Birth Lick-Seed`, 'color: #00BFFF; font-weight:bold;');
@@ -285,8 +292,6 @@ export class BluesBrain {
             this.currentAxiom = this.generateInitialAxiom(tension, epoch, dna);
         }
     } else if (phaseInSentence === 0) {
-        // #ЗАЧЕМ: Органическая эволюция фразы каждые 4 такта.
-        // #ЧТО: Используем evolveAxiom вместо подмены из библиотеки.
         console.log(`%c[SOR] L-SYSTEM: Organic Evolution of Phrase at Bar ${epoch}`, 'color: #DA70D6');
         this.currentAxiom = this.evolveAxiom(this.currentAxiom, tension, phaseName, dna, epoch);
     }
@@ -330,10 +335,6 @@ export class BluesBrain {
     return axiom;
   }
 
-  /**
-   * #ЗАЧЕМ: Л-правила развития фразы.
-   * #ЧТО: Применяет музыкальные трансформации к текущей аксиоме.
-   */
   private evolveAxiom(axiom: MelodicAxiomNote[], tension: number, phase: string, dna: SuiteDNA, epoch: number): MelodicAxiomNote[] {
     return axiom.map((note, i) => {
         let newDeg = note.deg; let newTech = note.tech;
