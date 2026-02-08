@@ -19,10 +19,10 @@ import { GUITAR_PATTERNS } from './assets/guitar-patterns';
 import { BLUES_SOLO_LICKS } from './assets/blues_guitar_solo';
 
 /**
- * #ЗАЧЕМ: Блюзовый Мозг V36.0 — "Global Energy Enrichment".
- * #ЧТО: 1. Внедрена энергетическая перкуссия (T > 0.6).
- *       2. Реализованы "дышащие" тома при низком напряжении (T < 0.4).
- *       3. Интегрирован деликатный вход через внешнее управление Tension.
+ * #ЗАЧЕМ: Блюзовый Мозг V37.0 — "The Breathing Ensemble".
+ * #ЧТО: 1. Реализовано "Дыхание Ударных" для минорных блюзов (мягкие сэмплы, акценты в пиках).
+ *       2. Порог Соло поднят до 0.55 для деликатного вступления акустики.
+ *       3. Жесткая фиксация сэмплов кика и томов (Sonor Classix).
  */
 
 const ENERGY_PRICES = {
@@ -80,7 +80,7 @@ export class BluesBrain {
         while (currentIndex !== 0) {
             randomIndex = Math.floor(next() * currentIndex);
             currentIndex--;
-            [newArray[currentIndex], newArray[randomIndex]] = [newArray[randomIndex], newArray[currentIndex]];
+            [newArray[currentIndex], newArray[randomIndex]] = [newArray[currentIndex], newArray[randomIndex]];
         }
         return newArray;
     }
@@ -109,10 +109,16 @@ export class BluesBrain {
     const combinedEvents: FractalEvent[] = [];
     const currentPianoEvents: FractalEvent[] = [];
     
+    const isMellowMood = ['dark', 'melancholic', 'anxious', 'gloomy', 'contemplative', 'calm'].includes(this.mood);
+
     if (hints.melody) {
       const prog = hints.summonProgress?.melody ?? 1.0;
       let melodyEvents: FractalEvent[] = [];
-      const canAffordSolo = (consumedEnergy + ENERGY_PRICES.solo <= barBudget) && tension > 0.4;
+      
+      // #ЗАЧЕМ: Деликатный вход. Порог Solo поднят до 0.55 для минорных блюзов.
+      // Это позволяет акустике (Black Acoustic) звучать дольше в режиме фингерстайла.
+      const soloThreshold = isMellowMood ? 0.55 : 0.4;
+      const canAffordSolo = (consumedEnergy + ENERGY_PRICES.solo <= barBudget) && tension > soloThreshold;
       
       if (canAffordSolo) {
           melodyEvents = this.generateLSystemMelody(epoch, currentChord, barIn12, tempo, tension, dna, bpmFactor);
@@ -327,12 +333,14 @@ export class BluesBrain {
   }
 
   /**
-   * #ЗАЧЕМ: Энергетическое обогащение ударных.
-   * #ЧТО: 1. При T > 0.6 добавляется перкуссия (perc-012..015).
-   *       2. При T < 0.4 добавляются редкие "дышащие" тома.
+   * #ЗАЧЕМ: Энергетическое обогащение ударных V37.0.
+   * #ЧТО: 1. Внедрена логика "Дыхания Ударных" (Soft Kicks, Sonor Toms).
+   *       2. При T > 0.85 — одиночный деликатный акцент в Ride.
+   *       3. Capping хетов на 0.35 для сохранения мягкости.
    */
   private generateDrums(epoch: number, tempo: number, tension: number, isEnsemble: boolean, bpmFactor: number): FractalEvent[] {
     const tickDur = (60 / tempo) / 3;
+    const isMellowMood = ['dark', 'melancholic', 'anxious', 'gloomy', 'contemplative', 'calm'].includes(this.mood);
     const kitPool = BLUES_DRUM_RIFFS[this.mood] || BLUES_DRUM_RIFFS.contemplative;
     const p = kitPool[calculateMusiNum(epoch, 3, this.seed, kitPool.length)];
     if (!p) return [];
@@ -342,34 +350,61 @@ export class BluesBrain {
     const effectiveBpmFactor = Math.max(bpmFactor, 0.85);
     if (calculateMusiNum(epoch, 13, this.seed, 100) / 100 > effectiveBpmFactor) return [];
 
-    // --- Energy-Based Percussion (Enrichment) ---
+    // --- Soft Kick Logic (Mellow Only) ---
+    const kickSample = isMellowMood 
+        ? (calculateMusiNum(epoch, 2, this.seed, 2) === 0 ? 'drum_drum_kick_reso' : 'drum_kick_drum6')
+        : 'drum_kick';
+
+    // --- Energy-Based Enrichment ---
     if (tension > 0.6) {
-        // Добавляем "рассыпчатую" перкуссию при высокой энергии
         const extraTicks = [2, 5, 8, 11];
         extraTicks.forEach(t => {
             if (this.random.next() < 0.3 * tension) {
                 const percId = `perc-01${12 + this.random.nextInt(4)}` as any;
-                events.push(this.createDrumEvent(percId, t * tickDur, 0.3, 'p'));
+                events.push(this.createDrumEvent(percId, t * tickDur, 0.25, 'p'));
             }
         });
-    } else if (tension < 0.4) {
-        // Добавляем редкие глубокие тома при низкой энергии ("дыхание")
-        if (calculateMusiNum(epoch, 5, this.seed, 10) > 8) {
-            events.push(this.createDrumEvent('drum_Sonor_Classix_Low_Tom', 10 * tickDur, 0.4, 'p'));
+        
+        // --- Single Ride Accent in Peak ---
+        if (tension > 0.85 && barIn12 % 4 === 0) {
+            events.push(this.createDrumEvent('drum_ride', 0, 0.35, 'p'));
         }
+    } else if (tension < 0.4 && isMellowMood) {
+        // --- Breathing Toms (Rhythmic Grid) ---
+        // Удары томов на 4-й доле (тик 9) раз в 2 такта
+        if (epoch % 2 === 0) {
+            const tomId = ['drum_Sonor_Classix_High_Tom', 'drum_Sonor_Classix_Mid_Tom', 'drum_Sonor_Classix_Low_Tom'][this.random.nextInt(3)];
+            events.push(this.createDrumEvent(tomId as any, 9 * tickDur, 0.35, 'p'));
+        }
+        
+        // Ритмичная перкуссия в "Созерцании" на слабых долях (3 и 9 тики)
+        [3, 9].forEach(t => {
+            if (this.random.next() < 0.4) {
+                events.push(this.createDrumEvent('perc-013', t * tickDur, 0.2, 'p'));
+            }
+        });
     }
 
     if (!isEnsemble && tension > 0.3) {
-        [3, 9].forEach(t => events.push(this.createDrumEvent('perc-013', t * tickDur, 0.4, 'p')));
+        [3, 9].forEach(t => events.push(this.createDrumEvent('perc-013', t * tickDur, 0.3, 'p')));
     }
-    if (barIn12 === 11) {
+    
+    if (barIn12 === 11 && !isMellowMood) { // Для бодрых блюзов оставляем старые филлы
         ['drum_tom_high', 'drum_tom_low'].forEach((tom, i) => events.push(this.createDrumEvent(tom as any, i * 3 * tickDur, 0.7, 'mf')));
     }
+
     if (p.HH) p.HH.forEach(t => {
-        if (this.random.next() < effectiveBpmFactor) events.push(this.createDrumEvent('drum_hihat', t * tickDur, 0.3 + (tension * 0.4), 'p'));
+        // #ЗАЧЕМ: Мягкие хеты. Capping веса на 0.35 для минорных настроений.
+        const hhWeight = isMellowMood ? 0.35 : (0.3 + (tension * 0.4));
+        if (this.random.next() < effectiveBpmFactor) events.push(this.createDrumEvent('drum_hihat', t * tickDur, hhWeight, 'p'));
     });
-    if (p.K) p.K.forEach(t => events.push(this.createDrumEvent('drum_kick', t * tickDur, 0.7 + (tension * 0.2), 'p')));
-    if (p.SD) p.SD.forEach(t => events.push(this.createDrumEvent('drum_snare', t * tickDur, 0.3 + (tension * 0.6), 'mf')));
+
+    if (p.K) p.K.forEach(t => events.push(this.createDrumEvent(kickSample as any, t * tickDur, 0.7 + (tension * 0.2), 'p')));
+    if (p.SD) p.SD.forEach(t => {
+        const snareSample = isMellowMood && tension < 0.5 ? 'drum_snare_ghost_note' : 'drum_snare';
+        events.push(this.createDrumEvent(snareSample as any, t * tickDur, 0.3 + (tension * 0.6), 'mf'));
+    });
+    
     return events;
   }
 

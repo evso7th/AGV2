@@ -1,14 +1,15 @@
 import type { MusicBlueprint } from '@/types/music';
 
 /**
- * #ЗАЧЕМ: Блюпринт "The Ritual" (Dark Blues v11.0 - Subtle Opening).
- * #ЧТО: 1. Внедрен Энергетический Фаде-ин (T: 0.3 -> 0.8) в первые 15% пьесы.
- *       2. Это гарантирует деликатное вступление гитары (Black Acoustic + Fingerstyle).
+ * #ЗАЧЕМ: Блюпринт "The Ritual" (Dark Blues v12.0 - Deep Subtle Opening).
+ * #ЧТО: 1. Стартовое напряжение снижено до 0.20 для гарантированного вступления на акустике.
+ *       2. Длительность зафиксирована на 144 тактах.
+ *       3. Ансамбль собирается мгновенно (барабаны и бас с 0 такта).
  */
 export const DarkBluesBlueprint: MusicBlueprint = {
     id: 'dark_blues',
     name: 'Ritual of Smoldering Textures',
-    description: 'A heavy, ritualistic blues in E Phrygian. Starts subtle, builds into a monolith.',
+    description: 'A heavy, ritualistic blues in E Phrygian. Starts very subtle, builds into a monolith.',
     mood: 'dark',
     musical: {
         key: { root: 'E', scale: 'phrygian', octave: 1 },
@@ -18,13 +19,14 @@ export const DarkBluesBlueprint: MusicBlueprint = {
         tensionProfile: { 
             type: 'wave', 
             peakPosition: 0.5, 
-            // #ЗАЧЕМ: Плавный рост энергии в начале для аккуратного вступления гитары.
+            // #ЗАЧЕМ: Очень плавный рост энергии в начале (0.2 -> 0.8).
+            // Это дает ~30 тактов жизни "Black Acoustic" в режиме фингерстайла.
             curve: (p, pp) => {
-                if (p < 0.15) {
-                    // Энергетический Фаде-ин: 0.3 -> 0.75
-                    return 0.3 + (p / 0.15) * 0.45;
+                if (p < 0.20) {
+                    // Глубокий Энергетический Фаде-ин: 0.2 -> 0.75
+                    return 0.2 + (p / 0.20) * 0.55;
                 }
-                // Тлеющая волна
+                // Тлеющая волна высокой интенсивности
                 return 0.75 + 0.15 * Math.sin(p * Math.PI * 2);
             }
         }
@@ -63,7 +65,8 @@ export const DarkBluesBlueprint: MusicBlueprint = {
                            drums: { activationChance: 1.0, instrumentOptions: [ { name: 'blues_melancholic_master', weight: 1.0 } ] },
                            bass: { activationChance: 1.0, instrumentOptions: [ { name: 'bass', weight: 1.0 } ] },
                            accompaniment: { activationChance: 1.0, instrumentOptions: [ { name: 'accompaniment', weight: 1.0 } ] },
-                           melody: { activationChance: 0.5, instrumentOptions: [ { name: 'melody', weight: 1.0 } ] }
+                           // #ЗАЧЕМ: Гитарист вступает сразу, но из-за низкого T (0.2) играет на акустике.
+                           melody: { activationChance: 1.0, instrumentOptions: [ { name: 'melody', weight: 1.0 } ] }
                         }
                     },
                     {
