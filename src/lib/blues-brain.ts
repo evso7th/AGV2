@@ -19,11 +19,10 @@ import { GUITAR_PATTERNS } from './assets/guitar-patterns';
 import { BLUES_SOLO_LICKS } from './assets/blues_guitar_solo';
 
 /**
- * #ЗАЧЕМ: Блюзовый Мозг V42.0 — "The Steady Pulse & Half-Rhythm Evolution".
- * #ЧТО: 1. Удалена логика пропуска тактов у барабанщика ("странный ударник" исправлен).
- *       2. Установлен режим "Постоянного Пульса": мягкие хеты и бит звучат непрерывно.
- *       3. Развитие аранжировки переведено на уровень перкуссионных акцентов.
- * #ОБНОВЛЕНО (ПЛАН №283): Запрет пианисту подниматься выше 4-й октавы (MIDI 71).
+ * #ЗАЧЕМ: Блюзовый Мозг V43.0 — "Lead Guitar Sovereignty".
+ * #ЧТО: 1. Ограничена "кликовость": транзиент-сэмплер теперь только для глюков Anxious.
+ *       2. Реформа тембрального морфинга: CS80 используется реже, ShineOn вступает раньше.
+ *       3. Повышена значимость длинных нот в среднем регистре для ShineOn.
  */
 
 const ENERGY_PRICES = {
@@ -131,6 +130,8 @@ export class BluesBrain {
           consumedEnergy += ENERGY_PRICES.harmony; 
       }
       
+      // #ЗАЧЕМ: "Glitches as Spice". 
+      // #ЧТО: Сверхвысокие ноты проигрываются ТОЛЬКО в Anxious и только раз в 10 тактов.
       if (this.mood === 'anxious' && epoch % 10 === 0 && this.random.next() < 0.4) {
           melodyEvents.push({
               type: 'melody',
@@ -138,7 +139,7 @@ export class BluesBrain {
               time: this.random.nextInRange(0.5, 3.5),
               duration: 0.05, 
               weight: 0.3,
-              technique: 'harm',
+              technique: 'harm', // Триггерит Surgical Cut в менеджере
               dynamics: 'p',
               phrasing: 'staccato'
           });
@@ -264,11 +265,16 @@ export class BluesBrain {
       return tracked.sort((a, b) => a.time - b.time).map(e => `${e.type === 'melody' ? 'M' : 'P'}:${(e.note - rootNote) % 12}:${Math.round(e.time / tickDur)}`).join('|');
   }
 
+  /**
+   * #ЗАЧЕМ: Реформа тембрального морфинга (План №285).
+   * #ЧТО: 1. CS80 теперь используется реже (окно 0.51-0.65).
+   *       2. ShineOn вступает раньше (T > 0.65) для длинных певучих нот.
+   */
   private evaluateTimbralDramaturgy(tension: number, hints: InstrumentHints, mood: Mood, epoch: number) {
     if (hints.melody) {
         if (tension <= 0.50) (hints as any).melody = 'blackAcoustic';
-        else if (tension <= 0.70) (hints as any).melody = 'cs80';
-        else (hints as any).melody = 'guitar_shineOn';
+        else if (tension <= 0.65) (hints as any).melody = 'cs80'; // Сужено окно "мяуканья"
+        else (hints as any).melody = 'guitar_shineOn'; // Певучий лид забирает лидерство раньше
     }
     if (hints.bass) {
         if (tension < 0.4) (hints as any).bass = 'bass_jazz_warm';
@@ -356,12 +362,6 @@ export class BluesBrain {
     }).slice(0, 6);
   }
 
-  /**
-   * #ЗАЧЕМ: Реализация Протокола "Дыхание Ударных" V42.0.
-   * #ЧТО: 1. Удалена логика пропуска тактов (skip bars). Барабанщик играет всегда.
-   *       2. Хеты обеспечивают непрерывный мягкий фон.
-   *       3. Тома и Райд вступают как энергетические акценты, не разрывая пульс.
-   */
   private generateDrums(epoch: number, tempo: number, tension: number, isEnsemble: boolean, bpmFactor: number): FractalEvent[] {
     const tickDur = (60 / tempo) / 3;
     const isMellowMood = ['dark', 'melancholic', 'anxious', 'gloomy', 'contemplative', 'calm'].includes(this.mood);
@@ -372,18 +372,11 @@ export class BluesBrain {
     const events: FractalEvent[] = [];
     const barIn12 = epoch % 12;
     
-    // #ЗАЧЕМ: Исправление "странного ударника".
-    // #ЧТО: Удален блок 'if (calculateMusiNum(...) > effectiveBpmFactor) return [];'. 
-    //      Теперь барабанщик не бросает палочки на целый такт.
-
     const kickSample = isMellowMood 
         ? (calculateMusiNum(epoch, 2, this.seed, 2) === 0 ? 'drum_drum_kick_reso' : 'drum_kick_drum6')
         : 'drum_kick';
 
-    // --- ЭНЕРГЕТИЧЕСКОЕ ОБОГАЩЕНИЕ (Enrichment) ---
-    
     if (tension > 0.6) {
-        // Высокий накал: мелкая перкуссия (Bongo, Tubes) усиливает драйв
         const extraTicks = [2, 5, 8, 11];
         const extraPool = [
             'drum_bongo_pc-01', 'drum_bongo_pc-02', 'drum_bongo_pc-03',
@@ -398,20 +391,16 @@ export class BluesBrain {
             }
         });
         
-        // Пик: Одиночный нежный удар в райд
         if (tension > 0.85 && barIn12 % 4 === 0) {
             const rideId = calculateMusiNum(epoch, 2, this.seed, 2) === 0 ? 'drum_ride' : 'drum_ride_wetter';
             events.push(this.createDrumEvent(rideId as any, 0, 0.3, 'p'));
         }
     } else if (tension < 0.4 && isMellowMood) {
-        // Низкое напряжение: Созерцательные тома Sonor Classix
         if (epoch % 2 === 0) {
             const tomId = ['drum_Sonor_Classix_High_Tom', 'drum_Sonor_Classix_Mid_Tom', 'drum_Sonor_Classix_Low_Tom'][this.random.nextInt(3)];
-            // Удар строго по сетке на 4-й доле (тик 9)
             events.push(this.createDrumEvent(tomId as any, 9 * tickDur, 0.35, 'p'));
         }
         
-        // Ритмичная "природная" перкуссия
         [3, 9].forEach(t => {
             if (this.random.next() < 0.45) {
                 const moodPerc = ['drum_bongo_pvc-tube-01', 'drum_bongo_pc-02', 'perc-013'][this.random.nextInt(3)];
@@ -420,25 +409,19 @@ export class BluesBrain {
         });
     }
 
-    // Солидарность с ансамблем: если соло еще не вошло, держим пульс на перкуссии
     if (!isEnsemble && tension > 0.3) {
         [3, 9].forEach(t => events.push(this.createDrumEvent('perc-013', t * tickDur, 0.3, 'p')));
     }
     
-    // Сбивки перед переходом (только для энергичных жанров)
     if (barIn12 === 11 && !isMellowMood) { 
         ['drum_tom_high', 'drum_tom_low'].forEach((tom, i) => events.push(this.createDrumEvent(tom as any, i * 3 * tickDur, 0.7, 'mf')));
     }
 
-    // --- ОСНОВНОЙ ПУЛЬС (Core Pulse) ---
-    
-    // Мягкие хеты: всегда играют, громкость ограничена
     if (p.HH) p.HH.forEach(t => {
         const hhWeight = isMellowMood ? 0.30 : (0.3 + (tension * 0.3));
         events.push(this.createDrumEvent('drum_hihat', t * tickDur, hhWeight, 'p'));
     });
 
-    // Кик и Снейр: основа блюзового бита
     if (p.K) p.K.forEach(t => events.push(this.createDrumEvent(kickSample as any, t * tickDur, 0.65 + (tension * 0.2), 'p')));
     if (p.SD) p.SD.forEach(t => {
         const snareSample = isMellowMood && tension < 0.5 ? 'drum_snare_ghost_note' : 'drum_snare';
@@ -474,17 +457,10 @@ export class BluesBrain {
     }).filter(e => e !== null) as FractalEvent[];
   }
 
-  /**
-   * #ЗАЧЕМ: Генерация партии пианино с жестким регистровым потолком.
-   * #ЧТО: 1. Базовая позиция установлена на C4 (root + 36).
-   *       2. Внедрен маппинг с октавным сдвигом: ноты выше MIDI 71 (B4) опускаются вниз.
-   */
   private generatePianoMotif(epoch: number, chord: GhostChord, tempo: number, tension: number, bpmFactor: number): FractalEvent[] {
     const beatDur = 60 / tempo;
     const root = chord.rootNote + 36;
     
-    // #ЗАЧЕМ: Запрет пианисту подниматься выше 4-й октавы (План №283).
-    // #ЧТО: Ноты ограничены MIDI 71 (B4). Если нота выше, она опускается на октаву.
     const notes = [root + 7, root + 10, root + 12].map(n => {
         let pitch = n;
         while (pitch > this.PIANO_CEILING) {

@@ -1,4 +1,3 @@
-
 import type { FractalEvent, AccompanimentInstrument } from '@/types/fractal';
 import type { Note } from "@/types/music";
 import { buildMultiInstrument } from './instrument-factory';
@@ -101,10 +100,12 @@ export class MelodySynthManagerV2 {
         if (notesToPlay.length === 0) return;
 
         // #ЗАЧЕМ: Реализация гибридного триггера и активация Surgical Cut.
-        // #ЧТО: Если техника ноты 'harm' (маркер глюка), принудительно включаем transientMode.
         const isGlitchNote = notesToPlay.some(n => n.technique === 'harm');
 
-        if (this.partName === 'melody' && (instrumentHint === 'guitar_shineOn' || instrumentHint === 'guitar_muffLead')) {
+        // #ЗАЧЕМ: Отмена глобальной "кликовости" (План №285).
+        // #ЧТО: Теперь сэмплер-транзиент вызывается ТОЛЬКО если это глюк. 
+        //      В остальных случаях играет только "тело" от фабрики.
+        if (isGlitchNote && this.partName === 'melody' && (instrumentHint === 'guitar_shineOn' || instrumentHint === 'guitar_muffLead')) {
             this.telecasterSampler.schedule(notesToPlay, barStartTime, tempo, true); 
         }
 
