@@ -1,14 +1,14 @@
 import type { MusicBlueprint } from '@/types/music';
 
 /**
- * #ЗАЧЕМ: Блюпринт "The Ritual" (Dark Blues v8.0 - Instant Pulse).
- * #ЧТО: 1. Барабаны перенесены на ПЕРВУЮ стадию активации (сразу после пролога).
- *       2. Шансы активации (activationChance) повышены до 1.0 для всех ключевых инструментов.
+ * #ЗАЧЕМ: Блюпринт "The Ritual" (Dark Blues v9.0 - Instant Ensemble).
+ * #ЧТО: 1. Барабаны и Бас включены в PROLOGUE (бар 0).
+ *       2. Шансы активации зафиксированы на 1.0 для исключения тишины.
  */
 export const DarkBluesBlueprint: MusicBlueprint = {
     id: 'dark_blues',
     name: 'Ritual of Smoldering Textures',
-    description: 'A heavy, ritualistic blues in E Phrygian. Smoldering energy without drops.',
+    description: 'A heavy, ritualistic blues in E Phrygian. Instant ensemble buildup from bar 0.',
     mood: 'dark',
     musical: {
         key: { root: 'E', scale: 'phrygian', octave: 1 },
@@ -28,18 +28,23 @@ export const DarkBluesBlueprint: MusicBlueprint = {
         parts: [
             {
                 id: 'PROLOGUE', name: 'The Void Opening', duration: { percent: 3 },
-                layers: { accompaniment: true, sfx: true },
+                // #ЗАЧЕМ: Разрешение всем базовым слоям играть с самого начала.
+                layers: { accompaniment: true, sfx: true, drums: true, bass: true },
                 stagedInstrumentation: [
                     { 
                         duration: { percent: 100 }, 
                         instrumentation: {
                            accompaniment: { activationChance: 1.0, instrumentOptions: [ { name: 'synth_cave_pad', weight: 1.0 } ] },
-                           sfx: { activationChance: 0.6, instrumentOptions: [ { name: 'dark', weight: 1.0 } ], transient: true }
+                           sfx: { activationChance: 0.6, instrumentOptions: [ { name: 'dark', weight: 1.0 } ], transient: true },
+                           // #ЗАЧЕМ: Немедленный вход ритм-секции (бар 0-2).
+                           drums: { activationChance: 1.0, instrumentOptions: [ { name: 'blues_dark', weight: 1.0 } ] },
+                           bass: { activationChance: 1.0, instrumentOptions: [ { name: 'bass_ambient_dark', weight: 1.0 } ] }
                         }
                     }
                 ],
                 instrumentRules: {
-                    accompaniment: { techniques: [{ value: 'long-chords', weight: 1.0 }], register: { preferred: 'low' } }
+                    accompaniment: { techniques: [{ value: 'long-chords', weight: 1.0 }], register: { preferred: 'low' } },
+                    drums: { kitName: 'blues_dark', density: { min: 0.3, max: 0.5 } }
                 },
                 bundles: [ { id: 'DARK_PROLOGUE_BUNDLE', name: 'The Void', duration: { percent: 100 }, characteristics: {}, phrases: {} } ],
                 outroFill: null,
@@ -51,7 +56,6 @@ export const DarkBluesBlueprint: MusicBlueprint = {
                     { 
                         duration: { percent: 20 }, 
                         instrumentation: {
-                           // #ЗАЧЕМ: Мгновенное формирование трио (Барабаны + Бас + Аккомп).
                            drums: { activationChance: 1.0, instrumentOptions: [ { name: 'blues_melancholic_master', weight: 1.0 } ] },
                            bass: { activationChance: 1.0, instrumentOptions: [ { name: 'bass', weight: 1.0 } ] },
                            accompaniment: { activationChance: 1.0, instrumentOptions: [ { name: 'accompaniment', weight: 1.0 } ] }

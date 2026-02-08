@@ -19,18 +19,17 @@ import { GUITAR_PATTERNS } from './assets/guitar-patterns';
 import { BLUES_SOLO_LICKS } from './assets/blues_guitar_solo';
 
 /**
- * #ЗАЧЕМ: Блюзовый Мозг V32.0 — "Dark Blues Resuscitation".
- * #ЧТО: 1. Повышена слышимость Органа/Rhodes (weight 0.45+).
- *       2. Снижена цена ударных для ранней активации.
- *       3. Исправлено затухание в Dark Blues.
- * #ОБНОВЛЕНО: Глубокая память и вакцина стагнации сохранены.
+ * #ЗАЧЕМ: Блюзовый Мозг V33.0 — "Dark Blues Resuscitation Final".
+ * #ЧТО: 1. Повышена слышимость Органа/Rhodes (weight 0.50+).
+ *       2. Снижена цена ударных до 10 для гарантированной активации.
+ *       3. Детальная телеметрия пианино сохранена.
  */
 
 const ENERGY_PRICES = {
     solo: 50,
     bass_walking: 20,
     bass_pedal: 5,
-    drums_full: 15,   // Снижено для гарантии входа в Dark Blues
+    drums_full: 10,   // Снижено максимально для раннего входа
     drums_minimal: 5,
     harmony: 15,      
     piano: 15, 
@@ -104,7 +103,6 @@ export class BluesBrain {
     
     this.evaluateTimbralDramaturgy(tension, hints, this.mood);
     
-    // #ЗАЧЕМ: Увеличенный бюджет для Dark Blues.
     const barBudget = 180 + (tension * 120); 
     let consumedEnergy = 0;
     
@@ -167,7 +165,6 @@ export class BluesBrain {
             const currentPattern = this.patternOptions[calculateMusiNum(Math.floor(epoch/8), 3, this.seed, this.patternOptions.length)];
             accEvents = this.generateAccompaniment(epoch, currentChord, tempo, tension, currentPattern);
         } else {
-            // Орган/Rhodes теперь звучат отчетливо
             accEvents = this.generateSustainedAccompaniment(epoch, currentChord, tempo, tension);
         }
         
@@ -290,7 +287,7 @@ export class BluesBrain {
   private generateFingerstyleMelody(epoch: number, chord: GhostChord, tempo: number, tension: number, bpmFactor: number): FractalEvent[] {
       const beatDur = 60 / tempo;
       const root = chord.rootNote + 36;
-      const isMinor = chord.rootNote % 12 === 4 || chord.rootNote % 12 === 9; // Adaptive minor check
+      const isMinor = chord.rootNote % 12 === 4 || chord.rootNote % 12 === 9; 
       const notes = [root, root + (isMinor ? 3 : 4), root + 7, root + 10];
       const events: FractalEvent[] = [];
       const baseDensity = 0.3 + (tension * 0.3);
@@ -337,7 +334,6 @@ export class BluesBrain {
     const events: FractalEvent[] = [];
     const barIn12 = epoch % 12;
     
-    // #ЗАЧЕМ: Улучшенная выживаемость барабанов в медленных темпах.
     const effectiveBpmFactor = Math.max(bpmFactor, 0.85);
     if (calculateMusiNum(epoch, 13, this.seed, 100) / 100 > effectiveBpmFactor) return [];
 
@@ -425,10 +421,6 @@ export class BluesBrain {
     return events;
   }
 
-  /**
-   * #ЗАЧЕМ: Генерация протяжных хоралов для Органа/Rhodes.
-   * #ЧТО: Создает 3-голосные аккорды на весь такт с повышенным весом.
-   */
   private generateSustainedAccompaniment(epoch: number, chord: GhostChord, tempo: number, tension: number): FractalEvent[] {
       const root = chord.rootNote;
       const isMinor = chord.chordType === 'minor' || chord.chordType === 'diminished';
@@ -438,9 +430,8 @@ export class BluesBrain {
           type: 'accompaniment',
           note: note + 12,
           time: i * 0.1, 
-          duration: 4.0, // Long sustain
-          // #ЗАЧЕМ: Повышенный вес для слышимости.
-          weight: 0.45 + (tension * 0.25), 
+          duration: 4.0, 
+          weight: 0.50 + (tension * 0.30), 
           technique: 'swell',
           dynamics: 'p',
           phrasing: 'legato'
