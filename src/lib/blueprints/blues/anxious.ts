@@ -1,8 +1,10 @@
+
 import type { MusicBlueprint } from '@/types/music';
 
 /**
  * #ЗАЧЕМ: Блюпринт "The Double-Peak Anxiety" (Anxious Blues v4.0 - Algorithmic Prologue).
  * #ЧТО: Внедрена секция PROLOGUE для резкого холодного входа.
+ * #ОБНОВЛЕНО (ПЛАН 243): Снижен шанс активации sfx и sparkles для обеспечения редкости.
  * #СВЯЗИ: Управляется BluesBrain.
  */
 export const AnxiousBluesBlueprint: MusicBlueprint = {
@@ -37,12 +39,12 @@ export const AnxiousBluesBlueprint: MusicBlueprint = {
                         duration: { percent: 100 }, 
                         instrumentation: {
                            accompaniment: { activationChance: 1.0, instrumentOptions: [ { name: 'ep_rhodes_warm', weight: 1.0 } ] },
-                           sfx: { activationChance: 0.9, instrumentOptions: [ { name: 'laser', weight: 1.0 } ], transient: true }
+                           sfx: { activationChance: 0.15, instrumentOptions: [ { name: 'laser', weight: 1.0 } ], transient: true }
                         }
                     }
                 ],
                 instrumentRules: {
-                    accompaniment: { techniques: [{ value: 'arpeggio-slow', weight: 1.0 }], density: { min: 0.2, max: 0.4 } }
+                    accompaniment: { techniques: [{ value: 'arpeggio-slow', weight: 1.0 }], register: { preferred: 'mid' } }
                 },
                 bundles: [{ id: 'ANX_PROLOGUE', name: 'Glitch Start', duration: { percent: 100 }, characteristics: {}, phrases: {} }],
                 outroFill: null,
@@ -108,7 +110,7 @@ export const AnxiousBluesBlueprint: MusicBlueprint = {
                         instrumentation: {
                            accompaniment: { activationChance: 1.0, instrumentOptions: [ { name: 'accompaniment', weight: 1.0 } ] },
                            pianoAccompaniment: { activationChance: 1.0, instrumentOptions: [ { name: 'piano', weight: 1.0 } ] },
-                           sfx: { activationChance: 0.8, instrumentOptions: [ { name: 'voice', weight: 1.0 } ], transient: true }
+                           sfx: { activationChance: 0.12, instrumentOptions: [ { name: 'voice', weight: 1.0 } ], transient: true }
                         }
                     }
                 ],
@@ -134,7 +136,7 @@ export const AnxiousBluesBlueprint: MusicBlueprint = {
                            melody: { activationChance: 1.0, instrumentOptions: [ { name: 'melody', weight: 1.0 } ] },
                            harmony: { activationChance: 1.0, instrumentOptions: [ { name: 'flute', weight: 1.0 } ] },
                            pianoAccompaniment: { activationChance: 1.0, instrumentOptions: [ { name: 'piano', weight: 1.0 } ] },
-                           sparkles: { activationChance: 0.6, instrumentOptions: [ { name: 'dark', weight: 1.0 } ], transient: true }
+                           sparkles: { activationChance: 0.15, instrumentOptions: [ { name: 'dark', weight: 1.0 } ], transient: true }
                         }
                     }
                 ],

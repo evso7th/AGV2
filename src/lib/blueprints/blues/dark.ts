@@ -1,8 +1,10 @@
+
 import type { MusicBlueprint } from '@/types/music';
 
 /**
  * #ЗАЧЕМ: Блюпринт "The Ritual" (Dark Blues v3.0 - Algorithmic Prologue).
  * #ЧТО: Внедрена секция PROLOGUE для глубокого атмосферного входа.
+ * #ОБНОВЛЕНО (ПЛАН 243): Снижен шанс активации sfx и sparkles для обеспечения редкости.
  * #СВЯЗИ: Управляется BluesBrain.
  */
 export const DarkBluesBlueprint: MusicBlueprint = {
@@ -35,7 +37,7 @@ export const DarkBluesBlueprint: MusicBlueprint = {
                         duration: { percent: 100 }, 
                         instrumentation: {
                            accompaniment: { activationChance: 1.0, instrumentOptions: [ { name: 'synth_cave_pad', weight: 1.0 } ] },
-                           sfx: { activationChance: 0.8, instrumentOptions: [ { name: 'dark', weight: 1.0 } ], transient: true }
+                           sfx: { activationChance: 0.12, instrumentOptions: [ { name: 'dark', weight: 1.0 } ], transient: true }
                         }
                     }
                 ],
@@ -52,7 +54,6 @@ export const DarkBluesBlueprint: MusicBlueprint = {
                 id: 'THE_RITUAL', name: 'The Accumulation', duration: { percent: 96 },
                 layers: { bass: true, accompaniment: true, melody: true, sfx: true, sparkles: true, drums: true, harmony: true, pianoAccompaniment: true },
                 stagedInstrumentation: [
-                    // Сцена 1: Фундамент (Бас + Орган).
                     { 
                         duration: { percent: 25 }, 
                         instrumentation: {
@@ -60,7 +61,6 @@ export const DarkBluesBlueprint: MusicBlueprint = {
                            bass: { activationChance: 1.0, instrumentOptions: [ { name: 'bass', weight: 1.0 } ] }
                         }
                     },
-                    // Сцена 2: Вход Гитариста.
                     {
                         duration: { percent: 25 }, 
                         instrumentation: {
@@ -69,7 +69,6 @@ export const DarkBluesBlueprint: MusicBlueprint = {
                            melody: { activationChance: 1.0, instrumentOptions: [ { name: 'melody', weight: 1.0 } ] }
                         }
                     },
-                    // Сцена 3: Полный Ансамбль.
                     {
                         duration: { percent: 25 }, 
                         instrumentation: {
@@ -79,7 +78,6 @@ export const DarkBluesBlueprint: MusicBlueprint = {
                            drums: { activationChance: 1.0, instrumentOptions: [ { name: 'blues_melancholic_master', weight: 1.0 } ] }
                         }
                     },
-                    // Сцена 4: Кульминация (Искры/Голоса).
                     {
                         duration: { percent: 25 }, 
                         instrumentation: {
@@ -89,8 +87,8 @@ export const DarkBluesBlueprint: MusicBlueprint = {
                            drums: { activationChance: 1.0, instrumentOptions: [ { name: 'blues_melancholic_master', weight: 1.0 } ] },
                            harmony: { activationChance: 1.0, instrumentOptions: [ { name: 'guitarChords', weight: 1.0 } ] },
                            pianoAccompaniment: { activationChance: 1.0, instrumentOptions: [ { name: 'piano', weight: 1.0 } ] },
-                           sparkles: { activationChance: 0.2, instrumentOptions: [ { name: 'dark', weight: 1.0 } ], transient: true },
-                           sfx: { activationChance: 0.1, instrumentOptions: [ { name: 'voice', weight: 1.0 } ], transient: true }
+                           sparkles: { activationChance: 0.1, instrumentOptions: [ { name: 'dark', weight: 1.0 } ], transient: true },
+                           sfx: { activationChance: 0.08, instrumentOptions: [ { name: 'voice', weight: 1.0 } ], transient: true }
                         }
                     }
                 ],

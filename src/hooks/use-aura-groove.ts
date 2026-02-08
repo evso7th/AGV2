@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useEffect, useCallback, useRef } from "react";
@@ -58,7 +59,6 @@ export type AuraGrooveProps = {
 
 /**
  * #ЗАЧЕМ: Хук управления UI музыкой.
- * #ИСПРАВЛЕНО (ПЛАН 237): Исправлена логика уведомлений (авто-дисмисс и тайм-ауты).
  */
 export const useAuraGroove = (): AuraGrooveProps => {
   const { 
@@ -95,8 +95,10 @@ export const useAuraGroove = (): AuraGrooveProps => {
     pianoAccompaniment: { name: "piano", volume: 0.65 },
   });
   const [textureSettings, setTextureSettings] = useState<TextureSettings>({
-      sparkles: { enabled: true, volume: 0.35 },
-      sfx: { enabled: true, volume: 0.35 },
+      // #ЗАЧЕМ: Системное снижение громкости в 3 раза.
+      // #ЧТО: volume изменен с 0.35 на 0.12.
+      sparkles: { enabled: true, volume: 0.12 },
+      sfx: { enabled: true, volume: 0.12 },
   });
   const [bpm, setBpm] = useState(75);
   const [score, setScore] = useState<ScoreName>('neuro_f_matrix');
@@ -202,7 +204,6 @@ export const useAuraGroove = (): AuraGrooveProps => {
           instrumentSettings
         });
 
-        // #ЗАЧЕМ: Гарантированный сброс лоадера и показ результата.
         dismissLoading();
 
         if (success) {

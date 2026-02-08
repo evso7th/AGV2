@@ -109,7 +109,7 @@ const SPARKLE_SAMPLES = {
         '/assets/music/droplets/light/ElectroKettle_SP_01.ogg',
         '/assets/music/droplets/light/Bpm174_C_PorsonPhaser_Pad.ogg',
         '/assets/music/droplets/light/Bpm174_E_Temple_Synth.ogg',
-        '/assets/music/droplets/light/Bpm174_F_KnockIn_Synth.ogg',
+        '/assets/music/droplets/light/Bpm174_F_MarkIn_Synth.ogg',
         '/assets/music/droplets/light/Bpm174_E_MotiveStab_Synth.ogg',
         '/assets/music/droplets/light/Bpm174_E_OurSoul_Pad.ogg',
         '/assets/music/droplets/light/Bpm174_B_Heart_Pad.ogg',
@@ -209,7 +209,9 @@ export class SparklePlayer {
         this.audioContext = audioContext;
         this.gainNode = this.audioContext.createGain();
         this.preamp = this.audioContext.createGain();
-        this.preamp.gain.value = 2.0; // Boost volume
+        // #ЗАЧЕМ: Системное снижение громкости в 3 раза по требованию пользователя.
+        // #ЧТО: gain изменен с 2.0 на 0.66.
+        this.preamp.gain.value = 0.66; 
         this.preamp.connect(this.gainNode);
         this.gainNode.connect(destination);
     }
@@ -255,7 +257,7 @@ export class SparklePlayer {
             }
             const arrayBuffer = await response.arrayBuffer();
             const buffer = await this.audioContext.decodeAudioData(arrayBuffer);
-            (buffer as any).url = url; // Attach URL for logging
+            (buffer as any).url = url; 
             return buffer;
         } catch (error) {
             console.error(`Error loading sparkle sample ${url}:`, error);
