@@ -19,10 +19,10 @@ import { GUITAR_PATTERNS } from './assets/guitar-patterns';
 import { BLUES_SOLO_LICKS } from './assets/blues_guitar_solo';
 
 /**
- * #ЗАЧЕМ: Блюзовый Мозг V26.0 — "Multi-Level Stagnation Vaccine".
- * #ЧТО: 1. Детектор циклов теперь ищет повторы последовательностей (1, 2 и 4 такта).
- *       2. При 3-х повторах подряд впрыскивается "Л-вакцина" (максимальный хаос в Л-систему).
- *       3. Глубина памяти увеличена до 24 тактов.
+ * #ЗАЧЕМ: Блюзовый Мозг V27.0 — "Isolated Piano Guard & Offset Vaccine".
+ * #ЧТО: 1. Добавлена изолированная память для Пианиста (pianoHistory).
+ *       2. Детектор стагнации теперь работает раздельно для ансамбля и для пианино.
+ *       3. Внедрен pianoStagnationOffset — офсет, ломающий детерминизм при зацикливании.
  */
 
 const ENERGY_PRICES = {
@@ -51,7 +51,12 @@ export class BluesBrain {
   private phrasePauseTimer = 0; 
   private readonly patternOptions: string[] = ['F_TRAVIS', 'F_ROLL12', 'S_SWING'];
 
+  // Память ансамбля
   private phraseHistory: string[] = [];
+  // Память пианиста (изолированная)
+  private pianoHistory: string[] = [];
+  private pianoStagnationOffset: number = 0;
+  
   private readonly MAX_HISTORY_DEPTH = 24;
 
   constructor(seed: number, mood: Mood) {
@@ -107,6 +112,7 @@ export class BluesBrain {
 
     // 1. MELODY & PIANO
     const combinedEvents: FractalEvent[] = [];
+    const currentPianoEvents: FractalEvent[] = [];
     
     if (hints.melody) {
       const price = getPrice(ENERGY_PRICES.solo, 'melody');
@@ -129,24 +135,41 @@ export class BluesBrain {
 
     const pianoPrice = getPrice(ENERGY_PRICES.piano, 'pianoAccompaniment');
     if (hints.pianoAccompaniment && (consumedEnergy + pianoPrice <= barBudget)) {
-        const pianoEvents = this.generatePianoMotif(epoch, currentChord, tempo, tension);
-        pianoEvents.forEach(e => { e.weight *= (0.4 * (hints.summonProgress?.pianoAccompaniment ?? 1.0)); }); 
-        combinedEvents.push(...pianoEvents);
+        const pEvents = this.generatePianoMotif(epoch, currentChord, tempo, tension);
+        pEvents.forEach(e => { e.weight *= (0.4 * (hints.summonProgress?.pianoAccompaniment ?? 1.0)); }); 
+        currentPianoEvents.push(...pEvents);
+        combinedEvents.push(...pEvents);
         consumedEnergy += pianoPrice;
     }
 
-    // #ЗАЧЕМ: Стабилизированный детектор стагнации последовательностей.
-    const shapeHash = this.getMelodicShapeHash(combinedEvents, currentChord.rootNote, tempo);
-    if (shapeHash) {
-        this.phraseHistory.push(shapeHash);
+    // #ЗАЧЕМ: Раздельный аудит стагнации для Ансамбля и Пианиста.
+    
+    // Аудит Пианиста
+    const pianoHash = this.getSpecificShapeHash(currentPianoEvents, currentChord.rootNote, tempo);
+    if (pianoHash !== "SILENCE") {
+        this.pianoHistory.push(pianoHash);
+        if (this.pianoHistory.length > this.MAX_HISTORY_DEPTH) this.pianoHistory.shift();
+        
+        const pianoStagnation = this.detectSequenceStagnation(this.pianoHistory);
+        if (pianoStagnation > 0) {
+            console.warn(`%c[SOR] PIANO STAGNATION VACCINE! Detected ${pianoStagnation}-bar loop. Shifting math.`, 'color: #ffffff; background: #8b4513; font-weight: bold; padding: 2px 5px;');
+            // Впрыск вакцины: изменение офсета для генератора пианино
+            this.pianoStagnationOffset += (this.random.nextInt(500) + 100);
+            this.pianoHistory = []; // Сброс памяти
+        }
+    }
+
+    // Аудит Ансамбля
+    const ensembleHash = this.getMelodicShapeHash(combinedEvents, currentChord.rootNote, tempo);
+    if (ensembleHash) {
+        this.phraseHistory.push(ensembleHash);
         if (this.phraseHistory.length > this.MAX_HISTORY_DEPTH) this.phraseHistory.shift();
         
-        const stagnationLength = this.detectSequenceStagnation();
-        if (stagnationLength > 0) {
-            console.warn(`%c[SOR] STAGNATION VACCINE: Detected ${stagnationLength}-bar sequence repeat (3x)! Injecting chaos.`, 'color: #ffffff; background: #ff4500; font-weight: bold; padding: 2px 5px;');
-            // Впрыск Л-вакцины: принудительная эволюция с коэффициентом 0.99
+        const ensembleStagnation = this.detectSequenceStagnation(this.phraseHistory);
+        if (ensembleStagnation > 0) {
+            console.warn(`%c[SOR] ENSEMBLE STAGNATION VACCINE! Detected ${ensembleStagnation}-bar sequence repeat.`, 'color: #ffffff; background: #ff4500; font-weight: bold; padding: 2px 5px;');
             this.currentAxiom = this.evolveAxiom(this.currentAxiom, 0.99, 'CLIMAX', dna, epoch);
-            this.phraseHistory = []; // Сброс памяти после вакцинации
+            this.phraseHistory = []; 
         }
     }
     
@@ -212,33 +235,39 @@ export class BluesBrain {
     return events;
   }
 
-  /**
-   * #ЗАЧЕМ: Детектор зацикливания последовательностей.
-   * #ЧТО: Ищет повторы длиной 1, 2 и 4 такта.
-   *       Если текущая последовательность совпадает с двумя предыдущими (3x подряд),
-   *       возвращает длину последовательности.
-   */
-  private detectSequenceStagnation(): number {
+  private detectSequenceStagnation(history: string[]): number {
       const lengths = [4, 2, 1];
       for (const L of lengths) {
-          if (this.phraseHistory.length < 3 * L) continue;
-          
-          const seq1 = this.phraseHistory.slice(-L).join('|');
-          const seq2 = this.phraseHistory.slice(-2 * L, -L).join('|');
-          const seq3 = this.phraseHistory.slice(-3 * L, -2 * L).join('|');
-          
+          if (history.length < 3 * L) continue;
+          const seq1 = history.slice(-L).join('|');
+          const seq2 = history.slice(-2 * L, -L).join('|');
+          const seq3 = history.slice(-3 * L, -2 * L).join('|');
           if (seq1 === seq2 && seq2 === seq3) return L;
       }
       return 0;
   }
 
+  /**
+   * #ЗАЧЕМ: Хэш конкретной партии для изолированного аудита.
+   */
+  private getSpecificShapeHash(events: FractalEvent[], rootNote: number, tempo: number): string {
+      if (events.length === 0) return "SILENCE";
+      const tickDur = (60 / tempo) / 3;
+      return events
+        .sort((a, b) => a.time - b.time)
+        .map(e => {
+            const relativeNote = (e.note - rootNote) % 12;
+            const tick = Math.round(e.time / tickDur);
+            return `${relativeNote}:${tick}`;
+        })
+        .join('|');
+  }
+
   private getMelodicShapeHash(events: FractalEvent[], rootNote: number, tempo: number): string {
       const tracked = events.filter(e => e.type === 'melody' || e.type === 'pianoAccompaniment');
       if (tracked.length === 0) return "";
-      
       const tickDur = (60 / tempo) / 3;
-
-      const hash = tracked
+      return tracked
         .sort((a, b) => a.time - b.time)
         .map(e => {
             const typeId = e.type === 'melody' ? 'M' : 'P';
@@ -247,8 +276,6 @@ export class BluesBrain {
             return `${typeId}:${relativeNote}:${tick}`;
         })
         .join('|');
-
-      return hash;
   }
 
   private evaluateTimbralDramaturgy(tension: number, hints: InstrumentHints, mood: Mood) {
@@ -302,7 +329,6 @@ export class BluesBrain {
             this.currentAxiom = this.generateInitialAxiom(tension, epoch, dna);
         }
     } else if (phaseInSentence === 0) {
-        console.log(`%c[SOR] L-SYSTEM: Organic Evolution of Phrase at Bar ${epoch}`, 'color: #DA70D6');
         this.currentAxiom = this.evolveAxiom(this.currentAxiom, tension, phaseName, dna, epoch);
     }
 
@@ -390,15 +416,31 @@ export class BluesBrain {
     return pattern.map(n => ({ type: 'bass', note: chord.rootNote - 12 + (DEGREE_TO_SEMITONE[n.deg] || 0), time: n.t * tickDur, duration: (n.d || 2) * tickDur, weight: 0.7 + tension * 0.2, technique: 'pluck', dynamics: tension > 0.6 ? 'mf' : 'p', phrasing: 'legato' }));
   }
 
+  /**
+   * #ЗАЧЕМ: Генератор фортепианного мотива.
+   * #ЧТО: Использует pianoStagnationOffset для предотвращения повторов при фиксации стагнации.
+   */
   private generatePianoMotif(epoch: number, chord: GhostChord, tempo: number, tension: number): FractalEvent[] {
     const beatDur = 60 / tempo;
     const root = chord.rootNote + 36;
     const notes = [root + 7, root + 10, root + 12]; 
     const events: FractalEvent[] = [];
     const density = 0.2 + (tension * 0.2); 
+    
     [1, 2, 3].forEach(beat => {
-        if (calculateMusiNum(epoch + beat, 7, this.seed, 10) / 10 < density) {
-            events.push({ type: 'pianoAccompaniment', note: notes[calculateMusiNum(epoch, 3, this.seed, 3)], time: beat * beatDur, duration: beatDur, weight: 0.4, technique: 'hit', dynamics: 'p', phrasing: 'staccato' });
+        // Добавлен pianoStagnationOffset в математику выбора
+        const musiInput = epoch + beat + this.pianoStagnationOffset;
+        if (calculateMusiNum(musiInput, 7, this.seed, 10) / 10 < density) {
+            events.push({ 
+                type: 'pianoAccompaniment', 
+                note: notes[calculateMusiNum(musiInput, 3, this.seed, 3)], 
+                time: beat * beatDur, 
+                duration: beatDur, 
+                weight: 0.4, 
+                technique: 'hit', 
+                dynamics: 'p', 
+                phrasing: 'staccato' 
+            });
         }
     });
     return events;
