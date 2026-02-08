@@ -1,9 +1,9 @@
 import type { MusicBlueprint } from '@/types/music';
 
 /**
- * #ЗАЧЕМ: Блюпринт "The Ritual" (Dark Blues v9.0 - Instant Ensemble).
- * #ЧТО: 1. Барабаны и Бас включены в PROLOGUE (бар 0).
- *       2. Шансы активации зафиксированы на 1.0 для исключения тишины.
+ * #ЗАЧЕМ: Блюпринт "The Ritual" (Dark Blues v10.0 - Longevity Fix).
+ * #ЧТО: 1. Длина пьесы зафиксирована на 144 тактах (устранение преждевременного аутро).
+ *       2. Гитара вступает раньше (перенесена в первую стадию Ritual).
  */
 export const DarkBluesBlueprint: MusicBlueprint = {
     id: 'dark_blues',
@@ -24,11 +24,12 @@ export const DarkBluesBlueprint: MusicBlueprint = {
         }
     },
     structure: {
+        // #ЗАЧЕМ: Устранение проблемы "короткой пьесы". 
+        // #ЧТО: preferredBars установлено в 144.
         totalDuration: { preferredBars: 144 },
         parts: [
             {
                 id: 'PROLOGUE', name: 'The Void Opening', duration: { percent: 3 },
-                // #ЗАЧЕМ: Разрешение всем базовым слоям играть с самого начала.
                 layers: { accompaniment: true, sfx: true, drums: true, bass: true },
                 stagedInstrumentation: [
                     { 
@@ -36,7 +37,6 @@ export const DarkBluesBlueprint: MusicBlueprint = {
                         instrumentation: {
                            accompaniment: { activationChance: 1.0, instrumentOptions: [ { name: 'synth_cave_pad', weight: 1.0 } ] },
                            sfx: { activationChance: 0.6, instrumentOptions: [ { name: 'dark', weight: 1.0 } ], transient: true },
-                           // #ЗАЧЕМ: Немедленный вход ритм-секции (бар 0-2).
                            drums: { activationChance: 1.0, instrumentOptions: [ { name: 'blues_dark', weight: 1.0 } ] },
                            bass: { activationChance: 1.0, instrumentOptions: [ { name: 'bass_ambient_dark', weight: 1.0 } ] }
                         }
@@ -58,7 +58,10 @@ export const DarkBluesBlueprint: MusicBlueprint = {
                         instrumentation: {
                            drums: { activationChance: 1.0, instrumentOptions: [ { name: 'blues_melancholic_master', weight: 1.0 } ] },
                            bass: { activationChance: 1.0, instrumentOptions: [ { name: 'bass', weight: 1.0 } ] },
-                           accompaniment: { activationChance: 1.0, instrumentOptions: [ { name: 'accompaniment', weight: 1.0 } ] }
+                           accompaniment: { activationChance: 1.0, instrumentOptions: [ { name: 'accompaniment', weight: 1.0 } ] },
+                           // #ЗАЧЕМ: Ранний вход гитары (бар 8-10).
+                           // #ЧТО: Гитара добавлена в самую первую стадию Ритуала.
+                           melody: { activationChance: 0.5, instrumentOptions: [ { name: 'melody', weight: 1.0 } ] }
                         }
                     },
                     {

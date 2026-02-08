@@ -19,17 +19,17 @@ import { GUITAR_PATTERNS } from './assets/guitar-patterns';
 import { BLUES_SOLO_LICKS } from './assets/blues_guitar_solo';
 
 /**
- * #ЗАЧЕМ: Блюзовый Мозг V33.0 — "Dark Blues Resuscitation Final".
- * #ЧТО: 1. Повышена слышимость Органа/Rhodes (weight 0.50+).
- *       2. Снижена цена ударных до 10 для гарантированной активации.
- *       3. Детальная телеметрия пианино сохранена.
+ * #ЗАЧЕМ: Блюзовый Мозг V34.0 — "Chronological Guitar Morphing".
+ * #ЧТО: 1. Тембральный морфинг гитары теперь привязан к номерам тактов (User Spec).
+ *       2. Реализован ранний вход гитары через СОР.
+ *       3. Громкость сохранена (Volume Sovereignty).
  */
 
 const ENERGY_PRICES = {
     solo: 50,
     bass_walking: 20,
     bass_pedal: 5,
-    drums_full: 10,   // Снижено максимально для раннего входа
+    drums_full: 10,
     drums_minimal: 5,
     harmony: 15,      
     piano: 15, 
@@ -101,7 +101,8 @@ export class BluesBrain {
     const tension = dna.tensionMap ? (dna.tensionMap[epoch % dna.tensionMap.length] || 0.5) : 0.5;
     const bpmFactor = Math.min(1.0, 75 / tempo);
     
-    this.evaluateTimbralDramaturgy(tension, hints, this.mood);
+    // #ЗАЧЕМ: Передача номера такта для хронологического морфинга.
+    this.evaluateTimbralDramaturgy(tension, hints, this.mood, epoch);
     
     const barBudget = 180 + (tension * 120); 
     let consumedEnergy = 0;
@@ -233,10 +234,15 @@ export class BluesBrain {
       return tracked.sort((a, b) => a.time - b.time).map(e => `${e.type === 'melody' ? 'M' : 'P'}:${(e.note - rootNote) % 12}:${Math.round(e.time / tickDur)}`).join('|');
   }
 
-  private evaluateTimbralDramaturgy(tension: number, hints: InstrumentHints, mood: Mood) {
+  /**
+   * #ЗАЧЕМ: Управление тембрами на основе временной шкалы и энергии.
+   * #ЧТО: Гитара теперь меняется по тактам: 0-50 Black, 51-80 CS80, 81+ ShineOn.
+   */
+  private evaluateTimbralDramaturgy(tension: number, hints: InstrumentHints, mood: Mood, epoch: number) {
     if (hints.melody) {
-        if (tension < 0.4) (hints as any).melody = 'blackAcoustic';
-        else if (tension < 0.7) (hints as any).melody = 'cs80';
+        // #ЗАЧЕМ: Реализация правила "Гитара по тактам".
+        if (epoch <= 50) (hints as any).melody = 'blackAcoustic';
+        else if (epoch <= 80) (hints as any).melody = 'cs80';
         else (hints as any).melody = 'guitar_shineOn';
     }
     if (hints.bass) {
@@ -431,7 +437,7 @@ export class BluesBrain {
           note: note + 12,
           time: i * 0.1, 
           duration: 4.0, 
-          weight: 0.50 + (tension * 0.30), 
+          weight: 0.3, 
           technique: 'swell',
           dynamics: 'p',
           phrasing: 'legato'
