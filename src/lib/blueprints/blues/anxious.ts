@@ -1,24 +1,27 @@
 import type { MusicBlueprint } from '@/types/music';
 
 /**
- * #ЗАЧЕМ: Блюпринт "The Double-Peak Anxiety" (Anxious Blues v6.0 - Chronos Alignment).
- * #ЧТО: BPM расширен до 80-100.
+ * #ЗАЧЕМ: Блюпринт "The Nervous Flux" (Anxious Blues v7.0 - Ambient Alignment).
+ * #ЧТО: 1. Tension Profile сглажен для сохранения фонового режима.
+ *       2. Плотность инструментов значительно снижена для высоких темпов (80-100 BPM).
+ *       3. Убраны резкие провалы.
  */
 export const AnxiousBluesBlueprint: MusicBlueprint = {
     id: 'anxious_blues',
-    name: 'Double-Peak Nervous Shuffle',
-    description: 'High-tension blues with an algorithmic prologue, rapid build-up and a dramatic breakdown.',
+    name: 'Nervous Ambient Shuffle',
+    description: 'High-tempo but low-density blues. Focuses on jitter and syncopation over speed.',
     mood: 'anxious',
     musical: {
         key: { root: 'E', scale: 'phrygian', octave: 2 },
-        bpm: { base: 90, range: [80, 100], modifier: 1.0 }, 
+        bpm: { base: 90, range: [85, 100], modifier: 1.0 }, 
         timeSignature: { numerator: 4, denominator: 4 },
         harmonicJourney: [],
         tensionProfile: { 
             type: 'wave', 
             peakPosition: 0.5, 
+            // #ЗАЧЕМ: Сглаженная волна без резких провалов.
             curve: (p, pp) => {
-                return 0.5 + 0.4 * Math.sin(p * Math.PI * 4);
+                return 0.6 + 0.2 * Math.sin(p * Math.PI * 2);
             }
         }
     },
@@ -26,10 +29,10 @@ export const AnxiousBluesBlueprint: MusicBlueprint = {
         totalDuration: { preferredBars: 144 },
         parts: [
             // ========================================================================
-            // 0. PROLOGUE (4 такта / 3%) — Холодный старт
+            // 0. PROLOGUE (4 такта / 3%) — Алгоритмический вход
             // ========================================================================
             {
-                id: 'PROLOGUE', name: 'Cold Start', duration: { percent: 3 },
+                id: 'PROLOGUE', name: 'The Glitch', duration: { percent: 3 },
                 layers: { accompaniment: true, sfx: true },
                 stagedInstrumentation: [
                     { 
@@ -41,125 +44,55 @@ export const AnxiousBluesBlueprint: MusicBlueprint = {
                     }
                 ],
                 instrumentRules: {
-                    accompaniment: { techniques: [{ value: 'arpeggio-fast', weight: 1.0 }], register: { preferred: 'mid' } }
+                    accompaniment: { techniques: [{ value: 'arpeggio-slow', weight: 1.0 }], register: { preferred: 'mid' } }
                 },
                 bundles: [{ id: 'ANX_PROLOGUE', name: 'Glitch Start', duration: { percent: 100 }, characteristics: {}, phrases: {} }],
                 outroFill: null,
             },
             // ========================================================================
-            // 1. INTRO (5%) — Sudden Unease
+            // 1. THE_FLUX (97%) — Persistent Nervousness
             // ========================================================================
             {
-                id: 'INTRO', name: 'Sudden Unease', duration: { percent: 5 },
-                layers: { bass: true, accompaniment: true, melody: true, drums: true, harmony: true, pianoAccompaniment: true },
+                id: 'THE_FLUX', name: 'Nervous Ensemble', duration: { percent: 97 },
+                layers: { bass: true, accompaniment: true, melody: true, drums: true, harmony: true, pianoAccompaniment: true, sfx: true },
                 stagedInstrumentation: [
                     { 
-                        duration: { percent: 100 }, 
+                        duration: { percent: 25 }, 
                         instrumentation: {
                            bass: { activationChance: 1.0, instrumentOptions: [ { name: 'bass', weight: 1.0 } ] },
-                           accompaniment: { activationChance: 1.0, instrumentOptions: [ { name: 'accompaniment', weight: 1.0 } ] },
                            drums: { activationChance: 1.0, instrumentOptions: [ { name: 'trance_melancholic', weight: 1.0 } ] },
+                           accompaniment: { activationChance: 1.0, instrumentOptions: [ { name: 'accompaniment', weight: 1.0 } ] }
+                        }
+                    },
+                    {
+                        duration: { percent: 25 }, 
+                        instrumentation: {
+                           bass: { activationChance: 1.0, instrumentOptions: [ { name: 'bass', weight: 1.0 } ] },
+                           drums: { activationChance: 1.0, instrumentOptions: [ { name: 'trance_melancholic', weight: 1.0 } ] },
+                           accompaniment: { activationChance: 1.0, instrumentOptions: [ { name: 'accompaniment', weight: 1.0 } ] },
                            melody: { activationChance: 1.0, instrumentOptions: [ { name: 'melody', weight: 1.0 } ] }
                         }
-                    }
-                ],
-                instrumentRules: {
-                    drums: { kitName: 'trance_melancholic', density: { min: 0.3, max: 0.5 } }
-                },
-                bundles: [{ id: 'ANX_FAST_START', name: 'Start', duration: { percent: 100 }, characteristics: {}, phrases: {} }],
-                outroFill: null,
-            },
-            // ========================================================================
-            // 2. MAIN_1 (40%) — First Panic
-            // ========================================================================
-            {
-                id: 'MAIN_1', name: 'First Panic', duration: { percent: 40 },
-                layers: { bass: true, accompaniment: true, melody: true, drums: true, harmony: true, pianoAccompaniment: true },
-                stagedInstrumentation: [
-                    { 
-                        duration: { percent: 100 }, 
+                    },
+                    {
+                        duration: { percent: 50 }, 
                         instrumentation: {
                            bass: { activationChance: 1.0, instrumentOptions: [ { name: 'bass', weight: 1.0 } ] },
                            drums: { activationChance: 1.0, instrumentOptions: [ { name: 'trance_melancholic', weight: 1.0 } ] },
                            accompaniment: { activationChance: 1.0, instrumentOptions: [ { name: 'accompaniment', weight: 1.0 } ] },
                            melody: { activationChance: 1.0, instrumentOptions: [ { name: 'melody', weight: 1.0 } ] },
+                           pianoAccompaniment: { activationChance: 1.0, instrumentOptions: [ { name: 'piano', weight: 1.0 } ] },
                            harmony: { activationChance: 1.0, instrumentOptions: [ { name: 'guitarChords', weight: 1.0 } ] },
-                           pianoAccompaniment: { activationChance: 1.0, instrumentOptions: [ { name: 'piano', weight: 1.0 } ] }
+                           sfx: { activationChance: 0.3, instrumentOptions: [ { name: 'laser', weight: 1.0 } ], transient: true }
                         }
                     }
                 ],
                 instrumentRules: {
-                    melody: { source: 'blues_solo', density: { min: 0.6, max: 0.8 } },
-                    drums: { kitName: 'trance_melancholic', density: { min: 0.6, max: 0.8 }, useSnare: true }
+                    // #ЗАЧЕМ: Снижение плотности для высокого BPM.
+                    melody: { source: 'blues_solo', density: { min: 0.3, max: 0.5 } },
+                    drums: { kitName: 'trance_melancholic', density: { min: 0.4, max: 0.6 }, useSnare: true },
+                    bass: { techniques: [{ value: 'pulse', weight: 1.0 }], density: { min: 0.5, max: 0.7 } }
                 },
-                bundles: [{ id: 'ANX_PEAK_1', name: 'Attack 1', duration: { percent: 100 }, characteristics: {}, phrases: {} }],
-                outroFill: { type: 'density_pause', duration: 2, parameters: { soloLayer: 'sfx' } },
-            },
-            // ========================================================================
-            // 3. BRIDGE (4%) — The Void
-            // ========================================================================
-            {
-                id: 'BRIDGE', name: 'The Void', duration: { percent: 4 }, 
-                layers: { bass: true, accompaniment: true, sfx: true, pianoAccompaniment: true },
-                stagedInstrumentation: [
-                    { 
-                        duration: { percent: 100 }, 
-                        instrumentation: {
-                           accompaniment: { activationChance: 1.0, instrumentOptions: [ { name: 'accompaniment', weight: 1.0 } ] },
-                           pianoAccompaniment: { activationChance: 1.0, instrumentOptions: [ { name: 'piano', weight: 1.0 } ] },
-                           sfx: { activationChance: 0.4, instrumentOptions: [ { name: 'voice', weight: 1.0 } ], transient: true }
-                        }
-                    }
-                ],
-                instrumentRules: {
-                    accompaniment: { techniques: [{ value: 'swell', weight: 1.0 }], register: { preferred: 'low' } }
-                },
-                bundles: [{ id: 'ANX_BREATH', name: 'Breather', duration: { percent: 100 }, characteristics: {}, phrases: {} }],
-                outroFill: { type: 'roll', duration: 1, parameters: { crescendo: true } },
-            },
-            // ========================================================================
-            // 4. MAIN_2 (40%) — Final Meltdown
-            // ========================================================================
-            {
-                id: 'MAIN_2', name: 'Final Meltdown', duration: { percent: 40 },
-                layers: { bass: true, accompaniment: true, melody: true, drums: true, harmony: true, pianoAccompaniment: true, sparkles: true, sfx: true },
-                stagedInstrumentation: [
-                    { 
-                        duration: { percent: 100 }, 
-                        instrumentation: {
-                           bass: { activationChance: 1.0, instrumentOptions: [ { name: 'bass', weight: 1.0 } ] },
-                           drums: { activationChance: 1.0, instrumentOptions: [ { name: 'trance_melancholic', weight: 1.0 } ] },
-                           accompaniment: { activationChance: 1.0, instrumentOptions: [ { name: 'accompaniment', weight: 1.0 } ] },
-                           melody: { activationChance: 1.0, instrumentOptions: [ { name: 'melody', weight: 1.0 } ] },
-                           harmony: { activationChance: 1.0, instrumentOptions: [ { name: 'flute', weight: 1.0 } ] },
-                           pianoAccompaniment: { activationChance: 1.0, instrumentOptions: [ { name: 'piano', weight: 1.0 } ] },
-                           sparkles: { activationChance: 0.4, instrumentOptions: [ { name: 'dark', weight: 1.0 } ], transient: true }
-                        }
-                    }
-                ],
-                instrumentRules: {
-                    melody: { source: 'blues_solo', register: { preferred: 'high' }, density: { min: 0.8, max: 1.0 } },
-                    drums: { kitName: 'trance_melancholic', density: { min: 0.8, max: 1.0 }, kickVolume: 1.2 }
-                },
-                bundles: [{ id: 'ANX_PEAK_2', name: 'Attack 2', duration: { percent: 100 }, characteristics: {}, phrases: {} }],
-                outroFill: null,
-            },
-            // ========================================================================
-            // 5. OUTRO (8%) — Exhaustion
-            // ========================================================================
-            {
-                id: 'OUTRO', name: 'Exhaustion', duration: { percent: 8 },
-                layers: { bass: true, accompaniment: true, sfx: true, pianoAccompaniment: true },
-                stagedInstrumentation: [
-                    { 
-                        duration: { percent: 100 }, 
-                        instrumentation: {
-                           bass: { activationChance: 1.0, instrumentOptions: [ { name: 'bass', weight: 1.0 } ] },
-                           pianoAccompaniment: { activationChance: 1.0, instrumentOptions: [ { name: 'piano', weight: 1.0 } ] }
-                        }
-                    }
-                ],
-                bundles: [{ id: 'ANX_EXIT', name: 'Final Breath', duration: { percent: 100 }, characteristics: {}, phrases: {} }],
+                bundles: [{ id: 'ANX_MAIN_BUNDLE', name: 'The Flux', duration: { percent: 100 }, characteristics: {}, phrases: {} }],
                 outroFill: null,
             }
         ]
