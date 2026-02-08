@@ -20,9 +20,9 @@ import { GUITAR_PATTERNS } from './assets/guitar-patterns';
 import { BLUES_SOLO_LICKS } from './assets/blues_guitar_solo';
 
 /**
- * #ЗАЧЕМ: Блюзовый Мозг V38.0 — "The Bongo Enrichment".
- * #ЧТО: 1. Внедрена логика использования новых ассетов Bongo и PVC в энергетических слоях.
- *       2. Расширен пул "Extra Percussion" за счет pc-01..03 и pvc-tube-01..03.
+ * #ЗАЧЕМ: Блюзовый Мозг V39.0 — "The Energy Telemetry".
+ * #ЧТО: 1. Внедрена телеметрия уровня энергии (Tension) на каждом такте.
+ *       2. Лог использует уникальный оранжевый префикс [ENERGY] для диагностики саспенса.
  */
 
 const ENERGY_PRICES = {
@@ -101,6 +101,9 @@ export class BluesBrain {
     const tension = dna.tensionMap ? (dna.tensionMap[epoch % dna.tensionMap.length] || 0.5) : 0.5;
     const bpmFactor = Math.min(1.0, 75 / tempo);
     
+    // #ЗАЧЕМ: Энергетическая телеметрия для диагностики саспенса (План №273).
+    console.log(`%c[ENERGY @ Bar ${epoch}] Tension: ${tension.toFixed(3)} | Phase: ${getChordNameForBar(barIn12)}`, 'color: #FB923C; font-weight: bold;');
+
     this.evaluateTimbralDramaturgy(tension, hints, this.mood, epoch);
     
     const barBudget = 180 + (tension * 120); 
@@ -330,11 +333,6 @@ export class BluesBrain {
     }).slice(0, 6);
   }
 
-  /**
-   * #ЗАЧЕМ: Энергетическое обогащение ударных V38.0.
-   * #ЧТО: 1. Внедрена логика использования Bongo и PVC в энергетических слоях.
-   *       2. При T > 0.6 — в паттерн впрыскиваются новые звуки pc-01..03 и pvc-tube-01..03.
-   */
   private generateDrums(epoch: number, tempo: number, tension: number, isEnsemble: boolean, bpmFactor: number): FractalEvent[] {
     const tickDur = (60 / tempo) / 3;
     const isMellowMood = ['dark', 'melancholic', 'anxious', 'gloomy', 'contemplative', 'calm'].includes(this.mood);
@@ -351,7 +349,6 @@ export class BluesBrain {
         ? (calculateMusiNum(epoch, 2, this.seed, 2) === 0 ? 'drum_drum_kick_reso' : 'drum_kick_drum6')
         : 'drum_kick';
 
-    // --- Energy-Based Enrichment (Bongo & PVC) ---
     if (tension > 0.6) {
         const extraTicks = [2, 5, 8, 11];
         const extraPool = [
@@ -376,7 +373,6 @@ export class BluesBrain {
             events.push(this.createDrumEvent(tomId as any, 9 * tickDur, 0.35, 'p'));
         }
         
-        // Ритмичное "дыхание" через Bongo/PVC при низкой энергии
         [3, 9].forEach(t => {
             if (this.random.next() < 0.45) {
                 const moodPerc = ['drum_bongo_pvc-tube-01', 'drum_bongo_pc-02', 'perc-013'][this.random.nextInt(3)];
@@ -515,4 +511,9 @@ export class BluesBrain {
     const octave = Math.floor(midi / 12) - 1;
     return `${notes[midi % 12]}${octave}`;
   }
+}
+
+function getChordNameForBar(barIndex: number): string {
+  const progression = ['i7', 'i7', 'i7', 'i7', 'iv7', 'iv7', 'i7', 'i7', 'v7', 'iv7', 'i7', 'v7'];
+  return progression[barIndex % 12];
 }
