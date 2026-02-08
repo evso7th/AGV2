@@ -140,8 +140,8 @@ const Scheduler = {
         }
 
         // #ЗАЧЕМ: AI Arbitrator — автоматический отбор лучших образцов.
-        // #ОБНОВЛЕНО (ПЛАН №286): Порог снижен до 0.80 по требованию пользователя для более активного наполнения генофонда.
-        if (finalPayload.beautyScore > 0.80 && this.barCount > 8) {
+        // #ОБНОВЛЕНО (ПЛАН №287): Порог снижен до 0.78 для более частого пополнения генофонда качественной музыкой.
+        if (finalPayload.beautyScore > 0.78 && this.barCount > 8) {
             console.log(`%c[Chain] AI ARBITRATOR: High Resonance Detected (${finalPayload.beautyScore.toFixed(3)}). Signaling UI for backup.`, 'color: #ff00ff');
             self.postMessage({ 
                 type: 'HIGH_RESONANCE_DETECTED', 
@@ -163,7 +163,6 @@ const Scheduler = {
         }
         
         const sectionName = finalPayload.navInfo?.currentPart.name || 'Unknown';
-        // #ЗАЧЕМ: Отображение текущего BPM в логах.
         console.log(`[Bar ${this.barCount}] [${this.suiteType}] [${sectionName}] BPM:${this.settings.bpm} Res:${finalPayload.beautyScore.toFixed(2)} D:${counts.drums}, B:${counts.bass}, M:${counts.melody}`);
 
         self.postMessage({ 
@@ -173,7 +172,6 @@ const Scheduler = {
                 instrumentHints: finalPayload.instrumentHints,
                 barDuration: this.barDuration,
                 barCount: this.barCount,
-                // #ЗАЧЕМ: Передача актуального BPM в UI.
                 actualBpm: this.settings.bpm
             }
         });

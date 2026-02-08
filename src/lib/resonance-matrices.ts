@@ -179,7 +179,7 @@ export const TraditionalK = ElectronicK;
 
 /**
  * #ЗАЧЕМ: Матрица резонанса для меланхоличного минора.
- * #ОБНОВЛЕНО (ПЛАН №286): Повышена награда за консонансы до 0.99.
+ * #ОБНОВЛЕНО (ПЛАН №287): Повышена базовая щедрость для тональных пар до 0.75.
  */
 export const MelancholicMinorK: ResonanceMatrix = (eventA: FractalEvent, eventB: FractalEvent, context: { mood: Mood; tempo: number; delta: number, genre: Genre }): number => {
     if (!eventA || !eventB) { return 0.5; }
@@ -204,7 +204,7 @@ export const MelancholicMinorK: ResonanceMatrix = (eventA: FractalEvent, eventB:
         if (isKick(drumEvent)) {
             if (areSimultaneous(bassEvent.time, drumEvent.time) && isOnStrongBeat(bassEvent.time)) return 1.0;
             if (Math.abs(bassEvent.time - drumEvent.time - 0.5) < 0.1 && isOnStrongBeat(drumEvent.time)) return 0.85; 
-            return 0.3;
+            return 0.4; // Повышен пол
         }
         if (isSnare(drumEvent)) {
             if (areSimultaneous(eventA.time, eventB.time) && isOnSnareBeat(eventA.time)) {
@@ -222,10 +222,10 @@ export const MelancholicMinorK: ResonanceMatrix = (eventA: FractalEvent, eventB:
         if (!noteAInScale || !noteBInScale) return 0.2; 
 
         const interval = Math.abs(eventA.note - eventB.note) % 12;
-        // #ЗАЧЕМ: Максимальное вознаграждение за чистую гармонию.
-        // #ОБНОВЛЕНО (ПЛАН №286): Поднято до 0.99.
         if ([3, 4, 7, 8, 9].includes(interval)) return 0.99;
-        return 0.6;
+        // #ЗАЧЕМ: Повышение базовой красоты для всех "правильных" пар.
+        // #ОБНОВЛЕНО (ПЛАН №287): С 0.60 до 0.75.
+        return 0.75; 
     }
 
 
@@ -236,8 +236,9 @@ export const MelancholicMinorK: ResonanceMatrix = (eventA: FractalEvent, eventB:
             if (isOnStrongBeat(kickTime) && isOnSnareBeat(snareTime)) {
                 return 0.95; 
             }
-            return 0.4;
+            return 0.6; // Повышено одобрение базового ритма
         }
+        return 0.6;
     }
 
     if (isGhostNote(eventA) || isGhostNote(eventB)) {
@@ -254,7 +255,9 @@ export const MelancholicMinorK: ResonanceMatrix = (eventA: FractalEvent, eventB:
              return noteAInScale && noteBInScale ? 0.95 : 0.2;
         }
 
-        return noteAInScale && noteBInScale ? 0.9 : 0.3;
+        // #ЗАЧЕМ: Повышено одобрение тональной связности внутри слоев.
+        // #ОБНОВЛЕНО (ПЛАН №287): С 0.90 до 0.95.
+        return noteAInScale && noteBInScale ? 0.95 : 0.4;
     }
     
     if (context.delta > 0.9) { 
