@@ -59,12 +59,14 @@ const Scheduler = {
             console.log(`%c[Chain] Loading MAIN Blueprint: ${blueprint.id}`, 'color: #FFD700; font-weight:bold;');
         }
 
+        // #ИСПРАВЛЕНО (ПЛАН 246): Передаем blueprint в конструктор.
+        // Это предотвращает загрузку неверного Блюпринта внутри движка.
         const newEngine = new FractalMusicEngine({
             ...settings,
             seed: settings.seed || Date.now(),
             introBars: settings.introBars,
             ancestor: settings.ancestor 
-        });
+        }, blueprint);
 
         newEngine.initialize(true); 
         fractalMusicEngine = newEngine;
@@ -135,7 +137,6 @@ const Scheduler = {
             console.error('[Worker.tick] CRITICAL ERROR:', e);
         }
 
-        // #ЗАЧЕМ: AI Arbitrator — автоматическое пополнение генофонда.
         if (finalPayload.beautyScore > 0.88 && this.barCount > 8) {
             console.log(`%c[GENEPOOL] AI ARBITRATOR: High Resonance Detected (${finalPayload.beautyScore.toFixed(3)}). Seed ${this.settings.seed} is worthy.`, 'color: #ff00ff; font-weight: bold;');
             self.postMessage({ 
@@ -197,7 +198,7 @@ const Scheduler = {
                  this.suiteType = 'MAIN';
              } else {
                  this.suiteType = 'BRIDGE';
-                 this.settings.seed = Date.now(); // Новое зерно для каждой основной части
+                 this.settings.seed = Date.now(); 
              }
              
              this.initializeEngine(this.settings, true);

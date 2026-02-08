@@ -1,5 +1,9 @@
 import type { MusicBlueprint } from '@/types/music';
 
+/**
+ * #ЗАЧЕМ: Блюпринт "Detroit Shuffle" (v6.0 - Chronos Alignment).
+ * #ЧТО: BPM расширен до 90-110 для уверенного драйва.
+ */
 export const JoyfulBluesBlueprint: MusicBlueprint = {
     id: 'joyful_blues',
     name: 'Detroit Shuffle',
@@ -7,7 +11,7 @@ export const JoyfulBluesBlueprint: MusicBlueprint = {
     mood: 'joyful',
     musical: {
         key: { root: 'A', scale: 'ionian', octave: 2 },
-        bpm: { base: 112, range: [110, 125], modifier: 1.0 }, // #ОБНОВЛЕНО (ПЛАН 94.1): Поднято для драйва.
+        bpm: { base: 100, range: [90, 110], modifier: 1.0 }, 
         timeSignature: { numerator: 4, denominator: 4 },
         harmonicJourney: [],
         tensionProfile: { type: 'crescendo', peakPosition: 0.7, curve: (p, pp) => p }
@@ -50,7 +54,7 @@ export const JoyfulBluesBlueprint: MusicBlueprint = {
                 instrumentRules: {
                     drums: { pattern: 'composer', density: { min: 0.8, max: 1.0 }, kickVolume: 1.1, useSnare: true, useGhostHat: true, usePerc: true, ride: { enabled: false }, useBrushes: true },
                     melody: {
-                        source: 'blues_solo', // #ИСПРАВЛЕНО: Явное указание источника для активации ликов.
+                        source: 'blues_solo', 
                         density: { min: 0.7, max: 0.9 },
                         register: { preferred: 'high' }
                     },

@@ -1,8 +1,9 @@
 import type { MusicBlueprint } from '@/types/music';
 
 /**
- * #ЗАЧЕМ: Блюпринт "The Ritual" (Dark Blues v4.0 - Inverse Tension Integration).
- * #ЧТО: Вероятности sfx и sparkles возвращены к базовым (0.4).
+ * #ЗАЧЕМ: Блюпринт "The Ritual" (Dark Blues v5.0 - Chronos Alignment).
+ * #ЧТО: 1. BPM расширен до 60-75.
+ *       2. Мелодия включена в фазу BUILD для предотвращения эффекта "пустого микса".
  */
 export const DarkBluesBlueprint: MusicBlueprint = {
     id: 'dark_blues',
@@ -11,7 +12,8 @@ export const DarkBluesBlueprint: MusicBlueprint = {
     mood: 'dark',
     musical: {
         key: { root: 'E', scale: 'phrygian', octave: 1 },
-        bpm: { base: 62, range: [60, 66], modifier: 1.0 },
+        // #ЗАЧЕМ: Вариативность темпа.
+        bpm: { base: 62, range: [60, 75], modifier: 1.0 }, 
         timeSignature: { numerator: 4, denominator: 4 },
         harmonicJourney: [],
         tensionProfile: { 
@@ -55,7 +57,9 @@ export const DarkBluesBlueprint: MusicBlueprint = {
                         duration: { percent: 25 }, 
                         instrumentation: {
                            accompaniment: { activationChance: 1.0, instrumentOptions: [ { name: 'accompaniment', weight: 1.0 } ] },
-                           bass: { activationChance: 1.0, instrumentOptions: [ { name: 'bass', weight: 1.0 } ] }
+                           bass: { activationChance: 1.0, instrumentOptions: [ { name: 'bass', weight: 1.0 } ] },
+                           // #ЗАЧЕМ: Предотвращение эффекта "пустого микса" в начале ритуала.
+                           melody: { activationChance: 0.5, instrumentOptions: [ { name: 'melody', weight: 1.0 } ] }
                         }
                     },
                     {

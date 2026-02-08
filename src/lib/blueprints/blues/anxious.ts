@@ -1,8 +1,8 @@
 import type { MusicBlueprint } from '@/types/music';
 
 /**
- * #ЗАЧЕМ: Блюпринт "The Double-Peak Anxiety" (Anxious Blues v5.0 - Inverse Tension Integration).
- * #ЧТО: Вероятности sfx и sparkles возвращены к базовым (0.4).
+ * #ЗАЧЕМ: Блюпринт "The Double-Peak Anxiety" (Anxious Blues v6.0 - Chronos Alignment).
+ * #ЧТО: BPM расширен до 80-100.
  */
 export const AnxiousBluesBlueprint: MusicBlueprint = {
     id: 'anxious_blues',
@@ -11,7 +11,7 @@ export const AnxiousBluesBlueprint: MusicBlueprint = {
     mood: 'anxious',
     musical: {
         key: { root: 'E', scale: 'phrygian', octave: 2 },
-        bpm: { base: 88, range: [84, 96], modifier: 1.0 },
+        bpm: { base: 90, range: [80, 100], modifier: 1.0 }, 
         timeSignature: { numerator: 4, denominator: 4 },
         harmonicJourney: [],
         tensionProfile: { 

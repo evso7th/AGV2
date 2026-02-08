@@ -1,20 +1,23 @@
-
 import type { MusicBlueprint } from '@/types/music';
 
+/**
+ * #ЗАЧЕМ: Блюпринт "Mid-Shuffle Chicago" (v2.0 - Chronos Alignment).
+ * #ЧТО: BPM расширен до 75-90.
+ */
 export const NeutralBluesBlueprint: MusicBlueprint = {
     id: 'neutral_blues',
     name: 'Mid-Shuffle Chicago',
     description: 'A classic, mid-tempo Chicago blues shuffle.',
-    mood: 'contemplative', // Using for neutral mood
+    mood: 'contemplative', 
     musical: {
         key: { root: 'G', scale: 'ionian', octave: 2 },
-        bpm: { base: 72, range: [68, 78], modifier: 1.0 }, // TEMPO ADJUSTED
-        timeSignature: { numerator: 4, denominator: 4 }, // Interpreted as 12/8 shuffle
-        harmonicJourney: [], // Driven by 12-bar blues structure in the engine
+        bpm: { base: 82, range: [75, 90], modifier: 1.0 }, 
+        timeSignature: { numerator: 4, denominator: 4 }, 
+        harmonicJourney: [], 
         tensionProfile: { type: 'plateau', peakPosition: 0.4, curve: (p, pp) => p < pp ? p / pp : 1.0 }
     },
     structure: {
-        totalDuration: { preferredBars: 144 }, // 12 loops of 12 bars
+        totalDuration: { preferredBars: 144 }, 
         parts: [
             {
                 id: 'INTRO', name: 'Verse 1-2', duration: { percent: 25 },

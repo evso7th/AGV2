@@ -1,9 +1,8 @@
 import type { MusicBlueprint } from '@/types/music';
 
 /**
- * #ЗАЧЕМ: Блюпринт "The Bluest Blues" (v21.0 - Inverse Tension Integration).
- * #ЧТО: Вероятности sfx и sparkles возвращены к базовым (0.4), 
- *       так как движок теперь фильтрует их по напряжению.
+ * #ЗАЧЕМ: Блюпринт "The Bluest Blues" (v22.0 - Chronos Tuning).
+ * #ЧТО: BPM расширен до диапазона 60-75.
  * #СТАТУС: FROZEN.
  */
 export const WinterBluesBlueprint: MusicBlueprint = {
@@ -13,7 +12,8 @@ export const WinterBluesBlueprint: MusicBlueprint = {
     mood: 'melancholic',
     musical: {
         key: { root: 'E', scale: 'dorian', octave: 1 },
-        bpm: { base: 72, range: [68, 78], modifier: 1.0 },
+        // #ЗАЧЕМ: Вариативность темпа между пьесами.
+        bpm: { base: 72, range: [60, 75], modifier: 1.0 }, 
         timeSignature: { numerator: 4, denominator: 4 },
         harmonicJourney: [],
         tensionProfile: { 

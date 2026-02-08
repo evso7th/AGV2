@@ -1,4 +1,4 @@
-import type { FractalEvent, Mood, Genre, InstrumentPart, InstrumentHints, GhostChord, SuiteDNA, NavigationInfo } from '@/types/music';
+import type { FractalEvent, Mood, Genre, InstrumentPart, InstrumentHints, GhostChord, SuiteDNA, NavigationInfo, MusicBlueprint } from '@/types/music';
 import { BlueprintNavigator } from './blueprint-navigator';
 import { getBlueprint } from './blueprints';
 import { BluesBrain } from './blues-brain';
@@ -44,12 +44,13 @@ interface EngineConfig {
 }
 
 /**
- * #ЗАЧЕМ: Фрактальный Музыкальный Движок V14.0 — "Inverse Tension Decoration".
- * #ЧТО: Декоративные слои (sfx, sparkles) теперь обратно пропорциональны напряжению сюиты.
- *       Это обеспечивает "воздух" в кульминациях и глубину в тихих моментах.
+ * #ЗАЧЕМ: Фрактальный Музыкальный Движок V15.0 — "Chronos Alignment".
+ * #ЧТО: Теперь движок принимает Блюпринт извне. Это устраняет баг
+ *       синхронизации Воркера (когда играл MAIN вместо BRIDGE).
  */
 export class FractalMusicEngine {
   public config: EngineConfig;
+  public blueprint: MusicBlueprint;
   public epoch = 0;
   public random: any;
   public suiteDNA: SuiteDNA | null = null; 
@@ -60,8 +61,9 @@ export class FractalMusicEngine {
   private previousChord: GhostChord | null = null;
   private lastEvents: FractalEvent[] = []; 
 
-  constructor(config: EngineConfig) {
+  constructor(config: EngineConfig, blueprint: MusicBlueprint) {
     this.config = { ...config };
+    this.blueprint = blueprint;
     this.random = seededRandom(config.seed);
   }
 
@@ -70,22 +72,21 @@ export class FractalMusicEngine {
       const seedChanged = newConfig.seed !== undefined && newConfig.seed !== this.config.seed;
       this.config = { ...this.config, ...newConfig };
       if (seedChanged) this.random = seededRandom(this.config.seed);
+      // NOTE: Blueprint update during run is not supported here, only via re-initialization
       if(moodOrGenreChanged || seedChanged) this.initialize(true);
   }
 
   public initialize(force: boolean = false) {
     if (this.isInitialized && !force) return;
 
-    const blueprint = getBlueprint(this.config.genre, this.config.mood);
-    
     // #ЗАЧЕМ: Алгоритм Evolutionary Sowing.
     this.suiteDNA = generateSuiteDNA(
-        blueprint.structure.totalDuration.preferredBars, 
+        this.blueprint.structure.totalDuration.preferredBars, 
         this.config.mood, 
         this.config.seed, 
         this.random, 
         this.config.genre, 
-        blueprint.structure.parts,
+        this.blueprint.structure.parts,
         this.config.ancestor
     );
 
@@ -93,7 +94,7 @@ export class FractalMusicEngine {
         console.log(`%c[GENEPOOL] Inheritance Detected! Ancestor Seed: ${this.config.ancestor.seed}`, 'color: #ff00ff; font-weight:bold;');
     }
 
-    this.navigator = new BlueprintNavigator(blueprint, this.config.seed, this.config.genre, this.config.mood, this.config.introBars, this.suiteDNA.soloPlanMap);
+    this.navigator = new BlueprintNavigator(this.blueprint, this.config.seed, this.config.genre, this.config.mood, this.config.introBars, this.suiteDNA.soloPlanMap);
     
     if (this.config.genre === 'blues') {
         this.bluesBrain = new BluesBrain(this.config.seed, this.config.mood);
@@ -121,7 +122,6 @@ export class FractalMusicEngine {
         const partBars = navInfo.currentPartEndBar - navInfo.currentPartStartBar + 1;
         const progress = (this.epoch - navInfo.currentPartStartBar) / partBars;
         
-        // #ЗАЧЕМ: Получение актуального напряжения для фильтрации декораций.
         const tension = this.suiteDNA?.tensionMap?.[this.epoch % (this.suiteDNA.tensionMap.length || 1)] ?? 0.5;
 
         let currentStage = stages[stages.length - 1];
@@ -137,8 +137,6 @@ export class FractalMusicEngine {
         Object.entries(currentStage.instrumentation).forEach(([partStr, rule]: [any, any]) => {
             const part = partStr as InstrumentPart;
             
-            // #ЗАЧЕМ: Закон Обратной Зависимости текстур от напряжения.
-            // #ЧТО: Шанс появления SFX и Sparkles снижается при росте напряжения.
             let effectiveChance = rule.activationChance;
             if (part === 'sfx' || part === 'sparkles') {
                 effectiveChance = rule.activationChance * (1.0 - tension);
