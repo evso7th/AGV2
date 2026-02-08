@@ -16,8 +16,18 @@ export function saveMasterpiece(db: Firestore, data: {
   instrumentSettings: any;
 }) {
   const masterpiecesRef = collection(db, 'masterpieces');
+  
+  // #ЗАЧЕМ: Гарантированная сериализация.
+  // Мы создаем чистый клон объекта данных, чтобы избежать передачи ссылок на внутренние стейты React.
+  const cleanSettings = JSON.parse(JSON.stringify(data.instrumentSettings));
+
   const payload = {
-    ...data,
+    seed: data.seed,
+    mood: data.mood,
+    genre: data.genre,
+    density: data.density,
+    bpm: data.bpm,
+    instrumentSettings: cleanSettings,
     timestamp: serverTimestamp()
   };
 

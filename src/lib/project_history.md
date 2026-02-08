@@ -3,6 +3,18 @@
 
 ---
 
+### ЗАПИСЬ: 2024-12-04 (План №249: «FIRESTORE PUBLIC WRITE ENFORCEMENT»)
+
+**ПРОБЛЕМА:**
+Даже после открытия прав на создание (create), анонимные пользователи получали отказ. Вероятная причина — отсутствие базового права на чтение (read) и проблемы с сериализацией instrumentSettings.
+
+**РЕШЕНИЕ:**
+1. **Public Read/Write**: В `firestore.rules` правила для `masterpieces` упрощены и расширены до `allow read, create: if true;`.
+2. **Payload Sanitization**: В `saveMasterpiece` добавлена глубокая очистка объекта `instrumentSettings` через `JSON.parse(JSON.stringify())` перед отправкой.
+3. **Stability**: Обеспечен беспрепятственный доступ к глобальному генофонду.
+
+---
+
 ### ЗАПИСЬ: 2024-12-04 (План №248: «FIREBASE PERMISSIONS FIX & CONTEXTUAL AUDIT»)
 
 **ПРОБЛЕМА:**

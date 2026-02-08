@@ -19,12 +19,11 @@ service cloud.firestore {
     // --- COLLECTION RULES ---
 
     // Masterpieces: Global genetic memory
-    // #ЗАЧЕМ: Перемещено в начало для приоритетного доступа.
+    // #ЗАЧЕМ: Полностью открытый доступ для Глобальной Памяти (Public Memory).
+    // #ЧТО: Разрешено чтение и создание для всех (включая анонимов).
     match /masterpieces/{id} {
-      // #ЗАЧЕМ: Полностью открытый доступ для Глобальной Памяти (Public Memory).
-      // #ЧТО: allow get, list, create установлены в true.
-      allow get, list, create: if true;
-      // No updates or deletes allowed for masterpieces once saved
+      allow read, create: if true;
+      // Запрет на изменение или удаление уже сохраненных шедевров.
       allow update, delete: if false;
     }
 
