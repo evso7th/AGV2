@@ -19,18 +19,18 @@ import { GUITAR_PATTERNS } from './assets/guitar-patterns';
 import { BLUES_SOLO_LICKS } from './assets/blues_guitar_solo';
 
 /**
- * #ЗАЧЕМ: Блюзовый Мозг V30.0 — "X-Ray Stagnation Control".
- * #ЧТО: 1. Внедрена детальная телеметрия Пианиста (logPianoSequence).
- *       2. Усилена вакцина: скачок смещения увеличен до 500 единиц.
- *       3. Исправлен баг "невидимой шарманки" через раздельное логирование.
+ * #ЗАЧЕМ: Блюзовый Мозг V31.0 — "Timbral Intelligence".
+ * #ЧТО: 1. Внедрен generateSustainedAccompaniment для Органа/Rhodes.
+ *       2. Исправлено "замалчивание" аккомпанемента из-за неверных техник.
+ *       3. Оптимизирован бюджет для раннего входа барабанов.
  */
 
 const ENERGY_PRICES = {
     solo: 50,
     bass_walking: 20,
     bass_pedal: 5,
-    drums_full: 25,
-    drums_minimal: 10,
+    drums_full: 20, // Снижено для раннего входа
+    drums_minimal: 8,
     harmony: 15,      
     piano: 15, 
     sfx: 10,          
@@ -157,8 +157,19 @@ export class BluesBrain {
     }
 
     if (hints.accompaniment) {
-        const currentPattern = this.patternOptions[calculateMusiNum(Math.floor(epoch/8), 3, this.seed, this.patternOptions.length)];
-        const accEvents = this.generateAccompaniment(epoch, currentChord, tempo, tension, currentPattern);
+        // #ЗАЧЕМ: Умный выбор техники на основе тембра.
+        const timbre = hints.accompaniment as string;
+        const isGuitarLike = timbre.includes('guitar') || timbre.includes('blackAcoustic');
+        
+        let accEvents: FractalEvent[] = [];
+        if (isGuitarLike) {
+            const currentPattern = this.patternOptions[calculateMusiNum(Math.floor(epoch/8), 3, this.seed, this.patternOptions.length)];
+            accEvents = this.generateAccompaniment(epoch, currentChord, tempo, tension, currentPattern);
+        } else {
+            // Для Органа/Rhodes используем протяжные аккорды (Sustained)
+            accEvents = this.generateSustainedAccompaniment(epoch, currentChord, tempo, tension);
+        }
+        
         accEvents.forEach(e => { e.weight *= (hints.summonProgress?.accompaniment ?? 1.0); });
         events.push(...accEvents);
     }
@@ -169,7 +180,6 @@ export class BluesBrain {
   private auditStagnation(combined: FractalEvent[], currentPiano: FractalEvent[], chord: GhostChord, tempo: number, dna: SuiteDNA, epoch: number) {
       const pianoHash = this.getSpecificShapeHash(currentPiano, chord.rootNote, tempo);
       
-      // #ЗАЧЕМ: Детальное логирование последовательности пианиста.
       if (currentPiano.length > 0) {
           const tickDur = (60 / tempo) / 3;
           const seqStr = currentPiano.map(e => `${this.getMidiNoteName(e.note)}(T:${Math.round(e.time / tickDur)})`).join(', ');
@@ -181,7 +191,6 @@ export class BluesBrain {
           if (this.pianoHistory.length > this.MAX_HISTORY_DEPTH) this.pianoHistory.shift();
           const pStag = this.detectSequenceStagnation(this.pianoHistory);
           if (pStag > 0) {
-              // #ЗАЧЕМ: Усиленная вакцина (прыжок на 500+ единиц).
               console.warn(`%c[SOR] PIANO STAGNATION DETECTED (${pStag}-bar loop). Injecting V3 Vaccine!`, 'color: #ff00ff; font-weight: bold;');
               this.pianoStagnationOffset += (this.random.nextInt(1000) + 500);
               this.pianoHistory = [];
@@ -411,6 +420,24 @@ export class BluesBrain {
           events.push({ type: 'accompaniment', note: chord.rootNote + (voicing[idx] - 40), time: t * tickDur, duration: beatDur * 2.0, weight: 0.3, technique: 'pluck', dynamics: 'p', phrasing: 'detached' });
     })));
     return events;
+  }
+
+  private generateSustainedAccompaniment(epoch: number, chord: GhostChord, tempo: number, tension: number): FractalEvent[] {
+      const root = chord.rootNote;
+      const isMinor = chord.chordType === 'minor' || chord.chordType === 'diminished';
+      const notes = [root, root + (isMinor ? 3 : 4), root + 7];
+      const beatDur = 60 / tempo;
+      
+      return notes.map((note, i) => ({
+          type: 'accompaniment',
+          note: note + 12,
+          time: i * 0.1, 
+          duration: 4.0, // На весь такт
+          weight: 0.25 + (tension * 0.2),
+          technique: 'swell',
+          dynamics: 'p',
+          phrasing: 'legato'
+      }));
   }
 
   private createDrumEvent(type: any, time: number, weight: number, dynamics: Dynamics): any {

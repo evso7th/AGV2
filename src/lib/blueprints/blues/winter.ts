@@ -1,9 +1,8 @@
 import type { MusicBlueprint } from '@/types/music';
 
 /**
- * #ЗАЧЕМ: Блюпринт "The Bluest Blues" (v22.0 - Chronos Tuning).
- * #ЧТО: BPM расширен до диапазона 60-75.
- * #СТАТУС: FROZEN.
+ * #ЗАЧЕМ: Блюпринт "The Bluest Blues" (v23.0 - Rapid Act).
+ * #ЧТО: Ускорено вступление ансамбля. Барабаны вступают значительно раньше.
  */
 export const WinterBluesBlueprint: MusicBlueprint = {
     id: 'winter_blues',
@@ -12,7 +11,6 @@ export const WinterBluesBlueprint: MusicBlueprint = {
     mood: 'melancholic',
     musical: {
         key: { root: 'E', scale: 'dorian', octave: 1 },
-        // #ЗАЧЕМ: Вариативность темпа между пьесами.
         bpm: { base: 72, range: [60, 75], modifier: 1.0 }, 
         timeSignature: { numerator: 4, denominator: 4 },
         harmonicJourney: [],
@@ -25,9 +23,6 @@ export const WinterBluesBlueprint: MusicBlueprint = {
     structure: {
         totalDuration: { preferredBars: 144 },
         parts: [
-            // ========================================================================
-            // 0. PROLOGUE (4 такта / 3%) — Алгоритмическая увертюра
-            // ========================================================================
             {
                 id: 'PROLOGUE', name: 'The Overture', duration: { percent: 3 },
                 layers: { accompaniment: true, sfx: true },
@@ -46,27 +41,23 @@ export const WinterBluesBlueprint: MusicBlueprint = {
                 bundles: [{ id: 'WINTER_PROLOGUE', name: 'First Breath', duration: { percent: 100 }, characteristics: {}, phrases: {} }],
                 outroFill: null,
             },
-            // ========================================================================
-            // 1. INTRO_1 (27%) — Opening Act
-            // ========================================================================
             {
                 id: 'INTRO_1', name: 'Opening Act', duration: { percent: 27 }, 
                 layers: { bass: true, accompaniment: true, melody: true, drums: true, harmony: true, pianoAccompaniment: true, sparkles: true },
                 stagedInstrumentation: [
                     { 
-                        duration: { percent: 25 }, 
+                        duration: { percent: 15 }, 
                         instrumentation: {
                            bass: { activationChance: 1.0, instrumentOptions: [ { name: 'bass', weight: 1.0 } ] },
-                           drums: { activationChance: 1.0, instrumentOptions: [ { name: 'blues_melancholic', weight: 1.0 } ] },
                            accompaniment: { activationChance: 1.0, instrumentOptions: [ { name: 'organ_soft_jazz', weight: 1.0 } ] },
                            harmony: { activationChance: 1.0, instrumentOptions: [ { name: 'guitarChords', weight: 1.0 } ] }
                         }
                     },
                     {
-                        duration: { percent: 25 }, 
+                        duration: { percent: 20 }, 
                         instrumentation: {
+                           drums: { activationChance: 1.0, instrumentOptions: [ { name: 'blues_melancholic', weight: 1.0 } ] }, // Ранние барабаны
                            bass: { activationChance: 1.0, instrumentOptions: [ { name: 'bass', weight: 1.0 } ] },
-                           drums: { activationChance: 1.0, instrumentOptions: [ { name: 'blues_melancholic', weight: 1.0 } ] },
                            accompaniment: { activationChance: 1.0, instrumentOptions: [ { name: 'organ_soft_jazz', weight: 1.0 } ] },
                            harmony: { activationChance: 1.0, instrumentOptions: [ { name: 'guitarChords', weight: 1.0 } ] },
                            melody: { activationChance: 1.0, instrumentOptions: [ { name: 'melody', weight: 1.0 } ] }
@@ -85,7 +76,7 @@ export const WinterBluesBlueprint: MusicBlueprint = {
                         }
                     },
                     {
-                        duration: { percent: 25 }, 
+                        duration: { percent: 40 }, 
                         instrumentation: {
                            melody: { activationChance: 1.0, instrumentOptions: [ { name: 'melody', weight: 1.0 } ] },
                            pianoAccompaniment: { activationChance: 1.0, instrumentOptions: [ { name: 'piano', weight: 1.0 } ] },
