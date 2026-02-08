@@ -3,7 +3,7 @@
 import { firebaseConfig } from '@/firebase/config';
 import { initializeApp, getApps, getApp, FirebaseApp } from 'firebase/app';
 import { getAuth } from 'firebase/auth';
-import { getFirestore } from 'firebase/firestore'
+import { getFirestore, initializeFirestore } from 'firebase/firestore';
 
 // IMPORTANT: DO NOT MODIFY THIS FUNCTION
 export function initializeFirebase() {
@@ -33,10 +33,16 @@ export function initializeFirebase() {
 }
 
 export function getSdks(firebaseApp: FirebaseApp) {
+  // #ЗАЧЕМ: Исправление сетевых ошибок WebChannel в среде разработки.
+  // #ЧТО: Использование принудительного Long Polling.
+  const firestore = initializeFirestore(firebaseApp, {
+    experimentalForceLongPolling: true,
+  });
+
   return {
     firebaseApp,
     auth: getAuth(firebaseApp),
-    firestore: getFirestore(firebaseApp)
+    firestore
   };
 }
 
