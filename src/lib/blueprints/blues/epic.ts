@@ -1,111 +1,74 @@
 import type { MusicBlueprint } from '@/types/music';
 
+/**
+ * #ЗАЧЕМ: Блюпринт "The Grand Finale" (Epic Blues v11.0).
+ * #ЧТО: 1. Грандиозное нарастание в D Ionian.
+ *       2. Переход от интимного пианино к мощному стадионному гимну.
+ */
 export const EpicBluesBlueprint: MusicBlueprint = {
     id: 'epic_blues',
-    name: 'Blues Brothers Epic',
-    description: 'A slow-building, powerful blues-rock piece that grows into a full-blown explosive solo.',
+    name: 'The Grand Finale',
+    description: 'A cinematic, slow-building blues rock anthem. From piano whispers to stadium leads.',
     mood: 'epic',
     musical: {
-        key: { root: 'E', scale: 'mixolydian', octave: 2 },
-        bpm: { base: 110, range: [100, 125], modifier: 1.0 }, // #ОБНОВЛЕНО (ПЛАН 94.1): Поднято для драйва.
+        key: { root: 'D', scale: 'ionian', octave: 2 },
+        bpm: { base: 110, range: [100, 120], modifier: 1.0 },
         timeSignature: { numerator: 4, denominator: 4 },
         harmonicJourney: [],
-        tensionProfile: { type: 'crescendo', peakPosition: 0.8, curve: (p, pp) => Math.pow(p, 1.5) }
+        tensionProfile: { 
+            type: 'crescendo', 
+            peakPosition: 0.9, 
+            curve: (p) => Math.pow(p, 2.0) // Резкое экспоненциальное нарастание
+        }
     },
     structure: {
-        totalDuration: { preferredBars: 144 },
+        totalDuration: { preferredBars: 180 },
         parts: [
             {
-                id: 'INTRO', name: 'The Spark', duration: { percent: 15 },
-                layers: { drums: true, accompaniment: true, bass: true, harmony: true },
-                instrumentation: {
-                    accompaniment: { 
-                        strategy: 'weighted', 
-                        v1Options: [{ name: 'synth', weight: 0.5 }, { name: 'ambientPad', weight: 0.5 }],
-                        v2Options: [{ name: 'synth', weight: 0.5 }, { name: 'synth_ambient_pad_lush', weight: 0.5 }]
-                    },
-                },
+                id: 'PROLOGUE', name: 'The Overture', duration: { percent: 10 },
+                layers: { pianoAccompaniment: true, sfx: true, sparkles: true },
+                stagedInstrumentation: [
+                    { 
+                        duration: { percent: 100 }, 
+                        instrumentation: {
+                           pianoAccompaniment: { activationChance: 1.0, instrumentOptions: [ { name: 'piano', weight: 1.0 } ] },
+                           sfx: { activationChance: 0.5, instrumentOptions: [ { name: 'common', weight: 1.0 } ], transient: true }
+                        }
+                    }
+                ],
                 instrumentRules: {
-                    drums: { pattern: 'composer', kitName: 'blues_epic', density: { min: 0.3, max: 0.5 }, useSnare: true, useGhostHat: true, kickVolume: 0.9, usePerc: false, ride: { enabled: false } },
-                    bass: { 
-                        techniques: [{ value: 'walking', weight: 1.0 }],
-                        presetModifiers: { octaveShift: 1 } 
-                    },
-                    accompaniment: { techniques: [{ value: 'long-chords', weight: 1.0 }], portamento: 0.05 },
-                    melody: { source: 'harmony_top_note' }
+                    pianoAccompaniment: { density: { min: 0.3, max: 0.5 } }
                 },
-                bundles: [{ id: 'EPIC_BLUES_INTRO_BUNDLE', name: 'Beat and Organ', duration: { percent: 100 }, characteristics: {}, phrases: {} }],
-                outroFill: { type: 'roll', duration: 1, parameters: { instrument: 'tom', crescendo: true } },
+                bundles: [{ id: 'EPIC_PROLOGUE', name: 'Overture', duration: { percent: 100 }, characteristics: {}, phrases: {} }],
+                outroFill: null,
             },
             {
-                id: 'VERSE', name: 'Main Theme', duration: { percent: 35 },
-                layers: { bass: true, drums: true, accompaniment: true, melody: true, harmony: true },
-                instrumentation: {
-                    accompaniment: { 
-                        strategy: 'weighted', 
-                        v1Options: [{ name: 'synth', weight: 0.5 }, { name: 'ambientPad', weight: 0.5 }],
-                        v2Options: [{ name: 'synth', weight: 0.5 }, { name: 'synth_ambient_pad_lush', weight: 0.5 }]
+                id: 'THE_ANTHEM', name: 'The Rise', duration: { percent: 90 },
+                layers: { bass: true, drums: true, melody: true, accompaniment: true, harmony: true, pianoAccompaniment: true, sparkles: true },
+                stagedInstrumentation: [
+                    { 
+                        duration: { percent: 30 }, 
+                        instrumentation: {
+                           bass: { activationChance: 1.0, instrumentOptions: [ { name: 'bass_jazz_warm', weight: 1.0 } ] },
+                           drums: { activationChance: 1.0, instrumentOptions: [ { name: 'blues_melancholic', weight: 1.0 } ] },
+                           accompaniment: { activationChance: 1.0, instrumentOptions: [ { name: 'organ', weight: 1.0 } ] }
+                        }
                     },
-                    melody: { strategy: 'weighted', v1Options: [{ name: 'guitar_shineOn', weight: 1.0 }], v2Options: [{ name: 'guitar_shineOn', weight: 1.0 }] },
-                },
+                    {
+                        duration: { percent: 70 }, 
+                        instrumentation: {
+                           melody: { activationChance: 1.0, instrumentOptions: [ { name: 'melody', weight: 1.0 } ] },
+                           drums: { activationChance: 1.0, instrumentOptions: [ { name: 'blues_epic', weight: 1.0 } ] },
+                           bass: { activationChance: 1.0, instrumentOptions: [ { name: 'rockBass', weight: 1.0 } ] }
+                        }
+                    }
+                ],
                 instrumentRules: {
-                    drums: { pattern: 'composer', kitName: 'blues_epic', density: { min: 0.6, max: 0.8 }, useSnare: true, useGhostHat: true, kickVolume: 1.1, usePerc: true, ride: { enabled: false } },
-                    bass: { 
-                        techniques: [{ value: 'walking', weight: 1.0 }],
-                        presetModifiers: { octaveShift: 1 } 
-                    },
-                    melody: { source: 'blues_solo', density: { min: 0.5, max: 0.7 } }
+                    melody: { source: 'blues_solo', density: { min: 0.7, max: 1.0 }, register: { preferred: 'high' } },
+                    drums: { kitName: 'blues_epic', density: { min: 0.8, max: 1.0 }, ride: { enabled: true } },
+                    bass: { techniques: [{ value: 'walking', weight: 1.0 }] }
                 },
-                bundles: [{ id: 'EPIC_BLUES_VERSE_BUNDLE', name: 'Theme', duration: { percent: 100 }, characteristics: {}, phrases: {} }],
-                outroFill: { type: 'roll', duration: 2, parameters: { instrument: 'tom', crescendo: true } },
-            },
-            {
-                id: 'SOLO', name: 'Guitar Solo', duration: { percent: 30 },
-                layers: { bass: true, drums: true, accompaniment: true, melody: true, harmony: true },
-                 instrumentation: {
-                    accompaniment: { 
-                        strategy: 'weighted', 
-                        v1Options: [{ name: 'synth', weight: 0.5 }, { name: 'ambientPad', weight: 0.5 }],
-                        v2Options: [{ name: 'synth', weight: 0.5 }, { name: 'synth_ambient_pad_lush', weight: 0.5 }]
-                    },
-                    melody: { strategy: 'weighted', v1Options: [{ name: 'guitar_muffLead', weight: 1.0 }], v2Options: [{ name: 'guitar_muffLead', weight: 1.0 }] }
-                },
-                instrumentRules: {
-                    drums: { pattern: 'composer', kitName: 'blues_epic', density: { min: 0.8, max: 1.0 }, kickVolume: 1.3, ride: { enabled: true } },
-                    melody: { 
-                        source: 'blues_solo', 
-                        density: { min: 0.9, max: 1.0 },
-                        register: { preferred: 'high' },
-                        soloPlan: 'S_ACTIVE' // #ОБНОВЛЕНО: Принудительный выбор активного соло-плана.
-                    },
-                    bass: { 
-                        techniques: [{ value: 'walking', weight: 1.0 }],
-                        presetModifiers: { octaveShift: 1 }
-                    },
-                },
-                bundles: [{ id: 'EPIC_BLUES_SOLO_BUNDLE', name: 'Lead Break', duration: { percent: 100 }, characteristics: {}, phrases: {} }],
-                outroFill: { type: 'roll', duration: 1, parameters: { instrument: 'crash' } },
-            },
-            {
-                id: 'OUTRO', name: 'Final Riff', duration: { percent: 20 },
-                layers: { bass: true, drums: true, accompaniment: true, melody: true, harmony: true },
-                instrumentation: {
-                    accompaniment: { 
-                        strategy: 'weighted', 
-                        v1Options: [{ name: 'synth', weight: 0.5 }, { name: 'ambientPad', weight: 0.5 }],
-                        v2Options: [{ name: 'synth', weight: 0.5 }, { name: 'synth_ambient_pad_lush', weight: 0.5 }]
-                    },
-                    melody: { strategy: 'weighted', v1Options: [{ name: 'guitar_shineOn', weight: 1.0 }], v2Options: [{ name: 'guitar_shineOn', weight: 1.0 }] }
-                },
-                instrumentRules: {
-                    drums: { pattern: 'composer', kitName: 'blues_epic', density: { min: 0.6, max: 0.8 }, useSnare: true, useGhostHat: true, kickVolume: 1.1, ride: { enabled: false } },
-                    bass: { 
-                        techniques: [{ value: 'walking', weight: 1.0 }],
-                        presetModifiers: { octaveShift: 1 }
-                    },
-                    melody: { source: 'blues_solo', density: { min: 0.3, max: 0.5 } } 
-                },
-                bundles: [{ id: 'EPIC_BLUES_OUTRO_BUNDLE', name: 'Outro Theme', duration: { percent: 100 }, characteristics: {}, phrases: {} }],
+                bundles: [{ id: 'EPIC_MAIN', name: 'Anthem Cycle', duration: { percent: 100 }, characteristics: {}, phrases: {} }],
                 outroFill: null,
             }
         ]
