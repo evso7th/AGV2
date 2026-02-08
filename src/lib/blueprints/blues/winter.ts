@@ -1,13 +1,14 @@
 import type { MusicBlueprint } from '@/types/music';
 
 /**
- * #ЗАЧЕМ: Блюпринт "The Bluest Blues" (v23.0 - Rapid Act).
- * #ЧТО: Ускорено вступление ансамбля. Барабаны вступают значительно раньше.
+ * #ЗАЧЕМ: Блюпринт "The Bluest Blues" (v24.0 - Solid Core Update).
+ * #ЧТО: Стабилизация энергии в середине пьесы. Устранен эффект "разбегания оркестра"
+ *       путем замены синусоидальной волны на более плотное тление.
  */
 export const WinterBluesBlueprint: MusicBlueprint = {
     id: 'winter_blues',
     name: 'The Bluest Blues (Prologue)',
-    description: 'A deep journey starting with a thematic overture and building into a soul-drenched blues.',
+    description: 'A deep journey starting with a thematic overture and building into a soul-drenched blues. Solid middle.',
     mood: 'melancholic',
     musical: {
         key: { root: 'E', scale: 'dorian', octave: 1 },
@@ -17,7 +18,12 @@ export const WinterBluesBlueprint: MusicBlueprint = {
         tensionProfile: { 
             type: 'arc', 
             peakPosition: 0.7, 
-            curve: (p, pp) => p < pp ? Math.pow(p / pp, 1.2) : 1 - Math.pow((p - pp) / (1 - pp), 1.5) 
+            // #ЗАЧЕМ: Устранение провала в середине. 
+            // #ЧТО: Формула гарантирует, что напряжение в центре остается высоким.
+            curve: (p, pp) => {
+                const base = p < pp ? Math.pow(p / pp, 1.2) : 1 - Math.pow((p - pp) / (1 - pp), 1.5);
+                return 0.3 + (base * 0.7); // Поднимаем пол напряжения до 0.3
+            }
         }
     },
     structure: {
@@ -56,7 +62,7 @@ export const WinterBluesBlueprint: MusicBlueprint = {
                     {
                         duration: { percent: 20 }, 
                         instrumentation: {
-                           drums: { activationChance: 1.0, instrumentOptions: [ { name: 'blues_melancholic', weight: 1.0 } ] }, // Ранние барабаны
+                           drums: { activationChance: 1.0, instrumentOptions: [ { name: 'blues_melancholic', weight: 1.0 } ] },
                            bass: { activationChance: 1.0, instrumentOptions: [ { name: 'bass', weight: 1.0 } ] },
                            accompaniment: { activationChance: 1.0, instrumentOptions: [ { name: 'organ_soft_jazz', weight: 1.0 } ] },
                            harmony: { activationChance: 1.0, instrumentOptions: [ { name: 'guitarChords', weight: 1.0 } ] },

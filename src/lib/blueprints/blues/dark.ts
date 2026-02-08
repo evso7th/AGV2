@@ -1,15 +1,15 @@
 import type { MusicBlueprint } from '@/types/music';
 
 /**
- * #ЗАЧЕМ: Блюпринт "The Ritual" (Dark Blues v12.0 - Deep Subtle Opening).
- * #ЧТО: 1. Стартовое напряжение снижено до 0.20 для гарантированного вступления на акустике.
- *       2. Длительность зафиксирована на 144 тактах.
- *       3. Ансамбль собирается мгновенно (барабаны и бас с 0 такта).
+ * #ЗАЧЕМ: Блюпринт "The Ritual" (Dark Blues v13.0 - Solid Core).
+ * #ЧТО: 1. Tension Curve исправлена: вместо глубокого синусоидального провала используется
+ *          платообразное тление с центральным пиком.
+ *       2. Устранен "провал в середине" — напряжение теперь всегда выше 0.60 после прогрева.
  */
 export const DarkBluesBlueprint: MusicBlueprint = {
     id: 'dark_blues',
     name: 'Ritual of Smoldering Textures',
-    description: 'A heavy, ritualistic blues in E Phrygian. Starts very subtle, builds into a monolith.',
+    description: 'A heavy, ritualistic blues in E Phrygian. Solid energetic core without middle-piece silence.',
     mood: 'dark',
     musical: {
         key: { root: 'E', scale: 'phrygian', octave: 1 },
@@ -19,15 +19,14 @@ export const DarkBluesBlueprint: MusicBlueprint = {
         tensionProfile: { 
             type: 'wave', 
             peakPosition: 0.5, 
-            // #ЗАЧЕМ: Очень плавный рост энергии в начале (0.2 -> 0.8).
-            // Это дает ~30 тактов жизни "Black Acoustic" в режиме фингерстайла.
+            // #ЗАЧЕМ: Устранение пустоты в середине. 
+            // #ЧТО: Волна теперь не уходит в глубокий минус. Пик смещен в центр.
             curve: (p, pp) => {
                 if (p < 0.20) {
-                    // Глубокий Энергетический Фаде-ин: 0.2 -> 0.75
-                    return 0.2 + (p / 0.20) * 0.55;
+                    return 0.2 + (p / 0.20) * 0.55; // Плавный вход: 0.2 -> 0.75
                 }
-                // Тлеющая волна высокой интенсивности
-                return 0.75 + 0.15 * Math.sin(p * Math.PI * 2);
+                // Тлеющая энергия: 0.65 - 0.85 без глубоких провалов.
+                return 0.75 + 0.1 * Math.sin(p * Math.PI); 
             }
         }
     },
@@ -65,7 +64,6 @@ export const DarkBluesBlueprint: MusicBlueprint = {
                            drums: { activationChance: 1.0, instrumentOptions: [ { name: 'blues_melancholic_master', weight: 1.0 } ] },
                            bass: { activationChance: 1.0, instrumentOptions: [ { name: 'bass', weight: 1.0 } ] },
                            accompaniment: { activationChance: 1.0, instrumentOptions: [ { name: 'accompaniment', weight: 1.0 } ] },
-                           // #ЗАЧЕМ: Гитарист вступает сразу, но из-за низкого T (0.2) играет на акустике.
                            melody: { activationChance: 1.0, instrumentOptions: [ { name: 'melody', weight: 1.0 } ] }
                         }
                     },

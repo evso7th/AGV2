@@ -1,16 +1,14 @@
 import type { MusicBlueprint } from '@/types/music';
 
 /**
- * #ЗАЧЕМ: Блюпринт "Celestial Blues" (Dreamy Blues v10.0).
- * #ЧТО: 1. Базируется на скелете Winter Blues (План №275).
- *       2. Лад изменен на Lydian для создания эффекта парения.
- *       3. Tension Profile: Плавная волна (0.45 - 0.65).
- *       4. Регистр сохранен низким (octave 1) по требованию пользователя.
+ * #ЗАЧЕМ: Блюпринт "Celestial Blues" (Dreamy Blues v11.0 - Solid Core Update).
+ * #ЧТО: Стабилизация энергии. Плавная волна теперь не уходит в глубокий минус,
+ *       сохраняя присутствие оркестра на протяжении всей 144-тактовой пьесы.
  */
 export const DreamyBluesBlueprint: MusicBlueprint = {
     id: 'dreamy_blues',
     name: 'Celestial Soul Drift',
-    description: 'A soaring, lyrical blues in E Lydian. Based on the Winter skeleton but filled with light and hope.',
+    description: 'A soaring, lyrical blues in E Lydian. Now with a solid energetic core.',
     mood: 'dreamy',
     musical: {
         key: { root: 'E', scale: 'lydian', octave: 1 }, 
@@ -20,8 +18,9 @@ export const DreamyBluesBlueprint: MusicBlueprint = {
         tensionProfile: { 
             type: 'wave', 
             peakPosition: 0.5, 
-            // #ЗАЧЕМ: Мягкое колыхание энергии без резких пиков и провалов.
-            curve: (p: number) => 0.55 + 0.1 * Math.sin(p * Math.PI * 4) 
+            // #ЗАЧЕМ: Мягкое колыхание энергии без "дыр" в середине.
+            // #ЧТО: Волна ограничена коридором 0.50 - 0.70.
+            curve: (p: number) => 0.60 + 0.1 * Math.sin(p * Math.PI) 
         }
     },
     structure: {

@@ -19,10 +19,10 @@ import { GUITAR_PATTERNS } from './assets/guitar-patterns';
 import { BLUES_SOLO_LICKS } from './assets/blues_guitar_solo';
 
 /**
- * #ЗАЧЕМ: Блюзовый Мозг V40.0 — "The Suspense Injection".
- * #ЧТО: 1. Реализован Glitch Injection для настроения 'anxious' (сверхвысокие ноты-скрипы).
- *       2. Внедрен Ритмический Джиттер для создания эффекта нестабильности.
- *       3. Порог перехода в Соло поднят до 0.55 для минорных блюзов.
+ * #ЗАЧЕМ: Блюзовый Мозг V41.0 — "Lead Expressivity & Ensemble Stability".
+ * #ЧТО: 1. Порог ShineOn Lead снижен до 0.70 для замены CS80 на длинных нотах.
+ *       2. Минимальный бюджет плотности поднят до 220 для устранения провалов.
+ *       3. СОР теперь жестче держит состав ансамбля в середине пьесы.
  */
 
 const ENERGY_PRICES = {
@@ -48,7 +48,7 @@ export class BluesBrain {
   private random: any;
   
   private readonly MELODY_CEILING = 79;
-  private readonly GLITCH_FLOOR = 100; // Питч-стресс для скрипов
+  private readonly GLITCH_FLOOR = 100; 
   private readonly patternOptions: string[] = ['F_TRAVIS', 'F_ROLL12', 'S_SWING'];
 
   private phraseHistory: string[] = [];
@@ -106,7 +106,10 @@ export class BluesBrain {
 
     this.evaluateTimbralDramaturgy(tension, hints, this.mood, epoch);
     
-    const barBudget = 180 + (tension * 120); 
+    // #ЗАЧЕМ: Устранение "пустой середины".
+    // #ЧТО: Минимальный порог бюджета поднят с 180 до 220. 
+    //      Теперь ансамбль сохраняет активность даже при умеренном напряжении.
+    const barBudget = 220 + (tension * 120); 
     let consumedEnergy = 0;
     
     const combinedEvents: FractalEvent[] = [];
@@ -129,15 +132,12 @@ export class BluesBrain {
           consumedEnergy += ENERGY_PRICES.harmony; 
       }
       
-      // #ЗАЧЕМ: Реализация Саспенс-Глитча для Anxious Blues.
-      // #ЧТО: Впрыск сверхвысокой ноты-скрипа раз в 10 тактов.
       if (this.mood === 'anxious' && epoch % 10 === 0 && this.random.next() < 0.4) {
-          console.log('%c[SOR] Injecting Dread Glitch...', 'color: #ef4444');
           melodyEvents.push({
               type: 'melody',
               note: this.GLITCH_FLOOR + this.random.nextInt(12),
               time: this.random.nextInRange(0.5, 3.5),
-              duration: 0.05, // Короткий чирп
+              duration: 0.05, 
               weight: 0.3,
               technique: 'harm',
               dynamics: 'p',
@@ -159,11 +159,10 @@ export class BluesBrain {
 
     this.auditStagnation(combinedEvents, currentPianoEvents, currentChord, tempo, dna, epoch);
     
-    // #ЗАЧЕМ: Ритмический Джиттер для Anxious Blues.
     if (this.mood === 'anxious') {
         combinedEvents.forEach(e => {
             if (e.type !== 'rest') {
-                e.time += (this.random.next() * 0.08 - 0.04); // ±40ms
+                e.time += (this.random.next() * 0.08 - 0.04); 
             }
         });
     }
@@ -266,10 +265,15 @@ export class BluesBrain {
       return tracked.sort((a, b) => a.time - b.time).map(e => `${e.type === 'melody' ? 'M' : 'P'}:${(e.note - rootNote) % 12}:${Math.round(e.time / tickDur)}`).join('|');
   }
 
+  /**
+   * #ЗАЧЕМ: Когнитивная Оркестровка V41.0.
+   * #ЧТО: Снижен порог вступления ShineOn Lead до 0.70.
+   *       Это позволяет заменить "мяукающий" CS80 на певучий лид на более ранней стадии экспрессии.
+   */
   private evaluateTimbralDramaturgy(tension: number, hints: InstrumentHints, mood: Mood, epoch: number) {
     if (hints.melody) {
         if (tension <= 0.50) (hints as any).melody = 'blackAcoustic';
-        else if (tension <= 0.80) (hints as any).melody = 'cs80';
+        else if (tension <= 0.70) (hints as any).melody = 'cs80';
         else (hints as any).melody = 'guitar_shineOn';
     }
     if (hints.bass) {
@@ -309,10 +313,9 @@ export class BluesBrain {
     return this.currentAxiom.map((n, idx, arr) => {
         if (this.random.next() < skipChance && n.deg !== 'R') return null; 
         const dur = (idx < arr.length - 1) ? (arr[idx+1].t - n.t) : Math.max(n.d, 6);
-        const jitter = 0; // Jitter is now applied globally in generateBar for Anxious
         return {
             type: 'melody', note: Math.min(chord.rootNote + 36 + registerLift + (DEGREE_TO_SEMITONE[n.deg] || 0), this.MELODY_CEILING),
-            time: Math.max(0, n.t + jitter) * tickDur, duration: dur * tickDur, weight: 0.8 + (tension * 0.2), technique: n.tech, dynamics: tension > 0.6 ? 'mf' : 'p', phrasing: 'legato', harmonicContext: phaseName
+            time: n.t * tickDur, duration: dur * tickDur, weight: 0.8 + (tension * 0.2), technique: n.tech, dynamics: tension > 0.6 ? 'mf' : 'p', phrasing: 'legato', harmonicContext: phaseName
         };
     }).filter(e => e !== null) as FractalEvent[];
   }
