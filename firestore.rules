@@ -19,6 +19,7 @@ service cloud.firestore {
     // --- COLLECTION RULES ---
 
     // Masterpieces: Global genetic memory
+    // #ЗАЧЕМ: Перемещено в начало для приоритетного доступа.
     match /masterpieces/{id} {
       // #ЗАЧЕМ: Полностью открытый доступ для Глобальной Памяти (Public Memory).
       // #ЧТО: allow get, list, create установлены в true.

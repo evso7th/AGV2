@@ -80,7 +80,6 @@ export const useAuraGroove = (): AuraGrooveProps => {
     cancelMasterFadeOut,
     startRecording,
     stopRecording,
-    // #ЗАЧЕМ: Получение доступа к воркеру для синхронизации темпа.
     getWorker
   } = useAudioEngine() as any; 
   
@@ -126,7 +125,6 @@ export const useAuraGroove = (): AuraGrooveProps => {
     initialize();
   }, [initialize]);
 
-  // #ЗАЧЕМ: Слушатель для синхронизации BPM из воркера в UI.
   useEffect(() => {
     const worker = getWorker?.();
     if (!worker) return;
@@ -198,44 +196,24 @@ export const useAuraGroove = (): AuraGrooveProps => {
       resetWorker();
   }, [resetWorker]);
 
-  const handleSaveMasterpiece = useCallback(async () => {
+  const handleSaveMasterpiece = useCallback(() => {
     if (!isInitialized || !isPlaying) return;
     
     console.log(`%c[GENEPOOL] USER FEEDBACK: Liking seed ${currentSeed}. Archiving to Masterpieces.`, 'color: #4ade80; font-weight: bold;');
 
-    const { dismiss: dismissLoading } = toast({ 
-      title: "Memory Activation", 
-      description: "Saving this state to the Elder Knowledge..." 
+    // #ЗАЧЕМ: Вызов сохранения Шедевра. Теперь это неблокирующая операция.
+    // Мы не используем await и не обрабатываем результат здесь, 
+    // так как ошибки обрабатываются глобально в firebase-service.
+    saveMasterpiece(db, {
+      seed: currentSeed,
+      mood,
+      genre,
+      density,
+      bpm,
+      instrumentSettings
     });
     
-    try {
-        const success = await saveMasterpiece(db, {
-          seed: currentSeed,
-          mood,
-          genre,
-          density,
-          bpm,
-          instrumentSettings
-        });
-
-        dismissLoading();
-
-        if (success) {
-          toast({ 
-            title: "Masterpiece Saved!", 
-            description: "This soul will help build future generations." 
-          });
-        } else {
-          toast({ 
-            variant: "destructive", 
-            title: "Memory Error", 
-            description: "Could not save the state." 
-          });
-        }
-    } catch (e) {
-        dismissLoading();
-        toast({ variant: "destructive", title: "Internal Error", description: "Storage system failed." });
-    }
+    // Согласно гайдлайнам, мы не выводим тост об успехе, только об ошибках.
   }, [isInitialized, isPlaying, db, currentSeed, mood, genre, density, bpm, instrumentSettings]);
 
   const handleToggleRecording = useCallback(() => {
