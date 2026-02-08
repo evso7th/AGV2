@@ -19,10 +19,10 @@ import { GUITAR_PATTERNS } from './assets/guitar-patterns';
 import { BLUES_SOLO_LICKS } from './assets/blues_guitar_solo';
 
 /**
- * #ЗАЧЕМ: Блюзовый Мозг V25.0 — "Stable Novelty Guard".
- * #ЧТО: 1. Хэширование мелодии переведено на квантованные тики (стабильность против джиттера).
- *       2. Добавлена прозрачная телеметрия [SOR] для мониторинга зацикливания.
- *       3. Л-логика теперь получает "инъекцию хаоса" при обнаружении стагнации.
+ * #ЗАЧЕМ: Блюзовый Мозг V26.0 — "Multi-Level Stagnation Vaccine".
+ * #ЧТО: 1. Детектор циклов теперь ищет повторы последовательностей (1, 2 и 4 такта).
+ *       2. При 3-х повторах подряд впрыскивается "Л-вакцина" (максимальный хаос в Л-систему).
+ *       3. Глубина памяти увеличена до 24 тактов.
  */
 
 const ENERGY_PRICES = {
@@ -52,7 +52,7 @@ export class BluesBrain {
   private readonly patternOptions: string[] = ['F_TRAVIS', 'F_ROLL12', 'S_SWING'];
 
   private phraseHistory: string[] = [];
-  private readonly MAX_REPETITION_COUNT = 3;
+  private readonly MAX_HISTORY_DEPTH = 24;
 
   constructor(seed: number, mood: Mood) {
     this.seed = seed;
@@ -135,17 +135,19 @@ export class BluesBrain {
         consumedEnergy += pianoPrice;
     }
 
-    // #ЗАЧЕМ: Стабилизированный детектор стагнации.
-    // #ЧТО: Хэширование теперь игнорирует микро-джиттер за счет квантования по тикам.
+    // #ЗАЧЕМ: Стабилизированный детектор стагнации последовательностей.
     const shapeHash = this.getMelodicShapeHash(combinedEvents, currentChord.rootNote, tempo);
-    if (this.isRepetitive(shapeHash)) {
-        console.warn(`%c[SOR] ENSEMBLE STAGNATION DETECTED (3x cycle)! Forcing Organic Evolution.`, 'color: #ffffff; background: #ff4500; font-weight: bold; padding: 2px 5px;');
-        // Принудительно мутируем аксиому, внедряя повышенную случайность
-        this.currentAxiom = this.evolveAxiom(this.currentAxiom, 0.95, 'CLIMAX', dna, epoch);
-        this.phraseHistory = [];
-    } else if (shapeHash) {
+    if (shapeHash) {
         this.phraseHistory.push(shapeHash);
-        if (this.phraseHistory.length > 8) this.phraseHistory.shift();
+        if (this.phraseHistory.length > this.MAX_HISTORY_DEPTH) this.phraseHistory.shift();
+        
+        const stagnationLength = this.detectSequenceStagnation();
+        if (stagnationLength > 0) {
+            console.warn(`%c[SOR] STAGNATION VACCINE: Detected ${stagnationLength}-bar sequence repeat (3x)! Injecting chaos.`, 'color: #ffffff; background: #ff4500; font-weight: bold; padding: 2px 5px;');
+            // Впрыск Л-вакцины: принудительная эволюция с коэффициентом 0.99
+            this.currentAxiom = this.evolveAxiom(this.currentAxiom, 0.99, 'CLIMAX', dna, epoch);
+            this.phraseHistory = []; // Сброс памяти после вакцинации
+        }
     }
     
     events.push(...combinedEvents);
@@ -211,10 +213,25 @@ export class BluesBrain {
   }
 
   /**
-   * #ЗАЧЕМ: Стабильное хэширование мелодической формы.
-   * #ЧТО: Использует квантование по тикам (1/3 доли) вместо секунд.
-   *       Это позволяет игнорировать микро-джиттер гуманизации.
+   * #ЗАЧЕМ: Детектор зацикливания последовательностей.
+   * #ЧТО: Ищет повторы длиной 1, 2 и 4 такта.
+   *       Если текущая последовательность совпадает с двумя предыдущими (3x подряд),
+   *       возвращает длину последовательности.
    */
+  private detectSequenceStagnation(): number {
+      const lengths = [4, 2, 1];
+      for (const L of lengths) {
+          if (this.phraseHistory.length < 3 * L) continue;
+          
+          const seq1 = this.phraseHistory.slice(-L).join('|');
+          const seq2 = this.phraseHistory.slice(-2 * L, -L).join('|');
+          const seq3 = this.phraseHistory.slice(-3 * L, -2 * L).join('|');
+          
+          if (seq1 === seq2 && seq2 === seq3) return L;
+      }
+      return 0;
+  }
+
   private getMelodicShapeHash(events: FractalEvent[], rootNote: number, tempo: number): string {
       const tracked = events.filter(e => e.type === 'melody' || e.type === 'pianoAccompaniment');
       if (tracked.length === 0) return "";
@@ -226,19 +243,12 @@ export class BluesBrain {
         .map(e => {
             const typeId = e.type === 'melody' ? 'M' : 'P';
             const relativeNote = (e.note - rootNote) % 12;
-            // Квантуем время до ближайшего тика
             const tick = Math.round(e.time / tickDur);
             return `${typeId}:${relativeNote}:${tick}`;
         })
         .join('|');
 
       return hash;
-  }
-
-  private isRepetitive(newHash: string): boolean {
-      if (!newHash || this.phraseHistory.length < this.MAX_REPETITION_COUNT) return false;
-      const recent = this.phraseHistory.slice(-this.MAX_REPETITION_COUNT);
-      return recent.every(h => h === newHash);
   }
 
   private evaluateTimbralDramaturgy(tension: number, hints: InstrumentHints, mood: Mood) {
