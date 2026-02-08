@@ -44,9 +44,9 @@ interface EngineConfig {
 }
 
 /**
- * #ЗАЧЕМ: Фрактальный Музыкальный Движок V15.0 — "Chronos Alignment".
- * #ЧТО: Теперь движок принимает Блюпринт извне. Это устраняет баг
- *       синхронизации Воркера (когда играл MAIN вместо BRIDGE).
+ * #ЗАЧЕМ: Фрактальный Музыкальный Движок V16.0 — "Persistent Ensemble Hardening".
+ * #ЧТО: 1. Внедрена память активации (activatedParts). Инструменты больше не исчезают.
+ *       2. Сохранена динамика морфинга: пресеты выбираются заново каждый такт.
  */
 export class FractalMusicEngine {
   public config: EngineConfig;
@@ -61,6 +61,9 @@ export class FractalMusicEngine {
   private previousChord: GhostChord | null = null;
   private lastEvents: FractalEvent[] = []; 
 
+  // #ЗАЧЕМ: Память ансамбля. Гарантирует, что музыкант не уйдет со сцены.
+  private activatedParts: Set<InstrumentPart> = new Set();
+
   constructor(config: EngineConfig, blueprint: MusicBlueprint) {
     this.config = { ...config };
     this.blueprint = blueprint;
@@ -72,14 +75,14 @@ export class FractalMusicEngine {
       const seedChanged = newConfig.seed !== undefined && newConfig.seed !== this.config.seed;
       this.config = { ...this.config, ...newConfig };
       if (seedChanged) this.random = seededRandom(this.config.seed);
-      // NOTE: Blueprint update during run is not supported here, only via re-initialization
       if(moodOrGenreChanged || seedChanged) this.initialize(true);
   }
 
   public initialize(force: boolean = false) {
     if (this.isInitialized && !force) return;
 
-    // #ЗАЧЕМ: Алгоритм Evolutionary Sowing.
+    this.activatedParts.clear(); // Сброс состава при новой сюите
+
     this.suiteDNA = generateSuiteDNA(
         this.blueprint.structure.totalDuration.preferredBars, 
         this.config.mood, 
@@ -89,10 +92,6 @@ export class FractalMusicEngine {
         this.blueprint.structure.parts,
         this.config.ancestor
     );
-
-    if (this.config.ancestor) {
-        console.log(`%c[GENEPOOL] Inheritance Detected! Ancestor Seed: ${this.config.ancestor.seed}`, 'color: #ff00ff; font-weight:bold;');
-    }
 
     this.navigator = new BlueprintNavigator(this.blueprint, this.config.seed, this.config.genre, this.config.mood, this.config.introBars, this.suiteDNA.soloPlanMap);
     
@@ -121,7 +120,6 @@ export class FractalMusicEngine {
     if (stages && stages.length > 0) {
         const partBars = navInfo.currentPartEndBar - navInfo.currentPartStartBar + 1;
         const progress = (this.epoch - navInfo.currentPartStartBar) / partBars;
-        
         const tension = this.suiteDNA?.tensionMap?.[this.epoch % (this.suiteDNA.tensionMap.length || 1)] ?? 0.5;
 
         let currentStage = stages[stages.length - 1];
@@ -137,12 +135,22 @@ export class FractalMusicEngine {
         Object.entries(currentStage.instrumentation).forEach(([partStr, rule]: [any, any]) => {
             const part = partStr as InstrumentPart;
             
-            let effectiveChance = rule.activationChance;
-            if (part === 'sfx' || part === 'sparkles') {
-                effectiveChance = rule.activationChance * (1.0 - tension);
+            // #ЗАЧЕМ: Протокол "Липкого Ансамбля" (Ensemble Persistence).
+            // Если инструмент еще не активирован - бросаем кубик.
+            if (!this.activatedParts.has(part)) {
+                let effectiveChance = rule.activationChance;
+                if (part === 'sfx' || part === 'sparkles') {
+                    effectiveChance = rule.activationChance * (1.0 - tension);
+                }
+
+                if (this.random.next() < effectiveChance) {
+                    this.activatedParts.add(part);
+                }
             }
 
-            if (this.random.next() < effectiveChance) {
+            // Если инструмент в списке активированных - он ОБЯЗАН играть.
+            if (this.activatedParts.has(part)) {
+                // Выбираем тембр (пресет) заново каждый такт для поддержки морфинга
                 const timbre = pickWeightedDeterministic(rule.instrumentOptions, this.config.seed, this.epoch, 500);
                 (instrumentHints as any)[part] = timbre;
                 instrumentHints.summonProgress![part] = 1.0; 
