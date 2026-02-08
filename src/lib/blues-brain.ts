@@ -1,3 +1,4 @@
+
 import type {
   FractalEvent,
   GhostChord,
@@ -19,10 +20,9 @@ import { GUITAR_PATTERNS } from './assets/guitar-patterns';
 import { BLUES_SOLO_LICKS } from './assets/blues_guitar_solo';
 
 /**
- * #ЗАЧЕМ: Блюзовый Мозг V37.0 — "The Breathing Ensemble".
- * #ЧТО: 1. Реализовано "Дыхание Ударных" для минорных блюзов (мягкие сэмплы, акценты в пиках).
- *       2. Порог Соло поднят до 0.55 для деликатного вступления акустики.
- *       3. Жесткая фиксация сэмплов кика и томов (Sonor Classix).
+ * #ЗАЧЕМ: Блюзовый Мозг V38.0 — "The Bongo Enrichment".
+ * #ЧТО: 1. Внедрена логика использования новых ассетов Bongo и PVC в энергетических слоях.
+ *       2. Расширен пул "Extra Percussion" за счет pc-01..03 и pvc-tube-01..03.
  */
 
 const ENERGY_PRICES = {
@@ -115,8 +115,6 @@ export class BluesBrain {
       const prog = hints.summonProgress?.melody ?? 1.0;
       let melodyEvents: FractalEvent[] = [];
       
-      // #ЗАЧЕМ: Деликатный вход. Порог Solo поднят до 0.55 для минорных блюзов.
-      // Это позволяет акустике (Black Acoustic) звучать дольше в режиме фингерстайла.
       const soloThreshold = isMellowMood ? 0.55 : 0.4;
       const canAffordSolo = (consumedEnergy + ENERGY_PRICES.solo <= barBudget) && tension > soloThreshold;
       
@@ -333,10 +331,9 @@ export class BluesBrain {
   }
 
   /**
-   * #ЗАЧЕМ: Энергетическое обогащение ударных V37.0.
-   * #ЧТО: 1. Внедрена логика "Дыхания Ударных" (Soft Kicks, Sonor Toms).
-   *       2. При T > 0.85 — одиночный деликатный акцент в Ride.
-   *       3. Capping хетов на 0.35 для сохранения мягкости.
+   * #ЗАЧЕМ: Энергетическое обогащение ударных V38.0.
+   * #ЧТО: 1. Внедрена логика использования Bongo и PVC в энергетических слоях.
+   *       2. При T > 0.6 — в паттерн впрыскиваются новые звуки pc-01..03 и pvc-tube-01..03.
    */
   private generateDrums(epoch: number, tempo: number, tension: number, isEnsemble: boolean, bpmFactor: number): FractalEvent[] {
     const tickDur = (60 / tempo) / 3;
@@ -350,37 +347,40 @@ export class BluesBrain {
     const effectiveBpmFactor = Math.max(bpmFactor, 0.85);
     if (calculateMusiNum(epoch, 13, this.seed, 100) / 100 > effectiveBpmFactor) return [];
 
-    // --- Soft Kick Logic (Mellow Only) ---
     const kickSample = isMellowMood 
         ? (calculateMusiNum(epoch, 2, this.seed, 2) === 0 ? 'drum_drum_kick_reso' : 'drum_kick_drum6')
         : 'drum_kick';
 
-    // --- Energy-Based Enrichment ---
+    // --- Energy-Based Enrichment (Bongo & PVC) ---
     if (tension > 0.6) {
         const extraTicks = [2, 5, 8, 11];
+        const extraPool = [
+            'drum_bongo_pc-01', 'drum_bongo_pc-02', 'drum_bongo_pc-03',
+            'drum_bongo_pvc-tube-01', 'drum_bongo_pvc-tube-02', 'drum_bongo_pvc-tube-03',
+            'perc-012', 'perc-013', 'perc-014', 'perc-015'
+        ];
+        
         extraTicks.forEach(t => {
-            if (this.random.next() < 0.3 * tension) {
-                const percId = `perc-01${12 + this.random.nextInt(4)}` as any;
-                events.push(this.createDrumEvent(percId, t * tickDur, 0.25, 'p'));
+            if (this.random.next() < 0.35 * tension) {
+                const percId = extraPool[this.random.nextInt(extraPool.length)] as any;
+                events.push(this.createDrumEvent(percId, t * tickDur, 0.22, 'p'));
             }
         });
         
-        // --- Single Ride Accent in Peak ---
         if (tension > 0.85 && barIn12 % 4 === 0) {
             events.push(this.createDrumEvent('drum_ride', 0, 0.35, 'p'));
         }
     } else if (tension < 0.4 && isMellowMood) {
-        // --- Breathing Toms (Rhythmic Grid) ---
-        // Удары томов на 4-й доле (тик 9) раз в 2 такта
         if (epoch % 2 === 0) {
             const tomId = ['drum_Sonor_Classix_High_Tom', 'drum_Sonor_Classix_Mid_Tom', 'drum_Sonor_Classix_Low_Tom'][this.random.nextInt(3)];
             events.push(this.createDrumEvent(tomId as any, 9 * tickDur, 0.35, 'p'));
         }
         
-        // Ритмичная перкуссия в "Созерцании" на слабых долях (3 и 9 тики)
+        // Ритмичное "дыхание" через Bongo/PVC при низкой энергии
         [3, 9].forEach(t => {
-            if (this.random.next() < 0.4) {
-                events.push(this.createDrumEvent('perc-013', t * tickDur, 0.2, 'p'));
+            if (this.random.next() < 0.45) {
+                const moodPerc = ['drum_bongo_pvc-tube-01', 'drum_bongo_pc-02', 'perc-013'][this.random.nextInt(3)];
+                events.push(this.createDrumEvent(moodPerc as any, t * tickDur, 0.18, 'p'));
             }
         });
     }
@@ -389,12 +389,11 @@ export class BluesBrain {
         [3, 9].forEach(t => events.push(this.createDrumEvent('perc-013', t * tickDur, 0.3, 'p')));
     }
     
-    if (barIn12 === 11 && !isMellowMood) { // Для бодрых блюзов оставляем старые филлы
+    if (barIn12 === 11 && !isMellowMood) { 
         ['drum_tom_high', 'drum_tom_low'].forEach((tom, i) => events.push(this.createDrumEvent(tom as any, i * 3 * tickDur, 0.7, 'mf')));
     }
 
     if (p.HH) p.HH.forEach(t => {
-        // #ЗАЧЕМ: Мягкие хеты. Capping веса на 0.35 для минорных настроений.
         const hhWeight = isMellowMood ? 0.35 : (0.3 + (tension * 0.4));
         if (this.random.next() < effectiveBpmFactor) events.push(this.createDrumEvent('drum_hihat', t * tickDur, hhWeight, 'p'));
     });

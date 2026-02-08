@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useEffect, useCallback, useRef } from "react";
@@ -57,7 +58,8 @@ export type AuraGrooveProps = {
 
 
 /**
- * #ЗАЧЕМ: Хук управления UI музыкой.
+ * #ЗАЧЕМ: Хук управления UI музыкой V3.0.
+ * #ЧТО: Дефолтная громкость мелодии снижена до 0.2 (20%).
  */
 export const useAuraGroove = (): AuraGrooveProps => {
   const { 
@@ -89,7 +91,8 @@ export const useAuraGroove = (): AuraGrooveProps => {
   const [drumSettings, setDrumSettings] = useState<DrumSettings>({ pattern: 'composer', volume: 0.25, kickVolume: 1.0, enabled: true });
   const [instrumentSettings, setInstrumentSettings] = useState<InstrumentSettings>({
     bass: { name: "bass_jazz_warm", volume: 0.5, technique: 'portamento' },
-    melody: { name: "blackAcoustic", volume: 0.5 }, 
+    // #ЗАЧЕМ: Установка дефолтной громкости 20% по запросу пользователя.
+    melody: { name: "blackAcoustic", volume: 0.2 }, 
     accompaniment: { name: "organ_soft_jazz", volume: 0.35 },
     harmony: { name: "guitarChords", volume: 0.25 },
     pianoAccompaniment: { name: "piano", volume: 0.65 },
@@ -201,9 +204,6 @@ export const useAuraGroove = (): AuraGrooveProps => {
     
     console.log(`%c[GENEPOOL] USER FEEDBACK: Liking seed ${currentSeed}. Archiving to Masterpieces.`, 'color: #4ade80; font-weight: bold;');
 
-    // #ЗАЧЕМ: Вызов сохранения Шедевра. Теперь это неблокирующая операция.
-    // Мы не используем await и не обрабатываем результат здесь, 
-    // так как ошибки обрабатываются глобально в firebase-service.
     saveMasterpiece(db, {
       seed: currentSeed,
       mood,
@@ -212,8 +212,6 @@ export const useAuraGroove = (): AuraGrooveProps => {
       bpm,
       instrumentSettings
     });
-    
-    // Согласно гайдлайнам, мы не выводим тост об успехе, только об ошибках.
   }, [isInitialized, isPlaying, db, currentSeed, mood, genre, density, bpm, instrumentSettings]);
 
   const handleToggleRecording = useCallback(() => {
