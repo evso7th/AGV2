@@ -100,13 +100,15 @@ export class MelodySynthManagerV2 {
         
         if (notesToPlay.length === 0) return;
 
-        // #ЗАЧЕМ: Реализация гибридного триггера для Гилморовских пресетов.
+        // #ЗАЧЕМ: Реализация гибридного триггера и активация Surgical Cut.
+        // #ЧТО: Если техника ноты 'harm' (маркер глюка), принудительно включаем transientMode.
+        const isGlitchNote = notesToPlay.some(n => n.technique === 'harm');
+
         if (this.partName === 'melody' && (instrumentHint === 'guitar_shineOn' || instrumentHint === 'guitar_muffLead')) {
             this.telecasterSampler.schedule(notesToPlay, barStartTime, tempo, true); 
         }
 
-        // --- Sampler Routing (CS80 is shared for Bass and Melody) ---
-        // #ОБНОВЛЕНО (ПЛАН 214): Для баса принудительно используются короткие сэмплы.
+        // --- Sampler Routing ---
         if (instrumentHint === 'cs80') {
             this.cs80Sampler.schedule(notesToPlay, barStartTime, this.partName === 'bass');
             return;
@@ -114,15 +116,15 @@ export class MelodySynthManagerV2 {
 
         if (this.partName === 'melody') {
             if (instrumentHint === 'blackAcoustic') {
-                this.blackAcousticSampler.schedule(notesToPlay, barStartTime, tempo);
+                this.blackAcousticSampler.schedule(notesToPlay, barStartTime, tempo, isGlitchNote);
                 return;
             }
             if (instrumentHint === 'telecaster') {
-                this.telecasterSampler.schedule(notesToPlay, barStartTime, tempo);
+                this.telecasterSampler.schedule(notesToPlay, barStartTime, tempo, isGlitchNote);
                 return;
             }
             if (instrumentHint === 'darkTelecaster') {
-                this.darkTelecasterSampler.schedule(notesToPlay, barStartTime, tempo);
+                this.darkTelecasterSampler.schedule(notesToPlay, barStartTime, tempo, isGlitchNote);
                 return;
             }
         }
