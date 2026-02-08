@@ -19,9 +19,9 @@ import { GUITAR_PATTERNS } from './assets/guitar-patterns';
 import { BLUES_SOLO_LICKS } from './assets/blues_guitar_solo';
 
 /**
- * #ЗАЧЕМ: Блюзовый Мозг V34.0 — "Chronological Guitar Morphing".
- * #ЧТО: 1. Тембральный морфинг гитары теперь привязан к номерам тактов (User Spec).
- *       2. Реализован ранний вход гитары через СОР.
+ * #ЗАЧЕМ: Блюзовый Мозг V35.0 — "Energy-Based Guitar Morphing".
+ * #ЧТО: 1. Тембральный морфинг гитары теперь привязан к уровню напряжения (Tension).
+ *       2. Реализована шкала: 0..0.50 Black, 0.51..0.80 CS80, 0.81..1.0 ShineOn.
  *       3. Громкость сохранена (Volume Sovereignty).
  */
 
@@ -101,7 +101,6 @@ export class BluesBrain {
     const tension = dna.tensionMap ? (dna.tensionMap[epoch % dna.tensionMap.length] || 0.5) : 0.5;
     const bpmFactor = Math.min(1.0, 75 / tempo);
     
-    // #ЗАЧЕМ: Передача номера такта для хронологического морфинга.
     this.evaluateTimbralDramaturgy(tension, hints, this.mood, epoch);
     
     const barBudget = 180 + (tension * 120); 
@@ -235,14 +234,14 @@ export class BluesBrain {
   }
 
   /**
-   * #ЗАЧЕМ: Управление тембрами на основе временной шкалы и энергии.
-   * #ЧТО: Гитара теперь меняется по тактам: 0-50 Black, 51-80 CS80, 81+ ShineOn.
+   * #ЗАЧЕМ: Управление тембрами на основе энергии (Tension).
+   * #ЧТО: Гитара теперь меняется по порогам напряжения: 0..0.50 Black, 0.51..0.80 CS80, 0.81..1.0 ShineOn.
    */
   private evaluateTimbralDramaturgy(tension: number, hints: InstrumentHints, mood: Mood, epoch: number) {
     if (hints.melody) {
-        // #ЗАЧЕМ: Реализация правила "Гитара по тактам".
-        if (epoch <= 50) (hints as any).melody = 'blackAcoustic';
-        else if (epoch <= 80) (hints as any).melody = 'cs80';
+        // #ЗАЧЕМ: Реализация правила "Гитара по энергии" (Fix Plan 266).
+        if (tension <= 0.50) (hints as any).melody = 'blackAcoustic';
+        else if (tension <= 0.80) (hints as any).melody = 'cs80';
         else (hints as any).melody = 'guitar_shineOn';
     }
     if (hints.bass) {
