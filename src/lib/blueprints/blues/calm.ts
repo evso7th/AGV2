@@ -1,82 +1,123 @@
-
 import type { MusicBlueprint } from '@/types/music';
 
+/**
+ * #ЗАЧЕМ: Блюпринт "Ripple Calm" (Calm Blues v10.0).
+ * #ЧТО: 1. Tension Ripple (0.47-0.53) — мягкое колебание вокруг точки переключения тембра (0.50).
+ *       2. Гитарист постоянно балансирует между интимной Акустикой и поющим CS80.
+ *       3. Светлый мажорный лад G Mixolydian.
+ *       4. Компактное Аутро (12 тактов).
+ */
 export const CalmBluesBlueprint: MusicBlueprint = {
     id: 'calm_blues',
-    name: 'Laid-Back Shuffle',
-    description: 'A slow, hypnotic, riff-based blues.',
+    name: 'Ripple Calm',
+    description: 'A stable, shimmering blues in G Mixolydian. Focus on timbral morphing around the 0.5 energy threshold.',
     mood: 'calm',
     musical: {
-        key: { root: 'G', scale: 'ionian', octave: 2 },
-        bpm: { base: 68, range: [64, 72], modifier: 1.0 },
+        key: { root: 'G', scale: 'mixolydian', octave: 2 },
+        bpm: { base: 72, range: [68, 78], modifier: 1.0 },
         timeSignature: { numerator: 4, denominator: 4 },
-        harmonicJourney: [], // 12-bar structure
-        tensionProfile: { type: 'plateau', peakPosition: 0.3, curve: (p, pp) => p < pp ? p / pp : 1.0 }
+        harmonicJourney: [],
+        tensionProfile: { 
+            type: 'plateau', 
+            peakPosition: 0.5, 
+            curve: (p: number) => {
+                if (p < 0.15) return 0.3 + (p / 0.15) * 0.2; // Прогрев: 0.3 -> 0.5
+                if (p > 0.92) return 0.5 - ((p - 0.92) / 0.08) * 0.4; // Растворение: 0.5 -> 0.1
+                // #ЗАЧЕМ: Создание тембрального мерцания. 
+                // #ЧТО: Колебания 0.47 - 0.53 заставляют Мозг СОР постоянно менять пресет гитары.
+                return 0.50 + 0.03 * Math.sin(p * Math.PI * 16); 
+            }
+        }
     },
     structure: {
-        totalDuration: { preferredBars: 120 }, // 10 loops of 12 bars
+        totalDuration: { preferredBars: 144 },
         parts: [
             {
-                id: 'INTRO', name: 'Verse 1', duration: { percent: 40 },
-                layers: { bass: true, drums: true, accompaniment: true, harmony: true, melody: true },
-                instrumentation: {
-                    accompaniment: { 
-                        strategy: 'weighted', 
-                        v1Options: [{ name: 'synth', weight: 0.5 }, { name: 'ambientPad', weight: 0.5 }],
-                        v2Options: [{ name: 'synth', weight: 0.5 }, { name: 'synth_ambient_pad_lush', weight: 0.5 }]
-                    },
-                    melody: { strategy: 'weighted', v1Options: [{ name: 'guitar_shineOn', weight: 1.0 }], v2Options: [{ name: 'guitar_shineOn', weight: 1.0 }] }
-                },
+                id: 'PROLOGUE', name: 'Light Ripples', duration: { percent: 5 },
+                layers: { accompaniment: true, pianoAccompaniment: true, sparkles: true, sfx: true },
+                stagedInstrumentation: [
+                    { 
+                        duration: { percent: 100 }, 
+                        instrumentation: {
+                           pianoAccompaniment: { activationChance: 1.0, instrumentOptions: [ { name: 'piano', weight: 1.0 } ] },
+                           accompaniment: { activationChance: 1.0, instrumentOptions: [ { name: 'ep_rhodes_warm', weight: 1.0 } ] },
+                           sparkles: { activationChance: 0.8, instrumentOptions: [ { name: 'light', weight: 1.0 } ], transient: true },
+                           sfx: { activationChance: 0.4, instrumentOptions: [ { name: 'common', weight: 1.0 } ], transient: true }
+                        }
+                    }
+                ],
                 instrumentRules: {
-                    drums: { pattern: 'composer', kitName: 'blues_calm', density: { min: 0.4, max: 0.6 } },
-                    bass: { techniques: [{ value: 'riff', weight: 1.0 }] }, 
-                    melody: { source: 'motif', density: { min: 0.2, max: 0.4 }, register: { preferred: 'mid' } }
+                    pianoAccompaniment: { density: { min: 0.2, max: 0.4 } },
+                    accompaniment: { techniques: [{ value: 'long-chords', weight: 1.0 }] }
                 },
-                bundles: [{ id: 'BLUES_CALM_VERSE_BUNDLE', name: 'Main Riff', duration: { percent: 100 }, characteristics: {}, phrases: {} }],
+                bundles: [{ id: 'CALM_PROLOGUE', name: 'Prelude', duration: { percent: 100 }, characteristics: {}, phrases: {} }],
                 outroFill: null,
             },
             {
-                id: 'SOLO', name: 'Solo', duration: { percent: 35 },
-                layers: { bass: true, drums: true, melody: true, accompaniment: true },
-                 instrumentation: {
-                    melody: { strategy: 'weighted', v1Options: [{ name: 'guitar_shineOn', weight: 1.0 }], v2Options: [{ name: 'guitar_shineOn', weight: 1.0 }] },
-                    accompaniment: { 
-                        strategy: 'weighted', 
-                        v1Options: [{ name: 'synth', weight: 0.5 }, { name: 'ambientPad', weight: 0.5 }],
-                        v2Options: [{ name: 'synth', weight: 0.5 }, { name: 'synth_ambient_pad_lush', weight: 0.5 }]
-                    },
-                },
+                id: 'INTRO', name: 'Gentle Flow', duration: { percent: 10 },
+                layers: { bass: true, drums: true, accompaniment: true, pianoAccompaniment: true, sparkles: true },
+                stagedInstrumentation: [
+                    { 
+                        duration: { percent: 100 }, 
+                        instrumentation: {
+                           bass: { activationChance: 1.0, instrumentOptions: [ { name: 'bass_jazz_warm', weight: 1.0 } ] },
+                           drums: { activationChance: 1.0, instrumentOptions: [ { name: 'trance_intro', weight: 1.0 } ] },
+                           accompaniment: { activationChance: 1.0, instrumentOptions: [ { name: 'ep_rhodes_warm', weight: 1.0 } ] },
+                           pianoAccompaniment: { activationChance: 1.0, instrumentOptions: [ { name: 'piano', weight: 1.0 } ] }
+                        }
+                    }
+                ],
                 instrumentRules: {
-                    drums: { pattern: 'composer', kitName: 'blues_calm', density: { min: 0.5, max: 0.7 }, ride: { enabled: true } },
-                    melody: { 
-                        source: 'motif', 
-                        density: { min: 0.6, max: 0.8 },
-                        register: { preferred: 'mid' }
-                    },
-                    bass: { techniques: [{ value: 'riff', weight: 1.0 }] },
+                    drums: { pattern: 'ambient_beat', density: { min: 0.3, max: 0.5 } },
+                    bass: { techniques: [{ value: 'pedal', weight: 1.0 }] }
                 },
-                bundles: [{ id: 'BLUES_CALM_SOLO_BUNDLE', name: 'Solo', duration: { percent: 100 }, characteristics: {}, phrases: {} }],
+                bundles: [{ id: 'CALM_INTRO', name: 'Awakening', duration: { percent: 100 }, characteristics: {}, phrases: {} }],
                 outroFill: null,
             },
-             {
-                id: 'OUTRO', name: 'Return to Riff', duration: { percent: 25 },
-                layers: { bass: true, drums: true, accompaniment: true, harmony: true, melody: true },
-                instrumentation: {
-                    accompaniment: { 
-                        strategy: 'weighted', 
-                        v1Options: [{ name: 'synth', weight: 0.5 }, { name: 'ambientPad', weight: 0.5 }],
-                        v2Options: [{ name: 'synth', weight: 0.5 }, { name: 'synth_ambient_pad_lush', weight: 0.5 }]
-                    },
-                    melody: { strategy: 'weighted', v1Options: [{ name: 'guitar_shineOn', weight: 1.0 }], v2Options: [{ name: 'guitar_shineOn', weight: 1.0 }] }
-                },
+            {
+                id: 'THE_CALM', name: 'Timbral Ripple', duration: { percent: 77 },
+                layers: { bass: true, drums: true, melody: true, accompaniment: true, harmony: true, pianoAccompaniment: true, sparkles: true, sfx: true },
+                stagedInstrumentation: [
+                    { 
+                        duration: { percent: 100 }, 
+                        instrumentation: {
+                           melody: { activationChance: 1.0, instrumentOptions: [ { name: 'melody', weight: 1.0 } ] },
+                           bass: { activationChance: 1.0, instrumentOptions: [ { name: 'bass', weight: 1.0 } ] },
+                           drums: { activationChance: 1.0, instrumentOptions: [ { name: 'blues_melancholic_master', weight: 1.0 } ] },
+                           accompaniment: { activationChance: 1.0, instrumentOptions: [ { name: 'accompaniment', weight: 1.0 } ] },
+                           harmony: { activationChance: 1.0, instrumentOptions: [ { name: 'guitarChords', weight: 1.0 } ] },
+                           pianoAccompaniment: { activationChance: 1.0, instrumentOptions: [ { name: 'piano', weight: 1.0 } ] }
+                        }
+                    }
+                ],
                 instrumentRules: {
-                    drums: { pattern: 'composer', kitName: 'blues_calm', density: { min: 0.4, max: 0.6 } },
-                    bass: { techniques: [{ value: 'riff', weight: 1.0 }] }, 
-                    melody: { source: 'motif', density: { min: 0.2, max: 0.4 }, register: { preferred: 'mid' } }
+                    melody: { source: 'blues_solo', density: { min: 0.25, max: 0.45 } },
+                    drums: { kitName: 'blues_melancholic_master', density: { min: 0.4, max: 0.6 }, usePerc: true },
+                    bass: { techniques: [{ value: 'walking', weight: 1.0 }] }
                 },
-                bundles: [{ id: 'BLUES_CALM_OUTRO_BUNDLE', name: 'Final Riff', duration: { percent: 100 }, characteristics: {}, phrases: {} }],
+                bundles: [{ id: 'CALM_MAIN_RIPPLE', name: 'Main Flow', duration: { percent: 100 }, characteristics: {}, phrases: {} }],
                 outroFill: null,
             },
+            {
+                id: 'OUTRO', name: 'Fading Ripples', duration: { percent: 8 }, // 12 bars (1 square)
+                layers: { bass: true, accompaniment: true, pianoAccompaniment: true, sparkles: true, sfx: true },
+                stagedInstrumentation: [
+                    { 
+                        duration: { percent: 100 }, 
+                        instrumentation: {
+                           pianoAccompaniment: { activationChance: 1.0, instrumentOptions: [ { name: 'piano', weight: 1.0 } ] },
+                           accompaniment: { activationChance: 1.0, instrumentOptions: [ { name: 'ep_rhodes_warm', weight: 1.0 } ] },
+                           bass: { activationChance: 1.0, instrumentOptions: [ { name: 'bass_ambient', weight: 1.0 } ] }
+                        }
+                    }
+                ],
+                instrumentRules: {
+                    bass: { techniques: [{ value: 'drone', weight: 1.0 }] },
+                    accompaniment: { techniques: [{ value: 'swell', weight: 1.0 }] }
+                },
+                bundles: [{ id: 'CALM_OUTRO', name: 'End Ripple', duration: { percent: 100 }, characteristics: {}, phrases: {} }],
+                outroFill: null,
+            }
         ]
     },
     mutations: {},
