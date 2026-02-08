@@ -23,6 +23,7 @@ import { BLUES_SOLO_LICKS } from './assets/blues_guitar_solo';
  * #ЧТО: 1. Удалена логика пропуска тактов у барабанщика ("странный ударник" исправлен).
  *       2. Установлен режим "Постоянного Пульса": мягкие хеты и бит звучат непрерывно.
  *       3. Развитие аранжировки переведено на уровень перкуссионных акцентов.
+ * #ОБНОВЛЕНО (ПЛАН №283): Запрет пианисту подниматься выше 4-й октавы (MIDI 71).
  */
 
 const ENERGY_PRICES = {
@@ -49,6 +50,7 @@ export class BluesBrain {
   
   private readonly MELODY_CEILING = 79;
   private readonly GLITCH_FLOOR = 100; 
+  private readonly PIANO_CEILING = 71; // B4 - Конец 4-й октавы
   private readonly patternOptions: string[] = ['F_TRAVIS', 'F_ROLL12', 'S_SWING'];
 
   private phraseHistory: string[] = [];
@@ -472,10 +474,25 @@ export class BluesBrain {
     }).filter(e => e !== null) as FractalEvent[];
   }
 
+  /**
+   * #ЗАЧЕМ: Генерация партии пианино с жестким регистровым потолком.
+   * #ЧТО: 1. Базовая позиция установлена на C4 (root + 36).
+   *       2. Внедрен маппинг с октавным сдвигом: ноты выше MIDI 71 (B4) опускаются вниз.
+   */
   private generatePianoMotif(epoch: number, chord: GhostChord, tempo: number, tension: number, bpmFactor: number): FractalEvent[] {
     const beatDur = 60 / tempo;
     const root = chord.rootNote + 36;
-    const notes = [root + 7, root + 10, root + 12]; 
+    
+    // #ЗАЧЕМ: Запрет пианисту подниматься выше 4-й октавы (План №283).
+    // #ЧТО: Ноты ограничены MIDI 71 (B4). Если нота выше, она опускается на октаву.
+    const notes = [root + 7, root + 10, root + 12].map(n => {
+        let pitch = n;
+        while (pitch > this.PIANO_CEILING) {
+            pitch -= 12;
+        }
+        return pitch;
+    });
+
     const events: FractalEvent[] = [];
     const density = (0.2 + (tension * 0.2)) * bpmFactor; 
     
