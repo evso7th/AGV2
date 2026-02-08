@@ -1,11 +1,11 @@
 import type { MusicBlueprint } from '@/types/music';
 
 /**
- * #ЗАЧЕМ: Блюпринт "The Inner Dialogue" (Contemplative Blues v6.0).
+ * #ЗАЧЕМ: Блюпринт "The Inner Dialogue" (Contemplative Blues v7.0).
  * #ЧТО: 1. Пролог (5%) — ленивое пианино, гитарные аккорды, искры и атмосфера.
  *       2. Объединенное вступление (8%) — рождение ансамбля за один квадрат (12 тактов).
- *       3. Плато раздумий (72%) — стабильная энергия 0.55 (мерцающий тембр).
- *       4. Расширенное аутро (15%) — долгое растворение.
+ *       3. Плато раздумий (79%) — стабильная энергия 0.55 (мерцающий тембр).
+ *       4. Компактное аутро (8%) — ровно один квадрат (12 тактов) для растворения.
  */
 export const ContemplativeBluesBlueprint: MusicBlueprint = {
     id: 'contemplative_blues',
@@ -22,7 +22,7 @@ export const ContemplativeBluesBlueprint: MusicBlueprint = {
             peakPosition: 0.5, 
             curve: (p) => {
                 if (p < 0.15) return 0.25 + (p / 0.15) * 0.30; // Прогрев: 0.25 -> 0.55
-                if (p > 0.85) return 0.55 - ((p - 0.85) / 0.15) * 0.35; // Растворение
+                if (p > 0.92) return 0.55 - ((p - 0.92) / 0.08) * 0.45; // Растворение (последний квадрат)
                 return 0.55 + (Math.sin(p * Math.PI * 10) * 0.03); // Колыхание на плато
             }
         }
@@ -76,7 +76,7 @@ export const ContemplativeBluesBlueprint: MusicBlueprint = {
                 outroFill: null,
             },
             {
-                id: 'MAIN_REFLECTION', name: 'The Inner Dialogue', duration: { percent: 72 },
+                id: 'MAIN_REFLECTION', name: 'The Inner Dialogue', duration: { percent: 79 },
                 layers: { bass: true, drums: true, melody: true, accompaniment: true, harmony: true, pianoAccompaniment: true, sparkles: true, sfx: true },
                 stagedInstrumentation: [
                     { 
@@ -100,7 +100,7 @@ export const ContemplativeBluesBlueprint: MusicBlueprint = {
                 outroFill: null,
             },
             {
-                id: 'OUTRO', name: 'Dissolving Trace', duration: { percent: 15 },
+                id: 'OUTRO', name: 'Dissolving Trace', duration: { percent: 8 }, // Ровно 1 квадрат (12 тактов)
                 layers: { pianoAccompaniment: true, sfx: true, bass: true, harmony: true },
                 stagedInstrumentation: [
                     { 
