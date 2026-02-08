@@ -140,8 +140,8 @@ const Scheduler = {
         }
 
         // #ЗАЧЕМ: AI Arbitrator — автоматический отбор лучших образцов.
-        // #ОБНОВЛЕНО (ПЛАН №257): Порог снижен с 0.88 до 0.85 для повышения динамики обучения.
-        if (finalPayload.beautyScore > 0.85 && this.barCount > 8) {
+        // #ОБНОВЛЕНО (ПЛАН №286): Порог снижен до 0.80 по требованию пользователя для более активного наполнения генофонда.
+        if (finalPayload.beautyScore > 0.80 && this.barCount > 8) {
             console.log(`%c[Chain] AI ARBITRATOR: High Resonance Detected (${finalPayload.beautyScore.toFixed(3)}). Signaling UI for backup.`, 'color: #ff00ff');
             self.postMessage({ 
                 type: 'HIGH_RESONANCE_DETECTED', 

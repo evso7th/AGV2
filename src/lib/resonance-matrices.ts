@@ -179,15 +179,15 @@ export const TraditionalK = ElectronicK;
 
 /**
  * #ЗАЧЕМ: Матрица резонанса для меланхоличного минора.
- * #ОБНОВЛЕНО (ПЛАН №257): Повышена награда за консонансы до 0.98.
+ * #ОБНОВЛЕНО (ПЛАН №286): Повышена награда за консонансы до 0.99.
  */
 export const MelancholicMinorK: ResonanceMatrix = (eventA: FractalEvent, eventB: FractalEvent, context: { mood: Mood; tempo: number; delta: number, genre: Genre }): number => {
     if (!eventA || !eventB) { return 0.5; }
 
     const event1IsBass = isBass(eventA);
     const event2IsBass = isBass(eventB);
-    const event1IsDrums = eventA.type.startsWith('drum_') || eventA.type.startsWith('perc-');
-    const event2IsDrums = eventB.type.startsWith('drum_') || eventB.type.startsWith('perc-');
+    const event1IsDrums = eventA.type.toString().startsWith('drum_') || eventA.type.toString().startsWith('perc-');
+    const event2IsDrums = eventB.type.toString().startsWith('drum_') || eventB.type.toString().startsWith('perc-');
     const event1IsAccomp = isAccompaniment(eventA);
     const event2IsAccomp = isAccompaniment(eventB);
 
@@ -223,7 +223,8 @@ export const MelancholicMinorK: ResonanceMatrix = (eventA: FractalEvent, eventB:
 
         const interval = Math.abs(eventA.note - eventB.note) % 12;
         // #ЗАЧЕМ: Максимальное вознаграждение за чистую гармонию.
-        if ([3, 4, 7, 8, 9].includes(interval)) return 0.98;
+        // #ОБНОВЛЕНО (ПЛАН №286): Поднято до 0.99.
+        if ([3, 4, 7, 8, 9].includes(interval)) return 0.99;
         return 0.6;
     }
 
