@@ -1,3 +1,4 @@
+
 /**
  * @file AuraGroove Music Worker (Architecture: "The Chain of Suites")
  *
@@ -8,6 +9,7 @@
  * #ЧТО: Воркер теперь знает тип текущей пьесы и автоматически подгружает БП моста.
  * #ИННОВАЦИЯ: AI Arbitrator следит за гармоническим резонансом и пополняет генофонд.
  * #ОБНОВЛЕНО (ПЛАН №288): Внедрена система Chronos Telemetry (метки времени в логах).
+ * #ОБНОВЛЕНО (ПЛАН №294): Внедрен самокорректирующийся таймер для устранения дрейфа (Seamless Stitch).
  */
 import type { WorkerSettings, ScoreName, Mood, Genre, InstrumentPart } from '@/types/music';
 import { FractalMusicEngine } from '@/lib/fractal-music-engine';
@@ -91,10 +93,22 @@ const Scheduler = {
         this.suiteType = 'PROMENADE'; 
         this.initializeEngine(this.settings, true);
 
+        // #ЗАЧЕМ: Реализация самокорректирующегося таймера.
+        // #ЧТО: Мы вычисляем время выполнения tick() и вычитаем его из задержки следующего такта.
         const loop = () => {
             if (!this.isRunning) return;
+            
+            const barStartTime = performance.now();
             this.tick();
-            this.loopId = setTimeout(loop, this.barDuration * 1000);
+            
+            // Вычисляем время, потраченное на расчет такта
+            const executionTime = performance.now() - barStartTime;
+            const targetDuration = this.barDuration * 1000;
+            
+            // Самокоррекция: уменьшаем задержку на время вычислений
+            const nextDelay = Math.max(0, targetDuration - executionTime);
+            
+            this.loopId = setTimeout(loop, nextDelay);
         };
         loop();
     },
@@ -150,7 +164,6 @@ const Scheduler = {
         }
 
         if (finalPayload.beautyScore > 0.78 && this.barCount > 8) {
-            // #ОБНОВЛЕНО (ПЛАН №288): Добавлена метка времени к логу Арбитра.
             console.log(`%c${getTimestamp()} [Chain] AI ARBITRATOR: High Resonance Detected (${finalPayload.beautyScore.toFixed(3)}). Signaling UI for backup.`, 'color: #ff00ff');
             self.postMessage({ 
                 type: 'HIGH_RESONANCE_DETECTED', 
@@ -172,7 +185,6 @@ const Scheduler = {
         }
         
         const sectionName = finalPayload.navInfo?.currentPart.name || 'Unknown';
-        // #ОБНОВЛЕНО (ПЛАН №288): Добавлена метка времени к регулярному логу бара.
         console.log(`${getTimestamp()} [Bar ${this.barCount}] [${this.suiteType}] [${sectionName}] BPM:${this.settings.bpm} Res:${finalPayload.beautyScore.toFixed(2)} D:${counts.drums}, B:${counts.bass}, M:${counts.melody}`);
 
         self.postMessage({ 

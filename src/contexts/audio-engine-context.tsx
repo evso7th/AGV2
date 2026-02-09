@@ -148,10 +148,6 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
 
   const getWorker = useCallback(() => workerRef.current, []);
 
-  /**
-   * #ЗАЧЕМ: Загрузка и аудит генетической памяти (Plan 289).
-   * #ЧТО: Подтягивает 20 последних шедевров из облака и выводит их таблицу в консоль.
-   */
   const loadAncestors = useCallback(async () => {
       try {
           const masterpiecesRef = collection(db, 'masterpieces');
@@ -376,7 +372,9 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
         if (!audioContextRef.current) audioContextRef.current = new (window.AudioContext || (window as any).webkitAudioContext)({ sampleRate: 44100, latencyHint: 'interactive' });
         if (audioContextRef.current.state === 'suspended') await audioContextRef.current.resume();
         const context = audioContextRef.current;
-        nextBarTimeRef.current = context.currentTime + 0.1; 
+        // #ЗАЧЕМ: Увеличение буфера для бесшовного воспроизведения.
+        // #ЧТО: Сдвиг времени старта на 500мс вперед (Safe Cushion).
+        nextBarTimeRef.current = context.currentTime + 0.5; 
         if (!masterGainNodeRef.current) {
             masterGainNodeRef.current = context.createGain(); masterGainNodeRef.current.connect(context.destination);
             recorderDestinationRef.current = context.createMediaStreamDestination(); masterGainNodeRef.current.connect(recorderDestinationRef.current);
@@ -434,7 +432,9 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
     if (!isInitialized || !workerRef.current || !audioContextRef.current) return;
     if (playing) {
         if (audioContextRef.current.state === 'suspended') audioContextRef.current.resume();
-        stopAllSounds(); nextBarTimeRef.current = audioContextRef.current.currentTime + 0.2; 
+        stopAllSounds(); 
+        // #ЗАЧЕМ: Безопасный запуск с запасом времени.
+        nextBarTimeRef.current = audioContextRef.current.currentTime + 0.5; 
         workerRef.current.postMessage({ command: 'start' }); scheduleNextImpulse();
     } else { stopAllSounds(); workerRef.current.postMessage({ command: 'stop' }); }
   }, [isInitialized, stopAllSounds, scheduleNextImpulse]);
