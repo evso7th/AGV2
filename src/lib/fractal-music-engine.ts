@@ -105,30 +105,30 @@ export class FractalMusicEngine {
     this.isInitialized = true;
   }
 
-  public evolve(barDuration: number, barCount: number): { events: FractalEvent[], instrumentHints: InstrumentHints, beautyScore: number, navInfo?: NavigationInfo } {
-    if (!this.navigator) return { events: [], instrumentHints: {}, beautyScore: 0 };
+  public evolve(barDuration: number, barCount: number): { events: FractalEvent[], instrumentHints: InstrumentHints, beautyScore: number, tension: number, navInfo?: NavigationInfo } {
+    if (!this.navigator) return { events: [], instrumentHints: {}, beautyScore: 0, tension: 0.5 };
     this.epoch = barCount;
 
-    if (this.epoch >= this.navigator.totalBars) return { events: [], instrumentHints: {}, beautyScore: 0 };
+    if (this.epoch >= this.navigator.totalBars) return { events: [], instrumentHints: {}, beautyScore: 0, tension: 0.5 };
 
     const navInfo = this.navigator.tick(this.epoch);
-    if (!navInfo) return { events: [], instrumentHints: {}, beautyScore: 0 };
+    if (!navInfo) return { events: [], instrumentHints: {}, beautyScore: 0, tension: 0.5 };
 
     const instrumentHints: InstrumentHints = { summonProgress: {} };
     const stages = navInfo.currentPart.stagedInstrumentation;
+
+    // #ЗАЧЕМ: Реализация Энергетической Мотивации (План №297).
+    // #ЧТО: Если мы в "боевой" части, напряжение не может упасть ниже порога жизни (0.4).
+    let tension = this.suiteDNA?.tensionMap?.[this.epoch % (this.suiteDNA.tensionMap.length || 1)] ?? 0.5;
+    const isMainZone = navInfo.currentPart.id.includes('MAIN') || navInfo.currentPart.id.includes('PEAK') || navInfo.currentPart.id.includes('ANTHEM');
+    if (isMainZone) {
+        tension = Math.max(0.4, tension);
+    }
 
     if (stages && stages.length > 0) {
         const partBars = navInfo.currentPartEndBar - navInfo.currentPartStartBar + 1;
         const progress = (this.epoch - navInfo.currentPartStartBar) / partBars;
         
-        // #ЗАЧЕМ: Реализация Энергетической Мотивации (План №297).
-        // #ЧТО: Если мы в "боевой" части, напряжение не может упасть ниже порога жизни (0.4).
-        let tension = this.suiteDNA?.tensionMap?.[this.epoch % (this.suiteDNA.tensionMap.length || 1)] ?? 0.5;
-        const isMainZone = navInfo.currentPart.id.includes('MAIN') || navInfo.currentPart.id.includes('PEAK') || navInfo.currentPart.id.includes('ANTHEM');
-        if (isMainZone) {
-            tension = Math.max(0.4, tension);
-        }
-
         let currentStage = stages[stages.length - 1];
         let acc = 0;
         for (const s of stages) { 
@@ -176,7 +176,7 @@ export class FractalMusicEngine {
 
     const beautyScore = this.calculateBeautyScore(result.events);
 
-    return { ...result, instrumentHints, beautyScore, navInfo };
+    return { ...result, instrumentHints, beautyScore, tension, navInfo };
   }
 
   private calculateBeautyScore(events: FractalEvent[]): number {

@@ -1,4 +1,3 @@
-
 /**
  * @file AuraGroove Music Worker (Architecture: "The Chain of Suites")
  *
@@ -158,10 +157,11 @@ const Scheduler = {
     tick() {
         if (!this.isRunning || !fractalMusicEngine) return;
 
-        let finalPayload: { events: FractalEvent[], instrumentHints: InstrumentHints, beautyScore: number, navInfo?: NavigationInfo } = { 
+        let finalPayload: { events: FractalEvent[], instrumentHints: InstrumentHints, beautyScore: number, tension: number, navInfo?: NavigationInfo } = { 
             events: [], 
             instrumentHints: {}, 
-            beautyScore: 0.5 
+            beautyScore: 0.5,
+            tension: 0.5
         };
 
         try {
@@ -191,7 +191,9 @@ const Scheduler = {
         }
         
         const sectionName = finalPayload.navInfo?.currentPart.name || 'Unknown';
-        console.log(`${getTimestamp()} [Bar ${this.barCount}] [${this.suiteType}] [${sectionName}] BPM:${this.settings.bpm} Res:${finalPayload.beautyScore.toFixed(2)} D:${counts.drums}, B:${counts.bass}, M:${counts.melody}`);
+        // #ЗАЧЕМ: Восстановление видимости энергии. 
+        // #ЧТО: В лог добавлено поле T (Tension) для мониторинга М-Мотивации.
+        console.log(`${getTimestamp()} [Bar ${this.barCount}] [${this.suiteType}] [${sectionName}] T:${finalPayload.tension.toFixed(2)} BPM:${this.settings.bpm} Res:${finalPayload.beautyScore.toFixed(2)} D:${counts.drums}, B:${counts.bass}, M:${counts.melody}`);
 
         self.postMessage({ 
             type: 'SCORE_READY', 
