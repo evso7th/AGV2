@@ -1,15 +1,13 @@
 /**
  * @fileOverview Blues Guitar Solo Library (Licks and Plans)
  * #ЗАЧЕМ: Содержит оцифрованную библиотеку блюзовых гитарных соло.
- * #ЧТО: Экспортирует BLUES_SOLO_LICKS (180 ликов) и BLUES_SOLO_PLANS.
+ * #ЧТО: Экспортирует BLUES_SOLO_LICKS (210 ликов) и BLUES_SOLO_PLANS.
  * #СВЯЗИ: Используется в `fractal-music-engine.ts` и `music-theory.ts`.
- * #ОБНОВЛЕНО (ПЛАН №290): Внедрено 150 Legacy-ликов (L31-L180) для культурного наследования.
- * #ОБНОВЛЕНО (ПЛАН №291): Активировано наследие через 20 новых планов (S21-S40).
+ * #ОБНОВЛЕНО (ПЛАН №292): Добавлены 30 Hard Rock ликов (L181-L210): Zeppelin, Sabbath, Purple, etc.
  */
 
 import type { BluesSoloPhrase } from '@/types/fractal';
 
-// Структура события: { t: tick, d: duration_in_ticks, deg: degree, tech?: technique }
 export const BLUES_SOLO_LICKS: Record<string, { phrase: BluesSoloPhrase; tags: string[] }> = {
   // --- BASE MATHEMATICAL LICKS (L01-L30) ---
   L01: { phrase: [{t:0,d:3,deg:'b3',tech:'bn'}, {t:3,d:3,deg:'R'}, {t:6,d:6,deg:'5',tech:'vb'}], tags: ['minor', 'cry', 'slow-bend'] },
@@ -201,9 +199,41 @@ export const BLUES_SOLO_LICKS: Record<string, { phrase: BluesSoloPhrase; tags: s
   L178: { phrase: [{t:0,d:2,deg:'R'}, {t:2,d:2,deg:'b3'}, {t:4,d:2,deg:'R'}, {t:6,d:6,deg:'R',tech:'sl'}], tags: ['legacy', 'virtuoso', 'sliding-root'] },
   L179: { phrase: [{t:0,d:3,deg:'5'}, {t:3,d:3,deg:'b7'}, {t:6,d:6,deg:'R+8',tech:'vb'}], tags: ['legacy', 'virtuoso', 'shining-end'] },
   L180: { phrase: [{t:0,d:12,deg:'R',tech:'vb'}], tags: ['legacy', 'virtuoso', 'final-virtuoso-anchor'] },
+
+  // --- LEGACY CATEGORY 6: HARD ROCK LEGENDS (L181-L210) ---
+  L181: { phrase: [{t:0,d:2,deg:'R'},{t:2,d:2,deg:'b3',tech:'h'},{t:4,d:2,deg:'3',tech:'p'},{t:6,d:6,deg:'5',tech:'vb'}], tags: ['legacy', 'zeppelin', 'page-style', 'ornament'] },
+  L182: { phrase: [{t:0,d:3,deg:'5',tech:'sl'},{t:3,d:3,deg:'7'},{t:6,d:6,deg:'R+8',tech:'bn'}], tags: ['legacy', 'zeppelin', 'climb', 'soaring'] },
+  L183: { phrase: [{t:0,d:6,deg:'b5',tech:'bn'},{t:6,d:6,deg:'4',tech:'vb'}], tags: ['legacy', 'sabbath', 'doom-blues', 'heavy'] },
+  L184: { phrase: [{t:0,d:3,deg:'R',tech:'ds'},{t:3,d:3,deg:'b5',tech:'ds'},{t:6,d:6,deg:'R',tech:'ds'}], tags: ['legacy', 'sabbath', 'tritone', 'stabs'] },
+  L185: { phrase: [{t:0,d:2,deg:'R'},{t:2,d:2,deg:'b2'},{t:4,d:2,deg:'2'},{t:6,d:6,deg:'b3',tech:'sl'}], tags: ['legacy', 'doors', 'krieger-style', 'chromatic'] },
+  L186: { phrase: [{t:0,d:4,deg:'9'},{t:4,d:4,deg:'b7'},{t:8,d:4,deg:'6'}], tags: ['legacy', 'doors', 'jazzy-resolve', 'mellow'] },
+  L187: { phrase: [{t:0,d:1,deg:'R'},{t:1,d:1,deg:'b3'},{t:2,d:1,deg:'3'},{t:3,d:1,deg:'5'},{t:4,d:1,deg:'6'},{t:5,d:1,deg:'b7'},{t:6,d:6,deg:'R+8'}], tags: ['legacy', 'purple', 'blackmore-style', 'fast-run'] },
+  L188: { phrase: [{t:0,d:3,deg:'5'},{t:3,d:3,deg:'b7',tech:'h'},{t:6,d:6,deg:'R',tech:'vb'}], tags: ['legacy', 'heep', 'box-style', 'classic'] },
+  L189: { phrase: [{t:0,d:1,deg:'R'},{t:1,d:1,deg:'b7'},{t:2,d:1,deg:'5'},{t:3,d:1,deg:'4'},{t:4,d:1,deg:'b3'},{t:5,d:1,deg:'R'},{t:6,d:6,deg:'R',tech:'vb'}], tags: ['legacy', 'ten-years-after', 'alvin-lee', 'shred'] },
+  L190: { phrase: [{t:0,d:6,deg:'R',tech:'ds'},{t:6,d:6,deg:'b3',tech:'bn'}], tags: ['legacy', 'butterfly', 'heavy-stabs', 'psych'] },
+  L191: { phrase: [{t:0,d:2,deg:'R'},{t:2,d:2,deg:'b3'},{t:4,d:2,deg:'4'},{t:6,d:2,deg:'b5'},{t:8,d:2,deg:'5'},{t:10,d:2,deg:'b7'}], tags: ['legacy', 'zeppelin', 'blues-scale', 'complete'] },
+  L192: { phrase: [{t:0,d:12,deg:'b5',tech:'bn+vb'}], tags: ['legacy', 'sabbath', 'tritone-hold', 'tense'] },
+  L193: { phrase: [{t:0,d:3,deg:'R'},{t:3,d:3,deg:'b3',tech:'h'},{t:6,d:6,deg:'R',tech:'p'}], tags: ['legacy', 'purple', 'blackmore-flick', 'ornament'] },
+  L194: { phrase: [{t:0,d:4,deg:'R'},{t:4,d:4,deg:'b2',tech:'sl'},{t:8,d:4,deg:'R'}], tags: ['legacy', 'doors', 'chromatic-sigh'] },
+  L195: { phrase: [{t:0,d:1,deg:'5'},{t:1,d:1,deg:'b7'},{t:2,d:1,deg:'R+8'},{t:3,d:9,deg:'R+8',tech:'vb'}], tags: ['legacy', 'heep', 'high-climb'] },
+  L196: { phrase: [{t:0,d:2,deg:'R'},{t:2,d:2,deg:'5'},{t:4,d:2,deg:'R'},{t:6,d:6,deg:'b7',tech:'bn'}], tags: ['legacy', 'zeppelin', 'page-shuffle'] },
+  L197: { phrase: [{t:0,d:6,deg:'R',tech:'ds'},{t:6,d:6,deg:'b7',tech:'ds'}], tags: ['legacy', 'sabbath', 'power-chordal'] },
+  L198: { phrase: [{t:0,d:3,deg:'9'},{t:3,d:3,deg:'R'},{t:6,d:6,deg:'5',tech:'vb'}], tags: ['legacy', 'doors', 'jazz-blues'] },
+  L199: { phrase: [{t:0,d:1,deg:'R'},{t:1,d:1,deg:'b3'},{t:2,d:1,deg:'4'},{t:3,d:1,deg:'b5'},{t:4,d:8,deg:'5',tech:'vb'}], tags: ['legacy', 'purple', 'shred-climb'] },
+  L200: { phrase: [{t:0,d:12,deg:'R+8',tech:'vb'}], tags: ['legacy', 'butterfly', 'psych-hold'] },
+  L201: { phrase: [{t:0,d:2,deg:'R'},{t:2,d:2,deg:'b3'},{t:4,d:2,deg:'R'},{t:6,d:2,deg:'b3'},{t:8,d:4,deg:'R'}], tags: ['legacy', 'ten-years-after', 'repetitive-burn'] },
+  L202: { phrase: [{t:0,d:3,deg:'5'},{t:3,d:3,deg:'b7'},{t:6,d:6,deg:'R',tech:'bn'}], tags: ['legacy', 'heep', 'rock-resolution'] },
+  L203: { phrase: [{t:0,d:6,deg:'b3',tech:'sl'},{t:6,d:6,deg:'R'}], tags: ['legacy', 'zeppelin', 'lazy-slide'] },
+  L204: { phrase: [{t:0,d:2,deg:'R'},{t:2,d:2,deg:'b2'},{t:4,d:2,deg:'2'},{t:6,d:6,deg:'3'}], tags: ['legacy', 'doors', 'chromatic-rise'] },
+  L205: { phrase: [{t:0,d:1,deg:'5'},{t:1,d:1,deg:'4'},{t:2,d:1,deg:'b3'},{t:3,d:9,deg:'R',tech:'vb'}], tags: ['legacy', 'purple', 'rapid-fall'] },
+  L206: { phrase: [{t:0,d:6,deg:'R',tech:'vb'},{t:6,d:6,deg:'b5',tech:'bn'}], tags: ['legacy', 'sabbath', 'heavy-question'] },
+  L207: { phrase: [{t:0,d:3,deg:'R'},{t:3,d:3,deg:'b7'},{t:6,d:6,deg:'R+8',tech:'vb'}], tags: ['legacy', 'heep', 'reaching-up'] },
+  L208: { phrase: [{t:0,d:2,deg:'R'},{t:2,d:2,deg:'b3'},{t:4,d:2,deg:'4'},{t:6,d:6,deg:'R',tech:'sl'}], tags: ['legacy', 'zeppelin', 'anchored-slide'] },
+  L209: { phrase: [{t:0,d:4,deg:'5'},{t:4,d:4,deg:'6'},{t:8,d:4,deg:'R'}], tags: ['legacy', 'butterfly', 'ascending-stable'] },
+  L210: { phrase: [{t:0,d:12,deg:'R',tech:'vb'}], tags: ['legacy', 'ten-years-after', 'final-shred-anchor'] },
 };
 
-// 20 планов соло, каждый на 36 тактов (3 хора по 12 тактов)
+// 25 планов соло, каждый на 36 тактов (3 хора по 12 тактов)
 export const BLUES_SOLO_PLANS: Record<string, { choruses: string[][] }> = {
   "S01": {
     choruses: [
@@ -239,20 +269,13 @@ export const BLUES_SOLO_PLANS: Record<string, { choruses: string[][] }> = {
     ]
   },
   
-  // --- NEW LEGACY PLANS (S21-S40) ---
+  // --- LEGACY PLANS (S21-S40) ---
   
   "S21": { // Slow Burn Masterpiece
     choruses: [
       ['L31', 'L33', 'L35', 'L36', 'L38', 'L40', 'L45', 'L47', 'L48', 'L50', 'L51', 'L09'],
       ['L32', 'L34', 'L37', 'L39', 'L41', 'L42', 'L43', 'L44', 'L12', 'L12', 'L55', 'L19'],
       ['L52', 'L53', 'L54', 'L56', 'L57', 'L58', 'L59', 'L60', 'L31', 'L32', 'L33', 'L09']
-    ]
-  },
-  "S22": { // Yearning Ballad
-    choruses: [
-      ['L36', 'L48', 'L51', 'L57', 'L33', 'L45', 'L47', 'L40', 'L38', 'L50', 'L31', 'L09'],
-      ['L41', 'L42', 'L43', 'L44', 'L32', 'L34', 'L37', 'L39', 'L12', 'L12', 'L55', 'L19'],
-      ['L52', 'L53', 'L54', 'L56', 'L57', 'L58', 'L59', 'L60', 'L36', 'L48', 'L51', 'L09']
     ]
   },
   "S25": { // Texas Shuffle Core
@@ -262,25 +285,11 @@ export const BLUES_SOLO_PLANS: Record<string, { choruses: string[][] }> = {
       ['L81', 'L82', 'L83', 'L84', 'L85', 'L86', 'L87', 'L88', 'L89', 'L90', 'L61', 'L09']
     ]
   },
-  "S26": { // Aggressive Shuffle
-    choruses: [
-      ['L80', 'L61', 'L64', 'L67', 'L74', 'L79', 'L87', 'L69', 'L71', 'L75', 'L81', 'L09'],
-      ['L66', 'L68', 'L72', 'L76', 'L83', 'L90', 'L63', 'L65', 'L12', 'L12', 'L80', 'L19'],
-      ['L81', 'L82', 'L83', 'L84', 'L85', 'L86', 'L87', 'L88', 'L89', 'L90', 'L80', 'L09']
-    ]
-  },
   "S29": { // Jazzy Sophistication
     choruses: [
       ['L91', 'L92', 'L93', 'L94', 'L95', 'L96', 'L97', 'L98', 'L99', 'L100', 'L101', 'L09'],
       ['L102', 'L103', 'L104', 'L105', 'L106', 'L107', 'L108', 'L109', 'L12', 'L12', 'L110', 'L19'],
       ['L111', 'L112', 'L113', 'L114', 'L115', 'L116', 'L117', 'L118', 'L119', 'L120', 'L91', 'L09']
-    ]
-  },
-  "S30": { // Cool Blues
-    choruses: [
-      ['L116', 'L91', 'L95', 'L99', 'L102', 'L104', 'L107', 'L113', 'L110', 'L118', 'L120', 'L09'],
-      ['L92', 'L94', 'L96', 'L98', 'L100', 'L101', 'L103', 'L105', 'L12', 'L12', 'L110', 'L19'],
-      ['L111', 'L112', 'L113', 'L114', 'L115', 'L116', 'L117', 'L118', 'L119', 'L120', 'L116', 'L09']
     ]
   },
   "S33": { // Soulful Emotions
@@ -290,13 +299,6 @@ export const BLUES_SOLO_PLANS: Record<string, { choruses: string[][] }> = {
       ['L141', 'L142', 'L143', 'L144', 'L145', 'L146', 'L147', 'L148', 'L149', 'L150', 'L121', 'L09']
     ]
   },
-  "S34": { // Pure Solace
-    choruses: [
-      ['L150', 'L121', 'L125', 'L128', 'L132', 'L135', 'L138', 'L140', 'L142', 'L146', 'L149', 'L09'],
-      ['L122', 'L124', 'L126', 'L127', 'L129', 'L130', 'L131', 'L133', 'L12', 'L12', 'L140', 'L19'],
-      ['L141', 'L142', 'L143', 'L144', 'L145', 'L146', 'L147', 'L148', 'L149', 'L150', 'L150', 'L09']
-    ]
-  },
   "S37": { // Virtuoso Explosion
     choruses: [
       ['L151', 'L152', 'L153', 'L154', 'L155', 'L156', 'L157', 'L158', 'L159', 'L160', 'L161', 'L09'],
@@ -304,25 +306,42 @@ export const BLUES_SOLO_PLANS: Record<string, { choruses: string[][] }> = {
       ['L171', 'L172', 'L173', 'L174', 'L175', 'L176', 'L177', 'L178', 'L179', 'L180', 'L151', 'L09']
     ]
   },
-  "S38": { // Shredder's Paradise
+
+  // --- HARD ROCK LEGENDS PLANS (S41-S45) ---
+
+  "S41": { // Hard Rock Blues Anthology (Zeppelin & Purple)
     choruses: [
-      ['L180', 'L151', 'L153', 'L156', 'L160', 'L163', 'L167', 'L171', 'L175', 'L179', 'L151', 'L09'],
-      ['L152', 'L154', 'L155', 'L157', 'L158', 'L159', 'L161', 'L162', 'L12', 'L12', 'L170', 'L19'],
-      ['L171', 'L172', 'L173', 'L174', 'L175', 'L176', 'L177', 'L178', 'L179', 'L180', 'L180', 'L09']
+      ['L181', 'L11', 'L191', 'L182', 'L11', 'L193', 'L181', 'L10', 'L196', 'L11', 'L181', 'L09'],
+      ['L191', 'L11', 'L187', 'L199', 'L11', 'L193', 'L181', 'L10', 'L12', 'L12', 'L182', 'L19'],
+      ['L181', 'L187', 'L191', 'L199', 'L181', 'L193', 'L181', 'L10', 'L181', 'L11', 'L181', 'L09']
     ]
   },
-  "S39": { // Diverse Journey
+  "S42": { // The Doom Ritual (Sabbath focus)
     choruses: [
-      ['L31', 'L61', 'L91', 'L121', 'L151', 'L33', 'L63', 'L93', 'L123', 'L153', 'L35', 'L09'],
-      ['L102', 'L132', 'L162', 'L42', 'L72', 'L112', 'L142', 'L172', 'L12', 'L12', 'L60', 'L19'],
-      ['L180', 'L150', 'L120', 'L90', 'L60', 'L30', 'L10', 'L01', 'L02', 'L03', 'L04', 'L09']
+      ['L183', 'L11', 'L184', 'L192', 'L11', 'L206', 'L183', 'L10', 'L197', 'L11', 'L183', 'L09'],
+      ['L192', 'L11', 'L206', 'L184', 'L11', 'L197', 'L183', 'L10', 'L12', 'L12', 'L183', 'L19'],
+      ['L183', 'L192', 'L206', 'L184', 'L183', 'L197', 'L183', 'L10', 'L183', 'L11', 'L183', 'L09']
     ]
   },
-  "S40": { // Epic Emotional Arc
+  "S43": { // Psychedelic Doors
     choruses: [
-      ['L128', 'L130', 'L132', 'L135', 'L33', 'L36', 'L39', 'L41', 'L44', 'L46', 'L49', 'L09'],
-      ['L61', 'L64', 'L66', 'L68', 'L151', 'L153', 'L157', 'L160', 'L12', 'L12', 'L171', 'L19'],
-      ['L175', 'L179', 'L112', 'L115', 'L120', 'L150', 'L140', 'L138', 'L60', 'L40', 'L10', 'L09']
+      ['L185', 'L11', 'L194', 'L186', 'L11', 'L198', 'L185', 'L10', 'L200', 'L11', 'L185', 'L09'],
+      ['L194', 'L11', 'L198', 'L186', 'L11', 'L204', 'L185', 'L10', 'L12', 'L12', 'L186', 'L19'],
+      ['L185', 'L194', 'L198', 'L186', 'L185', 'L204', 'L185', 'L10', 'L185', 'L11', 'L185', 'L09']
+    ]
+  },
+  "S44": { // Speed King (Ten Years After & Heep)
+    choruses: [
+      ['L189', 'L11', 'L201', 'L188', 'L11', 'L195', 'L189', 'L10', 'L207', 'L11', 'L189', 'L09'],
+      ['L201', 'L11', 'L195', 'L188', 'L11', 'L202', 'L189', 'L10', 'L12', 'L12', 'L210', 'L19'],
+      ['L189', 'L201', 'L195', 'L188', 'L189', 'L207', 'L189', 'L10', 'L189', 'L11', 'L189', 'L09']
+    ]
+  },
+  "S45": { // Anthology Mix (The Legends United)
+    choruses: [
+      ['L181', 'L183', 'L185', 'L187', 'L189', 'L191', 'L193', 'L195', 'L197', 'L199', 'L201', 'L09'],
+      ['L182', 'L184', 'L186', 'L188', 'L190', 'L192', 'L194', 'L196', 'L12', 'L12', 'L210', 'L19'],
+      ['L200', 'L202', 'L204', 'L206', 'L208', 'L210', 'L181', 'L183', 'L185', 'L187', 'L189', 'L09']
     ]
   }
 };
