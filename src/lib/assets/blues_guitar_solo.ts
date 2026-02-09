@@ -4,6 +4,7 @@
  * #ЧТО: Экспортирует BLUES_SOLO_LICKS (180 ликов) и BLUES_SOLO_PLANS.
  * #СВЯЗИ: Используется в `fractal-music-engine.ts` и `music-theory.ts`.
  * #ОБНОВЛЕНО (ПЛАН №290): Внедрено 150 Legacy-ликов (L31-L180) для культурного наследования.
+ * #ОБНОВЛЕНО (ПЛАН №291): Активировано наследие через 20 новых планов (S21-S40).
  */
 
 import type { BluesSoloPhrase } from '@/types/fractal';
@@ -42,7 +43,6 @@ export const BLUES_SOLO_LICKS: Record<string, { phrase: BluesSoloPhrase; tags: s
   L30_MINOR_PENTA: { phrase: [{t:0,d:2,deg:'b7'},{t:2,d:2,deg:'5'},{t:4,d:2,deg:'4'},{t:6,d:2,deg:'b3'},{t:8,d:2,deg:'R'},{t:10,d:2,deg:'b7'}], tags: ['minor', 'pentatonic', 'descend'] },
 
   // --- LEGACY CATEGORY 1: SLOW BURN (L31-L60) ---
-  // Deep bends, longing sustains, slow vibrato. Inspired by David Gilmour & Peter Green.
   L31: { phrase: [{t:0,d:12,deg:'5',tech:'bn'}], tags: ['legacy', 'slow-burn', 'scream', 'long'] },
   L32: { phrase: [{t:0,d:6,deg:'b3',tech:'bn'}, {t:6,d:6,deg:'R',tech:'vb'}], tags: ['legacy', 'slow-burn', 'cry', 'minor'] },
   L33: { phrase: [{t:0,d:4,deg:'R'}, {t:4,d:8,deg:'5',tech:'vb'}], tags: ['legacy', 'slow-burn', 'stable'] },
@@ -60,7 +60,7 @@ export const BLUES_SOLO_LICKS: Record<string, { phrase: BluesSoloPhrase; tags: s
   L45: { phrase: [{t:0,d:3,deg:'5'}, {t:3,d:3,deg:'4'}, {t:6,d:6,deg:'b3',tech:'vb'}], tags: ['legacy', 'slow-burn', 'resigned'] },
   L46: { phrase: [{t:0,d:12,deg:'4',tech:'bn'}], tags: ['legacy', 'slow-burn', 'tension-hold'] },
   L47: { phrase: [{t:0,d:6,deg:'b7'}, {t:6,d:6,deg:'5'}], tags: ['legacy', 'slow-burn', 'simple'] },
-  L48: { phrase: [{t:0,d:4,deg:'R'}, {t:4,d:4,deg:'b3'}, {t:8,d:4,deg:'R'}], tags: ['legacy', 'slow-burn', 'minimal'] },
+  L48: { phrase: [{t:0,d:4,deg:'R'}, {t:4,d:4,deg:'b3'}, {t:8,d:4,deg:'R'}], tags: ['legacy', 'soul', 'ballad'] },
   L49: { phrase: [{t:0,d:3,deg:'5'}, {t:3,d:9,deg:'5',tech:'vb'}], tags: ['legacy', 'slow-burn', 'meditative'] },
   L50: { phrase: [{t:0,d:2,deg:'b7'}, {t:2,d:2,deg:'R'}, {t:4,d:8,deg:'5',tech:'bn'}], tags: ['legacy', 'slow-burn', 'reaching-up'] },
   L51: { phrase: [{t:0,d:6,deg:'R'}, {t:6,d:6,deg:'b3',tech:'bn'}], tags: ['legacy', 'slow-burn', 'aching'] },
@@ -75,7 +75,6 @@ export const BLUES_SOLO_LICKS: Record<string, { phrase: BluesSoloPhrase; tags: s
   L60: { phrase: [{t:0,d:12,deg:'R',tech:'sl'}], tags: ['legacy', 'slow-burn', 'final-sigh'] },
 
   // --- LEGACY CATEGORY 2: TEXAS SHUFFLE (L61-L90) ---
-  // Rhythmic, triplet-based, aggressive pick attack. Inspired by Stevie Ray Vaughan.
   L61: { phrase: [{t:0,d:2,deg:'R'}, {t:2,d:2,deg:'R'}, {t:4,d:2,deg:'R'}, {t:6,d:6,deg:'b3',tech:'bn'}], tags: ['legacy', 'texas', 'rhythmic', 'stabs'] },
   L62: { phrase: [{t:0,d:2,deg:'5'}, {t:2,d:2,deg:'b7'}, {t:4,d:2,deg:'R'}, {t:6,d:6,deg:'5',tech:'vb'}], tags: ['legacy', 'texas', 'answer'] },
   L63: { phrase: [{t:0,d:2,deg:'R'}, {t:2,d:2,deg:'b3'}, {t:4,d:2,deg:'3'}, {t:6,d:2,deg:'5'}, {t:8,d:4,deg:'6'}], tags: ['legacy', 'texas', 'major-run'] },
@@ -108,7 +107,6 @@ export const BLUES_SOLO_LICKS: Record<string, { phrase: BluesSoloPhrase; tags: s
   L90: { phrase: [{t:0,d:3,deg:'5'}, {t:3,d:3,deg:'b7'}, {t:6,d:6,deg:'R',tech:'h'}], tags: ['legacy', 'texas', 'ascending-end'] },
 
   // --- LEGACY CATEGORY 3: JAZZY BLUES (L91-L120) ---
-  // Dorian 6ths, 9ths, chromatic enclosures. Inspired by B.B. King & T-Bone Walker.
   L91: { phrase: [{t:0,d:3,deg:'R'}, {t:3,d:3,deg:'9',tech:'gr'}, {t:6,d:6,deg:'R',tech:'vb'}], tags: ['legacy', 'jazzy', 'bb-king', 'sweet'] },
   L92: { phrase: [{t:0,d:4,deg:'5'}, {t:4,d:4,deg:'6'}, {t:8,d:4,deg:'R+8'}], tags: ['legacy', 'jazzy', 'dorian-six'] },
   L93: { phrase: [{t:0,d:3,deg:'3',tech:'gr'}, {t:3,d:3,deg:'R'}, {t:6,d:6,deg:'5'}], tags: ['legacy', 'jazzy', 'major-feel'] },
@@ -141,7 +139,6 @@ export const BLUES_SOLO_LICKS: Record<string, { phrase: BluesSoloPhrase; tags: s
   L120: { phrase: [{t:0,d:6,deg:'R'}, {t:6,d:6,deg:'R',tech:'vb'}], tags: ['legacy', 'jazzy', 'final-call'] },
 
   // --- LEGACY CATEGORY 4: SOUL BALLAD (L121-L150) ---
-  // Arpeggiated, lush grace notes, major pentatonic focus. Inspired by Curtis Mayfield & Albert King.
   L121: { phrase: [{t:0,d:4,deg:'R',tech:'sl'}, {t:4,d:4,deg:'3'}, {t:8,d:4,deg:'5',tech:'vb'}], tags: ['legacy', 'soul', 'ballad', 'major-sweet'] },
   L122: { phrase: [{t:0,d:3,deg:'R'}, {t:3,d:3,deg:'2',tech:'h'}, {t:6,d:6,deg:'R'}], tags: ['legacy', 'soul', 'ballad', 'ornament'] },
   L123: { phrase: [{t:0,d:6,deg:'5'}, {t:6,d:6,deg:'R+8',tech:'vb'}], tags: ['legacy', 'soul', 'ballad', 'reaching-hope'] },
@@ -153,7 +150,7 @@ export const BLUES_SOLO_LICKS: Record<string, { phrase: BluesSoloPhrase; tags: s
   L129: { phrase: [{t:0,d:4,deg:'5'}, {t:4,d:4,deg:'R'}, {t:8,d:4,deg:'b7'}], tags: ['legacy', 'soul', 'ballad', 'gentle-answer'] },
   L130: { phrase: [{t:0,d:3,deg:'R'}, {t:3,d:3,deg:'b3',tech:'bn'}, {t:6,d:6,deg:'R'}], tags: ['legacy', 'soul', 'ballad', 'sigh'] },
   L131: { phrase: [{t:0,d:6,deg:'R+8'}, {t:6,d:6,deg:'5',tech:'vb'}], tags: ['legacy', 'soul', 'ballad', 'high-descent'] },
-  L132: { phrase: [{t:0,d:4,deg:'R'}, {t:4,d:4,deg:'3'}, {t:8,d:4,deg:'R'}], tags: ['legacy', 'soul', 'ballad', 'major-anchor'] },
+  L132: { phrase: [{t:0,d:4,deg:'R'}, {t:4,d:4,deg:'b3'}, {t:8,d:4,deg:'R'}], tags: ['legacy', 'soul', 'ballad', 'major-anchor'] },
   L133: { phrase: [{t:0,d:3,deg:'5'}, {t:3,d:3,deg:'b7'}, {t:6,d:6,deg:'R',tech:'vb'}], tags: ['legacy', 'soul', 'ballad', 'standard-rise'] },
   L134: { phrase: [{t:0,d:6,deg:'R',tech:'sl'}, {t:6,d:6,deg:'b3',tech:'bn'}], tags: ['legacy', 'soul', 'ballad', 'aching-start'] },
   L135: { phrase: [{t:0,d:12,deg:'5',tech:'vb'}], tags: ['legacy', 'soul', 'ballad', 'warm-fifth'] },
@@ -174,7 +171,6 @@ export const BLUES_SOLO_LICKS: Record<string, { phrase: BluesSoloPhrase; tags: s
   L150: { phrase: [{t:0,d:12,deg:'R',tech:'vb'}], tags: ['legacy', 'soul', 'ballad', 'final-peace'] },
 
   // --- LEGACY CATEGORY 5: VIRTUOSO/ACTIVE (L151-L180) ---
-  // High density, fast runs, syncopation. Inspired by Buddy Guy & Gary Moore.
   L151: { phrase: [{t:0,d:1,deg:'R'}, {t:1,d:1,deg:'b3'}, {t:2,d:1,deg:'R'}, {t:3,d:1,deg:'b3'}, {t:4,d:8,deg:'5',tech:'bn'}], tags: ['legacy', 'virtuoso', 'tremor', 'active'] },
   L152: { phrase: [{t:0,d:2,deg:'5'}, {t:2,d:2,deg:'4'}, {t:4,d:2,deg:'b3'}, {t:6,d:2,deg:'R'}, {t:8,d:4,deg:'5',tech:'vb'}], tags: ['legacy', 'virtuoso', 'rapid-descent'] },
   L153: { phrase: [{t:0,d:1,deg:'R'}, {t:1,d:1,deg:'2'}, {t:2,d:1,deg:'b3'}, {t:3,d:1,deg:'3'}, {t:4,d:8,deg:'5',tech:'vb'}], tags: ['legacy', 'virtuoso', 'chromatic-climb'] },
@@ -240,6 +236,93 @@ export const BLUES_SOLO_PLANS: Record<string, { choruses: string[][] }> = {
   "WINTER_OUTRO_MELODY": {
     choruses: [
       ['L04', 'L04', 'L04', 'L04', 'L04', 'L04', 'L04', 'L04', 'L04', 'L04', 'L04', 'L04']
+    ]
+  },
+  
+  // --- NEW LEGACY PLANS (S21-S40) ---
+  
+  "S21": { // Slow Burn Masterpiece
+    choruses: [
+      ['L31', 'L33', 'L35', 'L36', 'L38', 'L40', 'L45', 'L47', 'L48', 'L50', 'L51', 'L09'],
+      ['L32', 'L34', 'L37', 'L39', 'L41', 'L42', 'L43', 'L44', 'L12', 'L12', 'L55', 'L19'],
+      ['L52', 'L53', 'L54', 'L56', 'L57', 'L58', 'L59', 'L60', 'L31', 'L32', 'L33', 'L09']
+    ]
+  },
+  "S22": { // Yearning Ballad
+    choruses: [
+      ['L36', 'L48', 'L51', 'L57', 'L33', 'L45', 'L47', 'L40', 'L38', 'L50', 'L31', 'L09'],
+      ['L41', 'L42', 'L43', 'L44', 'L32', 'L34', 'L37', 'L39', 'L12', 'L12', 'L55', 'L19'],
+      ['L52', 'L53', 'L54', 'L56', 'L57', 'L58', 'L59', 'L60', 'L36', 'L48', 'L51', 'L09']
+    ]
+  },
+  "S25": { // Texas Shuffle Core
+    choruses: [
+      ['L61', 'L62', 'L63', 'L64', 'L65', 'L66', 'L67', 'L68', 'L69', 'L70', 'L71', 'L09'],
+      ['L72', 'L73', 'L74', 'L75', 'L76', 'L77', 'L78', 'L79', 'L12', 'L12', 'L80', 'L19'],
+      ['L81', 'L82', 'L83', 'L84', 'L85', 'L86', 'L87', 'L88', 'L89', 'L90', 'L61', 'L09']
+    ]
+  },
+  "S26": { // Aggressive Shuffle
+    choruses: [
+      ['L80', 'L61', 'L64', 'L67', 'L74', 'L79', 'L87', 'L69', 'L71', 'L75', 'L81', 'L09'],
+      ['L66', 'L68', 'L72', 'L76', 'L83', 'L90', 'L63', 'L65', 'L12', 'L12', 'L80', 'L19'],
+      ['L81', 'L82', 'L83', 'L84', 'L85', 'L86', 'L87', 'L88', 'L89', 'L90', 'L80', 'L09']
+    ]
+  },
+  "S29": { // Jazzy Sophistication
+    choruses: [
+      ['L91', 'L92', 'L93', 'L94', 'L95', 'L96', 'L97', 'L98', 'L99', 'L100', 'L101', 'L09'],
+      ['L102', 'L103', 'L104', 'L105', 'L106', 'L107', 'L108', 'L109', 'L12', 'L12', 'L110', 'L19'],
+      ['L111', 'L112', 'L113', 'L114', 'L115', 'L116', 'L117', 'L118', 'L119', 'L120', 'L91', 'L09']
+    ]
+  },
+  "S30": { // Cool Blues
+    choruses: [
+      ['L116', 'L91', 'L95', 'L99', 'L102', 'L104', 'L107', 'L113', 'L110', 'L118', 'L120', 'L09'],
+      ['L92', 'L94', 'L96', 'L98', 'L100', 'L101', 'L103', 'L105', 'L12', 'L12', 'L110', 'L19'],
+      ['L111', 'L112', 'L113', 'L114', 'L115', 'L116', 'L117', 'L118', 'L119', 'L120', 'L116', 'L09']
+    ]
+  },
+  "S33": { // Soulful Emotions
+    choruses: [
+      ['L121', 'L122', 'L123', 'L124', 'L125', 'L126', 'L127', 'L128', 'L129', 'L130', 'L131', 'L09'],
+      ['L132', 'L133', 'L134', 'L135', 'L136', 'L137', 'L138', 'L139', 'L12', 'L12', 'L140', 'L19'],
+      ['L141', 'L142', 'L143', 'L144', 'L145', 'L146', 'L147', 'L148', 'L149', 'L150', 'L121', 'L09']
+    ]
+  },
+  "S34": { // Pure Solace
+    choruses: [
+      ['L150', 'L121', 'L125', 'L128', 'L132', 'L135', 'L138', 'L140', 'L142', 'L146', 'L149', 'L09'],
+      ['L122', 'L124', 'L126', 'L127', 'L129', 'L130', 'L131', 'L133', 'L12', 'L12', 'L140', 'L19'],
+      ['L141', 'L142', 'L143', 'L144', 'L145', 'L146', 'L147', 'L148', 'L149', 'L150', 'L150', 'L09']
+    ]
+  },
+  "S37": { // Virtuoso Explosion
+    choruses: [
+      ['L151', 'L152', 'L153', 'L154', 'L155', 'L156', 'L157', 'L158', 'L159', 'L160', 'L161', 'L09'],
+      ['L162', 'L163', 'L164', 'L165', 'L166', 'L167', 'L168', 'L169', 'L12', 'L12', 'L170', 'L19'],
+      ['L171', 'L172', 'L173', 'L174', 'L175', 'L176', 'L177', 'L178', 'L179', 'L180', 'L151', 'L09']
+    ]
+  },
+  "S38": { // Shredder's Paradise
+    choruses: [
+      ['L180', 'L151', 'L153', 'L156', 'L160', 'L163', 'L167', 'L171', 'L175', 'L179', 'L151', 'L09'],
+      ['L152', 'L154', 'L155', 'L157', 'L158', 'L159', 'L161', 'L162', 'L12', 'L12', 'L170', 'L19'],
+      ['L171', 'L172', 'L173', 'L174', 'L175', 'L176', 'L177', 'L178', 'L179', 'L180', 'L180', 'L09']
+    ]
+  },
+  "S39": { // Diverse Journey
+    choruses: [
+      ['L31', 'L61', 'L91', 'L121', 'L151', 'L33', 'L63', 'L93', 'L123', 'L153', 'L35', 'L09'],
+      ['L102', 'L132', 'L162', 'L42', 'L72', 'L112', 'L142', 'L172', 'L12', 'L12', 'L60', 'L19'],
+      ['L180', 'L150', 'L120', 'L90', 'L60', 'L30', 'L10', 'L01', 'L02', 'L03', 'L04', 'L09']
+    ]
+  },
+  "S40": { // Epic Emotional Arc
+    choruses: [
+      ['L128', 'L130', 'L132', 'L135', 'L33', 'L36', 'L39', 'L41', 'L44', 'L46', 'L49', 'L09'],
+      ['L61', 'L64', 'L66', 'L68', 'L151', 'L153', 'L157', 'L160', 'L12', 'L12', 'L171', 'L19'],
+      ['L175', 'L179', 'L112', 'L115', 'L120', 'L150', 'L140', 'L138', 'L60', 'L40', 'L10', 'L09']
     ]
   }
 };
