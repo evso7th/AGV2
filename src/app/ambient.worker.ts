@@ -10,6 +10,7 @@
  * #ИННОВАЦИЯ: AI Arbitrator следит за гармоническим резонансом и пополняет генофонд.
  * #ОБНОВЛЕНО (ПЛАН №288): Внедрена система Chronos Telemetry (метки времени в логах).
  * #ОБНОВЛЕНО (ПЛАН №294): Внедрен самокорректирующийся таймер для устранения дрейфа (Seamless Stitch).
+ * #ОБНОВЛЕНО (ПЛАН №296): Внедрена глубокая телеметрия времени вычислений.
  */
 import type { WorkerSettings, ScoreName, Mood, Genre, InstrumentPart } from '@/types/music';
 import { FractalMusicEngine } from '@/lib/fractal-music-engine';
@@ -94,7 +95,6 @@ const Scheduler = {
         this.initializeEngine(this.settings, true);
 
         // #ЗАЧЕМ: Реализация самокорректирующегося таймера.
-        // #ЧТО: Мы вычисляем время выполнения tick() и вычитаем его из задержки следующего такта.
         const loop = () => {
             if (!this.isRunning) return;
             
@@ -103,6 +103,13 @@ const Scheduler = {
             
             // Вычисляем время, потраченное на расчет такта
             const executionTime = performance.now() - barStartTime;
+            
+            // #ЗАЧЕМ: Телеметрия времени вычислений.
+            // #ЧТО: Логируем время генерации такта в отладочных целях.
+            if (executionTime > 50) {
+                console.debug(`%c${getTimestamp()} [Chronos] Heavy Tick! Computed in ${executionTime.toFixed(2)}ms`, 'color: #fbbf24;');
+            }
+
             const targetDuration = this.barDuration * 1000;
             
             // Самокоррекция: уменьшаем задержку на время вычислений
@@ -164,7 +171,6 @@ const Scheduler = {
         }
 
         if (finalPayload.beautyScore > 0.78 && this.barCount > 8) {
-            console.log(`%c${getTimestamp()} [Chain] AI ARBITRATOR: High Resonance Detected (${finalPayload.beautyScore.toFixed(3)}). Signaling UI for backup.`, 'color: #ff00ff');
             self.postMessage({ 
                 type: 'HIGH_RESONANCE_DETECTED', 
                 payload: { beautyScore: finalPayload.beautyScore, seed: this.settings.seed } 

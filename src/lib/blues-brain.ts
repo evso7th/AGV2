@@ -1,3 +1,4 @@
+
 import type {
   FractalEvent,
   GhostChord,
@@ -107,7 +108,8 @@ export class BluesBrain {
     const tension = dna.tensionMap ? (dna.tensionMap[epoch % dna.tensionMap.length] || 0.5) : 0.5;
     const bpmFactor = Math.min(1.0, 75 / tempo);
     
-    console.log(`%c[ENERGY @ Bar ${epoch}] Tension: ${tension.toFixed(3)} | Jolt: ${this.globalStagnationOffset}`, 'color: #FB923C; font-weight: bold;');
+    // #ЗАЧЕМ: Улучшенная визуализация когнитивной энергии.
+    console.log(`%c[ENERGY @ Bar ${epoch}] Tension: ${tension.toFixed(3)} | Jolt Offset: ${this.globalStagnationOffset}`, 'color: #fbbf24; font-weight: bold;');
 
     this.evaluateTimbralDramaturgy(tension, hints, this.mood, epoch);
     
@@ -159,7 +161,7 @@ export class BluesBrain {
         consumedEnergy += ENERGY_PRICES.piano;
     }
 
-    // --- ACC COMPONENT (Для хеширования) ---
+    // --- ACC COMPONENT ---
     let currentAccompEvents: FractalEvent[] = [];
     if (hints.accompaniment) {
         const timbre = hints.accompaniment as string;
@@ -176,7 +178,7 @@ export class BluesBrain {
         combinedEvents.push(...currentAccompEvents);
     }
 
-    // --- BASS COMPONENT (Для хеширования) ---
+    // --- BASS COMPONENT ---
     let currentBassEvents: FractalEvent[] = [];
     if (hints.bass) {
       const isWalking = (tension > 0.55);
@@ -217,8 +219,6 @@ export class BluesBrain {
    * #ЗАЧЕМ: Глобальный аудит зацикливания всего ансамбля.
    */
   private auditGlobalStagnation(bass: FractalEvent[], acc: FractalEvent[], melody: FractalEvent[], piano: FractalEvent[], chord: GhostChord, tempo: number, dna: SuiteDNA, epoch: number) {
-      const tickDur = (60 / tempo) / 3;
-      
       // 1. Piano Audit (Local)
       const pianoHash = this.getSpecificShapeHash(piano, chord.rootNote, tempo);
       if (pianoHash !== "SILENCE") {
@@ -244,7 +244,6 @@ export class BluesBrain {
       }
 
       // 3. GLOBAL JOLT (The Whole Piece)
-      // Хешируем ритмическую и интервальную структуру ВСЕГО ансамбля
       const globalHash = [
           this.getSpecificShapeHash(bass, chord.rootNote, tempo),
           this.getSpecificShapeHash(acc, chord.rootNote, tempo),
@@ -256,11 +255,12 @@ export class BluesBrain {
 
       const globalLoop = this.detectSequenceStagnation(this.globalHistory);
       if (globalLoop > 0) {
-          console.warn(`%c[SOR] GLOBAL ENSEMBLE STAGNATION (${globalLoop}-bar loop). INJECTING GLOBAL ENTRPY JOLT!`, 'color: #ff0000; font-weight: bold; font-size: 1.1em;');
-          // Сдвигаем фундамент всех фрактальных вычислений
+          // #ЗАЧЕМ: Улучшенная телеметрия Глобального Толчка.
+          // #ЧТО: Яркий визуальный сигнал в консоли при смене фрактального фундамента.
           this.globalStagnationOffset += (this.random.nextInt(2000) + 1000);
+          console.info(`%c⚡ [SOR] GLOBAL ENSEMBLE JOLT! (Detected ${globalLoop}-bar cycle). New Offset: ${this.globalStagnationOffset}`, 'color: #000; background: #fbbf24; font-weight: bold; padding: 2px 5px; border-radius: 3px;');
+          
           this.globalHistory = [];
-          // Сбрасываем также локальные истории, чтобы начать новую главу
           this.pianoHistory = [];
           this.phraseHistory = [];
       }
@@ -351,7 +351,6 @@ export class BluesBrain {
       const density = baseDensity * bpmFactor;
 
       [0, 1, 2, 3].forEach(beat => {
-          // #ЧТО: musInput теперь включает globalStagnationOffset
           const musInput = epoch + beat + this.globalStagnationOffset;
           if (calculateMusiNum(musInput, 3, this.seed, 10) / 10 < density) {
               events.push({
@@ -458,7 +457,6 @@ export class BluesBrain {
   private generateBass(epoch: number, chord: GhostChord, tempo: number, tension: number, isWalking: boolean, bpmFactor: number): FractalEvent[] {
     const tickDur = (60 / tempo) / 3;
     const riffs = BLUES_BASS_RIFFS[this.mood] || BLUES_BASS_RIFFS.contemplative;
-    // #ЧТО: Подмешиваем globalStagnationOffset в выбор риффа
     const riff = riffs[calculateMusiNum(Math.floor(epoch / 4), 5, this.seed + this.globalStagnationOffset, riffs.length)];
     const barIn12 = epoch % 12;
     
@@ -498,7 +496,6 @@ export class BluesBrain {
     const density = (0.2 + (tension * 0.2)) * bpmFactor; 
     
     [1, 2, 3].forEach(beat => {
-        // #ЧТО: musInput теперь включает и локальный, и глобальный офсет
         const musiInput = epoch + beat + this.pianoStagnationOffset + this.globalStagnationOffset;
         if (calculateMusiNum(musiInput, 7, this.seed, 10) / 10 < density) {
             events.push({ 
@@ -573,9 +570,4 @@ export class BluesBrain {
     const octave = Math.floor(midi / 12) - 1;
     return `${notes[midi % 12]}${octave}`;
   }
-}
-
-function getChordNameForBar(barIndex: number): string {
-  const progression = ['i7', 'i7', 'i7', 'i7', 'iv7', 'iv7', 'i7', 'i7', 'v7', 'iv7', 'i7', 'v7'];
-  return progression[barIndex % 12];
 }

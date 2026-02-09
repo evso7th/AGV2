@@ -160,17 +160,6 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
           }));
 
           console.log(`%c[GENEPOOL] Global memory audit: ${ancestorsRef.current.length} ancestors found. Cross-session evolution active.`, 'color: #00BFFF; font-weight: bold;');
-          
-          if (ancestorsRef.current.length > 0) {
-              console.table(ancestorsRef.current.map(a => ({
-                  id: a.id,
-                  mood: a.mood,
-                  genre: a.genre,
-                  seed: a.seed,
-                  bpm: a.bpm,
-                  timestamp: a.timestamp?.toDate ? a.timestamp.toDate().toLocaleString() : 'Legacy'
-              })));
-          }
       } catch (e) {
           console.warn('[Ancestors] Could not load global memory. Operating in "isolated session" mode.', e);
       }
@@ -335,6 +324,13 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
                     }
 
                     if(events && barDuration && settingsRef.current && barCount !== undefined){
+                        // #ЗАЧЕМ: Мониторинг "Здоровья Буфера" (Buffer Health).
+                        // #ЧТО: Если запас времени сокращается критически (дрейф или лаг), выводим предупреждение.
+                        const bufferHealth = nextBarTimeRef.current - audioContextRef.current!.currentTime;
+                        if (bufferHealth < 0.25) { // Менее 250мс запаса
+                            console.warn(`%c[CHRONOS] BUFFER LOW! Health: ${Math.round(bufferHealth * 1000)}ms. High scheduling jitter risk.`, 'color: #f87171; font-weight: bold;');
+                        }
+
                         scheduleEvents(events, nextBarTimeRef.current, settingsRef.current.bpm, barCount, settingsRef.current.composerControlsInstruments ? instrumentHints : undefined);
                         nextBarTimeRef.current += barDuration;
                     }
@@ -360,21 +356,21 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
     setIsInitializing(true);
     try {
         if (!auth.currentUser) {
-            console.log('[AudioEngine] Authenticating anonymously...');
             try {
                 await initiateAnonymousSignIn(auth);
-                console.log('[AudioEngine] Anonymous authentication successful.');
             } catch (authError) {
-                console.warn('[AudioEngine] Anonymous authentication failed (network?). Operating in offline mode.', authError);
+                console.warn('[AudioEngine] Anonymous auth failed. Offline mode.', authError);
             }
         }
 
         if (!audioContextRef.current) audioContextRef.current = new (window.AudioContext || (window as any).webkitAudioContext)({ sampleRate: 44100, latencyHint: 'interactive' });
         if (audioContextRef.current.state === 'suspended') await audioContextRef.current.resume();
         const context = audioContextRef.current;
-        // #ЗАЧЕМ: Увеличение буфера для бесшовного воспроизведения.
-        // #ЧТО: Сдвиг времени старта на 500мс вперед (Safe Cushion).
-        nextBarTimeRef.current = context.currentTime + 0.5; 
+        
+        // #ЗАЧЕМ: Увеличение "буферной подушки" для идеальной бесшовности.
+        // #ЧТО: Сдвиг времени старта на 1000мс вперед (Safe Horizon).
+        nextBarTimeRef.current = context.currentTime + 1.0; 
+
         if (!masterGainNodeRef.current) {
             masterGainNodeRef.current = context.createGain(); masterGainNodeRef.current.connect(context.destination);
             recorderDestinationRef.current = context.createMediaStreamDestination(); masterGainNodeRef.current.connect(recorderDestinationRef.current);
@@ -433,8 +429,8 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
     if (playing) {
         if (audioContextRef.current.state === 'suspended') audioContextRef.current.resume();
         stopAllSounds(); 
-        // #ЗАЧЕМ: Безопасный запуск с запасом времени.
-        nextBarTimeRef.current = audioContextRef.current.currentTime + 0.5; 
+        // #ЗАЧЕМ: Безопасный запуск с 1-секундным горизонтом планирования.
+        nextBarTimeRef.current = audioContextRef.current.currentTime + 1.0; 
         workerRef.current.postMessage({ command: 'start' }); scheduleNextImpulse();
     } else { stopAllSounds(); workerRef.current.postMessage({ command: 'stop' }); }
   }, [isInitialized, stopAllSounds, scheduleNextImpulse]);
