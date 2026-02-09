@@ -19,10 +19,11 @@ import { GUITAR_PATTERNS } from './assets/guitar-patterns';
 import { BLUES_SOLO_LICKS } from './assets/blues_guitar_solo';
 
 /**
- * #ЗАЧЕМ: Блюзовый Мозг V43.0 — "Lead Guitar Sovereignty".
- * #ЧТО: 1. Ограничена "кликовость": транзиент-сэмплер теперь только для глюков Anxious.
- *       2. Реформа тембрального морфинга: CS80 используется реже, ShineOn вступает раньше.
- *       3. Повышена значимость длинных нот в среднем регистре для ShineOn.
+ * #ЗАЧЕМ: Блюзовый Мозг V45.0 — "Global Ensemble Jolt".
+ * #ЧТО: 1. Внедрена система Global Stagnation Detection (хеширование всего ансамбля).
+ *       2. Реализована "Глобальная Вакцина" — при зацикливании всей пьесы меняется фундамент 
+ *          фрактальных вычислений (globalStagnationOffset) для всех инструментов одновременно.
+ *       3. Это создает эффект естественной, скоординированной мутации ("все вместе пошли вверх").
  */
 
 const ENERGY_PRICES = {
@@ -49,14 +50,17 @@ export class BluesBrain {
   
   private readonly MELODY_CEILING = 79;
   private readonly GLITCH_FLOOR = 100; 
-  private readonly PIANO_CEILING = 71; // B4 - Конец 4-й октавы
+  private readonly PIANO_CEILING = 71; 
   private readonly patternOptions: string[] = ['F_TRAVIS', 'F_ROLL12', 'S_SWING'];
 
   private phraseHistory: string[] = [];
   private pianoHistory: string[] = [];
-  private pianoStagnationOffset: number = 0;
+  private globalHistory: string[] = []; // Память всего ансамбля
   
-  private readonly MAX_HISTORY_DEPTH = 24;
+  private pianoStagnationOffset: number = 0;
+  private globalStagnationOffset: number = 0; // "Глобальная Вакцина"
+  
+  private readonly MAX_HISTORY_DEPTH = 32;
 
   constructor(seed: number, mood: Mood) {
     this.seed = seed;
@@ -103,7 +107,7 @@ export class BluesBrain {
     const tension = dna.tensionMap ? (dna.tensionMap[epoch % dna.tensionMap.length] || 0.5) : 0.5;
     const bpmFactor = Math.min(1.0, 75 / tempo);
     
-    console.log(`%c[ENERGY @ Bar ${epoch}] Tension: ${tension.toFixed(3)} | Phase: ${getChordNameForBar(barIn12)}`, 'color: #FB923C; font-weight: bold;');
+    console.log(`%c[ENERGY @ Bar ${epoch}] Tension: ${tension.toFixed(3)} | Jolt: ${this.globalStagnationOffset}`, 'color: #FB923C; font-weight: bold;');
 
     this.evaluateTimbralDramaturgy(tension, hints, this.mood, epoch);
     
@@ -130,8 +134,6 @@ export class BluesBrain {
           consumedEnergy += ENERGY_PRICES.harmony; 
       }
       
-      // #ЗАЧЕМ: "Glitches as Spice". 
-      // #ЧТО: Сверхвысокие ноты проигрываются ТОЛЬКО в Anxious и только раз в 10 тактов.
       if (this.mood === 'anxious' && epoch % 10 === 0 && this.random.next() < 0.4) {
           melodyEvents.push({
               type: 'melody',
@@ -139,7 +141,7 @@ export class BluesBrain {
               time: this.random.nextInRange(0.5, 3.5),
               duration: 0.05, 
               weight: 0.3,
-              technique: 'harm', // Триггерит Surgical Cut в менеджере
+              technique: 'harm', 
               dynamics: 'p',
               phrasing: 'staccato'
           });
@@ -157,7 +159,34 @@ export class BluesBrain {
         consumedEnergy += ENERGY_PRICES.piano;
     }
 
-    this.auditStagnation(combinedEvents, currentPianoEvents, currentChord, tempo, dna, epoch);
+    // --- ACC COMPONENT (Для хеширования) ---
+    let currentAccompEvents: FractalEvent[] = [];
+    if (hints.accompaniment) {
+        const timbre = hints.accompaniment as string;
+        const isGuitarLike = timbre.includes('guitar') || timbre.includes('blackAcoustic');
+        
+        if (isGuitarLike) {
+            const currentPattern = this.patternOptions[calculateMusiNum(Math.floor(epoch/8), 3, this.seed + this.globalStagnationOffset, this.patternOptions.length)];
+            currentAccompEvents = this.generateAccompaniment(epoch, currentChord, tempo, tension, currentPattern);
+        } else {
+            currentAccompEvents = this.generateSustainedAccompaniment(epoch, currentChord, tempo, tension);
+        }
+        
+        currentAccompEvents.forEach(e => { e.weight *= (hints.summonProgress?.accompaniment ?? 1.0); });
+        combinedEvents.push(...currentAccompEvents);
+    }
+
+    // --- BASS COMPONENT (Для хеширования) ---
+    let currentBassEvents: FractalEvent[] = [];
+    if (hints.bass) {
+      const isWalking = (tension > 0.55);
+      currentBassEvents = this.generateBass(epoch, currentChord, tempo, tension, isWalking, bpmFactor);
+      currentBassEvents.forEach(e => { e.weight *= (hints.summonProgress?.bass ?? 1.0); });
+      combinedEvents.push(...currentBassEvents);
+    }
+
+    // --- GLOBAL STAGNATION AUDIT ---
+    this.auditGlobalStagnation(currentBassEvents, currentAccompEvents, combinedEvents.filter(e => e.type === 'melody'), currentPianoEvents, currentChord, tempo, dna, epoch);
     
     if (this.mood === 'anxious') {
         combinedEvents.forEach(e => {
@@ -168,13 +197,6 @@ export class BluesBrain {
     }
 
     events.push(...combinedEvents);
-
-    if (hints.bass) {
-      const isWalking = (tension > 0.55);
-      const bassEvents = this.generateBass(epoch, currentChord, tempo, tension, isWalking, bpmFactor);
-      bassEvents.forEach(e => { e.weight *= (hints.summonProgress?.bass ?? 1.0); });
-      events.push(...bassEvents);
-    }
 
     if (hints.drums) {
       const drumEvents = this.generateDrums(epoch, tempo, tension, lastEvents.length > 0, bpmFactor);
@@ -188,55 +210,59 @@ export class BluesBrain {
         events.push(...harmEvents);
     }
 
-    if (hints.accompaniment) {
-        const timbre = hints.accompaniment as string;
-        const isGuitarLike = timbre.includes('guitar') || timbre.includes('blackAcoustic');
-        
-        let accEvents: FractalEvent[] = [];
-        if (isGuitarLike) {
-            const currentPattern = this.patternOptions[calculateMusiNum(Math.floor(epoch/8), 3, this.seed, this.patternOptions.length)];
-            accEvents = this.generateAccompaniment(epoch, currentChord, tempo, tension, currentPattern);
-        } else {
-            accEvents = this.generateSustainedAccompaniment(epoch, currentChord, tempo, tension);
-        }
-        
-        accEvents.forEach(e => { e.weight *= (hints.summonProgress?.accompaniment ?? 1.0); });
-        events.push(...accEvents);
-    }
-
     return events;
   }
 
-  private auditStagnation(combined: FractalEvent[], currentPiano: FractalEvent[], chord: GhostChord, tempo: number, dna: SuiteDNA, epoch: number) {
-      const pianoHash = this.getSpecificShapeHash(currentPiano, chord.rootNote, tempo);
+  /**
+   * #ЗАЧЕМ: Глобальный аудит зацикливания всего ансамбля.
+   */
+  private auditGlobalStagnation(bass: FractalEvent[], acc: FractalEvent[], melody: FractalEvent[], piano: FractalEvent[], chord: GhostChord, tempo: number, dna: SuiteDNA, epoch: number) {
+      const tickDur = (60 / tempo) / 3;
       
-      if (currentPiano.length > 0) {
-          const tickDur = (60 / tempo) / 3;
-          const seqStr = currentPiano.map(e => `${this.getMidiNoteName(e.note)}(T:${Math.round(e.time / tickDur)})`).join(', ');
-          console.debug(`[SOR] Bar ${epoch} Piano Sequence: [${seqStr}]`);
-      }
-
+      // 1. Piano Audit (Local)
+      const pianoHash = this.getSpecificShapeHash(piano, chord.rootNote, tempo);
       if (pianoHash !== "SILENCE") {
           this.pianoHistory.push(pianoHash);
           if (this.pianoHistory.length > this.MAX_HISTORY_DEPTH) this.pianoHistory.shift();
-          const pStag = this.detectSequenceStagnation(this.pianoHistory);
-          if (pStag > 0) {
-              console.warn(`%c[SOR] PIANO STAGNATION DETECTED (${pStag}-bar loop). Injecting Heavy Vaccine!`, 'color: #ff00ff; font-weight: bold;');
-              this.pianoStagnationOffset += (this.random.nextInt(1000) + 500);
+          if (this.detectSequenceStagnation(this.pianoHistory) > 0) {
+              console.warn(`%c[SOR] PIANO LOOP DETECTED. Injecting Piano Vaccine.`, 'color: #DA70D6;');
+              this.pianoStagnationOffset += 500;
               this.pianoHistory = [];
           }
       }
 
-      const ensembleHash = this.getMelodicShapeHash(combined, chord.rootNote, tempo);
+      // 2. Ensemble Audit (Tonal Narrative)
+      const ensembleHash = this.getMelodicShapeHash([...melody, ...piano], chord.rootNote, tempo);
       if (ensembleHash) {
           this.phraseHistory.push(ensembleHash);
           if (this.phraseHistory.length > this.MAX_HISTORY_DEPTH) this.phraseHistory.shift();
-          const eStag = this.detectSequenceStagnation(this.phraseHistory);
-          if (eStag > 0) {
-              console.warn(`%c[SOR] ENSEMBLE STAGNATION DETECTED (${eStag}-bar loop). Forcing L-Evolution!`, 'color: #ff00ff; font-weight: bold;');
+          if (this.detectSequenceStagnation(this.phraseHistory) > 0) {
+              console.warn(`%c[SOR] MELODIC LOOP DETECTED. Forcing L-Evolution.`, 'color: #ff00ff;');
               this.currentAxiom = this.evolveAxiom(this.currentAxiom, 0.99, 'CLIMAX', dna, epoch);
               this.phraseHistory = []; 
           }
+      }
+
+      // 3. GLOBAL JOLT (The Whole Piece)
+      // Хешируем ритмическую и интервальную структуру ВСЕГО ансамбля
+      const globalHash = [
+          this.getSpecificShapeHash(bass, chord.rootNote, tempo),
+          this.getSpecificShapeHash(acc, chord.rootNote, tempo),
+          this.getSpecificShapeHash(melody, chord.rootNote, tempo)
+      ].join('::');
+
+      this.globalHistory.push(globalHash);
+      if (this.globalHistory.length > this.MAX_HISTORY_DEPTH) this.globalHistory.shift();
+
+      const globalLoop = this.detectSequenceStagnation(this.globalHistory);
+      if (globalLoop > 0) {
+          console.warn(`%c[SOR] GLOBAL ENSEMBLE STAGNATION (${globalLoop}-bar loop). INJECTING GLOBAL ENTRPY JOLT!`, 'color: #ff0000; font-weight: bold; font-size: 1.1em;');
+          // Сдвигаем фундамент всех фрактальных вычислений
+          this.globalStagnationOffset += (this.random.nextInt(2000) + 1000);
+          this.globalHistory = [];
+          // Сбрасываем также локальные истории, чтобы начать новую главу
+          this.pianoHistory = [];
+          this.phraseHistory = [];
       }
   }
 
@@ -265,16 +291,11 @@ export class BluesBrain {
       return tracked.sort((a, b) => a.time - b.time).map(e => `${e.type === 'melody' ? 'M' : 'P'}:${(e.note - rootNote) % 12}:${Math.round(e.time / tickDur)}`).join('|');
   }
 
-  /**
-   * #ЗАЧЕМ: Реформа тембрального морфинга (План №285).
-   * #ЧТО: 1. CS80 теперь используется реже (окно 0.51-0.65).
-   *       2. ShineOn вступает раньше (T > 0.65) для длинных певучих нот.
-   */
   private evaluateTimbralDramaturgy(tension: number, hints: InstrumentHints, mood: Mood, epoch: number) {
     if (hints.melody) {
         if (tension <= 0.50) (hints as any).melody = 'blackAcoustic';
-        else if (tension <= 0.65) (hints as any).melody = 'cs80'; // Сужено окно "мяуканья"
-        else (hints as any).melody = 'guitar_shineOn'; // Певучий лид забирает лидерство раньше
+        else if (tension <= 0.65) (hints as any).melody = 'cs80'; 
+        else (hints as any).melody = 'guitar_shineOn'; 
     }
     if (hints.bass) {
         if (tension < 0.4) (hints as any).bass = 'bass_jazz_warm';
@@ -330,9 +351,11 @@ export class BluesBrain {
       const density = baseDensity * bpmFactor;
 
       [0, 1, 2, 3].forEach(beat => {
-          if (calculateMusiNum(epoch + beat, 3, this.seed, 10) / 10 < density) {
+          // #ЧТО: musInput теперь включает globalStagnationOffset
+          const musInput = epoch + beat + this.globalStagnationOffset;
+          if (calculateMusiNum(musInput, 3, this.seed, 10) / 10 < density) {
               events.push({
-                  type: 'melody', note: Math.min(notes[calculateMusiNum(epoch + beat, 5, this.seed, 4)], this.MELODY_CEILING),
+                  type: 'melody', note: Math.min(notes[calculateMusiNum(musInput, 5, this.seed, 4)], this.MELODY_CEILING),
                   time: beat * beatDur, duration: beatDur * 0.8, weight: 0.5 + (tension * 0.3), technique: 'pick', dynamics: 'p', phrasing: 'detached'
               });
           }
@@ -345,7 +368,7 @@ export class BluesBrain {
     const pool = ['R', 'b3', '4', '5', 'b7', this.thematicDegree];
     const count = tension > 0.6 ? 4 : 3; 
     for (let i = 0; i < count; i++) {
-        axiom.push({ deg: pool[calculateMusiNum(this.seed + i + epoch, 3, i, pool.length)], t: i * 2.5, d: 3, tech: 'pick' });
+        axiom.push({ deg: pool[calculateMusiNum(this.seed + i + epoch + this.globalStagnationOffset, 3, i, pool.length)], t: i * 2.5, d: 3, tech: 'pick' });
     }
     return axiom;
   }
@@ -353,8 +376,9 @@ export class BluesBrain {
   private evolveAxiom(axiom: MelodicAxiomNote[], tension: number, phase: string, dna: SuiteDNA, epoch: number): MelodicAxiomNote[] {
     return axiom.map((note, i) => {
         let newDeg = note.deg; let newTech = note.tech;
-        if (tension > 0.65 && phase === 'CLIMAX' && calculateMusiNum(epoch, 7, this.seed, 10) > 6) {
-            newDeg = ['5', 'b7', 'R+8', '9'][calculateMusiNum(epoch + i, 3, this.seed, 4)]; newTech = 'bend';
+        const musInput = epoch + i + this.globalStagnationOffset;
+        if (tension > 0.65 && phase === 'CLIMAX' && calculateMusiNum(musInput, 7, this.seed, 10) > 6) {
+            newDeg = ['5', 'b7', 'R+8', '9'][calculateMusiNum(musInput, 3, this.seed, 4)]; newTech = 'bend';
         } else if (phase === 'RESPONSE' && i === axiom.length - 1) {
             newDeg = (dna.thematicAnchors?.[0] as any) || 'R'; newTech = 'vibrato';
         }
@@ -366,7 +390,7 @@ export class BluesBrain {
     const tickDur = (60 / tempo) / 3;
     const isMellowMood = ['dark', 'melancholic', 'anxious', 'gloomy', 'contemplative', 'calm'].includes(this.mood);
     const kitPool = BLUES_DRUM_RIFFS[this.mood] || BLUES_DRUM_RIFFS.contemplative;
-    const p = kitPool[calculateMusiNum(epoch, 3, this.seed, kitPool.length)];
+    const p = kitPool[calculateMusiNum(epoch + this.globalStagnationOffset, 3, this.seed, kitPool.length)];
     if (!p) return [];
     
     const events: FractalEvent[] = [];
@@ -434,7 +458,8 @@ export class BluesBrain {
   private generateBass(epoch: number, chord: GhostChord, tempo: number, tension: number, isWalking: boolean, bpmFactor: number): FractalEvent[] {
     const tickDur = (60 / tempo) / 3;
     const riffs = BLUES_BASS_RIFFS[this.mood] || BLUES_BASS_RIFFS.contemplative;
-    const riff = riffs[calculateMusiNum(Math.floor(epoch / 4), 5, this.seed, riffs.length)];
+    // #ЧТО: Подмешиваем globalStagnationOffset в выбор риффа
+    const riff = riffs[calculateMusiNum(Math.floor(epoch / 4), 5, this.seed + this.globalStagnationOffset, riffs.length)];
     const barIn12 = epoch % 12;
     
     let pattern = (!isWalking) ? [{ t: 0, d: 12, deg: 'R' as BluesRiffDegree }] : riff.I;
@@ -473,7 +498,8 @@ export class BluesBrain {
     const density = (0.2 + (tension * 0.2)) * bpmFactor; 
     
     [1, 2, 3].forEach(beat => {
-        const musiInput = epoch + beat + this.pianoStagnationOffset;
+        // #ЧТО: musInput теперь включает и локальный, и глобальный офсет
+        const musiInput = epoch + beat + this.pianoStagnationOffset + this.globalStagnationOffset;
         if (calculateMusiNum(musiInput, 7, this.seed, 10) / 10 < density) {
             events.push({ 
                 type: 'pianoAccompaniment', 
