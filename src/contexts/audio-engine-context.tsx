@@ -1,3 +1,4 @@
+
 'use client';
 
 import React, { createContext, useContext, useState, useRef, useCallback, useEffect } from 'react';
@@ -147,13 +148,33 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
 
   const getWorker = useCallback(() => workerRef.current, []);
 
+  /**
+   * #ЗАЧЕМ: Загрузка и аудит генетической памяти (Plan 289).
+   * #ЧТО: Подтягивает 20 последних шедевров из облака и выводит их таблицу в консоль.
+   */
   const loadAncestors = useCallback(async () => {
       try {
           const masterpiecesRef = collection(db, 'masterpieces');
           const q = query(masterpiecesRef, orderBy('timestamp', 'desc'), limit(20));
           const snapshot = await getDocs(q);
-          ancestorsRef.current = snapshot.docs.map(doc => doc.data());
-          console.log(`%c[GENEPOOL] Successfully loaded ${ancestorsRef.current.length} ancestors from library. Cross-session evolution active.`, 'color: #00BFFF; font-weight: bold;');
+          
+          ancestorsRef.current = snapshot.docs.map(doc => ({
+              id: doc.id,
+              ...doc.data()
+          }));
+
+          console.log(`%c[GENEPOOL] Global memory audit: ${ancestorsRef.current.length} ancestors found. Cross-session evolution active.`, 'color: #00BFFF; font-weight: bold;');
+          
+          if (ancestorsRef.current.length > 0) {
+              console.table(ancestorsRef.current.map(a => ({
+                  id: a.id,
+                  mood: a.mood,
+                  genre: a.genre,
+                  seed: a.seed,
+                  bpm: a.bpm,
+                  timestamp: a.timestamp?.toDate ? a.timestamp.toDate().toLocaleString() : 'Legacy'
+              })));
+          }
       } catch (e) {
           console.warn('[Ancestors] Could not load global memory. Operating in "isolated session" mode.', e);
       }
@@ -294,7 +315,7 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
     if (workerRef.current) {
         workerRef.current.onmessage = (event: MessageEvent<WorkerMessage>) => {
              const { type, command, payload, error } = event.data;
-                if (command === 'SUITE_ENDED') { resetWorkerCallback(); return; }
+                if (command === 'reset' || command === 'SUITE_ENDED') { resetWorkerCallback(); return; }
                 
                 if (type === 'HIGH_RESONANCE_DETECTED' && payload && 'seed' in payload) {
                     if (settingsRef.current) {
@@ -342,9 +363,6 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
     if (isInitialized || isInitializing) return true;
     setIsInitializing(true);
     try {
-        // #ЗАЧЕМ: Гарантированная авторизация с обработкой сетевых сбоев.
-        // #ЧТО: Безопасный анонимный вход. Если сеть недоступна, логируем ошибку, 
-        //      но продолжаем инициализацию аудио (автономный режим).
         if (!auth.currentUser) {
             console.log('[AudioEngine] Authenticating anonymously...');
             try {
