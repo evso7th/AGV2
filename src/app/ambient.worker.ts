@@ -7,6 +7,7 @@
  * #ЗАЧЕМ: Реализация "Цепной Сюиты" (План №234). 
  * #ЧТО: Воркер теперь знает тип текущей пьесы и автоматически подгружает БП моста.
  * #ИННОВАЦИЯ: AI Arbitrator следит за гармоническим резонансом и пополняет генофонд.
+ * #ОБНОВЛЕНО (ПЛАН №288): Внедрена система Chronos Telemetry (метки времени в логах).
  */
 import type { WorkerSettings, ScoreName, Mood, Genre, InstrumentPart } from '@/types/music';
 import { FractalMusicEngine } from '@/lib/fractal-music-engine';
@@ -14,6 +15,18 @@ import type { FractalEvent, InstrumentHints, NavigationInfo } from '@/types/frac
 import { getBridgeBlueprint, getBlueprint } from '@/lib/blueprints';
 
 let fractalMusicEngine: FractalMusicEngine | undefined;
+
+/**
+ * #ЗАЧЕМ: Вспомогательная функция для формирования временной метки.
+ * #ЧТО: Возвращает строку в формате [DD:HH:MM].
+ */
+const getTimestamp = () => {
+    const now = new Date();
+    const d = String(now.getDate()).padStart(2, '0');
+    const h = String(now.getHours()).padStart(2, '0');
+    const m = String(now.getMinutes()).padStart(2, '0');
+    return `[${d}:${h}:${m}]`;
+};
 
 const Scheduler = {
     loopId: null as any,
@@ -49,14 +62,13 @@ const Scheduler = {
     },
 
     initializeEngine(settings: WorkerSettings, force: boolean = false) {
-        // #ЗАЧЕМ: Выбор Блюпринта на основе состояния Chain State Machine.
         let blueprint;
         if (this.suiteType === 'BRIDGE' || this.suiteType === 'PROMENADE') {
             blueprint = getBridgeBlueprint(settings.mood);
-            console.log(`%c[Chain] Loading BRIDGE Blueprint: ${blueprint.id}`, 'color: #00BFFF; font-weight:bold;');
+            console.log(`%c${getTimestamp()} [Chain] Loading BRIDGE Blueprint: ${blueprint.id}`, 'color: #00BFFF; font-weight:bold;');
         } else {
             blueprint = getBlueprint(settings.genre, settings.mood);
-            console.log(`%c[Chain] Loading MAIN Blueprint: ${blueprint.id}`, 'color: #FFD700; font-weight:bold;');
+            console.log(`%c${getTimestamp()} [Chain] Loading MAIN Blueprint: ${blueprint.id}`, 'color: #FFD700; font-weight:bold;');
         }
 
         const newEngine = new FractalMusicEngine({
@@ -69,16 +81,14 @@ const Scheduler = {
         newEngine.initialize(true); 
         fractalMusicEngine = newEngine;
         
-        // #ЗАЧЕМ: Синхронизация темпа. ДНК сюиты определяет BPM, воркер должен принять его.
         this.settings.bpm = fractalMusicEngine.config.tempo;
-        
         this.barCount = 0;
     },
 
     start() {
         if (this.isRunning) return;
         this.isRunning = true;
-        this.suiteType = 'PROMENADE'; // Начинаем всегда с пролога
+        this.suiteType = 'PROMENADE'; 
         this.initializeEngine(this.settings, true);
 
         const loop = () => {
@@ -139,10 +149,9 @@ const Scheduler = {
             console.error('[Worker.tick] CRITICAL ERROR:', e);
         }
 
-        // #ЗАЧЕМ: AI Arbitrator — автоматический отбор лучших образцов.
-        // #ОБНОВЛЕНО (ПЛАН №287): Порог снижен до 0.78 для более частого пополнения генофонда качественной музыкой.
         if (finalPayload.beautyScore > 0.78 && this.barCount > 8) {
-            console.log(`%c[Chain] AI ARBITRATOR: High Resonance Detected (${finalPayload.beautyScore.toFixed(3)}). Signaling UI for backup.`, 'color: #ff00ff');
+            // #ОБНОВЛЕНО (ПЛАН №288): Добавлена метка времени к логу Арбитра.
+            console.log(`%c${getTimestamp()} [Chain] AI ARBITRATOR: High Resonance Detected (${finalPayload.beautyScore.toFixed(3)}). Signaling UI for backup.`, 'color: #ff00ff');
             self.postMessage({ 
                 type: 'HIGH_RESONANCE_DETECTED', 
                 payload: { beautyScore: finalPayload.beautyScore, seed: this.settings.seed } 
@@ -163,7 +172,8 @@ const Scheduler = {
         }
         
         const sectionName = finalPayload.navInfo?.currentPart.name || 'Unknown';
-        console.log(`[Bar ${this.barCount}] [${this.suiteType}] [${sectionName}] BPM:${this.settings.bpm} Res:${finalPayload.beautyScore.toFixed(2)} D:${counts.drums}, B:${counts.bass}, M:${counts.melody}`);
+        // #ОБНОВЛЕНО (ПЛАН №288): Добавлена метка времени к регулярному логу бара.
+        console.log(`${getTimestamp()} [Bar ${this.barCount}] [${this.suiteType}] [${sectionName}] BPM:${this.settings.bpm} Res:${finalPayload.beautyScore.toFixed(2)} D:${counts.drums}, B:${counts.bass}, M:${counts.melody}`);
 
         self.postMessage({ 
             type: 'SCORE_READY', 
@@ -195,9 +205,8 @@ const Scheduler = {
 
         this.barCount++;
 
-        // Chain Logic
         if (fractalMusicEngine && this.barCount >= fractalMusicEngine.navigator!.totalBars) {
-             console.log(`%c[Chain] Suite ${this.suiteType} ended. Transitioning...`, 'color: #4ade80; font-weight: bold;');
+             console.log(`%c${getTimestamp()} [Chain] Suite ${this.suiteType} ended. Transitioning...`, 'color: #4ade80; font-weight: bold;');
              
              if (this.suiteType === 'BRIDGE' || this.suiteType === 'PROMENADE') {
                  this.suiteType = 'MAIN';
