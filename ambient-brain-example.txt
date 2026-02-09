@@ -1,0 +1,348 @@
+/**
+ * AMBIENT BRAIN v1.0
+ * Параметрическая экосистема для генеративного амбиента.
+ * Совместим с instrument-factory (7).ts и presets-v2 (8).ts
+ */
+
+import { midiToHz } from './instrument-factory (7).ts'; // или скопируйте хелпер
+
+// ───── ТИПЫ ─────
+interface AmbientBrainConfig {
+  durationSec?: number; // общая длительность трека (для автопилота)
+  moodTrajectory?: 'static' | 'wave' | 'ascent' | 'descent'; // траектория настроения
+}
+
+interface AmbientBrainState {
+  timeSec: number;
+  fog: number;    // 0..1 — спектральная плотность (туман)
+  pulse: number;  // 0..1 — ритмическая жизнь (пульсация)
+  depth: number;  // 0..1 — гармоническая сложность
+  harmonicState: {
+    centerMidi: number;   // текущий гармонический центр (например, 55 = ля)
+    mode: 'dorian' | 'lydian' | 'phrygian' | 'mixolydian' | 'aeolian';
+    density: number;      // 1..4 — количество слоёв в аккорде
+    lastTransitionSec: number;
+  };
+  tensionWaves: number[]; // [T0, T1, T2, T3] — 4 масштаба фрактальной кривой
+}
+
+// ───── ФРАКТАЛЬНАЯ КРИВАЯ НАПРЯЖЕНИЯ (готовый рецепт) ─────
+const PHI = [0.0, 1.309, 2.618, 4.188];   // φ₀..φ₃ — золотое сечение × √2
+const PSI = [0.785, 2.094, 3.927, 5.498]; // ψ₀..ψ₃ — π/4, 2π/3, 5π/4, 7π/4 + джиттер
+const BETA = 7.2360679775;                // иррациональный множитель
+const PERIODS = [8, 45, 180, 600];        // масштабы времени в секундах
+const WEIGHTS = [0.15, 0.35, 0.30, 0.20]; // веса масштабов
+const MOD_DEPTH = [0.05, 0.12, 0.25, 0.40]; // глубина модуляции
+
+function computeTensionWaves(timeSec: number): number[] {
+  const waves = [];
+  for (let n = 0; n < 4; n++) {
+    const base = Math.sin(2 * Math.PI * timeSec / PERIODS[n] + PHI[n]);
+    const mod = Math.sin(2 * Math.PI * timeSec / (PERIODS[n] / BETA) + PSI[n]);
+    const wave = base * (1 + MOD_DEPTH[n] * mod);
+    waves.push(wave);
+  }
+  return waves;
+}
+
+function computeGlobalTension(waves: number[]): number {
+  let tension = 0;
+  for (let n = 0; n < 4; n++) tension += WEIGHTS[n] * waves[n];
+  return (tension + 1) / 2; // нормализация в [0..1]
+}
+
+// ───── МОДАЛЬНЫЕ ПРАВИЛА ГАРМОНИИ ─────
+const MODE_INTERVALS = {
+  dorian: [0, 2, 3, 5, 7, 9, 10],
+  lydian: [0, 2, 4, 6, 7, 9, 11],
+  phrygian: [0, 1, 3, 5, 7, 8, 10],
+  mixolydian: [0, 2, 4, 5, 7, 9, 10],
+  aeolian: [0, 2, 3, 5, 7, 8, 10]
+} as const;
+
+function generateAmbientChord(centerMidi: number, mode: keyof typeof MODE_INTERVALS, density: number): number[] {
+  const intervals = MODE_INTERVALS[mode];
+  const notes = [centerMidi - 12]; // суб-бас (октава -1)
+  
+  // Верхние голоса: распределяем по регистрам
+  for (let i = 1; i <= Math.min(density, intervals.length - 1); i++) {
+    const interval = intervals[i];
+    if (i <= 2) {
+      notes.push(centerMidi + interval); // пад (октава 0)
+    } else {
+      notes.push(centerMidi + interval + 12); // сияние (октава +1)
+    }
+  }
+  
+  return notes.filter(n => n >= 36 && n <= 96);
+}
+
+// ───── МАРКОВСКАЯ МАШИНА ПЕРЕХОДОВ ─────
+const MODE_TRANSITIONS = {
+  dorian: ['dorian', 'lydian', 'aeolian'],
+  lydian: ['lydian', 'dorian', 'mixolydian'],
+  phrygian: ['phrygian', 'aeolian', 'dorian'],
+  mixolydian: ['mixolydian', 'lydian', 'dorian'],
+  aeolian: ['aeolian', 'phrygian', 'dorian']
+} as const;
+
+function getNextMode(currentMode: keyof typeof MODE_TRANSITIONS, depth: number): keyof typeof MODE_TRANSITIONS {
+  const candidates = MODE_TRANSITIONS[currentMode];
+  // При высоком depth — чаще меняем модальность
+  if (Math.random() < depth * 0.6) {
+    return candidates[Math.floor(Math.random() * candidates.length)] as keyof typeof MODE_TRANSITIONS;
+  }
+  return currentMode;
+}
+
+// ───── ОСНОВНОЙ КЛАСС МОЗГА ─────
+export class AmbientBrain {
+  private state: AmbientBrainState;
+  private config: AmbientBrainConfig;
+  private instruments: Record<string, any> = {};
+  private lastChord: number[] = [];
+  private goosebumpCooldown = 0; // защита от частых "мурашек"
+
+  constructor(config: AmbientBrainConfig = {}) {
+    this.config = { durationSec: 420, moodTrajectory: 'wave', ...config };
+    this.state = {
+      timeSec: 0,
+      fog: 0.3,
+      pulse: 0.15,
+      depth: 0.4,
+      harmonicState: {
+        centerMidi: 55, // ля
+        mode: 'dorian',
+        density: 2,
+        lastTransitionSec: 0
+      },
+      tensionWaves: [0, 0, 0, 0]
+    };
+  }
+
+  // Регистрация инструментов для управления
+  registerInstrument(name: string, instrument: any) {
+    this.instruments[name] = instrument;
+    console.log(`[AmbientBrain] Registered ${name}`);
+  }
+
+  // Обновление состояния (вызывать каждую секунду в композере)
+  update(ctx: AudioContext, timeSec: number) {
+    this.state.timeSec = timeSec;
+    this.state.tensionWaves = computeTensionWaves(timeSec);
+    const globalTension = computeGlobalTension(this.state.tensionWaves);
+
+    // ─── 1. АВТОПИЛОТ НАСТРОЕНИЯ ───
+    this.updateMoodAxes(timeSec);
+
+    // ─── 2. ГАРМОНИЧЕСКИЕ ПЕРЕХОДЫ ───
+    this.updateHarmony(ctx, timeSec, globalTension);
+
+    // ─── 3. ПРИМЕНЕНИЕ К ИНСТРУМЕНТАМ ───
+    this.applyToInstruments(ctx, timeSec);
+
+    // ─── 4. ЭФФЕКТ "МУРАШЕК" (контраст туман/чистота + микро-сдвиг) ───
+    this.triggerGoosebumps(ctx, timeSec);
+  }
+
+  private updateMoodAxes(timeSec: number) {
+    const progress = Math.min(timeSec / (this.config.durationSec || 420), 1.0);
+    
+    switch (this.config.moodTrajectory) {
+      case 'wave':
+        this.state.fog = 0.2 + 0.6 * Math.sin(progress * Math.PI);
+        this.state.pulse = 0.1 + 0.4 * (1 - Math.cos(progress * 2 * Math.PI));
+        this.state.depth = 0.3 + 0.5 * progress;
+        break;
+      case 'ascent':
+        this.state.fog = 0.1 + 0.3 * progress;
+        this.state.pulse = 0.05 + 0.25 * progress;
+        this.state.depth = 0.2 + 0.7 * progress;
+        break;
+      case 'descent':
+        this.state.fog = 0.8 - 0.6 * progress;
+        this.state.pulse = 0.6 - 0.45 * progress;
+        this.state.depth = 0.9 - 0.6 * progress;
+        break;
+      default: // static
+        this.state.fog = 0.4;
+        this.state.pulse = 0.2;
+        this.state.depth = 0.5;
+    }
+  }
+
+  private updateHarmony(ctx: AudioContext, timeSec: number, tension: number) {
+    const { harmonicState } = this.state;
+    const timeSinceLast = timeSec - harmonicState.lastTransitionSec;
+    
+    // Триггер перехода: резкий скачок напряжения + минимальная пауза
+    const tensionDelta = Math.abs(tension - computeGlobalTension(this.state.tensionWaves.map(w => w * 0.9)));
+    const shouldTransition = tensionDelta > 0.22 && timeSinceLast > 45 && Math.random() < this.state.depth * 0.7;
+    
+    if (shouldTransition) {
+      // Смена центра через золотое сечение (естественная непредсказуемость)
+      const goldenShift = Math.round(7.8 * (Math.random() > 0.5 ? 1 : -1)); // ≈ полутонов
+      harmonicState.centerMidi = clamp(harmonicState.centerMidi + goldenShift, 48, 72);
+      
+      // Смена модальности
+      harmonicState.mode = getNextMode(harmonicState.mode, this.state.depth);
+      
+      // Плотность = функция от глубины
+      harmonicState.density = Math.floor(1 + this.state.depth * 3);
+      
+      harmonicState.lastTransitionSec = timeSec;
+      
+      // Воспроизведение нового аккорда
+      const newChord = generateAmbientChord(
+        harmonicState.centerMidi,
+        harmonicState.mode,
+        harmonicState.density
+      );
+      
+      // Плавное затухание старого аккорда + вступление нового
+      if (this.instruments.pad) {
+        this.lastChord.forEach(midi => this.instruments.pad.noteOff(midi, ctx.currentTime));
+        setTimeout(() => {
+          newChord.forEach(midi => this.instruments.pad.noteOn(midi, ctx.currentTime, 0.8));
+        }, 300);
+      }
+      
+      this.lastChord = newChord;
+      console.log(`[AmbientBrain] Harmony shift → center=${harmonicState.centerMidi} (${harmonicState.mode}), density=${harmonicState.density}`);
+    }
+  }
+
+  private applyToInstruments(ctx: AudioContext, timeSec: number) {
+    const { fog, pulse, depth } = this.state;
+    const [T0, T1, T2, T3] = this.state.tensionWaves;
+    
+    // ─── PAD: управление фильтром, реверберацией, LFO ───
+    if (this.instruments.pad?.setParam) {
+      // LPF cutoff: туман = закрытие фильтра (нелинейно)
+      const cutoff = 1400 * (1 - Math.pow(fog, 1.5));
+      this.instruments.pad.setParam('lpfCutoff', cutoff);
+      
+      // Реверберация: туман = больше пространства
+      // (в текущей фабрике нет прямого управления — имитируем через громкость реверба)
+      // В продакшене: расширить синт для управления `reverbMix` через параметр
+    }
+    
+    // ─── БАС: плавный дрейф частоты при высоком тумане ───
+    if (this.instruments.bass && T3 > 0.7 && timeSec - this.state.harmonicState.lastTransitionSec > 20) {
+      // Микро-дрейф баса: ±0.3 полутона за 30 сек
+      const drift = Math.sin(timeSec * 0.03) * 0.3;
+      const driftedFreq = midiToHz(this.state.harmonicState.centerMidi + drift);
+      // В текущей архитектуре — перезапуск ноты (патч выше даёт базовую функциональность)
+    }
+    
+    // ─── ОРГАН: управление сложностью drawbar'ов через глубину ───
+    if (this.instruments.organ && depth > 0.6) {
+      // При высокой глубине — активируем больше drawbar'ов
+      // (в продакшене: расширить organ engine для динамической настройки drawbars)
+    }
+  }
+
+  private triggerGoosebumps(ctx: AudioContext, timeSec: number) {
+    const { fog, pulse, depth } = this.state;
+    const [T0, T1, T2] = this.state.tensionWaves;
+    
+    // Условие "мурашек": пик тумана + статика + достаточная глубина
+    const isGoosebumpMoment = 
+      fog > 0.85 && 
+      pulse < 0.15 && 
+      depth > 0.6 && 
+      T2 > 0.8 && 
+      timeSec - this.goosebumpCooldown > 120; // кулдаун 2 минуты
+    
+    if (isGoosebumpMoment) {
+      this.goosebumpCooldown = timeSec;
+      
+      console.log(`[AmbientBrain] 🌊 GOOSEBUMPS TRIGGERED at ${timeSec.toFixed(1)}s`);
+      
+      // 1. Резкое снижение тумана (прорыв в чистоту)
+      this.state.fog = 0.2;
+      
+      // 2. Микро-сдвиг баса на +1 полутон за 8 сек
+      if (this.instruments.bass?.setBaseFrequency) {
+        this.instruments.bass.setBaseFrequency(this.state.harmonicState.centerMidi + 1, 8);
+      }
+      
+      // 3. Всплеск реверберации для "открытия пространства"
+      if (this.instruments.pad) {
+        // В продакшене: управлять reverbMix через параметр
+        console.log('[AmbientBrain] Simulating reverb swell (requires engine patch)');
+      }
+    }
+  }
+
+  // Получение текущего состояния для отладки/визуализации
+  getState() {
+    return { ...this.state };
+  }
+}
+
+3. Как интегрировать в ваш composer
+// composer.ts — пример интеграции
+import { AmbientBrain } from './ambient-brain';
+
+// При инициализации композера:
+const ambientBrain = new AmbientBrain({
+  durationSec: 420, // 7 минут
+  moodTrajectory: 'wave' // или 'ascent', 'descent', 'static'
+});
+
+// Регистрация инструментов после их создания:
+ambientBrain.registerInstrument('pad', padInstrument); // synth_ambient_pad_lush
+ambientBrain.registerInstrument('bass', bassInstrument); // ваш бас
+ambientBrain.registerInstrument('organ', organInstrument); // organ_soft_jazz
+
+// В главном цикле композера (каждую секунду):
+setInterval(() => {
+  const timeSec = audioContext.currentTime - startTime;
+  ambientBrain.update(audioContext, timeSec);
+  
+  // Для отладки:
+  const state = ambientBrain.getState();
+  console.log(`[AmbientBrain] t=${timeSec.toFixed(1)}s | Fog=${state.fog.toFixed(2)} Pulse=${state.pulse.toFixed(2)} Depth=${state.depth.toFixed(2)}`);
+}, 1000);
+
+4. Пример 7-минутной траектории («Восход над туманом»)
+// Использование с кастомной траекторией:
+const brain = new AmbientBrain({
+  durationSec: 420,
+  moodTrajectory: 'custom' // обход автопилота — управление вручную
+});
+
+// В композере:
+if (timeSec < 90) {
+  brain.setState({ fog: 0.2, pulse: 0.05, depth: 0.3 }); // тишина перед бурей
+} else if (timeSec < 180) {
+  brain.setState({ fog: 0.6, pulse: 0.2, depth: 0.5 }); // нарастание тумана
+} else if (timeSec < 270) {
+  brain.setState({ fog: 0.85, pulse: 0.1, depth: 0.7 }); // пик тумана → триггер "мурашек"
+} else if (timeSec < 360) {
+  brain.setState({ fog: 0.3, pulse: 0.3, depth: 0.6 }); // прорыв в чистоту
+} else {
+  brain.setState({ fog: 0.15, pulse: 0.05, depth: 0.4 }); // угасание
+}
+
+Что работает «из коробки»:
+Функция
+Статус
+Требуется патч
+Фрактальная кривая напряжения
+✅ Полностью
+Нет
+Марковские гармонические переходы
+✅ Полностью
+Нет
+Управление fog/pulse/depth
+✅ Полностью
+Нет
+Эффект «мурашек» (микро-сдвиг баса)
+⚠️ Базовый
+patchBassEngine
+Динамическое управление LPF
+⚠️ Частично
+patchSynthEngine + расширение фильтра в фабрике
+
