@@ -1,4 +1,3 @@
-
 import type {
   FractalEvent,
   GhostChord,
@@ -20,11 +19,10 @@ import { GUITAR_PATTERNS } from './assets/guitar-patterns';
 import { BLUES_SOLO_LICKS } from './assets/blues_guitar_solo';
 
 /**
- * #ЗАЧЕМ: Блюзовый Мозг V45.0 — "Global Ensemble Jolt".
- * #ЧТО: 1. Внедрена система Global Stagnation Detection (хеширование всего ансамбля).
- *       2. Реализована "Глобальная Вакцина" — при зацикливании всей пьесы меняется фундамент 
- *          фрактальных вычислений (globalStagnationOffset) для всех инструментов одновременно.
- *       3. Это создает эффект естественной, скоординированной мутации ("все вместе пошли вверх").
+ * #ЗАЧЕМ: Блюзовый Мозг V46.0 — "M-Motivation Update".
+ * #ЧТО: 1. Внедрен "Энергетический Пол" (Tension Floor = 0.4) для зон MAIN.
+ *       2. Бюджет такта в MAIN секциях увеличен на 35%.
+ *       3. Порог Solo Activation в MAIN снижен до 0.45.
  */
 
 const ENERGY_PRICES = {
@@ -105,27 +103,37 @@ export class BluesBrain {
     const events: FractalEvent[] = [];
     const tempo = dna.baseTempo || 72;
     const barIn12 = epoch % 12;
-    const tension = dna.tensionMap ? (dna.tensionMap[epoch % dna.tensionMap.length] || 0.5) : 0.5;
     const bpmFactor = Math.min(1.0, 75 / tempo);
     
-    // #ЗАЧЕМ: Улучшенная визуализация когнитивной энергии.
-    console.log(`%c[ENERGY @ Bar ${epoch}] Tension: ${tension.toFixed(3)} | Jolt Offset: ${this.globalStagnationOffset}`, 'color: #fbbf24; font-weight: bold;');
+    // #ЗАЧЕМ: Реализация Энергетической Мотивации (План №297).
+    // #ЧТО: Если мы в MAIN зоне, подтягиваем уровень энергии.
+    let tension = dna.tensionMap ? (dna.tensionMap[epoch % dna.tensionMap.length] || 0.5) : 0.5;
+    const isMainZone = navInfo.currentPart.id.includes('MAIN') || navInfo.currentPart.id.includes('PEAK') || navInfo.currentPart.id.includes('ANTHEM');
+    
+    if (isMainZone) {
+        tension = Math.max(0.4, tension);
+    }
 
     this.evaluateTimbralDramaturgy(tension, hints, this.mood, epoch);
     
-    const barBudget = 220 + (tension * 120); 
-    let consumedEnergy = 0;
+    // #ЗАЧЕМ: Расширение бюджета для MAIN секций.
+    // #ЧТО: База увеличена с 220 до 300, множитель с 120 до 150.
+    const baseBudget = isMainZone ? 300 : 220;
+    const budgetMult = isMainZone ? 150 : 120;
+    const barBudget = baseBudget + (tension * budgetMult); 
     
+    let consumedEnergy = 0;
     const combinedEvents: FractalEvent[] = [];
     const currentPianoEvents: FractalEvent[] = [];
-    
     const isMellowMood = ['dark', 'melancholic', 'anxious', 'gloomy', 'contemplative', 'calm'].includes(this.mood);
 
     if (hints.melody) {
       const prog = hints.summonProgress?.melody ?? 1.0;
       let melodyEvents: FractalEvent[] = [];
       
-      const soloThreshold = isMellowMood ? 0.55 : 0.4;
+      // #ЗАЧЕМ: "Порог Смелости" (Solo Threshold).
+      // #ЧТО: В MAIN зоне гитарист играет соло даже при 0.45 энергии (раньше было 0.55).
+      const soloThreshold = isMainZone ? 0.45 : (isMellowMood ? 0.55 : 0.4);
       const canAffordSolo = (consumedEnergy + ENERGY_PRICES.solo <= barBudget) && tension > soloThreshold;
       
       if (canAffordSolo) {
@@ -255,8 +263,6 @@ export class BluesBrain {
 
       const globalLoop = this.detectSequenceStagnation(this.globalHistory);
       if (globalLoop > 0) {
-          // #ЗАЧЕМ: Улучшенная телеметрия Глобального Толчка.
-          // #ЧТО: Яркий визуальный сигнал в консоли при смене фрактального фундамента.
           this.globalStagnationOffset += (this.random.nextInt(2000) + 1000);
           console.info(`%c⚡ [SOR] GLOBAL ENSEMBLE JOLT! (Detected ${globalLoop}-bar cycle). New Offset: ${this.globalStagnationOffset}`, 'color: #000; background: #fbbf24; font-weight: bold; padding: 2px 5px; border-radius: 3px;');
           

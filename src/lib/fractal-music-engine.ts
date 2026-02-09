@@ -21,7 +21,7 @@ function seededRandom(seed: number) {
         while (currentIndex !== 0) {
             randomIndex = Math.floor(next() * currentIndex);
             currentIndex--;
-            [newArray[currentIndex], newArray[randomIndex]] = [newArray[randomIndex], newArray[currentIndex]];
+            [newArray[currentIndex], newArray[randomIndex]] = [newArray[currentIndex], newArray[randomIndex]];
         }
         return newArray;
     }
@@ -44,9 +44,9 @@ interface EngineConfig {
 }
 
 /**
- * #ЗАЧЕМ: Фрактальный Музыкальный Движок V16.0 — "Persistent Ensemble Hardening".
- * #ЧТО: 1. Внедрена память активации (activatedParts). Инструменты больше не исчезают.
- *       2. Сохранена динамика морфинга: пресеты выбираются заново каждый такт.
+ * #ЗАЧЕМ: Фрактальный Музыкальный Движок V17.0 — "Energy Motivation Update".
+ * #ЧТО: 1. Внедрен "Энергетический Пол" (Tension Floor) для частей MAIN.
+ *       2. Теперь напряжение в кульминации не падает ниже 0.4, обеспечивая ресурсы ансамблю.
  */
 export class FractalMusicEngine {
   public config: EngineConfig;
@@ -120,7 +120,14 @@ export class FractalMusicEngine {
     if (stages && stages.length > 0) {
         const partBars = navInfo.currentPartEndBar - navInfo.currentPartStartBar + 1;
         const progress = (this.epoch - navInfo.currentPartStartBar) / partBars;
-        const tension = this.suiteDNA?.tensionMap?.[this.epoch % (this.suiteDNA.tensionMap.length || 1)] ?? 0.5;
+        
+        // #ЗАЧЕМ: Реализация Энергетической Мотивации (План №297).
+        // #ЧТО: Если мы в "боевой" части, напряжение не может упасть ниже порога жизни (0.4).
+        let tension = this.suiteDNA?.tensionMap?.[this.epoch % (this.suiteDNA.tensionMap.length || 1)] ?? 0.5;
+        const isMainZone = navInfo.currentPart.id.includes('MAIN') || navInfo.currentPart.id.includes('PEAK') || navInfo.currentPart.id.includes('ANTHEM');
+        if (isMainZone) {
+            tension = Math.max(0.4, tension);
+        }
 
         let currentStage = stages[stages.length - 1];
         let acc = 0;
