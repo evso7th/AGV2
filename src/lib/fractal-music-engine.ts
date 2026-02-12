@@ -2,6 +2,7 @@ import type { FractalEvent, Mood, Genre, InstrumentPart, InstrumentHints, GhostC
 import { BlueprintNavigator } from './blueprint-navigator';
 import { getBlueprint } from './blueprints';
 import { BluesBrain } from './blues-brain';
+import { AmbientBrain } from './ambient-brain';
 import { generateSuiteDNA, createHarmonyAxiom, pickWeightedDeterministic } from './music-theory';
 import { ElectronicK, AmbientK, MelancholicMinorK } from './resonance-matrices';
 
@@ -44,9 +45,9 @@ interface EngineConfig {
 }
 
 /**
- * #ЗАЧЕМ: Фрактальный Музыкальный Движок V17.0 — "Energy Motivation Update".
- * #ЧТО: 1. Внедрен "Энергетический Пол" (Tension Floor) для частей MAIN.
- *       2. Теперь напряжение в кульминации не падает ниже 0.4, обеспечивая ресурсы ансамблю.
+ * #ЗАЧЕМ: Фрактальный Музыкальный Движок V18.0 — "Sovereign Genre Switchboard".
+ * #ЧТО: Реализована тотальная изоляция Амбиента от других жанров.
+ *       Движок теперь только маршрутизирует запрос в профильный "Мозг".
  */
 export class FractalMusicEngine {
   public config: EngineConfig;
@@ -58,13 +59,11 @@ export class FractalMusicEngine {
   private isInitialized = false;
 
   private bluesBrain: BluesBrain | null = null;
+  private ambientBrain: AmbientBrain | null = null;
   private previousChord: GhostChord | null = null;
   private lastEvents: FractalEvent[] = []; 
 
-  // #ЗАЧЕМ: Память ансамбля. Гарантирует, что музыкант не уйдет со сцены.
   private activatedParts: Set<InstrumentPart> = new Set();
-
-  // #ЗАЧЕМ: Память "Тематических Крючков" (Thematic Memory).
   private hookLibrary: { events: FractalEvent[], root: number }[] = [];
 
   constructor(config: EngineConfig, blueprint: MusicBlueprint) {
@@ -99,10 +98,16 @@ export class FractalMusicEngine {
 
     this.navigator = new BlueprintNavigator(this.blueprint, this.config.seed, this.config.genre, this.config.mood, this.config.introBars, this.suiteDNA.soloPlanMap);
     
+    // #ЗАЧЕМ: Инициализация суверенных мозгов.
     if (this.config.genre === 'blues') {
         this.bluesBrain = new BluesBrain(this.config.seed, this.config.mood);
+        this.ambientBrain = null;
+    } else if (this.config.genre === 'ambient') {
+        this.ambientBrain = new AmbientBrain(this.config.seed, this.config.mood);
+        this.bluesBrain = null;
     } else {
         this.bluesBrain = null;
+        this.ambientBrain = null;
     }
 
     this.config.tempo = this.suiteDNA.baseTempo;
@@ -110,7 +115,7 @@ export class FractalMusicEngine {
   }
 
   public evolve(barDuration: number, barCount: number): { events: FractalEvent[], instrumentHints: InstrumentHints, beautyScore: number, tension: number, navInfo?: NavigationInfo } {
-    if (!this.navigator) return { events: [], instrumentHints: {}, beautyScore: 0, tension: 0.5 };
+    if (!this.navigator || !this.suiteDNA) return { events: [], instrumentHints: {}, beautyScore: 0, tension: 0.5 };
     this.epoch = barCount;
 
     if (this.epoch >= this.navigator.totalBars) return { events: [], instrumentHints: {}, beautyScore: 0, tension: 0.5 };
@@ -118,48 +123,53 @@ export class FractalMusicEngine {
     const navInfo = this.navigator.tick(this.epoch);
     if (!navInfo) return { events: [], instrumentHints: {}, beautyScore: 0, tension: 0.5 };
 
+    // #ЗАЧЕМ: Тотальная изоляция Амбиента.
+    // #ЧТО: Если выбран амбиент, мы полностью игнорируем глобальный цикл оркестровки
+    //      и отдаем управление AmbientBrain.
+    if (this.config.genre === 'ambient' && this.ambientBrain) {
+        const foundChord = this.suiteDNA.harmonyTrack.find(chord => this.epoch >= chord.bar && this.epoch < chord.bar + chord.durationBars);
+        const currentChord = foundChord || this.suiteDNA.harmonyTrack[0];
+        
+        const ambientResult = this.ambientBrain.generateBar(this.epoch, currentChord, navInfo, this.suiteDNA);
+        const beautyScore = this.calculateBeautyScore(ambientResult.events);
+        const tension = this.suiteDNA.tensionMap[this.epoch % this.suiteDNA.tensionMap.length] || 0.5;
+
+        return { 
+            events: ambientResult.events, 
+            instrumentHints: ambientResult.instrumentHints, 
+            beautyScore, 
+            tension, 
+            navInfo 
+        };
+    }
+
+    // --- ГЛОБАЛЬНАЯ ОРКЕСТРОВКА (ДЛЯ ОСТАЛЬНЫХ ЖАНРОВ) ---
     const instrumentHints: InstrumentHints = { summonProgress: {} };
     const stages = navInfo.currentPart.stagedInstrumentation;
-
-    let tension = this.suiteDNA?.tensionMap?.[this.epoch % (this.suiteDNA.tensionMap.length || 1)] ?? 0.5;
-    const isMainZone = navInfo.currentPart.id.includes('MAIN') || navInfo.currentPart.id.includes('PEAK') || navInfo.currentPart.id.includes('ANTHEM');
-    if (isMainZone) {
-        tension = Math.max(0.4, tension);
-    }
+    let tension = this.suiteDNA.tensionMap[this.epoch % this.suiteDNA.tensionMap.length] ?? 0.5;
+    
+    if (navInfo.currentPart.id.includes('MAIN')) tension = Math.max(0.4, tension);
 
     if (stages && stages.length > 0) {
         const partBars = navInfo.currentPartEndBar - navInfo.currentPartStartBar + 1;
         const progress = (this.epoch - navInfo.currentPartStartBar) / partBars;
-        
         let currentStage = stages[stages.length - 1];
         let acc = 0;
         for (const s of stages) { 
             acc += s.duration.percent; 
-            if (progress * 100 <= acc) { 
-                currentStage = s; 
-                break; 
-            } 
+            if (progress * 100 <= acc) { currentStage = s; break; } 
         }
 
         Object.entries(currentStage.instrumentation).forEach(([partStr, rule]: [any, any]) => {
             const part = partStr as InstrumentPart;
             if (!this.activatedParts.has(part)) {
                 let effectiveChance = rule.activationChance;
-                if (part === 'sfx' || part === 'sparkles') {
-                    effectiveChance = rule.activationChance * (1.0 - tension);
-                }
-                if (this.random.next() < effectiveChance) {
-                    this.activatedParts.add(part);
-                }
+                if (part === 'sfx' || part === 'sparkles') effectiveChance *= (1.0 - tension);
+                if (this.random.next() < effectiveChance) this.activatedParts.add(part);
             }
-
             if (this.activatedParts.has(part)) {
-                const timbre = pickWeightedDeterministic(rule.instrumentOptions, this.config.seed, this.epoch, 500);
-                (instrumentHints as any)[part] = timbre;
+                (instrumentHints as any)[part] = pickWeightedDeterministic(rule.instrumentOptions, this.config.seed, this.epoch, 500);
                 instrumentHints.summonProgress![part] = 1.0; 
-                if (part === 'sparkles' && rule.instrumentOptions[0]?.category) {
-                    (instrumentHints as any).sparkleCategory = rule.instrumentOptions[0].category;
-                }
             }
         });
     }
@@ -168,7 +178,6 @@ export class FractalMusicEngine {
 
     const result = this.generateOneBar(barDuration, navInfo, instrumentHints);
     this.lastEvents = [...result.events];
-
     const beautyScore = this.calculateBeautyScore(result.events);
 
     return { ...result, instrumentHints, beautyScore, tension, navInfo };
@@ -176,7 +185,7 @@ export class FractalMusicEngine {
 
   private calculateBeautyScore(events: FractalEvent[]): number {
       if (events.length < 2) return 0.5;
-      const matrix = this.getResonanceMatrix();
+      const matrix = this.config.genre === 'ambient' ? AmbientK : (this.config.mood === 'melancholic' ? MelancholicMinorK : ElectronicK);
       let totalResonance = 0;
       let pairCount = 0;
       for (let i = 0; i < events.length; i++) {
@@ -186,12 +195,6 @@ export class FractalMusicEngine {
           }
       }
       return pairCount > 0 ? totalResonance / pairCount : 0.5;
-  }
-
-  private getResonanceMatrix() {
-      if (this.config.genre === 'ambient') return AmbientK;
-      if (this.config.mood === 'melancholic') return MelancholicMinorK;
-      return ElectronicK;
   }
   
   private generateOneBar(barDuration: number, navInfo: NavigationInfo, instrumentHints: InstrumentHints): { events: FractalEvent[] } {
@@ -206,23 +209,6 @@ export class FractalMusicEngine {
         allEvents = this.bluesBrain.generateBar(this.epoch, currentChord, navInfo, this.suiteDNA, instrumentHints, this.lastEvents);
     } else {
         allEvents = createHarmonyAxiom(currentChord, this.config.mood, this.config.genre, this.random, this.epoch);
-    }
-
-    // --- Dynamic Hook Logic ---
-    if (this.epoch > 12 && this.epoch < 60 && allEvents.some(e => e.type === 'melody') && this.hookLibrary.length < 3) {
-        if (this.random.next() < 0.15) {
-            const mEvents = allEvents.filter(e => e.type === 'melody');
-            this.hookLibrary.push({ events: JSON.parse(JSON.stringify(mEvents)), root: currentChord.rootNote });
-        }
-    }
-    if (this.epoch > 72 && this.hookLibrary.length > 0 && this.random.next() < 0.25) {
-        const hook = this.hookLibrary[this.random.nextInt(this.hookLibrary.length)];
-        const reprise = hook.events.map(e => ({
-            ...e,
-            note: e.note - hook.root + currentChord.rootNote,
-            weight: Math.min(1.0, e.weight + 0.05)
-        }));
-        allEvents = [...allEvents.filter(e => e.type !== 'melody'), ...reprise];
     }
 
     return { events: allEvents };
