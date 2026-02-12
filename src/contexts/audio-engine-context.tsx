@@ -207,7 +207,7 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
     if (nextActive) {
         speakerGainNodeRef.current.gain.setTargetAtTime(0, audioContextRef.current!.currentTime, 0.1);
         broadcastEngineRef.current.start();
-        toast({ title: "Broadcast Mode ON", description: "Audio is routed through system player buffer." });
+        toast({ title: "Broadcast Mode ON", description: "Audio is routed through system player bridge." });
     } else {
         speakerGainNodeRef.current.gain.setTargetAtTime(1, audioContextRef.current!.currentTime, 0.1);
         broadcastEngineRef.current.stop();
@@ -389,8 +389,6 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
         }
 
         if (!audioContextRef.current) {
-            // #ЗАЧЕМ: Возврат к частоте 44.1кГц (План №369).
-            // #ЧТО: Частота 48кГц вызывала треск из-за повышенной нагрузки на синтез.
             audioContextRef.current = new (window.AudioContext || (window as any).webkitAudioContext)({ 
                 sampleRate: 44100, 
                 latencyHint: 'interactive' 
@@ -399,6 +397,15 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
         if (audioContextRef.current.state === 'suspended') await audioContextRef.current.resume();
         const context = audioContextRef.current;
         
+        // #ЗАЧЕМ: Реализация протокола "Часовой" (The Sentinel).
+        // #ЧТО: Подключение неслышимого константного сигнала напрямую к выходу.
+        // #СВЯЗИ: Заставляет ОС удерживать высокий приоритет процесса в фоне.
+        const sentinel = context.createConstantSource();
+        sentinel.offset.value = 0.0000000001; 
+        sentinel.connect(context.destination);
+        sentinel.start();
+        console.log('%c[AudioEngine] THE SENTINEL IS ACTIVE. Throttling protection engaged.', 'color: #00BFFF; font-weight: bold;');
+
         nextBarTimeRef.current = context.currentTime + 1.0; 
 
         if (!masterGainNodeRef.current) {

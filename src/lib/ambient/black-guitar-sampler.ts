@@ -1,0 +1,213 @@
+
+
+import type { Note, Technique } from "@/types/music";
+import { BLUES_GUITAR_VOICINGS } from './assets/guitar-voicings';
+import { GUITAR_PATTERNS } from './assets/guitar-patterns';
+
+
+const BLACK_GUITAR_ORD_SAMPLES: Record<string, string> = {
+    'c6': '/assets/acoustic_guitar_samples/black/ord/twang_c6_p_rr2.ogg',
+    'gb4': '/assets/acoustic_guitar_samples/black/ord/twang_gb4_mf_rr1.ogg',
+    // ... many many samples
+    'b5': '/assets/acoustic_guitar_samples/black/ord/twang_b5_f_rr2.ogg',
+};
+
+type SamplerInstrument = {
+    buffers: Map<number, AudioBuffer>;
+};
+
+export class BlackGuitarSampler {
+    private audioContext: AudioContext;
+    private destination: AudioNode;
+    private instruments = new Map<string, SamplerInstrument>();
+    public isInitialized = false;
+    private isLoading = false;
+    private preamp: GainNode;
+    
+    constructor(audioContext: AudioContext, destination: AudioNode) {
+        this.audioContext = audioContext;
+        this.destination = destination;
+
+        this.preamp = this.audioContext.createGain();
+        this.preamp.gain.value = 1.0;
+        this.preamp.connect(this.destination);
+    }
+
+    async init(): Promise<boolean> {
+        return this.loadInstrument('blackAcoustic', BLACK_GUITAR_ORD_SAMPLES);
+    }
+
+    async loadInstrument(instrumentName: 'blackAcoustic', sampleMap: Record<string, string>): Promise<boolean> {
+        if (this.isInitialized || this.isLoading) return true;
+        this.isLoading = true;
+
+        if (this.instruments.has(instrumentName)) {
+            this.isLoading = false;
+            return true;
+        }
+
+        try {
+            const loadedBuffers = new Map<number, AudioBuffer>();
+            
+            const loadSample = async (url: string) => {
+                const response = await fetch(url);
+                if (!response.ok) throw new Error(`HTTP error! status: ${'' + response.status}`);
+                const arrayBuffer = await response.arrayBuffer();
+                return await this.audioContext.decodeAudioData(arrayBuffer);
+            };
+            
+            const notePromises = Object.entries(sampleMap).map(async ([key, url]) => {
+                const midi = this.keyToMidi(key);
+                if (midi === null) {
+                    console.warn(`[BlackGuitarSampler] Could not parse MIDI from key: ${key}`);
+                    return;
+                };
+
+                try {
+                    const buffer = await loadSample(url);
+                    loadedBuffers.set(midi, buffer);
+                } catch(e) { console.error(`Error loading sample for ${key}`, e); }
+            });
+
+            await Promise.all(notePromises);
+            
+            this.instruments.set(instrumentName, { buffers: loadedBuffers });
+            console.log(`[BlackGuitarSampler] Instrument "${instrumentName}" loaded with ${loadedBuffers.size} samples.`);
+            this.isInitialized = true;
+            this.isLoading = false;
+            return true;
+        } catch (error) {
+            console.error(`[BlackGuitarSampler] Failed to load instrument "${instrumentName}":`, error);
+            this.isLoading = false;
+            return false;
+        }
+    }
+    
+    public schedule(notes: Note[], time: number, tempo: number = 120) {
+        const instrument = this.instruments.get('blackAcoustic');
+        if (!this.isInitialized || !instrument) return;
+
+        notes.forEach(note => {
+            if (note.technique && (note.technique.startsWith('F_') || note.technique.startsWith('S_'))) {
+                this.playPattern(instrument, note, time, tempo);
+            } else {
+                this.playSingleNote(instrument, note, time);
+            }
+        });
+    }
+
+    private playPattern(instrument: SamplerInstrument, note: Note, barStartTime: number, tempo: number) {
+        const patternName = note.technique as string;
+        const patternData = GUITAR_PATTERNS[patternName];
+        if (!patternData) {
+            this.playSingleNote(instrument, note, barStartTime);
+            return;
+        }
+
+        const voicingName = note.params?.voicingName || 'E7_open';
+        const voicing = BLUES_GUITAR_VOICINGS[voicingName];
+        if (!voicing) {
+            this.playSingleNote(instrument, note, barStartTime);
+            return;
+        }
+
+        const beatDuration = 60 / tempo;
+        const ticksPerBeat = 3;
+
+        for (const event of patternData.pattern) {
+            for (const tick of event.ticks) {
+                const noteTimeInBar = (tick / ticksPerBeat) * beatDuration;
+                
+                for (const stringIndex of event.stringIndices) {
+                    if (stringIndex < voicing.length) {
+                        const midiNote = voicing[voicing.length - 1 - stringIndex];
+                        const { buffer, midi: sampleMidi } = this.findBestSample(instrument, midiNote);
+                        if (buffer) {
+                             const playTime = barStartTime + noteTimeInBar + ((patternData.rollDuration / ticksPerBeat) * beatDuration * (voicing.length - 1 - stringIndex));
+                             this.playSample(buffer, sampleMidi, midiNote, playTime, note.velocity || 0.7);
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    private playSingleNote(instrument: SamplerInstrument, note: Note, startTime: number) {
+        const { buffer, midi: sampleMidi } = this.findBestSample(instrument, note.midi);
+        if (!buffer) return;
+
+        const noteStartTime = startTime + note.time;
+        this.playSample(buffer, sampleMidi, note.midi, noteStartTime, note.velocity || 0.7, note.duration);
+    }
+    
+    private playSample(buffer: AudioBuffer, sampleMidi: number, targetMidi: number, startTime: number, velocity: number, duration?: number) {
+        const source = this.audioContext.createBufferSource();
+        source.buffer = buffer;
+
+        const gainNode = this.audioContext.createGain();
+        source.connect(gainNode);
+        gainNode.connect(this.preamp);
+
+        const playbackRate = Math.pow(2, (targetMidi - sampleMidi) / 12);
+        source.playbackRate.value = playbackRate;
+
+        gainNode.gain.setValueAtTime(velocity, startTime);
+
+        if (duration) {
+            gainNode.gain.setTargetAtTime(0, startTime + duration * 0.8, 0.1);
+            source.start(startTime);
+            source.stop(startTime + duration * 1.2);
+        } else {
+            source.start(startTime);
+        }
+        
+        source.onended = () => {
+            gainNode.disconnect();
+        };
+    }
+
+
+    private findBestSample(instrument: SamplerInstrument, targetMidi: number): { buffer: AudioBuffer | null, midi: number } {
+        const availableMidiNotes = Array.from(instrument.buffers.keys());
+        
+        if (availableMidiNotes.length === 0) return { buffer: null, midi: targetMidi };
+        const closestMidi = availableMidiNotes.reduce((prev, curr) => 
+            Math.abs(curr - targetMidi) < Math.abs(prev - targetMidi) ? curr : prev
+        );
+
+        const sampleBuffer = instrument.buffers.get(closestMidi);
+        
+        return { buffer: sampleBuffer || null, midi: closestMidi };
+    }
+    
+    private keyToMidi(key: string): number | null {
+        const parts = key.split('_');
+        if (parts.length < 1) return null;
+    
+        const noteStr = parts[0].toLowerCase();
+        const noteMatch = noteStr.match(/([a-g][b#]?)(\d)/);
+    
+        if (!noteMatch) return null;
+    
+        let [, name, octaveStr] = noteMatch;
+        const octave = parseInt(octaveStr, 10);
+    
+        const noteMap: Record<string, number> = {
+            'c': 0, 'c#': 1, 'db': 1, 'd': 2, 'd#': 3, 'eb': 3, 'e': 4, 'f': 5, 'f#': 6, 'gb': 6, 'g': 7, 'g#': 8, 'ab': 8, 'a': 9, 'a#': 10, 'bb': 10, 'b': 11
+        };
+    
+        const noteValue = noteMap[name];
+        
+        if (noteValue === undefined) return null;
+    
+        return 12 * (octave + 1) + noteValue;
+    }
+    
+
+    public stopAll() {
+    }
+
+    public dispose() {
+        this.preamp.disconnect();
+    }
+}

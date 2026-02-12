@@ -1,0 +1,118 @@
+import type { FractalEvent, AccompanimentInstrument } from '@/types/fractal';
+import type { Note } from "@/types/music";
+import { buildMultiInstrument } from './instrument-factory';
+import { V2_PRESETS, V1_TO_V2_PRESET_MAP } from './presets-v2';
+
+/**
+ * A V2 manager for the accompaniment synthesizer.
+ * This version uses the advanced `instrument-factory` to create a single,
+ * powerful, polyphonic instrument instance. It does not manage a pool of simple voices.
+ */
+export class AccompanimentSynthManagerV2 {
+    private audioContext: AudioContext;
+    private destination: AudioNode;
+    public isInitialized = false;
+    private instrument: any | null = null; 
+    
+    private activePresetName: keyof typeof V2_PRESETS | 'none' = 'organ_soft_jazz';
+    private preamp: GainNode;
+
+    constructor(audioContext: AudioContext, destination: AudioNode) {
+        this.audioContext = audioContext;
+        this.destination = destination;
+        
+        this.preamp = this.audioContext.createGain();
+        this.preamp.gain.value = 1.0;
+        this.preamp.connect(this.destination);
+    }
+
+    async init() {
+        if (this.isInitialized) return;
+        console.log('[AccompanimentManagerV2] Initializing...');
+        const preset = V2_PRESETS[this.activePresetName as keyof typeof V2_PRESETS];
+        const instrumentType = preset?.type || 'synth';
+        await this.loadInstrument(this.activePresetName as keyof typeof V2_PRESETS, instrumentType as any);
+        this.isInitialized = true;
+    }
+    
+    private async loadInstrument(presetName: keyof typeof V2_PRESETS, instrumentType: 'synth' | 'organ' | 'guitar' = 'synth') {
+        // #ЗАЧЕМ: Очистка ресурсов старого инструмента перед созданием нового.
+        if (this.instrument) {
+            console.log(`[AccompanimentManagerV2] Disposing old instrument before loading ${presetName}`);
+            this.instrument.disconnect();
+            this.instrument = null;
+        }
+        
+        const preset = V2_PRESETS[presetName];
+        if (!preset) return;
+        
+        try {
+            this.instrument = await buildMultiInstrument(this.audioContext, {
+                type: instrumentType,
+                preset: preset,
+                output: this.preamp
+            });
+            this.activePresetName = presetName;
+        } catch (error) {
+            console.error(`[AccompanimentManagerV2] Error loading instrument for preset ${presetName}:`, error);
+        }
+    }
+
+    public async schedule(events: FractalEvent[], barStartTime: number, tempo: number, barCount: number, instrumentHint?: string) {
+        const finalInstrumentHint = instrumentHint ? (V1_TO_V2_PRESET_MAP[instrumentHint] || instrumentHint) : this.activePresetName;
+
+        if (finalInstrumentHint === 'none') {
+            if (this.activePresetName !== 'none') await this.setInstrument('none');
+            return;
+        }
+        
+        if (finalInstrumentHint !== this.activePresetName) {
+            await this.setInstrument(finalInstrumentHint as keyof typeof V2_PRESETS);
+        }
+
+        if (!this.instrument) return;
+
+        const beatDuration = 60 / tempo;
+        events.forEach(event => {
+            if(event.type !== 'accompaniment') return;
+            const noteOnTime = barStartTime + (event.time * beatDuration);
+            this.instrument.noteOn(event.note, noteOnTime, event.weight, event.duration * beatDuration);
+        });
+    }
+    
+    public async setInstrument(instrumentName: keyof typeof V2_PRESETS | 'none') {
+       if (instrumentName === this.activePresetName) return;
+
+       if (instrumentName === 'none') {
+            if (this.instrument) this.instrument.disconnect();
+            this.instrument = null;
+            this.activePresetName = 'none';
+            return;
+       }
+
+       const newPreset = V2_PRESETS[instrumentName as keyof typeof V2_PRESETS];
+       if (!newPreset) return;
+
+       if (this.instrument && this.instrument.type === newPreset.type && this.instrument.setPreset) {
+           this.instrument.setPreset(newPreset);
+           this.activePresetName = instrumentName;
+       } else { 
+           await this.loadInstrument(instrumentName, (newPreset as any).type || 'synth');
+       }
+    }
+
+    public setPreampGain(volume: number) {
+        if (this.preamp) {
+            this.preamp.gain.setTargetAtTime(volume, this.audioContext.currentTime, 0.01);
+        }
+    }
+
+    public allNotesOff() {
+        if (this.instrument && this.instrument.allNotesOff) {
+            this.instrument.allNotesOff();
+        }
+    }
+
+    public stop() { this.allNotesOff(); }
+    public dispose() { this.stop(); if (this.instrument) this.instrument.disconnect(); this.preamp.disconnect(); }
+}
