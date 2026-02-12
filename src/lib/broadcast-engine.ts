@@ -1,8 +1,8 @@
 /**
- * #ЗАЧЕМ: Реализация "Вещательного Бункера" V3.
- * #ЧТО: 1. Внедрен "Буфер Разгона" (chunksAppended) повышенной плотности.
- *       2. Уменьшен размер чанка до 500мс для более частого пополнения буфера.
- *       3. Плеер запускается только после накопления 4-х чанков (2 секунды стабильности).
+ * #ЗАЧЕМ: Реализация "Вещательного Бункера" V4 — "Smooth Pruning Edition".
+ * #ЧТО: 1. Возврат к интервалу 1000мс для снижения нагрузки на CPU (устранение треска).
+ *       2. Внедрена система "Уборки Буфера" (Buffer Pruning) для предотвращения паузы на 29-й секунде.
+ *       3. Плеер стартует после накопления 3-х чанков (3 секунды стабильности).
  */
 
 export class BroadcastEngine {
@@ -31,17 +31,16 @@ export class BroadcastEngine {
         this.audioElement = new Audio();
         this.audioElement.src = URL.createObjectURL(this.mediaSource);
         
-        // Настройка плеера для стабильности
         this.audioElement.autoplay = false; 
         this.audioElement.preload = 'auto';
 
         this.mediaSource.addEventListener('sourceopen', () => {
             if (!this.mediaSource) return;
             try {
-                // #ЗАЧЕМ: Стабилизация кодека. 
                 this.sourceBuffer = this.mediaSource.addSourceBuffer('audio/webm;codecs=opus');
                 
                 this.sourceBuffer.addEventListener('updateend', () => {
+                    this.pruneBuffer(); // Очистка старых данных
                     this.processQueue();
                 });
             } catch (e) {
@@ -50,8 +49,8 @@ export class BroadcastEngine {
         });
 
         // 2. Инициализация MediaRecorder
-        // #ЗАЧЕМ: Повышение дискретности потока. 
-        // #ЧТО: Чанки по 500мс вместо 1000мс.
+        // #ЗАЧЕМ: Снижение нагрузки на процессор. 
+        // #ЧТО: Возврат к чанкам по 1000мс. Это уменьшает количество прерываний для упаковки.
         this.mediaRecorder = new MediaRecorder(this.stream, {
             mimeType: 'audio/webm;codecs=opus',
             audioBitsPerSecond: 192000
@@ -65,8 +64,31 @@ export class BroadcastEngine {
             }
         };
 
-        this.mediaRecorder.start(500); // Пополнение буфера каждые 0.5 сек
-        console.log('%c[Broadcast] Radio Stream Initializing (High-Density Buffering...)', 'color: #fbbf24; font-weight: bold;');
+        this.mediaRecorder.start(1000); // Пополнение буфера каждую 1 сек
+        console.log('%c[Broadcast] Radio Stream Initializing (Stable 1s Chunks)', 'color: #fbbf24; font-weight: bold;');
+    }
+
+    /**
+     * #ЗАЧЕМ: Устранение паузы на 29-й секунде.
+     * #ЧТО: Удаляет из буфера данные, которые уже были проиграны (старше 10 секунд).
+     *       Это предотвращает переполнение памяти и "заикание" Garbage Collector-а.
+     */
+    private pruneBuffer() {
+        if (!this.sourceBuffer || this.sourceBuffer.updating || !this.audioElement) return;
+        
+        const currentTime = this.audioElement.currentTime;
+        if (currentTime > 15) { // Начинаем чистку после 15 секунд игры
+            try {
+                // Оставляем в буфере только последние 5 секунд до текущего момента
+                // и всё, что запланировано в будущем.
+                const removeEnd = currentTime - 10;
+                if (this.sourceBuffer.buffered.length > 0 && this.sourceBuffer.buffered.start(0) < removeEnd) {
+                    this.sourceBuffer.remove(0, removeEnd);
+                }
+            } catch (e) {
+                // Игнорируем ошибки чистки
+            }
+        }
     }
 
     private async processQueue() {
@@ -78,12 +100,11 @@ export class BroadcastEngine {
                 this.sourceBuffer.appendBuffer(chunk);
                 this.chunksAppended++;
 
-                // #ЗАЧЕМ: Устранение эффекта "заезженной пластинки".
-                // #ЧТО: Плеер стартует после накопления 4-х чанков (стабильный запас 2с).
-                if (this.chunksAppended === 4 && this.audioElement) {
+                // Старт плеера после накопления запаса в 3 секунды
+                if (this.chunksAppended === 3 && this.audioElement) {
                     try {
                         await this.audioElement.play();
-                        console.log('%c[Broadcast] Radio Stream Playing (Ultra-Stable)', 'color: #4ade80; font-weight: bold;');
+                        console.log('%c[Broadcast] Radio Stream Playing (Pre-roll Done)', 'color: #4ade80; font-weight: bold;');
                     } catch (e) {
                         console.warn('[Broadcast] Play deferred by browser policy.');
                     }

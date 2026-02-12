@@ -198,10 +198,6 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
     }
   }, [isRecording, toast]);
 
-  /**
-   * #ЗАЧЕМ: Переключение в режим "Радио".
-   * #ЧТО: Активирует BroadcastEngine и приглушает прямой выход AudioContext.
-   */
   const toggleBroadcast = useCallback(() => {
     if (!broadcastEngineRef.current || !speakerGainNodeRef.current) return;
     
@@ -209,12 +205,10 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
     setIsBroadcastActive(nextActive);
 
     if (nextActive) {
-        // Включаем радио: приглушаем колонки, запускаем поток
         speakerGainNodeRef.current.gain.setTargetAtTime(0, audioContextRef.current!.currentTime, 0.1);
         broadcastEngineRef.current.start();
         toast({ title: "Broadcast Mode ON", description: "Audio is routed through system player buffer." });
     } else {
-        // Выключаем радио: включаем колонки, останавливаем поток
         speakerGainNodeRef.current.gain.setTargetAtTime(1, audioContextRef.current!.currentTime, 0.1);
         broadcastEngineRef.current.stop();
         toast({ title: "Broadcast Mode OFF", description: "Switched back to direct AudioContext output." });
@@ -352,15 +346,12 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
                     }
 
                     if(events && barDuration && settingsRef.current && barCount !== undefined){
-                        // #ЗАЧЕМ: Система Buffer Health Guard (План №366).
-                        // #ЧТО: Предотвращение планирования "в прошлом" (Scheduling in the past).
                         let scheduleTime = nextBarTimeRef.current;
                         const now = audioContextRef.current!.currentTime;
                         const bufferHealth = scheduleTime - now;
 
                         if (bufferHealth < 0.1) { 
                             console.warn(`%c[CHRONOS] BUFFER STARVATION! Health: ${Math.round(bufferHealth * 1000)}ms. Forcing Resync.`, 'color: #f87171; font-weight: bold;');
-                            // Прыжок веры: переносим планирование в будущее
                             scheduleTime = now + 0.5;
                             nextBarTimeRef.current = scheduleTime;
                         }
@@ -398,17 +389,16 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
         }
 
         if (!audioContextRef.current) {
-            // #ЗАЧЕМ: Переход на 48кГц для идеальной совместимости с Opus и Bluetooth.
+            // #ЗАЧЕМ: Возврат к частоте 44.1кГц (План №369).
+            // #ЧТО: Частота 48кГц вызывала треск из-за повышенной нагрузки на синтез.
             audioContextRef.current = new (window.AudioContext || (window as any).webkitAudioContext)({ 
-                sampleRate: 48000, 
+                sampleRate: 44100, 
                 latencyHint: 'interactive' 
             });
         }
         if (audioContextRef.current.state === 'suspended') await audioContextRef.current.resume();
         const context = audioContextRef.current;
         
-        // #ЗАЧЕМ: Увеличение стартового запаса (Resync Margin).
-        // #ЧТО: Теперь сюита стартует через 1.0 сек, гарантируя чистую первую ноту.
         nextBarTimeRef.current = context.currentTime + 1.0; 
 
         if (!masterGainNodeRef.current) {
@@ -478,7 +468,6 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
     if (playing) {
         if (audioContextRef.current.state === 'suspended') audioContextRef.current.resume();
         stopAllSounds(); 
-        // При старте даем большой запас (1.0 сек)
         nextBarTimeRef.current = audioContextRef.current.currentTime + 1.0; 
         workerRef.current.postMessage({ command: 'start' }); scheduleNextImpulse();
     } else { 
