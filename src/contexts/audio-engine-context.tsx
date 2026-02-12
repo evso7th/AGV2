@@ -390,7 +390,14 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
             }
         }
 
-        if (!audioContextRef.current) audioContextRef.current = new (window.AudioContext || (window as any).webkitAudioContext)({ sampleRate: 44100, latencyHint: 'interactive' });
+        if (!audioContextRef.current) {
+            // #ЗАЧЕМ: Переход на 48кГц для идеальной совместимости с Opus и Bluetooth.
+            // #ЧТО: sampleRate изменен с 44100 на 48000.
+            audioContextRef.current = new (window.AudioContext || (window as any).webkitAudioContext)({ 
+                sampleRate: 48000, 
+                latencyHint: 'interactive' 
+            });
+        }
         if (audioContextRef.current.state === 'suspended') await audioContextRef.current.resume();
         const context = audioContextRef.current;
         
@@ -399,9 +406,6 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
         if (!masterGainNodeRef.current) {
             masterGainNodeRef.current = context.createGain();
             
-            // #ЗАЧЕМ: Маршрутизация для Broadcast Mode.
-            // #ЧТО: masterGain -> speakerGain -> destination. 
-            //      Это позволяет приглушать прямой звук без остановки записи/вещания.
             speakerGainNodeRef.current = context.createGain();
             masterGainNodeRef.current.connect(speakerGainNodeRef.current);
             speakerGainNodeRef.current.connect(context.destination);
