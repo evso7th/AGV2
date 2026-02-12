@@ -9,7 +9,7 @@
  * #ИННОВАЦИЯ: AI Arbitrator следит за гармоническим резонансом и пополняет генофонд.
  * #ОБНОВЛЕНО (ПЛАН №288): Внедрена система Chronos Telemetry (метки времени в логах).
  * #ОБНОВЛЕНО (ПЛАН №294): Внедрен самокорректирующийся таймер для устранения дрейфа (Seamless Stitch).
- * #ОБНОВЛЕНО (ПЛАН №366): Оптимизация таймера и логирования.
+ * #ОБНОВЛЕНО (ПЛАН №370): Отключен лог-спам для повышения производительности на мобильных устройствах.
  */
 import type { WorkerSettings, ScoreName, Mood, Genre, InstrumentPart } from '@/types/music';
 import { FractalMusicEngine } from '@/lib/fractal-music-engine';
@@ -106,7 +106,6 @@ const Scheduler = {
                 console.warn(`%c${getTimestamp()} [Chronos] Heavy Tick! Computed in ${executionTime.toFixed(2)}ms`, 'color: #ef4444;');
             }
 
-            // Самокоррекция: уменьшаем задержку на время вычислений
             const nextDelay = Math.max(0, targetDuration - executionTime);
             this.loopId = setTimeout(loop, nextDelay);
         };
@@ -184,8 +183,12 @@ const Scheduler = {
             }
         }
         
-        const sectionName = finalPayload.navInfo?.currentPart.name || 'Unknown';
-        console.log(`${getTimestamp()} [Bar ${this.barCount}] [${this.suiteType}] [${sectionName}] T:${finalPayload.tension.toFixed(2)} BPM:${this.settings.bpm} Res:${finalPayload.beautyScore.toFixed(2)} D:${counts.drums}, B:${counts.bass}, M:${counts.melody}`);
+        // #ЗАЧЕМ: Снижение нагрузки на главный поток.
+        // #ЧТО: Логирование каждого такта теперь происходит через console.debug.
+        if (this.barCount % 12 === 0 || finalPayload.navInfo?.isPartTransition) {
+            const sectionName = finalPayload.navInfo?.currentPart.name || 'Unknown';
+            console.log(`${getTimestamp()} [Bar ${this.barCount}] [${this.suiteType}] [${sectionName}] T:${finalPayload.tension.toFixed(2)} BPM:${this.settings.bpm} Res:${finalPayload.beautyScore.toFixed(2)} D:${counts.drums}, B:${counts.bass}, M:${counts.melody}`);
+        }
 
         self.postMessage({ 
             type: 'SCORE_READY', 

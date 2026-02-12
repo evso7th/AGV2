@@ -1,8 +1,8 @@
 /**
- * #ЗАЧЕМ: Реализация "Вещательного Бункера" V4 — "Smooth Pruning Edition".
- * #ЧТО: 1. Возврат к интервалу 1000мс для снижения нагрузки на CPU (устранение треска).
- *       2. Внедрена система "Уборки Буфера" (Buffer Pruning) для предотвращения паузы на 29-й секунде.
- *       3. Плеер стартует после накопления 3-х чанков (3 секунды стабильности).
+ * #ЗАЧЕМ: Реализация "Вещательного Бункера" V5 — "Ultra Stability Edition".
+ * #ЧТО: 1. Увеличение размера чанка до 2000мс для минимизации "швов" и нагрузки на CPU.
+ *       2. Увеличение пре-ролла до 3-х чанков (6 секунд безопасности).
+ *       3. Автоматическая очистка буфера (Pruning) для предотвращения накопления мусора.
  */
 
 export class BroadcastEngine {
@@ -40,7 +40,7 @@ export class BroadcastEngine {
                 this.sourceBuffer = this.mediaSource.addSourceBuffer('audio/webm;codecs=opus');
                 
                 this.sourceBuffer.addEventListener('updateend', () => {
-                    this.pruneBuffer(); // Очистка старых данных
+                    this.pruneBuffer(); 
                     this.processQueue();
                 });
             } catch (e) {
@@ -49,8 +49,8 @@ export class BroadcastEngine {
         });
 
         // 2. Инициализация MediaRecorder
-        // #ЗАЧЕМ: Снижение нагрузки на процессор. 
-        // #ЧТО: Возврат к чанкам по 1000мс. Это уменьшает количество прерываний для упаковки.
+        // #ЗАЧЕМ: Радикальное снижение нагрузки на процессор. 
+        // #ЧТО: Чанки по 2000мс. Это делает поток максимально похожим на "Запись".
         this.mediaRecorder = new MediaRecorder(this.stream, {
             mimeType: 'audio/webm;codecs=opus',
             audioBitsPerSecond: 192000
@@ -64,30 +64,24 @@ export class BroadcastEngine {
             }
         };
 
-        this.mediaRecorder.start(1000); // Пополнение буфера каждую 1 сек
-        console.log('%c[Broadcast] Radio Stream Initializing (Stable 1s Chunks)', 'color: #fbbf24; font-weight: bold;');
+        this.mediaRecorder.start(2000); // 2-секундные фрагменты
+        console.log('%c[Broadcast] Radio Stream Initializing (Ultra Stable 2s Chunks)', 'color: #fbbf24; font-weight: bold;');
     }
 
     /**
-     * #ЗАЧЕМ: Устранение паузы на 29-й секунде.
-     * #ЧТО: Удаляет из буфера данные, которые уже были проиграны (старше 10 секунд).
-     *       Это предотвращает переполнение памяти и "заикание" Garbage Collector-а.
+     * #ЗАЧЕМ: Устранение пауз при длительном прослушивании.
      */
     private pruneBuffer() {
         if (!this.sourceBuffer || this.sourceBuffer.updating || !this.audioElement) return;
         
         const currentTime = this.audioElement.currentTime;
-        if (currentTime > 15) { // Начинаем чистку после 15 секунд игры
+        if (currentTime > 20) { 
             try {
-                // Оставляем в буфере только последние 5 секунд до текущего момента
-                // и всё, что запланировано в будущем.
                 const removeEnd = currentTime - 10;
                 if (this.sourceBuffer.buffered.length > 0 && this.sourceBuffer.buffered.start(0) < removeEnd) {
                     this.sourceBuffer.remove(0, removeEnd);
                 }
-            } catch (e) {
-                // Игнорируем ошибки чистки
-            }
+            } catch (e) {}
         }
     }
 
@@ -100,13 +94,14 @@ export class BroadcastEngine {
                 this.sourceBuffer.appendBuffer(chunk);
                 this.chunksAppended++;
 
-                // Старт плеера после накопления запаса в 3 секунды
+                // #ЗАЧЕМ: Железная стабильность (6 секунд запаса).
+                // #ЧТО: Старт после 3-х чанков по 2 секунды.
                 if (this.chunksAppended === 3 && this.audioElement) {
                     try {
                         await this.audioElement.play();
-                        console.log('%c[Broadcast] Radio Stream Playing (Pre-roll Done)', 'color: #4ade80; font-weight: bold;');
+                        console.log('%c[Broadcast] Radio Stream Playing (6s Safety Buffer Active)', 'color: #4ade80; font-weight: bold;');
                     } catch (e) {
-                        console.warn('[Broadcast] Play deferred by browser policy.');
+                        console.warn('[Broadcast] Play deferred.');
                     }
                 }
             }
