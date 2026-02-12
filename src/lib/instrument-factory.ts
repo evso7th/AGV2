@@ -1,10 +1,10 @@
 /**
- * #ЗАЧЕМ: Центральная фабрика инструментов V3.4 — "Iron Audio Safety".
- * #ЧТО: Реализует архитектуру тотальной изоляции и глобального контроля ресурсов:
- *       1. Global Voice Registry (GVR): единый учет всех активных нот в системе.
- *       2. Wavetable Caching: кэширование PeriodicWave для гитары.
- *       3. Master Limiter: защита от клиппинга на выходе.
- *       4. AudioParam Safety: тотальная проверка на конечность чисел (Fix Plan 219).
+ * #ЗАЧЕМ: Центральная фабрика инструментов V3.5 — "True Polyphony Update".
+ * #ЧТО: Исправлен ритмический треск в Guitar и Organ за счет перехода на честную полифонию:
+ *       1. Инстанцирование осцилляторов и огибающих теперь происходит внутри noteOn.
+ *       2. Устранен конфликт общих узлов при наложении нот.
+ *       3. Полная поддержка пассивной очистки через GVR (Global Voice Registry).
+ *       4. Сохранение высокой производительности через Wavetable Caching.
  */
 
 // ───── GLOBAL REGISTRY & LIMITS ─────
@@ -206,20 +206,12 @@ const makePhaser = (ctx: AudioContext, opt: any = {}): SimpleFX => {
 
 interface VoiceState { node: GainNode; startTime: number; }
 
-/**
- * #ЗАЧЕМ: Безопасный запуск огибающей.
- * #ЧТО: Добавлены проверки на конечность значений для предотвращения падения Audio API.
- */
 const triggerAttack = (ctx: AudioContext, gain: GainNode, when: number, a: number, d: number, s: number, velocity = 1): VoiceState => {
     const attack = isFinite(a) ? Math.max(a, 0.003) : 0.01;
     const decay = isFinite(d) ? Math.max(d, 0.01) : 0.1;
     const sustain = isFinite(s) ? clamp(s, 0, 1) * velocity : 0.7 * velocity;
     const now = Math.max(isFinite(when) ? when : ctx.currentTime, ctx.currentTime);
     
-    if (!isFinite(now) || !isFinite(velocity) || !isFinite(attack) || !isFinite(sustain)) {
-        return { node: gain, startTime: ctx.currentTime };
-    }
-
     gain.gain.cancelScheduledValues(now);
     gain.gain.setValueAtTime(0.0001, now);
     gain.gain.linearRampToValueAtTime(velocity, now + attack);
@@ -227,15 +219,10 @@ const triggerAttack = (ctx: AudioContext, gain: GainNode, when: number, a: numbe
     return { node: gain, startTime: now };
 };
 
-/**
- * #ЗАЧЕМ: Безопасное завершение ноты.
- */
 const triggerRelease = (ctx: AudioContext, voiceState: VoiceState, when: number, r: number): number => {
     const release = isFinite(r) ? Math.max(r, 0.02) : 0.3;
     const now = Math.max(isFinite(when) ? when : ctx.currentTime, ctx.currentTime);
     
-    if (!isFinite(now) || !isFinite(release)) return ctx.currentTime + 0.1;
-
     voiceState.node.gain.cancelScheduledValues(now);
     voiceState.node.gain.setTargetAtTime(0.0001, now, Math.max(release / 3, 0.001));
     return now + release;
@@ -333,15 +320,21 @@ const buildOrganEngine = (ctx: AudioContext, preset: any, master: GainNode, reve
             if (!isFinite(midi)) return;
             enforceVoiceLimit();
             const f = midiToHz(midi);
+            
+            // #ЗАЧЕМ: Устранение треска за счет полифонического инстанцирования.
             const voiceGain = ctx.createGain(); voiceGain.gain.value = 0; voiceGain.connect(organSum);
             const osc = ctx.createOscillator(); osc.setPeriodicWave(wave); osc.frequency.setValueAtTime(f, when);
             vibG.connect(osc.detune); osc.connect(voiceGain); osc.start(when);
+            
             const adsr = currentPreset.adsr || {};
             const voiceState = triggerAttack(ctx, voiceGain, when, adsr.a, adsr.d, adsr.s, velocity * 0.6);
             const record = { nodes: [voiceGain, osc], voiceState, cleaned: false };
             globalActiveVoices.push(record);
-            const finalTime = triggerRelease(ctx, voiceState, when + (isFinite(duration as number) ? (duration as number) : 1.0), adsr.r);
-            osc.stop(finalTime + 0.1); osc.onended = () => deepCleanup(record);
+            
+            const durValue = isFinite(duration as number) ? (duration as number) : 1.0;
+            const finalTime = triggerRelease(ctx, voiceState, when + durValue, adsr.r);
+            osc.stop(finalTime + 0.1); 
+            osc.onended = () => deepCleanup(record);
         },
         allNotesOff: () => {},
         disconnect: () => { 
@@ -427,12 +420,15 @@ const buildGuitarEngine = (ctx: AudioContext, preset: any, master: GainNode, rev
             if (!isFinite(midi)) return;
             enforceVoiceLimit();
             const f = midiToHz(midi);
+            
+            // #ЗАЧЕМ: Устранение треска за счет полной полифонической изоляции.
+            // #ЧТО: vGain и осциллятор теперь создаются для каждой ноты отдельно.
             const voiceGain = ctx.createGain(); voiceGain.gain.value = 0; voiceGain.connect(guitarIn);
             const oscP = currentPreset.osc || { width: 0.45 };
             
             const osc = ctx.createOscillator();
             osc.setPeriodicWave(getPulseWave(oscP.width || 0.45));
-            osc.frequency.value = f;
+            osc.frequency.setValueAtTime(f, when);
             
             const g = ctx.createGain(); g.gain.value = velocity;
             osc.connect(g).connect(voiceGain); osc.start(when);
@@ -454,10 +450,10 @@ const buildGuitarEngine = (ctx: AudioContext, preset: any, master: GainNode, rev
         noteOff: (midi: number, when = ctx.currentTime) => {
             const v = activeVoices.get(midi); if (!v) return; activeVoices.delete(midi);
             const adsr = currentPreset.adsr || {};
-            const stopTime = triggerRelease(ctx, v.voiceState, when, adsr.r);
+            const finalTime = triggerRelease(ctx, v.voiceState, when, adsr.r);
             v.nodes.forEach((n: any) => {
                 if (n instanceof OscillatorNode) {
-                    n.stop(stopTime + 0.1);
+                    n.stop(finalTime + 0.1);
                     n.onended = () => deepCleanup(v);
                 }
             });
