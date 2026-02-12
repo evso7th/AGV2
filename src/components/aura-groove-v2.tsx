@@ -1,7 +1,8 @@
+
 'use client';
 
 import { useState, useEffect } from "react";
-import { SlidersHorizontal, Music, Pause, Speaker, FileMusic, Drum, GitBranch, Atom, Piano, Home, X, Sparkles, Sprout, LayoutGrid, Timer, Guitar, RefreshCw, Bot, Waves, Cog, Radio, ThumbsUp } from "lucide-react";
+import { SlidersHorizontal, Music, Pause, Speaker, FileMusic, Drum, GitBranch, Atom, Piano, Home, X, Sparkles, Sprout, LayoutGrid, Timer, Guitar, RefreshCw, Bot, Waves, Cog, Radio, ThumbsUp, TowerControl } from "lucide-react";
 import Image from "next/image";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -46,7 +47,7 @@ const MOOD_COLOR_CLASSES: Record<MoodCategory, string> = {
 
 
 export function AuraGrooveV2({
-  isPlaying, isInitializing, isRecording, handlePlayPause, handleRegenerate, handleToggleRecording, handleSaveMasterpiece, drumSettings, setDrumSettings, instrumentSettings,
+  isPlaying, isInitializing, isRecording, isBroadcastActive, handlePlayPause, handleRegenerate, handleToggleRecording, handleToggleBroadcast, handleSaveMasterpiece, drumSettings, setDrumSettings, instrumentSettings,
   setInstrumentSettings, handleBassTechniqueChange, handleVolumeChange, textureSettings, handleTextureEnabledChange,
   bpm, handleBpmChange, score, handleScoreChange, density, setDensity, handleGoHome,
   isEqModalOpen, setIsEqModalOpen, eqSettings, handleEqChange,
@@ -69,10 +70,11 @@ export function AuraGrooveV2({
 
   const v2MelodyInstruments = Object.keys(V2_PRESETS).filter(k => V2_PRESETS[k as keyof typeof V2_PRESETS].type !== 'bass');
   
+  // Bass always uses V1 instruments now
   const bassInstrumentList = v1BassInstrumentNames;
 
   const melodyInstrumentList = useMelodyV2 ? v2MelodyInstruments : v1MelodyInstruments;
-  const textureInstrumentList = useMelodyV2 ? v2MelodyInstruments : v1MelodyInstruments; 
+  const textureInstrumentList = useMelodyV2 ? v2MelodyInstruments : v1MelodyInstruments; // 'accompaniment' uses this
 
   const harmonyInstrumentList: ('piano' | 'guitarChords' | 'flute' | 'violin' | 'none')[] = ['piano', 'guitarChords', 'flute', 'violin', 'none'];
   const moodList: Mood[] = ['epic', 'joyful', 'enthusiastic', 'melancholic', 'dark', 'anxious', 'dreamy', 'contemplative', 'calm'];
@@ -90,7 +92,8 @@ export function AuraGrooveV2({
     'acousticGuitar': 'Acoustic Folk',
     'neuro_f_matrix': 'Neuro F-Matrix',
     'rnb': 'R&B',
-    'trance': 'SlowTrance', 
+    'trance': 'SlowTrance', // UI RENAME
+    // V2 presets
     'organ': 'Cathedral Organ',
     'organ_soft_jazz': 'Soft Jazz Organ',
     'synth': 'Emerald Pad',
@@ -137,9 +140,19 @@ export function AuraGrooveV2({
           </div>
         </div>
         <div className="flex items-center justify-center gap-2 pt-2 pb-1.5">
-           <Button type="button" onClick={handlePlayPause} disabled={isInitializing} className="w-[45%] text-base h-10">
+           <Button type="button" onClick={handlePlayPause} disabled={isInitializing} className="w-[35%] text-base h-10">
               {isPlaying ? <Pause className="mr-2 h-5 w-5" /> : <Music className="mr-2 h-5 w-5" />}
               {isPlaying ? "Pause" : "Play"}
+           </Button>
+           <Button 
+              type="button" 
+              onClick={handleToggleBroadcast} 
+              disabled={isInitializing || !isPlaying} 
+              variant={isBroadcastActive ? "destructive" : "outline"}
+              className="h-10 w-10 p-0"
+              title={isBroadcastActive ? "Stop Radio" : "Start Radio (Bluetooth Safe)"}
+           >
+             <TowerControl className={cn("h-5 w-5", isBroadcastActive && "animate-pulse text-primary")} />
            </Button>
            <Button 
               type="button" 
@@ -241,17 +254,13 @@ export function AuraGrooveV2({
                   )}
                   <div className="grid grid-cols-[1fr_2fr_auto] items-center gap-2">
                     <Label htmlFor="bpm-slider" className="text-right text-xs">BPM</Label>
-                    <Slider id="bpm-slider" value={[bpm]} min={60} max={160} step={5} onValueChange={(v) => handleBpmChange(v[0])} className="col-span-1" disabled={isInitializing || composerControl}/>
+                    {/* #ЗАЧЕМ: Слайдер BPM теперь disabled во время игры, так как темп диктуется DNA. */}
+                    <Slider id="bpm-slider" value={[bpm]} min={60} max={160} step={1} onValueChange={(v) => handleBpmChange(v[0])} className="col-span-1" disabled={isInitializing || isPlaying || composerControl}/>
                     <span className="text-xs w-8 text-right font-mono">{bpm}</span>
                   </div>
                   <div className="grid grid-cols-3 items-center gap-2">
                     <Label htmlFor="density-slider" className="text-right text-xs">Density</Label>
                     <Slider id="density-slider" value={[density]} min={0.1} max={1} step={0.05} onValueChange={(v) => setDensity(v[0])} className="col-span-2" disabled={isInitializing}/>
-                  </div>
-                   <div className="grid grid-cols-[1fr_2fr_auto] items-center gap-2">
-                    <Label htmlFor="intro-slider" className="text-right text-xs">Intro Length</Label>
-                    <Slider id="intro-slider" value={[introBars]} min={1} max={10} step={1} onValueChange={(v) => setIntroBars(v[0])} className="col-span-1" disabled={isInitializing || isPlaying}/>
-                    <span className="text-xs w-8 text-right font-mono">{introBars}</span>
                   </div>
                 </CardContent>
               </Card>

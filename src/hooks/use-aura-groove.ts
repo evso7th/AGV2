@@ -16,6 +16,7 @@ export type AuraGrooveProps = {
   isInitializing: boolean;
   isRegenerating: boolean;
   isRecording: boolean;
+  isBroadcastActive: boolean;
   loadingText: string;
   drumSettings: DrumSettings;
   setDrumSettings: (settings: React.SetStateAction<DrumSettings>) => void;
@@ -32,6 +33,7 @@ export type AuraGrooveProps = {
   handlePlayPause: () => void;
   handleRegenerate: () => void;
   handleToggleRecording: () => void;
+  handleToggleBroadcast: () => void;
   handleSaveMasterpiece: () => void;
   density: number;
   setDensity: (value: number) => void;
@@ -58,8 +60,8 @@ export type AuraGrooveProps = {
 
 
 /**
- * #ЗАЧЕМ: Хук управления UI музыкой V3.0.
- * #ЧТО: Дефолтная громкость мелодии снижена до 0.2 (20%).
+ * #ЗАЧЕМ: Хук управления UI музыкой V3.1.
+ * #ЧТО: Добавлена поддержка Broadcast Mode (Radio).
  */
 export const useAuraGroove = (): AuraGrooveProps => {
   const { 
@@ -68,6 +70,7 @@ export const useAuraGroove = (): AuraGrooveProps => {
     isPlaying,
     useMelodyV2, 
     isRecording,
+    isBroadcastActive,
     toggleMelodyEngine,
     initialize, 
     setIsPlaying: setEngineIsPlaying, 
@@ -82,6 +85,7 @@ export const useAuraGroove = (): AuraGrooveProps => {
     cancelMasterFadeOut,
     startRecording,
     stopRecording,
+    toggleBroadcast,
     getWorker
   } = useAudioEngine() as any; 
   
@@ -91,7 +95,6 @@ export const useAuraGroove = (): AuraGrooveProps => {
   const [drumSettings, setDrumSettings] = useState<DrumSettings>({ pattern: 'composer', volume: 0.25, kickVolume: 1.0, enabled: true });
   const [instrumentSettings, setInstrumentSettings] = useState<InstrumentSettings>({
     bass: { name: "bass_jazz_warm", volume: 0.5, technique: 'portamento' },
-    // #ЗАЧЕМ: Установка дефолтной громкости 20% по запросу пользователя.
     melody: { name: "blackAcoustic", volume: 0.2 }, 
     accompaniment: { name: "organ_soft_jazz", volume: 0.35 },
     harmony: { name: "guitarChords", volume: 0.25 },
@@ -199,6 +202,11 @@ export const useAuraGroove = (): AuraGrooveProps => {
       resetWorker();
   }, [resetWorker]);
 
+  const handleToggleBroadcast = useCallback(() => {
+    if (!isInitialized || !isPlaying) return;
+    toggleBroadcast();
+  }, [isInitialized, isPlaying, toggleBroadcast]);
+
   const handleSaveMasterpiece = useCallback(() => {
     if (!isInitialized || !isPlaying) return;
     
@@ -293,9 +301,9 @@ export const useAuraGroove = (): AuraGrooveProps => {
   };
 
   return {
-    isInitializing, isPlaying, isRegenerating, isRecording,
+    isInitializing, isPlaying, isRegenerating, isRecording, isBroadcastActive,
     loadingText: isInitializing ? 'Initializing...' : (isInitialized ? 'Ready' : 'Click to initialize audio'),
-    handlePlayPause, handleRegenerate, handleToggleRecording, handleSaveMasterpiece,
+    handlePlayPause, handleRegenerate, handleToggleRecording, handleToggleBroadcast, handleSaveMasterpiece,
     drumSettings, setDrumSettings: handleDrumSettingsChange,
     instrumentSettings, setInstrumentSettings: handleInstrumentChange,
     handleBassTechniqueChange, handleVolumeChange,

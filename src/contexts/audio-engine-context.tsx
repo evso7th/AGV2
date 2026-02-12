@@ -31,6 +31,7 @@ import { buildMultiInstrument } from '@/lib/instrument-factory';
 import { useFirestore, useFirebase, initiateAnonymousSignIn } from '@/firebase';
 import { collection, query, limit, getDocs, orderBy } from 'firebase/firestore';
 import { saveMasterpiece } from '@/lib/firebase-service';
+import { BroadcastEngine } from '@/lib/broadcast-engine';
 
 export function noteToMidi(note: string): number {
     return new (Tone.Frequency as any)(note).toMidi();
@@ -75,6 +76,7 @@ interface AudioEngineContextType {
   isPlaying: boolean;
   useMelodyV2: boolean;
   isRecording: boolean;
+  isBroadcastActive: boolean;
   initialize: () => Promise<boolean>;
   setIsPlaying: (playing: boolean) => void;
   updateSettings: (settings: Partial<WorkerSettings>) => void;
@@ -89,6 +91,7 @@ interface AudioEngineContextType {
   toggleMelodyEngine: () => void;
   startRecording: () => void;
   stopRecording: () => void;
+  toggleBroadcast: () => void;
   getWorker: () => Worker | null;
 }
 
@@ -104,9 +107,10 @@ export const useAudioEngine = () => {
 export const AudioEngineProvider = ({ children }: { children: React.ReactNode }) => {
   const [isInitialized, setIsInitialized] = useState(false);
   const [isInitializing, setIsInitializing] = useState(false);
-  const [isPlaying, setIsPlaying] = useState(false);
+  const [isPlaying, setIsPlayingState] = useState(false);
   const [useMelodyV2, setUseMelodyV2] = useState(false);
   const [isRecording, setIsRecording] = useState(false);
+  const [isBroadcastActive, setIsBroadcastActive] = useState(false);
   
   const firebase = useFirebase();
   const workerRef = useRef<Worker | null>(null);
@@ -133,8 +137,10 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
   const cs80SamplerRef = useRef<CS80GuitarSampler | null>(null);
   
   const masterGainNodeRef = useRef<GainNode | null>(null);
+  const speakerGainNodeRef = useRef<GainNode | null>(null);
   const recorderDestinationRef = useRef<MediaStreamAudioDestinationNode | null>(null);
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
+  const broadcastEngineRef = useRef<BroadcastEngine | null>(null);
   const recordedChunksRef = useRef<Blob[]>([]);
 
   const gainNodesRef = useRef<Record<Exclude<InstrumentPart, 'pads' | 'effects'>, GainNode | null>>({
@@ -192,6 +198,29 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
       toast({ title: "Recording Stopped" });
     }
   }, [isRecording, toast]);
+
+  /**
+   * #ЗАЧЕМ: Переключение в режим "Радио".
+   * #ЧТО: Активирует BroadcastEngine и приглушает прямой выход AudioContext.
+   */
+  const toggleBroadcast = useCallback(() => {
+    if (!broadcastEngineRef.current || !speakerGainNodeRef.current) return;
+    
+    const nextActive = !isBroadcastActive;
+    setIsBroadcastActive(nextActive);
+
+    if (nextActive) {
+        // Включаем радио: приглушаем колонки, запускаем поток
+        speakerGainNodeRef.current.gain.setTargetAtTime(0, audioContextRef.current!.currentTime, 0.1);
+        broadcastEngineRef.current.start();
+        toast({ title: "Broadcast Mode ON", description: "Audio is routed through system player buffer." });
+    } else {
+        // Выключаем радио: включаем колонки, останавливаем поток
+        speakerGainNodeRef.current.gain.setTargetAtTime(1, audioContextRef.current!.currentTime, 0.1);
+        broadcastEngineRef.current.stop();
+        toast({ title: "Broadcast Mode OFF", description: "Switched back to direct AudioContext output." });
+    }
+  }, [isBroadcastActive, toast]);
 
   const resetWorkerCallback = useCallback(() => {
     if (workerRef.current) {
@@ -324,10 +353,8 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
                     }
 
                     if(events && barDuration && settingsRef.current && barCount !== undefined){
-                        // #ЗАЧЕМ: Мониторинг "Здоровья Буфера" (Buffer Health).
-                        // #ЧТО: Если запас времени сокращается критически (дрейф или лаг), выводим предупреждение.
                         const bufferHealth = nextBarTimeRef.current - audioContextRef.current!.currentTime;
-                        if (bufferHealth < 0.25) { // Менее 250мс запаса
+                        if (bufferHealth < 0.25) { 
                             console.warn(`%c[CHRONOS] BUFFER LOW! Health: ${Math.round(bufferHealth * 1000)}ms. High scheduling jitter risk.`, 'color: #f87171; font-weight: bold;');
                         }
 
@@ -367,14 +394,24 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
         if (audioContextRef.current.state === 'suspended') await audioContextRef.current.resume();
         const context = audioContextRef.current;
         
-        // #ЗАЧЕМ: Увеличение "буферной подушки" для идеальной бесшовности.
-        // #ЧТО: Сдвиг времени старта на 1000мс вперед (Safe Horizon).
         nextBarTimeRef.current = context.currentTime + 1.0; 
 
         if (!masterGainNodeRef.current) {
-            masterGainNodeRef.current = context.createGain(); masterGainNodeRef.current.connect(context.destination);
-            recorderDestinationRef.current = context.createMediaStreamDestination(); masterGainNodeRef.current.connect(recorderDestinationRef.current);
+            masterGainNodeRef.current = context.createGain();
+            
+            // #ЗАЧЕМ: Маршрутизация для Broadcast Mode.
+            // #ЧТО: masterGain -> speakerGain -> destination. 
+            //      Это позволяет приглушать прямой звук без остановки записи/вещания.
+            speakerGainNodeRef.current = context.createGain();
+            masterGainNodeRef.current.connect(speakerGainNodeRef.current);
+            speakerGainNodeRef.current.connect(context.destination);
+
+            recorderDestinationRef.current = context.createMediaStreamDestination(); 
+            masterGainNodeRef.current.connect(recorderDestinationRef.current);
+
+            broadcastEngineRef.current = new BroadcastEngine(context, recorderDestinationRef.current.stream);
         }
+
         if (!gainNodesRef.current.bass) {
             const parts: any[] = ['bass', 'melody', 'accompaniment', 'drums', 'sparkles', 'piano', 'violin', 'flute', 'guitarChords', 'acousticGuitarSolo', 'blackAcoustic', 'sfx', 'harmony', 'telecaster', 'darkTelecaster', 'cs80', 'pianoAccompaniment'];
             parts.forEach(part => { gainNodesRef.current[part] = context.createGain(); gainNodesRef.current[part]!.connect(masterGainNodeRef.current!); });
@@ -424,15 +461,24 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
   }, []);
   
   const setIsPlayingCallback = useCallback((playing: boolean) => {
-    setIsPlaying(playing);
+    setIsPlayingState(playing);
     if (!isInitialized || !workerRef.current || !audioContextRef.current) return;
     if (playing) {
         if (audioContextRef.current.state === 'suspended') audioContextRef.current.resume();
         stopAllSounds(); 
-        // #ЗАЧЕМ: Безопасный запуск с 1-секундным горизонтом планирования.
         nextBarTimeRef.current = audioContextRef.current.currentTime + 1.0; 
         workerRef.current.postMessage({ command: 'start' }); scheduleNextImpulse();
-    } else { stopAllSounds(); workerRef.current.postMessage({ command: 'stop' }); }
+    } else { 
+        stopAllSounds(); 
+        workerRef.current.postMessage({ command: 'stop' }); 
+        if (broadcastEngineRef.current?.isActive()) {
+            broadcastEngineRef.current.stop();
+            setIsBroadcastActive(false);
+            if (speakerGainNodeRef.current) {
+                speakerGainNodeRef.current.gain.setTargetAtTime(1, audioContextRef.current.currentTime, 0.1);
+            }
+        }
+    }
   }, [isInitialized, stopAllSounds, scheduleNextImpulse]);
 
   const setVolumeCallback = useCallback((part: InstrumentPart, volume: number) => {
@@ -452,12 +498,12 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
   
   return (
     <AudioEngineContext.Provider value={{
-        isInitialized, isInitializing, isPlaying, useMelodyV2, isRecording, initialize,
+        isInitialized, isInitializing, isPlaying, useMelodyV2, isRecording, isBroadcastActive, initialize,
         setIsPlaying: setIsPlayingCallback, updateSettings: updateSettingsCallback,
         resetWorker: resetWorkerCallback, setVolume: setVolumeCallback, setInstrument: setInstrumentCallback,
         setBassTechnique: (t) => {}, setTextureSettings: setTextureSettingsCallback,
         setEQGain: (i, g) => {}, startMasterFadeOut: (d) => {}, cancelMasterFadeOut: () => {},
-        toggleMelodyEngine, startRecording, stopRecording, getWorker
+        toggleMelodyEngine, startRecording, stopRecording, toggleBroadcast, getWorker
     }}>
       {children}
     </AudioEngineContext.Provider>
