@@ -1,4 +1,3 @@
-
 'use client';
 
 import React, { createContext, useContext, useState, useRef, useCallback, useEffect } from 'react';
@@ -264,13 +263,13 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
     if (!isInitialized) return;
     if (part === 'accompaniment') {
       if(useMelodyV2 && accompanimentManagerV2Ref.current) {
-        accompanimentManagerV2Ref.current.setInstrument(name);
+        await accompanimentManagerV2Ref.current.setInstrument(name);
       } else if (accompanimentManagerRef.current) {
         accompanimentManagerRef.current.setInstrument(name);
       }
     } else if (part === 'melody') {
         if(useMelodyV2 && melodyManagerV2Ref.current) {
-            melodyManagerV2Ref.current.setInstrument(name);
+            await melodyManagerV2Ref.current.setInstrument(name);
         } else if (melodyManagerRef.current) {
             melodyManagerRef.current.setInstrument(name);
         }
@@ -353,13 +352,21 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
                     }
 
                     if(events && barDuration && settingsRef.current && barCount !== undefined){
-                        const bufferHealth = nextBarTimeRef.current - audioContextRef.current!.currentTime;
-                        if (bufferHealth < 0.25) { 
-                            console.warn(`%c[CHRONOS] BUFFER LOW! Health: ${Math.round(bufferHealth * 1000)}ms. High scheduling jitter risk.`, 'color: #f87171; font-weight: bold;');
+                        // #ЗАЧЕМ: Система Buffer Health Guard (План №366).
+                        // #ЧТО: Предотвращение планирования "в прошлом" (Scheduling in the past).
+                        let scheduleTime = nextBarTimeRef.current;
+                        const now = audioContextRef.current!.currentTime;
+                        const bufferHealth = scheduleTime - now;
+
+                        if (bufferHealth < 0.1) { 
+                            console.warn(`%c[CHRONOS] BUFFER STARVATION! Health: ${Math.round(bufferHealth * 1000)}ms. Forcing Resync.`, 'color: #f87171; font-weight: bold;');
+                            // Прыжок веры: переносим планирование в будущее
+                            scheduleTime = now + 0.5;
+                            nextBarTimeRef.current = scheduleTime;
                         }
 
-                        scheduleEvents(events, nextBarTimeRef.current, settingsRef.current.bpm, barCount, settingsRef.current.composerControlsInstruments ? instrumentHints : undefined);
-                        nextBarTimeRef.current += barDuration;
+                        scheduleEvents(events, scheduleTime, settingsRef.current.bpm, barCount, settingsRef.current.composerControlsInstruments ? instrumentHints : undefined);
+                        nextBarTimeRef.current = scheduleTime + barDuration;
                     }
                 } else if (type === 'HARMONY_SCORE_READY' && payload && 'events' in payload) {
                      const { events, barDuration, instrumentHints, barCount } = payload;
@@ -392,7 +399,6 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
 
         if (!audioContextRef.current) {
             // #ЗАЧЕМ: Переход на 48кГц для идеальной совместимости с Opus и Bluetooth.
-            // #ЧТО: sampleRate изменен с 44100 на 48000.
             audioContextRef.current = new (window.AudioContext || (window as any).webkitAudioContext)({ 
                 sampleRate: 48000, 
                 latencyHint: 'interactive' 
@@ -401,6 +407,8 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
         if (audioContextRef.current.state === 'suspended') await audioContextRef.current.resume();
         const context = audioContextRef.current;
         
+        // #ЗАЧЕМ: Увеличение стартового запаса (Resync Margin).
+        // #ЧТО: Теперь сюита стартует через 1.0 сек, гарантируя чистую первую ноту.
         nextBarTimeRef.current = context.currentTime + 1.0; 
 
         if (!masterGainNodeRef.current) {
@@ -470,6 +478,7 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
     if (playing) {
         if (audioContextRef.current.state === 'suspended') audioContextRef.current.resume();
         stopAllSounds(); 
+        // При старте даем большой запас (1.0 сек)
         nextBarTimeRef.current = audioContextRef.current.currentTime + 1.0; 
         workerRef.current.postMessage({ command: 'start' }); scheduleNextImpulse();
     } else { 

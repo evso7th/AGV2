@@ -1,4 +1,3 @@
-
 /**
  * #ЗАЧЕМ: Реализация "Вещательного Бункера" V2.
  * #ЧТО: 1. Внедрен "Буфер Разгона" (chunksAppended) для устранения треска.
@@ -55,7 +54,7 @@ export class BroadcastEngine {
         });
 
         this.mediaRecorder.ondataavailable = async (e) => {
-            if (e.data.size > 0 && this.sourceBuffer) {
+            if (e.data.size > 0) {
                 const buffer = await e.data.arrayBuffer();
                 this.queue.push(buffer);
                 this.processQueue();
@@ -106,7 +105,9 @@ export class BroadcastEngine {
         }
 
         if (this.mediaSource && this.mediaSource.readyState === 'open') {
-            this.mediaSource.endOfStream();
+            try {
+                this.mediaSource.endOfStream();
+            } catch (e) {}
         }
 
         this.mediaRecorder = null;
