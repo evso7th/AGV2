@@ -4,11 +4,7 @@
  * #ЧТО: Функции для получения гамм, инверсий, ретроградов и гуманизации.
  *       Внедрена система цепей Маркова для генерации гармонического скелета.
  *       ДОБАВЛЕНО: Математика MusiNum для фрактальной детерминированности.
- * #ОБНОВЛЕНО (ПЛАН №238): Реализован алгоритм "Lick -> Transform -> Crossover -> Sowing".
- *       Теперь наследование (Breeding) влияет на "посев" всей структуры пьесы.
- * #ОБНОВЛЕНО (ПЛАН №241): Добавлена глубокая генетическая телеметрия (логирование эволюции).
- * #ОБНОВЛЕНО (ПЛАН №242): Трансформация лика перенесена в момент Рождения (Epoch 0).
- * #ОБНОВЛЕНО (ПЛАН №253): Реализовано битовое скрещивание (Bitwise Crossover) для повышения качества наследования.
+ * #ОБНОВЛЕНО (ПЛАН №374): Внедрена версия v242 — "Genetic Evolution & Birth Transformation".
  */
 
 import type { 
@@ -23,7 +19,7 @@ import type {
     BluesSoloPhrase,
     BluesRiffDegree
 } from '@/types/music';
-import { BLUES_SOLO_PLANS, BLUES_SOLO_LICKS } from './assets/blues_guitar_solo';
+import { BLUES_SOLO_LICKS, BLUES_SOLO_PLANS } from './assets/blues_guitar_solo';
 
 export const DEGREE_TO_SEMITONE: Record<string, number> = {
     'R': 0, 'b2': 1, '2': 2, 'b3': 3, '3': 4, '4': 5, '#4': 6, 'b5': 6, '5': 7,
@@ -35,13 +31,11 @@ const SEMITONE_TO_DEGREE: Record<number, BluesRiffDegree> = {
     8: 'b6', 9: '6', 10: 'b7', 11: '7', 12: 'R+8', 14: '9', 17: '11'
 };
 
-// --- GLOBAL LICK ROTATION ---
 let LICK_HISTORY: string[] = [];
 const MAX_HISTORY_SIZE = 10;
 
 export function calculateMusiNum(step: number, base: number = 2, start: number = 0, modulo: number = 8): number {
     if (!isFinite(step) || !isFinite(start) || !isFinite(base) || !isFinite(modulo) || modulo <= 0 || base <= 1) return 0;
-    
     let num = Math.abs(Math.floor(step + start));
     let sum = 0;
     while (num > 0) {
@@ -51,10 +45,6 @@ export function calculateMusiNum(step: number, base: number = 2, start: number =
     return sum % modulo;
 }
 
-/**
- * #ЗАЧЕМ: Движок Генетической Рекомбинации Ликов.
- * #ЧТО: Трансформирует базовый лик один раз при зачатии.
- */
 export function transformLick(lick: BluesSoloPhrase, seed: number, epoch: number, isBirth: boolean = false): BluesSoloPhrase {
     const transformed = JSON.parse(JSON.stringify(lick)) as BluesSoloPhrase;
     const transformType = calculateMusiNum(epoch, 3, seed, 4);
@@ -62,7 +52,6 @@ export function transformLick(lick: BluesSoloPhrase, seed: number, epoch: number
 
     switch (transformType) {
         case 1: // Inversion
-            console.log(`%c${logPrefix} INVERSION applied to lick`, 'color: #32CD32');
             const firstMidi = DEGREE_TO_SEMITONE[transformed[0].deg] || 0;
             transformed.forEach(n => {
                 const currentMidi = DEGREE_TO_SEMITONE[n.deg] || 0;
@@ -72,39 +61,26 @@ export function transformLick(lick: BluesSoloPhrase, seed: number, epoch: number
             });
             break;
         case 2: // Retrograde
-            console.log(`%c${logPrefix} RETROGRADE applied to lick`, 'color: #32CD32');
             return [...transformed].reverse().map((n, i) => ({ ...n, t: (12 - (transformed[transformed.length-1-i].t + transformed[transformed.length-1-i].d)) % 12 }));
         case 3: // Transposition
-            console.log(`%c${logPrefix} TRANSPOSITION applied to lick`, 'color: #32CD32');
             const shift = [0, 3, 5, 7, 10][calculateMusiNum(seed, 5, epoch, 5)];
             transformed.forEach(n => {
                 const currentMidi = DEGREE_TO_SEMITONE[n.deg] || 0;
                 n.deg = SEMITONE_TO_DEGREE[(currentMidi + shift) % 12] || 'R';
             });
             break;
-        default:
-            console.log(`%c${logPrefix} RHYTHMIC JITTER applied to lick`, 'color: #32CD32');
+        default: // Jitter
             transformed.forEach(n => { n.t = (n.t + calculateMusiNum(epoch, 2, seed, 2)) % 12; });
             break;
     }
     return transformed;
 }
 
-/**
- * #ЗАЧЕМ: Генетическое скрещивание семян.
- * #ЧТО: Использует битовую маску для смешивания энтропии двух родителей.
- *       Это более эффективный способ наследования структурных параметров, чем усреднение.
- */
 export function crossoverDNA(seedA: number, ancestor: any): number {
     if (!ancestor || !ancestor.seed) return seedA;
     const seedB = Number(ancestor.seed);
-    
-    // Битовое скрещивание: 0x55555555 = 01010101...
-    // Позволяет наследовать чередующиеся биты от каждого родителя.
     const mask = 0x55555555;
     const combined = (seedA & mask) | (seedB & ~mask);
-    
-    // Гарантируем положительное число и добавляем смещение на основе времени
     return Math.abs(combined) % 2147483647;
 }
 
@@ -164,36 +140,7 @@ export function createHarmonyAxiom(chord: GhostChord, mood: Mood, genre: Genre, 
     return events;
 }
 
-export function getScaleForMood(mood: Mood, genre?: Genre): number[] {
-  const E1 = 28;
-  let baseScale: number[];
-  if (genre === 'blues') {
-      baseScale = [0, 3, 5, 6, 7, 10]; 
-  } else {
-      switch (mood) {
-        case 'joyful': baseScale = [0, 2, 4, 5, 7, 9, 11]; break;
-        case 'epic': case 'enthusiastic': baseScale = [0, 2, 4, 6, 7, 9, 11]; break;
-        case 'dreamy': baseScale = [0, 2, 4, 7, 9]; break;
-        case 'contemplative': case 'calm': baseScale = [0, 2, 4, 5, 7, 9, 10]; break;
-        case 'melancholic': baseScale = [0, 2, 3, 5, 7, 9, 10]; break;
-        case 'dark': case 'gloomy': baseScale = [0, 2, 3, 5, 7, 8, 10]; break;
-        case 'anxious': baseScale = [0, 1, 3, 5, 6, 8, 10]; break;
-        default: baseScale = [0, 2, 3, 5, 7, 8, 10]; break;
-      }
-  }
-  const fullScale: number[] = [];
-  for (let octave = 0; octave < 5; octave++) {
-      for (const note of baseScale) { fullScale.push(E1 + (octave * 12) + note); }
-  }
-  return fullScale;
-}
-
-/**
- * #ЗАЧЕМ: Генератор ДНК сюиты V242 — "Birth Transformation Realignment".
- * #ЧТО: Лик трансформируется один раз при рождении (Epoch 0).
- */
 export function generateSuiteDNA(totalBars: number, mood: Mood, initialSeed: number, originalRandom: any, genre: Genre, blueprintParts: any[], ancestor?: any): SuiteDNA {
-    // 1. BIRTH SELECTION
     let seedLickId: string | undefined;
     let seedLickNotes: BluesSoloPhrase | undefined;
 
@@ -204,45 +151,18 @@ export function generateSuiteDNA(totalBars: number, mood: Mood, initialSeed: num
         );
         const pool = candidates.length > 0 ? candidates : Object.keys(BLUES_SOLO_LICKS);
         seedLickId = pool[calculateMusiNum(initialSeed, 7, 42, pool.length)];
-        
         LICK_HISTORY.push(seedLickId);
         if (LICK_HISTORY.length > MAX_HISTORY_SIZE) LICK_HISTORY.shift();
-        
-        if (seedLickId) {
-            console.log(`%c[GENEPOOL] BIRTH SELECTION: Lick Seed "${seedLickId}" picked.`, 'color: #FFD700; font-weight: bold;');
-            
-            // 2. BIRTH TRANSFORMATION (One-time only!)
-            const rawLick = BLUES_SOLO_LICKS[seedLickId].phrase;
-            seedLickNotes = transformLick(rawLick, initialSeed, 0, true);
-        }
+        if (seedLickId) seedLickNotes = transformLick(BLUES_SOLO_LICKS[seedLickId].phrase, initialSeed, 0, true);
     }
 
-    // 3. BREEDING (Genetic Crossover)
     const finalSeed = ancestor ? crossoverDNA(initialSeed, ancestor) : initialSeed;
-    if (ancestor) {
-        console.log(`%c[GENEPOOL] BREEDING: Parent A (Initial: ${initialSeed}) + Parent B (Ancestor: ${ancestor.seed}) -> Final Seed: ${finalSeed}`, 'color: #ff00ff; font-weight: bold;');
-    }
-    
-    // 4. SOWING
-    console.log(`%c[GENEPOOL] SOWING: Seeding structural parameters using Final Seed ${finalSeed}.`, 'color: #4ade80; font-weight: bold;');
-    
-    const sowingRandom = {
-        state: finalSeed,
-        next: function() {
-            this.state = (this.state * 1664525 + 1013904223) % Math.pow(2, 32);
-            return this.state / Math.pow(2, 32);
-        }
-    };
+    const sowingRandom = { state: finalSeed, next: function() { this.state = (this.state * 1664525 + 1013904223) % Math.pow(2, 32); return this.state / Math.pow(2, 32); } };
 
     const harmonyTrack: GhostChord[] = [];
-    const baseKeyNote = 24 + Math.floor(sowingRandom.next() * 12);
-    const key = baseKeyNote;
+    const key = 24 + Math.floor(sowingRandom.next() * 12);
     
-    const grids = {
-        classic: [0, 0, 0, 0, 5, 5, 0, 0, 7, 5, 0, 7],
-        'quick-change': [0, 5, 0, 0, 5, 5, 0, 0, 7, 5, 0, 7],
-        'minor-blues': [0, 0, 0, 0, 5, 5, 0, 0, 8, 7, 0, 7]
-    };
+    const grids = { classic: [0, 0, 0, 0, 5, 5, 0, 0, 7, 5, 0, 7], 'quick-change': [0, 5, 0, 0, 5, 5, 0, 0, 7, 5, 0, 7], 'minor-blues': [0, 0, 0, 0, 5, 5, 0, 0, 8, 7, 0, 7] };
     const gridTypes: (keyof typeof grids)[] = ['classic', 'quick-change', 'minor-blues'];
     const bluesGridType = gridTypes[calculateMusiNum(finalSeed, 3, finalSeed, 3)];
 
@@ -261,12 +181,7 @@ export function generateSuiteDNA(totalBars: number, mood: Mood, initialSeed: num
             while (currentBarInPart < partDuration) {
                 for (let i = 0; i < 12 && currentBarInPart < partDuration; i++) {
                     const offset = progression[i];
-                    harmonyTrack.push({
-                        rootNote: key + offset,
-                        chordType: (offset === 7 || offset === 8) ? 'major' : 'minor',
-                        bar: partStartBar + currentBarInPart,
-                        durationBars: 1
-                    });
+                    harmonyTrack.push({ rootNote: key + offset, chordType: (offset === 7 || offset === 8) ? 'major' : 'minor', bar: partStartBar + currentBarInPart, durationBars: 1 });
                     currentBarInPart++;
                 }
             }
@@ -283,11 +198,7 @@ export function generateSuiteDNA(totalBars: number, mood: Mood, initialSeed: num
         accumulatedBars += partDuration;
     });
 
-    const possibleTempos = {
-        joyful: [115, 140], enthusiastic: [125, 155], contemplative: [78, 92],
-        dreamy: [72, 86], calm: [68, 82], melancholic: [64, 72],
-        gloomy: [68, 78], dark: [64, 72], epic: [120, 145], anxious: [88, 105],
-    };
+    const possibleTempos = { joyful: [115, 140], enthusiastic: [125, 155], contemplative: [78, 92], dreamy: [72, 86], calm: [68, 82], melancholic: [64, 72], gloomy: [68, 78], dark: [64, 72], epic: [120, 145], anxious: [88, 105] };
     const [minTempo, maxTempo] = (possibleTempos as any)[mood] || [60, 80];
     const baseTempo = minTempo + Math.floor(sowingRandom.next() * (maxTempo - minTempo + 1));
 
@@ -295,22 +206,8 @@ export function generateSuiteDNA(totalBars: number, mood: Mood, initialSeed: num
     const allPlanIds = Object.keys(BLUES_SOLO_PLANS).filter(id => !id.includes('OUTRO'));
     const shuffledPlanIds = [...allPlanIds].sort(() => sowingRandom.next() - 0.5);
     let planIndex = 0;
-    blueprintParts.forEach((part: any) => {
-        if (part.instrumentRules?.melody?.source === 'blues_solo') {
-            soloPlanMap.set(part.id, shuffledPlanIds[planIndex % shuffledPlanIds.length]);
-            planIndex++;
-        }
-    });
+    blueprintParts.forEach((part: any) => { if (part.instrumentRules?.melody?.source === 'blues_solo') { soloPlanMap.set(part.id, shuffledPlanIds[planIndex % shuffledPlanIds.length]); planIndex++; } });
 
     const tensionMap = generateTensionMap(finalSeed, totalBars, mood);
-    const anchorPool = ['R', 'b3', '4', '5', 'b7'];
-    const thematicAnchors = [
-        anchorPool[calculateMusiNum(finalSeed, 3, 0, anchorPool.length)],
-        anchorPool[anchorPool.length - 1 - calculateMusiNum(finalSeed, 5, 1, anchorPool.length)]
-    ];
-
-    return { 
-        harmonyTrack, baseTempo, rhythmicFeel: 'shuffle', bassStyle: 'walking', drumStyle: 'shuffle_A', 
-        soloPlanMap, tensionMap, bluesGridType, thematicAnchors, seedLickId, seedLickNotes
-    };
+    return { harmonyTrack, baseTempo, rhythmicFeel: 'shuffle', bassStyle: 'walking', drumStyle: 'shuffle_A', soloPlanMap, tensionMap, bluesGridType, seedLickId, seedLickNotes };
 }

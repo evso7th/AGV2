@@ -1,4 +1,4 @@
-import type { FractalEvent, Mood, Genre, InstrumentPart, InstrumentHints, GhostChord, SuiteDNA, NavigationInfo, MusicBlueprint } from '@/types/music';
+import type { FractalEvent, Mood, Genre, InstrumentPart, InstrumentHints, GhostChord, SuiteDNA, NavigationInfo, MusicBlueprint, Technique } from '@/types/music';
 import { BlueprintNavigator } from './blueprint-navigator';
 import { getBlueprint } from './blueprints';
 import { BluesBrain } from './blues-brain';
@@ -21,7 +21,7 @@ function seededRandom(seed: number) {
         while (currentIndex !== 0) {
             randomIndex = Math.floor(next() * currentIndex);
             currentIndex--;
-            [newArray[currentIndex], newArray[randomIndex]] = [newArray[currentIndex], newArray[randomIndex]];
+            [newArray[currentIndex], newArray[randomIndex]] = [newArray[randomIndex], newArray[currentIndex]];
         }
         return newArray;
     }
@@ -64,6 +64,9 @@ export class FractalMusicEngine {
   // #ЗАЧЕМ: Память ансамбля. Гарантирует, что музыкант не уйдет со сцены.
   private activatedParts: Set<InstrumentPart> = new Set();
 
+  // #ЗАЧЕМ: Память "Тематических Крючков" (Thematic Memory).
+  private hookLibrary: { events: FractalEvent[], root: number }[] = [];
+
   constructor(config: EngineConfig, blueprint: MusicBlueprint) {
     this.config = { ...config };
     this.blueprint = blueprint;
@@ -81,7 +84,8 @@ export class FractalMusicEngine {
   public initialize(force: boolean = false) {
     if (this.isInitialized && !force) return;
 
-    this.activatedParts.clear(); // Сброс состава при новой сюите
+    this.activatedParts.clear(); 
+    this.hookLibrary = [];
 
     this.suiteDNA = generateSuiteDNA(
         this.blueprint.structure.totalDuration.preferredBars, 
@@ -117,8 +121,6 @@ export class FractalMusicEngine {
     const instrumentHints: InstrumentHints = { summonProgress: {} };
     const stages = navInfo.currentPart.stagedInstrumentation;
 
-    // #ЗАЧЕМ: Реализация Энергетической Мотивации (План №297).
-    // #ЧТО: Если мы в "боевой" части, напряжение не может упасть ниже порога жизни (0.4).
     let tension = this.suiteDNA?.tensionMap?.[this.epoch % (this.suiteDNA.tensionMap.length || 1)] ?? 0.5;
     const isMainZone = navInfo.currentPart.id.includes('MAIN') || navInfo.currentPart.id.includes('PEAK') || navInfo.currentPart.id.includes('ANTHEM');
     if (isMainZone) {
@@ -141,27 +143,20 @@ export class FractalMusicEngine {
 
         Object.entries(currentStage.instrumentation).forEach(([partStr, rule]: [any, any]) => {
             const part = partStr as InstrumentPart;
-            
-            // #ЗАЧЕМ: Протокол "Липкого Ансамбля" (Ensemble Persistence).
-            // Если инструмент еще не активирован - бросаем кубик.
             if (!this.activatedParts.has(part)) {
                 let effectiveChance = rule.activationChance;
                 if (part === 'sfx' || part === 'sparkles') {
                     effectiveChance = rule.activationChance * (1.0 - tension);
                 }
-
                 if (this.random.next() < effectiveChance) {
                     this.activatedParts.add(part);
                 }
             }
 
-            // Если инструмент в списке активированных - он ОБЯЗАН играть.
             if (this.activatedParts.has(part)) {
-                // Выбираем тембр (пресет) заново каждый такт для поддержки морфинга
                 const timbre = pickWeightedDeterministic(rule.instrumentOptions, this.config.seed, this.epoch, 500);
                 (instrumentHints as any)[part] = timbre;
                 instrumentHints.summonProgress![part] = 1.0; 
-                
                 if (part === 'sparkles' && rule.instrumentOptions[0]?.category) {
                     (instrumentHints as any).sparkleCategory = rule.instrumentOptions[0].category;
                 }
@@ -211,6 +206,23 @@ export class FractalMusicEngine {
         allEvents = this.bluesBrain.generateBar(this.epoch, currentChord, navInfo, this.suiteDNA, instrumentHints, this.lastEvents);
     } else {
         allEvents = createHarmonyAxiom(currentChord, this.config.mood, this.config.genre, this.random, this.epoch);
+    }
+
+    // --- Dynamic Hook Logic ---
+    if (this.epoch > 12 && this.epoch < 60 && allEvents.some(e => e.type === 'melody') && this.hookLibrary.length < 3) {
+        if (this.random.next() < 0.15) {
+            const mEvents = allEvents.filter(e => e.type === 'melody');
+            this.hookLibrary.push({ events: JSON.parse(JSON.stringify(mEvents)), root: currentChord.rootNote });
+        }
+    }
+    if (this.epoch > 72 && this.hookLibrary.length > 0 && this.random.next() < 0.25) {
+        const hook = this.hookLibrary[this.random.nextInt(this.hookLibrary.length)];
+        const reprise = hook.events.map(e => ({
+            ...e,
+            note: e.note - hook.root + currentChord.rootNote,
+            weight: Math.min(1.0, e.weight + 0.05)
+        }));
+        allEvents = [...allEvents.filter(e => e.type !== 'melody'), ...reprise];
     }
 
     return { events: allEvents };
