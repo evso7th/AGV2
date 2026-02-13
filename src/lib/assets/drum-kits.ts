@@ -84,6 +84,16 @@ export const DRUM_KITS: DrumKitLibrary = {
     // AMBIENT KITS
     // =========================================================================
     ambient: {
+        // #ЗАЧЕМ: Реализация "Имперского Звука" для меланхолии.
+        // #ЧТО: Специфический набор из томов Sonor Classix и колокольных райдов.
+        melancholic: {
+            kick: ['kick_drum6', 'drum_kick_reso'],
+            snare: ['drum_snare_ghost_note'],
+            hihat: ['drum_25693__walter_odington__hackney-hat-1'],
+            ride: ['drum_cymbal_bell1', 'drum_cymbal_bell2'],
+            crash: ['drum_crash2'],
+            perc: ['drum_Sonor_Classix_High_Tom', 'drum_Sonor_Classix_Low_Tom', 'drum_Sonor_Classix_Mid_Tom', 'drum_bongo_pvc-tube-01', 'drum_Bell_-_Soft']
+        },
         // "Безопасный" кит для всех интро. НЕТ крэшей, НЕТ райдов.
         intro: {
             kick: ['drum_kick_soft', 'drum_cajon_kick'],
@@ -111,122 +121,26 @@ export const DRUM_KITS: DrumKitLibrary = {
             crash: ['drum_crash2'], // Редкий, гулкий крэш
             perc: ['drum_lowtom', 'perc-007', 'perc-015', 'drum_Bell_-_Gong']
         }
-        // Другие настроения для ambient можно добавить здесь
     },
 
     // =========================================================================
     // BLUES KITS
     // =========================================================================
     blues: {
-        // Стандартный кит для чикагского шаффла
-        contemplative: { // Используем neutral/contemplative как базу
-            kick: ALL_KICKS,
-            snare: ALL_SNARES,
-            hihat: ALL_HIHATS,
-            ride: ALL_RIDES,
-            crash: ['drum_crash2'],
-            perc: ['drum_tom_mid', 'drum_tom_low']
-        },
-        // Кит для медленного, меланхоличного блюза
+        contemplative: { kick: ALL_KICKS, snare: ALL_SNARES, hihat: ALL_HIHATS, ride: ALL_RIDES, crash: ['drum_crash2'], perc: ['drum_tom_mid', 'drum_tom_low'] },
         melancholic: bluesMelancholicMaster,
-        // #ИСПРАВЛЕНО (ПЛАН 766): Полностью пересобран для классического блюз-рока без "железа".
-        blues_epic: {
-            kick: ALL_KICKS,
-            snare: ALL_SNARES,
-            hihat: ALL_HIHATS,
-            ride: [], // НИКАКИХ РАЙДОВ
-            crash: [], // НИКАКИХ КРЭШЕЙ
-            perc: ['drum_tom_mid', 'drum_tom_low'] // Только томы для филлов
-        },
-        blues_dark: {
-            kick: ['drum_kick_reso'],
-            snare: ['drum_snare_off'],
-            hihat: ['drum_closed_hi_hat_ghost'],
-            ride: ['drum_a-ride1'],
-            crash: [],
-            perc: ['drum_lowtom', 'drum_Sonor_Classix_Low_Tom']
-        },
+        blues_epic: { kick: ALL_KICKS, snare: ALL_SNARES, hihat: ALL_HIHATS, ride: [], crash: [], perc: ['drum_tom_mid', 'drum_tom_low'] },
+        blues_dark: { kick: ['drum_kick_reso'], snare: ['drum_snare_off'], hihat: ['drum_closed_hi_hat_ghost'], ride: ['drum_a-ride1'], crash: [], perc: ['drum_lowtom', 'drum_Sonor_Classix_Low_Tom'] },
         blues_melancholic_master: bluesMelancholicMaster,
-        // --- НОВЫЕ КИТЫ ДЛЯ WINTER BLUES (ПЛАН 1587) ---
-        winter_blues_prolog1: {
-            kick: ['drum_kick_reso'],
-            snare: [],
-            hihat: ['drum_25693__walter_odington__hackney-hat-1', 'drum_25694__walter_odington__hackney-hat-2'],
-            ride: [],
-            crash: [],
-            perc: ['perc-012', 'perc-013', 'perc-014', 'perc-015', 'drum_cowbell']
-        },
-        winter_blues_prolog2: {
-            kick: ['drum_kick_reso'],
-            snare: [],
-            hihat: ['drum_25693__walter_odington__hackney-hat-1', 'drum_25694__walter_odington__hackney-hat-2'],
-            ride: [],
-            crash: [],
-            perc: [
-                'drum_hightom_soft', 'drum_lowtom_soft', 'drum_midtom_soft',
-                'drum_Sonor_Classix_High_Tom', 'drum_Sonor_Classix_Low_Tom', 'drum_Sonor_Classix_Mid_Tom',
-                'perc-012', 'perc-013', 'perc-014', 'perc-015', 'drum_cowbell'
-            ]
-        },
-        winter_blues_prolog3: {
-            kick: ['drum_kick_reso'],
-            snare: ['drum_snare_ghost_note'],
-            hihat: ['drum_25693__walter_odington__hackney-hat-1', 'drum_25694__walter_odington__hackney-hat-2'],
-            ride: [],
-            crash: [],
-            perc: [
-                'drum_hightom_soft', 'drum_lowtom_soft', 'drum_midtom_soft',
-                'drum_Sonor_Classix_High_Tom', 'drum_Sonor_Classix_Low_Tom', 'drum_Sonor_Classix_Mid_Tom',
-                'perc-012', 'perc-013', 'perc-014', 'perc-015', 'drum_cowbell'
-            ]
-        },
-        dark_outro: {
-            kick: ['drum_kick_reso'],
-            snare: [],
-            hihat: [],
-            ride: [],
-            crash: [],
-            perc: [
-                'perc-012', 'perc-013', 'perc-014', 'perc-015',
-                'drum_Sonor_Classix_High_Tom',
-                'drum_Sonor_Classix_Low_Tom',
-                'drum_Sonor_Classix_Mid_Tom'
-            ]
-        }
-        // Другие настроения для blues можно добавить здесь
+        winter_blues_prolog1: { kick: ['drum_kick_reso'], snare: [], hihat: ['drum_25693__walter_odington__hackney-hat-1', 'drum_25694__walter_odington__hackney-hat-2'], ride: [], crash: [], perc: ['perc-012', 'perc-013', 'perc-014', 'perc-015', 'drum_cowbell'] },
+        winter_blues_prolog2: { kick: ['drum_kick_reso'], snare: [], hihat: ['drum_25693__walter_odington__hackney-hat-1', 'drum_25694__walter_odington__hackney-hat-2'], ride: [], crash: [], perc: [ 'drum_hightom_soft', 'drum_lowtom_soft', 'drum_midtom_soft', 'drum_Sonor_Classix_High_Tom', 'drum_Sonor_Classix_Low_Tom', 'drum_Sonor_Classix_Mid_Tom', 'perc-012', 'perc-013', 'perc-014', 'perc-015', 'drum_cowbell' ] },
+        winter_blues_prolog3: { kick: ['drum_kick_reso'], snare: ['drum_snare_ghost_note'], hihat: ['drum_25693__walter_odington__hackney-hat-1', 'drum_25694__walter_odington__hackney-hat-2'], ride: [], crash: [], perc: [ 'drum_hightom_soft', 'drum_lowtom_soft', 'drum_midtom_soft', 'drum_Sonor_Classix_High_Tom', 'drum_Sonor_Classix_Low_Tom', 'drum_Sonor_Classix_Mid_Tom', 'perc-012', 'perc-013', 'perc-014', 'perc-015', 'drum_cowbell' ] },
+        dark_outro: { kick: ['drum_kick_reso'], snare: [], hihat: [], ride: [], crash: [], perc: [ 'perc-012', 'perc-013', 'perc-014', 'perc-015', 'drum_Sonor_Classix_High_Tom', 'drum_Sonor_Classix_Low_Tom', 'drum_Sonor_Classix_Mid_Tom' ] }
     },
 
-    // =========================================================================
-    // TRANCE KITS
-    // =========================================================================
     trance: {
-        // Типичный кит для транса
-        melancholic: {
-            kick: ['drum_kick_drum6'],
-            snare: ['drum_snare', 'perc-009'],
-            hihat: ['drum_open_hh_top2', 'drum_closed_hi_hat_ghost'],
-            ride: [],
-            crash: ['drum_crash2'],
-            perc: ['perc-003', 'perc-008', 'perc-011']
-        },
-        intro: { // Безопасный кит для интро транса
-            kick: ['drum_kick_soft'],
-            snare: [],
-            hihat: ['drum_closed_hi_hat_ghost'],
-            ride: [],
-            crash: [],
-            perc: ['perc-003']
-        },
-        anxious: {
-            kick: ALL_KICKS,
-            snare: ALL_SNARES,
-            hihat: ALL_HIHATS,
-            ride: [],
-            crash: [ALL_CRASHES[0]],
-            perc: ALL_PERC,
-        }
-        // Другие настроения для trance можно добавить здесь
+        melancholic: { kick: ['drum_kick_drum6'], snare: ['drum_snare', 'perc-009'], hihat: ['drum_open_hh_top2', 'drum_closed_hi_hat_ghost'], ride: [], crash: ['drum_crash2'], perc: ['perc-003', 'perc-008', 'perc-011'] },
+        intro: { kick: ['drum_kick_soft'], snare: [], hihat: ['drum_closed_hi_hat_ghost'], ride: [], crash: [], perc: ['perc-003'] },
+        anxious: { kick: ALL_KICKS, snare: ALL_SNARES, hihat: ALL_HIHATS, ride: [], crash: [ALL_CRASHES[0]], perc: ALL_PERC, }
     }
-
-    // Другие жанры можно добавить здесь
 };
