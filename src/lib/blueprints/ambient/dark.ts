@@ -1,16 +1,16 @@
 import type { MusicBlueprint } from '@/types/music';
 
 /**
- * #ЗАЧЕМ: Блюпринт "Abyssal Ritual" (Dark Ambient v3.0).
- * #ЧТО: 1. Внедрена сценарная оркестровка с 3-мя сценами интро.
- *       2. Ударные вступают со 2-й сцены (5-й такт) — ритуальные гонги и томы.
- *       3. Темп 75 BPM для "нервного" кинематографического пульса.
- *       4. Полное доминирование Органа и Теремина в Мэйнах.
+ * #ЗАЧЕМ: Блюпринт "Abyssal Ritual" (Dark Ambient v4.0).
+ * #ЧТО: 1. Внедрена система 4-х стадий интро для работы "Лотереи Вступления".
+ *       2. Все 8 участников оркестра распределены по пулам активации.
+ *       3. Темп 75 BPM, лад E Phrygian.
+ *       4. Полное оркестровое присутствие в Мэйнах.
  */
 export const DarkAmbientBlueprint: MusicBlueprint = {
     id: 'dark_ambient',
     name: 'Abyssal Ritual',
-    description: 'A heavy, ritualistic journey into the deep Phrygian void. Cinematic and pulsing.',
+    description: 'A heavy, ritualistic journey with variable intro scenes and breathing orchestra.',
     mood: 'dark',
     musical: {
         key: { root: 'E', scale: 'phrygian', octave: 1 },
@@ -20,7 +20,6 @@ export const DarkAmbientBlueprint: MusicBlueprint = {
         tensionProfile: {
           type: 'plateau',
           peakPosition: 0.5,
-          // Тлеющее напряжение: 0.60 -> 0.80
           curve: (p) => 0.65 + 0.15 * Math.sin(p * Math.PI)
         }
     },
@@ -28,27 +27,34 @@ export const DarkAmbientBlueprint: MusicBlueprint = {
         totalDuration: { preferredBars: 156 },
         parts: [
           {
-            id: 'INTRO', name: 'DescentStages', duration: { percent: 8 }, // ~12 bars
+            id: 'INTRO', name: 'AwakeningLottery', duration: { percent: 10 }, // ~16 bars
             stagedInstrumentation: [
               {
-                duration: { percent: 33 }, // Bars 1-4
+                duration: { percent: 25 }, // Stage 1
                 instrumentation: {
                   bass: { activationChance: 1.0, instrumentOptions: [{ name: 'bass_ambient_dark', weight: 1.0 }] },
                   accompaniment: { activationChance: 1.0, instrumentOptions: [{ name: 'synth_cave_pad', weight: 1.0 }] }
                 }
               },
               {
-                duration: { percent: 33 }, // Bars 5-8
+                duration: { percent: 25 }, // Stage 2
                 instrumentation: {
                   drums: { activationChance: 1.0, instrumentOptions: [{ name: 'dark', weight: 1.0 }] },
                   pianoAccompaniment: { activationChance: 1.0, instrumentOptions: [{ name: 'piano', weight: 1.0 }] }
                 }
               },
               {
-                duration: { percent: 34 }, // Bars 9-12
+                duration: { percent: 25 }, // Stage 3
                 instrumentation: {
                   melody: { activationChance: 1.0, instrumentOptions: [{ name: 'organ_soft_jazz', weight: 0.7 }, { name: 'theremin', weight: 0.3 }] },
                   sfx: { activationChance: 0.8, instrumentOptions: [{ name: 'dark', weight: 1.0 }], transient: true }
+                }
+              },
+              {
+                duration: { percent: 25 }, // Stage 4
+                instrumentation: {
+                  harmony: { activationChance: 1.0, instrumentOptions: [{ name: 'flute', weight: 0.5 }, { name: 'violin', weight: 0.5 }] },
+                  sparkles: { activationChance: 0.7, instrumentOptions: [{ name: 'dark', weight: 1.0 }] }
                 }
               }
             ],
@@ -60,11 +66,10 @@ export const DarkAmbientBlueprint: MusicBlueprint = {
             outroFill: null,
           },
           {
-            id: 'BUILD', name: 'The Gathering', duration: { percent: 12 },
-            layers: { bass: true, drums: true, melody: true, accompaniment: true, sfx: true, sparkles: true },
+            id: 'BUILD', name: 'The Accumulation', duration: { percent: 10 },
+            layers: { bass: true, drums: true, melody: true, accompaniment: true, sfx: true, sparkles: true, harmony: true, pianoAccompaniment: true },
             instrumentation: {
-                melody: { strategy: 'weighted', v2Options: [{ name: 'theremin', weight: 0.6 }, { name: 'organ_soft_jazz', weight: 0.4 }] },
-                accompaniment: { strategy: 'weighted', v2Options: [{ name: 'synth_cave_pad', weight: 1.0 }] }
+                melody: { strategy: 'weighted', v2Options: [{ name: 'theremin', weight: 0.6 }, { name: 'organ_soft_jazz', weight: 0.4 }] }
             },
             instrumentRules: {
                 drums: { kitName: 'dark', pattern: 'composer', density: { min: 0.3, max: 0.5 } }
@@ -77,14 +82,14 @@ export const DarkAmbientBlueprint: MusicBlueprint = {
             layers: { bass: true, drums: true, melody: true, accompaniment: true, pianoAccompaniment: true, sparkles: true, harmony: true, sfx: true },
             instrumentRules: {
               drums: { kitName: 'dark', density: { min: 0.4, max: 0.6 } },
-              melody: { source: 'blues_solo' } // Используем блюзовые лики для экспрессии
+              melody: { source: 'blues_solo' }
             },
             bundles: [ { id: 'DARK_M1', name: 'The Monolith', duration: { percent: 100 }, characteristics: {}, phrases: {} } ],
             outroFill: null,
           },
           {
             id: 'BRIDGE', name: 'Breathing', duration: { percent: 5 },
-            layers: { bass: true, accompaniment: true, sfx: true },
+            layers: { bass: true, accompaniment: true, sfx: true, pianoAccompaniment: true },
             instrumentRules: {
                 accompaniment: { density: { min: 0.3, max: 0.5 } }
             },
@@ -93,7 +98,7 @@ export const DarkAmbientBlueprint: MusicBlueprint = {
           },
           {
             id: 'MAIN_2', name: 'Ritual_II', duration: { percent: 35 },
-            layers: { bass: true, drums: true, melody: true, accompaniment: true, harmony: true, sfx: true, sparkles: true },
+            layers: { bass: true, drums: true, melody: true, accompaniment: true, harmony: true, sfx: true, sparkles: true, pianoAccompaniment: true },
             instrumentation: {
                 melody: { strategy: 'weighted', v2Options: [{ name: 'guitar_muffLead', weight: 0.5 }, { name: 'organ_soft_jazz', weight: 0.5 }] }
             },
@@ -123,7 +128,7 @@ export const DarkAmbientBlueprint: MusicBlueprint = {
     },
     rendering: {
         mixTargets: {
-            bass: { level: -16, pan: 0.0 }, // Тяжелый бас
+            bass: { level: -16, pan: 0.0 },
             accompaniment: { level: -18, pan: 0.0 },
             melody: { level: -16, pan: -0.1 },
             sfx: { level: -26, pan: 0.0 }
