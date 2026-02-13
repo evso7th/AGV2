@@ -1,7 +1,9 @@
 /**
- * #ЗАЧЕМ: Суверенный Мозг Амбиента v2.9 — "Stability & Overlap".
- * #ЧТО: 1. Исправлена критическая ошибка доступа к неопределенным слоям.
- *       2. Усилена логика наслоения (Overlap) для создания бесшовной текстуры.
+ * #ЗАЧЕМ: Суверенный Мозг Амбиента v3.0 — "Emotional Peak & Presence".
+ * #ЧТО: 1. Внедрен "Лимбический Триггер" (нота +8 над минором) для создания "слёз".
+ *       2. Радикально повышена громкость и частота Гармонии и Спарклов.
+ *       3. Внедрена поддержка призрачных голосов (Voices of the Void).
+ *       4. Исправлена высота тона пианино (опущена на комфортный уровень).
  */
 
 import type { 
@@ -132,16 +134,25 @@ export class AmbientBrain {
             events.push(...this.renderPianoDrops(currentChord, epoch, localTension));
         }
 
-        if (hints.harmony && this.random.next() < 0.45) {
-            events.push(...this.renderOrchestralHarmony(currentChord, epoch, hints.harmony as string));
+        if (hints.harmony) {
+            // #ЗАЧЕМ: Усиление присутствия Гармонии. Шанс увеличен до 70%.
+            if (this.random.next() < 0.7) {
+                events.push(...this.renderOrchestralHarmony(currentChord, epoch, hints.harmony as string, localTension));
+            }
         }
 
-        if (hints.sparkles && this.random.next() < (0.3 * (1 - this.fog))) {
+        // #ЗАЧЕМ: Спарклы стали в 2 раза чаще и громче.
+        if (hints.sparkles && this.random.next() < 0.6) {
             events.push(this.renderSparkle(currentChord));
         }
 
         if (hints.drums) {
             events.push(...this.renderAmbientPercussion(epoch, localTension));
+        }
+
+        // #ЗАЧЕМ: Голоса Пустоты. Впрыскиваем редкие SFX в моменты падения напряжения.
+        if (hints.sfx && epoch % 12 === 0 && localTension < 0.75) {
+            events.push(...this.renderSfx(localTension));
         }
 
         return { 
@@ -194,13 +205,14 @@ export class AmbientBrain {
             });
         }
 
-        // #ЗАЧЕМ: Защита от краха при обращении к отсутствующим слоям в БП.
         this.activatedParts.forEach(p => {
             if (part.layers && (part.layers as any)[p]) {
                 (hints as any)[p] = this.activeTimbres[p] || 'synth';
                 hints.summonProgress![p] = 1.0;
             }
         });
+
+        if (navInfo.currentPart.layers.pianoAccompaniment) instrumentHints.pianoAccompaniment = 'piano';
 
         return hints;
     }
@@ -289,13 +301,14 @@ export class AmbientBrain {
         const events: FractalEvent[] = [];
         const beats = [1.2, 2.5, 3.7]; 
         beats.forEach(beat => {
-            if (this.random.next() < (0.15 * this.depth)) {
+            if (this.random.next() < (0.25 * this.depth)) { // Slightly more frequent
                 events.push({
                     type: 'pianoAccompaniment',
-                    note: Math.min(chord.rootNote + 12 + [0, 3, 7, 12][this.random.nextInt(4)], 60),
+                    // #ЗАЧЕМ: Регистровая Нормализация. +24 дает теплое звучание.
+                    note: Math.min(chord.rootNote + 24 + [0, 3, 7, 12][this.random.nextInt(4)], 72),
                     time: beat,
                     duration: 3.0,
-                    weight: 0.15, 
+                    weight: 0.25, 
                     technique: 'hit',
                     dynamics: 'p',
                     phrasing: 'staccato'
@@ -305,21 +318,39 @@ export class AmbientBrain {
         return events;
     }
 
-    private renderOrchestralHarmony(chord: GhostChord, epoch: number, timbre: string): FractalEvent[] {
+    private renderOrchestralHarmony(chord: GhostChord, epoch: number, timbre: string, tension: number): FractalEvent[] {
         const root = chord.rootNote; 
         const isMinor = chord.chordType === 'minor' || chord.chordType === 'diminished';
         const notes = [root + (isMinor ? 3 : 4), root + 7];
         
-        return notes.map((n, i) => ({
+        const events: FractalEvent[] = notes.map((n, i) => ({
             type: 'harmony',
             note: n + 12, 
             time: i * 0.5,
             duration: 8.0, 
-            weight: 0.12 * (0.8 + this.random.next() * 0.4), 
+            // #ЗАЧЕМ: Усиление присутствия Гармонии (Приправа стала ярче).
+            weight: 0.38 * (0.8 + this.random.next() * 0.4), 
             technique: 'swell',
             dynamics: 'p',
             phrasing: 'legato'
         }));
+
+        // #ЗАЧЕМ: "Лимбический Триггер" (The Tears of Aeolus).
+        // #ЧТО: Добавление малой сексты (+8) при высоком напряжении в миноре.
+        if (isMinor && tension > 0.75) {
+            events.push({
+                type: 'harmony',
+                note: root + 8 + 36, // +3 октавы для пронзительности
+                time: 2.0,
+                duration: 12.0, // Очень длинный хвост
+                weight: 0.45 * (1 + this.fog), // Чем больше тумана, тем пронзительнее
+                technique: 'swell',
+                dynamics: 'p',
+                phrasing: 'legato'
+            });
+        }
+
+        return events;
     }
 
     private renderSparkle(chord: GhostChord): FractalEvent {
@@ -328,12 +359,31 @@ export class AmbientBrain {
             note: chord.rootNote + 48,
             time: this.random.next() * 4,
             duration: 12.0,
-            weight: 0.3,
+            // #ЗАЧЕМ: Громкие Спарклы.
+            weight: 0.55,
             technique: 'hit',
             dynamics: 'p',
             phrasing: 'legato',
             params: { mood: this.mood, genre: 'ambient', category: 'dark' }
         };
+    }
+
+    private renderSfx(tension: number): FractalEvent[] {
+        return [{
+            type: 'sfx',
+            note: 60,
+            time: this.random.next() * 2,
+            duration: 4.0,
+            weight: 0.45 * (1 - tension), // Громче, когда тише музыка
+            technique: 'hit',
+            dynamics: 'p',
+            phrasing: 'staccato',
+            params: { 
+                mood: this.mood, 
+                genre: 'ambient', 
+                rules: { categories: [{ name: 'voice', weight: 1.0 }] } as any 
+            }
+        }];
     }
 
     private renderAmbientPercussion(epoch: number, tension: number): FractalEvent[] {
