@@ -1,11 +1,10 @@
 import type { MusicBlueprint } from '@/types/music';
 
 /**
- * #ЗАЧЕМ: Блюпринт "Abyssal Ritual" (Dark Ambient v4.0).
- * #ЧТО: 1. Внедрена система 4-х стадий интро для работы "Лотереи Вступления".
- *       2. Все 8 участников оркестра распределены по пулам активации.
- *       3. Темп 75 BPM, лад E Phrygian.
- *       4. Полное оркестровое присутствие в Мэйнах.
+ * #ЗАЧЕМ: Блюпринт "Abyssal Ritual" (Dark Ambient v4.1).
+ * #ЧТО: 1. Исправлена ошибка отсутствия слоев в INTRO.
+ *       2. Внедрена система 4-х стадий интро для работы "Лотереи Вступления".
+ *       3. Все 8 участников оркестра распределены по пулам активации.
  */
 export const DarkAmbientBlueprint: MusicBlueprint = {
     id: 'dark_ambient',
@@ -27,31 +26,33 @@ export const DarkAmbientBlueprint: MusicBlueprint = {
         totalDuration: { preferredBars: 156 },
         parts: [
           {
-            id: 'INTRO', name: 'AwakeningLottery', duration: { percent: 10 }, // ~16 bars
+            id: 'INTRO', name: 'AwakeningLottery', duration: { percent: 10 },
+            // #ИСПРАВЛЕНО (ПЛАН №398): Добавлен объект layers для предотвращения TypeError.
+            layers: { bass: true, drums: true, melody: true, accompaniment: true, sfx: true, sparkles: true, harmony: true, pianoAccompaniment: true },
             stagedInstrumentation: [
               {
-                duration: { percent: 25 }, // Stage 1
+                duration: { percent: 25 },
                 instrumentation: {
                   bass: { activationChance: 1.0, instrumentOptions: [{ name: 'bass_ambient_dark', weight: 1.0 }] },
                   accompaniment: { activationChance: 1.0, instrumentOptions: [{ name: 'synth_cave_pad', weight: 1.0 }] }
                 }
               },
               {
-                duration: { percent: 25 }, // Stage 2
+                duration: { percent: 25 },
                 instrumentation: {
                   drums: { activationChance: 1.0, instrumentOptions: [{ name: 'dark', weight: 1.0 }] },
                   pianoAccompaniment: { activationChance: 1.0, instrumentOptions: [{ name: 'piano', weight: 1.0 }] }
                 }
               },
               {
-                duration: { percent: 25 }, // Stage 3
+                duration: { percent: 25 },
                 instrumentation: {
                   melody: { activationChance: 1.0, instrumentOptions: [{ name: 'organ_soft_jazz', weight: 0.7 }, { name: 'theremin', weight: 0.3 }] },
                   sfx: { activationChance: 0.8, instrumentOptions: [{ name: 'dark', weight: 1.0 }], transient: true }
                 }
               },
               {
-                duration: { percent: 25 }, // Stage 4
+                duration: { percent: 25 },
                 instrumentation: {
                   harmony: { activationChance: 1.0, instrumentOptions: [{ name: 'flute', weight: 0.5 }, { name: 'violin', weight: 0.5 }] },
                   sparkles: { activationChance: 0.7, instrumentOptions: [{ name: 'dark', weight: 1.0 }] }

@@ -1,8 +1,7 @@
 /**
- * #ЗАЧЕМ: Суверенный Мозг Амбиента v2.8 — "The Living Orchestra".
- * #ЧТО: 1. Внедрена система "Intro Lottery" — случайная перестановка стадий вступления.
- *       2. Реализована память ликов для предотвращения повторов внутри Династии.
- *       3. Усилена микро-динамика ("Дыхание") для всех слоев.
+ * #ЗАЧЕМ: Суверенный Мозг Амбиента v2.9 — "Stability & Overlap".
+ * #ЧТО: 1. Исправлена критическая ошибка доступа к неопределенным слоям.
+ *       2. Усилена логика наслоения (Overlap) для создания бесшовной текстуры.
  */
 
 import type { 
@@ -78,13 +77,15 @@ export class AmbientBrain {
         const allParticipants: { part: InstrumentPart, rule: any }[] = [];
         
         stages.forEach(s => {
-            Object.entries(s.instrumentation).forEach(([part, rule]) => {
-                allParticipants.push({ part: part as InstrumentPart, rule });
-            });
+            if (s.instrumentation) {
+                Object.entries(s.instrumentation).forEach(([part, rule]) => {
+                    allParticipants.push({ part: part as InstrumentPart, rule });
+                });
+            }
         });
 
         const shuffled = this.random.shuffle(allParticipants);
-        const stageSize = Math.ceil(shuffled.length / stages.length);
+        const stageSize = Math.ceil(shuffled.length / (stages.length || 1));
 
         stages.forEach((_, i) => {
             const chunk = shuffled.slice(i * stageSize, (i + 1) * stageSize);
@@ -193,8 +194,9 @@ export class AmbientBrain {
             });
         }
 
+        // #ЗАЧЕМ: Защита от краха при обращении к отсутствующим слоям в БП.
         this.activatedParts.forEach(p => {
-            if (part.layers[p]) {
+            if (part.layers && (part.layers as any)[p]) {
                 (hints as any)[p] = this.activeTimbres[p] || 'synth';
                 hints.summonProgress![p] = 1.0;
             }
@@ -211,7 +213,6 @@ export class AmbientBrain {
         if (!this.usedLickIndices.has(groupKey)) this.usedLickIndices.set(groupKey, []);
         const used = this.usedLickIndices.get(groupKey)!;
 
-        // #ЗАЧЕМ: Реализация памяти фраз. Если в Династии остались неиспользованные лики - берем их.
         let lickIdx = calculateMusiNum(epoch, 3, this.seed, group.licks.length);
         if (used.length < group.licks.length) {
             while (used.includes(lickIdx)) {
@@ -219,7 +220,6 @@ export class AmbientBrain {
             }
             used.push(lickIdx);
         } else {
-            // Если все лики использованы, очищаем историю наполовину для нового цикла
             used.splice(0, Math.floor(used.length / 2));
         }
 
@@ -230,7 +230,7 @@ export class AmbientBrain {
             note: Math.min(chord.rootNote + 36 + group.registerBias + (DEGREE_TO_SEMITONE[n.deg] || 0), this.MELODY_CEILING),
             time: n.t / 3,
             duration: (n.d / 3) * 1.6, 
-            weight: (0.75 * (1 - this.fog * 0.2)) * (0.9 + this.random.next() * 0.2), // Микро-динамика
+            weight: (0.75 * (1 - this.fog * 0.2)) * (0.9 + this.random.next() * 0.2),
             technique: n.tech || 'pick',
             dynamics: 'p',
             phrasing: 'legato'

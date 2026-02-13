@@ -19,10 +19,10 @@ import { GUITAR_PATTERNS } from './assets/guitar-patterns';
 import { BLUES_SOLO_LICKS } from './assets/blues_guitar_solo';
 
 /**
- * #ЗАЧЕМ: Блюзовый Мозг V51.0 — "Register Discipline Update".
- * #ЧТО: 1. Верх мелодии ограничен MIDI 73 (C#5) по требованию пользователя.
- *       2. Низ баса ограничен MIDI 24 (1-я октава).
- *       3. Сохранена вся логика Anti-Stagnation и Dynasty Rotation.
+ * #ЗАЧЕМ: Блюзовый Мозг V52.0 — "The Void Voice Update".
+ * #ЧТО: 1. Реализована поддержка редких голосовых SFX в моментах падения напряжения.
+ *       2. Интервал голосовых вставок: 1 на 12 тактов.
+ *       3. Сохранена вся логика Anti-Stagnation и Register Discipline.
  */
 
 const ENERGY_PRICES = {
@@ -47,8 +47,6 @@ export class BluesBrain {
   private currentAxiom: MelodicAxiomNote[] = [];
   private random: any;
   
-  // #ЗАЧЕМ: Строгая регистровая дисциплина.
-  // #ЧТО: Потолок мелодии опущен до 73 (было 79).
   private readonly MELODY_CEILING = 73; 
   private readonly BASS_FLOOR = 24; 
   private readonly PIANO_CEILING = 71; 
@@ -159,6 +157,29 @@ export class BluesBrain {
       const dEvents = this.generateDrums(epoch, tempo, tension, lastEvents.length > 0, bpmFactor);
       dEvents.forEach(e => { e.weight *= (hints.summonProgress?.drums ?? 1.0); });
       combinedEvents.push(...dEvents);
+    }
+
+    // #ЗАЧЕМ: Редкие голосовые вставки в моменты затишья блюза.
+    if (hints.sfx) {
+        const isTensionLow = tension < 0.70;
+        const isRhythmicSlot = (epoch % 12 === 0); // 1 на 12 тактов
+        if (isTensionLow && isRhythmicSlot) {
+            combinedEvents.push({
+                type: 'sfx',
+                note: 60,
+                time: this.random.next() * 2,
+                duration: 3.0,
+                weight: 0.4,
+                technique: 'hit',
+                dynamics: 'p',
+                phrasing: 'staccato',
+                params: { 
+                    mood: this.mood, 
+                    genre: 'blues',
+                    rules: { categories: [{ name: 'voice', weight: 1.0 }] } as any
+                }
+            });
+        }
     }
 
     return combinedEvents;

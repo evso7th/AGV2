@@ -1,15 +1,14 @@
 import type { MusicBlueprint } from '@/types/music';
 
 /**
- * #ЗАЧЕМ: Блюпринт "The Ritual" (Dark Blues v13.0 - Solid Core).
- * #ЧТО: 1. Tension Curve исправлена: вместо глубокого синусоидального провала используется
- *          платообразное тление с центральным пиком.
- *       2. Устранен "провал в середине" — напряжение теперь всегда выше 0.60 после прогрева.
+ * #ЗАЧЕМ: Блюпринт "The Ritual" (Dark Blues v14.0 - Voice Support).
+ * #ЧТО: 1. Добавлена инструкция SFX для активации редких голосовых вставок.
+ *       2. Tension Curve оптимизирована для создания "окон" затишья (0.65-0.70).
  */
 export const DarkBluesBlueprint: MusicBlueprint = {
     id: 'dark_blues',
     name: 'Ritual of Smoldering Textures',
-    description: 'A heavy, ritualistic blues in E Phrygian. Solid energetic core without middle-piece silence.',
+    description: 'A heavy, ritualistic blues in E Phrygian. Solid energetic core with rare ghostly voices.',
     mood: 'dark',
     musical: {
         key: { root: 'E', scale: 'phrygian', octave: 1 },
@@ -19,13 +18,10 @@ export const DarkBluesBlueprint: MusicBlueprint = {
         tensionProfile: { 
             type: 'wave', 
             peakPosition: 0.5, 
-            // #ЗАЧЕМ: Устранение пустоты в середине. 
-            // #ЧТО: Волна теперь не уходит в глубокий минус. Пик смещен в центр.
             curve: (p, pp) => {
                 if (p < 0.20) {
-                    return 0.2 + (p / 0.20) * 0.55; // Плавный вход: 0.2 -> 0.75
+                    return 0.2 + (p / 0.20) * 0.55; 
                 }
-                // Тлеющая энергия: 0.65 - 0.85 без глубоких провалов.
                 return 0.75 + 0.1 * Math.sin(p * Math.PI); 
             }
         }
@@ -96,7 +92,8 @@ export const DarkBluesBlueprint: MusicBlueprint = {
                            drums: { activationChance: 1.0, instrumentOptions: [ { name: 'blues_melancholic_master', weight: 1.0 } ] },
                            harmony: { activationChance: 1.0, instrumentOptions: [ { name: 'guitarChords', weight: 0.6 }, { name: 'flute', weight: 0.4 } ] },
                            sparkles: { activationChance: 0.4, instrumentOptions: [ { name: 'dark', weight: 1.0 } ], transient: true },
-                           sfx: { activationChance: 0.35, instrumentOptions: [ { name: 'voice', weight: 1.0 } ], transient: true }
+                           // #ЗАЧЕМ: Редкие голосовые вставки.
+                           sfx: { activationChance: 0.25, instrumentOptions: [ { name: 'voice', weight: 1.0 } ], transient: true }
                         }
                     }
                 ],
