@@ -1,10 +1,8 @@
 /**
  * @fileOverview Universal Music Theory Utilities
  * #ЗАЧЕМ: Базовый набор инструментов для работы с нотами, ладами и ритмом.
- * #ЧТО: Функции для получения гамм, инверсий, ретроградов и гуманизации.
- *       Внедрена система цепей Маркова для генерации гармонического скелета.
- *       ДОБАВЛЕНО: Математика MusiNum для фрактальной детерминированности.
- * #ОБНОВЛЕНО (ПЛАН №379): Восстановлена функция getScaleForMood, необходимая для резонансных матриц.
+ * #ЧТО: Внедрена система Dynasty Rotation для обеспечения разнообразия старта сюиты.
+ * #ОБНОВЛЕНО (ПЛАН №382): Выбор первого лика теперь исключает повторы из межсессионной истории.
  */
 
 import type { 
@@ -36,49 +34,30 @@ const MAX_HISTORY_SIZE = 10;
 
 /**
  * #ЗАЧЕМ: Возвращает массив MIDI-нот для заданного настроения и жанра.
- * #ЧТО: Поддерживает блюзовые и амбиентные лады.
  */
 export function getScaleForMood(mood: Mood, genre?: Genre, chordType?: 'major' | 'minor' | 'dominant' | 'diminished'): number[] {
-  const E1 = 28; // Опорная точка
+  const E1 = 28; 
   let baseScale: number[];
 
   if (genre === 'blues') {
       if (chordType === 'major' || chordType === 'dominant') {
-          // Major Blues Scale: 1, 2, b3, 3, 5, 6
           baseScale = [0, 2, 3, 4, 7, 9];
       } else {
-          // Minor Blues Scale: 1, b3, 4, b5, 5, b7
           baseScale = [0, 3, 5, 6, 7, 10];
       }
   } else {
       switch (mood) {
-        case 'joyful':      
-          baseScale = [0, 2, 4, 5, 7, 9, 11];
-          break;
+        case 'joyful': baseScale = [0, 2, 4, 5, 7, 9, 11]; break;
         case 'epic':        
-        case 'enthusiastic':
-          baseScale = [0, 2, 4, 6, 7, 9, 11];
-          break;
-        case 'dreamy':      
-          baseScale = [0, 2, 4, 7, 9];
-          break;
+        case 'enthusiastic': baseScale = [0, 2, 4, 6, 7, 9, 11]; break;
+        case 'dreamy': baseScale = [0, 2, 4, 7, 9]; break;
         case 'contemplative': 
-        case 'calm':
-            baseScale = [0, 2, 4, 5, 7, 9, 10];
-            break;
-        case 'melancholic': 
-          baseScale = [0, 2, 3, 5, 7, 9, 10];
-          break;
+        case 'calm': baseScale = [0, 2, 4, 5, 7, 9, 10]; break;
+        case 'melancholic': baseScale = [0, 2, 3, 5, 7, 9, 10]; break;
         case 'dark':        
-        case 'gloomy':
-          baseScale = [0, 2, 3, 5, 7, 8, 10];
-          break;
-        case 'anxious':     
-          baseScale = [0, 1, 3, 5, 6, 8, 10];
-          break;
-        default:            
-          baseScale = [0, 2, 3, 5, 7, 8, 10];
-          break;
+        case 'gloomy': baseScale = [0, 2, 3, 5, 7, 8, 10]; break;
+        case 'anxious': baseScale = [0, 1, 3, 5, 6, 8, 10]; break;
+        default: baseScale = [0, 2, 3, 5, 7, 8, 10]; break;
       }
   }
 
@@ -196,20 +175,34 @@ export function createHarmonyAxiom(chord: GhostChord, mood: Mood, genre: Genre, 
     return events;
 }
 
-export function generateSuiteDNA(totalBars: number, mood: Mood, initialSeed: number, originalRandom: any, genre: Genre, blueprintParts: any[], ancestor?: any): SuiteDNA {
+export function generateSuiteDNA(totalBars: number, mood: Mood, initialSeed: number, originalRandom: any, genre: Genre, blueprintParts: any[], ancestor?: any, sessionHistory?: string[]): SuiteDNA {
     let seedLickId: string | undefined;
     let seedLickNotes: BluesSoloPhrase | undefined;
 
     if (genre === 'blues') {
-        const moodTags = (mood === 'dark' || mood === 'anxious' || mood === 'melancholic' || mood === 'gloomy') ? ['minor'] : ['major'];
-        const candidates = Object.keys(BLUES_SOLO_LICKS).filter(id => 
-            BLUES_SOLO_LICKS[id].tags.some(tag => moodTags.includes(tag)) && !LICK_HISTORY.includes(id)
-        );
+        const isMellow = ['dark', 'anxious', 'melancholic', 'gloomy'].includes(mood);
+        const dynasties = isMellow ? ['minor', 'slow-burn', 'doom-blues'] : ['major', 'texas', 'virtuoso', 'jazzy'];
+        
+        // #ЗАЧЕМ: Dynasty Rotation. Выбираем династию на основе истории сессии.
+        const lastDynasty = (sessionHistory && sessionHistory.length > 0) 
+            ? BLUES_SOLO_LICKS[sessionHistory[sessionHistory.length - 1]]?.tags[0] 
+            : undefined;
+        
+        const currentDynasty = dynasties.find(d => d !== lastDynasty) || dynasties[0];
+        
+        const candidates = Object.keys(BLUES_SOLO_LICKS).filter(id => {
+            const lick = BLUES_SOLO_LICKS[id];
+            const hasDynasty = lick.tags.includes(currentDynasty);
+            const inHistory = (sessionHistory || []).includes(id);
+            return hasDynasty && !inHistory;
+        });
+
         const pool = candidates.length > 0 ? candidates : Object.keys(BLUES_SOLO_LICKS);
-        seedLickId = pool[calculateMusiNum(initialSeed, 7, 42, pool.length)];
-        LICK_HISTORY.push(seedLickId);
-        if (LICK_HISTORY.length > MAX_HISTORY_SIZE) LICK_HISTORY.shift();
-        if (seedLickId) seedLickNotes = transformLick(BLUES_SOLO_LICKS[seedLickId].phrase, initialSeed, 0, true);
+        seedLickId = pool[calculateMusiNum(initialSeed, 7, initialSeed, pool.length)];
+        
+        if (seedLickId) {
+            seedLickNotes = transformLick(BLUES_SOLO_LICKS[seedLickId].phrase, initialSeed, 0, true);
+        }
     }
 
     const finalSeed = ancestor ? crossoverDNA(initialSeed, ancestor) : initialSeed;

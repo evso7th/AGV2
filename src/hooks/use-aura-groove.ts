@@ -1,4 +1,7 @@
-
+/**
+ * #ЗАЧЕМ: Хук управления UI музыкой V3.2.
+ * #ЧТО: Внедрена поддержка межсессионной памяти ликов через localStorage.
+ */
 'use client';
 
 import { useState, useEffect, useCallback, useRef } from "react";
@@ -10,6 +13,7 @@ import { saveMasterpiece } from "@/lib/firebase-service";
 import { toast } from "@/hooks/use-toast";
 
 const FADE_OUT_DURATION = 120; // 2 minutes
+const LICK_HISTORY_KEY = 'AuraGroove_LickHistory';
 
 export type AuraGrooveProps = {
   isPlaying: boolean;
@@ -58,11 +62,6 @@ export type AuraGrooveProps = {
   setIntroBars: (bars: number) => void;
 };
 
-
-/**
- * #ЗАЧЕМ: Хук управления UI музыкой V3.1.
- * #ЧТО: Добавлена поддержка Broadcast Mode (Radio).
- */
 export const useAuraGroove = (): AuraGrooveProps => {
   const { 
     isInitialized,
@@ -112,6 +111,7 @@ export const useAuraGroove = (): AuraGrooveProps => {
   const [mood, setMood] = useState<Mood>('melancholic');
   const [introBars, setIntroBars] = useState(12);
   const [currentSeed, setCurrentSeed] = useState<number>(0);
+  const [sessionLickHistory, setSessionLickHistory] = useState<string[]>([]);
 
   const [isEqModalOpen, setIsEqModalOpen] = useState(false);
   const [eqSettings, setEqSettings] = useState<number[]>(Array(7).fill(0));
@@ -121,11 +121,19 @@ export const useAuraGroove = (): AuraGrooveProps => {
     timeLeft: 0,
     isActive: false
   });
-  const timerIntervalRef = useRef<NodeJS.Timeout | null>(null);
-
+  
   const [isRegenerating, setIsRegenerating] = useState(false);
   const [hasPlayedOnce, setHasPlayedOnce] = useState(false);
 
+  // #ЗАЧЕМ: Загрузка истории ликов при монтировании.
+  useEffect(() => {
+    const saved = localStorage.getItem(LICK_HISTORY_KEY);
+    if (saved) {
+        try {
+            setSessionLickHistory(JSON.parse(saved));
+        } catch(e) {}
+    }
+  }, []);
 
   useEffect(() => {
     initialize();
@@ -138,6 +146,14 @@ export const useAuraGroove = (): AuraGrooveProps => {
     const handleMessage = (e: MessageEvent) => {
       if (e.data.type === 'SCORE_READY' && e.data.payload?.actualBpm) {
         setBpm(e.data.payload.actualBpm);
+      }
+      // #ЗАЧЕМ: Фиксация выбранного лика в межсессионной памяти.
+      if (e.data.type === 'LICK_BORN' && e.data.lickId) {
+          setSessionLickHistory(prev => {
+              const next = [...prev, e.data.lickId].slice(-10);
+              localStorage.setItem(LICK_HISTORY_KEY, JSON.stringify(next));
+              return next;
+          });
       }
     };
 
@@ -162,8 +178,9 @@ export const useAuraGroove = (): AuraGrooveProps => {
       mood,
       useMelodyV2,
       introBars,
+      sessionLickHistory // Передаем историю воркеру
     };
-  }, [bpm, score, genre, instrumentSettings, drumSettings, textureSettings, density, composerControlsInstruments, mood, useMelodyV2, introBars]);
+  }, [bpm, score, genre, instrumentSettings, drumSettings, textureSettings, density, composerControlsInstruments, mood, useMelodyV2, introBars, sessionLickHistory]);
 
   useEffect(() => {
     if (isInitialized) {

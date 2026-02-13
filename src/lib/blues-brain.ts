@@ -19,10 +19,10 @@ import { GUITAR_PATTERNS } from './assets/guitar-patterns';
 import { BLUES_SOLO_LICKS } from './assets/blues_guitar_solo';
 
 /**
- * #ЗАЧЕМ: Блюзовый Мозг V49.0 — "The Articulation Standard".
- * #ЧТО: 1. Введено жесткое ограничение длительности нот (никаких 4-тактовых гулов).
- *       2. Реализовано разнообразие техник: слайды, хаммеры, фингерстайл, стаккато.
- *       3. Усилена структура "Зов-Ответ" с обязательными паузами.
+ * #ЗАЧЕМ: Блюзовый Мозг V50.0 — "Dynasty Anti-Stagnation Update".
+ * #ЧТО: 1. Усилена "Вакцина Смещения". При зацикливании лики меняют Династию.
+ *       2. Внедрена поддержка межсессионной истории для предотвращения повторов старта.
+ *       3. Улучшена фразировка Call-Response.
  */
 
 const ENERGY_PRICES = {
@@ -50,14 +50,13 @@ export class BluesBrain {
   private readonly MELODY_CEILING = 79;
   private readonly BASS_FLOOR = 24; 
   private readonly PIANO_CEILING = 71; 
-  private readonly MAX_NOTE_DURATION = 2.0; // Максимум 2 такта для самых длинных нот
-  private readonly NORMAL_NOTE_DURATION = 1.2; // Максимум 3 доли для обычных фраз
+  private readonly MAX_NOTE_DURATION = 2.0; 
+  private readonly NORMAL_NOTE_DURATION = 1.2; 
 
   private readonly patternOptions: string[] = ['F_TRAVIS', 'F_ROLL12', 'S_SWING'];
 
   private phraseHistory: string[] = [];
   private pianoHistory: string[] = [];
-  private globalHistory: string[] = [];
   
   private pianoStagnationOffset: number = 0;
   private globalStagnationOffset: number = 0;
@@ -116,15 +115,12 @@ export class BluesBrain {
       let mEvents: FractalEvent[] = [];
       const soloThreshold = isMainZone ? 0.45 : (isMellowMood ? 0.55 : 0.4);
       
-      // #ЗАЧЕМ: Усиление "дыхания". 
-      // #ЧТО: С вероятностью 25% в спокойных зонах гитарист "пропускает" такт соло.
       const shouldTakeBreath = !isMainZone && tension < 0.5 && calculateMusiNum(epoch, 3, this.seed, 4) === 0;
 
       if ((consumedEnergy + ENERGY_PRICES.solo <= barBudget) && tension > soloThreshold && !shouldTakeBreath) {
           mEvents = this.generateLSystemMelody(epoch, currentChord, barIn12, tempo, tension, dna, bpmFactor);
           consumedEnergy += ENERGY_PRICES.solo;
       } else {
-          // Вместо соло играем фингерстайл или арпеджио
           mEvents = this.generateFingerstyleMelody(epoch, currentChord, tempo, tension, bpmFactor);
           consumedEnergy += ENERGY_PRICES.harmony; 
       }
@@ -155,6 +151,8 @@ export class BluesBrain {
       combinedEvents.push(...bEvents);
     }
 
+    // #ЗАЧЕМ: Усиленная Вакцина Смещения.
+    // #ЧТО: Если ансамбль зациклился, мы меняем ДНК лика и сдвигаем пианиста.
     this.auditGlobalStagnation(combinedEvents.filter(e => e.type === 'melody'), currentPianoEvents, currentChord, dna, epoch);
     
     if (hints.drums) {
@@ -181,7 +179,9 @@ export class BluesBrain {
           this.phraseHistory.push(ensembleHash);
           if (this.phraseHistory.length > this.MAX_HISTORY_DEPTH) this.phraseHistory.shift();
           if (this.detectSequenceStagnation(this.phraseHistory) > 0) {
+              // Принудительная эволюция Аксиомы при зацикливании
               this.currentAxiom = this.evolveAxiom(this.currentAxiom, 0.99, 'CLIMAX', dna, epoch);
+              this.globalStagnationOffset += 500;
               this.phraseHistory = []; 
           }
       }
@@ -233,10 +233,8 @@ export class BluesBrain {
     return this.currentAxiom.map((n, idx, arr) => {
         if (this.random.next() < (1.0 - bpmFactor) && n.deg !== 'R') return null; 
         
-        // #ЗАЧЕМ: Ограничение длительности. 
-        // #ЧТО: Длительность теперь жестко ограничена NORMAL_NOTE_DURATION.
         let dur = (idx < arr.length - 1) ? (arr[idx+1].t - n.t) : Math.max(n.d, 6);
-        dur = Math.min(dur, this.NORMAL_NOTE_DURATION * 3); // *3 так как это в тиках (12/8)
+        dur = Math.min(dur, this.NORMAL_NOTE_DURATION * 3); 
 
         return { 
             type: 'melody', 
@@ -257,8 +255,6 @@ export class BluesBrain {
       const events: FractalEvent[] = [];
       const density = (0.3 + (tension * 0.3)) * bpmFactor;
       
-      // #ЗАЧЕМ: Фингерстайл паттерн (План №381).
-      // #ЧТО: Имитация Трэвис-пикинга в мелодии.
       [0, 1, 2, 3].forEach(beat => {
           if (calculateMusiNum(epoch + beat + this.globalStagnationOffset, 3, this.seed, 10) / 10 < density) {
               const techIdx = calculateMusiNum(epoch + beat, 2, this.seed, 3);
@@ -268,7 +264,7 @@ export class BluesBrain {
                   type: 'melody', 
                   note: Math.min(notes[calculateMusiNum(epoch + beat, 5, this.seed, 4)], this.MELODY_CEILING), 
                   time: beat, 
-                  duration: 0.5, // Короткими нотами
+                  duration: 0.5, 
                   weight: 0.5 + (tension * 0.3), 
                   technique: techs[techIdx], 
                   dynamics: 'p', 
@@ -293,7 +289,6 @@ export class BluesBrain {
         let newTech = note.tech;
         let newPhrasing = note.phrasing;
 
-        // #ЗАЧЕМ: Обогащение техниками (План №381).
         if (tension > 0.65 && phase === 'CLIMAX' && calculateMusiNum(epoch + i, 7, this.seed, 10) > 6) {
             newDeg = ['5', 'b7', 'R+8', '9'][calculateMusiNum(epoch + i, 3, this.seed, 4)]; 
             newTech = 'bend';
@@ -305,10 +300,10 @@ export class BluesBrain {
                 newPhrasing = 'sostenuto';
             } else {
                 newTech = 'pick';
-                newPhrasing = 'staccato'; // Стаккато в ответах
+                newPhrasing = 'staccato';
             }
         } else if (calculateMusiNum(epoch + i, 5, this.seed, 10) > 8) {
-            newTech = 'slide'; // Спорадические слайды
+            newTech = 'slide'; 
         }
 
         return { ...note, deg: newDeg, tech: newTech, phrasing: newPhrasing }; 
@@ -381,8 +376,6 @@ export class BluesBrain {
       if (melody.length > 0) {
         const last = melody[melody.length - 1];
         
-        // #ЗАЧЕМ: Ограничение длительности кульминации.
-        // #ЧТО: Длительность финальной ноты ограничена 2.0 (MAX_NOTE_DURATION).
         events.push({ 
             type: 'melody', 
             note: Math.min(last.note! + 5, this.MELODY_CEILING), 

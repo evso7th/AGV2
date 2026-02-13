@@ -42,12 +42,12 @@ interface EngineConfig {
   useMelodyV2?: boolean;
   introBars: number;
   ancestor?: any;
+  sessionLickHistory?: string[];
 }
 
 /**
- * #ЗАЧЕМ: Фрактальный Музыкальный Движок V18.0 — "Sovereign Genre Switchboard".
- * #ЧТО: Реализована тотальная изоляция Амбиента от других жанров.
- *       Движок теперь только маршрутизирует запрос в профильный "Мозг".
+ * #ЗАЧЕМ: Фрактальный Музыкальный Движок V18.1 — "Dynasty Memory Update".
+ * #ЧТО: Внедрена поддержка межсессионной истории ликов для Dynasty Rotation.
  */
 export class FractalMusicEngine {
   public config: EngineConfig;
@@ -86,6 +86,7 @@ export class FractalMusicEngine {
     this.activatedParts.clear(); 
     this.hookLibrary = [];
 
+    // #ЗАЧЕМ: Передача истории сессии для исключения повторов при рождении.
     this.suiteDNA = generateSuiteDNA(
         this.blueprint.structure.totalDuration.preferredBars, 
         this.config.mood, 
@@ -93,12 +94,17 @@ export class FractalMusicEngine {
         this.random, 
         this.config.genre, 
         this.blueprint.structure.parts,
-        this.config.ancestor
+        this.config.ancestor,
+        this.config.sessionLickHistory
     );
+
+    // #ЗАЧЕМ: Сообщаем UI о выбранном лике для пополнения истории.
+    if (this.suiteDNA.seedLickId) {
+        self.postMessage({ type: 'LICK_BORN', lickId: this.suiteDNA.seedLickId });
+    }
 
     this.navigator = new BlueprintNavigator(this.blueprint, this.config.seed, this.config.genre, this.config.mood, this.config.introBars, this.suiteDNA.soloPlanMap);
     
-    // #ЗАЧЕМ: Инициализация суверенных мозгов.
     if (this.config.genre === 'blues') {
         this.bluesBrain = new BluesBrain(this.config.seed, this.config.mood);
         this.ambientBrain = null;
@@ -123,9 +129,6 @@ export class FractalMusicEngine {
     const navInfo = this.navigator.tick(this.epoch);
     if (!navInfo) return { events: [], instrumentHints: {}, beautyScore: 0, tension: 0.5 };
 
-    // #ЗАЧЕМ: Тотальная изоляция Амбиента.
-    // #ЧТО: Если выбран амбиент, мы полностью игнорируем глобальный цикл оркестровки
-    //      и отдаем управление AmbientBrain.
     if (this.config.genre === 'ambient' && this.ambientBrain) {
         const foundChord = this.suiteDNA.harmonyTrack.find(chord => this.epoch >= chord.bar && this.epoch < chord.bar + chord.durationBars);
         const currentChord = foundChord || this.suiteDNA.harmonyTrack[0];
@@ -143,7 +146,6 @@ export class FractalMusicEngine {
         };
     }
 
-    // --- ГЛОБАЛЬНАЯ ОРКЕСТРОВКА (ДЛЯ ОСТАЛЬНЫХ ЖАНРОВ) ---
     const instrumentHints: InstrumentHints = { summonProgress: {} };
     const stages = navInfo.currentPart.stagedInstrumentation;
     let tension = this.suiteDNA.tensionMap[this.epoch % this.suiteDNA.tensionMap.length] ?? 0.5;

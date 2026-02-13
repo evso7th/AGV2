@@ -13,7 +13,7 @@ import { BASS_PRESETS } from '@/lib/bass-presets';
 /**
  * #ЗАЧЕМ: Центральный хаб типов AuraGroove.
  * #ЧТО: Ре-экспортирует типы из fractal.ts и определяет UI-специфичные структуры.
- *       Исправлены ошибки отсутствия экспорта FractalEvent и GhostChord.
+ *       Добавлена поддержка межсессионной памяти ликов.
  */
 
 export type Mood = FractalMood;
@@ -172,6 +172,9 @@ export type WorkerSettings = {
   seed?: number;
   useMelodyV2?: boolean;
   introBars: number;
+  /** #ЗАЧЕМ: Межсессионная память ликов. */
+  sessionLickHistory?: string[];
+  ancestor?: any;
 };
 
 export type TimerSettings = {

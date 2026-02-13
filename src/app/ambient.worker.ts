@@ -1,15 +1,6 @@
 /**
  * @file AuraGroove Music Worker (Architecture: "The Chain of Suites")
- *
- * This worker implements a Suite State Machine: 
- * PROMENADE -> MAIN -> BRIDGE -> MAIN -> ...
- * 
- * #ЗАЧЕМ: Реализация "Цепной Сюиты" (План №234). 
- * #ЧТО: Воркер теперь знает тип текущей пьесы и автоматически подгружает БП моста.
- * #ИННОВАЦИЯ: AI Arbitrator следит за гармоническим резонансом и пополняет генофонд.
- * #ОБНОВЛЕНО (ПЛАН №288): Внедрена система Chronos Telemetry (метки времени в логах).
- * #ОБНОВЛЕНО (ПЛАН №294): Внедрен самокорректирующийся таймер для устранения дрейфа (Seamless Stitch).
- * #ОБНОВЛЕНО (ПЛАН №370): Отключен лог-спам для повышения производительности на мобильных устройствах.
+ * #ОБНОВЛЕНО (ПЛАН №382): Внедрена поддержка межсессионной истории ликов.
  */
 import type { WorkerSettings, ScoreName, Mood, Genre, InstrumentPart } from '@/types/music';
 import { FractalMusicEngine } from '@/lib/fractal-music-engine';
@@ -18,10 +9,6 @@ import { getBridgeBlueprint, getBlueprint } from '@/lib/blueprints';
 
 let fractalMusicEngine: FractalMusicEngine | undefined;
 
-/**
- * #ЗАЧЕМ: Вспомогательная функция для формирования временной метки.
- * #ЧТО: Возвращает строку в формате [DD:HH:MM].
- */
 const getTimestamp = () => {
     const now = new Date();
     const d = String(now.getDate()).padStart(2, '0');
@@ -56,6 +43,7 @@ const Scheduler = {
         mood: 'melancholic' as Mood,
         useMelodyV2: false, 
         introBars: 12, 
+        sessionLickHistory: [],
         ancestor: null as any 
     } as WorkerSettings,
 
@@ -77,7 +65,8 @@ const Scheduler = {
             ...settings,
             seed: settings.seed || Date.now(),
             introBars: settings.introBars,
-            ancestor: settings.ancestor 
+            ancestor: settings.ancestor,
+            sessionLickHistory: settings.sessionLickHistory
         }, blueprint);
 
         newEngine.initialize(true); 
@@ -183,8 +172,6 @@ const Scheduler = {
             }
         }
         
-        // #ЗАЧЕМ: Снижение нагрузки на главный поток.
-        // #ЧТО: Логирование каждого такта теперь происходит через console.debug.
         if (this.barCount % 12 === 0 || finalPayload.navInfo?.isPartTransition) {
             const sectionName = finalPayload.navInfo?.currentPart.name || 'Unknown';
             console.log(`${getTimestamp()} [Bar ${this.barCount}] [${this.suiteType}] [${sectionName}] T:${finalPayload.tension.toFixed(2)} BPM:${this.settings.bpm} Res:${finalPayload.beautyScore.toFixed(2)} D:${counts.drums}, B:${counts.bass}, M:${counts.melody}`);
