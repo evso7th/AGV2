@@ -1,8 +1,8 @@
 /**
- * #ЗАЧЕМ: Суверенный Мозг Амбиента v2.0 — "Rhythmic Vitality".
- * #ЧТО: 1. Бас переведен из режима дронов в режим активных медленных риффов.
- *       2. Реализованы "Органные Пассажи" — текучие арпеджио для Manfred Mann style.
- *       3. Пэды теперь "дышат" за счет перекрывающихся пульсаций.
+ * #ЗАЧЕМ: Суверенный Мозг Амбиента v2.1 — "Seasoning Balance Update".
+ * #ЧТО: 1. Гармония и Пианино опущены на 2 октавы вниз по требованию пользователя.
+ *       2. Громкость украшений (Harmony, Piano) снижена в 2 раза.
+ *       3. Гармония переведена в режим "редкой приправы" (шанс 40%).
  */
 
 import type { 
@@ -13,7 +13,8 @@ import type {
     NavigationInfo,
     Technique,
     InstrumentHints,
-    InstrumentPart
+    InstrumentPart,
+    Phrasing
 } from '@/types/music';
 import { calculateMusiNum, DEGREE_TO_SEMITONE, pickWeightedDeterministic } from './music-theory';
 import { AMBIENT_LEGACY } from './assets/ambient-legacy';
@@ -79,12 +80,12 @@ export class AmbientBrain {
         const hints = this.orchestrate(localTension, navInfo, epoch, dna);
         const events: FractalEvent[] = [];
 
-        // 1. ПЭДЫ (Теперь "дышат" перекрывающимися сегментами)
+        // 1. ПЭДЫ (Основа)
         if (hints.accompaniment) {
             events.push(...this.renderPad(currentChord, epoch, hints.accompaniment as string));
         }
 
-        // 2. БАС (Теперь всегда играет Ритмический Рифф)
+        // 2. БАС (Ритмическая опора)
         if (hints.bass) {
             events.push(...this.renderBass(currentChord, localTension, hints.bass as string, epoch));
         }
@@ -92,8 +93,6 @@ export class AmbientBrain {
         // 3. МЕЛОДИЯ И ПАССАЖИ
         if (hints.melody) {
             const timbre = hints.melody as string;
-            // #ЗАЧЕМ: Реализация Органных Пассажей.
-            // #ЧТО: Если инструмент - орган, и мы в активной фазе, играем арпеджио.
             if (timbre.includes('organ') && localTension > 0.45) {
                 events.push(...this.renderOrganArpeggio(currentChord, epoch, localTension));
             } else {
@@ -101,13 +100,14 @@ export class AmbientBrain {
             }
         }
 
-        // 4. ПИАНИНО (Капельки)
+        // 4. ПИАНИНО (Капельки - теперь ниже и тише)
         if (hints.pianoAccompaniment) {
             events.push(...this.renderPianoDrops(currentChord, epoch, localTension));
         }
 
-        // 5. ОРКЕСТРОВАЯ ГАРМОНИЯ
-        if (hints.harmony) {
+        // 5. ОРКЕСТРОВАЯ ГАРМОНИЯ (Приправа - теперь ниже, тише и реже)
+        // #ЗАЧЕМ: Уменьшение присутствия гармонии. Шанс 40%.
+        if (hints.harmony && this.random.next() < 0.4) {
             events.push(...this.renderOrchestralHarmony(currentChord, epoch, hints.harmony as string));
         }
 
@@ -116,7 +116,7 @@ export class AmbientBrain {
             events.push(this.renderSparkle(currentChord));
         }
 
-        // 7. УДАРНЫЕ (Сцена 2 и далее)
+        // 7. УДАРНЫЕ
         if (hints.drums) {
             events.push(...this.renderAmbientPercussion(epoch, localTension));
         }
@@ -163,18 +163,14 @@ export class AmbientBrain {
         return hints;
     }
 
-    /**
-     * #ЗАЧЕМ: Реализация Органных Пассажей (The Flow).
-     * #ЧТО: Медленные текучие арпеджио с наслоением.
-     */
     private renderOrganArpeggio(chord: GhostChord, epoch: number, tension: number): FractalEvent[] {
         const root = chord.rootNote + 36;
         const isMinor = chord.chordType === 'minor' || chord.chordType === 'diminished';
         const intervals = isMinor ? [0, 3, 7, 10, 12] : [0, 4, 7, 11, 12];
         
         const events: FractalEvent[] = [];
-        const count = 4; // 4 ноты на такт
-        const timeStep = 1.0; // Каждую секунду новая нота
+        const count = 4;
+        const timeStep = 1.0;
 
         for (let i = 0; i < count; i++) {
             const idx = calculateMusiNum(epoch + i, 3, this.seed, intervals.length);
@@ -182,7 +178,7 @@ export class AmbientBrain {
                 type: 'melody',
                 note: root + intervals[idx],
                 time: i * timeStep,
-                duration: 2.5, // Наслоение! Нота звучит 2.5 сек, перекрывая следующую
+                duration: 2.5,
                 weight: 0.65 * tension,
                 technique: 'pick',
                 dynamics: 'p',
@@ -202,9 +198,9 @@ export class AmbientBrain {
 
         return lick.phrase.map(n => ({
             type: 'melody',
-            note: Math.min(chord.rootNote + 36 + group.registerBias + (DEGREE_TO_SEMITONE[n.deg] || 0), 88),
+            note: Math.min(chord.rootNote + 36 + group.registerBias + (DEGREE_TO_SEMITONE[n.deg] || 0), 73), // Register Ceiling enforced
             time: n.t / 3,
-            duration: (n.d / 3) * 2.0, // Усиленный Overlap
+            duration: (n.d / 3) * 1.6,
             weight: 0.75 * (1 - this.fog * 0.15),
             technique: n.tech || 'pick',
             dynamics: 'p',
@@ -214,16 +210,17 @@ export class AmbientBrain {
 
     private renderPianoDrops(chord: GhostChord, epoch: number, tension: number): FractalEvent[] {
         const events: FractalEvent[] = [];
-        // #ЗАЧЕМ: Хаотичные, но музыкальные капли.
+        // #ЗАЧЕМ: Исправление регистра пианино. 
+        // #ЧТО: Сдвиг вниз на 24 полутона (+24 вместо +48). Снижен вес.
         const beats = [0.5, 1.8, 2.4, 3.7]; 
         beats.forEach(beat => {
             if (this.random.next() < (0.15 * this.depth)) {
                 events.push({
                     type: 'pianoAccompaniment',
-                    note: chord.rootNote + 48 + [0, 7, 12, 14][this.random.nextInt(4)],
+                    note: chord.rootNote + 24 + [0, 7, 12, 14][this.random.nextInt(4)],
                     time: beat,
                     duration: 2.0,
-                    weight: 0.4,
+                    weight: 0.2, // Снижено с 0.4
                     technique: 'hit',
                     dynamics: 'p',
                     phrasing: 'staccato'
@@ -234,7 +231,9 @@ export class AmbientBrain {
     }
 
     private renderOrchestralHarmony(chord: GhostChord, epoch: number, timbre: string): FractalEvent[] {
-        const root = chord.rootNote + 24;
+        // #ЗАЧЕМ: Исправление регистра Гармонии. 
+        // #ЧТО: Удалено +24. Теперь поет в регистре пэда. Снижен вес.
+        const root = chord.rootNote; 
         const isMinor = chord.chordType === 'minor' || chord.chordType === 'diminished';
         const notes = [root + (isMinor ? 3 : 4), root + 7, root + 12];
         
@@ -243,7 +242,7 @@ export class AmbientBrain {
             note: n,
             time: i * 0.25,
             duration: 8.0, 
-            weight: 0.4,
+            weight: 0.15, // Снижено с 0.4
             technique: 'swell',
             dynamics: 'p',
             phrasing: 'legato'
@@ -252,14 +251,12 @@ export class AmbientBrain {
 
     private renderAmbientPercussion(epoch: number, tension: number): FractalEvent[] {
         const events: FractalEvent[] = [];
-        // Всегда минимальный кик раз в 2 такта
         const isKickBar = epoch % 2 === 0;
         
         if (isKickBar) {
             events.push({ type: 'drum_kick', note: 36, time: 0, duration: 0.1, weight: 0.55, technique: 'hit', dynamics: 'p', phrasing: 'staccato' });
         }
 
-        // Ритмические томы и бонги
         [1.0, 2.5, 3.5].forEach(t => {
             if (this.random.next() < (0.15 + tension * 0.25)) {
                 const type = this.random.next() > 0.6 ? 'drum_Sonor_Classix_Low_Tom' : 'drum_bongo_pvc-tube-01';
@@ -276,7 +273,6 @@ export class AmbientBrain {
             }
         });
 
-        // Редкие колокольчики
         if (this.random.next() < (0.1 + tension * 0.1)) {
             const bellIndex = calculateMusiNum(epoch, 3, this.seed, 40);
             const bellTypes = ['Bell_-_Ambient', 'Bell_-_Echo', 'Bell_-_Deep', 'Bell_-_Gong', 'Bell_-_Soft'];
@@ -297,7 +293,7 @@ export class AmbientBrain {
     private applySpectralAtom(epoch: number, t3: number) {
         const atomKeys = Object.keys(SPECTRAL_ATOMS);
         const normalizedT3 = (t3 + 1.5) / 3.0;
-        const safeIdx = Math.floor(clamp(normalizedT3, 0, 0.999) * atomKeys.length);
+        const safeIdx = Math.floor(Math.max(0, Math.min(0.999, normalizedT3)) * atomKeys.length);
         const atom = SPECTRAL_ATOMS[atomKeys[safeIdx]];
         if (!atom) return;
         const step = epoch % 5; 
@@ -322,9 +318,9 @@ export class AmbientBrain {
     }
 
     private updateMoodAxes(epoch: number, tension: number) {
-        this.fog = clamp(0.2 + (tension * 0.6), 0, 1); 
-        this.depth = clamp(0.3 + (tension * 0.5), 0, 1);
-        this.pulse = clamp(0.1 + (tension * 0.4), 0, 1);
+        this.fog = Math.max(0, Math.min(1, 0.2 + (tension * 0.6))); 
+        this.depth = Math.max(0, Math.min(1, 0.3 + (tension * 0.5)));
+        this.pulse = Math.max(0, Math.min(1, 0.1 + (tension * 0.4)));
     }
 
     private renderPad(chord: GhostChord, epoch: number, timbre: string): FractalEvent[] {
@@ -333,8 +329,6 @@ export class AmbientBrain {
         const notes = [root, root + 7, root + 12];
         const cutoff = 1800 * (1 - Math.pow(this.fog, 1.8));
 
-        // #ЗАЧЕМ: Реализация Ритмического Дыхания Пэдов.
-        // #ЧТО: Каждый такт пэд пере-атакует, но хвост 8.0с создает бесшовность.
         return notes.map((n, i) => ({
             type: 'accompaniment',
             note: n,
@@ -343,39 +337,30 @@ export class AmbientBrain {
             weight: 0.38 * (1 - this.fog * 0.1),
             technique: 'swell',
             dynamics: 'p',
-            phrasing: 'legate',
+            phrasing: 'legato' as Phrasing,
             params: { attack: 2.0 + this.fog * 2, release: 6.0, filterCutoff: cutoff }
         }));
     }
 
-    /**
-     * #ЗАЧЕМ: Живой Бас (Slow Riffing).
-     * #ЧТО: Басист играет медленные, но четкие ритмические фигуры.
-     */
     private renderBass(chord: GhostChord, tension: number, timbre: string, epoch: number): FractalEvent[] {
-        const root = chord.rootNote - 12;
+        const root = Math.max(chord.rootNote - 12, 24); 
         const events: FractalEvent[] = [];
-        
-        // Базовая ритмическая фигура: 1 и 3 доли
         const pattern = [
             { t: 0, n: root, d: 2.0, weight: 0.65 },
             { t: 2.0, n: root + 7, d: 2.0, weight: 0.55 }
         ];
-
-        // В моменты напряжения — добавляем проходящую ноту
         if (tension > 0.6) {
             pattern.push({ t: 3.5, n: root + 10, d: 4.5, weight: 0.5 });
         }
-
         return pattern.map(p => ({
             type: 'bass',
-            note: Math.max(p.n, 24), // Регистровая дисциплина (MIDI 24)
+            note: p.n,
             time: p.t,
-            duration: p.d + 4.0, // Усиленный Overlap для баса
+            duration: p.d + 4.0, 
             weight: p.weight + (tension * 0.1),
             technique: 'pluck',
             dynamics: 'p',
-            phrasing: 'legato',
+            phrasing: 'legato' as Phrasing,
             params: { attack: 0.8, release: 4.0, filterCutoff: 150 + (tension * 100) }
         }));
     }
@@ -389,12 +374,8 @@ export class AmbientBrain {
             weight: 0.45,
             technique: 'hit',
             dynamics: 'p',
-            phrasing: 'staccato',
+            phrasing: 'staccato' as Phrasing,
             params: { mood: this.mood, category: 'dark' }
         };
     }
-}
-
-function clamp(v: number, min: number, max: number) {
-    return Math.max(min, Math.min(max, v));
 }
