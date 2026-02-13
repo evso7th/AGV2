@@ -19,8 +19,10 @@ import { GUITAR_PATTERNS } from './assets/guitar-patterns';
 import { BLUES_SOLO_LICKS } from './assets/blues_guitar_solo';
 
 /**
- * #ЗАЧЕМ: Блюзовый Мозг V47.0 — "Chronos Realignment".
- * #ЧТО: Весь временной расчет переведен в УДАРЫ (beats). 
+ * #ЗАЧЕМ: Блюзовый Мозг V48.0 — "Timbral & Register Hygiene".
+ * #ЧТО: 1. Внедрен жесткий потолок мелодии (G5/79) и пол баса (C1/24).
+ *       2. Оптимизированы пороги переключения инструментов.
+ *       3. Повышена точность выбора CS80 vs ShineOn.
  */
 
 const ENERGY_PRICES = {
@@ -45,8 +47,10 @@ export class BluesBrain {
   private currentAxiom: MelodicAxiomNote[] = [];
   private random: any;
   
+  // #ЗАЧЕМ: Соблюдение гигиены регистров (План №380).
+  // #ЧТО: Потолок мелодии — G5 (нижняя половина 5-й октавы). Пол баса — C1 (начало 1-й октавы).
   private readonly MELODY_CEILING = 79;
-  private readonly GLITCH_FLOOR = 100; 
+  private readonly BASS_FLOOR = 24; 
   private readonly PIANO_CEILING = 71; 
   private readonly patternOptions: string[] = ['F_TRAVIS', 'F_ROLL12', 'S_SWING'];
 
@@ -201,8 +205,10 @@ export class BluesBrain {
 
   private evaluateTimbralDramaturgy(tension: number, hints: InstrumentHints, mood: Mood, epoch: number) {
     if (hints.melody) {
-        if (tension <= 0.50) (hints as any).melody = 'blackAcoustic';
-        else if (tension <= 0.65) (hints as any).melody = 'cs80'; 
+        // #ЗАЧЕМ: Уточнение порогов для выбора солиста (План №380).
+        // #ЧТО: CS80 используется в среднем диапазоне. ShineOn активируется при T > 0.68.
+        if (tension <= 0.45) (hints as any).melody = 'blackAcoustic';
+        else if (tension <= 0.68) (hints as any).melody = 'cs80'; 
         else (hints as any).melody = 'guitar_shineOn'; 
     }
   }
@@ -230,7 +236,16 @@ export class BluesBrain {
       const density = (0.3 + (tension * 0.3)) * bpmFactor;
       [0, 1, 2, 3].forEach(beat => {
           if (calculateMusiNum(epoch + beat + this.globalStagnationOffset, 3, this.seed, 10) / 10 < density) {
-              events.push({ type: 'melody', note: Math.min(notes[calculateMusiNum(epoch + beat, 5, this.seed, 4)], this.MELODY_CEILING), time: beat, duration: 0.8, weight: 0.5 + (tension * 0.3), technique: 'pick', dynamics: 'p', phrasing: 'detached' });
+              events.push({ 
+                  type: 'melody', 
+                  note: Math.min(notes[calculateMusiNum(epoch + beat, 5, this.seed, 4)], this.MELODY_CEILING), 
+                  time: beat, 
+                  duration: 0.8, 
+                  weight: 0.5 + (tension * 0.3), 
+                  technique: 'pick', 
+                  dynamics: 'p', 
+                  phrasing: 'detached' 
+              });
           }
       });
       return events;
@@ -272,7 +287,19 @@ export class BluesBrain {
     const riff = riffs[calculateMusiNum(Math.floor(epoch / 4), 5, this.seed + this.globalStagnationOffset, riffs.length)];
     const barIn12 = epoch % 12;
     let pattern = (!isWalking) ? [{ t: 0, d: 12, deg: 'R' as BluesRiffDegree }] : (barIn12 === 11 ? riff.turn : ([4, 5, 9, 10].includes(barIn12) ? riff.IV : (barIn12 === 8 ? riff.V : riff.I)));
-    return pattern.map((n, i) => ({ type: 'bass', note: chord.rootNote - 12 + (DEGREE_TO_SEMITONE[n.deg] || 0), time: n.t / 3, duration: (n.d || 2) / 3, weight: 0.7 + tension * 0.2, technique: 'pluck', dynamics: tension > 0.6 ? 'mf' : 'p', phrasing: 'legato' }));
+    
+    // #ЗАЧЕМ: Защита от инфра-низких частот (План №380).
+    // #ЧТО: Внедрен Math.max(..., this.BASS_FLOOR) для удержания баса в 1-й октаве.
+    return pattern.map((n, i) => ({ 
+        type: 'bass', 
+        note: Math.max(chord.rootNote - 12 + (DEGREE_TO_SEMITONE[n.deg] || 0), this.BASS_FLOOR), 
+        time: n.t / 3, 
+        duration: (n.d || 2) / 3, 
+        weight: 0.7 + tension * 0.2, 
+        technique: 'pluck', 
+        dynamics: tension > 0.6 ? 'mf' : 'p', 
+        phrasing: 'legato' 
+    }));
   }
 
   private generatePianoMotif(epoch: number, chord: GhostChord, tempo: number, tension: number, bpmFactor: number): FractalEvent[] {
@@ -311,7 +338,18 @@ export class BluesBrain {
       const melody = events.filter(e => e.type === 'melody');
       if (melody.length > 0) {
         const last = melody[melody.length - 1];
-        events.push({ type: 'melody', note: last.note! + 5, time: last.time + last.duration + 0.3, duration: 1.2, weight: 0.95, technique: 'vibrato', dynamics: 'mf', phrasing: 'sostenuto' });
+        // #ЗАЧЕМ: Использование ShineOn для кульминационных разрешений.
+        // #ЧТО: Разрешение получает высокий вес и большую длительность.
+        events.push({ 
+            type: 'melody', 
+            note: Math.min(last.note! + 5, this.MELODY_CEILING), 
+            time: last.time + last.duration + 0.3, 
+            duration: 2.5, // Длинная нота
+            weight: 0.98, 
+            technique: 'vibrato', 
+            dynamics: 'mf', 
+            phrasing: 'sostenuto' 
+        });
         this.lastAscendingBar = epoch;
       }
     }

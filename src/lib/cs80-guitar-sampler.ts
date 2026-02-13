@@ -1,11 +1,10 @@
-
 import type { Note } from "@/types/music";
 
 /**
- * #ЗАЧЕМ: Сэмплер Yamaha CS-80 (Guitar Mode) с поддержкой двух слоев Velocity.
- * #ЧТО: Реализует выбор между 'norm_notes' и 'long_notes' на основе силы удара.
- *       Охватывает диапазон MIDI 36 (C2) - 96 (C7).
- * #ОБНОВЛЕНО (ПЛАН 214): Добавлен режим forceShort для басовых партий.
+ * #ЗАЧЕМ: Сэмплер Yamaha CS-80 (Guitar Mode) с интеллектуальным выбором слоев.
+ * #ЧТО: 1. Внедрена селекция сэмплов по ДЛИТЕЛЬНОСТИ (План №380).
+ *       2. Слой 'long_notes' используется только для по-настоящему длинных нот.
+ *       3. Повышена "нормированность" звучания блюзовых пассажей.
  */
 
 const CS80_NOTE_NAMES = ["c", "c", "d", "eb", "e", "f", "f", "g", "g", "a", "bb", "b"];
@@ -35,7 +34,7 @@ export class CS80GuitarSampler {
         this.destination = destination;
         this.preamp = this.audioContext.createGain();
         // #ЗАЧЕМ: Нормализация громкости. Сэмплы CS80 исходно очень громкие.
-        // #ЧТО: Громкость установлена в 0.4 (План №211).
+        // #ЧТО: Громкость установлена в 0.4.
         this.preamp.gain.value = 0.4; 
         this.preamp.connect(this.destination);
     }
@@ -54,7 +53,6 @@ export class CS80GuitarSampler {
             };
 
             const loadPromises: Promise<void>[] = [];
-            // Load range 36-96
             for (let midi = 36; midi <= 96; midi++) {
                 loadPromises.push((async () => {
                     const [norm, long] = await Promise.all([
@@ -79,7 +77,7 @@ export class CS80GuitarSampler {
 
     /**
      * #ЗАЧЕМ: Планирование воспроизведения.
-     * #ЧТО: Поддерживает forceShort для ритмического баса.
+     * #ЧТО: Смена слоя теперь зависит от длительности ноты.
      */
     public schedule(notes: Note[], time: number, forceShort: boolean = false) {
         if (!this.isInitialized) return;
@@ -87,13 +85,14 @@ export class CS80GuitarSampler {
         notes.forEach(note => {
             const layer = this.buffers.get(note.midi);
             if (!layer) {
-                // Fallback to closest if out of range 36-96
                 this.playClosest(note, time, forceShort);
                 return;
             }
 
-            // Velocity Switching: >= 0.7 triggers LONG notes, unless forceShort is true
-            const buffer = (forceShort || (note.velocity || 0.7) < 0.7) ? layer.norm : layer.long;
+            // #ЗАЧЕМ: Экономное использование 'long_notes' (План №380).
+            // #ЧТО: Используем длинный сэмпл только если нота длится дольше 2 секунд.
+            //      В остальных случаях предпочитаем 'norm_notes' для четкости.
+            const buffer = (forceShort || (note.duration || 0) < 2.0) ? layer.norm : layer.long;
             this.playSample(buffer, note.midi, note.midi, time + note.time, note.velocity || 0.7, note.duration);
         });
     }
@@ -107,7 +106,7 @@ export class CS80GuitarSampler {
         const layer = this.buffers.get(closestMidi);
         if (!layer) return;
 
-        const buffer = (forceShort || (note.velocity || 0.7) < 0.7) ? layer.norm : layer.long;
+        const buffer = (forceShort || (note.duration || 0) < 2.0) ? layer.norm : layer.long;
         this.playSample(buffer, closestMidi, note.midi, time + note.time, note.velocity || 0.7, note.duration);
     }
 
