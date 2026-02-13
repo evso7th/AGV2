@@ -1,6 +1,6 @@
 /**
  * @file AuraGroove Music Worker (Architecture: "The Chain of Suites")
- * #ОБНОВЛЕНО (ПЛАН №382): Внедрена поддержка межсессионной истории ликов.
+ * #ОБНОВЛЕНО (ПЛАН №383): Реализована непрерывная ротация династий в цепи сюит.
  */
 import type { WorkerSettings, ScoreName, Mood, Genre, InstrumentPart } from '@/types/music';
 import { FractalMusicEngine } from '@/lib/fractal-music-engine';
@@ -66,12 +66,24 @@ const Scheduler = {
             seed: settings.seed || Date.now(),
             introBars: settings.introBars,
             ancestor: settings.ancestor,
-            sessionLickHistory: settings.sessionLickHistory
+            sessionLickHistory: this.settings.sessionLickHistory // Используем локально обновленную историю
         }, blueprint);
 
         newEngine.initialize(true); 
         fractalMusicEngine = newEngine;
         
+        // #ЗАЧЕМ: Непрерывная ротация династий (ПЛАН №383).
+        // #ЧТО: Сразу после рождения Аксиомы добавляем её в историю, чтобы СЛЕДУЮЩАЯ сюита в цепи её избегала.
+        if (newEngine.suiteDNA?.seedLickId) {
+            this.settings.sessionLickHistory = [
+                ...(this.settings.sessionLickHistory || []),
+                newEngine.suiteDNA.seedLickId
+            ].slice(-10); // Помним последние 10 воплощений
+
+            // Сообщаем UI о рождении, чтобы синхронизировать localStorage
+            self.postMessage({ type: 'LICK_BORN', lickId: newEngine.suiteDNA.seedLickId });
+        }
+
         this.settings.bpm = fractalMusicEngine.config.tempo;
         this.barCount = 0;
     },

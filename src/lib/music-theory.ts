@@ -2,7 +2,7 @@
  * @fileOverview Universal Music Theory Utilities
  * #ЗАЧЕМ: Базовый набор инструментов для работы с нотами, ладами и ритмом.
  * #ЧТО: Внедрена система Dynasty Rotation для обеспечения разнообразия старта сюиты.
- * #ОБНОВЛЕНО (ПЛАН №382): Выбор первого лика теперь исключает повторы из межсессионной истории.
+ * #ОБНОВЛЕНО (ПЛАН №383): Усилена ротация династий для непрерывной игры.
  */
 
 import type { 
@@ -183,12 +183,18 @@ export function generateSuiteDNA(totalBars: number, mood: Mood, initialSeed: num
         const isMellow = ['dark', 'anxious', 'melancholic', 'gloomy'].includes(mood);
         const dynasties = isMellow ? ['minor', 'slow-burn', 'doom-blues'] : ['major', 'texas', 'virtuoso', 'jazzy'];
         
-        // #ЗАЧЕМ: Dynasty Rotation. Выбираем династию на основе истории сессии.
-        const lastDynasty = (sessionHistory && sessionHistory.length > 0) 
-            ? BLUES_SOLO_LICKS[sessionHistory[sessionHistory.length - 1]]?.tags[0] 
-            : undefined;
+        // #ЗАЧЕМ: Усиленная ротация династий (ПЛАН №383).
+        // #ЧТО: Анализируем последние 3-4 сыгранных лика, чтобы выбрать Династию, которой давно не было.
+        const playedDynasties = (sessionHistory || [])
+            .map(id => BLUES_SOLO_LICKS[id]?.tags[0])
+            .filter(Boolean);
         
-        const currentDynasty = dynasties.find(d => d !== lastDynasty) || dynasties[0];
+        const lastFew = playedDynasties.slice(-3);
+        const availableDynasties = dynasties.filter(d => !lastFew.includes(d));
+        
+        const currentDynasty = availableDynasties.length > 0 
+            ? availableDynasties[calculateMusiNum(initialSeed, 3, initialSeed, availableDynasties.length)]
+            : dynasties[calculateMusiNum(initialSeed, 3, initialSeed, dynasties.length)];
         
         const candidates = Object.keys(BLUES_SOLO_LICKS).filter(id => {
             const lick = BLUES_SOLO_LICKS[id];
