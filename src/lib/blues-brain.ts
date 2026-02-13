@@ -19,10 +19,10 @@ import { GUITAR_PATTERNS } from './assets/guitar-patterns';
 import { BLUES_SOLO_LICKS } from './assets/blues_guitar_solo';
 
 /**
- * #ЗАЧЕМ: Блюзовый Мозг V50.0 — "Dynasty Anti-Stagnation Update".
- * #ЧТО: 1. Усилена "Вакцина Смещения". При зацикливании лики меняют Династию.
- *       2. Внедрена поддержка межсессионной истории для предотвращения повторов старта.
- *       3. Улучшена фразировка Call-Response.
+ * #ЗАЧЕМ: Блюзовый Мозг V51.0 — "Register Discipline Update".
+ * #ЧТО: 1. Верх мелодии ограничен MIDI 73 (C#5) по требованию пользователя.
+ *       2. Низ баса ограничен MIDI 24 (1-я октава).
+ *       3. Сохранена вся логика Anti-Stagnation и Dynasty Rotation.
  */
 
 const ENERGY_PRICES = {
@@ -47,7 +47,9 @@ export class BluesBrain {
   private currentAxiom: MelodicAxiomNote[] = [];
   private random: any;
   
-  private readonly MELODY_CEILING = 79;
+  // #ЗАЧЕМ: Строгая регистровая дисциплина.
+  // #ЧТО: Потолок мелодии опущен до 73 (было 79).
+  private readonly MELODY_CEILING = 73; 
   private readonly BASS_FLOOR = 24; 
   private readonly PIANO_CEILING = 71; 
   private readonly MAX_NOTE_DURATION = 2.0; 
@@ -151,8 +153,6 @@ export class BluesBrain {
       combinedEvents.push(...bEvents);
     }
 
-    // #ЗАЧЕМ: Усиленная Вакцина Смещения.
-    // #ЧТО: Если ансамбль зациклился, мы меняем ДНК лика и сдвигаем пианиста.
     this.auditGlobalStagnation(combinedEvents.filter(e => e.type === 'melody'), currentPianoEvents, currentChord, dna, epoch);
     
     if (hints.drums) {
@@ -179,7 +179,6 @@ export class BluesBrain {
           this.phraseHistory.push(ensembleHash);
           if (this.phraseHistory.length > this.MAX_HISTORY_DEPTH) this.phraseHistory.shift();
           if (this.detectSequenceStagnation(this.phraseHistory) > 0) {
-              // Принудительная эволюция Аксиомы при зацикливании
               this.currentAxiom = this.evolveAxiom(this.currentAxiom, 0.99, 'CLIMAX', dna, epoch);
               this.globalStagnationOffset += 500;
               this.phraseHistory = []; 

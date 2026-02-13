@@ -1,9 +1,9 @@
-
 /**
- * #ЗАЧЕМ: Суверенный Мозг Амбиента v1.5 — "The Sticky Orchestra" (Architecture: Staged Activation).
- * #ЧТО: 1. Внедрена поддержка Декларативных Сцен из блюпринта.
- *       2. Реализовано правило Sticky Orchestra: инструмент вступил — инструмент остался.
- *       3. Интеграция локального микшера с вероятностями и селекцией пресетов.
+ * #ЗАЧЕМ: Суверенный Мозг Амбиента v1.6 — "Orchestral Presence Update".
+ * #ЧТО: 1. Внедрена поддержка полноценного оркестрового рендеринга (Flute, Violin, Guitar Chords).
+ *       2. Реализована манера "капельного" пианино.
+ *       3. Бас переведен из режима чистого дрона в режим медленных риффов.
+ *       4. Принудительное использование Dark Sparkles.
  * #СВЯЗИ: Вызывается из FractalMusicEngine.ts при genre === 'ambient'.
  */
 
@@ -15,7 +15,8 @@ import type {
     NavigationInfo,
     Technique,
     InstrumentHints,
-    InstrumentPart
+    InstrumentPart,
+    Phrasing
 } from '@/types/music';
 import { calculateMusiNum, DEGREE_TO_SEMITONE, pickWeightedDeterministic } from './music-theory';
 import { AMBIENT_LEGACY } from './assets/ambient-legacy';
@@ -39,12 +40,11 @@ export class AmbientBrain {
     private mood: Mood;
     private random: any;
     
-    // Локальные оси управления (Изоляция)
+    // Локальные оси управления
     private fog: number = 0.3;
     private pulse: number = 0.15;
     private depth: number = 0.4;
 
-    // #ЗАЧЕМ: Память липкого оркестра.
     private activatedParts: Set<InstrumentPart> = new Set();
     private activeTimbres: Partial<Record<InstrumentPart, string>> = {};
 
@@ -79,16 +79,17 @@ export class AmbientBrain {
         this.applySpectralAtom(epoch, waves[3]);
         this.updateMoodAxes(epoch, localTension);
 
-        // #ЗАЧЕМ: Переход к сценарной оркестровке.
         const hints = this.orchestrate(localTension, navInfo, epoch);
         const events: FractalEvent[] = [];
 
+        // #ЗАЧЕМ: Полноценное оркестровое присутствие.
+        // #ЧТО: Рендеринг всех активных слоев.
         if (hints.accompaniment) {
             events.push(...this.renderPad(currentChord, epoch, hints.accompaniment as string));
         }
 
         if (hints.bass) {
-            events.push(...this.renderBass(currentChord, localTension, hints.bass as string));
+            events.push(...this.renderBass(currentChord, localTension, hints.bass as string, epoch));
         }
 
         if (hints.melody) {
@@ -99,8 +100,16 @@ export class AmbientBrain {
             events.push(...this.renderPianoDrops(currentChord, epoch, localTension));
         }
 
-        if (hints.sparkles && this.random.next() < (0.15 * (1 - this.fog))) {
+        if (hints.harmony) {
+            events.push(...this.renderOrchestralHarmony(currentChord, epoch, hints.harmony as string));
+        }
+
+        if (hints.sparkles && this.random.next() < (0.2 * (1 - this.fog))) {
             events.push(this.renderSparkle(currentChord));
+        }
+
+        if (hints.drums) {
+            events.push(...this.renderAmbientPercussion(epoch, localTension));
         }
 
         return { 
@@ -111,9 +120,6 @@ export class AmbientBrain {
         };
     }
 
-    /**
-     * #ЗАЧЕМ: Реализация Декларативных Сцен и Sticky Orchestra.
-     */
     private orchestrate(tension: number, navInfo: NavigationInfo, epoch: number): InstrumentHints {
         const hints: InstrumentHints = { summonProgress: {} };
         const stages = navInfo.currentPart.stagedInstrumentation;
@@ -131,7 +137,6 @@ export class AmbientBrain {
             Object.entries(currentStage.instrumentation).forEach(([partStr, rule]: [any, any]) => {
                 const part = partStr as InstrumentPart;
                 
-                // Правило липкости: если вступил — остался
                 if (!this.activatedParts.has(part)) {
                     if (this.random.next() < rule.activationChance) {
                         this.activatedParts.add(part);
@@ -144,11 +149,6 @@ export class AmbientBrain {
                     hints.summonProgress![part] = 1.0;
                 }
             });
-        } else {
-            // Fallback sovereign logic (legacy)
-            hints.bass = tension > 0.25 ? 'bass_ambient' : undefined;
-            hints.accompaniment = 'synth_ambient_pad_lush';
-            hints.melody = tension > 0.4 ? 'mellotron_flute_intimate' : undefined;
         }
 
         return hints;
@@ -171,7 +171,7 @@ export class AmbientBrain {
             note: chord.rootNote + 36 + (DEGREE_TO_SEMITONE[n.deg] || 0),
             time: n.t / 3,
             duration: n.d / 3,
-            weight: 0.7 * (1 - this.fog * 0.3),
+            weight: 0.7 * (1 - this.fog * 0.2),
             technique: n.tech || 'pick',
             dynamics: 'p',
             phrasing: 'legato'
@@ -180,21 +180,62 @@ export class AmbientBrain {
 
     private renderPianoDrops(chord: GhostChord, epoch: number, tension: number): FractalEvent[] {
         const events: FractalEvent[] = [];
-        // Пианист играет на слабые доли (2 и 4)
-        [1, 3].forEach(beat => {
-            if (this.random.next() < (0.3 * this.depth)) {
+        // #ЗАЧЕМ: Манера "капелек" — редкие, точечные удары.
+        const beats = [1.2, 3.4]; 
+        beats.forEach(beat => {
+            if (this.random.next() < (0.2 * this.depth)) {
                 events.push({
                     type: 'pianoAccompaniment',
-                    note: chord.rootNote + 36 + [0, 7, 12][this.random.nextInt(3)],
-                    time: beat + (this.random.next() * 0.1),
-                    duration: 1.5,
-                    weight: 0.45,
+                    note: chord.rootNote + 48 + [0, 7, 12][this.random.nextInt(3)],
+                    time: beat + (this.random.next() * 0.05),
+                    duration: 0.8,
+                    weight: 0.4,
                     technique: 'hit',
                     dynamics: 'p',
                     phrasing: 'staccato'
                 });
             }
         });
+        return events;
+    }
+
+    private renderOrchestralHarmony(chord: GhostChord, epoch: number, timbre: string): FractalEvent[] {
+        const root = chord.rootNote + 24;
+        const isMinor = chord.chordType === 'minor' || chord.chordType === 'diminished';
+        const notes = [root + (isMinor ? 3 : 4), root + 7, root + 12];
+        
+        return notes.map((n, i) => ({
+            type: 'harmony',
+            note: n,
+            time: i * 0.2,
+            duration: 4.0,
+            weight: 0.35,
+            technique: 'swell',
+            dynamics: 'p',
+            phrasing: 'legato',
+            chordName: isMinor ? 'Am' : 'E'
+        }));
+    }
+
+    private renderAmbientPercussion(epoch: number, tension: number): FractalEvent[] {
+        const events: FractalEvent[] = [];
+        // Rare kicks
+        if (epoch % 2 === 0 && this.random.next() < 0.4) {
+            events.push({ type: 'drum_kick', note: 36, time: 0, duration: 0.1, weight: 0.6, technique: 'hit', dynamics: 'p', phrasing: 'staccato' });
+        }
+        // Toms and Bongos
+        [1, 2.5, 3.8].forEach(t => {
+            if (this.random.next() < (0.15 + tension * 0.2)) {
+                const type = this.random.next() > 0.5 ? 'drum_Sonor_Classix_Low_Tom' : 'drum_bongo_pvc-tube-01';
+                events.push({ type: type as any, note: 40, time: t, duration: 0.2, weight: 0.4, technique: 'hit', dynamics: 'p', phrasing: 'staccato' });
+            }
+        });
+        // Bells (using the vast library)
+        if (this.random.next() < 0.1) {
+            const bellIndex = calculateMusiNum(epoch, 2, this.seed, 40);
+            const bellTypes = ['Bell_-_Ambient', 'Bell_-_Soft', 'Bell_-_Echo', 'Bell_-_Deep'];
+            events.push({ type: `drum_${bellTypes[bellIndex % 4]}` as any, note: 60, time: this.random.next() * 4, duration: 2.0, weight: 0.3, technique: 'hit', dynamics: 'p', phrasing: 'staccato' });
+        }
         return events;
     }
 
@@ -233,7 +274,7 @@ export class AmbientBrain {
 
     private renderPad(chord: GhostChord, epoch: number, timbre: string): FractalEvent[] {
         const root = chord.rootNote + 12;
-        const isMinor = chord.chordType === 'minor';
+        const isMinor = chord.chordType === 'minor' || chord.chordType === 'diminished';
         const notes = [root, root + (isMinor ? 3 : 4), root + 7];
         const cutoff = 1800 * (1 - Math.pow(this.fog, 1.8));
 
@@ -242,7 +283,7 @@ export class AmbientBrain {
             note: n,
             time: i * 0.1,
             duration: 4.0,
-            weight: 0.25 * (1 - this.fog * 0.4),
+            weight: 0.3 * (1 - this.fog * 0.3),
             technique: 'swell',
             dynamics: 'p',
             phrasing: 'legato',
@@ -250,10 +291,18 @@ export class AmbientBrain {
         }));
     }
 
-    private renderBass(chord: GhostChord, tension: number, timbre: string): FractalEvent[] {
+    private renderBass(chord: GhostChord, tension: number, timbre: string, epoch: number): FractalEvent[] {
+        const root = chord.rootNote - 12;
+        // #ЗАЧЕМ: Бас теперь играет медленные риффы вместо чистого дрона.
+        if (calculateMusiNum(epoch, 3, this.seed, 10) > 6) {
+            return [
+                { type: 'bass', note: root, time: 0, duration: 2.0, weight: 0.6, technique: 'pluck', dynamics: 'p', phrasing: 'legato' },
+                { type: 'bass', note: root + 7, time: 2.5, duration: 1.5, weight: 0.5, technique: 'pluck', dynamics: 'p', phrasing: 'legato' }
+            ];
+        }
         return [{
             type: 'bass',
-            note: chord.rootNote - 12,
+            note: root,
             time: 0,
             duration: 4.0,
             weight: 0.55,
@@ -274,7 +323,8 @@ export class AmbientBrain {
             technique: 'hit',
             dynamics: 'p',
             phrasing: 'staccato',
-            params: { mood: this.mood, category: 'light' }
+            // #ЗАЧЕМ: Принудительное использование темных искр.
+            params: { mood: this.mood, category: 'dark' }
         };
     }
 }
