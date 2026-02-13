@@ -1,9 +1,7 @@
 /**
- * #ЗАЧЕМ: Суверенный Мозг Амбиента v3.0 — "Emotional Peak & Presence".
- * #ЧТО: 1. Внедрен "Лимбический Триггер" (нота +8 над минором) для создания "слёз".
- *       2. Радикально повышена громкость и частота Гармонии и Спарклов.
- *       3. Внедрена поддержка призрачных голосов (Voices of the Void).
- *       4. Исправлена высота тона пианино (опущена на комфортный уровень).
+ * #ЗАЧЕМ: Суверенный Мозг Амбиента v3.1 — "Stability & Presence".
+ * #ЧТО: 1. Исправлен TypeError при отсутствии объекта layers в части.
+ *       2. Усилена защита при активации пианино.
  */
 
 import type { 
@@ -135,13 +133,11 @@ export class AmbientBrain {
         }
 
         if (hints.harmony) {
-            // #ЗАЧЕМ: Усиление присутствия Гармонии. Шанс увеличен до 70%.
             if (this.random.next() < 0.7) {
                 events.push(...this.renderOrchestralHarmony(currentChord, epoch, hints.harmony as string, localTension));
             }
         }
 
-        // #ЗАЧЕМ: Спарклы стали в 2 раза чаще и громче.
         if (hints.sparkles && this.random.next() < 0.6) {
             events.push(this.renderSparkle(currentChord));
         }
@@ -150,7 +146,6 @@ export class AmbientBrain {
             events.push(...this.renderAmbientPercussion(epoch, localTension));
         }
 
-        // #ЗАЧЕМ: Голоса Пустоты. Впрыскиваем редкие SFX в моменты падения напряжения.
         if (hints.sfx && epoch % 12 === 0 && localTension < 0.75) {
             events.push(...this.renderSfx(localTension));
         }
@@ -205,14 +200,19 @@ export class AmbientBrain {
             });
         }
 
-        this.activatedParts.forEach(p => {
-            if (part.layers && (part.layers as any)[p]) {
-                (hints as any)[p] = this.activeTimbres[p] || 'synth';
-                hints.summonProgress![p] = 1.0;
-            }
-        });
+        // #ИСПРАВЛЕНО (ПЛАН №402): Добавлена проверка на существование layers.
+        if (part.layers) {
+            this.activatedParts.forEach(p => {
+                if ((part.layers as any)[p]) {
+                    (hints as any)[p] = this.activeTimbres[p] || 'synth';
+                    hints.summonProgress![p] = 1.0;
+                }
+            });
 
-        if (navInfo.currentPart.layers.pianoAccompaniment) instrumentHints.pianoAccompaniment = 'piano';
+            if (part.layers.pianoAccompaniment) {
+                hints.pianoAccompaniment = 'piano';
+            }
+        }
 
         return hints;
     }
@@ -301,10 +301,9 @@ export class AmbientBrain {
         const events: FractalEvent[] = [];
         const beats = [1.2, 2.5, 3.7]; 
         beats.forEach(beat => {
-            if (this.random.next() < (0.25 * this.depth)) { // Slightly more frequent
+            if (this.random.next() < (0.25 * this.depth)) { 
                 events.push({
                     type: 'pianoAccompaniment',
-                    // #ЗАЧЕМ: Регистровая Нормализация. +24 дает теплое звучание.
                     note: Math.min(chord.rootNote + 24 + [0, 3, 7, 12][this.random.nextInt(4)], 72),
                     time: beat,
                     duration: 3.0,
@@ -328,22 +327,19 @@ export class AmbientBrain {
             note: n + 12, 
             time: i * 0.5,
             duration: 8.0, 
-            // #ЗАЧЕМ: Усиление присутствия Гармонии (Приправа стала ярче).
             weight: 0.38 * (0.8 + this.random.next() * 0.4), 
             technique: 'swell',
             dynamics: 'p',
             phrasing: 'legato'
         }));
 
-        // #ЗАЧЕМ: "Лимбический Триггер" (The Tears of Aeolus).
-        // #ЧТО: Добавление малой сексты (+8) при высоком напряжении в миноре.
         if (isMinor && tension > 0.75) {
             events.push({
                 type: 'harmony',
-                note: root + 8 + 36, // +3 октавы для пронзительности
+                note: root + 8 + 36, 
                 time: 2.0,
-                duration: 12.0, // Очень длинный хвост
-                weight: 0.45 * (1 + this.fog), // Чем больше тумана, тем пронзительнее
+                duration: 12.0, 
+                weight: 0.45 * (1 + this.fog), 
                 technique: 'swell',
                 dynamics: 'p',
                 phrasing: 'legato'
@@ -359,7 +355,6 @@ export class AmbientBrain {
             note: chord.rootNote + 48,
             time: this.random.next() * 4,
             duration: 12.0,
-            // #ЗАЧЕМ: Громкие Спарклы.
             weight: 0.55,
             technique: 'hit',
             dynamics: 'p',
@@ -374,7 +369,7 @@ export class AmbientBrain {
             note: 60,
             time: this.random.next() * 2,
             duration: 4.0,
-            weight: 0.45 * (1 - tension), // Громче, когда тише музыка
+            weight: 0.45 * (1 - tension), 
             technique: 'hit',
             dynamics: 'p',
             phrasing: 'staccato',

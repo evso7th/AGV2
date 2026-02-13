@@ -1,14 +1,14 @@
 import type { MusicBlueprint } from '@/types/music';
 
 /**
- * #ЗАЧЕМ: Блюпринт "The Ritual" (Dark Blues v14.0 - Voice Support).
- * #ЧТО: 1. Добавлена инструкция SFX для активации редких голосовых вставок.
- *       2. Tension Curve оптимизирована для создания "окон" затишья (0.65-0.70).
+ * #ЗАЧЕМ: Блюпринт "The Ritual" (Dark Blues v15.0 - Universal Lottery).
+ * #ЧТО: 1. Внедрена секция INTRO с Лотереей Вступления.
+ *       2. Сохранены Voices of the Void и темное напряжение.
  */
 export const DarkBluesBlueprint: MusicBlueprint = {
     id: 'dark_blues',
     name: 'Ritual of Smoldering Textures',
-    description: 'A heavy, ritualistic blues in E Phrygian. Solid energetic core with rare ghostly voices.',
+    description: 'A heavy, ritualistic blues in E Phrygian. Now with lottery-based entrance and ghostly voices.',
     mood: 'dark',
     musical: {
         key: { root: 'E', scale: 'phrygian', octave: 1 },
@@ -51,48 +51,57 @@ export const DarkBluesBlueprint: MusicBlueprint = {
                 outroFill: null,
             },
             {
-                id: 'THE_RITUAL', name: 'The Accumulation', duration: { percent: 97 },
+                id: 'INTRO', name: 'LotteryRitual', duration: { percent: 10 },
+                layers: { bass: true, drums: true, melody: true, accompaniment: true, harmony: true, pianoAccompaniment: true, sfx: true, sparkles: true },
+                stagedInstrumentation: [
+                    {
+                        duration: { percent: 25 },
+                        instrumentation: {
+                            bass: { activationChance: 1.0, instrumentOptions: [{ name: 'bass_ambient_dark', weight: 1.0 }] },
+                            accompaniment: { activationChance: 1.0, instrumentOptions: [{ name: 'synth_cave_pad', weight: 1.0 }] }
+                        }
+                    },
+                    {
+                        duration: { percent: 25 },
+                        instrumentation: {
+                            drums: { activationChance: 1.0, instrumentOptions: [{ name: 'blues_dark', weight: 1.0 }] },
+                            pianoAccompaniment: { activationChance: 1.0, instrumentOptions: [{ name: 'piano', weight: 1.0 }] }
+                        }
+                    },
+                    {
+                        duration: { percent: 25 },
+                        instrumentation: {
+                            melody: { activationChance: 1.0, instrumentOptions: [{ name: 'organ_soft_jazz', weight: 0.7 }, { name: 'theremin', weight: 0.3 }] },
+                            sfx: { activationChance: 0.8, instrumentOptions: [{ name: 'dark', weight: 1.0 }], transient: true }
+                        }
+                    },
+                    {
+                        duration: { percent: 25 },
+                        instrumentation: {
+                            harmony: { activationChance: 1.0, instrumentOptions: [{ name: 'guitarChords', weight: 1.0 }] },
+                            sparkles: { activationChance: 0.7, instrumentOptions: [{ name: 'dark', weight: 1.0 }] }
+                        }
+                    }
+                ],
+                instrumentRules: {
+                    drums: { kitName: 'blues_dark', pattern: 'ambient_beat', density: { min: 0.1, max: 0.2 } }
+                },
+                bundles: [{ id: 'DARK_INTRO_LOTTERY', name: 'Step into Shadow', duration: { percent: 100 }, characteristics: {}, phrases: {} }],
+                outroFill: null,
+            },
+            {
+                id: 'THE_RITUAL', name: 'The Accumulation', duration: { percent: 87 },
                 layers: { bass: true, accompaniment: true, melody: true, sfx: true, sparkles: true, drums: true, harmony: true, pianoAccompaniment: true },
                 stagedInstrumentation: [
                     { 
-                        duration: { percent: 20 }, 
+                        duration: { percent: 100 }, 
                         instrumentation: {
                            drums: { activationChance: 1.0, instrumentOptions: [ { name: 'blues_melancholic_master', weight: 1.0 } ] },
                            bass: { activationChance: 1.0, instrumentOptions: [ { name: 'bass', weight: 1.0 } ] },
                            accompaniment: { activationChance: 1.0, instrumentOptions: [ { name: 'accompaniment', weight: 1.0 } ] },
-                           melody: { activationChance: 1.0, instrumentOptions: [ { name: 'melody', weight: 1.0 } ] }
-                        }
-                    },
-                    {
-                        duration: { percent: 20 }, 
-                        instrumentation: {
-                           drums: { activationChance: 1.0, instrumentOptions: [ { name: 'blues_melancholic_master', weight: 1.0 } ] },
-                           accompaniment: { activationChance: 1.0, instrumentOptions: [ { name: 'accompaniment', weight: 1.0 } ] },
-                           bass: { activationChance: 1.0, instrumentOptions: [ { name: 'bass', weight: 1.0 } ] },
-                           melody: { activationChance: 1.0, instrumentOptions: [ { name: 'melody', weight: 1.0 } ] }
-                        }
-                    },
-                    {
-                        duration: { percent: 20 }, 
-                        instrumentation: {
-                           melody: { activationChance: 1.0, instrumentOptions: [ { name: 'melody', weight: 1.0 } ] },
-                           accompaniment: { activationChance: 1.0, instrumentOptions: [ { name: 'accompaniment', weight: 1.0 } ] },
-                           bass: { activationChance: 1.0, instrumentOptions: [ { name: 'bass', weight: 1.0 } ] },
-                           drums: { activationChance: 1.0, instrumentOptions: [ { name: 'blues_melancholic_master', weight: 1.0 } ] },
-                           pianoAccompaniment: { activationChance: 1.0, instrumentOptions: [ { name: 'piano', weight: 1.0 } ] }
-                        }
-                    },
-                    {
-                        duration: { percent: 40 }, 
-                        instrumentation: {
                            melody: { activationChance: 1.0, instrumentOptions: [ { name: 'melody', weight: 1.0 } ] },
                            pianoAccompaniment: { activationChance: 1.0, instrumentOptions: [ { name: 'piano', weight: 1.0 } ] },
-                           accompaniment: { activationChance: 1.0, instrumentOptions: [ { name: 'accompaniment', weight: 1.0 } ] },
-                           bass: { activationChance: 1.0, instrumentOptions: [ { name: 'bass', weight: 1.0 } ] },
-                           drums: { activationChance: 1.0, instrumentOptions: [ { name: 'blues_melancholic_master', weight: 1.0 } ] },
                            harmony: { activationChance: 1.0, instrumentOptions: [ { name: 'guitarChords', weight: 0.6 }, { name: 'flute', weight: 0.4 } ] },
-                           sparkles: { activationChance: 0.4, instrumentOptions: [ { name: 'dark', weight: 1.0 } ], transient: true },
-                           // #ЗАЧЕМ: Редкие голосовые вставки.
                            sfx: { activationChance: 0.25, instrumentOptions: [ { name: 'voice', weight: 1.0 } ], transient: true }
                         }
                     }

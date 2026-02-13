@@ -1,14 +1,14 @@
 import type { MusicBlueprint } from '@/types/music';
 
 /**
- * #ЗАЧЕМ: Блюпринт "The Bluest Blues" (v24.0 - Solid Core Update).
- * #ЧТО: Стабилизация энергии в середине пьесы. Устранен эффект "разбегания оркестра"
- *       путем замены синусоидальной волны на более плотное тление.
+ * #ЗАЧЕМ: Блюпринт "The Bluest Blues" (v25.0 - Universal Lottery).
+ * #ЧТО: 1. Внедрена система Staged Instrumentation для раздела INTRO.
+ *       2. Оркестр теперь вступает случайными парами согласно глобальной лотерее.
  */
 export const WinterBluesBlueprint: MusicBlueprint = {
     id: 'winter_blues',
     name: 'The Bluest Blues (Prologue)',
-    description: 'A deep journey starting with a thematic overture and building into a soul-drenched blues. Solid middle.',
+    description: 'A deep journey starting with a thematic overture and building into a soul-drenched blues. Universal lottery enabled.',
     mood: 'melancholic',
     musical: {
         key: { root: 'E', scale: 'dorian', octave: 1 },
@@ -18,11 +18,9 @@ export const WinterBluesBlueprint: MusicBlueprint = {
         tensionProfile: { 
             type: 'arc', 
             peakPosition: 0.7, 
-            // #ЗАЧЕМ: Устранение провала в середине. 
-            // #ЧТО: Формула гарантирует, что напряжение в центре остается высоким.
             curve: (p, pp) => {
                 const base = p < pp ? Math.pow(p / pp, 1.2) : 1 - Math.pow((p - pp) / (1 - pp), 1.5);
-                return 0.3 + (base * 0.7); // Поднимаем пол напряжения до 0.3
+                return 0.3 + (base * 0.7);
             }
         }
     },
@@ -48,58 +46,45 @@ export const WinterBluesBlueprint: MusicBlueprint = {
                 outroFill: null,
             },
             {
-                id: 'INTRO_1', name: 'Opening Act', duration: { percent: 27 }, 
+                id: 'INTRO', name: 'LotteryOpening', duration: { percent: 27 }, 
                 layers: { bass: true, accompaniment: true, melody: true, drums: true, harmony: true, pianoAccompaniment: true, sparkles: true },
                 stagedInstrumentation: [
                     { 
-                        duration: { percent: 15 }, 
+                        duration: { percent: 25 }, 
                         instrumentation: {
                            bass: { activationChance: 1.0, instrumentOptions: [ { name: 'bass', weight: 1.0 } ] },
-                           accompaniment: { activationChance: 1.0, instrumentOptions: [ { name: 'organ_soft_jazz', weight: 1.0 } ] },
-                           harmony: { activationChance: 1.0, instrumentOptions: [ { name: 'guitarChords', weight: 1.0 } ] }
+                           accompaniment: { activationChance: 1.0, instrumentOptions: [ { name: 'organ_soft_jazz', weight: 1.0 } ] }
                         }
                     },
                     {
-                        duration: { percent: 20 }, 
+                        duration: { percent: 25 }, 
                         instrumentation: {
                            drums: { activationChance: 1.0, instrumentOptions: [ { name: 'blues_melancholic', weight: 1.0 } ] },
-                           bass: { activationChance: 1.0, instrumentOptions: [ { name: 'bass', weight: 1.0 } ] },
-                           accompaniment: { activationChance: 1.0, instrumentOptions: [ { name: 'organ_soft_jazz', weight: 1.0 } ] },
-                           harmony: { activationChance: 1.0, instrumentOptions: [ { name: 'guitarChords', weight: 1.0 } ] },
                            melody: { activationChance: 1.0, instrumentOptions: [ { name: 'melody', weight: 1.0 } ] }
                         }
                     },
                     {
                         duration: { percent: 25 }, 
                         instrumentation: {
-                           bass: { activationChance: 1.0, instrumentOptions: [ { name: 'bass', weight: 1.0 } ] },
-                           drums: { activationChance: 1.0, instrumentOptions: [ { name: 'blues_melancholic', weight: 1.0 } ] },
-                           accompaniment: { activationChance: 1.0, instrumentOptions: [ { name: 'organ_soft_jazz', weight: 1.0 } ] },
-                           harmony: { activationChance: 1.0, instrumentOptions: [ { name: 'guitarChords', weight: 1.0 } ] },
-                           melody: { activationChance: 1.0, instrumentOptions: [ { name: 'melody', weight: 1.0 } ] },
                            pianoAccompaniment: { activationChance: 1.0, instrumentOptions: [ { name: 'piano', weight: 1.0 } ] },
-                           sparkles: { activationChance: 0.4, instrumentOptions: [ { name: 'dark', weight: 1.0 } ], transient: true }
+                           harmony: { activationChance: 1.0, instrumentOptions: [ { name: 'guitarChords', weight: 1.0 } ] }
                         }
                     },
                     {
-                        duration: { percent: 40 }, 
+                        duration: { percent: 25 }, 
                         instrumentation: {
-                           melody: { activationChance: 1.0, instrumentOptions: [ { name: 'melody', weight: 1.0 } ] },
-                           pianoAccompaniment: { activationChance: 1.0, instrumentOptions: [ { name: 'piano', weight: 1.0 } ] },
-                           accompaniment: { activationChance: 1.0, instrumentOptions: [ { name: 'organ_soft_jazz', weight: 1.0 } ] },
-                           bass: { activationChance: 1.0, instrumentOptions: [ { name: 'bass', weight: 1.0 } ] },
-                           drums: { activationChance: 1.0, instrumentOptions: [ { name: 'blues_melancholic_master', weight: 1.0 } ] },
-                           harmony: { activationChance: 1.0, instrumentOptions: [ { name: 'guitarChords', weight: 0.6 }, { name: 'flute', weight: 0.4 } ] },
-                           sparkles: { activationChance: 0.35, instrumentOptions: [ { name: 'dark', weight: 1.0 } ], transient: true }
+                           sparkles: { activationChance: 0.6, instrumentOptions: [ { name: 'dark', weight: 1.0 } ], transient: true },
+                           sfx: { activationChance: 0.4, instrumentOptions: [ { name: 'voice', weight: 1.0 } ], transient: true }
                         }
                     }
                 ],
                 instrumentRules: {
                     bass: { techniques: [{ value: 'walking', weight: 1.0 }], density: { min: 1.0, max: 1.0 } },
                     accompaniment: { techniques: [{ value: 'long-chords', weight: 1.0 }], density: { min: 0.9, max: 1.0 } },
-                    melody: { source: 'blues_solo', density: { min: 0.6, max: 0.8 }, register: { preferred: 'low' } }
+                    melody: { source: 'blues_solo', density: { min: 0.6, max: 0.8 }, register: { preferred: 'low' } },
+                    drums: { kitName: 'blues_melancholic', pattern: 'ambient_beat' }
                 },
-                bundles: [{ id: 'FAST_INTRO', name: 'Rapid Buildup', duration: { percent: 100 }, characteristics: {}, phrases: {} }],
+                bundles: [{ id: 'WINTER_INTRO_STAGED', name: 'Scenaric Buildup', duration: { percent: 100 }, characteristics: {}, phrases: {} }],
                 outroFill: null,
             },
             {

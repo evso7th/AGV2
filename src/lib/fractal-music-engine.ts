@@ -46,9 +46,8 @@ interface EngineConfig {
 }
 
 /**
- * #ЗАЧЕМ: Фрактальный Музыкальный Движок V19.0 — "Global Sticky Orchestra".
- * #ЧТО: Внедрена глобальная логика наследования инструментов (Inherit or Overwrite).
- *       Инструменты сохраняют свои тембры, пока не получат новую инструкцию.
+ * #ЗАЧЕМ: Фрактальный Музыкальный Движок V20.0 — "Universal Intro Lottery".
+ * #ЧТО: Логика динамической жеребьевки инструментов интро теперь доступна для всех жанров (Блюз, Транс и др.).
  */
 export class FractalMusicEngine {
   public config: EngineConfig;
@@ -67,6 +66,9 @@ export class FractalMusicEngine {
   private activatedParts: Set<InstrumentPart> = new Set();
   private activeTimbres: Partial<Record<InstrumentPart, string>> = {};
   private hookLibrary: { events: FractalEvent[], root: number }[] = [];
+  
+  // #ЗАЧЕМ: Память лотереи вступления для текущей сессии.
+  private introLotteryMap: Map<number, Partial<Record<InstrumentPart, any>>> = new Map();
 
   constructor(config: EngineConfig, blueprint: MusicBlueprint) {
     this.config = { ...config };
@@ -82,12 +84,37 @@ export class FractalMusicEngine {
       if(moodOrGenreChanged || seedChanged) this.initialize(true);
   }
 
+  // #ЗАЧЕМ: Глобальная реализация Лотереи Вступления.
+  private performIntroLottery(stages: any[]) {
+    console.log('%c[Engine] INITIALIZING UNIVERSAL INTRO LOTTERY...', 'color: #00BFFF; font-weight: bold;');
+    const allParticipants: { part: InstrumentPart, rule: any }[] = [];
+    
+    stages.forEach(s => {
+        if (s.instrumentation) {
+            Object.entries(s.instrumentation).forEach(([part, rule]) => {
+                allParticipants.push({ part: part as InstrumentPart, rule });
+            });
+        }
+    });
+
+    const shuffled = this.random.shuffle(allParticipants);
+    const stageSize = Math.ceil(shuffled.length / (stages.length || 1));
+
+    stages.forEach((_, i) => {
+        const chunk = shuffled.slice(i * stageSize, (i + 1) * stageSize);
+        const stageInstr: Partial<Record<InstrumentPart, any>> = {};
+        chunk.forEach(p => { stageInstr[p.part] = p.rule; });
+        this.introLotteryMap.set(i, stageInstr);
+    });
+  }
+
   public initialize(force: boolean = false) {
     if (this.isInitialized && !force) return;
 
     this.activatedParts.clear(); 
     this.activeTimbres = {};
     this.hookLibrary = [];
+    this.introLotteryMap.clear();
 
     this.suiteDNA = generateSuiteDNA(
         this.blueprint.structure.totalDuration.preferredBars, 
@@ -146,16 +173,24 @@ export class FractalMusicEngine {
         };
     }
 
-    // --- Глобальная логика оркестровки (для Блюза и др.) ---
+    // --- Глобальная логика оркестровки (Блюз, Транс и др. с поддержкой Лотереи) ---
     const instrumentHints: InstrumentHints = { summonProgress: {} };
     let tension = this.suiteDNA.tensionMap[this.epoch % this.suiteDNA.tensionMap.length] ?? 0.5;
     
-    // 1. Определение источника инструкций (Stage или Part)
     let currentInstructions: Partial<Record<InstrumentPart, any>> | undefined;
     const stages = navInfo.currentPart.stagedInstrumentation;
-    if (stages && stages.length > 0) {
+
+    // #ЗАЧЕМ: Применение Лотереи Вступления для всех жанров.
+    if (navInfo.currentPart.id === 'INTRO' && stages && stages.length > 0) {
+        if (this.introLotteryMap.size === 0) this.performIntroLottery(stages);
+        
         const partBars = navInfo.currentPartEndBar - navInfo.currentPartStartBar + 1;
-        const progress = (this.epoch - navInfo.currentPartStartBar) / partBars;
+        const progress = (this.epoch - navInfo.currentPartStartBar) / (partBars || 1);
+        const stageIndex = Math.floor(progress * stages.length);
+        currentInstructions = this.introLotteryMap.get(Math.min(stageIndex, stages.length - 1));
+    } else if (stages && stages.length > 0) {
+        const partBars = navInfo.currentPartEndBar - navInfo.currentPartStartBar + 1;
+        const progress = (this.epoch - navInfo.currentPartStartBar) / (partBars || 1);
         let acc = 0;
         for (const s of stages) { 
             acc += s.duration.percent; 
@@ -165,11 +200,9 @@ export class FractalMusicEngine {
         currentInstructions = navInfo.currentPart.instrumentation;
     }
 
-    // 2. Обработка "Липкого Оркестра"
     if (currentInstructions) {
         Object.entries(currentInstructions).forEach(([partStr, rule]: [any, any]) => {
             const part = partStr as InstrumentPart;
-            // Если инструмент не активен - пробуем активировать
             if (!this.activatedParts.has(part)) {
                 let effectiveChance = rule.activationChance ?? 1.0;
                 if (part === 'sfx' || part === 'sparkles') effectiveChance *= (1.0 - tension * 0.5);
@@ -178,9 +211,7 @@ export class FractalMusicEngine {
                     const options = rule.instrumentOptions || rule.v2Options || rule.options || [];
                     this.activeTimbres[part] = pickWeightedDeterministic(options, this.config.seed, this.epoch, 500);
                 }
-            } 
-            // Если инструмент активен, но есть НОВАЯ инструкция - обновляем тембр
-            else {
+            } else {
                 const options = rule.instrumentOptions || rule.v2Options || rule.options || [];
                 if (options.length > 0) {
                     this.activeTimbres[part] = pickWeightedDeterministic(options, this.config.seed, this.epoch, 500);
@@ -189,15 +220,16 @@ export class FractalMusicEngine {
         });
     }
 
-    // 3. Сборка подсказок на основе памяти активаций и текущих слоев
-    this.activatedParts.forEach(part => {
-        if (navInfo.currentPart.layers[part]) {
-            (instrumentHints as any)[part] = this.activeTimbres[part] || 'synth';
-            instrumentHints.summonProgress![part] = 1.0; 
-        }
-    });
+    if (navInfo.currentPart.layers) {
+        this.activatedParts.forEach(part => {
+            if ((navInfo.currentPart.layers as any)[part]) {
+                (instrumentHints as any)[part] = this.activeTimbres[part] || 'synth';
+                instrumentHints.summonProgress![part] = 1.0; 
+            }
+        });
 
-    if (navInfo.currentPart.layers.pianoAccompaniment) instrumentHints.pianoAccompaniment = 'piano';
+        if (navInfo.currentPart.layers.pianoAccompaniment) instrumentHints.pianoAccompaniment = 'piano';
+    }
 
     const result = this.generateOneBar(barDuration, navInfo, instrumentHints);
     this.lastEvents = [...result.events];
