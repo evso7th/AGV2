@@ -46,8 +46,9 @@ interface EngineConfig {
 }
 
 /**
- * #ЗАЧЕМ: Фрактальный Музыкальный Движок V18.1 — "Dynasty Memory Update".
- * #ЧТО: Внедрена поддержка межсессионной истории ликов для Dynasty Rotation.
+ * #ЗАЧЕМ: Фрактальный Музыкальный Движок V18.2 — "Sovereign Ambient Path".
+ * #ЧТО: Реализована полная изоляция управления для жанра Амбиент.
+ *       Движок теперь доверяет AmbientBrain расчет напряжения и оркестровку.
  */
 export class FractalMusicEngine {
   public config: EngineConfig;
@@ -86,7 +87,6 @@ export class FractalMusicEngine {
     this.activatedParts.clear(); 
     this.hookLibrary = [];
 
-    // #ЗАЧЕМ: Передача истории сессии для исключения повторов при рождении.
     this.suiteDNA = generateSuiteDNA(
         this.blueprint.structure.totalDuration.preferredBars, 
         this.config.mood, 
@@ -98,7 +98,6 @@ export class FractalMusicEngine {
         this.config.sessionLickHistory
     );
 
-    // #ЗАЧЕМ: Сообщаем UI о выбранном лике для пополнения истории.
     if (this.suiteDNA.seedLickId) {
         self.postMessage({ type: 'LICK_BORN', lickId: this.suiteDNA.seedLickId });
     }
@@ -129,23 +128,25 @@ export class FractalMusicEngine {
     const navInfo = this.navigator.tick(this.epoch);
     if (!navInfo) return { events: [], instrumentHints: {}, beautyScore: 0, tension: 0.5 };
 
+    // #ЗАЧЕМ: Реализация суверенитета Амбиентного Мозга.
+    // #ЧТО: Если выбран жанр 'ambient', все управление (включая tension) делегируется AmbientBrain.
     if (this.config.genre === 'ambient' && this.ambientBrain) {
         const foundChord = this.suiteDNA.harmonyTrack.find(chord => this.epoch >= chord.bar && this.epoch < chord.bar + chord.durationBars);
         const currentChord = foundChord || this.suiteDNA.harmonyTrack[0];
         
         const ambientResult = this.ambientBrain.generateBar(this.epoch, currentChord, navInfo, this.suiteDNA);
         const beautyScore = this.calculateBeautyScore(ambientResult.events);
-        const tension = this.suiteDNA.tensionMap[this.epoch % this.suiteDNA.tensionMap.length] || 0.5;
 
         return { 
             events: ambientResult.events, 
             instrumentHints: ambientResult.instrumentHints, 
             beautyScore, 
-            tension, 
+            tension: ambientResult.tension, // Используем суверенное напряжение
             navInfo 
         };
     }
 
+    // --- Логика для остальных жанров (включая Блюз) ---
     const instrumentHints: InstrumentHints = { summonProgress: {} };
     const stages = navInfo.currentPart.stagedInstrumentation;
     let tension = this.suiteDNA.tensionMap[this.epoch % this.suiteDNA.tensionMap.length] ?? 0.5;

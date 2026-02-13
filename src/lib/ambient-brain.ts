@@ -1,7 +1,9 @@
 /**
- * #ЗАЧЕМ: Суверенный Мозг Амбиента v1.2 — "The Hall of Giants".
- * #ЧТО: Внедрена система семантического вдохновения от великих мастеров.
- *       Реализована изоляция управления (Fog, Pulse, Depth) и локальный микшер.
+ * #ЗАЧЕМ: Суверенный Мозг Амбиента v1.4 — "The Hall of Giants" (Fix: Stability & Isolation).
+ * #ЧТО: 1. Исправлена ошибка TypeError в applySpectralAtom (OOB Index).
+ *       2. Реализована полная изоляция управления энергией (Sovereign Tension).
+ *       3. Расширена библиотека Спектральных Атомов.
+ * #СВЯЗИ: Вызывается из FractalMusicEngine.ts при genre === 'ambient'.
  */
 
 import type { 
@@ -17,11 +19,17 @@ import { calculateMusiNum, DEGREE_TO_SEMITONE } from './music-theory';
 import { AMBIENT_LEGACY } from './assets/ambient-legacy';
 
 // ───── SPECTRAL ATOMS (A01-A12) ─────
+// Эти атомы определяют "форму дыхания" атмосферы.
 const SPECTRAL_ATOMS: Record<string, { fog: number[], depth: number[], pulse: number[] }> = {
     A01_BREATH: {
         fog: [0.2, 0.4, 0.6, 0.4, 0.2],
         depth: [0.3, 0.3, 0.5, 0.3, 0.3],
         pulse: [0.1, 0.1, 0.1, 0.1, 0.1]
+    },
+    A02_DAWN: {
+        fog: [0.1, 0.2, 0.3, 0.2, 0.1],
+        depth: [0.2, 0.4, 0.6, 0.4, 0.2],
+        pulse: [0.3, 0.3, 0.3, 0.3, 0.3]
     },
     A05_CRYSTAL: {
         fog: [0.8, 0.2, 0.1, 0.5, 0.8],
@@ -47,6 +55,7 @@ export class AmbientBrain {
     private mood: Mood;
     private random: any;
     
+    // Локальные оси управления (Изоляция)
     private fog: number = 0.3;
     private pulse: number = 0.15;
     private depth: number = 0.4;
@@ -59,31 +68,41 @@ export class AmbientBrain {
 
     private createSeededRandom(seed: number) {
         let state = seed;
+        const next = () => {
+            state = (state * 1664525 + 1013904223) % Math.pow(2, 32);
+            return state / Math.pow(2, 32);
+        };
         return {
-            next: () => {
-                state = (state * 1664525 + 1013904223) % Math.pow(2, 32);
-                return state / Math.pow(2, 32);
-            },
-            nextInt: (max: number) => Math.floor((state / Math.pow(2, 32)) * max)
+            next,
+            nextInt: (max: number) => Math.floor(next() * max)
         };
     }
 
+    /**
+     * Генерирует один такт амбиента с полностью изолированным управлением.
+     */
     public generateBar(
         epoch: number, 
         currentChord: GhostChord, 
         navInfo: NavigationInfo, 
         dna: SuiteDNA
-    ): { events: FractalEvent[], instrumentHints: InstrumentHints } {
+    ): { events: FractalEvent[], instrumentHints: InstrumentHints, tension: number, beautyScore: number } {
         
+        // 1. Расчет фрактальных волн напряжения
         const waves = this.computeTensionWaves(epoch * (60 / dna.baseTempo) * 4);
         const localTension = this.computeGlobalTension(waves);
 
+        // 2. Применение Спектрального Атома (структурирование тумана)
         this.applySpectralAtom(epoch, waves[3]);
+
+        // 3. Обновление осей настроения
         this.updateMoodAxes(epoch, localTension);
 
+        // 4. Оркестровка (выбор инструментов на основе локального напряжения)
         const hints = this.orchestrate(localTension);
         const events: FractalEvent[] = [];
 
+        // 5. Рендеринг партий
         if (hints.accompaniment) {
             events.push(...this.renderPad(currentChord, epoch));
         }
@@ -92,20 +111,23 @@ export class AmbientBrain {
             events.push(...this.renderBass(currentChord, localTension));
         }
 
-        // #ЗАЧЕМ: Интеграция наследия в мелодическую линию.
         if (hints.melody && this.random.next() < (0.4 * this.depth)) {
             events.push(...this.renderLegacyMelody(currentChord, epoch, localTension));
         }
 
-        if (hints.sparkles && this.random.next() < (0.12 * (1 - this.fog))) {
+        if (hints.sparkles && this.random.next() < (0.15 * (1 - this.fog))) {
             events.push(this.renderSparkle(currentChord));
         }
 
-        return { events, instrumentHints: hints };
+        return { 
+            events, 
+            instrumentHints: hints,
+            tension: localTension, // Суверенное напряжение
+            beautyScore: 0.5       // Будет пересчитано Двигателем
+        };
     }
 
     private renderLegacyMelody(chord: GhostChord, epoch: number, tension: number): FractalEvent[] {
-        // Выбор группы на основе настроения
         let groupKey = 'ENO';
         if (['joyful', 'epic'].includes(this.mood)) groupKey = tension > 0.6 ? 'JARRE' : 'OLDFIELD';
         else if (['dark', 'anxious'].includes(this.mood)) groupKey = 'CBL';
@@ -131,8 +153,16 @@ export class AmbientBrain {
 
     private applySpectralAtom(epoch: number, t3: number) {
         const atomKeys = Object.keys(SPECTRAL_ATOMS);
-        const atomIdx = Math.floor(((t3 + 1) / 2) * atomKeys.length) % atomKeys.length;
-        const atom = SPECTRAL_ATOMS[atomKeys[atomIdx]];
+        
+        // #ЗАЧЕМ: Безопасный расчет индекса (Fix TypeError).
+        // #ЧТО: Нормализация t3 из [-1.5, 1.5] в [0, 1] и клэмп.
+        const normalizedT3 = (t3 + 1.5) / 3.0;
+        const safeIdx = Math.floor(clamp(normalizedT3, 0, 0.999) * atomKeys.length);
+        
+        const atom = SPECTRAL_ATOMS[atomKeys[safeIdx]];
+        
+        if (!atom) return;
+
         const step = epoch % 5; 
         this.fog = (this.fog + atom.fog[step]) / 2;
         this.depth = (this.depth + atom.depth[step]) / 2;
