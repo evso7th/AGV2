@@ -67,10 +67,10 @@ export const useAuraGroove = (): AuraGrooveProps => {
     isInitialized,
     isInitializing,
     isPlaying,
-    useMelodyV2, 
+    useMelodyV2: useMelodyV2Engine, 
     isRecording,
     isBroadcastActive,
-    toggleMelodyEngine,
+    toggleMelodyEngine: toggleEngine,
     initialize, 
     setIsPlaying: setEngineIsPlaying, 
     updateSettings,
@@ -105,7 +105,7 @@ export const useAuraGroove = (): AuraGrooveProps => {
   });
   const [bpm, setBpm] = useState(75);
   const [score, setScore] = useState<ScoreName>('neuro_f_matrix');
-  const [genre, setGenre] = useState<Genre>('blues');
+  const [genre, setGenre] = useState<Genre>('ambient');
   const [density, setDensity] = useState(0.5);
   const [composerControlsInstruments, setComposerControlsInstruments] = useState(true);
   const [mood, setMood] = useState<Mood>('melancholic');
@@ -124,6 +124,9 @@ export const useAuraGroove = (): AuraGrooveProps => {
   
   const [isRegenerating, setIsRegenerating] = useState(false);
   const [hasPlayedOnce, setHasPlayedOnce] = useState(false);
+  
+  // Local state for toggle before engine initialization
+  const [useMelodyV2, setUseMelodyV2] = useState(true);
 
   // #ЗАЧЕМ: Загрузка истории ликов при монтировании.
   useEffect(() => {
@@ -317,6 +320,11 @@ export const useAuraGroove = (): AuraGrooveProps => {
     window.location.href = '/';
   };
 
+  const toggleMelodyEngineWrapper = () => {
+    setUseMelodyV2(prev => !prev);
+    toggleEngine();
+  };
+
   return {
     isInitializing, isPlaying, isRegenerating, isRecording, isBroadcastActive,
     loadingText: isInitializing ? 'Initializing...' : (isInitialized ? 'Ready' : 'Click to initialize audio'),
@@ -333,7 +341,7 @@ export const useAuraGroove = (): AuraGrooveProps => {
     handleExit: handleGoHome,
     isEqModalOpen, setIsEqModalOpen, eqSettings, handleEqChange,
     timerSettings, handleTimerDurationChange, handleToggleTimer,
-    mood, setMood, genre, setGenre, useMelodyV2, toggleMelodyEngine,
+    mood, setMood, genre, setGenre, useMelodyV2, toggleMelodyEngine: toggleMelodyEngineWrapper,
     introBars, setIntroBars,
   };
 };
