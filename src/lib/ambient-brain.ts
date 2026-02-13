@@ -1,9 +1,8 @@
 /**
- * #ЗАЧЕМ: Суверенный Мозг Амбиента v1.7 — "Seamless Orchestra & Legacy Identity".
- * #ЧТО: 1. Реализована технология Overlap Synthesis (длинные хвосты нот).
- *       2. Внедрена строгая дифференциация Мэнна и Олдфилда.
- *       3. Enforce No-Silence Policy: база всегда слышна.
- *       4. Орган принудительно используется для пассажей Мэнна.
+ * #ЗАЧЕМ: Суверенный Мозг Амбиента v1.8 — "The Art of Identity".
+ * #ЧТО: 1. Полная дифференциация Legacy-групп (Eno, Oldfield, Mann, etc.).
+ *       2. Принудительное наложение звука (Overlap Synthesis) для бесшовности.
+ *       3. Автоматическое управление инструментами на основе Династии.
  */
 
 import type { 
@@ -76,7 +75,7 @@ export class AmbientBrain {
         this.applySpectralAtom(epoch, waves[3]);
         this.updateMoodAxes(epoch, localTension);
 
-        const hints = this.orchestrate(localTension, navInfo, epoch);
+        const hints = this.orchestrate(localTension, navInfo, epoch, dna);
         const events: FractalEvent[] = [];
 
         if (hints.accompaniment) {
@@ -88,7 +87,7 @@ export class AmbientBrain {
         }
 
         if (hints.melody) {
-            events.push(...this.renderLegacyMelody(currentChord, epoch, localTension, hints));
+            events.push(...this.renderLegacyMelody(currentChord, epoch, localTension, hints, dna));
         }
 
         if (hints.pianoAccompaniment) {
@@ -115,7 +114,7 @@ export class AmbientBrain {
         };
     }
 
-    private orchestrate(tension: number, navInfo: NavigationInfo, epoch: number): InstrumentHints {
+    private orchestrate(tension: number, navInfo: NavigationInfo, epoch: number, dna: SuiteDNA): InstrumentHints {
         const hints: InstrumentHints = { summonProgress: {} };
         const stages = navInfo.currentPart.stagedInstrumentation;
 
@@ -149,37 +148,27 @@ export class AmbientBrain {
         return hints;
     }
 
-    private renderLegacyMelody(chord: GhostChord, epoch: number, tension: number, hints: InstrumentHints): FractalEvent[] {
-        // #ЗАЧЕМ: Дифференциация мастеров.
-        // #ЧТО: Мэнн против Олдфилда.
-        let groupKey = 'ENO';
-        if (['joyful', 'epic'].includes(this.mood)) {
-            groupKey = tension > 0.6 ? 'MANN' : 'OLDFIELD';
-        } else if (['dark', 'anxious'].includes(this.mood)) groupKey = 'CBL';
-        else groupKey = 'BOARDS';
-
-        // #ЗАЧЕМ: Манфред Мэнн всегда играет на Органе.
-        if (groupKey === 'MANN') {
-            (hints as any).melody = 'organ_soft_jazz';
-        } else if (groupKey === 'OLDFIELD') {
-            (hints as any).melody = 'synth';
-        }
-
+    private renderLegacyMelody(chord: GhostChord, epoch: number, tension: number, hints: InstrumentHints, dna: SuiteDNA): FractalEvent[] {
+        // #ЗАЧЕМ: Использование суверенной идентичности.
+        const groupKey = dna.ambientLegacyGroup || 'ENO';
         const group = AMBIENT_LEGACY[groupKey];
+
+        // #ЗАЧЕМ: Тотальная тембральная дифференциация.
+        (hints as any).melody = group.preferredInstrument;
+
         const lickIdx = calculateMusiNum(epoch, 3, this.seed, group.licks.length);
         const lick = group.licks[lickIdx];
 
         return lick.phrase.map(n => ({
             type: 'melody',
-            note: chord.rootNote + 36 + (DEGREE_TO_SEMITONE[n.deg] || 0),
+            note: Math.min(chord.rootNote + 36 + group.registerBias + (DEGREE_TO_SEMITONE[n.deg] || 0), 88),
             time: n.t / 3,
-            // #ЗАЧЕМ: Overlap Synthesis (наслоение).
-            // #ЧТО: Длительность каждой ноты увеличена в 1.6 раза.
-            duration: (n.d / 3) * 1.6, 
+            // #ЗАЧЕМ: Phrasing Identity.
+            duration: (n.d / 3) * (group.phrasing === 'sparse' ? 2.5 : 1.6), 
             weight: 0.75 * (1 - this.fog * 0.15),
             technique: n.tech || 'pick',
             dynamics: 'p',
-            phrasing: 'legato'
+            phrasing: group.phrasing === 'staccato' ? 'staccato' : 'legato'
         }));
     }
 
@@ -212,7 +201,7 @@ export class AmbientBrain {
             type: 'harmony',
             note: n,
             time: i * 0.2,
-            duration: 6.0, // Глубокий overlap
+            duration: 8.0, // Глубокий overlap
             weight: 0.4,
             technique: 'swell',
             dynamics: 'p',
@@ -222,8 +211,6 @@ export class AmbientBrain {
 
     private renderAmbientPercussion(epoch: number, tension: number): FractalEvent[] {
         const events: FractalEvent[] = [];
-        // #ЗАЧЕМ: Enforce No-Silence.
-        // #ЧТО: Гарантированный кик или том каждые 2 такта.
         const mustPlay = epoch % 2 === 0;
         
         if (mustPlay || this.random.next() < 0.4) {
@@ -288,20 +275,17 @@ export class AmbientBrain {
             type: 'accompaniment',
             note: n,
             time: i * 0.1,
-            // #ЗАЧЕМ: Overlap Synthesis.
-            // #ЧТО: Длительность 8 секунд обеспечивает наслоение хвостов на следующий такт.
             duration: 8.0, 
             weight: 0.35 * (1 - this.fog * 0.2),
             technique: 'swell',
             dynamics: 'p',
-            phrasing: 'legato',
+            phrasing: 'legate',
             params: { attack: 2.5 + this.fog * 3, release: 6.0, filterCutoff: cutoff }
         }));
     }
 
     private renderBass(chord: GhostChord, tension: number, timbre: string, epoch: number): FractalEvent[] {
         const root = chord.rootNote - 12;
-        // #ЗАЧЕМ: Постоянство баса.
         const isRiffBar = calculateMusiNum(epoch, 3, this.seed, 10) > 5;
         if (isRiffBar) {
             return [
@@ -313,7 +297,7 @@ export class AmbientBrain {
             type: 'bass',
             note: root,
             time: 0,
-            duration: 6.0, // Overlap
+            duration: 8.0, // Full Overlap
             weight: 0.6,
             technique: 'drone',
             dynamics: 'p',

@@ -2,7 +2,7 @@
  * @fileOverview Universal Music Theory Utilities
  * #ЗАЧЕМ: Базовый набор инструментов для работы с нотами, ладами и ритмом.
  * #ЧТО: Внедрена система Dynasty Rotation для обеспечения разнообразия старта сюиты.
- * #ОБНОВЛЕНО (ПЛАН №383): Усилена ротация династий для непрерывной игры.
+ * #ОБНОВЛЕНО (ПЛАН №390): Внедрен выбор Legacy Group для Амбиента на этапе DNA.
  */
 
 import type { 
@@ -18,6 +18,7 @@ import type {
     BluesRiffDegree
 } from '@/types/music';
 import { BLUES_SOLO_LICKS, BLUES_SOLO_PLANS } from './assets/blues_guitar_solo';
+import { AMBIENT_LEGACY } from './assets/ambient-legacy';
 
 export const DEGREE_TO_SEMITONE: Record<string, number> = {
     'R': 0, 'b2': 1, '2': 2, 'b3': 3, '3': 4, '4': 5, '#4': 6, 'b5': 6, '5': 7,
@@ -28,9 +29,6 @@ const SEMITONE_TO_DEGREE: Record<number, BluesRiffDegree> = {
     0: 'R', 1: 'b2', 2: '2', 3: 'b3', 4: '3', 5: '4', 6: '#4', 7: '5',
     8: 'b6', 9: '6', 10: 'b7', 11: '7', 12: 'R+8', 14: '9', 17: '11'
 };
-
-let LICK_HISTORY: string[] = [];
-const MAX_HISTORY_SIZE = 10;
 
 /**
  * #ЗАЧЕМ: Возвращает массив MIDI-нот для заданного настроения и жанра.
@@ -178,37 +176,30 @@ export function createHarmonyAxiom(chord: GhostChord, mood: Mood, genre: Genre, 
 export function generateSuiteDNA(totalBars: number, mood: Mood, initialSeed: number, originalRandom: any, genre: Genre, blueprintParts: any[], ancestor?: any, sessionHistory?: string[]): SuiteDNA {
     let seedLickId: string | undefined;
     let seedLickNotes: BluesSoloPhrase | undefined;
+    let ambientLegacyGroup: string | undefined;
 
     if (genre === 'blues') {
         const isMellow = ['dark', 'anxious', 'melancholic', 'gloomy'].includes(mood);
         const dynasties = isMellow ? ['minor', 'slow-burn', 'doom-blues'] : ['major', 'texas', 'virtuoso', 'jazzy'];
-        
-        // #ЗАЧЕМ: Усиленная ротация династий (ПЛАН №383).
-        // #ЧТО: Анализируем последние 3-4 сыгранных лика, чтобы выбрать Династию, которой давно не было.
-        const playedDynasties = (sessionHistory || [])
-            .map(id => BLUES_SOLO_LICKS[id]?.tags[0])
-            .filter(Boolean);
-        
+        const playedDynasties = (sessionHistory || []).map(id => BLUES_SOLO_LICKS[id]?.tags[0]).filter(Boolean);
         const lastFew = playedDynasties.slice(-3);
         const availableDynasties = dynasties.filter(d => !lastFew.includes(d));
-        
-        const currentDynasty = availableDynasties.length > 0 
-            ? availableDynasties[calculateMusiNum(initialSeed, 3, initialSeed, availableDynasties.length)]
-            : dynasties[calculateMusiNum(initialSeed, 3, initialSeed, dynasties.length)];
-        
+        const currentDynasty = availableDynasties.length > 0 ? availableDynasties[calculateMusiNum(initialSeed, 3, initialSeed, availableDynasties.length)] : dynasties[calculateMusiNum(initialSeed, 3, initialSeed, dynasties.length)];
         const candidates = Object.keys(BLUES_SOLO_LICKS).filter(id => {
             const lick = BLUES_SOLO_LICKS[id];
             const hasDynasty = lick.tags.includes(currentDynasty);
             const inHistory = (sessionHistory || []).includes(id);
             return hasDynasty && !inHistory;
         });
-
         const pool = candidates.length > 0 ? candidates : Object.keys(BLUES_SOLO_LICKS);
         seedLickId = pool[calculateMusiNum(initialSeed, 7, initialSeed, pool.length)];
-        
         if (seedLickId) {
             seedLickNotes = transformLick(BLUES_SOLO_LICKS[seedLickId].phrase, initialSeed, 0, true);
         }
+    } else if (genre === 'ambient') {
+        // #ЗАЧЕМ: Выбор Legacy Group для Амбиента на всю сюиту.
+        const allGroups = Object.keys(AMBIENT_LEGACY);
+        ambientLegacyGroup = allGroups[calculateMusiNum(initialSeed, 3, initialSeed, allGroups.length)];
     }
 
     const finalSeed = ancestor ? crossoverDNA(initialSeed, ancestor) : initialSeed;
@@ -216,7 +207,6 @@ export function generateSuiteDNA(totalBars: number, mood: Mood, initialSeed: num
 
     const harmonyTrack: GhostChord[] = [];
     const key = 24 + Math.floor(sowingRandom.next() * 12);
-    
     const grids = { classic: [0, 0, 0, 0, 5, 5, 0, 0, 7, 5, 0, 7], 'quick-change': [0, 5, 0, 0, 5, 5, 0, 0, 7, 5, 0, 7], 'minor-blues': [0, 0, 0, 0, 5, 5, 0, 0, 8, 7, 0, 7] };
     const gridTypes: (keyof typeof grids)[] = ['classic', 'quick-change', 'minor-blues'];
     const bluesGridType = gridTypes[calculateMusiNum(finalSeed, 3, finalSeed, 3)];
@@ -264,5 +254,5 @@ export function generateSuiteDNA(totalBars: number, mood: Mood, initialSeed: num
     blueprintParts.forEach((part: any) => { if (part.instrumentRules?.melody?.source === 'blues_solo') { soloPlanMap.set(part.id, shuffledPlanIds[planIndex % shuffledPlanIds.length]); planIndex++; } });
 
     const tensionMap = generateTensionMap(finalSeed, totalBars, mood);
-    return { harmonyTrack, baseTempo, rhythmicFeel: 'shuffle', bassStyle: 'walking', drumStyle: 'shuffle_A', soloPlanMap, tensionMap, bluesGridType, seedLickId, seedLickNotes };
+    return { harmonyTrack, baseTempo, rhythmicFeel: 'shuffle', bassStyle: 'walking', drumStyle: 'shuffle_A', soloPlanMap, tensionMap, bluesGridType, seedLickId, seedLickNotes, ambientLegacyGroup };
 }
