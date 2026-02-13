@@ -170,7 +170,6 @@ export type WorkerSettings = {
   composerControlsInstruments: boolean;
   mood: Mood;
   seed?: number;
-  useMelodyV2?: boolean;
   introBars: number;
   /** #ЗАЧЕМ: Межсессионная память ликов. */
   sessionLickHistory?: string[];

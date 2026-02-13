@@ -41,7 +41,6 @@ const Scheduler = {
         density: 0.5,
         composerControlsInstruments: true,
         mood: 'melancholic' as Mood,
-        useMelodyV2: true, 
         introBars: 12, 
         sessionLickHistory: [],
         ancestor: null as any 

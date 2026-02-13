@@ -56,8 +56,6 @@ export type AuraGrooveProps = {
   setMood: (mood: Mood) => void;
   genre: Genre;
   setGenre: (genre: Genre) => void;
-  useMelodyV2: boolean;
-  toggleMelodyEngine: () => void;
   introBars: number;
   setIntroBars: (bars: number) => void;
 };
@@ -67,10 +65,8 @@ export const useAuraGroove = (): AuraGrooveProps => {
     isInitialized,
     isInitializing,
     isPlaying,
-    useMelodyV2: useMelodyV2Engine, 
     isRecording,
     isBroadcastActive,
-    toggleMelodyEngine: toggleEngine,
     initialize, 
     setIsPlaying: setEngineIsPlaying, 
     updateSettings,
@@ -124,9 +120,6 @@ export const useAuraGroove = (): AuraGrooveProps => {
   
   const [isRegenerating, setIsRegenerating] = useState(false);
   const [hasPlayedOnce, setHasPlayedOnce] = useState(false);
-  
-  // Local state for toggle before engine initialization
-  const [useMelodyV2, setUseMelodyV2] = useState(true);
 
   // #ЗАЧЕМ: Загрузка истории ликов при монтировании.
   useEffect(() => {
@@ -179,11 +172,10 @@ export const useAuraGroove = (): AuraGrooveProps => {
       density,
       composerControlsInstruments,
       mood,
-      useMelodyV2,
       introBars,
       sessionLickHistory // Передаем историю воркеру
     };
-  }, [bpm, score, genre, instrumentSettings, drumSettings, textureSettings, density, composerControlsInstruments, mood, useMelodyV2, introBars, sessionLickHistory]);
+  }, [bpm, score, genre, instrumentSettings, drumSettings, textureSettings, density, composerControlsInstruments, mood, introBars, sessionLickHistory]);
 
   useEffect(() => {
     if (isInitialized) {
@@ -320,11 +312,6 @@ export const useAuraGroove = (): AuraGrooveProps => {
     window.location.href = '/';
   };
 
-  const toggleMelodyEngineWrapper = () => {
-    setUseMelodyV2(prev => !prev);
-    toggleEngine();
-  };
-
   return {
     isInitializing, isPlaying, isRegenerating, isRecording, isBroadcastActive,
     loadingText: isInitializing ? 'Initializing...' : (isInitialized ? 'Ready' : 'Click to initialize audio'),
@@ -341,7 +328,7 @@ export const useAuraGroove = (): AuraGrooveProps => {
     handleExit: handleGoHome,
     isEqModalOpen, setIsEqModalOpen, eqSettings, handleEqChange,
     timerSettings, handleTimerDurationChange, handleToggleTimer,
-    mood, setMood, genre, setGenre, useMelodyV2, toggleMelodyEngine: toggleMelodyEngineWrapper,
+    mood, setMood, genre, setGenre,
     introBars, setIntroBars,
   };
 };

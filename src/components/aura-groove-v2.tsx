@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState, useEffect } from "react";
@@ -54,7 +53,7 @@ export function AuraGrooveV2({
   timerSettings, handleTimerDurationChange, handleToggleTimer,
   composerControlsInstruments, setComposerControlsInstruments,
   mood, setMood, genre, setGenre, isRegenerating,
-  useMelodyV2, toggleMelodyEngine, introBars, setIntroBars,
+  introBars, setIntroBars,
 }: AuraGrooveProps) {
 
   const router = useRouter();
@@ -70,11 +69,10 @@ export function AuraGrooveV2({
 
   const v2MelodyInstruments = Object.keys(V2_PRESETS).filter(k => V2_PRESETS[k as keyof typeof V2_PRESETS].type !== 'bass');
   
-  // Bass always uses V1 instruments now
+  // All parts use V2-compatible list
   const bassInstrumentList = v1BassInstrumentNames;
-
-  const melodyInstrumentList = useMelodyV2 ? v2MelodyInstruments : v1MelodyInstruments;
-  const textureInstrumentList = useMelodyV2 ? v2MelodyInstruments : v1MelodyInstruments; // 'accompaniment' uses this
+  const melodyInstrumentList = v2MelodyInstruments;
+  const textureInstrumentList = v2MelodyInstruments; 
 
   const harmonyInstrumentList: ('piano' | 'guitarChords' | 'flute' | 'violin' | 'none')[] = ['piano', 'guitarChords', 'flute', 'violin', 'none'];
   const moodList: Mood[] = ['epic', 'joyful', 'enthusiastic', 'melancholic', 'dark', 'anxious', 'dreamy', 'contemplative', 'calm'];
@@ -92,8 +90,7 @@ export function AuraGrooveV2({
     'acousticGuitar': 'Acoustic Folk',
     'neuro_f_matrix': 'Neuro F-Matrix',
     'rnb': 'R&B',
-    'trance': 'SlowTrance', // UI RENAME
-    // V2 presets
+    'trance': 'SlowTrance', 
     'organ': 'Cathedral Organ',
     'organ_soft_jazz': 'Soft Jazz Organ',
     'synth': 'Emerald Pad',
@@ -208,12 +205,6 @@ export function AuraGrooveV2({
                           </SelectContent>
                       </Select>
                   </div>
-                  <div className="grid grid-cols-3 items-center gap-2">
-                    <Label htmlFor="v2-engine-switch" className="text-right text-xs flex items-center gap-1.5 justify-end"><Cog className="h-3 w-3"/>V2 Engine</Label>
-                    <div className="col-span-2 flex items-center">
-                        <Switch id="v2-engine-switch" checked={useMelodyV2} onCheckedChange={toggleMelodyEngine} disabled={isInitializing || isPlaying}/>
-                    </div>
-                  </div>
                    {isFractalStyle && (
                     <>
                      <div className="grid grid-cols-3 items-center gap-2">
@@ -254,7 +245,6 @@ export function AuraGrooveV2({
                   )}
                   <div className="grid grid-cols-[1fr_2fr_auto] items-center gap-2">
                     <Label htmlFor="bpm-slider" className="text-right text-xs">BPM</Label>
-                    {/* #ЗАЧЕМ: Слайдер BPM теперь disabled во время игры, так как темп диктуется DNA. */}
                     <Slider id="bpm-slider" value={[bpm]} min={60} max={160} step={1} onValueChange={(v) => handleBpmChange(v[0])} className="col-span-1" disabled={isInitializing || isPlaying || composerControl}/>
                     <span className="text-xs w-8 text-right font-mono">{bpm}</span>
                   </div>
@@ -338,21 +328,6 @@ export function AuraGrooveV2({
                                         <div className="h-8 text-xs flex items-center justify-end pr-2 text-muted-foreground">Fixed</div>
                                     )}
                                 </div>
-                                 {part === 'bass' && 'technique' in settings && (settings.name as BassInstrument | 'none') !== 'none' && (
-                                    <div className="grid grid-cols-2 items-center gap-2">
-                                        <Label className="font-semibold flex items-center gap-1.5 capitalize text-xs"><GitBranch className="h-4 w-4"/>Technique</Label>
-                                         <Select value={settings.technique} onValueChange={(v) => handleBassTechniqueChange(v as any)} disabled={isDisabled || settings.name === 'none'}>
-                                            <SelectTrigger className="h-8 text-xs"><SelectValue/></SelectTrigger>
-                                            <SelectContent>
-                                                <SelectItem value="arpeggio" className="text-xs">Arpeggio</SelectItem>
-                                                <SelectItem value="portamento" className="text-xs">Portamento</SelectItem>
-                                                <SelectItem value="glissando" className="text-xs">Glissando</SelectItem>
-                                                <SelectItem value="glide" className="text-xs">Glide</SelectItem>
-                                                <SelectItem value="pulse" className="text-xs">Pulse</SelectItem>
-                                            </SelectContent>
-                                        </Select>
-                                    </div>
-                                )}
                                  <div className="flex items-center gap-2">
                                     <Label className="text-xs text-muted-foreground"><Speaker className="h-3 w-3 inline-block mr-1"/>Volume</Label>
                                     <Slider value={[settings.volume]} max={1} step={0.05} onValueChange={(v) => handleVolumeChange(part as any, v[0])} disabled={isInitializing || ('name' in settings && settings.name === 'none')}/>
