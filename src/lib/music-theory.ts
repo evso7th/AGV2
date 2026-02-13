@@ -4,7 +4,7 @@
  * #ЧТО: Функции для получения гамм, инверсий, ретроградов и гуманизации.
  *       Внедрена система цепей Маркова для генерации гармонического скелета.
  *       ДОБАВЛЕНО: Математика MusiNum для фрактальной детерминированности.
- * #ОБНОВЛЕНО (ПЛАН №374): Внедрена версия v242 — "Genetic Evolution & Birth Transformation".
+ * #ОБНОВЛЕНО (ПЛАН №379): Восстановлена функция getScaleForMood, необходимая для резонансных матриц.
  */
 
 import type { 
@@ -34,6 +34,63 @@ const SEMITONE_TO_DEGREE: Record<number, BluesRiffDegree> = {
 let LICK_HISTORY: string[] = [];
 const MAX_HISTORY_SIZE = 10;
 
+/**
+ * #ЗАЧЕМ: Возвращает массив MIDI-нот для заданного настроения и жанра.
+ * #ЧТО: Поддерживает блюзовые и амбиентные лады.
+ */
+export function getScaleForMood(mood: Mood, genre?: Genre, chordType?: 'major' | 'minor' | 'dominant' | 'diminished'): number[] {
+  const E1 = 28; // Опорная точка
+  let baseScale: number[];
+
+  if (genre === 'blues') {
+      if (chordType === 'major' || chordType === 'dominant') {
+          // Major Blues Scale: 1, 2, b3, 3, 5, 6
+          baseScale = [0, 2, 3, 4, 7, 9];
+      } else {
+          // Minor Blues Scale: 1, b3, 4, b5, 5, b7
+          baseScale = [0, 3, 5, 6, 7, 10];
+      }
+  } else {
+      switch (mood) {
+        case 'joyful':      
+          baseScale = [0, 2, 4, 5, 7, 9, 11];
+          break;
+        case 'epic':        
+        case 'enthusiastic':
+          baseScale = [0, 2, 4, 6, 7, 9, 11];
+          break;
+        case 'dreamy':      
+          baseScale = [0, 2, 4, 7, 9];
+          break;
+        case 'contemplative': 
+        case 'calm':
+            baseScale = [0, 2, 4, 5, 7, 9, 10];
+            break;
+        case 'melancholic': 
+          baseScale = [0, 2, 3, 5, 7, 9, 10];
+          break;
+        case 'dark':        
+        case 'gloomy':
+          baseScale = [0, 2, 3, 5, 7, 8, 10];
+          break;
+        case 'anxious':     
+          baseScale = [0, 1, 3, 5, 6, 8, 10];
+          break;
+        default:            
+          baseScale = [0, 2, 3, 5, 7, 8, 10];
+          break;
+      }
+  }
+
+  const fullScale: number[] = [];
+  for (let octave = 0; octave < 3; octave++) {
+      for (const note of baseScale) {
+          fullScale.push(E1 + (octave * 12) + note);
+      }
+  }
+  return fullScale;
+}
+
 export function calculateMusiNum(step: number, base: number = 2, start: number = 0, modulo: number = 8): number {
     if (!isFinite(step) || !isFinite(start) || !isFinite(base) || !isFinite(modulo) || modulo <= 0 || base <= 1) return 0;
     let num = Math.abs(Math.floor(step + start));
@@ -48,7 +105,6 @@ export function calculateMusiNum(step: number, base: number = 2, start: number =
 export function transformLick(lick: BluesSoloPhrase, seed: number, epoch: number, isBirth: boolean = false): BluesSoloPhrase {
     const transformed = JSON.parse(JSON.stringify(lick)) as BluesSoloPhrase;
     const transformType = calculateMusiNum(epoch, 3, seed, 4);
-    const logPrefix = isBirth ? "[GENEPOOL] BIRTH TRANSFORMATION:" : "[SOR] Evolution:";
 
     switch (transformType) {
         case 1: // Inversion
