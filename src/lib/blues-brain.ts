@@ -19,10 +19,10 @@ import { GUITAR_PATTERNS } from './assets/guitar-patterns';
 import { BLUES_SOLO_LICKS } from './assets/blues_guitar_solo';
 
 /**
- * #ЗАЧЕМ: Блюзовый Мозг V48.0 — "Timbral & Register Hygiene".
- * #ЧТО: 1. Внедрен жесткий потолок мелодии (G5/79) и пол баса (C1/24).
- *       2. Оптимизированы пороги переключения инструментов.
- *       3. Повышена точность выбора CS80 vs ShineOn.
+ * #ЗАЧЕМ: Блюзовый Мозг V49.0 — "The Articulation Standard".
+ * #ЧТО: 1. Введено жесткое ограничение длительности нот (никаких 4-тактовых гулов).
+ *       2. Реализовано разнообразие техник: слайды, хаммеры, фингерстайл, стаккато.
+ *       3. Усилена структура "Зов-Ответ" с обязательными паузами.
  */
 
 const ENERGY_PRICES = {
@@ -37,7 +37,7 @@ const ENERGY_PRICES = {
     sparkles: 5       
 };
 
-type MelodicAxiomNote = { deg: string, t: number, d: number, tech: Technique };
+type MelodicAxiomNote = { deg: string, t: number, d: number, tech: Technique, phrasing?: Phrasing };
 
 export class BluesBrain {
   private seed: number;
@@ -47,11 +47,12 @@ export class BluesBrain {
   private currentAxiom: MelodicAxiomNote[] = [];
   private random: any;
   
-  // #ЗАЧЕМ: Соблюдение гигиены регистров (План №380).
-  // #ЧТО: Потолок мелодии — G5 (нижняя половина 5-й октавы). Пол баса — C1 (начало 1-й октавы).
   private readonly MELODY_CEILING = 79;
   private readonly BASS_FLOOR = 24; 
   private readonly PIANO_CEILING = 71; 
+  private readonly MAX_NOTE_DURATION = 2.0; // Максимум 2 такта для самых длинных нот
+  private readonly NORMAL_NOTE_DURATION = 1.2; // Максимум 3 доли для обычных фраз
+
   private readonly patternOptions: string[] = ['F_TRAVIS', 'F_ROLL12', 'S_SWING'];
 
   private phraseHistory: string[] = [];
@@ -114,10 +115,16 @@ export class BluesBrain {
       const prog = hints.summonProgress?.melody ?? 1.0;
       let mEvents: FractalEvent[] = [];
       const soloThreshold = isMainZone ? 0.45 : (isMellowMood ? 0.55 : 0.4);
-      if ((consumedEnergy + ENERGY_PRICES.solo <= barBudget) && tension > soloThreshold) {
+      
+      // #ЗАЧЕМ: Усиление "дыхания". 
+      // #ЧТО: С вероятностью 25% в спокойных зонах гитарист "пропускает" такт соло.
+      const shouldTakeBreath = !isMainZone && tension < 0.5 && calculateMusiNum(epoch, 3, this.seed, 4) === 0;
+
+      if ((consumedEnergy + ENERGY_PRICES.solo <= barBudget) && tension > soloThreshold && !shouldTakeBreath) {
           mEvents = this.generateLSystemMelody(epoch, currentChord, barIn12, tempo, tension, dna, bpmFactor);
           consumedEnergy += ENERGY_PRICES.solo;
       } else {
+          // Вместо соло играем фингерстайл или арпеджио
           mEvents = this.generateFingerstyleMelody(epoch, currentChord, tempo, tension, bpmFactor);
           consumedEnergy += ENERGY_PRICES.harmony; 
       }
@@ -205,8 +212,6 @@ export class BluesBrain {
 
   private evaluateTimbralDramaturgy(tension: number, hints: InstrumentHints, mood: Mood, epoch: number) {
     if (hints.melody) {
-        // #ЗАЧЕМ: Уточнение порогов для выбора солиста (План №380).
-        // #ЧТО: CS80 используется в среднем диапазоне. ShineOn активируется при T > 0.68.
         if (tension <= 0.45) (hints as any).melody = 'blackAcoustic';
         else if (tension <= 0.68) (hints as any).melody = 'cs80'; 
         else (hints as any).melody = 'guitar_shineOn'; 
@@ -216,16 +221,33 @@ export class BluesBrain {
   private generateLSystemMelody(epoch: number, chord: GhostChord, barIn12: number, tempo: number, tension: number, dna: SuiteDNA, bpmFactor: number): FractalEvent[] {
     const phaseInSentence = epoch % 4; 
     let phaseName = barIn12 === 11 ? 'TURNAROUND' : (phaseInSentence < 2 ? 'CALL' : (phaseInSentence === 2 ? 'RESPONSE' : (tension > 0.7 ? 'CLIMAX' : 'RESPONSE')));
+    
     if (this.currentAxiom.length === 0) {
-        this.currentAxiom = dna.seedLickNotes ? dna.seedLickNotes.map(n => ({ deg: n.deg, t: n.t, d: n.d, tech: (n.tech as Technique) || 'pick' })) : this.generateInitialAxiom(tension, epoch);
+        this.currentAxiom = dna.seedLickNotes ? dna.seedLickNotes.map(n => ({ deg: n.deg, t: n.t, d: n.d, tech: (n.tech as Technique) || 'pick', phrasing: 'legato' })) : this.generateInitialAxiom(tension, epoch);
     } else if (phaseInSentence === 0) {
         this.currentAxiom = this.evolveAxiom(this.currentAxiom, tension, phaseName, dna, epoch);
     }
+
     const registerLift = (tension > 0.7 || phaseName === 'CLIMAX') ? 12 : 0;
+    
     return this.currentAxiom.map((n, idx, arr) => {
         if (this.random.next() < (1.0 - bpmFactor) && n.deg !== 'R') return null; 
-        const dur = (idx < arr.length - 1) ? (arr[idx+1].t - n.t) : Math.max(n.d, 6);
-        return { type: 'melody', note: Math.min(chord.rootNote + 36 + registerLift + (DEGREE_TO_SEMITONE[n.deg] || 0), this.MELODY_CEILING), time: n.t / 3, duration: dur / 3, weight: 0.8 + (tension * 0.2), technique: n.tech, dynamics: tension > 0.6 ? 'mf' : 'p', phrasing: 'legato' };
+        
+        // #ЗАЧЕМ: Ограничение длительности. 
+        // #ЧТО: Длительность теперь жестко ограничена NORMAL_NOTE_DURATION.
+        let dur = (idx < arr.length - 1) ? (arr[idx+1].t - n.t) : Math.max(n.d, 6);
+        dur = Math.min(dur, this.NORMAL_NOTE_DURATION * 3); // *3 так как это в тиках (12/8)
+
+        return { 
+            type: 'melody', 
+            note: Math.min(chord.rootNote + 36 + registerLift + (DEGREE_TO_SEMITONE[n.deg] || 0), this.MELODY_CEILING), 
+            time: n.t / 3, 
+            duration: dur / 3, 
+            weight: 0.8 + (tension * 0.2), 
+            technique: n.tech, 
+            dynamics: tension > 0.6 ? 'mf' : 'p', 
+            phrasing: n.phrasing || (tension > 0.7 ? 'legato' : 'detached') 
+        };
     }).filter(e => e !== null) as FractalEvent[];
   }
 
@@ -234,17 +256,23 @@ export class BluesBrain {
       const notes = [root, root + 3, root + 7, root + 10];
       const events: FractalEvent[] = [];
       const density = (0.3 + (tension * 0.3)) * bpmFactor;
+      
+      // #ЗАЧЕМ: Фингерстайл паттерн (План №381).
+      // #ЧТО: Имитация Трэвис-пикинга в мелодии.
       [0, 1, 2, 3].forEach(beat => {
           if (calculateMusiNum(epoch + beat + this.globalStagnationOffset, 3, this.seed, 10) / 10 < density) {
+              const techIdx = calculateMusiNum(epoch + beat, 2, this.seed, 3);
+              const techs: Technique[] = ['pick', 'harm', 'slide'];
+              
               events.push({ 
                   type: 'melody', 
                   note: Math.min(notes[calculateMusiNum(epoch + beat, 5, this.seed, 4)], this.MELODY_CEILING), 
                   time: beat, 
-                  duration: 0.8, 
+                  duration: 0.5, // Короткими нотами
                   weight: 0.5 + (tension * 0.3), 
-                  technique: 'pick', 
+                  technique: techs[techIdx], 
                   dynamics: 'p', 
-                  phrasing: 'detached' 
+                  phrasing: 'staccato' 
               });
           }
       });
@@ -255,19 +283,35 @@ export class BluesBrain {
     const axiom: MelodicAxiomNote[] = [];
     const pool = ['R', 'b3', '4', '5', 'b7', this.thematicDegree];
     const count = tension > 0.6 ? 4 : 3; 
-    for (let i = 0; i < count; i++) axiom.push({ deg: pool[calculateMusiNum(this.seed + i + epoch, 3, i, pool.length)], t: i * 2.5, d: 3, tech: 'pick' });
+    for (let i = 0; i < count; i++) axiom.push({ deg: pool[calculateMusiNum(this.seed + i + epoch, 3, i, pool.length)], t: i * 2.5, d: 3, tech: 'pick', phrasing: 'detached' });
     return axiom;
   }
 
   private evolveAxiom(axiom: MelodicAxiomNote[], tension: number, phase: string, dna: SuiteDNA, epoch: number): MelodicAxiomNote[] {
     return axiom.map((note, i) => {
-        let newDeg = note.deg; let newTech = note.tech;
+        let newDeg = note.deg; 
+        let newTech = note.tech;
+        let newPhrasing = note.phrasing;
+
+        // #ЗАЧЕМ: Обогащение техниками (План №381).
         if (tension > 0.65 && phase === 'CLIMAX' && calculateMusiNum(epoch + i, 7, this.seed, 10) > 6) {
-            newDeg = ['5', 'b7', 'R+8', '9'][calculateMusiNum(epoch + i, 3, this.seed, 4)]; newTech = 'bend';
-        } else if (phase === 'RESPONSE' && i === axiom.length - 1) {
-            newDeg = 'R'; newTech = 'vibrato';
+            newDeg = ['5', 'b7', 'R+8', '9'][calculateMusiNum(epoch + i, 3, this.seed, 4)]; 
+            newTech = 'bend';
+            newPhrasing = 'legato';
+        } else if (phase === 'RESPONSE') {
+            if (i === axiom.length - 1) {
+                newDeg = 'R'; 
+                newTech = 'vibrato';
+                newPhrasing = 'sostenuto';
+            } else {
+                newTech = 'pick';
+                newPhrasing = 'staccato'; // Стаккато в ответах
+            }
+        } else if (calculateMusiNum(epoch + i, 5, this.seed, 10) > 8) {
+            newTech = 'slide'; // Спорадические слайды
         }
-        return { ...note, deg: newDeg, tech: newTech }; 
+
+        return { ...note, deg: newDeg, tech: newTech, phrasing: newPhrasing }; 
     }).slice(0, 6);
   }
 
@@ -288,8 +332,6 @@ export class BluesBrain {
     const barIn12 = epoch % 12;
     let pattern = (!isWalking) ? [{ t: 0, d: 12, deg: 'R' as BluesRiffDegree }] : (barIn12 === 11 ? riff.turn : ([4, 5, 9, 10].includes(barIn12) ? riff.IV : (barIn12 === 8 ? riff.V : riff.I)));
     
-    // #ЗАЧЕМ: Защита от инфра-низких частот (План №380).
-    // #ЧТО: Внедрен Math.max(..., this.BASS_FLOOR) для удержания баса в 1-й октаве.
     return pattern.map((n, i) => ({ 
         type: 'bass', 
         note: Math.max(chord.rootNote - 12 + (DEGREE_TO_SEMITONE[n.deg] || 0), this.BASS_FLOOR), 
@@ -338,13 +380,14 @@ export class BluesBrain {
       const melody = events.filter(e => e.type === 'melody');
       if (melody.length > 0) {
         const last = melody[melody.length - 1];
-        // #ЗАЧЕМ: Использование ShineOn для кульминационных разрешений.
-        // #ЧТО: Разрешение получает высокий вес и большую длительность.
+        
+        // #ЗАЧЕМ: Ограничение длительности кульминации.
+        // #ЧТО: Длительность финальной ноты ограничена 2.0 (MAX_NOTE_DURATION).
         events.push({ 
             type: 'melody', 
             note: Math.min(last.note! + 5, this.MELODY_CEILING), 
             time: last.time + last.duration + 0.3, 
-            duration: 2.5, // Длинная нота
+            duration: this.MAX_NOTE_DURATION, 
             weight: 0.98, 
             technique: 'vibrato', 
             dynamics: 'mf', 
@@ -356,8 +399,25 @@ export class BluesBrain {
     return events;
   }
 
-  private generateHarmonyEvents(epoch: number, chord: GhostChord, tempo: number, tension: number, instrument: any): FractalEvent[] {
-      if (instrument === 'guitarChords') return [{ type: 'harmony', note: chord.rootNote + 24, time: 0, duration: 4.0, weight: 0.3, technique: 'swell', dynamics: 'p', phrasing: 'legato', params: { barCount: epoch } }];
-      return [];
+  private evolveEmotion(epoch: number): void {
+    this.state.emotion.melancholy += (this.random.next() - 0.5) * 0.06;
+    this.state.emotion.darkness += (this.random.next() - 0.5) * 0.04;
+    this.state.emotion.melancholy = Math.max(0.65, Math.min(0.95, this.state.emotion.melancholy));
+    this.state.emotion.darkness = Math.max(0.15, Math.min(0.45, this.state.emotion.darkness));
+    this.state.tensionLevel = this.tensionLevel;
+  }
+
+  private updatePhrasePhase(barIn12: number): void {
+    if (barIn12 < 4) {
+      this.state.phraseState = 'call';
+    } else if (barIn12 < 8) {
+      this.state.phraseState = 'call_var';
+    } else {
+      this.state.phraseState = 'response';
+    }
+  }
+
+  getEmotionState(): { melancholy: number; darkness: number } {
+    return { ...this.state.emotion };
   }
 }
