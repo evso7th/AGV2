@@ -46,9 +46,9 @@ interface EngineConfig {
 }
 
 /**
- * #ЗАЧЕМ: Фрактальный Музыкальный Движок V18.2 — "Sovereign Ambient Path".
- * #ЧТО: Реализована полная изоляция управления для жанра Амбиент.
- *       Движок теперь доверяет AmbientBrain расчет напряжения и оркестровку.
+ * #ЗАЧЕМ: Фрактальный Музыкальный Движок V19.0 — "Global Sticky Orchestra".
+ * #ЧТО: Внедрена глобальная логика наследования инструментов (Inherit or Overwrite).
+ *       Инструменты сохраняют свои тембры, пока не получат новую инструкцию.
  */
 export class FractalMusicEngine {
   public config: EngineConfig;
@@ -65,6 +65,7 @@ export class FractalMusicEngine {
   private lastEvents: FractalEvent[] = []; 
 
   private activatedParts: Set<InstrumentPart> = new Set();
+  private activeTimbres: Partial<Record<InstrumentPart, string>> = {};
   private hookLibrary: { events: FractalEvent[], root: number }[] = [];
 
   constructor(config: EngineConfig, blueprint: MusicBlueprint) {
@@ -85,6 +86,7 @@ export class FractalMusicEngine {
     if (this.isInitialized && !force) return;
 
     this.activatedParts.clear(); 
+    this.activeTimbres = {};
     this.hookLibrary = [];
 
     this.suiteDNA = generateSuiteDNA(
@@ -128,8 +130,6 @@ export class FractalMusicEngine {
     const navInfo = this.navigator.tick(this.epoch);
     if (!navInfo) return { events: [], instrumentHints: {}, beautyScore: 0, tension: 0.5 };
 
-    // #ЗАЧЕМ: Реализация суверенитета Амбиентного Мозга.
-    // #ЧТО: Если выбран жанр 'ambient', все управление (включая tension) делегируется AmbientBrain.
     if (this.config.genre === 'ambient' && this.ambientBrain) {
         const foundChord = this.suiteDNA.harmonyTrack.find(chord => this.epoch >= chord.bar && this.epoch < chord.bar + chord.durationBars);
         const currentChord = foundChord || this.suiteDNA.harmonyTrack[0];
@@ -141,41 +141,61 @@ export class FractalMusicEngine {
             events: ambientResult.events, 
             instrumentHints: ambientResult.instrumentHints, 
             beautyScore, 
-            tension: ambientResult.tension, // Используем суверенное напряжение
+            tension: ambientResult.tension,
             navInfo 
         };
     }
 
-    // --- Логика для остальных жанров (включая Блюз) ---
+    // --- Глобальная логика оркестровки (для Блюза и др.) ---
     const instrumentHints: InstrumentHints = { summonProgress: {} };
-    const stages = navInfo.currentPart.stagedInstrumentation;
     let tension = this.suiteDNA.tensionMap[this.epoch % this.suiteDNA.tensionMap.length] ?? 0.5;
     
-    if (navInfo.currentPart.id.includes('MAIN')) tension = Math.max(0.4, tension);
-
+    // 1. Определение источника инструкций (Stage или Part)
+    let currentInstructions: Partial<Record<InstrumentPart, any>> | undefined;
+    const stages = navInfo.currentPart.stagedInstrumentation;
     if (stages && stages.length > 0) {
         const partBars = navInfo.currentPartEndBar - navInfo.currentPartStartBar + 1;
         const progress = (this.epoch - navInfo.currentPartStartBar) / partBars;
-        let currentStage = stages[stages.length - 1];
         let acc = 0;
         for (const s of stages) { 
             acc += s.duration.percent; 
-            if (progress * 100 <= acc) { currentStage = s; break; } 
+            if (progress * 100 <= acc) { currentInstructions = s.instrumentation; break; } 
         }
+    } else {
+        currentInstructions = navInfo.currentPart.instrumentation;
+    }
 
-        Object.entries(currentStage.instrumentation).forEach(([partStr, rule]: [any, any]) => {
+    // 2. Обработка "Липкого Оркестра"
+    if (currentInstructions) {
+        Object.entries(currentInstructions).forEach(([partStr, rule]: [any, any]) => {
             const part = partStr as InstrumentPart;
+            // Если инструмент не активен - пробуем активировать
             if (!this.activatedParts.has(part)) {
-                let effectiveChance = rule.activationChance;
-                if (part === 'sfx' || part === 'sparkles') effectiveChance *= (1.0 - tension);
-                if (this.random.next() < effectiveChance) this.activatedParts.add(part);
-            }
-            if (this.activatedParts.has(part)) {
-                (instrumentHints as any)[part] = pickWeightedDeterministic(rule.instrumentOptions, this.config.seed, this.epoch, 500);
-                instrumentHints.summonProgress![part] = 1.0; 
+                let effectiveChance = rule.activationChance ?? 1.0;
+                if (part === 'sfx' || part === 'sparkles') effectiveChance *= (1.0 - tension * 0.5);
+                if (this.random.next() < effectiveChance) {
+                    this.activatedParts.add(part);
+                    const options = rule.instrumentOptions || rule.v2Options || rule.options || [];
+                    this.activeTimbres[part] = pickWeightedDeterministic(options, this.config.seed, this.epoch, 500);
+                }
+            } 
+            // Если инструмент активен, но есть НОВАЯ инструкция - обновляем тембр
+            else {
+                const options = rule.instrumentOptions || rule.v2Options || rule.options || [];
+                if (options.length > 0) {
+                    this.activeTimbres[part] = pickWeightedDeterministic(options, this.config.seed, this.epoch, 500);
+                }
             }
         });
     }
+
+    // 3. Сборка подсказок на основе памяти активаций и текущих слоев
+    this.activatedParts.forEach(part => {
+        if (navInfo.currentPart.layers[part]) {
+            (instrumentHints as any)[part] = this.activeTimbres[part] || 'synth';
+            instrumentHints.summonProgress![part] = 1.0; 
+        }
+    });
 
     if (navInfo.currentPart.layers.pianoAccompaniment) instrumentHints.pianoAccompaniment = 'piano';
 
