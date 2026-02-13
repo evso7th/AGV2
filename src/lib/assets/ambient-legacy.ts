@@ -1,8 +1,8 @@
 /**
  * @fileOverview Ambient Legacy Library (Digital DNA of the Giants)
  * #ЗАЧЕМ: Оцифрованный опыт великих мастеров амбиента и электроники.
- * #ЧТО: Группы ликов и паттернов, отражающие характерные приемы Олдфилда, Жарра, Ино и др.
- * #СВЯЗИ: Используется в `AmbientBrain` для семантической генерации.
+ * #ЧТО: Группы ликов и паттернов, отражающие авторские манеры.
+ * #ОБНОВЛЕНО (ПЛАН №389): Реализована глубокая дифференциация Манфреда Мэнна и Майка Олдфилда.
  */
 
 import type { BluesSoloPhrase } from '@/types/fractal';
@@ -14,20 +14,26 @@ export type LegacyGroup = {
 };
 
 export const AMBIENT_LEGACY: Record<string, LegacyGroup> = {
+    // #ЗАЧЕМ: Майк Олдфилд. 
+    // #ЧТО: Вложенные циклы, "колокольные" интервалы, дорийский фолк.
     OLDFIELD: {
         id: 'oldfield',
         name: 'Mike Oldfield',
         licks: [
-            { phrase: [{t:0,d:3,deg:'R'}, {t:3,d:3,deg:'5'}, {t:6,d:3,deg:'R+8'}, {t:9,d:3,deg:'7'}], tags: ['bells', 'nested'] },
-            { phrase: [{t:0,d:6,deg:'5'}, {t:6,d:2,deg:'6'}, {t:8,d:2,deg:'7'}, {t:10,d:2,deg:'R+8'}], tags: ['ethnic', 'climb'] }
+            { phrase: [{t:0,d:3,deg:'R'}, {t:3,d:3,deg:'5'}, {t:6,d:3,deg:'R+8'}, {t:9,d:3,deg:'7'}], tags: ['crystalline', 'nested'] },
+            { phrase: [{t:0,d:6,deg:'5'}, {t:6,d:2,deg:'6'}, {t:8,d:2,deg:'7'}, {t:10,d:2,deg:'R+8'}], tags: ['tubular', 'climb'] },
+            { phrase: [{t:0,d:4,deg:'R'}, {t:4,d:4,deg:'2'}, {t:8,d:4,deg:'b3'}], tags: ['incantations', 'folk'] }
         ]
     },
-    JARRE: {
-        id: 'jarre',
-        name: 'Jean-Michel Jarre',
+    // #ЗАЧЕМ: Манфред Мэнн. 
+    // #ЧТО: Органные соло, "носовые" фильтры, прог-роковые блюзовые повороты.
+    MANN: {
+        id: 'mann',
+        name: 'Manfred Mann',
         licks: [
-            { phrase: [{t:0,d:2,deg:'R'}, {t:2,d:2,deg:'5'}, {t:4,d:2,deg:'R'}, {t:6,d:2,deg:'5'}, {t:8,d:4,deg:'b7'}], tags: ['laser', 'pulse'] },
-            { phrase: [{t:0,d:3,deg:'5'}, {t:3,d:3,deg:'b7'}, {t:6,d:3,deg:'R+8'}, {t:9,d:3,deg:'9'}], tags: ['oxygen', 'sweep'] }
+            { phrase: [{t:0,d:3,deg:'R'}, {t:3,d:3,deg:'b3',tech:'sl'}, {t:6,d:6,deg:'4',tech:'vb'}], tags: ['earth-band', 'organic'] },
+            { phrase: [{t:0,d:6,deg:'5'}, {t:6,d:3,deg:'b7'}, {t:9,d:3,deg:'R',tech:'sl'}], tags: ['solo-organ', 'bluesy'] },
+            { phrase: [{t:0,d:2,deg:'R'}, {t:2,d:2,deg:'b3'}, {t:4,d:2,deg:'4'}, {t:6,d:6,deg:'5',tech:'bn'}], tags: ['prog-blues', 'bending'] }
         ]
     },
     ENO: {

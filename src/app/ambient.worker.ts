@@ -1,6 +1,6 @@
 /**
  * @file AuraGroove Music Worker (Architecture: "The Chain of Suites")
- * #ОБНОВЛЕНО (ПЛАН №383): Реализована непрерывная ротация династий в цепи сюит.
+ * #ОБНОВЛЕНО (ПЛАН №389): Порог AI Arbitrator поднят до 0.9.
  */
 import type { WorkerSettings, ScoreName, Mood, Genre, InstrumentPart } from '@/types/music';
 import { FractalMusicEngine } from '@/lib/fractal-music-engine';
@@ -65,21 +65,18 @@ const Scheduler = {
             seed: settings.seed || Date.now(),
             introBars: settings.introBars,
             ancestor: settings.ancestor,
-            sessionLickHistory: this.settings.sessionLickHistory // Используем локально обновленную историю
+            sessionLickHistory: this.settings.sessionLickHistory 
         }, blueprint);
 
         newEngine.initialize(true); 
         fractalMusicEngine = newEngine;
         
-        // #ЗАЧЕМ: Непрерывная ротация династий (ПЛАН №383).
-        // #ЧТО: Сразу после рождения Аксиомы добавляем её в историю, чтобы СЛЕДУЮЩАЯ сюита в цепи её избегала.
         if (newEngine.suiteDNA?.seedLickId) {
             this.settings.sessionLickHistory = [
                 ...(this.settings.sessionLickHistory || []),
                 newEngine.suiteDNA.seedLickId
-            ].slice(-10); // Помним последние 10 воплощений
+            ].slice(-10); 
 
-            // Сообщаем UI о рождении, чтобы синхронизировать localStorage
             self.postMessage({ type: 'LICK_BORN', lickId: newEngine.suiteDNA.seedLickId });
         }
 
@@ -163,7 +160,9 @@ const Scheduler = {
             console.error('[Worker.tick] CRITICAL ERROR:', e);
         }
 
-        if (finalPayload.beautyScore > 0.78 && this.barCount > 8) {
+        // #ЗАЧЕМ: Стандарт 0.9.
+        // #ЧТО: Только исключительные шедевры попадают в генетическую память.
+        if (finalPayload.beautyScore > 0.90 && this.barCount > 8) {
             self.postMessage({ 
                 type: 'HIGH_RESONANCE_DETECTED', 
                 payload: { beautyScore: finalPayload.beautyScore, seed: this.settings.seed } 
