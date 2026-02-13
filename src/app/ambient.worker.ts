@@ -1,6 +1,7 @@
 /**
  * @file AuraGroove Music Worker (Architecture: "The Chain of Suites")
- * #ОБНОВЛЕНО (ПЛАН №389): Порог AI Arbitrator поднят до 0.9.
+ * #ОБНОВЛЕНО (ПЛАН №401): Исправлена логика переходов. Теперь переход происходит в начале тика,
+ *       что устраняет тишину после променада и предотвращает остановку цикла.
  */
 import type { WorkerSettings, ScoreName, Mood, Genre, InstrumentPart } from '@/types/music';
 import { FractalMusicEngine } from '@/lib/fractal-music-engine';
@@ -94,7 +95,11 @@ const Scheduler = {
             if (!this.isRunning) return;
             
             const barStartTime = performance.now();
-            this.tick();
+            try {
+                this.tick();
+            } catch (e) {
+                console.error('%c[Chronos] Tick execution failed!', 'color: #ef4444; font-weight: bold;', e);
+            }
             
             const executionTime = performance.now() - barStartTime;
             const targetDuration = this.barDuration * 1000;
@@ -147,6 +152,23 @@ const Scheduler = {
     tick() {
         if (!this.isRunning || !fractalMusicEngine) return;
 
+        // #ЗАЧЕМ: Бесшовный переход. Проверка конца сюиты перенесена в НАЧАЛО тика.
+        // #ЧТО: Если лимит тактов достигнут, мы немедленно переключаем тип сюиты и 
+        //      инициализируем новый движок, чтобы этот же тик сгенерировал Bar 0.
+        if (this.barCount >= fractalMusicEngine.navigator!.totalBars) {
+             console.log(`%c${getTimestamp()} [Chain] Suite ${this.suiteType} ended. Transitioning...`, 'color: #4ade80; font-weight: bold;');
+             
+             if (this.suiteType === 'BRIDGE' || this.suiteType === 'PROMENADE') {
+                 this.suiteType = 'MAIN';
+             } else {
+                 this.suiteType = 'BRIDGE';
+                 this.settings.seed = Date.now(); 
+             }
+             
+             this.initializeEngine(this.settings, true);
+             // initializeEngine сбрасывает barCount в 0.
+        }
+
         let finalPayload: { events: FractalEvent[], instrumentHints: InstrumentHints, beautyScore: number, tension: number, navInfo?: NavigationInfo } = { 
             events: [], 
             instrumentHints: {}, 
@@ -157,11 +179,9 @@ const Scheduler = {
         try {
             finalPayload = fractalMusicEngine.evolve(this.barDuration, this.barCount);
         } catch (e) {
-            console.error('[Worker.tick] CRITICAL ERROR:', e);
+            console.error('[Worker.tick] Generation error:', e);
         }
 
-        // #ЗАЧЕМ: Стандарт 0.9.
-        // #ЧТО: Только исключительные шедевры попадают в генетическую память.
         if (finalPayload.beautyScore > 0.90 && this.barCount > 8) {
             self.postMessage({ 
                 type: 'HIGH_RESONANCE_DETECTED', 
@@ -216,19 +236,6 @@ const Scheduler = {
         }
 
         this.barCount++;
-
-        if (fractalMusicEngine && this.barCount >= fractalMusicEngine.navigator!.totalBars) {
-             console.log(`%c${getTimestamp()} [Chain] Suite ${this.suiteType} ended. Transitioning...`, 'color: #4ade80; font-weight: bold;');
-             
-             if (this.suiteType === 'BRIDGE' || this.suiteType === 'PROMENADE') {
-                 this.suiteType = 'MAIN';
-             } else {
-                 this.suiteType = 'BRIDGE';
-                 this.settings.seed = Date.now(); 
-             }
-             
-             this.initializeEngine(this.settings, true);
-        }
     }
 };
 
