@@ -1,5 +1,4 @@
 
-
 import type { Note as NoteEvent } from "@/types/music";
 import { ACOUSTIC_GUITAR_CHORD_SAMPLES } from "./samples";
 import * as Tone from 'tone';
@@ -11,6 +10,7 @@ const CHORD_SAMPLE_MAP = ACOUSTIC_GUITAR_CHORD_SAMPLES;
  * #ЧТО: Он загружает сэмплы из `samples.ts` и проигрывает
  *       их на основе точного имени аккорда, полученного от композитора.
  * #СВЯЗИ: Управляется `HarmonySynthManager`.
+ * #ОБНОВЛЕНО (ПЛАН №403): Добавлен детальный аудит разрешения аккордов.
  */
 export class GuitarChordsSampler {
     private audioContext: AudioContext;
@@ -64,6 +64,7 @@ export class GuitarChordsSampler {
         if (!this.isInitialized || notes.length === 0) return;
 
         notes.forEach(note => {
+            // #ЗАЧЕМ: Аудит выполнения. 
             const barCount = (note.params as any)?.barCount ?? 'N/A';
             console.log(`[HarmonyAudit] [Sampler Exec] Bar: ${barCount} - Received note. Requesting chordName: "${note.chordName}"`);
 

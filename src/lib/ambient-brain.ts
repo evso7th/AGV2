@@ -1,7 +1,10 @@
+
 /**
- * #ЗАЧЕМ: Суверенный Мозг Амбиента v3.1 — "Stability & Presence".
- * #ЧТО: 1. Исправлен TypeError при отсутствии объекта layers в части.
- *       2. Усилена защита при активации пианино.
+ * #ЗАЧЕМ: Суверенный Мозг Амбиента v4.5 — "Musical Tapestry & Tails".
+ * #ЧТО: 1. Органные арпеджио восьмыми нотами (Virtuoso Plume).
+ *       2. Длительность наслоения увеличена до 12 секунд.
+ *       3. Лимбический триггер (+8 нота) звучит 16 секунд.
+ *       4. Добавлена передача chordName для гармонии.
  */
 
 import type { 
@@ -133,9 +136,7 @@ export class AmbientBrain {
         }
 
         if (hints.harmony) {
-            if (this.random.next() < 0.7) {
-                events.push(...this.renderOrchestralHarmony(currentChord, epoch, hints.harmony as string, localTension));
-            }
+            events.push(...this.renderOrchestralHarmony(currentChord, epoch, hints.harmony as string, localTension));
         }
 
         if (hints.sparkles && this.random.next() < 0.6) {
@@ -200,7 +201,6 @@ export class AmbientBrain {
             });
         }
 
-        // #ИСПРАВЛЕНО (ПЛАН №402): Добавлена проверка на существование layers.
         if (part.layers) {
             this.activatedParts.forEach(p => {
                 if ((part.layers as any)[p]) {
@@ -249,14 +249,18 @@ export class AmbientBrain {
         }));
     }
 
+    /**
+     * #ЗАЧЕМ: Реализация виртуозных органных пассажей.
+     * #ЧТО: Генерация 8-ми нот (восьмые) с перехлестом. Плотная музыкальная ткань.
+     */
     private renderOrganArpeggio(chord: GhostChord, epoch: number, tension: number): FractalEvent[] {
         const root = chord.rootNote + 24; 
         const isMinor = chord.chordType === 'minor' || chord.chordType === 'dominant';
-        const intervals = isMinor ? [0, 3, 7, 10, 12, 15] : [0, 4, 7, 11, 12, 16];
+        const intervals = isMinor ? [0, 3, 7, 10, 12, 15, 19, 24] : [0, 4, 7, 11, 12, 16, 19, 24];
         
         const events: FractalEvent[] = [];
-        const count = 4;
-        const timeStep = 1.0; 
+        const count = 8;
+        const timeStep = 0.5; // Восьмые ноты
 
         for (let i = 0; i < count; i++) {
             const idx = calculateMusiNum(epoch + i, 3, this.seed, intervals.length);
@@ -264,8 +268,8 @@ export class AmbientBrain {
                 type: 'melody',
                 note: Math.min(root + intervals[idx], this.MELODY_CEILING),
                 time: i * timeStep,
-                duration: 3.5,
-                weight: 0.45 * tension * (0.9 + this.random.next() * 0.2),
+                duration: 4.5, // Глубокий перехлест
+                weight: 0.55 * tension * (0.9 + this.random.next() * 0.2),
                 technique: 'pick',
                 dynamics: 'p',
                 phrasing: 'legato'
@@ -317,32 +321,42 @@ export class AmbientBrain {
         return events;
     }
 
+    /**
+     * #ЗАЧЕМ: Реализация оркестровой гармонии с лимбическим пиком.
+     * #ЧТО: Длительность увеличена до 12с. Внедрена нота +8 в миноре на Tension > 0.75.
+     */
     private renderOrchestralHarmony(chord: GhostChord, epoch: number, timbre: string, tension: number): FractalEvent[] {
         const root = chord.rootNote; 
         const isMinor = chord.chordType === 'minor' || chord.chordType === 'diminished';
         const notes = [root + (isMinor ? 3 : 4), root + 7];
+        const chordName = isMinor ? 'Am' : 'E';
         
         const events: FractalEvent[] = notes.map((n, i) => ({
             type: 'harmony',
-            note: n + 12, 
+            note: n + 12, // Октава 2-3 (теплое звучание)
             time: i * 0.5,
-            duration: 8.0, 
+            duration: 12.0, // WAS 8.0
             weight: 0.38 * (0.8 + this.random.next() * 0.4), 
             technique: 'swell',
             dynamics: 'p',
-            phrasing: 'legato'
+            phrasing: 'legato',
+            chordName: chordName,
+            params: { barCount: epoch }
         }));
 
+        // Лимбический триггер: малая секста (+8)
         if (isMinor && tension > 0.75) {
             events.push({
                 type: 'harmony',
-                note: root + 8 + 36, 
+                note: root + 8 + 36, // Высокий пик "слёз"
                 time: 2.0,
-                duration: 12.0, 
+                duration: 16.0, 
                 weight: 0.45 * (1 + this.fog), 
                 technique: 'swell',
                 dynamics: 'p',
-                phrasing: 'legato'
+                phrasing: 'legato',
+                chordName: chordName,
+                params: { barCount: epoch }
             });
         }
 
@@ -449,12 +463,12 @@ export class AmbientBrain {
             type: 'accompaniment',
             note: n,
             time: i * 0.2,
-            duration: 8.0, 
+            duration: 12.0, // WAS 8.0
             weight: 0.38 * (0.9 + this.random.next() * 0.2),
             technique: 'swell',
             dynamics: 'p',
             phrasing: 'legato' as Phrasing,
-            params: { attack: 2.0, release: 6.0, filterCutoff: cutoff }
+            params: { attack: 2.0, release: 6.0, filterCutoff: cutoff, barCount: epoch }
         }));
     }
 }

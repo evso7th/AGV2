@@ -11,6 +11,7 @@ import { FluteSamplerPlayer } from './flute-sampler-player';
 /**
  * Manages the "harmony" layer, specifically for rhythmic/harmonic instruments
  * like piano and guitar chords. It's a specialized sampler player.
+ * #ОБНОВЛЕНО (ПЛАН №403): Удалено смещение +24. Внедрено логирование аудита.
  */
 export class HarmonySynthManager {
     private audioContext: AudioContext;
@@ -65,8 +66,10 @@ export class HarmonySynthManager {
         }
 
         const beatDuration = 60 / tempo;
+        // #ЗАЧЕМ: Прозрачность исполнения.
+        // #ЧТО: Удалено принудительное смещение +24. Теперь MIDI-нота принимается "как есть".
         const notes: (Note & { chordName?: string, params?: any })[] = events.map(event => ({
-            midi: event.note + 24,
+            midi: event.note,
             time: event.time * beatDuration,
             duration: event.duration * beatDuration,
             velocity: event.weight,
@@ -78,6 +81,8 @@ export class HarmonySynthManager {
             return;
         }
 
+        // #ЗАЧЕМ: Аудит тишины. 
+        // #ЧТО: Логирование каждой пачки событий на этапе диспетчеризации.
         const barCount = (notes[0].params as any)?.barCount ?? 'N/A';
         console.log(`[HarmonyAudit] [Manager Dispatch] Bar: ${barCount} - Dispatching ${notes.length} events to instrument: ${instrumentToPlay}`);
 
