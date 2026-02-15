@@ -2,7 +2,7 @@
  * @fileOverview Universal Music Theory Utilities
  * #ЗАЧЕМ: Базовый набор инструментов для работы с нотами, ладами и ритмом.
  * #ЧТО: Внедрена система Dynasty Rotation для обеспечения разнообразия старта сюиты.
- * #ОБНОВЛЕНО (ПЛАН №423): Темповый коридор Anxious снижен для устранения эффекта "мотора".
+ * #ОБНОВЛЕНО (ПЛАН №424): Добавлен "Атлас Географических Состояний" (33 атома).
  */
 
 import type { 
@@ -28,6 +28,48 @@ export const DEGREE_TO_SEMITONE: Record<string, number> = {
 const SEMITONE_TO_DEGREE: Record<number, BluesRiffDegree> = {
     0: 'R', 1: 'b2', 2: '2', 3: 'b3', 4: '3', 5: '4', 6: '#4', 7: '5',
     8: 'b6', 9: '6', 10: 'b7', 11: '7', 12: 'R+8', 14: '9', 17: '11'
+};
+
+// #ЗАЧЕМ: 33 Географических Атома для нейтральных амбиентов.
+export const GEO_ATLAS: Record<string, { fog: number, pulse: number, depth: number, reg: number }> = {
+    // ХОЛОД (7)
+    Tundra: { fog: 0.2, pulse: 0.1, depth: 0.3, reg: -12 },
+    Glacier: { fog: 0.1, pulse: 0.05, depth: 0.4, reg: 12 },
+    Ice_Cave: { fog: 0.4, pulse: 0.15, depth: 0.6, reg: 0 },
+    Snow_Peak: { fog: 0.1, pulse: 0.2, depth: 0.5, reg: 24 },
+    Permafrost: { fog: 0.3, pulse: 0.05, depth: 0.4, reg: -24 },
+    Aurora: { fog: 0.6, pulse: 0.3, depth: 0.8, reg: 12 },
+    Frozen_Lake: { fog: 0.2, pulse: 0.1, depth: 0.2, reg: 0 },
+    // ЖАРА (7)
+    Dune: { fog: 0.5, pulse: 0.2, depth: 0.4, reg: -12 },
+    Oasis: { fog: 0.2, pulse: 0.4, depth: 0.6, reg: 0 },
+    Canyon: { fog: 0.1, pulse: 0.3, depth: 0.5, reg: 12 },
+    Stone_Temple: { fog: 0.4, pulse: 0.1, depth: 0.7, reg: -12 },
+    Savanna: { fog: 0.3, pulse: 0.5, depth: 0.4, reg: 0 },
+    Dust_Bowl: { fog: 0.8, pulse: 0.2, depth: 0.3, reg: 0 },
+    Red_Rocks: { fog: 0.2, pulse: 0.2, depth: 0.6, reg: -12 },
+    // ВОДА (7)
+    Deep_Trench: { fog: 0.9, pulse: 0.05, depth: 0.8, reg: -24 },
+    Coral_Reef: { fog: 0.1, pulse: 0.6, depth: 0.7, reg: 12 },
+    Harbor: { fog: 0.7, pulse: 0.2, depth: 0.4, reg: 0 },
+    Waterfall: { fog: 0.5, pulse: 0.8, depth: 0.6, reg: 0 },
+    Misty_Swamp: { fog: 0.8, pulse: 0.15, depth: 0.5, reg: -12 },
+    Open_Ocean: { fog: 0.3, pulse: 0.2, depth: 0.9, reg: 0 },
+    River: { fog: 0.2, pulse: 0.5, depth: 0.4, reg: 12 },
+    // МИСТИКА (7)
+    Void: { fog: 0.95, pulse: 0.01, depth: 0.2, reg: -24 },
+    Nebula: { fog: 0.6, pulse: 0.3, depth: 1.0, reg: 12 },
+    Fairy_Ring: { fog: 0.3, pulse: 0.4, depth: 0.6, reg: 12 },
+    Astral_Plain: { fog: 0.2, pulse: 0.2, depth: 0.9, reg: 24 },
+    Crystal_Cave: { fog: 0.4, pulse: 0.3, depth: 0.8, reg: 12 },
+    Ancient_Ruins: { fog: 0.5, pulse: 0.1, depth: 0.7, reg: 0 },
+    Monolith: { fog: 0.3, pulse: 0.05, depth: 1.0, reg: -12 },
+    // КУЛЬТУРА (5)
+    Highland: { fog: 0.4, pulse: 0.3, depth: 0.5, reg: 12 },
+    Zen_Monastery: { fog: 0.2, pulse: 0.1, depth: 0.6, reg: 0 },
+    Celtic_Shore: { fog: 0.6, pulse: 0.4, depth: 0.5, reg: 0 },
+    Black_Forest: { fog: 0.7, pulse: 0.3, depth: 0.6, reg: -12 },
+    Desert_Caravan: { fog: 0.5, pulse: 0.4, depth: 0.4, reg: 0 }
 };
 
 /**
@@ -177,6 +219,7 @@ export function generateSuiteDNA(totalBars: number, mood: Mood, initialSeed: num
     let seedLickId: string | undefined;
     let seedLickNotes: BluesSoloPhrase | undefined;
     let ambientLegacyGroup: string | undefined;
+    let itinerary: string[] | undefined;
 
     if (genre === 'blues') {
         const isMellow = ['dark', 'anxious', 'melancholic', 'gloomy'].includes(mood);
@@ -197,9 +240,17 @@ export function generateSuiteDNA(totalBars: number, mood: Mood, initialSeed: num
             seedLickNotes = transformLick(BLUES_SOLO_LICKS[seedLickId].phrase, initialSeed, 0, true);
         }
     } else if (genre === 'ambient') {
-        // #ЗАЧЕМ: Выбор Legacy Group для Амбиента на всю сюиту.
-        const allGroups = Object.keys(AMBIENT_LEGACY);
-        ambientLegacyGroup = allGroups[calculateMusiNum(initialSeed, 3, initialSeed, allGroups.length)];
+        const isAnxious = mood === 'anxious';
+        const groupKey = isAnxious ? 'FOLK' : (['melancholic', 'dark'].includes(mood) ? 'BOARDS' : 'BUDD');
+        ambientLegacyGroup = groupKey;
+
+        // #ЗАЧЕМ: Генерация географического маршрута (3 точки).
+        const allAtoms = Object.keys(GEO_ATLAS);
+        itinerary = [
+            allAtoms[calculateMusiNum(initialSeed, 3, initialSeed, allAtoms.length)],
+            allAtoms[calculateMusiNum(initialSeed, 7, initialSeed + 100, allAtoms.length)],
+            allAtoms[calculateMusiNum(initialSeed, 5, initialSeed + 200, allAtoms.length)]
+        ];
     }
 
     const finalSeed = ancestor ? crossoverDNA(initialSeed, ancestor) : initialSeed;
@@ -243,7 +294,6 @@ export function generateSuiteDNA(totalBars: number, mood: Mood, initialSeed: num
         accumulatedBars += partDuration;
     });
 
-    // #ЗАЧЕМ: Снижение темпа для Anxious Ambient.
     const possibleTempos = { joyful: [115, 140], enthusiastic: [125, 155], contemplative: [78, 92], dreamy: [72, 86], calm: [68, 82], melancholic: [64, 72], gloomy: [68, 78], dark: [64, 72], epic: [120, 145], anxious: [55, 65] };
     const [minTempo, maxTempo] = (possibleTempos as any)[mood] || [60, 80];
     const baseTempo = minTempo + Math.floor(sowingRandom.next() * (maxTempo - minTempo + 1));
@@ -255,5 +305,5 @@ export function generateSuiteDNA(totalBars: number, mood: Mood, initialSeed: num
     blueprintParts.forEach((part: any) => { if (part.instrumentRules?.melody?.source === 'blues_solo') { soloPlanMap.set(part.id, shuffledPlanIds[planIndex % shuffledPlanIds.length]); planIndex++; } });
 
     const tensionMap = generateTensionMap(finalSeed, totalBars, mood);
-    return { harmonyTrack, baseTempo, rhythmicFeel: 'shuffle', bassStyle: 'walking', drumStyle: 'shuffle_A', soloPlanMap, tensionMap, bluesGridType, seedLickId, seedLickNotes, ambientLegacyGroup };
+    return { harmonyTrack, baseTempo, rhythmicFeel: 'shuffle', bassStyle: 'walking', drumStyle: 'shuffle_A', soloPlanMap, tensionMap, bluesGridType, seedLickId, seedLickNotes, ambientLegacyGroup, itinerary };
 }

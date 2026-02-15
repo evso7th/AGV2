@@ -1,10 +1,14 @@
-
 import type { MusicBlueprint } from '@/types/music';
 
+/**
+ * #ЗАЧЕМ: Блюпринт "The Atlas Voyage" (Dreamy Ambient v15.0).
+ * #ЧТО: 1. Внедрена лотерея интро (4 этапа).
+ *       2. Реализована поддержка маршрута (3 локации).
+ */
 export const DreamyAmbientBlueprint: MusicBlueprint = {
   id: 'dreamy_ambient',
-  name: 'Celestial Drift',
-  description: 'Воздушный, парящий, светящийся эмбиент.',
+  name: 'Celestial Geography',
+  description: 'A physical journey through misty peaks and astral plains. Geography of Spirit.',
   mood: 'dreamy',
   musical: {
     key: { root: 'F', scale: 'lydian', octave: 3 },
@@ -24,121 +28,78 @@ export const DreamyAmbientBlueprint: MusicBlueprint = {
     totalDuration: { preferredBars: 160 },
     parts: [
       {
-        id: 'INTRO_1', name: 'First Glimmer', duration: { percent: 6 }, // ~10 bars
-        layers: { accompaniment: true, sparkles: true, sfx: true, harmony: true },
-        instrumentation: { 
-            accompaniment: { 
-                strategy: 'weighted', 
-                v1Options: [{ name: 'synth_ambient_pad_lush', weight: 1.0 }],
-                v2Options: [{ name: 'synth_ambient_pad_lush', weight: 1.0 }]
-            } 
-        },
+        id: 'INTRO', name: 'LotteryEntrance', duration: { percent: 15 },
+        layers: { accompaniment: true, sparkles: true, sfx: true, harmony: true, bass: true, drums: true, pianoAccompaniment: true, melody: true },
+        stagedInstrumentation: [
+            {
+                duration: { percent: 25 },
+                instrumentation: {
+                    accompaniment: { activationChance: 1.0, instrumentOptions: [{ name: 'synth_ambient_pad_lush', weight: 1.0 }] },
+                    bass: { activationChance: 1.0, instrumentOptions: [{ name: 'glideBass', weight: 1.0 }] }
+                }
+            },
+            {
+                duration: { percent: 25 },
+                instrumentation: {
+                    drums: { activationChance: 1.0, instrumentOptions: [{ name: 'calm', weight: 1.0 }] },
+                    melody: { activationChance: 1.0, instrumentOptions: [{ name: 'ep_rhodes_warm', weight: 1.0 }] }
+                }
+            },
+            {
+                duration: { percent: 25 },
+                instrumentation: {
+                    pianoAccompaniment: { activationChance: 1.0, instrumentOptions: [{ name: 'piano', weight: 1.0 }] },
+                    sfx: { activationChance: 0.8, instrumentOptions: [{ name: 'common', weight: 1.0 }], transient: true }
+                }
+            },
+            {
+                duration: { percent: 25 },
+                instrumentation: {
+                    harmony: { activationChance: 1.0, instrumentOptions: [{ name: 'violin', weight: 1.0 }] },
+                    sparkles: { activationChance: 0.7, instrumentOptions: [{ name: 'light', weight: 1.0 }] }
+                }
+            }
+        ],
         instrumentRules: {
           accompaniment: { register: { preferred: 'high' } },
-          sparkles: { eventProbability: 0.25 },
           melody: { source: 'harmony_top_note' }
         },
         bundles: [{ id: 'DREAMY_INTRO_1', name: 'Glimmer', duration: { percent: 100 }, characteristics: {}, phrases: {} }],
         outroFill: null,
       },
       {
-        id: 'INTRO_2', name: 'Awakening', duration: { percent: 7 }, // ~11 bars
-        layers: { accompaniment: true, bass: true, melody: true, sparkles: true, sfx: true, harmony: true },
+        id: 'MAIN', name: 'The Geography', duration: { percent: 75 },
+        layers: { bass: true, melody: true, accompaniment: true, drums: true, sparkles: true, sfx: true, harmony: true, pianoAccompaniment: true },
         instrumentation: {
-          accompaniment: { strategy: 'weighted', v1Options: [{ name: 'synth_ambient_pad_lush', weight: 1.0 }], v2Options: [{ name: 'synth_ambient_pad_lush', weight: 1.0 }] },
-          bass: { strategy: 'weighted', v1Options: [{ name: 'glideBass', weight: 1.0 }], v2Options: [{ name: 'glideBass', weight: 1.0 }] },
-          melody: {
-            strategy: 'weighted',
-            v1Options: [
-              { name: 'guitar_shineOn', weight: 0.2 },
-              { name: 'mellotron_flute_intimate', weight: 0.2 },
-              { name: 'organ', weight: 0.3 },
-              { name: 'mellotron', weight: 0.3 },
-            ],
-            v2Options: [
-              { name: 'guitar_shineOn', weight: 0.2 },
-              { name: 'mellotron_flute_intimate', weight: 0.2 },
-              { name: 'organ', weight: 0.3 },
-              { name: 'mellotron', weight: 0.3 },
-            ]
-          }
+            accompaniment: { strategy: 'weighted', v2Options: [{ name: 'synth_ambient_pad_lush', weight: 0.5 }, { name: 'synth', weight: 0.5 }] },
+            melody: { strategy: 'weighted', v2Options: [{ name: 'synth_lead_shineOn', weight: 0.4 }, { name: 'ep_rhodes_warm', weight: 0.6 }] }
         },
         instrumentRules: {
-          bass: { techniques: [{ value: 'floating', weight: 1.0 }], register: { preferred: 'mid' } },
-          melody: { source: 'harmony_top_note' }
-        },
-        bundles: [{ id: 'DREAMY_INTRO_2', name: 'Floating', duration: { percent: 100 }, characteristics: {}, phrases: {} }],
-        outroFill: null,
-      },
-      {
-        id: 'INTRO_3', name: 'Drifting', duration: { percent: 7 }, // ~11 bars
-        layers: { accompaniment: true, bass: true, melody: true, drums: true, sparkles: true, sfx: true, harmony: true },
-        instrumentation: {
-          accompaniment: { strategy: 'weighted', v1Options: [{ name: 'synth_ambient_pad_lush', weight: 0.8 }, { name: 'synth', weight: 0.2 }], v2Options: [{ name: 'synth_ambient_pad_lush', weight: 0.8 }, { name: 'synth', weight: 0.2 }] },
-          bass: { strategy: 'weighted', v1Options: [{ name: 'glideBass', weight: 1.0 }], v2Options: [{ name: 'glideBass', weight: 1.0 }] },
-          melody: {
-            strategy: 'weighted',
-            v1Options: [
-              { name: 'guitar_shineOn', weight: 0.2 },
-              { name: 'mellotron_flute_intimate', weight: 0.2 },
-              { name: 'organ', weight: 0.3 },
-              { name: 'mellotron', weight: 0.3 },
-            ],
-            v2Options: [
-              { name: 'guitar_shineOn', weight: 0.2 },
-              { name: 'mellotron_flute_intimate', weight: 0.2 },
-              { name: 'organ', weight: 0.3 },
-              { name: 'mellotron', weight: 0.3 },
-            ]
-          }
-        },
-        instrumentRules: {
-          drums: { pattern: 'ambient_beat', density: { min: 0.3, max: 0.5 }, kickVolume: 0.8 },
-          melody: { source: 'harmony_top_note' }
-        },
-        bundles: [{ id: 'DREAMY_INTRO_3', name: 'Light Pulse', duration: { percent: 100 }, characteristics: {}, phrases: {} }],
-        outroFill: { type: 'shimmer_burst', duration: 2, parameters: {} },
-      },
-      {
-        id: 'MAIN', name: 'Celestial expanse', duration: { percent: 50 },
-        layers: { bass: true, melody: true, accompaniment: true, drums: true, sparkles: true, sfx: true, harmony: true },
-        instrumentation: {
-            accompaniment: { strategy: 'weighted', v1Options: [{ name: 'synth_ambient_pad_lush', weight: 0.5 }, { name: 'synth', weight: 0.5 }], v2Options: [{ name: 'synth_ambient_pad_lush', weight: 0.5 }, { name: 'synth', weight: 0.5 }] },
-            bass: { strategy: 'weighted', v1Options: [{ name: 'glideBass', weight: 1.0 }], v2Options: [{ name: 'glideBass', weight: 1.0 }] },
-            melody: { strategy: 'weighted', v1Options: [{ name: 'guitar_shineOn', weight: 0.25 }, { name: 'organ', weight: 0.4 }, { name: 'mellotron', weight: 0.35 }], v2Options: [{ name: 'guitar_shineOn', weight: 0.25 }, { name: 'organ', weight: 0.4 }, { name: 'mellotron', weight: 0.35 }] }
-        },
-        instrumentRules: {
-            bass: { techniques: [{ value: 'arpeggio_slow', weight: 0.6 }, {value: 'melodic', weight: 0.4}] },
-            drums: { pattern: 'composer', density: { min: 0.5, max: 0.7 } },
-            melody: { source: 'harmony_top_note' }
+            drums: { pattern: 'ambient_beat', density: { min: 0.4, max: 0.6 } },
+            melody: { source: 'motif', density: { min: 0.3, max: 0.5 } }
         },
         bundles: [
-            { id: 'DREAMY_MAIN_1', name: 'Soaring', duration: { percent: 50 }, characteristics: {}, phrases: {} },
-            { id: 'DREAMY_MAIN_2', name: 'Shimmering', duration: { percent: 50 }, characteristics: {}, phrases: {} }
+            { id: 'DREAMY_MAIN_1', name: 'The Path', duration: { percent: 100 }, characteristics: {}, phrases: {} }
         ],
-        outroFill: { type: 'reverb_burst', duration: 4, parameters: {} },
+        outroFill: null,
       },
        {
-        id: 'OUTRO', name: 'Fading Starlight', duration: { percent: 30 },
-        layers: { accompaniment: true, sparkles: true, sfx: true, harmony: true, melody: true },
-        instrumentation: {
-            accompaniment: { strategy: 'weighted', v1Options: [{ name: 'synth_ambient_pad_lush', weight: 1.0 }], v2Options: [{ name: 'synth_ambient_pad_lush', weight: 1.0 }] },
-            melody: { strategy: 'weighted', v1Options: [{ name: 'organ', weight: 0.5 }, { name: 'mellotron', weight: 0.5 }], v2Options: [{ name: 'organ', weight: 0.5 }, { name: 'mellotron', weight: 0.5 }] }
-        },
-        instrumentRules: {
-            accompaniment: { register: { preferred: 'high' } },
-            melody: { source: 'harmony_top_note' }
-        },
-        bundles: [ { id: 'DREAMY_OUTRO_1', name: 'Quietude', duration: { percent: 100 }, characteristics: {}, phrases: {} } ],
+        id: 'OUTRO', name: 'Dissolution', duration: { percent: 10 },
+        layers: { accompaniment: true, sfx: true, harmony: true },
+        bundles: [ { id: 'DREAMY_OUTRO_1', name: 'Fading', duration: { percent: 100 }, characteristics: {}, phrases: {} } ],
         outroFill: null,
       },
     ]
   },
   mutations: {},
   ambientEvents: [
-      { type: 'sparkle', probability: 0.12, activeParts: ['INTRO_2', 'INTRO_3', 'MAIN', 'OUTRO'] }, // Bells
-      { type: 'shimmer_burst', probability: 0.06, activeParts: ['MAIN'] },
+      { type: 'sparkle', probability: 0.12, activeParts: ['MAIN', 'OUTRO'] },
   ],
   continuity: {},
-  rendering: {}
+  rendering: {
+      mixTargets: {
+          melody: { level: -26, pan: 0.0 },
+          accompaniment: { level: -18, pan: 0.0 }
+      }
+  }
 };

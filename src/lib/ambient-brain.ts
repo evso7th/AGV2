@@ -1,6 +1,8 @@
 /**
- * #ЗАЧЕМ: Суверенный Мозг Амбиента v7.13 — "Anti-Industrial Update".
- * #ЧТО: Внедрено ограничение скорости пассажей для Anxious режима для устранения эффекта "мотора".
+ * #ЗАЧЕМ: Суверенный Мозг Амбиента v8.0 — "The Great Atlas Update".
+ * #ЧТО: 1. Внедрена система Географических Атомов (33 состояния).
+ *       2. Реализовано плавное смешивание локаций по "Маршруту Путешествия".
+ *       3. Внедрен "Ритуальный Волкинг" для баса в режиме Anxious.
  */
 
 import type { 
@@ -15,7 +17,7 @@ import type {
     Phrasing,
     SfxRule
 } from '@/types/music';
-import { calculateMusiNum, DEGREE_TO_SEMITONE, pickWeightedDeterministic } from './music-theory';
+import { calculateMusiNum, DEGREE_TO_SEMITONE, pickWeightedDeterministic, GEO_ATLAS } from './music-theory';
 import { AMBIENT_LEGACY } from './assets/ambient-legacy';
 
 const SPECTRAL_ATOMS: Record<string, { fog: number[], depth: number[], pulse: number[] }> = {
@@ -42,6 +44,7 @@ export class AmbientBrain {
     private pulse: number = 0.15;
     private depth: number = 0.4;
     private solistCutoff: number = 2000; 
+    private geoRegisterShift: number = 0;
 
     private activatedParts: Set<InstrumentPart> = new Set();
     private activeTimbres: Partial<Record<InstrumentPart, string>> = {};
@@ -105,6 +108,8 @@ export class AmbientBrain {
         const waves = this.computeTensionWaves(epoch * (60 / dna.baseTempo) * 4);
         const localTension = this.computeGlobalTension(waves);
 
+        // #ЗАЧЕМ: Применение Географического Атласа.
+        this.applyGeography(epoch, dna);
         this.applySpectralAtom(epoch, waves[3]);
         this.updateMoodAxes(epoch, localTension);
 
@@ -136,7 +141,13 @@ export class AmbientBrain {
         hints.bass = hints.bass || 'bass_jazz_warm';
 
         events.push(...this.renderPad(currentChord, epoch, hints.accompaniment as string));
-        events.push(...this.renderRhythmicBass(currentChord, localTension, hints.bass as string, epoch));
+        
+        // #ЗАЧЕМ: Выбор басовой техники (Walking для Anxious, Pedal для остальных).
+        if (this.mood === 'anxious') {
+            events.push(...this.renderRitualWalkingBass(currentChord, localTension, hints.bass as string, epoch));
+        } else {
+            events.push(...this.renderRhythmicBass(currentChord, localTension, hints.bass as string, epoch));
+        }
 
         if (hints.melody) {
             events.push(...this.renderMelodicPadBase(currentChord, epoch, localTension));
@@ -175,6 +186,20 @@ export class AmbientBrain {
             tension: localTension,
             beautyScore: 0.5 
         };
+    }
+
+    private applyGeography(epoch: number, dna: SuiteDNA) {
+        if (!dna.itinerary || dna.itinerary.length === 0) return;
+        const progress = epoch / 150; // approximate total bars
+        const stage = Math.min(2, Math.floor(progress * 3));
+        const atomKey = dna.itinerary[stage];
+        const atom = GEO_ATLAS[atomKey];
+        if (!atom) return;
+
+        // Плавный морфинг к значениям атома
+        this.fog = (this.fog + atom.fog) / 2;
+        this.depth = (this.depth + atom.depth) / 2;
+        this.geoRegisterShift = atom.reg;
     }
 
     private orchestrate(tension: number, navInfo: NavigationInfo, epoch: number, dna: SuiteDNA): InstrumentHints {
@@ -237,7 +262,7 @@ export class AmbientBrain {
     }
 
     private renderMelodicPadBase(chord: GhostChord, epoch: number, tension: number): FractalEvent[] {
-        const root = Math.min(chord.rootNote + 24, this.MELODY_CEILING);
+        const root = Math.min(chord.rootNote + 24 + this.geoRegisterShift, this.MELODY_CEILING);
         return [{
             type: 'melody',
             note: root,
@@ -262,7 +287,7 @@ export class AmbientBrain {
             const breathDecay = 1.0 - (n.t / 60); 
             return {
                 type: 'melody',
-                note: Math.min(chord.rootNote + 36 + group.registerBias + (DEGREE_TO_SEMITONE[n.deg] || 0), this.MELODY_CEILING),
+                note: Math.min(chord.rootNote + 36 + group.registerBias + this.geoRegisterShift + (DEGREE_TO_SEMITONE[n.deg] || 0), this.MELODY_CEILING),
                 time: (n.t % 12) / 3,
                 duration: (n.d / 3) * 1.6, 
                 weight: (0.37 * breathDecay) * (0.9 + this.random.next() * 0.2), 
@@ -275,7 +300,7 @@ export class AmbientBrain {
     }
 
     private renderOrganArpeggio(chord: GhostChord, epoch: number, tension: number): FractalEvent[] {
-        const root = chord.rootNote + 24; 
+        const root = chord.rootNote + 24 + this.geoRegisterShift; 
         const isMinor = chord.chordType === 'minor' || chord.chordType === 'dominant';
         const intervals = isMinor ? [0, 3, 7, 10, 12, 15, 19, 24] : [0, 4, 7, 11, 12, 16, 19, 24];
         const events: FractalEvent[] = [];
@@ -283,8 +308,6 @@ export class AmbientBrain {
         let timeStep = 1.0; 
         let count = 4;
 
-        // #ЗАЧЕМ: Устранение эффекта "мотора" в тревожном режиме (ПЛАН №423).
-        // #ЧТО: Для настроения 'anxious' время шага ограничено 0.5 (1/8-е ноты).
         if (this.mood === 'anxious') {
             timeStep = tension > 0.5 ? 0.5 : 1.0;
             count = tension > 0.5 ? 8 : 4;
@@ -319,7 +342,7 @@ export class AmbientBrain {
 
     private renderRhythmicBass(chord: GhostChord, tension: number, timbre: string, epoch: number): FractalEvent[] {
         const root = Math.max(chord.rootNote - 12, this.BASS_FLOOR); 
-        const isMinor = chord.chordType === 'minor' || chord.chordType === 'dimнишеd';
+        const isMinor = chord.chordType === 'minor' || chord.chordType === 'diminished';
         
         const pattern = [
             { t: 0, n: root, d: 1.5, w: 0.85 },
@@ -340,6 +363,29 @@ export class AmbientBrain {
         }));
     }
 
+    private renderRitualWalkingBass(chord: GhostChord, tension: number, timbre: string, epoch: number): FractalEvent[] {
+        const root = Math.max(chord.rootNote - 12, this.BASS_FLOOR);
+        // #ЗАЧЕМ: Ритмический код в стиле Faun (1--2-3--).
+        const ritualPattern = [
+            { t: 0, n: root, w: 0.9 },
+            { t: 1.0, n: root + 7, w: 0.7 },
+            { t: 1.5, n: root + 6, w: 0.8 }, // Triton tension
+            { t: 2.5, n: root, w: 0.75 }
+        ];
+
+        return ritualPattern.map(p => ({
+            type: 'bass',
+            note: p.n,
+            time: p.t,
+            duration: 0.5,
+            weight: p.w * (0.9 + this.random.next() * 0.2),
+            technique: 'pluck',
+            dynamics: 'p',
+            phrasing: 'staccato',
+            params: { attack: 0.05, release: 0.5, filterCutoff: 400 }
+        }));
+    }
+
     private renderPianoDrops(chord: GhostChord, epoch: number, tension: number): FractalEvent[] {
         const events: FractalEvent[] = [];
         const beats = [1.2, 2.5, 3.7]; 
@@ -347,7 +393,7 @@ export class AmbientBrain {
             if (this.random.next() < (0.30 * this.depth)) { 
                 events.push({
                     type: 'pianoAccompaniment',
-                    note: Math.min(chord.rootNote + 24 + [0, 3, 7, 12][this.random.nextInt(4)], this.MELODY_CEILING),
+                    note: Math.min(chord.rootNote + 24 + this.geoRegisterShift + [0, 3, 7, 12][this.random.nextInt(4)], this.MELODY_CEILING),
                     time: beat,
                     duration: 3.0,
                     weight: 0.4, 
@@ -374,7 +420,7 @@ export class AmbientBrain {
         return notes.map((n, i) => {
             return {
                 type: 'harmony',
-                note: n + 12, 
+                note: n + 12 + this.geoRegisterShift, 
                 time: i * 0.5,
                 duration: 12.0,
                 weight: (timbre === 'violin' ? 0.15 : 0.45) * (0.8 + this.random.next() * 0.4), 
@@ -390,7 +436,7 @@ export class AmbientBrain {
     private renderSparkle(chord: GhostChord): FractalEvent {
         return {
             type: 'sparkle',
-            note: chord.rootNote + 48,
+            note: chord.rootNote + 48 + this.geoRegisterShift,
             time: this.random.next() * 4,
             duration: 12.0,
             weight: 0.55,
@@ -451,7 +497,7 @@ export class AmbientBrain {
         // 2. SOFT IRON (Ghost Hat & Wet Ride)
         const ironProb = 0.15 + (tension * 0.25);
         if (this.random.next() < ironProb) {
-            const isRide = this.random.next() < 0.3; // 30% ride
+            const isRide = this.random.next() < 0.3; 
             events.push({
                 type: isRide ? 'drum_ride_wetter' : 'drum_closed_hi_hat_ghost',
                 note: 60,
@@ -530,13 +576,12 @@ export class AmbientBrain {
         this.depth = Math.max(0, Math.min(1, 0.4 + (tension * 0.45)));
         this.pulse = Math.max(0, Math.min(1, 0.15 + (tension * 0.35)));
         
-        // #ЗАЧЕМ: Более закрытый фильтр для Anxious режима.
         const maxCutoff = this.mood === 'anxious' ? 3500 : 4500;
         this.solistCutoff = maxCutoff * (1 - this.fog) + 1200; 
     }
 
     private renderPad(chord: GhostChord, epoch: number, timbre: string): FractalEvent[] {
-        const root = chord.rootNote + 12;
+        const root = chord.rootNote + 12 + this.geoRegisterShift;
         const isMinor = chord.chordType === 'minor' || chord.chordType === 'diminished';
         const notes = [root, root + (isMinor ? 3 : 4), root + 7];
 

@@ -1,10 +1,14 @@
-
 import type { MusicBlueprint } from '@/types/music';
 
+/**
+ * #ЗАЧЕМ: Блюпринт "Contemplative Atlas" (Neutral Ambient v13.0).
+ * #ЧТО: 1. Лотерея интро.
+ *       2. Маршрут из 3-х географических локаций.
+ */
 export const NeutralAmbientBlueprint: MusicBlueprint = {
     id: 'neutral_ambient',
-    name: 'Infinite Expanse',
-    description: 'Сбалансированный, универсальный и спокойный эмбиент.',
+    name: 'Atlas of Contemplation',
+    description: 'A deep walk through neutral landscapes. From foggy harbors to zen monasteries.',
     mood: 'contemplative',
     musical: {
         key: { root: 'D', scale: 'ionian', octave: 3 },
@@ -17,11 +21,38 @@ export const NeutralAmbientBlueprint: MusicBlueprint = {
         totalDuration: { preferredBars: 168 },
         parts: [
             {
-                id: 'INTRO', name: 'Focus', duration: { percent: 12 },
-                layers: { accompaniment: true, sfx: true, sparkles: true, harmony: true },
-                instrumentation: {
-                    accompaniment: { strategy: 'weighted', v1Options: [{ name: 'ep_rhodes_warm', weight: 0.6 }, { name: 'synth', weight: 0.4 }], v2Options: [{ name: 'ep_rhodes_warm', weight: 0.6 }, { name: 'synth', weight: 0.4 }] },
-                },
+                id: 'INTRO', name: 'AtlasLottery', duration: { percent: 15 },
+                layers: { accompaniment: true, sfx: true, sparkles: true, harmony: true, bass: true, drums: true, pianoAccompaniment: true, melody: true },
+                stagedInstrumentation: [
+                    {
+                        duration: { percent: 25 },
+                        instrumentation: {
+                            accompaniment: { activationChance: 1.0, instrumentOptions: [{ name: 'synth_ambient_pad_lush', weight: 1.0 }] },
+                            bass: { activationChance: 1.0, instrumentOptions: [{ name: 'classicBass', weight: 1.0 }] }
+                        }
+                    },
+                    {
+                        duration: { percent: 25 },
+                        instrumentation: {
+                            drums: { activationChance: 1.0, instrumentOptions: [{ name: 'calm', weight: 1.0 }] },
+                            melody: { activationChance: 1.0, instrumentOptions: [{ name: 'ep_rhodes_warm', weight: 1.0 }] }
+                        }
+                    },
+                    {
+                        duration: { percent: 25 },
+                        instrumentation: {
+                            pianoAccompaniment: { activationChance: 1.0, instrumentOptions: [{ name: 'piano', weight: 1.0 }] },
+                            sfx: { activationChance: 0.7, instrumentOptions: [{ name: 'common', weight: 1.0 }], transient: true }
+                        }
+                    },
+                    {
+                        duration: { percent: 25 },
+                        instrumentation: {
+                            harmony: { activationChance: 1.0, instrumentOptions: [{ name: 'violin', weight: 1.0 }] },
+                            sparkles: { activationChance: 0.6, instrumentOptions: [{ name: 'ambient_common', weight: 1.0 }] }
+                        }
+                    }
+                ],
                 instrumentRules: {
                     accompaniment: { density: {min: 0.4, max: 0.6} },
                     melody: { source: 'harmony_top_note' }
@@ -30,55 +61,23 @@ export const NeutralAmbientBlueprint: MusicBlueprint = {
                 outroFill: null,
             },
             {
-                id: 'BUILD', name: 'Stream', duration: { percent: 31 },
-                layers: { accompaniment: true, sfx: true, sparkles: true, bass: true, drums: true, harmony: true },
+                id: 'MAIN', name: 'The Atlas Walk', duration: { percent: 75 },
+                layers: { accompaniment: true, sfx: true, sparkles: true, bass: true, drums: true, harmony: true, melody: true, pianoAccompaniment: true },
                 instrumentation: {
-                    accompaniment: { strategy: 'weighted', v1Options: [{ name: 'ep_rhodes_warm', weight: 0.7 }, { name: 'mellotron_flute_intimate', weight: 0.3 }], v2Options: [{ name: 'ep_rhodes_warm', weight: 0.7 }, { name: 'mellotron_flute_intimate', weight: 0.3 }] },
-                    bass: { strategy: 'weighted', v1Options: [{ name: 'classicBass', weight: 1.0 }], v2Options: [{ name: 'classicBass', weight: 1.0 }] }
+                    accompaniment: { strategy: 'weighted', v2Options: [{ name: 'synth_ambient_pad_lush', weight: 1.0 }] },
+                    melody: { strategy: 'weighted', v2Options: [{ name: 'ep_rhodes_warm', weight: 1.0 }] }
                 },
                  instrumentRules: {
-                   drums: { pattern: 'ambient_beat', density: { min: 0.2, max: 0.4 }, usePerc: true, useSnare: false, useGhostHat: true },
-                   melody: { source: 'harmony_top_note' }
+                   drums: { pattern: 'ambient_beat', density: { min: 0.3, max: 0.5 }, useGhostHat: true },
+                   melody: { source: 'motif', density: { min: 0.2, max: 0.4 } }
                 },
-                bundles: [{ id: 'NEUTRAL_BUILD_1', name: 'Flow', duration: { percent: 100 }, characteristics: {}, phrases: {} }],
+                bundles: [{ id: 'NEUTRAL_MAIN_1', name: 'Walking', duration: { percent: 100 }, characteristics: {}, phrases: {} }],
                 outroFill: null,
             },
             {
-                id: 'MAIN', name: 'Deep Work', duration: { percent: 31 },
-                layers: { accompaniment: true, sfx: true, sparkles: true, bass: true, drums: true, harmony: true, melody: true },
-                instrumentation: {
-                    accompaniment: { strategy: 'weighted', v1Options: [{ name: 'ep_rhodes_warm', weight: 0.8 }, { name: 'mellotron_flute_intimate', weight: 0.2 }], v2Options: [{ name: 'ep_rhodes_warm', weight: 0.8 }, { name: 'mellotron_flute_intimate', weight: 0.2 }] },
-                    melody: { strategy: 'weighted', v1Options: [{ name: 'synth', weight: 1.0 }], v2Options: [{ name: 'synth', weight: 1.0 }] }
-                },
-                instrumentRules: {
-                    melody: { density: { min: 0.15, max: 0.3 }, source: 'harmony_top_note' },
-                    drums: { density: { min: 0.3, max: 0.5 } }
-                },
-                bundles: [{ id: 'NEUTRAL_MAIN_1', name: 'Concentration', duration: { percent: 100 }, characteristics: {}, phrases: {} }],
-                outroFill: null,
-            },
-            {
-                id: 'RELEASE', name: 'Resolution', duration: { percent: 19 },
-                layers: { accompaniment: true, sfx: true, sparkles: true, bass: true, harmony: true },
-                 instrumentation: {
-                    accompaniment: { strategy: 'weighted', v1Options: [{ name: 'ep_rhodes_warm', weight: 1.0 }], v2Options: [{ name: 'ep_rhodes_warm', weight: 1.0 }] },
-                },
-                instrumentRules: {
-                    melody: { source: 'harmony_top_note' }
-                },
-                bundles: [{ id: 'NEUTRAL_RELEASE_1', name: 'Conclusion', duration: { percent: 100 }, characteristics: {}, phrases: {} }],
-                outroFill: null,
-            },
-            {
-                id: 'OUTRO', name: 'Silence', duration: { percent: 7 },
-                layers: { accompaniment: true, sfx: true },
-                 instrumentation: {
-                    accompaniment: { strategy: 'weighted', v1Options: [{ name: 'synth_ambient_pad_lush', weight: 1.0 }], v2Options: [{ name: 'synth_ambient_pad_lush', weight: 1.0 }] },
-                },
-                instrumentRules: {
-                    melody: { source: 'harmony_top_note' }
-                },
-                bundles: [{ id: 'NEUTRAL_OUTRO_1', name: 'Fade', duration: { percent: 100 }, characteristics: {}, phrases: {} }],
+                id: 'OUTRO', name: 'The Arrival', duration: { percent: 10 },
+                layers: { accompaniment: true, sfx: true, sparkles: true },
+                bundles: [{ id: 'NEUTRAL_OUTRO_1', name: 'End', duration: { percent: 100 }, characteristics: {}, phrases: {} }],
                 outroFill: null,
             },
         ]
@@ -86,5 +85,10 @@ export const NeutralAmbientBlueprint: MusicBlueprint = {
     mutations: {},
     ambientEvents: [],
     continuity: {},
-    rendering: {}
+    rendering: {
+        mixTargets: {
+            melody: { level: -28, pan: 0.0 },
+            accompaniment: { level: -18, pan: 0.0 }
+        }
+    }
 };

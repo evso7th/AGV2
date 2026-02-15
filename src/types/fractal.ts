@@ -287,7 +287,7 @@ export interface FractalEvent {
   /**
    * Параметры синтеза.
    */
-  params?: BassSynthParams | SfxSynthParams | { barCount?: number; voicingName?: string };
+  params?: BassSynthParams | SfxSynthParams | { barCount?: number; voicingName?: string; filterCutoff?: number };
   
   /** 
    * #ЗАЧЕМ: Это поле позволяет композитору явно указать имя аккорда для сэмплеров.
@@ -304,6 +304,8 @@ export type InstrumentHints = {
     harmony?: 'piano' | 'guitarChords' | 'violin' | 'flute' | 'none';
     pianoAccompaniment?: 'piano';
     drums?: string;
+    /** #ЗАЧЕМ: Эффект постепенного рождения. */
+    summonProgress?: Partial<Record<InstrumentPart, number>>;
 };
 
 /**
@@ -374,6 +376,8 @@ export type SuiteDNA = {
   seedLickId?: string;
   /** #ЗАЧЕМ: Трансформированная аксиома лика для старта эволюции (План №242). */
   seedLickNotes?: BluesSoloPhrase;
+  /** #ЗАЧЕМ: Маршрут географического путешествия (3 локации). */
+  itinerary?: string[];
 };
 
 
@@ -436,7 +440,7 @@ export type BluesSoloPhrase = {
   t: number; // Start tick (0-11)
   d: number; // Duration in ticks
   deg: BluesRiffDegree; // Degree relative to the chord root
-  tech?: 'sl' | 'h/p' | 'bn' | 'vb' | 'gr' | 'ds'; // Performance technique
+  tech?: 'sl' | 'h/p' | 'bn' | 'vb' | 'gr' | 'ds' | 'pick' | 'harm' | 'pluck' | 'hit' | 'swell'; // Performance technique
 }[];
 
 /**

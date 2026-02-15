@@ -1,10 +1,14 @@
-
 import type { MusicBlueprint } from '@/types/music';
 
+/**
+ * #ЗАЧЕМ: Блюпринт "Stable Geography" (Calm Ambient v12.0).
+ * #ЧТО: 1. Внедрена лотерея интро.
+ *       2. Реализована поддержка маршрута (3 локации).
+ */
 export const CalmAmbientBlueprint: MusicBlueprint = {
   id: 'calm_ambient',
-  name: 'Still Waters',
-  description: 'Теплый, обволакивающий и умиротворяющий эмбиент.',
+  name: 'Still Geography',
+  description: 'Stable waters and stone temples. A meditative tour through three locations.',
   mood: 'calm',
   musical: {
     key: { root: 'G', scale: 'mixolydian', octave: 3 },
@@ -21,105 +25,77 @@ export const CalmAmbientBlueprint: MusicBlueprint = {
     totalDuration: { preferredBars: 148 },
     parts: [
       {
-        id: 'INTRO', name: 'Gentle Awakening', duration: { percent: 14 },
-        layers: { sparkles: true, accompaniment: true, sfx: true },
-        instrumentation: {
-          accompaniment: {
-            strategy: 'weighted',
-            v1Options: [{ name: 'synth_ambient_pad_lush', weight: 0.7 }, { name: 'synth', weight: 0.3 }],
-            v2Options: [{ name: 'synth_ambient_pad_lush', weight: 0.7 }, { name: 'synth', weight: 0.3 }],
-          }
-        },
+        id: 'INTRO', name: 'CalmLottery', duration: { percent: 15 },
+        layers: { sparkles: true, accompaniment: true, sfx: true, bass: true, drums: true, harmony: true, pianoAccompaniment: true, melody: true },
+        stagedInstrumentation: [
+            {
+                duration: { percent: 25 },
+                instrumentation: {
+                    accompaniment: { activationChance: 1.0, instrumentOptions: [{ name: 'synth_ambient_pad_lush', weight: 1.0 }] },
+                    bass: { activationChance: 1.0, instrumentOptions: [{ name: 'bass_jazz_warm', weight: 1.0 }] }
+                }
+            },
+            {
+                duration: { percent: 25 },
+                instrumentation: {
+                    drums: { activationChance: 1.0, instrumentOptions: [{ name: 'calm', weight: 1.0 }] },
+                    melody: { activationChance: 1.0, instrumentOptions: [{ name: 'ep_rhodes_warm', weight: 1.0 }] }
+                }
+            },
+            {
+                duration: { percent: 25 },
+                instrumentation: {
+                    pianoAccompaniment: { activationChance: 1.0, instrumentOptions: [{ name: 'piano', weight: 1.0 }] },
+                    sfx: { activationChance: 0.6, instrumentOptions: [{ name: 'common', weight: 1.0 }], transient: true }
+                }
+            },
+            {
+                duration: { percent: 25 },
+                instrumentation: {
+                    harmony: { activationChance: 1.0, instrumentOptions: [{ name: 'guitarChords', weight: 1.0 }] },
+                    sparkles: { activationChance: 0.5, instrumentOptions: [{ name: 'ambient_common', weight: 1.0 }] }
+                }
+            }
+        ],
         instrumentRules: {
           accompaniment: { density: { min: 0.4, max: 0.6 } },
           melody: { source: 'harmony_top_note' }
         },
-        bundles: [{ id: 'CALM_INTRO_BUNDLE', name: 'First Breath', duration: { percent: 100 }, characteristics: {}, phrases: {} }],
+        bundles: [{ id: 'CALM_INTRO_BUNDLE', name: 'Breath', duration: { percent: 100 }, characteristics: {}, phrases: {} }],
         outroFill: null,
       },
       {
-        id: 'BUILD', name: 'Flowing Stream', duration: { percent: 30 },
-        layers: { sparkles: true, accompaniment: true, sfx: true, bass: true, drums: true, harmony: true, melody: true },
+        id: 'MAIN', name: 'The Atlas', duration: { percent: 75 },
+        layers: { sparkles: true, accompaniment: true, sfx: true, bass: true, drums: true, melody: true, harmony: true, pianoAccompaniment: true },
         instrumentation: {
-          accompaniment: {
-            strategy: 'weighted',
-            v1Options: [{ name: 'synth_ambient_pad_lush', weight: 0.6 }, { name: 'organ', weight: 0.4 }],
-            v2Options: [{ name: 'synth_ambient_pad_lush', weight: 0.6 }, { name: 'organ', weight: 0.4 }]
-          },
-          bass: {
-            strategy: 'weighted',
-            v1Options: [{ name: 'bass_jazz_warm', weight: 1.0 }],
-            v2Options: [{ name: 'bass_jazz_warm', weight: 1.0 }]
-          }
+          accompaniment: { strategy: 'weighted', v2Options: [{ name: 'synth_ambient_pad_lush', weight: 1.0 }] },
+          melody: { strategy: 'weighted', v2Options: [{ name: 'ep_rhodes_warm', weight: 1.0 }] }
         },
         instrumentRules: {
            drums: { pattern: 'ambient_beat', density: { min: 0.3, max: 0.5 } },
-           melody: { source: 'harmony_top_note' }
+           melody: { source: 'harmony_top_note', density: { min: 0.2, max: 0.4 } }
         },
-        bundles: [{ id: 'CALM_BUILD_BUNDLE', name: 'Movement', duration: { percent: 100 }, characteristics: {}, phrases: {} }],
+        bundles: [{ id: 'CALM_MAIN_BUNDLE', name: 'Travel', duration: { percent: 100 }, characteristics: {}, phrases: {} }],
         outroFill: null,
       },
       {
-        id: 'MAIN', name: 'Stillness', duration: { percent: 30 },
-        layers: { sparkles: true, accompaniment: true, sfx: true, bass: true, drums: true, melody: true, harmony: true },
-        instrumentation: {
-          accompaniment: {
-            strategy: 'weighted',
-            v1Options: [{ name: 'organ', weight: 0.5 }, { name: 'mellotron', weight: 0.5 }],
-            v2Options: [{ name: 'organ', weight: 0.5 }, { name: 'mellotron', weight: 0.5 }]
-          },
-           melody: {
-            strategy: 'weighted',
-            v1Options: [{ name: 'mellotron_flute_intimate', weight: 0.6 }, { name: 'ep_rhodes_warm', weight: 0.4 }],
-            v2Options: [{ name: 'mellotron_flute_intimate', weight: 0.6 }, { name: 'ep_rhodes_warm', weight: 0.4 }]
-          }
-        },
-        instrumentRules: {
-           melody: { density: { min: 0.2, max: 0.4 }, source: 'harmony_top_note' }
-        },
-        bundles: [{ id: 'CALM_MAIN_BUNDLE', name: 'Clarity', duration: { percent: 100 }, characteristics: {}, phrases: {} }],
-        outroFill: null,
-      },
-      {
-        id: 'RELEASE', name: 'Fading Light', duration: { percent: 19 },
-        layers: { sparkles: true, accompaniment: true, sfx: true, harmony: true, melody: true },
-        instrumentation: {
-           accompaniment: {
-            strategy: 'weighted',
-            v1Options: [{ name: 'synth_ambient_pad_lush', weight: 1.0 }],
-            v2Options: [{ name: 'synth_ambient_pad_lush', weight: 1.0 }]
-          }
-        },
-        instrumentRules: {
-            accompaniment: { density: { min: 0.3, max: 0.5 } },
-            melody: { source: 'harmony_top_note' }
-        },
-        bundles: [{ id: 'CALM_RELEASE_BUNDLE', name: 'Return', duration: { percent: 100 }, characteristics: {}, phrases: {} }],
-        outroFill: null,
-      },
-      {
-        id: 'OUTRO', name: 'Final Peace', duration: { percent: 8 },
-        layers: { sparkles: true, accompaniment: true, sfx: true },
-         instrumentation: {
-           accompaniment: {
-            strategy: 'weighted',
-            v1Options: [{ name: 'synth_ambient_pad_lush', weight: 1.0 }],
-            v2Options: [{ name: 'synth_ambient_pad_lush', weight: 1.0 }]
-          }
-        },
-        instrumentRules: {
-            melody: { source: 'harmony_top_note' }
-        },
-        bundles: [{ id: 'CALM_OUTRO_BUNDLE', name: 'End', duration: { percent: 100 }, characteristics: {}, phrases: {} }],
+        id: 'OUTRO', name: 'The End', duration: { percent: 10 },
+        layers: { accompaniment: true, sfx: true, bass: true },
+        bundles: [{ id: 'CALM_OUTRO_BUNDLE', name: 'Silence', duration: { percent: 100 }, characteristics: {}, phrases: {} }],
         outroFill: null,
       }
     ]
   },
   mutations: {},
   ambientEvents: [
-      { type: 'sparkle', probability: 0.08, activeParts: ['BUILD', 'MAIN', 'RELEASE'] }, // Bells
-      { type: 'sfx', probability: 0.06, activeParts: ['INTRO', 'OUTRO'] }, // Water droplets
+      { type: 'sparkle', probability: 0.08, activeParts: ['MAIN'] },
+      { type: 'sfx', probability: 0.06, activeParts: ['INTRO', 'OUTRO'] },
   ],
   continuity: {},
-  rendering: {}
+  rendering: {
+      mixTargets: {
+          melody: { level: -28, pan: 0.0 },
+          accompaniment: { level: -18, pan: 0.0 }
+      }
+  }
 };
