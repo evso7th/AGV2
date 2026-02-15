@@ -1,9 +1,9 @@
+
 import type { MusicBlueprint } from '@/types/music';
 
 /**
- * #ЗАЧЕМ: Блюпринт "The Ritual" (Dark Blues v15.0 - Universal Lottery).
- * #ЧТО: 1. Внедрена секция INTRO с Лотереей Вступления.
- *       2. Сохранены Voices of the Void и темное напряжение.
+ * #ЗАЧЕМ: Блюпринт "The Ritual" (Dark Blues v15.1).
+ * #ЧТО: Инструмент "flute" заменен на "violin" в лотерее интро.
  */
 export const DarkBluesBlueprint: MusicBlueprint = {
     id: 'dark_blues',
@@ -78,7 +78,8 @@ export const DarkBluesBlueprint: MusicBlueprint = {
                     {
                         duration: { percent: 25 },
                         instrumentation: {
-                            harmony: { activationChance: 1.0, instrumentOptions: [{ name: 'guitarChords', weight: 1.0 }] },
+                            // #ЗАЧЕМ: Флейта удалена.
+                            harmony: { activationChance: 1.0, instrumentOptions: [{ name: 'guitarChords', weight: 0.7 }, { name: 'violin', weight: 0.3 }] },
                             sparkles: { activationChance: 0.7, instrumentOptions: [{ name: 'dark', weight: 1.0 }] }
                         }
                     }
@@ -101,7 +102,8 @@ export const DarkBluesBlueprint: MusicBlueprint = {
                            accompaniment: { activationChance: 1.0, instrumentOptions: [ { name: 'accompaniment', weight: 1.0 } ] },
                            melody: { activationChance: 1.0, instrumentOptions: [ { name: 'melody', weight: 1.0 } ] },
                            pianoAccompaniment: { activationChance: 1.0, instrumentOptions: [ { name: 'piano', weight: 1.0 } ] },
-                           harmony: { activationChance: 1.0, instrumentOptions: [ { name: 'guitarChords', weight: 0.6 }, { name: 'flute', weight: 0.4 } ] },
+                           // #ЗАЧЕМ: Флейта удалена.
+                           harmony: { activationChance: 1.0, instrumentOptions: [ { name: 'guitarChords', weight: 0.8 }, { name: 'violin', weight: 0.2 } ] },
                            sfx: { activationChance: 0.25, instrumentOptions: [ { name: 'voice', weight: 1.0 } ], transient: true }
                         }
                     }

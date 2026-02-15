@@ -11,7 +11,7 @@ import { FluteSamplerPlayer } from './flute-sampler-player';
 /**
  * Manages the "harmony" layer, specifically for rhythmic/harmonic instruments
  * like piano and guitar chords. It's a specialized sampler player.
- * #ОБНОВЛЕНО (ПЛАН №403): Удалено смещение +24. Внедрено логирование аудита.
+ * #ОБНОВЛЕНО (ПЛАН №404): Введен тотальный карантин на инструмент "flute".
  */
 export class HarmonySynthManager {
     private audioContext: AudioContext;
@@ -59,15 +59,18 @@ export class HarmonySynthManager {
             return;
         }
         
-        const instrumentToPlay = instrumentHint || this.activeInstrumentName;
+        let instrumentToPlay = instrumentHint || this.activeInstrumentName;
+
+        // #ЗАЧЕМ: Карантин флейты.
+        if (instrumentToPlay === 'flute') {
+            instrumentToPlay = 'violin';
+        }
 
         if (instrumentToPlay === 'none') {
             return;
         }
 
         const beatDuration = 60 / tempo;
-        // #ЗАЧЕМ: Прозрачность исполнения.
-        // #ЧТО: Удалено принудительное смещение +24. Теперь MIDI-нота принимается "как есть".
         const notes: (Note & { chordName?: string, params?: any })[] = events.map(event => ({
             midi: event.note,
             time: event.time * beatDuration,
@@ -81,8 +84,6 @@ export class HarmonySynthManager {
             return;
         }
 
-        // #ЗАЧЕМ: Аудит тишины. 
-        // #ЧТО: Логирование каждой пачки событий на этапе диспетчеризации.
         const barCount = (notes[0].params as any)?.barCount ?? 'N/A';
         console.log(`[HarmonyAudit] [Manager Dispatch] Bar: ${barCount} - Dispatching ${notes.length} events to instrument: ${instrumentToPlay}`);
 
@@ -97,7 +98,8 @@ export class HarmonySynthManager {
                 this.violin.schedule(notes, barStartTime);
                 break;
             case 'flute':
-                this.flute.schedule(notes, barStartTime);
+                // Should be violin due to quarantine, but safety check
+                this.violin.schedule(notes, barStartTime);
                 break;
         }
     }
@@ -107,14 +109,19 @@ export class HarmonySynthManager {
             console.warn('[HarmonyManager] setInstrument called before initialization.');
             return;
         }
-        console.log(`[HarmonyManager] Setting active instrument to: ${instrumentName}`);
-        this.activeInstrumentName = instrumentName;
+        
+        // #ЗАЧЕМ: Карантин флейты.
+        let name = instrumentName;
+        if (name === 'flute') name = 'violin';
+
+        console.log(`[HarmonyManager] Setting active instrument to: ${name}`);
+        this.activeInstrumentName = name;
 
         // Manage volumes of child samplers
-        this.piano.setVolume(instrumentName === 'piano' ? 0.8 : 0);
-        this.guitarChords.setVolume(instrumentName === 'guitarChords' ? 0.9 : 0);
-        this.violin.setVolume(instrumentName === 'violin' ? 1.0 : 0);
-        this.flute.setVolume(instrumentName === 'flute' ? 1.0 : 0);
+        this.piano.setVolume(name === 'piano' ? 0.8 : 0);
+        this.guitarChords.setVolume(name === 'guitarChords' ? 0.9 : 0);
+        this.violin.setVolume(name === 'violin' ? 1.0 : 0);
+        this.flute.setVolume(0); // Always muted during quarantine
     }
 
     public allNotesOff() {

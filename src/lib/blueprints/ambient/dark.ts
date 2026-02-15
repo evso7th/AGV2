@@ -1,10 +1,10 @@
+
 import type { MusicBlueprint } from '@/types/music';
 
 /**
- * #ЗАЧЕМ: Блюпринт "Abyssal Ritual" (Dark Ambient v4.1).
- * #ЧТО: 1. Исправлена ошибка отсутствия слоев в INTRO.
- *       2. Внедрена система 4-х стадий интро для работы "Лотереи Вступления".
- *       3. Все 8 участников оркестра распределены по пулам активации.
+ * #ЗАЧЕМ: Блюпринт "Abyssal Ritual" (Dark Ambient v4.2).
+ * #ЧТО: 1. Инструмент "flute" удален из списка лотереи.
+ *       2. Гармония переведена на скрипки и гитарные аккорды.
  */
 export const DarkAmbientBlueprint: MusicBlueprint = {
     id: 'dark_ambient',
@@ -27,7 +27,6 @@ export const DarkAmbientBlueprint: MusicBlueprint = {
         parts: [
           {
             id: 'INTRO', name: 'AwakeningLottery', duration: { percent: 10 },
-            // #ИСПРАВЛЕНО (ПЛАН №398): Добавлен объект layers для предотвращения TypeError.
             layers: { bass: true, drums: true, melody: true, accompaniment: true, sfx: true, sparkles: true, harmony: true, pianoAccompaniment: true },
             stagedInstrumentation: [
               {
@@ -54,7 +53,8 @@ export const DarkAmbientBlueprint: MusicBlueprint = {
               {
                 duration: { percent: 25 },
                 instrumentation: {
-                  harmony: { activationChance: 1.0, instrumentOptions: [{ name: 'flute', weight: 0.5 }, { name: 'violin', weight: 0.5 }] },
+                  // #ЗАЧЕМ: Удаление флейты из состава.
+                  harmony: { activationChance: 1.0, instrumentOptions: [{ name: 'violin', weight: 0.7 }, { name: 'guitarChords', weight: 0.3 }] },
                   sparkles: { activationChance: 0.7, instrumentOptions: [{ name: 'dark', weight: 1.0 }] }
                 }
               }

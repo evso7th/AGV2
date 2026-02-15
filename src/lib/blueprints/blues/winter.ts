@@ -1,9 +1,9 @@
+
 import type { MusicBlueprint } from '@/types/music';
 
 /**
- * #ЗАЧЕМ: Блюпринт "The Bluest Blues" (v25.0 - Universal Lottery).
- * #ЧТО: 1. Внедрена система Staged Instrumentation для раздела INTRO.
- *       2. Оркестр теперь вступает случайными парами согласно глобальной лотерее.
+ * #ЗАЧЕМ: Блюпринт "The Bluest Blues" (v25.1).
+ * #ЧТО: Инструмент "flute" заменен на "violin" в лотерее интро.
  */
 export const WinterBluesBlueprint: MusicBlueprint = {
     id: 'winter_blues',
@@ -67,7 +67,8 @@ export const WinterBluesBlueprint: MusicBlueprint = {
                         duration: { percent: 25 }, 
                         instrumentation: {
                            pianoAccompaniment: { activationChance: 1.0, instrumentOptions: [ { name: 'piano', weight: 1.0 } ] },
-                           harmony: { activationChance: 1.0, instrumentOptions: [ { name: 'guitarChords', weight: 1.0 } ] }
+                           // #ЗАЧЕМ: Флейта удалена.
+                           harmony: { activationChance: 1.0, instrumentOptions: [ { name: 'violin', weight: 0.7 }, { name: 'guitarChords', weight: 0.3 } ] }
                         }
                     },
                     {
@@ -98,7 +99,8 @@ export const WinterBluesBlueprint: MusicBlueprint = {
                            bass: { activationChance: 1.0, instrumentOptions: [ { name: 'bass', weight: 1.0 } ] },
                            drums: { activationChance: 1.0, instrumentOptions: [ { name: 'blues_melancholic_master', weight: 1.0 } ] },
                            accompaniment: { activationChance: 1.0, instrumentOptions: [ { name: 'organ_soft_jazz', weight: 1.0 } ] },
-                           harmony: { activationChance: 1.0, instrumentOptions: [ { name: 'guitarChords', weight: 0.6 }, { name: 'flute', weight: 0.4 } ] },
+                           // #ЗАЧЕМ: Флейта удалена.
+                           harmony: { activationChance: 1.0, instrumentOptions: [ { name: 'guitarChords', weight: 0.7 }, { name: 'violin', weight: 0.3 } ] },
                            sparkles: { activationChance: 0.3, instrumentOptions: [ { name: 'dark', weight: 1.0 } ], transient: true }
                         }
                     }

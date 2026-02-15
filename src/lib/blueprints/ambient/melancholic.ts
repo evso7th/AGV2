@@ -1,10 +1,10 @@
+
 import type { MusicBlueprint } from '@/types/music';
 
 /**
- * #ЗАЧЕМ: Флагманский блюпринт "Imperial Sticky Orchestra" (v40.0).
- * #ЧТО: 1. Исправлен останов на 12-м баре: все части теперь имеют правила.
- *       2. Tension точно по графику: 0.5 (Мэйны), 0.4 (Бриджи), 0.3 (Финал).
- *       3. Сценарное интро и постепенный вывод в аутро.
+ * #ЗАЧЕМ: Флагманский блюпринт "Imperial Sticky Orchestra" (v40.1).
+ * #ЧТО: 1. Инструмент "flute" удален из всех стадий лотереи.
+ *       2. Гармония переведена на скрипки и гитарные аккорды.
  */
 export const MelancholicAmbientBlueprint: MusicBlueprint = {
   id: 'melancholic_ambient',
@@ -21,17 +21,16 @@ export const MelancholicAmbientBlueprint: MusicBlueprint = {
     tensionProfile: {
       type: 'arc',
       peakPosition: 0.5,
-      // #ЗАЧЕМ: Точное управление энергией по требованию пользователя.
       curve: (p: number) => {
         const bar = p * 156;
-        if (bar < 12) return 0.3 + (bar / 12) * 0.2; // Интро: 0.3 -> 0.5
-        if (bar < 60) return 0.5; // Main 1
-        if (bar < 64) return 0.4; // Bridge 1
-        if (bar < 100) return 0.5; // Main 2
-        if (bar < 104) return 0.4; // Bridge 2
-        if (bar < 140) return 0.5; // Main 3
-        if (bar < 144) return 0.4; // Bridge 3
-        return 0.4 - ((bar - 144) / 12) * 0.1; // Outro fall to 0.3
+        if (bar < 12) return 0.3 + (bar / 12) * 0.2; 
+        if (bar < 60) return 0.5; 
+        if (bar < 64) return 0.4; 
+        if (bar < 100) return 0.5; 
+        if (bar < 104) return 0.4; 
+        if (bar < 140) return 0.5; 
+        if (bar < 144) return 0.4; 
+        return 0.4 - ((bar - 144) / 12) * 0.1; 
       }
     }
   },
@@ -40,17 +39,17 @@ export const MelancholicAmbientBlueprint: MusicBlueprint = {
     totalDuration: { preferredBars: 156 },
     parts: [
       {
-        id: 'INTRO', name: 'AwakeningScenes', duration: { percent: 8 }, // 12.48 bars
+        id: 'INTRO', name: 'AwakeningScenes', duration: { percent: 8 }, 
         stagedInstrumentation: [
           {
-            duration: { percent: 33 }, // Bars 1-4
+            duration: { percent: 33 }, 
             instrumentation: {
               accompaniment: { activationChance: 1.0, instrumentOptions: [{ name: 'synth_ambient_pad_lush', weight: 0.5 }, { name: 'synth_cave_pad', weight: 0.5 }] },
               bass: { activationChance: 1.0, instrumentOptions: [{ name: 'bass_jazz_warm', weight: 1.0 }] }
             }
           },
           {
-            duration: { percent: 33 }, // Bars 5-8
+            duration: { percent: 33 }, 
             instrumentation: {
               drums: { activationChance: 1.0, instrumentOptions: [{ name: 'melancholic', weight: 1.0 }] },
               melody: { activationChance: 1.0, instrumentOptions: [{ name: 'synth', weight: 0.7 }, { name: 'guitar_shineOn', weight: 0.15 }, { name: 'organ_soft_jazz', weight: 0.15 }] },
@@ -58,10 +57,11 @@ export const MelancholicAmbientBlueprint: MusicBlueprint = {
             }
           },
           {
-            duration: { percent: 34 }, // Bars 9-12
+            duration: { percent: 34 }, 
             instrumentation: {
               sfx: { activationChance: 0.8, instrumentOptions: [{ name: 'dark', weight: 1.0 }], transient: true },
-              harmony: { activationChance: 1.0, instrumentOptions: [{ name: 'flute', weight: 0.4 }, { name: 'violin', weight: 0.4 }, { name: 'guitarChords', weight: 0.2 }] },
+              // #ЗАЧЕМ: Замена флейты на скрипки и гитарные аккорды.
+              harmony: { activationChance: 1.0, instrumentOptions: [{ name: 'violin', weight: 0.7 }, { name: 'guitarChords', weight: 0.3 }] },
               sparkles: { activationChance: 0.6, instrumentOptions: [{ name: 'dark', weight: 1.0 }] }
             }
           }
@@ -74,7 +74,7 @@ export const MelancholicAmbientBlueprint: MusicBlueprint = {
         outroFill: null,
       },
       {
-        id: 'BUILD', name: 'OrchestralGathering', duration: { percent: 8 }, // 12 bars
+        id: 'BUILD', name: 'OrchestralGathering', duration: { percent: 8 }, 
         layers: { bass: true, drums: true, melody: true, accompaniment: true, pianoAccompaniment: true, sfx: true, harmony: true, sparkles: true },
         instrumentation: {
             melody: { strategy: 'weighted', v2Options: [{ name: 'synth', weight: 0.7 }, { name: 'guitar_shineOn', weight: 0.15 }, { name: 'organ_soft_jazz', weight: 0.15 }] },
@@ -144,7 +144,7 @@ export const MelancholicAmbientBlueprint: MusicBlueprint = {
             {
                 duration: { percent: 50 },
                 instrumentation: {
-                    pianoAccompaniment: { activationChance: 0, instrumentOptions: [] }, // Remove
+                    pianoAccompaniment: { activationChance: 0, instrumentOptions: [] }, 
                     sfx: { activationChance: 0, instrumentOptions: [] }
                 }
             },

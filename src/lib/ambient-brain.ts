@@ -1,10 +1,9 @@
 
 /**
- * #ЗАЧЕМ: Суверенный Мозг Амбиента v4.5 — "Musical Tapestry & Tails".
- * #ЧТО: 1. Органные арпеджио восьмыми нотами (Virtuoso Plume).
- *       2. Длительность наслоения увеличена до 12 секунд.
- *       3. Лимбический триггер (+8 нота) звучит 16 секунд.
- *       4. Добавлена передача chordName для гармонии.
+ * #ЗАЧЕМ: Суверенный Мозг Амбиента v4.6 — "Gothic Drama & Flute Quarantine".
+ * #ЧТО: 1. Внедрена логика "Diabolus in Musica" (Тритон +6) для Dark Ambient.
+ *       2. Введен жесткий фильтр на инструмент "flute" (замена на violin).
+ *       3. Реализация параллельных квинт (Organum) в гармонии.
  */
 
 import type { 
@@ -193,10 +192,15 @@ export class AmbientBrain {
                 if (!this.activatedParts.has(partName)) {
                     if (this.random.next() < (rule.activationChance ?? 1.0)) {
                         this.activatedParts.add(partName);
-                        this.activeTimbres[partName] = pickWeightedDeterministic(rule.instrumentOptions || rule.v2Options || rule.options || [], this.seed, epoch, 500);
+                        let selected = pickWeightedDeterministic(rule.instrumentOptions || rule.v2Options || rule.options || [], this.seed, epoch, 500);
+                        // #ЗАЧЕМ: Тотальный карантин флейты.
+                        if (selected === 'flute') selected = 'violin';
+                        this.activeTimbres[partName] = selected;
                     }
                 } else if (rule.instrumentOptions?.length > 0) {
-                    this.activeTimbres[partName] = pickWeightedDeterministic(rule.instrumentOptions, this.seed, epoch, 500);
+                    let selected = pickWeightedDeterministic(rule.instrumentOptions, this.seed, epoch, 500);
+                    if (selected === 'flute') selected = 'violin';
+                    this.activeTimbres[partName] = selected;
                 }
             });
         }
@@ -249,10 +253,6 @@ export class AmbientBrain {
         }));
     }
 
-    /**
-     * #ЗАЧЕМ: Реализация виртуозных органных пассажей.
-     * #ЧТО: Генерация 8-ми нот (восьмые) с перехлестом. Плотная музыкальная ткань.
-     */
     private renderOrganArpeggio(chord: GhostChord, epoch: number, tension: number): FractalEvent[] {
         const root = chord.rootNote + 24; 
         const isMinor = chord.chordType === 'minor' || chord.chordType === 'dominant';
@@ -260,7 +260,7 @@ export class AmbientBrain {
         
         const events: FractalEvent[] = [];
         const count = 8;
-        const timeStep = 0.5; // Восьмые ноты
+        const timeStep = 0.5;
 
         for (let i = 0; i < count; i++) {
             const idx = calculateMusiNum(epoch + i, 3, this.seed, intervals.length);
@@ -268,7 +268,7 @@ export class AmbientBrain {
                 type: 'melody',
                 note: Math.min(root + intervals[idx], this.MELODY_CEILING),
                 time: i * timeStep,
-                duration: 4.5, // Глубокий перехлест
+                duration: 4.5,
                 weight: 0.55 * tension * (0.9 + this.random.next() * 0.2),
                 technique: 'pick',
                 dynamics: 'p',
@@ -322,20 +322,23 @@ export class AmbientBrain {
     }
 
     /**
-     * #ЗАЧЕМ: Реализация оркестровой гармонии с лимбическим пиком.
-     * #ЧТО: Длительность увеличена до 12с. Внедрена нота +8 в миноре на Tension > 0.75.
+     * #ЗАЧЕМ: Реализация оркестровой гармонии с готическими отсылками (Тритон).
+     * #ЧТО: 1. Добавлена инъекция "дьявольского тритона" (+6) для настроения Dark.
+     *       2. Реализация пустых квинт (Medieval Organum).
      */
     private renderOrchestralHarmony(chord: GhostChord, epoch: number, timbre: string, tension: number): FractalEvent[] {
         const root = chord.rootNote; 
         const isMinor = chord.chordType === 'minor' || chord.chordType === 'diminished';
-        const notes = [root + (isMinor ? 3 : 4), root + 7];
+        
+        // Базовые ноты: Medieval Organum (1 + 5)
+        const notes = [root, root + 7];
         const chordName = isMinor ? 'Am' : 'E';
         
         const events: FractalEvent[] = notes.map((n, i) => ({
             type: 'harmony',
-            note: n + 12, // Октава 2-3 (теплое звучание)
+            note: n + 12, 
             time: i * 0.5,
-            duration: 12.0, // WAS 8.0
+            duration: 12.0,
             weight: 0.38 * (0.8 + this.random.next() * 0.4), 
             technique: 'swell',
             dynamics: 'p',
@@ -344,11 +347,28 @@ export class AmbientBrain {
             params: { barCount: epoch }
         }));
 
+        // #ЗАЧЕМ: "Diabolus in Musica". 
+        // #ЧТО: Инъекция тритона (+6) в моменты высокого напряжения или густого тумана.
+        if (this.mood === 'dark' && (tension > 0.8 || this.fog > 0.9)) {
+            events.push({
+                type: 'harmony',
+                note: root + 6 + 24, // Тритон в среднем регистре
+                time: 1.0,
+                duration: 8.0,
+                weight: 0.35 * this.fog, 
+                technique: 'swell',
+                dynamics: 'p',
+                phrasing: 'legato',
+                chordName: 'dim',
+                params: { barCount: epoch }
+            });
+        }
+
         // Лимбический триггер: малая секста (+8)
         if (isMinor && tension > 0.75) {
             events.push({
                 type: 'harmony',
-                note: root + 8 + 36, // Высокий пик "слёз"
+                note: root + 8 + 36, 
                 time: 2.0,
                 duration: 16.0, 
                 weight: 0.45 * (1 + this.fog), 
@@ -463,7 +483,7 @@ export class AmbientBrain {
             type: 'accompaniment',
             note: n,
             time: i * 0.2,
-            duration: 12.0, // WAS 8.0
+            duration: 12.0, 
             weight: 0.38 * (0.9 + this.random.next() * 0.2),
             technique: 'swell',
             dynamics: 'p',
