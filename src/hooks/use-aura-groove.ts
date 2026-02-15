@@ -1,7 +1,8 @@
 /**
- * #ЗАЧЕМ: Хук управления UI музыкой V3.3.
+ * #ЗАЧЕМ: Хук управления UI музыкой V3.4.
  * #ЧТО: 1. Внедрена поддержка межсессионной памяти ликов через localStorage.
- *       2. Реализованы специфические дефолты громкости для жанра Амбиент (ПЛАН №420).
+ *       2. Реализованы специфические дефолты громкости для жанра Амбиент (ПЛАН №420, №421).
+ *       3. Громкость ударных системно снижена в 2 раза.
  */
 'use client';
 
@@ -88,7 +89,8 @@ export const useAuraGroove = (): AuraGrooveProps => {
   const db = useFirestore();
   const router = useRouter();
   
-  const [drumSettings, setDrumSettings] = useState<DrumSettings>({ pattern: 'composer', volume: 0.25, kickVolume: 1.0, enabled: true });
+  // #ОБНОВЛЕНО (ПЛАН №421): Начальная громкость ударных снижена до 0.12.
+  const [drumSettings, setDrumSettings] = useState<DrumSettings>({ pattern: 'composer', volume: 0.12, kickVolume: 1.0, enabled: true });
   
   // #ЗАЧЕМ: Дефолтный баланс для Амбиента при старте.
   // #ОБНОВЛЕНО (ПЛАН №420): Громкость мелодии снижена до 0.27.
@@ -136,7 +138,7 @@ export const useAuraGroove = (): AuraGrooveProps => {
     }
   }, []);
 
-  // #ЗАЧЕМ: Автоматический сброс громкости при переключении на Амбиент (ПЛАН №420).
+  // #ЗАЧЕМ: Автоматический сброс громкости при переключении на Амбиент (ПЛАН №420, №421).
   useEffect(() => {
     if (genre === 'ambient') {
       console.log('%c[UI] Genre switched to AMBIENT. Applying Imperial Balance.', 'color: #DA70D6; font-weight: bold;');
@@ -144,7 +146,8 @@ export const useAuraGroove = (): AuraGrooveProps => {
         melody: 0.27,
         accompaniment: 0.50,
         harmony: 0.15,
-        pianoAccompaniment: 0.35
+        pianoAccompaniment: 0.35,
+        drums: 0.12
       };
 
       setInstrumentSettings(prev => ({
@@ -155,12 +158,15 @@ export const useAuraGroove = (): AuraGrooveProps => {
         pianoAccompaniment: { ...prev.pianoAccompaniment, volume: ambientDefaults.pianoAccompaniment },
       }));
 
+      setDrumSettings(prev => ({ ...prev, volume: ambientDefaults.drums }));
+
       // Мгновенная синхронизация с движком
       if (isInitialized) {
         setVolume('melody', ambientDefaults.melody);
         setVolume('accompaniment', ambientDefaults.accompaniment);
         setVolume('harmony', ambientDefaults.harmony);
         setVolume('pianoAccompaniment', ambientDefaults.pianoAccompaniment);
+        setVolume('drums', ambientDefaults.drums);
       }
     }
   }, [genre, isInitialized, setVolume]);

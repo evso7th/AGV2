@@ -1,11 +1,8 @@
 /**
- * #ЗАЧЕМ: Суверенный Мозг Амбиента v7.10 — "Systemic Melody Reduction".
- * #ЧТО: 1. Системное снижение громкости (весов) мелодии в 2 раза.
- *       2. Внедрена поддержка "Мягкого Железа" (Ghost Hats + Wettest Ride).
- *       3. Реализован слой "Биологических Труб" (PVC Tubes), реагирующий на туман.
- *       4. Усилено присутствие "Ликов Великих" (Legacy Licks) для внятной мелодии.
- *       5. Сохранен "Имперский Баланс" и защита от инфразвука (BASS_FLOOR = 24).
- *       6. Расширен слой органических деталей (15 слоев perk-***), масштабируемых туманом.
+ * #ЗАЧЕМ: Суверенный Мозг Амбиента v7.11 — "Systemic Drum Reduction".
+ * #ЧТО: 1. Системное снижение громкости (весов) ударных и перкуссии в 2 раза.
+ *       2. Сохранена вся логика "Биологического Пульса" и "Органического Резонанса".
+ *       3. Снижена громкость Heartbeat (0.47/0.42), Iron (0.12) и Resonance (0.2/0.32).
  */
 
 import type { 
@@ -241,7 +238,6 @@ export class AmbientBrain {
 
     private renderMelodicPadBase(chord: GhostChord, epoch: number, tension: number): FractalEvent[] {
         const root = Math.min(chord.rootNote + 24, this.MELODY_CEILING);
-        // #ОБНОВЛЕНО (ПЛАН №420): Вес снижен с 0.45 до 0.22.
         return [{
             type: 'melody',
             note: root,
@@ -264,7 +260,6 @@ export class AmbientBrain {
 
         return barNotes.map(n => {
             const breathDecay = 1.0 - (n.t / 60); 
-            // #ОБНОВЛЕНО (ПЛАН №420): Базовый вес снижен с 0.75 до 0.37.
             return {
                 type: 'melody',
                 note: Math.min(chord.rootNote + 36 + group.registerBias + (DEGREE_TO_SEMITONE[n.deg] || 0), this.MELODY_CEILING),
@@ -300,7 +295,6 @@ export class AmbientBrain {
             if (this.random.next() < 0.15) continue;
 
             const idx = calculateMusiNum(epoch + i, 3, this.seed, intervals.length);
-            // #ОБНОВЛЕНО (ПЛАН №420): Базовый вес снижен с 0.45 до 0.22.
             events.push({
                 type: 'melody',
                 note: Math.min(root + intervals[idx], this.MELODY_CEILING),
@@ -362,9 +356,11 @@ export class AmbientBrain {
     private renderOrchestralHarmony(chord: GhostChord, epoch: number, hints: InstrumentHints, tension: number): FractalEvent[] {
         if (calculateMusiNum(epoch, 3, this.seed, 10) < 3) return [];
 
-        const isHighTension = tension > 0.60;
+        const isHighTension = tension > 0.65;
+        const isLowTension = tension < 0.45;
+        if (!isHighTension && !isLowTension) return [];
+
         const root = chord.rootNote; 
-        
         const timbre = isHighTension ? 'violin' : 'guitarChords';
         const notes = [root, root + 7];
         
@@ -416,17 +412,18 @@ export class AmbientBrain {
         const events: FractalEvent[] = [];
         
         // 1. HEARTBEAT (Kick + Tom)
+        // #ОБНОВЛЕНО (ПЛАН №421): Веса снижены в 2 раза.
         const heartbeatProb = 0.55 + (tension * 0.40); 
         if (this.random.next() < heartbeatProb) {
             const firstTime = 0;
             events.push({ 
                 type: 'drum_kick_reso', 
-                note: 36, time: firstTime, duration: 0.1, weight: 0.95, 
+                note: 36, time: firstTime, duration: 0.1, weight: 0.47, 
                 technique: 'hit', dynamics: 'p', phrasing: 'staccato' 
             });
             events.push({
                 type: 'drum_Sonor_Classix_Low_Tom',
-                note: 40, time: firstTime, duration: 1.0, weight: 0.85,
+                note: 40, time: firstTime, duration: 1.0, weight: 0.42,
                 technique: 'hit', dynamics: 'p', phrasing: 'staccato'
             });
 
@@ -434,18 +431,19 @@ export class AmbientBrain {
                 const secondTime = 0.33; 
                 events.push({ 
                     type: 'drum_kick_reso', 
-                    note: 36, time: secondTime, duration: 0.1, weight: 0.75, 
+                    note: 36, time: secondTime, duration: 0.1, weight: 0.37, 
                     technique: 'hit', dynamics: 'p', phrasing: 'staccato' 
                 });
                 events.push({
                     type: 'drum_Sonor_Classix_Mid_Tom',
-                    note: 43, time: secondTime, duration: 0.8, weight: 0.65,
+                    note: 43, time: secondTime, duration: 0.8, weight: 0.32,
                     technique: 'hit', dynamics: 'p', phrasing: 'staccato'
                 });
             }
         }
 
         // 2. SOFT IRON (Ghost Hat & Wet Ride)
+        // #ОБНОВЛЕНО (ПЛАН №421): Вес снижен до 0.12.
         const ironProb = 0.15 + (tension * 0.25);
         if (this.random.next() < ironProb) {
             const isRide = this.random.next() < 0.3; // 30% ride
@@ -454,7 +452,7 @@ export class AmbientBrain {
                 note: 60,
                 time: isRide ? 2.0 : this.random.next() * 4,
                 duration: 1.0,
-                weight: 0.25 * (1.0 - this.fog * 0.4),
+                weight: 0.12 * (1.0 - this.fog * 0.4),
                 technique: 'hit',
                 dynamics: 'p',
                 phrasing: 'staccato'
@@ -462,6 +460,7 @@ export class AmbientBrain {
         }
 
         // 3. THE RESONANCE PROTOCOL (Tubes & Perks)
+        // #ОБНОВЛЕНО (ПЛАН №421): Веса снижены до 0.2 и 0.32.
         const resonanceProb = 0.35 + (this.fog * 0.55); 
         if (this.random.next() < resonanceProb) {
             if (this.random.next() < 0.4) {
@@ -472,7 +471,7 @@ export class AmbientBrain {
                     note: 60,
                     time: this.random.next() * 4,
                     duration: 0.5,
-                    weight: 0.4 * (0.8 + this.random.next() * 0.4),
+                    weight: 0.2 * (0.8 + this.random.next() * 0.4),
                     technique: 'hit',
                     dynamics: 'p',
                     phrasing: 'staccato'
@@ -484,7 +483,7 @@ export class AmbientBrain {
                     note: 60, 
                     time: this.random.next() * 4, 
                     duration: 4.0, 
-                    weight: 0.65 * (0.7 + this.random.next() * 0.3),
+                    weight: 0.32 * (0.7 + this.random.next() * 0.3),
                     technique: 'hit', 
                     dynamics: 'p', 
                     phrasing: 'staccato'
