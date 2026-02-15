@@ -3,7 +3,7 @@ import type { MusicBlueprint } from '@/types/music';
 /**
  * #ЗАЧЕМ: Ступень Йоги 1 — EPIC: «Зов и Подготовка».
  * #ЧТО: Величественный Mixolydian амбиент. Модель Vangelis.
- * #ОБНОВЛЕНО (ПЛАН №432): Внедрена лотерея интро и поддержка светового атласа.
+ * #ОБНОВЛЕНО (ПЛАН №433): Внедрена Теневая Гармония.
  */
 export const EpicAmbientBlueprint: MusicBlueprint = {
     id: 'epic_ambient',
@@ -39,7 +39,7 @@ export const EpicAmbientBlueprint: MusicBlueprint = {
                         duration: { percent: 25 },
                         instrumentation: {
                             drums: { activationChance: 1.0, instrumentOptions: [{ name: 'intro', weight: 1.0 }] },
-                            harmony: { activationChance: 1.0, instrumentOptions: [{ name: 'violin', weight: 1.0 }] }
+                            harmony: { activationChance: 0.4, instrumentOptions: [{ name: 'violin', weight: 1.0 }] }
                         }
                     },
                     {
@@ -69,7 +69,8 @@ export const EpicAmbientBlueprint: MusicBlueprint = {
                 layers: { bass: true, melody: true, accompaniment: true, drums: true, sparkles: true, sfx: true, harmony: true, pianoAccompaniment: true },
                 instrumentation: {
                     accompaniment: { strategy: 'weighted', v2Options: [{ name: 'organ', weight: 0.7 }, { name: 'synth_ambient_pad_lush', weight: 0.3 }] },
-                    melody: { strategy: 'weighted', v2Options: [{ name: 'mellotron', weight: 0.6 }, { name: 'synth', weight: 0.4 }] }
+                    melody: { strategy: 'weighted', v2Options: [{ name: 'mellotron', weight: 0.6 }, { name: 'synth', weight: 0.4 }] },
+                    harmony: { strategy: 'weighted', options: [{ name: 'violin', weight: 0.5 }, { name: 'guitarChords', weight: 0.5 }] }
                 },
                 instrumentRules: {
                     melody: { density: { min: 0.3, max: 0.5 }, source: 'harmony_top_note' },
@@ -80,7 +81,7 @@ export const EpicAmbientBlueprint: MusicBlueprint = {
             },
             {
                 id: 'OUTRO', name: 'The Echoes', duration: { percent: 10 },
-                layers: { accompaniment: true, sfx: true, sparkles: true },
+                layers: { accompaniment: true, sfx: true, sparkles: true, harmony: true },
                 bundles: [{ id: 'EPIC_OUTRO_1', name: 'Fading Space', duration: { percent: 100 }, characteristics: {}, phrases: {} }],
                 outroFill: null
             }
@@ -89,5 +90,9 @@ export const EpicAmbientBlueprint: MusicBlueprint = {
     mutations: {},
     ambientEvents: [],
     continuity: {},
-    rendering: {}
+    rendering: {
+        mixTargets: {
+            harmony: { level: -32, pan: 0.0 }
+        }
+    }
 };

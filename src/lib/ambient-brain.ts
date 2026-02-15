@@ -1,9 +1,8 @@
 /**
- * #ЗАЧЕМ: Суверенный Мозг Амбиента v9.0 — "The Radiance Update".
- * #ЧТО: 1. Реализация Ступеней Йоги: Epic (Mixolydian), Enthusiastic (Lydian), Joyful (Ionian).
- *       2. Протокол "Дисциплина Искр": дифференцированные хвосты и вероятности.
- *       3. Световой Атлас для позитивных настроений.
- *       4. "Эффект Ослепления" (Dazzle): открытие ВЧ до 12кГц в пиках.
+ * #ЗАЧЕМ: Суверенный Мозг Амбиента v10.0 — "The Narrative Radiance Update".
+ * #ЧТО: 1. Реализация Нарративного Баса для светлых режимов (2-4 такта, 4-8 нот).
+ *       2. Внедрение Теневой Гармонии (акценты 35%, переключение по Tension).
+ *       3. Эволюция басовых аксиом для исключения "шарманки".
  */
 
 import type { 
@@ -53,10 +52,12 @@ export class AmbientBrain {
     private introLotteryMap: Map<number, Partial<Record<InstrumentPart, any>>> = new Map();
 
     private soloistBusyUntilBar: number = -1;
+    private bassBusyUntilBar: number = -1; // #ЗАЧЕМ: Память для длинных басовых фраз.
     private readonly MELODY_CEILING = 75;
     private readonly BASS_FLOOR = 31; 
 
     private currentTheme: { phrase: any[], startBar: number, endBar: number } | null = null;
+    private currentBassTheme: { phrase: any[], startBar: number, endBar: number } | null = null; // #ЗАЧЕМ: Басовая аксиома.
 
     constructor(seed: number, mood: Mood) {
         this.seed = seed;
@@ -110,7 +111,6 @@ export class AmbientBrain {
         const waves = this.computeTensionWaves(epoch * (60 / dna.baseTempo) * 4);
         const localTension = this.computeGlobalTension(waves);
 
-        // #ЗАЧЕМ: Разделение Географии и Сияния.
         const isPositive = ['joyful', 'enthusiastic', 'epic'].includes(this.mood);
         if (isPositive) {
             this.applyRadiance(epoch, dna);
@@ -123,8 +123,38 @@ export class AmbientBrain {
 
         // Yoga Mode Selection
         const yogaChord = { ...currentChord };
-        if (this.mood === 'epic') yogaChord.chordType = 'dominant'; // Mixolydian feel
-        else if (this.mood === 'joyful') yogaChord.chordType = 'major'; // Ionian clarity
+        if (this.mood === 'epic') yogaChord.chordType = 'dominant'; 
+        else if (this.mood === 'joyful') yogaChord.chordType = 'major'; 
+
+        // #ЗАЧЕМ: Реализация Нарративного Баса (2-4 такта) для светлых режимов.
+        if (isPositive && epoch >= this.bassBusyUntilBar) {
+            if (this.currentBassTheme && this.random.next() < 0.75) {
+                // Эволюция существующей фразы
+                this.currentBassTheme.phrase = this.currentBassTheme.phrase.map(n => ({
+                    ...n,
+                    deg: this.random.next() < 0.25 ? ['R', '5', '4', 'b7', '2'][this.random.nextInt(5)] : n.deg
+                }));
+                this.currentBassTheme.startBar = epoch;
+                const bars = this.currentBassTheme.endBar - this.currentBassTheme.startBar;
+                this.currentBassTheme.endBar = epoch + bars;
+                this.bassBusyUntilBar = epoch + bars;
+            } else {
+                // Рождение новой басовой аксиомы
+                const bars = this.random.nextInt(3) + 2; 
+                const noteCount = this.random.nextInt(5) + 4; 
+                const phrase: any[] = [];
+                const pool = ['R', '5', '4', 'b7', '2'];
+                for (let i = 0; i < noteCount; i++) {
+                    phrase.push({
+                        t: i * (bars * 12 / noteCount),
+                        d: (bars * 12 / noteCount) * 0.85,
+                        deg: pool[this.random.nextInt(pool.length)]
+                    });
+                }
+                this.currentBassTheme = { phrase, startBar: epoch, endBar: epoch + bars };
+                this.bassBusyUntilBar = epoch + bars;
+            }
+        }
 
         if (epoch >= this.soloistBusyUntilBar) {
             const developmentChance = 0.15 + localTension * 0.25;
@@ -155,7 +185,10 @@ export class AmbientBrain {
 
         events.push(...this.renderPad(yogaChord, epoch, hints.accompaniment as string));
         
-        if (this.mood === 'anxious') {
+        // #ЗАЧЕМ: Выбор между ритуалом и нарративным басом.
+        if (isPositive && this.currentBassTheme) {
+            events.push(...this.renderThemeBass(yogaChord, epoch, localTension));
+        } else if (this.mood === 'anxious') {
             events.push(...this.renderRitualWalkingBass(yogaChord, localTension, hints.bass as string, epoch));
         } else {
             events.push(...this.renderRhythmicBass(yogaChord, localTension, hints.bass as string, epoch));
@@ -172,13 +205,19 @@ export class AmbientBrain {
             events.push(...this.renderPianoDrops(yogaChord, epoch, localTension));
         }
 
+        // #ЗАЧЕМ: Реализация Теневой Гармонии (accents & shadows).
         if (hints.harmony) {
-            events.push(...this.renderOrchestralHarmony(yogaChord, epoch, hints, localTension));
+            const harmonyChance = isPositive ? 0.35 : 1.0; 
+            if (this.random.next() < harmonyChance) {
+                // Смена тембра по Tension
+                const timbre = localTension > 0.55 ? 'violin' : 'guitarChords';
+                hints.harmony = timbre as any; 
+                events.push(...this.renderOrchestralHarmony(yogaChord, epoch, hints, localTension));
+            }
         }
 
         events.push(...this.renderAmbientPercussion(epoch, localTension));
 
-        // Sparkle Discipline
         if (hints.sparkles) {
             let sparkleProb = 0.3;
             if (this.mood === 'epic') sparkleProb = 0.05;
@@ -324,6 +363,28 @@ export class AmbientBrain {
         });
     }
 
+    // #ЗАЧЕМ: Исполнение эволюционирующей басовой фразы.
+    private renderThemeBass(chord: GhostChord, epoch: number, tension: number): FractalEvent[] {
+        if (!this.currentBassTheme) return [];
+        const barOffset = (epoch - this.currentBassTheme.startBar) * 12;
+        const barNotes = this.currentBassTheme.phrase.filter(n => n.t >= barOffset && n.t < barOffset + 12);
+
+        return barNotes.map(n => {
+            const pitch = Math.max(chord.rootNote - 12 + (DEGREE_TO_SEMITONE[n.deg] || 0), this.BASS_FLOOR);
+            return {
+                type: 'bass',
+                note: pitch,
+                time: (n.t % 12) / 3,
+                duration: n.d / 3,
+                weight: (0.45 + (tension * 0.1)) * (0.9 + this.random.next() * 0.2),
+                technique: 'pluck',
+                dynamics: 'p',
+                phrasing: 'legato',
+                params: { attack: 0.1, release: 0.8, filterCutoff: 400 }
+            };
+        });
+    }
+
     private renderRhythmicBass(chord: GhostChord, tension: number, timbre: string, epoch: number): FractalEvent[] {
         const root = Math.max(chord.rootNote - 12, this.BASS_FLOOR); 
         const isMinor = chord.chordType === 'minor' || chord.chordType === 'diminished';
@@ -391,7 +452,7 @@ export class AmbientBrain {
 
     private renderOrchestralHarmony(chord: GhostChord, epoch: number, hints: InstrumentHints, tension: number): FractalEvent[] {
         const root = chord.rootNote; 
-        const timbre = tension > 0.5 ? 'violin' : 'guitarChords';
+        const timbre = (hints.harmony as string) || (tension > 0.55 ? 'violin' : 'guitarChords');
         const notes = [root, root + 7];
         
         return notes.map((n, i) => {
@@ -400,7 +461,7 @@ export class AmbientBrain {
                 note: n + 12 + this.registerShift, 
                 time: i * 0.5,
                 duration: 8.0,
-                weight: (timbre === 'violin' ? 0.10 : 0.30) * (0.8 + this.random.next() * 0.4), 
+                weight: (timbre === 'violin' ? 0.08 : 0.15) * (0.8 + this.random.next() * 0.4), 
                 technique: 'swell',
                 dynamics: 'p',
                 phrasing: 'legato',
@@ -411,7 +472,6 @@ export class AmbientBrain {
     }
 
     private renderSparkle(chord: GhostChord, isPositive: boolean): FractalEvent {
-        // #ЗАЧЕМ: Дифференциация длительности реверса.
         const duration = this.mood === 'joyful' ? 12.0 : 6.0;
         return {
             type: 'sparkle',
@@ -537,8 +597,6 @@ export class AmbientBrain {
         this.depth = Math.max(0, Math.min(1, 0.4 + (tension * 0.45)));
         this.pulse = Math.max(0, Math.min(1, 0.15 + (tension * 0.35)));
         
-        // #ЗАЧЕМ: Эффект Ослепления (Dazzle). 
-        // #ЧТО: При высоком натяжении в светлых режимах фильтр открывается максимально.
         const isPositive = ['joyful', 'enthusiastic', 'epic'].includes(this.mood);
         const dazzle = (isPositive && tension > 0.85) ? 1.0 : 0;
         const maxCutoff = this.mood === 'anxious' ? 3500 : 5300;

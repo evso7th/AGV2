@@ -3,7 +3,7 @@ import type { MusicBlueprint } from '@/types/music';
 /**
  * #ЗАЧЕМ: Ступень Йоги 2 — ENTHUSIASTIC: «Восхождение».
  * #ЧТО: Парящий Lydian амбиент. Модель Jean-Michel Jarre.
- * #ОБНОВЛЕНО (ПЛАН №432): Внедрена лотерея интро и поддержка светового атласа.
+ * #ОБНОВЛЕНО (ПЛАН №433): Внедрена Теневая Гармония.
  */
 export const EnthusiasticAmbientBlueprint: MusicBlueprint = {
     id: 'enthusiastic_ambient',
@@ -48,7 +48,7 @@ export const EnthusiasticAmbientBlueprint: MusicBlueprint = {
                     {
                         duration: { percent: 25 },
                         instrumentation: {
-                            harmony: { activationChance: 1.0, instrumentOptions: [{ name: 'violin', weight: 1.0 }] },
+                            harmony: { activationChance: 0.4, instrumentOptions: [{ name: 'violin', weight: 1.0 }] },
                             sparkles: { activationChance: 0.6, instrumentOptions: [{ name: 'light', weight: 1.0 }] }
                         }
                     }
@@ -65,7 +65,8 @@ export const EnthusiasticAmbientBlueprint: MusicBlueprint = {
                 layers: { bass: true, accompaniment: true, melody: true, drums: true, sparkles: true, sfx: true, harmony: true, pianoAccompaniment: true },
                 instrumentation: {
                     accompaniment: { strategy: 'weighted', v2Options: [{ name: 'synth', weight: 1.0 }] },
-                    melody: { strategy: 'weighted', v2Options: [{ name: 'guitar_shineOn', weight: 0.5 }, { name: 'theremin', weight: 0.5 }] }
+                    melody: { strategy: 'weighted', v2Options: [{ name: 'guitar_shineOn', weight: 0.5 }, { name: 'theremin', weight: 0.5 }] },
+                    harmony: { strategy: 'weighted', options: [{ name: 'violin', weight: 0.5 }, { name: 'guitarChords', weight: 0.5 }] }
                 },
                 instrumentRules: {
                     bass: { techniques: [{ value: 'pulse', weight: 1.0 }], density: { min: 0.7, max: 0.9 } },
@@ -86,5 +87,9 @@ export const EnthusiasticAmbientBlueprint: MusicBlueprint = {
     mutations: {},
     ambientEvents: [],
     continuity: {},
-    rendering: {}
+    rendering: {
+        mixTargets: {
+            harmony: { level: -30, pan: 0.0 }
+        }
+    }
 };
