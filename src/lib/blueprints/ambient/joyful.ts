@@ -1,10 +1,14 @@
-
 import type { MusicBlueprint } from '@/types/music';
 
+/**
+ * #ЗАЧЕМ: Ступень Йоги 3 — JOYFUL: «Чистое Присутствие».
+ * #ЧТО: Кристально чистый Ionian амбиент. Модель Harold Budd.
+ * #ОБНОВЛЕНО (ПЛАН №432): Внедрена лотерея интро и поддержка светового атласа.
+ */
 export const JoyfulAmbientBlueprint: MusicBlueprint = {
     id: 'joyful_ambient',
-    name: 'Golden Horizons',
-    description: 'Светлый, энергичный и позитивный эмбиент.',
+    name: 'The Pure Presence',
+    description: 'Stage 3: Samadhi. Crystal clarity and stillness in C Ionian. Inspired by Harold Budd.',
     mood: 'joyful',
     musical: {
         key: { root: 'C', scale: 'ionian', octave: 3 },
@@ -17,79 +21,69 @@ export const JoyfulAmbientBlueprint: MusicBlueprint = {
         totalDuration: { preferredBars: 160 },
         parts: [
             {
-                id: 'INTRO', name: 'Dawn', duration: { percent: 13 },
+                id: 'INTRO', name: 'PresenceLottery', duration: { percent: 13 },
+                layers: { accompaniment: true, sparkles: true, sfx: true, harmony: true, bass: true, drums: true, pianoAccompaniment: true, melody: true },
+                stagedInstrumentation: [
+                    {
+                        duration: { percent: 25 },
+                        instrumentation: {
+                            accompaniment: { activationChance: 1.0, instrumentOptions: [{ name: 'synth_ambient_pad_lush', weight: 1.0 }] },
+                            bass: { activationChance: 1.0, instrumentOptions: [{ name: 'bass_jazz_warm', weight: 1.0 }] }
+                        }
+                    },
+                    {
+                        duration: { percent: 25 },
+                        instrumentation: {
+                            pianoAccompaniment: { activationChance: 1.0, instrumentOptions: [{ name: 'piano', weight: 1.0 }] },
+                            harmony: { activationChance: 1.0, instrumentOptions: [{ name: 'guitarChords', weight: 1.0 }] }
+                        }
+                    },
+                    {
+                        duration: { percent: 25 },
+                        instrumentation: {
+                            melody: { activationChance: 1.0, instrumentOptions: [{ name: 'ep_rhodes_warm', weight: 1.0 }] },
+                            sfx: { activationChance: 0.5, instrumentOptions: [{ name: 'common', weight: 1.0 }], transient: true }
+                        }
+                    },
+                    {
+                        duration: { percent: 25 },
+                        instrumentation: {
+                            sparkles: { activationChance: 0.4, instrumentOptions: [{ name: 'light', weight: 1.0 }] },
+                            drums: { activationChance: 0.3, instrumentOptions: [{ name: 'calm', weight: 1.0 }] }
+                        }
+                    }
+                ],
+                instrumentRules: {
+                    accompaniment: { techniques: [{ value: 'long-chords', weight: 1.0 }], density: { min: 0.5, max: 0.7 } },
+                    melody: { source: 'harmony_top_note' }
+                },
+                bundles: [{ id: 'JOY_INTRO_1', name: 'Presence', duration: { percent: 100 }, characteristics: {}, phrases: {} }],
+                outroFill: null,
+            },
+            {
+                id: 'MAIN', name: 'The Clarity Atlas', duration: { percent: 75 },
+                layers: { bass: true, accompaniment: true, melody: true, drums: true, sparkles: true, sfx: true, harmony: true, pianoAccompaniment: true },
+                instrumentation: {
+                    melody: { strategy: 'weighted', v2Options: [{ name: 'ep_rhodes_warm', weight: 1.0 }] },
+                    accompaniment: { strategy: 'weighted', v2Options: [{ name: 'synth_ambient_pad_lush', weight: 1.0 }] }
+                },
+                instrumentRules: {
+                    drums: { pattern: 'ambient_beat', density: { min: 0.3, max: 0.5 } },
+                    melody: { source: 'harmony_top_note', density: { min: 0.2, max: 0.4 } }
+                },
+                bundles: [{ id: 'JOY_MAIN_1', name: 'Clarity', duration: { percent: 100 }, characteristics: {}, phrases: {} }],
+                outroFill: null,
+            },
+            {
+                id: 'OUTRO', name: 'Dissolution', duration: { percent: 12 },
                 layers: { accompaniment: true, sparkles: true, sfx: true, harmony: true },
-                instrumentation: {
-                    accompaniment: { strategy: 'weighted', v1Options: [{ name: 'synth', weight: 0.6 }, { name: 'organ', weight: 0.4 }], v2Options: [{ name: 'synth', weight: 0.6 }, { name: 'organ', weight: 0.4 }] }
-                },
-                instrumentRules: {
-                    accompaniment: { techniques: [{ value: 'arpeggio-fast', weight: 1.0 }], density: { min: 0.5, max: 0.7 } },
-                    melody: { source: 'harmony_top_note' }
-                },
-                bundles: [{ id: 'JOY_INTRO_1', name: 'First Light', duration: { percent: 100 }, characteristics: {}, phrases: {} }],
-                outroFill: null,
-            },
-            {
-                id: 'BUILD', name: 'Morning', duration: { percent: 29 },
-                layers: { bass: true, accompaniment: true, melody: true, drums: true, sparkles: true, sfx: true, harmony: true },
-                instrumentation: {
-                    bass: { strategy: 'weighted', v1Options: [{ name: 'bass_jazz_warm', weight: 1.0 }], v2Options: [{ name: 'bass_jazz_warm', weight: 1.0 }] },
-                    melody: { strategy: 'weighted', v1Options: [{ name: 'guitar_shineOn', weight: 1.0 }], v2Options: [{ name: 'guitar_shineOn', weight: 1.0 }] }
-                },
-                instrumentRules: {
-                    drums: { pattern: 'composer', density: { min: 0.5, max: 0.7 } },
-                    bass: { techniques: [{ value: 'walking', weight: 0.7 }, { value: 'melodic', weight: 0.3 }] },
-                    melody: { source: 'harmony_top_note' }
-                },
-                bundles: [{ id: 'JOY_BUILD_1', name: 'Awakening', duration: { percent: 100 }, characteristics: {}, phrases: {} }],
-                outroFill: { type: 'roll', duration: 2, parameters: {} },
-            },
-            {
-                id: 'MAIN', name: 'Daylight', duration: { percent: 32 },
-                layers: { bass: true, accompaniment: true, melody: true, drums: true, sparkles: true, sfx: true, harmony: true },
-                instrumentation: {
-                    melody: { strategy: 'weighted', v1Options: [{ name: 'synth', weight: 1.0 }], v2Options: [{ name: 'synth', weight: 1.0 }] },
-                    accompaniment: { strategy: 'weighted', v1Options: [{ name: 'organ', weight: 1.0 }], v2Options: [{ name: 'organ', weight: 1.0 }] }
-                },
-                instrumentRules: {
-                    drums: { pattern: 'composer', density: { min: 0.7, max: 0.9 }, kickVolume: 1.1 },
-                    melody: { source: 'harmony_top_note' }
-                },
-                bundles: [{ id: 'JOY_MAIN_1', name: 'Celebration', duration: { percent: 100 }, characteristics: {}, phrases: {} }],
-                outroFill: null,
-            },
-            {
-                id: 'RELEASE', name: 'Golden Hour', duration: { percent: 18 },
-                layers: { accompaniment: true, melody: true, drums: true, sparkles: true, sfx: true, harmony: true },
-                instrumentation: {
-                    accompaniment: { strategy: 'weighted', v1Options: [{ name: 'synth_ambient_pad_lush', weight: 1.0 }], v2Options: [{ name: 'synth_ambient_pad_lush', weight: 1.0 }] }
-                },
-                instrumentRules: {
-                    drums: { pattern: 'ambient_beat', density: { min: 0.4, max: 0.6 } },
-                    melody: { source: 'harmony_top_note' }
-                },
-                bundles: [{ id: 'JOY_RELEASE_1', name: 'Reflection', duration: { percent: 100 }, characteristics: {}, phrases: {} }],
-                outroFill: null,
-            },
-            {
-                id: 'OUTRO', name: 'Sunset', duration: { percent: 8 },
-                layers: { accompaniment: true, sparkles: true, sfx: true, harmony: true },
-                instrumentation: {
-                    accompaniment: { strategy: 'weighted', v1Options: [{ name: 'synth_ambient_pad_lush', weight: 1.0 }], v2Options: [{ name: 'synth_ambient_pad_lush', weight: 1.0 }] }
-                },
-                instrumentRules: {
-                    melody: { source: 'harmony_top_note' }
-                },
-                bundles: [{ id: 'JOY_OUTRO_1', name: 'Fade', duration: { percent: 100 }, characteristics: {}, phrases: {} }],
+                bundles: [{ id: 'JOY_OUTRO_1', name: 'Final Peace', duration: { percent: 100 }, characteristics: {}, phrases: {} }],
                 outroFill: null,
             }
         ]
     },
     mutations: {},
-    ambientEvents: [
-        { type: 'sparkle', probability: 0.15, activeParts: ['BUILD', 'MAIN', 'RELEASE'] }, // Bell
-        { type: 'sparkle', probability: 0.10, activeParts: ['MAIN'] }, // Sparkle Cascade
-    ],
+    ambientEvents: [],
     continuity: {},
     rendering: {}
 };

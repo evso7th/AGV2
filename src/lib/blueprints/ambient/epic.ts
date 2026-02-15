@@ -1,13 +1,17 @@
-
 import type { MusicBlueprint } from '@/types/music';
 
+/**
+ * #ЗАЧЕМ: Ступень Йоги 1 — EPIC: «Зов и Подготовка».
+ * #ЧТО: Величественный Mixolydian амбиент. Модель Vangelis.
+ * #ОБНОВЛЕНО (ПЛАН №432): Внедрена лотерея интро и поддержка светового атласа.
+ */
 export const EpicAmbientBlueprint: MusicBlueprint = {
     id: 'epic_ambient',
-    name: 'Heroic Dawn',
-    description: 'Величественный и масштабный эмбиент.',
+    name: 'The Pillars of Space',
+    description: 'Stage 1: Preparation. Majestic Mixolydian soundscapes inspired by Vangelis.',
     mood: 'epic',
     musical: {
-        key: { root: 'D', scale: 'ionian', octave: 2 },
+        key: { root: 'D', scale: 'mixolydian', octave: 2 },
         bpm: { base: 62, range: [60, 65], modifier: 1.0 },
         timeSignature: { numerator: 4, denominator: 4 },
         harmonicJourney: [],
@@ -21,64 +25,63 @@ export const EpicAmbientBlueprint: MusicBlueprint = {
         totalDuration: { preferredBars: 180 },
         parts: [
             {
-                id: 'INTRO', name: 'The Mists', duration: { percent: 15 },
-                layers: { accompaniment: true, sfx: true },
-                instrumentation: {
-                    accompaniment: { strategy: 'weighted', v1Options: [{ name: 'synth_ambient_pad_lush', weight: 1.0 }], v2Options: [{ name: 'synth_ambient_pad_lush', weight: 1.0 }] }
-                },
+                id: 'INTRO', name: 'PreparationLottery', duration: { percent: 15 },
+                layers: { accompaniment: true, sfx: true, bass: true, drums: true, harmony: true, pianoAccompaniment: true, melody: true, sparkles: true },
+                stagedInstrumentation: [
+                    {
+                        duration: { percent: 25 },
+                        instrumentation: {
+                            accompaniment: { activationChance: 1.0, instrumentOptions: [{ name: 'synth_ambient_pad_lush', weight: 1.0 }] },
+                            bass: { activationChance: 1.0, instrumentOptions: [{ name: 'bass_jazz_warm', weight: 1.0 }] }
+                        }
+                    },
+                    {
+                        duration: { percent: 25 },
+                        instrumentation: {
+                            drums: { activationChance: 1.0, instrumentOptions: [{ name: 'intro', weight: 1.0 }] },
+                            harmony: { activationChance: 1.0, instrumentOptions: [{ name: 'violin', weight: 1.0 }] }
+                        }
+                    },
+                    {
+                        duration: { percent: 25 },
+                        instrumentation: {
+                            pianoAccompaniment: { activationChance: 1.0, instrumentOptions: [{ name: 'piano', weight: 1.0 }] },
+                            sfx: { activationChance: 0.6, instrumentOptions: [{ name: 'common', weight: 1.0 }], transient: true }
+                        }
+                    },
+                    {
+                        duration: { percent: 25 },
+                        instrumentation: {
+                            melody: { activationChance: 1.0, instrumentOptions: [{ name: 'organ', weight: 1.0 }] },
+                            sparkles: { activationChance: 0.3, instrumentOptions: [{ name: 'light', weight: 1.0 }] }
+                        }
+                    }
+                ],
                 instrumentRules: {
                     accompaniment: { register: { preferred: 'low' }, density: { min: 0.3, max: 0.5 } },
                     melody: { source: 'harmony_top_note' }
                 },
-                bundles: [{ id: 'EPIC_INTRO_1', name: 'Mists', duration: { percent: 100 }, characteristics: {}, phrases: {} }],
+                bundles: [{ id: 'EPIC_INTRO_1', name: 'Preparation', duration: { percent: 100 }, characteristics: {}, phrases: {} }],
                 outroFill: null
             },
             {
-                id: 'BUILD', name: 'The Gathering', duration: { percent: 35 },
-                layers: { accompaniment: true, bass: true, drums: true, sfx: true, harmony: true },
+                id: 'MAIN', name: 'The Great Atlas', duration: { percent: 75 },
+                layers: { bass: true, melody: true, accompaniment: true, drums: true, sparkles: true, sfx: true, harmony: true, pianoAccompaniment: true },
                 instrumentation: {
-                    accompaniment: { strategy: 'weighted', v1Options: [{ name: 'organ', weight: 0.7 }, { name: 'mellotron', weight: 0.3 }], v2Options: [{ name: 'organ', weight: 0.7 }, { name: 'mellotron', weight: 0.3 }] },
-                    bass: { strategy: 'weighted', v1Options: [{ name: 'ambientDrone', weight: 1.0 }], v2Options: [{ name: 'ambientDrone', weight: 1.0 }] },
-                    harmony: { strategy: 'weighted', options: [{ name: 'violin', weight: 1.0 }] }
-                },
-                instrumentRules: {
-                    drums: { pattern: 'composer', density: { min: 0.2, max: 0.4 }, useSnare: false, rareKick: true, usePerc: true },
-                    melody: { source: 'harmony_top_note' }
-                },
-                bundles: [
-                    { id: 'EPIC_BUILD_1', name: 'Calling', duration: { percent: 50 }, characteristics: {}, phrases: {} },
-                    { id: 'EPIC_BUILD_2', name: 'Marching', duration: { percent: 50 }, characteristics: {}, phrases: {} }
-                ],
-                outroFill: { type: 'roll', duration: 4, parameters: { crescendo: true } }
-            },
-            {
-                id: 'MAIN', name: 'The Vista', duration: { percent: 40 },
-                layers: { bass: true, melody: true, accompaniment: true, drums: true, sparkles: true, sfx: true, harmony: true },
-                instrumentation: {
-                    accompaniment: { strategy: 'weighted', v1Options: [{ name: 'organ', weight: 1.0 }], v2Options: [{ name: 'organ', weight: 1.0 }] },
-                    bass: { strategy: 'weighted', v1Options: [{ name: 'resonantGliss', weight: 1.0 }], v2Options: [{ name: 'resonantGliss', weight: 1.0 }] },
-                    melody: { strategy: 'weighted', v1Options: [{ name: 'mellotron', weight: 0.6 }, { name: 'synth', weight: 0.4 }], v2Options: [{ name: 'mellotron', weight: 0.6 }, { name: 'synth', weight: 0.4 }] },
-                    harmony: { strategy: 'weighted', options: [{ name: 'mellotron', weight: 1.0 }] }
+                    accompaniment: { strategy: 'weighted', v2Options: [{ name: 'organ', weight: 0.7 }, { name: 'synth_ambient_pad_lush', weight: 0.3 }] },
+                    melody: { strategy: 'weighted', v2Options: [{ name: 'mellotron', weight: 0.6 }, { name: 'synth', weight: 0.4 }] }
                 },
                 instrumentRules: {
                     melody: { density: { min: 0.3, max: 0.5 }, source: 'harmony_top_note' },
-                    drums: { pattern: 'composer', density: { min: 0.5, max: 0.7 }, kickVolume: 1.1 }
+                    drums: { pattern: 'composer', density: { min: 0.2, max: 0.4 }, useSnare: false, usePerc: true }
                 },
-                bundles: [
-                  { id: 'EPIC_MAIN_1', name: 'Vista', duration: { percent: 100 }, characteristics: {}, phrases: {} }
-                ],
+                bundles: [{ id: 'EPIC_MAIN_1', name: 'Vista', duration: { percent: 100 }, characteristics: {}, phrases: {} }],
                 outroFill: null
             },
             {
                 id: 'OUTRO', name: 'The Echoes', duration: { percent: 10 },
                 layers: { accompaniment: true, sfx: true, sparkles: true },
-                instrumentation: {
-                    accompaniment: { strategy: 'weighted', v1Options: [{ name: 'synth_ambient_pad_lush', weight: 1.0 }], v2Options: [{ name: 'synth_ambient_pad_lush', weight: 1.0 }] }
-                },
-                instrumentRules: {
-                    melody: { source: 'harmony_top_note' }
-                },
-                bundles: [{ id: 'EPIC_OUTRO_1', name: 'Echoes', duration: { percent: 100 }, characteristics: {}, phrases: {} }],
+                bundles: [{ id: 'EPIC_OUTRO_1', name: 'Fading Space', duration: { percent: 100 }, characteristics: {}, phrases: {} }],
                 outroFill: null
             }
         ]

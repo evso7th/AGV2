@@ -1,9 +1,9 @@
 /**
- * #ЗАЧЕМ: Суверенный Мозг Амбиента v8.2 — "The G1 Purity Update".
- * #ЧТО: 1. Бас поднят до MIDI 31 (G1) для исключения инфразвукового рокота.
- *       2. Длительности нот сокращены до 0.4-0.7с для предотвращения фазовой интерференции.
- *       3. Слой гармонии восстановлен и работает непрерывно (Violin/Guitar).
- *       4. Активность мелодии снижена для достижения истинного покоя.
+ * #ЗАЧЕМ: Суверенный Мозг Амбиента v9.0 — "The Radiance Update".
+ * #ЧТО: 1. Реализация Ступеней Йоги: Epic (Mixolydian), Enthusiastic (Lydian), Joyful (Ionian).
+ *       2. Протокол "Дисциплина Искр": дифференцированные хвосты и вероятности.
+ *       3. Световой Атлас для позитивных настроений.
+ *       4. "Эффект Ослепления" (Dazzle): открытие ВЧ до 12кГц в пиках.
  */
 
 import type { 
@@ -18,7 +18,7 @@ import type {
     Phrasing,
     SfxRule
 } from '@/types/music';
-import { calculateMusiNum, DEGREE_TO_SEMITONE, pickWeightedDeterministic, GEO_ATLAS } from './music-theory';
+import { calculateMusiNum, DEGREE_TO_SEMITONE, pickWeightedDeterministic, GEO_ATLAS, LIGHT_ATLAS } from './music-theory';
 import { AMBIENT_LEGACY } from './assets/ambient-legacy';
 
 const SPECTRAL_ATOMS: Record<string, { fog: number[], depth: number[], pulse: number[] }> = {
@@ -44,8 +44,9 @@ export class AmbientBrain {
     private fog: number = 0.3;
     private pulse: number = 0.15;
     private depth: number = 0.4;
+    private bright: number = 0.3;
     private solistCutoff: number = 2000; 
-    private geoRegisterShift: number = 0;
+    private registerShift: number = 0;
 
     private activatedParts: Set<InstrumentPart> = new Set();
     private activeTimbres: Partial<Record<InstrumentPart, string>> = {};
@@ -53,8 +54,6 @@ export class AmbientBrain {
 
     private soloistBusyUntilBar: number = -1;
     private readonly MELODY_CEILING = 75;
-    // #ЗАЧЕМ: Защита от инфразвукового рокота.
-    // #ЧТО: Пол поднят с 24 до 31 (G1).
     private readonly BASS_FLOOR = 31; 
 
     private currentTheme: { phrase: any[], startBar: number, endBar: number } | null = null;
@@ -111,12 +110,22 @@ export class AmbientBrain {
         const waves = this.computeTensionWaves(epoch * (60 / dna.baseTempo) * 4);
         const localTension = this.computeGlobalTension(waves);
 
-        this.applyGeography(epoch, dna);
+        // #ЗАЧЕМ: Разделение Географии и Сияния.
+        const isPositive = ['joyful', 'enthusiastic', 'epic'].includes(this.mood);
+        if (isPositive) {
+            this.applyRadiance(epoch, dna);
+        } else {
+            this.applyGeography(epoch, dna);
+        }
+
         this.applySpectralAtom(epoch, waves[3]);
         this.updateMoodAxes(epoch, localTension);
 
-        // #ЗАЧЕМ: Повышение созерцательности. 
-        // #ЧТО: Снижен шанс новой темы для большего "воздуха".
+        // Yoga Mode Selection
+        const yogaChord = { ...currentChord };
+        if (this.mood === 'epic') yogaChord.chordType = 'dominant'; // Mixolydian feel
+        else if (this.mood === 'joyful') yogaChord.chordType = 'major'; // Ionian clarity
+
         if (epoch >= this.soloistBusyUntilBar) {
             const developmentChance = 0.15 + localTension * 0.25;
             if (this.random.next() < developmentChance) {
@@ -144,40 +153,41 @@ export class AmbientBrain {
         hints.accompaniment = hints.accompaniment || 'synth_ambient_pad_lush';
         hints.bass = hints.bass || 'bass_jazz_warm';
 
-        events.push(...this.renderPad(currentChord, epoch, hints.accompaniment as string));
+        events.push(...this.renderPad(yogaChord, epoch, hints.accompaniment as string));
         
         if (this.mood === 'anxious') {
-            events.push(...this.renderRitualWalkingBass(currentChord, localTension, hints.bass as string, epoch));
+            events.push(...this.renderRitualWalkingBass(yogaChord, localTension, hints.bass as string, epoch));
         } else {
-            events.push(...this.renderRhythmicBass(currentChord, localTension, hints.bass as string, epoch));
+            events.push(...this.renderRhythmicBass(yogaChord, localTension, hints.bass as string, epoch));
         }
 
         if (hints.melody) {
-            events.push(...this.renderMelodicPadBase(currentChord, epoch, localTension));
-
-            if (localTension > 0.65) {
-                events.push(...this.renderOrganArpeggio(currentChord, epoch, localTension));
-            }
-
+            events.push(...this.renderMelodicPadBase(yogaChord, epoch, localTension));
             if (this.currentTheme && epoch < this.currentTheme.endBar) {
-                events.push(...this.renderThemeMelody(currentChord, epoch, localTension, hints, dna));
+                events.push(...this.renderThemeMelody(yogaChord, epoch, localTension, hints, dna));
             }
         }
 
         if (hints.pianoAccompaniment) {
-            events.push(...this.renderPianoDrops(currentChord, epoch, localTension));
+            events.push(...this.renderPianoDrops(yogaChord, epoch, localTension));
         }
 
-        // #ЗАЧЕМ: Восстановление оркестровой гармонии.
-        // #ЧТО: Слой гармонии теперь работает всегда, переключаясь по натяжению.
         if (hints.harmony) {
-            events.push(...this.renderOrchestralHarmony(currentChord, epoch, hints, localTension));
+            events.push(...this.renderOrchestralHarmony(yogaChord, epoch, hints, localTension));
         }
 
         events.push(...this.renderAmbientPercussion(epoch, localTension));
 
-        if (hints.sparkles && this.random.next() < 0.6) {
-            events.push(this.renderSparkle(currentChord));
+        // Sparkle Discipline
+        if (hints.sparkles) {
+            let sparkleProb = 0.3;
+            if (this.mood === 'epic') sparkleProb = 0.05;
+            else if (this.mood === 'enthusiastic') sparkleProb = 0.1 + (localTension * 0.3);
+            else if (this.mood === 'joyful') sparkleProb = 0.12;
+
+            if (this.random.next() < sparkleProb) {
+                events.push(this.renderSparkle(yogaChord, isPositive));
+            }
         }
 
         if (hints.sfx && epoch % 12 === 0) {
@@ -203,7 +213,21 @@ export class AmbientBrain {
 
         this.fog = (this.fog + atom.fog) / 2;
         this.depth = (this.depth + atom.depth) / 2;
-        this.geoRegisterShift = atom.reg;
+        this.registerShift = atom.reg;
+    }
+
+    private applyRadiance(epoch: number, dna: SuiteDNA) {
+        if (!dna.itinerary || dna.itinerary.length === 0) return;
+        const progress = epoch / 150;
+        const stage = Math.min(2, Math.floor(progress * 3));
+        const atomKey = dna.itinerary[stage];
+        const atom = LIGHT_ATLAS[atomKey];
+        if (!atom) return;
+
+        this.fog = (this.fog + atom.fog) / 2;
+        this.depth = (this.depth + atom.depth) / 2;
+        this.bright = atom.bright;
+        this.registerShift = this.mood === 'joyful' ? 12 : (this.mood === 'epic' ? -12 : 0);
     }
 
     private orchestrate(tension: number, navInfo: NavigationInfo, epoch: number, dna: SuiteDNA): InstrumentHints {
@@ -218,13 +242,10 @@ export class AmbientBrain {
         let currentInstructions: Partial<Record<InstrumentPart, any>> | undefined;
 
         if (part.id === 'INTRO' && this.introLotteryMap.size > 0) {
-            const partBars = navInfo.currentPartEndBar - navInfo.currentPartStartBar + 1;
-            const progress = (epoch - navInfo.currentPartStartBar) / (partBars || 1);
-            const stageIndex = Math.floor(progress * (stages?.length || 1));
+            const stageIndex = Math.floor((epoch / (navInfo.currentPartEndBar || 1)) * (stages?.length || 1));
             currentInstructions = this.introLotteryMap.get(Math.min(stageIndex, (stages?.length || 1) - 1));
         } else if (stages && stages.length > 0) {
-            const partBars = navInfo.currentPartEndBar - navInfo.currentPartStartBar + 1;
-            const progress = (epoch - navInfo.currentPartStartBar) / (partBars || 1);
+            const progress = epoch / (navInfo.currentPartEndBar || 1);
             let acc = 0;
             for (const s of stages) { 
                 acc += s.duration.percent; 
@@ -266,7 +287,7 @@ export class AmbientBrain {
     }
 
     private renderMelodicPadBase(chord: GhostChord, epoch: number, tension: number): FractalEvent[] {
-        const root = Math.min(chord.rootNote + 24 + this.geoRegisterShift, this.MELODY_CEILING);
+        const root = Math.min(chord.rootNote + 24 + this.registerShift, this.MELODY_CEILING);
         return [{
             type: 'melody',
             note: root,
@@ -291,7 +312,7 @@ export class AmbientBrain {
             const breathDecay = 1.0 - (n.t / 60); 
             return {
                 type: 'melody',
-                note: Math.min(chord.rootNote + 36 + group.registerBias + this.geoRegisterShift + (DEGREE_TO_SEMITONE[n.deg] || 0), this.MELODY_CEILING),
+                note: Math.min(chord.rootNote + 36 + group.registerBias + this.registerShift + (DEGREE_TO_SEMITONE[n.deg] || 0), this.MELODY_CEILING),
                 time: (n.t % 12) / 3,
                 duration: (n.d / 3) * 1.6, 
                 weight: (0.25 * breathDecay) * (0.9 + this.random.next() * 0.2), 
@@ -303,52 +324,6 @@ export class AmbientBrain {
         });
     }
 
-    private renderOrganArpeggio(chord: GhostChord, epoch: number, tension: number): FractalEvent[] {
-        const root = chord.rootNote + 24 + this.geoRegisterShift; 
-        const isMinor = chord.chordType === 'minor' || chord.chordType === 'dominant';
-        const intervals = isMinor ? [0, 3, 7, 10, 12, 15, 19, 24] : [0, 4, 7, 11, 12, 16, 19, 24];
-        const events: FractalEvent[] = [];
-        
-        let timeStep = 1.0; 
-        let count = 4;
-
-        if (this.mood === 'anxious') {
-            timeStep = tension > 0.5 ? 0.5 : 1.0;
-            count = tension > 0.5 ? 8 : 4;
-        } else {
-            if (tension > 0.75) {
-                timeStep = 0.25; 
-                count = 16;
-            } else if (tension > 0.45) {
-                timeStep = 0.5; 
-                count = 8;
-            }
-        }
-
-        for (let i = 0; i < count; i++) {
-            if (this.random.next() < 0.15) continue;
-
-            const idx = calculateMusiNum(epoch + i, 3, this.seed, intervals.length);
-            events.push({
-                type: 'melody',
-                note: Math.min(root + intervals[idx], this.MELODY_CEILING),
-                time: i * timeStep,
-                duration: timeStep * 1.5, 
-                weight: 0.18 * tension,
-                technique: 'pick',
-                dynamics: 'p',
-                phrasing: 'legato',
-                params: { filterCutoff: this.solistCutoff }
-            });
-        }
-        return events;
-    }
-
-    /**
-     * #ЗАЧЕМ: Устранение эффекта "мотора".
-     * #ЧТО: 1. Бас гарантированно выше MIDI 31.
-     *       2. Длительности сокращены до 0.4-0.7.
-     */
     private renderRhythmicBass(chord: GhostChord, tension: number, timbre: string, epoch: number): FractalEvent[] {
         const root = Math.max(chord.rootNote - 12, this.BASS_FLOOR); 
         const isMinor = chord.chordType === 'minor' || chord.chordType === 'diminished';
@@ -401,7 +376,7 @@ export class AmbientBrain {
             if (this.random.next() < (0.25 * this.depth)) { 
                 events.push({
                     type: 'pianoAccompaniment',
-                    note: Math.min(chord.rootNote + 24 + this.geoRegisterShift + [0, 3, 7, 12][this.random.nextInt(4)], this.MELODY_CEILING),
+                    note: Math.min(chord.rootNote + 24 + this.registerShift + [0, 3, 7, 12][this.random.nextInt(4)], this.MELODY_CEILING),
                     time: beat,
                     duration: 1.5, 
                     weight: 0.25, 
@@ -415,7 +390,6 @@ export class AmbientBrain {
     }
 
     private renderOrchestralHarmony(chord: GhostChord, epoch: number, hints: InstrumentHints, tension: number): FractalEvent[] {
-        // #ЗАЧЕМ: Слой гармонии теперь присутствует всегда.
         const root = chord.rootNote; 
         const timbre = tension > 0.5 ? 'violin' : 'guitarChords';
         const notes = [root, root + 7];
@@ -423,7 +397,7 @@ export class AmbientBrain {
         return notes.map((n, i) => {
             return {
                 type: 'harmony',
-                note: n + 12 + this.geoRegisterShift, 
+                note: n + 12 + this.registerShift, 
                 time: i * 0.5,
                 duration: 8.0,
                 weight: (timbre === 'violin' ? 0.10 : 0.30) * (0.8 + this.random.next() * 0.4), 
@@ -436,17 +410,19 @@ export class AmbientBrain {
         });
     }
 
-    private renderSparkle(chord: GhostChord): FractalEvent {
+    private renderSparkle(chord: GhostChord, isPositive: boolean): FractalEvent {
+        // #ЗАЧЕМ: Дифференциация длительности реверса.
+        const duration = this.mood === 'joyful' ? 12.0 : 6.0;
         return {
             type: 'sparkle',
-            note: chord.rootNote + 48 + this.geoRegisterShift,
+            note: chord.rootNote + 48 + this.registerShift,
             time: this.random.next() * 4,
-            duration: 12.0,
+            duration,
             weight: 0.45, 
             technique: 'hit',
             dynamics: 'p',
             phrasing: 'legato',
-            params: { mood: this.mood, genre: 'ambient', category: 'ambient_common' }
+            params: { mood: this.mood, genre: 'ambient', category: isPositive ? 'light' : 'ambient_common' }
         };
     }
 
@@ -513,32 +489,17 @@ export class AmbientBrain {
 
         const resonanceProb = 0.35 + (this.fog * 0.55); 
         if (this.random.next() < resonanceProb) {
-            if (this.random.next() < 0.4) {
-                const tubeIdx = 1 + this.random.nextInt(3);
-                const tubeTypes = ['drum_bongo_pvc-tube-01', 'drum_bongo_pvc-tube-02', 'drum_bongo_pvc-tube-03'];
-                events.push({
-                    type: tubeTypes[tubeIdx - 1] as any,
-                    note: 60,
-                    time: this.random.next() * 4,
-                    duration: 0.5,
-                    weight: 0.2 * (0.8 + this.random.next() * 0.4),
-                    technique: 'hit',
-                    dynamics: 'p',
-                    phrasing: 'staccato'
-                });
-            } else {
-                const perkIdx = (1 + this.random.nextInt(15)).toString().padStart(3, '0');
-                events.push({
-                    type: `perc-${perkIdx}` as any,
-                    note: 60, 
-                    time: this.random.next() * 4, 
-                    duration: 4.0, 
-                    weight: 0.32 * (0.7 + this.random.next() * 0.3),
-                    technique: 'hit', 
-                    dynamics: 'p', 
-                    phrasing: 'staccato'
-                });
-            }
+            const tubeTypes = ['drum_bongo_pvc-tube-01', 'drum_bongo_pvc-tube-02', 'drum_bongo_pvc-tube-03'];
+            events.push({
+                type: tubeTypes[this.random.nextInt(3)] as any,
+                note: 60,
+                time: this.random.next() * 4,
+                duration: 0.5,
+                weight: 0.2 * (0.8 + this.random.next() * 0.4),
+                technique: 'hit',
+                dynamics: 'p',
+                phrasing: 'staccato'
+            });
         }
 
         return events;
@@ -576,12 +537,16 @@ export class AmbientBrain {
         this.depth = Math.max(0, Math.min(1, 0.4 + (tension * 0.45)));
         this.pulse = Math.max(0, Math.min(1, 0.15 + (tension * 0.35)));
         
-        const maxCutoff = this.mood === 'anxious' ? 3500 : 4500;
-        this.solistCutoff = maxCutoff * (1 - this.fog) + 1200; 
+        // #ЗАЧЕМ: Эффект Ослепления (Dazzle). 
+        // #ЧТО: При высоком натяжении в светлых режимах фильтр открывается максимально.
+        const isPositive = ['joyful', 'enthusiastic', 'epic'].includes(this.mood);
+        const dazzle = (isPositive && tension > 0.85) ? 1.0 : 0;
+        const maxCutoff = this.mood === 'anxious' ? 3500 : 5300;
+        this.solistCutoff = (maxCutoff * (1 - this.fog) + 1200) * (1.0 + dazzle * 0.5); 
     }
 
     private renderPad(chord: GhostChord, epoch: number, timbre: string): FractalEvent[] {
-        const root = chord.rootNote + 12 + this.geoRegisterShift;
+        const root = chord.rootNote + 12 + this.registerShift;
         const isMinor = chord.chordType === 'minor' || chord.chordType === 'diminished';
         const notes = [root, root + (isMinor ? 3 : 4), root + 7];
 
@@ -593,7 +558,7 @@ export class AmbientBrain {
             weight: 0.38 * (0.9 + this.random.next() * 0.2),
             technique: 'swell',
             dynamics: 'p',
-            phrasing: 'legate' as Phrasing,
+            phrasing: 'legato',
             params: { attack: 2.0, release: 6.0, filterCutoff: this.solistCutoff * 0.7, barCount: epoch }
         }));
     }
