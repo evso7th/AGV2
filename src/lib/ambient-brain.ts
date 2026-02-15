@@ -1,8 +1,9 @@
 /**
- * #ЗАЧЕМ: Суверенный Мозг Амбиента v7.1 — "The Tension Development Update".
- * #ЧТО: 1. Развитие тем (пассажи vs легаси) теперь напрямую зависит от Tension.
- *       2. Повествовательный бас усилен (weight 0.8) для всех амбиентов.
- *       3. Внедрена гарантия непрерывности развития (Anti-Stagnation).
+ * #ЗАЧЕМ: Суверенный Мозг Амбиента v7.2 — "The Vital Heartbeat Update".
+ * #ЧТО: 1. Унификация ритм-секции: Кик и Том работают как единое "Сердце" для всех амбиентов.
+ *       2. Реализация логики "Систола-Диастола" в зависимости от Tension.
+ *       3. Подавление хэтов туманом и рост органических деталей при высокой плотности Fog.
+ *       4. Сохранение всех достижений спектральной гигиены и повествовательного баса.
  */
 
 import type { 
@@ -110,10 +111,7 @@ export class AmbientBrain {
         this.applySpectralAtom(epoch, waves[3]);
         this.updateMoodAxes(epoch, localTension);
 
-        // #ЗАЧЕМ: Динамическое развитие тем в зависимости от Tension.
-        // #ЧТО: Чем выше Tension, тем чаще и быстрее вступают новые темы и пассажи.
         if (epoch >= this.soloistBusyUntilBar) {
-            // Вероятность новой темы растет с Tension
             const developmentChance = 0.4 + localTension * 0.5;
             const shouldStartTheme = this.random.next() < developmentChance;
             
@@ -142,7 +140,6 @@ export class AmbientBrain {
                     startBar: epoch,
                     endBar: epoch + phraseBars
                 };
-                // Если напряжение высокое, пауза между темами короче
                 const breathBars = localTension > 0.7 ? 0 : 1;
                 this.soloistBusyUntilBar = epoch + phraseBars + breathBars;
             } else {
@@ -153,7 +150,6 @@ export class AmbientBrain {
         const hints = this.orchestrate(localTension, navInfo, epoch, dna);
         const events: FractalEvent[] = [];
 
-        // Гарантия непрерывности (Аккомпанемент + Бас всегда в строю)
         hints.accompaniment = hints.accompaniment || 'synth_ambient_pad_lush';
         hints.bass = hints.bass || 'bass_jazz_warm';
 
@@ -162,7 +158,6 @@ export class AmbientBrain {
         }
 
         if (hints.bass) {
-            // #ЗАЧЕМ: Повествовательный бас теперь всегда активен при наличии темы.
             if (this.currentTheme && epoch < this.currentTheme.endBar) {
                 events.push(...this.renderNarrativeBass(currentChord, epoch, this.currentTheme));
             } else {
@@ -172,7 +167,6 @@ export class AmbientBrain {
 
         if (hints.melody) {
             const timbre = hints.melody as string;
-            // #ЗАЧЕМ: Органные пассажи при высоком напряжении.
             const isHighTension = localTension > 0.7;
             const isOrgan = timbre.includes('organ');
 
@@ -181,7 +175,6 @@ export class AmbientBrain {
             } else if (this.currentTheme && epoch < this.currentTheme.endBar) {
                 events.push(...this.renderThemeMelody(currentChord, epoch, localTension, hints, dna));
             } else if (epoch >= this.soloistBusyUntilBar - 1 && (timbre.includes('organ') || timbre.includes('synth'))) {
-                // Фоновое заполнение если нет темы
                 events.push(...this.renderOrganArpeggio(currentChord, epoch, localTension * 0.5));
             }
         }
@@ -283,7 +276,7 @@ export class AmbientBrain {
                 note: Math.max(chord.rootNote - 12, this.BASS_FLOOR),
                 time: 0,
                 duration: 4.0,
-                weight: 0.8, // Increased for audibility
+                weight: 0.8,
                 technique: 'pluck',
                 dynamics: 'p',
                 phrasing: 'legato',
@@ -298,7 +291,7 @@ export class AmbientBrain {
             note: Math.max(chord.rootNote - 12 + (DEGREE_TO_SEMITONE[primaryNote.deg] || 0), this.BASS_FLOOR),
             time: (primaryNote.t % 12) / 3,
             duration: 4.0,
-            weight: 0.85, // Increased weight for "Shadow" effect
+            weight: 0.85,
             technique: 'pluck',
             dynamics: 'p',
             phrasing: 'legato',
@@ -335,9 +328,8 @@ export class AmbientBrain {
         const intervals = isMinor ? [0, 3, 7, 10, 12, 15, 19, 24] : [0, 4, 7, 11, 12, 16, 19, 24];
         const events: FractalEvent[] = [];
         
-        // #ЗАЧЕМ: Пассажи становятся плотнее и быстрее при росте Tension.
         const count = tension > 0.8 ? 16 : 12; 
-        const timeStep = tension > 0.8 ? 0.1875 : 0.25; // 1/16 vs 1/12
+        const timeStep = tension > 0.8 ? 0.1875 : 0.25; 
 
         for (let i = 0; i < count; i++) {
             const idx = calculateMusiNum(epoch + i, 3, this.seed, intervals.length);
@@ -435,7 +427,7 @@ export class AmbientBrain {
                 weight: baseWeight * (0.8 + this.random.next() * 0.4), 
                 technique: 'swell',
                 dynamics: 'p',
-                phrasing: 'legato',
+                phrasing: 'legate',
                 chordName: chordName,
                 params: { barCount: epoch, filterCutoff: this.solistCutoff * 0.9 }
             };
@@ -476,12 +468,19 @@ export class AmbientBrain {
         }];
     }
 
+    /**
+     * #ЗАЧЕМ: Реализация Унифицированного Биологического Пульса.
+     * #ЧТО: Кик и Том работают как единое "Сердце". Хэты - редкие блики в тумане.
+     */
     private renderAmbientPercussion(epoch: number, tension: number): FractalEvent[] {
         const events: FractalEvent[] = [];
         
+        // --- 1. VITAL HEARTBEAT (Kick + Tom) ---
+        // Вероятность биения растет с Tension
         const heartbeatProb = 0.3 + (tension * 0.5); 
         if (this.random.next() < heartbeatProb) {
             const firstTime = 0;
+            // Кик и Том бьют синхронно (Систола)
             events.push({ 
                 type: 'drum_kick_reso', 
                 note: 36, time: firstTime, duration: 0.1, weight: 0.8 * (0.8 + tension * 0.2), 
@@ -493,6 +492,7 @@ export class AmbientBrain {
                 technique: 'hit', dynamics: 'p', phrasing: 'staccato'
             });
 
+            // Двойной удар (Диастола) только при высоком напряжении
             if (tension > 0.6) {
                 const secondTime = 0.33; 
                 events.push({ 
@@ -503,6 +503,8 @@ export class AmbientBrain {
             }
         }
 
+        // --- 2. HAT SUPPRESSION (Ghost Hats) ---
+        // Редкие акценты, подавляемые туманом
         const hatProb = (0.05 + (this.pulse * 0.10)) * (1.0 - this.fog * 0.6); 
         [1.33, 2.66, 3.66].forEach(t => { 
             if (this.random.next() < hatProb) {
@@ -514,6 +516,7 @@ export class AmbientBrain {
             }
         });
 
+        // --- 3. ATMOSPHERIC SENSITIVITY (Organic Details) ---
         const rideProb = 0.1 + (tension * 0.2);
         if (this.random.next() < rideProb) {
             events.push({
@@ -523,6 +526,7 @@ export class AmbientBrain {
             });
         }
 
+        // Детали (Перки и Тьюбы): Плотность растет с туманом
         const detailProb = 0.3 + (this.fog * 0.4); 
         if (this.random.next() < detailProb) {
             const perkIdx = (1 + this.random.nextInt(15)).toString().padStart(3, '0');
