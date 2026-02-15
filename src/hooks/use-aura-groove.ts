@@ -1,6 +1,7 @@
 /**
- * #ЗАЧЕМ: Хук управления UI музыкой V3.2.
- * #ЧТО: Внедрена поддержка межсессионной памяти ликов через localStorage.
+ * #ЗАЧЕМ: Хук управления UI музыкой V3.3.
+ * #ЧТО: 1. Внедрена поддержка межсессионной памяти ликов через localStorage.
+ *       2. Реализованы специфические дефолты громкости для жанра Амбиент (ПЛАН №406).
  */
 'use client';
 
@@ -88,13 +89,16 @@ export const useAuraGroove = (): AuraGrooveProps => {
   const router = useRouter();
   
   const [drumSettings, setDrumSettings] = useState<DrumSettings>({ pattern: 'composer', volume: 0.25, kickVolume: 1.0, enabled: true });
+  
+  // #ЗАЧЕМ: Дефолтный баланс для Амбиента при старте.
   const [instrumentSettings, setInstrumentSettings] = useState<InstrumentSettings>({
     bass: { name: "bass_jazz_warm", volume: 0.5, technique: 'portamento' },
-    melody: { name: "blackAcoustic", volume: 0.2 }, 
-    accompaniment: { name: "organ_soft_jazz", volume: 0.35 },
-    harmony: { name: "guitarChords", volume: 0.25 },
-    pianoAccompaniment: { name: "piano", volume: 0.65 },
+    melody: { name: "blackAcoustic", volume: 0.55 }, // 55
+    accompaniment: { name: "organ_soft_jazz", volume: 0.50 }, // 50
+    harmony: { name: "guitarChords", volume: 0.15 }, // 15
+    pianoAccompaniment: { name: "piano", volume: 0.35 }, // 35
   });
+
   const [textureSettings, setTextureSettings] = useState<TextureSettings>({
       sparkles: { enabled: true, volume: 0.12 },
       sfx: { enabled: true, volume: 0.12 },
@@ -131,6 +135,35 @@ export const useAuraGroove = (): AuraGrooveProps => {
     }
   }, []);
 
+  // #ЗАЧЕМ: Автоматический сброс громкости при переключении на Амбиент (ПЛАН №406).
+  useEffect(() => {
+    if (genre === 'ambient') {
+      console.log('%c[UI] Genre switched to AMBIENT. Applying Imperial Balance.', 'color: #DA70D6; font-weight: bold;');
+      const ambientDefaults = {
+        melody: 0.55,
+        accompaniment: 0.50,
+        harmony: 0.15,
+        pianoAccompaniment: 0.35
+      };
+
+      setInstrumentSettings(prev => ({
+        ...prev,
+        melody: { ...prev.melody, volume: ambientDefaults.melody },
+        accompaniment: { ...prev.accompaniment, volume: ambientDefaults.accompaniment },
+        harmony: { ...prev.harmony, volume: ambientDefaults.harmony },
+        pianoAccompaniment: { ...prev.pianoAccompaniment, volume: ambientDefaults.pianoAccompaniment },
+      }));
+
+      // Мгновенная синхронизация с движком
+      if (isInitialized) {
+        setVolume('melody', ambientDefaults.melody);
+        setVolume('accompaniment', ambientDefaults.accompaniment);
+        setVolume('harmony', ambientDefaults.harmony);
+        setVolume('pianoAccompaniment', ambientDefaults.pianoAccompaniment);
+      }
+    }
+  }, [genre, isInitialized, setVolume]);
+
   useEffect(() => {
     initialize();
   }, [initialize]);
@@ -143,7 +176,6 @@ export const useAuraGroove = (): AuraGrooveProps => {
       if (e.data.type === 'SCORE_READY' && e.data.payload?.actualBpm) {
         setBpm(e.data.payload.actualBpm);
       }
-      // #ЗАЧЕМ: Фиксация выбранного лика в межсессионной памяти.
       if (e.data.type === 'LICK_BORN' && e.data.lickId) {
           setSessionLickHistory(prev => {
               const next = [...prev, e.data.lickId].slice(-10);
@@ -173,7 +205,7 @@ export const useAuraGroove = (): AuraGrooveProps => {
       composerControlsInstruments,
       mood,
       introBars,
-      sessionLickHistory // Передаем историю воркеру
+      sessionLickHistory 
     };
   }, [bpm, score, genre, instrumentSettings, drumSettings, textureSettings, density, composerControlsInstruments, mood, introBars, sessionLickHistory]);
 
