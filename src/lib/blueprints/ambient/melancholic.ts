@@ -1,10 +1,10 @@
 import type { MusicBlueprint } from '@/types/music';
 
 /**
- * #ЗАЧЕМ: Флагманский блюпринт "Nostalgic Morning" (v42.1).
- * #ЧТО: 1. Интро разделено на 4 сцены по 25% для постепенного рождения ансамбля.
- *       2. Гарантированный старт Lush Pad и Bass на Бар 0.
- *       3. Полное соответствие Кодексу: D Dorian, No Flute, No Voice.
+ * #ЗАЧЕМ: Флагманский блюпринт "Nostalgic Morning" (v43.0).
+ * #ЧТО: 1. Техника баса изменена на 'walking' для получения риффового движения.
+ *       2. Аккомпанемент переведен на 'synth_ambient_pad_lush'.
+ *       3. Гарантированный старт ударных и фундамента.
  */
 export const MelancholicAmbientBlueprint: MusicBlueprint = {
   id: 'melancholic_ambient',
@@ -64,8 +64,9 @@ export const MelancholicAmbientBlueprint: MusicBlueprint = {
           }
         ],
         instrumentRules: {
-          drums: { kitName: 'melancholic', pattern: 'ambient_beat', density: { min: 0.05, max: 0.15 } },
-          bass: { techniques: [{ value: 'pedal', weight: 1.0 }] },
+          drums: { kitName: 'melancholic', pattern: 'ambient_beat', density: { min: 0.3, max: 0.5 } },
+          // #ЗАЧЕМ: Риффовый бас вместо статичной педали.
+          bass: { techniques: [{ value: 'walking', weight: 1.0 }] },
           accompaniment: { activationChance: 1.0 } 
         },
         bundles: [{ id: 'INTRO_B1', name: 'Foggy Morning', duration: { percent: 100 }, characteristics: {}, phrases: {} }],
@@ -85,7 +86,8 @@ export const MelancholicAmbientBlueprint: MusicBlueprint = {
             harmony: { strategy: 'weighted', options: [{ name: 'violin', weight: 0.5 }, { name: 'guitarChords', weight: 0.5 }] }
         },
         instrumentRules: {
-          drums: { kitName: 'melancholic', pattern: 'composer', density: { min: 0.3, max: 0.5 } },
+          drums: { kitName: 'melancholic', pattern: 'composer', density: { min: 0.4, max: 0.6 } },
+          bass: { techniques: [{ value: 'walking', weight: 1.0 }] },
           melody: { register: { preferred: 'mid' }, density: { min: 0.2, max: 0.4 } }
         },
         bundles: [{ id: 'MAIN_B1', name: 'Whiskey & Hope', duration: { percent: 100 }, characteristics: {}, phrases: {} }],
@@ -95,7 +97,7 @@ export const MelancholicAmbientBlueprint: MusicBlueprint = {
         id: 'OUTRO', name: 'Dissolving Trace', duration: { percent: 15 },
         layers: { bass: true, accompaniment: true, sfx: true, pianoAccompaniment: true, harmony: true },
         instrumentRules: {
-          bass: { techniques: [{ value: 'drone', weight: 1.0 }] },
+          bass: { techniques: [{ value: 'walking', weight: 1.0 }] },
           accompaniment: { techniques: [{ value: 'long-chords', weight: 1.0 }] }
         },
         bundles: [{ id: 'OUTRO_B1', name: 'Fade to Light', duration: { percent: 100 }, characteristics: {}, phrases: {} }],
