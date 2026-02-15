@@ -20,7 +20,7 @@ export const BASS_PRESET_INFO: Record<string, { description: string; color: stri
   bass_slap: { description: 'Bright, percussive slap bass for funk.', color: '#FF4500' },
   bass_cs80: { description: 'Legendary CS80 pitched down for deep synth bass.', color: '#00ced1' },
   classicBass: { description: 'Classic rock bass sound.', color: '#8B4513' },
-  glideBass: { description: 'Smooth, gliding synth bass.', color: '#4169E1' },
+  glideBass: { description: 'Substituted with Ambient Bass for purity.', color: '#2F4F4F' },
   ambientDrone: { description: 'Deep, evolving drone.', color: '#1A0033' },
   resonantGliss: { description: 'Singing, resonant lead bass.', color: '#8B008B' },
   hypnoticDrone: { description: 'Pulsating, wide drone.', color: '#483D8B' },
@@ -45,6 +45,23 @@ export const BASS_PRESETS: Record<string, BassPreset> = {
         chorus: { on: false, rate: 0.3, depth: 0.003, mix: 0 },
         delay: { on: false, time: 0.3, fb: 0.2, mix: 0, hc: 2000 },
         reverbMix: 0.12
+    },
+    // #ЗАЧЕМ: Устранение искажений. glideBass замещен на bass_ambient.
+    glideBass: {
+        type: 'bass' as const,
+        name: 'Ambient Sub',
+        volume: 0.65,
+        osc: [ { type: 'sine' as const, octave: 0, detune: 0, gain: 0.7 }, { type: 'triangle' as const, octave: 0, detune: -3, gain: 0.25 }, { type: 'sine' as const, octave: 1, detune: 5, gain: 0.08 }, { type: 'sine' as const, octave: -1, detune: 0, gain: 0.8 } ],
+        adsr: { a: 0.3, d: 0.8, s: 0.85, r: 1.5 },
+        filter: { type: 'lowpass' as const, cutoff: 600, q: 0.5, keyTrack: 0.15 },
+        filterEnv: { on: true, attack: 0.4, decay: 1.0, sustain: 0.4, release: 0.8, depth: 400, velocity: 0.3 },
+        drive: { on: false, type: 'tube' as const, amount: 0, tone: 1500 },
+        comp: { threshold: -20, ratio: 3, attack: 0.02, release: 0.3, makeup: 4 },
+        eq: { lowShelf: { freq: 60, gain: 5 }, mid: { freq: 400, q: 0.8, gain: -3 }, highShelf: { freq: 1500, gain: -6 } },
+        stringNoise: { on: false, type: 'finger' as const, amount: 0 },
+        chorus: { on: true, rate: 0.1, depth: 0.005, mix: 0.25 },
+        delay: { on: true, time: 0.6, fb: 0.4, mix: 0.2, hc: 1200 },
+        reverbMix: 0.35
     },
     bass_cs80: {
         type: 'bass' as const,
@@ -109,7 +126,7 @@ export const BASS_PRESETS: Record<string, BassPreset> = {
         osc: [ { type: 'sine' as const, octave: 0, detune: 0, gain: 0.65 }, { type: 'triangle' as const, octave: -1, detune: 0, gain: 0.35 }, { type: 'sine' as const, octave: -1, detune: 0, gain: 0.9 } ],
         adsr: { attack: 0.5, decay: 1.2, sustain: 0.9, release: 2.0 },
         filter: { type: 'lowpass' as const, cutoff: 400, q: 0.4 },
-        lfo: { shape: 'sine', rate: 0, amount: 0, target: 'pitch' },
+        lfo: { shape: 'sine' as const, rate: 0, amount: 0, target: 'pitch' as const },
         effects: { distortion: 0, chorus: { rate: 0.08, depth: 0.006, mix: 0.3 }, delay: { time: 0.8, feedback: 0.5, mix: 0.25 } }
     },
     bass_trance: {
@@ -119,7 +136,7 @@ export const BASS_PRESETS: Record<string, BassPreset> = {
         osc: [ { type: 'sawtooth' as const, octave: 0, detune: 0, gain: 0.7 }, { type: 'sawtooth' as const, octave: 0, detune: 5, gain: 0.3 }, { type: 'square' as const, octave: -1, detune: 0, gain: 0.25 }, { type: 'sine' as const, octave: -1, detune: 0, gain: 0.6 } ],
         adsr: { attack: 0.003, decay: 0.15, sustain: 0.5, release: 0.15 },
         filter: { type: 'lowpass' as const, cutoff: 800, q: 3 },
-        lfo: { shape: 'sine', rate: 0, amount: 0, target: 'pitch' },
+        lfo: { shape: 'sine' as const, rate: 0, amount: 0, target: 'pitch' as const },
         effects: { distortion: 0.3, chorus: { rate: 0, depth: 0, mix: 0 }, delay: { time: 0, feedback: 0, mix: 0 } }
     },
     bass_trance_acid: {
@@ -129,7 +146,7 @@ export const BASS_PRESETS: Record<string, BassPreset> = {
         osc: [ { type: 'sawtooth' as const, octave: 0, detune: 0, gain: 0.9 }, { type: 'square' as const, octave: -1, detune: 0, gain: 0.4 } ],
         adsr: { attack: 0.001, decay: 0.1, sustain: 0.3, release: 0.08 },
         filter: { type: 'lowpass' as const, cutoff: 400, q: 8 },
-        lfo: { shape: 'sine', rate: 0, amount: 0, target: 'pitch' },
+        lfo: { shape: 'sine' as const, rate: 0, amount: 0, target: 'pitch' as const },
         effects: { distortion: 0.4, chorus: { rate: 0, depth: 0, mix: 0 }, delay: { time: 0, feedback: 0, mix: 0 } }
     },
     bass_reggae: {
@@ -139,7 +156,7 @@ export const BASS_PRESETS: Record<string, BassPreset> = {
         osc: [ { type: 'sine' as const, octave: 0, detune: 0, gain: 0.8 }, { type: 'triangle' as const, octave: 0, detune: 0, gain: 0.2 }, { type: 'sine' as const, octave: -1, detune: 0, gain: 0.7 } ],
         adsr: { attack: 0.008, decay: 0.25, sustain: 0.4, release: 0.15 },
         filter: { type: 'lowpass' as const, cutoff: 900, q: 0.7 },
-        lfo: { shape: 'sine', rate: 0, amount: 0, target: 'pitch' },
+        lfo: { shape: 'sine' as const, rate: 0, amount: 0, target: 'pitch' as const },
         effects: { distortion: 0, chorus: { rate: 0, depth: 0, mix: 0 }, delay: { time: 0.375, feedback: 0.35, mix: 0.18 } }
     },
     bass_dub: {
@@ -149,7 +166,7 @@ export const BASS_PRESETS: Record<string, BassPreset> = {
         osc: [ { type: 'sine' as const, octave: 0, detune: 0, gain: 0.75 }, { type: 'triangle' as const, octave: 0, detune: -2, gain: 0.25 }, { type: 'sine' as const, octave: -1, detune: 0, gain: 0.85 } ],
         adsr: { attack: 0.01, decay: 0.3, sustain: 0.5, release: 0.25 },
         filter: { type: 'lowpass' as const, cutoff: 700, q: 1.2 },
-        lfo: { shape: 'sine', rate: 0, amount: 0, target: 'pitch' },
+        lfo: { shape: 'sine' as const, rate: 0, amount: 0, target: 'pitch' as const },
         effects: { distortion: 0.12, chorus: { rate: 0, depth: 0, mix: 0 }, delay: { time: 0.5, feedback: 0.45, mix: 0.25 } }
     },
     bass_house: {
@@ -159,7 +176,7 @@ export const BASS_PRESETS: Record<string, BassPreset> = {
         osc: [ { type: 'sine' as const, octave: 0, detune: 0, gain: 0.85 }, { type: 'triangle' as const, octave: 0, detune: 0, gain: 0.15 }, { type: 'sine' as const, octave: -1, detune: 0, gain: 0.65 } ],
         adsr: { attack: 0.002, decay: 0.18, sustain: 0.35, release: 0.12 },
         filter: { type: 'lowpass' as const, cutoff: 1200, q: 0.8 },
-        lfo: { shape: 'sine', rate: 0, amount: 0, target: 'pitch' },
+        lfo: { shape: 'sine' as const, rate: 0, amount: 0, target: 'pitch' as const },
         effects: { distortion: 0.2, chorus: { rate: 0, depth: 0, mix: 0 }, delay: { time: 0, feedback: 0, mix: 0 } }
     },
     bass_808: {
@@ -169,7 +186,7 @@ export const BASS_PRESETS: Record<string, BassPreset> = {
         osc: [ { type: 'sine' as const, octave: 0, detune: 0, gain: 1.0 }, { type: 'sine' as const, octave: -1, detune: 0, gain: 0.7 } ],
         adsr: { attack: 0.001, decay: 0.4, sustain: 0.2, release: 0.5 },
         filter: { type: 'lowpass' as const, cutoff: 500, q: 0.5 },
-        lfo: { shape: 'sine', rate: 0, amount: 0, target: 'pitch' },
+        lfo: { shape: 'sine' as const, rate: 0, amount: 0, target: 'pitch' as const },
         effects: { distortion: 0.35, chorus: { rate: 0, depth: 0, mix: 0 }, delay: { time: 0, feedback: 0, mix: 0 } }
     },
     bass_deep_house: {
@@ -179,7 +196,7 @@ export const BASS_PRESETS: Record<string, BassPreset> = {
         osc: [ { type: 'sine' as const, octave: 0, detune: 0, gain: 0.7 }, { type: 'sawtooth' as const, octave: 0, detune: 0, gain: 0.25 }, { type: 'sine' as const, octave: 1, detune: 0, gain: 0.1 }, { type: 'sine' as const, octave: -1, detune: 0, gain: 0.6 } ],
         adsr: { attack: 0.005, decay: 0.2, sustain: 0.5, release: 0.18 },
         filter: { type: 'lowpass' as const, cutoff: 1000, q: 1.5 },
-        lfo: { shape: 'sine', rate: 0, amount: 0, target: 'pitch' },
+        lfo: { shape: 'sine' as const, rate: 0, amount: 0, target: 'pitch' as const },
         effects: { distortion: 0.18, chorus: { rate: 0.15, depth: 0.003, mix: 0.12 }, delay: { time: 0, feedback: 0, mix: 0 } }
     },
     bass_rock_pick: {
@@ -189,7 +206,7 @@ export const BASS_PRESETS: Record<string, BassPreset> = {
         osc: [ { type: 'sawtooth' as const, octave: 0, detune: 0, gain: 0.6 }, { type: 'square' as const, octave: 0, detune: 2, gain: 0.25 }, { type: 'sine' as const, octave: 0, detune: 0, gain: 0.3 }, { type: 'sine' as const, octave: -1, detune: 0, gain: 0.4 } ],
         adsr: { attack: 0.003, decay: 0.2, sustain: 0.6, release: 0.15 },
         filter: { type: 'lowpass' as const, cutoff: 2200, q: 1.0 },
-        lfo: { shape: 'sine', rate: 0, amount: 0, target: 'pitch' },
+        lfo: { shape: 'sine' as const, rate: 0, amount: 0, target: 'pitch' as const },
         effects: { distortion: 0.4, chorus: { rate: 0, depth: 0, mix: 0 }, delay: { time: 0, feedback: 0, mix: 0 } }
     },
     bass_slap: {
@@ -199,7 +216,7 @@ export const BASS_PRESETS: Record<string, BassPreset> = {
         osc: [ { type: 'sawtooth' as const, octave: 0, detune: 0, gain: 0.55 }, { type: 'square' as const, octave: 0, detune: 3, gain: 0.3 }, { type: 'sine' as const, octave: 1, detune: 0, gain: 0.2 }, { type: 'sine' as const, octave: -1, detune: 0, gain: 0.45 } ],
         adsr: { attack: 0.001, decay: 0.15, sustain: 0.4, release: 0.12 },
         filter: { type: 'lowpass' as const, cutoff: 2500, q: 2 },
-        lfo: { shape: 'sine', rate: 0, amount: 0, target: 'pitch' },
+        lfo: { shape: 'sine' as const, rate: 0, amount: 0, target: 'pitch' as const },
         effects: { distortion: 0.25, chorus: { rate: 0, depth: 0, mix: 0 }, delay: { time: 0, feedback: 0, mix: 0 } }
     }
 };

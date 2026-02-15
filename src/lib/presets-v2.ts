@@ -38,6 +38,7 @@ export const V2_PRESETS = {
     adsr: { a: 1.2, d: 2.0, s: 0.8, r: 4.0 },
     lpf: { cutoff: 1400, q: 1.0, mode: '24dB' },
     lfo: { shape: 'sine', rate: 0.15, amount: 500, target: 'filter' },
+    comp: { threshold: -20, ratio: 3, attack: 0.005, release: 0.2, makeup: 5 },
     chorus: { on: true, rate: 0.18, depth: 0.008, mix: 0.45 },
     delay: { on: true, time: 0.55, fb: 0.35, hc: 3500, mix: 0.25 },
     reverbMix: 0.3
@@ -171,11 +172,12 @@ export const V1_TO_V2_PRESET_MAP: Record<string, PresetName> = {
 
 /**
  * #ЗАЧЕМ: Сопоставление V1-имен баса с новыми V2-пресетами.
+ * #ОБНОВЛЕНО (ПЛАН №429): glideBass теперь замещен на bass_ambient для исключения искажений.
  */
 export const BASS_PRESET_MAP: Record<string, keyof typeof BASS_PRESETS> = {
     bass: 'bass_jazz_warm',
     classicBass: 'bass_rock_pick',
-    glideBass: 'bass_trance',
+    glideBass: 'bass_ambient', // SUBSTITUTE for pure sound
     ambientDrone: 'bass_ambient_dark',
     resonantGliss: 'bass_trance_acid',
     hypnoticDrone: 'bass_ambient',
@@ -196,7 +198,7 @@ export const BASS_PRESET_MAP: Record<string, keyof typeof BASS_PRESETS> = {
     bottom_heavy: 'bass_ambient_dark',
     rockBass: 'bass_rock_pick',
     slapBass: 'bass_slap',
-    cs80: 'bass_cs80' // #ЗАЧЕМ: Поддержка басового режима CS80.
+    cs80: 'bass_cs80' 
 };
 
 export function getPreset(name: string): PresetConfig {

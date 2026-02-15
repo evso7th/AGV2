@@ -1,5 +1,4 @@
 
-
 import type { MelodyInstrument, BassInstrument } from "@/types/music";
 
 /**
@@ -62,8 +61,9 @@ export const BASS_PRESET_INFO: Record<string, { description: string; color: stri
   bass_deep_house: { description: 'Warm and groovy bass for deep house.', color: '#9932CC' },
   bass_rock_pick: { description: 'Aggressive picked bass for rock music.', color: '#B22222' },
   bass_slap: { description: 'Bright, percussive slap bass for funk.', color: '#FF4500' },
+  bass_cs80: { description: 'Legendary CS80 pitched down for deep synth bass.', color: '#00ced1' },
   classicBass: { description: 'Classic rock bass sound.', color: '#8B4513' },
-  glideBass: { description: 'Smooth, gliding synth bass.', color: '#4169E1' },
+  glideBass: { description: 'Substituted with Ambient Bass for purity.', color: '#2F4F4F' },
   ambientDrone: { description: 'Deep, evolving drone.', color: '#1A0033' },
   resonantGliss: { description: 'Singing, resonant lead bass.', color: '#8B008B' },
   hypnoticDrone: { description: 'Pulsating, wide drone.', color: '#483D8B' },
@@ -80,13 +80,14 @@ export const SYNTH_PRESETS: Record<string, SynthPreset> = {
     effects: { distortion: 0.05, chorus: { rate: 0, depth: 0, mix: 0 }, delay: { time: 0, feedback: 0, mix: 0 } },
     portamento: 0
   },
+  // #ЗАЧЕМ: Устранение "пердячего" звука.
+  // #ЧТО: glideBass замещен на bass_ambient.
   glideBass: {
-    layers: [{ type: 'triangle', detune: 0, octave: 0, gain: 1.0 }],
-    adsr: { attack: 0.05, decay: 0.1, sustain: 0.9, release: 1.5 },
-    filter: { type: 'lowpass', cutoff: 300, q: 0.8 },
+    layers: [ { type: 'sine', octave: 0, detune: 0, gain: 0.7 }, { type: 'triangle', octave: 0, detune: -3, gain: 0.25 }, { type: 'sine', octave: 1, detune: 5, gain: 0.08 }, { type: 'sine', octave: -1, detune: 0, gain: 0.8 } ],
+    adsr: { attack: 0.3, decay: 0.8, sustain: 0.85, release: 1.5 },
+    filter: { type: 'lowpass', cutoff: 600, q: 0.5 },
     lfo: { shape: 'sine', rate: 0, amount: 0, target: 'pitch' },
-    effects: { distortion: 0, chorus: { rate: 0, depth: 0, mix: 0 }, delay: { time: 0, feedback: 0, mix: 0 } },
-    portamento: 0.03
+    effects: { distortion: 0, chorus: { rate: 0.1, depth: 0.005, mix: 0.25 }, delay: { time: 0.6, feedback: 0.4, mix: 0.2 } }
   },
   ambientDrone: {
     layers: [{ type: 'sine', detune: 4, octave: 0, gain: 1.0 }, { type: 'sine', detune: -4, octave: -1, gain: 0.7 }],
@@ -222,7 +223,7 @@ export const SYNTH_PRESETS: Record<string, SynthPreset> = {
   // --- MELODY/ACCOMPANIMENT PRESETS ---
   organ: { layers: [ { type: 'triangle', detune: 0, octave: 0, gain: 1.0 }, { type: 'triangle', detune: 2, octave: 1, gain: 0.6 }, { type: 'triangle', detune: -2, octave: -1, gain: 0.4 }, ], adsr: { attack: 0.1, decay: 0.1, sustain: 0.9, release: 0.6 }, filter: { type: 'lowpass', cutoff: 2500, q: 2 }, lfo: { shape: 'sine', rate: 5.5, amount: 8, target: 'pitch' }, effects: { distortion: 0, chorus: { rate: 0.3, depth: 0.004, mix: 0.4 }, delay: { time: 0, feedback: 0, mix: 0 } }, },
   synth: { layers: [ { type: 'sawtooth', detune: -6, octave: 0, gain: 1.0 }, { type: 'sawtooth', detune: 6, octave: 0, gain: 0.7 }, { type: 'square', detune: 0, octave: -1, gain: 0.5 }, ], adsr: { attack: 0.05, decay: 0.4, sustain: 0.6, release: 0.8 }, filter: { type: 'lowpass', cutoff: 1800, q: 3.5 }, lfo: { shape: 'sine', rate: 0.5, amount: 400, target: 'filter' }, effects: { distortion: 0.1, chorus: { rate: 0.2, depth: 0.005, mix: 0.5 }, delay: { time: 0.5, feedback: 0.3, mix: 0.3 }, }, },
-  mellotron: { layers: [ { type: 'sawtooth', detune: 0, octave: 0, gain: 1.0 }, { type: 'sine', detune: 5, octave: 0, gain: 0.7 }, ], adsr: { attack: 0.3, decay: 0.2, sustain: 0.9, release: 1.2 }, filter: { type: 'lowpass', cutoff: 2200, q: 1.5 }, lfo: { shape: 'sine', rate: 4.5, amount: 5, target: 'pitch' }, effects: { distortion: 0.05, chorus: { rate: 0.1, depth: 0.001, mix: 0.2 }, delay: { time: 0, feedback: 0, mix: 0 }, }, },
+  mellotron: { layers: [ { type: 'sawtooth', detune: 0, octave: 0, gain: 1.0 }, { type: 'sine', detune: 5, octave: 0, gain: 0.7 }, ], adsr: { attack: 0.3, decay: 0.2, sustain: 0.9, release: 1.0 }, filter: { type: 'lowpass', cutoff: 2200, q: 1.5 }, lfo: { shape: 'sine', rate: 4.5, amount: 5, target: 'pitch' }, effects: { distortion: 0.05, chorus: { rate: 0.1, depth: 0.001, mix: 0.2 }, delay: { time: 0, feedback: 0, mix: 0 }, }, },
   theremin: { layers: [ { type: 'sine', detune: 0, octave: 0, gain: 1.0 }, { type: 'sine', detune: 2, octave: 1, gain: 0.3 }, ], adsr: { attack: 0.4, decay: 0.1, sustain: 1.0, release: 0.6 }, filter: { type: 'lowpass', cutoff: 5000, q: 1 }, lfo: { shape: 'sine', rate: 5, amount: 5, target: 'pitch' }, effects: { distortion: 0, chorus: { rate: 0.2, depth: 0.003, mix: 0.3 }, delay: { time: 0, feedback: 0, mix: 0 }, }, portamento: 0.08 },
   electricGuitar: { layers: [ { type: 'sawtooth', detune: 0, octave: 0, gain: 1.0 }, { type: 'square', detune: 3, octave: 0, gain: 0.6 }, ], adsr: { attack: 0.02, decay: 0.8, sustain: 0.2, release: 1.0 }, filter: { type: 'bandpass', cutoff: 1500, q: 3.5 }, lfo: { shape: 'sine', rate: 0, amount: 0, target: 'pitch' }, effects: { distortion: 0.6, chorus: { rate: 0, depth: 0, mix: 0 }, delay: { time: 0.375, feedback: 0.4, mix: 0.35 }, }, },
   'E-Bells_melody': { layers: [ { type: 'sine', detune: 0, octave: 0, gain: 1.0 } ], adsr: { attack: 0.001, decay: 1.6, sustain: 0.0, release: 1.6 }, filter: { type: 'highpass', cutoff: 800, q: 1 }, lfo: { shape: 'square', rate: 1.4, amount: 20, target: 'pitch' }, effects: { distortion: 0, chorus: { rate: 0, depth: 0, mix: 0 }, delay: { time: 0, feedback: 0, mix: 0 } }, },
@@ -248,4 +249,3 @@ export const SYNTH_PRESETS: Record<string, SynthPreset> = {
   blackAcoustic: { layers: [ { type: 'triangle', detune: 0, octave: 0, gain: 1.0 }, { type: 'noise', detune: 0, octave: 0, gain: 0.15 }, ], adsr: { attack: 0.001, decay: 0.3, sustain: 0.05, release: 0.3 }, filter: { type: 'bandpass', cutoff: 2000, q: 4.0 }, lfo: { shape: 'sine', rate: 0, amount: 0, target: 'pitch' }, effects: { distortion: 0, chorus: { rate: 0.1, depth: 0.001, mix: 0.1 }, delay: { time: 0, feedback: 0, mix: 0 }, }, },
   telecaster: { layers: [ { type: 'sawtooth', detune: -2, octave: 0, gain: 0.7 }, { type: 'square', detune: 2, octave: 0, gain: 0.5 }, ], adsr: { attack: 0.01, decay: 0.4, sustain: 0.5, release: 0.8 }, filter: { type: 'bandpass', cutoff: 2500, q: 3.0 }, lfo: { shape: 'sine', rate: 0, amount: 0, target: 'pitch' }, effects: { distortion: 0.4, chorus: { rate: 0.2, depth: 0.004, mix: 0.3 }, delay: { time: 0.3, feedback: 0.2, mix: 0.15 }, }, },
 };
-
