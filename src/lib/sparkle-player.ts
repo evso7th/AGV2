@@ -1,4 +1,3 @@
-
 import type { Genre, Mood } from '@/types/music';
 
 const SPARKLE_SAMPLES = {
@@ -55,14 +54,6 @@ const SPARKLE_SAMPLES = {
         '/assets/music/droplets/Koto1.ogg',
     ],
     DARK: [
-        '/assets/music/droplets/dark/00_-_Curse_of_Darkness.ogg',
-        '/assets/music/droplets/dark/00_-_Dark_spell_-_2.ogg',
-        '/assets/music/droplets/dark/00_-_Dark_whispers.ogg',
-        '/assets/music/droplets/dark/00_-_Door_to_Darkness.ogg',
-        '/assets/music/droplets/dark/00_-_Multiverse_Gate.ogg',
-        '/assets/music/droplets/dark/00_-_Rumbling_Kick.ogg',
-        '/assets/music/droplets/dark/00_-_The_Darkness_Occupied.ogg',
-        '/assets/music/droplets/dark/00_-_Unholy_Bells.ogg',
         '/assets/music/droplets/dark/01_Synth_2.ogg',
         '/assets/music/droplets/dark/03Rain_On_Mars_Am.ogg',
         '/assets/music/droplets/dark/04In_The_Shadows_Am_70Bpm.ogg',
@@ -75,12 +66,6 @@ const SPARKLE_SAMPLES = {
         '/assets/music/droplets/dark/27_SFX_2.ogg',
         '/assets/music/droplets/dark/28_SFX.ogg',
         '/assets/music/droplets/dark/50_SFX_2.ogg',
-        '/assets/music/droplets/dark/683625__dneproman__agony-labyrinth.ogg',
-        '/assets/music/droplets/dark/683626__dneproman__cave-breath.ogg',
-        '/assets/music/droplets/dark/683627__dneproman__dark-spell-1.ogg',
-        '/assets/music/droplets/dark/683629__dneproman__dark-whispers.ogg',
-        '/assets/music/droplets/dark/683631__dneproman__multiverse-gate.ogg',
-        '/assets/music/droplets/dark/683636__dneproman__urse-of-darkness.ogg',
         '/assets/music/droplets/dark/Analog_Stab_Cm_70Bpm.ogg',
         '/assets/music/droplets/dark/Big_Synth_Pad_Hit_Cm_70Bpm.ogg',
         '/assets/music/droplets/dark/Cosmic_FX_C_70Bpm.ogg',
@@ -109,7 +94,6 @@ const SPARKLE_SAMPLES = {
         '/assets/music/droplets/light/ElectroKettle_SP_01.ogg',
         '/assets/music/droplets/light/Bpm174_C_PorsonPhaser_Pad.ogg',
         '/assets/music/droplets/light/Bpm174_E_Temple_Synth.ogg',
-        //'/assets/music/droplets/light/Bpm174_F_MarkIn_Synth.ogg',
         '/assets/music/droplets/light/Bpm174_E_MotiveStab_Synth.ogg',
         '/assets/music/droplets/light/Bpm174_E_OurSoul_Pad.ogg',
         '/assets/music/droplets/light/Bpm174_B_Heart_Pad.ogg',
@@ -209,7 +193,7 @@ export class SparklePlayer {
         this.audioContext = audioContext;
         this.gainNode = this.audioContext.createGain();
         this.preamp = this.audioContext.createGain();
-        // #ЗАЧЕМ: Системное снижение громкости в 3 раза по требованию пользователя.
+        // #ЗАЧЕМ: Системное снижение громкости в 3 раза по требованию пользователя (ПЛАН №414).
         // #ЧТО: gain изменен с 2.0 на 0.66.
         this.preamp.gain.value = 0.66; 
         this.preamp.connect(this.gainNode);
@@ -278,45 +262,14 @@ export class SparklePlayer {
         } else if (category === 'promenade' && this.promenadeBuffers.length > 0) {
             samplePool = this.promenadeBuffers;
             poolName = 'PROMENADE';
+        } else if (genre === 'ambient') {
+            // #ЗАЧЕМ: Строгое ограничение пулов для Амбиента.
+            // #ЧТО: Используются только AMBIENT_COMMON и DARK.
+            samplePool = rand < 0.7 ? this.ambientCommonBuffers : this.darkBuffers;
+            poolName = rand < 0.7 ? 'AMBIENT_COMMON' : 'DARK';
         } else if (mood === 'dark' || mood === 'anxious') {
             samplePool = this.darkBuffers;
             poolName = 'DARK';
-        } else if (genre === 'ambient') {
-            switch (mood) {
-                case 'calm':
-                    samplePool = rand < 0.9 ? this.ambientCommonBuffers : this.lightBuffers;
-                    poolName = rand < 0.9 ? 'AMBIENT_COMMON' : 'LIGHT';
-                    break;
-                case 'contemplative':
-                    samplePool = rand < 0.8 ? this.ambientCommonBuffers : this.lightBuffers;
-                    poolName = rand < 0.8 ? 'AMBIENT_COMMON' : 'LIGHT';
-                    break;
-                case 'dreamy':
-                    samplePool = rand < 0.7 ? this.ambientCommonBuffers : this.lightBuffers;
-                    poolName = rand < 0.7 ? 'AMBIENT_COMMON' : 'LIGHT';
-                    break;
-                case 'joyful':
-                    samplePool = rand < 0.2 ? this.ambientCommonBuffers : this.lightBuffers;
-                    poolName = rand < 0.2 ? 'AMBIENT_COMMON' : 'LIGHT';
-                    break;
-                case 'enthusiastic':
-                    samplePool = rand < 0.3 ? this.ambientCommonBuffers : this.lightBuffers;
-                    poolName = rand < 0.3 ? 'AMBIENT_COMMON' : 'LIGHT';
-                    break;
-                case 'epic':
-                    if (rand < 0.4) { samplePool = this.lightBuffers; poolName = 'LIGHT'; }
-                    else if (rand < 0.8) { samplePool = this.ambientCommonBuffers; poolName = 'AMBIENT_COMMON'; }
-                    else { samplePool = this.darkBuffers; poolName = 'DARK'; }
-                    break;
-                case 'melancholic':
-                    if (rand < 0.5) { samplePool = this.ambientCommonBuffers; poolName = 'AMBIENT_COMMON'; }
-                    else if (rand < 0.8) { samplePool = this.lightBuffers; poolName = 'LIGHT'; }
-                    else { samplePool = this.darkBuffers; poolName = 'DARK'; }
-                    break;
-                default:
-                    samplePool = this.ambientCommonBuffers;
-                    poolName = 'AMBIENT_COMMON';
-            }
         } else {
             samplePool = this.rootBuffers;
             poolName = 'ROOT';

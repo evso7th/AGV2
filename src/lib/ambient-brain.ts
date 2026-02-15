@@ -1,10 +1,8 @@
-
 /**
- * #ЗАЧЕМ: Суверенный Мозг Амбиента v7.0 — "The Harmony Dynamics Update".
- * #ЧТО: 1. Внедрена интеллектуальная гармония: скрипки (High Tension) / гитара (Low Tension).
- *       2. Гармония вступает не каждый такт (60% шанс) для создания пространства.
- *       3. Voice SFX удалены в меланхолии, заменены на лазеры.
- *       4. Громкость скрипок снижена на уровне весов.
+ * #ЗАЧЕМ: Суверенный Мозг Амбиента v7.1 — "The Tension Development Update".
+ * #ЧТО: 1. Развитие тем (пассажи vs легаси) теперь напрямую зависит от Tension.
+ *       2. Повествовательный бас усилен (weight 0.8) для всех амбиентов.
+ *       3. Внедрена гарантия непрерывности развития (Anti-Stagnation).
  */
 
 import type { 
@@ -112,8 +110,13 @@ export class AmbientBrain {
         this.applySpectralAtom(epoch, waves[3]);
         this.updateMoodAxes(epoch, localTension);
 
+        // #ЗАЧЕМ: Динамическое развитие тем в зависимости от Tension.
+        // #ЧТО: Чем выше Tension, тем чаще и быстрее вступают новые темы и пассажи.
         if (epoch >= this.soloistBusyUntilBar) {
-            const shouldStartTheme = this.random.next() < (0.3 + localTension * 0.4);
+            // Вероятность новой темы растет с Tension
+            const developmentChance = 0.4 + localTension * 0.5;
+            const shouldStartTheme = this.random.next() < developmentChance;
+            
             if (shouldStartTheme) {
                 let groupKey = dna.ambientLegacyGroup || 'ENO';
                 if (this.mood === 'melancholic' && this.random.next() < 0.7) {
@@ -139,7 +142,9 @@ export class AmbientBrain {
                     startBar: epoch,
                     endBar: epoch + phraseBars
                 };
-                this.soloistBusyUntilBar = epoch + phraseBars + 1;
+                // Если напряжение высокое, пауза между темами короче
+                const breathBars = localTension > 0.7 ? 0 : 1;
+                this.soloistBusyUntilBar = epoch + phraseBars + breathBars;
             } else {
                 this.currentTheme = null;
             }
@@ -148,11 +153,16 @@ export class AmbientBrain {
         const hints = this.orchestrate(localTension, navInfo, epoch, dna);
         const events: FractalEvent[] = [];
 
+        // Гарантия непрерывности (Аккомпанемент + Бас всегда в строю)
+        hints.accompaniment = hints.accompaniment || 'synth_ambient_pad_lush';
+        hints.bass = hints.bass || 'bass_jazz_warm';
+
         if (hints.accompaniment) {
             events.push(...this.renderPad(currentChord, epoch, hints.accompaniment as string));
         }
 
         if (hints.bass) {
+            // #ЗАЧЕМ: Повествовательный бас теперь всегда активен при наличии темы.
             if (this.currentTheme && epoch < this.currentTheme.endBar) {
                 events.push(...this.renderNarrativeBass(currentChord, epoch, this.currentTheme));
             } else {
@@ -162,10 +172,17 @@ export class AmbientBrain {
 
         if (hints.melody) {
             const timbre = hints.melody as string;
-            if (this.currentTheme && epoch < this.currentTheme.endBar) {
+            // #ЗАЧЕМ: Органные пассажи при высоком напряжении.
+            const isHighTension = localTension > 0.7;
+            const isOrgan = timbre.includes('organ');
+
+            if (isHighTension && isOrgan) {
+                events.push(...this.renderOrganArpeggio(currentChord, epoch, localTension));
+            } else if (this.currentTheme && epoch < this.currentTheme.endBar) {
                 events.push(...this.renderThemeMelody(currentChord, epoch, localTension, hints, dna));
             } else if (epoch >= this.soloistBusyUntilBar - 1 && (timbre.includes('organ') || timbre.includes('synth'))) {
-                events.push(...this.renderOrganArpeggio(currentChord, epoch, localTension));
+                // Фоновое заполнение если нет темы
+                events.push(...this.renderOrganArpeggio(currentChord, epoch, localTension * 0.5));
             }
         }
 
@@ -173,7 +190,6 @@ export class AmbientBrain {
             events.push(...this.renderPianoDrops(currentChord, epoch, localTension));
         }
 
-        // #ЗАЧЕМ: Интеллектуальная оркестровка гармонии (ПЛАН №413).
         if (hints.harmony) {
             events.push(...this.renderOrchestralHarmony(currentChord, epoch, hints, localTension));
         }
@@ -267,7 +283,7 @@ export class AmbientBrain {
                 note: Math.max(chord.rootNote - 12, this.BASS_FLOOR),
                 time: 0,
                 duration: 4.0,
-                weight: 0.6,
+                weight: 0.8, // Increased for audibility
                 technique: 'pluck',
                 dynamics: 'p',
                 phrasing: 'legato',
@@ -282,7 +298,7 @@ export class AmbientBrain {
             note: Math.max(chord.rootNote - 12 + (DEGREE_TO_SEMITONE[primaryNote.deg] || 0), this.BASS_FLOOR),
             time: (primaryNote.t % 12) / 3,
             duration: 4.0,
-            weight: 0.7,
+            weight: 0.85, // Increased weight for "Shadow" effect
             technique: 'pluck',
             dynamics: 'p',
             phrasing: 'legato',
@@ -318,8 +334,10 @@ export class AmbientBrain {
         const isMinor = chord.chordType === 'minor' || chord.chordType === 'dominant';
         const intervals = isMinor ? [0, 3, 7, 10, 12, 15, 19, 24] : [0, 4, 7, 11, 12, 16, 19, 24];
         const events: FractalEvent[] = [];
-        const count = 12; 
-        const timeStep = 0.25; 
+        
+        // #ЗАЧЕМ: Пассажи становятся плотнее и быстрее при росте Tension.
+        const count = tension > 0.8 ? 16 : 12; 
+        const timeStep = tension > 0.8 ? 0.1875 : 0.25; // 1/16 vs 1/12
 
         for (let i = 0; i < count; i++) {
             const idx = calculateMusiNum(epoch + i, 3, this.seed, intervals.length);
@@ -328,7 +346,7 @@ export class AmbientBrain {
                 note: Math.min(root + intervals[idx], this.MELODY_CEILING),
                 time: i * timeStep,
                 duration: 1.5, 
-                weight: 0.45 * tension * (0.9 + this.random.next() * 0.2),
+                weight: 0.5 * tension * (0.9 + this.random.next() * 0.2),
                 technique: 'pick',
                 dynamics: 'p',
                 phrasing: 'legato',
@@ -379,10 +397,7 @@ export class AmbientBrain {
         return events;
     }
 
-    // #ЗАЧЕМ: Интеллектуальная оркестровка гармонии (ПЛАН №413).
-    // #ЧТО: 1. Шанс появления гармонии 60%. 2. Смена инструмента по Tension.
     private renderOrchestralHarmony(chord: GhostChord, epoch: number, hints: InstrumentHints, tension: number): FractalEvent[] {
-        // Проверка на "пустоту" (не в каждый такт)
         if (this.mood === 'melancholic' && calculateMusiNum(epoch, 3, this.seed, 10) > 6) {
             delete hints.harmony;
             return [];
@@ -393,7 +408,6 @@ export class AmbientBrain {
         const root = chord.rootNote; 
         const isMinor = chord.chordType === 'minor' || chord.chordType === 'diminished';
         
-        // Решение по тембру для Меланхолии
         if (this.mood === 'melancholic') {
             if (isHighTension) {
                 hints.harmony = 'violin';
@@ -401,7 +415,7 @@ export class AmbientBrain {
                 hints.harmony = 'guitarChords';
             } else {
                 delete hints.harmony;
-                return []; // Мелкое окно тишины между состояниями
+                return []; 
             }
         }
 
@@ -410,9 +424,8 @@ export class AmbientBrain {
         const chordName = isMinor ? 'Am' : 'E';
         
         return notes.map((n, i) => {
-            // #ЗАЧЕМ: Радикальное снижение громкости скрипок (ПЛАН №413).
             const isViolin = timbre === 'violin';
-            const baseWeight = isViolin ? 0.12 : 0.45; // Скрипки 0.12, гитара 0.45
+            const baseWeight = isViolin ? 0.12 : 0.45;
 
             return {
                 type: 'harmony',
@@ -444,8 +457,6 @@ export class AmbientBrain {
     }
 
     private renderSfx(tension: number): FractalEvent[] {
-        // #ЗАЧЕМ: Purge Voice SFX.
-        // #ЧТО: В меланхолии используется только категория 'laser'.
         const category = this.mood === 'melancholic' ? 'laser' : 'voice';
 
         return [{
@@ -492,7 +503,7 @@ export class AmbientBrain {
             }
         }
 
-        const hatProb = (0.05 + (this.pulse * 0.15)) * (1.0 - this.fog * 0.5); 
+        const hatProb = (0.05 + (this.pulse * 0.10)) * (1.0 - this.fog * 0.6); 
         [1.33, 2.66, 3.66].forEach(t => { 
             if (this.random.next() < hatProb) {
                 events.push({

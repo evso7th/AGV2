@@ -126,7 +126,7 @@ export class SfxSynthManager {
         this.destination = destination;
 
         this.preamp = this.context.createGain();
-        // #ЗАЧЕМ: Системное снижение громкости в 3 раза по требованию пользователя.
+        // #ЗАЧЕМ: Системное снижение громкости в 3 раза по требованию пользователя (ПЛАН №414).
         // #ЧТО: gain изменен с 0.5 на 0.16.
         this.preamp.gain.value = 0.16;
         this.preamp.connect(this.destination);
@@ -220,9 +220,8 @@ export class SfxSynthManager {
         
         const rand = Math.random();
         if (genre === 'blues') {
-            // #ЗАЧЕМ: Реформа SFX для блюза. Уменьшение голоса, увеличение атмосферы.
-            if (rand < 0.1) return 'voice'; // Снижено с 0.6
-            if (rand < 0.7) return 'dark';  // Приоритет dark
+            if (rand < 0.1) return 'voice'; 
+            if (rand < 0.7) return 'dark';  
             return 'common';
         }
         if (genre === 'trance' || genre === 'house' || genre === 'progressive') {
