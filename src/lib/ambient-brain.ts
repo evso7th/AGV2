@@ -1,8 +1,7 @@
 /**
- * #ЗАЧЕМ: Суверенный Мозг Амбиента v6.5 — "Spectral Hygiene & Enriched Percussion".
- * #ЧТО: 1. Внедрена динамическая фильтрация мелодии (solistCutoff) для устранения "зудящих" гармоник.
- *       2. Радикально усилена ударная секция: резонансный кик, мягкие томы, ghost hats и wet ride.
- *       3. Реализована поддержка органической перкуссии (PVC Tubes, Bells).
+ * #ЗАЧЕМ: Суверенный Мозг Амбиента v6.6 — "The Organic Percussion Expansion".
+ * #ЧТО: 1. Внедрена поддержка 15 дополнительных органических перкуссионных элементов (perc-001 - perc-015).
+ *       2. Расширен пул тактильных деталей в методе renderAmbientPercussion.
  */
 
 import type { 
@@ -42,7 +41,7 @@ export class AmbientBrain {
     private fog: number = 0.3;
     private pulse: number = 0.15;
     private depth: number = 0.4;
-    private solistCutoff: number = 2000; // #ЗАЧЕМ: Глобальный фильтр защиты слуха.
+    private solistCutoff: number = 2000; 
 
     private activatedParts: Set<InstrumentPart> = new Set();
     private activeTimbres: Partial<Record<InstrumentPart, string>> = {};
@@ -203,7 +202,7 @@ export class AmbientBrain {
         let currentInstructions: Partial<Record<InstrumentPart, any>> | undefined;
 
         if (part.id === 'INTRO' && this.introLotteryMap.size > 0) {
-            const partBars = navInfo.currentPartEndBar - navInfo.currentPartStartBar + 1;
+            const partBars = navInfo.currentPartEndBar - navInfo.currentPartStartStartBar + 1;
             const progress = (epoch - navInfo.currentPartStartBar) / (partBars || 1);
             const stageIndex = Math.floor(progress * stages!.length);
             currentInstructions = this.introLotteryMap.get(Math.min(stageIndex, stages!.length - 1));
@@ -264,7 +263,7 @@ export class AmbientBrain {
                 technique: 'pluck',
                 dynamics: 'p',
                 phrasing: 'legato',
-                params: { filterCutoff: 400 } // #ЗАЧЕМ: Ультра-глубокая тень.
+                params: { filterCutoff: 400 } 
             }];
         }
 
@@ -301,7 +300,7 @@ export class AmbientBrain {
                 technique: n.tech || 'pick',
                 dynamics: 'p',
                 phrasing: 'legato',
-                params: { filterCutoff: this.solistCutoff, barCount: epoch } // #ЗАЧЕМ: Спектральная гигиена.
+                params: { filterCutoff: this.solistCutoff, barCount: epoch } 
             };
         });
     }
@@ -498,13 +497,15 @@ export class AmbientBrain {
             });
         }
 
-        // 5. Organic Details (Tubes & Bells)
-        if (this.random.next() < 0.4) {
-            const percType = this.random.next() < 0.4 ? 'drum_bongo_pvc-tube-01' : 
-                             (this.random.next() < 0.7 ? 'drum_Bell_-_Ambient' : 'drum_Bell_-_Echo');
+        // 5. Organic Details (Tubes, Bells & Perks)
+        // #ЗАЧЕМ: Расширение тактильного пространства за счет 15 дополнительных перкуссионных слоев.
+        if (this.random.next() < 0.5) {
+            const perkIdx = (1 + this.random.nextInt(15)).toString().padStart(3, '0');
+            const percType = this.random.next() < 0.3 ? `perc-${perkIdx}` : 
+                             (this.random.next() < 0.6 ? 'drum_bongo_pvc-tube-01' : 'drum_Bell_-_Echo');
             events.push({
                 type: percType as any,
-                note: 60, time: this.random.next() * 4, duration: 4.0, weight: 0.7,
+                note: 60, time: this.random.next() * 4, duration: 4.0, weight: 0.6,
                 technique: 'hit', dynamics: 'p', phrasing: 'staccato'
             });
         }
@@ -544,8 +545,6 @@ export class AmbientBrain {
         this.depth = Math.max(0, Math.min(1, 0.4 + (tension * 0.45)));
         this.pulse = Math.max(0, Math.min(1, 0.15 + (tension * 0.35)));
         
-        // #ЗАЧЕМ: Спектральная гигиена. Закрытие фильтра при росте тумана.
-        // #ЧТО: CUTOFF = 800 - 5300 Hz. Чем выше fog, тем ниже cutoff.
         this.solistCutoff = 4500 * (1 - Math.pow(this.fog, 1.2)) + 800;
     }
 
