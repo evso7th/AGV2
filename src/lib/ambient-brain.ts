@@ -1,8 +1,8 @@
 /**
- * #ЗАЧЕМ: Суверенный Мозг Амбиента v5.0 — "Melodic Narration Act".
- * #ЧТО: 1. Внедрена система управления длинными фразами (2-4 такта).
- *       2. Реализована логика "Вдоха" (Breathing): после фразы солист делает паузу.
- *       3. Динамическая модуляция веса для имитации человеческого выдоха.
+ * #ЗАЧЕМ: Суверенный Мозг Амбиента v6.0 — "The Narrative Bass Act".
+ * #ЧТО: 1. Внедрена синхронизация Баса и Мелодии через общую тему (currentTheme).
+ *       2. Реализован метод "Гармонической Тени": бас следует за опорными точками лика.
+ *       3. Ансамбль теперь действует как единый организм с общим циклом "Тема -> Вдох".
  */
 
 import type { 
@@ -48,9 +48,12 @@ export class AmbientBrain {
     private usedLickIndices: Map<string, number[]> = new Map();
     private introLotteryMap: Map<number, Partial<Record<InstrumentPart, any>>> = new Map();
 
-    // #ЗАЧЕМ: Состояние занятости солиста.
     private soloistBusyUntilBar: number = -1;
     private readonly MELODY_CEILING = 73;
+    private readonly BASS_FLOOR = 24;
+
+    // #ЗАЧЕМ: Хранение текущей темы для синхронизации ансамбля.
+    private currentTheme: { phrase: BluesSoloPhrase, startBar: number, endBar: number } | null = null;
 
     constructor(seed: number, mood: Mood) {
         this.seed = seed;
@@ -111,6 +114,37 @@ export class AmbientBrain {
         this.applySpectralAtom(epoch, waves[3]);
         this.updateMoodAxes(epoch, localTension);
 
+        // #ЗАЧЕМ: Управление жизненным циклом темы ансамбля.
+        if (epoch >= this.soloistBusyUntilBar) {
+            const shouldStartTheme = this.random.next() < (0.3 + localTension * 0.4);
+            if (shouldStartTheme) {
+                const groupKey = dna.ambientLegacyGroup || 'ENO';
+                const group = AMBIENT_LEGACY[groupKey];
+                if (!this.usedLickIndices.has(groupKey)) this.usedLickIndices.set(groupKey, []);
+                const used = this.usedLickIndices.get(groupKey)!;
+
+                let lickIdx = calculateMusiNum(epoch, 3, this.seed, group.licks.length);
+                if (used.length < group.licks.length) {
+                    while (used.includes(lickIdx)) { lickIdx = (lickIdx + 1) % group.licks.length; }
+                    used.push(lickIdx);
+                } else { used.splice(0, Math.floor(used.length / 2)); }
+
+                const lick = group.licks[lickIdx];
+                const phraseTicks = Math.max(...lick.phrase.map(n => n.t + n.d));
+                const phraseBars = Math.ceil((phraseTicks + 1) / 12);
+                
+                this.currentTheme = {
+                    phrase: lick.phrase,
+                    startBar: epoch,
+                    endBar: epoch + phraseBars
+                };
+                this.soloistBusyUntilBar = epoch + phraseBars + 1; // Тема + 1 такт вдоха
+                console.log(`%c[AmbientBrain] Ensemble starts theme "${lick.tags.join(', ')}". Busy until bar: ${this.soloistBusyUntilBar}`, 'color: #00BFFF');
+            } else {
+                this.currentTheme = null;
+            }
+        }
+
         const hints = this.orchestrate(localTension, navInfo, epoch, dna);
         const events: FractalEvent[] = [];
 
@@ -119,32 +153,22 @@ export class AmbientBrain {
         }
 
         if (hints.bass) {
-            events.push(...this.renderRhythmicBass(currentChord, localTension, hints.bass as string, epoch));
+            // #ЗАЧЕМ: Синхронизация баса с мелодической темой.
+            if (this.currentTheme && epoch < this.currentTheme.endBar) {
+                events.push(...this.renderNarrativeBass(currentChord, epoch, this.currentTheme));
+            } else {
+                events.push(...this.renderRhythmicBass(currentChord, localTension, hints.bass as string, epoch));
+            }
         }
 
         if (hints.melody) {
             const timbre = hints.melody as string;
-            // #ЗАЧЕМ: Реализация логики "Вдоха". Солист вступает только если не занят фразой.
-            if (epoch >= this.soloistBusyUntilBar) {
-                // Шанс вступления зависит от Tension. При высоком Tension - чаще.
-                const shouldPlay = this.random.next() < (0.3 + localTension * 0.4);
-                if (shouldPlay) {
-                    if (timbre.includes('organ')) {
-                        events.push(...this.renderOrganArpeggio(currentChord, epoch, localTension));
-                        this.soloistBusyUntilBar = epoch + 1; // Орган пока по-прежнему на 1 такт
-                    } else {
-                        const legacyEvents = this.renderLegacyMelody(currentChord, epoch, localTension, hints, dna);
-                        events.push(...legacyEvents);
-                        
-                        // Определяем длительность фразы в тактах (по макс времени тика)
-                        const maxTick = Math.max(...legacyEvents.map(e => e.time * 3));
-                        const phraseBars = Math.ceil((maxTick + 1) / 12);
-                        
-                        // Солист занят фразой + 1 такт на "вдох" (тишину)
-                        this.soloistBusyUntilBar = epoch + phraseBars + 1;
-                        console.log(`%c[AmbientBrain] Soloist starts theme. Busy until bar: ${this.soloistBusyUntilBar}`, 'color: #DA70D6');
-                    }
-                }
+            if (this.currentTheme && epoch < this.currentTheme.endBar) {
+                const legacyEvents = this.renderThemeMelody(currentChord, epoch, localTension, hints, dna);
+                events.push(...legacyEvents);
+            } else if (epoch >= this.soloistBusyUntilBar - 1 && timbre.includes('organ')) {
+                // Органное наполнение в моменты затишья
+                events.push(...this.renderOrganArpeggio(currentChord, epoch, localTension));
             }
         }
 
@@ -238,35 +262,59 @@ export class AmbientBrain {
         return hints;
     }
 
-    private renderLegacyMelody(chord: GhostChord, epoch: number, tension: number, hints: InstrumentHints, dna: SuiteDNA): FractalEvent[] {
-        const groupKey = dna.ambientLegacyGroup || 'ENO';
-        const group = AMBIENT_LEGACY[groupKey];
-        (hints as any).melody = group.preferredInstrument;
+    // #ЗАЧЕМ: Рендеринг баса, который следует за мелодической темой.
+    private renderNarrativeBass(chord: GhostChord, epoch: number, theme: { phrase: any[], startBar: number }): FractalEvent[] {
+        const events: FractalEvent[] = [];
+        const root = Math.max(chord.rootNote - 12, this.BASS_FLOOR);
+        const barOffset = (epoch - theme.startBar) * 12;
 
-        if (!this.usedLickIndices.has(groupKey)) this.usedLickIndices.set(groupKey, []);
-        const used = this.usedLickIndices.get(groupKey)!;
+        // Извлекаем ноты темы, попадающие в текущий такт
+        const barNotes = theme.phrase.filter(n => n.t >= barOffset && n.t < barOffset + 12);
 
-        let lickIdx = calculateMusiNum(epoch, 3, this.seed, group.licks.length);
-        if (used.length < group.licks.length) {
-            while (used.includes(lickIdx)) {
-                lickIdx = (lickIdx + 1) % group.licks.length;
-            }
-            used.push(lickIdx);
-        } else {
-            used.splice(0, Math.floor(used.length / 2));
+        if (barNotes.length === 0) {
+            // Если в этом такте темы нет нот — держим корень
+            return [{
+                type: 'bass',
+                note: root,
+                time: 0,
+                duration: 4.0,
+                weight: 0.6,
+                technique: 'pluck',
+                dynamics: 'p',
+                phrasing: 'legato'
+            }];
         }
 
-        const lick = group.licks[lickIdx];
+        // Берем только опорные ноты (например, первую в такте или на сильных долях)
+        const primaryNote = barNotes.sort((a,b) => a.t - b.t)[0];
+        
+        return [{
+            type: 'bass',
+            note: Math.max(chord.rootNote - 12 + (DEGREE_TO_SEMITONE[primaryNote.deg] || 0), this.BASS_FLOOR),
+            time: (primaryNote.t % 12) / 3,
+            duration: 4.0,
+            weight: 0.7,
+            technique: 'pluck',
+            dynamics: 'p',
+            phrasing: 'legato'
+        }];
+    }
 
-        return lick.phrase.map(n => {
-            // #ЗАЧЕМ: Имитация затухающего дыхания.
-            // #ЧТО: Чем позже нота во фразе, тем меньше её вес.
-            const breathDecay = 1.0 - (n.t / 60); // Плавный спад громкости к концу 4 тактов
-            
+    private renderThemeMelody(chord: GhostChord, epoch: number, tension: number, hints: InstrumentHints, dna: SuiteDNA): FractalEvent[] {
+        if (!this.currentTheme) return [];
+        
+        const groupKey = dna.ambientLegacyGroup || 'ENO';
+        const group = AMBIENT_LEGACY[groupKey];
+        const barOffset = (epoch - this.currentTheme.startBar) * 12;
+        
+        const barNotes = this.currentTheme.phrase.filter(n => n.t >= barOffset && n.t < barOffset + 12);
+
+        return barNotes.map(n => {
+            const breathDecay = 1.0 - (n.t / 60); 
             return {
                 type: 'melody',
                 note: Math.min(chord.rootNote + 36 + group.registerBias + (DEGREE_TO_SEMITONE[n.deg] || 0), this.MELODY_CEILING),
-                time: n.t / 3,
+                time: (n.t % 12) / 3,
                 duration: (n.d / 3) * 1.6, 
                 weight: (0.75 * breathDecay * (1 - this.fog * 0.2)) * (0.9 + this.random.next() * 0.2),
                 technique: n.tech || 'pick',
@@ -302,7 +350,7 @@ export class AmbientBrain {
     }
 
     private renderRhythmicBass(chord: GhostChord, tension: number, timbre: string, epoch: number): FractalEvent[] {
-        const root = Math.max(chord.rootNote - 12, 24); 
+        const root = Math.max(chord.rootNote - 12, this.BASS_FLOOR); 
         const isMinor = chord.chordType === 'minor' || chord.chordType === 'diminished';
         
         const pattern = [
