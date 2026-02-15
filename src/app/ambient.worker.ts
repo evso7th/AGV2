@@ -1,11 +1,11 @@
 /**
- * @file AuraGroove Music Worker (Architecture: "The Chain of Suites")
- * #ОБНОВЛЕНО (ПЛАН №430): Дефолтный бас изменен на bass_jazz_warm для исключения glideBass.
+ * @file AuraGroove Music Worker (Architecture: "The Continuous Journey")
+ * #ОБНОВЛЕНО (ПЛАН №431): Логика PROMENADE/BRIDGE удалена. Бесконечная игра MAIN сюит.
  */
 import type { WorkerSettings, ScoreName, Mood, Genre, InstrumentPart } from '@/types/music';
 import { FractalMusicEngine } from '@/lib/fractal-music-engine';
 import type { FractalEvent, InstrumentHints, NavigationInfo } from '@/types/fractal';
-import { getBridgeBlueprint, getBlueprint } from '@/lib/blueprints';
+import { getBlueprint } from '@/lib/blueprints';
 
 let fractalMusicEngine: FractalMusicEngine | undefined;
 
@@ -21,7 +21,7 @@ const Scheduler = {
     loopId: null as any,
     isRunning: false,
     barCount: 0,
-    suiteType: 'PROMENADE' as 'MAIN' | 'BRIDGE' | 'PROMENADE',
+    suiteType: 'MAIN' as 'MAIN' | 'BRIDGE' | 'PROMENADE',
     
     settings: {
         bpm: 75,
@@ -29,7 +29,6 @@ const Scheduler = {
         genre: 'ambient' as Genre,
         drumSettings: { pattern: 'composer', enabled: true, kickVolume: 1.0 },
         instrumentSettings: { 
-            // #ЗАЧЕМ: Исключение glideBass из стартовых настроек.
             bass: { name: "bass_jazz_warm", volume: 0.7, technique: 'portamento' },
             melody: { name: "acousticGuitarSolo", volume: 0.8 },
             accompaniment: { name: "guitarChords", volume: 0.7 },
@@ -52,14 +51,10 @@ const Scheduler = {
     },
 
     initializeEngine(settings: WorkerSettings, force: boolean = false) {
-        let blueprint;
-        if (this.suiteType === 'BRIDGE' || this.suiteType === 'PROMENADE') {
-            blueprint = getBridgeBlueprint(settings.mood);
-            console.log(`%c${getTimestamp()} [Chain] Loading BRIDGE Blueprint: ${blueprint.id}`, 'color: #00BFFF; font-weight:bold;');
-        } else {
-            blueprint = getBlueprint(settings.genre, settings.mood);
-            console.log(`%c${getTimestamp()} [Chain] Loading MAIN Blueprint: ${blueprint.id}`, 'color: #FFD700; font-weight:bold;');
-        }
+        // #ЗАЧЕМ: Переход к модели непрерывных основных сюит.
+        // #ЧТО: Логика BRIDGE/PROMENADE удалена. Всегда загружаем MAIN Blueprint.
+        const blueprint = getBlueprint(settings.genre, settings.mood);
+        console.log(`%c${getTimestamp()} [Engine] Loading MAIN Blueprint: ${blueprint.id}`, 'color: #FFD700; font-weight:bold;');
 
         const newEngine = new FractalMusicEngine({
             ...settings,
@@ -88,7 +83,7 @@ const Scheduler = {
     start() {
         if (this.isRunning) return;
         this.isRunning = true;
-        this.suiteType = 'PROMENADE'; 
+        this.suiteType = 'MAIN'; 
         this.initializeEngine(this.settings, true);
 
         const loop = () => {
@@ -126,7 +121,7 @@ const Scheduler = {
         const wasRunning = this.isRunning;
         if (wasRunning) this.stop();
         this.settings.seed = Date.now();
-        this.suiteType = 'PROMENADE'; 
+        this.suiteType = 'MAIN'; 
         this.initializeEngine(this.settings, true); 
         if (wasRunning) this.start();
     },
@@ -152,16 +147,11 @@ const Scheduler = {
     tick() {
         if (!this.isRunning || !fractalMusicEngine) return;
 
+        // #ЗАЧЕМ: Реализация бесконечной цепи основных сюит.
+        // #ЧТО: При завершении сюиты генерируется новый сид и немедленно запускается новая MAIN пьеса.
         if (this.barCount >= fractalMusicEngine.navigator!.totalBars) {
-             console.log(`%c${getTimestamp()} [Chain] Suite ${this.suiteType} ended. Transitioning...`, 'color: #4ade80; font-weight: bold;');
-             
-             if (this.suiteType === 'BRIDGE' || this.suiteType === 'PROMENADE') {
-                 this.suiteType = 'MAIN';
-             } else {
-                 this.suiteType = 'BRIDGE';
-                 this.settings.seed = Date.now(); 
-             }
-             
+             console.log(`%c${getTimestamp()} [Chain] Suite ended. Seamlessly starting new piece...`, 'color: #4ade80; font-weight: bold;');
+             this.settings.seed = Date.now(); 
              this.initializeEngine(this.settings, true);
         }
 
