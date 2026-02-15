@@ -10,7 +10,7 @@ import type { CS80GuitarSampler } from './cs80-guitar-sampler';
 
 /**
  * A V2 manager for melody and bass parts.
- * Updated to support HYBRID synthesis and new CS80 Sampler for both parts.
+ * Updated to support HYBRID synthesis and dynamic spectral hygiene.
  */
 export class MelodySynthManagerV2 {
     private audioContext: AudioContext;
@@ -99,12 +99,8 @@ export class MelodySynthManagerV2 {
         
         if (notesToPlay.length === 0) return;
 
-        // #ЗАЧЕМ: Реализация гибридного триггера и активация Surgical Cut.
         const isGlitchNote = notesToPlay.some(n => n.technique === 'harm');
 
-        // #ЗАЧЕМ: Отмена глобальной "кликовости" (План №285).
-        // #ЧТО: Теперь сэмплер-транзиент вызывается ТОЛЬКО если это глюк. 
-        //      В остальных случаях играет только "тело" от фабрики.
         if (isGlitchNote && this.partName === 'melody' && (instrumentHint === 'guitar_shineOn' || instrumentHint === 'guitar_muffLead')) {
             this.telecasterSampler.schedule(notesToPlay, barStartTime, tempo, true); 
         }
@@ -159,6 +155,14 @@ export class MelodySynthManagerV2 {
         
         notesToPlay.forEach(note => {
             const noteOnTime = barStartTime + note.time;
+            
+            // #ЗАЧЕМ: Применение динамической спектральной гигиены (Plan 408).
+            // #ЧТО: Команды фильтрации передаются в инструмент в начале каждой фразы.
+            if (note.params?.filterCutoff && this.synth.setParam) {
+                this.synth.setParam('filterCutoff', note.params.filterCutoff);
+                this.synth.setParam('lpf', note.params.filterCutoff);
+            }
+
             if (isFinite(note.duration) && note.duration > 0) {
                  this.synth.noteOn(note.midi, noteOnTime, note.velocity, note.duration);
             }

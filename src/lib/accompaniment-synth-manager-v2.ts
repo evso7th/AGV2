@@ -5,8 +5,7 @@ import { V2_PRESETS, V1_TO_V2_PRESET_MAP } from './presets-v2';
 
 /**
  * A V2 manager for the accompaniment synthesizer.
- * This version uses the advanced `instrument-factory` to create a single,
- * powerful, polyphonic instrument instance. It does not manage a pool of simple voices.
+ * Updated to support dynamic spectral hygiene.
  */
 export class AccompanimentSynthManagerV2 {
     private audioContext: AudioContext;
@@ -36,7 +35,6 @@ export class AccompanimentSynthManagerV2 {
     }
     
     private async loadInstrument(presetName: keyof typeof V2_PRESETS, instrumentType: 'synth' | 'organ' | 'guitar' = 'synth') {
-        // #ЗАЧЕМ: Очистка ресурсов старого инструмента перед созданием нового.
         if (this.instrument) {
             console.log(`[AccompanimentManagerV2] Disposing old instrument before loading ${presetName}`);
             this.instrument.disconnect();
@@ -76,6 +74,13 @@ export class AccompanimentSynthManagerV2 {
         events.forEach(event => {
             if(event.type !== 'accompaniment') return;
             const noteOnTime = barStartTime + (event.time * beatDuration);
+
+            // #ЗАЧЕМ: Спектральная гигиена аккомпанемента.
+            if (event.params?.filterCutoff && this.instrument.setParam) {
+                this.instrument.setParam('filterCutoff', event.params.filterCutoff);
+                this.instrument.setParam('lpf', event.params.filterCutoff);
+            }
+
             this.instrument.noteOn(event.note, noteOnTime, event.weight, event.duration * beatDuration);
         });
     }
