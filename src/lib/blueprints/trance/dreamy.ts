@@ -1,6 +1,9 @@
-
 import type { MusicBlueprint } from '@/types/music';
 
+/**
+ * #ЗАЧЕМ: Мечтательный Транс (v1.1).
+ * #ОБНОВЛЕНО (ПЛАН №430): glideBass заменен на bass_ambient.
+ */
 export const DreamyTranceBlueprint: MusicBlueprint = {
     id: 'dreamy_trance',
     name: 'Starlight Echoes',
@@ -8,7 +11,7 @@ export const DreamyTranceBlueprint: MusicBlueprint = {
     mood: 'dreamy',
     musical: {
         key: { root: 'F', scale: 'lydian', octave: 3 },
-        bpm: { base: 82, range: [80, 86], modifier: 1.0 }, // SLOWED DOWN
+        bpm: { base: 82, range: [80, 86], modifier: 1.0 },
         timeSignature: { numerator: 4, denominator: 4 },
         harmonicJourney: [],
         tensionProfile: { type: 'arc', peakPosition: 0.65, curve: (p, pp) => p < pp ? p / pp : 1 - ((p - pp) / (1 - pp)) }
@@ -17,7 +20,7 @@ export const DreamyTranceBlueprint: MusicBlueprint = {
         totalDuration: { preferredBars: 128 },
         parts: [
             {
-                id: 'INTRO', name: 'Nebula', duration: { percent: 25 }, // INCREASED
+                id: 'INTRO', name: 'Nebula', duration: { percent: 25 },
                 layers: { accompaniment: true, bass: true, drums: true, sfx: true },
                 instrumentation: { 
                     accompaniment: { 
@@ -25,10 +28,11 @@ export const DreamyTranceBlueprint: MusicBlueprint = {
                         v1Options: [{ name: 'synth', weight: 0.5 }, { name: 'ambientPad', weight: 0.5 }],
                         v2Options: [{ name: 'synth', weight: 0.5 }, { name: 'synth_ambient_pad_lush', weight: 0.5 }]
                     },
-                    bass: { strategy: 'weighted', v1Options: [{ name: 'glideBass', weight: 1.0 }], v2Options: [{ name: 'glideBass', weight: 1.0 }] }
+                    // #ЗАЧЕМ: Исключение glideBass.
+                    bass: { strategy: 'weighted', v2Options: [{ name: 'bass_ambient', weight: 1.0 }] }
                 },
                 instrumentRules: { 
-                    drums: { pattern: 'ambient_beat', density: { min: 0.2, max: 0.4 }, kickVolume: 0.8, useSnare: false }, // SOFTER
+                    drums: { pattern: 'ambient_beat', density: { min: 0.2, max: 0.4 }, kickVolume: 0.8, useSnare: false },
                     bass: { techniques: [{ value: 'pulse', weight: 1.0 }] },
                     melody: { source: 'harmony_top_note' } 
                 },
@@ -47,7 +51,7 @@ export const DreamyTranceBlueprint: MusicBlueprint = {
                     bass: { strategy: 'weighted', v1Options: [{ name: 'bass_jazz_warm', weight: 1.0 }], v2Options: [{ name: 'bass_jazz_warm', weight: 1.0 }] }
                 },
                 instrumentRules: { 
-                    drums: { pattern: 'ambient_beat', density: { min: 0.4, max: 0.6 }, useSnare: true, kickVolume: 0.9 }, // SOFTER
+                    drums: { pattern: 'ambient_beat', density: { min: 0.4, max: 0.6 }, useSnare: true, kickVolume: 0.9 },
                     sparkles: { eventProbability: 0.15 },
                     melody: { source: 'harmony_top_note' } 
                 },
@@ -64,10 +68,10 @@ export const DreamyTranceBlueprint: MusicBlueprint = {
                         v2Options: [{ name: 'synth', weight: 0.5 }, { name: 'synth_ambient_pad_lush', weight: 0.5 }]
                     },
                     bass: { strategy: 'weighted', v1Options: [{ name: 'bass_jazz_warm', weight: 1.0 }], v2Options: [{ name: 'bass_jazz_warm', weight: 1.0 }] },
-                    melody: { strategy: 'weighted', v1Options: [{ name: 'theremin', weight: 0.6 }, { name: 'synth', weight: 0.4 }], v2Options: [{ name: 'theremin', weight: 0.6 }, { name: 'synth', weight: 0.4 }] }
+                    melody: { strategy: 'weighted', v1Options: [{ name: 'theremin', weight: 1.0 }], v2Options: [{ name: 'theremin', weight: 1.0 }] }
                 },
                 instrumentRules: { 
-                    drums: { pattern: 'composer', density: { min: 0.6, max: 0.8 }, kickVolume: 1.0, useSnare: true }, // SOFTER
+                    drums: { pattern: 'composer', density: { min: 0.6, max: 0.8 }, kickVolume: 1.0, useSnare: true },
                     bass: { techniques: [{value: 'pulse', weight: 1.0}] },
                     melody: { source: 'harmony_top_note' } 
                 },

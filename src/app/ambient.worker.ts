@@ -1,6 +1,6 @@
 /**
  * @file AuraGroove Music Worker (Architecture: "The Chain of Suites")
- * #ОБНОВЛЕНО (ПЛАН №428): Внедрено ежетактное логирование баса для диагностики искажений.
+ * #ОБНОВЛЕНО (ПЛАН №430): Дефолтный бас изменен на bass_jazz_warm для исключения glideBass.
  */
 import type { WorkerSettings, ScoreName, Mood, Genre, InstrumentPart } from '@/types/music';
 import { FractalMusicEngine } from '@/lib/fractal-music-engine';
@@ -29,7 +29,8 @@ const Scheduler = {
         genre: 'ambient' as Genre,
         drumSettings: { pattern: 'composer', enabled: true, kickVolume: 1.0 },
         instrumentSettings: { 
-            bass: { name: "glideBass", volume: 0.7, technique: 'portamento' },
+            // #ЗАЧЕМ: Исключение glideBass из стартовых настроек.
+            bass: { name: "bass_jazz_warm", volume: 0.7, technique: 'portamento' },
             melody: { name: "acousticGuitarSolo", volume: 0.8 },
             accompaniment: { name: "guitarChords", volume: 0.7 },
             harmony: { name: "piano", volume: 0.6 }
@@ -197,14 +198,12 @@ const Scheduler = {
             }
         }
         
-        // #ЗАЧЕМ: Детальная диагностика баса.
-        // #ЧТО: Логирование выводится на КАЖДОМ такте. Добавлен идентификатор пресета баса.
         const sectionName = finalPayload.navInfo?.currentPart.name || 'Unknown';
         const bassPreset = finalPayload.instrumentHints?.bass || 'none';
         console.log(
             `%c${getTimestamp()} [Bar ${this.barCount}] [${this.suiteType}] [${sectionName}] T:${finalPayload.tension.toFixed(2)} BPM:${this.settings.bpm} Res:${finalPayload.beautyScore.toFixed(2)} D:${counts.drums}, B:${counts.bass}, M:${counts.melody} | %cBASS: ${bassPreset}`,
-            'color: #888;', // Основной текст серый
-            'color: #4ade80; font-weight: bold;' // Пресет баса ярко-зеленый
+            'color: #888;', 
+            'color: #4ade80; font-weight: bold;' 
         );
 
         self.postMessage({ 

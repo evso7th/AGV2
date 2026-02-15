@@ -1,9 +1,8 @@
 import type { MusicBlueprint } from '@/types/music';
 
 /**
- * #ЗАЧЕМ: Блюпринт "The Atlas Voyage" (Dreamy Ambient v15.0).
- * #ЧТО: 1. Внедрена лотерея интро (4 этапа).
- *       2. Реализована поддержка маршрута (3 локации).
+ * #ЗАЧЕМ: Блюпринт "The Atlas Voyage" (Dreamy Ambient v15.1).
+ * #ОБНОВЛЕНО (ПЛАН №430): glideBass заменен на bass_ambient.
  */
 export const DreamyAmbientBlueprint: MusicBlueprint = {
   id: 'dreamy_ambient',
@@ -35,7 +34,8 @@ export const DreamyAmbientBlueprint: MusicBlueprint = {
                 duration: { percent: 25 },
                 instrumentation: {
                     accompaniment: { activationChance: 1.0, instrumentOptions: [{ name: 'synth_ambient_pad_lush', weight: 1.0 }] },
-                    bass: { activationChance: 1.0, instrumentOptions: [{ name: 'glideBass', weight: 1.0 }] }
+                    // #ЗАЧЕМ: Удаление glideBass.
+                    bass: { activationChance: 1.0, instrumentOptions: [{ name: 'bass_ambient', weight: 1.0 }] }
                 }
             },
             {

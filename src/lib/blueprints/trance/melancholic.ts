@@ -1,6 +1,9 @@
-
 import type { MusicBlueprint } from '@/types/music';
 
+/**
+ * #ЗАЧЕМ: Меланхоличный Транс (v1.1).
+ * #ОБНОВЛЕНО (ПЛАН №430): glideBass заменен на bass_ambient.
+ */
 export const MelancholicTranceBlueprint: MusicBlueprint = {
     id: 'melancholic_trance',
     name: 'Midnight Voyage',
@@ -8,7 +11,7 @@ export const MelancholicTranceBlueprint: MusicBlueprint = {
     mood: 'melancholic',
     musical: {
         key: { root: 'D', scale: 'dorian', octave: 3 },
-        bpm: { base: 74, range: [70, 78], modifier: 1.0 }, // SLOWED DOWN
+        bpm: { base: 74, range: [70, 78], modifier: 1.0 }, 
         timeSignature: { numerator: 4, denominator: 4 },
         harmonicJourney: [],
         tensionProfile: { type: 'arc', peakPosition: 0.7, curve: (p, pp) => p < pp ? Math.pow(p / pp, 1.2) : 1 - ((p - pp) / (1 - pp)) }
@@ -17,7 +20,7 @@ export const MelancholicTranceBlueprint: MusicBlueprint = {
         totalDuration: { preferredBars: 128 },
         parts: [
             {
-                id: 'INTRO_1', name: 'Atmosphere', duration: { percent: 15 }, // INCREASED
+                id: 'INTRO_1', name: 'Atmosphere', duration: { percent: 15 },
                 layers: { accompaniment: true, sfx: true, drums: true },
                 instrumentation: { 
                     accompaniment: { 
@@ -34,10 +37,11 @@ export const MelancholicTranceBlueprint: MusicBlueprint = {
                 outroFill: null,
             },
             {
-                id: 'INTRO_2', name: 'Pulse', duration: { percent: 15 }, // INCREASED
+                id: 'INTRO_2', name: 'Pulse', duration: { percent: 15 },
                 layers: { accompaniment: true, sfx: true, bass: true, drums: true },
                 instrumentation: { 
-                    bass: { strategy: 'weighted', v1Options: [{ name: 'glideBass', weight: 1.0 }], v2Options: [{ name: 'glideBass', weight: 1.0 }] },
+                    // #ЗАЧЕМ: Исключение glideBass.
+                    bass: { strategy: 'weighted', v2Options: [{ name: 'bass_ambient', weight: 1.0 }] },
                     accompaniment: { 
                         strategy: 'weighted', 
                         v1Options: [{ name: 'synth', weight: 0.5 }, { name: 'ambientPad', weight: 0.5 }],
@@ -53,7 +57,7 @@ export const MelancholicTranceBlueprint: MusicBlueprint = {
                 outroFill: { type: 'filter_sweep', duration: 2, parameters: {} },
             },
             {
-                id: 'BUILD', name: 'Journey', duration: { percent: 25 }, // INCREASED
+                id: 'BUILD', name: 'Journey', duration: { percent: 25 },
                 layers: { bass: true, accompaniment: true, drums: true, sfx: true, harmony: true },
                 instrumentation: {
                     accompaniment: { 
@@ -61,7 +65,8 @@ export const MelancholicTranceBlueprint: MusicBlueprint = {
                         v1Options: [{ name: 'synth', weight: 0.5 }, { name: 'ambientPad', weight: 0.5 }],
                         v2Options: [{ name: 'synth', weight: 0.5 }, { name: 'synth_ambient_pad_lush', weight: 0.5 }]
                     },
-                    bass: { strategy: 'weighted', v1Options: [{ name: 'glideBass', weight: 1.0 }], v2Options: [{ name: 'glideBass', weight: 1.0 }] }
+                    // #ЗАЧЕМ: Исключение glideBass.
+                    bass: { strategy: 'weighted', v2Options: [{ name: 'bass_ambient', weight: 1.0 }] }
                 },
                 instrumentRules: { 
                     drums: { pattern: 'composer', kitName: 'trance_melancholic', density: { min: 0.5, max: 0.7 }, kickVolume: 0.9 },
@@ -79,7 +84,8 @@ export const MelancholicTranceBlueprint: MusicBlueprint = {
                         v1Options: [{ name: 'synth', weight: 0.5 }, { name: 'ambientPad', weight: 0.5 }],
                         v2Options: [{ name: 'synth', weight: 0.5 }, { name: 'synth_ambient_pad_lush', weight: 0.5 }]
                     },
-                    bass: { strategy: 'weighted', v1Options: [{ name: 'glideBass', weight: 1.0 }], v2Options: [{ name: 'glideBass', weight: 1.0 }] },
+                    // #ЗАЧЕМ: Исключение glideBass.
+                    bass: { strategy: 'weighted', v2Options: [{ name: 'bass_ambient', weight: 1.0 }] },
                     melody: { strategy: 'weighted', v1Options: [{ name: 'synth', weight: 1.0 }], v2Options: [{ name: 'synth', weight: 1.0 }] }
                 },
                 instrumentRules: { 
