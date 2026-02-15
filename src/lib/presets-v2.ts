@@ -172,7 +172,7 @@ export const V1_TO_V2_PRESET_MAP: Record<string, PresetName> = {
 
 /**
  * #ЗАЧЕМ: Сопоставление V1-имен баса с новыми V2-пресетами.
- * #ОБНОВЛЕНО (ПЛАН №429): glideBass теперь замещен на bass_ambient для исключения искажений.
+ * #ОБНОВЛЕНО (ПЛАН №434): bass_trance удален и замещен на bass_house.
  */
 export const BASS_PRESET_MAP: Record<string, keyof typeof BASS_PRESETS> = {
     bass: 'bass_jazz_warm',
@@ -188,7 +188,7 @@ export const BASS_PRESET_MAP: Record<string, keyof typeof BASS_PRESETS> = {
     bass_blues: 'bass_blues',
     bass_ambient: 'bass_ambient',
     bass_ambient_dark: 'bass_ambient_dark',
-    bass_trance: 'bass_trance',
+    bass_trance: 'bass_house', // SUBSTITUTE
     bass_trance_acid: 'bass_trance_acid',
     bass_reggae: 'bass_reggae',
     bass_dub: 'bass_dub',

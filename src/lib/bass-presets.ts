@@ -9,7 +9,6 @@ export const BASS_PRESET_INFO: Record<string, { description: string; color: stri
   bass_blues: { description: 'Classic blues bass with a slight grit.', color: '#000080' },
   bass_ambient: { description: 'Deep, slow, atmospheric sub-bass.', color: '#2F4F4F' },
   bass_ambient_dark: { description: 'Very low, rumbling drone for dark soundscapes.', color: '#191970' },
-  bass_trance: { description: 'Punchy, rolling bassline for trance music.', color: '#00BFFF' },
   bass_trance_acid: { description: 'Resonant, squelchy acid bass.', color: '#FFD700' },
   bass_reggae: { description: 'Deep, round, and dubby reggae bass.', color: '#228B22' },
   bass_dub: { description: 'Heavier dub bass with prominent delay.', color: '#556B2F' },
@@ -128,16 +127,6 @@ export const BASS_PRESETS: Record<string, BassPreset> = {
         filter: { type: 'lowpass' as const, cutoff: 400, q: 0.4 },
         lfo: { shape: 'sine' as const, rate: 0, amount: 0, target: 'pitch' as const },
         effects: { distortion: 0, chorus: { rate: 0.08, depth: 0.006, mix: 0.3 }, delay: { time: 0.8, feedback: 0.5, mix: 0.25 } }
-    },
-    bass_trance: {
-        type: 'bass' as const,
-        name: 'Trance Bass',
-        volume: 0.75,
-        osc: [ { type: 'sawtooth' as const, octave: 0, detune: 0, gain: 0.7 }, { type: 'sawtooth' as const, octave: 0, detune: 5, gain: 0.3 }, { type: 'square' as const, octave: -1, detune: 0, gain: 0.25 }, { type: 'sine' as const, octave: -1, detune: 0, gain: 0.6 } ],
-        adsr: { attack: 0.003, decay: 0.15, sustain: 0.5, release: 0.15 },
-        filter: { type: 'lowpass' as const, cutoff: 800, q: 3 },
-        lfo: { shape: 'sine' as const, rate: 0, amount: 0, target: 'pitch' as const },
-        effects: { distortion: 0.3, chorus: { rate: 0, depth: 0, mix: 0 }, delay: { time: 0, feedback: 0, mix: 0 } }
     },
     bass_trance_acid: {
         type: 'bass' as const,

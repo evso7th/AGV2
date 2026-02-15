@@ -1,6 +1,10 @@
 
 import type { MusicBlueprint } from '@/types/music';
 
+/**
+ * #ЗАЧЕМ: Очистка Anxious Trance и удаление дефектного баса.
+ * #ЧТО: Замена bass_trance на bass_house.
+ */
 export const AnxiousTranceBlueprint: MusicBlueprint = {
     id: 'anxious_trance',
     name: 'Glitch in the System',
