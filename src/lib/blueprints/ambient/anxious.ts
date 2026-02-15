@@ -1,76 +1,85 @@
-
 import type { MusicBlueprint } from '@/types/music';
 
+/**
+ * #ЗАЧЕМ: Очистка Anxious Ambient от индастриал-звуков (ПЛАН №423).
+ * #ЧТО: 1. Удалена гитара Muff Lead (причина резкости).
+ *       2. Снижен темп и переименованы части.
+ *       3. Все ударные переведены в режим ambient_beat для стабильности.
+ */
 export const AnxiousAmbientBlueprint: MusicBlueprint = {
     id: 'anxious_ambient',
     name: 'Nervous System',
-    description: 'Напряженный, беспокойный эмбиент с неровными ритмами.',
+    description: 'A tense, but purely ambient soundscape. Floating suspense without industrial harshness.',
     mood: 'anxious',
     musical: {
         key: { root: 'E', scale: 'phrygian', octave: 2 },
-        bpm: { base: 66, range: [64, 70], modifier: 1.1 },
+        bpm: { base: 60, range: [58, 62], modifier: 1.05 },
         timeSignature: { numerator: 4, denominator: 4 },
         harmonicJourney: [],
-        tensionProfile: { type: 'wave', peakPosition: 0.5, curve: (p, pp) => 0.5 + 0.5 * Math.sin(p * Math.PI * 4) } // Faster wave
+        tensionProfile: { 
+            type: 'wave', 
+            peakPosition: 0.5, 
+            curve: (p) => 0.4 + 0.3 * Math.sin(p * Math.PI * 4) 
+        }
     },
     structure: {
         totalDuration: { preferredBars: 150 },
         parts: [
             {
-                id: 'INTRO', name: 'Unease', duration: { percent: 15 },
-                layers: { sfx: true, accompaniment: true },
+                id: 'INTRO', name: 'Shadows', duration: { percent: 15 },
+                layers: { sfx: true, accompaniment: true, pianoAccompaniment: true, bass: true, drums: true },
                 instrumentation: {
-                    accompaniment: { strategy: 'weighted', v1Options: [{ name: 'synth', weight: 0.8 }, { name: 'theremin', weight: 0.2 }], v2Options: [{ name: 'synth', weight: 0.8 }, { name: 'theremin', weight: 0.2 }] }
+                    accompaniment: { strategy: 'weighted', v2Options: [{ name: 'synth_cave_pad', weight: 1.0 }] },
+                    bass: { strategy: 'weighted', v2Options: [{ name: 'bass_ambient_dark', weight: 1.0 }] }
                 },
                 instrumentRules: {
-                    accompaniment: { density: { min: 0.2, max: 0.4 }, techniques: [{ value: 'arpeggio-fast', weight: 1.0 }] },
-                    sfx: { eventProbability: 0.3, categories: [{ name: 'dark', weight: 0.7 }, { name: 'laser', weight: 0.3 }] },
-                    melody: { source: 'harmony_top_note' }
+                    accompaniment: { density: { min: 0.2, max: 0.4 }, techniques: [{ value: 'long-chords', weight: 1.0 }] },
+                    drums: { kitName: 'intro', pattern: 'ambient_beat', density: { min: 0.1, max: 0.2 } },
+                    sfx: { eventProbability: 0.3, categories: [{ name: 'dark', weight: 0.7 }, { name: 'laser', weight: 0.3 }] }
                 },
-                bundles: [{ id: 'ANX_INTRO_1', name: 'Jitters', duration: { percent: 100 }, characteristics: {}, phrases: {} }],
+                bundles: [{ id: 'ANX_INTRO_1', name: 'First Shiver', duration: { percent: 100 }, characteristics: {}, phrases: {} }],
                 outroFill: null,
             },
             {
-                id: 'BUILD', name: 'Rising Panic', duration: { percent: 30 },
-                layers: { bass: true, drums: true, sfx: true, accompaniment: true },
+                id: 'BUILD', name: 'The Suspense', duration: { percent: 35 },
+                layers: { bass: true, drums: true, sfx: true, accompaniment: true, harmony: true, pianoAccompaniment: true },
                 instrumentation: {
-                    bass: { strategy: 'weighted', v1Options: [{ name: 'resonantGliss', weight: 1.0 }], v2Options: [{ name: 'resonantGliss', weight: 1.0 }] },
-                    accompaniment: { strategy: 'weighted', v1Options: [{ name: 'theremin', weight: 1.0 }], v2Options: [{ name: 'theremin', weight: 1.0 }] }
+                    bass: { strategy: 'weighted', v2Options: [{ name: 'bass_ambient', weight: 1.0 }] },
+                    accompaniment: { strategy: 'weighted', v2Options: [{ name: 'ep_rhodes_warm', weight: 1.0 }] },
+                    harmony: { strategy: 'weighted', options: [{ name: 'guitarChords', weight: 1.0 }] }
                 },
                 instrumentRules: {
-                    drums: { pattern: 'composer', density: { min: 0.4, max: 0.7 }, useSnare: true, useGhostHat: true },
-                    bass: { techniques: [{ value: 'glissando', weight: 1.0 }] },
-                    melody: { source: 'harmony_top_note' }
+                    drums: { pattern: 'ambient_beat', density: { min: 0.3, max: 0.5 }, usePerc: true },
+                    bass: { techniques: [{ value: 'pedal', weight: 1.0 }] }
                 },
-                bundles: [{ id: 'ANX_BUILD_1', name: 'Escalation', duration: { percent: 100 }, characteristics: {}, phrases: {} }],
-                outroFill: { type: 'roll', duration: 1, parameters: {} },
-            },
-            {
-                id: 'MAIN', name: 'System Overload', duration: { percent: 40 },
-                layers: { bass: true, drums: true, melody: true, sfx: true, accompaniment: true },
-                 instrumentation: {
-                    bass: { strategy: 'weighted', v1Options: [{ name: 'resonantGliss', weight: 1.0 }], v2Options: [{ name: 'resonantGliss', weight: 1.0 }] },
-                    accompaniment: { strategy: 'weighted', v1Options: [{ name: 'guitar_muffLead', weight: 1.0 }], v2Options: [{ name: 'guitar_muffLead', weight: 1.0 }] },
-                    melody: { strategy: 'weighted', v1Options: [{ name: 'synth', weight: 1.0 }], v2Options: [{ name: 'synth', weight: 1.0 }] }
-                },
-                instrumentRules: {
-                    drums: { pattern: 'composer', density: { min: 0.7, max: 0.9 }, kickVolume: 1.3 },
-                    melody: { register: { preferred: 'high' }, source: 'harmony_top_note' }
-                },
-                bundles: [{ id: 'ANX_MAIN_1', name: 'Chaos', duration: { percent: 100 }, characteristics: {}, phrases: {} }],
+                bundles: [{ id: 'ANX_BUILD_1', name: 'Creeping', duration: { percent: 100 }, characteristics: {}, phrases: {} }],
                 outroFill: null,
             },
             {
-                id: 'OUTRO', name: 'Aftershock', duration: { percent: 15 },
-                layers: { sfx: true, accompaniment: true },
+                id: 'MAIN', name: 'Static Pulse', duration: { percent: 40 },
+                layers: { bass: true, drums: true, melody: true, sfx: true, accompaniment: true, sparkles: true, harmony: true },
                  instrumentation: {
-                    accompaniment: { strategy: 'weighted', v1Options: [{ name: 'synth', weight: 1.0 }], v2Options: [{ name: 'synth', weight: 1.0 }] }
+                    bass: { strategy: 'weighted', v2Options: [{ name: 'bass_ambient', weight: 1.0 }] },
+                    accompaniment: { strategy: 'weighted', v2Options: [{ name: 'synth_ambient_pad_lush', weight: 1.0 }] },
+                    melody: { strategy: 'weighted', v2Options: [{ name: 'synth', weight: 0.7 }, { name: 'ep_rhodes_warm', weight: 0.3 }] }
                 },
                 instrumentRules: {
-                    sfx: { eventProbability: 0.4, categories: [{ name: 'laser', weight: 1.0 }] },
-                    melody: { source: 'harmony_top_note' }
+                    drums: { kitName: 'dark', pattern: 'ambient_beat', density: { min: 0.4, max: 0.6 } },
+                    melody: { register: { preferred: 'mid' }, density: { min: 0.2, max: 0.4 } }
                 },
-                bundles: [{ id: 'ANX_OUTRO_1', name: 'Echoes', duration: { percent: 100 }, characteristics: {}, phrases: {} }],
+                bundles: [{ id: 'ANX_MAIN_1', name: 'The Core', duration: { percent: 100 }, characteristics: {}, phrases: {} }],
+                outroFill: null,
+            },
+            {
+                id: 'OUTRO', name: 'Fading Signal', duration: { percent: 10 },
+                layers: { sfx: true, accompaniment: true, sparkles: true },
+                 instrumentation: {
+                    accompaniment: { strategy: 'weighted', v2Options: [{ name: 'synth_cave_pad', weight: 1.0 }] }
+                },
+                instrumentRules: {
+                    sfx: { eventProbability: 0.4, categories: [{ name: 'laser', weight: 1.0 }] }
+                },
+                bundles: [{ id: 'ANX_OUTRO_1', name: 'Silence', duration: { percent: 100 }, characteristics: {}, phrases: {} }],
                 outroFill: null,
             }
         ]
@@ -78,5 +87,11 @@ export const AnxiousAmbientBlueprint: MusicBlueprint = {
     mutations: {},
     ambientEvents: [],
     continuity: {},
-    rendering: {}
+    rendering: {
+        mixTargets: {
+            melody: { level: -22, pan: 0.0 },
+            accompaniment: { level: -18, pan: 0.0 },
+            sfx: { level: -28, pan: 0.0 }
+        }
+    }
 };

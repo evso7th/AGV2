@@ -2,7 +2,7 @@
  * @fileOverview Universal Music Theory Utilities
  * #ЗАЧЕМ: Базовый набор инструментов для работы с нотами, ладами и ритмом.
  * #ЧТО: Внедрена система Dynasty Rotation для обеспечения разнообразия старта сюиты.
- * #ОБНОВЛЕНО (ПЛАН №390): Внедрен выбор Legacy Group для Амбиента на этапе DNA.
+ * #ОБНОВЛЕНО (ПЛАН №423): Темповый коридор Anxious снижен для устранения эффекта "мотора".
  */
 
 import type { 
@@ -243,7 +243,8 @@ export function generateSuiteDNA(totalBars: number, mood: Mood, initialSeed: num
         accumulatedBars += partDuration;
     });
 
-    const possibleTempos = { joyful: [115, 140], enthusiastic: [125, 155], contemplative: [78, 92], dreamy: [72, 86], calm: [68, 82], melancholic: [64, 72], gloomy: [68, 78], dark: [64, 72], epic: [120, 145], anxious: [88, 105] };
+    // #ЗАЧЕМ: Снижение темпа для Anxious Ambient.
+    const possibleTempos = { joyful: [115, 140], enthusiastic: [125, 155], contemplative: [78, 92], dreamy: [72, 86], calm: [68, 82], melancholic: [64, 72], gloomy: [68, 78], dark: [64, 72], epic: [120, 145], anxious: [55, 65] };
     const [minTempo, maxTempo] = (possibleTempos as any)[mood] || [60, 80];
     const baseTempo = minTempo + Math.floor(sowingRandom.next() * (maxTempo - minTempo + 1));
 

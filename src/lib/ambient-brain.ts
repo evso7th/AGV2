@@ -1,7 +1,6 @@
 /**
- * #ЗАЧЕМ: Суверенный Мозг Амбиента v7.12 — "The Voice & Dark Mix Update".
- * #ЧТО: 1. Метод renderSfx больше не хардкодит категорию 'laser'.
- *       2. Реализована передача правил из блюпринта для динамического микса SFX.
+ * #ЗАЧЕМ: Суверенный Мозг Амбиента v7.13 — "Anti-Industrial Update".
+ * #ЧТО: Внедрено ограничение скорости пассажей для Anxious режима для устранения эффекта "мотора".
  */
 
 import type { 
@@ -284,12 +283,19 @@ export class AmbientBrain {
         let timeStep = 1.0; 
         let count = 4;
 
-        if (tension > 0.75) {
-            timeStep = 0.25; 
-            count = 16;
-        } else if (tension > 0.45) {
-            timeStep = 0.5; 
-            count = 8;
+        // #ЗАЧЕМ: Устранение эффекта "мотора" в тревожном режиме (ПЛАН №423).
+        // #ЧТО: Для настроения 'anxious' время шага ограничено 0.5 (1/8-е ноты).
+        if (this.mood === 'anxious') {
+            timeStep = tension > 0.5 ? 0.5 : 1.0;
+            count = tension > 0.5 ? 8 : 4;
+        } else {
+            if (tension > 0.75) {
+                timeStep = 0.25; 
+                count = 16;
+            } else if (tension > 0.45) {
+                timeStep = 0.5; 
+                count = 8;
+            }
         }
 
         for (let i = 0; i < count; i++) {
@@ -313,7 +319,7 @@ export class AmbientBrain {
 
     private renderRhythmicBass(chord: GhostChord, tension: number, timbre: string, epoch: number): FractalEvent[] {
         const root = Math.max(chord.rootNote - 12, this.BASS_FLOOR); 
-        const isMinor = chord.chordType === 'minor' || chord.chordType === 'diminished';
+        const isMinor = chord.chordType === 'minor' || chord.chordType === 'dimнишеd';
         
         const pattern = [
             { t: 0, n: root, d: 1.5, w: 0.85 },
@@ -413,7 +419,6 @@ export class AmbientBrain {
         const events: FractalEvent[] = [];
         
         // 1. HEARTBEAT (Kick + Tom)
-        // #ОБНОВЛЕНО (ПЛАН №421): Веса снижены в 2 раза.
         const heartbeatProb = 0.55 + (tension * 0.40); 
         if (this.random.next() < heartbeatProb) {
             const firstTime = 0;
@@ -444,7 +449,6 @@ export class AmbientBrain {
         }
 
         // 2. SOFT IRON (Ghost Hat & Wet Ride)
-        // #ОБНОВЛЕНО (ПЛАН №421): Вес снижен до 0.12.
         const ironProb = 0.15 + (tension * 0.25);
         if (this.random.next() < ironProb) {
             const isRide = this.random.next() < 0.3; // 30% ride
@@ -461,7 +465,6 @@ export class AmbientBrain {
         }
 
         // 3. THE RESONANCE PROTOCOL (Tubes & Perks)
-        // #ОБНОВЛЕНО (ПЛАН №421): Веса снижены до 0.2 и 0.32.
         const resonanceProb = 0.35 + (this.fog * 0.55); 
         if (this.random.next() < resonanceProb) {
             if (this.random.next() < 0.4) {
@@ -526,7 +529,10 @@ export class AmbientBrain {
         this.fog = Math.max(0, Math.min(1, 0.3 + (tension * 0.55))); 
         this.depth = Math.max(0, Math.min(1, 0.4 + (tension * 0.45)));
         this.pulse = Math.max(0, Math.min(1, 0.15 + (tension * 0.35)));
-        this.solistCutoff = 4500 * (1 - this.fog) + 1200; 
+        
+        // #ЗАЧЕМ: Более закрытый фильтр для Anxious режима.
+        const maxCutoff = this.mood === 'anxious' ? 3500 : 4500;
+        this.solistCutoff = maxCutoff * (1 - this.fog) + 1200; 
     }
 
     private renderPad(chord: GhostChord, epoch: number, timbre: string): FractalEvent[] {
