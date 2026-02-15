@@ -1,8 +1,8 @@
 /**
- * #ЗАЧЕМ: Суверенный Мозг Амбиента v6.7 — "Vital Heartbeat Update".
- * #ЧТО: 1. Замена циклического ритма на биологическое биение сердца (Kick + Low Tom).
- *       2. Радикальное снижение частоты хэтов ("Анти-шарманка").
- *       3. Привязка плотности перкуссии к Tension и Fog.
+ * #ЗАЧЕМ: Суверенный Мозг Амбиента v6.8 — "Nostalgic Comfort Update".
+ * #ЧТО: 1. Внедрена поддержка династии BUDD для деликатных фортепианных фраз.
+ *       2. Потолок мелодии жестко ограничен MIDI 75.
+ *       3. Оптимизирована логика выбора темы для ансамбля.
  */
 
 import type { 
@@ -50,7 +50,9 @@ export class AmbientBrain {
     private introLotteryMap: Map<number, Partial<Record<InstrumentPart, any>>> = new Map();
 
     private soloistBusyUntilBar: number = -1;
-    private readonly MELODY_CEILING = 73;
+    // #ЗАЧЕМ: Защита от пронзительности.
+    // #ЧТО: Потолок мелодии поднят до 75 по просьбе пользователя.
+    private readonly MELODY_CEILING = 75;
     private readonly BASS_FLOOR = 24;
 
     private currentTheme: { phrase: any[], startBar: number, endBar: number } | null = null;
@@ -113,7 +115,13 @@ export class AmbientBrain {
         if (epoch >= this.soloistBusyUntilBar) {
             const shouldStartTheme = this.random.next() < (0.3 + localTension * 0.4);
             if (shouldStartTheme) {
-                const groupKey = dna.ambientLegacyGroup || 'ENO';
+                // #ЗАЧЕМ: Выбор группы мастеров на основе настроения.
+                // #ЧТО: Для меланхолии приоритет отдается BUDD и BOARDS.
+                let groupKey = dna.ambientLegacyGroup || 'ENO';
+                if (this.mood === 'melancholic' && this.random.next() < 0.7) {
+                    groupKey = this.random.next() < 0.6 ? 'BUDD' : 'BOARDS';
+                }
+
                 const group = AMBIENT_LEGACY[groupKey];
                 if (!this.usedLickIndices.has(groupKey)) this.usedLickIndices.set(groupKey, []);
                 const used = this.usedLickIndices.get(groupKey)!;
@@ -459,10 +467,8 @@ export class AmbientBrain {
         const events: FractalEvent[] = [];
         
         // 1. VITAL HEARTBEAT (Kick + Low Tom)
-        // #ЗАЧЕМ: Замена метронома на биологический пульс.
-        const heartbeatProb = 0.3 + (tension * 0.5); // Шанс удара в такте
+        const heartbeatProb = 0.3 + (tension * 0.5); 
         if (this.random.next() < heartbeatProb) {
-            // Систола (первый удар)
             const firstTime = 0;
             events.push({ 
                 type: 'drum_kick_reso', 
@@ -475,9 +481,8 @@ export class AmbientBrain {
                 technique: 'hit', dynamics: 'p', phrasing: 'staccato'
             });
 
-            // Диастола (второй удар) - только при высоком напряжении
             if (tension > 0.6) {
-                const secondTime = 0.33; // Триольный отскок
+                const secondTime = 0.33; 
                 events.push({ 
                     type: 'drum_kick_reso', 
                     note: 36, time: secondTime, duration: 0.1, weight: 0.6 * tension, 
@@ -487,7 +492,6 @@ export class AmbientBrain {
         }
 
         // 2. GHOST HAT ACCENTS (Rare)
-        // #ЗАЧЕМ: Устранение "шарманки" хэтов. Теперь это редкие блики.
         const hatProb = (0.05 + (this.pulse * 0.15)) * (1.0 - this.fog * 0.5); 
         [1.33, 2.66, 3.66].forEach(t => { 
             if (this.random.next() < hatProb) {
@@ -510,7 +514,6 @@ export class AmbientBrain {
         }
 
         // 4. ORGANIC DETAILS & BELLS (React to Fog)
-        // #ЗАЧЕМ: Прощупывание тумана мелкими тактильными звуками.
         const detailProb = 0.3 + (this.fog * 0.4); 
         if (this.random.next() < detailProb) {
             const perkIdx = (1 + this.random.nextInt(15)).toString().padStart(3, '0');

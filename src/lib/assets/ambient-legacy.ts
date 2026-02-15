@@ -2,7 +2,7 @@
  * @fileOverview Ambient Legacy Library (Digital DNA of the Giants)
  * #ЗАЧЕМ: Оцифрованный опыт великих мастеров амбиента и электроники.
  * #ЧТО: Библиотека длинных музыкальных фраз (2-4 такта), превращающая текстуру в мелодию.
- * #ОБНОВЛЕНО (ПЛАН №405): Библиотека расширена до 90 фраз (по 15 на группу) для максимального разнообразия.
+ * #ОБНОВЛЕНО (ПЛАН №411): Добавлена династия BUDD (Harold Budd) для "светлой печали".
  */
 
 import type { BluesSoloPhrase } from '@/types/music';
@@ -17,6 +17,32 @@ export type LegacyGroup = {
 };
 
 export const AMBIENT_LEGACY: Record<string, LegacyGroup> = {
+    // ───── HAROLD BUDD: The Soft Touch (Piano Drops) ─────
+    BUDD: {
+        id: 'budd',
+        name: 'Harold Budd',
+        preferredInstrument: 'piano',
+        phrasing: 'sparse',
+        registerBias: 0,
+        licks: [
+            { phrase: [{t:0,d:12,deg:'R',tech:'vb'}, {t:24,d:24,deg:'6'}], tags: ['light-sadness', 'hope'] },
+            { phrase: [{t:6,d:18,deg:'9'}, {t:30,d:18,deg:'5'}], tags: ['comfort', 'whiskey-morning'] },
+            { phrase: [{t:0,d:24,deg:'R'}, {t:24,d:6,deg:'b7'}, {t:30,d:18,deg:'6'}], tags: ['dorian-light', 'melancholy'] },
+            { phrase: [{t:0,d:4,deg:'5'}, {t:12,d:4,deg:'6'}, {t:24,d:4,deg:'R+8'}, {t:36,d:12,deg:'5'}], tags: ['raindrops', 'morning'] },
+            { phrase: [{t:0,d:48,deg:'9',tech:'vb'}], tags: ['suspended', 'fragile'] },
+            { phrase: [{t:0,d:12,deg:'R'}, {t:18,d:12,deg:'4'}, {t:36,d:12,deg:'3'}], tags: ['resignation', 'peace'] },
+            { phrase: [{t:0,d:6,deg:'5'}, {t:12,d:6,deg:'6'}, {t:24,d:24,deg:'R',tech:'vb'}], tags: ['rising-hope'] },
+            { phrase: [{t:0,d:24,deg:'R'}, {t:30,d:18,deg:'b3'}], tags: ['deep-sigh'] },
+            { phrase: [{t:12,d:12,deg:'R'}, {t:24,d:12,deg:'2'}, {t:36,d:12,deg:'R'}], tags: ['minimal', 'stable'] },
+            { phrase: [{t:0,d:12,deg:'5'}, {t:24,d:24,deg:'6',tech:'vb'}], tags: ['shimmering-comfort'] },
+            { phrase: [{t:0,d:6,deg:'R'}, {t:12,d:6,deg:'9'}, {t:24,d:6,deg:'R'}, {t:36,d:12,deg:'5'}], tags: ['echo-of-party'] },
+            { phrase: [{t:0,d:24,deg:'4'}, {t:24,d:24,deg:'R'}], tags: ['final-breath'] },
+            { phrase: [{t:0,d:3,deg:'R'}, {t:12,d:3,deg:'5'}, {t:24,d:3,deg:'6'}, {t:36,d:12,deg:'R'}], tags: ['gentle-steps'] },
+            { phrase: [{t:0,d:12,deg:'b7'}, {t:12,d:12,deg:'6'}, {t:24,d:24,deg:'5'}], tags: ['fading-light'] },
+            { phrase: [{t:0,d:48,deg:'R',tech:'vb'}], tags: ['stillness'] }
+        ]
+    },
+
     // ───── BRIAN ENO: Generative Stillness ─────
     ENO: {
         id: 'eno',
