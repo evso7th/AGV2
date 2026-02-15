@@ -1,11 +1,8 @@
 import type { MusicBlueprint } from '@/types/music';
 
 /**
- * #ЗАЧЕМ: Блюпринт "Ripple Calm" (Calm Blues v10.0).
- * #ЧТО: 1. Tension Ripple (0.47-0.53) — мягкое колебание вокруг точки переключения тембра (0.50).
- *       2. Гитарист постоянно балансирует между интимной Акустикой и поющим CS80.
- *       3. Светлый мажорный лад G Mixolydian.
- *       4. Компактное Аутро (12 тактов).
+ * #ЗАЧЕМ: Блюпринт "Ripple Calm" (Calm Blues v10.1).
+ * #ЧТО: Бас унифицирован с темными режимами (bass_ambient_dark).
  */
 export const CalmBluesBlueprint: MusicBlueprint = {
     id: 'calm_blues',
@@ -21,10 +18,8 @@ export const CalmBluesBlueprint: MusicBlueprint = {
             type: 'plateau', 
             peakPosition: 0.5, 
             curve: (p: number) => {
-                if (p < 0.15) return 0.3 + (p / 0.15) * 0.2; // Прогрев: 0.3 -> 0.5
-                if (p > 0.92) return 0.5 - ((p - 0.92) / 0.08) * 0.4; // Растворение: 0.5 -> 0.1
-                // #ЗАЧЕМ: Создание тембрального мерцания. 
-                // #ЧТО: Колебания 0.47 - 0.53 заставляют Мозг СОР постоянно менять пресет гитары.
+                if (p < 0.15) return 0.3 + (p / 0.15) * 0.2; 
+                if (p > 0.92) return 0.5 - ((p - 0.92) / 0.08) * 0.4; 
                 return 0.50 + 0.03 * Math.sin(p * Math.PI * 16); 
             }
         }
@@ -60,7 +55,7 @@ export const CalmBluesBlueprint: MusicBlueprint = {
                     { 
                         duration: { percent: 100 }, 
                         instrumentation: {
-                           bass: { activationChance: 1.0, instrumentOptions: [ { name: 'bass_jazz_warm', weight: 1.0 } ] },
+                           bass: { activationChance: 1.0, instrumentOptions: [ { name: 'bass_ambient_dark', weight: 1.0 } ] },
                            drums: { activationChance: 1.0, instrumentOptions: [ { name: 'trance_intro', weight: 1.0 } ] },
                            accompaniment: { activationChance: 1.0, instrumentOptions: [ { name: 'ep_rhodes_warm', weight: 1.0 } ] },
                            pianoAccompaniment: { activationChance: 1.0, instrumentOptions: [ { name: 'piano', weight: 1.0 } ] }
@@ -82,7 +77,7 @@ export const CalmBluesBlueprint: MusicBlueprint = {
                         duration: { percent: 100 }, 
                         instrumentation: {
                            melody: { activationChance: 1.0, instrumentOptions: [ { name: 'melody', weight: 1.0 } ] },
-                           bass: { activationChance: 1.0, instrumentOptions: [ { name: 'bass', weight: 1.0 } ] },
+                           bass: { activationChance: 1.0, instrumentOptions: [ { name: 'bass_ambient_dark', weight: 1.0 } ] },
                            drums: { activationChance: 1.0, instrumentOptions: [ { name: 'blues_melancholic_master', weight: 1.0 } ] },
                            accompaniment: { activationChance: 1.0, instrumentOptions: [ { name: 'accompaniment', weight: 1.0 } ] },
                            harmony: { activationChance: 1.0, instrumentOptions: [ { name: 'guitarChords', weight: 1.0 } ] },
@@ -99,7 +94,7 @@ export const CalmBluesBlueprint: MusicBlueprint = {
                 outroFill: null,
             },
             {
-                id: 'OUTRO', name: 'Fading Ripples', duration: { percent: 8 }, // 12 bars (1 square)
+                id: 'OUTRO', name: 'Fading Ripples', duration: { percent: 8 }, 
                 layers: { bass: true, accompaniment: true, pianoAccompaniment: true, sparkles: true, sfx: true },
                 stagedInstrumentation: [
                     { 
@@ -107,7 +102,7 @@ export const CalmBluesBlueprint: MusicBlueprint = {
                         instrumentation: {
                            pianoAccompaniment: { activationChance: 1.0, instrumentOptions: [ { name: 'piano', weight: 1.0 } ] },
                            accompaniment: { activationChance: 1.0, instrumentOptions: [ { name: 'ep_rhodes_warm', weight: 1.0 } ] },
-                           bass: { activationChance: 1.0, instrumentOptions: [ { name: 'bass_ambient', weight: 1.0 } ] }
+                           bass: { activationChance: 1.0, instrumentOptions: [ { name: 'bass_ambient_dark', weight: 1.0 } ] }
                         }
                     }
                 ],

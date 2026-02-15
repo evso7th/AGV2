@@ -1,11 +1,8 @@
 import type { MusicBlueprint } from '@/types/music';
 
 /**
- * #ЗАЧЕМ: Блюпринт "The Inner Dialogue" (Contemplative Blues v7.0).
- * #ЧТО: 1. Пролог (5%) — ленивое пианино, гитарные аккорды, искры и атмосфера.
- *       2. Объединенное вступление (8%) — рождение ансамбля за один квадрат (12 тактов).
- *       3. Плато раздумий (79%) — стабильная энергия 0.55 (мерцающий тембр).
- *       4. Компактное аутро (8%) — ровно один квадрат (12 тактов) для растворения.
+ * #ЗАЧЕМ: Блюпринт "The Inner Dialogue" (Contemplative Blues v7.1).
+ * #ЧТО: Бас унифицирован с темными режимами (bass_ambient_dark).
  */
 export const ContemplativeBluesBlueprint: MusicBlueprint = {
     id: 'contemplative_blues',
@@ -21,9 +18,9 @@ export const ContemplativeBluesBlueprint: MusicBlueprint = {
             type: 'plateau', 
             peakPosition: 0.5, 
             curve: (p) => {
-                if (p < 0.15) return 0.25 + (p / 0.15) * 0.30; // Прогрев: 0.25 -> 0.55
-                if (p > 0.92) return 0.55 - ((p - 0.92) / 0.08) * 0.45; // Растворение (последний квадрат)
-                return 0.55 + (Math.sin(p * Math.PI * 10) * 0.03); // Колыхание на плато
+                if (p < 0.15) return 0.25 + (p / 0.15) * 0.30; 
+                if (p > 0.92) return 0.55 - ((p - 0.92) / 0.08) * 0.45; 
+                return 0.55 + (Math.sin(p * Math.PI * 10) * 0.03); 
             }
         }
     },
@@ -52,13 +49,13 @@ export const ContemplativeBluesBlueprint: MusicBlueprint = {
                 outroFill: null,
             },
             {
-                id: 'INTRO_COMBINED', name: 'The Ensemble Birth', duration: { percent: 8 }, // ~12 bars (1 square)
+                id: 'INTRO_COMBINED', name: 'The Ensemble Birth', duration: { percent: 8 }, 
                 layers: { bass: true, drums: true, melody: true, accompaniment: true, harmony: true, pianoAccompaniment: true, sfx: true, sparkles: true },
                 stagedInstrumentation: [
                     { 
                         duration: { percent: 100 }, 
                         instrumentation: {
-                           bass: { activationChance: 1.0, instrumentOptions: [ { name: 'bass_jazz_warm', weight: 1.0 } ] },
+                           bass: { activationChance: 1.0, instrumentOptions: [ { name: 'bass_ambient_dark', weight: 1.0 } ] },
                            drums: { activationChance: 1.0, instrumentOptions: [ { name: 'blues_melancholic', weight: 1.0 } ] },
                            melody: { activationChance: 1.0, instrumentOptions: [ { name: 'blackAcoustic', weight: 1.0 } ] },
                            accompaniment: { activationChance: 1.0, instrumentOptions: [ { name: 'ep_rhodes_warm', weight: 1.0 } ] },
@@ -84,10 +81,10 @@ export const ContemplativeBluesBlueprint: MusicBlueprint = {
                         instrumentation: {
                            melody: { activationChance: 1.0, instrumentOptions: [ { name: 'melody', weight: 1.0 } ] },
                            drums: { activationChance: 1.0, instrumentOptions: [ { name: 'blues_melancholic_master', weight: 1.0 } ] },
-                           bass: { activationChance: 1.0, instrumentOptions: [ { name: 'bass', weight: 1.0 } ] },
+                           bass: { activationChance: 1.0, instrumentOptions: [ { name: 'bass_ambient_dark', weight: 1.0 } ] },
                            pianoAccompaniment: { activationChance: 1.0, instrumentOptions: [ { name: 'piano', weight: 1.0 } ] },
                            accompaniment: { activationChance: 1.0, instrumentOptions: [ { name: 'accompaniment', weight: 1.0 } ] },
-                           harmony: { activationChance: 1.0, instrumentOptions: [ { name: 'guitarChords', weight: 0.6 }, { name: 'flute', weight: 0.4 } ] }
+                           harmony: { activationChance: 1.0, instrumentOptions: [ { name: 'guitarChords', weight: 0.6 }, { name: 'violin', weight: 0.4 } ] }
                         }
                     }
                 ],
@@ -100,14 +97,14 @@ export const ContemplativeBluesBlueprint: MusicBlueprint = {
                 outroFill: null,
             },
             {
-                id: 'OUTRO', name: 'Dissolving Trace', duration: { percent: 8 }, // Ровно 1 квадрат (12 тактов)
+                id: 'OUTRO', name: 'Dissolving Trace', duration: { percent: 8 }, 
                 layers: { pianoAccompaniment: true, sfx: true, bass: true, harmony: true },
                 stagedInstrumentation: [
                     { 
                         duration: { percent: 100 }, 
                         instrumentation: {
                            pianoAccompaniment: { activationChance: 1.0, instrumentOptions: [ { name: 'piano', weight: 1.0 } ] },
-                           bass: { activationChance: 1.0, instrumentOptions: [ { name: 'bass_ambient', weight: 1.0 } ] },
+                           bass: { activationChance: 1.0, instrumentOptions: [ { name: 'bass_ambient_dark', weight: 1.0 } ] },
                            harmony: { activationChance: 1.0, instrumentOptions: [ { name: 'guitarChords', weight: 1.0 } ] },
                            sfx: { activationChance: 0.8, instrumentOptions: [ { name: 'common', weight: 1.0 } ], transient: true }
                         }

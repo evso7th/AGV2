@@ -19,10 +19,10 @@ import { GUITAR_PATTERNS } from './assets/guitar-patterns';
 import { BLUES_SOLO_LICKS } from './assets/blues_guitar_solo';
 
 /**
- * #ЗАЧЕМ: Блюзовый Мозг V52.0 — "The Void Voice Update".
- * #ЧТО: 1. Реализована поддержка редких голосовых SFX в моментах падения напряжения.
- *       2. Интервал голосовых вставок: 1 на 12 тактов.
- *       3. Сохранена вся логика Anti-Stagnation и Register Discipline.
+ * #ЗАЧЕМ: Блюзовый Мозг V53.0 — "The Bass Floor Purity Update".
+ * #ЧТО: 1. Бас поднят до MIDI 31 (G1) для исключения инфразвукового гула.
+ *       2. Сохранены все голосовые SFX и логика Anti-Stagnation.
+ * #СВЯЗИ: Устраняет "пррр-пррр" в басовом диапазоне.
  */
 
 const ENERGY_PRICES = {
@@ -48,7 +48,9 @@ export class BluesBrain {
   private random: any;
   
   private readonly MELODY_CEILING = 73; 
-  private readonly BASS_FLOOR = 24; 
+  // #ЗАЧЕМ: Защита от инфразвукового рокота.
+  // #ЧТО: Пол поднят с 24 до 31 (G1).
+  private readonly BASS_FLOOR = 31; 
   private readonly PIANO_CEILING = 71; 
   private readonly MAX_NOTE_DURATION = 2.0; 
   private readonly NORMAL_NOTE_DURATION = 1.2; 

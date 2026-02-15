@@ -1,9 +1,9 @@
 import type { MusicBlueprint } from '@/types/music';
 
 /**
- * #ЗАЧЕМ: Блюпринт "Celestial Blues" (Dreamy Blues v11.0 - Solid Core Update).
- * #ЧТО: Стабилизация энергии. Плавная волна теперь не уходит в глубокий минус,
- *       сохраняя присутствие оркестра на протяжении всей 144-тактовой пьесы.
+ * #ЗАЧЕМ: Блюпринт "Celestial Blues" (Dreamy Blues v11.1 - Solid Core Update).
+ * #ЧТО: 1. Стабилизация энергии. Плавная волна теперь не уходит в глубокий минус.
+ *       2. Бас унифицирован с темными режимами (bass_ambient_dark).
  */
 export const DreamyBluesBlueprint: MusicBlueprint = {
     id: 'dreamy_blues',
@@ -18,8 +18,6 @@ export const DreamyBluesBlueprint: MusicBlueprint = {
         tensionProfile: { 
             type: 'wave', 
             peakPosition: 0.5, 
-            // #ЗАЧЕМ: Мягкое колыхание энергии без "дыр" в середине.
-            // #ЧТО: Волна ограничена коридором 0.50 - 0.70.
             curve: (p: number) => 0.60 + 0.1 * Math.sin(p * Math.PI) 
         }
     },
@@ -51,7 +49,7 @@ export const DreamyBluesBlueprint: MusicBlueprint = {
                     { 
                         duration: { percent: 15 }, 
                         instrumentation: {
-                           bass: { activationChance: 1.0, instrumentOptions: [ { name: 'bass_ambient', weight: 1.0 } ] },
+                           bass: { activationChance: 1.0, instrumentOptions: [ { name: 'bass_ambient_dark', weight: 1.0 } ] },
                            accompaniment: { activationChance: 1.0, instrumentOptions: [ { name: 'ep_rhodes_warm', weight: 1.0 } ] },
                            harmony: { activationChance: 1.0, instrumentOptions: [ { name: 'flute', weight: 1.0 } ] }
                         }
@@ -60,7 +58,7 @@ export const DreamyBluesBlueprint: MusicBlueprint = {
                         duration: { percent: 25 }, 
                         instrumentation: {
                            drums: { activationChance: 1.0, instrumentOptions: [ { name: 'blues_melancholic', weight: 1.0 } ] },
-                           bass: { activationChance: 1.0, instrumentOptions: [ { name: 'bass_ambient', weight: 1.0 } ] },
+                           bass: { activationChance: 1.0, instrumentOptions: [ { name: 'bass_ambient_dark', weight: 1.0 } ] },
                            accompaniment: { activationChance: 1.0, instrumentOptions: [ { name: 'ep_rhodes_warm', weight: 1.0 } ] },
                            melody: { activationChance: 1.0, instrumentOptions: [ { name: 'melody', weight: 1.0 } ] }
                         }
@@ -91,7 +89,7 @@ export const DreamyBluesBlueprint: MusicBlueprint = {
                         duration: { percent: 100 }, 
                         instrumentation: {
                            melody: { activationChance: 1.0, instrumentOptions: [ { name: 'melody', weight: 1.0 } ] },
-                           bass: { activationChance: 1.0, instrumentOptions: [ { name: 'bass_ambient', weight: 1.0 } ] },
+                           bass: { activationChance: 1.0, instrumentOptions: [ { name: 'bass_ambient_dark', weight: 1.0 } ] },
                            drums: { activationChance: 1.0, instrumentOptions: [ { name: 'blues_melancholic_master', weight: 1.0 } ] },
                            accompaniment: { activationChance: 1.0, instrumentOptions: [ { name: 'ep_rhodes_warm', weight: 1.0 } ] },
                            harmony: { activationChance: 1.0, instrumentOptions: [ { name: 'flute', weight: 0.7 }, { name: 'violin', weight: 0.3 } ] },
@@ -114,7 +112,7 @@ export const DreamyBluesBlueprint: MusicBlueprint = {
                     { 
                         duration: { percent: 100 }, 
                         instrumentation: {
-                           bass: { activationChance: 1.0, instrumentOptions: [ { name: 'bass_ambient', weight: 1.0 } ] },
+                           bass: { activationChance: 1.0, instrumentOptions: [ { name: 'bass_ambient_dark', weight: 1.0 } ] },
                            accompaniment: { activationChance: 1.0, instrumentOptions: [ { name: 'synth_ambient_pad_lush', weight: 1.0 } ] },
                            sparkles: { activationChance: 0.8, instrumentOptions: [ { name: 'light', weight: 1.0 } ], transient: true }
                         }
