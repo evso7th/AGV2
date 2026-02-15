@@ -1,10 +1,11 @@
 /**
- * #ЗАЧЕМ: Суверенный Мозг Амбиента v7.9 — "Vital Resonance & Legacy Narration".
- * #ЧТО: 1. Внедрена поддержка "Мягкого Железа" (Ghost Hats + Wettest Ride).
- *       2. Реализован слой "Биологических Труб" (PVC Tubes), реагирующий на туман.
- *       3. Усилено присутствие "Ликов Великих" (Legacy Licks) для внятной мелодии.
- *       4. Сохранен "Имперский Баланс" и защита от инфразвука (BASS_FLOOR = 24).
- *       5. Расширен слой органических деталей (15 слоев perk-***), масштабируемых туманом.
+ * #ЗАЧЕМ: Суверенный Мозг Амбиента v7.10 — "Systemic Melody Reduction".
+ * #ЧТО: 1. Системное снижение громкости (весов) мелодии в 2 раза.
+ *       2. Внедрена поддержка "Мягкого Железа" (Ghost Hats + Wettest Ride).
+ *       3. Реализован слой "Биологических Труб" (PVC Tubes), реагирующий на туман.
+ *       4. Усилено присутствие "Ликов Великих" (Legacy Licks) для внятной мелодии.
+ *       5. Сохранен "Имперский Баланс" и защита от инфразвука (BASS_FLOOR = 24).
+ *       6. Расширен слой органических деталей (15 слоев perk-***), масштабируемых туманом.
  */
 
 import type { 
@@ -240,12 +241,13 @@ export class AmbientBrain {
 
     private renderMelodicPadBase(chord: GhostChord, epoch: number, tension: number): FractalEvent[] {
         const root = Math.min(chord.rootNote + 24, this.MELODY_CEILING);
+        // #ОБНОВЛЕНО (ПЛАН №420): Вес снижен с 0.45 до 0.22.
         return [{
             type: 'melody',
             note: root,
             time: 0,
             duration: 12.0,
-            weight: 0.45 * (1.0 - this.fog * 0.3),
+            weight: 0.22 * (1.0 - this.fog * 0.3),
             technique: 'swell',
             dynamics: 'p',
             phrasing: 'legato',
@@ -262,12 +264,13 @@ export class AmbientBrain {
 
         return barNotes.map(n => {
             const breathDecay = 1.0 - (n.t / 60); 
+            // #ОБНОВЛЕНО (ПЛАН №420): Базовый вес снижен с 0.75 до 0.37.
             return {
                 type: 'melody',
                 note: Math.min(chord.rootNote + 36 + group.registerBias + (DEGREE_TO_SEMITONE[n.deg] || 0), this.MELODY_CEILING),
                 time: (n.t % 12) / 3,
                 duration: (n.d / 3) * 1.6, 
-                weight: (0.75 * breathDecay) * (0.9 + this.random.next() * 0.2), 
+                weight: (0.37 * breathDecay) * (0.9 + this.random.next() * 0.2), 
                 technique: n.tech || 'pick',
                 dynamics: 'p',
                 phrasing: 'legato',
@@ -297,12 +300,13 @@ export class AmbientBrain {
             if (this.random.next() < 0.15) continue;
 
             const idx = calculateMusiNum(epoch + i, 3, this.seed, intervals.length);
+            // #ОБНОВЛЕНО (ПЛАН №420): Базовый вес снижен с 0.45 до 0.22.
             events.push({
                 type: 'melody',
                 note: Math.min(root + intervals[idx], this.MELODY_CEILING),
                 time: i * timeStep,
                 duration: timeStep * 1.5, 
-                weight: 0.45 * tension,
+                weight: 0.22 * tension,
                 technique: 'pick',
                 dynamics: 'p',
                 phrasing: 'legato',
@@ -458,12 +462,8 @@ export class AmbientBrain {
         }
 
         // 3. THE RESONANCE PROTOCOL (Tubes & Perks)
-        // #ЗАЧЕМ: Создание осязаемой звуковой среды, реагирующей на туман.
-        // #ЧТО: Объединение ПВХ-труб и всех 15 слоев перкуссии в единый блок, 
-        //      плотность которого напрямую модулируется параметром fog.
-        const resonanceProb = 0.35 + (this.fog * 0.55); // Плотность растет с туманом
+        const resonanceProb = 0.35 + (this.fog * 0.55); 
         if (this.random.next() < resonanceProb) {
-            // Вероятностный выбор между Трубами (40%) и Перками (60%)
             if (this.random.next() < 0.4) {
                 const tubeIdx = 1 + this.random.nextInt(3);
                 const tubeTypes = ['drum_bongo_pvc-tube-01', 'drum_bongo_pvc-tube-02', 'drum_bongo_pvc-tube-03'];
@@ -478,7 +478,6 @@ export class AmbientBrain {
                     phrasing: 'staccato'
                 });
             } else {
-                // Тотальный охват всех 15 слоев perc-***
                 const perkIdx = (1 + this.random.nextInt(15)).toString().padStart(3, '0');
                 events.push({
                     type: `perc-${perkIdx}` as any,

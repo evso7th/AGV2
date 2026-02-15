@@ -1,7 +1,7 @@
 /**
  * #ЗАЧЕМ: Хук управления UI музыкой V3.3.
  * #ЧТО: 1. Внедрена поддержка межсессионной памяти ликов через localStorage.
- *       2. Реализованы специфические дефолты громкости для жанра Амбиент (ПЛАН №406).
+ *       2. Реализованы специфические дефолты громкости для жанра Амбиент (ПЛАН №420).
  */
 'use client';
 
@@ -91,12 +91,13 @@ export const useAuraGroove = (): AuraGrooveProps => {
   const [drumSettings, setDrumSettings] = useState<DrumSettings>({ pattern: 'composer', volume: 0.25, kickVolume: 1.0, enabled: true });
   
   // #ЗАЧЕМ: Дефолтный баланс для Амбиента при старте.
+  // #ОБНОВЛЕНО (ПЛАН №420): Громкость мелодии снижена до 0.27.
   const [instrumentSettings, setInstrumentSettings] = useState<InstrumentSettings>({
     bass: { name: "bass_jazz_warm", volume: 0.5, technique: 'portamento' },
-    melody: { name: "blackAcoustic", volume: 0.55 }, // 55
-    accompaniment: { name: "organ_soft_jazz", volume: 0.50 }, // 50
-    harmony: { name: "guitarChords", volume: 0.15 }, // 15
-    pianoAccompaniment: { name: "piano", volume: 0.35 }, // 35
+    melody: { name: "blackAcoustic", volume: 0.27 }, 
+    accompaniment: { name: "organ_soft_jazz", volume: 0.50 }, 
+    harmony: { name: "guitarChords", volume: 0.15 }, 
+    pianoAccompaniment: { name: "piano", volume: 0.35 }, 
   });
 
   const [textureSettings, setTextureSettings] = useState<TextureSettings>({
@@ -135,12 +136,12 @@ export const useAuraGroove = (): AuraGrooveProps => {
     }
   }, []);
 
-  // #ЗАЧЕМ: Автоматический сброс громкости при переключении на Амбиент (ПЛАН №406).
+  // #ЗАЧЕМ: Автоматический сброс громкости при переключении на Амбиент (ПЛАН №420).
   useEffect(() => {
     if (genre === 'ambient') {
       console.log('%c[UI] Genre switched to AMBIENT. Applying Imperial Balance.', 'color: #DA70D6; font-weight: bold;');
       const ambientDefaults = {
-        melody: 0.55,
+        melody: 0.27,
         accompaniment: 0.50,
         harmony: 0.15,
         pianoAccompaniment: 0.35
