@@ -1,8 +1,9 @@
+
 /**
- * #ЗАЧЕМ: Суверенный Мозг Амбиента v6.8 — "Nostalgic Comfort Update".
- * #ЧТО: 1. Внедрена поддержка династии BUDD для деликатных фортепианных фраз.
- *       2. Потолок мелодии жестко ограничен MIDI 75.
- *       3. Оптимизирована логика выбора темы для ансамбля.
+ * #ЗАЧЕМ: Суверенный Мозг Амбиента v6.9 — "The Organ Passage Update".
+ * #ЧТО: 1. Реализована техника быстрых органных пассажей (1/16-е ноты).
+ *       2. Скорректирован фильтр: пол solistCutoff поднят до 1200 Гц.
+ *       3. Устранена возможная тишина на старте лотереи.
  */
 
 import type { 
@@ -50,8 +51,6 @@ export class AmbientBrain {
     private introLotteryMap: Map<number, Partial<Record<InstrumentPart, any>>> = new Map();
 
     private soloistBusyUntilBar: number = -1;
-    // #ЗАЧЕМ: Защита от пронзительности.
-    // #ЧТО: Потолок мелодии поднят до 75 по просьбе пользователя.
     private readonly MELODY_CEILING = 75;
     private readonly BASS_FLOOR = 24;
 
@@ -115,8 +114,6 @@ export class AmbientBrain {
         if (epoch >= this.soloistBusyUntilBar) {
             const shouldStartTheme = this.random.next() < (0.3 + localTension * 0.4);
             if (shouldStartTheme) {
-                // #ЗАЧЕМ: Выбор группы мастеров на основе настроения.
-                // #ЧТО: Для меланхолии приоритет отдается BUDD и BOARDS.
                 let groupKey = dna.ambientLegacyGroup || 'ENO';
                 if (this.mood === 'melancholic' && this.random.next() < 0.7) {
                     groupKey = this.random.next() < 0.6 ? 'BUDD' : 'BOARDS';
@@ -167,6 +164,7 @@ export class AmbientBrain {
             if (this.currentTheme && epoch < this.currentTheme.endBar) {
                 events.push(...this.renderThemeMelody(currentChord, epoch, localTension, hints, dna));
             } else if (epoch >= this.soloistBusyUntilBar - 1 && (timbre.includes('organ') || timbre.includes('synth'))) {
+                // #ЗАЧЕМ: Активация органных пассажей в моменты затишья темы.
                 events.push(...this.renderOrganArpeggio(currentChord, epoch, localTension));
             }
         }
@@ -319,8 +317,10 @@ export class AmbientBrain {
         const isMinor = chord.chordType === 'minor' || chord.chordType === 'dominant';
         const intervals = isMinor ? [0, 3, 7, 10, 12, 15, 19, 24] : [0, 4, 7, 11, 12, 16, 19, 24];
         const events: FractalEvent[] = [];
-        const count = 8;
-        const timeStep = 0.5;
+        // #ЗАЧЕМ: Ускорение органных пассажей для "Имперского Звука".
+        // #ЧТО: Количество нот увеличено, шаг уменьшен (1/16-е ноты).
+        const count = 12; 
+        const timeStep = 0.25; 
 
         for (let i = 0; i < count; i++) {
             const idx = calculateMusiNum(epoch + i, 3, this.seed, intervals.length);
@@ -328,8 +328,8 @@ export class AmbientBrain {
                 type: 'melody',
                 note: Math.min(root + intervals[idx], this.MELODY_CEILING),
                 time: i * timeStep,
-                duration: 4.5,
-                weight: 0.55 * tension * (0.9 + this.random.next() * 0.2),
+                duration: 1.5, // Короче ноты для пассажа
+                weight: 0.45 * tension * (0.9 + this.random.next() * 0.2),
                 technique: 'pick',
                 dynamics: 'p',
                 phrasing: 'legato',
@@ -466,7 +466,6 @@ export class AmbientBrain {
     private renderAmbientPercussion(epoch: number, tension: number): FractalEvent[] {
         const events: FractalEvent[] = [];
         
-        // 1. VITAL HEARTBEAT (Kick + Low Tom)
         const heartbeatProb = 0.3 + (tension * 0.5); 
         if (this.random.next() < heartbeatProb) {
             const firstTime = 0;
@@ -491,7 +490,6 @@ export class AmbientBrain {
             }
         }
 
-        // 2. GHOST HAT ACCENTS (Rare)
         const hatProb = (0.05 + (this.pulse * 0.15)) * (1.0 - this.fog * 0.5); 
         [1.33, 2.66, 3.66].forEach(t => { 
             if (this.random.next() < hatProb) {
@@ -503,7 +501,6 @@ export class AmbientBrain {
             }
         });
 
-        // 3. WET RIDE (Atmospheric)
         const rideProb = 0.1 + (tension * 0.2);
         if (this.random.next() < rideProb) {
             events.push({
@@ -513,7 +510,6 @@ export class AmbientBrain {
             });
         }
 
-        // 4. ORGANIC DETAILS & BELLS (React to Fog)
         const detailProb = 0.3 + (this.fog * 0.4); 
         if (this.random.next() < detailProb) {
             const perkIdx = (1 + this.random.nextInt(15)).toString().padStart(3, '0');
@@ -562,14 +558,15 @@ export class AmbientBrain {
         this.depth = Math.max(0, Math.min(1, 0.4 + (tension * 0.45)));
         this.pulse = Math.max(0, Math.min(1, 0.15 + (tension * 0.35)));
         
-        this.solistCutoff = 4500 * (1 - Math.pow(this.fog, 1.2)) + 800;
+        // #ЗАЧЕМ: Гарантированная слышимость.
+        // #ЧТО: Пол фильтра поднят до 1200 Гц.
+        this.solistCutoff = 4500 * (1 - Math.pow(this.fog, 1.2)) + 1200;
     }
 
     private renderPad(chord: GhostChord, epoch: number, timbre: string): FractalEvent[] {
         const root = chord.rootNote + 12;
         const isMinor = chord.chordType === 'minor' || chord.chordType === 'diminished';
         const notes = [root, root + (isMinor ? 3 : 4), root + 7];
-        const cutoff = 1600 * (1 - Math.pow(this.fog, 1.5));
 
         return notes.map((n, i) => ({
             type: 'accompaniment',
