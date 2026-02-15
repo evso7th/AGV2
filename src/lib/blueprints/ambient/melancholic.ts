@@ -2,9 +2,11 @@
 import type { MusicBlueprint } from '@/types/music';
 
 /**
- * #ЗАЧЕМ: Флагманский блюпринт "Nostalgic Morning" (v41.2).
+ * #ЗАЧЕМ: Флагманский блюпринт "Nostalgic Morning" (v41.3).
  * #ЧТО: 1. Устранена тишина на старте: Pad теперь вступает на Бар 0.
  *       2. Соло-инструменты изменены на Орган и Эмеральд Пэд. Гитара удалена.
+ *       3. #ОБНОВЛЕНО (ПЛАН №413): Громкость гармонии снижена в 4 раза. 
+ *          Внедрена поддержка гитарных аккордов.
  */
 export const MelancholicAmbientBlueprint: MusicBlueprint = {
   id: 'melancholic_ambient',
@@ -32,7 +34,6 @@ export const MelancholicAmbientBlueprint: MusicBlueprint = {
     parts: [
       {
         id: 'INTRO', name: 'The Awakening', duration: { percent: 15 }, 
-        // #ЗАЧЕМ: Гарантированный старт без тишины.
         layers: { accompaniment: true, sfx: true, pianoAccompaniment: true, bass: true },
         instrumentation: {
             accompaniment: { strategy: 'weighted', v2Options: [{ name: 'synth_ambient_pad_lush', weight: 1.0 }] },
@@ -41,7 +42,7 @@ export const MelancholicAmbientBlueprint: MusicBlueprint = {
         instrumentRules: {
           drums: { kitName: 'melancholic', pattern: 'ambient_beat', density: { min: 0.05, max: 0.1 } },
           bass: { techniques: [{ value: 'pedal', weight: 1.0 }] },
-          accompaniment: { activationChance: 1.0 } // Force start
+          accompaniment: { activationChance: 1.0 } 
         },
         bundles: [{ id: 'INTRO_B1', name: 'Foggy Morning', duration: { percent: 100 }, characteristics: {}, phrases: {} }],
         outroFill: null,
@@ -50,14 +51,15 @@ export const MelancholicAmbientBlueprint: MusicBlueprint = {
         id: 'MAIN', name: 'Nostalgic Dialogue', duration: { percent: 70 }, 
         layers: { bass: true, drums: true, melody: true, accompaniment: true, pianoAccompaniment: true, sfx: true, harmony: true, sparkles: true },
         instrumentation: {
-            // #ЗАЧЕМ: Возврат классических тембров в соло.
             melody: { strategy: 'weighted', v2Options: [
                 { name: 'organ_soft_jazz', weight: 0.4 }, 
                 { name: 'synth', weight: 0.3 }, 
                 { name: 'organ_prog', weight: 0.2 },
                 { name: 'ep_rhodes_warm', weight: 0.1 }
             ]},
-            accompaniment: { strategy: 'weighted', v2Options: [{ name: 'synth_ambient_pad_lush', weight: 1.0 }] }
+            accompaniment: { strategy: 'weighted', v2Options: [{ name: 'synth_ambient_pad_lush', weight: 1.0 }] },
+            // #ЗАЧЕМ: Поддержка скрипок и гитары в гармонии.
+            harmony: { strategy: 'weighted', options: [{ name: 'violin', weight: 0.5 }, { name: 'guitarChords', weight: 0.5 }] }
         },
         instrumentRules: {
           drums: { kitName: 'melancholic', pattern: 'composer', density: { min: 0.3, max: 0.5 } },
@@ -90,6 +92,8 @@ export const MelancholicAmbientBlueprint: MusicBlueprint = {
       bass: { level: -18, pan: 0.0 },
       accompaniment: { level: -16, pan: 0.0 },
       melody: { level: -18, pan: -0.1 },
+      // #ЗАЧЕМ: Снижение громкости гармонии в 4 раза (ПЛАН №413).
+      harmony: { level: -30, pan: 0.0 },
       pianoAccompaniment: { level: -22, pan: 0.2 },
       sfx: { level: -26, pan: 0.0 }
     }

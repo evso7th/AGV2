@@ -1,9 +1,10 @@
 
 /**
- * #ЗАЧЕМ: Суверенный Мозг Амбиента v6.9 — "The Organ Passage Update".
- * #ЧТО: 1. Реализована техника быстрых органных пассажей (1/16-е ноты).
- *       2. Скорректирован фильтр: пол solistCutoff поднят до 1200 Гц.
- *       3. Устранена возможная тишина на старте лотереи.
+ * #ЗАЧЕМ: Суверенный Мозг Амбиента v7.0 — "The Harmony Dynamics Update".
+ * #ЧТО: 1. Внедрена интеллектуальная гармония: скрипки (High Tension) / гитара (Low Tension).
+ *       2. Гармония вступает не каждый такт (60% шанс) для создания пространства.
+ *       3. Voice SFX удалены в меланхолии, заменены на лазеры.
+ *       4. Громкость скрипок снижена на уровне весов.
  */
 
 import type { 
@@ -164,7 +165,6 @@ export class AmbientBrain {
             if (this.currentTheme && epoch < this.currentTheme.endBar) {
                 events.push(...this.renderThemeMelody(currentChord, epoch, localTension, hints, dna));
             } else if (epoch >= this.soloistBusyUntilBar - 1 && (timbre.includes('organ') || timbre.includes('synth'))) {
-                // #ЗАЧЕМ: Активация органных пассажей в моменты затишья темы.
                 events.push(...this.renderOrganArpeggio(currentChord, epoch, localTension));
             }
         }
@@ -173,8 +173,9 @@ export class AmbientBrain {
             events.push(...this.renderPianoDrops(currentChord, epoch, localTension));
         }
 
+        // #ЗАЧЕМ: Интеллектуальная оркестровка гармонии (ПЛАН №413).
         if (hints.harmony) {
-            events.push(...this.renderOrchestralHarmony(currentChord, epoch, hints.harmony as string, localTension));
+            events.push(...this.renderOrchestralHarmony(currentChord, epoch, hints, localTension));
         }
 
         if (hints.sparkles && this.random.next() < 0.6) {
@@ -317,8 +318,6 @@ export class AmbientBrain {
         const isMinor = chord.chordType === 'minor' || chord.chordType === 'dominant';
         const intervals = isMinor ? [0, 3, 7, 10, 12, 15, 19, 24] : [0, 4, 7, 11, 12, 16, 19, 24];
         const events: FractalEvent[] = [];
-        // #ЗАЧЕМ: Ускорение органных пассажей для "Имперского Звука".
-        // #ЧТО: Количество нот увеличено, шаг уменьшен (1/16-е ноты).
         const count = 12; 
         const timeStep = 0.25; 
 
@@ -328,7 +327,7 @@ export class AmbientBrain {
                 type: 'melody',
                 note: Math.min(root + intervals[idx], this.MELODY_CEILING),
                 time: i * timeStep,
-                duration: 1.5, // Короче ноты для пассажа
+                duration: 1.5, 
                 weight: 0.45 * tension * (0.9 + this.random.next() * 0.2),
                 technique: 'pick',
                 dynamics: 'p',
@@ -380,55 +379,54 @@ export class AmbientBrain {
         return events;
     }
 
-    private renderOrchestralHarmony(chord: GhostChord, epoch: number, timbre: string, tension: number): FractalEvent[] {
+    // #ЗАЧЕМ: Интеллектуальная оркестровка гармонии (ПЛАН №413).
+    // #ЧТО: 1. Шанс появления гармонии 60%. 2. Смена инструмента по Tension.
+    private renderOrchestralHarmony(chord: GhostChord, epoch: number, hints: InstrumentHints, tension: number): FractalEvent[] {
+        // Проверка на "пустоту" (не в каждый такт)
+        if (this.mood === 'melancholic' && calculateMusiNum(epoch, 3, this.seed, 10) > 6) {
+            delete hints.harmony;
+            return [];
+        }
+
+        const isHighTension = tension > 0.65;
+        const isLowTension = tension < 0.45;
         const root = chord.rootNote; 
         const isMinor = chord.chordType === 'minor' || chord.chordType === 'diminished';
+        
+        // Решение по тембру для Меланхолии
+        if (this.mood === 'melancholic') {
+            if (isHighTension) {
+                hints.harmony = 'violin';
+            } else if (isLowTension) {
+                hints.harmony = 'guitarChords';
+            } else {
+                delete hints.harmony;
+                return []; // Мелкое окно тишины между состояниями
+            }
+        }
+
+        const timbre = hints.harmony as string;
         const notes = [root, root + 7];
         const chordName = isMinor ? 'Am' : 'E';
         
-        const events: FractalEvent[] = notes.map((n, i) => ({
-            type: 'harmony',
-            note: n + 12, 
-            time: i * 0.5,
-            duration: 12.0,
-            weight: 0.38 * (0.8 + this.random.next() * 0.4), 
-            technique: 'swell',
-            dynamics: 'p',
-            phrasing: 'legato',
-            chordName: chordName,
-            params: { barCount: epoch, filterCutoff: this.solistCutoff * 0.9 }
-        }));
+        return notes.map((n, i) => {
+            // #ЗАЧЕМ: Радикальное снижение громкости скрипок (ПЛАН №413).
+            const isViolin = timbre === 'violin';
+            const baseWeight = isViolin ? 0.12 : 0.45; // Скрипки 0.12, гитара 0.45
 
-        if (this.mood === 'dark' && (tension > 0.8 || this.fog > 0.9)) {
-            events.push({
+            return {
                 type: 'harmony',
-                note: root + 6 + 24, 
-                time: 1.0,
-                duration: 8.0,
-                weight: 0.35 * this.fog, 
-                technique: 'swell',
-                dynamics: 'p',
-                phrasing: 'legato',
-                chordName: 'dim',
-                params: { barCount: epoch, filterCutoff: 1200 }
-            });
-        }
-
-        if (isMinor && tension > 0.75) {
-            events.push({
-                type: 'harmony',
-                note: root + 8 + 36, 
-                time: 2.0,
-                duration: 16.0, 
-                weight: 0.45 * (1 + this.fog), 
+                note: n + 12, 
+                time: i * 0.5,
+                duration: 12.0,
+                weight: baseWeight * (0.8 + this.random.next() * 0.4), 
                 technique: 'swell',
                 dynamics: 'p',
                 phrasing: 'legato',
                 chordName: chordName,
-                params: { barCount: epoch, filterCutoff: 1500 }
-            });
-        }
-        return events;
+                params: { barCount: epoch, filterCutoff: this.solistCutoff * 0.9 }
+            };
+        });
     }
 
     private renderSparkle(chord: GhostChord): FractalEvent {
@@ -446,6 +444,10 @@ export class AmbientBrain {
     }
 
     private renderSfx(tension: number): FractalEvent[] {
+        // #ЗАЧЕМ: Purge Voice SFX.
+        // #ЧТО: В меланхолии используется только категория 'laser'.
+        const category = this.mood === 'melancholic' ? 'laser' : 'voice';
+
         return [{
             type: 'sfx',
             note: 60,
@@ -458,7 +460,7 @@ export class AmbientBrain {
             params: { 
                 mood: this.mood, 
                 genre: 'ambient', 
-                rules: { categories: [{ name: 'voice', weight: 1.0 }] } as any 
+                rules: { categories: [{ name: category, weight: 1.0 }] } as any 
             }
         }];
     }
@@ -557,9 +559,6 @@ export class AmbientBrain {
         this.fog = Math.max(0, Math.min(1, 0.3 + (tension * 0.55))); 
         this.depth = Math.max(0, Math.min(1, 0.4 + (tension * 0.45)));
         this.pulse = Math.max(0, Math.min(1, 0.15 + (tension * 0.35)));
-        
-        // #ЗАЧЕМ: Гарантированная слышимость.
-        // #ЧТО: Пол фильтра поднят до 1200 Гц.
         this.solistCutoff = 4500 * (1 - Math.pow(this.fog, 1.2)) + 1200;
     }
 
