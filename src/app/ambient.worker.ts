@@ -1,7 +1,6 @@
 /**
  * @file AuraGroove Music Worker (Architecture: "The Chain of Suites")
- * #ОБНОВЛЕНО (ПЛАН №401): Исправлена логика переходов. Теперь переход происходит в начале тика,
- *       что устраняет тишину после променада и предотвращает остановку цикла.
+ * #ОБНОВЛЕНО (ПЛАН №428): Внедрено ежетактное логирование баса для диагностики искажений.
  */
 import type { WorkerSettings, ScoreName, Mood, Genre, InstrumentPart } from '@/types/music';
 import { FractalMusicEngine } from '@/lib/fractal-music-engine';
@@ -152,9 +151,6 @@ const Scheduler = {
     tick() {
         if (!this.isRunning || !fractalMusicEngine) return;
 
-        // #ЗАЧЕМ: Бесшовный переход. Проверка конца сюиты перенесена в НАЧАЛО тика.
-        // #ЧТО: Если лимит тактов достигнут, мы немедленно переключаем тип сюиты и 
-        //      инициализируем новый движок, чтобы этот же тик сгенерировал Bar 0.
         if (this.barCount >= fractalMusicEngine.navigator!.totalBars) {
              console.log(`%c${getTimestamp()} [Chain] Suite ${this.suiteType} ended. Transitioning...`, 'color: #4ade80; font-weight: bold;');
              
@@ -166,7 +162,6 @@ const Scheduler = {
              }
              
              this.initializeEngine(this.settings, true);
-             // initializeEngine сбрасывает barCount в 0.
         }
 
         let finalPayload: { events: FractalEvent[], instrumentHints: InstrumentHints, beautyScore: number, tension: number, navInfo?: NavigationInfo } = { 
@@ -202,10 +197,15 @@ const Scheduler = {
             }
         }
         
-        if (this.barCount % 12 === 0 || finalPayload.navInfo?.isPartTransition) {
-            const sectionName = finalPayload.navInfo?.currentPart.name || 'Unknown';
-            console.log(`${getTimestamp()} [Bar ${this.barCount}] [${this.suiteType}] [${sectionName}] T:${finalPayload.tension.toFixed(2)} BPM:${this.settings.bpm} Res:${finalPayload.beautyScore.toFixed(2)} D:${counts.drums}, B:${counts.bass}, M:${counts.melody}`);
-        }
+        // #ЗАЧЕМ: Детальная диагностика баса.
+        // #ЧТО: Логирование выводится на КАЖДОМ такте. Добавлен идентификатор пресета баса.
+        const sectionName = finalPayload.navInfo?.currentPart.name || 'Unknown';
+        const bassPreset = finalPayload.instrumentHints?.bass || 'none';
+        console.log(
+            `%c${getTimestamp()} [Bar ${this.barCount}] [${this.suiteType}] [${sectionName}] T:${finalPayload.tension.toFixed(2)} BPM:${this.settings.bpm} Res:${finalPayload.beautyScore.toFixed(2)} D:${counts.drums}, B:${counts.bass}, M:${counts.melody} | %cBASS: ${bassPreset}`,
+            'color: #888;', // Основной текст серый
+            'color: #4ade80; font-weight: bold;' // Пресет баса ярко-зеленый
+        );
 
         self.postMessage({ 
             type: 'SCORE_READY', 
