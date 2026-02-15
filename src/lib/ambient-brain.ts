@@ -1,9 +1,10 @@
 /**
- * #ЗАЧЕМ: Суверенный Мозг Амбиента v7.8 — "Vital Resonance & Legacy Narration".
+ * #ЗАЧЕМ: Суверенный Мозг Амбиента v7.9 — "Vital Resonance & Legacy Narration".
  * #ЧТО: 1. Внедрена поддержка "Мягкого Железа" (Ghost Hats + Wettest Ride).
  *       2. Реализован слой "Биологических Труб" (PVC Tubes), реагирующий на туман.
  *       3. Усилено присутствие "Ликов Великих" (Legacy Licks) для внятной мелодии.
  *       4. Сохранен "Имперский Баланс" и защита от инфразвука (BASS_FLOOR = 24).
+ *       5. Расширен слой органических деталей (15 слоев perk-***), масштабируемых туманом.
  */
 
 import type { 
@@ -110,7 +111,6 @@ export class AmbientBrain {
         this.applySpectralAtom(epoch, waves[3]);
         this.updateMoodAxes(epoch, localTension);
 
-        // #ЗАЧЕМ: Управление внятной мелодической линией (Наследие Великих).
         if (epoch >= this.soloistBusyUntilBar) {
             const developmentChance = 0.4 + localTension * 0.4;
             if (this.random.next() < developmentChance) {
@@ -126,7 +126,7 @@ export class AmbientBrain {
                     startBar: epoch,
                     endBar: epoch + phraseBars
                 };
-                this.soloistBusyUntilBar = epoch + phraseBars + 1; // Уменьшена пауза для внятности
+                this.soloistBusyUntilBar = epoch + phraseBars + 1;
             } else {
                 this.currentTheme = null;
             }
@@ -138,11 +138,9 @@ export class AmbientBrain {
         hints.accompaniment = hints.accompaniment || 'synth_ambient_pad_lush';
         hints.bass = hints.bass || 'bass_jazz_warm';
 
-        // ─── 1. ОСНОВА ───
         events.push(...this.renderPad(currentChord, epoch, hints.accompaniment as string));
         events.push(...this.renderRhythmicBass(currentChord, localTension, hints.bass as string, epoch));
 
-        // ─── 2. МЕЛОДИЯ ───
         if (hints.melody) {
             events.push(...this.renderMelodicPadBase(currentChord, epoch, localTension));
 
@@ -155,7 +153,6 @@ export class AmbientBrain {
             }
         }
 
-        // ─── 3. ДОПОЛНЕНИЯ ───
         if (hints.pianoAccompaniment) {
             events.push(...this.renderPianoDrops(currentChord, epoch, localTension));
         }
@@ -164,7 +161,6 @@ export class AmbientBrain {
             events.push(...this.renderOrchestralHarmony(currentChord, epoch, hints, localTension));
         }
 
-        // ─── 4. РИТМ И ТЕКСТУРА ───
         events.push(...this.renderAmbientPercussion(epoch, localTension));
 
         if (hints.sparkles && this.random.next() < 0.6) {
@@ -271,7 +267,7 @@ export class AmbientBrain {
                 note: Math.min(chord.rootNote + 36 + group.registerBias + (DEGREE_TO_SEMITONE[n.deg] || 0), this.MELODY_CEILING),
                 time: (n.t % 12) / 3,
                 duration: (n.d / 3) * 1.6, 
-                weight: (0.75 * breathDecay) * (0.9 + this.random.next() * 0.2), // Увеличен вес для внятности
+                weight: (0.75 * breathDecay) * (0.9 + this.random.next() * 0.2), 
                 technique: n.tech || 'pick',
                 dynamics: 'p',
                 phrasing: 'legato',
@@ -446,7 +442,6 @@ export class AmbientBrain {
         }
 
         // 2. SOFT IRON (Ghost Hat & Wet Ride)
-        // #ЗАЧЕМ: Редкое мягкое железо для воздуха в пиках.
         const ironProb = 0.15 + (tension * 0.25);
         if (this.random.next() < ironProb) {
             const isRide = this.random.next() < 0.3; // 30% ride
@@ -462,33 +457,40 @@ export class AmbientBrain {
             });
         }
 
-        // 3. TUBES (PVC Bongo)
-        // #ЗАЧЕМ: Тактильные "тьюбы", реагирующие на туман.
-        const tubeProb = 0.2 + (this.fog * 0.4);
-        if (this.random.next() < tubeProb) {
-            const tubeIdx = 1 + this.random.nextInt(3);
-            const tubeTypes = ['drum_bongo_pvc-tube-01', 'drum_bongo_pvc-tube-02', 'drum_bongo_pvc-tube-03'];
-            events.push({
-                type: tubeTypes[tubeIdx - 1] as any,
-                note: 60,
-                time: this.random.next() * 4,
-                duration: 0.5,
-                weight: 0.4,
-                technique: 'hit',
-                dynamics: 'p',
-                phrasing: 'staccato'
-            });
-        }
-
-        // 4. ORGANIC DETAILS (Perks)
-        const detailProb = 0.40 + (this.fog * 0.5); 
-        if (this.random.next() < detailProb) {
-            const perkIdx = (1 + this.random.nextInt(15)).toString().padStart(3, '0');
-            events.push({
-                type: `perc-${perkIdx}` as any,
-                note: 60, time: this.random.next() * 4, duration: 4.0, weight: 0.7,
-                technique: 'hit', dynamics: 'p', phrasing: 'staccato'
-            });
+        // 3. THE RESONANCE PROTOCOL (Tubes & Perks)
+        // #ЗАЧЕМ: Создание осязаемой звуковой среды, реагирующей на туман.
+        // #ЧТО: Объединение ПВХ-труб и всех 15 слоев перкуссии в единый блок, 
+        //      плотность которого напрямую модулируется параметром fog.
+        const resonanceProb = 0.35 + (this.fog * 0.55); // Плотность растет с туманом
+        if (this.random.next() < resonanceProb) {
+            // Вероятностный выбор между Трубами (40%) и Перками (60%)
+            if (this.random.next() < 0.4) {
+                const tubeIdx = 1 + this.random.nextInt(3);
+                const tubeTypes = ['drum_bongo_pvc-tube-01', 'drum_bongo_pvc-tube-02', 'drum_bongo_pvc-tube-03'];
+                events.push({
+                    type: tubeTypes[tubeIdx - 1] as any,
+                    note: 60,
+                    time: this.random.next() * 4,
+                    duration: 0.5,
+                    weight: 0.4 * (0.8 + this.random.next() * 0.4),
+                    technique: 'hit',
+                    dynamics: 'p',
+                    phrasing: 'staccato'
+                });
+            } else {
+                // Тотальный охват всех 15 слоев perc-***
+                const perkIdx = (1 + this.random.nextInt(15)).toString().padStart(3, '0');
+                events.push({
+                    type: `perc-${perkIdx}` as any,
+                    note: 60, 
+                    time: this.random.next() * 4, 
+                    duration: 4.0, 
+                    weight: 0.65 * (0.7 + this.random.next() * 0.3),
+                    technique: 'hit', 
+                    dynamics: 'p', 
+                    phrasing: 'staccato'
+                });
+            }
         }
 
         return events;
