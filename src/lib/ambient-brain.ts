@@ -1,4 +1,3 @@
-
 /**
  * #ЗАЧЕМ: Суверенный Мозг Амбиента v7.5 — "Dynamic Pulse & Flow".
  * #ЧТО: 1. Внедрена динамическая плотность органных пассажей (1/4 -> 1/8 -> 1/16).
@@ -117,7 +116,7 @@ export class AmbientBrain {
             const shouldStartTheme = this.random.next() < developmentChance;
             
             if (shouldStartTheme) {
-                let groupKey = dna.ambientLegacyGroup || 'ENO';
+                let groupKey = dna.ambientLegacyGroup || 'BUDD';
                 if (this.mood === 'melancholic' && this.random.next() < 0.7) {
                     groupKey = this.random.next() < 0.6 ? 'BUDD' : 'BOARDS';
                 }
@@ -302,7 +301,7 @@ export class AmbientBrain {
 
     private renderThemeMelody(chord: GhostChord, epoch: number, tension: number, hints: InstrumentHints, dna: SuiteDNA): FractalEvent[] {
         if (!this.currentTheme) return [];
-        const groupKey = dna.ambientLegacyGroup || 'ENO';
+        const groupKey = dna.ambientLegacyGroup || 'BUDD';
         const group = AMBIENT_LEGACY[groupKey];
         const barOffset = (epoch - this.currentTheme.startBar) * 12;
         const barNotes = this.currentTheme.phrase.filter(n => n.t >= barOffset && n.t < barOffset + 12);
@@ -323,30 +322,24 @@ export class AmbientBrain {
         });
     }
 
-    /**
-     * #ЗАЧЕМ: Динамическое масштабирование плотности пассажей (ПЛАН №416).
-     * #ЧТО: Ритм ускоряется с ростом Tension (1/4 -> 1/8 -> 1/16).
-     */
     private renderOrganArpeggio(chord: GhostChord, epoch: number, tension: number): FractalEvent[] {
         const root = chord.rootNote + 24; 
         const isMinor = chord.chordType === 'minor' || chord.chordType === 'dominant';
         const intervals = isMinor ? [0, 3, 7, 10, 12, 15, 19, 24] : [0, 4, 7, 11, 12, 16, 19, 24];
         const events: FractalEvent[] = [];
         
-        // --- Ритмическое масштабирование ---
-        let timeStep = 1.0; // 1/4
+        let timeStep = 1.0; 
         let count = 4;
 
         if (tension > 0.75) {
-            timeStep = 0.25; // 1/16
+            timeStep = 0.25; 
             count = 16;
         } else if (tension > 0.45) {
-            timeStep = 0.5; // 1/8
+            timeStep = 0.5; 
             count = 8;
         }
 
         for (let i = 0; i < count; i++) {
-            // --- Human Breathing (15% шанс пропуска) ---
             if (this.random.next() < 0.15) continue;
 
             const idx = calculateMusiNum(epoch + i, 3, this.seed, intervals.length);
@@ -393,7 +386,7 @@ export class AmbientBrain {
             if (this.random.next() < (0.25 * this.depth)) { 
                 events.push({
                     type: 'pianoAccompaniment',
-                    note: Math.min(chord.rootNote + 24 + [0, 3, 7, 12][this.random.nextInt(4)], 72),
+                    note: Math.min(chord.rootNote + 24 + [0, 3, 7, 12][this.random.nextInt(4)], this.MELODY_CEILING),
                     time: beat,
                     duration: 3.0,
                     weight: 0.35, 
@@ -407,7 +400,7 @@ export class AmbientBrain {
     }
 
     private renderOrchestralHarmony(chord: GhostChord, epoch: number, hints: InstrumentHints, tension: number): FractalEvent[] {
-        if (this.mood === 'melancholic' && calculateMusiNum(epoch, 3, this.seed, 10) > 6) {
+        if (this.mood === 'melancholic' && calculateMusiNum(epoch, 3, this.seed, 10) < 4) {
             delete hints.harmony;
             return [];
         }
@@ -444,7 +437,7 @@ export class AmbientBrain {
                 weight: baseWeight * (0.8 + this.random.next() * 0.4), 
                 technique: 'swell',
                 dynamics: 'p',
-                phrasing: 'legate',
+                phrasing: 'legato',
                 chordName: chordName,
                 params: { barCount: epoch, filterCutoff: this.solistCutoff * 0.9 }
             };
@@ -485,34 +478,47 @@ export class AmbientBrain {
         }];
     }
 
+    /**
+     * #ЗАЧЕМ: Реализация "Vital Heartbeat" синхронно с Кодексом v2.10.
+     * #ЧТО: 1. Кик и том теперь всегда бьют в паре.
+     *       2. Плотность деталей (тьюбы, перки) напрямую зависит от Fog.
+     */
     private renderAmbientPercussion(epoch: number, tension: number): FractalEvent[] {
         const events: FractalEvent[] = [];
         
-        const heartbeatProb = 0.3 + (tension * 0.5); 
+        const heartbeatProb = 0.35 + (tension * 0.5); 
         if (this.random.next() < heartbeatProb) {
             const firstTime = 0;
+            // Кик - основа сердца
             events.push({ 
                 type: 'drum_kick_reso', 
-                note: 36, time: firstTime, duration: 0.1, weight: 0.8 * (0.8 + tension * 0.2), 
+                note: 36, time: firstTime, duration: 0.1, weight: 0.85 * (0.8 + tension * 0.2), 
                 technique: 'hit', dynamics: 'p', phrasing: 'staccato' 
             });
+            // Том - поддержка сердца (синхронно!)
             events.push({
                 type: 'drum_Sonor_Classix_Low_Tom',
-                note: 40, time: firstTime, duration: 1.0, weight: 0.7 * (0.8 + tension * 0.2),
+                note: 40, time: firstTime, duration: 1.0, weight: 0.75 * (0.8 + tension * 0.2),
                 technique: 'hit', dynamics: 'p', phrasing: 'staccato'
             });
 
-            if (tension > 0.6) {
+            // Систола-Диастола (двойной удар) при высоком накале
+            if (tension > 0.68) {
                 const secondTime = 0.33; 
                 events.push({ 
                     type: 'drum_kick_reso', 
-                    note: 36, time: secondTime, duration: 0.1, weight: 0.6 * tension, 
+                    note: 36, time: secondTime, duration: 0.1, weight: 0.65 * tension, 
                     technique: 'hit', dynamics: 'p', phrasing: 'staccato' 
+                });
+                events.push({
+                    type: 'drum_Sonor_Classix_Mid_Tom',
+                    note: 43, time: secondTime, duration: 0.8, weight: 0.55 * tension,
+                    technique: 'hit', dynamics: 'p', phrasing: 'staccato'
                 });
             }
         }
 
-        const hatProb = (0.05 + (this.pulse * 0.10)) * (1.0 - this.fog * 0.6); 
+        const hatProb = (0.04 + (this.pulse * 0.08)) * (1.0 - this.fog * 0.7); 
         [1.33, 2.66, 3.66].forEach(t => { 
             if (this.random.next() < hatProb) {
                 events.push({
@@ -532,7 +538,7 @@ export class AmbientBrain {
             });
         }
 
-        const detailProb = 0.3 + (this.fog * 0.4); 
+        const detailProb = 0.35 + (this.fog * 0.5); 
         if (this.random.next() < detailProb) {
             const perkIdx = (1 + this.random.nextInt(15)).toString().padStart(3, '0');
             const isBell = this.random.next() < 0.4;
@@ -540,7 +546,7 @@ export class AmbientBrain {
             
             events.push({
                 type: type as any,
-                note: 60, time: this.random.next() * 4, duration: 4.0, weight: 0.6 * (1 - tension * 0.3),
+                note: 60, time: this.random.next() * 4, duration: 4.0, weight: 0.65 * (1 - tension * 0.35),
                 technique: 'hit', dynamics: 'p', phrasing: 'staccato'
             });
         }
@@ -579,7 +585,8 @@ export class AmbientBrain {
         this.fog = Math.max(0, Math.min(1, 0.3 + (tension * 0.55))); 
         this.depth = Math.max(0, Math.min(1, 0.4 + (tension * 0.45)));
         this.pulse = Math.max(0, Math.min(1, 0.15 + (tension * 0.35)));
-        this.solistCutoff = 4500 * (1 - Math.pow(this.fog, 1.2)) + 1200;
+        // #ЗАЧЕМ: Анти-пчела. Динамический LPF привязанный к Fog.
+        this.solistCutoff = 4500 * (1 - this.fog) + 800;
     }
 
     private renderPad(chord: GhostChord, epoch: number, timbre: string): FractalEvent[] {

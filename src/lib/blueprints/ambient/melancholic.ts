@@ -1,11 +1,10 @@
-
 import type { MusicBlueprint } from '@/types/music';
 
 /**
- * #ЗАЧЕМ: Флагманский блюпринт "Nostalgic Morning" (v42.0).
- * #ЧТО: 1. Исправлена активация ударных и баса: теперь они включены в лотерею интро.
- *       2. Внедрена двухэтапная "сценарная лотерея" для плавного рождения ансамбля.
- *       3. Сохранен "Имперский Баланс" и дорийская надежда.
+ * #ЗАЧЕМ: Флагманский блюпринт "Nostalgic Morning" (v42.1).
+ * #ЧТО: 1. Интро разделено на 4 сцены по 25% для постепенного рождения ансамбля.
+ *       2. Гарантированный старт Lush Pad и Bass на Бар 0.
+ *       3. Полное соответствие Кодексу: D Dorian, No Flute, No Voice.
  */
 export const MelancholicAmbientBlueprint: MusicBlueprint = {
   id: 'melancholic_ambient',
@@ -36,19 +35,31 @@ export const MelancholicAmbientBlueprint: MusicBlueprint = {
         layers: { accompaniment: true, sfx: true, pianoAccompaniment: true, bass: true, drums: true, sparkles: true, harmony: true, melody: true },
         stagedInstrumentation: [
           {
-            duration: { percent: 50 },
+            duration: { percent: 25 },
             instrumentation: {
               accompaniment: { activationChance: 1.0, instrumentOptions: [{ name: 'synth_ambient_pad_lush', weight: 1.0 }] },
-              bass: { activationChance: 1.0, instrumentOptions: [{ name: 'bass_jazz_warm', weight: 1.0 }] },
-              pianoAccompaniment: { activationChance: 1.0, instrumentOptions: [{ name: 'piano', weight: 1.0 }] }
+              bass: { activationChance: 1.0, instrumentOptions: [{ name: 'bass_jazz_warm', weight: 1.0 }] }
             }
           },
           {
-            duration: { percent: 50 },
+            duration: { percent: 25 },
             instrumentation: {
               drums: { activationChance: 1.0, instrumentOptions: [{ name: 'melancholic', weight: 1.0 }] },
+              melody: { activationChance: 1.0, instrumentOptions: [{ name: 'organ_soft_jazz', weight: 1.0 }] }
+            }
+          },
+          {
+            duration: { percent: 25 },
+            instrumentation: {
+              pianoAccompaniment: { activationChance: 1.0, instrumentOptions: [{ name: 'piano', weight: 1.0 }] },
+              harmony: { activationChance: 1.0, instrumentOptions: [{ name: 'guitarChords', weight: 1.0 }] }
+            }
+          },
+          {
+            duration: { percent: 25 },
+            instrumentation: {
               sfx: { activationChance: 0.8, instrumentOptions: [{ name: 'common', weight: 1.0 }], transient: true },
-              sparkles: { activationChance: 0.6, instrumentOptions: [{ name: 'ambient_common', weight: 1.0 }] }
+              sparkles: { activationChance: 0.7, instrumentOptions: [{ name: 'ambient_common', weight: 1.0 }] }
             }
           }
         ],
