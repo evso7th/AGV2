@@ -1,10 +1,8 @@
 import type { MusicBlueprint } from '@/types/music';
 
 /**
- * #ЗАЧЕМ: Блюпринт "Abyssal Ritual" (Dark Ambient v4.3).
- * #ЧТО: 1. Инструмент "flute" удален из списка лотереи.
- *       2. Гармония переведена на скрипки и гитарные аккорды.
- *       3. Внедрен 60/40 микс SFX (dark/voice) через явные правила.
+ * #ЗАЧЕМ: Блюпринт "Abyssal Ritual" (Dark Ambient v4.4).
+ * #ОБНОВЛЕНО (ПЛАН №426): Замена гудящего баса на техничный bass_house.
  */
 export const DarkAmbientBlueprint: MusicBlueprint = {
     id: 'dark_ambient',
@@ -32,7 +30,8 @@ export const DarkAmbientBlueprint: MusicBlueprint = {
               {
                 duration: { percent: 25 },
                 instrumentation: {
-                  bass: { activationChance: 1.0, instrumentOptions: [{ name: 'bass_ambient_dark', weight: 1.0 }] },
+                  // #ЗАЧЕМ: Использование четкого баса без гула.
+                  bass: { activationChance: 1.0, instrumentOptions: [{ name: 'bass_house', weight: 1.0 }] },
                   accompaniment: { activationChance: 1.0, instrumentOptions: [{ name: 'synth_cave_pad', weight: 1.0 }] }
                 }
               },
@@ -47,7 +46,6 @@ export const DarkAmbientBlueprint: MusicBlueprint = {
                 duration: { percent: 25 },
                 instrumentation: {
                   melody: { activationChance: 1.0, instrumentOptions: [{ name: 'organ_soft_jazz', weight: 0.7 }, { name: 'theremin', weight: 0.3 }] },
-                  // #ЗАЧЕМ: Лотерея теперь включает выбор между dark и voice для SFX.
                   sfx: { activationChance: 0.8, instrumentOptions: [{ name: 'dark', weight: 0.6 }, { name: 'voice', weight: 0.4 }], transient: true }
                 }
               },

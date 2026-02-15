@@ -2,9 +2,7 @@ import type { MusicBlueprint } from '@/types/music';
 
 /**
  * #ЗАЧЕМ: Очистка Anxious Ambient и внедрение Medieval Shadow (ПЛАН №424).
- * #ЧТО: 1. Добавлена лотерея интро (4 сцены по 25%).
- *       2. Внедрена династия FOLK (Blackmore/Faun) для соло.
- *       3. Бас переведен в режим Ritual Walking.
+ * #ОБНОВЛЕНО (ПЛАН №426): Замена гудящего баса на чистый bass_808.
  */
 export const AnxiousAmbientBlueprint: MusicBlueprint = {
     id: 'anxious_ambient',
@@ -32,7 +30,8 @@ export const AnxiousAmbientBlueprint: MusicBlueprint = {
                     {
                         duration: { percent: 25 },
                         instrumentation: {
-                            bass: { activationChance: 1.0, instrumentOptions: [{ name: 'bass_ambient_dark', weight: 1.0 }] },
+                            // #ЗАЧЕМ: Чистый, артикулированный бас вместо гула.
+                            bass: { activationChance: 1.0, instrumentOptions: [{ name: 'bass_808', weight: 1.0 }] },
                             accompaniment: { activationChance: 1.0, instrumentOptions: [{ name: 'synth_cave_pad', weight: 1.0 }] }
                         }
                     },
@@ -70,13 +69,13 @@ export const AnxiousAmbientBlueprint: MusicBlueprint = {
                 id: 'MAIN', name: 'Ritual Pulse', duration: { percent: 75 },
                 layers: { bass: true, drums: true, sfx: true, accompaniment: true, harmony: true, pianoAccompaniment: true, melody: true, sparkles: true },
                 instrumentation: {
-                    bass: { strategy: 'weighted', v2Options: [{ name: 'bass_ambient', weight: 1.0 }] },
+                    bass: { strategy: 'weighted', v2Options: [{ name: 'bass_808', weight: 1.0 }] },
                     accompaniment: { strategy: 'weighted', v2Options: [{ name: 'synth_ambient_pad_lush', weight: 1.0 }] },
                     melody: { strategy: 'weighted', v2Options: [{ name: 'blackAcoustic', weight: 0.7 }, { name: 'organ_soft_jazz', weight: 0.3 }] }
                 },
                 instrumentRules: {
                     drums: { pattern: 'ambient_beat', density: { min: 0.3, max: 0.5 }, usePerc: true },
-                    bass: { techniques: [{ value: 'walking', weight: 1.0 }] }, // Ritual Walking
+                    bass: { techniques: [{ value: 'walking', weight: 1.0 }] },
                     melody: { source: 'motif', style: 'solo' }
                 },
                 bundles: [{ id: 'ANX_MAIN_1', name: 'The Cycle', duration: { percent: 100 }, characteristics: {}, phrases: {} }],
