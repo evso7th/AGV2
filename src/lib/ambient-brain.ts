@@ -1,7 +1,8 @@
 /**
- * #ЗАЧЕМ: Суверенный Мозг Амбиента v6.6 — "The Organic Percussion Expansion".
- * #ЧТО: 1. Внедрена поддержка 15 дополнительных органических перкуссионных элементов (perc-001 - perc-015).
- *       2. Расширен пул тактильных деталей в методе renderAmbientPercussion.
+ * #ЗАЧЕМ: Суверенный Мозг Амбиента v6.7 — "Vital Heartbeat Update".
+ * #ЧТО: 1. Замена циклического ритма на биологическое биение сердца (Kick + Low Tom).
+ *       2. Радикальное снижение частоты хэтов ("Анти-шарманка").
+ *       3. Привязка плотности перкуссии к Tension и Fog.
  */
 
 import type { 
@@ -457,55 +458,68 @@ export class AmbientBrain {
     private renderAmbientPercussion(epoch: number, tension: number): FractalEvent[] {
         const events: FractalEvent[] = [];
         
-        // 1. Resonant Kick - every "1" (solid foundation)
-        if (epoch % 2 === 0) {
+        // 1. VITAL HEARTBEAT (Kick + Low Tom)
+        // #ЗАЧЕМ: Замена метронома на биологический пульс.
+        const heartbeatProb = 0.3 + (tension * 0.5); // Шанс удара в такте
+        if (this.random.next() < heartbeatProb) {
+            // Систола (первый удар)
+            const firstTime = 0;
             events.push({ 
                 type: 'drum_kick_reso', 
-                note: 36, time: 0, duration: 0.1, weight: 0.85, 
+                note: 36, time: firstTime, duration: 0.1, weight: 0.8 * (0.8 + tension * 0.2), 
                 technique: 'hit', dynamics: 'p', phrasing: 'staccato' 
             });
-        }
-
-        // 2. Soft Toms - breathing on 2 or 4
-        if (this.random.next() < 0.45) {
-            const tomTime = this.random.next() < 0.5 ? 1.0 : 3.0; // syncopated or backbeat
             events.push({
                 type: 'drum_Sonor_Classix_Low_Tom',
-                note: 40, time: tomTime, duration: 1.0, weight: 0.7,
+                note: 40, time: firstTime, duration: 1.0, weight: 0.7 * (0.8 + tension * 0.2),
                 technique: 'hit', dynamics: 'p', phrasing: 'staccato'
             });
+
+            // Диастола (второй удар) - только при высоком напряжении
+            if (tension > 0.6) {
+                const secondTime = 0.33; // Триольный отскок
+                events.push({ 
+                    type: 'drum_kick_reso', 
+                    note: 36, time: secondTime, duration: 0.1, weight: 0.6 * tension, 
+                    technique: 'hit', dynamics: 'p', phrasing: 'staccato' 
+                });
+            }
         }
 
-        // 3. Ghost Hats - 1/8 shuffle feel
-        const hatProb = 0.35 + (tension * 0.4);
-        [0.33, 0.66, 1.33, 1.66, 2.33, 2.66, 3.33, 3.66].forEach(t => {
+        // 2. GHOST HAT ACCENTS (Rare)
+        // #ЗАЧЕМ: Устранение "шарманки" хэтов. Теперь это редкие блики.
+        const hatProb = (0.05 + (this.pulse * 0.15)) * (1.0 - this.fog * 0.5); 
+        [1.33, 2.66, 3.66].forEach(t => { 
             if (this.random.next() < hatProb) {
                 events.push({
                     type: 'drum_closed_hi_hat_ghost',
-                    note: 42, time: t, duration: 0.1, weight: 0.45,
+                    note: 42, time: t, duration: 0.1, weight: 0.4,
                     technique: 'ghost', dynamics: 'p', phrasing: 'staccato'
                 });
             }
         });
 
-        // 4. Wet Ride - long atmospheric tails
-        if (this.random.next() < 0.25) {
+        // 3. WET RIDE (Atmospheric)
+        const rideProb = 0.1 + (tension * 0.2);
+        if (this.random.next() < rideProb) {
             events.push({
                 type: 'drum_ride_wetter',
-                note: 51, time: 0.5 + this.random.next() * 3, duration: 12.0, weight: 0.6,
+                note: 51, time: 1.0 + this.random.next() * 2.5, duration: 12.0, weight: 0.6,
                 technique: 'hit', dynamics: 'p', phrasing: 'legato'
             });
         }
 
-        // 5. Organic Details (Tubes, Bells & Perks)
-        // #ЗАЧЕМ: Расширение тактильного пространства за счет 15 дополнительных перкуссионных слоев.
-        if (this.random.next() < 0.5) {
+        // 4. ORGANIC DETAILS & BELLS (React to Fog)
+        // #ЗАЧЕМ: Прощупывание тумана мелкими тактильными звуками.
+        const detailProb = 0.3 + (this.fog * 0.4); 
+        if (this.random.next() < detailProb) {
             const perkIdx = (1 + this.random.nextInt(15)).toString().padStart(3, '0');
-            const percType = this.random.next() < 0.3 ? `perc-${perkIdx}` : 
-                             (this.random.next() < 0.6 ? 'drum_bongo_pvc-tube-01' : 'drum_Bell_-_Echo');
+            const isBell = this.random.next() < 0.4;
+            const type = isBell ? 'drum_Bell_-_Echo' : `perc-${perkIdx}`;
+            
             events.push({
-                type: percType as any,
-                note: 60, time: this.random.next() * 4, duration: 4.0, weight: 0.6,
+                type: type as any,
+                note: 60, time: this.random.next() * 4, duration: 4.0, weight: 0.6 * (1 - tension * 0.3),
                 technique: 'hit', dynamics: 'p', phrasing: 'staccato'
             });
         }
