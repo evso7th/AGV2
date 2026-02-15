@@ -3,7 +3,7 @@ import type { MusicBlueprint } from '@/types/music';
 /**
  * #ЗАЧЕМ: Ступень Йоги 3 — JOYFUL: «Чистое Присутствие».
  * #ЧТО: Кристально чистый Ionian амбиент. Модель Harold Budd.
- * #ОБНОВЛЕНО (ПЛАН №433): Внедрена Теневая Гармония.
+ * #ОБНОВЛЕНО (ПЛАН №435): Мелодия теперь гарантирована (activationChance 1.0).
  */
 export const JoyfulAmbientBlueprint: MusicBlueprint = {
     id: 'joyful_ambient',
@@ -35,13 +35,14 @@ export const JoyfulAmbientBlueprint: MusicBlueprint = {
                         duration: { percent: 25 },
                         instrumentation: {
                             pianoAccompaniment: { activationChance: 1.0, instrumentOptions: [{ name: 'piano', weight: 1.0 }] },
-                            harmony: { activationChance: 0.4, instrumentOptions: [{ name: 'guitarChords', weight: 1.0 }] }
+                            // #ЗАЧЕМ: Мелодия гарантирована.
+                            melody: { activationChance: 1.0, instrumentOptions: [{ name: 'ep_rhodes_warm', weight: 1.0 }] }
                         }
                     },
                     {
                         duration: { percent: 25 },
                         instrumentation: {
-                            melody: { activationChance: 1.0, instrumentOptions: [{ name: 'ep_rhodes_warm', weight: 1.0 }] },
+                            harmony: { activationChance: 0.4, instrumentOptions: [{ name: 'guitarChords', weight: 1.0 }] },
                             sfx: { activationChance: 0.5, instrumentOptions: [{ name: 'common', weight: 1.0 }], transient: true }
                         }
                     },
@@ -88,6 +89,7 @@ export const JoyfulAmbientBlueprint: MusicBlueprint = {
     continuity: {},
     rendering: {
         mixTargets: {
+            melody: { level: -18, pan: -0.1 },
             harmony: { level: -32, pan: 0.0 }
         }
     }

@@ -3,7 +3,7 @@ import type { MusicBlueprint } from '@/types/music';
 /**
  * #ЗАЧЕМ: Ступень Йоги 2 — ENTHUSIASTIC: «Восхождение».
  * #ЧТО: Парящий Lydian амбиент. Модель Jean-Michel Jarre.
- * #ОБНОВЛЕНО (ПЛАН №433): Внедрена Теневая Гармония.
+ * #ОБНОВЛЕНО (ПЛАН №435): Мелодия теперь гарантирована (activationChance 1.0).
  */
 export const EnthusiasticAmbientBlueprint: MusicBlueprint = {
     id: 'enthusiastic_ambient',
@@ -35,6 +35,7 @@ export const EnthusiasticAmbientBlueprint: MusicBlueprint = {
                         duration: { percent: 25 },
                         instrumentation: {
                             drums: { activationChance: 1.0, instrumentOptions: [{ name: 'intro', weight: 1.0 }] },
+                            // #ЗАЧЕМ: Мелодия гарантирована.
                             melody: { activationChance: 1.0, instrumentOptions: [{ name: 'theremin', weight: 1.0 }] }
                         }
                     },
@@ -89,6 +90,7 @@ export const EnthusiasticAmbientBlueprint: MusicBlueprint = {
     continuity: {},
     rendering: {
         mixTargets: {
+            melody: { level: -18, pan: -0.1 },
             harmony: { level: -30, pan: 0.0 }
         }
     }

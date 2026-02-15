@@ -1,8 +1,8 @@
 /**
- * #ЗАЧЕМ: Суверенный Мозг Амбиента v10.0 — "The Narrative Radiance Update".
- * #ЧТО: 1. Реализация Нарративного Баса для светлых режимов (2-4 такта, 4-8 нот).
- *       2. Внедрение Теневой Гармонии (акценты 35%, переключение по Tension).
- *       3. Эволюция басовых аксиом для исключения "шарманки".
+ * #ЗАЧЕМ: Суверенный Мозг Амбиента v11.0 — "The Luminous Beacon Update".
+ * #ЧТО: 1. Радикальное усиление мелодического присутствия в светлых режимах.
+ *       2. Повышение весов и вероятностей генерации тем для Солиста.
+ *       3. Оптимизация спектральной яркости для "Сияющих" инструментов.
  */
 
 import type { 
@@ -52,12 +52,12 @@ export class AmbientBrain {
     private introLotteryMap: Map<number, Partial<Record<InstrumentPart, any>>> = new Map();
 
     private soloistBusyUntilBar: number = -1;
-    private bassBusyUntilBar: number = -1; // #ЗАЧЕМ: Память для длинных басовых фраз.
+    private bassBusyUntilBar: number = -1; 
     private readonly MELODY_CEILING = 75;
     private readonly BASS_FLOOR = 31; 
 
     private currentTheme: { phrase: any[], startBar: number, endBar: number } | null = null;
-    private currentBassTheme: { phrase: any[], startBar: number, endBar: number } | null = null; // #ЗАЧЕМ: Басовая аксиома.
+    private currentBassTheme: { phrase: any[], startBar: number, endBar: number } | null = null; 
 
     constructor(seed: number, mood: Mood) {
         this.seed = seed;
@@ -121,15 +121,12 @@ export class AmbientBrain {
         this.applySpectralAtom(epoch, waves[3]);
         this.updateMoodAxes(epoch, localTension);
 
-        // Yoga Mode Selection
         const yogaChord = { ...currentChord };
         if (this.mood === 'epic') yogaChord.chordType = 'dominant'; 
         else if (this.mood === 'joyful') yogaChord.chordType = 'major'; 
 
-        // #ЗАЧЕМ: Реализация Нарративного Баса (2-4 такта) для светлых режимов.
         if (isPositive && epoch >= this.bassBusyUntilBar) {
             if (this.currentBassTheme && this.random.next() < 0.75) {
-                // Эволюция существующей фразы
                 this.currentBassTheme.phrase = this.currentBassTheme.phrase.map(n => ({
                     ...n,
                     deg: this.random.next() < 0.25 ? ['R', '5', '4', 'b7', '2'][this.random.nextInt(5)] : n.deg
@@ -139,7 +136,6 @@ export class AmbientBrain {
                 this.currentBassTheme.endBar = epoch + bars;
                 this.bassBusyUntilBar = epoch + bars;
             } else {
-                // Рождение новой басовой аксиомы
                 const bars = this.random.nextInt(3) + 2; 
                 const noteCount = this.random.nextInt(5) + 4; 
                 const phrase: any[] = [];
@@ -156,8 +152,10 @@ export class AmbientBrain {
             }
         }
 
+        // #ЗАЧЕМ: Увеличение "голода" Солиста в светлых режимах.
         if (epoch >= this.soloistBusyUntilBar) {
-            const developmentChance = 0.15 + localTension * 0.25;
+            const baseChance = isPositive ? 0.35 : 0.15; // Мелодия говорит чаще в светлых режимах
+            const developmentChance = baseChance + localTension * 0.25;
             if (this.random.next() < developmentChance) {
                 let groupKey = dna.ambientLegacyGroup || 'BUDD';
                 const group = AMBIENT_LEGACY[groupKey];
@@ -171,7 +169,9 @@ export class AmbientBrain {
                     startBar: epoch,
                     endBar: epoch + phraseBars
                 };
-                this.soloistBusyUntilBar = epoch + phraseBars + 3; 
+                // #ЗАЧЕМ: Сокращение паузы между фразами для Энтузиазма.
+                const restBars = this.mood === 'enthusiastic' ? 1 : 3;
+                this.soloistBusyUntilBar = epoch + phraseBars + restBars; 
             } else {
                 this.currentTheme = null;
             }
@@ -185,7 +185,6 @@ export class AmbientBrain {
 
         events.push(...this.renderPad(yogaChord, epoch, hints.accompaniment as string));
         
-        // #ЗАЧЕМ: Выбор между ритуалом и нарративным басом.
         if (isPositive && this.currentBassTheme) {
             events.push(...this.renderThemeBass(yogaChord, epoch, localTension));
         } else if (this.mood === 'anxious') {
@@ -205,11 +204,9 @@ export class AmbientBrain {
             events.push(...this.renderPianoDrops(yogaChord, epoch, localTension));
         }
 
-        // #ЗАЧЕМ: Реализация Теневой Гармонии (accents & shadows).
         if (hints.harmony) {
             const harmonyChance = isPositive ? 0.35 : 1.0; 
             if (this.random.next() < harmonyChance) {
-                // Смена тембра по Tension
                 const timbre = localTension > 0.55 ? 'violin' : 'guitarChords';
                 hints.harmony = timbre as any; 
                 events.push(...this.renderOrchestralHarmony(yogaChord, epoch, hints, localTension));
@@ -325,6 +322,7 @@ export class AmbientBrain {
         return hints;
     }
 
+    // #ЗАЧЕМ: Усиление веса базовой мелодии.
     private renderMelodicPadBase(chord: GhostChord, epoch: number, tension: number): FractalEvent[] {
         const root = Math.min(chord.rootNote + 24 + this.registerShift, this.MELODY_CEILING);
         return [{
@@ -332,7 +330,7 @@ export class AmbientBrain {
             note: root,
             time: 0,
             duration: 12.0,
-            weight: 0.22 * (1.0 - this.fog * 0.3),
+            weight: 0.45 * (1.0 - this.fog * 0.2), // Увеличен вес с 0.22 до 0.45
             technique: 'swell',
             dynamics: 'p',
             phrasing: 'legato',
@@ -340,6 +338,7 @@ export class AmbientBrain {
         }];
     }
 
+    // #ЗАЧЕМ: Усиление веса тематических фраз.
     private renderThemeMelody(chord: GhostChord, epoch: number, tension: number, hints: InstrumentHints, dna: SuiteDNA): FractalEvent[] {
         if (!this.currentTheme) return [];
         const groupKey = dna.ambientLegacyGroup || 'BUDD';
@@ -354,7 +353,7 @@ export class AmbientBrain {
                 note: Math.min(chord.rootNote + 36 + group.registerBias + this.registerShift + (DEGREE_TO_SEMITONE[n.deg] || 0), this.MELODY_CEILING),
                 time: (n.t % 12) / 3,
                 duration: (n.d / 3) * 1.6, 
-                weight: (0.25 * breathDecay) * (0.9 + this.random.next() * 0.2), 
+                weight: (0.55 * breathDecay) * (0.9 + this.random.next() * 0.2), // Увеличен вес с 0.25 до 0.55
                 technique: n.tech || 'pick',
                 dynamics: 'p',
                 phrasing: 'legato',
@@ -363,7 +362,6 @@ export class AmbientBrain {
         });
     }
 
-    // #ЗАЧЕМ: Исполнение эволюционирующей басовой фразы.
     private renderThemeBass(chord: GhostChord, epoch: number, tension: number): FractalEvent[] {
         if (!this.currentBassTheme) return [];
         const barOffset = (epoch - this.currentBassTheme.startBar) * 12;
@@ -599,8 +597,10 @@ export class AmbientBrain {
         
         const isPositive = ['joyful', 'enthusiastic', 'epic'].includes(this.mood);
         const dazzle = (isPositive && tension > 0.85) ? 1.0 : 0;
-        const maxCutoff = this.mood === 'anxious' ? 3500 : 5300;
-        this.solistCutoff = (maxCutoff * (1 - this.fog) + 1200) * (1.0 + dazzle * 0.5); 
+        
+        // #ЗАЧЕМ: Открытие фильтра для мелодии в светлых режимах.
+        const maxCutoff = isPositive ? 6500 : (this.mood === 'anxious' ? 3500 : 5300);
+        this.solistCutoff = (maxCutoff * (1 - this.fog * 0.7) + 1500) * (1.0 + dazzle * 0.5); 
     }
 
     private renderPad(chord: GhostChord, epoch: number, timbre: string): FractalEvent[] {

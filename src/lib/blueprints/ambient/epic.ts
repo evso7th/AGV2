@@ -3,7 +3,7 @@ import type { MusicBlueprint } from '@/types/music';
 /**
  * #ЗАЧЕМ: Ступень Йоги 1 — EPIC: «Зов и Подготовка».
  * #ЧТО: Величественный Mixolydian амбиент. Модель Vangelis.
- * #ОБНОВЛЕНО (ПЛАН №433): Внедрена Теневая Гармония.
+ * #ОБНОВЛЕНО (ПЛАН №435): Усилена роль Мелодии. activationChance поднят до 1.0.
  */
 export const EpicAmbientBlueprint: MusicBlueprint = {
     id: 'epic_ambient',
@@ -52,6 +52,7 @@ export const EpicAmbientBlueprint: MusicBlueprint = {
                     {
                         duration: { percent: 25 },
                         instrumentation: {
+                            // #ЗАЧЕМ: Мелодия гарантирована.
                             melody: { activationChance: 1.0, instrumentOptions: [{ name: 'organ', weight: 1.0 }] },
                             sparkles: { activationChance: 0.3, instrumentOptions: [{ name: 'light', weight: 1.0 }] }
                         }
@@ -92,6 +93,7 @@ export const EpicAmbientBlueprint: MusicBlueprint = {
     continuity: {},
     rendering: {
         mixTargets: {
+            melody: { level: -18, pan: -0.1 },
             harmony: { level: -32, pan: 0.0 }
         }
     }
