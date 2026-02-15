@@ -1,9 +1,9 @@
 /**
- * #ЗАЧЕМ: Суверенный Мозг Амбиента v7.6 — "Imperial Balance & Narrative Synergy".
- * #ЧТО: 1. Внедрена защита от инфразвука (BASS_FLOOR = 24).
- *       2. Реализована синергия: Мелодия = Пэды + Органные украшения (только в пиках).
- *       3. Восстановлен "риффовый" бас и слышимость ударных.
- *       4. Сбалансированы слои гармонии (Скрипки/Аккорды).
+ * #ЗАЧЕМ: Суверенный Мозг Амбиента v7.8 — "Vital Resonance & Legacy Narration".
+ * #ЧТО: 1. Внедрена поддержка "Мягкого Железа" (Ghost Hats + Wettest Ride).
+ *       2. Реализован слой "Биологических Труб" (PVC Tubes), реагирующий на туман.
+ *       3. Усилено присутствие "Ликов Великих" (Legacy Licks) для внятной мелодии.
+ *       4. Сохранен "Имперский Баланс" и защита от инфразвука (BASS_FLOOR = 24).
  */
 
 import type { 
@@ -47,12 +47,11 @@ export class AmbientBrain {
 
     private activatedParts: Set<InstrumentPart> = new Set();
     private activeTimbres: Partial<Record<InstrumentPart, string>> = {};
-    private usedLickIndices: Map<string, number[]> = new Map();
     private introLotteryMap: Map<number, Partial<Record<InstrumentPart, any>>> = new Map();
 
     private soloistBusyUntilBar: number = -1;
     private readonly MELODY_CEILING = 75;
-    private readonly BASS_FLOOR = 24; // Защита от инфразвука
+    private readonly BASS_FLOOR = 24; 
 
     private currentTheme: { phrase: any[], startBar: number, endBar: number } | null = null;
 
@@ -111,9 +110,9 @@ export class AmbientBrain {
         this.applySpectralAtom(epoch, waves[3]);
         this.updateMoodAxes(epoch, localTension);
 
-        // #ЗАЧЕМ: Управление тематическим развитием.
+        // #ЗАЧЕМ: Управление внятной мелодической линией (Наследие Великих).
         if (epoch >= this.soloistBusyUntilBar) {
-            const developmentChance = 0.3 + localTension * 0.4;
+            const developmentChance = 0.4 + localTension * 0.4;
             if (this.random.next() < developmentChance) {
                 let groupKey = dna.ambientLegacyGroup || 'BUDD';
                 const group = AMBIENT_LEGACY[groupKey];
@@ -127,7 +126,7 @@ export class AmbientBrain {
                     startBar: epoch,
                     endBar: epoch + phraseBars
                 };
-                this.soloistBusyUntilBar = epoch + phraseBars + 2; // Пауза для вдоха
+                this.soloistBusyUntilBar = epoch + phraseBars + 1; // Уменьшена пауза для внятности
             } else {
                 this.currentTheme = null;
             }
@@ -136,35 +135,27 @@ export class AmbientBrain {
         const hints = this.orchestrate(localTension, navInfo, epoch, dna);
         const events: FractalEvent[] = [];
 
-        // #ЗАЧЕМ: Гарантированная слышимость основы.
         hints.accompaniment = hints.accompaniment || 'synth_ambient_pad_lush';
         hints.bass = hints.bass || 'bass_jazz_warm';
 
-        // ─── 1. ОСНОВА (Пэды и Бас) ───
+        // ─── 1. ОСНОВА ───
         events.push(...this.renderPad(currentChord, epoch, hints.accompaniment as string));
-        
-        // Риффовый бас (как в Dark)
         events.push(...this.renderRhythmicBass(currentChord, localTension, hints.bass as string, epoch));
 
-        // ─── 2. МЕЛОДИЯ (Синергия слоев) ───
+        // ─── 2. МЕЛОДИЯ ───
         if (hints.melody) {
-            const timbre = hints.melody as string;
-            
-            // #ЗАЧЕМ: Мелодия теперь всегда имеет пэдовую основу.
             events.push(...this.renderMelodicPadBase(currentChord, epoch, localTension));
 
-            // #ЗАЧЕМ: Органные пассажи украшают ткань при росте напряжения.
             if (localTension > 0.6) {
                 events.push(...this.renderOrganArpeggio(currentChord, epoch, localTension));
             }
 
-            // Темы Harold Budd / Vangelis
             if (this.currentTheme && epoch < this.currentTheme.endBar) {
                 events.push(...this.renderThemeMelody(currentChord, epoch, localTension, hints, dna));
             }
         }
 
-        // ─── 3. ДОПОЛНЕНИЯ (Гармония и Пианино) ───
+        // ─── 3. ДОПОЛНЕНИЯ ───
         if (hints.pianoAccompaniment) {
             events.push(...this.renderPianoDrops(currentChord, epoch, localTension));
         }
@@ -176,7 +167,7 @@ export class AmbientBrain {
         // ─── 4. РИТМ И ТЕКСТУРА ───
         events.push(...this.renderAmbientPercussion(epoch, localTension));
 
-        if (hints.sparkles && this.random.next() < 0.5) {
+        if (hints.sparkles && this.random.next() < 0.6) {
             events.push(this.renderSparkle(currentChord));
         }
 
@@ -280,7 +271,7 @@ export class AmbientBrain {
                 note: Math.min(chord.rootNote + 36 + group.registerBias + (DEGREE_TO_SEMITONE[n.deg] || 0), this.MELODY_CEILING),
                 time: (n.t % 12) / 3,
                 duration: (n.d / 3) * 1.6, 
-                weight: (0.65 * breathDecay) * (0.9 + this.random.next() * 0.2),
+                weight: (0.75 * breathDecay) * (0.9 + this.random.next() * 0.2), // Увеличен вес для внятности
                 technique: n.tech || 'pick',
                 dynamics: 'p',
                 phrasing: 'legato',
@@ -326,14 +317,13 @@ export class AmbientBrain {
     }
 
     private renderRhythmicBass(chord: GhostChord, tension: number, timbre: string, epoch: number): FractalEvent[] {
-        // #ЗАЧЕМ: Защита от инфразвука. 
         const root = Math.max(chord.rootNote - 12, this.BASS_FLOOR); 
         const isMinor = chord.chordType === 'minor' || chord.chordType === 'diminished';
         
         const pattern = [
-            { t: 0, n: root, d: 1.5, w: 0.8 },
-            { t: 1.5, n: Math.max(root + (isMinor ? 3 : 4), this.BASS_FLOOR), d: 1.0, w: 0.6 },
-            { t: 2.5, n: Math.max(root + 7, this.BASS_FLOOR), d: 1.5, w: 0.7 }
+            { t: 0, n: root, d: 1.5, w: 0.85 },
+            { t: 1.5, n: Math.max(root + (isMinor ? 3 : 4), this.BASS_FLOOR), d: 1.0, w: 0.65 },
+            { t: 2.5, n: Math.max(root + 7, this.BASS_FLOOR), d: 1.5, w: 0.75 }
         ];
         
         return pattern.map(p => ({
@@ -353,13 +343,13 @@ export class AmbientBrain {
         const events: FractalEvent[] = [];
         const beats = [1.2, 2.5, 3.7]; 
         beats.forEach(beat => {
-            if (this.random.next() < (0.25 * this.depth)) { 
+            if (this.random.next() < (0.30 * this.depth)) { 
                 events.push({
                     type: 'pianoAccompaniment',
                     note: Math.min(chord.rootNote + 24 + [0, 3, 7, 12][this.random.nextInt(4)], this.MELODY_CEILING),
                     time: beat,
                     duration: 3.0,
-                    weight: 0.35, 
+                    weight: 0.4, 
                     technique: 'hit',
                     dynamics: 'p',
                     phrasing: 'staccato'
@@ -370,11 +360,9 @@ export class AmbientBrain {
     }
 
     private renderOrchestralHarmony(chord: GhostChord, epoch: number, hints: InstrumentHints, tension: number): FractalEvent[] {
-        // #ЗАЧЕМ: Сбалансированная гармония. Вступает в 70% случаев.
         if (calculateMusiNum(epoch, 3, this.seed, 10) < 3) return [];
 
         const isHighTension = tension > 0.60;
-        const isLowTension = tension < 0.50;
         const root = chord.rootNote; 
         
         const timbre = isHighTension ? 'violin' : 'guitarChords';
@@ -406,7 +394,7 @@ export class AmbientBrain {
             technique: 'hit',
             dynamics: 'p',
             phrasing: 'legato',
-            params: { mood: this.mood, genre: 'ambient', category: 'dark' }
+            params: { mood: this.mood, genre: 'ambient', category: 'ambient_common' }
         };
     }
 
@@ -427,8 +415,8 @@ export class AmbientBrain {
     private renderAmbientPercussion(epoch: number, tension: number): FractalEvent[] {
         const events: FractalEvent[] = [];
         
-        // #ЗАЧЕМ: Слышимое сердце. Увеличены веса.
-        const heartbeatProb = 0.45 + (tension * 0.45); 
+        // 1. HEARTBEAT (Kick + Tom)
+        const heartbeatProb = 0.55 + (tension * 0.40); 
         if (this.random.next() < heartbeatProb) {
             const firstTime = 0;
             events.push({ 
@@ -457,12 +445,48 @@ export class AmbientBrain {
             }
         }
 
+        // 2. SOFT IRON (Ghost Hat & Wet Ride)
+        // #ЗАЧЕМ: Редкое мягкое железо для воздуха в пиках.
+        const ironProb = 0.15 + (tension * 0.25);
+        if (this.random.next() < ironProb) {
+            const isRide = this.random.next() < 0.3; // 30% ride
+            events.push({
+                type: isRide ? 'drum_ride_wetter' : 'drum_closed_hi_hat_ghost',
+                note: 60,
+                time: isRide ? 2.0 : this.random.next() * 4,
+                duration: 1.0,
+                weight: 0.25 * (1.0 - this.fog * 0.4),
+                technique: 'hit',
+                dynamics: 'p',
+                phrasing: 'staccato'
+            });
+        }
+
+        // 3. TUBES (PVC Bongo)
+        // #ЗАЧЕМ: Тактильные "тьюбы", реагирующие на туман.
+        const tubeProb = 0.2 + (this.fog * 0.4);
+        if (this.random.next() < tubeProb) {
+            const tubeIdx = 1 + this.random.nextInt(3);
+            const tubeTypes = ['drum_bongo_pvc-tube-01', 'drum_bongo_pvc-tube-02', 'drum_bongo_pvc-tube-03'];
+            events.push({
+                type: tubeTypes[tubeIdx - 1] as any,
+                note: 60,
+                time: this.random.next() * 4,
+                duration: 0.5,
+                weight: 0.4,
+                technique: 'hit',
+                dynamics: 'p',
+                phrasing: 'staccato'
+            });
+        }
+
+        // 4. ORGANIC DETAILS (Perks)
         const detailProb = 0.40 + (this.fog * 0.5); 
         if (this.random.next() < detailProb) {
             const perkIdx = (1 + this.random.nextInt(15)).toString().padStart(3, '0');
             events.push({
                 type: `perc-${perkIdx}` as any,
-                note: 60, time: this.random.next() * 4, duration: 4.0, weight: 0.75,
+                note: 60, time: this.random.next() * 4, duration: 4.0, weight: 0.7,
                 technique: 'hit', dynamics: 'p', phrasing: 'staccato'
             });
         }
@@ -501,7 +525,7 @@ export class AmbientBrain {
         this.fog = Math.max(0, Math.min(1, 0.3 + (tension * 0.55))); 
         this.depth = Math.max(0, Math.min(1, 0.4 + (tension * 0.45)));
         this.pulse = Math.max(0, Math.min(1, 0.15 + (tension * 0.35)));
-        this.solistCutoff = 4500 * (1 - this.fog) + 1200; // Порог 1200
+        this.solistCutoff = 4500 * (1 - this.fog) + 1200; 
     }
 
     private renderPad(chord: GhostChord, epoch: number, timbre: string): FractalEvent[] {
