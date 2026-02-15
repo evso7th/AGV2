@@ -1,9 +1,10 @@
+
 /**
- * #ЗАЧЕМ: Суверенный Мозг Амбиента v7.2 — "The Vital Heartbeat Update".
- * #ЧТО: 1. Унификация ритм-секции: Кик и Том работают как единое "Сердце" для всех амбиентов.
- *       2. Реализация логики "Систола-Диастола" в зависимости от Tension.
- *       3. Подавление хэтов туманом и рост органических деталей при высокой плотности Fog.
- *       4. Сохранение всех достижений спектральной гигиены и повествовательного баса.
+ * #ЗАЧЕМ: Суверенный Мозг Амбиента v7.5 — "Dynamic Pulse & Flow".
+ * #ЧТО: 1. Внедрена динамическая плотность органных пассажей (1/4 -> 1/8 -> 1/16).
+ *       2. Реализована логика "Дыхания Солиста" (15% шанс пропуска ноты).
+ *       3. Стабилизирована активация ансамбля в меланхоличном режиме.
+ *       4. Исправлена проблема тишины ударных за счет гарантированной оркестровки.
  */
 
 import type { 
@@ -170,7 +171,7 @@ export class AmbientBrain {
             const isHighTension = localTension > 0.7;
             const isOrgan = timbre.includes('organ');
 
-            if (isHighTension && isOrgan) {
+            if (isOrgan) {
                 events.push(...this.renderOrganArpeggio(currentChord, epoch, localTension));
             } else if (this.currentTheme && epoch < this.currentTheme.endBar) {
                 events.push(...this.renderThemeMelody(currentChord, epoch, localTension, hints, dna));
@@ -221,8 +222,8 @@ export class AmbientBrain {
         if (part.id === 'INTRO' && this.introLotteryMap.size > 0) {
             const partBars = navInfo.currentPartEndBar - navInfo.currentPartStartStartBar + 1;
             const progress = (epoch - navInfo.currentPartStartBar) / (partBars || 1);
-            const stageIndex = Math.floor(progress * stages!.length);
-            currentInstructions = this.introLotteryMap.get(Math.min(stageIndex, stages!.length - 1));
+            const stageIndex = Math.floor(progress * (stages?.length || 1));
+            currentInstructions = this.introLotteryMap.get(Math.min(stageIndex, (stages?.length || 1) - 1));
         } else if (stages && stages.length > 0) {
             const partBars = navInfo.currentPartEndBar - navInfo.currentPartStartBar + 1;
             const progress = (epoch - navInfo.currentPartStartBar) / (partBars || 1);
@@ -322,22 +323,38 @@ export class AmbientBrain {
         });
     }
 
+    /**
+     * #ЗАЧЕМ: Динамическое масштабирование плотности пассажей (ПЛАН №416).
+     * #ЧТО: Ритм ускоряется с ростом Tension (1/4 -> 1/8 -> 1/16).
+     */
     private renderOrganArpeggio(chord: GhostChord, epoch: number, tension: number): FractalEvent[] {
         const root = chord.rootNote + 24; 
         const isMinor = chord.chordType === 'minor' || chord.chordType === 'dominant';
         const intervals = isMinor ? [0, 3, 7, 10, 12, 15, 19, 24] : [0, 4, 7, 11, 12, 16, 19, 24];
         const events: FractalEvent[] = [];
         
-        const count = tension > 0.8 ? 16 : 12; 
-        const timeStep = tension > 0.8 ? 0.1875 : 0.25; 
+        // --- Ритмическое масштабирование ---
+        let timeStep = 1.0; // 1/4
+        let count = 4;
+
+        if (tension > 0.75) {
+            timeStep = 0.25; // 1/16
+            count = 16;
+        } else if (tension > 0.45) {
+            timeStep = 0.5; // 1/8
+            count = 8;
+        }
 
         for (let i = 0; i < count; i++) {
+            // --- Human Breathing (15% шанс пропуска) ---
+            if (this.random.next() < 0.15) continue;
+
             const idx = calculateMusiNum(epoch + i, 3, this.seed, intervals.length);
             events.push({
                 type: 'melody',
                 note: Math.min(root + intervals[idx], this.MELODY_CEILING),
                 time: i * timeStep,
-                duration: 1.5, 
+                duration: timeStep * 1.5, 
                 weight: 0.5 * tension * (0.9 + this.random.next() * 0.2),
                 technique: 'pick',
                 dynamics: 'p',
@@ -468,19 +485,12 @@ export class AmbientBrain {
         }];
     }
 
-    /**
-     * #ЗАЧЕМ: Реализация Унифицированного Биологического Пульса.
-     * #ЧТО: Кик и Том работают как единое "Сердце". Хэты - редкие блики в тумане.
-     */
     private renderAmbientPercussion(epoch: number, tension: number): FractalEvent[] {
         const events: FractalEvent[] = [];
         
-        // --- 1. VITAL HEARTBEAT (Kick + Tom) ---
-        // Вероятность биения растет с Tension
         const heartbeatProb = 0.3 + (tension * 0.5); 
         if (this.random.next() < heartbeatProb) {
             const firstTime = 0;
-            // Кик и Том бьют синхронно (Систола)
             events.push({ 
                 type: 'drum_kick_reso', 
                 note: 36, time: firstTime, duration: 0.1, weight: 0.8 * (0.8 + tension * 0.2), 
@@ -492,7 +502,6 @@ export class AmbientBrain {
                 technique: 'hit', dynamics: 'p', phrasing: 'staccato'
             });
 
-            // Двойной удар (Диастола) только при высоком напряжении
             if (tension > 0.6) {
                 const secondTime = 0.33; 
                 events.push({ 
@@ -503,8 +512,6 @@ export class AmbientBrain {
             }
         }
 
-        // --- 2. HAT SUPPRESSION (Ghost Hats) ---
-        // Редкие акценты, подавляемые туманом
         const hatProb = (0.05 + (this.pulse * 0.10)) * (1.0 - this.fog * 0.6); 
         [1.33, 2.66, 3.66].forEach(t => { 
             if (this.random.next() < hatProb) {
@@ -516,7 +523,6 @@ export class AmbientBrain {
             }
         });
 
-        // --- 3. ATMOSPHERIC SENSITIVITY (Organic Details) ---
         const rideProb = 0.1 + (tension * 0.2);
         if (this.random.next() < rideProb) {
             events.push({
@@ -526,7 +532,6 @@ export class AmbientBrain {
             });
         }
 
-        // Детали (Перки и Тьюбы): Плотность растет с туманом
         const detailProb = 0.3 + (this.fog * 0.4); 
         if (this.random.next() < detailProb) {
             const perkIdx = (1 + this.random.nextInt(15)).toString().padStart(3, '0');
