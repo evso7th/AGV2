@@ -1,9 +1,8 @@
-
 /**
- * #ЗАЧЕМ: Суверенный Мозг Амбиента v4.6 — "Gothic Drama & Flute Quarantine".
- * #ЧТО: 1. Внедрена логика "Diabolus in Musica" (Тритон +6) для Dark Ambient.
- *       2. Введен жесткий фильтр на инструмент "flute" (замена на violin).
- *       3. Реализация параллельных квинт (Organum) в гармонии.
+ * #ЗАЧЕМ: Суверенный Мозг Амбиента v5.0 — "Melodic Narration Act".
+ * #ЧТО: 1. Внедрена система управления длинными фразами (2-4 такта).
+ *       2. Реализована логика "Вдоха" (Breathing): после фразы солист делает паузу.
+ *       3. Динамическая модуляция веса для имитации человеческого выдоха.
  */
 
 import type { 
@@ -49,6 +48,8 @@ export class AmbientBrain {
     private usedLickIndices: Map<string, number[]> = new Map();
     private introLotteryMap: Map<number, Partial<Record<InstrumentPart, any>>> = new Map();
 
+    // #ЗАЧЕМ: Состояние занятости солиста.
+    private soloistBusyUntilBar: number = -1;
     private readonly MELODY_CEILING = 73;
 
     constructor(seed: number, mood: Mood) {
@@ -123,10 +124,27 @@ export class AmbientBrain {
 
         if (hints.melody) {
             const timbre = hints.melody as string;
-            if (timbre.includes('organ')) {
-                events.push(...this.renderOrganArpeggio(currentChord, epoch, localTension));
-            } else {
-                events.push(...this.renderLegacyMelody(currentChord, epoch, localTension, hints, dna));
+            // #ЗАЧЕМ: Реализация логики "Вдоха". Солист вступает только если не занят фразой.
+            if (epoch >= this.soloistBusyUntilBar) {
+                // Шанс вступления зависит от Tension. При высоком Tension - чаще.
+                const shouldPlay = this.random.next() < (0.3 + localTension * 0.4);
+                if (shouldPlay) {
+                    if (timbre.includes('organ')) {
+                        events.push(...this.renderOrganArpeggio(currentChord, epoch, localTension));
+                        this.soloistBusyUntilBar = epoch + 1; // Орган пока по-прежнему на 1 такт
+                    } else {
+                        const legacyEvents = this.renderLegacyMelody(currentChord, epoch, localTension, hints, dna);
+                        events.push(...legacyEvents);
+                        
+                        // Определяем длительность фразы в тактах (по макс времени тика)
+                        const maxTick = Math.max(...legacyEvents.map(e => e.time * 3));
+                        const phraseBars = Math.ceil((maxTick + 1) / 12);
+                        
+                        // Солист занят фразой + 1 такт на "вдох" (тишину)
+                        this.soloistBusyUntilBar = epoch + phraseBars + 1;
+                        console.log(`%c[AmbientBrain] Soloist starts theme. Busy until bar: ${this.soloistBusyUntilBar}`, 'color: #DA70D6');
+                    }
+                }
             }
         }
 
@@ -193,7 +211,6 @@ export class AmbientBrain {
                     if (this.random.next() < (rule.activationChance ?? 1.0)) {
                         this.activatedParts.add(partName);
                         let selected = pickWeightedDeterministic(rule.instrumentOptions || rule.v2Options || rule.options || [], this.seed, epoch, 500);
-                        // #ЗАЧЕМ: Тотальный карантин флейты.
                         if (selected === 'flute') selected = 'violin';
                         this.activeTimbres[partName] = selected;
                     }
@@ -241,16 +258,22 @@ export class AmbientBrain {
 
         const lick = group.licks[lickIdx];
 
-        return lick.phrase.map(n => ({
-            type: 'melody',
-            note: Math.min(chord.rootNote + 36 + group.registerBias + (DEGREE_TO_SEMITONE[n.deg] || 0), this.MELODY_CEILING),
-            time: n.t / 3,
-            duration: (n.d / 3) * 1.6, 
-            weight: (0.75 * (1 - this.fog * 0.2)) * (0.9 + this.random.next() * 0.2),
-            technique: n.tech || 'pick',
-            dynamics: 'p',
-            phrasing: 'legato'
-        }));
+        return lick.phrase.map(n => {
+            // #ЗАЧЕМ: Имитация затухающего дыхания.
+            // #ЧТО: Чем позже нота во фразе, тем меньше её вес.
+            const breathDecay = 1.0 - (n.t / 60); // Плавный спад громкости к концу 4 тактов
+            
+            return {
+                type: 'melody',
+                note: Math.min(chord.rootNote + 36 + group.registerBias + (DEGREE_TO_SEMITONE[n.deg] || 0), this.MELODY_CEILING),
+                time: n.t / 3,
+                duration: (n.d / 3) * 1.6, 
+                weight: (0.75 * breathDecay * (1 - this.fog * 0.2)) * (0.9 + this.random.next() * 0.2),
+                technique: n.tech || 'pick',
+                dynamics: 'p',
+                phrasing: 'legato'
+            };
+        });
     }
 
     private renderOrganArpeggio(chord: GhostChord, epoch: number, tension: number): FractalEvent[] {
@@ -321,16 +344,10 @@ export class AmbientBrain {
         return events;
     }
 
-    /**
-     * #ЗАЧЕМ: Реализация оркестровой гармонии с готическими отсылками (Тритон).
-     * #ЧТО: 1. Добавлена инъекция "дьявольского тритона" (+6) для настроения Dark.
-     *       2. Реализация пустых квинт (Medieval Organum).
-     */
     private renderOrchestralHarmony(chord: GhostChord, epoch: number, timbre: string, tension: number): FractalEvent[] {
         const root = chord.rootNote; 
         const isMinor = chord.chordType === 'minor' || chord.chordType === 'diminished';
         
-        // Базовые ноты: Medieval Organum (1 + 5)
         const notes = [root, root + 7];
         const chordName = isMinor ? 'Am' : 'E';
         
@@ -347,12 +364,10 @@ export class AmbientBrain {
             params: { barCount: epoch }
         }));
 
-        // #ЗАЧЕМ: "Diabolus in Musica". 
-        // #ЧТО: Инъекция тритона (+6) в моменты высокого напряжения или густого тумана.
         if (this.mood === 'dark' && (tension > 0.8 || this.fog > 0.9)) {
             events.push({
                 type: 'harmony',
-                note: root + 6 + 24, // Тритон в среднем регистре
+                note: root + 6 + 24, 
                 time: 1.0,
                 duration: 8.0,
                 weight: 0.35 * this.fog, 
@@ -364,7 +379,6 @@ export class AmbientBrain {
             });
         }
 
-        // Лимбический триггер: малая секста (+8)
         if (isMinor && tension > 0.75) {
             events.push({
                 type: 'harmony',
