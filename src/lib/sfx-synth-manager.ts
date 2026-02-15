@@ -230,7 +230,9 @@ export class SfxSynthManager {
             return 'common';
         }
         if (mood === 'dark' || mood === 'anxious') {
-            return 'dark';
+            // #ЗАЧЕМ: Реализация 60/40 распределения для Dark/Anxious по просьбе пользователя.
+            // #ЧТО: Теперь "голоса" вплетаются в темную атмосферу системно.
+            return rand < 0.6 ? 'dark' : 'voice';
         }
         if (rand < 0.2) return 'bongo';
         return 'common';

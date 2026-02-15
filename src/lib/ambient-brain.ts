@@ -1,8 +1,7 @@
 /**
- * #ЗАЧЕМ: Суверенный Мозг Амбиента v7.11 — "Systemic Drum Reduction".
- * #ЧТО: 1. Системное снижение громкости (весов) ударных и перкуссии в 2 раза.
- *       2. Сохранена вся логика "Биологического Пульса" и "Органического Резонанса".
- *       3. Снижена громкость Heartbeat (0.47/0.42), Iron (0.12) и Resonance (0.2/0.32).
+ * #ЗАЧЕМ: Суверенный Мозг Амбиента v7.12 — "The Voice & Dark Mix Update".
+ * #ЧТО: 1. Метод renderSfx больше не хардкодит категорию 'laser'.
+ *       2. Реализована передача правил из блюпринта для динамического микса SFX.
  */
 
 import type { 
@@ -14,7 +13,8 @@ import type {
     Technique,
     InstrumentHints,
     InstrumentPart,
-    Phrasing
+    Phrasing,
+    SfxRule
 } from '@/types/music';
 import { calculateMusiNum, DEGREE_TO_SEMITONE, pickWeightedDeterministic } from './music-theory';
 import { AMBIENT_LEGACY } from './assets/ambient-legacy';
@@ -166,7 +166,8 @@ export class AmbientBrain {
         }
 
         if (hints.sfx && epoch % 12 === 0) {
-            events.push(...this.renderSfx(localTension));
+            const sfxRule = navInfo.currentPart.instrumentRules?.sfx as any;
+            events.push(...this.renderSfx(localTension, sfxRule));
         }
 
         return { 
@@ -394,7 +395,7 @@ export class AmbientBrain {
         };
     }
 
-    private renderSfx(tension: number): FractalEvent[] {
+    private renderSfx(tension: number, rules?: SfxRule): FractalEvent[] {
         return [{
             type: 'sfx',
             note: 60,
@@ -404,7 +405,7 @@ export class AmbientBrain {
             technique: 'hit',
             dynamics: 'p',
             phrasing: 'staccato',
-            params: { mood: this.mood, genre: 'ambient', category: 'laser' }
+            params: { mood: this.mood, genre: 'ambient', rules }
         }];
     }
 

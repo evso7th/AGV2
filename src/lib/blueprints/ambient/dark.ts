@@ -1,10 +1,10 @@
-
 import type { MusicBlueprint } from '@/types/music';
 
 /**
- * #ЗАЧЕМ: Блюпринт "Abyssal Ritual" (Dark Ambient v4.2).
+ * #ЗАЧЕМ: Блюпринт "Abyssal Ritual" (Dark Ambient v4.3).
  * #ЧТО: 1. Инструмент "flute" удален из списка лотереи.
  *       2. Гармония переведена на скрипки и гитарные аккорды.
+ *       3. Внедрен 60/40 микс SFX (dark/voice) через явные правила.
  */
 export const DarkAmbientBlueprint: MusicBlueprint = {
     id: 'dark_ambient',
@@ -13,7 +13,7 @@ export const DarkAmbientBlueprint: MusicBlueprint = {
     mood: 'dark',
     musical: {
         key: { root: 'E', scale: 'phrygian', octave: 1 },
-        bpm: { base: 75, range: [70, 80], modifier: 1.0 },
+        bpm: { base: 75, range: [70, 80], modifier: 1.0 }, 
         timeSignature: { numerator: 4, denominator: 4 },
         harmonicJourney: [],
         tensionProfile: {
@@ -47,13 +47,13 @@ export const DarkAmbientBlueprint: MusicBlueprint = {
                 duration: { percent: 25 },
                 instrumentation: {
                   melody: { activationChance: 1.0, instrumentOptions: [{ name: 'organ_soft_jazz', weight: 0.7 }, { name: 'theremin', weight: 0.3 }] },
-                  sfx: { activationChance: 0.8, instrumentOptions: [{ name: 'dark', weight: 1.0 }], transient: true }
+                  // #ЗАЧЕМ: Лотерея теперь включает выбор между dark и voice для SFX.
+                  sfx: { activationChance: 0.8, instrumentOptions: [{ name: 'dark', weight: 0.6 }, { name: 'voice', weight: 0.4 }], transient: true }
                 }
               },
               {
                 duration: { percent: 25 },
                 instrumentation: {
-                  // #ЗАЧЕМ: Удаление флейты из состава.
                   harmony: { activationChance: 1.0, instrumentOptions: [{ name: 'violin', weight: 0.7 }, { name: 'guitarChords', weight: 0.3 }] },
                   sparkles: { activationChance: 0.7, instrumentOptions: [{ name: 'dark', weight: 1.0 }] }
                 }
@@ -61,7 +61,8 @@ export const DarkAmbientBlueprint: MusicBlueprint = {
             ],
             instrumentRules: { 
                 drums: { kitName: 'dark', pattern: 'ambient_beat', density: { min: 0.1, max: 0.2 } },
-                bass: { techniques: [{ value: 'walking', weight: 1.0 }] }
+                bass: { techniques: [{ value: 'walking', weight: 1.0 }] },
+                sfx: { eventProbability: 0.3, categories: [{ name: 'dark', weight: 0.6 }, { name: 'voice', weight: 0.4 }] }
             },
             bundles: [ { id: 'DARK_INTRO_B1', name: 'The Entry', duration: { percent: 100 }, characteristics: {}, phrases: {} } ],
             outroFill: null,
@@ -73,7 +74,8 @@ export const DarkAmbientBlueprint: MusicBlueprint = {
                 melody: { strategy: 'weighted', v2Options: [{ name: 'theremin', weight: 0.6 }, { name: 'organ_soft_jazz', weight: 0.4 }] }
             },
             instrumentRules: {
-                drums: { kitName: 'dark', pattern: 'composer', density: { min: 0.3, max: 0.5 } }
+                drums: { kitName: 'dark', pattern: 'composer', density: { min: 0.3, max: 0.5 } },
+                sfx: { eventProbability: 0.3, categories: [{ name: 'dark', weight: 0.6 }, { name: 'voice', weight: 0.4 }] }
             },
             bundles: [ { id: 'DARK_BUILD_B1', name: 'Gathering', duration: { percent: 100 }, characteristics: {}, phrases: {} } ],
             outroFill: null,
@@ -83,7 +85,8 @@ export const DarkAmbientBlueprint: MusicBlueprint = {
             layers: { bass: true, drums: true, melody: true, accompaniment: true, pianoAccompaniment: true, sparkles: true, harmony: true, sfx: true },
             instrumentRules: {
               drums: { kitName: 'dark', density: { min: 0.4, max: 0.6 } },
-              melody: { source: 'blues_solo' }
+              melody: { source: 'blues_solo' },
+              sfx: { eventProbability: 0.3, categories: [{ name: 'dark', weight: 0.6 }, { name: 'voice', weight: 0.4 }] }
             },
             bundles: [ { id: 'DARK_M1', name: 'The Monolith', duration: { percent: 100 }, characteristics: {}, phrases: {} } ],
             outroFill: null,
@@ -92,7 +95,8 @@ export const DarkAmbientBlueprint: MusicBlueprint = {
             id: 'BRIDGE', name: 'Breathing', duration: { percent: 5 },
             layers: { bass: true, accompaniment: true, sfx: true, pianoAccompaniment: true },
             instrumentRules: {
-                accompaniment: { density: { min: 0.3, max: 0.5 } }
+                accompaniment: { density: { min: 0.3, max: 0.5 } },
+                sfx: { eventProbability: 0.3, categories: [{ name: 'dark', weight: 0.6 }, { name: 'voice', weight: 0.4 }] }
             },
             bundles: [ { id: 'DARK_B1', name: 'Void Breath', duration: { percent: 100 }, characteristics: {}, phrases: {} } ],
             outroFill: null,
@@ -104,7 +108,8 @@ export const DarkAmbientBlueprint: MusicBlueprint = {
                 melody: { strategy: 'weighted', v2Options: [{ name: 'guitar_muffLead', weight: 0.5 }, { name: 'organ_soft_jazz', weight: 0.5 }] }
             },
             instrumentRules: {
-              drums: { kitName: 'dark', density: { min: 0.6, max: 0.8 } }
+              drums: { kitName: 'dark', density: { min: 0.6, max: 0.8 } },
+              sfx: { eventProbability: 0.3, categories: [{ name: 'dark', weight: 0.6 }, { name: 'voice', weight: 0.4 }] }
             },
             bundles: [ { id: 'DARK_M2', name: 'The Peak', duration: { percent: 100 }, characteristics: {}, phrases: {} } ],
             outroFill: null,
@@ -114,7 +119,8 @@ export const DarkAmbientBlueprint: MusicBlueprint = {
             layers: { bass: true, accompaniment: true, sfx: true },
             instrumentRules: {
                 bass: { techniques: [{ value: 'drone', weight: 1.0 }] },
-                accompaniment: { techniques: [{ value: 'swell', weight: 1.0 }] }
+                accompaniment: { techniques: [{ value: 'swell', weight: 1.0 }] },
+                sfx: { eventProbability: 0.3, categories: [{ name: 'dark', weight: 0.6 }, { name: 'voice', weight: 0.4 }] }
             },
             bundles: [ { id: 'DARK_OUTRO', name: 'End', duration: { percent: 100 }, characteristics: {}, phrases: {} } ],
             outroFill: null,
