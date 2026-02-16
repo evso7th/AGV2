@@ -378,6 +378,10 @@ export type SuiteDNA = {
   seedLickNotes?: BluesSoloPhrase;
   /** #ЗАЧЕМ: Маршрут географического путешествия (3 локации). */
   itinerary?: string[];
+  /** #ЗАЧЕМ: Династия ликов для блюзовой пьесы (План №437). */
+  dynasty?: string;
+  /** #ЗАЧЕМ: Карта привязки ликов к частям блюпринта (План №437). */
+  partLickMap?: Map<string, string>;
 };
 
 
