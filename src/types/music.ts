@@ -14,7 +14,7 @@ import { BASS_PRESETS } from '@/lib/bass-presets';
  * #ЗАЧЕМ: Центральный хаб типов AuraGroove.
  * #ЧТО: Ре-экспортирует типы из fractal.ts и определяет UI-специфичные структуры.
  *       Добавлена поддержка межсессионной памяти ликов.
- * #ОБНОВЛЕНО (ПЛАН №437): Добавлены счетчики стагнации в BluesCognitiveState.
+ * #ОБНОВЛЕНО (ПЛАН №438): Многоуровневые счетчики стагнации (micro, meso, macro).
  */
 
 export type Mood = FractalMood;
@@ -337,15 +337,20 @@ export type InstrumentHints = FractalInstrumentHints & {
 export interface BluesCognitiveState {
   phraseState: 'call' | 'call_var' | 'response';
   tensionLevel: number;
-  phraseHistory: string[];
+  phraseHistory: string[]; // History of single bar hashes
+  mesoHistory: string[];   // History of 2-bar hashes
+  macroHistory: string[];  // History of 4-bar hashes
   lastPhraseHash: string;
   blueNotePending: boolean;
   emotion: {
     melancholy: number;
     darkness: number;
   };
-  /** #ЗАЧЕМ: Счетчики стагнации (План №437). */
-  stagnationStrikes: Record<string, number>;
-  /** #ЗАЧЕМ: Флаг активной вакцинации (План №437). */
-  vaccineActive?: { part: string, type: 'inversion' | 'shift' | 'rhythm' };
+  /** #ЗАЧЕМ: Счетчики стагнации (План №438). */
+  stagnationStrikes: {
+    micro: number;
+    meso: number;
+    macro: number;
+  };
+  vaccineActive?: { part: string, type: 'jitter' | 'inversion' | 'transposition' | 'rhythm' };
 }

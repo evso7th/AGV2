@@ -2,7 +2,7 @@
  * @fileOverview Universal Music Theory Utilities
  * #ЗАЧЕМ: Базовый набор инструментов для работы с нотами, ладами и ритмом.
  * #ЧТО: Внедрена система Dynasty Rotation для обеспечения разнообразия старта сюиты.
- * #ОБНОВЛЕНО (ПЛАН №437): Реализован Протокол Династий для блюза.
+ * #ОБНОВЛЕНО (ПЛАН №438): Жесткая фильтрация ликов по Taboo List для первой пьесы.
  */
 
 import type { 
@@ -256,11 +256,14 @@ export function generateSuiteDNA(totalBars: number, mood: Mood, initialSeed: num
         const isMellow = ['dark', 'anxious', 'melancholic', 'gloomy'].includes(mood);
         const dynasties = isMellow ? ['minor', 'slow-burn', 'doom-blues'] : ['major', 'texas', 'virtuoso', 'jazzy'];
         
-        // #ЗАЧЕМ: Dynasty Protocol - Одна пьеса, одна династия.
         dynasty = dynasties[calculateMusiNum(initialSeed, 3, initialSeed, dynasties.length)];
         console.log(`%c[DNA] NEW DYNASTY BORN: "${dynasty.toUpperCase()}"`, 'color: #DA70D6; font-weight: bold;');
 
-        const candidates = Object.keys(BLUES_SOLO_LICKS).filter(id => BLUES_SOLO_LICKS[id].tags.includes(dynasty!));
+        // #ЗАЧЕМ: Dynasty Taboo - Исключение недавно использованных ликов.
+        const tabooSet = new Set(sessionHistory || []);
+        const candidates = Object.keys(BLUES_SOLO_LICKS).filter(id => 
+            BLUES_SOLO_LICKS[id].tags.includes(dynasty!) && !tabooSet.has(id)
+        );
         const pool = candidates.length > 0 ? candidates : Object.keys(BLUES_SOLO_LICKS);
         
         seedLickId = pool[calculateMusiNum(initialSeed, 7, initialSeed, pool.length)];
@@ -268,7 +271,6 @@ export function generateSuiteDNA(totalBars: number, mood: Mood, initialSeed: num
             seedLickNotes = transformLick(BLUES_SOLO_LICKS[seedLickId].phrase, initialSeed, 0, true);
         }
 
-        // #ЗАЧЕМ: Semantic Linking - Новая часть, новый родственный лик.
         blueprintParts.forEach((part, i) => {
             const partSeed = initialSeed + i * 777;
             const partLick = pool[calculateMusiNum(partSeed, 5, i, pool.length)];

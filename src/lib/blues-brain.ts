@@ -20,12 +20,12 @@ import { GUITAR_PATTERNS } from './assets/guitar-patterns';
 import { BLUES_SOLO_LICKS } from './assets/blues_guitar_solo';
 
 /**
- * #ЗАЧЕМ: Блюзовый Мозг V54.0 — "Dynasty & Vaccine Update".
- * #ЧТО: 1. Внедрен Dynasty Protocol: новая часть - новый родственный лик.
- *       2. Реализована Вакцина от зацикливания v3.0 (Three Strikes Rule).
- *       3. Тембральная драматургия обновлена: Black Acoustic (T < 0.6), CS80 (T < 0.85), ShineOn (Peak).
- *       4. Снята блокировка эволюции при низком Tension.
- * #СВЯЗИ: Реализация музыкального сознания ансамбля.
+ * #ЗАЧЕМ: Блюзовый Мозг V55.0 — "The Fractal Sentinel Update".
+ * #ЧТО: 1. Внедрен Фрактальный Аудит Стагнации (Окна 1-2-4 такта).
+ *       2. Реализовано правило "Трех Ударов" (Strike Tolerance) для каждого масштаба.
+ *       3. Генетическая Вакцинация: Jitter (1т), Inversion (2т), Transposition (4т).
+ *       4. Тембральная драматургия зафиксирована: Black Acoustic (T < 0.6), CS80 (T < 0.85), ShineOn (Peak).
+ *       5. Громкая телеметрия аудита в консоли.
  */
 
 const ENERGY_PRICES = {
@@ -58,9 +58,8 @@ export class BluesBrain {
 
   private readonly patternOptions: string[] = ['F_TRAVIS', 'F_ROLL12', 'S_SWING'];
 
-  private phraseHistory: string[] = [];
-  private pianoHistory: string[] = [];
-  private accompHistory: string[] = [];
+  private mesoHistory: string[] = [];
+  private macroHistory: string[] = [];
   
   private pianoStagnationOffset: number = 0;
   private globalStagnationOffset: number = 0;
@@ -79,14 +78,16 @@ export class BluesBrain {
     this.state = {
       phraseState: 'call',
       tensionLevel: 0.3,
-      phraseHistory: [],
+      phraseHistory: [], // 1-bar history
+      mesoHistory: [],   // 2-bar history
+      macroHistory: [],  // 4-bar history
       lastPhraseHash: '',
       blueNotePending: false,
       emotion: {
         melancholy: ['melancholic', 'dark', 'anxious'].includes(mood) ? 0.85 : 0.4,
         darkness: ['dark', 'gloomy'].includes(mood) ? 0.35 : 0.2
       },
-      stagnationStrikes: { melody: 0, piano: 0, accompaniment: 0 }
+      stagnationStrikes: { micro: 0, meso: 0, macro: 0 }
     };
   }
 
@@ -121,7 +122,6 @@ export class BluesBrain {
 
     this.evaluateTimbralDramaturgy(tension, hints, this.mood, epoch);
     
-    // #ЗАЧЕМ: Semantic Linking - Смена лика при смене части.
     if (navInfo.isPartTransition && dna.partLickMap?.has(navInfo.currentPart.id)) {
         const nextLickId = dna.partLickMap.get(navInfo.currentPart.id)!;
         console.log(`%c[SOR] Part Transition: Switching to related lick "${nextLickId}"`, 'color: #00ced1; font-weight: bold;');
@@ -174,8 +174,8 @@ export class BluesBrain {
         combinedEvents.push(...aEvents);
     }
 
-    // #ЗАЧЕМ: Аудит Стагнации v3.0 - Fuzzy Hashing & Three Strikes.
-    this.auditStagnationV3(combinedEvents.filter(e => e.type === 'melody'), currentPianoEvents, currentAccompEvents, currentChord, dna, epoch, tension);
+    // #ЗАЧЕМ: Фрактальный Аудит v4.0 - Многомасштабные окна.
+    this.auditStagnationV4(combinedEvents.filter(e => e.type === 'melody'), currentPianoEvents, currentAccompEvents, currentChord, dna, epoch, tension);
     
     if (hints.bass) {
       const bEvents = this.generateBass(epoch, currentChord, tempo, tension, tension > 0.55, bpmFactor);
@@ -189,75 +189,117 @@ export class BluesBrain {
       combinedEvents.push(...dEvents);
     }
 
-    if (hints.sfx && (epoch % 12 === 0)) {
-        combinedEvents.push({
-            type: 'sfx', note: 60, time: this.random.next() * 2, duration: 3.0, weight: 0.4, technique: 'hit', dynamics: 'p', phrasing: 'staccato',
-            params: { mood: this.mood, genre: 'blues', rules: { categories: [{ name: 'voice', weight: 1.0 }] } as any }
-        });
-    }
-
     return combinedEvents;
   }
 
-  private auditStagnationV3(melody: FractalEvent[], piano: FractalEvent[], accomp: FractalEvent[], chord: GhostChord, dna: SuiteDNA, epoch: number, tension: number) {
-      const audit = (partName: 'melody' | 'piano' | 'accompaniment', events: FractalEvent[]) => {
-          const hash = this.getFuzzyHash(events, chord.rootNote);
-          if (hash === "SILENCE") return;
-
-          const history = partName === 'melody' ? this.phraseHistory : (partName === 'piano' ? this.pianoHistory : this.accompHistory);
+  /**
+   * #ЗАЧЕМ: Многомасштабный аудит зацикливания.
+   * #ЧТО: Сравнивает окна 1, 2 и 4 такта. Применяет правило "Трех Ударов".
+   */
+  private auditStagnationV4(melody: FractalEvent[], piano: FractalEvent[], accomp: FractalEvent[], chord: GhostChord, dna: SuiteDNA, epoch: number, tension: number) {
+      const parts: ('melody' | 'piano' | 'accompaniment')[] = ['melody', 'piano', 'accompaniment'];
+      
+      parts.forEach(partName => {
+          const events = partName === 'melody' ? melody : (partName === 'piano' ? piano : accomp);
+          const currentHash = this.getFuzzyHash(events, chord.rootNote);
           
-          if (history.length > 0 && hash === history[history.length - 1]) {
-              this.state.stagnationStrikes[partName]++;
-              console.warn(`%c[SOR] ${partName.toUpperCase()} STAGNATION STRIKE ${this.state.stagnationStrikes[partName]}/3`, 'color: #ffa500; font-weight: bold;');
+          const history = partName === 'melody' ? this.state.phraseHistory : (partName === 'piano' ? this.pianoHistory : this.accompHistory);
+          const mesoHist = partName === 'melody' ? this.state.mesoHistory : [];
+          const macroHist = partName === 'melody' ? this.state.macroHistory : [];
+
+          if (currentHash === "SILENCE") return;
+
+          // 1. MICRO AUDIT (1 Bar)
+          if (history.length > 0 && currentHash === history[history.length - 1]) {
+              this.state.stagnationStrikes.micro++;
+              console.warn(`%c[SOR] ${partName.toUpperCase()} MICRO STRIKE ${this.state.stagnationStrikes.micro}/3`, 'color: #ff8c00;');
           } else {
-              this.state.stagnationStrikes[partName] = 0;
+              this.state.stagnationStrikes.micro = 0;
           }
 
-          history.push(hash);
+          history.push(currentHash);
           if (history.length > this.MAX_HISTORY_DEPTH) history.shift();
 
-          if (this.state.stagnationStrikes[partName] >= 3) {
-              this.injectVaccine(partName, dna, epoch);
-              this.state.stagnationStrikes[partName] = 0;
+          // 2. MESO AUDIT (2 Bars) - Only for melody
+          if (partName === 'melody' && epoch % 2 === 1 && history.length >= 4) {
+              const currentMeso = history.slice(-2).join('|');
+              const prevMeso = history.slice(-4, -2).join('|');
+              if (currentMeso === prevMeso) {
+                  this.state.stagnationStrikes.meso++;
+                  console.warn(`%c[SOR] MELODY MESO STRIKE ${this.state.stagnationStrikes.meso}/3 (2-bar loop)`, 'color: #ff4500; font-weight: bold;');
+              } else {
+                  this.state.stagnationStrikes.meso = 0;
+              }
+              mesoHist.push(currentMeso);
           }
-      };
 
-      audit('melody', melody);
-      audit('piano', piano);
-      audit('accompaniment', accomp);
-      
-      // Update cognitive tension mapping
+          // 3. MACRO AUDIT (4 Bars) - Only for melody
+          if (partName === 'melody' && epoch % 4 === 3 && history.length >= 8) {
+              const currentMacro = history.slice(-4).join('|');
+              const prevMacro = history.slice(-8, -4).join('|');
+              if (currentMacro === prevMacro) {
+                  this.state.stagnationStrikes.macro++;
+                  console.warn(`%c[SOR] MELODY MACRO STRIKE ${this.state.stagnationStrikes.macro}/3 (4-bar phrase loop)`, 'color: #ff0000; font-weight: bold;');
+              } else {
+                  this.state.stagnationStrikes.macro = 0;
+              }
+              macroHist.push(currentMacro);
+          }
+
+          // --- REACTION (Vaccination) ---
+          if (this.state.stagnationStrikes.micro >= 3) {
+              this.injectVaccineV4(partName, 'jitter', dna, epoch);
+              this.state.stagnationStrikes.micro = 0;
+          } else if (this.state.stagnationStrikes.meso >= 3) {
+              this.injectVaccineV4(partName, 'inversion', dna, epoch);
+              this.state.stagnationStrikes.meso = 0;
+          } else if (this.state.stagnationStrikes.macro >= 3) {
+              this.injectVaccineV4(partName, 'transposition', dna, epoch);
+              this.state.stagnationStrikes.macro = 0;
+          }
+      });
+
       this.evolveEmotion(epoch, tension);
+  }
+
+  private injectVaccineV4(partName: string, type: 'jitter' | 'inversion' | 'transposition', dna: SuiteDNA, epoch: number) {
+      console.log(`%c[SOR] VACCINE INJECTED: ${type.toUpperCase()} for ${partName}`, 'color: #4ade80; font-weight: bold; border: 1px solid #4ade80; padding: 2px;');
+      
+      if (partName === 'melody') {
+          if (type === 'jitter') {
+              // Микро-вакцина: Джиттер времени
+              this.currentAxiom = this.currentAxiom.map(n => ({ ...n, t: (n.t + 1) % 12 }));
+          } else if (type === 'inversion') {
+              // Мезо-вакцина: Зеркальная Инверсия
+              const firstMidi = DEGREE_TO_SEMITONE[this.currentAxiom[0].deg] || 0;
+              this.currentAxiom = this.currentAxiom.map(n => {
+                  const semitone = DEGREE_TO_SEMITONE[n.deg] || 0;
+                  const inverted = (firstMidi * 2 - semitone + 12) % 12;
+                  return { ...n, deg: Object.keys(DEGREE_TO_SEMITONE).find(key => DEGREE_TO_SEMITONE[key] === inverted) || 'R' };
+              });
+          } else {
+              // Макро-вакцина: Тональный Прыжок (Транспозиция на кварту)
+              this.currentAxiom = this.currentAxiom.map(n => {
+                  const semitone = DEGREE_TO_SEMITONE[n.deg] || 0;
+                  return { ...n, deg: Object.keys(DEGREE_TO_SEMITONE).find(key => DEGREE_TO_SEMITONE[key] === (semitone + 5) % 12) || 'R' };
+              });
+          }
+          this.globalStagnationOffset += 1000;
+      } else {
+          this.globalStagnationOffset += 1000;
+          this.pianoStagnationOffset += 1000;
+      }
   }
 
   private getFuzzyHash(events: FractalEvent[], rootNote: number): string {
       if (events.length === 0) return "SILENCE";
-      // Fuzzy: только набор нот относительно корня (без учета времени и повторов)
       const pitchSet = Array.from(new Set(events.map(e => ((e.note - rootNote) % 12 + 12) % 12))).sort((a,b) => a - b);
       return pitchSet.join(',');
   }
 
-  private injectVaccine(partName: string, dna: SuiteDNA, epoch: number) {
-      console.log(`%c[SOR] VACCINE INJECTED: Forced mutation for ${partName}`, 'color: #4ade80; font-weight: bold;');
-      
-      if (partName === 'melody') {
-          // Вакцина: Принудительная инверсия текущей аксиомы
-          this.currentAxiom = this.currentAxiom.map(n => {
-              const semitone = DEGREE_TO_SEMITONE[n.deg] || 0;
-              const inverted = (12 - semitone) % 12; // Инверсия относительно тоники
-              return { ...n, deg: Object.keys(DEGREE_TO_SEMITONE).find(key => DEGREE_TO_SEMITONE[key] === inverted) || 'R' };
-          });
-          this.globalStagnationOffset += 1000;
-      } else if (partName === 'piano') {
-          this.pianoStagnationOffset += 1000;
-      } else {
-          this.globalStagnationOffset += 1000;
-      }
-  }
-
   private evaluateTimbralDramaturgy(tension: number, hints: InstrumentHints, mood: Mood, epoch: number) {
     if (hints.melody) {
-        // #ЗАЧЕМ: Обновленные тембральные пороги по запросу пользователя.
+        // #ЗАЧЕМ: Фиксация тембральных порогов по Плану №438.
         if (tension <= 0.60) (hints as any).melody = 'blackAcoustic';
         else if (tension <= 0.85) (hints as any).melody = 'cs80'; 
         else (hints as any).melody = 'guitar_shineOn'; 
@@ -335,8 +377,6 @@ export class BluesBrain {
         let newTech = note.tech;
         let newPhrasing = note.phrasing;
 
-        // #ЗАЧЕМ: Разморозка эволюции.
-        // #ЧТО: Снят жесткий порог Tension. Теперь мутация всегда возможна (базовый шанс 15%).
         const mutationChance = tension > 0.65 ? 0.40 : 0.15;
 
         if (this.random.next() < mutationChance) {
@@ -348,7 +388,6 @@ export class BluesBrain {
                 newDeg = i === axiom.length - 1 ? 'R' : newDeg;
                 newTech = i === axiom.length - 1 ? 'vibrato' : 'pick';
             } else {
-                // Мягкий дрейф
                 const pool = ['R', 'b3', '4', '5', 'b7', this.thematicDegree];
                 newDeg = pool[calculateMusiNum(epoch + i, 7, this.seed, pool.length)];
             }
@@ -375,16 +414,20 @@ export class BluesBrain {
     const barIn12 = epoch % 12;
     let pattern = (!isWalking) ? [{ t: 0, d: 12, deg: 'R' as BluesRiffDegree }] : (barIn12 === 11 ? riff.turn : ([4, 5, 9, 10].includes(barIn12) ? riff.IV : (barIn12 === 8 ? riff.V : riff.I)));
     
-    return pattern.map((n, i) => ({ 
-        type: 'bass', 
-        note: Math.max(chord.rootNote - 12 + (DEGREE_TO_SEMITONE[n.deg] || 0), this.BASS_FLOOR), 
-        time: n.t / 3, 
-        duration: (n.d || 2) / 3, 
-        weight: 0.7 + tension * 0.2, 
-        technique: 'pluck', 
-        dynamics: tension > 0.6 ? 'mf' : 'p', 
-        phrasing: 'legato' 
-    }));
+    // #ЗАЧЕМ: Внедрение "Bass Vitality" - микро-дрейф тайминга и громкости.
+    return pattern.map((n, i) => {
+        const drift = (this.random.next() * 40 - 20) / 1000; // ±20ms
+        return { 
+            type: 'bass', 
+            note: Math.max(chord.rootNote - 12 + (DEGREE_TO_SEMITONE[n.deg] || 0), this.BASS_FLOOR), 
+            time: n.t / 3 + drift, 
+            duration: (n.d || 2) / 3, 
+            weight: (0.7 + tension * 0.2) * (0.95 + this.random.next() * 0.1), 
+            technique: 'pluck', 
+            dynamics: tension > 0.6 ? 'mf' : 'p', 
+            phrasing: 'legato' 
+        };
+    });
   }
 
   private generatePianoMotif(epoch: number, chord: GhostChord, tempo: number, tension: number, bpmFactor: number): FractalEvent[] {
