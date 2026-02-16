@@ -20,12 +20,9 @@ import { GUITAR_PATTERNS } from './assets/guitar-patterns';
 import { BLUES_SOLO_LICKS } from './assets/blues_guitar_solo';
 
 /**
- * #ЗАЧЕМ: Блюзовый Мозг V55.0 — "The Fractal Sentinel Update".
- * #ЧТО: 1. Внедрен Фрактальный Аудит Стагнации (Окна 1-2-4 такта).
- *       2. Реализовано правило "Трех Ударов" (Strike Tolerance) для каждого масштаба.
- *       3. Генетическая Вакцинация: Jitter (1т), Inversion (2т), Transposition (4т).
- *       4. Тембральная драматургия зафиксирована: Black Acoustic (T < 0.6), CS80 (T < 0.85), ShineOn (Peak).
- *       5. Громкая телеметрия аудита в консоли.
+ * #ЗАЧЕМ: Блюзовый Мозг V55.1 — "Sentinel Hotfix".
+ * #ЧТО: Исправлен TypeError при инициализации истории стагнации.
+ * #ОБНОВЛЕНО (ПЛАН №438.1): Поля pianoHistory и accompHistory теперь корректно инициализируются в состоянии.
  */
 
 const ENERGY_PRICES = {
@@ -58,9 +55,6 @@ export class BluesBrain {
 
   private readonly patternOptions: string[] = ['F_TRAVIS', 'F_ROLL12', 'S_SWING'];
 
-  private mesoHistory: string[] = [];
-  private macroHistory: string[] = [];
-  
   private pianoStagnationOffset: number = 0;
   private globalStagnationOffset: number = 0;
   
@@ -78,9 +72,11 @@ export class BluesBrain {
     this.state = {
       phraseState: 'call',
       tensionLevel: 0.3,
-      phraseHistory: [], // 1-bar history
-      mesoHistory: [],   // 2-bar history
-      macroHistory: [],  // 4-bar history
+      phraseHistory: [],
+      pianoHistory: [], // Инициализация фикса
+      accompHistory: [], // Инициализация фикса
+      mesoHistory: [],
+      macroHistory: [],
       lastPhraseHash: '',
       blueNotePending: false,
       emotion: {
@@ -174,7 +170,6 @@ export class BluesBrain {
         combinedEvents.push(...aEvents);
     }
 
-    // #ЗАЧЕМ: Фрактальный Аудит v4.0 - Многомасштабные окна.
     this.auditStagnationV4(combinedEvents.filter(e => e.type === 'melody'), currentPianoEvents, currentAccompEvents, currentChord, dna, epoch, tension);
     
     if (hints.bass) {
@@ -192,10 +187,6 @@ export class BluesBrain {
     return combinedEvents;
   }
 
-  /**
-   * #ЗАЧЕМ: Многомасштабный аудит зацикливания.
-   * #ЧТО: Сравнивает окна 1, 2 и 4 такта. Применяет правило "Трех Ударов".
-   */
   private auditStagnationV4(melody: FractalEvent[], piano: FractalEvent[], accomp: FractalEvent[], chord: GhostChord, dna: SuiteDNA, epoch: number, tension: number) {
       const parts: ('melody' | 'piano' | 'accompaniment')[] = ['melody', 'piano', 'accompaniment'];
       
@@ -203,7 +194,11 @@ export class BluesBrain {
           const events = partName === 'melody' ? melody : (partName === 'piano' ? piano : accomp);
           const currentHash = this.getFuzzyHash(events, chord.rootNote);
           
-          const history = partName === 'melody' ? this.state.phraseHistory : (partName === 'piano' ? this.pianoHistory : this.accompHistory);
+          // #ИСПРАВЛЕНО: Безопасное получение истории из состояния.
+          let history = partName === 'melody' ? this.state.phraseHistory : (partName === 'piano' ? this.state.pianoHistory : this.state.accompHistory);
+          
+          if (!history) history = []; // Defensive fix
+
           const mesoHist = partName === 'melody' ? this.state.mesoHistory : [];
           const macroHist = partName === 'melody' ? this.state.macroHistory : [];
 
@@ -267,10 +262,8 @@ export class BluesBrain {
       
       if (partName === 'melody') {
           if (type === 'jitter') {
-              // Микро-вакцина: Джиттер времени
               this.currentAxiom = this.currentAxiom.map(n => ({ ...n, t: (n.t + 1) % 12 }));
           } else if (type === 'inversion') {
-              // Мезо-вакцина: Зеркальная Инверсия
               const firstMidi = DEGREE_TO_SEMITONE[this.currentAxiom[0].deg] || 0;
               this.currentAxiom = this.currentAxiom.map(n => {
                   const semitone = DEGREE_TO_SEMITONE[n.deg] || 0;
@@ -278,7 +271,6 @@ export class BluesBrain {
                   return { ...n, deg: Object.keys(DEGREE_TO_SEMITONE).find(key => DEGREE_TO_SEMITONE[key] === inverted) || 'R' };
               });
           } else {
-              // Макро-вакцина: Тональный Прыжок (Транспозиция на кварту)
               this.currentAxiom = this.currentAxiom.map(n => {
                   const semitone = DEGREE_TO_SEMITONE[n.deg] || 0;
                   return { ...n, deg: Object.keys(DEGREE_TO_SEMITONE).find(key => DEGREE_TO_SEMITONE[key] === (semitone + 5) % 12) || 'R' };
@@ -299,7 +291,6 @@ export class BluesBrain {
 
   private evaluateTimbralDramaturgy(tension: number, hints: InstrumentHints, mood: Mood, epoch: number) {
     if (hints.melody) {
-        // #ЗАЧЕМ: Фиксация тембральных порогов по Плану №438.
         if (tension <= 0.60) (hints as any).melody = 'blackAcoustic';
         else if (tension <= 0.85) (hints as any).melody = 'cs80'; 
         else (hints as any).melody = 'guitar_shineOn'; 
@@ -414,7 +405,6 @@ export class BluesBrain {
     const barIn12 = epoch % 12;
     let pattern = (!isWalking) ? [{ t: 0, d: 12, deg: 'R' as BluesRiffDegree }] : (barIn12 === 11 ? riff.turn : ([4, 5, 9, 10].includes(barIn12) ? riff.IV : (barIn12 === 8 ? riff.V : riff.I)));
     
-    // #ЗАЧЕМ: Внедрение "Bass Vitality" - микро-дрейф тайминга и громкости.
     return pattern.map((n, i) => {
         const drift = (this.random.next() * 40 - 20) / 1000; // ±20ms
         return { 

@@ -15,6 +15,7 @@ import { BASS_PRESETS } from '@/lib/bass-presets';
  * #ЧТО: Ре-экспортирует типы из fractal.ts и определяет UI-специфичные структуры.
  *       Добавлена поддержка межсессионной памяти ликов.
  * #ОБНОВЛЕНО (ПЛАН №438): Многоуровневые счетчики стагнации (micro, meso, macro).
+ * #ИСПРАВЛЕНО (ПЛАН №438.1): Добавлены массивы истории для пианиста и аккомпанемента.
  */
 
 export type Mood = FractalMood;
@@ -338,6 +339,8 @@ export interface BluesCognitiveState {
   phraseState: 'call' | 'call_var' | 'response';
   tensionLevel: number;
   phraseHistory: string[]; // History of single bar hashes
+  pianoHistory: string[];  // History of piano bar hashes
+  accompHistory: string[]; // History of accompaniment bar hashes
   mesoHistory: string[];   // History of 2-bar hashes
   macroHistory: string[];  // History of 4-bar hashes
   lastPhraseHash: string;
