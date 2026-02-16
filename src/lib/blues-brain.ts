@@ -175,7 +175,7 @@ export class BluesBrain {
     }
 
     // #ЗАЧЕМ: Аудит Стагнации v3.0 - Fuzzy Hashing & Three Strikes.
-    this.auditStagnationV3(combinedEvents.filter(e => e.type === 'melody'), currentPianoEvents, currentAccompEvents, currentChord, dna, epoch);
+    this.auditStagnationV3(combinedEvents.filter(e => e.type === 'melody'), currentPianoEvents, currentAccompEvents, currentChord, dna, epoch, tension);
     
     if (hints.bass) {
       const bEvents = this.generateBass(epoch, currentChord, tempo, tension, tension > 0.55, bpmFactor);
@@ -199,7 +199,7 @@ export class BluesBrain {
     return combinedEvents;
   }
 
-  private auditStagnationV3(melody: FractalEvent[], piano: FractalEvent[], accomp: FractalEvent[], chord: GhostChord, dna: SuiteDNA, epoch: number) {
+  private auditStagnationV3(melody: FractalEvent[], piano: FractalEvent[], accomp: FractalEvent[], chord: GhostChord, dna: SuiteDNA, epoch: number, tension: number) {
       const audit = (partName: 'melody' | 'piano' | 'accompaniment', events: FractalEvent[]) => {
           const hash = this.getFuzzyHash(events, chord.rootNote);
           if (hash === "SILENCE") return;
@@ -225,12 +225,15 @@ export class BluesBrain {
       audit('melody', melody);
       audit('piano', piano);
       audit('accompaniment', accomp);
+      
+      // Update cognitive tension mapping
+      this.evolveEmotion(epoch, tension);
   }
 
   private getFuzzyHash(events: FractalEvent[], rootNote: number): string {
       if (events.length === 0) return "SILENCE";
       // Fuzzy: только набор нот относительно корня (без учета времени и повторов)
-      const pitchSet = Array.from(new Set(events.map(e => (e.note - rootNote) % 12))).sort((a,b) => a - b);
+      const pitchSet = Array.from(new Set(events.map(e => ((e.note - rootNote) % 12 + 12) % 12))).sort((a,b) => a - b);
       return pitchSet.join(',');
   }
 
@@ -439,12 +442,12 @@ export class BluesBrain {
     return events;
   }
 
-  private evolveEmotion(epoch: number): void {
+  private evolveEmotion(epoch: number, tension: number): void {
     this.state.emotion.melancholy += (this.random.next() - 0.5) * 0.06;
     this.state.emotion.darkness += (this.random.next() - 0.5) * 0.04;
     this.state.emotion.melancholy = Math.max(0.65, Math.min(0.95, this.state.emotion.melancholy));
     this.state.emotion.darkness = Math.max(0.15, Math.min(0.45, this.state.emotion.darkness));
-    this.state.tensionLevel = tension; // tension variable should be defined outside or use this.state.tensionLevel directly
+    this.state.tensionLevel = tension; 
   }
 
   private updatePhrasePhase(barIn12: number): void {
