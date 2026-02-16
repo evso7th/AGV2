@@ -2,7 +2,7 @@
  * @fileOverview Universal Music Theory Utilities
  * #ЗАЧЕМ: Базовый набор инструментов для работы с нотами, ладами и ритмом.
  * #ЧТО: Внедрена система Dynasty Rotation для обеспечения разнообразия старта сюиты.
- * #ОБНОВЛЕНО (ПЛАН №438): Жесткая фильтрация ликов по Taboo List для первой пьесы.
+ * #ОБНОВЛЕНО (ПЛАН №439): Блюзовые аккорды теперь всегда содержат септимы и девятые ступени.
  */
 
 import type { 
@@ -224,7 +224,8 @@ export function createHarmonyAxiom(chord: GhostChord, mood: Mood, genre: Genre, 
     const events: FractalEvent[] = [];
     const isMinor = chord.chordType === 'minor' || chord.chordType === 'diminished';
     const root = chord.rootNote;
-    const notes = [root, root + (isMinor ? 3 : 4), root + 7];
+    // #ЗАЧЕМ: Богатая блюзовая гармония. Добавление септимы (10) и девятой (14) ступени.
+    const notes = [root, root + (isMinor ? 3 : 4), root + 7, root + 10];
     notes.forEach((note, i) => {
         events.push({
             type: 'accompaniment',
@@ -236,7 +237,7 @@ export function createHarmonyAxiom(chord: GhostChord, mood: Mood, genre: Genre, 
             dynamics: 'p',
             phrasing: 'legato',
             params: { barCount: epoch },
-            chordName: isMinor ? 'Am' : 'E' 
+            chordName: isMinor ? 'Am7' : 'E7' 
         });
     });
     return events;
@@ -259,7 +260,6 @@ export function generateSuiteDNA(totalBars: number, mood: Mood, initialSeed: num
         dynasty = dynasties[calculateMusiNum(initialSeed, 3, initialSeed, dynasties.length)];
         console.log(`%c[DNA] NEW DYNASTY BORN: "${dynasty.toUpperCase()}"`, 'color: #DA70D6; font-weight: bold;');
 
-        // #ЗАЧЕМ: Dynasty Taboo - Исключение недавно использованных ликов.
         const tabooSet = new Set(sessionHistory || []);
         const candidates = Object.keys(BLUES_SOLO_LICKS).filter(id => 
             BLUES_SOLO_LICKS[id].tags.includes(dynasty!) && !tabooSet.has(id)
@@ -326,7 +326,8 @@ export function generateSuiteDNA(totalBars: number, mood: Mood, initialSeed: num
             while (currentBarInPart < partDuration) {
                 for (let i = 0; i < 12 && currentBarInPart < partDuration; i++) {
                     const offset = progression[i];
-                    harmonyTrack.push({ rootNote: key + offset, chordType: (offset === 7 || offset === 8) ? 'major' : 'minor', bar: partStartBar + currentBarInPart, durationBars: 1 });
+                    // #ЗАЧЕМ: Обогащение ДНК. Каждому аккорду принудительно назначаем тип с септимой.
+                    harmonyTrack.push({ rootNote: key + offset, chordType: (offset === 7 || offset === 8) ? 'dominant' as any : 'minor', bar: partStartBar + currentBarInPart, durationBars: 1 });
                     currentBarInPart++;
                 }
             }
