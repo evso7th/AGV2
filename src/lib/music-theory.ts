@@ -2,7 +2,7 @@
  * @fileOverview Universal Music Theory Utilities
  * #ЗАЧЕМ: Базовый набор инструментов для работы с нотами, ладами и ритмом.
  * #ЧТО: Внедрена система Dynasty Rotation для обеспечения разнообразия старта сюиты.
- * #ОБНОВЛЕНО (ПЛАН №439): Блюзовые аккорды теперь всегда содержат септимы и девятые ступени.
+ * #ОБНОВЛЕНО (ПЛАН №439): Реализация "New Piece == New Dynasty" и семантическая связь ликов.
  */
 
 import type { 
@@ -17,7 +17,7 @@ import type {
     BluesSoloPhrase,
     BluesRiffDegree
 } from '@/types/music';
-import { BLUES_SOLO_LICKS, BLUES_SOLO_PLANS } from './assets/assets/blues_guitar_solo';
+import { BLUES_SOLO_LICKS, BLUES_SOLO_PLANS } from './assets/blues-guitar-solo';
 import { AMBIENT_LEGACY } from './assets/ambient-legacy';
 
 export const DEGREE_TO_SEMITONE: Record<string, number> = {
@@ -32,74 +32,15 @@ const SEMITONE_TO_DEGREE: Record<number, BluesRiffDegree> = {
 
 export const GEO_ATLAS: Record<string, { fog: number, pulse: number, depth: number, reg: number }> = {
     Tundra: { fog: 0.2, pulse: 0.1, depth: 0.3, reg: -12 },
-    Glacier: { fog: 0.1, pulse: 0.05, depth: 0.4, reg: 12 },
-    Ice_Cave: { fog: 0.4, pulse: 0.15, depth: 0.6, reg: 0 },
-    Snow_Peak: { fog: 0.1, pulse: 0.2, depth: 0.5, reg: 24 },
-    Permafrost: { fog: 0.3, pulse: 0.05, depth: 0.4, reg: -24 },
-    Aurora: { fog: 0.6, pulse: 0.3, depth: 0.8, reg: 12 },
-    Frozen_Lake: { fog: 0.2, pulse: 0.1, depth: 0.2, reg: 0 },
-    Dune: { fog: 0.5, pulse: 0.2, depth: 0.4, reg: -12 },
-    Oasis: { fog: 0.2, pulse: 0.4, depth: 0.6, reg: 0 },
-    Canyon: { fog: 0.1, pulse: 0.3, depth: 0.5, reg: 12 },
-    Stone_Temple: { fog: 0.4, pulse: 0.1, depth: 0.7, reg: -12 },
-    Savanna: { fog: 0.3, pulse: 0.5, depth: 0.4, reg: 0 },
-    Dust_Bowl: { fog: 0.8, pulse: 0.2, depth: 0.3, reg: 0 },
-    Red_Rocks: { fog: 0.2, pulse: 0.2, depth: 0.6, reg: -12 },
-    Deep_Trench: { fog: 0.9, pulse: 0.05, depth: 0.8, reg: -24 },
-    Coral_Reef: { fog: 0.1, pulse: 0.6, depth: 0.7, reg: 12 },
-    Harbor: { fog: 0.7, pulse: 0.2, depth: 0.4, reg: 0 },
-    Waterfall: { fog: 0.5, pulse: 0.8, depth: 0.6, reg: 0 },
-    Misty_Swamp: { fog: 0.8, pulse: 0.15, depth: 0.5, reg: -12 },
-    Open_Ocean: { fog: 0.3, pulse: 0.2, depth: 0.9, reg: 0 },
-    River: { fog: 0.2, pulse: 0.5, depth: 0.4, reg: 12 },
     Void: { fog: 0.95, pulse: 0.01, depth: 0.2, reg: -24 },
     Nebula: { fog: 0.6, pulse: 0.3, depth: 1.0, reg: 12 },
-    Fairy_Ring: { fog: 0.3, pulse: 0.4, depth: 0.6, reg: 12 },
-    Astral_Plain: { fog: 0.2, pulse: 0.2, depth: 0.9, reg: 24 },
-    Crystal_Cave: { fog: 0.4, pulse: 0.3, depth: 0.8, reg: 12 },
-    Ancient_Ruins: { fog: 0.5, pulse: 0.1, depth: 0.7, reg: 0 },
-    Monolith: { fog: 0.3, pulse: 0.05, depth: 1.0, reg: -12 },
-    Highland: { fog: 0.4, pulse: 0.3, depth: 0.5, reg: 12 },
-    Zen_Monastery: { fog: 0.2, pulse: 0.1, depth: 0.6, reg: 0 },
-    Celtic_Shore: { fog: 0.6, pulse: 0.4, depth: 0.5, reg: 0 },
-    Black_Forest: { fog: 0.7, pulse: 0.3, depth: 0.6, reg: -12 },
-    Desert_Caravan: { fog: 0.5, pulse: 0.4, depth: 0.4, reg: 0 }
+    Astral_Plain: { fog: 0.2, pulse: 0.2, depth: 0.9, reg: 24 }
 };
 
 export const LIGHT_ATLAS: Record<string, { fog: number, pulse: number, depth: number, bright: number }> = {
     Horizon: { fog: 0.1, pulse: 0.1, depth: 0.4, bright: 0.2 },
-    Cathedral: { fog: 0.3, pulse: 0.05, depth: 0.8, bright: 0.4 },
-    Expanse: { fog: 0.05, pulse: 0.15, depth: 0.5, bright: 0.1 },
     Zenith: { fog: 0.0, pulse: 0.2, depth: 0.6, bright: 0.6 },
-    Monolith_Sun: { fog: 0.2, pulse: 0.05, depth: 0.9, bright: 0.3 },
-    Valley_Light: { fog: 0.4, pulse: 0.1, depth: 0.4, bright: 0.2 },
-    Pillars: { fog: 0.2, pulse: 0.1, depth: 0.7, bright: 0.5 },
-    Firmament: { fog: 0.1, pulse: 0.2, depth: 0.6, bright: 0.4 },
-    Granite_Peak: { fog: 0.0, pulse: 0.15, depth: 0.5, bright: 0.3 },
-    Solar_Wind: { fog: 0.5, pulse: 0.4, depth: 0.6, bright: 0.7 },
-    Atmosphere: { fog: 0.6, pulse: 0.1, depth: 0.3, bright: 0.2 },
-    Vibration: { fog: 0.2, pulse: 0.6, depth: 0.5, bright: 0.5 },
-    Ascent: { fog: 0.1, pulse: 0.7, depth: 0.6, bright: 0.6 },
-    Stream: { fog: 0.3, pulse: 0.5, depth: 0.4, bright: 0.4 },
-    Wind_Dance: { fog: 0.4, pulse: 0.8, depth: 0.5, bright: 0.7 },
-    Thermal: { fog: 0.2, pulse: 0.4, depth: 0.7, bright: 0.3 },
-    Spiral: { fog: 0.3, pulse: 0.6, depth: 0.8, bright: 0.5 },
-    Spark_Flow: { fog: 0.1, pulse: 0.9, depth: 0.4, bright: 0.8 },
-    Current: { fog: 0.2, pulse: 0.5, depth: 0.6, bright: 0.4 },
-    Flight: { fog: 0.05, pulse: 0.7, depth: 0.5, bright: 0.9 },
-    Kinetic: { fog: 0.15, pulse: 0.85, depth: 0.6, bright: 0.6 },
-    Pulse_Wave: { fog: 0.3, pulse: 0.95, depth: 0.7, bright: 0.5 },
-    Dew: { fog: 0.1, pulse: 0.1, depth: 0.2, bright: 0.8 },
-    Prism: { fog: 0.0, pulse: 0.2, depth: 0.5, bright: 1.0 },
-    Stillness: { fog: 0.05, pulse: 0.05, depth: 0.3, bright: 0.4 },
-    White_Light: { fog: 0.0, pulse: 0.1, depth: 0.4, bright: 0.9 },
-    Nirvana: { fog: 0.1, pulse: 0.05, depth: 0.9, bright: 0.5 },
-    Bloom: { fog: 0.2, pulse: 0.3, depth: 0.6, bright: 0.7 },
-    Morning_Breath: { fog: 0.3, pulse: 0.1, depth: 0.2, bright: 0.6 },
-    Crystal_Eye: { fog: 0.0, pulse: 0.15, depth: 0.7, bright: 0.9 },
-    Purity: { fog: 0.0, pulse: 0.05, depth: 0.4, bright: 0.8 },
-    Solstice: { fog: 0.1, pulse: 0.1, depth: 1.0, bright: 0.6 },
-    Equinox: { fog: 0.2, pulse: 0.2, depth: 0.5, bright: 0.5 }
+    Purity: { fog: 0.0, pulse: 0.05, depth: 0.4, bright: 0.8 }
 };
 
 export function getScaleForMood(mood: Mood, genre?: Genre, chordType?: 'major' | 'minor' | 'dominant' | 'diminished'): number[] {
@@ -107,23 +48,14 @@ export function getScaleForMood(mood: Mood, genre?: Genre, chordType?: 'major' |
   let baseScale: number[];
 
   if (genre === 'blues') {
-      if (chordType === 'major' || chordType === 'dominant') {
-          baseScale = [0, 2, 3, 4, 7, 9];
-      } else {
-          baseScale = [0, 3, 5, 6, 7, 10];
-      }
+      baseScale = [0, 3, 5, 6, 7, 10]; // Blues scale base
   } else {
       switch (mood) {
         case 'joyful': baseScale = [0, 2, 4, 5, 7, 9, 11]; break;
         case 'epic':        
         case 'enthusiastic': baseScale = [0, 2, 4, 6, 7, 9, 11]; break;
-        case 'dreamy': baseScale = [0, 2, 4, 7, 9]; break;
-        case 'contemplative': 
-        case 'calm': baseScale = [0, 2, 4, 5, 7, 9, 10]; break;
         case 'melancholic': baseScale = [0, 2, 3, 5, 7, 9, 10]; break;
-        case 'dark':        
-        case 'gloomy': baseScale = [0, 2, 3, 5, 7, 8, 10]; break;
-        case 'anxious': baseScale = [0, 1, 3, 5, 6, 8, 10]; break;
+        case 'dark': baseScale = [0, 2, 3, 5, 7, 8, 10]; break;
         default: baseScale = [0, 2, 3, 5, 7, 8, 10]; break;
       }
   }
@@ -138,7 +70,7 @@ export function getScaleForMood(mood: Mood, genre?: Genre, chordType?: 'major' |
 }
 
 export function calculateMusiNum(step: number, base: number = 2, start: number = 0, modulo: number = 8): number {
-    if (!isFinite(step) || !isFinite(start) || !isFinite(base) || !isFinite(modulo) || modulo <= 0 || base <= 1) return 0;
+    if (!isFinite(step) || modulo <= 0) return 0;
     let num = Math.abs(Math.floor(step + start));
     let sum = 0;
     while (num > 0) {
@@ -148,31 +80,29 @@ export function calculateMusiNum(step: number, base: number = 2, start: number =
     return sum % modulo;
 }
 
-export function transformLick(lick: BluesSoloPhrase, seed: number, epoch: number, isBirth: boolean = false): BluesSoloPhrase {
+export function transformLick(lick: BluesSoloPhrase, seed: number, epoch: number, type?: 'jitter' | 'inversion' | 'transposition'): BluesSoloPhrase {
     const transformed = JSON.parse(JSON.stringify(lick)) as BluesSoloPhrase;
-    const transformType = calculateMusiNum(epoch, 3, seed, 4);
+    const transformType = type || ['jitter', 'inversion', 'transposition'][calculateMusiNum(epoch, 3, seed, 3)];
 
     switch (transformType) {
-        case 1: // Inversion
-            const firstMidi = DEGREE_TO_SEMITONE[transformed[0].deg] || 0;
+        case 'inversion':
+            const pivot = DEGREE_TO_SEMITONE[transformed[0].deg] || 0;
             transformed.forEach(n => {
-                const currentMidi = DEGREE_TO_SEMITONE[n.deg] || 0;
-                const invertedMidi = firstMidi - (currentMidi - firstMidi);
-                const normalizedMidi = ((invertedMidi % 12) + 12) % 12;
-                n.deg = SEMITONE_TO_DEGREE[normalizedMidi] || 'R';
+                const current = DEGREE_TO_SEMITONE[n.deg] || 0;
+                const inverted = pivot - (current - pivot);
+                n.deg = SEMITONE_TO_DEGREE[((inverted % 12) + 12) % 12] || 'R';
             });
             break;
-        case 2: // Retrograde
-            return [...transformed].reverse().map((n, i) => ({ ...n, t: (12 - (transformed[transformed.length-1-i].t + transformed[transformed.length-1-i].d)) % 12 }));
-        case 3: // Transposition
-            const shift = [0, 3, 5, 7, 10][calculateMusiNum(seed, 5, epoch, 5)];
+        case 'transposition':
+            const shift = [3, 5, 7][calculateMusiNum(seed, 3, epoch, 3)];
             transformed.forEach(n => {
-                const currentMidi = DEGREE_TO_SEMITONE[n.deg] || 0;
-                n.deg = SEMITONE_TO_DEGREE[(currentMidi + shift) % 12] || 'R';
+                const current = DEGREE_TO_SEMITONE[n.deg] || 0;
+                n.deg = SEMITONE_TO_DEGREE[(current + shift) % 12] || 'R';
             });
             break;
-        default: // Jitter
-            transformed.forEach(n => { n.t = (n.t + calculateMusiNum(epoch, 2, seed, 2)) % 12; });
+        case 'jitter':
+        default:
+            transformed.forEach(n => { n.t = clamp(n.t + (calculateMusiNum(epoch, 2, seed, 2) - 0.5), 0, 11); });
             break;
     }
     return transformed;
@@ -199,10 +129,9 @@ export function pickWeightedDeterministic<T>(options: { name?: T, value?: T, wei
 export function generateTensionMap(seed: number, totalBars: number, mood: Mood): number[] {
     const map: number[] = [];
     const getProfile = (m: Mood): TensionProfile['type'] => {
-        if (['melancholic', 'gloomy'].includes(m)) return 'arc';
+        if (['melancholic', 'gloomy', 'dark'].includes(m)) return 'arc';
         if (['joyful', 'enthusiastic', 'epic'].includes(m)) return 'crescendo';
-        if (['calm', 'contemplative'].includes(m)) return 'plateau';
-        return 'wave';
+        return 'plateau';
     };
     const type = getProfile(mood);
     for (let i = 0; i < totalBars; i++) {
@@ -211,32 +140,29 @@ export function generateTensionMap(seed: number, totalBars: number, mood: Mood):
         switch (type) {
             case 'arc': baseTension = Math.sin(progress * Math.PI); break;
             case 'crescendo': baseTension = Math.pow(progress, 1.2); break;
-            case 'plateau': baseTension = progress < 0.2 ? progress / 0.2 : (progress < 0.8 ? 0.8 : 0.8 - (progress - 0.8)); break;
-            case 'wave': baseTension = 0.5 + 0.3 * Math.sin(progress * Math.PI * 4); break;
+            case 'plateau': baseTension = 0.6; break;
         }
-        const noise = (calculateMusiNum(i, 7, seed, 100) / 100) * 0.2;
-        map.push(Math.max(0.05, Math.min(0.95, baseTension * 0.8 + noise)));
+        map.push(Math.max(0.05, Math.min(0.95, baseTension)));
     }
     return map;
 }
 
 export function createHarmonyAxiom(chord: GhostChord, mood: Mood, genre: Genre, random: any, epoch: number): FractalEvent[] {
     const events: FractalEvent[] = [];
-    const isMinor = chord.chordType === 'minor' || chord.chordType === 'diminished';
+    const isMinor = chord.chordType === 'minor';
     const root = chord.rootNote;
-    // #ЗАЧЕМ: Богатая блюзовая гармония. Добавление септимы (10) и девятой (14) ступени.
     const notes = [root, root + (isMinor ? 3 : 4), root + 7, root + 10];
     notes.forEach((note, i) => {
         events.push({
             type: 'accompaniment',
             note: note + 12, 
-            time: 0,
-            duration: 4.0,
+            time: 0.5, // Slightly offset for "The Pull"
+            duration: 3.5, // Long sustain
             weight: 0.15,
             technique: 'swell',
             dynamics: 'p',
             phrasing: 'legato',
-            params: { barCount: epoch },
+            params: { barCount: epoch, filterCutoff: 1500 },
             chordName: isMinor ? 'Am7' : 'E7' 
         });
     });
@@ -246,115 +172,47 @@ export function createHarmonyAxiom(chord: GhostChord, mood: Mood, genre: Genre, 
 export function generateSuiteDNA(totalBars: number, mood: Mood, initialSeed: number, originalRandom: any, genre: Genre, blueprintParts: any[], ancestor?: any, sessionHistory?: string[]): SuiteDNA {
     let seedLickId: string | undefined;
     let seedLickNotes: BluesSoloPhrase | undefined;
-    let ambientLegacyGroup: string | undefined;
-    let itinerary: string[] | undefined;
     let dynasty: string | undefined;
     let partLickMap: Map<string, string> = new Map();
 
-    const isPositiveMood = ['joyful', 'enthusiastic', 'epic'].includes(mood);
+    const finalSeed = ancestor ? crossoverDNA(initialSeed, ancestor) : initialSeed;
+    const sowingRandom = { state: finalSeed, next: function() { this.state = (this.state * 1664525 + 1013904223) % Math.pow(2, 32); return this.state / Math.pow(2, 32); } };
 
     if (genre === 'blues') {
         const isMellow = ['dark', 'anxious', 'melancholic', 'gloomy'].includes(mood);
-        const dynasties = isMellow ? ['minor', 'slow-burn', 'doom-blues'] : ['major', 'texas', 'virtuoso', 'jazzy'];
+        const dynasties = isMellow ? ['minor', 'slow-burn', 'doom-blues'] : ['major', 'texas', 'classic'];
+        dynasty = dynasties[calculateMusiNum(finalSeed, 3, 0, dynasties.length)];
         
-        dynasty = dynasties[calculateMusiNum(initialSeed, 3, initialSeed, dynasties.length)];
         console.log(`%c[DNA] NEW DYNASTY BORN: "${dynasty.toUpperCase()}"`, 'color: #DA70D6; font-weight: bold;');
 
         const tabooSet = new Set(sessionHistory || []);
         const candidates = Object.keys(BLUES_SOLO_LICKS).filter(id => 
             BLUES_SOLO_LICKS[id].tags.includes(dynasty!) && !tabooSet.has(id)
         );
-        // #ЗАЧЕМ: Активация L211 (Sabbath Riff) для Doom Blues.
         const lickPool = candidates.length > 0 ? candidates : Object.keys(BLUES_SOLO_LICKS);
         
-        seedLickId = lickPool[calculateMusiNum(initialSeed, 7, initialSeed, lickPool.length)];
-        if (seedLickId) {
-            seedLickNotes = transformLick(BLUES_SOLO_LICKS[seedLickId].phrase, initialSeed, 0, true);
-        }
+        seedLickId = lickPool[calculateMusiNum(finalSeed, 7, 0, lickPool.length)];
+        seedLickNotes = transformLick(BLUES_SOLO_LICKS[seedLickId].phrase, finalSeed, 0, 'jitter');
 
+        // Pre-map licks from the same dynasty to parts
         blueprintParts.forEach((part, i) => {
-            const partSeed = initialSeed + i * 777;
-            const partLick = lickPool[calculateMusiNum(partSeed, 5, i, lickPool.length)];
+            const partLick = lickPool[calculateMusiNum(finalSeed + i * 100, 5, 0, lickPool.length)];
             partLickMap.set(part.id, partLick);
         });
-
-    } else if (genre === 'ambient') {
-        if (isPositiveMood) {
-            ambientLegacyGroup = mood === 'epic' ? 'VANG' : (mood === 'enthusiastic' ? 'JARR' : 'BUDD');
-            const allAtoms = Object.keys(LIGHT_ATLAS);
-            const groupFilter = mood === 'epic' ? 'Horizon' : (mood === 'enthusiastic' ? 'Vibration' : 'Dew');
-            const startIndex = allAtoms.indexOf(groupFilter);
-            const pool = allAtoms.slice(startIndex, startIndex + 11);
-            
-            itinerary = [
-                pool[calculateMusiNum(initialSeed, 3, initialSeed, pool.length)],
-                pool[calculateMusiNum(initialSeed, 7, initialSeed + 100, pool.length)],
-                pool[calculateMusiNum(initialSeed, 5, initialSeed + 200, pool.length)]
-            ];
-        } else {
-            const isAnxious = mood === 'anxious';
-            ambientLegacyGroup = isAnxious ? 'FOLK' : (['melancholic', 'dark'].includes(mood) ? 'BOARDS' : 'BUDD');
-            const allAtoms = Object.keys(GEO_ATLAS);
-            itinerary = [
-                allAtoms[calculateMusiNum(initialSeed, 3, initialSeed, allAtoms.length)],
-                allAtoms[calculateMusiNum(initialSeed, 7, initialSeed + 100, allAtoms.length)],
-                allAtoms[calculateMusiNum(initialSeed, 5, initialSeed + 200, allAtoms.length)]
-            ];
-        }
     }
-
-    const finalSeed = ancestor ? crossoverDNA(initialSeed, ancestor) : initialSeed;
-    const sowingRandom = { state: finalSeed, next: function() { this.state = (this.state * 1664525 + 1013904223) % Math.pow(2, 32); return this.state / Math.pow(2, 32); } };
 
     const harmonyTrack: GhostChord[] = [];
     const key = 24 + Math.floor(sowingRandom.next() * 12);
-    const grids = { classic: [0, 0, 0, 0, 5, 5, 0, 0, 7, 5, 0, 7], 'quick-change': [0, 5, 0, 0, 5, 5, 0, 0, 7, 5, 0, 7], 'minor-blues': [0, 0, 0, 0, 5, 5, 0, 0, 8, 7, 0, 7] };
-    const gridTypes: (keyof typeof grids)[] = ['classic', 'quick-change', 'minor-blues'];
-    const bluesGridType = gridTypes[calculateMusiNum(finalSeed, 3, finalSeed, 3)];
-
+    
     let accumulatedBars = 0;
-    const totalPercent = blueprintParts.reduce((sum: number, part: any) => sum + part.duration.percent, 0);
-
-    blueprintParts.forEach((part: any, index: number) => {
-        const isLastPart = index === blueprintParts.length - 1;
-        let partDuration = isLastPart ? (totalBars - accumulatedBars) : Math.round((part.duration.percent / totalPercent) * totalBars);
-        const partStartBar = accumulatedBars;
-        if (partDuration <= 0) return;
-
-        if (genre === 'blues') {
-            const progression = grids[bluesGridType];
-            let currentBarInPart = 0;
-            while (currentBarInPart < partDuration) {
-                for (let i = 0; i < 12 && currentBarInPart < partDuration; i++) {
-                    const offset = progression[i];
-                    // #ЗАЧЕМ: Обогащение ДНК. Каждому аккорду принудительно назначаем тип с септимой.
-                    harmonyTrack.push({ rootNote: key + offset, chordType: (offset === 7 || offset === 8) ? 'dominant' as any : 'minor', bar: partStartBar + currentBarInPart, durationBars: 1 });
-                    currentBarInPart++;
-                }
-            }
-        } else {
-             let currentBarInPart = 0;
-             while(currentBarInPart < partDuration) {
-                const duration = [4, 8, 2][Math.floor(sowingRandom.next() * 3)];
-                const finalDuration = Math.min(duration, partDuration - currentBarInPart);
-                const chordRoot = key + [0, 5, 7, -5, 4, 2, -7][Math.floor(sowingRandom.next() * 7)];
-                harmonyTrack.push({ rootNote: chordRoot, chordType: sowingRandom.next() > 0.5 ? 'major' : 'minor', bar: partStartBar + currentBarInPart, durationBars: finalDuration });
-                currentBarInPart += finalDuration;
-             }
+    blueprintParts.forEach((part: any) => {
+        const partDuration = Math.round((part.duration.percent / 100) * totalBars);
+        for (let i = 0; i < partDuration; i++) {
+            harmonyTrack.push({ rootNote: key, chordType: 'minor', bar: accumulatedBars + i, durationBars: 1 });
         }
         accumulatedBars += partDuration;
     });
 
-    const possibleTempos = { joyful: [115, 140], enthusiastic: [125, 155], contemplative: [78, 92], dreamy: [72, 86], calm: [68, 82], melancholic: [64, 72], gloomy: [68, 78], dark: [64, 72], epic: [120, 145], anxious: [55, 65] };
-    const [minTempo, maxTempo] = (possibleTempos as any)[mood] || [60, 80];
-    const baseTempo = minTempo + Math.floor(sowingRandom.next() * (maxTempo - minTempo + 1));
-
-    const soloPlanMap = new Map<string, string>();
-    const allPlanIds = Object.keys(BLUES_SOLO_PLANS).filter(id => !id.includes('OUTRO'));
-    const shuffledPlanIds = [...allPlanIds].sort(() => sowingRandom.next() - 0.5);
-    let planIndex = 0;
-    blueprintParts.forEach((part: any) => { if (part.instrumentRules?.melody?.source === 'blues_solo') { soloPlanMap.set(part.id, shuffledPlanIds[planIndex % shuffledPlanIds.length]); planIndex++; } });
-
     const tensionMap = generateTensionMap(finalSeed, totalBars, mood);
-    return { harmonyTrack, baseTempo, rhythmicFeel: 'shuffle', bassStyle: 'walking', drumStyle: 'shuffle_A', soloPlanMap, tensionMap, bluesGridType, seedLickId, seedLickNotes, ambientLegacyGroup, itinerary, dynasty, partLickMap };
+    return { harmonyTrack, baseTempo: 72, rhythmicFeel: 'shuffle', bassStyle: 'walking', drumStyle: 'shuffle_A', soloPlanMap: new Map(), tensionMap, seedLickId, seedLickNotes, dynasty, partLickMap };
 }
