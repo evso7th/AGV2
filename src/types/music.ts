@@ -14,8 +14,7 @@ import { BASS_PRESETS } from '@/lib/bass-presets';
  * #ЗАЧЕМ: Центральный хаб типов AuraGroove.
  * #ЧТО: Ре-экспортирует типы из fractal.ts и определяет UI-специфичные структуры.
  *       Добавлена поддержка межсессионной памяти ликов.
- * #ОБНОВЛЕНО (ПЛАН №438): Многоуровневые счетчики стагнации (micro, meso, macro).
- * #ИСПРАВЛЕНО (ПЛАН №438.1): Добавлены массивы истории для пианиста и аккомпанемента.
+ * #ОБНОВЛЕНО (ПЛАН №439): Поддержка многомасштабного аудита стагнации (1-2-4 такта).
  */
 
 export type Mood = FractalMood;
@@ -173,7 +172,6 @@ export type WorkerSettings = {
   mood: Mood;
   seed?: number;
   introBars: number;
-  /** #ЗАЧЕМ: Межсессионная память ликов. */
   sessionLickHistory?: string[];
   ancestor?: any;
 };
@@ -349,7 +347,7 @@ export interface BluesCognitiveState {
     melancholy: number;
     darkness: number;
   };
-  /** #ЗАЧЕМ: Счетчики стагнации (План №438). */
+  /** #ЗАЧЕМ: Многоуровневые счетчики стагнации (План №439). */
   stagnationStrikes: {
     micro: number;
     meso: number;

@@ -102,7 +102,10 @@ export function transformLick(lick: BluesSoloPhrase, seed: number, epoch: number
             break;
         case 'jitter':
         default:
-            transformed.forEach(n => { n.t = clamp(n.t + (calculateMusiNum(epoch, 2, seed, 2) - 0.5), 0, 11); });
+            transformed.forEach(n => { 
+                const shiftVal = (calculateMusiNum(epoch, 2, seed, 2) - 0.5);
+                n.t = Math.max(0, Math.min(11, n.t + shiftVal));
+            });
             break;
     }
     return transformed;
