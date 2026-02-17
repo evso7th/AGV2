@@ -34,8 +34,8 @@ export class CS80GuitarSampler {
         this.destination = destination;
         this.preamp = this.audioContext.createGain();
         // #ЗАЧЕМ: Нормализация громкости. Сэмплы CS80 исходно очень громкие.
-        // #ЧТО: Громкость установлена в 0.4.
-        this.preamp.gain.value = 0.4; 
+        // #ОБНОВЛЕНО (ПЛАН №441): Громкость снижена в два раза по просьбе пользователя (0.4 -> 0.2).
+        this.preamp.gain.value = 0.2; 
         this.preamp.connect(this.destination);
     }
 
@@ -90,9 +90,9 @@ export class CS80GuitarSampler {
             }
 
             // #ЗАЧЕМ: Экономное использование 'long_notes' (План №380).
-            // #ЧТО: Используем длинный сэмпл только если нота длится дольше 2 секунд.
-            //      В остальных случаях предпочитаем 'norm_notes' для четкости.
-            const buffer = (forceShort || (note.duration || 0) < 2.0) ? layer.norm : layer.long;
+            // #ОБНОВЛЕНО (ПЛАН №441): Используем длинный сэмпл только если нота длится 3 сек и более (целая нота).
+            //      В остальных случаях предпочитаем 'norm_notes' для четкости атаки.
+            const buffer = (forceShort || (note.duration || 0) < 3.0) ? layer.norm : layer.long;
             this.playSample(buffer, note.midi, note.midi, time + note.time, note.velocity || 0.7, note.duration);
         });
     }
@@ -106,7 +106,8 @@ export class CS80GuitarSampler {
         const layer = this.buffers.get(closestMidi);
         if (!layer) return;
 
-        const buffer = (forceShort || (note.duration || 0) < 2.0) ? layer.norm : layer.long;
+        // #ОБНОВЛЕНО (ПЛАН №441): Порог 3.0 сек.
+        const buffer = (forceShort || (note.duration || 0) < 3.0) ? layer.norm : layer.long;
         this.playSample(buffer, closestMidi, note.midi, time + note.time, note.velocity || 0.7, note.duration);
     }
 
