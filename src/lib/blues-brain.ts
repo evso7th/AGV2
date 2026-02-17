@@ -2,7 +2,6 @@ import type {
   FractalEvent,
   GhostChord,
   InstrumentHints,
-  Dynamics,
   Mood,
   SuiteDNA,
   NavigationInfo,
@@ -13,12 +12,11 @@ import { BLUES_DRUM_RIFFS } from './assets/blues-drum-riffs';
 import { BLUES_SOLO_LICKS } from './assets/blues-guitar-solo';
 
 /**
- * #ЗАЧЕМ: Блюзовый Мозг V60.0 — "Masterpiece Alignment".
- * #ЧТО: 1. Внедрена система Fractal Sentinel V3 (1-2-4 такта).
- *       2. Реализован Sabbath Riff L212 (оцифровка).
- *       3. Аккомпанемент: "The Pull Chops" (длинный сустейн, задержка).
- *       4. Бас: "Iron Walker" (строго 4/4).
- *       5. Тембральные пороги: blackAcoustic(0.60), cs80(0.85), shineOn(Peak).
+ * #ЗАЧЕМ: Блюзовый Мозг V61.0 — "Narrative Flow".
+ * #ЧТО: 1. Мелодия теперь рендерится как сегмент длинной аксиомы (4-12 тактов).
+ *       2. Аккомпанемент "The Pull" (тягучие аккорды, исключение "цыганочки").
+ *       3. Бас: Монументальный "Iron Pillar".
+ *       4. Устранение заикания через циклическую память фраз.
  */
 
 export class BluesBrain {
@@ -74,33 +72,33 @@ export class BluesBrain {
     hints: InstrumentHints,
     lastEvents: FractalEvent[]
   ): FractalEvent[] {
-    const tempo = dna.baseTempo || 72;
     const tension = dna.tensionMap?.[epoch] ?? 0.5;
     
     this.evaluateTimbralDramaturgy(tension, hints);
     
-    if (navInfo.isPartTransition && dna.partLickMap?.has(navInfo.currentPart.id)) {
-        const nextLickId = dna.partLickMap.get(navInfo.currentPart.id)!;
-        this.currentAxiom = BLUES_SOLO_LICKS[nextLickId].phrase;
-        console.info(`%c[SOR] Part Transition: New Lick Loaded: ${nextLickId}`, 'color: #4ade80; font-weight: bold;');
+    // --- NARRATIVE SELECTION ---
+    if (this.currentAxiom.length === 0 || navInfo.isPartTransition) {
+        const lickId = dna.partLickMap?.get(navInfo.currentPart.id) || dna.seedLickId || 'L01';
+        this.currentAxiom = BLUES_SOLO_LICKS[lickId].phrase;
+        console.info(`%c[Narrative] New Master Axiom Loaded: ${lickId}`, 'color: #DA70D6; font-weight: bold;');
     }
 
     const events: FractalEvent[] = [];
     const melodyEvents: FractalEvent[] = [];
 
-    // --- 1. MELODY (The Voice) ---
+    // --- 1. MELODY (Horizontal Segment Rendering) ---
     if (hints.melody) {
-      const mEvents = this.renderMelody(epoch, currentChord, tension, dna);
+      const mEvents = this.renderMelodicSegment(epoch, currentChord, tension);
       melodyEvents.push(...mEvents);
       events.push(...mEvents);
     }
 
-    // --- 2. ACCOMPANIMENT (Pull Chops) ---
+    // --- 2. ACCOMPANIMENT (The Pull Chops) ---
     if (hints.accompaniment) {
-      events.push(...this.renderChops(epoch, currentChord, tension));
+      events.push(...this.renderPullChops(epoch, currentChord, tension));
     }
 
-    // --- 3. BASS (Iron Walker) ---
+    // --- 3. BASS (Iron Pillar) ---
     if (hints.bass) {
       events.push(...this.renderIronBass(currentChord));
     }
@@ -110,8 +108,7 @@ export class BluesBrain {
       events.push(...this.renderDrums(epoch));
     }
 
-    // --- STAGNATION AUDIT ---
-    this.auditStagnation(melodyEvents, currentChord, epoch, tension);
+    this.auditStagnationV4(melodyEvents, currentChord, epoch);
 
     return events;
   }
@@ -124,13 +121,23 @@ export class BluesBrain {
     }
   }
 
-  private renderMelody(epoch: number, chord: GhostChord, tension: number, dna: SuiteDNA): FractalEvent[] {
-    if (this.currentAxiom.length === 0) this.currentAxiom = dna.seedLickNotes || [];
+  /**
+   * #ЗАЧЕМ: Рендеринг сегмента длинной фразы.
+   * #ЧТО: Вычисляет смещение такта внутри аксиомы и возвращает только нужные ноты.
+   */
+  private renderMelodicSegment(epoch: number, chord: GhostChord, tension: number): FractalEvent[] {
+    const phraseTicks = Math.max(...this.currentAxiom.map(n => n.t + n.d), 12);
+    const phraseBars = Math.ceil(phraseTicks / 12);
     
-    return this.currentAxiom.map(n => ({
+    const barInPhrase = epoch % phraseBars;
+    const tickOffset = barInPhrase * 12;
+    
+    const barNotes = this.currentAxiom.filter(n => n.t >= tickOffset && n.t < tickOffset + 12);
+
+    return barNotes.map(n => ({
         type: 'melody',
         note: Math.min(chord.rootNote + 36 + (DEGREE_TO_SEMITONE[n.deg] || 0), this.MELODY_CEILING),
-        time: n.t / 3,
+        time: (n.t - tickOffset) / 3,
         duration: n.d / 3,
         weight: 0.85,
         technique: n.tech || 'pick',
@@ -139,29 +146,40 @@ export class BluesBrain {
     }));
   }
 
-  private renderChops(epoch: number, chord: GhostChord, tension: number): FractalEvent[] {
+  /**
+   * #ЗАЧЕМ: "Тянущий" аккомпанемент вместо суетливой "цыганочки".
+   * #ЧТО: Длинные сустейны, вступление на слабые доли, отсутствие переборов.
+   */
+  private renderPullChops(epoch: number, chord: GhostChord, tension: number): FractalEvent[] {
     const events: FractalEvent[] = [];
     const isMinor = chord.chordType === 'minor';
-    const notes = [chord.rootNote + 12 + (isMinor ? 3 : 4), chord.rootNote + 12 + 10]; // 3 and 7
+    const notes = [chord.rootNote + 12, chord.rootNote + 12 + (isMinor ? 3 : 4), chord.rootNote + 12 + 7];
     
-    [1.5, 3.5].forEach(t => {
-        if (this.random.next() < 0.7) {
-            notes.forEach(p => {
-                events.push({
-                    type: 'accompaniment', note: p, time: t + 0.02, // Slit delay
-                    duration: 2.0, weight: 0.3, technique: 'swell', dynamics: 'p', phrasing: 'legato'
-                });
+    // Играем только в четные такты или при высоком напряжении
+    if (epoch % 2 === 0 || tension > 0.6) {
+        const startTime = 0.5; // На "и" первой доли
+        notes.forEach((p, i) => {
+            events.push({
+                type: 'accompaniment',
+                note: p,
+                time: startTime + (i * 0.02), // Микро-ролл
+                duration: 3.5, // Тянем до конца такта
+                weight: 0.25,
+                technique: 'swell',
+                dynamics: 'p',
+                phrasing: 'legato'
             });
-        }
-    });
+        });
+    }
     return events;
   }
 
   private renderIronBass(chord: GhostChord): FractalEvent[] {
     const root = Math.max(chord.rootNote - 12, this.BASS_FLOOR);
-    const notes = [root, root + 4, root + 7, root + 10];
+    // Строгая опора: Root - 5 - 7 - Root
+    const notes = [root, root + 7, root + 10, root];
     return notes.map((p, i) => ({
-        type: 'bass', note: p, time: i, duration: 0.9, weight: i === 0 ? 0.8 : 0.5,
+        type: 'bass', note: p, time: i, duration: 0.9, weight: i === 0 ? 0.8 : 0.4,
         technique: 'pluck', dynamics: 'p', phrasing: 'legato'
     }));
   }
@@ -176,49 +194,22 @@ export class BluesBrain {
     return events;
   }
 
-  private auditStagnation(melody: FractalEvent[], chord: GhostChord, epoch: number, tension: number) {
+  private auditStagnationV4(melody: FractalEvent[], chord: GhostChord, epoch: number) {
       if (melody.length === 0) return;
       const hash = melody.map(e => (e.note - chord.rootNote) % 12).join(',');
 
-      // 1. MICRO (1 Bar)
+      // Memory check
       if (hash === this.state.phraseHistory[this.state.phraseHistory.length - 1]) {
           this.state.stagnationStrikes.micro++;
-          console.warn(`%c[SOR] MICRO STRIKE ${this.state.stagnationStrikes.micro}/3`, 'color: orange;');
       } else this.state.stagnationStrikes.micro = 0;
 
       this.state.phraseHistory.push(hash);
       if (this.state.phraseHistory.length > this.MAX_HISTORY_DEPTH) this.state.phraseHistory.shift();
 
-      // 2. MESO (2 Bars)
-      if (epoch % 2 === 1 && this.state.phraseHistory.length >= 4) {
-          const current = this.state.phraseHistory.slice(-2).join('|');
-          const last = this.state.phraseHistory.slice(-4, -2).join('|');
-          if (current === last) {
-              this.state.stagnationStrikes.meso++;
-              console.warn(`%c[SOR] MESO STRIKE ${this.state.stagnationStrikes.meso}/3`, 'color: red; font-weight: bold;');
-          } else this.state.stagnationStrikes.meso = 0;
+      if (this.state.stagnationStrikes.micro >= 3) {
+          console.info(`%c[SOR] Long-phrase stagnation detected. Injecting Variation.`, 'color: #4ade80; font-weight: bold;');
+          this.currentAxiom = transformLick(this.currentAxiom, this.seed, epoch, 'jitter');
+          this.state.stagnationStrikes.micro = 0;
       }
-
-      // 3. MACRO (4 Bars)
-      if (epoch % 4 === 3 && this.state.phraseHistory.length >= 8) {
-          const current = this.state.phraseHistory.slice(-4).join('|');
-          const last = this.state.phraseHistory.slice(-8, -4).join('|');
-          if (current === last) {
-              this.state.stagnationStrikes.macro++;
-              console.warn(`%c[SOR] MACRO STRIKE ${this.state.stagnationStrikes.macro}/3`, 'color: darkred; background: yellow;');
-          } else this.state.stagnationStrikes.macro = 0;
-      }
-
-      // VACCINATION
-      if (this.state.stagnationStrikes.micro >= 3) { this.inject('micro'); this.state.stagnationStrikes.micro = 0; }
-      if (this.state.stagnationStrikes.meso >= 3) { this.inject('meso'); this.state.stagnationStrikes.meso = 0; }
-      if (this.state.stagnationStrikes.macro >= 3) { this.inject('macro'); this.state.stagnationStrikes.macro = 0; }
-  }
-
-  private inject(scale: 'micro' | 'meso' | 'macro') {
-      console.info(`%c[SOR] VACCINE INJECTED: Scale=${scale.toUpperCase()}`, 'color: #4ade80; font-weight: bold;');
-      if (scale === 'micro') this.currentAxiom = transformLick(this.currentAxiom, this.seed, 0, 'jitter');
-      else if (scale === 'meso') this.currentAxiom = transformLick(this.currentAxiom, this.seed, 0, 'inversion');
-      else this.currentAxiom = transformLick(this.currentAxiom, this.seed, 0, 'transposition');
   }
 }
