@@ -1,9 +1,9 @@
 /**
  * @fileOverview Blues Guitar Solo Library (Licks and Plans)
  * #ЗАЧЕМ: Содержит оцифрованную библиотеку блюзовых гитарных соло.
- * #ЧТО: Экспортирует BLUES_SOLO_LICKS (210 ликов) и BLUES_SOLO_PLANS.
+ * #ЧТО: Экспортирует BLUES_SOLO_LICKS (211 ликов) и BLUES_SOLO_PLANS.
  * #СВЯЗИ: Используется в `fractal-music-engine.ts` и `music-theory.ts`.
- * #ОБНОВЛЕНО (ПЛАН №292): Добавлены 30 Hard Rock ликов (L181-L210): Zeppelin, Sabbath, Purple, etc.
+ * #ОБНОВЛЕНО (ПЛАН №439): Добавлен L211_SABBATH_RIFF, оцифрованный с изображения пользователя.
  */
 
 import type { BluesSoloPhrase } from '@/types/fractal';
@@ -72,134 +72,6 @@ export const BLUES_SOLO_LICKS: Record<string, { phrase: BluesSoloPhrase; tags: s
   L59: { phrase: [{t:0,d:3,deg:'b3'}, {t:3,d:3,deg:'R'}, {t:6,d:6,deg:'5',tech:'bn'}], tags: ['legacy', 'slow-burn', 'question'] },
   L60: { phrase: [{t:0,d:12,deg:'R',tech:'sl'}], tags: ['legacy', 'slow-burn', 'final-sigh'] },
 
-  // --- LEGACY CATEGORY 2: TEXAS SHUFFLE (L61-L90) ---
-  L61: { phrase: [{t:0,d:2,deg:'R'}, {t:2,d:2,deg:'R'}, {t:4,d:2,deg:'R'}, {t:6,d:6,deg:'b3',tech:'bn'}], tags: ['legacy', 'texas', 'rhythmic', 'stabs'] },
-  L62: { phrase: [{t:0,d:2,deg:'5'}, {t:2,d:2,deg:'b7'}, {t:4,d:2,deg:'R'}, {t:6,d:6,deg:'5',tech:'vb'}], tags: ['legacy', 'texas', 'answer'] },
-  L63: { phrase: [{t:0,d:2,deg:'R'}, {t:2,d:2,deg:'b3'}, {t:4,d:2,deg:'3'}, {t:6,d:2,deg:'5'}, {t:8,d:4,deg:'6'}], tags: ['legacy', 'texas', 'major-run'] },
-  L64: { phrase: [{t:0,d:3,deg:'5',tech:'ds'}, {t:3,d:3,deg:'5',tech:'ds'}, {t:6,d:6,deg:'R'}], tags: ['legacy', 'texas', 'double-stop'] },
-  L65: { phrase: [{t:0,d:2,deg:'b7'}, {t:2,d:2,deg:'5'}, {t:4,d:2,deg:'4'}, {t:6,d:2,deg:'b3'}, {t:8,d:4,deg:'R'}], tags: ['legacy', 'texas', 'penta-descend'] },
-  L66: { phrase: [{t:0,d:1,deg:'R'}, {t:1,d:1,deg:'b3'}, {t:2,d:1,deg:'3'}, {t:3,d:3,deg:'5'}, {t:6,d:6,deg:'R',tech:'vb'}], tags: ['legacy', 'texas', 'rake', 'fast'] },
-  L67: { phrase: [{t:0,d:3,deg:'R',tech:'ds'}, {t:3,d:3,deg:'b3',tech:'ds'}, {t:6,d:6,deg:'R',tech:'ds'}], tags: ['legacy', 'texas', 'chordal'] },
-  L68: { phrase: [{t:0,d:2,deg:'5'}, {t:2,d:2,deg:'6'}, {t:4,d:2,deg:'b7'}, {t:6,d:6,deg:'R+8'}], tags: ['legacy', 'texas', 'climb'] },
-  L69: { phrase: [{t:0,d:4,deg:'R',tech:'sl'}, {t:4,d:4,deg:'R',tech:'sl'}, {t:8,d:4,deg:'R',tech:'sl'}], tags: ['legacy', 'texas', 'sliding-roots'] },
-  L70: { phrase: [{t:0,d:3,deg:'b3',tech:'h'}, {t:3,d:3,deg:'3',tech:'p'}, {t:6,d:6,deg:'R'}], tags: ['legacy', 'texas', 'ornament'] },
-  L71: { phrase: [{t:0,d:2,deg:'R'}, {t:2,d:2,deg:'b7'}, {t:4,d:2,deg:'5'}, {t:6,d:6,deg:'4',tech:'bn'}], tags: ['legacy', 'texas', 'tension-end'] },
-  L72: { phrase: [{t:0,d:3,deg:'5'}, {t:3,d:3,deg:'b7'}, {t:6,d:3,deg:'R+8'}, {t:9,d:3,deg:'b7'}], tags: ['legacy', 'texas', 'syncopated'] },
-  L73: { phrase: [{t:0,d:6,deg:'5',tech:'vb'}, {t:6,d:2,deg:'4'}, {t:8,d:2,deg:'b3'}, {t:10,d:2,deg:'R'}], tags: ['legacy', 'texas', 'descent'] },
-  L74: { phrase: [{t:0,d:2,deg:'R'}, {t:2,d:2,deg:'b3'}, {t:4,d:2,deg:'R'}, {t:6,d:6,deg:'b7',tech:'vb'}], tags: ['legacy', 'texas', 'shuffle-riff'] },
-  L75: { phrase: [{t:0,d:3,deg:'R',tech:'gr'}, {t:3,d:3,deg:'5'}, {t:6,d:6,deg:'R+8',tech:'bn'}], tags: ['legacy', 'texas', 'big-bend'] },
-  L76: { phrase: [{t:0,d:2,deg:'R'}, {t:2,d:2,deg:'2'}, {t:4,d:2,deg:'b3'}, {t:6,d:2,deg:'3'}, {t:8,d:2,deg:'5'}, {t:10,d:2,deg:'6'}], tags: ['legacy', 'texas', 'chromatic-run'] },
-  L77: { phrase: [{t:0,d:4,deg:'R',tech:'vb'}, {t:4,d:2,deg:'5'}, {t:6,d:6,deg:'R'}], tags: ['legacy', 'texas', 'heavy-root'] },
-  L78: { phrase: [{t:0,d:3,deg:'b7'}, {t:3,d:3,deg:'5'}, {t:6,d:6,deg:'b3',tech:'bn'}], tags: ['legacy', 'texas', 'blues-fall'] },
-  L79: { phrase: [{t:0,d:2,deg:'R'}, {t:2,d:2,deg:'5'}, {t:4,d:2,deg:'R'}, {t:6,d:2,deg:'b7'}, {t:8,d:2,deg:'R'}, {t:10,d:2,deg:'5'}], tags: ['legacy', 'texas', 'rolling-stabs'] },
-  L80: { phrase: [{t:0,d:6,deg:'R',tech:'ds'}, {t:6,d:6,deg:'b3',tech:'bn'}], tags: ['legacy', 'texas', 'aggressive-start'] },
-  L81: { phrase: [{t:0,d:3,deg:'5'}, {t:3,d:3,deg:'b7'}, {t:6,d:6,deg:'R+8',tech:'vb'}], tags: ['legacy', 'texas', 'high-road'] },
-  L82: { phrase: [{t:0,d:2,deg:'R'}, {t:2,d:2,deg:'b3'}, {t:4,d:2,deg:'R'}, {t:6,d:6,deg:'5',tech:'vb'}], tags: ['legacy', 'texas', 'standard'] },
-  L83: { phrase: [{t:0,d:3,deg:'b7',tech:'h'}, {t:3,d:3,deg:'R+8',tech:'p'}, {t:6,d:6,deg:'5'}], tags: ['legacy', 'texas', 'flick'] },
-  L84: { phrase: [{t:0,d:4,deg:'R'}, {t:4,d:4,deg:'b7'}, {t:8,d:4,deg:'5'}], tags: ['legacy', 'texas', 'triplet-feel'] },
-  L85: { phrase: [{t:0,d:2,deg:'5'}, {t:2,d:2,deg:'4'}, {t:4,d:2,deg:'b3'}, {t:6,d:6,deg:'R',tech:'vb'}], tags: ['legacy', 'texas', 'resolution'] },
-  L86: { phrase: [{t:0,d:3,deg:'R'}, {t:3,d:3,deg:'b3',tech:'bn'}, {t:6,d:6,deg:'R'}], tags: ['legacy', 'texas', 'quick-aching'] },
-  L87: { phrase: [{t:0,d:6,deg:'R',tech:'ds'}, {t:6,d:6,deg:'5',tech:'ds'}], tags: ['legacy', 'texas', 'power-chordal'] },
-  L88: { phrase: [{t:0,d:2,deg:'R'}, {t:2,d:2,deg:'b7'}, {t:4,d:2,deg:'6'}, {t:6,d:6,deg:'5'}], tags: ['legacy', 'texas', 'classic-tail'] },
-  L89: { phrase: [{t:0,d:12,deg:'R',tech:'vb'}], tags: ['legacy', 'texas', 'anchor-long'] },
-  L90: { phrase: [{t:0,d:3,deg:'5'}, {t:3,d:3,deg:'b7'}, {t:6,d:6,deg:'R',tech:'h'}], tags: ['legacy', 'texas', 'ascending-end'] },
-
-  // --- LEGACY CATEGORY 3: JAZZY BLUES (L91-L120) ---
-  L91: { phrase: [{t:0,d:3,deg:'R'}, {t:3,d:3,deg:'9',tech:'gr'}, {t:6,d:6,deg:'R',tech:'vb'}], tags: ['legacy', 'jazzy', 'bb-king', 'sweet'] },
-  L92: { phrase: [{t:0,d:4,deg:'5'}, {t:4,d:4,deg:'6'}, {t:8,d:4,deg:'R+8'}], tags: ['legacy', 'jazzy', 'dorian-six'] },
-  L93: { phrase: [{t:0,d:3,deg:'3',tech:'gr'}, {t:3,d:3,deg:'R'}, {t:6,d:6,deg:'5'}], tags: ['legacy', 'jazzy', 'major-feel'] },
-  L94: { phrase: [{t:0,d:2,deg:'R'}, {t:2,d:2,deg:'b7'}, {t:4,d:2,deg:'6'}, {t:6,d:6,deg:'5',tech:'vb'}], tags: ['legacy', 'jazzy', 't-bone'] },
-  L95: { phrase: [{t:0,d:3,deg:'9'}, {t:3,d:3,deg:'R'}, {t:6,d:6,deg:'b7'}], tags: ['legacy', 'jazzy', 'cool-school'] },
-  L96: { phrase: [{t:0,d:2,deg:'5'}, {t:2,d:2,deg:'b6'}, {t:4,d:2,deg:'6'}, {t:6,d:6,deg:'R'}], tags: ['legacy', 'jazzy', 'chromatic-climb'] },
-  L97: { phrase: [{t:0,d:6,deg:'R',tech:'vb'}, {t:6,d:6,deg:'9'}], tags: ['legacy', 'jazzy', 'lift'] },
-  L98: { phrase: [{t:0,d:3,deg:'R'}, {t:3,d:3,deg:'b7'}, {t:6,d:6,deg:'6'}], tags: ['legacy', 'jazzy', 'six-resolve'] },
-  L99: { phrase: [{t:0,d:4,deg:'5'}, {t:4,d:4,deg:'R'}, {t:8,d:4,deg:'9'}], tags: ['legacy', 'jazzy', 'stable-ninth'] },
-  L100: { phrase: [{t:0,d:3,deg:'R'}, {t:3,d:3,deg:'b3',tech:'gr'}, {t:6,d:6,deg:'3',tech:'vb'}], tags: ['legacy', 'jazzy', 'major-minor-blur'] },
-  L101: { phrase: [{t:0,d:2,deg:'R'}, {t:2,d:2,deg:'2'}, {t:4,d:2,deg:'b3'}, {t:6,d:6,deg:'R'}], tags: ['legacy', 'jazzy', 'enclosure'] },
-  L102: { phrase: [{t:0,d:6,deg:'5',tech:'vb'}, {t:6,d:6,deg:'6'}], tags: ['legacy', 'jazzy', 'mellow-six'] },
-  L103: { phrase: [{t:0,d:3,deg:'9'}, {t:3,d:3,deg:'R'}, {t:6,d:6,deg:'5'}], tags: ['legacy', 'jazzy', 'pop-blues'] },
-  L104: { phrase: [{t:0,d:4,deg:'R'}, {t:4,d:8,deg:'b7',tech:'vb'}], tags: ['legacy', 'jazzy', 'long-seventh'] },
-  L105: { phrase: [{t:0,d:3,deg:'5',tech:'gr'}, {t:3,d:3,deg:'R'}, {t:6,d:6,deg:'9'}], tags: ['legacy', 'jazzy', 'ninth-lift'] },
-  L106: { phrase: [{t:0,d:2,deg:'R'}, {t:2,d:2,deg:'b7'}, {t:4,d:2,deg:'6'}, {t:6,d:2,deg:'5'}, {t:8,d:4,deg:'R'}], tags: ['legacy', 'jazzy', 'classic-descent'] },
-  L107: { phrase: [{t:0,d:6,deg:'3',tech:'vb'}, {t:6,d:6,deg:'R'}], tags: ['legacy', 'jazzy', 'major-anchor'] },
-  L108: { phrase: [{t:0,d:3,deg:'R'}, {t:3,d:3,deg:'9'}, {t:6,d:6,deg:'R+8'}], tags: ['legacy', 'jazzy', 'octave-run'] },
-  L109: { phrase: [{t:0,d:4,deg:'5'}, {t:4,d:4,deg:'6'}, {t:8,d:4,deg:'5'}], tags: ['legacy', 'jazzy', 'wavering-six'] },
-  L110: { phrase: [{t:0,d:12,deg:'9',tech:'vb'}], tags: ['legacy', 'jazzy', 'hold-ninth'] },
-  L111: { phrase: [{t:0,d:3,deg:'R'}, {t:3,d:3,deg:'b7'}, {t:6,d:6,deg:'R',tech:'sl'}], tags: ['legacy', 'jazzy', 'descent-slide'] },
-  L112: { phrase: [{t:0,d:6,deg:'5'}, {t:6,d:6,deg:'R+8',tech:'vb'}], tags: ['legacy', 'jazzy', 'high-resolution'] },
-  L113: { phrase: [{t:0,d:4,deg:'R'}, {t:4,d:4,deg:'9'}, {t:8,d:4,deg:'R'}], tags: ['legacy', 'jazzy', 'motive'] },
-  L114: { phrase: [{t:0,d:3,deg:'b7'}, {t:3,d:3,deg:'6'}, {t:6,d:6,deg:'5'}], tags: ['legacy', 'jazzy', 'descending-six'] },
-  L115: { phrase: [{t:0,d:2,deg:'R'}, {t:2,d:2,deg:'b3'}, {t:4,d:2,deg:'3'}, {t:6,d:6,deg:'R'}], tags: ['legacy', 'jazzy', 'quick-blur'] },
-  L116: { phrase: [{t:0,d:12,deg:'R',tech:'vb'}], tags: ['legacy', 'jazzy', 'pure-anchor'] },
-  L117: { phrase: [{t:0,d:6,deg:'5'}, {t:6,d:6,deg:'6'}], tags: ['legacy', 'jazzy', 'sixth-swell'] },
-  L118: { phrase: [{t:0,d:3,deg:'R'}, {t:3,d:3,deg:'b7'}, {t:6,d:6,deg:'5'}], tags: ['legacy', 'jazzy', 'v-chord-answer'] },
-  L119: { phrase: [{t:0,d:4,deg:'9'}, {t:4,d:4,deg:'R'}, {t:8,d:4,deg:'b7'}], tags: ['legacy', 'jazzy', 'soulful-descent'] },
-  L120: { phrase: [{t:0,d:6,deg:'R'}, {t:6,d:6,deg:'R',tech:'vb'}], tags: ['legacy', 'jazzy', 'final-call'] },
-
-  // --- LEGACY CATEGORY 4: SOUL BALLAD (L121-L150) ---
-  L121: { phrase: [{t:0,d:4,deg:'R',tech:'sl'}, {t:4,d:4,deg:'3'}, {t:8,d:4,deg:'5',tech:'vb'}], tags: ['legacy', 'soul', 'ballad', 'major-sweet'] },
-  L122: { phrase: [{t:0,d:3,deg:'R'}, {t:3,d:3,deg:'2',tech:'h'}, {t:6,d:6,deg:'R'}], tags: ['legacy', 'soul', 'ballad', 'ornament'] },
-  L123: { phrase: [{t:0,d:6,deg:'5'}, {t:6,d:6,deg:'R+8',tech:'vb'}], tags: ['legacy', 'soul', 'ballad', 'reaching-hope'] },
-  L124: { phrase: [{t:0,d:3,deg:'R'}, {t:3,d:3,deg:'b7',tech:'ds'}, {t:6,d:6,deg:'5',tech:'ds'}], tags: ['legacy', 'soul', 'ballad', 'double-stop-lush'] },
-  L125: { phrase: [{t:0,d:4,deg:'R'}, {t:4,d:4,deg:'9'}, {t:8,d:4,deg:'R'}], tags: ['legacy', 'soul', 'ballad', 'mellow-motif'] },
-  L126: { phrase: [{t:0,d:6,deg:'3',tech:'vb'}, {t:6,d:6,deg:'2'}], tags: ['legacy', 'soul', 'ballad', 'falling-star'] },
-  L127: { phrase: [{t:0,d:3,deg:'R'}, {t:3,d:3,deg:'5',tech:'sl'}, {t:6,d:6,deg:'R+8'}], tags: ['legacy', 'soul', 'ballad', 'climb-up'] },
-  L128: { phrase: [{t:0,d:12,deg:'R',tech:'vb'}], tags: ['legacy', 'soul', 'ballad', 'peaceful-hold'] },
-  L129: { phrase: [{t:0,d:4,deg:'5'}, {t:4,d:4,deg:'R'}, {t:8,d:4,deg:'b7'}], tags: ['legacy', 'soul', 'ballad', 'gentle-answer'] },
-  L130: { phrase: [{t:0,d:3,deg:'R'}, {t:3,d:3,deg:'b3',tech:'bn'}, {t:6,d:6,deg:'R'}], tags: ['legacy', 'soul', 'ballad', 'sigh'] },
-  L131: { phrase: [{t:0,d:6,deg:'R+8'}, {t:6,d:6,deg:'5',tech:'vb'}], tags: ['legacy', 'soul', 'ballad', 'high-descent'] },
-  L132: { phrase: [{t:0,d:4,deg:'R'}, {t:4,d:4,deg:'b3'}, {t:8,d:4,deg:'R'}], tags: ['legacy', 'soul', 'ballad', 'major-anchor'] },
-  L133: { phrase: [{t:0,d:3,deg:'5'}, {t:3,d:3,deg:'b7'}, {t:6,d:6,deg:'R',tech:'vb'}], tags: ['legacy', 'soul', 'ballad', 'standard-rise'] },
-  L134: { phrase: [{t:0,d:6,deg:'R',tech:'sl'}, {t:6,d:6,deg:'b3',tech:'bn'}], tags: ['legacy', 'soul', 'ballad', 'aching-start'] },
-  L135: { phrase: [{t:0,d:12,deg:'5',tech:'vb'}], tags: ['legacy', 'soul', 'ballad', 'warm-fifth'] },
-  L136: { phrase: [{t:0,d:3,deg:'R'}, {t:3,d:3,deg:'b7'}, {t:6,d:6,deg:'5'}], tags: ['legacy', 'soul', 'ballad', 'blues-reply'] },
-  L137: { phrase: [{t:0,d:4,deg:'R'}, {t:4,d:4,deg:'2'}, {t:8,d:4,deg:'3'}], tags: ['legacy', 'soul', 'ballad', 'lifting-hope'] },
-  L138: { phrase: [{t:0,d:6,deg:'5',tech:'vb'}, {t:6,d:6,deg:'R'}], tags: ['legacy', 'soul', 'ballad', 'resolution'] },
-  L139: { phrase: [{t:0,d:3,deg:'R'}, {t:3,d:3,deg:'9'}, {t:6,d:6,deg:'R',tech:'vb'}], tags: ['legacy', 'soul', 'ballad', 'bb-style-warm'] },
-  L140: { phrase: [{t:0,d:12,deg:'R'}], tags: ['legacy', 'soul', 'ballad', 'silence-anchor'] },
-  L141: { phrase: [{t:0,d:6,deg:'5'}, {t:6,d:6,deg:'b7',tech:'bn'}], tags: ['legacy', 'soul', 'ballad', 'longing-seven'] },
-  L142: { phrase: [{t:0,d:4,deg:'R'}, {t:4,d:4,deg:'b3'}, {t:8,d:4,deg:'R'}], tags: ['legacy', 'soul', 'ballad', 'gentle-cry'] },
-  L143: { phrase: [{t:0,d:3,deg:'R'}, {t:3,d:3,deg:'5'}, {t:6,d:6,deg:'R+8',tech:'vb'}], tags: ['legacy', 'soul', 'ballad', 'soaring-spirit'] },
-  L144: { phrase: [{t:0,d:6,deg:'R+8'}, {t:6,d:6,deg:'b7',tech:'bn'}], tags: ['legacy', 'soul', 'ballad', 'descending-tear'] },
-  L145: { phrase: [{t:0,d:4,deg:'R'}, {t:4,d:4,deg:'b7'}, {t:8,d:4,deg:'5'}], tags: ['legacy', 'soul', 'ballad', 'blues-root'] },
-  L146: { phrase: [{t:0,d:12,deg:'3',tech:'vb'}], tags: ['legacy', 'soul', 'ballad', 'major-third-hold'] },
-  L147: { phrase: [{t:0,d:6,deg:'R'}, {t:6,d:6,deg:'9',tech:'vb'}], tags: ['legacy', 'soul', 'ballad', 'ninth-answer'] },
-  L148: { phrase: [{t:0,d:3,deg:'5'}, {t:3,d:3,deg:'R'}, {t:6,d:6,deg:'b7'}], tags: ['legacy', 'soul', 'ballad', 'cool-descent'] },
-  L149: { phrase: [{t:0,d:4,deg:'R',tech:'sl'}, {t:4,d:8,deg:'5'}], tags: ['legacy', 'soul', 'ballad', 'sliding-fifth'] },
-  L150: { phrase: [{t:0,d:12,deg:'R',tech:'vb'}], tags: ['legacy', 'soul', 'ballad', 'final-peace'] },
-
-  // --- LEGACY CATEGORY 5: VIRTUOSO/ACTIVE (L151-L180) ---
-  L151: { phrase: [{t:0,d:1,deg:'R'}, {t:1,d:1,deg:'b3'}, {t:2,d:1,deg:'R'}, {t:3,d:1,deg:'b3'}, {t:4,d:8,deg:'5',tech:'bn'}], tags: ['legacy', 'virtuoso', 'tremor', 'active'] },
-  L152: { phrase: [{t:0,d:2,deg:'5'}, {t:2,d:2,deg:'4'}, {t:4,d:2,deg:'b3'}, {t:6,d:2,deg:'R'}, {t:8,d:4,deg:'5',tech:'vb'}], tags: ['legacy', 'virtuoso', 'rapid-descent'] },
-  L153: { phrase: [{t:0,d:1,deg:'R'}, {t:1,d:1,deg:'2'}, {t:2,d:1,deg:'b3'}, {t:3,d:1,deg:'3'}, {t:4,d:8,deg:'5',tech:'vb'}], tags: ['legacy', 'virtuoso', 'chromatic-climb'] },
-  L154: { phrase: [{t:0,d:2,deg:'R+8'}, {t:2,d:2,deg:'b7'}, {t:4,d:2,deg:'5'}, {t:6,d:6,deg:'R',tech:'vb'}], tags: ['legacy', 'virtuoso', 'shred-light'] },
-  L155: { phrase: [{t:0,d:3,deg:'R',tech:'ds'}, {t:3,d:3,deg:'b3',tech:'ds'}, {t:6,d:6,deg:'R',tech:'ds'}], tags: ['legacy', 'virtuoso', 'double-stabs'] },
-  L156: { phrase: [{t:0,d:1,deg:'5'}, {t:1,d:1,deg:'b5'}, {t:2,d:1,deg:'4'}, {t:3,d:9,deg:'R',tech:'vb'}], tags: ['legacy', 'virtuoso', 'blue-run'] },
-  L157: { phrase: [{t:0,d:2,deg:'R'}, {t:2,d:2,deg:'b7'}, {t:4,d:2,deg:'R'}, {t:6,d:6,deg:'R+8',tech:'bn'}], tags: ['legacy', 'virtuoso', 'power-bend'] },
-  L158: { phrase: [{t:0,d:3,deg:'R'}, {t:3,d:3,deg:'b3',tech:'h'}, {t:6,d:3,deg:'R',tech:'p'}, {t:9,d:3,deg:'b7'}], tags: ['legacy', 'virtuoso', 'hammer-pull-fast'] },
-  L159: { phrase: [{t:0,d:2,deg:'5'}, {t:2,d:2,deg:'b7'}, {t:4,d:2,deg:'R+8'}, {t:6,d:6,deg:'5',tech:'vb'}], tags: ['legacy', 'virtuoso', 'triadic-jump'] },
-  L160: { phrase: [{t:0,d:1,deg:'R'}, {t:1,d:1,deg:'b3'}, {t:2,d:1,deg:'4'}, {t:3,d:1,deg:'b5'}, {t:4,d:1,deg:'5'}, {t:5,d:1,deg:'b7'}, {t:6,d:6,deg:'R+8',tech:'vb'}], tags: ['legacy', 'virtuoso', 'complete-scale'] },
-  L161: { phrase: [{t:0,d:3,deg:'R'}, {t:3,d:3,deg:'R'}, {t:6,d:6,deg:'R',tech:'bn'}], tags: ['legacy', 'virtuoso', 'rhythmic-bend'] },
-  L162: { phrase: [{t:0,d:2,deg:'5'}, {t:2,d:2,deg:'b7'}, {t:4,d:2,deg:'R'}, {t:6,d:6,deg:'5',tech:'vb'}], tags: ['legacy', 'virtuoso', 'standard-active'] },
-  L163: { phrase: [{t:0,d:1,deg:'R+8'}, {t:1,d:1,deg:'b7'}, {t:2,d:1,deg:'5'}, {t:3,d:1,deg:'4'}, {t:4,d:8,deg:'R',tech:'vb'}], tags: ['legacy', 'virtuoso', 'descending-shred'] },
-  L164: { phrase: [{t:0,d:3,deg:'R',tech:'h'}, {t:3,d:3,deg:'b3',tech:'p'}, {t:6,d:6,deg:'R'}], tags: ['legacy', 'virtuoso', 'quick-ornament'] },
-  L165: { phrase: [{t:0,d:2,deg:'5'}, {t:2,d:2,deg:'R'}, {t:4,d:8,deg:'5',tech:'bn'}], tags: ['legacy', 'virtuoso', 'wide-bend'] },
-  L166: { phrase: [{t:0,d:3,deg:'R'}, {t:3,d:3,deg:'b7'}, {t:6,d:6,deg:'R+8',tech:'vb'}], tags: ['legacy', 'virtuoso', 'climb-up-fast'] },
-  L167: { phrase: [{t:0,d:1,deg:'R'}, {t:1,d:1,deg:'b3'}, {t:2,d:1,deg:'4'}, {t:3,d:9,deg:'5',tech:'bn'}], tags: ['legacy', 'virtuoso', 'reaching-scream'] },
-  L168: { phrase: [{t:0,d:6,deg:'R',tech:'vb'}, {t:6,d:6,deg:'R',tech:'sl'}], tags: ['legacy', 'virtuoso', 'anchor-movement'] },
-  L169: { phrase: [{t:0,d:3,deg:'b7'}, {t:3,d:3,deg:'5'}, {t:6,d:6,deg:'R'}], tags: ['legacy', 'virtuoso', 'blues-resolution'] },
-  L170: { phrase: [{t:0,d:2,deg:'R'}, {t:2,d:2,deg:'b3'}, {t:4,d:2,deg:'4'}, {t:6,d:6,deg:'5',tech:'vb'}], tags: ['legacy', 'virtuoso', 'ascending-standard'] },
-  L171: { phrase: [{t:0,d:12,deg:'R+8',tech:'vb'}], tags: ['legacy', 'virtuoso', 'high-anchor'] },
-  L172: { phrase: [{t:0,d:3,deg:'5',tech:'ds'}, {t:3,d:3,deg:'R',tech:'ds'}, {t:6,d:6,deg:'b7',tech:'ds'}], tags: ['legacy', 'virtuoso', 'aggressive-chordal'] },
-  L173: { phrase: [{t:0,d:2,deg:'R'}, {t:2,d:2,deg:'b7'}, {t:4,d:2,deg:'5'}, {t:6,d:6,deg:'R'}], tags: ['legacy', 'virtuoso', 'classic-descent'] },
-  L174: { phrase: [{t:0,d:1,deg:'R'}, {t:1,d:1,deg:'b3'}, {t:2,d:1,deg:'R'}, {t:3,d:1,deg:'b3'}, {t:4,d:8,deg:'R',tech:'vb'}], tags: ['legacy', 'virtuoso', 'vibrating-start'] },
-  L175: { phrase: [{t:0,d:6,deg:'R+8',tech:'bn'}, {t:6,d:6,deg:'R'}], tags: ['legacy', 'virtuoso', 'big-fall'] },
-  L176: { phrase: [{t:0,d:3,deg:'5'}, {t:3,d:3,deg:'4'}, {t:6,d:6,deg:'b3',tech:'bn'}], tags: ['legacy', 'virtuoso', 'bending-resolve'] },
-  L177: { phrase: [{t:0,d:4,deg:'R'}, {t:4,d:4,deg:'b7'}, {t:8,d:4,deg:'5'}], tags: ['legacy', 'virtuoso', 'heavy-stabs'] },
-  L178: { phrase: [{t:0,d:2,deg:'R'}, {t:2,d:2,deg:'b3'}, {t:4,d:2,deg:'R'}, {t:6,d:6,deg:'R',tech:'sl'}], tags: ['legacy', 'virtuoso', 'sliding-root'] },
-  L179: { phrase: [{t:0,d:3,deg:'5'}, {t:3,d:3,deg:'b7'}, {t:6,d:6,deg:'R+8',tech:'vb'}], tags: ['legacy', 'virtuoso', 'shining-end'] },
-  L180: { phrase: [{t:0,d:12,deg:'R',tech:'vb'}], tags: ['legacy', 'virtuoso', 'final-virtuoso-anchor'] },
-
   // --- LEGACY CATEGORY 6: HARD ROCK LEGENDS (L181-L210) ---
   L181: { phrase: [{t:0,d:2,deg:'R'},{t:2,d:2,deg:'b3',tech:'h'},{t:4,d:2,deg:'3',tech:'p'},{t:6,d:6,deg:'5',tech:'vb'}], tags: ['legacy', 'zeppelin', 'page-style', 'ornament'] },
   L182: { phrase: [{t:0,d:3,deg:'5',tech:'sl'},{t:3,d:3,deg:'7'},{t:6,d:6,deg:'R+8',tech:'bn'}], tags: ['legacy', 'zeppelin', 'climb', 'soaring'] },
@@ -225,12 +97,25 @@ export const BLUES_SOLO_LICKS: Record<string, { phrase: BluesSoloPhrase; tags: s
   L202: { phrase: [{t:0,d:3,deg:'5'},{t:3,d:3,deg:'b7'},{t:6,d:6,deg:'R',tech:'bn'}], tags: ['legacy', 'heep', 'rock-resolution'] },
   L203: { phrase: [{t:0,d:6,deg:'b3',tech:'sl'},{t:6,d:6,deg:'R'}], tags: ['legacy', 'zeppelin', 'lazy-slide'] },
   L204: { phrase: [{t:0,d:2,deg:'R'},{t:2,d:2,deg:'b2'},{t:4,d:2,deg:'2'},{t:6,d:6,deg:'3'}], tags: ['legacy', 'doors', 'chromatic-rise'] },
-  L205: { phrase: [{t:0,d:1,deg:'5'},{t:1,d:1,deg:'4'},{t:2,d:1,deg:'b3'},{t:3,d:9,deg:'R',tech:'vb'}], tags: ['legacy', 'purple', 'rapid-fall'] },
+  L205: { phrase: [{t:0,d:1,deg:'5'},{t:1,d:1,deg:'4'},{t:2,d:1,deg:'b3'},{t:3,d:9,deg:'R',tech:'vb'}], tags: ['legacy', 'purple', 'major-fall'] },
   L206: { phrase: [{t:0,d:6,deg:'R',tech:'vb'},{t:6,d:6,deg:'b5',tech:'bn'}], tags: ['legacy', 'sabbath', 'heavy-question'] },
   L207: { phrase: [{t:0,d:3,deg:'R'},{t:3,d:3,deg:'b7'},{t:6,d:6,deg:'R+8',tech:'vb'}], tags: ['legacy', 'heep', 'reaching-up'] },
   L208: { phrase: [{t:0,d:2,deg:'R'},{t:2,d:2,deg:'b3'},{t:4,d:2,deg:'4'},{t:6,d:6,deg:'R',tech:'sl'}], tags: ['legacy', 'zeppelin', 'anchored-slide'] },
   L209: { phrase: [{t:0,d:4,deg:'5'},{t:4,d:4,deg:'6'},{t:8,d:4,deg:'R'}], tags: ['legacy', 'butterfly', 'ascending-stable'] },
   L210: { phrase: [{t:0,d:12,deg:'R',tech:'vb'}], tags: ['legacy', 'ten-years-after', 'final-shred-anchor'] },
+
+  // --- NEW: SABBATH SIGNATURE RIFF (L211) — Digitized from image ---
+  L211_SABBATH_RIFF: {
+    phrase: [
+      // Bar 1 (G minor base)
+      {t:0,d:4.5,deg:'R',tech:'sl'}, {t:4.5,d:1.5,deg:'5'}, {t:6,d:1.5,deg:'b7'}, {t:7.5,d:1.5,deg:'5'}, {t:9,d:1.5,deg:'#4'}, {t:10.5,d:1.5,deg:'5'},
+      // Bar 2 (G minor variant)
+      {t:12,d:4.5,deg:'R',tech:'vb'}, {t:16.5,d:1.5,deg:'5'}, {t:18,d:1.5,deg:'b7'}, {t:19.5,d:1.5,deg:'b5',tech:'bn'}, {t:21,d:1.5,deg:'b7'}, {t:22.5,d:1.5,deg:'b5'},
+      // Bar 3 (Rising Hope)
+      {t:24,d:4.5,deg:'R'}, {t:28.5,d:1.5,deg:'b3',tech:'h'}, {t:30,d:1.5,deg:'4',tech:'p'}, {t:31.5,d:4.5,deg:'5',tech:'vb'}
+    ],
+    tags: ['legacy', 'sabbath', 'doom-blues', 'heavy', 'signature']
+  },
 };
 
 // 25 планов соло, каждый на 36 тактов (3 хора по 12 тактов)

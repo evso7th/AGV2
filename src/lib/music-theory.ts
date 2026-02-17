@@ -17,7 +17,7 @@ import type {
     BluesSoloPhrase,
     BluesRiffDegree
 } from '@/types/music';
-import { BLUES_SOLO_LICKS, BLUES_SOLO_PLANS } from './assets/blues_guitar_solo';
+import { BLUES_SOLO_LICKS, BLUES_SOLO_PLANS } from './assets/assets/blues_guitar_solo';
 import { AMBIENT_LEGACY } from './assets/ambient-legacy';
 
 export const DEGREE_TO_SEMITONE: Record<string, number> = {
@@ -264,16 +264,17 @@ export function generateSuiteDNA(totalBars: number, mood: Mood, initialSeed: num
         const candidates = Object.keys(BLUES_SOLO_LICKS).filter(id => 
             BLUES_SOLO_LICKS[id].tags.includes(dynasty!) && !tabooSet.has(id)
         );
-        const pool = candidates.length > 0 ? candidates : Object.keys(BLUES_SOLO_LICKS);
+        // #ЗАЧЕМ: Активация L211 (Sabbath Riff) для Doom Blues.
+        const lickPool = candidates.length > 0 ? candidates : Object.keys(BLUES_SOLO_LICKS);
         
-        seedLickId = pool[calculateMusiNum(initialSeed, 7, initialSeed, pool.length)];
+        seedLickId = lickPool[calculateMusiNum(initialSeed, 7, initialSeed, lickPool.length)];
         if (seedLickId) {
             seedLickNotes = transformLick(BLUES_SOLO_LICKS[seedLickId].phrase, initialSeed, 0, true);
         }
 
         blueprintParts.forEach((part, i) => {
             const partSeed = initialSeed + i * 777;
-            const partLick = pool[calculateMusiNum(partSeed, 5, i, pool.length)];
+            const partLick = lickPool[calculateMusiNum(partSeed, 5, i, lickPool.length)];
             partLickMap.set(part.id, partLick);
         });
 
