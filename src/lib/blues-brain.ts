@@ -15,10 +15,10 @@ import {
 import { BLUES_SOLO_LICKS } from './assets/blues_guitar_solo';
 
 /**
- * #ЗАЧЕМ: Блюзовый Мозг V86.0 — "Maximum Diversity".
- * #ЧТО: 1. Внедрена строгая память использованных ликов (usedLicksInSuite).
- *       2. Реализован Non-Deterministic Pick для исключения "шарманки".
- *       3. Исправлен баг "2-х ликов на пьесу".
+ * #ЗАЧЕМ: Блюзовый Мозг V88.0 — "Unified Unified SOR".
+ * #ЧТО: 1. Принудительная мутация ВСЕГО ансамбля каждые 12 тактов.
+ *       2. Расширение техник аккомпанемента при высоком напряжении.
+ *       3. Гарантированное разнообразие за счет расширенного пула ликов.
  */
 
 export class BluesBrain {
@@ -51,7 +51,9 @@ export class BluesBrain {
       lastPhraseHash: '',
       blueNotePending: false,
       emotion: { melancholy: 0.8, darkness: 0.3 },
-      stagnationStrikes: { micro: 0, meso: 0, macro: 0 }
+      stagnationStrikes: { micro: 0, meso: 0, macro: 0 },
+      // #ЗАЧЕМ: Синхронизация мутации ансамбля.
+      vaccineActive: { part: 'ensemble', type: 'jitter' } 
     };
   }
 
@@ -75,10 +77,11 @@ export class BluesBrain {
     
     this.evaluateTimbralDramaturgy(tension, hints);
     
-    // #ЗАЧЕМ: Исключение повторов. Смена лика на границах фраз.
-    const isPhraseBoundary = epoch % 4 === 0;
-    if (this.currentAxiom.length === 0 || navInfo.isPartTransition || isPhraseBoundary) {
+    // #ЗАЧЕМ: Принудительная мутация каждые 12 тактов для ВСЕГО ансамбля.
+    const isMutationBoundary = epoch % 12 === 0;
+    if (this.currentAxiom.length === 0 || navInfo.isPartTransition || isMutationBoundary) {
         this.selectNextAxiom(navInfo, dna, epoch);
+        this.refreshUnifiedMutation();
     }
 
     const events: FractalEvent[] = [];
@@ -89,6 +92,7 @@ export class BluesBrain {
     if (hints.drums) events.push(...this.renderBluesBeat(epoch, tension, navInfo));
     if (hints.pianoAccompaniment) events.push(...this.renderLyricalPiano(epoch, currentChord, tension));
 
+    // #ЗАЧЕМ: Строгий SFX-запрет в меланхолии (только бриджи, 1 раз).
     if (hints.sfx && this.mood === 'melancholic') {
         const isBridge = navInfo.currentPart.id.includes('BRIDGE');
         if (isBridge && !this.sfxPlayedInBridge) {
@@ -102,20 +106,29 @@ export class BluesBrain {
     return events;
   }
 
+  private refreshUnifiedMutation() {
+      // #ЗАЧЕМ: Рандомизация "прививки" для всего ансамбля.
+      const types: ('jitter' | 'inversion' | 'transposition' | 'rhythm')[] = ['jitter', 'inversion', 'rhythm'];
+      this.state.vaccineActive = { 
+          part: 'ensemble', 
+          type: types[this.random.nextInt(types.length)] 
+      };
+  }
+
   private mutateLick(phrase: any[], epoch: number): any[] {
-      // #ЗАЧЕМ: Создание бесконечных вариаций на базе одной аксиомы.
-      const mutationType = Math.floor(this.random.next() * 5); 
+      const type = this.state.vaccineActive?.type || 'jitter';
       let mutated = [...phrase];
-      switch(mutationType) {
-          case 1: // Inversion
+      
+      switch(type) {
+          case 'inversion':
               const pivot = phrase[0]?.deg || 'R';
               mutated = phrase.map(n => ({...n, deg: this.invertDegree(n.deg, pivot)}));
               break;
-          case 2: // Rhythmic Jitter
-              mutated = phrase.map(n => ({...n, t: n.t + (this.random.next() * 0.6 - 0.3)}));
+          case 'jitter':
+              mutated = phrase.map(n => ({...n, t: n.t + (this.random.next() * 0.4 - 0.2)}));
               break;
-          case 3: // Octave Shift
-              mutated = phrase.map(n => ({...n, deg: n.deg === 'R' ? 'R+8' : n.deg }));
+          case 'rhythm':
+              mutated = phrase.map(n => ({...n, d: n.d * (0.8 + this.random.next() * 0.4)}));
               break;
       }
       return mutated;
@@ -130,29 +143,24 @@ export class BluesBrain {
   }
 
   private selectNextAxiom(navInfo: NavigationInfo, dna: SuiteDNA, epoch: number) {
-      const dynasty = dna.dynasty || 'soul';
+      const dynasty = dna.dynasty || 'slow-burn';
       
-      // #ЗАЧЕМ: Умный подбор без повторов.
-      // #ЧТО: Сначала пытаемся выбрать лик, который ЕЩЕ НЕ ИГРАЛ в этой пьесе.
       let pool = Object.keys(BLUES_SOLO_LICKS).filter(id => 
           BLUES_SOLO_LICKS[id].tags.includes(dynasty) && !this.usedLicksInSuite.has(id)
       );
 
-      // Если пул исчерпан - сбрасываем память
       if (pool.length === 0) {
-          console.info(`%c[Narrative] Pool depleted for dynasty "${dynasty}". Resetting memory.`, 'color: #888;');
+          console.info(`%c[Narrative] Memory Reset for "${dynasty}". Pool refreshed.`, 'color: #888;');
           this.usedLicksInSuite.clear();
           pool = Object.keys(BLUES_SOLO_LICKS).filter(id => BLUES_SOLO_LICKS[id].tags.includes(dynasty));
       }
 
-      // Выбираем абсолютно случайно, а не детерминированно
       const nextId = pool[this.random.nextInt(pool.length)] || 'L01';
-
       this.currentLickId = nextId;
       this.usedLicksInSuite.add(nextId);
       this.currentAxiom = this.mutateLick(BLUES_SOLO_LICKS[nextId].phrase, epoch);
       
-      console.info(`%c[Narrative] Bar ${epoch} | Act: ${navInfo.currentPart.id} | New Theme: ${nextId} | Pool: ${pool.length}`, 'color: #4ade80; font-weight: bold;');
+      console.info(`%c[SOR] Bar ${epoch} | Unified Mutation: ${this.state.vaccineActive?.type} | New Axiom: ${nextId} | Pool: ${pool.length}`, 'color: #DA70D6; font-weight: bold;');
   }
 
   private evaluateTimbralDramaturgy(tension: number, hints: InstrumentHints) {
@@ -169,13 +177,14 @@ export class BluesBrain {
   private renderLyricalPiano(epoch: number, chord: GhostChord, tension: number): FractalEvent[] {
       const events: FractalEvent[] = [];
       const root = chord.rootNote + 24;
-      const noteChance = tension * 0.7;
+      // #ЗАЧЕМ: Прямая зависимость плотности от Tension.
+      const noteChance = Math.max(0.1, tension * 0.85); 
       [0, 1.5, 3].forEach(beat => {
           if (this.random.next() < noteChance) {
               events.push({
                   type: 'pianoAccompaniment',
                   note: Math.min(root + [0,3,7,10][this.random.nextInt(4)], this.MELODY_CEILING),
-                  time: beat, duration: 2.0, weight: 0.3 + tension * 0.2,
+                  time: beat, duration: 2.5, weight: 0.25 + tension * 0.3,
                   technique: 'hit', dynamics: 'p', phrasing: 'staccato'
               });
           }
@@ -202,10 +211,11 @@ export class BluesBrain {
     const isMin = chord.chordType === 'minor';
     const notes = [root, root + (isMin ? 3 : 4), root + 7, root + 10];
     
+    // #ЗАЧЕМ: Аккордовые пассажи в пиках напряжения (T > 0.7).
     if (tension > 0.7) { 
-        [0, 1.5, 3].forEach(t => notes.forEach(p => events.push({
-            type: 'accompaniment', note: p, time: t, duration: 0.5, weight: 0.3,
-            technique: 'pluck', dynamics: 'mp', phrasing: 'staccato'
+        [0, 2.0].forEach(t => notes.forEach((p, i) => events.push({
+            type: 'accompaniment', note: p, time: t + i * 0.05, duration: 1.2, weight: 0.45,
+            technique: 'pluck', dynamics: 'mf', phrasing: 'staccato'
         })));
     } else if (tension > 0.5) { 
         notes.forEach((p, i) => events.push({
