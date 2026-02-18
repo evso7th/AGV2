@@ -1,50 +1,109 @@
-
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
-    // --- GLOBAL HELPER FUNCTIONS ---
+    /**
+     * AuraGroove V2 Security Rules
+     *
+     * Core Philosophy:
+     * This ruleset enforces a strict user-ownership model designed for rapid prototyping. 
+     * It prioritizes high-security authorization while remaining flexible on data shapes 
+     * to allow for agile development.
+     *
+     * Data Structure:
+     * The database is organized hierarchically under /users/{userId}. All user-related 
+     * data, including projects, logs, and components, are nested subcollections 
+     * of the user's root document.
+     *
+     * Key Security Decisions:
+     * 1. Authorization Independence: Critical ownership fields (userId) are denormalized 
+     *    into every document. This allows rules to verify access using only the 
+     *    document data and the request's auth state, avoiding expensive get() calls.
+     * 2. Structural Segregation: Private user data is kept separate from any 
+     *    potentially public collections, ensuring simple and robust list operations.
+     * 3. Immutability: Relational fields (userId, projectId) are enforced as immutable 
+     *    after creation to prevent data being moved between owners or projects.
+     */
 
+    // --- Helper Functions ---
+
+    /**
+     * @description Checks if the request is made by a signed-in user.
+     */
     function isSignedIn() {
       return request.auth != null;
     }
 
+    /**
+     * @description Checks if the authenticated user's UID matches the provided userId.
+     */
     function isOwner(userId) {
       return isSignedIn() && request.auth.uid == userId;
     }
 
+    /**
+     * @description Checks if the user is the owner and the document exists.
+     * Used for update and delete operations to ensure state consistency.
+     */
     function isExistingOwner(userId) {
-      return isOwner(userId) && resource != null;
+      return resource != null && isOwner(userId);
     }
 
-    // --- COLLECTION RULES ---
+    // --- Collection Rules ---
 
-    // Masterpieces: Global genetic memory
-    // #ЗАЧЕМ: Разрешение записи только авторизованным пользователям.
-    // #ЧТО: Переход от 'if true' к 'if isSignedIn()'.
-    match /masterpieces/{document=**} {
-      allow read, create: if isSignedIn();
-      allow update, delete: if false;
-    }
-
+    /**
+     * @description Rules for the User profile document.
+     * @path /users/{userId}
+     * @allow Authenticated user (create) where request.auth.uid == userId.
+     * @deny Any user (update) trying to change a different user's profile.
+     * @principle Restricts access to a user's own data tree and enforces identity consistency.
+     */
     match /users/{userId} {
       allow get, list: if isOwner(userId);
       allow create: if isOwner(userId) && request.resource.data.id == userId;
       allow update: if isExistingOwner(userId) && request.resource.data.id == resource.data.id;
       allow delete: if isExistingOwner(userId);
 
-      match /contentIdeas/{contentIdeaId} {
+      /**
+       * @description Rules for Projects owned by a user.
+       * @path /users/{userId}/projects/{projectId}
+       * @allow User (create) a project under their own path with their userId in the data.
+       * @deny User (list) projects belonging to another user.
+       * @principle Enforces document ownership for writes and path-based list security.
+       */
+      match /projects/{projectId} {
         allow get, list: if isOwner(userId);
         allow create: if isOwner(userId) && request.resource.data.userId == userId;
         allow update: if isExistingOwner(userId) && request.resource.data.userId == resource.data.userId;
         allow delete: if isExistingOwner(userId);
-      }
 
-      match /canvases/{canvasId} {
-        allow get, list: if isOwner(userId);
-        allow create: if isOwner(userId) && request.resource.data.userId == userId;
-        allow update: if isExistingOwner(userId) && request.resource.data.userId == resource.data.userId;
-        allow delete: if isExistingOwner(userId);
+        /**
+         * @description Rules for Generation Logs associated with a project.
+         * @path /users/{userId}/projects/{projectId}/generationLogs/{logId}
+         * @allow User (get) a log if they own the parent project path.
+         * @deny User (update) a log to change its associated projectId.
+         * @principle Validates relational integrity between documents and parent paths.
+         */
+        match /generationLogs/{logId} {
+          allow get, list: if isOwner(userId);
+          allow create: if isOwner(userId) && request.resource.data.userId == userId && request.resource.data.projectId == projectId;
+          allow update: if isExistingOwner(userId) && request.resource.data.userId == resource.data.userId && request.resource.data.projectId == resource.data.projectId;
+          allow delete: if isExistingOwner(userId);
+        }
+
+        /**
+         * @description Rules for Canvas Components within a project.
+         * @path /users/{userId}/projects/{projectId}/canvasComponents/{compId}
+         * @allow User (create) a component with correct userId and projectId links.
+         * @deny Unauthenticated user (get) any canvas component.
+         * @principle Authorization Independence via denormalized ownership fields.
+         */
+        match /canvasComponents/{compId} {
+          allow get, list: if isOwner(userId);
+          allow create: if isOwner(userId) && request.resource.data.userId == userId && request.resource.data.projectId == projectId;
+          allow update: if isExistingOwner(userId) && request.resource.data.userId == resource.data.userId && request.resource.data.projectId == resource.data.projectId;
+          allow delete: if isExistingOwner(userId);
+        }
       }
     }
   }
