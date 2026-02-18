@@ -322,7 +322,7 @@ export class BluesBrain {
     const root = Math.max(chord.rootNote - 12, this.BASS_FLOOR);
     const isMin = chord.chordType === 'minor';
     const pattern = [ { t: 0, n: root, w: 0.7 }, { t: 1.0, n: root + 7, w: 0.5 }, { t: 2.0, n: root + (isMin ? 3 : 4), w: 0.6 }, { t: 3.0, n: root + 5, w: 0.5 } ];
-    return pattern.map(p => ({ type: 'bass', note: p.n, time: p.t, duration: 0.8, weight: p.w + (tension * 0.1), technique: 'pluck', dynamics: p', phrasing: 'legato', params: { attack: 0.1, release: 0.8, filterCutoff: 400 } }));
+    return pattern.map(p => ({ type: 'bass', note: p.n, time: p.t, duration: 0.8, weight: p.w + (tension * 0.1), technique: 'pluck', dynamics: 'p', phrasing: 'legato', params: { attack: 0.1, release: 0.8, filterCutoff: 400 } }));
   }
 
   private renderWalkingBass(chord: GhostChord, epoch: number, tension: number): FractalEvent[] {
