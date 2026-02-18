@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from "react";
-import { SlidersHorizontal, Music, Pause, Speaker, FileMusic, Drum, GitBranch, Atom, Piano, Home, X, Sparkles, Sprout, LayoutGrid, Timer, Guitar, RefreshCw, Bot, Waves, Cog, Radio, ThumbsUp, TowerControl } from "lucide-react";
+import { SlidersHorizontal, Music, Pause, Speaker, FileMusic, Drum, GitBranch, Atom, Piano, Home, X, Sparkles, Sprout, LayoutGrid, Timer, Guitar, RefreshCw, Bot, Waves, Cog, Radio, ThumbsUp, TowerControl, Factory } from "lucide-react";
 import Image from "next/image";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -281,6 +281,18 @@ export function AuraGrooveV2({
                             {timerSettings.isActive ? `Stop Timer (${formatTime(timerSettings.timeLeft)})` : 'Start Timer'}
                         </Button>
                     </div>
+                </CardContent>
+              </Card>
+              <Card className="border-0 shadow-none mt-2">
+                <CardContent className="p-3 pt-0">
+                  <Button 
+                    variant="outline" 
+                    className="w-full h-10 text-xs gap-2 border-dashed border-primary/30 hover:border-primary/60 transition-colors"
+                    onClick={() => router.push('/midi-ingest')}
+                  >
+                    <Factory className="h-4 w-4 text-primary" />
+                    MIDI Ingestion Dashboard
+                  </Button>
                 </CardContent>
               </Card>
             </TabsContent>
