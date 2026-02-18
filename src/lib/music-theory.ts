@@ -1,8 +1,7 @@
 /**
  * @fileOverview Universal Music Theory Utilities
  * #ЗАЧЕМ: Базовый набор инструментов для работы с нотами, ладами и ритмом.
- * #ЧТО: Внедрена система Choral DNA для длинных мелодических аксиом.
- * #ОБНОВЛЕНО (ПЛАН №444): Исправлена логика династий — расширен пул кандидатов для каждой части.
+ * #ОБНОВЛЕНО (ПЛАН №445): Блюзовая теория вынесена в отдельный модуль.
  */
 
 import type { 
@@ -12,20 +11,14 @@ import type {
     GhostChord, 
     SuiteDNA, 
     NavigationInfo,
-    TensionProfile,
-    BluesSoloPhrase,
-    BluesRiffDegree
+    TensionProfile
 } from '@/types/music';
+import { BLUES_PROGRESSION_OFFSETS, getDynastyForMood } from './blues-theory';
 import { BLUES_SOLO_LICKS } from './assets/blues_guitar_solo';
 
 export const DEGREE_TO_SEMITONE: Record<string, number> = {
     'R': 0, 'b2': 1, '2': 2, 'b3': 3, '3': 4, '4': 5, '#4': 6, 'b5': 6, '5': 7,
     'b6': 8, '6': 9, 'b7': 10, '7': 11, 'R+8': 12, '9': 14, '11': 17
-};
-
-const SEMITONE_TO_DEGREE: Record<number, BluesRiffDegree> = {
-    0: 'R', 1: 'b2', 2: '2', 3: 'b3', 4: '3', 5: '4', 6: '#4', 7: '5',
-    8: 'b6', 9: '6', 10: 'b7', 11: '7', 12: 'R+8', 14: '9', 17: '11'
 };
 
 export const MODE_SEMITONES: Record<string, number[]> = {
@@ -73,37 +66,6 @@ export const LIGHT_ATLAS: Record<string, { fog: number, depth: number, bright: n
     'VOID': { fog: 0.9, depth: 0.2, bright: 0.1 }
 };
 
-export function transformLick(lick: BluesSoloPhrase, seed: number, epoch: number, type?: 'jitter' | 'inversion' | 'transposition'): BluesSoloPhrase {
-    const transformed = JSON.parse(JSON.stringify(lick)) as BluesSoloPhrase;
-    const transformType = type || ['jitter', 'inversion', 'transposition'][calculateMusiNum(epoch, 3, seed, 3)];
-
-    switch (transformType) {
-        case 'inversion':
-            const pivot = DEGREE_TO_SEMITONE[transformed[0].deg] || 0;
-            transformed.forEach(n => {
-                const current = DEGREE_TO_SEMITONE[n.deg] || 0;
-                const inverted = pivot - (current - pivot);
-                n.deg = SEMITONE_TO_DEGREE[((inverted % 12) + 12) % 12] || 'R';
-            });
-            break;
-        case 'transposition':
-            const shift = [3, 5, 7][calculateMusiNum(seed, 3, epoch, 3)];
-            transformed.forEach(n => {
-                const current = DEGREE_TO_SEMITONE[n.deg] || 0;
-                n.deg = SEMITONE_TO_DEGREE[(current + shift) % 12] || 'R';
-            });
-            break;
-        case 'jitter':
-        default:
-            transformed.forEach(n => { 
-                const shiftVal = (calculateMusiNum(epoch, 2, seed, 2) - 0.5);
-                n.t = Math.max(0, n.t + shiftVal);
-            });
-            break;
-    }
-    return transformed;
-}
-
 export function calculateMusiNum(step: number, base: number = 2, start: number = 0, modulo: number = 8): number {
     if (!isFinite(step) || modulo <= 0) return 0;
     let num = Math.abs(Math.floor(step + start));
@@ -119,7 +81,7 @@ export function generateTensionMap(seed: number, totalBars: number, mood: Mood):
     const map: number[] = [];
     for (let i = 0; i < totalBars; i++) {
         const progress = i / totalBars;
-        const baseTension = 0.4 + 0.2 * Math.sin(progress * Math.PI);
+        const baseTension = 0.4 + 0.3 * Math.sin(progress * Math.PI); // Increased range
         map.push(Math.max(0.05, Math.min(0.95, baseTension)));
     }
     return map;
@@ -162,19 +124,16 @@ export function generateSuiteDNA(totalBars: number, mood: Mood, initialSeed: num
     let partLickMap: Map<string, string> = new Map();
 
     if (genre === 'blues') {
-        const dynasties = ['minor', 'slow-burn', 'doom-blues', 'major', 'texas', 'classic'];
-        const dynastyIdx = calculateMusiNum(initialSeed, 3, 0, dynasties.length);
-        const dynasty = dynasties[dynastyIdx];
-        
+        const dynasty = getDynastyForMood(mood, initialSeed);
         const pool = Object.keys(BLUES_SOLO_LICKS).filter(id => 
             BLUES_SOLO_LICKS[id].tags.includes(dynasty) && !(sessionHistory || []).includes(id)
         );
         const finalPool = pool.length > 0 ? pool : Object.keys(BLUES_SOLO_LICKS);
         
-        seedLickId = finalPool[calculateMusiNum(initialSeed, 7, 0, finalPool.length)];
+        seedLickId = finalPool[Math.abs(Math.floor(initialSeed)) % finalPool.length];
 
         blueprintParts.forEach((part: any, i: number) => {
-            const partLick = finalPool[calculateMusiNum(initialSeed + (i + 1) * 100, 5, 0, finalPool.length)];
+            const partLick = finalPool[(Math.abs(Math.floor(initialSeed)) + (i + 1) * 7) % finalPool.length];
             partLickMap.set(part.id, partLick);
         });
     }
