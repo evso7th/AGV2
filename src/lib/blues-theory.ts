@@ -2,9 +2,10 @@
  * @fileOverview THE BLUES CODEX (v1.0)
  * #ЗАЧЕМ: Централизованная библиотека законов блюза. 
  * #ЧТО: Содержит шкалы, прогрессии, правила разрешения и когнитивные маппинги.
+ * #СВЯЗИ: Используется в blues-brain.ts и music-theory.ts.
  */
 
-import type { Mood, GhostChord } from '@/types/music';
+import { calculateMusiNum } from './music-theory';
 
 // --- CORE SCALES ---
 // Blue Pentatonic: 1, b3, 4, b5, 5, b7
@@ -28,7 +29,7 @@ export function getNextChordRoot(barIndex: number, rootNote: number): number {
 }
 
 /**
- * #ЗАЧЕМ: Сопоставление настроения с блюзовой гармонией.
+ * #ЗАЧЕМ: Сопоставление такта с блюзовой гармонией.
  */
 export function getChordNameForBar(barIndex: number): string {
     const progression = ['i7', 'i7', 'i7', 'i7', 'iv7', 'iv7', 'i7', 'i7', 'v7', 'iv7', 'i7', 'v7'];
@@ -37,18 +38,16 @@ export function getChordNameForBar(barIndex: number): string {
 
 /**
  * #ЗАЧЕМ: Закон Разрешения Блюзовой Ноты.
- * #ЧТО: b5 обязана уйти в 5 (квинта) или 3 (терция).
  */
 export function resolveBlueNote(pitch: number, root: number): number {
-    // 75% -> resolution to 5th (hope), 25% -> resolution to 3rd (resignation)
     return Math.random() < 0.75 ? root + 7 : root + 3;
 }
 
 /**
  * #ЗАЧЕМ: Определение Династии ликов на основе ДНК сюиты.
  */
-export function getDynastyForMood(mood: Mood, seed: number): string {
-    const dynasties = ['minor', 'slow-burn', 'doom-blues', 'major', 'texas', 'classic'];
+export function getDynastyForMood(mood: string, seed: number): string {
+    const dynasties = ['soul', 'texas', 'king', 'detroit', 'chromatic', 'slow-burn'];
     const idx = Math.abs(Math.floor(seed)) % dynasties.length;
     return dynasties[idx];
 }

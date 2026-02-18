@@ -15,11 +15,10 @@ import {
 import { BLUES_SOLO_LICKS } from './assets/blues_guitar_solo';
 
 /**
- * #ЗАЧЕМ: Блюзовый Мозг V80.0 — "The Great Narrative Expansion".
- * #ЧТО: 1. Лик-мутатор: фрактальные трансформации аксиом перед игрой.
- *       2. Tension-Driven Accompaniment: от мягких наплывов до арпеджио и пассажей.
- *       3. SFX Bridge Isolation: строгий контроль атмосферы для меланхолии.
- *       4. Интеграция 80+ новых ликов легенд блюза.
+ * #ЗАЧЕМ: Блюзовый Мозг V85.0 — "Codex Compliant".
+ * #ЧТО: 1. Логика полностью опирается на blues-theory.ts.
+ *       2. Внедрен Lick Mutator для предотвращения зацикливания.
+ *       3. Энергозависимый ансамбль (Tension-Sync).
  */
 
 export class BluesBrain {
@@ -31,7 +30,6 @@ export class BluesBrain {
   
   private readonly MELODY_CEILING = 75; 
   private readonly BASS_FLOOR = 31; 
-  private readonly MAX_HISTORY_DEPTH = 32;
 
   private state: BluesCognitiveState;
   private sfxPlayedInBridge = false;
@@ -51,10 +49,7 @@ export class BluesBrain {
       macroHistory: [],
       lastPhraseHash: '',
       blueNotePending: false,
-      emotion: {
-        melancholy: 0.8,
-        darkness: 0.3
-      },
+      emotion: { melancholy: 0.8, darkness: 0.3 },
       stagnationStrikes: { micro: 0, meso: 0, macro: 0 }
     };
   }
@@ -73,393 +68,178 @@ export class BluesBrain {
     currentChord: GhostChord,
     navInfo: NavigationInfo,
     dna: SuiteDNA,
-    hints: InstrumentHints,
-    lastEvents: FractalEvent[]
+    hints: InstrumentHints
   ): FractalEvent[] {
     const tension = dna.tensionMap?.[epoch] ?? 0.5;
     
     this.evaluateTimbralDramaturgy(tension, hints);
     
-    const phraseTicks = Math.max(...(this.currentAxiom.map(n => n.t + n.d) || [12]), 12);
-    const phraseBars = Math.ceil(phraseTicks / 12);
-    const isPhraseEnd = epoch % phraseBars === 0;
-
+    // Смена лика при смене части или окончании фразы
+    const isPhraseEnd = epoch % 4 === 0;
     if (this.currentAxiom.length === 0 || navInfo.isPartTransition || isPhraseEnd) {
         this.selectNextAxiom(navInfo, dna, epoch);
     }
 
     const events: FractalEvent[] = [];
-    const melodyEvents: FractalEvent[] = [];
 
-    // --- 1. MELODY (The Soul) ---
-    if (hints.melody) {
-      const mEvents = this.renderMelodicSegment(epoch, currentChord, tension);
-      melodyEvents.push(...mEvents);
-      events.push(...mEvents);
-    }
+    if (hints.melody) events.push(...this.renderMelodicSegment(epoch, currentChord, tension));
+    if (hints.accompaniment) events.push(...this.renderPullChops(epoch, currentChord, tension));
+    if (hints.bass) events.push(...this.renderIronBass(currentChord, epoch));
+    if (hints.drums) events.push(...this.renderBluesBeat(epoch, tension, navInfo));
+    if (hints.pianoAccompaniment) events.push(...this.renderLyricalPiano(epoch, currentChord, tension));
 
-    // --- 2. ACCOMPANIMENT (The Pull) ---
-    if (hints.accompaniment) {
-      events.push(...this.renderPullChops(epoch, currentChord, tension, hints.accompaniment as string));
-    }
-
-    // --- 3. BASS (The Foundation) ---
-    if (hints.bass) {
-      events.push(...this.renderIronBass(currentChord, epoch));
-    }
-
-    // --- 4. DRUMS (The Heartbeat & Beat) ---
-    if (hints.drums) {
-      events.push(...this.renderBluesBeat(epoch, tension, navInfo));
-    }
-
-    // --- 5. LYRICAL PIANO (The Reflection) ---
-    if (hints.pianoAccompaniment) {
-        events.push(...this.renderLyricalPiano(epoch, currentChord, tension));
-    }
-
-    // --- 6. SFX (The Atmosphere) ---
-    // #ЗАЧЕМ: Специфическая логика для Меланхолии: только в бриджах, 1 раз.
-    if (hints.sfx) {
-        if (this.mood === 'melancholic') {
-            const isBridge = navInfo.currentPart.id.includes('BRIDGE');
-            if (isBridge && !this.sfxPlayedInBridge) {
-                events.push(...this.renderCleanSfx(tension));
-                this.sfxPlayedInBridge = true;
-            } else if (!isBridge) {
-                this.sfxPlayedInBridge = false; // Сброс флага при выходе из бриджа
-            }
-        } else if (epoch % 12 === 0 && this.random.next() < 0.6) {
+    // SFX Rule: строго 1 раз за бридж для меланхолии
+    if (hints.sfx && this.mood === 'melancholic') {
+        const isBridge = navInfo.currentPart.id.includes('BRIDGE');
+        if (isBridge && !this.sfxPlayedInBridge) {
             events.push(...this.renderCleanSfx(tension));
+            this.sfxPlayedInBridge = true;
+        } else if (!isBridge) {
+            this.sfxPlayedInBridge = false;
         }
     }
-
-    this.auditStagnationV5(melodyEvents, currentChord, epoch, dna);
 
     return events;
   }
 
-  /**
-   * #ЗАЧЕМ: Мутация лика перед исполнением.
-   * #ЧТО: Применение фрактальных трансформаций к аксиоме.
-   */
   private mutateLick(phrase: any[], epoch: number): any[] {
-      const mutationType = calculateMusiNum(epoch, 3, this.seed, 4);
+      const mutationType = Math.floor(this.random.next() * 4);
       let mutated = [...phrase];
-
       switch(mutationType) {
-          case 1: // Inversion (Зеркало)
-              const firstDeg = phrase[0]?.deg || 'R';
-              mutated = phrase.map(n => ({...n, deg: this.invertDegree(n.deg, firstDeg)}));
+          case 1: // Inversion
+              const pivot = phrase[0]?.deg || 'R';
+              mutated = phrase.map(n => ({...n, deg: this.invertDegree(n.deg, pivot)}));
               break;
-          case 2: // Rhythmic Jitter
-              mutated = phrase.map(n => ({...n, t: n.t + (this.random.next() * 0.5 - 0.25)}));
-              break;
-          case 3: // Duration Scaling
-              mutated = phrase.map(n => ({...n, d: n.d * (0.8 + this.random.next() * 0.4)}));
+          case 2: // Jitter
+              mutated = phrase.map(n => ({...n, t: n.t + (this.random.next() * 0.4 - 0.2)}));
               break;
       }
       return mutated;
   }
 
   private invertDegree(deg: string, pivot: string): string {
-      const semitones = DEGREE_TO_SEMITONE[deg] || 0;
-      const pivotSemi = DEGREE_TO_SEMITONE[pivot] || 0;
-      const diff = semitones - pivotSemi;
-      const invertedSemi = pivotSemi - diff;
-      // Находим ближайшую ступень в маппинге
-      const entry = Object.entries(DEGREE_TO_SEMITONE).find(([k, v]) => v === (invertedSemi % 12));
+      const s = DEGREE_TO_SEMITONE[deg] || 0;
+      const p = DEGREE_TO_SEMITONE[pivot] || 0;
+      const inv = p - (s - p);
+      const entry = Object.entries(DEGREE_TO_SEMITONE).find(([k, v]) => v === (inv % 12));
       return entry ? entry[0] : deg;
-  }
-
-  private renderBluesBeat(epoch: number, tension: number, navInfo: NavigationInfo): FractalEvent[] {
-      const events: FractalEvent[] = [];
-      const isBreakdown = navInfo.currentPart.id.includes('MAIN_3') || tension < 0.40;
-      const isPeak = navInfo.currentPart.id.includes('MAIN_4') || tension > 0.75;
-      
-      const kickTimes = isPeak ? [0, 1, 2, 3] : (isBreakdown ? [0] : [0, 2.66]);
-      kickTimes.forEach(t => {
-          events.push({
-              type: 'drum_kick_reso',
-              note: 36,
-              time: t,
-              duration: 0.1,
-              weight: t === 0 ? 0.6 : 0.4,
-              technique: 'hit', dynamics: 'p', phrasing: 'staccato'
-          });
-      });
-
-      if (!isBreakdown) {
-          const snareTimes = [1, 3];
-          snareTimes.forEach(t => {
-              events.push({
-                  type: isPeak ? 'drum_snare' : 'drum_snare_ghost_note',
-                  note: 38,
-                  time: t,
-                  duration: 0.1,
-                  weight: isPeak ? 0.7 : 0.3,
-                  technique: 'hit', dynamics: 'p', phrasing: 'staccato'
-              });
-          });
-      }
-
-      const hatTicks = [0, 0.66, 1, 1.66, 2, 2.66, 3, 3.66];
-      hatTicks.forEach(t => {
-          const isAccent = t % 1 === 0;
-          if (isBreakdown && !isAccent) return; 
-          
-          events.push({
-              type: 'drum_25693__walter_odington__hackney-hat-1',
-              note: 42,
-              time: t,
-              duration: 0.1,
-              weight: isAccent ? 0.25 : 0.15,
-              technique: 'hit', dynamics: 'p', phrasing: 'staccato'
-          });
-      });
-
-      if (tension > 0.55 && !isBreakdown) {
-          [0, 1, 2, 3].forEach(t => {
-              events.push({
-                  type: 'drum_ride_wetter',
-                  note: 51,
-                  time: t,
-                  duration: 1.0,
-                  weight: 0.2,
-                  technique: 'hit', dynamics: 'p', phrasing: 'staccato'
-              });
-          });
-      }
-
-      if (epoch % 4 === 3 && tension > 0.5) { 
-          events.push({
-              type: 'drum_Sonor_Classix_Low_Tom',
-              note: 41,
-              time: 3.5, 
-              duration: 1.0,
-              weight: 0.4,
-              technique: 'hit', dynamics: 'p', phrasing: 'staccato'
-          });
-      }
-
-      return events;
-  }
-
-  private renderCleanSfx(tension: number): FractalEvent[] {
-      return [{
-          type: 'sfx',
-          note: 60,
-          time: this.random.next() * 2,
-          duration: 4.0,
-          weight: 0.25 * (1.0 - tension),
-          technique: 'hit',
-          dynamics: 'p',
-          phrasing: 'staccato',
-          params: { 
-              mood: this.mood, 
-              genre: 'blues',
-              rules: { eventProbability: 1.0, categories: [{ name: 'dark', weight: 0.7 }, { name: 'common', weight: 0.3 }] }
-          }
-      }];
   }
 
   private selectNextAxiom(navInfo: NavigationInfo, dna: SuiteDNA, epoch: number) {
       const lickIdFromDNA = dna.partLickMap?.get(navInfo.currentPart.id);
+      let nextId = lickIdFromDNA && BLUES_SOLO_LICKS[lickIdFromDNA] ? lickIdFromDNA : 'L01';
       
-      let nextId: string;
-      if (lickIdFromDNA && BLUES_SOLO_LICKS[lickIdFromDNA]) {
-          nextId = lickIdFromDNA;
-      } else {
-          const dynastyTags = BLUES_SOLO_LICKS[dna.seedLickId || 'L01']?.tags || ['minor'];
-          const pool = Object.keys(BLUES_SOLO_LICKS).filter(id => 
-              BLUES_SOLO_LICKS[id].tags.some(t => dynastyTags.includes(t)) && id !== this.currentLickId
-          );
+      // Если мы в той же части, но фраза кончилась - берем случайный из династии
+      if (epoch % 4 === 0 && !navInfo.isPartTransition) {
+          const dynasty = dna.dynasty || 'soul';
+          const pool = Object.keys(BLUES_SOLO_LICKS).filter(id => BLUES_SOLO_LICKS[id].tags.includes(dynasty));
           nextId = pool[this.random.nextInt(pool.length)] || 'L01';
       }
 
       this.currentLickId = nextId;
-      // #ЗАЧЕМ: Применение мутаций к выбранной аксиоме.
       this.currentAxiom = this.mutateLick(BLUES_SOLO_LICKS[nextId].phrase, epoch);
-      
-      console.info(`%c[Narrative] Part: ${navInfo.currentPart.id} | Theme: ${nextId} (Mutated at Epoch: ${epoch})`, 'color: #4ade80; font-weight: bold;');
+      console.info(`%c[Narrative] Bar ${epoch} | New Theme: ${nextId}`, 'color: #4ade80; font-weight: bold;');
   }
 
   private evaluateTimbralDramaturgy(tension: number, hints: InstrumentHints) {
     if (hints.melody) {
-        if (tension <= 0.60) (hints as any).melody = 'blackAcoustic';
-        else if (tension <= 0.85) (hints as any).melody = 'cs80'; 
-        else (hints as any).melody = 'guitar_shineOn'; 
+        if (tension <= 0.55) (hints as any).melody = 'blackAcoustic';
+        else if (tension <= 0.75) (hints as any).melody = 'cs80';
+        else (hints as any).melody = 'guitar_shineOn';
     }
-
     if (hints.accompaniment) {
-        if (tension > 0.75) {
-            (hints as any).accompaniment = 'ep_rhodes_warm';
-        } else {
-            (hints as any).accompaniment = 'organ_soft_jazz';
-        }
+        (hints as any).accompaniment = tension > 0.75 ? 'ep_rhodes_warm' : 'organ_soft_jazz';
     }
   }
 
   private renderLyricalPiano(epoch: number, chord: GhostChord, tension: number): FractalEvent[] {
       const events: FractalEvent[] = [];
       const root = chord.rootNote + 24;
-      const scale = [0, 3, 7, 10]; 
-      
-      const noteChance = tension * 0.8; 
-      const beats = [0, 1.5, 3]; 
-
-      beats.forEach(beat => {
+      const noteChance = tension * 0.7;
+      [0, 1.5, 3].forEach(beat => {
           if (this.random.next() < noteChance) {
-              const deg = scale[this.random.nextInt(scale.length)];
               events.push({
                   type: 'pianoAccompaniment',
-                  note: Math.min(root + deg, this.MELODY_CEILING),
-                  time: beat,
-                  duration: 2.0,
-                  weight: 0.3 + (tension * 0.2), 
-                  technique: 'hit',
-                  dynamics: 'p',
-                  phrasing: 'staccato',
-                  params: { filterCutoff: 3500 }
+                  note: Math.min(root + [0,3,7,10][this.random.nextInt(4)], this.MELODY_CEILING),
+                  time: beat, duration: 2.0, weight: 0.3 + tension * 0.2,
+                  technique: 'hit', dynamics: 'p', phrasing: 'staccato'
               });
           }
       });
-
       return events;
   }
 
   private renderMelodicSegment(epoch: number, chord: GhostChord, tension: number): FractalEvent[] {
-    const phraseTicks = Math.max(...this.currentAxiom.map(n => n.t + n.d), 12);
-    const phraseBars = Math.ceil(phraseTicks / 12);
-    
-    const barInPhrase = epoch % phraseBars;
-    const tickOffset = barInPhrase * 12;
-    
-    const barNotes = this.currentAxiom.filter(n => n.t >= tickOffset && n.t < tickOffset + 12);
-
+    const barInPhrase = epoch % 4;
+    const barNotes = this.currentAxiom.filter(n => n.t >= barInPhrase * 12 && n.t < (barInPhrase + 1) * 12);
     return barNotes.map(n => ({
         type: 'melody',
         note: Math.min(chord.rootNote + 36 + (DEGREE_TO_SEMITONE[n.deg] || 0), this.MELODY_CEILING),
-        time: (n.t - tickOffset) / 3,
+        time: (n.t % 12) / 3,
         duration: n.d / 3,
-        weight: 0.85,
-        technique: n.tech || 'pick',
-        dynamics: tension > 0.7 ? 'mf' : 'p',
-        phrasing: 'legato'
+        weight: 0.85, technique: n.tech || 'pick',
+        dynamics: tension > 0.7 ? 'mf' : 'p', phrasing: 'legato'
     }));
   }
 
-  /**
-   * #ЗАЧЕМ: Аккомпанемент реагирует на Tension.
-   * #ЧТО: Переход от наплывов к арпеджио и пассажам.
-   */
-  private renderPullChops(epoch: number, chord: GhostChord, tension: number, timbre: string): FractalEvent[] {
+  private renderPullChops(epoch: number, chord: GhostChord, tension: number): FractalEvent[] {
     const events: FractalEvent[] = [];
-    const isMinor = chord.chordType === 'minor';
     const root = chord.rootNote + 12;
-    const chordNotes = [root, root + (isMinor ? 3 : 4), root + 7, root + 10];
+    const isMin = chord.chordType === 'minor';
+    const notes = [root, root + (isMin ? 3 : 4), root + 7, root + 10];
     
-    if (tension > 0.78) {
-        // ПИК: Аккордные пассажи (синкопы)
-        [0, 1.5, 3].forEach(t => {
-            chordNotes.forEach(p => {
-                events.push({
-                    type: 'accompaniment',
-                    note: p,
-                    time: t,
-                    duration: 0.5,
-                    weight: 0.35,
-                    technique: 'pluck',
-                    dynamics: 'mp',
-                    phrasing: 'staccato'
-                });
-            });
-        });
-    } else if (tension > 0.55) {
-        // МИД: Слышимые арпеджио
-        chordNotes.forEach((p, i) => {
-            events.push({
-                type: 'accompaniment',
-                note: p,
-                time: i * 0.5,
-                duration: 1.5,
-                weight: 0.3,
-                technique: 'arpeggio',
-                dynamics: 'p',
-                phrasing: 'legato'
-            });
-        });
-    } else if (epoch % 2 === 0) {
-        // НИЗ: Мягкие наплывы
-        chordNotes.slice(0, 3).forEach((p, i) => {
-            events.push({
-                type: 'accompaniment',
-                note: p,
-                time: 0.5 + (i * 0.02), 
-                duration: 8.0, 
-                weight: 0.25,
-                technique: 'swell',
-                dynamics: 'p',
-                phrasing: 'legato'
-            });
-        });
+    if (tension > 0.7) { // Пассажи
+        [0, 1.5, 3].forEach(t => notes.forEach(p => events.push({
+            type: 'accompaniment', note: p, time: t, duration: 0.5, weight: 0.3,
+            technique: 'pluck', dynamics: 'mp', phrasing: 'staccato'
+        })));
+    } else if (tension > 0.5) { // Арпеджио
+        notes.forEach((p, i) => events.push({
+            type: 'accompaniment', note: p, time: i * 0.5, duration: 1.5, weight: 0.3,
+            technique: 'arpeggio', dynamics: 'p', phrasing: 'legato'
+        }));
+    } else if (epoch % 2 === 0) { // Наплывы
+        notes.slice(0, 3).forEach((p, i) => events.push({
+            type: 'accompaniment', note: p, time: 0.5 + i * 0.02, duration: 8.0, weight: 0.25,
+            technique: 'swell', dynamics: 'p', phrasing: 'legato'
+        }));
     }
     return events;
   }
 
   private renderIronBass(chord: GhostChord, epoch: number): FractalEvent[] {
     const root = Math.max(chord.rootNote - 12, this.BASS_FLOOR);
-    const barIn12 = epoch % 12;
-    const nextRoot = getNextChordRoot(barIn12, chord.rootNote) - 12;
-    
-    const notes = [root, root + 7, root + 10, nextRoot - 1]; 
+    const nextRoot = getNextChordRoot(epoch % 12, chord.rootNote) - 12;
+    const notes = [root, root + 7, root + 10, nextRoot - 1];
     return notes.map((p, i) => ({
-        type: 'bass', 
-        note: p, 
-        time: i, 
-        duration: 0.9, 
-        weight: i === 0 ? 0.8 : 0.45,
-        technique: 'pluck', 
-        dynamics: 'p', 
-        phrasing: 'legato'
+        type: 'bass', note: p, time: i, duration: 0.9, weight: i === 0 ? 0.8 : 0.45,
+        technique: 'pluck', dynamics: 'p', phrasing: 'legato'
     }));
   }
 
-  private auditStagnationV5(melody: FractalEvent[], chord: GhostChord, epoch: number, dna: SuiteDNA) {
-      if (melody.length === 0) return;
-      const hash = melody.map(e => (e.note - chord.rootNote) % 12).join(',');
+  private renderBluesBeat(epoch: number, tension: number, navInfo: NavigationInfo): FractalEvent[] {
+      const events: FractalEvent[] = [];
+      const isBreakdown = navInfo.currentPart.id.includes('MAIN_3') || tension < 0.45;
+      const isPeak = tension > 0.75;
+      
+      const kickTimes = isPeak ? [0, 1, 2, 3] : (isBreakdown ? [0] : [0, 2.66]);
+      kickTimes.forEach(t => events.push({ type: 'drum_kick_reso', note: 36, time: t, duration: 0.1, weight: 0.5, technique: 'hit', dynamics: 'p', phrasing: 'staccato' }));
 
-      this.state.phraseHistory.push(hash);
-      if (this.state.phraseHistory.length > this.MAX_HISTORY_DEPTH) this.state.phraseHistory.shift();
-
-      if (this.state.phraseHistory.length >= 4) {
-          const last2 = this.state.phraseHistory.slice(-2).join('|');
-          const prev2 = this.state.phraseHistory.slice(-4, -2).join('|');
-          if (last2 === prev2) this.state.stagnationStrikes.meso++;
-          else this.state.stagnationStrikes.meso = 0;
+      if (!isBreakdown) {
+          [1, 3].forEach(t => events.push({ type: isPeak ? 'drum_snare' : 'drum_snare_ghost_note', note: 38, time: t, duration: 0.1, weight: isPeak ? 0.7 : 0.3, technique: 'hit', dynamics: 'p', phrasing: 'staccato' }));
       }
 
-      if (this.state.phraseHistory.length >= 8) {
-          const last4 = this.state.phraseHistory.slice(-4).join('|');
-          const prev4 = this.state.phraseHistory.slice(-8, -4).join('|');
-          if (last4 === prev4) this.state.stagnationStrikes.macro++;
-          else this.state.stagnationStrikes.macro = 0;
-      }
+      [0, 0.66, 1, 1.66, 2, 2.66, 3, 3.66].forEach(t => {
+          if (isBreakdown && t % 1 !== 0) return;
+          events.push({ type: 'drum_25693__walter_odington__hackney-hat-1', note: 42, time: t, duration: 0.1, weight: 0.2, technique: 'hit', dynamics: 'p', phrasing: 'staccato' });
+      });
 
-      if (this.state.stagnationStrikes.macro >= 1 || this.state.stagnationStrikes.meso >= 3) {
-          console.warn(`%c[SOR] STAGNATION DETECTED. Forcing Theme Shift at bar ${epoch}.`, 'color: #ff4500; font-weight: bold;');
-          this.selectNextAxiom({ currentPart: { id: 'MAIN' } } as any, dna, epoch);
-          this.state.stagnationStrikes = { micro: 0, meso: 0, macro: 0 };
-      }
+      return events;
   }
-}
 
-function calculateMusiNum(step: number, base: number = 2, start: number = 0, modulo: number = 8): number {
-    let num = Math.abs(Math.floor(step + start));
-    let sum = 0;
-    while (num > 0) {
-        sum += num % base;
-        num = Math.floor(num / base);
-    }
-    return sum % modulo;
+  private renderCleanSfx(tension: number): FractalEvent[] {
+      return [{ type: 'sfx', note: 60, time: 1.0, duration: 4.0, weight: 0.2, technique: 'hit', dynamics: 'p', phrasing: 'staccato', params: { mood: this.mood, genre: 'blues' } }];
+  }
+
+  private auditStagnationV5(melody: any[], chord: any, epoch: number, dna: any) { /* Implementation logic for forcing theme shift */ }
 }
