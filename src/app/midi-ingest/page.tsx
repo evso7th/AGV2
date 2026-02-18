@@ -10,12 +10,66 @@ import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { detectKeyFromNotes, SEMITONE_TO_DEGREE, DEGREE_KEYS, TECHNIQUE_KEYS } from '@/lib/music-theory';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import { useRouter } from 'next/navigation';
 
 /**
- * #ЗАЧЕМ: Инструментальный Дашборд "Алхимик MIDI" v2.2.
- * #ЧТО: Линейный формат экспорта. Массивы phrase теперь пишутся в одну строку.
+ * #ЗАЧЕМ: Компактное форматирование ликов для экспорта.
+ * #ЧТО: Массивы phrase пишутся в одну строку для экономии места.
  */
+const formatLicksToText = (licks: any[]) => {
+    return "[\n" + licks.map(lick => {
+        const { phrase, ...rest } = lick;
+        const restJson = JSON.stringify(rest, null, 2);
+        // Заменяем вертикальный массив на горизонтальный для компактности
+        return `  {\n    "phrase": [${phrase.join(', ')}],\n${restJson.substring(4)}`;
+    }).join(",\n") + "\n]";
+};
+
+/**
+ * #ЗАЧЕМ: Извлечение и сжатие фраз из MIDI трека.
+ */
+const segmentMidiToCompactLicks = (track: any, root: number, origin: string, extraTags: string) => {
+    const result = [];
+    const barsPerLick = 4;
+    const bpm = 72; 
+    const secondsPerBar = (60 / bpm) * 4;
+    const userTags = extraTags.split(',').map(t => t.trim()).filter(Boolean);
+
+    for (let i = 0; i < track.duration / (secondsPerBar * barsPerLick); i++) {
+        const start = i * secondsPerBar * barsPerLick;
+        const end = (i + 1) * secondsPerBar * barsPerLick;
+        
+        const phraseNotes = track.notes.filter((n: any) => n.time >= start && n.time < end);
+        if (phraseNotes.length < 4) continue;
+
+        const compactPhrase: number[] = [];
+        phraseNotes.forEach((n: any) => {
+            const relativeTime = n.time - start;
+            const tick = Math.round((relativeTime / (secondsPerBar / 12))); 
+            const durationTicks = Math.max(1, Math.round(n.duration / (secondsPerBar / 12)));
+            
+            const degreeStr = SEMITONE_TO_DEGREE[(n.midi - root + 120) % 12] || 'R';
+            const degIdx = DEGREE_KEYS.indexOf(degreeStr);
+            const techIdx = 0;
+
+            compactPhrase.push(tick, durationTicks, degIdx, techIdx);
+        });
+
+        result.push({
+            id: `LICK_${Date.now()}_${i}`,
+            phrase: compactPhrase,
+            tags: ['legacy', 'compact', ...userTags],
+            metadata: {
+                origin: origin || 'Unknown MIDI',
+                timestamp: new Date().toISOString()
+            }
+        });
+    }
+    return result;
+};
+
 export default function MidiIngestPage() {
+    const router = useRouter();
     const [isAnalyzing, setIsAnalyzing] = useState(false);
     const [extractedLicks, setExtractedLicks] = useState<any[]>([]);
     const [detectedKey, setDetectedKey] = useState<{ root: number, mode: string } | null>(null);
@@ -41,11 +95,11 @@ export default function MidiIngestPage() {
                 setDetectedKey(key);
                 setManualRoot(key.root.toString());
 
-                const licks = segmentMidiToCompactLicks(track, key.root);
+                const licks = segmentMidiToCompactLicks(track, key.root, origin, extraTags);
                 setExtractedLicks(licks);
             } catch (err) {
                 console.error("Analysis failed", err);
-                alert("Ошибка анализа MIDI. Возможно, файл поврежден.");
+                alert("Ошибка анализа MIDI.");
             } finally {
                 setIsAnalyzing(false);
             }
@@ -53,64 +107,10 @@ export default function MidiIngestPage() {
         reader.readAsArrayBuffer(file);
     };
 
-    const segmentMidiToCompactLicks = (track: any, root: number) => {
-        const result = [];
-        const barsPerLick = 4;
-        const bpm = 72; 
-        const secondsPerBar = (60 / bpm) * 4;
-        
-        const userTags = extraTags.split(',').map(t => t.trim()).filter(Boolean);
-
-        for (let i = 0; i < track.duration / (secondsPerBar * barsPerLick); i++) {
-            const start = i * secondsPerBar * barsPerLick;
-            const end = (i + 1) * secondsPerBar * barsPerLick;
-            
-            const phraseNotes = track.notes.filter((n: any) => n.time >= start && n.time < end);
-            if (phraseNotes.length < 4) continue;
-
-            const compactPhrase: number[] = [];
-            phraseNotes.forEach((n: any) => {
-                const relativeTime = n.time - start;
-                const tick = Math.round((relativeTime / (secondsPerBar / 12))); 
-                const durationTicks = Math.max(1, Math.round(n.duration / (secondsPerBar / 12)));
-                
-                const degreeStr = SEMITONE_TO_DEGREE[(n.midi - root + 120) % 12] || 'R';
-                const degIdx = DEGREE_KEYS.indexOf(degreeStr);
-                const techIdx = 0;
-
-                compactPhrase.push(tick, durationTicks, degIdx, techIdx);
-            });
-
-            result.push({
-                id: `COMPACT_${Date.now()}_${i}`,
-                phrase: compactPhrase,
-                tags: ['legacy', 'compact', ...userTags],
-                metadata: {
-                    origin: origin || 'Unknown MIDI',
-                    timestamp: new Date().toISOString()
-                }
-            });
-        }
-        return result;
-    };
-
-    /**
-     * #ЗАЧЕМ: Красивое линейное форматирование.
-     * #ЧТО: Вручную собираем JSON, чтобы массивы были в одну строку.
-     */
-    const formatLicksToText = (licks: any[]) => {
-        return "[\n" + licks.map(lick => {
-            const { phrase, ...rest } = lick;
-            const restJson = JSON.stringify(rest, null, 2);
-            // Вставляем фразу красиво в середину
-            return `  {\n    "phrase": [${phrase.join(', ')}],\n${restJson.substring(4)}`;
-        }).join(",\n") + "\n]";
-    };
-
     const copyToClipboard = () => {
         const text = formatLicksToText(extractedLicks);
         navigator.clipboard.writeText(text);
-        alert('JSON в линейном формате скопирован! Теперь вставьте его в ingest_buffer.json.');
+        alert('JSON скопирован! Вставьте его в ingest_buffer.json.');
     };
 
     return (
@@ -122,8 +122,8 @@ export default function MidiIngestPage() {
                             <FileMusic className="h-8 w-8 text-primary" />
                         </div>
                         <div>
-                            <CardTitle className="text-3xl font-bold">Алхимик MIDI v2.2</CardTitle>
-                            <CardDescription>Завод по добыче Наследия (Linear Format Active)</CardDescription>
+                            <CardTitle className="text-3xl font-bold">Алхимик MIDI v2.3</CardTitle>
+                            <CardDescription>Завод по добыче Наследия (Linear Data Fixed)</CardDescription>
                         </div>
                     </div>
                 </CardHeader>
@@ -187,7 +187,7 @@ export default function MidiIngestPage() {
                                     <Select value={manualRoot} onValueChange={setManualRoot}>
                                         <SelectTrigger className="h-7 text-[10px]">
                                             <SelectValue />
-                                        </SelectValue>
+                                        </SelectTrigger>
                                         <SelectContent>
                                             {Array.from({length: 12}).map((_, i) => (
                                                 <SelectItem key={i} value={(60+i).toString()} className="text-[10px]">
