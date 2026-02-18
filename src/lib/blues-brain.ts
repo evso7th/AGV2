@@ -15,11 +15,11 @@ import {
 import { BLUES_SOLO_LICKS } from './assets/blues_guitar_solo';
 
 /**
- * #ЗАЧЕМ: Блюзовый Мозг V95.0 — "The Unified Ensemble Guard".
- * #ЧТО: 1. Синхронная мутация всего ансамбля каждые 12 тактов.
- *       2. Робастный выбор ликов с каскадным поиском (Fallback).
- *       3. Многоуровневая физика исполнения (20/60/20).
- *       4. Изоляция SFX: строго 1 раз за бридж в меланхолии.
+ * #ЗАЧЕМ: Блюзовый Мозг V96.0 — "The Imperial Diversity & Ensemble Sync".
+ * #ЧТО: 1. Восстановление логов [Narrative].
+ *       2. Активация Страйков Стагнации (Fractal Guardians).
+ *       3. Сессионная память ликов (DNA.sessionHistory).
+ *       4. Волновая физика напряжения (0.3 - 0.8).
  */
 
 export class BluesBrain {
@@ -54,6 +54,7 @@ export class BluesBrain {
       mesoHistory: [],
       macroHistory: [],
       lastPhraseHash: '',
+      lastLickId: '',
       blueNotePending: false,
       emotion: { melancholy: 0.8, darkness: 0.3 },
       stagnationStrikes: { micro: 0, meso: 0, macro: 0 },
@@ -80,7 +81,6 @@ export class BluesBrain {
   ): FractalEvent[] {
     const tension = dna.tensionMap?.[epoch] ?? 0.5;
     
-    // Сброс SFX флага при смене части
     if (navInfo.currentPart.id !== this.currentPartId) {
         this.currentPartId = navInfo.currentPart.id;
         this.sfxPlayedInPart = false;
@@ -88,15 +88,18 @@ export class BluesBrain {
 
     this.evaluateTimbralDramaturgy(tension, hints);
     
-    // #ЗАЧЕМ: Принудительная мутация каждые 12 тактов + фрактальные стражи.
+    // #ЗАЧЕМ: Реализация Страйков Стагнации.
     const isMutationBoundary = epoch % 12 === 0;
-    const isStagnating = this.state.stagnationStrikes.micro > 3;
+    const isStagnating = this.state.stagnationStrikes.micro >= 3;
 
     if (this.currentAxiom.length === 0 || navInfo.isPartTransition || isMutationBoundary || isStagnating) {
+        if (isStagnating) {
+            console.warn(`%c[Narrative] STAGNATION DETECTED at Bar ${epoch}. Forcing mutation reset.`, 'color: #ff4444; font-weight: bold;');
+        }
         this.refreshUnifiedMutation();
         this.selectNextAxiom(navInfo, dna, epoch);
-        this.logSorActivity(epoch, navInfo, dna);
-        this.state.stagnationStrikes.micro = 0; // Сброс стража
+        this.logNarrativeActivity(epoch, navInfo, dna);
+        this.state.stagnationStrikes.micro = 0; 
     }
 
     const events: FractalEvent[] = [];
@@ -107,7 +110,6 @@ export class BluesBrain {
     if (hints.drums) events.push(...this.renderBluesBeat(epoch, tension, navInfo));
     if (hints.pianoAccompaniment) events.push(...this.renderLyricalPiano(epoch, currentChord, tension));
 
-    // SFX: Только в бриджах и только 1 раз для меланхолии
     if (hints.sfx && this.mood === 'melancholic') {
         if (navInfo.currentPart.id.includes('BRIDGE') && !this.sfxPlayedInPart) {
             events.push(...this.renderCleanSfx(tension));
@@ -118,12 +120,14 @@ export class BluesBrain {
     return events;
   }
 
-  private logSorActivity(epoch: number, navInfo: NavigationInfo, dna: SuiteDNA) {
+  private logNarrativeActivity(epoch: number, navInfo: NavigationInfo, dna: SuiteDNA) {
       const type = this.state.vaccineActive?.type || 'none';
       const lickId = this.currentLickId;
       const poolSize = Object.keys(BLUES_SOLO_LICKS).length - this.usedLicksInSuite.size;
+      
+      // #ЗАЧЕМ: Восстановление привычного формата логов.
       console.info(
-          `%c[SOR] Bar ${epoch} | Act: ${navInfo.currentPart.id} | Lick: ${lickId} | Mutation: ${type} | Pool: ${poolSize}`,
+          `%c[Narrative] Bar ${epoch} | Act: ${navInfo.currentPart.id} | Lick: ${lickId} | Mutation: ${type} | Pool: ${poolSize}`,
           'color: #DA70D6; font-weight: bold; background: #222; padding: 2px 5px; border-radius: 3px;'
       );
   }
@@ -138,25 +142,39 @@ export class BluesBrain {
 
   private selectNextAxiom(navInfo: NavigationInfo, dna: SuiteDNA, epoch: number) {
       const dynasty = dna.dynasty || 'slow-burn';
+      const sessionHistory = dna.sessionHistory || [];
       
-      // 1. Поиск в основной династии
+      // 1. Поиск в основной династии (исключая сессионную историю)
       let pool = Object.keys(BLUES_SOLO_LICKS).filter(id => 
-          BLUES_SOLO_LICKS[id].tags.includes(dynasty) && !this.usedLicksInSuite.has(id)
+          BLUES_SOLO_LICKS[id].tags.includes(dynasty) && 
+          !this.usedLicksInSuite.has(id) &&
+          !sessionHistory.includes(id)
       );
 
-      // 2. Расширение пула если мало вариантов (ПЛАН №458)
+      // 2. Расширение пула если мало вариантов
       if (pool.length < 5) {
-          pool = Object.keys(BLUES_SOLO_LICKS).filter(id => !this.usedLicksInSuite.has(id));
+          pool = Object.keys(BLUES_SOLO_LICKS).filter(id => 
+              !this.usedLicksInSuite.has(id) && 
+              !sessionHistory.includes(id)
+          );
       }
 
-      // 3. Полный сброс если всё использовано
+      // 3. Полный сброс если всё использовано (но избегаем последнего лика)
       if (pool.length === 0) {
+          console.log('%c[Narrative] Suite Pool Depleted. Refreshing memory...', 'color: #888;');
           this.usedLicksInSuite.clear();
-          pool = Object.keys(BLUES_SOLO_LICKS);
+          pool = Object.keys(BLUES_SOLO_LICKS).filter(id => id !== this.state.lastLickId);
       }
 
       const nextId = pool[this.random.nextInt(pool.length)] || 'L01';
+      
+      // #ЗАЧЕМ: Детекция стагнации на уровне ID.
+      if (nextId === this.state.lastLickId) {
+          this.state.stagnationStrikes.micro++;
+      }
+
       this.currentLickId = nextId;
+      this.state.lastLickId = nextId;
       this.usedLicksInSuite.add(nextId);
       this.currentAxiom = this.mutateLick(BLUES_SOLO_LICKS[nextId].phrase);
   }
@@ -200,7 +218,7 @@ export class BluesBrain {
         else (hints as any).melody = 'guitar_shineOn';
     }
     if (hints.accompaniment) {
-        (hints as any).accompaniment = tension > 0.72 ? 'ep_rhodes_warm' : 'organ_soft_jazz';
+        (hints as any).accompaniment = tension > 0.72 ? 'ep_rhodes_70s' : 'organ_soft_jazz';
     }
   }
 

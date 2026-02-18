@@ -1,7 +1,7 @@
 /**
  * @fileOverview Universal Music Theory Utilities
  * #ЗАЧЕМ: Базовый набор инструментов для работы с нотами и энергетическими картами.
- * #ОБНОВЛЕНО (ПЛАН №461): Реализована волновая физика напряжения для Меланхолик Блюза.
+ * #ОБНОВЛЕНО (ПЛАН №461): Уточненная волновая физика с жестким лимитом 0.3 - 0.8.
  */
 
 import type { 
@@ -73,8 +73,7 @@ export function calculateMusiNum(step: number, base: number = 2, start: number =
 
 /**
  * #ЗАЧЕМ: Генерация энергетического скелета сюиты.
- * #ЧТО: Для меланхоличного блюза реализована физика "4-х волн". 
- *       Внутри каждого MAIN напряжение растет от 0.3 до 0.8 и падает обратно.
+ * #ЧТО: Жесткое ограничение 0.3 - 0.8 для меланхолии.
  */
 export function generateTensionMap(seed: number, totalBars: number, mood: Mood, parts?: any[]): number[] {
     const map: number[] = [];
@@ -93,12 +92,11 @@ export function generateTensionMap(seed: number, totalBars: number, mood: Mood, 
                 if (part.id === 'INTRO') {
                     tension = 0.3; 
                 } else if (part.id.startsWith('MAIN')) {
-                    // Волна: 0.3 -> 0.8 -> 0.3 внутри каждой части
                     tension = 0.3 + 0.5 * Math.sin(progress * Math.PI);
                 } else if (part.id === 'OUTRO') {
                     tension = 0.3 * (1 - progress * 0.5); 
                 } else {
-                    tension = 0.35; // Bridges
+                    tension = 0.35; 
                 }
                 
                 map.push(Math.max(0.3, Math.min(0.8, tension + getJitter(accumulatedBars + i))));
@@ -113,7 +111,6 @@ export function generateTensionMap(seed: number, totalBars: number, mood: Mood, 
         }
     }
     
-    // Заполнение остатка если есть
     while(map.length < totalBars) map.push(0.3);
     return map;
 }
@@ -170,6 +167,7 @@ export function generateSuiteDNA(totalBars: number, mood: Mood, initialSeed: num
         tensionMap, 
         seedLickId, 
         partLickMap,
+        sessionHistory,
         dynasty: genre === 'blues' ? getDynastyForMood(mood, initialSeed) : undefined
     };
 }

@@ -14,13 +14,15 @@ import { BASS_PRESETS } from '@/lib/bass-presets';
  * #ЗАЧЕМ: Центральный хаб типов AuraGroove.
  * #ЧТО: Ре-экспортирует типы из fractal.ts и определяет UI-специфичные структуры.
  *       Добавлена поддержка межсессионной памяти ликов.
- * #ОБНОВЛЕНО (ПЛАН №439): Поддержка многомасштабного аудита стагнации (1-2-4 такта).
+ * #ОБНОВЛЕНО (ПЛАН №461): Поддержка сессионной истории в DNA.
  */
 
 export type Mood = FractalMood;
 export type { FractalEvent, GhostChord };
 export type NavigationInfo = FractalNavigationInfo;
-export type SuiteDNA = FractalSuiteDNA;
+export type SuiteDNA = FractalSuiteDNA & {
+    sessionHistory?: string[];
+};
 export type InstrumentPart = FractalInstrumentPart;
 
 export type PlayableNote = {
@@ -336,18 +338,19 @@ export type InstrumentHints = FractalInstrumentHints & {
 export interface BluesCognitiveState {
   phraseState: 'call' | 'call_var' | 'response';
   tensionLevel: number;
-  phraseHistory: string[]; // History of single bar hashes
-  pianoHistory: string[];  // History of piano bar hashes
-  accompHistory: string[]; // History of accompaniment bar hashes
-  mesoHistory: string[];   // History of 2-bar hashes
-  macroHistory: string[];  // History of 4-bar hashes
+  phraseHistory: string[]; 
+  pianoHistory: string[]; 
+  accompHistory: string[]; 
+  mesoHistory: string[];   
+  macroHistory: string[];  
   lastPhraseHash: string;
+  lastLickId?: string;
   blueNotePending: boolean;
   emotion: {
     melancholy: number;
     darkness: number;
   };
-  /** #ЗАЧЕМ: Многоуровневые счетчики стагнации (План №439). */
+  /** #ЗАЧЕМ: Многоуровневые счетчики стагнации. */
   stagnationStrikes: {
     micro: number;
     meso: number;
