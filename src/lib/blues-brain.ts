@@ -177,7 +177,6 @@ export class BluesBrain {
       this.state.lastLickId = nextId;
       this.usedLicksInSuite.add(nextId);
       
-      // #ЗАЧЕМ: Поддержка сжатого и обычного форматов.
       const lickData = BLUES_SOLO_LICKS[nextId];
       const rawPhrase = Array.isArray(lickData.phrase) ? lickData.phrase : decompressCompactPhrase(lickData.phrase as any);
       
