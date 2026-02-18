@@ -1,6 +1,7 @@
+
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Midi } from '@tonejs/midi';
 import { Upload, FileMusic, Download, Search, Settings2, Sparkles, Tags } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -8,7 +9,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { detectKeyFromNotes, SEMITONE_TO_DEGREE, DEGREE_KEYS, TECHNIQUE_KEYS } from '@/lib/music-theory';
+import { detectKeyFromNotes, SEMITONE_TO_DEGREE, DEGREE_KEYS } from '@/lib/music-theory';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { useRouter } from 'next/navigation';
 
@@ -20,7 +21,6 @@ const formatLicksToText = (licks: any[]) => {
     return "[\n" + licks.map(lick => {
         const { phrase, ...rest } = lick;
         const restJson = JSON.stringify(rest, null, 2);
-        // Заменяем вертикальный массив на горизонтальный для компактности
         return `  {\n    "phrase": [${phrase.join(', ')}],\n${restJson.substring(4)}`;
     }).join(",\n") + "\n]";
 };
@@ -60,7 +60,7 @@ const segmentMidiToCompactLicks = (track: any, root: number, origin: string, ext
             phrase: compactPhrase,
             tags: ['legacy', 'compact', ...userTags],
             metadata: {
-                origin: origin || 'Unknown MIDI',
+                origin: origin.trim() || 'Unknown MIDI',
                 timestamp: new Date().toISOString()
             }
         });
@@ -73,9 +73,21 @@ export default function MidiIngestPage() {
     const [isAnalyzing, setIsAnalyzing] = useState(false);
     const [extractedLicks, setExtractedLicks] = useState<any[]>([]);
     const [detectedKey, setDetectedKey] = useState<{ root: number, mode: string } | null>(null);
+    const [midiTrack, setMidiTrack] = useState<any | null>(null);
     const [manualRoot, setManualRoot] = useState<string>("60");
     const [origin, setOrigin] = useState("");
     const [extraTags, setExtraTags] = useState("");
+
+    // #ЗАЧЕМ: Реактивное обновление ликов.
+    // #ЧТО: Как только пользователь меняет метаданные или тональность, 
+    //       результат в окне предпросмотра обновляется мгновенно.
+    useEffect(() => {
+        if (midiTrack && detectedKey) {
+            const root = parseInt(manualRoot, 10);
+            const licks = segmentMidiToCompactLicks(midiTrack, root, origin, extraTags);
+            setExtractedLicks(licks);
+        }
+    }, [midiTrack, detectedKey, manualRoot, origin, extraTags]);
 
     const onFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
         const file = e.target.files?.[0];
@@ -92,11 +104,11 @@ export default function MidiIngestPage() {
 
                 const noteNumbers = track.notes.map(n => n.midi);
                 const key = detectKeyFromNotes(noteNumbers);
+                
+                // Просто сохраняем трек и ключ, useEffect сделает остальное
+                setMidiTrack(track);
                 setDetectedKey(key);
                 setManualRoot(key.root.toString());
-
-                const licks = segmentMidiToCompactLicks(track, key.root, origin, extraTags);
-                setExtractedLicks(licks);
             } catch (err) {
                 console.error("Analysis failed", err);
                 alert("Ошибка анализа MIDI.");
@@ -110,7 +122,7 @@ export default function MidiIngestPage() {
     const copyToClipboard = () => {
         const text = formatLicksToText(extractedLicks);
         navigator.clipboard.writeText(text);
-        alert('JSON скопирован! Вставьте его в ingest_buffer.json.');
+        alert('JSON скопирован в буфер обмена!');
     };
 
     return (
@@ -122,8 +134,8 @@ export default function MidiIngestPage() {
                             <FileMusic className="h-8 w-8 text-primary" />
                         </div>
                         <div>
-                            <CardTitle className="text-3xl font-bold">Алхимик MIDI v2.3</CardTitle>
-                            <CardDescription>Завод по добыче Наследия (Linear Data Fixed)</CardDescription>
+                            <CardTitle className="text-3xl font-bold">Алхимик MIDI v2.4</CardTitle>
+                            <CardDescription>Синхронная трансмутация метаданных</CardDescription>
                         </div>
                     </div>
                 </CardHeader>
@@ -183,7 +195,7 @@ export default function MidiIngestPage() {
                                     </div>
                                 </div>
                                 <div className="w-48 space-y-1">
-                                    <Label className="text-[10px] uppercase">Корректировка</Label>
+                                    <Label className="text-[10px] uppercase">Корректировка тоники</Label>
                                     <Select value={manualRoot} onValueChange={setManualRoot}>
                                         <SelectTrigger className="h-7 text-[10px]">
                                             <SelectValue />
@@ -205,10 +217,10 @@ export default function MidiIngestPage() {
                         <div className="space-y-4">
                             <div className="flex justify-between items-center">
                                 <Label className="text-sm font-bold flex items-center gap-2 uppercase">
-                                    <Settings2 className="h-4 w-4" /> Извлеченные Аксиомы ({extractedLicks.length})
+                                    <Settings2 className="h-4 w-4" /> Результат трансмогрификации ({extractedLicks.length})
                                 </Label>
                                 <Button size="sm" onClick={copyToClipboard} className="gap-2 text-xs h-8">
-                                    <Download className="h-3 w-3" /> Copy Linear JSON
+                                    <Download className="h-3 w-3" /> Copy Clean JSON
                                 </Button>
                             </div>
                             <ScrollArea className="h-[300px] rounded-md border p-4 bg-black/40 font-mono text-[10px]">
@@ -222,7 +234,7 @@ export default function MidiIngestPage() {
                     {isAnalyzing && (
                         <div className="flex flex-col items-center justify-center py-12 space-y-4">
                             <div className="h-8 w-8 border-2 border-primary border-t-transparent rounded-full animate-spin"></div>
-                            <p className="text-xs text-primary font-bold animate-pulse">Трансмутация MIDI нот...</p>
+                            <p className="text-xs text-primary font-bold animate-pulse">Анализ частот и ритмов...</p>
                         </div>
                     )}
                 </CardContent>
