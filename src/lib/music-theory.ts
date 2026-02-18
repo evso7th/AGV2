@@ -1,7 +1,7 @@
 /**
  * @fileOverview Universal Music Theory Utilities
  * #ЗАЧЕМ: Базовый набор инструментов для работы с нотами, ладами и ритмом.
- * #ОБНОВЛЕНО (ПЛАН №445): Блюзовая теория вынесена в отдельный модуль.
+ * #ОБНОВЛЕНО (ПЛАН №450): Теперь SuiteDNA хранит partLickMap для тематической связи MAIN-секций.
  */
 
 import type { 
@@ -81,7 +81,7 @@ export function generateTensionMap(seed: number, totalBars: number, mood: Mood):
     const map: number[] = [];
     for (let i = 0; i < totalBars; i++) {
         const progress = i / totalBars;
-        const baseTension = 0.4 + 0.3 * Math.sin(progress * Math.PI); // Increased range
+        const baseTension = 0.4 + 0.3 * Math.sin(progress * Math.PI); 
         map.push(Math.max(0.05, Math.min(0.95, baseTension)));
     }
     return map;
@@ -112,7 +112,8 @@ export function createHarmonyAxiom(chord: GhostChord, mood: Mood, genre: Genre, 
             weight: 0.5,
             technique: 'swell',
             dynamics: 'p',
-            phrasing: 'legato'
+            phrasing: 'legato',
+            chordName: isMinor ? 'Am' : 'C'
         });
     });
 
@@ -132,6 +133,8 @@ export function generateSuiteDNA(totalBars: number, mood: Mood, initialSeed: num
         
         seedLickId = finalPool[Math.abs(Math.floor(initialSeed)) % finalPool.length];
 
+        // #ЗАЧЕМ: Тематическая связь MAIN-секций.
+        // #ЧТО: Каждой части назначается свой лик из одной Династии.
         blueprintParts.forEach((part: any, i: number) => {
             const partLick = finalPool[(Math.abs(Math.floor(initialSeed)) + (i + 1) * 7) % finalPool.length];
             partLickMap.set(part.id, partLick);
@@ -151,5 +154,16 @@ export function generateSuiteDNA(totalBars: number, mood: Mood, initialSeed: num
     });
 
     const tensionMap = generateTensionMap(initialSeed, totalBars, mood);
-    return { harmonyTrack, baseTempo: 72, rhythmicFeel: 'shuffle', bassStyle: 'walking', drumStyle: 'shuffle_A', soloPlanMap: new Map(), tensionMap, seedLickId, partLickMap };
+    return { 
+        harmonyTrack, 
+        baseTempo: 72, 
+        rhythmicFeel: 'shuffle', 
+        bassStyle: 'walking', 
+        drumStyle: 'shuffle_A', 
+        soloPlanMap: new Map(), 
+        tensionMap, 
+        seedLickId, 
+        partLickMap,
+        dynasty: genre === 'blues' ? getDynastyForMood(mood, initialSeed) : undefined
+    };
 }

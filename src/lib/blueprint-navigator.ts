@@ -256,8 +256,9 @@ export class BlueprintNavigator {
         
         const instrumentationLog = formatInstrumentation(partInfo.part.instrumentation, partInfo.part.instrumentRules?.drums, hints.melody as MelodyInstrument);
 
+        // #ОБНОВЛЕНО (ПЛАН №450): Добавлено название файла Блюпринта в лог.
         return `%c[NAVIGATOR @ Bar ${currentBar}] ${transitionType} Transition: ${partInfo.part.id} (${partDuration} bars) / ${bundleInfo.bundle.id} (${bundleDuration} bars)\n` +
-                     `  - Context: Genre: ${this.genre}, Mood: ${this.mood}, BP: ${this.blueprint.name}\n` +
+                     `  - Context: Genre: ${this.genre}, Mood: ${this.mood}, BP: ${this.blueprint.name} (${this.blueprint.id})\n` +
                      `  - ${instrumentationLog}\n` +
                      `  - Rules: ${rulesLog.join(' | ')}\n` +
                      `  - Mutation: ${mutationType}`;
