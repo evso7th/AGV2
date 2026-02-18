@@ -12,14 +12,13 @@ import {
     getChordNameForBar,
     DEGREE_TO_SEMITONE
 } from './blues-theory';
-import { BLUES_DRUM_RIFFS } from './assets/blues-drum-riffs';
 import { BLUES_SOLO_LICKS } from './assets/blues_guitar_solo';
 
 /**
- * #ЗАЧЕМ: Блюзовый Мозг V70.0 — "The Narrative Masterpiece".
- * #ЧТО: 1. Внедрена поддержка 4-тактных морфинг-бриджей.
- *       2. Реализовано Lyrical Piano с плотностью, зависящей от Tension.
- *       3. Семантическая связь MAIN-частей через partLickMap.
+ * #ЗАЧЕМ: Блюзовый Мозг V75.0 — "The Beat & Atmosphere Evolution".
+ * #ЧТО: 1. Реализован "Когнитивный Блюзовый Бит": ударные меняют стиль от Tension и Части БП.
+ *       2. Введен запрет на голоса в SFX для меланхолии (Instrumental Purity).
+ *       3. Добавлена логика "Вздоха Томов" (Tom Punctuation) на границах фраз.
  * #ПРИМЕЧАНИЕ: Изменение логики СОР осознанно разрешено для реализации музыкального повествования.
  */
 
@@ -78,18 +77,7 @@ export class BluesBrain {
   ): FractalEvent[] {
     const tension = dna.tensionMap?.[epoch] ?? 0.5;
     
-    // #ЗАЧЕМ: Реализация морфинг-бриджа.
-    // #ЧТО: Если мы в бридже, первые 2 такта сохраняем прошлую оркестровку, вторые 2 — будущую.
-    if (navInfo.currentPart.id.startsWith('BRIDGE')) {
-        const barInPart = epoch - navInfo.currentPartStartBar;
-        if (barInPart < 2) {
-            // Inherit logic (usually handled by sticky engine, but we log here)
-            // console.log(`[Bridge] Morphing Stage 1: Retaining context.`);
-        } else {
-            // console.log(`[Bridge] Morphing Stage 2: Leading into next part.`);
-        }
-    }
-
+    // Evaluate visual feedback through hints
     this.evaluateTimbralDramaturgy(tension, hints);
     
     const phraseTicks = Math.max(...(this.currentAxiom.map(n => n.t + n.d) || [12]), 12);
@@ -103,32 +91,36 @@ export class BluesBrain {
     const events: FractalEvent[] = [];
     const melodyEvents: FractalEvent[] = [];
 
-    // --- 1. MELODY ---
+    // --- 1. MELODY (The Soul) ---
     if (hints.melody) {
       const mEvents = this.renderMelodicSegment(epoch, currentChord, tension);
       melodyEvents.push(...mEvents);
       events.push(...mEvents);
     }
 
-    // --- 2. ACCOMPANIMENT ---
+    // --- 2. ACCOMPANIMENT (The Pull) ---
     if (hints.accompaniment) {
       events.push(...this.renderPullChops(epoch, currentChord, tension, hints.accompaniment as string));
     }
 
-    // --- 3. BASS ---
+    // --- 3. BASS (The Foundation) ---
     if (hints.bass) {
       events.push(...this.renderIronBass(currentChord, epoch));
     }
 
-    // --- 4. DRUMS ---
+    // --- 4. DRUMS (The Heartbeat & Beat) ---
     if (hints.drums) {
-      events.push(...this.renderDrums(epoch));
+      events.push(...this.renderBluesBeat(epoch, tension, navInfo));
     }
 
-    // --- 5. LYRICAL PIANO ---
-    // #ЗАЧЕМ: Пианист как звуковой индикатор Tension.
+    // --- 5. LYRICAL PIANO (The Reflection) ---
     if (hints.pianoAccompaniment) {
         events.push(...this.renderLyricalPiano(epoch, currentChord, tension));
+    }
+
+    // --- 6. SFX (The Atmosphere) ---
+    if (hints.sfx && epoch % 4 === 0) {
+        events.push(...this.renderCleanSfx(tension));
     }
 
     // --- SOR AUDIT ---
@@ -137,8 +129,114 @@ export class BluesBrain {
     return events;
   }
 
+  /**
+   * #ЗАЧЕМ: Реализация "Когнитивного Блюзового Бита".
+   * #ЧТО: Ритм меняется от Tension и этапа БП. 
+   */
+  private renderBluesBeat(epoch: number, tension: number, navInfo: NavigationInfo): FractalEvent[] {
+      const events: FractalEvent[] = [];
+      const isBreakdown = navInfo.currentPart.id === 'MAIN_3' || tension < 0.40;
+      const isPeak = navInfo.currentPart.id === 'MAIN_4' || tension > 0.75;
+      
+      // 1. KICK (The Pulse)
+      const kickTimes = isPeak ? [0, 1, 2, 3] : (isBreakdown ? [0] : [0, 2.66]); // 2.66 is "a" of 2 for shuffle
+      kickTimes.forEach(t => {
+          events.push({
+              type: 'drum_kick_reso',
+              note: 36,
+              time: t,
+              duration: 0.1,
+              weight: t === 0 ? 0.6 : 0.4,
+              technique: 'hit', dynamics: 'p', phrasing: 'staccato'
+          });
+      });
+
+      // 2. SNARE (The Backbeat)
+      if (!isBreakdown) {
+          const snareTimes = [1, 3];
+          snareTimes.forEach(t => {
+              events.push({
+                  type: isPeak ? 'drum_snare' : 'drum_snare_ghost_note',
+                  note: 38,
+                  time: t,
+                  duration: 0.1,
+                  weight: isPeak ? 0.7 : 0.3,
+                  technique: 'hit', dynamics: 'p', phrasing: 'staccato'
+              });
+          });
+      }
+
+      // 3. HATS (The Shuffle)
+      if (navInfo.currentPart.id !== 'INTRO') {
+          const hatTicks = [0, 0.66, 1, 1.66, 2, 2.66, 3, 3.66];
+          hatTicks.forEach(t => {
+              const isAccent = t % 1 === 0;
+              if (isBreakdown && !isAccent) return; // Only quarter notes in breakdown
+              
+              events.push({
+                  type: 'drum_25693__walter_odington__hackney-hat-1',
+                  note: 42,
+                  time: t,
+                  duration: 0.1,
+                  weight: isAccent ? 0.25 : 0.15,
+                  technique: 'hit', dynamics: 'p', phrasing: 'staccato'
+              });
+          });
+      }
+
+      // 4. RIDE (The Air)
+      if (tension > 0.55 && !isBreakdown) {
+          [0, 1, 2, 3].forEach(t => {
+              events.push({
+                  type: 'drum_ride_wetter',
+                  note: 51,
+                  time: t,
+                  duration: 1.0,
+                  weight: 0.2,
+                  technique: 'hit', dynamics: 'p', phrasing: 'staccato'
+              });
+          });
+      }
+
+      // 5. TOM PUNCTUATION (The Breath)
+      if (epoch % 4 === 3 && tension > 0.5) { // End of a 4-bar block
+          events.push({
+              type: 'drum_Sonor_Classix_Low_Tom',
+              note: 41,
+              time: 3.5, // "and" of 4
+              duration: 1.0,
+              weight: 0.4,
+              technique: 'hit', dynamics: 'p', phrasing: 'staccato'
+          });
+      }
+
+      return events;
+  }
+
+  /**
+   * #ЗАЧЕМ: Инструментальная чистота SFX в меланхолии.
+   * #ЧТО: Исключение голосов.
+   */
+  private renderCleanSfx(tension: number): FractalEvent[] {
+      return [{
+          type: 'sfx',
+          note: 60,
+          time: this.random.next() * 2,
+          duration: 4.0,
+          weight: 0.25 * (1.0 - tension),
+          technique: 'hit',
+          dynamics: 'p',
+          phrasing: 'staccato',
+          params: { 
+              mood: this.mood, 
+              genre: 'blues',
+              // #ЗАЧЕМ: Запрет голосов.
+              rules: { eventProbability: 1.0, categories: [{ name: 'dark', weight: 0.7 }, { name: 'common', weight: 0.3 }] }
+          }
+      }];
+  }
+
   private selectNextAxiom(navInfo: NavigationInfo, dna: SuiteDNA, epoch: number) {
-      // #ЗАЧЕМ: Семантическая связь частей через partLickMap.
       const lickIdFromDNA = dna.partLickMap?.get(navInfo.currentPart.id);
       
       let nextId: string;
@@ -172,19 +270,11 @@ export class BluesBrain {
     }
   }
 
-  /**
-   * #ЗАЧЕМ: Лирическое пианино, озвучивающее волны напряжения.
-   * #ЧТО: Плотность игры прямо пропорциональна tension. 
-   */
   private renderLyricalPiano(epoch: number, chord: GhostChord, tension: number): FractalEvent[] {
       const events: FractalEvent[] = [];
       const root = chord.rootNote + 24;
-      const isMinor = chord.chordType === 'minor';
-      const scale = [0, 3, 7, 10]; // i7
+      const scale = [0, 3, 7, 10]; 
       
-      // #ЗАЧЕМ: Звуковое отображение Tension.
-      // 0.3 tension -> ~1 нота в 2 такта.
-      // 0.9 tension -> 4 ноты в такт.
       const noteChance = tension * 0.8; 
       const beats = [0, 1.5, 3]; 
 
@@ -196,7 +286,7 @@ export class BluesBrain {
                   note: Math.min(root + deg, this.MELODY_CEILING),
                   time: beat,
                   duration: 2.0,
-                  weight: 0.3 + (tension * 0.2), // Плотнее нажатие при напряжении
+                  weight: 0.3 + (tension * 0.2), 
                   technique: 'hit',
                   dynamics: 'p',
                   phrasing: 'staccato',
@@ -268,16 +358,6 @@ export class BluesBrain {
         dynamics: 'p', 
         phrasing: 'legato'
     }));
-  }
-
-  private renderDrums(epoch: number): FractalEvent[] {
-    const pool = BLUES_DRUM_RIFFS.melancholic || [];
-    const p = pool[epoch % pool.length];
-    if (!p) return [];
-    const events: FractalEvent[] = [];
-    if (p.K) p.K.forEach(t => events.push({ type: 'drum_kick_reso', time: t/3, duration: 0.1, weight: 0.5, technique: 'hit', dynamics: 'p', phrasing: 'staccato' }));
-    if (p.SD) p.SD.forEach(t => events.push({ type: 'drum_snare_ghost_note', time: t/3, duration: 0.1, weight: 0.35, technique: 'hit', dynamics: 'p', phrasing: 'staccato' }));
-    return events;
   }
 
   private auditStagnationV5(melody: FractalEvent[], chord: GhostChord, epoch: number, dna: SuiteDNA) {
