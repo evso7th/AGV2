@@ -1,10 +1,9 @@
+
 import type { Note } from "@/types/music";
 
 /**
- * #ЗАЧЕМ: Сэмплер Yamaha CS-80 (Guitar Mode) с интеллектуальным выбором слоев.
- * #ЧТО: 1. Внедрена селекция сэмплов по ДЛИТЕЛЬНОСТИ (План №380).
- *       2. Слой 'long_notes' используется только для по-настоящему длинных нот.
- *       3. Повышена "нормированность" звучания блюзовых пассажей.
+ * #ЗАЧЕМ: Сэмплер Yamaha CS-80 (Guitar Mode).
+ * #ЧТО: ПЛАН №467 — Полный отказ от обрезания длительности. Ноты затухают сами.
  */
 
 const CS80_NOTE_NAMES = ["c", "c", "d", "eb", "e", "f", "f", "g", "g", "a", "bb", "b"];
@@ -33,8 +32,6 @@ export class CS80GuitarSampler {
         this.audioContext = audioContext;
         this.destination = destination;
         this.preamp = this.audioContext.createGain();
-        // #ЗАЧЕМ: Нормализация громкости. Сэмплы CS80 исходно очень громкие.
-        // #ОБНОВЛЕНО (ПЛАН №441): Громкость снижена в два раза по просьбе пользователя (0.4 -> 0.2).
         this.preamp.gain.value = 0.2; 
         this.preamp.connect(this.destination);
     }
@@ -75,10 +72,6 @@ export class CS80GuitarSampler {
         }
     }
 
-    /**
-     * #ЗАЧЕМ: Планирование воспроизведения.
-     * #ЧТО: Смена слоя теперь зависит от длительности ноты.
-     */
     public schedule(notes: Note[], time: number, forceShort: boolean = false) {
         if (!this.isInitialized) return;
 
@@ -89,11 +82,8 @@ export class CS80GuitarSampler {
                 return;
             }
 
-            // #ЗАЧЕМ: Экономное использование 'long_notes' (План №380).
-            // #ОБНОВЛЕНО (ПЛАН №441): Используем длинный сэмпл только если нота длится 3 сек и более (целая нота).
-            //      В остальных случаях предпочитаем 'norm_notes' для четкости атаки.
             const buffer = (forceShort || (note.duration || 0) < 3.0) ? layer.norm : layer.long;
-            this.playSample(buffer, note.midi, note.midi, time + note.time, note.velocity || 0.7, note.duration);
+            this.playSample(buffer, note.midi, note.midi, time + note.time, note.velocity || 0.7);
         });
     }
 
@@ -106,12 +96,11 @@ export class CS80GuitarSampler {
         const layer = this.buffers.get(closestMidi);
         if (!layer) return;
 
-        // #ОБНОВЛЕНО (ПЛАН №441): Порог 3.0 сек.
         const buffer = (forceShort || (note.duration || 0) < 3.0) ? layer.norm : layer.long;
-        this.playSample(buffer, closestMidi, note.midi, time + note.time, note.velocity || 0.7, note.duration);
+        this.playSample(buffer, closestMidi, note.midi, time + note.time, note.velocity || 0.7);
     }
 
-    private playSample(buffer: AudioBuffer, sampleMidi: number, targetMidi: number, startTime: number, velocity: number, duration?: number) {
+    private playSample(buffer: AudioBuffer, sampleMidi: number, targetMidi: number, startTime: number, velocity: number) {
         if (!isFinite(startTime) || !isFinite(velocity)) return;
 
         const source = this.audioContext.createBufferSource();
@@ -126,9 +115,9 @@ export class CS80GuitarSampler {
         gainNode.gain.setValueAtTime(0, startTime);
         gainNode.gain.linearRampToValueAtTime(velocity, startTime + 0.01);
 
-        if (duration && isFinite(duration)) {
-            gainNode.gain.setTargetAtTime(0, startTime + duration, 0.4);
-        }
+        // #ЗАЧЕМ: Закон Сохранения Хвостов.
+        // #ЧТО: Удалено обрезание по note.duration.
+        gainNode.gain.setTargetAtTime(0, startTime + 15.0, 0.8);
 
         source.start(startTime);
         source.onended = () => {

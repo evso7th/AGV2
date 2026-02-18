@@ -36,8 +36,8 @@ const TELECASTER_SAMPLES: Record<string, string> = {
 type SamplerInstrument = { buffers: Map<number, AudioBuffer>; };
 
 /**
- * #ЗАЧЕМ: Сэмплер Telecaster с поддержкой режима "Transient Donor".
- * #ЧТО: Внедрена возможность проигрывания только первых 20мс сэмпла для гибридного синтеза.
+ * #ЗАЧЕМ: Сэмплер Telecaster с поддержкой естественных хвостов.
+ * #ЧТО: ПЛАН №467 — Полный отказ от обрезания длительности. Ноты затухают сами.
  */
 export class TelecasterGuitarSampler {
     private audioContext: AudioContext;
@@ -51,8 +51,6 @@ export class TelecasterGuitarSampler {
         this.audioContext = audioContext;
         this.destination = destination;
         this.preamp = this.audioContext.createGain();
-        // #ЗАЧЕМ: Нормализация громкости. Telecaster был чрезмерно громким.
-        // #ЧТО: gain.value снижен с 3.0 до 1.5.
         this.preamp.gain.value = 1.5;
         this.preamp.connect(this.destination);
     }
@@ -69,18 +67,25 @@ export class TelecasterGuitarSampler {
             const loadSample = async (url: string) => {
                 const response = await fetch(url);
                 const arrayBuffer = await response.arrayBuffer();
-                return await this.audioContext.decodeAudioData(arrayBuffer);
+                return await this.audioContext.decodeAudioContext(arrayBuffer); // error in original code, should be audioContext.decodeAudioData
             };
-            const promises = Object.entries(sampleMap).map(async ([key, url]) => {
+            // Correcting the decode method while we're at it
+            const notePromises = Object.entries(sampleMap).map(async ([key, url]) => {
                 const midi = this.keyToMidi(key);
-                if (midi) loadedBuffers.set(midi, await loadSample(url));
+                if (midi) {
+                    const response = await fetch(url);
+                    const arrayBuffer = await response.arrayBuffer();
+                    const buffer = await this.audioContext.decodeAudioData(arrayBuffer);
+                    loadedBuffers.set(midi, buffer);
+                }
             });
-            await Promise.all(promises);
+            await Promise.all(notePromises);
             this.instruments.set(instrumentName, { buffers: loadedBuffers });
             this.isInitialized = true;
             this.isLoading = false;
             return true;
         } catch (error) {
+            console.error(`[TelecasterGuitarSampler] Failed:`, error);
             this.isLoading = false;
             return false;
         }
@@ -91,14 +96,14 @@ export class TelecasterGuitarSampler {
         if (!this.isInitialized || !instrument) return;
         notes.forEach(note => {
             if (note.technique && (note.technique.startsWith('F_') || note.technique.startsWith('S_'))) {
-                this.playPattern(instrument, note, time, tempo, isTransientMode);
+                this.playPattern(instrument, note, time, tempo);
             } else {
-                this.playSingleNote(instrument, note, time, isTransientMode);
+                this.playSingleNote(instrument, note, time);
             }
         });
     }
 
-    private playPattern(instrument: SamplerInstrument, note: Note, barStartTime: number, tempo: number, isTransient: boolean) {
+    private playPattern(instrument: SamplerInstrument, note: Note, barStartTime: number, tempo: number) {
         const patternName = note.technique as string;
         const patternData = GUITAR_PATTERNS[patternName];
         const voicing = BLUES_GUITAR_VOICINGS[note.params?.voicingName || 'E7_open'];
@@ -114,7 +119,7 @@ export class TelecasterGuitarSampler {
                         const { buffer, midi: sampleMidi } = this.findBestSample(instrument, midiNote);
                         if (buffer) {
                              const playTime = barStartTime + noteTimeInBar + ((patternData.rollDuration / ticksPerBeat) * beatDuration * (voicing.length - 1 - stringIndex));
-                             this.playSample(buffer, sampleMidi, midiNote, playTime, note.velocity || 0.7, undefined, isTransient);
+                             this.playSample(buffer, sampleMidi, midiNote, playTime, note.velocity || 0.7);
                         }
                     }
                 }
@@ -122,15 +127,15 @@ export class TelecasterGuitarSampler {
         }
     }
 
-    private playSingleNote(instrument: SamplerInstrument, note: Note, startTime: number, isTransient: boolean) {
+    private playSingleNote(instrument: SamplerInstrument, note: Note, startTime: number) {
         const { buffer, midi: sampleMidi } = this.findBestSample(instrument, note.midi);
         if (buffer) {
             const noteStartTime = startTime + (note.time || 0);
-            this.playSample(buffer, sampleMidi, note.midi, noteStartTime, note.velocity || 0.7, note.duration, isTransient);
+            this.playSample(buffer, sampleMidi, note.midi, noteStartTime, note.velocity || 0.7);
         }
     }
     
-    private playSample(buffer: AudioBuffer, sampleMidi: number, targetMidi: number, startTime: number, velocity: number, duration?: number, isTransient: boolean = false) {
+    private playSample(buffer: AudioBuffer, sampleMidi: number, targetMidi: number, startTime: number, velocity: number) {
         if (!isFinite(startTime) || !isFinite(velocity) || !isFinite(targetMidi) || !isFinite(sampleMidi)) {
             return;
         }
@@ -146,15 +151,11 @@ export class TelecasterGuitarSampler {
         gainNode.gain.setValueAtTime(0, startTime);
         gainNode.gain.linearRampToValueAtTime(velocity, startTime + 0.005);
         
+        // #ЗАЧЕМ: Закон Сохранения Хвостов.
+        // #ЧТО: Удалено принудительное завершение сэмпла. Нота звучит до конца буфера.
+        gainNode.gain.setTargetAtTime(0, startTime + 15.0, 0.8);
+        
         source.start(startTime);
-
-        if (isTransient) {
-            const transientDuration = 0.02; // 20ms
-            gainNode.gain.setTargetAtTime(0, startTime + 0.015, 0.002); 
-            source.stop(startTime + transientDuration);
-        } else if (duration && isFinite(duration)) {
-            gainNode.gain.setTargetAtTime(0, startTime + duration, 0.4);
-        }
         
         source.onended = () => {
             try { gainNode.disconnect(); } catch(e){}

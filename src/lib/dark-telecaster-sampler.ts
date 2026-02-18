@@ -189,11 +189,10 @@ export class DarkTelecasterSampler {
         const { buffer, midi: sampleMidi } = this.findBestSample(instrument, note.midi);
         if (!buffer) return;
         const noteStartTime = startTime + (note.time || 0);
-        this.playSample(buffer, sampleMidi, note.midi, noteStartTime, note.velocity || 0.7, note.duration);
+        this.playSample(buffer, sampleMidi, note.midi, noteStartTime, note.velocity || 0.7);
     }
     
-    private playSample(buffer: AudioBuffer, sampleMidi: number, targetMidi: number, startTime: number, velocity: number, duration?: number) {
-        // #ЗАЧЕМ: Предотвращение критической ошибки AudioParam.
+    private playSample(buffer: AudioBuffer, sampleMidi: number, targetMidi: number, startTime: number, velocity: number) {
         if (!isFinite(startTime) || !isFinite(velocity) || !isFinite(targetMidi) || !isFinite(sampleMidi)) {
             return;
         }
@@ -210,9 +209,9 @@ export class DarkTelecasterSampler {
         gainNode.gain.setValueAtTime(0, startTime);
         gainNode.gain.linearRampToValueAtTime(velocity, startTime + 0.005);
 
-        if (duration && isFinite(duration)) {
-            gainNode.gain.setTargetAtTime(0, startTime + duration, 0.5);
-        }
+        // #ЗАЧЕМ: Закон Сохранения Хвостов.
+        // #ЧТО: Удалено обрезание по note.duration.
+        gainNode.gain.setTargetAtTime(0, startTime + 15.0, 0.8);
         
         source.start(startTime);
         source.onended = () => {

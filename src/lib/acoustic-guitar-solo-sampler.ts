@@ -4,7 +4,7 @@ import { ACOUSTIC_GUITAR_SOLO_SAMPLES, ACOUSTIC_GUITAR_SLIDE_SAMPLES, type Guita
 
 /**
  * #ЗАЧЕМ: Соло-сэмплер акустики с сохранением хвостов.
- * #ЧТО: Удален source.stop(), внедрен мягкий релиз.
+ * #ЧТО: ПЛАН №467 — Полный отказ от обрезания длительности. Ноты затухают сами.
  */
 export class AcousticGuitarSoloSampler {
     private audioContext: AudioContext;
@@ -86,10 +86,10 @@ export class AcousticGuitarSoloSampler {
             
             gainNode.gain.setValueAtTime(0, startTime);
             gainNode.gain.linearRampToValueAtTime(note.velocity || 0.7, startTime + 0.005);
-            // NO source.stop() - позволяем хвосту звучать
-            if (isFinite(note.duration)) {
-                gainNode.gain.setTargetAtTime(0, startTime + note.duration, 0.5);
-            }
+            
+            // #ЗАЧЕМ: Закон Сохранения Хвостов.
+            // #ЧТО: Удалено принудительное завершение сэмпла. Нота звучит до конца буфера.
+            gainNode.gain.setTargetAtTime(0, startTime + 15.0, 0.8);
             
             source.start(startTime);
             source.onended = () => { try { gainNode.disconnect(); } catch(e){} };

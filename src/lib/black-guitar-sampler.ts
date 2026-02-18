@@ -4,9 +4,8 @@ import { BLUES_GUITAR_VOICINGS } from './assets/guitar-voicings';
 import { GUITAR_PATTERNS } from './assets/guitar-patterns';
 
 /**
- * #ЗАЧЕМ: Сэмплер Black Acoustic с поддержкой естественных хвостов (tails) и режима "Transient Donor".
- * #ЧТО: Внедрена возможность проигрывания только первых 20мс сэмпла (Surgical Cut) для создания глюков.
- *       Использует расширенную карту сэмплов E3-E6.
+ * #ЗАЧЕМ: Сэмплер Black Acoustic с поддержкой естественных хвостов (tails).
+ * #ЧТО: ПЛАН №467 — Полный отказ от обрезания длительности. Ноты затухают сами.
  */
 const BLACK_GUITAR_ORD_SAMPLES: Record<string, string> = {
     'e3': '/assets/acoustic_guitar_samples/black/ord/twang_e3_f_rr3.ogg',
@@ -15,7 +14,7 @@ const BLACK_GUITAR_ORD_SAMPLES: Record<string, string> = {
     'a3': '/assets/acoustic_guitar_samples/black/ord/twang_a3_f_rr2.ogg',
     'b3': '/assets/acoustic_guitar_samples/black/ord/twang_b3_mf_rr3.ogg',
     'c4': '/assets/acoustic_guitar_samples/black/ord/twang_c4_mf_rr2.ogg',
-    'd4': '/assets/acoustic_guitar_samples/black/ord/twang_d4_mf_rr3.ogg',
+    'd4': '/assets/acoustic_guitar_samples/black/ord/twang_c4_mf_rr2.ogg', // Fallback for D4
     'e4': '/assets/acoustic_guitar_samples/black/ord/twang_e4_mf_rr1.ogg',
     'f4': '/assets/acoustic_guitar_samples/black/ord/twang_f4_mf_rr1.ogg',
     'g4': '/assets/acoustic_guitar_samples/black/ord/twang_g4_mf_rr2.ogg',
@@ -50,8 +49,6 @@ export class BlackGuitarSampler {
         this.destination = destination;
 
         this.preamp = this.audioContext.createGain();
-        // #ЗАЧЕМ: Уменьшение громкости в 2 раза по просьбе пользователя.
-        // #ЧТО: gain.value снижен с 1.2 до 0.6.
         this.preamp.gain.value = 0.6;
         this.preamp.connect(this.destination);
     }
@@ -132,7 +129,7 @@ export class BlackGuitarSampler {
                         const { buffer, midi: sampleMidi } = this.findBestSample(instrument, midiNote);
                         if (buffer) {
                              const playTime = barStartTime + noteTimeInBar + ((patternData.rollDuration / ticksPerBeat) * beatDuration * (voicing.length - 1 - stringIndex));
-                             this.playSample(buffer, sampleMidi, midiNote, playTime, note.velocity || 0.7, undefined, isTransient);
+                             this.playSample(buffer, sampleMidi, midiNote, playTime, note.velocity || 0.7, isTransient);
                         }
                     }
                 }
@@ -144,10 +141,10 @@ export class BlackGuitarSampler {
         const { buffer, midi: sampleMidi } = this.findBestSample(instrument, note.midi);
         if (!buffer) return;
         const noteStartTime = startTime + (note.time || 0);
-        this.playSample(buffer, sampleMidi, note.midi, noteStartTime, note.velocity || 0.7, note.duration, isTransient);
+        this.playSample(buffer, sampleMidi, note.midi, noteStartTime, note.velocity || 0.7, isTransient);
     }
     
-    private playSample(buffer: AudioBuffer, sampleMidi: number, targetMidi: number, startTime: number, velocity: number, duration?: number, isTransient: boolean = false) {
+    private playSample(buffer: AudioBuffer, sampleMidi: number, targetMidi: number, startTime: number, velocity: number, isTransient: boolean = false) {
         if (!isFinite(startTime) || !isFinite(velocity) || !isFinite(targetMidi) || !isFinite(sampleMidi)) {
             return;
         }
@@ -164,17 +161,12 @@ export class BlackGuitarSampler {
         gainNode.gain.setValueAtTime(0, startTime);
         gainNode.gain.linearRampToValueAtTime(velocity, startTime + 0.005);
 
-        if (isTransient) {
-            const transientDuration = 0.02; // 20ms
-            source.start(startTime);
-            gainNode.gain.setTargetAtTime(0, startTime + 0.015, 0.002);
-            source.stop(startTime + transientDuration);
-        } else {
-            if (duration && isFinite(duration)) {
-                gainNode.gain.setTargetAtTime(0, startTime + duration, 0.5);
-            }
-            source.start(startTime);
-        }
+        // #ЗАЧЕМ: Закон Сохранения Хвостов.
+        // #ЧТО: Удалено обрезание по note.duration. Нота звучит до конца сэмпла.
+        //      Добавлен пассивный релиз-предохранитель на 15-й секунде.
+        gainNode.gain.setTargetAtTime(0, startTime + 15.0, 0.8);
+        
+        source.start(startTime);
         
         source.onended = () => {
             try { gainNode.disconnect(); } catch(e) {}
