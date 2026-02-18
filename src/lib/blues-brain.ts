@@ -15,11 +15,11 @@ import {
 import { BLUES_SOLO_LICKS } from './assets/blues_guitar_solo';
 
 /**
- * #ЗАЧЕМ: Блюзовый Мозг V98.0 — "The Integrated Pianist".
- * #ЧТО: 1. Пианист интегрирован в гармонию ансамбля (играет по аккордам).
- *       2. Реализованы арпеджио и соло-пассажи для Пианиста в зависимости от Tension.
- *       3. Полная синхронизация СОР: зацикливание Пианиста триггерит смену темы для всех.
- *       4. Исправлена передача barCount для корректной телеметрии.
+ * #ЗАЧЕМ: Блюзовый Мозг V99.0 — "The Narrative Melodist".
+ * #ЧТО: 1. Реализован "Melodic Glue" — ноты цепляются друг за друга через микро-overlaps.
+ *       2. Внедрена ритмика "та-ра-тита-там" с динамическим весом каждой доли.
+ *       3. Гитарист и Пианист синхронизированы по нарративной сетке (12 тактов).
+ *       4. Липкий оркестр (Persistent Ensemble) гарантирует выживание всех участников лотереи.
  */
 
 export class BluesBrain {
@@ -34,7 +34,8 @@ export class BluesBrain {
 
   private state: BluesCognitiveState & { 
       introBassStyle: 'drone' | 'riff' | 'walking',
-      lastPianoHash: string 
+      lastPianoHash: string,
+      currentMutationType: string
   };
   private sfxPlayedInPart = false;
   private currentPartId = '';
@@ -63,7 +64,8 @@ export class BluesBrain {
       emotion: { melancholy: 0.8, darkness: 0.3 },
       stagnationStrikes: { micro: 0, meso: 0, macro: 0 },
       vaccineActive: { part: 'ensemble', type: 'jitter' },
-      introBassStyle: selectedIntroStyle
+      introBassStyle: selectedIntroStyle,
+      currentMutationType: 'jitter'
     };
   }
 
@@ -93,12 +95,13 @@ export class BluesBrain {
 
     this.evaluateTimbralDramaturgy(tension, hints);
     
+    // #ЗАЧЕМ: Принудительная мутация всего ансамбля каждые 12 тактов.
     const isMutationBoundary = epoch % 12 === 0;
     const isStagnating = this.state.stagnationStrikes.micro >= 3;
 
     if (this.currentAxiom.length === 0 || navInfo.isPartTransition || isMutationBoundary || isStagnating) {
         if (isStagnating) {
-            console.warn(`%c[Narrative] ENSEMBLE STAGNATION at Bar ${epoch}. Injecting Diversity Vaccine...`, 'color: #ff4444; font-weight: bold;');
+            console.warn(`%c[Narrative] ENSEMBLE STAGNATION at Bar ${epoch}. Triggering Global Reset.`, 'color: #ff4444; font-weight: bold;');
         }
         this.refreshUnifiedMutation();
         this.selectNextAxiom(navInfo, dna, epoch);
@@ -116,7 +119,6 @@ export class BluesBrain {
     if (hints.pianoAccompaniment) {
         const pianoEvents = this.renderIntegratedPiano(epoch, currentChord, tension);
         
-        // Stagnation Guard for Piano
         const pianoHash = pianoEvents.map(e => e.note).join('|');
         if (pianoHash === this.state.lastPianoHash && pianoEvents.length > 0) {
             this.state.stagnationStrikes.micro++;
@@ -139,20 +141,19 @@ export class BluesBrain {
   }
 
   private logNarrativeActivity(epoch: number, navInfo: NavigationInfo, dna: SuiteDNA) {
-      const type = this.state.vaccineActive?.type || 'none';
+      const type = this.state.currentMutationType;
       const lickId = this.currentLickId;
       console.info(
-          `%c[Narrative] Bar ${epoch} | Act: ${navInfo.currentPart.id} | Lick: ${lickId} | Mutation: ${type}`,
+          `%c[Narrative] Bar ${epoch} | Act: ${navInfo.currentPart.id} | New Theme: ${lickId} | Mutation: ${type}`,
           'color: #DA70D6; font-weight: bold; background: #222; padding: 2px 5px; border-radius: 3px;'
       );
   }
 
   private refreshUnifiedMutation() {
-      const types: ('jitter' | 'inversion' | 'transposition' | 'rhythm')[] = ['jitter', 'inversion', 'rhythm', 'transposition'];
-      this.state.vaccineActive = { 
-          part: 'ensemble', 
-          type: types[this.random.nextInt(types.length)] 
-      };
+      const types: ('jitter' | 'inversion' | 'rhythm' | 'transposition')[] = ['jitter', 'inversion', 'rhythm', 'transposition'];
+      const nextType = types[this.random.nextInt(types.length)];
+      this.state.currentMutationType = nextType;
+      this.state.vaccineActive = { part: 'ensemble', type: nextType };
   }
 
   private selectNextAxiom(navInfo: NavigationInfo, dna: SuiteDNA, epoch: number) {
@@ -166,15 +167,11 @@ export class BluesBrain {
       );
 
       if (pool.length < 5) {
-          pool = Object.keys(BLUES_SOLO_LICKS).filter(id => 
-              !this.usedLicksInSuite.has(id) && 
-              !sessionHistory.includes(id)
-          );
-      }
-
-      if (pool.length === 0) {
+          console.log(`%c[Narrative] Pool depleted for dynasty "${dynasty}". Resetting memory.`, 'color: #888;');
           this.usedLicksInSuite.clear();
-          pool = Object.keys(BLUES_SOLO_LICKS).filter(id => id !== this.state.lastLickId);
+          pool = Object.keys(BLUES_SOLO_LICKS).filter(id => 
+              BLUES_SOLO_LICKS[id].tags.includes(dynasty) && !sessionHistory.includes(id)
+          );
       }
 
       const nextId = pool[this.random.nextInt(pool.length)] || 'L01';
@@ -185,7 +182,7 @@ export class BluesBrain {
   }
 
   private mutateLick(phrase: any[]): any[] {
-      const type = this.state.vaccineActive?.type || 'jitter';
+      const type = this.state.currentMutationType;
       let mutated = JSON.parse(JSON.stringify(phrase));
       
       switch(type) {
@@ -223,74 +220,43 @@ export class BluesBrain {
         else (hints as any).melody = 'guitar_shineOn';
     }
     if (hints.accompaniment) {
-        (hints as any).accompaniment = tension > 0.72 ? 'ep_rhodes_70s' : 'organ_soft_jazz';
+        (hints as any).accompaniment = tension > 0.72 ? 'ep_rhodes_warm' : 'organ_soft_jazz';
     }
   }
 
   /**
-   * #ЗАЧЕМ: Интегрированное пианино. Играет в гармонии с ансамблем.
-   * #ЧТО: Использует ступени аккорда для создания арпеджио или соло-ответов.
+   * #ЗАЧЕМ: Нарративная Мелодия. Ноты цепляются друг за друга.
+   * #ЧТО: Ритмика "та-ра-тита-там" через микро-перекрытия и легато.
    */
-  private renderIntegratedPiano(epoch: number, chord: GhostChord, tension: number): FractalEvent[] {
-      const events: FractalEvent[] = [];
-      const root = chord.rootNote + 24;
-      const isMin = chord.chordType === 'minor' || chord.chordType === 'diminished';
-      
-      // Ступени для пианино: 1, 3, 5, 7, 9
-      const degrees = [0, isMin ? 3 : 4, 7, 10, 14];
-      
-      if (tension < 0.45) {
-          // Tier 1: Интимные ответы (одиночные ноты)
-          const noteChance = 0.2 + tension * 0.5;
-          [1.5, 3.0].forEach(beat => {
-              if (this.random.next() < noteChance) {
-                  const deg = degrees[this.random.nextInt(degrees.length)];
-                  events.push({
-                      type: 'pianoAccompaniment',
-                      note: Math.min(root + deg, this.MELODY_CEILING),
-                      time: beat, duration: 4.0, weight: 0.3 + tension * 0.2,
-                      technique: 'hit', dynamics: 'p', phrasing: 'staccato',
-                      params: { barCount: epoch }
-                  });
-              }
-          });
-      } else {
-          // Tier 2-3: Арпеджио и пассажи
-          const complexity = Math.floor(tension * 6); // 2-6 нот
-          const step = 4.0 / complexity;
-          
-          for (let i = 0; i < complexity; i++) {
-              if (this.random.next() < 0.8) {
-                  const deg = degrees[i % degrees.length];
-                  events.push({
-                      type: 'pianoAccompaniment',
-                      note: Math.min(root + deg, this.MELODY_CEILING),
-                      time: i * step, 
-                      duration: 2.5, 
-                      weight: 0.4 + tension * 0.3,
-                      technique: 'hit', dynamics: 'p', phrasing: 'staccato',
-                      params: { barCount: epoch }
-                  });
-              }
-          }
-      }
-      
-      return events;
-  }
-
   private renderMelodicSegment(epoch: number, chord: GhostChord, tension: number): FractalEvent[] {
     const barInCycle = epoch % 4;
     const barOffset = barInCycle * 12;
     const barNotes = this.currentAxiom.filter(n => n.t >= barOffset && n.t < barOffset + 12);
     
-    return barNotes.map(n => ({
-        type: 'melody',
-        note: Math.min(chord.rootNote + 36 + (DEGREE_TO_SEMITONE[n.deg] || 0) + (n.octShift || 0), this.MELODY_CEILING),
-        time: (n.t % 12) / 3,
-        duration: n.d / 3,
-        weight: 0.85, technique: n.tech || 'pick',
-        dynamics: tension > 0.7 ? 'mf' : 'p', phrasing: 'legato'
-    }));
+    return barNotes.map((n, i) => {
+        // Ритмический Клей: Если следующая нота близко, удлиняем текущую для перекрытия
+        const nextNote = barNotes[i+1];
+        let duration = n.d / 3;
+        if (nextNote && (nextNote.t - (n.t + n.d)) < 1) {
+            duration += 0.15; // Крошечное перекрытие для "зацепления"
+        }
+
+        // Динамический вес: Акценты на сильных долях фразы
+        const isAccent = n.t % 6 === 0;
+        const weight = isAccent ? 0.92 : 0.75;
+
+        return {
+            type: 'melody',
+            note: Math.min(chord.rootNote + 36 + (DEGREE_TO_SEMITONE[n.deg] || 0) + (n.octShift || 0), this.MELODY_CEILING),
+            time: (n.t % 12) / 3,
+            duration: duration,
+            weight: weight * (0.9 + this.random.next() * 0.2),
+            technique: n.tech || 'pick',
+            dynamics: tension > 0.7 ? 'mf' : 'p',
+            phrasing: 'legato',
+            params: { barCount: epoch }
+        };
+    });
   }
 
   private renderDynamicAccompaniment(epoch: number, chord: GhostChord, tension: number): FractalEvent[] {
@@ -380,6 +346,45 @@ export class BluesBrain {
           if (isBreakdown && t % 1 !== 0) return;
           events.push({ type: 'drum_25693__walter_odington__hackney-hat-1', note: 42, time: t, duration: 0.1, weight: 0.22, technique: 'hit', dynamics: 'p', phrasing: 'staccato' });
       });
+      return events;
+  }
+
+  private renderIntegratedPiano(epoch: number, chord: GhostChord, tension: number): FractalEvent[] {
+      const events: FractalEvent[] = [];
+      const root = chord.rootNote + 24;
+      const isMin = chord.chordType === 'minor' || chord.chordType === 'diminished';
+      const degrees = [0, isMin ? 3 : 4, 7, 10, 14];
+      
+      if (tension < 0.45) {
+          const noteChance = 0.2 + tension * 0.5;
+          [1.5, 3.0].forEach(beat => {
+              if (this.random.next() < noteChance) {
+                  const deg = degrees[this.random.nextInt(degrees.length)];
+                  events.push({
+                      type: 'pianoAccompaniment',
+                      note: Math.min(root + deg, this.MELODY_CEILING),
+                      time: beat, duration: 4.0, weight: 0.3 + tension * 0.2,
+                      technique: 'hit', dynamics: 'p', phrasing: 'staccato',
+                      params: { barCount: epoch }
+                  });
+              }
+          });
+      } else {
+          const complexity = Math.floor(tension * 6);
+          const step = 4.0 / complexity;
+          for (let i = 0; i < complexity; i++) {
+              if (this.random.next() < 0.8) {
+                  const deg = degrees[i % degrees.length];
+                  events.push({
+                      type: 'pianoAccompaniment',
+                      note: Math.min(root + deg, this.MELODY_CEILING),
+                      time: i * step, duration: 2.5, weight: 0.4 + tension * 0.3,
+                      technique: 'hit', dynamics: 'p', phrasing: 'staccato',
+                      params: { barCount: epoch }
+                  });
+              }
+          }
+      }
       return events;
   }
 
