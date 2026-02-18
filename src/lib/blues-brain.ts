@@ -1,4 +1,4 @@
-import type {
+import {
   FractalEvent,
   GhostChord,
   InstrumentHints,
@@ -15,11 +15,10 @@ import {
 import { BLUES_SOLO_LICKS } from './assets/blues_guitar_solo';
 
 /**
- * #ЗАЧЕМ: Блюзовый Мозг V75.0 — "The Beat & Atmosphere Evolution".
- * #ЧТО: 1. Реализован "Когнитивный Блюзовый Бит": ударные меняют стиль от Tension и Части БП.
- *       2. Введен запрет на голоса в SFX для меланхолии (Instrumental Purity).
- *       3. Добавлена логика "Вздоха Томов" (Tom Punctuation) на границах фраз.
- * #ПРИМЕЧАНИЕ: Изменение логики СОР осознанно разрешено для реализации музыкального повествования.
+ * #ЗАЧЕМ: Блюзовый Мозг V76.0 — "The Imperial Standard".
+ * #ЧТО: 1. SFX переведены в режим "Редких теней" (раз в 12-24 такта).
+ *       2. Сохранена вся когнитивная логика бита, пианино и нарратива.
+ *       3. Полная поддержка 4-актной структуры MAIN_1-4.
  */
 
 export class BluesBrain {
@@ -77,7 +76,6 @@ export class BluesBrain {
   ): FractalEvent[] {
     const tension = dna.tensionMap?.[epoch] ?? 0.5;
     
-    // Evaluate visual feedback through hints
     this.evaluateTimbralDramaturgy(tension, hints);
     
     const phraseTicks = Math.max(...(this.currentAxiom.map(n => n.t + n.d) || [12]), 12);
@@ -119,27 +117,23 @@ export class BluesBrain {
     }
 
     // --- 6. SFX (The Atmosphere) ---
-    if (hints.sfx && epoch % 4 === 0) {
+    // #ЗАЧЕМ: Сверхнизкая частота SFX (раз в 12-24 такта) по просьбе пользователя.
+    // #ЧТО: Срабатывает только каждый 12-й такт с вероятностью 60%.
+    if (hints.sfx && epoch % 12 === 0 && this.random.next() < 0.6) {
         events.push(...this.renderCleanSfx(tension));
     }
 
-    // --- SOR AUDIT ---
     this.auditStagnationV5(melodyEvents, currentChord, epoch, dna);
 
     return events;
   }
 
-  /**
-   * #ЗАЧЕМ: Реализация "Когнитивного Блюзового Бита".
-   * #ЧТО: Ритм меняется от Tension и этапа БП. 
-   */
   private renderBluesBeat(epoch: number, tension: number, navInfo: NavigationInfo): FractalEvent[] {
       const events: FractalEvent[] = [];
       const isBreakdown = navInfo.currentPart.id === 'MAIN_3' || tension < 0.40;
       const isPeak = navInfo.currentPart.id === 'MAIN_4' || tension > 0.75;
       
-      // 1. KICK (The Pulse)
-      const kickTimes = isPeak ? [0, 1, 2, 3] : (isBreakdown ? [0] : [0, 2.66]); // 2.66 is "a" of 2 for shuffle
+      const kickTimes = isPeak ? [0, 1, 2, 3] : (isBreakdown ? [0] : [0, 2.66]);
       kickTimes.forEach(t => {
           events.push({
               type: 'drum_kick_reso',
@@ -151,7 +145,6 @@ export class BluesBrain {
           });
       });
 
-      // 2. SNARE (The Backbeat)
       if (!isBreakdown) {
           const snareTimes = [1, 3];
           snareTimes.forEach(t => {
@@ -166,12 +159,11 @@ export class BluesBrain {
           });
       }
 
-      // 3. HATS (The Shuffle)
       if (navInfo.currentPart.id !== 'INTRO') {
           const hatTicks = [0, 0.66, 1, 1.66, 2, 2.66, 3, 3.66];
           hatTicks.forEach(t => {
               const isAccent = t % 1 === 0;
-              if (isBreakdown && !isAccent) return; // Only quarter notes in breakdown
+              if (isBreakdown && !isAccent) return; 
               
               events.push({
                   type: 'drum_25693__walter_odington__hackney-hat-1',
@@ -184,7 +176,6 @@ export class BluesBrain {
           });
       }
 
-      // 4. RIDE (The Air)
       if (tension > 0.55 && !isBreakdown) {
           [0, 1, 2, 3].forEach(t => {
               events.push({
@@ -198,12 +189,11 @@ export class BluesBrain {
           });
       }
 
-      // 5. TOM PUNCTUATION (The Breath)
-      if (epoch % 4 === 3 && tension > 0.5) { // End of a 4-bar block
+      if (epoch % 4 === 3 && tension > 0.5) { 
           events.push({
               type: 'drum_Sonor_Classix_Low_Tom',
               note: 41,
-              time: 3.5, // "and" of 4
+              time: 3.5, 
               duration: 1.0,
               weight: 0.4,
               technique: 'hit', dynamics: 'p', phrasing: 'staccato'
@@ -213,10 +203,6 @@ export class BluesBrain {
       return events;
   }
 
-  /**
-   * #ЗАЧЕМ: Инструментальная чистота SFX в меланхолии.
-   * #ЧТО: Исключение голосов.
-   */
   private renderCleanSfx(tension: number): FractalEvent[] {
       return [{
           type: 'sfx',
@@ -230,7 +216,6 @@ export class BluesBrain {
           params: { 
               mood: this.mood, 
               genre: 'blues',
-              // #ЗАЧЕМ: Запрет голосов.
               rules: { eventProbability: 1.0, categories: [{ name: 'dark', weight: 0.7 }, { name: 'common', weight: 0.3 }] }
           }
       }];
