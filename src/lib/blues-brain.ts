@@ -15,10 +15,11 @@ import {
 import { BLUES_SOLO_LICKS } from './assets/blues_guitar_solo';
 
 /**
- * #ЗАЧЕМ: Блюзовый Мозг V90.0 — "The Diversity Guard".
- * #ЧТО: 1. Исправлено зацикливание ликов через расширение пула (Fallback Search).
- *       2. Восстановлены и усилены логи СОР каждые 12 тактов.
- *       3. Синхронизация мутаций всего ансамбля.
+ * #ЗАЧЕМ: Блюзовый Мозг V95.0 — "The Unified Ensemble Guard".
+ * #ЧТО: 1. Синхронная мутация всего ансамбля каждые 12 тактов.
+ *       2. Робастный выбор ликов с каскадным поиском (Fallback).
+ *       3. Многоуровневая физика исполнения (20/60/20).
+ *       4. Изоляция SFX: строго 1 раз за бридж в меланхолии.
  */
 
 export class BluesBrain {
@@ -87,12 +88,15 @@ export class BluesBrain {
 
     this.evaluateTimbralDramaturgy(tension, hints);
     
-    // #ЗАЧЕМ: Принудительная мутация каждые 12 тактов.
+    // #ЗАЧЕМ: Принудительная мутация каждые 12 тактов + фрактальные стражи.
     const isMutationBoundary = epoch % 12 === 0;
-    if (this.currentAxiom.length === 0 || navInfo.isPartTransition || isMutationBoundary) {
+    const isStagnating = this.state.stagnationStrikes.micro > 3;
+
+    if (this.currentAxiom.length === 0 || navInfo.isPartTransition || isMutationBoundary || isStagnating) {
         this.refreshUnifiedMutation();
         this.selectNextAxiom(navInfo, dna, epoch);
         this.logSorActivity(epoch, navInfo, dna);
+        this.state.stagnationStrikes.micro = 0; // Сброс стража
     }
 
     const events: FractalEvent[] = [];
@@ -103,6 +107,7 @@ export class BluesBrain {
     if (hints.drums) events.push(...this.renderBluesBeat(epoch, tension, navInfo));
     if (hints.pianoAccompaniment) events.push(...this.renderLyricalPiano(epoch, currentChord, tension));
 
+    // SFX: Только в бриджах и только 1 раз для меланхолии
     if (hints.sfx && this.mood === 'melancholic') {
         if (navInfo.currentPart.id.includes('BRIDGE') && !this.sfxPlayedInPart) {
             events.push(...this.renderCleanSfx(tension));
@@ -116,9 +121,9 @@ export class BluesBrain {
   private logSorActivity(epoch: number, navInfo: NavigationInfo, dna: SuiteDNA) {
       const type = this.state.vaccineActive?.type || 'none';
       const lickId = this.currentLickId;
-      const dynasty = dna.dynasty || 'unknown';
+      const poolSize = Object.keys(BLUES_SOLO_LICKS).length - this.usedLicksInSuite.size;
       console.info(
-          `%c[SOR] Bar ${epoch} | Act: ${navInfo.currentPart.id} | Dynasty: ${dynasty} | Theme: ${lickId} | Mutation: ${type}`,
+          `%c[SOR] Bar ${epoch} | Act: ${navInfo.currentPart.id} | Lick: ${lickId} | Mutation: ${type} | Pool: ${poolSize}`,
           'color: #DA70D6; font-weight: bold; background: #222; padding: 2px 5px; border-radius: 3px;'
       );
   }
@@ -134,38 +139,31 @@ export class BluesBrain {
   private selectNextAxiom(navInfo: NavigationInfo, dna: SuiteDNA, epoch: number) {
       const dynasty = dna.dynasty || 'slow-burn';
       
-      // 1. Пытаемся найти в основной династии
+      // 1. Поиск в основной династии
       let pool = Object.keys(BLUES_SOLO_LICKS).filter(id => 
           BLUES_SOLO_LICKS[id].tags.includes(dynasty) && !this.usedLicksInSuite.has(id)
       );
 
-      // 2. Если пул пуст или слишком мал (<3), пробуем расширить (Fallback)
-      if (pool.length < 3) {
-          console.warn(`[SOR] Pool for "${dynasty}" is thinning (${pool.length}). Broadening search...`);
-          pool = Object.keys(BLUES_SOLO_LICKS).filter(id => 
-              (BLUES_SOLO_LICKS[id].tags.includes(dynasty) || BLUES_SOLO_LICKS[id].tags.includes('slow-burn')) && 
-              !this.usedLicksInSuite.has(id)
-          );
+      // 2. Расширение пула если мало вариантов (ПЛАН №458)
+      if (pool.length < 5) {
+          pool = Object.keys(BLUES_SOLO_LICKS).filter(id => !this.usedLicksInSuite.has(id));
       }
 
-      // 3. Если все равно пусто — тотальный сброс памяти
+      // 3. Полный сброс если всё использовано
       if (pool.length === 0) {
-          console.log(`[SOR] Full cycle completed. Clearing lick memory for suite.`);
           this.usedLicksInSuite.clear();
-          pool = Object.keys(BLUES_SOLO_LICKS).filter(id => BLUES_SOLO_LICKS[id].tags.includes(dynasty));
+          pool = Object.keys(BLUES_SOLO_LICKS);
       }
 
       const nextId = pool[this.random.nextInt(pool.length)] || 'L01';
       this.currentLickId = nextId;
       this.usedLicksInSuite.add(nextId);
-      
-      // Применяем мутацию к оцифрованной фразе
       this.currentAxiom = this.mutateLick(BLUES_SOLO_LICKS[nextId].phrase);
   }
 
   private mutateLick(phrase: any[]): any[] {
       const type = this.state.vaccineActive?.type || 'jitter';
-      let mutated = JSON.parse(JSON.stringify(phrase)); // Deep clone
+      let mutated = JSON.parse(JSON.stringify(phrase));
       
       switch(type) {
           case 'inversion':
@@ -173,13 +171,13 @@ export class BluesBrain {
               mutated = phrase.map(n => ({...n, deg: this.invertDegree(n.deg, pivot)}));
               break;
           case 'jitter':
-              mutated = phrase.map(n => ({...n, t: Math.max(0, n.t + (this.random.next() * 0.6 - 0.3))}));
+              mutated = phrase.map(n => ({...n, t: Math.max(0, n.t + (this.random.next() * 0.4 - 0.2))}));
               break;
           case 'rhythm':
-              mutated = phrase.map(n => ({...n, d: n.d * (0.7 + this.random.next() * 0.6)}));
+              mutated = phrase.map(n => ({...n, d: n.d * (0.8 + this.random.next() * 0.4)}));
               break;
           case 'transposition':
-              const shift = this.random.next() < 0.5 ? 12 : -12; // Октавный сдвиг как безопасная мутация
+              const shift = this.random.next() < 0.5 ? 12 : -12;
               mutated = phrase.map(n => ({...n, octShift: (n.octShift || 0) + shift}));
               break;
       }
@@ -316,7 +314,7 @@ export class BluesBrain {
 
   private renderBluesBeat(epoch: number, tension: number, navInfo: NavigationInfo): FractalEvent[] {
       const events: FractalEvent[] = [];
-      const isBreakdown = navInfo.currentPart.id.includes('MAIN_3') || tension < 0.42;
+      const isBreakdown = navInfo.currentPart.id.includes('BRIDGE') || tension < 0.42;
       const isPeak = tension > 0.72;
       const kickTimes = isPeak ? [0, 1, 2, 3] : (isBreakdown ? [0] : [0, 2.66]);
       kickTimes.forEach(t => events.push({ type: 'drum_kick_reso', note: 36, time: t, duration: 0.1, weight: 0.5 + (tension * 0.2), technique: 'hit', dynamics: 'p', phrasing: 'staccato' }));

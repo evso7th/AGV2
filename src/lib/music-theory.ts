@@ -1,7 +1,7 @@
 /**
  * @fileOverview Universal Music Theory Utilities
  * #ЗАЧЕМ: Базовый набор инструментов для работы с нотами и энергетическими картами.
- * #ОБНОВЛЕНО (ПЛАН №455): Восстановлены критические экспорты для AmbientBrain и Матриц.
+ * #ОБНОВЛЕНО (ПЛАН №461): Реализована волновая физика напряжения для Меланхолик Блюза.
  */
 
 import type { 
@@ -71,6 +71,11 @@ export function calculateMusiNum(step: number, base: number = 2, start: number =
     return sum % modulo;
 }
 
+/**
+ * #ЗАЧЕМ: Генерация энергетического скелета сюиты.
+ * #ЧТО: Для меланхоличного блюза реализована физика "4-х волн". 
+ *       Внутри каждого MAIN напряжение растет от 0.3 до 0.8 и падает обратно.
+ */
 export function generateTensionMap(seed: number, totalBars: number, mood: Mood, parts?: any[]): number[] {
     const map: number[] = [];
     const isMelancholic = mood === 'melancholic';
@@ -88,6 +93,7 @@ export function generateTensionMap(seed: number, totalBars: number, mood: Mood, 
                 if (part.id === 'INTRO') {
                     tension = 0.3; 
                 } else if (part.id.startsWith('MAIN')) {
+                    // Волна: 0.3 -> 0.8 -> 0.3 внутри каждой части
                     tension = 0.3 + 0.5 * Math.sin(progress * Math.PI);
                 } else if (part.id === 'OUTRO') {
                     tension = 0.3 * (1 - progress * 0.5); 
@@ -107,6 +113,7 @@ export function generateTensionMap(seed: number, totalBars: number, mood: Mood, 
         }
     }
     
+    // Заполнение остатка если есть
     while(map.length < totalBars) map.push(0.3);
     return map;
 }
@@ -180,7 +187,7 @@ export function createHarmonyAxiom(chord: GhostChord, mood: Mood, genre: Genre, 
         technique: 'swell',
         dynamics: 'p',
         phrasing: 'legato',
-        chordName: chord.chordType === 'minor' ? 'Am' : 'E', // Basic mapping for samplers
+        chordName: chord.chordType === 'minor' ? 'Am' : 'E',
         params: { barCount: epoch }
     }));
 }
