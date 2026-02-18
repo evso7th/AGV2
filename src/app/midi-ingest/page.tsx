@@ -12,9 +12,8 @@ import { detectKeyFromNotes, SEMITONE_TO_DEGREE, DEGREE_KEYS, TECHNIQUE_KEYS } f
 import { ScrollArea } from '@/components/ui/scroll-area';
 
 /**
- * #ЗАЧЕМ: Инструментальный Дашборд "Алхимик MIDI" v2.1.
- * #ЧТО: Внедрена экстремальная компрессия (ПЛАН №471). 
- *       Лики теперь сохраняются как плоские числовые массивы [t, d, degIdx, techIdx].
+ * #ЗАЧЕМ: Инструментальный Дашборд "Алхимик MIDI" v2.2.
+ * #ЧТО: Линейный формат экспорта. Массивы phrase теперь пишутся в одну строку.
  */
 export default function MidiIngestPage() {
     const [isAnalyzing, setIsAnalyzing] = useState(false);
@@ -54,10 +53,6 @@ export default function MidiIngestPage() {
         reader.readAsArrayBuffer(file);
     };
 
-    /**
-     * #ЗАЧЕМ: Экстремальное сжатие данных.
-     * #ЧТО: Одно событие = 4 числа в плоском массиве.
-     */
     const segmentMidiToCompactLicks = (track: any, root: number) => {
         const result = [];
         const barsPerLick = 4;
@@ -81,7 +76,7 @@ export default function MidiIngestPage() {
                 
                 const degreeStr = SEMITONE_TO_DEGREE[(n.midi - root + 120) % 12] || 'R';
                 const degIdx = DEGREE_KEYS.indexOf(degreeStr);
-                const techIdx = 0; // Default to 'pick'
+                const techIdx = 0;
 
                 compactPhrase.push(tick, durationTicks, degIdx, techIdx);
             });
@@ -99,10 +94,23 @@ export default function MidiIngestPage() {
         return result;
     };
 
+    /**
+     * #ЗАЧЕМ: Красивое линейное форматирование.
+     * #ЧТО: Вручную собираем JSON, чтобы массивы были в одну строку.
+     */
+    const formatLicksToText = (licks: any[]) => {
+        return "[\n" + licks.map(lick => {
+            const { phrase, ...rest } = lick;
+            const restJson = JSON.stringify(rest, null, 2);
+            // Вставляем фразу красиво в середину
+            return `  {\n    "phrase": [${phrase.join(', ')}],\n${restJson.substring(4)}`;
+        }).join(",\n") + "\n]";
+    };
+
     const copyToClipboard = () => {
-        const json = JSON.stringify(extractedLicks, null, 2);
-        navigator.clipboard.writeText(json);
-        alert('JSON скопирован! Теперь вставьте его в ingest_buffer.json. Размер данных уменьшен в 10 раз.');
+        const text = formatLicksToText(extractedLicks);
+        navigator.clipboard.writeText(text);
+        alert('JSON в линейном формате скопирован! Теперь вставьте его в ingest_buffer.json.');
     };
 
     return (
@@ -114,8 +122,8 @@ export default function MidiIngestPage() {
                             <FileMusic className="h-8 w-8 text-primary" />
                         </div>
                         <div>
-                            <CardTitle className="text-3xl font-bold">Алхимик MIDI v2.1</CardTitle>
-                            <CardDescription>Завод по добыче Наследия (Compact Format Enabled)</CardDescription>
+                            <CardTitle className="text-3xl font-bold">Алхимик MIDI v2.2</CardTitle>
+                            <CardDescription>Завод по добыче Наследия (Linear Format Active)</CardDescription>
                         </div>
                     </div>
                 </CardHeader>
@@ -179,7 +187,7 @@ export default function MidiIngestPage() {
                                     <Select value={manualRoot} onValueChange={setManualRoot}>
                                         <SelectTrigger className="h-7 text-[10px]">
                                             <SelectValue />
-                                        </SelectTrigger>
+                                        </SelectValue>
                                         <SelectContent>
                                             {Array.from({length: 12}).map((_, i) => (
                                                 <SelectItem key={i} value={(60+i).toString()} className="text-[10px]">
@@ -200,12 +208,12 @@ export default function MidiIngestPage() {
                                     <Settings2 className="h-4 w-4" /> Извлеченные Аксиомы ({extractedLicks.length})
                                 </Label>
                                 <Button size="sm" onClick={copyToClipboard} className="gap-2 text-xs h-8">
-                                    <Download className="h-3 w-3" /> Copy Compact JSON
+                                    <Download className="h-3 w-3" /> Copy Linear JSON
                                 </Button>
                             </div>
-                            <ScrollArea className="h-[250px] rounded-md border p-4 bg-black/40 font-mono text-[10px]">
-                                <pre className="text-primary/80">
-                                    {JSON.stringify(extractedLicks, null, 2)}
+                            <ScrollArea className="h-[300px] rounded-md border p-4 bg-black/40 font-mono text-[10px]">
+                                <pre className="text-primary/80 whitespace-pre">
+                                    {formatLicksToText(extractedLicks)}
                                 </pre>
                             </ScrollArea>
                         </div>
