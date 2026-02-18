@@ -2,7 +2,7 @@
  * @fileOverview Universal Music Theory Utilities
  * #ЗАЧЕМ: Базовый набор инструментов для работы с нотами, ладами и ритмом.
  * #ЧТО: Внедрена система Choral DNA для длинных мелодических аксиом.
- * #ОБНОВЛЕНО (ПЛАН №440): Гарантированное использование Legacy Licks как основы ДНК.
+ * #ОБНОВЛЕНО (ПЛАН №442): Восстановлена функция getScaleForMood для работы матриц резонанса.
  */
 
 import type { 
@@ -27,6 +27,42 @@ const SEMITONE_TO_DEGREE: Record<number, BluesRiffDegree> = {
     0: 'R', 1: 'b2', 2: '2', 3: 'b3', 4: '3', 5: '4', 6: '#4', 7: '5',
     8: 'b6', 9: '6', 10: 'b7', 11: '7', 12: 'R+8', 14: '9', 17: '11'
 };
+
+/**
+ * #ЗАЧЕМ: Базовые интервалы ладов.
+ */
+export const MODE_SEMITONES: Record<string, number[]> = {
+    ionian: [0, 2, 4, 5, 7, 9, 11],
+    dorian: [0, 2, 3, 5, 7, 9, 10],
+    phrygian: [0, 1, 3, 5, 7, 8, 10],
+    lydian: [0, 2, 4, 6, 7, 9, 11],
+    mixolydian: [0, 2, 4, 5, 7, 9, 10],
+    aeolian: [0, 2, 3, 5, 7, 8, 10],
+    locrian: [0, 1, 3, 5, 6, 8, 10]
+};
+
+/**
+ * #ЗАЧЕМ: Маппинг настроения на музыкальный лад.
+ * #ЧТО: Возвращает массив MIDI-нот гаммы.
+ */
+export function getScaleForMood(mood: Mood, root: number = 60): number[] {
+    const modeMap: Record<Mood, string> = {
+        joyful: 'ionian',
+        contemplative: 'ionian',
+        enthusiastic: 'lydian',
+        dreamy: 'lydian',
+        epic: 'mixolydian',
+        calm: 'mixolydian',
+        melancholic: 'dorian',
+        dark: 'phrygian',
+        gloomy: 'aeolian',
+        anxious: 'locrian'
+    };
+    
+    const mode = modeMap[mood] || 'dorian';
+    const intervals = MODE_SEMITONES[mode];
+    return intervals.map(semitone => root + semitone);
+}
 
 export function transformLick(lick: BluesSoloPhrase, seed: number, epoch: number, type?: 'jitter' | 'inversion' | 'transposition'): BluesSoloPhrase {
     const transformed = JSON.parse(JSON.stringify(lick)) as BluesSoloPhrase;
