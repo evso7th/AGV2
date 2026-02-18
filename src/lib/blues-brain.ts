@@ -15,10 +15,10 @@ import {
 import { BLUES_SOLO_LICKS } from './assets/blues_guitar_solo';
 
 /**
- * #ЗАЧЕМ: Блюзовый Мозг V88.0 — "Unified Unified SOR".
- * #ЧТО: 1. Принудительная мутация ВСЕГО ансамбля каждые 12 тактов.
- *       2. Расширение техник аккомпанемента при высоком напряжении.
- *       3. Гарантированное разнообразие за счет расширенного пула ликов.
+ * #ЗАЧЕМ: Блюзовый Мозг V89.0 — "Dynamic Performance Engine".
+ * #ЧТО: 1. Трехуровневая система техник (Tiers) на основе Tension (20/60/20).
+ *       2. Динамический выбор манеры баса для Intro.
+ *       3. Синхронизация плотности аккомпанемента и баса с энергией.
  */
 
 export class BluesBrain {
@@ -31,7 +31,7 @@ export class BluesBrain {
   private readonly MELODY_CEILING = 75; 
   private readonly BASS_FLOOR = 31; 
 
-  private state: BluesCognitiveState;
+  private state: BluesCognitiveState & { introBassStyle: 'drone' | 'riff' | 'walking' };
   private sfxPlayedInBridge = false;
   private usedLicksInSuite: Set<string> = new Set();
 
@@ -39,6 +39,10 @@ export class BluesBrain {
     this.seed = seed;
     this.mood = mood;
     this.random = this.createSeededRandom(seed);
+
+    // #ЗАЧЕМ: Разнообразие вступлений. Каждая пьеса имеет свой стартовый характер баса.
+    const introStyles: ('drone' | 'riff' | 'walking')[] = ['drone', 'riff', 'walking'];
+    const selectedIntroStyle = introStyles[this.random.nextInt(introStyles.length)];
 
     this.state = {
       phraseState: 'call',
@@ -52,8 +56,8 @@ export class BluesBrain {
       blueNotePending: false,
       emotion: { melancholy: 0.8, darkness: 0.3 },
       stagnationStrikes: { micro: 0, meso: 0, macro: 0 },
-      // #ЗАЧЕМ: Синхронизация мутации ансамбля.
-      vaccineActive: { part: 'ensemble', type: 'jitter' } 
+      vaccineActive: { part: 'ensemble', type: 'jitter' },
+      introBassStyle: selectedIntroStyle
     };
   }
 
@@ -77,7 +81,6 @@ export class BluesBrain {
     
     this.evaluateTimbralDramaturgy(tension, hints);
     
-    // #ЗАЧЕМ: Принудительная мутация каждые 12 тактов для ВСЕГО ансамбля.
     const isMutationBoundary = epoch % 12 === 0;
     if (this.currentAxiom.length === 0 || navInfo.isPartTransition || isMutationBoundary) {
         this.selectNextAxiom(navInfo, dna, epoch);
@@ -87,12 +90,11 @@ export class BluesBrain {
     const events: FractalEvent[] = [];
 
     if (hints.melody) events.push(...this.renderMelodicSegment(epoch, currentChord, tension));
-    if (hints.accompaniment) events.push(...this.renderPullChops(epoch, currentChord, tension));
-    if (hints.bass) events.push(...this.renderIronBass(currentChord, epoch));
+    if (hints.accompaniment) events.push(...this.renderDynamicAccompaniment(epoch, currentChord, tension));
+    if (hints.bass) events.push(...this.renderIronBass(currentChord, epoch, tension, navInfo));
     if (hints.drums) events.push(...this.renderBluesBeat(epoch, tension, navInfo));
     if (hints.pianoAccompaniment) events.push(...this.renderLyricalPiano(epoch, currentChord, tension));
 
-    // #ЗАЧЕМ: Строгий SFX-запрет в меланхолии (только бриджи, 1 раз).
     if (hints.sfx && this.mood === 'melancholic') {
         const isBridge = navInfo.currentPart.id.includes('BRIDGE');
         if (isBridge && !this.sfxPlayedInBridge) {
@@ -107,7 +109,6 @@ export class BluesBrain {
   }
 
   private refreshUnifiedMutation() {
-      // #ЗАЧЕМ: Рандомизация "прививки" для всего ансамбля.
       const types: ('jitter' | 'inversion' | 'transposition' | 'rhythm')[] = ['jitter', 'inversion', 'rhythm'];
       this.state.vaccineActive = { 
           part: 'ensemble', 
@@ -150,7 +151,6 @@ export class BluesBrain {
       );
 
       if (pool.length === 0) {
-          console.info(`%c[Narrative] Memory Reset for "${dynasty}". Pool refreshed.`, 'color: #888;');
           this.usedLicksInSuite.clear();
           pool = Object.keys(BLUES_SOLO_LICKS).filter(id => BLUES_SOLO_LICKS[id].tags.includes(dynasty));
       }
@@ -177,7 +177,6 @@ export class BluesBrain {
   private renderLyricalPiano(epoch: number, chord: GhostChord, tension: number): FractalEvent[] {
       const events: FractalEvent[] = [];
       const root = chord.rootNote + 24;
-      // #ЗАЧЕМ: Прямая зависимость плотности от Tension.
       const noteChance = Math.max(0.1, tension * 0.85); 
       [0, 1.5, 3].forEach(beat => {
           if (this.random.next() < noteChance) {
@@ -205,39 +204,182 @@ export class BluesBrain {
     }));
   }
 
-  private renderPullChops(epoch: number, chord: GhostChord, tension: number): FractalEvent[] {
+  // ============================================================================
+  // DYNAMIC PERFORMANCE ENGINE (ACCOMPANIMENT)
+  // ============================================================================
+
+  private renderDynamicAccompaniment(epoch: number, chord: GhostChord, tension: number): FractalEvent[] {
+    // Scheme: 20% (T<0.4) Soft Pads | 60% (0.4-0.7) Pad+Arp | 20% (T>0.7) Viscous Chords
+    if (tension < 0.4) {
+        return this.renderSoftPillows(epoch, chord, tension);
+    } else if (tension <= 0.7) {
+        return this.renderArpPad(epoch, chord, tension);
+    } else {
+        return this.renderPowerChords(epoch, chord, tension);
+    }
+  }
+
+  private renderSoftPillows(epoch: number, chord: GhostChord, tension: number): FractalEvent[] {
+    const root = chord.rootNote + 12;
+    const isMin = chord.chordType === 'minor';
+    const notes = [root, root + (isMin ? 3 : 4), root + 7];
+    
+    // Мягкое появление раз в 2 такта
+    if (epoch % 2 !== 0) return [];
+
+    return notes.map((p, i) => ({
+        type: 'accompaniment',
+        note: p,
+        time: 0.5 + i * 0.05,
+        duration: 8.0,
+        weight: 0.22,
+        technique: 'swell',
+        dynamics: 'p',
+        phrasing: 'legato'
+    }));
+  }
+
+  private renderArpPad(epoch: number, chord: GhostChord, tension: number): FractalEvent[] {
     const events: FractalEvent[] = [];
     const root = chord.rootNote + 12;
     const isMin = chord.chordType === 'minor';
     const notes = [root, root + (isMin ? 3 : 4), root + 7, root + 10];
-    
-    // #ЗАЧЕМ: Аккордовые пассажи в пиках напряжения (T > 0.7).
-    if (tension > 0.7) { 
-        [0, 2.0].forEach(t => notes.forEach((p, i) => events.push({
-            type: 'accompaniment', note: p, time: t + i * 0.05, duration: 1.2, weight: 0.45,
-            technique: 'pluck', dynamics: 'mf', phrasing: 'staccato'
-        })));
-    } else if (tension > 0.5) { 
-        notes.forEach((p, i) => events.push({
-            type: 'accompaniment', note: p, time: i * 0.5, duration: 1.5, weight: 0.3,
-            technique: 'arpeggio', dynamics: 'p', phrasing: 'legato'
-        }));
-    } else if (epoch % 2 === 0) { 
-        notes.slice(0, 3).forEach((p, i) => events.push({
-            type: 'accompaniment', note: p, time: 0.5 + i * 0.02, duration: 8.0, weight: 0.25,
-            technique: 'swell', dynamics: 'p', phrasing: 'legato'
-        }));
-    }
+
+    // Базовый пад (тихий)
+    events.push({
+        type: 'accompaniment', note: root, time: 0, duration: 4.0, weight: 0.25,
+        technique: 'swell', dynamics: 'p', phrasing: 'legato'
+    });
+
+    // Слышимые арпеджио
+    notes.forEach((p, i) => {
+        events.push({
+            type: 'accompaniment',
+            note: p + 12,
+            time: 1.0 + i * 0.5,
+            duration: 1.5,
+            weight: 0.35,
+            technique: 'pluck',
+            dynamics: 'p',
+            phrasing: 'detached'
+        });
+    });
+
     return events;
   }
 
-  private renderIronBass(chord: GhostChord, epoch: number): FractalEvent[] {
+  private renderPowerChords(epoch: number, chord: GhostChord, tension: number): FractalEvent[] {
+    const events: FractalEvent[] = [];
+    const root = chord.rootNote + 12;
+    const isMin = chord.chordType === 'minor';
+    const notes = [root, root + (isMin ? 3 : 4), root + 7, root + 10];
+
+    // Вязкие аккордовые удары ("навал")
+    [0, 2.0].forEach(t => {
+        notes.forEach((p, i) => {
+            events.push({
+                type: 'accompaniment',
+                note: p,
+                time: t + i * 0.03,
+                duration: 1.8,
+                weight: 0.55,
+                technique: 'pluck',
+                dynamics: 'mf',
+                phrasing: 'staccato'
+            });
+        });
+    });
+
+    return events;
+  }
+
+  // ============================================================================
+  // DYNAMIC PERFORMANCE ENGINE (BASS)
+  // ============================================================================
+
+  private renderIronBass(chord: GhostChord, epoch: number, tension: number, navInfo: NavigationInfo): FractalEvent[] {
+    // Intro Variety: Use chosen style for INTRO
+    if (navInfo.currentPart.id === 'INTRO') {
+        switch(this.state.introBassStyle) {
+            case 'drone': return this.renderDroneBass(chord, epoch);
+            case 'riff': return this.renderRiffBass(chord, epoch, tension);
+            case 'walking': return this.renderWalkingBass(chord, epoch, tension);
+        }
+    }
+
+    // Main Tiers: 20% Drone | 60% Riff | 20% Walking
+    if (tension < 0.4) {
+        return this.renderDroneBass(chord, epoch);
+    } else if (tension <= 0.7) {
+        return this.renderRiffBass(chord, epoch, tension);
+    } else {
+        return this.renderWalkingBass(chord, epoch, tension);
+    }
+  }
+
+  private renderDroneBass(chord: GhostChord, epoch: number): FractalEvent[] {
+    // Одна нота на 1-2 такта
+    if (epoch % 2 !== 0) return []; 
+    return [{
+        type: 'bass',
+        note: Math.max(chord.rootNote - 12, this.BASS_FLOOR),
+        time: 0,
+        duration: 8.0, // на 2 такта
+        weight: 0.6,
+        technique: 'pluck',
+        dynamics: 'p',
+        phrasing: 'legato',
+        params: { attack: 0.5, release: 2.0, filterCutoff: 300 }
+    }];
+  }
+
+  private renderRiffBass(chord: GhostChord, epoch: number, tension: number): FractalEvent[] {
+    const events: FractalEvent[] = [];
+    const root = Math.max(chord.rootNote - 12, this.BASS_FLOOR);
+    const isMin = chord.chordType === 'minor';
+    
+    // Несложный рифф: 4-8 ударов
+    const pattern = [
+        { t: 0, n: root, w: 0.7 },
+        { t: 1.0, n: root + 7, w: 0.5 },
+        { t: 2.0, n: root + (isMin ? 3 : 4), w: 0.6 },
+        { t: 3.0, n: root + 5, w: 0.5 }
+    ];
+
+    return pattern.map(p => ({
+        type: 'bass',
+        note: p.n,
+        time: p.t,
+        duration: 0.8,
+        weight: p.w + (tension * 0.1),
+        technique: 'pluck',
+        dynamics: 'p',
+        phrasing: 'legato',
+        params: { attack: 0.1, release: 0.8, filterCutoff: 400 }
+    }));
+  }
+
+  private renderWalkingBass(chord: GhostChord, epoch: number, tension: number): FractalEvent[] {
     const root = Math.max(chord.rootNote - 12, this.BASS_FLOOR);
     const nextRoot = getNextChordRoot(epoch % 12, chord.rootNote) - 12;
-    const notes = [root, root + 7, root + 10, nextRoot - 1];
+    
+    // Классический волкинг: 4 ноты на такт
+    const notes = [
+        root, 
+        root + 7, 
+        root + 10, 
+        nextRoot - 1 // ведущая хроматика
+    ];
+
     return notes.map((p, i) => ({
-        type: 'bass', note: p, time: i, duration: 0.9, weight: i === 0 ? 0.8 : 0.45,
-        technique: 'pluck', dynamics: 'p', phrasing: 'legato'
+        type: 'bass', 
+        note: p, 
+        time: i, 
+        duration: 0.9, 
+        weight: (i === 0 ? 0.85 : 0.5) + tension * 0.1,
+        technique: 'pluck', 
+        dynamics: i === 0 ? 'mf' : 'p', 
+        phrasing: 'legato'
     }));
   }
 
