@@ -50,7 +50,9 @@ export class BlackGuitarSampler {
         this.destination = destination;
 
         this.preamp = this.audioContext.createGain();
-        this.preamp.gain.value = 1.2;
+        // #ЗАЧЕМ: Уменьшение громкости в 2 раза по просьбе пользователя.
+        // #ЧТО: gain.value снижен с 1.2 до 0.6.
+        this.preamp.gain.value = 0.6;
         this.preamp.connect(this.destination);
     }
 
@@ -162,8 +164,6 @@ export class BlackGuitarSampler {
         gainNode.gain.setValueAtTime(0, startTime);
         gainNode.gain.linearRampToValueAtTime(velocity, startTime + 0.005);
 
-        // #ЗАЧЕМ: Реализация "Surgical Cut" для создания неземных глюков (Silent Hill style).
-        // #ЧТО: Если включен режим транзиента, звук принудительно обрывается через 20мс.
         if (isTransient) {
             const transientDuration = 0.02; // 20ms
             source.start(startTime);

@@ -51,7 +51,9 @@ export class TelecasterGuitarSampler {
         this.audioContext = audioContext;
         this.destination = destination;
         this.preamp = this.audioContext.createGain();
-        this.preamp.gain.value = 3.0;
+        // #ЗАЧЕМ: Нормализация громкости. Telecaster был чрезмерно громким.
+        // #ЧТО: gain.value снижен с 3.0 до 1.5.
+        this.preamp.gain.value = 1.5;
         this.preamp.connect(this.destination);
     }
 
@@ -129,7 +131,6 @@ export class TelecasterGuitarSampler {
     }
     
     private playSample(buffer: AudioBuffer, sampleMidi: number, targetMidi: number, startTime: number, velocity: number, duration?: number, isTransient: boolean = false) {
-        // #ЗАЧЕМ: Предотвращение критической ошибки AudioParam и реализация "Алгоритмической Хирургии" транзиента.
         if (!isFinite(startTime) || !isFinite(velocity) || !isFinite(targetMidi) || !isFinite(sampleMidi)) {
             return;
         }
@@ -145,15 +146,11 @@ export class TelecasterGuitarSampler {
         gainNode.gain.setValueAtTime(0, startTime);
         gainNode.gain.linearRampToValueAtTime(velocity, startTime + 0.005);
         
-        // #ИСПРАВЛЕНО (ПЛАН 196): source.start() вызывается ПЕРЕД source.stop().
-        // #ЗАЧЕМ: Согласно спецификации Web Audio API, метод stop() может быть вызван только после start().
         source.start(startTime);
 
-        // #ЗАЧЕМ: Извлечение 20мс транзиента для гибридного синтеза.
-        // #ЧТО: Принудительный стоп с микро-затуханием для предотвращения щелчков.
         if (isTransient) {
             const transientDuration = 0.02; // 20ms
-            gainNode.gain.setTargetAtTime(0, startTime + 0.015, 0.002); // Начинаем гасить на 15мс
+            gainNode.gain.setTargetAtTime(0, startTime + 0.015, 0.002); 
             source.stop(startTime + transientDuration);
         } else if (duration && isFinite(duration)) {
             gainNode.gain.setTargetAtTime(0, startTime + duration, 0.4);

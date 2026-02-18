@@ -1,8 +1,8 @@
+
 /**
- * #ЗАЧЕМ: Хук управления UI музыкой V3.4.
- * #ЧТО: 1. Внедрена поддержка межсессионной памяти ликов через localStorage.
- *       2. Реализованы специфические дефолты громкости для жанра Амбиент (ПЛАН №420, №421).
- *       3. Громкость ударных системно снижена в 2 раза.
+ * #ЗАЧЕМ: Хук управления UI музыкой V3.5.
+ * #ЧТО: 1. Снижена дефолтная громкость мелодии для Амбиента и Блюза до 0.14.
+ *       2. Усилен контроль за балансом гитарных сэмплеров.
  */
 'use client';
 
@@ -89,14 +89,13 @@ export const useAuraGroove = (): AuraGrooveProps => {
   const db = useFirestore();
   const router = useRouter();
   
-  // #ОБНОВЛЕНО (ПЛАН №421): Начальная громкость ударных снижена до 0.12.
   const [drumSettings, setDrumSettings] = useState<DrumSettings>({ pattern: 'composer', volume: 0.12, kickVolume: 1.0, enabled: true });
   
   // #ЗАЧЕМ: Дефолтный баланс для Амбиента при старте.
-  // #ОБНОВЛЕНО (ПЛАН №420): Громкость мелодии снижена до 0.27.
+  // #ОБНОВЛЕНО (ПЛАН №463): Громкость мелодии снижена до 0.14.
   const [instrumentSettings, setInstrumentSettings] = useState<InstrumentSettings>({
     bass: { name: "bass_jazz_warm", volume: 0.5, technique: 'portamento' },
-    melody: { name: "blackAcoustic", volume: 0.27 }, 
+    melody: { name: "blackAcoustic", volume: 0.14 }, 
     accompaniment: { name: "organ_soft_jazz", volume: 0.50 }, 
     harmony: { name: "guitarChords", volume: 0.15 }, 
     pianoAccompaniment: { name: "piano", volume: 0.35 }, 
@@ -128,7 +127,6 @@ export const useAuraGroove = (): AuraGrooveProps => {
   const [isRegenerating, setIsRegenerating] = useState(false);
   const [hasPlayedOnce, setHasPlayedOnce] = useState(false);
 
-  // #ЗАЧЕМ: Загрузка истории ликов при монтировании.
   useEffect(() => {
     const saved = localStorage.getItem(LICK_HISTORY_KEY);
     if (saved) {
@@ -138,12 +136,13 @@ export const useAuraGroove = (): AuraGrooveProps => {
     }
   }, []);
 
-  // #ЗАЧЕМ: Автоматический сброс громкости при переключении на Амбиент (ПЛАН №420, №421).
+  // #ЗАЧЕМ: Автоматический сброс громкости при переключении на Амбиент/Блюз.
+  // #ОБНОВЛЕНО (ПЛАН №463): Громкость мелодии системно снижена до 0.14.
   useEffect(() => {
-    if (genre === 'ambient') {
-      console.log('%c[UI] Genre switched to AMBIENT. Applying Imperial Balance.', 'color: #DA70D6; font-weight: bold;');
+    if (genre === 'ambient' || genre === 'blues') {
+      console.log(`%c[UI] Genre switched to ${genre.toUpperCase()}. Applying Imperial Balance.`, 'color: #DA70D6; font-weight: bold;');
       const ambientDefaults = {
-        melody: 0.27,
+        melody: 0.14,
         accompaniment: 0.50,
         harmony: 0.15,
         pianoAccompaniment: 0.35,
@@ -160,7 +159,6 @@ export const useAuraGroove = (): AuraGrooveProps => {
 
       setDrumSettings(prev => ({ ...prev, volume: ambientDefaults.drums }));
 
-      // Мгновенная синхронизация с движком
       if (isInitialized) {
         setVolume('melody', ambientDefaults.melody);
         setVolume('accompaniment', ambientDefaults.accompaniment);
