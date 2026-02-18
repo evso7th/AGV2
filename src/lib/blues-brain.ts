@@ -8,11 +8,13 @@ import {
   BluesCognitiveState
 } from '@/types/music';
 import { 
-    getNextChordRoot, 
-    getChordNameForBar,
     DEGREE_TO_SEMITONE,
     decompressCompactPhrase
 } from './music-theory';
+import { 
+    getNextChordRoot, 
+    getChordNameForBar 
+} from './blues-theory';
 import { BLUES_SOLO_LICKS } from './assets/blues_guitar_solo';
 
 /**
