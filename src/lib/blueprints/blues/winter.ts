@@ -1,16 +1,16 @@
 import type { MusicBlueprint } from '@/types/music';
 
 /**
- * #ЗАЧЕМ: Блюпринт "The Bluest Blues" (v27.0 - Lightning Intro).
- * #ЧТО: 1. Интро сокращено до 6 тактов (4% от 144).
- *       2. Разделено на 3 сцены по 2 такта (33% каждая).
- *       3. Попарный ввод: [Bass+Rhodes] -> [Drums+Melody] -> [Piano+Harmony].
- *       4. Оркестр "липкий" (все слои активны после вступления).
+ * #ЗАЧЕМ: Блюпринт "The Bluest Blues" (v28.0 - Universal Lottery).
+ * #ЧТО: 1. Интро сокращено до 6 тактов.
+ *       2. Реализована система "Лотереи Рождения": все участники (8 слоев) 
+ *          перемешиваются и вводятся группами в 3 этапа.
+ *       3. Оркестр "липкий" (Persistent Ensemble).
  */
 export const WinterBluesBlueprint: MusicBlueprint = {
     id: 'winter_blues',
-    name: 'The Bluest Blues (V27)',
-    description: 'A soul-drenched blues journey with a lightning 6-bar intro and staged instrumental arrival.',
+    name: 'The Bluest Blues (V28)',
+    description: 'A soul-drenched blues journey with a randomized 6-bar introduction lottery.',
     mood: 'melancholic',
     musical: {
         key: { root: 'E', scale: 'dorian', octave: 1 },
@@ -31,7 +31,7 @@ export const WinterBluesBlueprint: MusicBlueprint = {
         parts: [
             {
                 id: 'INTRO', 
-                name: 'LightningLottery', 
+                name: 'BirthLottery', 
                 duration: { percent: 4 }, // ~6 bars total
                 layers: { 
                     bass: true, 
@@ -43,28 +43,30 @@ export const WinterBluesBlueprint: MusicBlueprint = {
                     sparkles: true, 
                     sfx: true 
                 },
+                // #ЗАЧЕМ: Наполнение пула для лотереи.
+                // #ЧТО: Все 8 участников перечислены здесь. Движок перемешает их и распределит по сценам.
                 stagedInstrumentation: [
                     { 
-                        duration: { percent: 33 }, // Bars 1-2
+                        duration: { percent: 33 }, // Scene 1 (2 bars)
                         instrumentation: {
                            bass: { activationChance: 1.0, instrumentOptions: [ { name: 'bass', weight: 1.0 } ] },
-                           accompaniment: { activationChance: 1.0, instrumentOptions: [{ name: 'ep_rhodes_warm', weight: 1.0 }] }
-                        }
-                    },
-                    {
-                        duration: { percent: 33 }, // Bars 3-4
-                        instrumentation: {
-                           drums: { activationChance: 1.0, instrumentOptions: [ { name: 'blues_melancholic', weight: 1.0 } ] },
+                           accompaniment: { activationChance: 1.0, instrumentOptions: [{ name: 'ep_rhodes_warm', weight: 1.0 }] },
                            melody: { activationChance: 1.0, instrumentOptions: [ { name: 'blackAcoustic', weight: 0.5 }, { name: 'telecaster', weight: 0.5 } ] }
                         }
                     },
                     {
-                        duration: { percent: 34 }, // Bars 5-6
+                        duration: { percent: 33 }, // Scene 2 (2 bars)
                         instrumentation: {
+                           drums: { activationChance: 1.0, instrumentOptions: [ { name: 'blues_melancholic', weight: 1.0 } ] },
                            pianoAccompaniment: { activationChance: 1.0, instrumentOptions: [ { name: 'piano', weight: 1.0 } ] },
-                           harmony: { activationChance: 1.0, instrumentOptions: [ { name: 'violin', weight: 0.7 }, { name: 'guitarChords', weight: 0.3 } ] },
-                           sparkles: { activationChance: 0.6, instrumentOptions: [ { name: 'dark', weight: 1.0 } ] },
-                           sfx: { activationChance: 0.5, instrumentOptions: [ { name: 'voice', weight: 1.0 } ], transient: true }
+                           harmony: { activationChance: 1.0, instrumentOptions: [ { name: 'violin', weight: 0.7 }, { name: 'guitarChords', weight: 0.3 } ] }
+                        }
+                    },
+                    {
+                        duration: { percent: 34 }, // Scene 3 (2 bars)
+                        instrumentation: {
+                           sparkles: { activationChance: 1.0, instrumentOptions: [ { name: 'dark', weight: 1.0 } ] },
+                           sfx: { activationChance: 1.0, instrumentOptions: [ { name: 'voice', weight: 1.0 } ], transient: true }
                         }
                     }
                 ],
@@ -74,12 +76,12 @@ export const WinterBluesBlueprint: MusicBlueprint = {
                     melody: { source: 'blues_solo', density: { min: 0.6, max: 0.8 }, register: { preferred: 'low' } },
                     drums: { kitName: 'blues_melancholic', pattern: 'ambient_beat' }
                 },
-                bundles: [{ id: 'WINTER_INTRO_STAGED', name: 'Staged Birth', duration: { percent: 100 }, characteristics: {}, phrases: {} }],
+                bundles: [{ id: 'WINTER_INTRO_LOTTERY', name: 'Randomized Birth', duration: { percent: 100 }, characteristics: {}, phrases: {} }],
                 outroFill: null,
             },
             {
                 id: 'MAIN_1', 
-                name: 'Organ Dialogue', 
+                name: 'Imperial Dialogue', 
                 duration: { percent: 92 },
                 layers: { 
                     bass: true, 

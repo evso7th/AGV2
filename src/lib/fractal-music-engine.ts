@@ -46,8 +46,9 @@ interface EngineConfig {
 }
 
 /**
- * #ЗАЧЕМ: Фрактальный Музыкальный Движок V20.0 — "Universal Intro Lottery".
- * #ЧТО: Логика динамической жеребьевки инструментов интро теперь доступна для всех жанров (Блюз, Транс и др.).
+ * #ЗАЧЕМ: Фрактальный Музыкальный Движок V21.0 — "The True Birth Lottery".
+ * #ЧТО: Лотерея интро теперь полностью рандомизирована. Все участники сцен 
+ *       перемешиваются и распределяются по этапам вступления.
  */
 export class FractalMusicEngine {
   public config: EngineConfig;
@@ -67,7 +68,6 @@ export class FractalMusicEngine {
   private activeTimbres: Partial<Record<InstrumentPart, string>> = {};
   private hookLibrary: { events: FractalEvent[], root: number }[] = [];
   
-  // #ЗАЧЕМ: Память лотереи вступления для текущей сессии.
   private introLotteryMap: Map<number, Partial<Record<InstrumentPart, any>>> = new Map();
 
   constructor(config: EngineConfig, blueprint: MusicBlueprint) {
@@ -84,27 +84,40 @@ export class FractalMusicEngine {
       if(moodOrGenreChanged || seedChanged) this.initialize(true);
   }
 
-  // #ЗАЧЕМ: Глобальная реализация Лотереи Вступления.
+  /**
+   * #ЗАЧЕМ: Реализация непредсказуемого "рождения" ансамбля.
+   * #ЧТО: Сбор всех участников из всех сцен интро и их случайная перетасовка.
+   */
   private performIntroLottery(stages: any[]) {
-    console.log('%c[Engine] INITIALIZING UNIVERSAL INTRO LOTTERY...', 'color: #00BFFF; font-weight: bold;');
-    const allParticipants: { part: InstrumentPart, rule: any }[] = [];
+    console.log('%c[Engine] INITIALIZING BIRTH LOTTERY...', 'color: #00BFFF; font-weight: bold;');
     
+    // Собираем всех УНИКАЛЬНЫХ участников из всех стадий
+    const participantsMap = new Map<InstrumentPart, any>();
     stages.forEach(s => {
         if (s.instrumentation) {
             Object.entries(s.instrumentation).forEach(([part, rule]) => {
-                allParticipants.push({ part: part as InstrumentPart, rule });
+                participantsMap.set(part as InstrumentPart, rule);
             });
         }
     });
 
-    const shuffled = this.random.shuffle(allParticipants);
-    const stageSize = Math.ceil(shuffled.length / (stages.length || 1));
+    const allParts = Array.from(participantsMap.keys());
+    const shuffledParts = this.random.shuffle(allParts);
+    
+    // Распределяем перемешанные части по сценам (равномерно)
+    const stageCount = stages.length || 1;
+    const partsPerStage = Math.ceil(shuffledParts.length / stageCount);
 
     stages.forEach((_, i) => {
-        const chunk = shuffled.slice(i * stageSize, (i + 1) * stageSize);
+        const stageParts = shuffledParts.slice(i * partsPerStage, (i + 1) * partsPerStage);
         const stageInstr: Partial<Record<InstrumentPart, any>> = {};
-        chunk.forEach(p => { stageInstr[p.part] = p.rule; });
+        
+        stageParts.forEach(part => {
+            stageInstr[part] = participantsMap.get(part);
+        });
+        
         this.introLotteryMap.set(i, stageInstr);
+        console.log(`[Lottery] Stage ${i+1}: Assigned ${stageParts.join(', ')}`);
     });
   }
 
@@ -173,14 +186,12 @@ export class FractalMusicEngine {
         };
     }
 
-    // --- Глобальная логика оркестровки (Блюз, Транс и др. с поддержкой Лотереи) ---
     const instrumentHints: InstrumentHints = { summonProgress: {} };
     let tension = this.suiteDNA.tensionMap[this.epoch % this.suiteDNA.tensionMap.length] ?? 0.5;
     
     let currentInstructions: Partial<Record<InstrumentPart, any>> | undefined;
     const stages = navInfo.currentPart.stagedInstrumentation;
 
-    // #ЗАЧЕМ: Применение Лотереи Вступления для всех жанров.
     if (navInfo.currentPart.id === 'INTRO' && stages && stages.length > 0) {
         if (this.introLotteryMap.size === 0) this.performIntroLottery(stages);
         
