@@ -1,7 +1,7 @@
 /**
- * @fileOverview THE BLUES CODEX (v1.1)
+ * @fileOverview THE BLUES CODEX (v1.2)
  * #ЗАЧЕМ: Централизованная библиотека законов блюза. 
- * #ОБНОВЛЕНО (ПЛАН №455): Универсальные константы теперь импортируются из music-theory.ts.
+ * #ОБНОВЛЕНО (ПЛАН №479): Династии синхронизированы с тегами в blues_guitar_solo.ts.
  */
 
 import { calculateMusiNum, DEGREE_TO_SEMITONE } from './music-theory';
@@ -42,9 +42,10 @@ export function resolveBlueNote(pitch: number, root: number): number {
 
 /**
  * #ЗАЧЕМ: Определение Династии ликов на основе ДНК сюиты.
+ * #ОБНОВЛЕНО: Используются только теги, реально существующие в библиотеке.
  */
 export function getDynastyForMood(mood: string, seed: number): string {
-    const dynasties = ['soul', 'texas', 'king', 'detroit', 'chromatic', 'slow-burn'];
+    const dynasties = ['slow-burn', 'texas', 'soul', 'chromatic', 'legacy', 'lyrical'];
     const idx = Math.abs(Math.floor(seed)) % dynasties.length;
     return dynasties[idx];
 }

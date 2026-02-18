@@ -18,10 +18,10 @@ import {
 import { BLUES_SOLO_LICKS } from './assets/blues_guitar_solo';
 
 /**
- * #ЗАЧЕМ: Блюзовый Мозг V101.0 — "The Compact Narrative Engine".
- * #ЧТО: 1. Внедрена поддержка компактных числовых ликов (10x экономия места).
- *       2. Реализована автоматическая трансмутация из ingest_buffer.json.
- *       3. Оптимизирован Melodic Glue для работы со сжатыми данными.
+ * #ЗАЧЕМ: Блюзовый Мозг V102.0 — "The Diversity Fix".
+ * #ЧТО: 1. Исправлена проблема "Шарманки" (Hurdi-Gurdy effect) через каскадный поиск ликов.
+ *       2. Внедрен лог выбранной Династии для прозрачности СОР.
+ *       3. Оптимизирован сброс истории ликов.
  */
 
 export class BluesBrain {
@@ -131,21 +131,15 @@ export class BluesBrain {
         events.push(...pianoEvents);
     }
 
-    if (hints.sfx && this.mood === 'melancholic') {
-        if (navInfo.currentPart.id.includes('BRIDGE') && !this.sfxPlayedInPart) {
-            events.push(...this.renderCleanSfx(tension));
-            this.sfxPlayedInPart = true;
-        }
-    }
-
     return events;
   }
 
   private logNarrativeActivity(epoch: number, navInfo: NavigationInfo, dna: SuiteDNA) {
       const type = this.state.currentMutationType;
       const lickId = this.currentLickId;
+      const dynasty = dna.dynasty || 'unknown';
       console.info(
-          `%c[Narrative] Bar ${epoch} | Act: ${navInfo.currentPart.id} | New Theme: ${lickId} | Mutation: ${type}`,
+          `%c[Narrative] Bar ${epoch} | Dynasty: ${dynasty.toUpperCase()} | Theme: ${lickId} | Mutation: ${type}`,
           'color: #DA70D6; font-weight: bold; background: #222; padding: 2px 5px; border-radius: 3px;'
       );
   }
@@ -160,19 +154,31 @@ export class BluesBrain {
   private selectNextAxiom(navInfo: NavigationInfo, dna: SuiteDNA, epoch: number) {
       const dynasty = dna.dynasty || 'slow-burn';
       const sessionHistory = dna.sessionHistory || [];
+      const allLickIds = Object.keys(BLUES_SOLO_LICKS);
       
-      let pool = Object.keys(BLUES_SOLO_LICKS).filter(id => 
+      // 1. Пытаемся найти лики по Династии
+      let pool = allLickIds.filter(id => 
           BLUES_SOLO_LICKS[id].tags.includes(dynasty) && 
           !this.usedLicksInSuite.has(id) &&
           !sessionHistory.includes(id)
       );
 
-      if (pool.length < 5) {
+      // 2. Если по Династии пусто или мало, пробуем основной тег slow-burn
+      if (pool.length < 3) {
           this.usedLicksInSuite.clear();
-          pool = Object.keys(BLUES_SOLO_LICKS).filter(id => 
-              BLUES_SOLO_LICKS[id].tags.includes(dynasty) && !sessionHistory.includes(id)
+          pool = allLickIds.filter(id => 
+              (BLUES_SOLO_LICKS[id].tags.includes(dynasty) || BLUES_SOLO_LICKS[id].tags.includes('slow-burn')) && 
+              !sessionHistory.includes(id)
           );
       }
+
+      // 3. Если и так пусто, берем любой лик, которого не было в сессии
+      if (pool.length === 0) {
+          pool = allLickIds.filter(id => !sessionHistory.includes(id));
+      }
+
+      // 4. Крайний случай - любой лик из библиотеки
+      if (pool.length === 0) pool = allLickIds;
 
       const nextId = pool[this.random.nextInt(pool.length)] || 'L01';
       this.currentLickId = nextId;
@@ -386,7 +392,16 @@ export class BluesBrain {
       return events;
   }
 
-  private renderCleanSfx(tension: number): FractalEvent[] {
-      return [{ type: 'sfx', note: 60, time: 1.0, duration: 4.0, weight: 0.25, technique: 'hit', dynamics: 'p', phrasing: 'staccato', params: { mood: this.mood, genre: 'blues' } }];
+  private evolveEmotion(epoch: number): void {
+    this.state.emotion.melancholy += (this.random.next() - 0.5) * 0.06;
+    this.state.emotion.darkness += (this.random.next() - 0.5) * 0.04;
+    this.state.emotion.melancholy = Math.max(0.65, Math.min(0.95, this.state.emotion.melancholy));
+    this.state.emotion.darkness = Math.max(0.15, Math.min(0.45, this.state.emotion.darkness));
+  }
+
+  private updatePhrasePhase(barIn12: number): void {
+    if (barIn12 < 4) this.state.phraseState = 'call';
+    else if (barIn12 < 8) this.state.phraseState = 'call_var';
+    else this.state.phraseState = 'response';
   }
 }
