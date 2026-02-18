@@ -7,22 +7,18 @@ import type {
   NavigationInfo,
   BluesCognitiveState
 } from '@/types/music';
-import { calculateMusiNum } from './music-theory';
 import { 
-    BLUES_SCALE_DEGREES, 
-    DEGREE_TO_SEMITONE, 
     getNextChordRoot, 
-    getChordNameForBar 
+    getChordNameForBar,
+    DEGREE_TO_SEMITONE
 } from './blues-theory';
 import { BLUES_DRUM_RIFFS } from './assets/blues-drum-riffs';
 import { BLUES_SOLO_LICKS } from './assets/blues_guitar_solo';
 
 /**
- * #ЗАЧЕМ: Блюзовый Мозг V65.0 — "Narrative Freedom".
- * #ЧТО: 1. Вынос теории в blues-theory.ts.
- *       2. Реализация длинных (4 такта) ликов с корректной сегментацией.
- *       3. Радикальный аудит стагнации: принудительная смена аксиомы при петле.
- *       4. Усиление "The Pull" (перекрытие аккордов 8.0 долей).
+ * #ЗАЧЕМ: Блюзовый Мозг V66.0 — "Imperial Orchestration".
+ * #ЧТО: 1. Динамическое переключение на Rhodes при высоком напряжении.
+ *       2. Поддержка лотереи инструментов и многомасштабного аудита.
  */
 
 export class BluesBrain {
@@ -80,11 +76,9 @@ export class BluesBrain {
   ): FractalEvent[] {
     const tension = dna.tensionMap?.[epoch] ?? 0.5;
     
+    // #ЗАЧЕМ: Динамическая подстройка тембров под энергию.
     this.evaluateTimbralDramaturgy(tension, hints);
     
-    // --- NARRATIVE SELECTION ---
-    // #ЗАЧЕМ: Устранение 1-тактной шарманки.
-    // #ЧТО: Смена лика происходит ТОЛЬКО по окончании его длительности или принудительно.
     const phraseTicks = Math.max(...(this.currentAxiom.map(n => n.t + n.d) || [12]), 12);
     const phraseBars = Math.ceil(phraseTicks / 12);
     const isPhraseEnd = epoch % phraseBars === 0;
@@ -96,19 +90,19 @@ export class BluesBrain {
     const events: FractalEvent[] = [];
     const melodyEvents: FractalEvent[] = [];
 
-    // --- 1. MELODY (Horizontal Segment Rendering) ---
+    // --- 1. MELODY ---
     if (hints.melody) {
       const mEvents = this.renderMelodicSegment(epoch, currentChord, tension);
       melodyEvents.push(...mEvents);
       events.push(...mEvents);
     }
 
-    // --- 2. ACCOMPANIMENT (The Imperial Pull) ---
+    // --- 2. ACCOMPANIMENT ---
     if (hints.accompaniment) {
-      events.push(...this.renderPullChops(epoch, currentChord, tension));
+      events.push(...this.renderPullChops(epoch, currentChord, tension, hints.accompaniment as string));
     }
 
-    // --- 3. BASS (Iron Pillar) ---
+    // --- 3. BASS ---
     if (hints.bass) {
       events.push(...this.renderIronBass(currentChord, epoch));
     }
@@ -125,7 +119,6 @@ export class BluesBrain {
   }
 
   private selectNextAxiom(navInfo: NavigationInfo, dna: SuiteDNA, epoch: number) {
-      // #ЗАЧЕМ: Гарантированная новизна.
       const lickIdFromDNA = dna.partLickMap?.get(navInfo.currentPart.id) || dna.seedLickId || 'L01';
       const dynastyTags = BLUES_SOLO_LICKS[lickIdFromDNA]?.tags || ['minor'];
       
@@ -133,7 +126,6 @@ export class BluesBrain {
           BLUES_SOLO_LICKS[id].tags.some(t => dynastyTags.includes(t)) && id !== this.currentLickId
       );
 
-      // #ЗАЧЕМ: Уход от детерминизма calculateMusiNum к живому рандому.
       const nextId = pool[this.random.nextInt(pool.length)] || 'L01';
       this.currentLickId = nextId;
       this.currentAxiom = BLUES_SOLO_LICKS[nextId].phrase;
@@ -147,6 +139,14 @@ export class BluesBrain {
         else if (tension <= 0.85) (hints as any).melody = 'cs80'; 
         else (hints as any).melody = 'guitar_shineOn'; 
     }
+
+    // #ЗАЧЕМ: Реализация "Moment of Clarity".
+    // #ЧТО: При высоком напряжении аккомпанемент переключается с органов на Rhodes.
+    if (hints.accompaniment) {
+        if (tension > 0.75) {
+            (hints as any).accompaniment = 'ep_rhodes_warm';
+        }
+    }
   }
 
   private renderMelodicSegment(epoch: number, chord: GhostChord, tension: number): FractalEvent[] {
@@ -156,7 +156,6 @@ export class BluesBrain {
     const barInPhrase = epoch % phraseBars;
     const tickOffset = barInPhrase * 12;
     
-    // Выбираем только те ноты, которые попадают в текущий такт длинного лика
     const barNotes = this.currentAxiom.filter(n => n.t >= tickOffset && n.t < tickOffset + 12);
 
     return barNotes.map(n => ({
@@ -171,13 +170,12 @@ export class BluesBrain {
     }));
   }
 
-  private renderPullChops(epoch: number, chord: GhostChord, tension: number): FractalEvent[] {
+  private renderPullChops(epoch: number, chord: GhostChord, tension: number, timbre: string): FractalEvent[] {
     const events: FractalEvent[] = [];
     const isMinor = chord.chordType === 'minor';
     const root = chord.rootNote + 12;
     const notes = [root, root + (isMinor ? 3 : 4), root + 7];
     
-    // Тягучие аккорды с перекрытием 8 долей
     if (epoch % 2 === 0) {
         notes.forEach((p, i) => {
             events.push({
@@ -200,7 +198,6 @@ export class BluesBrain {
     const barIn12 = epoch % 12;
     const nextRoot = getNextChordRoot(barIn12, chord.rootNote) - 12;
     
-    // Железный фундамент: 1-2-3-4
     const notes = [root, root + 7, root + 10, nextRoot - 1]; 
     return notes.map((p, i) => ({
         type: 'bass', 
@@ -231,7 +228,6 @@ export class BluesBrain {
       this.state.phraseHistory.push(hash);
       if (this.state.phraseHistory.length > this.MAX_HISTORY_DEPTH) this.state.phraseHistory.shift();
 
-      // MESO (2-bar) check
       if (this.state.phraseHistory.length >= 4) {
           const last2 = this.state.phraseHistory.slice(-2).join('|');
           const prev2 = this.state.phraseHistory.slice(-4, -2).join('|');
@@ -239,7 +235,6 @@ export class BluesBrain {
           else this.state.stagnationStrikes.meso = 0;
       }
 
-      // MACRO (4-bar) check
       if (this.state.phraseHistory.length >= 8) {
           const last4 = this.state.phraseHistory.slice(-4).join('|');
           const prev4 = this.state.phraseHistory.slice(-8, -4).join('|');
@@ -248,7 +243,7 @@ export class BluesBrain {
       }
 
       if (this.state.stagnationStrikes.macro >= 1 || this.state.stagnationStrikes.meso >= 3) {
-          console.warn(`%c[SOR] PIECE STAGNATION DETECTED. Forcing Axiom Shift at bar ${epoch}.`, 'color: #ff4500; font-weight: bold;');
+          console.warn(`%c[SOR] STAGNATION DETECTED. Forcing Theme Shift at bar ${epoch}.`, 'color: #ff4500; font-weight: bold;');
           this.selectNextAxiom({ currentPart: { id: 'MAIN' } } as any, dna, epoch);
           this.state.stagnationStrikes = { micro: 0, meso: 0, macro: 0 };
       }

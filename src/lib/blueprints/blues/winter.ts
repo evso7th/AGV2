@@ -1,14 +1,15 @@
-
 import type { MusicBlueprint } from '@/types/music';
 
 /**
- * #ЗАЧЕМ: Блюпринт "The Bluest Blues" (v25.1).
- * #ЧТО: Инструмент "flute" заменен на "violin" в лотерее интро.
+ * #ЗАЧЕМ: Блюпринт "The Bluest Blues" (v26.0 - Imperial Orchestration).
+ * #ЧТО: 1. Лотерея интро: Аккомпанемент ТОЛЬКО Rhodes, Мелодия - Black или Telecaster.
+ *       2. Пианист включен в лотерею вступления.
+ *       3. Пост-интро: Органы как база, Rhodes только в пиках напряжения.
  */
 export const WinterBluesBlueprint: MusicBlueprint = {
     id: 'winter_blues',
-    name: 'The Bluest Blues (Prologue)',
-    description: 'A deep journey starting with a thematic overture and building into a soul-drenched blues. Universal lottery enabled.',
+    name: 'The Bluest Blues (V26)',
+    description: 'A soul-drenched blues journey with a staged Rhodes entrance and dynamic organ layering.',
     mood: 'melancholic',
     musical: {
         key: { root: 'E', scale: 'dorian', octave: 1 },
@@ -34,7 +35,8 @@ export const WinterBluesBlueprint: MusicBlueprint = {
                     { 
                         duration: { percent: 100 }, 
                         instrumentation: {
-                           accompaniment: { activationChance: 1.0, instrumentOptions: [ { name: 'accompaniment', weight: 1.0 } ] },
+                           // #ЗАЧЕМ: Rhodes как единственный голос пролога.
+                           accompaniment: { activationChance: 1.0, instrumentOptions: [ { name: 'ep_rhodes_warm', weight: 1.0 } ] },
                            sfx: { activationChance: 0.45, instrumentOptions: [ { name: 'common', weight: 1.0 } ], transient: true }
                         }
                     }
@@ -46,28 +48,30 @@ export const WinterBluesBlueprint: MusicBlueprint = {
                 outroFill: null,
             },
             {
-                id: 'INTRO', name: 'LotteryOpening', duration: { percent: 27 }, 
+                id: 'INTRO', name: 'ImperialLottery', duration: { percent: 27 }, 
                 layers: { bass: true, accompaniment: true, melody: true, drums: true, harmony: true, pianoAccompaniment: true, sparkles: true },
                 stagedInstrumentation: [
                     { 
                         duration: { percent: 25 }, 
                         instrumentation: {
                            bass: { activationChance: 1.0, instrumentOptions: [ { name: 'bass', weight: 1.0 } ] },
-                           accompaniment: { activationChance: 1.0, instrumentOptions: [ { name: 'organ_soft_jazz', weight: 1.0 } ] }
+                           // #ЗАЧЕМ: Аккомпанемент в интро только Rhodes.
+                           accompaniment: { activationChance: 1.0, instrumentOptions: [{ name: 'ep_rhodes_warm', weight: 1.0 }] }
                         }
                     },
                     {
                         duration: { percent: 25 }, 
                         instrumentation: {
                            drums: { activationChance: 1.0, instrumentOptions: [ { name: 'blues_melancholic', weight: 1.0 } ] },
-                           melody: { activationChance: 1.0, instrumentOptions: [ { name: 'melody', weight: 1.0 } ] }
+                           // #ЗАЧЕМ: Мелодия Black или Telecaster.
+                           melody: { activationChance: 1.0, instrumentOptions: [ { name: 'blackAcoustic', weight: 0.5 }, { name: 'telecaster', weight: 0.5 } ] }
                         }
                     },
                     {
                         duration: { percent: 25 }, 
                         instrumentation: {
+                           // #ЗАЧЕМ: Пианино участвует в лотерее.
                            pianoAccompaniment: { activationChance: 1.0, instrumentOptions: [ { name: 'piano', weight: 1.0 } ] },
-                           // #ЗАЧЕМ: Флейта удалена.
                            harmony: { activationChance: 1.0, instrumentOptions: [ { name: 'violin', weight: 0.7 }, { name: 'guitarChords', weight: 0.3 } ] }
                         }
                     },
@@ -89,22 +93,13 @@ export const WinterBluesBlueprint: MusicBlueprint = {
                 outroFill: null,
             },
             {
-                id: 'MAIN_1', name: 'The Soul Flow', duration: { percent: 66 },
+                id: 'MAIN_1', name: 'Organ Dialogue', duration: { percent: 66 },
                 layers: { bass: true, drums: true, melody: true, accompaniment: true, harmony: true, pianoAccompaniment: true, sparkles: true },
-                stagedInstrumentation: [
-                    { 
-                        duration: { percent: 100 }, 
-                        instrumentation: {
-                           melody: { activationChance: 1.0, instrumentOptions: [ { name: 'melody', weight: 1.0 } ] },
-                           bass: { activationChance: 1.0, instrumentOptions: [ { name: 'bass', weight: 1.0 } ] },
-                           drums: { activationChance: 1.0, instrumentOptions: [ { name: 'blues_melancholic_master', weight: 1.0 } ] },
-                           accompaniment: { activationChance: 1.0, instrumentOptions: [ { name: 'organ_soft_jazz', weight: 1.0 } ] },
-                           // #ЗАЧЕМ: Флейта удалена.
-                           harmony: { activationChance: 1.0, instrumentOptions: [ { name: 'guitarChords', weight: 0.7 }, { name: 'violin', weight: 0.3 } ] },
-                           sparkles: { activationChance: 0.3, instrumentOptions: [ { name: 'dark', weight: 1.0 } ], transient: true }
-                        }
-                    }
-                ],
+                instrumentation: {
+                   // #ЗАЧЕМ: Пост-интро база - Органы.
+                   accompaniment: { strategy: 'weighted', v2Options: [{ name: 'organ_soft_jazz', weight: 0.7 }, { name: 'organ_prog', weight: 0.3 }] },
+                   melody: { strategy: 'weighted', v2Options: [{ name: 'guitar_shineOn', weight: 1.0 }] }
+                },
                 instrumentRules: {
                     drums: { pattern: 'composer', kitName: 'blues_melancholic_master', density: { min: 0.8, max: 1.0 } },
                     bass: { techniques: [{ value: 'walking', weight: 1.0 }] },
@@ -115,18 +110,10 @@ export const WinterBluesBlueprint: MusicBlueprint = {
             },
             {
                 id: 'OUTRO', name: 'Final Breath', duration: { percent: 4 }, 
-                layers: { bass: true, drums: true, melody: false, accompaniment: false, harmony: true, pianoAccompaniment: true, sparkles: false, sfx: false },
-                stagedInstrumentation: [
-                    { 
-                        duration: { percent: 100 }, 
-                        instrumentation: {
-                           bass: { activationChance: 1.0, instrumentOptions: [ { name: 'bass', weight: 1.0 } ] },
-                           drums: { activationChance: 1.0, instrumentOptions: [ { name: 'blues_melancholic_master', weight: 1.0 } ] },
-                           harmony: { activationChance: 1.0, instrumentOptions: [ { name: 'guitarChords', weight: 1.0 } ] },
-                           pianoAccompaniment: { activationChance: 1.0, instrumentOptions: [ { name: 'piano', weight: 1.0 } ] }
-                        }
-                    }
-                ],
+                layers: { bass: true, drums: true, melody: false, accompaniment: true, harmony: true, pianoAccompaniment: true, sparkles: false, sfx: false },
+                instrumentation: {
+                    accompaniment: { strategy: 'weighted', v2Options: [{ name: 'ep_rhodes_warm', weight: 1.0 }] }
+                },
                 instrumentRules: {
                     bass: { techniques: [{ value: 'pedal', weight: 1.0 }], density: { min: 1.0, max: 1.0 } },
                     drums: { pattern: 'ambient_beat', density: { min: 0.2, max: 0.4 } },
@@ -140,5 +127,13 @@ export const WinterBluesBlueprint: MusicBlueprint = {
     mutations: {},
     ambientEvents: [],
     continuity: {},
-    rendering: {}
+    rendering: {
+        mixTargets: {
+            bass: { level: -18, pan: 0.0 },
+            accompaniment: { level: -16, pan: 0.0 },
+            melody: { level: -18, pan: -0.1 },
+            harmony: { level: -30, pan: 0.0 },
+            pianoAccompaniment: { level: -22, pan: 0.2 }
+        }
+    }
 };
