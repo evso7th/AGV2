@@ -15,10 +15,11 @@ import {
 import { BLUES_SOLO_LICKS } from './assets/blues_guitar_solo';
 
 /**
- * #ЗАЧЕМ: Блюзовый Мозг V97.0 — "The Unified Ensemble Guard".
- * #ЧТО: 1. Исправлен баг "Bar: N/A" для Пианиста.
- *       2. Внедрен Piano Stagnation Guard (хеширование фраз).
- *       3. Глобальная вакцинация ансамбля при зацикливании любого участника.
+ * #ЗАЧЕМ: Блюзовый Мозг V98.0 — "The Integrated Pianist".
+ * #ЧТО: 1. Пианист интегрирован в гармонию ансамбля (играет по аккордам).
+ *       2. Реализованы арпеджио и соло-пассажи для Пианиста в зависимости от Tension.
+ *       3. Полная синхронизация СОР: зацикливание Пианиста триггерит смену темы для всех.
+ *       4. Исправлена передача barCount для корректной телеметрии.
  */
 
 export class BluesBrain {
@@ -92,7 +93,6 @@ export class BluesBrain {
 
     this.evaluateTimbralDramaturgy(tension, hints);
     
-    // #ЗАЧЕМ: Реализация Глобальных Страйков Стагнации.
     const isMutationBoundary = epoch % 12 === 0;
     const isStagnating = this.state.stagnationStrikes.micro >= 3;
 
@@ -113,11 +113,11 @@ export class BluesBrain {
     if (hints.bass) events.push(...this.renderIronBass(currentChord, epoch, tension, navInfo));
     if (hints.drums) events.push(...this.renderBluesBeat(epoch, tension, navInfo));
     
-    // #ЗАЧЕМ: Применение защиты к Пианисту.
     if (hints.pianoAccompaniment) {
-        const pianoEvents = this.renderLyricalPiano(epoch, currentChord, tension);
-        const pianoHash = pianoEvents.map(e => e.note).join('|');
+        const pianoEvents = this.renderIntegratedPiano(epoch, currentChord, tension);
         
+        // Stagnation Guard for Piano
+        const pianoHash = pianoEvents.map(e => e.note).join('|');
         if (pianoHash === this.state.lastPianoHash && pianoEvents.length > 0) {
             this.state.stagnationStrikes.micro++;
             console.log(`%c[Narrative] Piano Stagnation Strike: ${this.state.stagnationStrikes.micro}/3`, 'color: #ffa500;');
@@ -141,10 +141,8 @@ export class BluesBrain {
   private logNarrativeActivity(epoch: number, navInfo: NavigationInfo, dna: SuiteDNA) {
       const type = this.state.vaccineActive?.type || 'none';
       const lickId = this.currentLickId;
-      const poolSize = Object.keys(BLUES_SOLO_LICKS).length - this.usedLicksInSuite.size;
-      
       console.info(
-          `%c[Narrative] Bar ${epoch} | Act: ${navInfo.currentPart.id} | Lick: ${lickId} | Mutation: ${type} | Pool: ${poolSize}`,
+          `%c[Narrative] Bar ${epoch} | Act: ${navInfo.currentPart.id} | Lick: ${lickId} | Mutation: ${type}`,
           'color: #DA70D6; font-weight: bold; background: #222; padding: 2px 5px; border-radius: 3px;'
       );
   }
@@ -180,11 +178,6 @@ export class BluesBrain {
       }
 
       const nextId = pool[this.random.nextInt(pool.length)] || 'L01';
-      
-      if (nextId === this.state.lastLickId) {
-          this.state.stagnationStrikes.micro++;
-      }
-
       this.currentLickId = nextId;
       this.state.lastLickId = nextId;
       this.usedLicksInSuite.add(nextId);
@@ -234,22 +227,54 @@ export class BluesBrain {
     }
   }
 
-  private renderLyricalPiano(epoch: number, chord: GhostChord, tension: number): FractalEvent[] {
+  /**
+   * #ЗАЧЕМ: Интегрированное пианино. Играет в гармонии с ансамблем.
+   * #ЧТО: Использует ступени аккорда для создания арпеджио или соло-ответов.
+   */
+  private renderIntegratedPiano(epoch: number, chord: GhostChord, tension: number): FractalEvent[] {
       const events: FractalEvent[] = [];
       const root = chord.rootNote + 24;
-      const noteChance = Math.max(0.1, tension * 0.9); 
-      [0, 1.5, 3].forEach(beat => {
-          if (this.random.next() < noteChance) {
-              events.push({
-                  type: 'pianoAccompaniment',
-                  note: Math.min(root + [0,3,7,10,12][this.random.nextInt(5)], this.MELODY_CEILING),
-                  time: beat, duration: 2.0, weight: 0.2 + tension * 0.4,
-                  technique: 'hit', dynamics: 'p', phrasing: 'staccato',
-                  // #ЗАЧЕМ: Исправление Bar: N/A в логах.
-                  params: { barCount: epoch }
-              });
+      const isMin = chord.chordType === 'minor' || chord.chordType === 'diminished';
+      
+      // Ступени для пианино: 1, 3, 5, 7, 9
+      const degrees = [0, isMin ? 3 : 4, 7, 10, 14];
+      
+      if (tension < 0.45) {
+          // Tier 1: Интимные ответы (одиночные ноты)
+          const noteChance = 0.2 + tension * 0.5;
+          [1.5, 3.0].forEach(beat => {
+              if (this.random.next() < noteChance) {
+                  const deg = degrees[this.random.nextInt(degrees.length)];
+                  events.push({
+                      type: 'pianoAccompaniment',
+                      note: Math.min(root + deg, this.MELODY_CEILING),
+                      time: beat, duration: 4.0, weight: 0.3 + tension * 0.2,
+                      technique: 'hit', dynamics: 'p', phrasing: 'staccato',
+                      params: { barCount: epoch }
+                  });
+              }
+          });
+      } else {
+          // Tier 2-3: Арпеджио и пассажи
+          const complexity = Math.floor(tension * 6); // 2-6 нот
+          const step = 4.0 / complexity;
+          
+          for (let i = 0; i < complexity; i++) {
+              if (this.random.next() < 0.8) {
+                  const deg = degrees[i % degrees.length];
+                  events.push({
+                      type: 'pianoAccompaniment',
+                      note: Math.min(root + deg, this.MELODY_CEILING),
+                      time: i * step, 
+                      duration: 2.5, 
+                      weight: 0.4 + tension * 0.3,
+                      technique: 'hit', dynamics: 'p', phrasing: 'staccato',
+                      params: { barCount: epoch }
+                  });
+              }
           }
-      });
+      }
+      
       return events;
   }
 

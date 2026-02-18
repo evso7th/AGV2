@@ -1,4 +1,3 @@
-
 import type { Note } from "@/types/music";
 
 type SamplerInstrument = {
@@ -6,6 +5,11 @@ type SamplerInstrument = {
     noteRange: [number, number];
 };
 
+/**
+ * #ЗАЧЕМ: Универсальный сэмплер с поддержкой естественных хвостов.
+ * #ЧТО: 1. Удалено принудительное завершение сэмпла (tail preservation).
+ *       2. Реализована защита от нечисловых значений AudioParam.
+ */
 export class SamplerPlayer {
     private audioContext: AudioContext;
     private outputNode: GainNode;
@@ -117,34 +121,32 @@ export class SamplerPlayer {
             gainNode.connect(this.preamp);
 
             const playbackRate = Math.pow(2, (note.midi - sampleMidi) / 12);
-            source.playbackRate.value = playbackRate;
+            source.playbackRate.value = isFinite(playbackRate) ? playbackRate : 1.0;
 
             const startTime = time + note.time;
-            
             const velocity = note.velocity ?? 0.7;
 
-            // #ЗАЧЕМ: Предотвращение критической ошибки Web Audio API.
-            // #ЧТО: Этот блок проверяет, являются ли значения `velocity` и `startTime`
-            //      корректными числовыми значениями (не NaN или Infinity).
-            //      Если значение некорректно, мы пропускаем проигрывание этой ноты и
-            //      выводим ошибку в консоль, но не останавливаем все приложение.
-            // #СВЯЗИ: Устраняет ошибку "Failed to set the 'value' property on 'AudioParam':
-            //          The provided float value is non-finite."
             if (!isFinite(velocity) || !isFinite(startTime)) {
                 console.error(`[${loggerPrefix || 'SamplerPlayer'}] Invalid non-finite value for note scheduling.`, {
                     velocity,
                     startTime,
                     note
                 });
-                return; // Пропустить эту ноту
+                return;
             }
 
-            gainNode.gain.setValueAtTime(velocity, startTime);
+            gainNode.gain.setValueAtTime(0, startTime);
+            gainNode.gain.linearRampToValueAtTime(velocity, startTime + 0.005);
+            
+            // #ЗАЧЕМ: Сохранение естественного хвоста.
+            // Мы не вызываем source.stop(), позволяя сэмплу дозвучать до конца буфера.
+            // Но мы добавляем мягкий release-предохранитель через 10 секунд, если нота не была выключена.
+            gainNode.gain.setTargetAtTime(0, startTime + 10.0, 0.8);
             
             source.start(startTime);
 
             source.onended = () => {
-                gainNode.disconnect();
+                try { gainNode.disconnect(); } catch(e) {}
             };
         });
     }
@@ -179,8 +181,7 @@ export class SamplerPlayer {
         return 12 * (octave + 1) + noteIndex;
     }
 
-    public stopAll() {
-    }
+    public stopAll() {}
 
     public dispose() {
         this.preamp.disconnect();
