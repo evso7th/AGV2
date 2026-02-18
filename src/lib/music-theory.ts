@@ -2,7 +2,7 @@
  * @fileOverview Universal Music Theory Utilities
  * #ЗАЧЕМ: Базовый набор инструментов для работы с нотами, ладами и ритмом.
  * #ЧТО: Внедрена система Choral DNA для длинных мелодических аксиом.
- * #ОБНОВЛЕНО (ПЛАН №443): Восстановлены GEO_ATLAS, LIGHT_ATLAS и createHarmonyAxiom.
+ * #ОБНОВЛЕНО (ПЛАН №444): Исправлена логика династий — расширен пул кандидатов для каждой части.
  */
 
 import type { 
@@ -16,7 +16,7 @@ import type {
     BluesSoloPhrase,
     BluesRiffDegree
 } from '@/types/music';
-import { BLUES_SOLO_LICKS } from './assets/blues-guitar-solo';
+import { BLUES_SOLO_LICKS } from './assets/blues_guitar_solo';
 
 export const DEGREE_TO_SEMITONE: Record<string, number> = {
     'R': 0, 'b2': 1, '2': 2, 'b3': 3, '3': 4, '4': 5, '#4': 6, 'b5': 6, '5': 7,
@@ -28,9 +28,6 @@ const SEMITONE_TO_DEGREE: Record<number, BluesRiffDegree> = {
     8: 'b6', 9: '6', 10: 'b7', 11: '7', 12: 'R+8', 14: '9', 17: '11'
 };
 
-/**
- * #ЗАЧЕМ: Базовые интервалы ладов.
- */
 export const MODE_SEMITONES: Record<string, number[]> = {
     ionian: [0, 2, 4, 5, 7, 9, 11],
     dorian: [0, 2, 3, 5, 7, 9, 10],
@@ -41,9 +38,6 @@ export const MODE_SEMITONES: Record<string, number[]> = {
     locrian: [0, 1, 3, 5, 6, 8, 10]
 };
 
-/**
- * #ЗАЧЕМ: Маппинг настроения на музыкальный лад.
- */
 export function getScaleForMood(mood: Mood, root: number = 60): number[] {
     const modeMap: Record<Mood, string> = {
         joyful: 'ionian',
@@ -63,9 +57,6 @@ export function getScaleForMood(mood: Mood, root: number = 60): number[] {
     return intervals.map(semitone => root + semitone);
 }
 
-/**
- * #ЗАЧЕМ: Атлас географических локаций для амбиента.
- */
 export const GEO_ATLAS: Record<string, { fog: number, depth: number, reg: number }> = {
     'HARBOR': { fog: 0.6, depth: 0.4, reg: -12 },
     'MOUNTAIN': { fog: 0.2, depth: 0.6, reg: 12 },
@@ -74,9 +65,6 @@ export const GEO_ATLAS: Record<string, { fog: number, depth: number, reg: number
     'CAVE': { fog: 0.8, depth: 0.9, reg: -24 }
 };
 
-/**
- * #ЗАЧЕМ: Атлас световых состояний для амбиента.
- */
 export const LIGHT_ATLAS: Record<string, { fog: number, depth: number, bright: number }> = {
     'DAWN': { fog: 0.3, depth: 0.4, bright: 0.6 },
     'NOON': { fog: 0.1, depth: 0.6, bright: 1.0 },
@@ -147,9 +135,6 @@ export function pickWeightedDeterministic<T>(options: { name?: T, value?: T, wei
     return (options[options.length - 1].name || options[options.length - 1].value) as T;
 }
 
-/**
- * #ЗАЧЕМ: Fallback генератор для аккордовых аксиом (не блюзовые жанры).
- */
 export function createHarmonyAxiom(chord: GhostChord, mood: Mood, genre: Genre, random: any, epoch: number): FractalEvent[] {
     const events: FractalEvent[] = [];
     const isMinor = chord.chordType === 'minor';
@@ -174,23 +159,22 @@ export function createHarmonyAxiom(chord: GhostChord, mood: Mood, genre: Genre, 
 
 export function generateSuiteDNA(totalBars: number, mood: Mood, initialSeed: number, originalRandom: any, genre: Genre, blueprintParts: any[], ancestor?: any, sessionHistory?: string[]): SuiteDNA {
     let seedLickId: string | undefined;
-    let seedLickNotes: BluesSoloPhrase | undefined;
     let partLickMap: Map<string, string> = new Map();
 
     if (genre === 'blues') {
         const dynasties = ['minor', 'slow-burn', 'doom-blues', 'major', 'texas', 'classic'];
-        const dynasty = dynasties[calculateMusiNum(initialSeed, 3, 0, dynasties.length)];
+        const dynastyIdx = calculateMusiNum(initialSeed, 3, 0, dynasties.length);
+        const dynasty = dynasties[dynastyIdx];
         
-        const candidates = Object.keys(BLUES_SOLO_LICKS).filter(id => 
+        const pool = Object.keys(BLUES_SOLO_LICKS).filter(id => 
             BLUES_SOLO_LICKS[id].tags.includes(dynasty) && !(sessionHistory || []).includes(id)
         );
-        const pool = candidates.length > 0 ? candidates : Object.keys(BLUES_SOLO_LICKS);
+        const finalPool = pool.length > 0 ? pool : Object.keys(BLUES_SOLO_LICKS);
         
-        seedLickId = pool[calculateMusiNum(initialSeed, 7, 0, pool.length)];
-        seedLickNotes = transformLick(BLUES_SOLO_LICKS[seedLickId].phrase, initialSeed, 0, 'jitter');
+        seedLickId = finalPool[calculateMusiNum(initialSeed, 7, 0, finalPool.length)];
 
         blueprintParts.forEach((part: any, i: number) => {
-            const partLick = pool[calculateMusiNum(initialSeed + i * 100, 5, 0, pool.length)];
+            const partLick = finalPool[calculateMusiNum(initialSeed + (i + 1) * 100, 5, 0, finalPool.length)];
             partLickMap.set(part.id, partLick);
         });
     }
@@ -208,5 +192,5 @@ export function generateSuiteDNA(totalBars: number, mood: Mood, initialSeed: num
     });
 
     const tensionMap = generateTensionMap(initialSeed, totalBars, mood);
-    return { harmonyTrack, baseTempo: 72, rhythmicFeel: 'shuffle', bassStyle: 'walking', drumStyle: 'shuffle_A', soloPlanMap: new Map(), tensionMap, seedLickId, seedLickNotes, partLickMap };
+    return { harmonyTrack, baseTempo: 72, rhythmicFeel: 'shuffle', bassStyle: 'walking', drumStyle: 'shuffle_A', soloPlanMap: new Map(), tensionMap, seedLickId, partLickMap };
 }
