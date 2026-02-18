@@ -1,7 +1,7 @@
 /**
  * @fileOverview Universal Music Theory Utilities
  * #ЗАЧЕМ: Базовый набор инструментов для работы с нотами и энергетическими картами.
- * #ОБНОВЛЕНО (ПЛАН №461): Уточненная волновая физика с жестким лимитом 0.3 - 0.8.
+ * #ОБНОВЛЕНО (ПЛАН №468): Добавлена логика автоматического определения ключа (Key Detection).
  */
 
 import type { 
@@ -31,6 +31,55 @@ export const DEGREE_TO_SEMITONE: Record<string, number> = {
     'R': 0, 'b2': 1, '2': 2, 'b3': 3, '3': 4, '4': 5, '#4': 6, 'b5': 6, '5': 7,
     'b6': 8, '6': 9, 'b7': 10, '7': 11, 'R+8': 12, '9': 14, '11': 17
 };
+
+/** #ЗАЧЕМ: Обратный маппинг для Алхимика MIDI. */
+export const SEMITONE_TO_DEGREE: Record<number, string> = {
+    0: 'R', 1: 'b2', 2: '2', 3: 'b3', 4: '3', 5: '4', 6: 'b5', 7: '5',
+    8: 'b6', 9: '6', 10: 'b7', 11: '7', 12: 'R+8', 14: '9', 17: '11'
+};
+
+/**
+ * #ЗАЧЕМ: Автоматическое определение ключа по массиву нот.
+ * #ЧТО: Сравнивает распределение высот с мажорными и минорными профилями.
+ */
+export function detectKeyFromNotes(notes: number[]): { root: number, mode: 'major' | 'minor' } {
+    if (notes.length === 0) return { root: 60, mode: 'minor' };
+
+    const counts = new Array(12).fill(0);
+    notes.forEach(n => counts[n % 12]++);
+
+    // Профили Krumhansl-Schmuckler (упрощенные для блюза)
+    const majorProfile = [6.35, 2.23, 3.48, 2.33, 4.38, 4.09, 2.52, 5.19, 2.39, 3.66, 2.29, 2.88];
+    const minorProfile = [6.33, 2.68, 3.52, 5.38, 2.60, 3.53, 2.54, 4.75, 3.98, 2.69, 3.34, 3.17];
+
+    let bestScore = -Infinity;
+    let bestRoot = 0;
+    let bestMode: 'major' | 'minor' = 'minor';
+
+    for (let root = 0; root < 12; root++) {
+        let majorScore = 0;
+        let minorScore = 0;
+        for (let i = 0; i < 12; i++) {
+            const val = counts[(root + i) % 12];
+            majorScore += val * majorProfile[i];
+            minorScore += val * minorProfile[i];
+        }
+
+        if (majorScore > bestScore) {
+            bestScore = majorScore;
+            bestRoot = root;
+            bestMode = 'major';
+        }
+        if (minorScore > bestScore) {
+            bestScore = minorScore;
+            bestRoot = root;
+            bestMode = 'minor';
+        }
+    }
+
+    // Для MIDI часто удобно возвращать корень в 4-й октаве (60-71)
+    return { root: 60 + bestRoot, mode: bestMode };
+}
 
 /** #ЗАЧЕМ: Атлас географических локаций для AmbientBrain. */
 export const GEO_ATLAS: Record<string, { fog: number, depth: number, reg: number }> = {
