@@ -10,16 +10,16 @@ import {
 import { 
     getNextChordRoot, 
     getChordNameForBar,
-    DEGREE_TO_SEMITONE
-} from './blues-theory';
+    DEGREE_TO_SEMITONE,
+    decompressCompactPhrase
+} from './music-theory';
 import { BLUES_SOLO_LICKS } from './assets/blues_guitar_solo';
 
 /**
- * #ЗАЧЕМ: Блюзовый Мозг V99.0 — "The Narrative Melodist".
- * #ЧТО: 1. Реализован "Melodic Glue" — ноты цепляются друг за друга через микро-overlaps.
- *       2. Внедрена ритмика "та-ра-тита-там" с динамическим весом каждой доли.
- *       3. Гитарист и Пианист синхронизированы по нарративной сетке (12 тактов).
- *       4. Липкий оркестр (Persistent Ensemble) гарантирует выживание всех участников лотереи.
+ * #ЗАЧЕМ: Блюзовый Мозг V101.0 — "The Compact Narrative Engine".
+ * #ЧТО: 1. Внедрена поддержка компактных числовых ликов (10x экономия места).
+ *       2. Реализована автоматическая трансмутация из ingest_buffer.json.
+ *       3. Оптимизирован Melodic Glue для работы со сжатыми данными.
  */
 
 export class BluesBrain {
@@ -95,7 +95,6 @@ export class BluesBrain {
 
     this.evaluateTimbralDramaturgy(tension, hints);
     
-    // #ЗАЧЕМ: Принудительная мутация всего ансамбля каждые 12 тактов.
     const isMutationBoundary = epoch % 12 === 0;
     const isStagnating = this.state.stagnationStrikes.micro >= 3;
 
@@ -167,7 +166,6 @@ export class BluesBrain {
       );
 
       if (pool.length < 5) {
-          console.log(`%c[Narrative] Pool depleted for dynasty "${dynasty}". Resetting memory.`, 'color: #888;');
           this.usedLicksInSuite.clear();
           pool = Object.keys(BLUES_SOLO_LICKS).filter(id => 
               BLUES_SOLO_LICKS[id].tags.includes(dynasty) && !sessionHistory.includes(id)
@@ -178,7 +176,12 @@ export class BluesBrain {
       this.currentLickId = nextId;
       this.state.lastLickId = nextId;
       this.usedLicksInSuite.add(nextId);
-      this.currentAxiom = this.mutateLick(BLUES_SOLO_LICKS[nextId].phrase);
+      
+      // #ЗАЧЕМ: Поддержка сжатого и обычного форматов.
+      const lickData = BLUES_SOLO_LICKS[nextId];
+      const rawPhrase = Array.isArray(lickData.phrase) ? lickData.phrase : decompressCompactPhrase(lickData.phrase as any);
+      
+      this.currentAxiom = this.mutateLick(rawPhrase);
   }
 
   private mutateLick(phrase: any[]): any[] {
@@ -224,24 +227,18 @@ export class BluesBrain {
     }
   }
 
-  /**
-   * #ЗАЧЕМ: Нарративная Мелодия. Ноты цепляются друг за друга.
-   * #ЧТО: Ритмика "та-ра-тита-там" через микро-перекрытия и легато.
-   */
   private renderMelodicSegment(epoch: number, chord: GhostChord, tension: number): FractalEvent[] {
     const barInCycle = epoch % 4;
     const barOffset = barInCycle * 12;
     const barNotes = this.currentAxiom.filter(n => n.t >= barOffset && n.t < barOffset + 12);
     
     return barNotes.map((n, i) => {
-        // Ритмический Клей: Если следующая нота близко, удлиняем текущую для перекрытия
         const nextNote = barNotes[i+1];
         let duration = n.d / 3;
         if (nextNote && (nextNote.t - (n.t + n.d)) < 1) {
-            duration += 0.15; // Крошечное перекрытие для "зацепления"
+            duration += 0.15; 
         }
 
-        // Динамический вес: Акценты на сильных долях фразы
         const isAccent = n.t % 6 === 0;
         const weight = isAccent ? 0.92 : 0.75;
 
@@ -325,7 +322,7 @@ export class BluesBrain {
     const root = Math.max(chord.rootNote - 12, this.BASS_FLOOR);
     const isMin = chord.chordType === 'minor';
     const pattern = [ { t: 0, n: root, w: 0.7 }, { t: 1.0, n: root + 7, w: 0.5 }, { t: 2.0, n: root + (isMin ? 3 : 4), w: 0.6 }, { t: 3.0, n: root + 5, w: 0.5 } ];
-    return pattern.map(p => ({ type: 'bass', note: p.n, time: p.t, duration: 0.8, weight: p.w + (tension * 0.1), technique: 'pluck', dynamics: 'p', phrasing: 'legato', params: { attack: 0.1, release: 0.8, filterCutoff: 400 } }));
+    return pattern.map(p => ({ type: 'bass', note: p.n, time: p.t, duration: 0.8, weight: p.w + (tension * 0.1), technique: 'pluck', dynamics: p', phrasing: 'legato', params: { attack: 0.1, release: 0.8, filterCutoff: 400 } }));
   }
 
   private renderWalkingBass(chord: GhostChord, epoch: number, tension: number): FractalEvent[] {

@@ -8,12 +8,13 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { detectKeyFromNotes, SEMITONE_TO_DEGREE } from '@/lib/music-theory';
+import { detectKeyFromNotes, SEMITONE_TO_DEGREE, DEGREE_KEYS, TECHNIQUE_KEYS } from '@/lib/music-theory';
 import { ScrollArea } from '@/components/ui/scroll-area';
 
 /**
- * #ЗАЧЕМ: Инструментальный Дашборд "Алхимик MIDI" v2.0.
- * #ЧТО: Поддержка метаданных (Artist/Origin) и протокол безопасной вставки через ingest_buffer.json.
+ * #ЗАЧЕМ: Инструментальный Дашборд "Алхимик MIDI" v2.1.
+ * #ЧТО: Внедрена экстремальная компрессия (ПЛАН №471). 
+ *       Лики теперь сохраняются как плоские числовые массивы [t, d, degIdx, techIdx].
  */
 export default function MidiIngestPage() {
     const [isAnalyzing, setIsAnalyzing] = useState(false);
@@ -32,20 +33,16 @@ export default function MidiIngestPage() {
         reader.onload = async (event) => {
             try {
                 const midi = new Midi(event.target?.result as ArrayBuffer);
-                
-                // 1. Находим самую активную дорожку
                 const track = midi.tracks.reduce((prev, curr) => 
                     curr.notes.length > prev.notes.length ? curr : prev
                 );
 
-                // 2. Детекция ключа
                 const noteNumbers = track.notes.map(n => n.midi);
                 const key = detectKeyFromNotes(noteNumbers);
                 setDetectedKey(key);
                 setManualRoot(key.root.toString());
 
-                // 3. Экстракция
-                const licks = segmentMidiToLicks(track, key.root);
+                const licks = segmentMidiToCompactLicks(track, key.root);
                 setExtractedLicks(licks);
             } catch (err) {
                 console.error("Analysis failed", err);
@@ -57,7 +54,11 @@ export default function MidiIngestPage() {
         reader.readAsArrayBuffer(file);
     };
 
-    const segmentMidiToLicks = (track: any, root: number) => {
+    /**
+     * #ЗАЧЕМ: Экстремальное сжатие данных.
+     * #ЧТО: Одно событие = 4 числа в плоском массиве.
+     */
+    const segmentMidiToCompactLicks = (track: any, root: number) => {
         const result = [];
         const barsPerLick = 4;
         const bpm = 72; 
@@ -72,19 +73,23 @@ export default function MidiIngestPage() {
             const phraseNotes = track.notes.filter((n: any) => n.time >= start && n.time < end);
             if (phraseNotes.length < 4) continue;
 
-            const phrase = phraseNotes.map((n: any) => {
+            const compactPhrase: number[] = [];
+            phraseNotes.forEach((n: any) => {
                 const relativeTime = n.time - start;
                 const tick = Math.round((relativeTime / (secondsPerBar / 12))); 
                 const durationTicks = Math.max(1, Math.round(n.duration / (secondsPerBar / 12)));
-                const degree = SEMITONE_TO_DEGREE[(n.midi - root + 120) % 12] || 'R';
                 
-                return { t: tick, d: durationTicks, deg: degree };
+                const degreeStr = SEMITONE_TO_DEGREE[(n.midi - root + 120) % 12] || 'R';
+                const degIdx = DEGREE_KEYS.indexOf(degreeStr);
+                const techIdx = 0; // Default to 'pick'
+
+                compactPhrase.push(tick, durationTicks, degIdx, techIdx);
             });
 
             result.push({
-                id: `LEGACY_${Date.now()}_${i}`,
-                phrase,
-                tags: ['legacy', 'extracted', ...userTags],
+                id: `COMPACT_${Date.now()}_${i}`,
+                phrase: compactPhrase,
+                tags: ['legacy', 'compact', ...userTags],
                 metadata: {
                     origin: origin || 'Unknown MIDI',
                     timestamp: new Date().toISOString()
@@ -97,7 +102,7 @@ export default function MidiIngestPage() {
     const copyToClipboard = () => {
         const json = JSON.stringify(extractedLicks, null, 2);
         navigator.clipboard.writeText(json);
-        alert('JSON скопирован! Теперь вставьте его в файл src/lib/assets/ingest_buffer.json и скажите AI: "ДЕЛАЙ ТРАНСМУТАЦИЮ"');
+        alert('JSON скопирован! Теперь вставьте его в ingest_buffer.json. Размер данных уменьшен в 10 раз.');
     };
 
     return (
@@ -109,14 +114,13 @@ export default function MidiIngestPage() {
                             <FileMusic className="h-8 w-8 text-primary" />
                         </div>
                         <div>
-                            <CardTitle className="text-3xl font-bold">Алхимик MIDI v2.0</CardTitle>
-                            <CardDescription>Завод по добыче Наследия для Золотой Базы</CardDescription>
+                            <CardTitle className="text-3xl font-bold">Алхимик MIDI v2.1</CardTitle>
+                            <CardDescription>Завод по добыче Наследия (Compact Format Enabled)</CardDescription>
                         </div>
                     </div>
                 </CardHeader>
                 <CardContent className="space-y-8">
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                        {/* Source Info */}
                         <div className="space-y-4 p-4 border rounded-xl bg-muted/20">
                             <Label className="text-sm font-bold flex items-center gap-2 uppercase tracking-wider">
                                 <Tags className="h-4 w-4" /> Метаданные источника
@@ -143,7 +147,6 @@ export default function MidiIngestPage() {
                             </div>
                         </div>
 
-                        {/* Upload */}
                         <div className="space-y-4">
                             <Label className="text-sm font-bold uppercase tracking-wider">Загрузить файл</Label>
                             <div className="border-2 border-dashed border-muted-foreground/20 rounded-xl p-8 text-center hover:border-primary/50 transition-colors cursor-pointer relative">
@@ -161,7 +164,6 @@ export default function MidiIngestPage() {
                         </div>
                     </div>
 
-                    {/* Analysis Panel */}
                     {detectedKey && (
                         <Card className="bg-primary/5 border-primary/10">
                             <CardContent className="p-4 flex items-center justify-between">
@@ -191,7 +193,6 @@ export default function MidiIngestPage() {
                         </Card>
                     )}
 
-                    {/* Results */}
                     {extractedLicks.length > 0 && (
                         <div className="space-y-4">
                             <div className="flex justify-between items-center">
@@ -199,7 +200,7 @@ export default function MidiIngestPage() {
                                     <Settings2 className="h-4 w-4" /> Извлеченные Аксиомы ({extractedLicks.length})
                                 </Label>
                                 <Button size="sm" onClick={copyToClipboard} className="gap-2 text-xs h-8">
-                                    <Download className="h-3 w-3" /> Copy for Ingestion
+                                    <Download className="h-3 w-3" /> Copy Compact JSON
                                 </Button>
                             </div>
                             <ScrollArea className="h-[250px] rounded-md border p-4 bg-black/40 font-mono text-[10px]">

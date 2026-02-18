@@ -1,7 +1,7 @@
 /**
  * @fileOverview Universal Music Theory Utilities
  * #ЗАЧЕМ: Базовый набор инструментов для работы с нотами и энергетическими картами.
- * #ОБНОВЛЕНО (ПЛАН №468): Добавлена логика автоматического определения ключа (Key Detection).
+ * #ОБНОВЛЕНО (ПЛАН №471): Добавлен Decompressor для компактных числовых массивов ликов.
  */
 
 import type { 
@@ -32,11 +32,34 @@ export const DEGREE_TO_SEMITONE: Record<string, number> = {
     'b6': 8, '6': 9, 'b7': 10, '7': 11, 'R+8': 12, '9': 14, '11': 17
 };
 
+/** #ЗАЧЕМ: Порядковые ключи для сжатия. */
+export const DEGREE_KEYS = Object.keys(DEGREE_TO_SEMITONE);
+
+/** #ЗАЧЕМ: Порядковые техники для сжатия. */
+export const TECHNIQUE_KEYS = ['pick', 'sl', 'h/p', 'bn', 'vb', 'gr', 'ds', 'harm', 'pluck', 'hit', 'swell'];
+
 /** #ЗАЧЕМ: Обратный маппинг для Алхимика MIDI. */
 export const SEMITONE_TO_DEGREE: Record<number, string> = {
     0: 'R', 1: 'b2', 2: '2', 3: 'b3', 4: '3', 5: '4', 6: 'b5', 7: '5',
     8: 'b6', 9: '6', 10: 'b7', 11: '7', 12: 'R+8', 14: '9', 17: '11'
 };
+
+/**
+ * #ЗАЧЕМ: Распаковка сжатого числового массива в осмысленные нотные объекты.
+ * #ЧТО: [t, d, degIdx, techIdx] -> { t, d, deg, tech }
+ */
+export function decompressCompactPhrase(compact: number[]): any[] {
+    const result = [];
+    for (let i = 0; i < compact.length; i += 4) {
+        result.push({
+            t: compact[i],
+            d: compact[i+1],
+            deg: DEGREE_KEYS[compact[i+2]] || 'R',
+            tech: TECHNIQUE_KEYS[compact[i+3]] || 'pick'
+        });
+    }
+    return result;
+}
 
 /**
  * #ЗАЧЕМ: Автоматическое определение ключа по массиву нот.

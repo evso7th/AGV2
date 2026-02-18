@@ -394,6 +394,13 @@ export type BluesRiffNote = {
   d?: number;     // duration in ticks (optional, default 2)
 };
 
+/**
+ * #ЗАЧЕМ: Сжатый формат лика для экономии места.
+ * #ЧТО: Плоский массив чисел [t, d, degIndex, techIndex, ...].
+ *       degIndex соответствует позиции в DEGREE_KEYS.
+ */
+export type CompactBluesPhrase = number[];
+
 export type BluesRiffPattern = BluesRiffNote[];
 
 export type BluesBassRiff = {
