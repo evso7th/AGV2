@@ -126,8 +126,6 @@ export class SfxSynthManager {
         this.destination = destination;
 
         this.preamp = this.context.createGain();
-        // #ЗАЧЕМ: Системное снижение громкости в 3 раза по требованию пользователя (ПЛАН №414).
-        // #ЧТО: gain изменен с 0.5 на 0.16.
         this.preamp.gain.value = 0.16;
         this.preamp.connect(this.destination);
     }
@@ -146,7 +144,6 @@ export class SfxSynthManager {
             }));
             await Promise.all(promises);
             this.buffers.set(category, categoryBuffers);
-             console.log(`[SFX] Loaded ${categoryBuffers.length} samples for category: ${category}`);
         }
         
         this.isReady = true;
@@ -169,10 +166,7 @@ export class SfxSynthManager {
 
 
     public trigger(events: FractalEvent[], barStartTime: number, tempo: number): void {
-        if (!this.isReady) {
-            console.warn('[SFX] Trigger called but not ready.');
-            return;
-        }
+        if (!this.isReady) return;
 
         events.forEach(event => {
             if (event.type !== 'sfx') return;
@@ -181,10 +175,7 @@ export class SfxSynthManager {
             const category = this.getCategoryForContext(mood, genre, rules);
             const samplePool = this.buffers.get(category);
 
-            if (!samplePool || samplePool.length === 0) {
-                console.warn(`[SFX] No samples found for category: ${category}`);
-                return;
-            }
+            if (!samplePool || samplePool.length === 0) return;
 
             const buffer = samplePool[Math.floor(Math.random() * samplePool.length)];
             const source = this.context.createBufferSource();
@@ -194,7 +185,6 @@ export class SfxSynthManager {
             const beatDuration = 60 / tempo;
             const startTime = barStartTime + (event.time * beatDuration);
 
-            console.log(`%c[SFX Player] Triggering effect. Category: '${category}'. Start time: ${startTime.toFixed(2)}`, 'color: #FFA500');
             source.start(startTime);
             
             this.activeSources.add(source);
@@ -206,15 +196,20 @@ export class SfxSynthManager {
     }
 
     private getCategoryForContext(mood: Mood, genre: Genre, rules?: SfxRule): string {
+        // #ЗАЧЕМ: Категорический запрет голосов в меланхолии.
+        // #ЧТО: Если настроение меланхоличное, 'voice' заменяется на 'dark' или 'common'.
+        if (mood === 'melancholic') {
+            const rand = Math.random();
+            return rand < 0.7 ? 'dark' : 'common';
+        }
+
         if (rules && rules.categories && rules.categories.length > 0) {
             const totalWeight = rules.categories.reduce((sum, cat) => sum + cat.weight, 0);
             let rand = Math.random() * totalWeight;
 
             for (const category of rules.categories) {
                 rand -= category.weight;
-                if (rand <= 0) {
-                    return category.name;
-                }
+                if (rand <= 0) return category.name;
             }
         }
         
@@ -230,24 +225,15 @@ export class SfxSynthManager {
             return 'common';
         }
         if (mood === 'dark' || mood === 'anxious') {
-            // #ЗАЧЕМ: Реализация 60/40 распределения для Dark/Anxious по просьбе пользователя.
-            // #ЧТО: Теперь "голоса" вплетаются в темную атмосферу системно.
             return rand < 0.6 ? 'dark' : 'voice';
         }
-        if (rand < 0.2) return 'bongo';
         return 'common';
     }
     
     public allNotesOff() {
        this.activeSources.forEach(source => {
-            try {
-                source.stop(0);
-            } catch(e) { /* ignore */ }
+            try { source.stop(0); } catch(e) {}
        });
        this.activeSources.clear();
-    }
-
-    public isSynthReady(): boolean {
-        return this.isReady;
     }
 }

@@ -15,10 +15,10 @@ import {
 import { BLUES_SOLO_LICKS } from './assets/blues_guitar_solo';
 
 /**
- * #ЗАЧЕМ: Блюзовый Мозг V85.0 — "Codex Compliant".
- * #ЧТО: 1. Логика полностью опирается на blues-theory.ts.
- *       2. Внедрен Lick Mutator для предотвращения зацикливания.
- *       3. Энергозависимый ансамбль (Tension-Sync).
+ * #ЗАЧЕМ: Блюзовый Мозг V86.0 — "Maximum Diversity".
+ * #ЧТО: 1. Внедрена строгая память использованных ликов (usedLicksInSuite).
+ *       2. Реализован Non-Deterministic Pick для исключения "шарманки".
+ *       3. Исправлен баг "2-х ликов на пьесу".
  */
 
 export class BluesBrain {
@@ -33,6 +33,7 @@ export class BluesBrain {
 
   private state: BluesCognitiveState;
   private sfxPlayedInBridge = false;
+  private usedLicksInSuite: Set<string> = new Set();
 
   constructor(seed: number, mood: Mood) {
     this.seed = seed;
@@ -74,9 +75,9 @@ export class BluesBrain {
     
     this.evaluateTimbralDramaturgy(tension, hints);
     
-    // Смена лика при смене части или окончании фразы
-    const isPhraseEnd = epoch % 4 === 0;
-    if (this.currentAxiom.length === 0 || navInfo.isPartTransition || isPhraseEnd) {
+    // #ЗАЧЕМ: Исключение повторов. Смена лика на границах фраз.
+    const isPhraseBoundary = epoch % 4 === 0;
+    if (this.currentAxiom.length === 0 || navInfo.isPartTransition || isPhraseBoundary) {
         this.selectNextAxiom(navInfo, dna, epoch);
     }
 
@@ -88,7 +89,6 @@ export class BluesBrain {
     if (hints.drums) events.push(...this.renderBluesBeat(epoch, tension, navInfo));
     if (hints.pianoAccompaniment) events.push(...this.renderLyricalPiano(epoch, currentChord, tension));
 
-    // SFX Rule: строго 1 раз за бридж для меланхолии
     if (hints.sfx && this.mood === 'melancholic') {
         const isBridge = navInfo.currentPart.id.includes('BRIDGE');
         if (isBridge && !this.sfxPlayedInBridge) {
@@ -103,15 +103,19 @@ export class BluesBrain {
   }
 
   private mutateLick(phrase: any[], epoch: number): any[] {
-      const mutationType = Math.floor(this.random.next() * 4);
+      // #ЗАЧЕМ: Создание бесконечных вариаций на базе одной аксиомы.
+      const mutationType = Math.floor(this.random.next() * 5); 
       let mutated = [...phrase];
       switch(mutationType) {
           case 1: // Inversion
               const pivot = phrase[0]?.deg || 'R';
               mutated = phrase.map(n => ({...n, deg: this.invertDegree(n.deg, pivot)}));
               break;
-          case 2: // Jitter
-              mutated = phrase.map(n => ({...n, t: n.t + (this.random.next() * 0.4 - 0.2)}));
+          case 2: // Rhythmic Jitter
+              mutated = phrase.map(n => ({...n, t: n.t + (this.random.next() * 0.6 - 0.3)}));
+              break;
+          case 3: // Octave Shift
+              mutated = phrase.map(n => ({...n, deg: n.deg === 'R' ? 'R+8' : n.deg }));
               break;
       }
       return mutated;
@@ -126,19 +130,29 @@ export class BluesBrain {
   }
 
   private selectNextAxiom(navInfo: NavigationInfo, dna: SuiteDNA, epoch: number) {
-      const lickIdFromDNA = dna.partLickMap?.get(navInfo.currentPart.id);
-      let nextId = lickIdFromDNA && BLUES_SOLO_LICKS[lickIdFromDNA] ? lickIdFromDNA : 'L01';
+      const dynasty = dna.dynasty || 'soul';
       
-      // Если мы в той же части, но фраза кончилась - берем случайный из династии
-      if (epoch % 4 === 0 && !navInfo.isPartTransition) {
-          const dynasty = dna.dynasty || 'soul';
-          const pool = Object.keys(BLUES_SOLO_LICKS).filter(id => BLUES_SOLO_LICKS[id].tags.includes(dynasty));
-          nextId = pool[this.random.nextInt(pool.length)] || 'L01';
+      // #ЗАЧЕМ: Умный подбор без повторов.
+      // #ЧТО: Сначала пытаемся выбрать лик, который ЕЩЕ НЕ ИГРАЛ в этой пьесе.
+      let pool = Object.keys(BLUES_SOLO_LICKS).filter(id => 
+          BLUES_SOLO_LICKS[id].tags.includes(dynasty) && !this.usedLicksInSuite.has(id)
+      );
+
+      // Если пул исчерпан - сбрасываем память
+      if (pool.length === 0) {
+          console.info(`%c[Narrative] Pool depleted for dynasty "${dynasty}". Resetting memory.`, 'color: #888;');
+          this.usedLicksInSuite.clear();
+          pool = Object.keys(BLUES_SOLO_LICKS).filter(id => BLUES_SOLO_LICKS[id].tags.includes(dynasty));
       }
 
+      // Выбираем абсолютно случайно, а не детерминированно
+      const nextId = pool[this.random.nextInt(pool.length)] || 'L01';
+
       this.currentLickId = nextId;
+      this.usedLicksInSuite.add(nextId);
       this.currentAxiom = this.mutateLick(BLUES_SOLO_LICKS[nextId].phrase, epoch);
-      console.info(`%c[Narrative] Bar ${epoch} | New Theme: ${nextId}`, 'color: #4ade80; font-weight: bold;');
+      
+      console.info(`%c[Narrative] Bar ${epoch} | Act: ${navInfo.currentPart.id} | New Theme: ${nextId} | Pool: ${pool.length}`, 'color: #4ade80; font-weight: bold;');
   }
 
   private evaluateTimbralDramaturgy(tension: number, hints: InstrumentHints) {
@@ -188,17 +202,17 @@ export class BluesBrain {
     const isMin = chord.chordType === 'minor';
     const notes = [root, root + (isMin ? 3 : 4), root + 7, root + 10];
     
-    if (tension > 0.7) { // Пассажи
+    if (tension > 0.7) { 
         [0, 1.5, 3].forEach(t => notes.forEach(p => events.push({
             type: 'accompaniment', note: p, time: t, duration: 0.5, weight: 0.3,
             technique: 'pluck', dynamics: 'mp', phrasing: 'staccato'
         })));
-    } else if (tension > 0.5) { // Арпеджио
+    } else if (tension > 0.5) { 
         notes.forEach((p, i) => events.push({
             type: 'accompaniment', note: p, time: i * 0.5, duration: 1.5, weight: 0.3,
             technique: 'arpeggio', dynamics: 'p', phrasing: 'legato'
         }));
-    } else if (epoch % 2 === 0) { // Наплывы
+    } else if (epoch % 2 === 0) { 
         notes.slice(0, 3).forEach((p, i) => events.push({
             type: 'accompaniment', note: p, time: 0.5 + i * 0.02, duration: 8.0, weight: 0.25,
             technique: 'swell', dynamics: 'p', phrasing: 'legato'
@@ -240,6 +254,4 @@ export class BluesBrain {
   private renderCleanSfx(tension: number): FractalEvent[] {
       return [{ type: 'sfx', note: 60, time: 1.0, duration: 4.0, weight: 0.2, technique: 'hit', dynamics: 'p', phrasing: 'staccato', params: { mood: this.mood, genre: 'blues' } }];
   }
-
-  private auditStagnationV5(melody: any[], chord: any, epoch: number, dna: any) { /* Implementation logic for forcing theme shift */ }
 }
