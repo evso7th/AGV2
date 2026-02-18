@@ -1,7 +1,7 @@
 /**
  * @fileOverview Universal Music Theory Utilities
  * #ЗАЧЕМ: Базовый набор инструментов для работы с нотами и энергетическими картами.
- * #ОБНОВЛЕНО (ПЛАН №454): Реализована "Физика 4-х Волн" для меланхоличного блюза.
+ * #ОБНОВЛЕНО (ПЛАН №455): Восстановлены критические экспорты для AmbientBrain и Матриц.
  */
 
 import type { 
@@ -26,6 +26,40 @@ export const MODE_SEMITONES: Record<string, number[]> = {
     locrian: [0, 1, 3, 5, 6, 8, 10]
 };
 
+/** #ЗАЧЕМ: Универсальный маппинг ступеней для всех Мозгов системы. */
+export const DEGREE_TO_SEMITONE: Record<string, number> = {
+    'R': 0, 'b2': 1, '2': 2, 'b3': 3, '3': 4, '4': 5, '#4': 6, 'b5': 6, '5': 7,
+    'b6': 8, '6': 9, 'b7': 10, '7': 11, 'R+8': 12, '9': 14, '11': 17
+};
+
+/** #ЗАЧЕМ: Атлас географических локаций для AmbientBrain. */
+export const GEO_ATLAS: Record<string, { fog: number, depth: number, reg: number }> = {
+    HARBOR: { fog: 0.6, depth: 0.3, reg: -12 },
+    MOUNTAIN: { fog: 0.2, depth: 0.5, reg: 12 },
+    VOID: { fog: 0.9, depth: 0.8, reg: 0 }
+};
+
+/** #ЗАЧЕМ: Атлас световых состояний (Йога Звука) для AmbientBrain. */
+export const LIGHT_ATLAS: Record<string, { fog: number, depth: number, bright: number }> = {
+    PRISM: { fog: 0.1, depth: 0.4, bright: 0.8 },
+    GLOW: { fog: 0.4, depth: 0.6, bright: 0.5 },
+    DAZZLE: { fog: 0.05, depth: 0.9, bright: 1.0 }
+};
+
+/** #ЗАЧЕМ: Универсальный определитель лада для Матриц Резонанса. */
+export function getScaleForMood(mood: Mood, key: number = 60): number[] {
+    const root = key % 12;
+    let mode = 'aeolian';
+    if (mood === 'joyful' || mood === 'epic') mode = 'ionian';
+    if (mood === 'enthusiastic' || mood === 'dreamy') mode = 'lydian';
+    if (mood === 'melancholic') mode = 'dorian';
+    if (mood === 'anxious') mode = 'phrygian';
+    if (mood === 'dark' || mood === 'gloomy') mode = 'aeolian';
+    
+    const intervals = MODE_SEMITONES[mode] || MODE_SEMITONES.aeolian;
+    return intervals.map(i => (root + i) % 12);
+}
+
 export function calculateMusiNum(step: number, base: number = 2, start: number = 0, modulo: number = 8): number {
     if (!isFinite(step) || modulo <= 0) return 0;
     let num = Math.abs(Math.floor(step + start));
@@ -37,10 +71,6 @@ export function calculateMusiNum(step: number, base: number = 2, start: number =
     return sum % modulo;
 }
 
-/**
- * #ЗАЧЕМ: Создание энергетической кривой сюиты.
- * #ЧТО: Для меланхолии реализована физика 0.3 - 0.8 с волнами внутри актов.
- */
 export function generateTensionMap(seed: number, totalBars: number, mood: Mood, parts?: any[]): number[] {
     const map: number[] = [];
     const isMelancholic = mood === 'melancholic';
@@ -58,7 +88,6 @@ export function generateTensionMap(seed: number, totalBars: number, mood: Mood, 
                 if (part.id === 'INTRO') {
                     tension = 0.3; 
                 } else if (part.id.startsWith('MAIN')) {
-                    // Волна: 0.3 -> 0.8 -> 0.3 внутри каждого мэйны
                     tension = 0.3 + 0.5 * Math.sin(progress * Math.PI);
                 } else if (part.id === 'OUTRO') {
                     tension = 0.3 * (1 - progress * 0.5); 
@@ -112,7 +141,7 @@ export function generateSuiteDNA(totalBars: number, mood: Mood, initialSeed: num
     }
 
     const harmonyTrack: GhostChord[] = [];
-    const key = 40 + Math.floor(originalRandom.next() * 12); // Higher base key for better guitar range
+    const key = 40 + Math.floor(originalRandom.next() * 12); 
     
     let accumulatedBars = 0;
     blueprintParts.forEach((part: any) => {
@@ -150,6 +179,8 @@ export function createHarmonyAxiom(chord: GhostChord, mood: Mood, genre: Genre, 
         weight: 0.5,
         technique: 'swell',
         dynamics: 'p',
-        phrasing: 'legato'
+        phrasing: 'legato',
+        chordName: chord.chordType === 'minor' ? 'Am' : 'E', // Basic mapping for samplers
+        params: { barCount: epoch }
     }));
 }
