@@ -1,7 +1,7 @@
 /**
  * @fileOverview Universal Music Theory Utilities
  * #ЗАЧЕМ: Базовый набор инструментов для работы с нотами, ладами и ритмом.
- * #ОБНОВЛЕНО (ПЛАН №450): Теперь SuiteDNA хранит partLickMap для тематической связи MAIN-секций.
+ * #ОБНОВЛЕНО (ПЛАН №453): Внедрена физика меланхоличных волн (0.3 - 0.8) для 4-актной структуры.
  */
 
 import type { 
@@ -77,13 +77,52 @@ export function calculateMusiNum(step: number, base: number = 2, start: number =
     return sum % modulo;
 }
 
-export function generateTensionMap(seed: number, totalBars: number, mood: Mood): number[] {
+/**
+ * #ЗАЧЕМ: Создание энергетической кривой сюиты.
+ * #ЧТО: Для меланхолии реализована логика "4-х волн" (0.3 - 0.8) с фрактальным джиттером.
+ */
+export function generateTensionMap(seed: number, totalBars: number, mood: Mood, parts?: any[]): number[] {
     const map: number[] = [];
-    for (let i = 0; i < totalBars; i++) {
-        const progress = i / totalBars;
-        const baseTension = 0.4 + 0.3 * Math.sin(progress * Math.PI); 
-        map.push(Math.max(0.05, Math.min(0.95, baseTension)));
+    const isMelancholic = mood === 'melancholic';
+    
+    // Фрактальный джиттер для "дыхания"
+    const getJitter = (bar: number) => (calculateMusiNum(bar, 3, seed, 10) / 100) - 0.05;
+
+    if (isMelancholic && parts && parts.length > 0) {
+        let accumulatedBars = 0;
+        parts.forEach(part => {
+            const partDuration = Math.round((part.duration.percent / 100) * totalBars);
+            for (let i = 0; i < partDuration; i++) {
+                const progress = i / (partDuration || 1);
+                let tension: number;
+
+                if (part.id === 'INTRO') {
+                    tension = 0.3; // Всегда низкое в интро
+                } else if (part.id.startsWith('MAIN')) {
+                    // Волна: 0.3 -> 0.8 -> 0.3
+                    tension = 0.3 + 0.5 * Math.sin(progress * Math.PI);
+                } else if (part.id === 'OUTRO') {
+                    tension = 0.3 * (1 - progress * 0.5); // Угасание
+                } else {
+                    tension = 0.35; // Бриджи
+                }
+                
+                map.push(clamp(tension + getJitter(accumulatedBars + i), 0.1, 0.95));
+            }
+            accumulatedBars += partDuration;
+        });
+    } else {
+        // Стандартная дуга для других настроений
+        for (let i = 0; i < totalBars; i++) {
+            const progress = i / totalBars;
+            const baseTension = 0.4 + 0.3 * Math.sin(progress * Math.PI); 
+            map.push(clamp(baseTension + getJitter(i), 0.05, 0.95));
+        }
     }
+    
+    // Заполняем остаток, если есть
+    while(map.length < totalBars) map.push(0.3);
+    
     return map;
 }
 
@@ -133,8 +172,6 @@ export function generateSuiteDNA(totalBars: number, mood: Mood, initialSeed: num
         
         seedLickId = finalPool[Math.abs(Math.floor(initialSeed)) % finalPool.length];
 
-        // #ЗАЧЕМ: Тематическая связь MAIN-секций.
-        // #ЧТО: Каждой части назначается свой лик из одной Династии.
         blueprintParts.forEach((part: any, i: number) => {
             const partLick = finalPool[(Math.abs(Math.floor(initialSeed)) + (i + 1) * 7) % finalPool.length];
             partLickMap.set(part.id, partLick);
@@ -153,7 +190,7 @@ export function generateSuiteDNA(totalBars: number, mood: Mood, initialSeed: num
         accumulatedBars += partDuration;
     });
 
-    const tensionMap = generateTensionMap(initialSeed, totalBars, mood);
+    const tensionMap = generateTensionMap(initialSeed, totalBars, mood, blueprintParts);
     return { 
         harmonyTrack, 
         baseTempo: 72, 
@@ -166,4 +203,8 @@ export function generateSuiteDNA(totalBars: number, mood: Mood, initialSeed: num
         partLickMap,
         dynasty: genre === 'blues' ? getDynastyForMood(mood, initialSeed) : undefined
     };
+}
+
+function clamp(v: number, min: number, max: number) {
+    return Math.max(min, Math.min(max, v));
 }

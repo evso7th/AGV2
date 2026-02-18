@@ -15,10 +15,11 @@ import {
 import { BLUES_SOLO_LICKS } from './assets/blues_guitar_solo';
 
 /**
- * #ЗАЧЕМ: Блюзовый Мозг V76.0 — "The Imperial Standard".
- * #ЧТО: 1. SFX переведены в режим "Редких теней" (раз в 12-24 такта).
- *       2. Сохранена вся когнитивная логика бита, пианино и нарратива.
- *       3. Полная поддержка 4-актной структуры MAIN_1-4.
+ * #ЗАЧЕМ: Блюзовый Мозг V80.0 — "The Great Narrative Expansion".
+ * #ЧТО: 1. Лик-мутатор: фрактальные трансформации аксиом перед игрой.
+ *       2. Tension-Driven Accompaniment: от мягких наплывов до арпеджио и пассажей.
+ *       3. SFX Bridge Isolation: строгий контроль атмосферы для меланхолии.
+ *       4. Интеграция 80+ новых ликов легенд блюза.
  */
 
 export class BluesBrain {
@@ -33,6 +34,7 @@ export class BluesBrain {
   private readonly MAX_HISTORY_DEPTH = 32;
 
   private state: BluesCognitiveState;
+  private sfxPlayedInBridge = false;
 
   constructor(seed: number, mood: Mood) {
     this.seed = seed;
@@ -117,10 +119,19 @@ export class BluesBrain {
     }
 
     // --- 6. SFX (The Atmosphere) ---
-    // #ЗАЧЕМ: Сверхнизкая частота SFX (раз в 12-24 такта) по просьбе пользователя.
-    // #ЧТО: Срабатывает только каждый 12-й такт с вероятностью 60%.
-    if (hints.sfx && epoch % 12 === 0 && this.random.next() < 0.6) {
-        events.push(...this.renderCleanSfx(tension));
+    // #ЗАЧЕМ: Специфическая логика для Меланхолии: только в бриджах, 1 раз.
+    if (hints.sfx) {
+        if (this.mood === 'melancholic') {
+            const isBridge = navInfo.currentPart.id.includes('BRIDGE');
+            if (isBridge && !this.sfxPlayedInBridge) {
+                events.push(...this.renderCleanSfx(tension));
+                this.sfxPlayedInBridge = true;
+            } else if (!isBridge) {
+                this.sfxPlayedInBridge = false; // Сброс флага при выходе из бриджа
+            }
+        } else if (epoch % 12 === 0 && this.random.next() < 0.6) {
+            events.push(...this.renderCleanSfx(tension));
+        }
     }
 
     this.auditStagnationV5(melodyEvents, currentChord, epoch, dna);
@@ -128,10 +139,43 @@ export class BluesBrain {
     return events;
   }
 
+  /**
+   * #ЗАЧЕМ: Мутация лика перед исполнением.
+   * #ЧТО: Применение фрактальных трансформаций к аксиоме.
+   */
+  private mutateLick(phrase: any[], epoch: number): any[] {
+      const mutationType = calculateMusiNum(epoch, 3, this.seed, 4);
+      let mutated = [...phrase];
+
+      switch(mutationType) {
+          case 1: // Inversion (Зеркало)
+              const firstDeg = phrase[0]?.deg || 'R';
+              mutated = phrase.map(n => ({...n, deg: this.invertDegree(n.deg, firstDeg)}));
+              break;
+          case 2: // Rhythmic Jitter
+              mutated = phrase.map(n => ({...n, t: n.t + (this.random.next() * 0.5 - 0.25)}));
+              break;
+          case 3: // Duration Scaling
+              mutated = phrase.map(n => ({...n, d: n.d * (0.8 + this.random.next() * 0.4)}));
+              break;
+      }
+      return mutated;
+  }
+
+  private invertDegree(deg: string, pivot: string): string {
+      const semitones = DEGREE_TO_SEMITONE[deg] || 0;
+      const pivotSemi = DEGREE_TO_SEMITONE[pivot] || 0;
+      const diff = semitones - pivotSemi;
+      const invertedSemi = pivotSemi - diff;
+      // Находим ближайшую ступень в маппинге
+      const entry = Object.entries(DEGREE_TO_SEMITONE).find(([k, v]) => v === (invertedSemi % 12));
+      return entry ? entry[0] : deg;
+  }
+
   private renderBluesBeat(epoch: number, tension: number, navInfo: NavigationInfo): FractalEvent[] {
       const events: FractalEvent[] = [];
-      const isBreakdown = navInfo.currentPart.id === 'MAIN_3' || tension < 0.40;
-      const isPeak = navInfo.currentPart.id === 'MAIN_4' || tension > 0.75;
+      const isBreakdown = navInfo.currentPart.id.includes('MAIN_3') || tension < 0.40;
+      const isPeak = navInfo.currentPart.id.includes('MAIN_4') || tension > 0.75;
       
       const kickTimes = isPeak ? [0, 1, 2, 3] : (isBreakdown ? [0] : [0, 2.66]);
       kickTimes.forEach(t => {
@@ -159,22 +203,20 @@ export class BluesBrain {
           });
       }
 
-      if (navInfo.currentPart.id !== 'INTRO') {
-          const hatTicks = [0, 0.66, 1, 1.66, 2, 2.66, 3, 3.66];
-          hatTicks.forEach(t => {
-              const isAccent = t % 1 === 0;
-              if (isBreakdown && !isAccent) return; 
-              
-              events.push({
-                  type: 'drum_25693__walter_odington__hackney-hat-1',
-                  note: 42,
-                  time: t,
-                  duration: 0.1,
-                  weight: isAccent ? 0.25 : 0.15,
-                  technique: 'hit', dynamics: 'p', phrasing: 'staccato'
-              });
+      const hatTicks = [0, 0.66, 1, 1.66, 2, 2.66, 3, 3.66];
+      hatTicks.forEach(t => {
+          const isAccent = t % 1 === 0;
+          if (isBreakdown && !isAccent) return; 
+          
+          events.push({
+              type: 'drum_25693__walter_odington__hackney-hat-1',
+              note: 42,
+              time: t,
+              duration: 0.1,
+              weight: isAccent ? 0.25 : 0.15,
+              technique: 'hit', dynamics: 'p', phrasing: 'staccato'
           });
-      }
+      });
 
       if (tension > 0.55 && !isBreakdown) {
           [0, 1, 2, 3].forEach(t => {
@@ -236,9 +278,10 @@ export class BluesBrain {
       }
 
       this.currentLickId = nextId;
-      this.currentAxiom = BLUES_SOLO_LICKS[nextId].phrase;
+      // #ЗАЧЕМ: Применение мутаций к выбранной аксиоме.
+      this.currentAxiom = this.mutateLick(BLUES_SOLO_LICKS[nextId].phrase, epoch);
       
-      console.info(`%c[Narrative] Part: ${navInfo.currentPart.id} | Theme: ${nextId} (Epoch: ${epoch})`, 'color: #4ade80; font-weight: bold;');
+      console.info(`%c[Narrative] Part: ${navInfo.currentPart.id} | Theme: ${nextId} (Mutated at Epoch: ${epoch})`, 'color: #4ade80; font-weight: bold;');
   }
 
   private evaluateTimbralDramaturgy(tension: number, hints: InstrumentHints) {
@@ -251,6 +294,8 @@ export class BluesBrain {
     if (hints.accompaniment) {
         if (tension > 0.75) {
             (hints as any).accompaniment = 'ep_rhodes_warm';
+        } else {
+            (hints as any).accompaniment = 'organ_soft_jazz';
         }
     }
   }
@@ -304,14 +349,49 @@ export class BluesBrain {
     }));
   }
 
+  /**
+   * #ЗАЧЕМ: Аккомпанемент реагирует на Tension.
+   * #ЧТО: Переход от наплывов к арпеджио и пассажам.
+   */
   private renderPullChops(epoch: number, chord: GhostChord, tension: number, timbre: string): FractalEvent[] {
     const events: FractalEvent[] = [];
     const isMinor = chord.chordType === 'minor';
     const root = chord.rootNote + 12;
-    const notes = [root, root + (isMinor ? 3 : 4), root + 7];
+    const chordNotes = [root, root + (isMinor ? 3 : 4), root + 7, root + 10];
     
-    if (epoch % 2 === 0) {
-        notes.forEach((p, i) => {
+    if (tension > 0.78) {
+        // ПИК: Аккордные пассажи (синкопы)
+        [0, 1.5, 3].forEach(t => {
+            chordNotes.forEach(p => {
+                events.push({
+                    type: 'accompaniment',
+                    note: p,
+                    time: t,
+                    duration: 0.5,
+                    weight: 0.35,
+                    technique: 'pluck',
+                    dynamics: 'mp',
+                    phrasing: 'staccato'
+                });
+            });
+        });
+    } else if (tension > 0.55) {
+        // МИД: Слышимые арпеджио
+        chordNotes.forEach((p, i) => {
+            events.push({
+                type: 'accompaniment',
+                note: p,
+                time: i * 0.5,
+                duration: 1.5,
+                weight: 0.3,
+                technique: 'arpeggio',
+                dynamics: 'p',
+                phrasing: 'legato'
+            });
+        });
+    } else if (epoch % 2 === 0) {
+        // НИЗ: Мягкие наплывы
+        chordNotes.slice(0, 3).forEach((p, i) => {
             events.push({
                 type: 'accompaniment',
                 note: p,
@@ -372,4 +452,14 @@ export class BluesBrain {
           this.state.stagnationStrikes = { micro: 0, meso: 0, macro: 0 };
       }
   }
+}
+
+function calculateMusiNum(step: number, base: number = 2, start: number = 0, modulo: number = 8): number {
+    let num = Math.abs(Math.floor(step + start));
+    let sum = 0;
+    while (num > 0) {
+        sum += num % base;
+        num = Math.floor(num / base);
+    }
+    return sum % modulo;
 }
