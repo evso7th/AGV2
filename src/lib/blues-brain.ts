@@ -15,11 +15,10 @@ import {
 import { BLUES_SOLO_LICKS } from './assets/blues_guitar_solo';
 
 /**
- * #ЗАЧЕМ: Блюзовый Мозг V96.0 — "The Imperial Diversity & Ensemble Sync".
- * #ЧТО: 1. Восстановление логов [Narrative].
- *       2. Активация Страйков Стагнации (Fractal Guardians).
- *       3. Сессионная память ликов (DNA.sessionHistory).
- *       4. Волновая физика напряжения (0.3 - 0.8).
+ * #ЗАЧЕМ: Блюзовый Мозг V97.0 — "The Unified Ensemble Guard".
+ * #ЧТО: 1. Исправлен баг "Bar: N/A" для Пианиста.
+ *       2. Внедрен Piano Stagnation Guard (хеширование фраз).
+ *       3. Глобальная вакцинация ансамбля при зацикливании любого участника.
  */
 
 export class BluesBrain {
@@ -32,7 +31,10 @@ export class BluesBrain {
   private readonly MELODY_CEILING = 75; 
   private readonly BASS_FLOOR = 31; 
 
-  private state: BluesCognitiveState & { introBassStyle: 'drone' | 'riff' | 'walking' };
+  private state: BluesCognitiveState & { 
+      introBassStyle: 'drone' | 'riff' | 'walking',
+      lastPianoHash: string 
+  };
   private sfxPlayedInPart = false;
   private currentPartId = '';
   private usedLicksInSuite: Set<string> = new Set();
@@ -55,6 +57,7 @@ export class BluesBrain {
       macroHistory: [],
       lastPhraseHash: '',
       lastLickId: '',
+      lastPianoHash: '',
       blueNotePending: false,
       emotion: { melancholy: 0.8, darkness: 0.3 },
       stagnationStrikes: { micro: 0, meso: 0, macro: 0 },
@@ -77,7 +80,8 @@ export class BluesBrain {
     currentChord: GhostChord,
     navInfo: NavigationInfo,
     dna: SuiteDNA,
-    hints: InstrumentHints
+    hints: InstrumentHints,
+    lastEvents: FractalEvent[] = []
   ): FractalEvent[] {
     const tension = dna.tensionMap?.[epoch] ?? 0.5;
     
@@ -88,13 +92,13 @@ export class BluesBrain {
 
     this.evaluateTimbralDramaturgy(tension, hints);
     
-    // #ЗАЧЕМ: Реализация Страйков Стагнации.
+    // #ЗАЧЕМ: Реализация Глобальных Страйков Стагнации.
     const isMutationBoundary = epoch % 12 === 0;
     const isStagnating = this.state.stagnationStrikes.micro >= 3;
 
     if (this.currentAxiom.length === 0 || navInfo.isPartTransition || isMutationBoundary || isStagnating) {
         if (isStagnating) {
-            console.warn(`%c[Narrative] STAGNATION DETECTED at Bar ${epoch}. Forcing mutation reset.`, 'color: #ff4444; font-weight: bold;');
+            console.warn(`%c[Narrative] ENSEMBLE STAGNATION at Bar ${epoch}. Injecting Diversity Vaccine...`, 'color: #ff4444; font-weight: bold;');
         }
         this.refreshUnifiedMutation();
         this.selectNextAxiom(navInfo, dna, epoch);
@@ -108,7 +112,21 @@ export class BluesBrain {
     if (hints.accompaniment) events.push(...this.renderDynamicAccompaniment(epoch, currentChord, tension));
     if (hints.bass) events.push(...this.renderIronBass(currentChord, epoch, tension, navInfo));
     if (hints.drums) events.push(...this.renderBluesBeat(epoch, tension, navInfo));
-    if (hints.pianoAccompaniment) events.push(...this.renderLyricalPiano(epoch, currentChord, tension));
+    
+    // #ЗАЧЕМ: Применение защиты к Пианисту.
+    if (hints.pianoAccompaniment) {
+        const pianoEvents = this.renderLyricalPiano(epoch, currentChord, tension);
+        const pianoHash = pianoEvents.map(e => e.note).join('|');
+        
+        if (pianoHash === this.state.lastPianoHash && pianoEvents.length > 0) {
+            this.state.stagnationStrikes.micro++;
+            console.log(`%c[Narrative] Piano Stagnation Strike: ${this.state.stagnationStrikes.micro}/3`, 'color: #ffa500;');
+        } else {
+            this.state.lastPianoHash = pianoHash;
+        }
+        
+        events.push(...pianoEvents);
+    }
 
     if (hints.sfx && this.mood === 'melancholic') {
         if (navInfo.currentPart.id.includes('BRIDGE') && !this.sfxPlayedInPart) {
@@ -125,7 +143,6 @@ export class BluesBrain {
       const lickId = this.currentLickId;
       const poolSize = Object.keys(BLUES_SOLO_LICKS).length - this.usedLicksInSuite.size;
       
-      // #ЗАЧЕМ: Восстановление привычного формата логов.
       console.info(
           `%c[Narrative] Bar ${epoch} | Act: ${navInfo.currentPart.id} | Lick: ${lickId} | Mutation: ${type} | Pool: ${poolSize}`,
           'color: #DA70D6; font-weight: bold; background: #222; padding: 2px 5px; border-radius: 3px;'
@@ -144,14 +161,12 @@ export class BluesBrain {
       const dynasty = dna.dynasty || 'slow-burn';
       const sessionHistory = dna.sessionHistory || [];
       
-      // 1. Поиск в основной династии (исключая сессионную историю)
       let pool = Object.keys(BLUES_SOLO_LICKS).filter(id => 
           BLUES_SOLO_LICKS[id].tags.includes(dynasty) && 
           !this.usedLicksInSuite.has(id) &&
           !sessionHistory.includes(id)
       );
 
-      // 2. Расширение пула если мало вариантов
       if (pool.length < 5) {
           pool = Object.keys(BLUES_SOLO_LICKS).filter(id => 
               !this.usedLicksInSuite.has(id) && 
@@ -159,16 +174,13 @@ export class BluesBrain {
           );
       }
 
-      // 3. Полный сброс если всё использовано (но избегаем последнего лика)
       if (pool.length === 0) {
-          console.log('%c[Narrative] Suite Pool Depleted. Refreshing memory...', 'color: #888;');
           this.usedLicksInSuite.clear();
           pool = Object.keys(BLUES_SOLO_LICKS).filter(id => id !== this.state.lastLickId);
       }
 
       const nextId = pool[this.random.nextInt(pool.length)] || 'L01';
       
-      // #ЗАЧЕМ: Детекция стагнации на уровне ID.
       if (nextId === this.state.lastLickId) {
           this.state.stagnationStrikes.micro++;
       }
@@ -186,17 +198,17 @@ export class BluesBrain {
       switch(type) {
           case 'inversion':
               const pivot = phrase[0]?.deg || 'R';
-              mutated = phrase.map(n => ({...n, deg: this.invertDegree(n.deg, pivot)}));
+              mutated = phrase.map((n: any) => ({...n, deg: this.invertDegree(n.deg, pivot)}));
               break;
           case 'jitter':
-              mutated = phrase.map(n => ({...n, t: Math.max(0, n.t + (this.random.next() * 0.4 - 0.2))}));
+              mutated = phrase.map((n: any) => ({...n, t: Math.max(0, n.t + (this.random.next() * 0.4 - 0.2))}));
               break;
           case 'rhythm':
-              mutated = phrase.map(n => ({...n, d: n.d * (0.8 + this.random.next() * 0.4)}));
+              mutated = phrase.map((n: any) => ({...n, d: n.d * (0.8 + this.random.next() * 0.4)}));
               break;
           case 'transposition':
               const shift = this.random.next() < 0.5 ? 12 : -12;
-              mutated = phrase.map(n => ({...n, octShift: (n.octShift || 0) + shift}));
+              mutated = phrase.map((n: any) => ({...n, octShift: (n.octShift || 0) + shift}));
               break;
       }
       return mutated;
@@ -232,7 +244,9 @@ export class BluesBrain {
                   type: 'pianoAccompaniment',
                   note: Math.min(root + [0,3,7,10,12][this.random.nextInt(5)], this.MELODY_CEILING),
                   time: beat, duration: 2.0, weight: 0.2 + tension * 0.4,
-                  technique: 'hit', dynamics: 'p', phrasing: 'staccato'
+                  technique: 'hit', dynamics: 'p', phrasing: 'staccato',
+                  // #ЗАЧЕМ: Исправление Bar: N/A в логах.
+                  params: { barCount: epoch }
               });
           }
       });
