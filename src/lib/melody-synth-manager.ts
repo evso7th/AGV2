@@ -26,12 +26,12 @@ type SynthVoice = {
 
 /**
  * Manages multiple synth voices for the melody part using native AudioNodes.
- * Now includes a "smart router" to delegate to samplers.
+ * Now includes deferred switching to ensure preset changes only happen during pauses.
  */
 export class MelodySynthManager {
     private audioContext: AudioContext;
     private destination: AudioNode;
-    private activeInstrumentName: MelodyInstrument | 'none' = 'organ';
+    private activeInstrumentName: string = 'organ';
     public isInitialized = false;
     private partName: 'melody';
 
@@ -117,45 +117,45 @@ export class MelodySynthManager {
     }
 
     public schedule(events: FractalEvent[], barStartTime: number, tempo: number, barCount: number, instrumentHint?: MelodyInstrument, composerControlsInstruments: boolean = true) {
-        const logPrefix = `%c[MelodyManagerV1 @ Bar ${barCount}]`;
-        const logCss = 'color: #DA70D6';
-        
-        console.log(`${logPrefix} Received schedule command. Instrument Hint: ${instrumentHint}, Events: ${events.length}`, logCss);
-
         if (!this.isInitialized) return;
         
         const melodyEvents = events.filter(e => 
             Array.isArray(e.type) ? e.type.includes(this.partName) : e.type === this.partName
         );
 
-        if (melodyEvents.length === 0) return;
-
-        const hint = (composerControlsInstruments && instrumentHint) ? instrumentHint : this.activeInstrumentName;
+        // --- DEFERRED PRESET SWITCH ---
+        // #ЗАЧЕМ: Переключение инструментаLead должно происходить только в паузах.
+        const targetHint = (composerControlsInstruments && instrumentHint) ? instrumentHint : this.activeInstrumentName;
         
+        if (targetHint !== this.activeInstrumentName) {
+            // Если в такте нет нот или текущий инструмент "выключен" — переключаем сразу.
+            // Иначе продолжаем играть текущим инструментом этот такт.
+            if (melodyEvents.length === 0 || this.activeInstrumentName === 'none') {
+                this.setInstrument(targetHint as any);
+            }
+        }
+
+        // Use the current active instrument for scheduling
+        const currentActive = this.activeInstrumentName;
+        if (currentActive === 'none') return;
+
         // --- SMART ROUTER ---
-        if (hint === 'blackAcoustic') {
-            console.log(`${logPrefix} Routing to BlackGuitarSampler`, logCss);
-            // #ЗАЧЕМ: Устранение искусственного завышения регистра.
-            // #ИСПРАВЛЕНО (ПЛАН 134): Удалено ручное смещение +24, так как когнитивный мозг теперь работает в нужном диапазоне.
+        if (currentActive === 'blackAcoustic') {
             const notesToPlay = melodyEvents.map(e => ({ midi: e.note, time: e.time * (60/tempo), duration: e.duration * (60/tempo), velocity: e.weight, technique: e.technique, params: e.params }));
             this.blackAcousticSampler.schedule(notesToPlay, barStartTime, tempo);
-            return; // Stop further execution
-        } else if (hint === 'telecaster') {
-            console.log(`${logPrefix} Routing to TelecasterGuitarSampler`, logCss);
+            return; 
+        } else if (currentActive === 'telecaster') {
             const notesToPlay = melodyEvents.map(e => ({ midi: e.note, time: e.time * (60/tempo), duration: e.duration * (60/tempo), velocity: e.weight, technique: e.technique, params: e.params }));
             this.telecasterSampler.schedule(notesToPlay, barStartTime, tempo);
             return;
         }
         
         // --- V1 SYNTH LOGIC (Fallback) ---
-        const finalInstrument = V1_TO_V2_PRESET_MAP[hint as keyof typeof V1_TO_V2_PRESET_MAP] || hint;
+        const finalInstrument = V1_TO_V2_PRESET_MAP[currentActive as keyof typeof V1_TO_V2_PRESET_MAP] || currentActive;
         
-        if (!finalInstrument || finalInstrument === 'none' || !(finalInstrument in SYNTH_PRESETS)) {
-            console.warn(`${logPrefix} Hint "${finalInstrument}" not found in V1 SYNTH_PRESETS. Skipping.`, logCss);
+        if (!finalInstrument || !(finalInstrument in SYNTH_PRESETS)) {
             return;
         }
-
-        console.log(`${logPrefix} Using internal synth. Instrument: ${finalInstrument} | Scheduling ${melodyEvents.length} notes...`, logCss);
 
         const beatDuration = 60 / tempo;
         const notes: Note[] = melodyEvents.map(event => ({ midi: event.note, time: event.time * beatDuration, duration: event.duration * beatDuration, velocity: event.weight }));
@@ -180,7 +180,6 @@ export class MelodySynthManager {
         const noteDuration = note.duration;
 
         if (!isFinite(noteTime) || !isFinite(noteDuration) || !isFinite(velocity) || !isFinite(barStartTime)) {
-            console.error('[MelodyManagerV1] Triggering aborted due to non-finite value:', { noteTime, noteDuration, velocity, barStartTime });
             return;
         }
         
@@ -210,12 +209,6 @@ export class MelodySynthManager {
         const attackEndTime = noteOnTime + preset.adsr.attack;
         const noteOffTime = noteOnTime + noteDuration;
         const releaseEndTime = noteOffTime + preset.adsr.release;
-
-        if (!isFinite(attackEndTime) || !isFinite(noteOffTime) || !isFinite(releaseEndTime) || !preset.adsr.attack || !preset.adsr.sustain || !preset.adsr.release) {
-            console.error('[MelodyManagerV1] Aborting due to non-finite envelope time calculation.');
-            voice.isActive = false;
-            return;
-        }
 
         gainParam.cancelScheduledValues(noteOnTime);
         gainParam.setValueAtTime(0.0001, noteOnTime);
@@ -247,7 +240,7 @@ export class MelodySynthManager {
                      const lfo = this.audioContext.createOscillator();
                      lfo.frequency.value = preset.lfo.rate;
                      const lfoGain = this.audioContext.createGain();
-                     lfoGain.gain.value = preset.lfo.amount; // Direct cents value
+                     lfoGain.gain.value = preset.lfo.amount;
                      lfo.connect(lfoGain).connect(osc.detune);
                      lfo.start(noteOnTime);
                      lfo.stop(releaseEndTime + 0.1);
@@ -282,7 +275,7 @@ export class MelodySynthManager {
 
     public setInstrument(instrumentName: MelodyInstrument | 'none') {
         if (!this.isInitialized) return;
-        this.activeInstrumentName = instrumentName as AccompanimentInstrument;
+        this.activeInstrumentName = instrumentName;
     }
     
     public setPreampGain(gain: number) {
@@ -310,8 +303,6 @@ export class MelodySynthManager {
 
     public dispose() {
         this.stop();
-        this.voicePool.forEach(voice => {
-        });
         this.preamp.disconnect();
     }
 }
