@@ -1,14 +1,19 @@
 /**
- * #ЗАЧЕМ: Heritage Alchemist V9.0 — "Genetic Integrity".
- * #ЧТО: 1. Внедрена система дедупликации (Fingerprinting).
- *       2. Реализован учет уже обработанных ликов через хеширование фраз.
- *       3. Добавлена визуальная индикация "Already Ingested".
+ * #ЗАЧЕМ: Heritage Alchemist V10.0 — "Global Census".
+ * #ЧТО: 1. Внедрен счетчик общего количества аксиом в Firestore (heritage_axioms).
+ *       2. Реализована автоматическая проверка объема генофонда при загрузке.
+ *       3. Добавлена визуальная панель "Global Genetic Reserve".
  */
 'use client';
 
 import { useState, useEffect, useMemo } from 'react';
 import { Midi } from '@tonejs/midi';
-import { Upload, FileMusic, Download, Search, Settings2, Sparkles, Tags, Heart, CloudUpload, Music, Waves, Drum, LayoutGrid, Factory, Trash2, BrainCircuit, Play, Volume2, PlayCircle, Square, StopCircle, CheckCircle2, AlertCircle } from 'lucide-react';
+import { 
+    Upload, FileMusic, Download, Search, Settings2, Sparkles, Tags, Heart, 
+    CloudUpload, Music, Waves, Drum, LayoutGrid, Factory, Trash2, BrainCircuit, 
+    Play, Volume2, PlayCircle, Square, StopCircle, CheckCircle2, AlertCircle,
+    Database, RefreshCcw, ShieldCheck
+} from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Label } from '@/components/ui/label';
@@ -18,6 +23,7 @@ import { detectKeyFromNotes, SEMITONE_TO_DEGREE, DEGREE_KEYS, TECHNIQUE_KEYS, DE
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { useRouter } from 'next/navigation';
 import { useFirestore } from '@/firebase';
+import { collection, getCountFromServer } from 'firebase/firestore';
 import { saveHeritageAxiom } from '@/lib/firebase-service';
 import { toast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
@@ -29,9 +35,6 @@ type IngestionRole = 'melody' | 'bass' | 'drums' | 'accomp';
 const MOOD_OPTIONS: Mood[] = ['epic', 'joyful', 'enthusiastic', 'melancholic', 'dark', 'anxious', 'dreamy', 'contemplative', 'calm'];
 const GENRE_OPTIONS: Genre[] = ['ambient', 'trance', 'blues', 'progressive', 'rock', 'house', 'rnb', 'ballad', 'reggae', 'celtic'];
 
-/**
- * #ЗАЧЕМ: Генерация уникального отпечатка фразы для предотвращения дублей.
- */
 const calculatePhraseHash = (phrase: number[]): string => {
     return phrase.join('|');
 };
@@ -42,8 +45,7 @@ const detectTrackRole = (track: any): IngestionRole => {
     if (track.channel === 9 || name.match(/drum|perc|kick|snare|hihat|kit|beat/)) return 'drums';
     if (name.match(/lead|solo|melody/)) return 'melody';
     if (name.match(/piano|key|chord|pad|str|string|organ/)) return 'accomp';
-    if (track.notes.length === 0) return 'melody';
-    const avgPitch = track.notes.reduce((sum: number, n: any) => sum + n.midi, 0) / track.notes.length;
+    const avgPitch = track.notes.reduce((sum: number, n: any) => sum + n.midi, 0) / (track.notes.length || 1);
     if (avgPitch < 48) return 'bass';
     return 'melody';
 };
@@ -109,12 +111,27 @@ export default function MidiIngestPage() {
     const [origin, setOrigin] = useState("");
     const [trackRoles, setTrackRoles] = useState<Map<number, IngestionRole>>(new Map());
     const [isPlayingFull, setIsPlayingFull] = useState(false);
-    
-    // #ЗАЧЕМ: Хранилище уже обработанных хешей для дедупликации.
     const [ingestedHashes, setIngestedHashes] = useState<Set<string>>(new Set());
+    
+    // #ЗАЧЕМ: Состояние для хранения общего количества аксиом в БД.
+    const [globalAxiomCount, setGlobalAxiomCount] = useState<number | null>(null);
+    const [isFetchingCount, setIsFetchingCount] = useState(false);
 
-    // Загрузка реестра из localStorage при старте
+    const fetchGlobalCount = async () => {
+        setIsFetchingCount(true);
+        try {
+            const coll = collection(db, 'heritage_axioms');
+            const snapshot = await getCountFromServer(coll);
+            setGlobalAxiomCount(snapshot.data().count);
+        } catch (e) {
+            console.error("[Census] Failed to fetch global count:", e);
+        } finally {
+            setIsFetchingCount(false);
+        }
+    };
+
     useEffect(() => {
+        fetchGlobalCount();
         const saved = localStorage.getItem('AuraGroove_Ingested_Hashes');
         if (saved) {
             try {
@@ -122,7 +139,7 @@ export default function MidiIngestPage() {
                 setIngestedHashes(new Set(parsed));
             } catch(e) {}
         }
-    }, []);
+    }, [db]);
 
     const onFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
         const file = e.target.files?.[0];
@@ -166,7 +183,6 @@ export default function MidiIngestPage() {
         }
     }, [midiFile, selectedTrackIndex, selectedRole, detectedKey, origin, selectedMood, selectedGenre]);
 
-    // Статистика дедупликации
     const stats = useMemo(() => {
         const total = extractedLicks.length;
         const known = extractedLicks.filter(l => ingestedHashes.has(l.hash)).length;
@@ -259,6 +275,7 @@ export default function MidiIngestPage() {
             setIngestedHashes(newHashes);
             
             toast({ title: "Genetic Ingestion Success", description: `Transmitted ${freshLicks.length} fresh axioms to the cloud.` });
+            fetchGlobalCount(); // Обновляем глобальный счетчик
         } catch (e) {
             toast({ variant: "destructive", title: "Transmission Failed" });
         } finally {
@@ -285,19 +302,25 @@ export default function MidiIngestPage() {
                             <Factory className="h-8 w-8 text-primary" />
                         </div>
                         <div>
-                            <CardTitle className="text-3xl font-bold tracking-tight">Heritage Alchemist v9.0</CardTitle>
+                            <CardTitle className="text-3xl font-bold tracking-tight">Heritage Alchemist v10.0</CardTitle>
                             <CardDescription className="text-muted-foreground flex items-center gap-2">
-                                <CheckCircle2 className="h-3 w-3 text-green-500" /> Fingerprinting Active | Dedup Protected
+                                <ShieldCheck className="h-3 w-3 text-green-500" /> Fingerprinting Active | Global Census Integrated
                             </CardDescription>
                         </div>
                     </div>
-                    <div className="flex gap-2">
-                        {(midiFile || isPlaying) && (
-                            <Button variant="outline" size="sm" onClick={silenceLaboratory} className="text-xs border-destructive/30 hover:bg-destructive/10 text-destructive gap-2">
-                                <Square className="h-3 w-3 fill-current" /> Silence All
-                            </Button>
-                        )}
-                        <Button variant="outline" onClick={() => router.push('/aura-groove')} className="text-xs hover:bg-primary hover:text-primary-foreground transition-all">
+                    <div className="flex items-center gap-4">
+                        {/* #ЗАЧЕМ: Визуальный блок глобальной статистики. */}
+                        <div className="hidden md:flex flex-col items-end px-4 border-r border-primary/10">
+                            <div className="flex items-center gap-2 text-primary font-bold text-lg">
+                                <Database className="h-4 w-4" />
+                                {globalAxiomCount !== null ? globalAxiomCount.toLocaleString() : '---'}
+                            </div>
+                            <span className="text-[10px] uppercase tracking-widest text-muted-foreground font-bold">Global Genetic Reserve</span>
+                        </div>
+                        <Button variant="ghost" size="icon" onClick={fetchGlobalCount} disabled={isFetchingCount} className={cn("h-10 w-10 rounded-xl", isFetchingCount && "animate-spin")}>
+                            <RefreshCcw className="h-5 w-5 text-primary/60" />
+                        </Button>
+                        <Button variant="outline" onClick={() => router.push('/aura-groove')} className="text-xs hover:bg-primary hover:text-primary-foreground transition-all rounded-xl h-10">
                             Return to Studio
                         </Button>
                     </div>
