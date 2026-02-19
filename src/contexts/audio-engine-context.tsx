@@ -1,8 +1,8 @@
 /**
- * #ЗАЧЕМ: Audio Engine Context V5.4 — "Ensemble Singleton Guard".
- * #ЧТО: 1. Внедрены строгие проверки на существование инстансов (if (!ref.current)).
- *       2. Устранено дублирование ударных и других менеджеров при повторной инициализации.
- *       3. Обновлен логгер для вывода метаданных Ликов и Мутаций.
+ * #ЗАЧЕМ: Audio Engine Context V5.5 — "Absolute Recovery".
+ * #ЧТО: 1. Исправлена критическая ошибка инициализации (useRef inside callback).
+ *       2. Внедрена нормализация громкости ударных (VOICE_BALANCE.drums = 0.5).
+ *       3. Гарантирован Singleton Guard для всех инструментов.
  */
 'use client';
 
@@ -26,7 +26,7 @@ import type { FractalEvent, InstrumentHints, NavigationInfo } from '@/types/frac
 // --- Constants ---
 const VOICE_BALANCE: Record<InstrumentPart, number> = {
   bass: 0.55, melody: 1.0, accompaniment: 0.6, 
-  drums: 0.5, // #ЗАЧЕМ: Баланс ударных снижен в 2 раза для чистоты микса.
+  drums: 0.5, // #ЗАЧЕМ: Баланс ударных снижен для чистоты микса.
   effects: 0.6, sparkles: 0.7, piano: 1.0, violin: 0.8, flute: 0.8, guitarChords: 0.9,
   acousticGuitarSolo: 0.9, blackAcoustic: 0.9, sfx: 0.8, harmony: 0.8,
   telecaster: 0.9, darkTelecaster: 0.9, cs80: 1.0, pianoAccompaniment: 0.7,
@@ -76,6 +76,7 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
   const audioContextRef = useRef<AudioContext | null>(null);
   const settingsRef = useRef<WorkerSettings | null>(null);
   
+  // SINGLETON REFS
   const drumMachineRef = useRef<DrumMachine | null>(null);
   const accompanimentManagerV2Ref = useRef<AccompanimentSynthManagerV2 | null>(null);
   const melodyManagerV2Ref = useRef<MelodySynthManagerV2 | null>(null);
@@ -87,7 +88,7 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
   
   const blackGuitarSamplerRef = useRef<BlackGuitarSampler | null>(null);
   const telecasterSamplerRef = useRef<TelecasterGuitarSampler | null>(null);
-  const darkTelecasterSamplerRef = useRef<DarkTelecasterSampler | null>(0 as any); // Re-ref correctly below
+  const darkTelecasterSamplerRef = useRef<DarkTelecasterSampler | null>(null);
   const cs80SamplerRef = useRef<CS80GuitarSampler | null>(null);
   
   const masterGainNodeRef = useRef<GainNode | null>(null);
@@ -101,6 +102,17 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
   const nextBarTimeRef = useRef<number>(0);
   const impulseTimerRef = useRef<NodeJS.Timeout | null>(null);
   const { toast } = useToast();
+
+  const stopAllSounds = useCallback(() => {
+    [melodyManagerV2Ref, bassManagerV2Ref, accompanimentManagerV2Ref, harmonyManagerRef, pianoAccompanimentManagerRef].forEach(r => r.current?.allNotesOff());
+    drumMachineRef.current?.stop();
+    sparklePlayerRef.current?.stopAll();
+    sfxSynthManagerRef.current?.allNotesOff();
+    blackGuitarSamplerRef.current?.stopAll();
+    telecasterSamplerRef.current?.stopAll();
+    darkTelecasterSamplerRef.current?.stopAll();
+    cs80SamplerRef.current?.stopAll();
+  }, []);
 
   const setInstrumentCallback = useCallback(async (part: string, name: string) => {
     if (!isInitialized) return;
@@ -183,20 +195,20 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
         });
 
         // #ЗАЧЕМ: Singleton Guards.
-        // #ЧТО: Инициализация происходит только если Ref пуст. Это устраняет дублирование "двух ударников".
         if (!drumMachineRef.current) drumMachineRef.current = new DrumMachine(context, gainNodesRef.current.drums);
         if (!blackGuitarSamplerRef.current) blackGuitarSamplerRef.current = new BlackGuitarSampler(context, gainNodesRef.current.melody);
         if (!telecasterSamplerRef.current) telecasterSamplerRef.current = new TelecasterGuitarSampler(context, gainNodesRef.current.melody);
-        
-        // Correcting darkTelecaster reference
-        const darkTeleRef = useRef<DarkTelecasterSampler | null>(null);
-        if (!darkTeleRef.current) darkTeleRef.current = new DarkTelecasterSampler(context, gainNodesRef.current.melody);
-        
+        if (!darkTelecasterSamplerRef.current) darkTelecasterSamplerRef.current = new DarkTelecasterSampler(context, gainNodesRef.current.melody);
         if (!cs80SamplerRef.current) cs80SamplerRef.current = new CS80GuitarSampler(context, gainNodesRef.current.melody);
         
         if (!accompanimentManagerV2Ref.current) accompanimentManagerV2Ref.current = new AccompanimentSynthManagerV2(context, gainNodesRef.current.accompaniment);
-        if (!melodyManagerV2Ref.current) melodyManagerV2Ref.current = new MelodySynthManagerV2(context, gainNodesRef.current.melody, telecasterSamplerRef.current!, blackGuitarSamplerRef.current!, darkTeleRef.current!, cs80SamplerRef.current!, 'melody');
-        if (!bassManagerV2Ref.current) bassManagerV2Ref.current = new MelodySynthManagerV2(context, gainNodesRef.current.bass, telecasterSamplerRef.current!, blackGuitarSamplerRef.current!, darkTeleRef.current!, cs80SamplerRef.current!, 'bass');
+        
+        if (!melodyManagerV2Ref.current) {
+            melodyManagerV2Ref.current = new MelodySynthManagerV2(context, gainNodesRef.current.melody!, telecasterSamplerRef.current!, blackGuitarSamplerRef.current!, darkTelecasterSamplerRef.current!, cs80SamplerRef.current!, 'melody');
+        }
+        if (!bassManagerV2Ref.current) {
+            bassManagerV2Ref.current = new MelodySynthManagerV2(context, gainNodesRef.current.bass!, telecasterSamplerRef.current!, blackGuitarSamplerRef.current!, darkTelecasterSamplerRef.current!, cs80SamplerRef.current!, 'bass');
+        }
         
         if (!harmonyManagerRef.current) harmonyManagerRef.current = new HarmonySynthManager(context, gainNodesRef.current.harmony);
         if (!pianoAccompanimentManagerRef.current) pianoAccompanimentManagerRef.current = new PianoAccompanimentManager(context, gainNodesRef.current.pianoAccompaniment);
@@ -207,7 +219,7 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
             drumMachineRef.current.init(),
             blackGuitarSamplerRef.current.init(),
             telecasterSamplerRef.current.init(),
-            darkTeleRef.current.init(),
+            darkTelecasterSamplerRef.current.init(),
             cs80SamplerRef.current.init(),
             accompanimentManagerV2Ref.current.init(),
             melodyManagerV2Ref.current.init(),
@@ -241,17 +253,11 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
         setIsInitialized(true);
         return true;
     } catch (e) {
+        console.error('[AudioEngine] Init error:', e);
         toast({ variant: "destructive", title: "Audio Error" });
         return false;
     } finally { setIsInitializing(false); }
   }, [isInitialized, isInitializing, toast, scheduleEvents]);
-
-  const stopAllSounds = useCallback(() => {
-    [melodyManagerV2Ref, bassManagerV2Ref, accompanimentManagerV2Ref, harmonyManagerRef, pianoAccompanimentManagerRef].forEach(r => r.current?.allNotesOff());
-    drumMachineRef.current?.stop();
-    sparklePlayerRef.current?.stopAll();
-    sfxSynthManagerRef.current?.allNotesOff();
-  }, []);
 
   const setIsPlayingCallback = useCallback((playing: boolean) => {
     setIsPlayingState(playing);

@@ -200,7 +200,6 @@ export class DrumMachine {
 
     schedule(score: FractalEvent[], barStartTime: number, tempo: number) {
         if (!this.sampler || !this.isInitialized) {
-            console.warn('[DrumMachine] Attempted to schedule before initialized.');
             return;
         }
         

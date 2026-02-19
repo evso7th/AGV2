@@ -82,7 +82,7 @@ export const useAuraGroove = (): AuraGrooveProps => {
     stopRecording,
     toggleBroadcast,
     getWorker
-  } = useAudioEngine() as any; 
+  } = useAudioEngine(); 
   
   const db = useFirestore();
   const router = useRouter();
@@ -140,7 +140,7 @@ export const useAuraGroove = (): AuraGrooveProps => {
         accompaniment: 0.18,
         harmony: 0.10,
         pianoAccompaniment: 0.12,
-        drums: 0.4 // Повышено в UI для соответствия системному снижению
+        drums: 0.4 
       };
 
       setInstrumentSettings(prev => ({
