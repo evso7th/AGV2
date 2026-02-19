@@ -1,8 +1,7 @@
 /**
- * #ЗАЧЕМ: Heritage Alchemist V11.0 — "Laboratory Control".
- * #ЧТО: 1. Внедрены кнопки Play/Stop для каждого трека в Ensemble Map.
- *       2. Внедрены кнопки Play/Stop для каждой аксиомы в Genetic Buffer.
- *       3. Добавлена глобальная кнопка "Stop All Sounds" в шапку.
+ * #ЗАЧЕМ: Heritage Alchemist V12.0 — "Performance Sync".
+ * #ЧТО: 1. Внедрена упреждающая загрузка инструментов (Eager Loading) перед playRawEvents.
+ *       2. Это исключает тишину и "too long wait" при воспроизведении полных MIDI файлов.
  */
 'use client';
 
@@ -96,7 +95,7 @@ const segmentTrackToCompactLicks = (track: any, root: number, role: IngestionRol
 export default function MidiIngestPage() {
     const router = useRouter();
     const db = useFirestore();
-    const { initialize, isInitialized, playRawEvents, setIsPlaying, isPlaying } = useAudioEngine();
+    const { initialize, isInitialized, playRawEvents, setInstrument, setIsPlaying, isPlaying } = useAudioEngine();
     
     const [isAnalyzing, setIsAnalyzing] = useState(false);
     const [isTransmitting, setIsTransmitting] = useState(false);
@@ -198,6 +197,9 @@ export default function MidiIngestPage() {
         setPlayingLickIdx(null);
     };
 
+    /**
+     * #ЗАЧЕМ: Ускоренное воспроизведение MIDI через Eager Loading.
+     */
     const playFullMidi = async () => {
         if (!midiFile) return;
         if (isPlayingFull) { silenceLaboratory(); return; }
@@ -229,8 +231,19 @@ export default function MidiIngestPage() {
         });
 
         if (allEvents.length > 0) {
+            // #ЗАЧЕМ: Загружаем инструменты ПЕРЕД планированием событий.
+            await Promise.all([
+                setInstrument('bass', 'bass_jazz_warm'),
+                setInstrument('melody', 'blackAcoustic'),
+                setInstrument('accompaniment', 'organ_soft_jazz')
+            ]);
+
             setIsPlayingFull(true);
-            playRawEvents(allEvents, { bass: 'bass_jazz_warm', melody: 'blackAcoustic', accompaniment: 'organ_soft_jazz' });
+            playRawEvents(allEvents, { 
+                bass: 'bass_jazz_warm', 
+                melody: 'blackAcoustic', 
+                accompaniment: 'organ_soft_jazz' 
+            });
         }
     };
 
@@ -262,8 +275,12 @@ export default function MidiIngestPage() {
         }));
 
         if (events.length > 0) {
+            // #ЗАЧЕМ: Упреждающая загрузка конкретного инструмента.
+            const targetInstrument = role === 'bass' ? 'bass_jazz_warm' : (role === 'melody' ? 'blackAcoustic' : 'organ_soft_jazz');
+            await setInstrument(role === 'accomp' ? 'accompaniment' : (role as any), targetInstrument);
+
             setPlayingTrackIdx(trackIdx);
-            playRawEvents(events, { [mappedRole]: role === 'bass' ? 'bass_jazz_warm' : (role === 'melody' ? 'blackAcoustic' : 'organ_soft_jazz') });
+            playRawEvents(events, { [mappedRole]: targetInstrument });
         }
     };
 
@@ -287,8 +304,15 @@ export default function MidiIngestPage() {
                 time: t / 3, duration: d / 3, weight: 0.8, technique: 'pick', dynamics: 'mf', phrasing: 'legato'
             });
         }
+
+        // #ЗАЧЕМ: Упреждающая загрузка для лика.
+        const targetInstrument = lick.role === 'bass' ? 'bass_jazz_warm' : (lick.role === 'melody' ? 'blackAcoustic' : 'organ_soft_jazz');
+        if (lick.role !== 'drums') {
+            await setInstrument(lick.role === 'accomp' ? 'accompaniment' : (lick.role as any), targetInstrument);
+        }
+
         setPlayingLickIdx(idx);
-        playRawEvents(events, { [role]: role === 'bass' ? 'bass_jazz_warm' : (role === 'melody' ? 'blackAcoustic' : 'organ_soft_jazz') });
+        playRawEvents(events, { [role]: targetInstrument });
     };
 
     const transmitToGlobalMemory = async () => {
@@ -344,9 +368,9 @@ export default function MidiIngestPage() {
                             <Factory className="h-8 w-8 text-primary" />
                         </div>
                         <div>
-                            <CardTitle className="text-3xl font-bold tracking-tight">Heritage Alchemist v11.0</CardTitle>
+                            <CardTitle className="text-3xl font-bold tracking-tight">Heritage Alchemist v12.0</CardTitle>
                             <CardDescription className="text-muted-foreground flex items-center gap-2">
-                                <ShieldCheck className="h-3 w-3 text-green-500" /> Fingerprinting Active | Advanced Playback Controls
+                                <ShieldCheck className="h-3 w-3 text-green-500" /> Fingerprinting Active | Performance Sync
                             </CardDescription>
                         </div>
                     </div>

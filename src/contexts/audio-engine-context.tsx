@@ -1,9 +1,7 @@
 /**
- * #ЗАЧЕМ: Audio Engine Context V5.5 — "Absolute Recovery".
- * #ЧТО: 1. Исправлена критическая ошибка инициализации (useRef inside callback).
- *       2. Внедрена нормализация громкости ударных (VOICE_BALANCE.drums = 0.5).
- *       3. Гарантирован Singleton Guard для всех инструментов.
- * #ОБНОВЛЕНО (ПЛАН №508): Снижен баланс CS80 в 2 раза.
+ * #ЗАЧЕМ: Audio Engine Context V5.6 — "Laboratory Precision".
+ * #ЧТО: 1. Увеличен запас времени (offset) для playRawEvents до 0.8с.
+ *       2. Это устраняет проглатывание первых нот при переключении инструментов.
  */
 'use client';
 
@@ -27,10 +25,10 @@ import type { FractalEvent, InstrumentHints, NavigationInfo } from '@/types/frac
 // --- Constants ---
 const VOICE_BALANCE: Record<InstrumentPart, number> = {
   bass: 0.55, melody: 1.0, accompaniment: 0.6, 
-  drums: 0.5, // #ЗАЧЕМ: Баланс ударных снижен для чистоты микса.
+  drums: 0.5, 
   effects: 0.6, sparkles: 0.7, piano: 1.0, violin: 0.8, flute: 0.8, guitarChords: 0.9,
   acousticGuitarSolo: 0.9, blackAcoustic: 0.9, sfx: 0.8, harmony: 0.8,
-  telecaster: 0.9, darkTelecaster: 0.9, cs80: 0.5, pianoAccompaniment: 0.7, // #ОБНОВЛЕНО: CS80 снижен до 0.5.
+  telecaster: 0.9, darkTelecaster: 0.9, cs80: 0.5, pianoAccompaniment: 0.7, 
 };
 
 // --- React Context ---
@@ -101,7 +99,6 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
 
   const gainNodesRef = useRef<any>({});
   const nextBarTimeRef = useRef<number>(0);
-  const impulseTimerRef = useRef<NodeJS.Timeout | null>(null);
   const { toast } = useToast();
 
   const stopAllSounds = useCallback(() => {
@@ -125,6 +122,8 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
         await accompanimentManagerV2Ref.current.setInstrument(name as any);
     } else if (part === 'harmony' && harmonyManagerRef.current) {
         harmonyManagerRef.current.setInstrument(name as any);
+    } else if (part === 'pianoAccompaniment' && pianoAccompanimentManagerRef.current) {
+        // Piano is fixed for now
     }
   }, [isInitialized]);
 
@@ -195,7 +194,6 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
             }
         });
 
-        // #ЗАЧЕМ: Singleton Guards.
         if (!drumMachineRef.current) drumMachineRef.current = new DrumMachine(context, gainNodesRef.current.drums);
         if (!blackGuitarSamplerRef.current) blackGuitarSamplerRef.current = new BlackGuitarSampler(context, gainNodesRef.current.melody);
         if (!telecasterSamplerRef.current) telecasterSamplerRef.current = new TelecasterGuitarSampler(context, gainNodesRef.current.melody);
@@ -316,7 +314,10 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
             }
         }, 
         getWorker: () => workerRef.current, 
-        playRawEvents: (e, h) => scheduleEvents(e, audioContextRef.current!.currentTime + 0.1, 72, 0, h)
+        playRawEvents: (e, h) => {
+            // #ЗАЧЕМ: Увеличен offset до 0.8с для стабильного старта MIDI.
+            scheduleEvents(e, audioContextRef.current!.currentTime + 0.8, 72, 0, h)
+        }
     }}>
       {children}
     </AudioEngineContext.Provider>
