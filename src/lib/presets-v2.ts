@@ -1,4 +1,3 @@
-
 // V2 Presets — совместимы with buildMultiInstrument()
 // Проверено на соответствие фабрике от 2024-12
 
@@ -152,7 +151,7 @@ export const V2_PRESETS = {
   cs80: {
     type: 'guitar', // Sampler mode in manager
     name: 'Vangelis CS80',
-    volume: 0.75,
+    volume: 0.38, // #ЗАЧЕМ: Уменьшено в 2 раза (было 0.75) по требованию пользователя.
     adsr: { a: 0.01, d: 0.3, s: 0.6, r: 1.5 }
   }
 

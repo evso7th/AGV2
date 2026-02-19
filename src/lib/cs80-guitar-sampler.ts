@@ -32,7 +32,7 @@ export class CS80GuitarSampler {
         this.audioContext = audioContext;
         this.destination = destination;
         this.preamp = this.audioContext.createGain();
-        this.preamp.gain.value = 0.2; 
+        this.preamp.gain.value = 0.1; // #ЗАЧЕМ: Уменьшено в 2 раза (было 0.2) по требованию пользователя.
         this.preamp.connect(this.destination);
     }
 

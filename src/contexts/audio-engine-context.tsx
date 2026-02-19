@@ -3,6 +3,7 @@
  * #ЧТО: 1. Исправлена критическая ошибка инициализации (useRef inside callback).
  *       2. Внедрена нормализация громкости ударных (VOICE_BALANCE.drums = 0.5).
  *       3. Гарантирован Singleton Guard для всех инструментов.
+ * #ОБНОВЛЕНО (ПЛАН №508): Снижен баланс CS80 в 2 раза.
  */
 'use client';
 
@@ -29,7 +30,7 @@ const VOICE_BALANCE: Record<InstrumentPart, number> = {
   drums: 0.5, // #ЗАЧЕМ: Баланс ударных снижен для чистоты микса.
   effects: 0.6, sparkles: 0.7, piano: 1.0, violin: 0.8, flute: 0.8, guitarChords: 0.9,
   acousticGuitarSolo: 0.9, blackAcoustic: 0.9, sfx: 0.8, harmony: 0.8,
-  telecaster: 0.9, darkTelecaster: 0.9, cs80: 1.0, pianoAccompaniment: 0.7,
+  telecaster: 0.9, darkTelecaster: 0.9, cs80: 0.5, pianoAccompaniment: 0.7, // #ОБНОВЛЕНО: CS80 снижен до 0.5.
 };
 
 // --- React Context ---
