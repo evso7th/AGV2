@@ -1,8 +1,8 @@
 
 /**
- * #ЗАЧЕМ: Audio Engine Context V5.7 — "Concurrency Guard".
- * #ЧТО: 1. Внедрен isInitializingRef для блокировки повторных входов в инициализацию.
- *       2. Это устраняет двойной старт ударных и других инструментов.
+ * #ЗАЧЕМ: Audio Engine Context V5.8 — "Master Balance Calibration".
+ * #ЧТО: 1. Системная громкость CS80 и Black Acoustic снижена в 2 раза.
+ *       2. Shine On откалиброван до эталонного значения.
  */
 'use client';
 
@@ -25,11 +25,26 @@ import type { FractalEvent, InstrumentHints, NavigationInfo } from '@/types/frac
 
 // --- Constants ---
 const VOICE_BALANCE: Record<InstrumentPart, number> = {
-  bass: 0.55, melody: 1.0, accompaniment: 0.6, 
+  bass: 0.55, 
+  melody: 1.0, 
+  accompaniment: 0.6, 
   drums: 0.5, 
-  effects: 0.6, sparkles: 0.7, piano: 1.0, violin: 0.8, flute: 0.8, guitarChords: 0.9,
-  acousticGuitarSolo: 0.9, blackAcoustic: 0.9, sfx: 0.8, harmony: 0.8,
-  telecaster: 0.9, darkTelecaster: 0.9, cs80: 0.5, pianoAccompaniment: 0.7, 
+  effects: 0.6, 
+  sparkles: 0.7, 
+  piano: 1.0, 
+  violin: 0.8, 
+  flute: 0.8, 
+  guitarChords: 0.9,
+  acousticGuitarSolo: 0.9, 
+  // #ЗАЧЕМ: Калибровка по требованию пользователя.
+  blackAcoustic: 0.45, // Было 0.9
+  sfx: 0.8, 
+  harmony: 0.8,
+  telecaster: 0.45, // Было 0.9
+  darkTelecaster: 0.45, // Было 0.9
+  cs80: 0.25, // Было 0.5 (суммарно снижено в 4 раза от начального)
+  guitar_shineOn: 0.72, // Было 0.9
+  pianoAccompaniment: 0.7, 
 };
 
 // --- React Context ---
@@ -72,13 +87,11 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
   const [isRecording, setIsRecording] = useState(false);
   const [isBroadcastActive, setIsBroadcastActive] = useState(false);
   
-  // #ЗАЧЕМ: Реф для мгновенной блокировки параллельных вызовов инициализации.
   const isInitializingRef = useRef(false);
   const workerRef = useRef<Worker | null>(null);
   const audioContextRef = useRef<AudioContext | null>(null);
   const settingsRef = useRef<WorkerSettings | null>(null);
   
-  // SINGLETON REFS
   const drumMachineRef = useRef<DrumMachine | null>(null);
   const accompanimentManagerV2Ref = useRef<AccompanimentSynthManagerV2 | null>(null);
   const melodyManagerV2Ref = useRef<MelodySynthManagerV2 | null>(null);
@@ -170,7 +183,6 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
   }, []);
 
   const initialize = useCallback(async () => {
-    // #ЗАЧЕМ: Реф гарантирует атомарность проверки на уровне микро-тиков.
     if (isInitialized || isInitializingRef.current) return true;
     isInitializingRef.current = true;
     setIsInitializing(true);
@@ -200,7 +212,7 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
             }
         });
 
-        if (!drumMachineRef.current) drumMachineRef.current = new DrumMachine(context, gainNodesRef.current.drums);
+        if (!drumMachineRef.current) drumMachineRef.current = new DrumMachine(context, gainNodesRef.current.drums!);
         if (!blackGuitarSamplerRef.current) blackGuitarSamplerRef.current = new BlackGuitarSampler(context, gainNodesRef.current.melody);
         if (!telecasterSamplerRef.current) telecasterSamplerRef.current = new TelecasterGuitarSampler(context, gainNodesRef.current.melody);
         if (!darkTelecasterSamplerRef.current) darkTelecasterSamplerRef.current = new DarkTelecasterSampler(context, gainNodesRef.current.melody);
@@ -267,7 +279,7 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
     }
   }, [isInitialized, isInitializing, toast, scheduleEvents]);
 
-  const setIsPlayingCallback = useCallback((playing: boolean) => {
+  const setIsPlayingStateCallback = useCallback((playing: boolean) => {
     setIsPlayingState(playing);
     if (!isInitialized || !workerRef.current) return;
     if (playing) {
@@ -296,7 +308,7 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
   return (
     <AudioEngineContext.Provider value={{
         isInitialized, isInitializing, isPlaying, isRecording, isBroadcastActive, initialize,
-        setIsPlaying: setIsPlayingCallback, updateSettings: (s) => {
+        setIsPlaying: setIsPlayingStateCallback, updateSettings: (s) => {
             if (workerRef.current) {
                 settingsRef.current = { ...settingsRef.current, ...s } as WorkerSettings;
                 workerRef.current.postMessage({ command: 'update_settings', data: s });

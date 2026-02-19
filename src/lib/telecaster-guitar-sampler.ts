@@ -1,3 +1,4 @@
+
 import type { Note, Technique } from "@/types/music";
 import { BLUES_GUITAR_VOICINGS } from './assets/guitar-voicings';
 import { GUITAR_PATTERNS } from './assets/guitar-patterns';
@@ -35,8 +36,8 @@ const TELECASTER_SAMPLES: Record<string, string> = {
 type SamplerInstrument = { buffers: Map<number, AudioBuffer>; };
 
 /**
- * #ЗАЧЕМ: Сэмплер Telecaster с поддержкой естественных хвостов.
- * #ЧТО: 1. Реализована полная остановка запланированных источников (stopAll).
+ * #ЗАЧЕМ: Сэмплер Telecaster с калибровкой громкости.
+ * #ЧТО: 1. Системное снижение громкости в 2 раза по требованию пользователя.
  */
 export class TelecasterGuitarSampler {
     private audioContext: AudioContext;
@@ -51,7 +52,8 @@ export class TelecasterGuitarSampler {
         this.audioContext = audioContext;
         this.destination = destination;
         this.preamp = this.audioContext.createGain();
-        this.preamp.gain.value = 1.5;
+        // #ЗАЧЕМ: Снижение громкости в 2 раза (было 1.5).
+        this.preamp.gain.value = 0.75;
         this.preamp.connect(this.destination);
     }
 

@@ -1,10 +1,11 @@
+
 import type { Note, Technique } from "@/types/music";
 import { BLUES_GUITAR_VOICINGS } from './assets/guitar-voicings';
 import { GUITAR_PATTERNS } from './assets/guitar-patterns';
 
 /**
- * #ЗАЧЕМ: Сэмплер Black Acoustic с поддержкой естественных хвостов.
- * #ЧТО: 1. Реализована полная остановка запланированных источников (stopAll).
+ * #ЗАЧЕМ: Сэмплер Black Acoustic с калибровкой громкости.
+ * #ЧТО: 1. Системное снижение громкости в 2 раза по требованию пользователя.
  */
 const BLACK_GUITAR_ORD_SAMPLES: Record<string, string> = {
     'e3': '/assets/acoustic_guitar_samples/black/ord/twang_e3_f_rr3.ogg',
@@ -12,7 +13,7 @@ const BLACK_GUITAR_ORD_SAMPLES: Record<string, string> = {
     'g3': '/assets/acoustic_guitar_samples/black/ord/twang_g3_mf_rr1.ogg',
     'a3': '/assets/acoustic_guitar_samples/black/ord/twang_a3_f_rr2.ogg',
     'b3': '/assets/acoustic_guitar_samples/black/ord/twang_b3_mf_rr3.ogg',
-    'c4': '/assets/acoustic_guitar_samples/black/ord/twang_c4_mf_rr2.ogg',
+    'c4': '/assets/acoustic_guitar_samples/black/ord/twang_c4_mf_rr2.ogg', 
     'd4': '/assets/acoustic_guitar_samples/black/ord/twang_c4_mf_rr2.ogg', 
     'e4': '/assets/acoustic_guitar_samples/black/ord/twang_e4_mf_rr1.ogg',
     'f4': '/assets/acoustic_guitar_samples/black/ord/twang_f4_mf_rr1.ogg',
@@ -49,7 +50,8 @@ export class BlackGuitarSampler {
         this.destination = destination;
 
         this.preamp = this.audioContext.createGain();
-        this.preamp.gain.value = 0.6;
+        // #ЗАЧЕМ: Снижение громкости в 2 раза (было 0.6).
+        this.preamp.gain.value = 0.3;
         this.preamp.connect(this.destination);
     }
 
