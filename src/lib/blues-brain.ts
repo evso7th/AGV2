@@ -19,12 +19,10 @@ import {
 import { BLUES_SOLO_LICKS } from './assets/blues_guitar_solo';
 
 /**
- * #ЗАЧЕМ: Блюзовый Мозг V110.0 — "Narrative Bass Tiers".
- * #ЧТО: 1. Бас теперь жестко привязан к Tension:
- *          - T < 0.4: Короткий дрон (1 нота).
- *          - T 0.4-0.7: 2-feel рифф (2 ноты).
- *          - T > 0.7: Walking bass (4 ноты).
- *       2. Сохранена нормализация фраз до 4-х тактов.
+ * #ЗАЧЕМ: Блюзовый Мозг V111.0 — "Narrative Bass Riffs".
+ * #ЧТО: 1. Tier 2 (T 0.4-0.7) теперь играет полноценный 4-х тактовый рифф (11 нот).
+ *       2. Реализована роковая синкопация и опора на тонику/квинту.
+ *       3. Сохранена трехуровневая динамика баса.
  */
 
 export class BluesBrain {
@@ -385,7 +383,7 @@ export class BluesBrain {
 
   /**
    * #ЗАЧЕМ: Реализация строгих уровней исполнения баса.
-   * #ЧТО: Разделение на Tier 1 (Drone), Tier 2 (2-feel Riff), Tier 3 (Walking).
+   * #ЧТО: Разделение на Tier 1 (Drone), Tier 2 (Composed Riff), Tier 3 (Walking).
    */
   private renderIronBass(chord: GhostChord, epoch: number, tension: number, navInfo: NavigationInfo): FractalEvent[] {
     const momentum = this.state.tensionMomentum;
@@ -406,7 +404,7 @@ export class BluesBrain {
         type: 'bass', 
         note: Math.max(chord.rootNote - 12, this.BASS_FLOOR), 
         time: 0, 
-        duration: 3.5, // Почти весь такт, но не перехлестывает
+        duration: 3.5, 
         weight: 0.65, 
         technique: 'pluck', 
         dynamics: 'p', 
@@ -415,24 +413,43 @@ export class BluesBrain {
     }];
   }
 
-  /** #Tier 2: Упругий рифф (2 ноты: 1 и 3 доли) */
+  /** 
+   * #Tier 2: Нарративный 4-х тактовый Рифф (T 0.4 - 0.7) 
+   * #ЗАЧЕМ: Создание упругого рокового грува (11 нот на цикл).
+   */
   private renderRiffBass(chord: GhostChord, epoch: number, tension: number): FractalEvent[] {
     const root = Math.max(chord.rootNote - 12, this.BASS_FLOOR);
-    const isMin = chord.chordType === 'minor';
-    const pattern = [ 
-        { t: 0, n: root, w: 0.7 }, 
-        { t: 2.0, n: root + 7, w: 0.6 } // Квинта на 3-й доле (2-feel)
+    const barInRiff = epoch % 4;
+    
+    // #ЗАЧЕМ: Реализация "Грува на 4 такта" (ПЛАН №518).
+    // #ЧТО: Сложный ритмический рисунок на 8-12 нот, имитирующий живой рок-блюз рифф.
+    const riffs = [
+        // Riff A: The "Smoke & Fire" (Root-Fifth Focus)
+        [
+            // Такт 0: Прямое утверждение
+            [{ t: 0, n: root, w: 0.85 }, { t: 2.0, n: root + 7, w: 0.7 }],
+            // Такт 1: Роковая синкопа (1-я доля + 2.5)
+            [{ t: 0, n: root, w: 0.8 }, { t: 1.5, n: root, w: 0.7 }, { t: 2.5, n: root + 7, w: 0.75 }],
+            // Такт 2: Расширение к септиме
+            [{ t: 0, n: root, w: 0.85 }, { t: 2.0, n: root + 7, w: 0.7 }, { t: 3.5, n: root + 10, w: 0.65 }],
+            // Такт 3: Подвод к тонике (v -> iv -> i)
+            [{ t: 0, n: root + 7, w: 0.75 }, { t: 1.5, n: root + 5, w: 0.7 }, { t: 2.5, n: root, w: 0.9 }]
+        ]
     ];
-    return pattern.map(p => ({ 
-        type: 'bass', 
-        note: p.n, 
-        time: p.t, 
+
+    const currentRiff = riffs[0]; 
+    const currentBarPattern = currentRiff[barInRiff];
+    
+    return currentBarPattern.map(p => ({
+        type: 'bass',
+        note: p.n,
+        time: p.t,
         duration: 1.2, 
-        weight: p.w + (tension * 0.1), 
-        technique: 'pluck', 
-        dynamics: 'p', 
-        phrasing: 'legato', 
-        params: { attack: 0.1, release: 0.8, filterCutoff: 400 } 
+        weight: (p.w + (tension * 0.1)) * (0.95 + this.random.next() * 0.1),
+        technique: 'pluck',
+        dynamics: p.t === 0 ? 'mf' : 'p',
+        phrasing: 'legato',
+        params: { attack: 0.1, release: 0.8, filterCutoff: 450 }
     }));
   }
 
