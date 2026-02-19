@@ -1,8 +1,7 @@
 /**
- * #ЗАЧЕМ: Heritage Alchemist V8.0.
- * #ЧТО: 1. Исправлена кнопка Stop Preview.
- *       2. Улучшена ролевая эвристика (Bass Priority).
- *       3. Гарантирован сброс состояния при Silence All.
+ * #ЗАЧЕМ: Heritage Alchemist V8.1.
+ * #ЧТО: Исправлена кнопка Silence All и Stop Preview.
+ *       Остановка MIDI теперь мгновенно гасит все запланированные ноты.
  */
 'use client';
 
@@ -29,14 +28,9 @@ type IngestionRole = 'melody' | 'bass' | 'drums' | 'accomp';
 const MOOD_OPTIONS: Mood[] = ['epic', 'joyful', 'enthusiastic', 'melancholic', 'dark', 'anxious', 'dreamy', 'contemplative', 'calm'];
 const GENRE_OPTIONS: Genre[] = ['ambient', 'trance', 'blues', 'progressive', 'rock', 'house', 'rnb', 'ballad', 'reggae', 'celtic'];
 
-/**
- * #ЗАЧЕМ: Улучшенная эвристика ролей. 
- * #ЧТО: Приоритет Баса.
- */
 const detectTrackRole = (track: any): IngestionRole => {
     const name = (track.name || "").toLowerCase();
     
-    // Прямые соответствия в именах (Приоритет БАСА)
     if (name.includes("bass")) return 'bass';
     if (track.channel === 9 || name.match(/drum|perc|kick|snare|hihat|kit|beat/)) return 'drums';
     if (name.match(/lead|solo|melody/)) return 'melody';
@@ -226,7 +220,7 @@ export default function MidiIngestPage() {
     };
 
     const silenceLaboratory = () => {
-        setIsPlaying(false);
+        setIsPlaying(false); // Trigger StopAllSounds in EngineContext
         setIsPlayingFull(false);
         toast({ title: "Sonic Silence", description: "All factory instruments disconnected." });
     };
@@ -291,13 +285,13 @@ export default function MidiIngestPage() {
     };
 
     const clearPreview = () => {
+        silenceLaboratory();
         setMidiFile(null);
         setFileName("");
         setExtractedLicks([]);
         setSelectedTrackIndex(-1);
         setDetectedKey(null);
         setTrackRoles(new Map());
-        setIsPlayingFull(false);
     };
 
     return (
@@ -309,7 +303,7 @@ export default function MidiIngestPage() {
                             <Factory className="h-8 w-8 text-primary" />
                         </div>
                         <div>
-                            <CardTitle className="text-3xl font-bold tracking-tight">Heritage Alchemist v8.0</CardTitle>
+                            <CardTitle className="text-3xl font-bold tracking-tight">Heritage Alchemist v8.1</CardTitle>
                             <CardDescription className="text-muted-foreground flex items-center gap-2">
                                 <Volume2 className="h-3 w-3" /> Full Ensemble Control Active
                             </CardDescription>

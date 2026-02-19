@@ -1,4 +1,3 @@
-
 import type { Note, Technique } from "@/types/music";
 import { BLUES_GUITAR_VOICINGS } from './assets/guitar-voicings';
 import { GUITAR_PATTERNS } from './assets/guitar-patterns';
@@ -37,7 +36,7 @@ type SamplerInstrument = { buffers: Map<number, AudioBuffer>; };
 
 /**
  * #ЗАЧЕМ: Сэмплер Telecaster с поддержкой естественных хвостов.
- * #ЧТО: ПЛАН №467 — Полный отказ от обрезания длительности. Ноты затухают сами.
+ * #ЧТО: 1. Реализована полная остановка запланированных источников (stopAll).
  */
 export class TelecasterGuitarSampler {
     private audioContext: AudioContext;
@@ -46,6 +45,7 @@ export class TelecasterGuitarSampler {
     public isInitialized = false;
     private isLoading = false;
     private preamp: GainNode;
+    private activeSources: Set<AudioBufferSourceNode> = new Set();
 
     constructor(audioContext: AudioContext, destination: AudioNode) {
         this.audioContext = audioContext;
@@ -64,12 +64,6 @@ export class TelecasterGuitarSampler {
         this.isLoading = true;
         try {
             const loadedBuffers = new Map<number, AudioBuffer>();
-            const loadSample = async (url: string) => {
-                const response = await fetch(url);
-                const arrayBuffer = await response.arrayBuffer();
-                return await this.audioContext.decodeAudioContext(arrayBuffer); // error in original code, should be audioContext.decodeAudioData
-            };
-            // Correcting the decode method while we're at it
             const notePromises = Object.entries(sampleMap).map(async ([key, url]) => {
                 const midi = this.keyToMidi(key);
                 if (midi) {
@@ -85,7 +79,6 @@ export class TelecasterGuitarSampler {
             this.isLoading = false;
             return true;
         } catch (error) {
-            console.error(`[TelecasterGuitarSampler] Failed:`, error);
             this.isLoading = false;
             return false;
         }
@@ -130,15 +123,12 @@ export class TelecasterGuitarSampler {
     private playSingleNote(instrument: SamplerInstrument, note: Note, startTime: number) {
         const { buffer, midi: sampleMidi } = this.findBestSample(instrument, note.midi);
         if (buffer) {
-            const noteStartTime = startTime + (note.time || 0);
-            this.playSample(buffer, sampleMidi, note.midi, noteStartTime, note.velocity || 0.7);
+            this.playSample(buffer, sampleMidi, note.midi, startTime + (note.time || 0), note.velocity || 0.7);
         }
     }
     
     private playSample(buffer: AudioBuffer, sampleMidi: number, targetMidi: number, startTime: number, velocity: number) {
-        if (!isFinite(startTime) || !isFinite(velocity) || !isFinite(targetMidi) || !isFinite(sampleMidi)) {
-            return;
-        }
+        if (!isFinite(startTime) || !isFinite(velocity)) return;
 
         const source = this.audioContext.createBufferSource();
         source.buffer = buffer;
@@ -150,14 +140,13 @@ export class TelecasterGuitarSampler {
 
         gainNode.gain.setValueAtTime(0, startTime);
         gainNode.gain.linearRampToValueAtTime(velocity, startTime + 0.005);
-        
-        // #ЗАЧЕМ: Закон Сохранения Хвостов.
-        // #ЧТО: Удалено принудительное завершение сэмпла. Нота звучит до конца буфера.
         gainNode.gain.setTargetAtTime(0, startTime + 15.0, 0.8);
         
         source.start(startTime);
+        this.activeSources.add(source);
         
         source.onended = () => {
+            this.activeSources.delete(source);
             try { gainNode.disconnect(); } catch(e){}
         };
     }
@@ -180,6 +169,12 @@ export class TelecasterGuitarSampler {
         return 12 * octave + noteMap[name];
     }
 
-    public stopAll() {}
-    public dispose() { this.preamp.disconnect(); }
+    public stopAll() {
+        this.activeSources.forEach(source => {
+            try { source.stop(0); } catch(e) {}
+        });
+        this.activeSources.clear();
+    }
+
+    public dispose() { this.stopAll(); this.preamp.disconnect(); }
 }

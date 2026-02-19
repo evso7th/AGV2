@@ -1,11 +1,10 @@
-
 import type { Note, Technique } from "@/types/music";
 import { BLUES_GUITAR_VOICINGS } from './assets/guitar-voicings';
 import { GUITAR_PATTERNS } from './assets/guitar-patterns';
 
 /**
- * #ЗАЧЕМ: Сэмплер Black Acoustic с поддержкой естественных хвостов (tails).
- * #ЧТО: ПЛАН №467 — Полный отказ от обрезания длительности. Ноты затухают сами.
+ * #ЗАЧЕМ: Сэмплер Black Acoustic с поддержкой естественных хвостов.
+ * #ЧТО: 1. Реализована полная остановка запланированных источников (stopAll).
  */
 const BLACK_GUITAR_ORD_SAMPLES: Record<string, string> = {
     'e3': '/assets/acoustic_guitar_samples/black/ord/twang_e3_f_rr3.ogg',
@@ -14,7 +13,7 @@ const BLACK_GUITAR_ORD_SAMPLES: Record<string, string> = {
     'a3': '/assets/acoustic_guitar_samples/black/ord/twang_a3_f_rr2.ogg',
     'b3': '/assets/acoustic_guitar_samples/black/ord/twang_b3_mf_rr3.ogg',
     'c4': '/assets/acoustic_guitar_samples/black/ord/twang_c4_mf_rr2.ogg',
-    'd4': '/assets/acoustic_guitar_samples/black/ord/twang_c4_mf_rr2.ogg', // Fallback for D4
+    'd4': '/assets/acoustic_guitar_samples/black/ord/twang_c4_mf_rr2.ogg', 
     'e4': '/assets/acoustic_guitar_samples/black/ord/twang_e4_mf_rr1.ogg',
     'f4': '/assets/acoustic_guitar_samples/black/ord/twang_f4_mf_rr1.ogg',
     'g4': '/assets/acoustic_guitar_samples/black/ord/twang_g4_mf_rr2.ogg',
@@ -43,6 +42,7 @@ export class BlackGuitarSampler {
     public isInitialized = false;
     private isLoading = false;
     private preamp: GainNode;
+    private activeSources: Set<AudioBufferSourceNode> = new Set();
     
     constructor(audioContext: AudioContext, destination: AudioNode) {
         this.audioContext = audioContext;
@@ -63,10 +63,8 @@ export class BlackGuitarSampler {
 
         try {
             const loadedBuffers = new Map<number, AudioBuffer>();
-            
             const loadSample = async (url: string) => {
                 const response = await fetch(url);
-                if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
                 const arrayBuffer = await response.arrayBuffer();
                 return await this.audioContext.decodeAudioData(arrayBuffer);
             };
@@ -74,10 +72,8 @@ export class BlackGuitarSampler {
             const notePromises = Object.entries(sampleMap).map(async ([key, url]) => {
                 const midi = this.keyToMidi(key);
                 if (midi === null) return;
-                try {
-                    const buffer = await loadSample(url);
-                    loadedBuffers.set(midi, buffer);
-                } catch(e) { console.error(`Error loading sample for ${key}`, e); }
+                const buffer = await loadSample(url);
+                loadedBuffers.set(midi, buffer);
             });
 
             await Promise.all(notePromises);
@@ -86,7 +82,6 @@ export class BlackGuitarSampler {
             this.isLoading = false;
             return true;
         } catch (error) {
-            console.error(`[BlackGuitarSampler] Failed:`, error);
             this.isLoading = false;
             return false;
         }
@@ -98,20 +93,17 @@ export class BlackGuitarSampler {
 
         notes.forEach(note => {
             if (note.technique && (note.technique.startsWith('F_') || note.technique.startsWith('S_'))) {
-                this.playPattern(instrument, note, time, tempo, isTransientMode);
+                this.playPattern(instrument, note, time, tempo);
             } else {
-                this.playSingleNote(instrument, note, time, isTransientMode);
+                this.playSingleNote(instrument, note, time);
             }
         });
     }
 
-    private playPattern(instrument: SamplerInstrument, note: Note, barStartTime: number, tempo: number, isTransient: boolean) {
+    private playPattern(instrument: SamplerInstrument, note: Note, barStartTime: number, tempo: number) {
         const patternName = note.technique as string;
         const patternData = GUITAR_PATTERNS[patternName];
-        if (!patternData) {
-            this.playSingleNote(instrument, note, barStartTime, isTransient);
-            return;
-        }
+        if (!patternData) return;
 
         const voicingName = note.params?.voicingName || 'E7_open';
         const voicing = BLUES_GUITAR_VOICINGS[voicingName];
@@ -129,7 +121,7 @@ export class BlackGuitarSampler {
                         const { buffer, midi: sampleMidi } = this.findBestSample(instrument, midiNote);
                         if (buffer) {
                              const playTime = barStartTime + noteTimeInBar + ((patternData.rollDuration / ticksPerBeat) * beatDuration * (voicing.length - 1 - stringIndex));
-                             this.playSample(buffer, sampleMidi, midiNote, playTime, note.velocity || 0.7, isTransient);
+                             this.playSample(buffer, sampleMidi, midiNote, playTime, note.velocity || 0.7);
                         }
                     }
                 }
@@ -137,38 +129,32 @@ export class BlackGuitarSampler {
         }
     }
 
-    private playSingleNote(instrument: SamplerInstrument, note: Note, startTime: number, isTransient: boolean) {
+    private playSingleNote(instrument: SamplerInstrument, note: Note, startTime: number) {
         const { buffer, midi: sampleMidi } = this.findBestSample(instrument, note.midi);
         if (!buffer) return;
-        const noteStartTime = startTime + (note.time || 0);
-        this.playSample(buffer, sampleMidi, note.midi, noteStartTime, note.velocity || 0.7, isTransient);
+        this.playSample(buffer, sampleMidi, note.midi, startTime + (note.time || 0), note.velocity || 0.7);
     }
     
-    private playSample(buffer: AudioBuffer, sampleMidi: number, targetMidi: number, startTime: number, velocity: number, isTransient: boolean = false) {
-        if (!isFinite(startTime) || !isFinite(velocity) || !isFinite(targetMidi) || !isFinite(sampleMidi)) {
-            return;
-        }
+    private playSample(buffer: AudioBuffer, sampleMidi: number, targetMidi: number, startTime: number, velocity: number) {
+        if (!isFinite(startTime) || !isFinite(velocity)) return;
 
         const source = this.audioContext.createBufferSource();
         source.buffer = buffer;
         const gainNode = this.audioContext.createGain();
-        source.connect(gainNode);
-        gainNode.connect(this.preamp);
+        source.connect(gainNode).connect(this.preamp);
 
         const playbackRate = Math.pow(2, (targetMidi - sampleMidi) / 12);
         source.playbackRate.value = isFinite(playbackRate) ? playbackRate : 1.0;
 
         gainNode.gain.setValueAtTime(0, startTime);
         gainNode.gain.linearRampToValueAtTime(velocity, startTime + 0.005);
-
-        // #ЗАЧЕМ: Закон Сохранения Хвостов.
-        // #ЧТО: Удалено обрезание по note.duration. Нота звучит до конца сэмпла.
-        //      Добавлен пассивный релиз-предохранитель на 15-й секунде.
         gainNode.gain.setTargetAtTime(0, startTime + 15.0, 0.8);
         
         source.start(startTime);
+        this.activeSources.add(source);
         
         source.onended = () => {
+            this.activeSources.delete(source);
             try { gainNode.disconnect(); } catch(e) {}
         };
     }
@@ -187,14 +173,16 @@ export class BlackGuitarSampler {
         if (!noteMatch) return null;
         let [, name, octaveStr] = noteMatch;
         const octave = parseInt(octaveStr, 10);
-        const noteMap: Record<string, number> = {
-            'c': 0, 'c#': 1, 'db': 1, 'd': 2, 'd#': 3, 'eb': 3, 'e': 4, 'f': 5, 'f#': 6, 'gb': 6, 'g': 7, 'g#': 8, 'ab': 8, 'a': 9, 'a#': 10, 'bb': 10, 'b': 11
-        };
-        const noteValue = noteMap[name];
-        if (noteValue === undefined) return null;
-        return 12 * (octave + 1) + noteValue;
+        const noteMap: Record<string, number> = { 'c': 0, 'c#': 1, 'db': 1, 'd': 2, 'd#': 3, 'eb': 3, 'e': 4, 'f': 5, 'f#': 6, 'gb': 6, 'g': 7, 'g#': 8, 'ab': 8, 'a': 9, 'a#': 10, 'bb': 10, 'b': 11 };
+        return 12 * (octave + 1) + (noteMap[name] ?? 0);
     }
 
-    public stopAll() {}
-    public dispose() { this.preamp.disconnect(); }
+    public stopAll() {
+        this.activeSources.forEach(source => {
+            try { source.stop(0); } catch(e) {}
+        });
+        this.activeSources.clear();
+    }
+
+    public dispose() { this.stopAll(); this.preamp.disconnect(); }
 }

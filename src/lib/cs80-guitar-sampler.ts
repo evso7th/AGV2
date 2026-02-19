@@ -1,9 +1,8 @@
-
 import type { Note } from "@/types/music";
 
 /**
  * #ЗАЧЕМ: Сэмплер Yamaha CS-80 (Guitar Mode).
- * #ЧТО: ПЛАН №493 — Естественные хвосты и выбор слоев на основе длительности такта.
+ * #ЧТО: 1. Реализована полная остановка запланированных источников (stopAll).
  */
 
 const CS80_NOTE_NAMES = ["c", "c", "d", "eb", "e", "f", "f", "g", "g", "a", "bb", "b"];
@@ -27,6 +26,7 @@ export class CS80GuitarSampler {
     public isInitialized = false;
     private isLoading = false;
     private preamp: GainNode;
+    private activeSources: Set<AudioBufferSourceNode> = new Set();
 
     constructor(audioContext: AudioContext, destination: AudioNode) {
         this.audioContext = audioContext;
@@ -63,23 +63,15 @@ export class CS80GuitarSampler {
             await Promise.all(loadPromises);
             this.isInitialized = true;
             this.isLoading = false;
-            console.log('%c[CS80Sampler] Ready. 122 samples loaded.', 'color: #32CD32; font-weight: bold;');
             return true;
         } catch (error) {
-            console.error('[CS80Sampler] Failed to load samples:', error);
             this.isLoading = false;
             return false;
         }
     }
 
-    /**
-     * #ЗАЧЕМ: Выбор слоя на основе длительности ноты относительно такта.
-     * #ЧТО: Сэмплы 'long' используются только если note.duration >= 1 bar.
-     */
     public schedule(notes: Note[], time: number, tempo: number = 72) {
         if (!this.isInitialized) return;
-        
-        // Длительность одного такта в секундах
         const barDuration = (60 / tempo) * 4;
 
         notes.forEach(note => {
@@ -123,18 +115,23 @@ export class CS80GuitarSampler {
 
         gainNode.gain.setValueAtTime(0, startTime);
         gainNode.gain.linearRampToValueAtTime(velocity, startTime + 0.01);
-
-        // #ЗАЧЕМ: Закон Сохранения Хвостов.
-        // #ЧТО: Мы не вызываем stop(). Сэмпл звучит до конца буфера.
-        // Добавлен пассивный предохранитель на 15-й секунде.
         gainNode.gain.setTargetAtTime(0, startTime + 15.0, 0.8);
 
         source.start(startTime);
+        this.activeSources.add(source);
+        
         source.onended = () => {
+            this.activeSources.delete(source);
             try { gainNode.disconnect(); } catch(e) {}
         };
     }
 
-    public stopAll() {}
-    public dispose() { this.preamp.disconnect(); }
+    public stopAll() {
+        this.activeSources.forEach(source => {
+            try { source.stop(0); } catch(e) {}
+        });
+        this.activeSources.clear();
+    }
+
+    public dispose() { this.stopAll(); this.preamp.disconnect(); }
 }
