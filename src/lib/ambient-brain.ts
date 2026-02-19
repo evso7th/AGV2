@@ -1,8 +1,8 @@
 /**
- * #ЗАЧЕМ: Суверенный Мозг Амбиента v15.0 — "Narrative Sentence Guard".
- * #ЧТО: 1. Все лики теперь растягиваются до 4-х тактов (48 тиков).
- *       2. Внедрена нормализация через stretchToNarrativeLength.
- *       3. Обновлены вероятности вступления тем.
+ * #ЗАЧЕМ: Суверенный Мозг Амбиента v16.0 — "The Atlas Sentinel".
+ * #ЧТО: 1. Внедрена защита от повторения тем через usedThemeHistory.
+ *       2. При стагнации тем принудительно меняется Атлас.
+ *       3. Усилено логирование работы стражей.
  */
 
 import type { 
@@ -62,8 +62,10 @@ export class AmbientBrain {
     private readonly MELODY_CEILING = 75;
     private readonly BASS_FLOOR = 31; 
 
-    private currentTheme: { phrase: any[], startBar: number, endBar: number } | null = null;
+    private currentTheme: { phrase: any[], startBar: number, endBar: number, id: string } | null = null;
     private currentBassTheme: { phrase: any[], startBar: number, endBar: number } | null = null; 
+    private usedThemeHistory: string[] = [];
+    private stagnationCounter: number = 0;
 
     constructor(seed: number, mood: Mood) {
         this.seed = seed;
@@ -119,9 +121,9 @@ export class AmbientBrain {
 
         const isPositive = ['joyful', 'enthusiastic', 'epic'].includes(this.mood);
         if (isPositive) {
-            this.applyRadiance(epoch, dna);
+            this.applyRadiance(epoch, dna, this.stagnationCounter > 2);
         } else {
-            this.applyGeography(epoch, dna);
+            this.applyGeography(epoch, dna, this.stagnationCounter > 2);
         }
 
         this.applySpectralAtom(epoch, waves[3]);
@@ -137,6 +139,7 @@ export class AmbientBrain {
         if (this.mood === 'epic') yogaChord.chordType = 'dominant'; 
         else if (this.mood === 'joyful') yogaChord.chordType = 'major'; 
 
+        // --- NARRATIVE BASS LOGIC ---
         if (isPositive && epoch >= this.bassBusyUntilBar) {
             if (this.currentBassTheme && this.random.next() < 0.75) {
                 this.currentBassTheme.phrase = this.currentBassTheme.phrase.map(n => ({
@@ -159,7 +162,6 @@ export class AmbientBrain {
                         deg: pool[this.random.nextInt(pool.length)]
                     });
                 }
-                // #ЗАЧЕМ: Нормализация баса до минимум 2-х тактов (24 тика).
                 const finalBass = stretchToNarrativeLength(phrase, 24, this.random);
                 const actualBars = Math.ceil(Math.max(...finalBass.map(n => n.t + n.d)) / 12);
                 
@@ -168,16 +170,36 @@ export class AmbientBrain {
             }
         }
 
+        // --- MELODY SENTINEL ---
         if (epoch >= this.soloistBusyUntilBar) {
             const baseChance = isPositive ? 0.60 : 0.40; 
             const developmentChance = baseChance + localTension * 0.25;
+            
             if (this.random.next() < developmentChance) {
                 let groupKey = dna.ambientLegacyGroup || 'BUDD';
                 const group = AMBIENT_LEGACY[groupKey];
-                const lickIdx = calculateMusiNum(epoch, 3, this.seed, group.licks.length);
-                const lick = group.licks[lickIdx];
                 
-                // #ЗАЧЕМ: Принудительное растягивание темы до 4-х тактов (48 тиков).
+                // Ищем тему, которая не играла в последних 3-х разах
+                let lickIdx = -1;
+                let attempts = 0;
+                while (attempts < 10) {
+                    lickIdx = calculateMusiNum(epoch + attempts, 3, this.seed, group.licks.length);
+                    const themeId = `${groupKey}_${lickIdx}`;
+                    if (!this.usedThemeHistory.includes(themeId)) break;
+                    attempts++;
+                }
+
+                const lick = group.licks[lickIdx];
+                const themeId = `${groupKey}_${lickIdx}`;
+
+                // Проверка на зацикливание
+                if (themeId === this.currentTheme?.id) {
+                    this.stagnationCounter++;
+                    console.log(`%c[SENTINEL] Ambient Stagnation Strike! (${this.stagnationCounter}/3)`, 'color: #ffa500;');
+                } else {
+                    if (this.stagnationCounter > 0) this.stagnationCounter--;
+                }
+
                 const narrativePhrase = stretchToNarrativeLength(lick.phrase, 48, this.random);
                 const phraseTicks = Math.max(...narrativePhrase.map(n => n.t + n.d));
                 const phraseBars = Math.ceil((phraseTicks + 1) / 12);
@@ -185,9 +207,13 @@ export class AmbientBrain {
                 this.currentTheme = {
                     phrase: narrativePhrase,
                     startBar: epoch,
-                    endBar: epoch + phraseBars
+                    endBar: epoch + phraseBars,
+                    id: themeId
                 };
                 
+                this.usedThemeHistory.push(themeId);
+                if (this.usedThemeHistory.length > 3) this.usedThemeHistory.shift();
+
                 const restBars = this.mood === 'enthusiastic' ? 0 : 1;
                 this.soloistBusyUntilBar = epoch + phraseBars + restBars; 
             } else {
@@ -257,10 +283,15 @@ export class AmbientBrain {
         };
     }
 
-    private applyGeography(epoch: number, dna: SuiteDNA) {
+    private applyGeography(epoch: number, dna: SuiteDNA, forceShift: boolean = false) {
         if (!dna.itinerary || dna.itinerary.length === 0) return;
-        const progress = epoch / 150; 
-        const stage = Math.min(2, Math.floor(progress * 3));
+        
+        let stage = Math.min(2, Math.floor((epoch / 150) * 3));
+        if (forceShift) {
+            stage = (stage + 1) % 3;
+            console.log(`[SENTINEL] Forced Geography Shift to stage ${stage}`);
+        }
+
         const atomKey = dna.itinerary[stage];
         const atom = GEO_ATLAS[atomKey];
         if (!atom) return;
@@ -270,10 +301,15 @@ export class AmbientBrain {
         this.registerShift = atom.reg;
     }
 
-    private applyRadiance(epoch: number, dna: SuiteDNA) {
+    private applyRadiance(epoch: number, dna: SuiteDNA, forceShift: boolean = false) {
         if (!dna.itinerary || dna.itinerary.length === 0) return;
-        const progress = epoch / 150;
-        const stage = Math.min(2, Math.floor(progress * 3));
+        
+        let stage = Math.min(2, Math.floor((epoch / 150) * 3));
+        if (forceShift) {
+            stage = (stage + 1) % 3;
+            console.log(`[SENTINEL] Forced Radiance Shift to stage ${stage}`);
+        }
+
         const atomKey = dna.itinerary[stage];
         const atom = LIGHT_ATLAS[atomKey];
         if (!atom) return;
@@ -357,8 +393,6 @@ export class AmbientBrain {
 
     private renderThemeMelody(chord: GhostChord, epoch: number, tension: number, hints: InstrumentHints, dna: SuiteDNA): FractalEvent[] {
         if (!this.currentTheme) return [];
-        const groupKey = dna.ambientLegacyGroup || 'BUDD';
-        const group = AMBIENT_LEGACY[groupKey];
         const barOffset = (epoch - this.currentTheme.startBar) * 12;
         const barNotes = this.currentTheme.phrase.filter(n => n.t >= barOffset && n.t < barOffset + 12);
 
@@ -376,7 +410,7 @@ export class AmbientBrain {
 
             events.push({
                 type: 'melody',
-                note: Math.min(chord.rootNote + 36 + group.registerBias + this.registerShift + (DEGREE_TO_SEMITONE[n.deg] || 0), this.MELODY_CEILING),
+                note: Math.min(chord.rootNote + 36 + (n.octShift || 0) + this.registerShift + (DEGREE_TO_SEMITONE[n.deg] || 0), this.MELODY_CEILING),
                 time: (n.t % 12) / 3,
                 duration: (n.d / 3) * 1.6, 
                 weight: (0.55 * breathDecay) * (0.9 + this.random.next() * 0.2),

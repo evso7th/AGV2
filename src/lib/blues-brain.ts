@@ -19,10 +19,10 @@ import {
 import { BLUES_SOLO_LICKS } from './assets/blues_guitar_solo';
 
 /**
- * #ЗАЧЕМ: Блюзовый Мозг V113.0 — "Chordal Softness Guard".
- * #ЧТО: 1. Внедрен гистерезис для смены инструментов аккомпанемента (0.65 - 0.75).
- *       2. Смена тембра теперь синхронизирована с границами фраз (4 такта).
- *       3. Снижена громкость аккордов органа (Tier 3) для мягкости перехода.
+ * #ЗАЧЕМ: Блюзовый Мозг V114.0 — "The Eternal Sentinel".
+ * #ЧТО: 1. Усилена защита от зацикливания. Теперь отслеживается история LickID.
+ *       2. Внедрен Ensemble Panic: при 3-х повторах меняется вся Династия.
+ *       3. Исправлен баланс громкости в Tier 3.
  */
 
 export class BluesBrain {
@@ -43,7 +43,8 @@ export class BluesBrain {
       currentMutationType: string,
       lastTension: number,
       tensionMomentum: number,
-      activeAccompTimbre: string
+      activeAccompTimbre: string,
+      recentLicks: string[]
   };
   private sfxPlayedInPart = false;
   private currentPartId = '';
@@ -78,7 +79,8 @@ export class BluesBrain {
       currentMutationType: 'jitter',
       lastTension: 0.5,
       tensionMomentum: 0,
-      activeAccompTimbre: 'organ_soft_jazz'
+      activeAccompTimbre: 'organ_soft_jazz',
+      recentLicks: []
     };
   }
 
@@ -109,6 +111,7 @@ export class BluesBrain {
         this.sfxPlayedInPart = false;
     }
 
+    // --- TIMBRAL HYSTERESIS ---
     if (epoch % 4 === 0 || epoch === 0) {
         this.evaluateTimbralDramaturgy(tension, hints);
     } else {
@@ -119,9 +122,13 @@ export class BluesBrain {
     const isMutationBoundary = epoch % 4 === 0;
     const isStagnating = this.state.stagnationStrikes.micro >= 3;
 
+    if (isStagnating) {
+        console.warn(`%c[GUARD] Ensemble Stagnation Detected at bar ${epoch}! Triggering Emergency Mutation.`, 'color: #ff4444; font-weight: bold;');
+    }
+
     if (this.currentAxiom.length === 0 || navInfo.isPartTransition || isMutationBoundary || isStagnating) {
         this.refreshUnifiedMutation();
-        this.selectNextAxiom(navInfo, dna, epoch);
+        this.selectNextAxiom(navInfo, dna, epoch, isStagnating);
         this.state.stagnationStrikes.micro = 0; 
     }
 
@@ -130,24 +137,6 @@ export class BluesBrain {
     const melodyEvents = hints.melody ? this.renderMelodicSegment(epoch, currentChord, tension) : [];
     const accompEvents = hints.accompaniment ? this.renderDynamicAccompaniment(epoch, currentChord, tension) : [];
     const pianoEvents = hints.pianoAccompaniment ? this.renderIntegratedPiano(epoch, currentChord, tension) : [];
-
-    const mHash = melodyEvents.map(e => e.note).join('-');
-    const aHash = accompEvents.map(e => e.note).join('-');
-    const pHash = pianoEvents.map(e => e.note).join('-');
-
-    const anyRepeat = (mHash && mHash === this.state.lastMelodyHash) || 
-                      (aHash && aHash === this.state.lastAccompHash) || 
-                      (pHash && pHash === this.state.lastPianoHash);
-
-    if (anyRepeat) {
-        this.state.stagnationStrikes.micro++;
-    } else {
-        if (this.state.stagnationStrikes.micro > 0) this.state.stagnationStrikes.micro--;
-    }
-
-    this.state.lastMelodyHash = mHash;
-    this.state.lastAccompHash = aHash;
-    this.state.lastPianoHash = pHash;
 
     events.push(...melodyEvents);
     events.push(...accompEvents);
@@ -211,26 +200,40 @@ export class BluesBrain {
       this.state.currentMutationType = nextType;
   }
 
-  private selectNextAxiom(navInfo: NavigationInfo, dna: SuiteDNA, epoch: number) {
-      const dynasty = dna.dynasty || 'slow-burn';
+  private selectNextAxiom(navInfo: NavigationInfo, dna: SuiteDNA, epoch: number, forceNewDynasty: boolean = false) {
+      let dynasty = dna.dynasty || 'slow-burn';
+      
+      // #ЗАЧЕМ: Если ансамбль стагнирует, мы меняем Династию принудительно.
+      if (forceNewDynasty) {
+          const dynasties = ['slow-burn', 'texas', 'soul', 'chromatic', 'legacy', 'lyrical'];
+          dynasty = dynasties[this.random.nextInt(dyn dynasties.length)];
+          console.log(`[GUARD] Switching Dynasty to: ${dynasty}`);
+      }
+
       const allLickIds = Object.keys(BLUES_SOLO_LICKS);
       
+      // Ищем лики, которые не играли в последних 5 фразах
       let pool = allLickIds.filter(id => 
           BLUES_SOLO_LICKS[id].tags.includes(dynasty) && 
-          !this.usedLicksInSuite.has(id)
+          !this.state.recentLicks.includes(id)
       );
 
-      if (pool.length < 3) {
-          this.usedLicksInSuite.clear();
-          pool = allLickIds.filter(id => 
-              BLUES_SOLO_LICKS[id].tags.includes(dynasty) || 
-              BLUES_SOLO_LICKS[id].tags.includes('slow-burn')
-          );
+      if (pool.length === 0) {
+          this.state.recentLicks = [];
+          pool = allLickIds.filter(id => BLUES_SOLO_LICKS[id].tags.includes(dynasty));
       }
 
       const nextId = pool[this.random.nextInt(pool.length)] || 'LN_01';
+      
+      // Проверка на повтор (Страйк)
+      if (nextId === this.currentLickId) {
+          this.state.stagnationStrikes.micro++;
+          console.log(`%c[GUARD] Stagnation Strike! (${this.state.stagnationStrikes.micro}/3)`, 'color: #ffa500;');
+      }
+
       this.currentLickId = nextId;
-      this.usedLicksInSuite.add(nextId);
+      this.state.recentLicks.push(nextId);
+      if (this.state.recentLicks.length > 5) this.state.recentLicks.shift();
       
       const lickData = BLUES_SOLO_LICKS[nextId];
       const rawPhrase = Array.isArray(lickData.phrase) ? lickData.phrase : decompressCompactPhrase(lickData.phrase as any);
@@ -380,10 +383,6 @@ export class BluesBrain {
     return events;
   }
 
-  /**
-   * #ЗАЧЕМ: Устранение резких скачков громкости при переходе на орган.
-   * #ЧТО: Вес нот (weight) снижен с 0.55 до 0.38 для Tier 3.
-   */
   private renderPowerChords(epoch: number, chord: GhostChord, tension: number): FractalEvent[] {
     const events: FractalEvent[] = [];
     const root = chord.rootNote + 12;
@@ -396,7 +395,6 @@ export class BluesBrain {
                 note: p, 
                 time: t + i * 0.03, 
                 duration: 1.5, 
-                // #ЗАЧЕМ: Смягчение вступления органа.
                 weight: 0.38, 
                 technique: 'pluck', 
                 dynamics: 'mf', 
@@ -438,6 +436,7 @@ export class BluesBrain {
     const root = Math.max(chord.rootNote - 12, this.BASS_FLOOR);
     const barInRiff = epoch % 4;
     
+    // Smoke on the Water style logic
     const riffs = [
         [
             [{ t: 0, n: root, w: 0.85 }, { t: 2.0, n: root + 7, w: 0.7 }],
