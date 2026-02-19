@@ -25,7 +25,8 @@ import type { FractalEvent, InstrumentHints, NavigationInfo } from '@/types/frac
 
 // --- Constants ---
 const VOICE_BALANCE: Record<InstrumentPart, number> = {
-  bass: 0.55, melody: 1.0, accompaniment: 0.6, drums: 1.0,
+  bass: 0.55, melody: 1.0, accompaniment: 0.6, 
+  drums: 0.5, // #ЗАЧЕМ: Баланс ударных снижен в 2 раза для чистоты микса.
   effects: 0.6, sparkles: 0.7, piano: 1.0, violin: 0.8, flute: 0.8, guitarChords: 0.9,
   acousticGuitarSolo: 0.9, blackAcoustic: 0.9, sfx: 0.8, harmony: 0.8,
   telecaster: 0.9, darkTelecaster: 0.9, cs80: 1.0, pianoAccompaniment: 0.7,
@@ -86,7 +87,7 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
   
   const blackGuitarSamplerRef = useRef<BlackGuitarSampler | null>(null);
   const telecasterSamplerRef = useRef<TelecasterGuitarSampler | null>(null);
-  const darkTelecasterSamplerRef = useRef<DarkTelecasterSampler | null>(null);
+  const darkTelecasterSamplerRef = useRef<DarkTelecasterSampler | null>(0 as any); // Re-ref correctly below
   const cs80SamplerRef = useRef<CS80GuitarSampler | null>(null);
   
   const masterGainNodeRef = useRef<GainNode | null>(null);
@@ -186,12 +187,16 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
         if (!drumMachineRef.current) drumMachineRef.current = new DrumMachine(context, gainNodesRef.current.drums);
         if (!blackGuitarSamplerRef.current) blackGuitarSamplerRef.current = new BlackGuitarSampler(context, gainNodesRef.current.melody);
         if (!telecasterSamplerRef.current) telecasterSamplerRef.current = new TelecasterGuitarSampler(context, gainNodesRef.current.melody);
-        if (!darkTelecasterSamplerRef.current) darkTelecasterSamplerRef.current = new DarkTelecasterSampler(context, gainNodesRef.current.melody);
+        
+        // Correcting darkTelecaster reference
+        const darkTeleRef = useRef<DarkTelecasterSampler | null>(null);
+        if (!darkTeleRef.current) darkTeleRef.current = new DarkTelecasterSampler(context, gainNodesRef.current.melody);
+        
         if (!cs80SamplerRef.current) cs80SamplerRef.current = new CS80GuitarSampler(context, gainNodesRef.current.melody);
         
         if (!accompanimentManagerV2Ref.current) accompanimentManagerV2Ref.current = new AccompanimentSynthManagerV2(context, gainNodesRef.current.accompaniment);
-        if (!melodyManagerV2Ref.current) melodyManagerV2Ref.current = new MelodySynthManagerV2(context, gainNodesRef.current.melody, telecasterSamplerRef.current, blackGuitarSamplerRef.current, darkTelecasterSamplerRef.current, cs80SamplerRef.current, 'melody');
-        if (!bassManagerV2Ref.current) bassManagerV2Ref.current = new MelodySynthManagerV2(context, gainNodesRef.current.bass, telecasterSamplerRef.current, blackGuitarSamplerRef.current, darkTelecasterSamplerRef.current, cs80SamplerRef.current, 'bass');
+        if (!melodyManagerV2Ref.current) melodyManagerV2Ref.current = new MelodySynthManagerV2(context, gainNodesRef.current.melody, telecasterSamplerRef.current!, blackGuitarSamplerRef.current!, darkTeleRef.current!, cs80SamplerRef.current!, 'melody');
+        if (!bassManagerV2Ref.current) bassManagerV2Ref.current = new MelodySynthManagerV2(context, gainNodesRef.current.bass, telecasterSamplerRef.current!, blackGuitarSamplerRef.current!, darkTeleRef.current!, cs80SamplerRef.current!, 'bass');
         
         if (!harmonyManagerRef.current) harmonyManagerRef.current = new HarmonySynthManager(context, gainNodesRef.current.harmony);
         if (!pianoAccompanimentManagerRef.current) pianoAccompanimentManagerRef.current = new PianoAccompanimentManager(context, gainNodesRef.current.pianoAccompaniment);
@@ -202,7 +207,7 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
             drumMachineRef.current.init(),
             blackGuitarSamplerRef.current.init(),
             telecasterSamplerRef.current.init(),
-            darkTelecasterSamplerRef.current.init(),
+            darkTeleRef.current.init(),
             cs80SamplerRef.current.init(),
             accompanimentManagerV2Ref.current.init(),
             melodyManagerV2Ref.current.init(),

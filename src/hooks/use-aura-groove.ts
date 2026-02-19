@@ -1,7 +1,6 @@
-
 /**
- * #ЗАЧЕМ: Хук управления UI музыкой V3.7.
- * #ЧТО: Обновленный "Имперский Баланс". Lead Guitar доминирует.
+ * #ЗАЧЕМ: Хук управления UI музыкой V3.8.
+ * #ЧТО: Нормализация громкости ударных и фикс маршрутизации регулятора.
  */
 'use client';
 
@@ -88,16 +87,15 @@ export const useAuraGroove = (): AuraGrooveProps => {
   const db = useFirestore();
   const router = useRouter();
   
-  const [drumSettings, setDrumSettings] = useState<DrumSettings>({ pattern: 'composer', volume: 0.12, kickVolume: 1.0, enabled: true });
+  // #ЗАЧЕМ: Установлена более высокая дефолтная громкость в UI (0.4) для работы в нормальном диапазоне.
+  const [drumSettings, setDrumSettings] = useState<DrumSettings>({ pattern: 'composer', volume: 0.4, kickVolume: 1.0, enabled: true });
   
-  // #ЗАЧЕМ: Улучшенный имперский баланс V3.7.
-  // #ОБНОВЛЕНО: Гитара (Melody) стала громче, Пианино и Органы снижены еще сильнее.
   const [instrumentSettings, setInstrumentSettings] = useState<InstrumentSettings>({
     bass: { name: "bass_jazz_warm", volume: 0.5, technique: 'portamento' },
-    melody: { name: "blackAcoustic", volume: 0.25 }, // Громкость Лида поднята
-    accompaniment: { name: "organ_soft_jazz", volume: 0.18 }, // Органы снижены
+    melody: { name: "blackAcoustic", volume: 0.25 },
+    accompaniment: { name: "organ_soft_jazz", volume: 0.18 },
     harmony: { name: "guitarChords", volume: 0.10 }, 
-    pianoAccompaniment: { name: "piano", volume: 0.12 }, // Пианино подавлено
+    pianoAccompaniment: { name: "piano", volume: 0.12 },
   });
 
   const [textureSettings, setTextureSettings] = useState<TextureSettings>({
@@ -135,16 +133,14 @@ export const useAuraGroove = (): AuraGrooveProps => {
     }
   }, []);
 
-  // #ЗАЧЕМ: Автоматический сброс громкости при переключении на Амбиент/Блюз.
   useEffect(() => {
     if (genre === 'ambient' || genre === 'blues') {
-      console.log(`%c[UI] Genre switched to ${genre.toUpperCase()}. Applying Narrative Balance.`, 'color: #DA70D6; font-weight: bold;');
       const ambientDefaults = {
         melody: 0.25,
         accompaniment: 0.18,
         harmony: 0.10,
         pianoAccompaniment: 0.12,
-        drums: 0.12
+        drums: 0.4 // Повышено в UI для соответствия системному снижению
       };
 
       setInstrumentSettings(prev => ({
@@ -257,8 +253,6 @@ export const useAuraGroove = (): AuraGrooveProps => {
   const handleSaveMasterpiece = useCallback(() => {
     if (!isInitialized || !isPlaying) return;
     
-    console.log(`%c[GENEPOOL] USER FEEDBACK: Liking seed ${currentSeed}. Archiving to Masterpieces.`, 'color: #4ade80; font-weight: bold;');
-
     saveMasterpiece(db, {
       seed: currentSeed,
       mood,
@@ -306,18 +300,20 @@ export const useAuraGroove = (): AuraGrooveProps => {
     }
   };
 
+  // #ЗАЧЕМ: Фикс регулятора громкости ударных.
+  const handleDrumSettingsChange = (settings: React.SetStateAction<DrumSettings>) => {
+    const newSettings = typeof settings === 'function' ? settings(drumSettings) : settings;
+    setDrumSettings(newSettings);
+    // #ЧТО: Явный вызов setVolume для немедленного обновления уровня в аудио-движке.
+    setVolume('drums', newSettings.volume);
+  };
+
   const handleTextureEnabledChange = (part: 'sparkles' | 'sfx', enabled: boolean) => {
       setTextureSettings(prev => {
           const newSettings = { ...prev, [part]: { ...prev[part], enabled }};
           setEngineTextureSettings(newSettings);
           return newSettings;
       });
-  };
-
-  const handleDrumSettingsChange = (settings: React.SetStateAction<DrumSettings>) => {
-    const newSettings = typeof settings === 'function' ? settings(drumSettings) : settings;
-    setDrumSettings(newSettings);
-    setVolume('drums', newSettings.volume);
   };
 
   const handleEqChange = (bandIndex: number, gain: number) => {

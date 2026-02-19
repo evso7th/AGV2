@@ -1,4 +1,3 @@
-
 import type { FractalEvent, InstrumentType } from "@/types/fractal";
 
 const DRUM_SAMPLES: Record<string, string> = {
@@ -186,7 +185,9 @@ export class DrumMachine {
         this.outputNode = destination;
 
         this.preamp = this.audioContext.createGain();
-        this.preamp.gain.value = 2.25;
+        // #ЗАЧЕМ: Системное снижение громкости ударных.
+        // #ЧТО: Гейн снижен с 2.25 до 0.85 для чистоты микса.
+        this.preamp.gain.value = 0.85;
         this.preamp.connect(this.outputNode);
     }
 
