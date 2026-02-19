@@ -1,7 +1,7 @@
 
 /**
- * #ЗАЧЕМ: Хук управления UI музыкой V3.6.
- * #ЧТО: Системное снижение громкости органов и пианино для Амбиента и Блюза.
+ * #ЗАЧЕМ: Хук управления UI музыкой V3.7.
+ * #ЧТО: Обновленный "Имперский Баланс". Lead Guitar доминирует.
  */
 'use client';
 
@@ -90,14 +90,14 @@ export const useAuraGroove = (): AuraGrooveProps => {
   
   const [drumSettings, setDrumSettings] = useState<DrumSettings>({ pattern: 'composer', volume: 0.12, kickVolume: 1.0, enabled: true });
   
-  // #ЗАЧЕМ: Улучшенный имперский баланс.
-  // #ОБНОВЛЕНО (ПЛАН №491): Громкость сопровождения (органы) и пианино снижена.
+  // #ЗАЧЕМ: Улучшенный имперский баланс V3.7.
+  // #ОБНОВЛЕНО: Гитара (Melody) стала громче, Пианино и Органы снижены еще сильнее.
   const [instrumentSettings, setInstrumentSettings] = useState<InstrumentSettings>({
     bass: { name: "bass_jazz_warm", volume: 0.5, technique: 'portamento' },
-    melody: { name: "blackAcoustic", volume: 0.18 }, // Чуть громче
-    accompaniment: { name: "organ_soft_jazz", volume: 0.35 }, // Снижено
-    harmony: { name: "guitarChords", volume: 0.15 }, 
-    pianoAccompaniment: { name: "piano", volume: 0.22 }, // Снижено
+    melody: { name: "blackAcoustic", volume: 0.25 }, // Громкость Лида поднята
+    accompaniment: { name: "organ_soft_jazz", volume: 0.18 }, // Органы снижены
+    harmony: { name: "guitarChords", volume: 0.10 }, 
+    pianoAccompaniment: { name: "piano", volume: 0.12 }, // Пианино подавлено
   });
 
   const [textureSettings, setTextureSettings] = useState<TextureSettings>({
@@ -140,10 +140,10 @@ export const useAuraGroove = (): AuraGrooveProps => {
     if (genre === 'ambient' || genre === 'blues') {
       console.log(`%c[UI] Genre switched to ${genre.toUpperCase()}. Applying Narrative Balance.`, 'color: #DA70D6; font-weight: bold;');
       const ambientDefaults = {
-        melody: 0.18,
-        accompaniment: 0.35,
-        harmony: 0.15,
-        pianoAccompaniment: 0.22,
+        melody: 0.25,
+        accompaniment: 0.18,
+        harmony: 0.10,
+        pianoAccompaniment: 0.12,
         drums: 0.12
       };
 
