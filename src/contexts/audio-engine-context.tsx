@@ -1,9 +1,8 @@
 /**
- * #ЗАЧЕМ: Audio Engine Context V5.3 — "V2 Sovereignty Alignment".
- * #ЧТО: 1. Удалены все остатки V1 движка.
- *       2. Роутинг всех партий (Bass, Melody, Accomp) переведен на V2.
- *       3. Исправлены сигнатуры вызовов schedule.
- *       4. Исправлен баланс громкости и выбор инструментов.
+ * #ЗАЧЕМ: Audio Engine Context V5.4 — "Ensemble Singleton Guard".
+ * #ЧТО: 1. Внедрены строгие проверки на существование инстансов (if (!ref.current)).
+ *       2. Устранено дублирование ударных и других менеджеров при повторной инициализации.
+ *       3. Обновлен логгер для вывода метаданных Ликов и Мутаций.
  */
 'use client';
 
@@ -137,8 +136,6 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
 
     if (drumMachineRef.current && drumEvents.length > 0) drumMachineRef.current.schedule(drumEvents, barStartTime, tempo);
     
-    // #ЗАЧЕМ: Унифицированный V2 роутинг. 
-    // #ЧТО: Все тональные партии идут через современные менеджеры.
     if (bassEvents.length > 0 && bassManagerV2Ref.current) {
         bassManagerV2Ref.current.schedule(bassEvents, barStartTime, tempo, instrumentHints?.bass);
     }
@@ -184,20 +181,22 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
             }
         });
 
-        drumMachineRef.current = new DrumMachine(context, gainNodesRef.current.drums);
-        blackGuitarSamplerRef.current = new BlackGuitarSampler(context, gainNodesRef.current.melody);
-        telecasterSamplerRef.current = new TelecasterGuitarSampler(context, gainNodesRef.current.melody);
-        darkTelecasterSamplerRef.current = new DarkTelecasterSampler(context, gainNodesRef.current.melody);
-        cs80SamplerRef.current = new CS80GuitarSampler(context, gainNodesRef.current.melody);
+        // #ЗАЧЕМ: Singleton Guards.
+        // #ЧТО: Инициализация происходит только если Ref пуст. Это устраняет дублирование "двух ударников".
+        if (!drumMachineRef.current) drumMachineRef.current = new DrumMachine(context, gainNodesRef.current.drums);
+        if (!blackGuitarSamplerRef.current) blackGuitarSamplerRef.current = new BlackGuitarSampler(context, gainNodesRef.current.melody);
+        if (!telecasterSamplerRef.current) telecasterSamplerRef.current = new TelecasterGuitarSampler(context, gainNodesRef.current.melody);
+        if (!darkTelecasterSamplerRef.current) darkTelecasterSamplerRef.current = new DarkTelecasterSampler(context, gainNodesRef.current.melody);
+        if (!cs80SamplerRef.current) cs80SamplerRef.current = new CS80GuitarSampler(context, gainNodesRef.current.melody);
         
-        accompanimentManagerV2Ref.current = new AccompanimentSynthManagerV2(context, gainNodesRef.current.accompaniment);
-        melodyManagerV2Ref.current = new MelodySynthManagerV2(context, gainNodesRef.current.melody, telecasterSamplerRef.current, blackGuitarSamplerRef.current, darkTelecasterSamplerRef.current, cs80SamplerRef.current, 'melody');
-        bassManagerV2Ref.current = new MelodySynthManagerV2(context, gainNodesRef.current.bass, telecasterSamplerRef.current, blackGuitarSamplerRef.current, darkTelecasterSamplerRef.current, cs80SamplerRef.current, 'bass');
+        if (!accompanimentManagerV2Ref.current) accompanimentManagerV2Ref.current = new AccompanimentSynthManagerV2(context, gainNodesRef.current.accompaniment);
+        if (!melodyManagerV2Ref.current) melodyManagerV2Ref.current = new MelodySynthManagerV2(context, gainNodesRef.current.melody, telecasterSamplerRef.current, blackGuitarSamplerRef.current, darkTelecasterSamplerRef.current, cs80SamplerRef.current, 'melody');
+        if (!bassManagerV2Ref.current) bassManagerV2Ref.current = new MelodySynthManagerV2(context, gainNodesRef.current.bass, telecasterSamplerRef.current, blackGuitarSamplerRef.current, darkTelecasterSamplerRef.current, cs80SamplerRef.current, 'bass');
         
-        harmonyManagerRef.current = new HarmonySynthManager(context, gainNodesRef.current.harmony);
-        pianoAccompanimentManagerRef.current = new PianoAccompanimentManager(context, gainNodesRef.current.pianoAccompaniment);
-        sparklePlayerRef.current = new SparklePlayer(context, gainNodesRef.current.sparkles);
-        sfxSynthManagerRef.current = new SfxSynthManager(context, gainNodesRef.current.sfx);
+        if (!harmonyManagerRef.current) harmonyManagerRef.current = new HarmonySynthManager(context, gainNodesRef.current.harmony);
+        if (!pianoAccompanimentManagerRef.current) pianoAccompanimentManagerRef.current = new PianoAccompanimentManager(context, gainNodesRef.current.pianoAccompaniment);
+        if (!sparklePlayerRef.current) sparklePlayerRef.current = new SparklePlayer(context, gainNodesRef.current.sparkles);
+        if (!sfxSynthManagerRef.current) sfxSynthManagerRef.current = new SfxSynthManager(context, gainNodesRef.current.sfx);
 
         await Promise.all([
             drumMachineRef.current.init(),
@@ -264,7 +263,6 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
   const setVolumeCallback = useCallback((part: InstrumentPart, volume: number) => {
     if (part === 'pads' || part === 'effects') return;
     
-    // Прямой доступ к преампам V2 менеджеров
     if (part === 'bass' && bassManagerV2Ref.current) bassManagerV2Ref.current.setPreampGain(volume);
     if (part === 'melody' && melodyManagerV2Ref.current) melodyManagerV2Ref.current.setPreampGain(volume);
     if (part === 'accompaniment' && accompanimentManagerV2Ref.current) accompanimentManagerV2Ref.current.setPreampGain(volume);
