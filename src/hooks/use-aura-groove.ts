@@ -1,8 +1,7 @@
 
 /**
- * #ЗАЧЕМ: Хук управления UI музыкой V3.5.
- * #ЧТО: 1. Снижена дефолтная громкость мелодии для Амбиента и Блюза до 0.14.
- *       2. Усилен контроль за балансом гитарных сэмплеров.
+ * #ЗАЧЕМ: Хук управления UI музыкой V3.6.
+ * #ЧТО: Системное снижение громкости органов и пианино для Амбиента и Блюза.
  */
 'use client';
 
@@ -91,14 +90,14 @@ export const useAuraGroove = (): AuraGrooveProps => {
   
   const [drumSettings, setDrumSettings] = useState<DrumSettings>({ pattern: 'composer', volume: 0.12, kickVolume: 1.0, enabled: true });
   
-  // #ЗАЧЕМ: Дефолтный баланс для Амбиента при старте.
-  // #ОБНОВЛЕНО (ПЛАН №463): Громкость мелодии снижена до 0.14.
+  // #ЗАЧЕМ: Улучшенный имперский баланс.
+  // #ОБНОВЛЕНО (ПЛАН №491): Громкость сопровождения (органы) и пианино снижена.
   const [instrumentSettings, setInstrumentSettings] = useState<InstrumentSettings>({
     bass: { name: "bass_jazz_warm", volume: 0.5, technique: 'portamento' },
-    melody: { name: "blackAcoustic", volume: 0.14 }, 
-    accompaniment: { name: "organ_soft_jazz", volume: 0.50 }, 
+    melody: { name: "blackAcoustic", volume: 0.18 }, // Чуть громче
+    accompaniment: { name: "organ_soft_jazz", volume: 0.35 }, // Снижено
     harmony: { name: "guitarChords", volume: 0.15 }, 
-    pianoAccompaniment: { name: "piano", volume: 0.35 }, 
+    pianoAccompaniment: { name: "piano", volume: 0.22 }, // Снижено
   });
 
   const [textureSettings, setTextureSettings] = useState<TextureSettings>({
@@ -137,15 +136,14 @@ export const useAuraGroove = (): AuraGrooveProps => {
   }, []);
 
   // #ЗАЧЕМ: Автоматический сброс громкости при переключении на Амбиент/Блюз.
-  // #ОБНОВЛЕНО (ПЛАН №463): Громкость мелодии системно снижена до 0.14.
   useEffect(() => {
     if (genre === 'ambient' || genre === 'blues') {
-      console.log(`%c[UI] Genre switched to ${genre.toUpperCase()}. Applying Imperial Balance.`, 'color: #DA70D6; font-weight: bold;');
+      console.log(`%c[UI] Genre switched to ${genre.toUpperCase()}. Applying Narrative Balance.`, 'color: #DA70D6; font-weight: bold;');
       const ambientDefaults = {
-        melody: 0.14,
-        accompaniment: 0.50,
+        melody: 0.18,
+        accompaniment: 0.35,
         harmony: 0.15,
-        pianoAccompaniment: 0.35,
+        pianoAccompaniment: 0.22,
         drums: 0.12
       };
 

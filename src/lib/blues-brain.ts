@@ -1,3 +1,4 @@
+
 import {
   FractalEvent,
   GhostChord,
@@ -18,10 +19,10 @@ import {
 import { BLUES_SOLO_LICKS } from './assets/blues_guitar_solo';
 
 /**
- * #ЗАЧЕМ: Блюзовый Мозг V104.0 — "Momentum Dynamics".
- * #ЧТО: 1. Внедрена динамика Намерения (dTension).
- *       2. Реализована логика "Предчувствия" (Anticipation) при росте напряжения.
- *       3. Реализована логика "Облегчения" (Resolution) при спаде.
+ * #ЗАЧЕМ: Блюзовый Мозг V105.0 — "Narrative Justice Update".
+ * #ЧТО: 1. Внедрена производная гармонии (Violins vs Chords).
+ *       2. Повышена плотность гитары (Lead) за счет ослабления дистилляции.
+ *       3. Внедрена защита пианиста от зацикливания (Piano Hashing).
  */
 
 export class BluesBrain {
@@ -94,8 +95,7 @@ export class BluesBrain {
   ): FractalEvent[] {
     const tension = dna.tensionMap?.[epoch] ?? 0.5;
     
-    // #ЗАЧЕМ: Вычисление Momentum (Намерения).
-    // #ЧТО: Сравнение текущего напряжения с предыдущим тактом.
+    // Вычисление Momentum (Намерения)
     this.state.tensionMomentum = tension - this.state.lastTension;
     this.state.lastTension = tension;
 
@@ -107,11 +107,12 @@ export class BluesBrain {
     this.evaluateTimbralDramaturgy(tension, hints);
     
     const isMutationBoundary = epoch % 12 === 0;
+    // #ЗАЧЕМ: Стражи зацикливания ансамбля.
     const isStagnating = this.state.stagnationStrikes.micro >= 3;
 
     if (this.currentAxiom.length === 0 || navInfo.isPartTransition || isMutationBoundary || isStagnating) {
         if (isStagnating) {
-            console.warn(`%c[Narrative] ENSEMBLE STAGNATION at Bar ${epoch}. Triggering Global Reset.`, 'color: #ff4444; font-weight: bold;');
+            console.warn(`%c[Narrative] ENSEMBLE STAGNATION (Lead/Piano). Triggering Global Mutation.`, 'color: #ff4444; font-weight: bold;');
         }
         this.refreshUnifiedMutation();
         this.selectNextAxiom(navInfo, dna, epoch);
@@ -126,10 +127,57 @@ export class BluesBrain {
     if (hints.drums) events.push(...this.renderBluesBeat(epoch, tension, navInfo));
     
     if (hints.pianoAccompaniment) {
-        events.push(...this.renderIntegratedPiano(epoch, currentChord, tension));
+        const pianoEvents = this.renderIntegratedPiano(epoch, currentChord, tension);
+        // Piano repetition guard
+        const pianoHash = pianoEvents.map(e => e.note).join('-');
+        if (pianoHash && this.state.lastPianoHash === pianoHash) {
+            this.state.stagnationStrikes.micro++;
+        }
+        this.state.lastPianoHash = pianoHash;
+        events.push(...pianoEvents);
+    }
+
+    if (hints.harmony) {
+        events.push(...this.renderDerivativeHarmony(currentChord, epoch, tension));
     }
 
     return events;
+  }
+
+  /**
+   * #ЗАЧЕМ: Реализация алгоритма "Гармония Намерения".
+   * #ЧТО: Скрипки на росте производной, аккорды на спаде.
+   */
+  private renderDerivativeHarmony(chord: GhostChord, epoch: number, tension: number): FractalEvent[] {
+      const momentum = this.state.tensionMomentum;
+      const events: FractalEvent[] = [];
+      const root = chord.rootNote;
+      
+      // Логика переключения: производная > 0 -> Скрипки, производная <= 0 -> Аккорды
+      const useViolin = momentum > 0.001; 
+      const probability = Math.min(0.8, 0.2 + Math.abs(momentum) * 20);
+
+      if (this.random.next() > probability) return [];
+
+      const timbre = useViolin ? 'violin' : 'guitarChords';
+      const notes = useViolin ? [root + 12, root + 19] : [root, root + 7, root + 10];
+
+      notes.forEach((n, i) => {
+          events.push({
+              type: 'harmony',
+              note: n + (useViolin ? 12 : 0),
+              time: i * 0.1,
+              duration: 8.0,
+              weight: (useViolin ? 0.12 : 0.22),
+              technique: 'swell',
+              dynamics: 'p',
+              phrasing: 'legato',
+              chordName: chord.chordType === 'minor' ? 'Am' : 'E', // Simplified for sampler
+              params: { barCount: epoch, filterCutoff: 3000 }
+          });
+      });
+
+      return events;
   }
 
   private refreshUnifiedMutation() {
@@ -208,11 +256,6 @@ export class BluesBrain {
     }
   }
 
-  /**
-   * #ЗАЧЕМ: Когнитивный рендер мелодии с Momentum.
-   * #ЧТО: 1. Дистилляция Напряжения.
-   *       2. Намеренная Артикуляция: dT > 0 -> Staccato (нервозность), dT < 0 -> Legato (облегчение).
-   */
   private renderMelodicSegment(epoch: number, chord: GhostChord, tension: number): FractalEvent[] {
     const barInCycle = epoch % 4;
     const barOffset = barInCycle * 12;
@@ -222,8 +265,9 @@ export class BluesBrain {
     const momentum = this.state.tensionMomentum;
 
     barNotes.forEach((n, i) => {
-        // Дистилляция: при низком tension и отсутствии роста — реже ноты
-        if (tension < 0.45 && momentum <= 0 && i % 2 !== 0) return;
+        // #ЗАЧЕМ: Повышение присутствия гитары.
+        // #ОБНОВЛЕНО: Порог дистилляции снижен с 0.45 до 0.3.
+        if (tension < 0.3 && momentum <= 0 && i % 3 !== 0) return;
 
         const nextNote = barNotes[i+1];
         let duration = n.d / 3;
@@ -231,17 +275,15 @@ export class BluesBrain {
             duration += 0.15; 
         }
 
-        // Влияние Momentum на длительность (Выдох/Вдох)
-        if (momentum < 0) duration *= (1.0 + Math.abs(momentum) * 5); // Облегчение: ноты тянутся
-        if (momentum > 0) duration *= (1.0 - momentum * 3); // Напряжение: ноты острее
+        if (momentum < 0) duration *= (1.0 + Math.abs(momentum) * 5); 
+        if (momentum > 0) duration *= (1.0 - momentum * 3); 
 
         const phraseProgress = (n.t % 48) / 48;
         const exhaleModifier = 1.0 - (phraseProgress * 0.3);
 
         const isAccent = n.t % 6 === 0;
-        const baseWeight = isAccent ? 0.92 : 0.75;
-        // Рост напряжения добавляет веса каждой ноте
-        const momentumBoost = momentum > 0 ? momentum * 2 : 0;
+        const baseWeight = isAccent ? 0.95 : 0.85; // Повышен вес гитары
+        const momentumBoost = momentum > 0 ? momentum * 3 : 0;
         const finalWeight = (baseWeight + momentumBoost) * exhaleModifier * (0.9 + this.random.next() * 0.2);
 
         const event: FractalEvent = {
@@ -251,14 +293,14 @@ export class BluesBrain {
             duration: duration,
             weight: finalWeight,
             technique: n.tech || 'pick',
-            dynamics: (tension > 0.7 || momentum > 0.05) ? 'mf' : 'p',
+            dynamics: (tension > 0.65 || momentum > 0.04) ? 'mf' : 'p',
             phrasing: momentum < -0.02 ? 'legato' : (momentum > 0.02 ? 'staccato' : 'detached'),
             params: { barCount: epoch }
         };
 
         events.push(event);
 
-        if ((tension > 0.82 || momentum > 0.1) && this.random.next() < 0.4) {
+        if ((tension > 0.80 || momentum > 0.08) && this.random.next() < 0.5) {
             events.push({
                 ...event,
                 note: event.note - 12,
@@ -273,7 +315,6 @@ export class BluesBrain {
 
   private renderDynamicAccompaniment(epoch: number, chord: GhostChord, tension: number): FractalEvent[] {
     const momentum = this.state.tensionMomentum;
-    // Если напряжение быстро растет, переходим в Arp раньше
     const effectiveTension = tension + momentum * 5;
 
     if (effectiveTension < 0.4) return this.renderSoftPillows(epoch, chord, tension);
@@ -328,7 +369,6 @@ export class BluesBrain {
             case 'walking': return this.renderWalkingBass(chord, epoch, tension);
         }
     }
-    // Если напряжение падает, переходим в Drone раньше
     const effectiveTension = tension + momentum * 3;
 
     if (effectiveTension < 0.4) return this.renderDroneBass(chord, epoch);
@@ -377,30 +417,32 @@ export class BluesBrain {
       const degrees = [0, isMin ? 3 : 4, 7, 10, 14];
       const momentum = this.state.tensionMomentum;
       
-      if (tension < 0.45 && momentum <= 0) {
-          const noteChance = 0.2 + tension * 0.5;
-          [1.5, 3.0].forEach(beat => {
+      // #ЗАЧЕМ: Уменьшение доминирования пианино.
+      if (tension < 0.50 && momentum <= 0) {
+          const noteChance = 0.15 + tension * 0.3; // Снижено с 0.2
+          [1.5, 3.5].forEach(beat => {
               if (this.random.next() < noteChance) {
                   const deg = degrees[this.random.nextInt(degrees.length)];
                   events.push({
                       type: 'pianoAccompaniment',
                       note: Math.min(root + deg, this.MELODY_CEILING),
-                      time: beat, duration: 4.0, weight: 0.3 + tension * 0.2,
+                      time: beat, duration: 4.0, weight: 0.22 + tension * 0.1,
                       technique: 'hit', dynamics: 'p', phrasing: 'staccato',
                       params: { barCount: epoch }
                   });
               }
           });
       } else {
-          const complexity = Math.floor((tension + Math.max(0, momentum * 5)) * 6);
+          // #ЧТО: Пианино становится плотнее только при росте напряжения.
+          const complexity = Math.floor((tension + Math.max(0, momentum * 3)) * 4);
           const step = 4.0 / Math.max(1, complexity);
           for (let i = 0; i < complexity; i++) {
-              if (this.random.next() < 0.8) {
+              if (this.random.next() < 0.6) {
                   const deg = degrees[i % degrees.length];
                   events.push({
                       type: 'pianoAccompaniment',
                       note: Math.min(root + deg, this.MELODY_CEILING),
-                      time: i * step, duration: 2.5, weight: 0.4 + tension * 0.3,
+                      time: i * step, duration: 2.5, weight: 0.35 + tension * 0.2,
                       technique: 'hit', dynamics: 'p', phrasing: 'staccato',
                       params: { barCount: epoch }
                   });
