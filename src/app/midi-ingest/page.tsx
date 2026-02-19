@@ -1,22 +1,22 @@
-
 'use client';
 
 import { useState, useEffect } from 'react';
 import { Midi } from '@tonejs/midi';
-import { Upload, FileMusic, Download, Search, Settings2, Sparkles, Tags, Heart, CloudUpload, Music, Waves, Drum, LayoutGrid, Factory, Trash2, BrainCircuit } from 'lucide-react';
+import { Upload, FileMusic, Download, Search, Settings2, Sparkles, Tags, Heart, CloudUpload, Music, Waves, Drum, LayoutGrid, Factory, Trash2, BrainCircuit, Play, Volume2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { detectKeyFromNotes, SEMITONE_TO_DEGREE, DEGREE_KEYS, TECHNIQUE_KEYS } from '@/lib/music-theory';
+import { detectKeyFromNotes, SEMITONE_TO_DEGREE, DEGREE_KEYS, TECHNIQUE_KEYS, DEGREE_TO_SEMITONE } from '@/lib/music-theory';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { useRouter } from 'next/navigation';
 import { useFirestore } from '@/firebase';
 import { saveHeritageAxiom } from '@/lib/firebase-service';
 import { toast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
-import type { Mood, Genre } from '@/types/music';
+import type { Mood, Genre, FractalEvent } from '@/types/music';
+import { useAudioEngine } from '@/contexts/audio-engine-context';
 
 type IngestionRole = 'melody' | 'bass' | 'drums' | 'accomp';
 
@@ -40,32 +40,20 @@ const formatLicksToText = (licks: any[]) => {
 
 /**
  * #ЗАЧЕМ: Эвристический определитель роли дорожки.
- * #ЧТО: Анализирует питчи, полифонию и метаданные.
  */
 const detectTrackRole = (track: any): IngestionRole => {
     const name = (track.name || "").toLowerCase();
-    
-    // 1. Ударные (Канал 10 или ключевые слова)
     if (track.channel === 9 || name.match(/drum|perc|kick|snare|hihat|kit|beat/)) return 'drums';
-    
     if (track.notes.length === 0) return 'melody';
-
-    // 2. Расчет среднего питча (Центр тяжести)
     const avgPitch = track.notes.reduce((sum: number, n: any) => sum + n.midi, 0) / track.notes.length;
-    
-    // 3. Проверка полифонии (аккорды)
-    // Проверяем, сколько нот звучит одновременно в среднем
     let overlaps = 0;
     const sampleSize = Math.min(track.notes.length, 20);
     for (let i = 0; i < sampleSize - 1; i++) {
         if (track.notes[i+1].time < track.notes[i].time + track.notes[i].duration) overlaps++;
     }
     const isPolyphonic = overlaps > (sampleSize * 0.3);
-
-    // Логика принятия решения
     if (name.includes("bass") || (avgPitch < 48 && !isPolyphonic)) return 'bass';
     if (name.match(/piano|key|chord|gtr|guitar|pad|str|string|organ/) || isPolyphonic) return 'accomp';
-    
     return 'melody';
 };
 
@@ -118,6 +106,8 @@ const segmentTrackToCompactLicks = (track: any, root: number, role: IngestionRol
 export default function MidiIngestPage() {
     const router = useRouter();
     const db = useFirestore();
+    const { initialize, isInitialized, playRawEvents } = useAudioEngine();
+    
     const [isAnalyzing, setIsAnalyzing] = useState(false);
     const [isTransmitting, setIsTransmitting] = useState(false);
     const [midiFile, setMidiFile] = useState<Midi | null>(null);
@@ -141,14 +131,12 @@ export default function MidiIngestPage() {
                 const midi = new Midi(event.target?.result as ArrayBuffer);
                 setMidiFile(midi);
                 
-                // Авто-детекция ролей для всех треков
                 const rolesMap = new Map<number, IngestionRole>();
                 midi.tracks.forEach((track, i) => {
                     rolesMap.set(i, detectTrackRole(track));
                 });
                 setTrackRoles(rolesMap);
 
-                // Выбираем самый интересный трек (обычно самый длинный тональный)
                 const longestTrackIdx = midi.tracks.reduce((prev, curr, idx) => 
                     curr.notes.length > midi.tracks[prev].notes.length ? idx : prev, 0
                 );
@@ -180,6 +168,41 @@ export default function MidiIngestPage() {
             setExtractedLicks(licks);
         }
     }, [midiFile, selectedTrackIndex, selectedRole, detectedKey, origin, selectedMood, selectedGenre]);
+
+    const auralizeLick = async (lick: any) => {
+        if (!isInitialized) {
+            const success = await initialize();
+            if (!success) return;
+        }
+
+        const roleMap: Record<string, string> = { 'melody': 'melody', 'bass': 'bass', 'accomp': 'accompaniment', 'drums': 'drums' };
+        const role = roleMap[lick.role] || 'melody';
+        
+        // Превращаем компактный лик в события FractalEvent
+        const events: FractalEvent[] = [];
+        const root = detectedKey?.root || 60;
+
+        for (let i = 0; i < lick.phrase.length; i += 4) {
+            const t = lick.phrase[i];
+            const d = lick.phrase[i+1];
+            const degIdx = lick.phrase[i+2];
+            const techIdx = lick.phrase[i+3];
+
+            events.push({
+                type: role as any,
+                note: root + (DEGREE_TO_SEMITONE[DEGREE_KEYS[degIdx]] || 0),
+                time: t / 3, // 12/8 grid (12 ticks = 4 beats)
+                duration: d / 3,
+                weight: 0.8,
+                technique: TECHNIQUE_KEYS[techIdx] as any,
+                dynamics: 'mf',
+                phrasing: 'legato'
+            });
+        }
+
+        playRawEvents(events);
+        toast({ title: "Sonic Preview Active", description: `Playing ${lick.role} axiom on system factory.` });
+    };
 
     const transmitToGlobalMemory = async () => {
         if (extractedLicks.length === 0) return;
@@ -219,9 +242,9 @@ export default function MidiIngestPage() {
                             <Factory className="h-8 w-8 text-primary" />
                         </div>
                         <div>
-                            <CardTitle className="text-3xl font-bold tracking-tight">Heritage Alchemist v5.0</CardTitle>
+                            <CardTitle className="text-3xl font-bold tracking-tight">Heritage Alchemist v6.0</CardTitle>
                             <CardDescription className="text-muted-foreground flex items-center gap-2">
-                                <BrainCircuit className="h-3 w-3" /> Heuristic Ensemble Ingestion Console
+                                <Volume2 className="h-3 w-3" /> Sonic Preview Enabled
                             </CardDescription>
                         </div>
                     </div>
@@ -231,7 +254,6 @@ export default function MidiIngestPage() {
                 </CardHeader>
                 <CardContent className="space-y-8 pt-8">
                     <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-                        {/* Left Column: Metadata & File */}
                         <div className="space-y-6 lg:col-span-1">
                             <div className="p-5 border rounded-2xl bg-muted/30 space-y-4 shadow-inner">
                                 <Label className="text-xs font-bold uppercase tracking-widest text-primary/80 flex items-center gap-2">
@@ -266,7 +288,6 @@ export default function MidiIngestPage() {
                                         <input type="file" accept=".mid,.midi" onChange={onFileUpload} className="absolute inset-0 opacity-0 cursor-pointer z-10" />
                                         <Upload className="h-8 w-8 mx-auto text-muted-foreground group-hover:text-primary mb-3 transition-colors" />
                                         <p className="text-xs font-medium text-muted-foreground group-hover:text-primary">Click to scan MIDI DNA</p>
-                                        <p className="text-[10px] text-muted-foreground/60 mt-1">Multi-track analysis v5.0</p>
                                     </div>
                                     {midiFile && (
                                         <Button variant="ghost" size="sm" onClick={clearPreview} className="w-full text-[10px] h-8 gap-2 text-destructive hover:bg-destructive/10">
@@ -277,7 +298,6 @@ export default function MidiIngestPage() {
                             </div>
                         </div>
 
-                        {/* Right Column: Track Map & Orchestrator */}
                         <div className="lg:col-span-2 space-y-6">
                             <div className="flex justify-between items-end mb-2">
                                 <Label className="text-xs font-bold uppercase tracking-widest text-primary/80 flex items-center gap-2">
@@ -291,7 +311,7 @@ export default function MidiIngestPage() {
                                 )}
                             </div>
                             
-                            <ScrollArea className="h-[280px] rounded-2xl border bg-black/30 p-3 shadow-inner">
+                            <ScrollArea className="h-[320px] rounded-2xl border bg-black/30 p-3 shadow-inner">
                                 {!midiFile ? (
                                     <div className="flex flex-col items-center justify-center h-full text-muted-foreground text-xs italic gap-2 opacity-50">
                                         <FileMusic className="h-10 w-10 mb-2" />
@@ -325,11 +345,20 @@ export default function MidiIngestPage() {
                                                             </span>
                                                         </div>
                                                     </div>
-                                                    <div className="flex items-center gap-6">
-                                                        <div className="flex flex-col text-right">
-                                                            <span className="text-xs font-mono opacity-70">{track.notes.length} events</span>
-                                                            <span className="text-[10px] opacity-50">{(track.duration / 4).toFixed(1)} bars</span>
-                                                        </div>
+                                                    <div className="flex items-center gap-4">
+                                                        {selectedTrackIndex === i && (
+                                                            <Button 
+                                                                size="icon" 
+                                                                variant="ghost" 
+                                                                className="h-8 w-8 rounded-full bg-primary/20 text-primary hover:bg-primary hover:text-primary-foreground transition-all"
+                                                                onClick={(e) => {
+                                                                    e.stopPropagation();
+                                                                    if (extractedLicks.length > 0) auralizeLick(extractedLicks[0]);
+                                                                }}
+                                                            >
+                                                                <Play className="h-4 w-4 fill-current" />
+                                                            </Button>
+                                                        )}
                                                         <div className={cn(
                                                             "p-2 rounded-full",
                                                             selectedTrackIndex === i ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground"
@@ -346,35 +375,6 @@ export default function MidiIngestPage() {
                                     </div>
                                 )}
                             </ScrollArea>
-
-                            {selectedTrackIndex !== -1 && (
-                                <div className="p-5 bg-primary/5 rounded-2xl border border-primary/10 flex items-center justify-between shadow-sm animate-in fade-in slide-in-from-bottom-2">
-                                    <div className="space-y-3">
-                                        <Label className="text-[10px] uppercase font-bold text-muted-foreground tracking-widest">Override Detected Role</Label>
-                                        <div className="flex gap-2">
-                                            {(['melody', 'bass', 'drums', 'accomp'] as IngestionRole[]).map(role => (
-                                                <Button 
-                                                    key={role}
-                                                    size="sm"
-                                                    variant={selectedRole === role ? "default" : "outline"}
-                                                    onClick={() => setSelectedRole(role)}
-                                                    className="h-8 px-4 text-[10px] capitalize gap-2 rounded-full transition-all"
-                                                >
-                                                    {role === 'melody' && <Music className="h-3 w-3"/>}
-                                                    {role === 'bass' && <Waves className="h-3 w-3"/>}
-                                                    {role === 'drums' && <Drum className="h-3 w-3"/>}
-                                                    {role === 'accomp' && <LayoutGrid className="h-3 w-3"/>}
-                                                    {role}
-                                                </Button>
-                                            ))}
-                                        </div>
-                                    </div>
-                                    <div className="text-right flex flex-col justify-center">
-                                        <p className="text-[10px] uppercase text-muted-foreground font-bold tracking-wider">Analysis Active</p>
-                                        <p className="text-xs font-medium text-primary/80">Segmenting into 4-bar axioms...</p>
-                                    </div>
-                                </div>
-                            )}
                         </div>
                     </div>
 
@@ -384,14 +384,23 @@ export default function MidiIngestPage() {
                                 <Label className="text-sm font-bold flex items-center gap-2 uppercase tracking-widest text-primary">
                                     <Settings2 className="h-4 w-4" /> Genetic Buffer ({extractedLicks.length} Axioms Ready)
                                 </Label>
-                                <Button 
-                                    onClick={transmitToGlobalMemory} 
-                                    disabled={isTransmitting}
-                                    className="gap-2 text-xs h-10 px-6 bg-green-600 hover:bg-green-700 shadow-lg shadow-green-900/30 rounded-full transition-all active:scale-95"
-                                >
-                                    <CloudUpload className="h-4 w-4" /> 
-                                    {isTransmitting ? 'Transmitting DNA...' : 'Endorse & Transmit'}
-                                </Button>
+                                <div className="flex gap-3">
+                                    <Button 
+                                        variant="outline"
+                                        onClick={() => auralizeLick(extractedLicks[0])}
+                                        className="gap-2 text-xs h-10 px-6 border-primary/30 rounded-full"
+                                    >
+                                        <Play className="h-4 w-4 fill-primary" /> Auralize DNA
+                                    </Button>
+                                    <Button 
+                                        onClick={transmitToGlobalMemory} 
+                                        disabled={isTransmitting}
+                                        className="gap-2 text-xs h-10 px-6 bg-green-600 hover:bg-green-700 shadow-lg shadow-green-900/30 rounded-full transition-all active:scale-95"
+                                    >
+                                        <CloudUpload className="h-4 w-4" /> 
+                                        {isTransmitting ? 'Transmitting DNA...' : 'Endorse & Transmit'}
+                                    </Button>
+                                </div>
                             </div>
                             <div className="rounded-2xl border p-1 bg-black/40 shadow-inner">
                                 <ScrollArea className="h-[200px] w-full">
@@ -401,19 +410,6 @@ export default function MidiIngestPage() {
                                         </pre>
                                     </div>
                                 </ScrollArea>
-                            </div>
-                        </div>
-                    )}
-
-                    {isAnalyzing && (
-                        <div className="fixed inset-0 bg-background/80 backdrop-blur-sm z-50 flex flex-col items-center justify-center space-y-6">
-                            <div className="relative">
-                                <div className="h-16 w-16 border-4 border-primary/20 rounded-full"></div>
-                                <div className="h-16 w-16 border-4 border-primary border-t-transparent rounded-full animate-spin absolute inset-0"></div>
-                            </div>
-                            <div className="text-center">
-                                <p className="text-lg text-primary font-bold animate-pulse tracking-tight">Heuristic DNA Scan in Progress...</p>
-                                <p className="text-xs text-muted-foreground mt-2">Mapping orchestral roles and harmonic structures</p>
                             </div>
                         </div>
                     )}

@@ -81,6 +81,8 @@ interface AudioEngineContextType {
   stopRecording: () => void;
   toggleBroadcast: () => void;
   getWorker: () => Worker | null;
+  /** #ЗАЧЕМ: Проигрывание сырых событий (для Алхимика MIDI). */
+  playRawEvents: (events: FractalEvent[], instrumentHint?: string) => void;
 }
 
 const AudioEngineContext = createContext<AudioEngineContextType | null>(null);
@@ -276,6 +278,14 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
     if (sfxSynthManagerRef.current && sfxEvents.length > 0) sfxSynthManagerRef.current.trigger(sfxEvents, barStartTime, settingsRef.current?.bpm || 75);
   }, []);
 
+  const playRawEvents = useCallback((events: FractalEvent[], instrumentHint?: string) => {
+      if (!isInitialized || !audioContextRef.current) return;
+      const now = audioContextRef.current.currentTime;
+      // #ЗАЧЕМ: Немедленное проигрывание на основе текущего темпа (или дефолта).
+      const tempo = settingsRef.current?.bpm || 72;
+      scheduleEvents(events, now + 0.1, tempo, 0, instrumentHint ? { [events[0].type as string]: instrumentHint } : undefined);
+  }, [isInitialized, scheduleEvents]);
+
   useEffect(() => {
     if (workerRef.current) {
         workerRef.current.onmessage = (event: MessageEvent<WorkerMessage>) => {
@@ -463,7 +473,7 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
         resetWorker: resetWorkerCallback, setVolume: setVolumeCallback, setInstrument: setInstrumentCallback,
         setBassTechnique: (t) => {}, setTextureSettings: setTextureSettingsCallback,
         setEQGain: (i, g) => {}, startMasterFadeOut: (d) => {}, cancelMasterFadeOut: () => {},
-        startRecording, stopRecording, toggleBroadcast, getWorker
+        startRecording, stopRecording, toggleBroadcast, getWorker, playRawEvents
     }}>
       {children}
     </AudioEngineContext.Provider>
