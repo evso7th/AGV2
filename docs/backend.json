@@ -36,12 +36,13 @@
       "properties": {
         "id": { "type": "string" },
         "phrase": { "type": "array", "items": { "type": "number" } },
+        "role": { "type": "string", "enum": ["melody", "bass", "drums", "accomp"] },
         "dynasty": { "type": "string" },
         "origin": { "type": "string" },
         "tags": { "type": "array", "items": { "type": "string" } },
         "timestamp": { "type": "string", "format": "date-time" }
       },
-      "required": ["phrase", "dynasty", "origin", "timestamp"]
+      "required": ["phrase", "role", "dynasty", "origin", "timestamp"]
     }
   },
   "auth": {

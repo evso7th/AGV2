@@ -42,11 +42,11 @@ export function saveMasterpiece(db: Firestore, data: {
 
 /**
  * #ЗАЧЕМ: Трансляция оцифрованного наследия в глобальную память.
- * #ЧТО: Сохраняет компактный лик (аксиому) в коллекцию heritage_axioms.
- * #СВЯЗИ: Вызывается из MIDI Alchemist Dashboard.
+ * #ЧТО: Сохраняет компактный лик (аксиому) в коллекцию heritage_axioms с указанием роли.
  */
 export function saveHeritageAxiom(db: Firestore, data: {
     phrase: number[];
+    role: 'melody' | 'bass' | 'drums' | 'accomp';
     dynasty: string;
     origin: string;
     tags: string[];
@@ -56,6 +56,7 @@ export function saveHeritageAxiom(db: Firestore, data: {
 
     const payload = {
         phrase: data.phrase,
+        role: data.role,
         dynasty: data.dynasty,
         origin: data.origin,
         tags: data.tags,
