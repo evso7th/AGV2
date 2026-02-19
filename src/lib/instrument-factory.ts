@@ -1,7 +1,8 @@
 /**
- * #ЗАЧЕМ: Центральная фабрика инструментов V3.6 — "Universal ADSR Update".
- * #ЧТО: Исправлена немота за счет поддержки обоих форматов ADSR (V1 и V2).
- *       Инстанцирование осцилляторов и огибающих теперь происходит внутри noteOn.
+ * #ЗАЧЕМ: Центральная фабрика инструментов V3.7 — "Volume & ADSR Normalization".
+ * #ЧТО: 1. Исправлена немота: ADSR теперь автоматически переводит мс в секунды.
+ *       2. Исправлен баланс: удалено двойное умножение на velocity.
+ *       3. Усилена защита голосов.
  */
 
 // ───── GLOBAL REGISTRY & LIMITS ─────
@@ -50,14 +51,20 @@ const clamp = (v: number, min: number, max: number) => Math.max(min, Math.min(ma
 /**
  * #ЗАЧЕМ: Универсальный парсер ADSR.
  * #ЧТО: Поддерживает форматы {a, d, s, r} и {attack, decay, sustain, release}.
+ *       Автоматически определяет мс (> 5) и переводит в секунды.
  */
 const getADSR = (p: any) => {
     const a = p.adsr || p;
+    let rawA = isFinite(a.a) ? a.a : (isFinite(a.attack) ? a.attack : 0.01);
+    let rawD = isFinite(a.d) ? a.d : (isFinite(a.decay) ? a.decay : 0.1);
+    let rawS = isFinite(a.s) ? a.s : (isFinite(a.sustain) ? a.sustain : 0.7);
+    let rawR = isFinite(a.r) ? a.r : (isFinite(a.release) ? a.release : 0.3);
+
     return {
-        a: isFinite(a.a) ? a.a : (isFinite(a.attack) ? a.attack : 0.01),
-        d: isFinite(a.d) ? a.d : (isFinite(a.decay) ? a.decay : 0.1),
-        s: isFinite(a.s) ? a.s : (isFinite(a.sustain) ? a.sustain : 0.7),
-        r: isFinite(a.r) ? a.r : (isFinite(a.release) ? a.release : 0.3)
+        a: rawA > 5 ? rawA / 1000 : rawA,
+        d: rawD > 5 ? rawD / 1000 : rawD,
+        s: rawS,
+        r: rawR > 5 ? rawR / 1000 : rawR
     };
 };
 
@@ -164,7 +171,7 @@ const makeDelay = (ctx: AudioContext, opt: any = {}): SimpleFX => {
         stop: () => {}, 
         setMix: (m) => {
             const v = clamp(m, 0, 1);
-            if(isFinite(v)) {
+            if (isFinite(v)) {
                 wet.gain.setTargetAtTime(v, ctx.currentTime, 0.02);
                 dry.gain.setTargetAtTime(1 - v, ctx.currentTime, 0.02);
             }
@@ -278,11 +285,12 @@ const buildSynthEngine = (ctx: AudioContext, preset: any, master: GainNode, reve
             oscConfigs.forEach((o: any) => {
                 const osc = ctx.createOscillator(); osc.type = o.type;
                 osc.frequency.setValueAtTime(f * Math.pow(2, o.octave || 0), when);
-                const g = ctx.createGain(); g.gain.value = (o.gain ?? 0.5) * velocity;
+                const g = ctx.createGain(); g.gain.value = (o.gain ?? 0.5); // Static oscillator gain
                 osc.connect(g).connect(voiceGain); osc.start(when);
                 nodes.push(osc, g);
             });
             const adsr = getADSR(currentPreset);
+            // #ЗАЧЕМ: Velocity применяется один раз на уровне общей огибающей.
             const voiceState = triggerAttack(ctx, voiceGain, when, adsr.a, adsr.d, adsr.s, velocity);
             const record = { nodes, voiceState, cleaned: false };
             globalActiveVoices.push(record);
@@ -335,7 +343,7 @@ const buildOrganEngine = (ctx: AudioContext, preset: any, master: GainNode, reve
             const osc = ctx.createOscillator(); osc.setPeriodicWave(wave); osc.frequency.setValueAtTime(f, when);
             vibG.connect(osc.detune); osc.connect(voiceGain); osc.start(when);
             const adsr = getADSR(currentPreset);
-            const voiceState = triggerAttack(ctx, voiceGain, when, adsr.a, adsr.d, adsr.s, velocity * 0.6);
+            const voiceState = triggerAttack(ctx, voiceGain, when, adsr.a, adsr.d, adsr.s, velocity);
             const record = { nodes: [voiceGain, osc], voiceState, cleaned: false };
             globalActiveVoices.push(record);
             const durValue = isFinite(duration as number) ? (duration as number) : 1.0;
@@ -369,7 +377,7 @@ const buildBassEngine = (ctx: AudioContext, preset: any, master: GainNode, rever
             oscs.forEach((o: any) => {
                 const x = ctx.createOscillator(); x.type = o.type;
                 x.frequency.setValueAtTime(f0 * Math.pow(2, o.octave || 0), when);
-                const g = ctx.createGain(); g.gain.value = (o.gain ?? 0.7) * velocity;
+                const g = ctx.createGain(); g.gain.value = (o.gain ?? 0.7); // Static oscillator gain
                 x.connect(g).connect(voiceGain); x.start(when);
                 nodes.push(x, g);
             });
@@ -424,10 +432,10 @@ const buildGuitarEngine = (ctx: AudioContext, preset: any, master: GainNode, rev
             const oscP = currentPreset.osc || { width: 0.45 };
             const osc = ctx.createOscillator(); osc.setPeriodicWave(getPulseWave(oscP.width || 0.45));
             osc.frequency.setValueAtTime(f, when);
-            const g = ctx.createGain(); g.gain.value = velocity;
+            const g = ctx.createGain(); g.gain.value = 1.0; // Static oscillator gain
             osc.connect(g).connect(voiceGain); osc.start(when);
             const adsr = getADSR(currentPreset);
-            const voiceState = triggerAttack(ctx, voiceGain, when, adsr.a, adsr.d, adsr.s, velocity * 0.15);
+            const voiceState = triggerAttack(ctx, voiceGain, when, adsr.a, adsr.d, adsr.s, velocity);
             const record = { nodes: [voiceGain, osc, g], voiceState, cleaned: false };
             globalActiveVoices.push(record);
             if (duration && isFinite(duration)) {
