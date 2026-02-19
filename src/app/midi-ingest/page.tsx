@@ -1,7 +1,9 @@
+
 /**
- * #ЗАЧЕМ: Heritage Alchemist V13.0 — "Curator's Control".
- * #ЧТО: 1. Добавлена возможность вручную менять роль трека (Melody/Bass/etc).
- *       2. Реализован выборочный импорт аксиом через чекбоксы.
+ * #ЗАЧЕМ: Heritage Alchemist V14.0 — "Sound Transmission Fix".
+ * #ЧТО: 1. Исправлена маршрутизация ударных (drums -> drum_kick).
+ *       2. Улучшена совместимость с V1 инструментами (bass_jazz_warm, organ_soft_jazz).
+ *       3. Гарантированная доставка instrumentHints в планировщик.
  */
 'use client';
 
@@ -178,7 +180,6 @@ export default function MidiIngestPage() {
         setSelectedRole(trackRoles.get(idx) || 'melody');
     };
 
-    /** #ЗАЧЕМ: Ручное переопределение роли трека. */
     const handleRoleOverride = (idx: number, newRole: IngestionRole) => {
         const newRoles = new Map(trackRoles);
         newRoles.set(idx, newRole);
@@ -194,7 +195,6 @@ export default function MidiIngestPage() {
             const licks = segmentTrackToCompactLicks(track, detectedKey.root, selectedRole, origin, selectedMood, selectedGenre);
             setExtractedLicks(licks);
             
-            // #ЗАЧЕМ: По умолчанию выбираем все свежие лики.
             const freshIds = new Set<string>();
             licks.forEach(l => {
                 if (!ingestedHashes.has(l.hash)) freshIds.add(l.id);
@@ -235,7 +235,7 @@ export default function MidiIngestPage() {
             const mappedRole = role === 'accomp' ? 'accompaniment' : role;
             track.notes.forEach(note => {
                 allEvents.push({
-                    type: mappedRole as any,
+                    type: (role === 'drums' ? 'drum_kick' : mappedRole) as any,
                     note: note.midi,
                     time: (note.time - minStartTime) / beatDuration,
                     duration: note.duration / beatDuration,
@@ -280,7 +280,7 @@ export default function MidiIngestPage() {
         if (minTime === Infinity) minTime = 0;
 
         const events: FractalEvent[] = track.notes.map(note => ({
-            type: mappedRole as any,
+            type: (role === 'drums' ? 'drum_kick' : mappedRole) as any,
             note: note.midi,
             time: (note.time - minTime) / beatDuration,
             duration: note.duration / beatDuration,
@@ -295,7 +295,11 @@ export default function MidiIngestPage() {
             await setInstrument(role === 'accomp' ? 'accompaniment' : (role as any), targetInstrument);
 
             setPlayingTrackIdx(trackIdx);
-            playRawEvents(events, { [mappedRole]: targetInstrument });
+            playRawEvents(events, { 
+                bass: role === 'bass' ? targetInstrument : undefined,
+                melody: role === 'melody' ? targetInstrument : undefined,
+                accompaniment: role === 'accomp' ? targetInstrument : undefined
+            } as any);
         }
     };
 
@@ -314,7 +318,7 @@ export default function MidiIngestPage() {
             const d = lick.phrase[i+1];
             const degIdx = lick.phrase[i+2];
             events.push({
-                type: role as any,
+                type: (lick.role === 'drums' ? 'drum_kick' : role) as any,
                 note: lick.role === 'drums' ? degIdx : root + (DEGREE_TO_SEMITONE[DEGREE_KEYS[degIdx]] || 0),
                 time: t / 3, duration: d / 3, weight: 0.8, technique: 'pick', dynamics: 'mf', phrasing: 'legato'
             });
@@ -322,14 +326,17 @@ export default function MidiIngestPage() {
 
         const targetInstrument = lick.role === 'bass' ? 'bass_jazz_warm' : (lick.role === 'melody' ? 'blackAcoustic' : 'organ_soft_jazz');
         if (lick.role !== 'drums') {
-            await setInstrument(lick.role === 'accomp' ? 'accompaniment' : (lick.role as any), targetInstrument);
+            await setInstrument(lick.role === 'accomp' ? 'accompaniment' : (role as any), targetInstrument);
         }
 
         setPlayingLickIdx(idx);
-        playRawEvents(events, { [role]: targetInstrument });
+        playRawEvents(events, { 
+            bass: lick.role === 'bass' ? targetInstrument : undefined,
+            melody: lick.role === 'melody' ? targetInstrument : undefined,
+            accompaniment: lick.role === 'accomp' ? targetInstrument : undefined
+        } as any);
     };
 
-    /** #ЗАЧЕМ: Переключение выбора лика. */
     const toggleLickSelection = (id: string) => {
         const next = new Set(selectedLickIds);
         if (next.has(id)) next.delete(id);
@@ -372,7 +379,7 @@ export default function MidiIngestPage() {
             const hashList = Array.from(newHashes);
             localStorage.setItem('AuraGroove_Ingested_Hashes', JSON.stringify(hashList));
             setIngestedHashes(newHashes);
-            setSelectedLickIds(new Set()); // Clear selection after successful ingest
+            setSelectedLickIds(new Set()); 
             
             toast({ title: "Genetic Ingestion Success", description: `Transmitted ${licksToIngest.length} selected axioms to the cloud.` });
             fetchGlobalCount(); 
@@ -403,7 +410,7 @@ export default function MidiIngestPage() {
                             <Factory className="h-8 w-8 text-primary" />
                         </div>
                         <div>
-                            <CardTitle className="text-3xl font-bold tracking-tight">Heritage Alchemist v13.0</CardTitle>
+                            <CardTitle className="text-3xl font-bold tracking-tight">Heritage Alchemist v14.0</CardTitle>
                             <CardDescription className="text-muted-foreground flex items-center gap-2">
                                 <ShieldCheck className="h-3 w-3 text-green-500" /> Curator Controls Active | Selective Ingestion
                             </CardDescription>
@@ -550,7 +557,6 @@ export default function MidiIngestPage() {
                                                                 <span className="text-[10px] text-primary/70 font-bold uppercase tracking-tighter flex items-center gap-1">
                                                                     <BrainCircuit className="h-2 w-2" /> Suggested:
                                                                 </span>
-                                                                {/* #ЗАЧЕМ: Ручное изменение роли трека. */}
                                                                 <Select 
                                                                     value={role} 
                                                                     onValueChange={(val) => handleRoleOverride(i, val as IngestionRole)}

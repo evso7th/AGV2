@@ -3,6 +3,16 @@
 
 ---
 
+### ЗАПИСЬ: 06-12-2024 (ПЛАН №520: LABORATORY ROUTING & PRESET SYNC)
+**ЗАДАЧА**: Исправить тишину при проигрывании аксиом на "Заводе" (Ingest Page).
+**РЕШЕНИЕ**: 
+1. **Sync V1/V2**: В `SYNTH_PRESETS` (V1) добавлены V2-имена инструментов (`bass_jazz_warm`, `organ_soft_jazz`), чтобы менеджеры V1 могли их "узнать".
+2. **Settings Defaulting**: В `AudioEngineProvider` добавлена защита: если настройки отсутствуют (как на Ingest Page), `composerControlsInstruments` считается `true` по умолчанию.
+3. **Drum Mapping**: В `auralizeLick` роль ударных теперь явно мапится на `drum_kick` для корректного попадания в сэмплер.
+4. **Resilience**: Усилена фильтрация и маршрутизация в `scheduleEvents` для поддержки всех типов событий.
+
+---
+
 ### ЗАПИСЬ: 06-12-2024 (ПЛАН №519: PRECISION VOLUME CALIBRATION)
 **ЗАДАЧА**: Привести громкость лидирующих инструментов (CS80, Black Acoustic, Shine On) к комфортному и сбалансированному уровню.
 **РЕШЕНИЕ**: 
