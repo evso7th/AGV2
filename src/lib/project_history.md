@@ -3,6 +3,14 @@
 
 ---
 
+### ЗАПИСЬ: 06-12-2024 (ПЛАН №523: RECORDING STATE FIX)
+**ЗАДАЧА**: Исправить runtime-ошибку, при которой функции startRecording и stopRecording не были определены в хуке useAuraGroove.
+**РЕШЕНИЕ**: 
+1. **Context Extraction**: Функции управления записью добавлены в деструктуризацию хука `useAudioEngine` внутри `src/hooks/use-aura-groove.ts`.
+2. **Callback Update**: Обновлены зависимости в `handleToggleRecording`.
+
+---
+
 ### ЗАПИСЬ: 06-12-2024 (ПЛАН №522: TOTAL V2 TRANSITION)
 **ЗАДАЧА**: Полностью отказаться от V1-движка и перевести все инструменты на V2-инфраструктуру.
 **РЕШЕНИЕ**: 

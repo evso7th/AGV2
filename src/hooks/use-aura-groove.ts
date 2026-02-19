@@ -1,6 +1,7 @@
 /**
  * #ЗАЧЕМ: Хук управления UI музыкой V4.0 — "V2 Finality".
  * #ЧТО: Удалена логика переключения V1/V2 движков. V2 теперь единственный путь.
+ * #ОБНОВЛЕНО (ПЛАН №523): Исправлен импорт startRecording и stopRecording из контекста.
  */
 'use client';
 
@@ -75,7 +76,9 @@ export const useAuraGroove = (): AuraGrooveProps => {
     setBassTechnique,
     setTextureSettings: setEngineTextureSettings,
     toggleBroadcast,
-    getWorker
+    getWorker,
+    startRecording,
+    stopRecording
   } = useAudioEngine(); 
   
   const db = useFirestore();
@@ -232,7 +235,7 @@ export const useAuraGroove = (): AuraGrooveProps => {
     } else {
       startRecording();
     }
-  }, [isRecording, stopRecording]);
+  }, [isRecording, stopRecording, startRecording]);
 
   const handleInstrumentChange = (part: keyof InstrumentSettings, name: any) => {
     setInstrumentSettings(prev => ({
