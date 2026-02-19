@@ -81,8 +81,8 @@ interface AudioEngineContextType {
   stopRecording: () => void;
   toggleBroadcast: () => void;
   getWorker: () => Worker | null;
-  /** #ЗАЧЕМ: Проигрывание сырых событий (для Алхимика MIDI). */
-  playRawEvents: (events: FractalEvent[], instrumentHint?: string) => void;
+  /** #ЗАЧЕМ: Проигрывание сырых событий с поддержкой нескольких инструментов. */
+  playRawEvents: (events: FractalEvent[], instrumentHints?: InstrumentHints) => void;
 }
 
 const AudioEngineContext = createContext<AudioEngineContextType | null>(null);
@@ -278,12 +278,12 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
     if (sfxSynthManagerRef.current && sfxEvents.length > 0) sfxSynthManagerRef.current.trigger(sfxEvents, barStartTime, settingsRef.current?.bpm || 75);
   }, []);
 
-  const playRawEvents = useCallback((events: FractalEvent[], instrumentHint?: string) => {
+  const playRawEvents = useCallback((events: FractalEvent[], instrumentHints?: InstrumentHints) => {
       if (!isInitialized || !audioContextRef.current) return;
       const now = audioContextRef.current.currentTime;
-      // #ЗАЧЕМ: Немедленное проигрывание на основе текущего темпа (или дефолта).
       const tempo = settingsRef.current?.bpm || 72;
-      scheduleEvents(events, now + 0.1, tempo, 0, instrumentHint ? { [events[0].type as string]: instrumentHint } : undefined);
+      // #ЗАЧЕМ: Поддержка нескольких инструментов в превью.
+      scheduleEvents(events, now + 0.1, tempo, 0, instrumentHints);
   }, [isInitialized, scheduleEvents]);
 
   useEffect(() => {

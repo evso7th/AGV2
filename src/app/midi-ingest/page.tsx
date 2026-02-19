@@ -15,7 +15,7 @@ import { useFirestore } from '@/firebase';
 import { saveHeritageAxiom } from '@/lib/firebase-service';
 import { toast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
-import type { Mood, Genre, FractalEvent } from '@/types/music';
+import type { Mood, Genre, FractalEvent, InstrumentHints } from '@/types/music';
 import { useAudioEngine } from '@/contexts/audio-engine-context';
 
 type IngestionRole = 'melody' | 'bass' | 'drums' | 'accomp';
@@ -23,9 +23,6 @@ type IngestionRole = 'melody' | 'bass' | 'drums' | 'accomp';
 const MOOD_OPTIONS: Mood[] = ['epic', 'joyful', 'enthusiastic', 'melancholic', 'dark', 'anxious', 'dreamy', 'contemplative', 'calm'];
 const GENRE_OPTIONS: Genre[] = ['ambient', 'trance', 'blues', 'progressive', 'rock', 'house', 'rnb', 'ballad', 'reggae', 'celtic'];
 
-/**
- * #ЗАЧЕМ: Компактное форматирование ликов для экспорта (линейный JSON).
- */
 const formatLicksToText = (licks: any[]) => {
     return "[\n" + licks.map(lick => {
         const { phrase, ...rest } = lick;
@@ -39,12 +36,20 @@ const formatLicksToText = (licks: any[]) => {
 };
 
 /**
- * #ЗАЧЕМ: Эвристический определитель роли дорожки.
+ * #ЗАЧЕМ: Улучшенная эвристика ролей. 
+ * #ЧТО: Приоритет ключевых слов в названиях дорожек.
  */
 const detectTrackRole = (track: any): IngestionRole => {
     const name = (track.name || "").toLowerCase();
+    
+    // Прямые соответствия в именах
     if (track.channel === 9 || name.match(/drum|perc|kick|snare|hihat|kit|beat/)) return 'drums';
+    if (name.includes("bass")) return 'bass';
+    if (name.match(/lead|solo|melody/)) return 'melody';
+    if (name.match(/piano|key|chord|pad|str|string|organ/)) return 'accomp';
+
     if (track.notes.length === 0) return 'melody';
+    
     const avgPitch = track.notes.reduce((sum: number, n: any) => sum + n.midi, 0) / track.notes.length;
     let overlaps = 0;
     const sampleSize = Math.min(track.notes.length, 20);
@@ -52,14 +57,12 @@ const detectTrackRole = (track: any): IngestionRole => {
         if (track.notes[i+1].time < track.notes[i].time + track.notes[i].duration) overlaps++;
     }
     const isPolyphonic = overlaps > (sampleSize * 0.3);
-    if (name.includes("bass") || (avgPitch < 48 && !isPolyphonic)) return 'bass';
-    if (name.match(/piano|key|chord|gtr|guitar|pad|str|string|organ/) || isPolyphonic) return 'accomp';
+    
+    if (avgPitch < 48 && !isPolyphonic) return 'bass';
+    if (isPolyphonic) return 'accomp';
     return 'melody';
 };
 
-/**
- * #ЗАЧЕМ: Универсальный сегментатор треков.
- */
 const segmentTrackToCompactLicks = (track: any, root: number, role: IngestionRole, origin: string, selectedMood: Mood, selectedGenre: Genre) => {
     const result = [];
     const barsPerLick = 4;
@@ -172,10 +175,6 @@ export default function MidiIngestPage() {
         }
     }, [midiFile, selectedTrackIndex, selectedRole, detectedKey, origin, selectedMood, selectedGenre]);
 
-    /**
-     * #ЗАЧЕМ: Проигрывание всего MIDI файла целиком.
-     * #ЧТО: ПЛАН №494 — Сбор всех дорожек в один массив событий.
-     */
     const playFullMidi = async () => {
         if (!midiFile) return;
 
@@ -193,8 +192,6 @@ export default function MidiIngestPage() {
         const beatDuration = 60 / tempo;
         const allEvents: FractalEvent[] = [];
         
-        // #ЗАЧЕМ: Устранение задержки в начале файла.
-        // #ЧТО: Вычисление времени самой первой ноты и вычитание его из всех остальных.
         let minStartTime = Infinity;
         midiFile.tracks.forEach(track => {
             track.notes.forEach(note => {
@@ -224,7 +221,13 @@ export default function MidiIngestPage() {
 
         if (allEvents.length > 0) {
             setIsPlayingFull(true);
-            playRawEvents(allEvents);
+            // #ЗАЧЕМ: Гарантированное использование басовых инструментов.
+            const hints: InstrumentHints = {
+                bass: 'bass_jazz_warm',
+                melody: 'blackAcoustic',
+                accompaniment: 'organ_soft_jazz'
+            };
+            playRawEvents(allEvents, hints);
             toast({ title: "Ensemble Performance", description: `Conducting full score: ${fileName}` });
         }
     };
@@ -265,7 +268,12 @@ export default function MidiIngestPage() {
             });
         }
 
-        playRawEvents(events);
+        // #ЗАЧЕМ: Бас должен звучать как бас.
+        const hints: InstrumentHints = {
+            [role]: role === 'bass' ? 'bass_jazz_warm' : (role === 'melody' ? 'blackAcoustic' : 'organ_soft_jazz')
+        };
+
+        playRawEvents(events, hints);
         toast({ title: "Axiom Preview", description: `Playing ${lick.role} fragment.` });
     };
 
