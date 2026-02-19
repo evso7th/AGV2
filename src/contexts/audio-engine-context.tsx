@@ -1,7 +1,8 @@
+
 /**
- * #ЗАЧЕМ: Audio Engine Context V5.6 — "Laboratory Precision".
- * #ЧТО: 1. Увеличен запас времени (offset) для playRawEvents до 0.8с.
- *       2. Это устраняет проглатывание первых нот при переключении инструментов.
+ * #ЗАЧЕМ: Audio Engine Context V5.7 — "Concurrency Guard".
+ * #ЧТО: 1. Внедрен isInitializingRef для блокировки повторных входов в инициализацию.
+ *       2. Это устраняет двойной старт ударных и других инструментов.
  */
 'use client';
 
@@ -71,6 +72,8 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
   const [isRecording, setIsRecording] = useState(false);
   const [isBroadcastActive, setIsBroadcastActive] = useState(false);
   
+  // #ЗАЧЕМ: Реф для мгновенной блокировки параллельных вызовов инициализации.
+  const isInitializingRef = useRef(false);
   const workerRef = useRef<Worker | null>(null);
   const audioContextRef = useRef<AudioContext | null>(null);
   const settingsRef = useRef<WorkerSettings | null>(null);
@@ -167,8 +170,11 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
   }, []);
 
   const initialize = useCallback(async () => {
-    if (isInitialized || isInitializing) return true;
+    // #ЗАЧЕМ: Реф гарантирует атомарность проверки на уровне микро-тиков.
+    if (isInitialized || isInitializingRef.current) return true;
+    isInitializingRef.current = true;
     setIsInitializing(true);
+
     try {
         if (!audioContextRef.current) {
             audioContextRef.current = new (window.AudioContext || (window as any).webkitAudioContext)({ sampleRate: 44100 });
@@ -255,7 +261,10 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
         console.error('[AudioEngine] Init error:', e);
         toast({ variant: "destructive", title: "Audio Error" });
         return false;
-    } finally { setIsInitializing(false); }
+    } finally { 
+        setIsInitializing(false); 
+        isInitializingRef.current = false;
+    }
   }, [isInitialized, isInitializing, toast, scheduleEvents]);
 
   const setIsPlayingCallback = useCallback((playing: boolean) => {
@@ -315,7 +324,6 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
         }, 
         getWorker: () => workerRef.current, 
         playRawEvents: (e, h) => {
-            // #ЗАЧЕМ: Увеличен offset до 0.8с для стабильного старта MIDI.
             scheduleEvents(e, audioContextRef.current!.currentTime + 0.8, 72, 0, h)
         }
     }}>

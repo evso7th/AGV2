@@ -1,3 +1,4 @@
+
 import type { FractalEvent, InstrumentType } from "@/types/fractal";
 
 const DRUM_SAMPLES: Record<string, string> = {
@@ -179,6 +180,7 @@ export class DrumMachine {
     private outputNode: AudioNode;
     private preamp: GainNode;
     public isInitialized = false;
+    private isInitializing = false;
 
     constructor(audioContext: AudioContext, destination: AudioNode) {
         this.audioContext = audioContext;
@@ -192,10 +194,12 @@ export class DrumMachine {
     }
 
     async init() {
-        if (this.isInitialized) return;
+        if (this.isInitialized || this.isInitializing) return;
+        this.isInitializing = true;
         this.sampler = createSampler(this.audioContext, this.preamp);
         await this.sampler.load(DRUM_SAMPLES);
         this.isInitialized = true;
+        this.isInitializing = false;
     }
 
     schedule(score: FractalEvent[], barStartTime: number, tempo: number) {

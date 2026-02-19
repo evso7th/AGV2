@@ -12,6 +12,7 @@ import { FluteSamplerPlayer } from './flute-sampler-player';
  * Manages the "harmony" layer, specifically for rhythmic/harmonic instruments
  * like piano and guitar chords. It's a specialized sampler player.
  * #ОБНОВЛЕНО (ПЛАН №404): Введен тотальный карантин на инструмент "flute".
+ * #ОБНОВЛЕНО (ПЛАН №511): Исправлен порядок инициализации флага готовности.
  */
 export class HarmonySynthManager {
     private audioContext: AudioContext;
@@ -48,9 +49,12 @@ export class HarmonySynthManager {
             this.flute.loadInstrument('flute', FLUTE_SAMPLES),
         ]);
         
+        // #ЗАЧЕМ: Флаг должен быть true ДО вызова setInstrument, 
+        // чтобы избежать ложного предупреждения о преждевременном вызове.
+        this.isInitialized = true;
+        
         this.setInstrument(this.activeInstrumentName);
 
-        this.isInitialized = true;
         console.log('[HarmonyManager] Harmony instruments initialized.');
     }
     
