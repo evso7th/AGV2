@@ -1,8 +1,8 @@
 /**
- * #ЗАЧЕМ: Суверенный Мозг Амбиента v11.0 — "The Luminous Beacon Update".
- * #ЧТО: 1. Радикальное усиление мелодического присутствия в светлых режимах.
- *       2. Повышение весов и вероятностей генерации тем для Солиста.
- *       3. Оптимизация спектральной яркости для "Сияющих" инструментов.
+ * #ЗАЧЕМ: Суверенный Мозг Амбиента v12.0 — "Cognitive Radiance".
+ * #ЧТО: 1. Внедрена Фрактальная Дистилляция (Cognitive Distillation).
+ *       2. Ноты Ликов теперь фильтруются на основе Fog и Tension.
+ *       3. Реализована логика "Дыхания" для длинных фраз.
  */
 
 import type { 
@@ -152,9 +152,8 @@ export class AmbientBrain {
             }
         }
 
-        // #ЗАЧЕМ: Увеличение "голода" Солиста в светлых режимах.
         if (epoch >= this.soloistBusyUntilBar) {
-            const baseChance = isPositive ? 0.35 : 0.15; // Мелодия говорит чаще в светлых режимах
+            const baseChance = isPositive ? 0.35 : 0.15; 
             const developmentChance = baseChance + localTension * 0.25;
             if (this.random.next() < developmentChance) {
                 let groupKey = dna.ambientLegacyGroup || 'BUDD';
@@ -169,7 +168,6 @@ export class AmbientBrain {
                     startBar: epoch,
                     endBar: epoch + phraseBars
                 };
-                // #ЗАЧЕМ: Сокращение паузы между фразами для Энтузиазма.
                 const restBars = this.mood === 'enthusiastic' ? 1 : 3;
                 this.soloistBusyUntilBar = epoch + phraseBars + restBars; 
             } else {
@@ -322,7 +320,6 @@ export class AmbientBrain {
         return hints;
     }
 
-    // #ЗАЧЕМ: Усиление веса базовой мелодии.
     private renderMelodicPadBase(chord: GhostChord, epoch: number, tension: number): FractalEvent[] {
         const root = Math.min(chord.rootNote + 24 + this.registerShift, this.MELODY_CEILING);
         return [{
@@ -330,7 +327,7 @@ export class AmbientBrain {
             note: root,
             time: 0,
             duration: 12.0,
-            weight: 0.45 * (1.0 - this.fog * 0.2), // Увеличен вес с 0.22 до 0.45
+            weight: 0.45 * (1.0 - this.fog * 0.2), 
             technique: 'swell',
             dynamics: 'p',
             phrasing: 'legato',
@@ -338,7 +335,11 @@ export class AmbientBrain {
         }];
     }
 
-    // #ЗАЧЕМ: Усиление веса тематических фраз.
+    /**
+     * #ЗАЧЕМ: Когнитивный рендер тематической мелодии.
+     * #ЧТО: 1. Фрактальная Дистилляция — при высоком Fog (тумане) ноты Лика пропадают.
+     *       2. Дыхание — вес нот снижается к концу 4-тактового цикла.
+     */
     private renderThemeMelody(chord: GhostChord, epoch: number, tension: number, hints: InstrumentHints, dna: SuiteDNA): FractalEvent[] {
         if (!this.currentTheme) return [];
         const groupKey = dna.ambientLegacyGroup || 'BUDD';
@@ -346,20 +347,31 @@ export class AmbientBrain {
         const barOffset = (epoch - this.currentTheme.startBar) * 12;
         const barNotes = this.currentTheme.phrase.filter(n => n.t >= barOffset && n.t < barOffset + 12);
 
-        return barNotes.map(n => {
-            const breathDecay = 1.0 - (n.t / 60); 
-            return {
+        const events: FractalEvent[] = [];
+
+        barNotes.forEach((n, i) => {
+            // 1. КОГНИТИВНАЯ ДИСТИЛЛЯЦИЯ (Fog Filter)
+            // Если туман густой, ноты Лика "растворяются"
+            if (this.fog > 0.75 && i % 2 !== 0 && this.random.next() < this.fog) return;
+
+            // 2. ЛОГИКА ДЫХАНИЯ (Breath/Exhale)
+            const phraseProgress = n.t / 48; // Фраза до 4-х тактов
+            const breathDecay = 1.0 - (phraseProgress * 0.4); 
+
+            events.push({
                 type: 'melody',
                 note: Math.min(chord.rootNote + 36 + group.registerBias + this.registerShift + (DEGREE_TO_SEMITONE[n.deg] || 0), this.MELODY_CEILING),
                 time: (n.t % 12) / 3,
                 duration: (n.d / 3) * 1.6, 
-                weight: (0.55 * breathDecay) * (0.9 + this.random.next() * 0.2), // Увеличен вес с 0.25 до 0.55
+                weight: (0.55 * breathDecay) * (0.9 + this.random.next() * 0.2),
                 technique: n.tech || 'pick',
                 dynamics: 'p',
                 phrasing: 'legato',
                 params: { filterCutoff: this.solistCutoff, barCount: epoch } 
-            };
+            });
         });
+
+        return events;
     }
 
     private renderThemeBass(chord: GhostChord, epoch: number, tension: number): FractalEvent[] {
@@ -598,7 +610,6 @@ export class AmbientBrain {
         const isPositive = ['joyful', 'enthusiastic', 'epic'].includes(this.mood);
         const dazzle = (isPositive && tension > 0.85) ? 1.0 : 0;
         
-        // #ЗАЧЕМ: Открытие фильтра для мелодии в светлых режимах.
         const maxCutoff = isPositive ? 6500 : (this.mood === 'anxious' ? 3500 : 5300);
         this.solistCutoff = (maxCutoff * (1 - this.fog * 0.7) + 1500) * (1.0 + dazzle * 0.5); 
     }

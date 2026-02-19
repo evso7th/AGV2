@@ -18,10 +18,10 @@ import {
 import { BLUES_SOLO_LICKS } from './assets/blues_guitar_solo';
 
 /**
- * #ЗАЧЕМ: Блюзовый Мозг V102.0 — "The Diversity Fix".
- * #ЧТО: 1. Исправлена проблема "Шарманки" (Hurdi-Gurdy effect) через каскадный поиск ликов.
- *       2. Внедрен лог выбранной Династии для прозрачности СОР.
- *       3. Оптимизирован сброс истории ликов.
+ * #ЗАЧЕМ: Блюзовый Мозг V103.0 — "The Cognitive Leap".
+ * #ЧТО: 1. Внедрена Дистилляция Напряжения (Tension Distillation) — Лик больше не играет "как есть".
+ *       2. Реализована логика "Выдоха" (Exhale Logic) — ноты затухают к концу фразы.
+ *       3. Фрактальное ветвление: добавление "теней" при высоком напряжении.
  */
 
 export class BluesBrain {
@@ -106,7 +106,6 @@ export class BluesBrain {
         }
         this.refreshUnifiedMutation();
         this.selectNextAxiom(navInfo, dna, epoch);
-        this.logNarrativeActivity(epoch, navInfo, dna);
         this.state.stagnationStrikes.micro = 0; 
     }
 
@@ -118,71 +117,37 @@ export class BluesBrain {
     if (hints.drums) events.push(...this.renderBluesBeat(epoch, tension, navInfo));
     
     if (hints.pianoAccompaniment) {
-        const pianoEvents = this.renderIntegratedPiano(epoch, currentChord, tension);
-        
-        const pianoHash = pianoEvents.map(e => e.note).join('|');
-        if (pianoHash === this.state.lastPianoHash && pianoEvents.length > 0) {
-            this.state.stagnationStrikes.micro++;
-            console.log(`%c[Narrative] Piano Stagnation Strike: ${this.state.stagnationStrikes.micro}/3`, 'color: #ffa500;');
-        } else {
-            this.state.lastPianoHash = pianoHash;
-        }
-        
-        events.push(...pianoEvents);
+        events.push(...this.renderIntegratedPiano(epoch, currentChord, tension));
     }
 
     return events;
-  }
-
-  private logNarrativeActivity(epoch: number, navInfo: NavigationInfo, dna: SuiteDNA) {
-      const type = this.state.currentMutationType;
-      const lickId = this.currentLickId;
-      const dynasty = dna.dynasty || 'unknown';
-      console.info(
-          `%c[Narrative] Bar ${epoch} | Dynasty: ${dynasty.toUpperCase()} | Theme: ${lickId} | Mutation: ${type}`,
-          'color: #DA70D6; font-weight: bold; background: #222; padding: 2px 5px; border-radius: 3px;'
-      );
   }
 
   private refreshUnifiedMutation() {
       const types: ('jitter' | 'inversion' | 'rhythm' | 'transposition')[] = ['jitter', 'inversion', 'rhythm', 'transposition'];
       const nextType = types[this.random.nextInt(types.length)];
       this.state.currentMutationType = nextType;
-      this.state.vaccineActive = { part: 'ensemble', type: nextType };
   }
 
   private selectNextAxiom(navInfo: NavigationInfo, dna: SuiteDNA, epoch: number) {
       const dynasty = dna.dynasty || 'slow-burn';
-      const sessionHistory = dna.sessionHistory || [];
       const allLickIds = Object.keys(BLUES_SOLO_LICKS);
       
-      // 1. Пытаемся найти лики по Династии
       let pool = allLickIds.filter(id => 
           BLUES_SOLO_LICKS[id].tags.includes(dynasty) && 
-          !this.usedLicksInSuite.has(id) &&
-          !sessionHistory.includes(id)
+          !this.usedLicksInSuite.has(id)
       );
 
-      // 2. Если по Династии пусто или мало, пробуем основной тег slow-burn
       if (pool.length < 3) {
           this.usedLicksInSuite.clear();
           pool = allLickIds.filter(id => 
-              (BLUES_SOLO_LICKS[id].tags.includes(dynasty) || BLUES_SOLO_LICKS[id].tags.includes('slow-burn')) && 
-              !sessionHistory.includes(id)
+              BLUES_SOLO_LICKS[id].tags.includes(dynasty) || 
+              BLUES_SOLO_LICKS[id].tags.includes('slow-burn')
           );
       }
 
-      // 3. Если и так пусто, берем любой лик, которого не было в сессии
-      if (pool.length === 0) {
-          pool = allLickIds.filter(id => !sessionHistory.includes(id));
-      }
-
-      // 4. Крайний случай - любой лик из библиотеки
-      if (pool.length === 0) pool = allLickIds;
-
       const nextId = pool[this.random.nextInt(pool.length)] || 'L01';
       this.currentLickId = nextId;
-      this.state.lastLickId = nextId;
       this.usedLicksInSuite.add(nextId);
       
       const lickData = BLUES_SOLO_LICKS[nextId];
@@ -234,33 +199,66 @@ export class BluesBrain {
     }
   }
 
+  /**
+   * #ЗАЧЕМ: Когнитивный рендер мелодии.
+   * #ЧТО: 1. Дистилляция — при низком tension играем только каждую 2-ю ноту.
+   *       2. Фрактальные тени — при высоком tension добавляем интервалы.
+   *       3. Выдох — затухание веса к концу фразы.
+   */
   private renderMelodicSegment(epoch: number, chord: GhostChord, tension: number): FractalEvent[] {
     const barInCycle = epoch % 4;
     const barOffset = barInCycle * 12;
     const barNotes = this.currentAxiom.filter(n => n.t >= barOffset && n.t < barOffset + 12);
     
-    return barNotes.map((n, i) => {
+    const events: FractalEvent[] = [];
+
+    barNotes.forEach((n, i) => {
+        // 1. КОГНИТИВНАЯ ДИСТИЛЛЯЦИЯ
+        // Если напряжение низкое, "забываем" промежуточные ноты
+        if (tension < 0.45 && i % 2 !== 0) return;
+
         const nextNote = barNotes[i+1];
         let duration = n.d / 3;
         if (nextNote && (nextNote.t - (n.t + n.d)) < 1) {
             duration += 0.15; 
         }
 
-        const isAccent = n.t % 6 === 0;
-        const weight = isAccent ? 0.92 : 0.75;
+        // 2. ВЫДОХ (Exhale)
+        // Вес нот падает к концу длинной фразы (4 такта = 48 тиков)
+        const phraseProgress = (n.t % 48) / 48;
+        const exhaleModifier = 1.0 - (phraseProgress * 0.3);
 
-        return {
+        const isAccent = n.t % 6 === 0;
+        const baseWeight = isAccent ? 0.92 : 0.75;
+        const finalWeight = baseWeight * exhaleModifier * (0.9 + this.random.next() * 0.2);
+
+        const event: FractalEvent = {
             type: 'melody',
             note: Math.min(chord.rootNote + 36 + (DEGREE_TO_SEMITONE[n.deg] || 0) + (n.octShift || 0), this.MELODY_CEILING),
             time: (n.t % 12) / 3,
             duration: duration,
-            weight: weight * (0.9 + this.random.next() * 0.2),
+            weight: finalWeight,
             technique: n.tech || 'pick',
             dynamics: tension > 0.7 ? 'mf' : 'p',
             phrasing: 'legato',
             params: { barCount: epoch }
         };
+
+        events.push(event);
+
+        // 3. ФРАКТАЛЬНЫЕ ТЕНИ
+        // При пиковом напряжении добавляем вторую ноту (интервал)
+        if (tension > 0.82 && this.random.next() < 0.4) {
+            events.push({
+                ...event,
+                note: event.note - 12, // тень октавой ниже
+                weight: event.weight * 0.6,
+                dynamics: 'p'
+            });
+        }
     });
+
+    return events;
   }
 
   private renderDynamicAccompaniment(epoch: number, chord: GhostChord, tension: number): FractalEvent[] {
