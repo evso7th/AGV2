@@ -3,7 +3,7 @@
 
 import { useState, useEffect } from 'react';
 import { Midi } from '@tonejs/midi';
-import { Upload, FileMusic, Download, Search, Settings2, Sparkles, Tags, Heart, CloudUpload, Music, Waves, Drum, LayoutGrid } from 'lucide-react';
+import { Upload, FileMusic, Download, Search, Settings2, Sparkles, Tags, Heart, CloudUpload, Music, Waves, Drum, LayoutGrid, Factory, Trash2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Label } from '@/components/ui/label';
@@ -16,8 +16,12 @@ import { useFirestore } from '@/firebase';
 import { saveHeritageAxiom } from '@/lib/firebase-service';
 import { toast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
+import type { Mood, Genre } from '@/types/music';
 
 type IngestionRole = 'melody' | 'bass' | 'drums' | 'accomp';
+
+const MOOD_OPTIONS: Mood[] = ['epic', 'joyful', 'enthusiastic', 'melancholic', 'dark', 'anxious', 'dreamy', 'contemplative', 'calm'];
+const GENRE_OPTIONS: Genre[] = ['ambient', 'trance', 'blues', 'progressive', 'rock', 'house', 'rnb', 'ballad', 'reggae', 'celtic'];
 
 /**
  * #ЗАЧЕМ: Компактное форматирование ликов для экспорта.
@@ -25,20 +29,19 @@ type IngestionRole = 'melody' | 'bass' | 'drums' | 'accomp';
 const formatLicksToText = (licks: any[]) => {
     return "[\n" + licks.map(lick => {
         const { phrase, ...rest } = lick;
-        const restJson = JSON.stringify(rest, null, 2);
-        return `  {\n    "phrase": [${phrase.join(', ')}],\n${restJson.substring(4)}`;
+        return `  {\n    "phrase": [${phrase.join(', ')}],\n    "role": "${rest.role}",\n    "origin": "${rest.origin}",\n    "tags": ${JSON.stringify(rest.tags)}\n  }`;
     }).join(",\n") + "\n]";
 };
 
 /**
  * #ЗАЧЕМ: Универсальный сегментатор треков.
  */
-const segmentTrackToCompactLicks = (track: any, root: number, role: IngestionRole, origin: string, extraTags: string) => {
+const segmentTrackToCompactLicks = (track: any, root: number, role: IngestionRole, origin: string, selectedMood: Mood, selectedGenre: Genre) => {
     const result = [];
     const barsPerLick = 4;
     const bpm = 72; 
     const secondsPerBar = (60 / bpm) * 4;
-    const userTags = extraTags.split(',').map(t => t.trim()).filter(Boolean);
+    const standardTags = [selectedMood, selectedGenre, 'heritage', role];
 
     for (let i = 0; i < track.duration / (secondsPerBar * barsPerLick); i++) {
         const start = i * secondsPerBar * barsPerLick;
@@ -55,7 +58,7 @@ const segmentTrackToCompactLicks = (track: any, root: number, role: IngestionRol
             
             let degreeIdx = 0;
             if (role === 'drums') {
-                degreeIdx = n.midi; // Для барабанов сохраняем MIDI питч
+                degreeIdx = n.midi; 
             } else {
                 const degreeStr = SEMITONE_TO_DEGREE[(n.midi - root + 120) % 12] || 'R';
                 degreeIdx = DEGREE_KEYS.indexOf(degreeStr);
@@ -69,7 +72,7 @@ const segmentTrackToCompactLicks = (track: any, root: number, role: IngestionRol
             id: `LICK_${Date.now()}_${role.toUpperCase()}_${i}`,
             phrase: compactPhrase,
             role: role,
-            tags: ['heritage', role, ...userTags],
+            tags: standardTags,
             origin: origin.trim() || 'Unknown Source'
         });
     }
@@ -85,9 +88,10 @@ export default function MidiIngestPage() {
     const [extractedLicks, setExtractedLicks] = useState<any[]>([]);
     const [selectedTrackIndex, setSelectedTrackIndex] = useState<number>(-1);
     const [selectedRole, setSelectedRole] = useState<IngestionRole>('melody');
+    const [selectedMood, setSelectedMood] = useState<Mood>('melancholic');
+    const [selectedGenre, setSelectedGenre] = useState<Genre>('blues');
     const [detectedKey, setDetectedKey] = useState<{ root: number, mode: string } | null>(null);
     const [origin, setOrigin] = useState("");
-    const [extraTags, setExtraTags] = useState("");
 
     const onFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
         const file = e.target.files?.[0];
@@ -100,7 +104,6 @@ export default function MidiIngestPage() {
                 const midi = new Midi(event.target?.result as ArrayBuffer);
                 setMidiFile(midi);
                 
-                // Авто-выбор самого длинного трека для начала
                 const longestTrackIdx = midi.tracks.reduce((prev, curr, idx) => 
                     curr.notes.length > midi.tracks[prev].notes.length ? idx : prev, 0
                 );
@@ -121,10 +124,10 @@ export default function MidiIngestPage() {
     useEffect(() => {
         if (midiFile && selectedTrackIndex !== -1 && detectedKey) {
             const track = midiFile.tracks[selectedTrackIndex];
-            const licks = segmentTrackToCompactLicks(track, detectedKey.root, selectedRole, origin, extraTags);
+            const licks = segmentTrackToCompactLicks(track, detectedKey.root, selectedRole, origin, selectedMood, selectedGenre);
             setExtractedLicks(licks);
         }
-    }, [midiFile, selectedTrackIndex, selectedRole, detectedKey, origin, extraTags]);
+    }, [midiFile, selectedTrackIndex, selectedRole, detectedKey, origin, selectedMood, selectedGenre]);
 
     const transmitToGlobalMemory = async () => {
         if (extractedLicks.length === 0) return;
@@ -147,6 +150,13 @@ export default function MidiIngestPage() {
         }
     };
 
+    const clearPreview = () => {
+        setMidiFile(null);
+        setExtractedLicks([]);
+        setSelectedTrackIndex(-1);
+        setDetectedKey(null);
+    };
+
     return (
         <main className="flex min-h-screen flex-col items-center p-8 bg-background">
             <Card className="w-full max-w-5xl shadow-xl border-primary/20">
@@ -154,8 +164,8 @@ export default function MidiIngestPage() {
                     <div className="flex items-center gap-3">
                         <Factory className="h-10 w-10 text-primary" />
                         <div>
-                            <CardTitle className="text-3xl font-bold">Heritage Alchemist v3.0</CardTitle>
-                            <CardDescription>Multi-Track Genetic Ingestion Console</CardDescription>
+                            <CardTitle className="text-3xl font-bold">Heritage Alchemist v4.0</CardTitle>
+                            <CardDescription>Semantic Genetic Ingestion Console</CardDescription>
                         </div>
                     </div>
                     <Button variant="ghost" onClick={() => router.push('/aura-groove')} className="text-xs"> Studio</Button>
@@ -163,9 +173,29 @@ export default function MidiIngestPage() {
                 <CardContent className="space-y-8">
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                         <div className="space-y-4 md:col-span-1 p-4 border rounded-xl bg-muted/20">
-                            <Label className="text-xs font-bold uppercase tracking-wider">Source Identity</Label>
+                            <Label className="text-xs font-bold uppercase tracking-wider">Identity & Mood</Label>
                             <Input placeholder="Artist / Dynasty" value={origin} onChange={(e) => setOrigin(e.target.value)} className="h-8 text-xs" />
-                            <Input placeholder="Tags (soul, romantic...)" value={extraTags} onChange={(e) => setExtraTags(e.target.value)} className="h-8 text-xs" />
+                            
+                            <div className="grid grid-cols-2 gap-2">
+                                <div className="space-y-1.5">
+                                    <Label className="text-[10px] uppercase text-muted-foreground">Target Genre</Label>
+                                    <Select value={selectedGenre} onValueChange={(v) => setSelectedGenre(v as Genre)}>
+                                        <SelectTrigger className="h-8 text-[10px] capitalize"><SelectValue /></SelectTrigger>
+                                        <SelectContent>
+                                            {GENRE_OPTIONS.map(g => <SelectItem key={g} value={g} className="text-xs">{g}</SelectItem>)}
+                                        </SelectContent>
+                                    </Select>
+                                </div>
+                                <div className="space-y-1.5">
+                                    <Label className="text-[10px] uppercase text-muted-foreground">Target Mood</Label>
+                                    <Select value={selectedMood} onValueChange={(v) => setSelectedMood(v as Mood)}>
+                                        <SelectTrigger className="h-8 text-[10px] capitalize"><SelectValue /></SelectTrigger>
+                                        <SelectContent>
+                                            {MOOD_OPTIONS.map(m => <SelectItem key={m} value={m} className="text-xs">{m}</SelectItem>)}
+                                        </SelectContent>
+                                    </Select>
+                                </div>
+                            </div>
                             
                             <div className="pt-4 border-t space-y-4">
                                 <Label className="text-xs font-bold uppercase">Discovery</Label>
@@ -174,12 +204,17 @@ export default function MidiIngestPage() {
                                     <Upload className="h-6 w-6 mx-auto text-primary/50 mb-2" />
                                     <p className="text-[10px] text-muted-foreground">Select MIDI File</p>
                                 </div>
+                                {midiFile && (
+                                    <Button variant="ghost" size="sm" onClick={clearPreview} className="w-full text-[10px] h-7 gap-2 text-destructive">
+                                        <Trash2 className="h-3 w-3" /> Clear Buffer
+                                    </Button>
+                                )}
                             </div>
                         </div>
 
                         <div className="md:col-span-2 space-y-4">
-                            <Label className="text-xs font-bold uppercase tracking-wider">Track Map {midiFile ? `(${midiFile.name})` : ''}</Label>
-                            <ScrollArea className="h-[200px] rounded-md border bg-black/20 p-2">
+                            <Label className="text-xs font-bold uppercase tracking-wider">Orchestra Track Map {midiFile ? `(${midiFile.name})` : ''}</Label>
+                            <ScrollArea className="h-[240px] rounded-md border bg-black/20 p-2">
                                 {!midiFile ? (
                                     <div className="flex items-center justify-center h-full text-muted-foreground text-xs italic">No file loaded</div>
                                 ) : (
@@ -195,7 +230,7 @@ export default function MidiIngestPage() {
                                             >
                                                 <div className="flex items-center gap-3">
                                                     <span className="font-mono opacity-50">{i.toString().padStart(2, '0')}</span>
-                                                    <span className="font-medium">{track.name || `Unnamed Track`}</span>
+                                                    <span className="font-medium truncate max-w-[150px]">{track.name || `Unnamed Track`}</span>
                                                 </div>
                                                 <div className="flex items-center gap-4 opacity-70">
                                                     <span>{track.notes.length} notes</span>
@@ -211,7 +246,7 @@ export default function MidiIngestPage() {
                                 <div className="flex items-center gap-4 p-3 bg-primary/5 rounded-lg border border-primary/10">
                                     <div className="flex-grow flex items-center gap-4">
                                         <div className="flex flex-col">
-                                            <Label className="text-[10px] uppercase text-muted-foreground">Active Track Role</Label>
+                                            <Label className="text-[10px] uppercase text-muted-foreground">Assign Role to Selection</Label>
                                             <div className="flex gap-1 mt-1">
                                                 {(['melody', 'bass', 'drums', 'accomp'] as IngestionRole[]).map(role => (
                                                     <Button 
@@ -244,7 +279,7 @@ export default function MidiIngestPage() {
                         <div className="space-y-4">
                             <div className="flex justify-between items-center">
                                 <Label className="text-sm font-bold flex items-center gap-2 uppercase">
-                                    <Settings2 className="h-4 w-4" /> Axiom Preview ({extractedLicks.length})
+                                    <Settings2 className="h-4 w-4" /> Genetic Preview ({extractedLicks.length} Axioms)
                                 </Label>
                                 <Button 
                                     onClick={transmitToGlobalMemory} 
@@ -252,10 +287,10 @@ export default function MidiIngestPage() {
                                     className="gap-2 text-xs h-9 bg-green-600 hover:bg-green-700 shadow-lg shadow-green-900/20"
                                 >
                                     <CloudUpload className="h-4 w-4" /> 
-                                    {isTransmitting ? 'Ingesting...' : 'Endorse & Transmit'}
+                                    {isTransmitting ? 'Transmitting...' : 'Endorse & Transmit'}
                                 </Button>
                             </div>
-                            <ScrollArea className="h-[200px] rounded-md border p-4 bg-black/40 font-mono text-[10px]">
+                            <ScrollArea className="h-[180px] rounded-md border p-4 bg-black/40 font-mono text-[10px]">
                                 <pre className="text-primary/80 whitespace-pre">
                                     {formatLicksToText(extractedLicks)}
                                 </pre>
@@ -266,7 +301,7 @@ export default function MidiIngestPage() {
                     {isAnalyzing && (
                         <div className="flex flex-col items-center justify-center py-12 space-y-4">
                             <div className="h-8 w-8 border-2 border-primary border-t-transparent rounded-full animate-spin"></div>
-                            <p className="text-xs text-primary font-bold animate-pulse">Decompressing Dynasty Code...</p>
+                            <p className="text-xs text-primary font-bold animate-pulse">Scanning Track DNA...</p>
                         </div>
                     )}
                 </CardContent>
