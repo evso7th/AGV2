@@ -19,10 +19,12 @@ import {
 import { BLUES_SOLO_LICKS } from './assets/blues_guitar_solo';
 
 /**
- * #ЗАЧЕМ: Блюзовый Мозг V109.0 — "Narrative Sentence Guard".
- * #ЧТО: 1. Все аксиомы теперь принудительно растягиваются до 4-х тактов (48 тиков).
- *       2. Внедрена нормализация через stretchToNarrativeLength.
- *       3. Бас нормализуется до 2-х тактов (24 тика).
+ * #ЗАЧЕМ: Блюзовый Мозг V110.0 — "Narrative Bass Tiers".
+ * #ЧТО: 1. Бас теперь жестко привязан к Tension:
+ *          - T < 0.4: Короткий дрон (1 нота).
+ *          - T 0.4-0.7: 2-feel рифф (2 ноты).
+ *          - T > 0.7: Walking bass (4 ноты).
+ *       2. Сохранена нормализация фраз до 4-х тактов.
  */
 
 export class BluesBrain {
@@ -109,7 +111,6 @@ export class BluesBrain {
 
     this.evaluateTimbralDramaturgy(tension, hints);
     
-    // Смена аксиомы каждые 4 такта для плотности мелодии.
     const isMutationBoundary = epoch % 4 === 0;
     const isStagnating = this.state.stagnationStrikes.micro >= 3;
 
@@ -193,7 +194,7 @@ export class BluesBrain {
               weight: (useViolin ? 0.12 : 0.22),
               technique: 'swell',
               dynamics: 'p',
-              phrasing: 'legato',
+              phrasing: 'legate',
               chordName: chord.chordType === 'minor' ? 'Am' : 'E',
               params: { barCount: epoch, filterCutoff: 3000 }
           });
@@ -225,14 +226,13 @@ export class BluesBrain {
           );
       }
 
-      const nextId = pool[this.random.nextInt(pool.length)] || 'L01';
+      const nextId = pool[this.random.nextInt(pool.length)] || 'LN_01';
       this.currentLickId = nextId;
       this.usedLicksInSuite.add(nextId);
       
       const lickData = BLUES_SOLO_LICKS[nextId];
       const rawPhrase = Array.isArray(lickData.phrase) ? lickData.phrase : decompressCompactPhrase(lickData.phrase as any);
       
-      // #ЗАЧЕМ: Принудительное растягивание до 4-х тактового "Предложения".
       const stretchedPhrase = stretchToNarrativeLength(rawPhrase, 48, this.random);
       this.currentAxiom = this.mutateLick(stretchedPhrase);
   }
@@ -284,7 +284,6 @@ export class BluesBrain {
     const lickTicks = Math.max(...this.currentAxiom.map(n => n.t + n.d), 0) || 12;
     const lickBars = Math.ceil(lickTicks / 12);
     
-    // Зацикливание коротких фраз (уже растянутых до 48 тиков).
     const effectiveBar = epoch % lickBars;
     const barOffset = effectiveBar * 12;
     const barNotes = this.currentAxiom.filter(n => n.t >= barOffset && n.t < barOffset + 12);
@@ -384,29 +383,30 @@ export class BluesBrain {
     return events;
   }
 
+  /**
+   * #ЗАЧЕМ: Реализация строгих уровней исполнения баса.
+   * #ЧТО: Разделение на Tier 1 (Drone), Tier 2 (2-feel Riff), Tier 3 (Walking).
+   */
   private renderIronBass(chord: GhostChord, epoch: number, tension: number, navInfo: NavigationInfo): FractalEvent[] {
     const momentum = this.state.tensionMomentum;
-    if (navInfo.currentPart.id === 'INTRO') {
-        switch(this.state.introBassStyle) {
-            case 'drone': return this.renderDroneBass(chord, epoch);
-            case 'riff': return this.renderRiffBass(chord, epoch, tension);
-            case 'walking': return this.renderWalkingBass(chord, epoch, tension);
-        }
-    }
     const effectiveTension = tension + momentum * 3;
 
-    if (effectiveTension < 0.4) return this.renderDroneBass(chord, epoch);
-    else if (effectiveTension <= 0.7) return this.renderRiffBass(chord, epoch, tension);
-    else return this.renderWalkingBass(chord, epoch, tension);
+    if (effectiveTension < 0.4) {
+        return this.renderDroneBass(chord, epoch);
+    } else if (effectiveTension <= 0.7) {
+        return this.renderRiffBass(chord, epoch, tension);
+    } else {
+        return this.renderWalkingBass(chord, epoch, tension);
+    }
   }
 
+  /** #Tier 1: Короткий дрон (1 нота на такт) */
   private renderDroneBass(chord: GhostChord, epoch: number): FractalEvent[] {
-    if (epoch % 2 !== 0) return []; 
     return [{ 
         type: 'bass', 
         note: Math.max(chord.rootNote - 12, this.BASS_FLOOR), 
         time: 0, 
-        duration: 4.0, 
+        duration: 3.5, // Почти весь такт, но не перехлестывает
         weight: 0.65, 
         technique: 'pluck', 
         dynamics: 'p', 
@@ -415,18 +415,42 @@ export class BluesBrain {
     }];
   }
 
+  /** #Tier 2: Упругий рифф (2 ноты: 1 и 3 доли) */
   private renderRiffBass(chord: GhostChord, epoch: number, tension: number): FractalEvent[] {
     const root = Math.max(chord.rootNote - 12, this.BASS_FLOOR);
     const isMin = chord.chordType === 'minor';
-    const pattern = [ { t: 0, n: root, w: 0.7 }, { t: 1.0, n: root + 7, w: 0.5 }, { t: 2.0, n: root + (isMin ? 3 : 4), w: 0.6 }, { t: 3.0, n: root + 5, w: 0.5 } ];
-    return pattern.map(p => ({ type: 'bass', note: p.n, time: p.t, duration: 0.8, weight: p.w + (tension * 0.1), technique: 'pluck', dynamics: 'p', phrasing: 'legato', params: { attack: 0.1, release: 0.8, filterCutoff: 400 } }));
+    const pattern = [ 
+        { t: 0, n: root, w: 0.7 }, 
+        { t: 2.0, n: root + 7, w: 0.6 } // Квинта на 3-й доле (2-feel)
+    ];
+    return pattern.map(p => ({ 
+        type: 'bass', 
+        note: p.n, 
+        time: p.t, 
+        duration: 1.2, 
+        weight: p.w + (tension * 0.1), 
+        technique: 'pluck', 
+        dynamics: 'p', 
+        phrasing: 'legato', 
+        params: { attack: 0.1, release: 0.8, filterCutoff: 400 } 
+    }));
   }
 
+  /** #Tier 3: Плотный волкинг (4 ноты на такт) */
   private renderWalkingBass(chord: GhostChord, epoch: number, tension: number): FractalEvent[] {
     const root = Math.max(chord.rootNote - 12, this.BASS_FLOOR);
     const nextRoot = getNextChordRoot(epoch % 12, chord.rootNote) - 12;
     const notes = [ root, root + 7, root + 10, nextRoot - 1 ];
-    return notes.map((p, i) => ({ type: 'bass', note: p, time: i, duration: 0.9, weight: (i === 0 ? 0.85 : 0.5) + tension * 0.1, technique: 'pluck', dynamics: i === 0 ? 'mf' : 'p', phrasing: 'legato' }));
+    return notes.map((p, i) => ({ 
+        type: 'bass', 
+        note: p, 
+        time: i, 
+        duration: 0.9, 
+        weight: (i === 0 ? 0.85 : 0.5) + tension * 0.1, 
+        technique: 'pluck', 
+        dynamics: i === 0 ? 'mf' : 'p', 
+        phrasing: 'legato' 
+    }));
   }
 
   private renderBluesBeat(epoch: number, tension: number, navInfo: NavigationInfo): FractalEvent[] {
