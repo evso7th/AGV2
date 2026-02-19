@@ -1,3 +1,4 @@
+
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
@@ -14,8 +15,12 @@ service cloud.firestore {
     }
 
     match /masterpieces/{id} {
-      // #ЗАЧЕМ: Открытие глобальной памяти для эволюции.
-      // #ЧТО: Чтение разрешено всем авторизованным. Запись разрешена при наличии UID.
+      allow read, list: if isSignedIn();
+      allow create: if isSignedIn();
+    }
+
+    match /heritage_axioms/{id} {
+      // #ЗАЧЕМ: Открытие наследия для всех поколений AuraGroove.
       allow read, list: if isSignedIn();
       allow create: if isSignedIn();
     }

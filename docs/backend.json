@@ -1,3 +1,4 @@
+
 {
   "entities": {
     "User": {
@@ -27,6 +28,20 @@
         "timestamp": { "type": "string", "format": "date-time" }
       },
       "required": ["seed", "mood", "genre", "timestamp"]
+    },
+    "HeritageAxiom": {
+      "title": "HeritageAxiom",
+      "type": "object",
+      "description": "A digitised musical fragment from human heritage, used as a seed for evolution.",
+      "properties": {
+        "id": { "type": "string" },
+        "phrase": { "type": "array", "items": { "type": "number" } },
+        "dynasty": { "type": "string" },
+        "origin": { "type": "string" },
+        "tags": { "type": "array", "items": { "type": "string" } },
+        "timestamp": { "type": "string", "format": "date-time" }
+      },
+      "required": ["phrase", "dynasty", "origin", "timestamp"]
     }
   },
   "auth": {
@@ -40,6 +55,10 @@
     "/masterpieces/{masterpieceId}": {
       "schema": { "$ref": "#/backend/entities/Masterpiece" },
       "description": "Global pool of successful musical seeds for evolutionary inheritance."
+    },
+    "/heritage_axioms/{axiomId}": {
+      "schema": { "$ref": "#/backend/entities/HeritageAxiom" },
+      "description": "Digitised human musical fragments feeding the global DNA pool."
     }
   }
 }

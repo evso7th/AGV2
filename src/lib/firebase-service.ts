@@ -6,8 +6,6 @@ import { FirestorePermissionError } from '@/firebase/errors';
 /**
  * #ЗАЧЕМ: Сохранение "Шедевра" (удачной музыкальной комбинации).
  * #ЧТО: Отправляет текущие параметры сюиты в Firestore. 
- *       Использует детерминированный путь через setDoc для обхода ошибок прав.
- * #СВЯЗИ: Вызывается из хука useAuraGroove.
  */
 export function saveMasterpiece(db: Firestore, data: {
   seed: number;
@@ -17,13 +15,8 @@ export function saveMasterpiece(db: Firestore, data: {
   bpm: number;
   instrumentSettings: any;
 }) {
-  // #ЗАЧЕМ: Гарантированный путь masterpieces/{id}.
-  // Мы создаем ссылку на новый документ в коллекции, чтобы SDK сгенерировал ID на клиенте.
   const masterpiecesRef = collection(db, 'masterpieces');
   const newDocRef = doc(masterpiecesRef);
-
-  // #ЗАЧЕМ: Гарантированная сериализация.
-  // Мы создаем чистый клон объекта данных.
   const cleanSettings = JSON.parse(JSON.stringify(data.instrumentSettings));
 
   const payload = {
@@ -36,18 +29,46 @@ export function saveMasterpiece(db: Firestore, data: {
     timestamp: serverTimestamp()
   };
 
-  // #ЗАЧЕМ: Соблюдение правила "Avoid Awaiting Mutation Calls".
-  // Используем setDoc с явно созданной ссылкой.
   setDoc(newDocRef, payload)
     .catch(async (serverError) => {
-      // #ЗАЧЕМ: Создание контекстной ошибки для диагностики.
       const permissionError = new FirestorePermissionError({
         path: newDocRef.path,
         operation: 'create',
         requestResourceData: payload,
       });
-
-      // Эмиссия ошибки через глобальный слушатель.
       errorEmitter.emit('permission-error', permissionError);
     });
+}
+
+/**
+ * #ЗАЧЕМ: Трансляция оцифрованного наследия в глобальную память.
+ * #ЧТО: Сохраняет компактный лик (аксиому) в коллекцию heritage_axioms.
+ * #СВЯЗИ: Вызывается из MIDI Alchemist Dashboard.
+ */
+export function saveHeritageAxiom(db: Firestore, data: {
+    phrase: number[];
+    dynasty: string;
+    origin: string;
+    tags: string[];
+}) {
+    const heritageRef = collection(db, 'heritage_axioms');
+    const newDocRef = doc(heritageRef);
+
+    const payload = {
+        phrase: data.phrase,
+        dynasty: data.dynasty,
+        origin: data.origin,
+        tags: data.tags,
+        timestamp: serverTimestamp()
+    };
+
+    setDoc(newDocRef, payload)
+        .catch(async (serverError) => {
+            const permissionError = new FirestorePermissionError({
+                path: newDocRef.path,
+                operation: 'create',
+                requestResourceData: payload,
+            });
+            errorEmitter.emit('permission-error', permissionError);
+        });
 }
