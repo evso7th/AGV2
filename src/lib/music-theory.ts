@@ -1,7 +1,7 @@
 /**
  * @fileOverview Universal Music Theory Utilities
  * #ЗАЧЕМ: Базовый набор инструментов для работы с нотами и энергетическими картами.
- * #ОБНОВЛЕНО (ПЛАН №486): Исправлена генерация BPM. Теперь используется диапазон из Блюпринта.
+ * #ОБНОВЛЕНО (ПЛАН №515): Внедрена функция stretchToNarrativeLength для борьбы с "огрызками".
  */
 
 import type { 
@@ -59,6 +59,35 @@ export function decompressCompactPhrase(compact: number[]): any[] {
         });
     }
     return result;
+}
+
+/**
+ * #ЗАЧЕМ: Нормализация длины фразы до "нарративного минимума".
+ * #ЧТО: Если фраза короче targetTicks (например, 4 такта = 48 тиков), 
+ *       она дублируется с применением микро-вариаций велосити и тайминга.
+ */
+export function stretchToNarrativeLength(phrase: any[], targetTicks: number, random: any): any[] {
+    if (phrase.length === 0) return [];
+    
+    const currentLength = Math.max(...phrase.map(n => n.t + n.d), 0) || 12;
+    if (currentLength >= targetTicks) return phrase;
+
+    const iterations = Math.ceil(targetTicks / currentLength);
+    const result = [];
+
+    for (let i = 0; i < iterations; i++) {
+        const offset = i * currentLength;
+        const variant = phrase.map(n => ({
+            ...n,
+            t: n.t + offset,
+            // Микро-вариации для каждого "витка"
+            weight: (n.weight || 0.8) * (0.9 + random.next() * 0.2),
+            timeJitter: (random.next() * 0.1 - 0.05) // микро-сдвиг для "живости"
+        }));
+        result.push(...variant);
+    }
+
+    return result.filter(n => n.t < targetTicks);
 }
 
 /**

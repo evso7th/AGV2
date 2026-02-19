@@ -1,8 +1,8 @@
 /**
- * #ЗАЧЕМ: Суверенный Мозг Амбиента v14.0 — "Continuous Journey Fix".
- * #ЧТО: 1. Повышена общая активность мелодии (baseChance up).
- *       2. Сокращен rest период между темами (3 -> 1).
- *       3. Снижен пропуск нот из-за тумана (skipProb penalty reduced).
+ * #ЗАЧЕМ: Суверенный Мозг Амбиента v15.0 — "Narrative Sentence Guard".
+ * #ЧТО: 1. Все лики теперь растягиваются до 4-х тактов (48 тиков).
+ *       2. Внедрена нормализация через stretchToNarrativeLength.
+ *       3. Обновлены вероятности вступления тем.
  */
 
 import type { 
@@ -17,7 +17,7 @@ import type {
     Phrasing,
     SfxRule
 } from '@/types/music';
-import { calculateMusiNum, DEGREE_TO_SEMITONE, pickWeightedDeterministic, GEO_ATLAS, LIGHT_ATLAS } from './music-theory';
+import { calculateMusiNum, DEGREE_TO_SEMITONE, pickWeightedDeterministic, GEO_ATLAS, LIGHT_ATLAS, stretchToNarrativeLength } from './music-theory';
 import { AMBIENT_LEGACY } from './assets/ambient-legacy';
 
 const SPECTRAL_ATOMS: Record<string, { fog: number[], depth: number[], pulse: number[] }> = {
@@ -159,13 +159,16 @@ export class AmbientBrain {
                         deg: pool[this.random.nextInt(pool.length)]
                     });
                 }
-                this.currentBassTheme = { phrase, startBar: epoch, endBar: epoch + bars };
-                this.bassBusyUntilBar = epoch + bars;
+                // #ЗАЧЕМ: Нормализация баса до минимум 2-х тактов (24 тика).
+                const finalBass = stretchToNarrativeLength(phrase, 24, this.random);
+                const actualBars = Math.ceil(Math.max(...finalBass.map(n => n.t + n.d)) / 12);
+                
+                this.currentBassTheme = { phrase: finalBass, startBar: epoch, endBar: epoch + actualBars };
+                this.bassBusyUntilBar = epoch + actualBars;
             }
         }
 
         if (epoch >= this.soloistBusyUntilBar) {
-            // #ЗАЧЕМ: Повышение активности солиста.
             const baseChance = isPositive ? 0.60 : 0.40; 
             const developmentChance = baseChance + localTension * 0.25;
             if (this.random.next() < developmentChance) {
@@ -173,16 +176,18 @@ export class AmbientBrain {
                 const group = AMBIENT_LEGACY[groupKey];
                 const lickIdx = calculateMusiNum(epoch, 3, this.seed, group.licks.length);
                 const lick = group.licks[lickIdx];
-                const phraseTicks = Math.max(...lick.phrase.map(n => n.t + n.d));
+                
+                // #ЗАЧЕМ: Принудительное растягивание темы до 4-х тактов (48 тиков).
+                const narrativePhrase = stretchToNarrativeLength(lick.phrase, 48, this.random);
+                const phraseTicks = Math.max(...narrativePhrase.map(n => n.t + n.d));
                 const phraseBars = Math.ceil((phraseTicks + 1) / 12);
                 
                 this.currentTheme = {
-                    phrase: lick.phrase,
+                    phrase: narrativePhrase,
                     startBar: epoch,
                     endBar: epoch + phraseBars
                 };
                 
-                // #ЗАЧЕМ: Сокращение rest периода для плотности.
                 const restBars = this.mood === 'enthusiastic' ? 0 : 1;
                 this.soloistBusyUntilBar = epoch + phraseBars + restBars; 
             } else {
@@ -361,13 +366,12 @@ export class AmbientBrain {
         const momentum = this.dFog;
 
         barNotes.forEach((n, i) => {
-            // #ЗАЧЕМ: Снижение штрафа за туман для стабильности мелодии.
             let skipProb = (this.fog * 0.4) * (1.0 + Math.max(0, momentum * 10));
             if (momentum < -0.01) skipProb *= 0.5;
 
             if (skipProb > 0.75 && i % 2 !== 0 && this.random.next() < skipProb) return;
 
-            const phraseProgress = n.t / 48; 
+            const phraseProgress = (n.t % 48) / 48; 
             const breathDecay = 1.0 - (phraseProgress * 0.4); 
 
             events.push({

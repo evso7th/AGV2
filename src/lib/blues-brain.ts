@@ -9,7 +9,8 @@ import {
 } from '@/types/music';
 import { 
     DEGREE_TO_SEMITONE,
-    decompressCompactPhrase
+    decompressCompactPhrase,
+    stretchToNarrativeLength
 } from './music-theory';
 import { 
     getNextChordRoot, 
@@ -18,10 +19,10 @@ import {
 import { BLUES_SOLO_LICKS } from './assets/blues_guitar_solo';
 
 /**
- * #ЗАЧЕМ: Блюзовый Мозг V108.0 — "Continuous Flow & Stagnation Guard".
- * #ЧТО: 1. Лики теперь сменяются каждые 4 такта (Phrase Boundary).
- *       2. Реализовано зацикливание коротких ликов для исключения тишины.
- *       3. Детектор стагнации следит за всеми участниками одновременно.
+ * #ЗАЧЕМ: Блюзовый Мозг V109.0 — "Narrative Sentence Guard".
+ * #ЧТО: 1. Все аксиомы теперь принудительно растягиваются до 4-х тактов (48 тиков).
+ *       2. Внедрена нормализация через stretchToNarrativeLength.
+ *       3. Бас нормализуется до 2-х тактов (24 тика).
  */
 
 export class BluesBrain {
@@ -108,7 +109,7 @@ export class BluesBrain {
 
     this.evaluateTimbralDramaturgy(tension, hints);
     
-    // #ЗАЧЕМ: Смена аксиомы каждые 4 такта для плотности мелодии.
+    // Смена аксиомы каждые 4 такта для плотности мелодии.
     const isMutationBoundary = epoch % 4 === 0;
     const isStagnating = this.state.stagnationStrikes.micro >= 3;
 
@@ -231,7 +232,9 @@ export class BluesBrain {
       const lickData = BLUES_SOLO_LICKS[nextId];
       const rawPhrase = Array.isArray(lickData.phrase) ? lickData.phrase : decompressCompactPhrase(lickData.phrase as any);
       
-      this.currentAxiom = this.mutateLick(rawPhrase);
+      // #ЗАЧЕМ: Принудительное растягивание до 4-х тактового "Предложения".
+      const stretchedPhrase = stretchToNarrativeLength(rawPhrase, 48, this.random);
+      this.currentAxiom = this.mutateLick(stretchedPhrase);
   }
 
   private mutateLick(phrase: any[]): any[] {
@@ -277,14 +280,11 @@ export class BluesBrain {
     }
   }
 
-  /**
-   * #ЗАЧЕМ: Рендер мелодии с поддержкой авто-лупинга коротких фраз.
-   */
   private renderMelodicSegment(epoch: number, chord: GhostChord, tension: number): FractalEvent[] {
     const lickTicks = Math.max(...this.currentAxiom.map(n => n.t + n.d), 0) || 12;
     const lickBars = Math.ceil(lickTicks / 12);
     
-    // #ЗАЧЕМ: Зацикливание коротких фраз.
+    // Зацикливание коротких фраз (уже растянутых до 48 тиков).
     const effectiveBar = epoch % lickBars;
     const barOffset = effectiveBar * 12;
     const barNotes = this.currentAxiom.filter(n => n.t >= barOffset && n.t < barOffset + 12);
