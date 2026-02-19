@@ -1,3 +1,9 @@
+/**
+ * #ЗАЧЕМ: Heritage Alchemist V8.0.
+ * #ЧТО: 1. Исправлена кнопка Stop Preview.
+ *       2. Улучшена ролевая эвристика (Bass Priority).
+ *       3. Гарантирован сброс состояния при Silence All.
+ */
 'use client';
 
 import { useState, useEffect } from 'react';
@@ -23,28 +29,16 @@ type IngestionRole = 'melody' | 'bass' | 'drums' | 'accomp';
 const MOOD_OPTIONS: Mood[] = ['epic', 'joyful', 'enthusiastic', 'melancholic', 'dark', 'anxious', 'dreamy', 'contemplative', 'calm'];
 const GENRE_OPTIONS: Genre[] = ['ambient', 'trance', 'blues', 'progressive', 'rock', 'house', 'rnb', 'ballad', 'reggae', 'celtic'];
 
-const formatLicksToText = (licks: any[]) => {
-    return "[\n" + licks.map(lick => {
-        const { phrase, ...rest } = lick;
-        return `  {
-    "phrase": [${phrase.join(', ')}],
-    "role": "${rest.role}",
-    "origin": "${rest.origin}",
-    "tags": ${JSON.stringify(rest.tags)}
-  }`;
-    }).join(",\n") + "\n]";
-};
-
 /**
  * #ЗАЧЕМ: Улучшенная эвристика ролей. 
- * #ЧТО: Приоритет ключевых слов в названиях дорожек.
+ * #ЧТО: Приоритет Баса.
  */
 const detectTrackRole = (track: any): IngestionRole => {
     const name = (track.name || "").toLowerCase();
     
-    // Прямые соответствия в именах
-    if (track.channel === 9 || name.match(/drum|perc|kick|snare|hihat|kit|beat/)) return 'drums';
+    // Прямые соответствия в именах (Приоритет БАСА)
     if (name.includes("bass")) return 'bass';
+    if (track.channel === 9 || name.match(/drum|perc|kick|snare|hihat|kit|beat/)) return 'drums';
     if (name.match(/lead|solo|melody/)) return 'melody';
     if (name.match(/piano|key|chord|pad|str|string|organ/)) return 'accomp';
 
@@ -221,7 +215,6 @@ export default function MidiIngestPage() {
 
         if (allEvents.length > 0) {
             setIsPlayingFull(true);
-            // #ЗАЧЕМ: Гарантированное использование басовых инструментов.
             const hints: InstrumentHints = {
                 bass: 'bass_jazz_warm',
                 melody: 'blackAcoustic',
@@ -268,7 +261,6 @@ export default function MidiIngestPage() {
             });
         }
 
-        // #ЗАЧЕМ: Бас должен звучать как бас.
         const hints: InstrumentHints = {
             [role]: role === 'bass' ? 'bass_jazz_warm' : (role === 'melody' ? 'blackAcoustic' : 'organ_soft_jazz')
         };
@@ -317,7 +309,7 @@ export default function MidiIngestPage() {
                             <Factory className="h-8 w-8 text-primary" />
                         </div>
                         <div>
-                            <CardTitle className="text-3xl font-bold tracking-tight">Heritage Alchemist v7.0</CardTitle>
+                            <CardTitle className="text-3xl font-bold tracking-tight">Heritage Alchemist v8.0</CardTitle>
                             <CardDescription className="text-muted-foreground flex items-center gap-2">
                                 <Volume2 className="h-3 w-3" /> Full Ensemble Control Active
                             </CardDescription>
@@ -504,7 +496,7 @@ export default function MidiIngestPage() {
                                 <ScrollArea className="h-[200px] w-full">
                                     <div className="p-4 font-mono text-[11px] leading-relaxed">
                                         <pre className="text-primary/90 whitespace-pre scrollbar-hide">
-                                            {formatLicksToText(extractedLicks)}
+                                            {JSON.stringify(extractedLicks, null, 2)}
                                         </pre>
                                     </div>
                                 </ScrollArea>

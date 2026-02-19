@@ -1,3 +1,7 @@
+/**
+ * #ЗАЧЕМ: Audio Engine Context V4.0 — "The Total Conductor".
+ * #ЧТО: Исправлена немота и утечки звука за счет включения всех менеджеров в stopAllSounds.
+ */
 'use client';
 
 import React, { createContext, useContext, useState, useRef, useCallback, useEffect } from 'react';
@@ -12,6 +16,9 @@ import { BlackGuitarSampler } from '@/lib/black-guitar-sampler';
 import { TelecasterGuitarSampler } from '@/lib/telecaster-guitar-sampler';
 import { DarkTelecasterSampler } from '@/lib/dark-telecaster-sampler';
 import { CS80GuitarSampler } from '@/lib/cs80-guitar-sampler';
+import { AccompanimentSynthManager } from '@/lib/accompaniment-synth-manager';
+import { BassSynthManager } from '@/lib/bass-synth-manager';
+import { MelodySynthManager } from '@/lib/melody-synth-manager';
 import type { FractalEvent, InstrumentHints, NavigationInfo } from '@/types/fractal';
 import * as Tone from 'tone';
 import { MelodySynthManagerV2 } from '@/lib/melody-synth-manager-v2';
@@ -110,6 +117,9 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
   const ancestorsRef = useRef<any[]>([]); 
   
   const drumMachineRef = useRef<DrumMachine | null>(null);
+  const accompanimentManagerRef = useRef<AccompanimentSynthManager | null>(null);
+  const bassManagerRef = useRef<BassSynthManager | null>(null);
+  const melodyManagerRef = useRef<MelodySynthManager | null>(null);
   const accompanimentManagerV2Ref = useRef<AccompanimentSynthManagerV2 | null>(null);
   const melodyManagerV2Ref = useRef<MelodySynthManagerV2 | null>(null);
   const bassManagerV2Ref = useRef<MelodySynthManagerV2 | null>(null);
@@ -263,16 +273,38 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
       else if (et === 'sfx') sfxEvents.push(event);
     }
 
+    const composerControls = settingsRef.current?.composerControlsInstruments !== false;
+
     if (drumMachineRef.current && drumEvents.length > 0) drumMachineRef.current.schedule(drumEvents, barStartTime, tempo);
-    if (bassEvents.length > 0 && bassManagerV2Ref.current) {
-        bassManagerV2Ref.current.schedule(bassEvents, barStartTime, tempo, instrumentHints?.bass);
+    
+    // #ЗАЧЕМ: Исправление ролевой неразберихи на Заводе. 
+    // #ЧТО: Если пришел явный намек на бас (V1 или V2), используем соответствующий менеджер.
+    if (bassEvents.length > 0) {
+        const hint = instrumentHints?.bass;
+        if (hint && (hint in V2_PRESETS) && bassManagerV2Ref.current) {
+            bassManagerV2Ref.current.schedule(bassEvents, barStartTime, tempo, hint);
+        } else if (bassManagerRef.current) {
+            bassManagerRef.current.schedule(bassEvents, barStartTime, tempo, barCount, hint, composerControls);
+        }
     }
-    if (accompanimentEvents.length > 0 && accompanimentManagerV2Ref.current) {
-        accompanimentManagerV2Ref.current.schedule(accompanimentEvents, barStartTime, tempo, barCount, instrumentHints?.accompaniment as any);
+
+    if (accompanimentEvents.length > 0) {
+        if (instrumentHints?.accompaniment && (instrumentHints.accompaniment in V2_PRESETS) && accompanimentManagerV2Ref.current) {
+            accompanimentManagerV2Ref.current.schedule(accompanimentEvents, barStartTime, tempo, barCount, instrumentHints.accompaniment);
+        } else if (accompanimentManagerRef.current) {
+            accompanimentManagerRef.current.schedule(accompanimentEvents, barStartTime, tempo, barCount, instrumentHints?.accompaniment as any, composerControls);
+        }
     }
-    if (melodyEvents.length > 0 && melodyManagerV2Ref.current) {
-        melodyManagerV2Ref.current.schedule(melodyEvents, barStartTime, tempo, instrumentHints?.melody);
+
+    if (melodyEvents.length > 0) {
+        const hint = instrumentHints?.melody;
+        if (hint && (hint in V2_PRESETS || hint === 'cs80' || hint === 'telecaster' || hint === 'blackAcoustic' || hint === 'darkTelecaster') && melodyManagerV2Ref.current) {
+            melodyManagerV2Ref.current.schedule(melodyEvents, barStartTime, tempo, hint);
+        } else if (melodyManagerRef.current) {
+            melodyManagerRef.current.schedule(melodyEvents, barStartTime, tempo, barCount, hint as any, composerControls);
+        }
     }
+
     if (harmonyManagerRef.current && harmonyEvents.length > 0) harmonyManagerRef.current.schedule(harmonyEvents, barStartTime, tempo, instrumentHints?.harmony);
     if (pianoAccompanimentManagerRef.current && pianoEvents.length > 0) pianoAccompanimentManagerRef.current.schedule(pianoEvents, barStartTime, tempo);
     if (sfxSynthManagerRef.current && sfxEvents.length > 0) sfxSynthManagerRef.current.trigger(sfxEvents, barStartTime, settingsRef.current?.bpm || 75);
@@ -282,7 +314,6 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
       if (!isInitialized || !audioContextRef.current) return;
       const now = audioContextRef.current.currentTime;
       const tempo = settingsRef.current?.bpm || 72;
-      // #ЗАЧЕМ: Поддержка нескольких инструментов в превью.
       scheduleEvents(events, now + 0.1, tempo, 0, instrumentHints);
   }, [isInitialized, scheduleEvents]);
 
@@ -319,7 +350,6 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
                         const bufferHealth = scheduleTime - now;
 
                         if (bufferHealth < 0.1) { 
-                            console.warn(`%c[CHRONOS] BUFFER STARVATION! Health: ${Math.round(bufferHealth * 1000)}ms. Forcing Resync.`, 'color: #f87171; font-weight: bold;');
                             scheduleTime = now + 0.5;
                             nextBarTimeRef.current = scheduleTime;
                         }
@@ -369,7 +399,6 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
         sentinel.offset.value = 0.0000000001; 
         sentinel.connect(context.destination);
         sentinel.start();
-        console.log('%c[AudioEngine] THE SENTINEL IS ACTIVE. Throttling protection engaged.', 'color: #00BFFF; font-weight: bold;');
 
         nextBarTimeRef.current = context.currentTime + 1.0; 
 
@@ -377,6 +406,7 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
             masterGainNodeRef.current = context.createGain();
             
             speakerGainNodeRef.current = context.createGain();
+            speakerGainNodeRef.current.gain.value = 1.0; // Гарантия звука при старте
             masterGainNodeRef.current.connect(speakerGainNodeRef.current);
             speakerGainNodeRef.current.connect(context.destination);
 
@@ -391,6 +421,17 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
             parts.forEach(part => { gainNodesRef.current[part] = context.createGain(); gainNodesRef.current[part]!.connect(masterGainNodeRef.current!); });
         }
         const initPromises: Promise<any>[] = [];
+        
+        // V1 Managers
+        if (!bassManagerRef.current) { bassManagerRef.current = new BassSynthManager(context, gainNodesRef.current.bass!); initPromises.push(bassManagerRef.current.init()); }
+        if (!melodyManagerRef.current) { 
+            // Mock samplers for V1 if needed, but V1 melody uses oscillators
+            melodyManagerRef.current = new MelodySynthManager(context, gainNodesRef.current.melody!, {} as any, {} as any, 'melody'); 
+            initPromises.push(melodyManagerRef.current.init()); 
+        }
+        if (!accompanimentManagerRef.current) { accompanimentManagerRef.current = new AccompanimentSynthManager(context, gainNodesRef.current.accompaniment!); initPromises.push(accompanimentManagerRef.current.init()); }
+
+        // V2 Managers & Samplers
         if (!drumMachineRef.current) { drumMachineRef.current = new DrumMachine(context, gainNodesRef.current.drums!); initPromises.push(drumMachineRef.current.init()); }
         if (!blackGuitarSamplerRef.current) { blackGuitarSamplerRef.current = new BlackGuitarSampler(context, gainNodesRef.current.melody!); initPromises.push(blackGuitarSamplerRef.current.init()); }
         if (!telecasterSamplerRef.current) { telecasterSamplerRef.current = new TelecasterGuitarSampler(context, gainNodesRef.current.melody!); initPromises.push(telecasterSamplerRef.current.init()); }
@@ -400,6 +441,7 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
         if (!accompanimentManagerV2Ref.current) { accompanimentManagerV2Ref.current = new AccompanimentSynthManagerV2(context, gainNodesRef.current.accompaniment!); initPromises.push(accompanimentManagerV2Ref.current.init()); }
         if (!melodyManagerV2Ref.current) { melodyManagerV2Ref.current = new MelodySynthManagerV2(context, gainNodesRef.current.melody!, telecasterSamplerRef.current!, blackGuitarSamplerRef.current!, darkTelecasterSamplerRef.current!, cs80SamplerRef.current!, 'melody'); initPromises.push(melodyManagerV2Ref.current.init()); }
         if (!bassManagerV2Ref.current) { bassManagerV2Ref.current = new MelodySynthManagerV2(context, gainNodesRef.current.bass!, telecasterSamplerRef.current!, blackGuitarSamplerRef.current!, darkTelecasterSamplerRef.current!, cs80SamplerRef.current!, 'bass'); initPromises.push(bassManagerV2Ref.current.init()); }
+        
         if (!harmonyManagerRef.current) { harmonyManagerRef.current = new HarmonySynthManager(context, gainNodesRef.current.harmony!); initPromises.push(harmonyManagerRef.current.init()); }
         if(!pianoAccompanimentManagerRef.current) { pianoAccompanimentManagerRef.current = new PianoAccompanimentManager(context, gainNodesRef.current.pianoAccompaniment!); initPromises.push(pianoAccompanimentManagerRef.current.init()); }
         if (!sparklePlayerRef.current) { sparklePlayerRef.current = new SparklePlayer(context, gainNodesRef.current.sparkles!); initPromises.push(sparklePlayerRef.current.init()); }
@@ -425,7 +467,13 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
 
   const stopAllSounds = useCallback(() => {
     drumMachineRef.current?.stop();
-    [accompanimentManagerV2Ref, melodyManagerV2Ref, bassManagerV2Ref, harmonyManagerRef, pianoAccompanimentManagerRef, sfxSynthManagerRef].forEach(r => r.current?.allNotesOff());
+    // #ЗАЧЕМ: Полная тишина. Останавливаем ВСЕХ менеджеров.
+    [
+        accompanimentManagerV2Ref, melodyManagerV2Ref, bassManagerV2Ref, 
+        harmonyManagerRef, pianoAccompanimentManagerRef, sfxSynthManagerRef,
+        bassManagerRef, melodyManagerRef, accompanimentManagerRef
+    ].forEach(r => r.current?.allNotesOff());
+    
     sparklePlayerRef.current?.stopAll();
     [blackGuitarSamplerRef, telecasterSamplerRef, darkTelecasterSamplerRef, cs80SamplerRef].forEach(r => r.current?.stopAll());
     if (impulseTimerRef.current) { clearTimeout(impulseTimerRef.current); impulseTimerRef.current = null; }
@@ -456,6 +504,7 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
     if (part === 'pads' || part === 'effects') return;
     if (part === 'bass') {
       if (bassManagerV2Ref.current) (bassManagerV2Ref.current as any).setPreampGain(volume);
+      if (bassManagerRef.current) bassManagerRef.current.setPreampGain(volume);
       return; 
     }
     const gainNode = gainNodesRef.current[part as any];
