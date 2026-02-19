@@ -1,6 +1,6 @@
 /**
  * @file AuraGroove Music Worker (Architecture: "The Continuous Journey")
- * #ОБНОВЛЕНО (ПЛАН №431): Логика PROMENADE/BRIDGE удалена. Бесконечная игра MAIN сюит.
+ * #ОБНОВЛЕНО (ПЛАН №500): Расширенное логирование состава ансамбля и громкости.
  */
 import type { WorkerSettings, ScoreName, Mood, Genre, InstrumentPart } from '@/types/music';
 import { FractalMusicEngine } from '@/lib/fractal-music-engine';
@@ -11,10 +11,10 @@ let fractalMusicEngine: FractalMusicEngine | undefined;
 
 const getTimestamp = () => {
     const now = new Date();
-    const d = String(now.getDate()).padStart(2, '0');
     const h = String(now.getHours()).padStart(2, '0');
     const m = String(now.getMinutes()).padStart(2, '0');
-    return `[${d}:${h}:${m}]`;
+    const s = String(now.getSeconds()).padStart(2, '0');
+    return `[${h}:${m}:${s}]`;
 };
 
 const Scheduler = {
@@ -32,7 +32,8 @@ const Scheduler = {
             bass: { name: "bass_jazz_warm", volume: 0.7, technique: 'portamento' },
             melody: { name: "acousticGuitarSolo", volume: 0.8 },
             accompaniment: { name: "guitarChords", volume: 0.7 },
-            harmony: { name: "piano", volume: 0.6 }
+            harmony: { name: "piano", volume: 0.6 },
+            pianoAccompaniment: { name: "piano", volume: 0.5 }
         },
         textureSettings: {
             sparkles: { enabled: true, volume: 0.7 },
@@ -51,8 +52,6 @@ const Scheduler = {
     },
 
     initializeEngine(settings: WorkerSettings, force: boolean = false) {
-        // #ЗАЧЕМ: Переход к модели непрерывных основных сюит.
-        // #ЧТО: Логика BRIDGE/PROMENADE удалена. Всегда загружаем MAIN Blueprint.
         const blueprint = getBlueprint(settings.genre, settings.mood);
         console.log(`%c${getTimestamp()} [Engine] Loading MAIN Blueprint: ${blueprint.id}`, 'color: #FFD700; font-weight:bold;');
 
@@ -147,8 +146,6 @@ const Scheduler = {
     tick() {
         if (!this.isRunning || !fractalMusicEngine) return;
 
-        // #ЗАЧЕМ: Реализация бесконечной цепи основных сюит.
-        // #ЧТО: При завершении сюиты генерируется новый сид и немедленно запускается новая MAIN пьеса.
         if (this.barCount >= fractalMusicEngine.navigator!.totalBars) {
              console.log(`%c${getTimestamp()} [Chain] Suite ended. Seamlessly starting new piece...`, 'color: #4ade80; font-weight: bold;');
              this.settings.seed = Date.now(); 
@@ -189,9 +186,23 @@ const Scheduler = {
         }
         
         const sectionName = finalPayload.navInfo?.currentPart.name || 'Unknown';
-        const bassPreset = finalPayload.instrumentHints?.bass || 'none';
+        
+        // #ЗАЧЕМ: Расширенная телеметрия ансамбля.
+        // #ЧТО: Сводная строка с пресетами и громкостью для всех каналов.
+        const iS = this.settings.instrumentSettings;
+        const h = finalPayload.instrumentHints || {};
+        
+        const bassStr = `BASS: ${h.bass || 'none'}@${iS.bass.volume.toFixed(2)}`;
+        const melStr = `MEL: ${h.melody || 'none'}@${iS.melody.volume.toFixed(2)}`;
+        const accStr = `ACC: ${h.accompaniment || 'none'}@${iS.accompaniment.volume.toFixed(2)}`;
+        const harStr = `HAR: ${h.harmony || 'none'}@${iS.harmony.volume.toFixed(2)}`;
+        const pStr = `PNO: ${iS.pianoAccompaniment.volume.toFixed(2)}`;
+
         console.log(
-            `%c${getTimestamp()} [Bar ${this.barCount}] [${this.suiteType}] [${sectionName}] T:${finalPayload.tension.toFixed(2)} BPM:${this.settings.bpm} Res:${finalPayload.beautyScore.toFixed(2)} D:${counts.drums}, B:${counts.bass}, M:${counts.melody} | %cBASS: ${bassPreset}`,
+            `%c${getTimestamp()} [Bar ${this.barCount}] [${this.suiteType}] [${sectionName}] ` +
+            `T:${finalPayload.tension.toFixed(2)} BPM:${this.settings.bpm} Res:${finalPayload.beautyScore.toFixed(2)} ` + 
+            `D:${counts.drums}, B:${counts.bass}, M:${counts.melody} | ` +
+            `%c${bassStr} | ${melStr} | ${accStr} | ${harStr} | ${pStr}`,
             'color: #888;', 
             'color: #4ade80; font-weight: bold;' 
         );

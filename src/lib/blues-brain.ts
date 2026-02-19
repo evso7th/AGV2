@@ -1,4 +1,3 @@
-
 import {
   FractalEvent,
   GhostChord,
@@ -19,11 +18,10 @@ import {
 import { BLUES_SOLO_LICKS } from './assets/blues_guitar_solo';
 
 /**
- * #ЗАЧЕМ: Блюзовый Мозг V106.0 — "Sovereign Lead Update".
- * #ЧТО: 1. Гитара (Lead) никогда не пропускает ноты ("играет всё").
- *       2. Тембр Lead меняется от Tension: Black -> CS80 -> Shine On.
- *       3. Гармония Намерения: Скрипки на росте, Аккорды на спаде.
- *       4. Пианино подавлено и защищено от зацикливания.
+ * #ЗАЧЕМ: Блюзовый Мозг V106.1 — "Diagnostic Narrative Balance".
+ * #ЧТО: 1. Дроны баса ограничены целой нотой (4.0).
+ *       2. Пороги переключения баса: Drone (<0.4), Riff (0.4-0.7), Walking (>0.7).
+ *       3. Momentum-driven timbre routing.
  */
 
 export class BluesBrain {
@@ -83,7 +81,7 @@ export class BluesBrain {
       state = (state * 1664525 + 1013904223) % Math.pow(2, 32);
       return state / Math.pow(2, 32);
     };
-    return { next, nextInt: (max: number) => Math.floor(next() * max) };
+    return { next, nextInt: (max: number) => Math.floor(next() * next) };
   }
 
   public generateBar(
@@ -140,10 +138,6 @@ export class BluesBrain {
     return events;
   }
 
-  /**
-   * #ЗАЧЕМ: Реализация "Гармонии Намерения" V2.
-   * #ЧТО: Скрипки растут на положительной производной, Аккорды на отрицательной.
-   */
   private renderDerivativeHarmony(chord: GhostChord, epoch: number, tension: number): FractalEvent[] {
       const momentum = this.state.tensionMomentum;
       const events: FractalEvent[] = [];
@@ -152,15 +146,13 @@ export class BluesBrain {
       let probability = 0;
       let useViolin = false;
 
-      // #ЗАЧЕМ: Связь вероятности с динамикой намерения.
       if (momentum > 0.001) {
           useViolin = true;
-          probability = Math.min(0.85, momentum * 25); // Рост производной -> Скрипки
+          probability = Math.min(0.85, momentum * 25); 
       } else if (momentum < -0.001) {
           useViolin = false;
-          probability = Math.min(0.85, Math.abs(momentum) * 20); // Спад производной -> Аккорды
+          probability = Math.min(0.85, Math.abs(momentum) * 20); 
       } else {
-          // Статичное состояние: редкие аккорды в покое
           useViolin = false;
           probability = tension < 0.4 ? 0.3 : 0.1;
       }
@@ -253,10 +245,6 @@ export class BluesBrain {
       return entry ? entry[0] : deg;
   }
 
-  /**
-   * #ЗАЧЕМ: Динамическая маршрутизация тембра по Tension.
-   * #ЧТО: Black/Tele -> CS80 -> Shine On.
-   */
   private evaluateTimbralDramaturgy(tension: number, hints: InstrumentHints) {
     if (hints.melody) {
         if (tension <= 0.40) (hints as any).melody = 'blackAcoustic';
@@ -268,10 +256,6 @@ export class BluesBrain {
     }
   }
 
-  /**
-   * #ЗАЧЕМ: Режим "Суверенного Лидера".
-   * #ЧТО: Удалена дистилляция. Гитара играет всё.
-   */
   private renderMelodicSegment(epoch: number, chord: GhostChord, tension: number): FractalEvent[] {
     const barInCycle = epoch % 4;
     const barOffset = barInCycle * 12;
@@ -281,9 +265,6 @@ export class BluesBrain {
     const momentum = this.state.tensionMomentum;
 
     barNotes.forEach((n, i) => {
-        // #ЗАЧЕМ: "Если есть партия - она играется". 
-        // Логика пропуска нот удалена полностью.
-
         const nextNote = barNotes[i+1];
         let duration = n.d / 3;
         if (nextNote && (nextNote.t - (n.t + n.d)) < 1) {
@@ -386,14 +367,30 @@ export class BluesBrain {
     }
     const effectiveTension = tension + momentum * 3;
 
+    // #ЗАЧЕМ: Строгое соблюдение порогов поведения баса.
+    // #ЧТО: Дроны (<0.4), Риффы (0.4-0.7), Волкинг (>0.7).
     if (effectiveTension < 0.4) return this.renderDroneBass(chord, epoch);
     else if (effectiveTension <= 0.7) return this.renderRiffBass(chord, epoch, tension);
     else return this.renderWalkingBass(chord, epoch, tension);
   }
 
+  /**
+   * #ЗАЧЕМ: Дроны баса ограничены целой нотой.
+   * #ЧТО: duration снижена с 8.0 до 4.0 (1 такт).
+   */
   private renderDroneBass(chord: GhostChord, epoch: number): FractalEvent[] {
     if (epoch % 2 !== 0) return []; 
-    return [{ type: 'bass', note: Math.max(chord.rootNote - 12, this.BASS_FLOOR), time: 0, duration: 8.0, weight: 0.65, technique: 'pluck', dynamics: 'p', phrasing: 'legato', params: { attack: 0.5, release: 2.0, filterCutoff: 300 } }];
+    return [{ 
+        type: 'bass', 
+        note: Math.max(chord.rootNote - 12, this.BASS_FLOOR), 
+        time: 0, 
+        duration: 4.0, // WAS 8.0, NOW 4.0 (Max 1 bar)
+        weight: 0.65, 
+        technique: 'pluck', 
+        dynamics: 'p', 
+        phrasing: 'legato', 
+        params: { attack: 0.5, release: 2.0, filterCutoff: 300 } 
+    }];
   }
 
   private renderRiffBass(chord: GhostChord, epoch: number, tension: number): FractalEvent[] {
@@ -432,7 +429,6 @@ export class BluesBrain {
       const degrees = [0, isMin ? 3 : 4, 7, 10, 14];
       const momentum = this.state.tensionMomentum;
       
-      // #ЗАЧЕМ: Радикальное снижение доминирования пианино.
       const noteChance = 0.12 + (tension * 0.25); 
       [1.5, 3.5].forEach(beat => {
           if (this.random.next() < noteChance && momentum >= -0.01) { 
