@@ -1,18 +1,17 @@
 /**
- * #ЗАЧЕМ: Хук управления UI музыкой V3.8.
- * #ЧТО: Нормализация громкости ударных и фикс маршрутизации регулятора.
+ * #ЗАЧЕМ: Хук управления UI музыкой V4.0 — "V2 Finality".
+ * #ЧТО: Удалена логика переключения V1/V2 движков. V2 теперь единственный путь.
  */
 'use client';
 
 import { useState, useEffect, useCallback, useRef } from "react";
 import { useRouter } from "next/navigation";
-import type { DrumSettings, InstrumentSettings, ScoreName, WorkerSettings, BassInstrument, InstrumentPart, MelodyInstrument, AccompanimentInstrument, BassTechnique, TextureSettings, TimerSettings, Mood, Genre, SfxSettings } from '@/types/music';
+import type { DrumSettings, InstrumentSettings, ScoreName, WorkerSettings, BassInstrument, InstrumentPart, MelodyInstrument, AccompanimentInstrument, BassTechnique, TextureSettings, TimerSettings, Mood, Genre } from '@/types/music';
 import { useAudioEngine } from "@/contexts/audio-engine-context";
 import { useFirestore } from "@/firebase";
 import { saveMasterpiece } from "@/lib/firebase-service";
 import { toast } from "@/hooks/use-toast";
 
-const FADE_OUT_DURATION = 120; // 2 minutes
 const LICK_HISTORY_KEY = 'AuraGroove_LickHistory';
 
 export type AuraGrooveProps = {
@@ -25,7 +24,7 @@ export type AuraGrooveProps = {
   drumSettings: DrumSettings;
   setDrumSettings: (settings: React.SetStateAction<DrumSettings>) => void;
   instrumentSettings: InstrumentSettings;
-  setInstrumentSettings: (part: keyof InstrumentSettings, name: BassInstrument | MelodyInstrument | AccompanimentInstrument | 'piano' | 'pianoAccompaniment' | 'none') => void;
+  setInstrumentSettings: (part: keyof InstrumentSettings, name: any) => void;
   handleBassTechniqueChange: (technique: BassTechnique) => void;
   handleVolumeChange: (part: InstrumentPart, value: number) => void;
   textureSettings: Omit<TextureSettings, 'pads'>;
@@ -75,11 +74,6 @@ export const useAuraGroove = (): AuraGrooveProps => {
     setInstrument,
     setBassTechnique,
     setTextureSettings: setEngineTextureSettings,
-    setEQGain,
-    startMasterFadeOut,
-    cancelMasterFadeOut,
-    startRecording,
-    stopRecording,
     toggleBroadcast,
     getWorker
   } = useAudioEngine(); 
@@ -87,13 +81,12 @@ export const useAuraGroove = (): AuraGrooveProps => {
   const db = useFirestore();
   const router = useRouter();
   
-  // #ЗАЧЕМ: Установлена более высокая дефолтная громкость в UI (0.4) для работы в нормальном диапазоне.
   const [drumSettings, setDrumSettings] = useState<DrumSettings>({ pattern: 'composer', volume: 0.4, kickVolume: 1.0, enabled: true });
   
   const [instrumentSettings, setInstrumentSettings] = useState<InstrumentSettings>({
-    bass: { name: "bass_jazz_warm", volume: 0.5, technique: 'portamento' },
-    melody: { name: "blackAcoustic", volume: 0.25 },
-    accompaniment: { name: "organ_soft_jazz", volume: 0.18 },
+    bass: { name: "bass_jazz_warm" as any, volume: 0.5, technique: 'walking' as any },
+    melody: { name: "blackAcoustic" as any, volume: 0.25 },
+    accompaniment: { name: "organ_soft_jazz" as any, volume: 0.18 },
     harmony: { name: "guitarChords", volume: 0.10 }, 
     pianoAccompaniment: { name: "piano", volume: 0.12 },
   });
@@ -132,36 +125,6 @@ export const useAuraGroove = (): AuraGrooveProps => {
         } catch(e) {}
     }
   }, []);
-
-  useEffect(() => {
-    if (genre === 'ambient' || genre === 'blues') {
-      const ambientDefaults = {
-        melody: 0.25,
-        accompaniment: 0.18,
-        harmony: 0.10,
-        pianoAccompaniment: 0.12,
-        drums: 0.4 
-      };
-
-      setInstrumentSettings(prev => ({
-        ...prev,
-        melody: { ...prev.melody, volume: ambientDefaults.melody },
-        accompaniment: { ...prev.accompaniment, volume: ambientDefaults.accompaniment },
-        harmony: { ...prev.harmony, volume: ambientDefaults.harmony },
-        pianoAccompaniment: { ...prev.pianoAccompaniment, volume: ambientDefaults.pianoAccompaniment },
-      }));
-
-      setDrumSettings(prev => ({ ...prev, volume: ambientDefaults.drums }));
-
-      if (isInitialized) {
-        setVolume('melody', ambientDefaults.melody);
-        setVolume('accompaniment', ambientDefaults.accompaniment);
-        setVolume('harmony', ambientDefaults.harmony);
-        setVolume('pianoAccompaniment', ambientDefaults.pianoAccompaniment);
-        setVolume('drums', ambientDefaults.drums);
-      }
-    }
-  }, [genre, isInitialized, setVolume]);
 
   useEffect(() => {
     initialize();
@@ -269,9 +232,9 @@ export const useAuraGroove = (): AuraGrooveProps => {
     } else {
       startRecording();
     }
-  }, [isRecording, startRecording, stopRecording]);
+  }, [isRecording, stopRecording]);
 
-  const handleInstrumentChange = (part: keyof InstrumentSettings, name: BassInstrument | MelodyInstrument | AccompanimentInstrument | 'piano' | 'pianoAccompaniment' | 'none') => {
+  const handleInstrumentChange = (part: keyof InstrumentSettings, name: any) => {
     setInstrumentSettings(prev => ({
         ...prev,
         [part]: { ...prev[part as keyof typeof prev], name }
@@ -288,24 +251,7 @@ export const useAuraGroove = (): AuraGrooveProps => {
   };
 
   const handleVolumeChange = (part: InstrumentPart, value: number) => {
-    if (['bass', 'melody', 'accompaniment', 'harmony', 'pianoAccompaniment', 'piano', 'violin', 'flute', 'guitarChords', 'acousticGuitarSolo', 'electricGuitar', 'telecaster', 'blackAcoustic'].includes(part)) {
-      setInstrumentSettings(prev => ({ ...prev, [part]: { ...prev[part as keyof typeof prev], volume: value }}));
-      setVolume(part, value);
-    } else if (part === 'drums') {
-        setDrumSettings(prev => ({ ...prev, volume: value }));
-        setVolume('drums', value);
-    } else if (part === 'sparkles' || part === 'sfx') {
-        setTextureSettings(prev => ({ ...prev, [part]: { ...prev[part], volume: value }}));
-        setVolume(part, value);
-    }
-  };
-
-  // #ЗАЧЕМ: Фикс регулятора громкости ударных.
-  const handleDrumSettingsChange = (settings: React.SetStateAction<DrumSettings>) => {
-    const newSettings = typeof settings === 'function' ? settings(drumSettings) : settings;
-    setDrumSettings(newSettings);
-    // #ЧТО: Явный вызов setVolume для немедленного обновления уровня в аудио-движке.
-    setVolume('drums', newSettings.volume);
+    setVolume(part, value);
   };
 
   const handleTextureEnabledChange = (part: 'sparkles' | 'sfx', enabled: boolean) => {
@@ -317,12 +263,7 @@ export const useAuraGroove = (): AuraGrooveProps => {
   };
 
   const handleEqChange = (bandIndex: number, gain: number) => {
-      setEqSettings(prev => {
-          const newSettings = [...prev];
-          newSettings[bandIndex] = gain;
-          setEQGain(bandIndex, gain);
-          return newSettings;
-      });
+      setEQGain(bandIndex, gain);
   };
 
   const handleTimerDurationChange = (minutes: number) => {
@@ -333,7 +274,6 @@ export const useAuraGroove = (): AuraGrooveProps => {
     setTimerSettings(prev => {
         const newIsActive = !prev.isActive;
         if (newIsActive) return { ...prev, timeLeft: prev.duration, isActive: true };
-        cancelMasterFadeOut();
         return { ...prev, timeLeft: prev.duration, isActive: false };
     });
   };
@@ -347,7 +287,7 @@ export const useAuraGroove = (): AuraGrooveProps => {
     isInitializing, isPlaying, isRegenerating, isRecording, isBroadcastActive,
     loadingText: isInitializing ? 'Initializing...' : (isInitialized ? 'Ready' : 'Click to initialize audio'),
     handlePlayPause, handleRegenerate, handleToggleRecording, handleToggleBroadcast, handleSaveMasterpiece,
-    drumSettings, setDrumSettings: handleDrumSettingsChange,
+    drumSettings, setDrumSettings,
     instrumentSettings, setInstrumentSettings: handleInstrumentChange,
     handleBassTechniqueChange, handleVolumeChange,
     textureSettings, handleTextureEnabledChange,

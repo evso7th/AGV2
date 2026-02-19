@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from "react";
-import { SlidersHorizontal, Music, Pause, Speaker, FileMusic, Drum, GitBranch, Atom, Piano, Home, X, Sparkles, Sprout, LayoutGrid, Timer, Guitar, RefreshCw, Bot, Waves, Cog, Radio, ThumbsUp, TowerControl, Factory } from "lucide-react";
+import { SlidersHorizontal, Music, Pause, Speaker, FileMusic, Drum, Atom, Piano, Home, Sparkles, Sprout, LayoutGrid, Timer, RefreshCw, Bot, Waves, Radio, ThumbsUp, TowerControl, Factory } from "lucide-react";
 import Image from "next/image";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -14,9 +14,8 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import type { AuraGrooveProps } from "@/hooks/use-aura-groove";
 import { useRouter } from "next/navigation";
 import { formatTime, cn } from "@/lib/utils";
-import type { BassInstrument, MelodyInstrument, AccompanimentInstrument, Mood, Genre } from '@/types/music';
+import type { Mood, Genre } from '@/types/music';
 import { V2_PRESETS } from "@/lib/presets-v2";
-import { SYNTH_PRESETS } from "@/lib/synth-presets";
 import { BASS_PRESET_INFO } from "@/lib/bass-presets";
 
 const EQ_BANDS = [
@@ -36,6 +35,7 @@ const MOOD_CATEGORIES: Record<Mood, MoodCategory> = {
   melancholic: 'dark',
   dark: 'dark',
   anxious: 'dark',
+  gloomy: 'dark'
 };
 
 const MOOD_COLOR_CLASSES: Record<MoodCategory, string> = {
@@ -47,13 +47,12 @@ const MOOD_COLOR_CLASSES: Record<MoodCategory, string> = {
 
 export function AuraGrooveV2({
   isPlaying, isInitializing, isRecording, isBroadcastActive, handlePlayPause, handleRegenerate, handleToggleRecording, handleToggleBroadcast, handleSaveMasterpiece, drumSettings, setDrumSettings, instrumentSettings,
-  setInstrumentSettings, handleBassTechniqueChange, handleVolumeChange, textureSettings, handleTextureEnabledChange,
-  bpm, handleBpmChange, score, handleScoreChange, density, setDensity, handleGoHome,
+  setInstrumentSettings, handleVolumeChange, textureSettings, handleTextureEnabledChange,
+  bpm, score, handleScoreChange, density, setDensity, handleGoHome,
   isEqModalOpen, setIsEqModalOpen, eqSettings, handleEqChange,
   timerSettings, handleTimerDurationChange, handleToggleTimer,
   composerControlsInstruments, setComposerControlsInstruments,
   mood, setMood, genre, setGenre, isRegenerating,
-  introBars, setIntroBars,
 }: AuraGrooveProps) {
 
   const router = useRouter();
@@ -63,19 +62,14 @@ export function AuraGrooveV2({
     setIsClient(true);
   }, []);
 
-  const allV1InstrumentNames = Object.keys(SYNTH_PRESETS);
-  const v1BassInstrumentNames = Object.keys(BASS_PRESET_INFO);
-  const v1MelodyInstruments = allV1InstrumentNames.filter(k => !v1BassInstrumentNames.includes(k));
-
+  const bassInstrumentList = Object.keys(BASS_PRESET_INFO);
   const v2MelodyInstruments = Object.keys(V2_PRESETS).filter(k => V2_PRESETS[k as keyof typeof V2_PRESETS].type !== 'bass');
   
-  // All parts use V2-compatible list
-  const bassInstrumentList = v1BassInstrumentNames;
   const melodyInstrumentList = v2MelodyInstruments;
   const textureInstrumentList = v2MelodyInstruments; 
 
   const harmonyInstrumentList: ('piano' | 'guitarChords' | 'flute' | 'violin' | 'none')[] = ['piano', 'guitarChords', 'flute', 'violin', 'none'];
-  const moodList: Mood[] = ['epic', 'joyful', 'enthusiastic', 'melancholic', 'dark', 'anxious', 'dreamy', 'contemplative', 'calm'];
+  const moodList: Mood[] = ['epic', 'joyful', 'enthusiastic', 'melancholic', 'dark', 'anxious', 'dreamy', 'contemplative', 'calm', 'gloomy'];
   
   const isFractalStyle = score === 'neuro_f_matrix';
 
@@ -85,12 +79,7 @@ export function AuraGrooveV2({
 
   const displayNames: Record<string, string> = {
     'guitarChords': 'Acoustic Chords',
-    'electricGuitar': 'Muff Lead Guitar',
-    'ambientPad': 'Ambient Pad',
-    'acousticGuitar': 'Acoustic Folk',
     'neuro_f_matrix': 'Neuro F-Matrix',
-    'rnb': 'R&B',
-    'trance': 'SlowTrance', 
     'organ': 'Cathedral Organ',
     'organ_soft_jazz': 'Soft Jazz Organ',
     'synth': 'Emerald Pad',
@@ -196,11 +185,6 @@ export function AuraGrooveV2({
                       <Select value={score} onValueChange={(v) => handleScoreChange(v as any)} disabled={isInitializing || isPlaying}>
                           <SelectTrigger id="score-selector" className="col-span-2 h-8 text-xs"><SelectValue /></SelectTrigger>
                           <SelectContent>
-                              <SelectItem value="dreamtales">Dreamtales</SelectItem>
-                              <SelectItem value="evolve">Evolve</SelectItem>
-                              <SelectItem value="omega">Omega</SelectItem>
-                              <SelectItem value="journey">Journey</SelectItem>
-                              <SelectItem value="multeity">Multeity</SelectItem>
                               <SelectItem value="neuro_f_matrix">{displayNames['neuro_f_matrix'] || 'Neuro F-Matrix'}</SelectItem>
                           </SelectContent>
                       </Select>
@@ -245,7 +229,7 @@ export function AuraGrooveV2({
                   )}
                   <div className="grid grid-cols-[1fr_2fr_auto] items-center gap-2">
                     <Label htmlFor="bpm-slider" className="text-right text-xs">BPM</Label>
-                    <Slider id="bpm-slider" value={[bpm]} min={60} max={160} step={1} onValueChange={(v) => handleBpmChange(v[0])} className="col-span-1" disabled={isInitializing || isPlaying || composerControl}/>
+                    <Slider id="bpm-slider" value={[bpm]} min={60} max={160} step={1} className="col-span-1" disabled={true}/>
                     <span className="text-xs w-8 text-right font-mono">{bpm}</span>
                   </div>
                   <div className="grid grid-cols-3 items-center gap-2">
@@ -330,8 +314,7 @@ export function AuraGrooveV2({
                                             <SelectTrigger className="h-8 text-xs"><SelectValue /></SelectTrigger>
                                             <SelectContent>
                                                 {instrumentList.map(inst => {
-                                                    const preset = (V2_PRESETS as any)[inst] || (SYNTH_PRESETS as any)[inst];
-                                                    const displayName = preset?.name || displayNames[inst] || inst.charAt(0).toUpperCase() + inst.slice(1).replace(/([A-Z])/g, ' $1');
+                                                    const displayName = displayNames[inst] || inst.charAt(0).toUpperCase() + inst.slice(1).replace(/([A-Z])/g, ' $1');
                                                     return <SelectItem key={inst} value={inst} className="text-xs">{displayName}</SelectItem>
                                                 })}
                                             </SelectContent>
@@ -342,7 +325,7 @@ export function AuraGrooveV2({
                                 </div>
                                  <div className="flex items-center gap-2">
                                     <Label className="text-xs text-muted-foreground"><Speaker className="h-3 w-3 inline-block mr-1"/>Volume</Label>
-                                    <Slider value={[settings.volume]} max={1} step={0.05} onValueChange={(v) => handleVolumeChange(part as any, v[0])} disabled={isInitializing || ('name' in settings && settings.name === 'none')}/>
+                                    <Slider value={[settings.volume]} max={1} step={0.05} onValueChange={(v) => handleVolumeChange(part as any, v[0])} disabled={isInitializing || settings.name === 'none'}/>
                                     <span className="text-xs w-8 text-right font-mono">{Math.round(settings.volume * 100)}</span>
                                 </div>
                             </div>
