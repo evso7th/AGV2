@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { Midi } from '@tonejs/midi';
-import { Upload, FileMusic, Download, Search, Settings2, Sparkles, Tags, Heart, CloudUpload, Music, Waves, Drum, LayoutGrid, Factory, Trash2, BrainCircuit, Play, Volume2, PlayCircle, Square } from 'lucide-react';
+import { Upload, FileMusic, Download, Search, Settings2, Sparkles, Tags, Heart, CloudUpload, Music, Waves, Drum, LayoutGrid, Factory, Trash2, BrainCircuit, Play, Volume2, PlayCircle, Square, StopCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Label } from '@/components/ui/label';
@@ -106,11 +106,12 @@ const segmentTrackToCompactLicks = (track: any, root: number, role: IngestionRol
 export default function MidiIngestPage() {
     const router = useRouter();
     const db = useFirestore();
-    const { initialize, isInitialized, playRawEvents, setIsPlaying } = useAudioEngine();
+    const { initialize, isInitialized, playRawEvents, setIsPlaying, isPlaying } = useAudioEngine();
     
     const [isAnalyzing, setIsAnalyzing] = useState(false);
     const [isTransmitting, setIsTransmitting] = useState(false);
     const [midiFile, setMidiFile] = useState<Midi | null>(null);
+    const [fileName, setFileName] = useState<string>("");
     const [extractedLicks, setExtractedLicks] = useState<any[]>([]);
     const [selectedTrackIndex, setSelectedTrackIndex] = useState<number>(-1);
     const [selectedRole, setSelectedRole] = useState<IngestionRole>('melody');
@@ -119,11 +120,13 @@ export default function MidiIngestPage() {
     const [detectedKey, setDetectedKey] = useState<{ root: number, mode: string } | null>(null);
     const [origin, setOrigin] = useState("");
     const [trackRoles, setTrackRoles] = useState<Map<number, IngestionRole>>(new Map());
+    const [isPlayingFull, setIsPlayingFull] = useState(false);
 
     const onFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
         const file = e.target.files?.[0];
         if (!file) return;
 
+        setFileName(file.name);
         setIsAnalyzing(true);
         const reader = new FileReader();
         reader.onload = async (event) => {
@@ -175,15 +178,32 @@ export default function MidiIngestPage() {
      */
     const playFullMidi = async () => {
         if (!midiFile) return;
+
+        if (isPlayingFull) {
+            silenceLaboratory();
+            return;
+        }
+
         if (!isInitialized) {
             const success = await initialize();
             if (!success) return;
         }
 
-        const tempo = 72; // Reference tempo for conversion
+        const tempo = 72; 
         const beatDuration = 60 / tempo;
         const allEvents: FractalEvent[] = [];
         
+        // #ЗАЧЕМ: Устранение задержки в начале файла.
+        // #ЧТО: Вычисление времени самой первой ноты и вычитание его из всех остальных.
+        let minStartTime = Infinity;
+        midiFile.tracks.forEach(track => {
+            track.notes.forEach(note => {
+                if (note.time < minStartTime) minStartTime = note.time;
+            });
+        });
+
+        if (minStartTime === Infinity) minStartTime = 0;
+
         midiFile.tracks.forEach((track, trackIdx) => {
             const role = trackRoles.get(trackIdx) || 'melody';
             const mappedRole = role === 'accomp' ? 'accompaniment' : role;
@@ -192,8 +212,7 @@ export default function MidiIngestPage() {
                 allEvents.push({
                     type: mappedRole as any,
                     note: note.midi,
-                    // Конвертируем секунды в "псевдо-доли" для совместимости с scheduleEvents
-                    time: note.time / beatDuration,
+                    time: (note.time - minStartTime) / beatDuration,
                     duration: note.duration / beatDuration,
                     weight: note.velocity,
                     technique: (role === 'bass' ? 'pluck' : (role === 'drums' ? 'hit' : 'pick')) as any,
@@ -204,13 +223,15 @@ export default function MidiIngestPage() {
         });
 
         if (allEvents.length > 0) {
+            setIsPlayingFull(true);
             playRawEvents(allEvents);
-            toast({ title: "Ensemble Performance", description: `Conducting full score: ${midiFile.name}` });
+            toast({ title: "Ensemble Performance", description: `Conducting full score: ${fileName}` });
         }
     };
 
     const silenceLaboratory = () => {
         setIsPlaying(false);
+        setIsPlayingFull(false);
         toast({ title: "Sonic Silence", description: "All factory instruments disconnected." });
     };
 
@@ -235,7 +256,7 @@ export default function MidiIngestPage() {
             events.push({
                 type: role as any,
                 note: lick.role === 'drums' ? degIdx : root + (DEGREE_TO_SEMITONE[DEGREE_KEYS[degIdx]] || 0),
-                time: t / 3, // 12/8 grid (12 ticks = 4 beats)
+                time: t / 3, 
                 duration: d / 3,
                 weight: 0.8,
                 technique: TECHNIQUE_KEYS[techIdx] as any,
@@ -245,7 +266,7 @@ export default function MidiIngestPage() {
         }
 
         playRawEvents(events);
-        toast({ title: "Sonic Preview Active", description: `Playing ${lick.role} axiom on system factory.` });
+        toast({ title: "Axiom Preview", description: `Playing ${lick.role} fragment.` });
     };
 
     const transmitToGlobalMemory = async () => {
@@ -271,10 +292,12 @@ export default function MidiIngestPage() {
 
     const clearPreview = () => {
         setMidiFile(null);
+        setFileName("");
         setExtractedLicks([]);
         setSelectedTrackIndex(-1);
         setDetectedKey(null);
         setTrackRoles(new Map());
+        setIsPlayingFull(false);
     };
 
     return (
@@ -293,7 +316,7 @@ export default function MidiIngestPage() {
                         </div>
                     </div>
                     <div className="flex gap-2">
-                        {midiFile && (
+                        {(midiFile || isPlaying) && (
                             <Button variant="outline" size="sm" onClick={silenceLaboratory} className="text-xs border-destructive/30 hover:bg-destructive/10 text-destructive gap-2">
                                 <Square className="h-3 w-3 fill-current" /> Silence All
                             </Button>
@@ -352,7 +375,7 @@ export default function MidiIngestPage() {
                         <div className="lg:col-span-2 space-y-6">
                             <div className="flex justify-between items-end mb-2">
                                 <Label className="text-xs font-bold uppercase tracking-widest text-primary/80 flex items-center gap-2">
-                                    <LayoutGrid className="h-3 w-3" /> Ensemble Map {midiFile ? `(${midiFile.name})` : ''}
+                                    <LayoutGrid className="h-3 w-3" /> Ensemble Map {fileName ? `(${fileName})` : ''}
                                 </Label>
                                 <div className="flex gap-2">
                                     {midiFile && (
@@ -360,9 +383,13 @@ export default function MidiIngestPage() {
                                             size="sm" 
                                             variant="secondary" 
                                             onClick={playFullMidi}
-                                            className="h-8 text-[10px] uppercase font-bold tracking-widest gap-2 bg-primary/20 hover:bg-primary/30 text-primary border border-primary/30"
+                                            className={cn(
+                                                "h-8 text-[10px] uppercase font-bold tracking-widest gap-2 bg-primary/20 text-primary border border-primary/30 transition-all",
+                                                isPlayingFull ? "bg-destructive/20 text-destructive border-destructive/30 hover:bg-destructive/30" : "hover:bg-primary/30"
+                                            )}
                                         >
-                                            <PlayCircle className="h-4 w-4" /> Conduct Full Performance
+                                            {isPlayingFull ? <StopCircle className="h-4 w-4 fill-current" /> : <PlayCircle className="h-4 w-4" />}
+                                            {isPlayingFull ? "Stop Preview" : "Play Source File"}
                                         </Button>
                                     )}
                                     {detectedKey && (
