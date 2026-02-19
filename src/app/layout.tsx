@@ -2,6 +2,7 @@ import type {Metadata} from 'next';
 import './globals.css';
 import { Toaster } from "@/components/ui/toaster"
 import { FirebaseClientProvider } from '@/firebase';
+import { AudioEngineProvider } from '@/contexts/audio-engine-context';
 
 export const metadata: Metadata = {
   title: 'AuraGroove',
@@ -23,7 +24,9 @@ export default function RootLayout({
       </head>
       <body className="font-body antialiased bg-background text-foreground">
         <FirebaseClientProvider>
-          {children}
+          <AudioEngineProvider>
+            {children}
+          </AudioEngineProvider>
         </FirebaseClientProvider>
         <Toaster />
       </body>
