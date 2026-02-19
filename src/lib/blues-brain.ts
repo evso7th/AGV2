@@ -18,10 +18,10 @@ import {
 import { BLUES_SOLO_LICKS } from './assets/blues_guitar_solo';
 
 /**
- * #ЗАЧЕМ: Блюзовый Мозг V106.1 — "Diagnostic Narrative Balance".
- * #ЧТО: 1. Дроны баса ограничены целой нотой (4.0).
- *       2. Пороги переключения баса: Drone (<0.4), Riff (0.4-0.7), Walking (>0.7).
- *       3. Momentum-driven timbre routing.
+ * #ЗАЧЕМ: Блюзовый Мозг V107.0 — "Total Stagnation Guard".
+ * #ЧТО: 1. Детектор стагнации теперь следит за Lead, Accomp и Piano одновременно.
+ *       2. Метод generateBar возвращает LickID и MutationType для прозрачного логирования.
+ *       3. Принудительный сброс аксиомы при 3-х повторах любой партии.
  */
 
 export class BluesBrain {
@@ -37,6 +37,8 @@ export class BluesBrain {
   private state: BluesCognitiveState & { 
       introBassStyle: 'drone' | 'riff' | 'walking',
       lastPianoHash: string,
+      lastMelodyHash: string,
+      lastAccompHash: string,
       currentMutationType: string,
       lastTension: number,
       tensionMomentum: number
@@ -64,6 +66,8 @@ export class BluesBrain {
       lastPhraseHash: '',
       lastLickId: '',
       lastPianoHash: '',
+      lastMelodyHash: '',
+      lastAccompHash: '',
       blueNotePending: false,
       emotion: { melancholy: 0.8, darkness: 0.3 },
       stagnationStrikes: { micro: 0, meso: 0, macro: 0 },
@@ -81,7 +85,7 @@ export class BluesBrain {
       state = (state * 1664525 + 1013904223) % Math.pow(2, 32);
       return state / Math.pow(2, 32);
     };
-    return { next, nextInt: (max: number) => Math.floor(next() * next) };
+    return { next, nextInt: (max: number) => Math.floor(next() * max) };
   }
 
   public generateBar(
@@ -91,10 +95,9 @@ export class BluesBrain {
     dna: SuiteDNA,
     hints: InstrumentHints,
     lastEvents: FractalEvent[] = []
-  ): FractalEvent[] {
+  ): { events: FractalEvent[], lickId?: string, mutationType?: string } {
     const tension = dna.tensionMap?.[epoch] ?? 0.5;
     
-    // Momentum calculation
     this.state.tensionMomentum = tension - this.state.lastTension;
     this.state.lastTension = tension;
 
@@ -109,6 +112,7 @@ export class BluesBrain {
     const isStagnating = this.state.stagnationStrikes.micro >= 3;
 
     if (this.currentAxiom.length === 0 || navInfo.isPartTransition || isMutationBoundary || isStagnating) {
+        if (isStagnating) console.warn(`%c[Brain] Stagnation Strike! Refreshing Axiom at bar ${epoch}`, 'color: #ff4444; font-weight: bold;');
         this.refreshUnifiedMutation();
         this.selectNextAxiom(navInfo, dna, epoch);
         this.state.stagnationStrikes.micro = 0; 
@@ -116,26 +120,45 @@ export class BluesBrain {
 
     const events: FractalEvent[] = [];
 
-    if (hints.melody) events.push(...this.renderMelodicSegment(epoch, currentChord, tension));
-    if (hints.accompaniment) events.push(...this.renderDynamicAccompaniment(epoch, currentChord, tension));
+    // --- RENDER PARTS ---
+    const melodyEvents = hints.melody ? this.renderMelodicSegment(epoch, currentChord, tension) : [];
+    const accompEvents = hints.accompaniment ? this.renderDynamicAccompaniment(epoch, currentChord, tension) : [];
+    const pianoEvents = hints.pianoAccompaniment ? this.renderIntegratedPiano(epoch, currentChord, tension) : [];
+
+    // --- STAGNATION DETECTION (The Guard) ---
+    const mHash = melodyEvents.map(e => e.note).join('-');
+    const aHash = accompEvents.map(e => e.note).join('-');
+    const pHash = pianoEvents.map(e => e.note).join('-');
+
+    const anyRepeat = (mHash && mHash === this.state.lastMelodyHash) || 
+                      (aHash && aHash === this.state.lastAccompHash) || 
+                      (pHash && pHash === this.state.lastPianoHash);
+
+    if (anyRepeat) {
+        this.state.stagnationStrikes.micro++;
+    } else {
+        // Only decay strikes if everything is fresh
+        if (this.state.stagnationStrikes.micro > 0) this.state.stagnationStrikes.micro--;
+    }
+
+    this.state.lastMelodyHash = mHash;
+    this.state.lastAccompHash = aHash;
+    this.state.lastPianoHash = pHash;
+
+    // --- COLLECT ALL ---
+    events.push(...melodyEvents);
+    events.push(...accompEvents);
+    events.push(...pianoEvents);
+
     if (hints.bass) events.push(...this.renderIronBass(currentChord, epoch, tension, navInfo));
     if (hints.drums) events.push(...this.renderBluesBeat(epoch, tension, navInfo));
-    
-    if (hints.pianoAccompaniment) {
-        const pianoEvents = this.renderIntegratedPiano(epoch, currentChord, tension);
-        const pianoHash = pianoEvents.map(e => e.note).join('-');
-        if (pianoHash && this.state.lastPianoHash === pianoHash) {
-            this.state.stagnationStrikes.micro++;
-        }
-        this.state.lastPianoHash = pianoHash;
-        events.push(...pianoEvents);
-    }
+    if (hints.harmony) events.push(...this.renderDerivativeHarmony(currentChord, epoch, tension));
 
-    if (hints.harmony) {
-        events.push(...this.renderDerivativeHarmony(currentChord, epoch, tension));
-    }
-
-    return events;
+    return { 
+        events, 
+        lickId: this.currentLickId, 
+        mutationType: this.state.currentMutationType 
+    };
   }
 
   private renderDerivativeHarmony(chord: GhostChord, epoch: number, tension: number): FractalEvent[] {
@@ -159,7 +182,6 @@ export class BluesBrain {
 
       if (this.random.next() > probability) return [];
 
-      const timbre = useViolin ? 'violin' : 'guitarChords';
       const notes = useViolin ? [root + 12, root + 19] : [root, root + 7, root + 10];
 
       notes.forEach((n, i) => {
@@ -172,7 +194,6 @@ export class BluesBrain {
               technique: 'swell',
               dynamics: 'p',
               phrasing: 'legato',
-              chordName: chord.chordType === 'minor' ? 'Am' : 'E',
               params: { barCount: epoch, filterCutoff: 3000 }
           });
       });
@@ -367,24 +388,18 @@ export class BluesBrain {
     }
     const effectiveTension = tension + momentum * 3;
 
-    // #ЗАЧЕМ: Строгое соблюдение порогов поведения баса.
-    // #ЧТО: Дроны (<0.4), Риффы (0.4-0.7), Волкинг (>0.7).
     if (effectiveTension < 0.4) return this.renderDroneBass(chord, epoch);
     else if (effectiveTension <= 0.7) return this.renderRiffBass(chord, epoch, tension);
     else return this.renderWalkingBass(chord, epoch, tension);
   }
 
-  /**
-   * #ЗАЧЕМ: Дроны баса ограничены целой нотой.
-   * #ЧТО: duration снижена с 8.0 до 4.0 (1 такт).
-   */
   private renderDroneBass(chord: GhostChord, epoch: number): FractalEvent[] {
     if (epoch % 2 !== 0) return []; 
     return [{ 
         type: 'bass', 
         note: Math.max(chord.rootNote - 12, this.BASS_FLOOR), 
         time: 0, 
-        duration: 4.0, // WAS 8.0, NOW 4.0 (Max 1 bar)
+        duration: 4.0, 
         weight: 0.65, 
         technique: 'pluck', 
         dynamics: 'p', 

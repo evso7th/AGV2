@@ -46,9 +46,8 @@ interface EngineConfig {
 }
 
 /**
- * #ЗАЧЕМ: Фрактальный Музыкальный Движок V21.0 — "The True Birth Lottery".
- * #ЧТО: Лотерея интро теперь полностью рандомизирована. Все участники сцен 
- *       перемешиваются и распределяются по этапам вступления.
+ * #ЗАЧЕМ: Фрактальный Музыкальный Движок V22.0 — "Cognitive Feedback Propagation".
+ * #ЧТО: evolve теперь возвращает метаданные лика и мутации для прозрачного логирования.
  */
 export class FractalMusicEngine {
   public config: EngineConfig;
@@ -84,14 +83,7 @@ export class FractalMusicEngine {
       if(moodOrGenreChanged || seedChanged) this.initialize(true);
   }
 
-  /**
-   * #ЗАЧЕМ: Реализация непредсказуемого "рождения" ансамбля.
-   * #ЧТО: Сбор всех участников из всех сцен интро и их случайная перетасовка.
-   */
   private performIntroLottery(stages: any[]) {
-    console.log('%c[Engine] INITIALIZING BIRTH LOTTERY...', 'color: #00BFFF; font-weight: bold;');
-    
-    // Собираем всех УНИКАЛЬНЫХ участников из всех стадий
     const participantsMap = new Map<InstrumentPart, any>();
     stages.forEach(s => {
         if (s.instrumentation) {
@@ -104,7 +96,6 @@ export class FractalMusicEngine {
     const allParts = Array.from(participantsMap.keys());
     const shuffledParts = this.random.shuffle(allParts);
     
-    // Распределяем перемешанные части по сценам (равномерно)
     const stageCount = stages.length || 1;
     const partsPerStage = Math.ceil(shuffledParts.length / stageCount);
 
@@ -117,7 +108,6 @@ export class FractalMusicEngine {
         });
         
         this.introLotteryMap.set(i, stageInstr);
-        console.log(`[Lottery] Stage ${i+1}: Assigned ${stageParts.join(', ')}`);
     });
   }
 
@@ -138,7 +128,7 @@ export class FractalMusicEngine {
         this.blueprint.structure.parts,
         this.config.ancestor,
         this.config.sessionLickHistory,
-        this.blueprint.musical.bpm // #ЗАЧЕМ: Передача конфига темпа в генератор ДНК.
+        this.blueprint.musical.bpm
     );
 
     if (this.suiteDNA.seedLickId) {
@@ -158,12 +148,19 @@ export class FractalMusicEngine {
         this.ambientBrain = null;
     }
 
-    // #ЗАЧЕМ: Обновление темпа из ДНК.
     this.config.tempo = this.suiteDNA.baseTempo;
     this.isInitialized = true;
   }
 
-  public evolve(barDuration: number, barCount: number): { events: FractalEvent[], instrumentHints: InstrumentHints, beautyScore: number, tension: number, navInfo?: NavigationInfo } {
+  public evolve(barDuration: number, barCount: number): { 
+      events: FractalEvent[], 
+      instrumentHints: InstrumentHints, 
+      beautyScore: number, 
+      tension: number, 
+      navInfo?: NavigationInfo,
+      lickId?: string,
+      mutationType?: string
+  } {
     if (!this.navigator || !this.suiteDNA) return { events: [], instrumentHints: {}, beautyScore: 0, tension: 0.5 };
     this.epoch = barCount;
 
@@ -248,7 +245,15 @@ export class FractalMusicEngine {
     this.lastEvents = [...result.events];
     const beautyScore = this.calculateBeautyScore(result.events);
 
-    return { ...result, instrumentHints, beautyScore, tension, navInfo };
+    return { 
+        ...result, 
+        instrumentHints, 
+        beautyScore, 
+        tension, 
+        navInfo,
+        lickId: (result as any).lickId,
+        mutationType: (result as any).mutationType
+    };
   }
 
   private calculateBeautyScore(events: FractalEvent[]): number {
@@ -265,21 +270,18 @@ export class FractalMusicEngine {
       return pairCount > 0 ? totalResonance / pairCount : 0.5;
   }
   
-  private generateOneBar(barDuration: number, navInfo: NavigationInfo, instrumentHints: InstrumentHints): { events: FractalEvent[] } {
+  private generateOneBar(barDuration: number, navInfo: NavigationInfo, instrumentHints: InstrumentHints): { events: FractalEvent[], lickId?: string, mutationType?: string } {
     if (!this.suiteDNA) return { events: [] };
     const foundChord = this.suiteDNA.harmonyTrack.find(chord => this.epoch >= chord.bar && this.epoch < chord.bar + chord.durationBars);
     let currentChord: GhostChord = foundChord || this.previousChord || this.suiteDNA.harmonyTrack[0];
     this.previousChord = currentChord;
     
-    let allEvents: FractalEvent[] = [];
-
     if (this.config.genre === 'blues' && this.bluesBrain) {
-        allEvents = this.bluesBrain.generateBar(this.epoch, currentChord, navInfo, this.suiteDNA, instrumentHints, this.lastEvents);
+        return this.bluesBrain.generateBar(this.epoch, currentChord, navInfo, this.suiteDNA, instrumentHints, this.lastEvents);
     } else {
-        allEvents = createHarmonyAxiom(currentChord, this.config.mood, this.config.genre, this.random, this.epoch);
+        const allEvents = createHarmonyAxiom(currentChord, this.config.mood, this.config.genre, this.random, this.epoch);
+        return { events: allEvents };
     }
-
-    return { events: allEvents };
   }
 
   public generateExternalImpulse() {}

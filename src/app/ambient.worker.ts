@@ -1,6 +1,6 @@
 /**
  * @file AuraGroove Music Worker (Architecture: "The Continuous Journey")
- * #ОБНОВЛЕНО (ПЛАН №501): Возвращение нарративных логов (границы частей/бандлов).
+ * #ОБНОВЛЕНО (ПЛАН №503): Когнитивная прозрачность. Логирование LickID и Mutation.
  */
 import type { WorkerSettings, ScoreName, Mood, Genre, InstrumentPart } from '@/types/music';
 import { FractalMusicEngine } from '@/lib/fractal-music-engine';
@@ -152,7 +152,15 @@ const Scheduler = {
              this.initializeEngine(this.settings, true);
         }
 
-        let finalPayload: { events: FractalEvent[], instrumentHints: InstrumentHints, beautyScore: number, tension: number, navInfo?: NavigationInfo } = { 
+        let finalPayload: { 
+            events: FractalEvent[], 
+            instrumentHints: InstrumentHints, 
+            beautyScore: number, 
+            tension: number, 
+            navInfo?: NavigationInfo,
+            lickId?: string,
+            mutationType?: string
+        } = { 
             events: [], 
             instrumentHints: {}, 
             beautyScore: 0.5,
@@ -165,12 +173,14 @@ const Scheduler = {
             console.error('[Worker.tick] Generation error:', e);
         }
 
-        // #ЗАЧЕМ: Возврат нарративных логов (границы секций).
+        // #ЗАЧЕМ: Вывод нарративных логов с данными о лике и мутации.
         if (finalPayload.navInfo) {
             const navLog = fractalMusicEngine.navigator?.formatLogMessage(
                 finalPayload.navInfo, 
                 finalPayload.instrumentHints, 
-                this.barCount
+                this.barCount,
+                finalPayload.lickId,
+                finalPayload.mutationType
             );
             if (navLog) console.log(navLog, 'color: #DA70D6; font-weight: bold;');
         }
@@ -197,7 +207,6 @@ const Scheduler = {
         
         const sectionName = finalPayload.navInfo?.currentPart.name || 'Unknown';
         
-        // #ЗАЧЕМ: Расширенная телеметрия ансамбля.
         const iS = this.settings.instrumentSettings;
         const h = finalPayload.instrumentHints || {};
         

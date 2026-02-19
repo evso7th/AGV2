@@ -60,7 +60,6 @@ function formatInstrumentation(
 
 /**
  * A class dedicated to navigating the hierarchical structure of a MusicBlueprint.
- * It tracks the current position (Part, Bundle) based on the bar count ('epoch').
  */
 export class BlueprintNavigator {
     public blueprint: MusicBlueprint;
@@ -114,7 +113,6 @@ export class BlueprintNavigator {
         }
 
         this.partBoundaries.sort((a,b) => a.startBar - b.startBar);
-        console.log('[NAVIGATOR] Initialized with part boundaries:', this.partBoundaries.map(p => ({id: p.part.id, start: p.startBar, end: p.endBar, bundles: p.bundleBoundaries.length})));
     }
     
     private createPartBoundary(part: BlueprintPart, startBar: number, duration: number): PartBoundary {
@@ -158,19 +156,11 @@ export class BlueprintNavigator {
     }
 
 
-    /**
-     * Calculates the current position in the blueprint for a given bar number.
-     * @param currentBar The current bar number (epoch).
-     * @returns NavigationInfo object with details about the current position and transitions.
-     */
     public tick(currentBar: number): NavigationInfo | null {
         const effectiveBar = currentBar % this.totalBars;
 
         const partInfo = this.partBoundaries.find(p => effectiveBar >= p.startBar && effectiveBar <= p.endBar);
-        if (!partInfo) {
-            console.error(`[NAVIGATOR @ Bar ${effectiveBar}] CRITICAL: Could not find part for current bar.`);
-            return null;
-        }
+        if (!partInfo) return null;
 
         if (partInfo.bundleBoundaries.length === 0) {
             const isPartTransition = effectiveBar === partInfo.startBar;
@@ -186,21 +176,7 @@ export class BlueprintNavigator {
         }
 
         const bundleInfo = partInfo.bundleBoundaries.find(b => effectiveBar >= b.startBar && effectiveBar <= b.endBar);
-        if (!bundleInfo) {
-            console.error(`[NAVIGATOR @ Bar ${effectiveBar}] CRITICAL: Could not find bundle in part ${partInfo.part.id}`);
-             if (partInfo.bundleBoundaries.length > 0) {
-                 return {
-                    currentPart: partInfo.part,
-                    currentBundle: partInfo.bundleBoundaries[0].bundle,
-                    isPartTransition: effectiveBar === partInfo.startBar,
-                    isBundleTransition: false,
-                    logMessage: `[NAVIGATOR @ Bar ${effectiveBar}] Fallback to first bundle.`,
-                    currentPartStartBar: partInfo.startBar,
-                    currentPartEndBar: partInfo.endBar
-                 };
-             }
-            return null;
-        }
+        if (!bundleInfo) return null;
 
         const isPartTransition = effectiveBar === partInfo.startBar;
         const isBundleTransition = !isPartTransition && effectiveBar === bundleInfo.startBar;
@@ -218,13 +194,17 @@ export class BlueprintNavigator {
     
     /**
      * #ЗАЧЕМ: Генератор подробного отчета о состоянии навигации.
-     * #ЧТО: Возвращает детализированную строку только на границах частей и бандлов.
+     * #ЧТО: Теперь выводит LickID и тип мутации для когнитивной прозрачности.
      */
-    public formatLogMessage(navInfo: NavigationInfo, hints: InstrumentHints, currentBar: number): string | null {
+    public formatLogMessage(
+        navInfo: NavigationInfo, 
+        hints: InstrumentHints, 
+        currentBar: number, 
+        lickId?: string, 
+        mutationType?: string
+    ): string | null {
         if (!navInfo) return null;
 
-        // #ЗАЧЕМ: Защита от спама в консоль.
-        // #ЧТО: Логируем только при фактической смене контекста.
         if (!navInfo.isPartTransition && !navInfo.isBundleTransition) return null;
 
         const partInfo = this.partBoundaries.find(p => p.part.id === navInfo.currentPart.id);
@@ -237,7 +217,7 @@ export class BlueprintNavigator {
         const bundleDuration = bundleInfo.endBar - bundleInfo.startBar + 1;
         
         const transitionType = navInfo.isPartTransition ? "Part" : "Bundle";
-        const mutationType = navInfo.isPartTransition ? "MACRO" : "micro";
+        const mutationScope = navInfo.isPartTransition ? "MACRO" : "micro";
 
         const rulesLog: string[] = [];
         if (partInfo.part.instrumentRules) {
@@ -256,12 +236,17 @@ export class BlueprintNavigator {
         
         const instrumentationLog = formatInstrumentation(partInfo.part.instrumentation, partInfo.part.instrumentRules?.drums, hints.melody as MelodyInstrument);
 
-        // #ОБНОВЛЕНО (ПЛАН №450): Добавлено название файла Блюпринта в лог.
-        return `%c[NAVIGATOR @ Bar ${currentBar}] ${transitionType} Transition: ${partInfo.part.id} (${partDuration} bars) / ${bundleInfo.bundle.id} (${bundleDuration} bars)\n` +
+        let output = `%c[NAVIGATOR @ Bar ${currentBar}] ${transitionType} Transition: ${partInfo.part.id} (${partDuration} bars) / ${bundleInfo.bundle.id} (${bundleDuration} bars)\n` +
                      `  - Context: Genre: ${this.genre}, Mood: ${this.mood}, BP: ${this.blueprint.name} (${this.blueprint.id})\n` +
                      `  - ${instrumentationLog}\n` +
                      `  - Rules: ${rulesLog.join(' | ')}\n` +
-                     `  - Mutation: ${mutationType}`;
+                     `  - Mutation: ${mutationScope}`;
+
+        // #ЗАЧЕМ: Вывод когнитивных метаданных.
+        if (lickId) output += ` | Lick: ${lickId}`;
+        if (mutationType) output += ` | Transform: ${mutationType}`;
+
+        return output;
     }
 }
 
