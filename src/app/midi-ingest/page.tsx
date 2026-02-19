@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { Midi } from '@tonejs/midi';
-import { Upload, FileMusic, Download, Search, Settings2, Sparkles, Tags, Heart, CloudUpload, Music, Waves, Drum, LayoutGrid, Factory, Trash2, BrainCircuit, Play, Volume2 } from 'lucide-react';
+import { Upload, FileMusic, Download, Search, Settings2, Sparkles, Tags, Heart, CloudUpload, Music, Waves, Drum, LayoutGrid, Factory, Trash2, BrainCircuit, Play, Volume2, PlayCircle, Square } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Label } from '@/components/ui/label';
@@ -106,7 +106,7 @@ const segmentTrackToCompactLicks = (track: any, root: number, role: IngestionRol
 export default function MidiIngestPage() {
     const router = useRouter();
     const db = useFirestore();
-    const { initialize, isInitialized, playRawEvents } = useAudioEngine();
+    const { initialize, isInitialized, playRawEvents, setIsPlaying } = useAudioEngine();
     
     const [isAnalyzing, setIsAnalyzing] = useState(false);
     const [isTransmitting, setIsTransmitting] = useState(false);
@@ -169,6 +169,51 @@ export default function MidiIngestPage() {
         }
     }, [midiFile, selectedTrackIndex, selectedRole, detectedKey, origin, selectedMood, selectedGenre]);
 
+    /**
+     * #ЗАЧЕМ: Проигрывание всего MIDI файла целиком.
+     * #ЧТО: ПЛАН №494 — Сбор всех дорожек в один массив событий.
+     */
+    const playFullMidi = async () => {
+        if (!midiFile) return;
+        if (!isInitialized) {
+            const success = await initialize();
+            if (!success) return;
+        }
+
+        const tempo = 72; // Reference tempo for conversion
+        const beatDuration = 60 / tempo;
+        const allEvents: FractalEvent[] = [];
+        
+        midiFile.tracks.forEach((track, trackIdx) => {
+            const role = trackRoles.get(trackIdx) || 'melody';
+            const mappedRole = role === 'accomp' ? 'accompaniment' : role;
+
+            track.notes.forEach(note => {
+                allEvents.push({
+                    type: mappedRole as any,
+                    note: note.midi,
+                    // Конвертируем секунды в "псевдо-доли" для совместимости с scheduleEvents
+                    time: note.time / beatDuration,
+                    duration: note.duration / beatDuration,
+                    weight: note.velocity,
+                    technique: (role === 'bass' ? 'pluck' : (role === 'drums' ? 'hit' : 'pick')) as any,
+                    dynamics: 'mf',
+                    phrasing: 'legato'
+                });
+            });
+        });
+
+        if (allEvents.length > 0) {
+            playRawEvents(allEvents);
+            toast({ title: "Ensemble Performance", description: `Conducting full score: ${midiFile.name}` });
+        }
+    };
+
+    const silenceLaboratory = () => {
+        setIsPlaying(false);
+        toast({ title: "Sonic Silence", description: "All factory instruments disconnected." });
+    };
+
     const auralizeLick = async (lick: any) => {
         if (!isInitialized) {
             const success = await initialize();
@@ -178,7 +223,6 @@ export default function MidiIngestPage() {
         const roleMap: Record<string, string> = { 'melody': 'melody', 'bass': 'bass', 'accomp': 'accompaniment', 'drums': 'drums' };
         const role = roleMap[lick.role] || 'melody';
         
-        // Превращаем компактный лик в события FractalEvent
         const events: FractalEvent[] = [];
         const root = detectedKey?.root || 60;
 
@@ -190,7 +234,7 @@ export default function MidiIngestPage() {
 
             events.push({
                 type: role as any,
-                note: root + (DEGREE_TO_SEMITONE[DEGREE_KEYS[degIdx]] || 0),
+                note: lick.role === 'drums' ? degIdx : root + (DEGREE_TO_SEMITONE[DEGREE_KEYS[degIdx]] || 0),
                 time: t / 3, // 12/8 grid (12 ticks = 4 beats)
                 duration: d / 3,
                 weight: 0.8,
@@ -242,15 +286,22 @@ export default function MidiIngestPage() {
                             <Factory className="h-8 w-8 text-primary" />
                         </div>
                         <div>
-                            <CardTitle className="text-3xl font-bold tracking-tight">Heritage Alchemist v6.0</CardTitle>
+                            <CardTitle className="text-3xl font-bold tracking-tight">Heritage Alchemist v7.0</CardTitle>
                             <CardDescription className="text-muted-foreground flex items-center gap-2">
-                                <Volume2 className="h-3 w-3" /> Sonic Preview Enabled
+                                <Volume2 className="h-3 w-3" /> Full Ensemble Control Active
                             </CardDescription>
                         </div>
                     </div>
-                    <Button variant="outline" onClick={() => router.push('/aura-groove')} className="text-xs hover:bg-primary hover:text-primary-foreground transition-all">
-                        Return to Studio
-                    </Button>
+                    <div className="flex gap-2">
+                        {midiFile && (
+                            <Button variant="outline" size="sm" onClick={silenceLaboratory} className="text-xs border-destructive/30 hover:bg-destructive/10 text-destructive gap-2">
+                                <Square className="h-3 w-3 fill-current" /> Silence All
+                            </Button>
+                        )}
+                        <Button variant="outline" onClick={() => router.push('/aura-groove')} className="text-xs hover:bg-primary hover:text-primary-foreground transition-all">
+                            Return to Studio
+                        </Button>
+                    </div>
                 </CardHeader>
                 <CardContent className="space-y-8 pt-8">
                     <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
@@ -303,12 +354,24 @@ export default function MidiIngestPage() {
                                 <Label className="text-xs font-bold uppercase tracking-widest text-primary/80 flex items-center gap-2">
                                     <LayoutGrid className="h-3 w-3" /> Ensemble Map {midiFile ? `(${midiFile.name})` : ''}
                                 </Label>
-                                {detectedKey && (
-                                    <div className="px-3 py-1 bg-primary/10 rounded-full border border-primary/20 flex items-center gap-2">
-                                        <span className="text-[10px] text-muted-foreground font-bold">KEY:</span>
-                                        <span className="text-xs font-bold text-primary">{detectedKey.root} {detectedKey.mode.toUpperCase()}</span>
-                                    </div>
-                                )}
+                                <div className="flex gap-2">
+                                    {midiFile && (
+                                        <Button 
+                                            size="sm" 
+                                            variant="secondary" 
+                                            onClick={playFullMidi}
+                                            className="h-8 text-[10px] uppercase font-bold tracking-widest gap-2 bg-primary/20 hover:bg-primary/30 text-primary border border-primary/30"
+                                        >
+                                            <PlayCircle className="h-4 w-4" /> Conduct Full Performance
+                                        </Button>
+                                    )}
+                                    {detectedKey && (
+                                        <div className="px-3 py-1 bg-primary/10 rounded-full border border-primary/20 flex items-center gap-2">
+                                            <span className="text-[10px] text-muted-foreground font-bold">KEY:</span>
+                                            <span className="text-xs font-bold text-primary">{detectedKey.root} {detectedKey.mode.toUpperCase()}</span>
+                                        </div>
+                                    )}
+                                </div>
                             </div>
                             
                             <ScrollArea className="h-[320px] rounded-2xl border bg-black/30 p-3 shadow-inner">
