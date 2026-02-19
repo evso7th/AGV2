@@ -3,7 +3,7 @@ import type { Note } from "@/types/music";
 
 /**
  * #ЗАЧЕМ: Сэмплер Yamaha CS-80 (Guitar Mode).
- * #ЧТО: ПЛАН №467 — Полный отказ от обрезания длительности. Ноты затухают сами.
+ * #ЧТО: ПЛАН №493 — Естественные хвосты и выбор слоев на основе длительности такта.
  */
 
 const CS80_NOTE_NAMES = ["c", "c", "d", "eb", "e", "f", "f", "g", "g", "a", "bb", "b"];
@@ -72,22 +72,31 @@ export class CS80GuitarSampler {
         }
     }
 
-    public schedule(notes: Note[], time: number, forceShort: boolean = false) {
+    /**
+     * #ЗАЧЕМ: Выбор слоя на основе длительности ноты относительно такта.
+     * #ЧТО: Сэмплы 'long' используются только если note.duration >= 1 bar.
+     */
+    public schedule(notes: Note[], time: number, tempo: number = 72) {
         if (!this.isInitialized) return;
+        
+        // Длительность одного такта в секундах
+        const barDuration = (60 / tempo) * 4;
 
         notes.forEach(note => {
             const layer = this.buffers.get(note.midi);
+            const isLong = (note.duration || 0) >= barDuration;
+
             if (!layer) {
-                this.playClosest(note, time, forceShort);
+                this.playClosest(note, time, isLong);
                 return;
             }
 
-            const buffer = (forceShort || (note.duration || 0) < 3.0) ? layer.norm : layer.long;
+            const buffer = isLong ? layer.long : layer.norm;
             this.playSample(buffer, note.midi, note.midi, time + note.time, note.velocity || 0.7);
         });
     }
 
-    private playClosest(note: Note, time: number, forceShort: boolean = false) {
+    private playClosest(note: Note, time: number, isLong: boolean) {
         const keys = Array.from(this.buffers.keys());
         if (keys.length === 0) return;
         const closestMidi = keys.reduce((prev, curr) => 
@@ -96,7 +105,7 @@ export class CS80GuitarSampler {
         const layer = this.buffers.get(closestMidi);
         if (!layer) return;
 
-        const buffer = (forceShort || (note.duration || 0) < 3.0) ? layer.norm : layer.long;
+        const buffer = isLong ? layer.long : layer.norm;
         this.playSample(buffer, closestMidi, note.midi, time + note.time, note.velocity || 0.7);
     }
 
@@ -116,7 +125,8 @@ export class CS80GuitarSampler {
         gainNode.gain.linearRampToValueAtTime(velocity, startTime + 0.01);
 
         // #ЗАЧЕМ: Закон Сохранения Хвостов.
-        // #ЧТО: Удалено обрезание по note.duration.
+        // #ЧТО: Мы не вызываем stop(). Сэмпл звучит до конца буфера.
+        // Добавлен пассивный предохранитель на 15-й секунде.
         gainNode.gain.setTargetAtTime(0, startTime + 15.0, 0.8);
 
         source.start(startTime);

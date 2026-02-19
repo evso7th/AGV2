@@ -1,3 +1,4 @@
+
 import type { FractalEvent, AccompanimentInstrument } from '@/types/fractal';
 import type { Note } from "@/types/music";
 import { buildMultiInstrument } from './instrument-factory';
@@ -107,7 +108,8 @@ export class MelodySynthManagerV2 {
 
         // --- Sampler Routing ---
         if (instrumentHint === 'cs80') {
-            this.cs80Sampler.schedule(notesToPlay, barStartTime, this.partName === 'bass');
+            // #ЗАЧЕМ: Передача темпа для выбора слоев norm/long.
+            this.cs80Sampler.schedule(notesToPlay, barStartTime, tempo);
             return;
         }
 
@@ -157,7 +159,6 @@ export class MelodySynthManagerV2 {
             const noteOnTime = barStartTime + note.time;
             
             // #ЗАЧЕМ: Применение динамической спектральной гигиены (Plan 408).
-            // #ЧТО: Команды фильтрации передаются в инструмент в начале каждой фразы.
             if (note.params?.filterCutoff && this.synth.setParam) {
                 this.synth.setParam('filterCutoff', note.params.filterCutoff);
                 this.synth.setParam('lpf', note.params.filterCutoff);
