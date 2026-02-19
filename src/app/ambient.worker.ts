@@ -1,6 +1,6 @@
 /**
  * @file AuraGroove Music Worker (Architecture: "The Continuous Journey")
- * #ОБНОВЛЕНО (ПЛАН №500): Расширенное логирование состава ансамбля и громкости.
+ * #ОБНОВЛЕНО (ПЛАН №501): Возвращение нарративных логов (границы частей/бандлов).
  */
 import type { WorkerSettings, ScoreName, Mood, Genre, InstrumentPart } from '@/types/music';
 import { FractalMusicEngine } from '@/lib/fractal-music-engine';
@@ -165,6 +165,16 @@ const Scheduler = {
             console.error('[Worker.tick] Generation error:', e);
         }
 
+        // #ЗАЧЕМ: Возврат нарративных логов (границы секций).
+        if (finalPayload.navInfo) {
+            const navLog = fractalMusicEngine.navigator?.formatLogMessage(
+                finalPayload.navInfo, 
+                finalPayload.instrumentHints, 
+                this.barCount
+            );
+            if (navLog) console.log(navLog, 'color: #DA70D6; font-weight: bold;');
+        }
+
         if (finalPayload.beautyScore > 0.90 && this.barCount > 8) {
             self.postMessage({ 
                 type: 'HIGH_RESONANCE_DETECTED', 
@@ -188,7 +198,6 @@ const Scheduler = {
         const sectionName = finalPayload.navInfo?.currentPart.name || 'Unknown';
         
         // #ЗАЧЕМ: Расширенная телеметрия ансамбля.
-        // #ЧТО: Сводная строка с пресетами и громкостью для всех каналов.
         const iS = this.settings.instrumentSettings;
         const h = finalPayload.instrumentHints || {};
         
