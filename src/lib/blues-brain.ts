@@ -18,10 +18,10 @@ import {
 import { BLUES_SOLO_LICKS } from './assets/blues_guitar_solo';
 
 /**
- * #ЗАЧЕМ: Блюзовый Мозг V103.0 — "The Cognitive Leap".
- * #ЧТО: 1. Внедрена Дистилляция Напряжения (Tension Distillation) — Лик больше не играет "как есть".
- *       2. Реализована логика "Выдоха" (Exhale Logic) — ноты затухают к концу фразы.
- *       3. Фрактальное ветвление: добавление "теней" при высоком напряжении.
+ * #ЗАЧЕМ: Блюзовый Мозг V104.0 — "Momentum Dynamics".
+ * #ЧТО: 1. Внедрена динамика Намерения (dTension).
+ *       2. Реализована логика "Предчувствия" (Anticipation) при росте напряжения.
+ *       3. Реализована логика "Облегчения" (Resolution) при спаде.
  */
 
 export class BluesBrain {
@@ -37,7 +37,9 @@ export class BluesBrain {
   private state: BluesCognitiveState & { 
       introBassStyle: 'drone' | 'riff' | 'walking',
       lastPianoHash: string,
-      currentMutationType: string
+      currentMutationType: string,
+      lastTension: number,
+      tensionMomentum: number
   };
   private sfxPlayedInPart = false;
   private currentPartId = '';
@@ -67,7 +69,9 @@ export class BluesBrain {
       stagnationStrikes: { micro: 0, meso: 0, macro: 0 },
       vaccineActive: { part: 'ensemble', type: 'jitter' },
       introBassStyle: selectedIntroStyle,
-      currentMutationType: 'jitter'
+      currentMutationType: 'jitter',
+      lastTension: 0.5,
+      tensionMomentum: 0
     };
   }
 
@@ -90,6 +94,11 @@ export class BluesBrain {
   ): FractalEvent[] {
     const tension = dna.tensionMap?.[epoch] ?? 0.5;
     
+    // #ЗАЧЕМ: Вычисление Momentum (Намерения).
+    // #ЧТО: Сравнение текущего напряжения с предыдущим тактом.
+    this.state.tensionMomentum = tension - this.state.lastTension;
+    this.state.lastTension = tension;
+
     if (navInfo.currentPart.id !== this.currentPartId) {
         this.currentPartId = navInfo.currentPart.id;
         this.sfxPlayedInPart = false;
@@ -200,10 +209,9 @@ export class BluesBrain {
   }
 
   /**
-   * #ЗАЧЕМ: Когнитивный рендер мелодии.
-   * #ЧТО: 1. Дистилляция — при низком tension играем только каждую 2-ю ноту.
-   *       2. Фрактальные тени — при высоком tension добавляем интервалы.
-   *       3. Выдох — затухание веса к концу фразы.
+   * #ЗАЧЕМ: Когнитивный рендер мелодии с Momentum.
+   * #ЧТО: 1. Дистилляция Напряжения.
+   *       2. Намеренная Артикуляция: dT > 0 -> Staccato (нервозность), dT < 0 -> Legato (облегчение).
    */
   private renderMelodicSegment(epoch: number, chord: GhostChord, tension: number): FractalEvent[] {
     const barInCycle = epoch % 4;
@@ -211,11 +219,11 @@ export class BluesBrain {
     const barNotes = this.currentAxiom.filter(n => n.t >= barOffset && n.t < barOffset + 12);
     
     const events: FractalEvent[] = [];
+    const momentum = this.state.tensionMomentum;
 
     barNotes.forEach((n, i) => {
-        // 1. КОГНИТИВНАЯ ДИСТИЛЛЯЦИЯ
-        // Если напряжение низкое, "забываем" промежуточные ноты
-        if (tension < 0.45 && i % 2 !== 0) return;
+        // Дистилляция: при низком tension и отсутствии роста — реже ноты
+        if (tension < 0.45 && momentum <= 0 && i % 2 !== 0) return;
 
         const nextNote = barNotes[i+1];
         let duration = n.d / 3;
@@ -223,14 +231,18 @@ export class BluesBrain {
             duration += 0.15; 
         }
 
-        // 2. ВЫДОХ (Exhale)
-        // Вес нот падает к концу длинной фразы (4 такта = 48 тиков)
+        // Влияние Momentum на длительность (Выдох/Вдох)
+        if (momentum < 0) duration *= (1.0 + Math.abs(momentum) * 5); // Облегчение: ноты тянутся
+        if (momentum > 0) duration *= (1.0 - momentum * 3); // Напряжение: ноты острее
+
         const phraseProgress = (n.t % 48) / 48;
         const exhaleModifier = 1.0 - (phraseProgress * 0.3);
 
         const isAccent = n.t % 6 === 0;
         const baseWeight = isAccent ? 0.92 : 0.75;
-        const finalWeight = baseWeight * exhaleModifier * (0.9 + this.random.next() * 0.2);
+        // Рост напряжения добавляет веса каждой ноте
+        const momentumBoost = momentum > 0 ? momentum * 2 : 0;
+        const finalWeight = (baseWeight + momentumBoost) * exhaleModifier * (0.9 + this.random.next() * 0.2);
 
         const event: FractalEvent = {
             type: 'melody',
@@ -239,19 +251,17 @@ export class BluesBrain {
             duration: duration,
             weight: finalWeight,
             technique: n.tech || 'pick',
-            dynamics: tension > 0.7 ? 'mf' : 'p',
-            phrasing: 'legato',
+            dynamics: (tension > 0.7 || momentum > 0.05) ? 'mf' : 'p',
+            phrasing: momentum < -0.02 ? 'legato' : (momentum > 0.02 ? 'staccato' : 'detached'),
             params: { barCount: epoch }
         };
 
         events.push(event);
 
-        // 3. ФРАКТАЛЬНЫЕ ТЕНИ
-        // При пиковом напряжении добавляем вторую ноту (интервал)
-        if (tension > 0.82 && this.random.next() < 0.4) {
+        if ((tension > 0.82 || momentum > 0.1) && this.random.next() < 0.4) {
             events.push({
                 ...event,
-                note: event.note - 12, // тень октавой ниже
+                note: event.note - 12,
                 weight: event.weight * 0.6,
                 dynamics: 'p'
             });
@@ -262,8 +272,12 @@ export class BluesBrain {
   }
 
   private renderDynamicAccompaniment(epoch: number, chord: GhostChord, tension: number): FractalEvent[] {
-    if (tension < 0.4) return this.renderSoftPillows(epoch, chord, tension);
-    else if (tension <= 0.7) return this.renderArpPad(epoch, chord, tension);
+    const momentum = this.state.tensionMomentum;
+    // Если напряжение быстро растет, переходим в Arp раньше
+    const effectiveTension = tension + momentum * 5;
+
+    if (effectiveTension < 0.4) return this.renderSoftPillows(epoch, chord, tension);
+    else if (effectiveTension <= 0.7) return this.renderArpPad(epoch, chord, tension);
     else return this.renderPowerChords(epoch, chord, tension);
   }
 
@@ -306,6 +320,7 @@ export class BluesBrain {
   }
 
   private renderIronBass(chord: GhostChord, epoch: number, tension: number, navInfo: NavigationInfo): FractalEvent[] {
+    const momentum = this.state.tensionMomentum;
     if (navInfo.currentPart.id === 'INTRO') {
         switch(this.state.introBassStyle) {
             case 'drone': return this.renderDroneBass(chord, epoch);
@@ -313,8 +328,11 @@ export class BluesBrain {
             case 'walking': return this.renderWalkingBass(chord, epoch, tension);
         }
     }
-    if (tension < 0.4) return this.renderDroneBass(chord, epoch);
-    else if (tension <= 0.7) return this.renderRiffBass(chord, epoch, tension);
+    // Если напряжение падает, переходим в Drone раньше
+    const effectiveTension = tension + momentum * 3;
+
+    if (effectiveTension < 0.4) return this.renderDroneBass(chord, epoch);
+    else if (effectiveTension <= 0.7) return this.renderRiffBass(chord, epoch, tension);
     else return this.renderWalkingBass(chord, epoch, tension);
   }
 
@@ -339,8 +357,9 @@ export class BluesBrain {
 
   private renderBluesBeat(epoch: number, tension: number, navInfo: NavigationInfo): FractalEvent[] {
       const events: FractalEvent[] = [];
-      const isBreakdown = navInfo.currentPart.id.includes('BRIDGE') || tension < 0.42;
-      const isPeak = tension > 0.72;
+      const momentum = this.state.tensionMomentum;
+      const isBreakdown = navInfo.currentPart.id.includes('BRIDGE') || (tension < 0.42 && momentum <= 0);
+      const isPeak = tension > 0.72 || momentum > 0.1;
       const kickTimes = isPeak ? [0, 1, 2, 3] : (isBreakdown ? [0] : [0, 2.66]);
       kickTimes.forEach(t => events.push({ type: 'drum_kick_reso', note: 36, time: t, duration: 0.1, weight: 0.5 + (tension * 0.2), technique: 'hit', dynamics: 'p', phrasing: 'staccato' }));
       if (!isBreakdown) { [1, 3].forEach(t => events.push({ type: isPeak ? 'drum_snare' : 'drum_snare_ghost_note', note: 38, time: t, duration: 0.1, weight: isPeak ? 0.75 : 0.35, technique: 'hit', dynamics: 'p', phrasing: 'staccato' })); }
@@ -354,10 +373,11 @@ export class BluesBrain {
   private renderIntegratedPiano(epoch: number, chord: GhostChord, tension: number): FractalEvent[] {
       const events: FractalEvent[] = [];
       const root = chord.rootNote + 24;
-      const isMin = chord.chordType === 'minor' || chord.chordType === 'diminished';
+      const isMin = chord.chordType === 'minor' || chord.chordType === 'dimidished';
       const degrees = [0, isMin ? 3 : 4, 7, 10, 14];
+      const momentum = this.state.tensionMomentum;
       
-      if (tension < 0.45) {
+      if (tension < 0.45 && momentum <= 0) {
           const noteChance = 0.2 + tension * 0.5;
           [1.5, 3.0].forEach(beat => {
               if (this.random.next() < noteChance) {
@@ -372,8 +392,8 @@ export class BluesBrain {
               }
           });
       } else {
-          const complexity = Math.floor(tension * 6);
-          const step = 4.0 / complexity;
+          const complexity = Math.floor((tension + Math.max(0, momentum * 5)) * 6);
+          const step = 4.0 / Math.max(1, complexity);
           for (let i = 0; i < complexity; i++) {
               if (this.random.next() < 0.8) {
                   const deg = degrees[i % degrees.length];

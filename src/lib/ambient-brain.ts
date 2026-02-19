@@ -1,8 +1,8 @@
 /**
- * #ЗАЧЕМ: Суверенный Мозг Амбиента v12.0 — "Cognitive Radiance".
- * #ЧТО: 1. Внедрена Фрактальная Дистилляция (Cognitive Distillation).
- *       2. Ноты Ликов теперь фильтруются на основе Fog и Tension.
- *       3. Реализована логика "Дыхания" для длинных фраз.
+ * #ЗАЧЕМ: Суверенный Мозг Амбиента v13.0 — "Momentum & Intent".
+ * #ЧТО: 1. Внедрена динамика Намерения (dFog, dDepth).
+ *       2. Реализован эффект "Кристаллизации" при рассеивании тумана (dFog < 0).
+ *       3. Эффект "Misty Flicker" усилен Momentum-ом (dFog > 0).
  */
 
 import type { 
@@ -46,6 +46,12 @@ export class AmbientBrain {
     private bright: number = 0.3;
     private solistCutoff: number = 2000; 
     private registerShift: number = 0;
+
+    // Momentum state
+    private lastFog: number = 0.3;
+    private lastDepth: number = 0.4;
+    private dFog: number = 0;
+    private dDepth: number = 0;
 
     private activatedParts: Set<InstrumentPart> = new Set();
     private activeTimbres: Partial<Record<InstrumentPart, string>> = {};
@@ -120,6 +126,12 @@ export class AmbientBrain {
 
         this.applySpectralAtom(epoch, waves[3]);
         this.updateMoodAxes(epoch, localTension);
+
+        // Compute Momentum
+        this.dFog = this.fog - this.lastFog;
+        this.dDepth = this.depth - this.lastDepth;
+        this.lastFog = this.fog;
+        this.lastDepth = this.depth;
 
         const yogaChord = { ...currentChord };
         if (this.mood === 'epic') yogaChord.chordType = 'dominant'; 
@@ -231,8 +243,8 @@ export class AmbientBrain {
 
         return { 
             events, 
-            instrumentHints: hints,
-            tension: localTension,
+            instrumentHints: hints, 
+            tension: localTension, 
             beautyScore: 0.5 
         };
     }
@@ -336,9 +348,10 @@ export class AmbientBrain {
     }
 
     /**
-     * #ЗАЧЕМ: Когнитивный рендер тематической мелодии.
-     * #ЧТО: 1. Фрактальная Дистилляция — при высоком Fog (тумане) ноты Лика пропадают.
-     *       2. Дыхание — вес нот снижается к концу 4-тактового цикла.
+     * #ЗАЧЕМ: Когнитивный рендер тематической мелодии с Momentum.
+     * #ЧТО: 1. Кристаллизация (dFog < 0): ноты становятся четче и реже пропускаются.
+     *       2. Misty Flicker (dFog > 0): ноты растворяются в тумане.
+     *       3. Дыхание усилено динамикой напряжения.
      */
     private renderThemeMelody(chord: GhostChord, epoch: number, tension: number, hints: InstrumentHints, dna: SuiteDNA): FractalEvent[] {
         if (!this.currentTheme) return [];
@@ -348,14 +361,18 @@ export class AmbientBrain {
         const barNotes = this.currentTheme.phrase.filter(n => n.t >= barOffset && n.t < barOffset + 12);
 
         const events: FractalEvent[] = [];
+        const momentum = this.dFog;
 
         barNotes.forEach((n, i) => {
-            // 1. КОГНИТИВНАЯ ДИСТИЛЛЯЦИЯ (Fog Filter)
-            // Если туман густой, ноты Лика "растворяются"
-            if (this.fog > 0.75 && i % 2 !== 0 && this.random.next() < this.fog) return;
+            // 1. КОГНИТИВНАЯ ДИСТИЛЛЯЦИЯ (Momentum Optimized)
+            // Если туман растет (momentum > 0), растворение агрессивнее
+            let skipProb = this.fog * (1.0 + Math.max(0, momentum * 10));
+            // Если туман рассеивается (momentum < 0), кристаллизация - пропускаем меньше нот
+            if (momentum < -0.01) skipProb *= 0.5;
 
-            // 2. ЛОГИКА ДЫХАНИЯ (Breath/Exhale)
-            const phraseProgress = n.t / 48; // Фраза до 4-х тактов
+            if (skipProb > 0.75 && i % 2 !== 0 && this.random.next() < skipProb) return;
+
+            const phraseProgress = n.t / 48; 
             const breathDecay = 1.0 - (phraseProgress * 0.4); 
 
             events.push({
@@ -366,7 +383,7 @@ export class AmbientBrain {
                 weight: (0.55 * breathDecay) * (0.9 + this.random.next() * 0.2),
                 technique: n.tech || 'pick',
                 dynamics: 'p',
-                phrasing: 'legato',
+                phrasing: momentum < -0.02 ? 'legato' : 'detached', // Кристаллизация дает четкость
                 params: { filterCutoff: this.solistCutoff, barCount: epoch } 
             });
         });
@@ -442,9 +459,10 @@ export class AmbientBrain {
 
     private renderPianoDrops(chord: GhostChord, epoch: number, tension: number): FractalEvent[] {
         const events: FractalEvent[] = [];
+        const momentum = Math.max(0, this.dDepth * 5);
         const beats = [1.2, 2.5, 3.7]; 
         beats.forEach(beat => {
-            if (this.random.next() < (0.25 * this.depth)) { 
+            if (this.random.next() < (0.25 * this.depth + momentum)) { 
                 events.push({
                     type: 'pianoAccompaniment',
                     note: Math.min(chord.rootNote + 24 + this.registerShift + [0, 3, 7, 12][this.random.nextInt(4)], this.MELODY_CEILING),
