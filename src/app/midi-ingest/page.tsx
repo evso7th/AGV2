@@ -1,7 +1,7 @@
 /**
- * #ЗАЧЕМ: Heritage Alchemist V12.0 — "Performance Sync".
- * #ЧТО: 1. Внедрена упреждающая загрузка инструментов (Eager Loading) перед playRawEvents.
- *       2. Это исключает тишину и "too long wait" при воспроизведении полных MIDI файлов.
+ * #ЗАЧЕМ: Heritage Alchemist V13.0 — "Curator's Control".
+ * #ЧТО: 1. Добавлена возможность вручную менять роль трека (Melody/Bass/etc).
+ *       2. Реализован выборочный импорт аксиом через чекбоксы.
  */
 'use client';
 
@@ -11,12 +11,13 @@ import {
     Upload, FileMusic, Settings2, Sparkles, Tags, 
     CloudUpload, Music, Waves, Drum, LayoutGrid, Factory, Trash2, BrainCircuit, 
     Play, PlayCircle, StopCircle, CheckCircle2,
-    Database, RefreshCcw, ShieldCheck, XCircle
+    Database, RefreshCcw, ShieldCheck, XCircle, CheckSquare, Square
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
+import { Checkbox } from '@/components/ui/checkbox';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { detectKeyFromNotes, SEMITONE_TO_DEGREE, DEGREE_KEYS, TECHNIQUE_KEYS, DEGREE_TO_SEMITONE } from '@/lib/music-theory';
 import { ScrollArea } from '@/components/ui/scroll-area';
@@ -115,6 +116,7 @@ export default function MidiIngestPage() {
     const [playingLickIdx, setPlayingLickIdx] = useState<number | null>(null);
     
     const [ingestedHashes, setIngestedHashes] = useState<Set<string>>(new Set());
+    const [selectedLickIds, setSelectedLickIds] = useState<Set<string>>(new Set());
     const [globalAxiomCount, setGlobalAxiomCount] = useState<number | null>(null);
     const [isFetchingCount, setIsFetchingCount] = useState(false);
 
@@ -176,19 +178,37 @@ export default function MidiIngestPage() {
         setSelectedRole(trackRoles.get(idx) || 'melody');
     };
 
+    /** #ЗАЧЕМ: Ручное переопределение роли трека. */
+    const handleRoleOverride = (idx: number, newRole: IngestionRole) => {
+        const newRoles = new Map(trackRoles);
+        newRoles.set(idx, newRole);
+        setTrackRoles(newRoles);
+        if (selectedTrackIndex === idx) {
+            setSelectedRole(newRole);
+        }
+    };
+
     useEffect(() => {
         if (midiFile && selectedTrackIndex !== -1 && detectedKey) {
             const track = midiFile.tracks[selectedTrackIndex];
             const licks = segmentTrackToCompactLicks(track, detectedKey.root, selectedRole, origin, selectedMood, selectedGenre);
             setExtractedLicks(licks);
+            
+            // #ЗАЧЕМ: По умолчанию выбираем все свежие лики.
+            const freshIds = new Set<string>();
+            licks.forEach(l => {
+                if (!ingestedHashes.has(l.hash)) freshIds.add(l.id);
+            });
+            setSelectedLickIds(freshIds);
         }
-    }, [midiFile, selectedTrackIndex, selectedRole, detectedKey, origin, selectedMood, selectedGenre]);
+    }, [midiFile, selectedTrackIndex, selectedRole, detectedKey, origin, selectedMood, selectedGenre, ingestedHashes]);
 
     const stats = useMemo(() => {
         const total = extractedLicks.length;
         const known = extractedLicks.filter(l => ingestedHashes.has(l.hash)).length;
-        return { total, known, fresh: total - known };
-    }, [extractedLicks, ingestedHashes]);
+        const selected = extractedLicks.filter(l => selectedLickIds.has(l.id)).length;
+        return { total, known, fresh: total - known, selected };
+    }, [extractedLicks, ingestedHashes, selectedLickIds]);
 
     const silenceLaboratory = () => {
         setIsPlaying(false);
@@ -197,9 +217,6 @@ export default function MidiIngestPage() {
         setPlayingLickIdx(null);
     };
 
-    /**
-     * #ЗАЧЕМ: Ускоренное воспроизведение MIDI через Eager Loading.
-     */
     const playFullMidi = async () => {
         if (!midiFile) return;
         if (isPlayingFull) { silenceLaboratory(); return; }
@@ -231,7 +248,6 @@ export default function MidiIngestPage() {
         });
 
         if (allEvents.length > 0) {
-            // #ЗАЧЕМ: Загружаем инструменты ПЕРЕД планированием событий.
             await Promise.all([
                 setInstrument('bass', 'bass_jazz_warm'),
                 setInstrument('melody', 'blackAcoustic'),
@@ -275,7 +291,6 @@ export default function MidiIngestPage() {
         }));
 
         if (events.length > 0) {
-            // #ЗАЧЕМ: Упреждающая загрузка конкретного инструмента.
             const targetInstrument = role === 'bass' ? 'bass_jazz_warm' : (role === 'melody' ? 'blackAcoustic' : 'organ_soft_jazz');
             await setInstrument(role === 'accomp' ? 'accompaniment' : (role as any), targetInstrument);
 
@@ -305,7 +320,6 @@ export default function MidiIngestPage() {
             });
         }
 
-        // #ЗАЧЕМ: Упреждающая загрузка для лика.
         const targetInstrument = lick.role === 'bass' ? 'bass_jazz_warm' : (lick.role === 'melody' ? 'blackAcoustic' : 'organ_soft_jazz');
         if (lick.role !== 'drums') {
             await setInstrument(lick.role === 'accomp' ? 'accompaniment' : (lick.role as any), targetInstrument);
@@ -315,17 +329,36 @@ export default function MidiIngestPage() {
         playRawEvents(events, { [role]: targetInstrument });
     };
 
+    /** #ЗАЧЕМ: Переключение выбора лика. */
+    const toggleLickSelection = (id: string) => {
+        const next = new Set(selectedLickIds);
+        if (next.has(id)) next.delete(id);
+        else next.add(id);
+        setSelectedLickIds(next);
+    };
+
+    const selectAllFresh = () => {
+        const next = new Set<string>();
+        extractedLicks.forEach(l => {
+            if (!ingestedHashes.has(l.hash)) next.add(l.id);
+        });
+        setSelectedLickIds(next);
+    };
+
+    const deselectAll = () => setSelectedLickIds(new Set());
+
     const transmitToGlobalMemory = async () => {
-        const freshLicks = extractedLicks.filter(l => !ingestedHashes.has(l.hash));
-        if (freshLicks.length === 0) {
-            toast({ title: "Genetic Stagnation", description: "No fresh axioms detected. All fragments already exist in global memory." });
+        const licksToIngest = extractedLicks.filter(l => selectedLickIds.has(l.id) && !ingestedHashes.has(l.hash));
+        
+        if (licksToIngest.length === 0) {
+            toast({ title: "Genetic Selection Empty", description: "No fresh axioms selected for transmission." });
             return;
         }
 
         setIsTransmitting(true);
         const newHashes = new Set(ingestedHashes);
         try {
-            for (const lick of freshLicks) {
+            for (const lick of licksToIngest) {
                 await saveHeritageAxiom(db, {
                     phrase: lick.phrase,
                     role: lick.role,
@@ -339,8 +372,9 @@ export default function MidiIngestPage() {
             const hashList = Array.from(newHashes);
             localStorage.setItem('AuraGroove_Ingested_Hashes', JSON.stringify(hashList));
             setIngestedHashes(newHashes);
+            setSelectedLickIds(new Set()); // Clear selection after successful ingest
             
-            toast({ title: "Genetic Ingestion Success", description: `Transmitted ${freshLicks.length} fresh axioms to the cloud.` });
+            toast({ title: "Genetic Ingestion Success", description: `Transmitted ${licksToIngest.length} selected axioms to the cloud.` });
             fetchGlobalCount(); 
         } catch (e) {
             toast({ variant: "destructive", title: "Transmission Failed" });
@@ -357,6 +391,7 @@ export default function MidiIngestPage() {
         setSelectedTrackIndex(-1);
         setDetectedKey(null);
         setTrackRoles(new Map());
+        setSelectedLickIds(new Set());
     };
 
     return (
@@ -368,9 +403,9 @@ export default function MidiIngestPage() {
                             <Factory className="h-8 w-8 text-primary" />
                         </div>
                         <div>
-                            <CardTitle className="text-3xl font-bold tracking-tight">Heritage Alchemist v12.0</CardTitle>
+                            <CardTitle className="text-3xl font-bold tracking-tight">Heritage Alchemist v13.0</CardTitle>
                             <CardDescription className="text-muted-foreground flex items-center gap-2">
-                                <ShieldCheck className="h-3 w-3 text-green-500" /> Fingerprinting Active | Performance Sync
+                                <ShieldCheck className="h-3 w-3 text-green-500" /> Curator Controls Active | Selective Ingestion
                             </CardDescription>
                         </div>
                     </div>
@@ -490,7 +525,7 @@ export default function MidiIngestPage() {
                                 ) : (
                                     <div className="space-y-2">
                                         {midiFile.tracks.map((track, i) => {
-                                            const role = trackRoles.get(i);
+                                            const role = trackRoles.get(i) || 'melody';
                                             const isCurrentPlaying = playingTrackIdx === i;
                                             return (
                                                 <div 
@@ -508,12 +543,29 @@ export default function MidiIngestPage() {
                                                             {i.toString().padStart(2, '0')}
                                                         </div>
                                                         <div className="flex flex-col">
-                                                            <span className="text-sm font-semibold truncate max-w-[200px]">
+                                                            <span className="text-sm font-semibold truncate max-w-[150px]">
                                                                 {track.name || `Track ${i + 1}`}
                                                             </span>
-                                                            <span className="text-[10px] text-primary/70 font-bold uppercase tracking-tighter flex items-center gap-1">
-                                                                <BrainCircuit className="h-2 w-2" /> Suggested: {role}
-                                                            </span>
+                                                            <div className="flex items-center gap-2">
+                                                                <span className="text-[10px] text-primary/70 font-bold uppercase tracking-tighter flex items-center gap-1">
+                                                                    <BrainCircuit className="h-2 w-2" /> Suggested:
+                                                                </span>
+                                                                {/* #ЗАЧЕМ: Ручное изменение роли трека. */}
+                                                                <Select 
+                                                                    value={role} 
+                                                                    onValueChange={(val) => handleRoleOverride(i, val as IngestionRole)}
+                                                                >
+                                                                    <SelectTrigger className="h-5 px-1 py-0 text-[10px] w-24 bg-primary/10 border-primary/20">
+                                                                        <SelectValue />
+                                                                    </SelectTrigger>
+                                                                    <SelectContent>
+                                                                        <SelectItem value="melody" className="text-[10px]">Melody</SelectItem>
+                                                                        <SelectItem value="bass" className="text-[10px]">Bass</SelectItem>
+                                                                        <SelectItem value="accomp" className="text-[10px]">Accompaniment</SelectItem>
+                                                                        <SelectItem value="drums" className="text-[10px]">Drums</SelectItem>
+                                                                    </SelectContent>
+                                                                </Select>
+                                                            </div>
                                                         </div>
                                                     </div>
                                                     <div className="flex items-center gap-2">
@@ -551,36 +603,65 @@ export default function MidiIngestPage() {
                                     <Label className="text-sm font-bold flex items-center gap-2 uppercase tracking-widest text-primary">
                                         <Settings2 className="h-4 w-4" /> Genetic Buffer ({extractedLicks.length} Axioms)
                                     </Label>
-                                    <span className="text-[10px] text-muted-foreground ml-6">
-                                        {stats.known} fragments flagged as existing duplicates and will be skipped.
-                                    </span>
+                                    <div className="flex items-center gap-4 ml-6">
+                                        <span className="text-[10px] text-muted-foreground">
+                                            {stats.selected} / {stats.total} selected for ingestion.
+                                        </span>
+                                        <div className="flex gap-2">
+                                            <Button variant="ghost" size="sm" onClick={selectAllFresh} className="h-6 text-[9px] px-2 gap-1 rounded-lg hover:bg-primary/10 text-primary">
+                                                <CheckSquare className="h-3 w-3" /> Select All Fresh
+                                            </Button>
+                                            <Button variant="ghost" size="sm" onClick={deselectAll} className="h-6 text-[9px] px-2 gap-1 rounded-lg hover:bg-destructive/10 text-destructive">
+                                                <Square className="h-3 w-3" /> Deselect All
+                                            </Button>
+                                        </div>
+                                    </div>
                                 </div>
                                 <div className="flex gap-3">
                                     <Button 
                                         onClick={transmitToGlobalMemory} 
-                                        disabled={isTransmitting || stats.fresh === 0}
+                                        disabled={isTransmitting || stats.selected === 0}
                                         className={cn(
                                             "gap-2 text-xs h-10 px-6 rounded-full transition-all active:scale-95 shadow-lg",
-                                            stats.fresh === 0 ? "bg-muted" : "bg-green-600 hover:bg-green-700 shadow-green-900/30"
+                                            stats.selected === 0 ? "bg-muted" : "bg-green-600 hover:bg-green-700 shadow-green-900/30"
                                         )}
                                     >
                                         <CloudUpload className="h-4 w-4" /> 
-                                        {isTransmitting ? 'Transmitting...' : `Ingest ${stats.fresh} Fresh Axioms`}
+                                        {isTransmitting ? 'Transmitting...' : `Ingest ${stats.selected} Selected Axioms`}
                                     </Button>
                                 </div>
                             </div>
                             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-2">
                                 {extractedLicks.map((lick, idx) => {
                                     const isIngested = ingestedHashes.has(lick.hash);
+                                    const isSelected = selectedLickIds.has(lick.id);
                                     const isCurrentPlayingLick = playingLickIdx === idx;
                                     return (
-                                        <div key={idx} className={cn(
-                                            "p-3 border rounded-xl flex items-center justify-between text-[10px] font-mono transition-colors",
-                                            isIngested ? "bg-muted/50 border-muted opacity-60" : "bg-primary/5 border-primary/20 hover:border-primary/40"
-                                        )}>
-                                            <div className="flex items-center gap-2 overflow-hidden">
-                                                {isIngested ? <CheckCircle2 className="h-3 w-3 text-green-500 shrink-0" /> : <Sparkles className="h-3 w-3 text-primary shrink-0" />}
-                                                <span className="truncate opacity-70">FRAG_{idx.toString().padStart(2, '0')}</span>
+                                        <div 
+                                            key={idx} 
+                                            onClick={() => !isIngested && toggleLickSelection(lick.id)}
+                                            className={cn(
+                                                "p-3 border rounded-xl flex items-center justify-between text-[10px] font-mono transition-all cursor-pointer",
+                                                isIngested 
+                                                    ? "bg-muted/50 border-muted opacity-60 cursor-default" 
+                                                    : (isSelected 
+                                                        ? "bg-primary/10 border-primary shadow-sm" 
+                                                        : "bg-primary/5 border-primary/20 hover:border-primary/40")
+                                            )}
+                                        >
+                                            <div className="flex items-center gap-3 overflow-hidden">
+                                                <div className="shrink-0" onClick={(e) => e.stopPropagation()}>
+                                                    <Checkbox 
+                                                        checked={isSelected} 
+                                                        onCheckedChange={() => toggleLickSelection(lick.id)}
+                                                        disabled={isIngested}
+                                                        className={cn(isIngested && "opacity-0")}
+                                                    />
+                                                </div>
+                                                <div className="flex items-center gap-2 overflow-hidden">
+                                                    {isIngested ? <CheckCircle2 className="h-3 w-3 text-green-500 shrink-0" /> : <Sparkles className="h-3 w-3 text-primary shrink-0" />}
+                                                    <span className="truncate opacity-70">FRAG_{idx.toString().padStart(2, '0')}</span>
+                                                </div>
                                             </div>
                                             <div className="flex items-center gap-2 shrink-0">
                                                 {isIngested && <span className="text-[8px] uppercase font-bold text-muted-foreground px-1 bg-muted rounded">KNOWN</span>}
@@ -588,7 +669,7 @@ export default function MidiIngestPage() {
                                                     variant="ghost" 
                                                     size="icon" 
                                                     className={cn("h-7 w-7 rounded-full", isCurrentPlayingLick ? "text-destructive hover:bg-destructive/10" : "text-primary hover:bg-primary/10")} 
-                                                    onClick={() => auralizeLick(lick, idx)}
+                                                    onClick={(e) => { e.stopPropagation(); auralizeLick(lick, idx); }}
                                                 >
                                                     {isCurrentPlayingLick ? <StopCircle className="h-4 w-4 fill-current" /> : <Play className="h-4 w-4" />}
                                                 </Button>
