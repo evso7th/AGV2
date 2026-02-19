@@ -18,10 +18,10 @@ import {
 import { BLUES_SOLO_LICKS } from './assets/blues_guitar_solo';
 
 /**
- * #ЗАЧЕМ: Блюзовый Мозг V107.0 — "Total Stagnation Guard".
- * #ЧТО: 1. Детектор стагнации теперь следит за Lead, Accomp и Piano одновременно.
- *       2. Метод generateBar возвращает LickID и MutationType для прозрачного логирования.
- *       3. Принудительный сброс аксиомы при 3-х повторах любой партии.
+ * #ЗАЧЕМ: Блюзовый Мозг V108.0 — "Continuous Flow & Stagnation Guard".
+ * #ЧТО: 1. Лики теперь сменяются каждые 4 такта (Phrase Boundary).
+ *       2. Реализовано зацикливание коротких ликов для исключения тишины.
+ *       3. Детектор стагнации следит за всеми участниками одновременно.
  */
 
 export class BluesBrain {
@@ -108,11 +108,11 @@ export class BluesBrain {
 
     this.evaluateTimbralDramaturgy(tension, hints);
     
-    const isMutationBoundary = epoch % 12 === 0;
+    // #ЗАЧЕМ: Смена аксиомы каждые 4 такта для плотности мелодии.
+    const isMutationBoundary = epoch % 4 === 0;
     const isStagnating = this.state.stagnationStrikes.micro >= 3;
 
     if (this.currentAxiom.length === 0 || navInfo.isPartTransition || isMutationBoundary || isStagnating) {
-        if (isStagnating) console.warn(`%c[Brain] Stagnation Strike! Refreshing Axiom at bar ${epoch}`, 'color: #ff4444; font-weight: bold;');
         this.refreshUnifiedMutation();
         this.selectNextAxiom(navInfo, dna, epoch);
         this.state.stagnationStrikes.micro = 0; 
@@ -125,7 +125,7 @@ export class BluesBrain {
     const accompEvents = hints.accompaniment ? this.renderDynamicAccompaniment(epoch, currentChord, tension) : [];
     const pianoEvents = hints.pianoAccompaniment ? this.renderIntegratedPiano(epoch, currentChord, tension) : [];
 
-    // --- STAGNATION DETECTION (The Guard) ---
+    // --- STAGNATION DETECTION ---
     const mHash = melodyEvents.map(e => e.note).join('-');
     const aHash = accompEvents.map(e => e.note).join('-');
     const pHash = pianoEvents.map(e => e.note).join('-');
@@ -137,7 +137,6 @@ export class BluesBrain {
     if (anyRepeat) {
         this.state.stagnationStrikes.micro++;
     } else {
-        // Only decay strikes if everything is fresh
         if (this.state.stagnationStrikes.micro > 0) this.state.stagnationStrikes.micro--;
     }
 
@@ -194,6 +193,7 @@ export class BluesBrain {
               technique: 'swell',
               dynamics: 'p',
               phrasing: 'legato',
+              chordName: chord.chordType === 'minor' ? 'Am' : 'E',
               params: { barCount: epoch, filterCutoff: 3000 }
           });
       });
@@ -277,9 +277,16 @@ export class BluesBrain {
     }
   }
 
+  /**
+   * #ЗАЧЕМ: Рендер мелодии с поддержкой авто-лупинга коротких фраз.
+   */
   private renderMelodicSegment(epoch: number, chord: GhostChord, tension: number): FractalEvent[] {
-    const barInCycle = epoch % 4;
-    const barOffset = barInCycle * 12;
+    const lickTicks = Math.max(...this.currentAxiom.map(n => n.t + n.d), 0) || 12;
+    const lickBars = Math.ceil(lickTicks / 12);
+    
+    // #ЗАЧЕМ: Зацикливание коротких фраз.
+    const effectiveBar = epoch % lickBars;
+    const barOffset = effectiveBar * 12;
     const barNotes = this.currentAxiom.filter(n => n.t >= barOffset && n.t < barOffset + 12);
     
     const events: FractalEvent[] = [];

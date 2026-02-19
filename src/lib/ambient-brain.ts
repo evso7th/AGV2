@@ -1,8 +1,8 @@
 /**
- * #ЗАЧЕМ: Суверенный Мозг Амбиента v13.0 — "Momentum & Intent".
- * #ЧТО: 1. Внедрена динамика Намерения (dFog, dDepth).
- *       2. Реализован эффект "Кристаллизации" при рассеивании тумана (dFog < 0).
- *       3. Эффект "Misty Flicker" усилен Momentum-ом (dFog > 0).
+ * #ЗАЧЕМ: Суверенный Мозг Амбиента v14.0 — "Continuous Journey Fix".
+ * #ЧТО: 1. Повышена общая активность мелодии (baseChance up).
+ *       2. Сокращен rest период между темами (3 -> 1).
+ *       3. Снижен пропуск нот из-за тумана (skipProb penalty reduced).
  */
 
 import type { 
@@ -165,7 +165,8 @@ export class AmbientBrain {
         }
 
         if (epoch >= this.soloistBusyUntilBar) {
-            const baseChance = isPositive ? 0.35 : 0.15; 
+            // #ЗАЧЕМ: Повышение активности солиста.
+            const baseChance = isPositive ? 0.60 : 0.40; 
             const developmentChance = baseChance + localTension * 0.25;
             if (this.random.next() < developmentChance) {
                 let groupKey = dna.ambientLegacyGroup || 'BUDD';
@@ -180,7 +181,9 @@ export class AmbientBrain {
                     startBar: epoch,
                     endBar: epoch + phraseBars
                 };
-                const restBars = this.mood === 'enthusiastic' ? 1 : 3;
+                
+                // #ЗАЧЕМ: Сокращение rest периода для плотности.
+                const restBars = this.mood === 'enthusiastic' ? 0 : 1;
                 this.soloistBusyUntilBar = epoch + phraseBars + restBars; 
             } else {
                 this.currentTheme = null;
@@ -347,12 +350,6 @@ export class AmbientBrain {
         }];
     }
 
-    /**
-     * #ЗАЧЕМ: Когнитивный рендер тематической мелодии с Momentum.
-     * #ЧТО: 1. Кристаллизация (dFog < 0): ноты становятся четче и реже пропускаются.
-     *       2. Misty Flicker (dFog > 0): ноты растворяются в тумане.
-     *       3. Дыхание усилено динамикой напряжения.
-     */
     private renderThemeMelody(chord: GhostChord, epoch: number, tension: number, hints: InstrumentHints, dna: SuiteDNA): FractalEvent[] {
         if (!this.currentTheme) return [];
         const groupKey = dna.ambientLegacyGroup || 'BUDD';
@@ -364,10 +361,8 @@ export class AmbientBrain {
         const momentum = this.dFog;
 
         barNotes.forEach((n, i) => {
-            // 1. КОГНИТИВНАЯ ДИСТИЛЛЯЦИЯ (Momentum Optimized)
-            // Если туман растет (momentum > 0), растворение агрессивнее
-            let skipProb = this.fog * (1.0 + Math.max(0, momentum * 10));
-            // Если туман рассеивается (momentum < 0), кристаллизация - пропускаем меньше нот
+            // #ЗАЧЕМ: Снижение штрафа за туман для стабильности мелодии.
+            let skipProb = (this.fog * 0.4) * (1.0 + Math.max(0, momentum * 10));
             if (momentum < -0.01) skipProb *= 0.5;
 
             if (skipProb > 0.75 && i % 2 !== 0 && this.random.next() < skipProb) return;
@@ -383,7 +378,7 @@ export class AmbientBrain {
                 weight: (0.55 * breathDecay) * (0.9 + this.random.next() * 0.2),
                 technique: n.tech || 'pick',
                 dynamics: 'p',
-                phrasing: momentum < -0.02 ? 'legato' : 'detached', // Кристаллизация дает четкость
+                phrasing: momentum < -0.02 ? 'legato' : 'detached', 
                 params: { filterCutoff: this.solistCutoff, barCount: epoch } 
             });
         });
