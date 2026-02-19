@@ -19,10 +19,10 @@ import {
 import { BLUES_SOLO_LICKS } from './assets/blues_guitar_solo';
 
 /**
- * #ЗАЧЕМ: Блюзовый Мозг V111.0 — "Narrative Bass Riffs".
- * #ЧТО: 1. Tier 2 (T 0.4-0.7) теперь играет полноценный 4-х тактовый рифф (11 нот).
- *       2. Реализована роковая синкопация и опора на тонику/квинту.
- *       3. Сохранена трехуровневая динамика баса.
+ * #ЗАЧЕМ: Блюзовый Мозг V112.0 — "Timbral Hysteresis Guard".
+ * #ЧТО: 1. Внедрен гистерезис для смены инструментов аккомпанемента (0.65 - 0.75).
+ *       2. Смена тембра теперь синхронизирована с границами фраз (4 такта).
+ *       3. Сохранен 4-х тактовый рифф баса.
  */
 
 export class BluesBrain {
@@ -42,7 +42,8 @@ export class BluesBrain {
       lastAccompHash: string,
       currentMutationType: string,
       lastTension: number,
-      tensionMomentum: number
+      tensionMomentum: number,
+      activeAccompTimbre: string
   };
   private sfxPlayedInPart = false;
   private currentPartId = '';
@@ -76,7 +77,8 @@ export class BluesBrain {
       introBassStyle: selectedIntroStyle,
       currentMutationType: 'jitter',
       lastTension: 0.5,
-      tensionMomentum: 0
+      tensionMomentum: 0,
+      activeAccompTimbre: 'organ_soft_jazz'
     };
   }
 
@@ -107,7 +109,15 @@ export class BluesBrain {
         this.sfxPlayedInPart = false;
     }
 
-    this.evaluateTimbralDramaturgy(tension, hints);
+    // #ЗАЧЕМ: Гистерезис и фразовая синхронизация тембров.
+    // #ЧТО: Смена тембров происходит только на границах фраз (4 такта).
+    if (epoch % 4 === 0 || epoch === 0) {
+        this.evaluateTimbralDramaturgy(tension, hints);
+    } else {
+        // Сохраняем текущие хинты, если мы внутри фразы
+        if (hints.melody) (hints as any).melody = this.state.lastMelodyHash ? (hints as any).melody : (tension <= 0.40 ? 'blackAcoustic' : (tension <= 0.70 ? 'cs80' : 'guitar_shineOn'));
+        if (hints.accompaniment) (hints as any).accompaniment = this.state.activeAccompTimbre;
+    }
     
     const isMutationBoundary = epoch % 4 === 0;
     const isStagnating = this.state.stagnationStrikes.micro >= 3;
@@ -267,6 +277,10 @@ export class BluesBrain {
       return entry ? entry[0] : deg;
   }
 
+  /**
+   * #ЗАЧЕМ: Устранение тембрального "дребезга".
+   * #ЧТО: Внедрена логика гистерезиса (Hysteresis).
+   */
   private evaluateTimbralDramaturgy(tension: number, hints: InstrumentHints) {
     if (hints.melody) {
         if (tension <= 0.40) (hints as any).melody = 'blackAcoustic';
@@ -274,7 +288,16 @@ export class BluesBrain {
         else (hints as any).melody = 'guitar_shineOn';
     }
     if (hints.accompaniment) {
-        (hints as any).accompaniment = tension > 0.72 ? 'ep_rhodes_warm' : 'organ_soft_jazz';
+        // Гистерезис: Rhodes включается при > 0.75, выключается только при < 0.65.
+        let nextTimbre = this.state.activeAccompTimbre;
+        if (this.state.activeAccompTimbre === 'organ_soft_jazz' && tension > 0.75) {
+            nextTimbre = 'ep_rhodes_warm';
+        } else if (this.state.activeAccompTimbre === 'ep_rhodes_warm' && tension < 0.65) {
+            nextTimbre = 'organ_soft_jazz';
+        }
+        
+        this.state.activeAccompTimbre = nextTimbre;
+        (hints as any).accompaniment = nextTimbre;
     }
   }
 

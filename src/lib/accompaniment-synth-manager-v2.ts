@@ -5,7 +5,7 @@ import { V2_PRESETS, V1_TO_V2_PRESET_MAP } from './presets-v2';
 
 /**
  * A V2 manager for the accompaniment synthesizer.
- * Updated to support dynamic spectral hygiene.
+ * Updated to support Deferred Preset Switching and Identity Guard.
  */
 export class AccompanimentSynthManagerV2 {
     private audioContext: AudioContext;
@@ -13,7 +13,7 @@ export class AccompanimentSynthManagerV2 {
     public isInitialized = false;
     private instrument: any | null = null; 
     
-    private activePresetName: keyof typeof V2_PRESETS | 'none' = 'organ_soft_jazz';
+    private activePresetName: string = 'none';
     private preamp: GainNode;
 
     constructor(audioContext: AudioContext, destination: AudioNode) {
@@ -28,23 +28,21 @@ export class AccompanimentSynthManagerV2 {
     async init() {
         if (this.isInitialized) return;
         console.log('[AccompanimentManagerV2] Initializing...');
-        const preset = V2_PRESETS[this.activePresetName as keyof typeof V2_PRESETS];
-        const instrumentType = preset?.type || 'synth';
-        await this.loadInstrument(this.activePresetName as keyof typeof V2_PRESETS, instrumentType as any);
+        await this.setInstrument('organ_soft_jazz');
         this.isInitialized = true;
     }
     
-    private async loadInstrument(presetName: keyof typeof V2_PRESETS, instrumentType: 'synth' | 'organ' | 'guitar' = 'synth') {
+    private async loadInstrument(presetName: string, instrumentType: 'synth' | 'organ' | 'guitar' = 'synth') {
         if (this.instrument) {
-            console.log(`[AccompanimentManagerV2] Disposing old instrument before loading ${presetName}`);
             this.instrument.disconnect();
             this.instrument = null;
         }
         
-        const preset = V2_PRESETS[presetName];
+        const preset = V2_PRESETS[presetName as keyof typeof V2_PRESETS];
         if (!preset) return;
         
         try {
+            console.log(`[AccompanimentManagerV2] Loading: ${presetName}`);
             this.instrument = await buildMultiInstrument(this.audioContext, {
                 type: instrumentType,
                 preset: preset,
@@ -57,40 +55,54 @@ export class AccompanimentSynthManagerV2 {
     }
 
     public async schedule(events: FractalEvent[], barStartTime: number, tempo: number, barCount: number, instrumentHint?: string) {
-        const finalInstrumentHint = instrumentHint ? (V1_TO_V2_PRESET_MAP[instrumentHint] || instrumentHint) : this.activePresetName;
-
-        if (finalInstrumentHint === 'none') {
-            if (this.activePresetName !== 'none') await this.setInstrument('none');
-            return;
-        }
-        
-        if (finalInstrumentHint !== this.activePresetName) {
-            await this.setInstrument(finalInstrumentHint as keyof typeof V2_PRESETS);
-        }
-
-        if (!this.instrument) return;
-
         const beatDuration = 60 / tempo;
-        events.forEach(event => {
-            if(event.type !== 'accompaniment') return;
-            const noteOnTime = barStartTime + (event.time * beatDuration);
+        const notesToPlay = events.filter(e => e.type === 'accompaniment').map(e => ({
+            midi: e.note,
+            time: e.time * beatDuration,
+            duration: e.duration * beatDuration,
+            velocity: e.weight,
+            params: e.params
+        }));
 
-            // #ЗАЧЕМ: Спектральная гигиена аккомпанемента.
-            if (event.params?.filterCutoff && this.instrument.setParam) {
-                this.instrument.setParam('filterCutoff', event.params.filterCutoff);
-                this.instrument.setParam('lpf', event.params.filterCutoff);
+        // --- DEFERRED PRESET SWITCH ---
+        // #ЗАЧЕМ: Аккомпанементу нельзя резко менять тембр во время игры.
+        if (instrumentHint) {
+            const mappedHint = V1_TO_V2_PRESET_MAP[instrumentHint] || instrumentHint;
+            if (mappedHint !== this.activePresetName) {
+                // Смена происходит только если текущий такт пуст или мы выходим из тишины.
+                if (notesToPlay.length === 0 || this.activePresetName === 'none') {
+                    await this.setInstrument(mappedHint);
+                }
+            }
+        }
+
+        if (this.activePresetName === 'none' || !this.instrument) return;
+        if (notesToPlay.length === 0) return;
+
+        notesToPlay.forEach(note => {
+            const noteOnTime = barStartTime + note.time;
+            
+            if (note.params?.filterCutoff && this.instrument.setParam) {
+                this.instrument.setParam('filterCutoff', note.params.filterCutoff);
+                this.instrument.setParam('lpf', note.params.filterCutoff);
             }
 
-            this.instrument.noteOn(event.note, noteOnTime, event.weight, event.duration * beatDuration);
+            if (isFinite(note.duration) && note.duration > 0) {
+                 this.instrument.noteOn(note.midi, noteOnTime, note.velocity, note.duration);
+            }
         });
     }
     
-    public async setInstrument(instrumentName: keyof typeof V2_PRESETS | 'none') {
+    public async setInstrument(instrumentName: string) {
+       // #ЗАЧЕМ: Equality Guard. Предотвращает бессмысленные перезагрузки графа.
        if (instrumentName === this.activePresetName) return;
 
+       if (this.instrument) {
+           this.instrument.disconnect();
+           this.instrument = null;
+       }
+
        if (instrumentName === 'none') {
-            if (this.instrument) this.instrument.disconnect();
-            this.instrument = null;
             this.activePresetName = 'none';
             return;
        }
@@ -98,12 +110,7 @@ export class AccompanimentSynthManagerV2 {
        const newPreset = V2_PRESETS[instrumentName as keyof typeof V2_PRESETS];
        if (!newPreset) return;
 
-       if (this.instrument && this.instrument.type === newPreset.type && this.instrument.setPreset) {
-           this.instrument.setPreset(newPreset);
-           this.activePresetName = instrumentName;
-       } else { 
-           await this.loadInstrument(instrumentName, (newPreset as any).type || 'synth');
-       }
+       await this.loadInstrument(instrumentName, (newPreset as any).type || 'synth');
     }
 
     public setPreampGain(volume: number) {

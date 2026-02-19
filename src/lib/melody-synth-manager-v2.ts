@@ -94,9 +94,7 @@ export class MelodySynthManagerV2 {
             params: e.params 
         }));
         
-        // --- DEFERRED PRESET SWITCH (Lead Stability Logic) ---
-        // #ЗАЧЕМ: Мелодии нельзя менять пресет во время активной игры.
-        // #ЧТО: Смена происходит только если текущий такт пуст (пауза) или если мы выходим из тишины.
+        // --- DEFERRED PRESET SWITCH ---
         if (instrumentHint && this.partName === 'melody') {
             const mappedHint = V1_TO_V2_PRESET_MAP[instrumentHint] || instrumentHint;
             if (mappedHint !== this.activePresetName) {
@@ -105,8 +103,6 @@ export class MelodySynthManagerV2 {
                 }
             }
         } else if (instrumentHint && this.partName === 'bass') {
-            // Bass usually changes on parts, but we can sync it too if needed.
-            // For now, let bass be more immediate as requested.
             const mappedHint = BASS_PRESET_MAP[instrumentHint] || instrumentHint;
             if (mappedHint !== this.activePresetName) {
                 await this.setInstrument(mappedHint);
@@ -116,7 +112,6 @@ export class MelodySynthManagerV2 {
         if (this.activePresetName === 'none') return;
         if (notesToPlay.length === 0) return;
 
-        // Use ACTIVE identity for routing
         const currentActive = this.activePresetName;
         const isGlitchNote = notesToPlay.some(n => n.technique === 'harm');
 
@@ -158,6 +153,7 @@ export class MelodySynthManagerV2 {
     }
     
     public async setInstrument(instrumentName: string) {
+       // #ЗАЧЕМ: Equality Guard.
        if (instrumentName === this.activePresetName) return;
 
        if (this.synth) {
@@ -178,7 +174,6 @@ export class MelodySynthManagerV2 {
        if (preset) {
            await this.loadInstrument(instrumentName, isBassPart ? 'bass' : (preset.type || 'synth'));
        } else {
-           // It's a sampler name or unknown preset
            this.activePresetName = instrumentName;
        }
     }
