@@ -1,7 +1,7 @@
 /**
- * #ЗАЧЕМ: Хук управления UI музыкой V4.0 — "V2 Finality".
- * #ЧТО: Удалена логика переключения V1/V2 движков. V2 теперь единственный путь.
- * #ОБНОВЛЕНО (ПЛАН №523): Исправлен импорт startRecording и stopRecording из контекста.
+ * #ЗАЧЕМ: Хук управления UI музыкой V4.1 — "UI Sync & Volume Sovereignty".
+ * #ЧТО: Исправлена ошибка синхронизации стейта громкости. Теперь ползунки движутся визуально.
+ * #ОБНОВЛЕНО (ПЛАН №525): handleVolumeChange теперь обновляет локальные настройки инструментов.
  */
 'use client';
 
@@ -253,8 +253,27 @@ export const useAuraGroove = (): AuraGrooveProps => {
       setBassTechnique(technique);
   };
 
+  /**
+   * #ЗАЧЕМ: Синхронизация визуального состояния ползунков.
+   * #ЧТО: Обновление локального стейта React при каждом изменении громкости.
+   */
   const handleVolumeChange = (part: InstrumentPart, value: number) => {
     setVolume(part, value);
+    
+    // #ЗАЧЕМ: Фикс "замерзших" слайдеров.
+    if (part in instrumentSettings) {
+      setInstrumentSettings(prev => ({
+        ...prev,
+        [part]: { ...prev[part as keyof typeof prev], volume: value }
+      }));
+    } else if (part === 'drums') {
+      setDrumSettings(prev => ({ ...prev, volume: value }));
+    } else if (part === 'sparkles' || part === 'sfx') {
+      setTextureSettings(prev => ({
+        ...prev,
+        [part]: { ...prev[part], volume: value }
+      }));
+    }
   };
 
   const handleTextureEnabledChange = (part: 'sparkles' | 'sfx', enabled: boolean) => {

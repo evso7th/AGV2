@@ -19,10 +19,10 @@ import {
 import { BLUES_SOLO_LICKS } from './assets/blues_guitar_solo';
 
 /**
- * #ЗАЧЕМ: Блюзовый Мозг V112.0 — "Timbral Hysteresis Guard".
+ * #ЗАЧЕМ: Блюзовый Мозг V113.0 — "Chordal Softness Guard".
  * #ЧТО: 1. Внедрен гистерезис для смены инструментов аккомпанемента (0.65 - 0.75).
  *       2. Смена тембра теперь синхронизирована с границами фраз (4 такта).
- *       3. Сохранен 4-х тактовый рифф баса.
+ *       3. Снижена громкость аккордов органа (Tier 3) для мягкости перехода.
  */
 
 export class BluesBrain {
@@ -109,12 +109,9 @@ export class BluesBrain {
         this.sfxPlayedInPart = false;
     }
 
-    // #ЗАЧЕМ: Гистерезис и фразовая синхронизация тембров.
-    // #ЧТО: Смена тембров происходит только на границах фраз (4 такта).
     if (epoch % 4 === 0 || epoch === 0) {
         this.evaluateTimbralDramaturgy(tension, hints);
     } else {
-        // Сохраняем текущие хинты, если мы внутри фразы
         if (hints.melody) (hints as any).melody = this.state.lastMelodyHash ? (hints as any).melody : (tension <= 0.40 ? 'blackAcoustic' : (tension <= 0.70 ? 'cs80' : 'guitar_shineOn'));
         if (hints.accompaniment) (hints as any).accompaniment = this.state.activeAccompTimbre;
     }
@@ -130,12 +127,10 @@ export class BluesBrain {
 
     const events: FractalEvent[] = [];
 
-    // --- RENDER PARTS ---
     const melodyEvents = hints.melody ? this.renderMelodicSegment(epoch, currentChord, tension) : [];
     const accompEvents = hints.accompaniment ? this.renderDynamicAccompaniment(epoch, currentChord, tension) : [];
     const pianoEvents = hints.pianoAccompaniment ? this.renderIntegratedPiano(epoch, currentChord, tension) : [];
 
-    // --- STAGNATION DETECTION ---
     const mHash = melodyEvents.map(e => e.note).join('-');
     const aHash = accompEvents.map(e => e.note).join('-');
     const pHash = pianoEvents.map(e => e.note).join('-');
@@ -154,7 +149,6 @@ export class BluesBrain {
     this.state.lastAccompHash = aHash;
     this.state.lastPianoHash = pHash;
 
-    // --- COLLECT ALL ---
     events.push(...melodyEvents);
     events.push(...accompEvents);
     events.push(...pianoEvents);
@@ -277,10 +271,6 @@ export class BluesBrain {
       return entry ? entry[0] : deg;
   }
 
-  /**
-   * #ЗАЧЕМ: Устранение тембрального "дребезга".
-   * #ЧТО: Внедрена логика гистерезиса (Hysteresis).
-   */
   private evaluateTimbralDramaturgy(tension: number, hints: InstrumentHints) {
     if (hints.melody) {
         if (tension <= 0.40) (hints as any).melody = 'blackAcoustic';
@@ -288,7 +278,6 @@ export class BluesBrain {
         else (hints as any).melody = 'guitar_shineOn';
     }
     if (hints.accompaniment) {
-        // Гистерезис: Rhodes включается при > 0.75, выключается только при < 0.65.
         let nextTimbre = this.state.activeAccompTimbre;
         if (this.state.activeAccompTimbre === 'organ_soft_jazz' && tension > 0.75) {
             nextTimbre = 'ep_rhodes_warm';
@@ -391,6 +380,10 @@ export class BluesBrain {
     return events;
   }
 
+  /**
+   * #ЗАЧЕМ: Устранение резких скачков громкости при переходе на орган.
+   * #ЧТО: Вес нот (weight) снижен с 0.55 до 0.38 для Tier 3.
+   */
   private renderPowerChords(epoch: number, chord: GhostChord, tension: number): FractalEvent[] {
     const events: FractalEvent[] = [];
     const root = chord.rootNote + 12;
@@ -398,16 +391,22 @@ export class BluesBrain {
     const notes = [root, root + (isMin ? 3 : 4), root + 7, root + 10];
     [0, 2.0].forEach(t => {
         notes.forEach((p, i) => {
-            events.push({ type: 'accompaniment', note: p, time: t + i * 0.03, duration: 1.5, weight: 0.55, technique: 'pluck', dynamics: 'mf', phrasing: 'staccato' });
+            events.push({ 
+                type: 'accompaniment', 
+                note: p, 
+                time: t + i * 0.03, 
+                duration: 1.5, 
+                // #ЗАЧЕМ: Смягчение вступления органа.
+                weight: 0.38, 
+                technique: 'pluck', 
+                dynamics: 'mf', 
+                phrasing: 'staccato' 
+            });
         });
     });
     return events;
   }
 
-  /**
-   * #ЗАЧЕМ: Реализация строгих уровней исполнения баса.
-   * #ЧТО: Разделение на Tier 1 (Drone), Tier 2 (Composed Riff), Tier 3 (Walking).
-   */
   private renderIronBass(chord: GhostChord, epoch: number, tension: number, navInfo: NavigationInfo): FractalEvent[] {
     const momentum = this.state.tensionMomentum;
     const effectiveTension = tension + momentum * 3;
@@ -421,7 +420,6 @@ export class BluesBrain {
     }
   }
 
-  /** #Tier 1: Короткий дрон (1 нота на такт) */
   private renderDroneBass(chord: GhostChord, epoch: number): FractalEvent[] {
     return [{ 
         type: 'bass', 
@@ -436,26 +434,15 @@ export class BluesBrain {
     }];
   }
 
-  /** 
-   * #Tier 2: Нарративный 4-х тактовый Рифф (T 0.4 - 0.7) 
-   * #ЗАЧЕМ: Создание упругого рокового грува (11 нот на цикл).
-   */
   private renderRiffBass(chord: GhostChord, epoch: number, tension: number): FractalEvent[] {
     const root = Math.max(chord.rootNote - 12, this.BASS_FLOOR);
     const barInRiff = epoch % 4;
     
-    // #ЗАЧЕМ: Реализация "Грува на 4 такта" (ПЛАН №518).
-    // #ЧТО: Сложный ритмический рисунок на 8-12 нот, имитирующий живой рок-блюз рифф.
     const riffs = [
-        // Riff A: The "Smoke & Fire" (Root-Fifth Focus)
         [
-            // Такт 0: Прямое утверждение
             [{ t: 0, n: root, w: 0.85 }, { t: 2.0, n: root + 7, w: 0.7 }],
-            // Такт 1: Роковая синкопа (1-я доля + 2.5)
             [{ t: 0, n: root, w: 0.8 }, { t: 1.5, n: root, w: 0.7 }, { t: 2.5, n: root + 7, w: 0.75 }],
-            // Такт 2: Расширение к септиме
             [{ t: 0, n: root, w: 0.85 }, { t: 2.0, n: root + 7, w: 0.7 }, { t: 3.5, n: root + 10, w: 0.65 }],
-            // Такт 3: Подвод к тонике (v -> iv -> i)
             [{ t: 0, n: root + 7, w: 0.75 }, { t: 1.5, n: root + 5, w: 0.7 }, { t: 2.5, n: root, w: 0.9 }]
         ]
     ];
@@ -476,7 +463,6 @@ export class BluesBrain {
     }));
   }
 
-  /** #Tier 3: Плотный волкинг (4 ноты на такт) */
   private renderWalkingBass(chord: GhostChord, epoch: number, tension: number): FractalEvent[] {
     const root = Math.max(chord.rootNote - 12, this.BASS_FLOOR);
     const nextRoot = getNextChordRoot(epoch % 12, chord.rootNote) - 12;
