@@ -1,7 +1,7 @@
 /**
  * @fileOverview Universal Music Theory Utilities
  * #ЗАЧЕМ: Базовый набор инструментов для работы с нотами и энергетическими картами.
- * #ОБНОВЛЕНО (ПЛАН №471): Добавлен Decompressor для компактных числовых массивов ликов.
+ * #ОБНОВЛЕНО (ПЛАН №486): Исправлена генерация BPM. Теперь используется диапазон из Блюпринта.
  */
 
 import type { 
@@ -197,7 +197,17 @@ export function pickWeightedDeterministic<T>(options: { name?: T, value?: T, wei
     return (options[options.length - 1].name || options[options.length - 1].value) as T;
 }
 
-export function generateSuiteDNA(totalBars: number, mood: Mood, initialSeed: number, originalRandom: any, genre: Genre, blueprintParts: any[], ancestor?: any, sessionHistory?: string[]): SuiteDNA {
+export function generateSuiteDNA(
+    totalBars: number, 
+    mood: Mood, 
+    initialSeed: number, 
+    originalRandom: any, 
+    genre: Genre, 
+    blueprintParts: any[], 
+    ancestor?: any, 
+    sessionHistory?: string[],
+    bpmConfig?: { base: number, range: [number, number], modifier: number }
+): SuiteDNA {
     let seedLickId: string | undefined;
     let partLickMap: Map<string, string> = new Map();
 
@@ -228,10 +238,20 @@ export function generateSuiteDNA(totalBars: number, mood: Mood, initialSeed: num
         accumulatedBars += partDuration;
     });
 
+    // #ЗАЧЕМ: Детерминированный расчет темпа на основе Блюпринта.
+    // #ЧТО: Выбор значения внутри range[min, max] с использованием seed.
+    let baseTempo = 72;
+    if (bpmConfig) {
+        const [min, max] = bpmConfig.range;
+        const rangeWidth = max - min;
+        const deterministicOffset = (calculateMusiNum(initialSeed, 13, 0, 100) / 100) * rangeWidth;
+        baseTempo = Math.round((min + deterministicOffset) * bpmConfig.modifier);
+    }
+
     const tensionMap = generateTensionMap(initialSeed, totalBars, mood, blueprintParts);
     return { 
         harmonyTrack, 
-        baseTempo: 72, 
+        baseTempo, 
         rhythmicFeel: 'shuffle', 
         bassStyle: 'walking', 
         drumStyle: 'shuffle_A', 

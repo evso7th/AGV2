@@ -137,7 +137,8 @@ export class FractalMusicEngine {
         this.config.genre, 
         this.blueprint.structure.parts,
         this.config.ancestor,
-        this.config.sessionLickHistory
+        this.config.sessionLickHistory,
+        this.blueprint.musical.bpm // #ЗАЧЕМ: Передача конфига темпа в генератор ДНК.
     );
 
     if (this.suiteDNA.seedLickId) {
@@ -157,6 +158,7 @@ export class FractalMusicEngine {
         this.ambientBrain = null;
     }
 
+    // #ЗАЧЕМ: Обновление темпа из ДНК.
     this.config.tempo = this.suiteDNA.baseTempo;
     this.isInitialized = true;
   }
