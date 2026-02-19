@@ -1,13 +1,14 @@
 /**
- * #ЗАЧЕМ: Heritage Alchemist V8.1.
- * #ЧТО: Исправлена кнопка Silence All и Stop Preview.
- *       Остановка MIDI теперь мгновенно гасит все запланированные ноты.
+ * #ЗАЧЕМ: Heritage Alchemist V9.0 — "Genetic Integrity".
+ * #ЧТО: 1. Внедрена система дедупликации (Fingerprinting).
+ *       2. Реализован учет уже обработанных ликов через хеширование фраз.
+ *       3. Добавлена визуальная индикация "Already Ingested".
  */
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { Midi } from '@tonejs/midi';
-import { Upload, FileMusic, Download, Search, Settings2, Sparkles, Tags, Heart, CloudUpload, Music, Waves, Drum, LayoutGrid, Factory, Trash2, BrainCircuit, Play, Volume2, PlayCircle, Square, StopCircle } from 'lucide-react';
+import { Upload, FileMusic, Download, Search, Settings2, Sparkles, Tags, Heart, CloudUpload, Music, Waves, Drum, LayoutGrid, Factory, Trash2, BrainCircuit, Play, Volume2, PlayCircle, Square, StopCircle, CheckCircle2, AlertCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Label } from '@/components/ui/label';
@@ -28,26 +29,22 @@ type IngestionRole = 'melody' | 'bass' | 'drums' | 'accomp';
 const MOOD_OPTIONS: Mood[] = ['epic', 'joyful', 'enthusiastic', 'melancholic', 'dark', 'anxious', 'dreamy', 'contemplative', 'calm'];
 const GENRE_OPTIONS: Genre[] = ['ambient', 'trance', 'blues', 'progressive', 'rock', 'house', 'rnb', 'ballad', 'reggae', 'celtic'];
 
+/**
+ * #ЗАЧЕМ: Генерация уникального отпечатка фразы для предотвращения дублей.
+ */
+const calculatePhraseHash = (phrase: number[]): string => {
+    return phrase.join('|');
+};
+
 const detectTrackRole = (track: any): IngestionRole => {
     const name = (track.name || "").toLowerCase();
-    
     if (name.includes("bass")) return 'bass';
     if (track.channel === 9 || name.match(/drum|perc|kick|snare|hihat|kit|beat/)) return 'drums';
     if (name.match(/lead|solo|melody/)) return 'melody';
     if (name.match(/piano|key|chord|pad|str|string|organ/)) return 'accomp';
-
     if (track.notes.length === 0) return 'melody';
-    
     const avgPitch = track.notes.reduce((sum: number, n: any) => sum + n.midi, 0) / track.notes.length;
-    let overlaps = 0;
-    const sampleSize = Math.min(track.notes.length, 20);
-    for (let i = 0; i < sampleSize - 1; i++) {
-        if (track.notes[i+1].time < track.notes[i].time + track.notes[i].duration) overlaps++;
-    }
-    const isPolyphonic = overlaps > (sampleSize * 0.3);
-    
-    if (avgPitch < 48 && !isPolyphonic) return 'bass';
-    if (isPolyphonic) return 'accomp';
+    if (avgPitch < 48) return 'bass';
     return 'melody';
 };
 
@@ -70,7 +67,6 @@ const segmentTrackToCompactLicks = (track: any, root: number, role: IngestionRol
             const relativeTime = n.time - start;
             const tick = Math.round((relativeTime / (secondsPerBar / 12))); 
             const durationTicks = Math.max(1, Math.round(n.duration / (secondsPerBar / 12)));
-            
             let degreeIdx = 0;
             if (role === 'drums') {
                 degreeIdx = n.midi; 
@@ -78,14 +74,15 @@ const segmentTrackToCompactLicks = (track: any, root: number, role: IngestionRol
                 const degreeStr = SEMITONE_TO_DEGREE[(n.midi - root + 120) % 12] || 'R';
                 degreeIdx = DEGREE_KEYS.indexOf(degreeStr);
             }
-            
-            const techIdx = 0;
-            compactPhrase.push(tick, durationTicks, degreeIdx, techIdx);
+            compactPhrase.push(tick, durationTicks, degreeIdx, 0);
         });
+
+        const hash = calculatePhraseHash(compactPhrase);
 
         result.push({
             id: `LICK_${Date.now()}_${role.toUpperCase()}_${i}`,
             phrase: compactPhrase,
+            hash: hash,
             role: role,
             tags: standardTags,
             origin: origin.trim() || 'Unknown Source'
@@ -112,6 +109,20 @@ export default function MidiIngestPage() {
     const [origin, setOrigin] = useState("");
     const [trackRoles, setTrackRoles] = useState<Map<number, IngestionRole>>(new Map());
     const [isPlayingFull, setIsPlayingFull] = useState(false);
+    
+    // #ЗАЧЕМ: Хранилище уже обработанных хешей для дедупликации.
+    const [ingestedHashes, setIngestedHashes] = useState<Set<string>>(new Set());
+
+    // Загрузка реестра из localStorage при старте
+    useEffect(() => {
+        const saved = localStorage.getItem('AuraGroove_Ingested_Hashes');
+        if (saved) {
+            try {
+                const parsed = JSON.parse(saved);
+                setIngestedHashes(new Set(parsed));
+            } catch(e) {}
+        }
+    }, []);
 
     const onFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
         const file = e.target.files?.[0];
@@ -124,22 +135,14 @@ export default function MidiIngestPage() {
             try {
                 const midi = new Midi(event.target?.result as ArrayBuffer);
                 setMidiFile(midi);
-                
                 const rolesMap = new Map<number, IngestionRole>();
-                midi.tracks.forEach((track, i) => {
-                    rolesMap.set(i, detectTrackRole(track));
-                });
+                midi.tracks.forEach((track, i) => rolesMap.set(i, detectTrackRole(track)));
                 setTrackRoles(rolesMap);
-
                 const longestTrackIdx = midi.tracks.reduce((prev, curr, idx) => 
-                    curr.notes.length > midi.tracks[prev].notes.length ? idx : prev, 0
-                );
-                
+                    curr.notes.length > midi.tracks[prev].notes.length ? idx : prev, 0);
                 setSelectedTrackIndex(longestTrackIdx);
                 setSelectedRole(rolesMap.get(longestTrackIdx) || 'melody');
-
-                const track = midi.tracks[longestTrackIdx];
-                const key = detectKeyFromNotes(track.notes.map(n => n.midi));
+                const key = detectKeyFromNotes(midi.tracks[longestTrackIdx].notes.map(n => n.midi));
                 setDetectedKey(key);
             } catch (err) {
                 toast({ variant: "destructive", title: "MIDI Analysis Failed" });
@@ -163,36 +166,28 @@ export default function MidiIngestPage() {
         }
     }, [midiFile, selectedTrackIndex, selectedRole, detectedKey, origin, selectedMood, selectedGenre]);
 
+    // Статистика дедупликации
+    const stats = useMemo(() => {
+        const total = extractedLicks.length;
+        const known = extractedLicks.filter(l => ingestedHashes.has(l.hash)).length;
+        return { total, known, fresh: total - known };
+    }, [extractedLicks, ingestedHashes]);
+
     const playFullMidi = async () => {
         if (!midiFile) return;
-
-        if (isPlayingFull) {
-            silenceLaboratory();
-            return;
-        }
-
-        if (!isInitialized) {
-            const success = await initialize();
-            if (!success) return;
-        }
+        if (isPlayingFull) { silenceLaboratory(); return; }
+        if (!isInitialized) await initialize();
 
         const tempo = 72; 
         const beatDuration = 60 / tempo;
         const allEvents: FractalEvent[] = [];
-        
         let minStartTime = Infinity;
-        midiFile.tracks.forEach(track => {
-            track.notes.forEach(note => {
-                if (note.time < minStartTime) minStartTime = note.time;
-            });
-        });
-
+        midiFile.tracks.forEach(t => t.notes.forEach(n => { if (n.time < minStartTime) minStartTime = n.time; }));
         if (minStartTime === Infinity) minStartTime = 0;
 
         midiFile.tracks.forEach((track, trackIdx) => {
             const role = trackRoles.get(trackIdx) || 'melody';
             const mappedRole = role === 'accomp' ? 'accompaniment' : role;
-
             track.notes.forEach(note => {
                 allEvents.push({
                     type: mappedRole as any,
@@ -209,31 +204,19 @@ export default function MidiIngestPage() {
 
         if (allEvents.length > 0) {
             setIsPlayingFull(true);
-            const hints: InstrumentHints = {
-                bass: 'bass_jazz_warm',
-                melody: 'blackAcoustic',
-                accompaniment: 'organ_soft_jazz'
-            };
-            playRawEvents(allEvents, hints);
-            toast({ title: "Ensemble Performance", description: `Conducting full score: ${fileName}` });
+            playRawEvents(allEvents, { bass: 'bass_jazz_warm', melody: 'blackAcoustic', accompaniment: 'organ_soft_jazz' });
         }
     };
 
     const silenceLaboratory = () => {
-        setIsPlaying(false); // Trigger StopAllSounds in EngineContext
+        setIsPlaying(false);
         setIsPlayingFull(false);
-        toast({ title: "Sonic Silence", description: "All factory instruments disconnected." });
     };
 
     const auralizeLick = async (lick: any) => {
-        if (!isInitialized) {
-            const success = await initialize();
-            if (!success) return;
-        }
-
+        if (!isInitialized) await initialize();
         const roleMap: Record<string, string> = { 'melody': 'melody', 'bass': 'bass', 'accomp': 'accompaniment', 'drums': 'drums' };
         const role = roleMap[lick.role] || 'melody';
-        
         const events: FractalEvent[] = [];
         const root = detectedKey?.root || 60;
 
@@ -241,33 +224,26 @@ export default function MidiIngestPage() {
             const t = lick.phrase[i];
             const d = lick.phrase[i+1];
             const degIdx = lick.phrase[i+2];
-            const techIdx = lick.phrase[i+3];
-
             events.push({
                 type: role as any,
                 note: lick.role === 'drums' ? degIdx : root + (DEGREE_TO_SEMITONE[DEGREE_KEYS[degIdx]] || 0),
-                time: t / 3, 
-                duration: d / 3,
-                weight: 0.8,
-                technique: TECHNIQUE_KEYS[techIdx] as any,
-                dynamics: 'mf',
-                phrasing: 'legato'
+                time: t / 3, duration: d / 3, weight: 0.8, technique: 'pick', dynamics: 'mf', phrasing: 'legato'
             });
         }
-
-        const hints: InstrumentHints = {
-            [role]: role === 'bass' ? 'bass_jazz_warm' : (role === 'melody' ? 'blackAcoustic' : 'organ_soft_jazz')
-        };
-
-        playRawEvents(events, hints);
-        toast({ title: "Axiom Preview", description: `Playing ${lick.role} fragment.` });
+        playRawEvents(events, { [role]: role === 'bass' ? 'bass_jazz_warm' : (role === 'melody' ? 'blackAcoustic' : 'organ_soft_jazz') });
     };
 
     const transmitToGlobalMemory = async () => {
-        if (extractedLicks.length === 0) return;
+        const freshLicks = extractedLicks.filter(l => !ingestedHashes.has(l.hash));
+        if (freshLicks.length === 0) {
+            toast({ title: "Genetic Stagnation", description: "No fresh axioms detected. All fragments already exist in global memory." });
+            return;
+        }
+
         setIsTransmitting(true);
+        const newHashes = new Set(ingestedHashes);
         try {
-            for (const lick of extractedLicks) {
+            for (const lick of freshLicks) {
                 await saveHeritageAxiom(db, {
                     phrase: lick.phrase,
                     role: lick.role,
@@ -275,8 +251,14 @@ export default function MidiIngestPage() {
                     origin: lick.origin,
                     tags: lick.tags
                 });
+                newHashes.add(lick.hash);
             }
-            toast({ title: "Genetic Ingestion Success", description: `Transmitted ${extractedLicks.length} axioms to the cloud.` });
+            
+            const hashList = Array.from(newHashes);
+            localStorage.setItem('AuraGroove_Ingested_Hashes', JSON.stringify(hashList));
+            setIngestedHashes(newHashes);
+            
+            toast({ title: "Genetic Ingestion Success", description: `Transmitted ${freshLicks.length} fresh axioms to the cloud.` });
         } catch (e) {
             toast({ variant: "destructive", title: "Transmission Failed" });
         } finally {
@@ -295,17 +277,17 @@ export default function MidiIngestPage() {
     };
 
     return (
-        <main className="flex min-h-screen flex-col items-center p-8 bg-background">
-            <Card className="w-full max-w-5xl shadow-xl border-primary/20 bg-card/50 backdrop-blur-sm">
+        <main className="flex min-h-screen flex-col items-center p-8 bg-background text-foreground">
+            <Card className="w-full max-w-5xl shadow-2xl border-primary/20 bg-card/50 backdrop-blur-sm">
                 <CardHeader className="flex flex-row items-center justify-between border-b pb-6">
                     <div className="flex items-center gap-4">
                         <div className="p-3 bg-primary/10 rounded-xl">
                             <Factory className="h-8 w-8 text-primary" />
                         </div>
                         <div>
-                            <CardTitle className="text-3xl font-bold tracking-tight">Heritage Alchemist v8.1</CardTitle>
+                            <CardTitle className="text-3xl font-bold tracking-tight">Heritage Alchemist v9.0</CardTitle>
                             <CardDescription className="text-muted-foreground flex items-center gap-2">
-                                <Volume2 className="h-3 w-3" /> Full Ensemble Control Active
+                                <CheckCircle2 className="h-3 w-3 text-green-500" /> Fingerprinting Active | Dedup Protected
                             </CardDescription>
                         </div>
                     </div>
@@ -327,11 +309,11 @@ export default function MidiIngestPage() {
                                 <Label className="text-xs font-bold uppercase tracking-widest text-primary/80 flex items-center gap-2">
                                     <Tags className="h-3 w-3" /> Identity & Taxonomy
                                 </Label>
-                                <Input placeholder="Artist / Group / Dynasty" value={origin} onChange={(e) => setOrigin(e.target.value)} className="h-10 text-sm bg-background/50" />
+                                <Input placeholder="Artist / Group / Dynasty" value={origin} onChange={(e) => setOrigin(e.target.value)} className="h-10 text-sm bg-background/50 border-primary/20" />
                                 
                                 <div className="grid grid-cols-2 gap-3">
                                     <div className="space-y-1.5">
-                                        <Label className="text-[10px] uppercase text-muted-foreground font-semibold">Target Genre</Label>
+                                        <Label className="text-[10px] uppercase text-muted-foreground font-semibold">Genre</Label>
                                         <Select value={selectedGenre} onValueChange={(v) => setSelectedGenre(v as Genre)}>
                                             <SelectTrigger className="h-9 text-xs bg-background/50"><SelectValue /></SelectTrigger>
                                             <SelectContent>
@@ -340,7 +322,7 @@ export default function MidiIngestPage() {
                                         </Select>
                                     </div>
                                     <div className="space-y-1.5">
-                                        <Label className="text-[10px] uppercase text-muted-foreground font-semibold">Target Mood</Label>
+                                        <Label className="text-[10px] uppercase text-muted-foreground font-semibold">Mood</Label>
                                         <Select value={selectedMood} onValueChange={(v) => setSelectedMood(v as Mood)}>
                                             <SelectTrigger className="h-9 text-xs bg-background/50"><SelectValue /></SelectTrigger>
                                             <SelectContent>
@@ -350,9 +332,9 @@ export default function MidiIngestPage() {
                                     </div>
                                 </div>
                                 
-                                <div className="pt-4 border-t space-y-4">
+                                <div className="pt-4 border-t border-primary/10 space-y-4">
                                     <Label className="text-xs font-bold uppercase tracking-widest text-primary/80">File Discovery</Label>
-                                    <div className="group border-2 border-dashed border-muted-foreground/30 rounded-2xl p-6 text-center hover:border-primary/50 hover:bg-primary/5 transition-all relative overflow-hidden">
+                                    <div className="group border-2 border-dashed border-primary/20 rounded-2xl p-6 text-center hover:border-primary/50 hover:bg-primary/5 transition-all relative overflow-hidden">
                                         <input type="file" accept=".mid,.midi" onChange={onFileUpload} className="absolute inset-0 opacity-0 cursor-pointer z-10" />
                                         <Upload className="h-8 w-8 mx-auto text-muted-foreground group-hover:text-primary mb-3 transition-colors" />
                                         <p className="text-xs font-medium text-muted-foreground group-hover:text-primary">Click to scan MIDI DNA</p>
@@ -367,27 +349,33 @@ export default function MidiIngestPage() {
                         </div>
 
                         <div className="lg:col-span-2 space-y-6">
-                            <div className="flex justify-between items-end mb-2">
+                            <div className="flex justify-between items-center mb-2">
                                 <Label className="text-xs font-bold uppercase tracking-widest text-primary/80 flex items-center gap-2">
                                     <LayoutGrid className="h-3 w-3" /> Ensemble Map {fileName ? `(${fileName})` : ''}
                                 </Label>
-                                <div className="flex gap-2">
+                                <div className="flex gap-2 items-center">
                                     {midiFile && (
-                                        <Button 
-                                            size="sm" 
-                                            variant="secondary" 
-                                            onClick={playFullMidi}
-                                            className={cn(
-                                                "h-8 text-[10px] uppercase font-bold tracking-widest gap-2 bg-primary/20 text-primary border border-primary/30 transition-all",
-                                                isPlayingFull ? "bg-destructive/20 text-destructive border-destructive/30 hover:bg-destructive/30" : "hover:bg-primary/30"
-                                            )}
-                                        >
-                                            {isPlayingFull ? <StopCircle className="h-4 w-4 fill-current" /> : <PlayCircle className="h-4 w-4" />}
-                                            {isPlayingFull ? "Stop Preview" : "Play Source File"}
-                                        </Button>
+                                        <div className="flex items-center gap-3 mr-4">
+                                            <div className="flex flex-col items-end">
+                                                <span className="text-[10px] font-bold text-green-500">{stats.fresh} FRESH</span>
+                                                <span className="text-[10px] font-bold text-muted-foreground">{stats.known} KNOWN</span>
+                                            </div>
+                                            <Button 
+                                                size="sm" 
+                                                variant="secondary" 
+                                                onClick={playFullMidi}
+                                                className={cn(
+                                                    "h-8 text-[10px] uppercase font-bold tracking-widest gap-2 bg-primary/20 text-primary border border-primary/30 transition-all",
+                                                    isPlayingFull ? "bg-destructive/20 text-destructive border-destructive/30 hover:bg-destructive/30" : "hover:bg-primary/30"
+                                                )}
+                                            >
+                                                {isPlayingFull ? <StopCircle className="h-4 w-4 fill-current" /> : <PlayCircle className="h-4 w-4" />}
+                                                {isPlayingFull ? "Stop Preview" : "Play Source File"}
+                                            </Button>
+                                        </div>
                                     )}
                                     {detectedKey && (
-                                        <div className="px-3 py-1 bg-primary/10 rounded-full border border-primary/20 flex items-center gap-2">
+                                        <div className="px-3 py-1 bg-primary/10 rounded-full border border-primary/20 flex items-center gap-2 shadow-sm">
                                             <span className="text-[10px] text-muted-foreground font-bold">KEY:</span>
                                             <span className="text-xs font-bold text-primary">{detectedKey.root} {detectedKey.mode.toUpperCase()}</span>
                                         </div>
@@ -395,7 +383,7 @@ export default function MidiIngestPage() {
                                 </div>
                             </div>
                             
-                            <ScrollArea className="h-[320px] rounded-2xl border bg-black/30 p-3 shadow-inner">
+                            <ScrollArea className="h-[320px] rounded-2xl border border-primary/10 bg-black/20 p-3 shadow-inner">
                                 {!midiFile ? (
                                     <div className="flex flex-col items-center justify-center h-full text-muted-foreground text-xs italic gap-2 opacity-50">
                                         <FileMusic className="h-10 w-10 mb-2" />
@@ -430,19 +418,6 @@ export default function MidiIngestPage() {
                                                         </div>
                                                     </div>
                                                     <div className="flex items-center gap-4">
-                                                        {selectedTrackIndex === i && (
-                                                            <Button 
-                                                                size="icon" 
-                                                                variant="ghost" 
-                                                                className="h-8 w-8 rounded-full bg-primary/20 text-primary hover:bg-primary hover:text-primary-foreground transition-all"
-                                                                onClick={(e) => {
-                                                                    e.stopPropagation();
-                                                                    if (extractedLicks.length > 0) auralizeLick(extractedLicks[0]);
-                                                                }}
-                                                            >
-                                                                <Play className="h-4 w-4 fill-current" />
-                                                            </Button>
-                                                        )}
                                                         <div className={cn(
                                                             "p-2 rounded-full",
                                                             selectedTrackIndex === i ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground"
@@ -463,37 +438,58 @@ export default function MidiIngestPage() {
                     </div>
 
                     {extractedLicks.length > 0 && (
-                        <div className="space-y-4 border-t pt-8 animate-in fade-in zoom-in-95">
+                        <div className="space-y-4 border-t border-primary/10 pt-8 animate-in fade-in zoom-in-95">
                             <div className="flex justify-between items-center">
-                                <Label className="text-sm font-bold flex items-center gap-2 uppercase tracking-widest text-primary">
-                                    <Settings2 className="h-4 w-4" /> Genetic Buffer ({extractedLicks.length} Axioms Ready)
-                                </Label>
+                                <div className="flex flex-col gap-1">
+                                    <Label className="text-sm font-bold flex items-center gap-2 uppercase tracking-widest text-primary">
+                                        <Settings2 className="h-4 w-4" /> Genetic Buffer ({extractedLicks.length} Axioms)
+                                    </Label>
+                                    <span className="text-[10px] text-muted-foreground ml-6">
+                                        {stats.known} fragments flagged as existing duplicates and will be skipped.
+                                    </span>
+                                </div>
                                 <div className="flex gap-3">
                                     <Button 
                                         variant="outline"
                                         onClick={() => auralizeLick(extractedLicks[0])}
-                                        className="gap-2 text-xs h-10 px-6 border-primary/30 rounded-full"
+                                        className="gap-2 text-xs h-10 px-6 border-primary/30 rounded-full hover:bg-primary/5"
                                     >
-                                        <Play className="h-4 w-4 fill-primary" /> Auralize DNA
+                                        <Play className="h-4 w-4 fill-primary" /> Auralize Sample
                                     </Button>
                                     <Button 
                                         onClick={transmitToGlobalMemory} 
-                                        disabled={isTransmitting}
-                                        className="gap-2 text-xs h-10 px-6 bg-green-600 hover:bg-green-700 shadow-lg shadow-green-900/30 rounded-full transition-all active:scale-95"
+                                        disabled={isTransmitting || stats.fresh === 0}
+                                        className={cn(
+                                            "gap-2 text-xs h-10 px-6 rounded-full transition-all active:scale-95 shadow-lg",
+                                            stats.fresh === 0 ? "bg-muted" : "bg-green-600 hover:bg-green-700 shadow-green-900/30"
+                                        )}
                                     >
                                         <CloudUpload className="h-4 w-4" /> 
-                                        {isTransmitting ? 'Transmitting DNA...' : 'Endorse & Transmit'}
+                                        {isTransmitting ? 'Transmitting...' : `Ingest ${stats.fresh} Fresh Axioms`}
                                     </Button>
                                 </div>
                             </div>
-                            <div className="rounded-2xl border p-1 bg-black/40 shadow-inner">
-                                <ScrollArea className="h-[200px] w-full">
-                                    <div className="p-4 font-mono text-[11px] leading-relaxed">
-                                        <pre className="text-primary/90 whitespace-pre scrollbar-hide">
-                                            {JSON.stringify(extractedLicks, null, 2)}
-                                        </pre>
-                                    </div>
-                                </ScrollArea>
+                            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-2">
+                                {extractedLicks.map((lick, idx) => {
+                                    const isIngested = ingestedHashes.has(lick.hash);
+                                    return (
+                                        <div key={idx} className={cn(
+                                            "p-3 border rounded-xl flex items-center justify-between text-[10px] font-mono transition-colors",
+                                            isIngested ? "bg-muted/50 border-muted opacity-60" : "bg-primary/5 border-primary/20 hover:border-primary/40"
+                                        )}>
+                                            <div className="flex items-center gap-2 overflow-hidden">
+                                                {isIngested ? <CheckCircle2 className="h-3 w-3 text-green-500 shrink-0" /> : <Sparkles className="h-3 w-3 text-primary shrink-0" />}
+                                                <span className="truncate opacity-70">FRAG_{idx.toString().padStart(2, '0')}</span>
+                                            </div>
+                                            <div className="flex items-center gap-2 shrink-0">
+                                                {isIngested && <span className="text-[8px] uppercase font-bold text-muted-foreground px-1 bg-muted rounded">KNOWN</span>}
+                                                <Button variant="ghost" size="icon" className="h-6 w-6 rounded-full" onClick={() => auralizeLick(lick)}>
+                                                    <Play className="h-2 w-2 fill-current" />
+                                                </Button>
+                                            </div>
+                                        </div>
+                                    );
+                                })}
                             </div>
                         </div>
                     )}
