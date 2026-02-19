@@ -1,7 +1,9 @@
 /**
- * #ЗАЧЕМ: Audio Engine Context V5.2 — "ReferenceError & Logic Fix".
- * #ЧТО: 1. Исправлена ошибка ReferenceError: setInstrumentCallback is not defined.
- *       2. Гарантирована инициализация V2-менеджеров.
+ * #ЗАЧЕМ: Audio Engine Context V5.3 — "V2 Sovereignty Alignment".
+ * #ЧТО: 1. Удалены все остатки V1 движка.
+ *       2. Роутинг всех партий (Bass, Melody, Accomp) переведен на V2.
+ *       3. Исправлены сигнатуры вызовов schedule.
+ *       4. Исправлен баланс громкости и выбор инструментов.
  */
 'use client';
 
@@ -20,10 +22,7 @@ import { MelodySynthManagerV2 } from '@/lib/melody-synth-manager-v2';
 import { HarmonySynthManager } from '@/lib/harmony-synth-manager';
 import { PianoAccompanimentManager } from '@/lib/piano-accompaniment-manager';
 import { BroadcastEngine } from '@/lib/broadcast-engine';
-import { useFirebase, initiateAnonymousSignIn } from '@/firebase';
-import { collection, query, limit, getDocs, orderBy } from 'firebase/firestore';
 import type { FractalEvent, InstrumentHints, NavigationInfo } from '@/types/fractal';
-import * as Tone from 'tone';
 
 // --- Constants ---
 const VOICE_BALANCE: Record<InstrumentPart, number> = {
@@ -73,11 +72,9 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
   const [isRecording, setIsRecording] = useState(false);
   const [isBroadcastActive, setIsBroadcastActive] = useState(false);
   
-  const firebase = useFirebase();
   const workerRef = useRef<Worker | null>(null);
   const audioContextRef = useRef<AudioContext | null>(null);
   const settingsRef = useRef<WorkerSettings | null>(null);
-  const ancestorsRef = useRef<any[]>([]); 
   
   const drumMachineRef = useRef<DrumMachine | null>(null);
   const accompanimentManagerV2Ref = useRef<AccompanimentSynthManagerV2 | null>(null);
@@ -139,11 +136,24 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
     }
 
     if (drumMachineRef.current && drumEvents.length > 0) drumMachineRef.current.schedule(drumEvents, barStartTime, tempo);
-    if (bassEvents.length > 0 && bassManagerV2Ref.current) bassManagerV2Ref.current.schedule(bassEvents, barStartTime, tempo, instrumentHints?.bass);
-    if (accompanimentEvents.length > 0 && accompanimentManagerV2Ref.current) accompanimentManagerV2Ref.current.schedule(accompanimentEvents, barStartTime, tempo, barCount, instrumentHints?.accompaniment);
-    if (melodyEvents.length > 0 && melodyManagerV2Ref.current) melodyManagerV2Ref.current.schedule(melodyEvents, barStartTime, tempo, instrumentHints?.melody);
-    if (harmonyManagerRef.current && harmonyEvents.length > 0) harmonyManagerRef.current.schedule(harmonyEvents, barStartTime, tempo, instrumentHints?.harmony);
-    if (sfxSynthManagerRef.current && sfxEvents.length > 0) sfxSynthManagerRef.current.trigger(sfxEvents, barStartTime, tempo);
+    
+    // #ЗАЧЕМ: Унифицированный V2 роутинг. 
+    // #ЧТО: Все тональные партии идут через современные менеджеры.
+    if (bassEvents.length > 0 && bassManagerV2Ref.current) {
+        bassManagerV2Ref.current.schedule(bassEvents, barStartTime, tempo, instrumentHints?.bass);
+    }
+    if (accompanimentEvents.length > 0 && accompanimentManagerV2Ref.current) {
+        accompanimentManagerV2Ref.current.schedule(accompanimentEvents, barStartTime, tempo, barCount, instrumentHints?.accompaniment);
+    }
+    if (melodyEvents.length > 0 && melodyManagerV2Ref.current) {
+        melodyManagerV2Ref.current.schedule(melodyEvents, barStartTime, tempo, instrumentHints?.melody);
+    }
+    if (harmonyManagerRef.current && harmonyEvents.length > 0) {
+        harmonyManagerRef.current.schedule(harmonyEvents, barStartTime, tempo, instrumentHints?.harmony);
+    }
+    if (sfxSynthManagerRef.current && sfxEvents.length > 0) {
+        sfxSynthManagerRef.current.trigger(sfxEvents, barStartTime, tempo);
+    }
   }, []);
 
   const initialize = useCallback(async () => {
@@ -206,6 +216,21 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
 
         if (!workerRef.current) {
             workerRef.current = new Worker(new URL('@/app/ambient.worker.ts', import.meta.url), { type: 'module' });
+            
+            workerRef.current.onmessage = (e) => {
+                const { type, payload, error } = e.data;
+                if (type === 'SCORE_READY' && payload && settingsRef.current) {
+                    scheduleEvents(payload.events, nextBarTimeRef.current, settingsRef.current.bpm, payload.barCount, payload.instrumentHints);
+                    nextBarTimeRef.current += payload.barDuration;
+                } else if (type === 'sparkle' && payload) {
+                    sparklePlayerRef.current?.playRandomSparkle(nextBarTimeRef.current + payload.time, payload.params?.genre, payload.params?.mood, payload.params?.category);
+                } else if (type === 'sfx' && payload) {
+                    sfxSynthManagerRef.current?.trigger([payload], nextBarTimeRef.current, settingsRef.current?.bpm || 75);
+                } else if (type === 'error') {
+                    toast({ variant: "destructive", title: "Worker Error", description: error });
+                }
+            };
+
             workerRef.current.postMessage({ command: 'init', data: {} });
         }
 
@@ -215,7 +240,14 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
         toast({ variant: "destructive", title: "Audio Error" });
         return false;
     } finally { setIsInitializing(false); }
-  }, [isInitialized, isInitializing, toast]);
+  }, [isInitialized, isInitializing, toast, scheduleEvents]);
+
+  const stopAllSounds = useCallback(() => {
+    [melodyManagerV2Ref, bassManagerV2Ref, accompanimentManagerV2Ref, harmonyManagerRef, pianoAccompanimentManagerRef].forEach(r => r.current?.allNotesOff());
+    drumMachineRef.current?.stop();
+    sparklePlayerRef.current?.stopAll();
+    sfxSynthManagerRef.current?.allNotesOff();
+  }, []);
 
   const setIsPlayingCallback = useCallback((playing: boolean) => {
     setIsPlayingState(playing);
@@ -225,19 +257,56 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
         workerRef.current.postMessage({ command: 'start' });
     } else {
         workerRef.current.postMessage({ command: 'stop' });
-        [melodyManagerV2Ref, bassManagerV2Ref, accompanimentManagerV2Ref].forEach(r => r.current?.allNotesOff());
+        stopAllSounds();
     }
-  }, [isInitialized]);
+  }, [isInitialized, stopAllSounds]);
+
+  const setVolumeCallback = useCallback((part: InstrumentPart, volume: number) => {
+    if (part === 'pads' || part === 'effects') return;
+    
+    // Прямой доступ к преампам V2 менеджеров
+    if (part === 'bass' && bassManagerV2Ref.current) bassManagerV2Ref.current.setPreampGain(volume);
+    if (part === 'melody' && melodyManagerV2Ref.current) melodyManagerV2Ref.current.setPreampGain(volume);
+    if (part === 'accompaniment' && accompanimentManagerV2Ref.current) accompanimentManagerV2Ref.current.setPreampGain(volume);
+
+    const gainNode = gainNodesRef.current[part];
+    if (gainNode && audioContextRef.current) {
+        const balancedVolume = volume * (VOICE_BALANCE[part] ?? 1);
+        gainNode.gain.setTargetAtTime(balancedVolume, audioContextRef.current.currentTime, 0.01);
+    }
+  }, []);
 
   return (
     <AudioEngineContext.Provider value={{
         isInitialized, isInitializing, isPlaying, isRecording, isBroadcastActive, initialize,
-        setIsPlaying: setIsPlayingCallback, updateSettings: (s) => {},
-        resetWorker: () => {}, setVolume: (p, v) => {}, setInstrument: setInstrumentCallback as any,
-        setBassTechnique: (t) => {}, setTextureSettings: (s) => {},
-        setEQGain: (i, g) => {}, startMasterFadeOut: (d) => {}, cancelMasterFadeOut: () => {},
-        startRecording: () => {}, stopRecording: () => {}, toggleBroadcast: () => {}, 
-        getWorker: () => workerRef.current, playRawEvents: (e, h) => {}
+        setIsPlaying: setIsPlayingCallback, updateSettings: (s) => {
+            if (workerRef.current) {
+                settingsRef.current = { ...settingsRef.current, ...s } as WorkerSettings;
+                workerRef.current.postMessage({ command: 'update_settings', data: s });
+            }
+        },
+        resetWorker: () => workerRef.current?.postMessage({ command: 'reset' }), 
+        setVolume: setVolumeCallback, 
+        setInstrument: setInstrumentCallback as any,
+        setBassTechnique: (t) => {}, 
+        setTextureSettings: (s) => {
+            setVolumeCallback('sparkles', s.sparkles.enabled ? s.sparkles.volume : 0);
+            setVolumeCallback('sfx', s.sfx.enabled ? s.sfx.volume : 0);
+        },
+        setEQGain: (i, g) => {}, 
+        startMasterFadeOut: (d) => {}, 
+        cancelMasterFadeOut: () => {},
+        startRecording: () => {}, 
+        stopRecording: () => {}, 
+        toggleBroadcast: () => {
+            if (broadcastEngineRef.current) {
+                if (isBroadcastActive) broadcastEngineRef.current.stop();
+                else broadcastEngineRef.current.start();
+                setIsBroadcastActive(!isBroadcastActive);
+            }
+        }, 
+        getWorker: () => workerRef.current, 
+        playRawEvents: (e, h) => scheduleEvents(e, audioContextRef.current!.currentTime + 0.1, 72, 0, h)
     }}>
       {children}
     </AudioEngineContext.Provider>
