@@ -1,7 +1,7 @@
 /**
- * #ЗАЧЕМ: Heritage Alchemist V16.0 — "The Vector Intuition".
- * #ЧТО: 1. Внедрена кнопка Auto-Calibrate для мгновенного анализа MIDI.
- *       2. Heuristic Vector Engine: авто-вычисление Tension, Brightness, Entropy.
+ * #ЗАЧЕМ: Heritage Alchemist V17.0 — "The AI Oracle".
+ * #ЧТО: 1. Интеграция с Genkit: кнопка "AI Deep Insight" для интеллектуальной калибровки.
+ *       2. Визуальная индикация процесса анализа ИИ.
  */
 'use client';
 
@@ -9,7 +9,8 @@ import { useState, useEffect } from 'react';
 import { Midi } from '@tonejs/midi';
 import { 
     Upload, FileMusic, Sparkles, CloudUpload, Music, Waves, Drum, LayoutGrid, Factory, 
-    Play, StopCircle, Database, RefreshCcw, Compass, Zap, Sun, Activity, Target, Wand2
+    Play, StopCircle, Database, RefreshCcw, Compass, Zap, Sun, Activity, Target, Wand2,
+    BrainCircuit, Loader2
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -35,6 +36,7 @@ import { toast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
 import type { Mood, Genre, FractalEvent, CommonMood, AxiomVector } from '@/types/fractal';
 import { useAudioEngine } from '@/contexts/audio-engine-context';
+import { analyzeAxiom } from '@/ai/flows/analyze-axiom-flow';
 
 type IngestionRole = 'melody' | 'bass' | 'drums' | 'accomp';
 
@@ -58,6 +60,7 @@ export default function MidiIngestPage() {
     const { initialize, isInitialized, playRawEvents, setIsPlaying } = useAudioEngine();
     
     const [isAnalyzing, setIsAnalyzing] = useState(false);
+    const [isAIAnalyzing, setIsAIAnalyzing] = useState(false);
     const [isTransmitting, setIsTransmitting] = useState(false);
     const [midiFile, setMidiFile] = useState<Midi | null>(null);
     const [fileName, setFileName] = useState<string>("");
@@ -73,6 +76,7 @@ export default function MidiIngestPage() {
     
     // Hypercube Vector State
     const [vector, setVector] = useState<AxiomVector>({ t: 0.5, b: 0.5, e: 0.5, h: 0.5 });
+    const [aiReasoning, setAIReasoning] = useState<string>("");
     
     const [playingLickIdx, setPlayingLickIdx] = useState<number | null>(null);
     const [selectedLickIds, setSelectedLickIds] = useState<Set<string>>(new Set());
@@ -171,14 +175,8 @@ export default function MidiIngestPage() {
         if (midiFile && selectedTrackIndex !== -1) segmentTrack();
     }, [midiFile, selectedTrackIndex, selectedRole, detectedKey]);
 
-    /**
-     * #ЗАЧЕМ: Автоматический анализ музыкального вектора.
-     * #ЧТО: Использует эвристики для расчета координат в Гиперкубе.
-     */
     const handleAutoCalibrate = () => {
         if (extractedLicks.length === 0 || !detectedKey) return;
-        
-        // Анализируем первый выбранный лик как референс для бандла
         const firstId = Array.from(selectedLickIds)[0];
         const lick = extractedLicks.find(l => l.id === (firstId || extractedLicks[0].id));
         if (!lick) return;
@@ -186,11 +184,45 @@ export default function MidiIngestPage() {
         const decompressed = decompressCompactPhrase(lick.phrase);
         const newVector = analyzeAxiomVector(decompressed, detectedKey.root);
         setVector(newVector);
+        setAIReasoning(""); 
         
         toast({
-            title: "Auto-Calibration Complete",
-            description: `Heuristic analysis: T:${newVector.t.toFixed(2)} B:${newVector.b.toFixed(2)}`
+            title: "Heuristic Calibration Complete",
+            description: "Mathematical analysis applied to sliders."
         });
+    };
+
+    /**
+     * #ЗАЧЕМ: Глубокий анализ ИИ через Genkit.
+     * #ЧТО: Отправляет данные фразы в ИИ-поток для музыковедческой оценки.
+     */
+    const handleAIDeepInsight = async () => {
+        if (extractedLicks.length === 0) return;
+        const firstId = Array.from(selectedLickIds)[0];
+        const lick = extractedLicks.find(l => l.id === (firstId || extractedLicks[0].id));
+        if (!lick) return;
+
+        setIsAIAnalyzing(true);
+        try {
+            const result = await analyzeAxiom({
+                phrase: lick.phrase,
+                genre: selectedGenre,
+                mood: selectedMood,
+                rootNote: detectedKey?.root
+            });
+
+            setVector(result.vector);
+            setAIReasoning(result.reasoning);
+
+            toast({
+                title: "AI Analysis Complete",
+                description: "Hypercube coordinates updated by the Oracle."
+            });
+        } catch (e) {
+            toast({ variant: "destructive", title: "AI Analysis Failed", description: String(e) });
+        } finally {
+            setIsAIAnalyzing(false);
+        }
     };
 
     const playPreview = async (lick: any, idx: number) => {
@@ -258,9 +290,9 @@ export default function MidiIngestPage() {
                             <Factory className="h-8 w-8 text-primary" />
                         </div>
                         <div>
-                            <CardTitle className="text-3xl font-bold tracking-tight">The Heritage Forge v16.0</CardTitle>
+                            <CardTitle className="text-3xl font-bold tracking-tight">The Heritage Forge v17.0</CardTitle>
                             <CardDescription className="text-muted-foreground flex items-center gap-2">
-                                <Compass className="h-3 w-3 text-primary" /> Heuristic Analysis & Hypercube Vectorization
+                                <BrainCircuit className="h-3 w-3 text-primary" /> AI Musicological Insight & Hypercube Vectorization
                             </CardDescription>
                         </div>
                     </div>
@@ -314,19 +346,31 @@ export default function MidiIngestPage() {
                     {/* --- Column 2: Vector Calibration --- */}
                     <div className="space-y-6">
                         <div className="p-5 border rounded-2xl bg-primary/5 space-y-6 shadow-sm border-primary/10 relative">
-                            <div className="flex justify-between items-center">
+                            <div className="flex flex-col gap-2">
                                 <Label className="text-xs font-bold uppercase tracking-widest text-primary flex items-center gap-2">
                                     <Zap className="h-3 w-3" /> Vector Calibration
                                 </Label>
-                                <Button 
-                                    variant="ghost" 
-                                    size="sm" 
-                                    className="h-7 px-2 text-[10px] gap-1 text-primary hover:bg-primary/10"
-                                    onClick={handleAutoCalibrate}
-                                    disabled={extractedLicks.length === 0}
-                                >
-                                    <Wand2 className="h-3 w-3" /> Auto-Analyze
-                                </Button>
+                                <div className="flex gap-2">
+                                    <Button 
+                                        variant="outline" 
+                                        size="sm" 
+                                        className="h-7 flex-1 text-[10px] gap-1 text-primary hover:bg-primary/5"
+                                        onClick={handleAutoCalibrate}
+                                        disabled={extractedLicks.length === 0 || isAIAnalyzing}
+                                    >
+                                        <Wand2 className="h-3 w-3" /> Heuristic
+                                    </Button>
+                                    <Button 
+                                        variant="default" 
+                                        size="sm" 
+                                        className="h-7 flex-1 text-[10px] gap-1 bg-primary/80 hover:bg-primary"
+                                        onClick={handleAIDeepInsight}
+                                        disabled={extractedLicks.length === 0 || isAIAnalyzing}
+                                    >
+                                        {isAIAnalyzing ? <Loader2 className="h-3 w-3 animate-spin" /> : <BrainCircuit className="h-3 w-3" />}
+                                        AI Insight
+                                    </Button>
+                                </div>
                             </div>
                             
                             <div className="space-y-4">
@@ -362,6 +406,14 @@ export default function MidiIngestPage() {
                                     <Slider value={[vector.h]} min={0} max={1} step={0.01} onValueChange={([v]) => setVector({...vector, h: v})} />
                                 </div>
                             </div>
+
+                            {aiReasoning && (
+                                <div className="mt-4 p-3 bg-background/50 rounded-xl border border-primary/10">
+                                    <p className="text-[10px] italic leading-relaxed text-muted-foreground">
+                                        <span className="font-bold text-primary not-italic">AI Verdict:</span> {aiReasoning}
+                                    </p>
+                                </div>
+                            )}
                         </div>
                     </div>
 
@@ -400,7 +452,7 @@ export default function MidiIngestPage() {
                             
                             <Button 
                                 onClick={transmit} 
-                                disabled={isTransmitting || selectedLickIds.size === 0}
+                                disabled={isTransmitting || selectedLickIds.size === 0 || isAIAnalyzing}
                                 className="w-full mt-4 h-12 rounded-2xl gap-2 font-bold shadow-lg shadow-primary/20"
                             >
                                 <CloudUpload className="h-5 w-5" />
