@@ -1,6 +1,8 @@
 /**
- * #ЗАЧЕМ: Хук управления UI музыкой V4.2 — "Full Volume Sovereignty".
- * #ЧТО: Исправлена ошибка синхронизации стейта. Теперь ВСЕ ползунки обновляют React-состояние и движок.
+ * #ЗАЧЕМ: Хук управления UI музыкой V4.3 — "Timer & Sync Restoration".
+ * #ЧТО: 1. Внедрены отсутствующие обработчики таймера (handleTimerDurationChange, handleToggleTimer).
+ *       2. Реализована логика обратного отсчета и авто-остановки.
+ *       3. Исправлена ошибка ReferenceError.
  */
 'use client';
 
@@ -10,7 +12,7 @@ import type { DrumSettings, InstrumentSettings, ScoreName, WorkerSettings, BassI
 import { useAudioEngine } from "@/contexts/audio-engine-context";
 import { useFirestore } from "@/firebase";
 import { saveMasterpiece } from "@/lib/firebase-service";
-import { toast } from "@/hooks/use-toast";
+import { useToast } from "@/hooks/use-toast";
 
 const LICK_HISTORY_KEY = 'AuraGroove_LickHistory';
 
@@ -57,6 +59,8 @@ export type AuraGrooveProps = {
   setGenre: (genre: Genre) => void;
   introBars: number;
   setIntroBars: (bars: number) => void;
+  useMelodyV2: boolean;
+  toggleMelodyEngine: () => void;
 };
 
 export const useAuraGroove = (): AuraGrooveProps => {
@@ -66,6 +70,7 @@ export const useAuraGroove = (): AuraGrooveProps => {
     isPlaying,
     isRecording,
     isBroadcastActive,
+    useMelodyV2,
     initialize, 
     setIsPlaying: setEngineIsPlaying, 
     updateSettings,
@@ -77,11 +82,12 @@ export const useAuraGroove = (): AuraGrooveProps => {
     toggleBroadcast,
     getWorker,
     startRecording,
-    stopRecording
+    stopRecording,
+    toggleMelodyEngine
   } = useAudioEngine(); 
   
   const db = useFirestore();
-  const router = useRouter();
+  const { toast } = useToast();
   
   const [drumSettings, setDrumSettings] = useState<DrumSettings>({ pattern: 'composer', volume: 0.4, kickVolume: 1.0, enabled: true });
   
@@ -131,6 +137,44 @@ export const useAuraGroove = (): AuraGrooveProps => {
   useEffect(() => {
     initialize();
   }, [initialize]);
+
+  // --- TIMER HANDLERS ---
+  const handleTimerDurationChange = (minutes: number) => {
+    const seconds = minutes * 60;
+    setTimerSettings(prev => ({
+      ...prev,
+      duration: seconds,
+      timeLeft: seconds
+    }));
+  };
+
+  const handleToggleTimer = () => {
+    setTimerSettings(prev => ({
+      ...prev,
+      isActive: !prev.isActive
+    }));
+  };
+
+  // --- COUNTDOWN EFFECT ---
+  useEffect(() => {
+    let interval: NodeJS.Timeout;
+    if (timerSettings.isActive && timerSettings.timeLeft > 0) {
+      interval = setInterval(() => {
+        setTimerSettings(prev => ({
+          ...prev,
+          timeLeft: Math.max(0, prev.timeLeft - 1)
+        }));
+      }, 1000);
+    } else if (timerSettings.timeLeft === 0 && timerSettings.isActive) {
+      setEngineIsPlaying(false);
+      setTimerSettings(prev => ({ ...prev, isActive: false }));
+      toast({
+        title: "Sleep Timer",
+        description: "Playback stopped by timer."
+      });
+    }
+    return () => clearInterval(interval);
+  }, [timerSettings.isActive, timerSettings.timeLeft, setEngineIsPlaying, toast]);
 
   useEffect(() => {
     const worker = getWorker?.();
@@ -252,14 +296,9 @@ export const useAuraGroove = (): AuraGrooveProps => {
       setBassTechnique(technique);
   };
 
-  /**
-   * #ЗАЧЕМ: Исправлено "замерзание" ВСЕХ слайдеров.
-   * #ЧТО: Каждое изменение громкости теперь обновляет локальное состояние React.
-   */
   const handleVolumeChange = (part: InstrumentPart, value: number) => {
     setVolume(part, value);
     
-    // #ЗАЧЕМ: Синхронное обновление UI для всех категорий.
     if (part in instrumentSettings) {
       setInstrumentSettings(prev => ({
         ...prev,
@@ -310,5 +349,6 @@ export const useAuraGroove = (): AuraGrooveProps => {
     timerSettings, handleTimerDurationChange, handleToggleTimer,
     mood, setMood, genre, setGenre,
     introBars, setIntroBars,
+    useMelodyV2, toggleMelodyEngine
   };
 };
