@@ -7,7 +7,7 @@ type SamplerInstrument = {
 
 /**
  * #ЗАЧЕМ: Универсальный сэмплер с поддержкой естественных хвостов.
- * #ЧТО: 1. Повышена базовая мощность преампа (ПЛАН №528).
+ * #ЧТО: 1. Повышена базовая мощность преампа (ПЛАН №529).
  *       2. Реализована полная остановка всех запланированных источников (stopAll).
  */
 export class SamplerPlayer {
@@ -25,7 +25,8 @@ export class SamplerPlayer {
         
         this.preamp = this.audioContext.createGain();
         // #ЗАЧЕМ: Повышение читаемости пианино.
-        this.preamp.gain.value = 1.2; 
+        // #ЧТО: Гейн поднят с 1.2 до 2.5.
+        this.preamp.gain.value = 2.5; 
         this.preamp.connect(this.outputNode);
         
         this.outputNode.connect(destination);

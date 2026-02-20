@@ -72,6 +72,7 @@ export class MelodySynthManagerV2 {
         if (!preset) return;
         
         try {
+            console.log(`[MelodySynthManagerV2] Loading: ${presetName} for ${this.partName}`);
             this.synth = await buildMultiInstrument(this.audioContext, {
                 type: instrumentType,
                 preset: preset,
@@ -83,7 +84,7 @@ export class MelodySynthManagerV2 {
         }
     }
 
-    public async schedule(events: FractalEvent[], barStartTime: number, tempo: number, instrumentHint?: string) {
+    public async schedule(events: FractalEvent[], barStartTime: number, tempo: number, instrumentHint?: string, barCount: number = 0) {
         const beatDuration = 60 / tempo;
         const notesToPlay = events.filter(e => e.type === this.partName).map(e => ({ 
             midi: e.note, 
@@ -94,11 +95,15 @@ export class MelodySynthManagerV2 {
             params: e.params 
         }));
         
-        // --- DEFERRED PRESET SWITCH ---
+        // --- DEFERRED PRESET SWITCH (V2.1 - HEURISTIC SYNC) ---
+        // #ЗАЧЕМ: Мы позволяем переключать инструмент на границах фраз или если текущий - заглушка 'synth'.
         if (instrumentHint && this.partName === 'melody') {
             const mappedHint = V1_TO_V2_PRESET_MAP[instrumentHint] || instrumentHint;
             if (mappedHint !== this.activePresetName) {
-                if (notesToPlay.length === 0 || this.activePresetName === 'none') {
+                const isPhraseBoundary = barCount % 4 === 0;
+                const isInitialDefault = this.activePresetName === 'synth' || this.activePresetName === 'none';
+                
+                if (notesToPlay.length === 0 || isPhraseBoundary || isInitialDefault) {
                     await this.setInstrument(mappedHint);
                 }
             }
@@ -174,6 +179,7 @@ export class MelodySynthManagerV2 {
        if (preset) {
            await this.loadInstrument(instrumentName, isBassPart ? 'bass' : (preset.type || 'synth'));
        } else {
+           // If it's a sampler name, we just set the name and let the schedule method handle routing
            this.activePresetName = instrumentName;
        }
     }

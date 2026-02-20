@@ -167,8 +167,8 @@ export const V1_TO_V2_PRESET_MAP: Record<string, PresetName> = {
   ambientPad: 'synth_ambient_pad_lush',
   piano: 'ep_rhodes_warm',
   rhodes: 'ep_rhodes_warm',
-  // #ЗАЧЕМ: Корректное сопоставление гитары. Больше никакой флейты!
-  acousticGuitar: 'ep_rhodes_warm' 
+  // #ЗАЧЕМ: Исправлено сопоставление. Теперь гитара - это гитара.
+  acousticGuitar: 'blackAcoustic' as any 
 };
 
 /**

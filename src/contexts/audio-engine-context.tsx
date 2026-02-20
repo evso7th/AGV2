@@ -1,8 +1,7 @@
 /**
- * #ЗАЧЕМ: Audio Engine Context V6.1 — "Narrative Routing Fix".
- * #ЧТО: 1. Исправлена маршрутизация пианино (pianoAccompaniment).
- *       2. Гарантированная передача событий гармонии и пианино в соответствующие менеджеры.
- *       3. Калибровка VOICE_BALANCE для V2 инструментов.
+ * #ЗАЧЕМ: Audio Engine Context V6.2 — "Bar Count Sync".
+ * #ЧТО: 1. Исправлена передача barCount в MelodySynthManagerV2.
+ *       2. Калибровка VOICE_BALANCE.
  */
 'use client';
 
@@ -165,13 +164,13 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
     if (drumMachineRef.current && drumEvents.length > 0) drumMachineRef.current.schedule(drumEvents, barStartTime, tempo);
     
     if (bassEvents.length > 0 && bassManagerV2Ref.current) {
-        bassManagerV2Ref.current.schedule(bassEvents, barStartTime, tempo, instrumentHints?.bass);
+        bassManagerV2Ref.current.schedule(bassEvents, barStartTime, tempo, instrumentHints?.bass, barCount);
     }
     if (accompanimentEvents.length > 0 && accompanimentManagerV2Ref.current) {
         accompanimentManagerV2Ref.current.schedule(accompanimentEvents, barStartTime, tempo, barCount, instrumentHints?.accompaniment);
     }
     if (melodyEvents.length > 0 && melodyManagerV2Ref.current) {
-        melodyManagerV2Ref.current.schedule(melodyEvents, barStartTime, tempo, instrumentHints?.melody);
+        melodyManagerV2Ref.current.schedule(melodyEvents, barStartTime, tempo, instrumentHints?.melody, barCount);
     }
     if (harmonyManagerRef.current && harmonyEvents.length > 0) {
         harmonyManagerRef.current.schedule(harmonyEvents, barStartTime, tempo, instrumentHints?.harmony);

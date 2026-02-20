@@ -19,10 +19,10 @@ import {
 import { BLUES_SOLO_LICKS } from './assets/blues_guitar_solo';
 
 /**
- * #ЗАЧЕМ: Блюзовый Мозг V115.0 — "Narrative Purity Fix".
- * #ЧТО: 1. Удален MelodicPadBase — главная причина "амбиентного гудения" в блюзе.
- *       2. Смягчены SoftPillows (аккомпанемент) для предотвращения забивания микса.
- *       3. Гарантирована работа Harmony и Piano.
+ * #ЗАЧЕМ: Блюзовый Мозг V116.0 — "The True Guitarist".
+ * #ЧТО: 1. Приоритет гитарным сэмплерам (blackAcoustic, telecaster) во всех режимах.
+ *       2. Синтезаторы используются только на экстремальных пиках напряжения.
+ *       3. Гарантированная передача barCount для бесшовной смены тембра.
  */
 
 export class BluesBrain {
@@ -115,7 +115,7 @@ export class BluesBrain {
     if (epoch % 4 === 0 || epoch === 0) {
         this.evaluateTimbralDramaturgy(tension, hints);
     } else {
-        if (hints.melody) (hints as any).melody = this.state.activeAccompTimbre === 'organ_soft_jazz' ? 'blackAcoustic' : 'guitar_shineOn';
+        if (hints.melody) (hints as any).melody = this.state.activeAccompTimbre === 'organ_soft_jazz' ? 'blackAcoustic' : 'telecaster';
         if (hints.accompaniment) (hints as any).accompaniment = this.state.activeAccompTimbre;
     }
     
@@ -130,7 +130,6 @@ export class BluesBrain {
 
     const events: FractalEvent[] = [];
 
-    // #ЗАЧЕМ: Чистый блюз. Мелодические пады удалены из этого цикла.
     if (hints.melody) {
         const melodyEvents = this.renderMelodicSegment(epoch, currentChord, tension);
         events.push(...melodyEvents);
@@ -189,7 +188,7 @@ export class BluesBrain {
               type: 'harmony',
               note: n + (useViolin ? 12 : 0),
               time: i * 0.1,
-              duration: 4.0, // Укорочено с 8.0 для блюза
+              duration: 4.0, 
               weight: (useViolin ? 0.12 : 0.22),
               technique: 'swell',
               dynamics: 'p',
@@ -214,6 +213,7 @@ export class BluesBrain {
       if (forceNewDynasty) {
           const dynasties = ['slow-burn', 'texas', 'soul', 'chromatic', 'legacy', 'lyrical'];
           dynasty = dynasties[this.random.nextInt(dynasties.length)];
+          console.log(`[GUARD] Switching Dynasty to: ${dynasty}`);
       }
 
       const allLickIds = Object.keys(BLUES_SOLO_LICKS);
@@ -279,9 +279,11 @@ export class BluesBrain {
 
   private evaluateTimbralDramaturgy(tension: number, hints: InstrumentHints) {
     if (hints.melody) {
-        if (tension <= 0.40) (hints as any).melody = 'blackAcoustic';
-        else if (tension <= 0.70) (hints as any).melody = 'cs80';
-        else (hints as any).melody = 'guitar_shineOn';
+        // #ЗАЧЕМ: Блюз - это гитара. 
+        // #ЧТО: Сэмплеры используются до порога 0.85. 
+        if (tension <= 0.45) (hints as any).melody = 'blackAcoustic';
+        else if (tension <= 0.85) (hints as any).melody = 'telecaster';
+        else (hints as any).melody = 'guitar_shineOn'; // Пик накала - синтезатор
     }
     if (hints.accompaniment) {
         let nextTimbre = this.state.activeAccompTimbre;
@@ -356,8 +358,8 @@ export class BluesBrain {
     const notes = [root, root + (isMin ? 3 : 4), root + 7];
     return notes.map((p, i) => ({
         type: 'accompaniment', note: p, time: 0.5 + i * 0.05, 
-        duration: 2.0, // Уменьшено с 8.0 для "дыхания" микса
-        weight: 0.22, // Уменьшено с 0.25
+        duration: 2.0, 
+        weight: 0.22, 
         technique: 'swell', dynamics: 'p', phrasing: 'legato'
     }));
   }
@@ -388,7 +390,7 @@ export class BluesBrain {
                 note: p, 
                 time: t + i * 0.03, 
                 duration: 1.5, 
-                weight: 0.32, // Смягчено по ПЛАНУ №525
+                weight: 0.32, 
                 technique: 'pluck', 
                 dynamics: 'mf', 
                 phrasing: 'staccato' 

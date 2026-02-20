@@ -10,7 +10,7 @@ type SamplerInstrument = {
 };
 
 /**
- * #ЗАЧЕМ: Сэмплер скрипки с повышенной мощностью (ПЛАН №528).
+ * #ЗАЧЕМ: Сэмплер скрипки с повышенной мощностью (ПЛАН №529).
  */
 export class ViolinSamplerPlayer {
     private audioContext: AudioContext;
@@ -24,7 +24,8 @@ export class ViolinSamplerPlayer {
         this.outputNode = this.audioContext.createGain();
         this.preamp = this.audioContext.createGain();
         // #ЗАЧЕМ: Повышение читаемости скрипки в миксе.
-        this.preamp.gain.value = 2.2; 
+        // #ЧТО: Гейн поднят с 2.2 до 3.5.
+        this.preamp.gain.value = 3.5; 
         this.preamp.connect(this.outputNode);
         this.outputNode.connect(destination);
     }
@@ -49,6 +50,7 @@ export class ViolinSamplerPlayer {
                 return samples.map(async (sample) => {
                     try {
                         const response = await fetch(sample.file);
+                        if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
                         const arrayBuffer = await response.arrayBuffer();
                         const audioBuffer = await this.audioContext.decodeAudioData(arrayBuffer);
                         loadedBuffers.get(midi)!.push({ velocity: sample.velocity, buffer: audioBuffer });
