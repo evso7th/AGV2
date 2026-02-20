@@ -1,7 +1,7 @@
 /**
- * #ЗАЧЕМ: Heritage Alchemist V17.0 — "The AI Oracle".
- * #ЧТО: 1. Интеграция с Genkit: кнопка "AI Deep Insight" для интеллектуальной калибровки.
- *       2. Визуальная индикация процесса анализа ИИ.
+ * #ЗАЧЕМ: Heritage Alchemist V18.0 — "The Great Purge".
+ * #ЧТО: 1. Добавлена функция handlePurgeDatabase для физического удаления старых аксиом.
+ *       2. Кнопка очистки базы встроена в заголовок.
  */
 'use client';
 
@@ -10,7 +10,7 @@ import { Midi } from '@tonejs/midi';
 import { 
     Upload, FileMusic, Sparkles, CloudUpload, Music, Waves, Drum, LayoutGrid, Factory, 
     Play, StopCircle, Database, RefreshCcw, Compass, Zap, Sun, Activity, Target, Wand2,
-    BrainCircuit, Loader2
+    BrainCircuit, Loader2, Trash2, AlertTriangle
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -30,13 +30,24 @@ import {
 } from '@/lib/music-theory';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { useFirestore } from '@/firebase';
-import { collection, getCountFromServer } from 'firebase/firestore';
+import { collection, getCountFromServer, getDocs, deleteDoc, doc } from 'firebase/firestore';
 import { saveHeritageAxiom } from '@/lib/firebase-service';
 import { toast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
 import type { Mood, Genre, FractalEvent, CommonMood, AxiomVector } from '@/types/fractal';
 import { useAudioEngine } from '@/contexts/audio-engine-context';
 import { analyzeAxiom } from '@/ai/flows/analyze-axiom-flow';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
 
 type IngestionRole = 'melody' | 'bass' | 'drums' | 'accomp';
 
@@ -62,6 +73,7 @@ export default function MidiIngestPage() {
     const [isAnalyzing, setIsAnalyzing] = useState(false);
     const [isAIAnalyzing, setIsAIAnalyzing] = useState(false);
     const [isTransmitting, setIsTransmitting] = useState(false);
+    const [isPurging, setIsPurging] = useState(false);
     const [midiFile, setMidiFile] = useState<Midi | null>(null);
     const [fileName, setFileName] = useState<string>("");
     const [extractedLicks, setExtractedLicks] = useState<any[]>([]);
@@ -192,10 +204,6 @@ export default function MidiIngestPage() {
         });
     };
 
-    /**
-     * #ЗАЧЕМ: Глубокий анализ ИИ через Genkit.
-     * #ЧТО: Отправляет данные фразы в ИИ-поток для музыковедческой оценки.
-     */
     const handleAIDeepInsight = async () => {
         if (extractedLicks.length === 0) return;
         const firstId = Array.from(selectedLickIds)[0];
@@ -222,6 +230,31 @@ export default function MidiIngestPage() {
             toast({ variant: "destructive", title: "AI Analysis Failed", description: String(e) });
         } finally {
             setIsAIAnalyzing(false);
+        }
+    };
+
+    /**
+     * #ЗАЧЕМ: Физическое очищение базы данных.
+     * #ЧТО: Удаляет все документы из коллекции heritage_axioms.
+     */
+    const handlePurgeDatabase = async () => {
+        setIsPurging(true);
+        try {
+            const collRef = collection(db, 'heritage_axioms');
+            const snapshot = await getDocs(collRef);
+            
+            const deletePromises = snapshot.docs.map(docSnap => deleteDoc(doc(db, 'heritage_axioms', docSnap.id)));
+            await Promise.all(deletePromises);
+            
+            toast({
+                title: "The Great Purge Complete",
+                description: "The Hypercube is now a clean slate."
+            });
+            fetchGlobalCount();
+        } catch (e) {
+            toast({ variant: "destructive", title: "Purge Failed", description: String(e) });
+        } finally {
+            setIsPurging(false);
         }
     };
 
@@ -290,18 +323,43 @@ export default function MidiIngestPage() {
                             <Factory className="h-8 w-8 text-primary" />
                         </div>
                         <div>
-                            <CardTitle className="text-3xl font-bold tracking-tight">The Heritage Forge v17.0</CardTitle>
+                            <CardTitle className="text-3xl font-bold tracking-tight">The Heritage Forge v18.0</CardTitle>
                             <CardDescription className="text-muted-foreground flex items-center gap-2">
                                 <BrainCircuit className="h-3 w-3 text-primary" /> AI Musicological Insight & Hypercube Vectorization
                             </CardDescription>
                         </div>
                     </div>
-                    <div className="text-right">
-                        <div className="text-2xl font-bold text-primary flex items-center gap-2 justify-end">
-                            <Database className="h-5 w-5" />
-                            {globalAxiomCount ?? '...'}
+                    <div className="flex items-center gap-6">
+                        <AlertDialog>
+                            <AlertDialogTrigger asChild>
+                                <Button variant="ghost" size="icon" className="text-destructive hover:bg-destructive/10" disabled={isPurging}>
+                                    {isPurging ? <Loader2 className="h-5 w-5 animate-spin" /> : <Trash2 className="h-5 w-5" />}
+                                </Button>
+                            </AlertDialogTrigger>
+                            <AlertDialogContent>
+                                <AlertDialogHeader>
+                                    <AlertDialogTitle className="flex items-center gap-2 text-destructive">
+                                        <AlertTriangle className="h-5 w-5" /> Execute The Great Purge?
+                                    </AlertDialogTitle>
+                                    <AlertDialogDescription>
+                                        This action will permanently delete all {globalAxiomCount} axioms from the cloud Hypercube. This process is irreversible.
+                                    </AlertDialogDescription>
+                                </AlertDialogHeader>
+                                <AlertDialogFooter>
+                                    <AlertDialogCancel>Abort</AlertDialogCancel>
+                                    <AlertDialogAction onClick={handlePurgeDatabase} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+                                        Burn Everything
+                                    </AlertDialogAction>
+                                </AlertDialogFooter>
+                            </AlertDialogContent>
+                        </AlertDialog>
+                        <div className="text-right">
+                            <div className="text-2xl font-bold text-primary flex items-center gap-2 justify-end">
+                                <Database className="h-5 w-5" />
+                                {globalAxiomCount ?? '...'}
+                            </div>
+                            <span className="text-[10px] uppercase tracking-widest text-muted-foreground">Hypercube Axioms</span>
                         </div>
-                        <span className="text-[10px] uppercase tracking-widest text-muted-foreground">Hypercube Axioms</span>
                     </div>
                 </CardHeader>
                 
@@ -441,7 +499,7 @@ export default function MidiIngestPage() {
                                                     }} />
                                                     <span className="text-[10px] font-mono opacity-70">BAR_{lick.barOffset}</span>
                                                 </div>
-                                                <Button variant="ghost" size="icon" className="h-8 w-8 text-primary" onClick={() => playPreview(lick, idx)}>
+                                                <Button variant="ghost" size="icon" className="text-primary h-8 w-8" onClick={() => playPreview(lick, idx)}>
                                                     {playingLickIdx === idx ? <RefreshCcw className="h-5 w-5 animate-spin" /> : <Play className="h-5 w-5" />}
                                                 </Button>
                                             </div>
@@ -452,7 +510,7 @@ export default function MidiIngestPage() {
                             
                             <Button 
                                 onClick={transmit} 
-                                disabled={isTransmitting || selectedLickIds.size === 0 || isAIAnalyzing}
+                                disabled={isTransmitting || selectedLickIds.size === 0 || isAIAnalyzing || isPurging}
                                 className="w-full mt-4 h-12 rounded-2xl gap-2 font-bold shadow-lg shadow-primary/20"
                             >
                                 <CloudUpload className="h-5 w-5" />
