@@ -1,9 +1,9 @@
 
 /**
- * #ЗАЧЕМ: Heritage Alchemist V23.0 — "The Intelligent Disassembler".
- * #ЧТО: 1. Интеграция ИИ-экстракции (extractAxioms).
- *       2. Исправлена маршрутизация звука (Play Full / Preview).
- *       3. Роль 'accomp' изменена на 'accompaniment' для совместимости с движком.
+ * #ЗАЧЕМ: Heritage Alchemist V24.0 — "Ergonomic Sovereignty".
+ * #ЧТО: 1. Кнопки Extract и Forge подняты наверх (под заголовки).
+ *       2. Реализована фиксированная высота окон с внутренней прокруткой (h-500px).
+ *       3. Оптимизирован макет для предотвращения вертикального переполнения.
  */
 'use client';
 
@@ -229,7 +229,6 @@ export default function MidiIngestPage() {
                 const state = trackStates[tIdx];
                 if (!state || !state.selected || state.role === 'ignore') continue;
 
-                // Подготовка данных для ИИ
                 const simplifiedNotes = track.notes.map(n => ({
                     t: Math.round(n.time / (secondsPerBar / 12)),
                     d: Math.round(n.duration / (secondsPerBar / 12)),
@@ -237,7 +236,6 @@ export default function MidiIngestPage() {
                     vel: n.velocity
                 }));
 
-                // Ограничиваем объем для ИИ (первые 32 такта)
                 const noteLimit = simplifiedNotes.filter(n => n.t < 32 * 12);
 
                 const aiExtraction = await extractAxioms({
@@ -376,8 +374,8 @@ export default function MidiIngestPage() {
 
     return (
         <main className="flex min-h-screen flex-col items-center p-8 bg-background text-foreground">
-            <Card className="w-full max-w-6xl shadow-2xl border-primary/20 bg-card/50 backdrop-blur-sm overflow-hidden">
-                <CardHeader className="flex flex-row items-center justify-between border-b pb-6 bg-primary/5">
+            <Card className="w-full max-w-6xl shadow-2xl border-primary/20 bg-card/50 backdrop-blur-sm overflow-hidden h-[85vh] flex flex-col">
+                <CardHeader className="flex flex-row items-center justify-between border-b pb-6 bg-primary/5 flex-shrink-0">
                     <div className="flex items-center gap-4">
                         <Button variant="ghost" size="icon" onClick={() => router.push('/aura-groove')} className="mr-2 hover:bg-primary/10 text-primary">
                             <ArrowLeft className="h-6 w-6" />
@@ -386,7 +384,7 @@ export default function MidiIngestPage() {
                             <Factory className="h-8 w-8 text-primary" />
                         </div>
                         <div>
-                            <CardTitle className="text-3xl font-bold tracking-tight">Heritage Forge v23.0</CardTitle>
+                            <CardTitle className="text-3xl font-bold tracking-tight">Heritage Forge v24.0</CardTitle>
                             <CardDescription className="text-muted-foreground flex items-center gap-2">
                                 <BrainCircuit className="h-3 w-3 text-primary" /> Multi-Main & Intelligent Disassembler
                             </CardDescription>
@@ -426,15 +424,14 @@ export default function MidiIngestPage() {
                     </div>
                 </CardHeader>
                 
-                <CardContent className="grid grid-cols-1 lg:grid-cols-4 gap-6 pt-8">
+                <CardContent className="grid grid-cols-1 lg:grid-cols-4 gap-6 pt-8 flex-grow overflow-hidden">
                     {/* --- Column 1: Discovery & Universal Sync --- */}
-                    <div className="space-y-6 lg:col-span-1">
+                    <div className="space-y-6 lg:col-span-1 overflow-y-auto pr-2">
                         <div className="p-5 border rounded-2xl bg-muted/30 space-y-5 shadow-inner">
                             <Label className="text-xs font-bold uppercase tracking-widest text-primary/80 flex items-center gap-2">
                                 <FileMusic className="h-3 w-3" /> Material Discovery
                             </Label>
                             
-                            {/* Composition ID */}
                             <div className="space-y-2">
                                 <Label className="text-[10px] text-muted-foreground uppercase flex items-center gap-1.5 font-bold">
                                     <Edit3 className="h-3 w-3" /> Composition ID
@@ -453,7 +450,6 @@ export default function MidiIngestPage() {
                                 <p className="text-xs font-medium text-muted-foreground group-hover:text-primary">Sow MIDI Material</p>
                             </div>
 
-                            {/* Global Selectors */}
                             <div className="space-y-4 pt-2 border-t border-primary/10">
                                 <div className="space-y-1.5">
                                     <Label className="text-[9px] text-muted-foreground uppercase font-bold">Target Genre</Label>
@@ -503,10 +499,17 @@ export default function MidiIngestPage() {
                     </div>
 
                     {/* --- Column 2: Track Inspector --- */}
-                    <div className="space-y-6 lg:col-span-1">
+                    <div className="space-y-6 lg:col-span-1 overflow-hidden flex flex-col">
                         <div className="flex flex-col h-full">
                             <Label className="text-xs font-bold uppercase tracking-widest text-primary/80 mb-3 block">Track Inspector</Label>
-                            <ScrollArea className="flex-grow border rounded-2xl bg-black/20 p-2 min-h-[400px]">
+                            
+                            {/* #ЗАЧЕМ: Кнопка Extract поднята наверх. */}
+                            <Button className="mb-4 w-full h-10 gap-2 font-bold shadow-lg" disabled={!midiFile || isAIAnalyzing} onClick={handleSmartExtract}>
+                                {isAIAnalyzing ? <Loader2 className="h-4 w-4 animate-spin" /> : <Scissors className="h-4 w-4" />}
+                                Smart Extract
+                            </Button>
+
+                            <ScrollArea className="flex-grow border rounded-2xl bg-black/20 p-2 h-[500px]">
                                 {!midiFile ? (
                                     <div className="flex items-center justify-center h-full text-muted-foreground text-xs italic pt-20">Waiting for upload...</div>
                                 ) : (
@@ -539,22 +542,25 @@ export default function MidiIngestPage() {
                                     </div>
                                 )}
                             </ScrollArea>
-                            <Button className="mt-4 w-full h-10 gap-2 font-bold" disabled={!midiFile || isAIAnalyzing} onClick={handleSmartExtract}>
-                                {isAIAnalyzing ? <Loader2 className="h-4 w-4 animate-spin" /> : <Scissors className="h-4 w-4" />}
-                                Smart Extract
-                            </Button>
                         </div>
                     </div>
 
                     {/* --- Column 3: Buffer & Vector Calibration --- */}
-                    <div className="space-y-6 lg:col-span-2 grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div className="space-y-6 lg:col-span-2 grid grid-cols-1 md:grid-cols-2 gap-6 overflow-hidden">
                         {/* Sub-column: Buffer */}
-                        <div className="flex flex-col h-full">
+                        <div className="flex flex-col h-full overflow-hidden">
                             <div className="flex justify-between items-center mb-3">
                                 <Label className="text-xs font-bold uppercase tracking-widest text-primary/80">Extraction Buffer</Label>
                                 <span className="text-[10px] font-bold text-primary px-2 bg-primary/10 rounded-full">{extractedLicks.length}</span>
                             </div>
-                            <ScrollArea className="flex-grow border rounded-2xl bg-black/20 p-2 min-h-[300px]">
+
+                            {/* #ЗАЧЕМ: Кнопка Forge поднята наверх для эргономики. */}
+                            <Button onClick={transmit} disabled={isTransmitting || selectedLickIds.size === 0 || isAIAnalyzing || isPurging} className="mb-4 w-full h-10 rounded-xl gap-2 font-bold shadow-lg shadow-primary/10">
+                                <CloudUpload className="h-4 w-4" />
+                                {isTransmitting ? 'Transmitting...' : `Forge ${selectedLickIds.size} Axioms`}
+                            </Button>
+
+                            <ScrollArea className="flex-grow border rounded-2xl bg-black/20 p-2 h-[500px]">
                                 {extractedLicks.length === 0 ? (
                                     <div className="flex items-center justify-center h-full text-muted-foreground text-xs italic pt-20">Extract to preview...</div>
                                 ) : (
@@ -581,8 +587,8 @@ export default function MidiIngestPage() {
                             </ScrollArea>
                         </div>
 
-                        {/* Sub-column: Vector & Transmit --- */}
-                        <div className="flex flex-col h-full gap-4">
+                        {/* Sub-column: Vector Calibration --- */}
+                        <div className="flex flex-col h-full gap-4 overflow-y-auto pr-1">
                             <div className="p-5 border rounded-2xl bg-primary/5 space-y-6 shadow-sm border-primary/10 flex-grow relative">
                                 <Label className="text-xs font-bold uppercase tracking-widest text-primary flex items-center gap-2 mb-2">
                                     <Zap className="h-3 w-3" /> Vector Calibration
@@ -612,13 +618,6 @@ export default function MidiIngestPage() {
                                     </div>
                                 )}
                             </div>
-
-                            <div className="p-4 border rounded-2xl bg-muted/20">
-                                <Button onClick={transmit} disabled={isTransmitting || selectedLickIds.size === 0 || isAIAnalyzing || isPurging} className="w-full h-12 rounded-2xl gap-2 font-bold shadow-lg shadow-primary/20">
-                                    <CloudUpload className="h-5 w-5" />
-                                    {isTransmitting ? 'Transmitting...' : `Forge ${selectedLickIds.size} Axioms`}
-                                </Button>
-                            </div>
                         </div>
                     </div>
                 </CardContent>
@@ -645,7 +644,6 @@ export default function MidiIngestPage() {
         const events: FractalEvent[] = [];
         const root = detectedKey?.root || 60;
         
-        // #ЗАЧЕМ: Умный выбор инструмента для превью.
         const hints: any = { 
             bass: 'bass_jazz_warm', 
             melody: 'telecaster', 
@@ -665,7 +663,8 @@ export default function MidiIngestPage() {
                 weight: 0.8, 
                 technique: 'pick', 
                 dynamics: 'mf', 
-                phrasing: 'legato'
+                phrasing: 'legate' as any,
+                params: { barCount: 0 }
             });
         }
         
