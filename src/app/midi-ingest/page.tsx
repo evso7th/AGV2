@@ -1,9 +1,8 @@
 /**
- * #ЗАЧЕМ: Heritage Alchemist V24.5 — "The Phoenix Forge".
- * #ЧТО: 1. Интеллектуальная экстракция аксиом через ИИ (Smart Extract).
- *       2. Исправлена маршрутизация звука: теперь при Play Full играют все инструменты.
- *       3. Полное удаление старого наследия (Purge) теперь работает.
- *       4. Исправлены ошибки импорта UI.
+ * #ЗАЧЕМ: Heritage Alchemist V25.0 — "The Mobile Sovereign".
+ * #ЧТО: 1. Полная адаптация UI под мобильный портретный режим (Responsive Stack).
+ *       2. Реализация Buffer Bridge: кнопка подготовки данных для прямого анализа Агентом.
+ *       3. Исправлена верстка: ScrollArea теперь занимают адекватное место.
  */
 'use client';
 
@@ -13,7 +12,7 @@ import { Midi } from '@tonejs/midi';
 import { 
     Upload, FileMusic, Sparkles, CloudUpload, Music, Waves, Drum, LayoutGrid, Factory, 
     Play, StopCircle, Database, RefreshCcw, Compass, Zap, Sun, Activity, Target, Wand2,
-    BrainCircuit, Loader2, Trash2, AlertTriangle, ArrowLeft, CheckCircle2, Info, Edit3, Scissors
+    BrainCircuit, Loader2, Trash2, AlertTriangle, ArrowLeft, CheckCircle2, Info, Edit3, Scissors, Save
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -199,7 +198,6 @@ export default function MidiIngestPage() {
         if (!isInitialized) await initialize();
 
         const events: FractalEvent[] = [];
-        // #ЗАЧЕМ: Маппинг имен для корректной маршрутизации в Context.
         const hints: any = { 
             bass: 'bass_jazz_warm', 
             melody: 'telecaster', 
@@ -212,7 +210,7 @@ export default function MidiIngestPage() {
 
             track.notes.forEach(n => {
                 events.push({
-                    type: state.role === 'accomp' ? 'accompaniment' : state.role as any,
+                    type: (state.role === 'accomp' || state.role === 'accompaniment') ? 'accompaniment' : state.role as any,
                     note: n.midi,
                     time: n.time,
                     duration: n.duration,
@@ -234,6 +232,40 @@ export default function MidiIngestPage() {
         playRawEvents(events, hints);
     };
 
+    const handlePrepareForAI = async () => {
+        if (!midiFile) return;
+        setIsAIAnalyzing(true);
+        
+        const dump: any = {
+            compositionId,
+            genre: selectedGenre,
+            mood: selectedMood,
+            detectedKey,
+            tracks: []
+        };
+
+        midiFile.tracks.forEach((track, idx) => {
+            const state = trackStates[idx];
+            if (!state || !state.selected) return;
+            dump.tracks.push({
+                name: track.name || `Track ${idx}`,
+                role: state.role,
+                notes: track.notes.map(n => ({ t: n.time, d: n.duration, p: n.midi, v: n.velocity }))
+            });
+        });
+
+        // #ЗАЧЕМ: Buffer Bridge. Экспорт в файл для прямого анализа Агентом.
+        try {
+            const { saveMidiToBuffer } = await import('./actions');
+            await saveMidiToBuffer(dump);
+            toast({ title: "Buffer Bridge Active", description: "Data saved to ingest_buffer.json. Tell the Agent to forge it." });
+        } catch (e) {
+            toast({ variant: "destructive", title: "Bridge Failed" });
+        } finally {
+            setIsAIAnalyzing(false);
+        }
+    };
+
     const handleSmartExtract = async () => {
         if (!midiFile || !detectedKey) return;
         setIsAIAnalyzing(true);
@@ -251,7 +283,6 @@ export default function MidiIngestPage() {
                 const state = trackStates[tIdx];
                 if (!state || !state.selected || state.role === 'ignore') continue;
 
-                // Берём срез для ИИ
                 const simplifiedNotes = track.notes
                     .filter(n => n.time < secondsPerBar * 32)
                     .map(n => ({
@@ -263,7 +294,6 @@ export default function MidiIngestPage() {
 
                 if (simplifiedNotes.length === 0) continue;
 
-                // ИИ находит "музыкальные атомы"
                 const aiExtraction = await extractAxioms({
                     notes: simplifiedNotes,
                     role: state.role,
@@ -359,7 +389,6 @@ export default function MidiIngestPage() {
         try {
             const collRef = collection(db, 'heritage_axioms');
             const snapshot = await getDocs(collRef);
-            // #ЗАЧЕМ: Очистка старого наследия.
             const deletePromises = snapshot.docs.map(docSnap => deleteDoc(doc(db, 'heritage_axioms', docSnap.id)));
             await Promise.all(deletePromises);
             toast({ title: "The Great Purge Executed", description: "Database cleared." });
@@ -403,24 +432,24 @@ export default function MidiIngestPage() {
     };
 
     return (
-        <main className="flex min-h-screen flex-col items-center p-8 bg-background text-foreground">
-            <Card className="w-full max-w-6xl shadow-2xl border-primary/20 bg-card/50 backdrop-blur-sm overflow-hidden h-[85vh] flex flex-col">
-                <CardHeader className="flex flex-row items-center justify-between border-b pb-6 bg-primary/5 flex-shrink-0">
-                    <div className="flex items-center gap-4">
-                        <Button variant="ghost" size="icon" onClick={() => router.push('/aura-groove')} className="mr-2 hover:bg-primary/10 text-primary">
+        <main className="flex min-h-screen flex-col items-center p-4 sm:p-8 bg-background text-foreground">
+            <Card className="w-full max-w-6xl shadow-2xl border-primary/20 bg-card/50 backdrop-blur-sm overflow-hidden flex flex-col">
+                <CardHeader className="flex flex-col sm:flex-row items-center justify-between border-b pb-6 bg-primary/5 gap-4">
+                    <div className="flex items-center gap-4 w-full sm:w-auto">
+                        <Button variant="ghost" size="icon" onClick={() => router.push('/aura-groove')} className="hover:bg-primary/10 text-primary">
                             <ArrowLeft className="h-6 w-6" />
                         </Button>
-                        <div className="p-3 bg-primary/10 rounded-xl">
-                            <Factory className="h-8 w-8 text-primary" />
+                        <div className="p-2 sm:p-3 bg-primary/10 rounded-xl">
+                            <Factory className="h-6 w-6 sm:h-8 sm:h-8 text-primary" />
                         </div>
                         <div>
-                            <CardTitle className="text-3xl font-bold tracking-tight">Heritage Forge v24.5</CardTitle>
-                            <CardDescription className="text-muted-foreground flex items-center gap-2">
-                                <BrainCircuit className="h-3 w-3 text-primary" /> Precision Narrative Ingestion
+                            <CardTitle className="text-xl sm:text-3xl font-bold tracking-tight">Heritage Forge v25.0</CardTitle>
+                            <CardDescription className="text-xs sm:text-sm text-muted-foreground flex items-center gap-2">
+                                <BrainCircuit className="h-3 w-3 text-primary" /> Responsive Narrative Ingestion
                             </CardDescription>
                         </div>
                     </div>
-                    <div className="flex items-center gap-6">
+                    <div className="flex items-center gap-4 sm:gap-6 justify-between w-full sm:w-auto border-t sm:border-t-0 pt-4 sm:pt-0">
                         <AlertDialog>
                             <AlertDialogTrigger asChild>
                                 <Button variant="ghost" size="icon" className="text-destructive hover:bg-destructive/10" disabled={isPurging}>
@@ -445,18 +474,18 @@ export default function MidiIngestPage() {
                             </AlertDialogContent>
                         </AlertDialog>
                         <div className="text-right">
-                            <div className="text-2xl font-bold text-primary flex items-center gap-2 justify-end">
-                                <Database className="h-5 w-5" />
+                            <div className="text-xl sm:text-2xl font-bold text-primary flex items-center gap-2 justify-end">
+                                <Database className="h-4 w-4 sm:h-5 sm:w-5" />
                                 {isFetchingCount ? '...' : (globalAxiomCount ?? '0')}
                             </div>
-                            <span className="text-[10px] uppercase tracking-widest text-muted-foreground">Global Census</span>
+                            <span className="text-[8px] sm:text-[10px] uppercase tracking-widest text-muted-foreground">Global Census</span>
                         </div>
                     </div>
                 </CardHeader>
                 
-                <CardContent className="grid grid-cols-1 lg:grid-cols-4 gap-6 pt-8 flex-grow overflow-hidden">
-                    {/* --- Column 1: Discovery & Meta --- */}
-                    <div className="space-y-6 lg:col-span-1 overflow-y-auto pr-2">
+                <CardContent className="p-4 sm:p-8 space-y-8">
+                    {/* --- Row 1: Discovery & Orchestrator --- */}
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
                         <div className="p-5 border rounded-2xl bg-muted/30 space-y-5 shadow-inner">
                             <Label className="text-xs font-bold uppercase tracking-widest text-primary/80 flex items-center gap-2">
                                 <FileMusic className="h-3 w-3" /> Material Discovery
@@ -514,33 +543,29 @@ export default function MidiIngestPage() {
                                         {isAIAnalyzing ? <Loader2 className="h-4 w-4 animate-spin" /> : <Sparkles className="h-4 w-4 text-primary" />}
                                         AI Orchestrator
                                     </Button>
-                                </div>
-                            )}
-
-                            {globalAdvice && (
-                                <div className="p-3 bg-primary/10 rounded-xl border border-primary/20">
-                                    <div className="flex items-center gap-2 mb-1 text-primary font-bold text-[10px] uppercase">
-                                        <Info className="h-3 w-3" /> Oracle Advice
-                                    </div>
-                                    <p className="text-[10px] leading-relaxed text-muted-foreground italic">"{globalAdvice}"</p>
+                                    <Button variant="default" size="sm" className="w-full gap-2 h-9 bg-primary/20 hover:bg-primary/30 text-primary border-primary/30" onClick={handlePrepareForAI} disabled={isAIAnalyzing}>
+                                        <Save className="h-4 w-4" />
+                                        Bridge to Agent
+                                    </Button>
                                 </div>
                             )}
                         </div>
-                    </div>
 
-                    {/* --- Column 2: Track Inspector --- */}
-                    <div className="space-y-6 lg:col-span-1 overflow-hidden flex flex-col">
-                        <div className="flex flex-col h-full">
-                            <Label className="text-xs font-bold uppercase tracking-widest text-primary/80 mb-3 block">Track Inspector</Label>
+                        {/* --- Track Inspector --- */}
+                        <div className="flex flex-col lg:col-span-1 border rounded-2xl bg-black/20 p-4 min-h-[400px]">
+                            <Label className="text-xs font-bold uppercase tracking-widest text-primary/80 mb-3 flex items-center justify-between">
+                                Track Inspector
+                                {isAnalyzing && <Loader2 className="h-3 w-3 animate-spin" />}
+                            </Label>
                             
                             <Button className="mb-4 w-full h-10 gap-2 font-bold shadow-lg" disabled={!midiFile || isAIAnalyzing} onClick={handleSmartExtract}>
                                 {isAIAnalyzing ? <Loader2 className="h-4 w-4 animate-spin" /> : <Scissors className="h-4 w-4" />}
                                 Smart Extract
                             </Button>
 
-                            <ScrollArea className="flex-grow border rounded-2xl bg-black/20 p-2 h-[500px]">
+                            <ScrollArea className="flex-grow h-[350px]">
                                 {!midiFile ? (
-                                    <div className="flex items-center justify-center h-full text-muted-foreground text-xs italic pt-20">Waiting for upload...</div>
+                                    <div className="flex items-center justify-center h-full text-muted-foreground text-xs italic text-center px-4">Waiting for upload...</div>
                                 ) : (
                                     <div className="space-y-3">
                                         {midiFile.tracks.map((track, idx) => {
@@ -551,10 +576,10 @@ export default function MidiIngestPage() {
                                                     <div className="flex items-center justify-between">
                                                         <div className="flex items-center gap-2">
                                                             <Checkbox checked={state.selected} onCheckedChange={(c) => setTrackStates(prev => ({...prev, [idx]: {...prev[idx], selected: !!c}}))} />
-                                                            <span className="text-[10px] font-bold truncate max-w-[100px]">{track.name || `Trk ${idx}`}</span>
+                                                            <span className="text-[10px] font-bold truncate max-w-[80px]">{track.name || `Trk ${idx}`}</span>
                                                         </div>
                                                         <Select value={state.role} onValueChange={(v) => setTrackStates(prev => ({...prev, [idx]: {...prev[idx], role: v as any}}))}>
-                                                            <SelectTrigger className="h-6 w-[80px] text-[9px] px-1"><SelectValue /></SelectTrigger>
+                                                            <SelectTrigger className="h-6 w-[70px] text-[8px] px-1"><SelectValue /></SelectTrigger>
                                                             <SelectContent>
                                                                 <SelectItem value="melody" className="text-[10px]">Melody</SelectItem>
                                                                 <SelectItem value="bass" className="text-[10px]">Bass</SelectItem>
@@ -564,7 +589,7 @@ export default function MidiIngestPage() {
                                                             </SelectContent>
                                                         </Select>
                                                     </div>
-                                                    {state.suggestion && <div className="text-[8px] text-primary/70 border-t pt-1 italic">{state.suggestion}</div>}
+                                                    {state.suggestion && <div className="text-[8px] text-primary/70 border-t pt-1 italic leading-tight">{state.suggestion}</div>}
                                                 </div>
                                             );
                                         })}
@@ -572,11 +597,9 @@ export default function MidiIngestPage() {
                                 )}
                             </ScrollArea>
                         </div>
-                    </div>
 
-                    {/* --- Column 3: Buffer --- */}
-                    <div className="space-y-6 lg:col-span-1 overflow-hidden flex flex-col">
-                        <div className="flex flex-col h-full overflow-hidden">
+                        {/* --- Extraction Buffer --- */}
+                        <div className="flex flex-col lg:col-span-1 border rounded-2xl bg-black/20 p-4 min-h-[400px]">
                             <div className="flex justify-between items-center mb-3">
                                 <Label className="text-xs font-bold uppercase tracking-widest text-primary/80">Extraction Buffer</Label>
                                 <span className="text-[10px] font-bold text-primary px-2 bg-primary/10 rounded-full">{extractedLicks.length}</span>
@@ -587,9 +610,9 @@ export default function MidiIngestPage() {
                                 {isTransmitting ? 'Transmitting...' : `Forge ${selectedLickIds.size} Axioms`}
                             </Button>
 
-                            <ScrollArea className="flex-grow border rounded-2xl bg-black/20 p-2 h-[500px]">
+                            <ScrollArea className="flex-grow h-[350px]">
                                 {extractedLicks.length === 0 ? (
-                                    <div className="flex items-center justify-center h-full text-muted-foreground text-xs italic pt-20">Extract to preview...</div>
+                                    <div className="flex items-center justify-center h-full text-muted-foreground text-xs italic text-center px-4">Extract to preview...</div>
                                 ) : (
                                     <div className="space-y-2">
                                         {extractedLicks.map((lick, idx) => (
@@ -613,7 +636,7 @@ export default function MidiIngestPage() {
                                                     </div>
                                                 </div>
                                                 <Button variant="ghost" size="icon" className="text-primary h-8 w-8" onClick={(e) => { e.stopPropagation(); playPreview(lick, idx); }}>
-                                                    {playingLickIdx === idx ? <RefreshCcw className="h-5 w-5 animate-spin" /> : <Play className="h-5 w-5" />}
+                                                    {playingLickIdx === idx ? <RefreshCw className="h-5 w-5 animate-spin" /> : <Play className="h-5 w-5" />}
                                                 </Button>
                                             </div>
                                         ))}
@@ -621,11 +644,9 @@ export default function MidiIngestPage() {
                                 )}
                             </ScrollArea>
                         </div>
-                    </div>
 
-                    {/* --- Column 4: Individual Vector Calibration --- */}
-                    <div className="space-y-6 lg:col-span-1 overflow-y-auto pr-1">
-                        <div className="p-5 border rounded-2xl bg-primary/5 space-y-6 shadow-sm border-primary/10 h-full relative">
+                        {/* --- Vector Calibration --- */}
+                        <div className="p-5 border rounded-2xl bg-primary/5 space-y-6 shadow-sm border-primary/10 min-h-[400px] relative">
                             <Label className="text-xs font-bold uppercase tracking-widest text-primary flex items-center gap-2 mb-2">
                                 <Zap className="h-3 w-3" /> Vector Calibration
                             </Label>
@@ -645,7 +666,7 @@ export default function MidiIngestPage() {
                                     <div className="space-y-4 pt-4">
                                         <VectorSlider label="Tension" value={activeLick.vector.t} icon={<Activity className="h-3 w-3" />} onChange={(v) => updateActiveVector({t: v})} />
                                         <VectorSlider label="Brightness" value={activeLick.vector.b} icon={<Sun className="h-3 w-3" />} onChange={(v) => updateActiveVector({b: v})} />
-                                        <VectorSlider label="Entropy" value={activeLick.vector.e} icon={<RefreshCcw className="h-3 w-3" />} onChange={(v) => updateActiveVector({e: v})} />
+                                        <VectorSlider label="Entropy" value={activeLick.vector.e} icon={<RefreshCw className="h-3 w-3" />} onChange={(v) => updateActiveVector({e: v})} />
                                         <VectorSlider label="Stability" value={activeLick.vector.h} icon={<Target className="h-3 w-3" />} onChange={(v) => updateActiveVector({h: v})} />
                                     </div>
 
@@ -658,7 +679,7 @@ export default function MidiIngestPage() {
                                     )}
                                 </>
                             ) : (
-                                <div className="flex items-center justify-center h-full text-muted-foreground text-xs italic text-center px-4">
+                                <div className="flex items-center justify-center h-full text-muted-foreground text-xs italic text-center px-4 pt-20">
                                     Select an axiom from the buffer to calibrate its unique DNA.
                                 </div>
                             )}
@@ -688,17 +709,18 @@ export default function MidiIngestPage() {
         const events: FractalEvent[] = [];
         const root = detectedKey?.root || 60;
         
-        // #ЗАЧЕМ: Корректные имена инструментов для Sampler Routing.
         const hints: any = { 
             bass: 'bass_jazz_warm', 
             melody: 'telecaster', 
             accompaniment: 'organ_soft_jazz' 
         };
 
-        for (let i = 0; i < lick.phrase.length; i += 4) {
-            const t = lick.phrase[i]; 
-            const d = lick.phrase[i+1]; 
-            const degIdx = lick.phrase[i+2];
+        const phrase = Array.isArray(lick.phrase) ? lick.phrase : decompressCompactPhrase(lick.phrase);
+
+        for (let i = 0; i < phrase.length; i += 4) {
+            const t = phrase[i]; 
+            const d = phrase[i+1]; 
+            const degIdx = phrase[i+2];
             
             events.push({
                 type: (lick.role === 'accomp' || lick.role === 'accompaniment') ? 'accompaniment' : lick.role as any,
