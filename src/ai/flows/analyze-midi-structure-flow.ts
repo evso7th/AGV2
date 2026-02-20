@@ -1,6 +1,7 @@
 'use server';
 /**
  * @fileOverview AI Orchestrator Flow for MIDI Structure Analysis.
+ * #ОБНОВЛЕНО (ПЛАН №548): Восстановлен префикс googleai/.
  */
 
 import { ai } from '@/ai/genkit';

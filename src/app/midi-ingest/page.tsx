@@ -1,9 +1,8 @@
-
 /**
- * #ЗАЧЕМ: Heritage Alchemist V24.0 — "Ergonomic Sovereignty".
- * #ЧТО: 1. Кнопки Extract и Forge подняты наверх (под заголовки).
- *       2. Реализована фиксированная высота окон с внутренней прокруткой (h-500px).
- *       3. Оптимизирован макет для предотвращения вертикального переполнения.
+ * #ЗАЧЕМ: Heritage Alchemist V24.1 — "Oracle Stability Update".
+ * #ЧТО: 1. Исправлена ошибка AI Extraction Failed за счет лимитирования нот.
+ *       2. Кнопки Extract и Forge подняты наверх.
+ *       3. Реализована фиксированная высота окон с внутренней прокруткой.
  */
 'use client';
 
@@ -229,6 +228,8 @@ export default function MidiIngestPage() {
                 const state = trackStates[tIdx];
                 if (!state || !state.selected || state.role === 'ignore') continue;
 
+                if (track.notes.length === 0) continue;
+
                 const simplifiedNotes = track.notes.map(n => ({
                     t: Math.round(n.time / (secondsPerBar / 12)),
                     d: Math.round(n.duration / (secondsPerBar / 12)),
@@ -237,6 +238,7 @@ export default function MidiIngestPage() {
                 }));
 
                 const noteLimit = simplifiedNotes.filter(n => n.t < 32 * 12);
+                if (noteLimit.length === 0) continue;
 
                 const aiExtraction = await extractAxioms({
                     notes: noteLimit,
@@ -282,6 +284,7 @@ export default function MidiIngestPage() {
             setSelectedLickIds(new Set(results.map(l => l.id)));
             toast({ title: "Intelligent Extraction Complete", description: `Forged ${results.length} unique axioms.` });
         } catch (e) {
+            console.error('[Ingest] Extract failed:', e);
             toast({ variant: "destructive", title: "AI Extraction Failed" });
         } finally {
             setIsAIAnalyzing(false);
@@ -384,9 +387,9 @@ export default function MidiIngestPage() {
                             <Factory className="h-8 w-8 text-primary" />
                         </div>
                         <div>
-                            <CardTitle className="text-3xl font-bold tracking-tight">Heritage Forge v24.0</CardTitle>
+                            <CardTitle className="text-3xl font-bold tracking-tight">Heritage Forge v24.1</CardTitle>
                             <CardDescription className="text-muted-foreground flex items-center gap-2">
-                                <BrainCircuit className="h-3 w-3 text-primary" /> Multi-Main & Intelligent Disassembler
+                                <BrainCircuit className="h-3 w-3 text-primary" /> Intelligent Orchestrator & Stable Extractor
                             </CardDescription>
                         </div>
                     </div>
@@ -503,7 +506,6 @@ export default function MidiIngestPage() {
                         <div className="flex flex-col h-full">
                             <Label className="text-xs font-bold uppercase tracking-widest text-primary/80 mb-3 block">Track Inspector</Label>
                             
-                            {/* #ЗАЧЕМ: Кнопка Extract поднята наверх. */}
                             <Button className="mb-4 w-full h-10 gap-2 font-bold shadow-lg" disabled={!midiFile || isAIAnalyzing} onClick={handleSmartExtract}>
                                 {isAIAnalyzing ? <Loader2 className="h-4 w-4 animate-spin" /> : <Scissors className="h-4 w-4" />}
                                 Smart Extract
@@ -554,7 +556,6 @@ export default function MidiIngestPage() {
                                 <span className="text-[10px] font-bold text-primary px-2 bg-primary/10 rounded-full">{extractedLicks.length}</span>
                             </div>
 
-                            {/* #ЗАЧЕМ: Кнопка Forge поднята наверх для эргономики. */}
                             <Button onClick={transmit} disabled={isTransmitting || selectedLickIds.size === 0 || isAIAnalyzing || isPurging} className="mb-4 w-full h-10 rounded-xl gap-2 font-bold shadow-lg shadow-primary/10">
                                 <CloudUpload className="h-4 w-4" />
                                 {isTransmitting ? 'Transmitting...' : `Forge ${selectedLickIds.size} Axioms`}

@@ -1,6 +1,7 @@
 'use server';
 /**
  * @fileOverview AI Musicologist Flow for Axiom Calibration.
+ * #ОБНОВЛЕНО (ПЛАН №548): Восстановлен префикс googleai/ для корректной маршрутизации.
  */
 
 import { ai } from '@/ai/genkit';
@@ -42,7 +43,7 @@ export async function analyzeAxiom(input: z.infer<typeof AnalyzeAxiomInputSchema
     if (!output) throw new Error('AI failed to respond');
     return output;
   } catch (e) {
-    console.error('[AI] Analysis failed:', e);
+    console.error('[AI] Axiom Analysis failed:', e);
     throw e;
   }
 }

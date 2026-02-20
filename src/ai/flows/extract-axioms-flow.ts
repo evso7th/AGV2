@@ -1,8 +1,8 @@
 'use server';
 /**
  * @fileOverview AI Musical Disassembler Flow.
- * #ЗАЧЕМ: Интеллектуальная экстракция аксиом вместо нарезки "ножницами".
- * #ЧТО: Анализирует поток нот и выделяет логически завершенные фразы переменной длины.
+ * #ОБНОВЛЕНО (ПЛАН №548): 1. Восстановлен префикс googleai/.
+ *                          2. Введен жесткий лимит 100 нот для предотвращения падения по токенам.
  */
 
 import { ai } from '@/ai/genkit';
@@ -33,10 +33,18 @@ const ExtractAxiomsOutputSchema = z.object({
 });
 
 export async function extractAxioms(input: z.infer<typeof ExtractAxiomsInputSchema>): Promise<z.infer<typeof ExtractAxiomsOutputSchema>> {
+  if (!input.notes || input.notes.length === 0) {
+    return { axioms: [] };
+  }
+
+  // #ЗАЧЕМ: Защита от Token Overflow.
+  // #ЧТО: Берем только первые 100 нот для анализа структуры.
+  const cappedNotes = input.notes.slice(0, 100);
+
   try {
     const { output } = await ai.generate({
       model: 'googleai/gemini-1.5-flash',
-      input: input,
+      input: { ...input, notes: cappedNotes },
       output: { schema: ExtractAxiomsOutputSchema },
       prompt: `You are an expert music editor. Analyze the following sequence of MIDI notes for a track role: "{{role}}".
       Your goal is to identify meaningful musical "axioms" (phrases, riffs, or rhythmic motifs).
@@ -51,7 +59,7 @@ export async function extractAxioms(input: z.infer<typeof ExtractAxiomsInputSche
       
       Return a list of start/end tick boundaries for the best axioms found in this material.`,
     });
-    if (!output) throw new Error('AI extraction failed');
+    if (!output) throw new Error('AI extraction failed to return output');
     return output;
   } catch (e) {
     console.error('[AI] Extraction failed:', e);
