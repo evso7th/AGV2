@@ -1,7 +1,7 @@
 /**
- * #ЗАЧЕМ: Audio Engine Context V6.2 — "Bar Count Sync".
- * #ЧТО: 1. Исправлена передача barCount в MelodySynthManagerV2.
- *       2. Калибровка VOICE_BALANCE.
+ * #ЗАЧЕМ: Audio Engine Context V6.3 — "Bar Count Propagation Fix".
+ * #ЧТО: 1. Исправлена передача barCount во все менеджеры V2.
+ *       2. Гарантирована бесшовная смена тембров на границах фраз.
  */
 'use client';
 
@@ -163,6 +163,7 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
 
     if (drumMachineRef.current && drumEvents.length > 0) drumMachineRef.current.schedule(drumEvents, barStartTime, tempo);
     
+    // #ЗАЧЕМ: Передача barCount для реализации эвристической смены тембров.
     if (bassEvents.length > 0 && bassManagerV2Ref.current) {
         bassManagerV2Ref.current.schedule(bassEvents, barStartTime, tempo, instrumentHints?.bass, barCount);
     }
@@ -283,7 +284,11 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
     setIsPlayingState(playing);
     if (!isInitialized || !workerRef.current) return;
     if (playing) {
-        nextBarTimeRef.current = audioContextRef.current!.currentTime + 0.5;
+        if (audioContextRef.current.state === 'suspended') {
+            audioContextRef.current.resume();
+        }
+        stopAllSounds(); 
+        nextBarTimeRef.current = audioContextRef.current.currentTime + 0.5;
         workerRef.current.postMessage({ command: 'start' });
     } else {
         workerRef.current.postMessage({ command: 'stop' });
@@ -316,7 +321,7 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
 
   return (
     <AudioEngineContext.Provider value={{
-        isInitialized, isInitializing, isPlaying, isRecording, isBroadcastActive, useMelodyV2: true, initialize,
+        isInitialized, isInitializing, isPlaying, isRecording, isBroadcastActive, initialize,
         setIsPlaying: setIsPlayingStateCallback, updateSettings: (s) => {
             if (workerRef.current) {
                 settingsRef.current = { ...settingsRef.current, ...s } as WorkerSettings;

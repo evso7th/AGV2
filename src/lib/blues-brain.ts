@@ -19,9 +19,9 @@ import {
 import { BLUES_SOLO_LICKS } from './assets/blues_guitar_solo';
 
 /**
- * #ЗАЧЕМ: Блюзовый Мозг V116.0 — "The True Guitarist".
+ * #ЗАЧЕМ: Блюзовый Мозг V117.0 — "The True Guitarist".
  * #ЧТО: 1. Приоритет гитарным сэмплерам (blackAcoustic, telecaster) во всех режимах.
- *       2. Синтезаторы используются только на экстремальных пиках напряжения.
+ *       2. Синтезаторы (пресет Shine On) используются только на экстремальных пиках напряжения.
  *       3. Гарантированная передача barCount для бесшовной смены тембра.
  */
 
@@ -112,10 +112,12 @@ export class BluesBrain {
     }
 
     // --- TIMBRAL HYSTERESIS ---
+    // #ЗАЧЕМ: Мы пересчитываем оркестровку каждые 4 такта для стабильности тембра.
     if (epoch % 4 === 0 || epoch === 0) {
         this.evaluateTimbralDramaturgy(tension, hints);
     } else {
-        if (hints.melody) (hints as any).melody = this.state.activeAccompTimbre === 'organ_soft_jazz' ? 'blackAcoustic' : 'telecaster';
+        // Удержание текущего тембра внутри фразы
+        if (hints.melody) (hints as any).melody = tension > 0.85 ? 'guitar_shineOn' : (tension <= 0.45 ? 'blackAcoustic' : 'telecaster');
         if (hints.accompaniment) (hints as any).accompaniment = this.state.activeAccompTimbre;
     }
     
@@ -279,11 +281,11 @@ export class BluesBrain {
 
   private evaluateTimbralDramaturgy(tension: number, hints: InstrumentHints) {
     if (hints.melody) {
-        // #ЗАЧЕМ: Блюз - это гитара. 
-        // #ЧТО: Сэмплеры используются до порога 0.85. 
+        // #ЗАЧЕМ: Блюз - это гитарный диалог. 
+        // #ЧТО: Сэмплеры ведут партию до экстремального накала.
         if (tension <= 0.45) (hints as any).melody = 'blackAcoustic';
         else if (tension <= 0.85) (hints as any).melody = 'telecaster';
-        else (hints as any).melody = 'guitar_shineOn'; // Пик накала - синтезатор
+        else (hints as any).melody = 'guitar_shineOn'; // "Shine On" вступает только на пике
     }
     if (hints.accompaniment) {
         let nextTimbre = this.state.activeAccompTimbre;
@@ -390,7 +392,7 @@ export class BluesBrain {
                 note: p, 
                 time: t + i * 0.03, 
                 duration: 1.5, 
-                weight: 0.32, 
+                weight: 0.38, 
                 technique: 'pluck', 
                 dynamics: 'mf', 
                 phrasing: 'staccato' 

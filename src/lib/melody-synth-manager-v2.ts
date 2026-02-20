@@ -10,7 +10,7 @@ import type { CS80GuitarSampler } from './cs80-guitar-sampler';
 
 /**
  * A V2 manager for melody and bass parts.
- * Updated to support HYBRID synthesis and deferred preset switching for melody.
+ * Updated to support HYBRID synthesis and heuristic preset switching.
  */
 export class MelodySynthManagerV2 {
     private audioContext: AudioContext;
@@ -95,8 +95,9 @@ export class MelodySynthManagerV2 {
             params: e.params 
         }));
         
-        // --- DEFERRED PRESET SWITCH (V2.1 - HEURISTIC SYNC) ---
-        // #ЗАЧЕМ: Мы позволяем переключать инструмент на границах фраз или если текущий - заглушка 'synth'.
+        // --- HEURISTIC PRESET SWITCH (V2.2) ---
+        // #ЗАЧЕМ: В новом "Нарративном Веке" такты редко бывают пустыми.
+        // #ЧТО: Разрешаем смену тембра на границах фраз (4 такта) или если текущий - дефолт 'synth'.
         if (instrumentHint && this.partName === 'melody') {
             const mappedHint = V1_TO_V2_PRESET_MAP[instrumentHint] || instrumentHint;
             if (mappedHint !== this.activePresetName) {
