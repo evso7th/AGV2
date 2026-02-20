@@ -1,7 +1,8 @@
 /**
- * #ЗАЧЕМ: Heritage Alchemist V19.0 — "Navigation Sync".
- * #ЧТО: 1. Добавлен хук useRouter и кнопка Back для возврата в основной UI.
- *       2. Кнопка размещена в заголовке для удобства навигации.
+ * #ЗАЧЕМ: Heritage Alchemist V20.0 — "Global Genre Scope".
+ * #ЧТО: 1. Добавлен селектор Genre в интерфейс импорта.
+ *       2. Метаданные аксиомы теперь включают выбранный жанр при сохранении.
+ *       3. Оптимизирован макет секции метаданных.
  */
 'use client';
 
@@ -324,7 +325,7 @@ export default function MidiIngestPage() {
                             <Factory className="h-8 w-8 text-primary" />
                         </div>
                         <div>
-                            <CardTitle className="text-3xl font-bold tracking-tight">The Heritage Forge v19.0</CardTitle>
+                            <CardTitle className="text-3xl font-bold tracking-tight">The Heritage Forge v20.0</CardTitle>
                             <CardDescription className="text-muted-foreground flex items-center gap-2">
                                 <BrainCircuit className="h-3 w-3 text-primary" /> AI Musicological Insight & Hypercube Vectorization
                             </CardDescription>
@@ -379,24 +380,35 @@ export default function MidiIngestPage() {
                             
                             <Input placeholder="Composition ID (Affinity Key)" value={compositionId} onChange={(e) => setCompositionId(e.target.value)} className="h-10 text-sm bg-background/50" />
                             
-                            <div className="grid grid-cols-2 gap-3">
+                            <div className="space-y-4 pt-2">
                                 <div className="space-y-1.5">
-                                    <Label className="text-[10px] uppercase text-muted-foreground font-semibold">Common Mood</Label>
-                                    <Select value={commonMood} onValueChange={(v) => setCommonMood(v as CommonMood)}>
+                                    <Label className="text-[10px] uppercase text-muted-foreground font-semibold">Target Genre</Label>
+                                    <Select value={selectedGenre} onValueChange={(v) => setSelectedGenre(v as Genre)}>
                                         <SelectTrigger className="h-9 text-xs bg-background/50"><SelectValue /></SelectTrigger>
                                         <SelectContent>
-                                            {COMMON_MOODS.map(m => <SelectItem key={m} value={m} className="text-xs capitalize">{m}</SelectItem>)}
+                                            {GENRE_OPTIONS.map(g => <SelectItem key={g} value={g} className="text-xs capitalize">{g}</SelectItem>)}
                                         </SelectContent>
                                     </Select>
                                 </div>
-                                <div className="space-y-1.5">
-                                    <Label className="text-[10px] uppercase text-muted-foreground font-semibold">Specific Mood</Label>
-                                    <Select value={selectedMood} onValueChange={(v) => setSelectedMood(v as Mood)}>
-                                        <SelectTrigger className="h-9 text-xs bg-background/50"><SelectValue /></SelectTrigger>
-                                        <SelectContent>
-                                            {MOOD_OPTIONS.map(m => <SelectItem key={m} value={m} className="text-xs capitalize">{m}</SelectItem>)}
-                                        </SelectContent>
-                                    </Select>
+                                <div className="grid grid-cols-2 gap-3">
+                                    <div className="space-y-1.5">
+                                        <Label className="text-[10px] uppercase text-muted-foreground font-semibold">Common Mood</Label>
+                                        <Select value={commonMood} onValueChange={(v) => setCommonMood(v as CommonMood)}>
+                                            <SelectTrigger className="h-9 text-xs bg-background/50"><SelectValue /></SelectTrigger>
+                                            <SelectContent>
+                                                {COMMON_MOODS.map(m => <SelectItem key={m} value={m} className="text-xs capitalize">{m}</SelectItem>)}
+                                            </SelectContent>
+                                        </Select>
+                                    </div>
+                                    <div className="space-y-1.5">
+                                        <Label className="text-[10px] uppercase text-muted-foreground font-semibold">Specific Mood</Label>
+                                        <Select value={selectedMood} onValueChange={(v) => setSelectedMood(v as Mood)}>
+                                            <SelectTrigger className="h-9 text-xs bg-background/50"><SelectValue /></SelectTrigger>
+                                            <SelectContent>
+                                                {MOOD_OPTIONS.map(m => <SelectItem key={m} value={m} className="text-xs capitalize">{m}</SelectItem>)}
+                                            </SelectContent>
+                                        </Select>
+                                    </div>
                                 </div>
                             </div>
                         </div>
