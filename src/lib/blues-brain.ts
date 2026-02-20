@@ -206,7 +206,7 @@ export class BluesBrain {
       // #ЗАЧЕМ: Если ансамбль стагнирует, мы меняем Династию принудительно.
       if (forceNewDynasty) {
           const dynasties = ['slow-burn', 'texas', 'soul', 'chromatic', 'legacy', 'lyrical'];
-          dynasty = dynasties[this.random.nextInt(dyn dynasties.length)];
+          dynasty = dynasties[this.random.nextInt(dynasties.length)];
           console.log(`[GUARD] Switching Dynasty to: ${dynasty}`);
       }
 
