@@ -1,8 +1,6 @@
 /**
- * #ЗАЧЕМ: Heritage Alchemist V22.0 — "Ergonomic Orchestration".
- * #ЧТО: 1. Метаданные (Genre, Common Mood, Mood) перенесены наверх, под Discovery.
- *       2. Восстановлено поле названия композиции (Composition ID).
- *       3. Оптимизирована навигация и визуальный поток.
+ * #ЗАЧЕМ: Heritage Alchemist V22.1 — "Import Fix".
+ * #ЧТО: Исправлена ошибка AlertDialogDescription is not defined.
  */
 'use client';
 
@@ -45,6 +43,7 @@ import {
   AlertDialogAction,
   AlertDialogCancel,
   AlertDialogContent,
+  AlertDialogDescription,
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle,
@@ -351,7 +350,7 @@ export default function MidiIngestPage() {
                             <Factory className="h-8 w-8 text-primary" />
                         </div>
                         <div>
-                            <CardTitle className="text-3xl font-bold tracking-tight">Heritage Forge v22.0</CardTitle>
+                            <CardTitle className="text-3xl font-bold tracking-tight">Heritage Forge v22.1</CardTitle>
                             <CardDescription className="text-muted-foreground flex items-center gap-2">
                                 <BrainCircuit className="h-3 w-3 text-primary" /> Orchestral Intelligence & Multi-Track Ingestion
                             </CardDescription>
