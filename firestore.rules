@@ -21,8 +21,9 @@ service cloud.firestore {
 
     match /heritage_axioms/{id} {
       // #ЗАЧЕМ: Открытие наследия для всех поколений AuraGroove.
+      // #ЧТО: Добавлена поддержка удаления для проведения "Великого Очищения".
       allow read, list: if isSignedIn();
-      allow create: if isSignedIn();
+      allow create, delete: if isSignedIn();
     }
   }
 }
