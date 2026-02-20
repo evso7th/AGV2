@@ -1,7 +1,7 @@
 'use server';
 /**
  * @fileOverview AI Musicologist Flow for Axiom Calibration.
- * #ОБНОВЛЕНО (ПЛАН №550): Удален префикс googleai/ для устранения ошибки 404.
+ * #ОБНОВЛЕНО (ПЛАН №551): Восстановлен префикс googleai/ для корректного резолвинга модели в Genkit.
  */
 
 import { ai } from '@/ai/genkit';
@@ -27,7 +27,7 @@ const AnalyzeAxiomOutputSchema = z.object({
 export async function analyzeAxiom(input: z.infer<typeof AnalyzeAxiomInputSchema>): Promise<z.infer<typeof AnalyzeAxiomOutputSchema>> {
   try {
     const { output } = await ai.generate({
-      model: 'gemini-1.5-flash',
+      model: 'googleai/gemini-1.5-flash',
       input: input,
       output: { schema: AnalyzeAxiomOutputSchema },
       prompt: `Analyze this MIDI fragment [tick, duration, degreeIndex, techniqueIndex].

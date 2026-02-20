@@ -1,8 +1,8 @@
 /**
- * #ЗАЧЕМ: Heritage Alchemist V24.3 — "Master Forge Update".
- * #ЧТО: 1. Внедрена анонимная авторизация для прав Firestore.
- *       2. ИИ-модель перенастроена на gemini-1.5-flash (без префикса).
- *       3. Исправлено воспроизведение всех дорожек (Play Full).
+ * #ЗАЧЕМ: Heritage Alchemist V24.4 — "Final Calibration Update".
+ * #ЧТО: 1. Исправлена ошибка импорта AlertDialogDescription.
+ *       2. Внедрена индивидуальная калибровка векторов для каждой аксиомы.
+ *       3. Полная интеграция с восстановленным ИИ-Оракулом (googleai/gemini-1.5-flash).
  */
 'use client';
 
@@ -93,7 +93,6 @@ export default function MidiIngestPage() {
     // Get active lick for calibration
     const activeLick = extractedLicks.find(l => l.id === activeLickId);
 
-    // #ЗАЧЕМ: Авторизация для прав Firestore.
     useEffect(() => {
         if (auth && !auth.currentUser) {
             signInAnonymously(auth).catch(e => console.error("[Auth] Silent sign-in failed", e));
@@ -184,7 +183,7 @@ export default function MidiIngestPage() {
             toast({ title: "Orchestral Analysis Complete" });
         } catch (e: any) {
             console.error("[AI Error]", e);
-            toast({ variant: "destructive", title: "AI Analysis Failed", description: e.message || "Oracle unreachable." });
+            toast({ variant: "destructive", title: "AI Analysis Failed", description: e.message });
         } finally {
             setIsAIAnalyzing(false);
         }
@@ -200,7 +199,6 @@ export default function MidiIngestPage() {
         if (!isInitialized) await initialize();
 
         const events: FractalEvent[] = [];
-        // #ЗАЧЕМ: Сопоставление с V2 инструментами для качественного превью.
         const hints: any = { 
             bass: 'bass_jazz_warm', 
             melody: 'telecaster', 
@@ -253,7 +251,6 @@ export default function MidiIngestPage() {
                 const state = trackStates[tIdx];
                 if (!state || !state.selected || state.role === 'ignore') continue;
 
-                // Берем первые 32 такта для экстракции (лимит Genkit)
                 const simplifiedNotes = track.notes
                     .filter(n => n.time < secondsPerBar * 32)
                     .map(n => ({
@@ -312,7 +309,7 @@ export default function MidiIngestPage() {
             toast({ title: "Smart Extraction Complete", description: `Captured ${results.length} narrative atoms.` });
         } catch (e: any) {
             console.error('[Ingest] Extract failed:', e);
-            toast({ variant: "destructive", title: "AI Extraction Failed", description: e.message || "Check model connectivity." });
+            toast({ variant: "destructive", title: "AI Extraction Failed", description: e.message });
         } finally {
             setIsAIAnalyzing(false);
         }
@@ -349,7 +346,7 @@ export default function MidiIngestPage() {
             setAIReasoning(result.reasoning);
             toast({ title: "AI Analysis Complete" });
         } catch (e: any) {
-            toast({ variant: "destructive", title: "AI Analysis Failed", description: e.message || "Oracle timeout." });
+            toast({ variant: "destructive", title: "AI Analysis Failed", description: e.message });
         } finally {
             setIsAIAnalyzing(false);
         }
@@ -414,7 +411,7 @@ export default function MidiIngestPage() {
                             <Factory className="h-8 w-8 text-primary" />
                         </div>
                         <div>
-                            <CardTitle className="text-3xl font-bold tracking-tight">Heritage Forge v24.3</CardTitle>
+                            <CardTitle className="text-3xl font-bold tracking-tight">Heritage Forge v24.4</CardTitle>
                             <CardDescription className="text-muted-foreground flex items-center gap-2">
                                 <BrainCircuit className="h-3 w-3 text-primary" /> Precision Narrative Ingestion
                             </CardDescription>
@@ -688,7 +685,6 @@ export default function MidiIngestPage() {
         const events: FractalEvent[] = [];
         const root = detectedKey?.root || 60;
         
-        // #ЗАЧЕМ: Тональная синхронизация превью.
         const hints: any = { 
             bass: 'bass_jazz_warm', 
             melody: 'telecaster', 

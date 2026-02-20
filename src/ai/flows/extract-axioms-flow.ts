@@ -1,9 +1,7 @@
 'use server';
 /**
  * @fileOverview AI Musical Disassembler Flow.
- * #ОБНОВЛЕНО (ПЛАН №550): 1. Удален префикс googleai/ для устранения 404.
- *                          2. Промпт переведен на "Интеллектуальный Анализ" (поиск фраз, а не нарезка).
- *                          3. Введен жесткий лимит 100 нот для стабильности.
+ * #ОБНОВЛЕНО (ПЛАН №551): Восстановлен префикс googleai/ для корректного резолвинга модели в Genkit.
  */
 
 import { ai } from '@/ai/genkit';
@@ -43,7 +41,7 @@ export async function extractAxioms(input: z.infer<typeof ExtractAxiomsInputSche
 
   try {
     const { output } = await ai.generate({
-      model: 'gemini-1.5-flash',
+      model: 'googleai/gemini-1.5-flash',
       input: { ...input, notes: cappedNotes },
       output: { schema: ExtractAxiomsOutputSchema },
       prompt: `You are an expert musicologist and master producer. Analyze the following MIDI data for the role: "{{role}}".

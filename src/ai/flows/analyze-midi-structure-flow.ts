@@ -1,7 +1,7 @@
 'use server';
 /**
  * @fileOverview AI Orchestrator Flow for MIDI Structure Analysis.
- * #ОБНОВЛЕНО (ПЛАН №550): Удален префикс googleai/ для устранения ошибки 404.
+ * #ОБНОВЛЕНО (ПЛАН №551): Восстановлен префикс googleai/ для корректного резолвинга модели в Genkit.
  */
 
 import { ai } from '@/ai/genkit';
@@ -34,7 +34,7 @@ const AnalyzeMidiOutputSchema = z.object({
 export async function analyzeMidiStructure(input: z.infer<typeof AnalyzeMidiInputSchema>): Promise<z.infer<typeof AnalyzeMidiOutputSchema>> {
   try {
     const { output } = await ai.generate({
-      model: 'gemini-1.5-flash',
+      model: 'googleai/gemini-1.5-flash',
       input: input,
       output: { schema: AnalyzeMidiOutputSchema },
       prompt: `Suggest AuraGroove roles for these tracks based on their names and characteristics:
