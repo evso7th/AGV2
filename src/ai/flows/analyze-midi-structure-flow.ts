@@ -38,7 +38,7 @@ const AnalyzeMidiOutputSchema = z.object({
 
 export async function analyzeMidiStructure(input: z.infer<typeof AnalyzeMidiInputSchema>): Promise<z.infer<typeof AnalyzeMidiOutputSchema>> {
   const { output } = await ai.generate({
-    model: 'googleai/gemini-1.5-flash',
+    model: 'gemini-1.5-flash',
     input: input,
     output: { schema: AnalyzeMidiOutputSchema },
     prompt: `You are an expert music producer and orchestrator. 

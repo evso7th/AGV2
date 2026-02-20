@@ -35,7 +35,7 @@ export async function analyzeAxiom(input: AnalyzeAxiomInput): Promise<AnalyzeAxi
 
 const prompt = ai.definePrompt({
   name: 'analyzeAxiomPrompt',
-  model: 'googleai/gemini-1.5-flash',
+  model: 'gemini-1.5-flash',
   input: { schema: AnalyzeAxiomInputSchema },
   output: { schema: AnalyzeAxiomOutputSchema },
   prompt: `You are a world-class musicologist and expert in generative music theory.
