@@ -1,10 +1,6 @@
 'use server';
 /**
  * @fileOverview AI Musicologist Flow for Axiom Calibration.
- *
- * - analyzeAxiom - A function that performs deep musicological analysis of a MIDI fragment.
- * - AnalyzeAxiomInput - MIDI sequence, genre, and intended mood.
- * - AnalyzeAxiomOutput - Vector coordinates (t, b, e, h) and reasoning.
  */
 
 import { ai } from '@/ai/genkit';
@@ -16,60 +12,37 @@ const AnalyzeAxiomInputSchema = z.object({
   mood: z.string().optional(),
   rootNote: z.number().optional(),
 });
-export type AnalyzeAxiomInput = z.infer<typeof AnalyzeAxiomInputSchema>;
 
 const AnalyzeAxiomOutputSchema = z.object({
   vector: z.object({
-    t: z.number().describe('Tension: Dissonance and chromaticism (0-1)'),
-    b: z.number().describe('Brightness: Register and major/minor feel (0-1)'),
-    e: z.number().describe('Entropy: Rhythmic complexity and syncopation (0-1)'),
-    h: z.number().describe('Harmonic Stability: Pull to the tonic (0-1)'),
+    t: z.number(),
+    b: z.number(),
+    e: z.number(),
+    h: z.number(),
   }),
-  reasoning: z.string().describe('Brief musicological justification for these values.'),
-});
-export type AnalyzeAxiomOutput = z.infer<typeof AnalyzeAxiomOutputSchema>;
-
-export async function analyzeAxiom(input: AnalyzeAxiomInput): Promise<AnalyzeAxiomOutput> {
-  return analyzeAxiomFlow(input);
-}
-
-const prompt = ai.definePrompt({
-  name: 'analyzeAxiomPrompt',
-  model: 'gemini-1.5-flash',
-  input: { schema: AnalyzeAxiomInputSchema },
-  output: { schema: AnalyzeAxiomOutputSchema },
-  prompt: `You are a world-class musicologist and expert in generative music theory.
-Analyze the following MIDI fragment provided in a compact format [tick, duration, degreeIndex, techniqueIndex].
-
-Context:
-Genre: {{{genre}}}
-Intended Mood: {{{mood}}}
-Root Note MIDI: {{{rootNote}}}
-
-Degrees Mapping: R, b2, 2, b3, 3, 4, #4, 5, b6, 6, b7, 7, R+8, 9, 11 (in this order).
-
-Your task is to position this fragment in the AuraGroove Hypercube (4D vector space):
-
-1. Tension (t): Evaluate dissonance. High values for tritones (#4/b5), minor seconds (b2), and frequent chromatic steps.
-2. Brightness (b): Evaluate the "light". High values for major intervals (3, 6, 7), high registers, and Lydian characteristics. Low for minor and Phrygian.
-3. Entropy (e): Evaluate rhythmic surprise. High values for syncopation, triplets against straight time, and irregular rests. 
-4. Harmonic Stability (h): Evaluate "gravity". High values if the phrase anchors strongly on the Root (R) and 5th. Low if it wanders or stays on tensions.
-
-Phrase Data:
-{{{phrase}}}
-
-Provide the 4D vector and a one-sentence reasoning.`,
+  reasoning: z.string(),
 });
 
-const analyzeAxiomFlow = ai.defineFlow(
-  {
-    name: 'analyzeAxiomFlow',
-    inputSchema: AnalyzeAxiomInputSchema,
-    outputSchema: AnalyzeAxiomOutputSchema,
-  },
-  async (input) => {
-    const { output } = await prompt(input);
-    if (!output) throw new Error('AI analysis failed to return output.');
+export async function analyzeAxiom(input: z.infer<typeof AnalyzeAxiomInputSchema>): Promise<z.infer<typeof AnalyzeAxiomOutputSchema>> {
+  try {
+    const { output } = await ai.generate({
+      model: 'googleai/gemini-1.5-flash',
+      input: input,
+      output: { schema: AnalyzeAxiomOutputSchema },
+      prompt: `Analyze this MIDI fragment [tick, duration, degreeIndex, techniqueIndex].
+      Context: Genre={{{genre}}}, Mood={{{mood}}}, Root={{{rootNote}}}.
+      Position it in the 4D space (0-1):
+      1. Tension (t): Dissonance/Chromaticism.
+      2. Brightness (b): Major feel/High register.
+      3. Entropy (e): Rhythmic complexity.
+      4. Stability (h): Tonic gravity.
+      
+      Phrase: {{{phrase}}}`,
+    });
+    if (!output) throw new Error('AI failed to respond');
     return output;
+  } catch (e) {
+    console.error('[AI] Analysis failed:', e);
+    throw e;
   }
-);
+}

@@ -1,6 +1,9 @@
+
 /**
- * #ЗАЧЕМ: Heritage Alchemist V22.1 — "Import Fix".
- * #ЧТО: Исправлена ошибка AlertDialogDescription is not defined.
+ * #ЗАЧЕМ: Heritage Alchemist V23.0 — "The Intelligent Disassembler".
+ * #ЧТО: 1. Интеграция ИИ-экстракции (extractAxioms).
+ *       2. Исправлена маршрутизация звука (Play Full / Preview).
+ *       3. Роль 'accomp' изменена на 'accompaniment' для совместимости с движком.
  */
 'use client';
 
@@ -10,7 +13,7 @@ import { Midi } from '@tonejs/midi';
 import { 
     Upload, FileMusic, Sparkles, CloudUpload, Music, Waves, Drum, LayoutGrid, Factory, 
     Play, StopCircle, Database, RefreshCcw, Compass, Zap, Sun, Activity, Target, Wand2,
-    BrainCircuit, Loader2, Trash2, AlertTriangle, ArrowLeft, CheckCircle2, Info, Edit3
+    BrainCircuit, Loader2, Trash2, AlertTriangle, ArrowLeft, CheckCircle2, Info, Edit3, Scissors
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -38,6 +41,7 @@ import type { Mood, Genre, FractalEvent, CommonMood, AxiomVector } from '@/types
 import { useAudioEngine } from '@/contexts/audio-engine-context';
 import { analyzeAxiom } from '@/ai/flows/analyze-axiom-flow';
 import { analyzeMidiStructure } from '@/ai/flows/analyze-midi-structure-flow';
+import { extractAxioms } from '@/ai/flows/extract-axioms-flow';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -50,7 +54,7 @@ import {
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 
-type IngestionRole = 'melody' | 'bass' | 'drums' | 'accomp' | 'ignore';
+type IngestionRole = 'melody' | 'bass' | 'drums' | 'accompaniment' | 'ignore';
 
 const MOOD_OPTIONS: Mood[] = ['epic', 'joyful', 'enthusiastic', 'melancholic', 'dark', 'anxious', 'dreamy', 'contemplative', 'calm', 'gloomy'];
 const GENRE_OPTIONS: Genre[] = ['ambient', 'trance', 'blues', 'progressive', 'rock', 'house', 'rnb', 'ballad', 'reggae', 'celtic'];
@@ -157,10 +161,11 @@ export default function MidiIngestPage() {
             
             const nextStates = { ...trackStates };
             result.suggestions.forEach(s => {
+                const role = s.suggestedRole === 'accomp' ? 'accompaniment' : s.suggestedRole;
                 nextStates[s.trackIndex] = {
                     ...nextStates[s.trackIndex],
-                    role: s.suggestedRole,
-                    selected: s.suggestedRole !== 'ignore',
+                    role: role as any,
+                    selected: role !== 'ignore',
                     suggestion: s.reasoning
                 };
             });
@@ -184,13 +189,15 @@ export default function MidiIngestPage() {
         if (!isInitialized) await initialize();
 
         const events: FractalEvent[] = [];
+        const hints: any = { bass: 'bass_jazz_warm', melody: 'telecaster', accompaniment: 'organ_soft_jazz' };
+
         midiFile.tracks.forEach((track, tIdx) => {
             const state = trackStates[tIdx];
             if (!state || state.role === 'ignore') return;
 
             track.notes.forEach(n => {
                 events.push({
-                    type: (state.role === 'drums' ? 'drum_kick' : state.role) as any,
+                    type: state.role as any,
                     note: n.midi,
                     time: n.time,
                     duration: n.duration,
@@ -203,55 +210,84 @@ export default function MidiIngestPage() {
         });
 
         setIsPlayingFull(true);
-        playRawEvents(events);
+        playRawEvents(events, hints);
     };
 
-    const extractMaterial = () => {
+    const handleSmartExtract = async () => {
         if (!midiFile || !detectedKey) return;
+        setIsAIAnalyzing(true);
+        setExtractedLicks([]);
         
-        const result: any[] = [];
-        const barsPerLick = 4;
-        const bpm = 72; 
-        const secondsPerBar = (60 / bpm) * 4;
-        const root = detectedKey.root;
+        try {
+            const results: any[] = [];
+            const bpm = 72; 
+            const secondsPerBar = (60 / bpm) * 4;
+            const root = detectedKey.root;
 
-        midiFile.tracks.forEach((track, tIdx) => {
-            const state = trackStates[tIdx];
-            if (!state || !state.selected || state.role === 'ignore') return;
+            for (let tIdx = 0; tIdx < midiFile.tracks.length; tIdx++) {
+                const track = midiFile.tracks[tIdx];
+                const state = trackStates[tIdx];
+                if (!state || !state.selected || state.role === 'ignore') continue;
 
-            for (let i = 0; i < track.duration / (secondsPerBar * barsPerLick); i++) {
-                const start = i * secondsPerBar * barsPerLick;
-                const end = (i + 1) * secondsPerBar * barsPerLick;
-                
-                const phraseNotes = track.notes.filter((n: any) => n.time >= start && n.time < end);
-                if (phraseNotes.length < 4) continue; 
+                // Подготовка данных для ИИ
+                const simplifiedNotes = track.notes.map(n => ({
+                    t: Math.round(n.time / (secondsPerBar / 12)),
+                    d: Math.round(n.duration / (secondsPerBar / 12)),
+                    pitch: n.midi,
+                    vel: n.velocity
+                }));
 
-                const compactPhrase: number[] = [];
-                phraseNotes.forEach((n: any) => {
-                    const relativeTime = n.time - start;
-                    const tick = Math.round((relativeTime / (secondsPerBar / 12))); 
-                    const durationTicks = Math.max(1, Math.round(n.duration / (secondsPerBar / 12)));
-                    let degreeIdx = 0;
-                    if (state.role === 'drums') {
-                        degreeIdx = n.midi; 
-                    } else {
-                        const degreeStr = SEMITONE_TO_DEGREE[(n.midi - root + 120) % 12] || 'R';
-                        degreeIdx = DEGREE_KEYS.indexOf(degreeStr);
-                    }
-                    compactPhrase.push(tick, durationTicks, degreeIdx, 0);
+                // Ограничиваем объем для ИИ (первые 32 такта)
+                const noteLimit = simplifiedNotes.filter(n => n.t < 32 * 12);
+
+                const aiExtraction = await extractAxioms({
+                    notes: noteLimit,
+                    role: state.role,
+                    trackName: track.name
                 });
 
-                result.push({
-                    id: `LICK_${compositionId}_T${tIdx}_B${i}`,
-                    phrase: compactPhrase,
-                    role: state.role,
-                    barOffset: i * barsPerLick,
-                    tags: [selectedMood, selectedGenre, state.role]
+                aiExtraction.axioms.forEach((def, i) => {
+                    const phraseNotes = track.notes.filter(n => {
+                        const tick = Math.round(n.time / (secondsPerBar / 12));
+                        return tick >= def.startTick && tick < def.endTick;
+                    });
+
+                    if (phraseNotes.length < 4) return;
+
+                    const compactPhrase: number[] = [];
+                    phraseNotes.forEach(n => {
+                        const relativeTime = n.time - (def.startTick * (secondsPerBar / 12));
+                        const tick = Math.round(relativeTime / (secondsPerBar / 12));
+                        const durationTicks = Math.max(1, Math.round(n.duration / (secondsPerBar / 12)));
+                        
+                        let degreeIdx = 0;
+                        if (state.role === 'drums') {
+                            degreeIdx = n.midi; 
+                        } else {
+                            const degreeStr = SEMITONE_TO_DEGREE[(n.midi - root + 120) % 12] || 'R';
+                            degreeIdx = DEGREE_KEYS.indexOf(degreeStr);
+                        }
+                        compactPhrase.push(tick, durationTicks, degreeIdx, 0);
+                    });
+
+                    results.push({
+                        id: `AI_AXIOM_${compositionId}_T${tIdx}_${i}`,
+                        phrase: compactPhrase,
+                        role: state.role,
+                        barOffset: Math.floor(def.startTick / 12),
+                        tags: [...def.tags, selectedMood, selectedGenre]
+                    });
                 });
             }
-        });
-        setExtractedLicks(result);
-        setSelectedLickIds(new Set(result.map(l => l.id)));
+
+            setExtractedLicks(results);
+            setSelectedLickIds(new Set(results.map(l => l.id)));
+            toast({ title: "Intelligent Extraction Complete", description: `Forged ${results.length} unique axioms.` });
+        } catch (e) {
+            toast({ variant: "destructive", title: "AI Extraction Failed" });
+        } finally {
+            setIsAIAnalyzing(false);
+        }
     };
 
     const handleAutoCalibrate = () => {
@@ -299,10 +335,10 @@ export default function MidiIngestPage() {
             const snapshot = await getDocs(collRef);
             const deletePromises = snapshot.docs.map(docSnap => deleteDoc(doc(db, 'heritage_axioms', docSnap.id)));
             await Promise.all(deletePromises);
-            toast({ title: "Purge Complete" });
+            toast({ title: "The Great Purge Executed", description: "Database cleared." });
             fetchGlobalCount();
         } catch (e) {
-            toast({ variant: "destructive", title: "Purge Failed" });
+            toast({ variant: "destructive", title: "Purge Failed", description: "Insufficient permissions or network error." });
         } finally {
             setIsPurging(false);
         }
@@ -350,9 +386,9 @@ export default function MidiIngestPage() {
                             <Factory className="h-8 w-8 text-primary" />
                         </div>
                         <div>
-                            <CardTitle className="text-3xl font-bold tracking-tight">Heritage Forge v22.1</CardTitle>
+                            <CardTitle className="text-3xl font-bold tracking-tight">Heritage Forge v23.0</CardTitle>
                             <CardDescription className="text-muted-foreground flex items-center gap-2">
-                                <BrainCircuit className="h-3 w-3 text-primary" /> Orchestral Intelligence & Multi-Track Ingestion
+                                <BrainCircuit className="h-3 w-3 text-primary" /> Multi-Main & Intelligent Disassembler
                             </CardDescription>
                         </div>
                     </div>
@@ -385,7 +421,7 @@ export default function MidiIngestPage() {
                                 <Database className="h-5 w-5" />
                                 {isFetchingCount ? '...' : (globalAxiomCount ?? '0')}
                             </div>
-                            <span className="text-[10px] uppercase tracking-widest text-muted-foreground">Global Count</span>
+                            <span className="text-[10px] uppercase tracking-widest text-muted-foreground">Global Census</span>
                         </div>
                     </div>
                 </CardHeader>
@@ -490,7 +526,7 @@ export default function MidiIngestPage() {
                                                             <SelectContent>
                                                                 <SelectItem value="melody" className="text-[10px]">Melody</SelectItem>
                                                                 <SelectItem value="bass" className="text-[10px]">Bass</SelectItem>
-                                                                <SelectItem value="accomp" className="text-[10px]">Accomp</SelectItem>
+                                                                <SelectItem value="accompaniment" className="text-[10px]">Accomp</SelectItem>
                                                                 <SelectItem value="drums" className="text-[10px]">Drums</SelectItem>
                                                                 <SelectItem value="ignore" className="text-[10px]">Ignore</SelectItem>
                                                             </SelectContent>
@@ -503,8 +539,9 @@ export default function MidiIngestPage() {
                                     </div>
                                 )}
                             </ScrollArea>
-                            <Button className="mt-4 w-full h-10 gap-2 font-bold" disabled={!midiFile} onClick={extractMaterial}>
-                                <Wand2 className="h-4 w-4" /> Extract Axioms
+                            <Button className="mt-4 w-full h-10 gap-2 font-bold" disabled={!midiFile || isAIAnalyzing} onClick={handleSmartExtract}>
+                                {isAIAnalyzing ? <Loader2 className="h-4 w-4 animate-spin" /> : <Scissors className="h-4 w-4" />}
+                                Smart Extract
                             </Button>
                         </div>
                     </div>
@@ -544,7 +581,7 @@ export default function MidiIngestPage() {
                             </ScrollArea>
                         </div>
 
-                        {/* Sub-column: Vector & Transmit */}
+                        {/* Sub-column: Vector & Transmit --- */}
                         <div className="flex flex-col h-full gap-4">
                             <div className="p-5 border rounded-2xl bg-primary/5 space-y-6 shadow-sm border-primary/10 flex-grow relative">
                                 <Label className="text-xs font-bold uppercase tracking-widest text-primary flex items-center gap-2 mb-2">
@@ -604,16 +641,35 @@ export default function MidiIngestPage() {
     async function playPreview(lick: any, idx: number) {
         if (playingLickIdx === idx) { setIsPlaying(false); setPlayingLickIdx(null); return; }
         if (!isInitialized) await initialize();
+        
         const events: FractalEvent[] = [];
         const root = detectedKey?.root || 60;
+        
+        // #ЗАЧЕМ: Умный выбор инструмента для превью.
+        const hints: any = { 
+            bass: 'bass_jazz_warm', 
+            melody: 'telecaster', 
+            accompaniment: 'organ_soft_jazz' 
+        };
+
         for (let i = 0; i < lick.phrase.length; i += 4) {
-            const t = lick.phrase[i]; const d = lick.phrase[i+1]; const degIdx = lick.phrase[i+2];
+            const t = lick.phrase[i]; 
+            const d = lick.phrase[i+1]; 
+            const degIdx = lick.phrase[i+2];
+            
             events.push({
-                type: (lick.role === 'drums' ? 'drum_kick' : lick.role) as any,
+                type: lick.role as any,
                 note: lick.role === 'drums' ? degIdx : root + (DEGREE_TO_SEMITONE[DEGREE_KEYS[degIdx]] || 0),
-                time: t / 3, duration: d / 3, weight: 0.8, technique: 'pick', dynamics: 'mf', phrasing: 'legato'
+                time: t / 3, 
+                duration: d / 3, 
+                weight: 0.8, 
+                technique: 'pick', 
+                dynamics: 'mf', 
+                phrasing: 'legato'
             });
         }
-        setPlayingLickIdx(idx); playRawEvents(events);
+        
+        setPlayingLickIdx(idx); 
+        playRawEvents(events, hints);
     }
 }

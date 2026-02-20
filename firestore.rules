@@ -15,14 +15,15 @@ service cloud.firestore {
     }
 
     match /masterpieces/{id} {
-      allow read, list: if isSignedIn();
+      // #ЗАЧЕМ: Открытие для публичного чтения (социальное наследие).
+      allow read, list: if true;
       allow create: if isSignedIn();
     }
 
     match /heritage_axioms/{id} {
       // #ЗАЧЕМ: Открытие наследия для всех поколений AuraGroove.
-      // #ЧТО: Добавлена поддержка удаления для проведения "Великого Очищения".
-      allow read, list: if isSignedIn();
+      // #ЧТО: Публичное чтение разрешено для корректной работы счетчиков и аналитики.
+      allow read, list: if true;
       allow create, delete: if isSignedIn();
     }
   }
