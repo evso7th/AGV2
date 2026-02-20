@@ -1,7 +1,6 @@
 /**
- * #ЗАЧЕМ: Хук управления UI музыкой V4.1 — "UI Sync & Volume Sovereignty".
- * #ЧТО: Исправлена ошибка синхронизации стейта громкости. Теперь ползунки движутся визуально.
- * #ОБНОВЛЕНО (ПЛАН №525): handleVolumeChange теперь обновляет локальные настройки инструментов.
+ * #ЗАЧЕМ: Хук управления UI музыкой V4.2 — "Full Volume Sovereignty".
+ * #ЧТО: Исправлена ошибка синхронизации стейта. Теперь ВСЕ ползунки обновляют React-состояние и движок.
  */
 'use client';
 
@@ -254,13 +253,13 @@ export const useAuraGroove = (): AuraGrooveProps => {
   };
 
   /**
-   * #ЗАЧЕМ: Синхронизация визуального состояния ползунков.
-   * #ЧТО: Обновление локального стейта React при каждом изменении громкости.
+   * #ЗАЧЕМ: Исправлено "замерзание" ВСЕХ слайдеров.
+   * #ЧТО: Каждое изменение громкости теперь обновляет локальное состояние React.
    */
   const handleVolumeChange = (part: InstrumentPart, value: number) => {
     setVolume(part, value);
     
-    // #ЗАЧЕМ: Фикс "замерзших" слайдеров.
+    // #ЗАЧЕМ: Синхронное обновление UI для всех категорий.
     if (part in instrumentSettings) {
       setInstrumentSettings(prev => ({
         ...prev,
@@ -271,7 +270,7 @@ export const useAuraGroove = (): AuraGrooveProps => {
     } else if (part === 'sparkles' || part === 'sfx') {
       setTextureSettings(prev => ({
         ...prev,
-        [part]: { ...prev[part], volume: value }
+        [part]: { ...prev[part as 'sparkles' | 'sfx'], volume: value }
       }));
     }
   };
@@ -286,18 +285,6 @@ export const useAuraGroove = (): AuraGrooveProps => {
 
   const handleEqChange = (bandIndex: number, gain: number) => {
       setEQGain(bandIndex, gain);
-  };
-
-  const handleTimerDurationChange = (minutes: number) => {
-      setTimerSettings(prev => ({...prev, duration: minutes * 60, timeLeft: minutes * 60 }));
-  };
-
-  const handleToggleTimer = () => {
-    setTimerSettings(prev => {
-        const newIsActive = !prev.isActive;
-        if (newIsActive) return { ...prev, timeLeft: prev.duration, isActive: true };
-        return { ...prev, timeLeft: prev.duration, isActive: false };
-    });
   };
 
   const handleGoHome = () => {

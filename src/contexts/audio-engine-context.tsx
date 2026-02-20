@@ -1,7 +1,8 @@
 /**
- * #ЗАЧЕМ: Audio Engine Context V6.3 — "Bar Count Propagation Fix".
- * #ЧТО: 1. Исправлена передача barCount во все менеджеры V2.
- *       2. Гарантирована бесшовная смена тембров на границах фраз.
+ * #ЗАЧЕМ: Audio Engine Context V7.0 — "Volume & Routing Sovereignty".
+ * #ЧТО: 1. Удвоена системная громкость ударных (0.5 -> 1.0).
+ *       2. Исправлена маршрутизация громкости для всех V2 инструментов.
+ *       3. Гарантированная доставка barCount во все менеджеры.
  */
 'use client';
 
@@ -27,7 +28,8 @@ const VOICE_BALANCE: Record<InstrumentPart, number> = {
   bass: 0.55, 
   melody: 1.0, 
   accompaniment: 0.6, 
-  drums: 0.5, 
+  // #ЗАЧЕМ: Удвоение системной громкости ударных по требованию пользователя.
+  drums: 1.0, 
   effects: 0.6, 
   sparkles: 0.7, 
   piano: 1.0, 
@@ -126,19 +128,6 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
     cs80SamplerRef.current?.stopAll();
   }, []);
 
-  const setInstrumentCallback = useCallback(async (part: string, name: string) => {
-    if (!isInitialized) return;
-    if (part === 'bass' && bassManagerV2Ref.current) {
-        await bassManagerV2Ref.current.setInstrument(name as any);
-    } else if (part === 'melody' && melodyManagerV2Ref.current) {
-        await melodyManagerV2Ref.current.setInstrument(name as any);
-    } else if (part === 'accompaniment' && accompanimentManagerV2Ref.current) {
-        await accompanimentManagerV2Ref.current.setInstrument(name as any);
-    } else if (part === 'harmony' && harmonyManagerRef.current) {
-        harmonyManagerRef.current.setInstrument(name as any);
-    }
-  }, [isInitialized]);
-
   const scheduleEvents = useCallback((events: FractalEvent[], barStartTime: number, tempo: number, barCount: number, instrumentHints?: InstrumentHints) => {
     if (!Array.isArray(events)) return;
     
@@ -163,7 +152,6 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
 
     if (drumMachineRef.current && drumEvents.length > 0) drumMachineRef.current.schedule(drumEvents, barStartTime, tempo);
     
-    // #ЗАЧЕМ: Передача barCount для реализации эвристической смены тембров.
     if (bassEvents.length > 0 && bassManagerV2Ref.current) {
         bassManagerV2Ref.current.schedule(bassEvents, barStartTime, tempo, instrumentHints?.bass, barCount);
     }
@@ -296,9 +284,14 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
     }
   }, [isInitialized, stopAllSounds]);
 
+  /**
+   * #ЗАЧЕМ: Централизованное управление громкостью V2.
+   * #ЧТО: Прямое управление преампами менеджеров для гарантированной тишины/мощности.
+   */
   const setVolumeCallback = useCallback((part: InstrumentPart, volume: number) => {
     if (part === 'pads' || part === 'effects') return;
     
+    // Маршрутизация на V2 преампы
     if (part === 'bass' && bassManagerV2Ref.current) {
         bassManagerV2Ref.current.setPreampGain(volume);
         return;
@@ -309,6 +302,10 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
     }
     if (part === 'accompaniment' && accompanimentManagerV2Ref.current) {
         accompanimentManagerV2Ref.current.setPreampGain(volume);
+        return;
+    }
+    if (part === 'pianoAccompaniment' && pianoAccompanimentManagerRef.current) {
+        pianoAccompanimentManagerRef.current.setVolume(volume);
         return;
     }
 
@@ -330,7 +327,13 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
         },
         resetWorker: () => workerRef.current?.postMessage({ command: 'reset' }), 
         setVolume: setVolumeCallback, 
-        setInstrument: setInstrumentCallback as any,
+        setInstrument: (async (part: string, name: string) => {
+            if (!isInitialized) return;
+            if (part === 'bass' && bassManagerV2Ref.current) await bassManagerV2Ref.current.setInstrument(name);
+            else if (part === 'melody' && melodyManagerV2Ref.current) await melodyManagerV2Ref.current.setInstrument(name);
+            else if (part === 'accompaniment' && accompanimentManagerV2Ref.current) await accompanimentManagerV2Ref.current.setInstrument(name);
+            else if (part === 'harmony' && harmonyManagerRef.current) harmonyManagerRef.current.setInstrument(name as any);
+        }) as any,
         setBassTechnique: (t) => {}, 
         setTextureSettings: (s) => {
             setVolumeCallback('sparkles', s.sparkles.enabled ? s.sparkles.volume : 0);
@@ -350,7 +353,7 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
         }, 
         getWorker: () => workerRef.current, 
         playRawEvents: (e, h) => {
-            scheduleEvents(e, audioContextRef.current!.currentTime + 0.8, 72, 0, h)
+            if(audioContextRef.current) scheduleEvents(e, audioContextRef.current.currentTime + 0.8, 72, 0, h)
         }
     }}>
       {children}

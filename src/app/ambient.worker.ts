@@ -1,8 +1,8 @@
 /**
- * @file AuraGroove Music Worker (Architecture: "The Continuous Journey")
- * #ОБНОВЛЕНО (ПЛАН №503): Когнитивная прозрачность. Логирование LickID и Mutation.
+ * @file AuraGroove Music Worker (Architecture: "The Narrative Journey")
+ * #ОБНОВЛЕНО (ПЛАН №530): Когнитивная прозрачность. Детальное логирование состава оркестра.
  */
-import type { WorkerSettings, ScoreName, Mood, Genre, InstrumentPart } from '@/types/music';
+import type { WorkerSettings, Mood, Genre, InstrumentPart } from '@/types/music';
 import { FractalMusicEngine } from '@/lib/fractal-music-engine';
 import type { FractalEvent, InstrumentHints, NavigationInfo } from '@/types/fractal';
 import { getBlueprint } from '@/lib/blueprints';
@@ -27,12 +27,12 @@ const Scheduler = {
         bpm: 75,
         score: 'neuro_f_matrix', 
         genre: 'ambient' as Genre,
-        drumSettings: { pattern: 'composer', enabled: true, kickVolume: 1.0 },
+        drumSettings: { pattern: 'composer', enabled: true, kickVolume: 1.0, volume: 0.5 },
         instrumentSettings: { 
-            bass: { name: "bass_jazz_warm", volume: 0.7, technique: 'portamento' },
-            melody: { name: "acousticGuitarSolo", volume: 0.8 },
-            accompaniment: { name: "guitarChords", volume: 0.7 },
-            harmony: { name: "piano", volume: 0.6 },
+            bass: { name: "bass_jazz_warm", volume: 0.7, technique: 'walking' },
+            melody: { name: "blackAcoustic", volume: 0.8 },
+            accompaniment: { name: "organ_soft_jazz", volume: 0.7 },
+            harmony: { name: "violin", volume: 0.6 },
             pianoAccompaniment: { name: "piano", volume: 0.5 }
         },
         textureSettings: {
@@ -43,38 +43,24 @@ const Scheduler = {
         composerControlsInstruments: true,
         mood: 'melancholic' as Mood,
         introBars: 12, 
-        sessionLickHistory: [],
-        ancestor: null as any 
+        sessionLickHistory: []
     } as WorkerSettings,
 
     get barDuration() { 
         return (60 / this.settings.bpm) * 4; 
     },
 
-    initializeEngine(settings: WorkerSettings, force: boolean = false) {
+    initializeEngine(settings: WorkerSettings) {
         const blueprint = getBlueprint(settings.genre, settings.mood);
-        console.log(`%c${getTimestamp()} [Engine] Loading MAIN Blueprint: ${blueprint.id}`, 'color: #FFD700; font-weight:bold;');
+        console.log(`%c${getTimestamp()} [Engine] Sowing Suite DNA: ${blueprint.name}`, 'color: #FFD700; font-weight:bold;');
 
-        const newEngine = new FractalMusicEngine({
+        fractalMusicEngine = new FractalMusicEngine({
             ...settings,
             seed: settings.seed || Date.now(),
-            introBars: settings.introBars,
-            ancestor: settings.ancestor,
-            sessionLickHistory: this.settings.sessionLickHistory 
+            introBars: settings.introBars
         }, blueprint);
 
-        newEngine.initialize(true); 
-        fractalMusicEngine = newEngine;
-        
-        if (newEngine.suiteDNA?.seedLickId) {
-            this.settings.sessionLickHistory = [
-                ...(this.settings.sessionLickHistory || []),
-                newEngine.suiteDNA.seedLickId
-            ].slice(-10); 
-
-            self.postMessage({ type: 'LICK_BORN', lickId: newEngine.suiteDNA.seedLickId });
-        }
-
+        fractalMusicEngine.initialize(true);
         this.settings.bpm = fractalMusicEngine.config.tempo;
         this.barCount = 0;
     },
@@ -82,28 +68,12 @@ const Scheduler = {
     start() {
         if (this.isRunning) return;
         this.isRunning = true;
-        this.suiteType = 'MAIN'; 
-        this.initializeEngine(this.settings, true);
+        this.initializeEngine(this.settings);
 
         const loop = () => {
             if (!this.isRunning) return;
-            
-            const barStartTime = performance.now();
-            try {
-                this.tick();
-            } catch (e) {
-                console.error('%c[Chronos] Tick execution failed!', 'color: #ef4444; font-weight: bold;', e);
-            }
-            
-            const executionTime = performance.now() - barStartTime;
-            const targetDuration = this.barDuration * 1000;
-            
-            if (executionTime > 100) {
-                console.warn(`%c${getTimestamp()} [Chronos] Heavy Tick! Computed in ${executionTime.toFixed(2)}ms`, 'color: #ef4444;');
-            }
-
-            const nextDelay = Math.max(0, targetDuration - executionTime);
-            this.loopId = setTimeout(loop, nextDelay);
+            this.tick();
+            this.loopId = setTimeout(loop, this.barDuration * 1000);
         };
         loop();
     },
@@ -120,138 +90,60 @@ const Scheduler = {
         const wasRunning = this.isRunning;
         if (wasRunning) this.stop();
         this.settings.seed = Date.now();
-        this.suiteType = 'MAIN'; 
-        this.initializeEngine(this.settings, true); 
+        this.initializeEngine(this.settings);
         if (wasRunning) this.start();
     },
 
     updateSettings(newSettings: Partial<WorkerSettings>) {
        const genreOrMoodChanged = (newSettings.genre && newSettings.genre !== this.settings.genre) || (newSettings.mood && newSettings.mood !== this.settings.mood);
-       
-       this.settings = {
-            ...this.settings,
-            ...newSettings,
-            drumSettings: newSettings.drumSettings ? { ...this.settings.drumSettings, ...newSettings.drumSettings } : this.settings.drumSettings,
-            instrumentSettings: newSettings.instrumentSettings ? { ...this.settings.instrumentSettings, ...newSettings.instrumentSettings } : this.settings.instrumentSettings,
-            textureSettings: newSettings.textureSettings ? { ...this.settings.textureSettings, ...newSettings.textureSettings } : this.settings.textureSettings,
-        };
-
-       if (genreOrMoodChanged) {
-           this.reset();
-       } else if (fractalMusicEngine) {
-           fractalMusicEngine.updateConfig(this.settings);
-       }
+       this.settings = { ...this.settings, ...newSettings };
+       if (genreOrMoodChanged) this.reset();
+       else if (fractalMusicEngine) fractalMusicEngine.updateConfig(this.settings);
     },
 
     tick() {
         if (!this.isRunning || !fractalMusicEngine) return;
 
         if (this.barCount >= fractalMusicEngine.navigator!.totalBars) {
-             console.log(`%c${getTimestamp()} [Chain] Suite ended. Seamlessly starting new piece...`, 'color: #4ade80; font-weight: bold;');
+             console.log(`%c${getTimestamp()} [Chain] Cycle Complete. Regenerating...`, 'color: #4ade80; font-weight: bold;');
              this.settings.seed = Date.now(); 
-             this.initializeEngine(this.settings, true);
+             this.initializeEngine(this.settings);
         }
 
-        let finalPayload: { 
-            events: FractalEvent[], 
-            instrumentHints: InstrumentHints, 
-            beautyScore: number, 
-            tension: number, 
-            navInfo?: NavigationInfo,
-            lickId?: string,
-            mutationType?: string
-        } = { 
-            events: [], 
-            instrumentHints: {}, 
-            beautyScore: 0.5,
-            tension: 0.5
-        };
-
+        let payload: any;
         try {
-            finalPayload = fractalMusicEngine.evolve(this.barDuration, this.barCount);
+            payload = fractalMusicEngine.evolve(this.barDuration, this.barCount);
         } catch (e) {
-            console.error('[Worker.tick] Generation error:', e);
+            console.error('[Worker] Evolution Error:', e);
+            return;
         }
 
-        // #ЗАЧЕМ: Вывод нарративных логов с данными о лике и мутации.
-        if (finalPayload.navInfo) {
-            const navLog = fractalMusicEngine.navigator?.formatLogMessage(
-                finalPayload.navInfo, 
-                finalPayload.instrumentHints, 
-                this.barCount,
-                finalPayload.lickId,
-                finalPayload.mutationType
-            );
-            if (navLog) console.log(navLog, 'color: #DA70D6; font-weight: bold;');
-        }
-
-        if (finalPayload.beautyScore > 0.90 && this.barCount > 8) {
-            self.postMessage({ 
-                type: 'HIGH_RESONANCE_DETECTED', 
-                payload: { beautyScore: finalPayload.beautyScore, seed: this.settings.seed } 
-            });
-        }
-
-        const counts = { drums: 0, bass: 0, melody: 0, accompaniment: 0, harmony: 0, sfx: 0, sparkles: 0 };
-        for (const event of finalPayload.events) {
-            if (event.type === 'bass') counts.bass++;
-            else if (event.type === 'melody') counts.melody++;
-            else if (event.type === 'accompaniment') counts.accompaniment++;
-            else if (event.type === 'harmony') counts.harmony++;
-            else if (event.type === 'sfx') counts.sfx++;
-            else if (event.type === 'sparkle') counts.sparkles++;
-            else if ((event.type as string).startsWith('drum_') || (event.type as string).startsWith('perc-')) {
-                counts.drums++;
-            }
-        }
+        const h = payload.instrumentHints || {};
+        const sectionName = payload.navInfo?.currentPart.name || 'Unknown';
         
-        const sectionName = finalPayload.navInfo?.currentPart.name || 'Unknown';
-        
-        const iS = this.settings.instrumentSettings;
-        const h = finalPayload.instrumentHints || {};
-        
-        const bassStr = `BASS: ${h.bass || 'none'}@${iS.bass.volume.toFixed(2)}`;
-        const melStr = `MEL: ${h.melody || 'none'}@${iS.melody.volume.toFixed(2)}`;
-        const accStr = `ACC: ${h.accompaniment || 'none'}@${iS.accompaniment.volume.toFixed(2)}`;
-        const harStr = `HAR: ${h.harmony || 'none'}@${iS.harmony.volume.toFixed(2)}`;
-        const pStr = `PNO: ${iS.pianoAccompaniment.volume.toFixed(2)}`;
+        // #ЗАЧЕМ: Narrative Logging. 
+        // #ЧТО: Вывод текущего лика и мутации для контроля 4-х тактового цикла.
+        const ensembleStr = `BASS: ${h.bass || 'none'} | MEL: ${h.melody || 'none'} | ACC: ${h.accompaniment || 'none'}`;
+        const cognitiveStr = `Lick: ${payload.lickId || 'none'} | Mut: ${payload.mutationType || 'none'}`;
 
         console.log(
-            `%c${getTimestamp()} [Bar ${this.barCount}] [${this.suiteType}] [${sectionName}] ` +
-            `T:${finalPayload.tension.toFixed(2)} BPM:${this.settings.bpm} Res:${finalPayload.beautyScore.toFixed(2)} ` + 
-            `D:${counts.drums}, B:${counts.bass}, M:${counts.melody} | ` +
-            `%c${bassStr} | ${melStr} | ${accStr} | ${harStr} | ${pStr}`,
+            `%c${getTimestamp()} [Bar ${this.barCount}] [${sectionName}] T:${payload.tension.toFixed(2)} ` +
+            `%c${ensembleStr} | %c${cognitiveStr}`,
             'color: #888;', 
-            'color: #4ade80; font-weight: bold;' 
+            'color: #4ade80; font-weight: bold;',
+            'color: #DA70D6;'
         );
 
         self.postMessage({ 
             type: 'SCORE_READY', 
             payload: {
-                events: finalPayload.events.filter(e => e.type !== 'sfx' && e.type !== 'sparkle' && e.type !== 'harmony'),
-                instrumentHints: finalPayload.instrumentHints,
+                events: payload.events,
+                instrumentHints: h,
                 barDuration: this.barDuration,
                 barCount: this.barCount,
                 actualBpm: this.settings.bpm
             }
         });
-        
-        finalPayload.events.forEach(e => {
-            if (e.type === 'sfx') self.postMessage({ type: 'sfx', payload: e });
-            if (e.type === 'sparkle') self.postMessage({ type: 'sparkle', payload: e });
-        });
-
-        if (finalPayload.events.some(e => e.type === 'harmony')) {
-             self.postMessage({ 
-                 type: 'HARMONY_SCORE_READY', 
-                 payload: {
-                     events: finalPayload.events.filter(e => e.type === 'harmony'),
-                     instrumentHints: finalPayload.instrumentHints,
-                     barDuration: this.barDuration,
-                     barCount: this.barCount
-                 } 
-             });
-        }
 
         this.barCount++;
     }
@@ -267,7 +159,6 @@ self.onmessage = (event: MessageEvent) => {
             case 'stop': Scheduler.stop(); break;
             case 'reset': Scheduler.reset(); break;
             case 'update_settings': Scheduler.updateSettings(data); break;
-            case 'external_impulse': if (fractalMusicEngine) fractalMusicEngine.generateExternalImpulse(); break;
         }
     } catch (e) {
         self.postMessage({ type: 'error', error: String(e) });
