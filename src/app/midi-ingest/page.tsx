@@ -1,16 +1,17 @@
 /**
- * #ЗАЧЕМ: Heritage Alchemist V18.0 — "The Great Purge".
- * #ЧТО: 1. Добавлена функция handlePurgeDatabase для физического удаления старых аксиом.
- *       2. Кнопка очистки базы встроена в заголовок.
+ * #ЗАЧЕМ: Heritage Alchemist V19.0 — "Navigation Sync".
+ * #ЧТО: 1. Добавлен хук useRouter и кнопка Back для возврата в основной UI.
+ *       2. Кнопка размещена в заголовке для удобства навигации.
  */
 'use client';
 
 import { useState, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
 import { Midi } from '@tonejs/midi';
 import { 
     Upload, FileMusic, Sparkles, CloudUpload, Music, Waves, Drum, LayoutGrid, Factory, 
     Play, StopCircle, Database, RefreshCcw, Compass, Zap, Sun, Activity, Target, Wand2,
-    BrainCircuit, Loader2, Trash2, AlertTriangle
+    BrainCircuit, Loader2, Trash2, AlertTriangle, ArrowLeft
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -68,6 +69,7 @@ const detectTrackRole = (track: any): IngestionRole => {
 
 export default function MidiIngestPage() {
     const db = useFirestore();
+    const router = useRouter();
     const { initialize, isInitialized, playRawEvents, setIsPlaying } = useAudioEngine();
     
     const [isAnalyzing, setIsAnalyzing] = useState(false);
@@ -233,10 +235,6 @@ export default function MidiIngestPage() {
         }
     };
 
-    /**
-     * #ЗАЧЕМ: Физическое очищение базы данных.
-     * #ЧТО: Удаляет все документы из коллекции heritage_axioms.
-     */
     const handlePurgeDatabase = async () => {
         setIsPurging(true);
         try {
@@ -319,11 +317,14 @@ export default function MidiIngestPage() {
             <Card className="w-full max-w-5xl shadow-2xl border-primary/20 bg-card/50 backdrop-blur-sm overflow-hidden">
                 <CardHeader className="flex flex-row items-center justify-between border-b pb-6 bg-primary/5">
                     <div className="flex items-center gap-4">
+                        <Button variant="ghost" size="icon" onClick={() => router.push('/aura-groove')} className="mr-2 hover:bg-primary/10 text-primary">
+                            <ArrowLeft className="h-6 w-6" />
+                        </Button>
                         <div className="p-3 bg-primary/10 rounded-xl">
                             <Factory className="h-8 w-8 text-primary" />
                         </div>
                         <div>
-                            <CardTitle className="text-3xl font-bold tracking-tight">The Heritage Forge v18.0</CardTitle>
+                            <CardTitle className="text-3xl font-bold tracking-tight">The Heritage Forge v19.0</CardTitle>
                             <CardDescription className="text-muted-foreground flex items-center gap-2">
                                 <BrainCircuit className="h-3 w-3 text-primary" /> AI Musicological Insight & Hypercube Vectorization
                             </CardDescription>
