@@ -32,17 +32,29 @@
     "HeritageAxiom": {
       "title": "HeritageAxiom",
       "type": "object",
-      "description": "A digitised musical fragment from human heritage, used as a seed for evolution.",
+      "description": "A vector-indexed musical fragment for the AuraGroove Hypercube.",
       "properties": {
         "id": { "type": "string" },
         "phrase": { "type": "array", "items": { "type": "number" } },
         "role": { "type": "string", "enum": ["melody", "bass", "drums", "accomp"] },
-        "dynasty": { "type": "string" },
-        "origin": { "type": "string" },
+        "genre": { "type": "string" },
+        "commonMood": { "type": "string", "enum": ["dark", "neutral", "light"] },
+        "mood": { "type": "string" },
+        "compositionId": { "type": "string" },
+        "barOffset": { "type": "number" },
+        "vector": {
+          "type": "object",
+          "properties": {
+            "t": { "type": "number", "description": "Tension (0-1)" },
+            "b": { "type": "number", "description": "Brightness (0-1)" },
+            "e": { "type": "number", "description": "Entropy/Rhythm Irregularity (0-1)" },
+            "h": { "type": "number", "description": "Harmonic Stability (0-1)" }
+          }
+        },
         "tags": { "type": "array", "items": { "type": "string" } },
         "timestamp": { "type": "string", "format": "date-time" }
       },
-      "required": ["phrase", "role", "dynasty", "origin", "timestamp"]
+      "required": ["phrase", "role", "compositionId", "commonMood", "vector", "timestamp"]
     }
   },
   "auth": {
@@ -59,7 +71,7 @@
     },
     "/heritage_axioms/{axiomId}": {
       "schema": { "$ref": "#/backend/entities/HeritageAxiom" },
-      "description": "Digitised human musical fragments feeding the global DNA pool."
+      "description": "The Hypercube Axiom Bank. Vector-indexed musical fragments."
     }
   }
 }

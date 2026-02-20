@@ -2,10 +2,10 @@
 import { collection, doc, setDoc, serverTimestamp, Firestore } from 'firebase/firestore';
 import { errorEmitter } from '@/firebase/error-emitter';
 import { FirestorePermissionError } from '@/firebase/errors';
+import type { AxiomVector, CommonMood } from '@/types/fractal';
 
 /**
  * #ЗАЧЕМ: Сохранение "Шедевра" (удачной музыкальной комбинации).
- * #ЧТО: Отправляет текущие параметры сюиты в Firestore. 
  */
 export function saveMasterpiece(db: Firestore, data: {
   seed: number;
@@ -41,13 +41,19 @@ export function saveMasterpiece(db: Firestore, data: {
 }
 
 /**
- * #ЗАЧЕМ: Трансляция оцифрованного наследия в глобальную память.
- * #ЧТО: Сохраняет компактный лик (аксиому) в коллекцию heritage_axioms с указанием роли.
+ * #ЗАЧЕМ: Трансляция оцифрованного наследия в Гиперкуб AuraGroove.
+ * #ЧТО: Сохраняет аксиому с векторными координатами и семантическими метками.
+ * #ОБНОВЛЕНО (ПЛАН №531): Поддержка Hypercube API (vector, commonMood, compositionId).
  */
 export function saveHeritageAxiom(db: Firestore, data: {
     phrase: number[];
     role: 'melody' | 'bass' | 'drums' | 'accomp';
-    dynasty: string;
+    genre: string;
+    commonMood: CommonMood;
+    mood: string;
+    compositionId: string;
+    barOffset: number;
+    vector: AxiomVector;
     origin: string;
     tags: string[];
 }) {
@@ -57,7 +63,12 @@ export function saveHeritageAxiom(db: Firestore, data: {
     const payload = {
         phrase: data.phrase,
         role: data.role,
-        dynasty: data.dynasty,
+        genre: data.genre,
+        commonMood: data.commonMood,
+        mood: data.mood,
+        compositionId: data.compositionId,
+        barOffset: data.barOffset,
+        vector: data.vector,
         origin: data.origin,
         tags: data.tags,
         timestamp: serverTimestamp()
