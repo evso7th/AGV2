@@ -1,8 +1,8 @@
 /**
- * #ЗАЧЕМ: Heritage Alchemist V24.2 — "Precision Forge Update".
- * #ЧТО: 1. Каждая аксиома в буфере теперь хранит свой уникальный вектор.
- *       2. Реализован механизм фокуса: слайдеры управляют только выбранной аксиомой.
- *       3. Индивидуальный ИИ-анализ для каждого фрагмента.
+ * #ЗАЧЕМ: Heritage Alchemist V24.3 — "Master Forge Update".
+ * #ЧТО: 1. Внедрена анонимная авторизация для прав Firestore.
+ *       2. ИИ-модель перенастроена на gemini-1.5-flash (без префикса).
+ *       3. Исправлено воспроизведение всех дорожек (Play Full).
  */
 'use client';
 
@@ -31,7 +31,8 @@ import {
     decompressCompactPhrase
 } from '@/lib/music-theory';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { useFirestore } from '@/firebase';
+import { useFirestore, useAuth } from '@/firebase';
+import { signInAnonymously } from 'firebase/auth';
 import { collection, getCountFromServer, getDocs, deleteDoc, doc } from 'firebase/firestore';
 import { saveHeritageAxiom } from '@/lib/firebase-service';
 import { toast } from '@/hooks/use-toast';
@@ -61,6 +62,7 @@ const COMMON_MOODS: CommonMood[] = ['dark', 'neutral', 'light'];
 
 export default function MidiIngestPage() {
     const db = useFirestore();
+    const auth = useAuth();
     const router = useRouter();
     const { initialize, isInitialized, playRawEvents, setIsPlaying } = useAudioEngine();
     
@@ -90,6 +92,13 @@ export default function MidiIngestPage() {
 
     // Get active lick for calibration
     const activeLick = extractedLicks.find(l => l.id === activeLickId);
+
+    // #ЗАЧЕМ: Авторизация для прав Firestore.
+    useEffect(() => {
+        if (auth && !auth.currentUser) {
+            signInAnonymously(auth).catch(e => console.error("[Auth] Silent sign-in failed", e));
+        }
+    }, [auth]);
 
     const fetchGlobalCount = async () => {
         setIsFetchingCount(true);
@@ -154,8 +163,8 @@ export default function MidiIngestPage() {
                 name: t.name || `Track ${i}`,
                 noteCount: t.notes.length,
                 avgPitch: t.notes.reduce((sum, n) => sum + n.midi, 0) / (t.notes.length || 1),
-                minPitch: Math.min(...t.notes.map(n => n.midi)),
-                maxPitch: Math.max(...t.notes.map(n => n.midi)),
+                minPitch: t.notes.length > 0 ? Math.min(...t.notes.map(n => n.midi)) : 0,
+                maxPitch: t.notes.length > 0 ? Math.max(...t.notes.map(n => n.midi)) : 127,
             }));
 
             const result = await analyzeMidiStructure({ tracks: trackSummaries, fileName });
@@ -173,8 +182,9 @@ export default function MidiIngestPage() {
             setTrackStates(nextStates);
             setGlobalAdvice(result.globalAdvice);
             toast({ title: "Orchestral Analysis Complete" });
-        } catch (e) {
-            toast({ variant: "destructive", title: "AI Analysis Failed" });
+        } catch (e: any) {
+            console.error("[AI Error]", e);
+            toast({ variant: "destructive", title: "AI Analysis Failed", description: e.message || "Oracle unreachable." });
         } finally {
             setIsAIAnalyzing(false);
         }
@@ -190,11 +200,17 @@ export default function MidiIngestPage() {
         if (!isInitialized) await initialize();
 
         const events: FractalEvent[] = [];
-        const hints: any = { bass: 'bass_jazz_warm', melody: 'telecaster', accompaniment: 'organ_soft_jazz' };
+        // #ЗАЧЕМ: Сопоставление с V2 инструментами для качественного превью.
+        const hints: any = { 
+            bass: 'bass_jazz_warm', 
+            melody: 'telecaster', 
+            accompaniment: 'organ_soft_jazz', 
+            harmony: 'violin' 
+        };
 
         midiFile.tracks.forEach((track, tIdx) => {
             const state = trackStates[tIdx];
-            if (!state || state.role === 'ignore') return;
+            if (!state || !state.selected || state.role === 'ignore') return;
 
             track.notes.forEach(n => {
                 events.push({
@@ -205,10 +221,16 @@ export default function MidiIngestPage() {
                     weight: 0.7,
                     technique: 'pick',
                     dynamics: 'mf',
-                    phrasing: 'legato'
+                    phrasing: 'legato',
+                    params: { barCount: 0 }
                 });
             });
         });
+
+        if (events.length === 0) {
+            toast({ title: "Nothing to play", description: "Select at least one track." });
+            return;
+        }
 
         setIsPlayingFull(true);
         playRawEvents(events, hints);
@@ -231,18 +253,20 @@ export default function MidiIngestPage() {
                 const state = trackStates[tIdx];
                 if (!state || !state.selected || state.role === 'ignore') continue;
 
-                const simplifiedNotes = track.notes.map(n => ({
-                    t: Math.round(n.time / (secondsPerBar / 12)),
-                    d: Math.round(n.duration / (secondsPerBar / 12)),
-                    pitch: n.midi,
-                    vel: n.velocity
-                }));
+                // Берем первые 32 такта для экстракции (лимит Genkit)
+                const simplifiedNotes = track.notes
+                    .filter(n => n.time < secondsPerBar * 32)
+                    .map(n => ({
+                        t: Math.round(n.time / (secondsPerBar / 12)),
+                        d: Math.round(n.duration / (secondsPerBar / 12)),
+                        pitch: n.midi,
+                        vel: n.velocity
+                    }));
 
-                const noteLimit = simplifiedNotes.filter(n => n.t < 32 * 12);
-                if (noteLimit.length === 0) continue;
+                if (simplifiedNotes.length === 0) continue;
 
                 const aiExtraction = await extractAxioms({
-                    notes: noteLimit,
+                    notes: simplifiedNotes,
                     role: state.role,
                     trackName: track.name
                 });
@@ -253,7 +277,7 @@ export default function MidiIngestPage() {
                         return tick >= def.startTick && tick < def.endTick;
                     });
 
-                    if (phraseNotes.length < 4) return;
+                    if (phraseNotes.length < 2) return;
 
                     const compactPhrase: number[] = [];
                     phraseNotes.forEach(n => {
@@ -277,7 +301,7 @@ export default function MidiIngestPage() {
                         role: state.role === 'accomp' ? 'accomp' : state.role,
                         barOffset: Math.floor(def.startTick / 12),
                         tags: [...def.tags, selectedMood, selectedGenre],
-                        vector: { t: 0.5, b: 0.5, e: 0.5, h: 0.5 } // Individual DNA
+                        vector: { t: 0.5, b: 0.5, e: 0.5, h: 0.5 } 
                     });
                 });
             }
@@ -285,10 +309,10 @@ export default function MidiIngestPage() {
             setExtractedLicks(results);
             setSelectedLickIds(new Set(results.map(l => l.id)));
             if (results.length > 0) setActiveLickId(results[0].id);
-            toast({ title: "Intelligent Extraction Complete", description: `Forged ${results.length} unique axioms.` });
-        } catch (e) {
+            toast({ title: "Smart Extraction Complete", description: `Captured ${results.length} narrative atoms.` });
+        } catch (e: any) {
             console.error('[Ingest] Extract failed:', e);
-            toast({ variant: "destructive", title: "AI Extraction Failed" });
+            toast({ variant: "destructive", title: "AI Extraction Failed", description: e.message || "Check model connectivity." });
         } finally {
             setIsAIAnalyzing(false);
         }
@@ -324,8 +348,8 @@ export default function MidiIngestPage() {
             updateActiveVector(result.vector);
             setAIReasoning(result.reasoning);
             toast({ title: "AI Analysis Complete" });
-        } catch (e) {
-            toast({ variant: "destructive", title: "AI Analysis Failed" });
+        } catch (e: any) {
+            toast({ variant: "destructive", title: "AI Analysis Failed", description: e.message || "Oracle timeout." });
         } finally {
             setIsAIAnalyzing(false);
         }
@@ -362,12 +386,12 @@ export default function MidiIngestPage() {
                     mood: selectedMood,
                     compositionId: compositionId,
                     barOffset: lick.barOffset,
-                    vector: lick.vector, // Transmitting individual vector
+                    vector: lick.vector, 
                     origin: fileName || 'Heritage Forge',
                     tags: lick.tags
                 });
             }
-            toast({ title: "Axioms Transmitted", description: `Added ${toTransmit.length} fragments.` });
+            toast({ title: "Axioms Transmitted", description: `Forged ${toTransmit.length} fragments.` });
             setExtractedLicks([]);
             setActiveLickId(null);
             fetchGlobalCount();
@@ -390,9 +414,9 @@ export default function MidiIngestPage() {
                             <Factory className="h-8 w-8 text-primary" />
                         </div>
                         <div>
-                            <CardTitle className="text-3xl font-bold tracking-tight">Heritage Forge v24.2</CardTitle>
+                            <CardTitle className="text-3xl font-bold tracking-tight">Heritage Forge v24.3</CardTitle>
                             <CardDescription className="text-muted-foreground flex items-center gap-2">
-                                <BrainCircuit className="h-3 w-3 text-primary" /> Multi-Vector Intelligent Ingestion
+                                <BrainCircuit className="h-3 w-3 text-primary" /> Precision Narrative Ingestion
                             </CardDescription>
                         </div>
                     </div>
@@ -438,6 +462,12 @@ export default function MidiIngestPage() {
                                 <FileMusic className="h-3 w-3" /> Material Discovery
                             </Label>
                             
+                            <div className="group border-2 border-dashed border-primary/20 rounded-2xl p-6 text-center hover:border-primary/50 hover:bg-primary/5 transition-all relative overflow-hidden">
+                                <input type="file" accept=".mid,.midi" onChange={onFileUpload} className="absolute inset-0 opacity-0 cursor-pointer z-10" />
+                                <Upload className="h-8 w-8 mx-auto text-muted-foreground group-hover:text-primary mb-3 transition-colors" />
+                                <p className="text-xs font-medium text-muted-foreground group-hover:text-primary">Sow MIDI Material</p>
+                            </div>
+
                             <div className="space-y-2">
                                 <Label className="text-[10px] text-muted-foreground uppercase flex items-center gap-1.5 font-bold">
                                     <Edit3 className="h-3 w-3" /> Composition ID
@@ -448,12 +478,6 @@ export default function MidiIngestPage() {
                                     className="h-8 text-xs font-mono bg-background"
                                     placeholder="e.g. moody_blues_track"
                                 />
-                            </div>
-
-                            <div className="group border-2 border-dashed border-primary/20 rounded-2xl p-6 text-center hover:border-primary/50 hover:bg-primary/5 transition-all relative overflow-hidden">
-                                <input type="file" accept=".mid,.midi" onChange={onFileUpload} className="absolute inset-0 opacity-0 cursor-pointer z-10" />
-                                <Upload className="h-8 w-8 mx-auto text-muted-foreground group-hover:text-primary mb-3 transition-colors" />
-                                <p className="text-xs font-medium text-muted-foreground group-hover:text-primary">Sow MIDI Material</p>
                             </div>
 
                             <div className="space-y-4 pt-2 border-t border-primary/10">
@@ -664,6 +688,7 @@ export default function MidiIngestPage() {
         const events: FractalEvent[] = [];
         const root = detectedKey?.root || 60;
         
+        // #ЗАЧЕМ: Тональная синхронизация превью.
         const hints: any = { 
             bass: 'bass_jazz_warm', 
             melody: 'telecaster', 
@@ -676,7 +701,7 @@ export default function MidiIngestPage() {
             const degIdx = lick.phrase[i+2];
             
             events.push({
-                type: lick.role === 'accomp' ? 'accompaniment' : lick.role as any,
+                type: (lick.role === 'accomp' || lick.role === 'accompaniment') ? 'accompaniment' : lick.role as any,
                 note: lick.role === 'drums' ? degIdx : root + (DEGREE_TO_SEMITONE[DEGREE_KEYS[degIdx]] || 0),
                 time: t / 3, 
                 duration: d / 3, 

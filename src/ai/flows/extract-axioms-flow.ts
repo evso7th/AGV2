@@ -1,8 +1,9 @@
 'use server';
 /**
  * @fileOverview AI Musical Disassembler Flow.
- * #ОБНОВЛЕНО (ПЛАН №548): 1. Восстановлен префикс googleai/.
- *                          2. Введен жесткий лимит 100 нот для предотвращения падения по токенам.
+ * #ОБНОВЛЕНО (ПЛАН №550): 1. Удален префикс googleai/ для устранения 404.
+ *                          2. Промпт переведен на "Интеллектуальный Анализ" (поиск фраз, а не нарезка).
+ *                          3. Введен жесткий лимит 100 нот для стабильности.
  */
 
 import { ai } from '@/ai/genkit';
@@ -37,27 +38,29 @@ export async function extractAxioms(input: z.infer<typeof ExtractAxiomsInputSche
     return { axioms: [] };
   }
 
-  // #ЗАЧЕМ: Защита от Token Overflow.
-  // #ЧТО: Берем только первые 100 нот для анализа структуры.
+  // #ЗАЧЕМ: Защита от Token Overflow и фокусировка на первых 32 тактах.
   const cappedNotes = input.notes.slice(0, 100);
 
   try {
     const { output } = await ai.generate({
-      model: 'googleai/gemini-1.5-flash',
+      model: 'gemini-1.5-flash',
       input: { ...input, notes: cappedNotes },
       output: { schema: ExtractAxiomsOutputSchema },
-      prompt: `You are an expert music editor. Analyze the following sequence of MIDI notes for a track role: "{{role}}".
-      Your goal is to identify meaningful musical "axioms" (phrases, riffs, or rhythmic motifs).
+      prompt: `You are an expert musicologist and master producer. Analyze the following MIDI data for the role: "{{role}}".
+      
+      CRITICAL MISSION: Do NOT simply cut the track every 4 bars.
+      Find meaningful "musical atoms" (axioms).
       
       RULES:
-      1. Axioms must be between 4 and 12 bars long (48 to 144 ticks).
-      2. Identify phrases that feel complete (e.g. Call and Response, a full Riff cycle).
-      3. Avoid cutting notes in the middle.
+      1. Identify complete musical thoughts: riffs, call-and-response pairs, or rhythmic hooks.
+      2. Axioms should ideally be between 48 and 144 ticks (4-12 bars in 12/8).
+      3. If the role is "bass", look for stable recurring patterns.
+      4. If the role is "melody", look for lyrical arcs or expressive solos.
+      5. If the role is "drums", look for consistent rhythmic grooves.
+      6. Return start/end tick boundaries that capture these full ideas without cutting notes.
       
       Track Data (Notes):
-      {{{notes}}}
-      
-      Return a list of start/end tick boundaries for the best axioms found in this material.`,
+      {{{notes}}}`,
     });
     if (!output) throw new Error('AI extraction failed to return output');
     return output;
