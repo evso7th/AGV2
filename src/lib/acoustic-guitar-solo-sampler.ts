@@ -14,6 +14,7 @@ export class AcousticGuitarSoloSampler {
     private preamp: GainNode;
     private isLoading = false;
     private slideBuffers: AudioBuffer[] = [];
+    private activeSources: Set<AudioBufferSourceNode> = new Set();
 
     constructor(audioContext: AudioContext, destination: AudioNode) {
         this.audioContext = audioContext;
@@ -92,12 +93,17 @@ export class AcousticGuitarSoloSampler {
             gainNode.gain.setTargetAtTime(0, startTime + 15.0, 0.8);
             
             source.start(startTime);
-            source.onended = () => { try { gainNode.disconnect(); } catch(e){} };
+            this.activeSources.add(source);
+            source.onended = () => {
+                this.activeSources.delete(source);
+                try { gainNode.disconnect(); } catch(e){} 
+            };
         });
     }
 
     private findBestSample(instrument: any, targetMidi: number, technique: Technique): { buffer: AudioBuffer | null, midi: number } {
         const availableMidiNotes = Array.from(instrument.buffers.keys()) as number[];
+        if (availableMidiNotes.length === 0) return { buffer: null, midi: targetMidi };
         const closestMidi = availableMidiNotes.reduce((prev, curr) => 
             Math.abs(curr - targetMidi) < Math.abs(prev - targetMidi) ? curr : prev
         );
@@ -112,6 +118,14 @@ export class AcousticGuitarSoloSampler {
         return 12 * (parseInt(match[3]) + 1) + noteMap[match[1].toUpperCase() + match[2]];
     }
 
-    public stopAll() {}
-    public dispose() { this.outputNode.disconnect(); }
+    public stopAll() {
+        this.activeSources.forEach(source => {
+            try {
+                source.stop(0);
+            } catch(e) {}
+        });
+        this.activeSources.clear();
+    }
+
+    public dispose() { this.stopAll(); this.outputNode.disconnect(); }
 }

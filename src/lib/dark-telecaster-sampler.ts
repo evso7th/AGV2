@@ -57,6 +57,7 @@ export class DarkTelecasterSampler {
     private instruments = new Map<string, SamplerInstrument>();
     public isInitialized = false;
     private isLoading = false;
+    private activeSources: Set<AudioBufferSourceNode> = new Set();
 
     // Effects chain nodes
     private preamp: GainNode;
@@ -208,13 +209,12 @@ export class DarkTelecasterSampler {
 
         gainNode.gain.setValueAtTime(0, startTime);
         gainNode.gain.linearRampToValueAtTime(velocity, startTime + 0.005);
-
-        // #ЗАЧЕМ: Закон Сохранения Хвостов.
-        // #ЧТО: Удалено обрезание по note.duration.
         gainNode.gain.setTargetAtTime(0, startTime + 15.0, 0.8);
         
         source.start(startTime);
+        this.activeSources.add(source);
         source.onended = () => {
+            this.activeSources.delete(source);
             try { gainNode.disconnect(); } catch(e) {}
         };
     }
@@ -249,6 +249,14 @@ export class DarkTelecasterSampler {
         }
     }
 
-    public stopAll() {}
-    public dispose() { this.preamp.disconnect(); }
+    public stopAll() {
+        this.activeSources.forEach(source => {
+            try {
+                source.stop(0);
+            } catch(e) {}
+        });
+        this.activeSources.clear();
+    }
+
+    public dispose() { this.stopAll(); this.preamp.disconnect(); }
 }

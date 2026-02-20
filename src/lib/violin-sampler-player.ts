@@ -1,3 +1,4 @@
+
 import type { Note } from "@/types/music";
 
 type VelocitySample = {
@@ -18,6 +19,7 @@ export class ViolinSamplerPlayer {
     private instruments = new Map<string, SamplerInstrument>();
     public isInitialized = false;
     private preamp: GainNode;
+    private activeSources: Set<AudioBufferSourceNode> = new Set();
 
     constructor(audioContext: AudioContext, destination: AudioNode) {
         this.audioContext = audioContext;
@@ -87,8 +89,13 @@ export class ViolinSamplerPlayer {
             const playbackRate = Math.pow(2, (note.midi - sampleMidi) / 12);
             source.playbackRate.value = playbackRate;
 
-            source.start(time + note.time);
-            source.onended = () => { try { gainNode.disconnect(); } catch(e){} };
+            const startTime = time + note.time;
+            source.start(startTime);
+            this.activeSources.add(source);
+            source.onended = () => {
+                this.activeSources.delete(source);
+                try { gainNode.disconnect(); } catch(e){} 
+            };
         });
     }
 
@@ -113,6 +120,14 @@ export class ViolinSamplerPlayer {
         return 12 * (octave + 1) + (noteMap[noteName] ?? 0);
     }
 
-    public stopAll() {}
-    public dispose() { this.outputNode.disconnect(); }
+    public stopAll() {
+        this.activeSources.forEach(source => {
+            try {
+                source.stop(0);
+            } catch(e) {}
+        });
+        this.activeSources.clear();
+    }
+
+    public dispose() { this.stopAll(); this.outputNode.disconnect(); }
 }

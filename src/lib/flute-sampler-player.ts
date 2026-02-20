@@ -16,6 +16,7 @@ export class FluteSamplerPlayer {
     private instruments = new Map<string, SamplerInstrument>();
     public isInitialized = false;
     private preamp: GainNode;
+    private activeSources: Set<AudioBufferSourceNode> = new Set();
 
     constructor(audioContext: AudioContext, destination: AudioNode) {
         this.audioContext = audioContext;
@@ -110,9 +111,11 @@ export class FluteSamplerPlayer {
 
             const startTime = time + note.time;
             source.start(startTime);
+            this.activeSources.add(source);
 
             source.onended = () => {
-                gainNode.disconnect();
+                this.activeSources.delete(source);
+                try { gainNode.disconnect(); } catch(e){}
             };
         });
     }
@@ -158,9 +161,16 @@ export class FluteSamplerPlayer {
     }
 
     public stopAll() {
+        this.activeSources.forEach(source => {
+            try {
+                source.stop(0);
+            } catch(e) {}
+        });
+        this.activeSources.clear();
     }
 
     public dispose() {
+        this.stopAll();
         this.outputNode.disconnect();
     }
 }

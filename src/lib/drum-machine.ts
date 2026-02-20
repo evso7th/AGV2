@@ -128,7 +128,6 @@ const DRUM_SAMPLES: Record<string, string> = {
 type Sampler = {
     buffers: Map<string, AudioBuffer>;
     load: (samples: Record<string, string>) => Promise<void>;
-    triggerAttack: (note: string, time: number, velocity?: number) => void;
 }
 
 function createSampler(audioContext: AudioContext, output: AudioNode): Sampler {
@@ -152,26 +151,7 @@ function createSampler(audioContext: AudioContext, output: AudioNode): Sampler {
         console.log('[DrumMachine] Initialized and samples loaded:', Array.from(buffers.keys()));
     };
 
-    const triggerAttack = (note: string, time: number, velocity = 1) => {
-        const buffer = buffers.get(note);
-        if (!buffer || !isFinite(time)) return;
-
-        const source = audioContext.createBufferSource();
-        source.buffer = buffer;
-
-        const gainNode = audioContext.createGain();
-        gainNode.gain.value = velocity;
-
-        source.connect(gainNode);
-        gainNode.connect(output);
-        source.start(time);
-
-        source.onended = () => {
-            gainNode.disconnect();
-        };
-    };
-
-    return { buffers, load, triggerAttack };
+    return { buffers, load };
 }
 
 export class DrumMachine {
@@ -181,6 +161,7 @@ export class DrumMachine {
     private preamp: GainNode;
     public isInitialized = false;
     private isInitializing = false;
+    private activeSources: Set<AudioBufferSourceNode> = new Set();
 
     constructor(audioContext: AudioContext, destination: AudioNode) {
         this.audioContext = audioContext;
@@ -218,9 +199,8 @@ export class DrumMachine {
                 sampleName = eventType.replace('drum_', '');
             }
             
-            if (!this.sampler.buffers.has(sampleName)) {
-                 continue;
-            }
+            const buffer = this.sampler.buffers.get(sampleName);
+            if (!buffer) continue;
 
             const absoluteTime = barStartTime + (event.time * beatDuration);
             
@@ -236,9 +216,30 @@ export class DrumMachine {
                 velocity *= 0.7;
             }
             
-            this.sampler.triggerAttack(sampleName, absoluteTime, velocity);
+            const source = this.audioContext.createBufferSource();
+            source.buffer = buffer;
+
+            const gainNode = this.audioContext.createGain();
+            gainNode.gain.value = velocity;
+
+            source.connect(gainNode);
+            gainNode.connect(this.preamp);
+            source.start(absoluteTime);
+            
+            this.activeSources.add(source);
+            source.onended = () => {
+                this.activeSources.delete(source);
+                try { gainNode.disconnect(); } catch(e){}
+            };
         }
     }
 
-    public stop() {}
+    public stop() {
+        this.activeSources.forEach(source => {
+            try {
+                source.stop(0);
+            } catch(e) {}
+        });
+        this.activeSources.clear();
+    }
 }
