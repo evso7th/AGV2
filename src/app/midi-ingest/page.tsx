@@ -1,9 +1,8 @@
 /**
- * #ЗАЧЕМ: Heritage Alchemist V21.0 — "Orchestral Intelligence".
- * #ЧТО: 1. Добавлен Track Inspector для отображения всех дорожек MIDI.
- *       2. Внедрен AI-анализ структуры файла для предложения ролей.
- *       3. Добавлена кнопка "Play Full Material" для прослушивания исходника.
- *       4. Исправлены права доступа к Firestore (через правила) для работы Purge.
+ * #ЗАЧЕМ: Heritage Alchemist V22.0 — "Ergonomic Orchestration".
+ * #ЧТО: 1. Метаданные (Genre, Common Mood, Mood) перенесены наверх, под Discovery.
+ *       2. Восстановлено поле названия композиции (Composition ID).
+ *       3. Оптимизирована навигация и визуальный поток.
  */
 'use client';
 
@@ -13,7 +12,7 @@ import { Midi } from '@tonejs/midi';
 import { 
     Upload, FileMusic, Sparkles, CloudUpload, Music, Waves, Drum, LayoutGrid, Factory, 
     Play, StopCircle, Database, RefreshCcw, Compass, Zap, Sun, Activity, Target, Wand2,
-    BrainCircuit, Loader2, Trash2, AlertTriangle, ArrowLeft, CheckCircle2, Info
+    BrainCircuit, Loader2, Trash2, AlertTriangle, ArrowLeft, CheckCircle2, Info, Edit3
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -46,7 +45,6 @@ import {
   AlertDialogAction,
   AlertDialogCancel,
   AlertDialogContent,
-  AlertDialogDescription,
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle,
@@ -119,7 +117,6 @@ export default function MidiIngestPage() {
                 const midi = new Midi(event.target?.result as ArrayBuffer);
                 setMidiFile(midi);
                 
-                // Initial track states
                 const initialStates: any = {};
                 midi.tracks.forEach((track, idx) => {
                     const avgPitch = track.notes.reduce((sum, n) => sum + n.midi, 0) / (track.notes.length || 1);
@@ -133,7 +130,6 @@ export default function MidiIngestPage() {
                 });
                 setTrackStates(initialStates);
 
-                // Initial Key detection from all notes
                 const allNotes = midi.tracks.flatMap(t => t.notes.map(n => n.midi));
                 setDetectedKey(detectKeyFromNotes(allNotes));
             } catch (err) {
@@ -171,7 +167,7 @@ export default function MidiIngestPage() {
             });
             setTrackStates(nextStates);
             setGlobalAdvice(result.globalAdvice);
-            toast({ title: "Orchestral Analysis Complete", description: "AI suggested roles for each track." });
+            toast({ title: "Orchestral Analysis Complete" });
         } catch (e) {
             toast({ variant: "destructive", title: "AI Analysis Failed" });
         } finally {
@@ -269,8 +265,7 @@ export default function MidiIngestPage() {
         const newVector = analyzeAxiomVector(decompressed, detectedKey.root);
         setVector(newVector);
         setAIReasoning(""); 
-        
-        toast({ title: "Heuristic Calibration Complete", description: "Mathematical analysis applied to sliders." });
+        toast({ title: "Heuristic Calibration Complete" });
     };
 
     const handleAIDeepInsight = async () => {
@@ -290,7 +285,7 @@ export default function MidiIngestPage() {
 
             setVector(result.vector);
             setAIReasoning(result.reasoning);
-            toast({ title: "AI Analysis Complete", description: "Hypercube coordinates updated by the Oracle." });
+            toast({ title: "AI Analysis Complete" });
         } catch (e) {
             toast({ variant: "destructive", title: "AI Analysis Failed" });
         } finally {
@@ -303,16 +298,12 @@ export default function MidiIngestPage() {
         try {
             const collRef = collection(db, 'heritage_axioms');
             const snapshot = await getDocs(collRef);
-            console.log(`[Forge] Purging ${snapshot.size} documents...`);
-            
             const deletePromises = snapshot.docs.map(docSnap => deleteDoc(doc(db, 'heritage_axioms', docSnap.id)));
             await Promise.all(deletePromises);
-            
-            toast({ title: "The Great Purge Complete", description: "The Hypercube is now a clean slate." });
+            toast({ title: "Purge Complete" });
             fetchGlobalCount();
         } catch (e) {
-            console.error("[Forge] Purge failed:", e);
-            toast({ variant: "destructive", title: "Purge Failed", description: "Check permissions or network." });
+            toast({ variant: "destructive", title: "Purge Failed" });
         } finally {
             setIsPurging(false);
         }
@@ -338,7 +329,7 @@ export default function MidiIngestPage() {
                     tags: lick.tags
                 });
             }
-            toast({ title: "Hypercube Updated", description: `Transmitted ${toTransmit.length} axioms.` });
+            toast({ title: "Axioms Transmitted", description: `Added ${toTransmit.length} fragments.` });
             setExtractedLicks([]);
             fetchGlobalCount();
         } catch (e) {
@@ -360,7 +351,7 @@ export default function MidiIngestPage() {
                             <Factory className="h-8 w-8 text-primary" />
                         </div>
                         <div>
-                            <CardTitle className="text-3xl font-bold tracking-tight">The Heritage Forge v21.0</CardTitle>
+                            <CardTitle className="text-3xl font-bold tracking-tight">Heritage Forge v22.0</CardTitle>
                             <CardDescription className="text-muted-foreground flex items-center gap-2">
                                 <BrainCircuit className="h-3 w-3 text-primary" /> Orchestral Intelligence & Multi-Track Ingestion
                             </CardDescription>
@@ -379,7 +370,7 @@ export default function MidiIngestPage() {
                                         <AlertTriangle className="h-5 w-5" /> Execute The Great Purge?
                                     </AlertDialogTitle>
                                     <AlertDialogDescription>
-                                        This action will permanently delete all {globalAxiomCount} axioms from the cloud Hypercube. This process is irreversible.
+                                        This action will permanently delete all {globalAxiomCount} axioms from the cloud.
                                     </AlertDialogDescription>
                                 </AlertDialogHeader>
                                 <AlertDialogFooter>
@@ -395,29 +386,68 @@ export default function MidiIngestPage() {
                                 <Database className="h-5 w-5" />
                                 {isFetchingCount ? '...' : (globalAxiomCount ?? '0')}
                             </div>
-                            <span className="text-[10px] uppercase tracking-widest text-muted-foreground">Hypercube Axioms</span>
+                            <span className="text-[10px] uppercase tracking-widest text-muted-foreground">Global Count</span>
                         </div>
                     </div>
                 </CardHeader>
                 
                 <CardContent className="grid grid-cols-1 lg:grid-cols-4 gap-6 pt-8">
-                    {/* --- Column 1: Source & Orchestration Advice --- */}
+                    {/* --- Column 1: Discovery & Universal Sync --- */}
                     <div className="space-y-6 lg:col-span-1">
-                        <div className="p-5 border rounded-2xl bg-muted/30 space-y-4 shadow-inner">
+                        <div className="p-5 border rounded-2xl bg-muted/30 space-y-5 shadow-inner">
                             <Label className="text-xs font-bold uppercase tracking-widest text-primary/80 flex items-center gap-2">
                                 <FileMusic className="h-3 w-3" /> Material Discovery
                             </Label>
+                            
+                            {/* Composition ID */}
+                            <div className="space-y-2">
+                                <Label className="text-[10px] text-muted-foreground uppercase flex items-center gap-1.5 font-bold">
+                                    <Edit3 className="h-3 w-3" /> Composition ID
+                                </Label>
+                                <Input 
+                                    value={compositionId} 
+                                    onChange={(e) => setCompositionId(e.target.value)} 
+                                    className="h-8 text-xs font-mono bg-background"
+                                    placeholder="e.g. moody_blues_track"
+                                />
+                            </div>
+
                             <div className="group border-2 border-dashed border-primary/20 rounded-2xl p-6 text-center hover:border-primary/50 hover:bg-primary/5 transition-all relative overflow-hidden">
                                 <input type="file" accept=".mid,.midi" onChange={onFileUpload} className="absolute inset-0 opacity-0 cursor-pointer z-10" />
                                 <Upload className="h-8 w-8 mx-auto text-muted-foreground group-hover:text-primary mb-3 transition-colors" />
                                 <p className="text-xs font-medium text-muted-foreground group-hover:text-primary">Sow MIDI Material</p>
+                            </div>
+
+                            {/* Global Selectors */}
+                            <div className="space-y-4 pt-2 border-t border-primary/10">
+                                <div className="space-y-1.5">
+                                    <Label className="text-[9px] text-muted-foreground uppercase font-bold">Target Genre</Label>
+                                    <Select value={selectedGenre} onValueChange={(v) => setSelectedGenre(v as Genre)}>
+                                        <SelectTrigger className="h-8 text-[10px] bg-background"><SelectValue /></SelectTrigger>
+                                        <SelectContent>{GENRE_OPTIONS.map(g => <SelectItem key={g} value={g} className="text-xs">{g}</SelectItem>)}</SelectContent>
+                                    </Select>
+                                </div>
+                                <div className="space-y-1.5">
+                                    <Label className="text-[9px] text-muted-foreground uppercase font-bold">Common Mood</Label>
+                                    <Select value={commonMood} onValueChange={(v) => setCommonMood(v as CommonMood)}>
+                                        <SelectTrigger className="h-8 text-[10px] bg-background"><SelectValue /></SelectTrigger>
+                                        <SelectContent>{COMMON_MOODS.map(m => <SelectItem key={m} value={m} className="text-xs">{m}</SelectItem>)}</SelectContent>
+                                    </Select>
+                                </div>
+                                <div className="space-y-1.5">
+                                    <Label className="text-[9px] text-muted-foreground uppercase font-bold">Specific Mood</Label>
+                                    <Select value={selectedMood} onValueChange={(v) => setSelectedMood(v as Mood)}>
+                                        <SelectTrigger className="h-8 text-[10px] bg-background"><SelectValue /></SelectTrigger>
+                                        <SelectContent>{MOOD_OPTIONS.map(m => <SelectItem key={m} value={m} className="text-xs">{m}</SelectItem>)}</SelectContent>
+                                    </Select>
+                                </div>
                             </div>
                             
                             {midiFile && (
                                 <div className="flex flex-col gap-2 pt-2">
                                     <Button variant="outline" size="sm" className="w-full gap-2 h-9" onClick={handlePlayFull}>
                                         {isPlayingFull ? <StopCircle className="h-4 w-4 text-destructive" /> : <Play className="h-4 w-4 text-primary" />}
-                                        {isPlayingFull ? 'Stop Material' : 'Play Full Material'}
+                                        {isPlayingFull ? 'Stop Material' : 'Play Full'}
                                     </Button>
                                     <Button variant="secondary" size="sm" className="w-full gap-2 h-9" onClick={handleOrchestralAI} disabled={isAIAnalyzing}>
                                         {isAIAnalyzing ? <Loader2 className="h-4 w-4 animate-spin" /> : <Sparkles className="h-4 w-4 text-primary" />}
@@ -547,18 +577,7 @@ export default function MidiIngestPage() {
                                 )}
                             </div>
 
-                            <div className="p-4 border rounded-2xl bg-muted/20 space-y-3">
-                                <Label className="text-[9px] uppercase tracking-wider text-muted-foreground font-bold">Metadata Sync</Label>
-                                <div className="grid grid-cols-2 gap-3">
-                                    <Select value={selectedGenre} onValueChange={(v) => setSelectedGenre(v as Genre)}>
-                                        <SelectTrigger className="h-8 text-[10px] bg-background"><SelectValue /></SelectTrigger>
-                                        <SelectContent>{GENRE_OPTIONS.map(g => <SelectItem key={g} value={g} className="text-xs">{g}</SelectItem>)}</SelectContent>
-                                    </Select>
-                                    <Select value={commonMood} onValueChange={(v) => setCommonMood(v as CommonMood)}>
-                                        <SelectTrigger className="h-8 text-[10px] bg-background"><SelectValue /></SelectTrigger>
-                                        <SelectContent>{COMMON_MOODS.map(m => <SelectItem key={m} value={m} className="text-xs">{m}</SelectItem>)}</SelectContent>
-                                    </Select>
-                                </div>
+                            <div className="p-4 border rounded-2xl bg-muted/20">
                                 <Button onClick={transmit} disabled={isTransmitting || selectedLickIds.size === 0 || isAIAnalyzing || isPurging} className="w-full h-12 rounded-2xl gap-2 font-bold shadow-lg shadow-primary/20">
                                     <CloudUpload className="h-5 w-5" />
                                     {isTransmitting ? 'Transmitting...' : `Forge ${selectedLickIds.size} Axioms`}
