@@ -1,20 +1,15 @@
-
 /**
- * #ЗАЧЕМ: Heritage Alchemist V15.0 — "The Hypercube Forge".
- * #ЧТО: 1. Добавлены органы управления вектором (Tension, Brightness, Entropy).
- *       2. Реализована привязка к Composition ID и Common Mood.
- *       3. Ручная калибровка "энергетического отпечатка" аксиомы.
+ * #ЗАЧЕМ: Heritage Alchemist V16.0 — "The Vector Intuition".
+ * #ЧТО: 1. Внедрена кнопка Auto-Calibrate для мгновенного анализа MIDI.
+ *       2. Heuristic Vector Engine: авто-вычисление Tension, Brightness, Entropy.
  */
 'use client';
 
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect } from 'react';
 import { Midi } from '@tonejs/midi';
 import { 
-    Upload, FileMusic, Settings2, Sparkles, Tags, 
-    CloudUpload, Music, Waves, Drum, LayoutGrid, Factory, Trash2, BrainCircuit, 
-    Play, PlayCircle, StopCircle, CheckCircle2,
-    Database, RefreshCcw, ShieldCheck, XCircle, CheckSquare, Square,
-    Compass, Zap, Sun, Activity, Target
+    Upload, FileMusic, Sparkles, CloudUpload, Music, Waves, Drum, LayoutGrid, Factory, 
+    Play, StopCircle, Database, RefreshCcw, Compass, Zap, Sun, Activity, Target, Wand2
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -23,9 +18,16 @@ import { Input } from '@/components/ui/input';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Slider } from '@/components/ui/slider';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { detectKeyFromNotes, SEMITONE_TO_DEGREE, DEGREE_KEYS, TECHNIQUE_KEYS, DEGREE_TO_SEMITONE } from '@/lib/music-theory';
+import { 
+    detectKeyFromNotes, 
+    SEMITONE_TO_DEGREE, 
+    DEGREE_KEYS, 
+    TECHNIQUE_KEYS, 
+    DEGREE_TO_SEMITONE,
+    analyzeAxiomVector,
+    decompressCompactPhrase
+} from '@/lib/music-theory';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { useRouter } from 'next/navigation';
 import { useFirestore } from '@/firebase';
 import { collection, getCountFromServer } from 'firebase/firestore';
 import { saveHeritageAxiom } from '@/lib/firebase-service';
@@ -52,9 +54,8 @@ const detectTrackRole = (track: any): IngestionRole => {
 };
 
 export default function MidiIngestPage() {
-    const router = useRouter();
     const db = useFirestore();
-    const { initialize, isInitialized, playRawEvents, setInstrument, setIsPlaying } = useAudioEngine();
+    const { initialize, isInitialized, playRawEvents, setIsPlaying } = useAudioEngine();
     
     const [isAnalyzing, setIsAnalyzing] = useState(false);
     const [isTransmitting, setIsTransmitting] = useState(false);
@@ -73,10 +74,7 @@ export default function MidiIngestPage() {
     // Hypercube Vector State
     const [vector, setVector] = useState<AxiomVector>({ t: 0.5, b: 0.5, e: 0.5, h: 0.5 });
     
-    const [isPlayingFull, setIsPlayingFull] = useState(false);
-    const [playingTrackIdx, setPlayingTrackIdx] = useState<number | null>(null);
     const [playingLickIdx, setPlayingLickIdx] = useState<number | null>(null);
-    
     const [selectedLickIds, setSelectedLickIds] = useState<Set<string>>(new Set());
     const [globalAxiomCount, setGlobalAxiomCount] = useState<number | null>(null);
     const [isFetchingCount, setIsFetchingCount] = useState(false);
@@ -130,7 +128,7 @@ export default function MidiIngestPage() {
         
         const track = midiFile.tracks[selectedTrackIndex];
         const result = [];
-        const barsPerLick = 4; // #ЗАЧЕМ: Минимум 4 такта для нарратива.
+        const barsPerLick = 4;
         const bpm = 72; 
         const secondsPerBar = (60 / bpm) * 4;
         const root = detectedKey.root;
@@ -140,7 +138,7 @@ export default function MidiIngestPage() {
             const end = (i + 1) * secondsPerBar * barsPerLick;
             
             const phraseNotes = track.notes.filter((n: any) => n.time >= start && n.time < end);
-            if (phraseNotes.length < 4) continue; // Отсеиваем слишком редкие фразы
+            if (phraseNotes.length < 4) continue; 
 
             const compactPhrase: number[] = [];
             phraseNotes.forEach((n: any) => {
@@ -172,6 +170,28 @@ export default function MidiIngestPage() {
     useEffect(() => {
         if (midiFile && selectedTrackIndex !== -1) segmentTrack();
     }, [midiFile, selectedTrackIndex, selectedRole, detectedKey]);
+
+    /**
+     * #ЗАЧЕМ: Автоматический анализ музыкального вектора.
+     * #ЧТО: Использует эвристики для расчета координат в Гиперкубе.
+     */
+    const handleAutoCalibrate = () => {
+        if (extractedLicks.length === 0 || !detectedKey) return;
+        
+        // Анализируем первый выбранный лик как референс для бандла
+        const firstId = Array.from(selectedLickIds)[0];
+        const lick = extractedLicks.find(l => l.id === (firstId || extractedLicks[0].id));
+        if (!lick) return;
+
+        const decompressed = decompressCompactPhrase(lick.phrase);
+        const newVector = analyzeAxiomVector(decompressed, detectedKey.root);
+        setVector(newVector);
+        
+        toast({
+            title: "Auto-Calibration Complete",
+            description: `Heuristic analysis: T:${newVector.t.toFixed(2)} B:${newVector.b.toFixed(2)}`
+        });
+    };
 
     const playPreview = async (lick: any, idx: number) => {
         if (playingLickIdx === idx) {
@@ -219,7 +239,7 @@ export default function MidiIngestPage() {
                     tags: lick.tags
                 });
             }
-            toast({ title: "Hypercube Updated", description: `Transmitted ${toTransmit.length} axioms to the cloud.` });
+            toast({ title: "Hypercube Updated", description: `Transmitted ${toTransmit.length} axioms.` });
             setExtractedLicks([]);
             fetchGlobalCount();
         } catch (e) {
@@ -238,9 +258,9 @@ export default function MidiIngestPage() {
                             <Factory className="h-8 w-8 text-primary" />
                         </div>
                         <div>
-                            <CardTitle className="text-3xl font-bold tracking-tight">The Heritage Forge v15.0</CardTitle>
+                            <CardTitle className="text-3xl font-bold tracking-tight">The Heritage Forge v16.0</CardTitle>
                             <CardDescription className="text-muted-foreground flex items-center gap-2">
-                                <Compass className="h-3 w-3 text-primary" /> Vector-Based Music Ingestion Active
+                                <Compass className="h-3 w-3 text-primary" /> Heuristic Analysis & Hypercube Vectorization
                             </CardDescription>
                         </div>
                     </div>
@@ -293,10 +313,21 @@ export default function MidiIngestPage() {
 
                     {/* --- Column 2: Vector Calibration --- */}
                     <div className="space-y-6">
-                        <div className="p-5 border rounded-2xl bg-primary/5 space-y-6 shadow-sm border-primary/10">
-                            <Label className="text-xs font-bold uppercase tracking-widest text-primary flex items-center gap-2">
-                                <Zap className="h-3 w-3" /> Vector Coordinates (Hypercube)
-                            </Label>
+                        <div className="p-5 border rounded-2xl bg-primary/5 space-y-6 shadow-sm border-primary/10 relative">
+                            <div className="flex justify-between items-center">
+                                <Label className="text-xs font-bold uppercase tracking-widest text-primary flex items-center gap-2">
+                                    <Zap className="h-3 w-3" /> Vector Calibration
+                                </Label>
+                                <Button 
+                                    variant="ghost" 
+                                    size="sm" 
+                                    className="h-7 px-2 text-[10px] gap-1 text-primary hover:bg-primary/10"
+                                    onClick={handleAutoCalibrate}
+                                    disabled={extractedLicks.length === 0}
+                                >
+                                    <Wand2 className="h-3 w-3" /> Auto-Analyze
+                                </Button>
+                            </div>
                             
                             <div className="space-y-4">
                                 <div className="space-y-2">
@@ -359,7 +390,7 @@ export default function MidiIngestPage() {
                                                     <span className="text-[10px] font-mono opacity-70">BAR_{lick.barOffset}</span>
                                                 </div>
                                                 <Button variant="ghost" size="icon" className="h-8 w-8 text-primary" onClick={() => playPreview(lick, idx)}>
-                                                    {playingLickIdx === idx ? <StopCircle className="h-5 w-5" /> : <Play className="h-5 w-5" />}
+                                                    {playingLickIdx === idx ? <RefreshCcw className="h-5 w-5 animate-spin" /> : <Play className="h-5 w-5" />}
                                                 </Button>
                                             </div>
                                         ))}

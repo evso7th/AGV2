@@ -1,7 +1,7 @@
 /**
  * @fileOverview Universal Music Theory Utilities
  * #ЗАЧЕМ: Базовый набор инструментов для работы с нотами и энергетическими картами.
- * #ОБНОВЛЕНО (ПЛАН №515): Внедрена функция stretchToNarrativeLength для борьбы с "огрызками".
+ * #ОБНОВЛЕНО (ПЛАН №532): Внедрена функция analyzeAxiomVector для авто-калибровки Гиперкуба.
  */
 
 import type { 
@@ -11,7 +11,8 @@ import type {
     GhostChord, 
     SuiteDNA, 
     NavigationInfo,
-    TensionProfile
+    TensionProfile,
+    AxiomVector
 } from '@/types/music';
 import { getChordNameForBar, getDynastyForMood } from './blues-theory';
 import { BLUES_SOLO_LICKS } from './assets/blues_guitar_solo';
@@ -62,9 +63,61 @@ export function decompressCompactPhrase(compact: number[]): any[] {
 }
 
 /**
+ * #ЗАЧЕМ: Эвристический анализ фразы для калибровки Гиперкуба.
+ * #ЧТО: Вычисляет координаты Vector (t, b, e, h) на основе интервалов и ритма.
+ */
+export function analyzeAxiomVector(phrase: any[], rootNote: number): AxiomVector {
+    if (phrase.length === 0) return { t: 0.5, b: 0.5, e: 0.5, h: 0.5 };
+
+    // 1. TENSION (Диссонанс и Хроматизм)
+    // Вес за ♭5, ♭2, ♭7 и хроматические шаги
+    let tensionScore = 0;
+    phrase.forEach((n, i) => {
+        const semitone = DEGREE_TO_SEMITONE[n.deg] || 0;
+        if ([1, 6, 10].includes(semitone % 12)) tensionScore += 0.2;
+        const prev = phrase[i-1];
+        if (prev) {
+            const diff = Math.abs(semitone - (DEGREE_TO_SEMITONE[prev.deg] || 0));
+            if (diff === 1) tensionScore += 0.15; // Хроматизм
+        }
+    });
+
+    // 2. BRIGHTNESS (Регистр и Мажорность)
+    let brightnessScore = 0;
+    const avgPitch = phrase.reduce((sum, n) => sum + (DEGREE_TO_SEMITONE[n.deg] || 0), 0) / phrase.length;
+    // Маппинг регистра (0-24 полутона) -> 0.0-1.0
+    brightnessScore = (avgPitch + 12) / 36;
+    // Мажорная терция добавляет яркости
+    if (phrase.some(n => n.deg === '3')) brightnessScore += 0.15;
+
+    // 3. ENTROPY (Ритмическая непредсказуемость)
+    let entropyScore = 0;
+    const ticks = phrase.map(n => n.t % 12);
+    const uniqueTicks = new Set(ticks).size;
+    entropyScore = uniqueTicks / 12; // Чем больше разных долей, тем выше энтропия
+    // Синкопы (не на 0, 3, 6, 9) добавляют веса
+    const syncopations = ticks.filter(t => ![0, 3, 6, 9].includes(t)).length;
+    entropyScore += (syncopations / phrase.length) * 0.5;
+
+    // 4. STABILITY (Тяготение к тонике)
+    let stabilityScore = 0;
+    const tonicNotes = phrase.filter(n => n.deg === 'R' || n.deg === '5').length;
+    stabilityScore = tonicNotes / phrase.length;
+    // Если заканчивается на тонику - это стабильно
+    if (phrase[phrase.length - 1].deg === 'R') stabilityScore += 0.2;
+
+    const clamp = (v: number) => Math.max(0.05, Math.min(0.95, v));
+
+    return {
+        t: clamp(tensionScore / 2 + 0.3),
+        b: clamp(brightnessScore),
+        e: clamp(entropyScore),
+        h: clamp(stabilityScore)
+    };
+}
+
+/**
  * #ЗАЧЕМ: Нормализация длины фразы до "нарративного минимума".
- * #ЧТО: Если фраза короче targetTicks (например, 4 такта = 48 тиков), 
- *       она дублируется с применением микро-вариаций велосити и тайминга.
  */
 export function stretchToNarrativeLength(phrase: any[], targetTicks: number, random: any): any[] {
     if (phrase.length === 0) return [];
@@ -80,9 +133,8 @@ export function stretchToNarrativeLength(phrase: any[], targetTicks: number, ran
         const variant = phrase.map(n => ({
             ...n,
             t: n.t + offset,
-            // Микро-вариации для каждого "витка"
             weight: (n.weight || 0.8) * (0.9 + random.next() * 0.2),
-            timeJitter: (random.next() * 0.1 - 0.05) // микро-сдвиг для "живости"
+            timeJitter: (random.next() * 0.1 - 0.05)
         }));
         result.push(...variant);
     }
@@ -92,7 +144,6 @@ export function stretchToNarrativeLength(phrase: any[], targetTicks: number, ran
 
 /**
  * #ЗАЧЕМ: Автоматическое определение ключа по массиву нот.
- * #ЧТО: Сравнивает распределение высот с мажорными и минорными профилями.
  */
 export function detectKeyFromNotes(notes: number[]): { root: number, mode: 'major' | 'minor' } {
     if (notes.length === 0) return { root: 60, mode: 'minor' };
@@ -100,7 +151,6 @@ export function detectKeyFromNotes(notes: number[]): { root: number, mode: 'majo
     const counts = new Array(12).fill(0);
     notes.forEach(n => counts[n % 12]++);
 
-    // Профили Krumhansl-Schmuckler (упрощенные для блюза)
     const majorProfile = [6.35, 2.23, 3.48, 2.33, 4.38, 4.09, 2.52, 5.19, 2.39, 3.66, 2.29, 2.88];
     const minorProfile = [6.33, 2.68, 3.52, 5.38, 2.60, 3.53, 2.54, 4.75, 3.98, 2.69, 3.34, 3.17];
 
@@ -129,7 +179,6 @@ export function detectKeyFromNotes(notes: number[]): { root: number, mode: 'majo
         }
     }
 
-    // Для MIDI часто удобно возвращать корень в 4-й октаве (60-71)
     return { root: 60 + bestRoot, mode: bestMode };
 }
 
@@ -174,7 +223,6 @@ export function calculateMusiNum(step: number, base: number = 2, start: number =
 
 /**
  * #ЗАЧЕМ: Генерация энергетического скелета сюиты.
- * #ЧТО: Жесткое ограничение 0.3 - 0.8 для меланхолии.
  */
 export function generateTensionMap(seed: number, totalBars: number, mood: Mood, parts?: any[]): number[] {
     const map: number[] = [];
@@ -267,8 +315,6 @@ export function generateSuiteDNA(
         accumulatedBars += partDuration;
     });
 
-    // #ЗАЧЕМ: Детерминированный расчет темпа на основе Блюпринта.
-    // #ЧТО: Выбор значения внутри range[min, max] с использованием seed.
     let baseTempo = 72;
     if (bpmConfig) {
         const [min, max] = bpmConfig.range;
