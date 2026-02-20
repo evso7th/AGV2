@@ -1,8 +1,8 @@
 /**
- * #ЗАЧЕМ: Heritage Alchemist V24.1 — "Oracle Stability Update".
- * #ЧТО: 1. Исправлена ошибка AI Extraction Failed за счет лимитирования нот.
- *       2. Кнопки Extract и Forge подняты наверх.
- *       3. Реализована фиксированная высота окон с внутренней прокруткой.
+ * #ЗАЧЕМ: Heritage Alchemist V24.2 — "Precision Forge Update".
+ * #ЧТО: 1. Каждая аксиома в буфере теперь хранит свой уникальный вектор.
+ *       2. Реализован механизм фокуса: слайдеры управляют только выбранной аксиомой.
+ *       3. Индивидуальный ИИ-анализ для каждого фрагмента.
  */
 'use client';
 
@@ -53,7 +53,7 @@ import {
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 
-type IngestionRole = 'melody' | 'bass' | 'drums' | 'accompaniment' | 'ignore';
+type IngestionRole = 'melody' | 'bass' | 'drums' | 'accomp' | 'ignore';
 
 const MOOD_OPTIONS: Mood[] = ['epic', 'joyful', 'enthusiastic', 'melancholic', 'dark', 'anxious', 'dreamy', 'contemplative', 'calm', 'gloomy'];
 const GENRE_OPTIONS: Genre[] = ['ambient', 'trance', 'blues', 'progressive', 'rock', 'house', 'rnb', 'ballad', 'reggae', 'celtic'];
@@ -72,6 +72,8 @@ export default function MidiIngestPage() {
     const [fileName, setFileName] = useState<string>("");
     const [trackStates, setTrackStates] = useState<Record<number, { role: IngestionRole, selected: boolean, suggestion?: string }>>({});
     const [extractedLicks, setExtractedLicks] = useState<any[]>([]);
+    const [activeLickId, setActiveLickId] = useState<string | null>(null);
+    
     const [selectedMood, setSelectedMood] = useState<Mood>('melancholic');
     const [selectedGenre, setSelectedGenre] = useState<Genre>('blues');
     const [commonMood, setCommonMood] = useState<CommonMood>('dark');
@@ -79,15 +81,15 @@ export default function MidiIngestPage() {
     const [detectedKey, setDetectedKey] = useState<{ root: number, mode: string } | null>(null);
     const [globalAdvice, setGlobalAdvice] = useState<string>("");
     
-    // Hypercube Vector State
-    const [vector, setVector] = useState<AxiomVector>({ t: 0.5, b: 0.5, e: 0.5, h: 0.5 });
     const [aiReasoning, setAIReasoning] = useState<string>("");
-    
     const [playingLickIdx, setPlayingLickIdx] = useState<number | null>(null);
     const [isPlayingFull, setIsPlayingFull] = useState(false);
     const [selectedLickIds, setSelectedLickIds] = useState<Set<string>>(new Set());
     const [globalAxiomCount, setGlobalAxiomCount] = useState<number | null>(null);
     const [isFetchingCount, setIsFetchingCount] = useState(false);
+
+    // Get active lick for calibration
+    const activeLick = extractedLicks.find(l => l.id === activeLickId);
 
     const fetchGlobalCount = async () => {
         setIsFetchingCount(true);
@@ -160,7 +162,7 @@ export default function MidiIngestPage() {
             
             const nextStates = { ...trackStates };
             result.suggestions.forEach(s => {
-                const role = s.suggestedRole === 'accomp' ? 'accompaniment' : s.suggestedRole;
+                const role = s.suggestedRole;
                 nextStates[s.trackIndex] = {
                     ...nextStates[s.trackIndex],
                     role: role as any,
@@ -196,7 +198,7 @@ export default function MidiIngestPage() {
 
             track.notes.forEach(n => {
                 events.push({
-                    type: state.role as any,
+                    type: state.role === 'accomp' ? 'accompaniment' : state.role as any,
                     note: n.midi,
                     time: n.time,
                     duration: n.duration,
@@ -216,6 +218,7 @@ export default function MidiIngestPage() {
         if (!midiFile || !detectedKey) return;
         setIsAIAnalyzing(true);
         setExtractedLicks([]);
+        setActiveLickId(null);
         
         try {
             const results: any[] = [];
@@ -227,8 +230,6 @@ export default function MidiIngestPage() {
                 const track = midiFile.tracks[tIdx];
                 const state = trackStates[tIdx];
                 if (!state || !state.selected || state.role === 'ignore') continue;
-
-                if (track.notes.length === 0) continue;
 
                 const simplifiedNotes = track.notes.map(n => ({
                     t: Math.round(n.time / (secondsPerBar / 12)),
@@ -273,15 +274,17 @@ export default function MidiIngestPage() {
                     results.push({
                         id: `AI_AXIOM_${compositionId}_T${tIdx}_${i}`,
                         phrase: compactPhrase,
-                        role: state.role,
+                        role: state.role === 'accomp' ? 'accomp' : state.role,
                         barOffset: Math.floor(def.startTick / 12),
-                        tags: [...def.tags, selectedMood, selectedGenre]
+                        tags: [...def.tags, selectedMood, selectedGenre],
+                        vector: { t: 0.5, b: 0.5, e: 0.5, h: 0.5 } // Individual DNA
                     });
                 });
             }
 
             setExtractedLicks(results);
             setSelectedLickIds(new Set(results.map(l => l.id)));
+            if (results.length > 0) setActiveLickId(results[0].id);
             toast({ title: "Intelligent Extraction Complete", description: `Forged ${results.length} unique axioms.` });
         } catch (e) {
             console.error('[Ingest] Extract failed:', e);
@@ -291,35 +294,34 @@ export default function MidiIngestPage() {
         }
     };
 
-    const handleAutoCalibrate = () => {
-        if (extractedLicks.length === 0 || !detectedKey) return;
-        const firstId = Array.from(selectedLickIds)[0];
-        const lick = extractedLicks.find(l => l.id === (firstId || extractedLicks[0].id));
-        if (!lick) return;
+    const updateActiveVector = (v: Partial<AxiomVector>) => {
+        if (!activeLickId) return;
+        setExtractedLicks(prev => prev.map(l => 
+            l.id === activeLickId ? { ...l, vector: { ...l.vector, ...v } } : l
+        ));
+    };
 
-        const decompressed = decompressCompactPhrase(lick.phrase);
+    const handleAutoCalibrate = () => {
+        if (!activeLick || !detectedKey) return;
+        const decompressed = decompressCompactPhrase(activeLick.phrase);
         const newVector = analyzeAxiomVector(decompressed, detectedKey.root);
-        setVector(newVector);
+        updateActiveVector(newVector);
         setAIReasoning(""); 
         toast({ title: "Heuristic Calibration Complete" });
     };
 
     const handleAIDeepInsight = async () => {
-        if (extractedLicks.length === 0) return;
-        const firstId = Array.from(selectedLickIds)[0];
-        const lick = extractedLicks.find(l => l.id === (firstId || extractedLicks[0].id));
-        if (!lick) return;
-
+        if (!activeLick) return;
         setIsAIAnalyzing(true);
         try {
             const result = await analyzeAxiom({
-                phrase: lick.phrase,
+                phrase: activeLick.phrase,
                 genre: selectedGenre,
                 mood: selectedMood,
                 rootNote: detectedKey?.root
             });
 
-            setVector(result.vector);
+            updateActiveVector(result.vector);
             setAIReasoning(result.reasoning);
             toast({ title: "AI Analysis Complete" });
         } catch (e) {
@@ -339,7 +341,7 @@ export default function MidiIngestPage() {
             toast({ title: "The Great Purge Executed", description: "Database cleared." });
             fetchGlobalCount();
         } catch (e) {
-            toast({ variant: "destructive", title: "Purge Failed", description: "Insufficient permissions or network error." });
+            toast({ variant: "destructive", title: "Purge Failed" });
         } finally {
             setIsPurging(false);
         }
@@ -354,19 +356,20 @@ export default function MidiIngestPage() {
             for (const lick of toTransmit) {
                 await saveHeritageAxiom(db, {
                     phrase: lick.phrase,
-                    role: lick.role,
+                    role: lick.role === 'accomp' ? 'accomp' : lick.role as any,
                     genre: selectedGenre,
                     commonMood: commonMood,
                     mood: selectedMood,
                     compositionId: compositionId,
                     barOffset: lick.barOffset,
-                    vector: vector,
+                    vector: lick.vector, // Transmitting individual vector
                     origin: fileName || 'Heritage Forge',
                     tags: lick.tags
                 });
             }
             toast({ title: "Axioms Transmitted", description: `Added ${toTransmit.length} fragments.` });
             setExtractedLicks([]);
+            setActiveLickId(null);
             fetchGlobalCount();
         } catch (e) {
             toast({ variant: "destructive", title: "Transmission Failed" });
@@ -387,9 +390,9 @@ export default function MidiIngestPage() {
                             <Factory className="h-8 w-8 text-primary" />
                         </div>
                         <div>
-                            <CardTitle className="text-3xl font-bold tracking-tight">Heritage Forge v24.1</CardTitle>
+                            <CardTitle className="text-3xl font-bold tracking-tight">Heritage Forge v24.2</CardTitle>
                             <CardDescription className="text-muted-foreground flex items-center gap-2">
-                                <BrainCircuit className="h-3 w-3 text-primary" /> Intelligent Orchestrator & Stable Extractor
+                                <BrainCircuit className="h-3 w-3 text-primary" /> Multi-Vector Intelligent Ingestion
                             </CardDescription>
                         </div>
                     </div>
@@ -428,7 +431,7 @@ export default function MidiIngestPage() {
                 </CardHeader>
                 
                 <CardContent className="grid grid-cols-1 lg:grid-cols-4 gap-6 pt-8 flex-grow overflow-hidden">
-                    {/* --- Column 1: Discovery & Universal Sync --- */}
+                    {/* --- Column 1: Discovery & Meta --- */}
                     <div className="space-y-6 lg:col-span-1 overflow-y-auto pr-2">
                         <div className="p-5 border rounded-2xl bg-muted/30 space-y-5 shadow-inner">
                             <Label className="text-xs font-bold uppercase tracking-widest text-primary/80 flex items-center gap-2">
@@ -531,7 +534,7 @@ export default function MidiIngestPage() {
                                                             <SelectContent>
                                                                 <SelectItem value="melody" className="text-[10px]">Melody</SelectItem>
                                                                 <SelectItem value="bass" className="text-[10px]">Bass</SelectItem>
-                                                                <SelectItem value="accompaniment" className="text-[10px]">Accomp</SelectItem>
+                                                                <SelectItem value="accomp" className="text-[10px]">Accomp</SelectItem>
                                                                 <SelectItem value="drums" className="text-[10px]">Drums</SelectItem>
                                                                 <SelectItem value="ignore" className="text-[10px]">Ignore</SelectItem>
                                                             </SelectContent>
@@ -547,9 +550,8 @@ export default function MidiIngestPage() {
                         </div>
                     </div>
 
-                    {/* --- Column 3: Buffer & Vector Calibration --- */}
-                    <div className="space-y-6 lg:col-span-2 grid grid-cols-1 md:grid-cols-2 gap-6 overflow-hidden">
-                        {/* Sub-column: Buffer */}
+                    {/* --- Column 3: Buffer --- */}
+                    <div className="space-y-6 lg:col-span-1 overflow-hidden flex flex-col">
                         <div className="flex flex-col h-full overflow-hidden">
                             <div className="flex justify-between items-center mb-3">
                                 <Label className="text-xs font-bold uppercase tracking-widest text-primary/80">Extraction Buffer</Label>
@@ -567,18 +569,26 @@ export default function MidiIngestPage() {
                                 ) : (
                                     <div className="space-y-2">
                                         {extractedLicks.map((lick, idx) => (
-                                            <div key={idx} className="p-3 border rounded-xl flex items-center justify-between bg-card/80 hover:bg-muted/50 transition-all group">
+                                            <div 
+                                                key={idx} 
+                                                onClick={() => setActiveLickId(lick.id)}
+                                                className={cn(
+                                                    "p-3 border rounded-xl flex items-center justify-between transition-all group cursor-pointer",
+                                                    activeLickId === lick.id ? "bg-primary/10 border-primary/50" : "bg-card/80 border-transparent hover:bg-muted/50"
+                                                )}
+                                            >
                                                 <div className="flex items-center gap-3">
-                                                    <Checkbox checked={selectedLickIds.has(lick.id)} onCheckedChange={() => {
+                                                    <Checkbox checked={selectedLickIds.has(lick.id)} onCheckedChange={(c) => {
                                                         const next = new Set(selectedLickIds);
                                                         if (next.has(lick.id)) next.delete(lick.id); else next.add(lick.id);
                                                         setSelectedLickIds(next);
                                                     }} />
                                                     <div className="flex flex-col">
-                                                        <span className="text-[9px] font-mono opacity-70 uppercase">{lick.role} @ BAR_{lick.barOffset}</span>
+                                                        <span className="text-[10px] font-bold uppercase">{lick.role} @ BAR_{lick.barOffset}</span>
+                                                        <span className="text-[8px] text-muted-foreground">V: {lick.vector.t.toFixed(1)} {lick.vector.b.toFixed(1)} {lick.vector.e.toFixed(1)} {lick.vector.h.toFixed(1)}</span>
                                                     </div>
                                                 </div>
-                                                <Button variant="ghost" size="icon" className="text-primary h-8 w-8" onClick={() => playPreview(lick, idx)}>
+                                                <Button variant="ghost" size="icon" className="text-primary h-8 w-8" onClick={(e) => { e.stopPropagation(); playPreview(lick, idx); }}>
                                                     {playingLickIdx === idx ? <RefreshCcw className="h-5 w-5 animate-spin" /> : <Play className="h-5 w-5" />}
                                                 </Button>
                                             </div>
@@ -587,38 +597,47 @@ export default function MidiIngestPage() {
                                 )}
                             </ScrollArea>
                         </div>
+                    </div>
 
-                        {/* Sub-column: Vector Calibration --- */}
-                        <div className="flex flex-col h-full gap-4 overflow-y-auto pr-1">
-                            <div className="p-5 border rounded-2xl bg-primary/5 space-y-6 shadow-sm border-primary/10 flex-grow relative">
-                                <Label className="text-xs font-bold uppercase tracking-widest text-primary flex items-center gap-2 mb-2">
-                                    <Zap className="h-3 w-3" /> Vector Calibration
-                                </Label>
-                                <div className="flex gap-2">
-                                    <Button variant="outline" size="sm" className="h-7 flex-1 text-[10px] gap-1" onClick={handleAutoCalibrate} disabled={extractedLicks.length === 0}>
-                                        Heuristic
-                                    </Button>
-                                    <Button variant="default" size="sm" className="h-7 flex-1 text-[10px] gap-1 bg-primary/80" onClick={handleAIDeepInsight} disabled={extractedLicks.length === 0 || isAIAnalyzing}>
-                                        {isAIAnalyzing ? <Loader2 className="h-3 w-3 animate-spin" /> : <BrainCircuit className="h-3 w-3" />}
-                                        AI Insight
-                                    </Button>
-                                </div>
-                                
-                                <div className="space-y-4 pt-4">
-                                    <VectorSlider label="Tension" value={vector.t} icon={<Activity className="h-3 w-3" />} onChange={(v) => setVector({...vector, t: v})} />
-                                    <VectorSlider label="Brightness" value={vector.b} icon={<Sun className="h-3 w-3" />} onChange={(v) => setVector({...vector, b: v})} />
-                                    <VectorSlider label="Entropy" value={vector.e} icon={<RefreshCcw className="h-3 w-3" />} onChange={(v) => setVector({...vector, e: v})} />
-                                    <VectorSlider label="Stability" value={vector.h} icon={<Target className="h-3 w-3" />} onChange={(v) => setVector({...vector, h: v})} />
-                                </div>
-
-                                {aiReasoning && (
-                                    <div className="mt-4 p-3 bg-background/50 rounded-xl border border-primary/10">
-                                        <p className="text-[10px] italic leading-relaxed text-muted-foreground">
-                                            <span className="font-bold text-primary not-italic">Oracle:</span> {aiReasoning}
-                                        </p>
+                    {/* --- Column 4: Individual Vector Calibration --- */}
+                    <div className="space-y-6 lg:col-span-1 overflow-y-auto pr-1">
+                        <div className="p-5 border rounded-2xl bg-primary/5 space-y-6 shadow-sm border-primary/10 h-full relative">
+                            <Label className="text-xs font-bold uppercase tracking-widest text-primary flex items-center gap-2 mb-2">
+                                <Zap className="h-3 w-3" /> Vector Calibration
+                            </Label>
+                            
+                            {activeLick ? (
+                                <>
+                                    <div className="flex gap-2">
+                                        <Button variant="outline" size="sm" className="h-7 flex-1 text-[10px] gap-1" onClick={handleAutoCalibrate}>
+                                            Heuristic
+                                        </Button>
+                                        <Button variant="default" size="sm" className="h-7 flex-1 text-[10px] gap-1 bg-primary/80" onClick={handleAIDeepInsight} disabled={isAIAnalyzing}>
+                                            {isAIAnalyzing ? <Loader2 className="h-3 w-3 animate-spin" /> : <BrainCircuit className="h-3 w-3" />}
+                                            AI Insight
+                                        </Button>
                                     </div>
-                                )}
-                            </div>
+                                    
+                                    <div className="space-y-4 pt-4">
+                                        <VectorSlider label="Tension" value={activeLick.vector.t} icon={<Activity className="h-3 w-3" />} onChange={(v) => updateActiveVector({t: v})} />
+                                        <VectorSlider label="Brightness" value={activeLick.vector.b} icon={<Sun className="h-3 w-3" />} onChange={(v) => updateActiveVector({b: v})} />
+                                        <VectorSlider label="Entropy" value={activeLick.vector.e} icon={<RefreshCcw className="h-3 w-3" />} onChange={(v) => updateActiveVector({e: v})} />
+                                        <VectorSlider label="Stability" value={activeLick.vector.h} icon={<Target className="h-3 w-3" />} onChange={(v) => updateActiveVector({h: v})} />
+                                    </div>
+
+                                    {aiReasoning && (
+                                        <div className="mt-4 p-3 bg-background/50 rounded-xl border border-primary/10">
+                                            <p className="text-[10px] italic leading-relaxed text-muted-foreground">
+                                                <span className="font-bold text-primary not-italic">Oracle:</span> {aiReasoning}
+                                            </p>
+                                        </div>
+                                    )}
+                                </>
+                            ) : (
+                                <div className="flex items-center justify-center h-full text-muted-foreground text-xs italic text-center px-4">
+                                    Select an axiom from the buffer to calibrate its unique DNA.
+                                </div>
+                            )}
                         </div>
                     </div>
                 </CardContent>
@@ -648,7 +667,7 @@ export default function MidiIngestPage() {
         const hints: any = { 
             bass: 'bass_jazz_warm', 
             melody: 'telecaster', 
-            accompaniment: 'organ_soft_jazz' 
+            accomp: 'organ_soft_jazz' 
         };
 
         for (let i = 0; i < lick.phrase.length; i += 4) {
@@ -657,14 +676,14 @@ export default function MidiIngestPage() {
             const degIdx = lick.phrase[i+2];
             
             events.push({
-                type: lick.role as any,
+                type: lick.role === 'accomp' ? 'accompaniment' : lick.role as any,
                 note: lick.role === 'drums' ? degIdx : root + (DEGREE_TO_SEMITONE[DEGREE_KEYS[degIdx]] || 0),
                 time: t / 3, 
                 duration: d / 3, 
                 weight: 0.8, 
                 technique: 'pick', 
                 dynamics: 'mf', 
-                phrasing: 'legate' as any,
+                phrasing: 'legato' as any,
                 params: { barCount: 0 }
             });
         }
