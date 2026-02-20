@@ -7,8 +7,8 @@ type SamplerInstrument = {
 
 /**
  * #ЗАЧЕМ: Универсальный сэмплер с поддержкой естественных хвостов.
- * #ЧТО: 1. Реализована полная остановка всех запланированных источников (stopAll).
- *       2. Защита от нечисловых значений AudioParam.
+ * #ЧТО: 1. Повышена базовая мощность преампа (ПЛАН №528).
+ *       2. Реализована полная остановка всех запланированных источников (stopAll).
  */
 export class SamplerPlayer {
     private audioContext: AudioContext;
@@ -24,7 +24,8 @@ export class SamplerPlayer {
         this.outputNode = this.audioContext.createGain();
         
         this.preamp = this.audioContext.createGain();
-        this.preamp.gain.value = 0.5; 
+        // #ЗАЧЕМ: Повышение читаемости пианино.
+        this.preamp.gain.value = 1.2; 
         this.preamp.connect(this.outputNode);
         
         this.outputNode.connect(destination);
@@ -81,7 +82,6 @@ export class SamplerPlayer {
                 noteRange: [minMidi, maxMidi],
             });
             
-            console.log(`[SamplerPlayer] Instrument "${instrumentName}" loaded successfully with ${loadedBuffers.size} samples.`);
             this.isInitialized = true;
             return true;
         } catch (error) {
@@ -92,20 +92,17 @@ export class SamplerPlayer {
     
     public schedule(instrumentName: string, notes: Note[], time: number, loggerPrefix?: string) {
         if (!this.isInitialized) {
-            if (loggerPrefix) console.warn(`[${loggerPrefix}] Tried to schedule before initialized.`);
             return;
         }
         
         const instrument = this.instruments.get(instrumentName);
         if (!instrument) {
-            if (loggerPrefix) console.warn(`[${loggerPrefix}] Instrument "${instrumentName}" not loaded.`);
             return;
         }
 
         notes.forEach(note => {
             const { buffer, midi: sampleMidi } = this.findClosestSample(instrument, note.midi);
             if (!buffer) {
-                 if (loggerPrefix) console.warn(`[${loggerPrefix}] Note ${note.midi}: No suitable sample found.`);
                 return;
             }
 

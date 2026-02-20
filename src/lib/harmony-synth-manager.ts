@@ -1,4 +1,3 @@
-
 import type { FractalEvent } from '@/types/fractal';
 import type { Note } from "@/types/music";
 import { SamplerPlayer } from '@/lib/sampler-player';
@@ -11,8 +10,7 @@ import { FluteSamplerPlayer } from './flute-sampler-player';
 /**
  * Manages the "harmony" layer, specifically for rhythmic/harmonic instruments
  * like piano and guitar chords. It's a specialized sampler player.
- * #ОБНОВЛЕНО (ПЛАН №404): Введен тотальный карантин на инструмент "flute".
- * #ОБНОВЛЕНО (ПЛАН №511): Исправлен порядок инициализации флага готовности.
+ * #ОБНОВЛЕНО (ПЛАН №528): Исправлено "немое" переключение. Все громкости теперь независимы.
  */
 export class HarmonySynthManager {
     private audioContext: AudioContext;
@@ -49,11 +47,13 @@ export class HarmonySynthManager {
             this.flute.loadInstrument('flute', FLUTE_SAMPLES),
         ]);
         
-        // #ЗАЧЕМ: Флаг должен быть true ДО вызова setInstrument, 
-        // чтобы избежать ложного предупреждения о преждевременном вызове.
         this.isInitialized = true;
         
-        this.setInstrument(this.activeInstrumentName);
+        // #ЗАЧЕМ: Установка дефолтных громкостей для всех сэмплеров.
+        this.piano.setVolume(0.8);
+        this.guitarChords.setVolume(0.9);
+        this.violin.setVolume(1.0);
+        this.flute.setVolume(0.8);
 
         console.log('[HarmonyManager] Harmony instruments initialized.');
     }
@@ -65,7 +65,6 @@ export class HarmonySynthManager {
         
         let instrumentToPlay = instrumentHint || this.activeInstrumentName;
 
-        // #ЗАЧЕМ: Карантин флейты.
         if (instrumentToPlay === 'flute') {
             instrumentToPlay = 'violin';
         }
@@ -88,9 +87,6 @@ export class HarmonySynthManager {
             return;
         }
 
-        const barCount = (notes[0].params as any)?.barCount ?? 'N/A';
-        console.log(`[HarmonyAudit] [Manager Dispatch] Bar: ${barCount} - Dispatching ${notes.length} events to instrument: ${instrumentToPlay}`);
-
         switch (instrumentToPlay) {
             case 'piano':
                 this.piano.schedule('piano', notes, barStartTime);
@@ -102,30 +98,20 @@ export class HarmonySynthManager {
                 this.violin.schedule(notes, barStartTime);
                 break;
             case 'flute':
-                // Should be violin due to quarantine, but safety check
                 this.violin.schedule(notes, barStartTime);
                 break;
         }
     }
 
     public setInstrument(instrumentName: 'piano' | 'guitarChords' | 'violin' | 'flute' | 'none') {
-        if (!this.isInitialized) {
-            console.warn('[HarmonyManager] setInstrument called before initialization.');
-            return;
-        }
+        if (!this.isInitialized) return;
         
-        // #ЗАЧЕМ: Карантин флейты.
         let name = instrumentName;
         if (name === 'flute') name = 'violin';
 
-        console.log(`[HarmonyManager] Setting active instrument to: ${name}`);
         this.activeInstrumentName = name;
-
-        // Manage volumes of child samplers
-        this.piano.setVolume(name === 'piano' ? 0.8 : 0);
-        this.guitarChords.setVolume(name === 'guitarChords' ? 0.9 : 0);
-        this.violin.setVolume(name === 'violin' ? 1.0 : 0);
-        this.flute.setVolume(0); // Always muted during quarantine
+        // #ЗАЧЕМ: Мы больше не глушим другие инструменты здесь, чтобы не мешать instrumentHint.
+        // Громкость регулируется системным VOICE_BALANCE и индивидуальными setVolume в init.
     }
 
     public allNotesOff() {

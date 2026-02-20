@@ -1,8 +1,8 @@
 /**
- * #ЗАЧЕМ: Audio Engine Context V6.0 — "The V2 Sovereignty".
- * #ЧТО: 1. Полное удаление V1-менеджеров (Bass, Melody, Accomp).
- *       2. Вся маршрутизация переведена на V2-менеджеры и фабрику buildMultiInstrument.
- *       3. Бас теперь использует MelodySynthManagerV2 для обеспечения качества Tier 2/3.
+ * #ЗАЧЕМ: Audio Engine Context V6.1 — "Narrative Routing Fix".
+ * #ЧТО: 1. Исправлена маршрутизация пианино (pianoAccompaniment).
+ *       2. Гарантированная передача событий гармонии и пианино в соответствующие менеджеры.
+ *       3. Калибровка VOICE_BALANCE для V2 инструментов.
  */
 'use client';
 
@@ -148,6 +148,7 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
     const accompanimentEvents: FractalEvent[] = [];
     const melodyEvents: FractalEvent[] = [];
     const harmonyEvents: FractalEvent[] = [];
+    const pianoEvents: FractalEvent[] = [];
     const sfxEvents: FractalEvent[] = [];
 
     for (const event of events) {
@@ -157,12 +158,12 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
       else if (et === 'accompaniment') accompanimentEvents.push(event);
       else if (et === 'melody') melodyEvents.push(event);
       else if (et === 'harmony') harmonyEvents.push(event);
+      else if (et === 'pianoAccompaniment') pianoEvents.push(event);
       else if (et === 'sfx') sfxEvents.push(event);
     }
 
     if (drumMachineRef.current && drumEvents.length > 0) drumMachineRef.current.schedule(drumEvents, barStartTime, tempo);
     
-    // #ЗАЧЕМ: Тотальная V2 маршрутизация.
     if (bassEvents.length > 0 && bassManagerV2Ref.current) {
         bassManagerV2Ref.current.schedule(bassEvents, barStartTime, tempo, instrumentHints?.bass);
     }
@@ -174,6 +175,9 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
     }
     if (harmonyManagerRef.current && harmonyEvents.length > 0) {
         harmonyManagerRef.current.schedule(harmonyEvents, barStartTime, tempo, instrumentHints?.harmony);
+    }
+    if (pianoAccompanimentManagerRef.current && pianoEvents.length > 0) {
+        pianoAccompanimentManagerRef.current.schedule(pianoEvents, barStartTime, tempo);
     }
     if (sfxSynthManagerRef.current && sfxEvents.length > 0) {
         sfxSynthManagerRef.current.trigger(sfxEvents, barStartTime, tempo);
@@ -216,7 +220,6 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
         if (!darkTelecasterSamplerRef.current) darkTelecasterSamplerRef.current = new DarkTelecasterSampler(context, gainNodesRef.current.melody);
         if (!cs80SamplerRef.current) cs80SamplerRef.current = new CS80GuitarSampler(context, gainNodesRef.current.melody);
         
-        // V2 Managers Only
         if (!accompanimentManagerV2Ref.current) accompanimentManagerV2Ref.current = new AccompanimentSynthManagerV2(context, gainNodesRef.current.accompaniment);
         
         if (!melodyManagerV2Ref.current) {
@@ -292,7 +295,6 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
   const setVolumeCallback = useCallback((part: InstrumentPart, volume: number) => {
     if (part === 'pads' || part === 'effects') return;
     
-    // Target V2 Managers preamps
     if (part === 'bass' && bassManagerV2Ref.current) {
         bassManagerV2Ref.current.setPreampGain(volume);
         return;
@@ -345,8 +347,7 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
         getWorker: () => workerRef.current, 
         playRawEvents: (e, h) => {
             scheduleEvents(e, audioContextRef.current!.currentTime + 0.8, 72, 0, h)
-        },
-        toggleMelodyEngine: () => {} // No-op, always V2
+        }
     }}>
       {children}
     </AudioEngineContext.Provider>

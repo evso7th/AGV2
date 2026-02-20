@@ -1,4 +1,3 @@
-
 // V2 Presets — совместимы with buildMultiInstrument()
 // Проверено на соответствие фабрике от 2024-12
 
@@ -135,7 +134,7 @@ export const V2_PRESETS = {
     volume: 0.15, 
     osc: { width: 0.5, detune: 7, mainGain: 0.8, detGain: 0.2, subGain: 0.3 },
     pickup: { cutoff: 3200, q: 1.2 },
-    drive: { type: 'muff', amount: 0.25 }, 
+    drive: { type: 'muff', amount: 0.65 }, 
     comp: { threshold: -20, ratio: 4, attack: 0.005, release: 0.1, makeup: 4 },
     post: { lpf: 4700 },
     phaser: { on: true, rate: 0.18, depth: 700, mix: 0.18 },
@@ -167,17 +166,18 @@ export const V1_TO_V2_PRESET_MAP: Record<string, PresetName> = {
   organ: 'organ',
   ambientPad: 'synth_ambient_pad_lush',
   piano: 'ep_rhodes_warm',
-  rhodes: 'ep_rhodes_warm'
+  rhodes: 'ep_rhodes_warm',
+  // #ЗАЧЕМ: Корректное сопоставление гитары. Больше никакой флейты!
+  acousticGuitar: 'ep_rhodes_warm' 
 };
 
 /**
  * #ЗАЧЕМ: Сопоставление V1-имен баса с новыми V2-пресетами.
- * #ОБНОВЛЕНО (ПЛАН №434): bass_trance удален и замещен на bass_house.
  */
 export const BASS_PRESET_MAP: Record<string, keyof typeof BASS_PRESETS> = {
     bass: 'bass_jazz_warm',
     classicBass: 'bass_rock_pick',
-    glideBass: 'bass_ambient', // SUBSTITUTE for pure sound
+    glideBass: 'bass_ambient',
     ambientDrone: 'bass_ambient_dark',
     resonantGliss: 'bass_trance_acid',
     hypnoticDrone: 'bass_ambient',
@@ -188,7 +188,7 @@ export const BASS_PRESET_MAP: Record<string, keyof typeof BASS_PRESETS> = {
     bass_blues: 'bass_blues',
     bass_ambient: 'bass_ambient',
     bass_ambient_dark: 'bass_ambient_dark',
-    bass_trance: 'bass_house', // SUBSTITUTE
+    bass_trance: 'bass_house',
     bass_trance_acid: 'bass_trance_acid',
     bass_reggae: 'bass_reggae',
     bass_dub: 'bass_dub',
