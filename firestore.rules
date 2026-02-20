@@ -21,8 +21,8 @@ service cloud.firestore {
     }
 
     match /heritage_axioms/{id} {
-      // #ЗАЧЕМ: Открытие наследия для всех поколений AuraGroove.
-      // #ЧТО: Публичное чтение разрешено для корректной работы счетчиков и аналитики.
+      // #ЗАЧЕМ: Полный доступ для "Алхимиков".
+      // #ЧТО: Разрешено удаление и списки для очистки базы.
       allow read, list: if true;
       allow create, delete: if isSignedIn();
     }

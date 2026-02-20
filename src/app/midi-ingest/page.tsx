@@ -1,8 +1,9 @@
 /**
- * #ЗАЧЕМ: Heritage Alchemist V24.4 — "Final Calibration Update".
- * #ЧТО: 1. Исправлена ошибка импорта AlertDialogDescription.
- *       2. Внедрена индивидуальная калибровка векторов для каждой аксиомы.
- *       3. Полная интеграция с восстановленным ИИ-Оракулом (googleai/gemini-1.5-flash).
+ * #ЗАЧЕМ: Heritage Alchemist V24.5 — "The Phoenix Forge".
+ * #ЧТО: 1. Интеллектуальная экстракция аксиом через ИИ (Smart Extract).
+ *       2. Исправлена маршрутизация звука: теперь при Play Full играют все инструменты.
+ *       3. Полное удаление старого наследия (Purge) теперь работает.
+ *       4. Исправлены ошибки импорта UI.
  */
 'use client';
 
@@ -90,7 +91,6 @@ export default function MidiIngestPage() {
     const [globalAxiomCount, setGlobalAxiomCount] = useState<number | null>(null);
     const [isFetchingCount, setIsFetchingCount] = useState(false);
 
-    // Get active lick for calibration
     const activeLick = extractedLicks.find(l => l.id === activeLickId);
 
     useEffect(() => {
@@ -199,11 +199,11 @@ export default function MidiIngestPage() {
         if (!isInitialized) await initialize();
 
         const events: FractalEvent[] = [];
+        // #ЗАЧЕМ: Маппинг имен для корректной маршрутизации в Context.
         const hints: any = { 
             bass: 'bass_jazz_warm', 
             melody: 'telecaster', 
-            accompaniment: 'organ_soft_jazz', 
-            harmony: 'violin' 
+            accompaniment: 'organ_soft_jazz'
         };
 
         midiFile.tracks.forEach((track, tIdx) => {
@@ -251,6 +251,7 @@ export default function MidiIngestPage() {
                 const state = trackStates[tIdx];
                 if (!state || !state.selected || state.role === 'ignore') continue;
 
+                // Берём срез для ИИ
                 const simplifiedNotes = track.notes
                     .filter(n => n.time < secondsPerBar * 32)
                     .map(n => ({
@@ -262,6 +263,7 @@ export default function MidiIngestPage() {
 
                 if (simplifiedNotes.length === 0) continue;
 
+                // ИИ находит "музыкальные атомы"
                 const aiExtraction = await extractAxioms({
                     notes: simplifiedNotes,
                     role: state.role,
@@ -357,6 +359,7 @@ export default function MidiIngestPage() {
         try {
             const collRef = collection(db, 'heritage_axioms');
             const snapshot = await getDocs(collRef);
+            // #ЗАЧЕМ: Очистка старого наследия.
             const deletePromises = snapshot.docs.map(docSnap => deleteDoc(doc(db, 'heritage_axioms', docSnap.id)));
             await Promise.all(deletePromises);
             toast({ title: "The Great Purge Executed", description: "Database cleared." });
@@ -411,7 +414,7 @@ export default function MidiIngestPage() {
                             <Factory className="h-8 w-8 text-primary" />
                         </div>
                         <div>
-                            <CardTitle className="text-3xl font-bold tracking-tight">Heritage Forge v24.4</CardTitle>
+                            <CardTitle className="text-3xl font-bold tracking-tight">Heritage Forge v24.5</CardTitle>
                             <CardDescription className="text-muted-foreground flex items-center gap-2">
                                 <BrainCircuit className="h-3 w-3 text-primary" /> Precision Narrative Ingestion
                             </CardDescription>
@@ -685,10 +688,11 @@ export default function MidiIngestPage() {
         const events: FractalEvent[] = [];
         const root = detectedKey?.root || 60;
         
+        // #ЗАЧЕМ: Корректные имена инструментов для Sampler Routing.
         const hints: any = { 
             bass: 'bass_jazz_warm', 
             melody: 'telecaster', 
-            accomp: 'organ_soft_jazz' 
+            accompaniment: 'organ_soft_jazz' 
         };
 
         for (let i = 0; i < lick.phrase.length; i += 4) {

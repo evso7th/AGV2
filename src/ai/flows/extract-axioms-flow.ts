@@ -1,7 +1,8 @@
 'use server';
 /**
  * @fileOverview AI Musical Disassembler Flow.
- * #ОБНОВЛЕНО (ПЛАН №551): Восстановлен префикс googleai/ для корректного резолвинга модели в Genkit.
+ * #ЗАЧЕМ: Замена "ножниц" на интеллектуальный анализ. 
+ * #ЧТО: ИИ находит логические музыкальные предложения вместо тупой нарезки по тактам.
  */
 
 import { ai } from '@/ai/genkit';
@@ -36,30 +37,31 @@ export async function extractAxioms(input: z.infer<typeof ExtractAxiomsInputSche
     return { axioms: [] };
   }
 
-  // #ЗАЧЕМ: Защита от Token Overflow и фокусировка на первых 32 тактах.
-  const cappedNotes = input.notes.slice(0, 100);
+  // #ЗАЧЕМ: Фокусировка на начале произведения для поиска "ДНК".
+  const cappedNotes = input.notes.slice(0, 150);
 
   try {
     const { output } = await ai.generate({
       model: 'googleai/gemini-1.5-flash',
       input: { ...input, notes: cappedNotes },
       output: { schema: ExtractAxiomsOutputSchema },
-      prompt: `You are an expert musicologist and master producer. Analyze the following MIDI data for the role: "{{role}}".
+      prompt: `You are an expert musicologist. Analyze the following MIDI notes for the instrument role: "{{role}}".
       
-      CRITICAL MISSION: Do NOT simply cut the track every 4 bars.
-      Find meaningful "musical atoms" (axioms).
+      MISSION: Identify meaningful "musical atoms" (axioms). 
+      An axiom is a complete thought: a riff, a call-and-response pair, or a distinct rhythmic groove.
       
       RULES:
-      1. Identify complete musical thoughts: riffs, call-and-response pairs, or rhythmic hooks.
-      2. Axioms should ideally be between 48 and 144 ticks (4-12 bars in 12/8).
-      3. If the role is "bass", look for stable recurring patterns.
-      4. If the role is "melody", look for lyrical arcs or expressive solos.
-      5. If the role is "drums", look for consistent rhythmic grooves.
-      6. Return start/end tick boundaries that capture these full ideas without cutting notes.
+      1. Axioms must be between 24 and 144 ticks (2-12 bars). 
+      2. Do NOT just split every 4 bars. Look for melodic peaks and pauses.
+      3. For "bass", find stable recurring motifs.
+      4. For "melody", find lyrical arcs or distinctive solos.
+      5. Return tick boundaries [startTick, endTick] that capture these full ideas perfectly.
       
-      Track Data (Notes):
+      Track Name: "{{trackName}}"
+      MIDI Data:
       {{{notes}}}`,
     });
+    
     if (!output) throw new Error('AI extraction failed to return output');
     return output;
   } catch (e) {

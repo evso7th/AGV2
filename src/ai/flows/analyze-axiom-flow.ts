@@ -1,7 +1,7 @@
 'use server';
 /**
  * @fileOverview AI Musicologist Flow for Axiom Calibration.
- * #ОБНОВЛЕНО (ПЛАН №551): Восстановлен префикс googleai/ для корректного резолвинга модели в Genkit.
+ * #ЗАЧЕМ: Индивидуальная калибровка вектора Гиперкуба.
  */
 
 import { ai } from '@/ai/genkit';
