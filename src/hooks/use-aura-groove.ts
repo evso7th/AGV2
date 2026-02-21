@@ -77,7 +77,8 @@ export const useAuraGroove = (): AuraGrooveProps => {
     toggleBroadcast,
     getWorker,
     startRecording,
-    stopRecording
+    stopRecording,
+    setEQGain
   } = useAudioEngine(); 
   
   const db = useFirestore();
@@ -285,7 +286,47 @@ export const useAuraGroove = (): AuraGrooveProps => {
 
   const handleEqChange = (bandIndex: number, gain: number) => {
       setEQGain(bandIndex, gain);
+      setEqSettings(prev => {
+          const next = [...prev];
+          next[bandIndex] = gain;
+          return next;
+      });
   };
+
+  const handleTimerDurationChange = useCallback((minutes: number) => {
+    const seconds = minutes * 60;
+    setTimerSettings(prev => ({
+      ...prev,
+      duration: seconds,
+      timeLeft: seconds
+    }));
+  }, []);
+
+  const handleToggleTimer = useCallback(() => {
+    setTimerSettings(prev => ({
+      ...prev,
+      isActive: !prev.isActive
+    }));
+  }, []);
+
+  useEffect(() => {
+    if (!timerSettings.isActive) return;
+    
+    if (timerSettings.timeLeft <= 0) {
+      setEngineIsPlaying(false);
+      setTimerSettings(prev => ({ ...prev, isActive: false }));
+      return;
+    }
+
+    const interval = setInterval(() => {
+      setTimerSettings(prev => ({
+        ...prev,
+        timeLeft: Math.max(0, prev.timeLeft - 1)
+      }));
+    }, 1000);
+
+    return () => clearInterval(interval);
+  }, [timerSettings.isActive, timerSettings.timeLeft, setEngineIsPlaying]);
 
   const handleGoHome = () => {
     setEngineIsPlaying(false);
