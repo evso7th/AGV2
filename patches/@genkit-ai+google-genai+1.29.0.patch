@@ -1,0 +1,52 @@
+diff --git a/node_modules/@genkit-ai/google-genai/lib/googleai/gemini.js b/node_modules/@genkit-ai/google-genai/lib/googleai/gemini.js
+index 360e3f0..f66eeed 100644
+--- a/node_modules/@genkit-ai/google-genai/lib/googleai/gemini.js
++++ b/node_modules/@genkit-ai/google-genai/lib/googleai/gemini.js
+@@ -245,7 +245,7 @@ const KNOWN_GEMINI_MODELS = {
+     "gemini-3.1-pro-preview-customtools"
+   ),
+   "gemini-3.1-pro-preview": commonRef("gemini-3.1-pro-preview"),
+-  "gemini-3-flash-preview": commonRef("gemini-3-flash-preview"),
++  "gemini-1.5-flash": commonRef("gemini-1.5-flash"),
+   "gemini-3-pro-preview": commonRef("gemini-3-pro-preview"),
+   "gemini-2.5-pro": commonRef("gemini-2.5-pro"),
+   "gemini-2.5-flash": commonRef("gemini-2.5-flash"),
+diff --git a/node_modules/@genkit-ai/google-genai/lib/vertexai/gemini.js b/node_modules/@genkit-ai/google-genai/lib/vertexai/gemini.js
+index 7301a57..6789e91 100644
+--- a/node_modules/@genkit-ai/google-genai/lib/vertexai/gemini.js
++++ b/node_modules/@genkit-ai/google-genai/lib/vertexai/gemini.js
+@@ -249,7 +249,7 @@ const GENERIC_IMAGE_MODEL = commonRef(
+ );
+ const KNOWN_GEMINI_MODELS = {
+   "gemini-3.1-pro-preview": commonRef("gemini-3.1-pro-preview"),
+-  "gemini-3-flash-preview": commonRef("gemini-3-flash-preview"),
++  "gemini-1.5-flash": commonRef("gemini-1.5-flash"),
+   "gemini-3-pro-preview": commonRef("gemini-3-pro-preview"),
+   "gemini-2.5-flash-lite": commonRef("gemini-2.5-flash-lite"),
+   "gemini-2.5-pro": commonRef("gemini-2.5-pro"),
+diff --git a/node_modules/@genkit-ai/google-genai/src/googleai/gemini.ts b/node_modules/@genkit-ai/google-genai/src/googleai/gemini.ts
+index 65024d1..6c73fdc 100644
+--- a/node_modules/@genkit-ai/google-genai/src/googleai/gemini.ts
++++ b/node_modules/@genkit-ai/google-genai/src/googleai/gemini.ts
+@@ -422,7 +422,7 @@ const KNOWN_GEMINI_MODELS = {
+     'gemini-3.1-pro-preview-customtools'
+   ),
+   'gemini-3.1-pro-preview': commonRef('gemini-3.1-pro-preview'),
+-  'gemini-3-flash-preview': commonRef('gemini-3-flash-preview'),
++  'gemini-1.5-flash': commonRef('gemini-1.5-flash'),
+   'gemini-3-pro-preview': commonRef('gemini-3-pro-preview'),
+   'gemini-2.5-pro': commonRef('gemini-2.5-pro'),
+   'gemini-2.5-flash': commonRef('gemini-2.5-flash'),
+diff --git a/node_modules/@genkit-ai/google-genai/src/vertexai/gemini.ts b/node_modules/@genkit-ai/google-genai/src/vertexai/gemini.ts
+index a90708a..1a4f47b 100644
+--- a/node_modules/@genkit-ai/google-genai/src/vertexai/gemini.ts
++++ b/node_modules/@genkit-ai/google-genai/src/vertexai/gemini.ts
+@@ -423,7 +423,7 @@ const GENERIC_IMAGE_MODEL = commonRef(
+ 
+ export const KNOWN_GEMINI_MODELS = {
+   'gemini-3.1-pro-preview': commonRef('gemini-3.1-pro-preview'),
+-  'gemini-3-flash-preview': commonRef('gemini-3-flash-preview'),
++  'gemini-1.5-flash': commonRef('gemini-1.5-flash'),
+   'gemini-3-pro-preview': commonRef('gemini-3-pro-preview'),
+   'gemini-2.5-flash-lite': commonRef('gemini-2.5-flash-lite'),
+   'gemini-2.5-pro': commonRef('gemini-2.5-pro'),
