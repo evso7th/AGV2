@@ -5,7 +5,9 @@ import {
   Mood,
   SuiteDNA,
   NavigationInfo,
-  BluesCognitiveState
+  BluesCognitiveState,
+  BluesGuitarRiff,
+  BluesMelody
 } from '@/types/music';
 import { 
     DEGREE_TO_SEMITONE,
@@ -17,12 +19,15 @@ import {
     getChordNameForBar 
 } from './blues-theory';
 import { BLUES_SOLO_LICKS } from './assets/blues_guitar_solo';
+import { BLUES_GUITAR_RIFFS, BLUES_GUITAR_VOICINGS } from './assets/blues-guitar-riffs';
+import { BLUES_MELODY_RIFFS } from './assets/blues-melody-riffs';
 
 /**
- * #ЗАЧЕМ: Блюзовый Мозг V118.0 — "Strict Narrative Sovereignty".
- * #ЧТО: 1. Лик меняется СТРОГО раз в 4 такта (epoch % 4 === 0).
- *       2. Устранена фрагментация: сегмент мелодии вычисляется по остатку от 4.
- *       3. Протокольное логирование для прозрачности.
+ * #ЗАЧЕМ: Блюзовый Мозг V125.0 — "The Acoustic Heritage Update".
+ * #ЧТО: 1. Интегрирована 12-тактовая библиотека гитарных аранжировок.
+ *       2. Реализована логика выбора техник (Fingerstyle/Strum/Solo) в реальном времени.
+ *       3. Поддержка "плотных" минорных мелодий для меланхолии.
+ * #ОБНОВЛЕНО (ПЛАН №568): Внедрена поддержка оцифрованной библиотеки из blues_guitar_melody.txt.
  */
 
 export class BluesBrain {
@@ -32,6 +37,10 @@ export class BluesBrain {
   private currentAxiom: any[] = [];
   private currentLickId: string = '';
   
+  // Дорожка активной аранжировки
+  private currentGuitarRiff: BluesGuitarRiff | null = null;
+  private currentGrandMelody: BluesMelody | null = null;
+
   private readonly MELODY_CEILING = 75; 
   private readonly BASS_FLOOR = 31; 
 
@@ -110,41 +119,53 @@ export class BluesBrain {
         this.sfxPlayedInPart = false;
     }
 
-    // --- NARRATIVE SYNC: 4-BAR CYCLE ---
-    // #ЗАЧЕМ: Мелодия не должна рваться каждый такт. 
-    // #ЧТО: Смена лика только каждые 4 такта.
+    // --- NARRATIVE SYNC: 12-BAR & 4-BAR CYCLE ---
     const isPhraseBoundary = epoch % 4 === 0;
-    const isStagnating = this.state.stagnationStrikes.micro >= 3;
+    const isChorusBoundary = epoch % 12 === 0;
 
-    if (this.currentAxiom.length === 0 || isPhraseBoundary || isStagnating) {
+    if (isChorusBoundary) {
+        this.selectGrandAxiom(tension);
+    }
+
+    if (this.currentAxiom.length === 0 || isPhraseBoundary) {
         this.refreshUnifiedMutation();
-        this.selectNextAxiom(navInfo, dna, epoch, isStagnating);
-        this.state.stagnationStrikes.micro = 0; 
+        this.selectNextAxiom(navInfo, dna, epoch);
     }
 
     const events: FractalEvent[] = [];
 
-    // Оркестровка (гистерезис)
+    // Оркестровка (выбор инструментов на основе напряжения)
     this.evaluateTimbralDramaturgy(tension, hints, epoch);
 
+    // --- 1. MELODY (SOLO / ARRANGEMENT) ---
     if (hints.melody) {
-        const melodyEvents = this.renderMelodicSegment(epoch, currentChord, tension);
-        events.push(...melodyEvents);
+        // Если есть полноценная аранжировка, используем её
+        if (this.currentGuitarRiff) {
+            events.push(...this.renderArrangedAcoustic(epoch, currentChord, tension));
+        } else {
+            const melodyEvents = this.renderMelodicSegment(epoch, currentChord, tension);
+            events.push(...melodyEvents);
+        }
     }
 
-    if (hints.accompaniment) {
+    // --- 2. ACCOMPANIMENT ---
+    if (hints.accompaniment && !this.currentGuitarRiff) {
         const accompEvents = this.renderDynamicAccompaniment(epoch, currentChord, tension);
         events.push(...accompEvents);
     }
 
+    // --- 3. PIANO ---
     if (hints.pianoAccompaniment) {
-        const pianoEvents = this.renderIntegratedPiano(epoch, currentChord, tension);
-        events.push(...pianoEvents);
+        events.push(...this.renderIntegratedPiano(epoch, currentChord, tension));
     }
 
+    // --- 4. BASS ---
     if (hints.bass) events.push(...this.renderIronBass(currentChord, epoch, tension, navInfo));
+    
+    // --- 5. DRUMS ---
     if (hints.drums) events.push(...this.renderBluesBeat(epoch, tension, navInfo));
     
+    // --- 6. HARMONY ---
     if (hints.harmony) {
         events.push(...this.renderDerivativeHarmony(currentChord, epoch, tension));
     }
@@ -156,27 +177,128 @@ export class BluesBrain {
     };
   }
 
-  private selectNextAxiom(navInfo: NavigationInfo, dna: SuiteDNA, epoch: number, forceNew: boolean) {
+  /**
+   * #ЗАЧЕМ: Выбор крупной 12-тактовой структуры.
+   */
+  private selectGrandAxiom(tension: number) {
+      const isMinor = this.mood === 'melancholic' || this.mood === 'dark';
+      
+      // Выбираем из гитарных аранжировок
+      const pool = BLUES_GUITAR_RIFFS.filter(r => 
+          r.moods.includes(this.mood) || (isMinor && r.type === 'minor') || (!isMinor && r.type === 'major')
+      );
+      
+      if (pool.length > 0) {
+          this.currentGuitarRiff = pool[this.random.nextInt(pool.length)];
+      }
+
+      // Выбираем из плотных мелодий
+      const melodyPool = BLUES_MELODY_RIFFS.filter(m => 
+          m.moods.includes(this.mood) || (isMinor && m.type === 'minor')
+      );
+      if (melodyPool.length > 0) {
+          this.currentGrandMelody = melodyPool[this.random.nextInt(melodyPool.length)];
+      }
+  }
+
+  private selectNextAxiom(navInfo: NavigationInfo, dna: SuiteDNA, epoch: number) {
+      // Если мы в режиме "плотной мелодии", берем фразу оттуда
+      if (this.currentGrandMelody) {
+          const barIn12 = epoch % 12;
+          const isTurn = barIn12 === 11;
+          const isMinor = this.currentGrandMelody.type === 'minor';
+          
+          let phrase: any[] = [];
+          if (isTurn) phrase = this.currentGrandMelody.phraseTurnaround || [];
+          else if (isMinor) {
+              const chord = getChordNameForBar(barIn12);
+              phrase = chord.startsWith('i') ? this.currentGrandMelody.phrasei! : this.currentGrandMelody.phraseiv!;
+          } else {
+              const chord = getChordNameForBar(barIn12);
+              if (chord.startsWith('i')) phrase = this.currentGrandMelody.phraseI!;
+              else if (chord.startsWith('iv')) phrase = this.currentGrandMelody.phraseIV!;
+              else phrase = this.currentGrandMelody.phraseV!;
+          }
+          
+          this.currentAxiom = phrase;
+          this.currentLickId = this.currentGrandMelody.id;
+          return;
+      }
+
+      // Стандартный выбор лика
       const allLickIds = Object.keys(BLUES_SOLO_LICKS);
       const pool = allLickIds.filter(id => !this.state.recentLicks.includes(id));
       const nextId = pool[this.random.nextInt(pool.length)] || allLickIds[0];
-
-      if (nextId === this.currentLickId) this.state.stagnationStrikes.micro++;
 
       this.currentLickId = nextId;
       this.state.recentLicks.push(nextId);
       if (this.state.recentLicks.length > 5) this.state.recentLicks.shift();
       
       const lickData = BLUES_SOLO_LICKS[nextId];
-      // Всегда берем сырую фразу и нормализуем ее до 48 тиков (4 такта)
       const rawPhrase = Array.isArray(lickData.phrase) ? lickData.phrase : decompressCompactPhrase(lickData.phrase as any);
       const stretched = stretchToNarrativeLength(rawPhrase, 48, this.random);
       
       this.currentAxiom = this.mutateLick(stretched);
   }
 
+  /**
+   * #ЗАЧЕМ: Исполнение гитарной аранжировки (Fingerstyle / Strum / Solo).
+   */
+  private renderArrangedAcoustic(epoch: number, chord: GhostChord, tension: number): FractalEvent[] {
+      if (!this.currentGuitarRiff) return [];
+      const events: FractalEvent[] = [];
+      const barIn12 = epoch % 12;
+      const beatDuration = 60 / this.config.tempo;
+
+      // 1. SOLO LAYER
+      const chordName = getChordNameForBar(barIn12);
+      let soloPhrase: any[] = [];
+      if (barIn12 === 11) soloPhrase = this.currentGuitarRiff.solo.Turnaround;
+      else if (chordName.startsWith('i')) soloPhrase = this.currentGuitarRiff.solo.I;
+      else if (chordName.startsWith('iv')) soloPhrase = this.currentGuitarRiff.solo.IV;
+      else soloPhrase = this.currentGuitarRiff.solo.V;
+
+      soloPhrase.forEach(n => {
+          events.push({
+              type: 'melody',
+              note: Math.min(chord.rootNote + 36 + (DEGREE_TO_SEMITONE[n.deg] || 0), this.MELODY_CEILING),
+              time: n.t / 3,
+              duration: n.d / 3,
+              weight: 0.85 * (tension + 0.2),
+              technique: n.tech || 'pick',
+              dynamics: 'p',
+              phrasing: 'legato'
+          });
+      });
+
+      // 2. FINGERSTYLE / STRUM LAYER (Зависит от напряжения)
+      if (tension < 0.6 && this.currentGuitarRiff.fingerstyle) {
+          const fs = this.currentGuitarRiff.fingerstyle[0];
+          events.push(...this.renderGuitarPattern(fs.pattern, fs.voicingName, tension));
+      } else if (this.currentGuitarRiff.strum) {
+          const st = this.currentGuitarRiff.strum[0];
+          events.push(...this.renderGuitarPattern(st.pattern, st.voicingName, tension));
+      }
+
+      return events;
+  }
+
+  private renderGuitarPattern(patternName: string, voicingName: string, tension: number): FractalEvent[] {
+      const voicing = BLUES_GUITAR_VOICINGS[voicingName] || BLUES_GUITAR_VOICINGS['E7_open'];
+      // Имитация Трэвис-пикинга или Страма через события аккомпанемента
+      return voicing.map((note, i) => ({
+          type: 'accompaniment',
+          note: note + 12,
+          time: i * 0.1,
+          duration: 1.0,
+          weight: 0.3 * (1 - tension * 0.5),
+          technique: 'pluck',
+          dynamics: 'p',
+          phrasing: 'detached'
+      }));
+  }
+
   private renderMelodicSegment(epoch: number, chord: GhostChord, tension: number): FractalEvent[] {
-    // В 12/8 системе 1 такт = 12 тиков. 4 такта = 48 тиков.
     const barInPhrase = epoch % 4;
     const barOffset = barInPhrase * 12;
     const barNotes = this.currentAxiom.filter(n => n.t >= barOffset && n.t < barOffset + 12);
@@ -188,12 +310,11 @@ export class BluesBrain {
         const nextNote = barNotes[i+1];
         let duration = n.d / 3;
         
-        // Legato glue
         if (nextNote && (nextNote.t - (n.t + n.d)) < 1) {
             duration += 0.15; 
         }
 
-        const phraseProgress = n.t / 48; // общий прогресс в 4-х тактах
+        const phraseProgress = n.t / 48;
         const exhaleModifier = 1.0 - (phraseProgress * 0.35);
 
         const isAccent = n.t % 6 === 0;
@@ -217,7 +338,7 @@ export class BluesBrain {
   }
 
   private evaluateTimbralDramaturgy(tension: number, hints: InstrumentHints, epoch: number) {
-    if (epoch % 4 !== 0 && epoch !== 0) return; // меняем только на границах фраз
+    if (epoch % 4 !== 0 && epoch !== 0) return;
 
     if (hints.melody) {
         if (tension <= 0.45) (hints as any).melody = 'blackAcoustic';

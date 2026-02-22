@@ -5,7 +5,8 @@ import type {
     FractalEvent,
     GhostChord,
     SuiteDNA as FractalSuiteDNA,
-    NavigationInfo as FractalNavigationInfo
+    NavigationInfo as FractalNavigationInfo,
+    Technique as FractalTechnique
 } from './fractal';
 import { V2_PRESETS } from '@/lib/presets-v2';
 import { BASS_PRESETS } from '@/lib/bass-presets';
@@ -13,8 +14,7 @@ import { BASS_PRESETS } from '@/lib/bass-presets';
 /**
  * #ЗАЧЕМ: Центральный хаб типов AuraGroove.
  * #ЧТО: Ре-экспортирует типы из fractal.ts и определяет UI-специфичные структуры.
- *       Добавлена поддержка межсессионной памяти ликов.
- * #ОБНОВЛЕНО (ПЛАН №461): Поддержка сессионной истории в DNA.
+ *       Добавлена поддержка сложных гитарных аранжировок (ПЛАН №568).
  */
 
 export type Mood = FractalMood;
@@ -115,7 +115,7 @@ export type InstrumentType = BassInstrument | MelodyInstrument | AccompanimentIn
 
 export type BassTechnique = 'arpeggio' | 'portamento' | 'glissando' | 'glide' | 'pulse' | 'riff' | 'long_notes' | 'walking' | 'boogie' | 'syncopated';    
 
-export type Technique = BassTechnique | 'pluck' | 'pick' | 'harm' | 'slide' | 'hit' | 'ghost' | 'swell' | 'fill' | 'bend' | 'vibrato';
+export type Technique = FractalTechnique | BassTechnique | 'pluck' | 'pick' | 'harm' | 'slide' | 'hit' | 'ghost' | 'swell' | 'fill' | 'bend' | 'vibrato' | 'sl' | 'h/p' | 'bn' | 'vb' | 'gr' | 'ds';
 export type AccompanimentTechnique = 'choral' | 'alternating-bass-chord' | 'chord-pulsation' | 'arpeggio-fast' | 'arpeggio-slow' | 'alberti-bass' | 'paired-notes' | 'long-chords' | 'power-chords' | 'rhythmic-comp';
 
 export type InstrumentSettings = {
@@ -358,3 +358,47 @@ export interface BluesCognitiveState {
   };
   vaccineActive?: { part: string, type: 'jitter' | 'inversion' | 'transposition' | 'rhythm' };
 }
+
+// --- Blues Specific Library Types ---
+
+export type BluesSoloPhrase = {
+  t: number;
+  d: number;
+  deg: string;
+  tech?: string;
+  octShift?: number;
+}[];
+
+export type BluesMelody = {
+    id: string;
+    moods: Mood[];
+    type: 'major' | 'minor';
+    tags: string[];
+    progression: string[];
+    phraseI?: BluesSoloPhrase;
+    phraseIV?: BluesSoloPhrase;
+    phraseV?: BluesSoloPhrase;
+    phraseTurnaround?: BluesSoloPhrase;
+    // For minor
+    phrasei?: BluesSoloPhrase;
+    phraseiv?: BluesSoloPhrase;
+};
+
+export type BluesGuitarRiff = {
+    id: string;
+    moods: Mood[];
+    type: 'major' | 'minor';
+    tags: string[];
+    bpm: number;
+    key: string;
+    solo: {
+        I: BluesSoloPhrase;
+        IV: BluesSoloPhrase;
+        V: BluesSoloPhrase;
+        Turnaround: BluesSoloPhrase;
+        i?: BluesSoloPhrase;
+        iv?: BluesSoloPhrase;
+    };
+    fingerstyle?: { probability: number; pattern: string; voicingName: string }[];
+    strum?: { probability: number; pattern: string; voicingName: string }[];
+};
