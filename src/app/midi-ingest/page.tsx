@@ -19,7 +19,7 @@ import { collection, getCountFromServer } from 'firebase/firestore';
 import { saveHeritageAxiom } from '@/lib/firebase-service';
 import { toast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
-import { exportMidiData, importAxiomData } from './actions';
+import { importAxiomData } from './actions';
 import { buildMultiInstrument } from '@/lib/instrument-factory';
 import { V2_PRESETS } from '@/lib/presets-v2';
 import { BASS_PRESET_INFO } from '@/lib/bass-presets';
@@ -54,7 +54,6 @@ export default function MidiIngestPage() {
 
     useEffect(() => {
         setIsClient(true);
-        // #ЗАЧЕМ: Микро-задержка для стабилизации Firebase Auth перед Census.
         const timer = setTimeout(() => {
             fetchGlobalCount();
         }, 1000);
@@ -68,7 +67,6 @@ export default function MidiIngestPage() {
             setGlobalCount(snapshot.data().count);
         } catch (e) {
             console.error("[Forge] Census failed:", e);
-            // Если ошибка прав сохраняется, выводим 0 вместо бесконечного ожидания
             if (globalCount === null) setGlobalCount(0);
         }
     };
@@ -132,7 +130,11 @@ export default function MidiIngestPage() {
         }
     };
 
-    const handleExport = async () => {
+    /**
+     * #ЗАЧЕМ: Прямая загрузка данных на диск пользователя.
+     * #ЧТО: ПЛАН №575 — Исключение вызова серверного экшена для предотвращения 400 Bad Request.
+     */
+    const handleExport = () => {
         if (!midiFile) return;
         setIsExporting(true);
         
@@ -153,11 +155,24 @@ export default function MidiIngestPage() {
             }))
         };
 
-        const result = await exportMidiData(exportData);
-        if (result.success) {
-            toast({ title: "Exported", description: "Data written to midi-export.json" });
+        try {
+            const blob = new Blob([JSON.stringify(exportData, null, 2)], { type: 'application/json' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = 'midi-export.json';
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+
+            toast({ title: "Exported", description: "File 'midi-export.json' downloaded to your local disk." });
+        } catch (e) {
+            console.error("[Forge] Browser export failed:", e);
+            toast({ variant: "destructive", title: "Export Failed", description: "Could not trigger download." });
+        } finally {
+            setIsExporting(false);
         }
-        setIsExporting(false);
     };
 
     const handleImport = async () => {
