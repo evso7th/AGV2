@@ -54,7 +54,11 @@ export default function MidiIngestPage() {
 
     useEffect(() => {
         setIsClient(true);
-        fetchGlobalCount();
+        // #ЗАЧЕМ: Микро-задержка для стабилизации Firebase Auth перед Census.
+        const timer = setTimeout(() => {
+            fetchGlobalCount();
+        }, 1000);
+        return () => clearTimeout(timer);
     }, []);
 
     const fetchGlobalCount = async () => {
@@ -64,6 +68,8 @@ export default function MidiIngestPage() {
             setGlobalCount(snapshot.data().count);
         } catch (e) {
             console.error("[Forge] Census failed:", e);
+            // Если ошибка прав сохраняется, выводим 0 вместо бесконечного ожидания
+            if (globalCount === null) setGlobalCount(0);
         }
     };
 
@@ -114,11 +120,10 @@ export default function MidiIngestPage() {
     const toggleTrackPlayback = async (trackIdx: number) => {
         const ctx = getAudioContext();
         await ctx.resume();
-        // Simple preview logic would go here
         toast({ title: "Preview", description: "Track preview logic coming soon." });
     };
 
-    const toggleSourcePlayback = async () => {
+    const toggleSourcePlaying = async () => {
         const ctx = getAudioContext();
         await ctx.resume();
         setIsSourcePlaying(!isSourcePlaying);
@@ -240,7 +245,7 @@ export default function MidiIngestPage() {
                         <Button 
                             variant="secondary" 
                             className="w-full h-10 gap-2" 
-                            onClick={toggleSourcePlayback}
+                            onClick={toggleSourcePlaying}
                             disabled={!midiFile}
                         >
                             {isSourcePlaying ? <StopCircle className="h-4 w-4" /> : <Play className="h-4 w-4" />}

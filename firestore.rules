@@ -14,16 +14,17 @@ service cloud.firestore {
       allow create, update: if isOwner(userId);
     }
 
-    match /masterpieces/{id} {
-      // #ЗАЧЕМ: Открытие достижений для всех.
-      allow read, list: if true;
+    match /masterpieces/{document=**} {
+      // #ЗАЧЕМ: Публичный доступ к коллекции "Шедевров".
+      // #ЧТО: Поддержка get, list и count (агрегации).
+      allow read: if true;
       allow create: if isSignedIn();
     }
 
-    match /heritage_axioms/{id} {
+    match /heritage_axioms/{document=**} {
       // #ЗАЧЕМ: Открытие наследия для всех поколений AuraGroove.
-      // #ЧТО: Публичный доступ на чтение исправляет ошибку permission-denied при подсчете аксиом.
-      allow read, list: if true;
+      // #ЧТО: Рекурсивный доступ исправляет ошибку permission-denied при RunAggregationQuery.
+      allow read: if true;
       allow create: if isSignedIn();
     }
   }
