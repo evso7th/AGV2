@@ -123,6 +123,11 @@ export default function MidiIngestPage() {
         if (!midiFile) return;
         setIsExporting(true);
         
+        // #ЗАЧЕМ: Формирование имени согласно спецификации пользователя.
+        // #ЧТО: <имя трека>-export-midi.json.txt
+        const baseName = fileName.replace(/\.[^/.]+$/, "");
+        const finalFileName = `${baseName}-export-midi.json.txt`;
+        
         const exportData = {
             fileName,
             genre,
@@ -130,6 +135,7 @@ export default function MidiIngestPage() {
             tracks: tracks.filter(t => t.selected).map(t => ({
                 name: t.name,
                 role: t.role,
+                preset: t.preset,
                 notes: t.notes.map((n: any) => ({
                     midi: n.midi,
                     time: n.time,
@@ -140,17 +146,17 @@ export default function MidiIngestPage() {
         };
 
         try {
-            const blob = new Blob([JSON.stringify(exportData, null, 2)], { type: 'application/json' });
+            const blob = new Blob([JSON.stringify(exportData, null, 2)], { type: 'text/plain' });
             const url = URL.createObjectURL(blob);
             const a = document.createElement('a');
             a.href = url;
-            a.download = 'midi-export.json';
+            a.download = finalFileName;
             document.body.appendChild(a);
             a.click();
             document.body.removeChild(a);
             URL.revokeObjectURL(url);
 
-            toast({ title: "Exported", description: "File 'midi-export.json' downloaded to your local disk." });
+            toast({ title: "Exported", description: `File '${finalFileName}' downloaded to your local disk.` });
         } catch (e) {
             console.error("[Forge] Browser export failed:", e);
             toast({ variant: "destructive", title: "Export Failed", description: "Could not trigger download." });
