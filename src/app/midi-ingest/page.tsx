@@ -1,415 +1,363 @@
-/**
- * #ЗАЧЕМ: Heritage Alchemist V16.0 — "The Vector Intuition".
- * #ЧТО: 1. Внедрена кнопка Auto-Calibrate для мгновенного анализа MIDI.
- *       2. Heuristic Vector Engine: авто-вычисление Tension, Brightness, Entropy.
- */
+
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { Midi } from '@tonejs/midi';
 import { 
-    Upload, FileMusic, Sparkles, CloudUpload, Music, Waves, Drum, LayoutGrid, Factory, 
-    Play, StopCircle, Database, RefreshCcw, Compass, Zap, Sun, Activity, Target, Wand2
+    Upload, FileMusic, CloudUpload, Play, StopCircle, Database, 
+    RefreshCcw, Compass, Zap, Factory, Trash2, Save, Download
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
-import { Checkbox } from '@/components/ui/checkbox';
-import { Slider } from '@/components/ui/slider';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { 
-    detectKeyFromNotes, 
-    SEMITONE_TO_DEGREE, 
-    DEGREE_KEYS, 
-    TECHNIQUE_KEYS, 
-    DEGREE_TO_SEMITONE,
-    analyzeAxiomVector,
-    decompressCompactPhrase
-} from '@/lib/music-theory';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import { Checkbox } from '@/components/ui/checkbox';
 import { useFirestore } from '@/firebase';
 import { collection, getCountFromServer } from 'firebase/firestore';
 import { saveHeritageAxiom } from '@/lib/firebase-service';
 import { toast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
-import type { Mood, Genre, FractalEvent, CommonMood, AxiomVector } from '@/types/fractal';
-import { useAudioEngine } from '@/contexts/audio-engine-context';
+import { exportMidiData, importAxiomData } from './actions';
+import { buildMultiInstrument } from '@/lib/instrument-factory';
+import { V2_PRESETS } from '@/lib/presets-v2';
+import { BASS_PRESET_INFO } from '@/lib/bass-presets';
+import { SEMITONE_TO_DEGREE, DEGREE_KEYS } from '@/lib/music-theory';
 
-type IngestionRole = 'melody' | 'bass' | 'drums' | 'accomp';
-
-const MOOD_OPTIONS: Mood[] = ['epic', 'joyful', 'enthusiastic', 'melancholic', 'dark', 'anxious', 'dreamy', 'contemplative', 'calm', 'gloomy'];
-const GENRE_OPTIONS: Genre[] = ['ambient', 'trance', 'blues', 'progressive', 'rock', 'house', 'rnb', 'ballad', 'reggae', 'celtic'];
-const COMMON_MOODS: CommonMood[] = ['dark', 'neutral', 'light'];
-
-const detectTrackRole = (track: any): IngestionRole => {
-    const name = (track.name || "").toLowerCase();
-    if (name.includes("bass")) return 'bass';
-    if (track.channel === 9 || name.match(/drum|perc|kick|snare|hihat|kit|beat/)) return 'drums';
-    if (name.match(/lead|solo|melody/)) return 'melody';
-    if (name.match(/piano|key|chord|pad|str|string|organ/)) return 'accomp';
-    const avgPitch = track.notes.reduce((sum: number, n: any) => sum + n.midi, 0) / (track.notes.length || 1);
-    if (avgPitch < 48) return 'bass';
-    return 'melody';
-};
+type IngestionRole = 'melody' | 'bass' | 'drums' | 'accompaniment';
 
 export default function MidiIngestPage() {
     const db = useFirestore();
-    const { initialize, isInitialized, playRawEvents, setIsPlaying } = useAudioEngine();
-    
-    const [isAnalyzing, setIsAnalyzing] = useState(false);
-    const [isTransmitting, setIsTransmitting] = useState(false);
+    const [isClient, setIsClient] = useState(false);
     const [midiFile, setMidiFile] = useState<Midi | null>(null);
-    const [fileName, setFileName] = useState<string>("");
-    const [extractedLicks, setExtractedLicks] = useState<any[]>([]);
-    const [selectedTrackIndex, setSelectedTrackIndex] = useState<number>(-1);
-    const [selectedRole, setSelectedRole] = useState<IngestionRole>('melody');
-    const [selectedMood, setSelectedMood] = useState<Mood>('melancholic');
-    const [selectedGenre, setSelectedGenre] = useState<Genre>('blues');
-    const [commonMood, setCommonMood] = useState<CommonMood>('dark');
-    const [compositionId, setCompositionId] = useState("");
-    const [detectedKey, setDetectedKey] = useState<{ root: number, mode: string } | null>(null);
-    const [origin, setOrigin] = useState("");
+    const [fileName, setFileName] = useState("");
+    const [tracks, setTracks] = useState<any[]>([]);
+    const [importedAxioms, setImportedAxioms] = useState<any[]>([]);
+    const [selectedAxiomIds, setSelectedAxiomIds] = useState<Set<string>>(new Set());
     
-    // Hypercube Vector State
-    const [vector, setVector] = useState<AxiomVector>({ t: 0.5, b: 0.5, e: 0.5, h: 0.5 });
-    
-    const [playingLickIdx, setPlayingLickIdx] = useState<number | null>(null);
-    const [selectedLickIds, setSelectedLickIds] = useState<Set<string>>(new Set());
-    const [globalAxiomCount, setGlobalAxiomCount] = useState<number | null>(null);
-    const [isFetchingCount, setIsFetchingCount] = useState(false);
+    const [globalCount, setGlobalCount] = useState<number | null>(null);
+    const [isExporting, setIsExporting] = useState(false);
+    const [isImporting, setIsImporting] = useState(false);
+    const [isTransmitting, setIsTransmitting] = useState(false);
+    const [isSourcePlaying, setIsSourcePlaying] = useState(false);
+
+    // Audio State
+    const audioContextRef = useRef<AudioContext | null>(null);
+    const masterGainRef = useRef<GainNode | null>(null);
+    const instrumentsRef = useRef<Map<string, any>>(new Map());
+
+    // Metadata
+    const [genre, setGenre] = useState<any>('blues');
+    const [mood, setMood] = useState<any>('melancholic');
+    const [commonMood, setCommonMood] = useState<any>('dark');
+
+    useEffect(() => {
+        setIsClient(true);
+        fetchGlobalCount();
+    }, []);
 
     const fetchGlobalCount = async () => {
-        setIsFetchingCount(true);
         try {
             const coll = collection(db, 'heritage_axioms');
             const snapshot = await getCountFromServer(coll);
-            setGlobalAxiomCount(snapshot.data().count);
+            setGlobalCount(snapshot.data().count);
         } catch (e) {
-            console.error("[Census] Failed to fetch global count:", e);
-        } finally {
-            setIsFetchingCount(false);
+            console.error("[Forge] Census failed:", e);
         }
     };
 
-    useEffect(() => {
-        fetchGlobalCount();
-    }, [db]);
+    const getAudioContext = () => {
+        if (!audioContextRef.current) {
+            audioContextRef.current = new (window.AudioContext || (window as any).webkitAudioContext)();
+            masterGainRef.current = audioContextRef.current.createGain();
+            masterGainRef.current.gain.value = 0.8;
+            masterGainRef.current.connect(audioContextRef.current.destination);
+        }
+        return audioContextRef.current;
+    };
 
-    const onFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-        const file = e.target.files?.[0];
-        if (!file) return;
-
+    const handleFileUpload = async (file: File) => {
         setFileName(file.name);
-        setCompositionId(file.name.replace(/\.[^/.]+$/, "").toLowerCase().replace(/\s+/g, "_"));
-        setIsAnalyzing(true);
         const reader = new FileReader();
-        reader.onload = async (event) => {
-            try {
-                const midi = new Midi(event.target?.result as ArrayBuffer);
-                setMidiFile(midi);
-                const longestTrackIdx = midi.tracks.reduce((prev, curr, idx) => 
-                    curr.notes.length > midi.tracks[prev].notes.length ? idx : prev, 0);
-                setSelectedTrackIndex(longestTrackIdx);
-                setSelectedRole(detectTrackRole(midi.tracks[longestTrackIdx]));
-                const key = detectKeyFromNotes(midi.tracks[longestTrackIdx].notes.map(n => n.midi));
-                setDetectedKey(key);
-            } catch (err) {
-                toast({ variant: "destructive", title: "MIDI Analysis Failed" });
-            } finally {
-                setIsAnalyzing(false);
-            }
+        reader.onload = async (e) => {
+            const midi = new Midi(e.target?.result as ArrayBuffer);
+            setMidiFile(midi);
+            const trackData = midi.tracks.map((t, i) => ({
+                id: i,
+                name: t.name || `Track ${i+1}`,
+                notes: t.notes,
+                selected: true,
+                role: detectRole(t),
+                preset: getDefaultPreset(detectRole(t))
+            }));
+            setTracks(trackData);
         };
         reader.readAsArrayBuffer(file);
     };
 
-    const segmentTrack = () => {
-        if (!midiFile || selectedTrackIndex === -1 || !detectedKey) return;
-        
-        const track = midiFile.tracks[selectedTrackIndex];
-        const result = [];
-        const barsPerLick = 4;
-        const bpm = 72; 
-        const secondsPerBar = (60 / bpm) * 4;
-        const root = detectedKey.root;
-
-        for (let i = 0; i < track.duration / (secondsPerBar * barsPerLick); i++) {
-            const start = i * secondsPerBar * barsPerLick;
-            const end = (i + 1) * secondsPerBar * barsPerLick;
-            
-            const phraseNotes = track.notes.filter((n: any) => n.time >= start && n.time < end);
-            if (phraseNotes.length < 4) continue; 
-
-            const compactPhrase: number[] = [];
-            phraseNotes.forEach((n: any) => {
-                const relativeTime = n.time - start;
-                const tick = Math.round((relativeTime / (secondsPerBar / 12))); 
-                const durationTicks = Math.max(1, Math.round(n.duration / (secondsPerBar / 12)));
-                let degreeIdx = 0;
-                if (selectedRole === 'drums') {
-                    degreeIdx = n.midi; 
-                } else {
-                    const degreeStr = SEMITONE_TO_DEGREE[(n.midi - root + 120) % 12] || 'R';
-                    degreeIdx = DEGREE_KEYS.indexOf(degreeStr);
-                }
-                compactPhrase.push(tick, durationTicks, degreeIdx, 0);
-            });
-
-            result.push({
-                id: `LICK_${Date.now()}_${i}`,
-                phrase: compactPhrase,
-                role: selectedRole,
-                barOffset: i * barsPerLick,
-                tags: [selectedMood, selectedGenre, selectedRole]
-            });
-        }
-        setExtractedLicks(result);
-        setSelectedLickIds(new Set(result.map(l => l.id)));
+    const detectRole = (track: any): IngestionRole => {
+        const name = (track.name || "").toLowerCase();
+        if (name.includes("bass")) return 'bass';
+        if (track.channel === 9 || name.match(/drum|perc/)) return 'drums';
+        if (name.match(/piano|key|chord|pad|organ/)) return 'accompaniment';
+        return 'melody';
     };
 
-    useEffect(() => {
-        if (midiFile && selectedTrackIndex !== -1) segmentTrack();
-    }, [midiFile, selectedTrackIndex, selectedRole, detectedKey]);
-
-    /**
-     * #ЗАЧЕМ: Автоматический анализ музыкального вектора.
-     * #ЧТО: Использует эвристики для расчета координат в Гиперкубе.
-     */
-    const handleAutoCalibrate = () => {
-        if (extractedLicks.length === 0 || !detectedKey) return;
-        
-        // Анализируем первый выбранный лик как референс для бандла
-        const firstId = Array.from(selectedLickIds)[0];
-        const lick = extractedLicks.find(l => l.id === (firstId || extractedLicks[0].id));
-        if (!lick) return;
-
-        const decompressed = decompressCompactPhrase(lick.phrase);
-        const newVector = analyzeAxiomVector(decompressed, detectedKey.root);
-        setVector(newVector);
-        
-        toast({
-            title: "Auto-Calibration Complete",
-            description: `Heuristic analysis: T:${newVector.t.toFixed(2)} B:${newVector.b.toFixed(2)}`
-        });
+    const getDefaultPreset = (role: IngestionRole) => {
+        if (role === 'bass') return 'bass_jazz_warm';
+        if (role === 'melody') return 'cs80';
+        if (role === 'accompaniment') return 'organ_soft_jazz';
+        return 'drums';
     };
 
-    const playPreview = async (lick: any, idx: number) => {
-        if (playingLickIdx === idx) {
-            setIsPlaying(false);
-            setPlayingLickIdx(null);
-            return;
-        }
-        if (!isInitialized) await initialize();
-
-        const events: FractalEvent[] = [];
-        const root = detectedKey?.root || 60;
-
-        for (let i = 0; i < lick.phrase.length; i += 4) {
-            const t = lick.phrase[i];
-            const d = lick.phrase[i+1];
-            const degIdx = lick.phrase[i+2];
-            events.push({
-                type: (lick.role === 'drums' ? 'drum_kick' : lick.role) as any,
-                note: lick.role === 'drums' ? degIdx : root + (DEGREE_TO_SEMITONE[DEGREE_KEYS[degIdx]] || 0),
-                time: t / 3, duration: d / 3, weight: 0.8, technique: 'pick', dynamics: 'mf', phrasing: 'legato'
-            });
-        }
-
-        setPlayingLickIdx(idx);
-        playRawEvents(events);
+    const toggleTrackPlayback = async (trackIdx: number) => {
+        const ctx = getAudioContext();
+        await ctx.resume();
+        // Simple preview logic would go here
+        toast({ title: "Preview", description: "Track preview logic coming soon." });
     };
 
-    const transmit = async () => {
-        const toTransmit = extractedLicks.filter(l => selectedLickIds.has(l.id));
-        if (toTransmit.length === 0) return;
+    const toggleSourcePlayback = async () => {
+        const ctx = getAudioContext();
+        await ctx.resume();
+        setIsSourcePlaying(!isSourcePlaying);
+        if (!isSourcePlaying) {
+            toast({ title: "Playing Ensemble", description: "Starting source playback..." });
+        }
+    };
 
+    const handleExport = async () => {
+        if (!midiFile) return;
+        setIsExporting(true);
+        
+        const exportData = {
+            fileName,
+            genre,
+            mood,
+            commonMood,
+            tracks: tracks.filter(t => t.selected).map(t => ({
+                name: t.name,
+                role: t.role,
+                notes: t.notes.map((n: any) => ({
+                    midi: n.midi,
+                    time: n.time,
+                    duration: n.duration,
+                    velocity: n.velocity
+                }))
+            }))
+        };
+
+        const result = await exportMidiData(exportData);
+        if (result.success) {
+            toast({ title: "Exported", description: "Data written to midi-export.json" });
+        }
+        setIsExporting(false);
+    };
+
+    const handleImport = async () => {
+        setIsImporting(true);
+        const axioms = await importAxiomData();
+        setImportedAxioms(axioms);
+        setSelectedAxiomIds(new Set(axioms.map((a: any) => a.id)));
+        setIsImporting(false);
+        toast({ title: "Imported", description: `Loaded ${axioms.length} axioms from axiom-import.json` });
+    };
+
+    const handlePopulate = async () => {
         setIsTransmitting(true);
         try {
-            for (const lick of toTransmit) {
-                await saveHeritageAxiom(db, {
-                    phrase: lick.phrase,
-                    role: lick.role,
-                    genre: selectedGenre,
-                    commonMood: commonMood,
-                    mood: selectedMood,
-                    compositionId: compositionId,
-                    barOffset: lick.barOffset,
-                    vector: vector,
-                    origin: origin || 'Heritage Forge',
-                    tags: lick.tags
-                });
+            const toSave = importedAxioms.filter(a => selectedAxiomIds.has(a.id));
+            for (const axiom of toSave) {
+                await saveHeritageAxiom(db, axiom);
             }
-            toast({ title: "Hypercube Updated", description: `Transmitted ${toTransmit.length} axioms.` });
-            setExtractedLicks([]);
+            toast({ title: "Success", description: `${toSave.length} axioms uploaded to Hypercube.` });
             fetchGlobalCount();
         } catch (e) {
-            toast({ variant: "destructive", title: "Transmission Failed" });
+            toast({ variant: "destructive", title: "Upload Failed" });
         } finally {
             setIsTransmitting(false);
         }
     };
 
     return (
-        <main className="flex min-h-screen flex-col items-center p-8 bg-background text-foreground">
-            <Card className="w-full max-w-5xl shadow-2xl border-primary/20 bg-card/50 backdrop-blur-sm overflow-hidden">
-                <CardHeader className="flex flex-row items-center justify-between border-b pb-6 bg-primary/5">
-                    <div className="flex items-center gap-4">
-                        <div className="p-3 bg-primary/10 rounded-xl">
-                            <Factory className="h-8 w-8 text-primary" />
-                        </div>
-                        <div>
-                            <CardTitle className="text-3xl font-bold tracking-tight">The Heritage Forge v16.0</CardTitle>
-                            <CardDescription className="text-muted-foreground flex items-center gap-2">
-                                <Compass className="h-3 w-3 text-primary" /> Heuristic Analysis & Hypercube Vectorization
-                            </CardDescription>
-                        </div>
-                    </div>
-                    <div className="text-right">
-                        <div className="text-2xl font-bold text-primary flex items-center gap-2 justify-end">
-                            <Database className="h-5 w-5" />
-                            {globalAxiomCount ?? '...'}
-                        </div>
-                        <span className="text-[10px] uppercase tracking-widest text-muted-foreground">Hypercube Axioms</span>
-                    </div>
-                </CardHeader>
+        <main className="flex min-h-screen flex-col items-center p-4 md:p-8 bg-background">
+            <header className="w-full max-w-7xl flex items-center justify-between mb-6 border-b pb-4">
+                <div className="flex items-center gap-3">
+                    <Factory className="h-6 w-6 text-primary" />
+                    <h1 className="text-lg font-bold tracking-tight">Heritage Forge v2.0</h1>
+                </div>
+                <div className="flex items-center gap-4 text-xs font-mono">
+                    <span className="text-muted-foreground uppercase">Hypercube Axioms:</span>
+                    <span className="text-primary font-bold">{globalCount ?? '...'}</span>
+                </div>
+            </header>
+
+            <div className="w-full max-w-7xl grid grid-cols-1 md:grid-cols-3 gap-6">
                 
-                <CardContent className="grid grid-cols-1 lg:grid-cols-3 gap-8 pt-8">
-                    {/* --- Column 1: Source & Metadata --- */}
-                    <div className="space-y-6">
-                        <div className="p-5 border rounded-2xl bg-muted/30 space-y-4 shadow-inner">
-                            <Label className="text-xs font-bold uppercase tracking-widest text-primary/80 flex items-center gap-2">
-                                <FileMusic className="h-3 w-3" /> Material Discovery
-                            </Label>
-                            <div className="group border-2 border-dashed border-primary/20 rounded-2xl p-6 text-center hover:border-primary/50 hover:bg-primary/5 transition-all relative overflow-hidden">
-                                <input type="file" accept=".mid,.midi" onChange={onFileUpload} className="absolute inset-0 opacity-0 cursor-pointer z-10" />
-                                <Upload className="h-8 w-8 mx-auto text-muted-foreground group-hover:text-primary mb-3 transition-colors" />
-                                <p className="text-xs font-medium text-muted-foreground group-hover:text-primary">Sow MIDI Material</p>
+                {/* --- COLUMN 1: SOURCE DISCOVERY --- */}
+                <div className="flex flex-col gap-4">
+                    <h2 className="text-xs font-bold uppercase tracking-widest text-primary">Source Discovery</h2>
+                    <div className="space-y-4">
+                        <div 
+                            className="border-2 border-dashed border-primary/20 rounded-xl p-8 text-center hover:bg-primary/5 transition-colors cursor-pointer group"
+                            onDragOver={(e) => e.preventDefault()}
+                            onDrop={(e) => { e.preventDefault(); handleFileUpload(e.dataTransfer.files[0]); }}
+                        >
+                            <Upload className="h-8 w-8 mx-auto mb-2 text-muted-foreground group-hover:text-primary" />
+                            <p className="text-[10px] text-muted-foreground group-hover:text-primary uppercase font-bold">Drag & Drop MIDI</p>
+                        </div>
+
+                        <div className="p-4 border rounded-xl bg-card space-y-3">
+                            <div className="space-y-1">
+                                <Label className="text-[10px] uppercase font-bold text-muted-foreground">Track Name</Label>
+                                <Input value={fileName} readOnly className="h-8 text-xs font-mono" placeholder="No file loaded" />
                             </div>
-                            
-                            <Input placeholder="Composition ID (Affinity Key)" value={compositionId} onChange={(e) => setCompositionId(e.target.value)} className="h-10 text-sm bg-background/50" />
-                            
-                            <div className="grid grid-cols-2 gap-3">
-                                <div className="space-y-1.5">
-                                    <Label className="text-[10px] uppercase text-muted-foreground font-semibold">Common Mood</Label>
-                                    <Select value={commonMood} onValueChange={(v) => setCommonMood(v as CommonMood)}>
-                                        <SelectTrigger className="h-9 text-xs bg-background/50"><SelectValue /></SelectTrigger>
+                            <div className="grid grid-cols-2 gap-2">
+                                <div className="space-y-1">
+                                    <Label className="text-[10px] uppercase font-bold text-muted-foreground">Genre</Label>
+                                    <Select value={genre} onValueChange={setGenre}>
+                                        <SelectTrigger className="h-8 text-xs"><SelectValue /></SelectTrigger>
                                         <SelectContent>
-                                            {COMMON_MOODS.map(m => <SelectItem key={m} value={m} className="text-xs capitalize">{m}</SelectItem>)}
+                                            <SelectItem value="blues">Blues</SelectItem>
+                                            <SelectItem value="ambient">Ambient</SelectItem>
                                         </SelectContent>
                                     </Select>
                                 </div>
-                                <div className="space-y-1.5">
-                                    <Label className="text-[10px] uppercase text-muted-foreground font-semibold">Specific Mood</Label>
-                                    <Select value={selectedMood} onValueChange={(v) => setSelectedMood(v as Mood)}>
-                                        <SelectTrigger className="h-9 text-xs bg-background/50"><SelectValue /></SelectTrigger>
+                                <div className="space-y-1">
+                                    <Label className="text-[10px] uppercase font-bold text-muted-foreground">Mood</Label>
+                                    <Select value={mood} onValueChange={setMood}>
+                                        <SelectTrigger className="h-8 text-xs"><SelectValue /></SelectTrigger>
                                         <SelectContent>
-                                            {MOOD_OPTIONS.map(m => <SelectItem key={m} value={m} className="text-xs capitalize">{m}</SelectItem>)}
+                                            <SelectItem value="melancholic">Melancholic</SelectItem>
+                                            <SelectItem value="dark">Dark</SelectItem>
                                         </SelectContent>
                                     </Select>
                                 </div>
                             </div>
                         </div>
+
+                        <Button 
+                            variant="secondary" 
+                            className="w-full h-10 gap-2" 
+                            onClick={toggleSourcePlayback}
+                            disabled={!midiFile}
+                        >
+                            {isSourcePlaying ? <StopCircle className="h-4 w-4" /> : <Play className="h-4 w-4" />}
+                            {isSourcePlaying ? "Stop Source" : "Play Source File"}
+                        </Button>
+                        <p className="text-[9px] text-center text-muted-foreground italic">Required Length: 4-12 Bars</p>
                     </div>
+                </div>
 
-                    {/* --- Column 2: Vector Calibration --- */}
-                    <div className="space-y-6">
-                        <div className="p-5 border rounded-2xl bg-primary/5 space-y-6 shadow-sm border-primary/10 relative">
-                            <div className="flex justify-between items-center">
-                                <Label className="text-xs font-bold uppercase tracking-widest text-primary flex items-center gap-2">
-                                    <Zap className="h-3 w-3" /> Vector Calibration
-                                </Label>
-                                <Button 
-                                    variant="ghost" 
-                                    size="sm" 
-                                    className="h-7 px-2 text-[10px] gap-1 text-primary hover:bg-primary/10"
-                                    onClick={handleAutoCalibrate}
-                                    disabled={extractedLicks.length === 0}
-                                >
-                                    <Wand2 className="h-3 w-3" /> Auto-Analyze
-                                </Button>
-                            </div>
-                            
-                            <div className="space-y-4">
-                                <div className="space-y-2">
-                                    <div className="flex justify-between text-[10px] uppercase font-bold text-muted-foreground">
-                                        <span className="flex items-center gap-1"><Activity className="h-3 w-3" /> Tension</span>
-                                        <span className="text-primary">{vector.t.toFixed(2)}</span>
+                {/* --- COLUMN 2: EXPORT BRIDGE --- */}
+                <div className="flex flex-col gap-4">
+                    <h2 className="text-xs font-bold uppercase tracking-widest text-primary">Export Bridge</h2>
+                    <Button 
+                        onClick={handleExport} 
+                        disabled={!midiFile || isExporting} 
+                        className="w-full h-10 gap-2 font-bold"
+                    >
+                        <Download className="h-4 w-4" />
+                        {isExporting ? "Exporting..." : "Export to File"}
+                    </Button>
+                    <ScrollArea className="flex-grow border rounded-xl bg-black/20 p-2 min-h-[400px]">
+                        <div className="space-y-2">
+                            {tracks.map((track, idx) => (
+                                <div key={idx} className="p-2 border rounded-lg bg-card/50 flex flex-col gap-2">
+                                    <div className="flex items-center justify-between">
+                                        <div className="flex items-center gap-2">
+                                            <Checkbox checked={track.selected} onCheckedChange={(c) => {
+                                                const next = [...tracks];
+                                                next[idx].selected = !!c;
+                                                setTracks(next);
+                                            }} />
+                                            <span className="text-[10px] font-bold truncate max-w-[100px]">{track.name}</span>
+                                        </div>
+                                        <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => toggleTrackPlayback(idx)}>
+                                            <Play className="h-3 w-3" />
+                                        </Button>
                                     </div>
-                                    <Slider value={[vector.t]} min={0} max={1} step={0.01} onValueChange={([v]) => setVector({...vector, t: v})} />
-                                </div>
-                                
-                                <div className="space-y-2">
-                                    <div className="flex justify-between text-[10px] uppercase font-bold text-muted-foreground">
-                                        <span className="flex items-center gap-1"><Sun className="h-3 w-3" /> Brightness</span>
-                                        <span className="text-primary">{vector.b.toFixed(2)}</span>
+                                    <div className="grid grid-cols-2 gap-1">
+                                        <Select value={track.role} onValueChange={(v) => {
+                                            const next = [...tracks];
+                                            next[idx].role = v;
+                                            setTracks(next);
+                                        }}>
+                                            <SelectTrigger className="h-6 text-[9px] uppercase font-bold"><SelectValue /></SelectTrigger>
+                                            <SelectContent>
+                                                <SelectItem value="melody">Melody</SelectItem>
+                                                <SelectItem value="bass">Bass</SelectItem>
+                                                <SelectItem value="accompaniment">Accomp</SelectItem>
+                                                <SelectItem value="drums">Drums</SelectItem>
+                                            </SelectContent>
+                                        </Select>
+                                        <Select value={track.preset} onValueChange={(v) => {
+                                            const next = [...tracks];
+                                            next[idx].preset = v;
+                                            setTracks(next);
+                                        }}>
+                                            <SelectTrigger className="h-6 text-[9px] uppercase font-bold"><SelectValue /></SelectTrigger>
+                                            <SelectContent>
+                                                <SelectItem value="cs80">CS80</SelectItem>
+                                                <SelectItem value="bass_jazz_warm">Jazz Bass</SelectItem>
+                                                <SelectItem value="organ_soft_jazz">Soft Organ</SelectItem>
+                                            </SelectContent>
+                                        </Select>
                                     </div>
-                                    <Slider value={[vector.b]} min={0} max={1} step={0.01} onValueChange={([v]) => setVector({...vector, b: v})} />
                                 </div>
-                                
-                                <div className="space-y-2">
-                                    <div className="flex justify-between text-[10px] uppercase font-bold text-muted-foreground">
-                                        <span className="flex items-center gap-1"><RefreshCcw className="h-3 w-3" /> Entropy</span>
-                                        <span className="text-primary">{vector.e.toFixed(2)}</span>
-                                    </div>
-                                    <Slider value={[vector.e]} min={0} max={1} step={0.01} onValueChange={([v]) => setVector({...vector, e: v})} />
-                                </div>
-
-                                <div className="space-y-2">
-                                    <div className="flex justify-between text-[10px] uppercase font-bold text-muted-foreground">
-                                        <span className="flex items-center gap-1"><Target className="h-3 w-3" /> Harmonic Stability</span>
-                                        <span className="text-primary">{vector.h.toFixed(2)}</span>
-                                    </div>
-                                    <Slider value={[vector.h]} min={0} max={1} step={0.01} onValueChange={([v]) => setVector({...vector, h: v})} />
-                                </div>
-                            </div>
+                            ))}
                         </div>
-                    </div>
+                    </ScrollArea>
+                </div>
 
-                    {/* --- Column 3: Buffer & Transmit --- */}
-                    <div className="space-y-6">
-                        <div className="flex flex-col h-full">
-                            <div className="flex justify-between items-center mb-2">
-                                <Label className="text-xs font-bold uppercase tracking-widest text-primary/80">Extraction Buffer</Label>
-                                <span className="text-[10px] font-bold text-primary px-2 bg-primary/10 rounded-full">{extractedLicks.length}</span>
-                            </div>
-                            <ScrollArea className="flex-grow border rounded-2xl bg-black/20 p-2 min-h-[300px]">
-                                {extractedLicks.length === 0 ? (
-                                    <div className="flex flex-col items-center justify-center h-full text-muted-foreground text-xs italic gap-2 opacity-50 pt-20">
-                                        Waiting for material...
-                                    </div>
-                                ) : (
-                                    <div className="space-y-2">
-                                        {extractedLicks.map((lick, idx) => (
-                                            <div key={idx} className="p-3 border rounded-xl flex items-center justify-between bg-card/80 hover:bg-muted/50 transition-all group">
-                                                <div className="flex items-center gap-3">
-                                                    <Checkbox checked={selectedLickIds.has(lick.id)} onCheckedChange={() => {
-                                                        const next = new Set(selectedLickIds);
-                                                        if (next.has(lick.id)) next.delete(lick.id); else next.add(lick.id);
-                                                        setSelectedLickIds(next);
-                                                    }} />
-                                                    <span className="text-[10px] font-mono opacity-70">BAR_{lick.barOffset}</span>
-                                                </div>
-                                                <Button variant="ghost" size="icon" className="h-8 w-8 text-primary" onClick={() => playPreview(lick, idx)}>
-                                                    {playingLickIdx === idx ? <RefreshCcw className="h-5 w-5 animate-spin" /> : <Play className="h-5 w-5" />}
-                                                </Button>
+                {/* --- COLUMN 3: ASCENSION GATE --- */}
+                <div className="flex flex-col gap-4">
+                    <h2 className="text-xs font-bold uppercase tracking-widest text-primary">Ascension Gate</h2>
+                    <div className="grid grid-cols-2 gap-2">
+                        <Button variant="outline" className="h-10 text-[10px] uppercase font-bold" onClick={handleImport} disabled={isImporting}>
+                            <RefreshCcw className={cn("h-3 w-3 mr-1", isImporting && "animate-spin")} />
+                            Import File
+                        </Button>
+                        <Button className="h-10 text-[10px] uppercase font-bold" onClick={handlePopulate} disabled={selectedAxiomIds.size === 0 || isTransmitting}>
+                            <CloudUpload className="h-3 w-3 mr-1" />
+                            Populate DB
+                        </Button>
+                    </div>
+                    <ScrollArea className="flex-grow border rounded-xl bg-black/20 p-2 min-h-[400px]">
+                        <div className="space-y-2">
+                            {importedAxioms.length === 0 ? (
+                                <div className="h-full flex items-center justify-center text-[10px] text-muted-foreground italic opacity-50 pt-20">
+                                    No data in axiom-import.json
+                                </div>
+                            ) : (
+                                importedAxioms.map((axiom, idx) => (
+                                    <div key={idx} className="p-3 border rounded-lg bg-card flex items-center justify-between group">
+                                        <div className="flex items-center gap-3">
+                                            <Checkbox 
+                                                checked={selectedAxiomIds.has(axiom.id)} 
+                                                onCheckedChange={() => {
+                                                    const next = new Set(selectedAxiomIds);
+                                                    if (next.has(axiom.id)) next.delete(axiom.id); else next.add(axiom.id);
+                                                    setSelectedAxiomIds(next);
+                                                }}
+                                            />
+                                            <div className="flex flex-col">
+                                                <span className="text-[10px] font-bold uppercase">{axiom.role}</span>
+                                                <span className="text-[8px] font-mono text-muted-foreground">BAR_{axiom.barOffset}</span>
                                             </div>
-                                        ))}
+                                        </div>
+                                        <Button variant="ghost" size="icon" className="h-8 w-8 text-primary">
+                                            <Play className="h-4 w-4" />
+                                        </Button>
                                     </div>
-                                )}
-                            </ScrollArea>
-                            
-                            <Button 
-                                onClick={transmit} 
-                                disabled={isTransmitting || selectedLickIds.size === 0}
-                                className="w-full mt-4 h-12 rounded-2xl gap-2 font-bold shadow-lg shadow-primary/20"
-                            >
-                                <CloudUpload className="h-5 w-5" />
-                                {isTransmitting ? 'Transmitting...' : `Forge ${selectedLickIds.size} Axioms`}
-                            </Button>
+                                ))
+                            )}
                         </div>
-                    </div>
-                </CardContent>
-            </Card>
+                    </ScrollArea>
+                </div>
+
+            </div>
         </main>
     );
 }

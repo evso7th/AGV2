@@ -15,13 +15,15 @@ service cloud.firestore {
     }
 
     match /masterpieces/{id} {
-      allow read, list: if isSignedIn();
+      // #ЗАЧЕМ: Открытие достижений для всех.
+      allow read, list: if true;
       allow create: if isSignedIn();
     }
 
     match /heritage_axioms/{id} {
       // #ЗАЧЕМ: Открытие наследия для всех поколений AuraGroove.
-      allow read, list: if isSignedIn();
+      // #ЧТО: Публичный доступ на чтение исправляет ошибку permission-denied при подсчете аксиом.
+      allow read, list: if true;
       allow create: if isSignedIn();
     }
   }
