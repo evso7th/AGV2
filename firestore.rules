@@ -23,9 +23,9 @@ service cloud.firestore {
 
     match /heritage_axioms/{document=**} {
       // #ЗАЧЕМ: Открытие наследия для всех поколений AuraGroove.
-      // #ЧТО: Рекурсивный доступ исправляет ошибку permission-denied при RunAggregationQuery.
+      // #ЧТО: write включает create, update и delete.
       allow read: if true;
-      allow create: if isSignedIn();
+      allow write: if isSignedIn();
     }
   }
 }

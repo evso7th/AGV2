@@ -5,7 +5,7 @@ import { useState, useEffect, useRef } from 'react';
 import { Midi } from '@tonejs/midi';
 import { 
     Upload, FileMusic, CloudUpload, Play, StopCircle, Database, 
-    RefreshCcw, Compass, Zap, Factory, Trash2, Save, Download
+    RefreshCcw, Compass, Zap, Factory, Trash2, Save, Download, AlertTriangle
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -15,7 +15,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Checkbox } from '@/components/ui/checkbox';
 import { useFirestore } from '@/firebase';
-import { collection, getCountFromServer } from 'firebase/firestore';
+import { collection, getCountFromServer, getDocs, deleteDoc, doc } from 'firebase/firestore';
 import { saveHeritageAxiom } from '@/lib/firebase-service';
 import { toast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
@@ -23,7 +23,6 @@ import { importAxiomData } from './actions';
 import { buildMultiInstrument } from '@/lib/instrument-factory';
 import { V2_PRESETS } from '@/lib/presets-v2';
 import { BASS_PRESET_INFO } from '@/lib/bass-presets';
-import { SEMITONE_TO_DEGREE, DEGREE_KEYS } from '@/lib/music-theory';
 
 type IngestionRole = 'melody' | 'bass' | 'drums' | 'accompaniment';
 
@@ -40,6 +39,7 @@ export default function MidiIngestPage() {
     const [isExporting, setIsExporting] = useState(false);
     const [isImporting, setIsImporting] = useState(false);
     const [isTransmitting, setIsTransmitting] = useState(false);
+    const [isClearing, setIsClearing] = useState(false);
     const [isSourcePlaying, setIsSourcePlaying] = useState(false);
 
     // Audio State
@@ -50,7 +50,6 @@ export default function MidiIngestPage() {
     // Metadata
     const [genre, setGenre] = useState<any>('blues');
     const [mood, setMood] = useState<any>('melancholic');
-    const [commonMood, setCommonMood] = useState<any>('dark');
 
     useEffect(() => {
         setIsClient(true);
@@ -82,20 +81,25 @@ export default function MidiIngestPage() {
     };
 
     const handleFileUpload = async (file: File) => {
+        if (!file) return;
         setFileName(file.name);
         const reader = new FileReader();
         reader.onload = async (e) => {
-            const midi = new Midi(e.target?.result as ArrayBuffer);
-            setMidiFile(midi);
-            const trackData = midi.tracks.map((t, i) => ({
-                id: i,
-                name: t.name || `Track ${i+1}`,
-                notes: t.notes,
-                selected: true,
-                role: detectRole(t),
-                preset: getDefaultPreset(detectRole(t))
-            }));
-            setTracks(trackData);
+            try {
+                const midi = new Midi(e.target?.result as ArrayBuffer);
+                setMidiFile(midi);
+                const trackData = midi.tracks.map((t, i) => ({
+                    id: i,
+                    name: t.name || `Track ${i+1}`,
+                    notes: t.notes,
+                    selected: true,
+                    role: detectRole(t),
+                    preset: getDefaultPreset(detectRole(t))
+                }));
+                setTracks(trackData);
+            } catch (err) {
+                toast({ variant: "destructive", title: "MIDI Error", description: "Invalid MIDI file format." });
+            }
         };
         reader.readAsArrayBuffer(file);
     };
@@ -115,25 +119,6 @@ export default function MidiIngestPage() {
         return 'drums';
     };
 
-    const toggleTrackPlayback = async (trackIdx: number) => {
-        const ctx = getAudioContext();
-        await ctx.resume();
-        toast({ title: "Preview", description: "Track preview logic coming soon." });
-    };
-
-    const toggleSourcePlaying = async () => {
-        const ctx = getAudioContext();
-        await ctx.resume();
-        setIsSourcePlaying(!isSourcePlaying);
-        if (!isSourcePlaying) {
-            toast({ title: "Playing Ensemble", description: "Starting source playback..." });
-        }
-    };
-
-    /**
-     * #ЗАЧЕМ: Прямая загрузка данных на диск пользователя.
-     * #ЧТО: ПЛАН №575 — Исключение вызова серверного экшена для предотвращения 400 Bad Request.
-     */
     const handleExport = () => {
         if (!midiFile) return;
         setIsExporting(true);
@@ -142,7 +127,6 @@ export default function MidiIngestPage() {
             fileName,
             genre,
             mood,
-            commonMood,
             tracks: tracks.filter(t => t.selected).map(t => ({
                 name: t.name,
                 role: t.role,
@@ -177,11 +161,16 @@ export default function MidiIngestPage() {
 
     const handleImport = async () => {
         setIsImporting(true);
-        const axioms = await importAxiomData();
-        setImportedAxioms(axioms);
-        setSelectedAxiomIds(new Set(axioms.map((a: any) => a.id)));
-        setIsImporting(false);
-        toast({ title: "Imported", description: `Loaded ${axioms.length} axioms from axiom-import.json` });
+        try {
+            const axioms = await importAxiomData();
+            setImportedAxioms(axioms);
+            setSelectedAxiomIds(new Set(axioms.map((a: any) => a.id)));
+            toast({ title: "Imported", description: `Loaded ${axioms.length} axioms from axiom-import.json` });
+        } catch (e) {
+            toast({ variant: "destructive", title: "Import Failed" });
+        } finally {
+            setIsImporting(false);
+        }
     };
 
     const handlePopulate = async () => {
@@ -197,6 +186,36 @@ export default function MidiIngestPage() {
             toast({ variant: "destructive", title: "Upload Failed" });
         } finally {
             setIsTransmitting(false);
+        }
+    };
+
+    const handleClearDatabase = async () => {
+        if (!window.confirm("CRITICAL ACTION: This will permanently delete ALL axioms from the Hypercube. Continue?")) return;
+        
+        setIsClearing(true);
+        try {
+            const coll = collection(db, 'heritage_axioms');
+            const snapshot = await getDocs(coll);
+            
+            const deletePromises = snapshot.docs.map(docSnap => deleteDoc(doc(db, 'heritage_axioms', docSnap.id)));
+            await Promise.all(deletePromises);
+            
+            toast({ title: "Hypercube Purged", description: `Successfully deleted ${snapshot.size} axioms.` });
+            fetchGlobalCount();
+        } catch (e) {
+            console.error("[Forge] Purge failed:", e);
+            toast({ variant: "destructive", title: "Purge Failed", description: "Access denied or connection lost." });
+        } finally {
+            setIsClearing(false);
+        }
+    };
+
+    const toggleSourcePlaying = async () => {
+        const ctx = getAudioContext();
+        await ctx.resume();
+        setIsSourcePlaying(!isSourcePlaying);
+        if (!isSourcePlaying) {
+            toast({ title: "Playing Ensemble", description: "Preview logic starting..." });
         }
     };
 
@@ -266,7 +285,10 @@ export default function MidiIngestPage() {
                             {isSourcePlaying ? <StopCircle className="h-4 w-4" /> : <Play className="h-4 w-4" />}
                             {isSourcePlaying ? "Stop Source" : "Play Source File"}
                         </Button>
-                        <p className="text-[9px] text-center text-muted-foreground italic">Required Length: 4-12 Bars</p>
+                        <div className="flex items-center justify-center gap-2 text-[9px] text-muted-foreground uppercase font-bold">
+                            <AlertTriangle className="h-3 w-3 text-amber-500" />
+                            Target Length: 4-12 Bars
+                        </div>
                     </div>
                 </div>
 
@@ -294,9 +316,6 @@ export default function MidiIngestPage() {
                                             }} />
                                             <span className="text-[10px] font-bold truncate max-w-[100px]">{track.name}</span>
                                         </div>
-                                        <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => toggleTrackPlayback(idx)}>
-                                            <Play className="h-3 w-3" />
-                                        </Button>
                                     </div>
                                     <div className="grid grid-cols-2 gap-1">
                                         <Select value={track.role} onValueChange={(v) => {
@@ -334,14 +353,25 @@ export default function MidiIngestPage() {
                 {/* --- COLUMN 3: ASCENSION GATE --- */}
                 <div className="flex flex-col gap-4">
                     <h2 className="text-xs font-bold uppercase tracking-widest text-primary">Ascension Gate</h2>
-                    <div className="grid grid-cols-2 gap-2">
-                        <Button variant="outline" className="h-10 text-[10px] uppercase font-bold" onClick={handleImport} disabled={isImporting}>
-                            <RefreshCcw className={cn("h-3 w-3 mr-1", isImporting && "animate-spin")} />
-                            Import File
-                        </Button>
-                        <Button className="h-10 text-[10px] uppercase font-bold" onClick={handlePopulate} disabled={selectedAxiomIds.size === 0 || isTransmitting}>
-                            <CloudUpload className="h-3 w-3 mr-1" />
-                            Populate DB
+                    <div className="space-y-2">
+                        <div className="grid grid-cols-2 gap-2">
+                            <Button variant="outline" className="h-10 text-[10px] uppercase font-bold" onClick={handleImport} disabled={isImporting}>
+                                <RefreshCcw className={cn("h-3 w-3 mr-1", isImporting && "animate-spin")} />
+                                Import File
+                            </Button>
+                            <Button className="h-10 text-[10px] uppercase font-bold" onClick={handlePopulate} disabled={selectedAxiomIds.size === 0 || isTransmitting}>
+                                <CloudUpload className="h-3 w-3 mr-1" />
+                                {isTransmitting ? "Sending..." : "Populate DB"}
+                            </Button>
+                        </div>
+                        <Button 
+                            variant="destructive" 
+                            className="w-full h-8 gap-2 text-[9px] uppercase font-bold opacity-70 hover:opacity-100 transition-opacity" 
+                            onClick={handleClearDatabase}
+                            disabled={isClearing}
+                        >
+                            <Trash2 className={cn("h-3 w-3", isClearing && "animate-pulse")} />
+                            {isClearing ? "Purging..." : "Wipe Hypercube"}
                         </Button>
                     </div>
                     <ScrollArea className="flex-grow border rounded-xl bg-black/20 p-2 min-h-[400px]">
