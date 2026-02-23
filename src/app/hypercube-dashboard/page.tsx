@@ -17,13 +17,16 @@ import {
   X,
   History,
   RotateCcw,
-  FileJson
+  FileJson,
+  Tag
 } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Checkbox } from '@/components/ui/checkbox';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Label } from "@/components/ui/label";
 import { useFirestore } from '@/firebase';
 import { collection, getDocs, writeBatch } from 'firebase/firestore';
 import { useAudioEngine } from '@/contexts/audio-engine-context';
@@ -32,14 +35,19 @@ import { decompressCompactPhrase, DEGREE_TO_SEMITONE } from '@/lib/music-theory'
 import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
 import type { FractalEvent, InstrumentHints } from '@/types/fractal';
+import type { Genre } from '@/types/music';
 
 const PROCESSED_FILES_KEY = 'AuraGroove_ImportedFiles';
 
+// #ЗАЧЕМ: Единый список жанров, доступных в системе.
+const AVAILABLE_GENRES: Genre[] = [
+  'ambient', 'blues', 'trance', 'progressive', 'rock', 'house', 'rnb', 'ballad', 'reggae', 'celtic'
+];
+
 /**
- * #ЗАЧЕМ: Дашборд Аудитора ДНК v3.0.
- * #ЧТО: 1. Отображает ТОЛЬКО содержимое загруженного локального JSON.
- *       2. Содержимое живой базы скрыто для чистоты сессии.
- *       3. Позволяет прослушивать и выборочно инжектировать Наследие.
+ * #ЗАЧЕМ: Дашборд Аудитора ДНК v3.5.
+ * #ЧТО: 1. Добавлен ручной выбор жанра для инъекции.
+ *       2. Список жанров синхронизирован с UI.
  */
 export default function HypercubeDashboard() {
   const db = useFirestore();
@@ -52,6 +60,7 @@ export default function HypercubeDashboard() {
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [processedFiles, setProcessedFiles] = useState<string[]>([]);
   const [currentFileName, setCurrentFileName] = useState<string>('');
+  const [selectedGenre, setSelectedGenre] = useState<Genre>('blues');
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   // Load history from localStorage
@@ -70,7 +79,9 @@ export default function HypercubeDashboard() {
   const stats = useMemo(() => {
     return stagedAxioms.reduce((acc, ax) => {
       acc.total++;
-      acc.genres[ax.genre || 'blues'] = (acc.genres[ax.genre || 'blues'] || 0) + 1;
+      // Use selected genre if set, otherwise fallback to axiom's genre or 'blues'
+      const g = selectedGenre || ax.genre || 'blues';
+      acc.genres[g] = (acc.genres[g] || 0) + 1;
       acc.moods[ax.mood] = (acc.moods[ax.mood] || 0) + 1;
       acc.commonMoods[ax.commonMood] = (acc.commonMoods[ax.commonMood] || 0) + 1;
       acc.compositionIds.add(ax.compositionId);
@@ -82,7 +93,7 @@ export default function HypercubeDashboard() {
         commonMoods: {} as Record<string, number>, 
         compositionIds: new Set<string>() 
     });
-  }, [stagedAxioms]);
+  }, [stagedAxioms, selectedGenre]);
 
   const resetStaging = () => {
     setStagedAxioms([]);
@@ -150,7 +161,7 @@ export default function HypercubeDashboard() {
       for (const ax of toInject) {
         await saveHeritageAxiom(db, {
           ...ax,
-          genre: ax.genre || 'blues',
+          genre: selectedGenre, // #ЗАЧЕМ: Принудительное назначение выбранного жанра.
           barOffset: 0,
           origin: `Manual_Forge_Injection_${currentFileName}`,
           timestamp: new Date().toISOString() as any
@@ -165,7 +176,7 @@ export default function HypercubeDashboard() {
 
       toast({ 
         title: "DNA Injected", 
-        description: `Successfully committed ${addedCount} axioms to the live Hypercube.` 
+        description: `Successfully committed ${addedCount} axioms to the live Hypercube as "${selectedGenre}".` 
       });
       
       resetStaging();
@@ -268,6 +279,22 @@ export default function HypercubeDashboard() {
           <Button onClick={() => fileInputRef.current?.click()} disabled={isProcessing} className="bg-primary hover:bg-primary/90 text-primary-foreground font-bold px-8 h-12 shadow-lg transition-transform active:scale-95">
             <Upload className="mr-2 h-5 w-5" /> Load DNA File from Disk
           </Button>
+
+          {/* #ЗАЧЕМ: Ручной выбор жанра для загружаемого пакета. */}
+          <div className="flex items-center gap-3 pl-4 border-l">
+            <Label htmlFor="genre-inject" className="text-xs uppercase font-bold text-muted-foreground">Target Genre:</Label>
+            <Select value={selectedGenre} onValueChange={(v) => setSelectedGenre(v as Genre)}>
+              <SelectTrigger id="genre-inject" className="w-[160px] h-10 font-mono">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {AVAILABLE_GENRES.map(g => (
+                  <SelectItem key={g} value={g} className="capitalize">{g}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+
           <div className="h-10 w-px bg-border mx-2" />
           <div className="flex flex-col">
              <span className="text-[10px] uppercase text-muted-foreground tracking-widest font-bold">Session History</span>
@@ -295,7 +322,7 @@ export default function HypercubeDashboard() {
             </Card>
             
             <Card className="bg-card border-primary/20 shadow-md">
-              <CardHeader className="pb-2"><CardTitle className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Genre Composition</CardTitle></CardHeader>
+              <CardHeader className="pb-2"><CardTitle className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Target Genres</CardTitle></CardHeader>
               <CardContent className="flex flex-wrap gap-1.5">
                 {Object.entries(stats.genres).map(([g, count]) => (
                   <Badge key={g} variant="secondary" className="text-[10px] uppercase font-mono bg-primary/10 text-primary border-primary/20">{g}: {count}</Badge>
@@ -322,7 +349,7 @@ export default function HypercubeDashboard() {
             <CardHeader className="bg-primary/5 border-b flex flex-row items-center justify-between py-4">
               <div>
                 <CardTitle className="text-xl font-bold flex items-center gap-2"><Wind className="h-6 w-6 text-primary"/> DNA Buffer: {currentFileName}</CardTitle>
-                <CardDescription>Auditing local forge data before cloud injection</CardDescription>
+                <CardDescription>Auditing local forge data before cloud injection into "{selectedGenre}"</CardDescription>
               </div>
               <div className="flex gap-3">
                 <Button variant="ghost" size="sm" onClick={resetStaging} className="text-muted-foreground hover:text-foreground">
