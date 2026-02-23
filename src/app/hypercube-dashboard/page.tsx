@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState, useMemo } from 'react';
@@ -197,7 +196,7 @@ export default function HypercubeDashboard() {
             </h1>
             <p className="text-muted-foreground">Legacy Management & Axiom Navigation Protocol v2.1</p>
           </div>
-          <Button variant="ghost" onClick={() => router.push('/')} className="gap-2">
+          <Button variant="ghost" onClick={() => router.push('/aura-groove')} className="gap-2">
             <ArrowLeft className="h-4 w-4" /> Back to AgV2
           </Button>
         </div>

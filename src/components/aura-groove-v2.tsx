@@ -1,8 +1,7 @@
-
 'use client';
 
 import { useState, useEffect } from "react";
-import { Music, Pause, Speaker, FileMusic, Drum, Atom, Piano, Home, Sparkles, Sprout, Timer, RefreshCw, Bot, Waves, Radio, ThumbsUp, TowerControl, SlidersHorizontal } from "lucide-react";
+import { Music, Pause, Speaker, FileMusic, Drum, Atom, Piano, Home, Sparkles, Sprout, Timer, RefreshCw, Bot, Waves, Radio, ThumbsUp, TowerControl, SlidersHorizontal, Database } from "lucide-react";
 import Image from "next/image";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -104,6 +103,7 @@ export function AuraGrooveV2({
             <h1 className="text-lg font-bold text-primary">AuraGroove</h1>
           </div>
           <div className="flex items-center gap-1">
+            <Button variant="ghost" size="icon" onClick={() => router.push('/hypercube-dashboard')} aria-label="Open Dashboard"><Database className="h-5 w-5" /></Button>
             <Button variant="ghost" size="icon" onClick={handleGoHome} aria-label="Go to Home"><Home className="h-5 w-5" /></Button>
             {isClient && (
               <Dialog open={isEqModalOpen} onOpenChange={setIsEqModalOpen}>
