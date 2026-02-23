@@ -58,7 +58,7 @@ function generateAxiomId(compositionId: string, role: string, phrase: number[]):
 /**
  * #ЗАЧЕМ: Трансляция оцифрованного наследия в Гиперкуб AuraGroove.
  * #ЧТО: Сохраняет аксиому с использованием детерминированного ID для защиты от дубликатов.
- * #ОБНОВЛЕНО (ПЛАН №585): Внедрен Duplicate Guard на уровне ID.
+ * #ОБНОВЛЕНО (ПЛАН №588): Восстановлено сохранение поля narrative.
  */
 export function saveHeritageAxiom(db: Firestore, data: {
     phrase: number[];
@@ -71,6 +71,7 @@ export function saveHeritageAxiom(db: Firestore, data: {
     vector: AxiomVector;
     origin: string;
     tags: string[];
+    narrative: string; // Обязательное поле
 }) {
     // Генерируем ID на основе контента
     const axiomId = generateAxiomId(data.compositionId, data.role, data.phrase);
@@ -87,6 +88,7 @@ export function saveHeritageAxiom(db: Firestore, data: {
         vector: data.vector,
         origin: data.origin,
         tags: data.tags,
+        narrative: data.narrative, // #ЗАЧЕМ: Возврат когнитивного контекста в базу.
         timestamp: serverTimestamp()
     };
 

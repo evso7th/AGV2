@@ -1,9 +1,11 @@
+
 'use client';
 
 import { useState, useMemo } from 'react';
 import { 
   Database, 
   Play, 
+  Square,
   Trash2, 
   FileJson, 
   Activity, 
@@ -25,9 +27,10 @@ import { useAudioEngine } from '@/contexts/audio-engine-context';
 import { saveHeritageAxiom } from '@/lib/firebase-service';
 import { decompressCompactPhrase, DEGREE_TO_SEMITONE } from '@/lib/music-theory';
 import { useToast } from '@/hooks/use-toast';
-import type { FractalEvent } from '@/types/fractal';
+import type { FractalEvent, InstrumentHints } from '@/types/fractal';
 
 // #ЗАЧЕМ: Статические данные Moody Blues для первичного импорта.
+// #ОБНОВЛЕНО: Стандарт v2.1 (96 тиков, Narrative).
 const MOODY_BLUES_ASSET = [
   {
     "phrase": [0, 24, 7, 4, 24, 12, 5, 4, 36, 12, 3, 4, 48, 24, 2, 4, 72, 24, 0, 4],
@@ -55,7 +58,7 @@ export default function HypercubeDashboard() {
   const db = useFirestore();
   const router = useRouter();
   const { toast } = useToast();
-  const { isInitialized, initialize, playRawEvents, isPlaying, setIsPlaying } = useAudioEngine();
+  const { isInitialized, initialize, playRawEvents, stopAllSounds, isPlaying, setIsPlaying } = useAudioEngine();
   const [isProcessing, setIsProcessing] = useState(false);
 
   // #ЗАЧЕМ: Корректная мемоизация запроса для предотвращения ошибок Firebase.
@@ -75,11 +78,10 @@ export default function HypercubeDashboard() {
     }, { total: 0, genres: {} as any, moods: {} as any, compositionIds: new Set<string>() });
   }, [axioms]);
 
-  // #ЗАЧЕМ: Умный импорт с защитой от дубликатов.
+  // #ЗАЧЕМ: Умный импорт с защитой от дубликатов и сохранением Narrative.
   const handleImportAsset = async () => {
     setIsProcessing(true);
     
-    // Создаем набор существующих "отпечатков" для быстрой проверки
     const existingFingerprints = new Set(axioms?.map(a => 
       `${a.compositionId}_${a.role}_${a.phrase.join(',')}`
     ) || []);
@@ -108,23 +110,16 @@ export default function HypercubeDashboard() {
           vector: ax.vector,
           origin: 'Legacy_Asset',
           tags: ax.tags,
+          narrative: ax.narrative, // #ЗАЧЕМ: Теперь сохраняется.
           timestamp: new Date().toISOString() as any
         });
         addedCount++;
       }
 
-      if (addedCount > 0) {
-        toast({ 
-          title: "Injection Successful", 
-          description: `Added ${addedCount} new axioms. ${skippedCount} duplicates skipped.` 
-        });
-      } else {
-        toast({ 
-          title: "No New Data", 
-          description: `All ${skippedCount} axioms already exist in Hypercube.`,
-          variant: "secondary" 
-        });
-      }
+      toast({ 
+        title: addedCount > 0 ? "Injection Successful" : "No New Data", 
+        description: `Added ${addedCount} new axioms. ${skippedCount} duplicates skipped.` 
+      });
     } catch (e) {
       toast({ variant: "destructive", title: "Injection Failed", description: String(e) });
     } finally {
@@ -156,33 +151,47 @@ export default function HypercubeDashboard() {
     }
   };
 
-  // Прослушивание
+  // #ЗАЧЕМ: Расширенный плеер с поддержкой всех ролей.
   const handlePlayAxiom = async (axiom: any) => {
     if (!isInitialized) await initialize();
     
-    // Останавливаем основной поток если играет, чтобы услышать аксиому
+    // Останавливаем все, включая текущую игру
     if (isPlaying) setIsPlaying(false);
+    stopAllSounds();
 
     const rawPhrase = decompressCompactPhrase(axiom.phrase);
+    
+    // Маппинг ролей в типы событий
+    const roleToType: Record<string, string> = {
+        'melody': 'melody',
+        'bass': 'bass',
+        'accomp': 'accompaniment',
+        'drums': 'drums'
+    };
+
+    const type = roleToType[axiom.role] || 'melody';
+
     const events: FractalEvent[] = rawPhrase.map(n => ({
-      type: axiom.role === 'accomp' ? 'accompaniment' : (axiom.role === 'drums' ? 'drums' : axiom.role),
-      note: (axiom.role === 'bass' ? 31 : 60) + (DEGREE_TO_SEMITONE[n.deg] || 0),
-      time: n.t / 3, // Конвертируем тики в доли (12/8 стандарт)
+      type: type,
+      note: (axiom.role === 'bass' ? 31 : (axiom.role === 'drums' ? 36 : 60)) + (DEGREE_TO_SEMITONE[n.deg] || 0),
+      time: n.t / 3, 
       duration: n.d / 3,
       weight: 0.8,
       technique: n.tech as any,
       dynamics: 'p',
-      phrasing: 'legato'
+      phrasing: 'legato',
+      params: { barCount: 0 }
     }));
 
-    const hints = {
-      [axiom.role === 'accomp' ? 'accompaniment' : (axiom.role === 'drums' ? 'drums' : axiom.role)]: 
-        axiom.role === 'melody' ? 'blackAcoustic' : 
-        (axiom.role === 'bass' ? 'bass_jazz_warm' : 'organ_soft_jazz')
+    // Инструментальные подсказки для аудита
+    const hints: InstrumentHints = {
+        [type]: axiom.role === 'melody' ? 'blackAcoustic' : 
+                (axiom.role === 'bass' ? 'bass_jazz_warm' : 
+                (axiom.role === 'drums' ? 'melancholic' : 'organ_soft_jazz'))
     };
 
     playRawEvents(events, hints);
-    toast({ title: `Playing: ${axiom.compositionId}`, description: `Role: ${axiom.role}` });
+    toast({ title: `Auditioning: ${axiom.compositionId}`, description: `Role: ${axiom.role}` });
   };
 
   return (
@@ -197,9 +206,14 @@ export default function HypercubeDashboard() {
             </h1>
             <p className="text-muted-foreground">Legacy Management & Axiom Navigation Protocol v2.1</p>
           </div>
-          <Button variant="ghost" onClick={() => router.push('/aura-groove')} className="gap-2">
-            <ArrowLeft className="h-4 w-4" /> Back to AgV2
-          </Button>
+          <div className="flex gap-2">
+            <Button variant="outline" size="sm" onClick={() => stopAllSounds()} className="gap-2 text-destructive border-destructive/50">
+                <Square className="h-4 w-4" /> Stop Audition
+            </Button>
+            <Button variant="ghost" onClick={() => router.push('/aura-groove')} className="gap-2">
+                <ArrowLeft className="h-4 w-4" /> Back to AgV2
+            </Button>
+          </div>
         </div>
 
         {/* Stats Grid */}
@@ -273,7 +287,7 @@ export default function HypercubeDashboard() {
                         [{ax.vector.t.toFixed(1)}, {ax.vector.b.toFixed(1)}, {ax.vector.e.toFixed(1)}, {ax.vector.h.toFixed(1)}]
                       </td>
                       <td className="p-4 text-xs max-w-xs italic text-muted-foreground line-clamp-2">
-                        {ax.narrative || 'No cognitive notes.'}
+                        {ax.narrative || 'Axiom Narrative Missing (Legacy Data)'}
                       </td>
                       <td className="p-4 text-right flex justify-end gap-2">
                         <Button size="icon" variant="ghost" onClick={() => handlePlayAxiom(ax)} title="Listen">

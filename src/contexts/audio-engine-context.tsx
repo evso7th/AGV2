@@ -1,8 +1,7 @@
+
 /**
- * #ЗАЧЕМ: Audio Engine Context V7.0 — "Volume & Routing Sovereignty".
- * #ЧТО: 1. Удвоена системная громкость ударных (0.5 -> 1.0).
- *       2. Исправлена маршрутизация громкости для всех V2 инструментов.
- *       3. Гарантированная доставка barCount во все менеджеры.
+ * #ЗАЧЕМ: Audio Engine Context V7.1 — "Volume & Routing Sovereignty".
+ * #ЧТО: Экспортирована функция stopAllSounds для управления Дашбордом.
  */
 'use client';
 
@@ -28,7 +27,6 @@ const VOICE_BALANCE: Record<InstrumentPart, number> = {
   bass: 0.55, 
   melody: 1.0, 
   accompaniment: 0.6, 
-  // #ЗАЧЕМ: Удвоение системной громкости ударных по требованию пользователя.
   drums: 1.0, 
   effects: 0.6, 
   sparkles: 0.7, 
@@ -70,6 +68,7 @@ interface AudioEngineContextType {
   toggleBroadcast: () => void;
   getWorker: () => Worker | null;
   playRawEvents: (events: FractalEvent[], instrumentHints?: InstrumentHints) => void;
+  stopAllSounds: () => void; // #ЗАЧЕМ: Добавлен экспорт для Дашборда.
 }
 
 const AudioEngineContext = createContext<AudioEngineContextType | null>(null);
@@ -284,14 +283,9 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
     }
   }, [isInitialized, stopAllSounds]);
 
-  /**
-   * #ЗАЧЕМ: Централизованное управление громкостью V2.
-   * #ЧТО: Прямое управление преампами менеджеров для гарантированной тишины/мощности.
-   */
   const setVolumeCallback = useCallback((part: InstrumentPart, volume: number) => {
     if (part === 'pads' || part === 'effects') return;
     
-    // Маршрутизация на V2 преампы
     if (part === 'bass' && bassManagerV2Ref.current) {
         bassManagerV2Ref.current.setPreampGain(volume);
         return;
@@ -354,7 +348,8 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
         getWorker: () => workerRef.current, 
         playRawEvents: (e, h) => {
             if(audioContextRef.current) scheduleEvents(e, audioContextRef.current.currentTime + 0.8, 72, 0, h)
-        }
+        },
+        stopAllSounds // #ЗАЧЕМ: Предоставление доступа к остановке.
     }}>
       {children}
     </AudioEngineContext.Provider>
