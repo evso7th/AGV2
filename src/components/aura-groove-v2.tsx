@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from "react";
-import { Music, Pause, Speaker, FileMusic, Drum, Atom, Piano, Home, Sparkles, Sprout, Timer, RefreshCw, Bot, Waves, Radio, ThumbsUp, TowerControl } from "lucide-react";
+import { Music, Pause, Speaker, FileMusic, Drum, Atom, Piano, Home, Sparkles, Sprout, Timer, RefreshCw, Bot, Waves, Radio, ThumbsUp, TowerControl, SlidersHorizontal } from "lucide-react";
 import Image from "next/image";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
