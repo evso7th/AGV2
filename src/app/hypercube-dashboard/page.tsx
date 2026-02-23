@@ -1,7 +1,6 @@
-
 'use client';
 
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { 
   Database, 
   Play, 
@@ -15,12 +14,16 @@ import {
   RefreshCcw,
   ShieldAlert,
   ArrowLeft,
-  CheckCircle2
+  CheckCircle2,
+  ListFilter,
+  Save,
+  X
 } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
+import { Checkbox } from '@/components/ui/checkbox';
 import { useFirestore, useCollection, useMemoFirebase } from '@/firebase';
 import { collection, doc, deleteDoc, getDocs, writeBatch } from 'firebase/firestore';
 import { useAudioEngine } from '@/contexts/audio-engine-context';
@@ -29,39 +32,21 @@ import { decompressCompactPhrase, DEGREE_TO_SEMITONE } from '@/lib/music-theory'
 import { useToast } from '@/hooks/use-toast';
 import type { FractalEvent, InstrumentHints } from '@/types/fractal';
 
-// #ЗАЧЕМ: Статические данные Moody Blues для первичного импорта.
-// #ОБНОВЛЕНО: Стандарт v2.1 (96 тиков, Narrative).
-const MOODY_BLUES_ASSET = [
-  {
-    "phrase": [0, 24, 7, 4, 24, 12, 5, 4, 36, 12, 3, 4, 48, 24, 2, 4, 72, 24, 0, 4],
-    "role": "melody",
-    "commonMood": "dark",
-    "mood": "melancholic",
-    "compositionId": "Nights_in_White_Satin",
-    "vector": { "t": 0.4, "b": 0.5, "e": 0.2, "h": 0.7 },
-    "tags": ["melancholic", "flute-like", "descending"],
-    "narrative": "Меланхоличное тяготение вниз от квинты к тонике. Идеально для меланхолии."
-  },
-  {
-    "phrase": [0, 96, 0, 10, 0, 96, 3, 10, 0, 96, 7, 10],
-    "role": "accomp",
-    "commonMood": "dark",
-    "mood": "dreamy",
-    "compositionId": "Nights_in_White_Satin",
-    "vector": { "t": 0.2, "b": 0.4, "e": 0.1, "h": 0.9 },
-    "tags": ["pad", "sustained", "minor"],
-    "narrative": "Устойчивое гармоническое поле минорной тоники. Фундамент покоя."
-  }
-];
+// #ЗАЧЕМ: Импорт пакетных данных от Завода.
+import BATCH_ASSET from '@/lib/assets/midi/auragroove-master-axioms-1771865219446.json';
 
 export default function HypercubeDashboard() {
   const db = useFirestore();
   const router = useRouter();
   const { toast } = useToast();
   const { isInitialized, initialize, playRawEvents, stopAllSounds, isPlaying, setIsPlaying } = useAudioEngine();
+  
   const [isProcessing, setIsProcessing] = useState(false);
+  const [isStaging, setIsStaging] = useState(false);
+  const [stagedAxioms, setStagedAxioms] = useState<any[]>([]);
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
 
-  // #ЗАЧЕМ: Корректная мемоизация запроса для предотвращения ошибок Firebase.
+  // Firebase Query
   const axiomsQuery = useMemoFirebase(() => collection(db, 'heritage_axioms'), [db]);
   const { data: axioms, isLoading } = useCollection(axiomsQuery);
 
@@ -78,48 +63,48 @@ export default function HypercubeDashboard() {
     }, { total: 0, genres: {} as any, moods: {} as any, compositionIds: new Set<string>() });
   }, [axioms]);
 
-  // #ЗАЧЕМ: Умный импорт с защитой от дубликатов и сохранением Narrative.
-  const handleImportAsset = async () => {
+  // #ЗАЧЕМ: Подготовка пакетных данных к выборочной загрузке.
+  const handleStageBatch = () => {
+    const flattened: any[] = [];
+    Object.entries(BATCH_ASSET).forEach(([trackName, licks]) => {
+      (licks as any[]).forEach((lick, idx) => {
+        const id = `${trackName}_${lick.role}_${idx}`;
+        flattened.push({
+          ...lick,
+          id,
+          compositionId: trackName
+        });
+      });
+    });
+    setStagedAxioms(flattened);
+    setSelectedIds(new Set(flattened.map(a => a.id)));
+    setIsStaging(true);
+  };
+
+  // #ЗАЧЕМ: Финальная инъекция выбранных аксиом.
+  const handleCommitInjection = async () => {
     setIsProcessing(true);
-    
-    const existingFingerprints = new Set(axioms?.map(a => 
-      `${a.compositionId}_${a.role}_${a.phrase.join(',')}`
-    ) || []);
-
     let addedCount = 0;
-    let skippedCount = 0;
-
+    
     try {
-      for (const ax of MOODY_BLUES_ASSET) {
-        const fingerprint = `${ax.compositionId}_${ax.role}_${ax.phrase.join(',')}`;
-        
-        if (existingFingerprints.has(fingerprint)) {
-          skippedCount++;
-          continue;
-        }
-
+      const toInject = stagedAxioms.filter(a => selectedIds.has(a.id));
+      
+      for (const ax of toInject) {
         await saveHeritageAxiom(db, {
           ...ax,
-          phrase: ax.phrase,
-          role: ax.role as any,
-          genre: 'blues',
-          commonMood: ax.commonMood as any,
-          mood: ax.mood,
-          compositionId: ax.compositionId,
+          genre: ax.genre || 'blues',
           barOffset: 0,
-          vector: ax.vector,
-          origin: 'Legacy_Asset',
-          tags: ax.tags,
-          narrative: ax.narrative, // #ЗАЧЕМ: Теперь сохраняется.
+          origin: 'Forge_Batch_Import',
           timestamp: new Date().toISOString() as any
         });
         addedCount++;
       }
 
       toast({ 
-        title: addedCount > 0 ? "Injection Successful" : "No New Data", 
-        description: `Added ${addedCount} new axioms. ${skippedCount} duplicates skipped.` 
+        title: "Injection Successful", 
+        description: `Committed ${addedCount} axioms to the Hypercube.` 
       });
+      setIsStaging(false);
     } catch (e) {
       toast({ variant: "destructive", title: "Injection Failed", description: String(e) });
     } finally {
@@ -127,14 +112,19 @@ export default function HypercubeDashboard() {
     }
   };
 
-  // Удаление одной аксиомы
+  const toggleSelect = (id: string) => {
+    const next = new Set(selectedIds);
+    if (next.has(id)) next.delete(id);
+    else next.add(id);
+    setSelectedIds(next);
+  };
+
   const handleDeleteAxiom = async (id: string) => {
     if (!window.confirm("Delete this memory?")) return;
     await deleteDoc(doc(db, 'heritage_axioms', id));
     toast({ title: "Axiom Deleted" });
   };
 
-  // Полная очистка
   const handlePurge = async () => {
     if (!window.confirm("CRITICAL: This will wipe the entire Hypercube database. Are you absolutely sure?")) return;
     setIsProcessing(true);
@@ -151,24 +141,18 @@ export default function HypercubeDashboard() {
     }
   };
 
-  // #ЗАЧЕМ: Расширенный плеер с поддержкой всех ролей.
   const handlePlayAxiom = async (axiom: any) => {
     if (!isInitialized) await initialize();
-    
-    // Останавливаем все, включая текущую игру
     if (isPlaying) setIsPlaying(false);
     stopAllSounds();
 
     const rawPhrase = decompressCompactPhrase(axiom.phrase);
-    
-    // Маппинг ролей в типы событий
     const roleToType: Record<string, string> = {
         'melody': 'melody',
         'bass': 'bass',
         'accomp': 'accompaniment',
         'drums': 'drums'
     };
-
     const type = roleToType[axiom.role] || 'melody';
 
     const events: FractalEvent[] = rawPhrase.map(n => ({
@@ -180,10 +164,10 @@ export default function HypercubeDashboard() {
       technique: n.tech as any,
       dynamics: 'p',
       phrasing: 'legato',
-      params: { barCount: 0 }
+      params: { barCount: 0 },
+      chordName: axiom.role === 'accomp' ? 'Am' : undefined
     }));
 
-    // Инструментальные подсказки для аудита
     const hints: InstrumentHints = {
         [type]: axiom.role === 'melody' ? 'blackAcoustic' : 
                 (axiom.role === 'bass' ? 'bass_jazz_warm' : 
@@ -191,7 +175,6 @@ export default function HypercubeDashboard() {
     };
 
     playRawEvents(events, hints);
-    toast({ title: `Auditioning: ${axiom.compositionId}`, description: `Role: ${axiom.role}` });
   };
 
   return (
@@ -204,7 +187,7 @@ export default function HypercubeDashboard() {
             <h1 className="text-4xl font-bold tracking-tight text-primary flex items-center gap-3">
               <Database className="h-10 w-10" /> Hypercube Dashboard
             </h1>
-            <p className="text-muted-foreground">Legacy Management & Axiom Navigation Protocol v2.1</p>
+            <p className="text-muted-foreground">Legacy Management & Batch Production Protocol v2.2</p>
           </div>
           <div className="flex gap-2">
             <Button variant="outline" size="sm" onClick={() => stopAllSounds()} className="gap-2 text-destructive border-destructive/50">
@@ -215,6 +198,60 @@ export default function HypercubeDashboard() {
             </Button>
           </div>
         </div>
+
+        {/* Staging UI (Selective Import) */}
+        {isStaging && (
+          <Card className="border-primary bg-primary/5 animate-in fade-in slide-in-from-top-4 duration-500">
+            <CardHeader className="flex flex-row items-center justify-between space-y-0">
+              <div>
+                <CardTitle className="flex items-center gap-2"><ListFilter className="h-5 w-5"/> Batch Injection Stage</CardTitle>
+                <CardDescription>Select axioms to commit to global memory</CardDescription>
+              </div>
+              <div className="flex gap-2">
+                <Button variant="ghost" size="icon" onClick={() => setIsStaging(false)}><X className="h-4 w-4"/></Button>
+              </div>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="max-h-[400px] overflow-y-auto border rounded-md bg-background">
+                <table className="w-full text-sm">
+                  <thead className="sticky top-0 bg-muted z-10">
+                    <tr className="border-b">
+                      <th className="p-3 w-10"></th>
+                      <th className="p-3 text-left">Track</th>
+                      <th className="p-3 text-left">Role</th>
+                      <th className="p-3 text-left">Narrative</th>
+                      <th className="p-3 text-right">Preview</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {stagedAxioms.map((ax) => (
+                      <tr key={ax.id} className="border-b hover:bg-muted/50 transition-colors">
+                        <td className="p-3 text-center">
+                          <Checkbox checked={selectedIds.has(ax.id)} onCheckedChange={() => toggleSelect(ax.id)} />
+                        </td>
+                        <td className="p-3 font-medium text-xs truncate max-w-[120px]">{ax.compositionId}</td>
+                        <td className="p-3"><Badge variant="secondary" className="text-[10px]">{ax.role}</Badge></td>
+                        <td className="p-3 text-xs italic text-muted-foreground line-clamp-1">{ax.narrative}</td>
+                        <td className="p-3 text-right">
+                          <Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => handlePlayAxiom(ax)}>
+                            <Play className="h-3 w-3" />
+                          </Button>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+              <div className="flex justify-end gap-3 pt-2">
+                <Button variant="outline" onClick={() => setIsStaging(false)}>Cancel</Button>
+                <Button onClick={handleCommitInjection} disabled={isProcessing || selectedIds.size === 0} className="gap-2">
+                  <Save className={cn("h-4 w-4", isProcessing && "animate-spin")} />
+                  Commit {selectedIds.size} Axioms
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+        )}
 
         {/* Stats Grid */}
         <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
@@ -239,12 +276,12 @@ export default function HypercubeDashboard() {
         {/* Controls */}
         <div className="flex flex-wrap gap-4">
           <Button 
-            onClick={handleImportAsset} 
-            disabled={isProcessing} 
+            onClick={handleStageBatch} 
+            disabled={isProcessing || isStaging} 
             className="bg-primary/20 hover:bg-primary/30 text-primary border border-primary/50"
           >
-            <RefreshCcw className={cn("mr-2 h-4 w-4", isProcessing && "animate-spin")} />
-            Inject Legacy Asset (Moody Blues)
+            <RefreshCcw className="mr-2 h-4 w-4" />
+            Stage New Forge Batch
           </Button>
           <Button 
             variant="destructive" 
@@ -260,7 +297,7 @@ export default function HypercubeDashboard() {
         <Card className="border-border/50 shadow-xl overflow-hidden">
           <CardHeader className="bg-muted/30 border-b">
             <CardTitle className="text-lg flex items-center gap-2"><Wind className="h-5 w-5"/> DNA Repository</CardTitle>
-            <CardDescription>Live list of vector-indexed musical fragments</CardDescription>
+            <CardDescription>Vector-indexed musical fragments</CardDescription>
           </CardHeader>
           <CardContent className="p-0">
             <div className="overflow-x-auto">
@@ -278,16 +315,16 @@ export default function HypercubeDashboard() {
                 <tbody className="divide-y">
                   {axioms?.map((ax) => (
                     <tr key={ax.id} className="hover:bg-muted/20 transition-colors">
-                      <td className="p-4 font-medium text-primary">{ax.compositionId}</td>
+                      <td className="p-4 font-medium text-primary truncate max-w-[150px]">{ax.compositionId}</td>
                       <td className="p-4">
-                        <Badge variant="outline" className="capitalize">{ax.role}</Badge>
+                        <Badge variant="outline" className="capitalize text-[10px]">{ax.role}</Badge>
                       </td>
-                      <td className="p-4 capitalize">{ax.mood}</td>
-                      <td className="p-4 font-mono text-xs text-muted-foreground">
+                      <td className="p-4 capitalize text-xs">{ax.mood}</td>
+                      <td className="p-4 font-mono text-[10px] text-muted-foreground">
                         [{ax.vector.t.toFixed(1)}, {ax.vector.b.toFixed(1)}, {ax.vector.e.toFixed(1)}, {ax.vector.h.toFixed(1)}]
                       </td>
                       <td className="p-4 text-xs max-w-xs italic text-muted-foreground line-clamp-2">
-                        {ax.narrative || 'Axiom Narrative Missing (Legacy Data)'}
+                        {ax.narrative}
                       </td>
                       <td className="p-4 text-right flex justify-end gap-2">
                         <Button size="icon" variant="ghost" onClick={() => handlePlayAxiom(ax)} title="Listen">
@@ -302,7 +339,7 @@ export default function HypercubeDashboard() {
                   {(!axioms || axioms.length === 0) && (
                     <tr>
                       <td colSpan={6} className="p-12 text-center text-muted-foreground">
-                        Hypercube is empty. Inject legacy data or upload MIDI via external Forge.
+                        Hypercube is empty. Stage a batch from Forge to begin.
                       </td>
                     </tr>
                   )}
