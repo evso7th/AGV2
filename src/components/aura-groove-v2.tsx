@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from "react";
-import { SlidersHorizontal, Music, Pause, Speaker, FileMusic, Drum, Atom, Piano, Home, Sparkles, Sprout, LayoutGrid, Timer, RefreshCw, Bot, Waves, Radio, ThumbsUp, TowerControl, Factory } from "lucide-react";
+import { Music, Pause, Speaker, FileMusic, Drum, Atom, Piano, Home, Sparkles, Sprout, Timer, RefreshCw, Bot, Waves, Radio, ThumbsUp, TowerControl } from "lucide-react";
 import Image from "next/image";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -267,18 +267,6 @@ export function AuraGrooveV2({
                     </div>
                 </CardContent>
               </Card>
-              <Card className="border-0 shadow-none mt-2">
-                <CardContent className="p-3 pt-0">
-                  <Button 
-                    variant="outline" 
-                    className="w-full h-10 text-xs gap-2 border-dashed border-primary/30 hover:border-primary/60 transition-colors"
-                    onClick={() => router.push('/midi-ingest')}
-                  >
-                    <Factory className="h-4 w-4 text-primary" />
-                    MIDI Ingestion Dashboard
-                  </Button>
-                </CardContent>
-              </Card>
             </TabsContent>
 
             <TabsContent value="instruments" className="space-y-1 pt-2 col-start-1 row-start-1 px-1">
@@ -357,7 +345,7 @@ export function AuraGrooveV2({
                           </div>
                           <div className="flex items-center gap-2">
                               <Label className="text-xs text-muted-foreground"><Speaker className="h-3 w-3 inline-block mr-1"/>Volume</Label>
-                              <Slider value={[textureSettings.sfx.volume]} max={1} step={0.05} onValueChange={(v) => handleVolumeChange('sfx' as any, v[0])} disabled={isInitializing || !textureSettings.sfx.enabled}/>
+                              <Slider value={[textureSettings.sfx.volume]} max={1} step={0.05} onValueChange={(v) => handleVolumeChange(part as any, v[0])} disabled={isInitializing || !textureSettings.sfx.enabled}/>
                                <span className="text-xs w-8 text-right font-mono">{Math.round(textureSettings.sfx.volume * 100)}</span>
                           </div>
                       </div>
