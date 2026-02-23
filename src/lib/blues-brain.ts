@@ -23,21 +23,34 @@ import { BLUES_GUITAR_RIFFS, BLUES_GUITAR_VOICINGS } from './assets/blues-guitar
 import { BLUES_MELODY_RIFFS } from './assets/blues-melody-riffs';
 
 /**
- * #ЗАЧЕМ: Блюзовый Мозг V125.0 — "The Acoustic Heritage Update".
- * #ЧТО: 1. Интегрирована 12-тактовая библиотека гитарных аранжировок.
- *       2. Реализована логика выбора техник (Fingerstyle/Strum/Solo) в реальном времени.
- *       3. Поддержка "плотных" минорных мелодий для меланхолии.
- * #ОБНОВЛЕНО (ПЛАН №568): Внедрена поддержка оцифрованной библиотеки из blues_guitar_melody.txt.
+ * #ЗАЧЕМ: Блюзовый Мозг V125.1 — "Worker Stability Fix".
+ * #ЧТО: 1. Исправлена инициализация config.
+ *       2. Тайминг нормализован в долях (beats) для исключения " tempo drift".
  */
+
+export interface BluesBrainConfig {
+  tempo: number;
+  rootNote: number;
+  emotion: {
+    melancholy: number;
+    darkness: number;
+  };
+}
+
+export const DEFAULT_CONFIG: BluesBrainConfig = {
+  tempo: 72,
+  rootNote: 55, // G3
+  emotion: { melancholy: 0.82, darkness: 0.25 }
+};
 
 export class BluesBrain {
   private seed: number;
   private mood: Mood;
   private random: any;
+  private config: BluesBrainConfig;
   private currentAxiom: any[] = [];
   private currentLickId: string = '';
   
-  // Дорожка активной аранжировки
   private currentGuitarRiff: BluesGuitarRiff | null = null;
   private currentGrandMelody: BluesMelody | null = null;
 
@@ -63,6 +76,14 @@ export class BluesBrain {
     this.mood = mood;
     this.random = this.createSeededRandom(seed);
 
+    this.config = {
+      ...DEFAULT_CONFIG,
+      emotion: {
+        melancholy: ['melancholic', 'dark', 'anxious'].includes(mood) ? 0.85 : 0.4,
+        darkness: ['dark', 'gloomy'].includes(mood) ? 0.35 : 0.2
+      }
+    };
+
     const introStyles: ('drone' | 'riff' | 'walking')[] = ['drone', 'riff', 'walking'];
     const selectedIntroStyle = introStyles[this.random.nextInt(introStyles.length)];
 
@@ -80,9 +101,8 @@ export class BluesBrain {
       lastMelodyHash: '',
       lastAccompHash: '',
       blueNotePending: false,
-      emotion: { melancholy: 0.8, darkness: 0.3 },
+      emotion: { ...this.config.emotion },
       stagnationStrikes: { micro: 0, meso: 0, macro: 0 },
-      vaccineActive: { part: 'ensemble', type: 'jitter' },
       introBassStyle: selectedIntroStyle,
       currentMutationType: 'jitter',
       lastTension: 0.5,
@@ -119,7 +139,6 @@ export class BluesBrain {
         this.sfxPlayedInPart = false;
     }
 
-    // --- NARRATIVE SYNC: 12-BAR & 4-BAR CYCLE ---
     const isPhraseBoundary = epoch % 4 === 0;
     const isChorusBoundary = epoch % 12 === 0;
 
@@ -133,39 +152,27 @@ export class BluesBrain {
     }
 
     const events: FractalEvent[] = [];
-
-    // Оркестровка (выбор инструментов на основе напряжения)
     this.evaluateTimbralDramaturgy(tension, hints, epoch);
 
-    // --- 1. MELODY (SOLO / ARRANGEMENT) ---
     if (hints.melody) {
-        // Если есть полноценная аранжировка, используем её
         if (this.currentGuitarRiff) {
             events.push(...this.renderArrangedAcoustic(epoch, currentChord, tension));
         } else {
-            const melodyEvents = this.renderMelodicSegment(epoch, currentChord, tension);
-            events.push(...melodyEvents);
+            events.push(...this.renderMelodicSegment(epoch, currentChord, tension));
         }
     }
 
-    // --- 2. ACCOMPANIMENT ---
     if (hints.accompaniment && !this.currentGuitarRiff) {
-        const accompEvents = this.renderDynamicAccompaniment(epoch, currentChord, tension);
-        events.push(...accompEvents);
+        events.push(...this.renderDynamicAccompaniment(epoch, currentChord, tension));
     }
 
-    // --- 3. PIANO ---
     if (hints.pianoAccompaniment) {
         events.push(...this.renderIntegratedPiano(epoch, currentChord, tension));
     }
 
-    // --- 4. BASS ---
     if (hints.bass) events.push(...this.renderIronBass(currentChord, epoch, tension, navInfo));
-    
-    // --- 5. DRUMS ---
     if (hints.drums) events.push(...this.renderBluesBeat(epoch, tension, navInfo));
     
-    // --- 6. HARMONY ---
     if (hints.harmony) {
         events.push(...this.renderDerivativeHarmony(currentChord, epoch, tension));
     }
@@ -177,22 +184,14 @@ export class BluesBrain {
     };
   }
 
-  /**
-   * #ЗАЧЕМ: Выбор крупной 12-тактовой структуры.
-   */
   private selectGrandAxiom(tension: number) {
       const isMinor = this.mood === 'melancholic' || this.mood === 'dark';
-      
-      // Выбираем из гитарных аранжировок
       const pool = BLUES_GUITAR_RIFFS.filter(r => 
           r.moods.includes(this.mood) || (isMinor && r.type === 'minor') || (!isMinor && r.type === 'major')
       );
-      
       if (pool.length > 0) {
           this.currentGuitarRiff = pool[this.random.nextInt(pool.length)];
       }
-
-      // Выбираем из плотных мелодий
       const melodyPool = BLUES_MELODY_RIFFS.filter(m => 
           m.moods.includes(this.mood) || (isMinor && m.type === 'minor')
       );
@@ -202,55 +201,43 @@ export class BluesBrain {
   }
 
   private selectNextAxiom(navInfo: NavigationInfo, dna: SuiteDNA, epoch: number) {
-      // Если мы в режиме "плотной мелодии", берем фразу оттуда
       if (this.currentGrandMelody) {
           const barIn12 = epoch % 12;
           const isTurn = barIn12 === 11;
           const isMinor = this.currentGrandMelody.type === 'minor';
-          
           let phrase: any[] = [];
           if (isTurn) phrase = this.currentGrandMelody.phraseTurnaround || [];
-          else if (isMinor) {
+          else {
               const chord = getChordNameForBar(barIn12);
-              phrase = chord.startsWith('i') ? this.currentGrandMelody.phrasei! : this.currentGrandMelody.phraseiv!;
-          } else {
-              const chord = getChordNameForBar(barIn12);
-              if (chord.startsWith('i')) phrase = this.currentGrandMelody.phraseI!;
-              else if (chord.startsWith('iv')) phrase = this.currentGrandMelody.phraseIV!;
-              else phrase = this.currentGrandMelody.phraseV!;
+              if (isMinor) phrase = chord.startsWith('i') ? this.currentGrandMelody.phrasei! : this.currentGrandMelody.phraseiv!;
+              else {
+                  if (chord.startsWith('i')) phrase = this.currentGrandMelody.phraseI!;
+                  else if (chord.startsWith('iv')) phrase = this.currentGrandMelody.phraseIV!;
+                  else phrase = this.currentGrandMelody.phraseV!;
+              }
           }
-          
           this.currentAxiom = phrase;
           this.currentLickId = this.currentGrandMelody.id;
           return;
       }
 
-      // Стандартный выбор лика
       const allLickIds = Object.keys(BLUES_SOLO_LICKS);
       const pool = allLickIds.filter(id => !this.state.recentLicks.includes(id));
       const nextId = pool[this.random.nextInt(pool.length)] || allLickIds[0];
-
       this.currentLickId = nextId;
       this.state.recentLicks.push(nextId);
       if (this.state.recentLicks.length > 5) this.state.recentLicks.shift();
-      
       const lickData = BLUES_SOLO_LICKS[nextId];
       const rawPhrase = Array.isArray(lickData.phrase) ? lickData.phrase : decompressCompactPhrase(lickData.phrase as any);
       const stretched = stretchToNarrativeLength(rawPhrase, 48, this.random);
-      
       this.currentAxiom = this.mutateLick(stretched);
   }
 
-  /**
-   * #ЗАЧЕМ: Исполнение гитарной аранжировки (Fingerstyle / Strum / Solo).
-   */
   private renderArrangedAcoustic(epoch: number, chord: GhostChord, tension: number): FractalEvent[] {
       if (!this.currentGuitarRiff) return [];
       const events: FractalEvent[] = [];
       const barIn12 = epoch % 12;
-      const beatDuration = 60 / this.config.tempo;
 
-      // 1. SOLO LAYER
       const chordName = getChordNameForBar(barIn12);
       let soloPhrase: any[] = [];
       if (barIn12 === 11) soloPhrase = this.currentGuitarRiff.solo.Turnaround;
@@ -271,7 +258,6 @@ export class BluesBrain {
           });
       });
 
-      // 2. FINGERSTYLE / STRUM LAYER (Зависит от напряжения)
       if (tension < 0.6 && this.currentGuitarRiff.fingerstyle) {
           const fs = this.currentGuitarRiff.fingerstyle[0];
           events.push(...this.renderGuitarPattern(fs.pattern, fs.voicingName, tension));
@@ -279,13 +265,11 @@ export class BluesBrain {
           const st = this.currentGuitarRiff.strum[0];
           events.push(...this.renderGuitarPattern(st.pattern, st.voicingName, tension));
       }
-
       return events;
   }
 
   private renderGuitarPattern(patternName: string, voicingName: string, tension: number): FractalEvent[] {
       const voicing = BLUES_GUITAR_VOICINGS[voicingName] || BLUES_GUITAR_VOICINGS['E7_open'];
-      // Имитация Трэвис-пикинга или Страма через события аккомпанемента
       return voicing.map((note, i) => ({
           type: 'accompaniment',
           note: note + 12,
@@ -302,21 +286,15 @@ export class BluesBrain {
     const barInPhrase = epoch % 4;
     const barOffset = barInPhrase * 12;
     const barNotes = this.currentAxiom.filter(n => n.t >= barOffset && n.t < barOffset + 12);
-    
     const events: FractalEvent[] = [];
     const momentum = this.state.tensionMomentum;
 
     barNotes.forEach((n, i) => {
         const nextNote = barNotes[i+1];
         let duration = n.d / 3;
-        
-        if (nextNote && (nextNote.t - (n.t + n.d)) < 1) {
-            duration += 0.15; 
-        }
-
+        if (nextNote && (nextNote.t - (n.t + n.d)) < 1) duration += 0.15; 
         const phraseProgress = n.t / 48;
         const exhaleModifier = 1.0 - (phraseProgress * 0.35);
-
         const isAccent = n.t % 6 === 0;
         const baseWeight = isAccent ? 0.95 : 0.85; 
         const finalWeight = (baseWeight + Math.max(0, momentum * 3)) * exhaleModifier * (0.95 + this.random.next() * 0.1);
@@ -333,13 +311,11 @@ export class BluesBrain {
             params: { barCount: epoch }
         });
     });
-
     return events;
   }
 
   private evaluateTimbralDramaturgy(tension: number, hints: InstrumentHints, epoch: number) {
     if (epoch % 4 !== 0 && epoch !== 0) return;
-
     if (hints.melody) {
         if (tension <= 0.45) (hints as any).melody = 'blackAcoustic';
         else if (tension <= 0.85) (hints as any).melody = 'telecaster';
@@ -361,8 +337,7 @@ export class BluesBrain {
               return phrase.map((n: any) => ({...n, t: Math.max(0, n.t + (this.random.next() * 0.2 - 0.1))}));
           case 'rhythm':
               return phrase.map((n: any) => ({...n, d: n.d * (0.9 + this.random.next() * 0.2)}));
-          default:
-              return phrase;
+          default: return phrase;
       }
   }
 
@@ -473,14 +448,5 @@ export class BluesBrain {
     if (barIn12 < 4) this.state.phraseState = 'call';
     else if (barIn12 < 8) this.state.phraseState = 'call_var';
     else this.state.phraseState = 'response';
-  }
-
-  private createSeededRandom(seed: number) {
-    let state = seed;
-    const next = () => {
-      state = (state * 1664525 + 1013904223) % Math.pow(2, 32);
-      return state / Math.pow(2, 32);
-    };
-    return { next, nextInt: (max: number) => Math.floor(next() * max) };
   }
 }
