@@ -1,0 +1,93 @@
+{
+  "overallAnalysis": "The piece is structured around two highly effective and common chordal progressions: a versatile I-V-vi-IV verse progression and a strong IV-I-V-I chorus resolution, both firmly rooted in C Major. Melodically, it features an uplifting ascending arpeggio motif providing a sense of growth, complemented by a subtle descending minor third fragment. Rhythmical drive is maintained by a recurring syncopated quarter-eighth-eighth-quarter pattern, adding a consistent groove, while longer half-note syncopations introduce subtle rhythmic interest. This combination creates a balanced, accessible, and emotionally engaging musical narrative with clear structural sections and a satisfying harmonic journey.",
+  "melodicAxioms": [
+    {
+      "pattern": "Ascending C Major Arpeggio",
+      "description": "This simple ascending arpeggio forms a core melodic motif, often used to initiate phrases or emphasize harmonic changes. It's a fundamental building block of many melodies, conveying a sense of openness and triumph. Its clarity and directness make it memorable and impactful.",
+      "occurrenceCount": 8,
+      "measures": [
+        1,
+        5,
+        9,
+        13,
+        17,
+        21,
+        25,
+        29
+      ],
+      "notesAndDurations": "C4 (quarter), E4 (quarter), G4 (quarter), C5 (quarter)"
+    },
+    {
+      "pattern": "Descending Stepwise Minor Third",
+      "description": "A subtle but recurring melodic fragment, this descending stepwise motion over a minor third interval adds a touch of wistfulness or resolution. It often appears at the end of shorter phrases, providing a gentle melodic descent.",
+      "occurrenceCount": 6,
+      "measures": [
+        3,
+        7,
+        11,
+        15,
+        19,
+        23
+      ],
+      "notesAndDurations": "E4 (quarter), D4 (quarter), C4 (half)"
+    }
+  ],
+  "chordalAxioms": [
+    {
+      "pattern": "I-V-vi-IV in C Major (Cmaj - Gmaj - Am - Fmaj)",
+      "description": "This 4-bar progression is a quintessential 'Axis of Awesome' progression, highly prevalent in pop and rock music. It creates a narrative arc, moving from the tonic (Cmaj) to the dominant (Gmaj), then to the relative minor (Am) for a touch of pathos, before resolving to the subdominant (Fmaj) which gently pulls back towards the tonic. Its 'gem' quality lies in its perfect balance of familiarity, emotional versatility, and harmonic strength, making it instantly recognizable yet endlessly adaptable. It feels both hopeful and slightly yearning, a foundational building block for countless songs.",
+      "occurrenceCount": 3,
+      "measures": [
+        1,
+        9,
+        25
+      ],
+      "notesAndDurations": "Cmaj (whole), Gmaj (whole), Am (whole), Fmaj (whole)"
+    },
+    {
+      "pattern": "IV-I-V-I in C Major (Fmaj - Cmaj - Gmaj - Cmaj)",
+      "description": "This 4-bar progression serves as a powerful resolution sequence, often used for choruses or codas due to its strong sense of arrival and finality. Starting on the subdominant (IV) creates a gentle pull towards the tonic (I), followed by the dominant (V) which provides the strongest pull back to the tonic. Its 'gem' status comes from its classic and undeniable sense of home, delivering a satisfying and uplifting conclusion to musical phrases. It embodies stability, triumph, and provides a clear harmonic anchor for the listener.",
+      "occurrenceCount": 4,
+      "measures": [
+        5,
+        13,
+        21,
+        29
+      ],
+      "notesAndDurations": "Fmaj (whole), Cmaj (whole), Gmaj (whole), Cmaj (whole)"
+    }
+  ],
+  "rhythmicAxioms": [
+    {
+      "pattern": "Quarter-Eighth-Eighth-Quarter",
+      "description": "A common syncopated rhythmic motif that adds forward momentum and groove. This pattern, particularly prominent in the accompaniment, provides a driving yet slightly playful feel to the piece, creating rhythmic interest against longer melodic notes. It's often found in bass lines or guitar strumming patterns.",
+      "occurrenceCount": 10,
+      "measures": [
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7,
+        8,
+        9,
+        10
+      ],
+      "notesAndDurations": "C4 (quarter), D4 (eighth), E4 (eighth), F4 (quarter)"
+    },
+    {
+      "pattern": "Half-Note Syncopation",
+      "description": "This rhythmic axiom involves a half-note starting on the 'and' of beat 2, creating a gentle syncopation that pushes the rhythm forward. It's less aggressive than shorter syncopations but adds a sophisticated lilt, often used in melodic phrases or pad textures.",
+      "occurrenceCount": 5,
+      "measures": [
+        6,
+        14,
+        22,
+        26,
+        30
+      ],
+      "notesAndDurations": "Rest (quarter), C4 (eighth), E4 (half), G4 (eighth)"
+    }
+  ]
+}
