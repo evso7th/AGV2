@@ -1,3 +1,4 @@
+
 /**
  * @file AuraGroove Music Worker (Architecture: "The Narrative Journey")
  * #ОБНОВЛЕНО (ПЛАН №591): Нарративная телеметрия. Вывод описаний активных аксиом.

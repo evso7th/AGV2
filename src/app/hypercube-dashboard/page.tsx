@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useMemo, useEffect, useRef } from 'react';
@@ -234,7 +235,7 @@ export default function HypercubeDashboard() {
             <h1 className="text-4xl font-bold tracking-tight text-primary flex items-center gap-3">
               <Database className="h-10 w-10" /> Hypercube Dashboard
             </h1>
-            <p className="text-muted-foreground">Legacy Management & Selective Injection Protocol v2.2</p>
+            <p className="text-muted-foreground">Legacy Management & Selective Injection Protocol v2.3</p>
           </div>
           <div className="flex gap-2">
             <Button variant="outline" size="sm" onClick={() => stopAllSounds()} className="gap-2 text-destructive border-destructive/50">
@@ -317,7 +318,7 @@ export default function HypercubeDashboard() {
           <Card className="bg-card border-primary/20">
             <CardHeader className="pb-2"><CardTitle className="text-sm flex items-center gap-2"><Music className="h-4 w-4 text-primary"/> Sources</CardTitle></CardHeader>
             <CardContent><p className="text-3xl font-mono">{stats.compositionIds.size}</p></CardContent>
-          </div>
+          </Card>
         </div>
 
         {/* Controls */}
