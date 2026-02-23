@@ -1,7 +1,7 @@
 /**
  * @fileOverview Universal Music Theory Utilities
  * #ЗАЧЕМ: Базовый набор инструментов для работы с нотами и энергетическими картами.
- * #ОБНОВЛЕНО (ПЛАН №532): Внедрена функция analyzeAxiomVector для авто-калибровки Гиперкуба.
+ * #ОБНОВЛЕНО (ПЛАН №595): Внедрено "Генетическое Скрещивание" для повышения уникальности.
  */
 
 import type { 
@@ -64,13 +64,10 @@ export function decompressCompactPhrase(compact: number[]): any[] {
 
 /**
  * #ЗАЧЕМ: Эвристический анализ фразы для калибровки Гиперкуба.
- * #ЧТО: Вычисляет координаты Vector (t, b, e, h) на основе интервалов и ритма.
  */
 export function analyzeAxiomVector(phrase: any[], rootNote: number): AxiomVector {
     if (phrase.length === 0) return { t: 0.5, b: 0.5, e: 0.5, h: 0.5 };
 
-    // 1. TENSION (Диссонанс и Хроматизм)
-    // Вес за ♭5, ♭2, ♭7 и хроматические шаги
     let tensionScore = 0;
     phrase.forEach((n, i) => {
         const semitone = DEGREE_TO_SEMITONE[n.deg] || 0;
@@ -78,32 +75,25 @@ export function analyzeAxiomVector(phrase: any[], rootNote: number): AxiomVector
         const prev = phrase[i-1];
         if (prev) {
             const diff = Math.abs(semitone - (DEGREE_TO_SEMITONE[prev.deg] || 0));
-            if (diff === 1) tensionScore += 0.15; // Хроматизм
+            if (diff === 1) tensionScore += 0.15;
         }
     });
 
-    // 2. BRIGHTNESS (Регистр и Мажорность)
     let brightnessScore = 0;
     const avgPitch = phrase.reduce((sum, n) => sum + (DEGREE_TO_SEMITONE[n.deg] || 0), 0) / phrase.length;
-    // Маппинг регистра (0-24 полутона) -> 0.0-1.0
     brightnessScore = (avgPitch + 12) / 36;
-    // Мажорная терция добавляет яркости
     if (phrase.some(n => n.deg === '3')) brightnessScore += 0.15;
 
-    // 3. ENTROPY (Ритмическая непредсказуемость)
     let entropyScore = 0;
     const ticks = phrase.map(n => n.t % 12);
     const uniqueTicks = new Set(ticks).size;
-    entropyScore = uniqueTicks / 12; // Чем больше разных долей, тем выше энтропия
-    // Синкопы (не на 0, 3, 6, 9) добавляют веса
+    entropyScore = uniqueTicks / 12;
     const syncopations = ticks.filter(t => ![0, 3, 6, 9].includes(t)).length;
     entropyScore += (syncopations / phrase.length) * 0.5;
 
-    // 4. STABILITY (Тяготение к тонике)
     let stabilityScore = 0;
     const tonicNotes = phrase.filter(n => n.deg === 'R' || n.deg === '5').length;
     stabilityScore = tonicNotes / phrase.length;
-    // Если заканчивается на тонику - это стабильно
     if (phrase[phrase.length - 1].deg === 'R') stabilityScore += 0.2;
 
     const clamp = (v: number) => Math.max(0.05, Math.min(0.95, v));
@@ -140,46 +130,6 @@ export function stretchToNarrativeLength(phrase: any[], targetTicks: number, ran
     }
 
     return result.filter(n => n.t < targetTicks);
-}
-
-/**
- * #ЗАЧЕМ: Автоматическое определение ключа по массиву нот.
- */
-export function detectKeyFromNotes(notes: number[]): { root: number, mode: 'major' | 'minor' } {
-    if (notes.length === 0) return { root: 60, mode: 'minor' };
-
-    const counts = new Array(12).fill(0);
-    notes.forEach(n => counts[n % 12]++);
-
-    const majorProfile = [6.35, 2.23, 3.48, 2.33, 4.38, 4.09, 2.52, 5.19, 2.39, 3.66, 2.29, 2.88];
-    const minorProfile = [6.33, 2.68, 3.52, 5.38, 2.60, 3.53, 2.54, 4.75, 3.98, 2.69, 3.34, 3.17];
-
-    let bestScore = -Infinity;
-    let bestRoot = 0;
-    let bestMode: 'major' | 'minor' = 'minor';
-
-    for (let root = 0; root < 12; root++) {
-        let majorScore = 0;
-        let minorScore = 0;
-        for (let i = 0; i < 12; i++) {
-            const val = counts[(root + i) % 12];
-            majorScore += val * majorProfile[i];
-            minorScore += val * minorProfile[i];
-        }
-
-        if (majorScore > bestScore) {
-            bestScore = majorScore;
-            bestRoot = root;
-            bestMode = 'major';
-        }
-        if (minorScore > bestScore) {
-            bestScore = minorScore;
-            bestRoot = root;
-            bestMode = 'minor';
-        }
-    }
-
-    return { root: 60 + bestRoot, mode: bestMode };
 }
 
 /** #ЗАЧЕМ: Атлас географических локаций для AmbientBrain. */
@@ -226,54 +176,51 @@ export function calculateMusiNum(step: number, base: number = 2, start: number =
  */
 export function generateTensionMap(seed: number, totalBars: number, mood: Mood, parts?: any[]): number[] {
     const map: number[] = [];
-    const isMelancholic = mood === 'melancholic';
-    
-    const getJitter = (bar: number) => (calculateMusiNum(bar, 3, seed, 10) / 100) - 0.05;
+    const getJitter = (bar: number) => (calculateMusiNum(bar, 7, seed, 10) / 100) - 0.05;
 
-    if (isMelancholic && parts && parts.length > 0) {
-        let accumulatedBars = 0;
-        parts.forEach(part => {
-            const partDuration = Math.round((part.duration.percent / 100) * totalBars);
-            for (let i = 0; i < partDuration; i++) {
-                const progress = i / (partDuration || 1);
-                let tension: number;
+    let accumulatedBars = 0;
+    parts?.forEach(part => {
+        const partDuration = Math.round((part.duration.percent / 100) * totalBars);
+        for (let i = 0; i < partDuration; i++) {
+            const progress = i / (partDuration || 1);
+            let tension: number;
 
-                if (part.id === 'INTRO') {
-                    tension = 0.3; 
-                } else if (part.id.startsWith('MAIN')) {
-                    tension = 0.3 + 0.5 * Math.sin(progress * Math.PI);
-                } else if (part.id === 'OUTRO') {
-                    tension = 0.3 * (1 - progress * 0.5); 
-                } else {
-                    tension = 0.35; 
-                }
-                
-                map.push(Math.max(0.3, Math.min(0.8, tension + getJitter(accumulatedBars + i))));
+            if (part.id === 'INTRO') {
+                tension = 0.25 + (progress * 0.1); 
+            } else if (part.id.startsWith('MAIN')) {
+                tension = 0.35 + 0.5 * Math.sin(progress * Math.PI);
+            } else if (part.id === 'OUTRO') {
+                tension = 0.3 * (1 - progress * 0.6); 
+            } else {
+                tension = 0.4; 
             }
-            accumulatedBars += partDuration;
-        });
-    } else {
-        for (let i = 0; i < totalBars; i++) {
-            const progress = i / totalBars;
-            const baseTension = 0.4 + 0.3 * Math.sin(progress * Math.PI); 
-            map.push(Math.max(0.1, Math.min(0.95, baseTension + getJitter(i))));
+            
+            map.push(Math.max(0.1, Math.min(0.95, tension + getJitter(accumulatedBars + i))));
         }
+        accumulatedBars += partDuration;
+    });
+
+    while(map.length < totalBars) {
+        const progress = map.length / totalBars;
+        map.push(0.4 + 0.3 * Math.sin(progress * Math.PI) + getJitter(map.length));
     }
-    
-    while(map.length < totalBars) map.push(0.3);
     return map;
 }
 
 export function pickWeightedDeterministic<T>(options: { name?: T, value?: T, weight: number }[], seed: number, epoch: number, offset: number): T {
     if (!options || options.length === 0) return null as any;
     const totalWeight = options.reduce((sum, opt) => sum + opt.weight, 0);
-    const fractalVal = calculateMusiNum(epoch, 7, seed + offset, 100);
+    const fractalVal = calculateMusiNum(epoch, 11, seed + offset, 100);
     const target = (fractalVal / 100) * totalWeight;
     let acc = 0;
     for (const opt of options) { acc += opt.weight; if (target <= acc) return (opt.name || opt.value) as T; }
     return (options[options.length - 1].name || options[options.length - 1].value) as T;
 }
 
+/**
+ * #ЗАЧЕМ: Генерация ДНК сюиты с учетом генетического наследования.
+ * #ЧТО: Скрещивание семени текущей сессии с семенем предка (если есть).
+ */
 export function generateSuiteDNA(
     totalBars: number, 
     mood: Mood, 
@@ -285,27 +232,34 @@ export function generateSuiteDNA(
     sessionHistory?: string[],
     bpmConfig?: { base: number, range: [number, number], modifier: number }
 ): SuiteDNA {
+    // --- GENETIC CROSSOVER ---
+    let finalSeed = initialSeed;
+    if (ancestor && typeof ancestor.seed === 'number') {
+        // Bitwise crossover between current seed and successful ancestor
+        finalSeed = (initialSeed & 0x55555555) | (ancestor.seed & 0xAAAAAAAA);
+        console.log(`%c[Genetics] Crossover Active. Inheriting DNA from Masterpiece.`, 'color: #DA70D6; font-weight: bold;');
+    }
+
     let seedLickId: string | undefined;
     let partLickMap: Map<string, string> = new Map();
 
     if (genre === 'blues') {
-        const dynasty = getDynastyForMood(mood, initialSeed);
+        const dynasty = getDynastyForMood(mood, finalSeed);
         const pool = Object.keys(BLUES_SOLO_LICKS).filter(id => 
             BLUES_SOLO_LICKS[id].tags.includes(dynasty) && !(sessionHistory || []).includes(id)
         );
         const finalPool = pool.length > 0 ? pool : Object.keys(BLUES_SOLO_LICKS);
         
-        seedLickId = finalPool[Math.abs(Math.floor(initialSeed)) % finalPool.length];
+        seedLickId = finalPool[calculateMusiNum(finalSeed, 13, 0, finalPool.length)];
 
         blueprintParts.forEach((part: any, i: number) => {
-            const partLick = finalPool[(Math.abs(Math.floor(initialSeed)) + (i + 1) * 7) % finalPool.length];
+            const partLick = finalPool[(calculateMusiNum(finalSeed, 17, i * 7, finalPool.length))];
             partLickMap.set(part.id, partLick);
         });
     }
 
+    const key = 40 + calculateMusiNum(finalSeed, 19, 0, 12); 
     const harmonyTrack: GhostChord[] = [];
-    const key = 40 + Math.floor(originalRandom.next() * 12); 
-    
     let accumulatedBars = 0;
     blueprintParts.forEach((part: any) => {
         const partDuration = Math.round((part.duration.percent / 100) * totalBars);
@@ -319,11 +273,21 @@ export function generateSuiteDNA(
     if (bpmConfig) {
         const [min, max] = bpmConfig.range;
         const rangeWidth = max - min;
-        const deterministicOffset = (calculateMusiNum(initialSeed, 13, 0, 100) / 100) * rangeWidth;
+        const deterministicOffset = (calculateMusiNum(finalSeed, 23, 0, 100) / 100) * rangeWidth;
         baseTempo = Math.round((min + deterministicOffset) * bpmConfig.modifier);
     }
 
-    const tensionMap = generateTensionMap(initialSeed, totalBars, mood, blueprintParts);
+    const tensionMap = generateTensionMap(finalSeed, totalBars, mood, blueprintParts);
+    
+    // Create random itinerary for Ambient
+    const itinerary = ['VOID', 'HARBOR', 'MOUNTAIN'];
+    const shuffledItinerary = [];
+    let tempItin = [...itinerary];
+    for(let i=0; i<3; i++) {
+        const idx = calculateMusiNum(finalSeed, 7, i*13, tempItin.length);
+        shuffledItinerary.push(tempItin.splice(idx, 1)[0]);
+    }
+
     return { 
         harmonyTrack, 
         baseTempo, 
@@ -335,7 +299,8 @@ export function generateSuiteDNA(
         seedLickId, 
         partLickMap,
         sessionHistory,
-        dynasty: genre === 'blues' ? getDynastyForMood(mood, initialSeed) : undefined
+        itinerary: shuffledItinerary,
+        dynasty: genre === 'blues' ? getDynastyForMood(mood, finalSeed) : undefined
     };
 }
 

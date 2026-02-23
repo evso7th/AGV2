@@ -1,7 +1,6 @@
-
 /**
- * @file AuraGroove Music Worker (Architecture: "The Narrative Journey")
- * #ОБНОВЛЕНО (ПЛАН №591): Нарративная телеметрия. Вывод описаний активных аксиом.
+ * @file AuraGroove Music Worker (Architecture: "The Genetic Composer")
+ * #ОБНОВЛЕНО (ПЛАН №595): Внедрена криптографическая рандомизация и поддержка генетики.
  */
 import type { WorkerSettings, Mood, Genre, InstrumentPart } from '@/types/music';
 import { FractalMusicEngine } from '@/lib/fractal-music-engine';
@@ -17,6 +16,13 @@ const getTimestamp = () => {
     const s = String(now.getSeconds()).padStart(2, '0');
     return `[${h}:${m}:${s}]`;
 };
+
+/** #ЗАЧЕМ: Генерация по-настоящему случайного семени. */
+function generateTrueSeed(): number {
+    const array = new Uint32Array(1);
+    self.crypto.getRandomValues(array);
+    return array[0];
+}
 
 const Scheduler = {
     loopId: null as any,
@@ -52,11 +58,13 @@ const Scheduler = {
 
     initializeEngine(settings: WorkerSettings) {
         const blueprint = getBlueprint(settings.genre, settings.mood);
-        console.log(`%c${getTimestamp()} [Engine] Sowing Suite DNA: ${blueprint.name}`, 'color: #FFD700; font-weight:bold;');
+        const seed = settings.seed || generateTrueSeed();
+        
+        console.log(`%c${getTimestamp()} [Engine] Sowing Suite DNA: ${blueprint.name} (Seed: ${seed})`, 'color: #FFD700; font-weight:bold;');
 
         fractalMusicEngine = new FractalMusicEngine({
             ...settings,
-            seed: settings.seed || Date.now(),
+            seed: seed,
             introBars: settings.introBars
         }, blueprint);
 
@@ -89,7 +97,8 @@ const Scheduler = {
     reset() {
         const wasRunning = this.isRunning;
         if (wasRunning) this.stop();
-        this.settings.seed = Date.now();
+        // #ЗАЧЕМ: Принудительное обновление семени при сбросе.
+        this.settings.seed = generateTrueSeed();
         this.initializeEngine(this.settings);
         if (wasRunning) this.start();
     },
@@ -105,8 +114,8 @@ const Scheduler = {
         if (!this.isRunning || !fractalMusicEngine) return;
 
         if (this.barCount >= fractalMusicEngine.navigator!.totalBars) {
-             console.log(`%c${getTimestamp()} [Chain] Cycle Complete. Regenerating...`, 'color: #4ade80; font-weight: bold;');
-             this.settings.seed = Date.now(); 
+             console.log(`%c${getTimestamp()} [Chain] Cycle Complete. Mutating Seed...`, 'color: #4ade80; font-weight: bold;');
+             this.settings.seed = generateTrueSeed(); 
              this.initializeEngine(this.settings);
         }
 
@@ -121,8 +130,6 @@ const Scheduler = {
         const h = payload.instrumentHints || {};
         const sectionName = payload.navInfo?.currentPart.name || 'Unknown';
         
-        // #ЗАЧЕМ: Narrative Logging. 
-        // #ЧТО: Вывод активных аксиом для всех ролей.
         const axioms = payload.activeAxioms || {};
         const narration = payload.narrative || 'Developing story...';
         

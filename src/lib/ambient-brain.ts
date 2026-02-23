@@ -1,7 +1,9 @@
 /**
- * @fileOverview Ambient Brain v16.1 — "The Narrative Sentinel".
- * #ЗАЧЕМ: Расширена отдача данных для телеметрии воркера.
- * #ЧТО: generateBar теперь возвращает narrative и ID активных тем.
+ * @fileOverview Ambient Brain v17.0 — "The Sentient Composer".
+ * #ЗАЧЕМ: Борьба с однообразием. Внедрена логика "Рождения" Аксиом с мутациями.
+ * #ЧТО: 1. Метод mutateAxiomOnBirth трансформирует наследие под конкретную сессию.
+ *       2. Stagnation Guard отслеживает зацикливание и вызывает "Когнитивный Прыжок".
+ *       3. Tension Momentum влияет на плотность событий в реальном времени.
  */
 
 import type { 
@@ -89,23 +91,41 @@ export class AmbientBrain {
         return { next, nextInt: (max: number) => Math.floor(next() * max), shuffle };
     }
 
-    private performIntroLottery(stages: any[]) {
-        const allParticipants: { part: InstrumentPart, rule: any }[] = [];
-        stages.forEach(s => {
-            if (s.instrumentation) {
-                Object.entries(s.instrumentation).forEach(([part, rule]) => {
-                    allParticipants.push({ part: part as InstrumentPart, rule });
+    /**
+     * #ЗАЧЕМ: Первичная мутация при "Рождении" аксиомы в сессии.
+     * #ЧТО: Трансформирует наследие (Inversion, Retrograde, Transposition) на основе seed.
+     */
+    private mutateAxiomOnBirth(phrase: any[], sessionKey: number): any[] {
+        const mutationType = calculateMusiNum(sessionKey, 3, 0, 4);
+        let result = [...phrase];
+
+        switch (mutationType) {
+            case 1: // Inversion
+                const pivot = DEGREE_TO_SEMITONE[phrase[0]?.deg || 'R'] || 0;
+                result = phrase.map(n => {
+                    const s = DEGREE_TO_SEMITONE[n.deg] || 0;
+                    const inv = (pivot - (s - pivot)) % 12;
+                    return { ...n, deg: this.semitoneToClosestDegree(inv < 0 ? inv + 12 : inv) };
                 });
-            }
-        });
-        const shuffled = this.random.shuffle(allParticipants);
-        const stageSize = Math.ceil(shuffled.length / (stages.length || 1));
-        stages.forEach((_, i) => {
-            const chunk = shuffled.slice(i * stageSize, (i + 1) * stageSize);
-            const stageInstr: Partial<Record<InstrumentPart, any>> = {};
-            chunk.forEach(p => { stageInstr[p.part] = p.rule; });
-            this.introLotteryMap.set(i, stageInstr);
-        });
+                break;
+            case 2: // Retrograde (Time reverse inside phrases)
+                const maxT = Math.max(...phrase.map(n => n.t));
+                result = phrase.map(n => ({ ...n, t: maxT - n.t })).sort((a, b) => a.t - b.t);
+                break;
+            case 3: // Modal Transposition (+- quart/fifth)
+                const shift = sessionKey % 2 === 0 ? 5 : 7;
+                result = phrase.map(n => ({ ...n, octShift: (n.octShift || 0) + (shift > 6 ? 1 : 0) }));
+                break;
+        }
+        return result;
+    }
+
+    private semitoneToClosestDegree(s: number): string {
+        const degrees: Record<number, string> = {
+            0: 'R', 1: 'b2', 2: '2', 3: 'b3', 4: '3', 5: '4', 6: 'b5', 7: '5',
+            8: 'b6', 9: '6', 10: 'b7', 11: '7', 12: 'R+8'
+        };
+        return degrees[s % 12] || 'R';
     }
 
     public generateBar(
@@ -119,10 +139,18 @@ export class AmbientBrain {
         const localTension = this.computeGlobalTension(waves);
 
         const isPositive = ['joyful', 'enthusiastic', 'epic'].includes(this.mood);
+        
+        // --- STAGNATON GUARD & DYNAMIC GEOGRAPHY ---
+        const needsCognitiveJump = this.stagnationCounter > 2;
         if (isPositive) {
-            this.applyRadiance(epoch, dna, this.stagnationCounter > 2);
+            this.applyRadiance(epoch, dna, needsCognitiveJump);
         } else {
-            this.applyGeography(epoch, dna, this.stagnationCounter > 2);
+            this.applyGeography(epoch, dna, needsCognitiveJump);
+        }
+
+        if (needsCognitiveJump) {
+            this.fog = Math.max(0.1, this.fog * 0.8); // Sudden clarity
+            this.stagnationCounter = 0;
         }
 
         this.applySpectralAtom(epoch, waves[3]);
@@ -169,7 +197,7 @@ export class AmbientBrain {
             }
         }
 
-        // --- MELODY SENTINEL ---
+        // --- MELODY SENTINEL WITH NOVELTY GUARD ---
         if (epoch >= this.soloistBusyUntilBar) {
             const baseChance = isPositive ? 0.60 : 0.40; 
             const developmentChance = baseChance + localTension * 0.25;
@@ -181,7 +209,7 @@ export class AmbientBrain {
                 let lickIdx = -1;
                 let attempts = 0;
                 while (attempts < 10) {
-                    lickIdx = calculateMusiNum(epoch + attempts, 3, this.seed, group.licks.length);
+                    lickIdx = calculateMusiNum(epoch + attempts, 7, this.seed, group.licks.length);
                     const themeId = `${groupKey}_${lickIdx}`;
                     if (!this.usedThemeHistory.includes(themeId)) break;
                     attempts++;
@@ -196,7 +224,9 @@ export class AmbientBrain {
                     if (this.stagnationCounter > 0) this.stagnationCounter--;
                 }
 
-                const narrativePhrase = stretchToNarrativeLength(lick.phrase, 48, this.random);
+                // #ЗАЧЕМ: Применение мутации рождения.
+                const transformedPhrase = this.mutateAxiomOnBirth(lick.phrase, this.seed + epoch);
+                const narrativePhrase = stretchToNarrativeLength(transformedPhrase, 48, this.random);
                 const phraseTicks = Math.max(...narrativePhrase.map(n => n.t + n.d));
                 const phraseBars = Math.ceil((phraseTicks + 1) / 12);
                 
@@ -209,7 +239,7 @@ export class AmbientBrain {
                 };
                 
                 this.usedThemeHistory.push(themeId);
-                if (this.usedThemeHistory.length > 3) this.usedThemeHistory.shift();
+                if (this.usedThemeHistory.length > 5) this.usedThemeHistory.shift();
 
                 const restBars = this.mood === 'enthusiastic' ? 0 : 1;
                 this.soloistBusyUntilBar = epoch + phraseBars + restBars; 
@@ -272,8 +302,7 @@ export class AmbientBrain {
             events.push(...this.renderSfx(localTension, sfxRule));
         }
 
-        // #ЗАЧЕМ: Наполнение телеметрии.
-        const narrative = this.currentTheme ? `Evoking ${this.currentTheme.id} (${this.currentTheme.tags.join(', ')})` : 'Flowing through ambient textures.';
+        const narrative = this.currentTheme ? `Evoking transformed ${this.currentTheme.id} (${this.currentTheme.tags.join(', ')})` : 'Flowing through ambient textures.';
 
         return { 
             events, 
