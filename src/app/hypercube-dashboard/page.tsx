@@ -17,7 +17,8 @@ import {
   ListFilter,
   Save,
   X,
-  History
+  History,
+  RotateCcw
 } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
@@ -85,10 +86,24 @@ export default function HypercubeDashboard() {
     });
   }, [axioms]);
 
+  // #ЗАЧЕМ: Сброс текущей сессии импорта. Очищает все временные данные.
+  const resetStaging = () => {
+    setStagedAxioms([]);
+    setSelectedIds(new Set());
+    setIsStaging(false);
+    setCurrentFileName('');
+    if (fileInputRef.current) {
+      fileInputRef.current.value = '';
+    }
+  };
+
   // #ЗАЧЕМ: Загрузка локального файла с диска пользователя.
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
+
+    // Сначала очищаем старые следы
+    resetStaging();
 
     if (processedFiles.includes(file.name)) {
       toast({ 
@@ -96,7 +111,6 @@ export default function HypercubeDashboard() {
         title: "Duplicate Blocked", 
         description: `File "${file.name}" has already been imported into the Hypercube.` 
       });
-      if (fileInputRef.current) fileInputRef.current.value = '';
       return;
     }
 
@@ -153,8 +167,9 @@ export default function HypercubeDashboard() {
         title: "Injection Successful", 
         description: `Committed ${addedCount} axioms from "${currentFileName}".` 
       });
-      setIsStaging(false);
-      if (fileInputRef.current) fileInputRef.current.value = '';
+      
+      // #ЗАЧЕМ: Очистка после коммита.
+      resetStaging();
     } catch (e) {
       toast({ variant: "destructive", title: "Injection Failed", description: String(e) });
     } finally {
@@ -187,6 +202,7 @@ export default function HypercubeDashboard() {
       // Also clear file history
       setProcessedFiles([]);
       localStorage.removeItem(PROCESSED_FILES_KEY);
+      resetStaging();
 
       toast({ title: "Hypercube Purged", description: `${snapshot.size} axioms removed.` });
     } catch (e) {
@@ -242,7 +258,7 @@ export default function HypercubeDashboard() {
             <h1 className="text-4xl font-bold tracking-tight text-primary flex items-center gap-3">
               <Database className="h-10 w-10" /> Hypercube Dashboard
             </h1>
-            <p className="text-muted-foreground">Legacy Management & Selective Injection Protocol v2.4</p>
+            <p className="text-muted-foreground">Legacy Management & Selective Injection Protocol v2.5</p>
           </div>
           <div className="flex gap-2">
             <Button variant="outline" size="sm" onClick={() => stopAllSounds()} className="gap-2 text-destructive border-destructive/50">
@@ -256,40 +272,51 @@ export default function HypercubeDashboard() {
 
         {/* Staging UI (Selective Import) */}
         {isStaging && (
-          <Card className="border-primary bg-primary/5 animate-in fade-in slide-in-from-top-4 duration-500">
+          <Card className="border-primary bg-primary/5 animate-in fade-in slide-in-from-top-4 duration-500 shadow-2xl">
             <CardHeader className="flex flex-row items-center justify-between space-y-0">
               <div>
-                <CardTitle className="flex items-center gap-2"><ListFilter className="h-5 w-5"/> Injection Stage: {currentFileName}</CardTitle>
-                <CardDescription>Select axioms to commit from the local file</CardDescription>
+                <CardTitle className="flex items-center gap-2"><ListFilter className="h-5 w-5"/> Injection Stage (From Local File): {currentFileName}</CardTitle>
+                <CardDescription>Select axioms to commit from the current file</CardDescription>
               </div>
               <div className="flex gap-2">
-                <Button variant="ghost" size="icon" onClick={() => setIsStaging(false)}><X className="h-4 w-4"/></Button>
+                <Button variant="ghost" className="gap-2 text-muted-foreground" onClick={resetStaging}>
+                  <RotateCcw className="h-4 w-4" /> Reset Staging
+                </Button>
+                <Button variant="ghost" size="icon" onClick={resetStaging}><X className="h-4 w-4"/></Button>
               </div>
             </CardHeader>
             <CardContent className="space-y-4">
-              <div className="max-h-[400px] overflow-y-auto border rounded-md bg-background">
+              <div className="max-h-[400px] overflow-y-auto border rounded-md bg-background shadow-inner">
                 <table className="w-full text-sm">
-                  <thead className="sticky top-0 bg-muted z-10">
+                  <thead className="sticky top-0 bg-muted z-10 shadow-sm">
                     <tr className="border-b">
-                      <th className="p-3 w-10"></th>
-                      <th className="p-3 text-left">Track</th>
+                      <th className="p-3 w-10 text-center">
+                        <Checkbox 
+                          checked={selectedIds.size === stagedAxioms.length} 
+                          onCheckedChange={(checked) => {
+                            if (checked) setSelectedIds(new Set(stagedAxioms.map(a => a.id)));
+                            else setSelectedIds(new Set());
+                          }} 
+                        />
+                      </th>
+                      <th className="p-3 text-left">Track / Source</th>
                       <th className="p-3 text-left">Role</th>
                       <th className="p-3 text-left">Narrative</th>
                       <th className="p-3 text-right">Preview</th>
                     </tr>
                   </thead>
-                  <tbody>
+                  <tbody className="divide-y">
                     {stagedAxioms.map((ax) => (
-                      <tr key={ax.id} className="border-b hover:bg-muted/50 transition-colors">
+                      <tr key={ax.id} className="hover:bg-muted/50 transition-colors">
                         <td className="p-3 text-center">
                           <Checkbox checked={selectedIds.has(ax.id)} onCheckedChange={() => toggleSelect(ax.id)} />
                         </td>
                         <td className="p-3 font-medium text-xs whitespace-normal break-all max-w-[150px] leading-tight">{ax.compositionId}</td>
                         <td className="p-3"><Badge variant="secondary" className="text-[10px]">{ax.role}</Badge></td>
-                        <td className="p-3 text-xs italic text-muted-foreground line-clamp-2">{ax.narrative}</td>
+                        <td className="p-3 text-xs italic text-muted-foreground leading-relaxed">{ax.narrative}</td>
                         <td className="p-3 text-right">
-                          <Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => handlePlayAxiom(ax)}>
-                            <Play className="h-3 w-3" />
+                          <Button size="icon" variant="ghost" className="h-8 w-8 hover:text-primary" onClick={() => handlePlayAxiom(ax)}>
+                            <Play className="h-4 w-4" />
                           </Button>
                         </td>
                       </tr>
@@ -298,10 +325,10 @@ export default function HypercubeDashboard() {
                 </table>
               </div>
               <div className="flex justify-end gap-3 pt-2">
-                <Button variant="outline" onClick={() => setIsStaging(false)}>Cancel</Button>
-                <Button onClick={handleCommitInjection} disabled={isProcessing || selectedIds.size === 0} className="gap-2">
+                <Button variant="outline" onClick={resetStaging}>Cancel & Clear</Button>
+                <Button onClick={handleCommitInjection} disabled={isProcessing || selectedIds.size === 0} className="gap-2 px-8 font-bold">
                   <Save className={cn("h-4 w-4", isProcessing && "animate-spin")} />
-                  Commit {selectedIds.size} Axioms
+                  Commit {selectedIds.size} Axioms to Hypercube
                 </Button>
               </div>
             </CardContent>
@@ -358,7 +385,7 @@ export default function HypercubeDashboard() {
           <Button 
             onClick={() => fileInputRef.current?.click()} 
             disabled={isProcessing || isStaging} 
-            className="bg-primary/20 hover:bg-primary/30 text-primary border border-primary/50"
+            className="bg-primary/20 hover:bg-primary/30 text-primary border border-primary/50 font-bold"
           >
             <Upload className="mr-2 h-4 w-4" />
             Upload Local Forge Batch
@@ -376,7 +403,7 @@ export default function HypercubeDashboard() {
         {/* Axiom List */}
         <Card className="border-border/50 shadow-xl overflow-hidden">
           <CardHeader className="bg-muted/30 border-b">
-            <CardTitle className="text-lg flex items-center gap-2"><Wind className="h-5 w-5"/> DNA Repository</CardTitle>
+            <CardTitle className="text-lg flex items-center gap-2"><Wind className="h-5 w-5"/> Hypercube Repository (Live Database)</CardTitle>
             <CardDescription>Vector-indexed musical fragments from {stats.compositionIds.size} sources</CardDescription>
           </CardHeader>
           <CardContent className="p-0">
@@ -409,10 +436,10 @@ export default function HypercubeDashboard() {
                         <p className="line-clamp-3">{ax.narrative || 'Axiom Narrative Missing'}</p>
                       </td>
                       <td className="p-4 text-right flex justify-end gap-2">
-                        <Button size="icon" variant="ghost" onClick={() => handlePlayAxiom(ax)} title="Listen">
+                        <Button size="icon" variant="ghost" onClick={() => handlePlayAxiom(ax)} title="Listen" className="h-8 w-8">
                           <Play className="h-4 w-4 text-primary" />
                         </Button>
-                        <Button size="icon" variant="ghost" onClick={() => handleDeleteAxiom(ax.id)} title="Delete">
+                        <Button size="icon" variant="ghost" onClick={() => handleDeleteAxiom(ax.id)} title="Delete" className="h-8 w-8">
                           <Trash2 className="h-4 w-4 text-destructive" />
                         </Button>
                       </td>
