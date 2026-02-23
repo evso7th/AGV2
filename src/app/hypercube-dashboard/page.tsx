@@ -67,15 +67,22 @@ export default function HypercubeDashboard() {
 
   // Stats
   const stats = useMemo(() => {
-    if (!axioms) return { total: 0, genres: {}, moods: {}, compositionIds: new Set() };
+    if (!axioms) return { total: 0, genres: {}, moods: {}, commonMoods: {}, compositionIds: new Set() };
     
     return axioms.reduce((acc, ax) => {
       acc.total++;
       acc.genres[ax.genre] = (acc.genres[ax.genre] || 0) + 1;
       acc.moods[ax.mood] = (acc.moods[ax.mood] || 0) + 1;
+      acc.commonMoods[ax.commonMood] = (acc.commonMoods[ax.commonMood] || 0) + 1;
       acc.compositionIds.add(ax.compositionId);
       return acc;
-    }, { total: 0, genres: {} as any, moods: {} as any, compositionIds: new Set<string>() });
+    }, { 
+        total: 0, 
+        genres: {} as Record<string, number>, 
+        moods: {} as Record<string, number>, 
+        commonMoods: {} as Record<string, number>, 
+        compositionIds: new Set<string>() 
+    });
   }, [axioms]);
 
   // #ЗАЧЕМ: Загрузка локального файла с диска пользователя.
@@ -235,7 +242,7 @@ export default function HypercubeDashboard() {
             <h1 className="text-4xl font-bold tracking-tight text-primary flex items-center gap-3">
               <Database className="h-10 w-10" /> Hypercube Dashboard
             </h1>
-            <p className="text-muted-foreground">Legacy Management & Selective Injection Protocol v2.3</p>
+            <p className="text-muted-foreground">Legacy Management & Selective Injection Protocol v2.4</p>
           </div>
           <div className="flex gap-2">
             <Button variant="outline" size="sm" onClick={() => stopAllSounds()} className="gap-2 text-destructive border-destructive/50">
@@ -308,16 +315,34 @@ export default function HypercubeDashboard() {
             <CardContent><p className="text-3xl font-mono">{isLoading ? '...' : stats.total}</p></CardContent>
           </Card>
           <Card className="bg-card border-primary/20">
-            <CardHeader className="pb-2"><CardTitle className="text-sm flex items-center gap-2"><History className="h-4 w-4 text-primary"/> Processed Files</CardTitle></CardHeader>
-            <CardContent><p className="text-3xl font-mono">{processedFiles.length}</p></CardContent>
+            <CardHeader className="pb-2"><CardTitle className="text-sm flex items-center gap-2"><History className="h-4 w-4 text-primary"/> Import History</CardTitle></CardHeader>
+            <CardContent><p className="text-3xl font-mono">{processedFiles.length}</p><p className="text-[10px] text-muted-foreground uppercase">Processed Files</p></CardContent>
           </Card>
           <Card className="bg-card border-primary/20">
-            <CardHeader className="pb-2"><CardTitle className="text-sm flex items-center gap-2"><Brain className="h-4 w-4 text-primary"/> Moods</CardTitle></CardHeader>
-            <CardContent><p className="text-3xl font-mono">{Object.keys(stats.moods).length}</p></CardContent>
+            <CardHeader className="pb-2"><CardTitle className="text-sm flex items-center gap-2"><Music className="h-4 w-4 text-primary"/> Genres Breakdown</CardTitle></CardHeader>
+            <CardContent>
+              <div className="flex flex-wrap gap-1">
+                {Object.entries(stats.genres).map(([g, count]) => (
+                  <Badge key={g} variant="secondary" className="text-[10px] uppercase font-mono">{g}: {count}</Badge>
+                ))}
+                {Object.keys(stats.genres).length === 0 && <span className="text-xs text-muted-foreground italic">None found</span>}
+              </div>
+            </CardContent>
           </Card>
           <Card className="bg-card border-primary/20">
-            <CardHeader className="pb-2"><CardTitle className="text-sm flex items-center gap-2"><Music className="h-4 w-4 text-primary"/> Sources</CardTitle></CardHeader>
-            <CardContent><p className="text-3xl font-mono">{stats.compositionIds.size}</p></CardContent>
+            <CardHeader className="pb-2"><CardTitle className="text-sm flex items-center gap-2"><Brain className="h-4 w-4 text-primary"/> Mood Distribution</CardTitle></CardHeader>
+            <CardContent className="space-y-2">
+              <div className="flex flex-wrap gap-1 border-b border-border/50 pb-1.5">
+                {Object.entries(stats.commonMoods).map(([cm, count]) => (
+                  <Badge key={cm} className="text-[10px] uppercase font-bold">{cm}: {count}</Badge>
+                ))}
+              </div>
+              <div className="flex flex-wrap gap-1 pt-0.5 opacity-80">
+                {Object.entries(stats.moods).map(([m, count]) => (
+                  <Badge key={m} variant="outline" className="text-[9px] lowercase px-1 h-4">{m}: {count}</Badge>
+                ))}
+              </div>
+            </CardContent>
           </Card>
         </div>
 
@@ -352,7 +377,7 @@ export default function HypercubeDashboard() {
         <Card className="border-border/50 shadow-xl overflow-hidden">
           <CardHeader className="bg-muted/30 border-b">
             <CardTitle className="text-lg flex items-center gap-2"><Wind className="h-5 w-5"/> DNA Repository</CardTitle>
-            <CardDescription>Vector-indexed musical fragments</CardDescription>
+            <CardDescription>Vector-indexed musical fragments from {stats.compositionIds.size} sources</CardDescription>
           </CardHeader>
           <CardContent className="p-0">
             <div className="overflow-x-auto">
@@ -381,7 +406,7 @@ export default function HypercubeDashboard() {
                         [{ax.vector.t.toFixed(1)}, {ax.vector.b.toFixed(1)}, {ax.vector.e.toFixed(1)}, {ax.vector.h.toFixed(1)}]
                       </td>
                       <td className="p-4 text-xs max-w-xs italic text-muted-foreground">
-                        <p className="line-clamp-3">{ax.narrative}</p>
+                        <p className="line-clamp-3">{ax.narrative || 'Axiom Narrative Missing'}</p>
                       </td>
                       <td className="p-4 text-right flex justify-end gap-2">
                         <Button size="icon" variant="ghost" onClick={() => handlePlayAxiom(ax)} title="Listen">
