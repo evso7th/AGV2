@@ -1,8 +1,7 @@
 /**
- * #ЗАЧЕМ: Суверенный Мозг Амбиента v16.0 — "The Atlas Sentinel".
- * #ЧТО: 1. Внедрена защита от повторения тем через usedThemeHistory.
- *       2. При стагнации тем принудительно меняется Атлас.
- *       3. Усилено логирование работы стражей.
+ * @fileOverview Ambient Brain v16.1 — "The Narrative Sentinel".
+ * #ЗАЧЕМ: Расширена отдача данных для телеметрии воркера.
+ * #ЧТО: generateBar теперь возвращает narrative и ID активных тем.
  */
 
 import type { 
@@ -62,7 +61,7 @@ export class AmbientBrain {
     private readonly MELODY_CEILING = 75;
     private readonly BASS_FLOOR = 31; 
 
-    private currentTheme: { phrase: any[], startBar: number, endBar: number, id: string } | null = null;
+    private currentTheme: { phrase: any[], startBar: number, endBar: number, id: string, tags: string[] } | null = null;
     private currentBassTheme: { phrase: any[], startBar: number, endBar: number } | null = null; 
     private usedThemeHistory: string[] = [];
     private stagnationCounter: number = 0;
@@ -114,7 +113,7 @@ export class AmbientBrain {
         currentChord: GhostChord, 
         navInfo: NavigationInfo, 
         dna: SuiteDNA
-    ): { events: FractalEvent[], instrumentHints: InstrumentHints, tension: number, beautyScore: number } {
+    ): { events: FractalEvent[], instrumentHints: InstrumentHints, tension: number, beautyScore: number, activeAxioms?: any, narrative?: string } {
         
         const waves = this.computeTensionWaves(epoch * (60 / dna.baseTempo) * 4);
         const localTension = this.computeGlobalTension(waves);
@@ -129,7 +128,7 @@ export class AmbientBrain {
         this.applySpectralAtom(epoch, waves[3]);
         this.updateMoodAxes(epoch, localTension);
 
-        // Compute Momentum
+        // Momentum
         this.dFog = this.fog - this.lastFog;
         this.dDepth = this.depth - this.lastDepth;
         this.lastFog = this.fog;
@@ -179,7 +178,6 @@ export class AmbientBrain {
                 let groupKey = dna.ambientLegacyGroup || 'BUDD';
                 const group = AMBIENT_LEGACY[groupKey];
                 
-                // Ищем тему, которая не играла в последних 3-х разах
                 let lickIdx = -1;
                 let attempts = 0;
                 while (attempts < 10) {
@@ -192,10 +190,8 @@ export class AmbientBrain {
                 const lick = group.licks[lickIdx];
                 const themeId = `${groupKey}_${lickIdx}`;
 
-                // Проверка на зацикливание
                 if (themeId === this.currentTheme?.id) {
                     this.stagnationCounter++;
-                    console.log(`%c[SENTINEL] Ambient Stagnation Strike! (${this.stagnationCounter}/3)`, 'color: #ffa500;');
                 } else {
                     if (this.stagnationCounter > 0) this.stagnationCounter--;
                 }
@@ -208,7 +204,8 @@ export class AmbientBrain {
                     phrase: narrativePhrase,
                     startBar: epoch,
                     endBar: epoch + phraseBars,
-                    id: themeId
+                    id: themeId,
+                    tags: lick.tags
                 };
                 
                 this.usedThemeHistory.push(themeId);
@@ -275,11 +272,20 @@ export class AmbientBrain {
             events.push(...this.renderSfx(localTension, sfxRule));
         }
 
+        // #ЗАЧЕМ: Наполнение телеметрии.
+        const narrative = this.currentTheme ? `Evoking ${this.currentTheme.id} (${this.currentTheme.tags.join(', ')})` : 'Flowing through ambient textures.';
+
         return { 
             events, 
             instrumentHints: hints, 
             tension: localTension, 
-            beautyScore: 0.5 
+            beautyScore: 0.5,
+            activeAxioms: {
+                melody: this.currentTheme?.id || 'Atmospheric',
+                bass: isPositive ? 'Narrative' : 'Steady',
+                accompaniment: hints.accompaniment
+            },
+            narrative
         };
     }
 
@@ -289,7 +295,6 @@ export class AmbientBrain {
         let stage = Math.min(2, Math.floor((epoch / 150) * 3));
         if (forceShift) {
             stage = (stage + 1) % 3;
-            console.log(`[SENTINEL] Forced Geography Shift to stage ${stage}`);
         }
 
         const atomKey = dna.itinerary[stage];
@@ -307,7 +312,6 @@ export class AmbientBrain {
         let stage = Math.min(2, Math.floor((epoch / 150) * 3));
         if (forceShift) {
             stage = (stage + 1) % 3;
-            console.log(`[SENTINEL] Forced Radiance Shift to stage ${stage}`);
         }
 
         const atomKey = dna.itinerary[stage];
@@ -513,7 +517,6 @@ export class AmbientBrain {
 
     private renderOrchestralHarmony(chord: GhostChord, epoch: number, hints: InstrumentHints, tension: number): FractalEvent[] {
         const root = chord.rootNote; 
-        const timbre = (hints.harmony as string) || (tension > 0.55 ? 'violin' : 'guitarChords');
         const notes = [root, root + 7];
         
         return notes.map((n, i) => {
@@ -522,7 +525,7 @@ export class AmbientBrain {
                 note: n + 12 + this.registerShift, 
                 time: i * 0.5,
                 duration: 8.0,
-                weight: (timbre === 'violin' ? 0.08 : 0.15) * (0.8 + this.random.next() * 0.4), 
+                weight: 0.12 * (0.8 + this.random.next() * 0.4), 
                 technique: 'swell',
                 dynamics: 'p',
                 phrasing: 'legato',

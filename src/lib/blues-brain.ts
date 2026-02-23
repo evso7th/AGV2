@@ -23,9 +23,8 @@ import { BLUES_GUITAR_RIFFS, BLUES_GUITAR_VOICINGS } from './assets/blues-guitar
 import { BLUES_MELODY_RIFFS } from './assets/blues-melody-riffs';
 
 /**
- * #ЗАЧЕМ: Блюзовый Мозг V125.1 — "Worker Stability Fix".
- * #ЧТО: 1. Исправлена инициализация config.
- *       2. Тайминг нормализован в долях (beats) для исключения " tempo drift".
+ * #ЗАЧЕМ: Блюзовый Мозг V126.0 — "Narrative Telemetry".
+ * #ЧТО: generateBar теперь возвращает activeAxioms и контекст для логирования.
  */
 
 export interface BluesBrainConfig {
@@ -128,7 +127,7 @@ export class BluesBrain {
     dna: SuiteDNA,
     hints: InstrumentHints,
     lastEvents: FractalEvent[] = []
-  ): { events: FractalEvent[], lickId?: string, mutationType?: string } {
+  ): { events: FractalEvent[], lickId?: string, mutationType?: string, activeAxioms?: any, narrative?: string } {
     const tension = dna.tensionMap?.[epoch] ?? 0.5;
     
     this.state.tensionMomentum = tension - this.state.lastTension;
@@ -177,10 +176,21 @@ export class BluesBrain {
         events.push(...this.renderDerivativeHarmony(currentChord, epoch, tension));
     }
 
+    // #ЗАЧЕМ: Формирование телеметрии.
+    const activeAxioms = {
+        melody: this.currentLickId,
+        bass: tension > 0.7 ? 'Walking' : 'Riff',
+        accompaniment: this.state.activeAccompTimbre
+    };
+
+    const narrative = `Performing blues narrative with ${this.currentLickId}. Mood: ${this.mood}.`;
+
     return { 
         events, 
         lickId: this.currentLickId, 
-        mutationType: this.state.currentMutationType 
+        mutationType: this.state.currentMutationType,
+        activeAxioms,
+        narrative
     };
   }
 

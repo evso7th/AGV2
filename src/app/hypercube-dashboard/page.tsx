@@ -1,23 +1,22 @@
 'use client';
 
-import { useState, useMemo, useEffect } from 'react';
+import { useState, useMemo, useEffect, useRef } from 'react';
 import { 
   Database, 
   Play, 
   Square,
   Trash2, 
-  FileJson, 
+  Upload, 
   Activity, 
   Music, 
   Wind, 
   Brain, 
-  RefreshCcw,
   ShieldAlert,
   ArrowLeft,
-  CheckCircle2,
   ListFilter,
   Save,
-  X
+  X,
+  History
 } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
@@ -30,10 +29,10 @@ import { useAudioEngine } from '@/contexts/audio-engine-context';
 import { saveHeritageAxiom } from '@/lib/firebase-service';
 import { decompressCompactPhrase, DEGREE_TO_SEMITONE } from '@/lib/music-theory';
 import { useToast } from '@/hooks/use-toast';
+import { cn } from '@/lib/utils';
 import type { FractalEvent, InstrumentHints } from '@/types/fractal';
 
-// #ЗАЧЕМ: Импорт пакетных данных от Завода.
-import BATCH_ASSET from '@/lib/assets/midi/auragroove-master-axioms-1771865219446.json';
+const PROCESSED_FILES_KEY = 'AuraGroove_ImportedFiles';
 
 export default function HypercubeDashboard() {
   const db = useFirestore();
@@ -45,12 +44,27 @@ export default function HypercubeDashboard() {
   const [isStaging, setIsStaging] = useState(false);
   const [stagedAxioms, setStagedAxioms] = useState<any[]>([]);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [processedFiles, setProcessedFiles] = useState<string[]>([]);
+  const [currentFileName, setCurrentFileName] = useState<string>('');
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // Load history from localStorage
+  useEffect(() => {
+    const saved = localStorage.getItem(PROCESSED_FILES_KEY);
+    if (saved) {
+      try {
+        setProcessedFiles(JSON.parse(saved));
+      } catch (e) {
+        console.error("Failed to parse import history");
+      }
+    }
+  }, []);
 
   // Firebase Query
   const axiomsQuery = useMemoFirebase(() => collection(db, 'heritage_axioms'), [db]);
   const { data: axioms, isLoading } = useCollection(axiomsQuery);
 
-  // Статистика
+  // Stats
   const stats = useMemo(() => {
     if (!axioms) return { total: 0, genres: {}, moods: {}, compositionIds: new Set() };
     
@@ -63,25 +77,47 @@ export default function HypercubeDashboard() {
     }, { total: 0, genres: {} as any, moods: {} as any, compositionIds: new Set<string>() });
   }, [axioms]);
 
-  // #ЗАЧЕМ: Подготовка пакетных данных к выборочной загрузке.
-  const handleStageBatch = () => {
-    const flattened: any[] = [];
-    Object.entries(BATCH_ASSET).forEach(([trackName, licks]) => {
-      (licks as any[]).forEach((lick, idx) => {
-        const id = `${trackName}_${lick.role}_${idx}`;
-        flattened.push({
-          ...lick,
-          id,
-          compositionId: trackName
-        });
+  // #ЗАЧЕМ: Загрузка локального файла с диска пользователя.
+  const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    if (processedFiles.includes(file.name)) {
+      toast({ 
+        variant: "destructive", 
+        title: "Duplicate Blocked", 
+        description: `File "${file.name}" has already been imported into the Hypercube.` 
       });
-    });
-    setStagedAxioms(flattened);
-    setSelectedIds(new Set(flattened.map(a => a.id)));
-    setIsStaging(true);
+      if (fileInputRef.current) fileInputRef.current.value = '';
+      return;
+    }
+
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      try {
+        const json = JSON.parse(event.target?.result as string);
+        const flattened: any[] = [];
+        Object.entries(json).forEach(([trackName, licks]) => {
+          (licks as any[]).forEach((lick, idx) => {
+            const id = `${trackName}_${lick.role}_${idx}`;
+            flattened.push({
+              ...lick,
+              id,
+              compositionId: trackName
+            });
+          });
+        });
+        setStagedAxioms(flattened);
+        setSelectedIds(new Set(flattened.map(a => a.id)));
+        setCurrentFileName(file.name);
+        setIsStaging(true);
+      } catch (err) {
+        toast({ variant: "destructive", title: "Parse Error", description: "The selected file is not a valid AuraGroove Axiom JSON." });
+      }
+    };
+    reader.readAsText(file);
   };
 
-  // #ЗАЧЕМ: Финальная инъекция выбранных аксиом.
   const handleCommitInjection = async () => {
     setIsProcessing(true);
     let addedCount = 0;
@@ -94,17 +130,23 @@ export default function HypercubeDashboard() {
           ...ax,
           genre: ax.genre || 'blues',
           barOffset: 0,
-          origin: 'Forge_Batch_Import',
+          origin: `Forge_Local_Import_${currentFileName}`,
           timestamp: new Date().toISOString() as any
         });
         addedCount++;
       }
 
+      // Update local history
+      const nextFiles = [...processedFiles, currentFileName];
+      setProcessedFiles(nextFiles);
+      localStorage.setItem(PROCESSED_FILES_KEY, JSON.stringify(nextFiles));
+
       toast({ 
         title: "Injection Successful", 
-        description: `Committed ${addedCount} axioms to the Hypercube.` 
+        description: `Committed ${addedCount} axioms from "${currentFileName}".` 
       });
       setIsStaging(false);
+      if (fileInputRef.current) fileInputRef.current.value = '';
     } catch (e) {
       toast({ variant: "destructive", title: "Injection Failed", description: String(e) });
     } finally {
@@ -133,6 +175,11 @@ export default function HypercubeDashboard() {
       const batch = writeBatch(db);
       snapshot.docs.forEach(d => batch.delete(d.ref));
       await batch.commit();
+      
+      // Also clear file history
+      setProcessedFiles([]);
+      localStorage.removeItem(PROCESSED_FILES_KEY);
+
       toast({ title: "Hypercube Purged", description: `${snapshot.size} axioms removed.` });
     } catch (e) {
       toast({ variant: "destructive", title: "Purge Failed" });
@@ -187,14 +234,14 @@ export default function HypercubeDashboard() {
             <h1 className="text-4xl font-bold tracking-tight text-primary flex items-center gap-3">
               <Database className="h-10 w-10" /> Hypercube Dashboard
             </h1>
-            <p className="text-muted-foreground">Legacy Management & Batch Production Protocol v2.2</p>
+            <p className="text-muted-foreground">Legacy Management & Selective Injection Protocol v2.2</p>
           </div>
           <div className="flex gap-2">
             <Button variant="outline" size="sm" onClick={() => stopAllSounds()} className="gap-2 text-destructive border-destructive/50">
                 <Square className="h-4 w-4" /> Stop Audition
             </Button>
             <Button variant="ghost" onClick={() => router.push('/aura-groove')} className="gap-2">
-                <ArrowLeft className="h-4 w-4" /> Back to AgV2
+                <ArrowLeft className="h-4 w-4" /> Back to Player
             </Button>
           </div>
         </div>
@@ -204,8 +251,8 @@ export default function HypercubeDashboard() {
           <Card className="border-primary bg-primary/5 animate-in fade-in slide-in-from-top-4 duration-500">
             <CardHeader className="flex flex-row items-center justify-between space-y-0">
               <div>
-                <CardTitle className="flex items-center gap-2"><ListFilter className="h-5 w-5"/> Batch Injection Stage</CardTitle>
-                <CardDescription>Select axioms to commit to global memory</CardDescription>
+                <CardTitle className="flex items-center gap-2"><ListFilter className="h-5 w-5"/> Injection Stage: {currentFileName}</CardTitle>
+                <CardDescription>Select axioms to commit from the local file</CardDescription>
               </div>
               <div className="flex gap-2">
                 <Button variant="ghost" size="icon" onClick={() => setIsStaging(false)}><X className="h-4 w-4"/></Button>
@@ -229,9 +276,9 @@ export default function HypercubeDashboard() {
                         <td className="p-3 text-center">
                           <Checkbox checked={selectedIds.has(ax.id)} onCheckedChange={() => toggleSelect(ax.id)} />
                         </td>
-                        <td className="p-3 font-medium text-xs truncate max-w-[120px]">{ax.compositionId}</td>
+                        <td className="p-3 font-medium text-xs whitespace-normal break-all max-w-[150px] leading-tight">{ax.compositionId}</td>
                         <td className="p-3"><Badge variant="secondary" className="text-[10px]">{ax.role}</Badge></td>
-                        <td className="p-3 text-xs italic text-muted-foreground line-clamp-1">{ax.narrative}</td>
+                        <td className="p-3 text-xs italic text-muted-foreground line-clamp-2">{ax.narrative}</td>
                         <td className="p-3 text-right">
                           <Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => handlePlayAxiom(ax)}>
                             <Play className="h-3 w-3" />
@@ -260,28 +307,35 @@ export default function HypercubeDashboard() {
             <CardContent><p className="text-3xl font-mono">{isLoading ? '...' : stats.total}</p></CardContent>
           </Card>
           <Card className="bg-card border-primary/20">
-            <CardHeader className="pb-2"><CardTitle className="text-sm flex items-center gap-2"><Music className="h-4 w-4 text-primary"/> Genres</CardTitle></CardHeader>
-            <CardContent><p className="text-3xl font-mono">{Object.keys(stats.genres).length}</p></CardContent>
+            <CardHeader className="pb-2"><CardTitle className="text-sm flex items-center gap-2"><History className="h-4 w-4 text-primary"/> Processed Files</CardTitle></CardHeader>
+            <CardContent><p className="text-3xl font-mono">{processedFiles.length}</p></CardContent>
           </Card>
           <Card className="bg-card border-primary/20">
             <CardHeader className="pb-2"><CardTitle className="text-sm flex items-center gap-2"><Brain className="h-4 w-4 text-primary"/> Moods</CardTitle></CardHeader>
             <CardContent><p className="text-3xl font-mono">{Object.keys(stats.moods).length}</p></CardContent>
           </Card>
           <Card className="bg-card border-primary/20">
-            <CardHeader className="pb-2"><CardTitle className="text-sm flex items-center gap-2"><FileJson className="h-4 w-4 text-primary"/> Sources</CardTitle></CardHeader>
+            <CardHeader className="pb-2"><CardTitle className="text-sm flex items-center gap-2"><Music className="h-4 w-4 text-primary"/> Sources</CardTitle></CardHeader>
             <CardContent><p className="text-3xl font-mono">{stats.compositionIds.size}</p></CardContent>
-          </Card>
+          </div>
         </div>
 
         {/* Controls */}
         <div className="flex flex-wrap gap-4">
+          <input 
+            type="file" 
+            ref={fileInputRef} 
+            onChange={handleFileSelect} 
+            accept=".json" 
+            className="hidden" 
+          />
           <Button 
-            onClick={handleStageBatch} 
+            onClick={() => fileInputRef.current?.click()} 
             disabled={isProcessing || isStaging} 
             className="bg-primary/20 hover:bg-primary/30 text-primary border border-primary/50"
           >
-            <RefreshCcw className="mr-2 h-4 w-4" />
-            Stage New Forge Batch
+            <Upload className="mr-2 h-4 w-4" />
+            Upload Local Forge Batch
           </Button>
           <Button 
             variant="destructive" 
@@ -315,7 +369,9 @@ export default function HypercubeDashboard() {
                 <tbody className="divide-y">
                   {axioms?.map((ax) => (
                     <tr key={ax.id} className="hover:bg-muted/20 transition-colors">
-                      <td className="p-4 font-medium text-primary truncate max-w-[150px]">{ax.compositionId}</td>
+                      <td className="p-4 font-medium text-primary whitespace-normal break-words max-w-[200px] leading-tight">
+                        {ax.compositionId}
+                      </td>
                       <td className="p-4">
                         <Badge variant="outline" className="capitalize text-[10px]">{ax.role}</Badge>
                       </td>
@@ -323,8 +379,8 @@ export default function HypercubeDashboard() {
                       <td className="p-4 font-mono text-[10px] text-muted-foreground">
                         [{ax.vector.t.toFixed(1)}, {ax.vector.b.toFixed(1)}, {ax.vector.e.toFixed(1)}, {ax.vector.h.toFixed(1)}]
                       </td>
-                      <td className="p-4 text-xs max-w-xs italic text-muted-foreground line-clamp-2">
-                        {ax.narrative}
+                      <td className="p-4 text-xs max-w-xs italic text-muted-foreground">
+                        <p className="line-clamp-3">{ax.narrative}</p>
                       </td>
                       <td className="p-4 text-right flex justify-end gap-2">
                         <Button size="icon" variant="ghost" onClick={() => handlePlayAxiom(ax)} title="Listen">
@@ -339,7 +395,7 @@ export default function HypercubeDashboard() {
                   {(!axioms || axioms.length === 0) && (
                     <tr>
                       <td colSpan={6} className="p-12 text-center text-muted-foreground">
-                        Hypercube is empty. Stage a batch from Forge to begin.
+                        Hypercube is empty. Upload a local batch to begin.
                       </td>
                     </tr>
                   )}
@@ -352,8 +408,4 @@ export default function HypercubeDashboard() {
       </div>
     </div>
   );
-}
-
-function cn(...classes: any[]) {
-  return classes.filter(Boolean).join(' ');
 }

@@ -1,6 +1,6 @@
 /**
  * @file AuraGroove Music Worker (Architecture: "The Narrative Journey")
- * #ОБНОВЛЕНО (ПЛАН №530): Когнитивная прозрачность. Детальное логирование состава оркестра.
+ * #ОБНОВЛЕНО (ПЛАН №591): Нарративная телеметрия. Вывод описаний активных аксиом.
  */
 import type { WorkerSettings, Mood, Genre, InstrumentPart } from '@/types/music';
 import { FractalMusicEngine } from '@/lib/fractal-music-engine';
@@ -21,7 +21,6 @@ const Scheduler = {
     loopId: null as any,
     isRunning: false,
     barCount: 0,
-    suiteType: 'MAIN' as 'MAIN' | 'BRIDGE' | 'PROMENADE',
     
     settings: {
         bpm: 75,
@@ -122,16 +121,22 @@ const Scheduler = {
         const sectionName = payload.navInfo?.currentPart.name || 'Unknown';
         
         // #ЗАЧЕМ: Narrative Logging. 
-        // #ЧТО: Вывод текущего лика и мутации для контроля 4-х тактового цикла.
+        // #ЧТО: Вывод активных аксиом для всех ролей.
+        const axioms = payload.activeAxioms || {};
+        const narration = payload.narrative || 'Developing story...';
+        
         const ensembleStr = `BASS: ${h.bass || 'none'} | MEL: ${h.melody || 'none'} | ACC: ${h.accompaniment || 'none'}`;
-        const cognitiveStr = `Lick: ${payload.lickId || 'none'} | Mut: ${payload.mutationType || 'none'}`;
+        const cognitiveStr = `Axioms: [MEL: ${axioms.melody || 'none'}] [BASS: ${axioms.bass || 'none'}] [ACC: ${axioms.accompaniment || 'none'}]`;
 
         console.log(
             `%c${getTimestamp()} [Bar ${this.barCount}] [${sectionName}] T:${payload.tension.toFixed(2)} ` +
-            `%c${ensembleStr} | %c${cognitiveStr}`,
+            `%c${ensembleStr}\n` +
+            `%c  ↳ ${cognitiveStr}\n` +
+            `%c  ↳ Narrative: ${narration}`,
             'color: #888;', 
             'color: #4ade80; font-weight: bold;',
-            'color: #DA70D6;'
+            'color: #DA70D6;',
+            'color: #ADD8E6; font-style: italic;'
         );
 
         self.postMessage({ 

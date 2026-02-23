@@ -46,8 +46,8 @@ interface EngineConfig {
 }
 
 /**
- * #ЗАЧЕМ: Фрактальный Музыкальный Движок V22.0 — "Cognitive Feedback Propagation".
- * #ЧТО: evolve теперь возвращает метаданные лика и мутации для прозрачного логирования.
+ * #ЗАЧЕМ: Фрактальный Музыкальный Движок V23.0 — "Cognitive Narrative Stream".
+ * #ЧТО: evolve теперь возвращает активные аксиомы и нарратив от специализированных Мозгов.
  */
 export class FractalMusicEngine {
   public config: EngineConfig;
@@ -159,7 +159,9 @@ export class FractalMusicEngine {
       tension: number, 
       navInfo?: NavigationInfo,
       lickId?: string,
-      mutationType?: string
+      mutationType?: string,
+      activeAxioms?: any,
+      narrative?: string
   } {
     if (!this.navigator || !this.suiteDNA) return { events: [], instrumentHints: {}, beautyScore: 0, tension: 0.5 };
     this.epoch = barCount;
@@ -181,7 +183,9 @@ export class FractalMusicEngine {
             instrumentHints: ambientResult.instrumentHints, 
             beautyScore, 
             tension: ambientResult.tension,
-            navInfo 
+            navInfo,
+            activeAxioms: ambientResult.activeAxioms,
+            narrative: ambientResult.narrative
         };
     }
 
@@ -252,7 +256,9 @@ export class FractalMusicEngine {
         tension, 
         navInfo,
         lickId: (result as any).lickId,
-        mutationType: (result as any).mutationType
+        mutationType: (result as any).mutationType,
+        activeAxioms: (result as any).activeAxioms,
+        narrative: (result as any).narrative
     };
   }
 
@@ -270,7 +276,7 @@ export class FractalMusicEngine {
       return pairCount > 0 ? totalResonance / pairCount : 0.5;
   }
   
-  private generateOneBar(barDuration: number, navInfo: NavigationInfo, instrumentHints: InstrumentHints): { events: FractalEvent[], lickId?: string, mutationType?: string } {
+  private generateOneBar(barDuration: number, navInfo: NavigationInfo, instrumentHints: InstrumentHints): { events: FractalEvent[], lickId?: string, mutationType?: string, activeAxioms?: any, narrative?: string } {
     if (!this.suiteDNA) return { events: [] };
     const foundChord = this.suiteDNA.harmonyTrack.find(chord => this.epoch >= chord.bar && this.epoch < chord.bar + chord.durationBars);
     let currentChord: GhostChord = foundChord || this.previousChord || this.suiteDNA.harmonyTrack[0];
