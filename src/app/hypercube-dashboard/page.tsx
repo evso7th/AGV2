@@ -19,7 +19,7 @@ import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { useFirestore, useCollection } from '@/firebase';
+import { useFirestore, useCollection, useMemoFirebase } from '@/firebase';
 import { collection, doc, deleteDoc, getDocs, writeBatch } from 'firebase/firestore';
 import { useAudioEngine } from '@/contexts/audio-engine-context';
 import { saveHeritageAxiom } from '@/lib/firebase-service';
@@ -58,8 +58,9 @@ export default function HypercubeDashboard() {
   const { isInitialized, initialize, playRawEvents, isPlaying, setIsPlaying } = useAudioEngine();
   const [isProcessing, setIsProcessing] = useState(false);
 
-  // Подписка на коллекцию аксиом
-  const { data: axioms, isLoading } = useCollection(collection(db, 'heritage_axioms'));
+  // #ЗАЧЕМ: Корректная мемоизация запроса для предотвращения ошибок Firebase.
+  const axiomsQuery = useMemoFirebase(() => collection(db, 'heritage_axioms'), [db]);
+  const { data: axioms, isLoading } = useCollection(axiomsQuery);
 
   // Статистика
   const stats = useMemo(() => {
