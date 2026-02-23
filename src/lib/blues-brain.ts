@@ -23,8 +23,10 @@ import { BLUES_GUITAR_RIFFS, BLUES_GUITAR_VOICINGS } from './assets/blues-guitar
 import { BLUES_MELODY_RIFFS } from './assets/blues-melody-riffs';
 
 /**
- * #ЗАЧЕМ: Блюзовый Мозг V126.0 — "Narrative Telemetry".
- * #ЧТО: generateBar теперь возвращает activeAxioms и контекст для логирования.
+ * #ЗАЧЕМ: Блюзовый Мозг V127.0 — "Narrative Drum Evolution".
+ * #ЧТО: 1. Полная перепись драм-движка. Теперь это не цикл, а интерпретатор масок.
+ *       2. Внедрена логика Stop-Time (бары 9-10) и Phrase Fills (4, 8, 12).
+ *       3. Использование томов Sonor Classix и динамических райдов.
  */
 
 export interface BluesBrainConfig {
@@ -153,6 +155,11 @@ export class BluesBrain {
     const events: FractalEvent[] = [];
     this.evaluateTimbralDramaturgy(tension, hints, epoch);
 
+    // --- RENDER DRUMS (Enhanced) ---
+    if (hints.drums) {
+        events.push(...this.renderNarrativeDrums(epoch, tension));
+    }
+
     if (hints.melody) {
         if (this.currentGuitarRiff) {
             events.push(...this.renderArrangedAcoustic(epoch, currentChord, tension));
@@ -170,20 +177,18 @@ export class BluesBrain {
     }
 
     if (hints.bass) events.push(...this.renderIronBass(currentChord, epoch, tension, navInfo));
-    if (hints.drums) events.push(...this.renderBluesBeat(epoch, tension, navInfo));
     
     if (hints.harmony) {
         events.push(...this.renderDerivativeHarmony(currentChord, epoch, tension));
     }
 
-    // #ЗАЧЕМ: Формирование телеметрии.
     const activeAxioms = {
         melody: this.currentLickId,
         bass: tension > 0.7 ? 'Walking' : 'Riff',
-        accompaniment: this.state.activeAccompTimbre
+        drums: epoch % 12 === 8 || epoch % 12 === 9 ? 'Stop-Time' : (epoch % 4 === 3 ? 'Fill' : 'Main Beat')
     };
 
-    const narrative = `Performing blues narrative with ${this.currentLickId}. Mood: ${this.mood}.`;
+    const narrative = `Blues narrative active. Bar ${epoch % 12 + 1}/12. Tension: ${tension.toFixed(2)}.`;
 
     return { 
         events, 
@@ -192,6 +197,156 @@ export class BluesBrain {
         activeAxioms,
         narrative
     };
+  }
+
+  // ============================================================================
+  // NARRATIVE DRUM ENGINE
+  // ============================================================================
+
+  private renderNarrativeDrums(epoch: number, tension: number): FractalEvent[] {
+      const events: FractalEvent[] = [];
+      const barIn12 = epoch % 12;
+      const isPhraseEnd = (epoch + 1) % 4 === 0;
+      
+      // 1. STOP-TIME LOGIC (Bars 9-10)
+      if (barIn12 === 8 || barIn12 === 9) {
+          if (tension > 0.5) return this.renderDrumStabs(tension);
+      }
+
+      // 2. FILL LOGIC (Phrase ends or Chorus boundary)
+      if (isPhraseEnd && this.random.next() < 0.7) {
+          return this.renderDrumFill(tension);
+      }
+
+      // 3. BASE BEAT (The Groove)
+      return this.renderBaseBluesBeat(epoch, tension);
+  }
+
+  private renderBaseBluesBeat(epoch: number, tension: number): FractalEvent[] {
+      const events: FractalEvent[] = [];
+      
+      // --- KICK (The Foundation) ---
+      // 1 and 3 are standard. Add "a" of 3 for drive.
+      const kickTicks = [0, 6]; 
+      if (tension > 0.6 || this.random.next() < 0.3) kickTicks.push(8); 
+      
+      kickTicks.forEach(t => {
+          events.push({
+              type: 'drum_kick_reso',
+              note: 36,
+              time: t / 3,
+              duration: 0.1,
+              weight: 0.75 + (tension * 0.2),
+              technique: 'hit', dynamics: 'p', phrasing: 'staccato'
+          });
+      });
+
+      // --- SNARE (The Backbeat) ---
+      // 2 and 4 are anchors.
+      [3, 9].forEach(t => {
+          events.push({
+              type: 'drum_snare',
+              note: 38,
+              time: t / 3,
+              duration: 0.1,
+              weight: 0.8 + (tension * 0.1),
+              technique: 'hit', dynamics: 'p', phrasing: 'staccato'
+          });
+      });
+
+      // Ghost Snares for depth
+      if (tension > 0.4 && this.random.next() < 0.6) {
+          [2, 5, 8, 11].forEach(t => {
+              if (this.random.next() < 0.4) {
+                  events.push({
+                      type: 'drum_snare_ghost_note',
+                      note: 38,
+                      time: t / 3,
+                      duration: 0.1,
+                      weight: 0.3,
+                      technique: 'hit', dynamics: 'p', phrasing: 'staccato'
+                  });
+              }
+          });
+      }
+
+      // --- HI-HAT / RIDE (The Shimmer) ---
+      const hasRide = tension > 0.65;
+      const hatTicks = [0, 2, 3, 5, 6, 8, 9, 11]; // Classic 12/8 Shuffle
+      
+      hatTicks.forEach(t => {
+          const isRideTick = hasRide && (t % 3 === 0); // Ride usually on beats
+          events.push({
+              type: isRideTick ? 'drum_ride_wetter' : 'drum_25693__walter_odington__hackney-hat-1',
+              note: 42,
+              time: t / 3,
+              duration: 0.1,
+              weight: (t % 3 === 0 ? 0.5 : 0.35) * (1.0 - this.state.emotion.melancholy * 0.3),
+              technique: 'hit', dynamics: 'p', phrasing: 'staccato'
+          });
+      });
+
+      // Occasional Open Hat accent
+      if (this.random.next() < 0.15) {
+          events.push({
+              type: 'drum_open_hh_top2',
+              note: 46,
+              time: 3.66, // "a" of 4
+              duration: 0.4,
+              weight: 0.45,
+              technique: 'hit', dynamics: 'p', phrasing: 'staccato'
+          });
+      }
+
+      return events;
+  }
+
+  private renderDrumStabs(tension: number): FractalEvent[] {
+      // #ЗАЧЕМ: Акцентированный стоп-тайм. Барабаны бьют только в сильные доли.
+      const events: FractalEvent[] = [];
+      [0, 2].forEach(beat => {
+          events.push({
+              type: 'drum_kick_reso', note: 36, time: beat, duration: 0.1, weight: 0.9, 
+              technique: 'hit', dynamics: 'mf', phrasing: 'staccato'
+          });
+          events.push({
+              type: 'drum_snare', note: 38, time: beat, duration: 0.1, weight: 0.85,
+              technique: 'hit', dynamics: 'mf', phrasing: 'staccato'
+          });
+          events.push({
+              type: 'drum_cymbal_bell1', note: 51, time: beat, duration: 2.0, weight: 0.6,
+              technique: 'hit', dynamics: 'p', phrasing: 'staccato'
+          });
+      });
+      return events;
+  }
+
+  private renderDrumFill(tension: number): FractalEvent[] {
+      const events: FractalEvent[] = [];
+      const isHeavy = tension > 0.7;
+      
+      // Simple Euclid Tom Roll
+      const tomTicks = isHeavy ? [0, 1.5, 3, 4.5, 6, 7.5, 9, 10.5] : [6, 7.5, 9, 10.5];
+      const tomTypes = ['drum_Sonor_Classix_High_Tom', 'drum_Sonor_Classix_Mid_Tom', 'drum_Sonor_Classix_Low_Tom'];
+      
+      tomTicks.forEach((t, i) => {
+          events.push({
+              type: tomTypes[i % tomTypes.length] as any,
+              note: 45 + i,
+              time: (t / 3),
+              duration: 0.5,
+              weight: 0.6 + (i * 0.05),
+              technique: 'hit', dynamics: 'p', phrasing: 'staccato'
+          });
+      });
+
+      // Final snare crack
+      events.push({
+          type: 'drum_snare', note: 38, time: 3.66, duration: 0.1, weight: 0.95,
+          technique: 'hit', dynamics: 'mf', phrasing: 'staccato'
+      });
+
+      return events;
   }
 
   private selectGrandAxiom(tension: number) {
@@ -415,15 +570,6 @@ export class BluesBrain {
     const nextRoot = getNextChordRoot(epoch % 12, chord.rootNote) - 12;
     const notes = [ root, root + 7, root + 10, nextRoot - 1 ];
     return notes.map((p, i) => ({ type: 'bass', note: p, time: i, duration: 0.9, weight: (i === 0 ? 0.85 : 0.5) + tension * 0.1, technique: 'pluck', dynamics: i === 0 ? 'mf' : 'p', phrasing: 'legato' }));
-  }
-
-  private renderBluesBeat(epoch: number, tension: number, navInfo: NavigationInfo): FractalEvent[] {
-      const events: FractalEvent[] = [];
-      const kickTimes = tension > 0.7 ? [0, 1, 2, 3] : [0, 2.66];
-      kickTimes.forEach(t => events.push({ type: 'drum_kick_reso', note: 36, time: t, duration: 0.1, weight: 0.5 + (tension * 0.2), technique: 'hit', dynamics: 'p', phrasing: 'staccato' }));
-      if (tension > 0.45) [1, 3].forEach(t => events.push({ type: 'drum_snare_ghost_note', note: 38, time: t, duration: 0.1, weight: 0.35, technique: 'hit', dynamics: 'p', phrasing: 'staccato' }));
-      [0, 0.66, 1, 1.66, 2, 2.66, 3, 3.66].forEach(t => events.push({ type: 'drum_25693__walter_odington__hackney-hat-1', note: 42, time: t, duration: 0.1, weight: 0.25, technique: 'hit', dynamics: 'p', phrasing: 'staccato' }));
-      return events;
   }
 
   private renderIntegratedPiano(epoch: number, chord: GhostChord, tension: number): FractalEvent[] {
