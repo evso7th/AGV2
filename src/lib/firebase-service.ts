@@ -41,9 +41,24 @@ export function saveMasterpiece(db: Firestore, data: {
 }
 
 /**
+ * #ЗАЧЕМ: Генерация уникального, но детерминированного ID для аксиомы.
+ * #ЧТО: Предотвращает дубликаты на уровне базы данных.
+ */
+function generateAxiomId(compositionId: string, role: string, phrase: number[]): string {
+    const content = `${compositionId}_${role}_${phrase.join(',')}`;
+    let hash = 0;
+    for (let i = 0; i < content.length; i++) {
+        hash = ((hash << 5) - hash) + content.charCodeAt(i);
+        hash |= 0; // Convert to 32bit integer
+    }
+    const cleanCompId = compositionId.replace(/[^a-zA-Z0-9]/g, '_');
+    return `${cleanCompId}_${role}_${Math.abs(hash).toString(36)}`;
+}
+
+/**
  * #ЗАЧЕМ: Трансляция оцифрованного наследия в Гиперкуб AuraGroove.
- * #ЧТО: Сохраняет аксиому с векторными координатами и семантическими метками.
- * #ОБНОВЛЕНО (ПЛАН №531): Поддержка Hypercube API (vector, commonMood, compositionId).
+ * #ЧТО: Сохраняет аксиому с использованием детерминированного ID для защиты от дубликатов.
+ * #ОБНОВЛЕНО (ПЛАН №585): Внедрен Duplicate Guard на уровне ID.
  */
 export function saveHeritageAxiom(db: Firestore, data: {
     phrase: number[];
@@ -57,8 +72,9 @@ export function saveHeritageAxiom(db: Firestore, data: {
     origin: string;
     tags: string[];
 }) {
-    const heritageRef = collection(db, 'heritage_axioms');
-    const newDocRef = doc(heritageRef);
+    // Генерируем ID на основе контента
+    const axiomId = generateAxiomId(data.compositionId, data.role, data.phrase);
+    const newDocRef = doc(db, 'heritage_axioms', axiomId);
 
     const payload = {
         phrase: data.phrase,

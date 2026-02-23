@@ -13,7 +13,8 @@ import {
   Brain, 
   RefreshCcw,
   ShieldAlert,
-  ArrowLeft
+  ArrowLeft,
+  CheckCircle2
 } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
@@ -74,11 +75,27 @@ export default function HypercubeDashboard() {
     }, { total: 0, genres: {} as any, moods: {} as any, compositionIds: new Set<string>() });
   }, [axioms]);
 
-  // Импорт из ассета
+  // #ЗАЧЕМ: Умный импорт с защитой от дубликатов.
   const handleImportAsset = async () => {
     setIsProcessing(true);
+    
+    // Создаем набор существующих "отпечатков" для быстрой проверки
+    const existingFingerprints = new Set(axioms?.map(a => 
+      `${a.compositionId}_${a.role}_${a.phrase.join(',')}`
+    ) || []);
+
+    let addedCount = 0;
+    let skippedCount = 0;
+
     try {
       for (const ax of MOODY_BLUES_ASSET) {
+        const fingerprint = `${ax.compositionId}_${ax.role}_${ax.phrase.join(',')}`;
+        
+        if (existingFingerprints.has(fingerprint)) {
+          skippedCount++;
+          continue;
+        }
+
         await saveHeritageAxiom(db, {
           ...ax,
           phrase: ax.phrase,
@@ -93,8 +110,21 @@ export default function HypercubeDashboard() {
           tags: ax.tags,
           timestamp: new Date().toISOString() as any
         });
+        addedCount++;
       }
-      toast({ title: "Injection Complete", description: "Moody Blues legacy added to Hypercube." });
+
+      if (addedCount > 0) {
+        toast({ 
+          title: "Injection Successful", 
+          description: `Added ${addedCount} new axioms. ${skippedCount} duplicates skipped.` 
+        });
+      } else {
+        toast({ 
+          title: "No New Data", 
+          description: `All ${skippedCount} axioms already exist in Hypercube.`,
+          variant: "secondary" 
+        });
+      }
     } catch (e) {
       toast({ variant: "destructive", title: "Injection Failed", description: String(e) });
     } finally {
@@ -135,7 +165,7 @@ export default function HypercubeDashboard() {
 
     const rawPhrase = decompressCompactPhrase(axiom.phrase);
     const events: FractalEvent[] = rawPhrase.map(n => ({
-      type: axiom.role === 'accomp' ? 'accompaniment' : axiom.role,
+      type: axiom.role === 'accomp' ? 'accompaniment' : (axiom.role === 'drums' ? 'drums' : axiom.role),
       note: (axiom.role === 'bass' ? 31 : 60) + (DEGREE_TO_SEMITONE[n.deg] || 0),
       time: n.t / 3, // Конвертируем тики в доли (12/8 стандарт)
       duration: n.d / 3,
@@ -146,7 +176,9 @@ export default function HypercubeDashboard() {
     }));
 
     const hints = {
-      [axiom.role === 'accomp' ? 'accompaniment' : axiom.role]: axiom.role === 'melody' ? 'blackAcoustic' : (axiom.role === 'bass' ? 'bass_jazz_warm' : 'organ_soft_jazz')
+      [axiom.role === 'accomp' ? 'accompaniment' : (axiom.role === 'drums' ? 'drums' : axiom.role)]: 
+        axiom.role === 'melody' ? 'blackAcoustic' : 
+        (axiom.role === 'bass' ? 'bass_jazz_warm' : 'organ_soft_jazz')
     };
 
     playRawEvents(events, hints);
