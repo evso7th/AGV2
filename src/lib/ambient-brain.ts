@@ -1,9 +1,10 @@
 /**
- * @fileOverview Ambient Brain v17.0 — "The Sentient Composer".
+ * @fileOverview Ambient Brain v17.1 — "The Sentient Composer".
  * #ЗАЧЕМ: Борьба с однообразием. Внедрена логика "Рождения" Аксиом с мутациями.
  * #ЧТО: 1. Метод mutateAxiomOnBirth трансформирует наследие под конкретную сессию.
  *       2. Stagnation Guard отслеживает зацикливание и вызывает "Когнитивный Прыжок".
  *       3. Tension Momentum влияет на плотность событий в реальном времени.
+ * #ОБНОВЛЕНО (ПЛАН №602): Исправлена ошибка отсутствия performIntroLottery.
  */
 
 import type { 
@@ -353,6 +354,38 @@ export class AmbientBrain {
         this.registerShift = this.mood === 'joyful' ? 12 : (this.mood === 'epic' ? -12 : 0);
     }
 
+    /**
+     * #ЗАЧЕМ: Реализация лотереи инструментов для интро.
+     * #ЧТО: Детерминированно распределяет доступные инструменты по сценам.
+     */
+    private performIntroLottery(stages: any[]) {
+        const participantsMap = new Map<InstrumentPart, any>();
+        stages.forEach(s => {
+            if (s.instrumentation) {
+                Object.entries(s.instrumentation).forEach(([part, rule]) => {
+                    participantsMap.set(part as InstrumentPart, rule);
+                });
+            }
+        });
+
+        const allParts = Array.from(participantsMap.keys());
+        const shuffledParts = this.random.shuffle(allParts);
+        
+        const stageCount = stages.length || 1;
+        const partsPerStage = Math.ceil(shuffledParts.length / stageCount);
+
+        stages.forEach((_, i) => {
+            const stageParts = shuffledParts.slice(i * partsPerStage, (i + 1) * partsPerStage);
+            const stageInstr: Partial<Record<InstrumentPart, any>> = {};
+            
+            stageParts.forEach(part => {
+                stageInstr[part] = participantsMap.get(part);
+            });
+            
+            this.introLotteryMap.set(i, stageInstr);
+        });
+    }
+
     private orchestrate(tension: number, navInfo: NavigationInfo, epoch: number, dna: SuiteDNA): InstrumentHints {
         const hints: InstrumentHints = { summonProgress: {} };
         const part = navInfo.currentPart;
@@ -365,10 +398,13 @@ export class AmbientBrain {
         let currentInstructions: Partial<Record<InstrumentPart, any>> | undefined;
 
         if (part.id === 'INTRO' && this.introLotteryMap.size > 0) {
-            const stageIndex = Math.floor((epoch / (navInfo.currentPartEndBar || 1)) * (stages?.length || 1));
+            const partBars = navInfo.currentPartEndBar - navInfo.currentPartStartBar + 1;
+            const progress = (epoch - navInfo.currentPartStartBar) / (partBars || 1);
+            const stageIndex = Math.floor(progress * (stages?.length || 1));
             currentInstructions = this.introLotteryMap.get(Math.min(stageIndex, (stages?.length || 1) - 1));
         } else if (stages && stages.length > 0) {
-            const progress = epoch / (navInfo.currentPartEndBar || 1);
+            const partBars = navInfo.currentPartEndBar - navInfo.currentPartStartBar + 1;
+            const progress = (epoch - navInfo.currentPartStartBar) / (partBars || 1);
             let acc = 0;
             for (const s of stages) { 
                 acc += s.duration.percent; 
