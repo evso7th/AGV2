@@ -24,7 +24,7 @@ import { BLUES_MELODY_RIFFS } from './assets/blues-melody-riffs';
 import { GUITAR_PATTERNS } from './assets/guitar-patterns';
 
 /**
- * #ЗАЧЕМ: Блюзовый Мозг V135.0 — "The Narrative Sovereignty".
+ * #ЗАЧЕМ: Блюзовый Мозг V136.0 — "The Harmony Sovereign".
  * #ЧТО: 1. Активация слоя гармонии: guitarChords теперь играют постоянно.
  *       2. Пианино: на спадах Tension играет каскадные пассажи.
  *       3. Масштабная перебалансировка громкостей.
@@ -183,12 +183,9 @@ export class BluesBrain {
 
     events.push(...bassEvents);
 
-    // --- MELODY LOGIC (NO HIJACKING) ---
+    // --- MELODY LOGIC ---
     if (hints.melody) {
-        // Главное соло всегда из Аксиомы
         events.push(...this.renderMelodicSegment(epoch, currentChord, tension));
-        
-        // Добавляем текстурные слои из риффа (перебор/бой)
         if (this.currentGuitarRiff) {
             events.push(...this.renderRhythmicTextureFromRiff(epoch, currentChord, tension));
         }
@@ -239,7 +236,6 @@ export class BluesBrain {
   }
 
   private selectNextAxiom(navInfo: NavigationInfo, dna: SuiteDNA, epoch: number) {
-      // --- 1. CLOUD DNA FIRST ---
       if (this.config.cloudAxioms && this.config.cloudAxioms.length > 0) {
           const commonMoodFilter = ['epic', 'joyful', 'enthusiastic'].includes(this.mood) ? 'light' : 
                                    (['melancholic', 'dark', 'anxious', 'gloomy'].includes(this.mood) ? 'dark' : 'neutral');
@@ -263,7 +259,6 @@ export class BluesBrain {
           }
       }
 
-      // --- 2. LOCAL NARRATIVE FALLBACK ---
       if (this.currentGrandMelody) {
           const barIn12 = epoch % 12;
           const chord = getChordNameForBar(barIn12);
@@ -282,7 +277,6 @@ export class BluesBrain {
           return;
       }
 
-      // --- 3. LEGACY ATOMS ---
       const allLickIds = Object.keys(BLUES_SOLO_LICKS);
       const nextId = allLickIds[this.random.nextInt(allLickIds.length)];
       this.currentLickId = nextId;
@@ -300,12 +294,10 @@ export class BluesBrain {
       const isMin = chord.chordType === 'minor' || chord.chordType === 'diminished';
       const third = isMin ? 3 : 4;
       const fifth = 7;
-      
       const inversionIdx = Math.floor(this.random.next() * 3); 
 
       bassEvents.forEach(bass => {
           if (bass.type !== 'bass') return;
-          
           events.push({
               ...bass,
               type: 'accompaniment',
@@ -330,7 +322,7 @@ export class BluesBrain {
                       note: finalPitch,
                       time: bass.time + (i * 0.02),
                       duration: bass.duration * 0.8,
-                      weight: 0.35 - (i * 0.05), // Slightly boosted
+                      weight: 0.35 - (i * 0.05),
                       technique: 'swell',
                       dynamics: 'p',
                       phrasing: 'legato'
@@ -344,10 +336,7 @@ export class BluesBrain {
   private renderRhythmicTextureFromRiff(epoch: number, chord: GhostChord, tension: number): FractalEvent[] {
       if (!this.currentGuitarRiff) return [];
       const events: FractalEvent[] = [];
-      
       const fingerRule = this.currentGuitarRiff.fingerstyle?.find(f => this.random.next() < f.probability);
-      const strumRule = this.currentGuitarRiff.strum?.find(s => this.random.next() < s.probability);
-
       if (fingerRule) {
           const pattern = GUITAR_PATTERNS[fingerRule.pattern];
           const voicing = BLUES_GUITAR_VOICINGS[fingerRule.voicingName] || BLUES_GUITAR_VOICINGS['E7_open'];
@@ -383,8 +372,6 @@ export class BluesBrain {
         const nextNote = barNotes[i+1];
         let duration = n.d / 3;
         if (nextNote && (nextNote.t - (n.t + n.d)) < 1) duration += 0.15; 
-        
-        // #ЗАЧЕМ: Жесткая отсечка. 
         duration = Math.min(duration, 4.0); 
 
         const phraseProgress = n.t / 48;
@@ -395,7 +382,7 @@ export class BluesBrain {
             note: Math.min(chord.rootNote + 24 + (DEGREE_TO_SEMITONE[n.deg] || 0) + (n.octShift || 0), this.MELODY_CEILING),
             time: (n.t % 12) / 3,
             duration: duration,
-            weight: 0.95 * exhaleModifier, // Slightly boosted
+            weight: 0.95 * exhaleModifier, 
             technique: n.tech || 'pick',
             dynamics: (tension > 0.65) ? 'mf' : 'p',
             phrasing: 'legato',
@@ -467,16 +454,8 @@ export class BluesBrain {
     const root = chord.rootNote + 12;
     const isMin = chord.chordType === 'minor';
     const notes = [root, root + (isMin ? 3 : 4), root + 7, root + 10];
-    
     return notes.map((p, i) => ({
-        type: 'accompaniment', 
-        note: p, 
-        time: i * 0.5, 
-        duration: 3.0, 
-        weight: 0.25, 
-        technique: 'swell', 
-        dynamics: 'p', 
-        phrasing: 'legato'
+        type: 'accompaniment', note: p, time: i * 0.5, duration: 3.0, weight: 0.25, technique: 'swell', dynamics: 'p', phrasing: 'legato'
     }));
   }
 
@@ -485,7 +464,6 @@ export class BluesBrain {
       const root = chord.rootNote + 24;
       const momentum = this.state.tensionMomentum;
       
-      // #ЗАЧЕМ: Реализация пассажей "на выдохе".
       if (momentum < -0.02 && this.random.next() < 0.75) {
           const scale = [0, 2, 3, 5, 7, 9, 10];
           for (let i = 0; i < 6; i++) {
@@ -495,9 +473,7 @@ export class BluesBrain {
                   time: 0.5 + (i * 0.15), 
                   duration: 1.0, 
                   weight: 0.25 * (1 - i * 0.1), 
-                  technique: 'hit', 
-                  dynamics: 'p', 
-                  phrasing: 'staccato' 
+                  technique: 'hit', dynamics: 'p', phrasing: 'staccato' 
               });
           }
           return events;
@@ -509,12 +485,7 @@ export class BluesBrain {
               events.push({ 
                   type: 'pianoAccompaniment', 
                   note: Math.min(root + [0, 3, 7, 10][this.random.nextInt(4)], this.MELODY_CEILING), 
-                  time: beat, 
-                  duration: 1.5, 
-                  weight: 0.25, 
-                  technique: 'hit', 
-                  dynamics: 'p', 
-                  phrasing: 'staccato' 
+                  time: beat, duration: 1.5, weight: 0.25, technique: 'hit', dynamics: 'p', phrasing: 'staccato' 
               }); 
           } 
       });
@@ -526,18 +497,19 @@ export class BluesBrain {
       const isMin = chord.chordType === 'minor' || chord.chordType === 'diminished';
       const rootNames = ['C', 'Db', 'D', 'Eb', 'E', 'F', 'Gb', 'G', 'Ab', 'A', 'Bb', 'B'];
       
-      // #ЗАЧЕМ: Исправление chordName: undefined.
-      const finalName = isMin ? `${rootNames[root % 12]}m` : rootNames[root % 12];
+      // #ЗАЧЕМ: Гарантированное имя аккорда.
+      const name = rootNames[root % 12];
+      const finalName = isMin ? `${name}m` : name;
 
-      // #ЗАЧЕМ: Более активная гармония. Вероятность повышена.
-      if (this.random.next() > 0.65 && tension < 0.7) return [];
+      // #ЗАЧЕМ: Повышена активность гармонии (было 0.65).
+      if (this.random.next() > 0.15 && tension < 0.7) return [];
 
       return [root + 12, root + 19].map((n, i) => ({ 
           type: 'harmony', 
           note: n + 12, 
           time: i * 0.1, 
           duration: 4.0, 
-          weight: 0.20 + (tension * 0.15), // Slightly louder
+          weight: 0.20 + (tension * 0.15),
           technique: 'swell', 
           dynamics: 'p', 
           phrasing: 'legato', 
@@ -556,27 +528,6 @@ export class BluesBrain {
     if (hints.melody) (hints as any).melody = tension > 0.8 ? 'guitar_shineOn' : (tension > 0.45 ? 'telecaster' : 'blackAcoustic');
     if (hints.accompaniment) (hints as any).accompaniment = tension > 0.75 ? 'ep_rhodes_warm' : 'organ_soft_jazz';
     if (hints.harmony) (hints as any).harmony = tension > 0.7 ? 'violin' : 'guitarChords';
-  }
-
-  private mutateLick(phrase: any[]): any[] {
-      const type = this.state.currentMutationType;
-      switch(type) {
-          case 'inversion':
-              const pivot = phrase[0]?.deg || 'R';
-              return phrase.map((n: any) => ({...n, deg: this.invertDegree(n.deg, pivot)}));
-          case 'jitter':
-              return phrase.map((n: any) => ({...n, t: Math.max(0, n.t + (this.random.next() * 0.2 - 0.1))}));
-          default: return phrase;
-      }
-  }
-
-  private invertDegree(deg: string, pivot: string): string {
-      const s = DEGREE_TO_SEMITONE[deg] || 0;
-      const p = DEGREE_TO_SEMITONE[pivot] || 0;
-      const inv = (p - (s - p)) % 12;
-      const finalS = inv < 0 ? inv + 12 : inv;
-      const entry = Object.entries(DEGREE_TO_SEMITONE).find(([k, v]) => v === finalS);
-      return entry ? entry[0] : deg;
   }
 
   private evolveEmotion(epoch: number): void {

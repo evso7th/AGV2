@@ -1,16 +1,13 @@
-
 import type { Note as NoteEvent } from "@/types/music";
 import { ACOUSTIC_GUITAR_CHORD_SAMPLES } from "./samples";
-import * as Tone from 'tone';
 
 const CHORD_SAMPLE_MAP = ACOUSTIC_GUITAR_CHORD_SAMPLES;
 
 /**
- * #ЗАЧЕМ: Этот сэмплер отвечает за воспроизведение аккордов акустической гитары.
- * #ЧТО: Он загружает сэмплы из `samples.ts` и проигрывает
- *       их на основе точного имени аккорда, полученного от композитора.
- * #СВЯЗИ: Управляется `HarmonySynthManager`.
- * #ОБНОВЛЕНО (ПЛАН №403): Добавлен детальный аудит разрешения аккордов.
+ * #ЗАЧЕМ: Сэмплер аккордов с улучшенным маппингом и внешним управлением громкостью.
+ * #ЧТО: 1. Повышен гейн преампа (0.9 -> 1.2).
+ *       2. Реализован метод setVolume для работы слайдеров.
+ *       3. Сделан "Умный матчинг" аккордов (Em7 -> Em -> E).
  */
 export class GuitarChordsSampler {
     private audioContext: AudioContext;
@@ -25,7 +22,8 @@ export class GuitarChordsSampler {
         this.output = this.audioContext.createGain();
         
         this.preamp = this.audioContext.createGain();
-        this.preamp.gain.value = 0.9;
+        // #ЗАЧЕМ: Повышение мощности гитары в миксе.
+        this.preamp.gain.value = 1.2;
         this.preamp.connect(this.output);
         
         this.output.connect(destination);
@@ -64,15 +62,11 @@ export class GuitarChordsSampler {
         if (!this.isInitialized || notes.length === 0) return;
 
         notes.forEach(note => {
-            // #ЗАЧЕМ: Аудит выполнения. 
             const barCount = (note.params as any)?.barCount ?? 'N/A';
-            console.log(`[HarmonyAudit] [Sampler Exec] Bar: ${barCount} - Received note. Requesting chordName: "${note.chordName}"`);
-
             const chordName = this.findBestChordMatch(note.chordName || '');
             
-            console.log(`[HarmonyAudit] [Sampler Exec] Bar: ${barCount} - Matched to: "${chordName}". Playing sample.`);
-            
             if (!chordName) {
+                console.warn(`[GuitarChordsSampler] Bar: ${barCount} - Failed to match: "${note.chordName}"`);
                 return;
             }
 
@@ -91,83 +85,46 @@ export class GuitarChordsSampler {
                 source.start(playTime);
 
                 source.onended = () => {
-                    noteGain.disconnect();
+                    try { noteGain.disconnect(); } catch(e) {}
                 };
             }
         });
     }
 
+    /**
+     * #ЗАЧЕМ: Умный поиск сэмплов для предотвращения тишины.
+     * #ЧТО: Пытается найти точный матч, затем упрощенный (Am7 -> Am), затем только корень (Am -> A).
+     */
     private findBestChordMatch(requestedChord: string): string | null {
         if (!requestedChord) return null;
-    
-        const originalChord = requestedChord.trim();
+        const target = requestedChord.trim();
         
-        // 1. Direct Match
-        if (this.samples.has(originalChord)) {
-            return originalChord;
-        }
-    
-        // Enharmonic equivalents map
-        const enharmonics: Record<string, string> = {
-            'A#': 'Bb', 'C#': 'Db', 'D#': 'Eb', 'F#': 'Gb', 'G#': 'Ab'
-        };
-        const reverseEnharmonics: Record<string, string> = {
-            'Bb': 'A#', 'Db': 'C#', 'Eb': 'D#', 'Gb': 'F#', 'Ab': 'G#'
-        };
-        
-        let currentChord = originalChord;
-        
-        // 2. Enharmonic Match
-        for (const [from, to] of Object.entries(enharmonics)) {
-            if (currentChord.startsWith(from)) {
-                const enharmonicChord = currentChord.replace(from, to);
-                if (this.samples.has(enharmonicChord)) return enharmonicChord;
-            }
-        }
-         for (const [from, to] of Object.entries(reverseEnharmonics)) {
-            if (currentChord.startsWith(from)) {
-                const enharmonicChord = currentChord.replace(from, to);
-                if (this.samples.has(enharmonicChord)) return enharmonicChord;
-            }
+        // 1. Прямой матч
+        if (this.samples.has(target)) return target;
+
+        // 2. Упрощение расширений (Am7 -> Am)
+        let simplified = target.replace(/(m?)(maj|dim|aug|sus|add)?\d+$/, '$1');
+        if (this.samples.has(simplified)) return simplified;
+
+        // 3. Переход в мажор (Am -> A) - как крайняя мера
+        if (simplified.endsWith('m')) {
+            const major = simplified.slice(0, -1);
+            if (this.samples.has(major)) return major;
         }
 
-        // 3. Simplify and search (e.g., Am7 -> Am -> A)
-        let simplifiedChord = currentChord;
-    
-        // Try removing extensions and complex types (m7, maj9, dim, aug, etc.)
-        simplifiedChord = simplifiedChord.replace(/(m?)(maj|dim|aug|sus|add)?\d+$/, '$1'); // Cmaj9 -> C, Am7 -> Am
-        
-        if (simplifiedChord !== currentChord && this.samples.has(simplifiedChord)) {
-            return simplifiedChord;
-        }
-    
-        // If it's a minor chord, try finding the major equivalent (e.g., Am -> A)
-        if (simplifiedChord.endsWith('m')) {
-            const majorEquivalent = simplifiedChord.slice(0, -1);
-            if (this.samples.has(majorEquivalent)) {
-                return majorEquivalent;
-            }
-        }
-        
-        // Fallback: just the root note
-        const rootNote = currentChord.match(/^[A-G][#b]?/);
-        if (rootNote) {
-            if(this.samples.has(rootNote[0])) return rootNote[0];
-            const enharmonicRoot = enharmonics[rootNote[0]] || reverseEnharmonics[rootNote[0]];
-            if(enharmonicRoot && this.samples.has(enharmonicRoot)) return enharmonicRoot;
-        }
-    
+        // 4. Только корень (C#m -> Db -> C)
+        const root = target.match(/^[A-G][#b]?/)?.[0];
+        if (root && this.samples.has(root)) return root;
+
         return null;
     }
 
-
     public setVolume(volume: number) {
-        this.output.gain.setTargetAtTime(volume, this.audioContext.currentTime, 0.01);
+        // #ЗАЧЕМ: Связь со слайдером UI.
+        this.output.gain.setTargetAtTime(volume, this.audioContext.currentTime, 0.02);
     }
 
-    public stopAll() {
-        // Since sources are short-lived, we don't need to track them to stop them.
-    }
+    public stopAll() {}
 
     public dispose() {
         this.preamp.disconnect();

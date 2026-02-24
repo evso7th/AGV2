@@ -8,9 +8,8 @@ import { FluteSamplerPlayer } from './flute-sampler-player';
 
 
 /**
- * Manages the "harmony" layer, specifically for rhythmic/harmonic instruments
- * like piano and guitar chords. It's a specialized sampler player.
- * #ОБНОВЛЕНО (ПЛАН №528): Исправлено "немое" переключение. Все громкости теперь независимы.
+ * Manages the "harmony" layer. 
+ * Updated to support global volume sovereignty across all internal samplers.
  */
 export class HarmonySynthManager {
     private audioContext: AudioContext;
@@ -49,9 +48,9 @@ export class HarmonySynthManager {
         
         this.isInitialized = true;
         
-        // #ЗАЧЕМ: Установка дефолтных громкостей для всех сэмплеров.
+        // Default volumes
         this.piano.setVolume(0.8);
-        this.guitarChords.setVolume(0.9);
+        this.guitarChords.setVolume(1.0);
         this.violin.setVolume(1.0);
         this.flute.setVolume(0.8);
 
@@ -59,19 +58,11 @@ export class HarmonySynthManager {
     }
     
     public schedule(events: FractalEvent[], barStartTime: number, tempo: number, instrumentHint?: 'piano' | 'guitarChords' | 'violin' | 'flute' | 'none') {
-        if (!this.isInitialized) {
-            return;
-        }
+        if (!this.isInitialized) return;
         
         let instrumentToPlay = instrumentHint || this.activeInstrumentName;
-
-        if (instrumentToPlay === 'flute') {
-            instrumentToPlay = 'violin';
-        }
-
-        if (instrumentToPlay === 'none') {
-            return;
-        }
+        if (instrumentToPlay === 'flute') instrumentToPlay = 'violin';
+        if (instrumentToPlay === 'none') return;
 
         const beatDuration = 60 / tempo;
         const notes: (Note & { chordName?: string, params?: any })[] = events.map(event => ({
@@ -83,9 +74,7 @@ export class HarmonySynthManager {
             params: event.params,
         }));
         
-        if (notes.length === 0) {
-            return;
-        }
+        if (notes.length === 0) return;
 
         switch (instrumentToPlay) {
             case 'piano':
@@ -103,15 +92,19 @@ export class HarmonySynthManager {
         }
     }
 
+    public setVolume(volume: number) {
+        // #ЗАЧЕМ: Трансляция громкости всем участникам слоя гармонии.
+        this.piano.setVolume(volume * 0.8);
+        this.guitarChords.setVolume(volume);
+        this.violin.setVolume(volume);
+        this.flute.setVolume(volume * 0.8);
+    }
+
     public setInstrument(instrumentName: 'piano' | 'guitarChords' | 'violin' | 'flute' | 'none') {
         if (!this.isInitialized) return;
-        
         let name = instrumentName;
         if (name === 'flute') name = 'violin';
-
         this.activeInstrumentName = name;
-        // #ЗАЧЕМ: Мы больше не глушим другие инструменты здесь, чтобы не мешать instrumentHint.
-        // Громкость регулируется системным VOICE_BALANCE и индивидуальными setVolume в init.
     }
 
     public allNotesOff() {
@@ -121,10 +114,7 @@ export class HarmonySynthManager {
         this.flute.stopAll();
     }
 
-    public stop() {
-        this.allNotesOff();
-    }
-
+    public stop() { this.allNotesOff(); }
     public dispose() {
         this.stop();
         this.piano.dispose();

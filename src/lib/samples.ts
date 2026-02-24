@@ -123,8 +123,8 @@ export const FLUTE_SAMPLES: Record<string, VelocitySample[]> = {
 };
 
 /**
- * #ЗАЧЕМ: Эта карта содержит только аутентичные сэмплы акустических аккордов.
- * #ЧТО: Удалены все вхождения Telecaster Clean для предотвращения тембрального конфликта.
+ * #ЗАЧЕМ: Расширенная карта сэмплов аккордов (Акустика + Телекастер).
+ * #ЧТО: Добавлены D, E, F, G и их минорные версии для полной гармонической свободы.
  */
 export const ACOUSTIC_GUITAR_CHORD_SAMPLES: Record<string, string> = {
   'Cdim': '/assets/guitars_hords_samples/1657cdim.ogg',
@@ -164,6 +164,15 @@ export const ACOUSTIC_GUITAR_CHORD_SAMPLES: Record<string, string> = {
   'Abm6': '/assets/guitars_hords_samples/5845abm-6.ogg',
   'Abm7': '/assets/guitars_hords_samples/5846abm-7.ogg',
   'Abm': '/assets/guitars_hords_samples/5847abm.ogg',
+  // --- Missing Core Chords (Donor: Telecaster Clean) ---
+  'D': '/assets/guitars_hords_samples/clear_telecaster/591191__telecaster-clean-d-hi-r.ogg',
+  'Dm': '/assets/guitars_hords_samples/clear_telecaster/591189__telecaster-clean-dm-hi-r.ogg',
+  'E': '/assets/guitars_hords_samples/clear_telecaster/591178__telecaster-clean-e-hi-l.ogg',
+  'Em': '/assets/guitars_hords_samples/clear_telecaster/591210__telecaster-clean-em-low-r.ogg',
+  'F': '/assets/guitars_hords_samples/clear_telecaster/591175__telecaster-clean-f-low-l.ogg',
+  'Fm': '/assets/guitars_hords_samples/clear_telecaster/591183__telecaster-clean-fm-low-r.ogg',
+  'G': '/assets/guitars_hords_samples/clear_telecaster/591194__telecaster-clean-g-low-l.ogg',
+  'Gm': '/assets/guitars_hords_samples/clear_telecaster/591192__telecaster-clean-gm-low-l.ogg',
 };
 
 export type GuitarTechniqueSamples = {
