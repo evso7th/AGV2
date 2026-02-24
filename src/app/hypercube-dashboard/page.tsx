@@ -15,7 +15,8 @@ import {
   X,
   RotateCcw,
   FileJson,
-  Tag
+  Tag,
+  Globe
 } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
@@ -24,8 +25,8 @@ import { Badge } from '@/components/ui/badge';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Label } from "@/components/ui/label";
-import { useFirestore } from '@/firebase';
-import { collection, getDocs, writeBatch } from 'firebase/firestore';
+import { useFirestore, useCollection, useMemoFirebase } from '@/firebase';
+import { collection, getDocs, writeBatch, query } from 'firebase/firestore';
 import { useAudioEngine } from '@/contexts/audio-engine-context';
 import { saveHeritageAxiom } from '@/lib/firebase-service';
 import { decompressCompactPhrase, DEGREE_TO_SEMITONE, repairLegacyPhrase } from '@/lib/music-theory';
@@ -41,10 +42,10 @@ const AVAILABLE_GENRES: Genre[] = [
 ];
 
 /**
- * #ЗАЧЕМ: Дашборд Аудитора ДНК v3.6.
- * #ЧТО: 1. Внедрен DNA Repair Station (фикс старых MIDI файлов).
- *       2. Улучшена читаемость названий треков (multiline).
- *       3. Гарантированное сохранение нарратива.
+ * #ЗАЧЕМ: Дашборд Аудитора ДНК v3.7.
+ * #ЧТО: 1. Восстановлена глобальная сводка по базе (Pulse).
+ *       2. Сохранен локальный аудит (DNA Repair Station).
+ *       3. Выборочная инъекция и защита от дублей.
  */
 export default function HypercubeDashboard() {
   const db = useFirestore();
@@ -52,6 +53,10 @@ export default function HypercubeDashboard() {
   const { toast } = useToast();
   const { isInitialized, initialize, playRawEvents, stopAllSounds, isPlaying, setIsPlaying } = useAudioEngine();
   
+  // --- Global Database Connection ---
+  const axiomsQuery = useMemoFirebase(() => query(collection(db, 'heritage_axioms')), [db]);
+  const { data: globalAxioms, isLoading: isDbLoading } = useCollection(axiomsQuery);
+
   const [isProcessing, setIsProcessing] = useState(false);
   const [stagedAxioms, setStagedAxioms] = useState<any[]>([]);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
@@ -71,21 +76,35 @@ export default function HypercubeDashboard() {
     }
   }, []);
 
-  const stats = useMemo(() => {
-    return stagedAxioms.reduce((acc, ax) => {
+  // --- Global Stats Calculation ---
+  const globalStats = useMemo(() => {
+    if (!globalAxioms) return { total: 0, genres: {}, moods: {}, commonMoods: {} };
+    return globalAxioms.reduce((acc, ax) => {
       acc.total++;
-      const g = selectedGenre || ax.genre || 'blues';
-      acc.genres[g] = (acc.genres[g] || 0) + 1;
+      acc.genres[ax.genre] = (acc.genres[ax.genre] || 0) + 1;
       acc.moods[ax.mood] = (acc.moods[ax.mood] || 0) + 1;
       acc.commonMoods[ax.commonMood] = (acc.commonMoods[ax.commonMood] || 0) + 1;
-      acc.compositionIds.add(ax.compositionId);
       return acc;
     }, { 
         total: 0, 
         genres: {} as Record<string, number>, 
         moods: {} as Record<string, number>, 
-        commonMoods: {} as Record<string, number>, 
-        compositionIds: new Set<string>() 
+        commonMoods: {} as Record<string, number> 
+    });
+  }, [globalAxioms]);
+
+  // --- Local Batch Stats Calculation ---
+  const localStats = useMemo(() => {
+    return stagedAxioms.reduce((acc, ax) => {
+      acc.total++;
+      const g = selectedGenre || ax.genre || 'blues';
+      acc.genres[g] = (acc.genres[g] || 0) + 1;
+      acc.commonMoods[ax.commonMood] = (acc.commonMoods[ax.commonMood] || 0) + 1;
+      return acc;
+    }, { 
+        total: 0, 
+        genres: {} as Record<string, number>, 
+        commonMoods: {} as Record<string, number>
     });
   }, [stagedAxioms, selectedGenre]);
 
@@ -119,10 +138,7 @@ export default function HypercubeDashboard() {
         const flattened: any[] = [];
         
         const processAxiom = (ax: any, idx: number, compId: string) => {
-            // #ЗАЧЕМ: DNA REPAIR STATION.
-            // #ЧТО: Если фраза в формате MIDI, конвертируем её в Spec.
             const repairedPhrase = repairLegacyPhrase(ax.phrase);
-            
             return {
                 ...ax,
                 phrase: repairedPhrase,
@@ -269,11 +285,57 @@ export default function HypercubeDashboard() {
           </div>
         </div>
 
-        {/* Global Toolbar */}
+        {/* Global Repository Pulse (Database Summary) */}
+        <div className="space-y-4">
+          <div className="flex items-center gap-2 text-primary font-bold uppercase tracking-widest text-xs">
+            <Globe className="h-4 w-4" /> Global Hypercube Pulse
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <Card className="bg-primary/5 border-primary/20 shadow-lg">
+              <CardHeader className="pb-2">
+                <CardTitle className="text-xs font-bold uppercase text-muted-foreground">Total Capacity</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="text-3xl font-black text-primary font-mono">
+                  {isDbLoading ? '---' : globalStats.total}
+                </div>
+                <p className="text-[10px] text-muted-foreground uppercase mt-1">Live Heritage Axioms</p>
+              </CardContent>
+            </Card>
+
+            <Card className="bg-primary/5 border-primary/20 shadow-lg">
+              <CardHeader className="pb-2">
+                <CardTitle className="text-xs font-bold uppercase text-muted-foreground">Genre Coverage</CardTitle>
+              </CardHeader>
+              <CardContent className="flex flex-wrap gap-1.5">
+                {isDbLoading ? <span className="text-xs animate-pulse">Syncing...</span> : 
+                  Object.entries(globalStats.genres).map(([g, count]) => (
+                    <Badge key={g} variant="secondary" className="text-[10px] uppercase font-mono bg-background text-primary border-primary/20">{g}: {count}</Badge>
+                  ))
+                }
+              </CardContent>
+            </Card>
+
+            <Card className="bg-primary/5 border-primary/20 shadow-lg">
+              <CardHeader className="pb-2">
+                <CardTitle className="text-xs font-bold uppercase text-muted-foreground">Mood Balance</CardTitle>
+              </CardHeader>
+              <CardContent className="flex flex-wrap gap-1">
+                {isDbLoading ? <span className="text-xs animate-pulse">Syncing...</span> : 
+                  Object.entries(globalStats.commonMoods).map(([cm, count]) => (
+                    <Badge key={cm} className="text-[10px] uppercase font-bold px-2">{cm}: {count}</Badge>
+                  ))
+                }
+              </CardContent>
+            </Card>
+          </div>
+        </div>
+
+        {/* Global Toolbar (Injection Control) */}
         <div className="flex flex-wrap items-center gap-4 bg-muted/20 p-4 rounded-lg border border-border/50 shadow-inner">
           <input type="file" ref={fileInputRef} onChange={handleFileSelect} accept=".json" className="hidden" />
           <Button onClick={() => fileInputRef.current?.click()} disabled={isProcessing} className="bg-primary hover:bg-primary/90 text-primary-foreground font-bold px-8 h-12 shadow-lg transition-transform active:scale-95">
-            <Upload className="mr-2 h-5 w-5" /> Load DNA File
+            <Upload className="mr-2 h-5 w-5" /> Load Local DNA
           </Button>
 
           <div className="flex items-center gap-3 pl-4 border-l">
@@ -292,63 +354,27 @@ export default function HypercubeDashboard() {
 
           <div className="h-10 w-px bg-border mx-2" />
           <div className="flex flex-col">
-             <span className="text-[10px] uppercase text-muted-foreground tracking-widest font-bold">Session History</span>
+             <span className="text-[10px] uppercase text-muted-foreground tracking-widest font-bold">Import History</span>
              <span className="text-sm font-mono"><strong>{processedFiles.length}</strong> Files Injected</span>
           </div>
           <div className="ml-auto flex gap-3">
              <Button variant="outline" size="sm" onClick={handlePurge} disabled={isProcessing} className="text-destructive border-destructive/20 hover:bg-destructive/10">
-                <ShieldAlert className="h-4 w-4 mr-2" /> Global Purge
+                <ShieldAlert className="h-4 w-4 mr-2" /> Master Purge
              </Button>
           </div>
         </div>
 
-        {/* Local File Stats Breakdown */}
-        {stagedAxioms.length > 0 && (
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 animate-in fade-in slide-in-from-top-2 duration-500">
-            <Card className="bg-card border-primary/20 shadow-md">
-              <CardHeader className="pb-2 flex flex-row items-center justify-between space-y-0">
-                <CardTitle className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Current Asset</CardTitle>
-                <Badge variant="outline" className="font-mono text-primary border-primary/30">{stats.total} Total Axioms</Badge>
-              </CardHeader>
-              <CardContent>
-                <p className="text-sm font-semibold truncate text-primary">{currentFileName}</p>
-                <p className="text-[10px] text-muted-foreground mt-1 uppercase tracking-tighter">Source: {stagedAxioms[0]?.compositionId || 'Unknown'}</p>
-              </CardContent>
-            </Card>
-            
-            <Card className="bg-card border-primary/20 shadow-md">
-              <CardHeader className="pb-2"><CardTitle className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Target Genres</CardTitle></CardHeader>
-              <CardContent className="flex flex-wrap gap-1.5">
-                {Object.entries(stats.genres).map(([g, count]) => (
-                  <Badge key={g} variant="secondary" className="text-[10px] uppercase font-mono bg-primary/10 text-primary border-primary/20">{g}: {count}</Badge>
-                ))}
-              </CardContent>
-            </Card>
-
-            <Card className="bg-card border-primary/20 shadow-md">
-              <CardHeader className="pb-2"><CardTitle className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Mood Variance</CardTitle></CardHeader>
-              <CardContent>
-                <div className="flex flex-wrap gap-1">
-                  {Object.entries(stats.commonMoods).map(([cm, count]) => (
-                    <Badge key={cm} className="text-[10px] uppercase font-bold px-2">{cm}: {count}</Badge>
-                  ))}
-                </div>
-              </CardContent>
-            </Card>
-          </div>
-        )}
-
-        {/* Main Auditor Workspace */}
+        {/* Local Staging Auditor */}
         {stagedAxioms.length > 0 ? (
           <Card className="border-primary/30 shadow-2xl overflow-hidden animate-in fade-in duration-700">
             <CardHeader className="bg-primary/5 border-b flex flex-row items-center justify-between py-4">
               <div>
-                <CardTitle className="text-xl font-bold flex items-center gap-2"><Wind className="h-6 w-6 text-primary"/> DNA Buffer: {currentFileName}</CardTitle>
+                <CardTitle className="text-xl font-bold flex items-center gap-2"><Wind className="h-6 w-6 text-primary"/> Staging Buffer: {currentFileName}</CardTitle>
                 <CardDescription>Auditing local forge data before cloud injection into "{selectedGenre}"</CardDescription>
               </div>
               <div className="flex gap-3">
                 <Button variant="ghost" size="sm" onClick={resetStaging} className="text-muted-foreground hover:text-foreground">
-                  <RotateCcw className="h-4 w-4 mr-2" /> Reset Buffer
+                  <RotateCcw className="h-4 w-4 mr-2" /> Clear Session
                 </Button>
                 <Button onClick={handleCommitInjection} disabled={isProcessing || selectedIds.size === 0} className="gap-2 font-bold px-10 h-11 shadow-lg active:scale-95">
                   <Save className={cn("h-5 w-5", isProcessing && "animate-spin")} />
@@ -420,12 +446,12 @@ export default function HypercubeDashboard() {
              <div className="text-center space-y-3">
                 <h3 className="text-3xl font-bold tracking-tight text-muted-foreground/80">Hypercube Buffer Empty</h3>
                 <p className="text-muted-foreground max-w-md mx-auto text-sm leading-relaxed">
-                    DNA list is dormant. Load a JSON asset from the local forge to begin auditing. 
-                    <br/><span className="text-xs opacity-60 italic">Absolute MIDI files will be automatically repaired during audit.</span>
+                    Local DNA buffer is dormant. Select a JSON asset to begin auditing and injection. 
+                    <br/><span className="text-xs opacity-60 italic">Absolute MIDI files will be automatically repaired.</span>
                 </p>
              </div>
              <Button onClick={() => fileInputRef.current?.click()} size="lg" className="px-12 h-14 text-xl font-black shadow-xl hover:shadow-primary/20 transition-all">
-                Select Forge File
+                Load Local DNA
              </Button>
           </div>
         )}
