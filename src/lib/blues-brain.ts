@@ -23,10 +23,9 @@ import { BLUES_GUITAR_RIFFS, BLUES_GUITAR_VOICINGS } from './assets/blues-guitar
 import { BLUES_MELODY_RIFFS } from './assets/blues-melody-riffs';
 
 /**
- * #ЗАЧЕМ: Блюзовый Мозг V128.0 — "The Obsidian Unison".
- * #ЧТО: 1. Реализован режим Унисона (Strict/Octave) между басом и аккомпанементом.
- *       2. Пад теперь может точно дублировать движения волкинг-баса.
- *       3. Усилена синхронизация слоев для монолитного звучания.
+ * #ЗАЧЕМ: Блюзовый Мозг V128.1 — "The Floyd Calm".
+ * #ЧТО: 1. Базовый регистр соло понижен на октаву для устранения писклявости.
+ *       2. Оптимизирована плотность веса нот.
  */
 
 export interface BluesBrainConfig {
@@ -161,7 +160,6 @@ export class BluesBrain {
     }
 
     // --- BASS (Core Foundation) ---
-    // #ЗАЧЕМ: Бас генерируется первым, чтобы аккомпанемент мог следовать за ним в Унисоне.
     const bassEvents = hints.bass ? this.renderIronBass(currentChord, epoch, tension, navInfo) : [];
 
     // --- ACCOMPANIMENT (Unison Logic) ---
@@ -210,10 +208,6 @@ export class BluesBrain {
     };
   }
 
-  // ============================================================================
-  // UNISON ENGINE (unison_concept.txt implementation)
-  // ============================================================================
-
   private renderUnisonAccompaniment(
       bassEvents: FractalEvent[], 
       chord: GhostChord, 
@@ -223,7 +217,6 @@ export class BluesBrain {
       const events: FractalEvent[] = [];
       const isMin = chord.chordType === 'minor' || chord.chordType === 'diminished';
       
-      // Дополнительные ноты аккорда для плотности (выше баса)
       const third = isMin ? 3 : 4;
       const fifth = 7;
       const seventh = 10;
@@ -231,23 +224,20 @@ export class BluesBrain {
       bassEvents.forEach(bass => {
           if (bass.type !== 'bass') return;
 
-          // 1. БАЗОВАЯ ТЕНЬ (Унисон с басом)
-          let shadowPitch = bass.note + 12; // +1 октава для чистоты микса
-          if (type === 'strict') shadowPitch = bass.note; // В строгом режиме — тот же регистр
+          let shadowPitch = bass.note + 12; 
+          if (type === 'strict') shadowPitch = bass.note; 
 
           events.push({
               ...bass,
               type: 'accompaniment',
               note: shadowPitch,
-              weight: bass.weight * 0.6, // Аккомпанемент тише баса
+              weight: bass.weight * 0.6, 
               technique: 'swell',
               phrasing: 'legato'
           });
 
-          // 2. ВЕРХНИЕ ГОЛОСА (для Strict/Octave режима)
-          // Добавляем их только на сильные доли (1 и 3) или при высоком напряжении
           if (type !== 'none' && (bass.time === 0 || bass.time === 2.0 || tension > 0.7)) {
-              const root = bass.note + 24; // На 2 октавы выше фундамента
+              const root = bass.note + 24; 
               const upperNotes = [root + third, root + fifth];
               if (tension > 0.6) upperNotes.push(root + seventh);
 
@@ -255,7 +245,7 @@ export class BluesBrain {
                   events.push({
                       type: 'accompaniment',
                       note: p,
-                      time: bass.time + (i * 0.02), // Микро-арпеджио для живости
+                      time: bass.time + (i * 0.02), 
                       duration: bass.duration,
                       weight: 0.25 * (1 - (i * 0.05)),
                       technique: 'swell',
@@ -268,10 +258,6 @@ export class BluesBrain {
 
       return events;
   }
-
-  // ============================================================================
-  // NARRATIVE DRUM ENGINE
-  // ============================================================================
 
   private renderNarrativeDrums(epoch: number, tension: number): FractalEvent[] {
       const events: FractalEvent[] = [];
@@ -447,7 +433,8 @@ export class BluesBrain {
       soloPhrase.forEach(n => {
           events.push({
               type: 'melody',
-              note: Math.min(chord.rootNote + 36 + (DEGREE_TO_SEMITONE[n.deg] || 0), this.MELODY_CEILING),
+              // #ЗАЧЕМ: Понижение регистра. Смещение +24 вместо +36.
+              note: Math.min(chord.rootNote + 24 + (DEGREE_TO_SEMITONE[n.deg] || 0), this.MELODY_CEILING),
               time: n.t / 3,
               duration: n.d / 3,
               weight: 0.85 * (tension + 0.2),
@@ -500,7 +487,9 @@ export class BluesBrain {
 
         events.push({
             type: 'melody',
-            note: Math.min(chord.rootNote + 36 + (DEGREE_TO_SEMITONE[n.deg] || 0) + (n.octShift || 0), this.MELODY_CEILING),
+            // #ЗАЧЕМ: Понижение регистра. Базовое смещение +24 вместо +36.
+            // #ЧТО: Теперь Shine-On звучит в бархатном среднем регистре.
+            note: Math.min(chord.rootNote + 24 + (DEGREE_TO_SEMITONE[n.deg] || 0) + (n.octShift || 0), this.MELODY_CEILING),
             time: (n.t % 12) / 3,
             duration: duration,
             weight: finalWeight,
@@ -516,8 +505,6 @@ export class BluesBrain {
   private evaluateTimbralDramaturgy(tension: number, hints: InstrumentHints, epoch: number) {
     if (epoch % 4 !== 0 && epoch !== 0) return;
     if (hints.melody) {
-        // Shine-On is locked for Dark Blues in the blueprint, 
-        // but we keep the logic here for other modes.
         if (tension <= 0.45) (hints as any).melody = (hints as any).melody || 'blackAcoustic';
         else if (tension <= 0.85) (hints as any).melody = (hints as any).melody || 'telecaster';
         else (hints as any).melody = (hints as any).melody || 'guitar_shineOn';

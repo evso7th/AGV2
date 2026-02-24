@@ -116,16 +116,20 @@ export const V2_PRESETS = {
   guitar_shineOn: {
     type: 'guitar',
     name: 'Velvet Lead', 
-    volume: 0.11,
-    osc: { width: 0.32, detune: 2, mainGain: 0.9, detGain: 0.1, subGain: 0.3 },
-    pickup: { cutoff: 2200, q: 0.8 },
-    drive: { type: 'soft', amount: 0.15 }, 
-    comp: { threshold: -22, ratio: 4, attack: 0.01, release: 0.2, makeup: 4 },
-    post: { lpf: 3800 },
+    volume: 0.12,
+    osc: { width: 0.35, detune: 2, mainGain: 0.9, detGain: 0.1, subGain: 0.3 },
+    // #ЗАЧЕМ: Устранение писклявости.
+    // #ЧТО: cutoff снижен с 2200 до 1650 для более "грудного" тембра.
+    pickup: { cutoff: 1650, q: 0.8 },
+    drive: { type: 'soft', amount: 0.18 }, 
+    comp: { threshold: -24, ratio: 4, attack: 0.01, release: 0.2, makeup: 4 },
+    post: { lpf: 2800 },
     phaser: { on: false }, 
     delayA: { on: true, time: 0.42, fb: 0.25, mix: 0.12 },
-    adsr: { a: 0.015, d: 0.4, s: 0.7, r: 2.4 }, 
-    reverbMix: 0.2
+    // #ЗАЧЕМ: Устранение "бесконечных" нот.
+    // #ЧТО: r (release) снижен с 2.4 до 0.8 сек.
+    adsr: { a: 0.015, d: 0.4, s: 0.7, r: 0.8 }, 
+    reverbMix: 0.22
   },
 
   guitar_muffLead: {
