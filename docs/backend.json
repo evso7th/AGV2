@@ -42,6 +42,13 @@
         "mood": { "type": "string" },
         "compositionId": { "type": "string" },
         "barOffset": { "type": "number" },
+        "nativeBpm": { "type": "number", "description": "Original tempo of the fragment." },
+        "nativeKey": { "type": "string", "description": "Original musical key (e.g. Am, E)." },
+        "timeSignature": { 
+          "type": "string", 
+          "enum": ["4/4", "3/4", "5/4", "7/8", "12/8"],
+          "description": "Original time signature."
+        },
         "vector": {
           "type": "object",
           "properties": {
@@ -52,6 +59,7 @@
           }
         },
         "tags": { "type": "array", "items": { "type": "string" } },
+        "narrative": { "type": "string" },
         "timestamp": { "type": "string", "format": "date-time" }
       },
       "required": ["phrase", "role", "compositionId", "commonMood", "vector", "timestamp"]

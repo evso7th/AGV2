@@ -58,7 +58,7 @@ function generateAxiomId(compositionId: string, role: string, phrase: number[]):
 /**
  * #ЗАЧЕМ: Трансляция оцифрованного наследия в Гиперкуб AuraGroove.
  * #ЧТО: Сохраняет аксиому с использованием детерминированного ID для защиты от дубликатов.
- * #ОБНОВЛЕНО (ПЛАН №588): Восстановлено сохранение поля narrative.
+ * #ОБНОВЛЕНО (ПЛАН №614): Добавлена поддержка nativeBpm, nativeKey и timeSignature.
  */
 export function saveHeritageAxiom(db: Firestore, data: {
     phrase: number[];
@@ -71,9 +71,11 @@ export function saveHeritageAxiom(db: Firestore, data: {
     vector: AxiomVector;
     origin: string;
     tags: string[];
-    narrative: string; // Обязательное поле
+    narrative: string;
+    nativeBpm?: number;
+    nativeKey?: string;
+    timeSignature?: string;
 }) {
-    // Генерируем ID на основе контента
     const axiomId = generateAxiomId(data.compositionId, data.role, data.phrase);
     const newDocRef = doc(db, 'heritage_axioms', axiomId);
 
@@ -88,7 +90,10 @@ export function saveHeritageAxiom(db: Firestore, data: {
         vector: data.vector,
         origin: data.origin,
         tags: data.tags,
-        narrative: data.narrative, // #ЗАЧЕМ: Возврат когнитивного контекста в базу.
+        narrative: data.narrative,
+        nativeBpm: data.nativeBpm || null,
+        nativeKey: data.nativeKey || null,
+        timeSignature: data.timeSignature || null,
         timestamp: serverTimestamp()
     };
 

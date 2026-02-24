@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useMemo, useEffect, useRef } from 'react';
@@ -16,7 +17,9 @@ import {
   RotateCcw,
   FileJson,
   Tag,
-  Globe
+  Globe,
+  Timer,
+  Key
 } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
@@ -42,10 +45,9 @@ const AVAILABLE_GENRES: Genre[] = [
 ];
 
 /**
- * #ЗАЧЕМ: Дашборд Аудитора ДНК v3.7.
- * #ЧТО: 1. Восстановлена глобальная сводка по базе (Pulse).
- *       2. Сохранен локальный аудит (DNA Repair Station).
- *       3. Выборочная инъекция и защита от дублей.
+ * #ЗАЧЕМ: Дашборд Аудитора ДНК v3.8.
+ * #ЧТО: 1. Добавлен аудит новых метаданных (BPM, Key, Time Signature).
+ *       2. Внедрена поддержка семантического масштабирования.
  */
 export default function HypercubeDashboard() {
   const db = useFirestore();
@@ -93,21 +95,6 @@ export default function HypercubeDashboard() {
     });
   }, [globalAxioms]);
 
-  // --- Local Batch Stats Calculation ---
-  const localStats = useMemo(() => {
-    return stagedAxioms.reduce((acc, ax) => {
-      acc.total++;
-      const g = selectedGenre || ax.genre || 'blues';
-      acc.genres[g] = (acc.genres[g] || 0) + 1;
-      acc.commonMoods[ax.commonMood] = (acc.commonMoods[ax.commonMood] || 0) + 1;
-      return acc;
-    }, { 
-        total: 0, 
-        genres: {} as Record<string, number>, 
-        commonMoods: {} as Record<string, number>
-    });
-  }, [stagedAxioms, selectedGenre]);
-
   const resetStaging = () => {
     setStagedAxioms([]);
     setSelectedIds(new Set());
@@ -143,7 +130,11 @@ export default function HypercubeDashboard() {
                 ...ax,
                 phrase: repairedPhrase,
                 id: `${compId}_${ax.role}_${idx}`,
-                compositionId: compId
+                compositionId: compId,
+                // Новые поля для аудита
+                nativeBpm: ax.nativeBpm || ax.bpm || null,
+                nativeKey: ax.nativeKey || ax.key || null,
+                timeSignature: ax.timeSignature || ax.ts || null
             };
         };
 
@@ -179,7 +170,10 @@ export default function HypercubeDashboard() {
           barOffset: 0,
           origin: `Manual_Forge_Injection_${currentFileName}`,
           timestamp: new Date().toISOString() as any,
-          narrative: ax.narrative || "Heritage component without notes."
+          narrative: ax.narrative || "Heritage component without notes.",
+          nativeBpm: ax.nativeBpm,
+          nativeKey: ax.nativeKey,
+          timeSignature: ax.timeSignature
         });
         addedCount++;
       }
@@ -285,7 +279,7 @@ export default function HypercubeDashboard() {
           </div>
         </div>
 
-        {/* Global Repository Pulse (Database Summary) */}
+        {/* Global Repository Pulse */}
         <div className="space-y-4">
           <div className="flex items-center gap-2 text-primary font-bold uppercase tracking-widest text-xs">
             <Globe className="h-4 w-4" /> Global Hypercube Pulse
@@ -331,7 +325,7 @@ export default function HypercubeDashboard() {
           </div>
         </div>
 
-        {/* Global Toolbar (Injection Control) */}
+        {/* Global Toolbar */}
         <div className="flex flex-wrap items-center gap-4 bg-muted/20 p-4 rounded-lg border border-border/50 shadow-inner">
           <input type="file" ref={fileInputRef} onChange={handleFileSelect} accept=".json" className="hidden" />
           <Button onClick={() => fileInputRef.current?.click()} disabled={isProcessing} className="bg-primary hover:bg-primary/90 text-primary-foreground font-bold px-8 h-12 shadow-lg transition-transform active:scale-95">
@@ -370,7 +364,7 @@ export default function HypercubeDashboard() {
             <CardHeader className="bg-primary/5 border-b flex flex-row items-center justify-between py-4">
               <div>
                 <CardTitle className="text-xl font-bold flex items-center gap-2"><Wind className="h-6 w-6 text-primary"/> Staging Buffer: {currentFileName}</CardTitle>
-                <CardDescription>Auditing local forge data before cloud injection into "{selectedGenre}"</CardDescription>
+                <CardDescription>Auditing local forge data with Native Metadata check</CardDescription>
               </div>
               <div className="flex gap-3">
                 <Button variant="ghost" size="sm" onClick={resetStaging} className="text-muted-foreground hover:text-foreground">
@@ -396,9 +390,9 @@ export default function HypercubeDashboard() {
                           }} 
                         />
                       </th>
-                      <th className="p-4 font-bold">Axiom Source / ID</th>
+                      <th className="p-4 font-bold">Source</th>
                       <th className="p-4 font-bold">Role</th>
-                      <th className="p-4 font-bold">Mood</th>
+                      <th className="p-4 font-bold">Native Meta</th>
                       <th className="p-4 font-bold">Vector (t,b,e,h)</th>
                       <th className="p-4 font-bold">Sentient Narrative</th>
                       <th className="p-4 font-bold text-right">Preview</th>
@@ -410,17 +404,27 @@ export default function HypercubeDashboard() {
                         <td className="p-4 text-center">
                           <Checkbox checked={selectedIds.has(ax.id)} onCheckedChange={() => toggleSelect(ax.id)} />
                         </td>
-                        <td className="p-4 font-bold text-primary whitespace-normal break-words max-w-[200px] leading-tight text-xs">
+                        <td className="p-4 font-bold text-primary whitespace-normal break-words max-w-[150px] leading-tight text-xs">
                           {ax.compositionId}
                         </td>
                         <td className="p-4">
                           <Badge variant="outline" className="capitalize text-[10px] border-primary/20 text-primary/80">{ax.role}</Badge>
                         </td>
-                        <td className="p-4 capitalize text-xs font-medium">{ax.mood}</td>
+                        <td className="p-4">
+                          <div className="flex flex-col gap-1">
+                            <div className="flex items-center gap-1.5 text-[10px] font-mono text-muted-foreground">
+                              <Timer className="h-3 w-3" /> {ax.nativeBpm || 'Elastic'}
+                            </div>
+                            <div className="flex items-center gap-1.5 text-[10px] font-mono text-muted-foreground">
+                              <Key className="h-3 w-3" /> {ax.nativeKey || 'Universal'}
+                            </div>
+                            <Badge variant="secondary" className="w-fit text-[9px] px-1 h-4">{ax.timeSignature || '4/4'}</Badge>
+                          </div>
+                        </td>
                         <td className="p-4 font-mono text-[10px] text-muted-foreground whitespace-nowrap">
                           [{ax.vector?.t?.toFixed(1) || 0}, {ax.vector?.b?.toFixed(1) || 0}, {ax.vector?.e?.toFixed(1) || 0}, {ax.vector?.h?.toFixed(1) || 0}]
                         </td>
-                        <td className="p-4 text-xs italic text-muted-foreground leading-relaxed max-w-md">
+                        <td className="p-4 text-xs italic text-muted-foreground leading-relaxed max-w-sm">
                           <p className="line-clamp-2 group-hover:line-clamp-none transition-all duration-300">{ax.narrative || 'Axiom Narrative Missing'}</p>
                         </td>
                         <td className="p-4 text-right">
@@ -447,7 +451,7 @@ export default function HypercubeDashboard() {
                 <h3 className="text-3xl font-bold tracking-tight text-muted-foreground/80">Hypercube Buffer Empty</h3>
                 <p className="text-muted-foreground max-w-md mx-auto text-sm leading-relaxed">
                     Local DNA buffer is dormant. Select a JSON asset to begin auditing and injection. 
-                    <br/><span className="text-xs opacity-60 italic">Absolute MIDI files will be automatically repaired.</span>
+                    <br/><span className="text-xs opacity-60 italic">Metadata (BPM, Key, Time Signature) will be automatically detected.</span>
                 </p>
              </div>
              <Button onClick={() => fileInputRef.current?.click()} size="lg" className="px-12 h-14 text-xl font-black shadow-xl hover:shadow-primary/20 transition-all">
