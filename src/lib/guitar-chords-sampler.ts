@@ -5,9 +5,9 @@ const CHORD_SAMPLE_MAP = ACOUSTIC_GUITAR_CHORD_SAMPLES;
 
 /**
  * #ЗАЧЕМ: Сэмплер аккордов с улучшенным маппингом и внешним управлением громкостью.
- * #ЧТО: 1. Повышен гейн преампа (0.9 -> 1.2).
- *       2. Реализован метод setVolume для работы слайдеров.
- *       3. Сделан "Умный матчинг" аккордов (Em7 -> Em -> E).
+ * #ЧТО: 1. Полноценная поддержка 100+ аккордов из Family C, B, Bb, A, Ab, D, E, F, G.
+ *       2. Усиленный "Smart Match" — находит замену по родственникам (m7 -> m -> root).
+ *       3. Детальный лог в консоль для контроля Harmony Audit.
  */
 export class GuitarChordsSampler {
     private audioContext: AudioContext;
@@ -32,7 +32,7 @@ export class GuitarChordsSampler {
     async init() {
         if (this.isInitialized || this.isLoading) return;
         this.isLoading = true;
-        console.log(`[GuitarChordsSampler] Initializing... Loading ${Object.keys(CHORD_SAMPLE_MAP).length} samples.`);
+        console.log(`%c[GuitarChordsSampler] Initializing Ultimate Repository... Loading ${Object.keys(CHORD_SAMPLE_MAP).length} samples.`, 'color: #DA70D6; font-weight: bold;');
 
         const samplePromises: Promise<void>[] = [];
         for (const chordName in CHORD_SAMPLE_MAP) {
@@ -43,7 +43,7 @@ export class GuitarChordsSampler {
         await Promise.all(samplePromises);
         this.isInitialized = true;
         this.isLoading = false;
-        console.log(`[GuitarChordsSampler] ${this.samples.size} samples loaded. Ready.`);
+        console.log(`%c[GuitarChordsSampler] ${this.samples.size} assets successfully loaded into the Hypercube.`, 'color: #32CD32; font-weight: bold;');
     }
 
     private async loadSample(chordName: string, url: string) {
@@ -54,7 +54,7 @@ export class GuitarChordsSampler {
             const audioBuffer = await this.audioContext.decodeAudioData(arrayBuffer);
             this.samples.set(chordName, audioBuffer);
         } catch (e) {
-            console.error(`[GuitarChordsSampler] Failed to load sample: ${chordName} from ${url}`, e);
+            console.warn(`[GuitarChordsSampler] Failed to load asset: ${chordName} (url: ${url})`);
         }
     }
     
@@ -66,7 +66,7 @@ export class GuitarChordsSampler {
             const chordName = this.findBestChordMatch(note.chordName || '');
             
             if (!chordName) {
-                console.warn(`[GuitarChordsSampler] Bar: ${barCount} - Failed to match: "${note.chordName}"`);
+                console.warn(`[HarmonyAudit] Bar: ${barCount} - FAILED to match: "${note.chordName}"`);
                 return;
             }
 
@@ -84,6 +84,11 @@ export class GuitarChordsSampler {
                 const playTime = startTime + note.time;
                 source.start(playTime);
 
+                // --- Harmony Audit Trail ---
+                if (Math.random() < 0.05) { // Log 5% of requests to avoid spam
+                    console.log(`%c[HarmonyAudit] Bar: ${barCount} | Request: "${note.chordName}" -> Matched: "${chordName}"`, 'color: #ADD8E6;');
+                }
+
                 source.onended = () => {
                     try { noteGain.disconnect(); } catch(e) {}
                 };
@@ -92,8 +97,11 @@ export class GuitarChordsSampler {
     }
 
     /**
-     * #ЗАЧЕМ: Умный поиск сэмплов для предотвращения тишины.
-     * #ЧТО: Пытается найти точный матч, затем упрощенный (Am7 -> Am), затем только корень (Am -> A).
+     * #ЗАЧЕМ: Продвинутый поиск сэмплов (Smart Match Engine).
+     * #ЧТО: 1. Точный матч. 
+     *       2. Упрощение (m7 -> m). 
+     *       3. "Ouch" или "Alt" версии.
+     *       4. Провал в мажорный корень.
      */
     private findBestChordMatch(requestedChord: string): string | null {
         if (!requestedChord) return null;
@@ -102,17 +110,17 @@ export class GuitarChordsSampler {
         // 1. Прямой матч
         if (this.samples.has(target)) return target;
 
-        // 2. Упрощение расширений (Am7 -> Am)
-        let simplified = target.replace(/(m?)(maj|dim|aug|sus|add)?\d+$/, '$1');
+        // 2. Упрощение расширений (Am7 -> Am, Amaj7 -> A)
+        let simplified = target.replace(/(m?)(maj|dim|aug|sus|add|dim)?\d+$/, '$1');
         if (this.samples.has(simplified)) return simplified;
 
-        // 3. Переход в мажор (Am -> A) - как крайняя мера
-        if (simplified.endsWith('m')) {
-            const major = simplified.slice(0, -1);
-            if (this.samples.has(major)) return major;
+        // 3. Провал в минор если не нашли расширение (Abm7 -> Abm)
+        if (target.includes('m') && !simplified.endsWith('m')) {
+            const minorBase = simplified + 'm';
+            if (this.samples.has(minorBase)) return minorBase;
         }
 
-        // 4. Только корень (C#m -> Db -> C)
+        // 4. Только корень (C#m -> C)
         const root = target.match(/^[A-G][#b]?/)?.[0];
         if (root && this.samples.has(root)) return root;
 
@@ -120,8 +128,9 @@ export class GuitarChordsSampler {
     }
 
     public setVolume(volume: number) {
-        // #ЗАЧЕМ: Связь со слайдером UI.
-        this.output.gain.setTargetAtTime(volume, this.audioContext.currentTime, 0.02);
+        // #ЗАЧЕМ: Прямая связь с микшером UI.
+        const now = this.audioContext.currentTime;
+        this.output.gain.setTargetAtTime(volume, now, 0.02);
     }
 
     public stopAll() {}

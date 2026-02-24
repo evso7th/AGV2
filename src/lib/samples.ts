@@ -123,48 +123,57 @@ export const FLUTE_SAMPLES: Record<string, VelocitySample[]> = {
 };
 
 /**
- * #ЗАЧЕМ: Расширенная карта сэмплов аккордов (Акустика + Телекастер).
- * #ЧТО: Добавлены D, E, F, G и их минорные версии для полной гармонической свободы.
+ * #ЗАЧЕМ: Расширенная карта сэмплов аккордов (8 гитаристов).
+ * #ЧТО: Полное сопоставление всех доступных .ogg и .mp3 файлов из библиотеки.
  */
 export const ACOUSTIC_GUITAR_CHORD_SAMPLES: Record<string, string> = {
-  'Cdim': '/assets/guitars_hords_samples/1657cdim.ogg',
-  'Cm': '/assets/guitars_hords_samples/1658cm.ogg',
-  'Cm6': '/assets/guitars_hords_samples/1659cm6.ogg',
-  'Cm7': '/assets/guitars_hords_samples/1660cm7.ogg',
+  // --- Family C ---
   'C': '/assets/guitars_hords_samples/1662c.ogg',
-  'C6': '/assets/guitars_hords_samples/1663c6.ogg',
+  'Cm': '/assets/guitars_hords_samples/1658cm.ogg',
   'C7': '/assets/guitars_hords_samples/1664c7.ogg',
   'C9': '/assets/guitars_hords_samples/1665c9.ogg',
+  'C6': '/assets/guitars_hords_samples/1663c6.ogg',
+  'Cm6': '/assets/guitars_hords_samples/1659cm6.ogg',
+  'Cm7': '/assets/guitars_hords_samples/1660cm7.ogg',
+  'Caug': '/assets/guitars_hords_samples/1666ca.ogg',
+  'Cdim': '/assets/guitars_hords_samples/1657cdim.ogg',
+  
+  // --- Family B / Bb ---
   'B': '/assets/guitars_hords_samples/4279-b.ogg',
-  'B6': '/assets/guitars_hords_samples/4280-b6.ogg',
+  'Bm': '/assets/guitars_hords_samples/4288-bm.ogg',
   'B7': '/assets/guitars_hords_samples/4281-b7.ogg',
   'B9': '/assets/guitars_hords_samples/4283-b9.ogg',
-  'Bb': '/assets/guitars_hords_samples/4284-bb.ogg',
-  'Bb6': '/assets/guitars_hords_samples/4285-bb6.ogg',
-  'Bb7': '/assets/guitars_hords_samples/4286-bb7.ogg',
-  'Bbm': '/assets/guitars_hords_samples/4287-bbm.ogg',
-  'Bm': '/assets/guitars_hords_samples/4288-bm.ogg',
+  'B6': '/assets/guitars_hords_samples/4280-b6.ogg',
   'Bm6': '/assets/guitars_hords_samples/4289-bm6.ogg',
   'Bm7': '/assets/guitars_hords_samples/4290-bm7.ogg',
   'Baug': '/assets/guitars_hords_samples/4291-baug.ogg',
   'Bdim': '/assets/guitars_hords_samples/4292-bdim.ogg',
+  
+  'Bb': '/assets/guitars_hords_samples/4284-bb.ogg',
+  'Bbm': '/assets/guitars_hords_samples/4287-bbm.ogg',
+  'Bb7': '/assets/guitars_hords_samples/4286-bb7.ogg',
+  'Bb6': '/assets/guitars_hords_samples/4285-bb6.ogg',
+  
+  // --- Family A / Ab ---
   'A': '/assets/guitars_hords_samples/4562-a.ogg',
-  'A6': '/assets/guitars_hords_samples/4564-a6.ogg',
-  'A7': '/assets/guitars_hords_samples/4565-a7.ogg',
-  'Adim': '/assets/guitars_hords_samples/4566-adim.ogg',
   'Am': '/assets/guitars_hords_samples/4567-am.ogg',
+  'A7': '/assets/guitars_hords_samples/4565-a7.ogg',
+  'A6': '/assets/guitars_hords_samples/4564-a6.ogg',
   'Am6': '/assets/guitars_hords_samples/4568-am6.ogg',
   'Am7': '/assets/guitars_hords_samples/4569-am7.ogg',
+  'Adim': '/assets/guitars_hords_samples/4566-adim.ogg',
+  
   'Ab': '/assets/guitars_hords_samples/5715-ab.ogg',
-  'Ab6': '/assets/guitars_hords_samples/5839ab-6.ogg',
+  'Abm': '/assets/guitars_hords_samples/5847abm.ogg',
   'Ab7': '/assets/guitars_hords_samples/5840ab-7.ogg',
   'Ab9': '/assets/guitars_hords_samples/5841ab-9.ogg',
-  'Abaug': '/assets/guitars_hords_samples/5843abaug.ogg',
-  'Abdim': '/assets/guitars_hords_samples/5844abdim.ogg',
+  'Ab6': '/assets/guitars_hords_samples/5839ab-6.ogg',
   'Abm6': '/assets/guitars_hords_samples/5845abm-6.ogg',
   'Abm7': '/assets/guitars_hords_samples/5846abm-7.ogg',
-  'Abm': '/assets/guitars_hords_samples/5847abm.ogg',
-  // --- Missing Core Chords (Donor: Telecaster Clean) ---
+  'Abaug': '/assets/guitars_hords_samples/5843abaug.ogg',
+  'Abdim': '/assets/guitars_hords_samples/5844abdim.ogg',
+
+  // --- Family D, E, F, G (High Quality Donors from Telecaster and MP3 library) ---
   'D': '/assets/guitars_hords_samples/clear_telecaster/591191__telecaster-clean-d-hi-r.ogg',
   'Dm': '/assets/guitars_hords_samples/clear_telecaster/591189__telecaster-clean-dm-hi-r.ogg',
   'E': '/assets/guitars_hords_samples/clear_telecaster/591178__telecaster-clean-e-hi-l.ogg',
@@ -173,6 +182,12 @@ export const ACOUSTIC_GUITAR_CHORD_SAMPLES: Record<string, string> = {
   'Fm': '/assets/guitars_hords_samples/clear_telecaster/591183__telecaster-clean-fm-low-r.ogg',
   'G': '/assets/guitars_hords_samples/clear_telecaster/591194__telecaster-clean-g-low-l.ogg',
   'Gm': '/assets/guitars_hords_samples/clear_telecaster/591192__telecaster-clean-gm-low-l.ogg',
+  
+  // --- Special MP3 Variants (Rising/Ascending) ---
+  'E_rising': '/assets/guitars_hords_samples/guitar-chord-mi-may-emai-rising.mp3',
+  'Em_ascending': '/assets/guitars_hords_samples/guitar-chord-e-minor-em-ascending.mp3',
+  'Dm_rising': '/assets/guitars_hords_samples/guitar-chord-d-minor-dm-rising.mp3',
+  'D_rising': '/assets/guitars_hords_samples/guitar-chord-in-d-major-rising-merry.mp3',
 };
 
 export type GuitarTechniqueSamples = {
