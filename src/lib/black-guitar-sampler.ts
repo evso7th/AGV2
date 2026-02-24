@@ -4,8 +4,7 @@ import { BLUES_GUITAR_VOICINGS } from './assets/guitar-voicings';
 import { GUITAR_PATTERNS } from './assets/guitar-patterns';
 
 /**
- * #ЗАЧЕМ: Сэмплер Black Acoustic с калибровкой громкости.
- * #ЧТО: 1. Системное снижение громкости в 2 раза по требованию пользователя.
+ * #ЗАЧЕМ: Сэмплер Black Acoustic с поддержкой гибридных транзиентов.
  */
 const BLACK_GUITAR_ORD_SAMPLES: Record<string, string> = {
     'e3': '/assets/acoustic_guitar_samples/black/ord/twang_e3_f_rr3.ogg',
@@ -50,7 +49,6 @@ export class BlackGuitarSampler {
         this.destination = destination;
 
         this.preamp = this.audioContext.createGain();
-        // #ЗАЧЕМ: Снижение громкости в 2 раза (было 0.6).
         this.preamp.gain.value = 0.3;
         this.preamp.connect(this.destination);
     }
@@ -94,10 +92,10 @@ export class BlackGuitarSampler {
         if (!this.isInitialized || !instrument) return;
 
         notes.forEach(note => {
-            if (note.technique && (note.technique.startsWith('F_') || note.technique.startsWith('S_'))) {
+            if (!isTransientMode && note.technique && (note.technique.startsWith('F_') || note.technique.startsWith('S_'))) {
                 this.playPattern(instrument, note, time, tempo);
             } else {
-                this.playSingleNote(instrument, note, time);
+                this.playSingleNote(instrument, note, time, isTransientMode);
             }
         });
     }
@@ -131,13 +129,13 @@ export class BlackGuitarSampler {
         }
     }
 
-    private playSingleNote(instrument: SamplerInstrument, note: Note, startTime: number) {
+    private playSingleNote(instrument: SamplerInstrument, note: Note, startTime: number, isTransientMode: boolean = false) {
         const { buffer, midi: sampleMidi } = this.findBestSample(instrument, note.midi);
         if (!buffer) return;
-        this.playSample(buffer, sampleMidi, note.midi, startTime + (note.time || 0), note.velocity || 0.7);
+        this.playSample(buffer, sampleMidi, note.midi, startTime + (note.time || 0), note.velocity || 0.7, isTransientMode);
     }
     
-    private playSample(buffer: AudioBuffer, sampleMidi: number, targetMidi: number, startTime: number, velocity: number) {
+    private playSample(buffer: AudioBuffer, sampleMidi: number, targetMidi: number, startTime: number, velocity: number, isTransientMode: boolean = false) {
         if (!isFinite(startTime) || !isFinite(velocity)) return;
 
         const source = this.audioContext.createBufferSource();
@@ -150,9 +148,16 @@ export class BlackGuitarSampler {
 
         gainNode.gain.setValueAtTime(0, startTime);
         gainNode.gain.linearRampToValueAtTime(velocity, startTime + 0.005);
-        gainNode.gain.setTargetAtTime(0, startTime + 15.0, 0.8);
         
-        source.start(startTime);
+        if (isTransientMode) {
+            gainNode.gain.setTargetAtTime(0.0001, startTime + 0.02, 0.005);
+            source.start(startTime);
+            source.stop(startTime + 0.05);
+        } else {
+            gainNode.gain.setTargetAtTime(0, startTime + 15.0, 0.8);
+            source.start(startTime);
+        }
+        
         this.activeSources.add(source);
         
         source.onended = () => {

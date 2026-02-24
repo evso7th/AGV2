@@ -1,3 +1,4 @@
+
 import type { FractalEvent, AccompanimentInstrument } from '@/types/fractal';
 import type { Note } from "@/types/music";
 import { buildMultiInstrument } from './instrument-factory';
@@ -10,7 +11,7 @@ import type { CS80GuitarSampler } from './cs80-guitar-sampler';
 
 /**
  * A V2 manager for melody and bass parts.
- * Updated to support HYBRID synthesis and heuristic preset switching.
+ * Updated to support HYBRID transients and heuristic preset switching.
  */
 export class MelodySynthManagerV2 {
     private audioContext: AudioContext;
@@ -96,8 +97,6 @@ export class MelodySynthManagerV2 {
         }));
         
         // --- HEURISTIC PRESET SWITCH (V2.2) ---
-        // #ЗАЧЕМ: В новом "Нарративном Веке" такты редко бывают пустыми.
-        // #ЧТО: Разрешаем смену тембра на границах фраз (4 такта) или если текущий - дефолт 'synth'.
         if (instrumentHint && this.partName === 'melody') {
             const mappedHint = V1_TO_V2_PRESET_MAP[instrumentHint] || instrumentHint;
             if (mappedHint !== this.activePresetName) {
@@ -144,6 +143,13 @@ export class MelodySynthManagerV2 {
         
         if (!this.synth) return;
         
+        // --- HYBRID TRANSIENT TRIGGER ---
+        // #ЗАЧЕМ: Возврат "укуса" гитары. 
+        // #ЧТО: Если играет синтезаторная гитара (мелодия), подмешиваем 20мс сэмпла Телекастера.
+        if (this.partName === 'melody' && this.activePresetName.startsWith('guitar')) {
+            this.telecasterSampler.schedule(notesToPlay, barStartTime, tempo, true);
+        }
+        
         notesToPlay.forEach(note => {
             const noteOnTime = barStartTime + note.time;
             
@@ -159,7 +165,6 @@ export class MelodySynthManagerV2 {
     }
     
     public async setInstrument(instrumentName: string) {
-       // #ЗАЧЕМ: Equality Guard.
        if (instrumentName === this.activePresetName) return;
 
        if (this.synth) {
@@ -180,7 +185,6 @@ export class MelodySynthManagerV2 {
        if (preset) {
            await this.loadInstrument(instrumentName, isBassPart ? 'bass' : (preset.type || 'synth'));
        } else {
-           // If it's a sampler name, we just set the name and let the schedule method handle routing
            this.activePresetName = instrumentName;
        }
     }

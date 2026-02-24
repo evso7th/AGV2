@@ -1,3 +1,4 @@
+
 import {
   FractalEvent,
   GhostChord,
@@ -23,9 +24,10 @@ import { BLUES_GUITAR_RIFFS, BLUES_GUITAR_VOICINGS } from './assets/blues-guitar
 import { BLUES_MELODY_RIFFS } from './assets/blues-melody-riffs';
 
 /**
- * #ЗАЧЕМ: Блюзовый Мозг V128.1 — "The Floyd Calm".
- * #ЧТО: 1. Базовый регистр соло понижен на октаву для устранения писклявости.
- *       2. Оптимизирована плотность веса нот.
+ * #ЗАЧЕМ: Блюзовый Мозг V129.0 — "Hybrid Improv & Transients".
+ * #ЧТО: 1. Лимит длительности нот соло в 1 такт (4.0).
+ *       2. Реализована красивая импровизация аккомпанемента вне унисона.
+ *       3. Принудительная смена лика на границах частей (после бриджей).
  */
 
 export interface BluesBrainConfig {
@@ -146,7 +148,8 @@ export class BluesBrain {
         this.selectGrandAxiom(tension);
     }
 
-    if (this.currentAxiom.length === 0 || isPhraseBoundary) {
+    // #ЗАЧЕМ: Смена ликов на границах частей (после бриджей).
+    if (this.currentAxiom.length === 0 || isPhraseBoundary || navInfo.isPartTransition) {
         this.refreshUnifiedMutation();
         this.selectNextAxiom(navInfo, dna, epoch);
     }
@@ -162,16 +165,16 @@ export class BluesBrain {
     // --- BASS (Core Foundation) ---
     const bassEvents = hints.bass ? this.renderIronBass(currentChord, epoch, tension, navInfo) : [];
 
-    // --- ACCOMPANIMENT (Unison Logic) ---
+    // --- ACCOMPANIMENT (Unison Logic & Hybrid Improv) ---
     const unisonType = navInfo.currentPart.instrumentRules?.accompaniment?.unisonType || 'none';
     
     if (hints.accompaniment && unisonType !== 'none') {
         events.push(...this.renderUnisonAccompaniment(bassEvents, currentChord, unisonType, tension));
     } else if (hints.accompaniment && !this.currentGuitarRiff) {
+        // #ЗАЧЕМ: Красивая импровизация аккомпанемента вне унисона.
         events.push(...this.renderDynamicAccompaniment(epoch, currentChord, tension));
     }
 
-    // Add bass to events after accompaniment might have used it
     events.push(...bassEvents);
 
     if (hints.melody) {
@@ -197,7 +200,7 @@ export class BluesBrain {
         unison: unisonType !== 'none' ? unisonType : undefined
     };
 
-    const narrative = `Obsidian narrative active. Unison: ${unisonType}. Bar ${epoch % 12 + 1}/12.`;
+    const narrative = `Hybrid narrative active. Hybrid Transients ON. Bar ${epoch % 12 + 1}/12.`;
 
     return { 
         events, 
@@ -433,10 +436,9 @@ export class BluesBrain {
       soloPhrase.forEach(n => {
           events.push({
               type: 'melody',
-              // #ЗАЧЕМ: Понижение регистра. Смещение +24 вместо +36.
               note: Math.min(chord.rootNote + 24 + (DEGREE_TO_SEMITONE[n.deg] || 0), this.MELODY_CEILING),
               time: n.t / 3,
-              duration: n.d / 3,
+              duration: Math.min(n.d / 3, 4.0), // #ЗАЧЕМ: Лимит длительности нот в 1 такт.
               weight: 0.85 * (tension + 0.2),
               technique: n.tech || 'pick',
               dynamics: 'p',
@@ -479,6 +481,10 @@ export class BluesBrain {
         const nextNote = barNotes[i+1];
         let duration = n.d / 3;
         if (nextNote && (nextNote.t - (n.t + n.d)) < 1) duration += 0.15; 
+        
+        // #ЗАЧЕМ: Лимит длительности нот в 1 такт.
+        duration = Math.min(duration, 4.0);
+
         const phraseProgress = n.t / 48;
         const exhaleModifier = 1.0 - (phraseProgress * 0.35);
         const isAccent = n.t % 6 === 0;
@@ -487,8 +493,6 @@ export class BluesBrain {
 
         events.push({
             type: 'melody',
-            // #ЗАЧЕМ: Понижение регистра. Базовое смещение +24 вместо +36.
-            // #ЧТО: Теперь Shine-On звучит в бархатном среднем регистре.
             note: Math.min(chord.rootNote + 24 + (DEGREE_TO_SEMITONE[n.deg] || 0) + (n.octShift || 0), this.MELODY_CEILING),
             time: (n.t % 12) / 3,
             duration: duration,
@@ -561,8 +565,32 @@ export class BluesBrain {
     const root = chord.rootNote + 12;
     const isMin = chord.chordType === 'minor';
     const notes = [root, root + (isMin ? 3 : 4), root + 7, root + 10];
+    
+    // #ЗАЧЕМ: Улучшенная импровизация аккомпанемента. 
+    // #ЧТО: Небыстрые красивые пассажи по ступеням аккорда вместо статики.
     events.push({ type: 'accompaniment', note: root, time: 0, duration: 4.0, weight: 0.28, technique: 'swell', dynamics: 'p', phrasing: 'legato' });
-    notes.forEach((p, i) => { if (this.random.next() < 0.7) events.push({ type: 'accompaniment', note: p + 12, time: 1.0 + i * 0.5, duration: 1.2, weight: 0.35, technique: 'pluck', dynamics: 'p', phrasing: 'detached' }); });
+    
+    const beautifulPassage = [
+        { t: 1.0, n: notes[1] + 12 }, // 3-я ступень октавой выше
+        { t: 2.5, n: notes[2] + 12 }, // 5-я
+        { t: 3.5, n: notes[3] + 12 }  // 7-я
+    ];
+
+    beautifulPassage.forEach(p => {
+        if (this.random.next() < (0.6 + tension * 0.2)) {
+            events.push({
+                type: 'accompaniment',
+                note: p.n,
+                time: p.t,
+                duration: 1.5,
+                weight: 0.32,
+                technique: 'pluck',
+                dynamics: 'p',
+                phrasing: 'detached'
+            });
+        }
+    });
+    
     return events;
   }
 

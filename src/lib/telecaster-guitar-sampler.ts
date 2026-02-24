@@ -36,8 +36,9 @@ const TELECASTER_SAMPLES: Record<string, string> = {
 type SamplerInstrument = { buffers: Map<number, AudioBuffer>; };
 
 /**
- * #ЗАЧЕМ: Сэмплер Telecaster с калибровкой громкости.
- * #ЧТО: 1. Системное снижение громкости в 2 раза по требованию пользователя.
+ * #ЗАЧЕМ: Сэмплер Telecaster с поддержкой гибридных транзиентов.
+ * #ЧТО: 1. Системное снижение громкости в 2 раза.
+ *       2. Внедрен isTransientMode для извлечения "щелчка" атаки (20мс).
  */
 export class TelecasterGuitarSampler {
     private audioContext: AudioContext;
@@ -90,10 +91,10 @@ export class TelecasterGuitarSampler {
         const instrument = this.instruments.get('telecaster');
         if (!this.isInitialized || !instrument) return;
         notes.forEach(note => {
-            if (note.technique && (note.technique.startsWith('F_') || note.technique.startsWith('S_'))) {
+            if (!isTransientMode && note.technique && (note.technique.startsWith('F_') || note.technique.startsWith('S_'))) {
                 this.playPattern(instrument, note, time, tempo);
             } else {
-                this.playSingleNote(instrument, note, time);
+                this.playSingleNote(instrument, note, time, isTransientMode);
             }
         });
     }
@@ -122,14 +123,14 @@ export class TelecasterGuitarSampler {
         }
     }
 
-    private playSingleNote(instrument: SamplerInstrument, note: Note, startTime: number) {
+    private playSingleNote(instrument: SamplerInstrument, note: Note, startTime: number, isTransientMode: boolean = false) {
         const { buffer, midi: sampleMidi } = this.findBestSample(instrument, note.midi);
         if (buffer) {
-            this.playSample(buffer, sampleMidi, note.midi, startTime + (note.time || 0), note.velocity || 0.7);
+            this.playSample(buffer, sampleMidi, note.midi, startTime + (note.time || 0), note.velocity || 0.7, isTransientMode);
         }
     }
     
-    private playSample(buffer: AudioBuffer, sampleMidi: number, targetMidi: number, startTime: number, velocity: number) {
+    private playSample(buffer: AudioBuffer, sampleMidi: number, targetMidi: number, startTime: number, velocity: number, isTransientMode: boolean = false) {
         if (!isFinite(startTime) || !isFinite(velocity)) return;
 
         const source = this.audioContext.createBufferSource();
@@ -141,10 +142,21 @@ export class TelecasterGuitarSampler {
         source.playbackRate.value = isFinite(playbackRate) ? playbackRate : 1.0;
 
         gainNode.gain.setValueAtTime(0, startTime);
-        gainNode.gain.linearRampToValueAtTime(velocity, startTime + 0.005);
-        gainNode.gain.setTargetAtTime(0, startTime + 15.0, 0.8);
+        // Transient mode gets a sharper, louder attack
+        const peakVelocity = isTransientMode ? velocity * 1.5 : velocity;
+        gainNode.gain.linearRampToValueAtTime(peakVelocity, startTime + 0.005);
         
-        source.start(startTime);
+        if (isTransientMode) {
+            // #ЗАЧЕМ: Извлечение только "удара". 
+            // #ЧТО: Резкое затухание через 20мс.
+            gainNode.gain.setTargetAtTime(0.0001, startTime + 0.02, 0.005);
+            source.start(startTime);
+            source.stop(startTime + 0.05);
+        } else {
+            gainNode.gain.setTargetAtTime(0, startTime + 15.0, 0.8);
+            source.start(startTime);
+        }
+        
         this.activeSources.add(source);
         
         source.onended = () => {
