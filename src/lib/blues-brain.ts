@@ -24,10 +24,10 @@ import { BLUES_GUITAR_RIFFS, BLUES_GUITAR_VOICINGS } from './assets/blues-guitar
 import { BLUES_MELODY_RIFFS } from './assets/blues-melody-riffs';
 
 /**
- * #ЗАЧЕМ: Блюзовый Мозг V130.0 — "Musical Density & Legato Flow".
- * #ЧТО: 1. Реализовано "Цепкое Легато": ноты перекрываются для плотного потока.
- *       2. Улучшенная импровизация аккомпанемента: красивые небыстрые пассажи.
- *       3. Гарантированная смена лика на границах частей.
+ * #ЗАЧЕМ: Блюзовый Мозг V131.0 — "Harmonic Integrity & Piano Expressivity".
+ * #ЧТО: 1. Пианино переведено на вариативные ритмические капли (drops).
+ *       2. Исправлен баг chordName: "undefined" для гитарных аккордов.
+ *       3. Жесткая отсечка длительности гитары (max 1 bar).
  */
 
 export interface BluesBrainConfig {
@@ -148,7 +148,6 @@ export class BluesBrain {
         this.selectGrandAxiom(tension);
     }
 
-    // #ЗАЧЕМ: Смена ликов на границах частей (после бриджей) или фраз.
     if (this.currentAxiom.length === 0 || isPhraseBoundary || navInfo.isPartTransition) {
         this.refreshUnifiedMutation();
         this.selectNextAxiom(navInfo, dna, epoch);
@@ -171,7 +170,6 @@ export class BluesBrain {
     if (hints.accompaniment && unisonType !== 'none') {
         events.push(...this.renderUnisonAccompaniment(bassEvents, currentChord, unisonType, tension));
     } else if (hints.accompaniment && !this.currentGuitarRiff) {
-        // #ЗАЧЕМ: Красивая импровизация аккомпанемента вне унисона.
         events.push(...this.renderDynamicAccompaniment(epoch, currentChord, tension));
     }
 
@@ -186,10 +184,12 @@ export class BluesBrain {
         }
     }
 
+    // --- PIANO (Meaningful Drops) ---
     if (hints.pianoAccompaniment) {
         events.push(...this.renderIntegratedPiano(epoch, currentChord, tension));
     }
     
+    // --- HARMONY (Chord Names Fixed) ---
     if (hints.harmony) {
         events.push(...this.renderDerivativeHarmony(currentChord, epoch, tension));
     }
@@ -205,7 +205,7 @@ export class BluesBrain {
         lickId: this.currentLickId, 
         mutationType: this.state.currentMutationType,
         activeAxioms,
-        narrative: `Bar ${epoch % 12 + 1}/12. Musical density active.`
+        narrative: `Bar ${epoch % 12 + 1}/12. Legato flow active.`
     };
   }
 
@@ -375,6 +375,7 @@ export class BluesBrain {
               type: 'melody',
               note: Math.min(chord.rootNote + 24 + (DEGREE_TO_SEMITONE[n.deg] || 0), this.MELODY_CEILING),
               time: n.t / 3,
+              // #ЗАЧЕМ: Жесткое ограничение длительности.
               duration: Math.min(n.d / 3, 4.0), 
               weight: 0.85 * (tension + 0.2),
               technique: n.tech || 'pick',
@@ -394,9 +395,8 @@ export class BluesBrain {
     barNotes.forEach((n, i) => {
         const nextNote = barNotes[i+1];
         let duration = n.d / 3;
-        // #ЗАЧЕМ: Эффект "Цепкого Легато". 
-        // #ЧТО: Если следующая нота близко, предыдущая растягивается для перекрытия.
         if (nextNote && (nextNote.t - (n.t + n.d)) < 1) duration += 0.15; 
+        // #ЗАЧЕМ: Жесткая отсечка "бесконечности".
         duration = Math.min(duration, 4.0); 
 
         const phraseProgress = n.t / 48;
@@ -442,8 +442,6 @@ export class BluesBrain {
     const third = isMin ? 3 : 4;
     const notes = [root, root + third, root + 7, root + 10, root + 14];
     
-    // #ЗАЧЕМ: Улучшенная импровизация аккомпанемента.
-    // #ЧТО: Небыстрые красивые пассажи по ступеням аккорда вместо статики.
     events.push({ type: 'accompaniment', note: root, time: 0, duration: 4.0, weight: 0.28, technique: 'swell', dynamics: 'p', phrasing: 'legato' });
     
     const passage = [
@@ -504,15 +502,65 @@ export class BluesBrain {
       const events: FractalEvent[] = [];
       const root = chord.rootNote + 24;
       const isMin = chord.chordType === 'minor';
+      
+      // #ЗАЧЕМ: Устранение "эффекта дятла".
+      // #ЧТО: Пианино теперь играет ритмические капли (drops) с вариацией по ступеням.
       const degrees = [0, isMin ? 3 : 4, 7, 10, 14];
-      [1.5, 3.5].forEach(beat => { if (this.random.next() < (0.15 + tension * 0.2)) events.push({ type: 'pianoAccompaniment', note: Math.min(root + degrees[this.random.nextInt(degrees.length)], this.MELODY_CEILING), time: beat, duration: 4.0, weight: 0.25 + tension * 0.1, technique: 'hit', dynamics: 'p', phrasing: 'staccato', params: { barCount: epoch } }); });
+      const patterns = [
+          [1.5, 3.5],
+          [0.5, 2.0, 3.75],
+          [1.25, 2.5, 3.5]
+      ];
+      const activePattern = patterns[epoch % patterns.length];
+
+      activePattern.forEach(beat => { 
+          if (this.random.next() < (0.25 + tension * 0.3)) { 
+              events.push({ 
+                  type: 'pianoAccompaniment', 
+                  note: Math.min(root + degrees[this.random.nextInt(degrees.length)], this.MELODY_CEILING), 
+                  time: beat, 
+                  duration: 1.5 + (this.random.next() * 2.0), 
+                  weight: 0.25 + tension * 0.1, 
+                  technique: 'hit', 
+                  dynamics: 'p', 
+                  phrasing: 'staccato', 
+                  params: { barCount: epoch } 
+              }); 
+          } 
+      });
       return events;
   }
 
   private renderDerivativeHarmony(chord: GhostChord, epoch: number, tension: number): FractalEvent[] {
       const events: FractalEvent[] = [];
-      if (this.random.next() > 0.3) return [];
-      [chord.rootNote + 12, chord.rootNote + 19].forEach((n, i) => events.push({ type: 'harmony', note: n + 12, time: i * 0.1, duration: 4.0, weight: 0.12, technique: 'swell', dynamics: 'p', phrasing: 'legato', params: { barCount: epoch, filterCutoff: 3000 } }));
+      const root = chord.rootNote;
+      
+      // #ЗАЧЕМ: Устранение chordName: "undefined".
+      // #ЧТО: Явное вычисление имени аккорда для сэмплеров.
+      const chordMap: Record<number, string> = { 
+          0: 'C', 1: 'Db', 2: 'D', 3: 'Eb', 4: 'E', 5: 'F', 6: 'Gb', 7: 'G', 8: 'Ab', 9: 'A', 10: 'Bb', 11: 'B' 
+      };
+      const rootName = chordMap[root % 12] || 'C';
+      const isMin = chord.chordType === 'minor' || chord.chordType === 'diminished';
+      const finalChordName = isMin ? `${rootName}m` : rootName;
+
+      // Шанс появления гармонического слоя
+      if (this.random.next() > 0.4 && tension < 0.7) return [];
+
+      [root + 12, root + 19].forEach((n, i) => {
+          events.push({ 
+              type: 'harmony', 
+              note: n + 12, 
+              time: i * 0.1, 
+              duration: 4.0, 
+              weight: 0.15 + (tension * 0.1), 
+              technique: 'swell', 
+              dynamics: 'p', 
+              phrasing: 'legato', 
+              chordName: finalChordName, // ТЕПЕРЬ ОПРЕДЕЛЕНО
+              params: { barCount: epoch, filterCutoff: 3000 } 
+          }); 
+      });
       return events;
   }
 
@@ -531,6 +579,11 @@ export class BluesBrain {
     if (hints.accompaniment) {
         this.state.activeAccompTimbre = tension > 0.75 ? 'ep_rhodes_warm' : 'organ_soft_jazz';
         (hints as any).accompaniment = this.state.activeAccompTimbre;
+    }
+    
+    // #ЗАЧЕМ: Управление слоем гармонии по напряжению.
+    if (hints.harmony) {
+        (hints as any).harmony = tension > 0.7 ? 'violin' : 'guitarChords';
     }
   }
 
