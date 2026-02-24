@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState, useMemo, useEffect, useRef } from 'react';
@@ -10,12 +9,10 @@ import {
   Activity, 
   Music, 
   Wind, 
-  Brain, 
   ShieldAlert,
   ArrowLeft,
   Save,
   X,
-  History,
   RotateCcw,
   FileJson,
   Tag
@@ -31,7 +28,7 @@ import { useFirestore } from '@/firebase';
 import { collection, getDocs, writeBatch } from 'firebase/firestore';
 import { useAudioEngine } from '@/contexts/audio-engine-context';
 import { saveHeritageAxiom } from '@/lib/firebase-service';
-import { decompressCompactPhrase, DEGREE_TO_SEMITONE } from '@/lib/music-theory';
+import { decompressCompactPhrase, DEGREE_TO_SEMITONE, repairLegacyPhrase } from '@/lib/music-theory';
 import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
 import type { FractalEvent, InstrumentHints } from '@/types/fractal';
@@ -39,15 +36,15 @@ import type { Genre } from '@/types/music';
 
 const PROCESSED_FILES_KEY = 'AuraGroove_ImportedFiles';
 
-// #ЗАЧЕМ: Единый список жанров, доступных в системе.
 const AVAILABLE_GENRES: Genre[] = [
   'ambient', 'blues', 'trance', 'progressive', 'rock', 'house', 'rnb', 'ballad', 'reggae', 'celtic'
 ];
 
 /**
- * #ЗАЧЕМ: Дашборд Аудитора ДНК v3.5.
- * #ЧТО: 1. Добавлен ручной выбор жанра для инъекции.
- *       2. Список жанров синхронизирован с UI.
+ * #ЗАЧЕМ: Дашборд Аудитора ДНК v3.6.
+ * #ЧТО: 1. Внедрен DNA Repair Station (фикс старых MIDI файлов).
+ *       2. Улучшена читаемость названий треков (multiline).
+ *       3. Гарантированное сохранение нарратива.
  */
 export default function HypercubeDashboard() {
   const db = useFirestore();
@@ -63,7 +60,6 @@ export default function HypercubeDashboard() {
   const [selectedGenre, setSelectedGenre] = useState<Genre>('blues');
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  // Load history from localStorage
   useEffect(() => {
     const saved = localStorage.getItem(PROCESSED_FILES_KEY);
     if (saved) {
@@ -75,11 +71,9 @@ export default function HypercubeDashboard() {
     }
   }, []);
 
-  // Stats derived EXCLUSIVELY from the LOADED FILE
   const stats = useMemo(() => {
     return stagedAxioms.reduce((acc, ax) => {
       acc.total++;
-      // Use selected genre if set, otherwise fallback to axiom's genre or 'blues'
       const g = selectedGenre || ax.genre || 'blues';
       acc.genres[g] = (acc.genres[g] || 0) + 1;
       acc.moods[ax.mood] = (acc.moods[ax.mood] || 0) + 1;
@@ -124,20 +118,24 @@ export default function HypercubeDashboard() {
         const json = JSON.parse(event.target?.result as string);
         const flattened: any[] = [];
         
-        // Handle both Array and Object (Batch) formats
+        const processAxiom = (ax: any, idx: number, compId: string) => {
+            // #ЗАЧЕМ: DNA REPAIR STATION.
+            // #ЧТО: Если фраза в формате MIDI, конвертируем её в Spec.
+            const repairedPhrase = repairLegacyPhrase(ax.phrase);
+            
+            return {
+                ...ax,
+                phrase: repairedPhrase,
+                id: `${compId}_${ax.role}_${idx}`,
+                compositionId: compId
+            };
+        };
+
         if (Array.isArray(json)) {
-            json.forEach((ax, idx) => {
-                flattened.push({ ...ax, id: `local_${idx}`, compositionId: ax.compositionId || file.name });
-            });
+            json.forEach((ax, idx) => flattened.push(processAxiom(ax, idx, ax.compositionId || file.name)));
         } else {
             Object.entries(json).forEach(([trackName, licks]) => {
-                (licks as any[]).forEach((lick, idx) => {
-                    flattened.push({
-                        ...lick,
-                        id: `${trackName}_${lick.role}_${idx}`,
-                        compositionId: trackName
-                    });
-                });
+                (licks as any[]).forEach((lick, idx) => flattened.push(processAxiom(lick, idx, trackName)));
             });
         }
 
@@ -161,22 +159,22 @@ export default function HypercubeDashboard() {
       for (const ax of toInject) {
         await saveHeritageAxiom(db, {
           ...ax,
-          genre: selectedGenre, // #ЗАЧЕМ: Принудительное назначение выбранного жанра.
+          genre: selectedGenre, 
           barOffset: 0,
           origin: `Manual_Forge_Injection_${currentFileName}`,
-          timestamp: new Date().toISOString() as any
+          timestamp: new Date().toISOString() as any,
+          narrative: ax.narrative || "Heritage component without notes."
         });
         addedCount++;
       }
 
-      // Update local history
       const nextFiles = [...new Set([...processedFiles, currentFileName])];
       setProcessedFiles(nextFiles);
       localStorage.setItem(PROCESSED_FILES_KEY, JSON.stringify(nextFiles));
 
       toast({ 
         title: "DNA Injected", 
-        description: `Successfully committed ${addedCount} axioms to the live Hypercube as "${selectedGenre}".` 
+        description: `Successfully committed ${addedCount} axioms to the live Hypercube.` 
       });
       
       resetStaging();
@@ -217,9 +215,7 @@ export default function HypercubeDashboard() {
     if (isPlaying) setIsPlaying(false);
     stopAllSounds();
 
-    const phrase = Array.isArray(axiom.phrase) && typeof axiom.phrase[0] === 'number' 
-        ? decompressCompactPhrase(axiom.phrase) 
-        : axiom.phrase;
+    const phrase = decompressCompactPhrase(axiom.phrase);
 
     const roleToType: Record<string, string> = {
         'melody': 'melody',
@@ -261,7 +257,7 @@ export default function HypercubeDashboard() {
             <h1 className="text-4xl font-bold tracking-tight text-primary flex items-center gap-3">
               <Database className="h-10 w-10" /> DNA Auditor
             </h1>
-            <p className="text-muted-foreground">Axiom Factory Asset Auditing & Selective Injection Protocol</p>
+            <p className="text-muted-foreground">Axiom Factory DNA Repair & Selective Injection Station</p>
           </div>
           <div className="flex gap-2">
             <Button variant="outline" size="sm" onClick={() => stopAllSounds()} className="gap-2 text-destructive border-destructive/50">
@@ -277,10 +273,9 @@ export default function HypercubeDashboard() {
         <div className="flex flex-wrap items-center gap-4 bg-muted/20 p-4 rounded-lg border border-border/50 shadow-inner">
           <input type="file" ref={fileInputRef} onChange={handleFileSelect} accept=".json" className="hidden" />
           <Button onClick={() => fileInputRef.current?.click()} disabled={isProcessing} className="bg-primary hover:bg-primary/90 text-primary-foreground font-bold px-8 h-12 shadow-lg transition-transform active:scale-95">
-            <Upload className="mr-2 h-5 w-5" /> Load DNA File from Disk
+            <Upload className="mr-2 h-5 w-5" /> Load DNA File
           </Button>
 
-          {/* #ЗАЧЕМ: Ручной выбор жанра для загружаемого пакета. */}
           <div className="flex items-center gap-3 pl-4 border-l">
             <Label htmlFor="genre-inject" className="text-xs uppercase font-bold text-muted-foreground">Target Genre:</Label>
             <Select value={selectedGenre} onValueChange={(v) => setSelectedGenre(v as Genre)}>
@@ -302,7 +297,7 @@ export default function HypercubeDashboard() {
           </div>
           <div className="ml-auto flex gap-3">
              <Button variant="outline" size="sm" onClick={handlePurge} disabled={isProcessing} className="text-destructive border-destructive/20 hover:bg-destructive/10">
-                <ShieldAlert className="h-4 w-4 mr-2" /> Global Purge (Cloud)
+                <ShieldAlert className="h-4 w-4 mr-2" /> Global Purge
              </Button>
           </div>
         </div>
@@ -425,8 +420,8 @@ export default function HypercubeDashboard() {
              <div className="text-center space-y-3">
                 <h3 className="text-3xl font-bold tracking-tight text-muted-foreground/80">Hypercube Buffer Empty</h3>
                 <p className="text-muted-foreground max-w-md mx-auto text-sm leading-relaxed">
-                    DNA list is dormant. Load a JSON asset from the local forge to begin auditing the Heritage Axioms. 
-                    <br/><span className="text-xs opacity-60 italic">Live cloud repository is hidden for session purity.</span>
+                    DNA list is dormant. Load a JSON asset from the local forge to begin auditing. 
+                    <br/><span className="text-xs opacity-60 italic">Absolute MIDI files will be automatically repaired during audit.</span>
                 </p>
              </div>
              <Button onClick={() => fileInputRef.current?.click()} size="lg" className="px-12 h-14 text-xl font-black shadow-xl hover:shadow-primary/20 transition-all">

@@ -1,7 +1,7 @@
 /**
  * @fileOverview Universal Music Theory Utilities
  * #ЗАЧЕМ: Базовый набор инструментов для работы с нотами и энергетическими картами.
- * #ОБНОВЛЕНО (ПЛАН №595): Внедрено "Генетическое Скрещивание" для повышения уникальности.
+ * #ОБНОВЛЕНО (ПЛАН №599): Внедрена функция repairLegacyPhrase для поддержки старых MIDI-данных.
  */
 
 import type { 
@@ -60,6 +60,45 @@ export function decompressCompactPhrase(compact: number[]): any[] {
         });
     }
     return result;
+}
+
+/**
+ * #ЗАЧЕМ: "Алхимик-Конвертер" для старых данных.
+ * #ЧТО: Если фраза содержит MIDI ноты (например, 72) вместо индексов, 
+ *       она конвертируется в правильный Spec формат [t, d, degIdx, techIdx].
+ */
+export function repairLegacyPhrase(compact: number[]): number[] {
+    if (!compact || compact.length === 0) return [];
+    
+    // Эвристика: если на 3-й позиции число > 20, это MIDI нота, а не индекс.
+    const isLegacy = compact.length >= 3 && compact[2] > 20;
+    if (!isLegacy) return compact;
+
+    const repaired: number[] = [];
+    const BASE_C4 = 60;
+
+    for (let i = 0; i < compact.length; i += 4) {
+        const t = compact[i];
+        const d = compact[i+1];
+        const midi = compact[i+2];
+        const vel = compact[i+3];
+
+        // 1. Вычисляем ступень относительно C4
+        const semitone = (midi - BASE_C4) % 12;
+        const octaveShift = Math.floor((midi - BASE_C4) / 12);
+        
+        // 2. Ищем ближайшую ступень в нашем маппинге
+        const degName = SEMITONE_TO_DEGREE[semitone < 0 ? semitone + 12 : semitone] || 'R';
+        const degIdx = DEGREE_KEYS.indexOf(degName);
+        
+        // 3. Назначаем технику (если это ударные - hit, иначе - pick)
+        const techIdx = TECHNIQUE_KEYS.indexOf('pick');
+
+        repaired.push(t, d, degIdx, techIdx);
+    }
+
+    console.log(`%c[DNA Repair] Recovered ${repaired.length / 4} notes from Legacy MIDI format.`, 'color: #FFA500;');
+    return repaired;
 }
 
 /**
