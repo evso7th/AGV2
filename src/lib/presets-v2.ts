@@ -1,3 +1,4 @@
+
 // V2 Presets — совместимы with buildMultiInstrument()
 // Проверено на соответствие фабрике от 2024-12
 
@@ -71,7 +72,6 @@ export const V2_PRESETS = {
   organ: {
     type: 'organ',
     name: 'Cathedral Organ',
-    // #ЗАЧЕМ: Системное снижение громкости (ПЛАН №491).
     volume: 0.17, 
     drawbars: [8, 8, 4, 2, 0, 0, 0, 1, 0],
     keyClick: 0.005,
@@ -84,7 +84,6 @@ export const V2_PRESETS = {
   organ_soft_jazz: {
     type: 'organ',
     name: 'Soft Jazz Organ',
-    // #ЗАЧЕМ: Системное снижение громкости (ПЛАН №491).
     volume: 0.1, 
     drawbars: [8, 0, 8, 5, 0, 3, 0, 0, 0], 
     lpf: 7600,
@@ -98,7 +97,6 @@ export const V2_PRESETS = {
   organ_jimmy_smith: {
     type: 'organ',
     name: 'Jimmy Smith Trio',
-    // #ЗАЧЕМ: Системное снижение громкости (ПЛАН №491).
     volume: 0.16, 
     drawbars: [8, 8, 8, 0, 0, 0, 0, 0, 0], 
     lpf: 8000,
@@ -116,20 +114,17 @@ export const V2_PRESETS = {
   guitar_shineOn: {
     type: 'guitar',
     name: 'Velvet Lead', 
-    volume: 0.12,
-    osc: { width: 0.35, detune: 2, mainGain: 0.9, detGain: 0.1, subGain: 0.3 },
-    // #ЗАЧЕМ: Устранение писклявости.
-    // #ЧТО: cutoff снижен с 2200 до 1650 для более "грудного" тембра.
-    pickup: { cutoff: 1650, q: 0.8 },
-    drive: { type: 'soft', amount: 0.18 }, 
-    comp: { threshold: -24, ratio: 4, attack: 0.01, release: 0.2, makeup: 4 },
-    post: { lpf: 2800 },
+    volume: 0.14, // Slightly increased
+    osc: { width: 0.38, detune: 3, mainGain: 0.9, detGain: 0.12, subGain: 0.35 },
+    // #ЗАЧЕМ: Плотность без писклявости.
+    pickup: { cutoff: 1850, q: 0.9 }, // Opened slightly from 1650
+    drive: { type: 'soft', amount: 0.22 }, 
+    comp: { threshold: -22, ratio: 4, attack: 0.01, release: 0.2, makeup: 4 },
+    post: { lpf: 3200 }, // Opened from 2800
     phaser: { on: false }, 
-    delayA: { on: true, time: 0.42, fb: 0.25, mix: 0.12 },
-    // #ЗАЧЕМ: Устранение "бесконечных" нот.
-    // #ЧТО: r (release) снижен с 2.4 до 0.8 сек.
-    adsr: { a: 0.015, d: 0.4, s: 0.7, r: 0.8 }, 
-    reverbMix: 0.22
+    delayA: { on: true, time: 0.42, fb: 0.28, mix: 0.15 },
+    adsr: { a: 0.015, d: 0.45, s: 0.75, r: 0.8 }, 
+    reverbMix: 0.24
   },
 
   guitar_muffLead: {
@@ -153,10 +148,9 @@ export const V2_PRESETS = {
   // ═══════════════════════════════════════════════════════════════════════════
 
   cs80: {
-    type: 'guitar', // Sampler mode in manager
+    type: 'guitar', 
     name: 'Vangelis CS80',
-    // #ЗАЧЕМ: Снижение громкости в 2 раза.
-    volume: 0.19, // Было 0.38
+    volume: 0.19, 
     adsr: { a: 0.01, d: 0.3, s: 0.6, r: 1.5 }
   }
 
@@ -171,13 +165,9 @@ export const V1_TO_V2_PRESET_MAP: Record<string, PresetName> = {
   ambientPad: 'synth_ambient_pad_lush',
   piano: 'ep_rhodes_warm',
   rhodes: 'ep_rhodes_warm',
-  // #ЗАЧЕМ: Исправлено сопоставление. Теперь гитара - это гитара.
   acousticGuitar: 'blackAcoustic' as any 
 };
 
-/**
- * #ЗАЧЕМ: Сопоставление V1-имен баса с новыми V2-пресетами.
- */
 export const BASS_PRESET_MAP: Record<string, keyof typeof BASS_PRESETS> = {
     bass: 'bass_jazz_warm',
     classicBass: 'bass_rock_pick',
@@ -186,7 +176,6 @@ export const BASS_PRESET_MAP: Record<string, keyof typeof BASS_PRESETS> = {
     resonantGliss: 'bass_trance_acid',
     hypnoticDrone: 'bass_ambient',
     linkRiff: 'bass_slap',
-    // V2 identity mapping
     bass_jazz_warm: 'bass_jazz_warm',
     bass_jazz_fretless: 'bass_jazz_fretless',
     bass_blues: 'bass_blues',

@@ -118,8 +118,7 @@ export class MelodySynthManagerV2 {
         if (notesToPlay.length === 0) return;
 
         const currentActive = this.activePresetName;
-        const isGlitchNote = notesToPlay.some(n => n.technique === 'harm');
-
+        
         // --- Sampler Routing ---
         if (currentActive === 'cs80') {
             this.cs80Sampler.schedule(notesToPlay, barStartTime, tempo);
@@ -128,15 +127,15 @@ export class MelodySynthManagerV2 {
 
         if (this.partName === 'melody') {
             if (currentActive === 'blackAcoustic') {
-                this.blackAcousticSampler.schedule(notesToPlay, barStartTime, tempo, isGlitchNote);
+                this.blackAcousticSampler.schedule(notesToPlay, barStartTime, tempo);
                 return;
             }
             if (currentActive === 'telecaster') {
-                this.telecasterSampler.schedule(notesToPlay, barStartTime, tempo, isGlitchNote);
+                this.telecasterSampler.schedule(notesToPlay, barStartTime, tempo);
                 return;
             }
             if (currentActive === 'darkTelecaster') {
-                this.darkTelecasterSampler.schedule(notesToPlay, barStartTime, tempo, isGlitchNote);
+                this.darkTelecasterSampler.schedule(notesToPlay, barStartTime, tempo);
                 return;
             }
         }
@@ -146,7 +145,7 @@ export class MelodySynthManagerV2 {
         // --- HYBRID TRANSIENT TRIGGER ---
         // #ЗАЧЕМ: Возврат "укуса" гитары. 
         // #ЧТО: Если играет синтезаторная гитара (мелодия), подмешиваем 20мс сэмпла Телекастера.
-        if (this.partName === 'melody' && this.activePresetName.startsWith('guitar')) {
+        if (this.partName === 'melody' && (this.activePresetName.startsWith('guitar') || this.activePresetName === 'synth')) {
             this.telecasterSampler.schedule(notesToPlay, barStartTime, tempo, true);
         }
         
