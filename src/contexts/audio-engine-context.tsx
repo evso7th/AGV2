@@ -1,7 +1,6 @@
-
 /**
- * #ЗАЧЕМ: Audio Engine Context V7.1 — "Volume & Routing Sovereignty".
- * #ЧТО: Экспортирована функция stopAllSounds для управления Дашбордом.
+ * #ЗАЧЕМ: Audio Engine Context V7.2 — "Cloud DNA Integration".
+ * #ЧТО: Внедрен фоновый загрузчик аксиом Наследия из Firestore.
  */
 'use client';
 
@@ -21,6 +20,8 @@ import { DarkTelecasterSampler } from '@/lib/dark-telecaster-sampler';
 import { CS80GuitarSampler } from '@/lib/cs80-guitar-sampler';
 import { BroadcastEngine } from '@/lib/broadcast-engine';
 import type { FractalEvent, InstrumentHints } from '@/types/fractal';
+import { collection, getDocs, query } from 'firebase/firestore';
+import { useFirestore } from '@/firebase';
 
 // --- Constants ---
 const VOICE_BALANCE: Record<InstrumentPart, number> = {
@@ -68,7 +69,7 @@ interface AudioEngineContextType {
   toggleBroadcast: () => void;
   getWorker: () => Worker | null;
   playRawEvents: (events: FractalEvent[], instrumentHints?: InstrumentHints) => void;
-  stopAllSounds: () => void; // #ЗАЧЕМ: Добавлен экспорт для Дашборда.
+  stopAllSounds: () => void;
 }
 
 const AudioEngineContext = createContext<AudioEngineContextType | null>(null);
@@ -115,6 +116,31 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
   const gainNodesRef = useRef<any>({});
   const nextBarTimeRef = useRef<number>(0);
   const { toast } = useToast();
+  const db = useFirestore();
+
+  /**
+   * #ЗАЧЕМ: Фоновая загрузка аксиом из облака.
+   * #ЧТО: Стриминг базы данных в Worker для расширения Гиперкуба.
+   */
+  useEffect(() => {
+    if (isInitialized && db) {
+      const fetchCloudAxioms = async () => {
+        try {
+          const axiomsCol = collection(db, 'heritage_axioms');
+          const snapshot = await getDocs(query(axiomsCol));
+          const axioms = snapshot.docs.map(d => ({ id: d.id, ...d.data() }));
+          
+          if (workerRef.current) {
+            console.log(`%c[CloudDNA] Transmitting ${axioms.length} axioms to Worker.`, 'color: #00ced1; font-weight: bold;');
+            workerRef.current.postMessage({ command: 'update_cloud_axioms', data: axioms });
+          }
+        } catch (e) {
+          console.error('[CloudDNA] Sync failed:', e);
+        }
+      };
+      fetchCloudAxioms();
+    }
+  }, [isInitialized, db]);
 
   const stopAllSounds = useCallback(() => {
     [melodyManagerV2Ref, bassManagerV2Ref, accompanimentManagerV2Ref, harmonyManagerRef, pianoAccompanimentManagerRef].forEach(r => r.current?.allNotesOff());
@@ -349,7 +375,7 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
         playRawEvents: (e, h) => {
             if(audioContextRef.current) scheduleEvents(e, audioContextRef.current.currentTime + 0.8, 72, 0, h)
         },
-        stopAllSounds // #ЗАЧЕМ: Предоставление доступа к остановке.
+        stopAllSounds 
     }}>
       {children}
     </AudioEngineContext.Provider>

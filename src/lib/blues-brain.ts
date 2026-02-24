@@ -23,10 +23,9 @@ import { BLUES_GUITAR_RIFFS } from './assets/blues-guitar-riffs';
 import { BLUES_MELODY_RIFFS } from './assets/blues-melody-riffs';
 
 /**
- * #ЗАЧЕМ: Блюзовый Мозг V132.0 — "Sophisticated Ensemble & Narrative Piano".
- * #ЧТО: 1. Пианино играет пассажи при падении напряжения (momentum < 0).
- *       2. Аккомпанемент использует инверсии и "теневые" ступени (9, 11).
- *       3. Усилен Novelty Guard для исключения повторов MelDense.
+ * #ЗАЧЕМ: Блюзовый Мозг V133.0 — "Hypercube Connection Active".
+ * #ЧТО: 1. Внедрена поддержка облачных аксиом (cloudAxioms) с 80% приоритетом.
+ *       2. Novelty Guard расширен для управления ID из базы данных Firestore.
  */
 
 export interface BluesBrainConfig {
@@ -37,6 +36,7 @@ export interface BluesBrainConfig {
     darkness: number;
   };
   sessionLickHistory?: string[];
+  cloudAxioms?: any[]; // #ЗАЧЕМ: База данных из Firestore.
 }
 
 export const DEFAULT_CONFIG: BluesBrainConfig = {
@@ -74,7 +74,7 @@ export class BluesBrain {
   private sfxPlayedInPart = false;
   private currentPartId = '';
 
-  constructor(seed: number, mood: Mood, sessionLickHistory?: string[]) {
+  constructor(seed: number, mood: Mood, sessionLickHistory?: string[], cloudAxioms?: any[]) {
     this.seed = seed;
     this.mood = mood;
     this.random = this.createSeededRandom(seed);
@@ -82,6 +82,7 @@ export class BluesBrain {
     this.config = {
       ...DEFAULT_CONFIG,
       sessionLickHistory: sessionLickHistory || [],
+      cloudAxioms: cloudAxioms || [],
       emotion: {
         melancholy: ['melancholic', 'dark', 'anxious'].includes(mood) ? 0.85 : 0.4,
         darkness: ['dark', 'gloomy'].includes(mood) ? 0.35 : 0.2
@@ -126,6 +127,11 @@ export class BluesBrain {
     return { next, nextInt: (max: number) => Math.floor(next() * max) };
   }
 
+  /** #ЗАЧЕМ: Обновление облачного пула аксиом на лету. */
+  public updateCloudAxioms(axioms: any[]) {
+      this.config.cloudAxioms = axioms;
+  }
+
   public generateBar(
     epoch: number,
     currentChord: GhostChord,
@@ -159,15 +165,12 @@ export class BluesBrain {
     const events: FractalEvent[] = [];
     this.evaluateTimbralDramaturgy(tension, hints, epoch);
 
-    // --- DRUMS ---
     if (hints.drums) {
         events.push(...this.renderNarrativeDrums(epoch, tension));
     }
 
-    // --- BASS ---
     const bassEvents = hints.bass ? this.renderIronBass(currentChord, epoch, tension, navInfo) : [];
 
-    // --- ACCOMPANIMENT ---
     const unisonType = navInfo.currentPart.instrumentRules?.accompaniment?.unisonType || 'none';
     
     if (hints.accompaniment && unisonType !== 'none') {
@@ -178,7 +181,6 @@ export class BluesBrain {
 
     events.push(...bassEvents);
 
-    // --- MELODY ---
     if (hints.melody) {
         if (this.currentGuitarRiff) {
             events.push(...this.renderArrangedAcoustic(epoch, currentChord, tension));
@@ -187,12 +189,10 @@ export class BluesBrain {
         }
     }
 
-    // --- PIANO (Expressive Drops & Passages) ---
     if (hints.pianoAccompaniment) {
         events.push(...this.renderIntegratedPiano(epoch, currentChord, tension));
     }
     
-    // --- HARMONY (Chord Names Fixed) ---
     if (hints.harmony) {
         events.push(...this.renderDerivativeHarmony(currentChord, epoch, tension));
     }
@@ -210,6 +210,97 @@ export class BluesBrain {
         activeAxioms,
         narrative: `Bar ${epoch % 12 + 1}/12. Legato flow active.`
     };
+  }
+
+  private getCommonMood(mood: Mood): string {
+      const map: Record<Mood, string> = {
+          epic: 'light', joyful: 'light', enthusiastic: 'light',
+          dreamy: 'neutral', contemplative: 'neutral', calm: 'neutral',
+          melancholic: 'dark', dark: 'dark', anxious: 'dark', gloomy: 'dark'
+      };
+      return map[mood] || 'neutral';
+  }
+
+  private selectGrandAxiom(tension: number) {
+      const isMinor = this.mood === 'melancholic' || this.mood === 'dark' || this.mood === 'gloomy';
+      
+      const pool = BLUES_GUITAR_RIFFS.filter(r => 
+          (r.moods.includes(this.mood) || (isMinor && r.type === 'minor') || (!isMinor && r.type === 'major')) &&
+          !this.state.recentGrandMelodies.includes(r.id)
+      );
+      
+      const finalPool = pool.length > 0 ? pool : BLUES_GUITAR_RIFFS;
+      this.currentGuitarRiff = finalPool[this.random.nextInt(finalPool.length)];
+      this.state.recentGrandMelodies.push(this.currentGuitarRiff.id);
+      if (this.state.recentGrandMelodies.length > 6) this.state.recentGrandMelodies.shift();
+
+      const melodyPool = BLUES_MELODY_RIFFS.filter(m => 
+          (m.moods.includes(this.mood) || (isMinor && m.type === 'minor')) &&
+          !this.state.recentLicks.includes(m.id)
+      );
+      const finalMelodyPool = melodyPool.length > 0 ? melodyPool : BLUES_MELODY_RIFFS;
+      this.currentGrandMelody = finalMelodyPool[this.random.nextInt(finalMelodyPool.length)];
+  }
+
+  private selectNextAxiom(navInfo: NavigationInfo, dna: SuiteDNA, epoch: number) {
+      // --- 1. CLOUD HYPERCUBE SELECTION ---
+      // #ЗАЧЕМ: Использование базы Heritage Axioms.
+      // #ЧТО: 80% шанс выбрать аксиому из Firestore, если пул не пуст.
+      if (this.config.cloudAxioms && this.config.cloudAxioms.length > 0) {
+          const moodFilter = this.mood;
+          const commonMoodFilter = this.getCommonMood(moodFilter);
+          
+          const cloudPool = this.config.cloudAxioms.filter(ax => 
+              ax.genre === 'blues' && 
+              ax.role === 'melody' &&
+              (ax.mood === moodFilter || ax.commonMood === commonMoodFilter) &&
+              !this.state.recentLicks.includes(ax.id)
+          );
+
+          if (cloudPool.length > 0 && this.random.next() < 0.8) {
+              const selected = cloudPool[this.random.nextInt(cloudPool.length)];
+              this.currentLickId = selected.id;
+              this.state.recentLicks.push(selected.id);
+              if (this.state.recentLicks.length > 20) this.state.recentLicks.shift();
+              
+              // Распаковка и подготовка
+              const rawPhrase = decompressCompactPhrase(selected.phrase);
+              const stretched = stretchToNarrativeLength(rawPhrase, 48, this.random);
+              this.currentAxiom = this.mutateLick(stretched);
+              return;
+          }
+      }
+
+      // --- 2. LOCAL ASSET FALLBACK ---
+      if (this.currentGrandMelody) {
+          const barIn12 = epoch % 12;
+          const isTurn = barIn12 === 11;
+          const isMinor = this.currentGrandMelody.type === 'minor';
+          let phrase: any[] = [];
+          if (isTurn) phrase = this.currentGrandMelody.phraseTurnaround || [];
+          else {
+              const chord = getChordNameForBar(barIn12);
+              if (isMinor) phrase = chord.startsWith('i') ? this.currentGrandMelody.phrasei! : this.currentGrandMelody.phraseiv!;
+              else {
+                  if (chord.startsWith('i')) phrase = this.currentGrandMelody.phraseI!;
+                  else if (chord.startsWith('iv')) phrase = this.currentGrandMelody.phraseIV!;
+                  else phrase = this.currentGrandMelody.phraseV!;
+              }
+          }
+          this.currentAxiom = phrase;
+          this.currentLickId = this.currentGrandMelody.id;
+          return;
+      }
+
+      const allLickIds = Object.keys(BLUES_SOLO_LICKS);
+      const pool = allLickIds.filter(id => !this.state.recentLicks.includes(id));
+      const nextId = pool[this.random.nextInt(pool.length)] || allLickIds[0];
+      this.currentLickId = nextId;
+      this.state.recentLicks.push(nextId);
+      if (this.state.recentLicks.length > 12) this.state.recentLicks.shift();
+      const rawPhrase = decompressCompactPhrase(BLUES_SOLO_LICKS[nextId].phrase as any);
+      const stretched = stretchToNarrativeLength(rawPhrase, 48, this.random);
+      this.currentAxiom = this.mutateLick(stretched);
   }
 
   private renderUnisonAccompaniment(
@@ -326,61 +417,8 @@ export class BluesBrain {
       tomTicks.forEach((t, i) => {
           events.push({ type: tomTypes[i % tomTypes.length] as any, note: 45 + i, time: (t / 3), duration: 0.5, weight: 0.6 + (i * 0.05), technique: 'hit', dynamics: 'p', phrasing: 'staccato' });
       });
-      events.push({ type: 'drum_snare', note: 38, time: 3.66, duration: 0.1, weight: 0.95, technique: 'hit', dynamics: 'mf', phrasing: 'staccato' });
+      events.push({ type: 'drum_snare', note: 38, time: 3.66, duration: 0.1, weight: 0.95, technique: 'mf', dynamics: 'mf', phrasing: 'staccato' });
       return events;
-  }
-
-  private selectGrandAxiom(tension: number) {
-      const isMinor = this.mood === 'melancholic' || this.mood === 'dark' || this.mood === 'gloomy';
-      
-      const pool = BLUES_GUITAR_RIFFS.filter(r => 
-          (r.moods.includes(this.mood) || (isMinor && r.type === 'minor') || (!isMinor && r.type === 'major')) &&
-          !this.state.recentGrandMelodies.includes(r.id)
-      );
-      
-      const finalPool = pool.length > 0 ? pool : BLUES_GUITAR_RIFFS;
-      this.currentGuitarRiff = finalPool[this.random.nextInt(finalPool.length)];
-      this.state.recentGrandMelodies.push(this.currentGuitarRiff.id);
-      if (this.state.recentGrandMelodies.length > 6) this.state.recentGrandMelodies.shift();
-
-      const melodyPool = BLUES_MELODY_RIFFS.filter(m => 
-          (m.moods.includes(this.mood) || (isMinor && m.type === 'minor')) &&
-          !this.state.recentLicks.includes(m.id)
-      );
-      const finalMelodyPool = melodyPool.length > 0 ? melodyPool : BLUES_MELODY_RIFFS;
-      this.currentGrandMelody = finalMelodyPool[this.random.nextInt(finalMelodyPool.length)];
-  }
-
-  private selectNextAxiom(navInfo: NavigationInfo, dna: SuiteDNA, epoch: number) {
-      if (this.currentGrandMelody) {
-          const barIn12 = epoch % 12;
-          const isTurn = barIn12 === 11;
-          const isMinor = this.currentGrandMelody.type === 'minor';
-          let phrase: any[] = [];
-          if (isTurn) phrase = this.currentGrandMelody.phraseTurnaround || [];
-          else {
-              const chord = getChordNameForBar(barIn12);
-              if (isMinor) phrase = chord.startsWith('i') ? this.currentGrandMelody.phrasei! : this.currentGrandMelody.phraseiv!;
-              else {
-                  if (chord.startsWith('i')) phrase = this.currentGrandMelody.phraseI!;
-                  else if (chord.startsWith('iv')) phrase = this.currentGrandMelody.phraseIV!;
-                  else phrase = this.currentGrandMelody.phraseV!;
-              }
-          }
-          this.currentAxiom = phrase;
-          this.currentLickId = this.currentGrandMelody.id;
-          return;
-      }
-
-      const allLickIds = Object.keys(BLUES_SOLO_LICKS);
-      const pool = allLickIds.filter(id => !this.state.recentLicks.includes(id));
-      const nextId = pool[this.random.nextInt(pool.length)] || allLickIds[0];
-      this.currentLickId = nextId;
-      this.state.recentLicks.push(nextId);
-      if (this.state.recentLicks.length > 12) this.state.recentLicks.shift();
-      const rawPhrase = decompressCompactPhrase(BLUES_SOLO_LICKS[nextId].phrase as any);
-      const stretched = stretchToNarrativeLength(rawPhrase, 48, this.random);
-      this.currentAxiom = this.mutateLick(stretched);
   }
 
   private renderArrangedAcoustic(epoch: number, chord: GhostChord, tension: number): FractalEvent[] {
@@ -550,7 +588,6 @@ export class BluesBrain {
       const isMin = chord.chordType === 'minor';
       const momentum = this.state.tensionMomentum;
       
-      // PASSAGES on exhale (drop in tension)
       if (momentum < -0.02 && this.random.next() < 0.75) {
           const scale = [0, 2, isMin ? 3 : 4, 5, 7, 9, 10]; 
           const passageLength = this.random.nextInt(4) + 4;
@@ -569,7 +606,6 @@ export class BluesBrain {
           return events;
       }
 
-      // STANDARD DROPS
       const degrees = [0, isMin ? 3 : 4, 7, 10, 14];
       const patterns = [
           [1.5, 3.5],

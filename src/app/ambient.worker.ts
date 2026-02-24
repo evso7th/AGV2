@@ -1,6 +1,6 @@
 /**
- * @file AuraGroove Music Worker (Architecture: "The Genetic Composer")
- * #ОБНОВЛЕНО (ПЛАН №608): Внедрена Глобальная Память Сессии (sessionHistory).
+ * @file AuraGroove Music Worker (Architecture: "The Cloud Composer")
+ * #ОБНОВЛЕНО (ПЛАН №610): Добавлена поддержка облачных аксиом (cloudAxiomPool).
  */
 import type { WorkerSettings, Mood, Genre, InstrumentPart } from '@/types/music';
 import { FractalMusicEngine } from '@/lib/fractal-music-engine';
@@ -17,7 +17,6 @@ const getTimestamp = () => {
     return `[${h}:${m}:${s}]`;
 };
 
-/** #ЗАЧЕМ: Генерация по-настоящему случайного семени. */
 function generateTrueSeed(): number {
     const array = new Uint32Array(1);
     self.crypto.getRandomValues(array);
@@ -29,6 +28,7 @@ const Scheduler = {
     isRunning: false,
     barCount: 0,
     sessionLickHistory: [] as string[],
+    cloudAxiomPool: [] as any[], // #ЗАЧЕМ: Репозиторий аксиом из Firestore.
     
     settings: {
         bpm: 75,
@@ -61,11 +61,11 @@ const Scheduler = {
         const blueprint = getBlueprint(settings.genre, settings.mood);
         const seed = settings.seed || generateTrueSeed();
         
-        // Передаем историю сессии в настройки для нового инстанса
         const finalSettings = {
             ...settings,
             seed: seed,
-            sessionLickHistory: this.sessionLickHistory 
+            sessionLickHistory: this.sessionLickHistory,
+            cloudAxioms: this.cloudAxiomPool // Передаем облачный пул в движок
         };
 
         console.log(`%c${getTimestamp()} [Engine] Sowing Suite DNA: ${blueprint.name} (Seed: ${seed})`, 'color: #FFD700; font-weight:bold;');
@@ -110,11 +110,19 @@ const Scheduler = {
        const genreOrMoodChanged = (newSettings.genre && newSettings.genre !== this.settings.genre) || (newSettings.mood && newSettings.mood !== this.settings.mood);
        this.settings = { ...this.settings, ...newSettings };
        if (genreOrMoodChanged) {
-           this.sessionLickHistory = []; // Сброс истории при смене жанра
+           this.sessionLickHistory = []; 
            this.reset();
        } else if (fractalMusicEngine) {
            fractalMusicEngine.updateConfig(this.settings);
        }
+    },
+
+    /** #ЗАЧЕМ: Обновление облачного пула аксиом на лету. */
+    updateCloudAxioms(axioms: any[]) {
+        this.cloudAxiomPool = axioms;
+        if (fractalMusicEngine) {
+            fractalMusicEngine.updateConfig({ cloudAxioms: axioms } as any);
+        }
     },
 
     tick() {
@@ -123,7 +131,6 @@ const Scheduler = {
         if (this.barCount >= fractalMusicEngine.navigator!.totalBars) {
              console.log(`%c${getTimestamp()} [Chain] Cycle Complete. Mutating Seed...`, 'color: #4ade80; font-weight: bold;');
              this.settings.seed = generateTrueSeed(); 
-             // ВАЖНО: initializeEngine теперь сохраняет sessionLickHistory
              this.initializeEngine(this.settings);
         }
 
@@ -135,7 +142,6 @@ const Scheduler = {
             return;
         }
 
-        // Обновляем историю сессии из данных движка
         if (payload.lickId) {
             if (!this.sessionLickHistory.includes(payload.lickId)) {
                 this.sessionLickHistory.push(payload.lickId);
@@ -171,7 +177,7 @@ const Scheduler = {
                 barDuration: this.barDuration,
                 barCount: this.barCount,
                 actualBpm: this.settings.bpm,
-                lickId: payload.lickId // Передаем ID лика обратно для синхронизации истории
+                lickId: payload.lickId 
             }
         });
 
@@ -192,6 +198,7 @@ self.onmessage = (event: MessageEvent) => {
             case 'stop': Scheduler.stop(); break;
             case 'reset': Scheduler.reset(); break;
             case 'update_settings': Scheduler.updateSettings(data); break;
+            case 'update_cloud_axioms': Scheduler.updateCloudAxioms(data); break; // #ЗАЧЕМ: Прием данных из Firestore.
         }
     } catch (e) {
         self.postMessage({ type: 'error', error: String(e) });
