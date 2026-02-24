@@ -85,13 +85,12 @@ export function repairLegacyPhrase(compact: number[]): number[] {
 
         // 1. Вычисляем ступень относительно C4
         const semitone = (midi - BASE_C4) % 12;
-        const octaveShift = Math.floor((midi - BASE_C4) / 12);
         
         // 2. Ищем ближайшую ступень в нашем маппинге
         const degName = SEMITONE_TO_DEGREE[semitone < 0 ? semitone + 12 : semitone] || 'R';
         const degIdx = DEGREE_KEYS.indexOf(degName);
         
-        // 3. Назначаем технику (если это ударные - hit, иначе - pick)
+        // 3. Назначаем технику
         const techIdx = TECHNIQUE_KEYS.indexOf('pick');
 
         repaired.push(t, d, degIdx, techIdx);
@@ -224,12 +223,14 @@ export function generateTensionMap(seed: number, totalBars: number, mood: Mood, 
             const progress = i / (partDuration || 1);
             let tension: number;
 
-            if (part.id === 'INTRO') {
+            if (part.id === 'INTRO' || part.id === 'PROLOGUE') {
                 tension = 0.25 + (progress * 0.1); 
-            } else if (part.id.startsWith('MAIN')) {
+            } else if (part.id.startsWith('MAIN') || part.id.startsWith('THE_')) {
                 tension = 0.35 + 0.5 * Math.sin(progress * Math.PI);
             } else if (part.id === 'OUTRO') {
                 tension = 0.3 * (1 - progress * 0.6); 
+            } else if (part.id.includes('BRIDGE')) {
+                tension = 0.45;
             } else {
                 tension = 0.4; 
             }
@@ -274,7 +275,6 @@ export function generateSuiteDNA(
     // --- GENETIC CROSSOVER ---
     let finalSeed = initialSeed;
     if (ancestor && typeof ancestor.seed === 'number') {
-        // Bitwise crossover between current seed and successful ancestor
         finalSeed = (initialSeed & 0x55555555) | (ancestor.seed & 0xAAAAAAAA);
         console.log(`%c[Genetics] Crossover Active. Inheriting DNA from Masterpiece.`, 'color: #DA70D6; font-weight: bold;');
     }

@@ -1,4 +1,3 @@
-
 import {
   FractalEvent,
   GhostChord,
@@ -6,9 +5,9 @@ import {
   Mood,
   SuiteDNA,
   NavigationInfo,
-  BluesCognitiveState,
   BluesGuitarRiff,
-  BluesMelody
+  BluesMelody,
+  BluesCognitiveState
 } from '@/types/music';
 import { 
     DEGREE_TO_SEMITONE,
@@ -20,7 +19,7 @@ import {
     getChordNameForBar 
 } from './blues-theory';
 import { BLUES_SOLO_LICKS } from './assets/blues_guitar_solo';
-import { BLUES_GUITAR_RIFFS, BLUES_GUITAR_VOICINGS } from './assets/blues-guitar-riffs';
+import { BLUES_GUITAR_RIFFS } from './assets/blues-guitar-riffs';
 import { BLUES_MELODY_RIFFS } from './assets/blues-melody-riffs';
 
 /**
@@ -37,6 +36,7 @@ export interface BluesBrainConfig {
     melancholy: number;
     darkness: number;
   };
+  sessionLickHistory?: string[];
 }
 
 export const DEFAULT_CONFIG: BluesBrainConfig = {
@@ -74,13 +74,14 @@ export class BluesBrain {
   private sfxPlayedInPart = false;
   private currentPartId = '';
 
-  constructor(seed: number, mood: Mood) {
+  constructor(seed: number, mood: Mood, sessionLickHistory?: string[]) {
     this.seed = seed;
     this.mood = mood;
     this.random = this.createSeededRandom(seed);
 
     this.config = {
       ...DEFAULT_CONFIG,
+      sessionLickHistory: sessionLickHistory || [],
       emotion: {
         melancholy: ['melancholic', 'dark', 'anxious'].includes(mood) ? 0.85 : 0.4,
         darkness: ['dark', 'gloomy'].includes(mood) ? 0.35 : 0.2
@@ -111,7 +112,7 @@ export class BluesBrain {
       lastTension: 0.5,
       tensionMomentum: 0,
       activeAccompTimbre: 'organ_soft_jazz',
-      recentLicks: [],
+      recentLicks: [...(sessionLickHistory || [])],
       recentGrandMelodies: []
     };
   }
@@ -222,7 +223,6 @@ export class BluesBrain {
       const third = isMin ? 3 : 4;
       const fifth = 7;
       
-      // #ЗАЧЕМ: Добавление инверсий и "теневых" нот в унисон.
       const inversion = this.random.nextInt(3) as 0 | 1 | 2;
 
       bassEvents.forEach(bass => {
@@ -239,13 +239,10 @@ export class BluesBrain {
               phrasing: 'legato'
           });
 
-          // Добавляем "тело" аккорда с учетом инверсии
           if (type !== 'none' && (bass.time === 0 || bass.time === 2.0 || tension > 0.65)) {
               const root = bass.note + 24; 
               let chordPitches = [root + third, root + fifth];
-              
-              // Добавляем 9-ю или 11-ю ступень для "блеска"
-              if (tension > 0.5) chordPitches.push(root + (isMin ? 14 : 14)); 
+              if (tension > 0.5) chordPitches.push(root + 14); 
 
               chordPitches.forEach((p, i) => {
                   let finalPitch = p;
@@ -336,7 +333,6 @@ export class BluesBrain {
   private selectGrandAxiom(tension: number) {
       const isMinor = this.mood === 'melancholic' || this.mood === 'dark' || this.mood === 'gloomy';
       
-      // #ЗАЧЕМ: Расширение выбора и защита от повторов.
       const pool = BLUES_GUITAR_RIFFS.filter(r => 
           (r.moods.includes(this.mood) || (isMinor && r.type === 'minor') || (!isMinor && r.type === 'major')) &&
           !this.state.recentGrandMelodies.includes(r.id)
@@ -345,7 +341,7 @@ export class BluesBrain {
       const finalPool = pool.length > 0 ? pool : BLUES_GUITAR_RIFFS;
       this.currentGuitarRiff = finalPool[this.random.nextInt(finalPool.length)];
       this.state.recentGrandMelodies.push(this.currentGuitarRiff.id);
-      if (this.state.recentGrandMelodies.length > 4) this.state.recentGrandMelodies.shift();
+      if (this.state.recentGrandMelodies.length > 6) this.state.recentGrandMelodies.shift();
 
       const melodyPool = BLUES_MELODY_RIFFS.filter(m => 
           (m.moods.includes(this.mood) || (isMinor && m.type === 'minor')) &&
@@ -381,7 +377,7 @@ export class BluesBrain {
       const nextId = pool[this.random.nextInt(pool.length)] || allLickIds[0];
       this.currentLickId = nextId;
       this.state.recentLicks.push(nextId);
-      if (this.state.recentLicks.length > 8) this.state.recentLicks.shift();
+      if (this.state.recentLicks.length > 12) this.state.recentLicks.shift();
       const rawPhrase = decompressCompactPhrase(BLUES_SOLO_LICKS[nextId].phrase as any);
       const stretched = stretchToNarrativeLength(rawPhrase, 48, this.random);
       this.currentAxiom = this.mutateLick(stretched);
@@ -456,13 +452,21 @@ export class BluesBrain {
     const root = chord.rootNote + 12;
     const isMin = chord.chordType === 'minor';
     
-    // Используем инверсии для мягкости
-    const inversion = this.random.nextInt(2);
+    const inversion = this.random.nextInt(3);
+    const registerShift = (this.random.next() < 0.3) ? 12 : 0;
     let notes = [root, root + (isMin ? 3 : 4), root + 7];
     if (inversion === 1) notes = [notes[1], notes[2], notes[0] + 12];
+    if (inversion === 2) notes = [notes[2], notes[0] + 12, notes[1] + 12];
 
     return notes.map((p, i) => ({
-        type: 'accompaniment', note: p, time: 0.5 + i * 0.05, duration: 2.5, weight: 0.22, technique: 'swell', dynamics: 'p', phrasing: 'legato'
+        type: 'accompaniment', 
+        note: p + registerShift, 
+        time: 0.5 + i * 0.05, 
+        duration: 2.5, 
+        weight: 0.22, 
+        technique: 'swell', 
+        dynamics: 'p', 
+        phrasing: 'legato'
     }));
   }
 
@@ -524,9 +528,20 @@ export class BluesBrain {
 
   private renderWalkingBass(chord: GhostChord, epoch: number, tension: number): FractalEvent[] {
     const root = Math.max(chord.rootNote - 12, this.BASS_FLOOR);
-    const nextRoot = getNextChordRoot(epoch % 12, chord.rootNote) - 12;
+    const barIn12 = epoch % 12;
+    const nextRoot = getNextChordRoot(barIn12, chord.rootNote) - 12;
+    
     const notes = [ root, root + 7, root + 10, nextRoot - 1 ];
-    return notes.map((p, i) => ({ type: 'bass', note: p, time: i, duration: 0.9, weight: (i === 0 ? 0.85 : 0.5) + tension * 0.1, technique: 'pluck', dynamics: i === 0 ? 'mf' : 'p', phrasing: 'legato' }));
+    return notes.map((p, i) => ({ 
+        type: 'bass', 
+        note: p, 
+        time: i, 
+        duration: 0.9, 
+        weight: (i === 0 ? 0.85 : 0.5) + tension * 0.1, 
+        technique: 'pluck', 
+        dynamics: i === 0 ? 'mf' : 'p', 
+        phrasing: 'legato' 
+    }));
   }
 
   private renderIntegratedPiano(epoch: number, chord: GhostChord, tension: number): FractalEvent[] {
@@ -535,17 +550,17 @@ export class BluesBrain {
       const isMin = chord.chordType === 'minor';
       const momentum = this.state.tensionMomentum;
       
-      // #ЗАЧЕМ: Пианино играет пассажи при падении напряжения (вздох).
-      if (momentum < -0.03 && this.random.next() < 0.7) {
-          const scale = [0, 2, isMin ? 3 : 4, 5, 7, 9, 10]; // Dorian/Mixolydian
-          const passageLength = 6;
+      // PASSAGES on exhale (drop in tension)
+      if (momentum < -0.02 && this.random.next() < 0.75) {
+          const scale = [0, 2, isMin ? 3 : 4, 5, 7, 9, 10]; 
+          const passageLength = this.random.nextInt(4) + 4;
           for (let i = 0; i < passageLength; i++) {
               events.push({
                   type: 'pianoAccompaniment',
-                  note: root + scale[i % scale.length] + 12,
-                  time: 1.0 + (i * 0.15),
-                  duration: 1.2,
-                  weight: 0.25 * (1 - i * 0.1),
+                  note: Math.min(root + scale[i % scale.length] + (this.random.next() < 0.3 ? 12 : 0), this.MELODY_CEILING),
+                  time: 0.5 + (i * 0.18),
+                  duration: 1.0,
+                  weight: 0.22 * (1.0 - i * 0.12),
                   technique: 'hit',
                   dynamics: 'p',
                   phrasing: 'staccato'
@@ -554,7 +569,7 @@ export class BluesBrain {
           return events;
       }
 
-      // Обычные капли (drops)
+      // STANDARD DROPS
       const degrees = [0, isMin ? 3 : 4, 7, 10, 14];
       const patterns = [
           [1.5, 3.5],
@@ -564,7 +579,7 @@ export class BluesBrain {
       const activePattern = patterns[epoch % patterns.length];
 
       activePattern.forEach(beat => { 
-          if (this.random.next() < (0.25 + tension * 0.3)) { 
+          if (this.random.next() < (0.25 + tension * 0.35)) { 
               events.push({ 
                   type: 'pianoAccompaniment', 
                   note: Math.min(root + degrees[this.random.nextInt(degrees.length)], this.MELODY_CEILING), 
@@ -573,8 +588,7 @@ export class BluesBrain {
                   weight: 0.25 + tension * 0.1, 
                   technique: 'hit', 
                   dynamics: 'p', 
-                  phrasing: 'staccato', 
-                  params: { barCount: epoch } 
+                  phrasing: 'staccato'
               }); 
           } 
       });

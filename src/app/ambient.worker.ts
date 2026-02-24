@@ -1,6 +1,6 @@
 /**
  * @file AuraGroove Music Worker (Architecture: "The Genetic Composer")
- * #ОБНОВЛЕНО (ПЛАН №595): Внедрена криптографическая рандомизация и поддержка генетики.
+ * #ОБНОВЛЕНО (ПЛАН №608): Внедрена Глобальная Память Сессии (sessionHistory).
  */
 import type { WorkerSettings, Mood, Genre, InstrumentPart } from '@/types/music';
 import { FractalMusicEngine } from '@/lib/fractal-music-engine';
@@ -28,6 +28,7 @@ const Scheduler = {
     loopId: null as any,
     isRunning: false,
     barCount: 0,
+    sessionLickHistory: [] as string[],
     
     settings: {
         bpm: 75,
@@ -60,15 +61,18 @@ const Scheduler = {
         const blueprint = getBlueprint(settings.genre, settings.mood);
         const seed = settings.seed || generateTrueSeed();
         
-        console.log(`%c${getTimestamp()} [Engine] Sowing Suite DNA: ${blueprint.name} (Seed: ${seed})`, 'color: #FFD700; font-weight:bold;');
-
-        fractalMusicEngine = new FractalMusicEngine({
+        // Передаем историю сессии в настройки для нового инстанса
+        const finalSettings = {
             ...settings,
             seed: seed,
-            introBars: settings.introBars
-        }, blueprint);
+            sessionLickHistory: this.sessionLickHistory 
+        };
 
+        console.log(`%c${getTimestamp()} [Engine] Sowing Suite DNA: ${blueprint.name} (Seed: ${seed})`, 'color: #FFD700; font-weight:bold;');
+
+        fractalMusicEngine = new FractalMusicEngine(finalSettings, blueprint);
         fractalMusicEngine.initialize(true);
+        
         this.settings.bpm = fractalMusicEngine.config.tempo;
         this.barCount = 0;
     },
@@ -97,7 +101,6 @@ const Scheduler = {
     reset() {
         const wasRunning = this.isRunning;
         if (wasRunning) this.stop();
-        // #ЗАЧЕМ: Принудительное обновление семени при сбросе.
         this.settings.seed = generateTrueSeed();
         this.initializeEngine(this.settings);
         if (wasRunning) this.start();
@@ -106,8 +109,12 @@ const Scheduler = {
     updateSettings(newSettings: Partial<WorkerSettings>) {
        const genreOrMoodChanged = (newSettings.genre && newSettings.genre !== this.settings.genre) || (newSettings.mood && newSettings.mood !== this.settings.mood);
        this.settings = { ...this.settings, ...newSettings };
-       if (genreOrMoodChanged) this.reset();
-       else if (fractalMusicEngine) fractalMusicEngine.updateConfig(this.settings);
+       if (genreOrMoodChanged) {
+           this.sessionLickHistory = []; // Сброс истории при смене жанра
+           this.reset();
+       } else if (fractalMusicEngine) {
+           fractalMusicEngine.updateConfig(this.settings);
+       }
     },
 
     tick() {
@@ -116,6 +123,7 @@ const Scheduler = {
         if (this.barCount >= fractalMusicEngine.navigator!.totalBars) {
              console.log(`%c${getTimestamp()} [Chain] Cycle Complete. Mutating Seed...`, 'color: #4ade80; font-weight: bold;');
              this.settings.seed = generateTrueSeed(); 
+             // ВАЖНО: initializeEngine теперь сохраняет sessionLickHistory
              this.initializeEngine(this.settings);
         }
 
@@ -125,6 +133,14 @@ const Scheduler = {
         } catch (e) {
             console.error('[Worker] Evolution Error:', e);
             return;
+        }
+
+        // Обновляем историю сессии из данных движка
+        if (payload.lickId) {
+            if (!this.sessionLickHistory.includes(payload.lickId)) {
+                this.sessionLickHistory.push(payload.lickId);
+                if (this.sessionLickHistory.length > 20) this.sessionLickHistory.shift();
+            }
         }
 
         const h = payload.instrumentHints || {};
@@ -154,7 +170,8 @@ const Scheduler = {
                 instrumentHints: h,
                 barDuration: this.barDuration,
                 barCount: this.barCount,
-                actualBpm: this.settings.bpm
+                actualBpm: this.settings.bpm,
+                lickId: payload.lickId // Передаем ID лика обратно для синхронизации истории
             }
         });
 
@@ -167,7 +184,10 @@ self.onmessage = (event: MessageEvent) => {
     const { command, data } = event.data;
     try {
         switch (command) {
-            case 'init': Scheduler.settings = { ...Scheduler.settings, ...data }; break;
+            case 'init': 
+                Scheduler.settings = { ...Scheduler.settings, ...data }; 
+                if (data.sessionLickHistory) Scheduler.sessionLickHistory = data.sessionLickHistory;
+                break;
             case 'start': Scheduler.start(); break;
             case 'stop': Scheduler.stop(); break;
             case 'reset': Scheduler.reset(); break;
