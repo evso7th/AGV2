@@ -23,10 +23,10 @@ import { BLUES_GUITAR_RIFFS, BLUES_GUITAR_VOICINGS } from './assets/blues-guitar
 import { BLUES_MELODY_RIFFS } from './assets/blues-melody-riffs';
 
 /**
- * #ЗАЧЕМ: Блюзовый Мозг V127.0 — "Narrative Drum Evolution".
- * #ЧТО: 1. Полная перепись драм-движка. Теперь это не цикл, а интерпретатор масок.
- *       2. Внедрена логика Stop-Time (бары 9-10) и Phrase Fills (4, 8, 12).
- *       3. Использование томов Sonor Classix и динамических райдов.
+ * #ЗАЧЕМ: Блюзовый Мозг V128.0 — "The Obsidian Unison".
+ * #ЧТО: 1. Реализован режим Унисона (Strict/Octave) между басом и аккомпанементом.
+ *       2. Пад теперь может точно дублировать движения волкинг-баса.
+ *       3. Усилена синхронизация слоев для монолитного звучания.
  */
 
 export interface BluesBrainConfig {
@@ -45,10 +45,10 @@ export const DEFAULT_CONFIG: BluesBrainConfig = {
 };
 
 export class BluesBrain {
+  private config: BluesBrainConfig;
   private seed: number;
   private mood: Mood;
   private random: any;
-  private config: BluesBrainConfig;
   private currentAxiom: any[] = [];
   private currentLickId: string = '';
   
@@ -155,10 +155,26 @@ export class BluesBrain {
     const events: FractalEvent[] = [];
     this.evaluateTimbralDramaturgy(tension, hints, epoch);
 
-    // --- RENDER DRUMS (Enhanced) ---
+    // --- DRUMS ---
     if (hints.drums) {
         events.push(...this.renderNarrativeDrums(epoch, tension));
     }
+
+    // --- BASS (Core Foundation) ---
+    // #ЗАЧЕМ: Бас генерируется первым, чтобы аккомпанемент мог следовать за ним в Унисоне.
+    const bassEvents = hints.bass ? this.renderIronBass(currentChord, epoch, tension, navInfo) : [];
+
+    // --- ACCOMPANIMENT (Unison Logic) ---
+    const unisonType = navInfo.currentPart.instrumentRules?.accompaniment?.unisonType || 'none';
+    
+    if (hints.accompaniment && unisonType !== 'none') {
+        events.push(...this.renderUnisonAccompaniment(bassEvents, currentChord, unisonType, tension));
+    } else if (hints.accompaniment && !this.currentGuitarRiff) {
+        events.push(...this.renderDynamicAccompaniment(epoch, currentChord, tension));
+    }
+
+    // Add bass to events after accompaniment might have used it
+    events.push(...bassEvents);
 
     if (hints.melody) {
         if (this.currentGuitarRiff) {
@@ -168,15 +184,9 @@ export class BluesBrain {
         }
     }
 
-    if (hints.accompaniment && !this.currentGuitarRiff) {
-        events.push(...this.renderDynamicAccompaniment(epoch, currentChord, tension));
-    }
-
     if (hints.pianoAccompaniment) {
         events.push(...this.renderIntegratedPiano(epoch, currentChord, tension));
     }
-
-    if (hints.bass) events.push(...this.renderIronBass(currentChord, epoch, tension, navInfo));
     
     if (hints.harmony) {
         events.push(...this.renderDerivativeHarmony(currentChord, epoch, tension));
@@ -185,10 +195,11 @@ export class BluesBrain {
     const activeAxioms = {
         melody: this.currentLickId,
         bass: tension > 0.7 ? 'Walking' : 'Riff',
-        drums: epoch % 12 === 8 || epoch % 12 === 9 ? 'Stop-Time' : (epoch % 4 === 3 ? 'Fill' : 'Main Beat')
+        drums: epoch % 12 === 8 || epoch % 12 === 9 ? 'Stop-Time' : (epoch % 4 === 3 ? 'Fill' : 'Main Beat'),
+        unison: unisonType !== 'none' ? unisonType : undefined
     };
 
-    const narrative = `Blues narrative active. Bar ${epoch % 12 + 1}/12. Tension: ${tension.toFixed(2)}.`;
+    const narrative = `Obsidian narrative active. Unison: ${unisonType}. Bar ${epoch % 12 + 1}/12.`;
 
     return { 
         events, 
@@ -200,6 +211,65 @@ export class BluesBrain {
   }
 
   // ============================================================================
+  // UNISON ENGINE (unison_concept.txt implementation)
+  // ============================================================================
+
+  private renderUnisonAccompaniment(
+      bassEvents: FractalEvent[], 
+      chord: GhostChord, 
+      type: 'strict' | 'octave' | 'harmonized',
+      tension: number
+  ): FractalEvent[] {
+      const events: FractalEvent[] = [];
+      const isMin = chord.chordType === 'minor' || chord.chordType === 'diminished';
+      
+      // Дополнительные ноты аккорда для плотности (выше баса)
+      const third = isMin ? 3 : 4;
+      const fifth = 7;
+      const seventh = 10;
+
+      bassEvents.forEach(bass => {
+          if (bass.type !== 'bass') return;
+
+          // 1. БАЗОВАЯ ТЕНЬ (Унисон с басом)
+          let shadowPitch = bass.note + 12; // +1 октава для чистоты микса
+          if (type === 'strict') shadowPitch = bass.note; // В строгом режиме — тот же регистр
+
+          events.push({
+              ...bass,
+              type: 'accompaniment',
+              note: shadowPitch,
+              weight: bass.weight * 0.6, // Аккомпанемент тише баса
+              technique: 'swell',
+              phrasing: 'legato'
+          });
+
+          // 2. ВЕРХНИЕ ГОЛОСА (для Strict/Octave режима)
+          // Добавляем их только на сильные доли (1 и 3) или при высоком напряжении
+          if (type !== 'none' && (bass.time === 0 || bass.time === 2.0 || tension > 0.7)) {
+              const root = bass.note + 24; // На 2 октавы выше фундамента
+              const upperNotes = [root + third, root + fifth];
+              if (tension > 0.6) upperNotes.push(root + seventh);
+
+              upperNotes.forEach((p, i) => {
+                  events.push({
+                      type: 'accompaniment',
+                      note: p,
+                      time: bass.time + (i * 0.02), // Микро-арпеджио для живости
+                      duration: bass.duration,
+                      weight: 0.25 * (1 - (i * 0.05)),
+                      technique: 'swell',
+                      dynamics: 'p',
+                      phrasing: 'legato'
+                  });
+              });
+          }
+      });
+
+      return events;
+  }
+
+  // ============================================================================
   // NARRATIVE DRUM ENGINE
   // ============================================================================
 
@@ -208,92 +278,63 @@ export class BluesBrain {
       const barIn12 = epoch % 12;
       const isPhraseEnd = (epoch + 1) % 4 === 0;
       
-      // 1. STOP-TIME LOGIC (Bars 9-10)
       if (barIn12 === 8 || barIn12 === 9) {
           if (tension > 0.5) return this.renderDrumStabs(tension);
       }
 
-      // 2. FILL LOGIC (Phrase ends or Chorus boundary)
       if (isPhraseEnd && this.random.next() < 0.7) {
           return this.renderDrumFill(tension);
       }
 
-      // 3. BASE BEAT (The Groove)
       return this.renderBaseBluesBeat(epoch, tension);
   }
 
   private renderBaseBluesBeat(epoch: number, tension: number): FractalEvent[] {
       const events: FractalEvent[] = [];
-      
-      // --- KICK (The Foundation) ---
-      // 1 and 3 are standard. Add "a" of 3 for drive.
       const kickTicks = [0, 6]; 
       if (tension > 0.6 || this.random.next() < 0.3) kickTicks.push(8); 
       
       kickTicks.forEach(t => {
           events.push({
-              type: 'drum_kick_reso',
-              note: 36,
-              time: t / 3,
-              duration: 0.1,
-              weight: 0.75 + (tension * 0.2),
+              type: 'drum_kick_reso', note: 36, time: t / 3, duration: 0.1, weight: 0.75 + (tension * 0.2),
               technique: 'hit', dynamics: 'p', phrasing: 'staccato'
           });
       });
 
-      // --- SNARE (The Backbeat) ---
-      // 2 and 4 are anchors.
       [3, 9].forEach(t => {
           events.push({
-              type: 'drum_snare',
-              note: 38,
-              time: t / 3,
-              duration: 0.1,
-              weight: 0.8 + (tension * 0.1),
+              type: 'drum_snare', note: 38, time: t / 3, duration: 0.1, weight: 0.8 + (tension * 0.1),
               technique: 'hit', dynamics: 'p', phrasing: 'staccato'
           });
       });
 
-      // Ghost Snares for depth
       if (tension > 0.4 && this.random.next() < 0.6) {
           [2, 5, 8, 11].forEach(t => {
               if (this.random.next() < 0.4) {
                   events.push({
-                      type: 'drum_snare_ghost_note',
-                      note: 38,
-                      time: t / 3,
-                      duration: 0.1,
-                      weight: 0.3,
+                      type: 'drum_snare_ghost_note', note: 38, time: t / 3, duration: 0.1, weight: 0.3,
                       technique: 'hit', dynamics: 'p', phrasing: 'staccato'
                   });
               }
           });
       }
 
-      // --- HI-HAT / RIDE (The Shimmer) ---
       const hasRide = tension > 0.65;
-      const hatTicks = [0, 2, 3, 5, 6, 8, 9, 11]; // Classic 12/8 Shuffle
+      const hatTicks = [0, 2, 3, 5, 6, 8, 9, 11]; 
       
       hatTicks.forEach(t => {
-          const isRideTick = hasRide && (t % 3 === 0); // Ride usually on beats
+          const isRideTick = hasRide && (t % 3 === 0);
           events.push({
               type: isRideTick ? 'drum_ride_wetter' : 'drum_25693__walter_odington__hackney-hat-1',
-              note: 42,
-              time: t / 3,
-              duration: 0.1,
+              note: 42, time: t / 3, duration: 0.1,
               weight: (t % 3 === 0 ? 0.5 : 0.35) * (1.0 - this.state.emotion.melancholy * 0.3),
               technique: 'hit', dynamics: 'p', phrasing: 'staccato'
           });
       });
 
-      // Occasional Open Hat accent
       if (this.random.next() < 0.15) {
           events.push({
-              type: 'drum_open_hh_top2',
-              note: 46,
-              time: 3.66, // "a" of 4
-              duration: 0.4,
-              weight: 0.45,
+              type: 'drum_open_hh_top2', note: 46, time: 3.66, duration: 0.4, weight: 0.45,
               technique: 'hit', dynamics: 'p', phrasing: 'staccato'
           });
       }
@@ -302,7 +343,6 @@ export class BluesBrain {
   }
 
   private renderDrumStabs(tension: number): FractalEvent[] {
-      // #ЗАЧЕМ: Акцентированный стоп-тайм. Барабаны бьют только в сильные доли.
       const events: FractalEvent[] = [];
       [0, 2].forEach(beat => {
           events.push({
@@ -324,23 +364,17 @@ export class BluesBrain {
   private renderDrumFill(tension: number): FractalEvent[] {
       const events: FractalEvent[] = [];
       const isHeavy = tension > 0.7;
-      
-      // Simple Euclid Tom Roll
       const tomTicks = isHeavy ? [0, 1.5, 3, 4.5, 6, 7.5, 9, 10.5] : [6, 7.5, 9, 10.5];
       const tomTypes = ['drum_Sonor_Classix_High_Tom', 'drum_Sonor_Classix_Mid_Tom', 'drum_Sonor_Classix_Low_Tom'];
       
       tomTicks.forEach((t, i) => {
           events.push({
               type: tomTypes[i % tomTypes.length] as any,
-              note: 45 + i,
-              time: (t / 3),
-              duration: 0.5,
-              weight: 0.6 + (i * 0.05),
+              note: 45 + i, time: (t / 3), duration: 0.5, weight: 0.6 + (i * 0.05),
               technique: 'hit', dynamics: 'p', phrasing: 'staccato'
           });
       });
 
-      // Final snare crack
       events.push({
           type: 'drum_snare', note: 38, time: 3.66, duration: 0.1, weight: 0.95,
           technique: 'hit', dynamics: 'mf', phrasing: 'staccato'
@@ -482,9 +516,11 @@ export class BluesBrain {
   private evaluateTimbralDramaturgy(tension: number, hints: InstrumentHints, epoch: number) {
     if (epoch % 4 !== 0 && epoch !== 0) return;
     if (hints.melody) {
-        if (tension <= 0.45) (hints as any).melody = 'blackAcoustic';
-        else if (tension <= 0.85) (hints as any).melody = 'telecaster';
-        else (hints as any).melody = 'guitar_shineOn';
+        // Shine-On is locked for Dark Blues in the blueprint, 
+        // but we keep the logic here for other modes.
+        if (tension <= 0.45) (hints as any).melody = (hints as any).melody || 'blackAcoustic';
+        else if (tension <= 0.85) (hints as any).melody = (hints as any).melody || 'telecaster';
+        else (hints as any).melody = (hints as any).melody || 'guitar_shineOn';
     }
     if (hints.accompaniment) {
         this.state.activeAccompTimbre = tension > 0.75 ? 'ep_rhodes_warm' : 'organ_soft_jazz';

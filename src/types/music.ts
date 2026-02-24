@@ -208,6 +208,7 @@ export type InstrumentBehaviorRules = {
     source?: MelodySource;
     style?: 'solo' | 'fingerstyle' | 'chord-melody'; 
     techniques?: { value: string; weight: number }[];
+    unisonType?: 'strict' | 'octave' | 'harmonized' | 'none';
      ride?: {
         enabled: boolean;
         quietWindows?: { start: number, end: number }[];
