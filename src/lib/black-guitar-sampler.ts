@@ -1,10 +1,10 @@
-
 import type { Note, Technique } from "@/types/music";
 import { BLUES_GUITAR_VOICINGS } from './assets/guitar-voicings';
 import { GUITAR_PATTERNS } from './assets/guitar-patterns';
 
 /**
  * #ЗАЧЕМ: Сэмплер Black Acoustic с поддержкой гибридных транзиентов.
+ * #ЧТО: Повышена громкость для баланса (ПЛАН №612).
  */
 const BLACK_GUITAR_ORD_SAMPLES: Record<string, string> = {
     'e3': '/assets/acoustic_guitar_samples/black/ord/twang_e3_f_rr3.ogg',
@@ -49,7 +49,8 @@ export class BlackGuitarSampler {
         this.destination = destination;
 
         this.preamp = this.audioContext.createGain();
-        this.preamp.gain.value = 0.3;
+        // #ЗАЧЕМ: Повышение читаемости акустики.
+        this.preamp.gain.value = 0.8;
         this.preamp.connect(this.destination);
     }
 

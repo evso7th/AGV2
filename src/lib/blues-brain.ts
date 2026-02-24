@@ -24,10 +24,11 @@ import { BLUES_MELODY_RIFFS } from './assets/blues-melody-riffs';
 import { GUITAR_PATTERNS } from './assets/guitar-patterns';
 
 /**
- * #ЗАЧЕМ: Блюзовый Мозг V134.0 — "The Narrative Sovereignty".
- * #ЧТО: 1. Ликвидирован перехват соло: Cloud Axioms теперь ВСЕГДА доминируют.
- *       2. Разделение ролей: GuitarRiff теперь дает только переборы/бой, не перебивая соло.
- *       3. Sophisticated Unison: Пад в унисоне обрел инверсии и теневые 9-ки.
+ * #ЗАЧЕМ: Блюзовый Мозг V135.0 — "The Narrative Sovereignty".
+ * #ЧТО: 1. Активация слоя гармонии: guitarChords теперь играют постоянно.
+ *       2. Пианино: на спадах Tension играет каскадные пассажи.
+ *       3. Масштабная перебалансировка громкостей.
+ *       4. Исправлена ошибка chordName: undefined.
  */
 
 export interface BluesBrainConfig {
@@ -183,13 +184,11 @@ export class BluesBrain {
     events.push(...bassEvents);
 
     // --- MELODY LOGIC (NO HIJACKING) ---
-    // #ЗАЧЕМ: Прямое использование Аксиомы для соло. 
-    // #ЧТО: Гитара из Riff теперь вносит только переборы, не трогая лид.
     if (hints.melody) {
-        // Главное соло всегда из currentAxiom (Облако или Legacy)
+        // Главное соло всегда из Аксиомы
         events.push(...this.renderMelodicSegment(epoch, currentChord, tension));
         
-        // Если есть аранжированный рифф — добавляем ЕГО текстурные слои (но не его соло!)
+        // Добавляем текстурные слои из риффа (перебор/бой)
         if (this.currentGuitarRiff) {
             events.push(...this.renderRhythmicTextureFromRiff(epoch, currentChord, tension));
         }
@@ -214,7 +213,7 @@ export class BluesBrain {
         lickId: this.currentLickId, 
         mutationType: this.state.currentMutationType,
         activeAxioms,
-        narrative: `Bar ${epoch % 12 + 1}/12. Narrative integrity active.`
+        narrative: `Bar ${epoch % 12 + 1}/12. Ensemble rebalanced.`
     };
   }
 
@@ -252,7 +251,7 @@ export class BluesBrain {
               !this.state.recentLicks.includes(ax.id)
           );
 
-          if (cloudPool.length > 0 && this.random.next() < 0.8) {
+          if (cloudPool.length > 0 && this.random.next() < 0.85) {
               const selected = cloudPool[this.random.nextInt(cloudPool.length)];
               this.currentLickId = selected.id;
               this.state.recentLicks.push(selected.id);
@@ -302,13 +301,11 @@ export class BluesBrain {
       const third = isMin ? 3 : 4;
       const fifth = 7;
       
-      // #ЗАЧЕМ: Устранение скуки. Каждые 4 такта меняем инверсию пада.
       const inversionIdx = Math.floor(this.random.next() * 3); 
 
       bassEvents.forEach(bass => {
           if (bass.type !== 'bass') return;
           
-          // Тень баса
           events.push({
               ...bass,
               type: 'accompaniment',
@@ -318,11 +315,10 @@ export class BluesBrain {
               phrasing: 'legato'
           });
 
-          // Гармоническое обогащение (инверсии + 9-ка)
           if (bass.time === 0 || bass.time === 2.0 || tension > 0.6) {
               const root = bass.note + 24;
               let pitches = [root + third, root + fifth];
-              if (tension > 0.55) pitches.push(root + 14); // Добавляем 9-ю ступень
+              if (tension > 0.55) pitches.push(root + 14); 
 
               pitches.forEach((p, i) => {
                   let finalPitch = p;
@@ -334,7 +330,7 @@ export class BluesBrain {
                       note: finalPitch,
                       time: bass.time + (i * 0.02),
                       duration: bass.duration * 0.8,
-                      weight: 0.25 - (i * 0.05),
+                      weight: 0.35 - (i * 0.05), // Slightly boosted
                       technique: 'swell',
                       dynamics: 'p',
                       phrasing: 'legato'
@@ -345,13 +341,9 @@ export class BluesBrain {
       return events;
   }
 
-  /**
-   * #ЗАЧЕМ: Извлечение только текстурных слоев из риффа (без перехвата соло).
-   */
   private renderRhythmicTextureFromRiff(epoch: number, chord: GhostChord, tension: number): FractalEvent[] {
       if (!this.currentGuitarRiff) return [];
       const events: FractalEvent[] = [];
-      const barIn12 = epoch % 12;
       
       const fingerRule = this.currentGuitarRiff.fingerstyle?.find(f => this.random.next() < f.probability);
       const strumRule = this.currentGuitarRiff.strum?.find(s => this.random.next() < s.probability);
@@ -368,7 +360,7 @@ export class BluesBrain {
                               note: voicing[voicing.length - 1 - si],
                               time: t / 3,
                               duration: 0.5,
-                              weight: 0.35,
+                              weight: 0.45,
                               technique: 'pluck',
                               dynamics: 'p',
                               phrasing: 'staccato'
@@ -390,7 +382,7 @@ export class BluesBrain {
     barNotes.forEach((n, i) => {
         const nextNote = barNotes[i+1];
         let duration = n.d / 3;
-        if (nextNote && (nextNote.t - (n.t + n.d)) < 1) duration += 0.15; // Smart Legato
+        if (nextNote && (nextNote.t - (n.t + n.d)) < 1) duration += 0.15; 
         
         // #ЗАЧЕМ: Жесткая отсечка. 
         duration = Math.min(duration, 4.0); 
@@ -403,7 +395,7 @@ export class BluesBrain {
             note: Math.min(chord.rootNote + 24 + (DEGREE_TO_SEMITONE[n.deg] || 0) + (n.octShift || 0), this.MELODY_CEILING),
             time: (n.t % 12) / 3,
             duration: duration,
-            weight: 0.9 * exhaleModifier,
+            weight: 0.95 * exhaleModifier, // Slightly boosted
             technique: n.tech || 'pick',
             dynamics: (tension > 0.65) ? 'mf' : 'p',
             phrasing: 'legato',
@@ -493,10 +485,20 @@ export class BluesBrain {
       const root = chord.rootNote + 24;
       const momentum = this.state.tensionMomentum;
       
-      if (momentum < -0.02 && this.random.next() < 0.7) {
+      // #ЗАЧЕМ: Реализация пассажей "на выдохе".
+      if (momentum < -0.02 && this.random.next() < 0.75) {
           const scale = [0, 2, 3, 5, 7, 9, 10];
           for (let i = 0; i < 6; i++) {
-              events.push({ type: 'pianoAccompaniment', note: Math.min(root + scale[i], this.MELODY_CEILING), time: 0.5 + (i * 0.15), duration: 1.0, weight: 0.25 * (1 - i * 0.1), technique: 'hit', dynamics: 'p', phrasing: 'staccato' });
+              events.push({ 
+                  type: 'pianoAccompaniment', 
+                  note: Math.min(root + scale[i], this.MELODY_CEILING), 
+                  time: 0.5 + (i * 0.15), 
+                  duration: 1.0, 
+                  weight: 0.25 * (1 - i * 0.1), 
+                  technique: 'hit', 
+                  dynamics: 'p', 
+                  phrasing: 'staccato' 
+              });
           }
           return events;
       }
@@ -504,7 +506,16 @@ export class BluesBrain {
       const patterns = [[1.5, 3.5], [0.5, 2.0, 3.75]];
       patterns[epoch % patterns.length].forEach(beat => { 
           if (this.random.next() < (0.2 + tension * 0.3)) { 
-              events.push({ type: 'pianoAccompaniment', note: Math.min(root + [0, 3, 7, 10][this.random.nextInt(4)], this.MELODY_CEILING), time: beat, duration: 1.5, weight: 0.25, technique: 'hit', dynamics: 'p', phrasing: 'staccato' }); 
+              events.push({ 
+                  type: 'pianoAccompaniment', 
+                  note: Math.min(root + [0, 3, 7, 10][this.random.nextInt(4)], this.MELODY_CEILING), 
+                  time: beat, 
+                  duration: 1.5, 
+                  weight: 0.25, 
+                  technique: 'hit', 
+                  dynamics: 'p', 
+                  phrasing: 'staccato' 
+              }); 
           } 
       });
       return events;
@@ -514,12 +525,24 @@ export class BluesBrain {
       const root = chord.rootNote;
       const isMin = chord.chordType === 'minor' || chord.chordType === 'diminished';
       const rootNames = ['C', 'Db', 'D', 'Eb', 'E', 'F', 'Gb', 'G', 'Ab', 'A', 'Bb', 'B'];
+      
+      // #ЗАЧЕМ: Исправление chordName: undefined.
       const finalName = isMin ? `${rootNames[root % 12]}m` : rootNames[root % 12];
 
-      if (this.random.next() > 0.4 && tension < 0.7) return [];
+      // #ЗАЧЕМ: Более активная гармония. Вероятность повышена.
+      if (this.random.next() > 0.65 && tension < 0.7) return [];
 
       return [root + 12, root + 19].map((n, i) => ({ 
-          type: 'harmony', note: n + 12, time: i * 0.1, duration: 4.0, weight: 0.15 + (tension * 0.1), technique: 'swell', dynamics: 'p', phrasing: 'legato', chordName: finalName, params: { barCount: epoch, filterCutoff: 3000 } 
+          type: 'harmony', 
+          note: n + 12, 
+          time: i * 0.1, 
+          duration: 4.0, 
+          weight: 0.20 + (tension * 0.15), // Slightly louder
+          technique: 'swell', 
+          dynamics: 'p', 
+          phrasing: 'legato', 
+          chordName: finalName, 
+          params: { barCount: epoch, filterCutoff: 3000 } 
       }));
   }
 

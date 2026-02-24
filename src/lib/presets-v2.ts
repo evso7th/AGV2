@@ -1,4 +1,3 @@
-
 // V2 Presets — совместимы with buildMultiInstrument()
 // Проверено на соответствие фабрике от 2024-12
 
@@ -114,13 +113,12 @@ export const V2_PRESETS = {
   guitar_shineOn: {
     type: 'guitar',
     name: 'Velvet Lead', 
-    volume: 0.14, // Slightly increased
+    volume: 0.22, // #ЗАЧЕМ: Повышена громкость (ПЛАН №612).
     osc: { width: 0.38, detune: 3, mainGain: 0.9, detGain: 0.12, subGain: 0.35 },
-    // #ЗАЧЕМ: Плотность без писклявости.
-    pickup: { cutoff: 1850, q: 0.9 }, // Opened slightly from 1650
+    pickup: { cutoff: 1850, q: 0.9 },
     drive: { type: 'soft', amount: 0.22 }, 
     comp: { threshold: -22, ratio: 4, attack: 0.01, release: 0.2, makeup: 4 },
-    post: { lpf: 3200 }, // Opened from 2800
+    post: { lpf: 3200 },
     phaser: { on: false }, 
     delayA: { on: true, time: 0.42, fb: 0.28, mix: 0.15 },
     adsr: { a: 0.015, d: 0.45, s: 0.75, r: 0.8 }, 
@@ -130,7 +128,7 @@ export const V2_PRESETS = {
   guitar_muffLead: {
     type: 'guitar',
     name: 'Muff Lead Guitar',
-    volume: 0.15, 
+    volume: 0.24, // #ЗАЧЕМ: Повышена громкость.
     osc: { width: 0.5, detune: 7, mainGain: 0.8, detGain: 0.2, subGain: 0.3 },
     pickup: { cutoff: 3200, q: 1.2 },
     drive: { type: 'muff', amount: 0.65 }, 

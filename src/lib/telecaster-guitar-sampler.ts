@@ -1,4 +1,3 @@
-
 import type { Note, Technique } from "@/types/music";
 import { BLUES_GUITAR_VOICINGS } from './assets/guitar-voicings';
 import { GUITAR_PATTERNS } from './assets/guitar-patterns';
@@ -37,8 +36,8 @@ type SamplerInstrument = { buffers: Map<number, AudioBuffer>; };
 
 /**
  * #ЗАЧЕМ: Сэмплер Telecaster с поддержкой гибридных транзиентов.
- * #ЧТО: 1. Системное снижение громкости в 2 раза.
- *       2. Внедрен isTransientMode для извлечения "щелчка" атаки (20мс).
+ * #ЧТО: 1. Повышена громкость преампа для баланса (ПЛАН №612).
+ *       2. Внедрен isTransientMode для извлечения "удара".
  */
 export class TelecasterGuitarSampler {
     private audioContext: AudioContext;
@@ -53,8 +52,8 @@ export class TelecasterGuitarSampler {
         this.audioContext = audioContext;
         this.destination = destination;
         this.preamp = this.audioContext.createGain();
-        // #ЗАЧЕМ: Снижение громкости в 2 раза (было 1.5).
-        this.preamp.gain.value = 0.75;
+        // #ЗАЧЕМ: Повышение мощности Телекастера.
+        this.preamp.gain.value = 1.2;
         this.preamp.connect(this.destination);
     }
 
@@ -142,13 +141,10 @@ export class TelecasterGuitarSampler {
         source.playbackRate.value = isFinite(playbackRate) ? playbackRate : 1.0;
 
         gainNode.gain.setValueAtTime(0, startTime);
-        // Transient mode gets a sharper, louder attack
         const peakVelocity = isTransientMode ? velocity * 1.5 : velocity;
         gainNode.gain.linearRampToValueAtTime(peakVelocity, startTime + 0.005);
         
         if (isTransientMode) {
-            // #ЗАЧЕМ: Извлечение только "удара". 
-            // #ЧТО: Резкое затухание через 20мс.
             gainNode.gain.setTargetAtTime(0.0001, startTime + 0.02, 0.005);
             source.start(startTime);
             source.stop(startTime + 0.05);
