@@ -24,11 +24,10 @@ import { BLUES_MELODY_RIFFS } from './assets/blues-melody-riffs';
 import { GUITAR_PATTERNS } from './assets/guitar-patterns';
 
 /**
- * #ЗАЧЕМ: Блюзовый Мозг V146.0 — "Ensemble Symbiosis".
- * #ЧТО: ПЛАН №627 — 1. Протокол поиска "Сиблингов" (Level 1).
- *       2. Ритмическое зеркало на основе энтропии (Level 2).
- *       3. Динамические филлы в паузах солиста (Level 3).
- *       4. Исправление застревания ротации (lzme4 fix).
+ * #ЗАЧЕМ: Блюзовый Мозг V147.0 — "Ensemble Synergy & Sentient Piano".
+ * #ЧТО: 1. Барабанщик обучен том-филлам и "влажному" райду.
+ *       2. Пианист перестал быть "дятлом": играет осмысленно, зависит от Tension.
+ *       3. Реализована логика "Выдоха" (Ensemble Breaths).
  */
 
 export interface BluesBrainConfig {
@@ -58,7 +57,7 @@ export class BluesBrain {
   
   private currentMelodyAxiomObj: any | null = null;
   private currentAxiom: any[] = [];
-  private currentBassAxiom: any[] = []; // Level 1 Sibling
+  private currentBassAxiom: any[] = [];
   
   private currentLickId: string = '';
   private currentTrackName: string = 'Local';
@@ -183,14 +182,13 @@ export class BluesBrain {
     const events: FractalEvent[] = [];
     this.evaluateTimbralDramaturgy(tension, hints, epoch);
 
-    if (hints.drums) {
-        events.push(...this.renderNarrativeDrums(epoch, tension));
-    }
-
-    // --- MELODY FIRST (to inform bass) ---
+    // --- MELODY FIRST (to inform ensemble breaths) ---
     const melodyEvents = hints.melody ? this.renderMelodicSegment(epoch, currentChord, tension) : [];
 
-    // --- SYMBIOTIC BASS (Level 1 -> 2 -> 3) ---
+    if (hints.drums) {
+        events.push(...this.renderNarrativeDrums(epoch, tension, melodyEvents));
+    }
+
     const bassEvents = hints.bass ? this.renderSymbioticBass(currentChord, epoch, tension, melodyEvents) : [];
 
     const unisonType = navInfo.currentPart.instrumentRules?.accompaniment?.unisonType || 'none';
@@ -203,7 +201,8 @@ export class BluesBrain {
     events.push(...bassEvents);
 
     if (hints.pianoAccompaniment) {
-        events.push(...this.renderIntegratedPiano(epoch, currentChord, tension, melodyEvents));
+        // #ЗАЧЕМ: Умное пианино.
+        events.push(...this.renderSentientPiano(epoch, currentChord, tension, melodyEvents));
     }
 
     events.push(...melodyEvents);
@@ -253,7 +252,7 @@ export class BluesBrain {
   }
 
   private selectNextAxiom(navInfo: NavigationInfo, dna: SuiteDNA, epoch: number) {
-      this.currentBassAxiom = []; // Reset sibling
+      this.currentBassAxiom = []; 
       this.ensembleStatus = 'ADAPTIVE';
 
       if (this.config.cloudAxioms && this.config.cloudAxioms.length > 0) {
@@ -269,10 +268,7 @@ export class BluesBrain {
           });
 
           if (cloudPool.length > 0) {
-              // #ЗАЧЕМ: Исправление застревания ротации.
-              // #ЧТО: Если мы в "якорном" режиме, принудительно исключаем последние 50% пула из выбора.
               let freshPool = cloudPool.filter(ax => !this.state.recentLicks.includes(ax.id));
-              
               if (freshPool.length === 0) {
                   const cloudPoolIds = new Set(cloudPool.map(ax => ax.id));
                   this.state.recentLicks = this.state.recentLicks.filter(id => !cloudPoolIds.has(id));
@@ -289,7 +285,6 @@ export class BluesBrain {
               const rawPhrase = decompressCompactPhrase(selected.phrase);
               this.currentAxiom = stretchToNarrativeLength(rawPhrase, 48, this.random);
 
-              // --- LEVEL 1: SIBLING SEARCH ---
               const sibling = this.config.cloudAxioms.find(ax => 
                   ax.role === 'bass' && 
                   ax.compositionId === selected.compositionId && 
@@ -331,7 +326,6 @@ export class BluesBrain {
   }
 
   private renderSymbioticBass(chord: GhostChord, epoch: number, tension: number, melodyEvents: FractalEvent[]): FractalEvent[] {
-      // LEVEL 1: Sibling priority
       if (this.currentBassAxiom.length > 0) {
           const barInPhrase = epoch % 4;
           const barOffset = barInPhrase * 12;
@@ -348,23 +342,19 @@ export class BluesBrain {
           }));
       }
 
-      // LEVEL 2: Rhythmic Mirroring
-      // If melody is too complex (high entropy), simplify bass.
       const melodyComplexity = this.currentMelodyAxiomObj?.vector?.e || 0.5;
-      if (melodyComplexity > 0.75) {
+      if (melodyComplexity > 0.75 && tension < 0.8) {
           return [{ type: 'bass', note: Math.max(chord.rootNote - 12, this.BASS_FLOOR), time: 0, duration: 3.5, weight: 0.7, technique: 'pluck', dynamics: 'p', phrasing: 'legato' }];
       }
 
-      // LEVEL 3: Dynamic Fills in Breaths
       const baseBass = tension > 0.7 ? this.renderWalkingBass(chord, epoch, tension) : this.renderRiffBass(chord, epoch, tension);
       
-      // Look for "Breaths" in melody (pauses > 2 ticks)
       const gaps = this.findMelodyBreaths(melodyEvents);
       if (gaps.length > 0 && this.random.next() < 0.6) {
           const gap = gaps[0];
           baseBass.push({
               type: 'bass',
-              note: Math.max(chord.rootNote - 13, this.BASS_FLOOR), // Chromatic approach to root
+              note: Math.max(chord.rootNote - 13, this.BASS_FLOOR), 
               time: gap.start,
               duration: 0.5,
               weight: 0.6,
@@ -383,7 +373,7 @@ export class BluesBrain {
       for (let i = 0; i < sorted.length - 1; i++) {
           const end = sorted[i].time + sorted[i].duration;
           const nextStart = sorted[i+1].time;
-          if (nextStart - end > 0.66) { // ~2 ticks in 12/8
+          if (nextStart - end > 0.66) { 
               breaths.push({ start: end, duration: nextStart - end });
           }
       }
@@ -393,7 +383,7 @@ export class BluesBrain {
   private renderUnisonAccompaniment(
       bassEvents: FractalEvent[], 
       chord: GhostChord, 
-      type: 'strict' | 'octave' | 'harmonized',
+      type: 'strict' | 'octave' | 'harmonized' | 'none',
       tension: number
   ): FractalEvent[] {
       const events: FractalEvent[] = [];
@@ -480,8 +470,6 @@ export class BluesBrain {
         const nextNote = barNotes[i+1];
         let duration = n.d / 3;
         if (nextNote && (nextNote.t - (n.t + n.d)) < 1) duration += 0.15; 
-        
-        // #ЗАЧЕМ: Устранение гула. Ограничение длительности.
         duration = Math.min(duration, 2.5); 
 
         const phraseProgress = n.t / 48;
@@ -522,19 +510,41 @@ export class BluesBrain {
     return notes.map((p, i) => ({ type: 'bass', note: p, time: i, duration: 0.9, weight: (i === 0 ? 0.85 : 0.5) + tension * 0.1, technique: 'pluck', dynamics: i === 0 ? 'mf' : 'p', phrasing: 'legato' }));
   }
 
-  private renderNarrativeDrums(epoch: number, tension: number): FractalEvent[] {
+  /**
+   * #ЗАЧЕМ: Барабанщик, который слышит ансамбль.
+   * #ЧТО: Пробежки по томам, сбивки и "влажный" райд.
+   */
+  private renderNarrativeDrums(epoch: number, tension: number, melodyEvents: FractalEvent[]): FractalEvent[] {
       const barIn12 = epoch % 12;
+      const isBreath = this.findMelodyBreaths(melodyEvents).length > 0;
+
+      // 1. Пауза на выдохе (1/2 секунды тишины в ударных)
+      if (isBreath && this.random.next() < 0.3) return [];
+
+      // 2. Stop-time в 8-9 тактах хора
       if (barIn12 === 8 || barIn12 === 9) return this.renderDrumStabs(tension);
-      if ((epoch + 1) % 4 === 0 && this.random.next() < 0.7) return this.renderDrumFill(tension);
+      
+      // 3. Сбивки на границах фраз (каждый 4-й такт)
+      if ((epoch + 1) % 4 === 0 && this.random.next() < 0.75) return this.renderDrumFill(tension);
+      
       return this.renderBaseBluesBeat(epoch, tension);
   }
 
   private renderBaseBluesBeat(epoch: number, tension: number): FractalEvent[] {
       const events: FractalEvent[] = [];
       const kickTicks = tension > 0.6 ? [0, 6, 8] : [0, 6];
+      
       kickTicks.forEach(t => events.push({ type: 'drum_kick_reso', note: 36, time: t / 3, duration: 0.1, weight: 0.75 + (tension * 0.2), technique: 'hit', dynamics: 'p', phrasing: 'staccato' }));
       [3, 9].forEach(t => events.push({ type: 'drum_snare', note: 38, time: t / 3, duration: 0.1, weight: 0.8, technique: 'hit', dynamics: 'p', phrasing: 'staccato' }));
+      
+      // Хэты с shuffle-свингом
       [0, 2, 3, 5, 6, 8, 9, 11].forEach(t => events.push({ type: 'drum_25693__walter_odington__hackney-hat-1', note: 42, time: t / 3, duration: 0.1, weight: (t % 3 === 0 ? 0.5 : 0.3), technique: 'hit', dynamics: 'p', phrasing: 'staccato' }));
+      
+      // #ЗАЧЕМ: Wettest Ride для атмосферы.
+      if (tension > 0.5 && this.random.next() < 0.4) {
+          events.push({ type: 'drum_ride_wetter', note: 51, time: 2.0, duration: 1.5, weight: 0.35, technique: 'hit', dynamics: 'p', phrasing: 'staccato' });
+      }
+
       return events;
   }
 
@@ -547,10 +557,33 @@ export class BluesBrain {
       return events;
   }
 
+  /**
+   * #ЗАЧЕМ: Пробежки по томам и сбивки.
+   */
   private renderDrumFill(tension: number): FractalEvent[] {
       const events: FractalEvent[] = [];
       const tomTypes = ['drum_Sonor_Classix_High_Tom', 'drum_Sonor_Classix_Mid_Tom', 'drum_Sonor_Classix_Low_Tom'];
-      [6, 7.5, 9, 10.5].forEach((t, i) => events.push({ type: tomTypes[i % tomTypes.length] as any, note: 45 + i, time: t / 3, duration: 0.5, weight: 0.6 + (i * 0.05), technique: 'hit', dynamics: 'p', phrasing: 'staccato' }));
+      
+      // Пробежка по томам в конце такта
+      const fillTicks = [6, 7.5, 9, 10.5];
+      fillTicks.forEach((t, i) => {
+          events.push({ 
+              type: tomTypes[i % tomTypes.length] as any, 
+              note: 45 + i, 
+              time: t / 3, 
+              duration: 0.5, 
+              weight: 0.6 + (i * 0.05), 
+              technique: 'hit', 
+              dynamics: 'p', 
+              phrasing: 'staccato' 
+          });
+      });
+
+      // Финальный акцент на 1-ю долю следующего такта (симулируем через длинный райд в конце)
+      if (tension > 0.7) {
+          events.push({ type: 'drum_ride_wetter', note: 51, time: 3.5, duration: 2.0, weight: 0.5, technique: 'hit', dynamics: 'mf', phrasing: 'staccato' });
+      }
+
       return events;
   }
 
@@ -563,12 +596,23 @@ export class BluesBrain {
     }));
   }
 
-  private renderIntegratedPiano(epoch: number, chord: GhostChord, tension: number, melodyEvents: FractalEvent[]): FractalEvent[] {
+  /**
+   * #ЗАЧЕМ: Умный пианист (Sentient Piano Mode).
+   * #ЧТО: 1. Не играет каждый такт. 
+   *       2. Играет шеллы и пассажи при высоком Tension.
+   *       3. "Shadow Echo": дублирует мелодию в 35% случаев.
+   */
+  private renderSentientPiano(epoch: number, chord: GhostChord, tension: number, melodyEvents: FractalEvent[]): FractalEvent[] {
       const events: FractalEvent[] = [];
       const root = chord.rootNote + 24;
-      
-      // #ЗАЧЕМ: Piano Shadow Mode.
-      // #ЧТО: Дублирование мелодии в 35% случаев для "кристального эха".
+      const isMin = chord.chordType === 'minor';
+
+      // --- LOGIC: SKIP BARS ---
+      // Если напряжение низкое, пианист молчит 50% времени, чтобы дать воздух.
+      if (tension < 0.45 && this.random.next() < 0.5) return [];
+
+      // --- LEVEL 1: SHADOW ECHO (Symmetry) ---
+      // В 35% случаев пианист становится тенью гитариста.
       if (this.random.next() < 0.35 && melodyEvents.length > 0) {
           return melodyEvents.map(me => ({
               ...me,
@@ -579,38 +623,55 @@ export class BluesBrain {
           }));
       }
 
-      // #ЗАЧЕМ: Дисциплина пассажей. Вероятность снижена до 0.18.
-      if (this.state.tensionMomentum < -0.05 && this.random.next() < 0.18) {
+      // --- LEVEL 2: HIGH TENSION PASSAGES ---
+      // Если напряжение падает после пика — играем пассаж (слёзы пианино).
+      if (this.state.tensionMomentum < -0.05 && this.random.next() < 0.25) {
           const scale = [0, 2, 3, 5, 7, 9, 10];
           for (let i = 0; i < 6; i++) {
               events.push({ 
                   type: 'pianoAccompaniment', 
-                  note: Math.min(root + scale[i], this.MELODY_CEILING), 
+                  note: Math.min(root + scale[5-i], this.MELODY_CEILING), // нисходящий пассаж
                   time: 0.5 + (i * 0.15), 
                   duration: 1.0, 
-                  weight: 0.30 * (1 - i * 0.1), 
+                  weight: 0.35 * (1 - i * 0.1), 
                   technique: 'hit', dynamics: 'p', phrasing: 'staccato' 
               });
           }
           return events;
       }
 
-      const patterns = [[1.5, 3.5], [0.5, 2.0, 3.75]];
-      patterns[epoch % patterns.length].forEach(beat => { 
-          if (this.random.next() < (0.15 + tension * 0.25)) { 
-              events.push({ 
-                  type: 'pianoAccompaniment', 
-                  note: Math.min(root + [0, 3, 7, 10][this.random.nextInt(4)], this.MELODY_CEILING), 
-                  time: beat, duration: 1.5, weight: 0.35, technique: 'hit', dynamics: 'p', phrasing: 'staccato' 
-              }); 
+      // --- LEVEL 3: BLUES STABS (Shell Chords) ---
+      // В остальных случаях играем блюзовые вставки (не дятлом!)
+      const patternChoice = calculateMusiNum(epoch, 7, this.seed, 3);
+      const stabTimes = patternChoice === 0 ? [1.5, 3.5] : (patternChoice === 1 ? [0.5, 2.75] : [2.0]);
+      
+      stabTimes.forEach(beat => { 
+          if (this.random.next() < (0.2 + tension * 0.4)) { 
+              const notes = [0, isMin ? 3 : 4, 10]; // 1, 3, b7 (Blues Shell)
+              notes.forEach((offset, i) => {
+                  events.push({ 
+                      type: 'pianoAccompaniment', 
+                      note: Math.min(root + offset, this.MELODY_CEILING), 
+                      time: beat + (i * 0.01), // микро-арпеджио
+                      duration: 1.2, 
+                      weight: 0.38 - (i * 0.05), 
+                      technique: 'hit', dynamics: 'p', phrasing: 'staccato' 
+                  });
+              });
           } 
       });
+
+      // Добавка перкуссионных звуков tube/perk
+      if (tension > 0.6 && this.random.next() < 0.2) {
+          events.push({ type: 'drum_bongo_pvc-tube-01', note: 60, time: 3.75, duration: 0.1, weight: 0.3, technique: 'hit', dynamics: 'p', phrasing: 'staccato' });
+      }
+
       return events;
   }
 
-  private renderDerivativeHarmony(chord: GhostChord, epoch: number, tension: number): FractalEvent[] {
-      const root = chord.rootNote;
-      const isMin = chord.chordType === 'minor' || chord.chordType === 'dimнished';
+  private renderDerivativeHarmony(currentChord: GhostChord, epoch: number, tension: number): FractalEvent[] {
+      const root = currentChord.rootNote;
+      const isMin = currentChord.chordType === 'minor' || currentChord.chordType === 'diminished';
       const rootNames = ['C', 'Db', 'D', 'Eb', 'E', 'F', 'Gb', 'G', 'Ab', 'A', 'Bb', 'B'];
       const name = rootNames[root % 12];
       const finalName = isMin ? `${name}m7` : `${name}7`;
@@ -636,29 +697,27 @@ export class BluesBrain {
       this.state.currentMutationType = types[this.random.nextInt(types.length)];
   }
 
-  /**
-   * #ЗАЧЕМ: Регулировка 90/10 для слоя гармонии.
-   */
   private evaluateTimbralDramaturgy(tension: number, hints: InstrumentHints, epoch: number) {
-    if (hints.melody) (hints as any).melody = tension > 0.8 ? 'guitar_shineOn' : (tension > 0.45 ? 'telecaster' : 'blackAcoustic');
+    if (hints.melody) (hints as any).melody = tension > 0.8 ? 'cs80' : (tension > 0.45 ? 'telecaster' : 'blackAcoustic');
     if (hints.accompaniment) (hints as any).accompaniment = tension > 0.75 ? 'ep_rhodes_warm' : 'organ_soft_jazz';
     
     if (hints.harmony) {
         let target = 'guitarChords';
-        // #ЗАЧЕМ: Скрипки только на экстремумах. 90% времени - гитара.
         if (tension > 0.88 || tension < 0.15) {
             target = 'violin';
         }
         (hints as any).harmony = target;
     }
   }
+}
 
-  private createSeededRandom(seed: number) {
-    let state = seed;
-    const next = () => {
-      state = (state * 1664525 + 1013904223) % Math.pow(2, 32);
-      return state / Math.pow(2, 32);
-    };
-    return { next, nextInt: (max: number) => Math.floor(next() * max) };
-  }
+function calculateMusiNum(step: number, base: number = 2, start: number = 0, modulo: number = 8): number {
+    if (!isFinite(step) || modulo <= 0) return 0;
+    let num = Math.abs(Math.floor(step + start));
+    let sum = 0;
+    while (num > 0) {
+        sum += num % base;
+        num = Math.floor(num / base);
+    }
+    return sum % modulo;
 }

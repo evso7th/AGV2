@@ -1,7 +1,6 @@
 /**
- * #ЗАЧЕМ: Audio Engine Context V7.7 — "Hot Cloud Sync".
- * #ЧТО: 1. Добавлен метод refreshCloudAxioms для принудительного перечитывания базы.
- *       2. Ребалансировка усиления сохранена.
+ * #ЗАЧЕМ: Audio Engine Context V7.8 — "Piano Volume Restoration".
+ * #ЧТО: ПЛАН №636 — Исправлена маршрутизация громкости пианино.
  */
 'use client';
 
@@ -47,7 +46,7 @@ interface AudioEngineContextType {
   initialize: () => Promise<boolean>;
   setIsPlaying: (playing: boolean) => void;
   updateSettings: (settings: Partial<WorkerSettings>) => void;
-  refreshCloudAxioms: () => Promise<void>; // #ЗАЧЕМ: Ручное обновление Наследия.
+  refreshCloudAxioms: () => Promise<void>;
   resetWorker: () => void;
   setVolume: (part: string, volume: number) => void;
   setInstrument: (part: 'bass' | 'melody' | 'accompaniment' | 'harmony' | 'pianoAccompaniment', name: any) => void;
@@ -109,7 +108,6 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
   const { toast } = useToast();
   const db = useFirestore();
 
-  // #ЗАЧЕМ: Вынос логики синхронизации в отдельную функцию.
   const refreshCloudAxioms = useCallback(async () => {
     if (!db) return;
     try {
@@ -120,7 +118,6 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
       if (workerRef.current) {
         workerRef.current.postMessage({ command: 'update_cloud_axioms', data: axioms });
       }
-      console.log(`%c[CloudDNA] Synchronized ${axioms.length} axioms.`, 'color: #4ade80; font-weight: bold;');
     } catch (e) {
       console.error('[CloudDNA] Sync failed:', e);
     }
@@ -268,6 +265,12 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
   const setVolumeCallback = useCallback((part: string, volume: number) => {
     if (part === 'pads' || part === 'effects') return;
     
+    // #ЗАЧЕМ: Прямое управление пианино.
+    if (part === 'pianoAccompaniment' && pianoAccompanimentManagerRef.current) {
+        pianoAccompanimentManagerRef.current.setVolume(volume);
+        return;
+    }
+
     const gainNode = gainNodesRef.current[part];
     if (gainNode && audioContextRef.current) {
         const balancedVolume = volume * (VOICE_BALANCE[part] ?? 1);
