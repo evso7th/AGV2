@@ -1,6 +1,6 @@
 /**
- * #ЗАЧЕМ: Хук управления UI музыкой V4.5 — "Timer Logic Restoration".
- * #ЧТО: ПЛАН №632 — Добавлены недостающие функции handleTimerDurationChange и handleToggleTimer.
+ * #ЗАЧЕМ: Хук управления UI музыкой V4.6 — "Heritage Metadata Aware".
+ * #ЧТО: ПЛАН №641 — availableCompositions теперь поддерживает объекты метаданных.
  */
 'use client';
 
@@ -20,7 +20,7 @@ export type AuraGrooveProps = {
   isRecording: boolean;
   isBroadcastActive: boolean;
   loadingText: string;
-  availableCompositions: string[];
+  availableCompositions: { id: string; count: number }[];
   selectedCompositionIds: string[];
   toggleCompositionFilter: (id: string) => void;
   clearCompositionFilters: () => void;
@@ -301,7 +301,7 @@ export const useAuraGroove = (): AuraGrooveProps => {
     setTimerSettings(prev => ({
       ...prev,
       isActive: !prev.isActive,
-      timeLeft: prev.duration // Reset time left when starting/stopping
+      timeLeft: prev.duration 
     }));
   };
 

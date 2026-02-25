@@ -1,6 +1,6 @@
 /**
- * #ЗАЧЕМ: Audio Engine Context V7.8 — "Piano Volume Restoration".
- * #ЧТО: ПЛАН №636 — Исправлена маршрутизация громкости пианино.
+ * #ЗАЧЕМ: Audio Engine Context V7.9 — "Heritage Metadata Enrichment".
+ * #ЧТО: ПЛАН №641 — availableCompositions теперь включает количество аксиом.
  */
 'use client';
 
@@ -35,6 +35,8 @@ const VOICE_BALANCE: Record<string, number> = {
   pianoAccompaniment: 0.55, 
 };
 
+type CompositionMeta = { id: string; count: number };
+
 // --- React Context ---
 interface AudioEngineContextType {
   isInitialized: boolean;
@@ -42,7 +44,7 @@ interface AudioEngineContextType {
   isPlaying: boolean;
   isRecording: boolean;
   isBroadcastActive: boolean;
-  availableCompositions: string[];
+  availableCompositions: CompositionMeta[];
   initialize: () => Promise<boolean>;
   setIsPlaying: (playing: boolean) => void;
   updateSettings: (settings: Partial<WorkerSettings>) => void;
@@ -77,7 +79,7 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
   const [isPlaying, setIsPlayingState] = useState(false);
   const [isRecording, setIsRecording] = useState(false);
   const [isBroadcastActive, setIsBroadcastActive] = useState(false);
-  const [availableCompositions, setAvailableCompositions] = useState<string[]>([]);
+  const [availableCompositions, setAvailableCompositions] = useState<CompositionMeta[]>([]);
   
   const isInitializingRef = useRef(false);
   const workerRef = useRef<Worker | null>(null);
@@ -113,8 +115,21 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
     try {
       const snapshot = await getDocs(query(collection(db, 'heritage_axioms')));
       const axioms = snapshot.docs.map(d => ({ id: d.id, ...d.data() }));
-      const uniqueIds = Array.from(new Set(axioms.map(ax => (ax as any).compositionId))).filter(Boolean).sort() as string[];
-      setAvailableCompositions(uniqueIds);
+      
+      const counts: Record<string, number> = {};
+      axioms.forEach(ax => {
+          const compId = (ax as any).compositionId;
+          if (compId) {
+              counts[compId] = (counts[compId] || 0) + 1;
+          }
+      });
+
+      const meta: CompositionMeta[] = Object.entries(counts)
+        .map(([id, count]) => ({ id, count }))
+        .sort((a,b) => a.id.localeCompare(b.id));
+
+      setAvailableCompositions(meta);
+
       if (workerRef.current) {
         workerRef.current.postMessage({ command: 'update_cloud_axioms', data: axioms });
       }

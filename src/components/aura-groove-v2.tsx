@@ -1,8 +1,6 @@
 /**
- * #ЗАЧЕМ: UI AuraGroove V2.9.2 — "Stability Restoration".
- * #ЧТО: 1. Восстановлена переменная genreList, вызывавшая ReferenceError.
- *       2. Синхронизированы все локальные определения инструментов и списков.
- *       3. Исправлена ошибка Hot Sync при открытии фильтра.
+ * #ЗАЧЕМ: UI AuraGroove V2.9.3 — "Heritage Transparency".
+ * #ЧТО: Внедрена визуализация количества аксиом в Cloud DNA Selector.
  */
 'use client';
 
@@ -26,6 +24,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, Dialog
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
+import { Badge } from "@/components/ui/badge";
 import type { AuraGrooveProps } from "@/hooks/use-aura-groove";
 import { useRouter } from "next/navigation";
 import { formatTime, cn } from "@/lib/utils";
@@ -85,7 +84,6 @@ export function AuraGrooveV2({
   // --- Instrument & Options Definitions ---
   const bassInstrumentList = Object.keys(BASS_PRESET_INFO);
   const v2MelodyInstruments = Object.keys(V2_PRESETS).filter(k => V2_PRESETS[k as keyof typeof V2_PRESETS].type !== 'bass');
-  const v1MelodyInstruments = Object.keys(SYNTH_PRESETS).filter(k => !bassInstrumentList.includes(k));
   
   const melodyInstrumentList = v2MelodyInstruments;
   const textureInstrumentList = v2MelodyInstruments; 
@@ -96,7 +94,6 @@ export function AuraGrooveV2({
   const isFractalStyle = score === 'neuro_f_matrix';
   const composerControl = isFractalStyle && composerControlsInstruments;
 
-  // #ЗАЧЕМ: Решение ошибки "genreList is not defined".
   const genreList: Genre[] = isFractalStyle
     ? ['ambient', 'trance', 'blues']
     : ['trance', 'ambient', 'progressive', 'rock', 'house', 'rnb', 'ballad', 'reggae', 'blues', 'celtic'];
@@ -114,9 +111,9 @@ export function AuraGrooveV2({
     'synth_ambient_pad_lush': 'Lush Pad'
   };
 
-  const filteredCompositions = availableCompositions.filter(id => {
-      const matchesSearch = id.toLowerCase().includes(filterSearchText.toLowerCase());
-      const matchesSelected = showSelectedOnly ? selectedCompositionIds.includes(id) : true;
+  const filteredCompositions = availableCompositions.filter(comp => {
+      const matchesSearch = comp.id.toLowerCase().includes(filterSearchText.toLowerCase());
+      const matchesSelected = showSelectedOnly ? selectedCompositionIds.includes(comp.id) : true;
       return matchesSearch && matchesSelected;
   });
 
@@ -241,7 +238,7 @@ export function AuraGrooveV2({
                                 <div className="relative group">
                                     <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground group-focus-within:text-primary transition-colors" />
                                     <Input 
-                                        placeholder="Search by track name or author..." 
+                                        placeholder="Search by track name..." 
                                         className="pl-9 h-9 text-xs border-primary/10 focus-visible:ring-primary/30 bg-background"
                                         value={filterSearchText}
                                         onChange={(e) => setFilterSearchText(e.target.value)}
@@ -282,7 +279,8 @@ export function AuraGrooveV2({
                                                 <p className="text-[10px] uppercase font-bold tracking-widest">No matching DNA</p>
                                             </div>
                                         ) : (
-                                            filteredCompositions.map(id => {
+                                            filteredCompositions.map(comp => {
+                                                const id = comp.id;
                                                 const isSelected = selectedCompositionIds.includes(id);
                                                 return (
                                                     <div key={id} 
@@ -307,6 +305,9 @@ export function AuraGrooveV2({
                                                         >
                                                             {id.replace(/_/g, ' ')}
                                                         </Label>
+                                                        <Badge variant="secondary" className="text-[9px] h-4 px-1.5 opacity-70 font-mono">
+                                                            {comp.count}
+                                                        </Badge>
                                                         {isSelected && <Check className="h-3.5 w-3.5 text-primary animate-in zoom-in duration-300" />}
                                                     </div>
                                                 );
