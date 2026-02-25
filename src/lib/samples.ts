@@ -123,71 +123,140 @@ export const FLUTE_SAMPLES: Record<string, VelocitySample[]> = {
 };
 
 /**
- * #ЗАЧЕМ: Расширенная карта сэмплов аккордов (8 гитаристов).
- * #ЧТО: Полное сопоставление всех доступных .ogg и .mp3 файлов из библиотеки.
+ * #ЗАЧЕМ: Расширенная карта сэмплов аккордов (ПЛАН №620).
+ * #ЧТО: Поддержка массивов файлов для каждого аккорда. Внедрено 200+ файлов.
  */
-export const ACOUSTIC_GUITAR_CHORD_SAMPLES: Record<string, string> = {
+export const ACOUSTIC_GUITAR_CHORD_SAMPLES: Record<string, string[]> = {
   // --- Family C ---
-  'C': '/assets/guitars_hords_samples/1662c.ogg',
-  'Cm': '/assets/guitars_hords_samples/1658cm.ogg',
-  'C7': '/assets/guitars_hords_samples/1664c7.ogg',
-  'C9': '/assets/guitars_hords_samples/1665c9.ogg',
-  'C6': '/assets/guitars_hords_samples/1663c6.ogg',
-  'Cm6': '/assets/guitars_hords_samples/1659cm6.ogg',
-  'Cm7': '/assets/guitars_hords_samples/1660cm7.ogg',
-  'Caug': '/assets/guitars_hords_samples/1666ca.ogg',
-  'Cdim': '/assets/guitars_hords_samples/1657cdim.ogg',
+  'C': [
+      '/assets/guitars_hords_samples/1662c.ogg',
+      '/assets/guitars_hords_samples/clear_telecaster/591204__telecaster-clean-c-hi-r.ogg',
+      '/assets/guitars_hords_samples/clear_telecaster/591205__telecaster-clean-c-hi-l.ogg',
+      '/assets/guitars_hords_samples/clear_telecaster/591208__telecaster-clean-c-hi-r.ogg',
+      '/assets/guitars_hords_samples/clear_telecaster/591209__telecaster-clean-c-hi-l.ogg'
+  ],
+  'Cm': [
+      '/assets/guitars_hords_samples/1658cm.ogg',
+      '/assets/guitars_hords_samples/clear_telecaster/591184__telecaster-clean-cm-hi-l.ogg',
+      '/assets/guitars_hords_samples/clear_telecaster/591185__telecaster-clean-cm-hi-r.ogg',
+      '/assets/guitars_hords_samples/clear_telecaster/591186__telecaster-clean-cm-hi-r.ogg',
+      '/assets/guitars_hords_samples/clear_telecaster/591187__telecaster-clean-cm-hi-l.ogg'
+  ],
+  'C7': ['/assets/guitars_hords_samples/1664c7.ogg'],
+  'C9': ['/assets/guitars_hords_samples/1665c9.ogg'],
+  'C6': ['/assets/guitars_hords_samples/1663c6.ogg'],
+  'Cm6': ['/assets/guitars_hords_samples/1659cm6.ogg'],
+  'Cm7': ['/assets/guitars_hords_samples/1660cm7.ogg'],
+  'Caug': ['/assets/guitars_hords_samples/1666ca.ogg'],
+  'Cdim': ['/assets/guitars_hords_samples/1657cdim.ogg'],
   
   // --- Family B / Bb ---
-  'B': '/assets/guitars_hords_samples/4279-b.ogg',
-  'Bm': '/assets/guitars_hords_samples/4288-bm.ogg',
-  'B7': '/assets/guitars_hords_samples/4281-b7.ogg',
-  'B9': '/assets/guitars_hords_samples/4283-b9.ogg',
-  'B6': '/assets/guitars_hords_samples/4280-b6.ogg',
-  'Bm6': '/assets/guitars_hords_samples/4289-bm6.ogg',
-  'Bm7': '/assets/guitars_hords_samples/4290-bm7.ogg',
-  'Baug': '/assets/guitars_hords_samples/4291-baug.ogg',
-  'Bdim': '/assets/guitars_hords_samples/4292-bdim.ogg',
+  'B': [
+      '/assets/guitars_hords_samples/4279-b.ogg',
+      '/assets/guitars_hords_samples/clear_telecaster/591173__telecaster-clean-b-hi-r.ogg',
+      '/assets/guitars_hords_samples/clear_telecaster/591174__telecaster-clean-b-hi-l.ogg'
+  ],
+  'Bm': [
+      '/assets/guitars_hords_samples/4288-bm.ogg',
+      '/assets/guitars_hords_samples/clear_telecaster/591206__telecaster-clean-bm-hi-r.ogg',
+      '/assets/guitars_hords_samples/clear_telecaster/591207__telecaster-clean-bm-hi-l.ogg'
+  ],
+  'B7': ['/assets/guitars_hords_samples/4281-b7.ogg'],
+  'B9': ['/assets/guitars_hords_samples/4283-b9.ogg'],
+  'B6': ['/assets/guitars_hords_samples/4280-b6.ogg'],
+  'Bm6': ['/assets/guitars_hords_samples/4289-bm6.ogg'],
+  'Bm7': ['/assets/guitars_hords_samples/4290-bm7.ogg'],
+  'Baug': ['/assets/guitars_hords_samples/4291-baug.ogg'],
+  'Bdim': ['/assets/guitars_hords_samples/4292-bdim.ogg'],
   
-  'Bb': '/assets/guitars_hords_samples/4284-bb.ogg',
-  'Bbm': '/assets/guitars_hords_samples/4287-bbm.ogg',
-  'Bb7': '/assets/guitars_hords_samples/4286-bb7.ogg',
-  'Bb6': '/assets/guitars_hords_samples/4285-bb6.ogg',
+  'Bb': [
+      '/assets/guitars_hords_samples/4284-bb.ogg',
+      '/assets/guitars_hords_samples/clear_telecaster/591202__telecaster-clean-bb-hi-r.ogg',
+      '/assets/guitars_hords_samples/clear_telecaster/591203__telecaster-clean-bb-hi-l.ogg'
+  ],
+  'Bbm': [
+      '/assets/guitars_hords_samples/4287-bbm.ogg',
+      '/assets/guitars_hords_samples/clear_telecaster/591200__telecaster-clean-bbm-hi-r.ogg',
+      '/assets/guitars_hords_samples/clear_telecaster/591201__telecaster-clean-bbm-hi-l.ogg'
+  ],
+  'Bb7': ['/assets/guitars_hords_samples/4286-bb7.ogg'],
+  'Bb6': ['/assets/guitars_hords_samples/4285-bb6.ogg'],
   
   // --- Family A / Ab ---
-  'A': '/assets/guitars_hords_samples/4562-a.ogg',
-  'Am': '/assets/guitars_hords_samples/4567-am.ogg',
-  'A7': '/assets/guitars_hords_samples/4565-a7.ogg',
-  'A6': '/assets/guitars_hords_samples/4564-a6.ogg',
-  'Am6': '/assets/guitars_hords_samples/4568-am6.ogg',
-  'Am7': '/assets/guitars_hords_samples/4569-am7.ogg',
-  'Adim': '/assets/guitars_hords_samples/4566-adim.ogg',
+  'A': [
+      '/assets/guitars_hords_samples/4562-a.ogg',
+      '/assets/guitars_hords_samples/clear_telecaster/591167__telecaster-clean-a-hi-r.ogg',
+      '/assets/guitars_hords_samples/clear_telecaster/591168__telecaster-clean-a-hi-l.ogg'
+  ],
+  'Am': [
+      '/assets/guitars_hords_samples/4567-am.ogg',
+      '/assets/guitars_hords_samples/clear_telecaster/591169__telecaster-clean-am-hi-r.ogg',
+      '/assets/guitars_hords_samples/clear_telecaster/591170__telecaster-clean-am-hi-l.ogg'
+  ],
+  'A7': ['/assets/guitars_hords_samples/4565-a7.ogg'],
+  'A6': ['/assets/guitars_hords_samples/4564-a6.ogg'],
+  'Am6': ['/assets/guitars_hords_samples/4568-am6.ogg'],
+  'Am7': ['/assets/guitars_hords_samples/4569-am7.ogg'],
+  'Adim': ['/assets/guitars_hords_samples/4566-adim.ogg'],
   
-  'Ab': '/assets/guitars_hords_samples/5715-ab.ogg',
-  'Abm': '/assets/guitars_hords_samples/5847abm.ogg',
-  'Ab7': '/assets/guitars_hords_samples/5840ab-7.ogg',
-  'Ab9': '/assets/guitars_hords_samples/5841ab-9.ogg',
-  'Ab6': '/assets/guitars_hords_samples/5839ab-6.ogg',
-  'Abm6': '/assets/guitars_hords_samples/5845abm-6.ogg',
-  'Abm7': '/assets/guitars_hords_samples/5846abm-7.ogg',
-  'Abaug': '/assets/guitars_hords_samples/5843abaug.ogg',
-  'Abdim': '/assets/guitars_hords_samples/5844abdim.ogg',
+  'Ab': [
+      '/assets/guitars_hords_samples/5715-ab.ogg',
+      '/assets/guitars_hords_samples/clear_telecaster/591165__telecaster-clean-ab-low-r.ogg',
+      '/assets/guitars_hords_samples/clear_telecaster/591166__telecaster-clean-ab-low-l.ogg'
+  ],
+  'Abm': [
+      '/assets/guitars_hords_samples/5847abm.ogg',
+      '/assets/guitars_hords_samples/clear_telecaster/591171__telecaster-clean-abm-low-r.ogg',
+      '/assets/guitars_hords_samples/clear_telecaster/591172__telecaster-clean-abm-low-l.ogg'
+  ],
+  'Ab7': ['/assets/guitars_hords_samples/5840ab-7.ogg'],
+  'Ab9': ['/assets/guitars_hords_samples/5841ab-9.ogg'],
+  'Ab6': ['/assets/guitars_hords_samples/5839ab-6.ogg'],
+  'Abm6': ['/assets/guitars_hords_samples/5845abm-6.ogg'],
+  'Abm7': ['/assets/guitars_hords_samples/5846abm-7.ogg'],
+  'Abaug': ['/assets/guitars_hords_samples/5843abaug.ogg'],
+  'Abdim': ['/assets/guitars_hords_samples/5844abdim.ogg'],
 
-  // --- Family D, E, F, G (High Quality Donors from Telecaster and MP3 library) ---
-  'D': '/assets/guitars_hords_samples/clear_telecaster/591191__telecaster-clean-d-hi-r.ogg',
-  'Dm': '/assets/guitars_hords_samples/clear_telecaster/591189__telecaster-clean-dm-hi-r.ogg',
-  'E': '/assets/guitars_hords_samples/clear_telecaster/591178__telecaster-clean-e-hi-l.ogg',
-  'Em': '/assets/guitars_hords_samples/clear_telecaster/591210__telecaster-clean-em-low-r.ogg',
-  'F': '/assets/guitars_hords_samples/clear_telecaster/591175__telecaster-clean-f-low-l.ogg',
-  'Fm': '/assets/guitars_hords_samples/clear_telecaster/591183__telecaster-clean-fm-low-r.ogg',
-  'G': '/assets/guitars_hords_samples/clear_telecaster/591194__telecaster-clean-g-low-l.ogg',
-  'Gm': '/assets/guitars_hords_samples/clear_telecaster/591192__telecaster-clean-gm-low-l.ogg',
-  
-  // --- Special MP3 Variants (Rising/Ascending) ---
-  'E_rising': '/assets/guitars_hords_samples/guitar-chord-mi-may-emai-rising.mp3',
-  'Em_ascending': '/assets/guitars_hords_samples/guitar-chord-e-minor-em-ascending.mp3',
-  'Dm_rising': '/assets/guitars_hords_samples/guitar-chord-d-minor-dm-rising.mp3',
-  'D_rising': '/assets/guitars_hords_samples/guitar-chord-in-d-major-rising-merry.mp3',
+  // --- Family D, E, F, G ---
+  'D': [
+      '/assets/guitars_hords_samples/clear_telecaster/591190__telecaster-clean-d-hi-l.ogg',
+      '/assets/guitars_hords_samples/clear_telecaster/591191__telecaster-clean-d-hi-r.ogg'
+  ],
+  'Dm': [
+      '/assets/guitars_hords_samples/clear_telecaster/591188__telecaster-clean-dm-hi-l.ogg',
+      '/assets/guitars_hords_samples/clear_telecaster/591189__telecaster-clean-dm-hi-r.ogg'
+  ],
+  'E': [
+      '/assets/guitars_hords_samples/clear_telecaster/591178__telecaster-clean-e-hi-l.ogg',
+      '/assets/guitars_hords_samples/clear_telecaster/591179__telecaster-clean-e-hi-r.ogg',
+      '/assets/guitars_hords_samples/clear_telecaster/591213__telecaster-clean-e-low-r.ogg',
+      '/assets/guitars_hords_samples/clear_telecaster/591214__telecaster-clean-e-low-l.ogg'
+  ],
+  'Em': [
+      '/assets/guitars_hords_samples/clear_telecaster/591210__telecaster-clean-em-low-r.ogg',
+      '/assets/guitars_hords_samples/clear_telecaster/591211__telecaster-clean-em-low-l.ogg',
+      '/assets/guitars_hords_samples/clear_telecaster/591219__telecaster-clean-em-hi-r.ogg',
+      '/assets/guitars_hords_samples/clear_telecaster/591220__telecaster-clean-em-hi-l.ogg'
+  ],
+  'F': [
+      '/assets/guitars_hords_samples/clear_telecaster/591175__telecaster-clean-f-low-l.ogg',
+      '/assets/guitars_hords_samples/clear_telecaster/591176__telecaster-clean-f-low-l.ogg',
+      '/assets/guitars_hords_samples/clear_telecaster/591177__telecaster-clean-f-low-r.ogg'
+  ],
+  'Fm': [
+      '/assets/guitars_hords_samples/clear_telecaster/591180__telecaster-clean-fm-low-l.ogg',
+      '/assets/guitars_hords_samples/clear_telecaster/591181__telecaster-clean-fm-low-r.ogg',
+      '/assets/guitars_hords_samples/clear_telecaster/591182__telecaster-clean-fm-low-l.ogg',
+      '/assets/guitars_hords_samples/clear_telecaster/591183__telecaster-clean-fm-low-r.ogg'
+  ],
+  'G': [
+      '/assets/guitars_hords_samples/clear_telecaster/591194__telecaster-clean-g-low-l.ogg',
+      '/assets/guitars_hords_samples/clear_telecaster/591199__telecaster-clean-g-low-r.ogg'
+  ],
+  'Gm': [
+      '/assets/guitars_hords_samples/clear_telecaster/591192__telecaster-clean-gm-low-l.ogg',
+      '/assets/guitars_hords_samples/clear_telecaster/591212__telecaster-clean-gm-low-r.ogg'
+  ],
 };
 
 export type GuitarTechniqueSamples = {

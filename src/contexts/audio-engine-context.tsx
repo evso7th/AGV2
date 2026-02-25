@@ -1,6 +1,6 @@
 /**
- * #ЗАЧЕМ: Audio Engine Context V7.5 — "Headroom Optimization".
- * #ЧТО: ПЛАН №617 — Общая перебалансировка усиления для предотвращения bus clipping.
+ * #ЗАЧЕМ: Audio Engine Context V7.6 — "Headroom & Sonic Cube".
+ * #ЧТО: ПЛАН №620 — Ребалансировка усиления для предотвращения клиппинга.
  */
 'use client';
 
@@ -24,16 +24,19 @@ import { collection, getDocs, query } from 'firebase/firestore';
 import { useFirestore } from '@/firebase';
 
 // --- Constants ---
-// #ЗАЧЕМ: Безопасный баланс ансамбля с запасом по Headroom.
+/** 
+ * #ЗАЧЕМ: Безопасный баланс ансамбля (Headroom Protocol).
+ * #ЧТО: Значения снижены на 20-30%, чтобы сумма всех слоев не вызывала искажений.
+ */
 const VOICE_BALANCE: Record<string, number> = {
-  bass: 0.75, 
-  melody: 0.85, 
-  accompaniment: 0.70, 
-  drums: 0.80, 
-  sparkles: 0.55, 
-  sfx: 0.65, 
-  harmony: 0.85,
-  pianoAccompaniment: 0.70, 
+  bass: 0.60, 
+  melody: 0.70, 
+  accompaniment: 0.55, 
+  drums: 0.65, 
+  sparkles: 0.40, 
+  sfx: 0.50, 
+  harmony: 0.60,
+  pianoAccompaniment: 0.55, 
 };
 
 // --- React Context ---
@@ -195,7 +198,7 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
             }
         });
 
-        if (!drumMachineRef.current) drumMachineRef.current = new DrumMachine(context, gainNodesRef.current.drums);
+        if (!drumMachineRef.current) drumMachineRef.current = new DrumMachine(context, gainNodesRef.current.drums!);
         if (!blackGuitarSamplerRef.current) blackGuitarSamplerRef.current = new BlackGuitarSampler(context, gainNodesRef.current.melody);
         if (!telecasterSamplerRef.current) telecasterSamplerRef.current = new TelecasterGuitarSampler(context, gainNodesRef.current.melody);
         if (!darkTelecasterSamplerRef.current) darkTelecasterSamplerRef.current = new DarkTelecasterSampler(context, gainNodesRef.current.melody);
