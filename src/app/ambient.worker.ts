@@ -1,6 +1,6 @@
 /**
  * @file AuraGroove Music Worker (Architecture: "The Cloud Composer")
- * #ОБНОВЛЕНО (ПЛАН №622): Реализация ротации фильтра и "Случайной Династии" (Вариант Б).
+ * #ОБНОВЛЕНО (ПЛАН №627): Расширенное логирование ансамблевой синхронизации.
  */
 import type { WorkerSettings, Mood, Genre, InstrumentPart } from '@/types/music';
 import { FractalMusicEngine } from '@/lib/fractal-music-engine';
@@ -29,7 +29,7 @@ const Scheduler = {
     barCount: 0,
     sessionLickHistory: [] as string[],
     cloudAxiomPool: [] as any[], 
-    filterRotationIndex: 0, // #ЗАЧЕМ: Управление очередью в Cloud Filter.
+    filterRotationIndex: 0, 
     
     settings: {
         bpm: 75,
@@ -59,40 +59,29 @@ const Scheduler = {
         return (60 / this.settings.bpm) * 4; 
     },
 
-    /**
-     * #ЗАЧЕМ: Выбор "Генетического Якоря" для новой сюиты.
-     * #ЧТО: Реализует Вариант Б (случайный трек если фильтр пуст) и ротацию (если фильтр полон).
-     */
     pickActiveAnchor(): string | null {
         const filter = this.settings.selectedCompositionIds || [];
-        
-        // 1. Если есть активный фильтр - идем по списку
         if (filter.length > 0) {
             const idx = this.filterRotationIndex % filter.length;
             return filter[idx];
         }
-
-        // 2. Вариант Б: Фильтр пуст - выбираем случайную династию из облака
         if (this.cloudAxiomPool.length > 0) {
             const uniqueIds = Array.from(new Set(this.cloudAxiomPool.map(ax => ax.compositionId)));
             const randIdx = Math.floor(Math.random() * uniqueIds.length);
             return uniqueIds[randIdx];
         }
-
         return null;
     },
 
     initializeEngine(settings: WorkerSettings) {
         const blueprint = getBlueprint(settings.genre, settings.mood);
         const seed = settings.seed || generateTrueSeed();
-        
-        // Определяем якорь ПЕРЕД инициализацией движка
         const activeAnchorId = this.pickActiveAnchor();
 
         const finalSettings = {
             ...settings,
             seed: seed,
-            activeAnchorId, // Передаем Якорь в движок
+            activeAnchorId, 
             sessionLickHistory: this.sessionLickHistory,
             cloudAxioms: this.cloudAxiomPool 
         };
@@ -143,7 +132,7 @@ const Scheduler = {
        this.settings = { ...this.settings, ...newSettings };
        if (genreOrMoodChanged || filterChanged) {
            this.sessionLickHistory = []; 
-           this.filterRotationIndex = 0; // Сброс ротации при смене фильтра
+           this.filterRotationIndex = 0; 
            this.reset();
        } else if (fractalMusicEngine) {
            fractalMusicEngine.updateConfig(this.settings);
@@ -162,10 +151,7 @@ const Scheduler = {
 
         if (this.barCount >= fractalMusicEngine.navigator!.totalBars) {
              console.log(`%c${getTimestamp()} [Chain] Cycle Complete. Rotating Heritage...`, 'color: #4ade80; font-weight: bold;');
-             
-             // Инкремент ротации для следующей сюиты
              this.filterRotationIndex++;
-             
              this.settings.seed = generateTrueSeed(); 
              this.initializeEngine(this.settings);
         }
@@ -181,7 +167,7 @@ const Scheduler = {
         if (payload.lickId) {
             if (!this.sessionLickHistory.includes(payload.lickId)) {
                 this.sessionLickHistory.push(payload.lickId);
-                if (this.sessionLickHistory.length > 20) this.sessionLickHistory.shift();
+                if (this.sessionLickHistory.length > 50) this.sessionLickHistory.shift();
             }
         }
 
@@ -192,12 +178,13 @@ const Scheduler = {
         const narration = payload.narrative || 'Developing story...';
         
         const ensembleStr = `BASS: ${h.bass || 'none'} | MEL: ${h.melody || 'none'} | ACC: ${h.accompaniment || 'none'}`;
+        const syncStatus = axioms.ensemble ? `[Ensemble: ${axioms.ensemble}]` : '';
         
         const melStr = axioms.melodyTrack ? `${axioms.melodyTrack} | ID: ${axioms.melody}` : (axioms.melody || 'none');
         const cognitiveStr = `Axioms: [MEL: ${melStr}] [BASS: ${axioms.bass || 'none'}] [ACC: ${axioms.accompaniment || 'none'}]`;
 
         console.log(
-            `%c${getTimestamp()} [Bar ${this.barCount}] [${sectionName}] T:${payload.tension.toFixed(2)} ` +
+            `%c${getTimestamp()} [Bar ${this.barCount}] [${sectionName}] T:${payload.tension.toFixed(2)} ${syncStatus} ` +
             `%c${ensembleStr}\n` +
             `%c  ↳ ${cognitiveStr}\n` +
             `%c  ↳ Narrative: ${narration}`,
