@@ -1,11 +1,9 @@
 import type { MusicBlueprint } from '@/types/music';
 
 /**
- * #ЗАЧЕМ: Блюпринт "The Imperial Narrative" (v30.0 - Multi-Main & Morphing Bridges).
- * #ЧТО: 1. Интро 6 тактов с полной лотереей (включая Пианино).
- *       2. MAIN разбит на 4 части с семантической связью.
- *       3. Внедрены 4-тактные бриджи между всеми частями.
- *       4. Липкий оркестр (Persistent Ensemble).
+ * #ЗАЧЕМ: Блюпринт "The Imperial Narrative" (v30.1 - Vangelis CS80 Climax).
+ * #ЧТО: 1. Гилморовская гитара в финали заменена на CS80 для "Blade Runner" эффекта.
+ *       2. Сохранена структура 4-х MAIN секций и бриджей.
  */
 export const WinterBluesBlueprint: MusicBlueprint = {
     id: 'winter_blues',
@@ -145,8 +143,9 @@ export const WinterBluesBlueprint: MusicBlueprint = {
                 id: 'MAIN_4', name: 'The Final Climax', duration: { percent: 20 },
                 layers: { bass: true, drums: true, melody: true, accompaniment: true, harmony: true, pianoAccompaniment: true, sparkles: true, sfx: true },
                 instrumentation: {
+                   // #ЗАЧЕМ: Замена гитары на CS80 для эпического финала.
                    accompaniment: { strategy: 'weighted', v2Options: [{ name: 'organ_prog', weight: 1.0 }] },
-                   melody: { strategy: 'weighted', v2Options: [{ name: 'guitar_shineOn', weight: 1.0 }] }
+                   melody: { strategy: 'weighted', v2Options: [{ name: 'cs80', weight: 1.0 }] }
                 },
                 instrumentRules: {
                     drums: { pattern: 'composer', kitName: 'blues_melancholic_master', density: { min: 0.9, max: 1.0 } },
