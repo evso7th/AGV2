@@ -24,10 +24,10 @@ import { BLUES_MELODY_RIFFS } from './assets/blues-melody-riffs';
 import { GUITAR_PATTERNS } from './assets/guitar-patterns';
 
 /**
- * #ЗАЧЕМ: Блюзовый Мозг V147.0 — "Ensemble Synergy & Sentient Piano".
- * #ЧТО: 1. Барабанщик обучен том-филлам и "влажному" райду.
- *       2. Пианист перестал быть "дятлом": играет осмысленно, зависит от Tension.
- *       3. Реализована логика "Выдоха" (Ensemble Breaths).
+ * #ЗАЧЕМ: Блюзовый Мозг V148.0 — "Ensemble Mirroring & Harmony Restoration".
+ * #ЧТО: 1. Harmony больше не молчит случайно.
+ *       2. Пианист переведен в режим Shadow Mirror (строгое дублирование ансамбля).
+ *       3. Синхронизированы мутации для Piano Shadow.
  */
 
 export interface BluesBrainConfig {
@@ -182,7 +182,6 @@ export class BluesBrain {
     const events: FractalEvent[] = [];
     this.evaluateTimbralDramaturgy(tension, hints, epoch);
 
-    // --- MELODY FIRST (to inform ensemble breaths) ---
     const melodyEvents = hints.melody ? this.renderMelodicSegment(epoch, currentChord, tension) : [];
 
     if (hints.drums) {
@@ -192,17 +191,20 @@ export class BluesBrain {
     const bassEvents = hints.bass ? this.renderSymbioticBass(currentChord, epoch, tension, melodyEvents) : [];
 
     const unisonType = navInfo.currentPart.instrumentRules?.accompaniment?.unisonType || 'none';
+    const accompanimentEvents: FractalEvent[] = [];
+    
     if (hints.accompaniment && unisonType !== 'none') {
-        events.push(...this.renderUnisonAccompaniment(bassEvents, currentChord, unisonType, tension));
+        accompanimentEvents.push(...this.renderUnisonAccompaniment(bassEvents, currentChord, unisonType, tension));
     } else if (hints.accompaniment) {
-        events.push(...this.renderDynamicAccompaniment(epoch, currentChord, tension));
+        accompanimentEvents.push(...this.renderDynamicAccompaniment(epoch, currentChord, tension));
     }
 
+    events.push(...accompanimentEvents);
     events.push(...bassEvents);
 
     if (hints.pianoAccompaniment) {
-        // #ЗАЧЕМ: Умное пианино.
-        events.push(...this.renderSentientPiano(epoch, currentChord, tension, melodyEvents));
+        // #ЗАЧЕМ: Пианино-Тень. Теперь играет синхронно с мелодией или аккомпанементом.
+        events.push(...this.renderShadowPiano(epoch, tension, melodyEvents, accompanimentEvents));
     }
 
     events.push(...melodyEvents);
@@ -212,6 +214,7 @@ export class BluesBrain {
     }
     
     if (hints.harmony) {
+        // #ЗАЧЕМ: Гарантированная Harmony. Блок случайного молчания удален.
         events.push(...this.renderDerivativeHarmony(currentChord, epoch, tension));
     }
 
@@ -510,21 +513,15 @@ export class BluesBrain {
     return notes.map((p, i) => ({ type: 'bass', note: p, time: i, duration: 0.9, weight: (i === 0 ? 0.85 : 0.5) + tension * 0.1, technique: 'pluck', dynamics: i === 0 ? 'mf' : 'p', phrasing: 'legato' }));
   }
 
-  /**
-   * #ЗАЧЕМ: Барабанщик, который слышит ансамбль.
-   * #ЧТО: Пробежки по томам, сбивки и "влажный" райд.
-   */
   private renderNarrativeDrums(epoch: number, tension: number, melodyEvents: FractalEvent[]): FractalEvent[] {
       const barIn12 = epoch % 12;
-      const isBreath = this.findMelodyBreaths(melodyEvents).length > 0;
+      const breaths = this.findMelodyBreaths(melodyEvents);
+      const isBreath = breaths.length > 0;
 
-      // 1. Пауза на выдохе (1/2 секунды тишины в ударных)
-      if (isBreath && this.random.next() < 0.3) return [];
+      if (isBreath && this.random.next() < 0.35) return [];
 
-      // 2. Stop-time в 8-9 тактах хора
       if (barIn12 === 8 || barIn12 === 9) return this.renderDrumStabs(tension);
       
-      // 3. Сбивки на границах фраз (каждый 4-й такт)
       if ((epoch + 1) % 4 === 0 && this.random.next() < 0.75) return this.renderDrumFill(tension);
       
       return this.renderBaseBluesBeat(epoch, tension);
@@ -537,10 +534,8 @@ export class BluesBrain {
       kickTicks.forEach(t => events.push({ type: 'drum_kick_reso', note: 36, time: t / 3, duration: 0.1, weight: 0.75 + (tension * 0.2), technique: 'hit', dynamics: 'p', phrasing: 'staccato' }));
       [3, 9].forEach(t => events.push({ type: 'drum_snare', note: 38, time: t / 3, duration: 0.1, weight: 0.8, technique: 'hit', dynamics: 'p', phrasing: 'staccato' }));
       
-      // Хэты с shuffle-свингом
       [0, 2, 3, 5, 6, 8, 9, 11].forEach(t => events.push({ type: 'drum_25693__walter_odington__hackney-hat-1', note: 42, time: t / 3, duration: 0.1, weight: (t % 3 === 0 ? 0.5 : 0.3), technique: 'hit', dynamics: 'p', phrasing: 'staccato' }));
       
-      // #ЗАЧЕМ: Wettest Ride для атмосферы.
       if (tension > 0.5 && this.random.next() < 0.4) {
           events.push({ type: 'drum_ride_wetter', note: 51, time: 2.0, duration: 1.5, weight: 0.35, technique: 'hit', dynamics: 'p', phrasing: 'staccato' });
       }
@@ -557,14 +552,10 @@ export class BluesBrain {
       return events;
   }
 
-  /**
-   * #ЗАЧЕМ: Пробежки по томам и сбивки.
-   */
   private renderDrumFill(tension: number): FractalEvent[] {
       const events: FractalEvent[] = [];
       const tomTypes = ['drum_Sonor_Classix_High_Tom', 'drum_Sonor_Classix_Mid_Tom', 'drum_Sonor_Classix_Low_Tom'];
       
-      // Пробежка по томам в конце такта
       const fillTicks = [6, 7.5, 9, 10.5];
       fillTicks.forEach((t, i) => {
           events.push({ 
@@ -579,7 +570,6 @@ export class BluesBrain {
           });
       });
 
-      // Финальный акцент на 1-ю долю следующего такта (симулируем через длинный райд в конце)
       if (tension > 0.7) {
           events.push({ type: 'drum_ride_wetter', note: 51, time: 3.5, duration: 2.0, weight: 0.5, technique: 'hit', dynamics: 'mf', phrasing: 'staccato' });
       }
@@ -597,76 +587,38 @@ export class BluesBrain {
   }
 
   /**
-   * #ЗАЧЕМ: Умный пианист (Sentient Piano Mode).
-   * #ЧТО: 1. Не играет каждый такт. 
-   *       2. Играет шеллы и пассажи при высоком Tension.
-   *       3. "Shadow Echo": дублирует мелодию в 35% случаев.
+   * #ЗАЧЕМ: Shadow Piano Mode. Полная синхронность с ансамблем.
+   * #ЧТО: Пианино дублирует мелодию или аккомпанемент, становясь их тенью.
    */
-  private renderSentientPiano(epoch: number, chord: GhostChord, tension: number, melodyEvents: FractalEvent[]): FractalEvent[] {
-      const events: FractalEvent[] = [];
-      const root = chord.rootNote + 24;
-      const isMin = chord.chordType === 'minor';
+  private renderShadowPiano(epoch: number, tension: number, melodyEvents: FractalEvent[], accompanimentEvents: FractalEvent[]): FractalEvent[] {
+      // Если напряжение критически низкое, пианист молчит.
+      if (tension < 0.3 && this.random.next() < 0.7) return [];
 
-      // --- LOGIC: SKIP BARS ---
-      // Если напряжение низкое, пианист молчит 50% времени, чтобы дать воздух.
-      if (tension < 0.45 && this.random.next() < 0.5) return [];
-
-      // --- LEVEL 1: SHADOW ECHO (Symmetry) ---
-      // В 35% случаев пианист становится тенью гитариста.
-      if (this.random.next() < 0.35 && melodyEvents.length > 0) {
+      // Приоритет 1: Тень мелодии (Shadow Echo)
+      if (melodyEvents.length > 0 && this.random.next() < 0.6) {
           return melodyEvents.map(me => ({
               ...me,
               type: 'pianoAccompaniment',
-              weight: me.weight * 0.45, 
+              weight: me.weight * 0.42, 
               technique: 'hit',
-              phrasing: 'staccato'
+              phrasing: 'staccato',
+              params: { ...me.params, shadow: 'melody' }
           }));
       }
 
-      // --- LEVEL 2: HIGH TENSION PASSAGES ---
-      // Если напряжение падает после пика — играем пассаж (слёзы пианино).
-      if (this.state.tensionMomentum < -0.05 && this.random.next() < 0.25) {
-          const scale = [0, 2, 3, 5, 7, 9, 10];
-          for (let i = 0; i < 6; i++) {
-              events.push({ 
-                  type: 'pianoAccompaniment', 
-                  note: Math.min(root + scale[5-i], this.MELODY_CEILING), // нисходящий пассаж
-                  time: 0.5 + (i * 0.15), 
-                  duration: 1.0, 
-                  weight: 0.35 * (1 - i * 0.1), 
-                  technique: 'hit', dynamics: 'p', phrasing: 'staccato' 
-              });
-          }
-          return events;
+      // Приоритет 2: Тень аккомпанемента (Chord Sync)
+      if (accompanimentEvents.length > 0) {
+          return accompanimentEvents.map(ae => ({
+              ...ae,
+              type: 'pianoAccompaniment',
+              weight: ae.weight * 0.38,
+              technique: 'hit',
+              phrasing: 'staccato',
+              params: { ...ae.params, shadow: 'accompaniment' }
+          }));
       }
 
-      // --- LEVEL 3: BLUES STABS (Shell Chords) ---
-      // В остальных случаях играем блюзовые вставки (не дятлом!)
-      const patternChoice = calculateMusiNum(epoch, 7, this.seed, 3);
-      const stabTimes = patternChoice === 0 ? [1.5, 3.5] : (patternChoice === 1 ? [0.5, 2.75] : [2.0]);
-      
-      stabTimes.forEach(beat => { 
-          if (this.random.next() < (0.2 + tension * 0.4)) { 
-              const notes = [0, isMin ? 3 : 4, 10]; // 1, 3, b7 (Blues Shell)
-              notes.forEach((offset, i) => {
-                  events.push({ 
-                      type: 'pianoAccompaniment', 
-                      note: Math.min(root + offset, this.MELODY_CEILING), 
-                      time: beat + (i * 0.01), // микро-арпеджио
-                      duration: 1.2, 
-                      weight: 0.38 - (i * 0.05), 
-                      technique: 'hit', dynamics: 'p', phrasing: 'staccato' 
-                  });
-              });
-          } 
-      });
-
-      // Добавка перкуссионных звуков tube/perk
-      if (tension > 0.6 && this.random.next() < 0.2) {
-          events.push({ type: 'drum_bongo_pvc-tube-01', note: 60, time: 3.75, duration: 0.1, weight: 0.3, technique: 'hit', dynamics: 'p', phrasing: 'staccato' });
-      }
-
-      return events;
+      return [];
   }
 
   private renderDerivativeHarmony(currentChord: GhostChord, epoch: number, tension: number): FractalEvent[] {
@@ -676,8 +628,7 @@ export class BluesBrain {
       const name = rootNames[root % 12];
       const finalName = isMin ? `${name}m7` : `${name}7`;
 
-      if (this.random.next() > 0.85 && tension < 0.4) return [];
-
+      // #ЗАЧЕМ: Harmony больше не молчит. Удалено "return []" при низком tension.
       return [root + 12, root + 19, root + (isMin ? 15 : 16)].map((n, i) => ({ 
           type: 'harmony', 
           note: n + 12, 
