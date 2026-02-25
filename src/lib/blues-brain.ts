@@ -24,10 +24,8 @@ import { BLUES_MELODY_RIFFS } from './assets/blues-melody-riffs';
 import { GUITAR_PATTERNS } from './assets/guitar-patterns';
 
 /**
- * #ЗАЧЕМ: Блюзовый Мозг V148.0 — "Ensemble Mirroring & Harmony Restoration".
- * #ЧТО: 1. Harmony больше не молчит случайно.
- *       2. Пианист переведен в режим Shadow Mirror (строгое дублирование ансамбля).
- *       3. Синхронизированы мутации для Piano Shadow.
+ * #ЗАЧЕМ: Блюзовый Мозг V149.0 — "Headroom Restoration".
+ * #ЧТО: ПЛАН №640 — Снижен коэффициент "Тени" пианино до 0.3 для предотвращения клиппинга.
  */
 
 export interface BluesBrainConfig {
@@ -203,7 +201,6 @@ export class BluesBrain {
     events.push(...bassEvents);
 
     if (hints.pianoAccompaniment) {
-        // #ЗАЧЕМ: Пианино-Тень. Теперь играет синхронно с мелодией или аккомпанементом.
         events.push(...this.renderShadowPiano(epoch, tension, melodyEvents, accompanimentEvents));
     }
 
@@ -214,7 +211,6 @@ export class BluesBrain {
     }
     
     if (hints.harmony) {
-        // #ЗАЧЕМ: Гарантированная Harmony. Блок случайного молчания удален.
         events.push(...this.renderDerivativeHarmony(currentChord, epoch, tension));
     }
 
@@ -589,29 +585,27 @@ export class BluesBrain {
   /**
    * #ЗАЧЕМ: Shadow Piano Mode. Полная синхронность с ансамблем.
    * #ЧТО: Пианино дублирует мелодию или аккомпанемент, становясь их тенью.
+   *       ПЛАН №640 — Снижен вес тени до 0.3 для защиты от клиппинга.
    */
   private renderShadowPiano(epoch: number, tension: number, melodyEvents: FractalEvent[], accompanimentEvents: FractalEvent[]): FractalEvent[] {
-      // Если напряжение критически низкое, пианист молчит.
       if (tension < 0.3 && this.random.next() < 0.7) return [];
 
-      // Приоритет 1: Тень мелодии (Shadow Echo)
       if (melodyEvents.length > 0 && this.random.next() < 0.6) {
           return melodyEvents.map(me => ({
               ...me,
               type: 'pianoAccompaniment',
-              weight: me.weight * 0.42, 
+              weight: me.weight * 0.30, 
               technique: 'hit',
               phrasing: 'staccato',
               params: { ...me.params, shadow: 'melody' }
           }));
       }
 
-      // Приоритет 2: Тень аккомпанемента (Chord Sync)
       if (accompanimentEvents.length > 0) {
           return accompanimentEvents.map(ae => ({
               ...ae,
               type: 'pianoAccompaniment',
-              weight: ae.weight * 0.38,
+              weight: ae.weight * 0.25,
               technique: 'hit',
               phrasing: 'staccato',
               params: { ...ae.params, shadow: 'accompaniment' }
@@ -628,7 +622,6 @@ export class BluesBrain {
       const name = rootNames[root % 12];
       const finalName = isMin ? `${name}m7` : `${name}7`;
 
-      // #ЗАЧЕМ: Harmony больше не молчит. Удалено "return []" при низком tension.
       return [root + 12, root + 19, root + (isMin ? 15 : 16)].map((n, i) => ({ 
           type: 'harmony', 
           note: n + 12, 

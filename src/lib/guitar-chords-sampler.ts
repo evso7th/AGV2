@@ -4,9 +4,8 @@ import { ACOUSTIC_GUITAR_CHORD_SAMPLES } from "./samples";
 const CHORD_SAMPLE_MAP = ACOUSTIC_GUITAR_CHORD_SAMPLES;
 
 /**
- * #ЗАЧЕМ: Сэмплер аккордов V3.0 — "The Sonic Hypercube".
- * #ЧТО: 1. Поддержка Round Robin через массивы сэмплов (200+ файлов).
- *       2. Расширенная логика Smart Match.
+ * #ЗАЧЕМ: Сэмплер аккордов V3.1 — "Headroom Optimized".
+ * #ЧТО: ПЛАН №640 — Гейн преампа снижен до 0.8 для предотвращения клиппинга.
  */
 export class GuitarChordsSampler {
     private audioContext: AudioContext;
@@ -21,7 +20,8 @@ export class GuitarChordsSampler {
         this.output = this.audioContext.createGain();
         
         this.preamp = this.audioContext.createGain();
-        this.preamp.gain.value = 1.2;
+        // #ЗАЧЕМ: Предотвращение "Пляммм". Снижение гейна с 1.2 до 0.8.
+        this.preamp.gain.value = 0.8;
         this.preamp.connect(this.output);
         
         this.output.connect(destination);
@@ -75,7 +75,6 @@ export class GuitarChordsSampler {
 
             const buffers = this.samples.get(matchedName);
             if (buffers && buffers.length > 0) {
-                // Round Robin / Random selection
                 const buffer = buffers[Math.floor(Math.random() * buffers.length)];
                 
                 const source = this.audioContext.createBufferSource();

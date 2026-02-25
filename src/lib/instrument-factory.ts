@@ -1,6 +1,6 @@
 /**
- * #ЗАЧЕМ: Центральная фабрика инструментов V3.8 — "Headroom & Clarity".
- * #ЧТО: ПЛАН №617 — Удалена двойная нагрузка гейна в гитарах, лимитер поднят до -3dB.
+ * #ЗАЧЕМ: Центральная фабрика инструментов V3.9 — "Imperial Headroom".
+ * #ЧТО: ПЛАН №640 — Лимитер откалиброван на -6dB для предотвращения "Пляммм".
  */
 
 // ───── GLOBAL REGISTRY & LIMITS ─────
@@ -465,7 +465,6 @@ const buildGuitarEngine = (ctx: AudioContext, preset: any, master: GainNode, rev
             const osc = ctx.createOscillator(); osc.setPeriodicWave(getPulseWave(oscP.width || 0.45));
             osc.frequency.setValueAtTime(f, when);
             
-            // #ЗАЧЕМ: Устранение двойного умножения громкости.
             const g = ctx.createGain(); g.gain.value = 1.0; 
             
             osc.connect(g).connect(voiceGain); osc.start(when);
@@ -525,7 +524,8 @@ export async function buildMultiInstrument(ctx: AudioContext, {
 
     const limiter = ctx.createDynamicsCompressor();
     // #ЗАЧЕМ: Увеличение запаса по громкости (Headroom).
-    limiter.threshold.value = -3.0; 
+    // #ЧТО: Порог снижен до -6dB для предотвращения искажений при суммировании голосов.
+    limiter.threshold.value = -6.0; 
     limiter.knee.value = 0;
     limiter.ratio.value = 20;
     limiter.attack.value = 0.003;
