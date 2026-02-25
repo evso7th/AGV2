@@ -44,12 +44,13 @@ interface EngineConfig {
   ancestor?: any;
   sessionLickHistory?: string[];
   cloudAxioms?: any[]; 
-  selectedCompositionIds?: string[]; // #ЗАЧЕМ: Поддержка фильтрации треков Наследия.
+  selectedCompositionIds?: string[];
+  activeAnchorId?: string | null; // #ЗАЧЕМ: Генетический Якорь сюиты.
 }
 
 /**
- * #ЗАЧЕМ: Фрактальный Музыкальный Движок V24.1 — "Selective Cloud DNA".
- * #ЧТО: Поддержка динамического обновления облачных аксиом и передача фильтров в Мозги.
+ * #ЗАЧЕМ: Фрактальный Музыкальный Движок V24.2 — "Genetic Anchor Supremacy".
+ * #ЧТО: Проброс activeAnchorId в Мозги для реализации Варианта Б.
  */
 export class FractalMusicEngine {
   public config: EngineConfig;
@@ -85,9 +86,12 @@ export class FractalMusicEngine {
       
       if (seedChanged) this.random = seededRandom(this.config.seed);
       
-      // #ЗАЧЕМ: Синхронизация облачных аксиом и фильтров с Мозгами на лету.
-      if (newConfig.cloudAxioms || newConfig.selectedCompositionIds) {
-          if (this.bluesBrain) (this.bluesBrain as any).updateCloudAxioms(this.config.cloudAxioms, this.config.selectedCompositionIds);
+      if (newConfig.cloudAxioms || newConfig.selectedCompositionIds || newConfig.activeAnchorId !== undefined) {
+          if (this.bluesBrain) (this.bluesBrain as any).updateCloudAxioms(
+              this.config.cloudAxioms, 
+              this.config.selectedCompositionIds,
+              this.config.activeAnchorId
+          );
       }
 
       if(moodOrGenreChanged || seedChanged) this.initialize(true);
@@ -148,8 +152,14 @@ export class FractalMusicEngine {
     this.navigator = new BlueprintNavigator(this.blueprint, this.config.seed, this.config.genre, this.config.mood, this.config.introBars, this.suiteDNA.soloPlanMap);
     
     if (this.config.genre === 'blues') {
-        // #ЗАЧЕМ: Передача облачных аксиом и фильтра при инициализации.
-        this.bluesBrain = new BluesBrain(this.config.seed, this.config.mood, this.config.sessionLickHistory, this.config.cloudAxioms, this.config.selectedCompositionIds);
+        this.bluesBrain = new BluesBrain(
+            this.config.seed, 
+            this.config.mood, 
+            this.config.sessionLickHistory, 
+            this.config.cloudAxioms, 
+            this.config.selectedCompositionIds,
+            this.config.activeAnchorId // Передаем Якорь в Мозг
+        );
         this.ambientBrain = null;
     } else if (this.config.genre === 'ambient') {
         this.ambientBrain = new AmbientBrain(this.config.seed, this.config.mood);

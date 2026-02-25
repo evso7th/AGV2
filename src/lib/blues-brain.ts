@@ -24,10 +24,8 @@ import { BLUES_MELODY_RIFFS } from './assets/blues-melody-riffs';
 import { GUITAR_PATTERNS } from './assets/guitar-patterns';
 
 /**
- * #ЗАЧЕМ: Блюзовый Мозг V142.0 — "Real-Time Ensemble Sovereignty".
- * #ЧТО: 1. Поминутный (ежетактный) контроль тембральной драматургии.
- *       2. Принудительное подавление скрипок в пользу гитары (90% времени).
- *       3. Гарантированное использование GuitarChordsSampler.
+ * #ЗАЧЕМ: Блюзовый Мозг V143.0 — "Genetic Anchor Supremacy".
+ * #ЧТО: ПЛАН №622 — Внедрение "Варианта Б" и эксклюзивного Генетического Якоря.
  */
 
 export interface BluesBrainConfig {
@@ -40,6 +38,7 @@ export interface BluesBrainConfig {
   sessionLickHistory?: string[];
   cloudAxioms?: any[];
   selectedCompositionIds?: string[];
+  activeAnchorId?: string | null; // #ЗАЧЕМ: Трек-донор, зафиксированный для этой сюиты.
 }
 
 export const DEFAULT_CONFIG: BluesBrainConfig = {
@@ -78,7 +77,14 @@ export class BluesBrain {
   private sfxPlayedInPart = false;
   private currentPartId = '';
 
-  constructor(seed: number, mood: Mood, sessionLickHistory?: string[], cloudAxioms?: any[], selectedCompositionIds?: string[]) {
+  constructor(
+      seed: number, 
+      mood: Mood, 
+      sessionLickHistory?: string[], 
+      cloudAxioms?: any[], 
+      selectedCompositionIds?: string[],
+      activeAnchorId?: string | null
+  ) {
     this.seed = seed;
     this.mood = mood;
     this.random = this.createSeededRandom(seed);
@@ -88,6 +94,7 @@ export class BluesBrain {
       sessionLickHistory: sessionLickHistory || [],
       cloudAxioms: cloudAxioms || [],
       selectedCompositionIds: selectedCompositionIds || [],
+      activeAnchorId: activeAnchorId || null,
       emotion: {
         melancholy: ['melancholic', 'dark', 'anxious'].includes(mood) ? 0.85 : 0.4,
         darkness: ['dark', 'gloomy'].includes(mood) ? 0.35 : 0.2
@@ -132,9 +139,13 @@ export class BluesBrain {
     return { next, nextInt: (max: number) => Math.floor(next() * max) };
   }
 
-  public updateCloudAxioms(axioms: any[], selectedCompositionIds?: string[]) {
+  /**
+   * #ЗАЧЕМ: Синхронизация Якоря.
+   */
+  public updateCloudAxioms(axioms: any[], selectedCompositionIds?: string[], activeAnchorId?: string | null) {
       this.config.cloudAxioms = axioms;
       this.config.selectedCompositionIds = selectedCompositionIds || [];
+      if (activeAnchorId !== undefined) this.config.activeAnchorId = activeAnchorId;
   }
 
   public generateBar(
@@ -168,8 +179,6 @@ export class BluesBrain {
 
     const events: FractalEvent[] = [];
     
-    // #ЗАЧЕМ: Ежетактный контроль тембральной драматургии.
-    // #ЧТО: Удалено ограничение epoch % 4. Теперь Мозг правит ансамблем каждое мгновение.
     this.evaluateTimbralDramaturgy(tension, hints, epoch);
 
     if (hints.drums) {
@@ -240,25 +249,36 @@ export class BluesBrain {
       this.currentGrandMelody = finalMelodyPool[this.random.nextInt(finalMelodyPool.length)];
   }
 
+  /**
+   * #ЗАЧЕМ: Реализация режима "Генетического Якоря" (Вариант Б).
+   * #ЧТО: Если зафиксирован activeAnchorId, система использует аксиомы ТОЛЬКО этого трека.
+   */
   private selectNextAxiom(navInfo: NavigationInfo, dna: SuiteDNA, epoch: number) {
       if (this.config.cloudAxioms && this.config.cloudAxioms.length > 0) {
-          const commonMoodFilter = ['epic', 'joyful', 'enthusiastic'].includes(this.mood) ? 'light' : 
-                                   (['melancholic', 'dark', 'anxious', 'gloomy'].includes(this.mood) ? 'dark' : 'neutral');
           
-          const isFiltered = this.config.selectedCompositionIds && this.config.selectedCompositionIds.length > 0;
+          // #ЗАЧЕМ: ПРИНУДИТЕЛЬНЫЙ ЯКОРЬ (Вариант Б).
+          const targetAnchor = this.config.activeAnchorId;
 
           const cloudPool = this.config.cloudAxioms.filter(ax => {
               const genreMatch = ax.genre === 'blues';
               const roleMatch = ax.role === 'melody';
-              const moodMatch = isFiltered 
-                  ? this.config.selectedCompositionIds!.includes(ax.compositionId)
-                  : (ax.mood === this.mood || ax.commonMood === commonMoodFilter);
               
-              return genreMatch && roleMatch && moodMatch;
+              // Если есть Якорь - фильтруем ТОЛЬКО по нему.
+              if (targetAnchor) {
+                  return genreMatch && roleMatch && ax.compositionId === targetAnchor;
+              }
+
+              // Fallback (если якорь не определен)
+              const commonMoodFilter = ['epic', 'joyful', 'enthusiastic'].includes(this.mood) ? 'light' : 
+                                       (['melancholic', 'dark', 'anxious', 'gloomy'].includes(this.mood) ? 'dark' : 'neutral');
+              return genreMatch && roleMatch && (ax.mood === this.mood || ax.commonMood === commonMoodFilter);
           });
 
           if (cloudPool.length > 0) {
+              // Shuffle Bag Rotation logic
               let freshPool = cloudPool.filter(ax => !this.state.recentLicks.includes(ax.id));
+              
+              // Если мешок пуст - обнуляем историю для этого якоря и начинаем заново
               if (freshPool.length === 0) {
                   const cloudPoolIds = new Set(cloudPool.map(ax => ax.id));
                   this.state.recentLicks = this.state.recentLicks.filter(id => !cloudPoolIds.has(id));
@@ -269,7 +289,7 @@ export class BluesBrain {
               this.currentLickId = selected.id;
               this.currentTrackName = selected.compositionId; 
               this.state.recentLicks.push(selected.id);
-              if (this.state.recentLicks.length > 30) this.state.recentLicks.shift();
+              if (this.state.recentLicks.length > 50) this.state.recentLicks.shift();
               
               const rawPhrase = decompressCompactPhrase(selected.phrase);
               this.currentAxiom = stretchToNarrativeLength(rawPhrase, 48, this.random);
@@ -277,7 +297,8 @@ export class BluesBrain {
           }
       }
 
-      this.currentTrackName = 'Local';
+      // Local fallback (только если в облаке вообще ничего нет по якорю)
+      this.currentTrackName = 'Local Fallback';
       if (this.currentGrandMelody) {
           const barIn12 = epoch % 12;
           const chord = getChordNameForBar(barIn12);
@@ -392,6 +413,8 @@ export class BluesBrain {
         const nextNote = barNotes[i+1];
         let duration = n.d / 3;
         if (nextNote && (nextNote.t - (n.t + n.d)) < 1) duration += 0.15; 
+        
+        // #ЗАЧЕМ: Борьба с кашей. Сольные ноты не должны гудеть.
         duration = Math.min(duration, 2.5); 
 
         const phraseProgress = n.t / 48;
@@ -541,22 +564,12 @@ export class BluesBrain {
       this.state.currentMutationType = types[this.random.nextInt(types.length)];
   }
 
-  /**
-   * #ЗАЧЕМ: Управление тембральной драматургией V5.0.
-   * #ЧТО: 1. Удалено ограничение по тактам. Контроль осуществляется КАЖДЫЙ ТАКТ.
-   *       2. Принудительное подавление скрипок в пользу гитары в 90% случаев.
-   */
   private evaluateTimbralDramaturgy(tension: number, hints: InstrumentHints, epoch: number) {
-    // #ЗАЧЕМ: Отказ от "замерзших" инструментов. 
-    // #ЧТО: Удалена проверка (epoch % 4 !== 0). Теперь Мозг правит каждое мгновение.
-    
     if (hints.melody) (hints as any).melody = tension > 0.8 ? 'guitar_shineOn' : (tension > 0.45 ? 'telecaster' : 'blackAcoustic');
     if (hints.accompaniment) (hints as any).accompaniment = tension > 0.75 ? 'ep_rhodes_warm' : 'organ_soft_jazz';
     
-    // --- HARMONY BALANCE PROTOCOL (The 90/10 Rule) ---
     if (hints.harmony) {
         let target = 'guitarChords';
-        // Скрипки только на ЭКСТРЕМАЛЬНЫХ пиках или провалах.
         if (tension > 0.88 || tension < 0.15) {
             target = 'violin';
         }
@@ -575,5 +588,14 @@ export class BluesBrain {
     if (barIn12 < 4) this.state.phraseState = 'call';
     else if (barIn12 < 8) this.state.phraseState = 'call_var';
     else this.state.phraseState = 'response';
+  }
+
+  private createSeededRandom(seed: number) {
+    let state = seed;
+    const next = () => {
+      state = (state * 1664525 + 1013904223) % Math.pow(2, 32);
+      return state / Math.pow(2, 32);
+    };
+    return { next, nextInt: (max: number) => Math.floor(next() * max) };
   }
 }

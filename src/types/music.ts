@@ -14,7 +14,7 @@ import { BASS_PRESETS } from '@/lib/bass-presets';
 /**
  * #ЗАЧЕМ: Центральный хаб типов AuraGroove.
  * #ЧТО: Ре-экспортирует типы из fractal.ts и определяет UI-специфичные структуры.
- *       Добавлена поддержка облачных аксиом (ПЛАН №610) и фильтрации (ПЛАН №615).
+ *       Добавлена поддержка активного Генетического Якоря (ПЛАН №622).
  */
 
 export type Mood = FractalMood;
@@ -176,7 +176,8 @@ export type WorkerSettings = {
   introBars: number;
   sessionLickHistory?: string[];
   cloudAxioms?: any[]; 
-  selectedCompositionIds?: string[]; // #ЗАЧЕМ: Фильтрация по конкретным трекам Наследия.
+  selectedCompositionIds?: string[];
+  activeAnchorId?: string | null; // #ЗАЧЕМ: Фиксация трека-донора для текущей сюиты.
   ancestor?: any;
 };
 
