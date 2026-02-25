@@ -1,6 +1,6 @@
 /**
  * @file AuraGroove Music Worker (Architecture: "The Cloud Composer")
- * #ОБНОВЛЕНО (ПЛАН №615): Добавлена поддержка фильтрации по CompositionID.
+ * #ОБНОВЛЕНО (ПЛАН №618): Гранулярное логирование аксиом (Track + Axiom ID).
  */
 import type { WorkerSettings, Mood, Genre, InstrumentPart } from '@/types/music';
 import { FractalMusicEngine } from '@/lib/fractal-music-engine';
@@ -51,7 +51,7 @@ const Scheduler = {
         mood: 'melancholic' as Mood,
         introBars: 12, 
         sessionLickHistory: [],
-        selectedCompositionIds: [] // #ЗАЧЕМ: Список разрешенных треков.
+        selectedCompositionIds: [] 
     } as WorkerSettings,
 
     get barDuration() { 
@@ -109,7 +109,6 @@ const Scheduler = {
 
     updateSettings(newSettings: Partial<WorkerSettings>) {
        const genreOrMoodChanged = (newSettings.genre && newSettings.genre !== this.settings.genre) || (newSettings.mood && newSettings.mood !== this.settings.mood);
-       // #ЗАЧЕМ: Смена фильтра также требует реинициализации для обновления планов.
        const filterChanged = newSettings.selectedCompositionIds !== undefined && JSON.stringify(newSettings.selectedCompositionIds) !== JSON.stringify(this.settings.selectedCompositionIds);
        
        this.settings = { ...this.settings, ...newSettings };
@@ -159,7 +158,10 @@ const Scheduler = {
         const narration = payload.narrative || 'Developing story...';
         
         const ensembleStr = `BASS: ${h.bass || 'none'} | MEL: ${h.melody || 'none'} | ACC: ${h.accompaniment || 'none'}`;
-        const cognitiveStr = `Axioms: [MEL: ${axioms.melody || 'none'}] [BASS: ${axioms.bass || 'none'}] [ACC: ${axioms.accompaniment || 'none'}]`;
+        
+        // #ЗАЧЕМ: Прозрачность. Выводим Трек и конкретный ID аксиомы.
+        const melStr = axioms.melodyTrack ? `${axioms.melodyTrack} | ID: ${axioms.melody}` : (axioms.melody || 'none');
+        const cognitiveStr = `Axioms: [MEL: ${melStr}] [BASS: ${axioms.bass || 'none'}] [ACC: ${axioms.accompaniment || 'none'}]`;
 
         console.log(
             `%c${getTimestamp()} [Bar ${this.barCount}] [${sectionName}] T:${payload.tension.toFixed(2)} ` +

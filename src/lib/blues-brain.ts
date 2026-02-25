@@ -24,8 +24,8 @@ import { BLUES_MELODY_RIFFS } from './assets/blues-melody-riffs';
 import { GUITAR_PATTERNS } from './assets/guitar-patterns';
 
 /**
- * #ЗАЧЕМ: Блюзовый Мозг V139.0 — "Selective Persistence".
- * #ЧТО: ПЛАН №617 — Исправлено переключение на MelDense при активном Cloud Filter.
+ * #ЗАЧЕМ: Блюзовый Мозг V140.0 — "Granular Heritage".
+ * #ЧТО: ПЛАН №618 — Добавлена прозрачность выбора конкретных аксиом в логах.
  */
 
 export interface BluesBrainConfig {
@@ -53,6 +53,7 @@ export class BluesBrain {
   private random: any;
   private currentAxiom: any[] = [];
   private currentLickId: string = '';
+  private currentTrackName: string = 'Local';
   
   private currentGuitarRiff: BluesGuitarRiff | null = null;
   private currentGrandMelody: BluesMelody | null = null;
@@ -197,8 +198,10 @@ export class BluesBrain {
         events.push(...this.renderDerivativeHarmony(currentChord, epoch, tension));
     }
 
+    // #ЗАЧЕМ: Расширенный объект для гранулярного логирования в Воркере.
     const activeAxioms = {
         melody: this.currentLickId,
+        melodyTrack: this.currentTrackName,
         bass: tension > 0.7 ? 'Walking' : 'Riff',
         drums: epoch % 12 === 8 || epoch % 12 === 9 ? 'Stop-Time' : (epoch % 4 === 3 ? 'Fill' : 'Main Beat')
     };
@@ -233,10 +236,6 @@ export class BluesBrain {
       this.currentGrandMelody = finalMelodyPool[this.random.nextInt(finalMelodyPool.length)];
   }
 
-  /**
-   * #ЗАЧЕМ: Выбор следующей аксиомы с поддержкой Selective Persistence.
-   * #ЧТО: ПЛАН №617 — Если активен фильтр CompositionID, Novelty Guard игнорируется при пустом пуле.
-   */
   private selectNextAxiom(navInfo: NavigationInfo, dna: SuiteDNA, epoch: number) {
       if (this.config.cloudAxioms && this.config.cloudAxioms.length > 0) {
           const commonMoodFilter = ['epic', 'joyful', 'enthusiastic'].includes(this.mood) ? 'light' : 
@@ -244,7 +243,6 @@ export class BluesBrain {
           
           const isFiltered = this.config.selectedCompositionIds && this.config.selectedCompositionIds.length > 0;
 
-          // 1. Создаем базовый пул согласно фильтрам
           const cloudPool = this.config.cloudAxioms.filter(ax => {
               const genreMatch = ax.genre === 'blues';
               const roleMatch = ax.role === 'melody';
@@ -256,15 +254,13 @@ export class BluesBrain {
           });
 
           if (cloudPool.length > 0) {
-              // 2. Пытаемся применить Novelty Guard
               const freshPool = cloudPool.filter(ax => !this.state.recentLicks.includes(ax.id));
-              
-              // 3. Если Novelty Guard опустошил пул, а фильтр включен — игнорируем его
               const finalPool = (freshPool.length === 0 && isFiltered) ? cloudPool : freshPool;
 
               if (finalPool.length > 0) {
                   const selected = finalPool[this.random.nextInt(finalPool.length)];
                   this.currentLickId = selected.id;
+                  this.currentTrackName = selected.compositionId; // Запоминаем имя трека
                   this.state.recentLicks.push(selected.id);
                   if (this.state.recentLicks.length > 20) this.state.recentLicks.shift();
                   
@@ -275,6 +271,7 @@ export class BluesBrain {
           }
       }
 
+      this.currentTrackName = 'Local';
       if (this.currentGrandMelody) {
           const barIn12 = epoch % 12;
           const chord = getChordNameForBar(barIn12);
