@@ -45,9 +45,9 @@ const AVAILABLE_GENRES: Genre[] = [
 ];
 
 /**
- * #ЗАЧЕМ: Дашборд Аудитора ДНК v3.8.
- * #ЧТО: 1. Добавлен аудит новых метаданных (BPM, Key, Time Signature).
- *       2. Внедрена поддержка семантического масштабирования.
+ * #ЗАЧЕМ: Дашборд Аудитора ДНК v3.9.
+ * #ЧТО: 1. Кнопка Play превращается в Stop при проигрывании.
+ *       2. Название Source очищается от технических суффиксов.
  */
 export default function HypercubeDashboard() {
   const db = useFirestore();
@@ -65,6 +65,7 @@ export default function HypercubeDashboard() {
   const [processedFiles, setProcessedFiles] = useState<string[]>([]);
   const [currentFileName, setCurrentFileName] = useState<string>('');
   const [selectedGenre, setSelectedGenre] = useState<Genre>('blues');
+  const [playingAxiomId, setPlayingAxiomId] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
@@ -99,6 +100,7 @@ export default function HypercubeDashboard() {
     setStagedAxioms([]);
     setSelectedIds(new Set());
     setCurrentFileName('');
+    setPlayingAxiomId(null);
     if (fileInputRef.current) {
       fileInputRef.current.value = '';
     }
@@ -109,6 +111,9 @@ export default function HypercubeDashboard() {
     if (!file) return;
 
     resetStaging();
+
+    // #ЗАЧЕМ: Очистка имени трека.
+    const cleanFileName = file.name.replace(/\.[^/.]+$/, "").replace(/-axiom.*$/, "");
 
     if (processedFiles.includes(file.name)) {
       toast({ 
@@ -131,7 +136,6 @@ export default function HypercubeDashboard() {
                 phrase: repairedPhrase,
                 id: `${compId}_${ax.role}_${idx}`,
                 compositionId: compId,
-                // Новые поля для аудита
                 nativeBpm: ax.nativeBpm || ax.bpm || null,
                 nativeKey: ax.nativeKey || ax.key || null,
                 timeSignature: ax.timeSignature || ax.ts || null
@@ -139,7 +143,8 @@ export default function HypercubeDashboard() {
         };
 
         if (Array.isArray(json)) {
-            json.forEach((ax, idx) => flattened.push(processAxiom(ax, idx, ax.compositionId || file.name)));
+            // #ЗАЧЕМ: Приоритет очищенному имени файла для колонки Source.
+            json.forEach((ax, idx) => flattened.push(processAxiom(ax, idx, ax.compositionId || cleanFileName)));
         } else {
             Object.entries(json).forEach(([trackName, licks]) => {
                 (licks as any[]).forEach((lick, idx) => flattened.push(processAxiom(lick, idx, trackName)));
@@ -221,8 +226,14 @@ export default function HypercubeDashboard() {
   };
 
   const handlePlayAxiom = async (axiom: any) => {
+    // #ЗАЧЕМ: Переключатель Play/Stop.
+    if (playingAxiomId === axiom.id) {
+        stopAllSounds();
+        setPlayingAxiomId(null);
+        return;
+    }
+
     if (!isInitialized) await initialize();
-    if (isPlaying) setIsPlaying(false);
     stopAllSounds();
 
     const phrase = decompressCompactPhrase(axiom.phrase);
@@ -255,6 +266,12 @@ export default function HypercubeDashboard() {
     };
 
     playRawEvents(events, hints);
+    setPlayingAxiomId(axiom.id);
+  };
+
+  const handleStopAudition = () => {
+      stopAllSounds();
+      setPlayingAxiomId(null);
   };
 
   return (
@@ -270,7 +287,7 @@ export default function HypercubeDashboard() {
             <p className="text-muted-foreground">Axiom Factory DNA Repair & Selective Injection Station</p>
           </div>
           <div className="flex gap-2">
-            <Button variant="outline" size="sm" onClick={() => stopAllSounds()} className="gap-2 text-destructive border-destructive/50">
+            <Button variant="outline" size="sm" onClick={handleStopAudition} className="gap-2 text-destructive border-destructive/50">
                 <Square className="h-4 w-4" /> Stop Audition
             </Button>
             <Button variant="ghost" onClick={() => router.push('/aura-groove')} className="gap-2">
@@ -321,7 +338,7 @@ export default function HypercubeDashboard() {
                   ))
                 }
               </CardContent>
-            </Card>
+            </div>
           </div>
         </div>
 
@@ -429,7 +446,7 @@ export default function HypercubeDashboard() {
                         </td>
                         <td className="p-4 text-right">
                           <Button size="icon" variant="ghost" onClick={() => handlePlayAxiom(ax)} className="h-10 w-10 hover:bg-primary/20 hover:text-primary transition-all">
-                            <Play className="h-5 w-5 fill-current" />
+                            {playingAxiomId === ax.id ? <Square className="h-5 w-5 fill-current" /> : <Play className="h-5 w-5 fill-current" />}
                           </Button>
                         </td>
                       </tr>
