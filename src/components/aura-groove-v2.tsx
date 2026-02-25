@@ -1,12 +1,13 @@
 /**
- * #ЗАЧЕМ: UI AuraGroove V2.8 — "Cloud Filter Portal".
- * #ЧТО: 1. Добавлен модал выбора треков Наследия во вкладке Composition.
- *       2. Реализована индикация активного фильтра.
+ * #ЗАЧЕМ: UI AuraGroove V2.9 — "The Curator's Palette".
+ * #ЧТО: 1. Текстовый фильтр в модальном окне Наследия.
+ *       2. Режим "Show Selected Only" для контроля ДНК.
+ *       3. Кнопка "Clear All" для быстрого сброса.
  */
 'use client';
 
 import { useState, useEffect } from "react";
-import { Music, Pause, Speaker, FileMusic, Drum, Atom, Piano, Home, Sparkles, Sprout, Timer, RefreshCw, Bot, Waves, Radio, ThumbsUp, TowerControl, SlidersHorizontal, Database, Filter, Check, RotateCcw } from "lucide-react";
+import { Music, Pause, Speaker, FileMusic, Drum, Atom, Piano, Home, Sparkles, Sprout, Timer, RefreshCw, Bot, Waves, Radio, ThumbsUp, TowerControl, Database, Filter, Check, RotateCcw, Search, Eye, EyeOff } from "lucide-react";
 import Image from "next/image";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -18,6 +19,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from "@/components/ui/dialog";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Checkbox } from "@/components/ui/checkbox";
+import { Input } from "@/components/ui/input";
 import type { AuraGrooveProps } from "@/hooks/use-aura-groove";
 import { useRouter } from "next/navigation";
 import { formatTime, cn } from "@/lib/utils";
@@ -66,6 +68,8 @@ export function AuraGrooveV2({
   const router = useRouter();
   const [isClient, setIsClient] = useState(false);
   const [isFilterModalOpen, setIsFilterModalOpen] = useState(false);
+  const [filterSearchText, setFilterSearchText] = useState("");
+  const [showSelectedOnly, setShowSelectedOnly] = useState(false);
 
   useEffect(() => {
     setIsClient(true);
@@ -99,8 +103,11 @@ export function AuraGrooveV2({
     'synth_ambient_pad_lush': 'Lush Pad'
   };
 
-  const composerControl = isFractalStyle && composerControlsInstruments;
-
+  const filteredCompositions = availableCompositions.filter(id => {
+      const matchesSearch = id.toLowerCase().includes(filterSearchText.toLowerCase());
+      const matchesSelected = showSelectedOnly ? selectedCompositionIds.includes(id) : true;
+      return matchesSearch && matchesSelected;
+  });
 
   return (
     <div className="w-full h-full flex flex-col p-3 bg-card">
@@ -190,7 +197,6 @@ export function AuraGrooveV2({
               <Card className="border-0 shadow-none">
                 <CardHeader className="p-2 py-1 flex flex-row items-center justify-between">
                     <CardTitle className="flex items-center gap-2 text-sm"><FileMusic className="h-4 w-4"/> Composition</CardTitle>
-                    {/* #ЗАЧЕМ: Доступ к фильтру облачных аксиом. */}
                     <Dialog open={isFilterModalOpen} onOpenChange={setIsFilterModalOpen}>
                         <DialogTrigger asChild>
                             <Button variant="ghost" size="sm" className={cn("h-7 px-2 gap-1.5 text-[10px] font-bold uppercase tracking-tighter", selectedCompositionIds.length > 0 && "text-primary bg-primary/10")}>
@@ -198,37 +204,96 @@ export function AuraGrooveV2({
                                 {selectedCompositionIds.length > 0 ? `${selectedCompositionIds.length} Tracks` : "Cloud Filter"}
                             </Button>
                         </DialogTrigger>
-                        <DialogContent className="sm:max-w-[380px] max-h-[80vh] flex flex-col p-0 overflow-hidden">
-                            <DialogHeader className="p-4 border-b">
-                                <DialogTitle className="flex items-center gap-2 text-primary"><Database className="h-5 w-5" /> Legacy Selector</DialogTitle>
-                                <p className="text-[10px] text-muted-foreground uppercase font-bold">Limit DNA to selected recordings</p>
+                        <DialogContent className="sm:max-w-[420px] max-h-[85vh] flex flex-col p-0 overflow-hidden bg-card border-primary/20 shadow-2xl">
+                            <DialogHeader className="p-4 pb-2 border-b border-primary/10">
+                                <DialogTitle className="flex items-center gap-2 text-primary font-black uppercase tracking-tight text-base">
+                                    <Database className="h-5 w-5" /> Cloud DNA Selector
+                                </DialogTitle>
+                                <p className="text-[10px] text-muted-foreground uppercase font-black tracking-widest opacity-70">Heritage Selection Protocol</p>
                             </DialogHeader>
-                            <div className="flex-grow overflow-hidden">
-                                <ScrollArea className="h-[400px] p-4">
-                                    <div className="space-y-3">
-                                        {availableCompositions.length === 0 ? (
-                                            <p className="text-center text-xs text-muted-foreground py-10 italic">No cloud axioms found. Syncing...</p>
+                            
+                            {/* --- Extended Toolbar --- */}
+                            <div className="p-3 pb-1 space-y-3 bg-muted/20">
+                                <div className="relative group">
+                                    <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground group-focus-within:text-primary transition-colors" />
+                                    <Input 
+                                        placeholder="Search by track name or author..." 
+                                        className="pl-9 h-9 text-xs border-primary/10 focus-visible:ring-primary/30 bg-background"
+                                        value={filterSearchText}
+                                        onChange={(e) => setFilterSearchText(e.target.value)}
+                                    />
+                                </div>
+                                <div className="flex items-center justify-between px-1">
+                                    <div className="flex items-center gap-2">
+                                        <Button 
+                                            variant="outline" 
+                                            size="sm" 
+                                            onClick={() => setShowSelectedOnly(!showSelectedOnly)}
+                                            className={cn("h-7 px-2 text-[10px] uppercase font-bold transition-all", showSelectedOnly && "bg-primary text-primary-foreground")}
+                                        >
+                                            {showSelectedOnly ? <Eye className="h-3 w-3 mr-1.5" /> : <EyeOff className="h-3 w-3 mr-1.5" />}
+                                            {showSelectedOnly ? "Showing Picked" : "Show All"}
+                                        </Button>
+                                        <span className="text-[10px] text-muted-foreground font-mono uppercase">
+                                            {filteredCompositions.length} matches
+                                        </span>
+                                    </div>
+                                    <Button 
+                                        variant="ghost" 
+                                        size="sm" 
+                                        onClick={clearCompositionFilters}
+                                        className="h-7 px-2 text-[10px] uppercase font-bold text-destructive hover:bg-destructive/10"
+                                    >
+                                        <RotateCcw className="h-3 w-3 mr-1.5" /> Reset Selection
+                                    </Button>
+                                </div>
+                            </div>
+
+                            <div className="flex-grow overflow-hidden bg-card/50">
+                                <ScrollArea className="h-[350px] px-2 py-1">
+                                    <div className="space-y-1">
+                                        {filteredCompositions.length === 0 ? (
+                                            <div className="flex flex-col items-center justify-center py-20 opacity-40">
+                                                <Database className="h-10 w-10 mb-2 stroke-1" />
+                                                <p className="text-[10px] uppercase font-bold tracking-widest">No matching DNA</p>
+                                            </div>
                                         ) : (
-                                            availableCompositions.map(id => (
-                                                <div key={id} className="flex items-center space-x-3 p-2 rounded-md hover:bg-muted/50 transition-colors">
-                                                    <Checkbox 
-                                                        id={`filter-${id}`} 
-                                                        checked={selectedCompositionIds.includes(id)}
-                                                        onCheckedChange={() => toggleCompositionFilter(id)}
-                                                    />
-                                                    <Label htmlFor={`filter-${id}`} className="text-xs font-medium cursor-pointer flex-grow leading-tight break-words">{id}</Label>
-                                                </div>
-                                            ))
+                                            filteredCompositions.map(id => {
+                                                const isSelected = selectedCompositionIds.includes(id);
+                                                return (
+                                                    <div key={id} 
+                                                        className={cn(
+                                                            "flex items-center space-x-3 p-2.5 rounded-lg transition-all border border-transparent cursor-pointer group mb-1",
+                                                            isSelected ? "bg-primary/10 border-primary/20" : "hover:bg-muted/50"
+                                                        )}
+                                                        onClick={() => toggleCompositionFilter(id)}
+                                                    >
+                                                        <Checkbox 
+                                                            id={`filter-${id}`} 
+                                                            checked={isSelected}
+                                                            onCheckedChange={() => {}}
+                                                            className="border-primary/30"
+                                                        />
+                                                        <Label 
+                                                            htmlFor={`filter-${id}`} 
+                                                            className={cn(
+                                                                "text-[11px] font-bold cursor-pointer flex-grow leading-tight break-words transition-colors",
+                                                                isSelected ? "text-primary" : "text-muted-foreground group-hover:text-foreground"
+                                                            )}
+                                                        >
+                                                            {id.replace(/_/g, ' ')}
+                                                        </Label>
+                                                        {isSelected && <Check className="h-3.5 w-3.5 text-primary animate-in zoom-in duration-300" />}
+                                                    </div>
+                                                );
+                                            })
                                         )}
                                     </div>
                                 </ScrollArea>
                             </div>
-                            <DialogFooter className="p-3 border-t bg-muted/20 flex flex-row justify-between sm:justify-between items-center gap-2">
-                                <Button variant="ghost" size="sm" onClick={clearCompositionFilters} className="text-[10px] uppercase font-bold h-8">
-                                    <RotateCcw className="h-3 w-3 mr-1.5" /> Reset
-                                </Button>
-                                <Button size="sm" onClick={() => setIsFilterModalOpen(false)} className="h-8 px-6 text-[10px] uppercase font-bold">
-                                    Apply
+                            <DialogFooter className="p-4 border-t bg-muted/30">
+                                <Button size="sm" onClick={() => setIsFilterModalOpen(false)} className="w-full h-10 font-black uppercase tracking-widest shadow-xl active:scale-95 transition-transform">
+                                    Inject Heritage
                                 </Button>
                             </DialogFooter>
                         </DialogContent>

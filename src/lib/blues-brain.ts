@@ -24,8 +24,9 @@ import { BLUES_MELODY_RIFFS } from './assets/blues-melody-riffs';
 import { GUITAR_PATTERNS } from './assets/guitar-patterns';
 
 /**
- * #ЗАЧЕМ: Блюзовый Мозг V144.0 — "The Discipline of Shadow".
- * #ЧТО: ПЛАН №623 — Пианист переведен в режим дублирования мелодии. Гитара очищена от грязи.
+ * #ЗАЧЕМ: Блюзовый Мозг V145.0 — "Heritage Freedom".
+ * #ЧТО: ПЛАН №625 — Игнорирование фильтра настроения при выборе конкретного Якоря. 
+ *       Это гарантирует использование ВСЕХ аксиом трека.
  */
 
 export interface BluesBrainConfig {
@@ -194,11 +195,9 @@ export class BluesBrain {
 
     events.push(...bassEvents);
 
-    // --- MELODY FIRST (to allow sync) ---
     const melodyEvents = hints.melody ? this.renderMelodicSegment(epoch, currentChord, tension) : [];
 
     if (hints.pianoAccompaniment) {
-        // #ЗАЧЕМ: Пианист теперь видит, что играет гитара.
         events.push(...this.renderIntegratedPiano(epoch, currentChord, tension, melodyEvents));
     }
 
@@ -249,6 +248,11 @@ export class BluesBrain {
       this.currentGrandMelody = finalMelodyPool[this.random.nextInt(finalMelodyPool.length)];
   }
 
+  /**
+   * #ЗАЧЕМ: Умный выбор аксиом из Наследия.
+   * #ЧТО: ПЛАН №625 — Игнорирование фильтра настроения, если задан целевой Якорь.
+   *       Это позволяет использовать ВСЕ аксиомы одного трека без потерь.
+   */
   private selectNextAxiom(navInfo: NavigationInfo, dna: SuiteDNA, epoch: number) {
       if (this.config.cloudAxioms && this.config.cloudAxioms.length > 0) {
           const targetAnchor = this.config.activeAnchorId;
@@ -256,7 +260,11 @@ export class BluesBrain {
           const cloudPool = this.config.cloudAxioms.filter(ax => {
               const genreMatch = ax.genre === 'blues';
               const roleMatch = ax.role === 'melody';
+              
+              // #ЗАЧЕМ: Если пользователь выбрал трек — отдаем ВСЕ его аксиомы.
+              // #ЧТО: Игнорируем проверку ax.mood и ax.commonMood.
               if (targetAnchor) return genreMatch && roleMatch && ax.compositionId === targetAnchor;
+              
               const commonMoodFilter = ['epic', 'joyful', 'enthusiastic'].includes(this.mood) ? 'light' : 
                                        (['melancholic', 'dark', 'anxious', 'gloomy'].includes(this.mood) ? 'dark' : 'neutral');
               return genreMatch && roleMatch && (ax.mood === this.mood || ax.commonMood === commonMoodFilter);
@@ -264,6 +272,12 @@ export class BluesBrain {
 
           if (cloudPool.length > 0) {
               let freshPool = cloudPool.filter(ax => !this.state.recentLicks.includes(ax.id));
+              
+              // #ЗАЧЕМ: Логирование доступности Наследия.
+              if (epoch % 12 === 0) {
+                  console.log(`%c[Heritage Pool] ${freshPool.length}/${cloudPool.length} fresh axioms available for anchor: ${targetAnchor || 'Free Evolution'}`, 'color: #DA70D6;');
+              }
+
               if (freshPool.length === 0) {
                   const cloudPoolIds = new Set(cloudPool.map(ax => ax.id));
                   this.state.recentLicks = this.state.recentLicks.filter(id => !cloudPoolIds.has(id));
@@ -398,7 +412,6 @@ export class BluesBrain {
         let duration = n.d / 3;
         if (nextNote && (nextNote.t - (n.t + n.d)) < 1) duration += 0.15; 
         
-        // #ЗАЧЕМ: Жесткий лимит длительности соло для чистоты микса.
         duration = Math.min(duration, 2.5); 
 
         const phraseProgress = n.t / 48;
@@ -486,28 +499,21 @@ export class BluesBrain {
     }));
   }
 
-  /**
-   * #ЗАЧЕМ: Пианист переведен в режим дисциплинированного дублера.
-   * #ЧТО: Редкие пассажи, фокус на синхронном удвоении мелодии.
-   */
   private renderIntegratedPiano(epoch: number, chord: GhostChord, tension: number, melodyEvents: FractalEvent[]): FractalEvent[] {
       const events: FractalEvent[] = [];
       const root = chord.rootNote + 24;
       const momentum = this.state.tensionMomentum;
       
-      // #ЗАЧЕМ: Дублирование мелодии (Piano Shadow).
-      // #ЧТО: Создает богатый резонанс с гитарным соло.
       if (this.random.next() < 0.35 && melodyEvents.length > 0) {
           return melodyEvents.map(me => ({
               ...me,
               type: 'pianoAccompaniment',
-              weight: me.weight * 0.45, // Мягкая тень
+              weight: me.weight * 0.45, 
               technique: 'hit',
               phrasing: 'staccato'
           }));
       }
 
-      // #ЗАЧЕМ: Пассажи стали в 4 раза реже.
       if (momentum < -0.05 && this.random.next() < 0.18) {
           const scale = [0, 2, 3, 5, 7, 9, 10];
           for (let i = 0; i < 6; i++) {
@@ -538,7 +544,7 @@ export class BluesBrain {
 
   private renderDerivativeHarmony(chord: GhostChord, epoch: number, tension: number): FractalEvent[] {
       const root = chord.rootNote;
-      const isMin = chord.chordType === 'minor' || chord.chordType === 'diminished';
+      const isMin = chord.chordType === 'minor' || chord.chordType === 'dimнished';
       const rootNames = ['C', 'Db', 'D', 'Eb', 'E', 'F', 'Gb', 'G', 'Ab', 'A', 'Bb', 'B'];
       
       const name = rootNames[root % 12];
@@ -583,6 +589,8 @@ export class BluesBrain {
     this.state.emotion.darkness += (this.random.next() - 0.5) * 0.04;
     this.state.emotion.melancholy = Math.max(0.65, Math.min(0.95, this.state.emotion.melancholy));
     this.state.emotion.darkness = Math.max(0.15, Math.min(0.45, this.state.emotion.darkness));
+    
+    this.state.tensionLevel = this.tensionLevel;
   }
 
   private updatePhrasePhase(barIn12: number): void {
