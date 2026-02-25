@@ -3,11 +3,12 @@
  * #ЧТО: 1. Текстовый фильтр в модальном окне Наследия.
  *       2. Режим "Show Selected Only" для контроля ДНК.
  *       3. Кнопка "Clear All" для быстрого сброса.
+ * #ИСПРАВЛЕНО: Добавлен импорт SlidersHorizontal.
  */
 'use client';
 
 import { useState, useEffect } from "react";
-import { Music, Pause, Speaker, FileMusic, Drum, Atom, Piano, Home, Sparkles, Sprout, Timer, RefreshCw, Bot, Waves, Radio, ThumbsUp, TowerControl, Database, Filter, Check, RotateCcw, Search, Eye, EyeOff } from "lucide-react";
+import { Music, Pause, Speaker, FileMusic, Drum, Atom, Piano, Home, Sparkles, Sprout, Timer, RefreshCw, Bot, Waves, Radio, ThumbsUp, TowerControl, Database, Filter, Check, RotateCcw, Search, Eye, EyeOff, SlidersHorizontal } from "lucide-react";
 import Image from "next/image";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
