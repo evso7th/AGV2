@@ -10,7 +10,8 @@ type SamplerInstrument = {
 };
 
 /**
- * #ЗАЧЕМ: Сэмплер скрипки с повышенной мощностью (ПЛАН №529).
+ * #ЗАЧЕМ: Сэмплер скрипки с системной калибровкой громкости.
+ * #ЧТО: ПЛАН №624 — Громкость снижена в 3 раза (3.5 -> 1.16) для баланса ансамбля.
  */
 export class ViolinSamplerPlayer {
     private audioContext: AudioContext;
@@ -23,9 +24,9 @@ export class ViolinSamplerPlayer {
         this.audioContext = audioContext;
         this.outputNode = this.audioContext.createGain();
         this.preamp = this.audioContext.createGain();
-        // #ЗАЧЕМ: Повышение читаемости скрипки в миксе.
-        // #ЧТО: Гейн поднят с 2.2 до 3.5.
-        this.preamp.gain.value = 3.5; 
+        // #ЗАЧЕМ: Системное снижение громкости скрипок по требованию пользователя.
+        // #ЧТО: Гейн снижен в 3 раза (3.5 -> 1.16).
+        this.preamp.gain.value = 1.16; 
         this.preamp.connect(this.outputNode);
         this.outputNode.connect(destination);
     }
