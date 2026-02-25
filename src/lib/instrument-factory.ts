@@ -1,8 +1,6 @@
 /**
- * #ЗАЧЕМ: Центральная фабрика инструментов V3.7 — "Volume & ADSR Normalization".
- * #ЧТО: 1. Исправлена немота: ADSR теперь автоматически переводит мс в секунды.
- *       2. Исправлен баланс: удалено двойное умножение на velocity.
- *       3. Усилена защита голосов и реализована полная остановка всех запланированных нот.
+ * #ЗАЧЕМ: Центральная фабрика инструментов V3.8 — "Headroom & Clarity".
+ * #ЧТО: ПЛАН №617 — Удалена двойная нагрузка гейна в гитарах, лимитер поднят до -3dB.
  */
 
 // ───── GLOBAL REGISTRY & LIMITS ─────
@@ -10,9 +8,6 @@
 let globalActiveVoices: any[] = [];
 const GLOBAL_VOICE_LIMIT = 150; 
 
-/**
- * #ЗАЧЕМ: Глобальная очистка голоса.
- */
 const deepCleanup = (voiceRecord: any) => {
     if (!voiceRecord || voiceRecord.cleaned) return;
     voiceRecord.cleaned = true;
@@ -48,11 +43,6 @@ const midiToHz = (m: number) => 440 * Math.pow(2, (m - 69) / 12);
 const dB = (x: number) => Math.pow(10, x / 20);
 const clamp = (v: number, min: number, max: number) => Math.max(min, Math.min(max, v));
 
-/**
- * #ЗАЧЕМ: Универсальный парсер ADSR.
- * #ЧТО: Поддерживает форматы {a, d, s, r} и {attack, decay, sustain, release}.
- *       Автоматически определяет мс (> 5) и переводит в секунды.
- */
 const getADSR = (p: any) => {
     const a = p.adsr || p;
     let rawA = isFinite(a.a) ? a.a : (isFinite(a.attack) ? a.attack : 0.01);
@@ -220,8 +210,6 @@ const makePhaser = (ctx: AudioContext, opt: any = {}): SimpleFX => {
     };
 };
 
-// ───── ADSR (Robust Implementation) ─────
-
 interface VoiceState { node: GainNode; startTime: number; }
 
 const triggerAttack = (ctx: AudioContext, gain: GainNode, when: number, a: number, d: number, s: number, velocity = 1): VoiceState => {
@@ -245,10 +233,6 @@ const triggerRelease = (ctx: AudioContext, voiceState: VoiceState, when: number,
     voiceState.node.gain.setTargetAtTime(0.0001, now, Math.max(release / 3, 0.001));
     return now + release;
 };
-
-// ═══════════════════════════════════════════════════════════════════════════
-// ENGINE BUILDERS
-// ═══════════════════════════════════════════════════════════════════════════
 
 const buildSynthEngine = (ctx: AudioContext, preset: any, master: GainNode, reverb: ConvolverNode, instrumentGain: GainNode, expressionGain: GainNode) => {
     let currentPreset = { ...preset };
@@ -480,7 +464,10 @@ const buildGuitarEngine = (ctx: AudioContext, preset: any, master: GainNode, rev
             const oscP = currentPreset.osc || { width: 0.45 };
             const osc = ctx.createOscillator(); osc.setPeriodicWave(getPulseWave(oscP.width || 0.45));
             osc.frequency.setValueAtTime(f, when);
+            
+            // #ЗАЧЕМ: Устранение двойного умножения громкости.
             const g = ctx.createGain(); g.gain.value = 1.0; 
+            
             osc.connect(g).connect(voiceGain); osc.start(when);
             const adsr = getADSR(currentPreset);
             const voiceState = triggerAttack(ctx, voiceGain, when, adsr.a, adsr.d, adsr.s, velocity);
@@ -516,10 +503,6 @@ const buildGuitarEngine = (ctx: AudioContext, preset: any, master: GainNode, rev
     };
 };
 
-// ═══════════════════════════════════════════════════════════════════════════
-// MAIN FACTORY
-// ═══════════════════════════════════════════════════════════════════════════
-
 export async function buildMultiInstrument(ctx: AudioContext, {
     type = 'synth',
     preset = {} as any,
@@ -541,7 +524,8 @@ export async function buildMultiInstrument(ctx: AudioContext, {
     else engine = buildSynthEngine(ctx, preset, master, reverb, instrumentGain, expressionGain);
 
     const limiter = ctx.createDynamicsCompressor();
-    limiter.threshold.value = -1.0;
+    // #ЗАЧЕМ: Увеличение запаса по громкости (Headroom).
+    limiter.threshold.value = -3.0; 
     limiter.knee.value = 0;
     limiter.ratio.value = 20;
     limiter.attack.value = 0.003;

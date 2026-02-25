@@ -24,8 +24,8 @@ import { BLUES_MELODY_RIFFS } from './assets/blues-melody-riffs';
 import { GUITAR_PATTERNS } from './assets/guitar-patterns';
 
 /**
- * #ЗАЧЕМ: Блюзовый Мозг V138.0 — "Harmonic Presence".
- * #ЧТО: ПЛАН №616 — Повышена плотность слоя гармонии для осязаемого "тела" микса.
+ * #ЗАЧЕМ: Блюзовый Мозг V139.0 — "Selective Persistence".
+ * #ЧТО: ПЛАН №617 — Исправлено переключение на MelDense при активном Cloud Filter.
  */
 
 export interface BluesBrainConfig {
@@ -233,30 +233,45 @@ export class BluesBrain {
       this.currentGrandMelody = finalMelodyPool[this.random.nextInt(finalMelodyPool.length)];
   }
 
+  /**
+   * #ЗАЧЕМ: Выбор следующей аксиомы с поддержкой Selective Persistence.
+   * #ЧТО: ПЛАН №617 — Если активен фильтр CompositionID, Novelty Guard игнорируется при пустом пуле.
+   */
   private selectNextAxiom(navInfo: NavigationInfo, dna: SuiteDNA, epoch: number) {
       if (this.config.cloudAxioms && this.config.cloudAxioms.length > 0) {
           const commonMoodFilter = ['epic', 'joyful', 'enthusiastic'].includes(this.mood) ? 'light' : 
                                    (['melancholic', 'dark', 'anxious', 'gloomy'].includes(this.mood) ? 'dark' : 'neutral');
           
+          const isFiltered = this.config.selectedCompositionIds && this.config.selectedCompositionIds.length > 0;
+
+          // 1. Создаем базовый пул согласно фильтрам
           const cloudPool = this.config.cloudAxioms.filter(ax => {
               const genreMatch = ax.genre === 'blues';
               const roleMatch = ax.role === 'melody';
-              const moodMatch = ax.mood === this.mood || ax.commonMood === commonMoodFilter;
-              const noveltyMatch = !this.state.recentLicks.includes(ax.id);
-              if (this.config.selectedCompositionIds && this.config.selectedCompositionIds.length > 0) {
-                  return genreMatch && roleMatch && this.config.selectedCompositionIds.includes(ax.compositionId) && noveltyMatch;
-              }
-              return genreMatch && roleMatch && moodMatch && noveltyMatch;
+              const moodMatch = isFiltered 
+                  ? this.config.selectedCompositionIds!.includes(ax.compositionId)
+                  : (ax.mood === this.mood || ax.commonMood === commonMoodFilter);
+              
+              return genreMatch && roleMatch && moodMatch;
           });
 
           if (cloudPool.length > 0) {
-              const selected = cloudPool[this.random.nextInt(cloudPool.length)];
-              this.currentLickId = selected.id;
-              this.state.recentLicks.push(selected.id);
-              if (this.state.recentLicks.length > 20) this.state.recentLicks.shift();
-              const rawPhrase = decompressCompactPhrase(selected.phrase);
-              this.currentAxiom = stretchToNarrativeLength(rawPhrase, 48, this.random);
-              return;
+              // 2. Пытаемся применить Novelty Guard
+              const freshPool = cloudPool.filter(ax => !this.state.recentLicks.includes(ax.id));
+              
+              // 3. Если Novelty Guard опустошил пул, а фильтр включен — игнорируем его
+              const finalPool = (freshPool.length === 0 && isFiltered) ? cloudPool : freshPool;
+
+              if (finalPool.length > 0) {
+                  const selected = finalPool[this.random.nextInt(finalPool.length)];
+                  this.currentLickId = selected.id;
+                  this.state.recentLicks.push(selected.id);
+                  if (this.state.recentLicks.length > 20) this.state.recentLicks.shift();
+                  
+                  const rawPhrase = decompressCompactPhrase(selected.phrase);
+                  this.currentAxiom = stretchToNarrativeLength(rawPhrase, 48, this.random);
+                  return;
+              }
           }
       }
 
@@ -500,7 +515,6 @@ export class BluesBrain {
       const name = rootNames[root % 12];
       const finalName = isMin ? `${name}m7` : `${name}7`;
 
-      // #ЗАЧЕМ: Повышена плотность слоя гармонии.
       if (this.random.next() > 0.85 && tension < 0.4) return [];
 
       return [root + 12, root + 19, root + (isMin ? 15 : 16)].map((n, i) => ({ 

@@ -1,8 +1,6 @@
 /**
- * #ЗАЧЕМ: Audio Engine Context V7.4 — "Unified Mixer Sovereignty".
- * #ЧТО: 1. Централизация управления громкостью в системных узлах gainNodesRef.
- *       2. Удаление двойного масштабирования (менеджер + контекст).
- *       3. Синхронизация VOICE_BALANCE с ключами InstrumentSettings.
+ * #ЗАЧЕМ: Audio Engine Context V7.5 — "Headroom Optimization".
+ * #ЧТО: ПЛАН №617 — Общая перебалансировка усиления для предотвращения bus clipping.
  */
 'use client';
 
@@ -26,16 +24,16 @@ import { collection, getDocs, query } from 'firebase/firestore';
 import { useFirestore } from '@/firebase';
 
 // --- Constants ---
-// #ЗАЧЕМ: Золотой баланс ансамбля.
+// #ЗАЧЕМ: Безопасный баланс ансамбля с запасом по Headroom.
 const VOICE_BALANCE: Record<string, number> = {
-  bass: 0.85, 
-  melody: 1.0, 
-  accompaniment: 0.75, 
-  drums: 0.85, 
-  sparkles: 0.6, 
-  sfx: 0.7, 
+  bass: 0.75, 
+  melody: 0.85, 
+  accompaniment: 0.70, 
+  drums: 0.80, 
+  sparkles: 0.55, 
+  sfx: 0.65, 
   harmony: 0.85,
-  pianoAccompaniment: 0.75, 
+  pianoAccompaniment: 0.70, 
 };
 
 // --- React Context ---
@@ -260,11 +258,6 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
     }
   }, [isInitialized, stopAllSounds]);
 
-  /**
-   * #ЗАЧЕМ: Ультимативное решение проблемы регуляторов.
-   * #ЧТО: Громкость устанавливается только на системных шинах gainNodesRef.
-   *       Это исключает "двойное умножение" и гарантирует работу всех слайдеров.
-   */
   const setVolumeCallback = useCallback((part: string, volume: number) => {
     if (part === 'pads' || part === 'effects') return;
     

@@ -38,6 +38,7 @@ type SamplerInstrument = { buffers: Map<number, AudioBuffer>; };
  * #ЗАЧЕМ: Сэмплер Telecaster с поддержкой гибридных транзиентов.
  * #ЧТО: 1. Повышена громкость преампа для баланса (ПЛАН №612).
  *       2. Внедрен isTransientMode для извлечения "удара".
+ *       3. ПЛАН №617: Удален избыточный 1.5x множитель для транзиентов.
  */
 export class TelecasterGuitarSampler {
     private audioContext: AudioContext;
@@ -52,7 +53,6 @@ export class TelecasterGuitarSampler {
         this.audioContext = audioContext;
         this.destination = destination;
         this.preamp = this.audioContext.createGain();
-        // #ЗАЧЕМ: Повышение мощности Телекастера.
         this.preamp.gain.value = 1.2;
         this.preamp.connect(this.destination);
     }
@@ -141,8 +141,8 @@ export class TelecasterGuitarSampler {
         source.playbackRate.value = isFinite(playbackRate) ? playbackRate : 1.0;
 
         gainNode.gain.setValueAtTime(0, startTime);
-        const peakVelocity = isTransientMode ? velocity * 1.5 : velocity;
-        gainNode.gain.linearRampToValueAtTime(peakVelocity, startTime + 0.005);
+        // #ЗАЧЕМ: Устранение клиппинга. Удален избыточный 1.5x множитель.
+        gainNode.gain.linearRampToValueAtTime(velocity, startTime + 0.005);
         
         if (isTransientMode) {
             gainNode.gain.setTargetAtTime(0.0001, startTime + 0.02, 0.005);
