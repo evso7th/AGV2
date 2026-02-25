@@ -1,6 +1,6 @@
 /**
- * #ЗАЧЕМ: Audio Engine Context V7.2 — "Cloud DNA Integration".
- * #ЧТО: Внедрен фоновый загрузчик аксиом Наследия из Firestore.
+ * #ЗАЧЕМ: Audio Engine Context V7.3 — "Selective Cloud DNA".
+ * #ЧТО: Внедрена поддержка извлечения уникальных CompositionID для фильтрации.
  */
 'use client';
 
@@ -53,6 +53,7 @@ interface AudioEngineContextType {
   isPlaying: boolean;
   isRecording: boolean;
   isBroadcastActive: boolean;
+  availableCompositions: string[]; // #ЗАЧЕМ: Список уникальных треков из облака.
   initialize: () => Promise<boolean>;
   setIsPlaying: (playing: boolean) => void;
   updateSettings: (settings: Partial<WorkerSettings>) => void;
@@ -86,6 +87,7 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
   const [isPlaying, setIsPlayingState] = useState(false);
   const [isRecording, setIsRecording] = useState(false);
   const [isBroadcastActive, setIsBroadcastActive] = useState(false);
+  const [availableCompositions, setAvailableCompositions] = useState<string[]>([]);
   
   const isInitializingRef = useRef(false);
   const workerRef = useRef<Worker | null>(null);
@@ -119,8 +121,7 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
   const db = useFirestore();
 
   /**
-   * #ЗАЧЕМ: Фоновая загрузка аксиом из облака.
-   * #ЧТО: Стриминг базы данных в Worker для расширения Гиперкуба.
+   * #ЗАЧЕМ: Фоновая загрузка аксиом из облака и извлечение уникальных CompositionID.
    */
   useEffect(() => {
     if (isInitialized && db) {
@@ -130,8 +131,12 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
           const snapshot = await getDocs(query(axiomsCol));
           const axioms = snapshot.docs.map(d => ({ id: d.id, ...d.data() }));
           
+          // Извлекаем уникальные ID композиций для фильтра в UI
+          const uniqueIds = Array.from(new Set(axioms.map(ax => (ax as any).compositionId))).filter(Boolean).sort();
+          setAvailableCompositions(uniqueIds);
+
           if (workerRef.current) {
-            console.log(`%c[CloudDNA] Transmitting ${axioms.length} axioms to Worker.`, 'color: #00ced1; font-weight: bold;');
+            console.log(`%c[CloudDNA] Transmitting ${axioms.length} axioms to Worker. Unique tracks: ${uniqueIds.length}`, 'color: #00ced1; font-weight: bold;');
             workerRef.current.postMessage({ command: 'update_cloud_axioms', data: axioms });
           }
         } catch (e) {
@@ -324,6 +329,10 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
         accompanimentManagerV2Ref.current.setPreampGain(volume);
         return;
     }
+    if (part === 'harmony' && harmonyManagerRef.current) {
+        harmonyManagerRef.current.setVolume(volume);
+        return;
+    }
     if (part === 'pianoAccompaniment' && pianoAccompanimentManagerRef.current) {
         pianoAccompanimentManagerRef.current.setVolume(volume);
         return;
@@ -338,7 +347,7 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
 
   return (
     <AudioEngineContext.Provider value={{
-        isInitialized, isInitializing, isPlaying, isRecording, isBroadcastActive, initialize,
+        isInitialized, isInitializing, isPlaying, isRecording, isBroadcastActive, availableCompositions, initialize,
         setIsPlaying: setIsPlayingStateCallback, updateSettings: (s) => {
             if (workerRef.current) {
                 settingsRef.current = { ...settingsRef.current, ...s } as WorkerSettings;

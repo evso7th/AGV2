@@ -1,6 +1,6 @@
 /**
  * @file AuraGroove Music Worker (Architecture: "The Cloud Composer")
- * #ОБНОВЛЕНО (ПЛАН №610): Добавлена поддержка облачных аксиом (cloudAxiomPool).
+ * #ОБНОВЛЕНО (ПЛАН №615): Добавлена поддержка фильтрации по CompositionID.
  */
 import type { WorkerSettings, Mood, Genre, InstrumentPart } from '@/types/music';
 import { FractalMusicEngine } from '@/lib/fractal-music-engine';
@@ -28,7 +28,7 @@ const Scheduler = {
     isRunning: false,
     barCount: 0,
     sessionLickHistory: [] as string[],
-    cloudAxiomPool: [] as any[], // #ЗАЧЕМ: Репозиторий аксиом из Firestore.
+    cloudAxiomPool: [] as any[], 
     
     settings: {
         bpm: 75,
@@ -50,7 +50,8 @@ const Scheduler = {
         composerControlsInstruments: true,
         mood: 'melancholic' as Mood,
         introBars: 12, 
-        sessionLickHistory: []
+        sessionLickHistory: [],
+        selectedCompositionIds: [] // #ЗАЧЕМ: Список разрешенных треков.
     } as WorkerSettings,
 
     get barDuration() { 
@@ -65,7 +66,7 @@ const Scheduler = {
             ...settings,
             seed: seed,
             sessionLickHistory: this.sessionLickHistory,
-            cloudAxioms: this.cloudAxiomPool // Передаем облачный пул в движок
+            cloudAxioms: this.cloudAxiomPool 
         };
 
         console.log(`%c${getTimestamp()} [Engine] Sowing Suite DNA: ${blueprint.name} (Seed: ${seed})`, 'color: #FFD700; font-weight:bold;');
@@ -108,8 +109,11 @@ const Scheduler = {
 
     updateSettings(newSettings: Partial<WorkerSettings>) {
        const genreOrMoodChanged = (newSettings.genre && newSettings.genre !== this.settings.genre) || (newSettings.mood && newSettings.mood !== this.settings.mood);
+       // #ЗАЧЕМ: Смена фильтра также требует реинициализации для обновления планов.
+       const filterChanged = newSettings.selectedCompositionIds !== undefined && JSON.stringify(newSettings.selectedCompositionIds) !== JSON.stringify(this.settings.selectedCompositionIds);
+       
        this.settings = { ...this.settings, ...newSettings };
-       if (genreOrMoodChanged) {
+       if (genreOrMoodChanged || filterChanged) {
            this.sessionLickHistory = []; 
            this.reset();
        } else if (fractalMusicEngine) {
@@ -117,7 +121,6 @@ const Scheduler = {
        }
     },
 
-    /** #ЗАЧЕМ: Обновление облачного пула аксиом на лету. */
     updateCloudAxioms(axioms: any[]) {
         this.cloudAxiomPool = axioms;
         if (fractalMusicEngine) {
@@ -198,7 +201,7 @@ self.onmessage = (event: MessageEvent) => {
             case 'stop': Scheduler.stop(); break;
             case 'reset': Scheduler.reset(); break;
             case 'update_settings': Scheduler.updateSettings(data); break;
-            case 'update_cloud_axioms': Scheduler.updateCloudAxioms(data); break; // #ЗАЧЕМ: Прием данных из Firestore.
+            case 'update_cloud_axioms': Scheduler.updateCloudAxioms(data); break; 
         }
     } catch (e) {
         self.postMessage({ type: 'error', error: String(e) });

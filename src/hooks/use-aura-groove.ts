@@ -1,6 +1,6 @@
 /**
- * #ЗАЧЕМ: Хук управления UI музыкой V4.2 — "Full Volume Sovereignty".
- * #ЧТО: Исправлена ошибка синхронизации стейта. Теперь ВСЕ ползунки обновляют React-состояние и движок.
+ * #ЗАЧЕМ: Хук управления UI музыкой V4.3 — "Cloud Filter Control".
+ * #ЧТО: Добавлена поддержка выбора конкретных CompositionID для фильтрации Наследия.
  */
 'use client';
 
@@ -21,6 +21,10 @@ export type AuraGrooveProps = {
   isRecording: boolean;
   isBroadcastActive: boolean;
   loadingText: string;
+  availableCompositions: string[];
+  selectedCompositionIds: string[];
+  toggleCompositionFilter: (id: string) => void;
+  clearCompositionFilters: () => void;
   drumSettings: DrumSettings;
   setDrumSettings: (settings: React.SetStateAction<DrumSettings>) => void;
   instrumentSettings: InstrumentSettings;
@@ -66,6 +70,7 @@ export const useAuraGroove = (): AuraGrooveProps => {
     isPlaying,
     isRecording,
     isBroadcastActive,
+    availableCompositions,
     initialize, 
     setIsPlaying: setEngineIsPlaying, 
     updateSettings,
@@ -107,6 +112,7 @@ export const useAuraGroove = (): AuraGrooveProps => {
   const [introBars, setIntroBars] = useState(12);
   const [currentSeed, setCurrentSeed] = useState<number>(0);
   const [sessionLickHistory, setSessionLickHistory] = useState<string[]>([]);
+  const [selectedCompositionIds, setSelectedCompositionIds] = useState<string[]>([]);
 
   const [isEqModalOpen, setIsEqModalOpen] = useState(false);
   const [eqSettings, setEqSettings] = useState<number[]>(Array(7).fill(0));
@@ -170,9 +176,10 @@ export const useAuraGroove = (): AuraGrooveProps => {
       composerControlsInstruments,
       mood,
       introBars,
-      sessionLickHistory 
+      sessionLickHistory,
+      selectedCompositionIds // #ЗАЧЕМ: Передача фильтра в Worker.
     };
-  }, [bpm, score, genre, instrumentSettings, drumSettings, textureSettings, density, composerControlsInstruments, mood, introBars, sessionLickHistory]);
+  }, [bpm, score, genre, instrumentSettings, drumSettings, textureSettings, density, composerControlsInstruments, mood, introBars, sessionLickHistory, selectedCompositionIds]);
 
   useEffect(() => {
     if (isInitialized) {
@@ -253,14 +260,9 @@ export const useAuraGroove = (): AuraGrooveProps => {
       setBassTechnique(technique);
   };
 
-  /**
-   * #ЗАЧЕМ: Исправлено "замерзание" ВСЕХ слайдеров.
-   * #ЧТО: Каждое изменение громкости теперь обновляет локальное состояние React.
-   */
   const handleVolumeChange = (part: InstrumentPart, value: number) => {
     setVolume(part, value);
     
-    // #ЗАЧЕМ: Синхронное обновление UI для всех категорий.
     if (part in instrumentSettings) {
       setInstrumentSettings(prev => ({
         ...prev,
@@ -309,6 +311,15 @@ export const useAuraGroove = (): AuraGrooveProps => {
     }));
   }, []);
 
+  const toggleCompositionFilter = (id: string) => {
+    setSelectedCompositionIds(prev => {
+      if (prev.includes(id)) return prev.filter(item => item !== id);
+      return [...prev, id];
+    });
+  };
+
+  const clearCompositionFilters = () => setSelectedCompositionIds([]);
+
   useEffect(() => {
     if (!timerSettings.isActive) return;
     
@@ -336,6 +347,10 @@ export const useAuraGroove = (): AuraGrooveProps => {
   return {
     isInitializing, isPlaying, isRegenerating, isRecording, isBroadcastActive,
     loadingText: isInitializing ? 'Initializing...' : (isInitialized ? 'Ready' : 'Click to initialize audio'),
+    availableCompositions,
+    selectedCompositionIds,
+    toggleCompositionFilter,
+    clearCompositionFilters,
     handlePlayPause, handleRegenerate, handleToggleRecording, handleToggleBroadcast, handleSaveMasterpiece,
     drumSettings, setDrumSettings,
     instrumentSettings, setInstrumentSettings: handleInstrumentChange,

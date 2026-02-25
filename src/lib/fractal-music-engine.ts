@@ -43,12 +43,13 @@ interface EngineConfig {
   introBars: number;
   ancestor?: any;
   sessionLickHistory?: string[];
-  cloudAxioms?: any[]; // #ЗАЧЕМ: Доступ к облачным аксиомам Наследия.
+  cloudAxioms?: any[]; 
+  selectedCompositionIds?: string[]; // #ЗАЧЕМ: Поддержка фильтрации треков Наследия.
 }
 
 /**
- * #ЗАЧЕМ: Фрактальный Музыкальный Движок V24.0 — "Cloud Enabled Harmony".
- * #ЧТО: Поддержка динамического обновления облачных аксиом и передача их в Мозги.
+ * #ЗАЧЕМ: Фрактальный Музыкальный Движок V24.1 — "Selective Cloud DNA".
+ * #ЧТО: Поддержка динамического обновления облачных аксиом и передача фильтров в Мозги.
  */
 export class FractalMusicEngine {
   public config: EngineConfig;
@@ -84,9 +85,9 @@ export class FractalMusicEngine {
       
       if (seedChanged) this.random = seededRandom(this.config.seed);
       
-      // #ЗАЧЕМ: Синхронизация облачных аксиом с Мозгами на лету.
-      if (newConfig.cloudAxioms) {
-          if (this.bluesBrain) (this.bluesBrain as any).updateCloudAxioms(newConfig.cloudAxioms);
+      // #ЗАЧЕМ: Синхронизация облачных аксиом и фильтров с Мозгами на лету.
+      if (newConfig.cloudAxioms || newConfig.selectedCompositionIds) {
+          if (this.bluesBrain) (this.bluesBrain as any).updateCloudAxioms(this.config.cloudAxioms, this.config.selectedCompositionIds);
       }
 
       if(moodOrGenreChanged || seedChanged) this.initialize(true);
@@ -147,8 +148,8 @@ export class FractalMusicEngine {
     this.navigator = new BlueprintNavigator(this.blueprint, this.config.seed, this.config.genre, this.config.mood, this.config.introBars, this.suiteDNA.soloPlanMap);
     
     if (this.config.genre === 'blues') {
-        // #ЗАЧЕМ: Передача облачных аксиом при инициализации.
-        this.bluesBrain = new BluesBrain(this.config.seed, this.config.mood, this.config.sessionLickHistory, this.config.cloudAxioms);
+        // #ЗАЧЕМ: Передача облачных аксиом и фильтра при инициализации.
+        this.bluesBrain = new BluesBrain(this.config.seed, this.config.mood, this.config.sessionLickHistory, this.config.cloudAxioms, this.config.selectedCompositionIds);
         this.ambientBrain = null;
     } else if (this.config.genre === 'ambient') {
         this.ambientBrain = new AmbientBrain(this.config.seed, this.config.mood);
@@ -208,8 +209,8 @@ export class FractalMusicEngine {
     if (navInfo.currentPart.id === 'INTRO' && stages && stages.length > 0) {
         if (this.introLotteryMap.size === 0) this.performIntroLottery(stages);
         
-        const partBars = navInfo.currentPartEndBar - navInfo.currentPartStartStartBar + 1;
-        const progress = (this.epoch - navInfo.currentStartBar) / (partBars || 1);
+        const partBars = navInfo.currentPartEndBar - navInfo.currentPartStartBar + 1;
+        const progress = (this.epoch - navInfo.currentPartStartBar) / (partBars || 1);
         const stageIndex = Math.floor(progress * stages.length);
         currentInstructions = this.introLotteryMap.get(Math.min(stageIndex, stages.length - 1));
     } else if (stages && stages.length > 0) {

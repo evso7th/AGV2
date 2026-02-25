@@ -24,11 +24,9 @@ import { BLUES_MELODY_RIFFS } from './assets/blues-melody-riffs';
 import { GUITAR_PATTERNS } from './assets/guitar-patterns';
 
 /**
- * #ЗАЧЕМ: Блюзовый Мозг V136.0 — "The Harmony Sovereign".
- * #ЧТО: 1. Активация слоя гармонии: guitarChords теперь играют постоянно.
- *       2. Пианино: на спадах Tension играет каскадные пассажи.
- *       3. Масштабная перебалансировка громкостей.
- *       4. Исправлена ошибка chordName: undefined.
+ * #ЗАЧЕМ: Блюзовый Мозг V137.0 — "Heritage Sovereignty".
+ * #ЧТО: 1. Внедрена поддержка декларативной фильтрации по CompositionID.
+ *       2. Мозг теперь отдает 100% приоритет выбранным трекам из облака.
  */
 
 export interface BluesBrainConfig {
@@ -40,6 +38,7 @@ export interface BluesBrainConfig {
   };
   sessionLickHistory?: string[];
   cloudAxioms?: any[];
+  selectedCompositionIds?: string[]; // #ЗАЧЕМ: Фильтр треков.
 }
 
 export const DEFAULT_CONFIG: BluesBrainConfig = {
@@ -77,7 +76,7 @@ export class BluesBrain {
   private sfxPlayedInPart = false;
   private currentPartId = '';
 
-  constructor(seed: number, mood: Mood, sessionLickHistory?: string[], cloudAxioms?: any[]) {
+  constructor(seed: number, mood: Mood, sessionLickHistory?: string[], cloudAxioms?: any[], selectedCompositionIds?: string[]) {
     this.seed = seed;
     this.mood = mood;
     this.random = this.createSeededRandom(seed);
@@ -86,6 +85,7 @@ export class BluesBrain {
       ...DEFAULT_CONFIG,
       sessionLickHistory: sessionLickHistory || [],
       cloudAxioms: cloudAxioms || [],
+      selectedCompositionIds: selectedCompositionIds || [],
       emotion: {
         melancholy: ['melancholic', 'dark', 'anxious'].includes(mood) ? 0.85 : 0.4,
         darkness: ['dark', 'gloomy'].includes(mood) ? 0.35 : 0.2
@@ -130,8 +130,9 @@ export class BluesBrain {
     return { next, nextInt: (max: number) => Math.floor(next() * max) };
   }
 
-  public updateCloudAxioms(axioms: any[]) {
+  public updateCloudAxioms(axioms: any[], selectedCompositionIds?: string[]) {
       this.config.cloudAxioms = axioms;
+      this.config.selectedCompositionIds = selectedCompositionIds || [];
   }
 
   public generateBar(
@@ -174,7 +175,6 @@ export class BluesBrain {
 
     const unisonType = navInfo.currentPart.instrumentRules?.accompaniment?.unisonType || 'none';
     
-    // --- ENSEMBLE LOGIC ---
     if (hints.accompaniment && unisonType !== 'none') {
         events.push(...this.renderUnisonAccompaniment(bassEvents, currentChord, unisonType, tension));
     } else if (hints.accompaniment) {
@@ -183,7 +183,6 @@ export class BluesBrain {
 
     events.push(...bassEvents);
 
-    // --- MELODY LOGIC ---
     if (hints.melody) {
         events.push(...this.renderMelodicSegment(epoch, currentChord, tension));
         if (this.currentGuitarRiff) {
@@ -240,14 +239,23 @@ export class BluesBrain {
           const commonMoodFilter = ['epic', 'joyful', 'enthusiastic'].includes(this.mood) ? 'light' : 
                                    (['melancholic', 'dark', 'anxious', 'gloomy'].includes(this.mood) ? 'dark' : 'neutral');
           
-          const cloudPool = this.config.cloudAxioms.filter(ax => 
-              ax.genre === 'blues' && 
-              ax.role === 'melody' &&
-              (ax.mood === this.mood || ax.commonMood === commonMoodFilter) &&
-              !this.state.recentLicks.includes(ax.id)
-          );
+          // --- DECLARATIVE CLOUD FILTER ---
+          // #ЗАЧЕМ: Гитарист должен играть только то, что выбрал пользователь.
+          const cloudPool = this.config.cloudAxioms.filter(ax => {
+              const genreMatch = ax.genre === 'blues';
+              const roleMatch = ax.role === 'melody';
+              const moodMatch = ax.mood === this.mood || ax.commonMood === commonMoodFilter;
+              const noveltyMatch = !this.state.recentLicks.includes(ax.id);
+              
+              // Если фильтр активен - игнорируем MoodMatch, даем приоритет выбранным трекам
+              if (this.config.selectedCompositionIds && this.config.selectedCompositionIds.length > 0) {
+                  return genreMatch && roleMatch && this.config.selectedCompositionIds.includes(ax.compositionId) && noveltyMatch;
+              }
+              
+              return genreMatch && roleMatch && moodMatch && noveltyMatch;
+          });
 
-          if (cloudPool.length > 0 && this.random.next() < 0.85) {
+          if (cloudPool.length > 0) {
               const selected = cloudPool[this.random.nextInt(cloudPool.length)];
               this.currentLickId = selected.id;
               this.state.recentLicks.push(selected.id);
@@ -497,11 +505,9 @@ export class BluesBrain {
       const isMin = chord.chordType === 'minor' || chord.chordType === 'diminished';
       const rootNames = ['C', 'Db', 'D', 'Eb', 'E', 'F', 'Gb', 'G', 'Ab', 'A', 'Bb', 'B'];
       
-      // #ЗАЧЕМ: Гарантированное имя аккорда.
       const name = rootNames[root % 12];
       const finalName = isMin ? `${name}m` : name;
 
-      // #ЗАЧЕМ: Повышена активность гармонии (было 0.65).
       if (this.random.next() > 0.15 && tension < 0.7) return [];
 
       return [root + 12, root + 19].map((n, i) => ({ 

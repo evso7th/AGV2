@@ -1,7 +1,12 @@
+/**
+ * #ЗАЧЕМ: UI AuraGroove V2.8 — "Cloud Filter Portal".
+ * #ЧТО: 1. Добавлен модал выбора треков Наследия во вкладке Composition.
+ *       2. Реализована индикация активного фильтра.
+ */
 'use client';
 
 import { useState, useEffect } from "react";
-import { Music, Pause, Speaker, FileMusic, Drum, Atom, Piano, Home, Sparkles, Sprout, Timer, RefreshCw, Bot, Waves, Radio, ThumbsUp, TowerControl, SlidersHorizontal, Database } from "lucide-react";
+import { Music, Pause, Speaker, FileMusic, Drum, Atom, Piano, Home, Sparkles, Sprout, Timer, RefreshCw, Bot, Waves, Radio, ThumbsUp, TowerControl, SlidersHorizontal, Database, Filter, Check, RotateCcw } from "lucide-react";
 import Image from "next/image";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -10,7 +15,9 @@ import { Label } from "@/components/ui/label";
 import { Slider } from "@/components/ui/slider";
 import { Switch } from "@/components/ui/switch";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from "@/components/ui/dialog";
+import { ScrollArea } from "@/components/ui/scroll-area";
+import { Checkbox } from "@/components/ui/checkbox";
 import type { AuraGrooveProps } from "@/hooks/use-aura-groove";
 import { useRouter } from "next/navigation";
 import { formatTime, cn } from "@/lib/utils";
@@ -53,10 +60,12 @@ export function AuraGrooveV2({
   timerSettings, handleTimerDurationChange, handleToggleTimer,
   composerControlsInstruments, setComposerControlsInstruments,
   mood, setMood, genre, setGenre, isRegenerating,
+  availableCompositions, selectedCompositionIds, toggleCompositionFilter, clearCompositionFilters
 }: AuraGrooveProps) {
 
   const router = useRouter();
   const [isClient, setIsClient] = useState(false);
+  const [isFilterModalOpen, setIsFilterModalOpen] = useState(false);
 
   useEffect(() => {
     setIsClient(true);
@@ -179,7 +188,52 @@ export function AuraGrooveV2({
           <div className="grid">
             <TabsContent value="composition" className="space-y-1.5 pt-2 col-start-1 row-start-1 px-1">
               <Card className="border-0 shadow-none">
-                <CardHeader className="p-2"><CardTitle className="flex items-center gap-2 text-sm"><FileMusic className="h-4 w-4"/> Composition</CardTitle></CardHeader>
+                <CardHeader className="p-2 py-1 flex flex-row items-center justify-between">
+                    <CardTitle className="flex items-center gap-2 text-sm"><FileMusic className="h-4 w-4"/> Composition</CardTitle>
+                    {/* #ЗАЧЕМ: Доступ к фильтру облачных аксиом. */}
+                    <Dialog open={isFilterModalOpen} onOpenChange={setIsFilterModalOpen}>
+                        <DialogTrigger asChild>
+                            <Button variant="ghost" size="sm" className={cn("h-7 px-2 gap-1.5 text-[10px] font-bold uppercase tracking-tighter", selectedCompositionIds.length > 0 && "text-primary bg-primary/10")}>
+                                <Filter className="h-3 w-3" />
+                                {selectedCompositionIds.length > 0 ? `${selectedCompositionIds.length} Tracks` : "Cloud Filter"}
+                            </Button>
+                        </DialogTrigger>
+                        <DialogContent className="sm:max-w-[380px] max-h-[80vh] flex flex-col p-0 overflow-hidden">
+                            <DialogHeader className="p-4 border-b">
+                                <DialogTitle className="flex items-center gap-2 text-primary"><Database className="h-5 w-5" /> Legacy Selector</DialogTitle>
+                                <p className="text-[10px] text-muted-foreground uppercase font-bold">Limit DNA to selected recordings</p>
+                            </DialogHeader>
+                            <div className="flex-grow overflow-hidden">
+                                <ScrollArea className="h-[400px] p-4">
+                                    <div className="space-y-3">
+                                        {availableCompositions.length === 0 ? (
+                                            <p className="text-center text-xs text-muted-foreground py-10 italic">No cloud axioms found. Syncing...</p>
+                                        ) : (
+                                            availableCompositions.map(id => (
+                                                <div key={id} className="flex items-center space-x-3 p-2 rounded-md hover:bg-muted/50 transition-colors">
+                                                    <Checkbox 
+                                                        id={`filter-${id}`} 
+                                                        checked={selectedCompositionIds.includes(id)}
+                                                        onCheckedChange={() => toggleCompositionFilter(id)}
+                                                    />
+                                                    <Label htmlFor={`filter-${id}`} className="text-xs font-medium cursor-pointer flex-grow leading-tight break-words">{id}</Label>
+                                                </div>
+                                            ))
+                                        )}
+                                    </div>
+                                </ScrollArea>
+                            </div>
+                            <DialogFooter className="p-3 border-t bg-muted/20 flex flex-row justify-between sm:justify-between items-center gap-2">
+                                <Button variant="ghost" size="sm" onClick={clearCompositionFilters} className="text-[10px] uppercase font-bold h-8">
+                                    <RotateCcw className="h-3 w-3 mr-1.5" /> Reset
+                                </Button>
+                                <Button size="sm" onClick={() => setIsFilterModalOpen(false)} className="h-8 px-6 text-[10px] uppercase font-bold">
+                                    Apply
+                                </Button>
+                            </DialogFooter>
+                        </DialogContent>
+                    </Dialog>
+                </CardHeader>
                 <CardContent className="space-y-2 p-3 pt-0">
                   <div className="grid grid-cols-3 items-center gap-2">
                       <Label htmlFor="score-selector" className="text-right text-xs">Style</Label>
