@@ -1,12 +1,19 @@
 /**
- * #ЗАЧЕМ: UI AuraGroove V2.9.1 — "The Live Curator".
- * #ЧТО: 1. Автоматический Hot Sync базы данных при открытии модального окна фильтра.
- *       2. Поиск и фильтры по Наследию сохранены.
+ * #ЗАЧЕМ: UI AuraGroove V2.9.2 — "Stability Restoration".
+ * #ЧТО: 1. Восстановлена переменная genreList, вызывавшая ReferenceError.
+ *       2. Синхронизированы все локальные определения инструментов и списков.
+ *       3. Исправлена ошибка Hot Sync при открытии фильтра.
  */
 'use client';
 
 import { useState, useEffect } from "react";
-import { Music, Pause, Speaker, FileMusic, Drum, Atom, Piano, Home, Sparkles, Sprout, Timer, RefreshCw, Bot, Waves, Radio, ThumbsUp, TowerControl, Database, Filter, Check, RotateCcw, Search, Eye, EyeOff, SlidersHorizontal } from "lucide-react";
+import { 
+  Music, Pause, Speaker, FileMusic, Drum, Atom, Piano, Home, 
+  Sparkles, Sprout, Timer, RefreshCw, Bot, Waves, Radio, 
+  ThumbsUp, TowerControl, Database, Filter, Check, RotateCcw, 
+  Search, Eye, EyeOff, SlidersHorizontal, Cog, GitBranch, LayoutGrid, X,
+  Guitar
+} from "lucide-react";
 import Image from "next/image";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -22,9 +29,10 @@ import { Input } from "@/components/ui/input";
 import type { AuraGrooveProps } from "@/hooks/use-aura-groove";
 import { useRouter } from "next/navigation";
 import { formatTime, cn } from "@/lib/utils";
-import type { Mood, Genre } from '@/types/music';
+import type { Mood, Genre, InstrumentPart, BassInstrument, MelodyInstrument, AccompanimentInstrument } from '@/types/music';
 import { V2_PRESETS } from "@/lib/presets-v2";
 import { BASS_PRESET_INFO } from "@/lib/bass-presets";
+import { SYNTH_PRESETS } from "@/lib/synth-presets";
 
 const EQ_BANDS = [
   { freq: '60', label: '60' }, { freq: '125', label: '125' }, { freq: '250', label: '250' },
@@ -74,8 +82,10 @@ export function AuraGrooveV2({
     setIsClient(true);
   }, []);
 
+  // --- Instrument & Options Definitions ---
   const bassInstrumentList = Object.keys(BASS_PRESET_INFO);
   const v2MelodyInstruments = Object.keys(V2_PRESETS).filter(k => V2_PRESETS[k as keyof typeof V2_PRESETS].type !== 'bass');
+  const v1MelodyInstruments = Object.keys(SYNTH_PRESETS).filter(k => !bassInstrumentList.includes(k));
   
   const melodyInstrumentList = v2MelodyInstruments;
   const textureInstrumentList = v2MelodyInstruments; 
@@ -85,6 +95,11 @@ export function AuraGrooveV2({
   
   const isFractalStyle = score === 'neuro_f_matrix';
   const composerControl = isFractalStyle && composerControlsInstruments;
+
+  // #ЗАЧЕМ: Решение ошибки "genreList is not defined".
+  const genreList: Genre[] = isFractalStyle
+    ? ['ambient', 'trance', 'blues']
+    : ['trance', 'ambient', 'progressive', 'rock', 'house', 'rnb', 'ballad', 'reggae', 'blues', 'celtic'];
 
   const displayNames: Record<string, string> = {
     'guitarChords': 'Acoustic Chords',
@@ -104,6 +119,17 @@ export function AuraGrooveV2({
       const matchesSelected = showSelectedOnly ? selectedCompositionIds.includes(id) : true;
       return matchesSearch && matchesSelected;
   });
+
+  const getPartIcon = (part: InstrumentPart) => {
+    switch(part) {
+        case 'bass': return <Waves className="h-4 w-4"/>;
+        case 'melody': return <GitBranch className="h-4 w-4"/>;
+        case 'accompaniment': return <Piano className="h-4 w-4"/>;
+        case 'harmony': return <Waves className="h-4 w-4"/>;
+        case 'pianoAccompaniment': return <Piano className="h-4 w-4"/>;
+        default: return <Music className="h-4 w-4"/>;
+    }
+  };
 
   return (
     <div className="w-full h-full flex flex-col p-3 bg-card">
@@ -195,7 +221,6 @@ export function AuraGrooveV2({
                     <CardTitle className="flex items-center gap-2 text-sm"><FileMusic className="h-4 w-4"/> Composition</CardTitle>
                     <Dialog open={isFilterModalOpen} onOpenChange={(open) => {
                         setIsFilterModalOpen(open);
-                        // #ЗАЧЕМ: Перечитывание базы данных при открытии окна.
                         if (open) refreshCloudAxioms();
                     }}>
                         <DialogTrigger asChild>
@@ -413,7 +438,7 @@ export function AuraGrooveV2({
                             <div key={part} className="p-2 border rounded-md space-y-2">
                                <div className="grid grid-cols-2 items-center gap-2">
                                     <Label className="font-semibold flex items-center gap-1.5 capitalize text-xs">
-                                        {part === 'pianoAccompaniment' ? <Piano className="h-4 w-4"/> : <Waves className="h-4 w-4"/>}
+                                        {getPartIcon(part as InstrumentPart)}
                                         {part === 'pianoAccompaniment' ? 'Piano' : part}
                                     </Label>
                                     {part !== 'pianoAccompaniment' ? (
