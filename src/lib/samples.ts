@@ -178,8 +178,8 @@ export const ACOUSTIC_GUITAR_CHORD_SAMPLES: Record<string, string[]> = {
   ],
   'Bbm': [
       '/assets/guitars_hords_samples/4287-bbm.ogg',
-      '/assets/guitars_hords_samples/clear_telecaster/591200__telecaster-clean-bbm-hi-r.ogg',
-      '/assets/guitars_hords_samples/clear_telecaster/591201__telecaster-clean-bbm-hi-l.ogg'
+      '/assets/guitars_hords_samples/clear_telecaster/591201__telecaster-clean-bbm-hi-l.ogg',
+      '/assets/guitars_hords_samples/clear_telecaster/591200__telecaster-clean-bbm-hi-r.ogg'
   ],
   'Bb7': ['/assets/guitars_hords_samples/4286-bb7.ogg'],
   'Bb6': ['/assets/guitars_hords_samples/4285-bb6.ogg'],
