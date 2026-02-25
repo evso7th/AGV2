@@ -39,7 +39,7 @@ import { saveHeritageAxiom } from '@/lib/firebase-service';
 import { decompressCompactPhrase, DEGREE_TO_SEMITONE, repairLegacyPhrase } from '@/lib/music-theory';
 import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
-import type { FractalEvent, InstrumentHints } from '@/types/fractal';
+import type { FractalEvent, InstrumentHints, Mood, CommonMood } from '@/types/fractal';
 import type { Genre } from '@/types/music';
 
 const PROCESSED_FILES_KEY = 'AuraGroove_ImportedFiles';
@@ -47,6 +47,23 @@ const PROCESSED_FILES_KEY = 'AuraGroove_ImportedFiles';
 const AVAILABLE_GENRES: Genre[] = [
   'ambient', 'blues', 'trance', 'progressive', 'rock', 'house', 'rnb', 'ballad', 'reggae', 'celtic'
 ];
+
+const AVAILABLE_MOODS: Mood[] = [
+  'epic', 'joyful', 'enthusiastic', 'melancholic', 'dark', 'anxious', 'dreamy', 'contemplative', 'calm', 'gloomy'
+];
+
+const MOOD_TO_COMMON: Record<Mood, CommonMood> = {
+  epic: 'light',
+  joyful: 'light',
+  enthusiastic: 'light',
+  dreamy: 'neutral',
+  contemplative: 'neutral',
+  calm: 'neutral',
+  melancholic: 'dark',
+  dark: 'dark',
+  anxious: 'dark',
+  gloomy: 'dark'
+};
 
 export default function HypercubeDashboard() {
   const db = useFirestore();
@@ -66,9 +83,12 @@ export default function HypercubeDashboard() {
   const [playingAxiomId, setPlayingAxiomId] = useState<string | null>(null);
   const [explorerSearch, setFilterSearchText] = useState("");
   
-  // Renaming State
+  // Renaming & Metadata State
   const [editingGroupId, setEditingGroupId] = useState<string | null>(null);
   const [editNameValue, setEditNameValue] = useState("");
+  const [editGenreValue, setEditGenreValue] = useState<Genre>('blues');
+  const [editMoodValue, setEditMoodValue] = useState<Mood>('melancholic');
+
   const [editingAxiomId, setEditingAxiomId] = useState<string | null>(null);
   const [editNarrativeValue, setEditNarrativeValue] = useState("");
 
@@ -268,22 +288,25 @@ export default function HypercubeDashboard() {
     }
   };
 
-  const handleRenameTrack = async (oldId: string, newId: string, licks: any[]) => {
-    if (!newId || oldId === newId) {
-        setEditingGroupId(null);
-        return;
-    }
+  const handleUpdateTrackMetadata = async (oldId: string, newId: string, newGenre: Genre, newMood: Mood, licks: any[]) => {
     setIsProcessing(true);
     try {
         const batch = writeBatch(db);
+        const newCommonMood = MOOD_TO_COMMON[newMood];
+        
         licks.forEach(ax => {
             const ref = doc(db, 'heritage_axioms', ax.id);
-            batch.update(ref, { compositionId: newId });
+            batch.update(ref, { 
+                compositionId: newId,
+                genre: newGenre,
+                mood: newMood,
+                commonMood: newCommonMood
+            });
         });
         await batch.commit();
-        toast({ title: "Track Renamed", description: `Updated ${licks.length} axioms to "${newId}"` });
+        toast({ title: "Track Updated", description: `Updated ${licks.length} axioms successfully.` });
     } catch (e) {
-        toast({ variant: "destructive", title: "Rename Failed" });
+        toast({ variant: "destructive", title: "Update Failed" });
     } finally {
         setIsProcessing(false);
         setEditingGroupId(null);
@@ -418,44 +441,77 @@ export default function HypercubeDashboard() {
                     <Accordion type="multiple" className="space-y-2">
                       {groupedAxioms.map(([compId, licks]) => (
                         <AccordionItem key={compId} value={compId} className="border border-border/50 rounded-lg overflow-hidden bg-background/30">
-                          <div className="flex items-center justify-between px-4 hover:bg-primary/5 transition-colors group">
-                            <div className="flex items-center gap-4 py-4 flex-grow">
-                                <Badge variant="secondary" className="bg-primary/10 text-primary border-primary/20 px-2 py-0.5 text-[10px] font-black">{licks.length}</Badge>
-                                
-                                {editingGroupId === compId ? (
-                                    <div className="flex items-center gap-2" onClick={(e) => e.stopPropagation()}>
-                                        <Input 
-                                            value={editNameValue} 
-                                            onChange={(e) => setEditNameValue(e.target.value)}
-                                            className="h-8 text-sm w-[300px]"
-                                            autoFocus
-                                        />
-                                        <Button size="icon" variant="ghost" className="h-8 w-8 text-primary" onClick={() => handleRenameTrack(compId, editNameValue, licks)}>
-                                            <Check className="h-4 w-4" />
-                                        </Button>
-                                        <Button size="icon" variant="ghost" className="h-8 w-8 text-muted-foreground" onClick={() => setEditingGroupId(null)}>
-                                            <X className="h-4 w-4" />
-                                        </Button>
-                                    </div>
-                                ) : (
-                                    <div className="space-y-0.5 flex-grow cursor-pointer" onClick={() => {
-                                        setEditingGroupId(compId);
-                                        setEditNameValue(compId);
-                                    }}>
-                                        <div className="text-sm font-black text-foreground group-hover:text-primary transition-colors flex items-center gap-2">
-                                            {compId.replace(/_/g, ' ')}
-                                            <Edit2 className="h-3 w-3 opacity-0 group-hover:opacity-100 transition-opacity" />
+                          <div className="flex flex-col px-4 hover:bg-primary/5 transition-colors group">
+                            <div className="flex items-center justify-between py-4">
+                                <div className="flex items-center gap-4 flex-grow">
+                                    <Badge variant="secondary" className="bg-primary/10 text-primary border-primary/20 px-2 py-0.5 text-[10px] font-black">{licks.length}</Badge>
+                                    
+                                    {editingGroupId === compId ? (
+                                        <div className="flex flex-col gap-3 w-full max-w-2xl bg-background/80 p-4 rounded-lg border border-primary/20" onClick={(e) => e.stopPropagation()}>
+                                            <div className="space-y-1.5">
+                                                <Label className="text-[10px] uppercase font-black opacity-70">Track Name</Label>
+                                                <Input 
+                                                    value={editNameValue} 
+                                                    onChange={(e) => setEditNameValue(e.target.value)}
+                                                    className="h-8 text-sm"
+                                                    autoFocus
+                                                />
+                                            </div>
+                                            <div className="grid grid-cols-2 gap-4">
+                                                <div className="space-y-1.5">
+                                                    <Label className="text-[10px] uppercase font-black opacity-70">Genre</Label>
+                                                    <Select value={editGenreValue} onValueChange={(v) => setEditGenreValue(v as Genre)}>
+                                                        <SelectTrigger className="h-8 text-xs bg-background"><SelectValue /></SelectTrigger>
+                                                        <SelectContent>
+                                                            {AVAILABLE_GENRES.map(g => <SelectItem key={g} value={g} className="capitalize text-xs">{g}</SelectItem>)}
+                                                        </SelectContent>
+                                                    </Select>
+                                                </div>
+                                                <div className="space-y-1.5">
+                                                    <Label className="text-[10px] uppercase font-black opacity-70">Mood</Label>
+                                                    <Select value={editMoodValue} onValueChange={(v) => setEditMoodValue(v as Mood)}>
+                                                        <SelectTrigger className="h-8 text-xs bg-background"><SelectValue /></SelectTrigger>
+                                                        <SelectContent>
+                                                            {AVAILABLE_MOODS.map(m => <SelectItem key={m} value={m} className="capitalize text-xs">{m}</SelectItem>)}
+                                                        </SelectContent>
+                                                    </Select>
+                                                </div>
+                                            </div>
+                                            <div className="flex items-center gap-2 pt-2">
+                                                <Button size="sm" className="gap-2 font-black uppercase text-[10px]" onClick={() => handleUpdateTrackMetadata(compId, editNameValue, editGenreValue, editMoodValue, licks)}>
+                                                    <Check className="h-3.5 w-3.5" /> Save Changes
+                                                </Button>
+                                                <Button size="sm" variant="ghost" className="gap-2 font-black uppercase text-[10px]" onClick={() => setEditingGroupId(null)}>
+                                                    <X className="h-3.5 w-3.5" /> Cancel
+                                                </Button>
+                                            </div>
                                         </div>
-                                        <div className="text-[10px] text-muted-foreground uppercase font-bold tracking-tighter">Genre: {licks[0].genre} | Mood: {licks[0].commonMood}</div>
-                                    </div>
-                                )}
+                                    ) : (
+                                        <div className="space-y-0.5 flex-grow cursor-pointer" onClick={() => {
+                                            setEditingGroupId(compId);
+                                            setEditNameValue(compId);
+                                            setEditGenreValue(licks[0].genre);
+                                            setEditMoodValue(licks[0].mood);
+                                        }}>
+                                            <div className="text-sm font-black text-foreground group-hover:text-primary transition-colors flex items-center gap-2">
+                                                {compId.replace(/_/g, ' ')}
+                                                <Edit2 className="h-3 w-3 opacity-0 group-hover:opacity-100 transition-opacity" />
+                                            </div>
+                                            <div className="text-[10px] text-muted-foreground uppercase font-bold tracking-tighter flex gap-2">
+                                                <span>Genre: <span className="text-foreground">{licks[0].genre}</span></span>
+                                                <span className="opacity-30">|</span>
+                                                <span>Mood: <span className="text-foreground">{licks[0].mood}</span> ({licks[0].commonMood})</span>
+                                            </div>
+                                        </div>
+                                    )}
+                                </div>
+                                
+                                <AccordionTrigger className="hover:no-underline w-auto px-4" />
+                                
+                                <Button variant="ghost" size="icon" onClick={(e) => { e.stopPropagation(); handleDeleteTrack(compId, licks); }} className="text-muted-foreground hover:text-destructive h-8 w-8 ml-2">
+                                  <Trash2 className="h-4 w-4" />
+                                </Button>
                             </div>
-                            
-                            <AccordionTrigger className="hover:no-underline w-auto px-4" />
-                            
-                            <Button variant="ghost" size="icon" onClick={(e) => { e.stopPropagation(); handleDeleteTrack(compId, licks); }} className="text-muted-foreground hover:text-destructive h-8 w-8 ml-2">
-                              <Trash2 className="h-4 w-4" />
-                            </Button>
                           </div>
                           <AccordionContent className="p-0 bg-muted/10 border-t">
                             <div className="divide-y divide-border/20">
